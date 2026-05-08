@@ -4,7 +4,8 @@ required_packages <- c(
   "sandwich",
   "nortest",
   "boot",
-  "readxl"
+  "readxl",
+  "jsonlite"
 )
 
 missing_packages <- required_packages[
@@ -20,4 +21,3 @@ shiny::runApp(
   host = "127.0.0.1",
   launch.browser = TRUE
 )
-

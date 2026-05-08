@@ -1,4 +1,4 @@
-required_packages <- c("shiny", "lmtest", "sandwich", "nortest", "boot", "readxl")
+required_packages <- c("shiny", "lmtest", "sandwich", "nortest", "boot", "readxl", "jsonlite")
 missing_packages <- required_packages[!vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)]
 if (length(missing_packages) > 0) {
   stop(
@@ -14,7 +14,9 @@ library(sandwich)
 library(nortest)
 library(boot)
 library(readxl)
+library(jsonlite)
 
+app_version <- trimws(readLines("VERSION", warn = FALSE)[1])
 dw_table_path <- "C:/StatEdu/EasyFlow/EasyFlow_Statistics_3.0.xlsx"
 
 format_p <- function(p) {
@@ -43,17 +45,17 @@ coeftest_table <- function(model, vcov_matrix = NULL) {
   }
 
   data.frame(
-    term = rownames(test),
-    estimate = test[, 1],
-    std_error = test[, 2],
-    statistic = test[, 3],
-    p_value = test[, 4],
+    Term = rownames(test),
+    B = test[, 1],
+    SE = test[, 2],
+    Statistic = test[, 3],
+    p = test[, 4],
     row.names = NULL,
     check.names = FALSE
   )
 }
 
-bootstrap_coef_ci <- function(data, formula, r = 2000, conf = .95) {
+bootstrap_coef_table <- function(data, formula, r = 2000, conf = .95, seed = 1234) {
   complete_data <- model.frame(formula, data = data, na.action = na.omit)
 
   boot_stat <- function(d, indices) {
@@ -61,15 +63,25 @@ bootstrap_coef_ci <- function(data, formula, r = 2000, conf = .95) {
     coef(fit)
   }
 
-  set.seed(1234)
+  set.seed(seed)
   boot_fit <- boot::boot(complete_data, statistic = boot_stat, R = r)
+  original_fit <- lm(formula, data = complete_data)
   alpha <- (1 - conf) / 2
   limits <- t(apply(boot_fit$t, 2, stats::quantile, probs = c(alpha, 1 - alpha), na.rm = TRUE))
 
+  boot_p <- function(x) {
+    n <- sum(!is.na(x))
+    lower <- (sum(x <= 0, na.rm = TRUE) + 1) / (n + 1)
+    upper <- (sum(x >= 0, na.rm = TRUE) + 1) / (n + 1)
+    min(1, 2 * min(lower, upper))
+  }
+
   data.frame(
-    term = names(coef(lm(formula, data = complete_data))),
-    boot_lower = limits[, 1],
-    boot_upper = limits[, 2],
+    Term = names(coef(original_fit)),
+    Boot_SE = apply(boot_fit$t, 2, stats::sd, na.rm = TRUE),
+    Boot_LLCI = limits[, 1],
+    Boot_ULCI = limits[, 2],
+    Boot_p = apply(boot_fit$t, 2, boot_p),
     row.names = NULL,
     check.names = FALSE
   )
@@ -82,25 +94,15 @@ durbin_watson_stat <- function(model) {
 
 lookup_dw_critical <- function(n, p, path = dw_table_path) {
   if (!file.exists(path)) {
-    return(list(dL = NA_real_, dU = NA_real_, note = "Durbin-Watson 임계값 파일을 찾을 수 없습니다."))
+    return(list(dL = NA_real_, dU = NA_real_, note = "Durbin-Watson critical value workbook was not found."))
   }
 
   if (n < 1 || n > 2000 || p < 1 || p > 20) {
-    return(list(dL = NA_real_, dU = NA_real_, note = "임계값 표 범위는 n=1~2000, p=1~20입니다."))
+    return(list(dL = NA_real_, dU = NA_real_, note = "The critical value table supports n = 1-2000 and p = 1-20."))
   }
 
-  dU_table <- readxl::read_excel(
-    path,
-    sheet = "Durbin-Watson",
-    range = "DP1:EI2000",
-    col_names = FALSE
-  )
-  dL_table <- readxl::read_excel(
-    path,
-    sheet = "Durbin-Watson",
-    range = "EL1:FE2000",
-    col_names = FALSE
-  )
+  dU_table <- readxl::read_excel(path, sheet = "Durbin-Watson", range = "DP1:EI2000", col_names = FALSE)
+  dL_table <- readxl::read_excel(path, sheet = "Durbin-Watson", range = "EL1:FE2000", col_names = FALSE)
 
   list(
     dL = as.numeric(dL_table[[p]][n]),
@@ -111,37 +113,122 @@ lookup_dw_critical <- function(n, p, path = dw_table_path) {
 
 interpret_dw <- function(d, dL, dU) {
   if (is.na(dL) || is.na(dU)) return(NA_character_)
-  if (dU < d && d < 4 - dU) return("독립: 자기상관 없음")
-  if (d < dL || d > 4 - dL) return("자기상관 가능")
-  "불확실 영역"
+  if (dU < d && d < 4 - dU) return("Independent")
+  if (d < dL || d > 4 - dL) return("Autocorrelation likely")
+  "Inconclusive"
 }
 
-ui <- fluidPage(
-  titlePanel("Assumption-Based Multiple Regression"),
+empty_message <- function(text) {
+  div(class = "empty-message", text)
+}
 
-  sidebarLayout(
-    sidebarPanel(
-      fileInput("file", "CSV 파일 업로드", accept = c(".csv")),
-      checkboxInput("header", "첫 행을 변수명으로 사용", TRUE),
-      selectInput("y", "종속변수", choices = NULL),
-      selectizeInput("xs", "독립변수", choices = NULL, multiple = TRUE),
-      numericInput("boot_r", "Bootstrap 반복 수", value = 2000, min = 500, step = 500),
-      actionButton("run", "분석 실행")
-    ),
+ui <- navbarPage(
+  title = div(class = "brand-title", "EasyFlow Regression", span(class = "version", paste0("v", app_version))),
+  id = "main_menu",
+  header = tags$head(tags$link(rel = "stylesheet", type = "text/css", href = "style.css")),
 
-    mainPanel(
-      h4("진단 결과"),
-      tableOutput("diagnostics"),
-      h4("Durbin-Watson 자기상관 진단"),
-      tableOutput("dw_result"),
-      h4("선택된 분석 방법"),
-      verbatimTextOutput("decision"),
-      h4("회귀분석 결과"),
-      tableOutput("regression"),
-      h4("Bootstrap 신뢰구간"),
-      tableOutput("bootstrap_ci"),
-      h4("모형 요약"),
-      verbatimTextOutput("summary")
+  tabPanel(
+    "Data",
+    div(
+      class = "page-shell",
+      div(
+        class = "toolbar",
+        div(
+          class = "toolbar-group",
+          fileInput("file", "Open Data File", accept = c(".csv")),
+          checkboxInput("header", "Use first row as variable names", TRUE)
+        )
+      ),
+      div(
+        class = "content-grid",
+        div(
+          class = "panel",
+          h3("Data Preview"),
+          tableOutput("data_preview")
+        ),
+        div(
+          class = "panel",
+          h3("Variables"),
+          tableOutput("variable_table")
+        )
+      )
+    )
+  ),
+
+  tabPanel(
+    "Settings",
+    div(
+      class = "page-shell",
+      div(
+        class = "content-grid",
+        div(
+          class = "panel",
+          h3("Load Settings"),
+          fileInput("settings_file", "Open Settings File", accept = c(".json")),
+          actionButton("apply_settings", "Apply Settings")
+        ),
+        div(
+          class = "panel",
+          h3("Save Settings"),
+          p("Save the current variable selection and analysis options as a JSON settings file."),
+          downloadButton("save_settings", "Save Settings")
+        )
+      )
+    )
+  ),
+
+  tabPanel(
+    "EasyFlow Regression",
+    div(
+      class = "page-shell",
+      div(
+        class = "analysis-layout",
+        div(
+          class = "side-panel",
+          h3("Model Setup"),
+          selectInput("y", "Dependent Variable", choices = NULL),
+          selectizeInput("xs", "Independent Variables", choices = NULL, multiple = TRUE),
+          numericInput("boot_r", "Bootstrap Resamples", value = 2000, min = 500, step = 500),
+          numericInput("seed", "Random Seed", value = 1234, min = 1, step = 1),
+          actionButton("run", "Run Analysis", class = "primary-action")
+        ),
+        div(
+          class = "result-panel",
+          h3("Assumption Diagnostics"),
+          tableOutput("diagnostics"),
+          h3("Durbin-Watson Test"),
+          tableOutput("dw_result"),
+          h3("Selected Method"),
+          verbatimTextOutput("decision"),
+          h3("Regression Coefficients"),
+          tableOutput("regression"),
+          h3("Bootstrap Results"),
+          tableOutput("bootstrap_ci"),
+          h3("Model Summary"),
+          verbatimTextOutput("summary")
+        )
+      )
+    )
+  ),
+
+  tabPanel(
+    "Results",
+    div(
+      class = "page-shell",
+      div(
+        class = "content-grid",
+        div(
+          class = "panel",
+          h3("Load Results"),
+          fileInput("results_file", "Open Results File", accept = c(".csv", ".json", ".html"))
+        ),
+        div(
+          class = "panel",
+          h3("Save Results"),
+          p("Save the current coefficient table as a CSV file."),
+          downloadButton("save_coefficients", "Save Coefficients")
+        )
+      )
     )
   )
 )
@@ -164,11 +251,20 @@ server <- function(input, output, session) {
     updateSelectizeInput(session, "xs", choices = cols, server = TRUE)
   })
 
+  observeEvent(input$apply_settings, {
+    req(input$settings_file)
+    settings <- jsonlite::fromJSON(input$settings_file$datapath)
+    if (!is.null(settings$dependent)) updateSelectInput(session, "y", selected = settings$dependent)
+    if (!is.null(settings$independent)) updateSelectizeInput(session, "xs", selected = settings$independent)
+    if (!is.null(settings$bootstrap_resamples)) updateNumericInput(session, "boot_r", value = settings$bootstrap_resamples)
+    if (!is.null(settings$seed)) updateNumericInput(session, "seed", value = settings$seed)
+  })
+
   analysis <- eventReactive(input$run, {
     data <- dataset()
     req(input$y, input$xs)
-    validate(need(!(input$y %in% input$xs), "종속변수는 독립변수와 중복될 수 없습니다."))
-    validate(need(length(input$xs) > 0, "독립변수를 하나 이상 선택하세요."))
+    validate(need(!(input$y %in% input$xs), "The dependent variable cannot also be an independent variable."))
+    validate(need(length(input$xs) > 0, "Select at least one independent variable."))
 
     formula <- make_formula(input$y, input$xs)
     model <- lm(formula, data = data)
@@ -186,13 +282,13 @@ server <- function(input, output, session) {
     homo_ok <- homogeneity$p.value > .05
 
     method <- if (normal_ok && homo_ok) {
-      "일반 OLS 회귀분석"
+      "OLS regression"
     } else if (normal_ok && !homo_ok) {
-      "HC3 robust SE 회귀분석"
+      "OLS regression with HC3 robust standard errors"
     } else if (!normal_ok && homo_ok) {
-      "OLS 회귀분석 + Bootstrap confidence intervals"
+      "OLS regression with bootstrap confidence intervals and bootstrap p values"
     } else {
-      "HC3 robust SE 회귀분석 + Bootstrap confidence intervals"
+      "OLS regression with HC3 robust standard errors, bootstrap confidence intervals, and bootstrap p values"
     }
 
     use_hc3 <- !homo_ok
@@ -201,8 +297,8 @@ server <- function(input, output, session) {
     vcov_matrix <- if (use_hc3) sandwich::vcovHC(model, type = "HC3") else NULL
     coef_table <- coeftest_table(model, vcov_matrix)
 
-    boot_ci <- if (use_bootstrap) {
-      bootstrap_coef_ci(data, formula, r = input$boot_r)
+    boot_table <- if (use_bootstrap) {
+      bootstrap_coef_table(data, formula, r = input$boot_r, seed = input$seed)
     } else {
       NULL
     }
@@ -210,21 +306,21 @@ server <- function(input, output, session) {
     list(
       model = model,
       diagnostics = data.frame(
-        assumption = c(
-          "잔차 정규성: Lilliefors corrected K-S test",
-          "등분산성: Breusch-Pagan test"
+        Assumption = c(
+          "Residual normality: Lilliefors corrected K-S test",
+          "Homoscedasticity: Breusch-Pagan test"
         ),
-        statistic = c(unname(normality$statistic), unname(homogeneity$statistic)),
-        p_value = c(format_p(normality$p.value), format_p(homogeneity$p.value)),
-        result = c(
-          if (normal_ok) "정규성 가정 기각 안 함" else "정규성 가정 위반 가능",
-          if (homo_ok) "등분산성 가정 기각 안 함" else "이분산성 가능"
+        Statistic = c(unname(normality$statistic), unname(homogeneity$statistic)),
+        p = c(format_p(normality$p.value), format_p(homogeneity$p.value)),
+        Decision = c(
+          if (normal_ok) "Not rejected" else "Violated",
+          if (homo_ok) "Not rejected" else "Violated"
         ),
         check.names = FALSE
       ),
       dw_result = data.frame(
-        item = c("Durbin-Watson d", "n", "p", "dL", "dU", "4 - dU", "4 - dL", "판정", "비고"),
-        value = c(
+        Item = c("Durbin-Watson d", "n", "p", "dL", "dU", "4 - dU", "4 - dL", "Decision", "Note"),
+        Value = c(
           round(dw_d, 4),
           dw_n,
           dw_p,
@@ -239,7 +335,23 @@ server <- function(input, output, session) {
       ),
       method = method,
       coef_table = coef_table,
-      boot_ci = boot_ci
+      boot_table = boot_table
+    )
+  })
+
+  output$data_preview <- renderTable({
+    if (is.null(input$file)) return(data.frame(Message = "Open a CSV file to preview data."))
+    head(dataset(), 10)
+  }, digits = 4)
+
+  output$variable_table <- renderTable({
+    if (is.null(input$file)) return(data.frame(Message = "No data file is open."))
+    data <- dataset()
+    data.frame(
+      Variable = names(data),
+      Type = vapply(data, function(x) class(x)[1], character(1)),
+      Missing = vapply(data, function(x) sum(is.na(x)), integer(1)),
+      check.names = FALSE
     )
   })
 
@@ -257,21 +369,44 @@ server <- function(input, output, session) {
 
   output$regression <- renderTable({
     table <- analysis()$coef_table
-    table$p_value <- vapply(table$p_value, format_p, character(1))
+    table$p <- vapply(table$p, format_p, character(1))
     table
   }, digits = 4)
 
   output$bootstrap_ci <- renderTable({
-    ci <- analysis()$boot_ci
-    if (is.null(ci)) {
-      return(data.frame(message = "잔차 정규성 가정이 기각되지 않아 bootstrap CI를 산출하지 않았습니다."))
+    table <- analysis()$boot_table
+    if (is.null(table)) {
+      return(data.frame(Message = "Bootstrap results are displayed when the residual normality assumption is violated."))
     }
-    ci
+    table$Boot_p <- vapply(table$Boot_p, format_p, character(1))
+    table
   }, digits = 4)
 
   output$summary <- renderPrint({
     summary(analysis()$model)
   })
+
+  output$save_settings <- downloadHandler(
+    filename = function() "EasyFlow_Regression_Settings.json",
+    content = function(file) {
+      settings <- list(
+        app = "EasyFlow Regression",
+        version = app_version,
+        dependent = input$y,
+        independent = input$xs,
+        bootstrap_resamples = input$boot_r,
+        seed = input$seed
+      )
+      jsonlite::write_json(settings, file, pretty = TRUE, auto_unbox = TRUE)
+    }
+  )
+
+  output$save_coefficients <- downloadHandler(
+    filename = function() "EasyFlow_Regression_Coefficients.csv",
+    content = function(file) {
+      write.csv(analysis()$coef_table, file, row.names = FALSE, fileEncoding = "UTF-8")
+    }
+  )
 }
 
 shinyApp(ui, server)
