@@ -1,0 +1,11 @@
+.Rhistory
+.RData
+.Rproj.user/
+.Ruserdata
+renv/library/
+renv/staging/
+results/
+settings/*.local.json
+*.log
+*.tmp
+
