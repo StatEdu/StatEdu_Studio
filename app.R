@@ -409,12 +409,22 @@ server <- function(input, output, session) {
   pending_settings <- reactiveVal(NULL)
   restored_data_file <- reactiveVal("")
   restored_variable_info <- reactiveVal(NULL)
+  active_data_file <- reactiveVal(NULL)
+
+  current_data_file <- reactive({
+    uploaded <- input$file
+    if (!is.null(uploaded)) {
+      return(list(path = uploaded$datapath, name = uploaded$name, restored = FALSE))
+    }
+    active_data_file()
+  })
 
   dataset <- reactive({
-    req(input$file)
+    file <- current_data_file()
+    req(file)
     data <- read_input_data(
-      input$file$datapath,
-      input$file$name,
+      file$path,
+      file$name,
       csv_header = input$header,
       dat_delimiter = input$dat_delimiter %||% "whitespace",
       dat_has_names = isTRUE(input$dat_has_names)
@@ -440,6 +450,23 @@ server <- function(input, output, session) {
     values <- settings_vector(x)
     if (length(values) == 0) return("")
     values[[1]]
+  }
+
+  restore_embedded_data_file <- function(settings) {
+    embedded <- settings$data_file_content_base64 %||% settings$embedded_data_file$content_base64
+    if (is.null(embedded) || !nzchar(settings_scalar(embedded))) {
+      return(FALSE)
+    }
+
+    file_name <- settings_scalar(settings$data_file %||% settings$embedded_data_file$name)
+    if (!nzchar(file_name)) {
+      file_name <- "EasyFlow_Regression_Data"
+    }
+    extension <- tools::file_ext(file_name)
+    restored_path <- tempfile("easyflow_data_", fileext = if (nzchar(extension)) paste0(".", extension) else "")
+    writeBin(jsonlite::base64_dec(settings_scalar(embedded)), restored_path)
+    active_data_file(list(path = restored_path, name = file_name, restored = TRUE))
+    TRUE
   }
 
   settings_variable_info <- function(settings) {
@@ -468,7 +495,7 @@ server <- function(input, output, session) {
   }
 
   current_data_step <- function() {
-    if (is.null(input$file) && is.null(restored_variable_info())) return("load_data")
+    if (is.null(current_data_file()) && is.null(restored_variable_info())) return("load_data")
     if (isTRUE(selection_applied())) return("assign_variable_roles")
     "select_analysis_variables"
   }
@@ -500,7 +527,7 @@ server <- function(input, output, session) {
   }
 
   available_variable_names <- function() {
-    if (!is.null(input$file)) {
+    if (!is.null(current_data_file())) {
       return(names(dataset()))
     }
     info <- restored_variable_info()
@@ -525,7 +552,12 @@ server <- function(input, output, session) {
     if (!is.null(settings$bootstrap_resamples)) updateNumericInput(session, "boot_r", value = settings$bootstrap_resamples)
     if (!is.null(settings$seed)) updateNumericInput(session, "seed", value = settings$seed)
 
-    if (is.null(input$file)) {
+    if (is.null(current_data_file()) && restore_embedded_data_file(settings)) {
+      pending_settings(settings)
+      return()
+    }
+
+    if (is.null(current_data_file())) {
       info <- settings_variable_info(settings)
       restored_data_file(settings_scalar(settings$data_file))
       restored_variable_info(info)
@@ -546,8 +578,6 @@ server <- function(input, output, session) {
     }
 
     cols <- names(dataset())
-    restored_data_file("")
-    restored_variable_info(NULL)
     selected <- intersect(selected, cols)
     selected_names(selected)
 
@@ -592,6 +622,10 @@ server <- function(input, output, session) {
     } else {
       restore_settings_state(settings)
     }
+  })
+
+  observeEvent(input$file, {
+    active_data_file(NULL)
   })
 
   observeEvent(input$variable_selected_names, {
@@ -644,7 +678,8 @@ server <- function(input, output, session) {
   })
 
   output$data_steps <- renderUI({
-    has_open_data <- !is.null(input$file)
+    file <- current_data_file()
+    has_open_data <- !is.null(file)
     has_data <- has_open_data || !is.null(restored_variable_info())
     applied <- isTRUE(selection_applied())
     selected <- selected_names()
@@ -657,7 +692,7 @@ server <- function(input, output, session) {
         if (has_data) {
           div(
             class = "step-summary",
-            div(if (has_open_data) input$file$name else restored_data_file(), class = "step-summary-title"),
+            div(if (has_open_data) file$name else restored_data_file(), class = "step-summary-title"),
             div(
               if (has_open_data) {
                 sprintf("%s variables, %s rows", ncol(dataset()), nrow(dataset()))
@@ -733,8 +768,10 @@ server <- function(input, output, session) {
 
   apply_settings_object <- function(settings) {
     restore_settings_state(settings)
-    if (is.null(input$file)) {
-      showNotification("Settings loaded. Open the matching data file to restore saved steps.", type = "message")
+    if (!is.null(current_data_file())) {
+      showNotification("Settings and data file loaded.", type = "message")
+    } else if (!is.null(restored_variable_info())) {
+      showNotification("Settings loaded. This older settings file does not include the data file.", type = "warning")
     } else {
       showNotification("Settings loaded.", type = "message")
     }
@@ -845,7 +882,8 @@ server <- function(input, output, session) {
   })
 
   output$data_loaded_message <- renderText({
-    if (is.null(input$file)) {
+    file <- current_data_file()
+    if (is.null(file)) {
       if (!is.null(restored_variable_info())) {
         return(sprintf(
           "Settings loaded for %s: %s variables saved. Reopen the data file before running analysis.",
@@ -856,11 +894,15 @@ server <- function(input, output, session) {
       return("No data file is open.")
     }
     data <- dataset()
-    sprintf("Loaded %s: %s variables, %s rows.", input$file$name, ncol(data), nrow(data))
+    if (isTRUE(file$restored)) {
+      sprintf("Loaded %s from settings: %s variables, %s rows.", file$name, ncol(data), nrow(data))
+    } else {
+      sprintf("Loaded %s: %s variables, %s rows.", file$name, ncol(data), nrow(data))
+    }
   })
 
   output$data_view_title <- renderText({
-    if (is.null(input$file) && is.null(restored_variable_info())) {
+    if (is.null(current_data_file()) && is.null(restored_variable_info())) {
       return("Variable Info")
     }
     if (identical(data_view(), "preview")) {
@@ -890,14 +932,14 @@ server <- function(input, output, session) {
   })
 
   output$variable_table <- renderDT({
-    if (is.null(input$file) && is.null(restored_variable_info())) {
+    if (is.null(current_data_file()) && is.null(restored_variable_info())) {
       return(DT::datatable(
         data.frame(Message = "Read a SAV, CSV, or DAT file to show variable information."),
         rownames = FALSE,
         options = list(dom = "t")
       ))
     }
-    table_data <- if (is.null(input$file)) {
+    table_data <- if (is.null(current_data_file())) {
       restored_variable_info()
     } else {
       variable_summary_table(dataset(), input)
@@ -1042,7 +1084,7 @@ server <- function(input, output, session) {
   })
 
   output$data_preview_table <- renderDT({
-    if (is.null(input$file)) {
+    if (is.null(current_data_file())) {
       return(DT::datatable(
         data.frame(Message = "Reopen the data file to preview data rows."),
         rownames = FALSE,
@@ -1099,15 +1141,18 @@ server <- function(input, output, session) {
   })
 
   current_settings <- function() {
-    variable_info <- if (is.null(input$file)) restored_variable_info() else variable_summary_table(dataset(), input)
+    file <- current_data_file()
+    variable_info <- if (is.null(file)) restored_variable_info() else variable_summary_table(dataset(), input)
     variable_names <- if (is.null(variable_info)) character(0) else as.character(variable_info$name)
+    data_content <- if (is.null(file)) "" else jsonlite::base64_enc(readBin(file$path, "raw", n = file.info(file$path)$size))
 
     list(
       app = "EasyFlow Regression",
       version = app_version,
       data_step = current_data_step(),
       data_view = data_view(),
-      data_file = if (is.null(input$file)) restored_data_file() else input$file$name,
+      data_file = if (is.null(file)) restored_data_file() else file$name,
+      data_file_content_base64 = data_content,
       data_variables = I(variable_names),
       data_variable_info = I(if (is.null(variable_info)) list() else variable_info),
       selection_applied = isTRUE(selection_applied()),
