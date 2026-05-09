@@ -435,6 +435,7 @@ server <- function(input, output, session) {
   data_view <- reactiveVal("info")
   selected_names <- reactiveVal(character(0))
   selection_applied <- reactiveVal(FALSE)
+  pending_settings <- reactiveVal(NULL)
 
   dataset <- reactive({
     req(input$file)
@@ -457,11 +458,67 @@ server <- function(input, output, session) {
     updateSelectizeInput(session, "covariates", choices = cols, selected = intersect(input$covariates %||% character(0), cols), server = TRUE)
   }
 
+  settings_vector <- function(x) {
+    if (is.null(x)) return(character(0))
+    as.character(unlist(x, use.names = FALSE))
+  }
+
+  current_data_step <- function() {
+    if (is.null(input$file)) return("load_data")
+    if (isTRUE(selection_applied())) return("review_selected_variables")
+    "select_analysis_variables"
+  }
+
+  restore_settings_state <- function(settings) {
+    selected <- settings_vector(settings$selected_variables)
+
+    if (!is.null(settings$data_view) && settings$data_view %in% c("info", "preview")) {
+      data_view(settings$data_view)
+    }
+    if (!is.null(settings$selected_variables)) {
+      selected_names(selected)
+    }
+    if (!is.null(settings$bootstrap_resamples)) updateNumericInput(session, "boot_r", value = settings$bootstrap_resamples)
+    if (!is.null(settings$seed)) updateNumericInput(session, "seed", value = settings$seed)
+
+    if (is.null(input$file)) {
+      pending_settings(settings)
+      selection_applied(FALSE)
+      return()
+    }
+
+    cols <- names(dataset())
+    selected <- intersect(selected, cols)
+    selected_names(selected)
+
+    if (!is.null(settings$id)) updateSelectInput(session, "id_var", selected = if ((settings$id %||% "") %in% cols) settings$id else "")
+    if (!is.null(settings$filter)) updateSelectInput(session, "filter_var", selected = if ((settings$filter %||% "") %in% cols) settings$filter else "")
+    if (!is.null(settings$filter_condition)) updateTextInput(session, "filter_condition", value = settings$filter_condition)
+    if (!is.null(settings$dependent)) updateSelectInput(session, "y", selected = if ((settings$dependent %||% "") %in% cols) settings$dependent else character(0))
+    if (!is.null(settings$independent)) updateSelectizeInput(session, "xs", selected = intersect(settings_vector(settings$independent), cols))
+    if (!is.null(settings$covariates)) updateSelectizeInput(session, "covariates", selected = intersect(settings_vector(settings$covariates), cols))
+
+    applied <- isTRUE(settings$selection_applied) ||
+      identical(settings$data_step %||% "", "review_selected_variables")
+    selection_applied(applied && length(selected) > 0)
+    if (isTRUE(selection_applied())) {
+      update_analysis_choices(selected)
+    } else {
+      update_analysis_choices(cols)
+    }
+    pending_settings(NULL)
+  }
+
   observeEvent(dataset(), {
     cols <- names(dataset())
-    selected_names(character(0))
-    selection_applied(FALSE)
-    update_analysis_choices(cols)
+    settings <- pending_settings()
+    if (is.null(settings)) {
+      selected_names(character(0))
+      selection_applied(FALSE)
+      update_analysis_choices(cols)
+    } else {
+      restore_settings_state(settings)
+    }
   })
 
   observeEvent(input$variable_selected_names, {
@@ -553,15 +610,12 @@ server <- function(input, output, session) {
   })
 
   apply_settings_object <- function(settings) {
-    if (!is.null(settings$id)) updateSelectInput(session, "id_var", selected = settings$id %||% "")
-    if (!is.null(settings$filter)) updateSelectInput(session, "filter_var", selected = settings$filter %||% "")
-    if (!is.null(settings$filter_condition)) updateTextInput(session, "filter_condition", value = settings$filter_condition)
-    if (!is.null(settings$dependent)) updateSelectInput(session, "y", selected = settings$dependent)
-    if (!is.null(settings$independent)) updateSelectizeInput(session, "xs", selected = settings$independent)
-    if (!is.null(settings$covariates)) updateSelectizeInput(session, "covariates", selected = settings$covariates)
-    if (!is.null(settings$selected_variables)) selected_names(as.character(settings$selected_variables))
-    if (!is.null(settings$bootstrap_resamples)) updateNumericInput(session, "boot_r", value = settings$bootstrap_resamples)
-    if (!is.null(settings$seed)) updateNumericInput(session, "seed", value = settings$seed)
+    restore_settings_state(settings)
+    if (is.null(input$file)) {
+      showNotification("Settings loaded. Open the matching data file to restore saved steps.", type = "message")
+    } else {
+      showNotification("Settings loaded.", type = "message")
+    }
   }
 
   observeEvent(input$apply_settings, {
@@ -907,6 +961,11 @@ server <- function(input, output, session) {
     list(
       app = "EasyFlow Regression",
       version = app_version,
+      data_step = current_data_step(),
+      data_view = data_view(),
+      data_file = if (is.null(input$file)) "" else input$file$name,
+      data_variables = if (is.null(input$file)) character(0) else names(dataset()),
+      selection_applied = isTRUE(selection_applied()),
       id = input$id_var %||% "",
       filter = input$filter_var %||% "",
       filter_condition = input$filter_condition %||% "",
