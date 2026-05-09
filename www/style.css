@@ -234,6 +234,26 @@ table {
   font-size: 13px;
 }
 
+.dataTable tbody,
+.dataTable tbody tr,
+.dataTable tbody td {
+  user-select: none;
+}
+
+table.dataTable tbody tr.selected,
+table.dataTable tbody tr.selected > *,
+table.dataTable tbody tr.selected td,
+table.dataTable tbody tr.selected th,
+table.dataTable tbody tr:active,
+table.dataTable tbody tr:active > *,
+table.dataTable tbody tr:active td,
+table.dataTable tbody tr:active th {
+  color: inherit !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
 pre {
   background: #f8fafc;
   border: 1px solid #d9e2ec;

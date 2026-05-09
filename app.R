@@ -712,6 +712,8 @@ server <- function(input, output, session) {
           }
         });
         table.on('change', 'input.variable-select', function() {
+          if (window.getSelection) window.getSelection().removeAllRanges();
+          $(this).closest('tr').removeClass('selected');
           var name = $(this).data('name');
           if ($(this).is(':checked')) {
             window.easyflowSelectedNames[name] = true;
@@ -720,6 +722,10 @@ server <- function(input, output, session) {
           }
           refreshVariableChecks();
           syncVariableSelection();
+        });
+        table.on('click', 'input.variable-select', function(e) {
+          e.stopPropagation();
+          $(this).closest('tr').removeClass('selected');
         });
 
         refreshVariableChecks();
