@@ -555,9 +555,6 @@ server <- function(input, output, session) {
 
   set_active_role_names <- function(names) {
     names <- intersect(as.character(names), selected_names())
-    if (identical(active_role(), "dependent")) {
-      names <- intersect(names, continuous_variable_names())
-    }
     switch(
       active_role(),
       independent = {
