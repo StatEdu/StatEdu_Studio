@@ -574,19 +574,28 @@ server <- function(input, output, session) {
     active_data_file(NULL)
   })
 
-  open_data_file <- function() {
+  topmost_tk_parent <- function() {
+    if (!requireNamespace("tcltk", quietly = TRUE)) {
+      return(NULL)
+    }
+
+    parent <- tcltk::tktoplevel()
+    try(tcltk::tkwm.withdraw(parent), silent = TRUE)
+    try(tcltk::tcl("wm", "attributes", parent, "-topmost", 1), silent = TRUE)
+    try(tcltk::tcl("wm", "attributes", parent, "-toolwindow", 1), silent = TRUE)
+    try(tcltk::tkfocus(parent), silent = TRUE)
+    parent
+  }
+
+  open_file_dialog <- function(title, filetypes) {
     path <- tryCatch(
       {
-        if (.Platform$OS.type == "windows") {
-          utils::choose.files(
-            caption = "Open EasyFlow Regression Data",
-            multi = FALSE,
-            filters = matrix(
-              c("Data files", "*.sav;*.csv;*.dat", "SPSS SAV", "*.sav", "CSV", "*.csv", "DAT", "*.dat", "All files", "*.*"),
-              ncol = 2,
-              byrow = TRUE
-            )
-          )
+        if (requireNamespace("tcltk", quietly = TRUE)) {
+          parent <- topmost_tk_parent()
+          on.exit(try(tcltk::tkdestroy(parent), silent = TRUE), add = TRUE)
+          as.character(tcltk::tkgetOpenFile(parent = parent, title = title, filetypes = filetypes))
+        } else if (.Platform$OS.type == "windows") {
+          utils::choose.files(caption = title, multi = FALSE)
         } else {
           file.choose()
         }
@@ -598,6 +607,13 @@ server <- function(input, output, session) {
       return(NULL)
     }
     path[[1]]
+  }
+
+  open_data_file <- function() {
+    open_file_dialog(
+      "Open EasyFlow Regression Data",
+      "{{Data files} {.sav .csv .dat}} {{SPSS SAV} {.sav}} {{CSV} {.csv}} {{DAT} {.dat}} {{All files} *}"
+    )
   }
 
   observeEvent(input$browse_data_file, {
@@ -748,32 +764,20 @@ server <- function(input, output, session) {
   })
 
   open_settings_file <- function() {
-    path <- tryCatch(
-      {
-        if (.Platform$OS.type == "windows") {
-          utils::choose.files(
-            caption = "Open EasyFlow Regression Settings",
-            multi = FALSE,
-            filters = matrix(c("JSON settings", "*.json", "All files", "*.*"), ncol = 2, byrow = TRUE)
-          )
-        } else {
-          file.choose()
-        }
-      },
-      error = function(e) character(0)
+    open_file_dialog(
+      "Open EasyFlow Regression Settings",
+      "{{JSON settings} {.json}} {{All files} *}"
     )
-
-    if (length(path) == 0 || !nzchar(path[[1]])) {
-      return(NULL)
-    }
-    path[[1]]
   }
 
   save_settings_file <- function() {
     path <- tryCatch(
       {
         if (requireNamespace("tcltk", quietly = TRUE)) {
+          parent <- topmost_tk_parent()
+          on.exit(try(tcltk::tkdestroy(parent), silent = TRUE), add = TRUE)
           as.character(tcltk::tkgetSaveFile(
+            parent = parent,
             title = "Save EasyFlow Regression Settings",
             initialfile = "EasyFlow_Regression_Settings.json",
             filetypes = "{{JSON settings} {.json}} {{All files} *}"
