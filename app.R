@@ -448,8 +448,7 @@ server <- function(input, output, session) {
     )
   }
 
-  apply_measurement_overrides <- function(table_data) {
-    overrides <- measurement_overrides()
+  apply_measurement_overrides <- function(table_data, overrides = measurement_overrides()) {
     if (length(overrides) == 0 || is.null(table_data) || nrow(table_data) == 0) {
       return(table_data)
     }
@@ -1108,7 +1107,7 @@ server <- function(input, output, session) {
     } else {
       variable_summary_table(dataset(), input)
     }
-    table_data <- apply_measurement_overrides(table_data)
+    table_data <- apply_measurement_overrides(table_data, isolate(measurement_overrides()))
     if (isTRUE(selection_applied())) {
       active_role()
       checked_names <- isolate(active_role_names())
@@ -1153,6 +1152,7 @@ server <- function(input, output, session) {
       callback = DT::JS(sprintf(
         "
         var selected = %s;
+        var dependentOnly = %s;
         window.easyflowSelectedNames = {};
         selected.forEach(function(name) { window.easyflowSelectedNames[name] = true; });
         var selectedHeader = $(table.column(0).header());
@@ -1205,6 +1205,24 @@ server <- function(input, output, session) {
               $(this).prop('checked', !!window.easyflowSelectedNames[name]);
             }
           });
+          updatePageToggle();
+        }
+
+        function updateMeasurementAvailability(select) {
+          if (!dependentOnly) return;
+          var dropdown = $(select);
+          var row = dropdown.closest('tr');
+          var checkbox = row.find('input.variable-select');
+          var name = checkbox.data('name');
+          var isContinuous = dropdown.val() === 'continuous';
+          checkbox.prop('disabled', !isContinuous);
+          if (isContinuous) {
+            checkbox.removeAttr('title');
+          } else {
+            checkbox.attr('title', 'Dependent variable must be continuous');
+            delete window.easyflowSelectedNames[name];
+            checkbox.prop('checked', false);
+          }
           updatePageToggle();
         }
 
@@ -1266,6 +1284,7 @@ server <- function(input, output, session) {
         });
         table.on('change', 'select.measurement-select', function(e) {
           e.stopPropagation();
+          updateMeasurementAvailability(this);
           Shiny.setInputValue('variable_measurement_update', {
             name: $(this).data('name'),
             value: $(this).val(),
@@ -1276,7 +1295,8 @@ server <- function(input, output, session) {
         refreshVariableChecks();
         syncVariableSelection();
         ",
-        jsonlite::toJSON(checked_names, auto_unbox = FALSE)
+        jsonlite::toJSON(checked_names, auto_unbox = FALSE),
+        jsonlite::toJSON(isTRUE(selection_applied()) && identical(active_role(), "dependent"), auto_unbox = TRUE)
       ))
     )
   })
