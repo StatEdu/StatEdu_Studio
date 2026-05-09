@@ -224,7 +224,77 @@ empty_message <- function(text) {
 ui <- navbarPage(
   title = div(class = "brand-title", "EasyFlow Regression", span(class = "version", paste0("v", app_version))),
   id = "main_menu",
-  header = tags$head(tags$link(rel = "stylesheet", type = "text/css", href = "style.css")),
+  header = tags$head(
+    tags$link(rel = "stylesheet", type = "text/css", href = "style.css"),
+    tags$script(HTML("
+      (function() {
+        var pendingSettingsSave = null;
+        var settingsFilename = 'EasyFlow_Regression_Settings.json';
+        var initialized = false;
+
+        function fallbackDownload(message) {
+          var blob = new Blob([message.content], { type: 'application/json;charset=utf-8' });
+          var url = URL.createObjectURL(blob);
+          var link = document.createElement('a');
+          link.href = url;
+          link.download = message.filename || settingsFilename;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+        }
+
+        function initSettingsSave() {
+          if (initialized || !window.Shiny || !Shiny.addCustomMessageHandler || !window.jQuery) return;
+          initialized = true;
+
+          $(document).on('click', '#save_settings, #save_settings_data', async function(event) {
+            var nonce = Date.now().toString() + Math.random().toString(16).slice(2);
+
+            if (window.showSaveFilePicker) {
+              try {
+                var handle = await window.showSaveFilePicker({
+                  suggestedName: settingsFilename,
+                  types: [{
+                    description: 'JSON settings file',
+                    accept: { 'application/json': ['.json'] }
+                  }]
+                });
+                pendingSettingsSave = { nonce: nonce, handle: handle };
+                Shiny.setInputValue('settings_save_request', { nonce: nonce, fallback: false }, { priority: 'event' });
+                return;
+              } catch (error) {
+                if (error && error.name === 'AbortError') return;
+              }
+            }
+
+            Shiny.setInputValue('settings_save_request', { nonce: nonce, fallback: true }, { priority: 'event' });
+          });
+
+          Shiny.addCustomMessageHandler('saveSettingsFile', async function(message) {
+            if (message.fallback || !pendingSettingsSave || pendingSettingsSave.nonce !== message.nonce) {
+              fallbackDownload(message);
+              return;
+            }
+
+            try {
+              var writable = await pendingSettingsSave.handle.createWritable();
+              await writable.write(message.content);
+              await writable.close();
+            } catch (error) {
+              fallbackDownload(message);
+            } finally {
+              pendingSettingsSave = null;
+            }
+          });
+        }
+
+        document.addEventListener('shiny:connected', initSettingsSave, { once: true });
+        if (document.readyState !== 'loading') initSettingsSave();
+        document.addEventListener('DOMContentLoaded', initSettingsSave, { once: true });
+      })();
+    "))
+  ),
 
   tabPanel(
     "Data",
@@ -278,7 +348,7 @@ ui <- navbarPage(
           class = "panel",
           h3("Save Settings"),
           p("Save the current variable selection and analysis options as a JSON settings file."),
-          downloadButton("save_settings", "Save Settings")
+          actionButton("save_settings", "Save Settings")
         )
       )
     )
@@ -467,7 +537,7 @@ server <- function(input, output, session) {
         class = "step-block",
         h3("Session settings"),
         fileInput("settings_file_data", "Load settings", accept = c(".json")),
-        downloadButton("save_settings_data", "Save settings")
+        actionButton("save_settings_data", "Save settings")
       )
     )
   })
@@ -839,17 +909,19 @@ server <- function(input, output, session) {
     )
   }
 
-  make_save_settings_handler <- function() {
-    downloadHandler(
-      filename = function() "EasyFlow_Regression_Settings.json",
-      content = function(file) {
-        jsonlite::write_json(current_settings(), file, pretty = TRUE, auto_unbox = TRUE)
-      }
+  observeEvent(input$settings_save_request, {
+    request <- input$settings_save_request
+    session$sendCustomMessage(
+      "saveSettingsFile",
+      list(
+        nonce = request$nonce,
+        fallback = isTRUE(request$fallback),
+        filename = "EasyFlow_Regression_Settings.json",
+        content = as.character(jsonlite::toJSON(current_settings(), pretty = TRUE, auto_unbox = TRUE))
+      )
     )
-  }
-
-  output$save_settings <- make_save_settings_handler()
-  output$save_settings_data <- make_save_settings_handler()
+    showNotification("Settings file is ready to save.", type = "message")
+  })
 
   output$save_coefficients <- downloadHandler(
     filename = function() "EasyFlow_Regression_Coefficients.csv",
