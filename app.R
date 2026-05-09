@@ -768,12 +768,12 @@ server <- function(input, output, session) {
             class = "role-actions",
             actionButton("select_dependent_role", sprintf("Dependent (%s)", length(dependent_names())), class = paste("role-button", if (identical(role, "dependent")) "is-active" else "")),
             actionButton("select_independent_role", sprintf("Independent (%s)", length(independent_names())), class = paste("role-button", if (identical(role, "independent")) "is-active" else "")),
-            actionButton("select_control_role", sprintf("Control (%s)", length(control_names())), class = paste("role-button", if (identical(role, "control")) "is-active" else ""))
+            actionButton("select_control_role", sprintf("Control/Covariates (%s)", length(control_names())), class = paste("role-button", if (identical(role, "control")) "is-active" else ""))
           ),
           div(
             sprintf(
               "Selecting: %s",
-              switch(role, independent = "Independent variables", control = "Control variables (covariates)", "Dependent variables")
+              switch(role, independent = "Independent variables", control = "Control/Covariates", "Dependent variables")
             ),
             class = "step-summary-detail"
           )
@@ -1007,7 +1007,7 @@ server <- function(input, output, session) {
       role_label <- switch(
         active_role(),
         independent = "independent variables",
-        control = "control variables",
+        control = "control/covariates",
         "dependent variables"
       )
       return(sprintf("Select %s (%s of %s selected)", role_label, length(active_role_names()), length(selected_names())))
