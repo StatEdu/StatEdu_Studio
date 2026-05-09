@@ -351,7 +351,8 @@ ui <- navbarPage(
         div(
           class = "panel",
           h3("Load Settings"),
-          fileInput("settings_file", "Open Settings File", accept = c(".json")),
+          actionButton("browse_settings", "Open Settings"),
+          fileInput("settings_file", "Open Settings File (browser fallback)", accept = c(".json")),
           actionButton("apply_settings", "Apply Settings")
         ),
         div(
@@ -469,6 +470,25 @@ server <- function(input, output, session) {
     TRUE
   }
 
+  restore_external_data_file <- function(settings, settings_path = NULL) {
+    if (is.null(settings_path) || !nzchar(settings_path)) {
+      return(FALSE)
+    }
+
+    file_name <- basename(settings_scalar(settings$data_file %||% settings$embedded_data_file$name))
+    if (!nzchar(file_name)) {
+      return(FALSE)
+    }
+
+    candidate <- file.path(dirname(settings_path), file_name)
+    if (!file.exists(candidate)) {
+      return(FALSE)
+    }
+
+    active_data_file(list(path = candidate, name = file_name, restored = TRUE))
+    TRUE
+  }
+
   settings_variable_info <- function(settings) {
     info <- settings$data_variable_info
     if (is.data.frame(info) && "name" %in% names(info)) {
@@ -537,7 +557,7 @@ server <- function(input, output, session) {
     as.character(info$name)
   }
 
-  restore_settings_state <- function(settings) {
+  restore_settings_state <- function(settings, settings_path = NULL) {
     selected <- settings_vector(settings$selected_variables)
     dependent <- settings_vector(settings$dependent_variables %||% settings$dependent)
     independent <- settings_vector(settings$independent_variables %||% settings$independent)
@@ -551,6 +571,11 @@ server <- function(input, output, session) {
     }
     if (!is.null(settings$bootstrap_resamples)) updateNumericInput(session, "boot_r", value = settings$bootstrap_resamples)
     if (!is.null(settings$seed)) updateNumericInput(session, "seed", value = settings$seed)
+
+    if (is.null(current_data_file()) && restore_external_data_file(settings, settings_path)) {
+      pending_settings(settings)
+      return()
+    }
 
     if (is.null(current_data_file()) && restore_embedded_data_file(settings)) {
       pending_settings(settings)
@@ -760,14 +785,37 @@ server <- function(input, output, session) {
       div(
         class = "step-block",
         h3("Session settings"),
-        fileInput("settings_file_data", "Load settings", accept = c(".json")),
+        actionButton("browse_settings_data", "Load settings"),
+        fileInput("settings_file_data", "Load settings (browser fallback)", accept = c(".json")),
         actionButton("save_settings_data", "Save settings")
       )
     )
   })
 
-  apply_settings_object <- function(settings) {
-    restore_settings_state(settings)
+  open_settings_file <- function() {
+    path <- tryCatch(
+      {
+        if (.Platform$OS.type == "windows") {
+          utils::choose.files(
+            caption = "Open EasyFlow Regression Settings",
+            multi = FALSE,
+            filters = matrix(c("JSON settings", "*.json", "All files", "*.*"), ncol = 2, byrow = TRUE)
+          )
+        } else {
+          file.choose()
+        }
+      },
+      error = function(e) character(0)
+    )
+
+    if (length(path) == 0 || !nzchar(path[[1]])) {
+      return(NULL)
+    }
+    path[[1]]
+  }
+
+  apply_settings_object <- function(settings, settings_path = NULL) {
+    restore_settings_state(settings, settings_path)
     if (!is.null(current_data_file())) {
       showNotification("Settings and data file loaded.", type = "message")
     } else if (!is.null(restored_variable_info())) {
@@ -782,9 +830,25 @@ server <- function(input, output, session) {
     apply_settings_object(jsonlite::fromJSON(input$settings_file$datapath))
   })
 
+  observeEvent(input$browse_settings, {
+    settings_path <- open_settings_file()
+    if (is.null(settings_path)) {
+      return()
+    }
+    apply_settings_object(jsonlite::fromJSON(settings_path), settings_path)
+  })
+
   observeEvent(input$settings_file_data, {
     req(input$settings_file_data)
     apply_settings_object(jsonlite::fromJSON(input$settings_file_data$datapath))
+  })
+
+  observeEvent(input$browse_settings_data, {
+    settings_path <- open_settings_file()
+    if (is.null(settings_path)) {
+      return()
+    }
+    apply_settings_object(jsonlite::fromJSON(settings_path), settings_path)
   })
 
   observeEvent(input$show_data_preview, {
