@@ -407,6 +407,8 @@ server <- function(input, output, session) {
   independent_names <- reactiveVal(character(0))
   control_names <- reactiveVal(character(0))
   pending_settings <- reactiveVal(NULL)
+  restored_data_file <- reactiveVal("")
+  restored_variable_info <- reactiveVal(NULL)
 
   dataset <- reactive({
     req(input$file)
@@ -440,8 +442,33 @@ server <- function(input, output, session) {
     values[[1]]
   }
 
+  settings_variable_info <- function(settings) {
+    info <- settings$data_variable_info
+    if (is.data.frame(info) && "name" %in% names(info)) {
+      return(info)
+    }
+
+    variables <- settings_vector(settings$data_variables)
+    if (length(variables) == 0) {
+      return(NULL)
+    }
+
+    data.frame(
+      source_order = seq_along(variables),
+      name = variables,
+      measurement = "",
+      storage_type = "",
+      n_unique = "",
+      n_missing = "",
+      min_value = "",
+      max_value = "",
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
+  }
+
   current_data_step <- function() {
-    if (is.null(input$file)) return("load_data")
+    if (is.null(input$file) && is.null(restored_variable_info())) return("load_data")
     if (isTRUE(selection_applied())) return("assign_variable_roles")
     "select_analysis_variables"
   }
@@ -472,6 +499,17 @@ server <- function(input, output, session) {
     )
   }
 
+  available_variable_names <- function() {
+    if (!is.null(input$file)) {
+      return(names(dataset()))
+    }
+    info <- restored_variable_info()
+    if (is.null(info)) {
+      return(character(0))
+    }
+    as.character(info$name)
+  }
+
   restore_settings_state <- function(settings) {
     selected <- settings_vector(settings$selected_variables)
     dependent <- settings_vector(settings$dependent_variables %||% settings$dependent)
@@ -488,12 +526,28 @@ server <- function(input, output, session) {
     if (!is.null(settings$seed)) updateNumericInput(session, "seed", value = settings$seed)
 
     if (is.null(input$file)) {
+      info <- settings_variable_info(settings)
+      restored_data_file(settings_scalar(settings$data_file))
+      restored_variable_info(info)
+      if (!is.null(info)) {
+        cols <- as.character(info$name)
+        selected <- intersect(selected, cols)
+        selected_names(selected)
+        set_role_choices(selected, dependent, independent, controls)
+
+        applied <- isTRUE(settings$selection_applied) ||
+          (settings$data_step %||% "") %in% c("review_selected_variables", "assign_variable_roles")
+        selection_applied(applied && length(selected) > 0)
+      } else {
+        selection_applied(FALSE)
+      }
       pending_settings(settings)
-      selection_applied(FALSE)
       return()
     }
 
     cols <- names(dataset())
+    restored_data_file("")
+    restored_variable_info(NULL)
     selected <- intersect(selected, cols)
     selected_names(selected)
 
@@ -529,6 +583,8 @@ server <- function(input, output, session) {
     cols <- names(dataset())
     settings <- pending_settings()
     if (is.null(settings)) {
+      restored_data_file("")
+      restored_variable_info(NULL)
       selected_names(character(0))
       selection_applied(FALSE)
       set_role_choices(character(0))
@@ -548,13 +604,13 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$apply_variable_selection, {
-    req(dataset())
+    cols <- available_variable_names()
     selected <- selected_names()
     if (length(selected) == 0) {
       showNotification("Select at least one variable to keep.", type = "warning")
       return()
     }
-    selected <- selected[selected %in% names(dataset())]
+    selected <- selected[selected %in% cols]
     update_analysis_choices(selected)
     selection_applied(TRUE)
     active_role("dependent")
@@ -568,7 +624,7 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$modify_variable_selection, {
-    req(dataset())
+    req(length(available_variable_names()) > 0)
     selection_applied(FALSE)
     data_view("info")
     set_role_choices(selected_names(), dependent_names(), independent_names(), control_names())
@@ -588,7 +644,8 @@ server <- function(input, output, session) {
   })
 
   output$data_steps <- renderUI({
-    has_data <- !is.null(input$file)
+    has_open_data <- !is.null(input$file)
+    has_data <- has_open_data || !is.null(restored_variable_info())
     applied <- isTRUE(selection_applied())
     selected <- selected_names()
     role <- active_role()
@@ -600,8 +657,18 @@ server <- function(input, output, session) {
         if (has_data) {
           div(
             class = "step-summary",
-            div(input$file$name, class = "step-summary-title"),
-            div(sprintf("%s variables, %s rows", ncol(dataset()), nrow(dataset())), class = "step-summary-detail")
+            div(if (has_open_data) input$file$name else restored_data_file(), class = "step-summary-title"),
+            div(
+              if (has_open_data) {
+                sprintf("%s variables, %s rows", ncol(dataset()), nrow(dataset()))
+              } else {
+                sprintf("%s variables saved in settings. Reopen the data file before running analysis.", nrow(restored_variable_info()))
+              },
+              class = "step-summary-detail"
+            ),
+            if (!has_open_data) {
+              fileInput("file", "Reconnect data file", accept = c(".sav", ".csv", ".dat"))
+            }
           )
         } else {
           tagList(
@@ -779,6 +846,13 @@ server <- function(input, output, session) {
 
   output$data_loaded_message <- renderText({
     if (is.null(input$file)) {
+      if (!is.null(restored_variable_info())) {
+        return(sprintf(
+          "Settings loaded for %s: %s variables saved. Reopen the data file before running analysis.",
+          restored_data_file(),
+          nrow(restored_variable_info())
+        ))
+      }
       return("No data file is open.")
     }
     data <- dataset()
@@ -786,7 +860,7 @@ server <- function(input, output, session) {
   })
 
   output$data_view_title <- renderText({
-    if (is.null(input$file)) {
+    if (is.null(input$file) && is.null(restored_variable_info())) {
       return("Variable Info")
     }
     if (identical(data_view(), "preview")) {
@@ -804,7 +878,7 @@ server <- function(input, output, session) {
       )
       return(sprintf("Select %s (%s of %s selected)", role_label, length(active_role_names()), length(selected_names())))
     }
-    sprintf("All variables (%s)", ncol(dataset()))
+    sprintf("All variables (%s)", length(available_variable_names()))
   })
 
   output$data_view_toggle <- renderUI({
@@ -816,15 +890,18 @@ server <- function(input, output, session) {
   })
 
   output$variable_table <- renderDT({
-    if (is.null(input$file)) {
+    if (is.null(input$file) && is.null(restored_variable_info())) {
       return(DT::datatable(
         data.frame(Message = "Read a SAV, CSV, or DAT file to show variable information."),
         rownames = FALSE,
         options = list(dom = "t")
       ))
     }
-    data <- dataset()
-    table_data <- variable_summary_table(data, input)
+    table_data <- if (is.null(input$file)) {
+      restored_variable_info()
+    } else {
+      variable_summary_table(dataset(), input)
+    }
     if (isTRUE(selection_applied())) {
       active_role()
       checked_names <- isolate(active_role_names())
@@ -967,7 +1044,7 @@ server <- function(input, output, session) {
   output$data_preview_table <- renderDT({
     if (is.null(input$file)) {
       return(DT::datatable(
-        data.frame(Message = "Read a SAV, CSV, or DAT file to preview data."),
+        data.frame(Message = "Reopen the data file to preview data rows."),
         rownames = FALSE,
         options = list(dom = "t")
       ))
@@ -1022,13 +1099,17 @@ server <- function(input, output, session) {
   })
 
   current_settings <- function() {
+    variable_info <- if (is.null(input$file)) restored_variable_info() else variable_summary_table(dataset(), input)
+    variable_names <- if (is.null(variable_info)) character(0) else as.character(variable_info$name)
+
     list(
       app = "EasyFlow Regression",
       version = app_version,
       data_step = current_data_step(),
       data_view = data_view(),
-      data_file = if (is.null(input$file)) "" else input$file$name,
-      data_variables = I(if (is.null(input$file)) character(0) else names(dataset())),
+      data_file = if (is.null(input$file)) restored_data_file() else input$file$name,
+      data_variables = I(variable_names),
+      data_variable_info = I(if (is.null(variable_info)) list() else variable_info),
       selection_applied = isTRUE(selection_applied()),
       id = input$id_var %||% "",
       filter = input$filter_var %||% "",
