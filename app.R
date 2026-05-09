@@ -443,9 +443,13 @@ server <- function(input, output, session) {
 
   set_role_choices <- function(choices, dependent = character(0), independent = character(0), controls = character(0)) {
     choices <- as.character(choices)
-    dependent_names(intersect(as.character(dependent), choices))
-    independent_names(intersect(as.character(independent), choices))
-    control_names(intersect(as.character(controls), choices))
+    dependent <- intersect(as.character(dependent), choices)
+    independent <- setdiff(intersect(as.character(independent), choices), dependent)
+    controls <- setdiff(intersect(as.character(controls), choices), c(dependent, independent))
+
+    dependent_names(dependent)
+    independent_names(independent)
+    control_names(controls)
   }
 
   active_role_names <- function() {
@@ -461,9 +465,30 @@ server <- function(input, output, session) {
     names <- intersect(as.character(names), selected_names())
     switch(
       active_role(),
-      independent = independent_names(names),
-      control = control_names(names),
-      dependent_names(names)
+      independent = {
+        independent_names(names)
+        dependent_names(setdiff(dependent_names(), names))
+        control_names(setdiff(control_names(), names))
+      },
+      control = {
+        control_names(names)
+        dependent_names(setdiff(dependent_names(), names))
+        independent_names(setdiff(independent_names(), names))
+      },
+      {
+        dependent_names(names)
+        independent_names(setdiff(independent_names(), names))
+        control_names(setdiff(control_names(), names))
+      }
+    )
+  }
+
+  assigned_elsewhere_names <- function() {
+    switch(
+      active_role(),
+      independent = unique(c(dependent_names(), control_names())),
+      control = unique(c(dependent_names(), independent_names())),
+      unique(c(independent_names(), control_names()))
     )
   }
 
@@ -1014,7 +1039,8 @@ server <- function(input, output, session) {
     if (isTRUE(selection_applied())) {
       active_role()
       checked_names <- isolate(active_role_names())
-      table_data <- table_data[table_data$name %in% selected_names(), , drop = FALSE]
+      visible_names <- setdiff(selected_names(), assigned_elsewhere_names())
+      table_data <- table_data[table_data$name %in% unique(c(checked_names, visible_names)), , drop = FALSE]
     } else {
       checked_names <- isolate(selected_names())
     }
