@@ -225,85 +225,7 @@ ui <- navbarPage(
   title = div(class = "brand-title", "EasyFlow Regression", span(class = "version", paste0("v", app_version))),
   id = "main_menu",
   header = tags$head(
-    tags$link(rel = "stylesheet", type = "text/css", href = "style.css"),
-    tags$script(HTML("
-      (function() {
-        var pendingSettingsSave = null;
-        var settingsFilename = 'EasyFlow_Regression_Settings.json';
-        var initialized = false;
-
-        function fallbackDownload(message) {
-          var blob = new Blob([message.content], { type: 'application/json;charset=utf-8' });
-          var url = URL.createObjectURL(blob);
-          var link = document.createElement('a');
-          link.href = url;
-          link.download = message.filename || settingsFilename;
-          document.body.appendChild(link);
-          link.click();
-          link.remove();
-          setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
-          Shiny.setInputValue('settings_save_result', {
-            nonce: message.nonce,
-            status: 'downloaded'
-          }, { priority: 'event' });
-        }
-
-        function initSettingsSave() {
-          if (initialized || !window.Shiny || !Shiny.addCustomMessageHandler || !window.jQuery) return;
-          initialized = true;
-
-          $(document).on('click', '#save_settings, #save_settings_data', async function(event) {
-            event.preventDefault();
-            var nonce = Date.now().toString() + Math.random().toString(16).slice(2);
-
-            if (window.showSaveFilePicker) {
-              try {
-                var handle = await window.showSaveFilePicker({
-                  suggestedName: settingsFilename,
-                  types: [{
-                    description: 'JSON settings file',
-                    accept: { 'application/json': ['.json'] }
-                  }]
-                });
-                pendingSettingsSave = { nonce: nonce, handle: handle };
-                Shiny.setInputValue('settings_save_request', { nonce: nonce, fallback: false }, { priority: 'event' });
-                return;
-              } catch (error) {
-                if (error && error.name === 'AbortError') return;
-              }
-            }
-
-            Shiny.setInputValue('settings_save_request', { nonce: nonce, fallback: true }, { priority: 'event' });
-          });
-
-          Shiny.addCustomMessageHandler('saveSettingsFile', async function(message) {
-            if (message.fallback || !pendingSettingsSave || pendingSettingsSave.nonce !== message.nonce) {
-              fallbackDownload(message);
-              return;
-            }
-
-            try {
-              var writable = await pendingSettingsSave.handle.createWritable();
-              await writable.write(new Blob([message.content], { type: 'application/json;charset=utf-8' }));
-              await writable.close();
-              Shiny.setInputValue('settings_save_result', {
-                nonce: message.nonce,
-                status: 'saved'
-              }, { priority: 'event' });
-            } catch (error) {
-              console.warn('EasyFlow settings save dialog failed; using download fallback.', error);
-              fallbackDownload(message);
-            } finally {
-              pendingSettingsSave = null;
-            }
-          });
-        }
-
-        document.addEventListener('shiny:connected', initSettingsSave, { once: true });
-        if (document.readyState !== 'loading') initSettingsSave();
-        document.addEventListener('DOMContentLoaded', initSettingsSave, { once: true });
-      })();
-    "))
+    tags$link(rel = "stylesheet", type = "text/css", href = "style.css")
   ),
 
   tabPanel(
@@ -352,8 +274,7 @@ ui <- navbarPage(
           class = "panel",
           h3("Load Settings"),
           actionButton("browse_settings", "Open Settings"),
-          fileInput("settings_file", "Open Settings File (browser fallback)", accept = c(".json")),
-          actionButton("apply_settings", "Apply Settings")
+          p("Open a settings file. If the matching data file is in the same folder, it opens automatically.")
         ),
         div(
           class = "panel",
@@ -653,6 +574,41 @@ server <- function(input, output, session) {
     active_data_file(NULL)
   })
 
+  open_data_file <- function() {
+    path <- tryCatch(
+      {
+        if (.Platform$OS.type == "windows") {
+          utils::choose.files(
+            caption = "Open EasyFlow Regression Data",
+            multi = FALSE,
+            filters = matrix(
+              c("Data files", "*.sav;*.csv;*.dat", "SPSS SAV", "*.sav", "CSV", "*.csv", "DAT", "*.dat", "All files", "*.*"),
+              ncol = 2,
+              byrow = TRUE
+            )
+          )
+        } else {
+          file.choose()
+        }
+      },
+      error = function(e) character(0)
+    )
+
+    if (length(path) == 0 || !nzchar(path[[1]])) {
+      return(NULL)
+    }
+    path[[1]]
+  }
+
+  observeEvent(input$browse_data_file, {
+    data_path <- open_data_file()
+    if (is.null(data_path)) {
+      return()
+    }
+
+    active_data_file(list(path = data_path, name = basename(data_path), restored = FALSE))
+  })
+
   observeEvent(input$variable_selected_names, {
     names <- as.character(input$variable_selected_names %||% character(0))
     if (isTRUE(selection_applied())) {
@@ -727,12 +683,12 @@ server <- function(input, output, session) {
               class = "step-summary-detail"
             ),
             if (!has_open_data) {
-              fileInput("file", "Reconnect data file", accept = c(".sav", ".csv", ".dat"))
+              actionButton("browse_data_file", "Reconnect data file")
             }
           )
         } else {
           tagList(
-            fileInput("file", "Data file", accept = c(".sav", ".csv", ".dat")),
+            actionButton("browse_data_file", "Open data file"),
             checkboxInput("header", "CSV first row contains variable names", TRUE),
             selectInput(
               "dat_delimiter",
@@ -786,7 +742,6 @@ server <- function(input, output, session) {
         class = "step-block",
         h3("Session settings"),
         actionButton("browse_settings_data", "Load settings"),
-        fileInput("settings_file_data", "Load settings (browser fallback)", accept = c(".json")),
         actionButton("save_settings_data", "Save settings")
       )
     )
@@ -814,6 +769,38 @@ server <- function(input, output, session) {
     path[[1]]
   }
 
+  save_settings_file <- function() {
+    path <- tryCatch(
+      {
+        if (requireNamespace("tcltk", quietly = TRUE)) {
+          as.character(tcltk::tkgetSaveFile(
+            title = "Save EasyFlow Regression Settings",
+            initialfile = "EasyFlow_Regression_Settings.json",
+            filetypes = "{{JSON settings} {.json}} {{All files} *}"
+          ))
+        } else {
+          folder <- utils::choose.dir(caption = "Choose a folder for EasyFlow Regression Settings")
+          if (is.na(folder) || !nzchar(folder)) {
+            character(0)
+          } else {
+            file.path(folder, "EasyFlow_Regression_Settings.json")
+          }
+        }
+      },
+      error = function(e) character(0)
+    )
+
+    if (length(path) == 0 || !nzchar(path[[1]])) {
+      return(NULL)
+    }
+
+    path <- path[[1]]
+    if (!nzchar(tools::file_ext(path))) {
+      path <- paste0(path, ".json")
+    }
+    path
+  }
+
   apply_settings_object <- function(settings, settings_path = NULL) {
     restore_settings_state(settings, settings_path)
     if (!is.null(current_data_file())) {
@@ -825,11 +812,6 @@ server <- function(input, output, session) {
     }
   }
 
-  observeEvent(input$apply_settings, {
-    req(input$settings_file)
-    apply_settings_object(jsonlite::fromJSON(input$settings_file$datapath))
-  })
-
   observeEvent(input$browse_settings, {
     settings_path <- open_settings_file()
     if (is.null(settings_path)) {
@@ -838,17 +820,34 @@ server <- function(input, output, session) {
     apply_settings_object(jsonlite::fromJSON(settings_path), settings_path)
   })
 
-  observeEvent(input$settings_file_data, {
-    req(input$settings_file_data)
-    apply_settings_object(jsonlite::fromJSON(input$settings_file_data$datapath))
-  })
-
   observeEvent(input$browse_settings_data, {
     settings_path <- open_settings_file()
     if (is.null(settings_path)) {
       return()
     }
     apply_settings_object(jsonlite::fromJSON(settings_path), settings_path)
+  })
+
+  save_settings_to_file <- function() {
+    settings_path <- save_settings_file()
+    if (is.null(settings_path)) {
+      return()
+    }
+
+    writeLines(
+      as.character(jsonlite::toJSON(current_settings(), pretty = TRUE, auto_unbox = TRUE)),
+      con = settings_path,
+      useBytes = TRUE
+    )
+    showNotification("Settings file was saved.", type = "message")
+  }
+
+  observeEvent(input$save_settings, {
+    save_settings_to_file()
+  })
+
+  observeEvent(input$save_settings_data, {
+    save_settings_to_file()
   })
 
   observeEvent(input$show_data_preview, {
@@ -1208,7 +1207,6 @@ server <- function(input, output, session) {
     file <- current_data_file()
     variable_info <- if (is.null(file)) restored_variable_info() else variable_summary_table(dataset(), input)
     variable_names <- if (is.null(variable_info)) character(0) else as.character(variable_info$name)
-    data_content <- if (is.null(file)) "" else jsonlite::base64_enc(readBin(file$path, "raw", n = file.info(file$path)$size))
 
     list(
       app = "EasyFlow Regression",
@@ -1216,7 +1214,6 @@ server <- function(input, output, session) {
       data_step = current_data_step(),
       data_view = data_view(),
       data_file = if (is.null(file)) restored_data_file() else file$name,
-      data_file_content_base64 = data_content,
       data_variables = I(variable_names),
       data_variable_info = I(if (is.null(variable_info)) list() else variable_info),
       selection_applied = isTRUE(selection_applied()),
@@ -1234,30 +1231,6 @@ server <- function(input, output, session) {
       seed = input$seed %||% 1234
     )
   }
-
-  observeEvent(input$settings_save_request, {
-    request <- input$settings_save_request
-    session$sendCustomMessage(
-      "saveSettingsFile",
-      list(
-        nonce = request$nonce,
-        fallback = isTRUE(request$fallback),
-        filename = "EasyFlow_Regression_Settings.json",
-        content = as.character(jsonlite::toJSON(current_settings(), pretty = TRUE, auto_unbox = TRUE))
-      )
-    )
-  })
-
-  observeEvent(input$settings_save_result, {
-    result <- input$settings_save_result
-    if (identical(result$status, "saved")) {
-      showNotification("Settings file was saved.", type = "message")
-    } else if (identical(result$status, "downloaded")) {
-      showNotification("Settings file was downloaded.", type = "message")
-    } else {
-      showNotification("Save dialog failed, so the settings file was downloaded instead.", type = "warning")
-    }
-  })
 
   output$save_coefficients <- downloadHandler(
     filename = function() "EasyFlow_Regression_Coefficients.csv",
