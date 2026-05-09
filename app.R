@@ -756,6 +756,10 @@ server <- function(input, output, session) {
     }
   })
 
+  observeEvent(input$variable_table_state, {
+    sync_table_state(input$variable_table_state)
+  })
+
   observeEvent(input$variable_measurement_update, {
     update <- input$variable_measurement_update
     name <- as.character(update$name %||% "")
@@ -1219,7 +1223,12 @@ server <- function(input, output, session) {
         nameHeader.html('<button type=\"button\" class=\"name-sort-toggle\">name <span class=\"sort-mark\">original</span></button>');
 
         function syncVariableSelection() {
-          Shiny.setInputValue('variable_selected_names', Object.keys(window.easyflowSelectedNames || {}), {priority: 'event'});
+          var state = currentTableState();
+          Shiny.setInputValue('variable_table_state', {
+            selected: state.selected,
+            measurements: state.measurements,
+            nonce: Date.now() + Math.random()
+          }, {priority: 'event'});
         }
 
         function currentPageNames() {
@@ -1363,11 +1372,7 @@ server <- function(input, output, session) {
         table.on('change', 'select.measurement-select', function(e) {
           e.stopPropagation();
           updateMeasurementAvailability(this);
-          Shiny.setInputValue('variable_measurement_update', {
-            name: $(this).data('name'),
-            value: $(this).val(),
-            nonce: Date.now() + Math.random()
-          }, {priority: 'event'});
+          syncVariableSelection();
         });
         $(document)
           .off('mousedown.easyflowMeasurementSnapshot', '#save_settings_data, #save_settings')
