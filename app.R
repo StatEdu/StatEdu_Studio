@@ -456,6 +456,9 @@ server <- function(input, output, session) {
     updateSelectInput(session, "y", choices = cols, selected = if ((input$y %||% "") %in% cols) input$y else character(0))
     updateSelectizeInput(session, "xs", choices = cols, selected = intersect(input$xs %||% character(0), cols), server = TRUE)
     updateSelectizeInput(session, "covariates", choices = cols, selected = intersect(input$covariates %||% character(0), cols), server = TRUE)
+    updateSelectizeInput(session, "dependent_vars", choices = cols, selected = intersect(input$dependent_vars %||% character(0), cols), server = TRUE)
+    updateSelectizeInput(session, "independent_vars", choices = cols, selected = intersect(input$independent_vars %||% character(0), cols), server = TRUE)
+    updateSelectizeInput(session, "control_vars", choices = cols, selected = intersect(input$control_vars %||% character(0), cols), server = TRUE)
   }
 
   settings_vector <- function(x) {
@@ -463,14 +466,36 @@ server <- function(input, output, session) {
     as.character(unlist(x, use.names = FALSE))
   }
 
+  settings_scalar <- function(x) {
+    values <- settings_vector(x)
+    if (length(values) == 0) return("")
+    values[[1]]
+  }
+
   current_data_step <- function() {
     if (is.null(input$file)) return("load_data")
-    if (isTRUE(selection_applied())) return("review_selected_variables")
+    if (isTRUE(selection_applied())) return("assign_variable_roles")
     "select_analysis_variables"
+  }
+
+  update_role_choices <- function(choices, dependent = character(0), independent = character(0), controls = character(0)) {
+    choices <- as.character(choices)
+    dependent <- intersect(as.character(dependent), choices)
+    independent <- intersect(as.character(independent), choices)
+    controls <- intersect(as.character(controls), choices)
+
+    session$onFlushed(function() {
+      updateSelectizeInput(session, "dependent_vars", choices = choices, selected = dependent, server = TRUE)
+      updateSelectizeInput(session, "independent_vars", choices = choices, selected = independent, server = TRUE)
+      updateSelectizeInput(session, "control_vars", choices = choices, selected = controls, server = TRUE)
+    }, once = TRUE)
   }
 
   restore_settings_state <- function(settings) {
     selected <- settings_vector(settings$selected_variables)
+    dependent <- settings_vector(settings$dependent_variables %||% settings$dependent)
+    independent <- settings_vector(settings$independent_variables %||% settings$independent)
+    controls <- settings_vector(settings$control_variables %||% settings$covariates)
 
     if (!is.null(settings$data_view) && settings$data_view %in% c("info", "preview")) {
       data_view(settings$data_view)
@@ -491,15 +516,25 @@ server <- function(input, output, session) {
     selected <- intersect(selected, cols)
     selected_names(selected)
 
-    if (!is.null(settings$id)) updateSelectInput(session, "id_var", selected = if ((settings$id %||% "") %in% cols) settings$id else "")
-    if (!is.null(settings$filter)) updateSelectInput(session, "filter_var", selected = if ((settings$filter %||% "") %in% cols) settings$filter else "")
+    if (!is.null(settings$id)) {
+      id <- settings_scalar(settings$id)
+      updateSelectInput(session, "id_var", selected = if (id %in% cols) id else "")
+    }
+    if (!is.null(settings$filter)) {
+      filter <- settings_scalar(settings$filter)
+      updateSelectInput(session, "filter_var", selected = if (filter %in% cols) filter else "")
+    }
     if (!is.null(settings$filter_condition)) updateTextInput(session, "filter_condition", value = settings$filter_condition)
-    if (!is.null(settings$dependent)) updateSelectInput(session, "y", selected = if ((settings$dependent %||% "") %in% cols) settings$dependent else character(0))
+    if (!is.null(settings$dependent)) {
+      y <- settings_scalar(settings$dependent)
+      updateSelectInput(session, "y", selected = if (y %in% cols) y else character(0))
+    }
     if (!is.null(settings$independent)) updateSelectizeInput(session, "xs", selected = intersect(settings_vector(settings$independent), cols))
     if (!is.null(settings$covariates)) updateSelectizeInput(session, "covariates", selected = intersect(settings_vector(settings$covariates), cols))
+    update_role_choices(selected, dependent, independent, controls)
 
     applied <- isTRUE(settings$selection_applied) ||
-      identical(settings$data_step %||% "", "review_selected_variables")
+      (settings$data_step %||% "") %in% c("review_selected_variables", "assign_variable_roles")
     selection_applied(applied && length(selected) > 0)
     if (isTRUE(selection_applied())) {
       update_analysis_choices(selected)
@@ -535,6 +570,12 @@ server <- function(input, output, session) {
     selected <- selected[selected %in% names(dataset())]
     update_analysis_choices(selected)
     selection_applied(TRUE)
+    update_role_choices(
+      selected,
+      input$dependent_vars %||% character(0),
+      input$independent_vars %||% character(0),
+      input$control_vars %||% character(0)
+    )
     showNotification(sprintf("%s variables selected for analysis.", length(selected)), type = "message")
   })
 
@@ -549,6 +590,9 @@ server <- function(input, output, session) {
     has_data <- !is.null(input$file)
     applied <- isTRUE(selection_applied())
     selected <- selected_names()
+    dependent_selected <- isolate(input$dependent_vars %||% character(0))
+    independent_selected <- isolate(input$independent_vars %||% character(0))
+    control_selected <- isolate(input$control_vars %||% character(0))
 
     tagList(
       div(
@@ -595,9 +639,11 @@ server <- function(input, output, session) {
       if (has_data && applied) {
         div(
           class = "step-block is-open",
-          h3("Step 3. Review selected variables"),
-          div("Only the variables selected in Step 2 are shown in the table.", class = "step-note"),
-          div(sprintf("%s selected variables are ready.", length(selected)), class = "step-summary-detail")
+          h3("Step 3. Assign variable roles"),
+          div("Choose dependent, independent, and control variables from the Step 2 selection.", class = "step-note"),
+          selectizeInput("dependent_vars", "Dependent variables", choices = selected, selected = intersect(dependent_selected, selected), multiple = TRUE),
+          selectizeInput("independent_vars", "Independent variables", choices = selected, selected = intersect(independent_selected, selected), multiple = TRUE),
+          selectizeInput("control_vars", "Control variables (covariates)", choices = selected, selected = intersect(control_selected, selected), multiple = TRUE)
         )
       },
       div(
@@ -964,15 +1010,18 @@ server <- function(input, output, session) {
       data_step = current_data_step(),
       data_view = data_view(),
       data_file = if (is.null(input$file)) "" else input$file$name,
-      data_variables = if (is.null(input$file)) character(0) else names(dataset()),
+      data_variables = I(if (is.null(input$file)) character(0) else names(dataset())),
       selection_applied = isTRUE(selection_applied()),
       id = input$id_var %||% "",
       filter = input$filter_var %||% "",
       filter_condition = input$filter_condition %||% "",
-      dependent = input$y %||% "",
-      independent = as.character(input$xs %||% character(0)),
-      covariates = as.character(input$covariates %||% character(0)),
-      selected_variables = as.character(selected_names() %||% character(0)),
+      dependent_variables = I(as.character(input$dependent_vars %||% character(0))),
+      independent_variables = I(as.character(input$independent_vars %||% character(0))),
+      control_variables = I(as.character(input$control_vars %||% character(0))),
+      dependent = I(as.character(input$dependent_vars %||% input$y %||% character(0))),
+      independent = I(as.character(input$independent_vars %||% input$xs %||% character(0))),
+      covariates = I(as.character(input$control_vars %||% input$covariates %||% character(0))),
+      selected_variables = I(as.character(selected_names() %||% character(0))),
       bootstrap_resamples = input$boot_r %||% 2000,
       seed = input$seed %||% 1234
     )
