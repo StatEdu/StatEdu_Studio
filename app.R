@@ -473,6 +473,9 @@ server <- function(input, output, session) {
 
     overrides <- settings_named_vector(settings$measurement_overrides)
     overrides <- overrides[nzchar(names(overrides)) & overrides %in% c("binary", "category", "ordered", "continuous")]
+    if (length(overrides) > 0) {
+      names(overrides) <- sub("^.*\\.", "", names(overrides))
+    }
     saved[names(overrides)] <- overrides
     saved
   }
@@ -507,6 +510,9 @@ server <- function(input, output, session) {
   update_measurement_overrides <- function(values) {
     updates <- settings_named_vector(values)
     updates <- updates[nzchar(names(updates)) & updates %in% c("binary", "category", "ordered", "continuous")]
+    if (length(updates) > 0) {
+      names(updates) <- sub("^.*\\.", "", names(updates))
+    }
     if (length(updates) == 0) {
       return(invisible(FALSE))
     }
@@ -1444,7 +1450,15 @@ server <- function(input, output, session) {
 
   current_settings <- function() {
     file <- current_data_file()
-    variable_info <- apply_measurement_overrides(if (is.null(file)) restored_variable_info() else variable_summary_table(dataset(), input))
+    overrides <- measurement_overrides()
+    dependent <- as.character(dependent_names())
+    if (length(dependent) > 0) {
+      overrides[dependent] <- "continuous"
+    }
+    variable_info <- apply_measurement_overrides(
+      if (is.null(file)) restored_variable_info() else variable_summary_table(dataset(), input),
+      overrides
+    )
     variable_names <- if (is.null(variable_info)) character(0) else as.character(variable_info$name)
 
     list(
@@ -1455,7 +1469,7 @@ server <- function(input, output, session) {
       data_file = if (is.null(file)) restored_data_file() else file$name,
       data_variables = I(variable_names),
       data_variable_info = I(if (is.null(variable_info)) list() else variable_info),
-      measurement_overrides = as.list(measurement_overrides()),
+      measurement_overrides = as.list(overrides),
       selection_applied = isTRUE(selection_applied()),
       id = input$id_var %||% "",
       filter = input$filter_var %||% "",
