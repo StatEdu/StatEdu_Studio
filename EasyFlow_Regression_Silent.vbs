@@ -1,0 +1,7 @@
+Set shell = CreateObject("WScript.Shell")
+Set fso = CreateObject("Scripting.FileSystemObject")
+
+appDir = fso.GetParentFolderName(WScript.ScriptFullName)
+shell.CurrentDirectory = appDir
+shell.Environment("PROCESS")("EASYFLOW_SILENT") = "1"
+shell.Run """" & appDir & "\EasyFlow_Regression.bat" & """", 0, False

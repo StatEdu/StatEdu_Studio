@@ -1,4 +1,4 @@
-required_packages <- c("shiny", "lmtest", "sandwich", "nortest", "boot", "readxl", "jsonlite")
+required_packages <- c("shiny", "DT", "lmtest", "sandwich", "nortest", "boot", "readxl", "jsonlite", "haven", "readr")
 missing_packages <- required_packages[!vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)]
 if (length(missing_packages) > 0) {
   stop(
@@ -9,6 +9,7 @@ if (length(missing_packages) > 0) {
 }
 
 library(shiny)
+library(DT)
 library(lmtest)
 library(sandwich)
 library(nortest)
@@ -19,6 +20,10 @@ library(jsonlite)
 app_version <- trimws(readLines("VERSION", warn = FALSE)[1])
 dw_table_path <- "C:/StatEdu/EasyFlow/EasyFlow_Statistics_3.0.xlsx"
 
+`%||%` <- function(x, y) {
+  if (is.null(x)) y else x
+}
+
 format_p <- function(p) {
   if (is.na(p)) return(NA_character_)
   if (p < .001) return("< .001")
@@ -26,15 +31,109 @@ format_p <- function(p) {
 }
 
 prepare_data <- function(data) {
+  data <- as.data.frame(data, stringsAsFactors = FALSE, check.names = TRUE)
   data[] <- lapply(data, function(x) {
+    if (inherits(x, "haven_labelled_spss")) x <- haven::zap_missing(x)
+    if (inherits(x, "haven_labelled")) x <- haven::zap_labels(x)
     if (is.character(x)) return(factor(x))
     x
   })
   data
 }
 
+read_input_data <- function(path, original_name, csv_header = TRUE, dat_delimiter = "whitespace", dat_has_names = FALSE) {
+  ext <- tolower(tools::file_ext(original_name))
+
+  if (identical(ext, "sav")) {
+    return(haven::read_sav(path, user_na = TRUE))
+  }
+
+  if (identical(ext, "csv")) {
+    return(readr::read_csv(path, col_names = csv_header, show_col_types = FALSE, progress = FALSE))
+  }
+
+  if (identical(ext, "dat")) {
+    if (identical(dat_delimiter, "comma")) {
+      return(readr::read_delim(path, delim = ",", col_names = dat_has_names, show_col_types = FALSE, progress = FALSE))
+    }
+    if (identical(dat_delimiter, "tab")) {
+      return(readr::read_tsv(path, col_names = dat_has_names, show_col_types = FALSE, progress = FALSE))
+    }
+    return(readr::read_table(path, col_names = dat_has_names, show_col_types = FALSE, progress = FALSE))
+  }
+
+  stop("Unsupported file type: .", ext, call. = FALSE)
+}
+
+infer_measurement <- function(x) {
+  values <- stats::na.omit(as.vector(x))
+  unique_n <- length(unique(values))
+
+  if (is.logical(x)) return("binary")
+  if (is.factor(x)) return(if (nlevels(x) <= 2) "binary" else "category")
+  if (is.character(x)) return(if (unique_n <= 2) "binary" else "category")
+  if ((is.numeric(x) || is.integer(x)) && unique_n <= 2) return("binary")
+  if ((is.numeric(x) || is.integer(x)) && unique_n <= 12) return("category")
+  "continuous"
+}
+
+variable_min <- function(x) {
+  values <- stats::na.omit(as.vector(x))
+  if (length(values) == 0 || !(is.numeric(values) || is.integer(values))) return("")
+  as.character(min(values))
+}
+
+variable_max <- function(x) {
+  values <- stats::na.omit(as.vector(x))
+  if (length(values) == 0 || !(is.numeric(values) || is.integer(values))) return("")
+  as.character(max(values))
+}
+
+variable_summary_table <- function(data, input) {
+  data.frame(
+    source_order = seq_along(data),
+    name = names(data),
+    measurement = vapply(data, infer_measurement, character(1)),
+    storage_type = vapply(data, function(x) class(x)[1], character(1)),
+    n_unique = vapply(data, function(x) length(unique(stats::na.omit(as.vector(x)))), integer(1)),
+    n_missing = vapply(data, function(x) sum(is.na(x)), integer(1)),
+    min_value = vapply(data, variable_min, character(1)),
+    max_value = vapply(data, variable_max, character(1)),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
 make_formula <- function(y, xs) {
-  as.formula(paste(y, "~", paste(xs, collapse = " + ")))
+  stats::reformulate(xs, response = y)
+}
+
+apply_filter <- function(data, filter_var, filter_condition) {
+  if (!nzchar(filter_var %||% "")) {
+    return(data)
+  }
+
+  if (!nzchar(trimws(filter_condition %||% ""))) {
+    filter_values <- data[[filter_var]]
+    keep <- !is.na(filter_values)
+    if (is.logical(filter_values)) {
+      keep <- keep & filter_values
+    } else if (is.numeric(filter_values) || is.integer(filter_values)) {
+      keep <- keep & filter_values == 1
+    } else {
+      keep <- keep & nzchar(as.character(filter_values))
+    }
+  } else {
+    keep <- eval(parse(text = filter_condition), envir = data, enclos = parent.frame())
+  }
+
+  validate(
+    need(is.logical(keep), "The filter condition must return TRUE/FALSE values."),
+    need(length(keep) == nrow(data), "The filter condition must return one TRUE/FALSE value per row."),
+    need(any(keep, na.rm = TRUE), "The filter removed all rows.")
+  )
+
+  data[keep %in% TRUE, , drop = FALSE]
 }
 
 coeftest_table <- function(model, vcov_matrix = NULL) {
@@ -132,24 +231,59 @@ ui <- navbarPage(
     div(
       class = "page-shell",
       div(
-        class = "toolbar",
-        div(
-          class = "toolbar-group",
-          fileInput("file", "Open Data File", accept = c(".csv")),
-          checkboxInput("header", "Use first row as variable names", TRUE)
-        )
+        class = "app-heading",
+        h1("EasyFlow Regression"),
+        div("SPSS SAV, CSV, DAT files can be loaded and summarized before regression analysis.", class = "app-subtitle")
       ),
       div(
-        class = "content-grid",
+        class = "data-layout",
         div(
-          class = "panel",
-          h3("Data Preview"),
-          tableOutput("data_preview")
+          class = "side-panel",
+          div(
+            class = "step-block",
+            h3("Step 1. Load data file"),
+            conditionalPanel(
+              condition = "!input.file",
+              fileInput("file", "Data file", accept = c(".sav", ".csv", ".dat")),
+              checkboxInput("header", "CSV first row contains variable names", TRUE),
+              selectInput(
+                "dat_delimiter",
+                "DAT delimiter",
+                choices = c("Whitespace" = "whitespace", "Comma" = "comma", "Tab" = "tab"),
+                selected = "whitespace"
+              ),
+              checkboxInput("dat_has_names", "DAT first row contains variable names", FALSE)
+            )
+          ),
+          div(
+            class = "step-block",
+            h3("Step 2. Select analysis variables"),
+            div("Check variables to keep, then apply the selection.", class = "step-note"),
+            uiOutput("variable_selection_controls")
+          ),
+          div(
+            class = "step-block",
+            h3("Session settings"),
+            fileInput("settings_file_data", "Load settings", accept = c(".json")),
+            downloadButton("save_settings_data", "Save settings")
+          )
         ),
         div(
-          class = "panel",
-          h3("Variables"),
-          tableOutput("variable_table")
+          class = "workspace-panel",
+          div(class = "load-message", textOutput("data_loaded_message")),
+          div(
+            class = "workspace-header",
+            h3(textOutput("data_view_title")),
+            uiOutput("data_view_toggle")
+          ),
+          conditionalPanel(
+            condition = "output.data_view === 'info'",
+            DTOutput("variable_table")
+          ),
+          conditionalPanel(
+            condition = "output.data_view === 'preview'",
+            DTOutput("data_preview_table")
+          )
         )
       )
     )
@@ -186,8 +320,15 @@ ui <- navbarPage(
         div(
           class = "side-panel",
           h3("Model Setup"),
+          selectInput("id_var", "ID Variable", choices = NULL),
+          selectInput("filter_var", "Filter Variable", choices = NULL),
+          conditionalPanel(
+            condition = "input.filter_var && input.filter_var !== ''",
+            textInput("filter_condition", "Filter Condition", placeholder = "Example: group == 1")
+          ),
           selectInput("y", "Dependent Variable", choices = NULL),
           selectizeInput("xs", "Independent Variables", choices = NULL, multiple = TRUE),
+          selectizeInput("covariates", "Covariates", choices = NULL, multiple = TRUE),
           numericInput("boot_r", "Bootstrap Resamples", value = 2000, min = 500, step = 500),
           numericInput("seed", "Random Seed", value = 1234, min = 1, step = 1),
           actionButton("run", "Run Analysis", class = "primary-action")
@@ -234,39 +375,127 @@ ui <- navbarPage(
 )
 
 server <- function(input, output, session) {
+  session$onSessionEnded(function() {
+    stopApp()
+  })
+
+  data_view <- reactiveVal("info")
+  selected_names <- reactiveVal(character(0))
+  selection_applied <- reactiveVal(FALSE)
+
   dataset <- reactive({
     req(input$file)
-    data <- read.csv(
+    data <- read_input_data(
       input$file$datapath,
-      header = input$header,
-      stringsAsFactors = FALSE,
-      check.names = TRUE
+      input$file$name,
+      csv_header = input$header,
+      dat_delimiter = input$dat_delimiter %||% "whitespace",
+      dat_has_names = isTRUE(input$dat_has_names)
     )
     prepare_data(data)
   })
 
+  update_analysis_choices <- function(cols) {
+    optional_cols <- c("None" = "", cols)
+    updateSelectInput(session, "id_var", choices = optional_cols, selected = if ((input$id_var %||% "") %in% cols) input$id_var else "")
+    updateSelectInput(session, "filter_var", choices = optional_cols, selected = if ((input$filter_var %||% "") %in% cols) input$filter_var else "")
+    updateSelectInput(session, "y", choices = cols, selected = if ((input$y %||% "") %in% cols) input$y else character(0))
+    updateSelectizeInput(session, "xs", choices = cols, selected = intersect(input$xs %||% character(0), cols), server = TRUE)
+    updateSelectizeInput(session, "covariates", choices = cols, selected = intersect(input$covariates %||% character(0), cols), server = TRUE)
+  }
+
   observeEvent(dataset(), {
     cols <- names(dataset())
-    updateSelectInput(session, "y", choices = cols)
-    updateSelectizeInput(session, "xs", choices = cols, server = TRUE)
+    selected_names(character(0))
+    selection_applied(FALSE)
+    update_analysis_choices(cols)
   })
+
+  observeEvent(input$variable_selected_names, {
+    selected_names(as.character(input$variable_selected_names %||% character(0)))
+  })
+
+  observeEvent(input$apply_variable_selection, {
+    req(dataset())
+    selected <- selected_names()
+    if (length(selected) == 0) {
+      showNotification("Select at least one variable to keep.", type = "warning")
+      return()
+    }
+    selected <- selected[selected %in% names(dataset())]
+    update_analysis_choices(selected)
+    selection_applied(TRUE)
+    showNotification(sprintf("%s variables selected for analysis.", length(selected)), type = "message")
+  })
+
+  observeEvent(input$modify_variable_selection, {
+    req(dataset())
+    selection_applied(FALSE)
+    data_view("info")
+    showNotification("Modify the checked variables, then apply the selection again.", type = "message")
+  })
+
+  output$variable_selection_controls <- renderUI({
+    has_data <- !is.null(input$file)
+    tagList(
+      actionButton(
+        "apply_variable_selection",
+        "Apply variable selection",
+        class = "btn-primary",
+        disabled = if (has_data) NULL else "disabled"
+      ),
+      actionButton(
+        "modify_variable_selection",
+        "Modify selection",
+        disabled = if (has_data) NULL else "disabled"
+      )
+    )
+  })
+
+  apply_settings_object <- function(settings) {
+    if (!is.null(settings$id)) updateSelectInput(session, "id_var", selected = settings$id %||% "")
+    if (!is.null(settings$filter)) updateSelectInput(session, "filter_var", selected = settings$filter %||% "")
+    if (!is.null(settings$filter_condition)) updateTextInput(session, "filter_condition", value = settings$filter_condition)
+    if (!is.null(settings$dependent)) updateSelectInput(session, "y", selected = settings$dependent)
+    if (!is.null(settings$independent)) updateSelectizeInput(session, "xs", selected = settings$independent)
+    if (!is.null(settings$covariates)) updateSelectizeInput(session, "covariates", selected = settings$covariates)
+    if (!is.null(settings$selected_variables)) selected_names(as.character(settings$selected_variables))
+    if (!is.null(settings$bootstrap_resamples)) updateNumericInput(session, "boot_r", value = settings$bootstrap_resamples)
+    if (!is.null(settings$seed)) updateNumericInput(session, "seed", value = settings$seed)
+  }
 
   observeEvent(input$apply_settings, {
     req(input$settings_file)
-    settings <- jsonlite::fromJSON(input$settings_file$datapath)
-    if (!is.null(settings$dependent)) updateSelectInput(session, "y", selected = settings$dependent)
-    if (!is.null(settings$independent)) updateSelectizeInput(session, "xs", selected = settings$independent)
-    if (!is.null(settings$bootstrap_resamples)) updateNumericInput(session, "boot_r", value = settings$bootstrap_resamples)
-    if (!is.null(settings$seed)) updateNumericInput(session, "seed", value = settings$seed)
+    apply_settings_object(jsonlite::fromJSON(input$settings_file$datapath))
   })
 
-  analysis <- eventReactive(input$run, {
-    data <- dataset()
-    req(input$y, input$xs)
-    validate(need(!(input$y %in% input$xs), "The dependent variable cannot also be an independent variable."))
-    validate(need(length(input$xs) > 0, "Select at least one independent variable."))
+  observeEvent(input$settings_file_data, {
+    req(input$settings_file_data)
+    apply_settings_object(jsonlite::fromJSON(input$settings_file_data$datapath))
+  })
 
-    formula <- make_formula(input$y, input$xs)
+  observeEvent(input$show_data_preview, {
+    data_view("preview")
+  })
+
+  observeEvent(input$show_variable_info, {
+    data_view("info")
+  })
+
+  output$data_view <- reactive({
+    data_view()
+  })
+  outputOptions(output, "data_view", suspendWhenHidden = FALSE)
+
+  analysis <- eventReactive(input$run, {
+    data <- apply_filter(dataset(), input$filter_var, input$filter_condition)
+    req(input$y, input$xs)
+    predictors <- unique(c(input$xs, input$covariates))
+    validate(need(!(input$y %in% predictors), "The dependent variable cannot also be an independent variable or covariate."))
+    validate(need(length(input$xs) > 0, "Select at least one independent variable."))
+    validate(need(length(predictors) > 0, "Select at least one predictor."))
+
+    formula <- make_formula(input$y, predictors)
     model <- lm(formula, data = data)
     resid_model <- residuals(model)
 
@@ -339,19 +568,186 @@ server <- function(input, output, session) {
     )
   })
 
-  output$data_preview <- renderTable({
-    if (is.null(input$file)) return(data.frame(Message = "Open a CSV file to preview data."))
-    head(dataset(), 10)
-  }, digits = 4)
-
-  output$variable_table <- renderTable({
-    if (is.null(input$file)) return(data.frame(Message = "No data file is open."))
+  output$data_loaded_message <- renderText({
+    if (is.null(input$file)) {
+      return("No data file is open.")
+    }
     data <- dataset()
-    data.frame(
-      Variable = names(data),
-      Type = vapply(data, function(x) class(x)[1], character(1)),
-      Missing = vapply(data, function(x) sum(is.na(x)), integer(1)),
-      check.names = FALSE
+    sprintf("Loaded %s: %s variables, %s rows.", input$file$name, ncol(data), nrow(data))
+  })
+
+  output$data_view_title <- renderText({
+    if (is.null(input$file)) {
+      return("Variable Info")
+    }
+    if (identical(data_view(), "preview")) {
+      return("Data Preview")
+    }
+    sprintf("All variables (%s)", ncol(dataset()))
+  })
+
+  output$data_view_toggle <- renderUI({
+    if (identical(data_view(), "preview")) {
+      actionButton("show_variable_info", "Variable Info", class = "view-toggle-button")
+    } else {
+      actionButton("show_data_preview", "Data Preview", class = "view-toggle-button")
+    }
+  })
+
+  output$variable_table <- renderDT({
+    if (is.null(input$file)) {
+      return(DT::datatable(
+        data.frame(Message = "Read a SAV, CSV, or DAT file to show variable information."),
+        rownames = FALSE,
+        options = list(dom = "t")
+      ))
+    }
+    data <- dataset()
+    table_data <- variable_summary_table(data, input)
+    checked_names <- selected_names()
+    table_data <- cbind(
+      selected = sprintf(
+        '<input type="checkbox" class="variable-select" data-name="%s" %s>',
+        htmltools::htmlEscape(table_data$name),
+        ifelse(table_data$name %in% checked_names, "checked", "")
+      ),
+      table_data,
+      stringsAsFactors = FALSE
+    )
+    DT::datatable(
+      table_data,
+      rownames = FALSE,
+      escape = FALSE,
+      filter = "top",
+      options = list(
+        pageLength = 20,
+        lengthMenu = c(10, 20, 50, 100),
+        scrollX = TRUE,
+        autoWidth = TRUE,
+        order = list(list(1, "asc")),
+        columnDefs = list(
+          list(orderable = FALSE, targets = 0),
+          list(visible = FALSE, targets = 1)
+        )
+      ),
+      callback = DT::JS(sprintf(
+        "
+        var selected = %s;
+        window.easyflowSelectedNames = {};
+        selected.forEach(function(name) { window.easyflowSelectedNames[name] = true; });
+        var selectedHeader = $(table.column(0).header());
+        var nameHeader = $(table.column(2).header());
+        var nameSortState = 'original';
+
+        selectedHeader.html('<button type=\"button\" class=\"page-select-toggle is-off\">selected</button>');
+        nameHeader.html('<button type=\"button\" class=\"name-sort-toggle\">name <span class=\"sort-mark\">original</span></button>');
+
+        function syncVariableSelection() {
+          Shiny.setInputValue('variable_selected_names', Object.keys(window.easyflowSelectedNames || {}), {priority: 'event'});
+        }
+
+        function currentPageNames() {
+          var names = [];
+          table.rows({page: 'current'}).every(function() {
+            var data = this.data();
+            if (data && data[2]) names.push(data[2]);
+          });
+          return names;
+        }
+
+        function updatePageToggle() {
+          var names = currentPageNames();
+          var allSelected = names.length > 0 && names.every(function(name) {
+            return !!window.easyflowSelectedNames[name];
+          });
+          selectedHeader.find('.page-select-toggle')
+            .toggleClass('is-on', allSelected)
+            .toggleClass('is-off', !allSelected);
+        }
+
+        function refreshVariableChecks() {
+          table.$('input.variable-select').each(function() {
+            var name = $(this).data('name');
+            $(this).prop('checked', !!window.easyflowSelectedNames[name]);
+          });
+          updatePageToggle();
+        }
+
+        function setCurrentPageSelection(checked) {
+          table.rows({page: 'current'}).every(function() {
+            var data = this.data();
+            if (!data || !data[2]) return;
+            if (checked) {
+              window.easyflowSelectedNames[data[2]] = true;
+            } else {
+              delete window.easyflowSelectedNames[data[2]];
+            }
+            $(this.node()).find('input.variable-select').prop('checked', checked);
+          });
+          refreshVariableChecks();
+          syncVariableSelection();
+        }
+
+        table.on('draw.dt', refreshVariableChecks);
+        selectedHeader.off('click.easyflowPageToggle').on('click.easyflowPageToggle', '.page-select-toggle', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          setCurrentPageSelection(!$(this).hasClass('is-on'));
+        });
+        nameHeader.off('click.easyflowNameSort').on('click.easyflowNameSort', '.name-sort-toggle', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (nameSortState === 'original') {
+            nameSortState = 'asc';
+            table.order([2, 'asc']).draw();
+            $(this).find('.sort-mark').text('▲');
+          } else if (nameSortState === 'asc') {
+            nameSortState = 'desc';
+            table.order([2, 'desc']).draw();
+            $(this).find('.sort-mark').text('▼');
+          } else {
+            nameSortState = 'original';
+            table.order([1, 'asc']).draw();
+            $(this).find('.sort-mark').text('original');
+          }
+        });
+        table.on('change', 'input.variable-select', function() {
+          var name = $(this).data('name');
+          if ($(this).is(':checked')) {
+            window.easyflowSelectedNames[name] = true;
+          } else {
+            delete window.easyflowSelectedNames[name];
+          }
+          refreshVariableChecks();
+          syncVariableSelection();
+        });
+
+        refreshVariableChecks();
+        syncVariableSelection();
+        ",
+        jsonlite::toJSON(checked_names, auto_unbox = FALSE)
+      ))
+    )
+  })
+
+  output$data_preview_table <- renderDT({
+    if (is.null(input$file)) {
+      return(DT::datatable(
+        data.frame(Message = "Read a SAV, CSV, or DAT file to preview data."),
+        rownames = FALSE,
+        options = list(dom = "t")
+      ))
+    }
+    DT::datatable(
+      head(dataset(), 20),
+      rownames = FALSE,
+      filter = "top",
+      options = list(
+        pageLength = 20,
+        lengthMenu = c(10, 20, 50, 100),
+        scrollX = TRUE,
+        autoWidth = TRUE
+      )
     )
   })
 
@@ -386,20 +782,33 @@ server <- function(input, output, session) {
     summary(analysis()$model)
   })
 
-  output$save_settings <- downloadHandler(
-    filename = function() "EasyFlow_Regression_Settings.json",
-    content = function(file) {
-      settings <- list(
-        app = "EasyFlow Regression",
-        version = app_version,
-        dependent = input$y,
-        independent = input$xs,
-        bootstrap_resamples = input$boot_r,
-        seed = input$seed
-      )
-      jsonlite::write_json(settings, file, pretty = TRUE, auto_unbox = TRUE)
-    }
-  )
+  current_settings <- function() {
+    list(
+      app = "EasyFlow Regression",
+      version = app_version,
+      id = input$id_var,
+      filter = input$filter_var,
+      filter_condition = input$filter_condition,
+      dependent = input$y,
+      independent = input$xs,
+      covariates = input$covariates,
+      selected_variables = selected_names(),
+      bootstrap_resamples = input$boot_r,
+      seed = input$seed
+    )
+  }
+
+  make_save_settings_handler <- function() {
+    downloadHandler(
+      filename = function() "EasyFlow_Regression_Settings.json",
+      content = function(file) {
+        jsonlite::write_json(current_settings(), file, pretty = TRUE, auto_unbox = TRUE)
+      }
+    )
+  }
+
+  output$save_settings <- make_save_settings_handler()
+  output$save_settings_data <- make_save_settings_handler()
 
   output$save_coefficients <- downloadHandler(
     filename = function() "EasyFlow_Regression_Coefficients.csv",

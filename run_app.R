@@ -1,11 +1,14 @@
 required_packages <- c(
   "shiny",
+  "DT",
   "lmtest",
   "sandwich",
   "nortest",
   "boot",
   "readxl",
-  "jsonlite"
+  "jsonlite",
+  "haven",
+  "readr"
 )
 
 missing_packages <- required_packages[
