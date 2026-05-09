@@ -239,34 +239,7 @@ ui <- navbarPage(
         class = "data-layout",
         div(
           class = "side-panel",
-          div(
-            class = "step-block",
-            h3("Step 1. Load data file"),
-            conditionalPanel(
-              condition = "!input.file",
-              fileInput("file", "Data file", accept = c(".sav", ".csv", ".dat")),
-              checkboxInput("header", "CSV first row contains variable names", TRUE),
-              selectInput(
-                "dat_delimiter",
-                "DAT delimiter",
-                choices = c("Whitespace" = "whitespace", "Comma" = "comma", "Tab" = "tab"),
-                selected = "whitespace"
-              ),
-              checkboxInput("dat_has_names", "DAT first row contains variable names", FALSE)
-            )
-          ),
-          div(
-            class = "step-block",
-            h3("Step 2. Select analysis variables"),
-            div("Check variables to keep, then apply the selection.", class = "step-note"),
-            uiOutput("variable_selection_controls")
-          ),
-          div(
-            class = "step-block",
-            h3("Session settings"),
-            fileInput("settings_file_data", "Load settings", accept = c(".json")),
-            downloadButton("save_settings_data", "Save settings")
-          )
+          uiOutput("data_steps")
         ),
         div(
           class = "workspace-panel",
@@ -435,19 +408,66 @@ server <- function(input, output, session) {
     showNotification("Modify the checked variables, then apply the selection again.", type = "message")
   })
 
-  output$variable_selection_controls <- renderUI({
+  output$data_steps <- renderUI({
     has_data <- !is.null(input$file)
+    applied <- isTRUE(selection_applied())
+    selected <- selected_names()
+
     tagList(
-      actionButton(
-        "apply_variable_selection",
-        "Apply variable selection",
-        class = "btn-primary",
-        disabled = if (has_data) NULL else "disabled"
+      div(
+        class = paste("step-block", if (has_data) "is-closed" else "is-open"),
+        h3("Step 1. Load data file"),
+        if (has_data) {
+          div(
+            class = "step-summary",
+            div(input$file$name, class = "step-summary-title"),
+            div(sprintf("%s variables, %s rows", ncol(dataset()), nrow(dataset())), class = "step-summary-detail")
+          )
+        } else {
+          tagList(
+            fileInput("file", "Data file", accept = c(".sav", ".csv", ".dat")),
+            checkboxInput("header", "CSV first row contains variable names", TRUE),
+            selectInput(
+              "dat_delimiter",
+              "DAT delimiter",
+              choices = c("Whitespace" = "whitespace", "Comma" = "comma", "Tab" = "tab"),
+              selected = "whitespace"
+            ),
+            checkboxInput("dat_has_names", "DAT first row contains variable names", FALSE)
+          )
+        }
       ),
-      actionButton(
-        "modify_variable_selection",
-        "Modify selection",
-        disabled = if (has_data) NULL else "disabled"
+      if (has_data) {
+        div(
+          class = paste("step-block", if (applied) "is-closed" else "is-open"),
+          h3("Step 2. Select analysis variables"),
+          if (applied) {
+            div(
+              class = "step-summary",
+              div(sprintf("%s variables selected", length(selected)), class = "step-summary-title"),
+              actionButton("modify_variable_selection", "Modify selection")
+            )
+          } else {
+            tagList(
+              div("Check variables to keep, then apply the selection.", class = "step-note"),
+              actionButton("apply_variable_selection", "Apply variable selection", class = "btn-primary")
+            )
+          }
+        )
+      },
+      if (has_data && applied) {
+        div(
+          class = "step-block is-open",
+          h3("Step 3. Review selected variables"),
+          div("Only the variables selected in Step 2 are shown in the table.", class = "step-note"),
+          div(sprintf("%s selected variables are ready.", length(selected)), class = "step-summary-detail")
+        )
+      },
+      div(
+        class = "step-block",
+        h3("Session settings"),
+        fileInput("settings_file_data", "Load settings", accept = c(".json")),
+        downloadButton("save_settings_data", "Save settings")
       )
     )
   })
@@ -581,7 +601,13 @@ server <- function(input, output, session) {
       return("Variable Info")
     }
     if (identical(data_view(), "preview")) {
+      if (isTRUE(selection_applied())) {
+        return(sprintf("Selected Data Preview (%s variables)", length(selected_names())))
+      }
       return("Data Preview")
+    }
+    if (isTRUE(selection_applied())) {
+      return(sprintf("Selected variables (%s)", length(selected_names())))
     }
     sprintf("All variables (%s)", ncol(dataset()))
   })
@@ -605,6 +631,9 @@ server <- function(input, output, session) {
     data <- dataset()
     table_data <- variable_summary_table(data, input)
     checked_names <- isolate(selected_names())
+    if (isTRUE(selection_applied())) {
+      table_data <- table_data[table_data$name %in% checked_names, , drop = FALSE]
+    }
     table_data <- cbind(
       selected = sprintf(
         '<input type="checkbox" class="variable-select" data-name="%s" %s>',
@@ -745,8 +774,13 @@ server <- function(input, output, session) {
         options = list(dom = "t")
       ))
     }
+    data <- dataset()
+    if (isTRUE(selection_applied())) {
+      selected <- selected_names()
+      data <- data[, intersect(selected, names(data)), drop = FALSE]
+    }
     DT::datatable(
-      head(dataset(), 20),
+      head(data, 20),
       rownames = FALSE,
       filter = "top",
       options = list(

@@ -130,6 +130,32 @@ body {
   border-bottom: 0;
 }
 
+.step-block.is-closed h3 {
+  color: #334e68;
+}
+
+.step-summary {
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid #d9e2ec;
+  border-radius: 6px;
+}
+
+.step-summary-title {
+  font-weight: 700;
+  color: #102a43;
+}
+
+.step-summary-detail {
+  margin-top: 4px;
+  color: #52606d;
+  font-size: 13px;
+}
+
+.step-summary .btn {
+  margin-top: 10px;
+}
+
 .step-note {
   margin-bottom: 12px;
   color: #334e68;
