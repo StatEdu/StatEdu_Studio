@@ -242,6 +242,10 @@ ui <- navbarPage(
           link.click();
           link.remove();
           setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+          Shiny.setInputValue('settings_save_result', {
+            nonce: message.nonce,
+            status: 'downloaded'
+          }, { priority: 'event' });
         }
 
         function initSettingsSave() {
@@ -249,6 +253,7 @@ ui <- navbarPage(
           initialized = true;
 
           $(document).on('click', '#save_settings, #save_settings_data', async function(event) {
+            event.preventDefault();
             var nonce = Date.now().toString() + Math.random().toString(16).slice(2);
 
             if (window.showSaveFilePicker) {
@@ -279,9 +284,14 @@ ui <- navbarPage(
 
             try {
               var writable = await pendingSettingsSave.handle.createWritable();
-              await writable.write(message.content);
+              await writable.write(new Blob([message.content], { type: 'application/json;charset=utf-8' }));
               await writable.close();
+              Shiny.setInputValue('settings_save_result', {
+                nonce: message.nonce,
+                status: 'saved'
+              }, { priority: 'event' });
             } catch (error) {
+              console.warn('EasyFlow settings save dialog failed; using download fallback.', error);
               fallbackDownload(message);
             } finally {
               pendingSettingsSave = null;
@@ -897,15 +907,15 @@ server <- function(input, output, session) {
     list(
       app = "EasyFlow Regression",
       version = app_version,
-      id = input$id_var,
-      filter = input$filter_var,
-      filter_condition = input$filter_condition,
-      dependent = input$y,
-      independent = input$xs,
-      covariates = input$covariates,
-      selected_variables = selected_names(),
-      bootstrap_resamples = input$boot_r,
-      seed = input$seed
+      id = input$id_var %||% "",
+      filter = input$filter_var %||% "",
+      filter_condition = input$filter_condition %||% "",
+      dependent = input$y %||% "",
+      independent = as.character(input$xs %||% character(0)),
+      covariates = as.character(input$covariates %||% character(0)),
+      selected_variables = as.character(selected_names() %||% character(0)),
+      bootstrap_resamples = input$boot_r %||% 2000,
+      seed = input$seed %||% 1234
     )
   }
 
@@ -920,7 +930,17 @@ server <- function(input, output, session) {
         content = as.character(jsonlite::toJSON(current_settings(), pretty = TRUE, auto_unbox = TRUE))
       )
     )
-    showNotification("Settings file is ready to save.", type = "message")
+  })
+
+  observeEvent(input$settings_save_result, {
+    result <- input$settings_save_result
+    if (identical(result$status, "saved")) {
+      showNotification("Settings file was saved.", type = "message")
+    } else if (identical(result$status, "downloaded")) {
+      showNotification("Settings file was downloaded.", type = "message")
+    } else {
+      showNotification("Save dialog failed, so the settings file was downloaded instead.", type = "warning")
+    }
   })
 
   output$save_coefficients <- downloadHandler(
