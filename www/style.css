@@ -181,6 +181,16 @@ body {
   gap: 18px;
 }
 
+.full-span {
+  grid-column: 1 / -1;
+}
+
+.result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .analysis-layout {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);

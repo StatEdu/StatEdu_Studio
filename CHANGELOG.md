@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Full regression result export to JSON and HTML.
+- Saved result preview for CSV, JSON, and HTML files in the Results tab.
+
 ## v0.1.0 - 2026-05-08
 
 ### Added
