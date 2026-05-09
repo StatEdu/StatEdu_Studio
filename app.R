@@ -70,6 +70,7 @@ infer_measurement <- function(x) {
   unique_n <- length(unique(values))
 
   if (is.logical(x)) return("binary")
+  if (is.ordered(x)) return("ordered")
   if (is.factor(x)) return(if (nlevels(x) <= 2) "binary" else "category")
   if (is.character(x)) return(if (unique_n <= 2) "binary" else "category")
   if ((is.numeric(x) || is.integer(x)) && unique_n <= 2) return("binary")
@@ -331,6 +332,7 @@ server <- function(input, output, session) {
   pending_settings <- reactiveVal(NULL)
   restored_data_file <- reactiveVal("")
   restored_variable_info <- reactiveVal(NULL)
+  measurement_overrides <- reactiveVal(character(0))
   active_data_file <- reactiveVal(NULL)
 
   current_data_file <- reactive({
@@ -372,6 +374,17 @@ server <- function(input, output, session) {
     values <- settings_vector(x)
     if (length(values) == 0) return("")
     values[[1]]
+  }
+
+  settings_named_vector <- function(x) {
+    if (is.null(x)) {
+      return(character(0))
+    }
+    values <- unlist(x, use.names = TRUE)
+    if (length(values) == 0) {
+      return(character(0))
+    }
+    as.character(values)
   }
 
   restore_embedded_data_file <- function(settings) {
@@ -435,15 +448,52 @@ server <- function(input, output, session) {
     )
   }
 
+  apply_measurement_overrides <- function(table_data) {
+    overrides <- measurement_overrides()
+    if (length(overrides) == 0 || is.null(table_data) || nrow(table_data) == 0) {
+      return(table_data)
+    }
+
+    matched <- table_data$name %in% names(overrides)
+    table_data$measurement[matched] <- unname(overrides[table_data$name[matched]])
+    table_data
+  }
+
+  measurement_select_html <- function(name, value) {
+    choices <- unique(c("binary", "category", "ordered", "continuous", value))
+    sprintf(
+      '<select class="measurement-select" data-name="%s">%s</select>',
+      htmltools::htmlEscape(name),
+      paste(
+        sprintf(
+          '<option value="%s" %s>%s</option>',
+          choices,
+          ifelse(choices == value, "selected", ""),
+          choices
+        ),
+        collapse = ""
+      )
+    )
+  }
+
   current_data_step <- function() {
     if (is.null(current_data_file()) && is.null(restored_variable_info())) return("load_data")
     if (isTRUE(selection_applied())) return("assign_variable_roles")
     "select_analysis_variables"
   }
 
+  continuous_variable_names <- function() {
+    info <- if (is.null(current_data_file())) restored_variable_info() else variable_summary_table(dataset(), input)
+    info <- apply_measurement_overrides(info)
+    if (is.null(info) || nrow(info) == 0) {
+      return(character(0))
+    }
+    as.character(info$name[info$measurement == "continuous"])
+  }
+
   set_role_choices <- function(choices, dependent = character(0), independent = character(0), controls = character(0)) {
     choices <- as.character(choices)
-    dependent <- intersect(as.character(dependent), choices)
+    dependent <- intersect(intersect(as.character(dependent), choices), continuous_variable_names())
     independent <- setdiff(intersect(as.character(independent), choices), dependent)
     controls <- setdiff(intersect(as.character(controls), choices), c(dependent, independent))
 
@@ -463,6 +513,9 @@ server <- function(input, output, session) {
 
   set_active_role_names <- function(names) {
     names <- intersect(as.character(names), selected_names())
+    if (identical(active_role(), "dependent")) {
+      names <- intersect(names, continuous_variable_names())
+    }
     switch(
       active_role(),
       independent = {
@@ -517,6 +570,7 @@ server <- function(input, output, session) {
     }
     if (!is.null(settings$bootstrap_resamples)) updateNumericInput(session, "boot_r", value = settings$bootstrap_resamples)
     if (!is.null(settings$seed)) updateNumericInput(session, "seed", value = settings$seed)
+    measurement_overrides(settings_named_vector(settings$measurement_overrides))
 
     if (is.null(current_data_file()) && restore_external_data_file(settings, settings_path)) {
       pending_settings(settings)
@@ -586,6 +640,7 @@ server <- function(input, output, session) {
     if (is.null(settings)) {
       restored_data_file("")
       restored_variable_info(NULL)
+      measurement_overrides(character(0))
       selected_names(character(0))
       selection_applied(FALSE)
       set_role_choices(character(0))
@@ -656,6 +711,23 @@ server <- function(input, output, session) {
       set_active_role_names(names)
     } else {
       selected_names(names)
+    }
+  })
+
+  observeEvent(input$variable_measurement_update, {
+    update <- input$variable_measurement_update
+    name <- as.character(update$name %||% "")
+    value <- as.character(update$value %||% "")
+    if (!nzchar(name) || !(value %in% c("binary", "category", "ordered", "continuous"))) {
+      return()
+    }
+
+    overrides <- measurement_overrides()
+    overrides[name] <- value
+    measurement_overrides(overrides)
+
+    if (!identical(value, "continuous")) {
+      dependent_names(setdiff(dependent_names(), name))
     }
   })
 
@@ -1036,6 +1108,7 @@ server <- function(input, output, session) {
     } else {
       variable_summary_table(dataset(), input)
     }
+    table_data <- apply_measurement_overrides(table_data)
     if (isTRUE(selection_applied())) {
       active_role()
       checked_names <- isolate(active_role_names())
@@ -1044,11 +1117,18 @@ server <- function(input, output, session) {
     } else {
       checked_names <- isolate(selected_names())
     }
+    disabled_names <- if (isTRUE(selection_applied()) && identical(active_role(), "dependent")) {
+      setdiff(table_data$name[table_data$measurement != "continuous"], checked_names)
+    } else {
+      character(0)
+    }
+    table_data$measurement <- mapply(measurement_select_html, table_data$name, table_data$measurement, USE.NAMES = FALSE)
     table_data <- cbind(
       selected = sprintf(
-        '<input type="checkbox" class="variable-select" data-name="%s" %s>',
+        '<input type="checkbox" class="variable-select" data-name="%s" %s %s>',
         htmltools::htmlEscape(table_data$name),
-        ifelse(table_data$name %in% checked_names, "checked", "")
+        ifelse(table_data$name %in% checked_names, "checked", ""),
+        ifelse(table_data$name %in% disabled_names, "disabled title=\"Dependent variable must be continuous\"", "")
       ),
       table_data,
       stringsAsFactors = FALSE
@@ -1095,8 +1175,18 @@ server <- function(input, output, session) {
           return names;
         }
 
+        function selectablePageNames() {
+          var names = [];
+          table.rows({page: 'current'}).every(function() {
+            var data = this.data();
+            var checkbox = $(this.node()).find('input.variable-select');
+            if (data && data[2] && !checkbox.prop('disabled')) names.push(data[2]);
+          });
+          return names;
+        }
+
         function updatePageToggle() {
-          var names = currentPageNames();
+          var names = selectablePageNames();
           var allSelected = names.length > 0 && names.every(function(name) {
             return !!window.easyflowSelectedNames[name];
           });
@@ -1108,7 +1198,12 @@ server <- function(input, output, session) {
         function refreshVariableChecks() {
           table.$('input.variable-select').each(function() {
             var name = $(this).data('name');
-            $(this).prop('checked', !!window.easyflowSelectedNames[name]);
+            if ($(this).prop('disabled')) {
+              delete window.easyflowSelectedNames[name];
+              $(this).prop('checked', false);
+            } else {
+              $(this).prop('checked', !!window.easyflowSelectedNames[name]);
+            }
           });
           updatePageToggle();
         }
@@ -1116,13 +1211,14 @@ server <- function(input, output, session) {
         function setCurrentPageSelection(checked) {
           table.rows({page: 'current'}).every(function() {
             var data = this.data();
-            if (!data || !data[2]) return;
+            var checkbox = $(this.node()).find('input.variable-select');
+            if (!data || !data[2] || checkbox.prop('disabled')) return;
             if (checked) {
               window.easyflowSelectedNames[data[2]] = true;
             } else {
               delete window.easyflowSelectedNames[data[2]];
             }
-            $(this.node()).find('input.variable-select').prop('checked', checked);
+            checkbox.prop('checked', checked);
           });
           refreshVariableChecks();
           syncVariableSelection();
@@ -1154,6 +1250,7 @@ server <- function(input, output, session) {
         table.on('change', 'input.variable-select', function() {
           if (window.getSelection) window.getSelection().removeAllRanges();
           $(this).closest('tr').removeClass('selected');
+          if ($(this).prop('disabled')) return;
           var name = $(this).data('name');
           if ($(this).is(':checked')) {
             window.easyflowSelectedNames[name] = true;
@@ -1166,6 +1263,14 @@ server <- function(input, output, session) {
         table.on('click', 'input.variable-select', function(e) {
           e.stopPropagation();
           $(this).closest('tr').removeClass('selected');
+        });
+        table.on('change', 'select.measurement-select', function(e) {
+          e.stopPropagation();
+          Shiny.setInputValue('variable_measurement_update', {
+            name: $(this).data('name'),
+            value: $(this).val(),
+            nonce: Date.now() + Math.random()
+          }, {priority: 'event'});
         });
 
         refreshVariableChecks();
@@ -1235,7 +1340,7 @@ server <- function(input, output, session) {
 
   current_settings <- function() {
     file <- current_data_file()
-    variable_info <- if (is.null(file)) restored_variable_info() else variable_summary_table(dataset(), input)
+    variable_info <- apply_measurement_overrides(if (is.null(file)) restored_variable_info() else variable_summary_table(dataset(), input))
     variable_names <- if (is.null(variable_info)) character(0) else as.character(variable_info$name)
 
     list(
@@ -1246,6 +1351,7 @@ server <- function(input, output, session) {
       data_file = if (is.null(file)) restored_data_file() else file$name,
       data_variables = I(variable_names),
       data_variable_info = I(if (is.null(variable_info)) list() else variable_info),
+      measurement_overrides = as.list(measurement_overrides()),
       selection_applied = isTRUE(selection_applied()),
       id = input$id_var %||% "",
       filter = input$filter_var %||% "",
