@@ -226,7 +226,22 @@ ui <- navbarPage(
   title = div(class = "brand-title", "EasyFlow Regression", span(class = "version", paste0("v", app_version))),
   id = "main_menu",
   header = tags$head(
-    tags$link(rel = "stylesheet", type = "text/css", href = "style.css")
+    tags$link(rel = "stylesheet", type = "text/css", href = "style.css"),
+    tags$script(HTML("
+      document.addEventListener('click', function(event) {
+        var button = event.target.closest('.settings-save-button');
+        if (!button || !window.Shiny) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+
+        var state = window.easyflowCurrentTableState ? window.easyflowCurrentTableState() : { measurements: {} };
+        Shiny.setInputValue('save_settings_request', {
+          selected: state.selected,
+          measurements: state.measurements || {},
+          nonce: Date.now() + Math.random()
+        }, {priority: 'event'});
+      }, true);
+    "))
   ),
 
   tabPanel(
@@ -281,7 +296,7 @@ ui <- navbarPage(
           class = "panel",
           h3("Save Settings"),
           p("Save the current variable selection and analysis options as a JSON settings file."),
-          actionButton("save_settings", "Save Settings")
+          actionButton("save_settings", "Save Settings", class = "settings-save-button")
         )
       )
     )
@@ -757,6 +772,23 @@ server <- function(input, output, session) {
     update_measurement_overrides(snapshot$values %||% snapshot)
   })
 
+  sync_table_state <- function(state) {
+    if (is.null(state)) {
+      return(invisible(FALSE))
+    }
+
+    update_measurement_overrides(state$measurements %||% character(0))
+    if (!is.null(state$selected)) {
+      names <- as.character(settings_vector(state$selected))
+      if (isTRUE(selection_applied())) {
+        set_active_role_names(names)
+      } else {
+        selected_names(names)
+      }
+    }
+    invisible(TRUE)
+  }
+
   observeEvent(input$apply_variable_selection, {
     cols <- available_variable_names()
     selected <- selected_names()
@@ -881,7 +913,7 @@ server <- function(input, output, session) {
         class = "step-block",
         h3("Session settings"),
         actionButton("browse_settings_data", "Load settings"),
-        actionButton("save_settings_data", "Save settings")
+        actionButton("save_settings_data", "Save settings", class = "settings-save-button")
       )
     )
   })
@@ -969,11 +1001,8 @@ server <- function(input, output, session) {
     showNotification("Settings file was saved.", type = "message")
   }
 
-  observeEvent(input$save_settings, {
-    save_settings_to_file()
-  })
-
-  observeEvent(input$save_settings_data, {
+  observeEvent(input$save_settings_request, {
+    sync_table_state(input$save_settings_request)
     save_settings_to_file()
   })
 
@@ -1264,6 +1293,17 @@ server <- function(input, output, session) {
           }, {priority: 'event'});
         }
 
+        function currentTableState() {
+          var measurements = {};
+          table.$('select.measurement-select').each(function() {
+            measurements[$(this).data('name')] = $(this).val();
+          });
+          return {
+            selected: Object.keys(window.easyflowSelectedNames || {}),
+            measurements: measurements
+          };
+        }
+
         function setCurrentPageSelection(checked) {
           table.rows({page: 'current'}).every(function() {
             var data = this.data();
@@ -1333,6 +1373,7 @@ server <- function(input, output, session) {
           .off('mousedown.easyflowMeasurementSnapshot', '#save_settings_data, #save_settings')
           .on('mousedown.easyflowMeasurementSnapshot', '#save_settings_data, #save_settings', syncMeasurementSnapshot);
 
+        window.easyflowCurrentTableState = currentTableState;
         refreshVariableChecks();
         syncVariableSelection();
         ",
