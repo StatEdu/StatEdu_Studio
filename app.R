@@ -448,6 +448,20 @@ server <- function(input, output, session) {
     )
   }
 
+  settings_measurement_overrides <- function(settings) {
+    info <- settings_variable_info(settings)
+    saved <- character(0)
+    if (is.data.frame(info) && all(c("name", "measurement") %in% names(info))) {
+      saved <- stats::setNames(as.character(info$measurement), as.character(info$name))
+      saved <- saved[nzchar(names(saved)) & saved %in% c("binary", "category", "ordered", "continuous")]
+    }
+
+    overrides <- settings_named_vector(settings$measurement_overrides)
+    overrides <- overrides[nzchar(names(overrides)) & overrides %in% c("binary", "category", "ordered", "continuous")]
+    saved[names(overrides)] <- overrides
+    saved
+  }
+
   apply_measurement_overrides <- function(table_data, overrides = measurement_overrides()) {
     if (length(overrides) == 0 || is.null(table_data) || nrow(table_data) == 0) {
       return(table_data)
@@ -473,6 +487,20 @@ server <- function(input, output, session) {
         collapse = ""
       )
     )
+  }
+
+  update_measurement_overrides <- function(values) {
+    updates <- settings_named_vector(values)
+    updates <- updates[nzchar(names(updates)) & updates %in% c("binary", "category", "ordered", "continuous")]
+    if (length(updates) == 0) {
+      return(invisible(FALSE))
+    }
+
+    overrides <- measurement_overrides()
+    overrides[names(updates)] <- updates
+    measurement_overrides(overrides)
+    dependent_names(intersect(dependent_names(), continuous_variable_names()))
+    invisible(TRUE)
   }
 
   current_data_step <- function() {
@@ -569,7 +597,7 @@ server <- function(input, output, session) {
     }
     if (!is.null(settings$bootstrap_resamples)) updateNumericInput(session, "boot_r", value = settings$bootstrap_resamples)
     if (!is.null(settings$seed)) updateNumericInput(session, "seed", value = settings$seed)
-    measurement_overrides(settings_named_vector(settings$measurement_overrides))
+    measurement_overrides(settings_measurement_overrides(settings))
 
     if (is.null(current_data_file()) && restore_external_data_file(settings, settings_path)) {
       pending_settings(settings)
@@ -721,13 +749,12 @@ server <- function(input, output, session) {
       return()
     }
 
-    overrides <- measurement_overrides()
-    overrides[name] <- value
-    measurement_overrides(overrides)
+    update_measurement_overrides(stats::setNames(value, name))
+  })
 
-    if (!identical(value, "continuous")) {
-      dependent_names(setdiff(dependent_names(), name))
-    }
+  observeEvent(input$variable_measurement_snapshot, {
+    snapshot <- input$variable_measurement_snapshot
+    update_measurement_overrides(snapshot$values %||% snapshot)
   })
 
   observeEvent(input$apply_variable_selection, {
@@ -1226,6 +1253,17 @@ server <- function(input, output, session) {
           updatePageToggle();
         }
 
+        function syncMeasurementSnapshot() {
+          var values = {};
+          table.$('select.measurement-select').each(function() {
+            values[$(this).data('name')] = $(this).val();
+          });
+          Shiny.setInputValue('variable_measurement_snapshot', {
+            values: values,
+            nonce: Date.now() + Math.random()
+          }, {priority: 'event'});
+        }
+
         function setCurrentPageSelection(checked) {
           table.rows({page: 'current'}).every(function() {
             var data = this.data();
@@ -1291,6 +1329,9 @@ server <- function(input, output, session) {
             nonce: Date.now() + Math.random()
           }, {priority: 'event'});
         });
+        $(document)
+          .off('mousedown.easyflowMeasurementSnapshot', '#save_settings_data, #save_settings')
+          .on('mousedown.easyflowMeasurementSnapshot', '#save_settings_data, #save_settings', syncMeasurementSnapshot);
 
         refreshVariableChecks();
         syncVariableSelection();
