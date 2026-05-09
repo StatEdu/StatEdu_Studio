@@ -368,40 +368,7 @@ ui <- navbarPage(
     "EasyFlow Regression",
     div(
       class = "page-shell",
-      div(
-        class = "analysis-layout",
-        div(
-          class = "side-panel",
-          h3("Model Setup"),
-          selectInput("id_var", "ID Variable", choices = NULL),
-          selectInput("filter_var", "Filter Variable", choices = NULL),
-          conditionalPanel(
-            condition = "input.filter_var && input.filter_var !== ''",
-            textInput("filter_condition", "Filter Condition", placeholder = "Example: group == 1")
-          ),
-          selectInput("y", "Dependent Variable", choices = NULL),
-          selectizeInput("xs", "Independent Variables", choices = NULL, multiple = TRUE),
-          selectizeInput("covariates", "Covariates", choices = NULL, multiple = TRUE),
-          numericInput("boot_r", "Bootstrap Resamples", value = 2000, min = 500, step = 500),
-          numericInput("seed", "Random Seed", value = 1234, min = 1, step = 1),
-          actionButton("run", "Run Analysis", class = "primary-action")
-        ),
-        div(
-          class = "result-panel",
-          h3("Assumption Diagnostics"),
-          tableOutput("diagnostics"),
-          h3("Durbin-Watson Test"),
-          tableOutput("dw_result"),
-          h3("Selected Method"),
-          verbatimTextOutput("decision"),
-          h3("Regression Coefficients"),
-          tableOutput("regression"),
-          h3("Bootstrap Results"),
-          tableOutput("bootstrap_ci"),
-          h3("Model Summary"),
-          verbatimTextOutput("summary")
-        )
-      )
+      empty_message("Regression analysis will be implemented later.")
     )
   ),
 
@@ -435,6 +402,10 @@ server <- function(input, output, session) {
   data_view <- reactiveVal("info")
   selected_names <- reactiveVal(character(0))
   selection_applied <- reactiveVal(FALSE)
+  active_role <- reactiveVal("dependent")
+  dependent_names <- reactiveVal(character(0))
+  independent_names <- reactiveVal(character(0))
+  control_names <- reactiveVal(character(0))
   pending_settings <- reactiveVal(NULL)
 
   dataset <- reactive({
@@ -456,9 +427,6 @@ server <- function(input, output, session) {
     updateSelectInput(session, "y", choices = cols, selected = if ((input$y %||% "") %in% cols) input$y else character(0))
     updateSelectizeInput(session, "xs", choices = cols, selected = intersect(input$xs %||% character(0), cols), server = TRUE)
     updateSelectizeInput(session, "covariates", choices = cols, selected = intersect(input$covariates %||% character(0), cols), server = TRUE)
-    updateSelectizeInput(session, "dependent_vars", choices = cols, selected = intersect(input$dependent_vars %||% character(0), cols), server = TRUE)
-    updateSelectizeInput(session, "independent_vars", choices = cols, selected = intersect(input$independent_vars %||% character(0), cols), server = TRUE)
-    updateSelectizeInput(session, "control_vars", choices = cols, selected = intersect(input$control_vars %||% character(0), cols), server = TRUE)
   }
 
   settings_vector <- function(x) {
@@ -478,17 +446,30 @@ server <- function(input, output, session) {
     "select_analysis_variables"
   }
 
-  update_role_choices <- function(choices, dependent = character(0), independent = character(0), controls = character(0)) {
+  set_role_choices <- function(choices, dependent = character(0), independent = character(0), controls = character(0)) {
     choices <- as.character(choices)
-    dependent <- intersect(as.character(dependent), choices)
-    independent <- intersect(as.character(independent), choices)
-    controls <- intersect(as.character(controls), choices)
+    dependent_names(intersect(as.character(dependent), choices))
+    independent_names(intersect(as.character(independent), choices))
+    control_names(intersect(as.character(controls), choices))
+  }
 
-    session$onFlushed(function() {
-      updateSelectizeInput(session, "dependent_vars", choices = choices, selected = dependent, server = TRUE)
-      updateSelectizeInput(session, "independent_vars", choices = choices, selected = independent, server = TRUE)
-      updateSelectizeInput(session, "control_vars", choices = choices, selected = controls, server = TRUE)
-    }, once = TRUE)
+  active_role_names <- function() {
+    switch(
+      active_role(),
+      independent = independent_names(),
+      control = control_names(),
+      dependent_names()
+    )
+  }
+
+  set_active_role_names <- function(names) {
+    names <- intersect(as.character(names), selected_names())
+    switch(
+      active_role(),
+      independent = independent_names(names),
+      control = control_names(names),
+      dependent_names(names)
+    )
   }
 
   restore_settings_state <- function(settings) {
@@ -531,7 +512,7 @@ server <- function(input, output, session) {
     }
     if (!is.null(settings$independent)) updateSelectizeInput(session, "xs", selected = intersect(settings_vector(settings$independent), cols))
     if (!is.null(settings$covariates)) updateSelectizeInput(session, "covariates", selected = intersect(settings_vector(settings$covariates), cols))
-    update_role_choices(selected, dependent, independent, controls)
+    set_role_choices(selected, dependent, independent, controls)
 
     applied <- isTRUE(settings$selection_applied) ||
       (settings$data_step %||% "") %in% c("review_selected_variables", "assign_variable_roles")
@@ -550,6 +531,7 @@ server <- function(input, output, session) {
     if (is.null(settings)) {
       selected_names(character(0))
       selection_applied(FALSE)
+      set_role_choices(character(0))
       update_analysis_choices(cols)
     } else {
       restore_settings_state(settings)
@@ -557,7 +539,12 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$variable_selected_names, {
-    selected_names(as.character(input$variable_selected_names %||% character(0)))
+    names <- as.character(input$variable_selected_names %||% character(0))
+    if (isTRUE(selection_applied())) {
+      set_active_role_names(names)
+    } else {
+      selected_names(names)
+    }
   })
 
   observeEvent(input$apply_variable_selection, {
@@ -570,11 +557,12 @@ server <- function(input, output, session) {
     selected <- selected[selected %in% names(dataset())]
     update_analysis_choices(selected)
     selection_applied(TRUE)
-    update_role_choices(
+    active_role("dependent")
+    set_role_choices(
       selected,
-      input$dependent_vars %||% character(0),
-      input$independent_vars %||% character(0),
-      input$control_vars %||% character(0)
+      dependent_names(),
+      independent_names(),
+      control_names()
     )
     showNotification(sprintf("%s variables selected for analysis.", length(selected)), type = "message")
   })
@@ -583,16 +571,27 @@ server <- function(input, output, session) {
     req(dataset())
     selection_applied(FALSE)
     data_view("info")
+    set_role_choices(selected_names(), dependent_names(), independent_names(), control_names())
     showNotification("Modify the checked variables, then apply the selection again.", type = "message")
+  })
+
+  observeEvent(input$select_dependent_role, {
+    active_role("dependent")
+  })
+
+  observeEvent(input$select_independent_role, {
+    active_role("independent")
+  })
+
+  observeEvent(input$select_control_role, {
+    active_role("control")
   })
 
   output$data_steps <- renderUI({
     has_data <- !is.null(input$file)
     applied <- isTRUE(selection_applied())
     selected <- selected_names()
-    dependent_selected <- isolate(input$dependent_vars %||% character(0))
-    independent_selected <- isolate(input$independent_vars %||% character(0))
-    control_selected <- isolate(input$control_vars %||% character(0))
+    role <- active_role()
 
     tagList(
       div(
@@ -640,10 +639,20 @@ server <- function(input, output, session) {
         div(
           class = "step-block is-open",
           h3("Step 3. Assign variable roles"),
-          div("Choose dependent, independent, and control variables from the Step 2 selection.", class = "step-note"),
-          selectizeInput("dependent_vars", "Dependent variables", choices = selected, selected = intersect(dependent_selected, selected), multiple = TRUE),
-          selectizeInput("independent_vars", "Independent variables", choices = selected, selected = intersect(independent_selected, selected), multiple = TRUE),
-          selectizeInput("control_vars", "Control variables (covariates)", choices = selected, selected = intersect(control_selected, selected), multiple = TRUE)
+          div("Use the checkbox column in the variable table to select variables for the active role.", class = "step-note"),
+          div(
+            class = "role-actions",
+            actionButton("select_dependent_role", sprintf("Dependent (%s)", length(dependent_names())), class = paste("role-button", if (identical(role, "dependent")) "is-active" else "")),
+            actionButton("select_independent_role", sprintf("Independent (%s)", length(independent_names())), class = paste("role-button", if (identical(role, "independent")) "is-active" else "")),
+            actionButton("select_control_role", sprintf("Control (%s)", length(control_names())), class = paste("role-button", if (identical(role, "control")) "is-active" else ""))
+          ),
+          div(
+            sprintf(
+              "Selecting: %s",
+              switch(role, independent = "Independent variables", control = "Control variables (covariates)", "Dependent variables")
+            ),
+            class = "step-summary-detail"
+          )
         )
       },
       div(
@@ -787,7 +796,13 @@ server <- function(input, output, session) {
       return("Data Preview")
     }
     if (isTRUE(selection_applied())) {
-      return(sprintf("Selected variables (%s)", length(selected_names())))
+      role_label <- switch(
+        active_role(),
+        independent = "independent variables",
+        control = "control variables",
+        "dependent variables"
+      )
+      return(sprintf("Select %s (%s of %s selected)", role_label, length(active_role_names()), length(selected_names())))
     }
     sprintf("All variables (%s)", ncol(dataset()))
   })
@@ -810,9 +825,12 @@ server <- function(input, output, session) {
     }
     data <- dataset()
     table_data <- variable_summary_table(data, input)
-    checked_names <- isolate(selected_names())
     if (isTRUE(selection_applied())) {
-      table_data <- table_data[table_data$name %in% checked_names, , drop = FALSE]
+      active_role()
+      checked_names <- isolate(active_role_names())
+      table_data <- table_data[table_data$name %in% selected_names(), , drop = FALSE]
+    } else {
+      checked_names <- isolate(selected_names())
     }
     table_data <- cbind(
       selected = sprintf(
@@ -1015,12 +1033,12 @@ server <- function(input, output, session) {
       id = input$id_var %||% "",
       filter = input$filter_var %||% "",
       filter_condition = input$filter_condition %||% "",
-      dependent_variables = I(as.character(input$dependent_vars %||% character(0))),
-      independent_variables = I(as.character(input$independent_vars %||% character(0))),
-      control_variables = I(as.character(input$control_vars %||% character(0))),
-      dependent = I(as.character(input$dependent_vars %||% input$y %||% character(0))),
-      independent = I(as.character(input$independent_vars %||% input$xs %||% character(0))),
-      covariates = I(as.character(input$control_vars %||% input$covariates %||% character(0))),
+      dependent_variables = I(as.character(dependent_names())),
+      independent_variables = I(as.character(independent_names())),
+      control_variables = I(as.character(control_names())),
+      dependent = I(as.character(dependent_names())),
+      independent = I(as.character(independent_names())),
+      covariates = I(as.character(control_names())),
       selected_variables = I(as.character(selected_names() %||% character(0))),
       bootstrap_resamples = input$boot_r %||% 2000,
       seed = input$seed %||% 1234
