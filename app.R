@@ -604,7 +604,7 @@ server <- function(input, output, session) {
     }
     data <- dataset()
     table_data <- variable_summary_table(data, input)
-    checked_names <- selected_names()
+    checked_names <- isolate(selected_names())
     table_data <- cbind(
       selected = sprintf(
         '<input type="checkbox" class="variable-select" data-name="%s" %s>',
