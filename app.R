@@ -1,4 +1,4 @@
-required_packages <- c("shiny", "DT", "lmtest", "sandwich", "nortest", "boot", "readxl", "jsonlite", "haven", "readr", "htmltools")
+required_packages <- c("shiny", "DT", "lmtest", "sandwich", "nortest", "boot", "readxl", "jsonlite", "haven", "readr")
 missing_packages <- required_packages[!vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)]
 if (length(missing_packages) > 0) {
   stop(
@@ -28,57 +28,6 @@ format_p <- function(p) {
   if (is.na(p)) return(NA_character_)
   if (p < .001) return("< .001")
   sprintf("%.3f", p)
-}
-
-format_table_html <- function(x) {
-  if (is.null(x) || length(x) == 0) return("<p>Not available.</p>")
-  x <- as.data.frame(x, check.names = FALSE)
-  if (nrow(x) == 0) return("<p>Not available.</p>")
-
-  header <- paste0(
-    "<tr>",
-    paste(sprintf("<th>%s</th>", htmltools::htmlEscape(names(x))), collapse = ""),
-    "</tr>"
-  )
-  body <- apply(x, 1, function(row) {
-    paste0(
-      "<tr>",
-      paste(sprintf("<td>%s</td>", htmltools::htmlEscape(as.character(row))), collapse = ""),
-      "</tr>"
-    )
-  })
-
-  paste0("<table>", header, paste(body, collapse = ""), "</table>")
-}
-
-make_results_html <- function(result) {
-  bootstrap_section <- if (is.null(result$bootstrap)) {
-    "<p>Bootstrap results were not required for the selected method.</p>"
-  } else {
-    format_table_html(result$bootstrap)
-  }
-
-  paste0(
-    "<!doctype html><html><head><meta charset=\"utf-8\">",
-    "<title>EasyFlow Regression Results</title>",
-    "<style>",
-    "body{font-family:Arial,sans-serif;margin:28px;color:#1f2933;}",
-    "h1{font-size:24px;margin-bottom:4px;} h2{font-size:18px;margin-top:26px;}",
-    "table{border-collapse:collapse;width:100%;margin-top:8px;} th,td{border:1px solid #d9e2ec;padding:6px 8px;text-align:left;}",
-    "th{background:#f1f5f9;} pre{white-space:pre-wrap;background:#f8fafc;border:1px solid #d9e2ec;padding:12px;}",
-    "</style></head><body>",
-    "<h1>EasyFlow Regression Results</h1>",
-    "<p><strong>Version:</strong> ", htmltools::htmlEscape(result$version), "</p>",
-    "<p><strong>Generated:</strong> ", htmltools::htmlEscape(result$generated_at), "</p>",
-    "<p><strong>Formula:</strong> ", htmltools::htmlEscape(result$formula), "</p>",
-    "<p><strong>Selected method:</strong> ", htmltools::htmlEscape(result$method), "</p>",
-    "<h2>Assumption Diagnostics</h2>", format_table_html(result$diagnostics),
-    "<h2>Durbin-Watson Test</h2>", format_table_html(result$durbin_watson),
-    "<h2>Regression Coefficients</h2>", format_table_html(result$coefficients),
-    "<h2>Bootstrap Results</h2>", bootstrap_section,
-    "<h2>Model Summary</h2><pre>", htmltools::htmlEscape(result$model_summary), "</pre>",
-    "</body></html>"
-  )
 }
 
 prepare_data <- function(data) {
@@ -417,20 +366,8 @@ ui <- navbarPage(
         div(
           class = "panel",
           h3("Save Results"),
-          p("Save the current analysis results for later review or manuscript preparation."),
-          div(
-            class = "result-actions",
-            downloadButton("save_coefficients", "Save Coefficients CSV"),
-            downloadButton("save_results_json", "Save Results JSON"),
-            downloadButton("save_results_html", "Save Results HTML")
-          )
-        ),
-        div(
-          class = "panel full-span",
-          h3("Results Preview"),
-          uiOutput("results_loaded_message"),
-          tableOutput("loaded_results_preview"),
-          verbatimTextOutput("loaded_results_text")
+          p("Save the current coefficient table as a CSV file."),
+          downloadButton("save_coefficients", "Save Coefficients")
         )
       )
     )
@@ -445,7 +382,6 @@ server <- function(input, output, session) {
   data_view <- reactiveVal("info")
   selected_names <- reactiveVal(character(0))
   selection_applied <- reactiveVal(FALSE)
-  loaded_results <- reactiveVal(NULL)
 
   dataset <- reactive({
     req(input$file)
@@ -544,30 +480,6 @@ server <- function(input, output, session) {
 
   observeEvent(input$show_variable_info, {
     data_view("info")
-  })
-
-  observeEvent(input$results_file, {
-    req(input$results_file)
-    ext <- tolower(tools::file_ext(input$results_file$name))
-
-    if (identical(ext, "json")) {
-      result <- jsonlite::fromJSON(input$results_file$datapath, simplifyVector = TRUE)
-      loaded_results(list(type = "json", name = input$results_file$name, data = result))
-      return()
-    }
-
-    if (identical(ext, "csv")) {
-      result <- read.csv(input$results_file$datapath, check.names = FALSE, fileEncoding = "UTF-8-BOM")
-      loaded_results(list(type = "csv", name = input$results_file$name, data = result))
-      return()
-    }
-
-    if (identical(ext, "html")) {
-      loaded_results(list(type = "html", name = input$results_file$name, data = NULL))
-      return()
-    }
-
-    showNotification("Supported result files are CSV, JSON, and HTML.", type = "warning")
   })
 
   output$data_view <- reactive({
@@ -839,47 +751,6 @@ server <- function(input, output, session) {
     )
   })
 
-  output$results_loaded_message <- renderUI({
-    result <- loaded_results()
-    if (is.null(result)) {
-      return(empty_message("Open a saved CSV, JSON, or HTML result file to preview it here."))
-    }
-
-    if (identical(result$type, "html")) {
-      return(div(class = "load-message", sprintf("Loaded %s. HTML files can be opened in a browser.", result$name)))
-    }
-
-    div(class = "load-message", sprintf("Loaded %s.", result$name))
-  })
-
-  output$loaded_results_preview <- renderTable({
-    result <- loaded_results()
-    if (is.null(result) || identical(result$type, "html")) return(NULL)
-
-    if (identical(result$type, "csv")) {
-      return(head(result$data, 20))
-    }
-
-    if (!is.null(result$data$coefficients)) {
-      return(result$data$coefficients)
-    }
-
-    if (!is.null(result$data$diagnostics)) {
-      return(result$data$diagnostics)
-    }
-
-    NULL
-  }, digits = 4)
-
-  output$loaded_results_text <- renderPrint({
-    result <- loaded_results()
-    if (is.null(result) || !identical(result$type, "json")) return(invisible(NULL))
-
-    cat("Method:", result$data$method %||% "Not available", "\n")
-    cat("Formula:", result$data$formula %||% "Not available", "\n")
-    cat("Generated:", result$data$generated_at %||% "Not available", "\n")
-  })
-
   output$diagnostics <- renderTable({
     analysis()$diagnostics
   }, digits = 4)
@@ -927,22 +798,6 @@ server <- function(input, output, session) {
     )
   }
 
-  current_result_object <- function() {
-    result <- analysis()
-    list(
-      app = "EasyFlow Regression",
-      version = app_version,
-      generated_at = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"),
-      formula = paste(deparse(stats::formula(result$model)), collapse = " "),
-      method = result$method,
-      diagnostics = result$diagnostics,
-      durbin_watson = result$dw_result,
-      coefficients = result$coef_table,
-      bootstrap = result$boot_table,
-      model_summary = paste(capture.output(summary(result$model)), collapse = "\n")
-    )
-  }
-
   make_save_settings_handler <- function() {
     downloadHandler(
       filename = function() "EasyFlow_Regression_Settings.json",
@@ -959,20 +814,6 @@ server <- function(input, output, session) {
     filename = function() "EasyFlow_Regression_Coefficients.csv",
     content = function(file) {
       write.csv(analysis()$coef_table, file, row.names = FALSE, fileEncoding = "UTF-8")
-    }
-  )
-
-  output$save_results_json <- downloadHandler(
-    filename = function() "EasyFlow_Regression_Results.json",
-    content = function(file) {
-      jsonlite::write_json(current_result_object(), file, pretty = TRUE, auto_unbox = TRUE, null = "null")
-    }
-  )
-
-  output$save_results_html <- downloadHandler(
-    filename = function() "EasyFlow_Regression_Results.html",
-    content = function(file) {
-      writeLines(make_results_html(current_result_object()), file, useBytes = TRUE)
     }
   )
 }
