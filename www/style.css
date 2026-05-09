@@ -234,6 +234,36 @@ table {
   font-size: 13px;
 }
 
+.variable-table-top,
+.variable-table-bottom {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.variable-table-top {
+  margin-bottom: 12px;
+}
+
+.variable-table-bottom {
+  margin-top: 12px;
+}
+
+.variable-table-top .dataTables_paginate,
+.variable-table-bottom .dataTables_paginate {
+  justify-self: end;
+}
+
+.variable-table-top .dataTables_filter {
+  justify-self: end;
+}
+
+.variable-table-top .dataTables_length,
+.variable-table-bottom .dataTables_info {
+  justify-self: start;
+}
+
 .dataTable tbody,
 .dataTable tbody tr,
 .dataTable tbody td {

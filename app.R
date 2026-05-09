@@ -620,6 +620,7 @@ server <- function(input, output, session) {
       escape = FALSE,
       filter = "top",
       options = list(
+        dom = '<"variable-table-top"lpf>rt<"variable-table-bottom"ip>',
         pageLength = 20,
         lengthMenu = c(10, 20, 50, 100),
         scrollX = TRUE,
