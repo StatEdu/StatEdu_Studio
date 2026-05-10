@@ -309,13 +309,26 @@ input.variable-select:disabled {
 
 .regression-fields {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
+  grid-template-columns: 380px 260px;
+  gap: 8px;
   align-items: start;
 }
 
 .regression-field .form-group {
   margin-bottom: 0;
+}
+
+.regression-fields > .regression-field {
+  grid-column: 1;
+}
+
+.regression-options {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  padding-top: 28px;
 }
 
 .predictor-order-actions {
@@ -677,6 +690,68 @@ table {
   font-size: 13px;
 }
 
+.coefficient-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-top: 2px solid #1f2937;
+}
+
+.coefficient-table th,
+.coefficient-table td {
+  padding: 7px 12px;
+  border-bottom: 1px solid #d7dde5;
+  text-align: right;
+}
+
+.coefficient-table th:first-child,
+.coefficient-table td:first-child {
+  text-align: left;
+}
+
+.coefficient-table thead th {
+  border-top: 0;
+  border-bottom: 2px solid #1f2937;
+  font-weight: 700;
+}
+
+.coefficient-table tfoot {
+  border-bottom: 2px solid #1f2937;
+}
+
+.coefficient-table .coefficient-fit-row td {
+  text-align: center;
+  border-top: 2px solid #1f2937;
+  border-bottom: 0;
+  font-weight: 500;
+}
+
+.coefficient-table .coefficient-dw-row td {
+  border-top: 1px solid #d7dde5;
+}
+
+.coefficient-note {
+  color: #52606d;
+  font-size: 11px;
+  line-height: 1.4;
+  margin-top: 4px;
+}
+
+.residual-diagnostic-plots {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.residual-plot-card h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
 .variable-table-top,
 .variable-table-bottom {
   display: grid;
@@ -739,6 +814,16 @@ pre {
   .analysis-layout,
   .regression-layout,
   .regression-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .regression-options,
+  .regression-fields > .regression-field {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .residual-diagnostic-plots {
     grid-template-columns: 1fr;
   }
 }

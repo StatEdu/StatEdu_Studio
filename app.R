@@ -1,4 +1,4 @@
-required_packages <- c("shiny", "DT", "lmtest", "sandwich", "nortest", "boot", "readxl", "jsonlite", "haven", "readr")
+required_packages <- c("shiny", "DT", "lmtest", "sandwich", "nortest", "boot", "jsonlite", "haven", "readr")
 missing_packages <- required_packages[!vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)]
 if (length(missing_packages) > 0) {
   stop(
@@ -14,11 +14,10 @@ library(lmtest)
 library(sandwich)
 library(nortest)
 library(boot)
-library(readxl)
 library(jsonlite)
 
 app_version <- trimws(readLines("VERSION", warn = FALSE)[1])
-dw_table_path <- "D:/Program/EXCEL_macro/EasyFlow_Statistics_3.2.1.xlsm"
+dw_table_path <- file.path("data", "durbin_watson_critical_values.csv")
 
 `%||%` <- function(x, y) {
   if (is.null(x)) y else x
@@ -44,7 +43,7 @@ named_value <- function(x, name, default = "") {
 format_p <- function(p) {
   if (is.na(p)) return(NA_character_)
   if (p < .001) return("< .001")
-  sprintf("%.3f", p)
+  sub("^0\\.", ".", sprintf("%.3f", p))
 }
 
 format_decimal3 <- function(x) {
@@ -198,6 +197,41 @@ apply_filter <- function(data, filter_var, filter_condition) {
   data[keep %in% TRUE, , drop = FALSE]
 }
 
+coefficient_collinearity <- function(model_matrix) {
+  terms <- colnames(model_matrix)
+  vif <- stats::setNames(rep(NA_real_, length(terms)), terms)
+  tolerance <- stats::setNames(rep(NA_real_, length(terms)), terms)
+  predictor_terms <- setdiff(terms, "(Intercept)")
+  if (length(predictor_terms) == 0) {
+    return(list(tolerance = tolerance, vif = vif))
+  }
+  if (length(predictor_terms) == 1) {
+    tolerance[predictor_terms] <- 1
+    vif[predictor_terms] <- 1
+    return(list(tolerance = tolerance, vif = vif))
+  }
+
+  predictors <- as.data.frame(model_matrix[, predictor_terms, drop = FALSE], check.names = FALSE)
+  for (term in predictor_terms) {
+    y <- predictors[[term]]
+    others <- predictors[, setdiff(predictor_terms, term), drop = FALSE]
+    if (stats::sd(y, na.rm = TRUE) == 0 || ncol(others) == 0) {
+      next
+    }
+    fit <- tryCatch(stats::lm(y ~ ., data = others), error = function(e) NULL)
+    if (is.null(fit)) {
+      next
+    }
+    r_squared <- summary(fit)$r.squared
+    if (is.na(r_squared)) {
+      next
+    }
+    tolerance[term] <- max(0, 1 - r_squared)
+    vif[term] <- if (r_squared >= 1) Inf else 1 / (1 - r_squared)
+  }
+  list(tolerance = tolerance, vif = vif)
+}
+
 coeftest_table <- function(model, vcov_matrix = NULL) {
   test <- if (is.null(vcov_matrix)) {
     lmtest::coeftest(model)
@@ -206,6 +240,7 @@ coeftest_table <- function(model, vcov_matrix = NULL) {
   }
 
   model_matrix <- stats::model.matrix(model)
+  collinearity <- coefficient_collinearity(model_matrix)
   outcome <- stats::model.response(stats::model.frame(model))
   outcome_sd <- stats::sd(outcome, na.rm = TRUE)
   predictor_sd <- apply(model_matrix, 2, stats::sd, na.rm = TRUE)
@@ -219,6 +254,8 @@ coeftest_table <- function(model, vcov_matrix = NULL) {
     beta = beta,
     t = test[, 3],
     p = test[, 4],
+    Tolerance = collinearity$tolerance[rownames(test)],
+    VIF = collinearity$vif[rownames(test)],
     row.names = NULL,
     check.names = FALSE
   )
@@ -263,19 +300,26 @@ durbin_watson_stat <- function(model) {
 
 lookup_dw_critical <- function(n, p, path = dw_table_path) {
   if (!file.exists(path)) {
-    return(list(dL = NA_real_, dU = NA_real_, note = "Durbin-Watson critical value workbook was not found."))
+    return(list(dL = NA_real_, dU = NA_real_, note = "Durbin-Watson critical value table was not found."))
   }
 
   if (n < 1 || n > 2000 || p < 1 || p > 20) {
     return(list(dL = NA_real_, dU = NA_real_, note = "The critical value table supports n = 1-2000 and p = 1-20."))
   }
 
-  dU_table <- readxl::read_excel(path, sheet = "Durbin-Watson", range = "DP1:EI2000", col_names = FALSE)
-  dL_table <- readxl::read_excel(path, sheet = "Durbin-Watson", range = "EL1:FE2000", col_names = FALSE)
+  table <- tryCatch(read.csv(path, stringsAsFactors = FALSE), error = function(e) NULL)
+  if (is.null(table) || !all(c("n", "p", "dL", "dU") %in% names(table))) {
+    return(list(dL = NA_real_, dU = NA_real_, note = "Durbin-Watson critical value table has an invalid format."))
+  }
+
+  row <- table[table$n == n & table$p == p, , drop = FALSE]
+  if (nrow(row) == 0) {
+    return(list(dL = NA_real_, dU = NA_real_, note = "Durbin-Watson critical value was not found for this n and p."))
+  }
 
   list(
-    dL = as.numeric(dL_table[[p]][n]),
-    dU = as.numeric(dU_table[[p]][n]),
+    dL = as.numeric(row$dL[[1]]),
+    dU = as.numeric(row$dU[[1]]),
     note = NA_character_
   )
 }
@@ -299,6 +343,7 @@ ui <- navbarPage(
     tags$script(HTML("
       window.easyflowSettingsDirty = false;
       window.easyflowVarLabels = window.easyflowVarLabels || {};
+      window.easyflowMeasurements = window.easyflowMeasurements || {};
 
       function captureEasyflowVarLabels() {
         function collectInput(input) {
@@ -353,6 +398,137 @@ ui <- navbarPage(
         }
       }
       window.easyflowStoreVarLabel = saveEasyflowVarLabelInput;
+
+      function collectEasyflowTableState() {
+        var selectedMap = Object.assign({}, window.easyflowSelectedNames || {});
+        document.querySelectorAll('input.variable-select[data-name]').forEach(function(input) {
+          var name = input.getAttribute('data-name');
+          if (!name || input.disabled) return;
+          if (input.checked) selectedMap[name] = true;
+          else delete selectedMap[name];
+        });
+
+        var measurements = {};
+        document.querySelectorAll('select').forEach(function(select) {
+          var optionValues = Array.prototype.slice.call(select.options || []).map(function(option) { return option.value; });
+          var isMeasurementSelect = select.classList.contains('measurement-select') ||
+            (select.id || '').indexOf('measurement_input_') === 0 ||
+            ['binary', 'category', 'ordered', 'continuous'].every(function(value) { return optionValues.indexOf(value) >= 0; });
+          if (!isMeasurementSelect) return;
+
+          var name = select.getAttribute('data-name') || '';
+          if (!name) {
+            var row = select.closest('tr');
+            var cells = row ? row.querySelectorAll('td') : [];
+            if (cells.length > 1) {
+              name = (cells[1].textContent || '').trim();
+            }
+          }
+          if (name) measurements[name] = select.value || '';
+        });
+        Object.assign(measurements, window.easyflowMeasurements || {});
+
+        var varLabels = Object.assign({}, window.easyflowVarLabels || {}, captureEasyflowVarLabels());
+        return {
+          selected: Object.keys(selectedMap),
+          measurements: measurements,
+          var_labels: varLabels
+        };
+      }
+      window.easyflowCollectTableState = collectEasyflowTableState;
+
+      function rememberEasyflowMeasurement(select, measurements) {
+        if (!select) return;
+        var optionValues = Array.prototype.slice.call(select.options || []).map(function(option) { return option.value; });
+        var isMeasurementSelect = select.classList.contains('measurement-select') ||
+          (select.id || '').indexOf('measurement_input_') === 0 ||
+          ['binary', 'category', 'ordered', 'continuous'].every(function(value) { return optionValues.indexOf(value) >= 0; });
+        if (!isMeasurementSelect) return;
+
+        var name = select.getAttribute('data-name') || '';
+        if (!name) {
+          var row = select.closest('tr');
+          var cells = row ? row.querySelectorAll('td') : [];
+          if (cells.length > 1) name = (cells[1].textContent || '').trim();
+        }
+        if (!name) return;
+        measurements[name] = select.value || '';
+        window.easyflowMeasurements = window.easyflowMeasurements || {};
+        window.easyflowMeasurements[name] = select.value || '';
+      }
+
+      function collectEasyflowMeasurementsFromPage() {
+        var measurements = {};
+        document.querySelectorAll('select.measurement-select, select[id^=\"measurement_input_\"]').forEach(function(select) {
+          rememberEasyflowMeasurement(select, measurements);
+        });
+        return measurements;
+      }
+
+      function submitEasyflowTableState() {
+        var state = null;
+        if (window.easyflowCurrentTableState) {
+          try {
+            state = window.easyflowCurrentTableState();
+          } catch (e) {
+            state = null;
+          }
+        }
+        if (!state) state = collectEasyflowTableState();
+        state.selected = state.selected || [];
+        var pageMeasurements = collectEasyflowMeasurementsFromPage();
+        state.measurements = Object.assign({}, state.measurements || {}, window.easyflowMeasurements || {}, pageMeasurements);
+        state.measurement_pairs = Object.keys(state.measurements || {}).map(function(name) {
+          return {name: name, value: state.measurements[name]};
+        });
+        state.var_labels = Object.assign({}, window.easyflowVarLabels || {}, state.var_labels || {}, captureEasyflowVarLabels());
+        state.debug_measurement_count = Object.keys(state.measurements || {}).length;
+        return state;
+      }
+      window.easyflowSubmitTableState = submitEasyflowTableState;
+
+      window.easyflowApplyVariableSelection = function() {
+        if (!window.Shiny) return false;
+        flushEasyflowInputs();
+        var state = submitEasyflowTableState();
+        state.nonce = Date.now() + Math.random();
+        Shiny.setInputValue('apply_variable_request', state, {priority: 'event'});
+        return false;
+      };
+
+      window.easyflowApplyRoleSelection = function() {
+        if (!window.Shiny) return false;
+        flushEasyflowInputs();
+        var state = submitEasyflowTableState();
+        state.nonce = Date.now() + Math.random();
+        Shiny.setInputValue('apply_role_request', state, {priority: 'event'});
+        return false;
+      };
+
+      window.easyflowSelectRole = function(role) {
+        if (!window.Shiny) return true;
+        flushEasyflowInputs();
+        var state = submitEasyflowTableState();
+        state.role = role || '';
+        state.nonce = Date.now() + Math.random();
+        Shiny.setInputValue('role_switch_request', state, {priority: 'event'});
+        return false;
+      };
+
+      window.easyflowFlushVariableTableState = function() {
+        if (!window.Shiny) return true;
+        flushEasyflowInputs();
+        var state = submitEasyflowTableState();
+        Shiny.setInputValue('variable_table_state', {
+          selected: state.selected,
+          measurements: state.measurements || {},
+          measurement_pairs: state.measurement_pairs || [],
+          var_labels: state.var_labels || {},
+          debug_measurement_count: state.debug_measurement_count || 0,
+          nonce: Date.now() + Math.random()
+        }, {priority: 'event'});
+        return true;
+      };
 
       function flushEasyflowInputs() {
         captureEasyflowVarLabels();
@@ -424,6 +600,37 @@ ui <- navbarPage(
         }, true);
       });
 
+      document.addEventListener('change', function(event) {
+        var select = event.target && event.target.matches && event.target.matches('select')
+          ? event.target
+          : null;
+        if (!select) return;
+        var optionValues = Array.prototype.slice.call(select.options || []).map(function(option) { return option.value; });
+        var isMeasurementSelect = select.classList.contains('measurement-select') ||
+          (select.id || '').indexOf('measurement_input_') === 0 ||
+          ['binary', 'category', 'ordered', 'continuous'].every(function(value) { return optionValues.indexOf(value) >= 0; });
+        if (!isMeasurementSelect) return;
+
+        var name = select.getAttribute('data-name') || '';
+        if (!name) {
+          var row = select.closest('tr');
+          var cells = row ? row.querySelectorAll('td') : [];
+          if (cells.length > 1) {
+            name = (cells[1].textContent || '').trim();
+          }
+        }
+        if (!name) return;
+        window.easyflowMeasurements = window.easyflowMeasurements || {};
+        window.easyflowMeasurements[name] = select.value || '';
+        if (window.Shiny) {
+          Shiny.setInputValue('variable_measurement_update', {
+            name: name,
+            value: window.easyflowMeasurements[name],
+            nonce: Date.now() + Math.random()
+          }, {priority: 'event'});
+        }
+      }, true);
+
       document.addEventListener('click', function(event) {
         var button = event.target.closest('.settings-save-button');
         if (!button || !window.Shiny) return;
@@ -432,7 +639,7 @@ ui <- navbarPage(
 
         flushEasyflowInputs();
 
-        var state = window.easyflowCurrentTableState ? window.easyflowCurrentTableState() : { measurements: {}, var_labels: {} };
+        var state = submitEasyflowTableState();
         var varLabels = Object.assign({}, window.easyflowVarLabels || {}, state.var_labels || {}, captureEasyflowVarLabels());
         var categoryLabels = {};
         document.querySelectorAll('input.category-label-input').forEach(function(input) {
@@ -445,6 +652,7 @@ ui <- navbarPage(
         Shiny.setInputValue('save_settings_request', {
           selected: state.selected,
           measurements: state.measurements || {},
+          measurement_pairs: state.measurement_pairs || [],
           var_labels: varLabels,
           category_labels: categoryLabels,
           nonce: Date.now() + Math.random()
@@ -564,6 +772,8 @@ server <- function(input, output, session) {
   restored_data_file <- reactiveVal("")
   restored_variable_info <- reactiveVal(NULL)
   measurement_overrides <- reactiveVal(character(0))
+  step3_variable_info <- reactiveVal(NULL)
+  step4_variable_info <- reactiveVal(NULL)
   active_data_file <- reactiveVal(NULL)
   reset_on_dataset_load <- reactiveVal(FALSE)
   unsaved_settings <- reactiveVal(FALSE)
@@ -678,6 +888,59 @@ server <- function(input, output, session) {
     }
     values <- as.character(values)
     keep_named_values(values)
+  }
+
+  settings_name_value_pairs <- function(x) {
+    if (is.null(x)) {
+      return(character(0))
+    }
+
+    if (is.data.frame(x) && all(c("name", "value") %in% names(x))) {
+      values <- stats::setNames(as.character(x$value), as.character(x$name))
+      return(values[!is.na(names(values)) & nzchar(names(values))])
+    }
+
+    if (is.list(x) && all(c("name", "value") %in% names(x))) {
+      names_vec <- settings_vector(x$name)
+      values_vec <- settings_vector(x$value)
+      length_out <- min(length(names_vec), length(values_vec))
+      if (length_out > 0) {
+        values <- stats::setNames(as.character(values_vec[seq_len(length_out)]), as.character(names_vec[seq_len(length_out)]))
+        return(values[!is.na(names(values)) & nzchar(names(values))])
+      }
+    }
+
+    if (is.list(x) && length(x) > 0) {
+      rows <- lapply(x, function(row) {
+        if (!is.list(row)) {
+          return(NULL)
+        }
+        name <- settings_scalar(row$name %||% "")
+        value <- settings_scalar(row$value %||% "")
+        if (!nzchar(name)) {
+          return(NULL)
+        }
+        stats::setNames(value, name)
+      })
+      rows <- rows[!vapply(rows, is.null, logical(1))]
+      if (length(rows) > 0) {
+        values <- unlist(rows, use.names = TRUE)
+        return(as.character(values))
+      }
+    }
+
+    character(0)
+  }
+
+  state_measurements <- function(state) {
+    if (is.null(state)) {
+      return(character(0))
+    }
+    values <- settings_name_value_pairs(state$measurement_pairs %||% NULL)
+    if (length(values) == 0) {
+      values <- settings_named_vector(state$measurements %||% character(0))
+    }
+    values
   }
 
   update_var_label_overrides <- function(values, allow_blank = TRUE) {
@@ -852,10 +1115,70 @@ server <- function(input, output, session) {
     table_data
   }
 
-  measurement_select_html <- function(name, value) {
+  apply_var_label_overrides_to_info <- function(info, labels = var_label_overrides()) {
+    if (is.null(info) || nrow(info) == 0 || length(labels) == 0) {
+      return(info)
+    }
+    matched <- info$name %in% names(labels)
+    info$var_label[matched] <- unname(labels[info$name[matched]])
+    info
+  }
+
+  base_variable_info <- function() {
+    info <- if (is.null(current_data_file())) restored_variable_info() else variable_summary_table(dataset(), input, raw_dataset())
+    info <- apply_measurement_overrides(info)
+    apply_var_label_overrides_to_info(info)
+  }
+
+  merge_state_into_info <- function(info, state = NULL, selected_only = FALSE) {
+    if (is.null(info) || nrow(info) == 0) {
+      return(info)
+    }
+    info <- apply_measurement_overrides(info)
+    info <- apply_var_label_overrides_to_info(info)
+
+    state_values <- state_measurements(state)
+    direct_values <- collect_measurement_inputs()
+    measurements <- state_values
+    if (length(direct_values) > 0) {
+      measurements[names(direct_values)] <- direct_values
+    }
+    measurements <- measurements[measurements %in% c("binary", "category", "ordered", "continuous")]
+    if (length(measurements) > 0) {
+      info <- apply_measurement_overrides(info, measurements)
+      overrides <- measurement_overrides()
+      overrides[names(measurements)] <- measurements
+      measurement_overrides(overrides)
+    }
+
+    labels <- settings_named_vector(state$var_labels %||% character(0))
+    direct_labels <- collect_var_label_inputs()
+    if (length(direct_labels) > 0) {
+      labels[names(direct_labels)] <- direct_labels
+    }
+    if (length(labels) > 0) {
+      info <- apply_var_label_overrides_to_info(info, labels)
+      existing <- var_label_overrides()
+      existing[names(labels)] <- labels
+      var_label_overrides(existing)
+    }
+
+    if (isTRUE(selected_only)) {
+      info <- info[info$name %in% selected_names(), , drop = FALSE]
+    }
+    info
+  }
+
+  measurement_select_html <- function(name, value, source_order) {
     choices <- unique(c("binary", "category", "ordered", "continuous", value))
     sprintf(
-      '<select class="measurement-select" data-name="%s">%s</select>',
+      paste0(
+        '<select id="measurement_input_%s" class="measurement-select" data-name="%s" ',
+        'onchange="if(window.Shiny){Shiny.setInputValue(&quot;variable_measurement_update&quot;,',
+        '{name:this.getAttribute(&quot;data-name&quot;),value:this.value,nonce:Date.now()+Math.random()},',
+        '{priority:&quot;event&quot;});}">%s</select>'
+      ),
+      htmltools::htmlEscape(source_order),
       htmltools::htmlEscape(name),
       paste(
         sprintf(
@@ -867,6 +1190,27 @@ server <- function(input, output, session) {
         collapse = ""
       )
     )
+  }
+
+  collect_measurement_inputs <- function() {
+    info <- tryCatch(variable_info_table(reactive_labels = FALSE), error = function(e) NULL)
+    if (is.null(info) || !all(c("source_order", "name") %in% names(info))) {
+      return(character(0))
+    }
+
+    collected <- character(0)
+    for (row_index in seq_len(nrow(info))) {
+      source_order <- as.character(info$source_order[[row_index]])
+      name <- as.character(info$name[[row_index]])
+      if (!nzchar(source_order) || !nzchar(name)) {
+        next
+      }
+      value <- input[[paste0("measurement_input_", source_order)]]
+      if (!is.null(value) && length(value) > 0 && value[[1]] %in% c("binary", "category", "ordered", "continuous")) {
+        collected[name] <- as.character(value[[1]])
+      }
+    }
+    collected
   }
 
   update_measurement_overrides <- function(values) {
@@ -896,6 +1240,7 @@ server <- function(input, output, session) {
     measurement_overrides(overrides)
     dependent_names(intersect(dependent_names(), continuous_variable_names()))
     mark_settings_dirty()
+    message(sprintf("Updated measurement: %s", paste(sprintf("%s=%s", names(updates), unname(updates)), collapse = ", ")))
     invisible(TRUE)
   }
 
@@ -907,8 +1252,11 @@ server <- function(input, output, session) {
   }
 
   continuous_variable_names <- function() {
-    info <- if (is.null(current_data_file())) restored_variable_info() else variable_summary_table(dataset(), input, raw_dataset())
-    info <- apply_measurement_overrides(info)
+    info <- if (isTRUE(selection_applied()) && !is.null(step3_variable_info())) {
+      step3_variable_info()
+    } else {
+      base_variable_info()
+    }
     if (is.null(info) || nrow(info) == 0) {
       return(character(0))
     }
@@ -979,8 +1327,13 @@ server <- function(input, output, session) {
   }
 
   variable_info_table <- function(reactive_labels = TRUE) {
-    info <- if (is.null(current_data_file())) restored_variable_info() else variable_summary_table(dataset(), input, raw_dataset())
-    info <- apply_measurement_overrides(info)
+    info <- if (identical(data_view(), "labels") && !is.null(step4_variable_info())) {
+      step4_variable_info()
+    } else if (isTRUE(selection_applied()) && !is.null(step3_variable_info())) {
+      step3_variable_info()
+    } else {
+      base_variable_info()
+    }
     if (is.null(info)) {
       return(NULL)
     }
@@ -991,10 +1344,7 @@ server <- function(input, output, session) {
       }
     }
     labels <- if (isTRUE(reactive_labels)) var_label_overrides() else isolate(var_label_overrides())
-    if (length(labels) > 0) {
-      matched <- info$name %in% names(labels)
-      info$var_label[matched] <- unname(labels[info$name[matched]])
-    }
+    info <- apply_var_label_overrides_to_info(info, labels)
     info
   }
 
@@ -1019,6 +1369,13 @@ server <- function(input, output, session) {
     }
     saved_var_labels <- saved_var_labels[nzchar(names(saved_var_labels)) & nzchar(trimws(as.character(saved_var_labels)))]
     var_label_overrides(saved_var_labels)
+    saved_info <- settings_variable_info(settings)
+    if (is.data.frame(saved_info) && "name" %in% names(saved_info)) {
+      saved_info <- apply_measurement_overrides(saved_info, settings_measurement_overrides(settings))
+      saved_info <- apply_var_label_overrides_to_info(saved_info, saved_var_labels)
+    } else {
+      saved_info <- NULL
+    }
     saved_category_labels <- settings$category_value_labels %||% NULL
     if (is.data.frame(saved_category_labels)) {
       category_label_values(saved_category_labels)
@@ -1036,7 +1393,7 @@ server <- function(input, output, session) {
     if (!is.null(settings$selected_variables)) {
       selected_names(selected)
     }
-    if (!is.null(settings$bootstrap_resamples)) updateNumericInput(session, "boot_r", value = settings$bootstrap_resamples)
+    if (!is.null(settings$bootstrap_resamples)) updateSelectInput(session, "boot_r", selected = as.character(settings$bootstrap_resamples))
     if (!is.null(settings$seed)) updateNumericInput(session, "seed", value = settings$seed)
     measurement_overrides(settings_measurement_overrides(settings))
 
@@ -1074,9 +1431,17 @@ server <- function(input, output, session) {
             (settings$data_step %||% "") %in% c("category_labels") ||
             (length(dependent_names()) > 0 && length(independent_names()) > 0)
         )
+        if (isTRUE(selection_applied()) && is.data.frame(saved_info)) {
+          step3_variable_info(saved_info[saved_info$name %in% selected, , drop = FALSE])
+        }
+        if (isTRUE(roles_applied()) && is.data.frame(saved_info)) {
+          step4_variable_info(saved_info[saved_info$name %in% selected, , drop = FALSE])
+        }
       } else {
         selection_applied(FALSE)
         roles_applied(FALSE)
+        step3_variable_info(NULL)
+        step4_variable_info(NULL)
       }
       pending_settings(settings)
       return()
@@ -1104,6 +1469,14 @@ server <- function(input, output, session) {
         (length(dependent_names()) > 0 && length(independent_names()) > 0)
     )
     if (isTRUE(selection_applied())) {
+      info <- if (is.null(saved_info)) base_variable_info() else saved_info
+      step3_variable_info(info[info$name %in% selected, , drop = FALSE])
+    }
+    if (isTRUE(roles_applied())) {
+      info <- if (is.null(saved_info)) step3_variable_info() else saved_info
+      step4_variable_info(info[info$name %in% selected, , drop = FALSE])
+    }
+    if (isTRUE(selection_applied())) {
       update_analysis_choices(selected)
     } else {
       update_analysis_choices(cols)
@@ -1120,6 +1493,8 @@ server <- function(input, output, session) {
         restored_data_file("")
         restored_variable_info(NULL)
         measurement_overrides(character(0))
+        step3_variable_info(NULL)
+        step4_variable_info(NULL)
         var_label_overrides(character(0))
         category_label_values(NULL)
         selected_names(character(0))
@@ -1250,7 +1625,7 @@ server <- function(input, output, session) {
       return(invisible(FALSE))
     }
 
-    update_measurement_overrides(state$measurements %||% character(0))
+    update_measurement_overrides(state_measurements(state))
     update_var_label_overrides(state$var_labels %||% character(0), allow_blank = FALSE)
     if (!is.null(state$selected)) {
       names <- as.character(settings_vector(state$selected))
@@ -1270,14 +1645,64 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
-  observeEvent(input$apply_variable_selection, {
+  apply_role_selection_state <- function(state = NULL) {
+    submitted_state <- state %||% input$variable_table_state
+    sync_table_state(submitted_state)
+    submitted_measurements <- state_measurements(submitted_state)
+    direct_measurements <- if (is.null(submitted_state) || length(submitted_measurements) == 0) collect_measurement_inputs() else character(0)
+    if (length(direct_measurements) > 0) {
+      update_measurement_overrides(direct_measurements)
+    }
+    current_measurements <- measurement_overrides()
+    if (length(current_measurements) > 0) {
+      message(sprintf(
+        "Apply roles measurement overrides: %s [%s]",
+        length(current_measurements),
+        paste(sprintf("%s=%s", names(current_measurements), unname(current_measurements)), collapse = ", ")
+      ))
+    }
+    if (length(dependent_names()) == 0) {
+      showNotification("Select one dependent variable before applying roles.", type = "warning")
+      return(invisible(FALSE))
+    }
+    if (length(independent_names()) == 0) {
+      showNotification("Select at least one independent variable before applying roles.", type = "warning")
+      return(invisible(FALSE))
+    }
+    stage3_info <- step3_variable_info()
+    if (is.null(stage3_info)) {
+      stage3_info <- base_variable_info()
+    }
+    step4_variable_info(merge_state_into_info(stage3_info, submitted_state, selected_only = TRUE))
+    roles_applied(TRUE)
+    predictor_order(predictor_candidates())
+    active_step("step4")
+    data_view("labels")
+    updateSelectInput(session, "y", choices = selected_names(), selected = utils::head(dependent_names(), 1))
+    updateSelectizeInput(session, "xs", choices = selected_names(), selected = independent_names(), server = TRUE)
+    updateSelectizeInput(session, "covariates", choices = selected_names(), selected = control_names(), server = TRUE)
+    mark_settings_dirty()
+    showNotification("Variable roles applied. Edit categorical value labels in Step 4.", type = "message")
+    invisible(TRUE)
+  }
+
+  apply_variable_selection_state <- function(state = NULL) {
+    submitted_state <- state %||% input$variable_table_state
+    sync_table_state(submitted_state)
+    submitted_measurements <- state_measurements(submitted_state)
+    direct_measurements <- if (is.null(submitted_state) || length(submitted_measurements) == 0) collect_measurement_inputs() else character(0)
+    if (length(direct_measurements) > 0) {
+      update_measurement_overrides(direct_measurements)
+    }
     cols <- available_variable_names()
     selected <- selected_names()
     if (length(selected) == 0) {
       showNotification("Select at least one variable to keep.", type = "warning")
-      return()
+      return(invisible(FALSE))
     }
     selected <- selected[selected %in% cols]
+    step3_variable_info(merge_state_into_info(base_variable_info(), submitted_state, selected_only = TRUE))
+    step4_variable_info(NULL)
     update_analysis_choices(selected)
     selection_applied(TRUE)
     roles_applied(FALSE)
@@ -1292,12 +1717,34 @@ server <- function(input, output, session) {
     )
     mark_settings_dirty()
     showNotification(sprintf("%s variables selected for analysis.", length(selected)), type = "message")
+    invisible(TRUE)
+  }
+
+  observeEvent(input$apply_variable_selection, {
+    if (!is.null(input$apply_variable_request) && !is.null(input$apply_variable_request$nonce)) {
+      return()
+    }
+    apply_variable_selection_state(input$variable_table_state)
+  })
+
+  observeEvent(input$apply_variable_request, {
+    request_measurements <- state_measurements(input$apply_variable_request)
+    debug_count <- settings_scalar(input$apply_variable_request$debug_measurement_count %||% "")
+    message(sprintf(
+      "Apply variable request: %s measurement value(s), client count %s [%s]",
+      length(request_measurements),
+      debug_count,
+      paste(sprintf("%s=%s", names(request_measurements), unname(request_measurements)), collapse = ", ")
+    ))
+    apply_variable_selection_state(input$apply_variable_request)
   })
 
   observeEvent(input$modify_variable_selection, {
     req(length(available_variable_names()) > 0)
     selection_applied(FALSE)
     roles_applied(FALSE)
+    step3_variable_info(NULL)
+    step4_variable_info(NULL)
     active_step("step2")
     data_view("info")
     set_role_choices(selected_names(), dependent_names(), independent_names(), control_names())
@@ -1329,36 +1776,61 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$select_dependent_role, {
+    if (!is.null(input$role_switch_request) && !is.null(input$role_switch_request$nonce)) {
+      return()
+    }
     active_role("dependent")
   })
 
   observeEvent(input$select_independent_role, {
+    if (!is.null(input$role_switch_request) && !is.null(input$role_switch_request$nonce)) {
+      return()
+    }
     active_role("independent")
   })
 
   observeEvent(input$select_control_role, {
+    if (!is.null(input$role_switch_request) && !is.null(input$role_switch_request$nonce)) {
+      return()
+    }
     active_role("control")
   })
 
+  observeEvent(input$role_switch_request, {
+    request_measurements <- state_measurements(input$role_switch_request)
+    message(sprintf(
+      "Role switch request: %s measurement value(s) [%s]",
+      length(request_measurements),
+      paste(sprintf("%s=%s", names(request_measurements), unname(request_measurements)), collapse = ", ")
+    ))
+    sync_table_state(input$role_switch_request)
+    stage3_info <- step3_variable_info()
+    if (!is.null(stage3_info)) {
+      step3_variable_info(merge_state_into_info(stage3_info, input$role_switch_request, selected_only = TRUE))
+    }
+    role <- as.character(input$role_switch_request$role %||% "")
+    if (role %in% c("dependent", "independent", "control")) {
+      active_role(role)
+    }
+  })
+
   observeEvent(input$apply_role_selection, {
-    sync_table_state(input$variable_table_state)
-    if (length(dependent_names()) == 0) {
-      showNotification("Select one dependent variable before applying roles.", type = "warning")
+    if (!is.null(input$apply_role_request) && !is.null(input$apply_role_request$nonce)) {
       return()
     }
-    if (length(independent_names()) == 0) {
-      showNotification("Select at least one independent variable before applying roles.", type = "warning")
-      return()
-    }
-    roles_applied(TRUE)
-    predictor_order(predictor_candidates())
-    active_step("step4")
-    data_view("labels")
-    updateSelectInput(session, "y", choices = selected_names(), selected = utils::head(dependent_names(), 1))
-    updateSelectizeInput(session, "xs", choices = selected_names(), selected = independent_names(), server = TRUE)
-    updateSelectizeInput(session, "covariates", choices = selected_names(), selected = control_names(), server = TRUE)
-    mark_settings_dirty()
-    showNotification("Variable roles applied. Edit categorical value labels in Step 4.", type = "message")
+    apply_role_selection_state(input$variable_table_state)
+  })
+
+  observeEvent(input$apply_role_request, {
+    request_measurements <- state_measurements(input$apply_role_request)
+    debug_count <- settings_scalar(input$apply_role_request$debug_measurement_count %||% "")
+    message(sprintf(
+      "Apply role request: %s measurement value(s), client count %s [%s]",
+      length(request_measurements),
+      debug_count,
+      paste(sprintf("%s=%s", names(request_measurements), unname(request_measurements)), collapse = ", ")
+    ))
+    apply_role_selection_state(input$apply_role_request)
   })
 
   output$data_steps <- renderUI({
@@ -1421,7 +1893,14 @@ server <- function(input, output, session) {
           } else if (identical(step, "step2")) {
             tagList(
               div("Check variables to keep, then apply the selection.", class = "step-note"),
-              actionButton("apply_variable_selection", "Apply variable selection", class = "btn-primary")
+              tags$button(
+                id = "apply_variable_selection_button",
+                "Apply variable selection",
+                type = "button",
+                class = "btn btn-primary",
+                onmousedown = "window.easyflowFlushVariableTableState && window.easyflowFlushVariableTableState();",
+                onclick = "return window.easyflowApplyVariableSelection ? window.easyflowApplyVariableSelection() : true;"
+              )
             )
           } else {
             div("Select variables first.", class = "step-note")
@@ -1445,9 +1924,30 @@ server <- function(input, output, session) {
               div("Use the checkbox column in the variable table to select variables for the active role.", class = "step-note"),
               div(
                 class = "role-actions",
-                actionButton("select_dependent_role", sprintf("Dependent (%s)", length(dependent_names())), class = paste("role-button", if (identical(role, "dependent")) "is-active" else "")),
-                actionButton("select_independent_role", sprintf("Independent (%s)", length(independent_names())), class = paste("role-button", if (identical(role, "independent")) "is-active" else "")),
-                actionButton("select_control_role", sprintf("Control/Covariates (%s)", length(control_names())), class = paste("role-button", if (identical(role, "control")) "is-active" else ""))
+                tags$button(
+                  id = "select_dependent_role_button",
+                  sprintf("Dependent (%s)", length(dependent_names())),
+                  type = "button",
+                  class = paste("role-button", if (identical(role, "dependent")) "is-active" else ""),
+                  onmousedown = "window.easyflowFlushVariableTableState && window.easyflowFlushVariableTableState();",
+                  onclick = "return window.easyflowSelectRole ? window.easyflowSelectRole('dependent') : true;"
+                ),
+                tags$button(
+                  id = "select_independent_role_button",
+                  sprintf("Independent (%s)", length(independent_names())),
+                  type = "button",
+                  class = paste("role-button", if (identical(role, "independent")) "is-active" else ""),
+                  onmousedown = "window.easyflowFlushVariableTableState && window.easyflowFlushVariableTableState();",
+                  onclick = "return window.easyflowSelectRole ? window.easyflowSelectRole('independent') : true;"
+                ),
+                tags$button(
+                  id = "select_control_role_button",
+                  sprintf("Control/Covariates (%s)", length(control_names())),
+                  type = "button",
+                  class = paste("role-button", if (identical(role, "control")) "is-active" else ""),
+                  onmousedown = "window.easyflowFlushVariableTableState && window.easyflowFlushVariableTableState();",
+                  onclick = "return window.easyflowSelectRole ? window.easyflowSelectRole('control') : true;"
+                )
               ),
               div(
                 sprintf(
@@ -1456,7 +1956,14 @@ server <- function(input, output, session) {
                 ),
                 class = "step-summary-detail"
               ),
-              actionButton("apply_role_selection", "Apply variable roles", class = "btn-primary")
+              tags$button(
+                id = "apply_role_selection_button",
+                "Apply variable roles",
+                type = "button",
+                class = "btn btn-primary",
+                onmousedown = "window.easyflowFlushVariableTableState && window.easyflowFlushVariableTableState();",
+                onclick = "return window.easyflowApplyRoleSelection ? window.easyflowApplyRoleSelection() : true;"
+              )
             )
           }
         )
@@ -1505,6 +2012,8 @@ server <- function(input, output, session) {
     var_label_overrides(character(0))
     category_label_values(NULL)
     measurement_overrides(character(0))
+    step3_variable_info(NULL)
+    step4_variable_info(NULL)
     pending_settings(NULL)
     data_view("info")
 
@@ -1517,8 +2026,8 @@ server <- function(input, output, session) {
     updateSelectInput(session, "y", selected = character(0))
     updateSelectizeInput(session, "xs", selected = character(0))
     updateSelectizeInput(session, "covariates", selected = character(0))
-    updateNumericInput(session, "boot_r", value = 2000)
-    updateNumericInput(session, "seed", value = 1234)
+    updateSelectInput(session, "boot_r", selected = "1000")
+    updateNumericInput(session, "seed", value = as.integer(format(Sys.Date(), "%Y%m%d")))
 
     active_step("step1")
 
@@ -1611,7 +2120,7 @@ server <- function(input, output, session) {
       con = settings_path,
       useBytes = TRUE
     )
-    label_count <- length(settings_named_vector(settings$var_label_overrides))
+    label_count <- length(settings$var_label_overrides %||% list())
     message(sprintf("Saved settings: %s var_label override(s) -> %s", label_count, settings_path))
     mark_settings_clean()
     showNotification("Settings file was saved.", type = "message")
@@ -1694,7 +2203,10 @@ server <- function(input, output, session) {
   }
 
   prepare_regression_model_data <- function(data, variables) {
-    info <- variable_info_table()
+    info <- step4_variable_info()
+    if (is.null(info)) {
+      info <- variable_info_table()
+    }
     if (is.null(info) || nrow(info) == 0) {
       return(data)
     }
@@ -1707,10 +2219,11 @@ server <- function(input, output, session) {
 
     refs <- regression_reference_values()
     for (name in as.character(categorical_info$name)) {
+      measurement <- as.character(categorical_info$measurement[match(name, categorical_info$name)] %||% "")
       values <- data[[name]]
-      data[[name]] <- factor(as.character(values))
+      data[[name]] <- factor(as.character(values), ordered = identical(measurement, "ordered"))
       reference <- trimws(named_value(refs, name, ""))
-      if (nzchar(reference) && reference %in% levels(data[[name]])) {
+      if (nzchar(reference) && reference %in% levels(data[[name]]) && !isTRUE(is.ordered(data[[name]]))) {
         data[[name]] <- stats::relevel(data[[name]], ref = reference)
       }
     }
@@ -1778,6 +2291,44 @@ server <- function(input, output, session) {
     term
   }
 
+  display_term_name_with_variables <- function(term, variable_names) {
+    term <- as.character(term %||% "")
+    if (!nzchar(term) || identical(term, "(Intercept)")) {
+      return(term)
+    }
+
+    term_clean <- gsub("`", "", term, fixed = TRUE)
+    variable_names <- unique(c(as.character(variable_names), names(var_label_overrides())))
+    variable_names <- variable_names[nzchar(variable_names)]
+    variable_names <- variable_names[order(nchar(variable_names), decreasing = TRUE)]
+    labels <- var_label_overrides()
+    category_table <- category_label_values()
+    if (is.data.frame(category_table) && all(c("name", "var_label") %in% names(category_table))) {
+      category_labels_named <- stats::setNames(as.character(category_table$var_label), as.character(category_table$name))
+      category_labels_named <- category_labels_named[nzchar(names(category_labels_named)) & nzchar(trimws(as.character(category_labels_named)))]
+      labels[names(category_labels_named)] <- category_labels_named
+    }
+    value_labels <- category_value_label_lookup()
+
+    for (name in variable_names) {
+      variable_label <- named_value(labels, name, name)
+      if (identical(term_clean, name)) {
+        return(variable_label)
+      }
+      if (startsWith(term_clean, name)) {
+        level <- substring(term_clean, nchar(name) + 1)
+        if (!nzchar(level)) next
+        category_label <- named_value(value_labels[[name]], level, "")
+        if (nzchar(category_label)) {
+          return(sprintf("%s:%s", variable_label, category_label))
+        }
+        return(sprintf("%s:%s", variable_label, level))
+      }
+    }
+
+    display_term_name(term)
+  }
+
   display_term_table <- function(table) {
     if (!is.data.frame(table) || !"Term" %in% names(table)) {
       return(table)
@@ -1831,6 +2382,15 @@ server <- function(input, output, session) {
       }
 
       variable_label <- named_value(var_label_overrides(), name, "")
+      if (!nzchar(variable_label)) {
+        category_table <- category_label_values()
+        if (is.data.frame(category_table) && all(c("name", "var_label") %in% names(category_table))) {
+          row_index <- match(name, as.character(category_table$name))
+          if (!is.na(row_index)) {
+            variable_label <- as.character(category_table$var_label[[row_index]] %||% "")
+          }
+        }
+      }
       if (!nzchar(variable_label)) variable_label <- name
       reference_label <- named_value(value_labels[[name]], reference, "")
       term <- if (nzchar(reference_label)) {
@@ -1856,6 +2416,72 @@ server <- function(input, output, session) {
     do.call(rbind, rows)
   }
 
+  coefficient_display_table <- function(result) {
+    coef_table <- result$coef_table
+    if (!is.data.frame(coef_table) || nrow(coef_table) == 0) {
+      return(coef_table)
+    }
+
+    use_hc3 <- isTRUE(result$use_hc3)
+    use_bootstrap <- isTRUE(result$use_bootstrap)
+
+    keep_columns <- function(table, columns) {
+      table[, intersect(columns, names(table)), drop = FALSE]
+    }
+
+    if (!use_bootstrap) {
+      if (use_hc3) {
+        return(keep_columns(coef_table, c("Term", "B", "HC3 SE", "t", "p", "Tolerance", "VIF")))
+      }
+      return(keep_columns(coef_table, c("Term", "B", "SE", "beta", "t", "p", "Tolerance", "VIF")))
+    }
+
+    boot_table <- result$boot_table
+    if (!is.data.frame(boot_table) || nrow(boot_table) == 0) {
+      if (use_hc3) {
+        return(keep_columns(coef_table, c("Term", "B", "HC3 SE")))
+      }
+      return(keep_columns(coef_table, c("Term", "B")))
+    }
+
+    boot_match <- match(coef_table$Term, boot_table$Term)
+
+    if (use_hc3) {
+      data.frame(
+        Term = coef_table$Term,
+        B = coef_table$B,
+        `HC3 SE` = coef_table[["HC3 SE"]],
+        LLCI = boot_table$Boot_LLCI[boot_match],
+        ULCI = boot_table$Boot_ULCI[boot_match],
+        `Boot p` = boot_table$Boot_p[boot_match],
+        check.names = FALSE
+      )
+    } else {
+      data.frame(
+        Term = coef_table$Term,
+        B = coef_table$B,
+        `Boot SE` = boot_table$Boot_SE[boot_match],
+        LLCI = boot_table$Boot_LLCI[boot_match],
+        ULCI = boot_table$Boot_ULCI[boot_match],
+        `Boot p` = boot_table$Boot_p[boot_match],
+        check.names = FALSE
+      )
+    }
+  }
+
+  coefficient_panel_title <- function(result) {
+    if (isTRUE(result$use_hc3) && isTRUE(result$use_bootstrap)) {
+      return("Bootstrap + HC3 Regression")
+    }
+    if (isTRUE(result$use_bootstrap)) {
+      return("Bootstrap Regression")
+    }
+    if (isTRUE(result$use_hc3)) {
+      return("HC3 Regression")
+    }
+    "OLS Regression"
+  }
+
   coefficient_output_table <- function(table, predictors = character(0), include_references = TRUE) {
     if (!is.data.frame(table) || nrow(table) == 0) {
       return(table)
@@ -1863,18 +2489,16 @@ server <- function(input, output, session) {
 
     raw_terms <- as.character(table$Term)
     labels <- var_label_overrides()
-    variable_names <- names(labels)
+    variable_names <- unique(c(as.character(predictors), names(labels)))
     table$.raw_variable <- vapply(raw_terms, raw_term_variable, character(1), variable_names = variable_names)
     table$.raw_level <- mapply(raw_term_level, raw_terms, table$.raw_variable, USE.NAMES = FALSE)
-    table <- display_term_table(table)
+    table$Term <- vapply(table$Term, display_term_name_with_variables, character(1), variable_names = variable_names)
 
-    if ("p" %in% names(table)) {
-      table$p <- vapply(table$p, format_p, character(1))
+    p_columns <- intersect(c("p", "Boot_p", "Boot p"), names(table))
+    for (column in p_columns) {
+      table[[column]] <- vapply(table[[column]], format_p, character(1))
     }
-    if ("Boot_p" %in% names(table)) {
-      table$Boot_p <- vapply(table$Boot_p, format_p, character(1))
-    }
-    for (column in setdiff(names(table), c("Term", "p", "Boot_p"))) {
+    for (column in setdiff(names(table), c("Term", p_columns))) {
       if (is.numeric(table[[column]])) {
         table[[column]] <- vapply(table[[column]], format_decimal3, character(1))
       }
@@ -1892,13 +2516,31 @@ server <- function(input, output, session) {
     output <- table[0, , drop = FALSE]
     categorical_names <- unique(reference_rows$.raw_variable)
     used_reference <- rep(FALSE, nrow(reference_rows))
+    handled_categorical <- character(0)
+    level_order <- function(values) {
+      values <- as.character(values %||% "")
+      numeric_values <- suppressWarnings(as.numeric(values))
+      if (all(!is.na(numeric_values))) {
+        order(numeric_values, values)
+      } else {
+        order(values)
+      }
+    }
 
     for (row_index in seq_len(nrow(table))) {
       variable <- table$.raw_variable[[row_index]]
-      if (nzchar(variable) && variable %in% categorical_names && !any(used_reference[reference_rows$.raw_variable == variable])) {
-        rows <- reference_rows[reference_rows$.raw_variable == variable, , drop = FALSE]
-        output <- rbind(output, rows)
-        used_reference[reference_rows$.raw_variable == variable] <- TRUE
+      if (nzchar(variable) && variable %in% categorical_names) {
+        if (!variable %in% handled_categorical) {
+          rows <- rbind(
+            table[table$.raw_variable == variable, , drop = FALSE],
+            reference_rows[reference_rows$.raw_variable == variable, , drop = FALSE]
+          )
+          rows <- rows[level_order(rows$.raw_level), , drop = FALSE]
+          output <- rbind(output, rows)
+          used_reference[reference_rows$.raw_variable == variable] <- TRUE
+          handled_categorical <- c(handled_categorical, variable)
+        }
+        next
       }
       output <- rbind(output, table[row_index, , drop = FALSE])
     }
@@ -1906,6 +2548,54 @@ server <- function(input, output, session) {
       output <- rbind(output, reference_rows[!used_reference, , drop = FALSE])
     }
     output[, setdiff(names(output), c(".raw_variable", ".raw_level")), drop = FALSE]
+  }
+
+  coefficient_html_table <- function(table, fit_line = NULL, stat_lines = character(0), note_line = NULL) {
+    if (!is.data.frame(table) || nrow(table) == 0) {
+      return(NULL)
+    }
+    columns <- names(table)
+    tagList(
+      tags$table(
+        class = "coefficient-table",
+        tags$thead(
+          tags$tr(lapply(columns, function(column) tags$th(column)))
+        ),
+        tags$tbody(
+          lapply(seq_len(nrow(table)), function(row_index) {
+            tags$tr(lapply(columns, function(column) tags$td(table[[column]][[row_index]] %||% "")))
+          })
+        ),
+        if (!is.null(fit_line) && nzchar(fit_line)) {
+          tags$tfoot(
+            tags$tr(
+              class = "coefficient-fit-row",
+              tags$td(colspan = length(columns), fit_line)
+            ),
+            lapply(as.character(stat_lines), function(line) {
+              if (!nzchar(line)) return(NULL)
+              tags$tr(
+                class = "coefficient-fit-row coefficient-dw-row",
+                tags$td(colspan = length(columns), line)
+              )
+            })
+          )
+        } else if (length(stat_lines) > 0) {
+          tags$tfoot(
+            lapply(as.character(stat_lines), function(line) {
+              if (!nzchar(line)) return(NULL)
+              tags$tr(
+                class = "coefficient-fit-row coefficient-dw-row",
+                tags$td(colspan = length(columns), line)
+              )
+            })
+          )
+        }
+      ),
+      if (!is.null(note_line) && nzchar(note_line)) {
+        tags$div(class = "coefficient-note", note_line)
+      }
+    )
   }
 
   analysis <- eventReactive(input$run, {
@@ -1940,9 +2630,9 @@ server <- function(input, output, session) {
     } else if (normal_ok && !homo_ok) {
       "OLS regression with HC3 robust standard errors"
     } else if (!normal_ok && homo_ok) {
-      "OLS regression with bootstrap confidence intervals and bootstrap p values"
+      "Bootstrap regression"
     } else {
-      "OLS regression with HC3 robust standard errors, bootstrap confidence intervals, and bootstrap p values"
+      "Bootstrap regression with HC3 robust standard errors"
     }
 
     use_hc3 <- !homo_ok
@@ -1950,9 +2640,12 @@ server <- function(input, output, session) {
 
     vcov_matrix <- if (use_hc3) sandwich::vcovHC(model, type = "HC3") else NULL
     coef_table <- coeftest_table(model, vcov_matrix)
+    if (isTRUE(use_hc3) && "SE" %in% names(coef_table)) {
+      names(coef_table)[names(coef_table) == "SE"] <- "HC3 SE"
+    }
 
     boot_table <- if (use_bootstrap) {
-      bootstrap_coef_table(data, formula, r = input$boot_r %||% 2000, seed = input$seed %||% 1234)
+      bootstrap_coef_table(data, formula, r = as.integer(input$boot_r %||% 1000), seed = input$seed %||% as.integer(format(Sys.Date(), "%Y%m%d")))
     } else {
       NULL
     }
@@ -1972,6 +2665,12 @@ server <- function(input, output, session) {
         unname(summary(model)$fstatistic["dendf"]),
         lower.tail = FALSE
       ),
+      dw_d = dw_d,
+      dw_crit = dw_crit,
+      normality_statistic = unname(normality$statistic),
+      normality_p = unname(normality$p.value),
+      homogeneity_statistic = unname(homogeneity$statistic),
+      homogeneity_p = unname(homogeneity$p.value),
       diagnostics = data.frame(
         Assumption = c(
           "Residual normality: Lilliefors corrected K-S test",
@@ -2001,6 +2700,8 @@ server <- function(input, output, session) {
         check.names = FALSE
       ),
       method = method,
+      use_hc3 = use_hc3,
+      use_bootstrap = use_bootstrap,
       coef_table = coef_table,
       boot_table = boot_table,
       predictors = predictors
@@ -2069,6 +2770,7 @@ server <- function(input, output, session) {
       return(NULL)
     }
 
+    info <- apply_measurement_overrides(info, measurement_overrides())
     info <- info[info$name %in% selected_names(), , drop = FALSE]
     info$selected <- TRUE
     info$role <- vapply(info$name, role_for_name, character(1))
@@ -2078,7 +2780,7 @@ server <- function(input, output, session) {
     }
 
     value_columns <- as.vector(rbind(paste0("value_", seq_len(6)), paste0("label_", seq_len(6))))
-    edit_columns <- c("reference", "reference_label", value_columns)
+    edit_columns <- c("var_label", "reference", "reference_label", value_columns)
     for (column in edit_columns) {
       if (!column %in% names(info)) {
         info[[column]] <- ""
@@ -2104,7 +2806,7 @@ server <- function(input, output, session) {
 
   save_category_label_edit <- function(name, field, value) {
     value_columns <- as.vector(rbind(paste0("value_", seq_len(6)), paste0("label_", seq_len(6))))
-    edit_columns <- c("reference", "reference_label", value_columns)
+    edit_columns <- c("var_label", "reference", "reference_label", value_columns)
     if (!nzchar(name) || !field %in% edit_columns) {
       return(invisible(FALSE))
     }
@@ -2130,6 +2832,9 @@ server <- function(input, output, session) {
     value <- as.character(value)
     changed <- !identical(as.character(table[[field]][[row_index]] %||% ""), value)
     table[[field]][row_index] <- value
+    if (identical(field, "var_label")) {
+      update_var_label_overrides(stats::setNames(value, name))
+    }
     if (identical(field, "reference")) {
       reference <- trimws(as.character(value))
       reference_label <- ""
@@ -2206,7 +2911,13 @@ server <- function(input, output, session) {
     } else {
       character(0)
     }
-    table_data$measurement <- mapply(measurement_select_html, table_data$name, table_data$measurement, USE.NAMES = FALSE)
+    table_data$measurement <- mapply(
+      measurement_select_html,
+      table_data$name,
+      table_data$measurement,
+      table_data$source_order,
+      USE.NAMES = FALSE
+    )
     table_data <- cbind(
       selected = sprintf(
         '<input type="checkbox" class="variable-select" data-name="%s" %s %s>',
@@ -2274,8 +2985,11 @@ server <- function(input, output, session) {
         nameHeader.html('<button type=\"button\" class=\"name-sort-toggle\">name <span class=\"sort-mark\">original</span></button>');
 
         function syncVariableSelection() {
+          var state = currentTableState();
           Shiny.setInputValue('variable_table_state', {
-            selected: Object.keys(window.easyflowSelectedNames || {}),
+            selected: state.selected,
+            measurements: state.measurements,
+            var_labels: state.var_labels,
             nonce: Date.now() + Math.random()
           }, {priority: 'event'});
         }
@@ -2357,10 +3071,47 @@ server <- function(input, output, session) {
           updatePageToggle();
         }
 
+        function measurementName(select) {
+          var name = $(select).attr('data-name') || $(select).data('name');
+          if (name) return name;
+          var data = table.row($(select).closest('tr')).data();
+          return data && data[2] ? data[2] : '';
+        }
+
+        function rememberMeasurementSelect(select, notifyServer) {
+          var name = measurementName(select);
+          if (!name) return;
+          window.easyflowMeasurements = window.easyflowMeasurements || {};
+          window.easyflowMeasurements[name] = $(select).val() || '';
+          if (notifyServer && window.Shiny) {
+            Shiny.setInputValue('variable_measurement_update', {
+              name: name,
+              value: window.easyflowMeasurements[name],
+              nonce: Date.now() + Math.random()
+            }, {priority: 'event'});
+          }
+        }
+
+        function restoreMeasurementSelects() {
+          window.easyflowMeasurements = window.easyflowMeasurements || {};
+          var restoreOne = function() {
+            var name = measurementName(this);
+            if (name && Object.prototype.hasOwnProperty.call(window.easyflowMeasurements, name)) {
+              $(this).val(window.easyflowMeasurements[name]);
+            }
+            updateMeasurementAvailability(this);
+          };
+          $(table.table().container()).find('select.measurement-select').each(restoreOne);
+        }
+
         function syncMeasurementSnapshot() {
-          var values = {};
-          table.$('select.measurement-select').each(function() {
-            values[$(this).data('name')] = $(this).val();
+          window.easyflowMeasurements = window.easyflowMeasurements || {};
+          var values = Object.assign({}, window.easyflowMeasurements);
+          $(table.table().container()).find('select.measurement-select').each(function() {
+            var name = $(this).attr('data-name') || $(this).data('name');
+            if (!name) return;
+            values[name] = $(this).val();
+            window.easyflowMeasurements[name] = values[name];
           });
           Shiny.setInputValue('variable_measurement_snapshot', {
             values: values,
@@ -2387,9 +3138,14 @@ server <- function(input, output, session) {
         }
 
         function currentTableState() {
-          var measurements = {};
-          table.$('select.measurement-select').each(function() {
-            measurements[$(this).data('name')] = $(this).val();
+          window.easyflowMeasurements = window.easyflowMeasurements || {};
+          var measurements = Object.assign({}, window.easyflowMeasurements);
+          $(table.table().container()).find('select.measurement-select').each(function() {
+            var name = $(this).attr('data-name') || $(this).data('name');
+            if (name) {
+              measurements[name] = $(this).val();
+              window.easyflowMeasurements[name] = measurements[name];
+            }
           });
           var varLabels = {};
           table.$('input.var-label-input, input[data-field=\"var_label\"]').each(function() {
@@ -2443,6 +3199,7 @@ server <- function(input, output, session) {
         }
 
         table.on('draw.dt', function() {
+          restoreMeasurementSelects();
           refreshVariableChecks();
           bindShinyInputs();
         });
@@ -2490,6 +3247,7 @@ server <- function(input, output, session) {
         });
         table.on('change', 'select.measurement-select', function(e) {
           e.stopPropagation();
+          rememberMeasurementSelect(this, true);
           updateMeasurementAvailability(this);
           syncVariableTableState();
         });
@@ -2506,9 +3264,9 @@ server <- function(input, output, session) {
         $(document)
           .off('mousedown.easyflowMeasurementSnapshot', '#save_settings_data')
           .on('mousedown.easyflowMeasurementSnapshot', '#save_settings_data', syncMeasurementSnapshot);
-
         window.easyflowCurrentTableState = currentTableState;
         bindShinyInputs();
+        restoreMeasurementSelects();
         refreshVariableChecks();
         syncVariableSelection();
         ",
@@ -2637,8 +3395,9 @@ server <- function(input, output, session) {
         "    saveCategoryInput(labelInput[0]);",
         "  }",
         "});",
-        "wrapper.off('change.varLabelInput').on('change.varLabelInput', 'input.var-label-input', function() {",
+        "wrapper.off('input.varLabelInput change.varLabelInput focusout.varLabelInput blur.varLabelInput').on('input.varLabelInput change.varLabelInput focusout.varLabelInput blur.varLabelInput', 'input.var-label-input', function() {",
         "  saveVarLabelInput(this);",
+        "  if ($(this).attr('data-field') === 'var_label') saveCategoryInput(this);",
         "});",
         "function rememberCategoryFocus(input) {",
         "  window.easyflowCategoryFocus = {",
@@ -2730,7 +3489,10 @@ server <- function(input, output, session) {
 
     labels <- stats::setNames(rep("", length(selected)), selected)
     measurements <- stats::setNames(rep("", length(selected)), selected)
-    info <- tryCatch(variable_info_table(), error = function(e) NULL)
+    info <- step4_variable_info()
+    if (is.null(info)) {
+      info <- tryCatch(variable_info_table(), error = function(e) NULL)
+    }
     if (!is.null(info) && all(c("name", "var_label", "measurement") %in% names(info))) {
       matched <- info$name %in% selected
       labels[info$name[matched]] <- as.character(info$var_label[matched])
@@ -2939,6 +3701,18 @@ server <- function(input, output, session) {
     variable_table <- regression_variable_table()
     dependent_choices <- display_variable_choices(dependent, variable_table)
     predictor_choices <- display_variable_choices(ordered_predictors, variable_table)
+    bootstrap_choices <- c(
+      "1000 (test)" = "1000",
+      "5000" = "5000",
+      "10000" = "10000",
+      "20000" = "20000",
+      "50000 (recommended)" = "50000"
+    )
+    current_bootstrap <- as.character(input$boot_r %||% "1000")
+    if (!current_bootstrap %in% unname(bootstrap_choices)) {
+      current_bootstrap <- "1000"
+    }
+    current_seed <- input$seed %||% as.integer(format(Sys.Date(), "%Y%m%d"))
 
     status_message <- NULL
     if (!isTRUE(selection_applied())) {
@@ -2973,6 +3747,17 @@ server <- function(input, output, session) {
             class = "predictor-order-actions",
             actionButton("move_predictor_up", "Up", class = "btn-default btn-sm"),
             actionButton("move_predictor_down", "Down", class = "btn-default btn-sm")
+          )
+        ),
+        div(
+          class = "regression-options",
+          div(
+            class = "regression-field",
+            selectInput("boot_r", "Bootstrap resamples", choices = bootstrap_choices, selected = current_bootstrap)
+          ),
+          div(
+            class = "regression-field",
+            numericInput("seed", "Seed number", value = current_seed, min = 1, step = 1)
           )
         )
       ),
@@ -3014,10 +3799,108 @@ server <- function(input, output, session) {
     analysis()$dw_result
   }, digits = 4)
 
-  output$regression <- renderTable({
+  output$regression <- renderUI({
     result <- analysis()
-    coefficient_output_table(result$coef_table, result$predictors, include_references = TRUE)
-  }, sanitize.text.function = identity)
+    table <- coefficient_output_table(coefficient_display_table(result), result$predictors, include_references = TRUE)
+    r2_label <- if (isTRUE(result$use_hc3) || isTRUE(result$use_bootstrap)) {
+      "OLS R^2(adj. R^2)"
+    } else {
+      "R^2(adj. R^2)"
+    }
+    fit_line <- paste(
+      sprintf(
+        "R²(adj. R²) = %s (%s)",
+        format_decimal3(result$r_squared),
+        format_decimal3(result$adjusted_r_squared)
+      ),
+      sprintf(
+        "F(%s, %s) = %s, p %s",
+        result$f_df1,
+        result$f_df2,
+        format_decimal3(result$f_statistic),
+        format_p(result$f_p)
+      )
+    )
+    fit_line <- paste(
+      sprintf(
+        "%s = %s (%s)",
+        r2_label,
+        format_decimal3(result$r_squared),
+        format_decimal3(result$adjusted_r_squared)
+      ),
+      sprintf(
+        "F(%s, %s) = %s, p %s",
+        result$f_df1,
+        result$f_df2,
+        format_decimal3(result$f_statistic),
+        format_p(result$f_p)
+      )
+    )
+    stat_lines <- c(
+      sprintf(
+        "d(dU~4-dU) = %s (%s~%s)",
+        format_decimal3(result$dw_d),
+        format_decimal3(result$dw_crit$dU),
+        format_decimal3(4 - result$dw_crit$dU)
+      ),
+      sprintf(
+        "z(p) = %s (%s)",
+        format_decimal3(result$normality_statistic),
+        format_p(result$normality_p)
+      ),
+      sprintf(
+        "chi^2(p) = %s (%s)",
+        format_decimal3(result$homogeneity_statistic),
+        format_p(result$homogeneity_p)
+      )
+    )
+    note_line <- paste(
+      if (!isTRUE(result$use_bootstrap)) "Tolerance = 1 - R^2 for each predictor;" else NULL,
+      if (!isTRUE(result$use_bootstrap)) "VIF = Variance Inflation Factor;" else NULL,
+      if (isTRUE(result$use_hc3)) "HC3 SE = heteroskedasticity-consistent standard error type 3;" else NULL,
+      if (isTRUE(result$use_bootstrap)) "Boot SE, LLCI, ULCI, and Boot p are bootstrap estimates based on the selected bootstrap resamples and seed number;" else NULL,
+      if (isTRUE(result$use_hc3) || isTRUE(result$use_bootstrap)) "OLS R^2 and adjusted R^2 are ordinary least squares model fit indices;" else NULL,
+      "d(dU~4-dU) = Durbin-Watson statistic (upper critical value~4-upper critical value);",
+      "z(p) = Lilliefors corrected Kolmogorov-Smirnov residual normality test statistic (p-value);",
+      "chi^2(p) = Breusch-Pagan homoscedasticity test statistic (p-value)"
+    )
+    coefficient_html_table(table, fit_line, stat_lines, note_line)
+  })
+
+  output$residual_qq_plot <- renderPlot({
+    result <- analysis()
+    residuals <- stats::residuals(result$model)
+    old_par <- par(no.readonly = TRUE)
+    on.exit(par(old_par), add = TRUE)
+    par(mar = c(4, 4, 1.5, 1), pty = "s")
+    stats::qqnorm(residuals, pch = 19, col = "#475569", cex = .75, main = "", xlab = "Theoretical quantiles", ylab = "Sample quantiles")
+    stats::qqline(residuals, col = "#1f2937", lwd = 1.2)
+    box()
+  }, res = 96)
+
+  output$residual_homoscedasticity_plot <- renderPlot({
+    result <- analysis()
+    fitted_values <- stats::fitted(result$model)
+    residuals <- stats::residuals(result$model)
+    old_par <- par(no.readonly = TRUE)
+    on.exit(par(old_par), add = TRUE)
+    par(mar = c(4, 4, 1.5, 1), pty = "s")
+    plot(
+      fitted_values,
+      residuals,
+      pch = 19,
+      col = "#475569",
+      cex = .75,
+      main = "",
+      xlab = "Fitted values",
+      ylab = "Residuals"
+    )
+    abline(h = 0, col = "#1f2937", lwd = 1.1)
+    if (length(fitted_values) > 2 && length(unique(fitted_values)) > 1) {
+      lines(stats::lowess(fitted_values, residuals), col = "#2563eb", lwd = 1.2)
+    }
+    box()
+  }, res = 96)
 
   output$coefficient_fit_line <- renderUI({
     result <- analysis()
@@ -3076,9 +3959,21 @@ server <- function(input, output, session) {
         ),
         div(
           class = "regression-result-panel",
-          h3("Coefficients"),
-          tableOutput("regression"),
-          uiOutput("coefficient_fit_line")
+          h3(coefficient_panel_title(result)),
+          uiOutput("regression"),
+          div(
+            class = "residual-diagnostic-plots",
+            div(
+              class = "residual-plot-card",
+              h4("Q-Q plot"),
+              plotOutput("residual_qq_plot", height = "420px")
+            ),
+            div(
+              class = "residual-plot-card",
+              h4("Residual homoscedasticity"),
+              plotOutput("residual_homoscedasticity_plot", height = "420px")
+            )
+          )
         ),
         div(
           class = "regression-result-panel",
@@ -3090,13 +3985,6 @@ server <- function(input, output, session) {
           h3("Durbin-Watson"),
           tableOutput("dw_result")
         ),
-        if (!is.null(result$boot_table)) {
-          div(
-            class = "regression-result-panel",
-            h3("Bootstrap confidence intervals"),
-            tableOutput("bootstrap_ci")
-          )
-        },
         div(
           class = "regression-result-panel",
           h3("R summary"),
@@ -3109,15 +3997,38 @@ server <- function(input, output, session) {
   current_settings <- function() {
     file <- current_data_file()
     overrides <- measurement_overrides()
+    direct_measurements <- collect_measurement_inputs()
+    if (length(direct_measurements) > 0) {
+      overrides[names(direct_measurements)] <- direct_measurements
+      measurement_overrides(overrides)
+    }
     dependent <- as.character(dependent_names())
     if (length(dependent) > 0) {
       overrides[dependent] <- "continuous"
     }
-    variable_info <- apply_measurement_overrides(
-      if (is.null(file)) restored_variable_info() else variable_summary_table(dataset(), input, raw_dataset()),
-      overrides
-    )
+    variable_info <- step4_variable_info()
+    if (is.null(variable_info)) {
+      variable_info <- step3_variable_info()
+    }
+    if (is.null(variable_info)) {
+      variable_info <- if (is.null(file)) restored_variable_info() else variable_summary_table(dataset(), input, raw_dataset())
+    }
+    variable_info <- apply_measurement_overrides(variable_info, overrides)
     labels <- var_label_overrides()
+    direct_labels <- collect_var_label_inputs()
+    if (length(direct_labels) > 0) {
+      labels[names(direct_labels)] <- direct_labels
+      var_label_overrides(labels)
+    }
+    category_table <- category_label_values()
+    if (is.data.frame(category_table) && all(c("name", "var_label") %in% names(category_table))) {
+      category_labels_named <- stats::setNames(as.character(category_table$var_label), as.character(category_table$name))
+      category_labels_named <- category_labels_named[nzchar(names(category_labels_named)) & nzchar(trimws(as.character(category_labels_named)))]
+      if (length(category_labels_named) > 0) {
+        labels[names(category_labels_named)] <- category_labels_named
+        var_label_overrides(labels)
+      }
+    }
     labels <- labels[!is.na(names(labels)) & nzchar(names(labels)) & nzchar(trimws(as.character(labels)))]
     if (!is.null(variable_info) && length(labels) > 0) {
       matched <- variable_info$name %in% names(labels)
@@ -3153,8 +4064,8 @@ server <- function(input, output, session) {
       covariates = I(as.character(control_names())),
       category_value_labels = I(if (is.null(category_labels)) list() else category_labels),
       selected_variables = I(as.character(selected_names() %||% character(0))),
-      bootstrap_resamples = input$boot_r %||% 2000,
-      seed = input$seed %||% 1234
+      bootstrap_resamples = as.integer(input$boot_r %||% 1000),
+      seed = input$seed %||% as.integer(format(Sys.Date(), "%Y%m%d"))
     )
   }
 
@@ -3162,7 +4073,7 @@ server <- function(input, output, session) {
     filename = function() "EasyFlow_Regression_Coefficients.csv",
     content = function(file) {
       result <- analysis()
-      write.csv(coefficient_output_table(result$coef_table, result$predictors, include_references = TRUE), file, row.names = FALSE, fileEncoding = "UTF-8")
+      write.csv(coefficient_output_table(coefficient_display_table(result), result$predictors, include_references = TRUE), file, row.names = FALSE, fileEncoding = "UTF-8")
     }
   )
 }
