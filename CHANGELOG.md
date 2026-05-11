@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.3.1 - 2026-05-11
+
+### Changed
+
+- Consolidated Model overview into one table across multiple dependent variables.
+- Reordered regression output to show all coefficient tables first, then diagnostic plots.
+- Consolidated assumption checks and Durbin-Watson results into one table each across dependent variables.
+- Displayed dependent variables by label only when labels exist, otherwise by variable name.
+- Displayed effect size guidelines once after the coefficient tables.
+
 ## v0.2.0 - 2026-05-11
 
 ### Added

@@ -2619,7 +2619,7 @@ server <- function(input, output, session) {
       "OLS Regression"
     }
     dependent <- all.vars(result$formula)[[1]]
-    dependent_label <- display_variable_name(dependent, regression_variable_table())
+    dependent_label <- display_variable_label_or_name(dependent, regression_variable_table())
     sprintf("%s(%s)", method, dependent_label)
   }
 
@@ -3997,6 +3997,23 @@ server <- function(input, output, session) {
     if (nzchar(label)) sprintf("%s(%s)", name, label) else name
   }
 
+  display_variable_label_or_name <- function(name, table = NULL) {
+    name <- as.character(name %||% "")
+    if (length(name) == 0 || !nzchar(name[[1]])) {
+      return("")
+    }
+    name <- name[[1]]
+    label <- named_value(var_label_overrides(), name, "")
+    if (!nzchar(label) && !is.null(table) && all(c("name", "var_label") %in% names(table))) {
+      row_index <- match(name, table$name)
+      if (!is.na(row_index)) {
+        label <- as.character(table$var_label[[row_index]] %||% "")
+      }
+    }
+    label <- trimws(label)
+    if (nzchar(label)) label else name
+  }
+
   display_variable_choices <- function(names, table = NULL) {
     names <- as.character(names %||% character(0))
     stats::setNames(names, vapply(names, display_variable_name, character(1), table = table))
@@ -4440,29 +4457,34 @@ server <- function(input, output, session) {
     analysis()$method
   })
 
-  model_overview_html_table <- function(result) {
+  model_overview_html_table <- function(results) {
+    if (!is.list(results) || length(results) == 0) {
+      return(NULL)
+    }
     variable_table <- regression_variable_table()
-    dependent <- all.vars(result$formula)[[1]]
-    dependent_label <- display_variable_name(dependent, variable_table)
-    predictor_labels <- vapply(
-      result$predictors,
-      function(name) display_variable_name(name, variable_table),
-      character(1)
-    )
-    table <- data.frame(
-      Item = c("Dependent variable", "Independent variables", "N", "R\u00B2(adj. R\u00B2)", "F(p)", "Selected method"),
-      Value = c(
-        dependent_label,
-        paste(predictor_labels, collapse = ", "),
-        result$n,
-        sprintf("%s (%s)", format_decimal3(result$r_squared), format_decimal3(result$adjusted_r_squared)),
-        sprintf("%s (%s)", format_decimal3(result$f_statistic), format_p(result$f_p)),
-        result$method
-      ),
-      check.names = FALSE
-    )
+    dependents <- vapply(results, function(result) all.vars(result$formula)[[1]], character(1))
+    dependent_labels <- vapply(dependents, display_variable_label_or_name, character(1), table = variable_table)
+    rows <- c("Independent variables", "N", "R\u00B2(adj. R\u00B2)", "F(p)", "Selected method")
+    values <- lapply(results, function(result) {
+      predictor_labels <- vapply(
+        result$predictors,
+        function(name) display_variable_name(name, variable_table),
+        character(1)
+      )
+      c(
+        "Independent variables" = paste(predictor_labels, collapse = ", "),
+        "N" = as.character(result$n),
+        "R\u00B2(adj. R\u00B2)" = sprintf("%s (%s)", format_decimal3(result$r_squared), format_decimal3(result$adjusted_r_squared)),
+        "F(p)" = sprintf("%s (%s)", format_decimal3(result$f_statistic), format_p(result$f_p)),
+        "Selected method" = result$method
+      )
+    })
+    table <- data.frame(Item = rows, stringsAsFactors = FALSE, check.names = FALSE)
+    for (index in seq_along(values)) {
+      table[[dependent_labels[[index]]]] <- unname(values[[index]][rows])
+    }
     tags$table(
-      class = "table shiny-table",
+      class = "table shiny-table combined-model-overview-table",
       tags$thead(tags$tr(lapply(names(table), tags$th))),
       tags$tbody(lapply(seq_len(nrow(table)), function(row_index) {
         tags$tr(lapply(table[row_index, , drop = TRUE], tags$td))
@@ -4474,7 +4496,7 @@ server <- function(input, output, session) {
     result <- analysis()
     variable_table <- regression_variable_table()
     dependent <- all.vars(result$formula)[[1]]
-    dependent_label <- display_variable_name(dependent, variable_table)
+    dependent_label <- display_variable_label_or_name(dependent, variable_table)
     predictor_labels <- vapply(
       result$predictors,
       function(name) display_variable_name(name, variable_table),
@@ -4668,9 +4690,20 @@ server <- function(input, output, session) {
     summary(analysis()$model)
   })
 
-  regression_result_block <- function(result, index) {
+  coefficient_result_block <- function(result) {
+    div(
+      class = "regression-result-panel",
+      h3(coefficient_panel_title(result)),
+      coefficient_result_ui(result)
+    )
+  }
+
+  plot_result_block <- function(result, index) {
     qq_id <- paste0("residual_qq_plot_", index)
     homo_id <- paste0("residual_homoscedasticity_plot_", index)
+    variable_table <- regression_variable_table()
+    dependent <- all.vars(result$formula)[[1]]
+    dependent_label <- display_variable_label_or_name(dependent, variable_table)
     local({
       plot_result <- result
       output[[qq_id]] <- renderPlot({
@@ -4681,52 +4714,104 @@ server <- function(input, output, session) {
       }, res = 96)
     })
 
-    tagList(
+    div(
+      class = "regression-result-panel",
+      h3(sprintf("Diagnostic plots(%s)", dependent_label)),
       div(
-        class = "regression-result-panel model-overview-panel",
-        h3("Model overview"),
-        model_overview_html_table(result)
-      ),
-      div(
-        class = "regression-result-panel",
-        h3(coefficient_panel_title(result)),
-        coefficient_result_ui(result),
-        effect_size_reference_panel(input$show_sr2, input$show_f2),
+        class = "residual-diagnostic-plots",
         div(
-          class = "residual-diagnostic-plots",
-          div(
-            class = "residual-plot-card",
-            h4("Q-Q plot"),
-            plotOutput(qq_id, height = "420px")
-          ),
-          div(
-            class = "residual-plot-card",
-            h4("Residual homoscedasticity"),
-            plotOutput(homo_id, height = "420px")
-          )
+          class = "residual-plot-card",
+          h4("Q-Q plot"),
+          plotOutput(qq_id, height = "420px")
+        ),
+        div(
+          class = "residual-plot-card",
+          h4("Residual homoscedasticity"),
+          plotOutput(homo_id, height = "420px")
         )
-      ),
+      )
+    )
+  }
+
+  combined_assumption_table <- function(results) {
+    if (!is.list(results) || length(results) == 0) {
+      return(NULL)
+    }
+    variable_table <- regression_variable_table()
+    dependents <- vapply(results, function(result) all.vars(result$formula)[[1]], character(1))
+    dependent_labels <- vapply(dependents, display_variable_label_or_name, character(1), table = variable_table)
+    rows <- unique(unlist(lapply(results, function(result) as.character(result$diagnostics$Assumption)), use.names = FALSE))
+    table <- data.frame(Assumption = rows, stringsAsFactors = FALSE, check.names = FALSE)
+    for (index in seq_along(results)) {
+      result <- results[[index]]
+      values <- vapply(rows, function(row_name) {
+        row_index <- match(row_name, result$diagnostics$Assumption)
+        if (is.na(row_index)) {
+          return("")
+        }
+        sprintf(
+          "%s, p %s, %s",
+          format_decimal3(result$diagnostics$Statistic[[row_index]]),
+          as.character(result$diagnostics$p[[row_index]]),
+          as.character(result$diagnostics$Decision[[row_index]])
+        )
+      }, character(1))
+      table[[dependent_labels[[index]]]] <- values
+    }
+    tags$table(
+      class = "table shiny-table combined-assumption-table",
+      tags$thead(tags$tr(lapply(names(table), tags$th))),
+      tags$tbody(lapply(seq_len(nrow(table)), function(row_index) {
+        tags$tr(lapply(table[row_index, , drop = TRUE], tags$td))
+      }))
+    )
+  }
+
+  combined_dw_table <- function(results) {
+    if (!is.list(results) || length(results) == 0) {
+      return(NULL)
+    }
+    variable_table <- regression_variable_table()
+    dependents <- vapply(results, function(result) all.vars(result$formula)[[1]], character(1))
+    dependent_labels <- vapply(dependents, display_variable_label_or_name, character(1), table = variable_table)
+    rows <- as.character(results[[1]]$dw_result$Item)
+    table <- data.frame(Item = rows, stringsAsFactors = FALSE, check.names = FALSE)
+    for (index in seq_along(results)) {
+      result <- results[[index]]
+      values <- vapply(rows, function(row_name) {
+        row_index <- match(row_name, result$dw_result$Item)
+        if (is.na(row_index)) {
+          return("")
+        }
+        value <- result$dw_result$Value[[row_index]]
+        if (is.numeric(value)) {
+          format_decimal3(value)
+        } else {
+          as.character(value %||% "")
+        }
+      }, character(1))
+      table[[dependent_labels[[index]]]] <- values
+    }
+    tags$table(
+      class = "table shiny-table combined-dw-table",
+      tags$thead(tags$tr(lapply(names(table), tags$th))),
+      tags$tbody(lapply(seq_len(nrow(table)), function(row_index) {
+        tags$tr(lapply(table[row_index, , drop = TRUE], tags$td))
+      }))
+    )
+  }
+
+  assumption_result_block <- function(results) {
+    tagList(
       div(
         class = "regression-result-panel",
         h3("Assumption checks"),
-        tags$table(
-          class = "table shiny-table",
-          tags$thead(tags$tr(lapply(names(result$diagnostics), tags$th))),
-          tags$tbody(lapply(seq_len(nrow(result$diagnostics)), function(row_index) {
-            tags$tr(lapply(result$diagnostics[row_index, , drop = TRUE], tags$td))
-          }))
-        )
+        combined_assumption_table(results)
       ),
       div(
         class = "regression-result-panel",
         h3("Durbin-Watson"),
-        tags$table(
-          class = "table shiny-table",
-          tags$thead(tags$tr(lapply(names(result$dw_result), tags$th))),
-          tags$tbody(lapply(seq_len(nrow(result$dw_result)), function(row_index) {
-            tags$tr(lapply(result$dw_result[row_index, , drop = TRUE], tags$td))
-          }))
-        )
+        combined_dw_table(results)
       )
     )
   }
@@ -4743,9 +4828,19 @@ server <- function(input, output, session) {
     tagList(
       div(
         class = "regression-results",
+        div(
+          class = "regression-result-panel model-overview-panel",
+          h3("Model overview"),
+          model_overview_html_table(results)
+        ),
         lapply(seq_along(results), function(index) {
-          regression_result_block(results[[index]], index)
-        })
+          coefficient_result_block(results[[index]])
+        }),
+        effect_size_reference_panel(input$show_sr2, input$show_f2),
+        lapply(seq_along(results), function(index) {
+          plot_result_block(results[[index]], index)
+        }),
+        assumption_result_block(results)
       )
     )
   })
