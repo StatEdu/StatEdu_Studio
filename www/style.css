@@ -446,6 +446,10 @@ input.variable-select:disabled {
 }
 
 .regression-actions {
+  display: grid;
+  grid-template-columns: 250px 56px 250px 250px;
+  column-gap: 16px;
+  align-items: start;
   margin-top: 18px;
 }
 
@@ -762,6 +766,20 @@ input.variable-select:disabled {
   color: #ffffff;
   background: #1d4ed8;
   border-color: #1e40af;
+}
+
+.regression-save-action {
+  display: flex;
+  gap: 8px;
+}
+
+.regression-actions > #regression_save_control {
+  grid-column: 4 / span 2;
+  margin-left: 32px;
+}
+
+.regression-save-action .btn {
+  min-width: 104px;
 }
 
 .reset-settings-button {

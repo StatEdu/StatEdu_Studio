@@ -1,4 +1,4 @@
-required_packages <- c("shiny", "DT", "lmtest", "sandwich", "nortest", "boot", "jsonlite", "haven", "readr")
+required_packages <- c("shiny", "DT", "lmtest", "sandwich", "nortest", "boot", "jsonlite", "haven", "readr", "htmltools", "openxlsx")
 missing_packages <- required_packages[!vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)]
 if (length(missing_packages) > 0) {
   stop(
@@ -803,27 +803,6 @@ ui <- navbarPage(
             uiOutput("bootstrap_stop_control")
           ),
           uiOutput("regression_results")
-        )
-      )
-    )
-  ),
-
-  tabPanel(
-    "Results",
-    div(
-      class = "page-shell",
-      div(
-        class = "content-grid",
-        div(
-          class = "panel",
-          h3("Load Results"),
-          fileInput("results_file", "Open Results File", accept = c(".csv", ".json", ".html"))
-        ),
-        div(
-          class = "panel",
-          h3("Save Results"),
-          p("Save the current coefficient table as a CSV file."),
-          downloadButton("save_coefficients", "Save Coefficients")
         )
       )
     )
@@ -4394,7 +4373,8 @@ server <- function(input, output, session) {
           tags$button("Run regression", type = "button", class = "btn btn-primary", disabled = "disabled")
         } else {
           actionButton("run", "Run regression", class = "btn-primary")
-        }
+        },
+        uiOutput("regression_save_control")
       )
     )
   })
@@ -4461,6 +4441,20 @@ server <- function(input, output, session) {
     if (!is.list(results) || length(results) == 0) {
       return(NULL)
     }
+    table <- model_overview_data_frame(results)
+    tags$table(
+      class = "table shiny-table combined-model-overview-table",
+      tags$thead(tags$tr(lapply(names(table), tags$th))),
+      tags$tbody(lapply(seq_len(nrow(table)), function(row_index) {
+        tags$tr(lapply(table[row_index, , drop = TRUE], tags$td))
+      }))
+    )
+  }
+
+  model_overview_data_frame <- function(results) {
+    if (!is.list(results) || length(results) == 0) {
+      return(data.frame())
+    }
     variable_table <- regression_variable_table()
     dependents <- vapply(results, function(result) all.vars(result$formula)[[1]], character(1))
     dependent_labels <- vapply(dependents, display_variable_label_or_name, character(1), table = variable_table)
@@ -4485,13 +4479,7 @@ server <- function(input, output, session) {
     for (index in seq_along(values)) {
       table[[dependent_labels[[index]]]] <- unname(values[[index]][rows])
     }
-    tags$table(
-      class = "table shiny-table combined-model-overview-table",
-      tags$thead(tags$tr(lapply(names(table), tags$th))),
-      tags$tbody(lapply(seq_len(nrow(table)), function(row_index) {
-        tags$tr(lapply(table[row_index, , drop = TRUE], tags$td))
-      }))
-    )
+    table
   }
 
   output$model_overview <- renderTable({
@@ -4806,6 +4794,342 @@ server <- function(input, output, session) {
     )
   })
 
+  tags_to_html <- function(content) {
+    paste(htmltools::renderTags(content)$html, collapse = "\n")
+  }
+
+  plot_data_uri <- function(plot_function, result, width = 420, height = 420, res = 96) {
+    path <- tempfile("easyflow_plot_", fileext = ".png")
+    grDevices::png(path, width = width, height = height, res = res)
+    closed <- FALSE
+    on.exit({
+      if (!closed) {
+        grDevices::dev.off()
+      }
+      unlink(path)
+    }, add = TRUE)
+    plot_function(result)
+    grDevices::dev.off()
+    closed <- TRUE
+    raw <- readBin(path, what = "raw", n = file.info(path)$size)
+    paste0("data:image/png;base64,", jsonlite::base64_enc(raw))
+  }
+
+  saved_plot_result_block <- function(result) {
+    variable_table <- regression_variable_table()
+    dependent <- all.vars(result$formula)[[1]]
+    dependent_label <- display_variable_label_or_name(dependent, variable_table)
+    div(
+      class = "regression-result-panel",
+      h3(sprintf("Diagnostic plots(%s)", dependent_label)),
+      div(
+        class = "residual-diagnostic-plots",
+        div(
+          class = "residual-plot-card",
+          h4("Q-Q plot"),
+          tags$img(
+            src = plot_data_uri(plot_residual_qq, result),
+            width = "420",
+            height = "420",
+            alt = sprintf("Q-Q plot(%s)", dependent_label)
+          )
+        ),
+        div(
+          class = "residual-plot-card",
+          h4("Residual homoscedasticity"),
+          tags$img(
+            src = plot_data_uri(plot_residual_homoscedasticity, result),
+            width = "420",
+            height = "420",
+            alt = sprintf("Residual homoscedasticity(%s)", dependent_label)
+          )
+        )
+      )
+    )
+  }
+
+  saved_analysis_results_html <- function(results) {
+    css_path <- file.path("www", "style.css")
+    css <- if (file.exists(css_path)) paste(readLines(css_path, warn = FALSE), collapse = "\n") else ""
+    document <- tags$html(
+      tags$head(
+        tags$meta(charset = "UTF-8"),
+        tags$title("EasyFlow Regression Results"),
+        tags$style(htmltools::HTML(css)),
+        tags$style(htmltools::HTML(
+          paste(
+            "body { background: #ffffff; }",
+            ".page-shell { max-width: 1280px; margin: 24px auto; }",
+            ".saved-results-meta { color: #52606d; margin: 4px 0 18px; font-size: 13px; }",
+            ".regression-results { border-top: 0; padding-top: 0; }",
+            ".regression-result-panel { break-inside: avoid; page-break-inside: avoid; }",
+            ".residual-diagnostic-plots img { display: block; width: 420px; height: 420px; }",
+            sep = "\n"
+          )
+        ))
+      ),
+      tags$body(
+        div(
+          class = "page-shell",
+          h1("EasyFlow Regression Results"),
+          div(
+            class = "saved-results-meta",
+            sprintf("Saved: %s", format(Sys.time(), "%Y-%m-%d %H:%M:%S"))
+          ),
+          div(
+            class = "regression-results",
+            div(
+              class = "regression-result-panel model-overview-panel",
+              h3("Model overview"),
+              model_overview_html_table(results)
+            ),
+            lapply(seq_along(results), function(index) {
+              coefficient_result_block(results[[index]])
+            }),
+            effect_size_reference_panel(input$show_sr2, input$show_f2),
+            lapply(seq_along(results), function(index) {
+              saved_plot_result_block(results[[index]])
+            }),
+            durbin_watson_result_block(results)
+          )
+        )
+      )
+    )
+    paste0("<!DOCTYPE html>\n", tags_to_html(document))
+  }
+
+  output$regression_save_control <- renderUI({
+    if (is.null(input$run) || input$run == 0) {
+      return(NULL)
+    }
+    div(
+      class = "regression-save-action",
+      actionButton("save_analysis_excel_dialog", "Save tables", class = "btn-primary"),
+      actionButton("save_analysis_figures_dialog", "Save figures", class = "btn-default")
+    )
+  })
+
+  saved_coefficients_table <- function(results) {
+    variable_table <- regression_variable_table()
+    tables <- lapply(results, function(result) {
+      dependent <- all.vars(result$formula)[[1]]
+      dependent_label <- display_variable_label_or_name(dependent, variable_table)
+      table <- coefficient_output_table(coefficient_display_table(result), result$predictors, include_references = TRUE)
+      if (!is.data.frame(table)) {
+        table <- data.frame()
+      }
+      data.frame(Dependent = dependent_label, table, check.names = FALSE)
+    })
+    columns <- unique(unlist(lapply(tables, names), use.names = FALSE))
+    tables <- lapply(tables, function(table) {
+      missing_columns <- setdiff(columns, names(table))
+      for (column in missing_columns) {
+        table[[column]] <- ""
+      }
+      table[, columns, drop = FALSE]
+    })
+    do.call(rbind, tables)
+  }
+
+  coefficient_export_table <- function(result) {
+    table <- coefficient_output_table(coefficient_display_table(result), result$predictors, include_references = TRUE)
+    if (!is.data.frame(table)) {
+      return(data.frame())
+    }
+    if (!isTRUE(input$show_sr2) && "sr2" %in% names(table)) {
+      table$sr2 <- NULL
+    }
+    if (!isTRUE(input$show_f2) && "f2" %in% names(table)) {
+      table$f2 <- NULL
+    }
+    if (!isTRUE(input$show_vif)) {
+      if ("Tolerance" %in% names(table)) table$Tolerance <- NULL
+      if ("VIF" %in% names(table)) table$VIF <- NULL
+    }
+    names(table)[names(table) == "sr2"] <- "sr\u00B2"
+    names(table)[names(table) == "f2"] <- "f\u00B2"
+    table
+  }
+
+  excel_sheet_name <- function(name, used = character(0)) {
+    name <- gsub("[\\\\/\\?\\*\\[\\]:]", " ", as.character(name %||% "Sheet"))
+    name <- trimws(gsub("\\s+", " ", name))
+    if (!nzchar(name)) {
+      name <- "Sheet"
+    }
+    base <- substr(name, 1, 31)
+    candidate <- base
+    counter <- 1L
+    while (tolower(candidate) %in% tolower(used)) {
+      suffix <- paste0("_", counter)
+      candidate <- paste0(substr(base, 1, 31 - nchar(suffix)), suffix)
+      counter <- counter + 1L
+    }
+    candidate
+  }
+
+  add_excel_table_sheet <- function(workbook, sheet_name, table, used_sheets) {
+    sheet_name <- excel_sheet_name(sheet_name, used_sheets)
+    openxlsx::addWorksheet(workbook, sheet_name)
+    if (is.data.frame(table) && nrow(table) > 0) {
+      openxlsx::writeDataTable(workbook, sheet_name, table, tableStyle = "TableStyleMedium2")
+      openxlsx::setColWidths(workbook, sheet_name, cols = seq_along(table), widths = "auto")
+    } else {
+      openxlsx::writeData(workbook, sheet_name, "No data")
+    }
+    c(used_sheets, sheet_name)
+  }
+
+  plot_png_file <- function(plot_function, result, dpi = 600, width = 4.375, height = 4.375) {
+    path <- tempfile("easyflow_plot_", fileext = ".png")
+    grDevices::png(path, width = width, height = height, units = "in", res = dpi)
+    closed <- FALSE
+    on.exit({
+      if (!closed) {
+        grDevices::dev.off()
+      }
+    }, add = TRUE)
+    plot_function(result)
+    grDevices::dev.off()
+    closed <- TRUE
+    path
+  }
+
+  save_analysis_excel_workbook <- function(results, file) {
+    workbook <- openxlsx::createWorkbook()
+    used_sheets <- character(0)
+    variable_table <- regression_variable_table()
+
+    used_sheets <- add_excel_table_sheet(workbook, "Model overview", model_overview_data_frame(results), used_sheets)
+
+    for (index in seq_along(results)) {
+      result <- results[[index]]
+      dependent <- all.vars(result$formula)[[1]]
+      dependent_label <- display_variable_label_or_name(dependent, variable_table)
+      used_sheets <- add_excel_table_sheet(
+        workbook,
+        sprintf("Coefficient %s %s", index, dependent_label),
+        coefficient_export_table(result),
+        used_sheets
+      )
+    }
+
+    openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
+  }
+
+  choose_excel_save_path <- function() {
+    default_name <- sprintf("EasyFlow_Regression_Results_%s.xlsx", format(Sys.time(), "%Y%m%d_%H%M%S"))
+    if (requireNamespace("tcltk", quietly = TRUE)) {
+      path <- as.character(tcltk::tkgetSaveFile(
+        initialfile = default_name,
+        defaultextension = ".xlsx",
+        filetypes = "{{Excel Workbook} {.xlsx}} {{All Files} {*}}",
+        title = "Save EasyFlow Regression Results"
+      ))
+      if (length(path) > 0 && nzchar(path[[1]])) {
+        return(path[[1]])
+      }
+    }
+    if (.Platform$OS.type == "windows") {
+      filters <- matrix(c("Excel Workbook", "*.xlsx", "All Files", "*.*"), ncol = 2, byrow = TRUE)
+      path <- utils::choose.files(default = default_name, caption = "Save EasyFlow Regression Results", multi = FALSE, filters = filters, index = 1)
+      if (length(path) > 0 && nzchar(path[[1]])) {
+        return(path[[1]])
+      }
+    }
+    character(0)
+  }
+
+  choose_figure_save_dir <- function() {
+    if (requireNamespace("tcltk", quietly = TRUE)) {
+      path <- as.character(tcltk::tk_choose.dir(
+        default = getwd(),
+        caption = "Choose folder for EasyFlow Regression figures"
+      ))
+      if (length(path) > 0 && nzchar(path[[1]]) && dir.exists(path[[1]])) {
+        return(path[[1]])
+      }
+    }
+    if (.Platform$OS.type == "windows") {
+      path <- utils::choose.dir(default = getwd(), caption = "Choose folder for EasyFlow Regression figures")
+      if (length(path) > 0 && nzchar(path[[1]]) && dir.exists(path[[1]])) {
+        return(path[[1]])
+      }
+    }
+    character(0)
+  }
+
+  safe_file_stem <- function(name) {
+    name <- gsub("[\\\\/:*?\"<>|]", "_", as.character(name %||% "variable"))
+    name <- trimws(gsub("\\s+", " ", name))
+    if (!nzchar(name)) "variable" else name
+  }
+
+  save_plot_png_file <- function(plot_function, result, file, dpi = 600, width = 4.375, height = 4.375) {
+    grDevices::png(file, width = width, height = height, units = "in", res = dpi)
+    closed <- FALSE
+    on.exit({
+      if (!closed) {
+        grDevices::dev.off()
+      }
+    }, add = TRUE)
+    plot_function(result)
+    grDevices::dev.off()
+    closed <- TRUE
+  }
+
+  save_analysis_figure_files <- function(results, directory) {
+    variable_table <- regression_variable_table()
+    saved <- character(0)
+    for (result in results) {
+      dependent <- all.vars(result$formula)[[1]]
+      dependent_label <- safe_file_stem(display_variable_label_or_name(dependent, variable_table))
+      qq_file <- file.path(directory, sprintf("qqplot(%s).png", dependent_label))
+      residual_file <- file.path(directory, sprintf("residual(%s).png", dependent_label))
+      save_plot_png_file(plot_residual_qq, result, qq_file, dpi = 600)
+      save_plot_png_file(plot_residual_homoscedasticity, result, residual_file, dpi = 600)
+      saved <- c(saved, qq_file, residual_file)
+    }
+    saved
+  }
+
+  observeEvent(input$save_analysis_excel_dialog, {
+    shiny::req(!is.null(input$run), input$run > 0)
+    path <- choose_excel_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) {
+      return(invisible(NULL))
+    }
+    if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) {
+      path <- paste0(path, ".xlsx")
+    }
+    tryCatch(
+      {
+        save_analysis_excel_workbook(analyses(), path)
+        showNotification(sprintf("Analysis results saved: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save analysis results:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  })
+
+  observeEvent(input$save_analysis_figures_dialog, {
+    shiny::req(!is.null(input$run), input$run > 0)
+    directory <- choose_figure_save_dir()
+    if (length(directory) == 0 || !nzchar(directory[[1]])) {
+      return(invisible(NULL))
+    }
+    tryCatch(
+      {
+        saved <- save_analysis_figure_files(analyses(), directory)
+        showNotification(sprintf("Saved %s figure file(s): %s", length(saved), directory), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save figures:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  })
+
   current_settings <- function() {
     file <- current_data_file()
     overrides <- measurement_overrides()
@@ -4886,10 +5210,22 @@ server <- function(input, output, session) {
   output$save_coefficients <- downloadHandler(
     filename = function() "EasyFlow_Regression_Coefficients.csv",
     content = function(file) {
-      result <- analysis()
-      write.csv(coefficient_output_table(coefficient_display_table(result), result$predictors, include_references = TRUE), file, row.names = FALSE, fileEncoding = "UTF-8")
+      shiny::req(!is.null(input$run), input$run > 0)
+      write.csv(saved_coefficients_table(analyses()), file, row.names = FALSE, fileEncoding = "UTF-8")
     }
   )
+
+  output$save_analysis_results <- downloadHandler(
+    filename = function() {
+      sprintf("EasyFlow_Regression_Results_%s.html", format(Sys.time(), "%Y%m%d_%H%M%S"))
+    },
+    content = function(file) {
+      shiny::req(!is.null(input$run), input$run > 0)
+      results <- analyses()
+      writeLines(saved_analysis_results_html(results), file, useBytes = TRUE)
+    }
+  )
+
 }
 
 shinyApp(ui, server)
