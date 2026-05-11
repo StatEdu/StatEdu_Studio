@@ -445,7 +445,7 @@ ui <- navbarPage(
         return window.easyflowVarLabels;
       }
 
-      function saveEasyflowVarLabelInput(input) {
+      function storeEasyflowVarLabelInput(input) {
         if (!input || !input.matches || !input.matches('input.var-label-input, input[data-field=\"var_label\"]')) return;
         var name = input.getAttribute('data-name');
         if (!name) {
@@ -456,6 +456,12 @@ ui <- navbarPage(
         if (!name) return;
         window.easyflowVarLabels = window.easyflowVarLabels || {};
         window.easyflowVarLabels[name] = input.value || '';
+        return name;
+      }
+
+      function saveEasyflowVarLabelInput(input) {
+        var name = storeEasyflowVarLabelInput(input);
+        if (!name) return;
         if (window.Shiny) {
           Shiny.setInputValue('var_label_cell_input', {
             name: name,
@@ -464,7 +470,8 @@ ui <- navbarPage(
           }, {priority: 'event'});
         }
       }
-      window.easyflowStoreVarLabel = saveEasyflowVarLabelInput;
+      window.easyflowStoreVarLabel = storeEasyflowVarLabelInput;
+      window.easyflowCommitVarLabel = saveEasyflowVarLabelInput;
 
       function collectEasyflowTableState() {
         var selectedMap = Object.assign({}, window.easyflowSelectedNames || {});
@@ -661,7 +668,10 @@ ui <- navbarPage(
         }
       }, true);
 
-      ['input', 'change', 'focusout', 'blur'].forEach(function(eventName) {
+      document.addEventListener('input', function(event) {
+        storeEasyflowVarLabelInput(event.target);
+      }, true);
+      ['change', 'focusout', 'blur'].forEach(function(eventName) {
         document.addEventListener(eventName, function(event) {
           saveEasyflowVarLabelInput(event.target);
         }, true);
@@ -2789,25 +2799,18 @@ server <- function(input, output, session) {
 
   analysis_result <- reactiveVal(NULL)
   bootstrap_job <- reactiveVal(NULL)
+  bootstrap_job_queue <- reactiveVal(list())
   bootstrap_status <- reactiveVal(NULL)
   bootstrap_cancel_requested <- reactiveVal(FALSE)
   bootstrap_process <- reactiveVal(NULL)
   bootstrap_stop_visible <- reactiveVal(FALSE)
   bootstrap_tick <- reactiveTimer(200, session)
 
-  prepare_analysis_result <- function() {
-    req(current_data_file())
-    shiny::validate(shiny::need(isTRUE(selection_applied()), "Apply Step 2 variable selection before running regression."))
-    shiny::validate(shiny::need(isTRUE(roles_applied()), "Apply Step 3 role assignment before running regression."))
-    data <- dataset()
-    predictors <- sync_predictor_order(update_input = FALSE)
-    req(input$y)
-    shiny::validate(shiny::need(!(input$y %in% predictors), "The dependent variable cannot also be an independent variable or covariate."))
-    shiny::validate(shiny::need(length(predictors) > 0, "Select at least one predictor."))
-
-    model_variables <- unique(c(input$y, predictors))
+  prepare_single_analysis_result <- function(dependent, data, predictors) {
+    shiny::validate(shiny::need(!(dependent %in% predictors), "The dependent variable cannot also be an independent variable or covariate."))
+    model_variables <- unique(c(dependent, predictors))
     data <- prepare_regression_model_data(data, model_variables)
-    formula <- make_formula(input$y, predictors)
+    formula <- make_formula(dependent, predictors)
     model <- lm(formula, data = data)
     resid_model <- residuals(model)
 
@@ -2913,6 +2916,7 @@ server <- function(input, output, session) {
     list(
       result = result,
       job = list(
+        dependent = dependent,
         complete_data = complete_data,
         formula = formula,
         original_fit = original_fit,
@@ -2926,6 +2930,30 @@ server <- function(input, output, session) {
         cancel = FALSE
       )
     )
+  }
+
+  prepare_analysis_result <- function() {
+    req(current_data_file())
+    shiny::validate(shiny::need(isTRUE(selection_applied()), "Apply Step 2 variable selection before running regression."))
+    shiny::validate(shiny::need(isTRUE(roles_applied()), "Apply Step 3 role assignment before running regression."))
+    data <- dataset()
+    predictors <- sync_predictor_order(update_input = FALSE)
+    dependents <- sync_dependent_order(update_input = FALSE)
+    dependents <- intersect(as.character(dependents), names(data))
+    shiny::validate(shiny::need(length(dependents) > 0, "Select at least one dependent variable."))
+    shiny::validate(shiny::need(length(predictors) > 0, "Select at least one predictor."))
+
+    prepared <- lapply(dependents, function(dependent) {
+      prepare_single_analysis_result(dependent, data, predictors)
+    })
+    results <- lapply(prepared, `[[`, "result")
+    jobs <- Filter(Negate(is.null), lapply(seq_along(prepared), function(index) {
+      job <- prepared[[index]]$job
+      if (is.null(job)) return(NULL)
+      job$result_index <- index
+      job
+    }))
+    list(results = results, jobs = jobs)
   }
 
   start_bootstrap_process <- function(job) {
@@ -3009,35 +3037,50 @@ server <- function(input, output, session) {
 
     if (file.exists(job$result_file)) {
       boot_result <- tryCatch(readRDS(job$result_file), error = function(e) NULL)
-      result <- analysis_result()
-      result$boot_table <- bootstrap_summary_table(boot_result$samples, job$original_fit)
-      analysis_result(result)
+      results <- analysis_result()
+      if (is.list(results) && length(results) >= job$result_index) {
+        results[[job$result_index]]$boot_table <- bootstrap_summary_table(boot_result$samples, job$original_fit)
+        analysis_result(results)
+      }
       bootstrap_process(NULL)
       bootstrap_job(NULL)
-      bootstrap_status(NULL)
-      bootstrap_stop_visible(FALSE)
       bootstrap_cancel_requested(FALSE)
-      showNotification("Bootstrap regression finished.", type = "message")
+      queue <- bootstrap_job_queue()
+      if (length(queue) > 0) {
+        next_job <- queue[[1]]
+        bootstrap_job_queue(queue[-1])
+        bootstrap_status(list(done = 0L, r = next_job$r, stopping = FALSE, message = sprintf("Starting bootstrap %s", next_job$dependent %||% "")))
+        bootstrap_job(next_job)
+        start_bootstrap_process(next_job)
+      } else {
+        bootstrap_status(NULL)
+        bootstrap_stop_visible(FALSE)
+        showNotification("Bootstrap regression finished.", type = "message")
+      }
     }
   }
 
   observeEvent(input$run, {
     bootstrap_job(NULL)
+    bootstrap_job_queue(list())
     bootstrap_cancel_requested(FALSE)
     bootstrap_stop_visible(FALSE)
     bootstrap_status(list(done = 0L, r = 0L, stopping = FALSE, message = "Running regression"))
     prepared <- prepare_analysis_result()
-    analysis_result(prepared$result)
-    if (is.null(prepared$job)) {
+    analysis_result(prepared$results)
+    if (length(prepared$jobs) == 0) {
       bootstrap_status(NULL)
       return()
     }
-    set.seed(prepared$job$seed)
-    bootstrap_status(list(done = 0L, r = prepared$job$r, stopping = FALSE, message = "Starting bootstrap"))
+    first_job <- prepared$jobs[[1]]
+    remaining_jobs <- if (length(prepared$jobs) > 1) prepared$jobs[-1] else list()
+    bootstrap_job_queue(remaining_jobs)
+    set.seed(first_job$seed)
+    bootstrap_status(list(done = 0L, r = first_job$r, stopping = FALSE, message = sprintf("Starting bootstrap %s", first_job$dependent %||% "")))
     bootstrap_stop_visible(TRUE)
     session$onFlushed(function() {
-      bootstrap_job(prepared$job)
-      start_bootstrap_process(prepared$job)
+      bootstrap_job(first_job)
+      start_bootstrap_process(first_job)
     }, once = TRUE)
   })
 
@@ -3048,6 +3091,7 @@ server <- function(input, output, session) {
       process$kill()
     }
     bootstrap_process(NULL)
+    bootstrap_job_queue(list())
     job <- bootstrap_job()
     if (!is.null(job)) {
       job$cancel <- TRUE
@@ -3064,6 +3108,7 @@ server <- function(input, output, session) {
       process$kill()
     }
     bootstrap_process(NULL)
+    bootstrap_job_queue(list())
     job <- bootstrap_job()
     if (!is.null(job)) {
       job$cancel <- TRUE
@@ -3080,7 +3125,20 @@ server <- function(input, output, session) {
 
   analysis <- reactive({
     req(analysis_result())
-    analysis_result()
+    results <- analysis_result()
+    if (is.list(results) && length(results) > 0 && !is.null(results[[1]]$model)) {
+      return(results[[1]])
+    }
+    results
+  })
+
+  analyses <- reactive({
+    req(analysis_result())
+    results <- analysis_result()
+    if (is.list(results) && length(results) > 0 && !is.null(results[[1]]$model)) {
+      return(results)
+    }
+    list(results)
   })
 
   output$data_loaded_message <- renderText({
@@ -3332,7 +3390,7 @@ server <- function(input, output, session) {
             "  var hasClientValue = Object.prototype.hasOwnProperty.call(window.easyflowVarLabels, name);",
             "  if (data !== null && data !== undefined && String(data).length > 0 && (!hasClientValue || String(window.easyflowVarLabels[name]).length === 0)) window.easyflowVarLabels[name] = data;",
             "  if (Object.prototype.hasOwnProperty.call(window.easyflowVarLabels, name)) value = window.easyflowVarLabels[name];",
-            "  return '<input type=\"text\" id=\"' + esc(inputId) + '\" class=\"form-control input-sm var-label-input\" data-name=\"' + esc(name) + '\" value=\"' + esc(value) + '\" oninput=\"window.easyflowStoreVarLabel && window.easyflowStoreVarLabel(this)\" onchange=\"window.easyflowStoreVarLabel && window.easyflowStoreVarLabel(this)\">';",
+            "  return '<input type=\"text\" id=\"' + esc(inputId) + '\" class=\"form-control input-sm var-label-input\" data-name=\"' + esc(name) + '\" value=\"' + esc(value) + '\" oninput=\"window.easyflowStoreVarLabel && window.easyflowStoreVarLabel(this)\" onchange=\"window.easyflowCommitVarLabel && window.easyflowCommitVarLabel(this)\">';",
             "}"
           ), orderable = FALSE)
         )
@@ -3494,11 +3552,17 @@ server <- function(input, output, session) {
           }, {priority: 'event'});
         }
 
-        function saveVarLabelInput(input) {
+        function storeVarLabelInput(input) {
           var name = rowNameFromInput(input);
           if (!name) return;
           window.easyflowVarLabels = window.easyflowVarLabels || {};
           window.easyflowVarLabels[name] = $(input).val() || '';
+          return name;
+        }
+
+        function saveVarLabelInput(input) {
+          var name = storeVarLabelInput(input);
+          if (!name) return;
           Shiny.setInputValue('var_label_cell_input', {
             name: name,
             value: window.easyflowVarLabels[name],
@@ -3508,7 +3572,7 @@ server <- function(input, output, session) {
 
         function syncVisibleVarLabels() {
           table.$('input.var-label-input').each(function() {
-            saveVarLabelInput(this);
+            storeVarLabelInput(this);
           });
         }
 
@@ -3627,7 +3691,11 @@ server <- function(input, output, session) {
           syncVariableTableState();
         });
         table.on('preDraw.dt page.dt order.dt search.dt', syncVisibleVarLabels);
-        table.on('input keyup focusout blur', 'input.var-label-input', function(e) {
+        table.on('input keyup', 'input.var-label-input', function(e) {
+          e.stopPropagation();
+          storeVarLabelInput(this);
+        });
+        table.on('focusout blur', 'input.var-label-input', function(e) {
           e.stopPropagation();
           saveVarLabelInput(this);
         });
@@ -3706,7 +3774,7 @@ server <- function(input, output, session) {
         "    if (Object.prototype.hasOwnProperty.call(window.easyflowVarLabels, name)) value = window.easyflowVarLabels[name];",
         "  }",
         "  var idAttr = inputId ? ' id=\"' + esc(inputId) + '\"' : '';",
-        "  var varLabelHandlers = fieldName === 'var_label' ? ' oninput=\"window.easyflowStoreVarLabel && window.easyflowStoreVarLabel(this)\" onchange=\"window.easyflowStoreVarLabel && window.easyflowStoreVarLabel(this)\"' : '';",
+        "  var varLabelHandlers = fieldName === 'var_label' ? ' oninput=\"window.easyflowStoreVarLabel && window.easyflowStoreVarLabel(this)\" onchange=\"window.easyflowCommitVarLabel && window.easyflowCommitVarLabel(this)\"' : '';",
         "  return '<input type=\"text\"' + idAttr + ' class=\"form-control input-sm ' + cls + '\" data-name=\"' + esc(name) + '\" data-field=\"' + fieldName + '\" value=\"' + esc(value) + '\"' + disabledAttr + tabAttr + varLabelHandlers + '>';",
         "}"
       )
@@ -3742,6 +3810,10 @@ server <- function(input, output, session) {
         "  var name = $(input).attr('data-name');",
         "  window.easyflowVarLabels = window.easyflowVarLabels || {};",
         "  if (name) window.easyflowVarLabels[name] = $(input).val() || '';",
+        "  return name;",
+        "}",
+        "function commitVarLabelInput(input) {",
+        "  var name = saveVarLabelInput(input);",
         "  Shiny.setInputValue('var_label_cell_input', {",
         "    name: name,",
         "    value: name ? window.easyflowVarLabels[name] : ($(input).val() || ''),",
@@ -3770,8 +3842,11 @@ server <- function(input, output, session) {
         "    saveCategoryInput(labelInput[0]);",
         "  }",
         "});",
-        "wrapper.off('input.varLabelInput change.varLabelInput focusout.varLabelInput blur.varLabelInput').on('input.varLabelInput change.varLabelInput focusout.varLabelInput blur.varLabelInput', 'input.var-label-input', function() {",
+        "wrapper.off('input.varLabelInput').on('input.varLabelInput', 'input.var-label-input', function() {",
         "  saveVarLabelInput(this);",
+        "});",
+        "wrapper.off('change.varLabelInput focusout.varLabelInput blur.varLabelInput').on('change.varLabelInput focusout.varLabelInput blur.varLabelInput', 'input.var-label-input', function() {",
+        "  commitVarLabelInput(this);",
         "  if ($(this).attr('data-field') === 'var_label') saveCategoryInput(this);",
         "});",
         "function rememberCategoryFocus(input) {",
@@ -4365,6 +4440,36 @@ server <- function(input, output, session) {
     analysis()$method
   })
 
+  model_overview_html_table <- function(result) {
+    variable_table <- regression_variable_table()
+    dependent <- all.vars(result$formula)[[1]]
+    dependent_label <- display_variable_name(dependent, variable_table)
+    predictor_labels <- vapply(
+      result$predictors,
+      function(name) display_variable_name(name, variable_table),
+      character(1)
+    )
+    table <- data.frame(
+      Item = c("Dependent variable", "Independent variables", "N", "R\u00B2(adj. R\u00B2)", "F(p)", "Selected method"),
+      Value = c(
+        dependent_label,
+        paste(predictor_labels, collapse = ", "),
+        result$n,
+        sprintf("%s (%s)", format_decimal3(result$r_squared), format_decimal3(result$adjusted_r_squared)),
+        sprintf("%s (%s)", format_decimal3(result$f_statistic), format_p(result$f_p)),
+        result$method
+      ),
+      check.names = FALSE
+    )
+    tags$table(
+      class = "table shiny-table",
+      tags$thead(tags$tr(lapply(names(table), tags$th))),
+      tags$tbody(lapply(seq_len(nrow(table)), function(row_index) {
+        tags$tr(lapply(table[row_index, , drop = TRUE], tags$td))
+      }))
+    )
+  }
+
   output$model_overview <- renderTable({
     result <- analysis()
     variable_table <- regression_variable_table()
@@ -4395,6 +4500,10 @@ server <- function(input, output, session) {
 
   output$regression <- renderUI({
     result <- analysis()
+    coefficient_result_ui(result)
+  })
+
+  coefficient_result_ui <- function(result) {
     table <- coefficient_output_table(coefficient_display_table(result), result$predictors, include_references = TRUE)
     if (!isTRUE(input$show_sr2) && "sr2" %in% names(table)) {
       table$sr2 <- NULL
@@ -4473,10 +4582,9 @@ server <- function(input, output, session) {
       "\u03C7\u00B2(p) = Breusch-Pagan homoscedasticity test statistic (p-value)"
     )
     coefficient_html_table(table, fit_line, stat_lines, note_line)
-  })
+  }
 
-  output$residual_qq_plot <- renderPlot({
-    result <- analysis()
+  plot_residual_qq <- function(result) {
     residuals <- stats::residuals(result$model)
     old_par <- par(no.readonly = TRUE)
     on.exit(par(old_par), add = TRUE)
@@ -4484,10 +4592,9 @@ server <- function(input, output, session) {
     stats::qqnorm(residuals, pch = 19, col = "#475569", cex = .75, main = "", xlab = "Theoretical quantiles", ylab = "Sample quantiles")
     stats::qqline(residuals, col = "#1f2937", lwd = 1.2)
     box()
-  }, res = 96)
+  }
 
-  output$residual_homoscedasticity_plot <- renderPlot({
-    result <- analysis()
+  plot_residual_homoscedasticity <- function(result) {
     fitted_values <- stats::fitted(result$model)
     residuals <- stats::rstandard(result$model)
     old_par <- par(no.readonly = TRUE)
@@ -4511,6 +4618,16 @@ server <- function(input, output, session) {
       lines(stats::lowess(fitted_values, residuals), col = "#2563eb", lwd = 1.2)
     }
     box()
+  }
+
+  output$residual_qq_plot <- renderPlot({
+    result <- analysis()
+    plot_residual_qq(result)
+  }, res = 96)
+
+  output$residual_homoscedasticity_plot <- renderPlot({
+    result <- analysis()
+    plot_residual_homoscedasticity(result)
   }, res = 96)
 
   output$coefficient_fit_line <- renderUI({
@@ -4551,6 +4668,69 @@ server <- function(input, output, session) {
     summary(analysis()$model)
   })
 
+  regression_result_block <- function(result, index) {
+    qq_id <- paste0("residual_qq_plot_", index)
+    homo_id <- paste0("residual_homoscedasticity_plot_", index)
+    local({
+      plot_result <- result
+      output[[qq_id]] <- renderPlot({
+        plot_residual_qq(plot_result)
+      }, res = 96)
+      output[[homo_id]] <- renderPlot({
+        plot_residual_homoscedasticity(plot_result)
+      }, res = 96)
+    })
+
+    tagList(
+      div(
+        class = "regression-result-panel model-overview-panel",
+        h3("Model overview"),
+        model_overview_html_table(result)
+      ),
+      div(
+        class = "regression-result-panel",
+        h3(coefficient_panel_title(result)),
+        coefficient_result_ui(result),
+        effect_size_reference_panel(input$show_sr2, input$show_f2),
+        div(
+          class = "residual-diagnostic-plots",
+          div(
+            class = "residual-plot-card",
+            h4("Q-Q plot"),
+            plotOutput(qq_id, height = "420px")
+          ),
+          div(
+            class = "residual-plot-card",
+            h4("Residual homoscedasticity"),
+            plotOutput(homo_id, height = "420px")
+          )
+        )
+      ),
+      div(
+        class = "regression-result-panel",
+        h3("Assumption checks"),
+        tags$table(
+          class = "table shiny-table",
+          tags$thead(tags$tr(lapply(names(result$diagnostics), tags$th))),
+          tags$tbody(lapply(seq_len(nrow(result$diagnostics)), function(row_index) {
+            tags$tr(lapply(result$diagnostics[row_index, , drop = TRUE], tags$td))
+          }))
+        )
+      ),
+      div(
+        class = "regression-result-panel",
+        h3("Durbin-Watson"),
+        tags$table(
+          class = "table shiny-table",
+          tags$thead(tags$tr(lapply(names(result$dw_result), tags$th))),
+          tags$tbody(lapply(seq_len(nrow(result$dw_result)), function(row_index) {
+            tags$tr(lapply(result$dw_result[row_index, , drop = TRUE], tags$td))
+          }))
+        )
+      )
+    )
+  }
+
   output$regression_results <- renderUI({
     if (is.null(input$run) || input$run == 0) {
       return(div(
@@ -4559,49 +4739,13 @@ server <- function(input, output, session) {
       ))
     }
 
-    result <- analysis()
+    results <- analyses()
     tagList(
       div(
         class = "regression-results",
-        div(
-          class = "regression-result-panel model-overview-panel",
-          h3("Model overview"),
-          tableOutput("model_overview")
-        ),
-        div(
-          class = "regression-result-panel",
-          h3(coefficient_panel_title(result)),
-          uiOutput("regression"),
-          effect_size_reference_panel(input$show_sr2, input$show_f2),
-          div(
-            class = "residual-diagnostic-plots",
-            div(
-              class = "residual-plot-card",
-              h4("Q-Q plot"),
-              plotOutput("residual_qq_plot", height = "420px")
-            ),
-            div(
-              class = "residual-plot-card",
-              h4("Residual homoscedasticity"),
-              plotOutput("residual_homoscedasticity_plot", height = "420px")
-            )
-          )
-        ),
-        div(
-          class = "regression-result-panel",
-          h3("Assumption checks"),
-          tableOutput("diagnostics")
-        ),
-        div(
-          class = "regression-result-panel",
-          h3("Durbin-Watson"),
-          tableOutput("dw_result")
-        ),
-        div(
-          class = "regression-result-panel",
-          h3("R summary"),
-          verbatimTextOutput("summary")
-        )
+        lapply(seq_along(results), function(index) {
+          regression_result_block(results[[index]], index)
+        })
       )
     )
   })
