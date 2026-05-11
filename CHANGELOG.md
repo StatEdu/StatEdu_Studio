@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.2.0 - 2026-05-11
+
+### Added
+
+- Added sequential regression output for multiple dependent variables.
+- Added bootstrap progress and stop controls in the regression setup panel.
+- Added optional sr2, f2, and VIF/collinearity diagnostics output.
+- Added effect size guideline references for sr2 and Cohen's f2.
+- Added side-by-side residual diagnostic plots.
+
+### Changed
+
+- Reworked the regression setup layout with Variables, Dependent Variables, Independent Variables, and bootstrap controls.
+- Updated Model overview to report dependent variable, independent variables, N, R2(adj. R2), F(p), and selected method.
+- Standardized residual homoscedasticity plots and outlier boundary display.
+- Improved superscript/subscript notation in regression output.
+
+### Fixed
+
+- Fixed Step 4 label editing so text input no longer resets on each typed character.
+- Fixed saved settings loading and propagation of variable labels, measurements, references, and value labels across steps.
+- Fixed bootstrap stop handling and progress display placement.
+
 ## v0.1.2 - 2026-05-11
 
 ### Added
