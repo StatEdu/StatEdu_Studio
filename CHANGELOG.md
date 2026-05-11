@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.5.0 - 2026-05-11
+
+### Added
+
+- Added a Hierarchical tab scaffold for hierarchical multiple regression with one dependent variable and Block 1/2/3 predictor organization.
+- Added Block 2 to Block 3 variable transfer controls for future hierarchical regression setup.
+- Added a Generalized tab scaffold for future generalized regression models.
+
+### Changed
+
+- Updated the Generalized setup options for GLM-style models by removing OLS-only bootstrap and sr2/f2 options.
+- Grouped count models as Poisson / Negative binomial / Zero-inflated and retained Gamma for positive continuous outcomes.
+- Updated Generalized reporting options to use exp(B) as IRR / ratio.
+
 ## v0.4.1 - 2026-05-11
 
 ### Changed

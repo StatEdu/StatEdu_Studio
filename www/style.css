@@ -547,6 +547,15 @@ input.variable-select:disabled {
   color: #ffffff;
 }
 
+.generalized-options {
+  min-width: 330px;
+}
+
+.generalized-option-field .form-group,
+.generalized-option-field select {
+  width: 100%;
+}
+
 .penalized-coefficients {
   margin-top: 12px;
 }

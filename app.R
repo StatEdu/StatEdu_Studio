@@ -806,6 +806,62 @@ ui <- navbarPage(
         )
       )
     )
+  ),
+
+  tabPanel(
+    "Hierarchical",
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1("Hierarchical"),
+        div("Review selected variables and prepare hierarchical regression analysis.", class = "app-subtitle")
+      ),
+      div(
+        class = "regression-layout",
+        div(
+          class = "side-panel",
+          uiOutput("hierarchical_variable_list")
+        ),
+        div(
+          class = "workspace-panel",
+          h3("Hierarchical"),
+          uiOutput("hierarchical_setup"),
+          div(
+            class = "empty-message regression-results-empty",
+            "Hierarchical regression models are not implemented yet."
+          )
+        )
+      )
+    )
+  ),
+
+  tabPanel(
+    "Generalized",
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1("Generalized"),
+        div("Review selected variables and prepare generalized regression analysis.", class = "app-subtitle")
+      ),
+      div(
+        class = "regression-layout",
+        div(
+          class = "side-panel",
+          uiOutput("generalized_variable_list")
+        ),
+        div(
+          class = "workspace-panel",
+          h3("Generalized"),
+          uiOutput("generalized_setup"),
+          div(
+            class = "empty-message regression-results-empty",
+            "Generalized regression models are not implemented yet."
+          )
+        )
+      )
+    )
   )
 )
 
@@ -828,6 +884,7 @@ server <- function(input, output, session) {
   independent_names <- reactiveVal(character(0))
   control_names <- reactiveVal(character(0))
   predictor_order <- reactiveVal(character(0))
+  hierarchical_block3_names <- reactiveVal(character(0))
   predictor_order_initialized <- reactiveVal(FALSE)
   var_label_overrides <- reactiveVal(character(0))
   category_label_values <- reactiveVal(NULL)
@@ -4009,7 +4066,7 @@ server <- function(input, output, session) {
     stats::setNames(names, vapply(names, display_variable_name, character(1), table = table))
   }
 
-  output$regression_variable_list <- renderUI({
+  role_variable_list_ui <- function() {
     table <- regression_variable_table()
     selected <- selected_names()
     dependent <- intersect(sync_dependent_order(update_input = FALSE), selected)
@@ -4077,6 +4134,18 @@ server <- function(input, output, session) {
       variable_block("Independent Variables", independent),
       variable_block("Covariates", controls)
     )
+  }
+
+  output$regression_variable_list <- renderUI({
+    role_variable_list_ui()
+  })
+
+  output$generalized_variable_list <- renderUI({
+    role_variable_list_ui()
+  })
+
+  output$hierarchical_variable_list <- renderUI({
+    role_variable_list_ui()
   })
 
   predictor_candidates <- function() {
@@ -4223,6 +4292,31 @@ server <- function(input, output, session) {
     sync_predictor_order(next_selection)
     updateSelectInput(session, "available_predictors", selected = selected)
     mark_settings_dirty()
+  })
+
+  hierarchical_block3_current <- function() {
+    candidates <- intersect(independent_names(), selected_names())
+    block3 <- intersect(hierarchical_block3_names(), candidates)
+    if (!identical(block3, hierarchical_block3_names())) {
+      hierarchical_block3_names(block3)
+    }
+    block3
+  }
+
+  observeEvent(input$move_hierarchical_block2_to_block3, {
+    selected <- intersect(as.character(input$hierarchical_block2 %||% ""), intersect(independent_names(), selected_names()))
+    if (length(selected) == 0) {
+      return()
+    }
+    hierarchical_block3_names(unique(c(hierarchical_block3_current(), selected)))
+  })
+
+  observeEvent(input$move_hierarchical_block3_to_block2, {
+    selected <- intersect(as.character(input$hierarchical_block3 %||% ""), hierarchical_block3_current())
+    if (length(selected) == 0) {
+      return()
+    }
+    hierarchical_block3_names(setdiff(hierarchical_block3_current(), selected))
   })
 
   output$regression_setup <- renderUI({
@@ -4387,6 +4481,264 @@ server <- function(input, output, session) {
         },
         uiOutput("penalized_regression_control"),
         uiOutput("regression_save_control")
+      )
+    )
+  })
+
+  output$hierarchical_setup <- renderUI({
+    selected <- as.character(selected_names() %||% character(0))
+    if (length(selected) == 0) {
+      return(tagList(
+        div(
+          class = "empty-message",
+          div("Complete Step 2 in the Data tab before setting up hierarchical regression.")
+        )
+      ))
+    }
+
+    ordered_dependents <- sync_dependent_order(update_input = FALSE)
+    block1 <- intersect(control_names(), selected)
+    independent <- intersect(independent_names(), selected)
+    block3 <- hierarchical_block3_current()
+    block2 <- setdiff(independent, block3)
+    block_list_size <- min(max(length(independent), 4), 10)
+    variable_table <- regression_variable_table()
+    dependent_choices <- display_variable_choices(ordered_dependents, variable_table)
+    block1_choices <- display_variable_choices(block1, variable_table)
+    block2_choices <- display_variable_choices(block2, variable_table)
+    block3_choices <- display_variable_choices(block3, variable_table)
+    current_seed <- input$seed %||% as.integer(format(Sys.Date(), "%Y%m%d"))
+
+    status_message <- NULL
+    if (!isTRUE(selection_applied())) {
+      status_message <- "Step 2 variable selection has not been applied yet."
+    } else if (!isTRUE(roles_applied())) {
+      status_message <- "Step 3 role assignment has not been applied yet."
+    }
+
+    tagList(
+      if (!is.null(status_message)) {
+        div(status_message, class = "regression-warning")
+      },
+      div(
+        class = "regression-fields hierarchical-fields",
+        div(
+          class = "regression-field hierarchical-dependent-field",
+          tags$label("Dependent Variable", `for` = "hierarchical_y", class = "control-label"),
+          selectInput(
+            "hierarchical_y",
+            label = NULL,
+            choices = dependent_choices,
+            selected = utils::head(ordered_dependents, 1),
+            multiple = FALSE,
+            selectize = TRUE
+          )
+        ),
+        div(
+          class = "regression-field",
+          tags$label("Block 1: Covariates", class = "control-label"),
+          selectInput(
+            "hierarchical_block1",
+            label = NULL,
+            choices = block1_choices,
+            selected = utils::head(block1, 1),
+            multiple = FALSE,
+            selectize = FALSE,
+            size = min(max(length(block1), 4), 10)
+          )
+        ),
+        div(
+          class = "regression-field",
+          tags$label("Block 2: Independent variables", class = "control-label"),
+          selectInput(
+            "hierarchical_block2",
+            label = NULL,
+            choices = block2_choices,
+            selected = utils::head(block2, 1),
+            multiple = FALSE,
+            selectize = FALSE,
+            size = block_list_size
+          )
+        ),
+        div(
+          class = "variable-transfer-actions hierarchical-block-transfer",
+          actionButton("move_hierarchical_block2_to_block3", ">", class = "btn btn-default btn-sm variable-transfer-button"),
+          actionButton("move_hierarchical_block3_to_block2", "<", class = "btn btn-default btn-sm variable-transfer-button")
+        ),
+        div(
+          class = "regression-field",
+          tags$label("Block 3: Additional predictors", class = "control-label"),
+          selectInput(
+            "hierarchical_block3",
+            label = NULL,
+            choices = block3_choices,
+            selected = utils::head(block3, 1),
+            multiple = FALSE,
+            selectize = FALSE,
+            size = block_list_size
+          )
+        ),
+        div(
+          class = "regression-options",
+          div(
+            class = "regression-field",
+            numericInput("hierarchical_seed", "Seed number", value = current_seed, min = 1, step = 1)
+          ),
+          div(
+            class = "regression-effect-options",
+            checkboxInput("hierarchical_show_sr2", "effect size sr\u00B2", value = FALSE),
+            checkboxInput("hierarchical_show_f2", "effect size f\u00B2", value = FALSE),
+            checkboxInput("hierarchical_show_vif", "Collinearity diagnostics(VIF)", value = FALSE)
+          )
+        )
+      ),
+      div(
+        class = "regression-actions",
+        tags$button("Run hierarchical", type = "button", class = "btn btn-primary", disabled = "disabled")
+      )
+    )
+  })
+
+  output$generalized_setup <- renderUI({
+    selected <- as.character(selected_names() %||% character(0))
+    if (length(selected) == 0) {
+      return(tagList(
+        div(
+          class = "empty-message",
+          div("Complete Step 2 in the Data tab before setting up generalized regression.")
+        )
+      ))
+    }
+
+    ordered_dependents <- sync_dependent_order(update_input = FALSE)
+    ordered_predictors <- sync_predictor_order(update_input = FALSE)
+    available_predictors <- predictor_candidates()
+    dependent_list_size <- min(max(length(ordered_dependents), 4), 10)
+    predictor_list_size <- min(max(length(ordered_predictors), 4), 10)
+    available_list_size <- 18
+    variable_table <- regression_variable_table()
+    dependent_choices <- display_variable_choices(ordered_dependents, variable_table)
+    predictor_choices <- display_variable_choices(ordered_predictors, variable_table)
+    available_choices <- display_variable_choices(available_predictors, variable_table)
+    family_choices <- c(
+      "Poisson / Negative binomial / Zero-inflated (count)" = "count",
+      "Gamma (positive continuous)" = "gamma"
+    )
+    link_choices <- c(
+      "Default for family" = "default",
+      "log" = "log",
+      "identity" = "identity",
+      "inverse" = "inverse"
+    )
+
+    status_message <- NULL
+    if (!isTRUE(selection_applied())) {
+      status_message <- "Step 2 variable selection has not been applied yet."
+    } else if (!isTRUE(roles_applied())) {
+      status_message <- "Step 3 role assignment has not been applied yet."
+    }
+
+    tagList(
+      if (!is.null(status_message)) {
+        div(status_message, class = "regression-warning")
+      },
+      div(
+        class = "regression-fields",
+        div(
+          class = "regression-variables-panel",
+          div(
+            class = "regression-setup-variable-box",
+            div("Variables", class = "regression-setup-variable-title"),
+            if (length(available_predictors) == 0) {
+              div("No predictor variables selected.", class = "regression-variable-empty")
+            } else {
+              selectInput(
+                "generalized_available_predictors",
+                label = NULL,
+                choices = available_choices,
+                selected = utils::head(available_predictors, 1),
+                multiple = FALSE,
+                selectize = FALSE,
+                size = available_list_size
+              )
+            }
+          )
+        ),
+        div(
+          class = "variable-transfer-actions",
+          tags$button(">", type = "button", class = "btn btn-default btn-sm variable-transfer-button", disabled = "disabled"),
+          tags$button("<", type = "button", class = "btn btn-default btn-sm variable-transfer-button", disabled = "disabled")
+        ),
+        div(
+          class = "regression-field",
+          tags$label("Dependent Variables", `for` = "generalized_y", class = "control-label"),
+          selectInput(
+            "generalized_y",
+            label = NULL,
+            choices = dependent_choices,
+            selected = utils::head(ordered_dependents, 1),
+            multiple = FALSE,
+            selectize = FALSE,
+            size = dependent_list_size
+          ),
+          div(
+            class = "dependent-order-actions",
+            tags$button("Up", type = "button", class = "btn btn-default btn-sm", disabled = "disabled"),
+            tags$button("Down", type = "button", class = "btn btn-default btn-sm", disabled = "disabled")
+          )
+        ),
+        div(
+          class = "regression-field",
+          tags$label("Independent Variables", class = "control-label"),
+          selectInput(
+            "generalized_predictor_order",
+            label = NULL,
+            choices = predictor_choices,
+            selected = utils::head(ordered_predictors, 1),
+            multiple = FALSE,
+            selectize = FALSE,
+            size = predictor_list_size
+          ),
+          div(
+            class = "predictor-order-actions",
+            tags$button("Up", type = "button", class = "btn btn-default btn-sm", disabled = "disabled"),
+            tags$button("Down", type = "button", class = "btn btn-default btn-sm", disabled = "disabled")
+          )
+        ),
+        div(
+          class = "regression-options generalized-options",
+          div(
+            class = "regression-field generalized-option-field",
+            selectInput(
+              "generalized_family",
+              "Outcome model",
+              choices = family_choices,
+              selected = "count",
+              selectize = FALSE
+            )
+          ),
+          div(
+            class = "regression-field generalized-option-field",
+            selectInput(
+              "generalized_link",
+              "Link function",
+              choices = link_choices,
+              selected = "default",
+              selectize = FALSE
+            )
+          ),
+          div(
+            class = "regression-effect-options",
+            checkboxInput("generalized_exponentiate", "Report exp(B): IRR / ratio", value = TRUE),
+            checkboxInput("generalized_robust_se", "Robust standard errors", value = TRUE),
+            checkboxInput("generalized_overdispersion", "Overdispersion check", value = TRUE),
+            checkboxInput("generalized_show_vif", "Collinearity diagnostics(VIF)", value = FALSE)
+          )
+        )
+      ),
+      div(
+        class = "regression-actions",
+        tags$button("Run generalized", type = "button", class = "btn btn-primary", disabled = "disabled")
       )
     )
   })
