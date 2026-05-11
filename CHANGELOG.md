@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.4.0 - 2026-05-11
+
+### Added
+
+- Added Windows-native save dialogs for Excel table export and figure folder selection.
+- Added Excel workbook export in journal-table style with coefficient tables, model fit rows, diagnostics, and notes.
+- Added VIF-based multicollinearity warnings with guidance for severe VIF values.
+- Added Ridge, LASSO, and Elastic Net analyses for severe multicollinearity cases using cross-validation.
+- Added SCI-style penalized regression tables for model performance, OLS/penalized coefficient comparison, and retained predictors.
+
+### Changed
+
+- Improved Model overview Excel formatting with shared independent-variable cell merging, wrapping, and compact widths.
+- Hid residual diagnostics and Durbin-Watson output when penalized regression results are displayed.
+- Updated regression result sheet names to use dependent variable labels or names.
+
+### Fixed
+
+- Fixed settings save errors when no categorical variables are selected.
+- Prevented blank measurement names from being stored in measurement overrides.
+
 ## v0.3.1 - 2026-05-11
 
 ### Changed

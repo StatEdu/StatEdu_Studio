@@ -1,4 +1,4 @@
-required_packages <- c("shiny", "DT", "lmtest", "sandwich", "nortest", "boot", "jsonlite", "haven", "readr", "htmltools", "openxlsx")
+required_packages <- c("shiny", "DT", "lmtest", "sandwich", "nortest", "boot", "jsonlite", "haven", "readr", "htmltools", "openxlsx", "glmnet")
 missing_packages <- required_packages[!vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)]
 if (length(missing_packages) > 0) {
   stop(
@@ -930,7 +930,7 @@ server <- function(input, output, session) {
     }
 
     keep_named_values <- function(values) {
-      names(values) <- clean_setting_names(names(values))
+      names(values) <- trimws(clean_setting_names(names(values)))
       values[!is.na(names(values)) & nzchar(names(values))]
     }
 
@@ -1299,11 +1299,13 @@ server <- function(input, output, session) {
     if (length(updates) == 0 || is.null(names(updates))) {
       return(invisible(FALSE))
     }
+    names(updates) <- trimws(names(updates))
     valid_names <- !is.na(names(updates)) & nzchar(names(updates))
     valid_values <- !is.na(updates) & updates %in% c("binary", "category", "ordered", "continuous")
     updates <- updates[valid_names & valid_values]
     if (length(updates) > 0) {
       names(updates) <- sub("^.*\\.", "", names(updates))
+      names(updates) <- trimws(names(updates))
       updates <- updates[!is.na(names(updates)) & nzchar(names(updates))]
     }
     if (length(updates) == 0) {
@@ -1311,6 +1313,7 @@ server <- function(input, output, session) {
     }
 
     overrides <- measurement_overrides()
+    overrides <- overrides[!is.na(names(overrides)) & nzchar(trimws(names(overrides)))]
     unchanged <- vapply(names(updates), function(name) {
       identical(named_value(overrides, name, ""), as.character(updates[[name]]))
     }, logical(1))
@@ -2270,9 +2273,12 @@ server <- function(input, output, session) {
         }
       }
       for (column in value_columns) {
-        if (!column %in% names(current)) current[[column]] <- ""
+        if (!column %in% names(current)) current[[column]] <- rep("", nrow(current))
       }
       for (name in names(incoming)) {
+        if (!nzchar(trimws(as.character(name %||% "")))) {
+          next
+        }
         if (!name %in% current$name) {
           current <- rbind(current, as.data.frame(as.list(c(name = name, stats::setNames(rep("", length(value_columns)), value_columns))), stringsAsFactors = FALSE, check.names = FALSE))
         }
@@ -2670,7 +2676,7 @@ server <- function(input, output, session) {
     output[, setdiff(names(output), c(".raw_variable", ".raw_level")), drop = FALSE]
   }
 
-  coefficient_html_table <- function(table, fit_line = NULL, stat_lines = character(0), note_line = NULL) {
+  coefficient_html_table <- function(table, fit_line = NULL, stat_lines = character(0), warning_line = NULL, note_line = NULL) {
     if (!is.data.frame(table) || nrow(table) == 0) {
       return(NULL)
     }
@@ -2712,6 +2718,9 @@ server <- function(input, output, session) {
           )
         }
       ),
+      if (!is.null(warning_line) && nzchar(warning_line)) {
+        tags$div(class = "coefficient-warning", warning_line)
+      },
       if (!is.null(note_line) && nzchar(note_line)) {
         tags$div(class = "coefficient-note", note_line)
       }
@@ -2777,6 +2786,7 @@ server <- function(input, output, session) {
   }
 
   analysis_result <- reactiveVal(NULL)
+  penalized_result <- reactiveVal(NULL)
   bootstrap_job <- reactiveVal(NULL)
   bootstrap_job_queue <- reactiveVal(list())
   bootstrap_status <- reactiveVal(NULL)
@@ -3040,6 +3050,7 @@ server <- function(input, output, session) {
   }
 
   observeEvent(input$run, {
+    penalized_result(NULL)
     bootstrap_job(NULL)
     bootstrap_job_queue(list())
     bootstrap_cancel_requested(FALSE)
@@ -4374,6 +4385,7 @@ server <- function(input, output, session) {
         } else {
           actionButton("run", "Run regression", class = "btn-primary")
         },
+        uiOutput("penalized_regression_control"),
         uiOutput("regression_save_control")
       )
     )
@@ -4529,71 +4541,11 @@ server <- function(input, output, session) {
     }
     names(table)[names(table) == "sr2"] <- "sr\u00B2"
     names(table)[names(table) == "f2"] <- "f\u00B2"
-    r2_label <- if (isTRUE(result$use_hc3) || isTRUE(result$use_bootstrap)) {
-      "OLS R\u00B2(adj. R\u00B2)"
-    } else {
-      "R\u00B2(adj. R\u00B2)"
-    }
-    fit_line <- paste(
-      sprintf(
-        "R\u00B2(adj. R\u00B2) = %s (%s)",
-        format_decimal3(result$r_squared),
-        format_decimal3(result$adjusted_r_squared)
-      ),
-      sprintf(
-        "F(%s, %s) = %s, p %s",
-        result$f_df1,
-        result$f_df2,
-        format_decimal3(result$f_statistic),
-        format_p(result$f_p)
-      )
-    )
-    fit_line <- paste(
-      sprintf(
-        "%s = %s (%s)",
-        r2_label,
-        format_decimal3(result$r_squared),
-        format_decimal3(result$adjusted_r_squared)
-      ),
-      sprintf(
-        "F(%s, %s) = %s, p %s",
-        result$f_df1,
-        result$f_df2,
-        format_decimal3(result$f_statistic),
-        format_p(result$f_p)
-      )
-    )
-    stat_lines <- c(
-      sprintf(
-        "d(d\u1D64~4-d\u1D64) = %s (%s~%s)",
-        format_decimal3(result$dw_d),
-        format_decimal3(result$dw_crit$dU),
-        format_decimal3(4 - result$dw_crit$dU)
-      ),
-      sprintf(
-        "z(p) = %s (%s)",
-        format_decimal3(result$normality_statistic),
-        format_p(result$normality_p)
-      ),
-      sprintf(
-        "\u03C7\u00B2(p) = %s (%s)",
-        format_decimal3(result$homogeneity_statistic),
-        format_p(result$homogeneity_p)
-      )
-    )
-    note_line <- paste(
-      if (isTRUE(input$show_vif)) "Tolerance = 1 - R\u00B2 for each predictor;" else NULL,
-      if (isTRUE(input$show_vif)) "VIF = Variance Inflation Factor;" else NULL,
-      if (isTRUE(result$use_hc3)) "HC3 SE = heteroskedasticity-consistent standard error type 3;" else NULL,
-      if (isTRUE(result$use_bootstrap)) "Boot SE, LLCI, ULCI, and Boot p are bootstrap estimates based on the selected bootstrap resamples and seed number;" else NULL,
-      if (isTRUE(input$show_sr2)) "sr\u00B2 = squared semi-partial correlation, unique R\u00B2 contribution for each coefficient;" else NULL,
-      if (isTRUE(input$show_f2)) "f\u00B2 = sr\u00B2 / (1 - model R\u00B2);" else NULL,
-      if (isTRUE(result$use_hc3) || isTRUE(result$use_bootstrap)) "OLS R\u00B2 and adjusted R\u00B2 are ordinary least squares model fit indices;" else NULL,
-      "d(d\u1D64~4-d\u1D64) = Durbin-Watson statistic (upper critical value~4-upper critical value);",
-      "z(p) = Lilliefors corrected Kolmogorov-Smirnov residual normality test statistic (p-value);",
-      "\u03C7\u00B2(p) = Breusch-Pagan homoscedasticity test statistic (p-value)"
-    )
-    coefficient_html_table(table, fit_line, stat_lines, note_line)
+    fit_line <- coefficient_fit_line(result)
+    stat_lines <- coefficient_stat_lines(result)
+    warning_line <- coefficient_vif_warning_line(result)
+    note_line <- coefficient_note_line(result)
+    coefficient_html_table(table, fit_line, stat_lines, warning_line, note_line)
   }
 
   plot_residual_qq <- function(result) {
@@ -4644,26 +4596,149 @@ server <- function(input, output, session) {
 
   output$coefficient_fit_line <- renderUI({
     result <- analysis()
+    parts <- strsplit(coefficient_fit_line(result), " F\\(", fixed = FALSE)[[1]]
+    fit_text <- parts[[1]]
+    f_text <- if (length(parts) > 1) paste0("F(", parts[[2]]) else ""
     tagList(
       tags$div(
         class = "coefficient-fit-line",
-        tags$span(
-          sprintf(
-            "R\u00B2(adj. R\u00B2) = %s (%s)",
-            format_decimal3(result$r_squared),
-            format_decimal3(result$adjusted_r_squared)
-          )
-        ),
-        tags$span(
-          sprintf(
-            "F(%s, %s) = %s, p %s",
-            result$f_df1,
-            result$f_df2,
-            format_decimal3(result$f_statistic),
-            format_p(result$f_p)
-          )
-        )
+        tags$span(fit_text),
+        tags$span(f_text)
       )
+    )
+  })
+
+  output$penalized_regression_control <- renderUI({
+    results <- analysis_result()
+    if (!has_severe_vif(results)) {
+      return(NULL)
+    }
+    actionButton("run_penalized_regression", "Run Ridge/LASSO/Elastic Net", class = "btn-warning")
+  })
+
+  fit_penalized_models <- function(results) {
+    if (!requireNamespace("glmnet", quietly = TRUE)) {
+      stop("Package 'glmnet' is required. Install it with install.packages(\"glmnet\").", call. = FALSE)
+    }
+    data <- dataset()
+    variable_table <- regression_variable_table()
+    model_specs <- list(
+      list(method = "Ridge", alpha = 0),
+      list(method = "LASSO", alpha = 1),
+      list(method = "Elastic Net", alpha = 0.5)
+    )
+
+    rows <- list()
+    coefficients <- list()
+    for (result in results) {
+      dependent <- all.vars(result$formula)[[1]]
+      dependent_label <- display_variable_label_or_name(dependent, variable_table)
+      complete_data <- stats::model.frame(result$formula, data = data, na.action = stats::na.omit)
+      x <- stats::model.matrix(result$formula, data = complete_data)
+      x <- x[, colnames(x) != "(Intercept)", drop = FALSE]
+      y <- stats::model.response(complete_data)
+
+      if (is.data.frame(result$coef_table) && all(c("Term", "B") %in% names(result$coef_table))) {
+        coefficients[[length(coefficients) + 1]] <- data.frame(
+          Outcome = dependent_label,
+          Method = "OLS",
+          Predictor = as.character(result$coef_table$Term),
+          Coefficient = as.numeric(result$coef_table$B),
+          Selected = TRUE,
+          check.names = FALSE
+        )
+      }
+
+      for (spec in model_specs) {
+        set.seed(input$seed %||% as.integer(format(Sys.Date(), "%Y%m%d")))
+        fit <- glmnet::cv.glmnet(x, y, alpha = spec$alpha, family = "gaussian", standardize = TRUE)
+        lambda <- fit$lambda.min
+        prediction <- as.numeric(stats::predict(fit, newx = x, s = "lambda.min"))
+        rmse <- sqrt(mean((y - prediction)^2, na.rm = TRUE))
+        r2 <- 1 - sum((y - prediction)^2, na.rm = TRUE) / sum((y - mean(y, na.rm = TRUE))^2, na.rm = TRUE)
+        coef_matrix <- as.matrix(stats::coef(fit, s = "lambda.min"))
+        nonzero <- sum(abs(coef_matrix[rownames(coef_matrix) != "(Intercept)", 1]) > 0)
+
+        summary_row <- data.frame(
+          Outcome = dependent_label,
+          Method = spec$method,
+          Alpha = spec$alpha,
+          Lambda_min = format_decimal3(lambda),
+          CV_MSE = format_decimal3(min(fit$cvm, na.rm = TRUE)),
+          RMSE = format_decimal3(rmse),
+          Apparent_R2 = format_decimal3(r2),
+          Selected_predictors_n = nonzero,
+          check.names = FALSE
+        )
+        names(summary_row) <- c("Outcome", "Method", "\u03B1", "\u03BBmin", "CV MSE", "RMSE", "Apparent R\u00B2", "Selected predictors, n")
+        rows[[length(rows) + 1]] <- summary_row
+        coef_values <- coef_matrix[, 1]
+        coefficients[[length(coefficients) + 1]] <- data.frame(
+          Outcome = dependent_label,
+          Method = spec$method,
+          Predictor = rownames(coef_matrix),
+          Coefficient = as.numeric(coef_values),
+          Selected = abs(as.numeric(coef_values)) > 0,
+          check.names = FALSE
+        )
+      }
+    }
+
+    coefficient_long <- do.call(rbind, coefficients)
+    coefficient_wide <- data.frame()
+    selected_summary <- data.frame()
+    if (is.data.frame(coefficient_long) && nrow(coefficient_long) > 0) {
+      coefficient_wide <- reshape(
+        coefficient_long[, c("Outcome", "Predictor", "Method", "Coefficient"), drop = FALSE],
+        idvar = c("Outcome", "Predictor"),
+        timevar = "Method",
+        direction = "wide"
+      )
+      names(coefficient_wide) <- sub("^Coefficient\\.", "", names(coefficient_wide))
+      ordered_columns <- intersect(c("Outcome", "Predictor", "OLS", "Ridge", "LASSO", "Elastic Net"), names(coefficient_wide))
+      coefficient_wide <- coefficient_wide[, ordered_columns, drop = FALSE]
+      method_columns <- setdiff(names(coefficient_wide), c("Outcome", "Predictor"))
+      for (column in method_columns) {
+        coefficient_wide[[column]] <- vapply(coefficient_wide[[column]], format_decimal3, character(1))
+      }
+      coefficient_wide <- coefficient_wide[order(coefficient_wide$Outcome, coefficient_wide$Predictor), , drop = FALSE]
+
+      selected_rows <- coefficient_long[
+        coefficient_long$Method != "OLS" & coefficient_long$Predictor != "(Intercept)" & coefficient_long$Selected,
+        c("Outcome", "Method", "Predictor"),
+        drop = FALSE
+      ]
+      selected_summary <- aggregate(
+        Predictor ~ Outcome + Method,
+        data = selected_rows,
+        FUN = function(values) paste(values, collapse = ", ")
+      )
+      names(selected_summary)[names(selected_summary) == "Predictor"] <- "Selected predictors"
+      all_methods <- unique(coefficient_long[coefficient_long$Method != "OLS", c("Outcome", "Method"), drop = FALSE])
+      selected_summary <- merge(all_methods, selected_summary, by = c("Outcome", "Method"), all.x = TRUE, sort = FALSE)
+      selected_summary[["Selected predictors"]][is.na(selected_summary[["Selected predictors"]])] <- "None"
+      selected_summary[["Selected predictors"]][selected_summary$Method == "Ridge"] <- "All predictors retained"
+    }
+
+    list(
+      summary = do.call(rbind, rows),
+      coefficients = coefficient_long,
+      coefficient_comparison = coefficient_wide,
+      selected_predictors = selected_summary
+    )
+  }
+
+  observeEvent(input$run_penalized_regression, {
+    results <- analysis_result()
+    shiny::req(has_severe_vif(results))
+    tryCatch(
+      {
+        penalized_result(fit_penalized_models(results))
+        showNotification("Ridge, LASSO, and Elastic Net finished.", type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Penalized regression failed:", conditionMessage(e)), type = "error", duration = 8)
+      }
     )
   })
 
@@ -4765,6 +4840,43 @@ server <- function(input, output, session) {
     )
   }
 
+  penalized_result_block <- function() {
+    result <- penalized_result()
+    if (!is.list(result) || !is.data.frame(result$summary)) {
+      return(NULL)
+    }
+    render_simple_table <- function(table, class_name) {
+      if (!is.data.frame(table) || nrow(table) == 0) {
+        return(NULL)
+      }
+      tags$table(
+        class = paste("table shiny-table penalized-journal-table", class_name),
+        tags$thead(tags$tr(lapply(names(table), tags$th))),
+        tags$tbody(lapply(seq_len(nrow(table)), function(row_index) {
+          tags$tr(lapply(table[row_index, , drop = TRUE], tags$td))
+        }))
+      )
+    }
+    div(
+      class = "regression-result-panel penalized-result-panel",
+      h3("Ridge/LASSO/Elastic Net"),
+      h4("Table 1. Penalized regression model performance"),
+      render_simple_table(result$summary, "penalized-summary-table"),
+      div(
+        class = "penalized-table-note",
+        "\u03BBmin was selected by cross-validation. Apparent R\u00B2 is reported for descriptive model performance; conventional p-values are not reported for penalized regression models."
+      ),
+      h4("Table 2. Penalized regression coefficients"),
+      render_simple_table(result$coefficient_comparison, "penalized-coefficient-comparison-table"),
+      div(
+        class = "penalized-table-note",
+        "Coefficients are estimated at \u03BBmin. A coefficient of 0 in LASSO or Elastic Net indicates that the predictor was not selected."
+      ),
+      h4("Table 3. Predictors retained by penalized regression"),
+      render_simple_table(result$selected_predictors, "penalized-selected-table")
+    )
+  }
+
   output$regression_results <- renderUI({
     if (is.null(input$run) || input$run == 0) {
       return(div(
@@ -4774,6 +4886,7 @@ server <- function(input, output, session) {
     }
 
     results <- analyses()
+    show_penalized <- is.list(penalized_result())
     tagList(
       div(
         class = "regression-results",
@@ -4782,14 +4895,19 @@ server <- function(input, output, session) {
           h3("Model overview"),
           model_overview_html_table(results)
         ),
+        penalized_result_block(),
         lapply(seq_along(results), function(index) {
           coefficient_result_block(results[[index]])
         }),
         effect_size_reference_panel(input$show_sr2, input$show_f2),
-        lapply(seq_along(results), function(index) {
-          plot_result_block(results[[index]], index)
-        }),
-        durbin_watson_result_block(results)
+        if (!isTRUE(show_penalized)) {
+          tagList(
+            lapply(seq_along(results), function(index) {
+              plot_result_block(results[[index]], index)
+            }),
+            durbin_watson_result_block(results)
+          )
+        }
       )
     )
   })
@@ -4951,6 +5069,105 @@ server <- function(input, output, session) {
     table
   }
 
+  coefficient_fit_line <- function(result) {
+    r2_label <- if (isTRUE(result$use_hc3) || isTRUE(result$use_bootstrap)) {
+      "OLS R\u00B2(adj. R\u00B2)"
+    } else {
+      "R\u00B2(adj. R\u00B2)"
+    }
+    paste(
+      sprintf(
+        "%s = %s (%s)",
+        r2_label,
+        format_decimal3(result$r_squared),
+        format_decimal3(result$adjusted_r_squared)
+      ),
+      sprintf(
+        "F(%s, %s) = %s, p %s",
+        result$f_df1,
+        result$f_df2,
+        format_decimal3(result$f_statistic),
+        format_p(result$f_p)
+      )
+    )
+  }
+
+  coefficient_stat_lines <- function(result) {
+    c(
+      sprintf(
+        "d(d\u1D64~4-d\u1D64) = %s (%s~%s)",
+        format_decimal3(result$dw_d),
+        format_decimal3(result$dw_crit$dU),
+        format_decimal3(4 - result$dw_crit$dU)
+      ),
+      sprintf(
+        "z(p) = %s (%s)",
+        format_decimal3(result$normality_statistic),
+        format_p(result$normality_p)
+      ),
+      sprintf(
+        "\u03C7\u00B2(p) = %s (%s)",
+        format_decimal3(result$homogeneity_statistic),
+        format_p(result$homogeneity_p)
+      )
+    )
+  }
+
+  coefficient_max_vif <- function(result) {
+    table <- result$coef_table
+    if (!is.data.frame(table) || !"VIF" %in% names(table)) {
+      return(NA_real_)
+    }
+    values <- suppressWarnings(as.numeric(table$VIF))
+    values <- values[is.finite(values)]
+    if (length(values) == 0) {
+      return(NA_real_)
+    }
+    max(values, na.rm = TRUE)
+  }
+
+  coefficient_vif_warning_line <- function(result) {
+    max_vif <- coefficient_max_vif(result)
+    if (is.na(max_vif) || max_vif <= 5) {
+      return(character(0))
+    }
+    if (max_vif > 10) {
+      return(sprintf(
+        "Multicollinearity warning: VIF exceeds 10 (max VIF = %s). Consider Ridge regression, LASSO, or Elastic Net as alternative analyses.",
+        format_decimal3(max_vif)
+      ))
+    }
+    sprintf(
+      "Multicollinearity caution: VIF exceeds 5 (max VIF = %s). Interpret individual regression coefficients with caution.",
+      format_decimal3(max_vif)
+    )
+  }
+
+  has_severe_vif <- function(results) {
+    if (!is.list(results) || length(results) == 0) {
+      return(FALSE)
+    }
+    any(vapply(results, function(result) {
+      max_vif <- coefficient_max_vif(result)
+      !is.na(max_vif) && max_vif > 10
+    }, logical(1)))
+  }
+
+  coefficient_note_line <- function(result) {
+    paste(
+      if (isTRUE(input$show_vif)) "Tolerance = 1 - R\u00B2 for each predictor;" else NULL,
+      if (isTRUE(input$show_vif)) "VIF = Variance Inflation Factor;" else NULL,
+      if (isTRUE(result$use_hc3)) "HC3 SE = heteroskedasticity-consistent standard error type 3;" else NULL,
+      if (isTRUE(result$use_bootstrap)) "Boot SE, LLCI, ULCI, and Boot p are bootstrap estimates based on the selected bootstrap resamples and seed number;" else NULL,
+      if (isTRUE(input$show_sr2)) "sr\u00B2 = squared semi-partial correlation, unique R\u00B2 contribution for each coefficient;" else NULL,
+      if (isTRUE(input$show_f2)) "f\u00B2 = sr\u00B2 / (1 - model R\u00B2);" else NULL,
+      if (isTRUE(result$use_hc3) || isTRUE(result$use_bootstrap)) "OLS R\u00B2 and adjusted R\u00B2 are ordinary least squares model fit indices;" else NULL,
+      "d(d\u1D64~4-d\u1D64) = Durbin-Watson statistic (upper critical value~4-upper critical value);",
+      "z(p) = Lilliefors corrected Kolmogorov-Smirnov residual normality test statistic (p-value);",
+      "\u03C7\u00B2(p) = Breusch-Pagan homoscedasticity test statistic (p-value)"
+    )
+  }
+
   excel_sheet_name <- function(name, used = character(0)) {
     name <- gsub("[\\\\/\\?\\*\\[\\]:]", " ", as.character(name %||% "Sheet"))
     name <- trimws(gsub("\\s+", " ", name))
@@ -4968,15 +5185,119 @@ server <- function(input, output, session) {
     candidate
   }
 
-  add_excel_table_sheet <- function(workbook, sheet_name, table, used_sheets) {
+  regression_excel_styles <- function() {
+    list(
+      title = openxlsx::createStyle(textDecoration = "bold", fontSize = 12, halign = "left"),
+      header = openxlsx::createStyle(textDecoration = "bold", halign = "center", valign = "center", border = "bottom", borderStyle = "thick"),
+      body = openxlsx::createStyle(halign = "center", valign = "center"),
+      left = openxlsx::createStyle(halign = "left", valign = "center", wrapText = TRUE),
+      wrap = openxlsx::createStyle(halign = "center", valign = "center", wrapText = TRUE),
+      summary = openxlsx::createStyle(halign = "center", valign = "center"),
+      warning = openxlsx::createStyle(halign = "center", valign = "center", wrapText = TRUE, fontColour = "#9A3412"),
+      note = openxlsx::createStyle(halign = "left", valign = "top", wrapText = TRUE),
+      top = openxlsx::createStyle(border = "top", borderStyle = "thick"),
+      bottom = openxlsx::createStyle(border = "bottom", borderStyle = "thick")
+    )
+  }
+
+  add_excel_table_sheet <- function(workbook, sheet_name, table, used_sheets, merge_shared_independent = FALSE) {
     sheet_name <- excel_sheet_name(sheet_name, used_sheets)
+    styles <- regression_excel_styles()
     openxlsx::addWorksheet(workbook, sheet_name)
     if (is.data.frame(table) && nrow(table) > 0) {
-      openxlsx::writeDataTable(workbook, sheet_name, table, tableStyle = "TableStyleMedium2")
-      openxlsx::setColWidths(workbook, sheet_name, cols = seq_along(table), widths = "auto")
+      openxlsx::writeData(workbook, sheet_name, table, startRow = 1, startCol = 1, withFilter = FALSE)
+      openxlsx::addStyle(workbook, sheet_name, styles$header, rows = 1, cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
+      openxlsx::addStyle(workbook, sheet_name, styles$body, rows = 2:(nrow(table) + 1), cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
+      openxlsx::addStyle(workbook, sheet_name, styles$left, rows = 2:(nrow(table) + 1), cols = 1, gridExpand = TRUE, stack = TRUE)
+      if (identical(sheet_name, "Model overview") && ncol(table) > 1) {
+        openxlsx::addStyle(workbook, sheet_name, styles$wrap, rows = 2:(nrow(table) + 1), cols = 2:ncol(table), gridExpand = TRUE, stack = TRUE)
+      }
+      openxlsx::addStyle(workbook, sheet_name, styles$bottom, rows = nrow(table) + 1, cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
+      if (isTRUE(merge_shared_independent) && ncol(table) > 2) {
+        independent_row <- which(as.character(table[[1]]) == "Independent variables")
+        independent_values <- as.character(unlist(table[independent_row, -1, drop = TRUE], use.names = FALSE))
+        if (
+          length(independent_row) == 1 &&
+          length(independent_values) == ncol(table) - 1 &&
+          all(!is.na(independent_values)) &&
+          all(nzchar(trimws(independent_values))) &&
+          length(unique(independent_values)) == 1
+        ) {
+          excel_row <- independent_row + 1
+          openxlsx::mergeCells(workbook, sheet_name, cols = 2:ncol(table), rows = excel_row)
+          openxlsx::addStyle(workbook, sheet_name, styles$body, rows = excel_row, cols = 2, gridExpand = TRUE, stack = TRUE)
+        }
+      }
+      if (identical(sheet_name, "Model overview")) {
+        overview_widths <- c(28, rep(24, max(0, ncol(table) - 1)))
+        openxlsx::setColWidths(workbook, sheet_name, cols = seq_along(table), widths = overview_widths[seq_along(table)])
+      } else {
+        openxlsx::setColWidths(workbook, sheet_name, cols = seq_along(table), widths = "auto")
+      }
     } else {
       openxlsx::writeData(workbook, sheet_name, "No data")
     }
+    c(used_sheets, sheet_name)
+  }
+
+  add_regression_result_sheet <- function(workbook, sheet_name, result, used_sheets) {
+    sheet_name <- excel_sheet_name(sheet_name, used_sheets)
+    table <- coefficient_export_table(result)
+    styles <- regression_excel_styles()
+    n_cols <- max(1, ncol(table))
+    data_start_row <- 3
+    header_row <- data_start_row
+
+    openxlsx::addWorksheet(workbook, sheet_name)
+    openxlsx::writeData(workbook, sheet_name, coefficient_panel_title(result), startRow = 1, startCol = 1, colNames = FALSE)
+    openxlsx::mergeCells(workbook, sheet_name, cols = 1:n_cols, rows = 1)
+    openxlsx::addStyle(workbook, sheet_name, styles$title, rows = 1, cols = 1, gridExpand = TRUE, stack = TRUE)
+
+    if (is.data.frame(table) && nrow(table) > 0 && ncol(table) > 0) {
+      openxlsx::writeData(workbook, sheet_name, table, startRow = data_start_row, startCol = 1, withFilter = FALSE)
+      openxlsx::addStyle(workbook, sheet_name, styles$top, rows = header_row, cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
+      openxlsx::addStyle(workbook, sheet_name, styles$header, rows = header_row, cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
+
+      body_rows <- (data_start_row + 1):(data_start_row + nrow(table))
+      openxlsx::addStyle(workbook, sheet_name, styles$body, rows = body_rows, cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
+      openxlsx::addStyle(workbook, sheet_name, styles$left, rows = body_rows, cols = 1, gridExpand = TRUE, stack = TRUE)
+
+      summary_lines <- c(coefficient_fit_line(result), coefficient_stat_lines(result))
+      summary_start <- data_start_row + nrow(table) + 1
+      for (index in seq_along(summary_lines)) {
+        row <- summary_start + index - 1
+        openxlsx::writeData(workbook, sheet_name, summary_lines[[index]], startRow = row, startCol = 1, colNames = FALSE)
+        openxlsx::mergeCells(workbook, sheet_name, cols = 1:ncol(table), rows = row)
+        openxlsx::addStyle(workbook, sheet_name, styles$summary, rows = row, cols = 1, gridExpand = TRUE, stack = TRUE)
+      }
+      openxlsx::addStyle(workbook, sheet_name, styles$top, rows = summary_start, cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
+
+      warning_line <- coefficient_vif_warning_line(result)
+      warning_row_count <- if (length(warning_line) > 0 && nzchar(warning_line[[1]])) 1L else 0L
+      if (warning_row_count > 0) {
+        warning_row <- summary_start + length(summary_lines)
+        openxlsx::writeData(workbook, sheet_name, warning_line[[1]], startRow = warning_row, startCol = 1, colNames = FALSE)
+        openxlsx::mergeCells(workbook, sheet_name, cols = 1:ncol(table), rows = warning_row)
+        openxlsx::addStyle(workbook, sheet_name, styles$warning, rows = warning_row, cols = 1, gridExpand = TRUE, stack = TRUE)
+        openxlsx::setRowHeights(workbook, sheet_name, rows = warning_row, heights = 28)
+      }
+      summary_end <- summary_start + length(summary_lines) + warning_row_count - 1
+      openxlsx::addStyle(workbook, sheet_name, styles$bottom, rows = summary_end, cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
+
+      note_row <- summary_end + 2
+      note <- coefficient_note_line(result)
+      openxlsx::writeData(workbook, sheet_name, note, startRow = note_row, startCol = 1, colNames = FALSE)
+      openxlsx::mergeCells(workbook, sheet_name, cols = 1:ncol(table), rows = note_row)
+      openxlsx::addStyle(workbook, sheet_name, styles$note, rows = note_row, cols = 1, gridExpand = TRUE, stack = TRUE)
+      openxlsx::setRowHeights(workbook, sheet_name, rows = note_row, heights = 48)
+
+      widths <- c(20, rep(10, max(0, ncol(table) - 1)))
+      openxlsx::setColWidths(workbook, sheet_name, cols = seq_len(ncol(table)), widths = widths[seq_len(ncol(table))])
+      openxlsx::freezePane(workbook, sheet_name, firstActiveRow = data_start_row + 1, firstActiveCol = 2)
+    } else {
+      openxlsx::writeData(workbook, sheet_name, "No data", startRow = data_start_row, startCol = 1, colNames = FALSE)
+    }
+
     c(used_sheets, sheet_name)
   }
 
@@ -5000,16 +5321,22 @@ server <- function(input, output, session) {
     used_sheets <- character(0)
     variable_table <- regression_variable_table()
 
-    used_sheets <- add_excel_table_sheet(workbook, "Model overview", model_overview_data_frame(results), used_sheets)
+    used_sheets <- add_excel_table_sheet(
+      workbook,
+      "Model overview",
+      model_overview_data_frame(results),
+      used_sheets,
+      merge_shared_independent = TRUE
+    )
 
     for (index in seq_along(results)) {
       result <- results[[index]]
       dependent <- all.vars(result$formula)[[1]]
       dependent_label <- display_variable_label_or_name(dependent, variable_table)
-      used_sheets <- add_excel_table_sheet(
+      used_sheets <- add_regression_result_sheet(
         workbook,
-        sprintf("Coefficient %s %s", index, dependent_label),
-        coefficient_export_table(result),
+        dependent_label,
+        result,
         used_sheets
       )
     }
@@ -5017,22 +5344,142 @@ server <- function(input, output, session) {
     openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
   }
 
+  ps_quote <- function(value) {
+    paste0("'", gsub("'", "''", enc2utf8(as.character(value %||% "")), fixed = TRUE), "'")
+  }
+
+  run_windows_dialog_script <- function(script) {
+    powershell <- Sys.which("powershell.exe")
+    if (!nzchar(powershell)) {
+      powershell <- Sys.which("powershell")
+    }
+    if (!nzchar(powershell)) {
+      return(character(0))
+    }
+    output <- tryCatch(
+      system2(
+        powershell,
+        c("-NoProfile", "-Sta", "-ExecutionPolicy", "Bypass", "-Command", script),
+        stdout = TRUE,
+        stderr = FALSE
+      ),
+      error = function(e) character(0)
+    )
+    output <- trimws(output[nzchar(output)])
+    if (length(output) > 0) output[[1]] else character(0)
+  }
+
+  choose_windows_save_file <- function(default_name, title) {
+    if (.Platform$OS.type != "windows") {
+      return(character(0))
+    }
+    script <- paste(
+      "Add-Type -AssemblyName System.Windows.Forms;",
+      "$dialog = New-Object System.Windows.Forms.SaveFileDialog;",
+      "$dialog.Title =", ps_quote(title), ";",
+      "$dialog.FileName =", ps_quote(default_name), ";",
+      "$dialog.Filter = 'Excel Workbook (*.xlsx)|*.xlsx|All Files (*.*)|*.*';",
+      "$dialog.DefaultExt = 'xlsx';",
+      "$dialog.AddExtension = $true;",
+      "$dialog.OverwritePrompt = $true;",
+      "if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {",
+      "[Console]::Out.WriteLine($dialog.FileName)",
+      "}"
+    )
+    run_windows_dialog_script(script)
+  }
+
+  choose_windows_directory <- function(caption) {
+    if (.Platform$OS.type != "windows") {
+      return(character(0))
+    }
+    script <- paste(
+      "Add-Type -AssemblyName System.Windows.Forms;",
+      "$dialog = New-Object System.Windows.Forms.OpenFileDialog;",
+      "$dialog.Title =", ps_quote(caption), ";",
+      "$dialog.CheckFileExists = $false;",
+      "$dialog.CheckPathExists = $true;",
+      "$dialog.ValidateNames = $false;",
+      "$dialog.FileName = 'Select this folder';",
+      "if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {",
+      "[Console]::Out.WriteLine([System.IO.Path]::GetDirectoryName($dialog.FileName))",
+      "}"
+    )
+    run_windows_dialog_script(script)
+  }
+
+  choose_tk_save_file <- function(default_name, title, extension, filetypes) {
+    if (requireNamespace("tcltk", quietly = TRUE)) {
+      path <- tryCatch(
+        as.character(tcltk::tkgetSaveFile(
+          initialfile = default_name,
+          defaultextension = extension,
+          filetypes = filetypes,
+          title = title
+        )),
+        error = function(e) character(0)
+      )
+      if (length(path) > 0 && nzchar(path[[1]])) {
+        return(path[[1]])
+      }
+    }
+    character(0)
+  }
+
+  choose_rstudio_save_file <- function(default_name, caption, filter) {
+    if (requireNamespace("rstudioapi", quietly = TRUE) && isTRUE(rstudioapi::isAvailable())) {
+      path <- tryCatch(
+        rstudioapi::selectFile(
+          caption = caption,
+          label = "Save",
+          path = file.path(getwd(), default_name),
+          filter = filter,
+          existing = FALSE
+        ),
+        error = function(e) character(0)
+      )
+      if (length(path) > 0 && nzchar(path[[1]])) {
+        return(path[[1]])
+      }
+    }
+    character(0)
+  }
+
   choose_excel_save_path <- function() {
     default_name <- sprintf("EasyFlow_Regression_Results_%s.xlsx", format(Sys.time(), "%Y%m%d_%H%M%S"))
-    if (requireNamespace("tcltk", quietly = TRUE)) {
-      path <- as.character(tcltk::tkgetSaveFile(
-        initialfile = default_name,
-        defaultextension = ".xlsx",
-        filetypes = "{{Excel Workbook} {.xlsx}} {{All Files} {*}}",
-        title = "Save EasyFlow Regression Results"
-      ))
+    title <- "Save EasyFlow Regression Results"
+    if (.Platform$OS.type == "windows") {
+      path <- choose_windows_save_file(default_name, title)
+      if (length(path) > 0 && nzchar(path[[1]])) {
+        return(path[[1]])
+      }
+    }
+    if (.Platform$OS.type == "windows") {
+      path <- choose_tk_save_file(default_name, title, ".xlsx", "{{Excel Workbook} {.xlsx}} {{All Files} {*}}")
       if (length(path) > 0 && nzchar(path[[1]])) {
         return(path[[1]])
       }
     }
     if (.Platform$OS.type == "windows") {
       filters <- matrix(c("Excel Workbook", "*.xlsx", "All Files", "*.*"), ncol = 2, byrow = TRUE)
-      path <- utils::choose.files(default = default_name, caption = "Save EasyFlow Regression Results", multi = FALSE, filters = filters, index = 1)
+      path <- utils::choose.files(default = default_name, caption = title, multi = FALSE, filters = filters, index = 1)
+      if (length(path) > 0 && nzchar(path[[1]])) {
+        return(path[[1]])
+      }
+    }
+    path <- choose_rstudio_save_file(default_name, title, "Excel Workbook (*.xlsx)")
+    if (length(path) > 0 && nzchar(path[[1]])) {
+      return(path[[1]])
+    }
+    choose_tk_save_file(default_name, title, ".xlsx", "{{Excel Workbook} {.xlsx}} {{All Files} {*}}")
+  }
+
+  choose_rstudio_directory <- function(caption) {
+    if (requireNamespace("rstudioapi", quietly = TRUE) && isTRUE(rstudioapi::isAvailable())) {
+      path <- tryCatch(
+        rstudioapi::selectDirectory(caption = caption, label = "Select", path = getwd()),
+        error = function(e) character(0)
+      )
       if (length(path) > 0 && nzchar(path[[1]])) {
         return(path[[1]])
       }
@@ -5041,17 +5488,28 @@ server <- function(input, output, session) {
   }
 
   choose_figure_save_dir <- function() {
-    if (requireNamespace("tcltk", quietly = TRUE)) {
-      path <- as.character(tcltk::tk_choose.dir(
-        default = getwd(),
-        caption = "Choose folder for EasyFlow Regression figures"
-      ))
+    caption <- "Choose folder for EasyFlow Regression figures"
+    if (.Platform$OS.type == "windows") {
+      path <- choose_windows_directory(caption)
       if (length(path) > 0 && nzchar(path[[1]]) && dir.exists(path[[1]])) {
         return(path[[1]])
       }
     }
     if (.Platform$OS.type == "windows") {
-      path <- utils::choose.dir(default = getwd(), caption = "Choose folder for EasyFlow Regression figures")
+      path <- utils::choose.dir(default = getwd(), caption = caption)
+      if (length(path) > 0 && nzchar(path[[1]]) && dir.exists(path[[1]])) {
+        return(path[[1]])
+      }
+    }
+    path <- choose_rstudio_directory(caption)
+    if (length(path) > 0 && nzchar(path[[1]]) && dir.exists(path[[1]])) {
+      return(path[[1]])
+    }
+    if (requireNamespace("tcltk", quietly = TRUE)) {
+      path <- tryCatch(
+        as.character(tcltk::tk_choose.dir(default = getwd(), caption = caption)),
+        error = function(e) character(0)
+      )
       if (length(path) > 0 && nzchar(path[[1]]) && dir.exists(path[[1]])) {
         return(path[[1]])
       }
@@ -5097,6 +5555,7 @@ server <- function(input, output, session) {
     shiny::req(!is.null(input$run), input$run > 0)
     path <- choose_excel_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
+      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
       return(invisible(NULL))
     }
     if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) {
@@ -5117,6 +5576,7 @@ server <- function(input, output, session) {
     shiny::req(!is.null(input$run), input$run > 0)
     directory <- choose_figure_save_dir()
     if (length(directory) == 0 || !nzchar(directory[[1]])) {
+      showNotification("Folder selection dialog was not available or was canceled.", type = "warning", duration = 5)
       return(invisible(NULL))
     }
     tryCatch(
