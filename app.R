@@ -232,6 +232,41 @@ coefficient_collinearity <- function(model_matrix) {
   list(tolerance = tolerance, vif = vif)
 }
 
+coefficient_effect_sizes <- function(model) {
+  model_matrix <- stats::model.matrix(model)
+  terms <- colnames(model_matrix)
+  outcome <- stats::model.response(stats::model.frame(model))
+  full_r2 <- unname(summary(model)$r.squared)
+  total_ss <- sum((outcome - mean(outcome, na.rm = TRUE))^2, na.rm = TRUE)
+  sr2 <- stats::setNames(rep(NA_real_, length(terms)), terms)
+  f2 <- stats::setNames(rep(NA_real_, length(terms)), terms)
+
+  if (is.na(full_r2) || total_ss <= 0) {
+    return(list(sr2 = sr2, f2 = f2))
+  }
+
+  for (term in terms) {
+    if (identical(term, "(Intercept)")) {
+      next
+    }
+    term_index <- match(term, terms)
+    keep <- setdiff(seq_along(terms), term_index)
+    if (length(keep) == 0) {
+      next
+    }
+    reduced_fit <- tryCatch(stats::lm.fit(model_matrix[, keep, drop = FALSE], outcome), error = function(e) NULL)
+    if (is.null(reduced_fit)) {
+      next
+    }
+    reduced_r2 <- 1 - sum(reduced_fit$residuals^2, na.rm = TRUE) / total_ss
+    value <- max(0, full_r2 - reduced_r2)
+    sr2[term] <- value
+    f2[term] <- if (full_r2 >= 1) Inf else value / (1 - full_r2)
+  }
+
+  list(sr2 = sr2, f2 = f2)
+}
+
 coeftest_table <- function(model, vcov_matrix = NULL) {
   test <- if (is.null(vcov_matrix)) {
     lmtest::coeftest(model)
@@ -241,6 +276,7 @@ coeftest_table <- function(model, vcov_matrix = NULL) {
 
   model_matrix <- stats::model.matrix(model)
   collinearity <- coefficient_collinearity(model_matrix)
+  effect_sizes <- coefficient_effect_sizes(model)
   outcome <- stats::model.response(stats::model.frame(model))
   outcome_sd <- stats::sd(outcome, na.rm = TRUE)
   predictor_sd <- apply(model_matrix, 2, stats::sd, na.rm = TRUE)
@@ -254,6 +290,8 @@ coeftest_table <- function(model, vcov_matrix = NULL) {
     beta = beta,
     t = test[, 3],
     p = test[, 4],
+    sr2 = effect_sizes$sr2[rownames(test)],
+    f2 = effect_sizes$f2[rownames(test)],
     Tolerance = collinearity$tolerance[rownames(test)],
     VIF = collinearity$vif[rownames(test)],
     row.names = NULL,
@@ -288,6 +326,35 @@ bootstrap_coef_table <- function(data, formula, r = 2000, conf = .95, seed = 123
     Boot_LLCI = limits[, 1],
     Boot_ULCI = limits[, 2],
     Boot_p = apply(boot_fit$t, 2, boot_p),
+    row.names = NULL,
+    check.names = FALSE
+  )
+}
+
+bootstrap_summary_table <- function(boot_samples, original_fit, conf = .95) {
+  if (!is.matrix(boot_samples) || nrow(boot_samples) == 0) {
+    return(NULL)
+  }
+
+  alpha <- (1 - conf) / 2
+  limits <- t(apply(boot_samples, 2, stats::quantile, probs = c(alpha, 1 - alpha), na.rm = TRUE))
+
+  boot_p <- function(x) {
+    n <- sum(!is.na(x))
+    if (n == 0) {
+      return(NA_real_)
+    }
+    lower <- (sum(x <= 0, na.rm = TRUE) + 1) / (n + 1)
+    upper <- (sum(x >= 0, na.rm = TRUE) + 1) / (n + 1)
+    min(1, 2 * min(lower, upper))
+  }
+
+  data.frame(
+    Term = names(coef(original_fit)),
+    Boot_SE = apply(boot_samples, 2, stats::sd, na.rm = TRUE),
+    Boot_LLCI = limits[, 1],
+    Boot_ULCI = limits[, 2],
+    Boot_p = apply(boot_samples, 2, boot_p),
     row.names = NULL,
     check.names = FALSE
   )
@@ -718,8 +785,13 @@ ui <- navbarPage(
         ),
         div(
           class = "workspace-panel",
-          h3("Regression setup"),
+          h3("EasyFlow Regression"),
           uiOutput("regression_setup"),
+          div(
+            class = "bootstrap-progress-slot",
+            uiOutput("bootstrap_progress"),
+            uiOutput("bootstrap_stop_control")
+          ),
           uiOutput("regression_results")
         )
       )
@@ -763,9 +835,11 @@ server <- function(input, output, session) {
   active_role <- reactiveVal("dependent")
   filter_names <- reactiveVal(character(0))
   dependent_names <- reactiveVal(character(0))
+  dependent_order <- reactiveVal(character(0))
   independent_names <- reactiveVal(character(0))
   control_names <- reactiveVal(character(0))
   predictor_order <- reactiveVal(character(0))
+  predictor_order_initialized <- reactiveVal(FALSE)
   var_label_overrides <- reactiveVal(character(0))
   category_label_values <- reactiveVal(NULL)
   pending_settings <- reactiveVal(NULL)
@@ -1060,6 +1134,24 @@ server <- function(input, output, session) {
 
     active_data_file(list(path = candidate, name = file_name, restored = TRUE))
     TRUE
+  }
+
+  settings_external_data_path <- function(settings, settings_path = NULL) {
+    if (is.null(settings_path) || !nzchar(settings_path)) {
+      return("")
+    }
+
+    file_name <- basename(settings_scalar(settings$data_file %||% settings$embedded_data_file$name))
+    if (!nzchar(file_name)) {
+      return("")
+    }
+
+    candidate <- file.path(dirname(settings_path), file_name)
+    if (!file.exists(candidate)) {
+      return("")
+    }
+
+    normalizePath(candidate, winslash = "/", mustWork = TRUE)
   }
 
   settings_variable_info <- function(settings) {
@@ -1397,6 +1489,19 @@ server <- function(input, output, session) {
     if (!is.null(settings$seed)) updateNumericInput(session, "seed", value = settings$seed)
     measurement_overrides(settings_measurement_overrides(settings))
 
+    settings_data_path <- settings_external_data_path(settings, settings_path)
+    current_path <- if (is.null(current_data_file())) {
+      ""
+    } else {
+      normalizePath(current_data_file()$path, winslash = "/", mustWork = FALSE)
+    }
+    if (nzchar(settings_data_path) && !identical(settings_data_path, current_path)) {
+      pending_settings(settings)
+      reset_on_dataset_load(FALSE)
+      active_data_file(list(path = settings_data_path, name = basename(settings_data_path), restored = TRUE))
+      return()
+    }
+
     if (is.null(current_data_file())) {
       pending_settings(settings)
       if (restore_external_data_file(settings, settings_path)) {
@@ -1422,6 +1527,13 @@ server <- function(input, output, session) {
         selected <- intersect(selected, cols)
         selected_names(selected)
         set_role_choices(selected, dependent, independent, controls)
+        if (!is.null(settings$dependent_order)) {
+          dependent_order(intersect(settings_vector(settings$dependent_order), dependent_names()))
+        }
+        if (!is.null(settings$predictor_order)) {
+          predictor_order(intersect(settings_vector(settings$predictor_order), predictor_candidates()))
+          predictor_order_initialized(TRUE)
+        }
 
         applied <- isTRUE(settings$selection_applied) ||
           (settings$data_step %||% "") %in% c("review_selected_variables", "assign_variable_roles", "category_labels")
@@ -1459,6 +1571,13 @@ server <- function(input, output, session) {
     if (!is.null(settings$independent)) updateSelectizeInput(session, "xs", selected = intersect(settings_vector(settings$independent), cols))
     if (!is.null(settings$covariates)) updateSelectizeInput(session, "covariates", selected = intersect(settings_vector(settings$covariates), cols))
     set_role_choices(selected, dependent, independent, controls)
+    if (!is.null(settings$dependent_order)) {
+      dependent_order(intersect(settings_vector(settings$dependent_order), dependent_names()))
+    }
+    if (!is.null(settings$predictor_order)) {
+      predictor_order(intersect(settings_vector(settings$predictor_order), predictor_candidates()))
+      predictor_order_initialized(TRUE)
+    }
 
     applied <- isTRUE(settings$selection_applied) ||
       (settings$data_step %||% "") %in% c("review_selected_variables", "assign_variable_roles", "category_labels")
@@ -1675,10 +1794,12 @@ server <- function(input, output, session) {
     }
     step4_variable_info(merge_state_into_info(stage3_info, submitted_state, selected_only = TRUE))
     roles_applied(TRUE)
+    dependent_order(dependent_candidates())
     predictor_order(predictor_candidates())
+    predictor_order_initialized(TRUE)
     active_step("step4")
     data_view("labels")
-    updateSelectInput(session, "y", choices = selected_names(), selected = utils::head(dependent_names(), 1))
+    sync_dependent_order(update_input = TRUE)
     updateSelectizeInput(session, "xs", choices = selected_names(), selected = independent_names(), server = TRUE)
     updateSelectizeInput(session, "covariates", choices = selected_names(), selected = control_names(), server = TRUE)
     mark_settings_dirty()
@@ -2431,17 +2552,17 @@ server <- function(input, output, session) {
 
     if (!use_bootstrap) {
       if (use_hc3) {
-        return(keep_columns(coef_table, c("Term", "B", "HC3 SE", "t", "p", "Tolerance", "VIF")))
+        return(keep_columns(coef_table, c("Term", "B", "HC3 SE", "t", "p", "sr2", "f2", "Tolerance", "VIF")))
       }
-      return(keep_columns(coef_table, c("Term", "B", "SE", "beta", "t", "p", "Tolerance", "VIF")))
+      return(keep_columns(coef_table, c("Term", "B", "SE", "beta", "t", "p", "sr2", "f2", "Tolerance", "VIF")))
     }
 
     boot_table <- result$boot_table
     if (!is.data.frame(boot_table) || nrow(boot_table) == 0) {
       if (use_hc3) {
-        return(keep_columns(coef_table, c("Term", "B", "HC3 SE")))
+        return(keep_columns(coef_table, c("Term", "B", "HC3 SE", "sr2", "f2", "Tolerance", "VIF")))
       }
-      return(keep_columns(coef_table, c("Term", "B")))
+      return(keep_columns(coef_table, c("Term", "B", "sr2", "f2", "Tolerance", "VIF")))
     }
 
     boot_match <- match(coef_table$Term, boot_table$Term)
@@ -2454,6 +2575,10 @@ server <- function(input, output, session) {
         LLCI = boot_table$Boot_LLCI[boot_match],
         ULCI = boot_table$Boot_ULCI[boot_match],
         `Boot p` = boot_table$Boot_p[boot_match],
+        sr2 = coef_table$sr2,
+        f2 = coef_table$f2,
+        Tolerance = coef_table$Tolerance,
+        VIF = coef_table$VIF,
         check.names = FALSE
       )
     } else {
@@ -2464,22 +2589,28 @@ server <- function(input, output, session) {
         LLCI = boot_table$Boot_LLCI[boot_match],
         ULCI = boot_table$Boot_ULCI[boot_match],
         `Boot p` = boot_table$Boot_p[boot_match],
+        sr2 = coef_table$sr2,
+        f2 = coef_table$f2,
+        Tolerance = coef_table$Tolerance,
+        VIF = coef_table$VIF,
         check.names = FALSE
       )
     }
   }
 
   coefficient_panel_title <- function(result) {
-    if (isTRUE(result$use_hc3) && isTRUE(result$use_bootstrap)) {
-      return("Bootstrap + HC3 Regression")
+    method <- if (isTRUE(result$use_hc3) && isTRUE(result$use_bootstrap)) {
+      "Bootstrap + HC3 Regression"
+    } else if (isTRUE(result$use_bootstrap)) {
+      "Bootstrap Regression"
+    } else if (isTRUE(result$use_hc3)) {
+      "HC3 Regression"
+    } else {
+      "OLS Regression"
     }
-    if (isTRUE(result$use_bootstrap)) {
-      return("Bootstrap Regression")
-    }
-    if (isTRUE(result$use_hc3)) {
-      return("HC3 Regression")
-    }
-    "OLS Regression"
+    dependent <- all.vars(result$formula)[[1]]
+    dependent_label <- display_variable_name(dependent, regression_variable_table())
+    sprintf("%s(%s)", method, dependent_label)
   }
 
   coefficient_output_table <- function(table, predictors = character(0), include_references = TRUE) {
@@ -2598,7 +2729,73 @@ server <- function(input, output, session) {
     )
   }
 
-  analysis <- eventReactive(input$run, {
+  effect_size_reference_panel <- function(show_sr2 = FALSE, show_f2 = FALSE) {
+    if (!isTRUE(show_sr2) && !isTRUE(show_f2)) {
+      return(NULL)
+    }
+    rows <- list()
+    if (isTRUE(show_sr2)) {
+      rows <- c(rows, list(tags$tr(
+        tags$td(tags$span("sr", tags$sup("2"))),
+        tags$td("Cohen et al. (2003); Pedhazur (1997)"),
+        tags$td(".01"),
+        tags$td(".09"),
+        tags$td(".25")
+      )))
+    }
+    if (isTRUE(show_f2)) {
+      rows <- c(rows, list(tags$tr(
+        tags$td(tags$span("Cohen's f", tags$sup("2"))),
+        tags$td("Cohen et al. (2003)"),
+        tags$td(".02"),
+        tags$td(".15"),
+        tags$td(".35")
+      )))
+    }
+    tagList(
+      div(
+        class = "effect-size-reference-panel",
+        h4("Effect Size Guidelines"),
+        tags$table(
+          class = "effect-size-reference-table",
+          tags$thead(tags$tr(
+            tags$th("Effect size"),
+            tags$th("Reference"),
+            tags$th("Small"),
+            tags$th("Medium"),
+            tags$th("Large")
+          )),
+          tags$tbody(rows)
+        ),
+        if (isTRUE(show_sr2)) {
+          p(
+            class = "effect-size-reference-note",
+            tags$span("Squared semi-partial correlations (sr", tags$sup("2"), ") were examined to estimate the unique variance explained by each predictor (Cohen et al., 2003; Pedhazur, 1997). Values of .01, .09, and .25 were interpreted as small, medium, and large effects, respectively.")
+          )
+        },
+        p(
+          class = "effect-size-reference-citation",
+          "Cohen, J., Cohen, P., West, S. G., & Leona S. Aiken (2003). Applied multiple regression/correlation analysis for the behavioral sciences (3rd ed.). Lawrence Erlbaum Associates."
+        ),
+        if (isTRUE(show_sr2)) {
+          p(
+            class = "effect-size-reference-citation",
+            "Elazar J. Pedhazur (1997). Multiple regression in behavioral research: Explanation and prediction (3rd ed.). Harcourt Brace."
+          )
+        }
+      )
+    )
+  }
+
+  analysis_result <- reactiveVal(NULL)
+  bootstrap_job <- reactiveVal(NULL)
+  bootstrap_status <- reactiveVal(NULL)
+  bootstrap_cancel_requested <- reactiveVal(FALSE)
+  bootstrap_process <- reactiveVal(NULL)
+  bootstrap_stop_visible <- reactiveVal(FALSE)
+  bootstrap_tick <- reactiveTimer(200, session)
+
+  prepare_analysis_result <- function() {
     req(current_data_file())
     shiny::validate(shiny::need(isTRUE(selection_applied()), "Apply Step 2 variable selection before running regression."))
     shiny::validate(shiny::need(isTRUE(roles_applied()), "Apply Step 3 role assignment before running regression."))
@@ -2644,13 +2841,7 @@ server <- function(input, output, session) {
       names(coef_table)[names(coef_table) == "SE"] <- "HC3 SE"
     }
 
-    boot_table <- if (use_bootstrap) {
-      bootstrap_coef_table(data, formula, r = as.integer(input$boot_r %||% 1000), seed = input$seed %||% as.integer(format(Sys.Date(), "%Y%m%d")))
-    } else {
-      NULL
-    }
-
-    list(
+    result <- list(
       model = model,
       formula = formula,
       n = stats::nobs(model),
@@ -2685,7 +2876,7 @@ server <- function(input, output, session) {
         check.names = FALSE
       ),
       dw_result = data.frame(
-        Item = c("Durbin-Watson d", "n", "p", "dL", "dU", "4 - dU", "4 - dL", "Decision", "Note"),
+        Item = c("Durbin-Watson d", "n", "p", "dL", "d\u1D64", "4 - d\u1D64", "4 - dL", "Decision", "Note"),
         Value = c(
           round(dw_d, 4),
           dw_n,
@@ -2703,9 +2894,193 @@ server <- function(input, output, session) {
       use_hc3 = use_hc3,
       use_bootstrap = use_bootstrap,
       coef_table = coef_table,
-      boot_table = boot_table,
+      boot_table = NULL,
       predictors = predictors
     )
+
+    if (!isTRUE(use_bootstrap)) {
+      return(list(result = result, job = NULL))
+    }
+
+    complete_data <- model.frame(formula, data = data, na.action = na.omit)
+    original_fit <- lm(formula, data = complete_data)
+    terms <- names(coef(original_fit))
+    r <- as.integer(input$boot_r %||% 1000)
+    if (is.na(r) || r < 1) {
+      r <- 1000
+    }
+
+    list(
+      result = result,
+      job = list(
+        complete_data = complete_data,
+        formula = formula,
+        original_fit = original_fit,
+        terms = terms,
+        progress_file = tempfile("easyflow_bootstrap_progress_", fileext = ".rds"),
+        result_file = tempfile("easyflow_bootstrap_result_", fileext = ".rds"),
+        done = 0L,
+        r = r,
+        seed = input$seed %||% as.integer(format(Sys.Date(), "%Y%m%d")),
+        chunk = min(100L, max(10L, ceiling(r / 100))),
+        cancel = FALSE
+      )
+    )
+  }
+
+  start_bootstrap_process <- function(job) {
+    process <- callr::r_bg(
+      function(job) {
+        set.seed(job$seed)
+        samples <- matrix(NA_real_, nrow = job$r, ncol = length(job$terms), dimnames = list(NULL, job$terms))
+        saveRDS(list(done = 0L, r = job$r), job$progress_file)
+
+        n <- nrow(job$complete_data)
+        done <- 0L
+        while (done < job$r) {
+          next_done <- min(job$r, done + job$chunk)
+          for (row_index in seq.int(done + 1L, next_done)) {
+            indices <- sample.int(n, n, replace = TRUE)
+            fit <- tryCatch(stats::lm(job$formula, data = job$complete_data[indices, , drop = FALSE]), error = function(e) NULL)
+            if (!is.null(fit)) {
+              values <- stats::coef(fit)
+              samples[row_index, names(values)] <- values
+            }
+          }
+          done <- next_done
+          saveRDS(list(done = done, r = job$r), job$progress_file)
+        }
+
+        saveRDS(list(samples = samples), job$result_file)
+        TRUE
+      },
+      args = list(job = job),
+      supervise = TRUE
+    )
+    bootstrap_process(process)
+  }
+
+  poll_bootstrap_process <- function() {
+    job <- bootstrap_job()
+    if (is.null(job)) {
+      return()
+    }
+    process <- bootstrap_process()
+
+    if (isTRUE(job$cancel) || isTRUE(bootstrap_cancel_requested())) {
+      if (!is.null(process) && process$is_alive()) {
+        process$kill()
+      }
+      bootstrap_process(NULL)
+      bootstrap_job(NULL)
+      bootstrap_status(NULL)
+      bootstrap_stop_visible(FALSE)
+      bootstrap_cancel_requested(FALSE)
+      showNotification("Bootstrap stopped.", type = "warning")
+      return()
+    }
+
+    if (file.exists(job$progress_file)) {
+      progress <- tryCatch(readRDS(job$progress_file), error = function(e) NULL)
+      if (is.list(progress)) {
+        job$done <- as.integer(progress$done %||% job$done)
+        bootstrap_job(job)
+        bootstrap_status(list(done = job$done, r = job$r, stopping = FALSE, message = "Running regression"))
+      }
+    }
+
+    if (is.null(process)) {
+      return()
+    }
+    exit_status <- process$get_exit_status()
+    if (is.null(exit_status)) {
+      return()
+    }
+
+    if (!identical(exit_status, 0L)) {
+      bootstrap_process(NULL)
+      bootstrap_job(NULL)
+      bootstrap_status(NULL)
+      bootstrap_stop_visible(FALSE)
+      bootstrap_cancel_requested(FALSE)
+      showNotification("Bootstrap failed or was interrupted.", type = "error")
+      return()
+    }
+
+    if (file.exists(job$result_file)) {
+      boot_result <- tryCatch(readRDS(job$result_file), error = function(e) NULL)
+      result <- analysis_result()
+      result$boot_table <- bootstrap_summary_table(boot_result$samples, job$original_fit)
+      analysis_result(result)
+      bootstrap_process(NULL)
+      bootstrap_job(NULL)
+      bootstrap_status(NULL)
+      bootstrap_stop_visible(FALSE)
+      bootstrap_cancel_requested(FALSE)
+      showNotification("Bootstrap regression finished.", type = "message")
+    }
+  }
+
+  observeEvent(input$run, {
+    bootstrap_job(NULL)
+    bootstrap_cancel_requested(FALSE)
+    bootstrap_stop_visible(FALSE)
+    bootstrap_status(list(done = 0L, r = 0L, stopping = FALSE, message = "Running regression"))
+    prepared <- prepare_analysis_result()
+    analysis_result(prepared$result)
+    if (is.null(prepared$job)) {
+      bootstrap_status(NULL)
+      return()
+    }
+    set.seed(prepared$job$seed)
+    bootstrap_status(list(done = 0L, r = prepared$job$r, stopping = FALSE, message = "Starting bootstrap"))
+    bootstrap_stop_visible(TRUE)
+    session$onFlushed(function() {
+      bootstrap_job(prepared$job)
+      start_bootstrap_process(prepared$job)
+    }, once = TRUE)
+  })
+
+  observeEvent(input$stop_bootstrap, {
+    bootstrap_cancel_requested(TRUE)
+    process <- bootstrap_process()
+    if (!is.null(process) && process$is_alive()) {
+      process$kill()
+    }
+    bootstrap_process(NULL)
+    job <- bootstrap_job()
+    if (!is.null(job)) {
+      job$cancel <- TRUE
+    }
+    bootstrap_job(NULL)
+    bootstrap_status(NULL)
+    bootstrap_stop_visible(FALSE)
+  })
+
+  observeEvent(input$stop_bootstrap_now, {
+    bootstrap_cancel_requested(TRUE)
+    process <- bootstrap_process()
+    if (!is.null(process) && process$is_alive()) {
+      process$kill()
+    }
+    bootstrap_process(NULL)
+    job <- bootstrap_job()
+    if (!is.null(job)) {
+      job$cancel <- TRUE
+    }
+    bootstrap_job(NULL)
+    bootstrap_status(NULL)
+    bootstrap_stop_visible(FALSE)
+  }, ignoreInit = TRUE)
+
+  observe({
+    bootstrap_tick()
+    isolate(poll_bootstrap_process())
+  })
+
+  analysis <- reactive({
+    req(analysis_result())
+    analysis_result()
   })
 
   output$data_loaded_message <- renderText({
@@ -3555,7 +3930,7 @@ server <- function(input, output, session) {
   output$regression_variable_list <- renderUI({
     table <- regression_variable_table()
     selected <- selected_names()
-    dependent <- intersect(dependent_names(), selected)
+    dependent <- intersect(sync_dependent_order(update_input = FALSE), selected)
     independent <- intersect(independent_names(), selected)
     controls <- intersect(control_names(), selected)
 
@@ -3630,10 +4005,38 @@ server <- function(input, output, session) {
     ))
   }
 
+  dependent_candidates <- function() {
+    intersect(dependent_names(), selected_names())
+  }
+
+  sync_dependent_order <- function(selected_item = NULL, update_input = TRUE) {
+    candidates <- dependent_candidates()
+    current <- dependent_order()
+    ordered <- c(intersect(current, candidates), setdiff(candidates, current))
+    if (!identical(current, ordered)) {
+      dependent_order(ordered)
+    }
+    if (isTRUE(update_input)) {
+      selected_item <- selected_item %||% input$y %||% utils::head(ordered, 1)
+      selected_item <- intersect(as.character(selected_item), ordered)
+      updateSelectInput(
+        session,
+        "y",
+        choices = display_variable_choices(ordered, regression_variable_table()),
+        selected = utils::head(selected_item, 1)
+      )
+    }
+    invisible(ordered)
+  }
+
   sync_predictor_order <- function(selected_item = NULL, update_input = TRUE) {
     candidates <- predictor_candidates()
     current <- predictor_order()
-    ordered <- c(intersect(current, candidates), setdiff(candidates, current))
+    ordered <- intersect(current, candidates)
+    if (!isTRUE(predictor_order_initialized()) && isTRUE(roles_applied())) {
+      ordered <- c(ordered, setdiff(candidates, ordered))
+      predictor_order_initialized(TRUE)
+    }
     if (!identical(current, ordered)) {
       predictor_order(ordered)
     }
@@ -3651,8 +4054,39 @@ server <- function(input, output, session) {
   }
 
   observe({
+    dependent_candidates()
+    sync_dependent_order()
+  })
+
+  observe({
     predictor_candidates()
     sync_predictor_order()
+  })
+
+  observeEvent(input$move_dependent_up, {
+    order <- dependent_order()
+    selected <- as.character(input$y %||% "")
+    index <- match(selected, order)
+    if (is.na(index) || index <= 1) {
+      return()
+    }
+    order[c(index - 1, index)] <- order[c(index, index - 1)]
+    dependent_order(order)
+    sync_dependent_order(selected)
+    mark_settings_dirty()
+  })
+
+  observeEvent(input$move_dependent_down, {
+    order <- dependent_order()
+    selected <- as.character(input$y %||% "")
+    index <- match(selected, order)
+    if (is.na(index) || index >= length(order)) {
+      return()
+    }
+    order[c(index, index + 1)] <- order[c(index + 1, index)]
+    dependent_order(order)
+    sync_dependent_order(selected)
+    mark_settings_dirty()
   })
 
   observeEvent(input$move_predictor_up, {
@@ -3681,6 +4115,34 @@ server <- function(input, output, session) {
     mark_settings_dirty()
   })
 
+  observeEvent(input$add_predictor_from_variables, {
+    selected <- as.character(input$available_predictors %||% "")
+    selected <- intersect(selected, predictor_candidates())
+    if (length(selected) == 0) {
+      return()
+    }
+    order <- sync_predictor_order(update_input = FALSE)
+    order <- c(order, setdiff(selected, order))
+    predictor_order(order)
+    predictor_order_initialized(TRUE)
+    sync_predictor_order(utils::head(selected, 1))
+    mark_settings_dirty()
+  })
+
+  observeEvent(input$remove_predictor_to_variables, {
+    selected <- as.character(input$predictor_order %||% "")
+    order <- sync_predictor_order(update_input = FALSE)
+    if (!selected %in% order) {
+      return()
+    }
+    next_selection <- utils::head(setdiff(order, selected), 1)
+    predictor_order(setdiff(order, selected))
+    predictor_order_initialized(TRUE)
+    sync_predictor_order(next_selection)
+    updateSelectInput(session, "available_predictors", selected = selected)
+    mark_settings_dirty()
+  })
+
   output$regression_setup <- renderUI({
     selected <- as.character(selected_names() %||% character(0))
     if (length(selected) == 0) {
@@ -3695,12 +4157,40 @@ server <- function(input, output, session) {
     dependent <- intersect(as.character(dependent_names() %||% character(0)), selected)
     independent <- intersect(as.character(independent_names() %||% character(0)), selected)
     controls <- intersect(as.character(control_names() %||% character(0)), selected)
-    dependent_selected <- utils::head(dependent, 1)
+    ordered_dependents <- sync_dependent_order(update_input = FALSE)
+    dependent_selected <- input$y %||% utils::head(ordered_dependents, 1)
+    dependent_selected <- utils::head(intersect(as.character(dependent_selected), ordered_dependents), 1)
+    if (length(dependent_selected) == 0) {
+      dependent_selected <- utils::head(ordered_dependents, 1)
+    }
     ordered_predictors <- sync_predictor_order(update_input = FALSE)
+    available_predictors <- predictor_candidates()
+    dependent_list_size <- min(max(length(ordered_dependents), 4), 10)
     predictor_list_size <- min(max(length(ordered_predictors), 4), 10)
+    available_list_size <- 18
     variable_table <- regression_variable_table()
-    dependent_choices <- display_variable_choices(dependent, variable_table)
+    dependent_choices <- display_variable_choices(ordered_dependents, variable_table)
     predictor_choices <- display_variable_choices(ordered_predictors, variable_table)
+    available_choices <- display_variable_choices(available_predictors, variable_table)
+    add_disabled <- length(setdiff(available_predictors, ordered_predictors)) == 0
+    remove_disabled <- length(ordered_predictors) == 0
+    setup_variable_list <- div(
+      class = "regression-setup-variable-box",
+      div("Variables", class = "regression-setup-variable-title"),
+      if (length(available_predictors) == 0) {
+        div("No predictor variables selected.", class = "regression-variable-empty")
+      } else {
+        selectInput(
+          "available_predictors",
+          label = NULL,
+          choices = available_choices,
+          selected = utils::head(available_predictors, 1),
+          multiple = FALSE,
+          selectize = FALSE,
+          size = available_list_size
+        )
+      }
+    )
     bootstrap_choices <- c(
       "1000 (test)" = "1000",
       "5000" = "5000",
@@ -3728,12 +4218,45 @@ server <- function(input, output, session) {
       div(
         class = "regression-fields",
         div(
-          class = "regression-field",
-          selectInput("y", "Dependent Variable", choices = dependent_choices, selected = dependent_selected)
+          class = "regression-variables-panel",
+          setup_variable_list
+        ),
+        div(
+          class = "variable-transfer-actions",
+          actionButton(
+            "add_predictor_from_variables",
+            ">",
+            class = "btn btn-default btn-sm variable-transfer-button",
+            disabled = if (add_disabled) "disabled" else NULL
+          ),
+          actionButton(
+            "remove_predictor_to_variables",
+            "<",
+            class = "btn btn-default btn-sm variable-transfer-button",
+            disabled = if (remove_disabled) "disabled" else NULL
+          )
         ),
         div(
           class = "regression-field",
-          tags$label("Independent Variable", class = "control-label"),
+          tags$label("Dependent Variables", `for` = "y", class = "control-label"),
+          selectInput(
+            "y",
+            label = NULL,
+            choices = dependent_choices,
+            selected = dependent_selected,
+            multiple = FALSE,
+            selectize = FALSE,
+            size = dependent_list_size
+          ),
+          div(
+            class = "dependent-order-actions",
+            actionButton("move_dependent_up", "Up", class = "btn-default btn-sm"),
+            actionButton("move_dependent_down", "Down", class = "btn-default btn-sm")
+          )
+        ),
+        div(
+          class = "regression-field",
+          tags$label("Independent Variables", class = "control-label"),
           selectInput(
             "predictor_order",
             label = NULL,
@@ -3753,11 +4276,23 @@ server <- function(input, output, session) {
           class = "regression-options",
           div(
             class = "regression-field",
-            selectInput("boot_r", "Bootstrap resamples", choices = bootstrap_choices, selected = current_bootstrap)
+            selectInput(
+              "boot_r",
+              "Bootstrap resamples",
+              choices = bootstrap_choices,
+              selected = current_bootstrap,
+              selectize = FALSE
+            )
           ),
           div(
             class = "regression-field",
             numericInput("seed", "Seed number", value = current_seed, min = 1, step = 1)
+          ),
+          div(
+            class = "regression-effect-options",
+            checkboxInput("show_sr2", "effect size sr\u00B2", value = FALSE),
+            checkboxInput("show_f2", "effect size f\u00B2", value = FALSE),
+            checkboxInput("show_vif", "Collinearity diagnostics(VIF)", value = FALSE)
           )
         )
       ),
@@ -3776,19 +4311,78 @@ server <- function(input, output, session) {
     analysis()$diagnostics
   }, digits = 4)
 
+  output$bootstrap_progress <- renderUI({
+    status <- bootstrap_status()
+    if (is.null(status)) {
+      return(NULL)
+    }
+
+    done <- as.integer(status$done %||% 0L)
+    total <- as.integer(status$r %||% 0L)
+    percent <- if (total > 0) min(100, max(0, round(done / total * 100))) else 0
+    message <- status$message %||% "Running regression"
+    label <- if (total > 0) {
+      sprintf("%s Bootstrap %s / %s", message, done, total)
+    } else {
+      message
+    }
+
+    div(
+      class = "bootstrap-progress-row bootstrap-progress-only",
+      div(
+        class = "bootstrap-progress-box",
+        div(
+          class = "bootstrap-progress-track",
+          div(class = "bootstrap-progress-bar", style = sprintf("width:%s%%;", percent))
+        ),
+        div(class = "bootstrap-progress-label", label)
+      )
+    )
+  })
+
+  output$bootstrap_stop_control <- renderUI({
+    if (!isTRUE(bootstrap_stop_visible())) {
+      return(NULL)
+    }
+
+    tags$button(
+      "Stop bootstrap",
+      id = "stop_bootstrap",
+      type = "button",
+      class = "btn btn-default btn-sm bootstrap-stop-button",
+      onmousedown = paste(
+        "this.disabled = true;",
+        "this.innerText = 'Stopping...';",
+        "if (window.Shiny) Shiny.setInputValue('stop_bootstrap_now', Date.now() + Math.random(), {priority: 'event'});"
+      ),
+      onclick = paste(
+        "if (window.Shiny) Shiny.setInputValue('stop_bootstrap_now', Date.now() + Math.random(), {priority: 'event'});"
+      )
+    )
+  })
+
   output$decision <- renderText({
     analysis()$method
   })
 
   output$model_overview <- renderTable({
     result <- analysis()
+    variable_table <- regression_variable_table()
+    dependent <- all.vars(result$formula)[[1]]
+    dependent_label <- display_variable_name(dependent, variable_table)
+    predictor_labels <- vapply(
+      result$predictors,
+      function(name) display_variable_name(name, variable_table),
+      character(1)
+    )
     data.frame(
-      Item = c("Formula", "N", "R-squared", "Adjusted R-squared", "Selected method"),
+        Item = c("Dependent variable", "Independent variables", "N", "R\u00B2(adj. R\u00B2)", "F(p)", "Selected method"),
       Value = c(
-        paste(deparse(result$formula), collapse = " "),
+        dependent_label,
+        paste(predictor_labels, collapse = ", "),
         result$n,
-        round(result$r_squared, 4),
-        round(result$adjusted_r_squared, 4),
+        sprintf("%s (%s)", format_decimal3(result$r_squared), format_decimal3(result$adjusted_r_squared)),
+        sprintf("%s (%s)", format_decimal3(result$f_statistic), format_p(result$f_p)),
         result$method
       ),
       check.names = FALSE
@@ -3802,14 +4396,26 @@ server <- function(input, output, session) {
   output$regression <- renderUI({
     result <- analysis()
     table <- coefficient_output_table(coefficient_display_table(result), result$predictors, include_references = TRUE)
+    if (!isTRUE(input$show_sr2) && "sr2" %in% names(table)) {
+      table$sr2 <- NULL
+    }
+    if (!isTRUE(input$show_f2) && "f2" %in% names(table)) {
+      table$f2 <- NULL
+    }
+    if (!isTRUE(input$show_vif)) {
+      if ("Tolerance" %in% names(table)) table$Tolerance <- NULL
+      if ("VIF" %in% names(table)) table$VIF <- NULL
+    }
+    names(table)[names(table) == "sr2"] <- "sr\u00B2"
+    names(table)[names(table) == "f2"] <- "f\u00B2"
     r2_label <- if (isTRUE(result$use_hc3) || isTRUE(result$use_bootstrap)) {
-      "OLS R^2(adj. R^2)"
+      "OLS R\u00B2(adj. R\u00B2)"
     } else {
-      "R^2(adj. R^2)"
+      "R\u00B2(adj. R\u00B2)"
     }
     fit_line <- paste(
       sprintf(
-        "R²(adj. R²) = %s (%s)",
+        "R\u00B2(adj. R\u00B2) = %s (%s)",
         format_decimal3(result$r_squared),
         format_decimal3(result$adjusted_r_squared)
       ),
@@ -3838,7 +4444,7 @@ server <- function(input, output, session) {
     )
     stat_lines <- c(
       sprintf(
-        "d(dU~4-dU) = %s (%s~%s)",
+        "d(d\u1D64~4-d\u1D64) = %s (%s~%s)",
         format_decimal3(result$dw_d),
         format_decimal3(result$dw_crit$dU),
         format_decimal3(4 - result$dw_crit$dU)
@@ -3849,20 +4455,22 @@ server <- function(input, output, session) {
         format_p(result$normality_p)
       ),
       sprintf(
-        "chi^2(p) = %s (%s)",
+        "\u03C7\u00B2(p) = %s (%s)",
         format_decimal3(result$homogeneity_statistic),
         format_p(result$homogeneity_p)
       )
     )
     note_line <- paste(
-      if (!isTRUE(result$use_bootstrap)) "Tolerance = 1 - R^2 for each predictor;" else NULL,
-      if (!isTRUE(result$use_bootstrap)) "VIF = Variance Inflation Factor;" else NULL,
+      if (isTRUE(input$show_vif)) "Tolerance = 1 - R\u00B2 for each predictor;" else NULL,
+      if (isTRUE(input$show_vif)) "VIF = Variance Inflation Factor;" else NULL,
       if (isTRUE(result$use_hc3)) "HC3 SE = heteroskedasticity-consistent standard error type 3;" else NULL,
       if (isTRUE(result$use_bootstrap)) "Boot SE, LLCI, ULCI, and Boot p are bootstrap estimates based on the selected bootstrap resamples and seed number;" else NULL,
-      if (isTRUE(result$use_hc3) || isTRUE(result$use_bootstrap)) "OLS R^2 and adjusted R^2 are ordinary least squares model fit indices;" else NULL,
-      "d(dU~4-dU) = Durbin-Watson statistic (upper critical value~4-upper critical value);",
+      if (isTRUE(input$show_sr2)) "sr\u00B2 = squared semi-partial correlation, unique R\u00B2 contribution for each coefficient;" else NULL,
+      if (isTRUE(input$show_f2)) "f\u00B2 = sr\u00B2 / (1 - model R\u00B2);" else NULL,
+      if (isTRUE(result$use_hc3) || isTRUE(result$use_bootstrap)) "OLS R\u00B2 and adjusted R\u00B2 are ordinary least squares model fit indices;" else NULL,
+      "d(d\u1D64~4-d\u1D64) = Durbin-Watson statistic (upper critical value~4-upper critical value);",
       "z(p) = Lilliefors corrected Kolmogorov-Smirnov residual normality test statistic (p-value);",
-      "chi^2(p) = Breusch-Pagan homoscedasticity test statistic (p-value)"
+      "\u03C7\u00B2(p) = Breusch-Pagan homoscedasticity test statistic (p-value)"
     )
     coefficient_html_table(table, fit_line, stat_lines, note_line)
   })
@@ -3872,7 +4480,7 @@ server <- function(input, output, session) {
     residuals <- stats::residuals(result$model)
     old_par <- par(no.readonly = TRUE)
     on.exit(par(old_par), add = TRUE)
-    par(mar = c(4, 4, 1.5, 1), pty = "s")
+    par(mar = c(4, 4, 1.5, 1), pty = "s", cex.axis = .8)
     stats::qqnorm(residuals, pch = 19, col = "#475569", cex = .75, main = "", xlab = "Theoretical quantiles", ylab = "Sample quantiles")
     stats::qqline(residuals, col = "#1f2937", lwd = 1.2)
     box()
@@ -3881,10 +4489,10 @@ server <- function(input, output, session) {
   output$residual_homoscedasticity_plot <- renderPlot({
     result <- analysis()
     fitted_values <- stats::fitted(result$model)
-    residuals <- stats::residuals(result$model)
+    residuals <- stats::rstandard(result$model)
     old_par <- par(no.readonly = TRUE)
     on.exit(par(old_par), add = TRUE)
-    par(mar = c(4, 4, 1.5, 1), pty = "s")
+    par(mar = c(4, 4, 1.5, 1), pty = "s", cex.axis = .8)
     plot(
       fitted_values,
       residuals,
@@ -3893,9 +4501,12 @@ server <- function(input, output, session) {
       cex = .75,
       main = "",
       xlab = "Fitted values",
-      ylab = "Residuals"
+      ylab = "Standardized residuals"
     )
     abline(h = 0, col = "#1f2937", lwd = 1.1)
+    if (any(abs(residuals) > 3, na.rm = TRUE)) {
+      abline(h = c(-3, 3), col = "#991b1b", lty = 2, lwd = 1)
+    }
     if (length(fitted_values) > 2 && length(unique(fitted_values)) > 1) {
       lines(stats::lowess(fitted_values, residuals), col = "#2563eb", lwd = 1.2)
     }
@@ -3909,7 +4520,7 @@ server <- function(input, output, session) {
         class = "coefficient-fit-line",
         tags$span(
           sprintf(
-            "R²(adj. R²) = %s (%s)",
+            "R\u00B2(adj. R\u00B2) = %s (%s)",
             format_decimal3(result$r_squared),
             format_decimal3(result$adjusted_r_squared)
           )
@@ -3953,7 +4564,7 @@ server <- function(input, output, session) {
       div(
         class = "regression-results",
         div(
-          class = "regression-result-panel",
+          class = "regression-result-panel model-overview-panel",
           h3("Model overview"),
           tableOutput("model_overview")
         ),
@@ -3961,6 +4572,7 @@ server <- function(input, output, session) {
           class = "regression-result-panel",
           h3(coefficient_panel_title(result)),
           uiOutput("regression"),
+          effect_size_reference_panel(input$show_sr2, input$show_f2),
           div(
             class = "residual-diagnostic-plots",
             div(
@@ -4056,12 +4668,14 @@ server <- function(input, output, session) {
       id = I(character(0)),
       filter = I(as.character(filter_names())),
       filter_condition = input$filter_condition %||% "",
-      dependent_variables = I(as.character(dependent_names())),
+      dependent_variables = I(as.character(sync_dependent_order(update_input = FALSE))),
       independent_variables = I(as.character(independent_names())),
       control_variables = I(as.character(control_names())),
-      dependent = I(as.character(dependent_names())),
+      dependent = I(as.character(sync_dependent_order(update_input = FALSE))),
       independent = I(as.character(independent_names())),
       covariates = I(as.character(control_names())),
+      dependent_order = I(as.character(sync_dependent_order(update_input = FALSE))),
+      predictor_order = I(as.character(sync_predictor_order(update_input = FALSE))),
       category_value_labels = I(if (is.null(category_labels)) list() else category_labels),
       selected_variables = I(as.character(selected_names() %||% character(0))),
       bootstrap_resamples = as.integer(input$boot_r %||% 1000),

@@ -79,7 +79,7 @@ body {
 }
 
 .workspace-panel h3 {
-  margin: 0;
+  margin: 0 0 24px;
   font-size: 22px;
   font-weight: 600;
   color: #102a43;
@@ -309,8 +309,9 @@ input.variable-select:disabled {
 
 .regression-fields {
   display: grid;
-  grid-template-columns: 380px 260px;
-  gap: 8px;
+  grid-template-columns: 250px 56px 250px 250px;
+  column-gap: 16px;
+  row-gap: 20px;
   align-items: start;
 }
 
@@ -318,25 +319,110 @@ input.variable-select:disabled {
   margin-bottom: 0;
 }
 
+.regression-fields label,
+.regression-setup-variable-title {
+  margin: 0 0 6px;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
 .regression-fields > .regression-field {
-  grid-column: 1;
+  grid-column: 3;
 }
 
 .regression-options {
-  grid-column: 2;
+  grid-column: 4;
   grid-row: 1 / span 2;
   display: grid;
-  gap: 16px;
+  gap: 18px;
   align-content: start;
-  padding-top: 28px;
+  padding-top: 0;
+  margin-left: 32px;
 }
 
+.regression-variables-panel {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+
+.regression-setup-variable-box {
+  display: grid;
+  gap: 0;
+  width: 250px;
+  min-width: 250px;
+  max-width: 250px;
+}
+
+.regression-setup-variable-box select {
+  width: 250px;
+  min-width: 250px;
+  max-width: 250px;
+  box-sizing: border-box;
+}
+
+.regression-field select,
+.regression-field input.form-control {
+  width: 250px;
+  min-width: 250px;
+  max-width: 250px;
+  box-sizing: border-box;
+}
+
+.regression-options .form-group,
+.regression-options .selectize-control {
+  width: 250px;
+  min-width: 250px;
+  max-width: 100%;
+}
+
+.regression-effect-options {
+  display: grid;
+  gap: 6px;
+  padding-top: 36px;
+}
+
+.regression-effect-options .checkbox {
+  margin: 0;
+}
+
+.regression-effect-options label {
+  font-weight: 400;
+}
+
+.regression-setup-variable-title {
+  display: block;
+}
+
+.variable-transfer-actions {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 381px;
+  padding-top: 203px;
+  z-index: 1;
+}
+
+.variable-transfer-button {
+  width: 34px;
+  min-width: 34px;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.dependent-order-actions,
 .predictor-order-actions {
   display: flex;
   gap: 8px;
   margin-top: 8px;
 }
 
+.dependent-order-actions .btn,
 .predictor-order-actions .btn {
   min-width: 72px;
 }
@@ -415,6 +501,20 @@ input.variable-select:disabled {
 
 .regression-result-panel table > tbody > tr:last-child > td,
 .regression-result-panel table > tbody > tr:last-child > th {
+  border-bottom: 0;
+}
+
+.model-overview-panel table {
+  border-top: 2px solid #1f2937;
+  border-bottom: 2px solid #1f2937;
+}
+
+.model-overview-panel table > thead > tr > th {
+  border-bottom: 2px solid #1f2937;
+}
+
+.model-overview-panel table > tbody > tr:last-child > td,
+.model-overview-panel table > tbody > tr:last-child > th {
   border-bottom: 0;
 }
 
@@ -736,9 +836,55 @@ table {
   margin-top: 4px;
 }
 
+.effect-size-reference-panel {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.effect-size-reference-panel h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.effect-size-reference-table {
+  width: 100%;
+  max-width: 780px;
+  border-collapse: collapse;
+  border-top: 2px solid #1f2937;
+  border-bottom: 2px solid #1f2937;
+  font-size: 12px;
+}
+
+.effect-size-reference-table th,
+.effect-size-reference-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #d7dde5;
+  text-align: left;
+}
+
+.effect-size-reference-table th {
+  border-bottom: 2px solid #1f2937;
+  font-weight: 700;
+}
+
+.effect-size-reference-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.effect-size-reference-note,
+.effect-size-reference-citation {
+  max-width: 980px;
+  margin: 8px 0 0;
+  color: #52606d;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .residual-diagnostic-plots {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, 420px);
   gap: 16px;
   margin-top: 18px;
   padding-top: 16px;
@@ -808,6 +954,72 @@ pre {
   border-radius: 8px;
 }
 
+.bootstrap-progress-slot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(760px, 100%);
+  margin-top: 10px;
+}
+
+.bootstrap-progress-slot:empty {
+  display: none;
+}
+
+.bootstrap-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 0 0 4px;
+}
+
+.bootstrap-progress-slot > .shiny-html-output {
+  margin: 0;
+}
+
+.bootstrap-progress-slot > .shiny-html-output:first-child {
+  flex: 0 1 460px;
+}
+
+.bootstrap-progress-slot > .shiny-html-output:last-child {
+  flex: 0 0 auto;
+}
+
+.bootstrap-progress-box {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.bootstrap-progress-track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5e7eb;
+}
+
+.bootstrap-progress-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: #2563eb;
+  transition: width 120ms linear;
+}
+
+.bootstrap-progress-label {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.bootstrap-stop-button {
+  align-self: center;
+  white-space: nowrap;
+}
+
 @media (max-width: 900px) {
   .content-grid,
   .data-layout,
@@ -818,9 +1030,18 @@ pre {
   }
 
   .regression-options,
+  .regression-variables-panel,
+  .variable-transfer-actions,
   .regression-fields > .regression-field {
     grid-column: 1;
     grid-row: auto;
+  }
+
+  .variable-transfer-actions {
+    flex-direction: row;
+    justify-content: flex-start;
+    min-height: 0;
+    padding-top: 0;
   }
 
   .residual-diagnostic-plots {
