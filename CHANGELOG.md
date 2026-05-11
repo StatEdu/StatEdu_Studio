@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.4.1 - 2026-05-11
+
+### Changed
+
+- Renamed the regression tab and page headings from EasyFlow Regression to Regression.
+
+### Fixed
+
+- Fixed empty VIF warning text handling that could show `missing value where TRUE/FALSE needed`.
+
 ## v0.4.0 - 2026-05-11
 
 ### Added

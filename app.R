@@ -779,12 +779,12 @@ ui <- navbarPage(
   ),
 
   tabPanel(
-    "EasyFlow Regression",
+    "Regression",
     div(
       class = "page-shell",
       div(
         class = "app-heading",
-        h1("EasyFlow Regression"),
+        h1("Regression"),
         div("Review selected variables and run regression analysis.", class = "app-subtitle")
       ),
       div(
@@ -795,7 +795,7 @@ ui <- navbarPage(
         ),
         div(
           class = "workspace-panel",
-          h3("EasyFlow Regression"),
+          h3("Regression"),
           uiOutput("regression_setup"),
           div(
             class = "bootstrap-progress-slot",
@@ -2718,10 +2718,10 @@ server <- function(input, output, session) {
           )
         }
       ),
-      if (!is.null(warning_line) && nzchar(warning_line)) {
+      if (length(warning_line) > 0 && nzchar(warning_line[[1]])) {
         tags$div(class = "coefficient-warning", warning_line)
       },
-      if (!is.null(note_line) && nzchar(note_line)) {
+      if (length(note_line) > 0 && nzchar(note_line[[1]])) {
         tags$div(class = "coefficient-note", note_line)
       }
     )
