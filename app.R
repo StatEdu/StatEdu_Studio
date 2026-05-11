@@ -2879,7 +2879,7 @@ server <- function(input, output, session) {
         check.names = FALSE
       ),
       dw_result = data.frame(
-        Item = c("Durbin-Watson d", "n", "p", "dL", "d\u1D64", "4 - d\u1D64", "4 - dL", "Decision", "Note"),
+        Item = c("Durbin-Watson's d", "n", "p", "d\u2097", "d\u1D64", "4 - d\u1D64", "4 - d\u2097", "Decision", "Note"),
         Value = c(
           round(dw_d, 4),
           dw_n,
@@ -4464,7 +4464,7 @@ server <- function(input, output, session) {
     variable_table <- regression_variable_table()
     dependents <- vapply(results, function(result) all.vars(result$formula)[[1]], character(1))
     dependent_labels <- vapply(dependents, display_variable_label_or_name, character(1), table = variable_table)
-    rows <- c("Independent variables", "N", "R\u00B2(adj. R\u00B2)", "F(p)", "Selected method")
+    rows <- c("Independent variables", "N", "R\u00B2(adj. R\u00B2)", "F(p)", "Residual normality", "Residual homoscedasticity", "Selected method")
     values <- lapply(results, function(result) {
       predictor_labels <- vapply(
         result$predictors,
@@ -4476,6 +4476,8 @@ server <- function(input, output, session) {
         "N" = as.character(result$n),
         "R\u00B2(adj. R\u00B2)" = sprintf("%s (%s)", format_decimal3(result$r_squared), format_decimal3(result$adjusted_r_squared)),
         "F(p)" = sprintf("%s (%s)", format_decimal3(result$f_statistic), format_p(result$f_p)),
+        "Residual normality" = sprintf("%s (%s)", format_decimal3(result$normality_statistic), format_p(result$normality_p)),
+        "Residual homoscedasticity" = sprintf("%s (%s)", format_decimal3(result$homogeneity_statistic), format_p(result$homogeneity_p)),
         "Selected method" = result$method
       )
     })
@@ -4733,40 +4735,6 @@ server <- function(input, output, session) {
     )
   }
 
-  combined_assumption_table <- function(results) {
-    if (!is.list(results) || length(results) == 0) {
-      return(NULL)
-    }
-    variable_table <- regression_variable_table()
-    dependents <- vapply(results, function(result) all.vars(result$formula)[[1]], character(1))
-    dependent_labels <- vapply(dependents, display_variable_label_or_name, character(1), table = variable_table)
-    rows <- unique(unlist(lapply(results, function(result) as.character(result$diagnostics$Assumption)), use.names = FALSE))
-    table <- data.frame(Assumption = rows, stringsAsFactors = FALSE, check.names = FALSE)
-    for (index in seq_along(results)) {
-      result <- results[[index]]
-      values <- vapply(rows, function(row_name) {
-        row_index <- match(row_name, result$diagnostics$Assumption)
-        if (is.na(row_index)) {
-          return("")
-        }
-        sprintf(
-          "%s, p %s, %s",
-          format_decimal3(result$diagnostics$Statistic[[row_index]]),
-          as.character(result$diagnostics$p[[row_index]]),
-          as.character(result$diagnostics$Decision[[row_index]])
-        )
-      }, character(1))
-      table[[dependent_labels[[index]]]] <- values
-    }
-    tags$table(
-      class = "table shiny-table combined-assumption-table",
-      tags$thead(tags$tr(lapply(names(table), tags$th))),
-      tags$tbody(lapply(seq_len(nrow(table)), function(row_index) {
-        tags$tr(lapply(table[row_index, , drop = TRUE], tags$td))
-      }))
-    )
-  }
-
   combined_dw_table <- function(results) {
     if (!is.list(results) || length(results) == 0) {
       return(NULL)
@@ -4801,18 +4769,11 @@ server <- function(input, output, session) {
     )
   }
 
-  assumption_result_block <- function(results) {
-    tagList(
-      div(
-        class = "regression-result-panel",
-        h3("Assumption checks"),
-        combined_assumption_table(results)
-      ),
-      div(
-        class = "regression-result-panel",
-        h3("Durbin-Watson"),
-        combined_dw_table(results)
-      )
+  durbin_watson_result_block <- function(results) {
+    div(
+      class = "regression-result-panel",
+      h3("Durbin-Watson"),
+      combined_dw_table(results)
     )
   }
 
@@ -4840,7 +4801,7 @@ server <- function(input, output, session) {
         lapply(seq_along(results), function(index) {
           plot_result_block(results[[index]], index)
         }),
-        assumption_result_block(results)
+        durbin_watson_result_block(results)
       )
     )
   })
