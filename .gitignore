@@ -5,6 +5,7 @@
 renv/library/
 renv/staging/
 results/
+sample/
 settings/*.local.json
 *.log
 *.tmp

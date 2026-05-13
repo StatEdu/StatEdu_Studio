@@ -12,6 +12,7 @@ required_packages <- c(
   "readr",
   "htmltools",
   "openxlsx",
+  "callr",
   "glmnet"
 )
 
@@ -38,18 +39,45 @@ load_app_packages <- function(packages = required_packages) {
 app_module_files <- c(
   "utils.R",
   "settings_io.R",
+  "settings_dialogs.R",
   "data_io.R",
+  "data_roles.R",
+  "data_category_labels.R",
+  "data_regression_setup.R",
   "analysis_regression.R",
   "analysis_penalized.R",
   "bootstrap_manager.R",
-  "server_helpers.R",
+  "server_client.R",
+  "server_data_state.R",
+  "server_state.R",
+  "server_settings.R",
+  "server_selection.R",
+  "server_setup.R",
+  "server_workflow.R",
+  "server_analysis.R",
+  "server_data_outputs.R",
   "ui_helpers.R",
+  "data_ui_tables.R",
+  "data_ui_steps.R",
   "data_ui.R",
   "diagnostic_plots.R",
   "result_formatting.R",
+  "result_labels.R",
+  "result_model_summary.R",
+  "result_coefficients.R",
   "setup_ui.R",
+  "setup_regression_ui.R",
+  "setup_hierarchical_ui.R",
+  "setup_generalized_ui.R",
+  "result_table_ui.R",
+  "result_penalized_ui.R",
+  "result_panels_ui.R",
+  "result_saved_ui.R",
+  "result_bootstrap_ui.R",
   "result_ui.R",
-  "result_export.R"
+  "result_export.R",
+  "result_export_files.R",
+  "app_server.R"
 )
 
 source_app_modules <- function(files = app_module_files, dir = "R") {
@@ -61,7 +89,6 @@ source_app_modules <- function(files = app_module_files, dir = "R") {
 
 read_app_config <- function(version_file = "VERSION") {
   list(
-    version = trimws(readLines(version_file, warn = FALSE)[1]),
-    dw_table_path = file.path("data", "durbin_watson_critical_values.csv")
+    version = trimws(readLines(version_file, warn = FALSE)[1])
   )
 }

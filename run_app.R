@@ -5,10 +5,13 @@ required_packages <- c(
   "sandwich",
   "nortest",
   "boot",
-  "readxl",
   "jsonlite",
   "haven",
-  "readr"
+  "readr",
+  "htmltools",
+  "openxlsx",
+  "callr",
+  "glmnet"
 )
 
 missing_packages <- required_packages[

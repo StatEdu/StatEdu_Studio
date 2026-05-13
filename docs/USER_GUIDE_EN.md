@@ -4,7 +4,7 @@ This guide will describe how to install, run, and use EasyFlow Statistics.
 
 ## Running the App
 
-Double-click `EasyFlow_Regression.bat`.
+Double-click `EasyFlow_Statistics.bat`.
 
 ## Data
 

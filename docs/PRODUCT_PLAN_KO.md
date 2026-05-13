@@ -2,7 +2,7 @@
 
 ## 기본 방향
 
-EasyFlow Statistics은 Windows 로컬 실행형 Shiny 앱으로 개발한다. 사용자는 R 또는 RStudio를 직접 열지 않고 `EasyFlow_Regression.bat`을 더블클릭하여 앱을 실행한다.
+EasyFlow Statistics은 Windows 로컬 실행형 Shiny 앱으로 개발한다. 사용자는 R 또는 RStudio를 직접 열지 않고 `EasyFlow_Statistics.bat`을 더블클릭하여 앱을 실행한다.
 
 앱 UI와 결과표는 영어로 작성하고, 매뉴얼은 영어와 한국어 두 가지로 제공한다.
 

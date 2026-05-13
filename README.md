@@ -16,7 +16,7 @@ The app runs on the user's own Windows PC and opens in a local browser session. 
 
 1. Install R.
 2. Unzip the EasyFlow Statistics folder.
-3. Double-click `EasyFlow_Regression.bat`.
+3. Double-click `EasyFlow_Statistics.bat`.
 
 The app will open at `127.0.0.1` in the default browser.
 

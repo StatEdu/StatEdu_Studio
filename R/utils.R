@@ -21,6 +21,11 @@ named_value <- function(x, name, default = "") {
   as.character(value[[1]])
 }
 
+named_override_log_text <- function(values = character(0)) {
+  values <- values %||% character(0)
+  paste(sprintf("%s=%s", names(values), unname(values)), collapse = ", ")
+}
+
 format_p <- function(p) {
   if (is.na(p)) return(NA_character_)
   if (p < .001) return("< .001")

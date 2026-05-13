@@ -1,5 +1,7 @@
 # Auto-extracted shared functions for EasyFlow Statistics.
 
+regression_dw_table_path <- file.path("data", "durbin_watson_critical_values.csv")
+
 make_formula <- function(y, xs) {
   stats::reformulate(xs, response = y)
 }
@@ -270,7 +272,7 @@ durbin_watson_stat <- function(model) {
   sum(diff(e)^2) / sum(e^2)
 }
 
-lookup_dw_critical <- function(n, p, path = dw_table_path) {
+lookup_dw_critical <- function(n, p, path = regression_dw_table_path) {
   if (!file.exists(path)) {
     return(list(dL = NA_real_, dU = NA_real_, note = "Durbin-Watson critical value table was not found."))
   }

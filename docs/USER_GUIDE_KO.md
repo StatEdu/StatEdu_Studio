@@ -4,7 +4,7 @@
 
 ## 실행
 
-`EasyFlow_Regression.bat`을 더블클릭합니다.
+`EasyFlow_Statistics.bat`을 더블클릭합니다.
 
 ## 데이터
 
