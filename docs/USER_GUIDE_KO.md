@@ -1,6 +1,6 @@
-# EasyFlow Regression 사용자 안내서
+# EasyFlow Statistics 사용자 안내서
 
-이 문서는 EasyFlow Regression의 설치, 실행, 사용 방법을 설명합니다.
+이 문서는 EasyFlow Statistics의 설치, 실행, 사용 방법을 설명합니다.
 
 ## 실행
 

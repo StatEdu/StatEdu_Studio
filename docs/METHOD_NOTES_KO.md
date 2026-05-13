@@ -1,6 +1,6 @@
 # 방법론 노트
 
-EasyFlow Regression은 회귀분석 후 가정 진단 결과에 따라 추론 방식을 선택합니다.
+EasyFlow Statistics은 회귀분석 후 가정 진단 결과에 따라 추론 방식을 선택합니다.
 
 ## 정규성
 

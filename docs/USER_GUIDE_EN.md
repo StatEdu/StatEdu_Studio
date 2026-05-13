@@ -1,6 +1,6 @@
-# EasyFlow Regression User Guide
+# EasyFlow Statistics User Guide
 
-This guide will describe how to install, run, and use EasyFlow Regression.
+This guide will describe how to install, run, and use EasyFlow Statistics.
 
 ## Running the App
 

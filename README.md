@@ -1,6 +1,6 @@
-# EasyFlow Regression
+# EasyFlow Statistics
 
-EasyFlow Regression is a local Shiny application for assumption-guided regression analysis.
+EasyFlow Statistics is a local Shiny application for assumption-guided regression analysis.
 
 The app runs on the user's own Windows PC and opens in a local browser session. Data are analyzed locally and are not sent to an external server.
 
@@ -15,7 +15,7 @@ The app runs on the user's own Windows PC and opens in a local browser session. 
 ## Local Run
 
 1. Install R.
-2. Unzip the EasyFlow Regression folder.
+2. Unzip the EasyFlow Statistics folder.
 3. Double-click `EasyFlow_Regression.bat`.
 
 The app will open at `127.0.0.1` in the default browser.
