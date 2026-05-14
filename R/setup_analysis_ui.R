@@ -51,6 +51,7 @@ analysis_transfer_listbox_input <- function(input_id, items, selected = characte
       tabindex = "0",
       `aria-multiselectable` = "true",
       `data-input-id` = input_id,
+      onkeydown = "return window.easyflowTransferListboxKeydown ? window.easyflowTransferListboxKeydown(event, this) : true;",
       style = listbox_style,
       lapply(items, function(item) {
         value <- as.character(item$value)

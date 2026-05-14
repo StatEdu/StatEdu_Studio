@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.5.2 - 2026-05-14
+
+### Changed
+
+- Added bootstrap sample count and seed number to the regression model overview when bootstrap regression is used.
+- Stabilized regression variable transfer behavior for first-item Shift selection and reduced selection-triggered scroll resets.
+- Increased the regression available variable list height to show 20 variables.
+- Added and refined EasyFlow Statistics logo concept SVG assets.
+
+
 ## v0.5.1 - 2026-05-14
 
 ### Changed

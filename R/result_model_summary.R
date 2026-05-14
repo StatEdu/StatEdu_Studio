@@ -32,6 +32,19 @@ regression_package_label <- function(result) {
   paste(vapply(unique(packages), package_version_label, character(1)), collapse = "; ")
 }
 
+regression_bootstrap_value <- function(result, field) {
+  if (!isTRUE(result$use_bootstrap)) {
+    return("")
+  }
+  value <- result[[field]]
+  if (is.null(value) || length(value) == 0 || is.na(value[[1]])) {
+    return("")
+  }
+  if (identical(field, "bootstrap_seed")) {
+    return(as.character(as.integer(value[[1]])))
+  }
+  format(as.integer(value[[1]]), big.mark = ",", scientific = FALSE, trim = TRUE)
+}
 
 model_overview_data_frame <- function(results, variable_table = NULL, labels = character(0)) {
   if (!is.list(results) || length(results) == 0) {
@@ -46,6 +59,7 @@ model_overview_data_frame <- function(results, variable_table = NULL, labels = c
     labels = labels,
     label_only = TRUE
   )
+  include_bootstrap_rows <- any(vapply(results, function(result) isTRUE(result$use_bootstrap), logical(1)))
   rows <- c(
     "Independent variables",
     "N",
@@ -53,7 +67,13 @@ model_overview_data_frame <- function(results, variable_table = NULL, labels = c
     "F(p)",
     "Residual normality",
     "Residual homoscedasticity",
-    "Selected method",
+    "Selected method"
+  )
+  if (include_bootstrap_rows) {
+    rows <- c(rows, "Bootstrap samples", "Seed number")
+  }
+  rows <- c(
+    rows,
     "Package"
   )
   values <- lapply(results, function(result) {
@@ -72,6 +92,8 @@ model_overview_data_frame <- function(results, variable_table = NULL, labels = c
       "Residual normality" = sprintf("%s (%s)", format_decimal3(result$normality_statistic), format_p(result$normality_p)),
       "Residual homoscedasticity" = sprintf("%s (%s)", format_decimal3(result$homogeneity_statistic), format_p(result$homogeneity_p)),
       "Selected method" = result$method,
+      "Bootstrap samples" = regression_bootstrap_value(result, "bootstrap_r"),
+      "Seed number" = regression_bootstrap_value(result, "bootstrap_seed"),
       "Package" = regression_package_label(result)
     )
   })

@@ -366,7 +366,10 @@
         var storedLastIndex = inputId && Object.prototype.hasOwnProperty.call(easyflowTransferLastIndexByInput, inputId)
           ? easyflowTransferLastIndexByInput[inputId]
           : listbox.getAttribute('data-last-index');
-        var lastIndex = parseInt(storedLastIndex || '-1', 10);
+        var lastIndex = (storedLastIndex === undefined || storedLastIndex === null || storedLastIndex === '')
+          ? -1
+          : parseInt(storedLastIndex, 10);
+        if (Number.isNaN(lastIndex)) lastIndex = -1;
 
         if (event.shiftKey && lastIndex >= 0) {
           var start = Math.min(lastIndex, index);
@@ -393,24 +396,23 @@
         }, true);
       });
 
-      document.addEventListener('keydown', function(event) {
+      document.addEventListener('pointerover', function(event) {
+        var listbox = event.target && event.target.closest ? event.target.closest('.analysis-transfer-listbox') : null;
+        if (listbox) easyflowActiveTransferListbox = listbox;
+      }, true);
+
+      function easyflowTransferHandleSelectAll(event, listbox) {
         var isSelectAll = (event.ctrlKey || event.metaKey) &&
           ((event.key || '').toLowerCase() === 'a' || event.code === 'KeyA');
-        if (!isSelectAll) return;
+        if (!isSelectAll || !listbox) return true;
 
-        var targetListbox = event.target && event.target.closest ? event.target.closest('.analysis-transfer-listbox') : null;
-        var activeListbox = easyflowActiveTransferListbox && document.body.contains(easyflowActiveTransferListbox)
-          ? easyflowActiveTransferListbox
-          : null;
-        var listbox = targetListbox || activeListbox;
-        if (!listbox) return;
+        if (!document.body.contains(listbox)) return true;
 
         var options = easyflowTransferOptions(listbox);
-        if (options.length === 0) return;
-
         event.preventDefault();
         event.stopPropagation();
         if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+        if (options.length === 0) return false;
 
         var allSelected = options.every(function(option) {
           return option.classList.contains('is-selected');
@@ -420,7 +422,31 @@
         });
         easyflowTransferFocusListbox(listbox);
         easyflowTransferSync(listbox);
-      }, true);
+        return false;
+      }
+
+      window.easyflowTransferListboxKeydown = function(event, listbox) {
+        easyflowTransferMarkActive(listbox);
+        return easyflowTransferHandleSelectAll(event, listbox);
+      };
+
+      function easyflowTransferSelectAllListener(event) {
+        var isSelectAll = (event.ctrlKey || event.metaKey) &&
+          ((event.key || '').toLowerCase() === 'a' || event.code === 'KeyA');
+        if (!isSelectAll) return;
+
+        var targetListbox = event.target && event.target.closest ? event.target.closest('.analysis-transfer-listbox') : null;
+        var focusedListbox = document.activeElement && document.activeElement.closest
+          ? document.activeElement.closest('.analysis-transfer-listbox')
+          : null;
+        var activeListbox = easyflowActiveTransferListbox && document.body.contains(easyflowActiveTransferListbox)
+          ? easyflowActiveTransferListbox
+          : null;
+        easyflowTransferHandleSelectAll(event, targetListbox || focusedListbox || activeListbox);
+      }
+
+      window.addEventListener('keydown', easyflowTransferSelectAllListener, true);
+      document.addEventListener('keydown', easyflowTransferSelectAllListener, true);
 
       function easyflowUpdateMoveButtonClasses() {
         document.querySelectorAll('.analysis-move-button').forEach(function(button) {

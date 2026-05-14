@@ -344,6 +344,14 @@ prepare_single_regression_result <- function(
 
   use_hc3 <- !homo_ok
   use_bootstrap <- !normal_ok
+  bootstrap_r <- as.integer(boot_r %||% 1000)
+  if (is.na(bootstrap_r) || bootstrap_r < 1) {
+    bootstrap_r <- 1000L
+  }
+  bootstrap_seed <- as.integer(seed %||% default_seed())
+  if (is.na(bootstrap_seed)) {
+    bootstrap_seed <- default_seed()
+  }
 
   vcov_matrix <- if (use_hc3) sandwich::vcovHC(model, type = "HC3") else NULL
   coef_table <- coeftest_table(model, vcov_matrix)
@@ -403,6 +411,8 @@ prepare_single_regression_result <- function(
     method = method,
     use_hc3 = use_hc3,
     use_bootstrap = use_bootstrap,
+    bootstrap_r = bootstrap_r,
+    bootstrap_seed = bootstrap_seed,
     coef_table = coef_table,
     boot_table = NULL,
     predictors = predictors
@@ -415,10 +425,6 @@ prepare_single_regression_result <- function(
   complete_data <- stats::model.frame(formula, data = data, na.action = stats::na.omit)
   original_fit <- stats::lm(formula, data = complete_data)
   terms <- names(stats::coef(original_fit))
-  r <- as.integer(boot_r %||% 1000)
-  if (is.na(r) || r < 1) {
-    r <- 1000
-  }
 
   list(
     result = result,
@@ -431,9 +437,9 @@ prepare_single_regression_result <- function(
       progress_file = tempfile("easyflow_bootstrap_progress_", fileext = ".rds"),
       result_file = tempfile("easyflow_bootstrap_result_", fileext = ".rds"),
       done = 0L,
-      r = r,
-      seed = seed,
-      chunk = min(100L, max(10L, ceiling(r / 100))),
+      r = bootstrap_r,
+      seed = bootstrap_seed,
+      chunk = min(100L, max(10L, ceiling(bootstrap_r / 100))),
       cancel = FALSE
     )
   )

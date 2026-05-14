@@ -26,7 +26,7 @@ The app will open at `127.0.0.1` in the default browser.
 
 If you use EasyFlow Statistics in your research, please cite:
 
-LEE, I. H. (2026). EasyFlow Statistics (Version 0.5.1) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
+LEE, I. H. (2026). EasyFlow Statistics (Version 0.5.2) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
 
 ## Development Model
 

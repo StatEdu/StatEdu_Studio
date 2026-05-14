@@ -10,8 +10,21 @@ body {
 }
 
 .brand-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-weight: 700;
   letter-spacing: 0;
+}
+
+.brand-logo {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+}
+
+.brand-name {
+  line-height: 1;
 }
 
 .version {
@@ -911,15 +924,17 @@ input.variable-select:disabled {
   max-height: 96px;
 }
 
-.regression-independent-panel .analysis-transfer-listbox,
-.regression-available-panel .analysis-transfer-listbox {
+.regression-independent-panel .analysis-transfer-listbox {
   height: 240px !important;
   min-height: 240px;
   max-height: 240px;
 }
 
 .regression-available-panel .analysis-transfer-listbox {
-  margin-top: 213px;
+  height: 480px !important;
+  min-height: 480px;
+  max-height: 480px;
+  margin-top: 0;
 }
 
 .regression-transfer-controls {
@@ -1972,15 +1987,17 @@ pre {
   max-height: 96px;
 }
 
-.regression-independent-panel .analysis-transfer-listbox,
-.regression-available-panel .analysis-transfer-listbox {
+.regression-independent-panel .analysis-transfer-listbox {
   height: 240px !important;
   min-height: 240px;
   max-height: 240px;
 }
 
 .regression-available-panel .analysis-transfer-listbox {
-  margin-top: 213px;
+  height: 480px !important;
+  min-height: 480px;
+  max-height: 480px;
+  margin-top: 0;
 }
 
 .regression-options.analysis-options-panel {

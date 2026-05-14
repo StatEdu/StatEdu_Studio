@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80" role="img" aria-labelledby="title desc">
+  <title id="title">EasyFlow Statistics EFS concept</title>
+  <desc id="desc">A compact logo concept using sigma, a clean flow path, and a statistics chart.</desc>
+  <rect x="8" y="10" width="344" height="60" rx="12" fill="#f8fafc" stroke="#d9e2ec"/>
+  <text x="28" y="52" font-family="Georgia, 'Times New Roman', serif" font-size="36" font-weight="700" fill="#0f766e">&#x03A3;</text>
+  <path d="M76 52c12-15 21-21 32-18 10 3 13 14 24 13 8-1 14-8 22-18" fill="none" stroke="#2563eb" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="76" cy="52" r="3" fill="#2563eb"/>
+  <circle cx="154" cy="29" r="3" fill="#2563eb"/>
+  <rect x="176" y="43" width="8" height="13" rx="1.5" fill="#94a3b8"/>
+  <rect x="190" y="34" width="8" height="22" rx="1.5" fill="#60a5fa"/>
+  <rect x="204" y="25" width="8" height="31" rx="1.5" fill="#2563eb"/>
+  <text x="235" y="38" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" fill="#102a43">EasyFlow</text>
+  <text x="235" y="59" font-family="Segoe UI, Arial, sans-serif" font-size="17" font-weight="600" fill="#334e68">Statistics</text>
+</svg>

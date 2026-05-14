@@ -29,7 +29,7 @@ regression_setup_state <- function(
     available_choices = display_variable_choices_with_measurements(available, variable_table, labels),
     available_items = variable_choice_items(available, variable_table, labels),
     available_selected = available_selected,
-    available_list_size = 18,
+    available_list_size = 20,
     add_dependent_disabled = length(available) == 0,
     add_predictor_disabled = length(available) == 0,
     remove_dependent_disabled = length(ordered_dependents) == 0,
@@ -124,7 +124,7 @@ regression_setup_panel <- function(
           "available_predictors",
           items = available_items,
           selected = available_selected,
-          size = 10
+          size = available_list_size
         )
       ),
       div(

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">EasyFlow Statistics mark</title>
+  <desc id="desc">A sigma symbol with a flowing curve and small chart bars.</desc>
+  <defs>
+    <linearGradient id="mark-bg" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0f766e"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="13" fill="url(#mark-bg)"/>
+  <path d="M43 16H20l14 16-14 16h25" fill="none" stroke="#ffffff" stroke-width="5.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M19 45c8-9 15-12 25-7" fill="none" stroke="#bae6fd" stroke-width="3.2" stroke-linecap="round"/>
+  <rect x="43" y="30" width="4" height="14" rx="1" fill="#fbbf24"/>
+  <rect x="49" y="24" width="4" height="20" rx="1" fill="#fbbf24"/>
+</svg>
