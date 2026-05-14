@@ -165,8 +165,10 @@ selection_flow_handlers <- function(
   finish_variable_selection <- function(selected) {
     update_analysis_choices(session, input, selected)
     selection_applied(TRUE)
-    roles_applied(FALSE)
-    go_data_step("step3")
+    roles_applied(TRUE)
+    predictor_order(character(0))
+    predictor_order_initialized(TRUE)
+    go_data_step("step3", "labels")
     active_role("dependent")
     set_role_choices(
       selected,
@@ -175,7 +177,7 @@ selection_flow_handlers <- function(
       control_names()
     )
     mark_settings_dirty()
-    showNotification(sprintf("%s variables selected for analysis.", length(selected)), type = "message")
+    showNotification(sprintf("%s variables selected for analysis. Edit variable labels in Step 3.", length(selected)), type = "message")
   }
 
   list(
@@ -222,12 +224,12 @@ register_data_step_observers <- function(
 
   observeEvent(input$go_step3, {
     req(isTRUE(selection_applied()))
-    go_data_step("step3")
+    go_data_step("step3", "labels")
   })
 
   observeEvent(input$go_step4, {
-    req(isTRUE(roles_applied()))
-    go_data_step("step4", "labels")
+    req(isTRUE(selection_applied()))
+    go_data_step("step3", "labels")
   })
 
   invisible(TRUE)

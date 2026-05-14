@@ -42,7 +42,7 @@ data_preview_datatable <- function(data, n = 20) {
   )
 }
 
-category_label_input_renderer <- function(field_name, unique_index) {
+category_label_input_renderer <- function(field_name, unique_index, name_index, source_order_index) {
   DT::JS(
     "function(data, type, row, meta) {",
     "  if (type !== 'display') return data;",
@@ -52,6 +52,8 @@ category_label_input_renderer <- function(field_name, unique_index) {
     "  }",
     sprintf("  var fieldName = '%s';", field_name),
     sprintf("  var uniqueIndex = %s;", unique_index),
+    sprintf("  var nameIndex = %s;", name_index),
+    sprintf("  var sourceOrderIndex = %s;", source_order_index),
     "  var pairMatch = fieldName.match(/^(value|label)_(\\d+)$/);",
     "  var cls = fieldName === 'var_label' ? 'var-label-input' : (pairMatch ? 'category-label-input value-label-input' : 'category-label-input category-meta-input');",
     "  var pairNumber = pairMatch ? parseInt(pairMatch[2], 10) : null;",
@@ -59,8 +61,9 @@ category_label_input_renderer <- function(field_name, unique_index) {
     "  var disabled = pairNumber !== null && isFinite(nUnique) && pairNumber > Math.max(1, Math.min(6, nUnique));",
     "  var disabledAttr = disabled ? ' disabled' : '';",
     "  var tabAttr = pairMatch && !disabled ? '' : ' tabindex=\"-1\"';",
-    "  var name = row[2];",
-    "  var inputId = (fieldName === 'var_label' ? 'category_var_label_input_' + row[0] : '');",
+    "  var name = nameIndex >= 0 ? row[nameIndex] : '';",
+    "  var sourceOrder = sourceOrderIndex >= 0 ? row[sourceOrderIndex] : meta.row;",
+    "  var inputId = (fieldName === 'var_label' ? 'category_var_label_input_' + sourceOrder : '');",
     "  var value = data;",
     "  if (fieldName === 'var_label') {",
     "    window.easyflowVarLabels = window.easyflowVarLabels || {};",
@@ -70,23 +73,94 @@ category_label_input_renderer <- function(field_name, unique_index) {
     "  }",
     "  var idAttr = inputId ? ' id=\"' + esc(inputId) + '\"' : '';",
     "  var varLabelHandlers = fieldName === 'var_label' ? ' oninput=\"window.easyflowStoreVarLabel && window.easyflowStoreVarLabel(this)\" onchange=\"window.easyflowCommitVarLabel && window.easyflowCommitVarLabel(this)\"' : '';",
-    "  return '<input type=\"text\"' + idAttr + ' class=\"form-control input-sm ' + cls + '\" data-name=\"' + esc(name) + '\" data-field=\"' + fieldName + '\" value=\"' + esc(value) + '\"' + disabledAttr + tabAttr + varLabelHandlers + '>';",
+    "  var listAttr = '';",
+    "  var dataList = '';",
+    "  if (fieldName === 'reference') {",
+    "    var listId = 'reference_values_' + esc(sourceOrder);",
+    "    listAttr = ' list=\"' + listId + '\"';",
+    "    dataList = '<datalist id=\"' + listId + '\">';",
+    "    for (var optionIndex = 1; optionIndex <= 6; optionIndex++) {",
+    "      var valueColumn = 'value_' + optionIndex;",
+    "      var columnIndex = meta.settings.aoColumns.findIndex(function(column) { return column.sTitle === valueColumn; });",
+    "      if (columnIndex < 0) continue;",
+    "      var optionValue = row[columnIndex];",
+    "      if (optionValue === null || optionValue === undefined || String(optionValue).length === 0) continue;",
+    "      dataList += '<option value=\"' + esc(optionValue) + '\"></option>';",
+    "    }",
+    "    dataList += '</datalist>';",
+    "  }",
+    "  return '<input type=\"text\"' + idAttr + listAttr + ' class=\"form-control input-sm ' + cls + '\" data-name=\"' + esc(name) + '\" data-field=\"' + fieldName + '\" value=\"' + esc(value) + '\"' + disabledAttr + tabAttr + varLabelHandlers + '>' + dataList;",
+    "}"
+  )
+}
+
+category_label_measurement_renderer <- function(name_index, source_order_index) {
+  DT::JS(
+    "function(data, type, row, meta) {",
+    "  if (type !== 'display') return data;",
+    "  function esc(x) {",
+    "    if (x === null || x === undefined) return '';",
+    "    return String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');",
+    "  }",
+    sprintf("  var nameIndex = %s;", name_index),
+    sprintf("  var sourceOrderIndex = %s;", source_order_index),
+    "  var name = nameIndex >= 0 ? row[nameIndex] : '';",
+    "  var sourceOrder = sourceOrderIndex >= 0 ? row[sourceOrderIndex] : meta.row;",
+    "  var current = String(data || 'category');",
+    "  var values = ['binary', 'category', 'ordered', 'continuous'];",
+    "  var labels = ['binary', 'category', 'ordinal', 'continuous'];",
+    "  var html = '<select id=\"category_measurement_input_' + esc(sourceOrder) + '\" class=\"measurement-select category-measurement-select\" data-name=\"' + esc(name) + '\" data-field=\"measurement\">';",
+    "  for (var i = 0; i < values.length; i++) {",
+    "    var selected = values[i] === current ? ' selected' : '';",
+    "    html += '<option value=\"' + values[i] + '\"' + selected + '>' + labels[i] + '</option>';",
+    "  }",
+    "  html += '</select>';",
+    "  return html;",
     "}"
   )
 }
 
 category_label_column_defs <- function(table_data, edit_columns = category_label_edit_columns()) {
   unique_index <- match("n_unique", names(table_data)) - 1L
-  column_defs <- list(
-    list(targets = 1, render = DT::JS(
+  source_order_index <- match("source_order", names(table_data)) - 1L
+  name_index <- match("name", names(table_data)) - 1L
+  selected_index <- match("selected", names(table_data)) - 1L
+  column_defs <- list()
+  var_label_index <- match("var_label", names(table_data)) - 1L
+  if (!is.na(var_label_index) && var_label_index >= 0) {
+    column_defs <- append(column_defs, list(list(targets = var_label_index, width = "170px")))
+  }
+  compact_value_indices <- which(grepl("^(reference|value_\\d+)$", names(table_data))) - 1L
+  compact_value_indices <- compact_value_indices[compact_value_indices >= 0]
+  if (length(compact_value_indices) > 0) {
+    column_defs <- append(column_defs, list(list(targets = compact_value_indices, width = "72px")))
+  }
+  measurement_index <- match("measurement", names(table_data)) - 1L
+  if (!is.na(measurement_index) && measurement_index >= 0) {
+    column_defs <- append(
+      column_defs,
+      list(list(
+        targets = measurement_index,
+        render = category_label_measurement_renderer(name_index, source_order_index),
+        orderable = FALSE,
+        width = "130px"
+      ))
+    )
+  }
+  if (!is.na(selected_index) && selected_index >= 0) {
+    column_defs <- append(column_defs, list(list(targets = selected_index, render = DT::JS(
       "function(data, type, row, meta) {",
       "  if (type === 'display') return '<input type=\"checkbox\" checked disabled>';",
       "  return data;",
       "}"
-    ), orderable = FALSE),
-    list(visible = FALSE, targets = 0),
-    list(visible = FALSE, targets = unique_index)
-  )
+    ), orderable = FALSE)))
+  }
+  if (!is.na(source_order_index) && source_order_index >= 0) {
+    column_defs <- append(column_defs, list(list(visible = FALSE, targets = source_order_index)))
+  }
+  if (!is.na(unique_index) && unique_index >= 0) {
+    column_defs <- append(column_defs, list(list(visible = FALSE, targets = unique_index)))
+  }
   for (field_name in edit_columns) {
     target_index <- match(field_name, names(table_data)) - 1L
     if (is.na(target_index)) {
@@ -96,7 +170,7 @@ category_label_column_defs <- function(table_data, edit_columns = category_label
       column_defs,
       list(list(
         targets = target_index,
-        render = category_label_input_renderer(field_name, unique_index),
+        render = category_label_input_renderer(field_name, unique_index, name_index, source_order_index),
         orderable = FALSE
       ))
     )
@@ -162,6 +236,17 @@ category_label_table_callback <- function() {
     "    labelInput.val(referenceLabelFor(row, $(this).val()));",
     "    saveCategoryInput(labelInput[0]);",
     "  }",
+    "});",
+    "wrapper.off('change.categoryMeasurementInput').on('change.categoryMeasurementInput', 'select.category-measurement-select', function() {",
+    "  var name = $(this).attr('data-name');",
+    "  var value = $(this).val();",
+    "  window.easyflowMeasurements = window.easyflowMeasurements || {};",
+    "  if (name) window.easyflowMeasurements[name] = value;",
+    "  Shiny.setInputValue('variable_measurement_update', {",
+    "    name: name,",
+    "    value: value,",
+    "    nonce: Date.now() + Math.random()",
+    "  }, {priority: 'event'});",
     "});",
     "wrapper.off('input.varLabelInput').on('input.varLabelInput', 'input.var-label-input', function() {",
     "  saveVarLabelInput(this);",

@@ -77,7 +77,6 @@ create_prepare_analysis_result_fn <- function(
   function() {
     shiny::req(current_data_file_fn())
     shiny::validate(shiny::need(isTRUE(selection_applied_fn()), "Apply Step 2 variable selection before running regression."))
-    shiny::validate(shiny::need(isTRUE(roles_applied_fn()), "Apply Step 3 role assignment before running regression."))
     data <- dataset_fn()
     predictors <- sync_predictor_order_fn(update_input = FALSE)
     dependents <- sync_dependent_order_fn(update_input = FALSE)

@@ -8,6 +8,9 @@ coefficient_html_table <- function(table, fit_line = NULL, stat_lines = characte
   tagList(
     tags$table(
       class = "coefficient-table",
+      if (length(note_line) > 0 && nzchar(note_line[[1]])) {
+        tags$caption(class = "coefficient-note", note_line)
+      },
       tags$thead(
         tags$tr(lapply(columns, function(column) tags$th(column)))
       ),
@@ -44,9 +47,6 @@ coefficient_html_table <- function(table, fit_line = NULL, stat_lines = characte
     ),
     if (length(warning_line) > 0 && nzchar(warning_line[[1]])) {
       tags$div(class = "coefficient-warning", warning_line)
-    },
-    if (length(note_line) > 0 && nzchar(note_line[[1]])) {
-      tags$div(class = "coefficient-note", note_line)
     }
   )
 }

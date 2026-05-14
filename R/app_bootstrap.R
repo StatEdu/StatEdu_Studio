@@ -1,4 +1,5 @@
 # App bootstrap helpers for EasyFlow Statistics.
+# All statistical analysis dependencies must be CRAN packages.
 
 required_packages <- c(
   "shiny",
@@ -44,6 +45,7 @@ app_module_files <- c(
   "data_roles.R",
   "data_category_labels.R",
   "data_regression_setup.R",
+  "analysis_frequencies.R",
   "analysis_regression.R",
   "analysis_penalized.R",
   "bootstrap_manager.R",
@@ -54,6 +56,9 @@ app_module_files <- c(
   "server_selection.R",
   "server_setup.R",
   "server_workflow.R",
+  "server_frequencies.R",
+  "server_ttest_anova.R",
+  "server_correlation.R",
   "server_analysis.R",
   "server_data_outputs.R",
   "ui_helpers.R",
@@ -65,13 +70,18 @@ app_module_files <- c(
   "result_labels.R",
   "result_model_summary.R",
   "result_coefficients.R",
+  "setup_analysis_ui.R",
   "setup_ui.R",
+  "setup_frequencies_ui.R",
+  "setup_ttest_anova_ui.R",
+  "setup_correlation_ui.R",
   "setup_regression_ui.R",
   "setup_hierarchical_ui.R",
   "setup_generalized_ui.R",
   "result_table_ui.R",
   "result_penalized_ui.R",
   "result_panels_ui.R",
+  "result_frequencies_ui.R",
   "result_saved_ui.R",
   "result_bootstrap_ui.R",
   "result_ui.R",

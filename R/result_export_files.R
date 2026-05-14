@@ -1,6 +1,12 @@
 # File dialog and figure export helpers for analysis results.
+# All analysis figure exports should use these helpers so folder selection,
+# file naming, and PNG resolution stay consistent across modules.
 
-plot_png_file <- function(plot_function, result, dpi = 600, width = 4.375, height = 4.375) {
+analysis_figure_dpi <- 600
+analysis_figure_width <- 4.375
+analysis_figure_height <- 4.375
+
+plot_png_file <- function(plot_function, result, dpi = analysis_figure_dpi, width = analysis_figure_width, height = analysis_figure_height) {
   path <- tempfile("easyflow_plot_", fileext = ".png")
   grDevices::png(path, width = width, height = height, units = "in", res = dpi)
   closed <- FALSE
@@ -136,7 +142,7 @@ safe_file_stem <- function(name) {
   if (!nzchar(name)) "variable" else name
 }
 
-save_plot_png_file <- function(plot_function, result, file, dpi = 600, width = 4.375, height = 4.375) {
+save_plot_png_file <- function(plot_function, result, file, dpi = analysis_figure_dpi, width = analysis_figure_width, height = analysis_figure_height) {
   grDevices::png(file, width = width, height = height, units = "in", res = dpi)
   closed <- FALSE
   on.exit({
@@ -236,8 +242,8 @@ save_analysis_figure_files <- function(results, directory, variable_table = NULL
     dependent_label <- safe_file_stem(display_variable_name_static(dependent, variable_table, labels, label_only = TRUE))
     qq_file <- file.path(directory, sprintf("qqplot(%s).png", dependent_label))
     residual_file <- file.path(directory, sprintf("residual(%s).png", dependent_label))
-    save_plot_png_file(plot_residual_qq, result, qq_file, dpi = 600)
-    save_plot_png_file(plot_residual_homoscedasticity, result, residual_file, dpi = 600)
+    save_plot_png_file(plot_residual_qq, result, qq_file)
+    save_plot_png_file(plot_residual_homoscedasticity, result, residual_file)
     saved <- c(saved, qq_file, residual_file)
   }
   saved
@@ -245,5 +251,143 @@ save_analysis_figure_files <- function(results, directory, variable_table = NULL
 
 save_analysis_figures_to_dir <- function(results, directory, variable_table = NULL, labels = character(0)) {
   save_analysis_figure_files(results, directory, variable_table, labels)
+}
+
+frequency_plot_label <- function(type) {
+  switch(
+    type,
+    pie = "Pie chart",
+    bar = "Bar chart",
+    histogram = "Histogram",
+    box = "Box plot",
+    violin = "Violin plot",
+    type
+  )
+}
+
+frequency_plot_counts <- function(result, name) {
+  values <- result$data[[name]]
+  values_chr <- as.character(values)
+  values_chr[is.na(values)] <- "(Missing)"
+  counts <- table(values_chr, useNA = "no")
+  ordered_values <- frequency_value_order(names(counts))
+  counts <- counts[ordered_values]
+  names(counts) <- frequency_value_display_labels(name, names(counts), result$category_table)
+  counts
+}
+
+draw_frequency_plot <- function(result, type, name) {
+  label <- frequency_variable_display_name(name, result$variable_info, result$labels, result$category_table)
+  if (identical(type, "pie")) {
+    counts <- frequency_plot_counts(result, name)
+    graphics::par(mar = c(2, 2, 2, 1))
+    graphics::pie(counts, main = label, col = grDevices::hcl.colors(length(counts), "Set 3"))
+    return(invisible(NULL))
+  }
+  if (identical(type, "bar")) {
+    counts <- frequency_plot_counts(result, name)
+    graphics::par(mar = c(5, 4, 2, 1))
+    graphics::barplot(
+      counts,
+      main = label,
+      ylab = "n",
+      col = "#73a7e8",
+      border = "#0f3d56",
+      las = 1,
+      axes = TRUE,
+      xaxs = "i"
+    )
+    graphics::abline(h = 0, col = "#1f2937", lwd = 1)
+    return(invisible(NULL))
+  }
+
+  values <- suppressWarnings(as.numeric(result$data[[name]]))
+  values <- values[!is.na(values)]
+  if (identical(type, "histogram")) {
+    graphics::par(mar = c(4, 4, 2, 1))
+    graphics::hist(
+      values,
+      main = label,
+      xlab = label,
+      ylab = "n",
+      col = "#73a7e8",
+      border = "#0f3d56"
+    )
+    graphics::abline(h = 0, col = "#1f2937", lwd = 1)
+    return(invisible(NULL))
+  }
+  if (identical(type, "box")) {
+    graphics::par(mar = c(3, 4, 2, 1))
+    graphics::boxplot(values, main = label, ylab = label, col = "#bfe3f1", border = "#0f3d56")
+    return(invisible(NULL))
+  }
+  if (identical(type, "violin")) {
+    graphics::par(mar = c(3, 4, 2, 1))
+    if (length(unique(values)) < 2) {
+      graphics::plot.new()
+      graphics::title(main = label)
+      graphics::text(0.5, 0.5, "Not enough unique values")
+      return(invisible(NULL))
+    }
+    density_values <- stats::density(values, na.rm = TRUE)
+    width <- density_values$y / max(density_values$y) * 0.35
+    graphics::plot(
+      c(0.5, 1.5),
+      range(density_values$x),
+      type = "n",
+      xaxt = "n",
+      xlab = "",
+      ylab = label,
+      main = label
+    )
+    graphics::polygon(
+      c(1 - width, rev(1 + width)),
+      c(density_values$x, rev(density_values$x)),
+      col = "#9fc7e8",
+      border = "#0f3d56"
+    )
+    graphics::points(rep(1, length(values)), values, pch = 16, cex = 0.45, col = grDevices::adjustcolor("#102a43", alpha.f = 0.4))
+    return(invisible(NULL))
+  }
+  stop("Unknown frequency plot type: ", type)
+}
+
+save_frequency_figure_files <- function(result, directory) {
+  options <- result$options %||% list()
+  saved <- character(0)
+  plot_jobs <- list()
+
+  if (isTRUE(options$pie)) {
+    plot_jobs <- c(plot_jobs, lapply(as.character(result$categorical %||% character(0)), function(name) list(type = "pie", name = name)))
+  }
+  if (isTRUE(options$bar)) {
+    plot_jobs <- c(plot_jobs, lapply(as.character(result$categorical %||% character(0)), function(name) list(type = "bar", name = name)))
+  }
+  if (isTRUE(options$histogram)) {
+    plot_jobs <- c(plot_jobs, lapply(as.character(result$continuous %||% character(0)), function(name) list(type = "histogram", name = name)))
+  }
+  if (isTRUE(options$box)) {
+    plot_jobs <- c(plot_jobs, lapply(as.character(result$continuous %||% character(0)), function(name) list(type = "box", name = name)))
+  }
+  if (isTRUE(options$violin)) {
+    plot_jobs <- c(plot_jobs, lapply(as.character(result$continuous %||% character(0)), function(name) list(type = "violin", name = name)))
+  }
+
+  for (job in plot_jobs) {
+    variable_label <- frequency_variable_display_name(job$name, result$variable_info, result$labels, result$category_table)
+    file <- file.path(directory, sprintf("%s(%s).png", safe_file_stem(frequency_plot_label(job$type)), safe_file_stem(variable_label)))
+    local({
+      plot_type <- job$type
+      plot_name <- job$name
+      save_plot_png_file(function(plot_result) draw_frequency_plot(plot_result, plot_type, plot_name), result, file)
+    })
+    saved <- c(saved, file)
+  }
+
+  saved
+}
+
+save_frequency_figures_to_dir <- function(result, directory) {
+  save_frequency_figure_files(result, directory)
 }
 

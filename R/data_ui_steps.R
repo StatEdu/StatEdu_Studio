@@ -64,13 +64,7 @@ data_view_title_text <- function(
     return("Categorical Value Labels")
   }
   if (isTRUE(selection_applied)) {
-    role_label <- switch(
-      active_role,
-      independent = "independent variables",
-      control = "control/covariates",
-      "dependent variable"
-    )
-    return(sprintf("Select %s (%s of %s selected)", role_label, active_role_count, selected_count))
+    return(sprintf("Selected variables (%s)", selected_count))
   }
   sprintf("All variables (%s)", available_count)
 }
@@ -97,12 +91,13 @@ data_view_title_state <- function(
   )
 }
 
-data_view_toggle_control <- function(view) {
+data_view_toggle_control <- function(view, step = "step1") {
   if (identical(view, "labels")) {
-    return(NULL)
+    return(actionButton("show_data_preview", "Data Preview", class = "view-toggle-button"))
   }
   if (identical(view, "preview")) {
-    return(actionButton("show_variable_info", "Variable Info", class = "view-toggle-button"))
+    label <- if (identical(step, "step3")) "Variable Labels" else "Variable Info"
+    return(actionButton("show_variable_info", label, class = "view-toggle-button"))
   }
   actionButton("show_data_preview", "Data Preview", class = "view-toggle-button")
 }
@@ -226,75 +221,14 @@ data_steps_panel <- function(
     if (has_data && applied) {
       div(
         class = step_class("step3", applied),
-        h3(actionLink("go_step3", "Step 3. Assign variable roles", class = "step-link")),
-        if (!identical(step, "step3") && role_applied) {
-          div(
-            class = "step-summary",
-            div(sprintf(
-              "Dependent %s, independent %s, covariates %s",
-              dependent_count, independent_count, control_count
-            ), class = "step-summary-title")
-          )
-        } else if (identical(step, "step3")) {
-          tagList(
-            div("Use the checkbox column in the variable table to select variables for the active role.", class = "step-note"),
-            div(
-              class = "role-actions",
-              tags$button(
-                id = "select_dependent_role_button",
-                sprintf("Dependent (%s)", dependent_count),
-                type = "button",
-                class = paste("role-button", if (identical(role, "dependent")) "is-active" else ""),
-                onmousedown = "window.easyflowFlushVariableTableState && window.easyflowFlushVariableTableState();",
-                onclick = "return window.easyflowSelectRole ? window.easyflowSelectRole('dependent') : true;"
-              ),
-              tags$button(
-                id = "select_independent_role_button",
-                sprintf("Independent (%s)", independent_count),
-                type = "button",
-                class = paste("role-button", if (identical(role, "independent")) "is-active" else ""),
-                onmousedown = "window.easyflowFlushVariableTableState && window.easyflowFlushVariableTableState();",
-                onclick = "return window.easyflowSelectRole ? window.easyflowSelectRole('independent') : true;"
-              ),
-              tags$button(
-                id = "select_control_role_button",
-                sprintf("Control/Covariates (%s)", control_count),
-                type = "button",
-                class = paste("role-button", if (identical(role, "control")) "is-active" else ""),
-                onmousedown = "window.easyflowFlushVariableTableState && window.easyflowFlushVariableTableState();",
-                onclick = "return window.easyflowSelectRole ? window.easyflowSelectRole('control') : true;"
-              )
-            ),
-            div(
-              sprintf(
-                "Selecting: %s",
-                switch(role, independent = "Independent variables", control = "Control/Covariates", "Dependent variable")
-              ),
-              class = "step-summary-detail"
-            ),
-            tags$button(
-              id = "apply_role_selection_button",
-              "Apply variable roles",
-              type = "button",
-              class = "btn btn-primary",
-              onmousedown = "window.easyflowFlushVariableTableState && window.easyflowFlushVariableTableState();",
-              onclick = "return window.easyflowApplyRoleSelection ? window.easyflowApplyRoleSelection() : true;"
-            )
-          )
-        }
-      )
-    },
-    if (has_data && role_applied) {
-      div(
-        class = step_class("step4", role_applied),
-        h3(actionLink("go_step4", "Step 4. Category labels", class = "step-link")),
-        if (identical(step, "step4")) {
+        h3(actionLink("go_step3", "Step 3. Variable labels", class = "step-link")),
+        if (identical(step, "step3")) {
           div("Edit value labels for categorical variables. These labels are saved with the session settings.", class = "step-note")
         } else {
           div(
             class = "step-summary",
             div("Categorical value labels", class = "step-summary-title"),
-            div("Click Step 4 to review or edit labels.", class = "step-summary-detail")
+            div("Click Step 3 to review or edit labels.", class = "step-summary-detail")
           )
         }
       )

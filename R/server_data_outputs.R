@@ -63,7 +63,7 @@ register_data_workspace_outputs <- function(
   })
 
   output$data_view_toggle <- renderUI({
-    data_view_toggle_control(data_view_fn())
+    data_view_toggle_control(data_view_fn(), active_step_fn())
   })
 
   output$data_view <- reactive({
@@ -83,25 +83,36 @@ register_data_table_outputs <- function(
   category_label_table_data_fn
 ) {
   output$category_label_table <- DT::renderDT({
-    table_data <- category_label_table_data_fn()
-    if (is.null(table_data)) {
-      return(empty_category_label_table())
-    }
-    if ("Message" %in% names(table_data)) {
-      return(empty_category_label_table())
-    }
+    tryCatch({
+      table_data <- category_label_table_data_fn()
+      if (is.null(table_data)) {
+        return(empty_category_label_table())
+      }
+      if ("Message" %in% names(table_data)) {
+        return(DT::datatable(
+          table_data,
+          rownames = FALSE,
+          escape = FALSE,
+          selection = "none",
+          options = list(dom = "t", paging = FALSE, ordering = FALSE)
+        ))
+      }
 
-    column_defs <- category_label_column_defs(table_data)
+      column_defs <- category_label_column_defs(table_data)
 
-    DT::datatable(
-      table_data,
-      rownames = FALSE,
-      escape = FALSE,
-      filter = "top",
-      selection = "none",
-      options = category_label_table_options(column_defs),
-      callback = category_label_table_callback()
-    )
+      DT::datatable(
+        table_data,
+        rownames = FALSE,
+        escape = FALSE,
+        filter = "top",
+        selection = "none",
+        options = category_label_table_options(column_defs),
+        callback = category_label_table_callback()
+      )
+    }, error = function(error) {
+      message("Category label table render error: ", conditionMessage(error))
+      empty_category_label_table()
+    })
   })
 
   output$data_preview_table <- DT::renderDT({
@@ -182,8 +193,8 @@ register_data_view_toggle_observers <- function(input, data_view, active_step, s
   })
 
   observeEvent(input$show_variable_info, {
-    if (identical(data_view(), "labels")) {
-      go_data_step("step3")
+    if (identical(active_step(), "step3")) {
+      go_data_step("step3", "labels")
     } else {
       go_data_step(active_step())
     }

@@ -12,6 +12,26 @@ regression_method_label <- function(result) {
   }
 }
 
+package_version_label <- function(package) {
+  version <- tryCatch(
+    as.character(utils::packageVersion(package)),
+    error = function(e) NA_character_
+  )
+  if (is.na(version) || !nzchar(version)) {
+    package
+  } else {
+    sprintf("%s %s", package, version)
+  }
+}
+
+regression_package_label <- function(result) {
+  packages <- c("stats", "lmtest", "nortest")
+  if (isTRUE(result$use_hc3) || isTRUE(result$use_bootstrap)) {
+    packages <- c(packages, "sandwich")
+  }
+  paste(vapply(unique(packages), package_version_label, character(1)), collapse = "; ")
+}
+
 
 model_overview_data_frame <- function(results, variable_table = NULL, labels = character(0)) {
   if (!is.list(results) || length(results) == 0) {
@@ -26,7 +46,16 @@ model_overview_data_frame <- function(results, variable_table = NULL, labels = c
     labels = labels,
     label_only = TRUE
   )
-  rows <- c("Independent variables", "N", "R\u00B2(adj. R\u00B2)", "F(p)", "Residual normality", "Residual homoscedasticity", "Selected method")
+  rows <- c(
+    "Independent variables",
+    "N",
+    "R\u00B2(adj. R\u00B2)",
+    "F(p)",
+    "Residual normality",
+    "Residual homoscedasticity",
+    "Selected method",
+    "Package"
+  )
   values <- lapply(results, function(result) {
     predictor_labels <- vapply(
       result$predictors,
@@ -42,7 +71,8 @@ model_overview_data_frame <- function(results, variable_table = NULL, labels = c
       "F(p)" = sprintf("%s (%s)", format_decimal3(result$f_statistic), format_p(result$f_p)),
       "Residual normality" = sprintf("%s (%s)", format_decimal3(result$normality_statistic), format_p(result$normality_p)),
       "Residual homoscedasticity" = sprintf("%s (%s)", format_decimal3(result$homogeneity_statistic), format_p(result$homogeneity_p)),
-      "Selected method" = result$method
+      "Selected method" = result$method,
+      "Package" = regression_package_label(result)
     )
   })
   table <- data.frame(Item = rows, stringsAsFactors = FALSE, check.names = FALSE)

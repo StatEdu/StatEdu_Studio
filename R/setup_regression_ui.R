@@ -6,28 +6,49 @@ regression_setup_state <- function(
   available_predictors,
   variable_table,
   labels = character(0),
+  selected_available = NULL,
   selected_dependent = NULL,
+  selected_predictor = NULL,
   bootstrap_value = NULL,
-  seed_value = NULL
+  seed_value = NULL,
+  show_sr2 = FALSE,
+  show_f2 = FALSE,
+  show_vif = FALSE
 ) {
   bootstrap_choices <- bootstrap_resample_choices()
-  dependent_selected <- selected_order_item(selected_dependent, ordered_dependents)
+  available <- setdiff(
+    as.character(available_predictors %||% character(0)),
+    unique(c(as.character(ordered_dependents %||% character(0)), as.character(ordered_predictors %||% character(0))))
+  )
+  available_selected <- selected_order_items(selected_available, available)
+  dependent_selected <- selected_order_items(selected_dependent, ordered_dependents)
+  predictor_selected <- selected_order_items(selected_predictor, ordered_predictors)
 
   list(
-    available_predictors = available_predictors,
-    available_choices = display_variable_choices_static(available_predictors, variable_table, labels),
+    available_predictors = available,
+    available_choices = display_variable_choices_with_measurements(available, variable_table, labels),
+    available_items = variable_choice_items(available, variable_table, labels),
+    available_selected = available_selected,
     available_list_size = 18,
-    add_disabled = length(setdiff(available_predictors, ordered_predictors)) == 0,
+    add_dependent_disabled = length(available) == 0,
+    add_predictor_disabled = length(available) == 0,
+    remove_dependent_disabled = length(ordered_dependents) == 0,
     remove_disabled = length(ordered_predictors) == 0,
-    dependent_choices = display_variable_choices_static(ordered_dependents, variable_table, labels),
+    dependent_choices = display_variable_choices_with_measurements(ordered_dependents, variable_table, labels),
+    dependent_items = variable_choice_items(ordered_dependents, variable_table, labels),
     dependent_selected = dependent_selected,
-    dependent_list_size = setup_list_size(ordered_dependents),
-    predictor_choices = display_variable_choices_static(ordered_predictors, variable_table, labels),
+    dependent_list_size = 4,
+    predictor_choices = display_variable_choices_with_measurements(ordered_predictors, variable_table, labels),
+    predictor_items = variable_choice_items(ordered_predictors, variable_table, labels),
     ordered_predictors = ordered_predictors,
-    predictor_list_size = setup_list_size(ordered_predictors),
+    predictor_selected = predictor_selected,
+    predictor_list_size = 10,
     bootstrap_choices = bootstrap_choices,
     current_bootstrap = normalized_bootstrap_resamples(bootstrap_value, bootstrap_choices),
-    current_seed = seed_value %||% default_seed()
+    current_seed = seed_value %||% default_seed(),
+    show_sr2 = isTRUE(show_sr2),
+    show_f2 = isTRUE(show_f2),
+    show_vif = isTRUE(show_vif)
   )
 }
 
@@ -36,18 +57,28 @@ regression_setup_panel_from_state <- function(setup, status_message) {
     status_message = status_message,
     available_predictors = setup$available_predictors,
     available_choices = setup$available_choices,
+    available_items = setup$available_items,
+    available_selected = setup$available_selected,
     available_list_size = setup$available_list_size,
-    add_disabled = setup$add_disabled,
+    add_dependent_disabled = setup$add_dependent_disabled,
+    add_predictor_disabled = setup$add_predictor_disabled,
+    remove_dependent_disabled = setup$remove_dependent_disabled,
     remove_disabled = setup$remove_disabled,
     dependent_choices = setup$dependent_choices,
+    dependent_items = setup$dependent_items,
     dependent_selected = setup$dependent_selected,
     dependent_list_size = setup$dependent_list_size,
     predictor_choices = setup$predictor_choices,
+    predictor_items = setup$predictor_items,
     ordered_predictors = setup$ordered_predictors,
+    predictor_selected = setup$predictor_selected,
     predictor_list_size = setup$predictor_list_size,
     bootstrap_choices = setup$bootstrap_choices,
     current_bootstrap = setup$current_bootstrap,
-    current_seed = setup$current_seed
+    current_seed = setup$current_seed,
+    show_sr2 = setup$show_sr2,
+    show_f2 = setup$show_f2,
+    show_vif = setup$show_vif
   )
 }
 
@@ -57,124 +88,130 @@ regression_setup_panel <- function(
   status_message,
   available_predictors,
   available_choices,
+  available_items,
+  available_selected,
   available_list_size,
-  add_disabled,
+  add_dependent_disabled,
+  add_predictor_disabled,
+  remove_dependent_disabled,
   remove_disabled,
   dependent_choices,
+  dependent_items,
   dependent_selected,
   dependent_list_size,
   predictor_choices,
+  predictor_items,
   ordered_predictors,
+  predictor_selected,
   predictor_list_size,
   bootstrap_choices,
   current_bootstrap,
-  current_seed
+  current_seed,
+  show_sr2 = FALSE,
+  show_f2 = FALSE,
+  show_vif = FALSE
 ) {
-  setup_variable_list <- div(
-    class = "regression-setup-variable-box",
-    div("Variables", class = "regression-setup-variable-title"),
-    if (length(available_predictors) == 0) {
-      div("No predictor variables selected.", class = "regression-variable-empty")
-    } else {
-      selectInput(
-        "available_predictors",
-        label = NULL,
-        choices = available_choices,
-        selected = utils::head(available_predictors, 1),
-        multiple = FALSE,
-        selectize = FALSE,
-        size = available_list_size
-      )
-    }
-  )
-
   tagList(
     if (!is.null(status_message)) {
       div(status_message, class = "regression-warning")
     },
     div(
-      class = "regression-fields",
+      class = "regression-setup-grid",
       div(
-        class = "regression-variables-panel",
-        setup_variable_list
+        class = "analysis-transfer-column analysis-transfer-panel regression-available-panel",
+        analysis_field_label_tag("Variables"),
+        analysis_transfer_listbox_input(
+          "available_predictors",
+          items = available_items,
+          selected = available_selected,
+          size = 10
+        )
       ),
       div(
-        class = "variable-transfer-actions",
+        class = "analysis-transfer-controls regression-transfer-controls",
+        actionButton(
+          "add_dependent_from_variables",
+          ">",
+          class = "btn btn-default analysis-move-button",
+          disabled = if (add_dependent_disabled && remove_dependent_disabled) "disabled" else NULL
+        ),
         actionButton(
           "add_predictor_from_variables",
           ">",
-          class = "btn btn-default btn-sm variable-transfer-button",
-          disabled = if (add_disabled) "disabled" else NULL
-        ),
-        actionButton(
-          "remove_predictor_to_variables",
-          "<",
-          class = "btn btn-default btn-sm variable-transfer-button",
-          disabled = if (remove_disabled) "disabled" else NULL
+          class = "btn btn-default analysis-move-button",
+          disabled = if (add_predictor_disabled && remove_disabled) "disabled" else NULL
         )
       ),
       div(
-        class = "regression-field",
-        tags$label("Dependent Variables", `for` = "y", class = "control-label"),
-        selectInput(
+        class = "regression-target-column",
+        div(
+          class = "analysis-transfer-column analysis-transfer-panel regression-dependent-panel",
+          analysis_field_label_tag("Dependent Variables", "continuous"),
+          analysis_transfer_listbox_input(
           "y",
-          label = NULL,
-          choices = dependent_choices,
+          items = dependent_items,
           selected = dependent_selected,
-          multiple = FALSE,
-          selectize = FALSE,
-          size = dependent_list_size
-        ),
-        div(
-          class = "dependent-order-actions",
-          actionButton("move_dependent_up", "Up", class = "btn-default btn-sm"),
-          actionButton("move_dependent_down", "Down", class = "btn-default btn-sm")
-        )
-      ),
-      div(
-        class = "regression-field",
-        tags$label("Independent Variables", class = "control-label"),
-        selectInput(
-          "predictor_order",
-          label = NULL,
-          choices = predictor_choices,
-          selected = utils::head(ordered_predictors, 1),
-          multiple = FALSE,
-          selectize = FALSE,
-          size = predictor_list_size
-        ),
-        div(
-          class = "predictor-order-actions",
-          actionButton("move_predictor_up", "Up", class = "btn-default btn-sm"),
-          actionButton("move_predictor_down", "Down", class = "btn-default btn-sm")
-        )
-      ),
-      div(
-        class = "regression-options",
-        div(
-          class = "regression-field",
-          selectInput(
-            "boot_r",
-            "Bootstrap resamples",
-            choices = bootstrap_choices,
-            selected = current_bootstrap,
-            selectize = FALSE
+          size = 4
+          ),
+          div(
+            class = "dependent-order-actions",
+            actionButton("move_dependent_up", "Up", class = "btn-default btn-sm"),
+            actionButton("move_dependent_down", "Down", class = "btn-default btn-sm")
           )
         ),
         div(
-          class = "regression-field",
-          numericInput("seed", "Seed number", value = current_seed, min = 1, step = 1)
-        ),
+          class = "analysis-transfer-column analysis-transfer-panel regression-independent-panel",
+          analysis_field_label_tag("Independent Variables", c("binary", "category", "ordered", "continuous")),
+          analysis_transfer_listbox_input(
+            "predictor_order",
+            items = predictor_items,
+            selected = predictor_selected,
+            size = 10
+          ),
+          div(
+            class = "predictor-order-actions",
+            actionButton("move_predictor_up", "Up", class = "btn-default btn-sm"),
+            actionButton("move_predictor_down", "Down", class = "btn-default btn-sm")
+          )
+        )
+      ),
+      div(
+        class = "analysis-options-column analysis-options-panel regression-options",
         div(
-          class = "regression-effect-options",
-          checkboxInput("show_sr2", "effect size sr\u00B2", value = FALSE),
-          checkboxInput("show_f2", "effect size f\u00B2", value = FALSE),
-          checkboxInput("show_vif", "Collinearity diagnostics(VIF)", value = FALSE)
+          class = "analysis-option-group",
+          div(class = "analysis-option-title", "Bootstrap"),
+          div(
+            class = "regression-field",
+            selectInput(
+              "boot_r",
+              "Number of bootstrap samples",
+              choices = bootstrap_choices,
+              selected = current_bootstrap,
+              selectize = FALSE
+            )
+          ),
+          div(
+            class = "regression-field",
+            numericInput("seed", "Seed number", value = current_seed, min = 1, step = 1)
+          )
+        ),
+        analysis_option_group(
+          "Effect size",
+          list(
+            list(id = "show_sr2", label = "sr\u00B2", value = isTRUE(show_sr2)),
+            list(id = "show_f2", label = "f\u00B2", value = isTRUE(show_f2))
+          )
+        ),
+        analysis_option_group(
+          "Collinearity diagnostics",
+          list(
+            list(id = "show_vif", label = "VIF", value = isTRUE(show_vif))
+          )
         )
       )
     ),
     div(
-      class = "regression-actions",
+      class = "analysis-action-row regression-action-row",
       if (!is.null(status_message)) {
         tags$button("Run regression", type = "button", class = "btn btn-primary", disabled = "disabled")
       } else {

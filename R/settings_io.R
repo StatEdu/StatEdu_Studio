@@ -290,11 +290,11 @@ settings_navigation_state <- function(settings) {
   view <- NULL
 
   if (!is.null(settings$active_step) && settings$active_step %in% c("step1", "step2", "step3", "step4")) {
-    step <- settings$active_step
-    view <- if (identical(settings$active_step, "step4")) "labels" else settings$data_view %||% "info"
+    step <- if (identical(settings$active_step, "step4")) "step3" else settings$active_step
+    view <- if (identical(settings$active_step, "step4") || identical(settings$active_step, "step3")) "labels" else settings$data_view %||% "info"
   }
 
-  if (!is.null(settings$data_view) && settings$data_view %in% c("info", "preview")) {
+  if (!is.null(settings$data_view) && settings$data_view %in% c("info", "preview") && !identical(step, "step3")) {
     view <- settings$data_view
   }
 

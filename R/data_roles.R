@@ -103,12 +103,46 @@ dependent_variable_candidates <- function(dependent = character(0), selected = c
   intersect(as.character(dependent), as.character(selected))
 }
 
+dependent_variable_candidates_from_info <- function(
+  dependent = character(0),
+  selected = character(0),
+  variable_info = NULL
+) {
+  selected <- as.character(selected %||% character(0))
+  candidates <- dependent_variable_candidates(dependent, selected)
+  if (length(candidates) > 0 || is.null(variable_info) || !"name" %in% names(variable_info)) {
+    return(candidates)
+  }
+  if (!"measurement" %in% names(variable_info)) {
+    return(selected)
+  }
+  continuous <- as.character(variable_info$name[variable_info$measurement == "continuous"])
+  intersect(continuous, selected)
+}
+
 predictor_variable_candidates <- function(independent = character(0), controls = character(0), selected = character(0)) {
   selected <- as.character(selected)
   unique(c(
     intersect(as.character(controls), selected),
     intersect(as.character(independent), selected)
   ))
+}
+
+predictor_variable_candidates_from_info <- function(
+  independent = character(0),
+  controls = character(0),
+  selected = character(0),
+  dependent = character(0),
+  variable_info = NULL
+) {
+  selected <- as.character(selected %||% character(0))
+  candidates <- predictor_variable_candidates(independent, controls, selected)
+  if (length(candidates) > 0) {
+    return(candidates)
+  }
+  # Data selection no longer assigns analysis roles. Keep the full selected
+  # variable pool available so each analysis setup can move variables itself.
+  selected
 }
 
 ordered_existing_then_new <- function(current = character(0), candidates = character(0)) {
@@ -130,6 +164,12 @@ selected_order_item <- function(selected = NULL, order = character(0)) {
   selected <- as.character(selected %||% utils::head(order, 1))
   selected <- intersect(selected, order)
   utils::head(selected, 1)
+}
+
+selected_order_items <- function(selected = NULL, order = character(0)) {
+  order <- as.character(order %||% character(0))
+  selected <- as.character(selected %||% character(0))
+  intersect(selected, order)
 }
 
 ordered_predictor_candidates <- function(

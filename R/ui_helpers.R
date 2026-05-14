@@ -4,6 +4,14 @@ empty_message <- function(text) {
   div(class = "empty-message", text)
 }
 
+analysis_save_buttons <- function(table_button_id, figure_button_id) {
+  div(
+    class = "analysis-save-action",
+    actionButton(table_button_id, "Save tables", class = "btn-primary"),
+    actionButton(figure_button_id, "Save figures", class = "btn-default")
+  )
+}
+
 set_data_step_view <- function(active_step_setter, data_view_setter, step, view = "info") {
   active_step_setter(step)
   data_view_setter(view)
@@ -14,11 +22,11 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-overlay"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-regression-move-buttons-1"))
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version))
+  tags$script(src = paste0("easyflow.js?v=", version, "-selection-controls-2"))
 }
 
 app_head_tags <- function(version) {
@@ -28,7 +36,20 @@ app_head_tags <- function(version) {
   )
 }
 
+enabled_analysis_tabs <- function() {
+  c(
+    frequencies = TRUE,
+    ttest_anova = TRUE,
+    correlation = TRUE,
+    regression = TRUE,
+    hierarchical = TRUE,
+    generalized = FALSE
+  )
+}
+
 app_ui <- function(version) {
+  analysis_tabs <- enabled_analysis_tabs()
+
   navbarPage(
     title = app_brand_title(version),
     id = "main_menu",
@@ -36,10 +57,16 @@ app_ui <- function(version) {
 
     data_tab_panel(),
 
-    regression_tab_panel(),
+    if (isTRUE(analysis_tabs[["frequencies"]])) frequencies_tab_panel(),
 
-    hierarchical_tab_panel(),
+    if (isTRUE(analysis_tabs[["ttest_anova"]])) ttest_anova_tab_panel(),
 
-    generalized_tab_panel()
+    if (isTRUE(analysis_tabs[["correlation"]])) correlation_tab_panel(),
+
+    if (isTRUE(analysis_tabs[["regression"]])) regression_tab_panel(),
+
+    if (isTRUE(analysis_tabs[["hierarchical"]])) hierarchical_tab_panel(),
+
+    if (isTRUE(analysis_tabs[["generalized"]])) generalized_tab_panel()
   )
 }

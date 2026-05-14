@@ -1,6 +1,8 @@
 # Main Shiny server assembly for EasyFlow Statistics.
 
-server <- function(input, output, session) {
+create_app_server <- function(app_version) {
+  force(app_version)
+  function(input, output, session) {
   session$onSessionEnded(function() {
     if (identical(Sys.getenv("EASYFLOW_STOP_ON_SESSION_END"), "1")) {
       stopApp()
@@ -21,6 +23,7 @@ server <- function(input, output, session) {
   control_names <- server_state$control_names
   predictor_order <- server_state$predictor_order
   hierarchical_block3_names <- server_state$hierarchical_block3_names
+  frequency_variables <- server_state$frequency_variables
   predictor_order_initialized <- server_state$predictor_order_initialized
   var_label_overrides <- server_state$var_label_overrides
   category_label_values <- server_state$category_label_values
@@ -525,6 +528,39 @@ server <- function(input, output, session) {
   predictor_candidates <- regression_accessors$predictor_candidates
   dependent_candidates <- regression_accessors$dependent_candidates
 
+  register_frequencies_handlers(
+    input = input,
+    output = output,
+    session = session,
+    dataset_fn = dataset,
+    selected_names_fn = selected_names,
+    variable_table_fn = regression_variable_table,
+    labels_fn = var_label_overrides,
+    category_table_fn = category_label_values,
+    frequency_variables = frequency_variables,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
+  register_ttest_anova_handlers(
+    input = input,
+    output = output,
+    session = session,
+    selected_names_fn = selected_names,
+    variable_table_fn = regression_variable_table,
+    labels_fn = var_label_overrides,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
+  register_correlation_handlers(
+    input = input,
+    output = output,
+    session = session,
+    selected_names_fn = selected_names,
+    variable_table_fn = regression_variable_table,
+    labels_fn = var_label_overrides,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
   setup_order_sync <- create_setup_order_sync(
     input = input,
     session = session,
@@ -563,6 +599,7 @@ server <- function(input, output, session) {
     dependent_order = dependent_order,
     predictor_order = predictor_order,
     predictor_order_initialized = predictor_order_initialized,
+    dependent_candidates_fn = dependent_candidates,
     predictor_candidates_fn = predictor_candidates,
     sync_dependent_order_fn = sync_dependent_order,
     sync_predictor_order_fn = sync_predictor_order,
@@ -577,10 +614,16 @@ server <- function(input, output, session) {
 
   register_hierarchical_block_observers(
     input,
+    dependent_order = dependent_order,
+    independent_names = independent_names,
+    control_names = control_names,
     independent_names_fn = independent_names,
     selected_names_fn = selected_names,
+    dependent_candidates_fn = dependent_candidates,
+    predictor_candidates_fn = predictor_candidates,
     hierarchical_block3_current_fn = hierarchical_block3_current,
     hierarchical_block3_names = hierarchical_block3_names,
+    sync_dependent_order_fn = sync_dependent_order,
     mark_settings_dirty = mark_settings_dirty
   )
 
@@ -675,5 +718,6 @@ server <- function(input, output, session) {
     category_table_fn = category_label_values
   )
 
+  }
 }
 

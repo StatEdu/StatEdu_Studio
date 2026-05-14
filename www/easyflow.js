@@ -2,6 +2,46 @@
       window.easyflowVarLabels = window.easyflowVarLabels || {};
       window.easyflowMeasurements = window.easyflowMeasurements || {};
 
+      window.easyflowSelectVariableIconOption = function(option) {
+        if (!option) return;
+        var listbox = option.closest('.variable-icon-listbox');
+        if (!listbox) return;
+        var inputId = listbox.getAttribute('data-input-id');
+        var value = option.getAttribute('data-value') || '';
+        if (!inputId || !value) return;
+
+        listbox.querySelectorAll('.variable-icon-option').forEach(function(item) {
+          item.classList.toggle('is-selected', item === option);
+          item.setAttribute('aria-selected', item === option ? 'true' : 'false');
+        });
+
+        var select = document.getElementById(inputId);
+        if (select) {
+          select.value = value;
+          if (window.jQuery) {
+            window.jQuery(select).trigger('change');
+          } else {
+            select.dispatchEvent(new Event('change', {bubbles: true}));
+          }
+        }
+      };
+
+      document.addEventListener('keydown', function(event) {
+        var listbox = event.target && event.target.closest ? event.target.closest('.variable-icon-listbox') : null;
+        if (!listbox) return;
+        if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+        var options = Array.prototype.slice.call(listbox.querySelectorAll('.variable-icon-option'));
+        if (options.length === 0) return;
+        var current = options.findIndex(function(item) { return item.classList.contains('is-selected'); });
+        var next = event.key === 'ArrowDown'
+          ? Math.min(options.length - 1, current + 1)
+          : Math.max(0, current - 1);
+        if (current < 0) next = 0;
+        window.easyflowSelectVariableIconOption(options[next]);
+        options[next].scrollIntoView({block: 'nearest'});
+        event.preventDefault();
+      });
+
       function captureEasyflowVarLabels() {
         function collectInput(input) {
           var name = input.getAttribute('data-name');
@@ -257,6 +297,155 @@
           }
         }
       }, true);
+
+      var easyflowTransferLastIndexByInput = {};
+      var easyflowActiveTransferListbox = null;
+
+      function easyflowTransferOptions(listbox) {
+        return Array.prototype.slice.call(listbox.querySelectorAll('.analysis-transfer-option'));
+      }
+
+      function easyflowTransferSelectedValues(listbox) {
+        return easyflowTransferOptions(listbox)
+          .filter(function(option) { return option.classList.contains('is-selected'); })
+          .map(function(option) { return option.getAttribute('data-value'); });
+      }
+
+      function easyflowTransferSetSelected(option, selected) {
+        option.classList.toggle('is-selected', selected);
+        option.setAttribute('aria-selected', selected ? 'true' : 'false');
+      }
+
+      function easyflowTransferClear(listbox) {
+        easyflowTransferOptions(listbox).forEach(function(option) {
+          easyflowTransferSetSelected(option, false);
+        });
+      }
+
+      function easyflowTransferSync(listbox) {
+        var inputId = listbox.getAttribute('data-input-id');
+        var select = inputId ? document.getElementById(inputId) : null;
+        var values = easyflowTransferSelectedValues(listbox);
+        if (select) {
+          Array.prototype.forEach.call(select.options, function(option) {
+            option.selected = values.indexOf(option.value) >= 0;
+          });
+        }
+        if (window.Shiny && inputId) {
+          Shiny.setInputValue(inputId, values, {priority: 'event'});
+        }
+      }
+
+      function easyflowTransferMarkActive(listbox) {
+        var inputId = listbox ? listbox.getAttribute('data-input-id') : null;
+        if (listbox) easyflowActiveTransferListbox = listbox;
+        if (window.Shiny && inputId) {
+          Shiny.setInputValue(inputId + '_active', Date.now() + Math.random(), {priority: 'event'});
+        }
+      }
+
+      function easyflowTransferFocusListbox(listbox) {
+        if (!listbox) return;
+        easyflowTransferMarkActive(listbox);
+        if (listbox.focus) {
+          try {
+            listbox.focus({preventScroll: true});
+          } catch (error) {
+            listbox.focus();
+          }
+        }
+      }
+
+      window.easyflowTransferOptionClick = function(event, option) {
+        var listbox = option && option.closest ? option.closest('.analysis-transfer-listbox') : null;
+        if (!listbox) return;
+        easyflowTransferFocusListbox(listbox);
+        var inputId = listbox.getAttribute('data-input-id') || '';
+        var options = easyflowTransferOptions(listbox);
+        var index = options.indexOf(option);
+        var storedLastIndex = inputId && Object.prototype.hasOwnProperty.call(easyflowTransferLastIndexByInput, inputId)
+          ? easyflowTransferLastIndexByInput[inputId]
+          : listbox.getAttribute('data-last-index');
+        var lastIndex = parseInt(storedLastIndex || '-1', 10);
+
+        if (event.shiftKey && lastIndex >= 0) {
+          var start = Math.min(lastIndex, index);
+          var end = Math.max(lastIndex, index);
+          if (!event.ctrlKey && !event.metaKey) easyflowTransferClear(listbox);
+          options.slice(start, end + 1).forEach(function(item) {
+            easyflowTransferSetSelected(item, true);
+          });
+        } else if (event.ctrlKey || event.metaKey) {
+          easyflowTransferSetSelected(option, !option.classList.contains('is-selected'));
+        } else {
+          easyflowTransferClear(listbox);
+          easyflowTransferSetSelected(option, true);
+        }
+        listbox.setAttribute('data-last-index', String(index));
+        if (inputId) easyflowTransferLastIndexByInput[inputId] = index;
+        easyflowTransferSync(listbox);
+      };
+
+      ['mousedown', 'focusin'].forEach(function(eventName) {
+        document.addEventListener(eventName, function(event) {
+          var listbox = event.target && event.target.closest ? event.target.closest('.analysis-transfer-listbox') : null;
+          if (listbox) easyflowTransferMarkActive(listbox);
+        }, true);
+      });
+
+      document.addEventListener('keydown', function(event) {
+        var isSelectAll = (event.ctrlKey || event.metaKey) &&
+          ((event.key || '').toLowerCase() === 'a' || event.code === 'KeyA');
+        if (!isSelectAll) return;
+
+        var targetListbox = event.target && event.target.closest ? event.target.closest('.analysis-transfer-listbox') : null;
+        var activeListbox = easyflowActiveTransferListbox && document.body.contains(easyflowActiveTransferListbox)
+          ? easyflowActiveTransferListbox
+          : null;
+        var listbox = targetListbox || activeListbox;
+        if (!listbox) return;
+
+        var options = easyflowTransferOptions(listbox);
+        if (options.length === 0) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+
+        var allSelected = options.every(function(option) {
+          return option.classList.contains('is-selected');
+        });
+        options.forEach(function(option) {
+          easyflowTransferSetSelected(option, !allSelected);
+        });
+        easyflowTransferFocusListbox(listbox);
+        easyflowTransferSync(listbox);
+      }, true);
+
+      function easyflowUpdateMoveButtonClasses() {
+        document.querySelectorAll('.analysis-move-button').forEach(function(button) {
+          var label = (button.textContent || '').trim();
+          button.classList.toggle('analysis-move-forward', label === '>');
+          button.classList.toggle('analysis-move-back', label === '<');
+        });
+      }
+
+      function easyflowStartMoveButtonObserver() {
+        easyflowUpdateMoveButtonClasses();
+        if (!window.MutationObserver || !document.body) return;
+        var observer = new MutationObserver(easyflowUpdateMoveButtonClasses);
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true,
+          characterData: true
+        });
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', easyflowStartMoveButtonObserver);
+      } else {
+        easyflowStartMoveButtonObserver();
+      }
 
       document.addEventListener('input', function(event) {
         storeEasyflowVarLabelInput(event.target);

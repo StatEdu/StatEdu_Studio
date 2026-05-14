@@ -28,7 +28,7 @@ named_override_log_text <- function(values = character(0)) {
 
 format_p <- function(p) {
   if (is.na(p)) return(NA_character_)
-  if (p < .001) return("< .001")
+  if (p < .001) return("<.001")
   sub("^0\\.", ".", sprintf("%.3f", p))
 }
 

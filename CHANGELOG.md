@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.5.1 - 2026-05-14
+
+### Changed
+
+- Stabilized regression variable transfer controls, including multi-select, Ctrl+A selection, movement direction, and order preservation.
+- Refined regression setup layout, fixed list heights, move button placement, and option checkbox persistence.
+- Added shared table and figure export behavior for analysis outputs.
+- Added Frequencies / Descriptives setup and output scaffolding with shared variable transfer UI.
+- Updated citation metadata for EasyFlow Statistics.
+
+
 ## v0.5.0 - 2026-05-11
 
 ### Added

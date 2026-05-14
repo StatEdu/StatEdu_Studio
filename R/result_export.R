@@ -1,4 +1,6 @@
 # Result export helpers for EasyFlow Statistics.
+# All analysis table exports should use these helpers so workbook layout,
+# table lines, title rows, column widths, and alignment stay consistent.
 
 excel_sheet_name <- function(name, used = character(0)) {
   name <- gsub("[\\\\/\\?\\*\\[\\]:]", " ", as.character(name %||% "Sheet"))
@@ -17,34 +19,50 @@ excel_sheet_name <- function(name, used = character(0)) {
   candidate
 }
 
-regression_excel_styles <- function() {
+analysis_excel_styles <- function() {
   list(
     title = openxlsx::createStyle(textDecoration = "bold", fontSize = 12, halign = "left"),
-    header = openxlsx::createStyle(textDecoration = "bold", halign = "center", valign = "center", border = "bottom", borderStyle = "thick"),
+    header = openxlsx::createStyle(textDecoration = "bold", halign = "center", valign = "center", border = "bottom", borderStyle = "thin"),
     body = openxlsx::createStyle(halign = "center", valign = "center"),
     left = openxlsx::createStyle(halign = "left", valign = "center", wrapText = TRUE),
     wrap = openxlsx::createStyle(halign = "center", valign = "center", wrapText = TRUE),
     summary = openxlsx::createStyle(halign = "center", valign = "center"),
     warning = openxlsx::createStyle(halign = "center", valign = "center", wrapText = TRUE, fontColour = "#9A3412"),
     note = openxlsx::createStyle(halign = "left", valign = "top", wrapText = TRUE),
-    top = openxlsx::createStyle(border = "top", borderStyle = "thick"),
-    bottom = openxlsx::createStyle(border = "bottom", borderStyle = "thick")
+    top = openxlsx::createStyle(border = "top", borderStyle = "thin"),
+    bottom = openxlsx::createStyle(border = "bottom", borderStyle = "thin")
   )
 }
 
-add_excel_table_sheet <- function(workbook, sheet_name, table, used_sheets, merge_shared_independent = FALSE) {
+regression_excel_styles <- analysis_excel_styles
+
+add_excel_table_sheet <- function(workbook, sheet_name, table, used_sheets, merge_shared_independent = FALSE, title = NULL) {
   sheet_name <- excel_sheet_name(sheet_name, used_sheets)
-  styles <- regression_excel_styles()
+  styles <- analysis_excel_styles()
+  title <- title %||% sheet_name
   openxlsx::addWorksheet(workbook, sheet_name)
   if (is.data.frame(table) && nrow(table) > 0) {
-    openxlsx::writeData(workbook, sheet_name, table, startRow = 1, startCol = 1, withFilter = FALSE)
-    openxlsx::addStyle(workbook, sheet_name, styles$header, rows = 1, cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
-    openxlsx::addStyle(workbook, sheet_name, styles$body, rows = 2:(nrow(table) + 1), cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
-    openxlsx::addStyle(workbook, sheet_name, styles$left, rows = 2:(nrow(table) + 1), cols = 1, gridExpand = TRUE, stack = TRUE)
-    if (identical(sheet_name, "Model overview") && ncol(table) > 1) {
-      openxlsx::addStyle(workbook, sheet_name, styles$wrap, rows = 2:(nrow(table) + 1), cols = 2:ncol(table), gridExpand = TRUE, stack = TRUE)
+    n_cols <- ncol(table)
+    title_row <- 1L
+    header_row <- 3L
+    body_rows <- (header_row + 1):(header_row + nrow(table))
+
+    openxlsx::writeData(workbook, sheet_name, title, startRow = title_row, startCol = 1, colNames = FALSE)
+    openxlsx::mergeCells(workbook, sheet_name, cols = seq_len(n_cols), rows = title_row)
+    openxlsx::addStyle(workbook, sheet_name, styles$title, rows = title_row, cols = 1, gridExpand = TRUE, stack = TRUE)
+
+    openxlsx::writeData(workbook, sheet_name, table, startRow = header_row, startCol = 1, withFilter = FALSE)
+    openxlsx::addStyle(workbook, sheet_name, styles$top, rows = header_row, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+    openxlsx::addStyle(workbook, sheet_name, styles$header, rows = header_row, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+    openxlsx::addStyle(workbook, sheet_name, styles$body, rows = body_rows, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+    openxlsx::addStyle(workbook, sheet_name, styles$left, rows = body_rows, cols = 1, gridExpand = TRUE, stack = TRUE)
+    if (n_cols >= 2) {
+      openxlsx::addStyle(workbook, sheet_name, styles$left, rows = body_rows, cols = 2, gridExpand = TRUE, stack = TRUE)
     }
-    openxlsx::addStyle(workbook, sheet_name, styles$bottom, rows = nrow(table) + 1, cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
+    if (identical(sheet_name, "Model overview") && ncol(table) > 1) {
+      openxlsx::addStyle(workbook, sheet_name, styles$wrap, rows = body_rows, cols = 2:ncol(table), gridExpand = TRUE, stack = TRUE)
+    }
+    openxlsx::addStyle(workbook, sheet_name, styles$bottom, rows = header_row + nrow(table), cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
     if (isTRUE(merge_shared_independent) && ncol(table) > 2) {
       independent_row <- which(as.character(table[[1]]) == "Independent variables")
       independent_values <- as.character(unlist(table[independent_row, -1, drop = TRUE], use.names = FALSE))
@@ -55,7 +73,7 @@ add_excel_table_sheet <- function(workbook, sheet_name, table, used_sheets, merg
         all(nzchar(trimws(independent_values))) &&
         length(unique(independent_values)) == 1
       ) {
-        excel_row <- independent_row + 1
+        excel_row <- independent_row + header_row
         openxlsx::mergeCells(workbook, sheet_name, cols = 2:ncol(table), rows = excel_row)
         openxlsx::addStyle(workbook, sheet_name, styles$body, rows = excel_row, cols = 2, gridExpand = TRUE, stack = TRUE)
       }
@@ -64,7 +82,18 @@ add_excel_table_sheet <- function(workbook, sheet_name, table, used_sheets, merg
       overview_widths <- c(28, rep(24, max(0, ncol(table) - 1)))
       openxlsx::setColWidths(workbook, sheet_name, cols = seq_along(table), widths = overview_widths[seq_along(table)])
     } else {
-      openxlsx::setColWidths(workbook, sheet_name, cols = seq_along(table), widths = "auto")
+      widths <- rep(12, ncol(table))
+      names(widths) <- names(table)
+      widths[1] <- 14
+      if (ncol(table) >= 2) {
+        widths[2] <- 18
+      }
+      summary_column <- "n(%) or M \u00b1 SD"
+      widths[names(widths) == summary_column] <- 16
+      widths[names(widths) %in% c("Min", "Max", "Median", "M", "SD", "n", "%")] <- 12
+      widths[names(widths) %in% c("IQR(Q1~Q3)")] <- 18
+      widths[names(widths) %in% c("Skewness", "Kurtosis")] <- 12
+      openxlsx::setColWidths(workbook, sheet_name, cols = seq_along(table), widths = widths)
     }
   } else {
     openxlsx::writeData(workbook, sheet_name, "No data")
@@ -84,7 +113,7 @@ add_regression_result_sheet <- function(
   title = NULL
 ) {
   sheet_name <- excel_sheet_name(sheet_name, used_sheets)
-  styles <- regression_excel_styles()
+  styles <- analysis_excel_styles()
   n_cols <- max(1, ncol(table))
   data_start_row <- 3
   header_row <- data_start_row
@@ -343,5 +372,19 @@ save_analysis_excel_file <- function(
     show_sr2 = show_sr2,
     show_f2 = show_f2
   )
+}
+
+save_frequencies_excel_file <- function(result, file) {
+  table <- frequency_combined_table(result, result$options %||% list(n_percent = TRUE, mean_sd = TRUE))
+  workbook <- openxlsx::createWorkbook()
+  used_sheets <- character(0)
+  used_sheets <- add_excel_table_sheet(
+    workbook,
+    "Frequencies Descriptives",
+    table,
+    used_sheets
+  )
+  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
+  invisible(file)
 }
 

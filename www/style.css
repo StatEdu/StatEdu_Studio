@@ -85,6 +85,12 @@ body {
   color: #102a43;
 }
 
+.frequencies-workspace-panel {
+  min-width: 980px;
+  background: #f8fafc;
+  overflow-x: auto;
+}
+
 .workspace-header {
   display: flex;
   align-items: center;
@@ -283,6 +289,17 @@ input.variable-select:disabled {
   min-width: 86px;
 }
 
+.var-label-input {
+  min-width: 150px;
+  width: 150px;
+}
+
+.category-meta-input[data-field="reference"],
+.value-label-input[data-field^="value_"] {
+  min-width: 64px;
+  width: 64px;
+}
+
 .compact-action {
   width: auto;
 }
@@ -360,6 +377,680 @@ input.variable-select:disabled {
   min-width: 250px;
   max-width: 250px;
   box-sizing: border-box;
+}
+
+.variable-icon-listbox {
+  width: 250px;
+  min-width: 250px;
+  max-width: 250px;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  box-sizing: border-box;
+  padding: 4px 0;
+}
+
+.variable-icon-listbox:focus {
+  outline: 1px solid #60a5fa;
+  outline-offset: 1px;
+}
+
+.variable-icon-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 2px 8px;
+  color: #102a43;
+  font-size: 14px;
+  line-height: 20px;
+  cursor: default;
+  user-select: none;
+}
+
+.variable-icon-option.is-selected {
+  color: #ffffff;
+  background: #737373;
+}
+
+.variable-icon-option.is-selected .measurement-symbol {
+  filter: none;
+}
+
+.variable-icon-option-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.frequencies-setup-grid {
+  display: grid;
+  grid-template-columns: 326px 50px 326px 310px;
+  gap: 18px;
+  align-items: start;
+  margin-top: 18px;
+  width: 1138px;
+  min-width: 1138px;
+  padding: 18px;
+  background: #f4f8fb;
+  border: 1px solid #e1eaf2;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.analysis-transfer-column {
+  width: 326px;
+}
+
+.analysis-transfer-panel,
+.analysis-options-panel {
+  background: #eef4f8;
+  border: 1px solid #d5e2ec;
+  border-radius: 8px;
+  padding: 12px;
+  box-sizing: border-box;
+  box-shadow: 0 1px 1px rgba(15, 23, 42, 0.03);
+}
+
+.analysis-transfer-panel {
+  width: 326px;
+  min-height: 568px;
+}
+
+.analysis-transfer-column .analysis-field-label {
+  margin-left: 0;
+}
+
+.analysis-field-label,
+.analysis-option-title {
+  margin-bottom: 16px;
+  color: #002b50;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.analysis-field-label-with-icons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.analysis-allowed-measurements {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.analysis-allowed-measurements .measurement-symbol {
+  flex-basis: 14px;
+  width: 14px;
+  height: 14px;
+  opacity: 0.95;
+}
+
+.analysis-transfer-listbox {
+  width: 300px;
+  min-width: 300px;
+  max-width: 300px;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid #b8c8d6;
+  border-radius: 6px;
+  box-sizing: border-box;
+  padding: 4px 0;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.05);
+  user-select: none;
+}
+
+.analysis-transfer-listbox:focus {
+  outline: 1px solid #60a5fa;
+  outline-offset: 1px;
+}
+
+.analysis-transfer-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 2px 18px;
+  color: #102a43;
+  font-size: 14px;
+  line-height: 20px;
+  cursor: default;
+  user-select: none;
+}
+
+.analysis-transfer-option:nth-child(even):not(.is-selected) {
+  background: #f8fafc;
+}
+
+.analysis-transfer-option:hover:not(.is-selected) {
+  background: #e7f0f8;
+}
+
+.analysis-transfer-option.is-selected {
+  color: #102a43;
+  background: #b8cef0;
+  box-shadow: none;
+  font-weight: 400;
+}
+
+.analysis-transfer-option-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analysis-transfer-controls {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 48px;
+}
+
+.analysis-move-button {
+  width: 34px;
+  min-width: 34px;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.analysis-move-button.analysis-move-forward {
+  color: #174a7c !important;
+  background-color: #d7e6fb !important;
+  border-color: #9fbfea !important;
+}
+
+.analysis-move-button.analysis-move-forward:hover,
+.analysis-move-button.analysis-move-forward:focus {
+  color: #ffffff !important;
+  background-color: #2f80ed !important;
+  border-color: #1d5fc0 !important;
+}
+
+.analysis-move-button.analysis-move-back {
+  color: #4b3200 !important;
+  background-color: #f8d66d !important;
+  border-color: #e2b93b !important;
+}
+
+.analysis-move-button.analysis-move-back:hover,
+.analysis-move-button.analysis-move-back:focus {
+  color: #ffffff !important;
+  background-color: #d98a00 !important;
+  border-color: #a86400 !important;
+}
+
+.analysis-move-button:disabled,
+.analysis-move-button.disabled {
+  color: #8a98a8 !important;
+  background-color: #e7edf3 !important;
+  border-color: #cbd8e4 !important;
+}
+
+.analysis-options-column {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.analysis-options-panel {
+  min-height: 330px;
+  width: 310px;
+}
+
+.analysis-option-group .checkbox {
+  margin-top: 6px;
+  margin-bottom: 6px;
+  margin-left: 36px;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.analysis-action-row {
+  margin-top: 26px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.frequencies-action-row {
+  display: grid;
+  grid-template-columns: 326px 50px 326px 310px;
+  gap: 18px;
+  align-items: center;
+  width: 1138px;
+  min-width: 1138px;
+}
+
+.frequencies-action-row > .btn {
+  grid-column: 1;
+}
+
+.frequencies-action-row > #frequencies_save_control {
+  grid-column: 4;
+}
+
+.ttest-anova-workspace-panel {
+  min-width: 980px;
+  overflow-x: auto;
+}
+
+.ttest-anova-setup-grid {
+  display: grid;
+  grid-template-columns: 326px 50px 326px 310px;
+  gap: 18px;
+  align-items: start;
+  margin-top: 18px;
+  width: 1138px;
+  min-width: 1138px;
+  padding: 18px;
+  background: #f4f8fb;
+  border: 1px solid #e1eaf2;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.ttest-anova-setup-grid > .analysis-transfer-panel {
+  min-height: 568px;
+}
+
+.ttest-anova-target-column {
+  display: grid;
+  gap: 18px;
+  width: 326px;
+}
+
+.ttest-anova-target-column .analysis-transfer-panel {
+  min-height: 0;
+}
+
+.ttest-anova-transfer-controls {
+  flex-direction: column;
+  gap: 184px;
+}
+
+.ttest-anova-transfer-button-group {
+  display: grid;
+  gap: 8px;
+}
+
+.ttest-anova-options-column {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 310px;
+}
+
+.ttest-anova-method-panel.analysis-options-panel {
+  min-height: 150px;
+  width: 310px;
+}
+
+.ttest-anova-options.analysis-options-panel {
+  min-height: 210px;
+  width: 310px;
+}
+
+.ttest-anova-method-panel .form-group,
+.ttest-anova-method-panel .form-control,
+.ttest-anova-method-panel select,
+.ttest-anova-options .form-group,
+.ttest-anova-options .form-control,
+.ttest-anova-options select {
+  width: 250px;
+  min-width: 250px;
+  max-width: 250px;
+  box-sizing: border-box;
+}
+
+.ttest-anova-action-row {
+  display: grid;
+  grid-template-columns: 326px 50px 326px 310px;
+  gap: 18px;
+  align-items: center;
+  width: 1138px;
+  min-width: 1138px;
+}
+
+.ttest-anova-action-row > .btn {
+  grid-column: 1;
+}
+
+.correlation-workspace-panel {
+  min-width: 980px;
+  overflow-x: auto;
+}
+
+.correlation-setup-grid {
+  display: grid;
+  grid-template-columns: 326px 50px 326px 310px;
+  gap: 18px;
+  align-items: start;
+  margin-top: 18px;
+  width: 1138px;
+  min-width: 1138px;
+  padding: 18px;
+  background: #f4f8fb;
+  border: 1px solid #e1eaf2;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.correlation-setup-grid > .analysis-transfer-panel {
+  min-height: 568px;
+}
+
+.correlation-transfer-controls {
+  padding-top: 84px;
+}
+
+.correlation-options-column {
+  display: flex;
+  flex-direction: column;
+  gap: 82px;
+  width: 310px;
+}
+
+.correlation-method-panel.analysis-options-panel {
+  min-height: 210px;
+  width: 310px;
+}
+
+.correlation-options.analysis-options-panel {
+  min-height: 170px;
+  width: 310px;
+}
+
+.correlation-action-row {
+  display: grid;
+  grid-template-columns: 326px 50px 326px 310px;
+  gap: 18px;
+  align-items: center;
+  width: 1138px;
+  min-width: 1138px;
+}
+
+.correlation-action-row > .btn {
+  grid-column: 1;
+}
+
+.hierarchical-workspace-panel {
+  min-width: 1320px;
+  overflow-x: auto;
+}
+
+.hierarchical-setup-grid {
+  display: grid;
+  grid-template-columns: 326px 50px 326px 310px;
+  gap: 18px;
+  align-items: start;
+  margin-top: 18px;
+  width: 1138px;
+  min-width: 1138px;
+  padding: 18px;
+  background: #f4f8fb;
+  border: 1px solid #e1eaf2;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.hierarchical-setup-grid > .analysis-transfer-panel {
+  min-height: 712px;
+}
+
+.hierarchical-transfer-controls {
+  flex-direction: column;
+  gap: 88px;
+}
+
+.hierarchical-transfer-button-group {
+  display: grid;
+  gap: 8px;
+}
+
+.hierarchical-target-column {
+  display: grid;
+  gap: 18px;
+  width: 326px;
+}
+
+.hierarchical-target-panel.analysis-transfer-panel {
+  min-height: 0;
+}
+
+.hierarchical-order-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.hierarchical-order-actions .btn {
+  min-width: 78px;
+}
+
+.hierarchical-options.analysis-options-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  min-height: 330px;
+  width: 310px;
+}
+
+.hierarchical-options .regression-field,
+.hierarchical-options .form-group,
+.hierarchical-options .selectize-control,
+.hierarchical-options .form-control,
+.hierarchical-options select {
+  width: 250px;
+  min-width: 250px;
+  max-width: 250px;
+  box-sizing: border-box;
+}
+
+.hierarchical-action-row {
+  display: grid;
+  grid-template-columns: 326px 50px 326px 310px;
+  gap: 18px;
+  align-items: center;
+  width: 1138px;
+  min-width: 1138px;
+}
+
+.hierarchical-action-row > .btn {
+  grid-column: 1;
+}
+
+.regression-workspace-panel {
+  min-width: 980px;
+  overflow-x: auto;
+}
+
+.regression-setup-grid {
+  display: grid;
+  grid-template-columns: 326px 50px 326px 20px 310px;
+  gap: 18px;
+  align-items: start;
+  margin-top: 18px;
+  width: 1176px;
+  min-width: 1176px;
+  padding: 18px;
+  background: #f4f8fb;
+  border: 1px solid #e1eaf2;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.regression-setup-grid > .analysis-transfer-panel {
+  min-height: 568px;
+}
+
+.regression-target-column {
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 24px;
+  width: 326px;
+  height: 568px;
+}
+
+.regression-target-column .analysis-transfer-panel {
+  min-height: 0;
+}
+
+.regression-dependent-panel .analysis-transfer-listbox,
+.regression-independent-panel .analysis-transfer-listbox {
+  width: 300px;
+  min-width: 300px;
+  max-width: 300px;
+}
+
+.regression-dependent-panel .analysis-transfer-listbox {
+  height: 96px !important;
+  min-height: 96px;
+  max-height: 96px;
+}
+
+.regression-independent-panel .analysis-transfer-listbox,
+.regression-available-panel .analysis-transfer-listbox {
+  height: 240px !important;
+  min-height: 240px;
+  max-height: 240px;
+}
+
+.regression-available-panel .analysis-transfer-listbox {
+  margin-top: 213px;
+}
+
+.regression-transfer-controls {
+  flex-direction: column;
+  gap: 186px;
+  transform: translateX(6px);
+}
+
+.regression-transfer-button-group {
+  display: grid;
+  gap: 8px;
+}
+
+.regression-options {
+  grid-column: 5;
+  grid-row: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  align-content: initial;
+  margin-left: 0;
+  padding-top: 12px;
+  min-height: 568px;
+  width: 310px;
+}
+
+.regression-options .regression-field {
+  width: 250px;
+  min-width: 250px;
+  max-width: 250px;
+}
+
+.regression-options > .analysis-option-group:first-child .regression-field {
+  margin-left: 36px;
+}
+
+.regression-options .form-group,
+.regression-options .selectize-control,
+.regression-options .form-control,
+.regression-options select {
+  width: 250px;
+  min-width: 250px;
+  max-width: 250px;
+  box-sizing: border-box;
+}
+
+.regression-action-row {
+  display: grid;
+  grid-template-columns: 326px 50px 326px 20px 310px;
+  gap: 18px;
+  align-items: center;
+  width: 1176px;
+  min-width: 1176px;
+}
+
+.regression-action-row > .btn {
+  grid-column: 1;
+  justify-self: start;
+  margin-left: 30px;
+  width: 300px;
+  min-width: 300px;
+}
+
+.regression-action-row > #penalized_regression_control {
+  grid-column: 2 / span 2;
+}
+
+.regression-action-row > #regression_save_control {
+  grid-column: 5;
+  margin-left: 18px;
+}
+
+.analysis-save-action {
+  display: flex;
+  gap: 8px;
+}
+
+.analysis-save-action .btn {
+  min-width: 104px;
+}
+
+#frequencies_results {
+  margin-top: 34px;
+}
+
+.frequencies-result-section {
+  width: 1138px;
+  min-width: 1138px;
+  box-sizing: border-box;
+}
+
+.frequencies-result-section .coefficient-table {
+  width: 100%;
+}
+
+.frequency-plots-section {
+  margin-top: 26px;
+}
+
+.frequency-plot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 360px);
+  gap: 22px;
+  align-items: start;
+  margin-bottom: 22px;
+}
+
+.frequency-plot-row {
+  display: grid;
+  gap: 22px;
+  align-items: start;
+  margin-bottom: 22px;
+}
+
+.frequency-plot-row-1 {
+  grid-template-columns: 360px;
+}
+
+.frequency-plot-row-2 {
+  grid-template-columns: repeat(2, 360px);
+}
+
+.frequency-plot-row-3 {
+  grid-template-columns: repeat(3, 360px);
+}
+
+.frequency-plot-card h4 {
+  margin: 0 0 8px;
+  color: #102a43;
+  font-size: 15px;
+  font-weight: 700;
 }
 
 .regression-field select,
@@ -481,6 +1172,8 @@ input.variable-select:disabled {
   width: auto;
   min-width: 440px;
   margin-bottom: 0;
+  border-top: 2px solid #1f2937;
+  border-bottom: 2px solid #1f2937;
   border-collapse: collapse;
   border-spacing: 0;
   background: transparent;
@@ -500,7 +1193,7 @@ input.variable-select:disabled {
 
 .regression-result-panel table > thead > tr > th {
   font-weight: 700;
-  border-bottom: 2px solid #d0d0d0;
+  border-bottom: 2px solid #1f2937;
 }
 
 .regression-result-panel table > tbody > tr:last-child > td,
@@ -729,8 +1422,8 @@ input.variable-select:disabled {
 .regression-variable-option {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  justify-content: flex-start;
+  gap: 7px;
   min-height: 30px;
   padding: 5px 8px;
   color: #102a43;
@@ -744,6 +1437,7 @@ input.variable-select:disabled {
 }
 
 .regression-variable-option-name {
+  flex: 1 1 auto;
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -760,20 +1454,88 @@ input.variable-select:disabled {
   text-align: center;
 }
 
-.measurement-continuous {
+.measurement-icon.measurement-continuous {
   background: #2563eb;
 }
 
-.measurement-binary {
+.measurement-icon.measurement-binary {
   background: #0f766e;
 }
 
-.measurement-category {
+.measurement-icon.measurement-category {
   background: #7c3aed;
 }
 
-.measurement-ordered {
+.measurement-icon.measurement-ordered {
   background: #b45309;
+}
+
+.measurement-symbol {
+  position: relative;
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  color: #0f172a;
+}
+
+.measurement-symbol::before,
+.measurement-symbol::after {
+  content: "";
+  position: absolute;
+  box-sizing: border-box;
+}
+
+.measurement-symbol.measurement-continuous::before {
+  display: none;
+}
+
+.measurement-symbol.measurement-continuous::after {
+  display: none;
+}
+
+.measurement-symbol.measurement-continuous {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M2 2 V16 H17' fill='none' stroke='%230f3d56' stroke-width='1.4' stroke-linecap='round'/%3E%3Cpath d='M4 14 L7 10 L9 12 L14 6 L16 4' fill='none' stroke='%232563eb' stroke-width='2.1' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 16px 16px;
+}
+
+.measurement-symbol.measurement-binary::before {
+  display: none;
+}
+
+.measurement-symbol.measurement-binary::after {
+  display: none;
+}
+
+.measurement-symbol.measurement-binary {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Ccircle cx='9' cy='9' r='7.2' fill='%23f2b84b' stroke='%230f3d56' stroke-width='1.1'/%3E%3Cpath d='M9 1.8 A7.2 7.2 0 0 1 9 16.2 Z' fill='%2373a7e8'/%3E%3Cpath d='M9 1.8 L9 16.2' stroke='%23ffffff' stroke-width='1.4'/%3E%3Ccircle cx='9' cy='9' r='7.2' fill='none' stroke='%230f3d56' stroke-width='1.1'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 16px 16px;
+}
+
+.measurement-symbol.measurement-category {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpolygon points='9,1 16,5 16,13 9,17 2,13 2,5' fill='%230f766e'/%3E%3Cpath d='M9 9 L9 1 L16 5 L16 13 Z' fill='%232563eb'/%3E%3Cpath d='M9 9 L16 13 L9 17 L2 13 Z' fill='%23f59e0b'/%3E%3Cpath d='M9 9 L2 13 L2 5 L9 1 Z' fill='%237c3aed'/%3E%3Cpath d='M9 9 L9 1 M9 9 L16 13 M9 9 L2 13' stroke='%23ffffff' stroke-width='1.3' stroke-linecap='round'/%3E%3Cpolygon points='9,1 16,5 16,13 9,17 2,13 2,5' fill='none' stroke='%230f172a' stroke-width='.7'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 16px 16px;
+}
+
+.measurement-symbol.measurement-ordered::before {
+  display: none;
+}
+
+.measurement-symbol.measurement-ordered::after {
+  display: none;
+}
+
+.measurement-symbol.measurement-ordered {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M2 15 H17' stroke='%230f3d56' stroke-width='1.4' stroke-linecap='round'/%3E%3Crect x='3' y='10' width='3.5' height='5' fill='%23bfe3f1' stroke='%230f3d56' stroke-width='1'/%3E%3Crect x='7.3' y='6.5' width='3.5' height='8.5' fill='%239fc7e8' stroke='%230f3d56' stroke-width='1'/%3E%3Crect x='11.6' y='2.5' width='3.5' height='12.5' fill='%234f97d7' stroke='%230f3d56' stroke-width='1'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 16px 16px;
 }
 
 .regression-variable-item {
@@ -894,6 +1656,7 @@ table {
   width: 100%;
   border-collapse: collapse;
   border-top: 2px solid #1f2937;
+  border-bottom: 2px solid #1f2937;
 }
 
 .coefficient-table th,
@@ -930,10 +1693,14 @@ table {
 }
 
 .coefficient-note {
+  caption-side: bottom;
   color: #52606d;
   font-size: 11px;
   line-height: 1.4;
   margin-top: 4px;
+  padding-top: 4px;
+  text-align: left;
+  white-space: normal;
 }
 
 .effect-size-reference-panel {
@@ -1034,6 +1801,43 @@ table {
   user-select: none;
 }
 
+table.dataTable {
+  border-top: 2px solid #1f2937 !important;
+  border-bottom: 1px solid #1f2937 !important;
+  border-collapse: collapse;
+}
+
+table.dataTable thead th,
+table.dataTable thead td {
+  border-bottom: 1px solid #1f2937 !important;
+}
+
+table.dataTable thead tr.filters th,
+table.dataTable thead tr.filters td,
+table.dataTable thead tr:nth-child(2) th,
+table.dataTable thead tr:nth-child(2) td {
+  border-bottom: 1px solid #d7dde5 !important;
+}
+
+table.dataTable thead tr:not(:first-child) th,
+table.dataTable thead tr:not(:first-child) td,
+table.dataTable thead tr:last-child th,
+table.dataTable thead tr:last-child td {
+  border-bottom: 1px solid #d7dde5 !important;
+}
+
+.dataTables_scrollBody table.dataTable,
+div.dataTables_scrollBody table.dataTable {
+  border-top: 0 !important;
+}
+
+.dataTables_scrollBody table.dataTable tbody tr:first-child td,
+.dataTables_scrollBody table.dataTable tbody tr:first-child th,
+div.dataTables_scrollBody table.dataTable tbody tr:first-child td,
+div.dataTables_scrollBody table.dataTable tbody tr:first-child th {
+  border-top: 0 !important;
+}
+
 table.dataTable tbody tr.selected,
 table.dataTable tbody tr.selected > *,
 table.dataTable tbody tr.selected td,
@@ -1118,6 +1922,141 @@ pre {
 .bootstrap-stop-button {
   align-self: center;
   white-space: nowrap;
+}
+
+.regression-workspace-panel {
+  min-width: 980px;
+  overflow-x: auto;
+}
+
+.regression-setup-grid {
+  display: grid;
+  grid-template-columns: 326px 50px 326px 20px 310px;
+  gap: 18px;
+  align-items: start;
+  margin-top: 18px;
+  width: 1176px;
+  min-width: 1176px;
+  padding: 18px;
+  background: #f4f8fb;
+  border: 1px solid #e1eaf2;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.regression-setup-grid > .analysis-transfer-panel {
+  min-height: 568px;
+}
+
+.regression-target-column {
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 24px;
+  width: 326px;
+  height: 568px;
+}
+
+.regression-target-column .analysis-transfer-panel {
+  min-height: 0;
+}
+
+.regression-transfer-controls {
+  flex-direction: column;
+  gap: 186px;
+  transform: translateX(6px);
+}
+
+.regression-dependent-panel .analysis-transfer-listbox {
+  height: 96px !important;
+  min-height: 96px;
+  max-height: 96px;
+}
+
+.regression-independent-panel .analysis-transfer-listbox,
+.regression-available-panel .analysis-transfer-listbox {
+  height: 240px !important;
+  min-height: 240px;
+  max-height: 240px;
+}
+
+.regression-available-panel .analysis-transfer-listbox {
+  margin-top: 213px;
+}
+
+.regression-options.analysis-options-panel {
+  grid-column: 5 !important;
+  grid-row: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  align-content: initial;
+  margin-left: 0;
+  padding-top: 12px;
+  min-height: 568px !important;
+  height: 568px;
+  width: 310px;
+}
+
+.regression-options .regression-field,
+.regression-options .form-group,
+.regression-options .selectize-control,
+.regression-options .form-control,
+.regression-options select {
+  width: 250px;
+  min-width: 250px;
+  max-width: 250px;
+  box-sizing: border-box;
+}
+
+.regression-options.analysis-options-panel > .analysis-option-group:first-child .regression-field {
+  margin-left: 36px;
+}
+
+.regression-options.analysis-options-panel > .analysis-option-group:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.regression-options.analysis-options-panel > .analysis-option-group:first-child .regression-field,
+.regression-options.analysis-options-panel > .analysis-option-group:first-child .form-group,
+.regression-options.analysis-options-panel > .analysis-option-group:first-child .selectize-control,
+.regression-options.analysis-options-panel > .analysis-option-group:first-child .form-control,
+.regression-options.analysis-options-panel > .analysis-option-group:first-child select {
+  width: 228px;
+  min-width: 228px;
+  max-width: 228px;
+}
+
+.regression-action-row {
+  display: grid;
+  grid-template-columns: 326px 50px 326px 20px 310px;
+  gap: 18px;
+  align-items: center;
+  width: 1176px;
+  min-width: 1176px;
+}
+
+.regression-action-row > .btn {
+  grid-column: 1;
+  justify-self: start;
+  margin-left: 30px;
+  width: 300px;
+  min-width: 300px;
+}
+
+.regression-action-row > #penalized_regression_control {
+  grid-column: 2 / span 2;
+}
+
+.regression-action-row > #regression_save_control {
+  grid-column: 5;
+  margin-left: 18px;
+  justify-self: start;
+}
+
+.regression-action-row > #regression_save_control .analysis-save-action {
+  justify-content: flex-start;
 }
 
 @media (max-width: 900px) {

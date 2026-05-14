@@ -1,3 +1,79 @@
+frequencies_tab_panel <- function() {
+  tabPanel(
+    "Frequencies",
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1("Frequencies / Descriptives"),
+        div("Move variables into the analysis list and select summary options.", class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel",
+        style = "min-width:980px;overflow-x:auto;",
+        h3("Frequencies / Descriptives"),
+        uiOutput("frequencies_setup"),
+        div(
+          class = "analysis-action-row frequencies-action-row",
+          actionButton("run_frequencies", "Run analysis", class = "btn btn-primary"),
+          uiOutput("frequencies_save_control")
+        ),
+        uiOutput("frequencies_results")
+      )
+    )
+  )
+}
+
+ttest_anova_tab_panel <- function() {
+  tabPanel(
+    "t-test / ANOVA",
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1("t-test / ANOVA"),
+        div("Move variables into the analysis lists and select test options.", class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel ttest-anova-workspace-panel",
+        style = "min-width:980px;overflow-x:auto;",
+        h3("t-test / ANOVA"),
+        uiOutput("ttest_anova_setup"),
+        div(
+          class = "analysis-action-row ttest-anova-action-row",
+          actionButton("run_ttest_anova", "Run analysis", class = "btn btn-primary")
+        ),
+        uiOutput("ttest_anova_results")
+      )
+    )
+  )
+}
+
+correlation_tab_panel <- function() {
+  tabPanel(
+    "Correlation",
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1("Correlation"),
+        div("Move variables into the analysis list and select correlation options.", class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel correlation-workspace-panel",
+        style = "min-width:980px;overflow-x:auto;",
+        h3("Correlation"),
+        uiOutput("correlation_setup"),
+        div(
+          class = "analysis-action-row correlation-action-row",
+          actionButton("run_correlation", "Run analysis", class = "btn btn-primary")
+        ),
+        uiOutput("correlation_results")
+      )
+    )
+  )
+}
+
 regression_tab_panel <- function() {
   tabPanel(
     "Regression",
@@ -9,22 +85,15 @@ regression_tab_panel <- function() {
         div("Review selected variables and run regression analysis.", class = "app-subtitle")
       ),
       div(
-        class = "regression-layout",
+        class = "workspace-panel frequencies-workspace-panel regression-workspace-panel",
+        h3("Regression"),
+        uiOutput("regression_setup"),
         div(
-          class = "side-panel",
-          uiOutput("regression_variable_list")
+          class = "bootstrap-progress-slot",
+          uiOutput("bootstrap_progress"),
+          uiOutput("bootstrap_stop_control")
         ),
-        div(
-          class = "workspace-panel",
-          h3("Regression"),
-          uiOutput("regression_setup"),
-          div(
-            class = "bootstrap-progress-slot",
-            uiOutput("bootstrap_progress"),
-            uiOutput("bootstrap_stop_control")
-          ),
-          uiOutput("regression_results")
-        )
+        uiOutput("regression_results")
       )
     )
   )
@@ -41,20 +110,15 @@ hierarchical_tab_panel <- function() {
         div("Review selected variables and prepare hierarchical regression analysis.", class = "app-subtitle")
       ),
       div(
-        class = "regression-layout",
+        class = "workspace-panel frequencies-workspace-panel hierarchical-workspace-panel",
+        style = "min-width:980px;overflow-x:auto;",
+        h3("Hierarchical"),
+        uiOutput("hierarchical_setup"),
         div(
-          class = "side-panel",
-          uiOutput("hierarchical_variable_list")
+          class = "empty-message regression-results-empty",
+          "Hierarchical regression models are not implemented yet."
         ),
-        div(
-          class = "workspace-panel",
-          h3("Hierarchical"),
-          uiOutput("hierarchical_setup"),
-          div(
-            class = "empty-message regression-results-empty",
-            "Hierarchical regression models are not implemented yet."
-          )
-        )
+        uiOutput("hierarchical_results")
       )
     )
   )
@@ -174,11 +238,102 @@ measurement_icon_label <- function(measurement) {
   measurement <- tolower(as.character(measurement %||% ""))
   switch(
     measurement,
-    continuous = "C",
-    binary = "B",
-    category = "Cat",
-    ordered = "Ord",
-    "?"
+    continuous = "\u223F",
+    binary = "\u25D0",
+    category = "\u25C6",
+    ordered = "\u2582\u2585\u2588",
+    "\u25CB"
+  )
+}
+
+display_variable_choices_with_measurements <- function(names, table = NULL, labels = character(0)) {
+  choices <- display_variable_choices_static(names, table, labels)
+  variable_names <- as.character(names %||% character(0))
+  if (is.null(table) || !all(c("name", "measurement") %in% names(table)) || length(variable_names) == 0) {
+    return(choices)
+  }
+
+  measurements <- stats::setNames(as.character(table$measurement), as.character(table$name))
+  choice_values <- unname(choices)
+  labels_by_value <- stats::setNames(names(choices), choice_values)
+  icon_labels <- vapply(variable_names, function(name) {
+    paste(measurement_icon_label(measurements[[name]]), named_value(labels_by_value, name, name))
+  }, character(1))
+  stats::setNames(choice_values, icon_labels)
+}
+
+variable_choice_items <- function(names, table = NULL, labels = character(0)) {
+  variable_names <- as.character(names %||% character(0))
+  if (length(variable_names) == 0) {
+    return(list())
+  }
+
+  measurements <- character(0)
+  if (!is.null(table) && all(c("name", "measurement") %in% names(table))) {
+    measurements <- stats::setNames(as.character(table$measurement), as.character(table$name))
+  }
+
+  lapply(variable_names, function(name) {
+    list(
+      value = name,
+      label = display_variable_name_static(name, table, labels),
+      measurement = named_value(measurements, name, "")
+    )
+  })
+}
+
+measurement_symbol_tag <- function(measurement) {
+  measurement <- tolower(as.character(measurement %||% ""))
+  measurement_label <- switch(
+    measurement,
+    category = "nominal",
+    ordered = "ordinal",
+    measurement
+  )
+  span(
+    class = paste("measurement-symbol", paste0("measurement-", measurement)),
+    title = measurement_label,
+    `aria-label` = measurement_label
+  )
+}
+
+variable_icon_listbox_input <- function(input_id, items, selected = NULL, size = 8) {
+  values <- vapply(items, `[[`, character(1), "value")
+  labels <- vapply(items, `[[`, character(1), "label")
+  selected <- selected_order_item(selected, values)
+  height_px <- max(4, as.integer(size %||% 8)) * 24
+
+  tagList(
+    tags$select(
+      id = input_id,
+      class = "easyflow-hidden-select",
+      style = "display:none;",
+      lapply(seq_along(values), function(index) {
+        tags$option(
+          value = values[[index]],
+          selected = if (identical(values[[index]], selected)) "selected" else NULL,
+          labels[[index]]
+        )
+      })
+    ),
+    div(
+      class = "variable-icon-listbox",
+      role = "listbox",
+      tabindex = "0",
+      `data-input-id` = input_id,
+      style = paste0("height:", height_px, "px;"),
+      lapply(items, function(item) {
+        value <- as.character(item$value)
+        div(
+          class = paste("variable-icon-option", if (identical(value, selected)) "is-selected" else ""),
+          role = "option",
+          `data-value` = value,
+          onclick = "window.easyflowSelectVariableIconOption && window.easyflowSelectVariableIconOption(this);",
+          measurement_symbol_tag(item$measurement),
+          span(item$label, class = "variable-icon-option-label")
+        )
+      })
+    )
   )
 }
 
@@ -221,12 +376,8 @@ regression_role_variable_list <- function(
             measurement <- as.character(row$measurement %||% "")
             div(
               class = "regression-variable-option",
-              span(display_name, class = "regression-variable-option-name"),
-              span(
-                measurement_icon_label(measurement),
-                class = paste("measurement-icon", paste0("measurement-", tolower(measurement))),
-                title = measurement
-              )
+              measurement_symbol_tag(measurement),
+              span(display_name, class = "regression-variable-option-name")
             )
           })
         )

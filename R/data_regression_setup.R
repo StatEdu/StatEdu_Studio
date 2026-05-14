@@ -87,22 +87,32 @@ current_regression_variable_table <- function(
 move_order_item <- function(order, selected, direction = c("up", "down")) {
   direction <- match.arg(direction)
   order <- as.character(order %||% character(0))
-  selected <- utils::head(as.character(selected %||% character(0)), 1)
-  index <- match(selected, order)
-
-  if (length(selected) == 0 || is.na(index)) {
-    return(list(order = order, selected = selected, changed = FALSE))
-  }
-  if (identical(direction, "up") && index <= 1) {
-    return(list(order = order, selected = selected, changed = FALSE))
-  }
-  if (identical(direction, "down") && index >= length(order)) {
+  selected <- intersect(as.character(selected %||% character(0)), order)
+  if (length(selected) == 0) {
     return(list(order = order, selected = selected, changed = FALSE))
   }
 
-  swap_index <- if (identical(direction, "up")) index - 1 else index + 1
-  order[c(index, swap_index)] <- order[c(swap_index, index)]
-  list(order = order, selected = selected, changed = TRUE)
+  next_order <- order
+  if (identical(direction, "up")) {
+    for (item in selected) {
+      index <- match(item, next_order)
+      if (!is.na(index) && index > 1 && !(next_order[[index - 1]] %in% selected)) {
+        next_order[c(index - 1, index)] <- next_order[c(index, index - 1)]
+      }
+    }
+  } else {
+    for (item in rev(selected)) {
+      index <- match(item, next_order)
+      if (!is.na(index) && index < length(next_order) && !(next_order[[index + 1]] %in% selected)) {
+        next_order[c(index, index + 1)] <- next_order[c(index + 1, index)]
+      }
+    }
+  }
+
+  if (identical(next_order, order)) {
+    return(list(order = order, selected = selected, changed = FALSE))
+  }
+  list(order = next_order, selected = selected, changed = TRUE)
 }
 
 append_order_items <- function(order, items) {
@@ -112,7 +122,7 @@ append_order_items <- function(order, items) {
   next_order <- c(order, setdiff(items, order))
   list(
     order = next_order,
-    selected = utils::head(items, 1),
+    selected = intersect(items, next_order),
     changed = !identical(order, next_order)
   )
 }

@@ -142,8 +142,7 @@ register_analysis_save_handlers <- function(
     }
     div(
       class = "regression-save-action",
-      actionButton("save_analysis_excel_dialog", "Save tables", class = "btn-primary"),
-      actionButton("save_analysis_figures_dialog", "Save figures", class = "btn-default")
+      analysis_save_buttons("save_analysis_excel_dialog", "save_analysis_figures_dialog")
     )
   })
 

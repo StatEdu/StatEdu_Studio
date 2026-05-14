@@ -37,7 +37,7 @@ category_label_display_data <- function(
     independent = independent,
     controls = controls
   )
-  info <- info[info$role != "exclude" & info$measurement %in% c("binary", "category", "ordered"), , drop = FALSE]
+  info <- info[info$measurement %in% c("binary", "category", "ordered"), , drop = FALSE]
   if (nrow(info) == 0) {
     return(data.frame(Message = "No categorical variables are selected.", check.names = FALSE))
   }
@@ -63,7 +63,7 @@ category_label_display_data <- function(
     }
   }
 
-  info[, c("source_order", "selected", "name", "var_label", "role", "measurement", "n_unique", "reference", "reference_label", value_columns), drop = FALSE]
+  info[, c("source_order", "name", "var_label", "measurement", "n_unique", "reference", value_columns), drop = FALSE]
 }
 
 category_label_seed_table <- function(base, max_pairs = 6) {
@@ -74,34 +74,49 @@ category_label_seed_table <- function(base, max_pairs = 6) {
   base[, c("name", edit_columns), drop = FALSE]
 }
 
+normalize_category_label_table <- function(table, columns, base = NULL) {
+  if (!is.data.frame(table)) {
+    if (!is.null(base) && is.data.frame(base) && "name" %in% names(base)) {
+      table <- base[, intersect(c("name", columns), names(base)), drop = FALSE]
+    } else {
+      table <- data.frame(name = character(0), stringsAsFactors = FALSE, check.names = FALSE)
+    }
+  }
+
+  if (!"name" %in% names(table)) {
+    table$name <- character(nrow(table))
+  }
+
+  for (column in columns) {
+    if (!column %in% names(table)) {
+      table[[column]] <- rep("", nrow(table))
+    }
+  }
+
+  table[, c("name", columns), drop = FALSE]
+}
+
+new_category_label_row <- function(name, columns) {
+  as.data.frame(
+    as.list(c(name = name, stats::setNames(rep("", length(columns)), columns))),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
 update_category_label_table <- function(table, base, name, field, value, max_pairs = 6) {
   edit_columns <- category_label_edit_columns(max_pairs)
   if (!nzchar(name) || !field %in% edit_columns) {
     return(list(table = table, changed = FALSE, var_label_update = NULL, ok = FALSE))
   }
 
+  table <- normalize_category_label_table(table, edit_columns, base)
   if (!is.data.frame(table)) {
-    table <- category_label_seed_table(base, max_pairs)
-    if (!is.data.frame(table)) {
-      return(list(table = table, changed = FALSE, var_label_update = NULL, ok = FALSE))
-    }
-  } else {
-    for (column in edit_columns) {
-      if (!column %in% names(table)) {
-        table[[column]] <- ""
-      }
-    }
+    return(list(table = table, changed = FALSE, var_label_update = NULL, ok = FALSE))
   }
 
   if (!name %in% table$name) {
-    table <- rbind(
-      table,
-      as.data.frame(
-        as.list(c(name = name, stats::setNames(rep("", length(edit_columns)), edit_columns))),
-        stringsAsFactors = FALSE,
-        check.names = FALSE
-      )
-    )
+    table <- rbind(table, new_category_label_row(name, edit_columns))
   }
 
   row_index <- match(name, table$name)
@@ -134,33 +149,14 @@ merge_category_label_save_request <- function(current, incoming, base = NULL, ma
     return(current)
   }
 
-  if (!is.data.frame(current)) {
-    current <- if (is.null(base) || !"name" %in% names(base)) {
-      data.frame(name = character(0), stringsAsFactors = FALSE, check.names = FALSE)
-    } else {
-      base[, c("name", intersect(value_columns, names(base))), drop = FALSE]
-    }
-  }
-
-  for (column in value_columns) {
-    if (!column %in% names(current)) {
-      current[[column]] <- rep("", nrow(current))
-    }
-  }
+  current <- normalize_category_label_table(current, value_columns, base)
 
   for (name in names(incoming)) {
     if (!nzchar(trimws(as.character(name %||% "")))) {
       next
     }
     if (!name %in% current$name) {
-      current <- rbind(
-        current,
-        as.data.frame(
-          as.list(c(name = name, stats::setNames(rep("", length(value_columns)), value_columns))),
-          stringsAsFactors = FALSE,
-          check.names = FALSE
-        )
-      )
+      current <- rbind(current, new_category_label_row(name, value_columns))
     }
     row_index <- match(name, current$name)
     for (field in intersect(names(incoming[[name]]), value_columns)) {

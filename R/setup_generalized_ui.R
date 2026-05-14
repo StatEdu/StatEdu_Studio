@@ -9,12 +9,12 @@ generalized_setup_state <- function(
 ) {
   list(
     available_predictors = available_predictors,
-    available_choices = display_variable_choices_static(available_predictors, variable_table, labels),
+    available_choices = display_variable_choices_with_measurements(available_predictors, variable_table, labels),
     available_list_size = 18,
-    dependent_choices = display_variable_choices_static(ordered_dependents, variable_table, labels),
+    dependent_choices = display_variable_choices_with_measurements(ordered_dependents, variable_table, labels),
     ordered_dependents = ordered_dependents,
     dependent_list_size = setup_list_size(ordered_dependents),
-    predictor_choices = display_variable_choices_static(ordered_predictors, variable_table, labels),
+    predictor_choices = display_variable_choices_with_measurements(ordered_predictors, variable_table, labels),
     ordered_predictors = ordered_predictors,
     predictor_list_size = setup_list_size(ordered_predictors),
     family_choices = generalized_family_choices(),

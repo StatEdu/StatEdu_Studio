@@ -4,6 +4,8 @@ EasyFlow Statistics is a local Shiny application for assumption-guided regressio
 
 The app runs on the user's own Windows PC and opens in a local browser session. Data are analyzed locally and are not sent to an external server.
 
+All statistical analyses use CRAN packages only.
+
 ## Current Scope
 
 - Multiple regression
@@ -19,6 +21,12 @@ The app runs on the user's own Windows PC and opens in a local browser session. 
 3. Double-click `EasyFlow_Statistics.bat`.
 
 The app will open at `127.0.0.1` in the default browser.
+
+## Citation
+
+If you use EasyFlow Statistics in your research, please cite:
+
+LEE, I. H. (2026). EasyFlow Statistics (Version 0.5.1) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
 
 ## Development Model
 

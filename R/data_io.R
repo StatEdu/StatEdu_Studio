@@ -219,7 +219,7 @@ data_step_value <- function(has_data_file = FALSE, has_restored_info = FALSE, ac
   if (!isTRUE(has_data_file) && !isTRUE(has_restored_info)) {
     return("load_data")
   }
-  if (identical(active_step, "step4")) {
+  if (identical(active_step, "step3") || identical(active_step, "step4")) {
     return("category_labels")
   }
   if (isTRUE(selection_applied)) {
@@ -357,6 +357,7 @@ merge_variable_info_state <- function(
 
 measurement_select_html <- function(name, value, source_order) {
   choices <- unique(c("binary", "category", "ordered", "continuous", value))
+  choice_labels <- ifelse(choices == "ordered", "ordinal", choices)
   sprintf(
     paste0(
       '<select id="measurement_input_%s" class="measurement-select" data-name="%s" ',
@@ -371,7 +372,7 @@ measurement_select_html <- function(name, value, source_order) {
         '<option value="%s" %s>%s</option>',
         choices,
         ifelse(choices == value, "selected", ""),
-        choices
+        choice_labels
       ),
       collapse = ""
     )
