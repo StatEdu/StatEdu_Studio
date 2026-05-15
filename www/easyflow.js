@@ -300,6 +300,7 @@
 
       var easyflowTransferLastIndexByInput = {};
       var easyflowActiveTransferListbox = null;
+      var easyflowActiveTransferInputId = null;
 
       function easyflowTransferOptions(listbox) {
         return Array.prototype.slice.call(listbox.querySelectorAll('.analysis-transfer-option'));
@@ -339,9 +340,37 @@
       function easyflowTransferMarkActive(listbox) {
         var inputId = listbox ? listbox.getAttribute('data-input-id') : null;
         if (listbox) easyflowActiveTransferListbox = listbox;
+        if (inputId) easyflowActiveTransferInputId = inputId;
         if (window.Shiny && inputId) {
           Shiny.setInputValue(inputId + '_active', Date.now() + Math.random(), {priority: 'event'});
         }
+      }
+
+      function easyflowFindTransferListboxByInputId(inputId) {
+        if (!inputId) return null;
+        var listboxes = document.querySelectorAll('.analysis-transfer-listbox');
+        for (var i = 0; i < listboxes.length; i += 1) {
+          if (listboxes[i].getAttribute('data-input-id') === inputId) return listboxes[i];
+        }
+        return null;
+      }
+
+      function easyflowResolveActiveTransferListbox(event) {
+        var targetListbox = event && event.target && event.target.closest
+          ? event.target.closest('.analysis-transfer-listbox')
+          : null;
+        if (targetListbox) return targetListbox;
+
+        var focusedListbox = document.activeElement && document.activeElement.closest
+          ? document.activeElement.closest('.analysis-transfer-listbox')
+          : null;
+        if (focusedListbox) return focusedListbox;
+
+        if (easyflowActiveTransferListbox && document.body.contains(easyflowActiveTransferListbox)) {
+          return easyflowActiveTransferListbox;
+        }
+
+        return easyflowFindTransferListboxByInputId(easyflowActiveTransferInputId);
       }
 
       function easyflowTransferFocusListbox(listbox) {
@@ -398,7 +427,10 @@
 
       document.addEventListener('pointerover', function(event) {
         var listbox = event.target && event.target.closest ? event.target.closest('.analysis-transfer-listbox') : null;
-        if (listbox) easyflowActiveTransferListbox = listbox;
+        if (listbox) {
+          easyflowActiveTransferListbox = listbox;
+          easyflowActiveTransferInputId = listbox.getAttribute('data-input-id') || easyflowActiveTransferInputId;
+        }
       }, true);
 
       function easyflowTransferHandleSelectAll(event, listbox) {
@@ -435,18 +467,43 @@
           ((event.key || '').toLowerCase() === 'a' || event.code === 'KeyA');
         if (!isSelectAll) return;
 
-        var targetListbox = event.target && event.target.closest ? event.target.closest('.analysis-transfer-listbox') : null;
-        var focusedListbox = document.activeElement && document.activeElement.closest
-          ? document.activeElement.closest('.analysis-transfer-listbox')
-          : null;
-        var activeListbox = easyflowActiveTransferListbox && document.body.contains(easyflowActiveTransferListbox)
-          ? easyflowActiveTransferListbox
-          : null;
-        easyflowTransferHandleSelectAll(event, targetListbox || focusedListbox || activeListbox);
+        var listbox = easyflowResolveActiveTransferListbox(event);
+        if (listbox) {
+          easyflowTransferHandleSelectAll(event, listbox);
+        }
       }
 
       window.addEventListener('keydown', easyflowTransferSelectAllListener, true);
       document.addEventListener('keydown', easyflowTransferSelectAllListener, true);
+
+      function easyflowRegisterClearTransferSelectionHandler() {
+        if (!window.Shiny || !Shiny.addCustomMessageHandler || window.easyflowClearTransferSelectionHandlerRegistered) {
+          return;
+        }
+        window.easyflowClearTransferSelectionHandlerRegistered = true;
+        Shiny.addCustomMessageHandler('easyflow-clear-transfer-selection', function(message) {
+          var inputIds = [];
+          if (message && Array.isArray(message.inputIds)) {
+            inputIds = message.inputIds;
+          } else if (message && message.inputId) {
+            inputIds = [message.inputId];
+          }
+
+          inputIds.forEach(function(inputId) {
+            var listbox = easyflowFindTransferListboxByInputId(inputId);
+            if (listbox) {
+              easyflowTransferClear(listbox);
+              delete easyflowTransferLastIndexByInput[inputId];
+              listbox.removeAttribute('data-last-index');
+            }
+            if (window.Shiny && inputId) {
+              Shiny.setInputValue(inputId, [], {priority: 'event'});
+            }
+          });
+        });
+      }
+      easyflowRegisterClearTransferSelectionHandler();
+      document.addEventListener('shiny:connected', easyflowRegisterClearTransferSelectionHandler);
 
       function easyflowUpdateMoveButtonClasses() {
         document.querySelectorAll('.analysis-move-button').forEach(function(button) {
@@ -512,6 +569,57 @@
           }, {priority: 'event'});
         }
       }, true);
+
+      (function() {
+        function selectedRadioValue(name) {
+          var checked = document.querySelector('input[name="' + name + '"]:checked');
+          return checked ? checked.value : null;
+        }
+
+        function setTtestNormalityDisabled(selector, disabled) {
+          document.querySelectorAll(selector).forEach(function(container) {
+            container.classList.toggle('ttest-normality-disabled', disabled);
+            container.querySelectorAll('input').forEach(function(input) {
+              input.disabled = disabled;
+            });
+          });
+        }
+
+        function updateTtestNormalityTree() {
+          var normality = document.getElementById('ttest_anova_normality_enabled');
+          if (!normality) return;
+          var enabled = normality.checked;
+          var studyType = selectedRadioValue('ttest_anova_normality_study_type') || 'survey';
+          setTtestNormalityDisabled('.ttest-normality-study-options', !enabled);
+          setTtestNormalityDisabled('.ttest-normality-survey-branch', !enabled || studyType !== 'survey');
+          setTtestNormalityDisabled('.ttest-normality-experimental-branch', !enabled || studyType !== 'experimental');
+        }
+
+        function scheduleTtestNormalityTreeUpdate() {
+          window.setTimeout(updateTtestNormalityTree, 0);
+        }
+
+        document.addEventListener('change', function(event) {
+          var target = event.target;
+          if (!target || !target.matches) return;
+          if (
+            target.matches('#ttest_anova_normality_enabled') ||
+            target.matches('input[name="ttest_anova_normality_study_type"]')
+          ) {
+            scheduleTtestNormalityTreeUpdate();
+          }
+        }, true);
+
+        document.addEventListener('shiny:value', scheduleTtestNormalityTreeUpdate);
+        document.addEventListener('shiny:bound', scheduleTtestNormalityTreeUpdate);
+        document.addEventListener('shiny:connected', scheduleTtestNormalityTreeUpdate);
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', scheduleTtestNormalityTreeUpdate);
+        } else {
+          scheduleTtestNormalityTreeUpdate();
+        }
+        window.easyflowUpdateTtestNormalityTree = updateTtestNormalityTree;
+      })();
 
       document.addEventListener('click', function(event) {
         var button = event.target.closest('.settings-save-button');

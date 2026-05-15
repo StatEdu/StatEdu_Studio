@@ -12,12 +12,25 @@ register_frequencies_handlers <- function(
   frequency_variables,
   mark_settings_dirty
 ) {
+  active_frequency_list <- reactiveVal(NULL)
+
   frequency_state <- reactive({
     frequencies_setup_state(
       selected_names = selected_names_fn(),
       variable_table = variable_table_fn(),
       labels = labels_fn(),
-      selected_variables = frequency_variables()
+      selected_variables = frequency_variables(),
+      selected_available = isolate(input$frequency_available),
+      selected_selected = isolate(input$frequency_selected),
+      table_summary = input$frequency_table_summary,
+      stat_min_max = input$frequency_stat_min_max,
+      stat_skew_kurtosis = input$frequency_stat_skew_kurtosis,
+      stat_median_iqr = input$frequency_stat_median_iqr,
+      plot_pie = input$frequency_plot_pie,
+      plot_bar = input$frequency_plot_bar,
+      plot_histogram = input$frequency_plot_histogram,
+      plot_box = input$frequency_plot_box,
+      plot_violin = input$frequency_plot_violin
     )
   })
 
@@ -25,8 +38,16 @@ register_frequencies_handlers <- function(
     frequencies_setup_panel(frequency_state())
   })
 
+  observeEvent(input$frequency_available_active, {
+    active_frequency_list("frequency_available")
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$frequency_selected_active, {
+    active_frequency_list("frequency_selected")
+  }, ignoreInit = TRUE)
+
   observe({
-    if (length(input$frequency_selected %||% character(0)) > 0) {
+    if (identical(active_frequency_list(), "frequency_selected") && length(input$frequency_selected %||% character(0)) > 0) {
       updateActionButton(session, "frequency_move", label = "<")
     } else {
       updateActionButton(session, "frequency_move", label = ">")
@@ -38,13 +59,33 @@ register_frequencies_handlers <- function(
     current <- intersect(as.character(frequency_variables() %||% character(0)), selected_names_fn())
     selected_selected <- intersect(as.character(input$frequency_selected %||% character(0)), current)
 
-    if (length(available_selected) > 0) {
-      frequency_variables(c(current, setdiff(available_selected, current)))
+    if (identical(active_frequency_list(), "frequency_selected") && length(selected_selected) > 0) {
+      frequency_variables(setdiff(current, selected_selected))
+      active_frequency_list("frequency_available")
       mark_settings_dirty()
       return()
     }
-    if (length(selected_selected) > 0) {
-      frequency_variables(setdiff(current, selected_selected))
+    if (length(available_selected) > 0) {
+      frequency_variables(c(current, setdiff(available_selected, current)))
+      active_frequency_list("frequency_selected")
+      mark_settings_dirty()
+    }
+  })
+
+  observeEvent(input$frequency_move_up, {
+    updated <- move_order_item(frequency_variables(), input$frequency_selected, "up")
+    if (isTRUE(updated$changed)) {
+      frequency_variables(updated$order)
+      active_frequency_list("frequency_selected")
+      mark_settings_dirty()
+    }
+  })
+
+  observeEvent(input$frequency_move_down, {
+    updated <- move_order_item(frequency_variables(), input$frequency_selected, "down")
+    if (isTRUE(updated$changed)) {
+      frequency_variables(updated$order)
+      active_frequency_list("frequency_selected")
       mark_settings_dirty()
     }
   })

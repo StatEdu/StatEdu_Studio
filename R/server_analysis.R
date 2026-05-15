@@ -62,10 +62,11 @@ regression_plot_result_block <- function(
   result,
   index,
   variable_table_fn,
-  labels_fn
+  labels_fn,
+  id_prefix = "residual"
 ) {
-  qq_id <- paste0("residual_qq_plot_", index)
-  homo_id <- paste0("residual_homoscedasticity_plot_", index)
+  qq_id <- paste0(id_prefix, "_qq_plot_", index)
+  homo_id <- paste0(id_prefix, "_homoscedasticity_plot_", index)
   variable_table <- variable_table_fn()
   dependent <- all.vars(result$formula)[[1]]
   dependent_label <- display_variable_name_static(dependent, variable_table, labels_fn(), label_only = TRUE)
@@ -79,7 +80,7 @@ regression_plot_result_block <- function(
     }, res = 96)
   })
 
-  plot_result_panel(dependent_label, qq_id, homo_id)
+  plot_result_panel(dependent_label, qq_id, homo_id, result = result)
 }
 
 register_regression_results_output <- function(
@@ -119,6 +120,51 @@ register_regression_results_output <- function(
             index,
             variable_table_fn = variable_table_fn,
             labels_fn = labels_fn
+          )
+        })
+      )
+    )
+  })
+
+  invisible(TRUE)
+}
+
+register_hierarchical_results_output <- function(
+  input,
+  output,
+  analyses_fn,
+  variable_table_fn,
+  labels_fn,
+  category_table_fn
+) {
+  output$hierarchical_results <- renderUI({
+    if (is.null(input$run_hierarchical) || input$run_hierarchical == 0) {
+      return(div(
+        class = "empty-message regression-results-empty",
+        "Click Run hierarchical to fit the model."
+      ))
+    }
+
+    results <- analyses_fn()
+    tagList(
+      hierarchical_results_panel(
+        results = results,
+        variable_table = variable_table_fn(),
+        labels = labels_fn(),
+        category_table = category_table_fn(),
+        refs = regression_reference_values_static(category_table_fn()),
+        value_labels = category_value_label_lookup_static(category_table_fn()),
+        show_sr2 = input$hierarchical_show_sr2,
+        show_f2 = input$hierarchical_show_f2,
+        show_vif = input$hierarchical_show_vif,
+        plot_blocks = lapply(seq_along(results), function(index) {
+          regression_plot_result_block(
+            output,
+            results[[index]],
+            index,
+            variable_table_fn = variable_table_fn,
+            labels_fn = labels_fn,
+            id_prefix = "hierarchical_residual"
           )
         })
       )
@@ -291,6 +337,44 @@ register_analysis_run_handlers <- function(
   observe({
     bootstrap_tick()
     isolate(bootstrap_manager$poll())
+  })
+
+  invisible(TRUE)
+}
+
+register_hierarchical_analysis_run_handlers <- function(
+  input,
+  session,
+  prepare_hierarchical_result_fn,
+  penalized_result,
+  analysis_result,
+  bootstrap_job,
+  bootstrap_job_queue,
+  bootstrap_cancel_requested,
+  bootstrap_status,
+  bootstrap_stop_visible,
+  bootstrap_manager
+) {
+  observeEvent(input$run_hierarchical, {
+    penalized_result(NULL)
+    bootstrap_job(NULL)
+    bootstrap_job_queue(list())
+    bootstrap_cancel_requested(FALSE)
+    bootstrap_stop_visible(FALSE)
+    bootstrap_status(list(done = 0L, r = 0L, stopping = FALSE, message = "Running hierarchical regression"))
+    prepared <- prepare_hierarchical_result_fn()
+    analysis_result(prepared$results)
+    if (length(prepared$jobs) == 0) {
+      bootstrap_status(NULL)
+      return()
+    }
+    first_job <- prepared$jobs[[1]]
+    remaining_jobs <- if (length(prepared$jobs) > 1) prepared$jobs[-1] else list()
+    bootstrap_job_queue(remaining_jobs)
+    set.seed(first_job$seed)
+    session$onFlushed(function() {
+      bootstrap_manager$start(first_job)
+    }, once = TRUE)
   })
 
   invisible(TRUE)

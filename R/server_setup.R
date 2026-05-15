@@ -295,6 +295,7 @@ create_hierarchical_block3_current <- function(
 
 register_hierarchical_block_observers <- function(
   input,
+  session,
   dependent_order,
   independent_names,
   control_names,
@@ -307,6 +308,15 @@ register_hierarchical_block_observers <- function(
   sync_dependent_order_fn,
   mark_settings_dirty
 ) {
+  active_hierarchical_list <- reactiveVal(NULL)
+
+  clear_transfer_selection <- function(input_ids) {
+    session$sendCustomMessage(
+      "easyflow-clear-transfer-selection",
+      list(inputIds = as.character(input_ids))
+    )
+  }
+
   move_selected_to <- function(target, selected) {
     updated <- append_order_items(target(), selected)
     if (!updated$changed) {
@@ -324,6 +334,196 @@ register_hierarchical_block_observers <- function(
     target(updated$order)
     TRUE
   }
+
+  move_button_label <- function(target_input_id) {
+    if (identical(active_hierarchical_list(), target_input_id) &&
+        length(input[[target_input_id]] %||% character(0)) > 0) {
+      "<"
+    } else {
+      ">"
+    }
+  }
+
+  hierarchical_move_direction <- function(target_input_id) {
+    available_selected <- as.character(input$hierarchical_available %||% character(0))
+    target_selected <- as.character(input[[target_input_id]] %||% character(0))
+    active_list <- active_hierarchical_list()
+
+    if (identical(active_list, target_input_id) && length(target_selected) > 0) {
+      return("remove")
+    }
+    if (identical(active_list, "hierarchical_available") && length(available_selected) > 0) {
+      return("add")
+    }
+
+    # Prefer the selected target list over stale selections left in the source
+    # list. This keeps repeated moves from block1/2/3 working after the UI
+    # re-renders and before the browser selection-clear message arrives.
+    if (length(target_selected) > 0) {
+      return("remove")
+    }
+    if (length(available_selected) > 0) {
+      return("add")
+    }
+    "add"
+  }
+
+  observeEvent(input$hierarchical_available_active, {
+    active_hierarchical_list("hierarchical_available")
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$hierarchical_y_active, {
+    active_hierarchical_list("hierarchical_y")
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$hierarchical_block1_active, {
+    active_hierarchical_list("hierarchical_block1")
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$hierarchical_block2_active, {
+    active_hierarchical_list("hierarchical_block2")
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$hierarchical_block3_active, {
+    active_hierarchical_list("hierarchical_block3")
+  }, ignoreInit = TRUE)
+
+  observe({
+    updateActionButton(session, "hierarchical_dependent_move", label = move_button_label("hierarchical_y"))
+  })
+
+  observe({
+    updateActionButton(session, "hierarchical_block1_move", label = move_button_label("hierarchical_block1"))
+  })
+
+  observe({
+    updateActionButton(session, "hierarchical_block2_move", label = move_button_label("hierarchical_block2"))
+  })
+
+  observe({
+    updateActionButton(session, "hierarchical_block3_move", label = move_button_label("hierarchical_block3"))
+  })
+
+  observeEvent(input$hierarchical_dependent_move, {
+    if (identical(hierarchical_move_direction("hierarchical_y"), "remove")) {
+      selected <- intersect(as.character(input$hierarchical_y %||% character(0)), sync_dependent_order_fn(update_input = FALSE))
+      if (length(selected) == 0) {
+        return()
+      }
+      updated <- remove_order_items(sync_dependent_order_fn(update_input = FALSE), selected)
+      if (!updated$changed) {
+        return()
+      }
+      dependent_order(updated$order)
+      sync_dependent_order_fn(updated$selected)
+      clear_transfer_selection("hierarchical_y")
+      active_hierarchical_list("hierarchical_available")
+      mark_settings_dirty()
+      return()
+    }
+
+    raw_selected <- as.character(input$hierarchical_available %||% character(0))
+    selected <- intersect(raw_selected, dependent_candidates_fn())
+    if (length(raw_selected) > 0 && length(selected) == 0) {
+      showNotification("Dependent variable selection is limited to continuous variables.", type = "warning")
+      return()
+    }
+    updated <- append_order_items(sync_dependent_order_fn(update_input = FALSE), selected)
+    if (!updated$changed) {
+      return()
+    }
+    dependent_order(updated$order)
+    sync_dependent_order_fn(updated$selected)
+    clear_transfer_selection("hierarchical_available")
+    active_hierarchical_list("hierarchical_available")
+    mark_settings_dirty()
+  })
+
+  observeEvent(input$hierarchical_block1_move, {
+    if (identical(hierarchical_move_direction("hierarchical_block1"), "remove")) {
+      selected <- intersect(as.character(input$hierarchical_block1 %||% character(0)), control_names())
+      if (length(selected) == 0) {
+        return()
+      }
+      if (remove_selected_from(control_names, selected)) {
+        clear_transfer_selection("hierarchical_block1")
+        active_hierarchical_list("hierarchical_available")
+        mark_settings_dirty()
+      }
+      return()
+    }
+
+    selected <- intersect(as.character(input$hierarchical_available %||% character(0)), predictor_candidates_fn())
+    if (length(selected) == 0) {
+      return()
+    }
+    if (move_selected_to(control_names, selected)) {
+      clear_transfer_selection("hierarchical_available")
+      active_hierarchical_list("hierarchical_available")
+      mark_settings_dirty()
+    }
+  })
+
+  observeEvent(input$hierarchical_block2_move, {
+    if (identical(hierarchical_move_direction("hierarchical_block2"), "remove")) {
+      block2 <- setdiff(intersect(independent_names_fn(), selected_names_fn()), hierarchical_block3_current_fn())
+      selected <- intersect(as.character(input$hierarchical_block2 %||% character(0)), block2)
+      if (length(selected) == 0) {
+        return()
+      }
+      if (remove_selected_from(independent_names, selected)) {
+        clear_transfer_selection("hierarchical_block2")
+        active_hierarchical_list("hierarchical_available")
+        mark_settings_dirty()
+      }
+      return()
+    }
+
+    selected <- intersect(as.character(input$hierarchical_available %||% character(0)), predictor_candidates_fn())
+    if (length(selected) == 0) {
+      return()
+    }
+    if (move_selected_to(independent_names, selected)) {
+      hierarchical_block3_names(setdiff(hierarchical_block3_current_fn(), selected))
+      clear_transfer_selection("hierarchical_available")
+      active_hierarchical_list("hierarchical_available")
+      mark_settings_dirty()
+    }
+  })
+
+  observeEvent(input$hierarchical_block3_move, {
+    if (identical(hierarchical_move_direction("hierarchical_block3"), "remove")) {
+      selected <- intersect(as.character(input$hierarchical_block3 %||% character(0)), hierarchical_block3_current_fn())
+      if (length(selected) == 0) {
+        return()
+      }
+      updated <- remove_order_items(hierarchical_block3_current_fn(), selected)
+      if (!updated$changed) {
+        return()
+      }
+      hierarchical_block3_names(updated$order)
+      independent_names(setdiff(independent_names(), selected))
+      clear_transfer_selection("hierarchical_block3")
+      active_hierarchical_list("hierarchical_available")
+      mark_settings_dirty()
+      return()
+    }
+
+    selected <- intersect(as.character(input$hierarchical_available %||% character(0)), predictor_candidates_fn())
+    if (length(selected) == 0) {
+      return()
+    }
+    moved_independent <- move_selected_to(independent_names, selected)
+    updated <- append_order_items(hierarchical_block3_current_fn(), selected)
+    if (updated$changed) {
+      hierarchical_block3_names(updated$order)
+    }
+    if (moved_independent || updated$changed) {
+      clear_transfer_selection("hierarchical_available")
+      active_hierarchical_list("hierarchical_available")
+      mark_settings_dirty()
+    }
+  })
 
   observeEvent(input$hierarchical_add_dependent, {
     selected <- intersect(as.character(input$hierarchical_available %||% character(0)), dependent_candidates_fn())
@@ -567,7 +767,7 @@ register_setup_outputs <- function(
 
     regression_setup_panel_from_state(
       setup,
-      setup_status_message(selection_applied_fn(), roles_applied_fn())
+      NULL
     )
   })
 
@@ -590,12 +790,20 @@ register_setup_outputs <- function(
       variable_table = regression_variable_table_fn(),
       labels = var_label_overrides_fn(),
       bootstrap_value = input$hierarchical_boot_r,
-      seed_value = input$hierarchical_seed
+      seed_value = input$hierarchical_seed,
+      selected_available = isolate(input$hierarchical_available),
+      selected_dependent = isolate(input$hierarchical_y),
+      selected_block1 = isolate(input$hierarchical_block1),
+      selected_block2 = isolate(input$hierarchical_block2),
+      selected_block3 = isolate(input$hierarchical_block3),
+      show_sr2 = input$hierarchical_show_sr2,
+      show_f2 = input$hierarchical_show_f2,
+      show_vif = input$hierarchical_show_vif
     )
 
     hierarchical_setup_panel_from_state(
       setup,
-      setup_status_message(selection_applied_fn(), roles_applied_fn())
+      NULL
     )
   })
 

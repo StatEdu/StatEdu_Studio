@@ -4,7 +4,14 @@ correlation_setup_state <- function(
   selected_names,
   correlation_variables = character(0),
   variable_table = NULL,
-  labels = character(0)
+  labels = character(0),
+  selected_available = character(0),
+  selected_selected = character(0),
+  normality = FALSE,
+  p_ci = TRUE,
+  significance_levels = TRUE,
+  scatter_plot = FALSE,
+  matrix_plot = FALSE
 ) {
   selected <- as.character(selected_names %||% character(0))
   correlation_variables <- intersect(as.character(correlation_variables %||% character(0)), selected)
@@ -13,9 +20,16 @@ correlation_setup_state <- function(
   list(
     available = available,
     available_items = analysis_variable_items(available, variable_table, labels),
+    available_selected = selected_order_items(selected_available, available),
     correlation_variables = correlation_variables,
     selected_items = analysis_variable_items(correlation_variables, variable_table, labels),
-    move_disabled = length(selected) == 0
+    selected_selected = selected_order_items(selected_selected, correlation_variables),
+    move_disabled = length(selected) == 0,
+    normality = isTRUE(normality),
+    p_ci = isTRUE(p_ci),
+    significance_levels = isTRUE(significance_levels),
+    scatter_plot = isTRUE(scatter_plot),
+    matrix_plot = isTRUE(matrix_plot)
   )
 }
 
@@ -24,8 +38,8 @@ correlation_setup_panel <- function(state) {
     class = "correlation-setup-grid",
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
-      div(class = "analysis-field-label", "Variables"),
-      analysis_transfer_listbox_input("correlation_available", state$available_items, size = 20)
+      analysis_field_label_tag("Variables"),
+      analysis_transfer_listbox_input("correlation_available", state$available_items, selected = state$available_selected, size = 20)
     ),
     div(
       class = "analysis-transfer-controls correlation-transfer-controls",
@@ -38,29 +52,31 @@ correlation_setup_panel <- function(state) {
     ),
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
-      div(class = "analysis-field-label", "Selected Variables"),
-      analysis_transfer_listbox_input("correlation_selected", state$selected_items, size = 20)
+      analysis_field_label_tag("Selected Variables", analysis_allowed_measurements_all()),
+      analysis_transfer_listbox_input("correlation_selected", state$selected_items, selected = state$selected_selected, size = 20),
+      div(
+        class = "analysis-order-actions correlation-order-actions",
+        actionButton("correlation_move_up", "Up", class = "btn-default btn-sm"),
+        actionButton("correlation_move_down", "Down", class = "btn-default btn-sm")
+      )
     ),
     div(
       class = "correlation-options-column",
       div(
-        class = "analysis-options-panel correlation-method-panel",
-        analysis_option_group(
-          "Correlation coefficient",
-          list(
-            list(id = "correlation_pearson", label = "Pearson", value = TRUE),
-            list(id = "correlation_spearman", label = "Spearman", value = FALSE),
-            list(id = "correlation_kendall", label = "Kendall's tau-b", value = FALSE)
-          )
-        )
-      ),
-      div(
         class = "analysis-options-panel correlation-options",
         analysis_option_group(
-          "Options",
+          "Statistics",
           list(
-            list(id = "correlation_p_value", label = "p-value", value = TRUE),
-            list(id = "correlation_n", label = "Sample size (N)", value = TRUE)
+            list(id = "correlation_normality", label = "normality (skewness/kurtosis)", value = state$normality),
+            list(id = "correlation_p_ci", label = "p-value & 95% CI", value = state$p_ci),
+            list(id = "correlation_significance_levels", label = "significance levels", value = state$significance_levels)
+          )
+        ),
+        analysis_option_group(
+          "Plot",
+          list(
+            list(id = "correlation_scatter_plot", label = "scatter plot matrix", value = state$scatter_plot),
+            list(id = "correlation_matrix_plot", label = "correlation matrix heatmap", value = state$matrix_plot)
           )
         )
       )

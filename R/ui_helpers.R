@@ -20,22 +20,24 @@ set_data_step_view <- function(active_step_setter, data_view_setter, step, view 
 app_brand_title <- function(version) {
   div(
     class = "brand-title",
-    tags$img(src = "logo-mark.svg", class = "brand-logo", alt = "EasyFlow Statistics logo"),
+    tags$img(src = "logo-mark.png", class = "brand-logo", alt = "EasyFlow Statistics logo"),
     span(class = "brand-name", "EasyFlow Statistics"),
     span(class = "version", paste0("v", version))
   )
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-regression-listbox-20-1"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-logo-png-1"))
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-selection-controls-5"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-selection-controls-7"))
 }
 
 app_head_tags <- function(version) {
   tags$head(
+    tags$link(rel = "icon", type = "image/png", sizes = "32x32", href = "logo-favicon-32.png"),
+    tags$link(rel = "icon", type = "image/png", sizes = "64x64", href = "logo-favicon-64.png"),
     app_stylesheet_link(version),
     app_script_link(version)
   )

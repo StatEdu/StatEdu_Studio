@@ -96,3 +96,61 @@ create_prepare_analysis_result_fn <- function(
     )
   }
 }
+
+create_prepare_hierarchical_analysis_result_fn <- function(
+  current_data_file_fn,
+  dataset_fn,
+  hierarchical_y_fn,
+  hierarchical_block1_fn,
+  hierarchical_block2_fn,
+  hierarchical_block3_fn,
+  step4_variable_info_fn,
+  variable_info_table_fn,
+  category_label_values_fn,
+  boot_r_fn,
+  seed_fn,
+  sync_dependent_order_fn = NULL,
+  control_names_fn = NULL,
+  independent_names_fn = NULL,
+  hierarchical_block3_current_fn = NULL
+) {
+  function() {
+    shiny::req(current_data_file_fn())
+    data <- dataset_fn()
+    dependents <- as.character(hierarchical_y_fn() %||% character(0))
+    block1 <- as.character(hierarchical_block1_fn() %||% character(0))
+    block2 <- as.character(hierarchical_block2_fn() %||% character(0))
+    block3 <- as.character(hierarchical_block3_fn() %||% character(0))
+
+    if (length(dependents) == 0 && !is.null(sync_dependent_order_fn)) {
+      dependents <- sync_dependent_order_fn(update_input = FALSE)
+    }
+    if (length(block1) == 0 && !is.null(control_names_fn)) {
+      block1 <- control_names_fn()
+    }
+    if (length(block2) == 0 && !is.null(independent_names_fn)) {
+      fallback_block3 <- if (!is.null(hierarchical_block3_current_fn)) hierarchical_block3_current_fn() else character(0)
+      block2 <- setdiff(independent_names_fn(), fallback_block3)
+    }
+    if (length(block3) == 0 && !is.null(hierarchical_block3_current_fn)) {
+      block3 <- hierarchical_block3_current_fn()
+    }
+
+    info <- step4_variable_info_fn()
+    if (is.null(info)) {
+      info <- variable_info_table_fn()
+    }
+
+    prepare_hierarchical_analysis_results(
+      data = data,
+      dependents = dependents,
+      block1 = block1,
+      block2 = block2,
+      block3 = block3,
+      variable_info = info,
+      reference_values = regression_reference_values_static(category_label_values_fn()),
+      boot_r = boot_r_fn(),
+      seed = seed_fn() %||% default_seed()
+    )
+  }
+}

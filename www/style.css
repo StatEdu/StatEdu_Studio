@@ -1,12 +1,23 @@
 body {
   background: #f6f8fb;
   color: #1f2933;
+  scroll-padding-top: 58px;
 }
 
 .navbar {
   border: 0;
   border-radius: 0;
+  position: sticky;
+  top: 0;
+  z-index: 3000;
+  background: #f8fafc;
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+}
+
+.navbar.navbar-default,
+.navbar.navbar-static-top {
+  position: sticky !important;
+  top: 0;
 }
 
 .brand-title {
@@ -622,6 +633,18 @@ input.variable-select:disabled {
   font-weight: 400;
 }
 
+.analysis-option-group .radio {
+  margin-top: 6px;
+  margin-bottom: 6px;
+  margin-left: 36px;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.analysis-option-group .radio label {
+  font-weight: 400;
+}
+
 .analysis-action-row {
   margin-top: 26px;
   padding-top: 0;
@@ -718,6 +741,141 @@ input.variable-select:disabled {
   box-sizing: border-box;
 }
 
+.ttest-normality-options {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 0;
+}
+
+.ttest-normality-options .form-group,
+.ttest-normality-options .shiny-input-container {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+}
+
+.ttest-normality-subgroup {
+  margin-top: 4px;
+}
+
+.ttest-normality-level {
+  margin-top: 4px;
+  display: block !important;
+}
+
+.ttest-normality-level-1 {
+  margin-left: 34px !important;
+}
+
+.ttest-normality-level-2 {
+  margin-left: 58px !important;
+}
+
+.ttest-normality-level-3 {
+  margin-left: 0 !important;
+}
+
+.ttest-normality-study-options,
+.ttest-normality-study-options > .ttest-normality-study-options-group,
+.ttest-normality-study-options > .ttest-normality-study-options-group > .ttest-normality-study-block,
+.ttest-normality-study-block,
+.ttest-normality-branch,
+.ttest-normality-method-group,
+.ttest-normality-method-group > .shiny-options-group {
+  display: block !important;
+}
+
+.ttest-normality-study-options > .ttest-normality-study-options-group,
+.ttest-normality-study-block > .ttest-normality-branch > .ttest-normality-level-3,
+.ttest-normality-method-group > .shiny-options-group {
+  display: block !important;
+  flex-direction: unset !important;
+  align-items: unset !important;
+}
+
+.ttest-normality-study-block {
+  width: 100%;
+  display: block !important;
+  margin: 2px 0 0 0 !important;
+  clear: both !important;
+}
+
+.ttest-normality-branch {
+  display: block !important;
+  margin-top: 0 !important;
+  margin-left: 86px !important;
+  width: auto !important;
+  transition: opacity 120ms ease;
+}
+
+.ttest-normality-options .checkbox,
+.ttest-normality-options .radio,
+.ttest-normality-study-choice,
+.ttest-normality-method-choice {
+  display: block !important;
+  float: none !important;
+  width: auto !important;
+  margin: 3px 0 !important;
+  min-height: 0;
+}
+
+.ttest-normality-options .checkbox label,
+.ttest-normality-options .radio label,
+.ttest-normality-study-choice,
+.ttest-normality-method-choice {
+  display: block !important;
+  width: max-content;
+  max-width: 100%;
+  padding-left: 0 !important;
+  margin-left: 0 !important;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.ttest-normality-options .checkbox input[type="checkbox"],
+.ttest-normality-options .radio input[type="radio"],
+.ttest-normality-study-choice input,
+.ttest-normality-method-choice input {
+  position: static !important;
+  margin: 0 6px 0 0 !important;
+}
+
+.ttest-normality-study-options {
+  transition: opacity 120ms ease;
+}
+
+.ttest-normality-study-choice {
+  align-items: center;
+  gap: 6px;
+  font-weight: 400;
+}
+
+.ttest-normality-study-choice input {
+  margin: 0;
+}
+
+.ttest-normality-study-choice span {
+  line-height: 1.35;
+}
+
+.ttest-normality-disabled {
+  opacity: 0.35;
+}
+
+.ttest-normality-disabled label,
+.ttest-normality-disabled .radio,
+.ttest-normality-disabled .control-label,
+.ttest-normality-disabled span {
+  color: #6f7f8d;
+  cursor: not-allowed;
+}
+
+.ttest-normality-disabled input {
+  cursor: not-allowed;
+}
+
 .ttest-anova-action-row {
   display: grid;
   grid-template-columns: 326px 50px 326px 310px;
@@ -762,7 +920,7 @@ input.variable-select:disabled {
 .correlation-options-column {
   display: flex;
   flex-direction: column;
-  gap: 82px;
+  gap: 18px;
   width: 310px;
 }
 
@@ -772,7 +930,7 @@ input.variable-select:disabled {
 }
 
 .correlation-options.analysis-options-panel {
-  min-height: 170px;
+  min-height: 568px;
   width: 310px;
 }
 
@@ -829,6 +987,38 @@ input.variable-select:disabled {
   width: 326px;
 }
 
+.hierarchical-target-stack {
+  grid-column: 2 / span 2;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 394px;
+}
+
+.hierarchical-target-row {
+  display: grid;
+  grid-template-columns: 50px 326px;
+  gap: 18px;
+  align-items: center;
+}
+
+.hierarchical-target-move-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hierarchical-target-row .hierarchical-target-panel {
+  width: 326px;
+  box-sizing: border-box;
+}
+
+.hierarchical-target-row .hierarchical-target-panel .analysis-transfer-listbox {
+  width: 300px;
+  min-width: 300px;
+  max-width: 300px;
+}
+
 .hierarchical-target-panel.analysis-transfer-panel {
   min-height: 0;
 }
@@ -840,6 +1030,16 @@ input.variable-select:disabled {
 }
 
 .hierarchical-order-actions .btn {
+  min-width: 78px;
+}
+
+.analysis-order-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.analysis-order-actions .btn {
   min-width: 78px;
 }
 
@@ -1707,6 +1907,48 @@ table {
   border-top: 1px solid #d7dde5;
 }
 
+.hierarchical-coefficient-table {
+  border-top: 0;
+}
+
+.hierarchical-table-wrap {
+  display: inline-block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.hierarchical-coefficient-table thead tr:first-child th {
+  border-top: 2px solid #1f2937;
+}
+
+.hierarchical-coefficient-table .hierarchical-model-header {
+  text-align: center;
+  font-weight: 700;
+}
+
+.hierarchical-coefficient-table th:first-child,
+.hierarchical-coefficient-table td:first-child {
+  width: 170px;
+  min-width: 170px;
+}
+
+.hierarchical-coefficient-table th:not(:first-child):not(.hierarchical-model-header):not(.hierarchical-model-separator),
+.hierarchical-coefficient-table td:not(:first-child):not(.hierarchical-model-separator) {
+  width: 72px;
+  min-width: 72px;
+  max-width: 72px;
+}
+
+.hierarchical-coefficient-table .hierarchical-model-separator {
+  width: 8px;
+  min-width: 8px;
+  max-width: 8px;
+  padding: 0;
+  border-top: 0 !important;
+  border-bottom: 0 !important;
+  background: transparent;
+}
+
 .coefficient-note {
   caption-side: bottom;
   color: #52606d;
@@ -1716,6 +1958,19 @@ table {
   padding-top: 4px;
   text-align: left;
   white-space: normal;
+}
+
+.hierarchical-model-notes {
+  margin-top: 8px;
+  color: #1f2937;
+}
+
+.hierarchical-model-note-line + .hierarchical-model-note-line {
+  margin-top: 2px;
+}
+
+.hierarchical-coefficient-note {
+  margin-top: 6px;
 }
 
 .effect-size-reference-panel {
@@ -2000,6 +2255,7 @@ pre {
   margin-top: 0;
 }
 
+.hierarchical-options.analysis-options-panel,
 .regression-options.analysis-options-panel {
   grid-column: 5 !important;
   grid-row: auto;
@@ -2014,6 +2270,11 @@ pre {
   width: 310px;
 }
 
+.hierarchical-options .regression-field,
+.hierarchical-options .form-group,
+.hierarchical-options .selectize-control,
+.hierarchical-options .form-control,
+.hierarchical-options select,
 .regression-options .regression-field,
 .regression-options .form-group,
 .regression-options .selectize-control,
@@ -2025,16 +2286,23 @@ pre {
   box-sizing: border-box;
 }
 
+.hierarchical-options.analysis-options-panel > .analysis-option-group:first-child .regression-field,
 .regression-options.analysis-options-panel > .analysis-option-group:first-child .regression-field {
   margin-left: 36px;
 }
 
+.hierarchical-options.analysis-options-panel > .analysis-option-group:first-child,
 .regression-options.analysis-options-panel > .analysis-option-group:first-child {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
+.hierarchical-options.analysis-options-panel > .analysis-option-group:first-child .regression-field,
+.hierarchical-options.analysis-options-panel > .analysis-option-group:first-child .form-group,
+.hierarchical-options.analysis-options-panel > .analysis-option-group:first-child .selectize-control,
+.hierarchical-options.analysis-options-panel > .analysis-option-group:first-child .form-control,
+.hierarchical-options.analysis-options-panel > .analysis-option-group:first-child select,
 .regression-options.analysis-options-panel > .analysis-option-group:first-child .regression-field,
 .regression-options.analysis-options-panel > .analysis-option-group:first-child .form-group,
 .regression-options.analysis-options-panel > .analysis-option-group:first-child .selectize-control,
@@ -2103,4 +2371,181 @@ pre {
   .residual-diagnostic-plots {
     grid-template-columns: 1fr;
   }
+}
+
+/* Shared analysis setup geometry. Keep these overrides after module-specific rules. */
+.frequencies-setup-grid,
+.ttest-anova-setup-grid,
+.correlation-setup-grid,
+.hierarchical-setup-grid,
+.regression-setup-grid {
+  grid-template-columns: 326px 50px 326px 20px 310px;
+  width: 1176px;
+  min-width: 1176px;
+}
+
+.frequencies-action-row,
+.ttest-anova-action-row,
+.correlation-action-row,
+.hierarchical-action-row,
+.regression-action-row {
+  grid-template-columns: 326px 50px 326px 20px 310px;
+  width: 1176px;
+  min-width: 1176px;
+}
+
+.frequencies-setup-grid > .analysis-options-panel,
+.ttest-anova-options-column,
+.correlation-options-column,
+.hierarchical-options.analysis-options-panel,
+.regression-options.analysis-options-panel {
+  grid-column: 5;
+}
+
+.analysis-transfer-listbox {
+  height: auto;
+}
+
+.frequencies-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
+.correlation-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
+.ttest-anova-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
+.hierarchical-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
+.regression-available-panel .analysis-transfer-listbox {
+  height: 480px !important;
+  min-height: 480px;
+  max-height: 480px;
+}
+
+.ttest-anova-dependent-panel .analysis-transfer-listbox,
+.hierarchical-target-panel .analysis-transfer-listbox,
+.regression-dependent-panel .analysis-transfer-listbox {
+  height: 96px !important;
+  min-height: 96px;
+  max-height: 96px;
+}
+
+.ttest-anova-factor-panel .analysis-transfer-listbox,
+.regression-independent-panel .analysis-transfer-listbox {
+  height: 240px !important;
+  min-height: 240px;
+  max-height: 240px;
+}
+
+.hierarchical-target-panel .analysis-transfer-listbox[style*="144px"] {
+  height: 144px !important;
+  min-height: 144px;
+  max-height: 144px;
+}
+
+.hierarchical-target-panel .analysis-transfer-listbox[style*="96px"] {
+  height: 96px !important;
+  min-height: 96px;
+  max-height: 96px;
+}
+
+.hierarchical-dependent-panel .analysis-transfer-listbox,
+.hierarchical-block2-panel .analysis-transfer-listbox,
+.hierarchical-block3-panel .analysis-transfer-listbox {
+  height: 48px !important;
+  min-height: 48px;
+  max-height: 48px;
+}
+
+.hierarchical-block1-panel .analysis-transfer-listbox {
+  height: 144px !important;
+  min-height: 144px;
+  max-height: 144px;
+}
+
+.hierarchical-list-size-2 .analysis-transfer-listbox {
+  height: 48px !important;
+  min-height: 48px !important;
+  max-height: 48px !important;
+}
+
+.hierarchical-list-size-4 .analysis-transfer-listbox {
+  height: 96px !important;
+  min-height: 96px !important;
+  max-height: 96px !important;
+}
+
+.hierarchical-list-size-6 .analysis-transfer-listbox {
+  height: 144px !important;
+  min-height: 144px !important;
+  max-height: 144px !important;
+}
+
+.frequencies-setup-grid > .analysis-transfer-panel,
+.correlation-setup-grid > .analysis-transfer-panel,
+.ttest-anova-setup-grid > .analysis-transfer-panel,
+.hierarchical-setup-grid > .analysis-transfer-panel,
+.regression-setup-grid > .analysis-transfer-panel {
+  min-height: 568px;
+}
+
+.analysis-transfer-controls,
+.correlation-transfer-controls,
+.ttest-anova-transfer-controls,
+.hierarchical-transfer-controls,
+.regression-transfer-controls {
+  align-items: center;
+  justify-content: center;
+  transform: translateX(6px);
+}
+
+.ttest-anova-transfer-controls,
+.hierarchical-transfer-controls,
+.regression-transfer-controls {
+  flex-direction: column;
+}
+
+.ttest-anova-transfer-controls,
+.regression-transfer-controls {
+  gap: 186px;
+}
+
+.hierarchical-transfer-controls {
+  gap: 64px;
+}
+
+.frequencies-action-row > .btn,
+.ttest-anova-action-row > .btn,
+.correlation-action-row > .btn,
+.hierarchical-action-row > .btn,
+.regression-action-row > .btn {
+  grid-column: 1;
+  justify-self: start;
+  margin-left: 30px;
+  width: 300px;
+  min-width: 300px;
+}
+
+.frequencies-action-row > #frequencies_save_control,
+.regression-action-row > #regression_save_control {
+  grid-column: 5;
+  margin-left: 0;
+  justify-self: start;
+}
+
+.frequencies-setup-grid > .analysis-options-panel,
+.ttest-anova-options.analysis-options-panel,
+.correlation-options-column,
+.hierarchical-options.analysis-options-panel,
+.regression-options.analysis-options-panel {
+  min-height: 568px;
+}
+
+.hierarchical-setup-grid > .analysis-transfer-panel,
+.hierarchical-options.analysis-options-panel {
+  min-height: 616px;
+}
+
+.hierarchical-options.analysis-options-panel > .analysis-option-group:first-child,
+.regression-options.analysis-options-panel > .analysis-option-group:first-child {
+  gap: 8px;
+}
+
+.hierarchical-options.analysis-options-panel > .analysis-option-group:first-child > .analysis-option-title,
+.regression-options.analysis-options-panel > .analysis-option-group:first-child > .analysis-option-title {
+  margin-bottom: 0;
 }

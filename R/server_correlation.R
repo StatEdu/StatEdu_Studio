@@ -10,6 +10,7 @@ register_correlation_handlers <- function(
   mark_settings_dirty
 ) {
   correlation_variables <- reactiveVal(character(0))
+  active_correlation_list <- reactiveVal(NULL)
 
   current_selected <- reactive({
     as.character(selected_names_fn() %||% character(0))
@@ -29,7 +30,14 @@ register_correlation_handlers <- function(
         selected_names = selected,
         correlation_variables = correlation_variables(),
         variable_table = current_variable_table(),
-        labels = labels_fn()
+        labels = labels_fn(),
+        selected_available = isolate(input$correlation_available),
+        selected_selected = isolate(input$correlation_selected),
+        normality = input$correlation_normality,
+        p_ci = input$correlation_p_ci %||% TRUE,
+        significance_levels = input$correlation_significance_levels %||% TRUE,
+        scatter_plot = input$correlation_scatter_plot,
+        matrix_plot = input$correlation_matrix_plot
       )
     )
   })
@@ -43,8 +51,16 @@ register_correlation_handlers <- function(
     }
   })
 
+  observeEvent(input$correlation_available_active, {
+    active_correlation_list("correlation_available")
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$correlation_selected_active, {
+    active_correlation_list("correlation_selected")
+  }, ignoreInit = TRUE)
+
   observe({
-    if (length(input$correlation_selected %||% character(0)) > 0) {
+    if (identical(active_correlation_list(), "correlation_selected") && length(input$correlation_selected %||% character(0)) > 0) {
       updateActionButton(session, "correlation_move", label = "<")
     } else {
       updateActionButton(session, "correlation_move", label = ">")
@@ -57,13 +73,33 @@ register_correlation_handlers <- function(
     current <- intersect(as.character(correlation_variables() %||% character(0)), selected)
     selected_selected <- intersect(as.character(input$correlation_selected %||% character(0)), current)
 
-    if (length(available_selected) > 0) {
-      correlation_variables(c(current, setdiff(available_selected, current)))
+    if (identical(active_correlation_list(), "correlation_selected") && length(selected_selected) > 0) {
+      correlation_variables(setdiff(current, selected_selected))
+      active_correlation_list("correlation_available")
       mark_settings_dirty()
       return()
     }
-    if (length(selected_selected) > 0) {
-      correlation_variables(setdiff(current, selected_selected))
+    if (length(available_selected) > 0) {
+      correlation_variables(c(current, setdiff(available_selected, current)))
+      active_correlation_list("correlation_selected")
+      mark_settings_dirty()
+    }
+  })
+
+  observeEvent(input$correlation_move_up, {
+    updated <- move_order_item(correlation_variables(), input$correlation_selected, "up")
+    if (isTRUE(updated$changed)) {
+      correlation_variables(updated$order)
+      active_correlation_list("correlation_selected")
+      mark_settings_dirty()
+    }
+  })
+
+  observeEvent(input$correlation_move_down, {
+    updated <- move_order_item(correlation_variables(), input$correlation_selected, "down")
+    if (isTRUE(updated$changed)) {
+      correlation_variables(updated$order)
+      active_correlation_list("correlation_selected")
       mark_settings_dirty()
     }
   })
@@ -78,11 +114,11 @@ register_correlation_handlers <- function(
     correlation_result(list(
       variables = correlation_variables(),
       options = list(
-        pearson = isTRUE(input$correlation_pearson),
-        spearman = isTRUE(input$correlation_spearman),
-        kendall = isTRUE(input$correlation_kendall),
-        p_value = isTRUE(input$correlation_p_value),
-        n = isTRUE(input$correlation_n)
+        normality = isTRUE(input$correlation_normality),
+        p_ci = isTRUE(input$correlation_p_ci),
+        significance_levels = isTRUE(input$correlation_significance_levels),
+        scatter_plot = isTRUE(input$correlation_scatter_plot),
+        matrix_plot = isTRUE(input$correlation_matrix_plot)
       )
     ))
   })

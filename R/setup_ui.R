@@ -114,10 +114,6 @@ hierarchical_tab_panel <- function() {
         style = "min-width:980px;overflow-x:auto;",
         h3("Hierarchical"),
         uiOutput("hierarchical_setup"),
-        div(
-          class = "empty-message regression-results-empty",
-          "Hierarchical regression models are not implemented yet."
-        ),
         uiOutput("hierarchical_results")
       )
     )

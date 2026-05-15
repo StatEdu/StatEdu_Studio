@@ -11,11 +11,73 @@ prepare_data <- function(data) {
   data
 }
 
+read_sav_robust <- function(path) {
+  if (!requireNamespace("haven", quietly = TRUE)) {
+    stop(
+      "SPSS SAV files require the CRAN package 'haven'. Install it with install.packages(\"haven\").",
+      call. = FALSE
+    )
+  }
+
+  source_path <- normalizePath(path, winslash = "/", mustWork = TRUE)
+  read_path <- source_path
+
+  # Some Windows/R setups fail when haven reads an uploaded file from a
+  # non-ASCII or extensionless temporary path. Copy to an ASCII .sav path first.
+  tmp_path <- tempfile(pattern = "easyflow_sav_", fileext = ".sav")
+  copied <- tryCatch(
+    file.copy(source_path, tmp_path, overwrite = TRUE),
+    error = function(e) FALSE
+  )
+  if (isTRUE(copied) && file.exists(tmp_path)) {
+    read_path <- tmp_path
+    on.exit(unlink(tmp_path), add = TRUE)
+  }
+
+  supports_encoding <- "encoding" %in% names(formals(haven::read_sav))
+  encodings <- if (supports_encoding) {
+    c(NA_character_, "UTF-8", "CP949", "EUC-KR", "latin1")
+  } else {
+    NA_character_
+  }
+  errors <- character(0)
+
+  for (encoding in encodings) {
+    encoding_label <- if (is.na(encoding)) "default" else encoding
+    result <- tryCatch(
+      {
+        args <- list(file = read_path, user_na = TRUE)
+        if (!is.na(encoding) && supports_encoding) {
+          args$encoding <- encoding
+        }
+        do.call(haven::read_sav, args)
+      },
+      error = function(e) {
+        errors <<- c(errors, sprintf("%s: %s", encoding_label, conditionMessage(e)))
+        NULL
+      }
+    )
+    if (!is.null(result)) {
+      return(result)
+    }
+  }
+
+  stop(
+    paste0(
+      "Could not read the SPSS SAV file. Tried encodings: ",
+      paste(ifelse(is.na(encodings), "default", encodings), collapse = ", "),
+      ". Last errors: ",
+      paste(utils::tail(errors, 3), collapse = " | ")
+    ),
+    call. = FALSE
+  )
+}
+
 read_input_data <- function(path, original_name, csv_header = TRUE, dat_delimiter = "whitespace", dat_has_names = FALSE) {
   ext <- tolower(tools::file_ext(original_name))
 
   if (identical(ext, "sav")) {
-    return(haven::read_sav(path, user_na = TRUE))
+    return(read_sav_robust(path))
   }
 
   if (identical(ext, "csv")) {

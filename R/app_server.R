@@ -547,6 +547,8 @@ create_app_server <- function(app_version) {
     session = session,
     selected_names_fn = selected_names,
     variable_table_fn = regression_variable_table,
+    dataset_fn = dataset,
+    category_table_fn = category_label_values,
     labels_fn = var_label_overrides,
     mark_settings_dirty = mark_settings_dirty
   )
@@ -614,6 +616,7 @@ create_app_server <- function(app_version) {
 
   register_hierarchical_block_observers(
     input,
+    session,
     dependent_order = dependent_order,
     independent_names = independent_names,
     control_names = control_names,
@@ -643,6 +646,38 @@ create_app_server <- function(app_version) {
     hierarchical_block3_current_fn = hierarchical_block3_current
   )
 
+  prepare_hierarchical_result <- create_prepare_hierarchical_analysis_result_fn(
+    current_data_file_fn = current_data_file,
+    dataset_fn = dataset,
+    hierarchical_y_fn = function() input$hierarchical_y,
+    hierarchical_block1_fn = function() input$hierarchical_block1,
+    hierarchical_block2_fn = function() input$hierarchical_block2,
+    hierarchical_block3_fn = function() input$hierarchical_block3,
+    step4_variable_info_fn = step4_variable_info,
+    variable_info_table_fn = regression_variable_table,
+    category_label_values_fn = category_label_values,
+    boot_r_fn = function() input$hierarchical_boot_r,
+    seed_fn = function() input$hierarchical_seed,
+    sync_dependent_order_fn = sync_dependent_order,
+    control_names_fn = control_names,
+    independent_names_fn = independent_names,
+    hierarchical_block3_current_fn = hierarchical_block3_current
+  )
+
+  register_hierarchical_analysis_run_handlers(
+    input = input,
+    session = session,
+    prepare_hierarchical_result_fn = prepare_hierarchical_result,
+    penalized_result = penalized_result,
+    analysis_result = analysis_result,
+    bootstrap_job = bootstrap_job,
+    bootstrap_job_queue = bootstrap_job_queue,
+    bootstrap_cancel_requested = bootstrap_cancel_requested,
+    bootstrap_status = bootstrap_status,
+    bootstrap_stop_visible = bootstrap_stop_visible,
+    bootstrap_manager = bootstrap_manager
+  )
+
   register_bootstrap_progress_outputs(
     output,
     bootstrap_status_fn = bootstrap_status,
@@ -668,6 +703,15 @@ create_app_server <- function(app_version) {
     labels_fn = var_label_overrides,
     category_table_fn = category_label_values,
     penalized_result_fn = penalized_result
+  )
+
+  register_hierarchical_results_output(
+    input,
+    output,
+    analyses_fn = analyses,
+    variable_table_fn = regression_variable_table,
+    labels_fn = var_label_overrides,
+    category_table_fn = category_label_values
   )
 
   register_analysis_save_handlers(

@@ -46,7 +46,73 @@ regression_reference_values_static <- function(category_table) {
   refs[nzchar(trimws(refs))]
 }
 
-prepare_regression_model_data_static <- function(data, variables, variable_info = NULL, reference_values = character(0)) {
+normalize_regression_variable_info_static <- function(variable_info = NULL, variable_table = NULL) {
+  info <- variable_info
+  if (is.null(info) && !is.null(variable_table)) {
+    info <- variable_table
+  }
+  if (is.null(info)) {
+    return(NULL)
+  }
+
+  required <- c("name", "var_label", "role", "measurement")
+  pad_to <- function(x, n) {
+    if (is.null(x)) {
+      x <- character(0)
+    }
+    x <- as.character(x)
+    length(x) <- n
+    x[is.na(x)] <- ""
+    x
+  }
+
+  if (is.data.frame(info)) {
+    n <- nrow(info)
+    for (col in required) {
+      if (!col %in% names(info)) {
+        info[[col]] <- rep("", n)
+      }
+    }
+    info$name <- as.character(info$name)
+    info$var_label <- as.character(info$var_label)
+    info$role <- as.character(info$role)
+    info$measurement <- as.character(info$measurement)
+    return(info)
+  }
+
+  if (is.list(info) && all(required %in% names(info))) {
+    n <- max(vapply(info[required], length, integer(1)), 0L)
+    if (n == 0L) {
+      return(NULL)
+    }
+    return(data.frame(
+      name = pad_to(info$name, n),
+      var_label = pad_to(info$var_label, n),
+      role = pad_to(info$role, n),
+      measurement = pad_to(info$measurement, n),
+      stringsAsFactors = FALSE
+    ))
+  }
+
+  if (is.list(info) && length(info) >= 4) {
+    n <- max(vapply(info[1:4], length, integer(1)), 0L)
+    if (n == 0L) {
+      return(NULL)
+    }
+    return(data.frame(
+      name = pad_to(info[[1]], n),
+      var_label = pad_to(info[[2]], n),
+      role = pad_to(info[[3]], n),
+      measurement = pad_to(info[[4]], n),
+      stringsAsFactors = FALSE
+    ))
+  }
+
+  NULL
+}
+
+prepare_regression_model_data_static <- function(data, variables, variable_info = NULL, reference_values = character(0), variable_table = NULL) {
+  variable_info <- normalize_regression_variable_info_static(variable_info, variable_table)
   if (is.null(variable_info) || nrow(variable_info) == 0) {
     return(data)
   }
@@ -312,11 +378,18 @@ prepare_single_regression_result <- function(
   variable_info = NULL,
   reference_values = character(0),
   boot_r = 1000,
-  seed = default_seed()
+  seed = default_seed(),
+  variable_table = NULL
 ) {
+  variable_info <- normalize_regression_variable_info_static(variable_info, variable_table)
   shiny::validate(shiny::need(!(dependent %in% predictors), "The dependent variable cannot also be an independent variable or covariate."))
   model_variables <- unique(c(dependent, predictors))
-  data <- prepare_regression_model_data_static(data, model_variables, variable_info, reference_values)
+  data <- prepare_regression_model_data_static(
+    data,
+    model_variables,
+    variable_info = variable_info,
+    reference_values = reference_values
+  )
   formula <- make_formula(dependent, predictors)
   model <- stats::lm(formula, data = data)
   resid_model <- stats::residuals(model)
@@ -452,8 +525,10 @@ prepare_regression_analysis_results <- function(
   variable_info = NULL,
   reference_values = character(0),
   boot_r = 1000,
-  seed = default_seed()
+  seed = default_seed(),
+  variable_table = NULL
 ) {
+  variable_info <- normalize_regression_variable_info_static(variable_info, variable_table)
   dependents <- intersect(as.character(dependents), names(data))
   predictors <- intersect(as.character(predictors), names(data))
 
@@ -480,5 +555,81 @@ prepare_regression_analysis_results <- function(
     job
   }))
 
+  list(results = results, jobs = jobs)
+}
+
+prepare_hierarchical_analysis_results <- function(
+  data,
+  dependents,
+  block1,
+  block2 = character(0),
+  block3 = character(0),
+  variable_info = NULL,
+  reference_values = character(0),
+  boot_r = 1000,
+  seed = default_seed(),
+  variable_table = NULL
+) {
+  variable_info <- normalize_regression_variable_info_static(variable_info, variable_table)
+  data_names <- names(data)
+  dependents <- intersect(unique(as.character(dependents %||% character(0))), data_names)
+  block1 <- intersect(unique(as.character(block1 %||% character(0))), data_names)
+  block2 <- intersect(unique(as.character(block2 %||% character(0))), data_names)
+  block3 <- intersect(unique(as.character(block3 %||% character(0))), data_names)
+
+  shiny::validate(shiny::need(length(dependents) > 0, "Select at least one dependent variable."))
+  shiny::validate(shiny::need(length(block1) > 0, "Select at least one Block 1 variable."))
+  if (length(block3) > 0) {
+    shiny::validate(shiny::need(length(block2) > 0, "Block 3 requires Block 2 variables."))
+  }
+
+  steps <- list(
+    list(name = "Model 1", predictors = block1, blocks = "Block 1")
+  )
+  if (length(block2) > 0) {
+    steps <- c(steps, list(
+      list(name = "Model 2", predictors = unique(c(block1, block2)), blocks = "Block 1 + Block 2")
+    ))
+  }
+  if (length(block3) > 0) {
+    steps <- c(steps, list(
+      list(name = "Model 3", predictors = unique(c(block1, block2, block3)), blocks = "Block 1 + Block 2 + Block 3")
+    ))
+  }
+
+  results <- list()
+  jobs <- list()
+  for (dependent in dependents) {
+    for (step_index in seq_along(steps)) {
+      predictors <- setdiff(steps[[step_index]]$predictors, dependent)
+      if (length(predictors) == 0) {
+        next
+      }
+      prepared <- prepare_single_regression_result(
+        dependent = dependent,
+        data = data,
+        predictors = predictors,
+        variable_info = variable_info,
+        reference_values = reference_values,
+        boot_r = boot_r,
+        seed = seed
+      )
+      result <- prepared$result
+      result$hierarchical <- TRUE
+      result$hierarchical_step <- steps[[step_index]]$name
+      result$hierarchical_step_index <- step_index
+      result$hierarchical_blocks <- steps[[step_index]]$blocks
+      result$block1 <- block1
+      result$block2 <- block2
+      result$block3 <- block3
+      results[[length(results) + 1L]] <- result
+      if (!is.null(prepared$job)) {
+        prepared$job$result_index <- length(results)
+        jobs[[length(jobs) + 1L]] <- prepared$job
+      }
+    }
+  }
+
+  shiny::validate(shiny::need(length(results) > 0, "No hierarchical regression model could be prepared."))
   list(results = results, jobs = jobs)
 }

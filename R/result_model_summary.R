@@ -59,6 +59,13 @@ model_overview_data_frame <- function(results, variable_table = NULL, labels = c
     labels = labels,
     label_only = TRUE
   )
+  dependent_labels <- mapply(function(label, result) {
+    if (!is.null(result$hierarchical_step) && nzchar(result$hierarchical_step)) {
+      sprintf("%s %s", label, result$hierarchical_step)
+    } else {
+      label
+    }
+  }, dependent_labels, results, USE.NAMES = FALSE)
   include_bootstrap_rows <- any(vapply(results, function(result) isTRUE(result$use_bootstrap), logical(1)))
   rows <- c(
     "Independent variables",

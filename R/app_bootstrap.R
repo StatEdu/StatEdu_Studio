@@ -46,6 +46,7 @@ app_module_files <- c(
   "data_category_labels.R",
   "data_regression_setup.R",
   "analysis_frequencies.R",
+  "analysis_ttest_anova.R",
   "analysis_regression.R",
   "analysis_penalized.R",
   "bootstrap_manager.R",

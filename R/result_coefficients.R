@@ -3,7 +3,11 @@
 coefficient_panel_title_static <- function(result, variable_table = NULL, labels = character(0)) {
   dependent <- all.vars(result$formula)[[1]]
   dependent_label <- display_variable_name_static(dependent, variable_table, labels, label_only = TRUE)
-  sprintf("%s(%s)", regression_method_label(result), dependent_label)
+  title <- sprintf("%s(%s)", regression_method_label(result), dependent_label)
+  if (!is.null(result$hierarchical_step) && nzchar(result$hierarchical_step)) {
+    title <- sprintf("%s: %s", result$hierarchical_step, title)
+  }
+  title
 }
 
 coefficient_output_table_with_context <- function(

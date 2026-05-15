@@ -4,6 +4,26 @@ analysis_variable_items <- function(names, table = NULL, labels = character(0)) 
   variable_choice_items(names, table, labels)
 }
 
+analysis_allowed_measurements_all <- function() {
+  c("binary", "category", "ordered", "continuous")
+}
+
+analysis_allowed_variables <- function(names, variable_table = NULL, allowed_measurements = character(0)) {
+  names <- as.character(names %||% character(0))
+  allowed_measurements <- tolower(as.character(allowed_measurements %||% character(0)))
+  allowed_measurements[allowed_measurements == "ordinal"] <- "ordered"
+  allowed_measurements[allowed_measurements == "nominal"] <- "category"
+  if (length(names) == 0 || length(allowed_measurements) == 0) {
+    return(names)
+  }
+  if (is.null(variable_table) || !all(c("name", "measurement") %in% names(variable_table))) {
+    return(names)
+  }
+  measurements <- stats::setNames(tolower(as.character(variable_table$measurement)), as.character(variable_table$name))
+  measurements[measurements == "ordinal"] <- "ordered"
+  names[names %in% names(measurements) & measurements[names] %in% allowed_measurements]
+}
+
 analysis_field_label_tag <- function(label, allowed_measurements = character(0)) {
   allowed_measurements <- as.character(allowed_measurements %||% character(0))
   div(
@@ -60,6 +80,7 @@ analysis_transfer_listbox_input <- function(input_id, items, selected = characte
           role = "option",
           `aria-selected` = if (value %in% selected) "true" else "false",
           `data-value` = value,
+          onmousedown = "event.preventDefault();",
           onclick = "window.easyflowTransferOptionClick && window.easyflowTransferOptionClick(event, this);",
           measurement_symbol_tag(item$measurement),
           span(item$label, class = "analysis-transfer-option-label")
@@ -76,5 +97,18 @@ analysis_option_group <- function(title, options) {
     lapply(options, function(option) {
       checkboxInput(option$id, option$label, value = isTRUE(option$value))
     })
+  )
+}
+
+analysis_radio_group <- function(title, input_id, choices, selected = NULL) {
+  values <- unname(choices)
+  selected <- as.character(selected %||% values[[1]])
+  if (!selected %in% values) {
+    selected <- values[[1]]
+  }
+  div(
+    class = "analysis-option-group analysis-radio-group",
+    div(class = "analysis-option-title", title),
+    radioButtons(input_id, label = NULL, choices = choices, selected = selected)
   )
 }

@@ -136,12 +136,10 @@ predictor_variable_candidates_from_info <- function(
   variable_info = NULL
 ) {
   selected <- as.character(selected %||% character(0))
-  candidates <- predictor_variable_candidates(independent, controls, selected)
-  if (length(candidates) > 0) {
-    return(candidates)
-  }
   # Data selection no longer assigns analysis roles. Keep the full selected
   # variable pool available so each analysis setup can move variables itself.
+  # Returning only already-assigned predictors/covariates here makes the
+  # remaining unassigned variables disappear from later analysis target blocks.
   selected
 }
 
