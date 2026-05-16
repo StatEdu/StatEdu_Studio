@@ -14,6 +14,8 @@ All statistical analyses use CRAN packages only.
 - Automatic selection among OLS, HC3 robust standard errors, bootstrap confidence intervals, and HC3 plus bootstrap
 - Durbin-Watson decision using dL and dU critical values from the easyflow_statistics workbook
 
+For the full current method inventory, see [docs/ANALYSIS_METHODS_KO.md](docs/ANALYSIS_METHODS_KO.md).
+
 ## Local Run
 
 1. Install R.
