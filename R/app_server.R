@@ -23,6 +23,7 @@ create_app_server <- function(app_version) {
   control_names <- server_state$control_names
   predictor_order <- server_state$predictor_order
   hierarchical_block3_names <- server_state$hierarchical_block3_names
+  hierarchical_active_block <- reactiveVal("block1")
   frequency_variables <- server_state$frequency_variables
   predictor_order_initialized <- server_state$predictor_order_initialized
   var_label_overrides <- server_state$var_label_overrides
@@ -628,6 +629,7 @@ create_app_server <- function(app_version) {
     predictor_candidates_fn = predictor_candidates,
     hierarchical_block3_current_fn = hierarchical_block3_current,
     hierarchical_block3_names = hierarchical_block3_names,
+    hierarchical_active_block = hierarchical_active_block,
     sync_dependent_order_fn = sync_dependent_order,
     mark_settings_dirty = mark_settings_dirty
   )
@@ -645,16 +647,17 @@ create_app_server <- function(app_version) {
     roles_applied_fn = roles_applied,
     control_names_fn = control_names,
     independent_names_fn = independent_names,
-    hierarchical_block3_current_fn = hierarchical_block3_current
+    hierarchical_block3_current_fn = hierarchical_block3_current,
+    hierarchical_active_block_fn = hierarchical_active_block
   )
 
   prepare_hierarchical_result <- create_prepare_hierarchical_analysis_result_fn(
     current_data_file_fn = current_data_file,
     dataset_fn = dataset,
-    hierarchical_y_fn = function() input$hierarchical_y,
-    hierarchical_block1_fn = function() input$hierarchical_block1,
-    hierarchical_block2_fn = function() input$hierarchical_block2,
-    hierarchical_block3_fn = function() input$hierarchical_block3,
+    hierarchical_y_fn = function() sync_dependent_order(update_input = FALSE),
+    hierarchical_block1_fn = control_names,
+    hierarchical_block2_fn = function() setdiff(independent_names(), hierarchical_block3_current()),
+    hierarchical_block3_fn = hierarchical_block3_current,
     step4_variable_info_fn = step4_variable_info,
     variable_info_table_fn = regression_variable_table,
     category_label_values_fn = category_label_values,

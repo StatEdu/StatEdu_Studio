@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.5.7 - 2026-05-17
+
+### Changed
+
+- Reworked hierarchical regression setup to show Dependent Variables plus one active Block at a time, with previous/next block navigation while preserving Block 1/2/3 variable state.
+- Adjusted hierarchical setup panel heights, list sizes, and block navigation placement for a more compact aligned layout.
+- Refined hierarchical regression result table separators between coefficient rows and model fit rows.
+- Tuned hierarchical regression result table column widths and padding for wide three-model outputs with effect-size columns.
+
+
 ## v0.5.6 - 2026-05-16
 
 ### Changed

@@ -305,6 +305,7 @@ register_hierarchical_block_observers <- function(
   predictor_candidates_fn,
   hierarchical_block3_current_fn,
   hierarchical_block3_names,
+  hierarchical_active_block,
   sync_dependent_order_fn,
   mark_settings_dirty
 ) {
@@ -386,6 +387,29 @@ register_hierarchical_block_observers <- function(
 
   observeEvent(input$hierarchical_block3_active, {
     active_hierarchical_list("hierarchical_block3")
+  }, ignoreInit = TRUE)
+
+  normalize_active_block <- function(value) {
+    value <- as.character(value %||% "block1")[[1]]
+    if (value %in% c("block1", "block2", "block3")) value else "block1"
+  }
+
+  set_active_block <- function(value) {
+    hierarchical_active_block(normalize_active_block(value))
+    active_hierarchical_list("hierarchical_available")
+    clear_transfer_selection(c("hierarchical_available", "hierarchical_block1", "hierarchical_block2", "hierarchical_block3"))
+  }
+
+  observeEvent(input$hierarchical_block_prev, {
+    current <- normalize_active_block(hierarchical_active_block())
+    previous <- switch(current, block3 = "block2", block2 = "block1", "block1")
+    set_active_block(previous)
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$hierarchical_block_next, {
+    current <- normalize_active_block(hierarchical_active_block())
+    next_block <- switch(current, block1 = "block2", block2 = "block3", "block3")
+    set_active_block(next_block)
   }, ignoreInit = TRUE)
 
   observe({
@@ -741,7 +765,8 @@ register_setup_outputs <- function(
   roles_applied_fn,
   control_names_fn,
   independent_names_fn,
-  hierarchical_block3_current_fn
+  hierarchical_block3_current_fn,
+  hierarchical_active_block_fn
 ) {
   output$regression_setup <- renderUI({
     selected <- as.character(selected_names_fn() %||% character(0))
@@ -796,6 +821,7 @@ register_setup_outputs <- function(
       selected_block1 = isolate(input$hierarchical_block1),
       selected_block2 = isolate(input$hierarchical_block2),
       selected_block3 = isolate(input$hierarchical_block3),
+      active_block = hierarchical_active_block_fn(),
       show_sr2 = isolate(input$hierarchical_show_sr2),
       show_f2 = isolate(input$hierarchical_show_f2),
       show_vif = isolate(input$hierarchical_show_vif)

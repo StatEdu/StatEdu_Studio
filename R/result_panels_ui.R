@@ -266,10 +266,13 @@ hierarchical_model_table <- function(
   filter_coefficient_export_table(table, show_sr2, show_f2, show_vif)
 }
 
-hierarchical_separator_cell <- function() {
+hierarchical_separator_cell <- function(border_top = "0", border_bottom = "1px solid #d7dde5") {
   tags$td(
     class = "hierarchical-model-separator",
-    style = "width:10px;min-width:10px;max-width:10px;padding:0;border-left:0;border-right:0;border-bottom:1px solid #d7dde5;background:transparent;",
+    style = paste0(
+      "width:10px;min-width:10px;max-width:10px;padding:0;border-left:0;border-right:0;",
+      "border-top:", border_top, ";border-bottom:", border_bottom, ";background:transparent;"
+    ),
     ""
   )
 }
@@ -279,7 +282,7 @@ hierarchical_term_cell_style <- function(last = FALSE) {
     "padding:9px 18px;line-height:1.45;border-left:0;border-right:0;",
     "border-top:0;border-bottom:", if (isTRUE(last)) "0" else "1px solid #d7dde5", ";",
     "vertical-align:middle;background:transparent;",
-    "width:240px;min-width:240px;max-width:240px;",
+    "width:232px;min-width:232px;max-width:232px;",
     "text-align:left;white-space:normal;overflow-wrap:break-word;word-break:keep-all;"
   )
 }
@@ -298,20 +301,28 @@ hierarchical_header_separator_cell <- function(class = "hierarchical-model-heade
   )
 }
 
-hierarchical_footer_row <- function(label, values, model_columns) {
+hierarchical_footer_row <- function(label, values, model_columns, first = FALSE) {
+  top_border <- if (isTRUE(first)) "2px solid #1f2937" else "1px solid #d7dde5"
   cells <- list(tags$td(
     class = "coefficient-summary-label",
-    style = "padding:9px 18px;line-height:1.45;border-left:0;border-right:0;border-top:1px solid #d7dde5;border-bottom:0;text-align:left;width:240px;min-width:240px;max-width:240px;white-space:normal;overflow-wrap:break-word;",
+    style = paste0(
+      "padding:9px 18px;line-height:1.45;border-left:0;border-right:0;",
+      "border-top:", top_border, ";border-bottom:0;text-align:left;",
+      "width:232px;min-width:232px;max-width:232px;white-space:normal;overflow-wrap:break-word;"
+    ),
     label
   ))
   for (index in seq_along(values)) {
     cells <- c(cells, list(tags$td(
       colspan = length(model_columns[[index]]),
-      style = "padding:9px 18px;line-height:1.45;border-left:0;border-right:0;border-top:1px solid #d7dde5;border-bottom:0;text-align:center;font-weight:500;",
+      style = paste0(
+        "padding:9px 18px;line-height:1.45;border-left:0;border-right:0;",
+        "border-top:", top_border, ";border-bottom:0;text-align:center;font-weight:500;"
+      ),
       values[[index]]
     )))
     if (index < length(values)) {
-      cells <- c(cells, list(hierarchical_separator_cell()))
+      cells <- c(cells, list(hierarchical_separator_cell(border_top = top_border, border_bottom = "0")))
     }
   }
   do.call(tags$tr, c(list(class = "coefficient-fit-row"), cells))
@@ -334,8 +345,8 @@ hierarchical_table_colgroup <- function(model_columns) {
 }
 
 hierarchical_table_width <- function(model_columns) {
-  term_width <- 240
-  stat_width <- 78
+  term_width <- 232
+  stat_width <- 70
   separator_width <- 10
   model_count <- length(model_columns)
   stat_count <- sum(lengths(model_columns))
@@ -384,7 +395,7 @@ hierarchical_coefficient_html_table <- function(
     style = paste0(
       "padding:9px 18px;line-height:1.45;border-left:0;border-right:0;",
       "border-top:2px solid #1f2937;border-bottom:2px solid #1f2937;",
-      "text-align:left;font-weight:700;width:240px;min-width:240px;max-width:240px;white-space:nowrap;"
+      "text-align:left;font-weight:700;width:232px;min-width:232px;max-width:232px;white-space:nowrap;"
     ),
     "Term"
   ))
@@ -411,7 +422,7 @@ hierarchical_coefficient_html_table <- function(
         style = paste0(
           "padding:9px 18px;line-height:1.45;border-left:0;border-right:0;",
           "border-top:0;border-bottom:2px solid #1f2937;",
-          "text-align:right;font-weight:700;min-width:76px;white-space:nowrap;"
+          "text-align:right;font-weight:700;min-width:65px;white-space:nowrap;"
         ),
         column
       )
@@ -447,7 +458,7 @@ hierarchical_coefficient_html_table <- function(
   })
 
   footer_rows <- list(
-    hierarchical_footer_row("F(p)", lapply(summary_values, `[[`, "f"), model_columns),
+    hierarchical_footer_row("F(p)", lapply(summary_values, `[[`, "f"), model_columns, first = TRUE),
     hierarchical_footer_row("R\u00B2(adj. R\u00B2)", lapply(summary_values, `[[`, "r2"), model_columns)
   )
   if (length(model_tables) > 1) {

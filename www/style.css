@@ -2024,11 +2024,11 @@ table {
 }
 
 .hierarchical-coefficient-table .hierarchical-term-col {
-  width: 240px;
+  width: 232px;
 }
 
 .hierarchical-coefficient-table .hierarchical-stat-col {
-  width: 78px;
+  width: 70px;
 }
 
 .hierarchical-coefficient-table .hierarchical-separator-col {
@@ -2037,11 +2037,11 @@ table {
 
 .hierarchical-coefficient-table thead tr:last-child th:not(.hierarchical-model-separator),
 .hierarchical-coefficient-table td:not(:first-child):not(.hierarchical-model-separator) {
-  width: 78px;
-  min-width: 78px;
-  max-width: 78px;
-  padding-left: 8px;
-  padding-right: 8px;
+  width: 70px;
+  min-width: 70px;
+  max-width: 70px;
+  padding-left: 7px;
+  padding-right: 7px;
   overflow-wrap: normal;
   white-space: nowrap;
 }
@@ -2718,6 +2718,92 @@ pre {
 .hierarchical-setup-grid > .analysis-transfer-panel,
 .hierarchical-options.analysis-options-panel {
   min-height: 616px;
+}
+
+.hierarchical-setup-grid {
+  align-items: stretch;
+  grid-auto-rows: 568px;
+}
+
+.hierarchical-setup-grid > .analysis-transfer-panel,
+.hierarchical-target-stack-compact,
+.hierarchical-options.analysis-options-panel {
+  height: 568px;
+  min-height: 568px;
+  box-sizing: border-box;
+}
+
+.hierarchical-target-stack-compact {
+  display: grid;
+  grid-template-rows: 198px 352px;
+  gap: 18px;
+}
+
+.hierarchical-target-stack-compact .hierarchical-target-row {
+  align-items: stretch;
+}
+
+.hierarchical-target-stack-compact .hierarchical-target-move-cell {
+  align-items: center;
+}
+
+.hierarchical-target-stack-compact .hierarchical-target-panel {
+  height: 100%;
+  min-height: 0;
+}
+
+.hierarchical-target-panel.hierarchical-dependent-panel .analysis-transfer-listbox,
+.hierarchical-dependent-panel.hierarchical-list-size-3 .analysis-transfer-listbox {
+  height: 72px !important;
+  min-height: 72px !important;
+  max-height: 72px !important;
+}
+
+.hierarchical-active-block-row .analysis-transfer-listbox {
+  height: 216px !important;
+  min-height: 216px !important;
+  max-height: 216px !important;
+}
+
+.hierarchical-block-title-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.hierarchical-block-title-row .analysis-field-label {
+  margin-bottom: 0;
+}
+
+.hierarchical-block-title {
+  min-width: 0;
+  width: 100%;
+}
+
+.hierarchical-block-title > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hierarchical-block-nav {
+  display: inline-flex;
+  gap: 6px;
+  justify-self: end;
+}
+
+.hierarchical-block-nav-button {
+  width: 34px;
+  min-width: 34px;
+  height: 30px;
+  padding: 2px 0;
+  color: #174a7c;
+  background-color: #e7f0fb;
+  border-color: #b8ccea;
+  font-size: 20px;
+  line-height: 22px;
+  font-weight: 700;
 }
 
 .hierarchical-options.analysis-options-panel > .analysis-option-group:first-child,
