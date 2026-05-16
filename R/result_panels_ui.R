@@ -267,21 +267,49 @@ hierarchical_model_table <- function(
 }
 
 hierarchical_separator_cell <- function() {
-  tags$td(class = "hierarchical-model-separator", "")
+  tags$td(
+    class = "hierarchical-model-separator",
+    style = "width:10px;min-width:10px;max-width:10px;padding:0;border-left:0;border-right:0;border-bottom:1px solid #d7dde5;background:transparent;",
+    ""
+  )
 }
 
-hierarchical_header_separator_cell <- function() {
+hierarchical_term_cell_style <- function(last = FALSE) {
+  paste0(
+    "padding:9px 18px;line-height:1.45;border-left:0;border-right:0;",
+    "border-top:0;border-bottom:", if (isTRUE(last)) "0" else "1px solid #d7dde5", ";",
+    "vertical-align:middle;background:transparent;",
+    "width:240px;min-width:240px;max-width:240px;",
+    "text-align:left;white-space:normal;overflow-wrap:break-word;word-break:keep-all;"
+  )
+}
+
+hierarchical_header_separator_cell <- function(class = "hierarchical-model-header-separator") {
+  is_subheader <- identical(class, "hierarchical-model-subheader-separator")
   tags$th(
-    rowspan = 2,
-    class = "hierarchical-model-separator hierarchical-model-header-separator",
+    class = paste("hierarchical-model-separator", class),
+    style = paste0(
+      "width:10px;min-width:10px;max-width:10px;padding:0;border-left:0;border-right:0;",
+      "border-top:", if (isTRUE(is_subheader)) "0" else "2px solid #1f2937", ";",
+      "border-bottom:", if (isTRUE(is_subheader)) "2px solid #1f2937" else "0", ";",
+      "background:transparent;"
+    ),
     ""
   )
 }
 
 hierarchical_footer_row <- function(label, values, model_columns) {
-  cells <- list(tags$td(class = "coefficient-summary-label", label))
+  cells <- list(tags$td(
+    class = "coefficient-summary-label",
+    style = "padding:9px 18px;line-height:1.45;border-left:0;border-right:0;border-top:1px solid #d7dde5;border-bottom:0;text-align:left;width:240px;min-width:240px;max-width:240px;white-space:normal;overflow-wrap:break-word;",
+    label
+  ))
   for (index in seq_along(values)) {
-    cells <- c(cells, list(tags$td(colspan = length(model_columns[[index]]), values[[index]])))
+    cells <- c(cells, list(tags$td(
+      colspan = length(model_columns[[index]]),
+      style = "padding:9px 18px;line-height:1.45;border-left:0;border-right:0;border-top:1px solid #d7dde5;border-bottom:0;text-align:center;font-weight:500;",
+      values[[index]]
+    )))
     if (index < length(values)) {
       cells <- c(cells, list(hierarchical_separator_cell()))
     }
@@ -306,9 +334,9 @@ hierarchical_table_colgroup <- function(model_columns) {
 }
 
 hierarchical_table_width <- function(model_columns) {
-  term_width <- 170
-  stat_width <- 86
-  separator_width <- 8
+  term_width <- 240
+  stat_width <- 78
+  separator_width <- 10
   model_count <- length(model_columns)
   stat_count <- sum(lengths(model_columns))
   term_width + (stat_count * stat_width) + (max(model_count - 1, 0) * separator_width)
@@ -349,12 +377,25 @@ hierarchical_coefficient_html_table <- function(
     return(NULL)
   }
   model_columns <- lapply(model_tables, function(table) setdiff(names(table), "Term"))
-  terms <- unique(unlist(lapply(model_tables, function(table) as.character(table$Term)), use.names = FALSE))
+  terms <- unique(unlist(lapply(rev(model_tables), function(table) as.character(table$Term)), use.names = FALSE))
 
-  header_groups <- list(tags$th(rowspan = 2, "Term"))
+  header_groups <- list(tags$th(
+    rowspan = 2,
+    style = paste0(
+      "padding:9px 18px;line-height:1.45;border-left:0;border-right:0;",
+      "border-top:2px solid #1f2937;border-bottom:2px solid #1f2937;",
+      "text-align:left;font-weight:700;width:240px;min-width:240px;max-width:240px;white-space:nowrap;"
+    ),
+    "Term"
+  ))
   for (index in seq_along(model_tables)) {
     header_groups <- c(header_groups, list(tags$th(
       class = "hierarchical-model-header",
+      style = paste0(
+        "padding:9px 18px;line-height:1.45;border-left:0;border-right:0;",
+        "border-top:2px solid #1f2937;border-bottom:2px solid #1f2937;",
+        "text-align:center;font-weight:700;white-space:nowrap;"
+      ),
       colspan = length(model_columns[[index]]),
       model_labels[[index]]
     )))
@@ -363,20 +404,40 @@ hierarchical_coefficient_html_table <- function(
     }
   }
   sub_headers <- list()
-  for (columns in model_columns) {
-    sub_headers <- c(sub_headers, lapply(columns, function(column) tags$th(column)))
+  for (index in seq_along(model_columns)) {
+    columns <- model_columns[[index]]
+    sub_headers <- c(sub_headers, lapply(columns, function(column) {
+      tags$th(
+        style = paste0(
+          "padding:9px 18px;line-height:1.45;border-left:0;border-right:0;",
+          "border-top:0;border-bottom:2px solid #1f2937;",
+          "text-align:right;font-weight:700;min-width:76px;white-space:nowrap;"
+        ),
+        column
+      )
+    }))
+    if (index < length(model_columns)) {
+      sub_headers <- c(sub_headers, list(hierarchical_header_separator_cell("hierarchical-model-subheader-separator")))
+    }
   }
 
   body_rows <- lapply(terms, function(term) {
-    cells <- list(tags$td(term))
+    term_index <- match(term, terms)
+    is_last <- identical(term_index, length(terms))
+    cells <- list(tags$td(
+      style = hierarchical_term_cell_style(is_last),
+      term
+    ))
     for (model_index in seq_along(model_tables)) {
       table <- model_tables[[model_index]]
       columns <- model_columns[[model_index]]
       row_index <- match(term, as.character(table$Term))
       if (is.na(row_index)) {
-        cells <- c(cells, lapply(columns, function(column) tags$td("")))
+        cells <- c(cells, lapply(columns, function(column) tags$td(style = result_body_cell_style(FALSE, is_last), "")))
       } else {
-        cells <- c(cells, lapply(columns, function(column) tags$td(as.character(table[[column]][[row_index]] %||% ""))))
+        cells <- c(cells, lapply(columns, function(column) {
+          tags$td(style = result_body_cell_style(FALSE, is_last), as.character(table[[column]][[row_index]] %||% ""))
+        }))
       }
       if (model_index < length(model_tables)) {
         cells <- c(cells, list(hierarchical_separator_cell()))
@@ -403,7 +464,8 @@ hierarchical_coefficient_html_table <- function(
   table <- tags$table(
     class = "coefficient-table hierarchical-coefficient-table",
     style = sprintf(
-      "width: %dpx; min-width: %dpx;",
+      "%s width: %dpx; min-width: %dpx; table-layout: fixed;",
+      result_table_style(),
       hierarchical_table_width(model_columns),
       hierarchical_table_width(model_columns)
     ),
@@ -430,7 +492,11 @@ hierarchical_coefficient_html_table <- function(
 
   do.call(
     tags$div,
-    c(list(class = "hierarchical-table-wrap"), list(table), notes)
+    c(
+      list(class = "hierarchical-table-wrap"),
+      list(div(class = "hierarchical-table-scroll", table)),
+      notes
+    )
   )
 }
 

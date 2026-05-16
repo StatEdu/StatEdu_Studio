@@ -1,4 +1,4 @@
-# Auto-extracted shared functions for EasyFlow Statistics.
+# Auto-extracted shared functions for easyflow_statistics.
 
 `%||%` <- function(x, y) {
   if (is.null(x)) y else x

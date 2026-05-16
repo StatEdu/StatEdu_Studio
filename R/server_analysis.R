@@ -186,7 +186,7 @@ register_hierarchical_save_handlers <- function(
     if (is.null(input$run_hierarchical) || input$run_hierarchical == 0) {
       return(NULL)
     }
-    analysis_save_buttons("save_hierarchical_excel_dialog", "save_hierarchical_figures_dialog")
+    analysis_save_buttons("save_hierarchical_excel_dialog", "save_hierarchical_figures_dialog", "save_hierarchical_html_dialog")
   })
 
   observeEvent(input$save_hierarchical_excel_dialog, {
@@ -242,6 +242,36 @@ register_hierarchical_save_handlers <- function(
     )
   })
 
+  observeEvent(input$save_hierarchical_html_dialog, {
+    shiny::req(!is.null(input$run_hierarchical), input$run_hierarchical > 0)
+    path <- choose_html_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) {
+      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      return(invisible(NULL))
+    }
+    if (!grepl("\\.html?$", path, ignore.case = TRUE)) {
+      path <- paste0(path, ".html")
+    }
+    tryCatch(
+      {
+        write_hierarchical_results_html(
+          analyses_fn(),
+          path,
+          variable_table = variable_table_fn(),
+          labels = labels_fn(),
+          category_table = category_table_fn(),
+          show_sr2 = input$hierarchical_show_sr2,
+          show_f2 = input$hierarchical_show_f2,
+          show_vif = input$hierarchical_show_vif
+        )
+        showNotification(sprintf("HTML results saved: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save HTML results:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  })
+
   invisible(TRUE)
 }
 
@@ -259,7 +289,7 @@ register_analysis_save_handlers <- function(
     }
     div(
       class = "regression-save-action",
-      analysis_save_buttons("save_analysis_excel_dialog", "save_analysis_figures_dialog")
+      analysis_save_buttons("save_analysis_excel_dialog", "save_analysis_figures_dialog", "save_analysis_html_dialog")
     )
   })
 
@@ -312,6 +342,36 @@ register_analysis_save_handlers <- function(
       },
       error = function(e) {
         showNotification(paste("Failed to save figures:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  })
+
+  observeEvent(input$save_analysis_html_dialog, {
+    shiny::req(!is.null(input$run), input$run > 0)
+    path <- choose_html_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) {
+      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      return(invisible(NULL))
+    }
+    if (!grepl("\\.html?$", path, ignore.case = TRUE)) {
+      path <- paste0(path, ".html")
+    }
+    tryCatch(
+      {
+        write_analysis_results_html(
+          analyses_fn(),
+          path,
+          variable_table = variable_table_fn(),
+          labels = labels_fn(),
+          category_table = category_table_fn(),
+          show_sr2 = input$show_sr2,
+          show_f2 = input$show_f2,
+          show_vif = input$show_vif
+        )
+        showNotification(sprintf("HTML results saved: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save HTML results:", conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })

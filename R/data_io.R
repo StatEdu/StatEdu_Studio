@@ -1,4 +1,4 @@
-# Auto-extracted shared functions for EasyFlow Statistics.
+# Auto-extracted shared functions for easyflow_statistics.
 
 prepare_data <- function(data) {
   data <- as.data.frame(data, stringsAsFactors = FALSE, check.names = TRUE)

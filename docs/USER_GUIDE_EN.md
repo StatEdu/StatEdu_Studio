@@ -1,10 +1,10 @@
-# EasyFlow Statistics User Guide
+# easyflow_statistics User Guide
 
-This guide will describe how to install, run, and use EasyFlow Statistics.
+This guide will describe how to install, run, and use easyflow_statistics.
 
 ## Running the App
 
-Double-click `EasyFlow_Statistics.bat`.
+Double-click `easyflow_statistics.bat`.
 
 ## Data
 

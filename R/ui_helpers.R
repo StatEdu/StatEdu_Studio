@@ -1,15 +1,19 @@
-# Auto-extracted shared functions for EasyFlow Statistics.
+# Auto-extracted shared functions for easyflow_statistics.
 
 empty_message <- function(text) {
   div(class = "empty-message", text)
 }
 
-analysis_save_buttons <- function(table_button_id, figure_button_id) {
-  div(
+analysis_save_buttons <- function(table_button_id, figure_button_id, html_button_id = NULL) {
+  buttons <- list(
     class = "analysis-save-action",
     actionButton(table_button_id, "Save tables", class = "btn-primary"),
     actionButton(figure_button_id, "Save figures", class = "btn-default")
   )
+  if (!is.null(html_button_id) && nzchar(html_button_id)) {
+    buttons <- c(buttons, list(actionButton(html_button_id, "Save HTML", class = "btn-default")))
+  }
+  do.call(div, buttons)
 }
 
 set_data_step_view <- function(active_step_setter, data_view_setter, step, view = "info") {
@@ -20,14 +24,13 @@ set_data_step_view <- function(active_step_setter, data_view_setter, step, view 
 app_brand_title <- function(version) {
   div(
     class = "brand-title",
-    tags$img(src = "logo-mark.png", class = "brand-logo", alt = "EasyFlow Statistics logo"),
-    span(class = "brand-name", "EasyFlow Statistics"),
+    tags$img(src = "logo-horizontal.png", class = "brand-logo-horizontal", alt = "Easyflow Statistics logo"),
     span(class = "version", paste0("v", version))
   )
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-hierarchical-table-2"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-hier-term-1"))
 }
 
 app_script_link <- function(version) {

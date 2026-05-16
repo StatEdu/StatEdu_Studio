@@ -1,4 +1,4 @@
-# App bootstrap helpers for EasyFlow Statistics.
+# App bootstrap helpers for easyflow_statistics.
 # All statistical analysis dependencies must be CRAN packages.
 
 required_packages <- c(
@@ -15,7 +15,8 @@ required_packages <- c(
   "openxlsx",
   "callr",
   "glmnet",
-  "agricolae"
+  "agricolae",
+  "polycor"
 )
 
 ensure_required_packages <- function(packages = required_packages) {

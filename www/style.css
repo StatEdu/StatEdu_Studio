@@ -20,26 +20,33 @@ body {
   top: 0;
 }
 
+.navbar > .container-fluid .navbar-brand,
+.navbar > .container .navbar-brand {
+  height: 56px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
 .brand-title {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-weight: 700;
   letter-spacing: 0;
+  height: 44px;
 }
 
-.brand-logo {
-  width: 26px;
-  height: 26px;
-  flex: 0 0 26px;
-}
-
-.brand-name {
-  line-height: 1;
+.brand-logo-horizontal {
+  width: 158px;
+  height: 44px;
+  flex: 0 0 158px;
+  object-fit: contain;
+  object-position: left center;
+  display: block;
 }
 
 .version {
-  margin-left: 8px;
+  margin-left: 2px;
   font-size: 12px;
   font-weight: 500;
   color: #dbeafe;
@@ -453,7 +460,8 @@ input.variable-select:disabled {
   display: grid;
   grid-template-columns: 326px 50px 326px 310px;
   gap: 18px;
-  align-items: start;
+  align-items: stretch;
+  grid-auto-rows: 568px;
   margin-top: 18px;
   width: 1138px;
   min-width: 1138px;
@@ -481,6 +489,21 @@ input.variable-select:disabled {
 .analysis-transfer-panel {
   width: 326px;
   min-height: 568px;
+}
+
+.frequencies-setup-grid > .analysis-transfer-panel,
+.frequencies-setup-grid > .analysis-options-panel,
+.ttest-anova-setup-grid > .analysis-transfer-panel,
+.ttest-anova-setup-grid > .ttest-anova-target-column,
+.ttest-anova-setup-grid > .ttest-anova-options-column,
+.correlation-setup-grid > .analysis-transfer-panel,
+.correlation-setup-grid > .correlation-options-column,
+.regression-setup-grid > .analysis-transfer-panel,
+.regression-setup-grid > .regression-target-column,
+.regression-setup-grid > .regression-options {
+  height: 568px;
+  min-height: 568px;
+  box-sizing: border-box;
 }
 
 .analysis-transfer-column .analysis-field-label {
@@ -677,7 +700,8 @@ input.variable-select:disabled {
   display: grid;
   grid-template-columns: 326px 50px 326px 310px;
   gap: 18px;
-  align-items: start;
+  align-items: stretch;
+  grid-auto-rows: 568px;
   margin-top: 18px;
   width: 1138px;
   min-width: 1138px;
@@ -725,7 +749,8 @@ input.variable-select:disabled {
 }
 
 .ttest-anova-options.analysis-options-panel {
-  min-height: 210px;
+  min-height: 568px;
+  height: 568px;
   width: 310px;
 }
 
@@ -902,7 +927,8 @@ input.variable-select:disabled {
   display: grid;
   grid-template-columns: 326px 50px 326px 310px;
   gap: 18px;
-  align-items: start;
+  align-items: stretch;
+  grid-auto-rows: 568px;
   margin-top: 18px;
   width: 1138px;
   min-width: 1138px;
@@ -935,6 +961,7 @@ input.variable-select:disabled {
 
 .correlation-options.analysis-options-panel {
   min-height: 568px;
+  height: 568px;
   width: 310px;
 }
 
@@ -1092,7 +1119,8 @@ input.variable-select:disabled {
   display: grid;
   grid-template-columns: 326px 50px 326px 20px 310px;
   gap: 18px;
-  align-items: start;
+  align-items: stretch;
+  grid-auto-rows: 568px;
   margin-top: 18px;
   width: 1176px;
   min-width: 1176px;
@@ -1948,57 +1976,99 @@ table {
 }
 
 .hierarchical-table-wrap {
-  display: inline-block;
+  display: block;
+  max-width: 100%;
+}
+
+.hierarchical-table-scroll {
   max-width: 100%;
   overflow-x: auto;
 }
 
 .hierarchical-coefficient-table thead tr:first-child th {
   border-top: 2px solid #1f2937;
+  border-bottom: 0;
+}
+
+.hierarchical-coefficient-table thead tr:first-child th:first-child {
+  border-bottom: 2px solid #1f2937;
 }
 
 .hierarchical-coefficient-table .hierarchical-model-header {
   text-align: center;
   font-weight: 700;
+  border-bottom: 2px solid #1f2937;
 }
 
-.hierarchical-coefficient-table th:first-child,
-.hierarchical-coefficient-table td:first-child {
-  width: 170px;
-  min-width: 170px;
+.hierarchical-coefficient-table thead tr:last-child th {
+  border-bottom: 2px solid #1f2937;
+}
+
+.hierarchical-coefficient-table thead tr:last-child th:not(.hierarchical-model-separator) {
+  text-align: right;
+}
+
+.hierarchical-coefficient-table tbody td:not(:first-child):not(.hierarchical-model-separator) {
+  text-align: right;
+}
+
+.hierarchical-coefficient-table thead tr:first-child th:first-child,
+.hierarchical-coefficient-table tbody td:first-child,
+.hierarchical-coefficient-table tfoot td:first-child {
+  width: 240px;
+  min-width: 240px;
+  max-width: 240px;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: keep-all;
 }
 
 .hierarchical-coefficient-table .hierarchical-term-col {
-  width: 170px;
+  width: 240px;
 }
 
 .hierarchical-coefficient-table .hierarchical-stat-col {
-  width: 86px;
+  width: 78px;
 }
 
 .hierarchical-coefficient-table .hierarchical-separator-col {
-  width: 8px;
+  width: 10px;
 }
 
-.hierarchical-coefficient-table th:not(:first-child):not(.hierarchical-model-header):not(.hierarchical-model-separator),
+.hierarchical-coefficient-table thead tr:last-child th:not(.hierarchical-model-separator),
 .hierarchical-coefficient-table td:not(:first-child):not(.hierarchical-model-separator) {
-  width: 86px;
-  min-width: 86px;
-  max-width: 86px;
-  overflow-wrap: anywhere;
+  width: 78px;
+  min-width: 78px;
+  max-width: 78px;
+  padding-left: 8px;
+  padding-right: 8px;
+  overflow-wrap: normal;
+  white-space: nowrap;
 }
 
 .hierarchical-coefficient-table .hierarchical-model-separator {
-  width: 8px;
-  min-width: 8px;
-  max-width: 8px;
+  width: 10px;
+  min-width: 10px;
+  max-width: 10px;
   padding: 0;
   background: transparent;
 }
 
 .hierarchical-coefficient-table .hierarchical-model-header-separator {
-  border-top: 0 !important;
+  border-bottom: 0 !important;
+}
+
+.hierarchical-coefficient-table .hierarchical-model-subheader-separator {
   border-bottom: 2px solid #1f2937 !important;
+}
+
+.hierarchical-coefficient-table tfoot .coefficient-fit-row td {
+  border-top: 1px solid #d7dde5;
+  border-bottom: 0;
+}
+
+.hierarchical-coefficient-table tfoot tr:first-child td {
+  border-top: 2px solid #1f2937;
 }
 
 .coefficient-note {
@@ -2015,6 +2085,9 @@ table {
 .hierarchical-model-notes {
   margin-top: 8px;
   color: #1f2937;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .hierarchical-model-note-line + .hierarchical-model-note-line {
@@ -2023,6 +2096,9 @@ table {
 
 .hierarchical-coefficient-note {
   margin-top: 6px;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .effect-size-reference-panel {
@@ -2597,6 +2673,46 @@ pre {
 .hierarchical-options.analysis-options-panel,
 .regression-options.analysis-options-panel {
   min-height: 568px;
+}
+
+.frequencies-setup-grid,
+.ttest-anova-setup-grid,
+.correlation-setup-grid,
+.regression-setup-grid {
+  align-items: stretch;
+  grid-auto-rows: 568px;
+}
+
+.frequencies-setup-grid > .analysis-transfer-panel,
+.frequencies-setup-grid > .analysis-options-panel,
+.ttest-anova-setup-grid > .analysis-transfer-panel,
+.ttest-anova-setup-grid > .ttest-anova-target-column,
+.ttest-anova-setup-grid > .ttest-anova-options-column,
+.correlation-setup-grid > .analysis-transfer-panel,
+.correlation-setup-grid > .correlation-options-column,
+.regression-setup-grid > .analysis-transfer-panel,
+.regression-setup-grid > .regression-target-column,
+.regression-setup-grid > .regression-options.analysis-options-panel {
+  height: 568px;
+  min-height: 568px;
+  box-sizing: border-box;
+}
+
+.ttest-anova-options.analysis-options-panel,
+.correlation-options.analysis-options-panel,
+.regression-options.analysis-options-panel {
+  height: 568px;
+  min-height: 568px;
+}
+
+.ttest-anova-target-column {
+  grid-template-rows: 198px 352px;
+  height: 568px;
+}
+
+.regression-target-column {
+  grid-template-rows: 198px 346px;
+  height: 568px;
 }
 
 .hierarchical-setup-grid > .analysis-transfer-panel,

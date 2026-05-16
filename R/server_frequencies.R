@@ -169,7 +169,7 @@ register_frequencies_handlers <- function(
     if (is.null(result)) {
       return(NULL)
     }
-    analysis_save_buttons("save_frequencies_excel_dialog", "save_frequencies_figures_dialog")
+    analysis_save_buttons("save_frequencies_excel_dialog", "save_frequencies_figures_dialog", "save_frequencies_html_dialog")
   })
 
   observeEvent(input$save_frequencies_excel_dialog, {
@@ -213,6 +213,28 @@ register_frequencies_handlers <- function(
       },
       error = function(e) {
         showNotification(paste("Failed to save figures:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  })
+
+  observeEvent(input$save_frequencies_html_dialog, {
+    result <- frequency_result()
+    shiny::req(!is.null(result))
+    path <- choose_html_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) {
+      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      return(invisible(NULL))
+    }
+    if (!grepl("\\.html?$", path, ignore.case = TRUE)) {
+      path <- paste0(path, ".html")
+    }
+    tryCatch(
+      {
+        write_frequencies_results_html(result, path)
+        showNotification(sprintf("HTML results saved: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save HTML results:", conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })

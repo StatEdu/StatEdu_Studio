@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 360" role="img" aria-labelledby="title desc">
-  <title id="title">EasyFlow Statistics revised logo proposal</title>
-  <desc id="desc">A simplified EasyFlow Statistics logo with a sigma mark, chart bars, and a clean upward flow arrow.</desc>
+  <title id="title">easyflow_statistics revised logo proposal</title>
+  <desc id="desc">A simplified easyflow_statistics logo with a sigma mark, chart bars, and a clean upward flow arrow.</desc>
   <defs>
     <linearGradient id="barGradient" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0" stop-color="#0f766e"/>
@@ -28,7 +28,7 @@
   </g>
 
   <g transform="translate(380 105)">
-    <text x="0" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="72" font-weight="800" fill="#0f766e" letter-spacing="-1">EasyFlow</text>
+    <text x="0" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="72" font-weight="800" fill="#0f766e" letter-spacing="-1">easyflow_statistics</text>
     <text x="0" y="152" font-family="Georgia, 'Times New Roman', serif" font-size="78" font-weight="500" fill="#082f49">Statistics</text>
   </g>
 

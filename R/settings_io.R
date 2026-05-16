@@ -1,4 +1,4 @@
-# Settings helpers for EasyFlow Statistics.
+# Settings helpers for easyflow_statistics.
 
 settings_vector <- function(x) {
   if (is.null(x)) return(character(0))
@@ -127,7 +127,7 @@ settings_embedded_data_file <- function(settings) {
 
   file_name <- settings_scalar(settings$data_file %||% settings$embedded_data_file$name)
   if (!nzchar(file_name)) {
-    file_name <- "EasyFlow_Statistics_Data"
+    file_name <- "easyflow_statistics_data"
   }
   extension <- tools::file_ext(file_name)
   restored_path <- tempfile("easyflow_data_", fileext = if (nzchar(extension)) paste0(".", extension) else "")
@@ -378,7 +378,7 @@ build_settings_object <- function(
 ) {
   variable_names <- if (is.null(variable_info)) character(0) else as.character(variable_info$name)
   list(
-    app = "EasyFlow Statistics",
+    app = "easyflow_statistics",
     version = app_version,
     data_step = data_step,
     active_step = active_step,

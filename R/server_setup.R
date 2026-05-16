@@ -758,11 +758,11 @@ register_setup_outputs <- function(
       selected_available = isolate(input$available_predictors),
       selected_dependent = isolate(input$y),
       selected_predictor = isolate(input$predictor_order),
-      bootstrap_value = input$boot_r,
-      seed_value = input$seed,
-      show_sr2 = input$show_sr2,
-      show_f2 = input$show_f2,
-      show_vif = input$show_vif
+      bootstrap_value = isolate(input$boot_r),
+      seed_value = isolate(input$seed),
+      show_sr2 = isolate(input$show_sr2),
+      show_f2 = isolate(input$show_f2),
+      show_vif = isolate(input$show_vif)
     )
 
     regression_setup_panel_from_state(
@@ -789,16 +789,16 @@ register_setup_outputs <- function(
       block3 = block3,
       variable_table = regression_variable_table_fn(),
       labels = var_label_overrides_fn(),
-      bootstrap_value = input$hierarchical_boot_r,
-      seed_value = input$hierarchical_seed,
+      bootstrap_value = isolate(input$hierarchical_boot_r),
+      seed_value = isolate(input$hierarchical_seed),
       selected_available = isolate(input$hierarchical_available),
       selected_dependent = isolate(input$hierarchical_y),
       selected_block1 = isolate(input$hierarchical_block1),
       selected_block2 = isolate(input$hierarchical_block2),
       selected_block3 = isolate(input$hierarchical_block3),
-      show_sr2 = input$hierarchical_show_sr2,
-      show_f2 = input$hierarchical_show_f2,
-      show_vif = input$hierarchical_show_vif
+      show_sr2 = isolate(input$hierarchical_show_sr2),
+      show_f2 = isolate(input$hierarchical_show_f2),
+      show_vif = isolate(input$hierarchical_show_vif)
     )
 
     hierarchical_setup_panel_from_state(

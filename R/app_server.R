@@ -1,4 +1,4 @@
-# Main Shiny server assembly for EasyFlow Statistics.
+# Main Shiny server assembly for easyflow_statistics.
 
 create_app_server <- function(app_version) {
   force(app_version)

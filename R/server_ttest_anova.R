@@ -338,7 +338,8 @@ register_ttest_anova_handlers <- function(
     }
     div(
       class = "analysis-save-action",
-      actionButton("save_ttest_anova_excel_dialog", "Save tables", class = "btn-primary")
+      actionButton("save_ttest_anova_excel_dialog", "Save tables", class = "btn-primary"),
+      actionButton("save_ttest_anova_html_dialog", "Save HTML", class = "btn-default")
     )
   })
 
@@ -360,6 +361,28 @@ register_ttest_anova_handlers <- function(
       },
       error = function(e) {
         showNotification(paste("Failed to save analysis results:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  })
+
+  observeEvent(input$save_ttest_anova_html_dialog, {
+    result <- ttest_anova_result()
+    shiny::req(!is.null(result), is.null(result$error))
+    path <- choose_html_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) {
+      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      return(invisible(NULL))
+    }
+    if (!grepl("\\.html?$", path, ignore.case = TRUE)) {
+      path <- paste0(path, ".html")
+    }
+    tryCatch(
+      {
+        write_ttest_anova_results_html(result, path)
+        showNotification(sprintf("HTML results saved: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save HTML results:", conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })

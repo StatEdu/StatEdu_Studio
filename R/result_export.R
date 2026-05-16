@@ -1,4 +1,4 @@
-# Result export helpers for EasyFlow Statistics.
+# Result export helpers for easyflow_statistics.
 # All analysis table exports should use these helpers so workbook layout,
 # table lines, title rows, column widths, and alignment stay consistent.
 
@@ -23,8 +23,11 @@ analysis_excel_styles <- function() {
   list(
     title = openxlsx::createStyle(textDecoration = "bold", fontSize = 12, halign = "left"),
     header = openxlsx::createStyle(textDecoration = "bold", halign = "center", valign = "center", border = "bottom", borderStyle = "thin"),
+    group_header = openxlsx::createStyle(textDecoration = "bold", halign = "center", valign = "center"),
+    right_header = openxlsx::createStyle(textDecoration = "bold", halign = "right", valign = "center", border = "bottom", borderStyle = "thin"),
     body = openxlsx::createStyle(halign = "center", valign = "center"),
     left = openxlsx::createStyle(halign = "left", valign = "center", wrapText = TRUE),
+    right = openxlsx::createStyle(halign = "right", valign = "center"),
     wrap = openxlsx::createStyle(halign = "center", valign = "center", wrapText = TRUE),
     summary = openxlsx::createStyle(halign = "center", valign = "center"),
     warning = openxlsx::createStyle(halign = "center", valign = "center", wrapText = TRUE, fontColour = "#9A3412"),
@@ -35,6 +38,22 @@ analysis_excel_styles <- function() {
 }
 
 regression_excel_styles <- analysis_excel_styles
+
+excel_note_row_height <- function(text, widths, min_height = 48, line_height = 15, padding = 10) {
+  text <- paste(as.character(text %||% ""), collapse = "\n")
+  widths <- as.numeric(widths %||% numeric(0))
+  total_width <- sum(widths[is.finite(widths) & widths > 0], na.rm = TRUE)
+  if (!is.finite(total_width) || total_width <= 0) {
+    total_width <- 60
+  }
+  chars_per_line <- max(24L, floor(total_width * 1.15))
+  lines <- strsplit(text, "\n", fixed = TRUE)[[1]]
+  if (length(lines) == 0) {
+    lines <- ""
+  }
+  wrapped_lines <- sum(pmax(1L, ceiling(nchar(lines, type = "width") / chars_per_line)))
+  max(min_height, wrapped_lines * line_height + padding)
+}
 
 add_excel_table_sheet <- function(workbook, sheet_name, table, used_sheets, merge_shared_independent = FALSE, title = NULL) {
   sheet_name <- excel_sheet_name(sheet_name, used_sheets)
@@ -155,14 +174,14 @@ add_regression_result_sheet <- function(
     summary_end <- summary_start + length(summary_lines) + warning_row_count - 1
     openxlsx::addStyle(workbook, sheet_name, styles$bottom, rows = summary_end, cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
 
+    widths <- c(20, rep(10, max(0, ncol(table) - 1)))
     note_row <- summary_end + 2
     note <- coefficient_note_line(result, show_vif, show_sr2, show_f2)
     openxlsx::writeData(workbook, sheet_name, note, startRow = note_row, startCol = 1, colNames = FALSE)
     openxlsx::mergeCells(workbook, sheet_name, cols = 1:ncol(table), rows = note_row)
     openxlsx::addStyle(workbook, sheet_name, styles$note, rows = note_row, cols = 1, gridExpand = TRUE, stack = TRUE)
-    openxlsx::setRowHeights(workbook, sheet_name, rows = note_row, heights = 48)
+    openxlsx::setRowHeights(workbook, sheet_name, rows = note_row, heights = excel_note_row_height(note, widths, min_height = 48))
 
-    widths <- c(20, rep(10, max(0, ncol(table) - 1)))
     openxlsx::setColWidths(workbook, sheet_name, cols = seq_len(ncol(table)), widths = widths[seq_len(ncol(table))])
     openxlsx::freezePane(workbook, sheet_name, firstActiveRow = data_start_row + 1, firstActiveCol = 2)
   } else {
@@ -244,11 +263,11 @@ saved_coefficients_table <- function(results, variable_table = NULL, labels = ch
 }
 
 coefficients_csv_filename <- function() {
-  "EasyFlow_Statistics_Coefficients.csv"
+  "easyflow_statistics_coefficients.csv"
 }
 
 analysis_results_html_filename <- function() {
-  sprintf("EasyFlow_Statistics_Results_%s.html", format(Sys.time(), "%Y%m%d_%H%M%S"))
+  sprintf("easyflow_statistics_results_%s.html", format(Sys.time(), "%Y%m%d_%H%M%S"))
 }
 
 write_coefficients_csv <- function(results, file, variable_table = NULL, labels = character(0), category_table = NULL) {
@@ -282,6 +301,57 @@ write_analysis_results_html <- function(
       show_f2 = show_f2,
       show_vif = show_vif
     ),
+    file,
+    useBytes = TRUE
+  )
+}
+
+write_hierarchical_results_html <- function(
+  results,
+  file,
+  variable_table = NULL,
+  labels = character(0),
+  category_table = NULL,
+  show_sr2 = FALSE,
+  show_f2 = FALSE,
+  show_vif = FALSE
+) {
+  writeLines(
+    saved_hierarchical_results_html(
+      results,
+      variable_table = variable_table,
+      labels = labels,
+      category_table = category_table,
+      refs = regression_reference_values_static(category_table),
+      value_labels = category_value_label_lookup_static(category_table),
+      show_sr2 = show_sr2,
+      show_f2 = show_f2,
+      show_vif = show_vif
+    ),
+    file,
+    useBytes = TRUE
+  )
+}
+
+write_frequencies_results_html <- function(result, file) {
+  writeLines(
+    saved_frequencies_results_html(result),
+    file,
+    useBytes = TRUE
+  )
+}
+
+write_ttest_anova_results_html <- function(result, file) {
+  writeLines(
+    saved_ttest_anova_results_html(result),
+    file,
+    useBytes = TRUE
+  )
+}
+
+write_correlation_results_html <- function(result, file) {
+  writeLines(
+    saved_correlation_results_html(result),
     file,
     useBytes = TRUE
   )
@@ -398,7 +468,8 @@ hierarchical_export_table <- function(
     show_vif = show_vif
   )
   model_labels <- mapply(hierarchical_step_label, group, seq_along(group), USE.NAMES = FALSE)
-  terms <- unique(unlist(lapply(model_tables, function(table) as.character(table$Term)), use.names = FALSE))
+  model_columns <- lapply(model_tables, function(table) setdiff(names(table), "Term"))
+  terms <- unique(unlist(lapply(rev(model_tables), function(table) as.character(table$Term)), use.names = FALSE))
   out <- data.frame(Term = terms, stringsAsFactors = FALSE, check.names = FALSE)
   for (model_index in seq_along(model_tables)) {
     table <- model_tables[[model_index]]
@@ -434,6 +505,9 @@ hierarchical_export_table <- function(
     }
     out <- rbind(out, as.data.frame(row, stringsAsFactors = FALSE, check.names = FALSE))
   }
+  attr(out, "model_labels") <- model_labels
+  attr(out, "model_columns") <- model_columns
+  attr(out, "summary_start") <- length(terms) + 1L
   out
 }
 
@@ -445,32 +519,91 @@ add_hierarchical_result_sheet <- function(workbook, sheet_name, table, note, mod
   if (is.data.frame(table) && nrow(table) > 0 && ncol(table) > 0) {
     n_cols <- ncol(table)
     title_row <- 1L
-    header_row <- 3L
-    body_rows <- (header_row + 1):(header_row + nrow(table))
+    header_top_row <- 3L
+    header_bottom_row <- 4L
+    data_start_row <- 5L
+    body_rows <- data_start_row:(data_start_row + nrow(table) - 1L)
+    model_labels <- attr(table, "model_labels", exact = TRUE)
+    model_columns <- attr(table, "model_columns", exact = TRUE)
+    summary_start <- as.integer(attr(table, "summary_start", exact = TRUE) %||% NA_integer_)
+    if (is.null(model_labels) || is.null(model_columns)) {
+      model_labels <- unique(sub("^(Model [0-9]+) .*", "\\1", names(table)[-1]))
+      model_columns <- lapply(model_labels, function(label) sub(paste0("^", label, " "), "", grep(paste0("^", label, " "), names(table), value = TRUE)))
+    }
+    model_widths <- lengths(model_columns)
     openxlsx::writeData(workbook, sheet_name, title, startRow = title_row, startCol = 1, colNames = FALSE)
     openxlsx::mergeCells(workbook, sheet_name, cols = seq_len(n_cols), rows = title_row)
     openxlsx::addStyle(workbook, sheet_name, styles$title, rows = title_row, cols = 1, gridExpand = TRUE, stack = TRUE)
-    openxlsx::writeData(workbook, sheet_name, table, startRow = header_row, startCol = 1, withFilter = FALSE)
-    openxlsx::addStyle(workbook, sheet_name, styles$top, rows = header_row, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
-    openxlsx::addStyle(workbook, sheet_name, styles$header, rows = header_row, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+
+    openxlsx::writeData(workbook, sheet_name, "Term", startRow = header_top_row, startCol = 1, colNames = FALSE)
+    openxlsx::mergeCells(workbook, sheet_name, cols = 1, rows = header_top_row:header_bottom_row)
+    current_col <- 2L
+    for (model_index in seq_along(model_labels)) {
+      span <- model_widths[[model_index]]
+      if (span <= 0) next
+      openxlsx::writeData(workbook, sheet_name, model_labels[[model_index]], startRow = header_top_row, startCol = current_col, colNames = FALSE)
+      if (span > 1) {
+        openxlsx::mergeCells(workbook, sheet_name, cols = current_col:(current_col + span - 1L), rows = header_top_row)
+      }
+      for (column_index in seq_len(span)) {
+        openxlsx::writeData(
+          workbook,
+          sheet_name,
+          as.character(model_columns[[model_index]][[column_index]]),
+          startRow = header_bottom_row,
+          startCol = current_col + column_index - 1L,
+          colNames = FALSE
+        )
+      }
+      current_col <- current_col + span
+    }
+    openxlsx::addStyle(workbook, sheet_name, styles$top, rows = header_top_row, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+    if (n_cols > 1) {
+      openxlsx::addStyle(workbook, sheet_name, styles$group_header, rows = header_top_row, cols = 2:n_cols, gridExpand = TRUE, stack = TRUE)
+      openxlsx::addStyle(workbook, sheet_name, styles$right_header, rows = header_bottom_row, cols = 2:n_cols, gridExpand = TRUE, stack = TRUE)
+    }
+    openxlsx::addStyle(workbook, sheet_name, styles$header, rows = header_top_row:header_bottom_row, cols = 1, gridExpand = TRUE, stack = TRUE)
+
+    openxlsx::writeData(workbook, sheet_name, table, startRow = data_start_row, startCol = 1, colNames = FALSE, withFilter = FALSE)
     openxlsx::addStyle(workbook, sheet_name, styles$body, rows = body_rows, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
     openxlsx::addStyle(workbook, sheet_name, styles$left, rows = body_rows, cols = 1, gridExpand = TRUE, stack = TRUE)
-    openxlsx::addStyle(workbook, sheet_name, styles$bottom, rows = header_row + nrow(table), cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+    if (n_cols > 1) {
+      openxlsx::addStyle(workbook, sheet_name, styles$right, rows = body_rows, cols = 2:n_cols, gridExpand = TRUE, stack = TRUE)
+    }
+    if (!is.na(summary_start) && summary_start <= nrow(table)) {
+      summary_rows <- (data_start_row + summary_start - 1L):(data_start_row + nrow(table) - 1L)
+      openxlsx::addStyle(workbook, sheet_name, styles$summary, rows = summary_rows, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+      for (row in summary_rows) {
+        current_col <- 2L
+        for (span in model_widths) {
+          if (span <= 0) next
+          if (span > 1) {
+            openxlsx::mergeCells(workbook, sheet_name, cols = current_col:(current_col + span - 1L), rows = row)
+          }
+          current_col <- current_col + span
+        }
+      }
+      openxlsx::addStyle(workbook, sheet_name, styles$top, rows = summary_rows[[1]], cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+    }
+    openxlsx::addStyle(workbook, sheet_name, styles$bottom, rows = data_start_row + nrow(table) - 1L, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
 
+    widths <- rep(12, n_cols)
+    widths[[1]] <- 20
+    if (n_cols > 1) {
+      widths[2:n_cols] <- 10
+    }
     notes <- c(model_notes, note)
     notes <- notes[nzchar(notes %||% "")]
     if (length(notes) > 0) {
-      note_row <- header_row + nrow(table) + 2L
+      note_row <- data_start_row + nrow(table) + 1L
       note_text <- paste(notes, collapse = "\n")
       openxlsx::writeData(workbook, sheet_name, note_text, startRow = note_row, startCol = 1, colNames = FALSE)
       openxlsx::mergeCells(workbook, sheet_name, cols = seq_len(n_cols), rows = note_row)
       openxlsx::addStyle(workbook, sheet_name, styles$note, rows = note_row, cols = 1, gridExpand = TRUE, stack = TRUE)
-      openxlsx::setRowHeights(workbook, sheet_name, rows = note_row, heights = max(40, 16 * length(notes)))
+      openxlsx::setRowHeights(workbook, sheet_name, rows = note_row, heights = excel_note_row_height(note_text, widths, min_height = 48))
     }
-    widths <- rep(12, n_cols)
-    widths[[1]] <- 24
     openxlsx::setColWidths(workbook, sheet_name, cols = seq_len(n_cols), widths = widths)
-    openxlsx::freezePane(workbook, sheet_name, firstActiveRow = header_row + 1, firstActiveCol = 2)
+    openxlsx::freezePane(workbook, sheet_name, firstActiveRow = data_start_row, firstActiveCol = 2)
   } else {
     openxlsx::writeData(workbook, sheet_name, "No data")
   }

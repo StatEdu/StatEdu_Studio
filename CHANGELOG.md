@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.5.6 - 2026-05-16
+
+### Changed
+
+- Added shared HTML export across analysis result tabs and aligned saved HTML table styling with in-app regression-style tables.
+- Expanded correlation analysis with measurement-level automatic method selection, optional latent-variable correlations, method/reason matrices, p-value and 95% CI matrix output, and larger scatter/heatmap figures.
+- Refined Excel/HTML export styling for regression and hierarchical regression tables, including two-level headers, numeric alignment, notes, and save dialog behavior.
+- Stabilized regression and hierarchical regression option controls during bootstrap workflows.
+- Standardized setup panel block geometry for non-hierarchical analysis tabs.
+
+
 ## v0.5.5 - 2026-05-16
 
 ### Changed
@@ -28,7 +39,7 @@
 - Added bootstrap sample count and seed number to the regression model overview when bootstrap regression is used.
 - Stabilized regression variable transfer behavior for first-item Shift selection and reduced selection-triggered scroll resets.
 - Increased the regression available variable list height to show 20 variables.
-- Added and refined EasyFlow Statistics logo concept SVG assets.
+- Added and refined easyflow_statistics logo concept SVG assets.
 
 
 ## v0.5.1 - 2026-05-14
@@ -39,7 +50,7 @@
 - Refined regression setup layout, fixed list heights, move button placement, and option checkbox persistence.
 - Added shared table and figure export behavior for analysis outputs.
 - Added Frequencies / Descriptives setup and output scaffolding with shared variable transfer UI.
-- Updated citation metadata for EasyFlow Statistics.
+- Updated citation metadata for easyflow_statistics.
 
 
 ## v0.5.0 - 2026-05-11
@@ -60,7 +71,7 @@
 
 ### Changed
 
-- Renamed the regression tab and page headings from EasyFlow Regression to Regression.
+- Renamed the regression tab and page headings from easyflow_statistics to Regression.
 
 ### Fixed
 
@@ -146,5 +157,5 @@
 - Breusch-Pagan homoscedasticity test.
 - HC3 robust standard errors.
 - Bootstrap confidence intervals.
-- Durbin-Watson dL/dU lookup using `C:/StatEdu/EasyFlow/EasyFlow_Statistics_3.0.xlsx`.
+- Durbin-Watson dL/dU lookup using `C:/StatEdu/easyflow_statistics/easyflow_statistics_3.0.xlsx`.
 

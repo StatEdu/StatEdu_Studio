@@ -36,6 +36,8 @@ register_correlation_handlers <- function(
         selected_available = isolate(input$correlation_available),
         selected_selected = isolate(input$correlation_selected),
         normality = input$correlation_normality,
+        latent_correlations = input$correlation_latent_correlations,
+        reason = input$correlation_reason,
         p_ci = input$correlation_p_ci %||% TRUE,
         significance_levels = input$correlation_significance_levels %||% TRUE,
         scatter_plot = input$correlation_scatter_plot,
@@ -121,6 +123,8 @@ register_correlation_handlers <- function(
       category_table = category_table_fn(),
       options = list(
         normality = isTRUE(input$correlation_normality),
+        latent_correlations = isTRUE(input$correlation_latent_correlations),
+        reason = isTRUE(input$correlation_reason),
         p_ci = isTRUE(input$correlation_p_ci),
         significance_levels = isTRUE(input$correlation_significance_levels),
         scatter_plot = isTRUE(input$correlation_scatter_plot),
@@ -138,6 +142,17 @@ register_correlation_handlers <- function(
     correlation_results_ui(result)
   })
 
+  output$correlation_save_control <- renderUI({
+    result <- correlation_result()
+    if (is.null(result)) {
+      return(NULL)
+    }
+    div(
+      class = "analysis-save-action",
+      actionButton("save_correlation_html_dialog", "Save HTML", class = "btn-default")
+    )
+  })
+
   observe({
     result <- correlation_result()
     if (is.null(result)) {
@@ -153,6 +168,28 @@ register_correlation_handlers <- function(
         draw_correlation_heatmap(result)
       })
     }
+  })
+
+  observeEvent(input$save_correlation_html_dialog, {
+    result <- correlation_result()
+    shiny::req(!is.null(result))
+    path <- choose_html_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) {
+      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      return(invisible(NULL))
+    }
+    if (!grepl("\\.html?$", path, ignore.case = TRUE)) {
+      path <- paste0(path, ".html")
+    }
+    tryCatch(
+      {
+        write_correlation_results_html(result, path)
+        showNotification(sprintf("HTML results saved: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save HTML results:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
   })
 
   invisible(TRUE)

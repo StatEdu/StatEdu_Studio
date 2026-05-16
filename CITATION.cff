@@ -1,13 +1,13 @@
 cff-version: 1.2.0
-message: "If you use EasyFlow Statistics in your research, please cite it as below."
+message: "If you use easyflow_statistics in your research, please cite it as below."
 type: software
-title: "EasyFlow Statistics"
-version: "0.5.2"
-date-released: "2026-05-14"
+title: "easyflow_statistics"
+version: "0.5.6"
+date-released: "2026-05-16"
 authors:
   - family-names: "LEE"
     given-names: "IL HYUN"
-repository-code: "https://github.com/StatEdu/EasyFlow_Statistics_dev"
-url: "https://github.com/StatEdu/EasyFlow_Statistics_dev"
+repository-code: "https://github.com/StatEdu/easyflow_statistics_dev"
+url: "https://github.com/StatEdu/easyflow_statistics_dev"
 doi: "10.22934/statedu.easyflow.statistics"
-abstract: "EasyFlow Statistics is a local Shiny application for statistical analysis."
+abstract: "easyflow_statistics is a local Shiny application for statistical analysis."

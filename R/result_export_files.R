@@ -47,22 +47,39 @@ run_windows_dialog_script <- function(script) {
   if (length(output) > 0) output[[1]] else character(0)
 }
 
-choose_windows_save_file <- function(default_name, title) {
+choose_windows_save_file <- function(
+  default_name,
+  title,
+  filter = "Excel Workbook (*.xlsx)|*.xlsx|All Files (*.*)|*.*",
+  default_ext = "xlsx"
+) {
   if (.Platform$OS.type != "windows") {
     return(character(0))
   }
   script <- paste(
     "Add-Type -AssemblyName System.Windows.Forms;",
+    "Add-Type -AssemblyName System.Drawing;",
+    "$owner = New-Object System.Windows.Forms.Form;",
+    "$owner.TopMost = $true;",
+    "$owner.ShowInTaskbar = $false;",
+    "$owner.StartPosition = 'CenterScreen';",
+    "$owner.Size = New-Object System.Drawing.Size(1,1);",
+    "$owner.Opacity = 0;",
     "$dialog = New-Object System.Windows.Forms.SaveFileDialog;",
     "$dialog.Title =", ps_quote(title), ";",
     "$dialog.FileName =", ps_quote(default_name), ";",
-    "$dialog.Filter = 'Excel Workbook (*.xlsx)|*.xlsx|All Files (*.*)|*.*';",
-    "$dialog.DefaultExt = 'xlsx';",
+    "$dialog.Filter =", ps_quote(filter), ";",
+    "$dialog.DefaultExt =", ps_quote(default_ext), ";",
     "$dialog.AddExtension = $true;",
     "$dialog.OverwritePrompt = $true;",
-    "if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {",
+    "$owner.Show();",
+    "$owner.Activate();",
+    "if ($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) {",
     "[Console]::Out.WriteLine($dialog.FileName)",
-    "}"
+    "}",
+    "$dialog.Dispose();",
+    "$owner.Close();",
+    "$owner.Dispose();"
   )
   run_windows_dialog_script(script)
 }
@@ -73,15 +90,27 @@ choose_windows_directory <- function(caption) {
   }
   script <- paste(
     "Add-Type -AssemblyName System.Windows.Forms;",
+    "Add-Type -AssemblyName System.Drawing;",
+    "$owner = New-Object System.Windows.Forms.Form;",
+    "$owner.TopMost = $true;",
+    "$owner.ShowInTaskbar = $false;",
+    "$owner.StartPosition = 'CenterScreen';",
+    "$owner.Size = New-Object System.Drawing.Size(1,1);",
+    "$owner.Opacity = 0;",
     "$dialog = New-Object System.Windows.Forms.OpenFileDialog;",
     "$dialog.Title =", ps_quote(caption), ";",
     "$dialog.CheckFileExists = $false;",
     "$dialog.CheckPathExists = $true;",
     "$dialog.ValidateNames = $false;",
     "$dialog.FileName = 'Select this folder';",
-    "if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {",
+    "$owner.Show();",
+    "$owner.Activate();",
+    "if ($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) {",
     "[Console]::Out.WriteLine([System.IO.Path]::GetDirectoryName($dialog.FileName))",
-    "}"
+    "}",
+    "$dialog.Dispose();",
+    "$owner.Close();",
+    "$owner.Dispose();"
   )
   run_windows_dialog_script(script)
 }
@@ -177,8 +206,8 @@ plot_data_uri <- function(plot_function, result, width = 420, height = 420, res 
 }
 
 choose_excel_save_path <- function() {
-  default_name <- sprintf("EasyFlow_Statistics_Results_%s.xlsx", format(Sys.time(), "%Y%m%d_%H%M%S"))
-  title <- "Save EasyFlow Statistics Results"
+  default_name <- sprintf("easyflow_statistics_results_%s.xlsx", format(Sys.time(), "%Y%m%d_%H%M%S"))
+  title <- "Save easyflow_statistics Results"
   if (.Platform$OS.type == "windows") {
     path <- choose_windows_save_file(default_name, title)
     if (length(path) > 0 && nzchar(path[[1]])) {
@@ -205,8 +234,37 @@ choose_excel_save_path <- function() {
   choose_tk_save_file(default_name, title, ".xlsx", "{{Excel Workbook} {.xlsx}} {{All Files} {*}}")
 }
 
+choose_html_save_path <- function() {
+  default_name <- sprintf("easyflow_statistics_results_%s.html", format(Sys.time(), "%Y%m%d_%H%M%S"))
+  title <- "Save easyflow_statistics HTML Results"
+  if (.Platform$OS.type == "windows") {
+    path <- choose_windows_save_file(default_name, title, "HTML File (*.html)|*.html|All Files (*.*)|*.*", "html")
+    if (length(path) > 0 && nzchar(path[[1]])) {
+      return(path[[1]])
+    }
+  }
+  if (.Platform$OS.type == "windows") {
+    path <- choose_tk_save_file(default_name, title, ".html", "{{HTML File} {.html}} {{All Files} {*}}")
+    if (length(path) > 0 && nzchar(path[[1]])) {
+      return(path[[1]])
+    }
+  }
+  if (.Platform$OS.type == "windows") {
+    filters <- matrix(c("HTML File", "*.html", "All Files", "*.*"), ncol = 2, byrow = TRUE)
+    path <- utils::choose.files(default = default_name, caption = title, multi = FALSE, filters = filters, index = 1)
+    if (length(path) > 0 && nzchar(path[[1]])) {
+      return(path[[1]])
+    }
+  }
+  path <- choose_rstudio_save_file(default_name, title, "HTML File (*.html)")
+  if (length(path) > 0 && nzchar(path[[1]])) {
+    return(path[[1]])
+  }
+  choose_tk_save_file(default_name, title, ".html", "{{HTML File} {.html}} {{All Files} {*}}")
+}
+
 choose_figure_save_dir <- function() {
-  caption <- "Choose folder for EasyFlow Statistics figures"
+  caption <- "Choose folder for easyflow_statistics figures"
   if (.Platform$OS.type == "windows") {
     path <- choose_windows_directory(caption)
     if (length(path) > 0 && nzchar(path[[1]]) && dir.exists(path[[1]])) {

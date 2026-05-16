@@ -8,6 +8,8 @@ correlation_setup_state <- function(
   selected_available = character(0),
   selected_selected = character(0),
   normality = FALSE,
+  latent_correlations = FALSE,
+  reason = FALSE,
   p_ci = TRUE,
   significance_levels = TRUE,
   scatter_plot = FALSE,
@@ -26,6 +28,8 @@ correlation_setup_state <- function(
     selected_selected = selected_order_items(selected_selected, correlation_variables),
     move_disabled = length(selected) == 0,
     normality = isTRUE(normality),
+    latent_correlations = isTRUE(latent_correlations),
+    reason = isTRUE(reason),
     p_ci = isTRUE(p_ci),
     significance_levels = isTRUE(significance_levels),
     scatter_plot = isTRUE(scatter_plot),
@@ -67,9 +71,19 @@ correlation_setup_panel <- function(state) {
         analysis_option_group(
           "Statistics",
           list(
-            list(id = "correlation_normality", label = "normality (skewness/kurtosis)", value = state$normality),
             list(id = "correlation_p_ci", label = "p-value & 95% CI", value = state$p_ci),
-            list(id = "correlation_significance_levels", label = "significance levels", value = state$significance_levels)
+            list(id = "correlation_significance_levels", label = "significance levels", value = state$significance_levels),
+            list(id = "correlation_normality", label = "normality diagnostics", value = state$normality),
+            list(id = "correlation_reason", label = "reason", value = state$reason)
+          )
+        ),
+        div(
+          class = "analysis-option-group",
+          div(class = "analysis-option-title", "Advanced correlations"),
+          checkboxInput(
+            "correlation_latent_correlations",
+            "Use latent-variable correlations",
+            value = state$latent_correlations
           )
         ),
         analysis_option_group(

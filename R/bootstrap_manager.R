@@ -1,4 +1,4 @@
-# Bootstrap job state management for EasyFlow Statistics.
+# Bootstrap job state management for easyflow_statistics.
 
 create_bootstrap_manager <- function(
   bootstrap_job,

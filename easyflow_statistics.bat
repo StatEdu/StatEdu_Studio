@@ -3,10 +3,10 @@ setlocal EnableExtensions EnableDelayedExpansion
 
 cd /d "%~dp0"
 
-echo Starting EasyFlow Statistics...
+echo Starting easyflow_statistics...
 echo.
 
-echo Closing existing EasyFlow Statistics process, if any...
+echo Closing existing easyflow_statistics process, if any...
 powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'Rscript.exe' -and $_.CommandLine -like '*run_app.R*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
 timeout /t 2 /nobreak >nul
 
@@ -43,5 +43,5 @@ echo.
 "%RSCRIPT%" run_app.R
 
 echo.
-echo EasyFlow Statistics stopped.
+echo easyflow_statistics stopped.
 pause

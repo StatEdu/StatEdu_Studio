@@ -1,6 +1,6 @@
 # Method Notes
 
-EasyFlow Statistics applies regression diagnostics before selecting the inferential output.
+easyflow_statistics applies regression diagnostics before selecting the inferential output.
 
 ## Normality
 

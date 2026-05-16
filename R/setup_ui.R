@@ -67,7 +67,8 @@ correlation_tab_panel <- function() {
         uiOutput("correlation_setup"),
         div(
           class = "analysis-action-row correlation-action-row",
-          actionButton("run_correlation", "Run analysis", class = "btn btn-primary")
+          actionButton("run_correlation", "Run analysis", class = "btn btn-primary"),
+          uiOutput("correlation_save_control")
         ),
         uiOutput("correlation_results")
       )
