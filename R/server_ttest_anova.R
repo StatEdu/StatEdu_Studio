@@ -81,7 +81,13 @@ register_ttest_anova_handlers <- function(
   })
 
   observeEvent(input$ttest_anova_normality_enabled, {
-    normality_enabled_value(isTRUE(input$ttest_anova_normality_enabled))
+    enabled <- isTRUE(input$ttest_anova_normality_enabled)
+    normality_enabled_value(enabled)
+    if (enabled) {
+      normality_study_type_value("survey")
+      normality_survey_method_value("skew_kurtosis")
+      normality_method_value("skew_kurtosis")
+    }
   }, ignoreInit = TRUE)
 
   observeEvent(input$ttest_anova_normality_study_type, {

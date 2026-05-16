@@ -192,24 +192,21 @@ ttest_parametric_anova_pairwise <- function(values, groups, method = "scheffe") 
   }
 
   if (identical(method, "duncan")) {
+    if (!requireNamespace("agricolae", quietly = TRUE)) {
+      stop("Package 'agricolae' is required for Duncan multiple range test.", call. = FALSE)
+    }
     fit <- stats::aov(y ~ g, data = data)
-    summary_fit <- summary(fit)[[1]]
-    mse <- as.numeric(summary_fit[["Mean Sq"]][[2]])
-    df_error <- as.numeric(summary_fit[["Df"]][[2]])
-    means <- tapply(data$y, data$g, mean)
-    counts <- table(data$g)
-    ordered_levels <- names(sort(means))
-    ranks <- stats::setNames(seq_along(ordered_levels), ordered_levels)
-    for (i in seq_len(k - 1)) {
-      for (j in seq.int(i + 1, k)) {
-        ni <- as.numeric(counts[[i]])
-        nj <- as.numeric(counts[[j]])
-        se <- sqrt(mse * (1 / ni + 1 / nj) / 2)
-        range_size <- abs(ranks[[levels[[i]]]] - ranks[[levels[[j]]]]) + 1
-        if (!is.finite(se) || se <= 0 || !is.finite(range_size)) next
-        q_value <- abs(means[[i]] - means[[j]]) / se
-        p <- stats::ptukey(q_value, nmeans = range_size, df = df_error, lower.tail = FALSE)
-        matrix_out[i, j] <- matrix_out[j, i] <- p
+    duncan <- try(agricolae::duncan.test(fit, "g", group = FALSE, console = FALSE), silent = TRUE)
+    if (!inherits(duncan, "try-error") && is.data.frame(duncan[["comparison"]])) {
+      comparison <- duncan[["comparison"]]
+      for (row_name in rownames(comparison)) {
+        pair <- strsplit(row_name, " - ", fixed = TRUE)[[1]]
+        if (length(pair) == 2 && all(pair %in% levels) && "pvalue" %in% names(comparison)) {
+          p <- as.numeric(comparison[row_name, "pvalue"])
+          if (!is.na(p)) {
+            matrix_out[pair[[1]], pair[[2]]] <- matrix_out[pair[[2]], pair[[1]]] <- p
+          }
+        }
       }
     }
     return(matrix_out)
@@ -344,48 +341,270 @@ ttest_lookup_letters <- function(letter_map, values) {
   out
 }
 
-ttest_effect_size <- function(values, groups, test_type) {
+ttest_analysis_data <- function(values, groups) {
+  data <- data.frame(y = as.numeric(values), g = as.factor(groups))
+  data[stats::complete.cases(data), , drop = FALSE]
+}
+
+ttest_hedges_correction <- function(df) {
+  if (!is.finite(df) || df <= 1) return(NA_real_)
+  1 - (3 / (4 * df - 1))
+}
+
+ttest_hedges_g <- function(values, groups) {
+  data <- ttest_analysis_data(values, groups)
+  split_values <- split(data$y, data$g)
+  if (length(split_values) != 2) return(NA_real_)
+  n1 <- length(split_values[[1]])
+  n2 <- length(split_values[[2]])
+  if (n1 < 2 || n2 < 2) return(NA_real_)
+  df <- n1 + n2 - 2
+  pooled <- sqrt(((n1 - 1) * stats::var(split_values[[1]]) + (n2 - 1) * stats::var(split_values[[2]])) / df)
+  if (!is.finite(pooled) || pooled == 0) return(NA_real_)
+  d <- (mean(split_values[[1]]) - mean(split_values[[2]])) / pooled
+  d * ttest_hedges_correction(df)
+}
+
+ttest_paired_dz <- function(before, after) {
+  data <- data.frame(before = as.numeric(before), after = as.numeric(after))
+  data <- data[stats::complete.cases(data), , drop = FALSE]
+  if (nrow(data) < 2) return(NA_real_)
+  differences <- data$after - data$before
+  sd_diff <- stats::sd(differences)
+  if (!is.finite(sd_diff) || sd_diff == 0) return(NA_real_)
+  mean(differences) / sd_diff
+}
+
+ttest_paired_gav <- function(before, after) {
+  data <- data.frame(before = as.numeric(before), after = as.numeric(after))
+  data <- data[stats::complete.cases(data), , drop = FALSE]
+  if (nrow(data) < 2) return(NA_real_)
+  average_sd <- (stats::sd(data$before) + stats::sd(data$after)) / 2
+  if (!is.finite(average_sd) || average_sd == 0) return(NA_real_)
+  d_av <- mean(data$after - data$before) / average_sd
+  d_av * ttest_hedges_correction(nrow(data) - 1)
+}
+
+ttest_anova_sums <- function(values, groups) {
+  data <- ttest_analysis_data(values, groups)
+  if (nrow(data) == 0 || length(unique(data$g)) < 2) return(NULL)
+  fit <- stats::aov(y ~ g, data = data)
+  summary_fit <- summary(fit)[[1]]
+  list(
+    ss_between = as.numeric(summary_fit[["Sum Sq"]][[1]]),
+    ss_error = as.numeric(summary_fit[["Sum Sq"]][[2]]),
+    ss_total = sum(summary_fit[["Sum Sq"]], na.rm = TRUE),
+    df_between = as.numeric(summary_fit[["Df"]][[1]]),
+    df_error = as.numeric(summary_fit[["Df"]][[2]]),
+    ms_error = as.numeric(summary_fit[["Mean Sq"]][[2]])
+  )
+}
+
+ttest_omega_squared <- function(values, groups) {
+  sums <- ttest_anova_sums(values, groups)
+  if (is.null(sums) || !is.finite(sums$ss_total) || sums$ss_total <= 0 || !is.finite(sums$ms_error)) {
+    return(NA_real_)
+  }
+  omega <- (sums$ss_between - sums$df_between * sums$ms_error) / (sums$ss_total + sums$ms_error)
+  if (!is.finite(omega)) NA_real_ else max(0, omega)
+}
+
+ttest_partial_eta_squared <- function(ss_effect, ss_error) {
+  denominator <- ss_effect + ss_error
+  if (!is.finite(denominator) || denominator <= 0) return(NA_real_)
+  ss_effect / denominator
+}
+
+ttest_kruskal_epsilon_squared <- function(values, groups) {
+  data <- ttest_analysis_data(values, groups)
+  if (nrow(data) == 0 || length(unique(data$g)) < 2) return(NA_real_)
+  kw <- stats::kruskal.test(y ~ g, data = data)
+  k <- length(unique(data$g))
+  denominator <- nrow(data) - k
+  if (!is.finite(denominator) || denominator <= 0) return(NA_real_)
+  epsilon <- (as.numeric(kw$statistic) - k + 1) / denominator
+  if (!is.finite(epsilon)) NA_real_ else max(0, epsilon)
+}
+
+ttest_mann_whitney_z <- function(values, groups) {
   data <- data.frame(y = as.numeric(values), g = as.factor(groups))
   data <- data[stats::complete.cases(data), , drop = FALSE]
+  split_values <- split(data$y, data$g)
+  if (length(split_values) != 2) return(NA_real_)
+  n1 <- length(split_values[[1]])
+  n2 <- length(split_values[[2]])
+  n <- n1 + n2
+  if (n1 < 1 || n2 < 1 || n < 3) return(NA_real_)
+  ranks <- rank(data$y, ties.method = "average")
+  rank_sum_1 <- sum(ranks[data$g == levels(data$g)[[1]]])
+  u1 <- rank_sum_1 - n1 * (n1 + 1) / 2
+  mean_u <- n1 * n2 / 2
+  ties <- table(data$y)
+  tie_correction <- sum(ties^3 - ties) / (n * (n - 1))
+  variance_u <- n1 * n2 * (n + 1 - tie_correction) / 12
+  if (!is.finite(variance_u) || variance_u <= 0) return(NA_real_)
+  (u1 - mean_u) / sqrt(variance_u)
+}
+
+ttest_jt_test <- function(values, groups, alternative = "two.sided") {
+  data <- data.frame(y = as.numeric(values), g = as.character(groups))
+  data <- data[stats::complete.cases(data), , drop = FALSE]
+  levels <- ttest_level_order(unique(data$g))
+  data <- data[data$g %in% levels, , drop = FALSE]
+  k <- length(levels)
+  n <- nrow(data)
+  if (k < 2 || n < 3) {
+    return(list(statistic = NA_real_, z = NA_real_, p.value = NA_real_, r = NA_real_))
+  }
+
+  split_values <- lapply(levels, function(level) data$y[data$g == level])
+  jt <- 0
+  for (i in seq_len(k - 1)) {
+    for (j in seq.int(i + 1, k)) {
+      comparisons <- outer(split_values[[j]], split_values[[i]], "-")
+      jt <- jt + sum(comparisons > 0, na.rm = TRUE) + 0.5 * sum(comparisons == 0, na.rm = TRUE)
+    }
+  }
+
+  counts <- vapply(split_values, length, integer(1))
+  mean_jt <- (n^2 - sum(counts^2)) / 4
+  var_jt <- (n^2 * (2 * n + 3) - sum(counts^2 * (2 * counts + 3))) / 72
+  if (!is.finite(var_jt) || var_jt <= 0) {
+    return(list(statistic = jt, z = NA_real_, p.value = NA_real_, r = NA_real_))
+  }
+
+  z <- (jt - mean_jt) / sqrt(var_jt)
+  alternative <- match.arg(alternative, c("two.sided", "greater", "less"))
+  p_value <- switch(
+    alternative,
+    greater = stats::pnorm(z, lower.tail = FALSE),
+    less = stats::pnorm(z, lower.tail = TRUE),
+    two.sided = 2 * stats::pnorm(abs(z), lower.tail = FALSE)
+  )
+  list(statistic = jt, z = z, p.value = p_value, r = abs(z) / sqrt(n))
+}
+
+ttest_polynomial_trend <- function(values, groups, degree = 1, weights = NULL) {
+  data <- data.frame(y = as.numeric(values), g = as.character(groups))
+  data <- data[stats::complete.cases(data), , drop = FALSE]
+  if (nrow(data) < 3) {
+    return(list(method = "Polynomial trend", p.value = NA_real_, partial_eta2 = NA_real_))
+  }
+  levels <- ttest_level_order(unique(data$g))
+  data$score <- match(data$g, levels)
+  degree <- min(as.integer(degree %||% 1), length(levels) - 1)
+  if (!is.finite(degree) || degree < 1) {
+    return(list(method = "Polynomial trend", p.value = NA_real_, partial_eta2 = NA_real_))
+  }
+  if (!is.null(weights)) {
+    weights <- as.numeric(weights)
+    if (length(weights) != nrow(data)) {
+      weights <- NULL
+    }
+  }
+  fit <- stats::lm(y ~ stats::poly(score, degree = degree), data = data, weights = weights)
+  anova_fit <- stats::anova(fit)
+  ss_effect <- sum(as.numeric(anova_fit[["Sum Sq"]][-nrow(anova_fit)]), na.rm = TRUE)
+  ss_error <- as.numeric(anova_fit[["Sum Sq"]][nrow(anova_fit)])
+  p_value <- as.numeric(anova_fit[["Pr(>F)"]][[1]])
+  list(
+    method = "Polynomial trend",
+    p.value = p_value,
+    partial_eta2 = ttest_partial_eta_squared(ss_effect, ss_error)
+  )
+}
+
+ttest_welch_polynomial_trend <- function(values, groups, degree = 1) {
+  data <- data.frame(y = as.numeric(values), g = as.character(groups))
+  data <- data[stats::complete.cases(data), , drop = FALSE]
+  levels <- ttest_level_order(unique(data$g))
+  group_variance <- tapply(data$y, data$g, stats::var, na.rm = TRUE)
+  weights <- 1 / group_variance[data$g]
+  weights[!is.finite(weights)] <- 1
+  out <- ttest_polynomial_trend(data$y, data$g, degree = degree, weights = weights)
+  out$method <- "Welch + polynomial"
+  out
+}
+
+ttest_select_trend_method <- function(normal = FALSE, variance = c("equal", "mild_heterogeneous", "heterogeneous"), ordinal = FALSE, robust = FALSE) {
+  variance <- match.arg(variance)
+  if (isTRUE(robust) || isTRUE(ordinal) || !isTRUE(normal)) return("JT")
+  if (identical(variance, "mild_heterogeneous")) return("Welch + polynomial")
+  "Polynomial trend"
+}
+
+ttest_trend_analysis <- function(values, groups, normal = FALSE, equal_variance = TRUE, ordinal = FALSE, robust = FALSE) {
+  variance <- if (isTRUE(equal_variance)) "equal" else "mild_heterogeneous"
+  method <- ttest_select_trend_method(normal = normal, variance = variance, ordinal = ordinal, robust = robust)
+  if (identical(method, "JT")) {
+    jt <- ttest_jt_test(values, groups)
+    return(list(method = "JT", p.value = jt$p.value, effect_size = jt$r, effect_size_name = "r"))
+  }
+  if (identical(method, "Welch + polynomial")) {
+    trend <- ttest_welch_polynomial_trend(values, groups)
+    return(list(method = trend$method, p.value = trend$p.value, effect_size = trend$partial_eta2, effect_size_name = "partial eta2"))
+  }
+  trend <- ttest_polynomial_trend(values, groups)
+  list(method = trend$method, p.value = trend$p.value, effect_size = trend$partial_eta2, effect_size_name = "partial eta2")
+}
+
+ttest_ordered_significance_notation <- function(values, groups, p_matrix, labels = NULL, alpha = .05) {
+  data <- data.frame(y = as.numeric(values), g = as.character(groups))
+  data <- data[stats::complete.cases(data) & nzchar(data$g), , drop = FALSE]
+  if (nrow(data) == 0 || is.null(p_matrix) || length(p_matrix) == 0) return("")
+  levels <- ttest_level_order(unique(data$g))
+  data$g <- factor(data$g, levels = levels)
+  means <- tapply(data$y, data$g, mean, na.rm = TRUE)
+  levels <- levels[levels %in% names(means)]
+  ordered_levels <- names(sort(means[levels], decreasing = TRUE))
+  if (!is.null(labels)) {
+    labels <- stats::setNames(as.character(labels), names(labels))
+  }
+  display <- function(level) {
+    label <- named_value(labels, level, level)
+    if (nzchar(label)) label else level
+  }
+  statements <- character(0)
+  for (i in seq_along(ordered_levels)) {
+    higher <- ordered_levels[[i]]
+    lower <- character(0)
+    if (i >= length(ordered_levels)) next
+    for (j in seq.int(i + 1, length(ordered_levels))) {
+      candidate <- ordered_levels[[j]]
+      if (!all(c(higher, candidate) %in% rownames(p_matrix)) || !all(c(higher, candidate) %in% colnames(p_matrix))) next
+      p_value <- p_matrix[higher, candidate] %||% NA_real_
+      if (!is.na(p_value) && p_value < alpha && means[[higher]] > means[[candidate]]) {
+        lower <- c(lower, display(candidate))
+      }
+    }
+    if (length(lower) > 0) {
+      statements <- c(statements, sprintf("%s>%s", display(higher), paste(lower, collapse = ", ")))
+    }
+  }
+  paste(statements, collapse = "; ")
+}
+
+ttest_effect_size <- function(values, groups, test_type) {
+  data <- ttest_analysis_data(values, groups)
   if (nrow(data) == 0) return("")
   if (identical(test_type, "t")) {
-    split_values <- split(data$y, data$g)
-    if (length(split_values) != 2) return("")
-    n1 <- length(split_values[[1]])
-    n2 <- length(split_values[[2]])
-    pooled <- sqrt(((n1 - 1) * stats::var(split_values[[1]]) + (n2 - 1) * stats::var(split_values[[2]])) / (n1 + n2 - 2))
-    if (!is.finite(pooled) || pooled == 0) return("")
-    return(format_decimal3((mean(split_values[[1]]) - mean(split_values[[2]])) / pooled))
+    return(format_decimal3(ttest_hedges_g(values, groups)))
   }
   if (identical(test_type, "anova")) {
-    fit <- stats::aov(y ~ g, data = data)
-    summary_fit <- summary(fit)[[1]]
-    ss_between <- as.numeric(summary_fit[["Sum Sq"]][[1]])
-    ss_total <- sum(summary_fit[["Sum Sq"]], na.rm = TRUE)
-    if (!is.finite(ss_total) || ss_total == 0) return("")
-    return(format_decimal3(ss_between / ss_total))
+    return(format_decimal3(ttest_omega_squared(values, groups)))
   }
   if (identical(test_type, "kw")) {
-    kw <- stats::kruskal.test(y ~ g, data = data)
-    k <- length(unique(data$g))
-    epsilon <- (as.numeric(kw$statistic) - k + 1) / (nrow(data) - k)
-    return(format_decimal3(epsilon))
+    return(format_decimal3(ttest_kruskal_epsilon_squared(values, groups)))
+  }
+  if (identical(test_type, "jt")) {
+    return(format_decimal3(ttest_jt_test(values, groups)$r))
   }
   ""
 }
 
-ttest_trend_p <- function(values, groups, normal = FALSE) {
-  data <- data.frame(y = as.numeric(values), g = as.character(groups))
-  data <- data[stats::complete.cases(data), , drop = FALSE]
-  if (nrow(data) < 3) return("")
-  levels <- ttest_level_order(unique(data$g))
-  data$score <- match(data$g, levels)
-  if (isTRUE(normal)) {
-    fit <- stats::lm(y ~ score, data = data)
-    return(format_p(summary(fit)$coefficients["score", "Pr(>|t|)"]))
-  }
-  test <- suppressWarnings(stats::cor.test(data$score, data$y, method = "spearman", exact = FALSE))
-  format_p(test$p.value)
+ttest_trend_p <- function(values, groups, normal = FALSE, equal_variance = TRUE, ordinal = FALSE, robust = FALSE) {
+  trend <- ttest_trend_analysis(values, groups, normal = normal, equal_variance = equal_variance, ordinal = ordinal, robust = robust)
+  format_p(trend$p.value)
 }
 
 ttest_group_summary <- function(values, groups, levels) {
@@ -401,7 +620,160 @@ ttest_group_summary <- function(values, groups, levels) {
   })
 }
 
-ttest_result_table_columns <- c("Variable", "Value", "M", "SD", "t or F", "p", "post-hoc")
+ttest_result_table_columns <- c("Variable", "Value", "M", "SD", "Statistic", "p", "Effect size", "p for trend", "post-hoc")
+
+ttest_statistic_heading <- function(labels) {
+  labels <- unique(as.character(labels %||% character(0)))
+  labels <- labels[nzchar(labels)]
+  if (length(labels) == 0) {
+    return("Statistic")
+  }
+  paste(labels, collapse = "/")
+}
+
+ttest_apply_statistic_heading <- function(table, labels) {
+  if (!is.data.frame(table) || !"Statistic" %in% names(table)) {
+    return(table)
+  }
+  names(table)[names(table) == "Statistic"] <- ttest_statistic_heading(labels)
+  table
+}
+
+ttest_effect_size_name <- function(test_type) {
+  switch(
+    as.character(test_type %||% ""),
+    t = "Hedges' g",
+    anova = "omega squared",
+    kw = "epsilon squared",
+    jt = "r",
+    ""
+  )
+}
+
+ttest_p_note <- function(test_type, analysis) {
+  analysis <- as.character(analysis %||% "")
+  test_type <- as.character(test_type %||% "")
+  if (grepl("^Welch", analysis)) {
+    return(list(symbol = "\u2020", note = "\u2020: Welch test was used because homogeneity of variance was not satisfied."))
+  }
+  if (identical(test_type, "mw")) {
+    return(list(symbol = "\u222B", note = "\u222B: Mann-Whitney U test."))
+  }
+  if (identical(test_type, "kw")) {
+    return(list(symbol = "\u222C", note = "\u222C: Kruskal-Wallis test."))
+  }
+  list(symbol = "", note = "")
+}
+
+ttest_trend_note <- function(method) {
+  method <- as.character(method %||% "")
+  switch(
+    method,
+    `Polynomial trend` = list(symbol = "\u2021", note = "\u2021: Polynomial trend analysis."),
+    `Welch + polynomial` = list(symbol = "\u00A7", note = "\u00A7: Welch + polynomial trend analysis."),
+    JT = list(symbol = "\u00B6", note = "\u00B6: Jonckheere-Terpstra trend test."),
+    list(symbol = "", note = "")
+  )
+}
+
+ttest_effect_symbol_map <- function(effect_names, reserved = character(0)) {
+  effect_names <- unique(as.character(effect_names %||% character(0)))
+  effect_names <- effect_names[nzchar(effect_names)]
+  if (length(effect_names) == 0) return(character(0))
+  symbols <- c("\u2021", "\u00A7", "\u00B6", "#", "\u2020\u2020", "\u2021\u2021", "\u00A7\u00A7")
+  symbols <- setdiff(symbols, unique(reserved[nzchar(reserved)]))
+  stats::setNames(utils::head(symbols, length(effect_names)), effect_names)
+}
+
+ttest_note_sort_key <- function(notes) {
+  order_symbols <- c("\u2020", "\u2021", "\u00A7", "\u222B", "\u222C", "\u00B6", "#", "\u2020\u2020", "\u2021\u2021", "\u00A7\u00A7")
+  vapply(notes, function(note) {
+    hit <- which(vapply(order_symbols, function(symbol) startsWith(note, symbol), logical(1)))
+    if (length(hit) == 0) length(order_symbols) + 1L else hit[[1]]
+  }, integer(1))
+}
+
+ttest_apply_effect_notes <- function(table, items) {
+  if (!is.data.frame(table) || !"Effect size" %in% names(table)) {
+    return(list(table = table, notes = character(0)))
+  }
+  effect_names <- vapply(items, function(item) item$notes$effect_size %||% "", character(1))
+  effect_names <- effect_names[nzchar(effect_names)]
+  if (length(effect_names) == 0) {
+    return(list(table = table, notes = character(0)))
+  }
+
+  reserved <- c(
+    vapply(items, function(item) item$notes$p_symbol %||% "", character(1)),
+    vapply(items, function(item) item$notes$trend_symbol %||% "", character(1))
+  )
+  unique_effects <- unique(effect_names)
+  effect_symbols <- ttest_effect_symbol_map(unique_effects, reserved)
+  if (length(effect_symbols) == 0) {
+    return(list(table = table, notes = character(0)))
+  }
+
+  if (length(unique_effects) == 1) {
+    names(table)[names(table) == "Effect size"] <- paste0("Effect size", unname(effect_symbols[[unique_effects[[1]]]]))
+  } else {
+    row_start <- 1L
+    for (item in items) {
+      n_rows <- if (is.data.frame(item$table)) nrow(item$table) else 0L
+      effect_name <- item$notes$effect_size %||% ""
+      if (n_rows > 0 && nzchar(effect_name) && effect_name %in% names(effect_symbols)) {
+        value <- table[["Effect size"]][[row_start]]
+        if (nzchar(value %||% "")) {
+          table[["Effect size"]][[row_start]] <- paste0(value, unname(effect_symbols[[effect_name]]))
+        }
+      }
+      row_start <- row_start + n_rows
+    }
+  }
+
+  notes <- sprintf("%s: %s.", unname(effect_symbols), names(effect_symbols))
+  list(table = table, notes = notes)
+}
+
+ttest_analysis_note_line <- function(items) {
+  items <- Filter(function(item) !is.null(item) && !is.null(item$notes), items %||% list())
+  if (length(items) == 0) return("")
+
+  method_notes <- vapply(items, function(item) {
+    item$notes$p_note %||% ""
+  }, character(1))
+  method_notes <- unique(method_notes[nzchar(method_notes)])
+
+  posthoc_notes <- vapply(items, function(item) {
+    posthoc <- item$notes$posthoc %||% ""
+    if (!nzchar(posthoc)) return("")
+    posthoc
+  }, character(1))
+  posthoc_notes <- unique(posthoc_notes[nzchar(posthoc_notes)])
+
+  trend_notes <- vapply(items, function(item) {
+    item$notes$trend_note %||% ""
+  }, character(1))
+  trend_notes <- unique(trend_notes[nzchar(trend_notes)])
+
+  effect_notes <- unique(unlist(lapply(items, function(item) item$notes$effect_notes %||% character(0)), use.names = FALSE))
+  effect_notes <- effect_notes[nzchar(effect_notes)]
+
+  parts <- character(0)
+  if (length(method_notes) > 0) {
+    parts <- c(parts, method_notes)
+  }
+  if (length(effect_notes) > 0) {
+    parts <- c(parts, effect_notes)
+  }
+  if (length(posthoc_notes) > 0) {
+    parts <- c(parts, sprintf("Post-hoc: %s.", paste(posthoc_notes, collapse = ", ")))
+  }
+  if (length(trend_notes) > 0) {
+    parts <- c(parts, trend_notes)
+  }
+  parts <- parts[order(ttest_note_sort_key(parts))]
+  paste(parts, collapse = " ")
+}
 
 ttest_bind_result_rows <- function(rows) {
   rows <- Filter(function(row) is.data.frame(row) && nrow(row) > 0, rows)
@@ -470,11 +842,12 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
   equal_variance <- NA
   analysis <- ""
   statistic <- NA_real_
+  statistic_label <- ""
   p_value <- NA_real_
   test_type <- ""
   posthoc_label <- ""
   letters <- NULL
-  ordered_letters <- NULL
+  p_matrix <- NULL
 
   if (group_count == 2) {
     if (parametric) {
@@ -482,12 +855,14 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
       equal_variance <- is.na(levene_p) || levene_p >= .05
       fit <- stats::t.test(values ~ as.factor(groups), var.equal = isTRUE(equal_variance))
       statistic <- unname(fit$statistic)
+      statistic_label <- "t"
       p_value <- fit$p.value
       analysis <- if (isTRUE(equal_variance)) "Independent samples t-test" else "Welch t-test"
       test_type <- "t"
     } else {
       fit <- suppressWarnings(stats::wilcox.test(values ~ as.factor(groups), exact = FALSE))
-      statistic <- unname(fit$statistic)
+      statistic <- ttest_mann_whitney_z(values, groups)
+      statistic_label <- "z"
       p_value <- fit$p.value
       analysis <- "Mann-Whitney U test (Wilcoxon rank-sum test)"
       test_type <- "mw"
@@ -499,21 +874,20 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
       fit <- stats::aov(values ~ as.factor(groups))
       fit_summary <- summary(fit)[[1]]
       statistic <- as.numeric(fit_summary[["F value"]][[1]])
+      statistic_label <- "F"
       p_value <- as.numeric(fit_summary[["Pr(>F)"]][[1]])
       analysis <- "One-way ANOVA"
       test_type <- "anova"
       if (!is.na(p_value) && p_value < .05) {
         method <- tolower(options$post_hoc_method %||% "scheffe")
-        posthoc_label <- switch(method, tukey = "Tukey", duncan = "Duncan", bonferroni = "Bonferroni", "Scheffe")
+        posthoc_label <- switch(method, tukey = "Tukey HSD", duncan = "Duncan multiple range test", bonferroni = "Bonferroni post-hoc test", "Scheffe post-hoc test")
         p_matrix <- ttest_parametric_anova_pairwise(values, groups, method)
         letters <- ttest_group_letters(values, groups, p_matrix, ordered = FALSE)
-        if (isTRUE(options$ordered_significance)) {
-          ordered_letters <- ttest_group_letters(values, groups, p_matrix, ordered = TRUE)
-        }
       }
     } else {
       fit <- stats::oneway.test(values ~ as.factor(groups), var.equal = FALSE)
       statistic <- unname(fit$statistic)
+      statistic_label <- "F"
       p_value <- fit$p.value
       analysis <- "Welch ANOVA"
       test_type <- "anova"
@@ -521,59 +895,93 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
         posthoc_label <- "Games-Howell"
         p_matrix <- ttest_games_howell_pairwise(values, groups)
         letters <- ttest_group_letters(values, groups, p_matrix, ordered = FALSE)
-        if (isTRUE(options$ordered_significance)) {
-          ordered_letters <- ttest_group_letters(values, groups, p_matrix, ordered = TRUE)
-        }
       }
     }
   } else {
     fit <- stats::kruskal.test(values ~ as.factor(groups))
     statistic <- unname(fit$statistic)
+    statistic_label <- stat_chisq_label()
     p_value <- fit$p.value
     analysis <- "Kruskal-Wallis test"
     test_type <- "kw"
     if (!is.na(p_value) && p_value < .05) {
-      posthoc_label <- "Bonferroni"
+      posthoc_label <- "Pairwise Wilcoxon rank-sum test with Bonferroni correction"
       p_matrix <- ttest_nonparametric_pairwise(values, groups)
       letters <- ttest_group_letters(values, groups, p_matrix, ordered = FALSE)
-      if (isTRUE(options$ordered_significance)) {
-        ordered_letters <- ttest_group_letters(values, groups, p_matrix, ordered = TRUE)
-      }
     }
   }
 
   summaries <- do.call(rbind, ttest_group_summary(values, groups, levels))
   display_values <- ttest_display_levels(factor, summaries$Value, category_table)
+  trend_p <- ""
+  trend_method <- ""
+  if (isTRUE(options$trend_analysis) && factor_measure == "ordered") {
+    trend_result <- ttest_trend_analysis(
+      values,
+      groups,
+      normal = parametric,
+      equal_variance = isTRUE(equal_variance),
+      ordinal = dependent_measure == "ordered",
+      robust = isTRUE(options$robust_trend)
+    )
+    trend_p <- format_p(trend_result$p.value)
+    trend_method <- trend_result$method %||% ""
+  }
+  p_note <- ttest_p_note(test_type, analysis)
+  trend_note <- ttest_trend_note(trend_method)
+  effect_size_text <- if (isTRUE(options$effect_size)) {
+    ttest_effect_size(values, groups, test_type)
+  } else {
+    ""
+  }
   rows <- data.frame(
     Variable = "",
     Value = display_values,
     M = summaries$M,
     SD = summaries$SD,
-    `t or F` = "",
+    Statistic = "",
     p = "",
+    `Effect size` = "",
+    `p for trend` = "",
     `post-hoc` = "",
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
   rows$Variable[[1]] <- ttest_display_variable(factor, variable_info, labels, category_table)
-  rows$`t or F`[[1]] <- format_decimal3(statistic)
+  rows$Statistic[[1]] <- format_decimal3(statistic)
   p_text <- format_p(p_value)
-  rows$p[[1]] <- if (is.na(p_text)) "" else p_text
+  rows$p[[1]] <- if (is.na(p_text)) "" else paste0(p_text, p_note$symbol %||% "")
+  rows[["Effect size"]][[1]] <- effect_size_text
+  rows[["p for trend"]][[1]] <- if (is.na(trend_p) || !nzchar(trend_p)) "" else paste0(trend_p, trend_note$symbol %||% "")
 
-  if (nzchar(posthoc_label)) {
+  if (nzchar(posthoc_label) && isTRUE(options$ordered_significance) && !is.null(p_matrix)) {
+    level_labels <- stats::setNames(ttest_display_levels(factor, levels, category_table), levels)
+    rows[["post-hoc"]][[1]] <- ttest_ordered_significance_notation(
+      values,
+      groups,
+      p_matrix,
+      labels = level_labels
+    )
+  } else if (nzchar(posthoc_label)) {
     rows[["post-hoc"]] <- ttest_lookup_letters(letters, summaries$Value)
   }
-  if (!is.null(ordered_letters)) {
-    rows[["post-hoc"]] <- ttest_lookup_letters(ordered_letters, summaries$Value)
-  }
   rows <- rows[, ttest_result_table_columns, drop = FALSE]
+
+  normality_text <- sprintf(
+    "%s: %s",
+    normality$method,
+    if (isTRUE(normality$normal)) "satisfied" else "not satisfied"
+  )
+  if (isTRUE(normality_enabled) && nzchar(normality$detail %||% "")) {
+    normality_text <- sprintf("%s (%s)", normality_text, normality$detail)
+  }
 
   overview <- data.frame(
     `Dependent variable` = ttest_display_variable(dependent, variable_info, labels, category_table),
     `Independent variable` = ttest_display_variable(factor, variable_info, labels, category_table),
     N = as.character(length(values)),
-    Normality = sprintf("%s: %s", normality$method, if (isTRUE(normality$normal)) "satisfied" else "not satisfied"),
-    `Levene p` = if (is.na(levene_p)) "" else format_p(levene_p),
+    Normality = normality_text,
+    `Homogeneity p` = if (is.na(levene_p)) "" else format_p(levene_p),
     Analysis = analysis,
     `Post-hoc` = posthoc_label,
     Package = "stats",
@@ -581,19 +989,24 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
     check.names = FALSE
   )
 
-  if (isTRUE(options$trend_analysis) && factor_measure == "ordered") {
-    overview[["p for trend"]] <- ttest_trend_p(values, groups, parametric)
-  }
-  if (isTRUE(options$effect_size)) {
-    overview[["Effect size"]] <- ttest_effect_size(values, groups, test_type)
-  }
-
   list(
     title = overview$`Dependent variable`[[1]],
     dependent = dependent,
     factor = factor,
     table = rows,
-    overview = overview
+    overview = overview,
+    statistic_label = statistic_label,
+    notes = list(
+      factor = overview$`Independent variable`[[1]],
+      analysis = analysis,
+      p_symbol = p_note$symbol %||% "",
+      p_note = p_note$note %||% "",
+      effect_size = if (isTRUE(options$effect_size)) ttest_effect_size_name(test_type) else "",
+      posthoc = posthoc_label,
+      trend = trend_method,
+      trend_symbol = trend_note$symbol %||% "",
+      trend_note = trend_note$note %||% ""
+    )
   )
 }
 
@@ -622,10 +1035,20 @@ prepare_ttest_anova_results <- function(
       overview_rows[[length(overview_rows) + 1]] <- item$overview
     }
     if (length(dependent_items) > 0) {
+      combined_table <- ttest_bind_result_rows(lapply(dependent_items, function(item) item$table))[, ttest_result_table_columns, drop = FALSE]
+      statistic_labels <- vapply(dependent_items, function(item) item$statistic_label %||% "", character(1))
+      combined_table <- ttest_apply_statistic_heading(combined_table, statistic_labels)
+      effect_result <- ttest_apply_effect_notes(combined_table, dependent_items)
+      combined_table <- effect_result$table
+      if (length(effect_result$notes) > 0) {
+        dependent_items[[1]]$notes$effect_notes <- effect_result$notes
+      }
+      note_line <- ttest_analysis_note_line(dependent_items)
       results[[length(results) + 1]] <- list(
         title = ttest_display_variable(dependent, variable_info, labels, category_table),
         dependent = dependent,
-        table = ttest_bind_result_rows(lapply(dependent_items, function(item) item$table))[, ttest_result_table_columns, drop = FALSE],
+        table = combined_table,
+        note = note_line,
         overview = ttest_bind_result_rows(lapply(dependent_items, function(item) item$overview)),
         factors = lapply(dependent_items, function(item) item$factor)
       )
@@ -656,7 +1079,7 @@ ttest_anova_results_ui <- function(result) {
 
   sections <- list(
     tags$div(
-      class = "result-section",
+      class = "result-section regression-result-panel",
       tags$h3("Model overview"),
       model_overview_html_table(result$overview)
     )
@@ -664,9 +1087,9 @@ ttest_anova_results_ui <- function(result) {
 
   for (item in result$results %||% list()) {
     sections[[length(sections) + 1]] <- tags$div(
-      class = "result-section",
+      class = "result-section regression-result-panel",
       tags$h3(item$title),
-      coefficient_html_table(item$table)
+      coefficient_html_table(item$table, note_line = item$note %||% "")
     )
   }
 

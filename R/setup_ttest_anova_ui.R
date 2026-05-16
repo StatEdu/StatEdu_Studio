@@ -76,10 +76,10 @@ ttest_anova_setup_state <- function(
     current_experimental_normality <- "sw"
   }
   post_hoc_choices <- c(
-    "Tukey" = "tukey",
-    "Duncan" = "duncan",
-    "Scheffe" = "scheffe",
-    "Bonferroni" = "bonferroni"
+    "Tukey HSD" = "tukey",
+    "Duncan multiple range test" = "duncan",
+    "Scheffe post-hoc test" = "scheffe",
+    "Bonferroni post-hoc test" = "bonferroni"
   )
   current_post_hoc <- as.character(post_hoc_method %||% "scheffe")
   if (!current_post_hoc %in% unname(post_hoc_choices)) {
@@ -121,6 +121,10 @@ ttest_anova_setup_state <- function(
 }
 
 ttest_anova_setup_panel <- function(state) {
+  normality_on <- isTRUE(state$normality_enabled)
+  survey_active <- normality_on && identical(state$normality_study_type, "survey")
+  experimental_active <- normality_on && identical(state$normality_study_type, "experimental")
+
   normality_study_radio <- function(value, label) {
     tags$label(
       class = "radio ttest-normality-study-choice",
@@ -223,7 +227,10 @@ ttest_anova_setup_panel <- function(state) {
           ),
           div(
             id = "ttest_anova_normality_study_type",
-            class = "form-group shiny-input-radiogroup shiny-input-container analysis-option-subgroup ttest-normality-subgroup ttest-normality-study-options",
+            class = paste(
+              "form-group shiny-input-radiogroup shiny-input-container analysis-option-subgroup ttest-normality-subgroup ttest-normality-study-options",
+              if (!normality_on) "ttest-normality-disabled" else ""
+            ),
             div(
               class = "shiny-options-group ttest-normality-study-options-group",
               div(
@@ -233,7 +240,10 @@ ttest_anova_setup_panel <- function(state) {
                   normality_study_radio("survey", "Survey study")
                 ),
                 div(
-                  class = "ttest-normality-branch ttest-normality-survey-branch",
+                  class = paste(
+                    "ttest-normality-branch ttest-normality-survey-branch",
+                    if (!survey_active) "ttest-normality-disabled" else ""
+                  ),
                   div(
                     class = "ttest-normality-level ttest-normality-level-3",
                     normality_method_radio_group(
@@ -251,7 +261,10 @@ ttest_anova_setup_panel <- function(state) {
                   normality_study_radio("experimental", "Experimental study")
                 ),
                 div(
-                  class = "ttest-normality-branch ttest-normality-experimental-branch",
+                  class = paste(
+                    "ttest-normality-branch ttest-normality-experimental-branch",
+                    if (!experimental_active) "ttest-normality-disabled" else ""
+                  ),
                   div(
                     class = "ttest-normality-level ttest-normality-level-3",
                     normality_method_radio_group(

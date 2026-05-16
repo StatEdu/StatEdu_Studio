@@ -14,7 +14,8 @@ required_packages <- c(
   "htmltools",
   "openxlsx",
   "callr",
-  "glmnet"
+  "glmnet",
+  "agricolae"
 )
 
 ensure_required_packages <- function(packages = required_packages) {

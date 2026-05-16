@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.5.4 - 2026-05-16
+
+### Changed
+
+- Added effect size, trend analysis, ordered significance notation, and expanded post-hoc handling for t-test / ANOVA outputs.
+- Refined t-test / ANOVA normality option behavior, model overview labels, statistic labels, p-value notes, and result table layout.
+- Added Duncan multiple range test support through agricolae and updated required package loading.
+- Fixed Frequencies / Descriptives optional statistic columns and adjusted result tables to use compact regression-style widths.
+- Refined hierarchical regression table spacing, separator lines, and chi-square statistic labeling.
+
+
 ## v0.5.2 - 2026-05-14
 
 ### Changed

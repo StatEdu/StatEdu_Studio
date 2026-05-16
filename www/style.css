@@ -1220,14 +1220,33 @@ input.variable-select:disabled {
   margin-top: 34px;
 }
 
+#ttest_anova_results {
+  display: grid;
+  gap: 16px;
+  margin-top: 34px;
+  padding-top: 18px;
+  border-top: 1px solid #e5e7eb;
+}
+
 .frequencies-result-section {
-  width: 1138px;
-  min-width: 1138px;
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
   box-sizing: border-box;
+  overflow-x: auto;
+}
+
+.frequency-table-wrap {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .frequencies-result-section .coefficient-table {
-  width: 100%;
+  width: max-content !important;
+  min-width: 0;
+  table-layout: auto;
 }
 
 .frequency-plots-section {
@@ -1376,6 +1395,13 @@ input.variable-select:disabled {
   background: #ffffff;
   border: 1px solid #d9e2ec;
   border-radius: 6px;
+}
+
+.result-section.regression-result-panel {
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  box-sizing: border-box;
 }
 
 .regression-result-panel h3 {
@@ -1909,6 +1935,8 @@ table {
 
 .hierarchical-coefficient-table {
   border-top: 0;
+  table-layout: fixed;
+  width: auto;
 }
 
 .hierarchical-table-wrap {
@@ -1932,11 +1960,24 @@ table {
   min-width: 170px;
 }
 
+.hierarchical-coefficient-table .hierarchical-term-col {
+  width: 170px;
+}
+
+.hierarchical-coefficient-table .hierarchical-stat-col {
+  width: 86px;
+}
+
+.hierarchical-coefficient-table .hierarchical-separator-col {
+  width: 8px;
+}
+
 .hierarchical-coefficient-table th:not(:first-child):not(.hierarchical-model-header):not(.hierarchical-model-separator),
 .hierarchical-coefficient-table td:not(:first-child):not(.hierarchical-model-separator) {
-  width: 72px;
-  min-width: 72px;
-  max-width: 72px;
+  width: 86px;
+  min-width: 86px;
+  max-width: 86px;
+  overflow-wrap: anywhere;
 }
 
 .hierarchical-coefficient-table .hierarchical-model-separator {
@@ -1944,9 +1985,12 @@ table {
   min-width: 8px;
   max-width: 8px;
   padding: 0;
-  border-top: 0 !important;
-  border-bottom: 0 !important;
   background: transparent;
+}
+
+.hierarchical-coefficient-table .hierarchical-model-header-separator {
+  border-top: 0 !important;
+  border-bottom: 2px solid #1f2937 !important;
 }
 
 .coefficient-note {

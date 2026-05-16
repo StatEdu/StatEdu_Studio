@@ -27,7 +27,7 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-logo-png-1"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-hierarchical-table-2"))
 }
 
 app_script_link <- function(version) {

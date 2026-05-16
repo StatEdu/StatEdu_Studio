@@ -238,7 +238,7 @@ hierarchical_coefficient_note_line <- function(result, show_vif = FALSE, show_sr
     "\u0394R\u00B2(F change p) = change in R\u00B2 from the previous model (nested model comparison p-value);",
     "d(d\u1D64~4-d\u1D64) = Durbin-Watson statistic (upper critical value~4-upper critical value);",
     "z(p) = Lilliefors corrected Kolmogorov-Smirnov residual normality test statistic (p-value);",
-    "\u03C7\u00B2(p) = Breusch-Pagan homoscedasticity test statistic (p-value)"
+    sprintf("%s = Breusch-Pagan homoscedasticity test statistic (p-value)", stat_chisq_label(with_p = TRUE))
   )
 }
 
@@ -287,6 +287,31 @@ hierarchical_footer_row <- function(label, values, model_columns) {
     }
   }
   do.call(tags$tr, c(list(class = "coefficient-fit-row"), cells))
+}
+
+hierarchical_table_colgroup <- function(model_columns) {
+  cols <- list(tags$col(class = "hierarchical-term-col"))
+  for (index in seq_along(model_columns)) {
+    cols <- c(
+      cols,
+      lapply(model_columns[[index]], function(column) {
+        tags$col(class = "hierarchical-stat-col")
+      })
+    )
+    if (index < length(model_columns)) {
+      cols <- c(cols, list(tags$col(class = "hierarchical-separator-col")))
+    }
+  }
+  do.call(tags$colgroup, cols)
+}
+
+hierarchical_table_width <- function(model_columns) {
+  term_width <- 170
+  stat_width <- 86
+  separator_width <- 8
+  model_count <- length(model_columns)
+  stat_count <- sum(lengths(model_columns))
+  term_width + (stat_count * stat_width) + (max(model_count - 1, 0) * separator_width)
 }
 
 hierarchical_model_note_lines <- function(group, variable_table = NULL, labels = character(0)) {
@@ -372,11 +397,17 @@ hierarchical_coefficient_html_table <- function(
   footer_rows <- c(footer_rows, list(
     hierarchical_footer_row("d(d\u1D64~4-d\u1D64)", lapply(summary_values, `[[`, "dw"), model_columns),
     hierarchical_footer_row("z(p)", lapply(summary_values, `[[`, "normality"), model_columns),
-    hierarchical_footer_row("\u03C7\u00B2(p)", lapply(summary_values, `[[`, "homogeneity"), model_columns)
+    hierarchical_footer_row(stat_chisq_label(with_p = TRUE), lapply(summary_values, `[[`, "homogeneity"), model_columns)
   ))
 
   table <- tags$table(
     class = "coefficient-table hierarchical-coefficient-table",
+    style = sprintf(
+      "width: %dpx; min-width: %dpx;",
+      hierarchical_table_width(model_columns),
+      hierarchical_table_width(model_columns)
+    ),
+    hierarchical_table_colgroup(model_columns),
     tags$thead(
       do.call(tags$tr, header_groups),
       do.call(tags$tr, sub_headers)

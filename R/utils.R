@@ -39,6 +39,10 @@ format_decimal3 <- function(x) {
   sub("^0\\.", ".", text)
 }
 
+stat_chisq_label <- function(with_p = FALSE) {
+  if (isTRUE(with_p)) "x\u00B2(p)" else "x\u00B2"
+}
+
 default_seed <- function() {
   as.integer(format(Sys.Date(), "%Y%m%d"))
 }

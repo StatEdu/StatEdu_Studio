@@ -579,10 +579,26 @@
         function setTtestNormalityDisabled(selector, disabled) {
           document.querySelectorAll(selector).forEach(function(container) {
             container.classList.toggle('ttest-normality-disabled', disabled);
+            container.setAttribute('aria-disabled', disabled ? 'true' : 'false');
             container.querySelectorAll('input').forEach(function(input) {
               input.disabled = disabled;
             });
           });
+        }
+
+        function setRadioValue(name, value) {
+          var input = document.querySelector('input[name="' + name + '"][value="' + value + '"]');
+          if (!input || input.checked) return;
+          input.checked = true;
+          input.dispatchEvent(new Event('change', {bubbles: true}));
+          if (window.Shiny) {
+            Shiny.setInputValue(name, value, {priority: 'event'});
+          }
+        }
+
+        function resetTtestNormalityDefaults() {
+          setRadioValue('ttest_anova_normality_study_type', 'survey');
+          setRadioValue('ttest_anova_survey_normality_method', 'skew_kurtosis');
         }
 
         function updateTtestNormalityTree() {
@@ -606,6 +622,9 @@
             target.matches('#ttest_anova_normality_enabled') ||
             target.matches('input[name="ttest_anova_normality_study_type"]')
           ) {
+            if (target.matches('#ttest_anova_normality_enabled') && target.checked) {
+              resetTtestNormalityDefaults();
+            }
             scheduleTtestNormalityTreeUpdate();
           }
         }, true);
@@ -613,6 +632,12 @@
         document.addEventListener('shiny:value', scheduleTtestNormalityTreeUpdate);
         document.addEventListener('shiny:bound', scheduleTtestNormalityTreeUpdate);
         document.addEventListener('shiny:connected', scheduleTtestNormalityTreeUpdate);
+        if (window.MutationObserver) {
+          new MutationObserver(scheduleTtestNormalityTreeUpdate).observe(document.documentElement, {
+            childList: true,
+            subtree: true
+          });
+        }
         if (document.readyState === 'loading') {
           document.addEventListener('DOMContentLoaded', scheduleTtestNormalityTreeUpdate);
         } else {

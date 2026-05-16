@@ -94,9 +94,15 @@ frequency_combined_table <- function(result, options) {
 
   table <- do.call(rbind, lapply(rows, as.data.frame, stringsAsFactors = FALSE, check.names = FALSE))
   columns <- if (isTRUE(options$n_percent) && isTRUE(options$mean_sd)) {
-    c("Variable", "Value", frequency_summary_column(), "Min", "Max", "Median", "IQR(Q1~Q3)")
+    c("Variable", "Value", frequency_summary_column())
   } else {
-    c("Variable", "Value", "n", "%", "M", "SD", "Min", "Max", "Median", "IQR(Q1~Q3)")
+    c("Variable", "Value", "n", "%", "M", "SD")
+  }
+  if (isTRUE(options$min_max)) {
+    columns <- c(columns, "Min", "Max")
+  }
+  if (isTRUE(options$median_iqr)) {
+    columns <- c(columns, "Median", "IQR(Q1~Q3)")
   }
   if (isTRUE(options$skew_kurtosis)) {
     columns <- c(columns, "Skewness", "Kurtosis")
@@ -114,9 +120,9 @@ frequencies_results_ui <- function(result) {
     return(div(class = "empty-message regression-results-empty", "No frequency/descriptive results to show."))
   }
   div(
-    class = "result-section frequencies-result-section",
+    class = "result-section frequencies-result-section regression-result-panel",
     h3("Frequencies / Descriptives"),
-    coefficient_html_table(table),
+    div(class = "frequency-table-wrap", coefficient_html_table(table)),
     frequency_plot_blocks(result, options)
   )
 }
