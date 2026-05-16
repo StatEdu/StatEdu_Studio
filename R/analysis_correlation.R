@@ -153,15 +153,6 @@ correlation_method_for_pair <- function(
 ) {
   pair <- sort(c(x_measure, y_measure))
   if (identical(pair, c("continuous", "continuous"))) {
-    if (isTRUE(normality_checked) && is.data.frame(normality_table) && nrow(normality_table) > 0) {
-      normal_map <- stats::setNames(as.logical(normality_table$normal), as.character(normality_table$Name))
-      x_normal <- isTRUE(normal_map[[x_name]])
-      y_normal <- isTRUE(normal_map[[y_name]])
-      if (isTRUE(x_normal) && isTRUE(y_normal)) {
-        return(list(method = "pearson", label = "Pearson", reason = "Pearson was selected because both continuous variables satisfied skewness/kurtosis normality diagnostics."))
-      }
-      return(list(method = "spearman", label = "Spearman", reason = "Spearman was selected because at least one continuous variable did not satisfy skewness/kurtosis normality diagnostics."))
-    }
     method <- continuous_method %||% "pearson"
     method <- if (method %in% c("pearson", "spearman", "kendall")) method else "pearson"
     return(list(method = method, label = tools::toTitleCase(method), reason = sprintf("%s selected for two continuous variables.", tools::toTitleCase(method))))
