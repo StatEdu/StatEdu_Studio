@@ -889,6 +889,10 @@ input.variable-select:disabled {
   grid-column: 1;
 }
 
+.ttest-anova-action-row > #ttest_anova_save_control {
+  grid-column: 4;
+}
+
 .correlation-workspace-panel {
   min-width: 980px;
   overflow-x: auto;
@@ -1073,6 +1077,10 @@ input.variable-select:disabled {
 
 .hierarchical-action-row > .btn {
   grid-column: 1;
+}
+
+.hierarchical-action-row > #hierarchical_save_control {
+  grid-column: 4;
 }
 
 .regression-workspace-panel {
@@ -2565,6 +2573,18 @@ pre {
 }
 
 .frequencies-action-row > #frequencies_save_control,
+.ttest-anova-action-row > #ttest_anova_save_control {
+  grid-column: 4;
+  margin-left: 0;
+  justify-self: start;
+}
+
+.hierarchical-action-row > #hierarchical_save_control {
+  grid-column: 4;
+  margin-left: 0;
+  justify-self: start;
+}
+
 .regression-action-row > #regression_save_control {
   grid-column: 5;
   margin-left: 0;

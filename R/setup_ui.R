@@ -41,7 +41,8 @@ ttest_anova_tab_panel <- function() {
         uiOutput("ttest_anova_setup"),
         div(
           class = "analysis-action-row ttest-anova-action-row",
-          actionButton("run_ttest_anova", "Run analysis", class = "btn btn-primary")
+          actionButton("run_ttest_anova", "Run analysis", class = "btn btn-primary"),
+          uiOutput("ttest_anova_save_control")
         ),
         uiOutput("ttest_anova_results")
       )

@@ -11,7 +11,8 @@ required_packages <- c(
   "htmltools",
   "openxlsx",
   "callr",
-  "glmnet"
+  "glmnet",
+  "agricolae"
 )
 
 missing_packages <- required_packages[

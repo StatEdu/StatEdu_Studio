@@ -253,6 +253,26 @@ save_analysis_figures_to_dir <- function(results, directory, variable_table = NU
   save_analysis_figure_files(results, directory, variable_table, labels)
 }
 
+save_hierarchical_figure_files <- function(results, directory, variable_table = NULL, labels = character(0)) {
+  saved <- character(0)
+  for (result in results) {
+    dependent <- all.vars(result$formula)[[1]]
+    dependent_label <- safe_file_stem(display_variable_name_static(dependent, variable_table, labels, label_only = TRUE))
+    step_label <- safe_file_stem(result$hierarchical_step %||% sprintf("Model %s", result$hierarchical_step_index %||% ""))
+    suffix <- sprintf("%s_%s", dependent_label, step_label)
+    qq_file <- file.path(directory, sprintf("qqplot(%s).png", suffix))
+    residual_file <- file.path(directory, sprintf("residual(%s).png", suffix))
+    save_plot_png_file(plot_residual_qq, result, qq_file)
+    save_plot_png_file(plot_residual_homoscedasticity, result, residual_file)
+    saved <- c(saved, qq_file, residual_file)
+  }
+  saved
+}
+
+save_hierarchical_figures_to_dir <- function(results, directory, variable_table = NULL, labels = character(0)) {
+  save_hierarchical_figure_files(results, directory, variable_table, labels)
+}
+
 frequency_plot_label <- function(type) {
   switch(
     type,

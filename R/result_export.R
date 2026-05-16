@@ -374,6 +374,155 @@ save_analysis_excel_file <- function(
   )
 }
 
+hierarchical_export_table <- function(
+  group,
+  variable_table = NULL,
+  labels = character(0),
+  category_table = NULL,
+  show_sr2 = FALSE,
+  show_f2 = FALSE,
+  show_vif = FALSE
+) {
+  refs <- regression_reference_values_static(category_table)
+  value_labels <- category_value_label_lookup_static(category_table)
+  model_tables <- lapply(
+    group,
+    hierarchical_model_table,
+    variable_table = variable_table,
+    labels = labels,
+    category_table = category_table,
+    refs = refs,
+    value_labels = value_labels,
+    show_sr2 = show_sr2,
+    show_f2 = show_f2,
+    show_vif = show_vif
+  )
+  model_labels <- mapply(hierarchical_step_label, group, seq_along(group), USE.NAMES = FALSE)
+  terms <- unique(unlist(lapply(model_tables, function(table) as.character(table$Term)), use.names = FALSE))
+  out <- data.frame(Term = terms, stringsAsFactors = FALSE, check.names = FALSE)
+  for (model_index in seq_along(model_tables)) {
+    table <- model_tables[[model_index]]
+    columns <- setdiff(names(table), "Term")
+    row_match <- match(terms, as.character(table$Term))
+    for (column in columns) {
+      values <- rep("", length(terms))
+      matched <- !is.na(row_match)
+      values[matched] <- as.character(table[[column]][row_match[matched]] %||% "")
+      out[[paste(model_labels[[model_index]], column)]] <- values
+    }
+  }
+
+  summary_values <- hierarchical_summary_values(group)
+  summary_labels <- c("F(p)", "R\u00B2(adj. R\u00B2)")
+  summary_keys <- c("f", "r2")
+  if (length(group) > 1) {
+    summary_labels <- c(summary_labels, "\u0394R\u00B2(F change p)")
+    summary_keys <- c(summary_keys, "delta")
+  }
+  summary_labels <- c(summary_labels, "d(d\u1D64~4-d\u1D64)", "z(p)", stat_chisq_label(with_p = TRUE))
+  summary_keys <- c(summary_keys, "dw", "normality", "homogeneity")
+
+  for (summary_index in seq_along(summary_labels)) {
+    row <- as.list(rep("", ncol(out)))
+    names(row) <- names(out)
+    row[["Term"]] <- summary_labels[[summary_index]]
+    key <- summary_keys[[summary_index]]
+    for (model_index in seq_along(model_tables)) {
+      first_model_column <- setdiff(names(model_tables[[model_index]]), "Term")[[1]]
+      target <- paste(model_labels[[model_index]], first_model_column)
+      row[[target]] <- summary_values[[model_index]][[key]] %||% ""
+    }
+    out <- rbind(out, as.data.frame(row, stringsAsFactors = FALSE, check.names = FALSE))
+  }
+  out
+}
+
+add_hierarchical_result_sheet <- function(workbook, sheet_name, table, note, model_notes, used_sheets, title = NULL) {
+  sheet_name <- excel_sheet_name(sheet_name, used_sheets)
+  styles <- analysis_excel_styles()
+  title <- title %||% sheet_name
+  openxlsx::addWorksheet(workbook, sheet_name)
+  if (is.data.frame(table) && nrow(table) > 0 && ncol(table) > 0) {
+    n_cols <- ncol(table)
+    title_row <- 1L
+    header_row <- 3L
+    body_rows <- (header_row + 1):(header_row + nrow(table))
+    openxlsx::writeData(workbook, sheet_name, title, startRow = title_row, startCol = 1, colNames = FALSE)
+    openxlsx::mergeCells(workbook, sheet_name, cols = seq_len(n_cols), rows = title_row)
+    openxlsx::addStyle(workbook, sheet_name, styles$title, rows = title_row, cols = 1, gridExpand = TRUE, stack = TRUE)
+    openxlsx::writeData(workbook, sheet_name, table, startRow = header_row, startCol = 1, withFilter = FALSE)
+    openxlsx::addStyle(workbook, sheet_name, styles$top, rows = header_row, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+    openxlsx::addStyle(workbook, sheet_name, styles$header, rows = header_row, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+    openxlsx::addStyle(workbook, sheet_name, styles$body, rows = body_rows, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+    openxlsx::addStyle(workbook, sheet_name, styles$left, rows = body_rows, cols = 1, gridExpand = TRUE, stack = TRUE)
+    openxlsx::addStyle(workbook, sheet_name, styles$bottom, rows = header_row + nrow(table), cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+
+    notes <- c(model_notes, note)
+    notes <- notes[nzchar(notes %||% "")]
+    if (length(notes) > 0) {
+      note_row <- header_row + nrow(table) + 2L
+      note_text <- paste(notes, collapse = "\n")
+      openxlsx::writeData(workbook, sheet_name, note_text, startRow = note_row, startCol = 1, colNames = FALSE)
+      openxlsx::mergeCells(workbook, sheet_name, cols = seq_len(n_cols), rows = note_row)
+      openxlsx::addStyle(workbook, sheet_name, styles$note, rows = note_row, cols = 1, gridExpand = TRUE, stack = TRUE)
+      openxlsx::setRowHeights(workbook, sheet_name, rows = note_row, heights = max(40, 16 * length(notes)))
+    }
+    widths <- rep(12, n_cols)
+    widths[[1]] <- 24
+    openxlsx::setColWidths(workbook, sheet_name, cols = seq_len(n_cols), widths = widths)
+    openxlsx::freezePane(workbook, sheet_name, firstActiveRow = header_row + 1, firstActiveCol = 2)
+  } else {
+    openxlsx::writeData(workbook, sheet_name, "No data")
+  }
+  c(used_sheets, sheet_name)
+}
+
+save_hierarchical_excel_file <- function(
+  results,
+  file,
+  variable_table = NULL,
+  labels = character(0),
+  category_table = NULL,
+  show_sr2 = FALSE,
+  show_f2 = FALSE,
+  show_vif = FALSE
+) {
+  workbook <- openxlsx::createWorkbook()
+  used_sheets <- character(0)
+  used_sheets <- add_excel_table_sheet(
+    workbook,
+    "Model overview",
+    model_overview_data_frame(results, variable_table, labels),
+    used_sheets,
+    merge_shared_independent = TRUE
+  )
+  groups <- hierarchical_result_groups(results)
+  for (group in groups) {
+    final_index <- length(group)
+    dependent <- hierarchical_result_dependent_name(group[[1]])
+    dependent_label <- display_variable_name_static(dependent, variable_table, labels, label_only = TRUE)
+    used_sheets <- add_hierarchical_result_sheet(
+      workbook,
+      dependent_label,
+      hierarchical_export_table(
+        group,
+        variable_table = variable_table,
+        labels = labels,
+        category_table = category_table,
+        show_sr2 = show_sr2,
+        show_f2 = show_f2,
+        show_vif = show_vif
+      ),
+      hierarchical_coefficient_note_line(group[[final_index]], show_vif, show_sr2, show_f2),
+      hierarchical_model_note_lines(group, variable_table, labels),
+      used_sheets,
+      title = sprintf("Hierarchical Regression(%s)", dependent_label)
+    )
+  }
+  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
+  invisible(file)
+}
+
 save_frequencies_excel_file <- function(result, file) {
   table <- frequency_combined_table(result, result$options %||% list(n_percent = TRUE, mean_sd = TRUE))
   workbook <- openxlsx::createWorkbook()
@@ -388,3 +537,73 @@ save_frequencies_excel_file <- function(result, file) {
   invisible(file)
 }
 
+add_ttest_anova_result_sheet <- function(workbook, sheet_name, table, note, used_sheets, title = NULL) {
+  sheet_name <- excel_sheet_name(sheet_name, used_sheets)
+  styles <- analysis_excel_styles()
+  title <- title %||% sheet_name
+  openxlsx::addWorksheet(workbook, sheet_name)
+
+  if (is.data.frame(table) && nrow(table) > 0 && ncol(table) > 0) {
+    n_cols <- ncol(table)
+    title_row <- 1L
+    header_row <- 3L
+    body_rows <- (header_row + 1):(header_row + nrow(table))
+
+    openxlsx::writeData(workbook, sheet_name, title, startRow = title_row, startCol = 1, colNames = FALSE)
+    openxlsx::mergeCells(workbook, sheet_name, cols = seq_len(n_cols), rows = title_row)
+    openxlsx::addStyle(workbook, sheet_name, styles$title, rows = title_row, cols = 1, gridExpand = TRUE, stack = TRUE)
+
+    openxlsx::writeData(workbook, sheet_name, table, startRow = header_row, startCol = 1, withFilter = FALSE)
+    openxlsx::addStyle(workbook, sheet_name, styles$top, rows = header_row, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+    openxlsx::addStyle(workbook, sheet_name, styles$header, rows = header_row, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+    openxlsx::addStyle(workbook, sheet_name, styles$body, rows = body_rows, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+    openxlsx::addStyle(workbook, sheet_name, styles$left, rows = body_rows, cols = 1, gridExpand = TRUE, stack = TRUE)
+    if (n_cols >= 2) {
+      openxlsx::addStyle(workbook, sheet_name, styles$left, rows = body_rows, cols = 2, gridExpand = TRUE, stack = TRUE)
+    }
+    openxlsx::addStyle(workbook, sheet_name, styles$bottom, rows = header_row + nrow(table), cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+
+    if (length(note) > 0 && nzchar(note[[1]])) {
+      note_row <- header_row + nrow(table) + 2L
+      openxlsx::writeData(workbook, sheet_name, note[[1]], startRow = note_row, startCol = 1, colNames = FALSE)
+      openxlsx::mergeCells(workbook, sheet_name, cols = seq_len(n_cols), rows = note_row)
+      openxlsx::addStyle(workbook, sheet_name, styles$note, rows = note_row, cols = 1, gridExpand = TRUE, stack = TRUE)
+      openxlsx::setRowHeights(workbook, sheet_name, rows = note_row, heights = 40)
+    }
+
+    widths <- rep(12, n_cols)
+    names(widths) <- names(table)
+    widths[names(widths) %in% c("Variable", "Value", "Dependent variable", "Independent variable", "Normality", "Analysis", "Post-hoc")] <- 20
+    widths[names(widths) %in% c("Package")] <- 14
+    openxlsx::setColWidths(workbook, sheet_name, cols = seq_len(n_cols), widths = widths)
+    openxlsx::freezePane(workbook, sheet_name, firstActiveRow = header_row + 1)
+  } else {
+    openxlsx::writeData(workbook, sheet_name, "No data")
+  }
+
+  c(used_sheets, sheet_name)
+}
+
+save_ttest_anova_excel_file <- function(result, file) {
+  workbook <- openxlsx::createWorkbook()
+  used_sheets <- character(0)
+  used_sheets <- add_excel_table_sheet(
+    workbook,
+    "Model overview",
+    result$overview,
+    used_sheets,
+    title = "Model overview"
+  )
+  for (item in result$results %||% list()) {
+    used_sheets <- add_ttest_anova_result_sheet(
+      workbook,
+      item$title %||% "Result",
+      item$table,
+      item$note %||% "",
+      used_sheets,
+      title = item$title %||% "Result"
+    )
+  }
+  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
+  invisible(file)
+}

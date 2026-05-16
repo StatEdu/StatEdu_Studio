@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.5.5 - 2026-05-16
+
+### Changed
+
+- Implemented the Correlation analysis run workflow with pairwise correlations, optional normality checks, p-values, confidence intervals, significance markers, matrix tables, and plots.
+- Added Excel table export for t-test / ANOVA results.
+- Added Excel table export and residual diagnostic figure export for hierarchical regression results.
+- Updated local run package requirements for newly used analysis dependencies.
+
+
 ## v0.5.4 - 2026-05-16
 
 ### Changed

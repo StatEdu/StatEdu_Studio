@@ -331,5 +331,38 @@ register_ttest_anova_handlers <- function(
     ttest_anova_results_ui(result)
   })
 
+  output$ttest_anova_save_control <- renderUI({
+    result <- ttest_anova_result()
+    if (is.null(result) || !is.null(result$error)) {
+      return(NULL)
+    }
+    div(
+      class = "analysis-save-action",
+      actionButton("save_ttest_anova_excel_dialog", "Save tables", class = "btn-primary")
+    )
+  })
+
+  observeEvent(input$save_ttest_anova_excel_dialog, {
+    result <- ttest_anova_result()
+    shiny::req(!is.null(result), is.null(result$error))
+    path <- choose_excel_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) {
+      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      return(invisible(NULL))
+    }
+    if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) {
+      path <- paste0(path, ".xlsx")
+    }
+    tryCatch(
+      {
+        save_ttest_anova_excel_file(result, path)
+        showNotification(sprintf("Analysis results saved: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save analysis results:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  })
+
   invisible(TRUE)
 }

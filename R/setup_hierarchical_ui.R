@@ -246,7 +246,8 @@ hierarchical_setup_panel <- function(setup, status_message) {
         "Run hierarchical",
         class = "btn-primary",
         disabled = if (!can_run) "disabled" else NULL
-      )
+      ),
+      uiOutput("hierarchical_save_control")
     )
   )
 }

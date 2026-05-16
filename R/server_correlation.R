@@ -4,8 +4,10 @@ register_correlation_handlers <- function(
   input,
   output,
   session,
+  dataset_fn,
   selected_names_fn,
   variable_table_fn,
+  category_table_fn,
   labels_fn,
   mark_settings_dirty
 ) {
@@ -111,8 +113,12 @@ register_correlation_handlers <- function(
       showNotification("Select at least two variables for correlation analysis.", type = "warning", duration = 5)
       return()
     }
-    correlation_result(list(
+    result <- prepare_correlation_results(
+      data = dataset_fn(),
       variables = correlation_variables(),
+      variable_info = variable_table_fn(),
+      labels = labels_fn(),
+      category_table = category_table_fn(),
       options = list(
         normality = isTRUE(input$correlation_normality),
         p_ci = isTRUE(input$correlation_p_ci),
@@ -120,7 +126,8 @@ register_correlation_handlers <- function(
         scatter_plot = isTRUE(input$correlation_scatter_plot),
         matrix_plot = isTRUE(input$correlation_matrix_plot)
       )
-    ))
+    )
+    correlation_result(result)
   })
 
   output$correlation_results <- renderUI({
@@ -128,7 +135,24 @@ register_correlation_handlers <- function(
     if (is.null(result)) {
       return(empty_message("Move variables and click Run analysis."))
     }
-    empty_message("Correlation analysis engine is not implemented yet.")
+    correlation_results_ui(result)
+  })
+
+  observe({
+    result <- correlation_result()
+    if (is.null(result)) {
+      return()
+    }
+    if (isTRUE(result$options$scatter_plot)) {
+      output[[correlation_scatter_plot_id()]] <- renderPlot({
+        draw_correlation_scatter_plot(result)
+      })
+    }
+    if (isTRUE(result$options$matrix_plot)) {
+      output[[correlation_heatmap_plot_id()]] <- renderPlot({
+        draw_correlation_heatmap(result)
+      })
+    }
   })
 
   invisible(TRUE)

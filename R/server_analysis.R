@@ -174,6 +174,77 @@ register_hierarchical_results_output <- function(
   invisible(TRUE)
 }
 
+register_hierarchical_save_handlers <- function(
+  input,
+  output,
+  analyses_fn,
+  variable_table_fn,
+  labels_fn,
+  category_table_fn
+) {
+  output$hierarchical_save_control <- renderUI({
+    if (is.null(input$run_hierarchical) || input$run_hierarchical == 0) {
+      return(NULL)
+    }
+    analysis_save_buttons("save_hierarchical_excel_dialog", "save_hierarchical_figures_dialog")
+  })
+
+  observeEvent(input$save_hierarchical_excel_dialog, {
+    shiny::req(!is.null(input$run_hierarchical), input$run_hierarchical > 0)
+    path <- choose_excel_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) {
+      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      return(invisible(NULL))
+    }
+    if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) {
+      path <- paste0(path, ".xlsx")
+    }
+    tryCatch(
+      {
+        save_hierarchical_excel_file(
+          analyses_fn(),
+          path,
+          variable_table_fn(),
+          labels_fn(),
+          category_table_fn(),
+          show_sr2 = input$hierarchical_show_sr2,
+          show_f2 = input$hierarchical_show_f2,
+          show_vif = input$hierarchical_show_vif
+        )
+        showNotification(sprintf("Analysis results saved: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save analysis results:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  })
+
+  observeEvent(input$save_hierarchical_figures_dialog, {
+    shiny::req(!is.null(input$run_hierarchical), input$run_hierarchical > 0)
+    directory <- choose_figure_save_dir()
+    if (length(directory) == 0 || !nzchar(directory[[1]])) {
+      showNotification("Folder selection dialog was not available or was canceled.", type = "warning", duration = 5)
+      return(invisible(NULL))
+    }
+    tryCatch(
+      {
+        saved <- save_hierarchical_figures_to_dir(
+          analyses_fn(),
+          directory,
+          variable_table_fn(),
+          labels_fn()
+        )
+        showNotification(sprintf("Saved %s figure file(s): %s", length(saved), directory), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save figures:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  })
+
+  invisible(TRUE)
+}
+
 register_analysis_save_handlers <- function(
   input,
   output,
