@@ -2640,6 +2640,7 @@ pre {
 .regression-transfer-controls {
   align-items: center;
   justify-content: center;
+  padding-top: 0;
   transform: translateX(6px);
 }
 
@@ -2651,7 +2652,18 @@ pre {
 
 .ttest-anova-transfer-controls,
 .regression-transfer-controls {
-  gap: 186px;
+  display: grid;
+  gap: 18px;
+  align-items: center;
+  justify-items: center;
+}
+
+.ttest-anova-transfer-controls {
+  grid-template-rows: 198px 352px;
+}
+
+.regression-transfer-controls {
+  grid-template-rows: 198px 346px;
 }
 
 .hierarchical-transfer-controls {

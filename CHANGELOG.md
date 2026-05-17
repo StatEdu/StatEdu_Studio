@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.6.7 - 2026-05-17
+
+### Changed
+
+- Re-centered analysis transfer buttons by removing the shared downward offset and aligning the two-button regression/t-test layouts to their target block rows.
+
+
 ## v0.6.6 - 2026-05-17
 
 ### Changed
