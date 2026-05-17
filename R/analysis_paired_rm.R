@@ -200,6 +200,7 @@ paired_rm_posthoc_scale <- function(y, method, adjustment, variable_info, labels
       Value = format_decimal3(item$statistic),
       p = format_p(item$p),
       `p adjusted` = format_p(p_adjusted[[index]]),
+      `Effect size` = item$effect_label,
       ES = item$effect,
       stringsAsFactors = FALSE,
       check.names = FALSE
@@ -234,17 +235,18 @@ paired_rm_posthoc_binary <- function(y, adjustment, variable_info, labels, categ
   }))
 }
 
-paired_rm_posthoc_notation <- function(variables, posthoc, means = NULL, labels = NULL, alpha = .05) {
+paired_rm_posthoc_notation <- function(variables, posthoc, means = NULL, labels = NULL, contrast_labels = NULL, alpha = .05) {
   if (!is.data.frame(posthoc) || nrow(posthoc) == 0) return("")
   display <- stats::setNames(as.character(labels %||% variables), variables)
+  contrast_display <- stats::setNames(as.character(contrast_labels %||% variables), variables)
   sig <- matrix(FALSE, nrow = length(variables), ncol = length(variables), dimnames = list(variables, variables))
   for (i in seq_along(variables)) {
     if (i >= length(variables)) next
     for (j in seq.int(i + 1L, length(variables))) {
       first <- variables[[i]]
       second <- variables[[j]]
-      contrast <- sprintf("%s - %s", display[[first]], display[[second]])
-      reverse <- sprintf("%s - %s", display[[second]], display[[first]])
+      contrast <- sprintf("%s - %s", contrast_display[[first]], contrast_display[[second]])
+      reverse <- sprintf("%s - %s", contrast_display[[second]], contrast_display[[first]])
       row <- posthoc[posthoc$Contrast %in% c(contrast, reverse), , drop = FALSE]
       if (nrow(row) == 0) next
       p_text <- row$`p adjusted`[[1]]
@@ -294,12 +296,49 @@ paired_rm_time_header_labels <- function(n) {
   c("pre", if (n > 1) paste0("post", seq_len(n - 1L)) else character(0))
 }
 
+paired_rm_option_time_labels <- function(options, n) {
+  defaults <- paired_rm_time_header_labels(n)
+  labels <- trimws(as.character(options$time_labels %||% defaults))
+  if (length(labels) < n) {
+    labels <- c(labels, defaults[seq.int(length(labels) + 1L, n)])
+  }
+  labels <- labels[seq_len(n)]
+  ifelse(nzchar(labels), labels, defaults)
+}
+
+paired_rm_pairwise_effects <- function(result, variables, time_labels, contrast_labels) {
+  posthoc <- result$posthoc
+  if (!is.data.frame(posthoc) || nrow(posthoc) == 0 || !"ES" %in% names(posthoc)) {
+    return(list(columns = character(0), labels = character(0), values = character(0)))
+  }
+  columns <- character(0)
+  labels <- character(0)
+  values <- character(0)
+  if (length(variables) < 2L) {
+    return(list(columns = columns, labels = labels, values = values))
+  }
+  i <- 1L
+  for (j in seq.int(2L, length(variables))) {
+    first <- variables[[i]]
+    second <- variables[[j]]
+    contrast <- sprintf("%s - %s", contrast_labels[[first]], contrast_labels[[second]])
+    reverse <- sprintf("%s - %s", contrast_labels[[second]], contrast_labels[[first]])
+    row <- posthoc[posthoc$Contrast %in% c(contrast, reverse), , drop = FALSE]
+    column <- sprintf("ES_%d_%d", i, j)
+    columns <- c(columns, column)
+    labels <- c(labels, sprintf("%s-%s", time_labels[[i]], time_labels[[j]]))
+    values <- c(values, if (nrow(row) > 0) as.character(row$ES[[1]] %||% "") else "")
+  }
+  list(columns = columns, labels = labels, values = values)
+}
+
 paired_rm_display_table <- function(result) {
   variables <- as.character(result$variables %||% character(0))
   if (length(variables) == 0 || !is.data.frame(result$summary) || nrow(result$summary) == 0) {
     return(result$table)
   }
-  time_labels <- paired_rm_time_header_labels(nrow(result$summary))
+  time_labels <- paired_rm_option_time_labels(result$options %||% list(), nrow(result$summary))
+  contrast_labels <- stats::setNames(as.character(result$summary$Time %||% variables), variables)
   means <- stats::setNames(suppressWarnings(as.numeric(sub("^\\.", "0.", result$summary$M))), variables)
   row <- data.frame(
     `Repeated variables` = result$group_label,
@@ -316,17 +355,55 @@ paired_rm_display_table <- function(result) {
   row[["StatisticLabel"]] <- statistic_label
   row[["Statistic"]] <- result$table$Value[[1]]
   row[["p"]] <- result$table$p[[1]]
-  row[["ES"]] <- result$table$ES[[1]] %||% ""
-  row[["Post-hoc"]] <- paired_rm_posthoc_notation(variables, result$posthoc, means, stats::setNames(time_labels, variables))
+  row[["ES_overall_label"]] <- "overall"
+  row[["ES_overall"]] <- result$table$ES[[1]] %||% ""
+  pairwise_effect_labels <- unique(as.character(result$posthoc$`Effect size` %||% ""))
+  pairwise_effect_labels <- pairwise_effect_labels[nzchar(pairwise_effect_labels)]
+  row[["PairwiseEffectSizeLabel"]] <- if (length(pairwise_effect_labels) > 0) paste(pairwise_effect_labels, collapse = ", ") else ""
+  if (!nzchar(row[["PairwiseEffectSizeLabel"]])) {
+    methods <- unique(as.character(result$posthoc$Method %||% ""))
+    methods <- methods[nzchar(methods)]
+    if (any(methods == "Paired t-test")) row[["PairwiseEffectSizeLabel"]] <- "Hedges' g"
+    if (any(methods == "Wilcoxon signed-rank test")) row[["PairwiseEffectSizeLabel"]] <- "r"
+  }
+  pairwise_effects <- paired_rm_pairwise_effects(result, variables, time_labels, contrast_labels)
+  for (index in seq_along(pairwise_effects$columns)) {
+    row[[paste0(pairwise_effects$columns[[index]], "_label")]] <- pairwise_effects$labels[[index]]
+    row[[pairwise_effects$columns[[index]]]] <- pairwise_effects$values[[index]]
+  }
+  row[["Post-hoc"]] <- paired_rm_posthoc_notation(variables, result$posthoc, means, stats::setNames(time_labels, variables), contrast_labels)
+  posthoc_methods <- unique(as.character(result$posthoc$Method %||% ""))
+  posthoc_methods <- posthoc_methods[nzchar(posthoc_methods)]
+  row[["PosthocMethodLabel"]] <- paste(posthoc_methods, collapse = ", ")
+  row[["PosthocAdjustmentLabel"]] <- if (identical(result$options$posthoc_adjustment %||% "holm", "bonferroni")) "Bonferroni correction" else "Holm Bonferroni"
   row[["Method"]] <- result$table$Method[[1]]
   row[["EffectSizeLabel"]] <- result$table$`Effect size`[[1]] %||% ""
+  for (column in c("Wilks' lambda", "GG epsilon", "GG p")) {
+    if (column %in% names(result$table)) {
+      row[[column]] <- result$table[[column]][[1]] %||% ""
+    }
+  }
+  if (is.data.frame(result$assumption) && nrow(result$assumption) > 0) {
+    sphericity_row <- result$assumption[result$assumption$Statistics == "Sphericity", , drop = FALSE]
+    sphericity_p_row <- result$assumption[result$assumption$Statistics == "Sphericity p", , drop = FALSE]
+    if (nrow(sphericity_row) > 0) {
+      row[["Sphericity"]] <- sphericity_row$Result[[1]] %||% ""
+    }
+    if (nrow(sphericity_p_row) > 0) {
+      row[["Sphericity p"]] <- sphericity_p_row$Value[[1]] %||% ""
+    }
+  }
   row
 }
 
 paired_rm_binary_display_table <- function(result, values, variable_info, labels, category_table) {
   variables <- as.character(result$variables %||% character(0))
   if (length(variables) == 0) return(result$table)
-  time_labels <- paired_rm_time_header_labels(length(variables))
+  time_labels <- paired_rm_option_time_labels(result$options %||% list(), length(variables))
+  contrast_labels <- stats::setNames(
+    vapply(variables, paired_display_name, character(1), variable_info = variable_info, labels = labels, category_table = category_table),
+    variables
+  )
   row <- data.frame(
     `Repeated variables` = result$group_label,
     N = result$table$N[[1]],
@@ -342,7 +419,11 @@ paired_rm_binary_display_table <- function(result, values, variable_info, labels
   row[["StatisticLabel"]] <- result$table$Statistic[[1]]
   row[["Statistic"]] <- result$table$Value[[1]]
   row[["p"]] <- result$table$p[[1]]
-  row[["Post-hoc"]] <- paired_rm_posthoc_notation(variables, result$posthoc, NULL, stats::setNames(time_labels, variables))
+  row[["Post-hoc"]] <- paired_rm_posthoc_notation(variables, result$posthoc, NULL, stats::setNames(time_labels, variables), contrast_labels)
+  posthoc_methods <- unique(as.character(result$posthoc$Method %||% ""))
+  posthoc_methods <- posthoc_methods[nzchar(posthoc_methods)]
+  row[["PosthocMethodLabel"]] <- paste(posthoc_methods, collapse = ", ")
+  row[["PosthocAdjustmentLabel"]] <- if (identical(result$options$posthoc_adjustment %||% "holm", "bonferroni")) "Bonferroni correction" else "Holm Bonferroni"
   row[["Method"]] <- result$table$Method[[1]]
   row
 }
@@ -393,8 +474,9 @@ prepare_paired_rm_single_result <- function(data, variables, variable_info = NUL
       posthoc <- paired_rm_posthoc_scale(as.data.frame(y), "Paired t-test", adjustment, variable_info, labels, category_table)
     }
     assumption <- data.frame(
-      Check = c("Normality method", "Normality", "Mauchly W", "Sphericity p", "Sphericity", "GG epsilon"),
-      Result = c(normality$method, if (isTRUE(normality$satisfied)) "Satisfied" else "Not satisfied", format_decimal3(sphericity$w), format_p(sphericity$p), if (isTRUE(sphericity$satisfied)) "Satisfied" else "Not satisfied", format_decimal3(sphericity$epsilon)),
+      Statistics = c("Normality method", "Normality", "Mauchly W", "Sphericity p", "Sphericity", "GG epsilon"),
+      Value = c(normality$method, "", format_decimal3(sphericity$w), format_p(sphericity$p), "", format_decimal3(sphericity$epsilon)),
+      Result = c("", if (isTRUE(normality$satisfied)) "Satisfied" else "Not satisfied", "", "", if (isTRUE(sphericity$satisfied)) "Satisfied" else "Not satisfied", ""),
       stringsAsFactors = FALSE
     )
     result <- list(type = "paired_rm", measurement = "Continuous", variables = variables, group_label = paired_rm_group_label(variables, variable_info, labels, category_table), table = main, summary = paired_rm_summary_table(y, variable_info, labels, category_table), posthoc = posthoc, assumption = assumption, options = options)

@@ -170,7 +170,7 @@ ttest_anova_setup_panel <- function(state) {
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
       analysis_field_label_tag("Variables"),
-      analysis_transfer_listbox_input("ttest_available", state$available_items, selected = state$available_selected, size = 20)
+      analysis_transfer_listbox_input("ttest_available", state$available_items, selected = state$available_selected, size = 19)
     ),
     div(
       class = "analysis-transfer-controls ttest-anova-transfer-controls",

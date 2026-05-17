@@ -1161,15 +1161,15 @@ input.variable-select:disabled {
 }
 
 .regression-independent-panel .analysis-transfer-listbox {
-  height: 240px !important;
-  min-height: 240px;
-  max-height: 240px;
+  height: 248px !important;
+  min-height: 248px !important;
+  max-height: 248px !important;
 }
 
 .regression-available-panel .analysis-transfer-listbox {
-  height: 480px !important;
-  min-height: 480px;
-  max-height: 480px;
+  height: 465px !important;
+  min-height: 465px !important;
+  max-height: 465px !important;
   margin-top: 0;
 }
 
@@ -2389,15 +2389,15 @@ pre {
 }
 
 .regression-independent-panel .analysis-transfer-listbox {
-  height: 240px !important;
-  min-height: 240px;
-  max-height: 240px;
+  height: 248px !important;
+  min-height: 248px !important;
+  max-height: 248px !important;
 }
 
 .regression-available-panel .analysis-transfer-listbox {
-  height: 480px !important;
-  min-height: 480px;
-  max-height: 480px;
+  height: 465px !important;
+  min-height: 465px !important;
+  max-height: 465px !important;
   margin-top: 0;
 }
 
@@ -2559,12 +2559,21 @@ pre {
 .frequencies-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
 .reliability-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
 .correlation-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
-.ttest-anova-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
 .hierarchical-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
 .regression-available-panel .analysis-transfer-listbox {
-  height: 480px !important;
-  min-height: 480px;
-  max-height: 480px;
+  height: 465px !important;
+  min-height: 465px !important;
+  max-height: 465px !important;
+}
+
+.frequencies-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
+.reliability-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
+.correlation-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
+.ttest-anova-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
+.paired-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox {
+  height: 465px !important;
+  min-height: 465px !important;
+  max-height: 465px !important;
 }
 
 .ttest-anova-dependent-panel .analysis-transfer-listbox,
@@ -2575,11 +2584,16 @@ pre {
   max-height: 96px;
 }
 
-.ttest-anova-factor-panel .analysis-transfer-listbox,
+.ttest-anova-factor-panel .analysis-transfer-listbox {
+  height: 248px !important;
+  min-height: 248px !important;
+  max-height: 248px !important;
+}
+
 .regression-independent-panel .analysis-transfer-listbox {
-  height: 240px !important;
-  min-height: 240px;
-  max-height: 240px;
+  height: 248px !important;
+  min-height: 248px !important;
+  max-height: 248px !important;
 }
 
 .hierarchical-target-panel .analysis-transfer-listbox[style*="144px"] {
@@ -2664,7 +2678,7 @@ pre {
 }
 
 .regression-transfer-controls {
-  grid-template-rows: 198px 346px;
+  grid-template-rows: 198px 352px;
 }
 
 .hierarchical-transfer-controls {
@@ -2701,6 +2715,7 @@ pre {
 .reliability-action-row > #reliability_save_control,
 .frequencies-action-row > #frequencies_save_control,
 .paired-action-row > #paired_save_control,
+.paired-action-row > #paired_rm_save_control,
 .ttest-anova-action-row > #ttest_anova_save_control,
 .correlation-action-row > #correlation_save_control {
   grid-column: 5;
@@ -2778,19 +2793,82 @@ pre {
 }
 
 .paired-transfer-controls {
+  display: flex;
   justify-content: center;
   gap: 0;
+  align-items: center;
 }
 
-.paired-target-panel .analysis-transfer-listbox {
-  height: 480px !important;
-  min-height: 480px;
-  max-height: 480px;
+.paired-rm-target-panel .analysis-transfer-listbox {
+  height: 465px !important;
+  min-height: 465px !important;
+  max-height: 465px !important;
+}
+
+.paired-target-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.paired-target-panel .analysis-field-label {
+  flex: 0 0 auto;
+}
+
+.paired-target-panel .analysis-order-actions {
+  flex: 0 0 auto;
+  justify-content: flex-start;
+  margin-top: 8px;
+  padding-bottom: 0;
+}
+
+.paired-rm-time-labels {
+  display: grid;
+  grid-template-columns: 54px 1fr;
+  column-gap: 12px;
+  row-gap: 8px;
+  align-items: center;
+}
+
+.paired-rm-time-labels .analysis-option-title {
+  grid-column: 1 / -1;
+  margin-bottom: 2px;
+}
+
+.paired-rm-time-labels .form-group {
+  display: contents;
+}
+
+.paired-rm-time-labels label {
+  margin: 0;
+  font-weight: 500;
+  padding-left: 18px;
+  text-align: right;
+}
+
+.paired-rm-time-labels .form-control {
+  width: 116px;
+  min-width: 116px;
+  max-width: 116px;
+  height: 32px;
+  padding: 4px 8px;
+}
+
+.paired-rm-grouped-table th,
+.paired-rm-grouped-table td {
+  padding: 4px 5px;
+  white-space: nowrap;
+}
+
+.paired-rm-grouped-table th:first-child,
+.paired-rm-grouped-table td:first-child,
+.paired-rm-grouped-table th:last-child,
+.paired-rm-grouped-table td:last-child {
+  white-space: normal;
 }
 
 
 .regression-target-column {
-  grid-template-rows: 198px 346px;
+  grid-template-rows: 198px 352px;
   height: 568px;
 }
 
@@ -2831,17 +2909,23 @@ pre {
   min-height: 0;
 }
 
+.ttest-anova-target-column,
+.regression-target-column,
+.hierarchical-target-stack-compact {
+  gap: 18px !important;
+}
+
 .hierarchical-target-panel.hierarchical-dependent-panel .analysis-transfer-listbox,
-.hierarchical-dependent-panel.hierarchical-list-size-3 .analysis-transfer-listbox {
-  height: 72px !important;
-  min-height: 72px !important;
-  max-height: 72px !important;
+.hierarchical-dependent-panel.hierarchical-list-size-4 .analysis-transfer-listbox {
+  height: 96px !important;
+  min-height: 96px !important;
+  max-height: 96px !important;
 }
 
 .hierarchical-active-block-row .analysis-transfer-listbox {
-  height: 216px !important;
-  min-height: 216px !important;
-  max-height: 216px !important;
+  height: 210px !important;
+  min-height: 210px !important;
+  max-height: 210px !important;
 }
 
 .hierarchical-block-title-row {

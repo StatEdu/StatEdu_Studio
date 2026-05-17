@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.7.1 - 2026-05-17
+
+### Changed
+
+- Refined Paired test (3+) repeated-measures labels, grouped result headers, post-hoc notes, and effect-size annotations.
+- Standardized analysis transfer-list heights and transfer-button alignment across Reliability, Frequencies, Paired test, t-test/ANOVA, Correlation, Regression, and Hierarchical workflows.
+
 ## v0.7.0 - 2026-05-17
 
 ### Added

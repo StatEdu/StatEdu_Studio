@@ -19,6 +19,20 @@ register_paired_rm_handlers <- function(
 
   current_selected <- reactive(as.character(selected_names_fn() %||% character(0)))
   current_variable_table <- reactive(variable_table_fn())
+  current_time_label_count <- reactive({
+    groups <- repeated_groups()
+    if (length(groups) > 0) max(lengths(groups)) else 3L
+  })
+  current_time_labels <- reactive({
+    count <- current_time_label_count()
+    defaults <- paired_rm_time_header_labels(count)
+    labels <- vapply(seq_len(count), function(index) {
+      value <- input[[paste0("paired_rm_time_label_", index)]]
+      value <- trimws(as.character(value %||% ""))
+      if (nzchar(value)) value else defaults[[index]]
+    }, character(1))
+    labels
+  })
 
   output$paired_rm_setup <- renderUI({
     selected <- current_selected()
@@ -33,7 +47,8 @@ register_paired_rm_handlers <- function(
       selected_available = isolate(input$paired_rm_available),
       selected_repeated = isolate(input$paired_rm_repeated),
       assumption_check = isolate(assumption_check()),
-      adjustment = isolate(adjustment())
+      adjustment = isolate(adjustment()),
+      time_labels = isolate(current_time_labels())
     ))
   })
 
@@ -118,7 +133,8 @@ register_paired_rm_handlers <- function(
         category_table = category_table_fn(),
         options = list(
           assumption_check = isTRUE(assumption_check()),
-          posthoc_adjustment = adjustment()
+          posthoc_adjustment = adjustment(),
+          time_labels = current_time_labels()
         )
       ),
       error = function(e) list(error = conditionMessage(e))
@@ -143,18 +159,28 @@ register_paired_rm_handlers <- function(
   observeEvent(input$save_paired_rm_html_dialog, {
     result <- paired_rm_result()
     req(!is.null(result), is.null(result$error))
-    path <- result_file_path("html", prefix = "easyflow_statistics_paired_rm")
+    path <- choose_html_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
+    if (!grepl("\\.html?$", path, ignore.case = TRUE)) path <- paste0(path, ".html")
     write_paired_rm_results_html(result, path)
-    showNotification(paste("Saved HTML:", path), type = "message", duration = 5)
+    showNotification(sprintf("HTML results saved: %s", path), type = "message")
   })
 
   observeEvent(input$save_paired_rm_excel_dialog, {
     result <- paired_rm_result()
     req(!is.null(result), is.null(result$error))
-    path <- result_file_path("xlsx", prefix = "easyflow_statistics_paired_rm")
+    path <- choose_excel_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
+    if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) path <- paste0(path, ".xlsx")
     save_paired_rm_excel_file(result, path)
-    showNotification(paste("Saved Excel:", path), type = "message", duration = 5)
+    showNotification(sprintf("Analysis results saved: %s", path), type = "message")
   })
 
-  register_add_result_placeholder(input, "add_paired_rm_result")
+  observeEvent(input$add_paired_rm_result, {
+    result <- paired_rm_result()
+    req(!is.null(result), is.null(result$error))
+    path <- result_file_path("html", prefix = "easyflow_statistics_paired_rm_added")
+    write_paired_rm_results_html(result, path)
+    showNotification(sprintf("Result added as HTML snapshot: %s", path), type = "message", duration = 5)
+  }, ignoreInit = TRUE)
 }

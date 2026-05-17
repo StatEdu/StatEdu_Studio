@@ -6,6 +6,38 @@ paired_rm_statistic_label <- function(table) {
   if (length(labels) == 1L) labels[[1]] else "Statistic"
 }
 
+paired_rm_method_marker_map <- function(table) {
+  if (!is.data.frame(table) || !"Method" %in% names(table)) return(character(0))
+  methods <- unique(as.character(table$Method))
+  methods <- methods[nzchar(methods)]
+  if (length(methods) <= 1L) return(character(0))
+  stats::setNames(letters[seq_along(methods)], methods)
+}
+
+paired_rm_method_marker_for_row <- function(table, row_index) {
+  marker_map <- paired_rm_method_marker_map(table)
+  if (length(marker_map) == 0 || !"Method" %in% names(table)) return("")
+  method <- as.character(table$Method[[row_index]] %||% "")
+  named_value(marker_map, method, "")
+}
+
+paired_rm_p_value_cell <- function(value, marker) {
+  if (!nzchar(marker %||% "")) return(value %||% "")
+  tags$span(
+    style = "white-space:nowrap;",
+    value %||% "",
+    tags$sup(style = "margin-left:2px;font-size:75%;vertical-align:super;", marker)
+  )
+}
+
+paired_rm_sup_header <- function(label, marker) {
+  tags$span(
+    style = "white-space:nowrap;",
+    label,
+    tags$sup(style = "margin-left:2px;font-size:75%;vertical-align:super;", marker)
+  )
+}
+
 paired_rm_method_note <- function(result) {
   table <- result$display_table %||% result$count_table %||% result$table
   methods <- unique(as.character(table$Method %||% ""))
@@ -15,18 +47,67 @@ paired_rm_method_note <- function(result) {
 }
 
 paired_rm_table_method_note <- function(table) {
+  if (!is.data.frame(table) || nrow(table) == 0) return("")
+  marker_map <- paired_rm_method_marker_map(table)
   methods <- unique(as.character(table$Method %||% ""))
   methods <- methods[nzchar(methods)]
-  parts <- character(0)
-  if (length(methods) > 0) {
-    parts <- c(parts, paste0("Analysis method: ", paste(methods, collapse = ", "), "."))
+  method_note <- if (length(marker_map) > 0) {
+    paste0("Analysis method: ", paste(sprintf("%s %s", unname(marker_map), names(marker_map)), collapse = "; "), ".")
+  } else if (length(methods) == 1L) {
+    if (
+      identical(methods[[1]], "Standard RM ANOVA") &&
+        "Sphericity" %in% names(table) &&
+        "Sphericity p" %in% names(table) &&
+        any(as.character(table$Sphericity %||% "") == "Satisfied", na.rm = TRUE)
+    ) {
+      p_values <- unique(as.character(table$`Sphericity p` %||% ""))
+      p_values <- p_values[nzchar(p_values)]
+      p_note <- if (length(p_values) == 1L) paste0("(p=", p_values[[1]], ") ") else ""
+      paste0("Analysis method: Sphericity ", p_note, "satisfied; RM ANOVA.")
+    } else {
+      paste0("Analysis method: ", methods[[1]], ".")
+    }
+  } else {
+    ""
   }
-  effect_methods <- unique(as.character(table$EffectSizeLabel %||% ""))
-  effect_methods <- effect_methods[nzchar(effect_methods)]
-  if (length(effect_methods) > 0) {
-    parts <- c(parts, paste0("Effect size: ", paste(effect_methods, collapse = ", "), "."))
+  overall_effect_methods <- unique(as.character(table$EffectSizeLabel %||% ""))
+  overall_effect_methods <- overall_effect_methods[nzchar(overall_effect_methods)]
+  pairwise_effect_methods <- unique(as.character(table$PairwiseEffectSizeLabel %||% ""))
+  pairwise_effect_methods <- pairwise_effect_methods[nzchar(pairwise_effect_methods)]
+  effect_parts <- character(0)
+  if (length(overall_effect_methods) > 0) {
+    effect_parts <- c(effect_parts, paste0("a overall = ", paste(overall_effect_methods, collapse = ", ")))
   }
-  paste(parts, collapse = " ")
+  if (length(pairwise_effect_methods) > 0) {
+    effect_parts <- c(effect_parts, paste0("b pairwise = ", paste(pairwise_effect_methods, collapse = ", ")))
+  }
+  effect_note <- if (length(effect_parts) > 0) paste0("Effect size: ", paste(effect_parts, collapse = "; "), ".") else ""
+  posthoc_methods <- unique(as.character(table$PosthocMethodLabel %||% ""))
+  posthoc_methods <- posthoc_methods[nzchar(posthoc_methods)]
+  posthoc_adjustments <- unique(as.character(table$PosthocAdjustmentLabel %||% ""))
+  posthoc_adjustments <- posthoc_adjustments[nzchar(posthoc_adjustments)]
+  posthoc_note <- if (length(posthoc_methods) > 0) {
+    adjustment_text <- if (length(posthoc_adjustments) == 1L) paste0(" with ", posthoc_adjustments[[1]], " adjustment") else ""
+    paste0("Post-hoc: c ", paste(posthoc_methods, collapse = ", "), adjustment_text, ".")
+  } else {
+    ""
+  }
+  correction_notes <- vapply(seq_len(nrow(table)), function(index) {
+    group <- as.character(table$`Repeated variables`[[index]] %||% "")
+    details <- character(0)
+    if ("Wilks' lambda" %in% names(table) && nzchar(as.character(table$`Wilks' lambda`[[index]] %||% ""))) {
+      details <- c(details, paste0("Wilks' lambda = ", table$`Wilks' lambda`[[index]]))
+    }
+    if ("GG epsilon" %in% names(table) && nzchar(as.character(table$`GG epsilon`[[index]] %||% ""))) {
+      details <- c(details, paste0("GG epsilon = ", table$`GG epsilon`[[index]]))
+    }
+    if ("GG p" %in% names(table) && nzchar(as.character(table$`GG p`[[index]] %||% ""))) {
+      details <- c(details, paste0("GG p = ", table$`GG p`[[index]]))
+    }
+    if (length(details) == 0) return("")
+    paste0(group, ": ", paste(details, collapse = "; "), ".")
+  }, character(1))
+  paste(c(method_note, effect_note, posthoc_note, correction_notes[nzchar(correction_notes)]), collapse = " ")
 }
 
 paired_rm_posthoc_note <- function(result) {
@@ -53,6 +134,21 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
   time_indices <- as.integer(sub("^Time([0-9]+)_label$", "\\1", time_label_columns))
   time_indices <- sort(time_indices)
   statistic_label <- paired_rm_statistic_label(table)
+  es_columns <- grep("^ES_[0-9]+_[0-9]+$", names(table), value = TRUE)
+  es_label_columns <- paste0(es_columns, "_label")
+  es_labels <- vapply(seq_along(es_columns), function(index) {
+    label_column <- es_label_columns[[index]]
+    labels <- as.character(table[[label_column]] %||% "")
+    labels <- labels[nzchar(labels)]
+    if (length(labels) > 0) labels[[1]] else sub("^ES_", "", es_columns[[index]])
+  }, character(1))
+  include_es <- "ES_overall" %in% names(table) || length(es_columns) > 0
+  header_style <- function(first = FALSE) {
+    paste0(result_header_cell_style(first, compact = TRUE, compact_width = 44, compact_first_width = 148), if (!isTRUE(first)) "text-align:center;" else "")
+  }
+  body_style <- function(first = FALSE, last = FALSE) {
+    result_body_cell_style(first, last, compact = TRUE, compact_width = 44, compact_first_width = 148)
+  }
   body_columns <- c(
     "Repeated variables",
     "N",
@@ -63,7 +159,8 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
     },
     "Statistic",
     "p",
-    "ES",
+    if (include_es) "ES_overall",
+    es_columns,
     "Post-hoc"
   )
   body_columns <- body_columns[body_columns %in% names(table)]
@@ -71,28 +168,30 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
     labels <- as.character(table[[paste0("Time", index, "_label")]] %||% "")
     labels <- labels[nzchar(labels)]
     label <- if (length(labels) > 0) labels[[1]] else paste0("Time ", index)
-    tags$th(colspan = 2, style = result_header_cell_style(FALSE), label)
+    tags$th(colspan = 2, style = header_style(FALSE), label)
   })
   tags$table(
     class = "coefficient-table paired-grouped-table paired-rm-grouped-table",
-    style = result_table_style(font_size = 15, min_width = 760),
+    style = result_table_style(font_size = 13, min_width = 520),
     tags$thead(
       tags$tr(
-        tags$th(rowspan = 2, style = result_header_cell_style(TRUE), "Repeated variables"),
-        tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "N"),
+        tags$th(rowspan = 2, style = header_style(TRUE), "Repeated variables"),
+        tags$th(rowspan = 2, style = header_style(FALSE), "N"),
         time_header,
-        tags$th(rowspan = 2, style = result_header_cell_style(FALSE), statistic_label),
-        tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "p"),
-        if ("ES" %in% names(table)) tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "ES"),
-        tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "Post-hoc")
+        tags$th(rowspan = 2, style = header_style(FALSE), statistic_label),
+        tags$th(rowspan = 2, style = header_style(FALSE), "p"),
+        if (include_es) tags$th(colspan = 1L + length(es_columns), style = header_style(FALSE), "ES"),
+        tags$th(rowspan = 2, style = header_style(FALSE), paired_rm_sup_header("Post-hoc", "c"))
       ),
       tags$tr(
         lapply(time_indices, function(index) {
           tagList(
-            tags$th(style = result_header_cell_style(FALSE), if (identical(type, "count")) "0" else "M"),
-            tags$th(style = result_header_cell_style(FALSE), if (identical(type, "count")) "1" else "SD")
+            tags$th(style = header_style(FALSE), if (identical(type, "count")) "0" else "M"),
+            tags$th(style = header_style(FALSE), if (identical(type, "count")) "1" else "SD")
           )
-        })
+        }),
+        if (include_es) tags$th(style = header_style(FALSE), paired_rm_sup_header(as.character(table$ES_overall_label[[1]] %||% "overall"), "a")),
+        lapply(es_labels, function(label) tags$th(style = header_style(FALSE), paired_rm_sup_header(label, "b")))
       )
     ),
     tags$tbody(
@@ -100,8 +199,12 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
         tags$tr(lapply(seq_along(body_columns), function(column_index) {
           column <- body_columns[[column_index]]
           tags$td(
-            style = result_body_cell_style(column_index == 1, row_index == nrow(table)),
-            table[[column]][[row_index]] %||% ""
+            style = body_style(column_index == 1, row_index == nrow(table)),
+            if (identical(column, "p")) {
+              paired_rm_p_value_cell(table[[column]][[row_index]], paired_rm_method_marker_for_row(table, row_index))
+            } else {
+              table[[column]][[row_index]] %||% ""
+            }
           )
         }))
       })

@@ -967,6 +967,15 @@ add_paired_rm_grouped_excel_sheet <- function(workbook, sheet_name, table, used_
   }
   time_indices <- sort(as.integer(sub("^Time([0-9]+)_label$", "\\1", time_label_columns)))
   statistic_label <- paired_rm_statistic_label(table)
+  es_columns <- grep("^ES_[0-9]+_[0-9]+$", names(table), value = TRUE)
+  es_label_columns <- paste0(es_columns, "_label")
+  es_labels <- vapply(seq_along(es_columns), function(index) {
+    label_column <- es_label_columns[[index]]
+    labels <- as.character(table[[label_column]] %||% "")
+    labels <- labels[nzchar(labels)]
+    if (length(labels) > 0) labels[[1]] else sub("^ES_", "", es_columns[[index]])
+  }, character(1))
+  include_es <- "ES_overall" %in% names(table) || length(es_columns) > 0
   export_columns <- c(
     "Repeated variables",
     "N",
@@ -977,7 +986,8 @@ add_paired_rm_grouped_excel_sheet <- function(workbook, sheet_name, table, used_
     },
     "Statistic",
     "p",
-    "ES",
+    if (include_es) "ES_overall",
+    es_columns,
     "Post-hoc"
   )
   export_columns <- export_columns[export_columns %in% names(table)]
@@ -987,14 +997,29 @@ add_paired_rm_grouped_excel_sheet <- function(workbook, sheet_name, table, used_
     labels <- labels[nzchar(labels)]
     if (length(labels) > 0) labels[[1]] else paste0("Time ", index)
   }, character(1))
-  include_es <- "ES" %in% names(export)
-  header_top <- c("Repeated variables", "N", as.vector(rbind(time_labels, rep("", length(time_labels)))), statistic_label, "p", if (include_es) "ES", "Post-hoc")
-  header_bottom <- c("", "", rep(if (identical(type, "count")) c("0", "1") else c("M", "SD"), length(time_labels)), "", "", if (include_es) "", "")
+  header_top <- c("Repeated variables", "N", as.vector(rbind(time_labels, rep("", length(time_labels)))), statistic_label, "p", if (include_es) c("ES", rep("", length(es_columns))), "Post-hoc (c)")
+  header_bottom <- c(
+    "",
+    "",
+    rep(if (identical(type, "count")) c("0", "1") else c("M", "SD"), length(time_labels)),
+    "",
+    "",
+    if (include_es) c(paste0(as.character(table$ES_overall_label[[1]] %||% "overall"), " (a)"), paste0(es_labels, " (b)")),
+    ""
+  )
   merge_cols <- c(list(1, 2), lapply(seq_along(time_indices), function(index) {
     start <- 3 + (index - 1L) * 2L
     start:(start + 1L)
-  }), as.list(seq.int(3 + length(time_indices) * 2L, ncol(export))))
-  widths <- c(28, 10, rep(12, length(time_indices) * 2L), 14, 12, if (include_es) 12, 28)
+  }))
+  if (include_es) {
+    es_start <- 3 + length(time_indices) * 2L + 2L
+    merge_cols <- c(merge_cols, list(es_start:(es_start + length(es_columns))))
+    tail_start <- es_start + length(es_columns) + 1L
+  } else {
+    tail_start <- 3 + length(time_indices) * 2L
+  }
+  merge_cols <- c(merge_cols, as.list(seq.int(tail_start, ncol(export))))
+  widths <- c(16, 6, rep(7, length(time_indices) * 2L), 8, 8, if (include_es) rep(8, 1L + length(es_columns)), 16)
 
   title_row <- 1L
   header_row <- 3L

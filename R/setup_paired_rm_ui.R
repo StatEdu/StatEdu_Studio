@@ -38,7 +38,8 @@ paired_rm_setup_state <- function(
   selected_available = NULL,
   selected_repeated = NULL,
   assumption_check = FALSE,
-  adjustment = "holm"
+  adjustment = "holm",
+  time_labels = NULL
 ) {
   selected <- as.character(selected_names %||% character(0))
   repeated_groups <- lapply(repeated_groups %||% list(), function(group) intersect(as.character(group), selected))
@@ -46,6 +47,14 @@ paired_rm_setup_state <- function(
   group_values <- paired_rm_group_values(repeated_groups)
   grouped_variables <- unique(unlist(repeated_groups, use.names = FALSE))
   available <- setdiff(selected, grouped_variables)
+  time_count <- if (length(repeated_groups) > 0) max(lengths(repeated_groups)) else 3L
+  default_time_labels <- paired_rm_time_header_labels(time_count)
+  time_labels <- as.character(time_labels %||% default_time_labels)
+  time_labels <- trimws(time_labels)
+  if (length(time_labels) < time_count) {
+    time_labels <- c(time_labels, default_time_labels[seq.int(length(time_labels) + 1L, time_count)])
+  }
+  time_labels <- ifelse(nzchar(time_labels[seq_len(time_count)]), time_labels[seq_len(time_count)], default_time_labels)
   list(
     available = available,
     available_items = analysis_variable_items(available, variable_table, labels),
@@ -56,7 +65,24 @@ paired_rm_setup_state <- function(
     repeated_selected = selected_order_items(selected_repeated, group_values),
     assumption_check = isTRUE(assumption_check),
     adjustment = if (identical(adjustment, "bonferroni")) "bonferroni" else "holm",
+    time_labels = time_labels,
     move_disabled = length(selected) == 0
+  )
+}
+
+paired_rm_time_label_inputs <- function(time_labels) {
+  labels <- as.character(time_labels %||% paired_rm_time_header_labels(3L))
+  div(
+    class = "paired-rm-time-labels",
+    div(class = "analysis-option-title", "Repeated variable labels"),
+    lapply(seq_along(labels), function(index) {
+      textInput(
+        inputId = paste0("paired_rm_time_label_", index),
+        label = paste0(index, if (index == 1L) "st" else if (index == 2L) "nd" else if (index == 3L) "rd" else "th"),
+        value = labels[[index]],
+        width = "100%"
+      )
+    })
   )
 }
 
@@ -66,14 +92,14 @@ paired_rm_setup_panel <- function(state) {
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
       analysis_field_label_tag("Variables"),
-      analysis_transfer_listbox_input("paired_rm_available", state$available_items, selected = state$available_selected, size = 20)
+      analysis_transfer_listbox_input("paired_rm_available", state$available_items, selected = state$available_selected, size = 19)
     ),
     div(
       class = "analysis-transfer-controls ttest-anova-transfer-controls paired-transfer-controls",
       actionButton("paired_rm_move", ">", class = "btn btn-default analysis-move-button", disabled = if (isTRUE(state$move_disabled) && length(state$repeated_groups) == 0) "disabled" else NULL)
     ),
     div(
-      class = "analysis-transfer-column analysis-transfer-panel paired-target-panel",
+      class = "analysis-transfer-column analysis-transfer-panel paired-target-panel paired-rm-target-panel",
       analysis_field_label_tag("Repeated-measures variables", c("binary", "ordered", "continuous")),
       analysis_transfer_listbox_input("paired_rm_repeated", state$repeated_items, selected = state$repeated_selected, size = 19),
       div(class = "analysis-order-actions paired-order-actions", actionButton("paired_rm_up", "Up", class = "btn-default btn-sm"), actionButton("paired_rm_down", "Down", class = "btn-default btn-sm"))
@@ -91,7 +117,8 @@ paired_rm_setup_panel <- function(state) {
           "paired_rm_adjustment",
           choices = c("Holm Bonferroni" = "holm", "Bonferroni correction" = "bonferroni"),
           selected = state$adjustment
-        )
+        ),
+        paired_rm_time_label_inputs(state$time_labels)
       )
     )
   )

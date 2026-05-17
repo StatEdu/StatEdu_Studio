@@ -33,7 +33,7 @@ reliability_setup_panel <- function(state) {
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
       analysis_field_label_tag("Variables"),
-      analysis_transfer_listbox_input("reliability_available", state$available_items, selected = state$available_selected, size = 20)
+      analysis_transfer_listbox_input("reliability_available", state$available_items, selected = state$available_selected, size = 19)
     ),
     div(
       class = "analysis-transfer-controls",
@@ -42,7 +42,7 @@ reliability_setup_panel <- function(state) {
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
       analysis_field_label_tag("Items", c("binary", "ordered", "continuous")),
-      analysis_transfer_listbox_input("reliability_selected", state$selected_items, selected = state$selected_selected, size = 20),
+      analysis_transfer_listbox_input("reliability_selected", state$selected_items, selected = state$selected_selected, size = 19),
       div(
         class = "analysis-order-actions reliability-order-actions",
         actionButton("reliability_move_up", "Up", class = "btn-default btn-sm"),

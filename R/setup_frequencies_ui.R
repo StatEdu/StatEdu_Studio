@@ -44,7 +44,7 @@ frequencies_setup_panel <- function(state) {
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
       analysis_field_label_tag("Variables"),
-      analysis_transfer_listbox_input("frequency_available", state$available_items, selected = state$available_selected, size = 20)
+      analysis_transfer_listbox_input("frequency_available", state$available_items, selected = state$available_selected, size = 19)
     ),
     div(
       class = "analysis-transfer-controls",
@@ -53,7 +53,7 @@ frequencies_setup_panel <- function(state) {
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
       analysis_field_label_tag("Selected Variables", analysis_allowed_measurements_all()),
-      analysis_transfer_listbox_input("frequency_selected", state$selected_items, selected = state$selected_selected, size = 20),
+      analysis_transfer_listbox_input("frequency_selected", state$selected_items, selected = state$selected_selected, size = 19),
       div(
         class = "analysis-order-actions frequency-order-actions",
         actionButton("frequency_move_up", "Up", class = "btn-default btn-sm"),
