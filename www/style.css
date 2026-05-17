@@ -20,6 +20,36 @@ body {
   top: 0;
 }
 
+.navbar .dropdown-menu > li.dropdown {
+  position: relative;
+}
+
+.navbar .dropdown-menu > li.dropdown > .dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+
+.navbar .dropdown-menu > li.dropdown:hover > .dropdown-menu,
+.navbar .dropdown-menu > li.dropdown.open > .dropdown-menu,
+.navbar .dropdown-menu > li.dropdown:focus-within > .dropdown-menu {
+  display: block;
+}
+
+.navbar .dropdown-menu > li.dropdown > a.dropdown-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.navbar .dropdown-menu > li.dropdown > a.dropdown-toggle .caret {
+  margin-left: auto;
+  transform: rotate(-90deg);
+}
+
 .navbar > .container-fluid .navbar-brand,
 .navbar > .container .navbar-brand {
   height: 56px;

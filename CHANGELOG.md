@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.7.4 - 2026-05-18
+
+### Changed
+
+- Reorganized the top navigation into Data, Data Editor, Calculator, Analysis, Result, and About.
+- Added Data Editor and Analysis menu groupings, including nested Paired test and Regression menus.
+- Improved nested menu handling so Analysis and Calculator submenus use normal Shiny tab activation.
+- Reduced analysis setup delays by avoiding unnecessary Data Step 3 table flushing and repeated variable-info summaries during menu navigation.
+
 ## v0.7.3 - 2026-05-17
 
 ### Changed

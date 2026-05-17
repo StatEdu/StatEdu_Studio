@@ -81,11 +81,11 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-reliability-factors-15"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-nested-analysis-menu-1"))
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-measurement-flush-1"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-nested-analysis-menu-10"))
 }
 
 app_head_tags <- function(version) {
@@ -121,24 +121,14 @@ app_ui <- function(version) {
 
     data_tab_panel(),
 
-    if (isTRUE(analysis_tabs[["reliability"]])) reliability_tab_panel(),
+    data_editor_tab_panel(),
 
-    if (isTRUE(analysis_tabs[["frequencies"]])) frequencies_tab_panel(),
+    calculator_tab_panel(),
 
-    if (isTRUE(analysis_tabs[["paired"]])) paired_tab_panel(),
+    analysis_tab_panel(analysis_tabs),
 
-    if (isTRUE(analysis_tabs[["paired_rm"]])) paired_rm_tab_panel(),
+    result_tab_panel(),
 
-    if (isTRUE(analysis_tabs[["ttest_anova"]])) ttest_anova_tab_panel(),
-
-    if (isTRUE(analysis_tabs[["correlation"]])) correlation_tab_panel(),
-
-    if (isTRUE(analysis_tabs[["regression"]])) regression_tab_panel(),
-
-    if (isTRUE(analysis_tabs[["hierarchical"]])) hierarchical_tab_panel(),
-
-    if (isTRUE(analysis_tabs[["generalized"]])) generalized_tab_panel(),
-
-    calculator_tab_panel()
+    about_tab_panel()
   )
 }

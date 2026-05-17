@@ -192,7 +192,7 @@ create_base_variable_info_fn <- function(
   measurement_overrides_fn,
   var_label_overrides_fn
 ) {
-  function() {
+  cached_base_variable_info <- reactive({
     has_data_file <- !is.null(current_data_file_fn())
     base_variable_info_value(
       has_data_file = has_data_file,
@@ -203,6 +203,10 @@ create_base_variable_info_fn <- function(
       measurement_overrides = measurement_overrides_fn(),
       var_label_overrides = var_label_overrides_fn()
     )
+  })
+
+  function() {
+    cached_base_variable_info()
   }
 }
 
@@ -403,11 +407,18 @@ create_variable_info_table_fn <- function(
 ) {
   function(reactive_labels = TRUE) {
     labels <- if (isTRUE(reactive_labels)) labels_fn() else isolate(labels_fn())
+    selection_applied <- selection_applied_fn()
+    step3_info <- step3_variable_info_fn()
+    base_info <- if (isTRUE(selection_applied) && !is.null(step3_info)) {
+      NULL
+    } else {
+      base_variable_info_fn()
+    }
     variable_info_table_value(
       data_view = data_view_fn(),
-      selection_applied = selection_applied_fn(),
-      step3_info = step3_variable_info_fn(),
-      base_info = base_variable_info_fn(),
+      selection_applied = selection_applied,
+      step3_info = step3_info,
+      base_info = base_info,
       measurement_overrides = measurement_overrides_fn(),
       labels = labels
     )

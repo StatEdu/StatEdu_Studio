@@ -2,6 +2,63 @@
       window.easyflowVarLabels = window.easyflowVarLabels || {};
       window.easyflowMeasurements = window.easyflowMeasurements || {};
 
+      function registerEasyflowNestedDropdownMenus() {
+        if (!window.jQuery) return;
+        function configureNestedDropdownToggles() {
+          window.jQuery('.dropdown-menu .dropdown-toggle')
+            .removeAttr('data-toggle')
+            .removeAttr('data-bs-toggle')
+            .attr('aria-haspopup', 'true');
+        }
+
+        configureNestedDropdownToggles();
+        window.jQuery(configureNestedDropdownToggles);
+        document.addEventListener('DOMContentLoaded', configureNestedDropdownToggles);
+        document.addEventListener('shiny:connected', configureNestedDropdownToggles);
+        window.setTimeout(configureNestedDropdownToggles, 0);
+
+        if (window.easyflowNestedDropdownRegistered) return;
+        window.easyflowNestedDropdownRegistered = true;
+
+        function activateTopDropdownTab(link) {
+          var topDropdown = window.jQuery(link).closest('.navbar-nav > .dropdown');
+          if (topDropdown.length === 0) return;
+          var topLink = topDropdown.children('a[data-toggle="tab"], a[data-bs-toggle="tab"]').first();
+          if (topLink.length === 0) return;
+          if (window.jQuery.fn.tab) {
+            topLink.tab('show');
+          } else {
+            window.jQuery(topLink.attr('href')).addClass('active').siblings('.tab-pane').removeClass('active');
+            topDropdown.addClass('active').siblings('li').removeClass('active');
+          }
+        }
+
+        document.addEventListener('click', function(event) {
+          var link = event.target.closest ? event.target.closest('.navbar-nav > .dropdown .dropdown-menu a[href^="#"]:not(.dropdown-toggle)') : null;
+          if (!link) return;
+          activateTopDropdownTab(link);
+        }, true);
+
+        window.jQuery(document)
+          .on('click.easyflowNestedDropdown', '.dropdown-menu .dropdown-toggle', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            var item = window.jQuery(this).parent();
+            item.toggleClass('open');
+            item.siblings('.dropdown.open').removeClass('open');
+          })
+          .on('click.easyflowNestedDropdown', '.navbar-nav > .dropdown .dropdown-menu a[data-toggle="tab"], .navbar-nav > .dropdown .dropdown-menu a[data-bs-toggle="tab"]', function() {
+            activateTopDropdownTab(this);
+          })
+          .on('hidden.bs.dropdown.easyflowNestedDropdown', '.navbar-nav > .dropdown', function() {
+            window.jQuery(this).find('.dropdown.open').removeClass('open');
+          });
+      }
+
+      registerEasyflowNestedDropdownMenus();
+      document.addEventListener('shiny:connected', registerEasyflowNestedDropdownMenus);
+      window.setTimeout(registerEasyflowNestedDropdownMenus, 0);
+
       window.easyflowSelectVariableIconOption = function(option) {
         if (!option) return;
         var listbox = option.closest('.variable-icon-listbox');
@@ -287,7 +344,14 @@
       });
 
       document.addEventListener('click', function(event) {
-        if (event.target.closest('.navbar-nav a')) {
+        var navLink = event.target.closest('.navbar-nav a');
+        if (navLink) {
+          var activeTopLink = document.querySelector('.navbar-nav > li.active > a');
+          var activeTopValue = activeTopLink ? activeTopLink.getAttribute('data-value') : '';
+          var targetValue = navLink.getAttribute('data-value') || '';
+          if (activeTopValue !== 'Data' || targetValue === 'Data' || navLink.classList.contains('dropdown-toggle') || navLink.closest('.dropdown-menu')) {
+            return;
+          }
           flushEasyflowInputs();
           var state = submitEasyflowTableState();
           if (window.Shiny) {

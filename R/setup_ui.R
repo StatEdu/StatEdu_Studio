@@ -1,6 +1,6 @@
-reliability_tab_panel <- function() {
+reliability_tab_panel <- function(title = "Reliability") {
   tabPanel(
-    "Reliability",
+    title,
     div(
       class = "page-shell",
       div(
@@ -24,9 +24,9 @@ reliability_tab_panel <- function() {
   )
 }
 
-frequencies_tab_panel <- function() {
+frequencies_tab_panel <- function(title = "Frequencies") {
   tabPanel(
-    "Frequencies",
+    title,
     div(
       class = "page-shell",
       div(
@@ -50,9 +50,9 @@ frequencies_tab_panel <- function() {
   )
 }
 
-paired_tab_panel <- function() {
+paired_tab_panel <- function(title = "Paired test") {
   tabPanel(
-    "Paired test",
+    title,
     value = "paired",
     div(
       class = "page-shell",
@@ -77,9 +77,9 @@ paired_tab_panel <- function() {
   )
 }
 
-paired_rm_tab_panel <- function() {
+paired_rm_tab_panel <- function(title = "Paired test (3+)") {
   tabPanel(
-    "Paired test (3+)",
+    title,
     value = "paired_rm",
     div(
       class = "page-shell",
@@ -104,9 +104,9 @@ paired_rm_tab_panel <- function() {
   )
 }
 
-ttest_anova_tab_panel <- function() {
+ttest_anova_tab_panel <- function(title = "t-test / ANOVA") {
   tabPanel(
-    "t-test / ANOVA",
+    title,
     div(
       class = "page-shell",
       div(
@@ -130,9 +130,9 @@ ttest_anova_tab_panel <- function() {
   )
 }
 
-correlation_tab_panel <- function() {
+correlation_tab_panel <- function(title = "Correlation") {
   tabPanel(
-    "Correlation",
+    title,
     div(
       class = "page-shell",
       div(
@@ -156,9 +156,9 @@ correlation_tab_panel <- function() {
   )
 }
 
-regression_tab_panel <- function() {
+regression_tab_panel <- function(title = "Regression") {
   tabPanel(
-    "Regression",
+    title,
     div(
       class = "page-shell",
       div(
@@ -181,9 +181,9 @@ regression_tab_panel <- function() {
   )
 }
 
-hierarchical_tab_panel <- function() {
+hierarchical_tab_panel <- function(title = "Hierarchical") {
   tabPanel(
-    "Hierarchical",
+    title,
     div(
       class = "page-shell",
       div(
@@ -202,9 +202,9 @@ hierarchical_tab_panel <- function() {
   )
 }
 
-generalized_tab_panel <- function() {
+generalized_tab_panel <- function(title = "Generalized") {
   tabPanel(
-    "Generalized",
+    title,
     div(
       class = "page-shell",
       div(

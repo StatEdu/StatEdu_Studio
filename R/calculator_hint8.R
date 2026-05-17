@@ -168,7 +168,7 @@ hint8_calculator_tab_panel <- function() {
 
 calculator_tab_panel <- function() {
   navbarMenu(
-    "calculator",
+    "Calculator",
     hint8_calculator_tab_panel(),
     metabolic_calculator_tab_panel(),
     metabolic_severity_calculator_tab_panel(),

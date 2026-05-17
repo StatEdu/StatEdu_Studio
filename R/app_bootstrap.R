@@ -55,6 +55,7 @@ app_module_files <- c(
   "analysis_paired_rm.R",
   "analysis_ttest_anova.R",
   "analysis_regression.R",
+  "data_editor_ui.R",
   "calculator_hint8.R",
   "calculator_metabolic.R",
   "calculator_metabolic_severity.R",
@@ -89,6 +90,7 @@ app_module_files <- c(
   "result_coefficients.R",
   "setup_analysis_ui.R",
   "setup_ui.R",
+  "analysis_menu_ui.R",
   "setup_reliability_ui.R",
   "setup_frequencies_ui.R",
   "setup_paired_ui.R",
@@ -111,6 +113,7 @@ app_module_files <- c(
   "result_ui.R",
   "result_export.R",
   "result_export_files.R",
+  "app_misc_ui.R",
   "app_server.R"
 )
 
