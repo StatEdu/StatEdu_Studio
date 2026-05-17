@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.7.2 - 2026-05-17
+
+### Changed
+
+- Added Reliability subfactor blocks with total-row summaries, combined item analysis output, and full-item item-deleted diagnostics.
+- Refined Reliability option handling so omega statistics are shown and validated only when the omega option is enabled.
+- Adjusted Reliability list sizing, result-table widths, and header alignment.
+
+
 ## v0.7.1 - 2026-05-17
 
 ### Changed

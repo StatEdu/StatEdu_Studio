@@ -13,17 +13,54 @@ register_reliability_handlers <- function(
   mark_settings_dirty
 ) {
   active_reliability_list <- reactiveVal(NULL)
+  reliability_factor_blocks <- reactiveVal(NULL)
+  active_reliability_factor <- reactiveVal(1L)
+
+  normalize_reliability_blocks <- function(blocks, selected = selected_names_fn()) {
+    selected <- as.character(selected %||% character(0))
+    blocks <- blocks %||% list(as.character(reliability_variables() %||% character(0)))
+    blocks <- lapply(blocks, function(block) intersect(as.character(block %||% character(0)), selected))
+    if (length(blocks) == 0) blocks <- list(character(0))
+    blocks
+  }
+
+  current_reliability_blocks <- reactive({
+    blocks <- reliability_factor_blocks()
+    if (is.null(blocks)) {
+      blocks <- list(as.character(reliability_variables() %||% character(0)))
+    }
+    normalize_reliability_blocks(blocks)
+  })
+
+  set_reliability_blocks <- function(blocks) {
+    blocks <- normalize_reliability_blocks(blocks)
+    reliability_factor_blocks(blocks)
+    index <- min(max(1L, as.integer(active_reliability_factor() %||% 1L)), length(blocks))
+    active_reliability_factor(index)
+    reliability_variables(blocks[[index]])
+    mark_settings_dirty()
+    invisible(blocks)
+  }
+
+  active_reliability_variables <- function() {
+    blocks <- current_reliability_blocks()
+    index <- min(max(1L, as.integer(active_reliability_factor() %||% 1L)), length(blocks))
+    blocks[[index]]
+  }
 
   reliability_state <- reactive({
     reliability_setup_state(
       selected_names = selected_names_fn(),
       variable_table = variable_table_fn(),
       labels = labels_fn(),
-      selected_variables = reliability_variables(),
+      selected_variables = active_reliability_variables(),
+      factor_blocks = current_reliability_blocks(),
+      active_factor = active_reliability_factor(),
       selected_available = isolate(input$reliability_available),
       selected_selected = isolate(input$reliability_selected),
       normality = input$reliability_normality,
       ordinal = input$reliability_ordinal,
+      subfactor_enabled = input$reliability_subfactor_enabled,
       reliability_if_deleted = input$reliability_if_deleted,
       item_total_correlation = input$reliability_item_total_correlation
     )
@@ -39,10 +76,10 @@ register_reliability_handlers <- function(
 
   observe({
     selected <- as.character(selected_names_fn() %||% character(0))
-    current <- reliability_variables()
-    updated <- intersect(current, selected)
-    if (!identical(updated, current)) {
-      reliability_variables(updated)
+    blocks <- current_reliability_blocks()
+    updated <- normalize_reliability_blocks(blocks, selected)
+    if (!identical(updated, blocks)) {
+      set_reliability_blocks(updated)
     }
   })
 
@@ -62,6 +99,38 @@ register_reliability_handlers <- function(
     }
   })
 
+  observeEvent(input$reliability_subfactor_enabled, {
+    if (!isTRUE(input$reliability_subfactor_enabled)) {
+      blocks <- current_reliability_blocks()
+      active_reliability_factor(1L)
+      reliability_variables(blocks[[1L]])
+      active_reliability_list("reliability_selected")
+    }
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$reliability_factor_next, {
+    blocks <- current_reliability_blocks()
+    index <- as.integer(active_reliability_factor() %||% 1L)
+    if (index >= length(blocks)) {
+      blocks <- c(blocks, list(character(0)))
+      reliability_factor_blocks(blocks)
+    }
+    active_reliability_factor(index + 1L)
+    reliability_variables(blocks[[index + 1L]])
+    active_reliability_list("reliability_selected")
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$reliability_factor_prev, {
+    blocks <- current_reliability_blocks()
+    index <- max(1L, as.integer(active_reliability_factor() %||% 1L) - 1L)
+    active_reliability_factor(index)
+    reliability_variables(blocks[[index]])
+    active_reliability_list("reliability_selected")
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
   reliability_selection_measurements <- function(names) {
     reliability_measurements_for(names, variable_table_fn())
   }
@@ -77,13 +146,15 @@ register_reliability_handlers <- function(
   observeEvent(input$reliability_move, {
     selected <- as.character(selected_names_fn() %||% character(0))
     available_selected <- intersect(as.character(input$reliability_available %||% character(0)), selected)
-    current <- intersect(as.character(reliability_variables() %||% character(0)), selected)
+    blocks <- current_reliability_blocks()
+    factor_index <- min(max(1L, as.integer(active_reliability_factor() %||% 1L)), length(blocks))
+    current <- intersect(as.character(blocks[[factor_index]] %||% character(0)), selected)
     selected_selected <- intersect(as.character(input$reliability_selected %||% character(0)), current)
 
     if (identical(active_reliability_list(), "reliability_selected") && length(selected_selected) > 0) {
-      reliability_variables(setdiff(current, selected_selected))
+      blocks[[factor_index]] <- setdiff(current, selected_selected)
+      set_reliability_blocks(blocks)
       active_reliability_list("reliability_available")
-      mark_settings_dirty()
       return()
     }
     if (length(available_selected) > 0) {
@@ -96,51 +167,82 @@ register_reliability_handlers <- function(
         )
         return()
       }
-      reliability_variables(next_variables)
+      blocks[[factor_index]] <- next_variables
+      set_reliability_blocks(blocks)
       active_reliability_list("reliability_selected")
-      mark_settings_dirty()
     }
   })
 
   observeEvent(input$reliability_move_up, {
-    updated <- move_order_item(reliability_variables(), input$reliability_selected, "up")
+    blocks <- current_reliability_blocks()
+    factor_index <- min(max(1L, as.integer(active_reliability_factor() %||% 1L)), length(blocks))
+    updated <- move_order_item(blocks[[factor_index]], input$reliability_selected, "up")
     if (isTRUE(updated$changed)) {
-      reliability_variables(updated$order)
+      blocks[[factor_index]] <- updated$order
+      set_reliability_blocks(blocks)
       active_reliability_list("reliability_selected")
-      mark_settings_dirty()
     }
   })
 
   observeEvent(input$reliability_move_down, {
-    updated <- move_order_item(reliability_variables(), input$reliability_selected, "down")
+    blocks <- current_reliability_blocks()
+    factor_index <- min(max(1L, as.integer(active_reliability_factor() %||% 1L)), length(blocks))
+    updated <- move_order_item(blocks[[factor_index]], input$reliability_selected, "down")
     if (isTRUE(updated$changed)) {
-      reliability_variables(updated$order)
+      blocks[[factor_index]] <- updated$order
+      set_reliability_blocks(blocks)
       active_reliability_list("reliability_selected")
-      mark_settings_dirty()
     }
   })
 
   reliability_result <- reactiveVal(NULL)
 
   observeEvent(input$run_reliability, {
-    if (length(reliability_variables()) < 2) {
+    valid_blocks <- if (isTRUE(input$reliability_subfactor_enabled)) {
+      Filter(function(block) length(block) >= 2, current_reliability_blocks())
+    } else {
+      list(active_reliability_variables())
+    }
+    if (length(valid_blocks) == 0) {
       showNotification("Select at least two items for reliability analysis.", type = "warning", duration = 5)
       return()
     }
     result <- tryCatch(
-      prepare_reliability_results(
-        data = dataset_fn(),
-        variables = reliability_variables(),
-        variable_info = variable_table_fn(),
-        labels = labels_fn(),
-        category_table = category_table_fn(),
-        options = list(
+      {
+        options <- list(
           normality = isTRUE(input$reliability_normality),
           ordinal = isTRUE(input$reliability_ordinal),
           reliability_if_deleted = isTRUE(input$reliability_if_deleted),
           item_total_correlation = isTRUE(input$reliability_item_total_correlation)
         )
-      ),
+        results <- lapply(seq_along(valid_blocks), function(index) {
+          result <- prepare_reliability_results(
+            data = dataset_fn(),
+            variables = valid_blocks[[index]],
+            variable_info = variable_table_fn(),
+            labels = labels_fn(),
+            category_table = category_table_fn(),
+            options = options
+          )
+          result$subfactor <- paste0("Subfactor ", index)
+          result
+        })
+        if (!isTRUE(input$reliability_subfactor_enabled)) {
+          results[[1]]
+        } else {
+          total_variables <- unique(unlist(valid_blocks, use.names = FALSE))
+          total <- prepare_reliability_results(
+            data = dataset_fn(),
+            variables = total_variables,
+            variable_info = variable_table_fn(),
+            labels = labels_fn(),
+            category_table = category_table_fn(),
+            options = options
+          )
+          total$subfactor <- "Total"
+          list(type = "reliability_factors", total = total, factors = results, options = options)
+        }
+      },
       error = function(e) {
         showNotification(conditionMessage(e), type = "warning", duration = 7)
         NULL

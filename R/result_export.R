@@ -742,6 +742,40 @@ add_excel_table_sheet_with_note <- function(workbook, sheet_name, table, note, u
 save_reliability_excel_file <- function(result, file) {
   workbook <- openxlsx::createWorkbook()
   used_sheets <- character(0)
+  if (identical(result$type %||% "", "reliability_factors")) {
+    used_sheets <- add_reliability_excel_sheet(
+      workbook,
+      "Reliability",
+      reliability_factor_overview_table(result),
+      "",
+      used_sheets
+    )
+    for (item in result$factors %||% list()) {
+      if (is.data.frame(item$normality_table) && nrow(item$normality_table) > 0) {
+        normality <- data.frame(Subfactor = item$subfactor %||% "", item$normality_table, check.names = FALSE)
+        used_sheets <- add_excel_table_sheet(workbook, paste0(item$subfactor, " Normality"), normality, used_sheets)
+      }
+    }
+    item_analysis <- reliability_factor_item_analysis_table(result)
+    if (is.data.frame(item_analysis) && nrow(item_analysis) > 0) {
+      item_note <- reliability_item_analysis_note((result$factors %||% list(result$total))[[1]])
+      if ("Total items if item deleted" %in% names(item_analysis)) {
+        item_note <- paste(
+          item_note,
+          "Total items if item deleted is calculated from all items across subfactors after removing each item."
+        )
+      }
+      used_sheets <- add_reliability_excel_sheet(
+        workbook,
+        "Item analysis",
+        item_analysis,
+        item_note,
+        used_sheets
+      )
+    }
+    openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
+    return(invisible(file))
+  }
   used_sheets <- add_reliability_excel_sheet(
     workbook,
     "Reliability",

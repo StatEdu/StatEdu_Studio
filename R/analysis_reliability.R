@@ -234,12 +234,16 @@ reliability_compute_value <- function(matrix, method, measurement) {
   )
 }
 
-reliability_method_label <- function(method) {
+reliability_include_omega <- function(options = list()) {
+  isTRUE(options$ordinal)
+}
+
+reliability_method_label <- function(method, include_omega = TRUE) {
   switch(
     method,
     kr20 = "KR-20",
-    pearson = "Cronbach's alpha / Pearson omega",
-    ordinal = "Ordinal alpha / Ordinal omega",
+    pearson = if (isTRUE(include_omega)) "Cronbach's alpha / Pearson omega" else "Cronbach's alpha",
+    ordinal = if (isTRUE(include_omega)) "Ordinal alpha / Ordinal omega" else "Ordinal alpha",
     method
   )
 }
@@ -332,8 +336,9 @@ prepare_reliability_results <- function(data, variables, variable_info = NULL, l
   } else if (identical(measurement, "continuous") && isTRUE(options$normality)) {
     normality <- reliability_normality_table(matrix, variables, variable_info, labels, category_table)
   }
-  shiny::validate(shiny::need(!identical(method, "pearson") || length(variables) >= 3, "Pearson omega requires at least three items."))
-  shiny::validate(shiny::need(!identical(method, "ordinal") || length(variables) >= 3, "Ordinal alpha / Ordinal omega requires at least three items."))
+  include_omega <- reliability_include_omega(options)
+  shiny::validate(shiny::need(!isTRUE(include_omega) || !identical(method, "pearson") || length(variables) >= 3, "Pearson omega requires at least three items."))
+  shiny::validate(shiny::need(!isTRUE(include_omega) || !identical(method, "ordinal") || length(variables) >= 3, "Ordinal omega requires at least three items."))
 
   value <- reliability_compute_value(matrix, method, measurement)
   details_enabled <- isTRUE(options$reliability_if_deleted) || isTRUE(options$item_total_correlation)
@@ -347,8 +352,10 @@ prepare_reliability_results <- function(data, variables, variable_info = NULL, l
     if (isTRUE(options$reliability_if_deleted)) {
       if (identical(method, "ordinal")) {
         keep <- c(keep, "Ordinal alpha if item deleted", "Ordinal omega if item deleted")
+        if (!isTRUE(include_omega)) keep <- setdiff(keep, "Ordinal omega if item deleted")
       } else if (identical(method, "pearson")) {
         keep <- c(keep, "Cronbach's alpha if item deleted", "Pearson omega if item deleted")
+        if (!isTRUE(include_omega)) keep <- setdiff(keep, "Pearson omega if item deleted")
       } else {
         keep <- c(keep, "Reliability if item deleted")
       }
@@ -364,9 +371,8 @@ prepare_reliability_results <- function(data, variables, variable_info = NULL, l
       Items = length(variables),
       N = nrow(complete),
       `Measurement level` = "Ordinal",
-      Method = reliability_method_label(method),
+      Method = reliability_method_label(method, include_omega),
       `Ordinal alpha` = reliability_format_decimal(value[["ordinal_alpha"]]),
-      `Ordinal omega` = reliability_format_decimal(value[["ordinal_omega"]]),
       check.names = FALSE
     )
   } else if (identical(method, "pearson")) {
@@ -374,9 +380,8 @@ prepare_reliability_results <- function(data, variables, variable_info = NULL, l
       Items = length(variables),
       N = nrow(complete),
       `Measurement level` = "Continuous",
-      Method = reliability_method_label(method),
+      Method = reliability_method_label(method, include_omega),
       `Cronbach's alpha` = reliability_format_decimal(value[["pearson_alpha"]]),
-      `Pearson omega` = reliability_format_decimal(value[["pearson_omega"]]),
       check.names = FALSE
     )
   } else {
@@ -384,10 +389,16 @@ prepare_reliability_results <- function(data, variables, variable_info = NULL, l
       Items = length(variables),
       N = nrow(complete),
       `Measurement level` = switch(measurement, binary = "Binary", ordered = "Ordinal", continuous = "Continuous"),
-      Method = reliability_method_label(method),
+      Method = reliability_method_label(method, include_omega),
       Reliability = reliability_format_decimal(value),
       check.names = FALSE
     )
+  }
+  if (identical(method, "ordinal") && isTRUE(include_omega)) {
+    overview$`Ordinal omega` <- reliability_format_decimal(value[["ordinal_omega"]])
+  }
+  if (identical(method, "pearson") && isTRUE(include_omega)) {
+    overview$`Pearson omega` <- reliability_format_decimal(value[["pearson_omega"]])
   }
 
   list(
@@ -395,7 +406,13 @@ prepare_reliability_results <- function(data, variables, variable_info = NULL, l
     measurement = measurement,
     method = method,
     reliability = value,
-    recommended = switch(method, pearson = "Pearson Omega", ordinal = "Ordinal Omega", kr20 = "KR-20", reliability_method_label(method)),
+    recommended = switch(
+      method,
+      pearson = reliability_method_label(method, include_omega),
+      ordinal = reliability_method_label(method, include_omega),
+      kr20 = "KR-20",
+      reliability_method_label(method, include_omega)
+    ),
     response_categories = response_categories,
     normality_decision = normality_decision,
     overview = overview,

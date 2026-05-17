@@ -38,13 +38,20 @@ analysis_field_label_tag <- function(label, allowed_measurements = character(0))
   )
 }
 
-analysis_transfer_listbox_input <- function(input_id, items, selected = character(0), size = 14) {
+analysis_transfer_listbox_input <- function(
+  input_id,
+  items,
+  selected = character(0),
+  size = 14,
+  important_height = FALSE,
+  height_offset = 0
+) {
   values <- vapply(items, `[[`, character(1), "value")
   labels <- vapply(items, `[[`, character(1), "label")
   selected <- intersect(as.character(selected %||% character(0)), values)
-  height_px <- max(4, as.integer(size %||% 14)) * 24
+  height_px <- max(4, as.integer(size %||% 14)) * 24 + as.integer(height_offset %||% 0)
   listbox_style <- paste0(
-    "height:", height_px, "px;",
+    "height:", height_px, "px", if (isTRUE(important_height)) " !important" else "", ";",
     "width:300px;min-width:300px;max-width:300px;",
     "overflow-y:auto;background:#fff;",
     "border:1px solid #b8c8d6;border-radius:6px;",

@@ -2557,7 +2557,7 @@ pre {
 }
 
 .frequencies-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
-.reliability-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
+.reliability-setup-grid > .analysis-transfer-panel:not(.reliability-target-panel) .analysis-transfer-listbox,
 .correlation-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
 .hierarchical-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
 .regression-available-panel .analysis-transfer-listbox {
@@ -2567,7 +2567,7 @@ pre {
 }
 
 .frequencies-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
-.reliability-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
+.reliability-setup-grid > .analysis-transfer-panel:not(.reliability-target-panel) .analysis-transfer-listbox,
 .correlation-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
 .ttest-anova-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
 .paired-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox {
@@ -2827,6 +2827,51 @@ pre {
   column-gap: 12px;
   row-gap: 8px;
   align-items: center;
+}
+
+.reliability-factor-title-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  margin-bottom: 16px;
+}
+
+.reliability-factor-title-row .analysis-field-label {
+  margin-bottom: 21px;
+}
+
+.reliability-factor-nav {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: -10px;
+}
+
+.reliability-factor-title-row .checkbox {
+  margin: -10px 0 0 0;
+  font-weight: 400;
+}
+
+.reliability-factor-nav-button {
+  min-width: 106px;
+  height: 30px;
+  padding: 4px 10px;
+}
+
+.reliability-setup-grid > .analysis-transfer-panel.reliability-target-panel.reliability-subfactor-off .analysis-transfer-listbox {
+  height: 432px !important;
+  min-height: 432px !important;
+  max-height: 432px !important;
+}
+
+.reliability-setup-grid > .analysis-transfer-panel.reliability-target-panel.reliability-subfactor-on .analysis-transfer-listbox {
+  height: 401px !important;
+  min-height: 401px !important;
+  max-height: 401px !important;
+}
+
+.reliability-target-panel.reliability-subfactor-off .analysis-transfer-listbox {
+  margin-top: -10px;
 }
 
 .paired-rm-time-labels .analysis-option-title {
