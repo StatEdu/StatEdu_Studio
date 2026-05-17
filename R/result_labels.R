@@ -201,8 +201,10 @@ category_value_label_lookup_static <- function(table) {
     for (i in seq_along(value_columns)) {
       value <- if (value_columns[[i]] %in% names(table)) as.character(table[[value_columns[[i]]]][[row_index]] %||% "") else ""
       label <- if (label_columns[[i]] %in% names(table)) as.character(table[[label_columns[[i]]]][[row_index]] %||% "") else ""
-      if (nzchar(trimws(value)) && nzchar(trimws(label))) {
-        values[trimws(value)] <- trimws(label)
+      value <- trimws(value)
+      label <- trimws(label)
+      if (nzchar(value)) {
+        values[value] <- if (nzchar(label)) label else value
       }
     }
     lookup[[name]] <- values

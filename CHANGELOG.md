@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.6.6 - 2026-05-17
+
+### Changed
+
+- Regression and hierarchical regression now display categorical coefficients as `variable:level` and include the default reference row even when no explicit reference value is set in the Data tab.
+
+
 ## v0.6.5 - 2026-05-17
 
 ### Changed
