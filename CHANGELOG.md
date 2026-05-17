@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.6.4 - 2026-05-17
+
+### Changed
+
+- Applied significance-level stars to the correlation coefficient matrix when the significance levels option is selected.
+
+
 ## v0.6.3 - 2026-05-17
 
 ### Changed

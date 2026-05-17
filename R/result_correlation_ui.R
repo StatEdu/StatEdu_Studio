@@ -8,7 +8,12 @@ correlation_normality_display_table <- function(result) {
   table[, intersect(c("Variable", "N", "Skewness", "Kurtosis", "Normality"), names(table)), drop = FALSE]
 }
 
-correlation_lower_matrix_display_table <- function(matrix, formatter = format_decimal3) {
+correlation_lower_matrix_display_table <- function(
+  matrix,
+  formatter = format_decimal3,
+  p_matrix = NULL,
+  significance_levels = FALSE
+) {
   if (!is.matrix(matrix) || nrow(matrix) == 0) {
     return(NULL)
   }
@@ -16,7 +21,17 @@ correlation_lower_matrix_display_table <- function(matrix, formatter = format_de
   for (row in seq_len(nrow(matrix))) {
     for (col in seq_len(ncol(matrix))) {
       if (row > col && is.finite(matrix[row, col])) {
-        out[row, col] <- formatter(matrix[row, col])
+        stars <- if (
+          isTRUE(significance_levels) &&
+            is.matrix(p_matrix) &&
+            row <= nrow(p_matrix) &&
+            col <= ncol(p_matrix)
+        ) {
+          correlation_sig(p_matrix[row, col])
+        } else {
+          ""
+        }
+        out[row, col] <- paste0(formatter(matrix[row, col]), stars)
       }
     }
   }
@@ -27,7 +42,13 @@ correlation_lower_matrix_display_table <- function(matrix, formatter = format_de
 
 correlation_matrix_display_table <- function(result, source = NULL) {
   source <- source %||% result
-  correlation_lower_matrix_display_table(source$correlation_matrix, format_decimal3)
+  options <- result$options %||% list()
+  correlation_lower_matrix_display_table(
+    source$correlation_matrix,
+    format_decimal3,
+    p_matrix = source$p_matrix,
+    significance_levels = isTRUE(options$significance_levels)
+  )
 }
 
 correlation_p_matrix_display_table <- function(result, source = NULL) {
