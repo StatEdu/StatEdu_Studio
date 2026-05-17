@@ -16,6 +16,7 @@ required_packages <- c(
   "callr",
   "glmnet",
   "agricolae",
+  "psych",
   "polycor"
 )
 
@@ -47,6 +48,7 @@ app_module_files <- c(
   "data_roles.R",
   "data_category_labels.R",
   "data_regression_setup.R",
+  "analysis_reliability.R",
   "analysis_frequencies.R",
   "analysis_correlation.R",
   "analysis_ttest_anova.R",
@@ -60,6 +62,7 @@ app_module_files <- c(
   "server_selection.R",
   "server_setup.R",
   "server_workflow.R",
+  "server_reliability.R",
   "server_frequencies.R",
   "server_ttest_anova.R",
   "server_correlation.R",
@@ -76,6 +79,7 @@ app_module_files <- c(
   "result_coefficients.R",
   "setup_analysis_ui.R",
   "setup_ui.R",
+  "setup_reliability_ui.R",
   "setup_frequencies_ui.R",
   "setup_ttest_anova_ui.R",
   "setup_correlation_ui.R",
@@ -85,6 +89,7 @@ app_module_files <- c(
   "result_table_ui.R",
   "result_penalized_ui.R",
   "result_panels_ui.R",
+  "result_reliability_ui.R",
   "result_frequencies_ui.R",
   "result_correlation_ui.R",
   "result_saved_ui.R",

@@ -169,7 +169,12 @@ register_frequencies_handlers <- function(
     if (is.null(result)) {
       return(NULL)
     }
-    analysis_save_buttons("save_frequencies_excel_dialog", "save_frequencies_figures_dialog", "save_frequencies_html_dialog")
+    analysis_save_buttons(
+      html_button_id = "save_frequencies_html_dialog",
+      figure_button_id = "save_frequencies_figures_dialog",
+      excel_button_id = "save_frequencies_excel_dialog",
+      add_result_button_id = "add_frequencies_result"
+    )
   })
 
   observeEvent(input$save_frequencies_excel_dialog, {
@@ -238,6 +243,8 @@ register_frequencies_handlers <- function(
       }
     )
   })
+
+  register_add_result_placeholder(input, "add_frequencies_result")
 
   invisible(TRUE)
 }

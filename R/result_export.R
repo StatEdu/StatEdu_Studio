@@ -55,6 +55,30 @@ excel_note_row_height <- function(text, widths, min_height = 48, line_height = 1
   max(min_height, wrapped_lines * line_height + padding)
 }
 
+excel_table_column_widths <- function(table) {
+  widths <- rep(12, ncol(table))
+  names(widths) <- names(table)
+  if (length(widths) == 0) {
+    return(widths)
+  }
+  widths[1] <- 14
+  if (ncol(table) >= 2) {
+    widths[2] <- 18
+  }
+  widths[names(widths) %in% c("Item")] <- 22
+  widths[names(widths) %in% c("Measurement level")] <- 18
+  widths[names(widths) %in% c("Method")] <- 34
+  widths[names(widths) %in% c("Ordinal")] <- 10
+  widths[names(widths) %in% c("Cronbach's alpha", "Pearson omega", "Ordinal alpha", "Ordinal omega", "Reliability")] <- 16
+  widths[names(widths) %in% c("Cronbach's alpha if item deleted", "Pearson omega if item deleted", "Ordinal alpha if item deleted", "Ordinal omega if item deleted", "Reliability if item deleted")] <- 24
+  widths[names(widths) %in% c("Corrected item-total correlation", "Item-total correlation")] <- 24
+  widths[names(widths) %in% c("Skewness", "Kurtosis")] <- 14
+  widths[names(widths) %in% c("Min", "Max", "Median", "M", "SD", "n", "%", "N", "Missing")] <- 12
+  widths[names(widths) %in% c("IQR(Q1~Q3)")] <- 18
+  widths[names(widths) %in% c("n(%) or M \u00b1 SD")] <- 16
+  widths
+}
+
 add_excel_table_sheet <- function(workbook, sheet_name, table, used_sheets, merge_shared_independent = FALSE, title = NULL) {
   sheet_name <- excel_sheet_name(sheet_name, used_sheets)
   styles <- analysis_excel_styles()
@@ -101,17 +125,7 @@ add_excel_table_sheet <- function(workbook, sheet_name, table, used_sheets, merg
       overview_widths <- c(28, rep(24, max(0, ncol(table) - 1)))
       openxlsx::setColWidths(workbook, sheet_name, cols = seq_along(table), widths = overview_widths[seq_along(table)])
     } else {
-      widths <- rep(12, ncol(table))
-      names(widths) <- names(table)
-      widths[1] <- 14
-      if (ncol(table) >= 2) {
-        widths[2] <- 18
-      }
-      summary_column <- "n(%) or M \u00b1 SD"
-      widths[names(widths) == summary_column] <- 16
-      widths[names(widths) %in% c("Min", "Max", "Median", "M", "SD", "n", "%")] <- 12
-      widths[names(widths) %in% c("IQR(Q1~Q3)")] <- 18
-      widths[names(widths) %in% c("Skewness", "Kurtosis")] <- 12
+      widths <- excel_table_column_widths(table)
       openxlsx::setColWidths(workbook, sheet_name, cols = seq_along(table), widths = widths)
     }
   } else {
@@ -336,6 +350,14 @@ write_hierarchical_results_html <- function(
 write_frequencies_results_html <- function(result, file) {
   writeLines(
     saved_frequencies_results_html(result),
+    file,
+    useBytes = TRUE
+  )
+}
+
+write_reliability_results_html <- function(result, file) {
+  writeLines(
+    saved_reliability_results_html(result),
     file,
     useBytes = TRUE
   )
@@ -670,6 +692,109 @@ save_frequencies_excel_file <- function(result, file) {
   invisible(file)
 }
 
+add_reliability_excel_sheet <- function(workbook, sheet_name, table, note, used_sheets) {
+  used_sheets <- add_excel_table_sheet(workbook, sheet_name, table, used_sheets)
+  actual_sheet <- utils::tail(used_sheets, 1)
+  if (is.data.frame(table) && nrow(table) > 0 && ncol(table) > 0 && length(note) > 0 && nzchar(note[[1]] %||% "")) {
+    styles <- analysis_excel_styles()
+    note_row <- 3L + nrow(table) + 2L
+    n_cols <- ncol(table)
+    widths <- excel_table_column_widths(table)
+    openxlsx::writeData(workbook, actual_sheet, note[[1]], startRow = note_row, startCol = 1, colNames = FALSE)
+    openxlsx::mergeCells(workbook, actual_sheet, cols = seq_len(n_cols), rows = note_row)
+    openxlsx::addStyle(workbook, actual_sheet, styles$note, rows = note_row, cols = 1, gridExpand = TRUE, stack = TRUE)
+    openxlsx::setRowHeights(workbook, actual_sheet, rows = note_row, heights = excel_note_row_height(note[[1]], widths, min_height = 42))
+  }
+  used_sheets
+}
+
+add_excel_table_sheet_with_note <- function(workbook, sheet_name, table, note, used_sheets, title = NULL) {
+  used_sheets <- add_excel_table_sheet(workbook, sheet_name, table, used_sheets, title = title)
+  actual_sheet <- utils::tail(used_sheets, 1)
+  if (is.data.frame(table) && nrow(table) > 0 && ncol(table) > 0 && length(note) > 0 && nzchar(note[[1]] %||% "")) {
+    styles <- analysis_excel_styles()
+    note_row <- 3L + nrow(table) + 2L
+    widths <- excel_table_column_widths(table)
+    openxlsx::writeData(workbook, actual_sheet, note[[1]], startRow = note_row, startCol = 1, colNames = FALSE)
+    openxlsx::mergeCells(workbook, actual_sheet, cols = seq_len(ncol(table)), rows = note_row)
+    openxlsx::addStyle(workbook, actual_sheet, styles$note, rows = note_row, cols = 1, gridExpand = TRUE, stack = TRUE)
+    openxlsx::setRowHeights(workbook, actual_sheet, rows = note_row, heights = excel_note_row_height(note[[1]], widths, min_height = 42))
+  }
+  used_sheets
+}
+
+save_reliability_excel_file <- function(result, file) {
+  workbook <- openxlsx::createWorkbook()
+  used_sheets <- character(0)
+  used_sheets <- add_reliability_excel_sheet(
+    workbook,
+    "Reliability",
+    reliability_overview_table(result),
+    reliability_method_note(result),
+    used_sheets
+  )
+  if (is.data.frame(result$normality_table) && nrow(result$normality_table) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Normality", result$normality_table, used_sheets)
+  }
+  item_analysis <- reliability_item_analysis_table(result)
+  if (is.data.frame(item_analysis) && nrow(item_analysis) > 0) {
+    used_sheets <- add_reliability_excel_sheet(
+      workbook,
+      "Item analysis",
+      item_analysis,
+      reliability_item_analysis_note(result),
+      used_sheets
+    )
+  }
+  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
+  invisible(file)
+}
+
+save_correlation_excel_file <- function(result, file) {
+  workbook <- openxlsx::createWorkbook()
+  used_sheets <- character(0)
+  significance_note <- if (isTRUE(result$options$significance_levels)) "* p < .05; ** p < .01; *** p < .001" else ""
+  used_sheets <- add_excel_table_sheet_with_note(
+    workbook,
+    "Correlations",
+    correlation_matrix_display_table(result),
+    significance_note,
+    used_sheets
+  )
+  if (isTRUE(result$options$p_ci)) {
+    used_sheets <- add_excel_table_sheet(
+      workbook,
+      "p-value CI",
+      correlation_p_matrix_display_table(result),
+      used_sheets
+    )
+  }
+  used_sheets <- add_excel_table_sheet(
+    workbook,
+    "Methods",
+    correlation_method_matrix_display_table(result),
+    used_sheets
+  )
+  reason_table <- correlation_reason_display_table(result)
+  if (isTRUE(result$options$reason) && is.data.frame(reason_table) && nrow(reason_table) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Reason", reason_table, used_sheets)
+  }
+  normality_table <- correlation_normality_display_table(result)
+  if (isTRUE(result$options$normality) && is.data.frame(normality_table) && nrow(normality_table) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Normality", normality_table, used_sheets)
+  }
+  if (is.list(result$latent)) {
+    used_sheets <- add_excel_table_sheet(
+      workbook,
+      "Latent correlations",
+      correlation_matrix_display_table(result, result$latent),
+      used_sheets
+    )
+  }
+  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
+  invisible(file)
+}
+
 add_ttest_anova_result_sheet <- function(workbook, sheet_name, table, note, used_sheets, title = NULL) {
   sheet_name <- excel_sheet_name(sheet_name, used_sheets)
   styles <- analysis_excel_styles()
@@ -701,7 +826,7 @@ add_ttest_anova_result_sheet <- function(workbook, sheet_name, table, note, used
       openxlsx::writeData(workbook, sheet_name, note[[1]], startRow = note_row, startCol = 1, colNames = FALSE)
       openxlsx::mergeCells(workbook, sheet_name, cols = seq_len(n_cols), rows = note_row)
       openxlsx::addStyle(workbook, sheet_name, styles$note, rows = note_row, cols = 1, gridExpand = TRUE, stack = TRUE)
-      openxlsx::setRowHeights(workbook, sheet_name, rows = note_row, heights = 40)
+      openxlsx::setRowHeights(workbook, sheet_name, rows = note_row, heights = excel_note_row_height(note[[1]], excel_table_column_widths(table), min_height = 42))
     }
 
     widths <- rep(12, n_cols)

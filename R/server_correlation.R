@@ -147,9 +147,12 @@ register_correlation_handlers <- function(
     if (is.null(result)) {
       return(NULL)
     }
-    div(
-      class = "analysis-save-action",
-      actionButton("save_correlation_html_dialog", "Save HTML", class = "btn-default")
+    analysis_save_buttons(
+      html_button_id = "save_correlation_html_dialog",
+      figure_button_id = NULL,
+      excel_button_id = "save_correlation_excel_dialog",
+      add_result_button_id = "add_correlation_result",
+      has_figures = FALSE
     )
   })
 
@@ -191,6 +194,30 @@ register_correlation_handlers <- function(
       }
     )
   })
+
+  observeEvent(input$save_correlation_excel_dialog, {
+    result <- correlation_result()
+    shiny::req(!is.null(result))
+    path <- choose_excel_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) {
+      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      return(invisible(NULL))
+    }
+    if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) {
+      path <- paste0(path, ".xlsx")
+    }
+    tryCatch(
+      {
+        save_correlation_excel_file(result, path)
+        showNotification(sprintf("Analysis results saved: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save analysis results:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  })
+
+  register_add_result_placeholder(input, "add_correlation_result")
 
   invisible(TRUE)
 }

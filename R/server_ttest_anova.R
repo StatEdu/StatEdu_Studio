@@ -336,10 +336,12 @@ register_ttest_anova_handlers <- function(
     if (is.null(result) || !is.null(result$error)) {
       return(NULL)
     }
-    div(
-      class = "analysis-save-action",
-      actionButton("save_ttest_anova_excel_dialog", "Save tables", class = "btn-primary"),
-      actionButton("save_ttest_anova_html_dialog", "Save HTML", class = "btn-default")
+    analysis_save_buttons(
+      html_button_id = "save_ttest_anova_html_dialog",
+      figure_button_id = NULL,
+      excel_button_id = "save_ttest_anova_excel_dialog",
+      add_result_button_id = "add_ttest_anova_result",
+      has_figures = FALSE
     )
   })
 
@@ -386,6 +388,8 @@ register_ttest_anova_handlers <- function(
       }
     )
   })
+
+  register_add_result_placeholder(input, "add_ttest_anova_result")
 
   invisible(TRUE)
 }

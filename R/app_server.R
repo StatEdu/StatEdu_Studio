@@ -24,6 +24,7 @@ create_app_server <- function(app_version) {
   predictor_order <- server_state$predictor_order
   hierarchical_block3_names <- server_state$hierarchical_block3_names
   hierarchical_active_block <- reactiveVal("block1")
+  reliability_variables <- server_state$reliability_variables
   frequency_variables <- server_state$frequency_variables
   predictor_order_initialized <- server_state$predictor_order_initialized
   var_label_overrides <- server_state$var_label_overrides
@@ -528,6 +529,19 @@ create_app_server <- function(app_version) {
   regression_variable_table <- regression_accessors$regression_variable_table
   predictor_candidates <- regression_accessors$predictor_candidates
   dependent_candidates <- regression_accessors$dependent_candidates
+
+  register_reliability_handlers(
+    input = input,
+    output = output,
+    session = session,
+    dataset_fn = dataset,
+    selected_names_fn = selected_names,
+    variable_table_fn = regression_variable_table,
+    labels_fn = var_label_overrides,
+    category_table_fn = category_label_values,
+    reliability_variables = reliability_variables,
+    mark_settings_dirty = mark_settings_dirty
+  )
 
   register_frequencies_handlers(
     input = input,

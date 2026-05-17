@@ -1,3 +1,29 @@
+reliability_tab_panel <- function() {
+  tabPanel(
+    "Reliability",
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1("Reliability"),
+        div("Move same-level items into the analysis list and select item diagnostics.", class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel reliability-workspace-panel",
+        style = "min-width:980px;overflow-x:auto;",
+        h3("Reliability"),
+        uiOutput("reliability_setup"),
+        div(
+          class = "analysis-action-row reliability-action-row",
+          actionButton("run_reliability", "Run analysis", class = "btn btn-primary"),
+          uiOutput("reliability_save_control")
+        ),
+        uiOutput("reliability_results")
+      )
+    )
+  )
+}
+
 frequencies_tab_panel <- function() {
   tabPanel(
     "Frequencies",

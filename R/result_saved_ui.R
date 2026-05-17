@@ -217,6 +217,15 @@ saved_frequencies_results_html <- function(result, css_path = file.path("www", "
   )
 }
 
+saved_reliability_results_html <- function(result, css_path = file.path("www", "style.css")) {
+  saved_results_document(
+    "easyflow_statistics Reliability Results",
+    tags$div(class = "regression-results", reliability_results_ui(result)),
+    max_width = 1500,
+    css_path = css_path
+  )
+}
+
 saved_ttest_anova_results_html <- function(result, css_path = file.path("www", "style.css")) {
   saved_results_document(
     "easyflow_statistics t-test / ANOVA Results",

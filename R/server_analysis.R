@@ -186,7 +186,12 @@ register_hierarchical_save_handlers <- function(
     if (is.null(input$run_hierarchical) || input$run_hierarchical == 0) {
       return(NULL)
     }
-    analysis_save_buttons("save_hierarchical_excel_dialog", "save_hierarchical_figures_dialog", "save_hierarchical_html_dialog")
+    analysis_save_buttons(
+      html_button_id = "save_hierarchical_html_dialog",
+      figure_button_id = "save_hierarchical_figures_dialog",
+      excel_button_id = "save_hierarchical_excel_dialog",
+      add_result_button_id = "add_hierarchical_result"
+    )
   })
 
   observeEvent(input$save_hierarchical_excel_dialog, {
@@ -272,6 +277,8 @@ register_hierarchical_save_handlers <- function(
     )
   })
 
+  register_add_result_placeholder(input, "add_hierarchical_result")
+
   invisible(TRUE)
 }
 
@@ -289,7 +296,12 @@ register_analysis_save_handlers <- function(
     }
     div(
       class = "regression-save-action",
-      analysis_save_buttons("save_analysis_excel_dialog", "save_analysis_figures_dialog", "save_analysis_html_dialog")
+      analysis_save_buttons(
+        html_button_id = "save_analysis_html_dialog",
+        figure_button_id = "save_analysis_figures_dialog",
+        excel_button_id = "save_analysis_excel_dialog",
+        add_result_button_id = "add_regression_result"
+      )
     )
   })
 
@@ -375,6 +387,8 @@ register_analysis_save_handlers <- function(
       }
     )
   })
+
+  register_add_result_placeholder(input, "add_regression_result")
 
   invisible(TRUE)
 }

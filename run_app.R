@@ -13,6 +13,7 @@ required_packages <- c(
   "callr",
   "glmnet",
   "agricolae",
+  "psych",
   "polycor"
 )
 

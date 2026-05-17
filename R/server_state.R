@@ -41,6 +41,7 @@ create_server_state <- function() {
     control_names = reactiveVal(character(0)),
     predictor_order = reactiveVal(character(0)),
     hierarchical_block3_names = reactiveVal(character(0)),
+    reliability_variables = reactiveVal(character(0)),
     frequency_variables = reactiveVal(character(0)),
     predictor_order_initialized = reactiveVal(FALSE),
     var_label_overrides = reactiveVal(character(0)),

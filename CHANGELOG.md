@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.6.0 - 2026-05-17
+
+### Changed
+
+- Added Reliability analysis with same-level item selection, automatic KR-20/Cronbach's alpha/omega routing, ordinal alpha/omega support, item diagnostics, and normality-aware method notes.
+- Standardized analysis save controls across result tabs with edition-aware HTML/figure/Excel/add-result buttons.
+- Improved HTML and Excel result exports so table notes are saved with matching table widths and readable Excel column sizing.
+- Added `psych` as the reliability-analysis engine for alpha, omega, and polychoric-based ordinal coefficients.
+
+
 ## v0.5.7 - 2026-05-17
 
 ### Changed
