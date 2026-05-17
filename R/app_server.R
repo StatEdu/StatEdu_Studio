@@ -100,7 +100,8 @@ create_app_server <- function(app_version) {
   continuous_variable_names <- create_continuous_variable_names_fn(
     selection_applied_fn = selection_applied,
     step3_variable_info_fn = step3_variable_info,
-    base_variable_info_fn = base_variable_info
+    base_variable_info_fn = base_variable_info,
+    measurement_overrides_fn = measurement_overrides
   )
 
   override_handlers <- override_update_handlers(

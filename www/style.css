@@ -2640,7 +2640,8 @@ pre {
 .regression-transfer-controls {
   align-items: center;
   justify-content: center;
-  transform: translateX(6px);
+  padding-top: 0;
+  transform: none;
 }
 
 .ttest-anova-transfer-controls,
@@ -2649,13 +2650,20 @@ pre {
   flex-direction: column;
 }
 
-.ttest-anova-transfer-controls,
-.regression-transfer-controls {
-  gap: 186px;
+.ttest-anova-transfer-controls {
+  display: grid;
+  grid-template-rows: 198px 352px;
+  gap: 18px;
+  align-items: center;
+  justify-items: center;
 }
 
-.hierarchical-transfer-controls {
-  gap: 64px;
+.regression-transfer-controls {
+  display: grid;
+  grid-template-rows: 198px 346px;
+  gap: 18px;
+  align-items: center;
+  justify-items: center;
 }
 
 .reliability-action-row,

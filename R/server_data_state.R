@@ -56,7 +56,8 @@ create_current_data_step_fn <- function(
 create_continuous_variable_names_fn <- function(
   selection_applied_fn,
   step3_variable_info_fn,
-  base_variable_info_fn
+  base_variable_info_fn,
+  measurement_overrides_fn = function() character(0)
 ) {
   function() {
     info <- if (isTRUE(selection_applied_fn()) && !is.null(step3_variable_info_fn())) {
@@ -64,6 +65,7 @@ create_continuous_variable_names_fn <- function(
     } else {
       base_variable_info_fn()
     }
+    info <- apply_measurement_overrides(info, measurement_overrides_fn())
     if (is.null(info) || nrow(info) == 0) {
       return(character(0))
     }

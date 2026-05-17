@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.6.2 - 2026-05-17
+
+### Changed
+
+- Fixed regression and hierarchical regression dependent-variable filtering so Step 3 measurement-level overrides are honored when selecting continuous dependent variables.
+- Re-aligned analysis variable-transfer buttons after the shared setup-panel geometry changes.
+
+
 ## v0.6.1 - 2026-05-17
 
 ### Changed
