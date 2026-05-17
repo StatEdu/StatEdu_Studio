@@ -11,11 +11,12 @@ register_paired_handlers <- function(
   labels_fn,
   mark_settings_dirty
 ) {
-  first_variables <- reactiveVal(character(0))
-  second_variables <- reactiveVal(character(0))
+  paired_pairs <- reactiveVal(data.frame(first = character(0), second = character(0), stringsAsFactors = FALSE))
   active_list <- reactiveVal(NULL)
   assumption_check <- reactiveVal(FALSE)
   bowker <- reactiveVal(FALSE)
+  effect_size <- reactiveVal(FALSE)
+  cohen_d <- reactiveVal(FALSE)
   paired_result <- reactiveVal(NULL)
 
   current_selected <- reactive(as.character(selected_names_fn() %||% character(0)))
@@ -28,15 +29,15 @@ register_paired_handlers <- function(
     }
     paired_setup_panel(paired_setup_state(
       selected_names = selected,
-      first_variables = first_variables(),
-      second_variables = second_variables(),
+      paired_pairs = paired_pairs(),
       variable_table = current_variable_table(),
       labels = labels_fn(),
       selected_available = isolate(input$paired_available),
-      selected_first = isolate(input$paired_first),
-      selected_second = isolate(input$paired_second),
+      selected_pairs = isolate(input$paired_pairs),
       assumption_check = isolate(assumption_check()),
-      bowker = isolate(bowker())
+      bowker = isolate(bowker()),
+      effect_size = isolate(effect_size()),
+      cohen_d = isolate(cohen_d())
     ))
   })
 
@@ -48,86 +49,98 @@ register_paired_handlers <- function(
     bowker(isTRUE(input$paired_bowker))
   }, ignoreInit = TRUE)
 
+  observeEvent(input$paired_effect_size, {
+    effect_size(isTRUE(input$paired_effect_size))
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$paired_cohen_d, {
+    cohen_d(isTRUE(input$paired_cohen_d))
+  }, ignoreInit = TRUE)
+
   observe({
     selected <- current_selected()
-    first_variables(intersect(first_variables(), selected))
-    second_variables(intersect(second_variables(), selected))
+    pairs <- paired_pairs()
+    pairs <- pairs[pairs$first %in% selected & pairs$second %in% selected, , drop = FALSE]
+    paired_pairs(pairs)
   })
 
   observeEvent(input$paired_available_active, active_list("paired_available"), ignoreInit = TRUE)
-  observeEvent(input$paired_first_active, active_list("paired_first"), ignoreInit = TRUE)
-  observeEvent(input$paired_second_active, active_list("paired_second"), ignoreInit = TRUE)
+  observeEvent(input$paired_pairs_active, active_list("paired_pairs"), ignoreInit = TRUE)
 
   observe({
-    updateActionButton(session, "paired_first_move", label = if (identical(active_list(), "paired_first") && length(input$paired_first %||% character(0)) > 0) "<" else ">")
-  })
-  observe({
-    updateActionButton(session, "paired_second_move", label = if (identical(active_list(), "paired_second") && length(input$paired_second %||% character(0)) > 0) "<" else ">")
+    updateActionButton(session, "paired_pair_move", label = if (identical(active_list(), "paired_pairs") && length(input$paired_pairs %||% character(0)) > 0) "<" else ">")
   })
 
-  move_to_list <- function(target) {
-    selected <- current_selected()
-    source_values <- intersect(as.character(input$paired_available %||% character(0)), selected)
-    if (length(source_values) == 0) return()
-    if (identical(target, "first")) {
-      first_variables(c(first_variables(), setdiff(source_values, first_variables())))
-      active_list("paired_first")
+  observeEvent(input$paired_pair_move, {
+    if (identical(active_list(), "paired_pairs")) {
+      selected_pairs <- intersect(as.character(input$paired_pairs %||% character(0)), paired_pair_values(paired_pairs()$first, paired_pairs()$second))
+      if (length(selected_pairs) == 0) return()
+      remove_pairs <- paired_pair_from_values(selected_pairs)
+      pairs <- paired_pairs()
+      remove_values <- paired_pair_values(remove_pairs$first, remove_pairs$second)
+      keep <- !paired_pair_values(pairs$first, pairs$second) %in% remove_values
+      paired_pairs(pairs[keep, , drop = FALSE])
+      active_list("paired_available")
+      mark_settings_dirty()
     } else {
-      second_variables(c(second_variables(), setdiff(source_values, second_variables())))
-      active_list("paired_second")
+      selected <- current_selected()
+      source_values <- intersect(as.character(input$paired_available %||% character(0)), selected)
+      if (length(source_values) != 2L) {
+        showNotification("Select exactly two variables to create one paired row.", type = "warning")
+        return()
+      }
+      measurements <- paired_measurement_lookup(current_variable_table())
+      levels <- vapply(source_values, function(name) named_value(measurements, name, "continuous"), character(1))
+      if (!identical(levels[[1]], levels[[2]])) {
+        showNotification("Paired variables must have the same measurement level.", type = "warning")
+        return()
+      }
+      pairs <- paired_pairs()
+      existing_values <- paired_pair_values(pairs$first, pairs$second)
+      next_pair <- data.frame(first = source_values[[1]], second = source_values[[2]], stringsAsFactors = FALSE)
+      next_value <- paired_pair_values(next_pair$first, next_pair$second)
+      if (!next_value %in% existing_values) {
+        paired_pairs(rbind(pairs, next_pair))
+      }
+      active_list("paired_pairs")
+      mark_settings_dirty()
     }
-    mark_settings_dirty()
+  })
+
+  reorder_pairs <- function(direction) {
+    pairs <- paired_pairs()
+    values <- paired_pair_values(pairs$first, pairs$second)
+    updated <- move_order_item(values, input$paired_pairs, direction)
+    if (isTRUE(updated$changed)) {
+      next_pairs <- paired_pair_from_values(updated$order)
+      paired_pairs(next_pairs)
+      mark_settings_dirty()
+    }
   }
 
-  observeEvent(input$paired_first_move, {
-    if (identical(active_list(), "paired_first")) {
-      chosen <- intersect(as.character(input$paired_first %||% character(0)), first_variables())
-      first_variables(setdiff(first_variables(), chosen))
-      active_list("paired_available")
-      mark_settings_dirty()
-    } else {
-      move_to_list("first")
-    }
+  observeEvent(input$paired_pair_up, {
+    reorder_pairs("up")
   })
-
-  observeEvent(input$paired_second_move, {
-    if (identical(active_list(), "paired_second")) {
-      chosen <- intersect(as.character(input$paired_second %||% character(0)), second_variables())
-      second_variables(setdiff(second_variables(), chosen))
-      active_list("paired_available")
-      mark_settings_dirty()
-    } else {
-      move_to_list("second")
-    }
-  })
-
-  observeEvent(input$paired_first_up, {
-    updated <- move_order_item(first_variables(), input$paired_first, "up")
-    if (isTRUE(updated$changed)) first_variables(updated$order)
-  })
-  observeEvent(input$paired_first_down, {
-    updated <- move_order_item(first_variables(), input$paired_first, "down")
-    if (isTRUE(updated$changed)) first_variables(updated$order)
-  })
-  observeEvent(input$paired_second_up, {
-    updated <- move_order_item(second_variables(), input$paired_second, "up")
-    if (isTRUE(updated$changed)) second_variables(updated$order)
-  })
-  observeEvent(input$paired_second_down, {
-    updated <- move_order_item(second_variables(), input$paired_second, "down")
-    if (isTRUE(updated$changed)) second_variables(updated$order)
+  observeEvent(input$paired_pair_down, {
+    reorder_pairs("down")
   })
 
   observeEvent(input$run_paired, {
+    pairs <- paired_pairs()
     result <- tryCatch(
       prepare_paired_results(
         data = dataset_fn(),
-        first = first_variables(),
-        second = second_variables(),
+        first = pairs$first,
+        second = pairs$second,
         variable_info = current_variable_table(),
         labels = labels_fn(),
         category_table = category_table_fn(),
-        options = list(assumption_check = isTRUE(assumption_check()), bowker = isTRUE(bowker()))
+        options = list(
+          assumption_check = isTRUE(assumption_check()),
+          bowker = isTRUE(bowker()),
+          effect_size = isTRUE(effect_size()),
+          cohen_d = isTRUE(cohen_d())
+        )
       ),
       error = function(e) list(error = conditionMessage(e))
     )

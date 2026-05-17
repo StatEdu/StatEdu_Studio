@@ -102,6 +102,7 @@ enabled_analysis_tabs <- function() {
     reliability = TRUE,
     frequencies = TRUE,
     paired = TRUE,
+    paired_rm = TRUE,
     ttest_anova = TRUE,
     correlation = TRUE,
     regression = TRUE,
@@ -125,6 +126,8 @@ app_ui <- function(version) {
     if (isTRUE(analysis_tabs[["frequencies"]])) frequencies_tab_panel(),
 
     if (isTRUE(analysis_tabs[["paired"]])) paired_tab_panel(),
+
+    if (isTRUE(analysis_tabs[["paired_rm"]])) paired_rm_tab_panel(),
 
     if (isTRUE(analysis_tabs[["ttest_anova"]])) ttest_anova_tab_panel(),
 

@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.7.0 - 2026-05-17
+
+### Added
+
+- Added a Paired test (3+) tab for three or more repeated measurements, including RM ANOVA, Friedman, and Cochran's Q routing with assumption checks and post-hoc comparisons.
+- Added repeated-measures effect sizes: partial eta squared, Kendall's W, Hedges' g, and Wilcoxon r.
+
+### Changed
+
+- Refined paired test output tables, post-hoc notation, effect-size placement, and HTML/Excel export layouts.
+- Adjusted paired test selection panels to use grouped repeated-measures rows and more compact target list heights.
+
+
 ## v0.6.8 - 2026-05-17
 
 ### Added

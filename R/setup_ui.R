@@ -59,7 +59,7 @@ paired_tab_panel <- function() {
       div(
         class = "app-heading",
         h1("Paired test"),
-        div("Move repeated-measures variables into Time 1 and Time 2 lists in matching order.", class = "app-subtitle")
+        div("Select two repeated-measures variables at a time to create paired rows.", class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel paired-workspace-panel",
@@ -72,6 +72,33 @@ paired_tab_panel <- function() {
           uiOutput("paired_save_control")
         ),
         uiOutput("paired_results")
+      )
+    )
+  )
+}
+
+paired_rm_tab_panel <- function() {
+  tabPanel(
+    "Paired test (3+)",
+    value = "paired_rm",
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1("Paired test (3+)"),
+        div("Move three or more repeated-measures variables into the analysis list.", class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel paired-workspace-panel",
+        style = "min-width:980px;overflow-x:auto;",
+        h3("Paired test (3+)"),
+        uiOutput("paired_rm_setup"),
+        div(
+          class = "analysis-action-row paired-action-row",
+          actionButton("run_paired_rm", "Run analysis", class = "btn btn-primary"),
+          uiOutput("paired_rm_save_control")
+        ),
+        uiOutput("paired_rm_results")
       )
     )
   )

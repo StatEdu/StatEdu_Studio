@@ -152,12 +152,83 @@ paired_category_table <- function(x, y) {
   table(x, y)
 }
 
+paired_effect_value <- function(value) {
+  if (!is.finite(value)) {
+    return(if (identical(value, Inf)) "Inf" else "")
+  }
+  format_decimal3(value)
+}
+
+paired_hedges_correction <- function(n) {
+  if (!is.finite(n) || n <= 1) return(NA_real_)
+  df <- n - 1
+  if (df <= 1) return(1)
+  1 - (3 / (4 * df - 1))
+}
+
+paired_t_effects <- function(diff) {
+  diff <- diff[is.finite(diff)]
+  n <- length(diff)
+  sd_diff <- stats::sd(diff, na.rm = TRUE)
+  d <- if (n > 1 && is.finite(sd_diff) && sd_diff > 0) mean(diff, na.rm = TRUE) / sd_diff else NA_real_
+  g <- d * paired_hedges_correction(n)
+  list(d = d, g = g)
+}
+
+paired_wilcoxon_r <- function(p, diff) {
+  diff <- diff[is.finite(diff)]
+  n <- length(diff)
+  if (!is.finite(p) || p <= 0 || n <= 0) return(NA_real_)
+  z <- stats::qnorm(p / 2, lower.tail = FALSE)
+  direction <- sign(stats::median(diff, na.rm = TRUE))
+  if (!is.finite(direction) || direction == 0) direction <- sign(mean(diff, na.rm = TRUE))
+  if (!is.finite(direction) || direction == 0) direction <- 1
+  direction * z / sqrt(n)
+}
+
+paired_odds_ratio <- function(table) {
+  if (nrow(table) != 2 || ncol(table) != 2) return(NA_real_)
+  b <- as.numeric(table[1, 2])
+  c <- as.numeric(table[2, 1])
+  if (c == 0 && b == 0) return(NA_real_)
+  if (c == 0) return(Inf)
+  b / c
+}
+
+paired_count_rows <- function(pair_label, method, table, statistic_label, statistic, p, effect_label = "", effect = "", level_variable = NULL, category_table = NULL) {
+  levels <- rownames(table)
+  display_levels <- if (length(level_variable) > 0 && nzchar(level_variable[[1]] %||% "")) {
+    frequency_value_display_labels(level_variable[[1]], levels, category_table)
+  } else {
+    levels
+  }
+  rows <- lapply(seq_along(levels), function(index) {
+    row <- as.list(rep("", 8L + length(levels)))
+    names(row) <- c("Variable", "Pre", paste0("Post_", display_levels), "StatisticLabel", "Statistic", "p", "EffectLabel", "Effect", "Method")
+    row[["Variable"]] <- if (index == 1L) pair_label else ""
+    row[["Pre"]] <- display_levels[[index]]
+    for (post_index in seq_along(levels)) {
+      row[[paste0("Post_", display_levels[[post_index]])]] <- as.integer(table[levels[[index]], levels[[post_index]]])
+    }
+    row[["StatisticLabel"]] <- if (index == 1L) statistic_label else ""
+    row[["Statistic"]] <- if (index == 1L) statistic else ""
+    row[["p"]] <- if (index == 1L) p else ""
+    row[["EffectLabel"]] <- if (index == 1L) effect_label else ""
+    row[["Effect"]] <- if (index == 1L) effect else ""
+    row[["Method"]] <- if (index == 1L) method else ""
+    as.data.frame(row, stringsAsFactors = FALSE, check.names = FALSE)
+  })
+  out <- do.call(rbind, rows)
+  attr(out, "post_levels") <- display_levels
+  out
+}
+
 paired_analyze_pair <- function(data, first, second, measurement, variable_info, labels, category_table, options) {
   x_raw <- data[[first]]
   y_raw <- data[[second]]
   first_label <- paired_display_name(first, variable_info, labels, category_table)
   second_label <- paired_display_name(second, variable_info, labels, category_table)
-  pair_label <- sprintf("%s - %s", second_label, first_label)
+  pair_label <- sprintf("%s - %s", first_label, second_label)
 
   if (identical(measurement, "continuous")) {
     pair <- paired_complete_data(paired_numeric(x_raw), paired_numeric(y_raw))
@@ -170,12 +241,21 @@ paired_analyze_pair <- function(data, first, second, measurement, variable_info,
       statistic <- unname(as.numeric(test$statistic))
       df <- unname(as.numeric(test$parameter))
       p <- as.numeric(test$p.value)
+      effects <- paired_t_effects(diff)
+      effect_label <- if (isTRUE(options$cohen_d)) "Hedges' g; Cohen's d" else "Hedges' g"
+      effect <- if (isTRUE(options$cohen_d)) {
+        paste(paired_effect_value(effects$g), paired_effect_value(effects$d), sep = "; ")
+      } else {
+        paired_effect_value(effects$g)
+      }
     } else {
       test <- suppressWarnings(stats::wilcox.test(pair$y, pair$x, paired = TRUE, exact = FALSE))
       method <- "Wilcoxon signed-rank test"
       statistic <- unname(as.numeric(test$statistic))
       df <- NA_real_
       p <- as.numeric(test$p.value)
+      effect_label <- "r"
+      effect <- paired_effect_value(paired_wilcoxon_r(p, diff))
     }
     return(list(
       result = data.frame(
@@ -189,15 +269,49 @@ paired_analyze_pair <- function(data, first, second, measurement, variable_info,
         stringsAsFactors = FALSE,
         check.names = FALSE
       ),
+      scale = data.frame(
+        Variable = pair_label,
+        Pre_M = format_decimal3(mean(pair$x, na.rm = TRUE)),
+        Pre_SD = format_decimal3(stats::sd(pair$x, na.rm = TRUE)),
+        Post_M = format_decimal3(mean(pair$y, na.rm = TRUE)),
+        Post_SD = format_decimal3(stats::sd(pair$y, na.rm = TRUE)),
+        Method = method,
+        StatisticLabel = if (identical(method, "Paired t-test")) "t" else "W",
+        Statistic = format_decimal3(statistic),
+        p = format_p(p),
+        EffectLabel = effect_label,
+        Effect = effect,
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      ),
+      count = NULL,
       check = paired_check_table(pair_label, check)
     ))
   }
 
   if (identical(measurement, "ordered")) {
     pair <- paired_complete_data(paired_numeric(x_raw), paired_numeric(y_raw))
+    diff <- pair$y - pair$x
     test <- suppressWarnings(stats::wilcox.test(pair$y, pair$x, paired = TRUE, exact = FALSE))
+    p <- as.numeric(test$p.value)
     return(list(
-      result = data.frame(Pair = pair_label, Level = "Ordinal", Method = "Wilcoxon signed-rank test", N = pair$n, Statistic = format_decimal3(unname(as.numeric(test$statistic))), df = "", p = format_p(test$p.value), stringsAsFactors = FALSE, check.names = FALSE),
+      result = data.frame(Pair = pair_label, Level = "Ordinal", Method = "Wilcoxon signed-rank test", N = pair$n, Statistic = format_decimal3(unname(as.numeric(test$statistic))), df = "", p = format_p(p), stringsAsFactors = FALSE, check.names = FALSE),
+      scale = data.frame(
+        Variable = pair_label,
+        Pre_M = format_decimal3(mean(pair$x, na.rm = TRUE)),
+        Pre_SD = format_decimal3(stats::sd(pair$x, na.rm = TRUE)),
+        Post_M = format_decimal3(mean(pair$y, na.rm = TRUE)),
+        Post_SD = format_decimal3(stats::sd(pair$y, na.rm = TRUE)),
+        Method = "Wilcoxon signed-rank test",
+        StatisticLabel = "W",
+        Statistic = format_decimal3(unname(as.numeric(test$statistic))),
+        p = format_p(p),
+        EffectLabel = "r",
+        Effect = paired_effect_value(paired_wilcoxon_r(p, diff)),
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      ),
+      count = NULL,
       check = NULL
     ))
   }
@@ -210,8 +324,14 @@ paired_analyze_pair <- function(data, first, second, measurement, variable_info,
     use_asymptotic <- (b + c) >= 25 && b > 5 && c > 5
     res <- if (use_asymptotic) paired_mcnemar_asymptotic(tab) else paired_mcnemar_exact(tab)
     method <- if (use_asymptotic) "McNemar test" else "Exact McNemar test"
+    statistic_label <- if (use_asymptotic) stat_chisq_label(FALSE) else ""
+    effect_label <- "OR"
+    effect <- paired_effect_value(paired_odds_ratio(tab))
     return(list(
       result = data.frame(Pair = pair_label, Level = "Binary", Method = method, N = pair$n, Statistic = format_decimal3(res$statistic), df = if (is.finite(res$df)) format_decimal3(res$df) else "", p = format_p(res$p), b = b, c = c, stringsAsFactors = FALSE, check.names = FALSE),
+      scale = NULL,
+      count = paired_count_rows(pair_label, method, tab, statistic_label, format_decimal3(res$statistic), format_p(res$p), effect_label, effect, first, category_table),
+      count_method = method,
       check = NULL
     ))
   }
@@ -220,6 +340,9 @@ paired_analyze_pair <- function(data, first, second, measurement, variable_info,
   method <- if (isTRUE(options$bowker)) "Bowker symmetry test" else "Stuart-Maxwell test"
   list(
     result = data.frame(Pair = pair_label, Level = "Categorical", Method = method, N = pair$n, Statistic = format_decimal3(res$statistic), df = if (is.finite(res$df)) format_decimal3(res$df) else "", p = format_p(res$p), stringsAsFactors = FALSE, check.names = FALSE),
+    scale = NULL,
+    count = paired_count_rows(pair_label, method, tab, stat_chisq_label(FALSE), format_decimal3(res$statistic), format_p(res$p), "", "", first, category_table),
+    count_method = method,
     check = NULL
   )
 }
@@ -246,11 +369,32 @@ prepare_paired_results <- function(data, first, second, variable_info = NULL, la
     table[, all_columns, drop = FALSE]
   })
   result_table <- do.call(rbind, result_tables)
+  scale_tables <- Filter(Negate(is.null), lapply(items, `[[`, "scale"))
+  scale_table <- if (length(scale_tables) > 0) do.call(rbind, scale_tables) else NULL
+  count_tables <- Filter(Negate(is.null), lapply(items, `[[`, "count"))
+  count_table <- if (length(count_tables) > 0) {
+    all_columns <- unique(unlist(lapply(count_tables, names), use.names = FALSE))
+    count_tables <- lapply(count_tables, function(table) {
+      missing <- setdiff(all_columns, names(table))
+      for (column in missing) table[[column]] <- ""
+      table[, all_columns, drop = FALSE]
+    })
+    out <- do.call(rbind, count_tables)
+    attr(out, "post_levels") <- unique(unlist(lapply(count_tables, function(table) attr(table, "post_levels", exact = TRUE)), use.names = FALSE))
+    out
+  } else {
+    NULL
+  }
+  count_methods <- unique(as.character(unlist(lapply(items, function(item) item$count_method %||% character(0)), use.names = FALSE)))
+  count_methods <- count_methods[nzchar(count_methods)]
   checks <- Filter(Negate(is.null), lapply(items, `[[`, "check"))
   check_table <- if (length(checks) > 0) do.call(rbind, checks) else NULL
   list(
     type = "paired",
     table = result_table,
+    scale_table = scale_table,
+    count_table = count_table,
+    count_methods = count_methods,
     checks = check_table,
     options = options
   )

@@ -379,6 +379,14 @@ write_paired_results_html <- function(result, file) {
   )
 }
 
+write_paired_rm_results_html <- function(result, file) {
+  writeLines(
+    saved_paired_rm_results_html(result),
+    file,
+    useBytes = TRUE
+  )
+}
+
 write_correlation_results_html <- function(result, file) {
   writeLines(
     saved_correlation_results_html(result),
@@ -850,6 +858,180 @@ add_ttest_anova_result_sheet <- function(workbook, sheet_name, table, note, used
   c(used_sheets, sheet_name)
 }
 
+add_paired_grouped_excel_sheet <- function(workbook, sheet_name, table, used_sheets, title = NULL, type = c("scale", "count"), note = "", show_effect_size = FALSE) {
+  type <- match.arg(type)
+  sheet_name <- excel_sheet_name(sheet_name, used_sheets)
+  styles <- analysis_excel_styles()
+  title <- title %||% sheet_name
+  openxlsx::addWorksheet(workbook, sheet_name)
+  if (!is.data.frame(table) || nrow(table) == 0) {
+    openxlsx::writeData(workbook, sheet_name, "No data")
+    return(c(used_sheets, sheet_name))
+  }
+
+  show_effect_size <- isTRUE(show_effect_size) && paired_has_effect(table)
+  effect_labels <- if (show_effect_size) paired_effect_labels(table) else character(0)
+  if (identical(type, "scale")) {
+    export_columns <- c("Variable", "Pre_M", "Pre_SD", "Post_M", "Post_SD", "Statistic", "p")
+    export <- table[, export_columns, drop = FALSE]
+    for (label in effect_labels) {
+      export[[label]] <- vapply(seq_len(nrow(table)), function(index) paired_effect_value_for_label(table, index, label), character(1))
+    }
+    statistic_label <- paired_scale_statistic_label(table)
+    header_top <- c("Variable", "Pre", "", "Post", "", statistic_label, "p", effect_labels)
+    header_bottom <- c("", "M", "SD", "M", "SD", "", "", rep("", length(effect_labels)))
+    merge_cols <- c(list(1, 2:3, 4:5, 6, 7), as.list(seq_along(effect_labels) + 7L))
+    widths <- c(28, 12, 12, 12, 12, 12, 12, rep(14, length(effect_labels)))
+  } else {
+    post_columns <- grep("^Post_", names(table), value = TRUE)
+    post_labels <- sub("^Post_", "", post_columns)
+    include_statistic <- paired_has_statistic(table)
+    export_columns <- c("Variable", "Pre", post_columns)
+    if (include_statistic) export_columns <- c(export_columns, "Statistic")
+    export_columns <- c(export_columns, "p")
+    export <- table[, export_columns, drop = FALSE]
+    for (label in effect_labels) {
+      export[[label]] <- vapply(seq_len(nrow(table)), function(index) paired_effect_value_for_label(table, index, label), character(1))
+    }
+    statistic_label <- paired_count_statistic_label(table)
+    header_top <- c("Variable", "Pre", "Post", rep("", max(0, length(post_columns) - 1L)), if (include_statistic) statistic_label, "p", effect_labels)
+    header_bottom <- c("", "", post_labels, if (include_statistic) "", "", rep("", length(effect_labels)))
+    merge_cols <- c(
+      list(1, 2),
+      if (length(post_columns) > 1L) list(3:(2 + length(post_columns))) else list(),
+      if (include_statistic) list(match("Statistic", export_columns)) else list(),
+      list(match("p", export_columns)),
+      as.list(match(effect_labels, names(export)))
+    )
+    widths <- c(28, 16, rep(12, length(post_columns)), if (include_statistic) 14, 12, rep(14, length(effect_labels)))
+  }
+  method_markers <- vapply(seq_len(nrow(table)), function(index) paired_method_marker_for_row(table, index), character(1))
+  if (any(nzchar(method_markers)) && "p" %in% names(export)) {
+    export$p <- ifelse(nzchar(as.character(export$p)), paste0(export$p, method_markers), export$p)
+  }
+
+  title_row <- 1L
+  header_row <- 3L
+  subheader_row <- 4L
+  body_start <- 5L
+  body_rows <- body_start:(body_start + nrow(export) - 1L)
+  n_cols <- ncol(export)
+
+  openxlsx::writeData(workbook, sheet_name, title, startRow = title_row, startCol = 1, colNames = FALSE)
+  openxlsx::mergeCells(workbook, sheet_name, cols = seq_len(n_cols), rows = title_row)
+  openxlsx::addStyle(workbook, sheet_name, styles$title, rows = title_row, cols = 1, gridExpand = TRUE, stack = TRUE)
+
+  openxlsx::writeData(workbook, sheet_name, t(header_top), startRow = header_row, startCol = 1, colNames = FALSE)
+  openxlsx::writeData(workbook, sheet_name, t(header_bottom), startRow = subheader_row, startCol = 1, colNames = FALSE)
+  openxlsx::writeData(workbook, sheet_name, export, startRow = body_start, startCol = 1, colNames = FALSE, withFilter = FALSE)
+  for (cols in merge_cols) {
+    if (length(cols) == 1L && !nzchar(header_bottom[[cols]])) {
+      openxlsx::mergeCells(workbook, sheet_name, cols = cols, rows = header_row:subheader_row)
+    } else if (length(cols) > 1L) {
+      openxlsx::mergeCells(workbook, sheet_name, cols = cols, rows = header_row)
+    }
+  }
+  openxlsx::addStyle(workbook, sheet_name, styles$top, rows = header_row, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+  openxlsx::addStyle(workbook, sheet_name, styles$header, rows = header_row:subheader_row, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+  openxlsx::addStyle(workbook, sheet_name, styles$body, rows = body_rows, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+  openxlsx::addStyle(workbook, sheet_name, styles$left, rows = body_rows, cols = 1, gridExpand = TRUE, stack = TRUE)
+  if (identical(type, "count")) {
+    openxlsx::addStyle(workbook, sheet_name, styles$left, rows = body_rows, cols = 2, gridExpand = TRUE, stack = TRUE)
+  }
+  openxlsx::addStyle(workbook, sheet_name, styles$bottom, rows = body_start + nrow(export) - 1L, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+  if (length(note) > 0 && nzchar(note[[1]])) {
+    note_row <- body_start + nrow(export) + 1L
+    openxlsx::writeData(workbook, sheet_name, note[[1]], startRow = note_row, startCol = 1, colNames = FALSE)
+    openxlsx::mergeCells(workbook, sheet_name, cols = seq_len(n_cols), rows = note_row)
+    openxlsx::addStyle(workbook, sheet_name, styles$note, rows = note_row, cols = 1, gridExpand = TRUE, stack = TRUE)
+    openxlsx::setRowHeights(workbook, sheet_name, rows = note_row, heights = excel_note_row_height(note[[1]], widths, min_height = 36))
+  }
+  openxlsx::setColWidths(workbook, sheet_name, cols = seq_len(n_cols), widths = widths)
+  openxlsx::freezePane(workbook, sheet_name, firstActiveRow = body_start)
+  c(used_sheets, sheet_name)
+}
+
+add_paired_rm_grouped_excel_sheet <- function(workbook, sheet_name, table, used_sheets, title = NULL, note = "", type = c("scale", "count")) {
+  type <- match.arg(type)
+  sheet_name <- excel_sheet_name(sheet_name, used_sheets)
+  styles <- analysis_excel_styles()
+  title <- title %||% sheet_name
+  openxlsx::addWorksheet(workbook, sheet_name)
+  if (!is.data.frame(table) || nrow(table) == 0) {
+    openxlsx::writeData(workbook, sheet_name, "No data")
+    return(c(used_sheets, sheet_name))
+  }
+  time_label_columns <- grep("^Time[0-9]+_label$", names(table), value = TRUE)
+  if (length(time_label_columns) == 0) {
+    return(add_ttest_anova_result_sheet(workbook, sheet_name, table, note, used_sheets, title = title))
+  }
+  time_indices <- sort(as.integer(sub("^Time([0-9]+)_label$", "\\1", time_label_columns)))
+  statistic_label <- paired_rm_statistic_label(table)
+  export_columns <- c(
+    "Repeated variables",
+    "N",
+    if (identical(type, "count")) {
+      as.vector(rbind(paste0("Time", time_indices, "_0"), paste0("Time", time_indices, "_1")))
+    } else {
+      as.vector(rbind(paste0("Time", time_indices, "_M"), paste0("Time", time_indices, "_SD")))
+    },
+    "Statistic",
+    "p",
+    "ES",
+    "Post-hoc"
+  )
+  export_columns <- export_columns[export_columns %in% names(table)]
+  export <- table[, export_columns, drop = FALSE]
+  time_labels <- vapply(time_indices, function(index) {
+    labels <- as.character(table[[paste0("Time", index, "_label")]] %||% "")
+    labels <- labels[nzchar(labels)]
+    if (length(labels) > 0) labels[[1]] else paste0("Time ", index)
+  }, character(1))
+  include_es <- "ES" %in% names(export)
+  header_top <- c("Repeated variables", "N", as.vector(rbind(time_labels, rep("", length(time_labels)))), statistic_label, "p", if (include_es) "ES", "Post-hoc")
+  header_bottom <- c("", "", rep(if (identical(type, "count")) c("0", "1") else c("M", "SD"), length(time_labels)), "", "", if (include_es) "", "")
+  merge_cols <- c(list(1, 2), lapply(seq_along(time_indices), function(index) {
+    start <- 3 + (index - 1L) * 2L
+    start:(start + 1L)
+  }), as.list(seq.int(3 + length(time_indices) * 2L, ncol(export))))
+  widths <- c(28, 10, rep(12, length(time_indices) * 2L), 14, 12, if (include_es) 12, 28)
+
+  title_row <- 1L
+  header_row <- 3L
+  subheader_row <- 4L
+  body_start <- 5L
+  body_rows <- body_start:(body_start + nrow(export) - 1L)
+  n_cols <- ncol(export)
+
+  openxlsx::writeData(workbook, sheet_name, title, startRow = title_row, startCol = 1, colNames = FALSE)
+  openxlsx::mergeCells(workbook, sheet_name, cols = seq_len(n_cols), rows = title_row)
+  openxlsx::addStyle(workbook, sheet_name, styles$title, rows = title_row, cols = 1, gridExpand = TRUE, stack = TRUE)
+  openxlsx::writeData(workbook, sheet_name, t(header_top), startRow = header_row, startCol = 1, colNames = FALSE)
+  openxlsx::writeData(workbook, sheet_name, t(header_bottom), startRow = subheader_row, startCol = 1, colNames = FALSE)
+  openxlsx::writeData(workbook, sheet_name, export, startRow = body_start, startCol = 1, colNames = FALSE, withFilter = FALSE)
+  for (cols in merge_cols) {
+    if (length(cols) == 1L && cols >= 1L && cols <= n_cols) {
+      openxlsx::mergeCells(workbook, sheet_name, cols = cols, rows = header_row:subheader_row)
+    } else if (length(cols) > 1L && all(cols <= n_cols)) {
+      openxlsx::mergeCells(workbook, sheet_name, cols = cols, rows = header_row)
+    }
+  }
+  openxlsx::addStyle(workbook, sheet_name, styles$top, rows = header_row, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+  openxlsx::addStyle(workbook, sheet_name, styles$header, rows = header_row:subheader_row, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+  openxlsx::addStyle(workbook, sheet_name, styles$body, rows = body_rows, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+  openxlsx::addStyle(workbook, sheet_name, styles$left, rows = body_rows, cols = 1, gridExpand = TRUE, stack = TRUE)
+  openxlsx::addStyle(workbook, sheet_name, styles$bottom, rows = body_start + nrow(export) - 1L, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+  if (length(note) > 0 && nzchar(note[[1]])) {
+    note_row <- body_start + nrow(export) + 1L
+    openxlsx::writeData(workbook, sheet_name, note[[1]], startRow = note_row, startCol = 1, colNames = FALSE)
+    openxlsx::mergeCells(workbook, sheet_name, cols = seq_len(n_cols), rows = note_row)
+    openxlsx::addStyle(workbook, sheet_name, styles$note, rows = note_row, cols = 1, gridExpand = TRUE, stack = TRUE)
+  }
+  openxlsx::setColWidths(workbook, sheet_name, cols = seq_len(n_cols), widths = widths[seq_len(n_cols)])
+  openxlsx::freezePane(workbook, sheet_name, firstActiveRow = body_start)
+  c(used_sheets, sheet_name)
+}
+
 save_ttest_anova_excel_file <- function(result, file) {
   workbook <- openxlsx::createWorkbook()
   used_sheets <- character(0)
@@ -877,20 +1059,105 @@ save_ttest_anova_excel_file <- function(result, file) {
 save_paired_excel_file <- function(result, file) {
   workbook <- openxlsx::createWorkbook()
   used_sheets <- character(0)
-  used_sheets <- add_ttest_anova_result_sheet(
-    workbook,
-    "Paired test",
-    result$table,
-    "",
-    used_sheets,
-    title = "Paired test"
-  )
+  if (is.data.frame(result$scale_table) && nrow(result$scale_table) > 0) {
+    used_sheets <- add_paired_grouped_excel_sheet(
+      workbook,
+      "Paired M SD",
+      result$scale_table,
+      used_sheets,
+      title = "Paired test: M and SD",
+      type = "scale",
+      note = paired_method_note(result$scale_table),
+      show_effect_size = isTRUE(result$options$effect_size)
+    )
+  }
+  if (is.data.frame(result$count_table) && nrow(result$count_table) > 0) {
+    used_sheets <- add_paired_grouped_excel_sheet(
+      workbook,
+      "Paired n",
+      result$count_table,
+      used_sheets,
+      title = "Paired test: n by level",
+      type = "count",
+      note = paired_count_method_note(result),
+      show_effect_size = isTRUE(result$options$effect_size)
+    )
+  }
+  if (length(used_sheets) == 0) {
+    used_sheets <- add_ttest_anova_result_sheet(
+      workbook,
+      "Paired test",
+      result$table,
+      "",
+      used_sheets,
+      title = "Paired test"
+    )
+  }
   if (isTRUE(result$options$assumption_check) && is.data.frame(result$checks) && nrow(result$checks) > 0) {
     used_sheets <- add_ttest_anova_result_sheet(
       workbook,
       "Assumption check",
       result$checks,
       "Outliers were evaluated using values beyond 3*IQR from the paired difference distribution.",
+      used_sheets,
+      title = "Assumption check"
+    )
+  }
+  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
+  invisible(file)
+}
+
+save_paired_rm_excel_file <- function(result, file) {
+  workbook <- openxlsx::createWorkbook()
+  used_sheets <- character(0)
+  if (is.data.frame(result$display_table) && nrow(result$display_table) > 0) {
+    used_sheets <- add_paired_rm_grouped_excel_sheet(
+      workbook,
+      "Repeated M SD",
+      result$display_table,
+      used_sheets,
+      note = paired_rm_table_method_note(result$display_table),
+      title = "Repeated-measures test: continuous / ordinal",
+      type = "scale"
+    )
+  }
+  if (is.data.frame(result$count_table) && nrow(result$count_table) > 0) {
+    used_sheets <- add_paired_rm_grouped_excel_sheet(
+      workbook,
+      "Repeated n",
+      result$count_table,
+      used_sheets,
+      note = paired_rm_table_method_note(result$count_table),
+      title = "Repeated-measures test: binary",
+      type = "count"
+    )
+  }
+  if (length(used_sheets) == 0) {
+    used_sheets <- add_ttest_anova_result_sheet(
+      workbook,
+      "Repeated test",
+      result$table,
+      paired_rm_method_note(result),
+      used_sheets,
+      title = "Repeated-measures test"
+    )
+  }
+  if (is.data.frame(result$posthoc) && nrow(result$posthoc) > 0) {
+    used_sheets <- add_ttest_anova_result_sheet(
+      workbook,
+      "Posthoc",
+      result$posthoc,
+      paired_rm_posthoc_note(result),
+      used_sheets,
+      title = "Post-hoc pairwise comparisons"
+    )
+  }
+  if (isTRUE(result$options$assumption_check) && is.data.frame(result$assumption) && nrow(result$assumption) > 0) {
+    used_sheets <- add_ttest_anova_result_sheet(
+      workbook,
+      "Assumptions",
+      result$assumption,
+      "",
       used_sheets,
       title = "Assumption check"
     )

@@ -244,6 +244,15 @@ saved_paired_results_html <- function(result, css_path = file.path("www", "style
   )
 }
 
+saved_paired_rm_results_html <- function(result, css_path = file.path("www", "style.css")) {
+  saved_results_document(
+    "easyflow_statistics Paired Test 3+ Results",
+    tags$div(class = "regression-results", paired_rm_results_ui(result)),
+    max_width = 1500,
+    css_path = css_path
+  )
+}
+
 saved_correlation_results_html <- function(result, css_path = file.path("www", "style.css")) {
   options <- result$options %||% list()
   normality_table <- correlation_normality_display_table(result)
