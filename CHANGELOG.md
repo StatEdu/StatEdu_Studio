@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.6.1 - 2026-05-17
+
+### Changed
+
+- Fixed measurement-level propagation so Step 3 variable type changes are applied immediately in Reliability, Frequencies, t-test/ANOVA, Correlation, Regression, and Hierarchical setup lists.
+
+
 ## v0.6.0 - 2026-05-17
 
 ### Changed

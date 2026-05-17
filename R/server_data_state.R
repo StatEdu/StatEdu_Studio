@@ -338,6 +338,7 @@ create_variable_info_table_fn <- function(
   step3_variable_info_fn,
   step4_variable_info_fn,
   base_variable_info_fn,
+  measurement_overrides_fn,
   labels_fn
 ) {
   function(reactive_labels = TRUE) {
@@ -348,6 +349,7 @@ create_variable_info_table_fn <- function(
       step3_info = step3_variable_info_fn(),
       step4_info = step4_variable_info_fn(),
       base_info = base_variable_info_fn(),
+      measurement_overrides = measurement_overrides_fn(),
       labels = labels
     )
   }

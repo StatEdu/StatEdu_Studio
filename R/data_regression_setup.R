@@ -65,6 +65,7 @@ current_regression_variable_table <- function(
   selected,
   step4_info = NULL,
   fallback_info = NULL,
+  measurement_overrides = character(0),
   label_overrides = character(0),
   dependent = character(0),
   independent = character(0),
@@ -74,6 +75,7 @@ current_regression_variable_table <- function(
   if (is.null(info)) {
     info <- fallback_info
   }
+  info <- apply_measurement_overrides(info, measurement_overrides)
   regression_variable_table_data(
     selected,
     info = info,

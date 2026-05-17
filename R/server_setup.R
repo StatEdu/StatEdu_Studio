@@ -863,6 +863,7 @@ create_regression_variable_accessors <- function(
   step4_variable_info_fn,
   step3_variable_info_fn,
   variable_info_table_fn,
+  measurement_overrides_fn,
   var_label_overrides_fn,
   dependent_names_fn,
   independent_names_fn,
@@ -880,6 +881,7 @@ create_regression_variable_accessors <- function(
           tryCatch(variable_info_table_fn(), error = function(e) NULL)
         }
       },
+      measurement_overrides = measurement_overrides_fn(),
       label_overrides = var_label_overrides_fn(),
       dependent = dependent_names_fn(),
       independent = independent_names_fn(),

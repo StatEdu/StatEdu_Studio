@@ -137,6 +137,7 @@ create_app_server <- function(app_version) {
     step3_variable_info_fn = step3_variable_info,
     step4_variable_info_fn = step4_variable_info,
     base_variable_info_fn = base_variable_info,
+    measurement_overrides_fn = measurement_overrides,
     labels_fn = var_label_overrides
   )
   table_input_collectors <- create_table_input_collectors(input, variable_info_table)
@@ -521,6 +522,7 @@ create_app_server <- function(app_version) {
     step4_variable_info_fn = step4_variable_info,
     step3_variable_info_fn = step3_variable_info,
     variable_info_table_fn = variable_info_table,
+    measurement_overrides_fn = measurement_overrides,
     var_label_overrides_fn = var_label_overrides,
     dependent_names_fn = dependent_names,
     independent_names_fn = independent_names,

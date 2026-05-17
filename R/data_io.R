@@ -265,6 +265,7 @@ variable_info_table_value <- function(
   step3_info = NULL,
   step4_info = NULL,
   base_info = NULL,
+  measurement_overrides = character(0),
   labels = character(0)
 ) {
   info <- select_variable_info_source(
@@ -274,6 +275,7 @@ variable_info_table_value <- function(
     step4_info = step4_info,
     base_info = base_info
   )
+  info <- apply_measurement_overrides(info, measurement_overrides)
   prepare_variable_info_table(info, labels)
 }
 
