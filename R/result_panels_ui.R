@@ -40,37 +40,39 @@ effect_size_reference_panel <- function(show_sr2 = FALSE, show_f2 = FALSE) {
       tags$td(".35")
     )))
   }
+  table_tag <- tags$table(
+    class = "effect-size-reference-table",
+    tags$thead(tags$tr(
+      tags$th("Effect size"),
+      tags$th("Reference"),
+      tags$th("Small"),
+      tags$th("Medium"),
+      tags$th("Large")
+    )),
+    tags$tbody(rows)
+  )
+  note_tag <- if (isTRUE(show_sr2)) {
+    tags$div(
+      class = "coefficient-note effect-size-reference-note",
+      tags$span("Squared semi-partial correlations (sr", tags$sup("2"), ") were examined to estimate the unique variance explained by each predictor (Cohen et al., 2003; Pedhazur, 1997). Values of .01, .09, and .25 were interpreted as small, medium, and large effects, respectively.")
+    )
+  } else {
+    NULL
+  }
+
   tagList(
     div(
       class = "effect-size-reference-panel",
       h4("Effect Size Guidelines"),
-      tags$table(
-        class = "effect-size-reference-table",
-        tags$thead(tags$tr(
-          tags$th("Effect size"),
-          tags$th("Reference"),
-          tags$th("Small"),
-          tags$th("Medium"),
-          tags$th("Large")
-        )),
-        tags$tbody(rows)
-      ),
-      if (isTRUE(show_sr2)) {
-        p(
-          class = "effect-size-reference-note",
-          tags$span("Squared semi-partial correlations (sr", tags$sup("2"), ") were examined to estimate the unique variance explained by each predictor (Cohen et al., 2003; Pedhazur, 1997). Values of .01, .09, and .25 were interpreted as small, medium, and large effects, respectively.")
-        )
-      },
+      result_table_with_notes(table_tag, note_tag),
       p(
         class = "effect-size-reference-citation",
         "Cohen, J., Cohen, P., West, S. G., & Leona S. Aiken (2003). Applied multiple regression/correlation analysis for the behavioral sciences (3rd ed.). Lawrence Erlbaum Associates."
       ),
-      if (isTRUE(show_sr2)) {
-        p(
-          class = "effect-size-reference-citation",
-          "Elazar J. Pedhazur (1997). Multiple regression in behavioral research: Explanation and prediction (3rd ed.). Harcourt Brace."
-        )
-      }
+      if (isTRUE(show_sr2)) p(
+        class = "effect-size-reference-citation",
+        "Elazar J. Pedhazur (1997). Multiple regression in behavioral research: Explanation and prediction (3rd ed.). Harcourt Brace."
+      )
     )
   )
 }
@@ -504,7 +506,7 @@ hierarchical_coefficient_html_table <- function(
   do.call(
     tags$div,
     c(
-      list(class = "hierarchical-table-wrap"),
+      list(class = "result-table-with-note hierarchical-table-wrap"),
       list(div(class = "hierarchical-table-scroll", table)),
       notes
     )

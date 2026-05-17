@@ -249,7 +249,7 @@ settings_restore_state <- function(settings) {
     measurement_overrides = measurements,
     category_labels = category_labels,
     selection_applied = isTRUE(settings$selection_applied) ||
-      data_step %in% c("review_selected_variables", "assign_variable_roles", "category_labels"),
+      data_step %in% c("review_selected_variables", "category_labels"),
     roles_applied = isTRUE(settings$roles_applied) ||
       data_step %in% c("category_labels")
   )
@@ -265,23 +265,16 @@ settings_stage_info_state <- function(
 ) {
   selected <- as.character(selected %||% character(0))
   applied <- isTRUE(selection_applied) && length(selected) > 0
-  role_applied <- isTRUE(roles_applied) || isTRUE(has_roles)
-
   info <- if (is.null(saved_info)) fallback_info else saved_info
   step3_info <- NULL
-  step4_info <- NULL
   if (isTRUE(applied) && is.data.frame(info) && "name" %in% names(info)) {
     step3_info <- info[info$name %in% selected, , drop = FALSE]
-  }
-  if (isTRUE(role_applied) && is.data.frame(info) && "name" %in% names(info)) {
-    step4_info <- info[info$name %in% selected, , drop = FALSE]
   }
 
   list(
     selection_applied = applied,
-    roles_applied = role_applied,
-    step3_info = step3_info,
-    step4_info = step4_info
+    roles_applied = isTRUE(roles_applied) || isTRUE(has_roles),
+    step3_info = step3_info
   )
 }
 
@@ -289,9 +282,9 @@ settings_navigation_state <- function(settings) {
   step <- NULL
   view <- NULL
 
-  if (!is.null(settings$active_step) && settings$active_step %in% c("step1", "step2", "step3", "step4")) {
-    step <- if (identical(settings$active_step, "step4")) "step3" else settings$active_step
-    view <- if (identical(settings$active_step, "step4") || identical(settings$active_step, "step3")) "labels" else settings$data_view %||% "info"
+  if (!is.null(settings$active_step) && settings$active_step %in% c("step1", "step2", "step3")) {
+    step <- settings$active_step
+    view <- if (identical(settings$active_step, "step3")) "labels" else settings$data_view %||% "info"
   }
 
   if (!is.null(settings$data_view) && settings$data_view %in% c("info", "preview") && !identical(step, "step3")) {
@@ -474,7 +467,6 @@ prepare_current_settings_object <- function(
 }
 
 current_settings_variable_info <- function(
-  step4_info = NULL,
   step3_info = NULL,
   restored_info = NULL,
   current_file = NULL,
@@ -482,10 +474,7 @@ current_settings_variable_info <- function(
   input = NULL,
   raw_data = NULL
 ) {
-  variable_info <- step4_info
-  if (is.null(variable_info)) {
-    variable_info <- step3_info
-  }
+  variable_info <- step3_info
   if (is.null(variable_info)) {
     variable_info <- if (is.null(current_file)) {
       restored_info
@@ -503,7 +492,6 @@ create_current_settings_fn <- function(
   current_data_step_fn,
   active_step_fn,
   data_view_fn,
-  step4_variable_info_fn,
   step3_variable_info_fn,
   restored_variable_info_fn,
   restored_data_file_fn,
@@ -528,7 +516,6 @@ create_current_settings_fn <- function(
   function() {
     file <- current_data_file_fn()
     variable_info <- current_settings_variable_info(
-      step4_info = step4_variable_info_fn(),
       step3_info = step3_variable_info_fn(),
       restored_info = restored_variable_info_fn(),
       current_file = file,

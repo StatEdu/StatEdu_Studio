@@ -4,7 +4,6 @@ settings_restore_handlers <- function(
   selection_applied,
   roles_applied,
   step3_variable_info,
-  step4_variable_info,
   category_label_values,
   dependent_order = NULL,
   predictor_order = NULL,
@@ -16,7 +15,6 @@ settings_restore_handlers <- function(
     selection_applied(stage$selection_applied)
     roles_applied(stage$roles_applied)
     step3_variable_info(stage$step3_info)
-    step4_variable_info(stage$step4_info)
   }
 
   restore_category_labels <- function(labels) {
@@ -54,7 +52,7 @@ loaded_dataset_reset_handler <- function(
   restored_variable_info,
   measurement_overrides,
   step3_variable_info,
-  step4_variable_info,
+  calculated_variables,
   var_label_overrides,
   category_label_values,
   selected_names,
@@ -69,7 +67,7 @@ loaded_dataset_reset_handler <- function(
     restored_variable_info(NULL)
     measurement_overrides(character(0))
     step3_variable_info(NULL)
-    step4_variable_info(NULL)
+    calculated_variables(data.frame(check.names = FALSE))
     var_label_overrides(character(0))
     category_label_values(NULL)
     selected_names(character(0))
@@ -157,7 +155,7 @@ register_settings_reset_handler <- function(
   category_label_values,
   measurement_overrides,
   step3_variable_info,
-  step4_variable_info,
+  calculated_variables,
   pending_settings,
   reset_setup_inputs_fn,
   go_data_step_fn,
@@ -180,7 +178,7 @@ register_settings_reset_handler <- function(
     category_label_values(NULL)
     measurement_overrides(character(0))
     step3_variable_info(NULL)
-    step4_variable_info(NULL)
+    calculated_variables(data.frame(check.names = FALSE))
     pending_settings(NULL)
 
     reset_setup_inputs_fn(session)

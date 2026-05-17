@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.7.3 - 2026-05-17
+
+### Changed
+
+- Added calculator menu modules for HINT8, EQ5D, Metabolic Syndrome, Metabolic Severity, FRS, and ASCVD10.
+- Added calculated calculator outputs back into the current loaded data so they are available in analysis menus.
+- Removed obsolete Data Step 4/5 workflow remnants and finalized variable-label editing in Step 3.
+- Standardized result table note rendering so notes match the table width across analysis outputs.
+
+
 ## v0.7.2 - 2026-05-17
 
 ### Changed
@@ -238,7 +248,7 @@
 
 ### Fixed
 
-- Fixed Step 4 label editing so text input no longer resets on each typed character.
+- Fixed label editing so text input no longer resets on each typed character.
 - Fixed saved settings loading and propagation of variable labels, measurements, references, and value labels across steps.
 - Fixed bootstrap stop handling and progress display placement.
 
@@ -254,8 +264,8 @@
 ### Fixed
 
 - Enabled the Step 3 `selected` header button to select or clear all visible variables for the active role.
-- Changed the Step 3 apply button to submit the current DataTables checkbox state before moving to Step 4.
-- Preserved and synced Step 4 `var_label`, `reference`, `value`, and `label` edits while DataTables redraws.
+- Changed the Step 3 apply button to submit the current DataTables checkbox state.
+- Preserved and synced `var_label`, `reference`, `value`, and `label` edits while DataTables redraws.
 
 ## v0.1.0 - 2026-05-08
 

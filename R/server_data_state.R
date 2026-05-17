@@ -1,14 +1,74 @@
 # Server factories for data state, variable info, and settings restoration.
 
-create_data_reactives <- function(input, active_data_file) {
+append_calculated_variables <- function(data, calculated = NULL) {
+  data <- as.data.frame(data, stringsAsFactors = FALSE, check.names = FALSE)
+  calculated <- as.data.frame(calculated %||% data.frame(check.names = FALSE), stringsAsFactors = FALSE, check.names = FALSE)
+  if (ncol(calculated) == 0) {
+    return(data)
+  }
+  if (nrow(calculated) != nrow(data)) {
+    return(data)
+  }
+  for (name in names(calculated)) {
+    data[[name]] <- calculated[[name]]
+  }
+  data
+}
+
+calculated_variable_info_row <- function(
+  name,
+  values,
+  template_info = NULL,
+  var_label = "Calculated variable",
+  measurement = NULL
+) {
+  values <- as.vector(values)
+  columns <- names(template_info %||% data.frame())
+  required <- c("source_order", "name", "var_label", "measurement", "storage_type", "n_unique", "n_missing", "min_value", "max_value")
+  columns <- unique(c(columns, required))
+  row <- as.data.frame(as.list(stats::setNames(rep("", length(columns)), columns)), stringsAsFactors = FALSE, check.names = FALSE)
+
+  source_order <- 1L
+  if (is.data.frame(template_info) && "source_order" %in% names(template_info) && nrow(template_info) > 0) {
+    source_order <- suppressWarnings(max(as.integer(template_info$source_order), na.rm = TRUE)) + 1L
+    if (!is.finite(source_order)) {
+      source_order <- nrow(template_info) + 1L
+    }
+  }
+
+  present <- stats::na.omit(values)
+  inferred_measurement <- measurement %||% infer_measurement(values)
+  row$source_order <- source_order
+  row$name <- name
+  row$var_label <- var_label
+  row$measurement <- inferred_measurement
+  row$storage_type <- class(values)[1]
+  row$n_unique <- length(unique(present))
+  row$n_missing <- sum(is.na(values))
+  row$min_value <- if (length(present) > 0 && (is.numeric(present) || is.integer(present))) as.character(min(present)) else ""
+  row$max_value <- if (length(present) > 0 && (is.numeric(present) || is.integer(present))) as.character(max(present)) else ""
+  if ("_row" %in% names(row)) {
+    row$`_row` <- name
+  }
+  row
+}
+
+create_data_reactives <- function(input, active_data_file, calculated_variables = NULL) {
   current_data_file <- reactive({
     current_data_file_value(input$file, active_data_file())
   })
 
-  raw_dataset <- reactive({
+  source_dataset <- reactive({
     file <- current_data_file()
     req(file)
     read_current_data_file(file, input)
+  })
+
+  raw_dataset <- reactive({
+    append_calculated_variables(
+      source_dataset(),
+      if (is.function(calculated_variables)) calculated_variables() else NULL
+    )
   })
 
   dataset <- reactive({
@@ -17,6 +77,7 @@ create_data_reactives <- function(input, active_data_file) {
 
   list(
     current_data_file = current_data_file,
+    source_dataset = source_dataset,
     raw_dataset = raw_dataset,
     dataset = dataset
   )
@@ -207,7 +268,6 @@ create_restore_settings_variable_info_only_fn <- function(
   selection_applied,
   roles_applied,
   step3_variable_info,
-  step4_variable_info,
   pending_settings
 ) {
   function(settings, selected, dependent, independent, controls, saved_info, restored) {
@@ -237,7 +297,6 @@ create_restore_settings_variable_info_only_fn <- function(
       selection_applied(FALSE)
       roles_applied(FALSE)
       step3_variable_info(NULL)
-      step4_variable_info(NULL)
     }
     pending_settings(settings)
     TRUE
@@ -338,7 +397,6 @@ create_variable_info_table_fn <- function(
   data_view_fn,
   selection_applied_fn,
   step3_variable_info_fn,
-  step4_variable_info_fn,
   base_variable_info_fn,
   measurement_overrides_fn,
   labels_fn
@@ -349,7 +407,6 @@ create_variable_info_table_fn <- function(
       data_view = data_view_fn(),
       selection_applied = selection_applied_fn(),
       step3_info = step3_variable_info_fn(),
-      step4_info = step4_variable_info_fn(),
       base_info = base_variable_info_fn(),
       measurement_overrides = measurement_overrides_fn(),
       labels = labels

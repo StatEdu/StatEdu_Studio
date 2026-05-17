@@ -137,6 +137,8 @@ app_ui <- function(version) {
 
     if (isTRUE(analysis_tabs[["hierarchical"]])) hierarchical_tab_panel(),
 
-    if (isTRUE(analysis_tabs[["generalized"]])) generalized_tab_panel()
+    if (isTRUE(analysis_tabs[["generalized"]])) generalized_tab_panel(),
+
+    calculator_tab_panel()
   )
 }

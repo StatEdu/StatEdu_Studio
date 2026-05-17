@@ -20,6 +20,13 @@ These rules apply to every analysis result table in easyflow_statistics.
 - Draw a solid line below the header.
 - Draw a solid line at the bottom of each table.
 
+## Table Notes
+
+- Analysis result notes and footnotes must use the same visual width as the table they describe.
+- Notes must never extend beyond the table width and must never be narrower than the table width.
+- Long note text must wrap inside the table width.
+- New HTML table output should place notes in the shared table-note wrapper, for example with `result_table_with_notes()` or `coefficient_html_table(note_line = ...)`.
+
 ## Labels
 
 - Variable names: show `var_label` when it exists; otherwise show the variable name.

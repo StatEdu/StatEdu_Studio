@@ -111,10 +111,12 @@ correlation_matrix_set_ui <- function(result, source = NULL, title_prefix = "") 
     div(
       class = "result-section correlation-result-section regression-result-panel",
       h3(paste0(title_prefix, "Correlation / association coefficients")),
-      coefficient_html_table(main_table, compact = TRUE, compact_font_size = 13),
-      if (!nzchar(title_prefix) && isTRUE(options$significance_levels)) {
-        div(class = "coefficient-note", "* p < .05; ** p < .01; *** p < .001")
-      }
+      coefficient_html_table(
+        main_table,
+        compact = TRUE,
+        compact_font_size = 13,
+        note_line = if (!nzchar(title_prefix) && isTRUE(options$significance_levels)) "* p < .05; ** p < .01; *** p < .001" else NULL
+      )
     ),
     if (isTRUE(options$p_ci) && is.data.frame(p_table) && nrow(p_table) > 0) {
       div(

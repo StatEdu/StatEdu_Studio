@@ -34,7 +34,7 @@ create_app_server <- function(app_version) {
   restored_variable_info <- server_state$restored_variable_info
   measurement_overrides <- server_state$measurement_overrides
   step3_variable_info <- server_state$step3_variable_info
-  step4_variable_info <- server_state$step4_variable_info
+  calculated_variables <- server_state$calculated_variables
   active_data_file <- server_state$active_data_file
   reset_on_dataset_load <- server_state$reset_on_dataset_load
   unsaved_settings <- server_state$unsaved_settings
@@ -51,7 +51,7 @@ create_app_server <- function(app_version) {
 
   register_client_error_handler(input)
 
-  data_reactives <- create_data_reactives(input, active_data_file)
+  data_reactives <- create_data_reactives(input, active_data_file, calculated_variables)
   current_data_file <- data_reactives$current_data_file
   raw_dataset <- data_reactives$raw_dataset
   dataset <- data_reactives$dataset
@@ -136,7 +136,6 @@ create_app_server <- function(app_version) {
     data_view_fn = data_view,
     selection_applied_fn = selection_applied,
     step3_variable_info_fn = step3_variable_info,
-    step4_variable_info_fn = step4_variable_info,
     base_variable_info_fn = base_variable_info,
     measurement_overrides_fn = measurement_overrides,
     labels_fn = var_label_overrides
@@ -154,7 +153,6 @@ create_app_server <- function(app_version) {
     selection_applied,
     roles_applied,
     step3_variable_info,
-    step4_variable_info,
     category_label_values,
     dependent_order = dependent_order,
     predictor_order = predictor_order,
@@ -189,7 +187,6 @@ create_app_server <- function(app_version) {
     selection_applied = selection_applied,
     roles_applied = roles_applied,
     step3_variable_info = step3_variable_info,
-    step4_variable_info = step4_variable_info,
     pending_settings = pending_settings
   )
 
@@ -227,7 +224,7 @@ create_app_server <- function(app_version) {
     restored_variable_info,
     measurement_overrides,
     step3_variable_info,
-    step4_variable_info,
+    calculated_variables,
     var_label_overrides,
     category_label_values,
     selected_names,
@@ -306,7 +303,6 @@ create_app_server <- function(app_version) {
     step3_variable_info_fn = step3_variable_info,
     base_variable_info_fn = base_variable_info,
     merge_state_into_info_fn = merge_state_into_info,
-    step4_variable_info = step4_variable_info,
     finish_role_selection_fn = finish_role_selection
   )
 
@@ -319,7 +315,6 @@ create_app_server <- function(app_version) {
     base_variable_info_fn = base_variable_info,
     merge_state_into_info_fn = merge_state_into_info,
     step3_variable_info = step3_variable_info,
-    step4_variable_info = step4_variable_info,
     finish_variable_selection_fn = finish_variable_selection
   )
 
@@ -329,7 +324,6 @@ create_app_server <- function(app_version) {
     selection_applied,
     roles_applied,
     step3_variable_info,
-    step4_variable_info,
     selected_names,
     dependent_names,
     independent_names,
@@ -372,7 +366,7 @@ create_app_server <- function(app_version) {
     category_label_values = category_label_values,
     measurement_overrides = measurement_overrides,
     step3_variable_info = step3_variable_info,
-    step4_variable_info = step4_variable_info,
+    calculated_variables = calculated_variables,
     pending_settings = pending_settings,
     reset_setup_inputs_fn = reset_setup_inputs,
     go_data_step_fn = go_data_step,
@@ -451,7 +445,6 @@ create_app_server <- function(app_version) {
     dataset_fn = dataset,
     sync_predictor_order_fn = sync_predictor_order,
     sync_dependent_order_fn = sync_dependent_order,
-    step4_variable_info_fn = step4_variable_info,
     variable_info_table_fn = variable_info_table,
     category_label_values_fn = category_label_values,
     boot_r_fn = function() input$boot_r,
@@ -518,9 +511,119 @@ create_app_server <- function(app_version) {
     category_label_table_data_fn = category_label_table_data
   )
 
+  add_calculated_variable <- function(name, values, var_label = "Calculated variable", measurement = NULL) {
+    name <- trimws(as.character(name %||% ""))
+    if (!nzchar(name)) {
+      return(invisible(FALSE))
+    }
+    values <- as.numeric(values)
+    if (length(values) != nrow(dataset())) {
+      showNotification("Calculated variable row count does not match the current data.", type = "warning", duration = 6)
+      return(invisible(FALSE))
+    }
+
+    current_calculated <- as.data.frame(calculated_variables() %||% data.frame(check.names = FALSE), stringsAsFactors = FALSE, check.names = FALSE)
+    if (ncol(current_calculated) == 0 || nrow(current_calculated) != length(values)) {
+      current_calculated <- data.frame(row_id = seq_along(values), check.names = FALSE)
+      current_calculated$row_id <- NULL
+    }
+    current_calculated[[name]] <- values
+    calculated_variables(current_calculated)
+
+    current_selected <- as.character(selected_names() %||% character(0))
+    if (!name %in% current_selected) {
+      selected_names(c(current_selected, name))
+    }
+
+    info <- tryCatch(variable_info_table(), error = function(e) NULL)
+    row <- calculated_variable_info_row(
+      name,
+      values,
+      info,
+      var_label = var_label,
+      measurement = measurement
+    )
+    stage3 <- step3_variable_info()
+    if (is.null(stage3)) {
+      stage3 <- info
+    }
+    if (is.data.frame(stage3)) {
+      stage3 <- stage3[as.character(stage3$name) != name, , drop = FALSE]
+      row <- row[, names(stage3), drop = FALSE]
+      step3_variable_info(rbind(stage3, row))
+    }
+
+    if (!is.null(measurement)) {
+      measurement_overrides(merge_named_overrides(measurement_overrides(), stats::setNames(measurement, name))$values)
+    }
+    var_label_overrides(merge_named_overrides(var_label_overrides(), stats::setNames(var_label, name))$values)
+    update_analysis_choices(session, input, selected_names())
+    mark_settings_dirty()
+    invisible(TRUE)
+  }
+
+  register_hint8_calculator_handlers(
+    input = input,
+    output = output,
+    session = session,
+    dataset_fn = dataset,
+    current_data_file_fn = current_data_file,
+    variable_info_fn = variable_info_table,
+    add_calculated_variable_fn = add_calculated_variable
+  )
+
+  register_metabolic_calculator_handlers(
+    input = input,
+    output = output,
+    session = session,
+    dataset_fn = dataset,
+    current_data_file_fn = current_data_file,
+    variable_info_fn = variable_info_table,
+    add_calculated_variable_fn = add_calculated_variable
+  )
+
+  register_metabolic_severity_calculator_handlers(
+    input = input,
+    output = output,
+    session = session,
+    dataset_fn = dataset,
+    current_data_file_fn = current_data_file,
+    variable_info_fn = variable_info_table,
+    add_calculated_variable_fn = add_calculated_variable
+  )
+
+  register_frs_calculator_handlers(
+    input = input,
+    output = output,
+    session = session,
+    dataset_fn = dataset,
+    current_data_file_fn = current_data_file,
+    variable_info_fn = variable_info_table,
+    add_calculated_variable_fn = add_calculated_variable
+  )
+
+  register_eq5d_calculator_handlers(
+    input = input,
+    output = output,
+    session = session,
+    dataset_fn = dataset,
+    current_data_file_fn = current_data_file,
+    variable_info_fn = variable_info_table,
+    add_calculated_variable_fn = add_calculated_variable
+  )
+
+  register_ascvd10_calculator_handlers(
+    input = input,
+    output = output,
+    session = session,
+    dataset_fn = dataset,
+    current_data_file_fn = current_data_file,
+    variable_info_fn = variable_info_table,
+    add_calculated_variable_fn = add_calculated_variable
+  )
+
   regression_accessors <- create_regression_variable_accessors(
     selected_names_fn = selected_names,
-    step4_variable_info_fn = step4_variable_info,
     step3_variable_info_fn = step3_variable_info,
     variable_info_table_fn = variable_info_table,
     measurement_overrides_fn = measurement_overrides,
@@ -699,7 +802,6 @@ create_app_server <- function(app_version) {
     hierarchical_block1_fn = control_names,
     hierarchical_block2_fn = function() setdiff(independent_names(), hierarchical_block3_current()),
     hierarchical_block3_fn = hierarchical_block3_current,
-    step4_variable_info_fn = step4_variable_info,
     variable_info_table_fn = regression_variable_table,
     category_label_values_fn = category_label_values,
     boot_r_fn = function() input$hierarchical_boot_r,
@@ -785,7 +887,6 @@ create_app_server <- function(app_version) {
     current_data_step_fn = current_data_step,
     active_step_fn = active_step,
     data_view_fn = data_view,
-    step4_variable_info_fn = step4_variable_info,
     step3_variable_info_fn = step3_variable_info,
     restored_variable_info_fn = restored_variable_info,
     restored_data_file_fn = restored_data_file,

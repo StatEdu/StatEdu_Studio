@@ -45,6 +45,29 @@ result_body_cell_style <- function(first = FALSE, last = FALSE, compact = FALSE,
   )
 }
 
+result_note_tag <- function(text, class = "coefficient-note") {
+  if (length(text) == 0 || !nzchar(text[[1]] %||% "")) {
+    return(NULL)
+  }
+  tags$div(class = class, text)
+}
+
+result_table_with_notes <- function(table_tag, ..., class = "result-table-with-note") {
+  notes <- list(...)
+  notes <- Filter(Negate(is.null), notes)
+  if (is.null(table_tag)) {
+    return(NULL)
+  }
+  do.call(
+    tags$div,
+    c(
+      list(class = class),
+      list(table_tag),
+      notes
+    )
+  )
+}
+
 coefficient_html_table <- function(
   table,
   fit_line = NULL,
@@ -61,8 +84,7 @@ coefficient_html_table <- function(
     return(NULL)
   }
   columns <- names(table)
-  tagList(
-    tags$table(
+  table_tag <- tags$table(
       class = "coefficient-table",
       style = result_table_style(font_size = if (isTRUE(compact)) compact_font_size else 15, min_width = if (isTRUE(compact)) compact_min_width else 480),
       tags$thead(
@@ -134,13 +156,11 @@ coefficient_html_table <- function(
           })
         )
       }
-    ),
-    if (length(note_line) > 0 && nzchar(note_line[[1]])) {
-      tags$div(class = "coefficient-note", note_line)
-    },
-    if (length(warning_line) > 0 && nzchar(warning_line[[1]])) {
-      tags$div(class = "coefficient-warning", warning_line)
-    }
+  )
+  result_table_with_notes(
+    table_tag,
+    result_note_tag(note_line),
+    result_note_tag(warning_line, class = "coefficient-warning")
   )
 }
 
@@ -149,7 +169,7 @@ model_overview_html_table <- function(table) {
   if (!is.data.frame(table) || nrow(table) == 0) {
     return(NULL)
   }
-  tags$table(
+  table_tag <- tags$table(
     class = "table shiny-table combined-model-overview-table",
     style = result_table_style(),
     tags$thead(tags$tr(lapply(seq_along(names(table)), function(index) {
@@ -162,13 +182,14 @@ model_overview_html_table <- function(table) {
       }))
     }))
   )
+  result_table_with_notes(table_tag)
 }
 
 combined_dw_html_table <- function(table) {
   if (!is.data.frame(table) || nrow(table) == 0) {
     return(NULL)
   }
-  tags$table(
+  table_tag <- tags$table(
     class = "table shiny-table combined-dw-table",
     style = result_table_style(),
     tags$thead(tags$tr(lapply(seq_along(names(table)), function(index) {
@@ -181,5 +202,6 @@ combined_dw_html_table <- function(table) {
       }))
     }))
   )
+  result_table_with_notes(table_tag)
 }
 

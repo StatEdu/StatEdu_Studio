@@ -167,16 +167,20 @@ paired_results_ui <- function(result) {
       tags$div(
         class = "result-section paired-result-section regression-result-panel",
         tags$h3("Paired test: continuous / ordinal"),
-        paired_grouped_table(result$scale_table, "scale", show_effect_size = isTRUE(result$options$effect_size)),
-        tags$div(class = "coefficient-note", paired_method_note(result$scale_table))
+        result_table_with_notes(
+          paired_grouped_table(result$scale_table, "scale", show_effect_size = isTRUE(result$options$effect_size)),
+          result_note_tag(paired_method_note(result$scale_table))
+        )
       )
     },
     if (is.data.frame(result$count_table) && nrow(result$count_table) > 0) {
       tags$div(
         class = "result-section paired-result-section regression-result-panel",
         tags$h3("Paired test: binary / categorical"),
-        paired_grouped_table(result$count_table, "count", show_effect_size = isTRUE(result$options$effect_size)),
-        tags$div(class = "coefficient-note", paired_count_method_note(result))
+        result_table_with_notes(
+          paired_grouped_table(result$count_table, "count", show_effect_size = isTRUE(result$options$effect_size)),
+          result_note_tag(paired_count_method_note(result))
+        )
       )
     },
     if (isTRUE(result$options$assumption_check) && is.data.frame(result$checks) && nrow(result$checks) > 0) {

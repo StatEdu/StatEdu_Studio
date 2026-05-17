@@ -254,6 +254,73 @@ body {
   border-color: #0d5f59;
 }
 
+.hint8-target-panel .form-group {
+  margin-bottom: 8px;
+}
+
+.hint8-transfer-spacer {
+  pointer-events: none;
+}
+
+.hint8-target-panel label {
+  color: #102a43;
+  font-size: 13px;
+}
+
+.hint8-variable-input-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 10px;
+}
+
+.metabolic-target-panel .form-group {
+  margin-bottom: 6px;
+}
+
+.metabolic-target-panel label {
+  color: #102a43;
+  font-size: 12px;
+}
+
+.metabolic-variable-input-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.metabolic-reference-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 8px;
+}
+
+.metabolic-reference-grid .form-group {
+  margin-bottom: 6px;
+}
+
+.metabolic-reference-grid label {
+  font-size: 12px;
+}
+
+.hint8-initial-table {
+  width: 100%;
+  margin-top: 10px;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.hint8-initial-table th,
+.hint8-initial-table td {
+  padding: 5px 4px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+}
+
+.hint8-initial-table th:not(:first-child),
+.hint8-initial-table td:not(:first-child) {
+  text-align: right;
+  white-space: nowrap;
+}
+
 .role-actions {
   display: grid;
   gap: 8px;
@@ -2091,8 +2158,31 @@ table {
   padding-top: 4px;
   text-align: left;
   white-space: normal;
-  max-width: 100%;
-  overflow-wrap: break-word;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.result-table-with-note {
+  display: inline-block;
+  width: auto;
+  max-width: none;
+  vertical-align: top;
+}
+
+.result-table-with-note > .coefficient-table,
+.result-table-with-note > table {
+  display: table;
+}
+
+.result-table-with-note .coefficient-note,
+.result-table-with-note .coefficient-warning {
+  width: 0;
+  min-width: 100%;
+  max-width: none;
+  box-sizing: border-box;
 }
 
 .reliability-note {
@@ -2103,8 +2193,8 @@ table {
 .hierarchical-model-notes {
   margin-top: 8px;
   color: #1f2937;
-  max-width: 100%;
-  overflow-wrap: break-word;
+  max-width: none;
+  overflow-wrap: anywhere;
   word-break: normal;
 }
 
@@ -2114,8 +2204,8 @@ table {
 
 .hierarchical-coefficient-note {
   margin-top: 6px;
-  max-width: 100%;
-  overflow-wrap: break-word;
+  max-width: none;
+  overflow-wrap: anywhere;
   word-break: normal;
 }
 

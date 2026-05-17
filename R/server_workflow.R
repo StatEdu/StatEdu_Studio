@@ -10,7 +10,6 @@ create_apply_role_selection_state_fn <- function(
   step3_variable_info_fn,
   base_variable_info_fn,
   merge_state_into_info_fn,
-  step4_variable_info,
   finish_role_selection_fn
 ) {
   function(state = NULL) {
@@ -22,11 +21,6 @@ create_apply_role_selection_state_fn <- function(
       showNotification(validation_message, type = "warning")
       return(invisible(FALSE))
     }
-    stage3_info <- step3_variable_info_fn()
-    if (is.null(stage3_info)) {
-      stage3_info <- base_variable_info_fn()
-    }
-    step4_variable_info(merge_state_into_info_fn(stage3_info, submitted_state, selected_only = TRUE))
     finish_role_selection_fn()
     invisible(TRUE)
   }
@@ -41,7 +35,6 @@ create_apply_variable_selection_state_fn <- function(
   base_variable_info_fn,
   merge_state_into_info_fn,
   step3_variable_info,
-  step4_variable_info,
   finish_variable_selection_fn
 ) {
   function(state = NULL) {
@@ -55,7 +48,6 @@ create_apply_variable_selection_state_fn <- function(
     }
     selected <- selection_state$selected
     step3_variable_info(merge_state_into_info_fn(base_variable_info_fn(), submitted_state, selected_only = TRUE))
-    step4_variable_info(NULL)
     finish_variable_selection_fn(selected)
     invisible(TRUE)
   }
@@ -68,7 +60,6 @@ create_prepare_analysis_result_fn <- function(
   dataset_fn,
   sync_predictor_order_fn,
   sync_dependent_order_fn,
-  step4_variable_info_fn,
   variable_info_table_fn,
   category_label_values_fn,
   boot_r_fn,
@@ -80,10 +71,7 @@ create_prepare_analysis_result_fn <- function(
     data <- dataset_fn()
     predictors <- sync_predictor_order_fn(update_input = FALSE)
     dependents <- sync_dependent_order_fn(update_input = FALSE)
-    info <- step4_variable_info_fn()
-    if (is.null(info)) {
-      info <- variable_info_table_fn()
-    }
+    info <- tryCatch(variable_info_table_fn(), error = function(e) NULL)
 
     prepare_regression_analysis_results(
       data = data,
@@ -104,7 +92,6 @@ create_prepare_hierarchical_analysis_result_fn <- function(
   hierarchical_block1_fn,
   hierarchical_block2_fn,
   hierarchical_block3_fn,
-  step4_variable_info_fn,
   variable_info_table_fn,
   category_label_values_fn,
   boot_r_fn,
@@ -136,10 +123,7 @@ create_prepare_hierarchical_analysis_result_fn <- function(
       block3 <- hierarchical_block3_current_fn()
     }
 
-    info <- step4_variable_info_fn()
-    if (is.null(info)) {
-      info <- variable_info_table_fn()
-    }
+    info <- tryCatch(variable_info_table_fn(), error = function(e) NULL)
 
     prepare_hierarchical_analysis_results(
       data = data,

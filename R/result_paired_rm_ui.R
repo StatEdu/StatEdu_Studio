@@ -225,32 +225,34 @@ paired_rm_results_ui <- function(result) {
       tags$div(
         class = "result-section paired-result-section regression-result-panel",
         tags$h3("Repeated-measures test: continuous / ordinal"),
-        paired_rm_grouped_table(result$display_table, "scale"),
-        tags$div(class = "coefficient-note", paired_rm_table_method_note(result$display_table))
+        result_table_with_notes(
+          paired_rm_grouped_table(result$display_table, "scale"),
+          result_note_tag(paired_rm_table_method_note(result$display_table))
+        )
       )
     },
     if (is.data.frame(result$count_table) && nrow(result$count_table) > 0) {
       tags$div(
         class = "result-section paired-result-section regression-result-panel",
         tags$h3("Repeated-measures test: binary"),
-        paired_rm_grouped_table(result$count_table, "count"),
-        tags$div(class = "coefficient-note", paired_rm_table_method_note(result$count_table))
+        result_table_with_notes(
+          paired_rm_grouped_table(result$count_table, "count"),
+          result_note_tag(paired_rm_table_method_note(result$count_table))
+        )
       )
     },
     if ((!is.data.frame(result$display_table) || nrow(result$display_table) == 0) && (!is.data.frame(result$count_table) || nrow(result$count_table) == 0)) {
       tags$div(
         class = "result-section paired-result-section regression-result-panel",
         tags$h3("Repeated-measures test"),
-        coefficient_html_table(result$table),
-        tags$div(class = "coefficient-note", paired_rm_method_note(result))
+        coefficient_html_table(result$table, note_line = paired_rm_method_note(result))
       )
     },
     if (is.data.frame(result$posthoc) && nrow(result$posthoc) > 0) {
       tags$div(
         class = "result-section paired-result-section regression-result-panel",
         tags$h3("Post-hoc pairwise comparisons"),
-        coefficient_html_table(result$posthoc),
-        tags$div(class = "coefficient-note", paired_rm_posthoc_note(result))
+        coefficient_html_table(result$posthoc, note_line = paired_rm_posthoc_note(result))
       )
     },
     if (isTRUE(result$options$assumption_check) && is.data.frame(result$assumption) && nrow(result$assumption) > 0) {

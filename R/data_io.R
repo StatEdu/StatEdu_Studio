@@ -241,10 +241,7 @@ ensure_variable_info_columns <- function(info) {
   info
 }
 
-select_variable_info_source <- function(data_view = "info", selection_applied = FALSE, step3_info = NULL, step4_info = NULL, base_info = NULL) {
-  if (identical(data_view, "labels") && !is.null(step4_info)) {
-    return(step4_info)
-  }
+select_variable_info_source <- function(data_view = "info", selection_applied = FALSE, step3_info = NULL, base_info = NULL) {
   if (isTRUE(selection_applied) && !is.null(step3_info)) {
     return(step3_info)
   }
@@ -263,7 +260,6 @@ variable_info_table_value <- function(
   data_view = "info",
   selection_applied = FALSE,
   step3_info = NULL,
-  step4_info = NULL,
   base_info = NULL,
   measurement_overrides = character(0),
   labels = character(0)
@@ -272,7 +268,6 @@ variable_info_table_value <- function(
     data_view = data_view,
     selection_applied = selection_applied,
     step3_info = step3_info,
-    step4_info = step4_info,
     base_info = base_info
   )
   info <- apply_measurement_overrides(info, measurement_overrides)
@@ -283,11 +278,11 @@ data_step_value <- function(has_data_file = FALSE, has_restored_info = FALSE, ac
   if (!isTRUE(has_data_file) && !isTRUE(has_restored_info)) {
     return("load_data")
   }
-  if (identical(active_step, "step3") || identical(active_step, "step4")) {
+  if (identical(active_step, "step3")) {
     return("category_labels")
   }
   if (isTRUE(selection_applied)) {
-    return("assign_variable_roles")
+    return("category_labels")
   }
   "select_analysis_variables"
 }

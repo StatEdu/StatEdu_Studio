@@ -860,7 +860,6 @@ register_setup_outputs <- function(
 # Regression setup accessors and order synchronization.
 create_regression_variable_accessors <- function(
   selected_names_fn,
-  step4_variable_info_fn,
   step3_variable_info_fn,
   variable_info_table_fn,
   measurement_overrides_fn,
@@ -872,7 +871,6 @@ create_regression_variable_accessors <- function(
   regression_variable_table <- function() {
     current_regression_variable_table(
       selected_names_fn(),
-      step4_info = step4_variable_info_fn(),
       fallback_info = {
         step3_info <- step3_variable_info_fn()
         if (!is.null(step3_info)) {

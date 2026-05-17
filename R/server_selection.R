@@ -155,12 +155,12 @@ selection_flow_handlers <- function(
     dependent_order(dependent_candidates_fn())
     predictor_order(predictor_candidates_fn())
     predictor_order_initialized(TRUE)
-    go_data_step("step4", "labels")
+    go_data_step("step3", "labels")
     sync_dependent_order_fn(update_input = TRUE)
     updateSelectizeInput(session, "xs", choices = selected_names(), selected = independent_names(), server = TRUE)
     updateSelectizeInput(session, "covariates", choices = selected_names(), selected = control_names(), server = TRUE)
     mark_settings_dirty()
-    showNotification("Variable roles applied. Edit categorical value labels in Step 4.", type = "message")
+    showNotification("Variable information saved. Edit categorical value labels in Step 3.", type = "message")
   }
 
   finish_variable_selection <- function(selected) {
@@ -193,7 +193,6 @@ register_data_step_observers <- function(
   selection_applied,
   roles_applied,
   step3_variable_info,
-  step4_variable_info,
   selected_names,
   dependent_names,
   independent_names,
@@ -207,7 +206,6 @@ register_data_step_observers <- function(
     selection_applied(FALSE)
     roles_applied(FALSE)
     step3_variable_info(NULL)
-    step4_variable_info(NULL)
     go_data_step("step2")
     set_role_choices(selected_names(), dependent_names(), independent_names(), control_names())
     mark_settings_dirty()
@@ -224,11 +222,6 @@ register_data_step_observers <- function(
   })
 
   observeEvent(input$go_step3, {
-    req(isTRUE(selection_applied()))
-    go_data_step("step3", "labels")
-  })
-
-  observeEvent(input$go_step4, {
     req(isTRUE(selection_applied()))
     go_data_step("step3", "labels")
   })

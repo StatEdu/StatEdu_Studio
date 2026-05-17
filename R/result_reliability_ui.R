@@ -180,7 +180,7 @@ reliability_note_tag <- function(text, width = 620) {
   }
   div(
     class = "coefficient-note reliability-note",
-    style = sprintf("width:%dpx;max-width:100%%;overflow-wrap:break-word;word-break:normal;", as.integer(width)),
+    style = sprintf("width:%dpx;overflow-wrap:break-word;word-break:normal;", as.integer(width)),
     text
   )
 }
@@ -328,8 +328,10 @@ reliability_results_ui <- function(result) {
           div(
             class = "result-section reliability-result-section regression-result-panel",
             h3("Item analysis"),
-            reliability_html_table(item_analysis, min_width = item_analysis_width),
-            reliability_note_tag(item_note, width = item_analysis_width)
+            result_table_with_notes(
+              reliability_html_table(item_analysis, min_width = item_analysis_width),
+              reliability_note_tag(item_note, width = item_analysis_width)
+            )
           )
         }
       )
@@ -345,15 +347,19 @@ reliability_results_ui <- function(result) {
       div(
         class = "result-section reliability-result-section regression-result-panel",
         h3("Reliability"),
-        reliability_html_table(overview, min_width = overview_width),
-        reliability_note_tag(reliability_method_note(result), width = overview_width)
+        result_table_with_notes(
+          reliability_html_table(overview, min_width = overview_width),
+          reliability_note_tag(reliability_method_note(result), width = overview_width)
+        )
       ),
       if (is.data.frame(item_analysis) && nrow(item_analysis) > 0) {
         div(
           class = "result-section reliability-result-section regression-result-panel",
           h3("Item analysis"),
-          reliability_html_table(item_analysis, min_width = item_analysis_width),
-          reliability_note_tag(reliability_item_analysis_note(result), width = item_analysis_width)
+          result_table_with_notes(
+            reliability_html_table(item_analysis, min_width = item_analysis_width),
+            reliability_note_tag(reliability_item_analysis_note(result), width = item_analysis_width)
+          )
         )
       },
       NULL

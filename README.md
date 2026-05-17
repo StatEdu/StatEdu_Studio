@@ -30,7 +30,7 @@ The app will open at `127.0.0.1` in the default browser.
 
 If you use easyflow_statistics in your research, please cite:
 
-LEE, I. H. (2026). easyflow_statistics (Version 0.7.2) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
+LEE, I. H. (2026). easyflow_statistics (Version 0.7.3) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
 
 ## Development Model
 
