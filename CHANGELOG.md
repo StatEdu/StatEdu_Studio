@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.6.5 - 2026-05-17
+
+### Changed
+
+- Restored analysis transfer-button alignment from the 0.5.7 setup geometry and applied it to the new Reliability tab.
+- Restored the hierarchical regression save-button placement to the 0.5.7 action-row position.
+
+
 ## v0.6.4 - 2026-05-17
 
 ### Changed

@@ -2640,8 +2640,7 @@ pre {
 .regression-transfer-controls {
   align-items: center;
   justify-content: center;
-  padding-top: 0;
-  transform: none;
+  transform: translateX(6px);
 }
 
 .ttest-anova-transfer-controls,
@@ -2650,20 +2649,13 @@ pre {
   flex-direction: column;
 }
 
-.ttest-anova-transfer-controls {
-  display: grid;
-  grid-template-rows: 198px 352px;
-  gap: 18px;
-  align-items: center;
-  justify-items: center;
+.ttest-anova-transfer-controls,
+.regression-transfer-controls {
+  gap: 186px;
 }
 
-.regression-transfer-controls {
-  display: grid;
-  grid-template-rows: 198px 346px;
-  gap: 18px;
-  align-items: center;
-  justify-items: center;
+.hierarchical-transfer-controls {
+  gap: 64px;
 }
 
 .reliability-action-row,
@@ -2702,10 +2694,10 @@ pre {
 }
 
 .hierarchical-action-row > #hierarchical_save_control {
-  grid-column: 5;
+  grid-column: 4;
   margin-left: 0;
-  justify-self: center;
-  transform: translateX(18px);
+  justify-self: start;
+  transform: none;
 }
 
 .regression-action-row > #regression_save_control {

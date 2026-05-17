@@ -81,7 +81,7 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-controls-2"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-controls-3"))
 }
 
 app_script_link <- function(version) {
