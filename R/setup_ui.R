@@ -50,6 +50,33 @@ frequencies_tab_panel <- function() {
   )
 }
 
+paired_tab_panel <- function() {
+  tabPanel(
+    "Paired test",
+    value = "paired",
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1("Paired test"),
+        div("Move repeated-measures variables into Time 1 and Time 2 lists in matching order.", class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel paired-workspace-panel",
+        style = "min-width:980px;overflow-x:auto;",
+        h3("Paired test"),
+        uiOutput("paired_setup"),
+        div(
+          class = "analysis-action-row paired-action-row",
+          actionButton("run_paired", "Run analysis", class = "btn btn-primary"),
+          uiOutput("paired_save_control")
+        ),
+        uiOutput("paired_results")
+      )
+    )
+  )
+}
+
 ttest_anova_tab_panel <- function() {
   tabPanel(
     "t-test / ANOVA",

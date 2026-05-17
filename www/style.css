@@ -2533,6 +2533,7 @@ pre {
 
 .reliability-action-row,
 .frequencies-action-row,
+.paired-action-row,
 .ttest-anova-action-row,
 .correlation-action-row,
 .hierarchical-action-row,
@@ -2672,6 +2673,7 @@ pre {
 
 .reliability-action-row,
 .frequencies-action-row,
+.paired-action-row,
 .ttest-anova-action-row,
 .correlation-action-row {
   display: grid;
@@ -2684,6 +2686,7 @@ pre {
 
 .reliability-action-row > .btn,
 .frequencies-action-row > .btn,
+.paired-action-row > .btn,
 .ttest-anova-action-row > .btn,
 .correlation-action-row > .btn,
 .hierarchical-action-row > .btn,
@@ -2697,6 +2700,7 @@ pre {
 
 .reliability-action-row > #reliability_save_control,
 .frequencies-action-row > #frequencies_save_control,
+.paired-action-row > #paired_save_control,
 .ttest-anova-action-row > #ttest_anova_save_control,
 .correlation-action-row > #correlation_save_control {
   grid-column: 5;
@@ -2729,6 +2733,7 @@ pre {
 
 .frequencies-setup-grid,
 .reliability-setup-grid,
+.paired-setup-grid,
 .ttest-anova-setup-grid,
 .correlation-setup-grid,
 .regression-setup-grid {
@@ -2740,6 +2745,9 @@ pre {
 .frequencies-setup-grid > .analysis-options-panel,
 .reliability-setup-grid > .analysis-transfer-panel,
 .reliability-setup-grid > .analysis-options-panel,
+.paired-setup-grid > .analysis-transfer-panel,
+.paired-setup-grid > .paired-target-column,
+.paired-setup-grid > .ttest-anova-options-column,
 .ttest-anova-setup-grid > .analysis-transfer-panel,
 .ttest-anova-setup-grid > .ttest-anova-target-column,
 .ttest-anova-setup-grid > .ttest-anova-options-column,
@@ -2763,6 +2771,19 @@ pre {
 .ttest-anova-target-column {
   grid-template-rows: 198px 352px;
   height: 568px;
+}
+
+.paired-target-column,
+.paired-transfer-controls {
+  grid-template-rows: 275px 275px;
+  height: 568px;
+}
+
+.paired-first-panel .analysis-transfer-listbox,
+.paired-second-panel .analysis-transfer-listbox {
+  height: 168px !important;
+  min-height: 168px;
+  max-height: 168px;
 }
 
 .regression-target-column {

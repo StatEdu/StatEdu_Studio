@@ -371,6 +371,14 @@ write_ttest_anova_results_html <- function(result, file) {
   )
 }
 
+write_paired_results_html <- function(result, file) {
+  writeLines(
+    saved_paired_results_html(result),
+    file,
+    useBytes = TRUE
+  )
+}
+
 write_correlation_results_html <- function(result, file) {
   writeLines(
     saved_correlation_results_html(result),
@@ -860,6 +868,31 @@ save_ttest_anova_excel_file <- function(result, file) {
       item$note %||% "",
       used_sheets,
       title = item$title %||% "Result"
+    )
+  }
+  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
+  invisible(file)
+}
+
+save_paired_excel_file <- function(result, file) {
+  workbook <- openxlsx::createWorkbook()
+  used_sheets <- character(0)
+  used_sheets <- add_ttest_anova_result_sheet(
+    workbook,
+    "Paired test",
+    result$table,
+    "",
+    used_sheets,
+    title = "Paired test"
+  )
+  if (isTRUE(result$options$assumption_check) && is.data.frame(result$checks) && nrow(result$checks) > 0) {
+    used_sheets <- add_ttest_anova_result_sheet(
+      workbook,
+      "Assumption check",
+      result$checks,
+      "Outliers were evaluated using values beyond 3*IQR from the paired difference distribution.",
+      used_sheets,
+      title = "Assumption check"
     )
   }
   openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)

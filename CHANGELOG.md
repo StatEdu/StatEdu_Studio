@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.6.8 - 2026-05-17
+
+### Added
+
+- Added a Paired test tab for two repeated measurements, with paired t-test/Wilcoxon routing, McNemar/exact McNemar routing for binary pairs, and Stuart-Maxwell/Bowker options for categorical pairs.
+- Added optional paired-difference assumption checks with Shapiro-Wilk or skewness/kurtosis diagnostics plus 3*IQR outlier screening.
+- Added HTML and Excel export support for paired test tables and assumption-check notes.
+
+
 ## v0.6.7 - 2026-05-17
 
 ### Changed

@@ -235,6 +235,15 @@ saved_ttest_anova_results_html <- function(result, css_path = file.path("www", "
   )
 }
 
+saved_paired_results_html <- function(result, css_path = file.path("www", "style.css")) {
+  saved_results_document(
+    "easyflow_statistics Paired Test Results",
+    tags$div(class = "regression-results", paired_results_ui(result)),
+    max_width = 1500,
+    css_path = css_path
+  )
+}
+
 saved_correlation_results_html <- function(result, css_path = file.path("www", "style.css")) {
   options <- result$options %||% list()
   normality_table <- correlation_normality_display_table(result)

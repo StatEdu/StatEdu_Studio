@@ -9,6 +9,7 @@ All statistical analyses use CRAN packages only.
 ## Current Scope
 
 - Multiple regression
+- Paired tests for two repeated measurements
 - Residual normality test using the Lilliefors corrected Kolmogorov-Smirnov test
 - Homoscedasticity test using the Breusch-Pagan test
 - Automatic selection among OLS, HC3 robust standard errors, bootstrap confidence intervals, and HC3 plus bootstrap
@@ -28,7 +29,7 @@ The app will open at `127.0.0.1` in the default browser.
 
 If you use easyflow_statistics in your research, please cite:
 
-LEE, I. H. (2026). easyflow_statistics (Version 0.6.7) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
+LEE, I. H. (2026). easyflow_statistics (Version 0.6.8) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
 
 ## Development Model
 
