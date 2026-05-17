@@ -580,7 +580,7 @@ collect_measurement_inputs_from_table <- function(variable_info_fn, input) {
   collect_variable_inputs_from_table(
     variable_info_fn,
     input,
-    prefixes = "measurement_input_",
+    prefixes = c("measurement_input_", "category_measurement_input_"),
     allowed_values = c("binary", "category", "ordered", "continuous")
   )
 }

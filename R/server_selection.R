@@ -108,6 +108,7 @@ register_variable_table_state_observers <- function(
 
   observeEvent(input$nav_flush_request, {
     update_var_label_overrides_fn(input$nav_flush_request$var_labels %||% character(0), allow_blank = FALSE)
+    update_measurement_overrides_fn(input$nav_flush_request$measurements %||% character(0))
   })
 
   observeEvent(input$variable_measurement_update, {

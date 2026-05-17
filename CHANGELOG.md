@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.6.3 - 2026-05-17
+
+### Changed
+
+- Fixed Step 3 measurement-level changes so navigation to analysis tabs flushes the current measurement selections along with labels.
+- Included Step 3 category-label measurement selectors in the server-side direct input collection path.
+- Moved the hierarchical regression save-button block back under the third setup block.
+
+
 ## v0.6.2 - 2026-05-17
 
 ### Changed

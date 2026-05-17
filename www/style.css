@@ -2702,7 +2702,7 @@ pre {
 }
 
 .hierarchical-action-row > #hierarchical_save_control {
-  grid-column: 4;
+  grid-column: 5;
   margin-left: 0;
   justify-self: center;
   transform: translateX(18px);

@@ -81,11 +81,11 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-hier-term-1"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-controls-2"))
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-selection-controls-7"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-measurement-flush-1"))
 }
 
 app_head_tags <- function(version) {

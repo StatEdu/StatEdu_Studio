@@ -289,9 +289,12 @@
       document.addEventListener('click', function(event) {
         if (event.target.closest('.navbar-nav a')) {
           flushEasyflowInputs();
+          var state = submitEasyflowTableState();
           if (window.Shiny) {
             Shiny.setInputValue('nav_flush_request', {
-              var_labels: captureEasyflowVarLabels(),
+              measurements: state.measurements || {},
+              measurement_pairs: state.measurement_pairs || [],
+              var_labels: Object.assign({}, window.easyflowVarLabels || {}, state.var_labels || {}, captureEasyflowVarLabels()),
               nonce: Date.now() + Math.random()
             }, {priority: 'event'});
           }
