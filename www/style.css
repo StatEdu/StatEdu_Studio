@@ -957,6 +957,204 @@ input.variable-select:disabled {
   gap: 26px;
 }
 
+.crosstab-target-panel .form-group {
+  margin-bottom: 14px;
+}
+
+.crosstab-target-panel label {
+  color: #102a43;
+  font-size: 12px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.crosstab-target-panel .selectize-input {
+  min-height: 34px;
+}
+
+.crosstab-variable-input-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.crosstab-variable-listbox-label {
+  color: #102a43;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.crosstab-target-panel .analysis-transfer-listbox {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+}
+
+.crosstab-options-panel .analysis-option-title {
+  margin-bottom: 6px;
+}
+
+.crosstab-options-panel .radio,
+.crosstab-options-panel .checkbox,
+.crosstab-options-panel .form-group {
+  margin-top: 0;
+  margin-bottom: 7px;
+}
+
+.crosstab-rule-summary {
+  margin-top: 10px;
+  padding: 8px 10px;
+}
+
+.crosstab-table-wrap td {
+  white-space: pre-line;
+}
+
+.crosstab-main-table {
+  min-width: 760px;
+  table-layout: fixed;
+}
+
+.crosstab-row-variable-col {
+  width: 80px;
+}
+
+.crosstab-row-label-col {
+  width: 86px;
+}
+
+.crosstab-n-col {
+  width: 86px;
+}
+
+.crosstab-count-col {
+  width: 86px;
+}
+
+.crosstab-percent-col {
+  width: 50px;
+}
+
+.crosstab-stat-col {
+  width: 72px;
+}
+
+.crosstab-trend-p-col {
+  width: 92px;
+}
+
+.crosstab-main-table th,
+.crosstab-main-table td {
+  padding: 9px 12px;
+  line-height: 1.35;
+  border-left: 0;
+  border-right: 0;
+  background: transparent;
+  white-space: nowrap;
+}
+
+.crosstab-main-table thead th {
+  color: #2f3a46;
+  font-weight: 700;
+  border-bottom: 2px solid #1f2937;
+}
+
+.crosstab-main-table thead tr:first-child th {
+  border-bottom: 0;
+}
+
+.crosstab-main-table thead tr:first-child th[rowspan] {
+  vertical-align: bottom;
+  border-bottom: 2px solid #1f2937;
+}
+
+.crosstab-main-table thead tr:last-child th {
+  border-top: 1px solid #d7dde5;
+}
+
+.crosstab-row-head {
+  min-width: 80px;
+  text-align: left;
+}
+
+.crosstab-row-variable {
+  min-width: 80px;
+  text-align: left;
+}
+
+.crosstab-level-label-head,
+.crosstab-row-label {
+  min-width: 120px;
+  text-align: left;
+}
+
+.crosstab-col-head {
+  text-align: center !important;
+}
+
+.crosstab-level-head,
+.crosstab-n-head,
+.crosstab-n-cell,
+.crosstab-total-head,
+.crosstab-sub-head,
+.crosstab-stat-head,
+.crosstab-stat-cell {
+  min-width: 64px;
+  text-align: center;
+}
+
+.crosstab-level-head {
+  text-align: right !important;
+}
+
+.crosstab-total-level-head {
+  text-align: center !important;
+}
+
+.crosstab-sub-head,
+.crosstab-n-sub-head,
+.crosstab-n-head,
+.crosstab-n-cell {
+  text-align: right !important;
+}
+
+.crosstab-row-label {
+  text-align: left !important;
+}
+
+.crosstab-count-cell {
+  min-width: 64px;
+  text-align: right;
+}
+
+.crosstab-count-only-cell,
+.crosstab-percent-only-cell {
+  min-width: 42px;
+  text-align: right;
+}
+
+.crosstab-main-table tbody td {
+  border-bottom: 1px solid #d7dde5;
+}
+
+.crosstab-main-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.crosstab-stat-cell {
+  vertical-align: middle;
+  font-weight: 600;
+}
+
+.crosstab-footnote-marker {
+  margin-left: 2px;
+  font-size: 10px;
+  line-height: 0;
+  vertical-align: super;
+}
+
 .analysis-options-panel {
   min-height: 330px;
   width: 310px;
@@ -1002,6 +1200,10 @@ input.variable-select:disabled {
 }
 
 .frequencies-action-row > #frequencies_save_control {
+  grid-column: 4;
+}
+
+.frequencies-action-row > #crosstab_save_control {
   grid-column: 4;
 }
 
@@ -3333,6 +3535,29 @@ pre {
   height: 210px !important;
   min-height: 210px !important;
   max-height: 210px !important;
+}
+
+.crosstab-row-panel .analysis-transfer-listbox,
+.crosstab-column-panel .analysis-transfer-listbox {
+  height: 168px !important;
+  min-height: 168px !important;
+  max-height: 168px !important;
+}
+
+.crosstab-target-column {
+  grid-template-rows: 275px 275px !important;
+  height: 568px !important;
+}
+
+.crosstab-row-panel,
+.crosstab-column-panel {
+  height: 275px !important;
+  min-height: 275px !important;
+  box-sizing: border-box;
+}
+
+.crosstab-transfer-controls {
+  grid-template-rows: 275px 275px !important;
 }
 
 .hierarchical-block-title-row {

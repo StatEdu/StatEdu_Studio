@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.7.10 - 2026-05-18
+
+### Changed
+
+- Added Cross-tabulation Analysis for binary, ordered, and categorical variables with Pearson chi-square, Fisher exact / Monte Carlo fallback, and trend analysis.
+- Added multi-variable row and column assignment with ordering controls, column-grouped result tables, row/column/total percent display options, and optional split n / percent cells.
+- Added p-value method footnotes, p for trend with method-specific notes, effect-size notes, and HTML / Excel export support for cross-tabulation results.
+- Added validation coverage for cross-tabulation statistics, rendering, variable ordering, and export helpers.
+
+
 ## v0.7.9 - 2026-05-18
 
 ### Changed

@@ -445,6 +445,14 @@ write_correlation_results_html <- function(result, file) {
   )
 }
 
+write_crosstab_results_html <- function(result, file) {
+  writeLines(
+    saved_crosstab_results_html(result),
+    file,
+    useBytes = TRUE
+  )
+}
+
 coefficient_export_table <- function(
   result,
   show_sr2 = FALSE,
@@ -889,6 +897,99 @@ save_correlation_excel_file <- function(result, file) {
       "Latent correlations",
       correlation_matrix_display_table(result, result$latent),
       used_sheets
+    )
+  }
+  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
+  invisible(file)
+}
+
+crosstab_excel_group_table <- function(results) {
+  first <- results[[1]]
+  col_labels <- crosstab_value_labels(first$col_var, colnames(first$table), first$category_table)
+  split <- crosstab_split_count_percent(first)
+  show_trend_p <- crosstab_show_trend_p(results)
+  method_notes <- crosstab_method_footnotes(results)
+  rows <- list()
+
+  for (result in results) {
+    tab <- result$table
+    percent <- crosstab_primary_percent_matrix(result)
+    row_labels <- crosstab_value_labels(result$row_var, rownames(tab), result$category_table)
+    statistic <- crosstab_format_number(result$association$statistic)
+    p_marker <- crosstab_method_marker(result, method_notes)
+    p_value <- crosstab_format_p(result$association$p)
+    if (nzchar(p_marker)) p_value <- paste0(p_value, p_marker)
+    trend_marker <- crosstab_trend_marker(result, method_notes)
+    effect <- crosstab_general_effect_info(result)$value
+
+    for (row_index in seq_len(nrow(tab))) {
+      base <- list(
+        `Row variable` = if (row_index == 1) result$row_label else "",
+        Value = row_labels[[row_index]]
+      )
+      if (isTRUE(split)) {
+        base[["Total n"]] <- rowSums(tab)[[row_index]]
+        base[["Total %"]] <- crosstab_split_percent_text(crosstab_total_percent_value(tab, row_index))
+        for (col_index in seq_len(ncol(tab))) {
+          label <- col_labels[[col_index]]
+          base[[paste(label, "n")]] <- tab[row_index, col_index]
+          base[[paste(label, "%")]] <- crosstab_split_percent_text(if (is.null(percent)) NULL else percent[row_index, col_index])
+        }
+      } else {
+        base[["n"]] <- crosstab_cell_text(rowSums(tab)[[row_index]], crosstab_total_percent_value(tab, row_index))
+        for (col_index in seq_len(ncol(tab))) {
+          base[[col_labels[[col_index]]]] <- crosstab_cell_text(tab[row_index, col_index], if (is.null(percent)) NULL else percent[row_index, col_index])
+        }
+      }
+      base[["x2"]] <- if (row_index == 1) statistic else ""
+      base[["p"]] <- if (row_index == 1) p_value else ""
+      base[["ES"]] <- if (row_index == 1) effect else ""
+      if (isTRUE(show_trend_p)) {
+        trend_p <- crosstab_trend_p_text(result)
+        if (nzchar(trend_p) && nzchar(trend_marker)) trend_p <- paste0(trend_p, trend_marker)
+        base[["p for trend"]] <- if (row_index == 1) trend_p else ""
+      }
+      rows[[length(rows) + 1L]] <- base
+    }
+  }
+
+  data.frame(do.call(rbind, lapply(rows, as.data.frame, stringsAsFactors = FALSE, check.names = FALSE)), check.names = FALSE)
+}
+
+crosstab_excel_group_note <- function(results) {
+  method_notes <- crosstab_method_footnotes(results)
+  method_lines <- if (is.data.frame(method_notes) && nrow(method_notes) > 0) {
+    sprintf("%s. %s", method_notes$marker, method_notes$note)
+  } else {
+    character(0)
+  }
+  effect_lines <- unique(unlist(lapply(results, function(result) {
+    effect <- crosstab_general_effect_info(result)
+    if (nzchar(effect$note)) effect$note else character(0)
+  }), use.names = FALSE))
+  trend_lines <- unique(unlist(lapply(results, function(result) {
+    if (is.null(result$trend) && nzchar(as.character(result$trend_note %||% ""))) {
+      result$trend_note
+    } else {
+      character(0)
+    }
+  }), use.names = FALSE))
+  paste(c(method_lines, effect_lines, trend_lines), collapse = "\n")
+}
+
+save_crosstab_excel_file <- function(result, file) {
+  results <- crosstab_result_list(result)
+  workbook <- openxlsx::createWorkbook()
+  used_sheets <- character(0)
+  for (group in crosstab_results_by_column(results)) {
+    first <- group[[1]]
+    used_sheets <- add_excel_table_sheet_with_note(
+      workbook,
+      first$col_label,
+      crosstab_excel_group_table(group),
+      crosstab_excel_group_note(group),
+      used_sheets,
+      title = sprintf("Cross-tabulation: %s", first$col_label)
     )
   }
   openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)

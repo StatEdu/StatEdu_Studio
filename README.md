@@ -11,6 +11,7 @@ All statistical analyses use CRAN packages only.
 - Multiple regression
 - Paired tests for two repeated measurements
 - Paired tests for three or more repeated measurements
+- Cross-tabulation analysis for binary, ordered, and categorical variables
 - Residual normality test using the Lilliefors corrected Kolmogorov-Smirnov test
 - Homoscedasticity test using the Breusch-Pagan test
 - Automatic selection among OLS, HC3 robust standard errors, bootstrap confidence intervals, and HC3 plus bootstrap
@@ -30,7 +31,7 @@ The app will open at `127.0.0.1` in the default browser.
 
 If you use easyflow_statistics in your research, please cite:
 
-LEE, I. H. (2026). easyflow_statistics (Version 0.7.9) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
+LEE, I. H. (2026). easyflow_statistics (Version 0.7.10) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
 
 ## Development Model
 

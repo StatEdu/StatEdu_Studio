@@ -517,3 +517,14 @@ saved_correlation_results_html <- function(result, css_path = file.path("www", "
     report_mode = report_mode
   )
 }
+
+saved_crosstab_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
+  saved_results_document(
+    "EasyFlow Statistics Cross-tabulation Results",
+    tags$div(class = "crosstab-results regression-results", crosstab_results_ui(result)),
+    max_width = 1500,
+    css_path = css_path,
+    print_landscape = TRUE,
+    report_mode = report_mode
+  )
+}

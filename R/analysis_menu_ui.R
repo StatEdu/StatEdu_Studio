@@ -22,12 +22,29 @@ analysis_placeholder_tab_panel <- function(title, subtitle, body_title, body_tex
 }
 
 crosstab_tab_panel <- function() {
-  analysis_placeholder_tab_panel(
-    "Crosstabs",
-    "Prepare cross-tabulation and categorical association tests.",
-    "Crosstabs",
-    "Crosstab analysis will be implemented here.",
-    value = "analysis_crosstabs"
+  tabPanel(
+    "Cross-tabulation Analysis",
+    value = "analysis_crosstabs",
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1("Cross-tabulation Analysis"),
+        div("Cross-tabulation and categorical association tests for binary, ordered, and categorical variables.", class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel",
+        style = "min-width:980px;overflow-x:auto;",
+        h3("Cross-tabulation Analysis"),
+        uiOutput("crosstab_setup"),
+        div(
+          class = "analysis-action-row frequencies-action-row",
+          actionButton("run_crosstab", "Run analysis", class = "btn btn-primary"),
+          uiOutput("crosstab_save_control")
+        ),
+        uiOutput("crosstab_results")
+      )
+    )
   )
 }
 
