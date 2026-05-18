@@ -361,7 +361,7 @@ metabolic_calculator_setup_ui <- function(file, data, variable_info, input) {
         div(class = "analysis-option-title", "Reference cutoffs"),
         div(class = "metabolic-reference-grid", metabolic_reference_controls(input))
       ),
-      metabolic_reference_table(input),
+      if (!identical(metabolic_reference_set_id(input), "custom")) metabolic_reference_table(input),
       div(class = "analysis-option-title metabolic-coding-title", "Coding"),
       metabolic_coding_table(),
       div(class = "analysis-option-title metabolic-output-title", "Output"),

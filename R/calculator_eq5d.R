@@ -677,7 +677,7 @@ eq5d_setup_ui <- function(file, data, variable_info, input) {
     div(class = "analysis-transfer-column analysis-transfer-panel", analysis_field_label_tag("Variables"), analysis_transfer_listbox_input("eq5d_available", available_items, selected = isolate(input$eq5d_available), size = 19)),
     div(class = "analysis-transfer-controls hint8-transfer-spacer"),
     div(
-      class = "analysis-transfer-column analysis-transfer-panel metabolic-target-panel",
+      class = "analysis-transfer-column analysis-transfer-panel metabolic-target-panel eq5d-target-panel",
       analysis_field_label_tag("EQ-5D variables"),
       div(
         class = "eq5d-type-control",

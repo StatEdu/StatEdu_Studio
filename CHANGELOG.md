@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.7.9 - 2026-05-18
+
+### Changed
+
+- Tightened and aligned calculator panel spacing across EQ-5D, metabolic syndrome, and metabolic severity calculators.
+- Hid the metabolic syndrome default criterion table when Custom criteria are selected.
+- Reworked the metabolic severity Formula panel to match the other calculator reference panels and separated its Output section.
+- Added calculator validation coverage for HINT8, EQ-5D, metabolic syndrome, FRS, ASCVD10, and metabolic severity.
+
+
 ## v0.7.7 - 2026-05-18
 
 ### Changed

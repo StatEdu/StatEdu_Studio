@@ -393,26 +393,38 @@ body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   column-gap: 8px;
+  row-gap: 0;
 }
 
 .metabolic-unit-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   column-gap: 8px;
-  margin-bottom: -4px;
+  margin-bottom: -8px;
 }
 
 .metabolic-reference-grid .form-group {
-  margin-bottom: 2px;
+  margin-bottom: -5px;
 }
 
 .metabolic-reference-grid label,
 .metabolic-unit-grid label {
   font-size: 12px;
-  margin-bottom: 2px;
+  margin-bottom: 1px;
+}
+
+.metabolic-reference-grid .form-control {
+  height: 29px;
+  padding: 3px 10px;
+  font-size: 12px;
 }
 
 .metabolic-unit-control .form-group {
+  margin-bottom: -2px;
+}
+
+.metabolic-unit-control .selectize-control,
+.metabolic-reference-set-control .selectize-control {
   margin-bottom: 0;
 }
 
@@ -434,7 +446,7 @@ body {
 }
 
 .metabolic-reference-set-control .form-group {
-  margin-bottom: -3px;
+  margin-bottom: -8px;
 }
 
 .metabolic-reference-set-label {
@@ -446,13 +458,13 @@ body {
 
 .metabolic-syndrome-reference-panel .analysis-option-title {
   margin-top: 0;
-  margin-bottom: -2px;
+  margin-bottom: -7px;
   line-height: 1.05;
 }
 
 .metabolic-syndrome-reference-panel .hint8-initial-table {
-  margin-top: 0;
-  margin-bottom: -1px;
+  margin-top: -3px;
+  margin-bottom: -8px;
 }
 
 .metabolic-syndrome-reference-panel .hint8-initial-table td,
@@ -470,8 +482,8 @@ body {
 
 .metabolic-coding-title,
 .metabolic-output-title {
-  margin-top: -4px;
-  margin-bottom: -3px;
+  margin-top: -12px;
+  margin-bottom: -15px;
 }
 
 .metabolic-syndrome-reference-panel .metabolic-reference-table th {
@@ -495,6 +507,12 @@ body {
 
 .metabolic-reference-custom {
   display: block;
+  margin-top: 3px;
+  margin-bottom: -6px;
+}
+
+.metabolic-reference-custom > .analysis-option-title {
+  margin-bottom: 2px;
 }
 
 .metabolic-reference-table {
@@ -3440,6 +3458,11 @@ pre {
   margin-bottom: 14px;
 }
 
+.eq5d-target-panel .metabolic-variable-input-grid .form-group,
+.mbss-target-panel .metabolic-variable-input-grid .form-group {
+  margin-bottom: 9px;
+}
+
 .eq5d-type-control #eq5d_type,
 .eq5d-type-control .selectize-control.single .selectize-input {
   color: #062f4f !important;
@@ -3459,6 +3482,28 @@ pre {
   color: #334e68;
   font-size: 12px;
   font-weight: 700;
+}
+
+.mbss-reference-panel > .analysis-option-title {
+  margin-bottom: 2px !important;
+}
+
+.mbss-reference-panel .step-summary {
+  margin-bottom: 8px !important;
+  padding: 5px 12px !important;
+}
+
+.mbss-reference-panel .hint8-initial-table {
+  margin-top: 4px !important;
+}
+
+.mbss-reference-panel .hint8-initial-table td {
+  font-size: 12px;
+}
+
+.mbss-output-title {
+  margin-top: 10px;
+  margin-bottom: 4px;
 }
 
 .eq5d-initial-panel .eq5d-initial-table {

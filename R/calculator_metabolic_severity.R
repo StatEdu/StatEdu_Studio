@@ -137,20 +137,27 @@ metabolic_severity_setup_ui <- function(file, data, variable_info, input) {
     ),
     div(class = "analysis-transfer-controls hint8-transfer-spacer"),
     div(
-      class = "analysis-transfer-column analysis-transfer-panel metabolic-target-panel",
+      class = "analysis-transfer-column analysis-transfer-panel metabolic-target-panel mbss-target-panel",
       analysis_field_label_tag("Severity score variables"),
       div(class = "metabolic-variable-input-grid", variable_inputs)
     ),
     div(
-      class = "analysis-options-column analysis-options-panel metabolic-reference-panel",
+      class = "analysis-options-column analysis-options-panel metabolic-reference-panel mbss-reference-panel",
       div(class = "analysis-option-title", "Formula"),
-      div(class = "step-summary", div("Outputs: MBSS_overall, MBSS", class = "step-summary-title")),
+      div(class = "step-summary mbss-formula-summary", div("Korean adults aged 20 to 59", class = "step-summary-title")),
       tags$table(
-        class = "hint8-initial-table",
+        class = "hint8-initial-table metabolic-reference-table mbss-formula-table",
         tags$tbody(
           tags$tr(tags$td("Age range"), tags$td("20 to 59")),
-          tags$tr(tags$td("Inputs"), tags$td("sex, age, glucose, SBP, WC, HDL-C, TG")),
           tags$tr(tags$td("TG transform"), tags$td("ln(TG)"))
+        )
+      ),
+      div(class = "analysis-option-title calculator-output-title mbss-output-title", "Output"),
+      tags$table(
+        class = "hint8-initial-table metabolic-reference-table mbss-output-table",
+        tags$tbody(
+          tags$tr(tags$td("Overall score"), tags$td("MBSS_overall")),
+          tags$tr(tags$td("Age-specific score"), tags$td("MBSS"))
         )
       )
     )
