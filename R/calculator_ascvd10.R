@@ -3,19 +3,7 @@
 ascvd10_variable_specs <- function() {
   data.frame(
     id = c("race", "sex", "age", "SMOK", "CHOL", "HDLc", "HPd", "SBP", "DM", "c_history", "c_ldlc"),
-    label = c(
-      "Race (White 1, African-American 2, Other 3)",
-      "Sex (Male 1, Female 2)",
-      "Age",
-      "Current smoker (1=yes, 0=no)",
-      "Total cholesterol",
-      "HDL cholesterol",
-      "Treated for hypertension (1=yes, 0=no)",
-      "SBP",
-      "Diabetes (1=yes, 0=no)",
-      "History of ASCVD (1=yes, 0=no)",
-      "LDL cholesterol"
-    ),
+    label = c("Race", "Sex", "Age", "Current smoker", "Total cholesterol", "HDL cholesterol", "Hypertension treatment", "SBP", "Diabetes", "ASCVD history", "LDL cholesterol"),
     required = c(rep(TRUE, 10), FALSE),
     stringsAsFactors = FALSE
   )
@@ -114,7 +102,7 @@ ascvd10_result <- function(data, selected) {
     metabolic_numeric(source[[variable_name]])
   })
   names(values) <- selected_ids
-  source[["ASCVD10"]] <- ascvd10_score(values$race, values$sex, values$age, values$SMOK, values$CHOL, values$HDLc, values$HPd, values$SBP, values$DM, values$c_history, values$c_ldlc)
+  source[["ascvd10_score"]] <- ascvd10_score(values$race, values$sex, values$age, values$SMOK, values$CHOL, values$HDLc, values$HPd, values$SBP, values$DM, values$c_history, values$c_ldlc)
   source
 }
 
@@ -124,7 +112,7 @@ ascvd10_calculator_tab_panel <- function() {
     value = "calculator_ascvd10",
     div(
       class = "page-shell",
-      div(class = "app-heading", h1("ASCVD10 Calculator"), div("Select variables and add ASCVD10 to the current data.", class = "app-subtitle")),
+      div(class = "app-heading", h1("ASCVD10 Calculator"), div("Select variables and add ascvd10_score to the current data.", class = "app-subtitle")),
       div(
         class = "workspace-panel frequencies-workspace-panel metabolic-calculator-workspace",
         style = "min-width:980px;overflow-x:auto;",
@@ -141,14 +129,39 @@ ascvd10_calculator_tab_panel <- function() {
 
 ascvd10_reference_table <- function() {
   rows <- data.frame(
-    Rule = c("Race", "Sex", "ASCVD history", "LDL-C"),
-    Value = c("White=1, African-American=2, Other=3", "Male=1, Female=2", "1 -> ASCVD10 missing", ">=190 -> ASCVD10 missing"),
+    Reference = c("Race", "Sex"),
+    Coding = c("White=1; African-American=2; Other=3", "Male=1; Female=2"),
     stringsAsFactors = FALSE
   )
   tags$table(
-    class = "hint8-initial-table",
-    tags$thead(tags$tr(tags$th("Reference"), tags$th("Value"))),
-    tags$tbody(lapply(seq_len(nrow(rows)), function(index) tags$tr(tags$td(rows$Rule[[index]]), tags$td(rows$Value[[index]]))))
+    class = "hint8-initial-table ascvd10-reference-table",
+    tags$thead(tags$tr(tags$th("Reference"), tags$th("Coding"))),
+    tags$tbody(lapply(seq_len(nrow(rows)), function(index) {
+      tags$tr(tags$td(rows$Reference[[index]]), tags$td(rows$Coding[[index]]))
+    }))
+  )
+}
+
+ascvd10_exclusion_table <- function() {
+  rows <- data.frame(
+    Variable = c("ASCVD history", "LDL-C"),
+    Rule = c("1", ">= 190"),
+    Result = c("ascvd10_score missing", "ascvd10_score missing"),
+    stringsAsFactors = FALSE
+  )
+  tags$table(
+    class = "hint8-initial-table ascvd10-reference-table ascvd10-exclusion-table",
+    tags$thead(tags$tr(tags$th("Variable"), tags$th("Rule"), tags$th("Result"))),
+    tags$tbody(lapply(seq_len(nrow(rows)), function(index) {
+      tags$tr(tags$td(rows$Variable[[index]]), tags$td(rows$Rule[[index]]), tags$td(rows$Result[[index]]))
+    }))
+  )
+}
+
+ascvd10_output_table <- function() {
+  tags$table(
+    class = "hint8-initial-table ascvd10-reference-table ascvd10-output-table",
+    tags$tbody(tags$tr(tags$td("10-year risk"), tags$td("ascvd10_score")))
   )
 }
 
@@ -167,8 +180,21 @@ ascvd10_setup_ui <- function(file, data, variable_info, input) {
     class = "frequencies-setup-grid metabolic-setup-grid",
     div(class = "analysis-transfer-column analysis-transfer-panel", analysis_field_label_tag("Variables"), analysis_transfer_listbox_input("ascvd10_available", available_items, selected = isolate(input$ascvd10_available), size = 19)),
     div(class = "analysis-transfer-controls hint8-transfer-spacer"),
-    div(class = "analysis-transfer-column analysis-transfer-panel metabolic-target-panel", analysis_field_label_tag("ASCVD10 variables"), div(class = "metabolic-variable-input-grid", variable_inputs)),
-    div(class = "analysis-options-column analysis-options-panel metabolic-reference-panel", div(class = "analysis-option-title", "Reference"), ascvd10_reference_table())
+    div(
+      class = "analysis-transfer-column analysis-transfer-panel metabolic-target-panel ascvd10-target-panel",
+      analysis_field_label_tag("ASCVD10 variables"),
+      div(class = "ascvd10-two-column-row", variable_inputs[[1]], variable_inputs[[2]]),
+      div(class = "metabolic-variable-input-grid", variable_inputs[-c(1, 2)])
+    ),
+    div(
+      class = "analysis-options-column analysis-options-panel metabolic-reference-panel ascvd10-reference-panel",
+      div(class = "analysis-option-title", "Reference"),
+      ascvd10_reference_table(),
+      div(class = "analysis-option-title ascvd10-rule-title", "Exclusion rules"),
+      ascvd10_exclusion_table(),
+      div(class = "analysis-option-title ascvd10-output-title", "Output"),
+      ascvd10_output_table()
+    )
   )
 }
 
@@ -197,8 +223,8 @@ register_ascvd10_calculator_handlers <- function(input, output, session, dataset
     }
     tryCatch({
       result_data <- ascvd10_result(dataset_fn(), ascvd10_selected_variables(input))
-      add_calculated_variable_fn("ASCVD10", result_data[["ASCVD10"]], var_label = "ASCVD 10-year risk", measurement = "continuous")
-      showNotification("ASCVD10 was added to the current data.", type = "message", duration = 5)
+      add_calculated_variable_fn("ascvd10_score", result_data[["ascvd10_score"]], var_label = "ASCVD 10-year risk", measurement = "continuous")
+      showNotification("ascvd10_score was added to the current data.", type = "message", duration = 5)
       result_data
     }, error = function(error) {
       showNotification(conditionMessage(error), type = "warning", duration = 6)
@@ -208,13 +234,13 @@ register_ascvd10_calculator_handlers <- function(input, output, session, dataset
   output$ascvd10_calculator_summary <- renderUI({
     data <- result()
     if (is.null(data)) return(div(class = "empty-message", div("Select variables and click Calculate.")))
-    div(class = "empty-message", div(sprintf("Calculated ASCVD10 for %s rows. The variable is available in analysis menus.", nrow(data))))
+    div(class = "empty-message", div(sprintf("Calculated ascvd10_score for %s rows. The variable is available in analysis menus.", nrow(data))))
   })
   output$ascvd10_calculator_preview <- DT::renderDT({
     data <- result()
     if (is.null(data)) return(DT::datatable(data.frame(Message = "No ASCVD10 result yet.", stringsAsFactors = FALSE), rownames = FALSE, options = list(dom = "t", paging = FALSE, ordering = FALSE)))
     selected <- ascvd10_selected_variables(input)
-    preview_names <- intersect(c(unname(selected[nzchar(selected)]), "ASCVD10"), names(data))
+    preview_names <- intersect(c(unname(selected[nzchar(selected)]), "ascvd10_score"), names(data))
     DT::datatable(utils::head(data[, preview_names, drop = FALSE], 50), rownames = FALSE, filter = "top", options = list(pageLength = 10, scrollX = TRUE))
   })
   output$download_ascvd10_calculator <- downloadHandler(

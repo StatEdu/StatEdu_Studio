@@ -61,12 +61,11 @@ hint8_score <- function(items, profile_11111111_as_one = TRUE) {
   score
 }
 
-hint8_ordered_choices <- function(data, variable_info = NULL) {
-  if (is.null(data) || ncol(data) == 0 || is.null(variable_info) || !all(c("name", "measurement") %in% names(variable_info))) {
+hint8_variable_choices <- function(data, variable_info = NULL) {
+  if (is.null(data) || ncol(data) == 0) {
     return(character(0))
   }
-  ordered <- as.character(variable_info$name[as.character(variable_info$measurement) == "ordered"])
-  intersect(ordered, names(data))
+  names(data)
 }
 
 hint8_selected_variables <- function(input) {
@@ -77,8 +76,7 @@ hint8_selected_variables <- function(input) {
 hint8_calculator_result <- function(
   data,
   selected,
-  score_name = "HINT8_score",
-  ordered_choices = NULL,
+  variable_choices = NULL,
   profile_11111111_as_one = TRUE
 ) {
   selected <- as.character(selected)
@@ -89,17 +87,12 @@ hint8_calculator_result <- function(
   if (is.null(data) || !all(selected %in% names(data))) {
     stop("Selected variables are not available in the loaded data.", call. = FALSE)
   }
-  if (!is.null(ordered_choices) && !all(selected %in% ordered_choices)) {
-    stop("HINT8 item variables must be ordered variables.", call. = FALSE)
-  }
-
-  score_name <- trimws(as.character(score_name %||% "HINT8_score"))
-  if (!nzchar(score_name)) {
-    score_name <- "HINT8_score"
+  if (!is.null(variable_choices) && !all(selected %in% variable_choices)) {
+    stop("Selected HINT8 item variables are not available in the loaded data.", call. = FALSE)
   }
 
   result <- as.data.frame(data, stringsAsFactors = FALSE, check.names = FALSE)
-  result[[score_name]] <- hint8_score(
+  result[["hint8_score"]] <- hint8_score(
     result[, selected, drop = FALSE],
     profile_11111111_as_one = profile_11111111_as_one
   )
@@ -146,7 +139,7 @@ hint8_calculator_tab_panel <- function() {
       div(
         class = "app-heading",
         h1("HINT8 Calculator"),
-        div("Select the 8 ordered HINT8 item variables from the current data and calculate HINT8_score.", class = "app-subtitle")
+        div("Select the 8 HINT8 item variables from the current data and calculate hint8_score.", class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel hint8-calculator-workspace",
@@ -170,11 +163,11 @@ calculator_tab_panel <- function() {
   navbarMenu(
     "Calculator",
     hint8_calculator_tab_panel(),
-    metabolic_calculator_tab_panel(),
-    metabolic_severity_calculator_tab_panel(),
-    frs_calculator_tab_panel(),
     eq5d_calculator_tab_panel(),
-    ascvd10_calculator_tab_panel()
+    metabolic_calculator_tab_panel(),
+    frs_calculator_tab_panel(),
+    ascvd10_calculator_tab_panel(),
+    metabolic_severity_calculator_tab_panel()
   )
 }
 
@@ -182,7 +175,7 @@ hint8_item_select_control <- function(id, label, choices, selected = "") {
   selectInput(
     id,
     label,
-    choices = c("Select ordered variable" = "", choices),
+    choices = c("Select variable" = "", choices),
     selected = selected,
     width = "100%"
   )
@@ -221,12 +214,19 @@ hint8_weight_values_table <- function() {
   )
 }
 
+hint8_output_table <- function() {
+  tags$table(
+    class = "hint8-initial-table hint8-output-table",
+    tags$tbody(tags$tr(tags$td("Score"), tags$td("hint8_score")))
+  )
+}
+
 hint8_calculator_setup_ui <- function(file, data, variable_info, input) {
   if (is.null(file)) {
     return(setup_empty_message("Load a data file in the Data tab before using the HINT8 calculator."))
   }
 
-  choices <- hint8_ordered_choices(data, variable_info)
+  choices <- hint8_variable_choices(data, variable_info)
   specs <- hint8_item_specs()
   available_items <- analysis_variable_items(choices, variable_info, character(0))
   profile_as_one <- isTRUE(input$hint8_profile_11111111_as_one %||% TRUE)
@@ -244,33 +244,34 @@ hint8_calculator_setup_ui <- function(file, data, variable_info, input) {
     class = "frequencies-setup-grid hint8-setup-grid",
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
-      analysis_field_label_tag("Variables", "ordered"),
-      if (length(choices) == 0) {
-        div(class = "step-note", "Set HINT8 item variables to ordered in Data Step 3 before selecting variables.")
-      },
+      analysis_field_label_tag("Variables"),
       analysis_transfer_listbox_input("hint8_available", available_items, selected = isolate(input$hint8_available), size = 19)
     ),
     div(class = "analysis-transfer-controls hint8-transfer-spacer"),
     div(
       class = "analysis-transfer-column analysis-transfer-panel hint8-target-panel",
-      analysis_field_label_tag("HINT8 variables", "ordered"),
-      div(class = "hint8-variable-input-grid", variable_inputs),
-      textInput("hint8_score_name", "Output variable", value = isolate(input$hint8_score_name %||% "HINT8_score"), width = "100%")
+      analysis_field_label_tag("HINT8 variables"),
+      div(class = "hint8-variable-input-grid hint8-single-column-input-grid", variable_inputs)
     ),
     div(
       class = "analysis-options-column analysis-options-panel hint8-initial-panel",
       div(class = "analysis-option-title", "Initial values"),
       div(
-        class = "step-summary hint8-initial-summary",
-        div(sprintf("Initial score: %.3f", initial_score), class = "step-summary-title"),
-        div("When checked, profile 11111111 is scored as 1.000. When unchecked, the formula score is 0.927.", class = "step-summary-detail")
-      ),
-      checkboxInput(
-        "hint8_profile_11111111_as_one",
-        "profile 11111111 -> HINT8 = 1.0",
-        value = profile_as_one
-      ),
-      hint8_weight_values_table()
+        class = "hint8-initial-content",
+        div(
+          class = "step-summary hint8-initial-summary",
+          div(sprintf("Initial score: %.3f", initial_score), class = "step-summary-title"),
+          div("When checked, profile 11111111 is scored as 1.000. When unchecked, the formula score is 0.927.", class = "step-summary-detail")
+        ),
+        checkboxInput(
+          "hint8_profile_11111111_as_one",
+          "profile 11111111 -> HINT8 = 1.0",
+          value = profile_as_one
+        ),
+        hint8_weight_values_table(),
+        div(class = "analysis-option-title calculator-output-title", "Output"),
+        hint8_output_table()
+      )
     )
   )
 }
@@ -322,21 +323,16 @@ register_hint8_calculator_handlers <- function(
         result_data <- hint8_calculator_result(
           dataset_fn(),
           hint8_selected_variables(input),
-          input$hint8_score_name,
-          ordered_choices = hint8_ordered_choices(dataset_fn(), variable_info_fn()),
+          variable_choices = hint8_variable_choices(dataset_fn(), variable_info_fn()),
           profile_11111111_as_one = isTRUE(input$hint8_profile_11111111_as_one)
         )
-        score_name <- trimws(input$hint8_score_name %||% "HINT8_score")
-        if (!nzchar(score_name)) {
-          score_name <- "HINT8_score"
-        }
         add_calculated_variable_fn(
-          score_name,
-          result_data[[score_name]],
+          "hint8_score",
+          result_data[["hint8_score"]],
           var_label = "HINT8 score",
           measurement = "continuous"
         )
-        showNotification(sprintf("%s was added to the current data.", score_name), type = "message", duration = 5)
+        showNotification("hint8_score was added to the current data.", type = "message", duration = 5)
         result_data
       },
       error = function(error) {
@@ -349,15 +345,14 @@ register_hint8_calculator_handlers <- function(
   output$hint8_calculator_summary <- renderUI({
     data <- result()
     if (is.null(data)) {
-      return(div(class = "empty-message", div("Select ordered variables and click Calculate.")))
+      return(div(class = "empty-message", div("Select variables and click Calculate.")))
     }
-    score_name <- trimws(input$hint8_score_name %||% "HINT8_score")
-    score <- data[[score_name]]
+    score <- data[["hint8_score"]]
     div(
       class = "empty-message",
       div(sprintf(
         "Calculated %s for %s rows. Missing/invalid item rows: %s. The score variable is available in analysis menus.",
-        score_name,
+        "hint8_score",
         nrow(data),
         sum(is.na(score))
       ))
@@ -374,8 +369,7 @@ register_hint8_calculator_handlers <- function(
       ))
     }
     selected <- hint8_selected_variables(input)
-    score_name <- trimws(input$hint8_score_name %||% "HINT8_score")
-    preview_names <- intersect(c(selected, score_name), names(data))
+    preview_names <- intersect(c(selected, "hint8_score"), names(data))
     DT::datatable(
       utils::head(data[, preview_names, drop = FALSE], 50),
       rownames = FALSE,
@@ -394,8 +388,7 @@ register_hint8_calculator_handlers <- function(
         data <- hint8_calculator_result(
           dataset_fn(),
           hint8_selected_variables(input),
-          input$hint8_score_name,
-          ordered_choices = hint8_ordered_choices(dataset_fn(), variable_info_fn()),
+          variable_choices = hint8_variable_choices(dataset_fn(), variable_info_fn()),
           profile_11111111_as_one = isTRUE(input$hint8_profile_11111111_as_one)
         )
       }

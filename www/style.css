@@ -340,13 +340,48 @@ body {
   column-gap: 10px;
 }
 
+.hint8-single-column-input-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.hint8-single-column-input-grid .form-group {
+  margin-bottom: 3px;
+}
+
+.hint8-single-column-input-grid label {
+  margin-bottom: 2px;
+  line-height: 1.05;
+}
+
+.hint8-single-column-input-grid .selectize-control {
+  margin-bottom: 0;
+}
+
+.hint8-single-column-input-grid .selectize-input {
+  min-height: 30px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
 .metabolic-target-panel .form-group {
-  margin-bottom: 6px;
+  margin-bottom: 2px;
 }
 
 .metabolic-target-panel label {
   color: #102a43;
   font-size: 12px;
+  line-height: 1;
+  margin-bottom: 1px;
+}
+
+.metabolic-target-panel .selectize-input {
+  min-height: 28px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.metabolic-target-panel .selectize-control {
+  margin-bottom: 0;
 }
 
 .metabolic-variable-input-grid {
@@ -360,12 +395,120 @@ body {
   column-gap: 8px;
 }
 
-.metabolic-reference-grid .form-group {
-  margin-bottom: 6px;
+.metabolic-unit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 8px;
+  margin-bottom: -4px;
 }
 
-.metabolic-reference-grid label {
+.metabolic-reference-grid .form-group {
+  margin-bottom: 2px;
+}
+
+.metabolic-reference-grid label,
+.metabolic-unit-grid label {
   font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.metabolic-unit-control .form-group {
+  margin-bottom: 0;
+}
+
+.metabolic-unit-control .selectize-control.single .selectize-input,
+.metabolic-unit-control select,
+.metabolic-reference-set-control .selectize-control.single .selectize-input,
+.metabolic-reference-set-control select {
+  color: #062f4f !important;
+  background-color: #fff4dc !important;
+  border-color: #c77d16 !important;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px rgba(199, 125, 22, 0.12);
+}
+
+.metabolic-unit-control label,
+.metabolic-reference-set-control label {
+  color: #8a4c00;
+  font-weight: 800;
+}
+
+.metabolic-reference-set-control .form-group {
+  margin-bottom: -3px;
+}
+
+.metabolic-reference-set-label {
+  margin: 2px 0 0;
+  color: #334e68;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.metabolic-syndrome-reference-panel .analysis-option-title {
+  margin-top: 0;
+  margin-bottom: -2px;
+  line-height: 1.05;
+}
+
+.metabolic-syndrome-reference-panel .hint8-initial-table {
+  margin-top: 0;
+  margin-bottom: -1px;
+}
+
+.metabolic-syndrome-reference-panel .hint8-initial-table td,
+.metabolic-syndrome-reference-panel .hint8-initial-table th {
+  padding-top: 0;
+  padding-bottom: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.08;
+}
+
+.metabolic-syndrome-reference-panel .metabolic-reference-table thead th {
+  padding-bottom: 4px;
+}
+
+.metabolic-coding-title,
+.metabolic-output-title {
+  margin-top: -4px;
+  margin-bottom: -3px;
+}
+
+.metabolic-syndrome-reference-panel .metabolic-reference-table th {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.metabolic-syndrome-reference-panel .metabolic-reference-table td {
+  font-size: 11px;
+}
+
+.metabolic-syndrome-reference-panel .selectize-input {
+  min-height: 27px;
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+.metabolic-reference-hidden {
+  display: none;
+}
+
+.metabolic-reference-custom {
+  display: block;
+}
+
+.metabolic-reference-table {
+  table-layout: fixed;
+}
+
+.metabolic-reference-table th:nth-child(1),
+.metabolic-reference-table td:nth-child(1) {
+  width: 38%;
+}
+
+.metabolic-reference-table th:nth-child(2),
+.metabolic-reference-table td:nth-child(2) {
+  width: 62%;
 }
 
 .hint8-initial-table {
@@ -3223,4 +3366,272 @@ pre {
 .hierarchical-options.analysis-options-panel > .analysis-option-group:first-child > .analysis-option-title,
 .regression-options.analysis-options-panel > .analysis-option-group:first-child > .analysis-option-title {
   margin-bottom: 0;
+}
+
+.hint8-initial-panel > .analysis-option-title {
+  margin-bottom: 2px !important;
+}
+
+.hint8-initial-panel .hint8-initial-content {
+  margin-top: -14px !important;
+}
+
+.hint8-initial-panel .hint8-initial-summary {
+  margin-bottom: 8px !important;
+  padding: 5px 12px !important;
+}
+
+.hint8-initial-panel .hint8-initial-summary .step-summary-detail {
+  margin-top: 2px !important;
+}
+
+.hint8-initial-panel .checkbox,
+.hint8-initial-panel .form-group {
+  margin-top: 0 !important;
+  margin-bottom: 10px !important;
+}
+
+.hint8-initial-panel .hint8-weight-matrix-table {
+  margin-top: 4px !important;
+}
+
+.eq5d-initial-panel > .analysis-option-title {
+  margin-bottom: 2px !important;
+}
+
+.eq5d-initial-panel .eq5d-initial-content {
+  margin-top: -14px !important;
+}
+
+.eq5d-initial-panel .eq5d-initial-summary {
+  margin-bottom: 8px !important;
+  padding: 5px 12px !important;
+}
+
+.eq5d-initial-panel .eq5d-initial-summary .step-summary-detail {
+  margin-top: 2px !important;
+}
+
+.eq5d-initial-panel .checkbox,
+.eq5d-initial-panel .form-group {
+  margin-top: 0 !important;
+  margin-bottom: 8px !important;
+}
+
+.eq5d-initial-panel .checkbox {
+  margin-bottom: 16px !important;
+}
+
+.eq5d-initial-panel #eq5d_value_set,
+.eq5d-initial-panel .selectize-control.single .selectize-input {
+  color: #062f4f !important;
+  background-color: #fff4dc !important;
+  border-color: #c77d16 !important;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px rgba(199, 125, 22, 0.12);
+}
+
+.eq5d-initial-panel label[for="eq5d_value_set"] {
+  color: #8a4c00;
+  font-weight: 800;
+}
+
+.eq5d-type-control {
+  margin-bottom: 14px;
+}
+
+.eq5d-type-control #eq5d_type,
+.eq5d-type-control .selectize-control.single .selectize-input {
+  color: #062f4f !important;
+  background-color: #fff4dc !important;
+  border-color: #c77d16 !important;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px rgba(199, 125, 22, 0.12);
+}
+
+.eq5d-type-control label[for="eq5d_type"] {
+  color: #8a4c00;
+  font-weight: 800;
+}
+
+.eq5d-value-set-label {
+  margin: 8px 0 6px;
+  color: #334e68;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.eq5d-initial-panel .eq5d-initial-table {
+  margin-top: 4px !important;
+}
+
+.calculator-output-title {
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+
+.hint8-output-table,
+.eq5d-output-table {
+  margin-top: 0 !important;
+}
+
+.frs-output-title {
+  margin-top: 4px;
+}
+
+.frs-reference-panel .analysis-option-title {
+  margin-bottom: 1px;
+  line-height: 1.05;
+}
+
+.frs-reference-panel .hint8-initial-table {
+  margin-top: 0;
+  margin-bottom: 4px;
+}
+
+.frs-reference-panel .hint8-initial-table td {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  line-height: 1.15;
+}
+
+.frs-unit-control {
+  margin-bottom: 5px;
+}
+
+.frs-unit-control .form-group {
+  margin-bottom: 0;
+}
+
+.frs-unit-control label {
+  margin-bottom: 1px;
+  line-height: 1.05;
+}
+
+.frs-unit-control .selectize-control {
+  margin-bottom: 0;
+}
+
+.frs-unit-control #frs_lipid_unit,
+.frs-unit-control .selectize-control.single .selectize-input {
+  color: #062f4f !important;
+  background-color: #fff4dc !important;
+  border-color: #c77d16 !important;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px rgba(199, 125, 22, 0.12);
+}
+
+.frs-unit-control label[for="frs_lipid_unit"] {
+  color: #8a4c00;
+  font-weight: 800;
+}
+
+.frs-target-panel .form-group {
+  margin-bottom: 5px;
+}
+
+.frs-target-panel label {
+  margin-bottom: 2px;
+}
+
+.ascvd10-target-panel .form-group {
+  margin-bottom: 1px;
+}
+
+.ascvd10-target-panel label {
+  margin-bottom: 1px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.ascvd10-target-panel .selectize-input {
+  min-height: 28px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.ascvd10-target-panel .selectize-control {
+  margin-bottom: 0;
+}
+
+.ascvd10-two-column-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  margin-bottom: 1px;
+}
+
+.ascvd10-two-column-row .form-group {
+  min-width: 0;
+}
+
+.ascvd10-reference-table th,
+.ascvd10-reference-table td {
+  font-size: 11px;
+  line-height: 1.15;
+  padding-top: 3px;
+  padding-bottom: 3px;
+  padding-left: 4px;
+  padding-right: 4px;
+  vertical-align: top;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.ascvd10-reference-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.ascvd10-reference-table th:nth-child(1),
+.ascvd10-reference-table td:nth-child(1) {
+  width: 28%;
+}
+
+.ascvd10-reference-table th:nth-child(2),
+.ascvd10-reference-table td:nth-child(2) {
+  width: 72%;
+}
+
+.ascvd10-reference-table th:nth-child(3),
+.ascvd10-reference-table td:nth-child(3) {
+  width: auto;
+}
+
+.ascvd10-reference-panel .analysis-option-title {
+  margin-bottom: 2px;
+  line-height: 1.05;
+}
+
+.ascvd10-reference-panel .hint8-initial-table {
+  margin-bottom: 6px;
+}
+
+.ascvd10-rule-title,
+.ascvd10-output-title {
+  margin-top: 4px;
+}
+
+.ascvd10-exclusion-table th:nth-child(1),
+.ascvd10-exclusion-table td:nth-child(1) {
+  width: 34%;
+}
+
+.ascvd10-exclusion-table th:nth-child(2),
+.ascvd10-exclusion-table td:nth-child(2) {
+  width: 18%;
+}
+
+.ascvd10-exclusion-table th:nth-child(3),
+.ascvd10-exclusion-table td:nth-child(3) {
+  width: 48%;
+}
+
+.ascvd10-output-table td:nth-child(1) {
+  width: 42%;
+}
+
+.ascvd10-output-table td:nth-child(2) {
+  width: 58%;
 }

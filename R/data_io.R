@@ -97,14 +97,39 @@ read_input_data <- function(path, original_name, csv_header = TRUE, dat_delimite
   stop("Unsupported file type: .", ext, call. = FALSE)
 }
 
+supported_data_file_extension <- function(name) {
+  tolower(tools::file_ext(as.character(name %||% ""))) %in% c("sav", "csv", "dat")
+}
+
+valid_data_file_path <- function(path) {
+  path <- as.character(path %||% "")
+  nzchar(path) && file.exists(path) && !dir.exists(path)
+}
+
+valid_data_file_value <- function(file) {
+  is.list(file) &&
+    valid_data_file_path(file$path) &&
+    supported_data_file_extension(file$name %||% file$path)
+}
+
 current_data_file_value <- function(uploaded, active_file = NULL) {
   if (!is.null(uploaded)) {
-    return(list(path = uploaded$datapath, name = uploaded$name, restored = FALSE))
+    file <- list(path = uploaded$datapath, name = uploaded$name, restored = FALSE)
+    if (valid_data_file_value(file)) {
+      return(file)
+    }
+    return(NULL)
   }
-  active_file
+  if (valid_data_file_value(active_file)) {
+    return(active_file)
+  }
+  NULL
 }
 
 read_current_data_file <- function(file, input) {
+  if (!valid_data_file_value(file)) {
+    stop("No supported data file is available. Use a SAV, CSV, or DAT file.", call. = FALSE)
+  }
   read_input_data(
     file$path,
     file$name,

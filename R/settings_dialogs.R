@@ -30,7 +30,11 @@ open_file_dialog <- function(title, filetypes) {
   if (length(path) == 0 || !nzchar(path[[1]])) {
     return(NULL)
   }
-  path[[1]]
+  path <- path[[1]]
+  if (dir.exists(path)) {
+    return(NULL)
+  }
+  path
 }
 
 open_settings_file <- function() {
@@ -41,10 +45,14 @@ open_settings_file <- function() {
 }
 
 open_data_file <- function() {
-  open_file_dialog(
+  path <- open_file_dialog(
     "Open easyflow_statistics Data",
     "{{Data files} {.sav .csv .dat}} {{SPSS SAV} {.sav}} {{CSV} {.csv}} {{DAT} {.dat}} {{All files} *}"
   )
+  if (is.null(path) || !supported_data_file_extension(path)) {
+    return(NULL)
+  }
+  path
 }
 
 save_settings_file <- function() {

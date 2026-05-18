@@ -3,22 +3,57 @@
 metabolic_variable_specs <- function() {
   data.frame(
     id = c("sex", "wc", "glu", "DMd", "SBP", "DBP", "HPd", "HDLc", "TG"),
-    label = c(
-      "SEX (Male 1, Female 2)",
-      "Waist Circumference",
-      "Glucose",
-      "Treated for Diabetes (1=yes, 0=no)",
-      "SBP",
-      "DBP",
-      "Treated for Hypertension (1=yes, 0=no)",
-      "HDL cholesterol",
-      "Triglycerides"
-    ),
+    label = c("Sex", "Waist circumference", "Glucose", "Diabetes treatment", "SBP", "DBP", "Hypertension treatment", "HDL cholesterol", "Triglycerides"),
     stringsAsFactors = FALSE
   )
 }
 
 metabolic_default_references <- function() {
+  metabolic_reference_sets()[["korea_asian"]]$refs
+}
+
+metabolic_reference_sets <- function() {
+  list(
+    korea_asian = list(label = "Korea / Asian", diagnosis = "count3", refs = list(wc_m = 90, wc_f = 80, glu = 100, sbp = 130, dbp = 85, hdlc_m = 40, hdlc_f = 50, tg = 150)),
+    japan = list(label = "Japan", diagnosis = "japan", refs = list(wc_m = 85, wc_f = 90, glu = 110, sbp = 130, dbp = 85, hdlc_m = 40, hdlc_f = 40, tg = 150)),
+    ncep_atp3 = list(label = "NCEP ATP III", diagnosis = "count3", refs = list(wc_m = 102, wc_f = 88, glu = 100, sbp = 130, dbp = 85, hdlc_m = 40, hdlc_f = 50, tg = 150)),
+    idf_europid = list(label = "IDF Europid", diagnosis = "count3", refs = list(wc_m = 94, wc_f = 80, glu = 100, sbp = 130, dbp = 85, hdlc_m = 40, hdlc_f = 50, tg = 150)),
+    custom = list(label = "Custom", diagnosis = "count3", refs = list(
+      wc_m = 90,
+      wc_f = 80,
+      glu = 100,
+      sbp = 130,
+      dbp = 85,
+      hdlc_m = 40,
+      hdlc_f = 50,
+      tg = 150
+    ))
+  )
+}
+
+metabolic_reference_set_choices <- function() {
+  sets <- metabolic_reference_sets()
+  stats::setNames(names(sets), vapply(sets, function(set) set$label, character(1)))
+}
+
+metabolic_reference_set_id <- function(input) {
+  value <- as.character(input$metabolic_reference_set %||% "korea_asian")
+  if (value %in% names(metabolic_reference_sets())) value else "korea_asian"
+}
+
+metabolic_reference_set_label <- function(input) {
+  metabolic_reference_sets()[[metabolic_reference_set_id(input)]]$label
+}
+
+metabolic_reference_set_defaults <- function(input) {
+  metabolic_reference_sets()[[metabolic_reference_set_id(input)]]$refs
+}
+
+metabolic_diagnosis_method <- function(input) {
+  metabolic_reference_sets()[[metabolic_reference_set_id(input)]]$diagnosis %||% "count3"
+}
+
+metabolic_legacy_default_references <- function() {
   list(
     wc_m = 90,
     wc_f = 80,
@@ -32,7 +67,7 @@ metabolic_default_references <- function() {
 }
 
 metabolic_reference_value <- function(input, id) {
-  defaults <- metabolic_default_references()
+  defaults <- metabolic_reference_set_defaults(input)
   value <- suppressWarnings(as.numeric(input[[paste0("metabolic_ref_", id)]] %||% defaults[[id]]))
   if (length(value) == 0 || is.na(value)) {
     value <- defaults[[id]]
@@ -54,10 +89,36 @@ metabolic_selected_variables <- function(input) {
 
 metabolic_reference_inputs <- function(input) {
   ids <- names(metabolic_default_references())
+  if (!identical(metabolic_reference_set_id(input), "custom")) {
+    defaults <- metabolic_reference_set_defaults(input)
+    return(stats::setNames(vapply(ids, function(id) as.numeric(defaults[[id]]), numeric(1)), ids))
+  }
   stats::setNames(vapply(ids, function(id) metabolic_reference_value(input, id), numeric(1)), ids)
 }
 
-metabolic_result <- function(data, selected, refs) {
+metabolic_unit_inputs <- function(input) {
+  list(
+    wc = if (identical(as.character(input$metabolic_wc_unit %||% "cm"), "inch")) "inch" else "cm",
+    lipid = if (identical(as.character(input$metabolic_lipid_unit %||% "mg_dl"), "mmol_l")) "mmol_l" else "mg_dl",
+    glucose = if (identical(as.character(input$metabolic_glucose_unit %||% "mg_dl"), "mmol_l")) "mmol_l" else "mg_dl"
+  )
+}
+
+metabolic_convert_units <- function(values, units) {
+  if (identical(units$wc, "inch")) {
+    values$wc <- round(values$wc * 2.54, 6)
+  }
+  if (identical(units$glucose, "mmol_l")) {
+    values$glu <- round(values$glu * 18.0182, 6)
+  }
+  if (identical(units$lipid, "mmol_l")) {
+    values$HDLc <- round(values$HDLc * 38.67, 6)
+    values$TG <- round(values$TG * 88.57, 6)
+  }
+  values
+}
+
+metabolic_result <- function(data, selected, refs, units = list(wc = "cm", lipid = "mg_dl", glucose = "mg_dl"), diagnosis = "count3") {
   selected_ids <- names(selected)
   selected <- as.character(selected)
   if (is.null(selected_ids) || length(selected_ids) != length(selected) || any(!nzchar(selected_ids))) {
@@ -73,6 +134,7 @@ metabolic_result <- function(data, selected, refs) {
   source <- as.data.frame(data, stringsAsFactors = FALSE, check.names = FALSE)
   values <- lapply(selected, function(name) metabolic_numeric(source[[name]]))
   names(values) <- selected_ids
+  values <- metabolic_convert_units(values, units)
 
   sex <- values$sex
   wc <- values$wc
@@ -109,11 +171,19 @@ metabolic_result <- function(data, selected, refs) {
   components <- data.frame(mb_wc, mb_dm, mb_hp, mb_hdlc, mb_tg)
   mb_5 <- rowSums(components, na.rm = TRUE)
   mb_5[rowSums(!is.na(components)) == 0] <- NA_real_
-  g_mb <- ifelse(is.na(mb_5), NA_real_, ifelse(mb_5 >= 3, 1, 0))
+  if (identical(diagnosis, "japan")) {
+    dyslipid <- ifelse(mb_hdlc == 1 | mb_tg == 1, 1, ifelse(mb_hdlc == 0 & mb_tg == 0, 0, NA_real_))
+    risk_groups <- data.frame(mb_dm, mb_hp, dyslipid)
+    risk_count <- rowSums(risk_groups, na.rm = TRUE)
+    risk_count[rowSums(!is.na(risk_groups)) == 0] <- NA_real_
+    g_mb <- ifelse(is.na(mb_wc) | is.na(risk_count), NA_real_, ifelse(mb_wc == 1 & risk_count >= 2, 1, 0))
+  } else {
+    g_mb <- ifelse(is.na(mb_5), NA_real_, ifelse(mb_5 >= 3, 1, 0))
+  }
 
   result <- source
-  result[["MB_5"]] <- mb_5
-  result[["G.MB"]] <- g_mb
+  result[["metabolic_count"]] <- mb_5
+  result[["metabolic_syndrome"]] <- g_mb
   result
 }
 
@@ -126,7 +196,7 @@ metabolic_calculator_tab_panel <- function() {
       div(
         class = "app-heading",
         h1("Metabolic Syndrome Calculator"),
-        div("Select metabolic syndrome variables, adjust reference cutoffs, and add MB_5 and G.MB to the current data.", class = "app-subtitle")
+        div("Select metabolic syndrome variables, adjust reference cutoffs, and add metabolic_count and metabolic_syndrome to the current data.", class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel metabolic-calculator-workspace",
@@ -163,24 +233,31 @@ metabolic_loaded_message_text <- function(file = NULL, data = NULL) {
   sprintf("Loaded %s: %s variables, %s rows.", file$name, ncol(data), nrow(data))
 }
 
-metabolic_reference_table <- function() {
+metabolic_reference_table <- function(input) {
+  refs <- metabolic_reference_inputs(input)
+  diagnosis <- metabolic_diagnosis_method(input)
+  diagnosis_text <- if (identical(diagnosis, "japan")) {
+    HTML("WC criterion required<br>and 2+ of glucose/BP/lipid")
+  } else {
+    HTML("metabolic_syndrome = 1<br>when metabolic_count >= 3")
+  }
   rows <- list(
-    c("Waist circumference", "Male >= 90, Female >= 80"),
-    c("Glucose", ">= 100 or treated for diabetes"),
-    c("Blood pressure", "SBP >= 130 or DBP >= 85 or treated for hypertension"),
-    c("HDL-C", "Male < 40, Female < 50"),
-    c("Triglycerides", ">= 150"),
-    c("Diagnosis", "G.MB = 1 when MB_5 >= 3")
+    c("Waist circumference", sprintf("Male >= %s, Female >= %s", refs[["wc_m"]], refs[["wc_f"]])),
+    c("Glucose", sprintf(">= %s or treated for diabetes", refs[["glu"]])),
+    c("Blood pressure", HTML(sprintf("SBP >= %s or DBP >= %s<br>or treated for hypertension", refs[["sbp"]], refs[["dbp"]]))),
+    c("HDL-C", sprintf("Male < %s, Female < %s", refs[["hdlc_m"]], refs[["hdlc_f"]])),
+    c("Triglycerides", sprintf(">= %s", refs[["tg"]])),
+    c("Diagnosis", diagnosis_text)
   )
   tags$table(
     class = "hint8-initial-table metabolic-reference-table",
     tags$thead(tags$tr(tags$th("Criterion"), tags$th("Default"))),
-    tags$tbody(lapply(rows, function(row) tags$tr(tags$td(row[[1]]), tags$td(row[[2]]))))
+    tags$tbody(lapply(rows, function(row) tags$tr(tags$td(row[[1]]), tags$td(HTML(as.character(row[[2]]))))))
   )
 }
 
 metabolic_reference_controls <- function(input) {
-  defaults <- metabolic_default_references()
+  defaults <- metabolic_reference_set_defaults(input)
   tagList(
     numericInput("metabolic_ref_wc_m", "WC male", value = input$metabolic_ref_wc_m %||% defaults$wc_m, min = 0, width = "100%"),
     numericInput("metabolic_ref_wc_f", "WC female", value = input$metabolic_ref_wc_f %||% defaults$wc_f, min = 0, width = "100%"),
@@ -190,6 +267,58 @@ metabolic_reference_controls <- function(input) {
     numericInput("metabolic_ref_hdlc_m", "HDL-C male", value = input$metabolic_ref_hdlc_m %||% defaults$hdlc_m, min = 0, width = "100%"),
     numericInput("metabolic_ref_hdlc_f", "HDL-C female", value = input$metabolic_ref_hdlc_f %||% defaults$hdlc_f, min = 0, width = "100%"),
     numericInput("metabolic_ref_tg", "TG", value = input$metabolic_ref_tg %||% defaults$tg, min = 0, width = "100%")
+  )
+}
+
+metabolic_unit_controls <- function(input) {
+  units <- metabolic_unit_inputs(input)
+  tagList(
+    div(
+      class = "metabolic-unit-control",
+      selectInput("metabolic_wc_unit", "Waist unit", choices = c("cm" = "cm", "inch" = "inch"), selected = units$wc, width = "100%")
+    ),
+    div(
+      class = "metabolic-unit-control",
+      selectInput("metabolic_glucose_unit", "Glucose unit", choices = c("mg/dL" = "mg_dl", "mmol/L" = "mmol_l"), selected = units$glucose, width = "100%")
+    ),
+    div(
+      class = "metabolic-unit-control",
+      selectInput("metabolic_lipid_unit", "Lipid unit", choices = c("mg/dL" = "mg_dl", "mmol/L" = "mmol_l"), selected = units$lipid, width = "100%")
+    )
+  )
+}
+
+metabolic_reference_set_control <- function(input) {
+  div(
+    class = "metabolic-reference-set-control",
+    selectInput(
+      "metabolic_reference_set",
+      "Criteria / population",
+      choices = metabolic_reference_set_choices(),
+      selected = metabolic_reference_set_id(input),
+      width = "100%"
+    )
+  )
+}
+
+metabolic_coding_table <- function() {
+  tags$table(
+    class = "hint8-initial-table metabolic-reference-table metabolic-coding-table",
+    tags$tbody(
+      tags$tr(tags$td("Sex"), tags$td("Male = 1, Female = 2")),
+      tags$tr(tags$td("Diabetes treatment"), tags$td("Yes = 1, No = 0")),
+      tags$tr(tags$td("Hypertension treatment"), tags$td("Yes = 1, No = 0"))
+    )
+  )
+}
+
+metabolic_output_table <- function() {
+  tags$table(
+    class = "hint8-initial-table metabolic-reference-table metabolic-output-table",
+    tags$tbody(
+      tags$tr(tags$td("Criteria count"), tags$td("metabolic_count")),
+      tags$tr(tags$td("Diagnosis"), tags$td("metabolic_syndrome"))
+    )
   )
 }
 
@@ -223,10 +352,20 @@ metabolic_calculator_setup_ui <- function(file, data, variable_info, input) {
       div(class = "metabolic-variable-input-grid", variable_inputs)
     ),
     div(
-      class = "analysis-options-column analysis-options-panel metabolic-reference-panel",
-      div(class = "analysis-option-title", "Reference cutoffs"),
-      div(class = "metabolic-reference-grid", metabolic_reference_controls(input)),
-      metabolic_reference_table()
+      class = "analysis-options-column analysis-options-panel metabolic-reference-panel metabolic-syndrome-reference-panel",
+      div(class = "analysis-option-title", "Criteria / Unit"),
+      metabolic_reference_set_control(input),
+      div(class = "metabolic-unit-grid", metabolic_unit_controls(input)),
+      div(
+        class = if (identical(metabolic_reference_set_id(input), "custom")) "metabolic-reference-custom" else "metabolic-reference-hidden",
+        div(class = "analysis-option-title", "Reference cutoffs"),
+        div(class = "metabolic-reference-grid", metabolic_reference_controls(input))
+      ),
+      metabolic_reference_table(input),
+      div(class = "analysis-option-title metabolic-coding-title", "Coding"),
+      metabolic_coding_table(),
+      div(class = "analysis-option-title metabolic-output-title", "Output"),
+      metabolic_output_table()
     )
   )
 }
@@ -275,10 +414,10 @@ register_metabolic_calculator_handlers <- function(
     }
     tryCatch(
       {
-        result_data <- metabolic_result(dataset_fn(), metabolic_selected_variables(input), metabolic_reference_inputs(input))
-        add_calculated_variable_fn("MB_5", result_data[["MB_5"]], var_label = "Metabolic syndrome criteria count", measurement = "continuous")
-        add_calculated_variable_fn("G.MB", result_data[["G.MB"]], var_label = "Metabolic Syndrome", measurement = "binary")
-        showNotification("MB_5 and G.MB were added to the current data.", type = "message", duration = 5)
+        result_data <- metabolic_result(dataset_fn(), metabolic_selected_variables(input), metabolic_reference_inputs(input), metabolic_unit_inputs(input), metabolic_diagnosis_method(input))
+        add_calculated_variable_fn("metabolic_count", result_data[["metabolic_count"]], var_label = "Metabolic syndrome criteria count", measurement = "continuous")
+        add_calculated_variable_fn("metabolic_syndrome", result_data[["metabolic_syndrome"]], var_label = "Metabolic Syndrome", measurement = "binary")
+        showNotification("metabolic_count and metabolic_syndrome were added to the current data.", type = "message", duration = 5)
         result_data
       },
       error = function(error) {
@@ -293,11 +432,11 @@ register_metabolic_calculator_handlers <- function(
     if (is.null(data)) {
       return(div(class = "empty-message", div("Select variables and click Calculate.")))
     }
-    g <- data[["G.MB"]]
+    g <- data[["metabolic_syndrome"]]
     div(
       class = "empty-message",
       div(sprintf(
-        "Calculated MB_5 and G.MB for %s rows. Metabolic syndrome: %s. Missing diagnosis: %s. The variables are available in analysis menus.",
+        "Calculated metabolic_count and metabolic_syndrome for %s rows. Metabolic syndrome: %s. Missing diagnosis: %s. The variables are available in analysis menus.",
         nrow(data),
         sum(g == 1, na.rm = TRUE),
         sum(is.na(g))
@@ -315,7 +454,7 @@ register_metabolic_calculator_handlers <- function(
       ))
     }
     selected <- metabolic_selected_variables(input)
-    preview_names <- intersect(c(unname(selected), "MB_5", "G.MB"), names(data))
+    preview_names <- intersect(c(unname(selected), "metabolic_count", "metabolic_syndrome"), names(data))
     DT::datatable(
       utils::head(data[, preview_names, drop = FALSE], 50),
       rownames = FALSE,
@@ -331,7 +470,7 @@ register_metabolic_calculator_handlers <- function(
     content = function(file) {
       data <- result()
       if (is.null(data)) {
-        data <- metabolic_result(dataset_fn(), metabolic_selected_variables(input), metabolic_reference_inputs(input))
+        data <- metabolic_result(dataset_fn(), metabolic_selected_variables(input), metabolic_reference_inputs(input), metabolic_unit_inputs(input), metabolic_diagnosis_method(input))
       }
       utils::write.csv(data, file, row.names = FALSE, na = "")
     }

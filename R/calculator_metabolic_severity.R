@@ -83,7 +83,7 @@ metabolic_severity_result <- function(data, selected) {
 
 metabolic_severity_calculator_tab_panel <- function() {
   tabPanel(
-    "metabolic severity",
+    "Metabolic Severity",
     value = "calculator_metabolic_severity",
     div(
       class = "page-shell",

@@ -107,12 +107,12 @@ settings_external_data_path <- function(settings, settings_path = NULL) {
   }
 
   file_name <- basename(settings_scalar(settings$data_file %||% settings$embedded_data_file$name))
-  if (!nzchar(file_name)) {
+  if (!nzchar(file_name) || identical(file_name, ".") || !supported_data_file_extension(file_name)) {
     return("")
   }
 
   candidate <- file.path(dirname(settings_path), file_name)
-  if (!file.exists(candidate)) {
+  if (!valid_data_file_path(candidate)) {
     return("")
   }
 
@@ -130,6 +130,9 @@ settings_embedded_data_file <- function(settings) {
     file_name <- "easyflow_statistics_data"
   }
   extension <- tools::file_ext(file_name)
+  if (!supported_data_file_extension(file_name)) {
+    return(NULL)
+  }
   restored_path <- tempfile("easyflow_data_", fileext = if (nzchar(extension)) paste0(".", extension) else "")
   writeBin(jsonlite::base64_dec(settings_scalar(embedded)), restored_path)
   list(path = restored_path, name = file_name, restored = TRUE)
