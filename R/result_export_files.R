@@ -26,6 +26,16 @@ ps_quote <- function(value) {
   paste0("'", gsub("'", "''", enc2utf8(as.character(value %||% "")), fixed = TRUE), "'")
 }
 
+windows_dialog_cancel_marker <- "__EASYFLOW_DIALOG_CANCEL__"
+
+is_windows_dialog_cancel <- function(path) {
+  length(path) > 0 && identical(path[[1]], windows_dialog_cancel_marker)
+}
+
+is_dialog_path <- function(path) {
+  length(path) > 0 && !is.na(path[[1]]) && nzchar(path[[1]])
+}
+
 run_windows_dialog_script <- function(script) {
   powershell <- Sys.which("powershell.exe")
   if (!nzchar(powershell)) {
@@ -76,6 +86,8 @@ choose_windows_save_file <- function(
     "$owner.Activate();",
     "if ($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) {",
     "[Console]::Out.WriteLine($dialog.FileName)",
+    "} else {",
+    "[Console]::Out.WriteLine(", ps_quote(windows_dialog_cancel_marker), ")",
     "}",
     "$dialog.Dispose();",
     "$owner.Close();",
@@ -107,6 +119,8 @@ choose_windows_directory <- function(caption) {
     "$owner.Activate();",
     "if ($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) {",
     "[Console]::Out.WriteLine([System.IO.Path]::GetDirectoryName($dialog.FileName))",
+    "} else {",
+    "[Console]::Out.WriteLine(", ps_quote(windows_dialog_cancel_marker), ")",
     "}",
     "$dialog.Dispose();",
     "$owner.Close();",
@@ -126,7 +140,7 @@ choose_tk_save_file <- function(default_name, title, extension, filetypes) {
       )),
       error = function(e) character(0)
     )
-    if (length(path) > 0 && nzchar(path[[1]])) {
+    if (is_dialog_path(path)) {
       return(path[[1]])
     }
   }
@@ -145,7 +159,7 @@ choose_rstudio_save_file <- function(default_name, caption, filter) {
       ),
       error = function(e) character(0)
     )
-    if (length(path) > 0 && nzchar(path[[1]])) {
+    if (is_dialog_path(path)) {
       return(path[[1]])
     }
   }
@@ -158,7 +172,7 @@ choose_rstudio_directory <- function(caption) {
       rstudioapi::selectDirectory(caption = caption, label = "Select", path = getwd()),
       error = function(e) character(0)
     )
-    if (length(path) > 0 && nzchar(path[[1]])) {
+    if (is_dialog_path(path)) {
       return(path[[1]])
     }
   }
@@ -185,7 +199,27 @@ save_plot_png_file <- function(plot_function, result, file, dpi = analysis_figur
 }
 
 tags_to_html <- function(content) {
-  paste(htmltools::renderTags(content)$html, collapse = "\n")
+  rendered <- htmltools::renderTags(content)
+  html <- paste(rendered$html, collapse = "\n")
+  head <- paste(rendered$head, collapse = "\n")
+
+  if (nzchar(head)) {
+    html_tag <- regexpr("<html[^>]*>", html, perl = TRUE)
+    if (html_tag[[1]] != -1) {
+      insert_at <- html_tag[[1]] + attr(html_tag, "match.length") - 1
+      html <- paste0(
+        substr(html, 1, insert_at),
+        "\n  <head>\n",
+        head,
+        "\n  </head>",
+        substr(html, insert_at + 1, nchar(html))
+      )
+    } else {
+      html <- paste(head, html, sep = "\n")
+    }
+  }
+
+  html
 }
 
 plot_data_uri <- function(plot_function, result, width = 420, height = 420, res = 96) {
@@ -210,25 +244,28 @@ choose_excel_save_path <- function() {
   title <- "Save easyflow_statistics Results"
   if (.Platform$OS.type == "windows") {
     path <- choose_windows_save_file(default_name, title)
-    if (length(path) > 0 && nzchar(path[[1]])) {
+    if (is_windows_dialog_cancel(path)) {
+      return(character(0))
+    }
+    if (is_dialog_path(path)) {
       return(path[[1]])
     }
   }
   if (.Platform$OS.type == "windows") {
     path <- choose_tk_save_file(default_name, title, ".xlsx", "{{Excel Workbook} {.xlsx}} {{All Files} {*}}")
-    if (length(path) > 0 && nzchar(path[[1]])) {
+    if (is_dialog_path(path)) {
       return(path[[1]])
     }
   }
   if (.Platform$OS.type == "windows") {
     filters <- matrix(c("Excel Workbook", "*.xlsx", "All Files", "*.*"), ncol = 2, byrow = TRUE)
     path <- utils::choose.files(default = default_name, caption = title, multi = FALSE, filters = filters, index = 1)
-    if (length(path) > 0 && nzchar(path[[1]])) {
+    if (is_dialog_path(path)) {
       return(path[[1]])
     }
   }
   path <- choose_rstudio_save_file(default_name, title, "Excel Workbook (*.xlsx)")
-  if (length(path) > 0 && nzchar(path[[1]])) {
+  if (is_dialog_path(path)) {
     return(path[[1]])
   }
   choose_tk_save_file(default_name, title, ".xlsx", "{{Excel Workbook} {.xlsx}} {{All Files} {*}}")
@@ -239,46 +276,116 @@ choose_html_save_path <- function() {
   title <- "Save easyflow_statistics HTML Results"
   if (.Platform$OS.type == "windows") {
     path <- choose_windows_save_file(default_name, title, "HTML File (*.html)|*.html|All Files (*.*)|*.*", "html")
-    if (length(path) > 0 && nzchar(path[[1]])) {
+    if (is_windows_dialog_cancel(path)) {
+      return(character(0))
+    }
+    if (is_dialog_path(path)) {
       return(path[[1]])
     }
   }
   if (.Platform$OS.type == "windows") {
     path <- choose_tk_save_file(default_name, title, ".html", "{{HTML File} {.html}} {{All Files} {*}}")
-    if (length(path) > 0 && nzchar(path[[1]])) {
+    if (is_dialog_path(path)) {
       return(path[[1]])
     }
   }
   if (.Platform$OS.type == "windows") {
     filters <- matrix(c("HTML File", "*.html", "All Files", "*.*"), ncol = 2, byrow = TRUE)
     path <- utils::choose.files(default = default_name, caption = title, multi = FALSE, filters = filters, index = 1)
-    if (length(path) > 0 && nzchar(path[[1]])) {
+    if (is_dialog_path(path)) {
       return(path[[1]])
     }
   }
   path <- choose_rstudio_save_file(default_name, title, "HTML File (*.html)")
-  if (length(path) > 0 && nzchar(path[[1]])) {
+  if (is_dialog_path(path)) {
     return(path[[1]])
   }
   choose_tk_save_file(default_name, title, ".html", "{{HTML File} {.html}} {{All Files} {*}}")
+}
+
+choose_pdf_save_path <- function() {
+  default_name <- sprintf("easyflow_statistics_results_%s.pdf", format(Sys.time(), "%Y%m%d_%H%M%S"))
+  title <- "Save EasyFlow Statistics PDF Results"
+  if (.Platform$OS.type == "windows") {
+    path <- choose_windows_save_file(default_name, title, "PDF File (*.pdf)|*.pdf|All Files (*.*)|*.*", "pdf")
+    if (is_windows_dialog_cancel(path)) {
+      return(character(0))
+    }
+    if (is_dialog_path(path)) {
+      return(path[[1]])
+    }
+  }
+  if (.Platform$OS.type == "windows") {
+    path <- choose_tk_save_file(default_name, title, ".pdf", "{{PDF File} {.pdf}} {{All Files} {*}}")
+    if (is_dialog_path(path)) {
+      return(path[[1]])
+    }
+  }
+  path <- choose_rstudio_save_file(default_name, title, "PDF File (*.pdf)")
+  if (is_dialog_path(path)) {
+    return(path[[1]])
+  }
+  choose_tk_save_file(default_name, title, ".pdf", "{{PDF File} {.pdf}} {{All Files} {*}}")
+}
+
+find_pdf_chromium <- function() {
+  candidates <- c(
+    Sys.getenv("EASYFLOW_CHROME", ""),
+    Sys.which("chrome"),
+    Sys.which("google-chrome"),
+    Sys.which("chromium"),
+    Sys.which("msedge"),
+    "C:/Program Files/Google/Chrome/Application/chrome.exe",
+    "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
+    "C:/Program Files/Microsoft/Edge/Application/msedge.exe",
+    "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
+  )
+  candidates <- candidates[nzchar(candidates)]
+  candidates <- candidates[file.exists(candidates)]
+  if (length(candidates) == 0) "" else candidates[[1]]
+}
+
+write_pdf_from_html <- function(html, file) {
+  browser <- find_pdf_chromium()
+  if (!nzchar(browser)) {
+    stop("Chrome or Edge was not found. Install Chrome/Edge or set EASYFLOW_CHROME.")
+  }
+  html_file <- tempfile("easyflow_pdf_", fileext = ".html")
+  writeLines(html, html_file, useBytes = TRUE)
+  on.exit(unlink(html_file), add = TRUE)
+  args <- c(
+    "--headless=new",
+    "--disable-gpu",
+    "--no-pdf-header-footer",
+    paste0("--print-to-pdf=", normalizePath(file, winslash = "/", mustWork = FALSE)),
+    normalizePath(html_file, winslash = "/", mustWork = TRUE)
+  )
+  status <- system2(browser, args = args, stdout = TRUE, stderr = TRUE)
+  if (!file.exists(file) || file.info(file)$size <= 0) {
+    stop(paste(c("PDF export failed.", status), collapse = "\n"))
+  }
+  invisible(file)
 }
 
 choose_figure_save_dir <- function() {
   caption <- "Choose folder for easyflow_statistics figures"
   if (.Platform$OS.type == "windows") {
     path <- choose_windows_directory(caption)
-    if (length(path) > 0 && nzchar(path[[1]]) && dir.exists(path[[1]])) {
+    if (is_windows_dialog_cancel(path)) {
+      return(character(0))
+    }
+    if (is_dialog_path(path) && dir.exists(path[[1]])) {
       return(path[[1]])
     }
   }
   if (.Platform$OS.type == "windows") {
     path <- utils::choose.dir(default = getwd(), caption = caption)
-    if (length(path) > 0 && nzchar(path[[1]]) && dir.exists(path[[1]])) {
+    if (is_dialog_path(path) && dir.exists(path[[1]])) {
       return(path[[1]])
     }
   }
   path <- choose_rstudio_directory(caption)
-  if (length(path) > 0 && nzchar(path[[1]]) && dir.exists(path[[1]])) {
+  if (is_dialog_path(path) && dir.exists(path[[1]])) {
     return(path[[1]])
   }
   if (requireNamespace("tcltk", quietly = TRUE)) {
@@ -286,7 +393,7 @@ choose_figure_save_dir <- function() {
       as.character(tcltk::tk_choose.dir(default = getwd(), caption = caption)),
       error = function(e) character(0)
     )
-    if (length(path) > 0 && nzchar(path[[1]]) && dir.exists(path[[1]])) {
+    if (is_dialog_path(path) && dir.exists(path[[1]])) {
       return(path[[1]])
     }
   }

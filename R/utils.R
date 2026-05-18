@@ -50,3 +50,10 @@ default_seed <- function() {
 has_request_nonce <- function(request) {
   !is.null(request) && !is.null(request$nonce)
 }
+
+setup_option_checked <- function(value, default = FALSE) {
+  if (is.null(value)) {
+    return(isTRUE(default))
+  }
+  isTRUE(value)
+}

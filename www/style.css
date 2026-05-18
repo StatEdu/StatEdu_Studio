@@ -50,6 +50,43 @@ body {
   transform: rotate(-90deg);
 }
 
+.navbar .dropdown-menu > li.dropdown.active > a.dropdown-toggle,
+.navbar .dropdown-menu > li.dropdown.open > a.dropdown-toggle,
+.navbar .dropdown-menu > li.dropdown.active > a.dropdown-toggle:focus,
+.navbar .dropdown-menu > li.dropdown.open > a.dropdown-toggle:focus {
+  color: #262626;
+  background-color: #f5f5f5;
+}
+
+.navbar .dropdown-menu > li.dropdown.active > a.dropdown-toggle:hover,
+.navbar .dropdown-menu > li.dropdown.open > a.dropdown-toggle:hover {
+  color: #262626;
+  background-color: #eeeeee;
+}
+
+.navbar .dropdown-menu > li.dropdown > .dropdown-menu > li:not(.active) > a {
+  color: #333333;
+  background-color: #ffffff;
+}
+
+.navbar .dropdown-menu > li.dropdown > .dropdown-menu > li > a {
+  color: #333333;
+  background-color: #ffffff;
+}
+
+.navbar .dropdown-menu > li.dropdown > .dropdown-menu > li.active > a,
+.navbar .dropdown-menu > li.dropdown > .dropdown-menu > li.active > a:hover,
+.navbar .dropdown-menu > li.dropdown > .dropdown-menu > li.active > a:focus {
+  color: #ffffff;
+  background-color: #337ab7;
+}
+
+.navbar .dropdown-menu > li.dropdown > .dropdown-menu > li:not(.active) > a:hover,
+.navbar .dropdown-menu > li.dropdown > .dropdown-menu > li:not(.active) > a:focus {
+  color: #262626;
+  background-color: #f5f5f5;
+}
+
 .navbar > .container-fluid .navbar-brand,
 .navbar > .container .navbar-brand {
   height: 56px;
@@ -1192,11 +1229,11 @@ input.variable-select:disabled {
 
 .hierarchical-action-row {
   display: grid;
-  grid-template-columns: 326px 50px 326px 310px;
+  grid-template-columns: 326px 50px 326px 20px 310px;
   gap: 18px;
   align-items: center;
-  width: 1138px;
-  min-width: 1138px;
+  width: 1176px;
+  min-width: 1176px;
 }
 
 .hierarchical-action-row > .btn {
@@ -1204,7 +1241,7 @@ input.variable-select:disabled {
 }
 
 .hierarchical-action-row > #hierarchical_save_control {
-  grid-column: 4;
+  grid-column: 5;
 }
 
 .regression-workspace-panel {
@@ -1343,7 +1380,7 @@ input.variable-select:disabled {
 .analysis-save-action {
   display: grid;
   grid-template-columns: 118px 118px;
-  grid-template-rows: 38px 38px;
+  grid-template-rows: 38px 38px 38px;
   gap: 8px 10px;
   width: 246px;
 }
@@ -1358,6 +1395,31 @@ input.variable-select:disabled {
 
 .analysis-save-slot-empty {
   visibility: hidden;
+}
+
+.analysis-save-button.btn-primary {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: #ffffff;
+}
+
+.analysis-save-button.btn-primary:hover,
+.analysis-save-button.btn-primary:focus {
+  background: #0b5f59;
+  border-color: #0b5f59;
+  color: #ffffff;
+}
+
+.analysis-save-button:disabled,
+.analysis-save-button[disabled],
+.analysis-save-button.disabled {
+  opacity: 0.32 !important;
+  color: #8a94a3 !important;
+  background: #eef2f6 !important;
+  border-color: #d9e2ec !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
+  filter: grayscale(1);
 }
 
 #frequencies_results {
@@ -2845,10 +2907,10 @@ pre {
 }
 
 .hierarchical-action-row > #hierarchical_save_control {
-  grid-column: 4;
+  grid-column: 5;
   margin-left: 0;
-  justify-self: start;
-  transform: none;
+  justify-self: center;
+  transform: translateX(18px);
 }
 
 .regression-action-row > #regression_save_control {

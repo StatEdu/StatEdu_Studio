@@ -479,12 +479,23 @@ create_app_server <- function(app_version) {
     category_label_values,
     measurement_overrides,
     update_var_label_overrides,
+    update_measurement_overrides,
+    step3_variable_info,
     mark_settings_dirty
   )
   category_label_table_data <- category_handlers$category_label_table_data
   save_category_label_edit <- category_handlers$save_category_label_edit
+  apply_category_label_snapshot <- category_handlers$apply_category_label_snapshot
 
-  register_category_label_observers(input, save_category_label_edit, update_var_label_overrides)
+  register_category_label_observers(
+    input,
+    save_category_label_edit,
+    update_var_label_overrides,
+    apply_category_label_snapshot,
+    category_label_table_data,
+    collect_measurement_inputs,
+    collect_var_label_inputs
+  )
 
   register_variable_table_output(
     output,

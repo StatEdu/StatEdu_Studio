@@ -83,7 +83,7 @@ settings_name_value_pairs <- function(x) {
     rows <- rows[!vapply(rows, is.null, logical(1))]
     if (length(rows) > 0) {
       values <- unlist(rows, use.names = TRUE)
-      return(as.character(values))
+      return(values[!is.na(names(values)) & nzchar(names(values))])
     }
   }
 
@@ -532,10 +532,10 @@ create_current_settings_fn <- function(
       data_file = if (is.null(file)) restored_data_file_fn() else file$name,
       variable_info = variable_info,
       measurement_overrides = measurement_overrides(),
-      direct_measurements = collect_measurement_inputs_fn(),
+      direct_measurements = character(0),
       dependent_variables = dependent_names_fn(),
       var_label_overrides = var_label_overrides(),
-      direct_var_labels = collect_var_label_inputs_fn(),
+      direct_var_labels = character(0),
       category_table = category_label_values_fn(),
       category_labels = category_label_table_data_fn(),
       selection_applied = selection_applied_fn(),

@@ -63,7 +63,7 @@ category_label_input_renderer <- function(field_name, unique_index, name_index, 
     "  var tabAttr = pairMatch && !disabled ? '' : ' tabindex=\"-1\"';",
     "  var name = nameIndex >= 0 ? row[nameIndex] : '';",
     "  var sourceOrder = sourceOrderIndex >= 0 ? row[sourceOrderIndex] : meta.row;",
-    "  var inputId = (fieldName === 'var_label' ? 'category_var_label_input_' + sourceOrder : '');",
+    "  var inputId = fieldName === 'var_label' ? 'category_var_label_input_' + sourceOrder : 'category_' + fieldName + '_input_' + sourceOrder;",
     "  var value = data;",
     "  if (fieldName === 'var_label') {",
     "    window.easyflowVarLabels = window.easyflowVarLabels || {};",
@@ -72,7 +72,7 @@ category_label_input_renderer <- function(field_name, unique_index, name_index, 
     "    if (Object.prototype.hasOwnProperty.call(window.easyflowVarLabels, name)) value = window.easyflowVarLabels[name];",
     "  }",
     "  var idAttr = inputId ? ' id=\"' + esc(inputId) + '\"' : '';",
-    "  var varLabelHandlers = fieldName === 'var_label' ? ' oninput=\"window.easyflowStoreVarLabel && window.easyflowStoreVarLabel(this)\" onchange=\"window.easyflowCommitVarLabel && window.easyflowCommitVarLabel(this)\"' : '';",
+    "  var directHandlers = ' onchange=\"if(window.Shiny){Shiny.setInputValue(&quot;category_label_cell_input&quot;,{name:this.getAttribute(&quot;data-name&quot;),field:this.getAttribute(&quot;data-field&quot;),value:this.value,nonce:Date.now()+Math.random()},{priority:&quot;event&quot;});}\"';",
     "  var listAttr = '';",
     "  var dataList = '';",
     "  if (fieldName === 'reference') {",
@@ -89,7 +89,7 @@ category_label_input_renderer <- function(field_name, unique_index, name_index, 
     "    }",
     "    dataList += '</datalist>';",
     "  }",
-    "  return '<input type=\"text\"' + idAttr + listAttr + ' class=\"form-control input-sm ' + cls + '\" data-name=\"' + esc(name) + '\" data-field=\"' + fieldName + '\" value=\"' + esc(value) + '\"' + disabledAttr + tabAttr + varLabelHandlers + '>' + dataList;",
+    "  return '<input type=\"text\"' + idAttr + listAttr + ' class=\"form-control input-sm ' + cls + '\" data-name=\"' + esc(name) + '\" data-field=\"' + fieldName + '\" value=\"' + esc(value) + '\"' + disabledAttr + tabAttr + directHandlers + '>' + dataList;",
     "}"
   )
 }
@@ -107,9 +107,11 @@ category_label_measurement_renderer <- function(name_index, source_order_index) 
     "  var name = nameIndex >= 0 ? row[nameIndex] : '';",
     "  var sourceOrder = sourceOrderIndex >= 0 ? row[sourceOrderIndex] : meta.row;",
     "  var current = String(data || 'category');",
+    "  window.easyflowMeasurements = window.easyflowMeasurements || {};",
+    "  if (name && Object.prototype.hasOwnProperty.call(window.easyflowMeasurements, name)) current = String(window.easyflowMeasurements[name] || current);",
     "  var values = ['binary', 'category', 'ordered', 'continuous'];",
     "  var labels = ['binary', 'category', 'ordinal', 'continuous'];",
-    "  var html = '<select id=\"category_measurement_input_' + esc(sourceOrder) + '\" class=\"measurement-select category-measurement-select\" data-name=\"' + esc(name) + '\" data-field=\"measurement\">';",
+    "  var html = '<select id=\"category_measurement_input_' + esc(sourceOrder) + '\" class=\"measurement-select category-measurement-select\" data-name=\"' + esc(name) + '\" data-field=\"measurement\" onchange=\"if(window.Shiny){Shiny.setInputValue(&quot;variable_measurement_update&quot;,{name:this.getAttribute(&quot;data-name&quot;),value:this.value,nonce:Date.now()+Math.random()},{priority:&quot;event&quot;});}\">';",
     "  for (var i = 0; i < values.length; i++) {",
     "    var selected = values[i] === current ? ' selected' : '';",
     "    html += '<option value=\"' + values[i] + '\"' + selected + '>' + labels[i] + '</option>';",
@@ -544,6 +546,9 @@ variable_table_callback_script <- function() {
         }
 
         function currentTableState() {
+          if (window.easyflowCollectTableState && window.isEasyflowVisibleElement && !window.isEasyflowVisibleElement(table.table().container())) {
+            return window.easyflowCollectTableState();
+          }
           window.easyflowMeasurements = window.easyflowMeasurements || {};
           var measurements = Object.assign({}, window.easyflowMeasurements);
           $(table.table().container()).find('select.measurement-select').each(function() {

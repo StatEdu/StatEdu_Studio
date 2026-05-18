@@ -2,6 +2,13 @@
       window.easyflowVarLabels = window.easyflowVarLabels || {};
       window.easyflowMeasurements = window.easyflowMeasurements || {};
 
+      function isEasyflowVisibleElement(element) {
+        if (!element || !element.getClientRects) return false;
+        if (element.closest && element.closest('[style*="display:none"], [style*="display: none"]')) return false;
+        return element.getClientRects().length > 0;
+      }
+      window.isEasyflowVisibleElement = isEasyflowVisibleElement;
+
       function registerEasyflowNestedDropdownMenus() {
         if (!window.jQuery) return;
         function configureNestedDropdownToggles() {
@@ -20,25 +27,6 @@
         if (window.easyflowNestedDropdownRegistered) return;
         window.easyflowNestedDropdownRegistered = true;
 
-        function activateTopDropdownTab(link) {
-          var topDropdown = window.jQuery(link).closest('.navbar-nav > .dropdown');
-          if (topDropdown.length === 0) return;
-          var topLink = topDropdown.children('a[data-toggle="tab"], a[data-bs-toggle="tab"]').first();
-          if (topLink.length === 0) return;
-          if (window.jQuery.fn.tab) {
-            topLink.tab('show');
-          } else {
-            window.jQuery(topLink.attr('href')).addClass('active').siblings('.tab-pane').removeClass('active');
-            topDropdown.addClass('active').siblings('li').removeClass('active');
-          }
-        }
-
-        document.addEventListener('click', function(event) {
-          var link = event.target.closest ? event.target.closest('.navbar-nav > .dropdown .dropdown-menu a[href^="#"]:not(.dropdown-toggle)') : null;
-          if (!link) return;
-          activateTopDropdownTab(link);
-        }, true);
-
         window.jQuery(document)
           .on('click.easyflowNestedDropdown', '.dropdown-menu .dropdown-toggle', function(event) {
             event.preventDefault();
@@ -46,9 +34,6 @@
             var item = window.jQuery(this).parent();
             item.toggleClass('open');
             item.siblings('.dropdown.open').removeClass('open');
-          })
-          .on('click.easyflowNestedDropdown', '.navbar-nav > .dropdown .dropdown-menu a[data-toggle="tab"], .navbar-nav > .dropdown .dropdown-menu a[data-bs-toggle="tab"]', function() {
-            activateTopDropdownTab(this);
           })
           .on('hidden.bs.dropdown.easyflowNestedDropdown', '.navbar-nav > .dropdown', function() {
             window.jQuery(this).find('.dropdown.open').removeClass('open');
@@ -115,9 +100,12 @@
           'input[data-field="var_label"]',
           'table.dataTable tbody tr td:nth-child(3) input[type="text"]'
         ];
-        document.querySelectorAll(selectors.join(',')).forEach(collectInput);
+        document.querySelectorAll(selectors.join(',')).forEach(function(input) {
+          if (isEasyflowVisibleElement(input)) collectInput(input);
+        });
 
         document.querySelectorAll('table.dataTable').forEach(function(table) {
+          if (!isEasyflowVisibleElement(table)) return;
           var headers = Array.prototype.slice.call(table.querySelectorAll('thead tr:first-child th'));
           var labelIndex = headers.findIndex(function(th) {
             return (th.textContent || '').replace(/\s+/g, ' ').trim().indexOf('var_label') >= 0;
@@ -171,6 +159,7 @@
 
         var measurements = {};
         document.querySelectorAll('select').forEach(function(select) {
+          if (!isEasyflowVisibleElement(select)) return;
           var optionValues = Array.prototype.slice.call(select.options || []).map(function(option) { return option.value; });
           var isMeasurementSelect = select.classList.contains('measurement-select') ||
             (select.id || '').indexOf('measurement_input_') === 0 ||
@@ -200,6 +189,7 @@
 
       function rememberEasyflowMeasurement(select, measurements) {
         if (!select) return;
+        if (!isEasyflowVisibleElement(select)) return;
         var optionValues = Array.prototype.slice.call(select.options || []).map(function(option) { return option.value; });
         var isMeasurementSelect = select.classList.contains('measurement-select') ||
           (select.id || '').indexOf('measurement_input_') === 0 ||
@@ -220,7 +210,7 @@
 
       function collectEasyflowMeasurementsFromPage() {
         var measurements = {};
-        document.querySelectorAll('select.measurement-select, select[id^="measurement_input_"]').forEach(function(select) {
+        document.querySelectorAll('select.measurement-select, select.category-measurement-select, select[id^="measurement_input_"]').forEach(function(select) {
           rememberEasyflowMeasurement(select, measurements);
         });
         return measurements;
@@ -228,7 +218,8 @@
 
       function submitEasyflowTableState() {
         var state = null;
-        if (window.easyflowCurrentTableState) {
+        var variableTable = document.getElementById('variable_table');
+        if (window.easyflowCurrentTableState && isEasyflowVisibleElement(variableTable)) {
           try {
             state = window.easyflowCurrentTableState();
           } catch (e) {
@@ -291,9 +282,75 @@
         return true;
       };
 
+      function collectEasyflowCategoryLabelState() {
+        var root = document.getElementById('category_label_table') || document;
+        var categoryLabels = {};
+        var varLabels = {};
+        root.querySelectorAll('input[data-name][data-field]').forEach(function(input) {
+          var name = input.getAttribute('data-name');
+          var field = input.getAttribute('data-field');
+          if (!name || !field || input.disabled) return;
+          categoryLabels[name] = categoryLabels[name] || {};
+          categoryLabels[name][field] = input.value || '';
+          if (field === 'var_label') {
+            varLabels[name] = input.value || '';
+          }
+        });
+
+        var measurements = {};
+        root.querySelectorAll('select.category-measurement-select[data-name]').forEach(function(select) {
+          var name = select.getAttribute('data-name') || '';
+          if (!name) return;
+          measurements[name] = select.value || '';
+          window.easyflowMeasurements = window.easyflowMeasurements || {};
+          window.easyflowMeasurements[name] = select.value || '';
+        });
+
+        return {
+          category_labels: categoryLabels,
+          var_labels: varLabels,
+          var_label_pairs: Object.keys(varLabels).map(function(name) {
+            return {name: name, value: varLabels[name]};
+          }),
+          measurements: measurements,
+          measurement_pairs: Object.keys(measurements).map(function(name) {
+            return {name: name, value: measurements[name]};
+          })
+        };
+      }
+
+      window.easyflowFlushCategoryLabelState = function() {
+        flushEasyflowInputs();
+        return true;
+      };
+
+      window.easyflowApplyCategoryLabels = function() {
+        if (!window.Shiny) return false;
+        var state = collectEasyflowCategoryLabelState();
+        state.nonce = Date.now() + Math.random();
+        Shiny.setInputValue('apply_category_labels_request', state, {priority: 'event'});
+        Shiny.setInputValue('variable_measurement_snapshot', {
+          values: state.measurements || {},
+          measurement_pairs: state.measurement_pairs || [],
+          nonce: Date.now() + Math.random()
+        }, {priority: 'event'});
+        return false;
+      };
+
+      document.addEventListener('click', function(event) {
+        var button = event.target && event.target.closest ? event.target.closest('#apply_category_labels_button') : null;
+        if (!button) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+        window.easyflowApplyCategoryLabels();
+      }, true);
+
       function flushEasyflowInputs() {
         captureEasyflowVarLabels();
+        collectEasyflowMeasurementsFromPage();
         document.querySelectorAll('input.category-label-input, input.var-label-input').forEach(function(input) {
+          if (!isEasyflowVisibleElement(input)) return;
           input.dispatchEvent(new Event('change', {bubbles: true}));
         });
         if (window.Shiny) {
@@ -303,6 +360,20 @@
           }, {priority: 'event'});
         }
       }
+
+      document.addEventListener('change', function(event) {
+        var select = event.target && event.target.closest ? event.target.closest('select.category-measurement-select') : null;
+        if (!select) return;
+        var measurements = {};
+        rememberEasyflowMeasurement(select, measurements);
+        if (window.Shiny) {
+          Shiny.setInputValue('variable_measurement_update', {
+            name: select.getAttribute('data-name') || '',
+            value: select.value || '',
+            nonce: Date.now() + Math.random()
+          }, {priority: 'event'});
+        }
+      }, true);
 
       function registerEasyflowDirtyHandler() {
         if (!window.Shiny || window.easyflowDirtyHandlerRegistered) return;

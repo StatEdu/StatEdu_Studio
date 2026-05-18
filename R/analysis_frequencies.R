@@ -6,7 +6,7 @@ format_frequency_percent <- function(value, pad_under_10 = FALSE) {
   }
   formatted <- formatC(value, format = "f", digits = 1)
   if (isTRUE(pad_under_10) && value < 10) {
-    formatted <- paste0(" ", formatted)
+    formatted <- paste0("\u00A0", formatted)
   }
   formatted
 }

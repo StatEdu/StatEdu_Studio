@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.7.5 - 2026-05-18
+
+### Changed
+
+- Fixed Data Step 3 label application so variable labels, value labels, and measurement types are applied in one click and persist to saved settings.
+- Added paid-export gating for PDF, Excel, and Add result while keeping HTML and figure export available in the free mode.
+- Added PDF report export for regression and hierarchical regression with report cover, mixed portrait/landscape print layout, scaled wide tables, and two-column plot pages.
+- Improved saved HTML output as a viewer with horizontal table scrolling while preserving the original on-screen layout.
+- Standardized regression and hierarchical regression save-button layout and enabled sr2, f2, and VIF options by default.
+- Fixed repeated save-dialog prompts after canceling and reduced analysis menu tab activation errors.
+
 ## v0.7.4 - 2026-05-18
 
 ### Changed

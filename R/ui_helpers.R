@@ -5,18 +5,21 @@ empty_message <- function(text) {
 }
 
 analysis_save_edition <- function() {
-  edition <- tolower(Sys.getenv("EASYFLOW_EDITION", "development"))
-  if (!edition %in% c("development", "personal", "institution")) {
-    edition <- "development"
+  edition <- tolower(Sys.getenv("EASYFLOW_EDITION", "free"))
+  if (!edition %in% c("free", "development", "personal", "institution")) {
+    edition <- "free"
   }
   edition
 }
 
 analysis_save_feature_enabled <- function(feature, edition = analysis_save_edition()) {
-  if (identical(edition, "personal")) {
-    return(feature %in% c("html", "figure"))
+  if (identical(edition, "development")) {
+    return(TRUE)
   }
-  TRUE
+  if (identical(edition, "personal") || identical(edition, "institution")) {
+    return(feature %in% c("html", "pdf", "figure", "excel", "add_result"))
+  }
+  feature %in% c("html", "figure")
 }
 
 analysis_save_button <- function(id, label, feature, class = "btn-default") {
@@ -35,6 +38,7 @@ analysis_save_button <- function(id, label, feature, class = "btn-default") {
 
 analysis_save_buttons <- function(
   html_button_id = NULL,
+  pdf_button_id = NULL,
   figure_button_id = NULL,
   excel_button_id = NULL,
   add_result_button_id = NULL,
@@ -48,8 +52,9 @@ analysis_save_buttons <- function(
     } else {
       div(class = "analysis-save-slot analysis-save-slot-empty")
     },
-    analysis_save_button(excel_button_id, "Save Excel", "excel", class = "btn-primary"),
-    analysis_save_button(add_result_button_id, "Add result", "add_result", class = "btn-default")
+    analysis_save_button(pdf_button_id, "Save PDF", "pdf", class = "btn-default"),
+    analysis_save_button(excel_button_id, "Save Excel", "excel", class = "btn-default"),
+    analysis_save_button(add_result_button_id, "Add result", "add_result", class = "btn-primary")
   )
 }
 
@@ -81,11 +86,11 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-nested-analysis-menu-1"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-save-layout-1"))
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-nested-analysis-menu-10"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-nested-menu-22"))
 }
 
 app_head_tags <- function(version) {

@@ -320,6 +320,31 @@ write_analysis_results_html <- function(
   )
 }
 
+write_analysis_results_pdf <- function(
+  results,
+  file,
+  variable_table = NULL,
+  labels = character(0),
+  category_table = NULL,
+  show_sr2 = FALSE,
+  show_f2 = FALSE,
+  show_vif = FALSE
+) {
+  html <- saved_analysis_results_html(
+    results,
+    variable_table = variable_table,
+    labels = labels,
+    category_table = category_table,
+    refs = regression_reference_values_static(category_table),
+    value_labels = category_value_label_lookup_static(category_table),
+    show_sr2 = show_sr2,
+    show_f2 = show_f2,
+    show_vif = show_vif,
+    report_mode = TRUE
+  )
+  write_pdf_from_html(html, file)
+}
+
 write_hierarchical_results_html <- function(
   results,
   file,
@@ -345,6 +370,31 @@ write_hierarchical_results_html <- function(
     file,
     useBytes = TRUE
   )
+}
+
+write_hierarchical_results_pdf <- function(
+  results,
+  file,
+  variable_table = NULL,
+  labels = character(0),
+  category_table = NULL,
+  show_sr2 = FALSE,
+  show_f2 = FALSE,
+  show_vif = FALSE
+) {
+  html <- saved_hierarchical_results_html(
+    results,
+    variable_table = variable_table,
+    labels = labels,
+    category_table = category_table,
+    refs = regression_reference_values_static(category_table),
+    value_labels = category_value_label_lookup_static(category_table),
+    show_sr2 = show_sr2,
+    show_f2 = show_f2,
+    show_vif = show_vif,
+    report_mode = TRUE
+  )
+  write_pdf_from_html(html, file)
 }
 
 write_frequencies_results_html <- function(result, file) {

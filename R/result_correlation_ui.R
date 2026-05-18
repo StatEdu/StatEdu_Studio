@@ -109,7 +109,7 @@ correlation_matrix_set_ui <- function(result, source = NULL, title_prefix = "") 
   reason_table <- correlation_reason_display_table(source)
   tagList(
     div(
-      class = "result-section correlation-result-section regression-result-panel",
+      class = "result-section correlation-result-section regression-result-panel landscape-table-panel",
       h3(paste0(title_prefix, "Correlation / association coefficients")),
       coefficient_html_table(
         main_table,
@@ -120,7 +120,7 @@ correlation_matrix_set_ui <- function(result, source = NULL, title_prefix = "") 
     ),
     if (isTRUE(options$p_ci) && is.data.frame(p_table) && nrow(p_table) > 0) {
       div(
-        class = "result-section correlation-result-section regression-result-panel",
+        class = "result-section correlation-result-section regression-result-panel landscape-table-panel",
         h3(paste0(title_prefix, "p-value & 95% CI")),
         coefficient_html_table(
           p_table,
@@ -134,7 +134,7 @@ correlation_matrix_set_ui <- function(result, source = NULL, title_prefix = "") 
     },
     if (is.data.frame(method_table) && nrow(method_table) > 0) {
       div(
-        class = "result-section correlation-result-section regression-result-panel",
+        class = "result-section correlation-result-section regression-result-panel landscape-table-panel",
         h3(paste0(title_prefix, "Methods")),
         coefficient_html_table(
           method_table,
@@ -148,7 +148,7 @@ correlation_matrix_set_ui <- function(result, source = NULL, title_prefix = "") 
     },
     if (isTRUE(options$reason) && is.data.frame(reason_table) && nrow(reason_table) > 0) {
       div(
-        class = "result-section correlation-result-section regression-result-panel",
+        class = "result-section correlation-result-section regression-result-panel landscape-table-panel",
         h3(paste0(title_prefix, "Reason")),
         coefficient_html_table(reason_table)
       )

@@ -11,7 +11,7 @@ coefficient_result_ui <- function(table, result, show_sr2 = FALSE, show_f2 = FAL
 
 coefficient_result_block <- function(title, content) {
   div(
-    class = "regression-result-panel",
+    class = "regression-result-panel landscape-table-panel",
     h3(title),
     content
   )
@@ -96,7 +96,7 @@ diagnostic_plot_title <- function(dependent_label, result = NULL) {
 
 saved_plot_result_block <- function(result, dependent_label) {
   div(
-    class = "regression-result-panel",
+    class = "regression-result-panel diagnostic-plots-section",
     h3(diagnostic_plot_title(dependent_label, result)),
     div(
       class = "residual-diagnostic-plots",
@@ -126,7 +126,7 @@ saved_plot_result_block <- function(result, dependent_label) {
 
 plot_result_panel <- function(dependent_label, qq_output_id, homoscedasticity_output_id, result = NULL) {
   div(
-    class = "regression-result-panel",
+    class = "regression-result-panel diagnostic-plots-section",
     h3(diagnostic_plot_title(dependent_label, result)),
     div(
       class = "residual-diagnostic-plots",
@@ -146,7 +146,7 @@ plot_result_panel <- function(dependent_label, qq_output_id, homoscedasticity_ou
 
 durbin_watson_result_block <- function(table) {
   div(
-    class = "regression-result-panel",
+    class = "regression-result-panel durbin-watson-panel",
     h3("Durbin-Watson"),
     combined_dw_html_table(table)
   )
@@ -589,7 +589,7 @@ hierarchical_results_panel <- function(
         show_vif
       )
     }),
-    effect_size_reference_panel(show_sr2, show_f2),
+    regression_reference_summary_block(results, variable_table, labels, show_sr2, show_f2),
     plot_blocks
   )
 }
@@ -630,6 +630,33 @@ regression_durbin_watson_result_block <- function(results, variable_table = NULL
   durbin_watson_result_block(combined_dw_data_frame(results, variable_table, labels))
 }
 
+regression_reference_summary_block <- function(
+  results,
+  variable_table = NULL,
+  labels = character(0),
+  show_sr2 = FALSE,
+  show_f2 = FALSE
+) {
+  effect_panel <- effect_size_reference_panel(show_sr2, show_f2)
+  dw_table <- combined_dw_data_frame(results, variable_table, labels)
+  has_effect <- !is.null(effect_panel)
+  has_dw <- is.data.frame(dw_table) && nrow(dw_table) > 0
+  if (!has_effect && !has_dw) {
+    return(NULL)
+  }
+
+  div(
+    class = "regression-result-panel reference-summary-panel",
+    if (has_effect) effect_panel,
+    if (has_effect && has_dw) tags$div(class = "reference-summary-divider"),
+    if (has_dw) tags$div(
+      class = "durbin-watson-panel",
+      h3("Durbin-Watson"),
+      combined_dw_html_table(dw_table)
+    )
+  )
+}
+
 regression_results_panel <- function(
   results,
   variable_table = NULL,
@@ -665,12 +692,9 @@ regression_results_panel <- function(
         show_vif
       )
     }),
-    effect_size_reference_panel(show_sr2, show_f2),
+    regression_reference_summary_block(results, variable_table, labels, show_sr2, show_f2),
     if (!isTRUE(show_penalized)) {
-      tagList(
-        plot_blocks,
-        regression_durbin_watson_result_block(results, variable_table, labels)
-      )
+      plot_blocks
     }
   )
 }

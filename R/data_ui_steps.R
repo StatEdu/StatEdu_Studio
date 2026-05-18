@@ -102,6 +102,47 @@ data_view_toggle_control <- function(view, step = "step1") {
   actionButton("show_data_preview", "Data Preview", class = "view-toggle-button")
 }
 
+apply_category_labels_inline_js <- function() {
+  paste(
+    "if (window.easyflowApplyCategoryLabels) return window.easyflowApplyCategoryLabels();",
+    "if (window.Shiny) {",
+    "  var root = document.getElementById('category_label_table') || document;",
+    "  var categoryLabels = {};",
+    "  var measurements = {};",
+    "  var varLabels = {};",
+    "  var measurementPairs = [];",
+    "  var varLabelPairs = [];",
+    "  root.querySelectorAll('input[data-name][data-field], select[data-name][data-field]').forEach(function(el) {",
+    "    var name = el.getAttribute('data-name') || '';",
+    "    var field = el.getAttribute('data-field') || '';",
+    "    if (!name || !field) return;",
+    "    var value = el.value || '';",
+    "    if (field === 'measurement') {",
+    "      measurements[name] = value;",
+    "      measurementPairs.push({name: name, value: value});",
+    "      return;",
+    "    }",
+    "    categoryLabels[name] = categoryLabels[name] || {};",
+    "    categoryLabels[name][field] = value;",
+    "    if (field === 'var_label') {",
+    "      varLabels[name] = value;",
+    "      varLabelPairs.push({name: name, value: value});",
+    "    }",
+    "  });",
+    "  Shiny.setInputValue('apply_category_labels_request', {",
+    "    category_labels: categoryLabels,",
+    "    measurements: measurements,",
+    "    measurement_pairs: measurementPairs,",
+    "    var_labels: varLabels,",
+    "    var_label_pairs: varLabelPairs,",
+    "    nonce: Date.now() + Math.random()",
+    "  }, {priority: 'event'});",
+    "}",
+    "return false;",
+    sep = ""
+  )
+}
+
 data_steps_state <- function(
   file = NULL,
   open_data = NULL,
@@ -223,7 +264,15 @@ data_steps_panel <- function(
         class = step_class("step3", applied),
         h3(actionLink("go_step3", "Step 3. Variable labels", class = "step-link")),
         if (identical(step, "step3")) {
-          div("Edit value labels for categorical variables. These labels are saved with the session settings.", class = "step-note")
+          tagList(
+            div("Edit value labels for categorical variables. Click Apply labels to update the active session.", class = "step-note"),
+            actionButton(
+              "apply_category_labels_button",
+              "Apply labels",
+              class = "btn btn-primary",
+              onclick = apply_category_labels_inline_js()
+            )
+          )
         } else {
           div(
             class = "step-summary",

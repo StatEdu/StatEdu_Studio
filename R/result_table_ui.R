@@ -68,6 +68,23 @@ result_table_with_notes <- function(table_tag, ..., class = "result-table-with-n
   )
 }
 
+coefficient_column_class <- function(name) {
+  normalized <- gsub("[^[:alnum:]]+", "", tolower(as.character(name %||% "")))
+  switch(
+    normalized,
+    term = "coefficient-col-term",
+    b = "coefficient-col-b",
+    reference = "coefficient-col-reference",
+    t = "coefficient-col-compact",
+    p = "coefficient-col-compact",
+    sr2 = "coefficient-col-compact",
+    f2 = "coefficient-col-compact",
+    vif = "coefficient-col-compact",
+    tolerance = "coefficient-col-tolerance",
+    "coefficient-col-stat"
+  )
+}
+
 coefficient_html_table <- function(
   table,
   fit_line = NULL,
@@ -87,6 +104,9 @@ coefficient_html_table <- function(
   table_tag <- tags$table(
       class = "coefficient-table",
       style = result_table_style(font_size = if (isTRUE(compact)) compact_font_size else 15, min_width = if (isTRUE(compact)) compact_min_width else 480),
+      tags$colgroup(lapply(columns, function(column) {
+        tags$col(class = coefficient_column_class(column))
+      })),
       tags$thead(
         tags$tr(lapply(seq_along(columns), function(index) {
           tags$th(

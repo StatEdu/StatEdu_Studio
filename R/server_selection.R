@@ -124,7 +124,7 @@ register_variable_table_state_observers <- function(
 
   observeEvent(input$variable_measurement_snapshot, {
     snapshot <- input$variable_measurement_snapshot
-    update_measurement_overrides_fn(snapshot$values %||% snapshot)
+    update_measurement_overrides_fn(snapshot$measurement_pairs %||% snapshot$values %||% snapshot)
   })
 
   invisible(TRUE)
@@ -313,6 +313,8 @@ category_label_handlers <- function(
   category_label_values,
   measurement_overrides,
   update_var_label_overrides,
+  update_measurement_overrides,
+  step3_variable_info,
   mark_settings_dirty
 ) {
   category_label_table_data <- function() {
@@ -348,13 +350,115 @@ category_label_handlers <- function(
     invisible(TRUE)
   }
 
+  apply_category_label_snapshot_request <- function(payload) {
+    if (is.null(payload)) {
+      return(invisible(FALSE))
+    }
+
+    payload_category_count <- length(payload$category_labels %||% list())
+    payload_measurement_count <- length(payload$measurements %||% character(0))
+    payload_var_label_count <- length(payload$var_labels %||% character(0))
+    measurement_payload <- payload$measurement_pairs %||% payload$measurements %||% character(0)
+    var_label_payload <- payload$var_label_pairs %||% payload$var_labels %||% character(0)
+    debug_measurements <- clean_measurement_overrides(measurement_payload)
+    debug_var_labels <- clean_var_label_overrides(var_label_payload)
+    debug_category_names <- names(payload$category_labels %||% list())
+    debug_measurement_sample <- paste(utils::head(sprintf("%s=%s", names(debug_measurements), unname(debug_measurements)), 8), collapse = ", ")
+    debug_var_label_sample <- paste(utils::head(sprintf("%s=%s", names(debug_var_labels), unname(debug_var_labels)), 8), collapse = ", ")
+    debug_category_sample <- paste(utils::head(debug_category_names, 8), collapse = ", ")
+
+    measurement_changed <- FALSE
+    if (!is.null(measurement_payload)) {
+      measurement_changed <- isTRUE(update_measurement_overrides(debug_measurements))
+    }
+
+    result <- apply_category_label_snapshot(
+      category_label_values(),
+      payload$category_labels,
+      category_label_table_data()
+    )
+    category_label_values(result$table)
+
+    var_label_updates <- result$var_label_updates
+    if (!is.null(var_label_payload)) {
+      var_label_updates <- merge_named_overrides(var_label_updates, clean_var_label_overrides(var_label_payload))$values
+    }
+    var_label_changed <- FALSE
+    if (length(var_label_updates) > 0) {
+      var_label_changed <- isTRUE(update_var_label_overrides(var_label_updates))
+    }
+
+    updated_info <- tryCatch(variable_info_table(), error = function(e) NULL)
+    if (is.data.frame(updated_info)) {
+      updated_info <- apply_measurement_overrides(updated_info, debug_measurements)
+      updated_info <- apply_var_label_overrides_to_info(updated_info, debug_var_labels)
+    }
+    info_measurement_sample <- ""
+    info_var_label_sample <- ""
+    if (is.data.frame(updated_info) && is.function(step3_variable_info)) {
+      if (all(c("name", "measurement") %in% names(updated_info))) {
+        info_measurements <- stats::setNames(as.character(updated_info$measurement), as.character(updated_info$name))
+        info_measurement_sample <- paste(utils::head(sprintf("%s=%s", names(info_measurements), unname(info_measurements)), 8), collapse = ", ")
+      }
+      if (all(c("name", "var_label") %in% names(updated_info))) {
+        info_var_labels <- stats::setNames(as.character(updated_info$var_label), as.character(updated_info$name))
+        info_var_label_sample <- paste(utils::head(sprintf("%s=%s", names(info_var_labels), unname(info_var_labels)), 8), collapse = ", ")
+      }
+      attr(updated_info, "easyflow_step3_apply_nonce") <- as.character(Sys.time())
+      step3_variable_info(updated_info)
+    }
+
+    saved_category_table <- category_label_values()
+    saved_category_sample <- ""
+    if (is.data.frame(saved_category_table) && nrow(saved_category_table) > 0 && "name" %in% names(saved_category_table)) {
+      saved_category_sample <- paste(utils::head(as.character(saved_category_table$name), 8), collapse = ", ")
+    }
+
+    if (isTRUE(result$changed) || isTRUE(var_label_changed) || isTRUE(measurement_changed)) {
+      mark_settings_dirty()
+    }
+    message(sprintf(
+      "Step 3 apply: category_rows=%s, measurements=%s, var_labels=%s, changed=%s; measurement_sample=[%s]; var_label_sample=[%s]; category_sample=[%s]; info_measurement_sample=[%s]; info_var_label_sample=[%s]; saved_category_sample=[%s]",
+      payload_category_count,
+      payload_measurement_count,
+      payload_var_label_count,
+      isTRUE(result$changed) || isTRUE(var_label_changed) || isTRUE(measurement_changed),
+      debug_measurement_sample,
+      debug_var_label_sample,
+      debug_category_sample,
+      info_measurement_sample,
+      info_var_label_sample,
+      saved_category_sample
+    ))
+    showNotification(
+      sprintf(
+        "Variable labels applied (%s value rows, %s types, %s variable labels).",
+        payload_category_count,
+        payload_measurement_count,
+        payload_var_label_count
+      ),
+      type = "message",
+      duration = 4
+    )
+    invisible(TRUE)
+  }
+
   list(
     category_label_table_data = category_label_table_data,
-    save_category_label_edit = save_category_label_edit
+    save_category_label_edit = save_category_label_edit,
+    apply_category_label_snapshot = apply_category_label_snapshot_request
   )
 }
 
-register_category_label_observers <- function(input, save_category_label_edit, update_var_label_overrides) {
+register_category_label_observers <- function(
+  input,
+  save_category_label_edit,
+  update_var_label_overrides,
+  apply_category_label_snapshot = NULL,
+  category_label_table_data_fn = NULL,
+  collect_measurement_inputs_fn = NULL,
+  collect_var_label_inputs_fn = NULL
+) {
   observeEvent(input$category_label_cell_input, {
     save_category_label_edit(
       as.character(input$category_label_cell_input$name %||% ""),
@@ -374,6 +478,29 @@ register_category_label_observers <- function(input, save_category_label_edit, u
 
   observeEvent(input$var_label_snapshot, {
     update_var_label_overrides(input$var_label_snapshot$values %||% character(0), allow_blank = FALSE)
+  })
+
+  observeEvent(input$apply_category_labels_request, {
+    if (is.null(apply_category_label_snapshot)) {
+      return()
+    }
+    apply_category_label_snapshot(input$apply_category_labels_request)
+  })
+
+  observeEvent(input$apply_category_labels_button, {
+    if (is.null(apply_category_label_snapshot)) {
+      return()
+    }
+    category_labels <- if (is.function(category_label_table_data_fn)) {
+      collect_category_label_inputs_from_table(category_label_table_data_fn(), input)
+    } else {
+      NULL
+    }
+    apply_category_label_snapshot(list(
+      category_labels = category_labels,
+      measurements = if (is.function(collect_measurement_inputs_fn)) collect_measurement_inputs_fn() else character(0),
+      var_labels = if (is.function(collect_var_label_inputs_fn)) collect_var_label_inputs_fn() else character(0)
+    ))
   })
 
   invisible(TRUE)

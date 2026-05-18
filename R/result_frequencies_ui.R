@@ -11,7 +11,13 @@ frequency_compact_summary <- function(row, is_continuous) {
   if (isTRUE(is_continuous)) {
     return(frequency_format_value(row[["M \u00b1 SD"]]))
   }
-  paste0(frequency_format_value(row[["N"]]), "(", frequency_format_value(row[["Percent"]]), ")")
+  percent <- suppressWarnings(as.numeric(row[["Percent"]]))
+  percent_display <- if (length(percent) > 0 && !is.na(percent)) {
+    format_frequency_percent(percent, pad_under_10 = TRUE)
+  } else {
+    frequency_format_value(row[["Percent"]])
+  }
+  paste0(frequency_format_value(row[["N"]]), "(", percent_display, ")")
 }
 
 frequency_summary_column <- function() {

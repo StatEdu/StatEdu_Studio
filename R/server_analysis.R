@@ -188,6 +188,7 @@ register_hierarchical_save_handlers <- function(
     }
     analysis_save_buttons(
       html_button_id = "save_hierarchical_html_dialog",
+      pdf_button_id = "save_hierarchical_pdf_dialog",
       figure_button_id = "save_hierarchical_figures_dialog",
       excel_button_id = "save_hierarchical_excel_dialog",
       add_result_button_id = "add_hierarchical_result"
@@ -277,6 +278,36 @@ register_hierarchical_save_handlers <- function(
     )
   })
 
+  observeEvent(input$save_hierarchical_pdf_dialog, {
+    shiny::req(!is.null(input$run_hierarchical), input$run_hierarchical > 0)
+    path <- choose_pdf_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) {
+      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      return(invisible(NULL))
+    }
+    if (!grepl("\\.pdf$", path, ignore.case = TRUE)) {
+      path <- paste0(path, ".pdf")
+    }
+    tryCatch(
+      {
+        write_hierarchical_results_pdf(
+          analyses_fn(),
+          path,
+          variable_table = variable_table_fn(),
+          labels = labels_fn(),
+          category_table = category_table_fn(),
+          show_sr2 = input$hierarchical_show_sr2,
+          show_f2 = input$hierarchical_show_f2,
+          show_vif = input$hierarchical_show_vif
+        )
+        showNotification(sprintf("PDF results saved: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save PDF results:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  })
+
   register_add_result_placeholder(input, "add_hierarchical_result")
 
   invisible(TRUE)
@@ -298,6 +329,7 @@ register_analysis_save_handlers <- function(
       class = "regression-save-action",
       analysis_save_buttons(
         html_button_id = "save_analysis_html_dialog",
+        pdf_button_id = "save_analysis_pdf_dialog",
         figure_button_id = "save_analysis_figures_dialog",
         excel_button_id = "save_analysis_excel_dialog",
         add_result_button_id = "add_regression_result"
@@ -384,6 +416,36 @@ register_analysis_save_handlers <- function(
       },
       error = function(e) {
         showNotification(paste("Failed to save HTML results:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  })
+
+  observeEvent(input$save_analysis_pdf_dialog, {
+    shiny::req(!is.null(input$run), input$run > 0)
+    path <- choose_pdf_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) {
+      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      return(invisible(NULL))
+    }
+    if (!grepl("\\.pdf$", path, ignore.case = TRUE)) {
+      path <- paste0(path, ".pdf")
+    }
+    tryCatch(
+      {
+        write_analysis_results_pdf(
+          analyses_fn(),
+          path,
+          variable_table = variable_table_fn(),
+          labels = labels_fn(),
+          category_table = category_table_fn(),
+          show_sr2 = input$show_sr2,
+          show_f2 = input$show_f2,
+          show_vif = input$show_vif
+        )
+        showNotification(sprintf("PDF results saved: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save PDF results:", conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })

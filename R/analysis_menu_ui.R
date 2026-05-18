@@ -47,19 +47,13 @@ analysis_tab_panel <- function(analysis_tabs = enabled_analysis_tabs()) {
     if (isTRUE(analysis_tabs[["frequencies"]])) frequencies_tab_panel("Frequencies / Descriptives"),
     crosstab_tab_panel(),
     if (isTRUE(analysis_tabs[["ttest_anova"]])) ttest_anova_tab_panel("t-test / ANOVA"),
-    navbarMenu(
-      "Paired test",
-      if (isTRUE(analysis_tabs[["paired"]])) paired_tab_panel("paired test (2)"),
-      if (isTRUE(analysis_tabs[["paired_rm"]])) paired_rm_tab_panel("paired test (3+)")
-    ),
+    if (isTRUE(analysis_tabs[["paired"]])) paired_tab_panel("Paired test (2)"),
+    if (isTRUE(analysis_tabs[["paired_rm"]])) paired_rm_tab_panel("Paired test (3+)"),
     if (isTRUE(analysis_tabs[["correlation"]])) correlation_tab_panel("Correlation"),
     if (isTRUE(analysis_tabs[["reliability"]])) reliability_tab_panel("Reliability"),
-    navbarMenu(
-      "Regression",
-      if (isTRUE(analysis_tabs[["regression"]])) regression_tab_panel("Regression"),
-      if (isTRUE(analysis_tabs[["hierarchical"]])) hierarchical_tab_panel("Hierarchical Regression"),
-      if (isTRUE(analysis_tabs[["generalized"]])) generalized_tab_panel("Generalized"),
-      logistic_regression_tab_panel()
-    )
+    if (isTRUE(analysis_tabs[["regression"]])) regression_tab_panel("Regression"),
+    if (isTRUE(analysis_tabs[["hierarchical"]])) hierarchical_tab_panel("Hierarchical Regression"),
+    if (isTRUE(analysis_tabs[["generalized"]])) generalized_tab_panel("Generalized"),
+    logistic_regression_tab_panel()
   )
 }

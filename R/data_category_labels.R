@@ -167,3 +167,92 @@ merge_category_label_save_request <- function(current, incoming, base = NULL, ma
   current
 }
 
+apply_category_label_snapshot <- function(current, incoming, base = NULL, max_pairs = 6) {
+  edit_columns <- category_label_edit_columns(max_pairs)
+  if (is.null(incoming)) {
+    return(list(table = current, changed = FALSE, var_label_updates = character(0)))
+  }
+
+  current <- normalize_category_label_table(current, edit_columns, base)
+  var_label_updates <- character(0)
+  changed <- FALSE
+
+  for (name in names(incoming)) {
+    name <- trimws(as.character(name %||% ""))
+    if (!nzchar(name)) {
+      next
+    }
+    if (!name %in% current$name) {
+      current <- rbind(current, new_category_label_row(name, edit_columns))
+      changed <- TRUE
+    }
+
+    row_index <- match(name, current$name)
+    for (field in intersect(names(incoming[[name]]), edit_columns)) {
+      value <- as.character(incoming[[name]][[field]] %||% "")
+      if (!identical(as.character(current[[field]][[row_index]] %||% ""), value)) {
+        current[[field]][[row_index]] <- value
+        changed <- TRUE
+      }
+      if (identical(field, "var_label")) {
+        var_label_updates[[name]] <- value
+      }
+    }
+  }
+
+  for (row_index in seq_len(nrow(current))) {
+    reference <- trimws(as.character(current$reference[[row_index]] %||% ""))
+    reference_label <- ""
+    if (nzchar(reference)) {
+      for (i in seq_len(max_pairs)) {
+        if (identical(trimws(as.character(current[[paste0("value_", i)]][[row_index]] %||% "")), reference)) {
+          reference_label <- as.character(current[[paste0("label_", i)]][[row_index]] %||% "")
+          break
+        }
+      }
+    }
+    if (!identical(as.character(current$reference_label[[row_index]] %||% ""), reference_label)) {
+      current$reference_label[[row_index]] <- reference_label
+      changed <- TRUE
+    }
+  }
+
+  list(table = current, changed = changed, var_label_updates = var_label_updates)
+}
+
+collect_category_label_inputs_from_table <- function(table_data, input, max_pairs = 6) {
+  if (is.null(table_data) || !is.data.frame(table_data) || !all(c("source_order", "name") %in% names(table_data))) {
+    return(NULL)
+  }
+
+  fields <- category_label_edit_columns(max_pairs)
+  collected <- list()
+  for (row_index in seq_len(nrow(table_data))) {
+    source_order <- as.character(table_data$source_order[[row_index]] %||% "")
+    name <- as.character(table_data$name[[row_index]] %||% "")
+    if (!nzchar(source_order) || !nzchar(name)) {
+      next
+    }
+
+    row_values <- list()
+    for (field in fields) {
+      input_id <- if (identical(field, "var_label")) {
+        paste0("category_var_label_input_", source_order)
+      } else {
+        paste0("category_", field, "_input_", source_order)
+      }
+      value <- input[[input_id]]
+      if (is.null(value) || length(value) == 0) {
+        next
+      }
+      row_values[[field]] <- as.character(value[[1]] %||% "")
+    }
+
+    if (length(row_values) > 0) {
+      collected[[name]] <- row_values
+    }
+  }
+
+  collected
+}
+

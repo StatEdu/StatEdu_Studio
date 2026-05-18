@@ -16,9 +16,9 @@ hierarchical_setup_state <- function(
   selected_block2 = NULL,
   selected_block3 = NULL,
   active_block = "block1",
-  show_sr2 = FALSE,
-  show_f2 = FALSE,
-  show_vif = FALSE
+  show_sr2 = TRUE,
+  show_f2 = TRUE,
+  show_vif = TRUE
 ) {
   selected <- as.character(selected_names %||% character(0))
   ordered_dependents <- intersect(as.character(ordered_dependents %||% character(0)), selected)
@@ -58,9 +58,9 @@ hierarchical_setup_state <- function(
     bootstrap_choices = bootstrap_choices,
     current_bootstrap = normalized_bootstrap_resamples(bootstrap_value, bootstrap_choices),
     current_seed = seed_value %||% default_seed(),
-    show_sr2 = isTRUE(show_sr2),
-    show_f2 = isTRUE(show_f2),
-    show_vif = isTRUE(show_vif),
+    show_sr2 = setup_option_checked(show_sr2, default = TRUE),
+    show_f2 = setup_option_checked(show_f2, default = TRUE),
+    show_vif = setup_option_checked(show_vif, default = TRUE),
     move_disabled = length(selected) == 0
   )
 }

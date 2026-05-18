@@ -305,7 +305,10 @@ available_names_from_data_state <- function(data = NULL, restored_info = NULL, h
 }
 
 clean_measurement_overrides <- function(values) {
-  updates <- settings_named_vector(values)
+  updates <- settings_name_value_pairs(values)
+  if (length(updates) == 0) {
+    updates <- settings_named_vector(values)
+  }
   if (length(updates) == 0 || is.null(names(updates))) {
     return(character(0))
   }
@@ -322,7 +325,10 @@ clean_measurement_overrides <- function(values) {
 }
 
 clean_var_label_overrides <- function(values, allow_blank = TRUE) {
-  labels <- settings_named_vector(values)
+  labels <- settings_name_value_pairs(values)
+  if (length(labels) == 0) {
+    labels <- settings_named_vector(values)
+  }
   if (length(labels) == 0 || is.null(names(labels))) {
     return(character(0))
   }
