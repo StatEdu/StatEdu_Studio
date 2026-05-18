@@ -196,25 +196,28 @@ hint8_loaded_message_text <- function(file = NULL, data = NULL) {
 }
 
 hint8_weight_values_table <- function() {
-  specs <- hint8_item_specs()
   maps <- hint8_penalty_maps()
+  levels <- as.character(1:4)
+  dimensions <- paste0("LQ", seq_along(maps))
   tags$table(
-    class = "hint8-initial-table",
+    class = "hint8-initial-table hint8-weight-matrix-table",
     tags$thead(tags$tr(
-      tags$th("Item"),
-      tags$th("Value 1"),
-      tags$th("Value 2"),
-      tags$th("Value 3"),
-      tags$th("Value 4")
+      tags$th(""),
+      lapply(levels, tags$th)
     )),
-    tags$tbody(lapply(seq_len(nrow(specs)), function(index) {
+    tags$tbody(
+      lapply(seq_along(dimensions), function(index) {
+        values <- maps[[index]][levels]
+        tags$tr(
+          tags$td(dimensions[[index]], class = "hint8-dimension-label"),
+          lapply(values, function(value) tags$td(sprintf("%.3f", unname(value))))
+        )
+      }),
       tags$tr(
-        tags$td(specs$label[[index]]),
-        lapply(as.character(1:4), function(value) {
-          tags$td(sprintf("%.3f", unname(maps[[index]][[value]])))
-        })
+        tags$td("constant", class = "hint8-dimension-label"),
+        tags$td(sprintf("%.3f", 0.073), colspan = length(levels))
       )
-    }))
+    )
   )
 }
 
@@ -224,10 +227,6 @@ hint8_calculator_setup_ui <- function(file, data, variable_info, input) {
   }
 
   choices <- hint8_ordered_choices(data, variable_info)
-  if (length(choices) == 0) {
-    return(setup_empty_message("Set HINT8 item variables to ordered in Data Step 3 before using the HINT8 calculator."))
-  }
-
   specs <- hint8_item_specs()
   available_items <- analysis_variable_items(choices, variable_info, character(0))
   profile_as_one <- isTRUE(input$hint8_profile_11111111_as_one %||% TRUE)
@@ -246,6 +245,9 @@ hint8_calculator_setup_ui <- function(file, data, variable_info, input) {
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
       analysis_field_label_tag("Variables", "ordered"),
+      if (length(choices) == 0) {
+        div(class = "step-note", "Set HINT8 item variables to ordered in Data Step 3 before selecting variables.")
+      },
       analysis_transfer_listbox_input("hint8_available", available_items, selected = isolate(input$hint8_available), size = 19)
     ),
     div(class = "analysis-transfer-controls hint8-transfer-spacer"),

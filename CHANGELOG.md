@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.7.7 - 2026-05-18
+
+### Changed
+
+- Changed the HINT8 calculator initial values display to a compact item-by-level matrix.
+- Kept the HINT8 setup panels visible after loading data even when no ordered variables are available.
+- Tightened HINT8 initial-value panel spacing.
+
 ## v0.7.6 - 2026-05-18
 
 ### Changed

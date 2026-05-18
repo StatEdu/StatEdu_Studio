@@ -388,6 +388,25 @@ body {
   white-space: nowrap;
 }
 
+.hint8-initial-panel .analysis-option-title {
+  margin-bottom: 8px;
+}
+
+.hint8-initial-summary {
+  margin-bottom: 8px;
+  padding: 8px 12px;
+}
+
+.hint8-initial-panel .checkbox,
+.hint8-initial-panel .form-group {
+  margin-top: 4px;
+  margin-bottom: 6px;
+}
+
+.hint8-weight-matrix-table {
+  margin-top: 2px;
+}
+
 .role-actions {
   display: grid;
   gap: 8px;

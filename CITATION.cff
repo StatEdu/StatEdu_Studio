@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use easyflow_statistics in your research, please cite it as below."
 type: software
 title: "easyflow_statistics"
-version: "0.7.6"
+version: "0.7.7"
 date-released: "2026-05-18"
 authors:
   - family-names: "LEE"
