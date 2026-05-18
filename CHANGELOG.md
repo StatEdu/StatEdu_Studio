@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.7.6 - 2026-05-18
+
+### Changed
+
+- Changed the EQ-5D calculator initial values display from a long reference list to a compact dimension-by-level matrix.
+
 ## v0.7.5 - 2026-05-18
 
 ### Changed

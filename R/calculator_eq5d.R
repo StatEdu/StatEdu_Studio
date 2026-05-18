@@ -106,19 +106,32 @@ eq5d_calculator_tab_panel <- function() {
 
 eq5d_reference_table <- function(type = "5L") {
   reference <- eq5d_reference_values(type)
-  values <- unlist(reference$maps, use.names = FALSE)
-  values <- values[values != 0]
-  rows <- data.frame(
-    Item = c(reference$labels, "constant", if (toupper(type) == "3L") "N3" else "N4"),
-    Value = c(values, reference$constant, reference$n),
-    stringsAsFactors = FALSE
-  )
+  type <- toupper(as.character(type %||% "5L"))
+  levels <- if (identical(type, "3L")) as.character(2:3) else as.character(2:5)
+  dimensions <- c("M", "S", "U", "P", "A")
   tags$table(
-    class = "hint8-initial-table",
-    tags$thead(tags$tr(tags$th("Reference"), tags$th("Value"))),
-    tags$tbody(lapply(seq_len(nrow(rows)), function(index) {
-      tags$tr(tags$td(rows$Item[[index]]), tags$td(sprintf("%.3f", rows$Value[[index]])))
-    }))
+    class = "hint8-initial-table eq5d-initial-table",
+    tags$thead(tags$tr(
+      tags$th(""),
+      lapply(levels, tags$th)
+    )),
+    tags$tbody(
+      lapply(seq_along(dimensions), function(index) {
+        values <- reference$maps[[index]][levels]
+        tags$tr(
+          tags$td(dimensions[[index]], class = "eq5d-dimension-label"),
+          lapply(values, function(value) tags$td(sprintf("%.3f", unname(value))))
+        )
+      }),
+      tags$tr(
+        tags$td("constant", class = "eq5d-dimension-label"),
+        tags$td(sprintf("%.3f", reference$constant), colspan = length(levels))
+      ),
+      tags$tr(
+        tags$td(if (identical(type, "3L")) "N3" else "N4", class = "eq5d-dimension-label"),
+        tags$td(sprintf("%.3f", reference$n), colspan = length(levels))
+      )
+    )
   )
 }
 
