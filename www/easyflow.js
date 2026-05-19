@@ -556,6 +556,28 @@
         easyflowTransferSync(listbox);
       };
 
+      window.easyflowTransferOptionDoubleClick = function(event, option) {
+        var listbox = option && option.closest ? option.closest('.analysis-transfer-listbox') : null;
+        if (!listbox) return;
+        if (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        easyflowTransferFocusListbox(listbox);
+        easyflowTransferClear(listbox);
+        easyflowTransferSetSelected(option, true);
+        easyflowTransferSync(listbox);
+
+        var inputId = listbox.getAttribute('data-input-id') || '';
+        var value = option.getAttribute('data-value') || '';
+        if (window.Shiny && inputId && value) {
+          Shiny.setInputValue(inputId + '_doubleclick', {
+            value: value,
+            nonce: Date.now() + Math.random()
+          }, {priority: 'event'});
+        }
+      };
+
       ['mousedown', 'focusin'].forEach(function(eventName) {
         document.addEventListener(eventName, function(event) {
           var listbox = event.target && event.target.closest ? event.target.closest('.analysis-transfer-listbox') : null;

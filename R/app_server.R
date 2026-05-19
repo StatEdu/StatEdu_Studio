@@ -685,6 +685,18 @@ create_app_server <- function(app_version) {
     mark_settings_dirty = mark_settings_dirty
   )
 
+  register_logistic_handlers(
+    input = input,
+    output = output,
+    session = session,
+    selected_names_fn = selected_names,
+    dataset_fn = dataset,
+    variable_table_fn = regression_variable_table,
+    labels_fn = var_label_overrides,
+    category_table_fn = category_label_values,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
   register_ttest_anova_handlers(
     input = input,
     output = output,
@@ -816,6 +828,32 @@ create_app_server <- function(app_version) {
     independent_names_fn = independent_names,
     hierarchical_block3_current_fn = hierarchical_block3_current,
     hierarchical_active_block_fn = hierarchical_active_block
+  )
+
+  register_analysis_data_viewer_handlers(
+    input = input,
+    output = output,
+    prefix = "regression",
+    title = "Regression Data Viewer",
+    dataset_fn = dataset,
+    selected_names_fn = selected_names,
+    variables_fn = function() unique(c(sync_dependent_order(update_input = FALSE), sync_predictor_order(update_input = FALSE))),
+    variable_table_fn = regression_variable_table,
+    labels_fn = var_label_overrides,
+    category_table_fn = category_label_values
+  )
+
+  register_analysis_data_viewer_handlers(
+    input = input,
+    output = output,
+    prefix = "hierarchical",
+    title = "Hierarchical Regression Data Viewer",
+    dataset_fn = dataset,
+    selected_names_fn = selected_names,
+    variables_fn = function() unique(c(sync_dependent_order(update_input = FALSE), control_names(), independent_names())),
+    variable_table_fn = regression_variable_table,
+    labels_fn = var_label_overrides,
+    category_table_fn = category_label_values
   )
 
   prepare_hierarchical_result <- create_prepare_hierarchical_analysis_result_fn(

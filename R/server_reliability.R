@@ -74,6 +74,19 @@ register_reliability_handlers <- function(
     reliability_setup_panel(reliability_state())
   })
 
+  register_analysis_data_viewer_handlers(
+    input = input,
+    output = output,
+    prefix = "reliability",
+    title = "Reliability Data Viewer",
+    dataset_fn = dataset_fn,
+    selected_names_fn = selected_names_fn,
+    variables_fn = function() unique(unlist(current_reliability_blocks(), use.names = FALSE)),
+    variable_table_fn = variable_table_fn,
+    labels_fn = labels_fn,
+    category_table_fn = category_table_fn
+  )
+
   observe({
     selected <- as.character(selected_names_fn() %||% character(0))
     blocks <- current_reliability_blocks()
@@ -172,6 +185,18 @@ register_reliability_handlers <- function(
       active_reliability_list("reliability_selected")
     }
   })
+
+  observeEvent(input$reliability_selected_doubleclick, {
+    selected <- as.character(selected_names_fn() %||% character(0))
+    blocks <- current_reliability_blocks()
+    factor_index <- min(max(1L, as.integer(active_reliability_factor() %||% 1L)), length(blocks))
+    current <- intersect(as.character(blocks[[factor_index]] %||% character(0)), selected)
+    chosen <- intersect(as.character(input$reliability_selected_doubleclick$value %||% ""), current)
+    if (length(chosen) == 0) return()
+    blocks[[factor_index]] <- setdiff(current, chosen)
+    set_reliability_blocks(blocks)
+    active_reliability_list("reliability_available")
+  }, ignoreInit = TRUE)
 
   observeEvent(input$reliability_move_up, {
     blocks <- current_reliability_blocks()

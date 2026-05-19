@@ -187,6 +187,22 @@ register_setup_order_observers <- function(
     mark_settings_dirty()
   })
 
+  observeEvent(input$y_doubleclick, {
+    order <- sync_dependent_order_fn(update_input = FALSE)
+    selected <- intersect(as.character(input$y_doubleclick$value %||% ""), order)
+    if (length(selected) == 0) {
+      return()
+    }
+    updated <- remove_order_items(order, selected)
+    if (!updated$changed) {
+      return()
+    }
+    dependent_order(updated$order)
+    sync_dependent_order_fn(updated$selected)
+    active_regression_list("available_predictors")
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
   observeEvent(input$add_predictor_from_variables, {
     if (identical(active_regression_list(), "predictor_order")) {
       order <- sync_predictor_order_fn(update_input = FALSE)
@@ -255,6 +271,24 @@ register_setup_order_observers <- function(
     updateSelectInput(session, "available_predictors", selected = selected)
     mark_settings_dirty()
   })
+
+  observeEvent(input$predictor_order_doubleclick, {
+    order <- sync_predictor_order_fn(update_input = FALSE)
+    selected <- intersect(as.character(input$predictor_order_doubleclick$value %||% ""), order)
+    if (length(selected) == 0) {
+      return()
+    }
+    updated <- remove_order_items(order, selected)
+    if (!updated$changed) {
+      return()
+    }
+    predictor_order(updated$order)
+    predictor_order_initialized(TRUE)
+    sync_predictor_order_fn(updated$selected)
+    updateSelectInput(session, "available_predictors", selected = selected)
+    active_regression_list("available_predictors")
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
 
   invisible(TRUE)
 }
@@ -648,6 +682,59 @@ register_hierarchical_block_observers <- function(
     independent_names(setdiff(independent_names(), selected))
     mark_settings_dirty()
   })
+
+  observeEvent(input$hierarchical_y_doubleclick, {
+    selected <- intersect(as.character(input$hierarchical_y_doubleclick$value %||% ""), sync_dependent_order_fn(update_input = FALSE))
+    if (length(selected) == 0) {
+      return()
+    }
+    updated <- remove_order_items(sync_dependent_order_fn(update_input = FALSE), selected)
+    if (!updated$changed) {
+      return()
+    }
+    dependent_order(updated$order)
+    sync_dependent_order_fn(updated$selected)
+    active_hierarchical_list("hierarchical_available")
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$hierarchical_block1_doubleclick, {
+    selected <- intersect(as.character(input$hierarchical_block1_doubleclick$value %||% ""), control_names())
+    if (length(selected) == 0) {
+      return()
+    }
+    if (remove_selected_from(control_names, selected)) {
+      active_hierarchical_list("hierarchical_available")
+      mark_settings_dirty()
+    }
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$hierarchical_block2_doubleclick, {
+    block2 <- setdiff(intersect(independent_names_fn(), selected_names_fn()), hierarchical_block3_current_fn())
+    selected <- intersect(as.character(input$hierarchical_block2_doubleclick$value %||% ""), block2)
+    if (length(selected) == 0) {
+      return()
+    }
+    if (remove_selected_from(independent_names, selected)) {
+      active_hierarchical_list("hierarchical_available")
+      mark_settings_dirty()
+    }
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$hierarchical_block3_doubleclick, {
+    selected <- intersect(as.character(input$hierarchical_block3_doubleclick$value %||% ""), hierarchical_block3_current_fn())
+    if (length(selected) == 0) {
+      return()
+    }
+    updated <- remove_order_items(hierarchical_block3_current_fn(), selected)
+    if (!updated$changed) {
+      return()
+    }
+    hierarchical_block3_names(updated$order)
+    independent_names(setdiff(independent_names(), selected))
+    active_hierarchical_list("hierarchical_available")
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
 
   observeEvent(input$move_hierarchical_block2_to_block3, {
     selected <- intersect(

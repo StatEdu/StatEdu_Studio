@@ -41,6 +41,19 @@ register_paired_handlers <- function(
     ))
   })
 
+  register_analysis_data_viewer_handlers(
+    input = input,
+    output = output,
+    prefix = "paired",
+    title = "Paired Test Data Viewer",
+    dataset_fn = dataset_fn,
+    selected_names_fn = selected_names_fn,
+    variables_fn = function() unique(c(paired_pairs()$first, paired_pairs()$second)),
+    variable_table_fn = variable_table_fn,
+    labels_fn = labels_fn,
+    category_table_fn = category_table_fn
+  )
+
   observeEvent(input$paired_assumption_check, {
     assumption_check(isTRUE(input$paired_assumption_check))
   }, ignoreInit = TRUE)
@@ -106,6 +119,21 @@ register_paired_handlers <- function(
       mark_settings_dirty()
     }
   })
+
+  observeEvent(input$paired_pairs_doubleclick, {
+    selected_pairs <- intersect(
+      as.character(input$paired_pairs_doubleclick$value %||% ""),
+      paired_pair_values(paired_pairs()$first, paired_pairs()$second)
+    )
+    if (length(selected_pairs) == 0) return()
+    remove_pairs <- paired_pair_from_values(selected_pairs)
+    pairs <- paired_pairs()
+    remove_values <- paired_pair_values(remove_pairs$first, remove_pairs$second)
+    keep <- !paired_pair_values(pairs$first, pairs$second) %in% remove_values
+    paired_pairs(pairs[keep, , drop = FALSE])
+    active_list("paired_available")
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
 
   reorder_pairs <- function(direction) {
     pairs <- paired_pairs()

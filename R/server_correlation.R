@@ -46,6 +46,19 @@ register_correlation_handlers <- function(
     )
   })
 
+  register_analysis_data_viewer_handlers(
+    input = input,
+    output = output,
+    prefix = "correlation",
+    title = "Correlation Data Viewer",
+    dataset_fn = dataset_fn,
+    selected_names_fn = selected_names_fn,
+    variables_fn = correlation_variables,
+    variable_table_fn = variable_table_fn,
+    labels_fn = labels_fn,
+    category_table_fn = category_table_fn
+  )
+
   observe({
     selected <- current_selected()
     current <- correlation_variables()
@@ -89,6 +102,16 @@ register_correlation_handlers <- function(
       mark_settings_dirty()
     }
   })
+
+  observeEvent(input$correlation_selected_doubleclick, {
+    selected <- current_selected()
+    current <- intersect(as.character(correlation_variables() %||% character(0)), selected)
+    chosen <- intersect(as.character(input$correlation_selected_doubleclick$value %||% ""), current)
+    if (length(chosen) == 0) return()
+    correlation_variables(setdiff(current, chosen))
+    active_correlation_list("correlation_available")
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
 
   observeEvent(input$correlation_move_up, {
     updated <- move_order_item(correlation_variables(), input$correlation_selected, "up")

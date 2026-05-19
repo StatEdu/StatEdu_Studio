@@ -15,6 +15,8 @@ register_crosstab_handlers <- function(
   crosstab_row_vars <- reactiveVal(character(0))
   crosstab_col_vars <- reactiveVal(character(0))
   active_crosstab_list <- reactiveVal(NULL)
+  crosstab_data_viewer_visible <- reactiveVal(FALSE)
+  crosstab_data_viewer_label_mode <- reactiveVal(FALSE)
 
   current_crosstab_allowed <- function() {
     allowed <- analysis_allowed_variables(selected_names_fn(), variable_table_fn(), crosstab_allowed_measurements())
@@ -47,6 +49,58 @@ register_crosstab_handlers <- function(
 
   output$crosstab_setup <- renderUI({
     crosstab_setup_panel(crosstab_state())
+  })
+
+  crosstab_viewer_variables <- reactive({
+    current <- current_crosstab_allowed()
+    if (isTRUE(input$crosstab_viewer_all_step2)) {
+      data <- dataset_fn()
+      return(intersect(as.character(selected_names_fn() %||% character(0)), names(data %||% data.frame())))
+    }
+    unique(c(current$col_vars, current$row_vars))
+  })
+
+  output$crosstab_view_mode <- reactive({
+    if (isTRUE(crosstab_data_viewer_visible())) "viewer" else "analysis"
+  })
+  outputOptions(output, "crosstab_view_mode", suspendWhenHidden = FALSE)
+
+  observeEvent(input$crosstab_view_data, {
+    crosstab_data_viewer_visible(TRUE)
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$crosstab_back_to_analysis, {
+    crosstab_data_viewer_visible(FALSE)
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$crosstab_value_label_toggle, {
+    crosstab_data_viewer_label_mode(!isTRUE(crosstab_data_viewer_label_mode()))
+  }, ignoreInit = TRUE)
+
+  output$crosstab_data_viewer <- renderUI({
+    analysis_data_viewer_panel(
+      title = "Cross-tabulation Data Viewer",
+      variables = crosstab_viewer_variables(),
+      variable_table = variable_table_fn(),
+      labels = labels_fn(),
+      back_button_id = "crosstab_back_to_analysis",
+      scope_input_id = "crosstab_viewer_all_step2",
+      value_label_button_id = "crosstab_value_label_toggle",
+      table_output_id = "crosstab_data_viewer_table",
+      all_selected = isTRUE(input$crosstab_viewer_all_step2),
+      label_mode = crosstab_data_viewer_label_mode()
+    )
+  })
+
+  output$crosstab_data_viewer_table <- DT::renderDT({
+    analysis_data_viewer_table(
+      dataset_fn(),
+      crosstab_viewer_variables(),
+      category_table = category_table_fn(),
+      use_labels = crosstab_data_viewer_label_mode(),
+      variable_table = variable_table_fn(),
+      labels = labels_fn()
+    )
   })
 
   observeEvent(input$crosstab_available_active, {
@@ -118,6 +172,30 @@ register_crosstab_handlers <- function(
     if (!updated$changed) return()
     crosstab_col_vars(updated$order)
     active_crosstab_list("crosstab_col")
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$crosstab_col_doubleclick, {
+    state <- current_crosstab_allowed()
+    value <- input$crosstab_col_doubleclick$value %||% ""
+    selected <- intersect(as.character(value), state$col_vars)
+    if (length(selected) == 0) return()
+    updated <- remove_order_items(state$col_vars, selected)
+    if (!updated$changed) return()
+    crosstab_col_vars(updated$order)
+    active_crosstab_list("crosstab_available")
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$crosstab_row_doubleclick, {
+    state <- current_crosstab_allowed()
+    value <- input$crosstab_row_doubleclick$value %||% ""
+    selected <- intersect(as.character(value), state$row_vars)
+    if (length(selected) == 0) return()
+    updated <- remove_order_items(state$row_vars, selected)
+    if (!updated$changed) return()
+    crosstab_row_vars(updated$order)
+    active_crosstab_list("crosstab_available")
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 

@@ -89,6 +89,20 @@ analysis_transfer_listbox_input <- function(
           `data-value` = value,
           onmousedown = "event.preventDefault();",
           onclick = "window.easyflowTransferOptionClick && window.easyflowTransferOptionClick(event, this);",
+          ondblclick = paste(
+            "if (window.easyflowTransferOptionDoubleClick) {",
+            "window.easyflowTransferOptionDoubleClick(event, this);",
+            "} else {",
+            "event.preventDefault(); event.stopPropagation();",
+            "var listbox = this.closest('.analysis-transfer-listbox');",
+            "var inputId = listbox ? listbox.getAttribute('data-input-id') : '';",
+            "var value = this.getAttribute('data-value') || '';",
+            "if (window.Shiny && inputId && value) {",
+            "Shiny.setInputValue(inputId + '_doubleclick', {value: value, nonce: Date.now() + Math.random()}, {priority: 'event'});",
+            "}",
+            "}",
+            sep = ""
+          ),
           measurement_symbol_tag(item$measurement),
           span(item$label, class = "analysis-transfer-option-label")
         )

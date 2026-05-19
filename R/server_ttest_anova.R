@@ -80,6 +80,19 @@ register_ttest_anova_handlers <- function(
     )
   })
 
+  register_analysis_data_viewer_handlers(
+    input = input,
+    output = output,
+    prefix = "ttest_anova",
+    title = "t-test / ANOVA Data Viewer",
+    dataset_fn = dataset_fn,
+    selected_names_fn = selected_names_fn,
+    variables_fn = function() unique(c(dependent_variables(), factor_variables())),
+    variable_table_fn = variable_table_fn,
+    labels_fn = labels_fn,
+    category_table_fn = category_table_fn
+  )
+
   observeEvent(input$ttest_anova_normality_enabled, {
     enabled <- isTRUE(input$ttest_anova_normality_enabled)
     normality_enabled_value(enabled)
@@ -211,6 +224,16 @@ register_ttest_anova_handlers <- function(
     mark_settings_dirty()
   })
 
+  observeEvent(input$ttest_dependents_doubleclick, {
+    selected <- current_selected()
+    current <- intersect(dependent_variables(), selected)
+    chosen <- intersect(as.character(input$ttest_dependents_doubleclick$value %||% ""), current)
+    if (length(chosen) == 0) return()
+    dependent_variables(setdiff(current, chosen))
+    active_ttest_list("ttest_available")
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
   observeEvent(input$ttest_factor_move, {
     selected <- current_selected()
     if (identical(active_ttest_list(), "ttest_factors")) {
@@ -235,6 +258,16 @@ register_ttest_anova_handlers <- function(
     active_ttest_list("ttest_factors")
     mark_settings_dirty()
   })
+
+  observeEvent(input$ttest_factors_doubleclick, {
+    selected <- current_selected()
+    current <- intersect(factor_variables(), selected)
+    chosen <- intersect(as.character(input$ttest_factors_doubleclick$value %||% ""), current)
+    if (length(chosen) == 0) return()
+    factor_variables(setdiff(current, chosen))
+    active_ttest_list("ttest_available")
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
 
   observeEvent(input$ttest_dependent_up, {
     updated <- move_order_item(dependent_variables(), input$ttest_dependents, "up")

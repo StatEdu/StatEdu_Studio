@@ -52,6 +52,19 @@ register_paired_rm_handlers <- function(
     ))
   })
 
+  register_analysis_data_viewer_handlers(
+    input = input,
+    output = output,
+    prefix = "paired_rm",
+    title = "Paired Test (3+) Data Viewer",
+    dataset_fn = dataset_fn,
+    selected_names_fn = selected_names_fn,
+    variables_fn = function() unique(unlist(repeated_groups(), use.names = FALSE)),
+    variable_table_fn = variable_table_fn,
+    labels_fn = labels_fn,
+    category_table_fn = category_table_fn
+  )
+
   observeEvent(input$paired_rm_assumption_check, {
     assumption_check(isTRUE(input$paired_rm_assumption_check))
   }, ignoreInit = TRUE)
@@ -165,6 +178,19 @@ register_paired_rm_handlers <- function(
     write_paired_rm_results_html(result, path)
     showNotification(sprintf("HTML results saved: %s", path), type = "message")
   })
+
+  observeEvent(input$paired_rm_repeated_doubleclick, {
+    selected_groups <- intersect(
+      as.character(input$paired_rm_repeated_doubleclick$value %||% ""),
+      paired_rm_group_values(repeated_groups())
+    )
+    if (length(selected_groups) == 0) return()
+    remove_values <- paired_rm_group_values(paired_rm_group_from_values(selected_groups))
+    keep <- !paired_rm_group_values(repeated_groups()) %in% remove_values
+    repeated_groups(repeated_groups()[keep])
+    active_list("paired_rm_available")
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
 
   observeEvent(input$save_paired_rm_excel_dialog, {
     result <- paired_rm_result()

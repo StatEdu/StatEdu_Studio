@@ -11,14 +11,17 @@ reliability_tab_panel <- function(title = "Reliability") {
       div(
         class = "workspace-panel frequencies-workspace-panel reliability-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        h3("Reliability"),
-        uiOutput("reliability_setup"),
-        div(
-          class = "analysis-action-row reliability-action-row",
-          actionButton("run_reliability", "Run analysis", class = "btn btn-primary"),
-          uiOutput("reliability_save_control")
-        ),
-        uiOutput("reliability_results")
+        analysis_workspace_heading("Reliability", "reliability"),
+        analysis_workspace_body(
+          "reliability",
+          uiOutput("reliability_setup"),
+          div(
+            class = "analysis-action-row reliability-action-row",
+            actionButton("run_reliability", "Run analysis", class = "btn btn-primary"),
+            uiOutput("reliability_save_control")
+          ),
+          uiOutput("reliability_results")
+        )
       )
     )
   )
@@ -37,14 +40,17 @@ frequencies_tab_panel <- function(title = "Frequencies") {
       div(
         class = "workspace-panel frequencies-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        h3("Frequencies / Descriptives"),
-        uiOutput("frequencies_setup"),
-        div(
-          class = "analysis-action-row frequencies-action-row",
-          actionButton("run_frequencies", "Run analysis", class = "btn btn-primary"),
-          uiOutput("frequencies_save_control")
-        ),
-        uiOutput("frequencies_results")
+        analysis_workspace_heading("Frequencies / Descriptives", "frequencies"),
+        analysis_workspace_body(
+          "frequencies",
+          uiOutput("frequencies_setup"),
+          div(
+            class = "analysis-action-row frequencies-action-row",
+            actionButton("run_frequencies", "Run analysis", class = "btn btn-primary"),
+            uiOutput("frequencies_save_control")
+          ),
+          uiOutput("frequencies_results")
+        )
       )
     )
   )
@@ -64,14 +70,17 @@ paired_tab_panel <- function(title = "Paired test") {
       div(
         class = "workspace-panel frequencies-workspace-panel paired-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        h3("Paired test"),
-        uiOutput("paired_setup"),
-        div(
-          class = "analysis-action-row paired-action-row",
-          actionButton("run_paired", "Run analysis", class = "btn btn-primary"),
-          uiOutput("paired_save_control")
-        ),
-        uiOutput("paired_results")
+        analysis_workspace_heading("Paired test", "paired"),
+        analysis_workspace_body(
+          "paired",
+          uiOutput("paired_setup"),
+          div(
+            class = "analysis-action-row paired-action-row",
+            actionButton("run_paired", "Run analysis", class = "btn btn-primary"),
+            uiOutput("paired_save_control")
+          ),
+          uiOutput("paired_results")
+        )
       )
     )
   )
@@ -91,14 +100,17 @@ paired_rm_tab_panel <- function(title = "Paired test (3+)") {
       div(
         class = "workspace-panel frequencies-workspace-panel paired-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        h3("Paired test (3+)"),
-        uiOutput("paired_rm_setup"),
-        div(
-          class = "analysis-action-row paired-action-row",
-          actionButton("run_paired_rm", "Run analysis", class = "btn btn-primary"),
-          uiOutput("paired_rm_save_control")
-        ),
-        uiOutput("paired_rm_results")
+        analysis_workspace_heading("Paired test (3+)", "paired_rm"),
+        analysis_workspace_body(
+          "paired_rm",
+          uiOutput("paired_rm_setup"),
+          div(
+            class = "analysis-action-row paired-action-row",
+            actionButton("run_paired_rm", "Run analysis", class = "btn btn-primary"),
+            uiOutput("paired_rm_save_control")
+          ),
+          uiOutput("paired_rm_results")
+        )
       )
     )
   )
@@ -117,14 +129,17 @@ ttest_anova_tab_panel <- function(title = "t-test / ANOVA") {
       div(
         class = "workspace-panel frequencies-workspace-panel ttest-anova-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        h3("t-test / ANOVA"),
-        uiOutput("ttest_anova_setup"),
-        div(
-          class = "analysis-action-row ttest-anova-action-row",
-          actionButton("run_ttest_anova", "Run analysis", class = "btn btn-primary"),
-          uiOutput("ttest_anova_save_control")
-        ),
-        uiOutput("ttest_anova_results")
+        analysis_workspace_heading("t-test / ANOVA", "ttest_anova"),
+        analysis_workspace_body(
+          "ttest_anova",
+          uiOutput("ttest_anova_setup"),
+          div(
+            class = "analysis-action-row ttest-anova-action-row",
+            actionButton("run_ttest_anova", "Run analysis", class = "btn btn-primary"),
+            uiOutput("ttest_anova_save_control")
+          ),
+          uiOutput("ttest_anova_results")
+        )
       )
     )
   )
@@ -143,14 +158,17 @@ correlation_tab_panel <- function(title = "Correlation") {
       div(
         class = "workspace-panel frequencies-workspace-panel correlation-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        h3("Correlation"),
-        uiOutput("correlation_setup"),
-        div(
-          class = "analysis-action-row correlation-action-row",
-          actionButton("run_correlation", "Run analysis", class = "btn btn-primary"),
-          uiOutput("correlation_save_control")
-        ),
-        uiOutput("correlation_results")
+        analysis_workspace_heading("Correlation", "correlation"),
+        analysis_workspace_body(
+          "correlation",
+          uiOutput("correlation_setup"),
+          div(
+            class = "analysis-action-row correlation-action-row",
+            actionButton("run_correlation", "Run analysis", class = "btn btn-primary"),
+            uiOutput("correlation_save_control")
+          ),
+          uiOutput("correlation_results")
+        )
       )
     )
   )
@@ -168,14 +186,17 @@ regression_tab_panel <- function(title = "Regression") {
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel regression-workspace-panel",
-        h3("Regression"),
-        uiOutput("regression_setup"),
-        div(
-          class = "bootstrap-progress-slot",
-          uiOutput("bootstrap_progress"),
-          uiOutput("bootstrap_stop_control")
-        ),
-        uiOutput("regression_results")
+        analysis_workspace_heading("Regression", "regression"),
+        analysis_workspace_body(
+          "regression",
+          uiOutput("regression_setup"),
+          div(
+            class = "bootstrap-progress-slot",
+            uiOutput("bootstrap_progress"),
+            uiOutput("bootstrap_stop_control")
+          ),
+          uiOutput("regression_results")
+        )
       )
     )
   )
@@ -194,9 +215,12 @@ hierarchical_tab_panel <- function(title = "Hierarchical") {
       div(
         class = "workspace-panel frequencies-workspace-panel hierarchical-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        h3("Hierarchical"),
-        uiOutput("hierarchical_setup"),
-        uiOutput("hierarchical_results")
+        analysis_workspace_heading("Hierarchical", "hierarchical"),
+        analysis_workspace_body(
+          "hierarchical",
+          uiOutput("hierarchical_setup"),
+          uiOutput("hierarchical_results")
+        )
       )
     )
   )

@@ -35,26 +35,54 @@ crosstab_tab_panel <- function() {
       div(
         class = "workspace-panel frequencies-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        h3("Cross-tabulation Analysis"),
-        uiOutput("crosstab_setup"),
         div(
-          class = "analysis-action-row frequencies-action-row",
-          actionButton("run_crosstab", "Run analysis", class = "btn btn-primary"),
-          uiOutput("crosstab_save_control")
+          class = "analysis-workspace-heading crosstab-workspace-heading",
+          h3("Cross-tabulation Analysis"),
+          conditionalPanel(
+            condition = "output.crosstab_view_mode !== 'viewer'",
+            analysis_data_viewer_button("crosstab_view_data")
+          )
         ),
-        uiOutput("crosstab_results")
+        conditionalPanel(
+          condition = "output.crosstab_view_mode !== 'viewer'",
+          uiOutput("crosstab_setup"),
+          div(
+            class = "analysis-action-row frequencies-action-row",
+            actionButton("run_crosstab", "Run analysis", class = "btn btn-primary"),
+            uiOutput("crosstab_save_control")
+          ),
+          uiOutput("crosstab_results")
+        ),
+        conditionalPanel(
+          condition = "output.crosstab_view_mode === 'viewer'",
+          uiOutput("crosstab_data_viewer")
+        )
       )
     )
   )
 }
 
 logistic_regression_tab_panel <- function() {
-  analysis_placeholder_tab_panel(
+  tabPanel(
     "Logistic Regression",
-    "Prepare logistic regression models for binary outcomes.",
-    "Logistic Regression",
-    "Logistic regression analysis will be implemented here.",
-    value = "analysis_logistic_regression"
+    value = "analysis_logistic_regression",
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1("Logistic Regression"),
+        div("Logistic regression models for binary, ordered, and categorical dependent variables.", class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel logistic-workspace-panel",
+        style = "min-width:980px;overflow-x:auto;",
+        analysis_workspace_heading("Logistic Regression", "logistic"),
+        analysis_workspace_body(
+          "logistic",
+          uiOutput("logistic_setup")
+        )
+      )
+    )
   )
 }
 

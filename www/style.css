@@ -1193,6 +1193,199 @@ input.variable-select:disabled {
   border-top: 0;
 }
 
+.analysis-workspace-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  width: 100%;
+  margin-bottom: 18px;
+}
+
+.analysis-workspace-heading h3 {
+  margin: 0;
+}
+
+.analysis-workspace-heading,
+.frequencies-setup-grid,
+.correlation-setup-grid,
+.reliability-setup-grid,
+.ttest-anova-setup-grid,
+.regression-setup-grid,
+.hierarchical-setup-grid,
+.logistic-setup-grid,
+.analysis-data-viewer-panel {
+  width: 1140px;
+  min-width: 1140px;
+}
+
+.analysis-data-viewer-button {
+  min-width: 166px;
+  height: 38px;
+  font-weight: 500;
+}
+
+.analysis-data-viewer-panel {
+  padding: 18px;
+  background: #f4f8fb;
+  border: 1px solid #e1eaf2;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.analysis-data-viewer-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+
+.analysis-data-viewer-header h3 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.analysis-data-viewer-subtitle {
+  color: #52606d;
+  font-size: 14px;
+}
+
+.analysis-data-viewer-controls {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.analysis-data-viewer-scope-control .checkbox {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.analysis-data-viewer-scope-control {
+  padding-top: 8px;
+  margin-right: 0;
+}
+
+.analysis-data-viewer-button-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.analysis-data-viewer-action-button {
+  width: 128px;
+  height: 38px;
+  padding: 8px 10px;
+  font-weight: 600;
+}
+
+.analysis-data-viewer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  min-height: 34px;
+  margin-bottom: 12px;
+}
+
+.analysis-data-viewer-toolbar .checkbox {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.analysis-data-value-label-button {
+  min-width: 128px;
+  font-weight: 600;
+}
+
+.analysis-data-value-label-button.is-active {
+  color: #ffffff;
+  background-color: #337ab7;
+  border-color: #2e6da4;
+}
+
+.analysis-data-viewer-variables {
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid #d9e8f5;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.analysis-data-viewer-section-title {
+  margin-bottom: 8px;
+  color: #002b4d;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.analysis-data-viewer-variable-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.analysis-data-viewer-variable {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 320px;
+  padding: 6px 8px;
+  border: 1px solid #d6e4f0;
+  border-radius: 6px;
+  background: #f8fbfe;
+  color: #102a43;
+  font-size: 14px;
+}
+
+.analysis-data-viewer-variable-label {
+  color: #627d98;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analysis-data-viewer-variable-name {
+  color: #002b4d;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.analysis-data-viewer-empty {
+  color: #52606d;
+  font-size: 14px;
+}
+
+.analysis-data-viewer-table-wrap {
+  overflow-x: auto;
+  padding: 12px;
+  border: 1px solid #d9e8f5;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.analysis-data-viewer-table-wrap .dataTables_wrapper,
+.analysis-data-viewer-table-wrap table.dataTable {
+  width: max-content !important;
+  min-width: 100%;
+}
+
+.analysis-data-viewer-table-wrap table.dataTable th,
+.analysis-data-viewer-table-wrap table.dataTable td {
+  white-space: nowrap;
+}
+
+.analysis-data-viewer-column-heading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
 .frequencies-action-row {
   display: grid;
   grid-template-columns: 326px 50px 326px 310px;
@@ -3554,6 +3747,13 @@ pre {
   min-height: 568px !important;
 }
 
+.crosstab-workspace-heading,
+.regression-setup-grid.crosstab-setup-grid,
+.analysis-data-viewer-panel {
+  width: 1140px !important;
+  min-width: 1140px !important;
+}
+
 .crosstab-column-panel {
   height: auto !important;
   min-height: 0 !important;
@@ -3945,4 +4145,42 @@ pre {
 
 .ascvd10-output-table td:nth-child(2) {
   width: 58%;
+}
+
+/* Final shared analysis geometry: match the cross-tabulation layout. */
+.frequencies-setup-grid,
+.reliability-setup-grid,
+.paired-setup-grid,
+.ttest-anova-setup-grid,
+.correlation-setup-grid,
+.hierarchical-setup-grid,
+.regression-setup-grid,
+.logistic-setup-grid {
+  grid-template-columns: 326px 50px 326px 20px 310px !important;
+  gap: 18px !important;
+  width: 1140px !important;
+  min-width: 1140px !important;
+  max-width: 1140px !important;
+}
+
+.analysis-workspace-heading,
+.analysis-data-viewer-panel {
+  width: 1140px !important;
+  min-width: 1140px !important;
+  max-width: 1140px !important;
+}
+
+.reliability-action-row,
+.frequencies-action-row,
+.paired-action-row,
+.ttest-anova-action-row,
+.correlation-action-row,
+.hierarchical-action-row,
+.regression-action-row,
+.logistic-action-row {
+  grid-template-columns: 326px 50px 326px 20px 310px !important;
+  gap: 18px !important;
+  width: 1140px !important;
+  min-width: 1140px !important;
+  max-width: 1140px !important;
 }

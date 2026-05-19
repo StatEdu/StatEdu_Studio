@@ -173,6 +173,56 @@ expect_true(identical(length(gregexpr("1. Pearson chi-square test was used.", mu
 expect_true(!grepl("Tests:", multi_result_html, fixed = TRUE), "Expected grouped result to omit the separate tests table")
 expect_true(!grepl("<h3>Effect size</h3>", multi_result_html, fixed = TRUE), "Expected grouped result to omit the separate effect size table")
 
+message("Checking selected data viewer...")
+viewer_panel_html <- renderTags(analysis_data_viewer_panel(
+  title = "Cross-tabulation Data Viewer",
+  variables = c("group", "dose"),
+  variable_table = variable_info,
+  back_button_id = "crosstab_back_to_analysis",
+  scope_input_id = "crosstab_viewer_all_step2",
+  value_label_button_id = "crosstab_value_label_toggle",
+  table_output_id = "crosstab_data_viewer_table"
+))$html
+expect_true(grepl("View selected data", renderTags(analysis_data_viewer_button("crosstab_view_data"))$html, fixed = TRUE), "Expected analysis data viewer button")
+expect_true(grepl("Back to analysis", viewer_panel_html, fixed = TRUE), "Expected selected data viewer back button")
+expect_true(grepl("crosstab_viewer_all_step2", viewer_panel_html, fixed = TRUE), "Expected Step 2 scope toggle")
+expect_true(grepl("Value / Label", viewer_panel_html, fixed = TRUE), "Expected value label toggle")
+expect_true(grepl("easyflowTransferOptionDoubleClick", renderTags(crosstab_setup_panel(crosstab_setup_state(
+  selected_names = c("group", "dose"),
+  variable_table = variable_info,
+  row_var = "group",
+  col_var = "dose"
+)))$html, fixed = TRUE), "Expected transfer listbox double click handler")
+viewer_table_html <- renderTags(analysis_data_viewer_table(data, c("group", "dose"), variable_table = variable_info))$html
+expect_true(grepl("group", viewer_table_html, fixed = TRUE), "Expected selected data viewer table to include group")
+expect_true(grepl("dose", viewer_table_html, fixed = TRUE), "Expected selected data viewer table to include dose")
+expect_true(!grepl("outcome", viewer_table_html, fixed = TRUE), "Expected selected data viewer table to omit unselected columns")
+expect_true(grepl("analysis-data-viewer-column-heading", viewer_table_html, fixed = TRUE), "Expected selected data viewer table headers to include measurement icons")
+viewer_label_header_html <- renderTags(analysis_data_viewer_table(
+  data,
+  c("group", "dose"),
+  variable_table = variable_info,
+  labels = c(group = "Treatment group"),
+  use_labels = TRUE
+))$html
+expect_true(grepl("Treatment group", viewer_label_header_html, fixed = TRUE), "Expected selected data viewer table header to use variable label in label mode")
+label_preview <- analysis_data_viewer_labeled_data(
+  data.frame(group = c(1, 2, 3), dose = c(2, 1, 1), check.names = FALSE),
+  c("group", "dose"),
+  category_table = data.frame(
+    name = "group",
+    value_1 = "1",
+    label_1 = "Control",
+    value_2 = "2",
+    label_2 = "Treatment",
+    stringsAsFactors = FALSE
+  ),
+  use_labels = TRUE
+)
+expect_true(identical(as.character(label_preview$group), c("Control", "Treatment", "3")), "Expected viewer to apply available value labels")
+top_preview <- analysis_data_viewer_labeled_data(data.frame(group = seq_len(25), check.names = FALSE), "group")
+expect_true(nrow(top_preview) == 20, "Expected selected data viewer preview to stop at 20 rows")
+
 message("Checking result saving helpers...")
 saved_html <- tempfile("crosstab_", fileext = ".html")
 write_crosstab_results_html(list(display_result, display_result_2), saved_html)

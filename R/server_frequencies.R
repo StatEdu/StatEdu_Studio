@@ -38,6 +38,19 @@ register_frequencies_handlers <- function(
     frequencies_setup_panel(frequency_state())
   })
 
+  register_analysis_data_viewer_handlers(
+    input = input,
+    output = output,
+    prefix = "frequencies",
+    title = "Frequencies / Descriptives Data Viewer",
+    dataset_fn = dataset_fn,
+    selected_names_fn = selected_names_fn,
+    variables_fn = frequency_variables,
+    variable_table_fn = variable_table_fn,
+    labels_fn = labels_fn,
+    category_table_fn = category_table_fn
+  )
+
   observeEvent(input$frequency_available_active, {
     active_frequency_list("frequency_available")
   }, ignoreInit = TRUE)
@@ -71,6 +84,15 @@ register_frequencies_handlers <- function(
       mark_settings_dirty()
     }
   })
+
+  observeEvent(input$frequency_selected_doubleclick, {
+    current <- intersect(as.character(frequency_variables() %||% character(0)), selected_names_fn())
+    selected <- intersect(as.character(input$frequency_selected_doubleclick$value %||% ""), current)
+    if (length(selected) == 0) return()
+    frequency_variables(setdiff(current, selected))
+    active_frequency_list("frequency_available")
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
 
   observeEvent(input$frequency_move_up, {
     updated <- move_order_item(frequency_variables(), input$frequency_selected, "up")
