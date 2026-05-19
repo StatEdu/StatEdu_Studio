@@ -1144,11 +1144,18 @@ input.variable-select:disabled {
 }
 
 .crosstab-stat-cell {
-  vertical-align: middle;
-  font-weight: 600;
+  vertical-align: top;
+  font-weight: 400;
 }
 
 .crosstab-footnote-marker {
+  margin-left: 2px;
+  font-size: 10px;
+  line-height: 0;
+  vertical-align: super;
+}
+
+.coefficient-footnote-marker {
   margin-left: 2px;
   font-size: 10px;
   line-height: 0;
@@ -1204,7 +1211,10 @@ input.variable-select:disabled {
 }
 
 .frequencies-action-row > #crosstab_save_control {
-  grid-column: 4;
+  grid-column: 5;
+  margin-left: 0;
+  justify-self: center;
+  transform: translateX(18px);
 }
 
 .ttest-anova-workspace-panel {
@@ -3278,6 +3288,7 @@ pre {
 
 .reliability-action-row > #reliability_save_control,
 .frequencies-action-row > #frequencies_save_control,
+.frequencies-action-row > #crosstab_save_control,
 .paired-action-row > #paired_save_control,
 .paired-action-row > #paired_rm_save_control,
 .ttest-anova-action-row > #ttest_anova_save_control,
@@ -3537,27 +3548,57 @@ pre {
   max-height: 210px !important;
 }
 
-.crosstab-row-panel .analysis-transfer-listbox,
-.crosstab-column-panel .analysis-transfer-listbox {
-  height: 168px !important;
-  min-height: 168px !important;
-  max-height: 168px !important;
-}
-
 .crosstab-target-column {
-  grid-template-rows: 275px 275px !important;
-  height: 568px !important;
+  grid-template-rows: auto auto !important;
+  height: auto !important;
+  min-height: 568px !important;
 }
 
-.crosstab-row-panel,
 .crosstab-column-panel {
-  height: 275px !important;
-  min-height: 275px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  box-sizing: border-box;
+}
+
+.crosstab-row-panel {
+  height: auto !important;
+  min-height: 0 !important;
   box-sizing: border-box;
 }
 
 .crosstab-transfer-controls {
-  grid-template-rows: 275px 275px !important;
+  display: grid;
+  grid-template-rows: 214px 354px !important;
+  gap: 18px !important;
+  align-items: center;
+  justify-items: center;
+  padding-top: 0 !important;
+}
+
+.crosstab-column-panel .analysis-transfer-listbox {
+  height: 96px !important;
+  min-height: 96px !important;
+  max-height: 96px !important;
+}
+
+.crosstab-row-panel .analysis-transfer-listbox {
+  height: 248px !important;
+  min-height: 248px !important;
+  max-height: 248px !important;
+}
+
+.regression-result-panel .crosstab-main-table > tbody > tr > td.crosstab-stat-cell {
+  vertical-align: top !important;
+}
+
+.coefficient-table.crosstab-main-table > thead > tr > th.crosstab-col-head,
+.regression-result-panel .crosstab-main-table > thead > tr > th.crosstab-col-head {
+  text-align: center !important;
+}
+
+.coefficient-table.crosstab-main-table > tbody > tr > td.crosstab-row-label,
+.regression-result-panel .crosstab-main-table > tbody > tr > td.crosstab-row-label {
+  text-align: left !important;
 }
 
 .hierarchical-block-title-row {

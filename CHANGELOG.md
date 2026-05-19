@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.7.11 - 2026-05-19
+
+### Changed
+
+- Changed Cross-tabulation setup so column variables are assigned above row variables, with column and row panels sized for the expected variable counts.
+- Added Cross-tabulation PDF export and enabled all save actions by default for development builds.
+- Standardized Cross-tabulation result layout, including top-aligned statistics, centered column headers, left-aligned row values, and numbered effect-size notes.
+- Standardized effect-size number formatting across result outputs to three decimals without a leading zero.
+- Added numbered p-value, effect-size, and trend notes for t-test / ANOVA results and rendered note markers as superscripts.
+- Added validation coverage for t-test / ANOVA note rendering and expanded Cross-tabulation validation coverage.
+
+
 ## v0.7.10 - 2026-05-18
 
 ### Changed

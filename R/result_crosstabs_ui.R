@@ -186,7 +186,7 @@ crosstab_header_tags <- function(col_label, col_labels, split = FALSE, show_tren
 
 crosstab_general_effect_info <- function(result) {
   table <- result$effect_sizes
-  empty <- list(value = "", note = "")
+  empty <- list(value = "", key = "", note = "")
   if (!is.data.frame(table) || nrow(table) == 0) return(empty)
   preferred <- if (any(table$Effect == "Odds ratio")) "Odds ratio" else "Cramer's V"
   matched <- table[table$Effect == preferred, , drop = FALSE]
@@ -196,7 +196,17 @@ crosstab_general_effect_info <- function(result) {
   } else {
     "ES = Cramer's V."
   }
-  list(value = matched$Estimate[[1]], note = note)
+  list(value = matched$Estimate[[1]], key = preferred, note = note)
+}
+
+crosstab_effect_note_text <- function(key) {
+  key <- as.character(key %||% "")
+  switch(
+    key,
+    "Odds ratio" = "ES = odds ratio.",
+    "Cramer's V" = "ES = Cramer's V.",
+    if (nzchar(key)) paste0("ES = ", key, ".") else ""
+  )
 }
 
 crosstab_method_note_text <- function(method) {
@@ -241,6 +251,16 @@ crosstab_method_footnotes <- function(results) {
       stringsAsFactors = FALSE
     )
   }
+  effect_keys <- unique(vapply(results, function(result) crosstab_general_effect_info(result)$key, character(1)))
+  effect_keys <- effect_keys[nzchar(effect_keys)]
+  for (key in effect_keys) {
+    rows[[length(rows) + 1L]] <- data.frame(
+      type = "effect",
+      key = key,
+      note = crosstab_effect_note_text(key),
+      stringsAsFactors = FALSE
+    )
+  }
   trend_keys <- unique(vapply(results, crosstab_trend_note_key, character(1)))
   trend_keys <- trend_keys[nzchar(trend_keys)]
   for (key in trend_keys) {
@@ -271,6 +291,13 @@ crosstab_trend_marker <- function(result, method_notes) {
   if (length(matched) == 0) "" else matched[[1]]
 }
 
+crosstab_effect_marker <- function(result, method_notes) {
+  if (!is.data.frame(method_notes) || nrow(method_notes) == 0) return("")
+  effect <- crosstab_general_effect_info(result)
+  matched <- method_notes$marker[method_notes$type == "effect" & method_notes$key == effect$key]
+  if (length(matched) == 0) "" else matched[[1]]
+}
+
 crosstab_p_with_marker <- function(p_value, marker) {
   if (!nzchar(as.character(marker %||% ""))) return(p_value)
   tagList(p_value, tags$sup(class = "crosstab-footnote-marker", marker))
@@ -286,6 +313,7 @@ crosstab_main_table_ui <- function(result, method_notes = crosstab_method_footno
   p_value <- crosstab_format_p(association$p)
   p_marker <- crosstab_method_marker(result, method_notes)
   trend_marker <- crosstab_trend_marker(result, method_notes)
+  effect_marker <- crosstab_effect_marker(result, method_notes)
   effect <- crosstab_general_effect_info(result)$value
   stat_rowspan <- nrow(tab)
   split <- crosstab_split_count_percent(result)
@@ -311,7 +339,7 @@ crosstab_main_table_ui <- function(result, method_notes = crosstab_method_footno
             list(
               tags$td(class = "crosstab-stat-cell", rowspan = stat_rowspan, statistic),
               tags$td(class = "crosstab-stat-cell", rowspan = stat_rowspan, crosstab_p_with_marker(p_value, p_marker)),
-              tags$td(class = "crosstab-stat-cell", rowspan = stat_rowspan, effect),
+              tags$td(class = "crosstab-stat-cell", rowspan = stat_rowspan, crosstab_p_with_marker(effect, effect_marker)),
               if (isTRUE(show_trend_p)) tags$td(class = "crosstab-stat-cell crosstab-trend-p-cell", rowspan = stat_rowspan, crosstab_p_with_marker(crosstab_trend_p_text(result), trend_marker))
             )
           }
@@ -343,6 +371,7 @@ crosstab_column_group_table_ui <- function(results, method_notes = crosstab_meth
         p_value <- crosstab_format_p(result$association$p)
         p_marker <- crosstab_method_marker(result, method_notes)
         trend_marker <- crosstab_trend_marker(result, method_notes)
+        effect_marker <- crosstab_effect_marker(result, method_notes)
         effect <- crosstab_general_effect_info(result)$value
         lapply(seq_len(nrow(tab)), function(row_index) {
           tags$tr(
@@ -359,7 +388,7 @@ crosstab_column_group_table_ui <- function(results, method_notes = crosstab_meth
               list(
                 tags$td(class = "crosstab-stat-cell", rowspan = nrow(tab), statistic),
                 tags$td(class = "crosstab-stat-cell", rowspan = nrow(tab), crosstab_p_with_marker(p_value, p_marker)),
-                tags$td(class = "crosstab-stat-cell", rowspan = nrow(tab), effect),
+                tags$td(class = "crosstab-stat-cell", rowspan = nrow(tab), crosstab_p_with_marker(effect, effect_marker)),
                 if (isTRUE(show_trend_p)) tags$td(class = "crosstab-stat-cell crosstab-trend-p-cell", rowspan = nrow(tab), crosstab_p_with_marker(crosstab_trend_p_text(result), trend_marker))
               )
             }
@@ -376,10 +405,6 @@ crosstab_column_group_notes_ui <- function(results, method_notes = crosstab_meth
   } else {
     character(0)
   }
-  effect_lines <- unique(unlist(lapply(results, function(result) {
-    effect <- crosstab_general_effect_info(result)
-    if (nzchar(effect$note)) effect$note else character(0)
-  }), use.names = FALSE))
   trend_lines <- unique(unlist(lapply(results, function(result) {
     if (is.null(result$trend) && nzchar(as.character(result$trend_note %||% ""))) {
       result$trend_note
@@ -387,7 +412,7 @@ crosstab_column_group_notes_ui <- function(results, method_notes = crosstab_meth
       character(0)
     }
   }), use.names = FALSE))
-  notes <- c(method_lines, effect_lines, trend_lines)
+  notes <- c(method_lines, trend_lines)
   div(
     class = "analysis-result-notes crosstab-notes",
     lapply(notes, function(note) div(note))

@@ -15,7 +15,7 @@ saved_results_cover_text <- function() {
     tolower(Sys.getenv("EASYFLOW_EDITION", "development"))
   }
   if (!edition %in% c("free", "development", "personal", "institution")) {
-    edition <- "free"
+    edition <- "development"
   }
 
   list(
@@ -63,6 +63,8 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     ".coefficient-table th:not(:first-child) { text-align: right !important; }",
     ".coefficient-table thead th { border-top: 2px solid #1f2937 !important; border-bottom: 2px solid #1f2937 !important; font-weight: 700; }",
     ".coefficient-table tbody td:not(:first-child), .coefficient-table tfoot td:not(:first-child) { text-align: right !important; }",
+    ".coefficient-table.crosstab-main-table > thead > tr > th.crosstab-col-head, .regression-result-panel .crosstab-main-table > thead > tr > th.crosstab-col-head { text-align: center !important; }",
+    ".coefficient-table.crosstab-main-table > tbody > tr > td.crosstab-row-label, .regression-result-panel .crosstab-main-table > tbody > tr > td.crosstab-row-label { text-align: left !important; }",
     ".coefficient-table tfoot { border-bottom: 2px solid #1f2937 !important; }",
     ".coefficient-table .coefficient-fit-row td { text-align: center !important; border-top: 1px solid #d7dde5 !important; border-bottom: 0 !important; font-weight: 500; }",
     ".coefficient-table tfoot .coefficient-fit-row:first-child td { border-top: 2px solid #1f2937 !important; }",
@@ -154,6 +156,8 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     "  .hierarchical-coefficient-table th, .hierarchical-coefficient-table td, .correlation-result-section table th, .correlation-result-section table td { padding: 3pt 3.5pt !important; }",
     "  .coefficient-table th:not(:first-child), .coefficient-table td:not(:first-child), .regression-result-panel table th:not(:first-child), .regression-result-panel table td:not(:first-child) { text-align: right !important; }",
     "  .coefficient-table th:first-child, .coefficient-table td:first-child, .regression-result-panel table th:first-child, .regression-result-panel table td:first-child { text-align: left !important; }",
+    "  .coefficient-table.crosstab-main-table > thead > tr > th.crosstab-col-head, .regression-result-panel .crosstab-main-table > thead > tr > th.crosstab-col-head { text-align: center !important; }",
+    "  .coefficient-table.crosstab-main-table > tbody > tr > td.crosstab-row-label, .regression-result-panel .crosstab-main-table > tbody > tr > td.crosstab-row-label { text-align: left !important; }",
     "  .coefficient-table .coefficient-fit-row td { border-top: 1px solid #d7dde5 !important; }",
     "  .coefficient-table tfoot .coefficient-fit-row:first-child td { border-top: 2px solid #1f2937 !important; }",
     "  .reference-summary-panel { break-inside: avoid; page-break-inside: avoid; }",
@@ -183,9 +187,11 @@ saved_results_viewer_css <- function(max_width = 1280) {
     ".regression-result-panel table, .coefficient-table { width: auto; min-width: 480px; border-collapse: collapse !important; border-spacing: 0 !important; border-top: 2px solid #1f2937 !important; border-bottom: 2px solid #1f2937 !important; color: #2f3a46; font-size: 15px; background: transparent; }",
     ".regression-result-panel table th, .regression-result-panel table td { padding: 9px 16px; line-height: 1.45; border-left: 0 !important; border-right: 0 !important; border-bottom: 1px solid #d7dde5; vertical-align: middle; background: transparent; white-space: nowrap; }",
     ".regression-result-panel table thead th { border-bottom: 2px solid #1f2937 !important; font-weight: 700; }",
-    ".regression-result-panel table th:first-child, .regression-result-panel table td:first-child { text-align: left !important; }",
-    ".regression-result-panel table th:not(:first-child), .regression-result-panel table td:not(:first-child) { text-align: right !important; }",
-    ".result-table-with-note, .frequency-table-wrap, .hierarchical-table-wrap, .hierarchical-table-scroll { max-width: 100%; overflow-x: auto; }",
+        ".regression-result-panel table th:first-child, .regression-result-panel table td:first-child { text-align: left !important; }",
+        ".regression-result-panel table th:not(:first-child), .regression-result-panel table td:not(:first-child) { text-align: right !important; }",
+        ".coefficient-table.crosstab-main-table > thead > tr > th.crosstab-col-head, .regression-result-panel .crosstab-main-table > thead > tr > th.crosstab-col-head { text-align: center !important; }",
+        ".coefficient-table.crosstab-main-table > tbody > tr > td.crosstab-row-label, .regression-result-panel .crosstab-main-table > tbody > tr > td.crosstab-row-label { text-align: left !important; }",
+        ".result-table-with-note, .frequency-table-wrap, .hierarchical-table-wrap, .hierarchical-table-scroll { max-width: 100%; overflow-x: auto; }",
     ".frequency-plot-grid, .frequency-plot-row, .correlation-plot-grid, .residual-diagnostic-plots { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }",
     ".frequency-plot-card, .correlation-plot-card, .residual-plot-card { border: 1px solid #d9e2ec; border-radius: 6px; padding: 12px; background: #ffffff; }",
     ".frequency-plot-card h4, .correlation-plot-card h4, .residual-plot-card h4 { margin: 0 0 8px; font-size: 15px; color: #15233a; }",

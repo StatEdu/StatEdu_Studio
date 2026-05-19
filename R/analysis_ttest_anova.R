@@ -588,16 +588,16 @@ ttest_effect_size <- function(values, groups, test_type) {
   data <- ttest_analysis_data(values, groups)
   if (nrow(data) == 0) return("")
   if (identical(test_type, "t")) {
-    return(format_decimal3(ttest_hedges_g(values, groups)))
+    return(format_effect_size(ttest_hedges_g(values, groups)))
   }
   if (identical(test_type, "anova")) {
-    return(format_decimal3(ttest_omega_squared(values, groups)))
+    return(format_effect_size(ttest_omega_squared(values, groups)))
   }
   if (identical(test_type, "kw")) {
-    return(format_decimal3(ttest_kruskal_epsilon_squared(values, groups)))
+    return(format_effect_size(ttest_kruskal_epsilon_squared(values, groups)))
   }
   if (identical(test_type, "jt")) {
-    return(format_decimal3(ttest_jt_test(values, groups)$r))
+    return(format_effect_size(ttest_jt_test(values, groups)$r))
   }
   ""
 }
@@ -654,83 +654,113 @@ ttest_p_note <- function(test_type, analysis) {
   analysis <- as.character(analysis %||% "")
   test_type <- as.character(test_type %||% "")
   if (grepl("^Welch", analysis)) {
-    return(list(symbol = "\u2020", note = "\u2020: Welch test was used because homogeneity of variance was not satisfied."))
+    return(list(key = "welch", symbol = "", note = "Welch test was used because homogeneity of variance was not satisfied."))
   }
   if (identical(test_type, "mw")) {
-    return(list(symbol = "\u222B", note = "\u222B: Mann-Whitney U test."))
+    return(list(key = "mann_whitney", symbol = "", note = "Mann-Whitney U test."))
   }
   if (identical(test_type, "kw")) {
-    return(list(symbol = "\u222C", note = "\u222C: Kruskal-Wallis test."))
+    return(list(key = "kruskal_wallis", symbol = "", note = "Kruskal-Wallis test."))
   }
-  list(symbol = "", note = "")
+  list(key = "", symbol = "", note = "")
 }
 
 ttest_trend_note <- function(method) {
   method <- as.character(method %||% "")
   switch(
     method,
-    `Polynomial trend` = list(symbol = "\u2021", note = "\u2021: Polynomial trend analysis."),
-    `Welch + polynomial` = list(symbol = "\u00A7", note = "\u00A7: Welch + polynomial trend analysis."),
-    JT = list(symbol = "\u00B6", note = "\u00B6: Jonckheere-Terpstra trend test."),
-    list(symbol = "", note = "")
+    `Polynomial trend` = list(key = "polynomial", symbol = "", note = "Polynomial trend analysis."),
+    `Welch + polynomial` = list(key = "welch_polynomial", symbol = "", note = "Welch + polynomial trend analysis."),
+    JT = list(key = "jt", symbol = "", note = "Jonckheere-Terpstra trend test."),
+    list(key = "", symbol = "", note = "")
   )
 }
 
-ttest_effect_symbol_map <- function(effect_names, reserved = character(0)) {
-  effect_names <- unique(as.character(effect_names %||% character(0)))
-  effect_names <- effect_names[nzchar(effect_names)]
-  if (length(effect_names) == 0) return(character(0))
-  symbols <- c("\u2021", "\u00A7", "\u00B6", "#", "\u2020\u2020", "\u2021\u2021", "\u00A7\u00A7")
-  symbols <- setdiff(symbols, unique(reserved[nzchar(reserved)]))
-  stats::setNames(utils::head(symbols, length(effect_names)), effect_names)
+ttest_note_key <- function(type, key) {
+  paste(as.character(type %||% ""), as.character(key %||% ""), sep = ":")
 }
 
-ttest_note_sort_key <- function(notes) {
-  order_symbols <- c("\u2020", "\u2021", "\u00A7", "\u222B", "\u222C", "\u00B6", "#", "\u2020\u2020", "\u2021\u2021", "\u00A7\u00A7")
-  vapply(notes, function(note) {
-    hit <- which(vapply(order_symbols, function(symbol) startsWith(note, symbol), logical(1)))
-    if (length(hit) == 0) length(order_symbols) + 1L else hit[[1]]
-  }, integer(1))
+ttest_numbered_notes <- function(items) {
+  rows <- list()
+  add_note <- function(type, key, note) {
+    key <- as.character(key %||% "")
+    note <- as.character(note %||% "")
+    if (!nzchar(key) || !nzchar(note)) return()
+    rows[[length(rows) + 1L]] <<- data.frame(type = type, key = key, note = note, stringsAsFactors = FALSE)
+  }
+  for (item in items %||% list()) {
+    notes <- item$notes %||% list()
+    add_note("method", notes$p_key %||% "", notes$p_note %||% "")
+    effect <- notes$effect_size %||% ""
+    if (nzchar(effect)) add_note("effect", effect, paste0("Effect size = ", effect, "."))
+    add_note("trend", notes$trend_key %||% "", notes$trend_note %||% "")
+  }
+  if (length(rows) == 0) {
+    return(data.frame(marker = character(0), type = character(0), key = character(0), note = character(0), stringsAsFactors = FALSE))
+  }
+  out <- do.call(rbind, rows)
+  out <- out[!duplicated(ttest_note_key(out$type, out$key)), , drop = FALSE]
+  out$marker <- as.character(seq_len(nrow(out)))
+  out[, c("marker", "type", "key", "note")]
 }
 
-ttest_apply_effect_notes <- function(table, items) {
-  if (!is.data.frame(table) || !"Effect size" %in% names(table)) {
-    return(list(table = table, notes = character(0)))
-  }
-  effect_names <- vapply(items, function(item) item$notes$effect_size %||% "", character(1))
-  effect_names <- effect_names[nzchar(effect_names)]
-  if (length(effect_names) == 0) {
-    return(list(table = table, notes = character(0)))
+ttest_note_marker <- function(notes, type, key) {
+  if (!is.data.frame(notes) || nrow(notes) == 0) return("")
+  matched <- notes$marker[notes$type == type & notes$key == key]
+  if (length(matched) == 0) "" else matched[[1]]
+}
+
+ttest_append_marker <- function(value, marker) {
+  value <- as.character(value %||% "")
+  marker <- as.character(marker %||% "")
+  if (!nzchar(value) || !nzchar(marker)) return(value)
+  paste0(value, marker)
+}
+
+ttest_apply_numbered_notes <- function(table, items) {
+  notes <- ttest_numbered_notes(items)
+  if (!is.data.frame(table) || nrow(table) == 0 || nrow(notes) == 0) {
+    return(list(table = table, notes = notes))
   }
 
-  reserved <- c(
-    vapply(items, function(item) item$notes$p_symbol %||% "", character(1)),
-    vapply(items, function(item) item$notes$trend_symbol %||% "", character(1))
-  )
-  unique_effects <- unique(effect_names)
-  effect_symbols <- ttest_effect_symbol_map(unique_effects, reserved)
-  if (length(effect_symbols) == 0) {
-    return(list(table = table, notes = character(0)))
+  cell_markers <- list()
+  add_cell_marker <- function(row, column, marker) {
+    marker <- as.character(marker %||% "")
+    if (!nzchar(marker)) return()
+    cell_markers[[length(cell_markers) + 1L]] <<- data.frame(
+      row = as.integer(row),
+      column = as.character(column),
+      marker = marker,
+      stringsAsFactors = FALSE
+    )
   }
 
-  if (length(unique_effects) == 1) {
-    names(table)[names(table) == "Effect size"] <- paste0("Effect size", unname(effect_symbols[[unique_effects[[1]]]]))
-  } else {
-    row_start <- 1L
-    for (item in items) {
-      n_rows <- if (is.data.frame(item$table)) nrow(item$table) else 0L
-      effect_name <- item$notes$effect_size %||% ""
-      if (n_rows > 0 && nzchar(effect_name) && effect_name %in% names(effect_symbols)) {
-        value <- table[["Effect size"]][[row_start]]
-        if (nzchar(value %||% "")) {
-          table[["Effect size"]][[row_start]] <- paste0(value, unname(effect_symbols[[effect_name]]))
-        }
+  row_start <- 1L
+  for (item in items %||% list()) {
+    n_rows <- if (is.data.frame(item$table)) nrow(item$table) else 0L
+    item_notes <- item$notes %||% list()
+    if (n_rows > 0) {
+      p_marker <- ttest_note_marker(notes, "method", item_notes$p_key %||% "")
+      if ("p" %in% names(table)) {
+        table$p[[row_start]] <- ttest_append_marker(table$p[[row_start]], p_marker)
+        add_cell_marker(row_start, "p", p_marker)
       }
-      row_start <- row_start + n_rows
+      effect_marker <- ttest_note_marker(notes, "effect", item_notes$effect_size %||% "")
+      if ("Effect size" %in% names(table)) {
+        table[["Effect size"]][[row_start]] <- ttest_append_marker(table[["Effect size"]][[row_start]], effect_marker)
+        add_cell_marker(row_start, "Effect size", effect_marker)
+      }
+      trend_marker <- ttest_note_marker(notes, "trend", item_notes$trend_key %||% "")
+      if ("p for trend" %in% names(table)) {
+        table[["p for trend"]][[row_start]] <- ttest_append_marker(table[["p for trend"]][[row_start]], trend_marker)
+        add_cell_marker(row_start, "p for trend", trend_marker)
+      }
     }
+    row_start <- row_start + n_rows
   }
-
-  notes <- sprintf("%s: %s.", unname(effect_symbols), names(effect_symbols))
+  if (length(cell_markers) > 0) {
+    attr(table, "note_markers") <- do.call(rbind, cell_markers)
+  }
   list(table = table, notes = notes)
 }
 
@@ -738,40 +768,17 @@ ttest_analysis_note_line <- function(items) {
   items <- Filter(function(item) !is.null(item) && !is.null(item$notes), items %||% list())
   if (length(items) == 0) return("")
 
-  method_notes <- vapply(items, function(item) {
-    item$notes$p_note %||% ""
-  }, character(1))
-  method_notes <- unique(method_notes[nzchar(method_notes)])
-
   posthoc_notes <- vapply(items, function(item) {
     posthoc <- item$notes$posthoc %||% ""
     if (!nzchar(posthoc)) return("")
     posthoc
   }, character(1))
   posthoc_notes <- unique(posthoc_notes[nzchar(posthoc_notes)])
-
-  trend_notes <- vapply(items, function(item) {
-    item$notes$trend_note %||% ""
-  }, character(1))
-  trend_notes <- unique(trend_notes[nzchar(trend_notes)])
-
-  effect_notes <- unique(unlist(lapply(items, function(item) item$notes$effect_notes %||% character(0)), use.names = FALSE))
-  effect_notes <- effect_notes[nzchar(effect_notes)]
-
-  parts <- character(0)
-  if (length(method_notes) > 0) {
-    parts <- c(parts, method_notes)
-  }
-  if (length(effect_notes) > 0) {
-    parts <- c(parts, effect_notes)
-  }
+  notes <- ttest_numbered_notes(items)
+  parts <- if (is.data.frame(notes) && nrow(notes) > 0) sprintf("%s. %s", notes$marker, notes$note) else character(0)
   if (length(posthoc_notes) > 0) {
     parts <- c(parts, sprintf("Post-hoc: %s.", paste(posthoc_notes, collapse = ", ")))
   }
-  if (length(trend_notes) > 0) {
-    parts <- c(parts, trend_notes)
-  }
-  parts <- parts[order(ttest_note_sort_key(parts))]
   paste(parts, collapse = " ")
 }
 
@@ -999,11 +1006,13 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
     notes = list(
       factor = overview$`Independent variable`[[1]],
       analysis = analysis,
+      p_key = p_note$key %||% "",
       p_symbol = p_note$symbol %||% "",
       p_note = p_note$note %||% "",
       effect_size = if (isTRUE(options$effect_size)) ttest_effect_size_name(test_type) else "",
       posthoc = posthoc_label,
       trend = trend_method,
+      trend_key = trend_note$key %||% "",
       trend_symbol = trend_note$symbol %||% "",
       trend_note = trend_note$note %||% ""
     )
@@ -1038,11 +1047,8 @@ prepare_ttest_anova_results <- function(
       combined_table <- ttest_bind_result_rows(lapply(dependent_items, function(item) item$table))[, ttest_result_table_columns, drop = FALSE]
       statistic_labels <- vapply(dependent_items, function(item) item$statistic_label %||% "", character(1))
       combined_table <- ttest_apply_statistic_heading(combined_table, statistic_labels)
-      effect_result <- ttest_apply_effect_notes(combined_table, dependent_items)
-      combined_table <- effect_result$table
-      if (length(effect_result$notes) > 0) {
-        dependent_items[[1]]$notes$effect_notes <- effect_result$notes
-      }
+      note_result <- ttest_apply_numbered_notes(combined_table, dependent_items)
+      combined_table <- note_result$table
       note_line <- ttest_analysis_note_line(dependent_items)
       results[[length(results) + 1]] <- list(
         title = ttest_display_variable(dependent, variable_info, labels, category_table),

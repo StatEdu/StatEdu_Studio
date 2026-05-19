@@ -5,9 +5,9 @@ empty_message <- function(text) {
 }
 
 analysis_save_edition <- function() {
-  edition <- tolower(Sys.getenv("EASYFLOW_EDITION", "free"))
+  edition <- tolower(Sys.getenv("EASYFLOW_EDITION", "development"))
   if (!edition %in% c("free", "development", "personal", "institution")) {
-    edition <- "free"
+    edition <- "development"
   }
   edition
 }
@@ -19,7 +19,7 @@ analysis_save_feature_enabled <- function(feature, edition = analysis_save_editi
   if (identical(edition, "personal") || identical(edition, "institution")) {
     return(feature %in% c("html", "pdf", "figure", "excel", "add_result"))
   }
-  feature %in% c("html", "figure")
+  feature %in% c("html", "pdf", "figure")
 }
 
 analysis_save_button <- function(id, label, feature, class = "btn-default") {

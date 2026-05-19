@@ -453,6 +453,13 @@ write_crosstab_results_html <- function(result, file) {
   )
 }
 
+write_crosstab_results_pdf <- function(result, file) {
+  write_pdf_from_html(
+    saved_crosstab_results_html(result, report_mode = TRUE),
+    file
+  )
+}
+
 coefficient_export_table <- function(
   result,
   show_sr2 = FALSE,

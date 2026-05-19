@@ -67,13 +67,13 @@ crosstab_setup_panel <- function(state) {
     div(
       class = "analysis-transfer-controls regression-transfer-controls crosstab-transfer-controls",
       actionButton(
-        "crosstab_assign_row",
+        "crosstab_assign_col",
         ">",
         class = "btn btn-default analysis-move-button",
         disabled = if (state$move_disabled) "disabled" else NULL
       ),
       actionButton(
-        "crosstab_assign_col",
+        "crosstab_assign_row",
         ">",
         class = "btn btn-default analysis-move-button",
         disabled = if (state$move_disabled) "disabled" else NULL
@@ -82,23 +82,23 @@ crosstab_setup_panel <- function(state) {
     div(
       class = "regression-target-column crosstab-target-column",
       div(
-        class = "analysis-transfer-column analysis-transfer-panel regression-dependent-panel crosstab-row-panel",
-        analysis_field_label_tag("Row variable", crosstab_allowed_measurements()),
-        analysis_transfer_listbox_input("crosstab_row", state$row_items, selected = state$row_selected, size = 7),
-        div(
-          class = "analysis-order-actions crosstab-order-actions",
-          actionButton("crosstab_row_up", "Up", class = "btn-default btn-sm"),
-          actionButton("crosstab_row_down", "Down", class = "btn-default btn-sm")
-        )
-      ),
-      div(
-        class = "analysis-transfer-column analysis-transfer-panel regression-independent-panel crosstab-column-panel",
+        class = "analysis-transfer-column analysis-transfer-panel regression-dependent-panel crosstab-column-panel",
         analysis_field_label_tag("Column variable", crosstab_allowed_measurements()),
-        analysis_transfer_listbox_input("crosstab_col", state$col_items, selected = state$col_selected, size = 7),
+        analysis_transfer_listbox_input("crosstab_col", state$col_items, selected = state$col_selected, size = 4),
         div(
           class = "analysis-order-actions crosstab-order-actions",
           actionButton("crosstab_col_up", "Up", class = "btn-default btn-sm"),
           actionButton("crosstab_col_down", "Down", class = "btn-default btn-sm")
+        )
+      ),
+      div(
+        class = "analysis-transfer-column analysis-transfer-panel regression-independent-panel crosstab-row-panel",
+        analysis_field_label_tag("Row variable", crosstab_allowed_measurements()),
+        analysis_transfer_listbox_input("crosstab_row", state$row_items, selected = state$row_selected, size = 10),
+        div(
+          class = "analysis-order-actions crosstab-order-actions",
+          actionButton("crosstab_row_up", "Up", class = "btn-default btn-sm"),
+          actionButton("crosstab_row_down", "Down", class = "btn-default btn-sm")
         )
       )
     ),

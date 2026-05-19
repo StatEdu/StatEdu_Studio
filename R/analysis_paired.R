@@ -156,7 +156,7 @@ paired_effect_value <- function(value) {
   if (!is.finite(value)) {
     return(if (identical(value, Inf)) "Inf" else "")
   }
-  format_decimal3(value)
+  format_effect_size(value)
 }
 
 paired_hedges_correction <- function(n) {

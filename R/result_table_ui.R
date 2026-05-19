@@ -68,6 +68,28 @@ result_table_with_notes <- function(table_tag, ..., class = "result-table-with-n
   )
 }
 
+result_cell_note_marker <- function(table, row_index, column) {
+  markers <- attr(table, "note_markers", exact = TRUE)
+  if (!is.data.frame(markers) || nrow(markers) == 0) {
+    return("")
+  }
+  matched <- markers[markers$row == row_index & markers$column == column, , drop = FALSE]
+  if (nrow(matched) == 0) "" else as.character(matched$marker[[1]])
+}
+
+result_cell_content <- function(value, marker = "") {
+  value <- as.character(value %||% "")
+  marker <- as.character(marker %||% "")
+  if (!nzchar(value) || !nzchar(marker)) {
+    return(value)
+  }
+  base <- sub(paste0(marker, "$"), "", value)
+  tagList(
+    base,
+    tags$sup(class = "coefficient-footnote-marker", marker)
+  )
+}
+
 coefficient_column_class <- function(name) {
   normalized <- gsub("[^[:alnum:]]+", "", tolower(as.character(name %||% "")))
   switch(
@@ -125,6 +147,7 @@ coefficient_html_table <- function(
         lapply(seq_len(nrow(table)), function(row_index) {
           tags$tr(lapply(seq_along(columns), function(column_index) {
             column <- columns[[column_index]]
+            marker <- result_cell_note_marker(table, row_index, column)
             tags$td(
               style = result_body_cell_style(
                 column_index == 1,
@@ -134,7 +157,7 @@ coefficient_html_table <- function(
                 compact_width = compact_width,
                 compact_first_width = compact_first_width
               ),
-              table[[column]][[row_index]] %||% ""
+              result_cell_content(table[[column]][[row_index]] %||% "", marker)
             )
           }))
         })

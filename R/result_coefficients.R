@@ -93,7 +93,8 @@ coefficient_output_table_static <- function(
   }
   for (column in setdiff(names(table), c("Term", p_columns))) {
     if (is.numeric(table[[column]])) {
-      table[[column]] <- vapply(table[[column]], format_decimal3, character(1))
+      formatter <- if (column %in% c("sr2", "f2")) format_effect_size else format_decimal3
+      table[[column]] <- vapply(table[[column]], formatter, character(1))
     }
   }
 

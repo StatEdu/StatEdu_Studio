@@ -176,20 +176,45 @@ register_crosstab_handlers <- function(
       split_count_percent = isTRUE(input$crosstab_split_count_percent),
       trend = isTRUE(input$crosstab_trend)
     )
-    result <- lapply(current$row_vars, function(row_var) {
-      lapply(current$col_vars, function(col_var) {
-        prepare_crosstab_results(
-          data = dataset_fn(),
-          row_var = row_var,
-          col_var = col_var,
-          variable_info = variable_table_fn(),
-          labels = labels_fn(),
-          category_table = category_table_fn(),
-          options = options
+    result <- list()
+    errors <- character(0)
+    for (row_var in current$row_vars) {
+      for (col_var in current$col_vars) {
+        item <- tryCatch(
+          prepare_crosstab_results(
+            data = dataset_fn(),
+            row_var = row_var,
+            col_var = col_var,
+            variable_info = variable_table_fn(),
+            labels = labels_fn(),
+            category_table = category_table_fn(),
+            options = options
+          ),
+          error = function(e) {
+            errors <<- c(errors, sprintf("%s x %s: %s", row_var, col_var, conditionMessage(e)))
+            NULL
+          }
         )
-      })
-    })
-    crosstab_result(unlist(result, recursive = FALSE))
+        if (!is.null(item)) result[[length(result) + 1L]] <- item
+      }
+    }
+    if (length(result) == 0) {
+      crosstab_result(NULL)
+      showNotification(
+        if (length(errors) > 0) errors[[1]] else "No valid cross-tabulation result could be prepared.",
+        type = "error",
+        duration = 8
+      )
+      return()
+    }
+    crosstab_result(result)
+    if (length(errors) > 0) {
+      showNotification(
+        sprintf("%s combination(s) were skipped. First issue: %s", length(errors), errors[[1]]),
+        type = "warning",
+        duration = 8
+      )
+    }
   })
 
   output$crosstab_results <- renderUI({
@@ -203,6 +228,7 @@ register_crosstab_handlers <- function(
     }
     analysis_save_buttons(
       html_button_id = "save_crosstab_html_dialog",
+      pdf_button_id = "save_crosstab_pdf_dialog",
       figure_button_id = NULL,
       excel_button_id = "save_crosstab_excel_dialog",
       add_result_button_id = "add_crosstab_result",
@@ -228,6 +254,28 @@ register_crosstab_handlers <- function(
       },
       error = function(e) {
         showNotification(paste("Failed to save HTML results:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$save_crosstab_pdf_dialog, {
+    result <- crosstab_result()
+    shiny::req(!is.null(result))
+    path <- choose_pdf_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) {
+      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      return(invisible(NULL))
+    }
+    if (!grepl("\\.pdf$", path, ignore.case = TRUE)) {
+      path <- paste0(path, ".pdf")
+    }
+    tryCatch(
+      {
+        write_crosstab_results_pdf(result, path)
+        showNotification(sprintf("PDF results saved: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save PDF results:", conditionMessage(e)), type = "error", duration = 8)
       }
     )
   }, ignoreInit = TRUE)

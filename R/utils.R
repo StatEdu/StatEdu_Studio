@@ -39,6 +39,10 @@ format_decimal3 <- function(x) {
   sub("^0\\.", ".", text)
 }
 
+format_effect_size <- function(x) {
+  format_decimal3(x)
+}
+
 stat_chisq_label <- function(with_p = FALSE) {
   if (isTRUE(with_p)) "x\u00B2(p)" else "x\u00B2"
 }

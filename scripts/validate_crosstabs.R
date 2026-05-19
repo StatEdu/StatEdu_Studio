@@ -110,6 +110,15 @@ ordered_trend_note_html <- renderTags(crosstab_single_result_ui(trend_ordered))$
 expect_true(grepl("Score-based ordered-by-ordered trend association was used for p for trend.", ordered_trend_note_html, fixed = TRUE), "Expected score-based ordered trend note")
 mixed_trend_notes <- crosstab_method_footnotes(list(trend_2xk, trend_ordered))
 expect_true(sum(mixed_trend_notes$type == "trend") == 2, "Expected different trend methods to receive separate notes")
+mixed_effect_notes <- crosstab_method_footnotes(list(display_result, trend_ordered))
+expect_true(sum(mixed_effect_notes$type == "effect") == 2, "Expected different effect-size types to receive separate notes")
+odds_marker <- mixed_effect_notes$marker[mixed_effect_notes$type == "effect" & mixed_effect_notes$key == "Odds ratio"]
+cramer_marker <- mixed_effect_notes$marker[mixed_effect_notes$type == "effect" & mixed_effect_notes$key == "Cramer's V"]
+expect_true(length(odds_marker) == 1 && length(cramer_marker) == 1 && !identical(odds_marker, cramer_marker), "Expected odds ratio and Cramer's V to use different ES markers")
+odds_html <- renderTags(crosstab_main_table_ui(display_result, mixed_effect_notes))$html
+cramer_html <- renderTags(crosstab_main_table_ui(trend_ordered, mixed_effect_notes))$html
+expect_true(grepl(sprintf('class="crosstab-footnote-marker">%s</sup>', odds_marker), odds_html, fixed = TRUE), "Expected odds ratio ES marker in result table")
+expect_true(grepl(sprintf('class="crosstab-footnote-marker">%s</sup>', cramer_marker), cramer_html, fixed = TRUE), "Expected Cramer's V ES marker in result table")
 single_result_html <- renderTags(crosstab_single_result_ui(display_result))$html
 expect_true(!grepl("Tests:", single_result_html, fixed = TRUE), "Expected single result to omit the separate tests table")
 expect_true(!grepl("<h3>Effect size</h3>", single_result_html, fixed = TRUE), "Expected single result to omit the separate effect size table")
@@ -132,9 +141,11 @@ expect_true(identical(setup_state$col_vars, "group"), "Expected column variable"
 expect_true(!"sex" %in% setup_state$available, "Expected assigned row variable to leave available list")
 expect_true(!"group" %in% setup_state$available, "Expected assigned column variable to leave available list")
 expect_true(grepl("regression-target-column", setup_html, fixed = TRUE), "Expected regression-style target column")
-expect_true(grepl("regression-dependent-panel", setup_html, fixed = TRUE), "Expected regression-style row variable panel")
-expect_true(grepl("regression-independent-panel", setup_html, fixed = TRUE), "Expected regression-style column variable panel")
-expect_true(length(gregexpr("height:168px", setup_html, fixed = TRUE)[[1]]) >= 2, "Expected row and column variable panels to use size 7 height")
+expect_true(grepl("regression-dependent-panel", setup_html, fixed = TRUE), "Expected regression-style column variable panel")
+expect_true(grepl("regression-independent-panel", setup_html, fixed = TRUE), "Expected regression-style row variable panel")
+expect_true(grepl("height:96px", setup_html, fixed = TRUE), "Expected column variable panel to use size 4 height")
+expect_true(grepl("height:240px", setup_html, fixed = TRUE), "Expected row variable panel to use size 10 height")
+expect_true(regexpr('data-input-id="crosstab_col"', setup_html, fixed = TRUE) < regexpr('data-input-id="crosstab_row"', setup_html, fixed = TRUE), "Expected column variable panel before row variable panel")
 expect_true(grepl("crosstab_split_count_percent", setup_html, fixed = TRUE), "Expected separate n and percent option")
 expect_true(grepl("crosstab_row_up", setup_html, fixed = TRUE), "Expected row variable move-up button")
 expect_true(grepl("crosstab_row_down", setup_html, fixed = TRUE), "Expected row variable move-down button")

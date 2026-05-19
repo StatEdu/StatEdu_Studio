@@ -66,6 +66,10 @@ crosstab_format_p <- function(value) {
   format_p(value)
 }
 
+crosstab_format_effect_size <- function(value) {
+  format_effect_size(value)
+}
+
 crosstab_percent_matrix <- function(tab, margin = c("row", "column", "total")) {
   margin <- match.arg(margin)
   if (identical(margin, "row")) {
@@ -220,15 +224,19 @@ crosstab_trend_or <- function(tab) {
   unname(exp(stats::coef(fit)[[2]]))
 }
 
+crosstab_prop_trend_test <- function(x, n, score) {
+  suppressWarnings(stats::prop.trend.test(x, n, score = score))
+}
+
 crosstab_trend_analysis <- function(tab, row_measure = "", col_measure = "") {
   if (nrow(tab) == 2 && ncol(tab) >= 2) {
     event_row <- crosstab_binary_row_index(tab)
-    test <- stats::prop.trend.test(as.numeric(tab[event_row, ]), colSums(tab), score = seq_len(ncol(tab)))
+    test <- crosstab_prop_trend_test(as.numeric(tab[event_row, ]), colSums(tab), score = seq_len(ncol(tab)))
     return(list(method = "Armitage trend analysis", detail = "cochran_armitage", statistic = unname(test$statistic), df = unname(test$parameter), p = test$p.value, odds_ratio = crosstab_trend_or(tab), gamma = NA_real_))
   }
   if (ncol(tab) == 2 && nrow(tab) >= 2) {
     event_col <- 2L
-    test <- stats::prop.trend.test(as.numeric(tab[, event_col]), rowSums(tab), score = seq_len(nrow(tab)))
+    test <- crosstab_prop_trend_test(as.numeric(tab[, event_col]), rowSums(tab), score = seq_len(nrow(tab)))
     return(list(method = "Armitage trend analysis", detail = "cochran_armitage", statistic = unname(test$statistic), df = unname(test$parameter), p = test$p.value, odds_ratio = crosstab_trend_or(tab), gamma = NA_real_))
   }
   if (identical(row_measure, "ordered") && identical(col_measure, "ordered")) {
@@ -252,15 +260,15 @@ crosstab_trend_analysis <- function(tab, row_measure = "", col_measure = "") {
 crosstab_effect_size_table <- function(tab, trend = NULL) {
   rows <- list()
   if (all(dim(tab) == c(2, 2))) {
-    rows[[length(rows) + 1]] <- data.frame(Effect = "Odds ratio", Estimate = crosstab_format_number(crosstab_odds_ratio(tab)), stringsAsFactors = FALSE)
+    rows[[length(rows) + 1]] <- data.frame(Effect = "Odds ratio", Estimate = crosstab_format_effect_size(crosstab_odds_ratio(tab)), stringsAsFactors = FALSE)
   }
-  rows[[length(rows) + 1]] <- data.frame(Effect = "Cramer's V", Estimate = crosstab_format_number(crosstab_cramers_v(tab)), stringsAsFactors = FALSE)
+  rows[[length(rows) + 1]] <- data.frame(Effect = "Cramer's V", Estimate = crosstab_format_effect_size(crosstab_cramers_v(tab)), stringsAsFactors = FALSE)
   if (!is.null(trend)) {
     if (!is.na(trend$odds_ratio)) {
-      rows[[length(rows) + 1]] <- data.frame(Effect = "Trend odds ratio", Estimate = crosstab_format_number(trend$odds_ratio), stringsAsFactors = FALSE)
+      rows[[length(rows) + 1]] <- data.frame(Effect = "Trend odds ratio", Estimate = crosstab_format_effect_size(trend$odds_ratio), stringsAsFactors = FALSE)
     }
     if (!is.na(trend$gamma)) {
-      rows[[length(rows) + 1]] <- data.frame(Effect = "Gamma", Estimate = crosstab_format_number(trend$gamma), stringsAsFactors = FALSE)
+      rows[[length(rows) + 1]] <- data.frame(Effect = "Gamma", Estimate = crosstab_format_effect_size(trend$gamma), stringsAsFactors = FALSE)
     }
   }
   do.call(rbind, rows)
