@@ -217,6 +217,7 @@ regression_setup_panel <- function(
       } else {
         actionButton("run", "Run regression", class = "btn-primary")
       },
+      uiOutput("regression_reset_control"),
       uiOutput("penalized_regression_control"),
       uiOutput("regression_save_control")
     )

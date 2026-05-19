@@ -49,6 +49,7 @@ crosstab_tab_panel <- function() {
           div(
             class = "analysis-action-row frequencies-action-row",
             actionButton("run_crosstab", "Run analysis", class = "btn btn-primary"),
+            uiOutput("crosstab_reset_control"),
             uiOutput("crosstab_save_control")
           ),
           uiOutput("crosstab_results")
@@ -79,7 +80,8 @@ logistic_regression_tab_panel <- function() {
         analysis_workspace_heading("Logistic Regression", "logistic"),
         analysis_workspace_body(
           "logistic",
-          uiOutput("logistic_setup")
+          uiOutput("logistic_setup"),
+          uiOutput("logistic_results")
         )
       )
     )

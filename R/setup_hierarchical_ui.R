@@ -98,7 +98,7 @@ hierarchical_active_block_setup <- function(setup) {
     list(
       index = 1L,
       name = "block1",
-      title = sprintf("Block 1: Covariates (%s)", length(setup$block1)),
+      title = sprintf("Block 1 (%s)", length(setup$block1)),
       input_id = "hierarchical_block1",
       items = setup$block1_items,
       selected = setup$block1_selected,
@@ -109,7 +109,7 @@ hierarchical_active_block_setup <- function(setup) {
   )
 }
 
-hierarchical_block_title_tag <- function(block) {
+hierarchical_block_title_tag <- function(block, can_next = FALSE) {
   div(
     class = "hierarchical-block-title-row",
     div(
@@ -125,7 +125,7 @@ hierarchical_block_title_tag <- function(block) {
       if (block$index > 1L) {
         actionButton("hierarchical_block_prev", "\u2039", class = "btn-default btn-sm hierarchical-block-nav-button", title = "Previous block")
       },
-      if (block$index < 3L) {
+      if (block$index < 3L && isTRUE(can_next)) {
         actionButton("hierarchical_block_next", "\u203a", class = "btn-default btn-sm hierarchical-block-nav-button", title = "Next block")
       }
     )
@@ -165,7 +165,7 @@ hierarchical_target_panel <- function(
 }
 
 hierarchical_setup_panel <- function(setup, status_message) {
-  can_run <- length(setup$ordered_dependents) > 0 && length(setup$block1) > 0
+  can_run <- length(setup$ordered_dependents) > 0 && length(unique(c(setup$block1, setup$block2, setup$block3))) > 0
   active_block <- hierarchical_active_block_setup(setup)
   tagList(
     if (!is.null(status_message)) {
@@ -219,7 +219,7 @@ hierarchical_setup_panel <- function(setup, status_message) {
             )
           ),
           hierarchical_target_panel(
-            hierarchical_block_title_tag(active_block),
+            hierarchical_block_title_tag(active_block, can_next = active_block$index == 1L || length(setup[[active_block$name]]) > 0),
             active_block$input_id,
             active_block$items,
             active_block$selected,
@@ -273,6 +273,7 @@ hierarchical_setup_panel <- function(setup, status_message) {
         class = "btn-primary",
         disabled = if (!can_run) "disabled" else NULL
       ),
+      uiOutput("hierarchical_reset_control"),
       uiOutput("hierarchical_save_control")
     )
   )

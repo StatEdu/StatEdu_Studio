@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.7.13 - 2026-05-19
+
+### Changed
+
+- Added Logistic Regression setup and results for binary, ordinal, and multinomial dependent variables, including hierarchical block models, OR / CI output, pseudo R2 options, VIF, model-fit rows, and warning notes.
+- Added shared Reset setting controls across analysis setup screens, enabled only when the analysis assignment block contains variables.
+- Standardized selected-data viewer access, transfer-list double-click removal, and three-panel grid spacing across analysis menus.
+- Updated regression and hierarchical regression block handling so empty leading blocks are compacted before running models.
+
+
 ## v0.7.11 - 2026-05-19
 
 ### Changed

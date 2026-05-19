@@ -165,6 +165,25 @@ register_correlation_handlers <- function(
     correlation_results_ui(result)
   })
 
+  output$correlation_reset_control <- renderUI({
+    analysis_reset_button(
+      "reset_correlation_selection",
+      enabled = length(as.character(correlation_variables() %||% character(0))) > 0
+    )
+  })
+
+  observeEvent(input$reset_correlation_selection, {
+    if (length(as.character(correlation_variables() %||% character(0))) == 0) return()
+    correlation_variables(character(0))
+    correlation_result(NULL)
+    active_correlation_list("correlation_available")
+    session$sendCustomMessage(
+      "easyflow-clear-transfer-selection",
+      list(inputIds = c("correlation_available", "correlation_selected"))
+    )
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
   output$correlation_save_control <- renderUI({
     result <- correlation_result()
     if (is.null(result)) {

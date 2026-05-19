@@ -830,6 +830,63 @@ create_app_server <- function(app_version) {
     hierarchical_active_block_fn = hierarchical_active_block
   )
 
+  output$regression_reset_control <- renderUI({
+    analysis_reset_button(
+      "reset_regression_selection",
+      enabled = length(unique(c(sync_dependent_order(update_input = FALSE), sync_predictor_order(update_input = FALSE)))) > 0
+    )
+  })
+
+  observeEvent(input$reset_regression_selection, {
+    if (length(unique(c(sync_dependent_order(update_input = FALSE), sync_predictor_order(update_input = FALSE)))) == 0) return()
+    dependent_order(character(0))
+    predictor_order(character(0))
+    predictor_order_initialized(TRUE)
+    sync_dependent_order(update_input = TRUE)
+    sync_predictor_order(update_input = TRUE)
+    analysis_result(NULL)
+    penalized_result(NULL)
+    bootstrap_job(NULL)
+    bootstrap_job_queue(list())
+    bootstrap_cancel_requested(FALSE)
+    bootstrap_status(NULL)
+    bootstrap_stop_visible(FALSE)
+    session$sendCustomMessage(
+      "easyflow-clear-transfer-selection",
+      list(inputIds = c("available_predictors", "y", "predictor_order"))
+    )
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  output$hierarchical_reset_control <- renderUI({
+    analysis_reset_button(
+      "reset_hierarchical_selection",
+      enabled = length(unique(c(sync_dependent_order(update_input = FALSE), control_names(), independent_names()))) > 0
+    )
+  })
+
+  observeEvent(input$reset_hierarchical_selection, {
+    if (length(unique(c(sync_dependent_order(update_input = FALSE), control_names(), independent_names()))) == 0) return()
+    dependent_order(character(0))
+    control_names(character(0))
+    independent_names(character(0))
+    hierarchical_block3_names(character(0))
+    hierarchical_active_block("block1")
+    sync_dependent_order(update_input = TRUE)
+    analysis_result(NULL)
+    penalized_result(NULL)
+    bootstrap_job(NULL)
+    bootstrap_job_queue(list())
+    bootstrap_cancel_requested(FALSE)
+    bootstrap_status(NULL)
+    bootstrap_stop_visible(FALSE)
+    session$sendCustomMessage(
+      "easyflow-clear-transfer-selection",
+      list(inputIds = c("hierarchical_available", "hierarchical_y", "hierarchical_block1", "hierarchical_block2", "hierarchical_block3"))
+    )
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
   register_analysis_data_viewer_handlers(
     input = input,
     output = output,

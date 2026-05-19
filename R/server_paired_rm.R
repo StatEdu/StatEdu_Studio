@@ -157,6 +157,25 @@ register_paired_rm_handlers <- function(
 
   output$paired_rm_results <- renderUI(paired_rm_results_ui(paired_rm_result()))
 
+  output$paired_rm_reset_control <- renderUI({
+    analysis_reset_button(
+      "reset_paired_rm_selection",
+      enabled = length(repeated_groups()) > 0
+    )
+  })
+
+  observeEvent(input$reset_paired_rm_selection, {
+    if (length(repeated_groups()) == 0) return()
+    repeated_groups(list())
+    paired_rm_result(NULL)
+    active_list("paired_rm_available")
+    session$sendCustomMessage(
+      "easyflow-clear-transfer-selection",
+      list(inputIds = c("paired_rm_available", "paired_rm_repeated"))
+    )
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
   output$paired_rm_save_control <- renderUI({
     result <- paired_rm_result()
     if (is.null(result) || !is.null(result$error)) return(NULL)

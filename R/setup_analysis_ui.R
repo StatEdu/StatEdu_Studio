@@ -38,6 +38,16 @@ analysis_field_label_tag <- function(label, allowed_measurements = character(0))
   )
 }
 
+analysis_reset_button <- function(input_id, enabled = FALSE, label = "Reset setting") {
+  tags$button(
+    id = input_id,
+    type = "button",
+    class = "btn action-button btn-default analysis-reset-button",
+    disabled = if (!isTRUE(enabled)) "disabled" else NULL,
+    label
+  )
+}
+
 analysis_transfer_listbox_input <- function(
   input_id,
   items,

@@ -364,6 +364,26 @@ register_ttest_anova_handlers <- function(
     ttest_anova_results_ui(result)
   })
 
+  output$ttest_anova_reset_control <- renderUI({
+    analysis_reset_button(
+      "reset_ttest_anova_selection",
+      enabled = length(unique(c(dependent_variables(), factor_variables()))) > 0
+    )
+  })
+
+  observeEvent(input$reset_ttest_anova_selection, {
+    if (length(unique(c(dependent_variables(), factor_variables()))) == 0) return()
+    dependent_variables(character(0))
+    factor_variables(character(0))
+    ttest_anova_result(NULL)
+    active_ttest_list("ttest_available")
+    session$sendCustomMessage(
+      "easyflow-clear-transfer-selection",
+      list(inputIds = c("ttest_available", "ttest_dependents", "ttest_factors"))
+    )
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
   output$ttest_anova_save_control <- renderUI({
     result <- ttest_anova_result()
     if (is.null(result) || !is.null(result$error)) {

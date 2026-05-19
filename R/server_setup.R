@@ -370,6 +370,19 @@ register_hierarchical_block_observers <- function(
     TRUE
   }
 
+  compact_hierarchical_block_state <- function() {
+    selected <- as.character(selected_names_fn() %||% character(0))
+    block1 <- intersect(control_names(), selected)
+    block3 <- intersect(hierarchical_block3_current_fn(), selected)
+    block2 <- setdiff(intersect(independent_names_fn(), selected), block3)
+    compacted <- compact_analysis_blocks(block1, block2, block3)
+    new_independent <- unique(c(compacted$block2, compacted$block3))
+    if (!identical(control_names(), compacted$block1)) control_names(compacted$block1)
+    if (!identical(independent_names(), new_independent)) independent_names(new_independent)
+    if (!identical(hierarchical_block3_current_fn(), compacted$block3)) hierarchical_block3_names(compacted$block3)
+    compacted
+  }
+
   move_button_label <- function(target_input_id) {
     if (identical(active_hierarchical_list(), target_input_id) &&
         length(input[[target_input_id]] %||% character(0)) > 0) {
@@ -441,7 +454,18 @@ register_hierarchical_block_observers <- function(
   }, ignoreInit = TRUE)
 
   observeEvent(input$hierarchical_block_next, {
+    compacted <- compact_hierarchical_block_state()
     current <- normalize_active_block(hierarchical_active_block())
+    current_values <- switch(
+      current,
+      block1 = compacted$block1,
+      block2 = compacted$block2,
+      block3 = compacted$block3,
+      character(0)
+    )
+    if (length(current_values) == 0) {
+      return()
+    }
     next_block <- switch(current, block1 = "block2", block2 = "block3", "block3")
     set_active_block(next_block)
   }, ignoreInit = TRUE)

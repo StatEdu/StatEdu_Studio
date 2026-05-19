@@ -58,11 +58,17 @@ logistic_setup_state <- function(
   selected_block1 = NULL,
   selected_block2 = NULL,
   selected_block3 = NULL,
-  active_block = "block1"
+  active_block = "block1",
+  show_b = FALSE,
+  show_se = FALSE,
+  show_mcfadden = FALSE,
+  show_cox_snell = FALSE,
+  show_b_se = NULL,
+  show_extra_r2 = NULL,
+  split_ci = FALSE
 ) {
   selected <- as.character(selected_names %||% character(0))
   dependents <- intersect(as.character(dependents %||% character(0)), selected)
-  dependents <- dependents[seq_len(min(length(dependents), 1L))]
   block1 <- intersect(as.character(block1 %||% character(0)), selected)
   block2 <- intersect(as.character(block2 %||% character(0)), selected)
   block3 <- intersect(as.character(block3 %||% character(0)), selected)
@@ -91,6 +97,10 @@ logistic_setup_state <- function(
     block3_selected = selected_order_items(selected_block3, block3),
     active_block = active_block,
     model_family = logistic_model_family_label(dependents, variable_table),
+    show_b_se = if (is.null(show_b_se)) isTRUE(show_b) || isTRUE(show_se) else isTRUE(show_b_se),
+    show_extra_r2 = if (is.null(show_extra_r2)) isTRUE(show_mcfadden) || isTRUE(show_cox_snell) else isTRUE(show_extra_r2),
+    split_ci = isTRUE(split_ci),
+    can_run = length(dependents) > 0 && length(unique(c(block1, block2, block3))) > 0,
     move_disabled = length(selected) == 0
   )
 }
@@ -124,7 +134,7 @@ logistic_active_block_setup <- function(setup) {
     list(
       index = 1L,
       name = "block1",
-      title = sprintf("Block 1: Covariates (%s)", length(setup$block1)),
+      title = sprintf("Block 1 (%s)", length(setup$block1)),
       input_id = "logistic_block1",
       items = setup$block1_items,
       selected = setup$block1_selected,
@@ -135,7 +145,7 @@ logistic_active_block_setup <- function(setup) {
   )
 }
 
-logistic_block_title_tag <- function(block) {
+logistic_block_title_tag <- function(block, can_next = FALSE) {
   div(
     class = "hierarchical-block-title-row logistic-block-title-row",
     div(
@@ -151,7 +161,7 @@ logistic_block_title_tag <- function(block) {
       if (block$index > 1L) {
         actionButton("logistic_block_prev", "\u2039", class = "btn-default btn-sm hierarchical-block-nav-button", title = "Previous block")
       },
-      if (block$index < 3L) {
+      if (block$index < 3L && isTRUE(can_next)) {
         actionButton("logistic_block_next", "\u203a", class = "btn-default btn-sm hierarchical-block-nav-button", title = "Next block")
       }
     )
@@ -172,13 +182,11 @@ logistic_target_panel <- function(title, input_id, items, selected, size, move_u
     class = paste("analysis-transfer-column analysis-transfer-panel hierarchical-target-panel logistic-target-panel", panel_class, size_class),
     if (inherits(title, "shiny.tag") || inherits(title, "shiny.tag.list")) title else analysis_field_label_tag(title, allowed_measurements),
     analysis_transfer_listbox_input(input_id, items = items, selected = selected, size = size),
-    if (!identical(input_id, "logistic_y")) {
-      div(
-        class = "hierarchical-order-actions logistic-order-actions",
-        actionButton(move_up_id, "Up", class = "btn-default btn-sm"),
-        actionButton(move_down_id, "Down", class = "btn-default btn-sm")
-      )
-    }
+    div(
+      class = "hierarchical-order-actions logistic-order-actions",
+      actionButton(move_up_id, "Up", class = "btn-default btn-sm"),
+      actionButton(move_down_id, "Down", class = "btn-default btn-sm")
+    )
   )
 }
 
@@ -209,7 +217,7 @@ logistic_setup_panel <- function(setup, status_message = NULL) {
             )
           ),
           logistic_target_panel(
-            "Dependent Variable",
+            sprintf("Dependent Variables (%s)", length(setup$dependents)),
             "logistic_y",
             setup$dependent_items,
             setup$dependent_selected,
@@ -231,7 +239,7 @@ logistic_setup_panel <- function(setup, status_message = NULL) {
             )
           ),
           logistic_target_panel(
-            logistic_block_title_tag(active_block),
+            logistic_block_title_tag(active_block, can_next = active_block$index == 1L || length(setup[[active_block$name]]) > 0),
             active_block$input_id,
             active_block$items,
             active_block$selected,
@@ -246,23 +254,23 @@ logistic_setup_panel <- function(setup, status_message = NULL) {
         class = "analysis-options-column analysis-options-panel hierarchical-options logistic-options",
         div(
           class = "analysis-option-group",
-          div(class = "analysis-option-title", "Model"),
-          div(setup$model_family, class = "step-summary-detail logistic-model-family")
-        ),
-        div(
-          class = "step-summary logistic-rule-summary",
-          div("Method is selected by dependent variable type.", class = "step-summary-title"),
-          div("Binary: binary logistic; ordered: ordinal logistic; categorical: multinomial logistic.", class = "step-summary-detail")
-        ),
-        div(
-          class = "step-summary logistic-rule-summary",
-          div("Analysis options will be finalized after the UI structure is reviewed.", class = "step-summary-detail")
+          div(class = "analysis-option-title", "Output"),
+          checkboxInput("logistic_show_b_se", "B, SE", value = isTRUE(setup$show_b_se)),
+          checkboxInput("logistic_show_extra_r2", "McFadden R\u00b2, Cox & Snell R\u00b2", value = isTRUE(setup$show_extra_r2)),
+          checkboxInput("logistic_split_ci", "95% CI (LLCI, ULCI)", value = isTRUE(setup$split_ci))
         )
       )
     ),
     div(
       class = "analysis-action-row hierarchical-action-row logistic-action-row",
-      tags$button("Run logistic", type = "button", class = "btn btn-primary", disabled = "disabled"),
+      actionButton("run_logistic", "Run logistic", class = "btn btn-primary", disabled = if (!isTRUE(setup$can_run)) "disabled" else NULL),
+      tags$button(
+        id = "reset_logistic_block2",
+        type = "button",
+        class = "btn action-button btn-default analysis-reset-button logistic-reset-button",
+        disabled = if (length(unique(c(setup$dependents, setup$block1, setup$block2, setup$block3))) == 0) "disabled" else NULL,
+        "Reset setting"
+      ),
       div(class = "analysis-save-slot analysis-save-slot-empty")
     )
   )

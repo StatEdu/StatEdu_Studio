@@ -299,6 +299,28 @@ register_crosstab_handlers <- function(
     crosstab_results_ui(crosstab_result())
   })
 
+  output$crosstab_reset_control <- renderUI({
+    current <- current_crosstab_allowed()
+    analysis_reset_button(
+      "reset_crosstab_selection",
+      enabled = length(unique(c(current$col_vars, current$row_vars))) > 0
+    )
+  })
+
+  observeEvent(input$reset_crosstab_selection, {
+    current <- current_crosstab_allowed()
+    if (length(unique(c(current$col_vars, current$row_vars))) == 0) return()
+    crosstab_col_vars(character(0))
+    crosstab_row_vars(character(0))
+    crosstab_result(NULL)
+    active_crosstab_list("crosstab_available")
+    session$sendCustomMessage(
+      "easyflow-clear-transfer-selection",
+      list(inputIds = c("crosstab_available", "crosstab_col", "crosstab_row"))
+    )
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
   output$crosstab_save_control <- renderUI({
     result <- crosstab_result()
     if (is.null(result)) {

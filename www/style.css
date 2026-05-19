@@ -3492,6 +3492,37 @@ pre {
   transform: translateX(18px);
 }
 
+.reliability-action-row > #reliability_reset_control,
+.frequencies-action-row > #frequencies_reset_control,
+.frequencies-action-row > #crosstab_reset_control,
+.paired-action-row > #paired_reset_control,
+.paired-action-row > #paired_rm_reset_control,
+.ttest-anova-action-row > #ttest_anova_reset_control,
+.correlation-action-row > #correlation_reset_control,
+.hierarchical-action-row > #hierarchical_reset_control,
+.regression-action-row > #regression_reset_control,
+.logistic-action-row > #reset_logistic_block2 {
+  grid-column: 3;
+  width: 300px;
+  min-width: 300px;
+  margin-left: 30px;
+  justify-self: start;
+}
+
+.analysis-reset-button,
+.reliability-action-row > #reliability_reset_control .analysis-reset-button,
+.frequencies-action-row > #frequencies_reset_control .analysis-reset-button,
+.frequencies-action-row > #crosstab_reset_control .analysis-reset-button,
+.paired-action-row > #paired_reset_control .analysis-reset-button,
+.paired-action-row > #paired_rm_reset_control .analysis-reset-button,
+.ttest-anova-action-row > #ttest_anova_reset_control .analysis-reset-button,
+.correlation-action-row > #correlation_reset_control .analysis-reset-button,
+.hierarchical-action-row > #hierarchical_reset_control .analysis-reset-button,
+.regression-action-row > #regression_reset_control .analysis-reset-button {
+  width: 300px;
+  min-width: 300px;
+}
+
 .hierarchical-action-row > #hierarchical_save_control {
   grid-column: 5;
   margin-left: 0;
@@ -4183,4 +4214,32 @@ pre {
   width: 1140px !important;
   min-width: 1140px !important;
   max-width: 1140px !important;
+}
+
+.logistic-action-row {
+  margin-bottom: 28px;
+}
+
+.logistic-action-row > #reset_logistic_block2 {
+  grid-column: 3;
+  width: 300px;
+  min-width: 300px;
+  margin-left: 30px;
+  justify-self: start;
+  transform: none;
+}
+
+.logistic-action-row > #reset_logistic_block2.analysis-reset-button {
+  width: 300px;
+  min-width: 300px;
+}
+
+.logistic-options .analysis-option-group .checkbox {
+  margin-top: 2px;
+  margin-bottom: 2px;
+  line-height: 1.25;
+}
+
+.logistic-options .analysis-option-group .checkbox label {
+  white-space: nowrap;
 }

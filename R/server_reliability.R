@@ -282,6 +282,27 @@ register_reliability_handlers <- function(
     reliability_results_ui(reliability_result())
   })
 
+  output$reliability_reset_control <- renderUI({
+    analysis_reset_button(
+      "reset_reliability_selection",
+      enabled = length(unique(unlist(current_reliability_blocks(), use.names = FALSE))) > 0
+    )
+  })
+
+  observeEvent(input$reset_reliability_selection, {
+    if (length(unique(unlist(current_reliability_blocks(), use.names = FALSE))) == 0) return()
+    reliability_factor_blocks(list(character(0)))
+    active_reliability_factor(1L)
+    reliability_variables(character(0))
+    reliability_result(NULL)
+    active_reliability_list("reliability_available")
+    session$sendCustomMessage(
+      "easyflow-clear-transfer-selection",
+      list(inputIds = c("reliability_available", "reliability_selected"))
+    )
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
   output$reliability_save_control <- renderUI({
     result <- reliability_result()
     if (is.null(result)) {

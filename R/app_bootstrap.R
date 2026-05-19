@@ -17,7 +17,9 @@ required_packages <- c(
   "glmnet",
   "agricolae",
   "psych",
-  "polycor"
+  "polycor",
+  "MASS",
+  "nnet"
 )
 
 ensure_required_packages <- function(packages = required_packages) {
@@ -56,6 +58,7 @@ app_module_files <- c(
   "analysis_paired_rm.R",
   "analysis_ttest_anova.R",
   "analysis_regression.R",
+  "analysis_logistic.R",
   "data_editor_ui.R",
   "calculator_hint8.R",
   "calculator_metabolic.R",
@@ -112,6 +115,7 @@ app_module_files <- c(
   "result_reliability_ui.R",
   "result_frequencies_ui.R",
   "result_crosstabs_ui.R",
+  "result_logistic_ui.R",
   "result_paired_ui.R",
   "result_paired_rm_ui.R",
   "result_correlation_ui.R",

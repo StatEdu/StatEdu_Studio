@@ -46,6 +46,17 @@ regression_reference_values_static <- function(category_table) {
   refs[nzchar(trimws(refs))]
 }
 
+compact_analysis_blocks <- function(block1, block2 = character(0), block3 = character(0)) {
+  blocks <- list(
+    unique(as.character(block1 %||% character(0))),
+    unique(as.character(block2 %||% character(0))),
+    unique(as.character(block3 %||% character(0)))
+  )
+  compacted <- Filter(function(block) length(block) > 0, blocks)
+  compacted <- c(compacted, rep(list(character(0)), 3L - length(compacted)))
+  list(block1 = compacted[[1]], block2 = compacted[[2]], block3 = compacted[[3]])
+}
+
 normalize_regression_variable_info_static <- function(variable_info = NULL, variable_table = NULL) {
   info <- variable_info
   if (is.null(info) && !is.null(variable_table)) {
@@ -576,6 +587,10 @@ prepare_hierarchical_analysis_results <- function(
   block1 <- intersect(unique(as.character(block1 %||% character(0))), data_names)
   block2 <- intersect(unique(as.character(block2 %||% character(0))), data_names)
   block3 <- intersect(unique(as.character(block3 %||% character(0))), data_names)
+  compacted <- compact_analysis_blocks(block1, block2, block3)
+  block1 <- compacted$block1
+  block2 <- compacted$block2
+  block3 <- compacted$block3
 
   shiny::validate(shiny::need(length(dependents) > 0, "Select at least one dependent variable."))
   shiny::validate(shiny::need(length(block1) > 0, "Select at least one Block 1 variable."))

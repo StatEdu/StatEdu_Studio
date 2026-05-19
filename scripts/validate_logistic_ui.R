@@ -33,15 +33,18 @@ setup <- logistic_setup_state(
   labels = c(change = "Changed", satisfaction = "Satisfaction"),
   active_block = "block1"
 )
-stopifnot(identical(setup$dependents, "change"))
+stopifnot(identical(setup$dependents, c("change", "satisfaction")))
 
 html <- as.character(htmltools::renderTags(logistic_setup_panel(setup, NULL))$html)
 required_fragments <- c(
   "logistic_available",
   "logistic_y",
   "logistic_block1",
-  "Dependent Variable",
-  "Binary logistic regression",
+  "Dependent Variables (2)",
+  "B, SE",
+  "95% CI (LLCI, ULCI)",
+  "McFadden R",
+  "Cox &amp; Snell R",
   "Run logistic"
 )
 for (fragment in required_fragments) {
@@ -49,8 +52,13 @@ for (fragment in required_fragments) {
     stop(sprintf("Expected logistic UI fragment not found: %s", fragment), call. = FALSE)
   }
 }
-if (grepl("Dependent Variable (", html, fixed = TRUE)) {
-  stop("Logistic dependent label should not include a count.", call. = FALSE)
+if (grepl("Dependent Variable (1/1)", html, fixed = TRUE)) {
+  stop("Logistic dependent label should not be capped at one variable.", call. = FALSE)
+}
+for (removed in c("Method is selected by dependent variable type.", "Complete case analysis is used by default.", "Model</div>")) {
+  if (grepl(removed, html, fixed = TRUE)) {
+    stop(sprintf("Removed logistic UI fragment is still present: %s", removed), call. = FALSE)
+  }
 }
 
 cat("Logistic UI validation passed.\n")

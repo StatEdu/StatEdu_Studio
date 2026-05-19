@@ -122,6 +122,10 @@ create_prepare_hierarchical_analysis_result_fn <- function(
     if (length(block3) == 0 && !is.null(hierarchical_block3_current_fn)) {
       block3 <- hierarchical_block3_current_fn()
     }
+    compacted <- compact_analysis_blocks(block1, block2, block3)
+    block1 <- compacted$block1
+    block2 <- compacted$block2
+    block3 <- compacted$block3
 
     info <- tryCatch(variable_info_table_fn(), error = function(e) NULL)
 

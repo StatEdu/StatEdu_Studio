@@ -186,6 +186,25 @@ register_frequencies_handlers <- function(
     frequencies_results_ui(frequency_result())
   })
 
+  output$frequencies_reset_control <- renderUI({
+    analysis_reset_button(
+      "reset_frequencies_selection",
+      enabled = length(as.character(frequency_variables() %||% character(0))) > 0
+    )
+  })
+
+  observeEvent(input$reset_frequencies_selection, {
+    if (length(as.character(frequency_variables() %||% character(0))) == 0) return()
+    frequency_variables(character(0))
+    frequency_result(NULL)
+    active_frequency_list("frequency_available")
+    session$sendCustomMessage(
+      "easyflow-clear-transfer-selection",
+      list(inputIds = c("frequency_available", "frequency_selected"))
+    )
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
   output$frequencies_save_control <- renderUI({
     result <- frequency_result()
     if (is.null(result)) {

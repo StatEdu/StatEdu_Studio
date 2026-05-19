@@ -17,6 +17,10 @@ register_logistic_handlers <- function(
   logistic_block3 <- reactiveVal(character(0))
   logistic_active_block <- reactiveVal("block1")
   active_logistic_list <- reactiveVal(NULL)
+  logistic_show_b_se <- reactiveVal(FALSE)
+  logistic_show_extra_r2 <- reactiveVal(FALSE)
+  logistic_split_ci <- reactiveVal(FALSE)
+  logistic_results <- reactiveVal(NULL)
 
   normalize_selected <- function(values) {
     intersect(as.character(values %||% character(0)), as.character(selected_names_fn() %||% character(0)))
@@ -84,6 +88,14 @@ register_logistic_handlers <- function(
     TRUE
   }
 
+  compact_logistic_block_state <- function() {
+    compacted <- compact_analysis_blocks(logistic_block1(), logistic_block2(), logistic_block3())
+    if (!identical(logistic_block1(), compacted$block1)) logistic_block1(compacted$block1)
+    if (!identical(logistic_block2(), compacted$block2)) logistic_block2(compacted$block2)
+    if (!identical(logistic_block3(), compacted$block3)) logistic_block3(compacted$block3)
+    compacted
+  }
+
   set_active_block <- function(value) {
     value <- as.character(value %||% "block1")[[1]]
     if (!value %in% c("block1", "block2", "block3")) {
@@ -100,8 +112,7 @@ register_logistic_handlers <- function(
       return(setup_empty_message("Complete Step 2 in the Data tab before setting up logistic regression."))
     }
 
-    current_dependents <- normalize_selected(logistic_dependents())
-    logistic_dependents(current_dependents[seq_len(min(length(current_dependents), 1L))])
+    logistic_dependents(normalize_selected(logistic_dependents()))
     logistic_block1(normalize_selected(logistic_block1()))
     logistic_block2(normalize_selected(logistic_block2()))
     logistic_block3(normalize_selected(logistic_block3()))
@@ -119,10 +130,31 @@ register_logistic_handlers <- function(
       selected_block1 = isolate(input$logistic_block1),
       selected_block2 = isolate(input$logistic_block2),
       selected_block3 = isolate(input$logistic_block3),
-      active_block = logistic_active_block()
+      active_block = logistic_active_block(),
+      show_b_se = logistic_show_b_se(),
+      show_extra_r2 = logistic_show_extra_r2(),
+      split_ci = logistic_split_ci()
     )
 
     logistic_setup_panel(setup, NULL)
+  })
+
+  output$logistic_results <- renderUI({
+    results <- logistic_results()
+    if (is.null(results)) {
+      return(NULL)
+    }
+    logistic_results_panel(
+      results,
+      variable_table = variable_table_fn(),
+      labels = labels_fn(),
+      category_table = category_table_fn(),
+      show_b = logistic_show_b_se(),
+      show_se = logistic_show_b_se(),
+      show_mcfadden = logistic_show_extra_r2(),
+      show_cox_snell = logistic_show_extra_r2(),
+      split_ci = logistic_split_ci()
+    )
   })
 
   register_analysis_data_viewer_handlers(
@@ -165,7 +197,18 @@ register_logistic_handlers <- function(
   }, ignoreInit = TRUE)
 
   observeEvent(input$logistic_block_next, {
+    compacted <- compact_logistic_block_state()
     current <- as.character(logistic_active_block() %||% "block1")[[1]]
+    current_values <- switch(
+      current,
+      block1 = compacted$block1,
+      block2 = compacted$block2,
+      block3 = compacted$block3,
+      character(0)
+    )
+    if (length(current_values) == 0) {
+      return()
+    }
     next_block <- switch(current, block1 = "block2", block2 = "block3", "block3")
     set_active_block(next_block)
   }, ignoreInit = TRUE)
@@ -209,11 +252,66 @@ register_logistic_handlers <- function(
     if (length(selected) == 0) {
       return()
     }
-    logistic_dependents(selected[[1]])
-    clear_transfer_selection("logistic_available")
+    if (append_to_target(logistic_dependents, selected)) {
+      clear_transfer_selection("logistic_available")
+      active_logistic_list("logistic_available")
+      mark_settings_dirty()
+    }
+  })
+
+  observeEvent(input$logistic_show_b_se, {
+    logistic_show_b_se(isTRUE(input$logistic_show_b_se))
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$logistic_show_extra_r2, {
+    logistic_show_extra_r2(isTRUE(input$logistic_show_extra_r2))
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$logistic_split_ci, {
+    logistic_split_ci(isTRUE(input$logistic_split_ci))
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$run_logistic, {
+    data <- dataset_fn()
+    shiny::req(is.data.frame(data))
+    tryCatch(
+      {
+        compacted <- compact_logistic_block_state()
+        results <- prepare_logistic_analysis_results(
+          data = data,
+          dependents = logistic_dependents(),
+          block1 = compacted$block1,
+          block2 = compacted$block2,
+          block3 = compacted$block3,
+          variable_info = variable_table_fn(),
+          reference_values = logistic_reference_values_static(category_table_fn())
+        )
+        logistic_results(results)
+        showNotification("Logistic regression finished.", type = "message")
+      },
+      error = function(e) {
+        logistic_results(NULL)
+        showNotification(paste("Logistic regression failed:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$reset_logistic_block2, {
+    if (length(unique(c(logistic_dependents(), logistic_block1(), logistic_block2(), logistic_block3()))) == 0) {
+      return()
+    }
+    logistic_dependents(character(0))
+    logistic_block1(character(0))
+    logistic_block2(character(0))
+    logistic_block3(character(0))
+    logistic_results(NULL)
+    clear_transfer_selection(c("logistic_available", "logistic_y", "logistic_block1", "logistic_block2", "logistic_block3"))
     active_logistic_list("logistic_available")
     mark_settings_dirty()
-  })
+  }, ignoreInit = TRUE)
 
   move_block <- function(target, input_id) {
     if (identical(logistic_move_direction(input_id), "remove")) {

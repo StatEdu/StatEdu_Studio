@@ -18,6 +18,7 @@ reliability_tab_panel <- function(title = "Reliability") {
           div(
             class = "analysis-action-row reliability-action-row",
             actionButton("run_reliability", "Run analysis", class = "btn btn-primary"),
+            uiOutput("reliability_reset_control"),
             uiOutput("reliability_save_control")
           ),
           uiOutput("reliability_results")
@@ -47,6 +48,7 @@ frequencies_tab_panel <- function(title = "Frequencies") {
           div(
             class = "analysis-action-row frequencies-action-row",
             actionButton("run_frequencies", "Run analysis", class = "btn btn-primary"),
+            uiOutput("frequencies_reset_control"),
             uiOutput("frequencies_save_control")
           ),
           uiOutput("frequencies_results")
@@ -77,6 +79,7 @@ paired_tab_panel <- function(title = "Paired test") {
           div(
             class = "analysis-action-row paired-action-row",
             actionButton("run_paired", "Run analysis", class = "btn btn-primary"),
+            uiOutput("paired_reset_control"),
             uiOutput("paired_save_control")
           ),
           uiOutput("paired_results")
@@ -107,6 +110,7 @@ paired_rm_tab_panel <- function(title = "Paired test (3+)") {
           div(
             class = "analysis-action-row paired-action-row",
             actionButton("run_paired_rm", "Run analysis", class = "btn btn-primary"),
+            uiOutput("paired_rm_reset_control"),
             uiOutput("paired_rm_save_control")
           ),
           uiOutput("paired_rm_results")
@@ -136,6 +140,7 @@ ttest_anova_tab_panel <- function(title = "t-test / ANOVA") {
           div(
             class = "analysis-action-row ttest-anova-action-row",
             actionButton("run_ttest_anova", "Run analysis", class = "btn btn-primary"),
+            uiOutput("ttest_anova_reset_control"),
             uiOutput("ttest_anova_save_control")
           ),
           uiOutput("ttest_anova_results")
@@ -165,6 +170,7 @@ correlation_tab_panel <- function(title = "Correlation") {
           div(
             class = "analysis-action-row correlation-action-row",
             actionButton("run_correlation", "Run analysis", class = "btn btn-primary"),
+            uiOutput("correlation_reset_control"),
             uiOutput("correlation_save_control")
           ),
           uiOutput("correlation_results")

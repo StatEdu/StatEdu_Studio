@@ -177,6 +177,25 @@ register_paired_handlers <- function(
 
   output$paired_results <- renderUI(paired_results_ui(paired_result()))
 
+  output$paired_reset_control <- renderUI({
+    analysis_reset_button(
+      "reset_paired_selection",
+      enabled = nrow(paired_pairs()) > 0
+    )
+  })
+
+  observeEvent(input$reset_paired_selection, {
+    if (nrow(paired_pairs()) == 0) return()
+    paired_pairs(data.frame(first = character(0), second = character(0), stringsAsFactors = FALSE))
+    paired_result(NULL)
+    active_list("paired_available")
+    session$sendCustomMessage(
+      "easyflow-clear-transfer-selection",
+      list(inputIds = c("paired_available", "paired_pairs"))
+    )
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
   output$paired_save_control <- renderUI({
     result <- paired_result()
     if (is.null(result) || !is.null(result$error)) return(NULL)

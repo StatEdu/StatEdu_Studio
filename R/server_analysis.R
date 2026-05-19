@@ -100,7 +100,13 @@ register_regression_results_output <- function(
       ))
     }
 
-    results <- analyses_fn()
+    results <- tryCatch(analyses_fn(), error = function(e) NULL)
+    if (is.null(results)) {
+      return(div(
+        class = "empty-message regression-results-empty",
+        "Click Run regression to fit the model."
+      ))
+    }
     tagList(
       regression_results_panel(
         results = results,
@@ -145,7 +151,13 @@ register_hierarchical_results_output <- function(
       ))
     }
 
-    results <- analyses_fn()
+    results <- tryCatch(analyses_fn(), error = function(e) NULL)
+    if (is.null(results)) {
+      return(div(
+        class = "empty-message regression-results-empty",
+        "Click Run hierarchical to fit the model."
+      ))
+    }
     tagList(
       hierarchical_results_panel(
         results = results,
@@ -184,6 +196,9 @@ register_hierarchical_save_handlers <- function(
 ) {
   output$hierarchical_save_control <- renderUI({
     if (is.null(input$run_hierarchical) || input$run_hierarchical == 0) {
+      return(NULL)
+    }
+    if (is.null(tryCatch(analyses_fn(), error = function(e) NULL))) {
       return(NULL)
     }
     analysis_save_buttons(
@@ -323,6 +338,9 @@ register_analysis_save_handlers <- function(
 ) {
   output$regression_save_control <- renderUI({
     if (is.null(input$run) || input$run == 0) {
+      return(NULL)
+    }
+    if (is.null(tryCatch(analyses_fn(), error = function(e) NULL))) {
       return(NULL)
     }
     div(
