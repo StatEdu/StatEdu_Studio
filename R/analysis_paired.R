@@ -399,3 +399,47 @@ prepare_paired_results <- function(data, first, second, variable_info = NULL, la
     options = options
   )
 }
+
+prepare_paired_unified_results <- function(data, variable_groups, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
+  groups <- lapply(variable_groups %||% list(), as.character)
+  groups <- groups[lengths(groups) >= 2L]
+  shiny::validate(shiny::need(length(groups) > 0, "Select one or more repeated-measures rows."))
+
+  two_groups <- groups[lengths(groups) == 2L]
+  rm_groups <- groups[lengths(groups) >= 3L]
+  paired_result <- NULL
+  paired_rm_result <- NULL
+
+  if (length(two_groups) > 0) {
+    paired_result <- prepare_paired_results(
+      data = data,
+      first = vapply(two_groups, `[[`, character(1), 1L),
+      second = vapply(two_groups, `[[`, character(1), 2L),
+      variable_info = variable_info,
+      labels = labels,
+      category_table = category_table,
+      options = options
+    )
+  }
+
+  if (length(rm_groups) > 0) {
+    paired_rm_result <- prepare_paired_rm_results(
+      data = data,
+      variable_groups = rm_groups,
+      variable_info = variable_info,
+      labels = labels,
+      category_table = category_table,
+      options = options
+    )
+  }
+
+  if (!is.null(paired_result) && !is.null(paired_rm_result)) {
+    return(list(
+      type = "paired_combined",
+      paired = paired_result,
+      paired_rm = paired_rm_result,
+      options = options
+    ))
+  }
+  paired_result %||% paired_rm_result
+}

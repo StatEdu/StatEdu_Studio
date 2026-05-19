@@ -1274,8 +1274,93 @@ save_ttest_anova_excel_file <- function(result, file) {
 }
 
 save_paired_excel_file <- function(result, file) {
+  if (identical(result$type, "paired_rm")) {
+    return(save_paired_rm_excel_file(result, file))
+  }
   workbook <- openxlsx::createWorkbook()
   used_sheets <- character(0)
+  if (identical(result$type, "paired_combined")) {
+    paired_part <- result$paired
+    rm_part <- result$paired_rm
+    if (is.data.frame(paired_part$scale_table) && nrow(paired_part$scale_table) > 0) {
+      used_sheets <- add_paired_grouped_excel_sheet(
+        workbook,
+        "Paired M SD",
+        paired_part$scale_table,
+        used_sheets,
+        title = "Paired test: M and SD",
+        type = "scale",
+        note = paired_method_note(paired_part$scale_table),
+        show_effect_size = isTRUE(paired_part$options$effect_size)
+      )
+    }
+    if (is.data.frame(paired_part$count_table) && nrow(paired_part$count_table) > 0) {
+      used_sheets <- add_paired_grouped_excel_sheet(
+        workbook,
+        "Paired n",
+        paired_part$count_table,
+        used_sheets,
+        title = "Paired test: n by level",
+        type = "count",
+        note = paired_count_method_note(paired_part),
+        show_effect_size = isTRUE(paired_part$options$effect_size)
+      )
+    }
+    if (isTRUE(paired_part$options$assumption_check) && is.data.frame(paired_part$checks) && nrow(paired_part$checks) > 0) {
+      used_sheets <- add_ttest_anova_result_sheet(
+        workbook,
+        "Paired assumptions",
+        paired_part$checks,
+        "Outliers were evaluated using values beyond 3*IQR from the paired difference distribution.",
+        used_sheets,
+        title = "Paired assumption check"
+      )
+    }
+    if (is.data.frame(rm_part$display_table) && nrow(rm_part$display_table) > 0) {
+      used_sheets <- add_paired_rm_grouped_excel_sheet(
+        workbook,
+        "Repeated M SD",
+        rm_part$display_table,
+        used_sheets,
+        note = paired_rm_table_method_note(rm_part$display_table),
+        title = "Repeated-measures test: continuous / ordinal",
+        type = "scale"
+      )
+    }
+    if (is.data.frame(rm_part$count_table) && nrow(rm_part$count_table) > 0) {
+      used_sheets <- add_paired_rm_grouped_excel_sheet(
+        workbook,
+        "Repeated n",
+        rm_part$count_table,
+        used_sheets,
+        note = paired_rm_table_method_note(rm_part$count_table),
+        title = "Repeated-measures test: binary",
+        type = "count"
+      )
+    }
+    if (is.data.frame(rm_part$posthoc) && nrow(rm_part$posthoc) > 0) {
+      used_sheets <- add_ttest_anova_result_sheet(
+        workbook,
+        "Repeated posthoc",
+        rm_part$posthoc,
+        paired_rm_posthoc_note(rm_part),
+        used_sheets,
+        title = "Post-hoc pairwise comparisons"
+      )
+    }
+    if (isTRUE(rm_part$options$assumption_check) && is.data.frame(rm_part$assumption) && nrow(rm_part$assumption) > 0) {
+      used_sheets <- add_ttest_anova_result_sheet(
+        workbook,
+        "Repeated assumptions",
+        rm_part$assumption,
+        "",
+        used_sheets,
+        title = "Repeated-measures assumption check"
+      )
+    }
+    openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
+    return(invisible(file))
+  }
   if (is.data.frame(result$scale_table) && nrow(result$scale_table) > 0) {
     used_sheets <- add_paired_grouped_excel_sheet(
       workbook,

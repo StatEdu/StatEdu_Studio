@@ -269,7 +269,7 @@ hierarchical_setup_panel <- function(setup, status_message) {
       class = "analysis-action-row hierarchical-action-row",
       actionButton(
         "run_hierarchical",
-        "Run hierarchical",
+        "Run regression",
         class = "btn-primary",
         disabled = if (!can_run) "disabled" else NULL
       ),

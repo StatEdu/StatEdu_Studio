@@ -910,7 +910,7 @@ register_setup_outputs <- function(
   output$hierarchical_setup <- renderUI({
     selected <- as.character(selected_names_fn() %||% character(0))
     if (length(selected) == 0) {
-      return(setup_empty_message("Complete Step 2 in the Data tab before setting up hierarchical regression."))
+      return(setup_empty_message("Complete Step 2 in the Data tab before setting up regression."))
     }
 
     block1 <- intersect(control_names_fn(), selected)

@@ -11,16 +11,30 @@ register_paired_handlers <- function(
   labels_fn,
   mark_settings_dirty
 ) {
-  paired_pairs <- reactiveVal(data.frame(first = character(0), second = character(0), stringsAsFactors = FALSE))
+  repeated_groups <- reactiveVal(list())
   active_list <- reactiveVal(NULL)
   assumption_check <- reactiveVal(FALSE)
   bowker <- reactiveVal(FALSE)
   effect_size <- reactiveVal(FALSE)
   cohen_d <- reactiveVal(FALSE)
+  adjustment <- reactiveVal("holm")
   paired_result <- reactiveVal(NULL)
 
   current_selected <- reactive(as.character(selected_names_fn() %||% character(0)))
   current_variable_table <- reactive(variable_table_fn())
+  current_time_label_count <- reactive({
+    groups <- repeated_groups()
+    if (length(groups) > 0) max(3L, max(lengths(groups))) else 3L
+  })
+  current_time_labels <- reactive({
+    count <- current_time_label_count()
+    defaults <- paired_rm_time_header_labels(count)
+    vapply(seq_len(count), function(index) {
+      value <- input[[paste0("paired_time_label_", index)]]
+      value <- trimws(as.character(value %||% ""))
+      if (nzchar(value)) value else defaults[[index]]
+    }, character(1))
+  })
 
   output$paired_setup <- renderUI({
     selected <- current_selected()
@@ -29,15 +43,17 @@ register_paired_handlers <- function(
     }
     paired_setup_panel(paired_setup_state(
       selected_names = selected,
-      paired_pairs = paired_pairs(),
+      repeated_groups = repeated_groups(),
       variable_table = current_variable_table(),
       labels = labels_fn(),
       selected_available = isolate(input$paired_available),
-      selected_pairs = isolate(input$paired_pairs),
+      selected_repeated = isolate(input$paired_pairs),
       assumption_check = isolate(assumption_check()),
       bowker = isolate(bowker()),
       effect_size = isolate(effect_size()),
-      cohen_d = isolate(cohen_d())
+      cohen_d = isolate(cohen_d()),
+      adjustment = isolate(adjustment()),
+      time_labels = isolate(current_time_labels())
     ))
   })
 
@@ -48,7 +64,7 @@ register_paired_handlers <- function(
     title = "Paired Test Data Viewer",
     dataset_fn = dataset_fn,
     selected_names_fn = selected_names_fn,
-    variables_fn = function() unique(c(paired_pairs()$first, paired_pairs()$second)),
+    variables_fn = function() unique(unlist(repeated_groups(), use.names = FALSE)),
     variable_table_fn = variable_table_fn,
     labels_fn = labels_fn,
     category_table_fn = category_table_fn
@@ -70,11 +86,14 @@ register_paired_handlers <- function(
     cohen_d(isTRUE(input$paired_cohen_d))
   }, ignoreInit = TRUE)
 
+  observeEvent(input$paired_adjustment, {
+    adjustment(as.character(input$paired_adjustment %||% "holm"))
+  }, ignoreInit = TRUE)
+
   observe({
     selected <- current_selected()
-    pairs <- paired_pairs()
-    pairs <- pairs[pairs$first %in% selected & pairs$second %in% selected, , drop = FALSE]
-    paired_pairs(pairs)
+    groups <- lapply(repeated_groups(), function(group) intersect(as.character(group), selected))
+    repeated_groups(groups[lengths(groups) >= 2L])
   })
 
   observeEvent(input$paired_available_active, active_list("paired_available"), ignoreInit = TRUE)
@@ -86,34 +105,35 @@ register_paired_handlers <- function(
 
   observeEvent(input$paired_pair_move, {
     if (identical(active_list(), "paired_pairs")) {
-      selected_pairs <- intersect(as.character(input$paired_pairs %||% character(0)), paired_pair_values(paired_pairs()$first, paired_pairs()$second))
-      if (length(selected_pairs) == 0) return()
-      remove_pairs <- paired_pair_from_values(selected_pairs)
-      pairs <- paired_pairs()
-      remove_values <- paired_pair_values(remove_pairs$first, remove_pairs$second)
-      keep <- !paired_pair_values(pairs$first, pairs$second) %in% remove_values
-      paired_pairs(pairs[keep, , drop = FALSE])
+      selected_groups <- intersect(as.character(input$paired_pairs %||% character(0)), paired_group_values(repeated_groups()))
+      if (length(selected_groups) == 0) return()
+      remove_values <- paired_group_values(paired_group_from_values(selected_groups))
+      keep <- !paired_group_values(repeated_groups()) %in% remove_values
+      repeated_groups(repeated_groups()[keep])
       active_list("paired_available")
       mark_settings_dirty()
     } else {
       selected <- current_selected()
       source_values <- intersect(as.character(input$paired_available %||% character(0)), selected)
-      if (length(source_values) != 2L) {
-        showNotification("Select exactly two variables to create one paired row.", type = "warning")
+      if (length(source_values) < 2L) {
+        showNotification("Select two or more repeated-measures variables to create one paired row.", type = "warning")
         return()
       }
       measurements <- paired_measurement_lookup(current_variable_table())
       levels <- vapply(source_values, function(name) named_value(measurements, name, "continuous"), character(1))
-      if (!identical(levels[[1]], levels[[2]])) {
-        showNotification("Paired variables must have the same measurement level.", type = "warning")
+      if (length(unique(levels)) > 1) {
+        showNotification("Repeated-measures variables must have the same measurement level.", type = "warning")
         return()
       }
-      pairs <- paired_pairs()
-      existing_values <- paired_pair_values(pairs$first, pairs$second)
-      next_pair <- data.frame(first = source_values[[1]], second = source_values[[2]], stringsAsFactors = FALSE)
-      next_value <- paired_pair_values(next_pair$first, next_pair$second)
+      if (length(source_values) >= 3L && identical(levels[[1]], "category")) {
+        showNotification("Categorical paired tests with three or more repeated measurements will be supported after 1.0. Use two repeated measurements for now.", type = "warning")
+        return()
+      }
+      groups <- repeated_groups()
+      existing_values <- paired_group_values(groups)
+      next_value <- paired_group_values(list(source_values))
       if (!next_value %in% existing_values) {
-        paired_pairs(rbind(pairs, next_pair))
+        repeated_groups(c(groups, list(source_values)))
       }
       active_list("paired_pairs")
       mark_settings_dirty()
@@ -121,45 +141,39 @@ register_paired_handlers <- function(
   })
 
   observeEvent(input$paired_pairs_doubleclick, {
-    selected_pairs <- intersect(
+    selected_groups <- intersect(
       as.character(input$paired_pairs_doubleclick$value %||% ""),
-      paired_pair_values(paired_pairs()$first, paired_pairs()$second)
+      paired_group_values(repeated_groups())
     )
-    if (length(selected_pairs) == 0) return()
-    remove_pairs <- paired_pair_from_values(selected_pairs)
-    pairs <- paired_pairs()
-    remove_values <- paired_pair_values(remove_pairs$first, remove_pairs$second)
-    keep <- !paired_pair_values(pairs$first, pairs$second) %in% remove_values
-    paired_pairs(pairs[keep, , drop = FALSE])
+    if (length(selected_groups) == 0) return()
+    remove_values <- paired_group_values(paired_group_from_values(selected_groups))
+    keep <- !paired_group_values(repeated_groups()) %in% remove_values
+    repeated_groups(repeated_groups()[keep])
     active_list("paired_available")
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
-  reorder_pairs <- function(direction) {
-    pairs <- paired_pairs()
-    values <- paired_pair_values(pairs$first, pairs$second)
+  reorder_groups <- function(direction) {
+    values <- paired_group_values(repeated_groups())
     updated <- move_order_item(values, input$paired_pairs, direction)
     if (isTRUE(updated$changed)) {
-      next_pairs <- paired_pair_from_values(updated$order)
-      paired_pairs(next_pairs)
+      repeated_groups(paired_group_from_values(updated$order))
       mark_settings_dirty()
     }
   }
 
   observeEvent(input$paired_pair_up, {
-    reorder_pairs("up")
+    reorder_groups("up")
   })
   observeEvent(input$paired_pair_down, {
-    reorder_pairs("down")
+    reorder_groups("down")
   })
 
   observeEvent(input$run_paired, {
-    pairs <- paired_pairs()
     result <- tryCatch(
-      prepare_paired_results(
+      prepare_paired_unified_results(
         data = dataset_fn(),
-        first = pairs$first,
-        second = pairs$second,
+        variable_groups = repeated_groups(),
         variable_info = current_variable_table(),
         labels = labels_fn(),
         category_table = category_table_fn(),
@@ -167,7 +181,9 @@ register_paired_handlers <- function(
           assumption_check = isTRUE(assumption_check()),
           bowker = isTRUE(bowker()),
           effect_size = isTRUE(effect_size()),
-          cohen_d = isTRUE(cohen_d())
+          cohen_d = isTRUE(cohen_d()),
+          posthoc_adjustment = adjustment(),
+          time_labels = current_time_labels()
         )
       ),
       error = function(e) list(error = conditionMessage(e))
@@ -180,13 +196,13 @@ register_paired_handlers <- function(
   output$paired_reset_control <- renderUI({
     analysis_reset_button(
       "reset_paired_selection",
-      enabled = nrow(paired_pairs()) > 0
+      enabled = length(repeated_groups()) > 0
     )
   })
 
   observeEvent(input$reset_paired_selection, {
-    if (nrow(paired_pairs()) == 0) return()
-    paired_pairs(data.frame(first = character(0), second = character(0), stringsAsFactors = FALSE))
+    if (length(repeated_groups()) == 0) return()
+    repeated_groups(list())
     paired_result(NULL)
     active_list("paired_available")
     session$sendCustomMessage(

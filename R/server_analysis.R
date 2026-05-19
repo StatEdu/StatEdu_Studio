@@ -4,13 +4,23 @@ register_bootstrap_progress_outputs <- function(output, bootstrap_status_fn, boo
   output$bootstrap_progress <- renderUI({
     bootstrap_progress_ui(bootstrap_status_fn())
   })
+  output$hierarchical_bootstrap_progress <- renderUI({
+    bootstrap_progress_ui(bootstrap_status_fn())
+  })
 
   output$bootstrap_stop_control <- renderUI({
     if (!isTRUE(bootstrap_stop_visible_fn())) {
       return(NULL)
     }
 
-    bootstrap_stop_button()
+    bootstrap_stop_button("stop_bootstrap")
+  })
+  output$hierarchical_bootstrap_stop_control <- renderUI({
+    if (!isTRUE(bootstrap_stop_visible_fn())) {
+      return(NULL)
+    }
+
+    bootstrap_stop_button("hierarchical_stop_bootstrap")
   })
 
   invisible(TRUE)
@@ -147,7 +157,7 @@ register_hierarchical_results_output <- function(
     if (is.null(input$run_hierarchical) || input$run_hierarchical == 0) {
       return(div(
         class = "empty-message regression-results-empty",
-        "Click Run hierarchical to fit the model."
+        "Click Run regression to fit the model."
       ))
     }
 
@@ -155,7 +165,32 @@ register_hierarchical_results_output <- function(
     if (is.null(results)) {
       return(div(
         class = "empty-message regression-results-empty",
-        "Click Run hierarchical to fit the model."
+        "Click Run regression to fit the model."
+      ))
+    }
+    if (!regression_results_are_hierarchical(results)) {
+      return(tagList(
+        regression_results_panel(
+          results = results,
+          variable_table = variable_table_fn(),
+          labels = labels_fn(),
+          category_table = category_table_fn(),
+          refs = regression_reference_values_static(category_table_fn()),
+          value_labels = category_value_label_lookup_static(category_table_fn()),
+          show_sr2 = input$hierarchical_show_sr2,
+          show_f2 = input$hierarchical_show_f2,
+          show_vif = input$hierarchical_show_vif,
+          plot_blocks = lapply(seq_along(results), function(index) {
+            regression_plot_result_block(
+              output,
+              results[[index]],
+              index,
+              variable_table_fn = variable_table_fn,
+              labels_fn = labels_fn,
+              id_prefix = "hierarchical_residual"
+            )
+          })
+        )
       ))
     }
     tagList(
@@ -222,8 +257,10 @@ register_hierarchical_save_handlers <- function(
     }
     tryCatch(
       {
-        save_hierarchical_excel_file(
-          analyses_fn(),
+        results <- analyses_fn()
+        save_fn <- if (regression_results_are_hierarchical(results)) save_hierarchical_excel_file else save_analysis_excel_file
+        save_fn(
+          results,
           path,
           variable_table_fn(),
           labels_fn(),
@@ -249,8 +286,10 @@ register_hierarchical_save_handlers <- function(
     }
     tryCatch(
       {
-        saved <- save_hierarchical_figures_to_dir(
-          analyses_fn(),
+        results <- analyses_fn()
+        save_fn <- if (regression_results_are_hierarchical(results)) save_hierarchical_figures_to_dir else save_analysis_figures_to_dir
+        saved <- save_fn(
+          results,
           directory,
           variable_table_fn(),
           labels_fn()
@@ -275,8 +314,10 @@ register_hierarchical_save_handlers <- function(
     }
     tryCatch(
       {
-        write_hierarchical_results_html(
-          analyses_fn(),
+        results <- analyses_fn()
+        write_fn <- if (regression_results_are_hierarchical(results)) write_hierarchical_results_html else write_analysis_results_html
+        write_fn(
+          results,
           path,
           variable_table = variable_table_fn(),
           labels = labels_fn(),
@@ -305,8 +346,10 @@ register_hierarchical_save_handlers <- function(
     }
     tryCatch(
       {
-        write_hierarchical_results_pdf(
-          analyses_fn(),
+        results <- analyses_fn()
+        write_fn <- if (regression_results_are_hierarchical(results)) write_hierarchical_results_pdf else write_analysis_results_pdf
+        write_fn(
+          results,
           path,
           variable_table = variable_table_fn(),
           labels = labels_fn(),

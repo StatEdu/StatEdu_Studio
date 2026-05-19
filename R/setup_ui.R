@@ -67,7 +67,7 @@ paired_tab_panel <- function(title = "Paired test") {
       div(
         class = "app-heading",
         h1("Paired test"),
-        div("Select two repeated-measures variables at a time to create paired rows.", class = "app-subtitle")
+        div("Select two or more repeated-measures variables at a time to create paired rows.", class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel paired-workspace-panel",
@@ -208,23 +208,28 @@ regression_tab_panel <- function(title = "Regression") {
   )
 }
 
-hierarchical_tab_panel <- function(title = "Hierarchical") {
+hierarchical_tab_panel <- function(title = "Regression") {
   tabPanel(
     title,
     div(
       class = "page-shell",
       div(
         class = "app-heading",
-        h1("Hierarchical"),
-        div("Review selected variables and prepare hierarchical regression analysis.", class = "app-subtitle")
+        h1("Regression"),
+        div("Review selected variables and run regression analysis.", class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel hierarchical-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        analysis_workspace_heading("Hierarchical", "hierarchical"),
+        analysis_workspace_heading("Regression", "hierarchical"),
         analysis_workspace_body(
           "hierarchical",
           uiOutput("hierarchical_setup"),
+          div(
+            class = "bootstrap-progress-slot",
+            uiOutput("hierarchical_bootstrap_progress"),
+            uiOutput("hierarchical_bootstrap_stop_control")
+          ),
           uiOutput("hierarchical_results")
         )
       )

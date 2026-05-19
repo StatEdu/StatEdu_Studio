@@ -27,10 +27,10 @@ bootstrap_progress_ui <- function(status) {
   )
 }
 
-bootstrap_stop_button <- function() {
+bootstrap_stop_button <- function(id = "stop_bootstrap") {
   tags$button(
     "Stop bootstrap",
-    id = "stop_bootstrap",
+    id = id,
     type = "button",
     class = "btn btn-default btn-sm bootstrap-stop-button",
     onmousedown = paste(

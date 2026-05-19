@@ -156,10 +156,20 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
 
 paired_results_ui <- function(result) {
   if (is.null(result)) {
-    return(empty_message("Move paired variables and click Run analysis."))
+    return(empty_message("Move repeated-measures variables and click Run analysis."))
   }
   if (!is.null(result$error)) {
     return(empty_message(result$error))
+  }
+  if (identical(result$type, "paired_rm")) {
+    return(paired_rm_results_ui(result))
+  }
+  if (identical(result$type, "paired_combined")) {
+    return(tags$div(
+      class = "regression-results paired-results paired-combined-results",
+      paired_results_ui(result$paired),
+      paired_rm_results_ui(result$paired_rm)
+    ))
   }
   tags$div(
     class = "regression-results paired-results",

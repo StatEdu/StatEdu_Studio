@@ -8,9 +8,8 @@ All statistical analyses use CRAN packages only.
 
 ## Current Scope
 
-- Multiple regression
-- Paired tests for two repeated measurements
-- Paired tests for three or more repeated measurements
+- Regression with single-block and hierarchical block workflows
+- Paired tests for two or more repeated measurements
 - Cross-tabulation analysis for binary, ordered, and categorical variables
 - Residual normality test using the Lilliefors corrected Kolmogorov-Smirnov test
 - Homoscedasticity test using the Breusch-Pagan test
@@ -31,7 +30,7 @@ The app will open at `127.0.0.1` in the default browser.
 
 If you use easyflow_statistics in your research, please cite:
 
-LEE, I. H. (2026). easyflow_statistics (Version 0.8.0) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
+LEE, I. H. (2026). easyflow_statistics (Version 0.8.1) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
 
 ## Development Model
 

@@ -569,6 +569,11 @@ prepare_regression_analysis_results <- function(
   list(results = results, jobs = jobs)
 }
 
+regression_results_are_hierarchical <- function(results) {
+  results <- results %||% list()
+  any(vapply(results, function(result) isTRUE(result$hierarchical), logical(1)))
+}
+
 prepare_hierarchical_analysis_results <- function(
   data,
   dependents,
@@ -596,6 +601,17 @@ prepare_hierarchical_analysis_results <- function(
   shiny::validate(shiny::need(length(block1) > 0, "Select at least one Block 1 variable."))
   if (length(block3) > 0) {
     shiny::validate(shiny::need(length(block2) > 0, "Block 3 requires Block 2 variables."))
+  }
+  if (length(block2) == 0 && length(block3) == 0) {
+    return(prepare_regression_analysis_results(
+      data = data,
+      dependents = dependents,
+      predictors = block1,
+      variable_info = variable_info,
+      reference_values = reference_values,
+      boot_r = boot_r,
+      seed = seed
+    ))
   }
 
   steps <- list(

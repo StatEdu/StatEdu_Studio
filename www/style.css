@@ -3337,7 +3337,7 @@ pre {
 .reliability-setup-grid > .analysis-transfer-panel:not(.reliability-target-panel) .analysis-transfer-listbox,
 .correlation-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
 .ttest-anova-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
-.paired-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox {
+.paired-setup-grid > .analysis-transfer-panel:not(.paired-rm-target-panel) .analysis-transfer-listbox {
   height: 465px !important;
   min-height: 465px !important;
   max-height: 465px !important;
@@ -3599,9 +3599,15 @@ pre {
 }
 
 .paired-rm-target-panel .analysis-transfer-listbox {
-  height: 465px !important;
-  min-height: 465px !important;
-  max-height: 465px !important;
+  height: 439px !important;
+  min-height: 439px !important;
+  max-height: 439px !important;
+}
+
+.paired-setup-grid > .analysis-transfer-panel.paired-rm-target-panel .analysis-transfer-listbox[data-input-id="paired_pairs"] {
+  height: 439px !important;
+  min-height: 439px !important;
+  max-height: 439px !important;
 }
 
 .paired-target-panel {

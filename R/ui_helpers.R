@@ -86,7 +86,7 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-metabolic-font-1"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-paired-size-6"))
 }
 
 app_script_link <- function(version) {
@@ -110,7 +110,7 @@ enabled_analysis_tabs <- function() {
     paired_rm = TRUE,
     ttest_anova = TRUE,
     correlation = TRUE,
-    regression = TRUE,
+    regression = FALSE,
     hierarchical = TRUE,
     generalized = FALSE
   )

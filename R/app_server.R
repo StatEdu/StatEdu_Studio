@@ -904,7 +904,7 @@ create_app_server <- function(app_version) {
     input = input,
     output = output,
     prefix = "hierarchical",
-    title = "Hierarchical Regression Data Viewer",
+    title = "Regression Data Viewer",
     dataset_fn = dataset,
     selected_names_fn = selected_names,
     variables_fn = function() unique(c(sync_dependent_order(update_input = FALSE), control_names(), independent_names())),

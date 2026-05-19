@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.8.1 - 2026-05-19
+
+### Changed
+
+- Combined Paired test (2) and Paired test (3+) into one Paired test setup that dispatches to the appropriate analysis by repeated-measure count.
+- Renamed the hierarchical regression workflow to Regression and removed the separate regression menu, while preserving single-block regression and multi-block hierarchical behavior.
+- Added bootstrap progress and stop controls to the unified regression workflow.
+- Updated paired-test layout sizing and Data tab branding.
+
+
 ## v0.8.0 - 2026-05-19
 
 ### Changed
