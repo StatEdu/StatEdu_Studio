@@ -61,10 +61,10 @@ logistic_setup_state <- function(
   active_block = "block1",
   show_b = FALSE,
   show_se = FALSE,
-  show_mcfadden = FALSE,
-  show_cox_snell = FALSE,
+  show_mcfadden = TRUE,
+  show_cox_snell = TRUE,
   show_b_se = NULL,
-  show_extra_r2 = NULL,
+  show_extra_r2 = TRUE,
   split_ci = FALSE
 ) {
   selected <- as.character(selected_names %||% character(0))

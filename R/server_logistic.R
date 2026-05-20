@@ -18,7 +18,7 @@ register_logistic_handlers <- function(
   logistic_active_block <- reactiveVal("block1")
   active_logistic_list <- reactiveVal(NULL)
   logistic_show_b_se <- reactiveVal(FALSE)
-  logistic_show_extra_r2 <- reactiveVal(FALSE)
+  logistic_show_extra_r2 <- reactiveVal(TRUE)
   logistic_split_ci <- reactiveVal(FALSE)
   logistic_results <- reactiveVal(NULL)
 

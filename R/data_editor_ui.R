@@ -20,12 +20,7 @@ data_editor_same_variable_tab_panel <- function() {
   tabPanel(
     "Recode same variable",
     value = "data_editor_recode_same",
-    data_editor_command_panel(
-      "Recode into Same Variables",
-      "Change coding values in selected variables and keep the same variable names.",
-      "Same-variable recoding",
-      "This command will recode values directly in the selected variables."
-    )
+    data_editor_same_variable_panel()
   )
 }
 

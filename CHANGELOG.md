@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.8.2 - 2026-05-20
+
+### Changed
+
+- Enabled commonly used analysis options by default across paired tests, frequencies, correlation, reliability, logistic regression, and t-test / ANOVA setup screens.
+- Added independent nonparametric post-hoc correction choices for Kruskal-Wallis follow-up comparisons, with Bonferroni correction selected by default and Holm Bonferroni available.
+- Refined the t-test / ANOVA option panel spacing so post-hoc and effect-size controls fit within the setup panel.
+- Added same-variable recoding support in the Data editor.
+
 ## v0.8.1 - 2026-05-19
 
 ### Changed

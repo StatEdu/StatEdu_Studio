@@ -74,10 +74,10 @@ paired_setup_state <- function(
   labels = character(0),
   selected_available = NULL,
   selected_repeated = NULL,
-  assumption_check = FALSE,
-  bowker = FALSE,
-  effect_size = FALSE,
-  cohen_d = FALSE,
+  assumption_check = TRUE,
+  bowker = TRUE,
+  effect_size = TRUE,
+  cohen_d = TRUE,
   adjustment = "holm",
   time_labels = NULL
 ) {

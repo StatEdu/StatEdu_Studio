@@ -573,6 +573,76 @@ create_app_server <- function(app_version) {
     invisible(TRUE)
   }
 
+  update_existing_variable <- function(name, values, measurement = NULL) {
+    name <- trimws(as.character(name %||% ""))
+    if (!nzchar(name) || !name %in% names(dataset())) {
+      return(invisible(FALSE))
+    }
+    values <- as.vector(values)
+    if (length(values) != nrow(dataset())) {
+      showNotification("Recoded variable row count does not match the current data.", type = "warning", duration = 6)
+      return(invisible(FALSE))
+    }
+
+    current_calculated <- as.data.frame(calculated_variables() %||% data.frame(check.names = FALSE), stringsAsFactors = FALSE, check.names = FALSE)
+    if (ncol(current_calculated) == 0 || nrow(current_calculated) != length(values)) {
+      current_calculated <- data.frame(row_id = seq_along(values), check.names = FALSE)
+      current_calculated$row_id <- NULL
+    }
+    current_calculated[[name]] <- values
+    calculated_variables(current_calculated)
+
+    info <- tryCatch(variable_info_table(), error = function(e) NULL)
+    stage3 <- step3_variable_info()
+    base_row <- if (is.data.frame(stage3) && name %in% as.character(stage3$name)) {
+      stage3[match(name, as.character(stage3$name)), , drop = FALSE]
+    } else if (is.data.frame(info) && name %in% as.character(info$name)) {
+      info[match(name, as.character(info$name)), , drop = FALSE]
+    } else {
+      NULL
+    }
+    if (is.data.frame(base_row) && nrow(base_row) > 0) {
+      current_measurement <- as.character(base_row$measurement[[1]] %||% "")
+      current_label <- as.character(base_row$var_label[[1]] %||% name)
+      row <- calculated_variable_info_row(
+        name,
+        values,
+        stage3 %||% info,
+        var_label = current_label,
+        measurement = measurement %||% current_measurement
+      )
+      common <- intersect(names(row), names(base_row))
+      for (column in common) {
+        base_row[[column]] <- row[[column]]
+      }
+      if (is.data.frame(stage3) && name %in% as.character(stage3$name)) {
+        stage3[match(name, as.character(stage3$name)), names(base_row)] <- base_row
+        step3_variable_info(stage3)
+      }
+    }
+
+    if (!is.null(measurement) && nzchar(measurement)) {
+      measurement_overrides(merge_named_overrides(measurement_overrides(), stats::setNames(measurement, name))$values)
+    }
+    update_analysis_choices(session, input, selected_names())
+    mark_settings_dirty()
+    invisible(TRUE)
+  }
+
+  register_recode_same_handlers(
+    input = input,
+    output = output,
+    session = session,
+    dataset_fn = dataset,
+    current_data_file_fn = current_data_file,
+    selected_names_fn = selected_names,
+    variable_info_fn = variable_info_table,
+    labels_fn = var_label_overrides,
+    category_table_fn = category_label_values,
+    update_existing_variable_fn = update_existing_variable,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
   register_hint8_calculator_handlers(
     input = input,
     output = output,

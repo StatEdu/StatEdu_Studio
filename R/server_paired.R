@@ -13,10 +13,10 @@ register_paired_handlers <- function(
 ) {
   repeated_groups <- reactiveVal(list())
   active_list <- reactiveVal(NULL)
-  assumption_check <- reactiveVal(FALSE)
-  bowker <- reactiveVal(FALSE)
-  effect_size <- reactiveVal(FALSE)
-  cohen_d <- reactiveVal(FALSE)
+  assumption_check <- reactiveVal(TRUE)
+  bowker <- reactiveVal(TRUE)
+  effect_size <- reactiveVal(TRUE)
+  cohen_d <- reactiveVal(TRUE)
   adjustment <- reactiveVal("holm")
   paired_result <- reactiveVal(NULL)
 

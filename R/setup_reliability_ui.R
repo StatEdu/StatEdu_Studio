@@ -9,11 +9,11 @@ reliability_setup_state <- function(
   active_factor = 1L,
   selected_available = character(0),
   selected_selected = character(0),
-  normality = FALSE,
-  ordinal = FALSE,
+  normality = TRUE,
+  ordinal = TRUE,
   subfactor_enabled = FALSE,
-  reliability_if_deleted = FALSE,
-  item_total_correlation = FALSE
+  reliability_if_deleted = TRUE,
+  item_total_correlation = TRUE
 ) {
   selected <- as.character(selected_names %||% character(0))
   if (is.null(factor_blocks)) {

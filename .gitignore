@@ -9,4 +9,6 @@ sample/
 settings/*.local.json
 *.log
 *.tmp
+easyflow_statistics_*.zip
+공모/
 

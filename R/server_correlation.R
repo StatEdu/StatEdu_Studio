@@ -35,13 +35,13 @@ register_correlation_handlers <- function(
         labels = labels_fn(),
         selected_available = isolate(input$correlation_available),
         selected_selected = isolate(input$correlation_selected),
-        normality = input$correlation_normality,
+        normality = input$correlation_normality %||% TRUE,
         latent_correlations = input$correlation_latent_correlations,
-        reason = input$correlation_reason,
+        reason = input$correlation_reason %||% TRUE,
         p_ci = input$correlation_p_ci %||% TRUE,
         significance_levels = input$correlation_significance_levels %||% TRUE,
-        scatter_plot = input$correlation_scatter_plot,
-        matrix_plot = input$correlation_matrix_plot
+        scatter_plot = input$correlation_scatter_plot %||% TRUE,
+        matrix_plot = input$correlation_matrix_plot %||% TRUE
       )
     )
   })

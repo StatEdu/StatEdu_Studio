@@ -19,7 +19,7 @@ ttest_anova_setup_state <- function(
   selected_available = NULL,
   selected_dependent = NULL,
   selected_factor = NULL,
-  normality_enabled = FALSE,
+  normality_enabled = TRUE,
   normality_study_type = NULL,
   normality_method = NULL,
   normality_survey_method = NULL,
@@ -28,9 +28,10 @@ ttest_anova_setup_state <- function(
   normality_ks = FALSE,
   trend_analysis = FALSE,
   post_hoc_method = NULL,
+  nonparametric_post_hoc_method = NULL,
   post_hoc = FALSE,
   ordered_significance = FALSE,
-  effect_size = FALSE
+  effect_size = TRUE
 ) {
   selected <- as.character(selected_names %||% character(0))
   dependent_variables <- intersect(as.character(dependent_variables %||% character(0)), selected)
@@ -85,6 +86,14 @@ ttest_anova_setup_state <- function(
   if (!current_post_hoc %in% unname(post_hoc_choices)) {
     current_post_hoc <- "scheffe"
   }
+  nonparametric_post_hoc_choices <- c(
+    "Bonferroni correction" = "bonferroni",
+    "Holm Bonferroni" = "holm"
+  )
+  current_nonparametric_post_hoc <- as.character(nonparametric_post_hoc_method %||% "bonferroni")
+  if (!current_nonparametric_post_hoc %in% unname(nonparametric_post_hoc_choices)) {
+    current_nonparametric_post_hoc <- "bonferroni"
+  }
 
   list(
     available = available,
@@ -113,6 +122,8 @@ ttest_anova_setup_state <- function(
     trend_analysis = isTRUE(trend_analysis),
     post_hoc_choices = post_hoc_choices,
     post_hoc_method = current_post_hoc,
+    nonparametric_post_hoc_choices = nonparametric_post_hoc_choices,
+    nonparametric_post_hoc_method = current_nonparametric_post_hoc,
     post_hoc = isTRUE(post_hoc),
     ordered_significance = isTRUE(ordered_significance),
     effect_size = isTRUE(effect_size),
@@ -287,16 +298,24 @@ ttest_anova_setup_panel <- function(state) {
         div(
           class = "analysis-option-group analysis-radio-group",
           div(class = "analysis-option-title", "Post-hoc"),
+          checkboxInput(
+            "ttest_anova_ordered_significance",
+            "Ordered significance notation",
+            value = state$ordered_significance
+          ),
+          div(class = "analysis-option-subtitle", "ANOVA"),
           radioButtons(
             "ttest_anova_post_hoc_method",
             label = NULL,
             choices = state$post_hoc_choices,
             selected = state$post_hoc_method
           ),
-          checkboxInput(
-            "ttest_anova_ordered_significance",
-            "Ordered significance notation",
-            value = state$ordered_significance
+          div(class = "analysis-option-subtitle", "Nonparametric"),
+          radioButtons(
+            "ttest_anova_nonparametric_post_hoc_method",
+            label = NULL,
+            choices = state$nonparametric_post_hoc_choices,
+            selected = state$nonparametric_post_hoc_method
           )
         ),
         analysis_option_group(

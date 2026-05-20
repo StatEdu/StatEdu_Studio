@@ -59,6 +59,7 @@ app_module_files <- c(
   "analysis_ttest_anova.R",
   "analysis_regression.R",
   "analysis_logistic.R",
+  "data_editor_recode.R",
   "data_editor_ui.R",
   "calculator_hint8.R",
   "calculator_metabolic.R",

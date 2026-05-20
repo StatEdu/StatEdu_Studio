@@ -58,11 +58,11 @@ register_reliability_handlers <- function(
       active_factor = active_reliability_factor(),
       selected_available = isolate(input$reliability_available),
       selected_selected = isolate(input$reliability_selected),
-      normality = input$reliability_normality,
-      ordinal = input$reliability_ordinal,
+      normality = input$reliability_normality %||% TRUE,
+      ordinal = input$reliability_ordinal %||% TRUE,
       subfactor_enabled = input$reliability_subfactor_enabled,
-      reliability_if_deleted = input$reliability_if_deleted,
-      item_total_correlation = input$reliability_item_total_correlation
+      reliability_if_deleted = input$reliability_if_deleted %||% TRUE,
+      item_total_correlation = input$reliability_item_total_correlation %||% TRUE
     )
   })
 

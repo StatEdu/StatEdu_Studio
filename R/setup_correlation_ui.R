@@ -7,13 +7,13 @@ correlation_setup_state <- function(
   labels = character(0),
   selected_available = character(0),
   selected_selected = character(0),
-  normality = FALSE,
+  normality = TRUE,
   latent_correlations = FALSE,
-  reason = FALSE,
+  reason = TRUE,
   p_ci = TRUE,
   significance_levels = TRUE,
-  scatter_plot = FALSE,
-  matrix_plot = FALSE
+  scatter_plot = TRUE,
+  matrix_plot = TRUE
 ) {
   selected <- as.character(selected_names %||% character(0))
   correlation_variables <- intersect(as.character(correlation_variables %||% character(0)), selected)

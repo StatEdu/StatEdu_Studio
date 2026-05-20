@@ -276,14 +276,18 @@ ttest_games_howell_pairwise <- function(values, groups) {
   matrix_out
 }
 
-ttest_nonparametric_pairwise <- function(values, groups) {
+ttest_nonparametric_pairwise <- function(values, groups, method = "bonferroni") {
   data <- data.frame(y = as.numeric(values), g = as.factor(groups))
   data <- data[stats::complete.cases(data), , drop = FALSE]
   levels <- levels(data$g)
   k <- length(levels)
   matrix_out <- matrix(1, nrow = k, ncol = k, dimnames = list(levels, levels))
   if (k < 2) return(matrix_out)
-  pairwise <- stats::pairwise.wilcox.test(data$y, data$g, p.adjust.method = "bonferroni", exact = FALSE)
+  method <- tolower(method %||% "bonferroni")
+  if (!method %in% c("bonferroni", "holm")) {
+    method <- "bonferroni"
+  }
+  pairwise <- stats::pairwise.wilcox.test(data$y, data$g, p.adjust.method = method, exact = FALSE)
   if (is.matrix(pairwise$p.value)) {
     for (row in rownames(pairwise$p.value)) {
       for (col in colnames(pairwise$p.value)) {
@@ -912,8 +916,13 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
     analysis <- "Kruskal-Wallis test"
     test_type <- "kw"
     if (!is.na(p_value) && p_value < .05) {
-      posthoc_label <- "Pairwise Wilcoxon rank-sum test with Bonferroni correction"
-      p_matrix <- ttest_nonparametric_pairwise(values, groups)
+      method <- tolower(options$nonparametric_post_hoc_method %||% "bonferroni")
+      if (!method %in% c("bonferroni", "holm")) {
+        method <- "bonferroni"
+      }
+      correction_label <- if (identical(method, "holm")) "Holm Bonferroni" else "Bonferroni correction"
+      posthoc_label <- sprintf("Pairwise Wilcoxon rank-sum test with %s", correction_label)
+      p_matrix <- ttest_nonparametric_pairwise(values, groups, method)
       letters <- ttest_group_letters(values, groups, p_matrix, ordered = FALSE)
     }
   }

@@ -33,15 +33,16 @@ register_ttest_anova_handlers <- function(
   dependent_variables <- reactiveVal(character(0))
   factor_variables <- reactiveVal(character(0))
   active_ttest_list <- reactiveVal(NULL)
-  normality_enabled_value <- reactiveVal(FALSE)
+  normality_enabled_value <- reactiveVal(TRUE)
   normality_study_type_value <- reactiveVal("survey")
   normality_survey_method_value <- reactiveVal("skew_kurtosis")
   normality_experimental_method_value <- reactiveVal("sw")
   normality_method_value <- reactiveVal("skew_kurtosis")
   post_hoc_method_value <- reactiveVal("scheffe")
+  nonparametric_post_hoc_method_value <- reactiveVal("bonferroni")
   trend_analysis_value <- reactiveVal(FALSE)
   ordered_significance_value <- reactiveVal(FALSE)
-  effect_size_value <- reactiveVal(FALSE)
+  effect_size_value <- reactiveVal(TRUE)
 
   current_selected <- reactive({
     as.character(selected_names_fn() %||% character(0))
@@ -74,6 +75,7 @@ register_ttest_anova_handlers <- function(
         normality_experimental_method = isolate(normality_experimental_method_value()),
         trend_analysis = isolate(trend_analysis_value()),
         post_hoc_method = isolate(post_hoc_method_value()),
+        nonparametric_post_hoc_method = isolate(nonparametric_post_hoc_method_value()),
         ordered_significance = isolate(ordered_significance_value()),
         effect_size = isolate(effect_size_value())
       )
@@ -143,6 +145,14 @@ register_ttest_anova_handlers <- function(
   observeEvent(input$ttest_anova_post_hoc_method, {
     value <- input$ttest_anova_post_hoc_method %||% "scheffe"
     post_hoc_method_value(value)
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$ttest_anova_nonparametric_post_hoc_method, {
+    value <- input$ttest_anova_nonparametric_post_hoc_method %||% "bonferroni"
+    if (!value %in% c("bonferroni", "holm")) {
+      value <- "bonferroni"
+    }
+    nonparametric_post_hoc_method_value(value)
   }, ignoreInit = TRUE)
 
   observeEvent(input$ttest_anova_trend_analysis, {
@@ -328,6 +338,10 @@ register_ttest_anova_handlers <- function(
       normality_method <- "sw"
     }
     post_hoc_method <- post_hoc_method_value() %||% "scheffe"
+    nonparametric_post_hoc_method <- nonparametric_post_hoc_method_value() %||% "bonferroni"
+    if (!nonparametric_post_hoc_method %in% c("bonferroni", "holm")) {
+      nonparametric_post_hoc_method <- "bonferroni"
+    }
     options <- list(
         normality_enabled = normality_enabled,
         normality_study_type = normality_study_type,
@@ -338,6 +352,7 @@ register_ttest_anova_handlers <- function(
         trend_analysis = isTRUE(trend_analysis_value()),
         post_hoc = TRUE,
         post_hoc_method = post_hoc_method,
+        nonparametric_post_hoc_method = nonparametric_post_hoc_method,
         ordered_significance = isTRUE(ordered_significance_value()),
         effect_size = isTRUE(effect_size_value())
       )
