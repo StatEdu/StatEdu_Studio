@@ -99,9 +99,12 @@ metabolic_severity_calculator_tab_panel <- function() {
         div(class = "load-message", textOutput("mbss_loaded_message")),
         uiOutput("mbss_calculator_setup"),
         div(
-          class = "analysis-action-row metabolic-action-row",
-          actionButton("run_mbss_calculator", "Calculate", class = "btn btn-primary"),
-          downloadButton("download_mbss_calculator", "Download CSV", class = "btn btn-default")
+          class = "analysis-action-row calculator-action-row",
+          div(
+            class = "calculator-action-row-controls",
+            actionButton("run_mbss_calculator", "Calculate", class = "btn btn-primary"),
+            downloadButton("download_mbss_calculator", "Download CSV", class = "btn btn-default")
+          )
         ),
         uiOutput("mbss_calculator_summary"),
         DT::DTOutput("mbss_calculator_preview")
@@ -123,7 +126,7 @@ metabolic_severity_setup_ui <- function(file, data, variable_info, input) {
       paste0("mbss_", id),
       specs$label[[index]],
       choices = c("Select variable" = "", choices),
-      selected = input[[paste0("mbss_", id)]] %||% "",
+      selected = isolate(input[[paste0("mbss_", id)]]) %||% "",
       width = "100%"
     )
   })
@@ -133,7 +136,7 @@ metabolic_severity_setup_ui <- function(file, data, variable_info, input) {
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
       analysis_field_label_tag("Variables"),
-      analysis_transfer_listbox_input("mbss_available", available_items, selected = isolate(input$mbss_available), size = 19)
+      analysis_transfer_listbox_input("mbss_available", available_items, selected = isolate(input$mbss_available), size = 17)
     ),
     div(class = "analysis-transfer-controls hint8-transfer-spacer"),
     div(
@@ -178,7 +181,8 @@ register_metabolic_severity_calculator_handlers <- function(input, output, sessi
   })
 
   observeEvent(input$mbss_available, {
-    picked <- as.character(input$mbss_available %||% "")
+    picked <- utils::tail(as.character(input$mbss_available %||% ""), 1)
+    picked <- if (length(picked) > 0) picked[[1]] else ""
     if (!nzchar(picked)) return()
     selected <- metabolic_severity_selected_variables(input)
     if (picked %in% selected) return()
@@ -207,14 +211,14 @@ register_metabolic_severity_calculator_handlers <- function(input, output, sessi
 
   output$mbss_calculator_summary <- renderUI({
     data <- result()
-    if (is.null(data)) return(div(class = "empty-message", div("Select variables and click Calculate.")))
+    if (is.null(data)) return(NULL)
     div(class = "empty-message", div(sprintf("Calculated MBSS_overall and MBSS for %s rows. The variables are available in analysis menus.", nrow(data))))
   })
 
   output$mbss_calculator_preview <- DT::renderDT({
     data <- result()
     if (is.null(data)) {
-      return(DT::datatable(data.frame(Message = "No metabolic severity result yet.", stringsAsFactors = FALSE), rownames = FALSE, options = list(dom = "t", paging = FALSE, ordering = FALSE)))
+      return(NULL)
     }
     selected <- metabolic_severity_selected_variables(input)
     preview_names <- intersect(c(unname(selected), "MBSS_overall", "MBSS"), names(data))

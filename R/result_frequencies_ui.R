@@ -118,12 +118,12 @@ frequency_combined_table <- function(result, options) {
 
 frequencies_results_ui <- function(result) {
   if (is.null(result)) {
-    return(div(class = "empty-message regression-results-empty", "Move variables and click Run analysis."))
+    return(NULL)
   }
   options <- result$options %||% list(n_percent = TRUE, mean_sd = TRUE)
   table <- frequency_combined_table(result, options)
   if (is.null(table) || nrow(table) == 0) {
-    return(div(class = "empty-message regression-results-empty", "No frequency/descriptive results to show."))
+    return(NULL)
   }
   div(
     class = "result-section frequencies-result-section regression-result-panel",

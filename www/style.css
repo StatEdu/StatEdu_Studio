@@ -540,6 +540,11 @@ body {
   min-height: 506px;
 }
 
+.recode-different-options {
+  grid-column: 5;
+  min-height: 506px;
+}
+
 .recode-rule-table {
   width: 100%;
   border-collapse: collapse;
@@ -565,13 +570,98 @@ body {
   padding: 4px 8px;
 }
 
+.recode-reverse-options {
+  margin-top: 12px;
+}
+
+.recode-reverse-options .analysis-option-title {
+  margin-bottom: 8px;
+}
+
+.recode-reverse-range {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.recode-reverse-range .form-group {
+  margin-bottom: 6px;
+}
+
+.recode-reverse-range .form-control {
+  height: 30px;
+  padding: 4px 8px;
+}
+
+.recode-reverse-options .checkbox {
+  margin-top: 4px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.recode-reverse-button {
+  width: 100%;
+}
+
+.recode-observed-range {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: #334e68;
+  font-size: 13px;
+}
+
+.recode-auto-options {
+  margin-top: 0;
+}
+
+.recode-auto-options .analysis-option-title,
+.recode-new-name-options .analysis-option-title {
+  margin-bottom: 12px;
+}
+
+.recode-auto-options .form-group,
+.recode-new-name-options .form-group {
+  margin-bottom: 8px;
+}
+
+.recode-new-name-options {
+  margin-top: 26px;
+}
+
+.recode-auto-options .radio {
+  margin-top: 8px;
+  margin-bottom: 12px;
+}
+
+.recode-auto-options .radio:last-child {
+  margin-bottom: 22px;
+}
+
+.recode-auto-options .recode-observed-range {
+  margin-top: 16px;
+  margin-bottom: 14px;
+}
+
+.recode-auto-options .recode-reverse-range {
+  margin-top: 12px;
+}
+
+.recode-help-text {
+  color: #6b7c8f;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .recode-same-action-row {
   display: grid;
   grid-template-columns: 326px 50px 326px 20px 310px;
   gap: 18px;
   align-items: center;
-  width: 1140px;
-  min-width: 1140px;
+  width: 1176px;
+  min-width: 1176px;
 }
 
 .recode-same-action-row > .btn {
@@ -582,13 +672,15 @@ body {
   min-width: 300px;
 }
 
-.recode-same-action-row > #recode_same_reset_control {
+.recode-same-action-row > [id$="_reset_control"] {
   grid-column: 3;
   justify-self: start;
   margin-left: 30px;
+  width: 300px;
+  min-width: 300px;
 }
 
-.recode-same-action-row > #recode_same_reset_control .analysis-reset-button {
+.recode-same-action-row > [id$="_reset_control"] .analysis-reset-button {
   width: 300px;
   min-width: 300px;
 }
@@ -1092,6 +1184,10 @@ input.variable-select:disabled {
   margin-bottom: 7px;
 }
 
+.crosstab-split-count-option {
+  margin-top: 11px;
+}
+
 .crosstab-rule-summary {
   margin-top: 10px;
   padding: 8px 10px;
@@ -1280,6 +1376,42 @@ input.variable-select:disabled {
   margin-top: 26px;
   padding-top: 0;
   border-top: 0;
+}
+
+.calculator-action-row {
+  display: grid;
+  grid-template-columns: 326px 50px 326px 20px 310px;
+  gap: 18px;
+  align-items: center;
+  width: 1176px;
+  min-width: 1176px;
+  margin-top: 16px;
+}
+
+.calculator-action-row-controls {
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 300px;
+  min-width: 300px;
+  margin-left: 30px;
+}
+
+.calculator-action-row-controls .btn {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 36px;
+}
+
+.easyflow-empty-setup-grid .analysis-transfer-listbox {
+  background: #fff;
+}
+
+.empty-setup-message {
+  color: #334e68;
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 .analysis-workspace-heading {
@@ -1574,12 +1706,103 @@ input.variable-select:disabled {
   box-sizing: border-box;
 }
 
+.step3-action-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.data-editor-result-output,
+.coding-error-output {
+  width: 1140px;
+  max-width: 1140px;
+  margin-top: 18px;
+  box-sizing: border-box;
+  overflow-x: auto;
+}
+
+.data-editor-result-output:empty,
+.variable-calculation-reliability-output:empty {
+  display: none;
+}
+
+.variable-calculation-reliability-options {
+  margin-top: 34px;
+}
+
+.variable-calculation-reliability-options .analysis-option-title {
+  margin-bottom: 8px;
+}
+
+.coding-error-output-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: -35px;
+  pointer-events: none;
+}
+
+.coding-error-output-actions > .btn {
+  width: 220px;
+  pointer-events: auto;
+}
+
+.data-editor-result-output .dataTables_wrapper,
+.coding-error-output .dataTables_wrapper {
+  width: 100%;
+  max-width: 100%;
+}
+
+.coding-error-output .dataTables_filter {
+  float: left !important;
+  text-align: left !important;
+  margin-bottom: 8px;
+}
+
+.coding-error-output .dataTables_filter input {
+  width: 220px;
+  margin-left: 6px;
+}
+
+.data-editor-result-output table.dataTable,
+.coding-error-output table.dataTable {
+  width: 100% !important;
+  table-layout: fixed;
+}
+
+.data-editor-result-output table.dataTable th,
+.data-editor-result-output table.dataTable td,
+.coding-error-output table.dataTable th,
+.coding-error-output table.dataTable td {
+  white-space: normal;
+  word-break: break-word;
+}
+
+.coding-error-fix-input {
+  width: 88px;
+  max-width: 100%;
+  height: 30px;
+  padding: 4px 8px;
+}
+
+.coding-error-fix-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 160px;
+}
+
+.coding-error-row-apply {
+  height: 30px;
+  padding: 4px 8px;
+  line-height: 1.2;
+}
+
 .ttest-anova-options .analysis-option-title {
   margin-bottom: 0;
 }
 
 .ttest-anova-options .analysis-option-subtitle {
-  margin: 4px 0 5px 18px;
+  margin: 4px 0 8px 18px;
   color: #002b50;
   font-size: 14px;
   font-weight: 400;
@@ -1597,6 +1820,11 @@ input.variable-select:disabled {
 
 .ttest-anova-options .analysis-radio-group > .checkbox {
   margin-left: 0;
+}
+
+.ttest-anova-ordered-significance-option .form-group {
+  margin-left: 0 !important;
+  margin-bottom: 3px;
 }
 
 .ttest-anova-options .analysis-radio-group > .form-group .radio {

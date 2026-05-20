@@ -1086,7 +1086,7 @@ prepare_ttest_anova_results <- function(
 
 ttest_anova_results_ui <- function(result) {
   if (is.null(result)) {
-    return(empty_message("Move variables and click Run analysis."))
+    return(NULL)
   }
   if (!is.null(result$error)) {
     return(tags$div(class = "analysis-error", result$error))

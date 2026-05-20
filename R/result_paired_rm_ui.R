@@ -214,7 +214,7 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
 
 paired_rm_results_ui <- function(result) {
   if (is.null(result)) {
-    return(empty_message("Move three or more repeated-measures variables and click Run analysis."))
+    return(NULL)
   }
   if (is.list(result) && !is.null(result$error)) {
     return(empty_message(result$error))

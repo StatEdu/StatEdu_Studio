@@ -374,7 +374,7 @@ register_ttest_anova_handlers <- function(
   output$ttest_anova_results <- renderUI({
     result <- ttest_anova_result()
     if (is.null(result)) {
-      return(empty_message("Move variables and click Run analysis."))
+      return(NULL)
     }
     ttest_anova_results_ui(result)
   })

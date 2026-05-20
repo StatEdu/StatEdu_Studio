@@ -104,18 +104,12 @@ register_regression_results_output <- function(
 ) {
   output$regression_results <- renderUI({
     if (is.null(input$run) || input$run == 0) {
-      return(div(
-        class = "empty-message regression-results-empty",
-        "Click Run regression to fit the model."
-      ))
+      return(NULL)
     }
 
     results <- tryCatch(analyses_fn(), error = function(e) NULL)
     if (is.null(results)) {
-      return(div(
-        class = "empty-message regression-results-empty",
-        "Click Run regression to fit the model."
-      ))
+      return(NULL)
     }
     tagList(
       regression_results_panel(
@@ -155,18 +149,12 @@ register_hierarchical_results_output <- function(
 ) {
   output$hierarchical_results <- renderUI({
     if (is.null(input$run_hierarchical) || input$run_hierarchical == 0) {
-      return(div(
-        class = "empty-message regression-results-empty",
-        "Click Run regression to fit the model."
-      ))
+      return(NULL)
     }
 
     results <- tryCatch(analyses_fn(), error = function(e) NULL)
     if (is.null(results)) {
-      return(div(
-        class = "empty-message regression-results-empty",
-        "Click Run regression to fit the model."
-      ))
+      return(NULL)
     }
     if (!regression_results_are_hierarchical(results)) {
       return(tagList(

@@ -302,7 +302,7 @@ reliability_html_table <- function(table, min_width = 360) {
 
 reliability_results_ui <- function(result) {
   if (is.null(result)) {
-    return(empty_message("Move items and click Run analysis."))
+    return(NULL)
   }
   if (identical(result$type %||% "", "reliability_factors")) {
     overview <- reliability_factor_overview_table(result)

@@ -148,9 +148,12 @@ hint8_calculator_tab_panel <- function() {
         div(class = "load-message", textOutput("hint8_loaded_message")),
         uiOutput("hint8_calculator_setup"),
         div(
-          class = "analysis-action-row hint8-action-row",
-          actionButton("run_hint8_calculator", "Calculate", class = "btn btn-primary"),
-          downloadButton("download_hint8_calculator", "Download CSV", class = "btn btn-default")
+          class = "analysis-action-row calculator-action-row",
+          div(
+            class = "calculator-action-row-controls",
+            actionButton("run_hint8_calculator", "Calculate", class = "btn btn-primary"),
+            downloadButton("download_hint8_calculator", "Download CSV", class = "btn btn-default")
+          )
         ),
         uiOutput("hint8_calculator_summary"),
         DT::DTOutput("hint8_calculator_preview")
@@ -236,7 +239,7 @@ hint8_calculator_setup_ui <- function(file, data, variable_info, input) {
       specs$id[[index]],
       specs$label[[index]],
       choices,
-      selected = input[[specs$id[[index]]]] %||% ""
+      selected = isolate(input[[specs$id[[index]]]]) %||% ""
     )
   })
 
@@ -245,7 +248,7 @@ hint8_calculator_setup_ui <- function(file, data, variable_info, input) {
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
       analysis_field_label_tag("Variables"),
-      analysis_transfer_listbox_input("hint8_available", available_items, selected = isolate(input$hint8_available), size = 19)
+      analysis_transfer_listbox_input("hint8_available", available_items, selected = isolate(input$hint8_available), size = 17)
     ),
     div(class = "analysis-transfer-controls hint8-transfer-spacer"),
     div(
@@ -298,7 +301,8 @@ register_hint8_calculator_handlers <- function(
   })
 
   observeEvent(input$hint8_available, {
-    picked <- as.character(input$hint8_available %||% "")
+    picked <- utils::tail(as.character(input$hint8_available %||% ""), 1)
+    picked <- if (length(picked) > 0) picked[[1]] else ""
     if (!nzchar(picked)) {
       return()
     }
@@ -345,7 +349,7 @@ register_hint8_calculator_handlers <- function(
   output$hint8_calculator_summary <- renderUI({
     data <- result()
     if (is.null(data)) {
-      return(div(class = "empty-message", div("Select variables and click Calculate.")))
+      return(NULL)
     }
     score <- data[["hint8_score"]]
     div(
@@ -362,11 +366,7 @@ register_hint8_calculator_handlers <- function(
   output$hint8_calculator_preview <- DT::renderDT({
     data <- result()
     if (is.null(data)) {
-      return(DT::datatable(
-        data.frame(Message = "No HINT8 result yet.", stringsAsFactors = FALSE),
-        rownames = FALSE,
-        options = list(dom = "t", paging = FALSE, ordering = FALSE)
-      ))
+      return(NULL)
     }
     selected <- hint8_selected_variables(input)
     preview_names <- intersect(c(selected, "hint8_score"), names(data))

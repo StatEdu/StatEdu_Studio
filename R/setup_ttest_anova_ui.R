@@ -298,10 +298,13 @@ ttest_anova_setup_panel <- function(state) {
         div(
           class = "analysis-option-group analysis-radio-group",
           div(class = "analysis-option-title", "Post-hoc"),
-          checkboxInput(
-            "ttest_anova_ordered_significance",
-            "Ordered significance notation",
-            value = state$ordered_significance
+          div(
+            class = "ttest-anova-ordered-significance-option",
+            checkboxInput(
+              "ttest_anova_ordered_significance",
+              "Ordered significance notation",
+              value = state$ordered_significance
+            )
           ),
           div(class = "analysis-option-subtitle", "ANOVA"),
           radioButtons(

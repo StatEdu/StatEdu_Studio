@@ -268,10 +268,31 @@ generalized_tab_panel <- function(title = "Generalized") {
 }
 
 setup_empty_message <- function(message) {
-  tagList(
+  div(
+    class = "frequencies-setup-grid easyflow-empty-setup-grid",
     div(
-      class = "empty-message",
-      div(message)
+      class = "analysis-transfer-column analysis-transfer-panel",
+      analysis_field_label_tag("Variables"),
+      tags$select(class = "analysis-transfer-listbox form-control", multiple = NA, size = 19)
+    ),
+    div(
+      class = "analysis-transfer-controls",
+      tags$button(type = "button", class = "btn btn-default analysis-move-button", disabled = NA, ">")
+    ),
+    div(
+      class = "analysis-transfer-column analysis-transfer-panel",
+      analysis_field_label_tag("Selected Variables"),
+      tags$select(class = "analysis-transfer-listbox form-control", multiple = NA, size = 19),
+      div(
+        class = "dependent-order-actions",
+        tags$button(type = "button", class = "btn btn-default btn-sm", disabled = NA, "Up"),
+        tags$button(type = "button", class = "btn btn-default btn-sm", disabled = NA, "Down")
+      )
+    ),
+    div(
+      class = "analysis-options-column analysis-options-panel",
+      div(class = "analysis-option-title", "Options"),
+      div(class = "empty-setup-message", message)
     )
   )
 }

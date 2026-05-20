@@ -111,13 +111,15 @@ crosstab_setup_panel <- function(state) {
         choices = c("Survey" = "survey", "Experimental" = "experimental"),
         selected = state$design
       ),
-      analysis_option_group(
-        "Display",
-        list(
-          list(id = "crosstab_row_percent", label = "row %", value = state$show_row_percent),
-          list(id = "crosstab_column_percent", label = "column %", value = state$show_column_percent),
-          list(id = "crosstab_total_percent", label = "total %", value = state$show_total_percent),
-          list(id = "crosstab_split_count_percent", label = "separate n and %", value = state$split_count_percent)
+      div(
+        class = "analysis-option-group crosstab-display-options",
+        div(class = "analysis-option-title", "Display"),
+        checkboxInput("crosstab_row_percent", "row %", value = state$show_row_percent),
+        checkboxInput("crosstab_column_percent", "column %", value = state$show_column_percent),
+        checkboxInput("crosstab_total_percent", "total %", value = state$show_total_percent),
+        div(
+          class = "crosstab-split-count-option",
+          checkboxInput("crosstab_split_count_percent", "separate n and %", value = state$split_count_percent)
         )
       ),
       analysis_option_group(

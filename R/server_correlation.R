@@ -160,7 +160,7 @@ register_correlation_handlers <- function(
   output$correlation_results <- renderUI({
     result <- correlation_result()
     if (is.null(result)) {
-      return(empty_message("Move variables and click Run analysis."))
+      return(NULL)
     }
     correlation_results_ui(result)
   })

@@ -93,10 +93,11 @@ role_assignment_validation <- function(dependent = character(0), independent = c
 variable_selection_state <- function(selected = character(0), available = character(0)) {
   selected <- as.character(selected %||% character(0))
   available <- as.character(available %||% character(0))
+  selected <- selected[selected %in% available]
   if (length(selected) == 0) {
     return(list(ok = FALSE, selected = character(0), message = "Select at least one variable to keep."))
   }
-  list(ok = TRUE, selected = selected[selected %in% available], message = NULL)
+  list(ok = TRUE, selected = selected, message = NULL)
 }
 
 dependent_variable_candidates <- function(dependent = character(0), selected = character(0)) {

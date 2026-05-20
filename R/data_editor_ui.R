@@ -26,14 +26,25 @@ data_editor_same_variable_tab_panel <- function() {
 
 data_editor_different_variable_tab_panel <- function() {
   tabPanel(
-    "Recode different variable",
+    "Auto reverse coding",
     value = "data_editor_recode_different",
-    data_editor_command_panel(
-      "Recode into Different Variables",
-      "Create new variables from recoded values while preserving the original variables.",
-      "Different-variable recoding",
-      "This command will create new recoded variables from selected source variables."
-    )
+    data_editor_different_variable_panel()
+  )
+}
+
+data_editor_coding_error_check_tab_panel <- function() {
+  tabPanel(
+    "Coding error check",
+    value = "data_editor_coding_error_check",
+    data_editor_coding_error_check_panel()
+  )
+}
+
+data_editor_variable_calculation_tab_panel <- function() {
+  tabPanel(
+    "Auto variable calculation",
+    value = "data_editor_variable_calculation",
+    data_editor_variable_calculation_panel()
   )
 }
 
@@ -54,7 +65,9 @@ data_editor_tab_panel <- function() {
   navbarMenu(
     "Data Editor",
     data_editor_same_variable_tab_panel(),
+    data_editor_coding_error_check_tab_panel(),
     data_editor_different_variable_tab_panel(),
+    data_editor_variable_calculation_tab_panel(),
     data_editor_missing_values_tab_panel()
   )
 }

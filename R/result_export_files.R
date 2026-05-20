@@ -271,6 +271,38 @@ choose_excel_save_path <- function() {
   choose_tk_save_file(default_name, title, ".xlsx", "{{Excel Workbook} {.xlsx}} {{All Files} {*}}")
 }
 
+choose_data_csv_save_path <- function() {
+  default_name <- sprintf("easyflow_statistics_data_%s.csv", format(Sys.time(), "%Y%m%d_%H%M%S"))
+  title <- "Save EasyFlow Statistics Data"
+  if (.Platform$OS.type == "windows") {
+    path <- choose_windows_save_file(default_name, title, "CSV File (*.csv)|*.csv|All Files (*.*)|*.*", "csv")
+    if (is_windows_dialog_cancel(path)) {
+      return(character(0))
+    }
+    if (is_dialog_path(path)) {
+      return(path[[1]])
+    }
+  }
+  if (.Platform$OS.type == "windows") {
+    path <- choose_tk_save_file(default_name, title, ".csv", "{{CSV File} {.csv}} {{All Files} {*}}")
+    if (is_dialog_path(path)) {
+      return(path[[1]])
+    }
+  }
+  if (.Platform$OS.type == "windows") {
+    filters <- matrix(c("CSV File", "*.csv", "All Files", "*.*"), ncol = 2, byrow = TRUE)
+    path <- utils::choose.files(default = default_name, caption = title, multi = FALSE, filters = filters, index = 1)
+    if (is_dialog_path(path)) {
+      return(path[[1]])
+    }
+  }
+  path <- choose_rstudio_save_file(default_name, title, "CSV File (*.csv)")
+  if (is_dialog_path(path)) {
+    return(path[[1]])
+  }
+  choose_tk_save_file(default_name, title, ".csv", "{{CSV File} {.csv}} {{All Files} {*}}")
+}
+
 choose_html_save_path <- function() {
   default_name <- sprintf("easyflow_statistics_results_%s.html", format(Sys.time(), "%Y%m%d_%H%M%S"))
   title <- "Save easyflow_statistics HTML Results"

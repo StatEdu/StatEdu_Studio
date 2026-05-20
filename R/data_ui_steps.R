@@ -155,7 +155,8 @@ data_steps_state <- function(
   selected = character(0),
   dependent = character(0),
   independent = character(0),
-  controls = character(0)
+  controls = character(0),
+  has_calculated_variables = FALSE
 ) {
   has_open_data <- !is.null(file)
   list(
@@ -173,7 +174,8 @@ data_steps_state <- function(
     selected_count = length(selected),
     dependent_count = length(dependent),
     independent_count = length(independent),
-    control_count = length(controls)
+    control_count = length(controls),
+    has_calculated_variables = isTRUE(has_calculated_variables)
   )
 }
 
@@ -192,7 +194,8 @@ data_steps_panel <- function(
   selected_count,
   dependent_count,
   independent_count,
-  control_count
+  control_count,
+  has_calculated_variables = FALSE
 ) {
   step_class <- function(name, enabled = TRUE) {
     paste("step-block", if (identical(step, name)) "is-open" else "is-closed", if (!enabled) "is-disabled" else "")
@@ -245,13 +248,11 @@ data_steps_panel <- function(
         } else if (identical(step, "step2")) {
           tagList(
             div("Check variables to keep, then apply the selection.", class = "step-note"),
-            tags$button(
-              id = "apply_variable_selection_button",
+            actionButton(
+              "apply_variable_selection",
               "Apply variable selection",
-              type = "button",
               class = "btn btn-primary",
-              onmousedown = "window.easyflowFlushVariableTableState && window.easyflowFlushVariableTableState();",
-              onclick = "return window.easyflowApplyVariableSelection ? window.easyflowApplyVariableSelection() : true;"
+              onmousedown = "if(window.easyflowFlushVariableTableState){window.easyflowFlushVariableTableState();}"
             )
           )
         } else {
@@ -266,11 +267,17 @@ data_steps_panel <- function(
         if (identical(step, "step3")) {
           tagList(
             div("Edit value labels for categorical variables. Click Apply labels to update the active session.", class = "step-note"),
-            actionButton(
-              "apply_category_labels_button",
-              "Apply labels",
-              class = "btn btn-primary",
-              onclick = apply_category_labels_inline_js()
+            div(
+              class = "step3-action-row",
+              actionButton(
+                "apply_category_labels_button",
+                "Apply labels",
+                class = "btn btn-primary",
+                onmousedown = "if(window.easyflowApplyCategoryLabels){window.easyflowApplyCategoryLabels();}"
+              ),
+              if (isTRUE(has_calculated_variables)) {
+                actionButton("save_current_data_file", "Save data", class = "btn btn-default")
+              }
             )
           )
         } else {

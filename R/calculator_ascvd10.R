@@ -119,7 +119,14 @@ ascvd10_calculator_tab_panel <- function() {
         h3("ASCVD 10-year risk"),
         div(class = "load-message", textOutput("ascvd10_loaded_message")),
         uiOutput("ascvd10_calculator_setup"),
-        div(class = "analysis-action-row metabolic-action-row", actionButton("run_ascvd10_calculator", "Calculate", class = "btn btn-primary"), downloadButton("download_ascvd10_calculator", "Download CSV", class = "btn btn-default")),
+        div(
+          class = "analysis-action-row calculator-action-row",
+          div(
+            class = "calculator-action-row-controls",
+            actionButton("run_ascvd10_calculator", "Calculate", class = "btn btn-primary"),
+            downloadButton("download_ascvd10_calculator", "Download CSV", class = "btn btn-default")
+          )
+        ),
         uiOutput("ascvd10_calculator_summary"),
         DT::DTOutput("ascvd10_calculator_preview")
       )
@@ -174,11 +181,15 @@ ascvd10_setup_ui <- function(file, data, variable_info, input) {
     id <- specs$id[[index]]
     label <- specs$label[[index]]
     if (!isTRUE(specs$required[[index]])) label <- paste0(label, " (optional)")
-    selectInput(paste0("ascvd10_", id), label, choices = c("Select variable" = "", choices), selected = input[[paste0("ascvd10_", id)]] %||% "", width = "100%")
+    selectInput(paste0("ascvd10_", id), label, choices = c("Select variable" = "", choices), selected = isolate(input[[paste0("ascvd10_", id)]]) %||% "", width = "100%")
   })
   div(
     class = "frequencies-setup-grid metabolic-setup-grid",
-    div(class = "analysis-transfer-column analysis-transfer-panel", analysis_field_label_tag("Variables"), analysis_transfer_listbox_input("ascvd10_available", available_items, selected = isolate(input$ascvd10_available), size = 19)),
+    div(
+      class = "analysis-transfer-column analysis-transfer-panel",
+      analysis_field_label_tag("Variables"),
+      analysis_transfer_listbox_input("ascvd10_available", available_items, selected = isolate(input$ascvd10_available), size = 17)
+    ),
     div(class = "analysis-transfer-controls hint8-transfer-spacer"),
     div(
       class = "analysis-transfer-column analysis-transfer-panel metabolic-target-panel ascvd10-target-panel",
@@ -209,7 +220,8 @@ register_ascvd10_calculator_handlers <- function(input, output, session, dataset
     ascvd10_setup_ui(file, data, if (is.null(file)) NULL else variable_info_fn(), input)
   })
   observeEvent(input$ascvd10_available, {
-    picked <- as.character(input$ascvd10_available %||% "")
+    picked <- utils::tail(as.character(input$ascvd10_available %||% ""), 1)
+    picked <- if (length(picked) > 0) picked[[1]] else ""
     if (!nzchar(picked)) return()
     selected <- ascvd10_selected_variables(input)
     if (picked %in% selected) return()
@@ -233,12 +245,12 @@ register_ascvd10_calculator_handlers <- function(input, output, session, dataset
   }, ignoreInit = TRUE)
   output$ascvd10_calculator_summary <- renderUI({
     data <- result()
-    if (is.null(data)) return(div(class = "empty-message", div("Select variables and click Calculate.")))
+    if (is.null(data)) return(NULL)
     div(class = "empty-message", div(sprintf("Calculated ascvd10_score for %s rows. The variable is available in analysis menus.", nrow(data))))
   })
   output$ascvd10_calculator_preview <- DT::renderDT({
     data <- result()
-    if (is.null(data)) return(DT::datatable(data.frame(Message = "No ASCVD10 result yet.", stringsAsFactors = FALSE), rownames = FALSE, options = list(dom = "t", paging = FALSE, ordering = FALSE)))
+    if (is.null(data)) return(NULL)
     selected <- ascvd10_selected_variables(input)
     preview_names <- intersect(c(unname(selected[nzchar(selected)]), "ascvd10_score"), names(data))
     DT::datatable(utils::head(data[, preview_names, drop = FALSE], 50), rownames = FALSE, filter = "top", options = list(pageLength = 10, scrollX = TRUE))

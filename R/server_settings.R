@@ -58,6 +58,17 @@ loaded_dataset_reset_handler <- function(
   selected_names,
   selection_applied,
   roles_applied,
+  active_role = NULL,
+  filter_names = NULL,
+  dependent_names = NULL,
+  independent_names = NULL,
+  control_names = NULL,
+  dependent_order = NULL,
+  predictor_order = NULL,
+  predictor_order_initialized = NULL,
+  hierarchical_block3_names = NULL,
+  reliability_variables = NULL,
+  frequency_variables = NULL,
   go_data_step,
   set_role_choices
 ) {
@@ -73,9 +84,21 @@ loaded_dataset_reset_handler <- function(
     selected_names(character(0))
     selection_applied(FALSE)
     roles_applied(FALSE)
+    if (is.function(active_role)) active_role("dependent")
+    if (is.function(filter_names)) filter_names(character(0))
+    if (is.function(dependent_names)) dependent_names(character(0))
+    if (is.function(independent_names)) independent_names(character(0))
+    if (is.function(control_names)) control_names(character(0))
+    if (is.function(dependent_order)) dependent_order(character(0))
+    if (is.function(predictor_order)) predictor_order(character(0))
+    if (is.function(predictor_order_initialized)) predictor_order_initialized(FALSE)
+    if (is.function(hierarchical_block3_names)) hierarchical_block3_names(character(0))
+    if (is.function(reliability_variables)) reliability_variables(character(0))
+    if (is.function(frequency_variables)) frequency_variables(character(0))
     go_data_step("step2")
     set_role_choices(character(0))
     update_analysis_choices(session, input, cols)
+    session$sendCustomMessage("easyflow-clear-data-session", list())
     invisible(TRUE)
   }
 }
@@ -180,6 +203,7 @@ register_settings_reset_handler <- function(
     step3_variable_info(NULL)
     calculated_variables(data.frame(check.names = FALSE))
     pending_settings(NULL)
+    session$sendCustomMessage("easyflow-clear-data-session", list())
 
     reset_setup_inputs_fn(session)
     go_data_step_fn("step1")

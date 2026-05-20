@@ -16,10 +16,12 @@ register_data_workspace_outputs <- function(
   control_names_fn,
   data_view_fn,
   active_role_names_fn,
-  available_variable_names_fn
+  available_variable_names_fn,
+  calculated_variables_fn = NULL
 ) {
   output$data_steps <- renderUI({
     file <- current_data_file_fn()
+    calculated <- if (is.function(calculated_variables_fn)) calculated_variables_fn() else NULL
     state <- data_steps_state(
       file = file,
       open_data = if (!is.null(file)) dataset_fn() else NULL,
@@ -32,7 +34,8 @@ register_data_workspace_outputs <- function(
       selected = selected_names_fn(),
       dependent = dependent_names_fn(),
       independent = independent_names_fn(),
-      controls = control_names_fn()
+      controls = control_names_fn(),
+      has_calculated_variables = is.data.frame(calculated) && ncol(calculated) > 0
     )
     do.call(data_steps_panel, state)
   })

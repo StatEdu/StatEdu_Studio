@@ -156,7 +156,7 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
 
 paired_results_ui <- function(result) {
   if (is.null(result)) {
-    return(empty_message("Move repeated-measures variables and click Run analysis."))
+    return(NULL)
   }
   if (!is.null(result$error)) {
     return(empty_message(result$error))

@@ -584,7 +584,14 @@ eq5d_calculator_tab_panel <- function() {
         h3("EQ-5D"),
         div(class = "load-message", textOutput("eq5d_loaded_message")),
         uiOutput("eq5d_calculator_setup"),
-        div(class = "analysis-action-row hint8-action-row", actionButton("run_eq5d_calculator", "Calculate", class = "btn btn-primary"), downloadButton("download_eq5d_calculator", "Download CSV", class = "btn btn-default")),
+        div(
+          class = "analysis-action-row calculator-action-row",
+          div(
+            class = "calculator-action-row-controls",
+            actionButton("run_eq5d_calculator", "Calculate", class = "btn btn-primary"),
+            downloadButton("download_eq5d_calculator", "Download CSV", class = "btn btn-default")
+          )
+        ),
         uiOutput("eq5d_calculator_summary"),
         DT::DTOutput("eq5d_calculator_preview")
       )
@@ -670,11 +677,15 @@ eq5d_setup_ui <- function(file, data, variable_info, input) {
   initial_score <- if (isTRUE(profile_as_one)) 1 else 1 - reference$constant
   variable_inputs <- lapply(seq_len(nrow(specs)), function(index) {
     id <- specs$id[[index]]
-    hint8_item_select_control(id, specs$label[[index]], choices, selected = input[[id]] %||% "")
+    hint8_item_select_control(id, specs$label[[index]], choices, selected = isolate(input[[id]]) %||% "")
   })
   div(
     class = "frequencies-setup-grid metabolic-setup-grid",
-    div(class = "analysis-transfer-column analysis-transfer-panel", analysis_field_label_tag("Variables"), analysis_transfer_listbox_input("eq5d_available", available_items, selected = isolate(input$eq5d_available), size = 19)),
+    div(
+      class = "analysis-transfer-column analysis-transfer-panel",
+      analysis_field_label_tag("Variables"),
+      analysis_transfer_listbox_input("eq5d_available", available_items, selected = isolate(input$eq5d_available), size = 17)
+    ),
     div(class = "analysis-transfer-controls hint8-transfer-spacer"),
     div(
       class = "analysis-transfer-column analysis-transfer-panel metabolic-target-panel eq5d-target-panel",
@@ -727,7 +738,8 @@ register_eq5d_calculator_handlers <- function(input, output, session, dataset_fn
     eq5d_setup_ui(file, data, if (is.null(file)) NULL else variable_info_fn(), input)
   })
   observeEvent(input$eq5d_available, {
-    picked <- as.character(input$eq5d_available %||% "")
+    picked <- utils::tail(as.character(input$eq5d_available %||% ""), 1)
+    picked <- if (length(picked) > 0) picked[[1]] else ""
     if (!nzchar(picked)) return()
     selected <- eq5d_selected_variables(input)
     if (picked %in% selected) return()
@@ -759,12 +771,12 @@ register_eq5d_calculator_handlers <- function(input, output, session, dataset_fn
   }, ignoreInit = TRUE)
   output$eq5d_calculator_summary <- renderUI({
     data <- result()
-    if (is.null(data)) return(div(class = "empty-message", div("Select variables and click Calculate.")))
+    if (is.null(data)) return(NULL)
     div(class = "empty-message", div(sprintf("Calculated eq5d_score for %s rows. The variable is available in analysis menus.", nrow(data))))
   })
   output$eq5d_calculator_preview <- DT::renderDT({
     data <- result()
-    if (is.null(data)) return(DT::datatable(data.frame(Message = "No EQ-5D result yet.", stringsAsFactors = FALSE), rownames = FALSE, options = list(dom = "t", paging = FALSE, ordering = FALSE)))
+    if (is.null(data)) return(NULL)
     selected <- eq5d_selected_variables(input)
     preview_names <- intersect(c(selected, "eq5d_score"), names(data))
     DT::datatable(utils::head(data[, preview_names, drop = FALSE], 50), rownames = FALSE, filter = "top", options = list(pageLength = 10, scrollX = TRUE))

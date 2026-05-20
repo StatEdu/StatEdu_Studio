@@ -590,7 +590,7 @@ hierarchical_export_table <- function(
   summary_labels <- c("F(p)", "R\u00B2(adj. R\u00B2)")
   summary_keys <- c("f", "r2")
   if (length(group) > 1) {
-    summary_labels <- c(summary_labels, "\u0394R\u00B2(F change p)")
+    summary_labels <- c(summary_labels, attr(summary_values, "delta_label", exact = TRUE) %||% "\u0394R\u00B2(F change p)")
     summary_keys <- c(summary_keys, "delta")
   }
   summary_labels <- c(summary_labels, "d(d\u1D64~4-d\u1D64)", "z(p)", stat_chisq_label(with_p = TRUE))

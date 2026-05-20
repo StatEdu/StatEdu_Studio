@@ -1,6 +1,19 @@
       window.easyflowSettingsDirty = false;
       window.easyflowVarLabels = window.easyflowVarLabels || {};
       window.easyflowMeasurements = window.easyflowMeasurements || {};
+      window.easyflowCodingErrorFixValues = window.easyflowCodingErrorFixValues || {};
+
+      window.easyflowRestoreCodingErrorFixInputs = function(root) {
+        root = root || document;
+        var values = window.easyflowCodingErrorFixValues || {};
+        var inputs = root.querySelectorAll ? root.querySelectorAll('.coding-error-fix-input') : [];
+        Array.prototype.forEach.call(inputs, function(input) {
+          var index = input.getAttribute('data-coding-error-index');
+          if (index && Object.prototype.hasOwnProperty.call(values, index)) {
+            input.value = values[index];
+          }
+        });
+      };
 
       function isEasyflowVisibleElement(element) {
         if (!element || !element.getClientRects) return false;
@@ -8,6 +21,112 @@
         return element.getClientRects().length > 0;
       }
       window.isEasyflowVisibleElement = isEasyflowVisibleElement;
+
+      window.easyflowTransferFallbackSync = function(listbox) {
+        if (!listbox || !listbox.getAttribute) return;
+        var inputId = listbox.getAttribute('data-input-id') || '';
+        var values = Array.prototype.slice.call(listbox.querySelectorAll('.analysis-transfer-option.is-selected'))
+          .map(function(option) { return option.getAttribute('data-value') || ''; })
+          .filter(function(value) { return value !== ''; });
+        var select = inputId ? document.getElementById(inputId) : null;
+        if (select) {
+          Array.prototype.forEach.call(select.options, function(option) {
+            option.selected = values.indexOf(option.value) >= 0;
+          });
+          if (window.jQuery) {
+            window.jQuery(select).trigger('change');
+          } else {
+            select.dispatchEvent(new Event('change', {bubbles: true}));
+          }
+        }
+        if (window.Shiny && inputId) {
+          Shiny.setInputValue(inputId, values, {priority: 'event'});
+          Shiny.setInputValue(inputId + '_active', Date.now() + Math.random(), {priority: 'event'});
+        }
+      };
+
+      window.easyflowTransferFallbackFocus = function(listbox) {
+        if (!listbox) return;
+        window.easyflowFallbackActiveTransferListbox = listbox;
+        if (listbox.focus) {
+          try {
+            listbox.focus({preventScroll: true});
+          } catch (error) {
+            listbox.focus();
+          }
+        }
+      };
+
+      window.easyflowTransferOptionClickFallback = function(event, option) {
+        var listbox = option && option.closest ? option.closest('.analysis-transfer-listbox') : null;
+        if (!listbox) return;
+        window.easyflowTransferFallbackFocus(listbox);
+        var options = Array.prototype.slice.call(listbox.querySelectorAll('.analysis-transfer-option'));
+        var index = options.indexOf(option);
+        var lastIndex = parseInt(listbox.getAttribute('data-last-index') || '-1', 10);
+        if (Number.isNaN(lastIndex)) lastIndex = -1;
+
+        if (event && event.shiftKey && lastIndex >= 0) {
+          var start = Math.min(lastIndex, index);
+          var end = Math.max(lastIndex, index);
+          if (!event.ctrlKey && !event.metaKey) {
+            options.forEach(function(item) {
+              item.classList.remove('is-selected');
+              item.setAttribute('aria-selected', 'false');
+            });
+          }
+          options.slice(start, end + 1).forEach(function(item) {
+            item.classList.add('is-selected');
+            item.setAttribute('aria-selected', 'true');
+          });
+        } else if (event && (event.ctrlKey || event.metaKey)) {
+          var selected = !option.classList.contains('is-selected');
+          option.classList.toggle('is-selected', selected);
+          option.setAttribute('aria-selected', selected ? 'true' : 'false');
+        } else {
+          options.forEach(function(item) {
+            item.classList.remove('is-selected');
+            item.setAttribute('aria-selected', 'false');
+          });
+          option.classList.add('is-selected');
+          option.setAttribute('aria-selected', 'true');
+        }
+        listbox.setAttribute('data-last-index', String(index));
+        window.easyflowTransferFallbackSync(listbox);
+      };
+
+      window.easyflowTransferListboxKeydownFallback = function(event, listbox) {
+        var isSelectAll = (event.ctrlKey || event.metaKey) &&
+          ((event.key || '').toLowerCase() === 'a' || event.code === 'KeyA');
+        if (!isSelectAll || !listbox) return true;
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+        var options = Array.prototype.slice.call(listbox.querySelectorAll('.analysis-transfer-option'));
+        var allSelected = options.length > 0 && options.every(function(option) {
+          return option.classList.contains('is-selected');
+        });
+        options.forEach(function(option) {
+          option.classList.toggle('is-selected', !allSelected);
+          option.setAttribute('aria-selected', !allSelected ? 'true' : 'false');
+        });
+        window.easyflowTransferFallbackSync(listbox);
+        return false;
+      };
+
+      document.addEventListener('keydown', function(event) {
+        var isSelectAll = (event.ctrlKey || event.metaKey) &&
+          ((event.key || '').toLowerCase() === 'a' || event.code === 'KeyA');
+        if (!isSelectAll) return;
+        var listbox = event.target && event.target.closest
+          ? event.target.closest('.analysis-transfer-listbox')
+          : null;
+        if (!listbox && window.easyflowFallbackActiveTransferListbox && document.body.contains(window.easyflowFallbackActiveTransferListbox)) {
+          listbox = window.easyflowFallbackActiveTransferListbox;
+        }
+        if (!listbox || !listbox.querySelector || !listbox.querySelector('.analysis-transfer-option')) return;
+        window.easyflowTransferListboxKeydownFallback(event, listbox);
+      }, true);
 
       function registerEasyflowNestedDropdownMenus() {
         if (!window.jQuery) return;
@@ -43,6 +162,38 @@
       registerEasyflowNestedDropdownMenus();
       document.addEventListener('shiny:connected', registerEasyflowNestedDropdownMenus);
       window.setTimeout(registerEasyflowNestedDropdownMenus, 0);
+
+      function registerEasyflowCodingErrorFixHandler() {
+        if (!window.Shiny || !Shiny.addCustomMessageHandler || window.easyflowCodingErrorFixHandlerRegistered) {
+          return;
+        }
+        window.easyflowCodingErrorFixHandlerRegistered = true;
+        Shiny.addCustomMessageHandler('easyflow-clear-coding-error-fixes', function() {
+          window.easyflowCodingErrorFixValues = {};
+        });
+      }
+
+      registerEasyflowCodingErrorFixHandler();
+      document.addEventListener('shiny:connected', registerEasyflowCodingErrorFixHandler);
+
+      function clearEasyflowClientDataSession() {
+        window.easyflowVarLabels = {};
+        window.easyflowMeasurements = {};
+        window.easyflowSelectedNames = {};
+        window.easyflowCodingErrorFixValues = {};
+        window.easyflowCurrentTableState = null;
+      }
+
+      function registerEasyflowDataSessionHandler() {
+        if (!window.Shiny || !Shiny.addCustomMessageHandler || window.easyflowDataSessionHandlerRegistered) {
+          return;
+        }
+        window.easyflowDataSessionHandlerRegistered = true;
+        Shiny.addCustomMessageHandler('easyflow-clear-data-session', clearEasyflowClientDataSession);
+      }
+
+      registerEasyflowDataSessionHandler();
+      document.addEventListener('shiny:connected', registerEasyflowDataSessionHandler);
 
       window.easyflowSelectVariableIconOption = function(option) {
         if (!option) return;
@@ -415,7 +566,7 @@
       });
 
       document.addEventListener('click', function(event) {
-        var navLink = event.target.closest('.navbar-nav a');
+        var navLink = event.target && event.target.closest ? event.target.closest('.navbar-nav a') : null;
         if (navLink) {
           var activeTopLink = document.querySelector('.navbar-nav > li.active > a');
           var activeTopValue = activeTopLink ? activeTopLink.getAttribute('data-value') : '';
@@ -469,6 +620,11 @@
           Array.prototype.forEach.call(select.options, function(option) {
             option.selected = values.indexOf(option.value) >= 0;
           });
+          if (window.jQuery) {
+            window.jQuery(select).trigger('change');
+          } else {
+            select.dispatchEvent(new Event('change', {bubbles: true}));
+          }
         }
         if (window.Shiny && inputId) {
           Shiny.setInputValue(inputId, values, {priority: 'event'});
@@ -807,7 +963,7 @@
       })();
 
       document.addEventListener('click', function(event) {
-        var button = event.target.closest('.settings-save-button');
+        var button = event.target && event.target.closest ? event.target.closest('.settings-save-button') : null;
         if (!button || !window.Shiny) return;
         event.preventDefault();
         event.stopImmediatePropagation();

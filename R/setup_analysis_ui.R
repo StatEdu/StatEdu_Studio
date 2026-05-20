@@ -59,6 +59,7 @@ analysis_transfer_listbox_input <- function(
   values <- vapply(items, `[[`, character(1), "value")
   labels <- vapply(items, `[[`, character(1), "label")
   selected <- intersect(as.character(selected %||% character(0)), values)
+  # Keep transient listbox selections isolated in renderUI callers; the shared JS restores scroll after Shiny rebinds.
   height_px <- max(4, as.integer(size %||% 14)) * 24 + as.integer(height_offset %||% 0)
   listbox_style <- paste0(
     "height:", height_px, "px", if (isTRUE(important_height)) " !important" else "", ";",
@@ -88,7 +89,13 @@ analysis_transfer_listbox_input <- function(
       tabindex = "0",
       `aria-multiselectable` = "true",
       `data-input-id` = input_id,
-      onkeydown = "return window.easyflowTransferListboxKeydown ? window.easyflowTransferListboxKeydown(event, this) : true;",
+      onkeydown = paste(
+        "if (window.easyflowTransferListboxKeydownFallback) {",
+        "return window.easyflowTransferListboxKeydownFallback(event, this);",
+        "}",
+        "return window.easyflowTransferListboxKeydown ? window.easyflowTransferListboxKeydown(event, this) : true;",
+        sep = ""
+      ),
       style = listbox_style,
       lapply(items, function(item) {
         value <- as.character(item$value)
@@ -98,7 +105,14 @@ analysis_transfer_listbox_input <- function(
           `aria-selected` = if (value %in% selected) "true" else "false",
           `data-value` = value,
           onmousedown = "event.preventDefault();",
-          onclick = "window.easyflowTransferOptionClick && window.easyflowTransferOptionClick(event, this);",
+          onclick = paste(
+            "if (window.easyflowTransferOptionClickFallback) {",
+            "window.easyflowTransferOptionClickFallback(event, this);",
+            "} else if (window.easyflowTransferOptionClick) {",
+            "window.easyflowTransferOptionClick(event, this);",
+            "}",
+            sep = ""
+          ),
           ondblclick = paste(
             "if (window.easyflowTransferOptionDoubleClick) {",
             "window.easyflowTransferOptionDoubleClick(event, this);",

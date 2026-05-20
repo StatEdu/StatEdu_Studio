@@ -176,7 +176,7 @@ correlation_square_plot_size <- function(result, base = 640, per_variable = 26, 
 
 correlation_results_ui <- function(result) {
   if (is.null(result)) {
-    return(empty_message("Move variables and click Run analysis."))
+    return(NULL)
   }
   main_table <- correlation_matrix_display_table(result)
   if (!is.data.frame(main_table) || nrow(main_table) == 0) {

@@ -166,7 +166,14 @@ frs_calculator_tab_panel <- function() {
         h3("Framingham risk score"),
         div(class = "load-message", textOutput("frs_loaded_message")),
         uiOutput("frs_calculator_setup"),
-        div(class = "analysis-action-row metabolic-action-row", actionButton("run_frs_calculator", "Calculate", class = "btn btn-primary"), downloadButton("download_frs_calculator", "Download CSV", class = "btn btn-default")),
+        div(
+          class = "analysis-action-row calculator-action-row",
+          div(
+            class = "calculator-action-row-controls",
+            actionButton("run_frs_calculator", "Calculate", class = "btn btn-primary"),
+            downloadButton("download_frs_calculator", "Download CSV", class = "btn btn-default")
+          )
+        ),
         uiOutput("frs_calculator_summary"),
         DT::DTOutput("frs_calculator_preview")
       )
@@ -181,11 +188,15 @@ frs_setup_ui <- function(file, data, variable_info, input) {
   available_items <- analysis_variable_items(choices, variable_info, character(0))
   variable_inputs <- lapply(seq_len(nrow(specs)), function(index) {
     id <- specs$id[[index]]
-    selectInput(paste0("frs_", id), specs$label[[index]], choices = c("Select variable" = "", choices), selected = input[[paste0("frs_", id)]] %||% "", width = "100%")
+    selectInput(paste0("frs_", id), specs$label[[index]], choices = c("Select variable" = "", choices), selected = isolate(input[[paste0("frs_", id)]]) %||% "", width = "100%")
   })
   div(
     class = "frequencies-setup-grid metabolic-setup-grid",
-    div(class = "analysis-transfer-column analysis-transfer-panel", analysis_field_label_tag("Variables"), analysis_transfer_listbox_input("frs_available", available_items, selected = isolate(input$frs_available), size = 19)),
+    div(
+      class = "analysis-transfer-column analysis-transfer-panel",
+      analysis_field_label_tag("Variables"),
+      analysis_transfer_listbox_input("frs_available", available_items, selected = isolate(input$frs_available), size = 17)
+    ),
     div(class = "analysis-transfer-controls hint8-transfer-spacer"),
       div(class = "analysis-transfer-column analysis-transfer-panel metabolic-target-panel frs-target-panel", analysis_field_label_tag("FRS variables"), div(class = "metabolic-variable-input-grid", variable_inputs)),
     div(
@@ -238,7 +249,8 @@ register_frs_calculator_handlers <- function(input, output, session, dataset_fn,
     frs_setup_ui(file, data, if (is.null(file)) NULL else variable_info_fn(), input)
   })
   observeEvent(input$frs_available, {
-    picked <- as.character(input$frs_available %||% "")
+    picked <- utils::tail(as.character(input$frs_available %||% ""), 1)
+    picked <- if (length(picked) > 0) picked[[1]] else ""
     if (!nzchar(picked)) return()
     selected <- frs_selected_variables(input)
     if (picked %in% selected) return()
@@ -265,12 +277,12 @@ register_frs_calculator_handlers <- function(input, output, session, dataset_fn,
   }, ignoreInit = TRUE)
   output$frs_calculator_summary <- renderUI({
     data <- result()
-    if (is.null(data)) return(div(class = "empty-message", div("Select variables and click Calculate.")))
+    if (is.null(data)) return(NULL)
     div(class = "empty-message", div(sprintf("Calculated FRS outputs for %s rows. The variables are available in analysis menus.", nrow(data))))
   })
   output$frs_calculator_preview <- DT::renderDT({
     data <- result()
-    if (is.null(data)) return(DT::datatable(data.frame(Message = "No FRS result yet.", stringsAsFactors = FALSE), rownames = FALSE, options = list(dom = "t", paging = FALSE, ordering = FALSE)))
+    if (is.null(data)) return(NULL)
     selected <- frs_selected_variables(input)
     preview_names <- intersect(c(unname(selected), "frs_score", "frs_cvd10", "frs_cvd10_group", "frs_heart_age"), names(data))
     DT::datatable(utils::head(data[, preview_names, drop = FALSE], 50), rownames = FALSE, filter = "top", options = list(pageLength = 10, scrollX = TRUE))

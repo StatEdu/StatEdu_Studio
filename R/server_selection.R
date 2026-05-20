@@ -280,9 +280,6 @@ register_selection_apply_observers <- function(
   apply_role_selection_state
 ) {
   observeEvent(input$apply_variable_selection, {
-    if (has_request_nonce(input$apply_variable_request)) {
-      return()
-    }
     apply_variable_selection_state(input$variable_table_state)
   })
 
@@ -291,9 +288,6 @@ register_selection_apply_observers <- function(
   })
 
   observeEvent(input$apply_role_selection, {
-    if (has_request_nonce(input$apply_role_request)) {
-      return()
-    }
     apply_role_selection_state(input$variable_table_state)
   })
 

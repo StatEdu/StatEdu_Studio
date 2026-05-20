@@ -22,4 +22,57 @@ label_rules <- data.frame(old = c("1", "2"), new = c("low", "high"), stringsAsFa
 label_result <- recode_same_values(c(1, 2, 3), label_rules, keep_unmatched = TRUE)
 stopifnot(identical(label_result, c("low", "high", "3")))
 
+reverse_result <- reverse_score_values(c(1, 2, 3, 4, 5, NA), minimum = 1, maximum = 5)
+stopifnot(identical(reverse_result, c(5, 4, 3, 2, 1, NA)))
+
+observed_reverse_result <- reverse_score_values(c(2, 3, 4, NA))
+stopifnot(identical(observed_reverse_result, c(4, 3, 2, NA)))
+
+factor_reverse_result <- reverse_score_values(factor(c("1", "2", "5")), minimum = 1, maximum = 5)
+stopifnot(identical(factor_reverse_result, c(5, 4, 1)))
+
+message("Checking different-variable recoding helpers...")
+sample_data <- data.frame(
+  id = 1:4,
+  q1 = c(1, 2, 3, 5),
+  q2 = c("1", "2.5", "6", "x"),
+  check.names = FALSE
+)
+range_result <- recode_selected_range(sample_data, c("q1", "q2"))
+stopifnot(identical(range_result, c(minimum = 1, maximum = 6)))
+
+issues <- recode_range_issues(sample_data, c("q1", "q2"), minimum = 1, maximum = 5)
+stopifnot(nrow(issues) == 3)
+stopifnot(identical(as.character(issues$Variable), c("q2", "q2", "q2")))
+stopifnot(identical(as.character(issues$Value), c("2.5", "6", "x")))
+
+display_issues <- coding_error_issues_display(issues)
+stopifnot("Corrected value" %in% names(display_issues))
+stopifnot(grepl("coding_error_fix_1", display_issues$`Corrected value`[[1]], fixed = TRUE))
+stopifnot(grepl("coding_error_apply_one", display_issues$`Corrected value`[[1]], fixed = TRUE))
+stopifnot(grepl('tabindex="-1"', display_issues$`Corrected value`[[1]], fixed = TRUE))
+
+stopifnot(identical(recode_new_variable_name("{variable}_R", "q1"), "q1_R"))
+stopifnot(identical(recode_new_variable_name("_rev", "q1", literal = FALSE), "q1_rev"))
+stopifnot(identical(recode_new_variable_name("custom_name", "q1", literal = TRUE), "custom_name"))
+
+message("Checking automatic variable calculation helpers...")
+calculation_data <- data.frame(
+  item1 = c(1, 2, NA, NA),
+  item2 = c(3, 4, 6, NA),
+  item3 = c(5, NA, 8, NA),
+  check.names = FALSE
+)
+calculated <- calculate_variable_outputs(
+  calculation_data,
+  c("item1", "item2", "item3"),
+  c("mean", "sum", "sd", "var"),
+  "scale"
+)
+stopifnot(identical(names(calculated), c("M_scale", "S_scale", "SD_scale", "Var_scale")))
+stopifnot(identical(calculated$M_scale, c(3, 3, 7, NA)))
+stopifnot(identical(calculated$S_scale, c(9, 6, 14, NA)))
+stopifnot(all.equal(calculated$SD_scale, c(2, sqrt(2), sqrt(2), NA), check.attributes = FALSE))
+stopifnot(all.equal(calculated$Var_scale, c(4, 2, 2, NA), check.attributes = FALSE))
+
 message("All data editor recoding validations passed.")

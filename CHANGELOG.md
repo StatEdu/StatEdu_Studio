@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.8.3 - 2026-05-20
+
+### Changed
+
+- Added Data editor workflows for coding error checks, automatic reverse coding, different-variable recoding, and row-wise variable calculation.
+- Added correction apply controls, generated-variable previews, save-data support after variable creation, and validation coverage for recoding and copied CSV / DAT reads.
+- Standardized setup/result layout behavior across Data editor, Calculator, and Analysis menus, including shared button placement and selected-data viewer fallback behavior.
+- Updated analysis option defaults and nonparametric post-hoc controls, including reliability ordinal alpha default handling and t-test / ANOVA spacing refinements.
+- Improved cloud-synced data file handling by copying SAV, CSV, and DAT files to a temporary read location before import.
+- Restored transfer-list multi-selection behavior for Ctrl / Shift / Ctrl+A while preserving stable Shiny input synchronization.
+
+
 ## v0.8.2 - 2026-05-20
 
 ### Changed

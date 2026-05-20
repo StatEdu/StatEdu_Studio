@@ -182,11 +182,82 @@ hierarchical_step_label <- function(result, index) {
   sprintf("Model %s", index)
 }
 
+hierarchical_bootstrap_delta_r2_ci <- function(previous, current, conf = .95) {
+  previous_r2 <- as.numeric(previous$bootstrap_r_squared %||% numeric(0))
+  current_r2 <- as.numeric(current$bootstrap_r_squared %||% numeric(0))
+  count <- min(length(previous_r2), length(current_r2))
+  if (count == 0) {
+    return(c(lower = NA_real_, upper = NA_real_))
+  }
+  delta <- current_r2[seq_len(count)] - previous_r2[seq_len(count)]
+  delta <- delta[is.finite(delta)]
+  if (length(delta) == 0) {
+    return(c(lower = NA_real_, upper = NA_real_))
+  }
+  alpha <- (1 - conf) / 2
+  stats::quantile(delta, probs = c(alpha, 1 - alpha), na.rm = TRUE, names = FALSE)
+}
+
+hierarchical_robust_wald_f_p <- function(previous, current) {
+  if (is.null(previous$model) || is.null(current$model)) {
+    return(NA_real_)
+  }
+  current_terms <- setdiff(colnames(stats::model.matrix(current$model)), "(Intercept)")
+  previous_terms <- setdiff(colnames(stats::model.matrix(previous$model)), "(Intercept)")
+  added_terms <- setdiff(current_terms, previous_terms)
+  if (length(added_terms) == 0) {
+    return(NA_real_)
+  }
+  coefficients <- stats::coef(current$model)
+  term_index <- match(added_terms, names(coefficients))
+  term_index <- term_index[!is.na(term_index)]
+  if (length(term_index) == 0) {
+    return(NA_real_)
+  }
+  vcov_matrix <- tryCatch(sandwich::vcovHC(current$model, type = "HC3"), error = function(e) NULL)
+  if (is.null(vcov_matrix)) {
+    return(NA_real_)
+  }
+  beta <- coefficients[term_index]
+  covariance <- vcov_matrix[term_index, term_index, drop = FALSE]
+  inverse_covariance <- tryCatch(solve(covariance), error = function(e) NULL)
+  if (is.null(inverse_covariance)) {
+    return(NA_real_)
+  }
+  df1 <- length(beta)
+  df2 <- stats::df.residual(current$model)
+  statistic <- as.numeric(t(beta) %*% inverse_covariance %*% beta / df1)
+  if (!is.finite(statistic) || !is.finite(df1) || !is.finite(df2) || df1 <= 0 || df2 <= 0) {
+    return(NA_real_)
+  }
+  stats::pf(statistic, df1, df2, lower.tail = FALSE)
+}
+
 hierarchical_delta_line <- function(previous, current) {
   if (is.null(previous) || is.null(current)) {
     return("")
   }
   delta_r2 <- current$r_squared - previous$r_squared
+  if (isTRUE(previous$use_bootstrap) || isTRUE(current$use_bootstrap)) {
+    ci <- hierarchical_bootstrap_delta_r2_ci(previous, current)
+    if (all(is.finite(ci))) {
+      return(sprintf(
+        "\u0394R\u00B2[95%% CI]=%s[%s, %s]",
+        format_decimal3(delta_r2),
+        format_decimal3(ci[[1]]),
+        format_decimal3(ci[[2]])
+      ))
+    }
+    return(sprintf("\u0394R\u00B2[95%% CI]=%s[pending]", format_decimal3(delta_r2)))
+  }
+  if (isTRUE(previous$use_hc3) || isTRUE(current$use_hc3)) {
+    robust_p <- hierarchical_robust_wald_f_p(previous, current)
+    return(sprintf(
+      "\u0394R\u00B2(Robust Wald F p)=%s(%s)",
+      format_decimal3(delta_r2),
+      format_p(robust_p)
+    ))
+  }
   df1 <- current$f_df1 - previous$f_df1
   df2 <- current$f_df2
   if (!is.finite(delta_r2) || !is.finite(df1) || !is.finite(df2) || df1 <= 0 || df2 <= 0) {
@@ -201,8 +272,18 @@ hierarchical_delta_line <- function(previous, current) {
   )
 }
 
+hierarchical_delta_footer_label <- function(group) {
+  if (any(vapply(group, function(result) isTRUE(result$use_bootstrap), logical(1)))) {
+    return("\u0394R\u00B2(bootstrap 95% CI)")
+  }
+  if (any(vapply(group, function(result) isTRUE(result$use_hc3), logical(1)))) {
+    return("\u0394R\u00B2(Robust Wald F p)")
+  }
+  "\u0394R\u00B2(F change p)"
+}
+
 hierarchical_summary_values <- function(group) {
-  lapply(seq_along(group), function(index) {
+  values <- lapply(seq_along(group), function(index) {
     result <- group[[index]]
     previous <- if (index > 1) group[[index - 1]] else NULL
     list(
@@ -227,6 +308,8 @@ hierarchical_summary_values <- function(group) {
       )
     )
   })
+  attr(values, "delta_label") <- hierarchical_delta_footer_label(group)
+  values
 }
 
 hierarchical_coefficient_note_line <- function(result, show_vif = FALSE, show_sr2 = FALSE, show_f2 = FALSE) {
@@ -237,7 +320,7 @@ hierarchical_coefficient_note_line <- function(result, show_vif = FALSE, show_sr
     if (isTRUE(result$use_bootstrap)) "Boot SE, LLCI, ULCI, and Boot p are bootstrap estimates based on the selected bootstrap resamples and seed number;" else NULL,
     if (isTRUE(show_sr2)) "sr\u00B2 = squared semi-partial correlation, unique R\u00B2 contribution for each coefficient;" else NULL,
     if (isTRUE(show_f2)) "f\u00B2 = sr\u00B2 / (1 - model R\u00B2);" else NULL,
-    "\u0394R\u00B2(F change p) = change in R\u00B2 from the previous model (nested model comparison p-value);",
+    "\u0394R\u00B2(F change p) is shown when OLS assumptions are met; \u0394R\u00B2(Robust Wald F p) is shown for HC3 models; \u0394R\u00B2[95% CI] is shown for bootstrap models;",
     "d(d\u1D64~4-d\u1D64) = Durbin-Watson statistic (upper critical value~4-upper critical value);",
     "z(p) = Lilliefors corrected Kolmogorov-Smirnov residual normality test statistic (p-value);",
     sprintf("%s = Breusch-Pagan homoscedasticity test statistic (p-value)", stat_chisq_label(with_p = TRUE))
@@ -465,7 +548,7 @@ hierarchical_coefficient_html_table <- function(
   )
   if (length(model_tables) > 1) {
     footer_rows <- c(footer_rows, list(
-      hierarchical_footer_row("\u0394R\u00B2(F change p)", lapply(summary_values, `[[`, "delta"), model_columns)
+      hierarchical_footer_row(attr(summary_values, "delta_label", exact = TRUE) %||% "\u0394R\u00B2(F change p)", lapply(summary_values, `[[`, "delta"), model_columns)
     ))
   }
   footer_rows <- c(footer_rows, list(

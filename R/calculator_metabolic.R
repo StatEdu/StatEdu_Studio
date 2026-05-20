@@ -205,9 +205,12 @@ metabolic_calculator_tab_panel <- function() {
         div(class = "load-message", textOutput("metabolic_loaded_message")),
         uiOutput("metabolic_calculator_setup"),
         div(
-          class = "analysis-action-row metabolic-action-row",
-          actionButton("run_metabolic_calculator", "Calculate", class = "btn btn-primary"),
-          downloadButton("download_metabolic_calculator", "Download CSV", class = "btn btn-default")
+          class = "analysis-action-row calculator-action-row",
+          div(
+            class = "calculator-action-row-controls",
+            actionButton("run_metabolic_calculator", "Calculate", class = "btn btn-primary"),
+            downloadButton("download_metabolic_calculator", "Download CSV", class = "btn btn-default")
+          )
         ),
         uiOutput("metabolic_calculator_summary"),
         DT::DTOutput("metabolic_calculator_preview")
@@ -335,7 +338,7 @@ metabolic_calculator_setup_ui <- function(file, data, variable_info, input) {
   available_items <- analysis_variable_items(choices, variable_info, character(0))
   variable_inputs <- lapply(seq_len(nrow(specs)), function(index) {
     id <- specs$id[[index]]
-    metabolic_item_select_control(id, specs$label[[index]], choices, selected = input[[paste0("metabolic_", id)]] %||% "")
+    metabolic_item_select_control(id, specs$label[[index]], choices, selected = isolate(input[[paste0("metabolic_", id)]]) %||% "")
   })
 
   div(
@@ -343,7 +346,7 @@ metabolic_calculator_setup_ui <- function(file, data, variable_info, input) {
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
       analysis_field_label_tag("Variables"),
-      analysis_transfer_listbox_input("metabolic_available", available_items, selected = isolate(input$metabolic_available), size = 19)
+      analysis_transfer_listbox_input("metabolic_available", available_items, selected = isolate(input$metabolic_available), size = 17)
     ),
     div(class = "analysis-transfer-controls hint8-transfer-spacer"),
     div(
@@ -392,7 +395,8 @@ register_metabolic_calculator_handlers <- function(
   })
 
   observeEvent(input$metabolic_available, {
-    picked <- as.character(input$metabolic_available %||% "")
+    picked <- utils::tail(as.character(input$metabolic_available %||% ""), 1)
+    picked <- if (length(picked) > 0) picked[[1]] else ""
     if (!nzchar(picked)) {
       return()
     }
@@ -430,7 +434,7 @@ register_metabolic_calculator_handlers <- function(
   output$metabolic_calculator_summary <- renderUI({
     data <- result()
     if (is.null(data)) {
-      return(div(class = "empty-message", div("Select variables and click Calculate.")))
+      return(NULL)
     }
     g <- data[["metabolic_syndrome"]]
     div(
@@ -447,11 +451,7 @@ register_metabolic_calculator_handlers <- function(
   output$metabolic_calculator_preview <- DT::renderDT({
     data <- result()
     if (is.null(data)) {
-      return(DT::datatable(
-        data.frame(Message = "No metabolic result yet.", stringsAsFactors = FALSE),
-        rownames = FALSE,
-        options = list(dom = "t", paging = FALSE, ordering = FALSE)
-      ))
+      return(NULL)
     }
     selected <- metabolic_selected_variables(input)
     preview_names <- intersect(c(unname(selected), "metabolic_count", "metabolic_syndrome"), names(data))

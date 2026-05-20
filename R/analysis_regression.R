@@ -322,6 +322,7 @@ start_bootstrap_process <- function(job) {
 
       n <- nrow(job$complete_data)
       done <- 0L
+      r_squared <- rep(NA_real_, job$r)
       while (done < job$r) {
         next_done <- min(job$r, done + job$chunk)
         for (row_index in seq.int(done + 1L, next_done)) {
@@ -330,13 +331,14 @@ start_bootstrap_process <- function(job) {
           if (!is.null(fit)) {
             values <- stats::coef(fit)
             samples[row_index, names(values)] <- values
+            r_squared[[row_index]] <- tryCatch(unname(summary(fit)$r.squared), error = function(e) NA_real_)
           }
         }
         done <- next_done
         saveRDS(list(done = done, r = job$r), job$progress_file)
       }
 
-      saveRDS(list(samples = samples), job$result_file)
+      saveRDS(list(samples = samples, r_squared = r_squared), job$result_file)
       TRUE
     },
     args = list(job = job),

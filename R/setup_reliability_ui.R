@@ -10,7 +10,7 @@ reliability_setup_state <- function(
   selected_available = character(0),
   selected_selected = character(0),
   normality = TRUE,
-  ordinal = TRUE,
+  ordinal = FALSE,
   subfactor_enabled = FALSE,
   reliability_if_deleted = TRUE,
   item_total_correlation = TRUE

@@ -477,11 +477,11 @@ crosstab_results_by_column <- function(results) {
 
 crosstab_results_ui <- function(result) {
   if (is.null(result)) {
-    return(div(class = "empty-message regression-results-empty", "Select row and column variables, then click Run analysis."))
+    return(NULL)
   }
   results <- crosstab_result_list(result)
   if (length(results) == 0) {
-    return(div(class = "empty-message regression-results-empty", "Select row and column variables, then click Run analysis."))
+    return(NULL)
   }
 
   div(

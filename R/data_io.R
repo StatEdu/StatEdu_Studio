@@ -73,25 +73,46 @@ read_sav_robust <- function(path) {
   )
 }
 
+copy_data_file_for_reading <- function(path, original_name = path) {
+  source_path <- normalizePath(path, winslash = "/", mustWork = TRUE)
+  extension <- tolower(tools::file_ext(as.character(original_name %||% path)))
+  fileext <- if (nzchar(extension)) paste0(".", extension) else ""
+  tmp_path <- tempfile(pattern = "easyflow_data_", fileext = fileext)
+  copied <- tryCatch(
+    file.copy(source_path, tmp_path, overwrite = TRUE),
+    error = function(e) FALSE
+  )
+  if (!isTRUE(copied) || !file.exists(tmp_path)) {
+    stop(
+      "Could not copy the data file to a local temporary file before reading. ",
+      "Make sure the file is fully synced and not locked by OneDrive, Synology Drive, or another program.",
+      call. = FALSE
+    )
+  }
+  tmp_path
+}
+
 read_input_data <- function(path, original_name, csv_header = TRUE, dat_delimiter = "whitespace", dat_has_names = FALSE) {
   ext <- tolower(tools::file_ext(original_name))
+  read_path <- copy_data_file_for_reading(path, original_name)
+  on.exit(unlink(read_path), add = TRUE)
 
   if (identical(ext, "sav")) {
-    return(read_sav_robust(path))
+    return(read_sav_robust(read_path))
   }
 
   if (identical(ext, "csv")) {
-    return(readr::read_csv(path, col_names = csv_header, show_col_types = FALSE, progress = FALSE))
+    return(readr::read_csv(read_path, col_names = csv_header, show_col_types = FALSE, progress = FALSE))
   }
 
   if (identical(ext, "dat")) {
     if (identical(dat_delimiter, "comma")) {
-      return(readr::read_delim(path, delim = ",", col_names = dat_has_names, show_col_types = FALSE, progress = FALSE))
+      return(readr::read_delim(read_path, delim = ",", col_names = dat_has_names, show_col_types = FALSE, progress = FALSE))
     }
     if (identical(dat_delimiter, "tab")) {
-      return(readr::read_tsv(path, col_names = dat_has_names, show_col_types = FALSE, progress = FALSE))
+      return(readr::read_tsv(read_path, col_names = dat_has_names, show_col_types = FALSE, progress = FALSE))
     }
-    return(readr::read_table(path, col_names = dat_has_names, show_col_types = FALSE, progress = FALSE))
+    return(readr::read_table(read_path, col_names = dat_has_names, show_col_types = FALSE, progress = FALSE))
   }
 
   stop("Unsupported file type: .", ext, call. = FALSE)

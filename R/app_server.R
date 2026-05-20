@@ -230,6 +230,17 @@ create_app_server <- function(app_version) {
     selected_names,
     selection_applied,
     roles_applied,
+    active_role = active_role,
+    filter_names = filter_names,
+    dependent_names = dependent_names,
+    independent_names = independent_names,
+    control_names = control_names,
+    dependent_order = dependent_order,
+    predictor_order = predictor_order,
+    predictor_order_initialized = predictor_order_initialized,
+    hierarchical_block3_names = hierarchical_block3_names,
+    reliability_variables = reliability_variables,
+    frequency_variables = frequency_variables,
     go_data_step,
     set_role_choices
   )
@@ -243,6 +254,32 @@ create_app_server <- function(app_version) {
   )
 
   register_data_input_observers(input, active_data_file, reset_on_dataset_load, mark_settings_dirty)
+
+  observeEvent(input$save_current_data_file, {
+    data <- tryCatch(raw_dataset(), error = function(e) NULL)
+    calculated <- calculated_variables()
+    if (!is.data.frame(data) || nrow(data) == 0 || !is.data.frame(calculated) || ncol(calculated) == 0) {
+      showNotification("There are no generated variables to save.", type = "warning", duration = 5)
+      return()
+    }
+    path <- choose_data_csv_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) {
+      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      return()
+    }
+    if (!grepl("\\.csv$", path, ignore.case = TRUE)) {
+      path <- paste0(path, ".csv")
+    }
+    tryCatch(
+      {
+        readr::write_excel_csv(as.data.frame(data, stringsAsFactors = FALSE, check.names = FALSE), path, na = "")
+        showNotification(sprintf("Data saved: %s", path), type = "message", duration = 6)
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save data:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  }, ignoreInit = TRUE)
 
   table_handlers <- table_state_handlers(
     selection_applied,
@@ -414,7 +451,8 @@ create_app_server <- function(app_version) {
     control_names_fn = control_names,
     data_view_fn = data_view,
     active_role_names_fn = active_role_names,
-    available_variable_names_fn = available_variable_names
+    available_variable_names_fn = available_variable_names,
+    calculated_variables_fn = calculated_variables
   )
 
   analysis_state <- create_analysis_state(session)
@@ -640,6 +678,49 @@ create_app_server <- function(app_version) {
     labels_fn = var_label_overrides,
     category_table_fn = category_label_values,
     update_existing_variable_fn = update_existing_variable,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
+  register_coding_error_check_handlers(
+    input = input,
+    output = output,
+    session = session,
+    dataset_fn = dataset,
+    current_data_file_fn = current_data_file,
+    selected_names_fn = selected_names,
+    variable_info_fn = variable_info_table,
+    labels_fn = var_label_overrides,
+    category_table_fn = category_label_values,
+    update_existing_variable_fn = update_existing_variable,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
+  register_recode_different_handlers(
+    input = input,
+    output = output,
+    session = session,
+    dataset_fn = dataset,
+    current_data_file_fn = current_data_file,
+    selected_names_fn = selected_names,
+    variable_info_fn = variable_info_table,
+    labels_fn = var_label_overrides,
+    category_table_fn = category_label_values,
+    add_calculated_variable_fn = add_calculated_variable,
+    update_existing_variable_fn = update_existing_variable,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
+  register_variable_calculation_handlers(
+    input = input,
+    output = output,
+    session = session,
+    dataset_fn = dataset,
+    current_data_file_fn = current_data_file,
+    selected_names_fn = selected_names,
+    variable_info_fn = variable_info_table,
+    labels_fn = var_label_overrides,
+    category_table_fn = category_label_values,
+    add_calculated_variable_fn = add_calculated_variable,
     mark_settings_dirty = mark_settings_dirty
   )
 

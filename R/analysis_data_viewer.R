@@ -37,6 +37,7 @@ register_analysis_data_viewer_handlers <- function(
   dataset_fn,
   selected_names_fn,
   variables_fn,
+  extra_variables_fn = NULL,
   variable_table_fn,
   labels_fn,
   category_table_fn
@@ -54,10 +55,21 @@ register_analysis_data_viewer_handlers <- function(
   viewer_variables <- reactive({
     data <- dataset_fn()
     data_names <- names(data %||% data.frame())
+    selected_variables <- intersect(as.character(selected_names_fn() %||% character(0)), data_names)
     if (isTRUE(input[[scope_input_id]])) {
-      return(intersect(as.character(selected_names_fn() %||% character(0)), data_names))
+      return(selected_variables)
     }
-    intersect(unique(as.character(variables_fn() %||% character(0))), data_names)
+    variables <- as.character(variables_fn() %||% character(0))
+    extra_variables <- if (is.function(extra_variables_fn)) {
+      as.character(extra_variables_fn() %||% character(0))
+    } else {
+      character(0)
+    }
+    analysis_variables <- intersect(unique(c(variables, extra_variables)), data_names)
+    if (length(analysis_variables) == 0) {
+      return(selected_variables)
+    }
+    analysis_variables
   })
 
   output[[mode_output_id]] <- reactive({
