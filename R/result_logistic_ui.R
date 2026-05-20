@@ -1,14 +1,28 @@
 # Logistic regression result UI.
 
 logistic_format_ci <- function(lower, upper) {
-  sprintf("%s-%s", format_decimal3(lower), format_decimal3(upper))
+  sprintf("%s-%s", logistic_format_number(lower), logistic_format_number(upper))
+}
+
+logistic_format_number <- function(x, threshold = 1e6) {
+  x <- suppressWarnings(as.numeric(x))
+  if (length(x) == 0 || is.na(x)) {
+    return("")
+  }
+  if (!is.finite(x)) {
+    return(as.character(x))
+  }
+  if (abs(x) >= threshold) {
+    return(formatC(x, format = "e", digits = 2))
+  }
+  format_decimal3(x)
 }
 
 logistic_format_ci_parenthetical <- function(lower, upper) {
   if (is.na(lower) || is.na(upper)) {
     return("")
   }
-  sprintf("(%s~%s)", sprintf("%.3f", lower), sprintf("%.3f", upper))
+  sprintf("(%s~%s)", logistic_format_number(lower), logistic_format_number(upper))
 }
 
 logistic_result_notes <- function(result) {
@@ -16,7 +30,28 @@ logistic_result_notes <- function(result) {
   if (isTRUE(result$ordinal_fallback)) {
     notes <- c(notes, "The proportional odds assumption was not met; multinomial logistic regression was fitted instead.")
   }
+  instability_note <- logistic_instability_note(result)
+  if (nzchar(instability_note)) {
+    notes <- c(notes, instability_note)
+  }
   unique(notes[!is.na(notes) & nzchar(notes)])
+}
+
+logistic_instability_note <- function(result) {
+  table <- result$coef_table
+  if (!is.data.frame(table) || nrow(table) == 0) {
+    return("")
+  }
+  numeric_column <- function(name) suppressWarnings(as.numeric(table[[name]] %||% NA_real_))
+  large_or <- any(abs(numeric_column("OR")) >= 1e6, na.rm = TRUE)
+  large_ci <- any(abs(c(numeric_column("LLCI"), numeric_column("ULCI"))) >= 1e6, na.rm = TRUE)
+  large_se <- any(abs(numeric_column("SE")) >= 10, na.rm = TRUE)
+  vif_values <- suppressWarnings(as.numeric(result$predictor_vif %||% NA_real_))
+  large_vif <- any(vif_values >= 10, na.rm = TRUE)
+  if (!large_or && !large_ci && !large_se && !large_vif) {
+    return("")
+  }
+  "Very large OR, confidence interval, SE, or VIF indicates an unstable logistic model, commonly caused by sparse cells, quasi/complete separation, or multicollinearity. Interpret these coefficients with caution and consider collapsing categories, reducing predictors, or using penalized/exact logistic regression."
 }
 
 logistic_term_candidates <- function(variable, level = "") {
@@ -85,24 +120,24 @@ logistic_fit_body_style <- function(last = FALSE, top = "") {
 logistic_coef_cells <- function(row, show_b = FALSE, show_se = FALSE, split_ci = FALSE, reference = FALSE) {
   cells <- character(0)
   if (isTRUE(show_b)) {
-    cells <- c(cells, if (isTRUE(reference)) "reference" else format_decimal3(row$B))
+    cells <- c(cells, if (isTRUE(reference)) "reference" else logistic_format_number(row$B))
   }
   if (isTRUE(show_se)) {
-    cells <- c(cells, if (isTRUE(reference)) "" else format_decimal3(row$SE))
+    cells <- c(cells, if (isTRUE(reference)) "" else logistic_format_number(row$SE))
   }
   cells <- c(
     cells,
     if (isTRUE(reference)) {
       if (isTRUE(show_b)) "" else "reference"
     } else {
-      format_decimal3(row$OR)
+      logistic_format_number(row$OR)
     }
   )
   if (isTRUE(split_ci)) {
     cells <- c(
       cells,
-      if (isTRUE(reference)) "" else format_decimal3(row$LLCI),
-      if (isTRUE(reference)) "" else format_decimal3(row$ULCI)
+      if (isTRUE(reference)) "" else logistic_format_number(row$LLCI),
+      if (isTRUE(reference)) "" else logistic_format_number(row$ULCI)
     )
   } else {
     cells <- c(cells, if (isTRUE(reference)) "" else logistic_format_ci_parenthetical(row$LLCI, row$ULCI))
@@ -117,7 +152,7 @@ logistic_coef_cells <- function(row, show_b = FALSE, show_se = FALSE, split_ci =
 logistic_vif_cell <- function(result, predictor) {
   values <- result$predictor_vif %||% numeric(0)
   value <- suppressWarnings(as.numeric(named_value(values, predictor, NA_real_)))
-  if (is.na(value)) "" else format_decimal3(value)
+  if (is.na(value)) "" else logistic_format_number(value)
 }
 
 logistic_value_label <- function(variable, value, category_table = NULL) {

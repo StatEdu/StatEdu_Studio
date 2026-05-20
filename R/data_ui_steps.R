@@ -248,6 +248,26 @@ data_steps_panel <- function(
         } else if (identical(step, "step2")) {
           tagList(
             div("Check variables to keep, then apply the selection.", class = "step-note"),
+            div(
+              class = "bulk-measurement-control",
+              selectInput(
+                "bulk_measurement_type",
+                "Set selected variable type to",
+                choices = c(
+                  "binary" = "binary",
+                  "category" = "category",
+                  "ordinal" = "ordered",
+                  "continuous" = "continuous"
+                ),
+                selected = "continuous"
+              ),
+              actionButton(
+                "apply_bulk_measurement_type",
+                "Apply type",
+                class = "btn btn-default",
+                onclick = "if(window.easyflowApplyBulkMeasurement){window.easyflowApplyBulkMeasurement(); return false;}"
+              )
+            ),
             actionButton(
               "apply_variable_selection",
               "Apply variable selection",

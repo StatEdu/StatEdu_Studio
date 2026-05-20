@@ -204,7 +204,7 @@ reliability_header_label <- function(column) {
 
 reliability_column_width <- function(column, first = FALSE) {
   if (isTRUE(first)) {
-    return("82px")
+    return("128px")
   }
   if (column %in% c("Reliability if item deleted", "Total items if item deleted")) {
     return("92px")
@@ -225,7 +225,7 @@ reliability_column_width <- function(column, first = FALSE) {
     return(if (identical(column, "Cronbach's alpha")) "92px" else "82px")
   }
   if (column %in% c("Item", "Subfactor")) {
-    return("82px")
+    return("128px")
   }
   "52px"
 }

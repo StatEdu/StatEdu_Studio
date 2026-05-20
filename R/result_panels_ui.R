@@ -182,6 +182,26 @@ hierarchical_step_label <- function(result, index) {
   sprintf("Model %s", index)
 }
 
+hierarchical_model_method_label <- function(result) {
+  regression_method_label(result)
+}
+
+hierarchical_step_header_label <- function(result, index, group = NULL) {
+  label <- hierarchical_step_label(result, index)
+  if (!is.list(group) || length(group) <= 1L) {
+    return(label)
+  }
+  methods <- vapply(group, hierarchical_model_method_label, character(1))
+  if (length(unique(methods)) <= 1L) {
+    return(label)
+  }
+  tags$span(
+    style = "white-space:nowrap;",
+    label,
+    tags$sup(class = "coefficient-footnote-marker", as.character(index))
+  )
+}
+
 hierarchical_bootstrap_delta_r2_ci <- function(previous, current, conf = .95) {
   previous_r2 <- as.numeric(previous$bootstrap_r_squared %||% numeric(0))
   current_r2 <- as.numeric(current$bootstrap_r_squared %||% numeric(0))
@@ -458,7 +478,12 @@ hierarchical_model_note_lines <- function(group, variable_table = NULL, labels =
     } else {
       "No predictors"
     }
-    sprintf("%s: %s", hierarchical_step_label(result, index), predictor_text)
+    method_text <- if (length(unique(vapply(group, hierarchical_model_method_label, character(1)))) > 1L) {
+      sprintf(" [%s]", hierarchical_model_method_label(result))
+    } else {
+      ""
+    }
+    sprintf("%s%s: %s", hierarchical_step_label(result, index), method_text, predictor_text)
   }, character(1))
 }
 
@@ -624,7 +649,7 @@ hierarchical_coefficient_result_block <- function(
       show_vif = index == final_index && isTRUE(show_vif)
     )
   })
-  model_labels <- mapply(hierarchical_step_label, group, seq_along(group), USE.NAMES = FALSE)
+  model_labels <- mapply(hierarchical_step_header_label, group, seq_along(group), MoreArgs = list(group = group), SIMPLIFY = FALSE, USE.NAMES = FALSE)
   dependent <- hierarchical_result_dependent_name(group[[1]])
   dependent_label <- display_variable_name_static(dependent, variable_table, labels, label_only = TRUE)
   coefficient_result_block(

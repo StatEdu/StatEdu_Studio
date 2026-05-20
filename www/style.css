@@ -281,6 +281,22 @@ body {
   color: #334e68;
 }
 
+.bulk-measurement-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+  margin: 10px 0 12px;
+}
+
+.bulk-measurement-control .form-group {
+  margin-bottom: 0;
+}
+
+.bulk-measurement-control .btn {
+  min-width: 96px;
+}
+
 .step-block .btn {
   margin-right: 6px;
   margin-bottom: 6px;
@@ -2366,8 +2382,8 @@ input.variable-select:disabled {
 }
 
 .frequencies-result-section {
-  display: inline-block;
-  width: fit-content;
+  display: block;
+  width: 100%;
   max-width: 100%;
   box-sizing: border-box;
   overflow-x: auto;
@@ -2381,9 +2397,22 @@ input.variable-select:disabled {
 }
 
 .frequencies-result-section .coefficient-table {
-  width: max-content !important;
+  width: auto !important;
   min-width: 0;
   table-layout: auto;
+}
+
+.frequencies-result-section .coefficient-table th,
+.frequencies-result-section .coefficient-table td {
+  max-width: 150px;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.frequencies-result-section .coefficient-table th:first-child,
+.frequencies-result-section .coefficient-table td:first-child {
+  max-width: 190px;
 }
 
 .frequency-plots-section {
@@ -3230,6 +3259,10 @@ table {
   max-width: none;
   overflow-wrap: anywhere;
   word-break: normal;
+}
+
+.reference-summary-panel .durbin-watson-panel {
+  margin-top: 22px;
 }
 
 .effect-size-reference-panel {

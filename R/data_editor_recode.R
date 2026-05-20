@@ -190,6 +190,23 @@ recode_new_variable_name <- function(pattern, variable, literal = TRUE) {
   paste0(variable, pattern)
 }
 
+recode_source_measurement <- function(variable_info, variable, data = NULL) {
+  variable <- as.character(variable %||% "")
+  if (is.data.frame(variable_info) && all(c("name", "measurement") %in% names(variable_info))) {
+    row_index <- match(variable, as.character(variable_info$name))
+    if (!is.na(row_index)) {
+      measurement <- as.character(variable_info$measurement[[row_index]] %||% "")
+      if (nzchar(measurement)) {
+        return(measurement)
+      }
+    }
+  }
+  if (!is.null(data) && variable %in% names(data)) {
+    return(infer_measurement(data[[variable]]))
+  }
+  "continuous"
+}
+
 variable_calculation_choices <- function() {
   c(
     "Mean" = "mean",
@@ -1501,10 +1518,12 @@ register_recode_different_handlers <- function(
       target <- "new"
     }
     created <- character(0)
+    variable_info <- tryCatch(variable_info_fn(), error = function(e) NULL)
     for (name in variables) {
       values <- reverse_score_values(data[[name]], minimum = minimum, maximum = maximum)
+      source_measurement <- recode_source_measurement(variable_info, name, data)
       if (identical(target, "same")) {
-        ok <- update_existing_variable_fn(name, values, measurement = "ordered")
+        ok <- update_existing_variable_fn(name, values, measurement = source_measurement)
         if (isTRUE(ok)) {
           created <- c(created, name)
         }
@@ -1512,7 +1531,7 @@ register_recode_different_handlers <- function(
       }
       pattern <- input$recode_different_new_name %||% "{variable}_R"
       new_name <- recode_new_variable_name(pattern, name, literal = length(variables) == 1)
-      ok <- add_calculated_variable_fn(new_name, values, var_label = sprintf("%s reverse-coded", name), measurement = "ordered")
+      ok <- add_calculated_variable_fn(new_name, values, var_label = sprintf("%s reverse-coded", name), measurement = source_measurement)
       if (isTRUE(ok)) {
         created <- c(created, new_name)
       }

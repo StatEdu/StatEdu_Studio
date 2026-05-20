@@ -122,6 +122,25 @@ register_variable_table_state_observers <- function(
     update_measurement_overrides_fn(stats::setNames(value, name))
   })
 
+  observeEvent(input$variable_measurement_bulk_update, {
+    update <- input$variable_measurement_bulk_update
+    names <- as.character(update$names %||% character(0))
+    value <- as.character(update$value %||% "")
+    if (length(names) == 0) {
+      showNotification("Select variables before applying a variable type.", type = "warning")
+      return()
+    }
+    if (!(value %in% c("binary", "category", "ordered", "continuous"))) {
+      return()
+    }
+    names <- unique(names[nzchar(names)])
+    update_measurement_overrides_fn(stats::setNames(rep(value, length(names)), names))
+    showNotification(
+      sprintf("Changed %s selected variable type(s) to %s.", length(names), if (identical(value, "ordered")) "ordinal" else value),
+      type = "message"
+    )
+  })
+
   observeEvent(input$variable_measurement_snapshot, {
     snapshot <- input$variable_measurement_snapshot
     update_measurement_overrides_fn(snapshot$measurement_pairs %||% snapshot$values %||% snapshot)

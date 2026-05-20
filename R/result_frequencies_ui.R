@@ -128,7 +128,7 @@ frequencies_results_ui <- function(result) {
   div(
     class = "result-section frequencies-result-section regression-result-panel",
     h3("Frequencies / Descriptives"),
-    div(class = "frequency-table-wrap", coefficient_html_table(table)),
+    div(class = "frequency-table-wrap", coefficient_html_table(table, compact = TRUE, compact_font_size = 13, compact_width = 58, compact_first_width = 130, compact_min_width = 480)),
     frequency_plot_blocks(result, options)
   )
 }

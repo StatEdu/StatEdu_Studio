@@ -521,6 +521,52 @@ variable_table_callback_script <- function() {
           }, {priority: 'event'});
         }
 
+        window.easyflowApplyBulkMeasurement = function() {
+          var value = $('#bulk_measurement_type').val() || '';
+          if (['binary', 'category', 'ordered', 'continuous'].indexOf(value) < 0) return false;
+          window.easyflowSelectedNames = window.easyflowSelectedNames || {};
+          window.easyflowMeasurements = window.easyflowMeasurements || {};
+          var names = [];
+          table.rows({page: 'current'}).every(function() {
+            var data = this.data();
+            var checkbox = $(this.node()).find('input.variable-select');
+            if (data && data[2] && checkbox.length && checkbox.is(':checked')) {
+              names.push(data[2]);
+            }
+          });
+          if (names.length === 0) {
+            if (window.Shiny) {
+              Shiny.setInputValue('variable_measurement_bulk_update', {
+                names: [],
+                value: value,
+                nonce: Date.now() + Math.random()
+              }, {priority: 'event'});
+            }
+            return false;
+          }
+          names.forEach(function(name) {
+            window.easyflowMeasurements[name] = value;
+          });
+          $(table.table().container()).find('select.measurement-select').each(function() {
+            var name = $(this).attr('data-name') || $(this).data('name');
+            if (name && window.easyflowSelectedNames[name]) {
+              $(this).val(value);
+              updateMeasurementAvailability(this);
+            }
+          });
+          refreshVariableChecks();
+          syncVariableTableState();
+          if (window.Shiny) {
+            Shiny.setInputValue('variable_measurement_bulk_update', {
+              names: names,
+              value: value,
+              measurements: window.easyflowMeasurements,
+              nonce: Date.now() + Math.random()
+            }, {priority: 'event'});
+          }
+          return false;
+        };
+
         function storeVarLabelInput(input) {
           var name = rowNameFromInput(input);
           if (!name) return;

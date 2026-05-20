@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.8.4 - 2026-05-20
+
+### Changed
+
+- Improved result-table layout for frequencies, t-test / ANOVA notes, correlation p-value / CI output, reliability item analysis, regression Durbin-Watson spacing, hierarchical regression method annotations, and unstable logistic regression output.
+- Added Step 2 bulk measurement-type editing for the variables checked on the current Data page.
+- Preserved source variable measurement levels when automatic reverse coding creates new variables or overwrites existing variables.
+
+
 ## v0.8.3 - 2026-05-20
 
 ### Changed

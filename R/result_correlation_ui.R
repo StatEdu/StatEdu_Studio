@@ -70,7 +70,7 @@ correlation_p_matrix_display_table <- function(result, source = NULL) {
   }
   table <- as.data.frame(out, check.names = FALSE)
   names(table) <- colnames(matrix)
-  data.frame(Variable = rownames(matrix), table, check.names = FALSE)
+  data.frame(Variable = rownames(matrix), ` ` = "95% CI\np", table, check.names = FALSE)
 }
 
 correlation_method_matrix_display_table <- function(result, source = NULL) {
