@@ -290,6 +290,83 @@ register_setup_order_observers <- function(
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
+  observeEvent(input$analysis_transfer_drop, {
+    drop <- input$analysis_transfer_drop
+    ids <- c("available_predictors", "y", "predictor_order")
+    source <- as.character(drop$source %||% "")
+    target <- as.character(drop$target %||% "")
+    values <- unique(as.character(drop$values %||% character(0)))
+    values <- values[nzchar(values)]
+    if (!source %in% ids || !target %in% ids || identical(source, target) || length(values) == 0) {
+      return()
+    }
+
+    current_dependent <- sync_dependent_order_fn(update_input = FALSE)
+    current_predictor <- sync_predictor_order_fn(update_input = FALSE)
+    changed <- FALSE
+    selected_after <- values
+
+    remove_from_dependent <- function(selected) {
+      updated <- remove_order_items(dependent_order(), selected)
+      if (updated$changed) {
+        dependent_order(updated$order)
+        changed <<- TRUE
+      }
+    }
+    remove_from_predictor <- function(selected) {
+      updated <- remove_order_items(predictor_order(), selected)
+      if (updated$changed) {
+        predictor_order(updated$order)
+        predictor_order_initialized(TRUE)
+        changed <<- TRUE
+      }
+    }
+
+    if (identical(target, "available_predictors")) {
+      selected <- intersect(values, unique(c(current_dependent, current_predictor)))
+      if (length(selected) == 0) return()
+      remove_from_dependent(selected)
+      remove_from_predictor(selected)
+      selected_after <- selected
+      active_regression_list("available_predictors")
+    } else if (identical(target, "y")) {
+      selected <- intersect(values, unique(c(dependent_candidates_fn(), current_dependent, current_predictor)))
+      selected <- intersect(selected, dependent_candidates_fn())
+      if (length(selected) == 0) {
+        showNotification("Dependent variable selection is limited to continuous variables.", type = "warning")
+        return()
+      }
+      remove_from_predictor(selected)
+      updated <- append_order_items(dependent_order(), selected)
+      if (updated$changed) {
+        dependent_order(updated$order)
+        changed <- TRUE
+      }
+      selected_after <- selected
+      active_regression_list("y")
+    } else if (identical(target, "predictor_order")) {
+      selected <- intersect(values, unique(c(predictor_candidates_fn(), current_dependent, current_predictor)))
+      if (length(selected) == 0) return()
+      remove_from_dependent(selected)
+      updated <- append_order_items(predictor_order(), selected)
+      if (updated$changed) {
+        predictor_order(updated$order)
+        predictor_order_initialized(TRUE)
+        changed <- TRUE
+      }
+      selected_after <- selected
+      active_regression_list("predictor_order")
+    }
+
+    if (!changed) return()
+    sync_dependent_order_fn(if (identical(target, "y")) selected_after else character(0))
+    sync_predictor_order_fn(if (identical(target, "predictor_order")) selected_after else character(0))
+    if (identical(target, "available_predictors")) {
+      updateSelectInput(session, "available_predictors", selected = selected_after)
+    }
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
   invisible(TRUE)
 }
 
@@ -859,6 +936,118 @@ register_hierarchical_block_observers <- function(
       mark_settings_dirty()
     }
   })
+
+  observeEvent(input$analysis_transfer_drop, {
+    drop <- input$analysis_transfer_drop
+    ids <- c("hierarchical_available", "hierarchical_y", "hierarchical_block1", "hierarchical_block2", "hierarchical_block3")
+    source <- as.character(drop$source %||% "")
+    target <- as.character(drop$target %||% "")
+    values <- unique(as.character(drop$values %||% character(0)))
+    values <- values[nzchar(values)]
+    if (!source %in% ids || !target %in% ids || identical(source, target) || length(values) == 0) {
+      return()
+    }
+
+    selected <- intersect(values, selected_names_fn())
+    if (length(selected) == 0) return()
+
+    current_dependent <- sync_dependent_order_fn(update_input = FALSE)
+    current_block1 <- control_names()
+    current_block3 <- hierarchical_block3_current_fn()
+    current_independent <- independent_names()
+    current_block2 <- setdiff(intersect(independent_names_fn(), selected_names_fn()), current_block3)
+    changed <- FALSE
+
+    remove_dependent <- function(items) {
+      updated <- remove_order_items(dependent_order(), items)
+      if (updated$changed) {
+        dependent_order(updated$order)
+        changed <<- TRUE
+      }
+    }
+    remove_block1 <- function(items) {
+      if (remove_selected_from(control_names, items)) {
+        changed <<- TRUE
+      }
+    }
+    remove_independent <- function(items) {
+      if (remove_selected_from(independent_names, items)) {
+        changed <<- TRUE
+      }
+    }
+    remove_block3 <- function(items) {
+      updated <- remove_order_items(hierarchical_block3_current_fn(), items)
+      if (updated$changed) {
+        hierarchical_block3_names(updated$order)
+        changed <<- TRUE
+      }
+    }
+
+    if (identical(target, "hierarchical_available")) {
+      selected <- intersect(selected, unique(c(current_dependent, current_block1, current_block2, current_block3)))
+      if (length(selected) == 0) return()
+      remove_dependent(selected)
+      remove_block1(selected)
+      remove_block3(selected)
+      remove_independent(selected)
+      active_hierarchical_list("hierarchical_available")
+    } else if (identical(target, "hierarchical_y")) {
+      allowed <- intersect(selected, unique(c(dependent_candidates_fn(), current_dependent)))
+      if (length(allowed) == 0) {
+        showNotification("Dependent variable selection is limited to continuous variables.", type = "warning")
+        return()
+      }
+      remove_block1(allowed)
+      remove_block3(allowed)
+      remove_independent(allowed)
+      updated <- append_order_items(sync_dependent_order_fn(update_input = FALSE), allowed)
+      if (updated$changed) {
+        dependent_order(updated$order)
+        changed <- TRUE
+      }
+      active_hierarchical_list("hierarchical_y")
+    } else if (identical(target, "hierarchical_block1")) {
+      allowed <- intersect(selected, unique(c(predictor_candidates_fn(), current_dependent, current_block1, current_block2, current_block3)))
+      if (length(allowed) == 0) return()
+      remove_dependent(allowed)
+      remove_block3(allowed)
+      remove_independent(allowed)
+      if (move_selected_to(control_names, allowed)) {
+        changed <- TRUE
+      }
+      active_hierarchical_list("hierarchical_block1")
+    } else if (identical(target, "hierarchical_block2")) {
+      allowed <- intersect(selected, unique(c(predictor_candidates_fn(), current_dependent, current_block1, current_block2, current_block3)))
+      if (length(allowed) == 0) return()
+      remove_dependent(allowed)
+      remove_block1(allowed)
+      remove_block3(allowed)
+      if (move_selected_to(independent_names, allowed)) {
+        changed <- TRUE
+      }
+      hierarchical_block3_names(setdiff(hierarchical_block3_current_fn(), allowed))
+      active_hierarchical_list("hierarchical_block2")
+    } else if (identical(target, "hierarchical_block3")) {
+      allowed <- intersect(selected, unique(c(predictor_candidates_fn(), current_dependent, current_block1, current_block2, current_block3)))
+      if (length(allowed) == 0) return()
+      remove_dependent(allowed)
+      remove_block1(allowed)
+      moved_independent <- move_selected_to(independent_names, allowed)
+      updated <- append_order_items(hierarchical_block3_current_fn(), allowed)
+      if (updated$changed) {
+        hierarchical_block3_names(updated$order)
+      }
+      if (moved_independent || updated$changed) {
+        changed <- TRUE
+      }
+      active_hierarchical_list("hierarchical_block3")
+    }
+
+    if (!changed) return()
+    sync_dependent_order_fn(if (identical(target, "hierarchical_y")) selected else character(0))
+    clear_transfer_selection(ids)
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
 
   invisible(TRUE)
 }

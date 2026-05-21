@@ -350,6 +350,63 @@ register_logistic_handlers <- function(
     move_block(logistic_block3, "logistic_block3")
   }, ignoreInit = TRUE)
 
+  observeEvent(input$analysis_transfer_drop, {
+    drop <- input$analysis_transfer_drop
+    ids <- c("logistic_available", "logistic_y", "logistic_block1", "logistic_block2", "logistic_block3")
+    source <- as.character(drop$source %||% "")
+    target <- as.character(drop$target %||% "")
+    values <- unique(as.character(drop$values %||% character(0)))
+    values <- values[nzchar(values)]
+    if (!source %in% ids || !target %in% ids || identical(source, target) || length(values) == 0) {
+      return()
+    }
+
+    selected <- normalize_selected(values)
+    if (length(selected) == 0) return()
+    changed <- FALSE
+
+    remove_all_targets <- function(items) {
+      if (remove_from_target(logistic_dependents, items)) changed <<- TRUE
+      if (remove_from_target(logistic_block1, items)) changed <<- TRUE
+      if (remove_from_target(logistic_block2, items)) changed <<- TRUE
+      if (remove_from_target(logistic_block3, items)) changed <<- TRUE
+    }
+
+    if (identical(target, "logistic_available")) {
+      selected <- intersect(selected, unique(c(logistic_dependents(), logistic_block1(), logistic_block2(), logistic_block3())))
+      if (length(selected) == 0) return()
+      remove_all_targets(selected)
+      active_logistic_list("logistic_available")
+    } else if (identical(target, "logistic_y")) {
+      allowed <- intersect(selected, dependent_candidates())
+      if (length(allowed) == 0) {
+        showNotification("Dependent variable selection is limited to binary, ordered, or categorical variables.", type = "warning")
+        return()
+      }
+      remove_all_targets(allowed)
+      if (append_to_target(logistic_dependents, allowed)) changed <- TRUE
+      active_logistic_list("logistic_y")
+    } else {
+      allowed <- intersect(selected, selected_predictor_candidates())
+      if (length(allowed) == 0) return()
+      remove_all_targets(allowed)
+      target_store <- switch(
+        target,
+        logistic_block1 = logistic_block1,
+        logistic_block2 = logistic_block2,
+        logistic_block3 = logistic_block3,
+        NULL
+      )
+      if (is.null(target_store)) return()
+      if (append_to_target(target_store, allowed)) changed <- TRUE
+      active_logistic_list(target)
+    }
+
+    if (!changed) return()
+    mark_settings_dirty()
+    clear_transfer_selection(ids)
+  }, ignoreInit = TRUE)
+
   observeEvent(input$logistic_y_doubleclick, {
     value <- input$logistic_y_doubleclick$value %||% ""
     selected <- intersect(as.character(value), logistic_dependents())

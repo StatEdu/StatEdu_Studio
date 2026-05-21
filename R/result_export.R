@@ -1268,6 +1268,16 @@ save_ttest_anova_excel_file <- function(result, file) {
       used_sheets,
       title = item$title %||% "Result"
     )
+    if (is.data.frame(item$posthoc) && nrow(item$posthoc) > 0) {
+      used_sheets <- add_ttest_anova_result_sheet(
+        workbook,
+        paste(item$title %||% "Result", "posthoc"),
+        item$posthoc,
+        "",
+        used_sheets,
+        title = paste(item$title %||% "Result", "Post-hoc")
+      )
+    }
   }
   openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
   invisible(file)

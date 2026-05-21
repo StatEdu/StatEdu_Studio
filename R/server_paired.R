@@ -153,6 +153,54 @@ register_paired_handlers <- function(
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
+  observeEvent(input$analysis_transfer_drop, {
+    drop <- input$analysis_transfer_drop
+    ids <- c("paired_available", "paired_pairs")
+    source <- as.character(drop$source %||% "")
+    target <- as.character(drop$target %||% "")
+    values <- unique(as.character(drop$values %||% character(0)))
+    values <- values[nzchar(values)]
+    if (!source %in% ids || !target %in% ids || identical(source, target) || length(values) == 0) return()
+
+    if (identical(target, "paired_available")) {
+      selected_groups <- intersect(values, paired_group_values(repeated_groups()))
+      if (length(selected_groups) == 0) return()
+      remove_values <- paired_group_values(paired_group_from_values(selected_groups))
+      keep <- !paired_group_values(repeated_groups()) %in% remove_values
+      repeated_groups(repeated_groups()[keep])
+      active_list("paired_available")
+      mark_settings_dirty()
+      session$sendCustomMessage("easyflow-clear-transfer-selection", list(inputIds = ids))
+      return()
+    }
+
+    selected <- current_selected()
+    source_values <- intersect(values, selected)
+    if (length(source_values) < 2L) {
+      showNotification("Select two or more repeated-measures variables to create one paired row.", type = "warning")
+      return()
+    }
+    measurements <- paired_measurement_lookup(current_variable_table())
+    levels <- vapply(source_values, function(name) named_value(measurements, name, "continuous"), character(1))
+    if (length(unique(levels)) > 1) {
+      showNotification("Repeated-measures variables must have the same measurement level.", type = "warning")
+      return()
+    }
+    if (length(source_values) >= 3L && identical(levels[[1]], "category")) {
+      showNotification("Categorical paired tests with three or more repeated measurements will be supported after 1.0. Use two repeated measurements for now.", type = "warning")
+      return()
+    }
+    groups <- repeated_groups()
+    existing_values <- paired_group_values(groups)
+    next_value <- paired_group_values(list(source_values))
+    if (!next_value %in% existing_values) {
+      repeated_groups(c(groups, list(source_values)))
+      mark_settings_dirty()
+    }
+    active_list("paired_pairs")
+    session$sendCustomMessage("easyflow-clear-transfer-selection", list(inputIds = ids))
+  }, ignoreInit = TRUE)
+
   reorder_groups <- function(direction) {
     values <- paired_group_values(repeated_groups())
     updated <- move_order_item(values, input$paired_pairs, direction)

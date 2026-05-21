@@ -198,6 +198,36 @@ register_reliability_handlers <- function(
     active_reliability_list("reliability_available")
   }, ignoreInit = TRUE)
 
+  register_dual_transfer_drop_observer(
+    input = input,
+    session = session,
+    available_id = "reliability_available",
+    selected_id = "reliability_selected",
+    selected_values = function(value) {
+      blocks <- current_reliability_blocks()
+      factor_index <- min(max(1L, as.integer(active_reliability_factor() %||% 1L)), length(blocks))
+      if (missing(value)) {
+        return(blocks[[factor_index]])
+      }
+      blocks[[factor_index]] <- as.character(value %||% character(0))
+      set_reliability_blocks(blocks)
+    },
+    all_values_fn = selected_names_fn,
+    active_list = active_reliability_list,
+    mark_settings_dirty = NULL,
+    validate_next = function(next_values, target, chosen) {
+      if (identical(target, "reliability_selected") && !isTRUE(reliability_selection_allowed(next_values))) {
+        showNotification(
+          "Reliability analysis accepts only one measurement level at a time. Select binary, ordinal, or continuous items only.",
+          type = "warning",
+          duration = 6
+        )
+        return(FALSE)
+      }
+      TRUE
+    }
+  )
+
   observeEvent(input$reliability_move_up, {
     blocks <- current_reliability_blocks()
     factor_index <- min(max(1L, as.integer(active_reliability_factor() %||% 1L)), length(blocks))

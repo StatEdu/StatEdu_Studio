@@ -217,6 +217,65 @@ register_crosstab_handlers <- function(
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
+  observeEvent(input$analysis_transfer_drop, {
+    drop <- input$analysis_transfer_drop
+    ids <- c("crosstab_available", "crosstab_row", "crosstab_col")
+    source <- as.character(drop$source %||% "")
+    target <- as.character(drop$target %||% "")
+    values <- unique(as.character(drop$values %||% character(0)))
+    values <- values[nzchar(values)]
+    if (!source %in% ids || !target %in% ids || identical(source, target) || length(values) == 0) {
+      return()
+    }
+
+    state <- current_crosstab_allowed()
+    changed <- FALSE
+    if (identical(target, "crosstab_available")) {
+      selected <- intersect(values, unique(c(state$row_vars, state$col_vars)))
+      if (length(selected) == 0) return()
+      row_updated <- remove_order_items(state$row_vars, selected)
+      col_updated <- remove_order_items(state$col_vars, selected)
+      if (row_updated$changed) {
+        crosstab_row_vars(row_updated$order)
+        changed <- TRUE
+      }
+      if (col_updated$changed) {
+        crosstab_col_vars(col_updated$order)
+        changed <- TRUE
+      }
+      active_crosstab_list("crosstab_available")
+    } else if (identical(target, "crosstab_row")) {
+      selected <- intersect(values, state$allowed)
+      if (length(selected) == 0) return()
+      col_updated <- remove_order_items(state$col_vars, selected)
+      if (col_updated$changed) {
+        crosstab_col_vars(col_updated$order)
+        changed <- TRUE
+      }
+      row_updated <- append_order_items(state$row_vars, selected)
+      if (row_updated$changed) {
+        crosstab_row_vars(row_updated$order)
+        changed <- TRUE
+      }
+      active_crosstab_list("crosstab_row")
+    } else if (identical(target, "crosstab_col")) {
+      selected <- intersect(values, state$allowed)
+      if (length(selected) == 0) return()
+      row_updated <- remove_order_items(state$row_vars, selected)
+      if (row_updated$changed) {
+        crosstab_row_vars(row_updated$order)
+        changed <- TRUE
+      }
+      col_updated <- append_order_items(state$col_vars, selected)
+      if (col_updated$changed) {
+        crosstab_col_vars(col_updated$order)
+        changed <- TRUE
+      }
+      active_crosstab_list("crosstab_col")
+    }
+    if (changed) mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
   observeEvent(input$crosstab_col_up, {
     state <- current_crosstab_allowed()
     updated <- move_order_item(state$col_vars, input$crosstab_col, "up")

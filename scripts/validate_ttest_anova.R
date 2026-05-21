@@ -47,8 +47,35 @@ expect_true(grepl("2\\. Welch test was used because homogeneity of variance was 
 expect_true(grepl("3\\. Effect size = omega squared\\.", note), "Expected numbered omega squared note")
 
 html <- as.character(tags_to_html(ttest_anova_results_ui(result)))
+expect_true(grepl('class="coefficient-footnote-value"', html, fixed = TRUE), "Expected footnote value wrapper to render")
 expect_true(grepl('class="coefficient-footnote-marker">1</sup>', html, fixed = TRUE), "Expected Hedges' g marker to render as superscript")
 expect_true(grepl('class="coefficient-footnote-marker">2</sup>', html, fixed = TRUE), "Expected p-value marker to render as superscript")
 expect_true(grepl('class="coefficient-footnote-marker">3</sup>', html, fixed = TRUE), "Expected omega squared marker to render as superscript")
+
+message("Checking t-test / ANOVA post-hoc table...")
+posthoc_data <- data.frame(
+  y = c(1, 2, 2, 2, 3, 10, 11, 11, 12, 12, 20, 21, 22, 22, 23),
+  group = rep(c("A", "B", "C"), each = 5),
+  stringsAsFactors = FALSE
+)
+posthoc_info <- data.frame(
+  name = c("y", "group"),
+  var_label = c("Outcome", "Group"),
+  measurement = c("continuous", "category"),
+  stringsAsFactors = FALSE
+)
+posthoc_result <- prepare_ttest_anova_results(
+  posthoc_data,
+  dependents = "y",
+  factors = "group",
+  variable_info = posthoc_info,
+  options = list(effect_size = TRUE, normality_enabled = FALSE, post_hoc_method = "tukey")
+)
+posthoc_table <- posthoc_result$results[[1]]$posthoc
+expect_true(is.data.frame(posthoc_table) && nrow(posthoc_table) == 3, "Expected ANOVA post-hoc pairwise table")
+expect_true(all(c("Variable", "Method", "Comparison", "p") %in% names(posthoc_table)), "Expected post-hoc table columns")
+expect_true(all(posthoc_table$Method == "Tukey HSD"), "Expected Tukey HSD method in post-hoc table")
+posthoc_html <- as.character(tags_to_html(ttest_anova_results_ui(posthoc_result)))
+expect_true(grepl("<h4>Post-hoc</h4>", posthoc_html, fixed = TRUE), "Expected post-hoc section in ANOVA HTML")
 
 message("All t-test / ANOVA validations passed.")

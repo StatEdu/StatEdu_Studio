@@ -1367,13 +1367,21 @@ input.variable-select:disabled {
   vertical-align: super;
 }
 
+.coefficient-footnote-value {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 2px;
+  white-space: nowrap;
+  line-height: inherit;
+}
+
 .coefficient-footnote-marker {
   display: inline-block;
-  margin-left: 2px;
   font-size: 10px;
   line-height: 1;
-  vertical-align: baseline;
-  transform: translateY(-0.25em);
+  vertical-align: super;
+  transform: translateY(-0.35em);
 }
 
 .analysis-options-panel {
@@ -1399,6 +1407,57 @@ input.variable-select:disabled {
 
 .analysis-option-group .radio label {
   font-weight: 400;
+}
+
+.analysis-transfer-option {
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.analysis-transfer-option.is-dragging {
+  opacity: 0.45;
+}
+
+.analysis-transfer-dragging,
+.analysis-transfer-dragging * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+
+.analysis-transfer-drag-ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 10000;
+  max-width: 240px;
+  padding: 6px 10px;
+  color: #102a43;
+  background: #ffffff;
+  border: 1px solid #0f766e;
+  border-radius: 4px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
+  font-size: 13px;
+  line-height: 1.25;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.analysis-transfer-listbox.is-drop-target {
+  border-color: #0f766e !important;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.16);
+}
+
+.metabolic-target-panel select.is-drop-target,
+.hint8-target-panel select.is-drop-target,
+.eq5d-target-panel select.is-drop-target,
+.frs-target-panel select.is-drop-target,
+.ascvd10-target-panel select.is-drop-target,
+.mbss-target-panel select.is-drop-target {
+  border-color: #0f766e !important;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.16);
 }
 
 .analysis-action-row {
@@ -2422,6 +2481,17 @@ input.variable-select:disabled {
   margin-top: 34px;
   padding-top: 18px;
   border-top: 1px solid #e5e7eb;
+}
+
+.ttest-anova-posthoc-section {
+  margin-top: 18px;
+}
+
+.ttest-anova-posthoc-section h4 {
+  margin: 0 0 10px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #102033;
 }
 
 .frequencies-result-section {

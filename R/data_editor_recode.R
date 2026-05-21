@@ -858,6 +858,17 @@ register_recode_same_handlers <- function(
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
+  register_dual_transfer_drop_observer(
+    input = input,
+    session = session,
+    available_id = "recode_same_available",
+    selected_id = "recode_same_selected",
+    selected_values = selected_variables,
+    all_values_fn = function() names(tryCatch(dataset_fn(), error = function(e) data.frame()) %||% data.frame()),
+    active_list = active_list,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
   observeEvent(input$recode_same_up, {
     updated <- move_order_item(selected_variables(), input$recode_same_selected, "up")
     if (isTRUE(updated$changed)) {
@@ -1091,6 +1102,21 @@ register_coding_error_check_handlers <- function(
     correction_values(character(0))
     mark_settings_dirty()
   }, ignoreInit = TRUE)
+
+  register_dual_transfer_drop_observer(
+    input = input,
+    session = session,
+    available_id = "coding_error_available",
+    selected_id = "coding_error_selected",
+    selected_values = selected_variables,
+    all_values_fn = function() names(tryCatch(dataset_fn(), error = function(e) data.frame()) %||% data.frame()),
+    active_list = active_list,
+    mark_settings_dirty = mark_settings_dirty,
+    after_change = function(target, chosen, next_values) {
+      last_issues(data.frame())
+      correction_values(character(0))
+    }
+  )
 
   observeEvent(input$coding_error_up, {
     updated <- move_order_item(selected_variables(), input$coding_error_selected, "up")
@@ -1443,6 +1469,21 @@ register_recode_different_handlers <- function(
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
+  register_dual_transfer_drop_observer(
+    input = input,
+    session = session,
+    available_id = "recode_different_available",
+    selected_id = "recode_different_selected",
+    selected_values = selected_variables,
+    all_values_fn = function() names(tryCatch(dataset_fn(), error = function(e) data.frame()) %||% data.frame()),
+    active_list = active_list,
+    mark_settings_dirty = mark_settings_dirty,
+    after_change = function(target, chosen, next_values) {
+      last_issues(data.frame())
+      output_variables(character(0))
+    }
+  )
+
   observeEvent(input$recode_different_up, {
     updated <- move_order_item(selected_variables(), input$recode_different_selected, "up")
     if (isTRUE(updated$changed)) {
@@ -1663,6 +1704,22 @@ register_variable_calculation_handlers <- function(
     reliability_result(NULL)
     mark_settings_dirty()
   }, ignoreInit = TRUE)
+
+  register_dual_transfer_drop_observer(
+    input = input,
+    session = session,
+    available_id = "variable_calculation_available",
+    selected_id = "variable_calculation_selected",
+    selected_values = selected_variables,
+    all_values_fn = function() names(tryCatch(dataset_fn(), error = function(e) data.frame()) %||% data.frame()),
+    active_list = active_list,
+    mark_settings_dirty = mark_settings_dirty,
+    after_change = function(target, chosen, next_values) {
+      preview_data(data.frame(check.names = FALSE))
+      output_variables(character(0))
+      reliability_result(NULL)
+    }
+  )
 
   observeEvent(input$variable_calculation_up, {
     updated <- move_order_item(selected_variables(), input$variable_calculation_selected, "up")

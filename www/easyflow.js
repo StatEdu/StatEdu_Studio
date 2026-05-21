@@ -168,7 +168,7 @@
           return;
         }
         window.easyflowCodingErrorFixHandlerRegistered = true;
-        Shiny.addCustomMessageHandler('easyflow-clear-coding-error-fixes', function() {
+        Shiny.addCustomMessageHandler('easyflow-clear-coding-error-fixes', function(message) {
           window.easyflowCodingErrorFixValues = {};
         });
       }
@@ -189,7 +189,9 @@
           return;
         }
         window.easyflowDataSessionHandlerRegistered = true;
-        Shiny.addCustomMessageHandler('easyflow-clear-data-session', clearEasyflowClientDataSession);
+        Shiny.addCustomMessageHandler('easyflow-clear-data-session', function(message) {
+          clearEasyflowClientDataSession();
+        });
       }
 
       registerEasyflowDataSessionHandler();
@@ -752,6 +754,19 @@
         option.setAttribute('aria-selected', selected ? 'true' : 'false');
       }
 
+      function easyflowTransferOptionValue(option) {
+        return option ? (option.getAttribute('data-value') || '') : '';
+      }
+
+      function easyflowTransferDragValues(option, listbox) {
+        var value = easyflowTransferOptionValue(option);
+        var selected = easyflowTransferSelectedValues(listbox);
+        if (value && selected.indexOf(value) >= 0) {
+          return selected;
+        }
+        return value ? [value] : [];
+      }
+
       function easyflowTransferClear(listbox) {
         easyflowTransferOptions(listbox).forEach(function(option) {
           easyflowTransferSetSelected(option, false);
@@ -826,6 +841,13 @@
       }
 
       window.easyflowTransferOptionClick = function(event, option) {
+        if (window.easyflowTransferSuppressClickUntil && Date.now() < window.easyflowTransferSuppressClickUntil) {
+          if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+          return;
+        }
         var listbox = option && option.closest ? option.closest('.analysis-transfer-listbox') : null;
         if (!listbox) return;
         easyflowTransferFocusListbox(listbox);
@@ -880,12 +902,337 @@
         }
       };
 
+      function easyflowDecorateTransferDragOptions(root) {
+        root = root || document;
+        if (!root.querySelectorAll) return;
+        root.querySelectorAll('.analysis-transfer-option').forEach(function(option) {
+          option.setAttribute('draggable', 'false');
+        });
+      }
+
+      function easyflowTransferDropPayload(source, target, values) {
+        return {
+          source: source ? (source.getAttribute('data-input-id') || '') : '',
+          target: target ? (target.getAttribute('data-input-id') || '') : '',
+          values: values || [],
+          nonce: Date.now() + Math.random()
+        };
+      }
+
+      function easyflowTransferListboxFromEvent(event) {
+        var listbox = event.target && event.target.closest ? event.target.closest('.analysis-transfer-listbox') : null;
+        if (listbox) return listbox;
+        var panel = event.target && event.target.closest ? event.target.closest('.analysis-transfer-panel') : null;
+        if (panel && panel.querySelector) {
+          listbox = panel.querySelector('.analysis-transfer-listbox');
+          if (listbox) return listbox;
+        }
+        if (typeof event.clientX === 'number' && typeof event.clientY === 'number' && document.elementFromPoint) {
+          var element = document.elementFromPoint(event.clientX, event.clientY);
+          if (element && element.closest) {
+            listbox = element.closest('.analysis-transfer-listbox');
+            if (listbox) return listbox;
+            panel = element.closest('.analysis-transfer-panel');
+            if (panel && panel.querySelector) {
+              return panel.querySelector('.analysis-transfer-listbox');
+            }
+          }
+        }
+        return null;
+      }
+
+      function easyflowTransferCalculatorSelectFromEvent(event) {
+        if (typeof event.clientX !== 'number' || typeof event.clientY !== 'number' || !document.elementFromPoint) {
+          return null;
+        }
+        var element = document.elementFromPoint(event.clientX, event.clientY);
+        if (!element || !element.closest) return null;
+        var panel = element.closest('.hint8-target-panel, .metabolic-target-panel, .eq5d-target-panel, .frs-target-panel, .ascvd10-target-panel, .mbss-target-panel');
+        if (!panel || element.closest('.eq5d-type-control')) return null;
+        var select = element.closest('select');
+        if (!select) {
+          var group = element.closest('.form-group, .shiny-input-container');
+          select = group && group.querySelector ? group.querySelector('select') : null;
+        }
+        if (!select || !panel.contains(select) || !select.id) return null;
+        if (select.closest('.eq5d-type-control')) return null;
+        return select;
+      }
+
+      var easyflowPointerTransfer = null;
+
+      function easyflowTransferLabelForGhost(option, values) {
+        var label = option ? (option.innerText || option.textContent || '') : '';
+        label = label.replace(/\s+/g, ' ').trim();
+        if (values && values.length > 1) return values.length + ' variables';
+        return label || 'Move variable';
+      }
+
+      function easyflowTransferCreateGhost(option, values) {
+        var ghost = document.createElement('div');
+        ghost.className = 'analysis-transfer-drag-ghost';
+        ghost.textContent = easyflowTransferLabelForGhost(option, values);
+        document.body.appendChild(ghost);
+        return ghost;
+      }
+
+      function easyflowTransferMoveGhost(ghost, x, y) {
+        if (!ghost) return;
+        ghost.style.transform = 'translate(' + (x + 12) + 'px, ' + (y + 12) + 'px)';
+      }
+
+      function easyflowTransferSetPointerTarget(target) {
+        if (window.easyflowTransferDropTarget && window.easyflowTransferDropTarget !== target && window.easyflowTransferDropTarget.classList) {
+          window.easyflowTransferDropTarget.classList.remove('is-drop-target');
+        }
+        window.easyflowTransferDropTarget = target || null;
+        if (target && target.classList) target.classList.add('is-drop-target');
+      }
+
+      function easyflowTransferSelectHasValue(select, value) {
+        return Array.prototype.some.call(select.options || [], function(option) {
+          return option.value === value;
+        });
+      }
+
+      function easyflowTransferCommitCalculatorSelect(select) {
+        var state = window.easyflowTransferDragState;
+        if (!select || !state || !state.values || state.values.length === 0 || window.easyflowTransferDropSent) return false;
+        var value = state.values[0];
+        if (!easyflowTransferSelectHasValue(select, value)) return false;
+        window.easyflowTransferDropSent = true;
+        select.value = value;
+        if (window.jQuery) {
+          var wrapped = window.jQuery(select);
+          if (select.selectize && select.selectize.setValue) {
+            select.selectize.setValue(value);
+          } else {
+            wrapped.trigger('change');
+          }
+        } else {
+          select.dispatchEvent(new Event('input', {bubbles: true}));
+          select.dispatchEvent(new Event('change', {bubbles: true}));
+        }
+        if (window.Shiny && Shiny.setInputValue) {
+          Shiny.setInputValue(select.id, value, {priority: 'event'});
+        }
+        return true;
+      }
+
+      function easyflowTransferStartPointerDrag(state, event) {
+        state.dragging = true;
+        easyflowTransferFocusListbox(state.listbox);
+        window.easyflowTransferDragState = easyflowTransferDropPayload(state.listbox, null, state.values);
+        window.easyflowTransferDropTarget = null;
+        window.easyflowTransferDropSent = false;
+        state.option.classList.add('is-dragging');
+        state.listbox.classList.add('is-drag-source');
+        state.ghost = easyflowTransferCreateGhost(state.option, state.values);
+        easyflowTransferMoveGhost(state.ghost, event.clientX, event.clientY);
+        document.body.classList.add('analysis-transfer-dragging');
+      }
+
+      function easyflowTransferCleanupPointerDrag() {
+        document.querySelectorAll('.analysis-transfer-option.is-dragging').forEach(function(option) {
+          option.classList.remove('is-dragging');
+        });
+        document.querySelectorAll('.analysis-transfer-listbox.is-drag-source, .analysis-transfer-listbox.is-drop-target').forEach(function(listbox) {
+          listbox.classList.remove('is-drag-source');
+          listbox.classList.remove('is-drop-target');
+        });
+        if (easyflowPointerTransfer && easyflowPointerTransfer.ghost && easyflowPointerTransfer.ghost.parentNode) {
+          easyflowPointerTransfer.ghost.parentNode.removeChild(easyflowPointerTransfer.ghost);
+        }
+        document.body.classList.remove('analysis-transfer-dragging');
+        easyflowPointerTransfer = null;
+        window.easyflowTransferDragState = null;
+        window.easyflowTransferDropTarget = null;
+        window.easyflowTransferDropSent = false;
+      }
+
+      document.addEventListener('pointerdown', function(event) {
+        if (event.button !== 0) return;
+        var option = event.target && event.target.closest ? event.target.closest('.analysis-transfer-option') : null;
+        var listbox = option && option.closest ? option.closest('.analysis-transfer-listbox') : null;
+        if (!option || !listbox) return;
+        var values = easyflowTransferDragValues(option, listbox);
+        if (values.length === 0) return;
+        easyflowPointerTransfer = {
+          pointerId: event.pointerId,
+          option: option,
+          listbox: listbox,
+          values: values,
+          startX: event.clientX,
+          startY: event.clientY,
+          ghost: null,
+          dragging: false
+        };
+      }, true);
+
+      document.addEventListener('pointermove', function(event) {
+        var state = easyflowPointerTransfer;
+        if (!state || state.pointerId !== event.pointerId) return;
+        var dx = event.clientX - state.startX;
+        var dy = event.clientY - state.startY;
+        if (!state.dragging && Math.sqrt(dx * dx + dy * dy) < 6) return;
+        if (!state.dragging) {
+          easyflowTransferStartPointerDrag(state, event);
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        easyflowTransferMoveGhost(state.ghost, event.clientX, event.clientY);
+        easyflowTransferSetPointerTarget(easyflowTransferListboxFromEvent(event) || easyflowTransferCalculatorSelectFromEvent(event));
+      }, true);
+
+      document.addEventListener('pointerup', function(event) {
+        var state = easyflowPointerTransfer;
+        if (!state || state.pointerId !== event.pointerId) return;
+        if (state.dragging) {
+          event.preventDefault();
+          event.stopPropagation();
+          var target = window.easyflowTransferDropTarget || easyflowTransferListboxFromEvent(event) || easyflowTransferCalculatorSelectFromEvent(event);
+          if (target && target.tagName && target.tagName.toLowerCase() === 'select') {
+            easyflowTransferCommitCalculatorSelect(target);
+          } else {
+            easyflowTransferCommitDrop(target);
+          }
+          window.easyflowTransferSuppressClickUntil = Date.now() + 500;
+        }
+        easyflowTransferCleanupPointerDrag();
+      }, true);
+
+      document.addEventListener('pointercancel', function(event) {
+        var state = easyflowPointerTransfer;
+        if (!state || state.pointerId !== event.pointerId) return;
+        easyflowTransferCleanupPointerDrag();
+      }, true);
+
+      function easyflowTransferCommitDrop(target) {
+        var state = window.easyflowTransferDragState;
+        if (!target || !state || window.easyflowTransferDropSent) return false;
+        target.classList.remove('is-drop-target');
+        var source = easyflowFindTransferListboxByInputId(state.source);
+        var payload = easyflowTransferDropPayload(source, target, state.values || []);
+        if (!payload.source || !payload.target || payload.values.length === 0 || payload.source === payload.target) {
+          return false;
+        }
+        window.easyflowTransferDropSent = true;
+        easyflowTransferMarkActive(target);
+        if (window.Shiny && Shiny.setInputValue) {
+          Shiny.setInputValue('analysis_transfer_drop', payload, {priority: 'event'});
+        } else if (window.Shiny && Shiny.onInputChange) {
+          Shiny.onInputChange('analysis_transfer_drop', payload);
+        }
+        return true;
+      }
+
+      window.easyflowTransferListboxDragOver = function(event, listbox) {
+        listbox = listbox || easyflowTransferListboxFromEvent(event);
+        if (!listbox) return true;
+        if (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+        }
+        window.easyflowTransferDropTarget = listbox;
+        listbox.classList.add('is-drop-target');
+        return false;
+      };
+
+      window.easyflowTransferListboxDrop = function(event, listbox) {
+        listbox = listbox || easyflowTransferListboxFromEvent(event) || window.easyflowTransferDropTarget;
+        if (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        if (!window.easyflowTransferDragState && event && event.dataTransfer) {
+          try {
+            var data = event.dataTransfer.getData('application/x-easyflow-transfer');
+            if (data) window.easyflowTransferDragState = JSON.parse(data);
+          } catch (error) {
+            window.easyflowTransferDragState = null;
+          }
+        }
+        if (!window.easyflowTransferDragState) return false;
+        easyflowTransferCommitDrop(listbox);
+        return false;
+      };
+
+      document.addEventListener('dragstart', function(event) {
+        var option = event.target && event.target.closest ? event.target.closest('.analysis-transfer-option') : null;
+        var listbox = option && option.closest ? option.closest('.analysis-transfer-listbox') : null;
+        if (!option || !listbox) return;
+        easyflowTransferFocusListbox(listbox);
+        var values = easyflowTransferDragValues(option, listbox);
+        if (values.length === 0) return;
+        window.easyflowTransferDragState = easyflowTransferDropPayload(listbox, null, values);
+        window.easyflowTransferDropTarget = null;
+        window.easyflowTransferDropSent = false;
+        if (event.dataTransfer) {
+          event.dataTransfer.effectAllowed = 'move';
+          event.dataTransfer.setData('text/plain', values.join('\n'));
+          event.dataTransfer.setData('application/x-easyflow-transfer', JSON.stringify(window.easyflowTransferDragState));
+        }
+        option.classList.add('is-dragging');
+        listbox.classList.add('is-drag-source');
+      }, true);
+
+      document.addEventListener('dragend', function(event) {
+        document.querySelectorAll('.analysis-transfer-option.is-dragging').forEach(function(option) {
+          option.classList.remove('is-dragging');
+        });
+        document.querySelectorAll('.analysis-transfer-listbox.is-drag-source, .analysis-transfer-listbox.is-drop-target').forEach(function(listbox) {
+          listbox.classList.remove('is-drag-source');
+          listbox.classList.remove('is-drop-target');
+        });
+        if (window.easyflowTransferDragState && !window.easyflowTransferDropSent && window.easyflowTransferDropTarget) {
+          easyflowTransferCommitDrop(window.easyflowTransferDropTarget);
+        }
+        window.easyflowTransferDragState = null;
+        window.easyflowTransferDropTarget = null;
+        window.easyflowTransferDropSent = false;
+      }, true);
+
+      document.addEventListener('dragover', function(event) {
+        var listbox = easyflowTransferListboxFromEvent(event);
+        if (!listbox || !window.easyflowTransferDragState) return;
+        window.easyflowTransferListboxDragOver(event, listbox);
+      }, true);
+
+      document.addEventListener('dragleave', function(event) {
+        var listbox = easyflowTransferListboxFromEvent(event);
+        if (!listbox) return;
+        var related = event.relatedTarget;
+        if (related && listbox.contains(related)) return;
+        listbox.classList.remove('is-drop-target');
+      }, true);
+
+      document.addEventListener('drop', function(event) {
+        var target = easyflowTransferListboxFromEvent(event) || window.easyflowTransferDropTarget;
+        if (!target || !window.easyflowTransferDragState) return;
+        window.easyflowTransferListboxDrop(event, target);
+      }, true);
+
       ['mousedown', 'focusin'].forEach(function(eventName) {
         document.addEventListener(eventName, function(event) {
           var listbox = event.target && event.target.closest ? event.target.closest('.analysis-transfer-listbox') : null;
           if (listbox) easyflowTransferMarkActive(listbox);
         }, true);
       });
+
+      easyflowDecorateTransferDragOptions(document);
+      document.addEventListener('shiny:bound', function(event) {
+        easyflowDecorateTransferDragOptions(event.target || document);
+      });
+      if (window.MutationObserver && document.body) {
+        new MutationObserver(function(mutations) {
+          mutations.forEach(function(mutation) {
+            mutation.addedNodes && Array.prototype.forEach.call(mutation.addedNodes, function(node) {
+              if (node.nodeType === 1) easyflowDecorateTransferDragOptions(node);
+            });
+          });
+        }).observe(document.body, {childList: true, subtree: true});
+      }
 
       document.addEventListener('pointerover', function(event) {
         var listbox = event.target && event.target.closest ? event.target.closest('.analysis-transfer-listbox') : null;

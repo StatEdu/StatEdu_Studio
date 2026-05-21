@@ -89,6 +89,9 @@ analysis_transfer_listbox_input <- function(
       tabindex = "0",
       `aria-multiselectable` = "true",
       `data-input-id` = input_id,
+      ondragenter = "return window.easyflowTransferListboxDragOver ? window.easyflowTransferListboxDragOver(event, this) : false;",
+      ondragover = "return window.easyflowTransferListboxDragOver ? window.easyflowTransferListboxDragOver(event, this) : false;",
+      ondrop = "return window.easyflowTransferListboxDrop ? window.easyflowTransferListboxDrop(event, this) : false;",
       onkeydown = paste(
         "if (window.easyflowTransferListboxKeydownFallback) {",
         "return window.easyflowTransferListboxKeydownFallback(event, this);",
@@ -104,7 +107,6 @@ analysis_transfer_listbox_input <- function(
           role = "option",
           `aria-selected` = if (value %in% selected) "true" else "false",
           `data-value` = value,
-          onmousedown = "event.preventDefault();",
           onclick = paste(
             "if (window.easyflowTransferOptionClickFallback) {",
             "window.easyflowTransferOptionClickFallback(event, this);",

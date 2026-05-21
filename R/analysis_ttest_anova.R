@@ -345,6 +345,42 @@ ttest_lookup_letters <- function(letter_map, values) {
   out
 }
 
+ttest_posthoc_table <- function(factor, levels, p_matrix, method, variable_info = NULL, labels = character(0), category_table = NULL) {
+  method <- as.character(method %||% "")
+  if (!nzchar(method) || is.null(p_matrix) || length(p_matrix) == 0) {
+    return(data.frame())
+  }
+  levels <- as.character(levels %||% character(0))
+  levels <- levels[levels %in% rownames(p_matrix) & levels %in% colnames(p_matrix)]
+  if (length(levels) < 2) {
+    return(data.frame())
+  }
+
+  display_levels <- stats::setNames(ttest_display_levels(factor, levels, category_table), levels)
+  rows <- list()
+  for (i in seq_len(length(levels) - 1L)) {
+    for (j in seq.int(i + 1L, length(levels))) {
+      first <- levels[[i]]
+      second <- levels[[j]]
+      p_value <- suppressWarnings(as.numeric(p_matrix[first, second]))
+      rows[[length(rows) + 1L]] <- data.frame(
+        Variable = ttest_display_variable(factor, variable_info, labels, category_table),
+        Method = method,
+        Comparison = sprintf("%s - %s", display_levels[[first]], display_levels[[second]]),
+        p = if (is.na(p_value)) "" else format_p(p_value),
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      )
+    }
+  }
+  if (length(rows) == 0) {
+    return(data.frame())
+  }
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
 ttest_analysis_data <- function(values, groups) {
   data <- data.frame(y = as.numeric(values), g = as.factor(groups))
   data[stats::complete.cases(data), , drop = FALSE]
@@ -982,6 +1018,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
     rows[["post-hoc"]] <- ttest_lookup_letters(letters, summaries$Value)
   }
   rows <- rows[, ttest_result_table_columns, drop = FALSE]
+  posthoc_table <- ttest_posthoc_table(factor, levels, p_matrix, posthoc_label, variable_info, labels, category_table)
 
   normality_text <- sprintf(
     "%s: %s",
@@ -1010,6 +1047,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
     dependent = dependent,
     factor = factor,
     table = rows,
+    posthoc = posthoc_table,
     overview = overview,
     statistic_label = statistic_label,
     notes = list(
@@ -1059,10 +1097,12 @@ prepare_ttest_anova_results <- function(
       note_result <- ttest_apply_numbered_notes(combined_table, dependent_items)
       combined_table <- note_result$table
       note_line <- ttest_analysis_note_line(dependent_items)
+      posthoc_table <- ttest_bind_result_rows(lapply(dependent_items, function(item) item$posthoc))
       results[[length(results) + 1]] <- list(
         title = ttest_display_variable(dependent, variable_info, labels, category_table),
         dependent = dependent,
         table = combined_table,
+        posthoc = posthoc_table,
         note = note_line,
         overview = ttest_bind_result_rows(lapply(dependent_items, function(item) item$overview)),
         factors = lapply(dependent_items, function(item) item$factor)
@@ -1104,7 +1144,14 @@ ttest_anova_results_ui <- function(result) {
     sections[[length(sections) + 1]] <- tags$div(
       class = "result-section regression-result-panel",
       tags$h3(item$title),
-      coefficient_html_table(item$table, note_line = item$note %||% "")
+      coefficient_html_table(item$table, note_line = item$note %||% ""),
+      if (is.data.frame(item$posthoc) && nrow(item$posthoc) > 0) {
+        tags$div(
+          class = "ttest-anova-posthoc-section",
+          tags$h4("Post-hoc"),
+          coefficient_html_table(item$posthoc)
+        )
+      }
     )
   }
 

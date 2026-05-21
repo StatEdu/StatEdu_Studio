@@ -10,6 +10,29 @@ coefficient_panel_title_static <- function(result, variable_table = NULL, labels
   title
 }
 
+coefficient_display_labels <- function(variable_info = NULL, labels = character(0), category_table = NULL) {
+  display_labels <- character(0)
+
+  add_labels <- function(values) {
+    values <- values %||% character(0)
+    if (length(values) == 0 || is.null(names(values))) return()
+    value_names <- names(values)
+    values <- as.character(values)
+    keep <- !is.na(value_names) & nzchar(value_names) & nzchar(trimws(values))
+    if (any(keep)) {
+      display_labels[value_names[keep]] <<- values[keep]
+    }
+  }
+
+  if (is.data.frame(variable_info) && all(c("name", "var_label") %in% names(variable_info))) {
+    add_labels(stats::setNames(as.character(variable_info$var_label), as.character(variable_info$name)))
+  }
+  add_labels(category_var_label_lookup_static(category_table))
+  add_labels(labels)
+
+  display_labels
+}
+
 coefficient_output_table_with_context <- function(
   table,
   predictors = character(0),
@@ -20,6 +43,7 @@ coefficient_output_table_with_context <- function(
   labels = character(0),
   category_table = NULL
 ) {
+  display_labels <- coefficient_display_labels(variable_info, labels, category_table)
   reference_rows <- if (isTRUE(include_references)) {
     categorical_reference_rows_static(
       predictors,
@@ -27,7 +51,7 @@ coefficient_output_table_with_context <- function(
       variable_info,
       refs,
       value_labels,
-      labels,
+      display_labels,
       category_table
     )
   } else {
@@ -37,7 +61,7 @@ coefficient_output_table_with_context <- function(
     table,
     predictors,
     include_references,
-    labels,
+    display_labels,
     value_labels,
     reference_rows
   )

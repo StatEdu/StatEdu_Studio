@@ -315,6 +315,73 @@ register_ttest_anova_handlers <- function(
     }
   })
 
+  observeEvent(input$analysis_transfer_drop, {
+    drop <- input$analysis_transfer_drop
+    ids <- c("ttest_available", "ttest_dependents", "ttest_factors")
+    source <- as.character(drop$source %||% "")
+    target <- as.character(drop$target %||% "")
+    values <- unique(as.character(drop$values %||% character(0)))
+    values <- values[nzchar(values)]
+    if (!source %in% ids || !target %in% ids || identical(source, target) || length(values) == 0) {
+      return()
+    }
+
+    selected <- current_selected()
+    changed <- FALSE
+    if (identical(target, "ttest_available")) {
+      chosen <- intersect(values, unique(c(dependent_variables(), factor_variables())))
+      if (length(chosen) == 0) return()
+      next_dependents <- setdiff(intersect(dependent_variables(), selected), chosen)
+      next_factors <- setdiff(intersect(factor_variables(), selected), chosen)
+      if (!identical(next_dependents, dependent_variables())) {
+        dependent_variables(next_dependents)
+        changed <- TRUE
+      }
+      if (!identical(next_factors, factor_variables())) {
+        factor_variables(next_factors)
+        changed <- TRUE
+      }
+      active_ttest_list("ttest_available")
+    } else if (identical(target, "ttest_dependents")) {
+      chosen <- intersect(values, selected)
+      allowed <- ttest_anova_continuous_candidates(chosen, current_variable_table())
+      if (length(chosen) > 0 && length(allowed) == 0) {
+        showNotification("Dependent variables should be ordinal or continuous.", type = "warning", duration = 4)
+        return()
+      }
+      next_factors <- setdiff(intersect(factor_variables(), selected), allowed)
+      next_dependents <- c(intersect(dependent_variables(), selected), setdiff(allowed, dependent_variables()))
+      if (!identical(next_factors, factor_variables())) {
+        factor_variables(next_factors)
+        changed <- TRUE
+      }
+      if (!identical(next_dependents, dependent_variables())) {
+        dependent_variables(next_dependents)
+        changed <- TRUE
+      }
+      active_ttest_list("ttest_dependents")
+    } else if (identical(target, "ttest_factors")) {
+      chosen <- intersect(values, selected)
+      allowed <- ttest_anova_factor_candidates(chosen, current_variable_table())
+      if (length(chosen) > 0 && length(allowed) == 0) {
+        showNotification("Grouping variables should be binary, nominal, or ordinal.", type = "warning", duration = 4)
+        return()
+      }
+      next_dependents <- setdiff(intersect(dependent_variables(), selected), allowed)
+      next_factors <- c(intersect(factor_variables(), selected), setdiff(allowed, factor_variables()))
+      if (!identical(next_dependents, dependent_variables())) {
+        dependent_variables(next_dependents)
+        changed <- TRUE
+      }
+      if (!identical(next_factors, factor_variables())) {
+        factor_variables(next_factors)
+        changed <- TRUE
+      }
+      active_ttest_list("ttest_factors")
+    }
+    if (changed) mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
   ttest_anova_result <- reactiveVal(NULL)
 
   observeEvent(input$run_ttest_anova, {
