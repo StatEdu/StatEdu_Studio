@@ -126,17 +126,25 @@ register_variable_table_state_observers <- function(
     update <- input$variable_measurement_bulk_update
     names <- as.character(update$names %||% character(0))
     value <- as.character(update$value %||% "")
-    if (length(names) == 0) {
+    updates <- clean_measurement_overrides(update$measurement_pairs %||% character(0))
+    if (length(updates) == 0) {
+      measurement_values <- clean_measurement_overrides(update$measurements %||% character(0))
+      if (length(names) > 0) {
+        names <- unique(names[nzchar(names)])
+        updates <- measurement_values[names[names %in% names(measurement_values)]]
+      }
+    }
+    if (length(updates) == 0 && length(names) > 0 && value %in% c("binary", "category", "ordered", "continuous")) {
+      names <- unique(names[nzchar(names)])
+      updates <- stats::setNames(rep(value, length(names)), names)
+    }
+    if (length(updates) == 0) {
       showNotification("Select variables before applying a variable type.", type = "warning")
       return()
     }
-    if (!(value %in% c("binary", "category", "ordered", "continuous"))) {
-      return()
-    }
-    names <- unique(names[nzchar(names)])
-    update_measurement_overrides_fn(stats::setNames(rep(value, length(names)), names))
+    update_measurement_overrides_fn(updates)
     showNotification(
-      sprintf("Changed %s selected variable type(s) to %s.", length(names), if (identical(value, "ordered")) "ordinal" else value),
+      sprintf("Changed %s selected variable type(s) to %s.", length(updates), if (identical(value, "ordered")) "ordinal" else value),
       type = "message"
     )
   })
@@ -299,7 +307,7 @@ register_selection_apply_observers <- function(
   apply_role_selection_state
 ) {
   observeEvent(input$apply_variable_selection, {
-    apply_variable_selection_state(input$variable_table_state)
+    apply_variable_selection_state(NULL)
   })
 
   observeEvent(input$apply_variable_request, {

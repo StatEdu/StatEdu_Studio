@@ -28,6 +28,8 @@ data_preview_table_options <- function() {
   list(
     pageLength = 20,
     lengthMenu = c(10, 20, 50, 100),
+    deferRender = TRUE,
+    searchDelay = 250,
     scrollX = TRUE,
     autoWidth = TRUE
   )
@@ -185,6 +187,8 @@ category_label_table_options <- function(column_defs) {
     dom = '<"variable-table-top"lfp>rt<"variable-table-bottom"ip>',
     pageLength = 20,
     lengthMenu = c(10, 20, 50, 100),
+    deferRender = TRUE,
+    searchDelay = 250,
     scrollX = TRUE,
     autoWidth = TRUE,
     order = list(list(0, "asc")),
@@ -337,6 +341,8 @@ variable_table_options <- function() {
     dom = '<"variable-table-top"lfp>rt<"variable-table-bottom"ip>',
     pageLength = 20,
     lengthMenu = c(10, 20, 50, 100),
+    deferRender = TRUE,
+    searchDelay = 250,
     scrollX = TRUE,
     autoWidth = TRUE,
     order = list(list(1, "asc")),
@@ -386,6 +392,45 @@ variable_table_callback_script <- function() {
         selectedHeader.html('<button type=\"button\" class=\"page-select-toggle is-off\">selected</button>');
         nameHeader.html('<button type=\"button\" class=\"name-sort-toggle\">name <span class=\"sort-mark\">original</span></button>');
 
+        function rememberVariableTablePage() {
+          if (window.easyflowVariableTableRestorePending) return;
+          try {
+            window.easyflowVariableTablePage = table.page.info().page || 0;
+          } catch (e) {}
+        }
+
+        function requestVariableTablePageRestore() {
+          try {
+            window.easyflowVariableTablePage = table.page.info().page || 0;
+            window.easyflowVariableTableRestorePending = window.easyflowVariableTablePage > 0;
+          } catch (e) {
+            window.easyflowVariableTableRestorePending = false;
+          }
+        }
+
+        function restoreVariableTablePage() {
+          if (!window.easyflowVariableTableRestorePending) return;
+          var page = parseInt(window.easyflowVariableTablePage || 0, 10);
+          if (!isFinite(page) || page <= 0) return;
+          try {
+            var info = table.page.info();
+            var maxPage = Math.max(0, (info.pages || 1) - 1);
+            var targetPage = Math.min(page, maxPage);
+            if ((info.page || 0) !== targetPage) {
+              window.easyflowVariableTableRestorePending = false;
+              table.page(targetPage).draw(false);
+            } else {
+              window.easyflowVariableTableRestorePending = false;
+            }
+          } catch (e) {}
+        }
+
+        function scheduleVariableTablePageRestore() {
+          [0, 50, 150, 300].forEach(function(delay) {
+            window.setTimeout(restoreVariableTablePage, delay);
+          });
+        }
+
         function syncVariableSelection() {
           var state = currentTableState();
           Shiny.setInputValue('variable_table_state', {
@@ -398,9 +443,13 @@ variable_table_callback_script <- function() {
 
         function syncVariableTableState() {
           var state = currentTableState();
+          var measurementPairs = Object.keys(state.measurements || {}).map(function(name) {
+            return {name: name, value: state.measurements[name]};
+          });
           Shiny.setInputValue('variable_table_state', {
             selected: state.selected,
             measurements: state.measurements,
+            measurement_pairs: measurementPairs,
             var_labels: state.var_labels,
             nonce: Date.now() + Math.random()
           }, {priority: 'event'});
@@ -524,14 +573,18 @@ variable_table_callback_script <- function() {
         window.easyflowApplyBulkMeasurement = function() {
           var value = $('#bulk_measurement_type').val() || '';
           if (['binary', 'category', 'ordered', 'continuous'].indexOf(value) < 0) return false;
+          requestVariableTablePageRestore();
           window.easyflowSelectedNames = window.easyflowSelectedNames || {};
           window.easyflowMeasurements = window.easyflowMeasurements || {};
+          window.easyflowBulkMeasurementPairs = window.easyflowBulkMeasurementPairs || [];
           var names = [];
           table.rows({page: 'current'}).every(function() {
             var data = this.data();
             var checkbox = $(this.node()).find('input.variable-select');
-            if (data && data[2] && checkbox.length && checkbox.is(':checked')) {
+            var isChecked = checkbox.length && checkbox.is(':checked');
+            if (data && data[2] && (window.easyflowSelectedNames[data[2]] || isChecked)) {
               names.push(data[2]);
+              window.easyflowSelectedNames[data[2]] = true;
             }
           });
           if (names.length === 0) {
@@ -547,10 +600,14 @@ variable_table_callback_script <- function() {
           names.forEach(function(name) {
             window.easyflowMeasurements[name] = value;
           });
+          window.easyflowBulkMeasurementPairs = names.map(function(name) {
+            return {name: name, value: value};
+          });
           $(table.table().container()).find('select.measurement-select').each(function() {
             var name = $(this).attr('data-name') || $(this).data('name');
             if (name && window.easyflowSelectedNames[name]) {
               $(this).val(value);
+              rememberMeasurementSelect(this, true);
               updateMeasurementAvailability(this);
             }
           });
@@ -561,6 +618,12 @@ variable_table_callback_script <- function() {
               names: names,
               value: value,
               measurements: window.easyflowMeasurements,
+              measurement_pairs: window.easyflowBulkMeasurementPairs,
+              nonce: Date.now() + Math.random()
+            }, {priority: 'event'});
+            Shiny.setInputValue('variable_measurement_snapshot', {
+              values: window.easyflowMeasurements,
+              measurement_pairs: window.easyflowBulkMeasurementPairs,
               nonce: Date.now() + Math.random()
             }, {priority: 'event'});
           }
@@ -659,7 +722,9 @@ variable_table_callback_script <- function() {
           restoreMeasurementSelects();
           refreshVariableChecks();
           bindShinyInputs();
+          scheduleVariableTablePageRestore();
         });
+        table.on('page.dt', rememberVariableTablePage);
         selectedHeader.off('click.easyflowPageToggle').on('click.easyflowPageToggle', '.page-select-toggle', function(e) {
           e.preventDefault();
           e.stopPropagation();
@@ -729,6 +794,7 @@ variable_table_callback_script <- function() {
         bindShinyInputs();
         restoreMeasurementSelects();
         refreshVariableChecks();
+        scheduleVariableTablePageRestore();
         syncVariableSelection();
         "
 }

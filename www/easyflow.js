@@ -381,6 +381,10 @@
         state.selected = state.selected || [];
         var pageMeasurements = collectEasyflowMeasurementsFromPage();
         state.measurements = Object.assign({}, state.measurements || {}, window.easyflowMeasurements || {}, pageMeasurements);
+        (window.easyflowBulkMeasurementPairs || []).forEach(function(pair) {
+          if (!pair || !pair.name) return;
+          state.measurements[pair.name] = pair.value || '';
+        });
         state.measurement_pairs = Object.keys(state.measurements || {}).map(function(name) {
           return {name: name, value: state.measurements[name]};
         });

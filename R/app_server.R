@@ -347,6 +347,7 @@ create_app_server <- function(app_version) {
     input = input,
     sync_table_state_fn = sync_table_state,
     sync_missing_measurement_inputs_fn = sync_missing_measurement_inputs,
+    measurement_overrides_fn = measurement_overrides,
     selected_names_fn = selected_names,
     available_variable_names_fn = available_variable_names,
     base_variable_info_fn = base_variable_info,

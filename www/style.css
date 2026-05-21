@@ -1357,10 +1357,12 @@ input.variable-select:disabled {
 }
 
 .coefficient-footnote-marker {
+  display: inline-block;
   margin-left: 2px;
   font-size: 10px;
-  line-height: 0;
-  vertical-align: super;
+  line-height: 1;
+  vertical-align: baseline;
+  transform: translateY(-0.25em);
 }
 
 .analysis-options-panel {

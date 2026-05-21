@@ -30,6 +30,7 @@ create_apply_variable_selection_state_fn <- function(
   input,
   sync_table_state_fn,
   sync_missing_measurement_inputs_fn,
+  measurement_overrides_fn,
   selected_names_fn,
   available_variable_names_fn,
   base_variable_info_fn,
@@ -38,16 +39,39 @@ create_apply_variable_selection_state_fn <- function(
   finish_variable_selection_fn
 ) {
   function(state = NULL) {
-    submitted_state <- state %||% input$variable_table_state
-    sync_table_state_fn(submitted_state)
-    sync_missing_measurement_inputs_fn(submitted_state)
+    has_submitted_state <- !is.null(state)
+    submitted_state <- if (has_submitted_state) state else NULL
+    if (!is.null(state)) {
+      sync_table_state_fn(submitted_state)
+      sync_missing_measurement_inputs_fn(submitted_state)
+    }
     selection_state <- variable_selection_state(selected_names_fn(), available_variable_names_fn())
     if (!isTRUE(selection_state$ok)) {
       showNotification(selection_state$message, type = "warning")
       return(invisible(FALSE))
     }
     selected <- selection_state$selected
-    step3_variable_info(merge_state_into_info_fn(base_variable_info_fn(), submitted_state, selected_only = TRUE))
+    submitted_measurements <- if (has_submitted_state) {
+      clean_measurement_overrides(settings_state_measurements(submitted_state))
+    } else {
+      character(0)
+    }
+    measurement_values <- merge_named_overrides(measurement_overrides_fn(), submitted_measurements)$values
+    base_info <- apply_measurement_overrides(
+      base_variable_info_fn(),
+      measurement_values
+    )
+    if (has_submitted_state) {
+      merge_state <- submitted_state
+      merge_state$measurements <- measurement_values
+      merge_state$measurement_pairs <- lapply(names(measurement_values), function(name) {
+        list(name = name, value = unname(measurement_values[[name]]))
+      })
+      step3_variable_info(merge_state_into_info_fn(base_info, merge_state, selected_only = TRUE))
+    } else {
+      step3_info <- base_info[base_info$name %in% selected, , drop = FALSE]
+      step3_variable_info(step3_info)
+    }
     finish_variable_selection_fn(selected)
     invisible(TRUE)
   }

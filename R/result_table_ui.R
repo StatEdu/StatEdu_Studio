@@ -85,7 +85,7 @@ result_cell_content <- function(value, marker = "") {
   }
   base <- sub(paste0(marker, "$"), "", value)
   tags$span(
-    style = "white-space:nowrap;",
+    style = "display:inline-flex;align-items:flex-start;white-space:nowrap;line-height:1.2;",
     base,
     tags$sup(class = "coefficient-footnote-marker", marker)
   )

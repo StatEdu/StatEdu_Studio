@@ -272,7 +272,8 @@ data_steps_panel <- function(
               "apply_variable_selection",
               "Apply variable selection",
               class = "btn btn-primary",
-              onmousedown = "if(window.easyflowFlushVariableTableState){window.easyflowFlushVariableTableState();}"
+              onmousedown = "if(window.easyflowFlushVariableTableState){window.easyflowFlushVariableTableState();}",
+              onclick = "if(window.easyflowApplyVariableSelection){return window.easyflowApplyVariableSelection();}"
             )
           )
         } else {

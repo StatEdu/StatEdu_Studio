@@ -192,16 +192,23 @@ create_base_variable_info_fn <- function(
   measurement_overrides_fn,
   var_label_overrides_fn
 ) {
-  cached_base_variable_info <- reactive({
+  cached_raw_base_variable_info <- reactive({
     has_data_file <- !is.null(current_data_file_fn())
-    base_variable_info_value(
-      has_data_file = has_data_file,
-      data = if (isTRUE(has_data_file)) dataset_fn() else NULL,
-      input = input,
-      raw_data = if (isTRUE(has_data_file)) raw_dataset_fn() else NULL,
-      restored_info = restored_variable_info_fn(),
-      measurement_overrides = measurement_overrides_fn(),
-      var_label_overrides = var_label_overrides_fn()
+    if (isTRUE(has_data_file)) {
+      return(variable_summary_table(
+        data = dataset_fn(),
+        input = input,
+        raw_data = raw_dataset_fn()
+      ))
+    }
+    restored_variable_info_fn()
+  })
+
+  cached_base_variable_info <- reactive({
+    apply_variable_overrides(
+      cached_raw_base_variable_info(),
+      measurement_overrides_fn(),
+      var_label_overrides_fn()
     )
   })
 

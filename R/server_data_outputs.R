@@ -159,7 +159,7 @@ register_variable_table_output <- function(
       checked_names <- isolate(selected_names_fn())
     }
     table_state <- variable_table_render_state(
-      variable_info_table_fn(reactive_labels = FALSE),
+      isolate(variable_info_table_fn(reactive_labels = FALSE)),
       checked_names = checked_names,
       selected_names = isolate(selected_names_fn()),
       assigned_elsewhere = isolate(assigned_elsewhere_names_fn()),
