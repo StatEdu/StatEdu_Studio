@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.8.6 - 2026-05-21
+
+### Changed
+
+- Added Step 3 variable review with Labels / Variables views and a unified Apply workflow for value labels, variable labels, and measurement-type changes.
+- Ensured Step 3 measurement-type edits propagate to analysis menus after applying.
+- Kept Step 3 review controls consistent with the current Data workflow layout.
+
+
 ## v0.8.4 - 2026-05-20
 
 ### Changed
