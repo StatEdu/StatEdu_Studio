@@ -61,7 +61,7 @@ data_view_title_text <- function(
     return("Data Preview")
   }
   if (identical(view, "labels")) {
-    return("Categorical Value Labels")
+    return("Variable Review")
   }
   if (isTRUE(selection_applied)) {
     return(sprintf("Selected variables (%s)", selected_count))
@@ -140,6 +140,52 @@ apply_category_labels_inline_js <- function() {
     "}",
     "return false;",
     sep = ""
+  )
+}
+
+apply_step3_review_inline_js <- function() {
+  paste(
+    "if (window.easyflowApplyStep3Review) return window.easyflowApplyStep3Review();",
+    "if (window.Shiny) {",
+    "  var categoryLabels = {};",
+    "  var measurements = {};",
+    "  var varLabels = {};",
+    "  var selectedMap = {};",
+    "  function putMeasurement(name, value) { if (name && value) measurements[name] = value; }",
+    "  function putVarLabel(name, value) { if (!name) return; varLabels[name] = value || ''; categoryLabels[name] = categoryLabels[name] || {}; categoryLabels[name].var_label = value || ''; }",
+    "  var labelRoot = document.getElementById('category_label_table') || document;",
+    "  labelRoot.querySelectorAll('input[data-name][data-field]').forEach(function(input) {",
+    "    var name = input.getAttribute('data-name') || '';",
+    "    var field = input.getAttribute('data-field') || '';",
+    "    if (!name || !field || input.disabled) return;",
+    "    categoryLabels[name] = categoryLabels[name] || {};",
+    "    categoryLabels[name][field] = input.value || '';",
+    "    if (field === 'var_label') putVarLabel(name, input.value || '');",
+    "  });",
+    "  labelRoot.querySelectorAll('select.category-measurement-select[data-name]').forEach(function(select) {",
+    "    putMeasurement(select.getAttribute('data-name') || '', select.value || '');",
+    "  });",
+    "  var selectedRoot = document.getElementById('selected_variable_edit_table') || document;",
+    "  selectedRoot.querySelectorAll('input.variable-select[data-name]').forEach(function(input) {",
+    "    var name = input.getAttribute('data-name') || '';",
+    "    if (name && !input.disabled && input.checked) selectedMap[name] = true;",
+    "  });",
+    "  selectedRoot.querySelectorAll('select.measurement-select[data-name]').forEach(function(select) {",
+    "    putMeasurement(select.getAttribute('data-name') || '', select.value || '');",
+    "  });",
+    "  selectedRoot.querySelectorAll('input.var-label-input[data-name], input[data-field=\"var_label\"][data-name]').forEach(function(input) {",
+    "    putVarLabel(input.getAttribute('data-name') || '', input.value || '');",
+    "  });",
+    "  var measurementPairs = Object.keys(measurements).map(function(name) { return {name:name, value:measurements[name]}; });",
+    "  var varLabelPairs = Object.keys(varLabels).map(function(name) { return {name:name, value:varLabels[name]}; });",
+    "  var selected = Object.keys(selectedMap);",
+    "  var nonce = Date.now() + Math.random();",
+    "  Shiny.setInputValue('apply_selected_variable_review_request', {selected:selected, measurements:measurements, measurement_pairs:measurementPairs, var_labels:varLabels, nonce:nonce}, {priority:'event'});",
+    "  Shiny.setInputValue('apply_category_labels_request', {category_labels:categoryLabels, measurements:measurements, measurement_pairs:measurementPairs, var_labels:varLabels, var_label_pairs:varLabelPairs, selected:selected, nonce:nonce + 1}, {priority:'event'});",
+    "  Shiny.setInputValue('variable_measurement_snapshot', {values:measurements, measurement_pairs:measurementPairs, nonce:nonce + 2}, {priority:'event'});",
+    "}",
+    "return false;",
+    sep = "\n"
   )
 }
 
@@ -284,17 +330,36 @@ data_steps_panel <- function(
     if (has_data && applied) {
       div(
         class = step_class("step3", applied),
-        h3(actionLink("go_step3", "Step 3. Variable labels", class = "step-link")),
+        h3(actionLink("go_step3", "Step 3. Variable review", class = "step-link")),
         if (identical(step, "step3")) {
           tagList(
-            div("Edit value labels for categorical variables. Click Apply labels to update the active session.", class = "step-note"),
+            div("Review selected variables or edit categorical value labels.", class = "step-note"),
+            div(
+              class = "step3-view-toggle",
+              tags$button(
+                type = "button",
+                class = "step3-toggle-combined step3-control-button",
+                onclick = paste0(
+                  "var next=(window.easyflowStep3View==='variables')?'labels':'variables';",
+                  "window.easyflowStep3View=next;",
+                  "this.querySelector('[data-step3-label]').classList.toggle('is-active',next==='labels');",
+                  "this.querySelector('[data-step3-selected]').classList.toggle('is-active',next==='variables');",
+                  "if(window.Shiny){Shiny.setInputValue('step3_label_view',next,{priority:'event'});}",
+                  "return false;"
+                ),
+                tags$span(`data-step3-label` = TRUE, class = "is-active", "Labels"),
+                tags$span(class = "step3-toggle-divider", "/"),
+                tags$span(`data-step3-selected` = TRUE, "Variables")
+              )
+            ),
             div(
               class = "step3-action-row",
-              actionButton(
-                "apply_category_labels_button",
-                "Apply labels",
-                class = "btn btn-primary",
-                onmousedown = "if(window.easyflowApplyCategoryLabels){window.easyflowApplyCategoryLabels();}"
+              tags$button(
+                id = "apply_step3_review",
+                type = "button",
+                "Apply",
+                class = "btn btn-primary step3-control-button",
+                onclick = apply_step3_review_inline_js()
               ),
               if (isTRUE(has_calculated_variables)) {
                 actionButton("save_current_data_file", "Save data", class = "btn btn-default")
@@ -304,8 +369,8 @@ data_steps_panel <- function(
         } else {
           div(
             class = "step-summary",
-            div("Categorical value labels", class = "step-summary-title"),
-            div("Click Step 3 to review or edit labels.", class = "step-summary-detail")
+            div("Variable review", class = "step-summary-title"),
+            div("Click Step 3 to review selected variables or edit labels.", class = "step-summary-detail")
           )
         }
       )

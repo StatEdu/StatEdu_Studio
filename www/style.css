@@ -183,6 +183,17 @@ body {
   color: #102a43;
 }
 
+.data-table-section {
+  margin-bottom: 24px;
+}
+
+.data-table-section h4 {
+  margin: 0 0 10px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #102a43;
+}
+
 .frequencies-workspace-panel {
   min-width: 980px;
   background: #f8fafc;
@@ -1728,6 +1739,36 @@ input.variable-select:disabled {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.step3-view-toggle {
+  margin: 6px 0 14px;
+}
+
+.step3-control-button {
+  width: 168px;
+  min-width: 168px;
+  height: 38px;
+  box-sizing: border-box;
+}
+
+.step3-toggle-combined {
+  padding: 8px 14px;
+  border: 1px solid #b9c8d8;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #829ab1;
+  cursor: pointer;
+}
+
+.step3-toggle-combined .is-active {
+  color: #102a43;
+  font-weight: 700;
+}
+
+.step3-toggle-divider {
+  margin: 0 8px;
+  color: #9fb3c8;
 }
 
 .data-editor-result-output,

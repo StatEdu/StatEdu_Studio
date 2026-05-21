@@ -66,6 +66,48 @@ category_label_display_data <- function(
   info[, c("source_order", "name", "var_label", "measurement", "n_unique", "reference", value_columns), drop = FALSE]
 }
 
+selected_variable_summary_data <- function(
+  info,
+  selected_names = character(0),
+  saved_values = NULL,
+  measurement_overrides = character(0)
+) {
+  if (is.null(info) || nrow(info) == 0) {
+    return(data.frame(Message = "No variables are selected.", check.names = FALSE))
+  }
+
+  info <- apply_measurement_overrides(info, measurement_overrides)
+  info <- info[info$name %in% as.character(selected_names), , drop = FALSE]
+  if (nrow(info) == 0) {
+    return(data.frame(Message = "No variables are selected.", check.names = FALSE))
+  }
+
+  if (!"reference" %in% names(info)) {
+    info$reference <- ""
+  }
+  if (is.data.frame(saved_values) && all(c("name", "reference") %in% names(saved_values))) {
+    matched <- match(info$name, saved_values$name)
+    has_saved <- !is.na(matched)
+    info$reference[has_saved] <- as.character(saved_values$reference[matched[has_saved]] %||% "")
+  }
+  if ("measurement" %in% names(info)) {
+    info$reference[!info$measurement %in% c("binary", "category", "ordered")] <- ""
+  }
+
+  output <- data.frame(
+    Variable = as.character(info$name),
+    Label = as.character(info$var_label %||% ""),
+    Measurement = ifelse(as.character(info$measurement) == "ordered", "ordinal", as.character(info$measurement)),
+    Reference = as.character(info$reference %||% ""),
+    Min = as.character(info$min_value %||% ""),
+    Max = as.character(info$max_value %||% ""),
+    Missing = as.character(info$n_missing %||% ""),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+  output
+}
+
 category_label_seed_table <- function(base, max_pairs = 6) {
   edit_columns <- category_label_edit_columns(max_pairs)
   if (is.null(base) || !"name" %in% names(base)) {

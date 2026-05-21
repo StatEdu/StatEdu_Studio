@@ -154,6 +154,16 @@ register_variable_table_state_observers <- function(
     update_measurement_overrides_fn(snapshot$measurement_pairs %||% snapshot$values %||% snapshot)
   })
 
+  observeEvent(input$apply_selected_variable_review, {
+    sync_table_state_fn(input$variable_table_state)
+    showNotification("Selected variable information saved.", type = "message")
+  })
+
+  observeEvent(input$apply_selected_variable_review_request, {
+    sync_table_state_fn(input$apply_selected_variable_review_request)
+    showNotification("Selected variable information saved.", type = "message")
+  })
+
   invisible(TRUE)
 }
 
@@ -453,7 +463,7 @@ category_label_handlers <- function(
     ))
     showNotification(
       sprintf(
-        "Variable labels applied (%s value rows, %s types, %s variable labels).",
+        "Variable review applied (%s value rows, %s types, %s variable labels).",
         payload_category_count,
         payload_measurement_count,
         payload_var_label_count

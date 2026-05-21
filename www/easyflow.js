@@ -403,6 +403,148 @@
         return false;
       };
 
+      window.easyflowApplySelectedVariableReview = function() {
+        if (!window.Shiny) return false;
+        flushEasyflowInputs();
+        var state = collectEasyflowSelectedVariableReviewState();
+        state.nonce = Date.now() + Math.random();
+        Shiny.setInputValue('apply_selected_variable_review_request', state, {priority: 'event'});
+        return false;
+      };
+
+      function collectEasyflowSelectedVariableReviewState() {
+        var root = document.getElementById('selected_variable_edit_table') || document;
+        var measurements = Object.assign({}, window.easyflowMeasurements || {});
+        var varLabels = Object.assign({}, window.easyflowVarLabels || {});
+        var selectedMap = Object.assign({}, window.easyflowSelectedNames || {});
+
+        if (!root || !root.querySelectorAll) {
+          return submitEasyflowTableState();
+        }
+
+        root.querySelectorAll('input.variable-select[data-name]').forEach(function(input) {
+          var name = input.getAttribute('data-name') || '';
+          if (!name || input.disabled) return;
+          selectedMap[name] = true;
+        });
+
+        root.querySelectorAll('select.measurement-select[data-name]').forEach(function(select) {
+          var name = select.getAttribute('data-name') || '';
+          if (!name) return;
+          measurements[name] = select.value || '';
+          window.easyflowMeasurements = window.easyflowMeasurements || {};
+          window.easyflowMeasurements[name] = measurements[name];
+        });
+
+        root.querySelectorAll('input.var-label-input[data-name], input[data-field=\"var_label\"][data-name]').forEach(function(input) {
+          var name = input.getAttribute('data-name') || '';
+          if (!name) return;
+          varLabels[name] = input.value || '';
+          window.easyflowVarLabels = window.easyflowVarLabels || {};
+          window.easyflowVarLabels[name] = varLabels[name];
+        });
+
+        return {
+          selected: Object.keys(selectedMap),
+          measurements: measurements,
+          measurement_pairs: Object.keys(measurements).map(function(name) {
+            return {name: name, value: measurements[name]};
+          }),
+          var_labels: varLabels
+        };
+      }
+      window.easyflowCollectSelectedVariableReviewState = collectEasyflowSelectedVariableReviewState;
+
+      function mergeEasyflowNamedValues(target, source) {
+        Object.keys(source || {}).forEach(function(name) {
+          if (!name) return;
+          target[name] = source[name];
+        });
+        return target;
+      }
+
+      function buildEasyflowStep3ReviewState() {
+        var categoryState = collectEasyflowCategoryLabelState();
+        var selectedState = collectEasyflowSelectedVariableReviewState();
+        var categoryLabels = categoryState.category_labels || {};
+        var varLabels = mergeEasyflowNamedValues(
+          Object.assign({}, categoryState.var_labels || {}),
+          selectedState.var_labels || {}
+        );
+        var measurements = mergeEasyflowNamedValues(
+          Object.assign({}, categoryState.measurements || {}),
+          selectedState.measurements || {}
+        );
+
+        Object.keys(varLabels).forEach(function(name) {
+          if (!name) return;
+          categoryLabels[name] = categoryLabels[name] || {};
+          categoryLabels[name].var_label = varLabels[name] || '';
+        });
+
+        return {
+          category_labels: categoryLabels,
+          var_labels: varLabels,
+          var_label_pairs: Object.keys(varLabels).map(function(name) {
+            return {name: name, value: varLabels[name]};
+          }),
+          measurements: measurements,
+          measurement_pairs: Object.keys(measurements).map(function(name) {
+            return {name: name, value: measurements[name]};
+          }),
+          selected: selectedState.selected || []
+        };
+      }
+
+      window.easyflowApplyStep3Review = function() {
+        if (!window.Shiny) return false;
+        flushEasyflowInputs();
+        var state = buildEasyflowStep3ReviewState();
+        state.nonce = Date.now() + Math.random();
+        Shiny.setInputValue('apply_selected_variable_review_request', {
+          selected: state.selected || [],
+          measurements: state.measurements || {},
+          measurement_pairs: state.measurement_pairs || [],
+          var_labels: state.var_labels || {},
+          nonce: Date.now() + Math.random()
+        }, {priority: 'event'});
+        Shiny.setInputValue('apply_category_labels_request', state, {priority: 'event'});
+        Shiny.setInputValue('variable_measurement_snapshot', {
+          values: state.measurements || {},
+          measurement_pairs: state.measurement_pairs || [],
+          nonce: Date.now() + Math.random()
+        }, {priority: 'event'});
+        return false;
+      };
+
+      function setEasyflowStep3ToggleLabel(button, view) {
+        if (!button) return;
+        button.textContent = view === 'variables' ? 'Labels' : 'Variables';
+      }
+
+      window.easyflowToggleStep3View = function(button) {
+        window.easyflowStep3View = window.easyflowStep3View === 'variables' ? 'labels' : 'variables';
+        setEasyflowStep3ToggleLabel(button, window.easyflowStep3View);
+        if (window.Shiny) {
+          Shiny.setInputValue('step3_label_view', window.easyflowStep3View, {priority: 'event'});
+        }
+        return false;
+      };
+
+      function initializeEasyflowStep3View() {
+        if (!window.easyflowStep3View) window.easyflowStep3View = 'labels';
+        document.querySelectorAll('.step3-toggle-button').forEach(function(button) {
+          setEasyflowStep3ToggleLabel(button, window.easyflowStep3View);
+        });
+        if (window.Shiny) {
+          Shiny.setInputValue('step3_label_view', window.easyflowStep3View, {priority: 'event'});
+        }
+      }
+
+      document.addEventListener('shiny:value', initializeEasyflowStep3View);
+      document.addEventListener('DOMContentLoaded', initializeEasyflowStep3View);
+      window.setTimeout(initializeEasyflowStep3View, 0);
+
       window.easyflowApplyRoleSelection = function() {
         if (!window.Shiny) return false;
         flushEasyflowInputs();

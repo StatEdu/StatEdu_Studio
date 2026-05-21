@@ -16,6 +16,14 @@ empty_category_label_table <- function() {
   )
 }
 
+empty_selected_variable_summary_table <- function() {
+  DT::datatable(
+    data.frame(Message = "Apply Step 2 variable selection to review selected variables.", check.names = FALSE),
+    rownames = FALSE,
+    options = list(dom = "t")
+  )
+}
+
 empty_data_preview_table <- function() {
   DT::datatable(
     data.frame(Message = "Reopen the data file to preview data rows."),
@@ -180,6 +188,19 @@ category_label_column_defs <- function(table_data, edit_columns = category_label
     )
   }
   column_defs
+}
+
+selected_variable_summary_table_options <- function() {
+  list(
+    dom = '<"variable-table-top"lfp>rt<"variable-table-bottom"ip>',
+    pageLength = 20,
+    lengthMenu = c(10, 20, 50, 100),
+    deferRender = TRUE,
+    searchDelay = 250,
+    scrollX = TRUE,
+    autoWidth = TRUE,
+    order = list(list(0, "asc"))
+  )
 }
 
 category_label_table_options <- function(column_defs) {

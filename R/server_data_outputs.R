@@ -83,8 +83,79 @@ register_data_table_outputs <- function(
   dataset_fn,
   selection_applied_fn,
   selected_names_fn,
+  variable_info_table_fn,
+  category_label_values_fn,
+  measurement_overrides_fn,
   category_label_table_data_fn
 ) {
+  output$selected_variable_edit_table <- DT::renderDT({
+    tryCatch({
+      selected <- selected_names_fn()
+      table_info <- variable_info_table_fn()
+      if (is.null(table_info) || length(selected) == 0) {
+        return(empty_variable_table())
+      }
+      table_info <- table_info[table_info$name %in% selected, , drop = FALSE]
+      table_state <- variable_table_render_state(
+        table_info,
+        checked_names = selected,
+        selected_names = selected,
+        selection_applied = FALSE,
+        measurement_overrides = measurement_overrides_fn()
+      )
+      DT::datatable(
+        table_state$table_data,
+        rownames = FALSE,
+        escape = FALSE,
+        filter = "top",
+        options = variable_table_options(),
+        callback = variable_table_callback(
+          selected_names = table_state$checked_names,
+          dependent_only = FALSE,
+          single_select_role = FALSE,
+          script = variable_table_callback_script()
+        )
+      )
+    }, error = function(error) {
+      message("Selected variable edit table render error: ", conditionMessage(error))
+      empty_variable_table()
+    })
+  })
+
+  output$selected_variable_summary_table <- DT::renderDT({
+    tryCatch({
+      table_data <- selected_variable_summary_data(
+        variable_info_table_fn(),
+        selected_names = selected_names_fn(),
+        saved_values = category_label_values_fn(),
+        measurement_overrides = measurement_overrides_fn()
+      )
+      if (is.null(table_data)) {
+        return(empty_selected_variable_summary_table())
+      }
+      if ("Message" %in% names(table_data)) {
+        return(DT::datatable(
+          table_data,
+          rownames = FALSE,
+          escape = FALSE,
+          selection = "none",
+          options = list(dom = "t", paging = FALSE, ordering = FALSE)
+        ))
+      }
+      DT::datatable(
+        table_data,
+        rownames = FALSE,
+        escape = FALSE,
+        filter = "top",
+        selection = "none",
+        options = selected_variable_summary_table_options()
+      )
+    }, error = function(error) {
+      message("Selected variable summary render error: ", conditionMessage(error))
+      empty_selected_variable_summary_table()
+    })
+  })
+
   output$category_label_table <- DT::renderDT({
     tryCatch({
       table_data <- category_label_table_data_fn()

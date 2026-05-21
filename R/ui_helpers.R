@@ -90,7 +90,7 @@ app_stylesheet_link <- function(version) {
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-transfer-focus-1"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-step3-inline-apply-1"))
 }
 
 app_head_tags <- function(version) {

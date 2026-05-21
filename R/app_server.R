@@ -558,6 +558,9 @@ create_app_server <- function(app_version) {
     dataset_fn = dataset,
     selection_applied_fn = selection_applied,
     selected_names_fn = selected_names,
+    variable_info_table_fn = variable_info_table,
+    category_label_values_fn = category_label_values,
+    measurement_overrides_fn = measurement_overrides,
     category_label_table_data_fn = category_label_table_data
   )
 
