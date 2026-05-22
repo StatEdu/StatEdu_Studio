@@ -11,6 +11,7 @@ source(file.path(repo_root, "R", "data_io.R"))
 source(file.path(repo_root, "R", "data_category_labels.R"))
 source(file.path(repo_root, "R", "data_editor_recode.R"))
 source(file.path(repo_root, "R", "data_editor_likert.R"))
+source(file.path(repo_root, "R", "data_editor_missing.R"))
 
 message("Checking same-variable recoding rules...")
 rules <- data.frame(old = c("1", "2", ""), new = c("10", "20", ""), stringsAsFactors = FALSE)
@@ -117,5 +118,34 @@ stopifnot(identical(unname(partial_choices), c("item1", "item2")))
 stopifnot(grepl("observed 4 of 5 levels", names(partial_choices)[[2]], fixed = TRUE))
 partial_converted <- recode_likert_values(partial_likert_data$item2, partial_mapping)
 stopifnot(identical(partial_converted, c(2, 3, 4, 5, 5)))
+
+message("Checking automatic missing-value detection helpers...")
+missing_data <- data.frame(
+  scale = c(1, 2, 3, 9, NA),
+  score = c(10, 12, 999, 15, 11),
+  comment = c("ok", "NA", "", "\ubaa8\ub984", "done"),
+  group = factor(c("A", "N/A", "B", "A", "B")),
+  check.names = FALSE
+)
+missing_candidates <- detect_missing_value_candidates(missing_data)
+stopifnot(all(c("scale", "score", "comment", "group") %in% missing_candidates$variable))
+stopifnot(any(missing_candidates$variable == "scale" & missing_candidates$value == "9"))
+stopifnot(any(missing_candidates$variable == "score" & missing_candidates$value == "999"))
+stopifnot(any(missing_candidates$variable == "comment" & missing_candidates$value == ""))
+stopifnot(any(missing_candidates$variable == "comment" & missing_candidates$value == "\ubaa8\ub984"))
+stopifnot(any(missing_candidates$variable == "group" & missing_candidates$value == "N/A"))
+
+score_rule <- missing_candidates[missing_candidates$variable == "score" & missing_candidates$value == "999", , drop = FALSE]
+score_result <- apply_missing_value_rules(missing_data$score, score_rule)
+stopifnot(identical(score_result, c(10, 12, NA, 15, 11)))
+
+comment_rules <- missing_candidates[missing_candidates$variable == "comment", , drop = FALSE]
+comment_result <- apply_missing_value_rules(missing_data$comment, comment_rules)
+stopifnot(identical(is.na(comment_result), c(FALSE, TRUE, TRUE, TRUE, FALSE)))
+
+group_rule <- missing_candidates[missing_candidates$variable == "group" & missing_candidates$value == "N/A", , drop = FALSE]
+group_result <- apply_missing_value_rules(missing_data$group, group_rule)
+stopifnot(is.factor(group_result))
+stopifnot(identical(is.na(group_result), c(FALSE, TRUE, FALSE, FALSE, FALSE)))
 
 message("All data editor recoding validations passed.")

@@ -42,7 +42,7 @@ data_editor_different_variable_tab_panel <- function() {
 
 data_editor_coding_error_check_tab_panel <- function() {
   tabPanel(
-    "Coding error check",
+    "Auto coding error check",
     value = "data_editor_coding_error_check",
     data_editor_coding_error_check_panel()
   )
@@ -58,14 +58,9 @@ data_editor_variable_calculation_tab_panel <- function() {
 
 data_editor_missing_values_tab_panel <- function() {
   tabPanel(
-    "Missing values",
+    "Auto missing values",
     value = "data_editor_missing_values",
-    data_editor_command_panel(
-      "Missing Values",
-      "Define user-missing values for variables before running analyses.",
-      "Missing value definition",
-      "This command will define values that analyses should treat as missing."
-    )
+    data_editor_missing_panel()
   )
 }
 

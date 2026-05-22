@@ -361,7 +361,7 @@ coding_error_check_setup_panel <- function(file, data, variable_info, labels = c
     div(
       class = "analysis-options-column analysis-options-panel recode-different-options",
       div(class = "analysis-option-group recode-range-check-options",
-        div(class = "analysis-option-title", "Coding error check"),
+        div(class = "analysis-option-title", "Auto coding error check"),
         div(class = "recode-help-text", "Run checks values outside the range and non-integer values."),
         div(class = "recode-observed-range",
           span("Observed range"),
@@ -386,12 +386,12 @@ data_editor_coding_error_check_panel <- function() {
     class = "page-shell",
     div(
       class = "app-heading",
-      h1("Coding Error Check"),
+      h1("Auto Coding Error Check"),
       div("Check selected variables for out-of-range values and non-integer values.", class = "app-subtitle")
     ),
     div(
       class = "workspace-panel frequencies-workspace-panel data-editor-workspace",
-      analysis_workspace_heading("Coding error check", "coding_error"),
+      analysis_workspace_heading("Auto coding error check", "coding_error"),
       analysis_workspace_body(
         "coding_error",
         uiOutput("coding_error_setup"),
@@ -1030,7 +1030,7 @@ register_coding_error_check_handlers <- function(
     input = input,
     output = output,
     prefix = "coding_error",
-    title = "Coding Error Check Data Viewer",
+    title = "Auto Coding Error Check Data Viewer",
     dataset_fn = dataset_fn,
     selected_names_fn = selected_names_fn,
     variables_fn = selected_variables,

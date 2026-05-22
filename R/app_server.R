@@ -741,6 +741,16 @@ create_app_server <- function(app_version) {
     mark_settings_dirty = mark_settings_dirty
   )
 
+  register_missing_value_handlers(
+    input = input,
+    output = output,
+    session = session,
+    dataset_fn = dataset,
+    current_data_file_fn = current_data_file,
+    update_existing_variable_fn = update_existing_variable,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
   register_hint8_calculator_handlers(
     input = input,
     output = output,
