@@ -8,7 +8,9 @@ setwd(repo_root)
 
 source(file.path(repo_root, "R", "utils.R"))
 source(file.path(repo_root, "R", "data_io.R"))
+source(file.path(repo_root, "R", "data_category_labels.R"))
 source(file.path(repo_root, "R", "data_editor_recode.R"))
+source(file.path(repo_root, "R", "data_editor_likert.R"))
 
 message("Checking same-variable recoding rules...")
 rules <- data.frame(old = c("1", "2", ""), new = c("10", "20", ""), stringsAsFactors = FALSE)
@@ -74,5 +76,46 @@ stopifnot(identical(calculated$M_scale, c(3, 3, 7, NA)))
 stopifnot(identical(calculated$S_scale, c(9, 6, 14, NA)))
 stopifnot(all.equal(calculated$SD_scale, c(2, sqrt(2), sqrt(2), NA), check.attributes = FALSE))
 stopifnot(all.equal(calculated$Var_scale, c(4, 2, 2, NA), check.attributes = FALSE))
+
+message("Checking automatic Likert detection and conversion helpers...")
+likert_data <- data.frame(
+  sat1 = c("매우 불만족", "불만족", "보통", "만족", "매우 만족"),
+  sat2 = c("불만족", "보통", "만족", "매우 만족", "매우 불만족"),
+  note = c("a", "b", "c", "d", "e"),
+  check.names = FALSE
+)
+detected <- detect_likert_variables(likert_data)
+stopifnot(nrow(detected) == 2)
+summary <- likert_group_summary(detected)
+stopifnot(nrow(summary) == 1)
+stopifnot(summary$variable_count[[1]] == 2)
+mapping <- detected$mapping[[1]]
+stopifnot(identical(as.character(mapping$label), c("매우 불만족", "불만족", "보통", "만족", "매우 만족")))
+stopifnot(identical(as.numeric(mapping$value), c(1, 2, 3, 4, 5)))
+converted <- recode_likert_values(likert_data$sat1, mapping)
+stopifnot(identical(converted, c(1, 2, 3, 4, 5)))
+reversed <- recode_likert_values(likert_data$sat1, mapping, reverse = TRUE)
+stopifnot(identical(reversed, c(5, 4, 3, 2, 1)))
+payload <- likert_category_payload(c("sat1"), mapping)
+stopifnot(identical(payload$sat1$value_1, "1"))
+stopifnot(identical(payload$sat1$label_5, "매우 만족"))
+
+partial_likert_data <- data.frame(
+  item1 = c("1 (전혀 그렇지 않다)", "2 (그렇지 않다)", "3 (보통이다)", "4 (그렇다)", "5 (매우 그렇다)"),
+  item2 = c("2 (그렇지 않다)", "3 (보통이다)", "4 (그렇다)", "5 (매우 그렇다)", "5 (매우 그렇다)"),
+  check.names = FALSE
+)
+partial_detected <- detect_likert_variables(partial_likert_data)
+partial_summary <- likert_group_summary(partial_detected)
+stopifnot(nrow(partial_summary) == 1)
+stopifnot(partial_summary$variable_count[[1]] == 2)
+stopifnot(partial_summary$levels[[1]] == 5)
+partial_mapping <- likert_group_representative_mapping(partial_detected)
+stopifnot(identical(as.numeric(partial_mapping$value), c(1, 2, 3, 4, 5)))
+partial_choices <- likert_variable_choice_labels(partial_detected, partial_mapping)
+stopifnot(identical(unname(partial_choices), c("item1", "item2")))
+stopifnot(grepl("observed 4 of 5 levels", names(partial_choices)[[2]], fixed = TRUE))
+partial_converted <- recode_likert_values(partial_likert_data$item2, partial_mapping)
+stopifnot(identical(partial_converted, c(2, 3, 4, 5, 5)))
 
 message("All data editor recoding validations passed.")

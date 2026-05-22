@@ -439,7 +439,7 @@ hierarchical_table_colgroup <- function(model_columns) {
     cols <- c(
       cols,
       lapply(model_columns[[index]], function(column) {
-        tags$col(class = "hierarchical-stat-col")
+        tags$col(class = hierarchical_stat_column_class(column))
       })
     )
     if (index < length(model_columns)) {
@@ -451,11 +451,12 @@ hierarchical_table_colgroup <- function(model_columns) {
 
 hierarchical_table_width <- function(model_columns) {
   term_width <- 232
-  stat_width <- 70
   separator_width <- 10
   model_count <- length(model_columns)
-  stat_count <- sum(lengths(model_columns))
-  term_width + (stat_count * stat_width) + (max(model_count - 1, 0) * separator_width)
+  stat_width <- sum(unlist(lapply(model_columns, function(columns) {
+    vapply(columns, hierarchical_stat_column_width, integer(1))
+  }), use.names = FALSE))
+  term_width + stat_width + (max(model_count - 1, 0) * separator_width)
 }
 
 hierarchical_model_note_lines <- function(group, variable_table = NULL, labels = character(0)) {
@@ -529,11 +530,7 @@ hierarchical_coefficient_html_table <- function(
     columns <- model_columns[[index]]
     sub_headers <- c(sub_headers, lapply(columns, function(column) {
       tags$th(
-        style = paste0(
-          "padding:9px 18px;line-height:1.45;border-left:0;border-right:0;",
-          "border-top:0;border-bottom:2px solid #1f2937;",
-          "text-align:right;font-weight:700;min-width:65px;white-space:nowrap;"
-        ),
+        style = paste0(hierarchical_stat_cell_style(column, header = TRUE), "font-weight:700;"),
         column
       )
     }))
@@ -554,10 +551,10 @@ hierarchical_coefficient_html_table <- function(
       columns <- model_columns[[model_index]]
       row_index <- match(term, as.character(table$Term))
       if (is.na(row_index)) {
-        cells <- c(cells, lapply(columns, function(column) tags$td(style = result_body_cell_style(FALSE, is_last), "")))
+        cells <- c(cells, lapply(columns, function(column) tags$td(style = hierarchical_stat_cell_style(column, is_last), "")))
       } else {
         cells <- c(cells, lapply(columns, function(column) {
-          tags$td(style = result_body_cell_style(FALSE, is_last), as.character(table[[column]][[row_index]] %||% ""))
+          tags$td(style = hierarchical_stat_cell_style(column, is_last), as.character(table[[column]][[row_index]] %||% ""))
         }))
       }
       if (model_index < length(model_tables)) {

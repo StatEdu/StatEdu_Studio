@@ -6,7 +6,7 @@ data_tab_panel <- function() {
       div(
         class = "app-heading",
         h1("EasyFlow Statistics"),
-        div("SPSS SAV, CSV, DAT files can be loaded and summarized before regression analysis.", class = "app-subtitle")
+        div("SPSS SAV, Excel, CSV, DAT files can be loaded and summarized before analysis.", class = "app-subtitle")
       ),
       div(
         class = "data-layout",

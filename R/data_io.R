@@ -105,6 +105,16 @@ read_input_data <- function(path, original_name, csv_header = TRUE, dat_delimite
     return(readr::read_csv(read_path, col_names = csv_header, show_col_types = FALSE, progress = FALSE))
   }
 
+  if (identical(ext, "xlsx")) {
+    if (!requireNamespace("openxlsx", quietly = TRUE)) {
+      stop(
+        "Excel files require the CRAN package 'openxlsx'. Install it with install.packages(\"openxlsx\").",
+        call. = FALSE
+      )
+    }
+    return(openxlsx::read.xlsx(read_path, detectDates = TRUE))
+  }
+
   if (identical(ext, "dat")) {
     if (identical(dat_delimiter, "comma")) {
       return(readr::read_delim(read_path, delim = ",", col_names = dat_has_names, show_col_types = FALSE, progress = FALSE))
@@ -119,7 +129,7 @@ read_input_data <- function(path, original_name, csv_header = TRUE, dat_delimite
 }
 
 supported_data_file_extension <- function(name) {
-  tolower(tools::file_ext(as.character(name %||% ""))) %in% c("sav", "csv", "dat")
+  tolower(tools::file_ext(as.character(name %||% ""))) %in% c("sav", "csv", "dat", "xlsx")
 }
 
 valid_data_file_path <- function(path) {

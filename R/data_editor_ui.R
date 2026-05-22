@@ -24,6 +24,14 @@ data_editor_same_variable_tab_panel <- function() {
   )
 }
 
+data_editor_likert_tab_panel <- function() {
+  tabPanel(
+    "Auto Likert conversion",
+    value = "data_editor_likert",
+    data_editor_likert_panel()
+  )
+}
+
 data_editor_different_variable_tab_panel <- function() {
   tabPanel(
     "Auto reverse coding",
@@ -64,6 +72,7 @@ data_editor_missing_values_tab_panel <- function() {
 data_editor_tab_panel <- function() {
   navbarMenu(
     "Data Editor",
+    data_editor_likert_tab_panel(),
     data_editor_same_variable_tab_panel(),
     data_editor_coding_error_check_tab_panel(),
     data_editor_different_variable_tab_panel(),

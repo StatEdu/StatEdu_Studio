@@ -3274,6 +3274,10 @@ table {
   width: 70px;
 }
 
+.hierarchical-coefficient-table .hierarchical-stat-col-narrow {
+  width: 48px;
+}
+
 .hierarchical-coefficient-table .hierarchical-separator-col {
   width: 10px;
 }
@@ -3287,6 +3291,11 @@ table {
   padding-right: 7px;
   overflow-wrap: normal;
   white-space: nowrap;
+}
+
+.hierarchical-coefficient-table thead tr:last-child th:nth-child(n):not(.hierarchical-model-separator),
+.hierarchical-coefficient-table td:nth-child(n):not(:first-child):not(.hierarchical-model-separator) {
+  box-sizing: border-box;
 }
 
 .hierarchical-coefficient-table .hierarchical-model-separator {
@@ -4740,4 +4749,235 @@ pre {
 
 .logistic-options .analysis-option-group .checkbox label {
   white-space: nowrap;
+}
+
+.likert-group-table {
+  table-layout: fixed;
+  width: 100% !important;
+}
+
+#likert_groups,
+#likert_groups_wrapper,
+.likert-review-grid,
+.likert-action-row {
+  width: 1140px;
+  min-width: 1140px;
+  max-width: 1140px;
+}
+
+.likert-group-table th,
+.likert-group-table td {
+  vertical-align: top;
+}
+
+.likert-group-table .likert-select-col {
+  width: 34px !important;
+  min-width: 34px !important;
+  max-width: 34px !important;
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+}
+
+.likert-group-table .likert-group-col {
+  width: 76px !important;
+  min-width: 76px !important;
+  max-width: 76px !important;
+  white-space: nowrap;
+}
+
+.likert-group-table .likert-variables-col {
+  width: 680px !important;
+  min-width: 680px !important;
+  white-space: normal !important;
+}
+
+.likert-group-table .likert-count-col,
+.likert-group-table .likert-levels-col {
+  width: 56px !important;
+  min-width: 56px !important;
+  max-width: 56px !important;
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+}
+
+.likert-group-table .likert-dictionary-col {
+  width: 112px !important;
+  min-width: 112px !important;
+  max-width: 112px !important;
+  white-space: nowrap;
+}
+
+.likert-variable-line {
+  display: block;
+  line-height: 1.35;
+  margin-bottom: 3px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.likert-variable-hidden-count {
+  color: #6b7280;
+  font-style: italic;
+}
+
+.likert-group-select {
+  margin: 0;
+}
+
+.likert-map-table {
+  width: auto;
+  min-width: 0;
+  max-width: 620px;
+  table-layout: fixed;
+  margin-top: 8px;
+}
+
+.likert-map-table th:first-child,
+.likert-map-table td:first-child {
+  width: 420px;
+  min-width: 420px;
+  max-width: 420px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.likert-map-table th:nth-child(2),
+.likert-map-table td:nth-child(2) {
+  width: 112px;
+  min-width: 112px;
+  max-width: 112px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.likert-map-table .form-group {
+  margin-bottom: 0;
+}
+
+.likert-map-table input.form-control {
+  width: 92px;
+  min-width: 92px;
+  max-width: 92px;
+}
+
+#likert_variables .checkbox {
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+#likert_variables .checkbox label {
+  display: block;
+  width: 100%;
+  max-width: none;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.likert-partial-level-note {
+  color: #b45309;
+  font-weight: 800;
+  background: #fff3cd;
+  border: 1px solid #f1c96b;
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+
+.likert-review-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px 120px;
+  gap: 28px;
+  align-items: start;
+  margin-top: 34px;
+  margin-bottom: 14px;
+}
+
+.likert-review-block {
+  min-width: 0;
+}
+
+.likert-review-title {
+  font-weight: 700;
+  color: #0b3558;
+  margin-bottom: 8px;
+  line-height: 1.25;
+}
+
+.likert-items-block #likert_variables {
+  max-height: 390px;
+  overflow-y: auto;
+  padding-top: 6px;
+  padding-right: 8px;
+  width: 100%;
+}
+
+.likert-items-block .form-group,
+#likert_variables .shiny-options-group {
+  width: 100%;
+}
+
+.likert-label-list,
+.likert-value-list {
+  display: grid;
+  grid-auto-rows: minmax(34px, auto);
+  gap: 0;
+}
+
+.likert-label-row {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  line-height: 1.3;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.likert-value-list .form-group {
+  margin-bottom: 0;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+}
+
+.likert-value-list input.form-control {
+  width: 92px;
+  min-width: 92px;
+  max-width: 92px;
+}
+
+.likert-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 300px) minmax(0, 180px) 220px 260px;
+  gap: 20px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.likert-action-row .form-group,
+.likert-action-row .checkbox {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.likert-action-row .checkbox label {
+  line-height: 1.3;
+  white-space: normal;
+}
+
+.likert-action-row #apply_likert_conversion {
+  width: 260px;
+}
+
+.likert-action-row #likert_measurement {
+  width: 220px;
+}
+
+.likert-measurement-control .form-group {
+  margin-bottom: 0;
 }

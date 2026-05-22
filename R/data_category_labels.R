@@ -1,14 +1,14 @@
 # Data helpers for categorical value label editing.
 
-category_label_value_columns <- function(max_pairs = 6) {
+category_label_value_columns <- function(max_pairs = 11) {
   as.vector(rbind(paste0("value_", seq_len(max_pairs)), paste0("label_", seq_len(max_pairs))))
 }
 
-category_label_edit_columns <- function(max_pairs = 6) {
+category_label_edit_columns <- function(max_pairs = 11) {
   c("var_label", "reference", "reference_label", category_label_value_columns(max_pairs))
 }
 
-category_label_save_columns <- function(max_pairs = 6) {
+category_label_save_columns <- function(max_pairs = 11) {
   c("reference", "reference_label", category_label_value_columns(max_pairs))
 }
 
@@ -20,7 +20,7 @@ category_label_display_data <- function(
   controls = character(0),
   saved_values = NULL,
   measurement_overrides = character(0),
-  max_pairs = 6
+  max_pairs = 11
 ) {
   if (is.null(info) || nrow(info) == 0) {
     return(NULL)
@@ -28,6 +28,9 @@ category_label_display_data <- function(
 
   info <- apply_measurement_overrides(info, measurement_overrides)
   info <- info[info$name %in% as.character(selected_names), , drop = FALSE]
+  if (nrow(info) == 0) {
+    return(data.frame(Message = "No categorical variables are selected.", check.names = FALSE))
+  }
   info$selected <- TRUE
   info$role <- vapply(
     info$name,
@@ -108,7 +111,7 @@ selected_variable_summary_data <- function(
   output
 }
 
-category_label_seed_table <- function(base, max_pairs = 6) {
+category_label_seed_table <- function(base, max_pairs = 11) {
   edit_columns <- category_label_edit_columns(max_pairs)
   if (is.null(base) || !"name" %in% names(base)) {
     return(NULL)
@@ -146,7 +149,7 @@ new_category_label_row <- function(name, columns) {
   )
 }
 
-update_category_label_table <- function(table, base, name, field, value, max_pairs = 6) {
+update_category_label_table <- function(table, base, name, field, value, max_pairs = 11) {
   edit_columns <- category_label_edit_columns(max_pairs)
   if (!nzchar(name) || !field %in% edit_columns) {
     return(list(table = table, changed = FALSE, var_label_update = NULL, ok = FALSE))
@@ -185,7 +188,7 @@ update_category_label_table <- function(table, base, name, field, value, max_pai
   list(table = table, changed = changed, var_label_update = var_label_update, ok = TRUE)
 }
 
-merge_category_label_save_request <- function(current, incoming, base = NULL, max_pairs = 6) {
+merge_category_label_save_request <- function(current, incoming, base = NULL, max_pairs = 11) {
   value_columns <- category_label_save_columns(max_pairs)
   if (is.null(incoming)) {
     return(current)
@@ -209,7 +212,7 @@ merge_category_label_save_request <- function(current, incoming, base = NULL, ma
   current
 }
 
-apply_category_label_snapshot <- function(current, incoming, base = NULL, max_pairs = 6) {
+apply_category_label_snapshot <- function(current, incoming, base = NULL, max_pairs = 11) {
   edit_columns <- category_label_edit_columns(max_pairs)
   if (is.null(incoming)) {
     return(list(table = current, changed = FALSE, var_label_updates = character(0)))
@@ -262,7 +265,7 @@ apply_category_label_snapshot <- function(current, incoming, base = NULL, max_pa
   list(table = current, changed = changed, var_label_updates = var_label_updates)
 }
 
-collect_category_label_inputs_from_table <- function(table_data, input, max_pairs = 6) {
+collect_category_label_inputs_from_table <- function(table_data, input, max_pairs = 11) {
   if (is.null(table_data) || !is.data.frame(table_data) || !all(c("source_order", "name") %in% names(table_data))) {
     return(NULL)
   }

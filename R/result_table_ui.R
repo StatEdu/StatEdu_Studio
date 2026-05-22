@@ -108,6 +108,46 @@ coefficient_column_class <- function(name) {
   )
 }
 
+result_column_key <- function(name) {
+  name <- gsub("\u00B2", "2", as.character(name %||% ""), fixed = TRUE)
+  gsub("[^[:alnum:]]+", "", tolower(name))
+}
+
+hierarchical_compact_stat_column <- function(name) {
+  result_column_key(name) %in% c("llci", "ulci", "p", "bootp", "sr2", "f2", "vif")
+}
+
+hierarchical_stat_column_class <- function(name) {
+  if (isTRUE(hierarchical_compact_stat_column(name))) {
+    return("hierarchical-stat-col hierarchical-stat-col-narrow")
+  }
+  "hierarchical-stat-col"
+}
+
+hierarchical_stat_column_width <- function(name) {
+  key <- result_column_key(name)
+  if (key %in% c("bootp")) {
+    return(54L)
+  }
+  if (key %in% c("llci", "ulci", "p", "sr2", "f2", "vif")) {
+    return(48L)
+  }
+  70L
+}
+
+hierarchical_stat_cell_style <- function(column, last = FALSE, header = FALSE) {
+  width <- hierarchical_stat_column_width(column)
+  padding <- if (isTRUE(hierarchical_compact_stat_column(column))) "9px 4px" else "9px 7px"
+  paste0(
+    "padding:", padding, ";line-height:1.45;border-left:0;border-right:0;",
+    "border-top:0;border-bottom:",
+    if (isTRUE(header)) "2px solid #1f2937" else if (isTRUE(last)) "0" else "1px solid #d7dde5",
+    ";vertical-align:middle;background:transparent;",
+    "width:", width, "px;min-width:", width, "px;max-width:", width, "px;",
+    "text-align:right;white-space:nowrap;overflow-wrap:normal;"
+  )
+}
+
 coefficient_html_table <- function(
   table,
   fit_line = NULL,

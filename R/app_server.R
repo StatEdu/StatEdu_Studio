@@ -728,6 +728,19 @@ create_app_server <- function(app_version) {
     mark_settings_dirty = mark_settings_dirty
   )
 
+  register_likert_conversion_handlers(
+    input = input,
+    output = output,
+    session = session,
+    dataset_fn = dataset,
+    raw_dataset_fn = raw_dataset,
+    current_data_file_fn = current_data_file,
+    selected_names_fn = selected_names,
+    update_existing_variable_fn = update_existing_variable,
+    apply_category_label_snapshot_fn = apply_category_label_snapshot,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
   register_hint8_calculator_handlers(
     input = input,
     output = output,

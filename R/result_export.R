@@ -693,7 +693,11 @@ add_hierarchical_result_sheet <- function(workbook, sheet_name, table, note, mod
     widths <- rep(12, n_cols)
     widths[[1]] <- 20
     if (n_cols > 1) {
-      widths[2:n_cols] <- 10
+      column_names <- names(table)
+      widths[2:n_cols] <- vapply(column_names[2:n_cols], function(name) {
+        column <- sub("^Model [0-9]+ ", "", as.character(name))
+        if (isTRUE(hierarchical_compact_stat_column(column))) 7 else 10
+      }, numeric(1))
     }
     notes <- c(model_notes, note)
     notes <- notes[nzchar(notes %||% "")]
