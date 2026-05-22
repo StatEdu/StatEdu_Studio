@@ -666,6 +666,11 @@ recode_same_setup_panel <- function(file, data, variable_info, labels = characte
     "Ordered" = "ordered",
     "Continuous" = "continuous"
   )
+  current_target <- isolate(input$recode_same_target) %||% "same"
+  if (!current_target %in% c("same", "new")) {
+    current_target <- "same"
+  }
+  current_pattern <- isolate(input$recode_same_new_name) %||% "{variable}_recode"
 
   div(
     class = "recode-same-setup-grid",
@@ -722,16 +727,21 @@ recode_same_setup_panel <- function(file, data, variable_info, labels = characte
       ),
       checkboxInput("recode_same_keep_unmatched", "Keep unmatched values", value = TRUE),
       selectInput("recode_same_measurement", "Measurement after recoding", choices = measurement_choices, selected = "", selectize = FALSE),
-      div(class = "analysis-option-group recode-reverse-options",
-        div(class = "analysis-option-title", "Auto reverse score"),
-        DT::DTOutput("recode_same_reverse_summary"),
-        div(
-          class = "recode-reverse-range",
-          numericInput("recode_same_reverse_min", "Minimum", value = 1, min = -Inf, step = 1, width = "100%"),
-          numericInput("recode_same_reverse_max", "Maximum", value = 5, min = -Inf, step = 1, width = "100%")
-        ),
-        checkboxInput("recode_same_reverse_use_observed", "Use observed min/max for each variable", value = FALSE),
-        actionButton("apply_recode_same_reverse", "Reverse score", class = "btn btn-default recode-reverse-button")
+      div(class = "analysis-option-group recode-auto-options",
+        div(class = "analysis-option-title", "Save result to"),
+        radioButtons(
+          "recode_same_target",
+          label = NULL,
+          choices = c("Same variables" = "same", "New variables" = "new"),
+          selected = current_target
+        )
+      ),
+      conditionalPanel(
+        condition = "input.recode_same_target == 'new'",
+        div(class = "analysis-option-group recode-new-name-options",
+          textInput("recode_same_new_name", "New variable name", value = current_pattern, width = "100%"),
+          div(class = "recode-help-text", "Use {variable} for the original variable name, for example {variable}_recode.")
+        )
       )
     )
   )
@@ -742,12 +752,12 @@ data_editor_same_variable_panel <- function() {
     class = "page-shell",
     div(
       class = "app-heading",
-      h1("Recode into Same Variables"),
-      div("Change coding values in selected variables and keep the same variable names.", class = "app-subtitle")
+      h1("Recode Variable"),
+      div("Change coding values in selected variables and save the result to the same variables or new variables.", class = "app-subtitle")
     ),
     div(
       class = "workspace-panel frequencies-workspace-panel data-editor-workspace",
-      analysis_workspace_heading("Same-variable recoding", "recode_same"),
+      analysis_workspace_heading("Recode variable", "recode_same"),
       analysis_workspace_body(
         "recode_same",
         uiOutput("recode_same_setup"),
@@ -774,6 +784,7 @@ register_recode_same_handlers <- function(
   labels_fn,
   category_table_fn,
   update_existing_variable_fn,
+  add_calculated_variable_fn = NULL,
   mark_settings_dirty
 ) {
   selected_variables <- reactiveVal(character(0))
@@ -911,6 +922,11 @@ register_recode_same_handlers <- function(
     for (name in variables) {
       preview[[name]] <- recode_same_values(preview[[name]], rules, keep_unmatched = isTRUE(input$recode_same_keep_unmatched))
     }
+    if (identical(as.character(input$recode_same_target %||% "same"), "new")) {
+      names(preview) <- vapply(names(preview), function(name) {
+        recode_new_variable_name(input$recode_same_new_name %||% "{variable}_recode", name, literal = length(variables) == 1)
+      }, character(1))
+    }
     preview
   })
 
@@ -958,11 +974,34 @@ register_recode_same_handlers <- function(
 
     measurement <- as.character(input$recode_same_measurement %||% "")
     if (!nzchar(measurement)) measurement <- NULL
+    target <- as.character(input$recode_same_target %||% "same")
+    if (!target %in% c("same", "new")) {
+      target <- "same"
+    }
+    if (identical(target, "new") && !is.function(add_calculated_variable_fn)) {
+      showNotification("New-variable recoding is not available in this session.", type = "warning", duration = 5)
+      return()
+    }
+
+    changed <- character(0)
     for (name in variables) {
       values <- recode_same_values(data[[name]], rules, keep_unmatched = isTRUE(input$recode_same_keep_unmatched))
-      update_existing_variable_fn(name, values, measurement = measurement)
+      ok <- if (identical(target, "new")) {
+        pattern <- input$recode_same_new_name %||% "{variable}_recode"
+        new_name <- recode_new_variable_name(pattern, name, literal = length(variables) == 1)
+        add_calculated_variable_fn(new_name, values, var_label = sprintf("%s recoded", name), measurement = measurement)
+      } else {
+        update_existing_variable_fn(name, values, measurement = measurement)
+      }
+      if (isTRUE(ok)) {
+        changed <- c(changed, if (identical(target, "new")) new_name else name)
+      }
     }
-    last_message(sprintf("Recoded %s variable(s): %s", length(variables), paste(variables, collapse = ", ")))
+    if (length(changed) == 0) {
+      last_message("No variables were recoded.")
+      return()
+    }
+    last_message(sprintf("Recoded %s variable(s): %s", length(changed), paste(changed, collapse = ", ")))
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 

@@ -62,6 +62,7 @@ app_module_files <- c(
   "data_editor_recode.R",
   "data_editor_likert.R",
   "data_editor_missing.R",
+  "data_editor_transform.R",
   "data_editor_ui.R",
   "calculator_hint8.R",
   "calculator_metabolic.R",

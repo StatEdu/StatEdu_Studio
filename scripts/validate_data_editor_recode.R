@@ -12,6 +12,7 @@ source(file.path(repo_root, "R", "data_category_labels.R"))
 source(file.path(repo_root, "R", "data_editor_recode.R"))
 source(file.path(repo_root, "R", "data_editor_likert.R"))
 source(file.path(repo_root, "R", "data_editor_missing.R"))
+source(file.path(repo_root, "R", "data_editor_transform.R"))
 
 message("Checking same-variable recoding rules...")
 rules <- data.frame(old = c("1", "2", ""), new = c("10", "20", ""), stringsAsFactors = FALSE)
@@ -147,5 +148,36 @@ group_rule <- missing_candidates[missing_candidates$variable == "group" & missin
 group_result <- apply_missing_value_rules(missing_data$group, group_rule)
 stopifnot(is.factor(group_result))
 stopifnot(identical(is.na(group_result), c(FALSE, TRUE, FALSE, FALSE, FALSE)))
+
+message("Checking formula-based variable transformation helpers...")
+transform_data <- data.frame(
+  x = c(1, 2, 3),
+  y = c(10, 20, 30),
+  txt = c("a", "b", "c"),
+  start = as.Date(c("2026-01-01", "2026-01-02", "2026-01-03")),
+  end = as.Date(c("2026-01-03", "2026-01-05", "2026-01-07")),
+  check.names = FALSE
+)
+linear_result <- transform_eval_expression(transform_data, "2*x + 3*y")
+stopifnot(identical(linear_result, c(32, 64, 96)))
+implicit_linear_result <- transform_eval_expression(transform_data, "2x + 3y")
+stopifnot(identical(implicit_linear_result, c(32, 64, 96)))
+ln_result <- transform_eval_expression(transform_data, "ln(y)")
+stopifnot(all.equal(ln_result, log(c(10, 20, 30)), check.attributes = FALSE))
+text_result <- transform_eval_expression(transform_data, "paste0(txt, '_', x)")
+stopifnot(identical(text_result, c("a_1", "b_2", "c_3")))
+condition_result <- transform_eval_expression(transform_data, "if_else(x >= 2, 'high', 'low')")
+stopifnot(identical(condition_result, c("low", "high", "high")))
+case_result <- transform_eval_expression(transform_data, "case_when(x == 1, 'one', x == 2, 'two', default = 'other')")
+stopifnot(identical(case_result, c("one", "two", "other")))
+date_result <- transform_eval_expression(transform_data, "date_diff(end, start)")
+stopifnot(identical(date_result, c(2, 3, 4)))
+stats_result <- transform_eval_expression(transform_data, "row_mean(x, y)")
+stopifnot(identical(stats_result, c(5.5, 11, 16.5)))
+blocked <- tryCatch({
+  transform_eval_expression(transform_data, "system('whoami')")
+  FALSE
+}, error = function(e) TRUE)
+stopifnot(isTRUE(blocked))
 
 message("All data editor recoding validations passed.")

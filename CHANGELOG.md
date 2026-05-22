@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.8.8 - 2026-05-23
+
+### Changed
+
+- Added automatic missing-value detection with reviewed conversion to `NA`.
+- Added formula-based variable transformation for creating new variables from numeric, text, statistical, date, and conditional expressions.
+- Reorganized Data Editor commands and consolidated recoding into a single Recode variable workflow with same-variable and new-variable targets.
+
 ## v0.8.7 - 2026-05-22
 
 ### Changed

@@ -569,7 +569,9 @@ create_app_server <- function(app_version) {
     if (!nzchar(name)) {
       return(invisible(FALSE))
     }
-    values <- as.numeric(values)
+    if (is.factor(values)) {
+      values <- as.character(values)
+    }
     if (length(values) != nrow(dataset())) {
       showNotification("Calculated variable row count does not match the current data.", type = "warning", duration = 6)
       return(invisible(FALSE))
@@ -682,6 +684,7 @@ create_app_server <- function(app_version) {
     labels_fn = var_label_overrides,
     category_table_fn = category_label_values,
     update_existing_variable_fn = update_existing_variable,
+    add_calculated_variable_fn = add_calculated_variable,
     mark_settings_dirty = mark_settings_dirty
   )
 
@@ -724,6 +727,18 @@ create_app_server <- function(app_version) {
     variable_info_fn = variable_info_table,
     labels_fn = var_label_overrides,
     category_table_fn = category_label_values,
+    add_calculated_variable_fn = add_calculated_variable,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
+  register_variable_transformation_handlers(
+    input = input,
+    output = output,
+    session = session,
+    dataset_fn = dataset,
+    current_data_file_fn = current_data_file,
+    variable_info_fn = variable_info_table,
+    labels_fn = var_label_overrides,
     add_calculated_variable_fn = add_calculated_variable,
     mark_settings_dirty = mark_settings_dirty
   )

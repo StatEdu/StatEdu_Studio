@@ -18,7 +18,7 @@ data_editor_command_panel <- function(title, subtitle, body_title, body_text) {
 
 data_editor_same_variable_tab_panel <- function() {
   tabPanel(
-    "Recode same variable",
+    "Recode variable",
     value = "data_editor_recode_same",
     data_editor_same_variable_panel()
   )
@@ -56,6 +56,14 @@ data_editor_variable_calculation_tab_panel <- function() {
   )
 }
 
+data_editor_variable_transformation_tab_panel <- function() {
+  tabPanel(
+    "Variable transformation",
+    value = "data_editor_variable_transformation",
+    data_editor_variable_transformation_panel()
+  )
+}
+
 data_editor_missing_values_tab_panel <- function() {
   tabPanel(
     "Auto missing values",
@@ -67,11 +75,12 @@ data_editor_missing_values_tab_panel <- function() {
 data_editor_tab_panel <- function() {
   navbarMenu(
     "Data Editor",
-    data_editor_likert_tab_panel(),
-    data_editor_same_variable_tab_panel(),
     data_editor_coding_error_check_tab_panel(),
+    data_editor_likert_tab_panel(),
+    data_editor_missing_values_tab_panel(),
     data_editor_different_variable_tab_panel(),
     data_editor_variable_calculation_tab_panel(),
-    data_editor_missing_values_tab_panel()
+    data_editor_variable_transformation_tab_panel(),
+    data_editor_same_variable_tab_panel()
   )
 }
