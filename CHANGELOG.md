@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.8.7 - 2026-05-22
+
+### Changed
+
+- Added automatic Likert text detection and batch conversion for imported survey data.
+- Added grouped Likert review controls for item text, original labels, numeric values, reverse coding, and post-conversion variable type.
+- Improved partial Likert-level handling so items with missing observed response levels stay aligned to the full detected scale.
+- Narrowed compact hierarchical regression statistic columns for easier table scanning.
+
+
 ## v0.8.6 - 2026-05-21
 
 ### Changed
