@@ -521,29 +521,44 @@
 
       function setEasyflowStep3ToggleLabel(button, view) {
         if (!button) return;
-        button.textContent = view === 'variables' ? 'Labels' : 'Variables';
+        var normalized = view === 'variables' ? 'variables' : 'labels';
+        if (button.classList && button.classList.contains('step3-toggle-combined')) {
+          var labelSpan = button.querySelector('[data-step3-label]');
+          var selectedSpan = button.querySelector('[data-step3-selected]');
+          if (labelSpan) labelSpan.classList.toggle('is-active', normalized === 'labels');
+          if (selectedSpan) selectedSpan.classList.toggle('is-active', normalized === 'variables');
+          return;
+        }
+        button.textContent = normalized === 'variables' ? 'Labels' : 'Variables';
       }
 
       window.easyflowToggleStep3View = function(button) {
         window.easyflowStep3View = window.easyflowStep3View === 'variables' ? 'labels' : 'variables';
-        setEasyflowStep3ToggleLabel(button, window.easyflowStep3View);
-        if (window.Shiny) {
-          Shiny.setInputValue('step3_label_view', window.easyflowStep3View, {priority: 'event'});
-        }
+        document.querySelectorAll('.step3-toggle-button, .step3-toggle-combined').forEach(function(item) {
+          setEasyflowStep3ToggleLabel(item, window.easyflowStep3View);
+        });
+        document.querySelectorAll('.step3-labels-section').forEach(function(section) {
+          section.style.display = window.easyflowStep3View === 'labels' ? '' : 'none';
+        });
+        document.querySelectorAll('.step3-variables-section').forEach(function(section) {
+          section.style.display = window.easyflowStep3View === 'variables' ? '' : 'none';
+        });
         return false;
       };
 
       function initializeEasyflowStep3View() {
         if (!window.easyflowStep3View) window.easyflowStep3View = 'labels';
-        document.querySelectorAll('.step3-toggle-button').forEach(function(button) {
+        document.querySelectorAll('.step3-toggle-button, .step3-toggle-combined').forEach(function(button) {
           setEasyflowStep3ToggleLabel(button, window.easyflowStep3View);
         });
-        if (window.Shiny) {
-          Shiny.setInputValue('step3_label_view', window.easyflowStep3View, {priority: 'event'});
-        }
+        document.querySelectorAll('.step3-labels-section').forEach(function(section) {
+          section.style.display = window.easyflowStep3View === 'labels' ? '' : 'none';
+        });
+        document.querySelectorAll('.step3-variables-section').forEach(function(section) {
+          section.style.display = window.easyflowStep3View === 'variables' ? '' : 'none';
+        });
       }
 
-      document.addEventListener('shiny:value', initializeEasyflowStep3View);
       document.addEventListener('DOMContentLoaded', initializeEasyflowStep3View);
       window.setTimeout(initializeEasyflowStep3View, 0);
 

@@ -340,12 +340,16 @@ data_steps_panel <- function(
                 type = "button",
                 class = "step3-toggle-combined step3-control-button",
                 onclick = paste0(
-                  "var next=(window.easyflowStep3View==='variables')?'labels':'variables';",
+                  "(function(button){",
+                  "var selected=button.querySelector('[data-step3-selected]');",
+                  "var next=(selected&&selected.classList.contains('is-active'))?'labels':'variables';",
+                  "var label=button.querySelector('[data-step3-label]');",
+                  "if(label){label.classList.toggle('is-active',next==='labels');}",
+                  "if(selected){selected.classList.toggle('is-active',next==='variables');}",
+                  "document.querySelectorAll('.step3-labels-section').forEach(function(section){section.style.display=next==='labels'?'':'none';});",
+                  "document.querySelectorAll('.step3-variables-section').forEach(function(section){section.style.display=next==='variables'?'':'none';});",
                   "window.easyflowStep3View=next;",
-                  "this.querySelector('[data-step3-label]').classList.toggle('is-active',next==='labels');",
-                  "this.querySelector('[data-step3-selected]').classList.toggle('is-active',next==='variables');",
-                  "if(window.Shiny){Shiny.setInputValue('step3_label_view',next,{priority:'event'});}",
-                  "return false;"
+                  "})(this); return false;"
                 ),
                 tags$span(`data-step3-label` = TRUE, class = "is-active", "Labels"),
                 tags$span(class = "step3-toggle-divider", "/"),

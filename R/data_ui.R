@@ -31,19 +31,19 @@ data_tab_panel <- function() {
             DTOutput("data_preview_table")
           ),
           conditionalPanel(
-            condition = "output.data_view === 'labels' && input.step3_label_view === 'variables'",
-            div(
-              class = "data-table-section",
-              h4("Selected variables"),
-              DTOutput("selected_variable_edit_table")
-            )
-          ),
-          conditionalPanel(
-            condition = "output.data_view === 'labels' && (!input.step3_label_view || input.step3_label_view === 'labels')",
-            div(
-              class = "data-table-section",
-              h4("Categorical value labels"),
-              DTOutput("category_label_table")
+            condition = "output.data_view === 'labels'",
+            tagList(
+              div(
+                class = "data-table-section step3-labels-section",
+                h4("Categorical value labels"),
+                DTOutput("category_label_table")
+              ),
+              div(
+                class = "data-table-section step3-variables-section",
+                style = "display: none;",
+                h4("Selected variables"),
+                DTOutput("selected_variable_edit_table")
+              )
             )
           )
         )
