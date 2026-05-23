@@ -96,6 +96,8 @@ analysis_tab_panel <- function(analysis_tabs = enabled_analysis_tabs()) {
     if (isTRUE(analysis_tabs[["ttest_anova"]])) ttest_anova_tab_panel("t-test / ANOVA"),
     if (isTRUE(analysis_tabs[["paired"]]) || isTRUE(analysis_tabs[["paired_rm"]])) paired_tab_panel("Paired test"),
     if (isTRUE(analysis_tabs[["correlation"]])) correlation_tab_panel("Correlation"),
+    if (isTRUE(analysis_tabs[["factor_analysis"]])) factor_analysis_tab_panel("Factor Analysis"),
+    if (isTRUE(analysis_tabs[["pca"]])) pca_tab_panel("Principal Components"),
     if (isTRUE(analysis_tabs[["reliability"]])) reliability_tab_panel("Reliability"),
     if (isTRUE(analysis_tabs[["hierarchical"]])) hierarchical_tab_panel("Regression"),
     if (isTRUE(analysis_tabs[["generalized"]])) generalized_tab_panel("Generalized"),

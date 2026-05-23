@@ -524,6 +524,28 @@ saved_correlation_results_html <- function(result, css_path = file.path("www", "
   )
 }
 
+saved_factor_analysis_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
+  saved_results_document(
+    "EasyFlow Statistics Factor Analysis Results",
+    factor_analysis_results_ui(result, report_mode = TRUE),
+    max_width = 1500,
+    css_path = css_path,
+    print_landscape = TRUE,
+    report_mode = report_mode
+  )
+}
+
+saved_pca_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
+  saved_results_document(
+    "EasyFlow Statistics Principal Component Analysis Results",
+    pca_results_ui(result, report_mode = TRUE),
+    max_width = 1500,
+    css_path = css_path,
+    print_landscape = TRUE,
+    report_mode = report_mode
+  )
+}
+
 saved_crosstab_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
   saved_results_document(
     "EasyFlow Statistics Cross-tabulation Results",

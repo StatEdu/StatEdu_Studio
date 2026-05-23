@@ -180,6 +180,66 @@ correlation_tab_panel <- function(title = "Correlation") {
   )
 }
 
+factor_analysis_tab_panel <- function(title = "Factor Analysis") {
+  tabPanel(
+    title,
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1("Factor Analysis"),
+        div("Move ordinal or continuous variables into the analysis list and select extraction and rotation options.", class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel correlation-workspace-panel factor-analysis-workspace-panel",
+        style = "min-width:980px;overflow-x:auto;",
+        analysis_workspace_heading("Factor Analysis", "factor"),
+        analysis_workspace_body(
+          "factor",
+          uiOutput("factor_analysis_setup"),
+          div(
+            class = "analysis-action-row correlation-action-row factor-analysis-action-row",
+            actionButton("run_factor_analysis", "Run analysis", class = "btn btn-primary"),
+            uiOutput("factor_analysis_reset_control"),
+            uiOutput("factor_analysis_save_control")
+          ),
+          uiOutput("factor_analysis_results")
+        )
+      )
+    )
+  )
+}
+
+pca_tab_panel <- function(title = "Principal Components") {
+  tabPanel(
+    title,
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1("Principal Component Analysis"),
+        div("Move ordinal or continuous variables into the analysis list and select matrix, component, and plot options.", class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel correlation-workspace-panel pca-workspace-panel",
+        style = "min-width:980px;overflow-x:auto;",
+        analysis_workspace_heading("Principal Component Analysis", "pca"),
+        analysis_workspace_body(
+          "pca",
+          uiOutput("pca_setup"),
+          div(
+            class = "analysis-action-row correlation-action-row pca-action-row",
+            actionButton("run_pca", "Run analysis", class = "btn btn-primary"),
+            uiOutput("pca_reset_control"),
+            uiOutput("pca_save_control")
+          ),
+          uiOutput("pca_results")
+        )
+      )
+    )
+  )
+}
+
 regression_tab_panel <- function(title = "Regression") {
   tabPanel(
     title,

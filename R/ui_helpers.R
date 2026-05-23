@@ -86,7 +86,7 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-drag-drop-2"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-factor-pca-1"))
 }
 
 app_script_link <- function(version) {
@@ -110,6 +110,8 @@ enabled_analysis_tabs <- function() {
     paired_rm = TRUE,
     ttest_anova = TRUE,
     correlation = TRUE,
+    factor_analysis = TRUE,
+    pca = TRUE,
     regression = FALSE,
     hierarchical = TRUE,
     generalized = FALSE

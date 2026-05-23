@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.8.12 - 2026-05-23
+
+### Changed
+
+- Added exploratory factor analysis with principal axis factoring and maximum likelihood extraction, Varimax and Oblimin rotation, eigenvalue or fixed-factor selection, normality-driven method selection, KMO / Bartlett diagnostics, scree plots, and export support.
+- Added principal component analysis with correlation or covariance matrix input, component selection by eigenvalue, fixed count, or cumulative variance, optional rotation, scree and component plots, diagnostics, and export support.
+- Added validation coverage for factor analysis and PCA calculations and exports.
+
+
 ## v0.8.11 - 2026-05-23
 
 ### Changed

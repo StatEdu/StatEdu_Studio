@@ -445,6 +445,22 @@ write_correlation_results_html <- function(result, file) {
   )
 }
 
+write_factor_analysis_results_html <- function(result, file) {
+  writeLines(
+    saved_factor_analysis_results_html(result),
+    file,
+    useBytes = TRUE
+  )
+}
+
+write_pca_results_html <- function(result, file) {
+  writeLines(
+    saved_pca_results_html(result),
+    file,
+    useBytes = TRUE
+  )
+}
+
 write_crosstab_results_html <- function(result, file) {
   writeLines(
     saved_crosstab_results_html(result),
@@ -910,6 +926,43 @@ save_correlation_excel_file <- function(result, file) {
       used_sheets
     )
   }
+  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
+  invisible(file)
+}
+
+save_factor_analysis_excel_file <- function(result, file) {
+  workbook <- openxlsx::createWorkbook()
+  used_sheets <- character(0)
+  used_sheets <- add_excel_table_sheet(workbook, "Overview", result$overview, used_sheets, title = "Factor analysis")
+  used_sheets <- add_excel_table_sheet(workbook, "Suitability", result$suitability$overview, used_sheets)
+  if (is.data.frame(result$normality_table) && nrow(result$normality_table) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Normality", result$normality_table, used_sheets)
+  }
+  used_sheets <- add_excel_table_sheet(workbook, "Loadings", result$loadings_table, used_sheets, title = "Pattern / loading matrix")
+  if (is.data.frame(result$variance_table) && nrow(result$variance_table) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Variance", result$variance_table, used_sheets, title = "Variance explained")
+  }
+  if (is.data.frame(result$factor_correlation_table) && nrow(result$factor_correlation_table) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Factor correlations", result$factor_correlation_table, used_sheets)
+  }
+  used_sheets <- add_excel_table_sheet(workbook, "Eigenvalues", result$eigen_table, used_sheets)
+  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
+  invisible(file)
+}
+
+save_pca_excel_file <- function(result, file) {
+  workbook <- openxlsx::createWorkbook()
+  used_sheets <- character(0)
+  used_sheets <- add_excel_table_sheet(workbook, "Overview", result$overview, used_sheets, title = "Principal component analysis")
+  used_sheets <- add_excel_table_sheet(workbook, "Suitability", result$suitability$overview, used_sheets)
+  used_sheets <- add_excel_table_sheet(workbook, "Loadings", result$loadings_table, used_sheets, title = "Component loadings")
+  if (is.data.frame(result$variance_table) && nrow(result$variance_table) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Variance", result$variance_table, used_sheets, title = "Variance explained")
+  }
+  if (is.data.frame(result$component_correlation_table) && nrow(result$component_correlation_table) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Component correlations", result$component_correlation_table, used_sheets)
+  }
+  used_sheets <- add_excel_table_sheet(workbook, "Eigenvalues", result$eigen_table, used_sheets)
   openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
   invisible(file)
 }
