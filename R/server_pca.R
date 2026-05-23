@@ -224,7 +224,7 @@ register_pca_handlers <- function(
       html_button_id = "save_pca_html_dialog",
       figure_button_id = "save_pca_figures_dialog",
       excel_button_id = "save_pca_excel_dialog",
-      add_result_button_id = "add_pca_result",
+      add_result_button_id = NULL,
       has_figures = TRUE
     )
   })
@@ -301,8 +301,6 @@ register_pca_handlers <- function(
       }
     )
   })
-
-  register_add_result_placeholder(input, "add_pca_result")
 
   invisible(TRUE)
 }

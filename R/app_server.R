@@ -50,6 +50,7 @@ create_app_server <- function(app_version) {
   }
 
   register_client_error_handler(input)
+  register_result_accumulator_outputs(input, output, session)
 
   data_reactives <- create_data_reactives(input, active_data_file, calculated_variables)
   current_data_file <- data_reactives$current_data_file
@@ -1200,6 +1201,7 @@ create_app_server <- function(app_version) {
   register_hierarchical_save_handlers(
     input,
     output,
+    session = session,
     analyses_fn = analyses,
     variable_table_fn = regression_variable_table,
     labels_fn = var_label_overrides,
@@ -1209,6 +1211,7 @@ create_app_server <- function(app_version) {
   register_analysis_save_handlers(
     input,
     output,
+    session = session,
     analyses_fn = analyses,
     variable_table_fn = regression_variable_table,
     labels_fn = var_label_overrides,

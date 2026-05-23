@@ -265,11 +265,9 @@ register_paired_rm_handlers <- function(
     showNotification(sprintf("Analysis results saved: %s", path), type = "message")
   })
 
-  observeEvent(input$add_paired_rm_result, {
+  register_add_result_snapshot(input, session, "add_paired_rm_result", "Paired test 3+", function() {
     result <- paired_rm_result()
-    req(!is.null(result), is.null(result$error))
-    path <- result_file_path("html", prefix = "easyflow_statistics_paired_rm_added")
-    write_paired_rm_results_html(result, path)
-    showNotification(sprintf("Result added as HTML snapshot: %s", path), type = "message", duration = 5)
-  }, ignoreInit = TRUE)
+    shiny::req(!is.null(result), is.null(result$error))
+    saved_paired_rm_results_html(result)
+  })
 }

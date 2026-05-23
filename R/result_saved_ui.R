@@ -556,3 +556,376 @@ saved_crosstab_results_html <- function(result, css_path = file.path("www", "sty
     report_mode = report_mode
   )
 }
+
+result_accumulator_store <- function(session) {
+  store <- session$userData$result_entries
+  if (is.null(store) || !is.function(store)) {
+    store <- reactiveVal(list())
+    session$userData$result_entries <- store
+  }
+  store
+}
+
+append_result_snapshot <- function(session, title, html) {
+  store <- result_accumulator_store(session)
+  entries <- isolate(store())
+  index <- length(entries) + 1L
+  saved_at <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+  entry <- list(
+    id = paste0("saved_result_", index, "_", as.integer(Sys.time())),
+    title = title,
+    saved_at = saved_at,
+    html = html
+  )
+  store(c(entries, list(entry)))
+  entry
+}
+
+saved_result_entry_ui <- function(entry, index) {
+  div(
+    class = "saved-result-entry",
+    div(
+      class = "saved-result-entry-header",
+      div(
+        class = "saved-result-title",
+        span(sprintf("%02d", index), class = "saved-result-index"),
+        span(entry$title)
+      ),
+      div(entry$saved_at, class = "saved-result-time")
+    ),
+    tags$iframe(
+      class = "saved-result-frame",
+      title = entry$title,
+      srcdoc = entry$html
+    )
+  )
+}
+
+result_entry_document <- function(entry) {
+  tryCatch(
+    xml2::read_html(entry$html, options = c("RECOVER", "NOERROR", "NOWARNING")),
+    error = function(e) NULL
+  )
+}
+
+result_entry_body_html <- function(entry) {
+  document <- result_entry_document(entry)
+  if (is.null(document)) {
+    return(entry$html)
+  }
+  body <- xml2::xml_find_first(document, ".//body")
+  if (length(body) == 0 || is.na(xml2::xml_name(body))) {
+    return(entry$html)
+  }
+  paste(vapply(xml2::xml_children(body), as.character, character(1)), collapse = "\n")
+}
+
+result_collection_content <- function(entries) {
+  tags$div(
+    class = "result-collection-export",
+    lapply(seq_along(entries), function(index) {
+      entry <- entries[[index]]
+      tags$section(
+        class = "result-collection-export-entry",
+        tags$h2(sprintf("%02d. %s", index, entry$title)),
+        tags$div(sprintf("Added to Result: %s", entry$saved_at), class = "saved-results-meta"),
+        htmltools::HTML(result_entry_body_html(entry))
+      )
+    })
+  )
+}
+
+saved_result_collection_html <- function(entries, css_path = file.path("www", "style.css"), report_mode = FALSE) {
+  saved_results_document(
+    "EasyFlow Statistics Result Collection",
+    result_collection_content(entries),
+    max_width = 1500,
+    css_path = css_path,
+    print_landscape = TRUE,
+    report_mode = report_mode
+  )
+}
+
+write_result_collection_html <- function(entries, file) {
+  writeLines(saved_result_collection_html(entries), file, useBytes = TRUE)
+  invisible(file)
+}
+
+write_result_collection_pdf <- function(entries, file) {
+  write_pdf_from_html(saved_result_collection_html(entries, report_mode = TRUE), file)
+}
+
+result_html_text <- function(node) {
+  text <- tryCatch(xml2::xml_text(node, trim = TRUE), error = function(e) "")
+  trimws(gsub("\\s+", " ", text))
+}
+
+result_table_title <- function(table_node, fallback) {
+  heading <- xml2::xml_find_first(
+    table_node,
+    "ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' regression-result-panel ')][1]//*[self::h1 or self::h2 or self::h3 or self::h4][1]"
+  )
+  if (length(heading) == 0 || is.na(xml2::xml_name(heading))) {
+    heading <- xml2::xml_find_first(table_node, "preceding::*[self::h1 or self::h2 or self::h3 or self::h4][1]")
+  }
+  title <- if (length(heading) > 0 && !is.na(xml2::xml_name(heading))) result_html_text(heading) else ""
+  if (nzchar(title)) title else fallback
+}
+
+result_entry_tables <- function(entry, entry_index = 1L) {
+  document <- result_entry_document(entry)
+  if (is.null(document)) {
+    return(list())
+  }
+  table_nodes <- xml2::xml_find_all(document, ".//table")
+  if (length(table_nodes) == 0) {
+    return(list())
+  }
+  tables <- vector("list", length(table_nodes))
+  for (index in seq_along(table_nodes)) {
+    table <- tryCatch(rvest::html_table(table_nodes[[index]], fill = TRUE, trim = TRUE), error = function(e) NULL)
+    if (is.null(table) || !is.data.frame(table) || nrow(table) == 0 || ncol(table) == 0) {
+      next
+    }
+    names(table) <- make.unique(ifelse(nzchar(names(table)), names(table), paste0("Column ", seq_along(table))))
+    table[] <- lapply(table, as.character)
+    title <- result_table_title(
+      table_nodes[[index]],
+      sprintf("%s table %s", entry$title, index)
+    )
+    tables[[index]] <- list(
+      title = title,
+      sheet_name = sprintf("%02d %s", entry_index, title),
+      table = table
+    )
+  }
+  Filter(Negate(is.null), tables)
+}
+
+result_collection_index_table <- function(entries) {
+  data.frame(
+    No = seq_along(entries),
+    Result = vapply(entries, function(entry) entry$title, character(1)),
+    Added = vapply(entries, function(entry) entry$saved_at, character(1)),
+    check.names = FALSE
+  )
+}
+
+save_result_collection_excel_file <- function(entries, file) {
+  workbook <- openxlsx::createWorkbook()
+  used_sheets <- character(0)
+  used_sheets <- add_excel_table_sheet(
+    workbook,
+    "Result index",
+    result_collection_index_table(entries),
+    used_sheets,
+    title = "Result index"
+  )
+  for (entry_index in seq_along(entries)) {
+    tables <- result_entry_tables(entries[[entry_index]], entry_index)
+    for (table_info in tables) {
+      used_sheets <- add_excel_table_sheet(
+        workbook,
+        table_info$sheet_name,
+        table_info$table,
+        used_sheets,
+        title = sprintf("%02d. %s - %s", entry_index, entries[[entry_index]]$title, table_info$title)
+      )
+    }
+  }
+  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
+  invisible(file)
+}
+
+result_entry_images <- function(entry) {
+  document <- result_entry_document(entry)
+  if (is.null(document)) {
+    return(list())
+  }
+  image_nodes <- xml2::xml_find_all(document, ".//img[starts-with(@src, 'data:image/')]")
+  if (length(image_nodes) == 0) {
+    return(list())
+  }
+  lapply(seq_along(image_nodes), function(index) {
+    src <- xml2::xml_attr(image_nodes[[index]], "src") %||% ""
+    mime <- sub("^data:([^;]+);base64,.*$", "\\1", src)
+    payload <- sub("^data:[^;]+;base64,", "", src)
+    extension <- switch(mime, "image/jpeg" = ".jpg", "image/webp" = ".webp", ".png")
+    path <- tempfile("easyflow_result_image_", fileext = extension)
+    writeBin(jsonlite::base64_dec(payload), path)
+    alt <- xml2::xml_attr(image_nodes[[index]], "alt") %||% sprintf("Figure %s", index)
+    list(path = path, title = alt)
+  })
+}
+
+write_result_collection_docx <- function(entries, file) {
+  document <- officer::read_docx()
+  document <- officer::body_add_par(document, "EasyFlow Statistics Result Collection", style = "heading 1")
+  document <- officer::body_add_par(document, sprintf("Saved: %s", format(Sys.time(), "%Y-%m-%d %H:%M:%S")), style = "Normal")
+  for (entry_index in seq_along(entries)) {
+    entry <- entries[[entry_index]]
+    document <- officer::body_add_par(document, sprintf("%02d. %s", entry_index, entry$title), style = "heading 1")
+    document <- officer::body_add_par(document, sprintf("Added to Result: %s", entry$saved_at), style = "Normal")
+    tables <- result_entry_tables(entry, entry_index)
+    for (table_info in tables) {
+      document <- officer::body_add_par(document, table_info$title, style = "heading 2")
+      table <- flextable::flextable(table_info$table)
+      table <- flextable::autofit(table)
+      document <- flextable::body_add_flextable(document, table)
+    }
+    images <- result_entry_images(entry)
+    for (image in images) {
+      if (file.exists(image$path)) {
+        document <- officer::body_add_par(document, image$title, style = "heading 2")
+        document <- officer::body_add_img(document, src = image$path, width = 6.5, height = 4.5)
+      }
+    }
+    unlink(vapply(images, `[[`, character(1), "path"))
+  }
+  print(document, target = file)
+  invisible(file)
+}
+
+saved_results_empty_ui <- function() {
+  div(class = "empty-message", div("Click Add result after an analysis to collect results here."))
+}
+
+result_entries_for_export <- function(store) {
+  entries <- isolate(store())
+  if (length(entries) == 0) {
+    stop("No saved results are available. Click Add result after an analysis first.", call. = FALSE)
+  }
+  entries
+}
+
+register_result_accumulator_outputs <- function(input, output, session) {
+  store <- result_accumulator_store(session)
+
+  output$saved_results_list <- renderUI({
+    entries <- store()
+    if (length(entries) == 0) {
+      return(saved_results_empty_ui())
+    }
+    tagList(
+      div(class = "saved-result-count", sprintf("%s result(s) saved in this session.", length(entries))),
+      div(
+        class = "saved-result-list",
+        lapply(seq_along(entries), function(index) saved_result_entry_ui(entries[[index]], index))
+      )
+    )
+  })
+
+  observeEvent(input$clear_saved_results, {
+    store(list())
+    showNotification("Saved results cleared.", type = "message", duration = 3)
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$save_result_collection_html_dialog, {
+    tryCatch(
+      {
+        entries <- result_entries_for_export(store)
+        path <- choose_html_save_path()
+        if (length(path) == 0 || !nzchar(path[[1]])) {
+          showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+          return(invisible(NULL))
+        }
+        if (!grepl("\\.html?$", path, ignore.case = TRUE)) {
+          path <- paste0(path, ".html")
+        }
+        write_result_collection_html(entries, path)
+        showNotification(sprintf("Result collection saved: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save Result collection:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$save_result_collection_pdf_dialog, {
+    tryCatch(
+      {
+        entries <- result_entries_for_export(store)
+        path <- choose_pdf_save_path()
+        if (length(path) == 0 || !nzchar(path[[1]])) {
+          showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+          return(invisible(NULL))
+        }
+        if (!grepl("\\.pdf$", path, ignore.case = TRUE)) {
+          path <- paste0(path, ".pdf")
+        }
+        write_result_collection_pdf(entries, path)
+        showNotification(sprintf("Result collection saved: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save Result collection:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$save_result_collection_excel_dialog, {
+    tryCatch(
+      {
+        entries <- result_entries_for_export(store)
+        path <- choose_excel_save_path()
+        if (length(path) == 0 || !nzchar(path[[1]])) {
+          showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+          return(invisible(NULL))
+        }
+        if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) {
+          path <- paste0(path, ".xlsx")
+        }
+        save_result_collection_excel_file(entries, path)
+        showNotification(sprintf("Result collection saved: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save Result collection:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$save_result_collection_word_dialog, {
+    tryCatch(
+      {
+        entries <- result_entries_for_export(store)
+        path <- choose_word_save_path()
+        if (length(path) == 0 || !nzchar(path[[1]])) {
+          showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+          return(invisible(NULL))
+        }
+        if (!grepl("\\.docx$", path, ignore.case = TRUE)) {
+          path <- paste0(path, ".docx")
+        }
+        write_result_collection_docx(entries, path)
+        showNotification(sprintf("Result collection saved: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save Result collection:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  }, ignoreInit = TRUE)
+
+  invisible(TRUE)
+}
+
+register_add_result_snapshot <- function(input, session, button_id, title, html_fn) {
+  if (is.null(button_id) || !nzchar(button_id)) {
+    return(invisible(FALSE))
+  }
+  observeEvent(input[[button_id]], {
+    tryCatch(
+      {
+        html <- html_fn()
+        if (length(html) == 0 || is.null(html) || !nzchar(as.character(html)[[1]])) {
+          stop("No analysis result is available to add.")
+        }
+        append_result_snapshot(session, title, as.character(html)[[1]])
+        updateNavbarPage(session, "main_menu", selected = "result")
+        showNotification(sprintf("Added to Result: %s", title), type = "message", duration = 3)
+      },
+      error = function(e) {
+        showNotification(paste("Failed to add result:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  }, ignoreInit = TRUE)
+  invisible(TRUE)
+}

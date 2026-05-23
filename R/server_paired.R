@@ -292,6 +292,10 @@ register_paired_handlers <- function(
     showNotification(sprintf("Analysis results saved: %s", path), type = "message")
   })
 
-  register_add_result_placeholder(input, "add_paired_result")
+  register_add_result_snapshot(input, session, "add_paired_result", "Paired test", function() {
+    result <- paired_result()
+    shiny::req(!is.null(result), is.null(result$error))
+    saved_paired_results_html(result)
+  })
   invisible(TRUE)
 }

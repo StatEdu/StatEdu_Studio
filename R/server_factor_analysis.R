@@ -215,7 +215,7 @@ register_factor_analysis_handlers <- function(
       html_button_id = "save_factor_analysis_html_dialog",
       figure_button_id = "save_factor_analysis_figures_dialog",
       excel_button_id = "save_factor_analysis_excel_dialog",
-      add_result_button_id = "add_factor_analysis_result",
+      add_result_button_id = NULL,
       has_figures = TRUE
     )
   })
@@ -283,8 +283,6 @@ register_factor_analysis_handlers <- function(
       }
     )
   })
-
-  register_add_result_placeholder(input, "add_factor_analysis_result")
 
   invisible(TRUE)
 }

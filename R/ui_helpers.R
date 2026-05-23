@@ -17,7 +17,7 @@ analysis_save_feature_enabled <- function(feature, edition = analysis_save_editi
     return(TRUE)
   }
   if (identical(edition, "personal") || identical(edition, "institution")) {
-    return(feature %in% c("html", "pdf", "figure", "excel", "add_result"))
+    return(feature %in% c("html", "pdf", "figure", "excel", "word", "add_result"))
   }
   feature %in% c("html", "pdf", "figure")
 }
@@ -58,20 +58,6 @@ analysis_save_buttons <- function(
   )
 }
 
-register_add_result_placeholder <- function(input, button_id) {
-  if (is.null(button_id) || !nzchar(button_id)) {
-    return(invisible(FALSE))
-  }
-  observeEvent(input[[button_id]], {
-    showNotification(
-      "Add result is reserved for the institutional result accumulation workflow.",
-      type = "message",
-      duration = 4
-    )
-  }, ignoreInit = TRUE)
-  invisible(TRUE)
-}
-
 set_data_step_view <- function(active_step_setter, data_view_setter, step, view = "info") {
   active_step_setter(step)
   data_view_setter(view)
@@ -86,7 +72,7 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-factor-pca-1"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-result-1"))
 }
 
 app_script_link <- function(version) {

@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.9.0 - 2026-05-24
+
+### Changed
+
+- Added Result tab accumulation so supported analysis outputs can be collected in order from Add result.
+- Added Result collection export to HTML, PDF, Excel, and Word.
+- Kept factor analysis and principal component analysis out of Add result until their final Result table format is decided.
+
+
 ## v0.8.12 - 2026-05-23
 
 ### Changed

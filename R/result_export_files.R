@@ -360,6 +360,31 @@ choose_pdf_save_path <- function() {
   choose_tk_save_file(default_name, title, ".pdf", "{{PDF File} {.pdf}} {{All Files} {*}}")
 }
 
+choose_word_save_path <- function() {
+  default_name <- sprintf("easyflow_statistics_results_%s.docx", format(Sys.time(), "%Y%m%d_%H%M%S"))
+  title <- "Save EasyFlow Statistics Word Results"
+  if (.Platform$OS.type == "windows") {
+    path <- choose_windows_save_file(default_name, title, "Word Document (*.docx)|*.docx|All Files (*.*)|*.*", "docx")
+    if (is_windows_dialog_cancel(path)) {
+      return(character(0))
+    }
+    if (is_dialog_path(path)) {
+      return(path[[1]])
+    }
+  }
+  if (.Platform$OS.type == "windows") {
+    path <- choose_tk_save_file(default_name, title, ".docx", "{{Word Document} {.docx}} {{All Files} {*}}")
+    if (is_dialog_path(path)) {
+      return(path[[1]])
+    }
+  }
+  path <- choose_rstudio_save_file(default_name, title, "Word Document (*.docx)")
+  if (is_dialog_path(path)) {
+    return(path[[1]])
+  }
+  choose_tk_save_file(default_name, title, ".docx", "{{Word Document} {.docx}} {{All Files} {*}}")
+}
+
 find_pdf_chromium <- function() {
   candidates <- c(
     Sys.getenv("EASYFLOW_CHROME", ""),
