@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.8.11 - 2026-05-23
+
+### Changed
+
+- Restored the navbar brand to use the horizontal EasyFlow Statistics logo image instead of composing the logo from an icon and HTML text.
+
 ## v0.8.10 - 2026-05-23
 
 ### Changed
