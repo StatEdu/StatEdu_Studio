@@ -194,7 +194,13 @@ register_ttest_anova_handlers <- function(
   }, ignoreInit = TRUE)
 
   observe({
-    if (identical(active_ttest_list(), "ttest_dependents") && length(input$ttest_dependents %||% character(0)) > 0) {
+    selected <- current_selected()
+    available_selected <- intersect(as.character(input$ttest_available %||% character(0)), selected)
+    dependent_selected <- intersect(as.character(input$ttest_dependents %||% character(0)), dependent_variables())
+    if (length(dependent_selected) > 0 && (
+      identical(active_ttest_list(), "ttest_dependents") ||
+        length(available_selected) == 0
+    )) {
       updateActionButton(session, "ttest_dependent_move", label = "<")
     } else {
       updateActionButton(session, "ttest_dependent_move", label = ">")
@@ -202,7 +208,13 @@ register_ttest_anova_handlers <- function(
   })
 
   observe({
-    if (identical(active_ttest_list(), "ttest_factors") && length(input$ttest_factors %||% character(0)) > 0) {
+    selected <- current_selected()
+    available_selected <- intersect(as.character(input$ttest_available %||% character(0)), selected)
+    factor_selected <- intersect(as.character(input$ttest_factors %||% character(0)), factor_variables())
+    if (length(factor_selected) > 0 && (
+      identical(active_ttest_list(), "ttest_factors") ||
+        length(available_selected) == 0
+    )) {
       updateActionButton(session, "ttest_factor_move", label = "<")
     } else {
       updateActionButton(session, "ttest_factor_move", label = ">")
@@ -211,9 +223,13 @@ register_ttest_anova_handlers <- function(
 
   observeEvent(input$ttest_dependent_move, {
     selected <- current_selected()
-    if (identical(active_ttest_list(), "ttest_dependents")) {
-      chosen <- intersect(as.character(input$ttest_dependents %||% character(0)), dependent_variables())
-      current <- intersect(dependent_variables(), selected)
+    current <- intersect(dependent_variables(), selected)
+    chosen_target <- intersect(as.character(input$ttest_dependents %||% character(0)), current)
+    chosen_available <- intersect(as.character(input$ttest_available %||% character(0)), selected)
+    remove_from_target <- length(chosen_target) > 0 &&
+      (identical(active_ttest_list(), "ttest_dependents") || length(chosen_available) == 0)
+    if (isTRUE(remove_from_target)) {
+      chosen <- chosen_target
       updated <- setdiff(current, chosen)
       if (!identical(updated, current)) {
         dependent_variables(updated)
@@ -222,13 +238,12 @@ register_ttest_anova_handlers <- function(
       }
       return()
     }
-    chosen <- intersect(as.character(input$ttest_available %||% character(0)), selected)
+    chosen <- chosen_available
     allowed <- ttest_anova_continuous_candidates(chosen, current_variable_table())
     if (length(chosen) > 0 && length(allowed) == 0) {
       showNotification("Dependent variables should be ordinal or continuous.", type = "warning", duration = 4)
       return()
     }
-    current <- intersect(dependent_variables(), selected)
     dependent_variables(c(current, setdiff(allowed, current)))
     active_ttest_list("ttest_dependents")
     mark_settings_dirty()
@@ -246,9 +261,13 @@ register_ttest_anova_handlers <- function(
 
   observeEvent(input$ttest_factor_move, {
     selected <- current_selected()
-    if (identical(active_ttest_list(), "ttest_factors")) {
-      chosen <- intersect(as.character(input$ttest_factors %||% character(0)), factor_variables())
-      current <- intersect(factor_variables(), selected)
+    current <- intersect(factor_variables(), selected)
+    chosen_target <- intersect(as.character(input$ttest_factors %||% character(0)), current)
+    chosen_available <- intersect(as.character(input$ttest_available %||% character(0)), selected)
+    remove_from_target <- length(chosen_target) > 0 &&
+      (identical(active_ttest_list(), "ttest_factors") || length(chosen_available) == 0)
+    if (isTRUE(remove_from_target)) {
+      chosen <- chosen_target
       updated <- setdiff(current, chosen)
       if (!identical(updated, current)) {
         factor_variables(updated)
@@ -257,13 +276,12 @@ register_ttest_anova_handlers <- function(
       }
       return()
     }
-    chosen <- intersect(as.character(input$ttest_available %||% character(0)), selected)
+    chosen <- chosen_available
     allowed <- ttest_anova_factor_candidates(chosen, current_variable_table())
     if (length(chosen) > 0 && length(allowed) == 0) {
       showNotification("Grouping variables should be binary, nominal, or ordinal.", type = "warning", duration = 4)
       return()
     }
-    current <- intersect(factor_variables(), selected)
     factor_variables(c(current, setdiff(allowed, current)))
     active_ttest_list("ttest_factors")
     mark_settings_dirty()

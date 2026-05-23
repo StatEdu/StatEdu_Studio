@@ -6,8 +6,8 @@ cd /d "%~dp0"
 echo Starting easyflow_statistics...
 echo.
 
-echo Closing existing easyflow_statistics process, if any...
-powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'Rscript.exe' -and $_.CommandLine -like '*run_app.R*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
+echo Closing existing easyflow_statistics process on port 7894, if any...
+powershell -NoProfile -Command "$ports = @(7894); foreach ($port in $ports) { Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue } }"
 timeout /t 2 /nobreak >nul
 
 set "RSCRIPT="

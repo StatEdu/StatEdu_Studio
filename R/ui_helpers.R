@@ -80,7 +80,8 @@ set_data_step_view <- function(active_step_setter, data_view_setter, step, view 
 app_brand_title <- function(version) {
   div(
     class = "brand-title",
-    tags$img(src = "logo-horizontal.png", class = "brand-logo-horizontal", alt = "Easyflow Statistics logo"),
+    tags$img(src = "logo-mark.png", class = "brand-logo-mark", alt = "EasyFlow Statistics logo"),
+    span(class = "brand-name", "EasyFlow Statistics"),
     span(class = "version", paste0("v", version))
   )
 }

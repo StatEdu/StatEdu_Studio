@@ -78,4 +78,28 @@ expect_true(all(posthoc_table$Method == "Tukey HSD"), "Expected Tukey HSD method
 posthoc_html <- as.character(tags_to_html(ttest_anova_results_ui(posthoc_result)))
 expect_true(grepl("<h4>Post-hoc</h4>", posthoc_html, fixed = TRUE), "Expected post-hoc section in ANOVA HTML")
 
+message("Checking ordered post-hoc notation grouping...")
+ordered_values <- c(rep(1, 3), rep(3, 3), rep(4, 3))
+ordered_groups <- rep(c("1", "2", "3"), each = 3)
+ordered_p <- matrix(
+  1,
+  nrow = 3,
+  ncol = 3,
+  dimnames = list(c("1", "2", "3"), c("1", "2", "3"))
+)
+ordered_p["3", "1"] <- ordered_p["1", "3"] <- .01
+ordered_p["2", "1"] <- ordered_p["1", "2"] <- .02
+ordered_p["3", "2"] <- ordered_p["2", "3"] <- .20
+expect_true(
+  identical(ttest_ordered_significance_notation(ordered_values, ordered_groups, ordered_p), "3, 2>1"),
+  "Expected shared lower group notation to combine higher groups"
+)
+
+ordered_p["3", "2"] <- ordered_p["2", "3"] <- .01
+ordered_p["2", "1"] <- ordered_p["1", "2"] <- .20
+expect_true(
+  identical(ttest_ordered_significance_notation(ordered_values, ordered_groups, ordered_p), "3>2, 1"),
+  "Expected one higher group notation to retain multiple lower groups"
+)
+
 message("All t-test / ANOVA validations passed.")

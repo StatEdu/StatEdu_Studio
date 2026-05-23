@@ -1,9 +1,14 @@
 # Changelog
 
-## v0.8.8 - 2026-05-23
+## v0.8.10 - 2026-05-23
 
 ### Changed
 
+- Fixed navbar brand contrast so the EasyFlow Statistics logo text and version remain visible on the light header.
+- Standardized ordered post-hoc significance notation so shared comparison patterns render consistently, including `3, 2>1` and `3>2, 1`.
+- Improved t-test / ANOVA variable transfer behavior when moving variables back from dependent or independent lists.
+- Refined automatic measurement inference so decimal-valued numeric variables are not classified as categorical solely by low unique counts.
+- Limited the launcher cleanup to the app port before starting a new EasyFlow Statistics session.
 - Added automatic missing-value detection with reviewed conversion to `NA`.
 - Added formula-based variable transformation for creating new variables from numeric, text, statistical, date, and conditional expressions.
 - Reorganized Data Editor commands and consolidated recoding into a single Recode variable workflow with same-variable and new-variable targets.

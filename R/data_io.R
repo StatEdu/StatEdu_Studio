@@ -170,6 +170,11 @@ read_current_data_file <- function(file, input) {
   )
 }
 
+numeric_integer_like <- function(values, tolerance = sqrt(.Machine$double.eps)) {
+  values <- stats::na.omit(as.numeric(values))
+  length(values) > 0 && all(abs(values - round(values)) < tolerance)
+}
+
 infer_measurement <- function(x) {
   values <- stats::na.omit(as.vector(x))
   unique_n <- length(unique(values))
@@ -179,7 +184,7 @@ infer_measurement <- function(x) {
   if (is.factor(x)) return(if (nlevels(x) <= 2) "binary" else "category")
   if (is.character(x)) return(if (unique_n <= 2) "binary" else "category")
   if ((is.numeric(x) || is.integer(x)) && unique_n <= 2) return("binary")
-  if ((is.numeric(x) || is.integer(x)) && unique_n <= 12) return("category")
+  if ((is.numeric(x) || is.integer(x)) && unique_n <= 12 && numeric_integer_like(values)) return("category")
   "continuous"
 }
 

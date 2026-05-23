@@ -604,7 +604,7 @@ ttest_ordered_significance_notation <- function(values, groups, p_matrix, labels
     label <- named_value(labels, level, level)
     if (nzchar(label)) label else level
   }
-  statements <- character(0)
+  statements <- list()
   for (i in seq_along(ordered_levels)) {
     higher <- ordered_levels[[i]]
     lower <- character(0)
@@ -618,10 +618,38 @@ ttest_ordered_significance_notation <- function(values, groups, p_matrix, labels
       }
     }
     if (length(lower) > 0) {
-      statements <- c(statements, sprintf("%s>%s", display(higher), paste(lower, collapse = ", ")))
+      key <- paste(lower, collapse = "\r")
+      if (is.null(statements[[key]])) {
+        statements[[key]] <- list(higher = character(0), lower = lower)
+      }
+      statements[[key]]$higher <- c(statements[[key]]$higher, higher)
     }
   }
-  paste(statements, collapse = "; ")
+  if (length(statements) == 0) {
+    return("")
+  }
+  notation <- vapply(statements, function(statement) {
+    higher <- vapply(statement$higher, display, character(1))
+    lower <- vapply(statement$lower, display, character(1))
+    sprintf("%s>%s", paste(higher, collapse = ", "), paste(lower, collapse = ", "))
+  }, character(1))
+  paste(notation, collapse = "; ")
+}
+
+ttest_distribute_ordered_posthoc <- function(rows, notation) {
+  if (!is.data.frame(rows) || !"post-hoc" %in% names(rows)) {
+    return(rows)
+  }
+  notation <- as.character(notation %||% "")
+  statements <- trimws(unlist(strsplit(notation, "\\s*;\\s*|\\n+", perl = TRUE), use.names = FALSE))
+  statements <- statements[nzchar(statements)]
+  if (length(statements) == 0) {
+    return(rows)
+  }
+  rows[["post-hoc"]] <- ""
+  target_rows <- seq_len(min(nrow(rows), length(statements)))
+  rows[["post-hoc"]][target_rows] <- statements[target_rows]
+  rows
 }
 
 ttest_effect_size <- function(values, groups, test_type) {
@@ -1008,12 +1036,13 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
 
   if (nzchar(posthoc_label) && isTRUE(options$ordered_significance) && !is.null(p_matrix)) {
     level_labels <- stats::setNames(ttest_display_levels(factor, levels, category_table), levels)
-    rows[["post-hoc"]][[1]] <- ttest_ordered_significance_notation(
+    ordered_posthoc <- ttest_ordered_significance_notation(
       values,
       groups,
       p_matrix,
       labels = level_labels
     )
+    rows <- ttest_distribute_ordered_posthoc(rows, ordered_posthoc)
   } else if (nzchar(posthoc_label)) {
     rows[["post-hoc"]] <- ttest_lookup_letters(letters, summaries$Value)
   }
