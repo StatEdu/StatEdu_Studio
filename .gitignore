@@ -7,6 +7,9 @@ renv/staging/
 results/
 sample/
 settings/*.local.json
+data/*.sav
+data/*.spe
+data/hint8.json
 *.log
 *.tmp
 easyflow_statistics_*.zip
