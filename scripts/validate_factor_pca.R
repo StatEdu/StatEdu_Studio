@@ -259,6 +259,31 @@ expect_true(
   nzchar(as.character(factor_with_reliability$loadings_table$Reliability[factor_with_reliability$loadings_table$Variable == "Eigenvalue"])),
   "Expected overall reliability to appear in the Reliability column on the Eigenvalue row"
 )
+factor_saved_scores <- factor_analysis_saved_score_outputs(
+  factor_with_reliability,
+  include_means = TRUE,
+  include_sums = TRUE,
+  include_scores = TRUE
+)
+expect_true(
+  is.data.frame(factor_saved_scores) &&
+    nrow(factor_saved_scores) == nrow(data) &&
+    all(c("MF_FA1", "SF_FA1", "FS_FA1") %in% names(factor_saved_scores)),
+  "Expected factor analysis saved score options to create row-matched mean, sum, and factor score variables"
+)
+expect_true(
+  all(vapply(factor_saved_scores, is.numeric, logical(1))),
+  "Expected saved factor analysis variables to be numeric"
+)
+factor_custom_saved_scores <- factor_analysis_saved_score_outputs(
+  factor_with_reliability,
+  include_means = TRUE,
+  base_name = "PA"
+)
+expect_true(
+  all(c("MF_PA1", "MF_PA2") %in% names(factor_custom_saved_scores)),
+  "Expected factor analysis saved score names to honor the user base name"
+)
 factor_reliability_html <- as.character(htmltools::renderTags(factor_analysis_results_ui(factor_with_reliability))$html)
 expect_true(
   grepl("Reliability if deleted", factor_reliability_html, fixed = TRUE) &&

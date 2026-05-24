@@ -35,6 +35,7 @@ create_app_server <- function(app_version) {
   measurement_overrides <- server_state$measurement_overrides
   step3_variable_info <- server_state$step3_variable_info
   calculated_variables <- server_state$calculated_variables
+  renamed_variables <- server_state$renamed_variables
   active_data_file <- server_state$active_data_file
   reset_on_dataset_load <- server_state$reset_on_dataset_load
   unsaved_settings <- server_state$unsaved_settings
@@ -52,8 +53,9 @@ create_app_server <- function(app_version) {
   register_client_error_handler(input)
   register_result_accumulator_outputs(input, output, session)
 
-  data_reactives <- create_data_reactives(input, active_data_file, calculated_variables)
+  data_reactives <- create_data_reactives(input, active_data_file, calculated_variables, renamed_variables)
   current_data_file <- data_reactives$current_data_file
+  source_dataset <- data_reactives$source_dataset
   raw_dataset <- data_reactives$raw_dataset
   dataset <- data_reactives$dataset
 
@@ -226,8 +228,9 @@ create_app_server <- function(app_version) {
     measurement_overrides,
     step3_variable_info,
     calculated_variables,
-    var_label_overrides,
-    category_label_values,
+    renamed_variables = renamed_variables,
+    var_label_overrides = var_label_overrides,
+    category_label_values = category_label_values,
     selected_names,
     selection_applied,
     roles_applied,
@@ -259,8 +262,10 @@ create_app_server <- function(app_version) {
   observeEvent(input$save_current_data_file, {
     data <- tryCatch(raw_dataset(), error = function(e) NULL)
     calculated <- calculated_variables()
-    if (!is.data.frame(data) || nrow(data) == 0 || !is.data.frame(calculated) || ncol(calculated) == 0) {
-      showNotification("There are no generated variables to save.", type = "warning", duration = 5)
+    renamed <- renamed_variables()
+    has_edits <- (is.data.frame(calculated) && ncol(calculated) > 0) || length(renamed) > 0
+    if (!is.data.frame(data) || nrow(data) == 0 || !isTRUE(has_edits)) {
+      showNotification("There are no data edits to save.", type = "warning", duration = 5)
       return()
     }
     path <- choose_data_csv_save_path()
@@ -406,6 +411,7 @@ create_app_server <- function(app_version) {
     measurement_overrides = measurement_overrides,
     step3_variable_info = step3_variable_info,
     calculated_variables = calculated_variables,
+    renamed_variables = renamed_variables,
     pending_settings = pending_settings,
     reset_setup_inputs_fn = reset_setup_inputs,
     go_data_step_fn = go_data_step,
@@ -454,7 +460,8 @@ create_app_server <- function(app_version) {
     data_view_fn = data_view,
     active_role_names_fn = active_role_names,
     available_variable_names_fn = available_variable_names,
-    calculated_variables_fn = calculated_variables
+    calculated_variables_fn = calculated_variables,
+    renamed_variables_fn = renamed_variables
   )
 
   analysis_state <- create_analysis_state(session)
@@ -674,6 +681,118 @@ create_app_server <- function(app_version) {
     invisible(TRUE)
   }
 
+  rename_vector_values <- function(values, old_name, new_name) {
+    values <- as.character(values %||% character(0))
+    values[values == old_name] <- new_name
+    unique(values)
+  }
+
+  rename_named_values <- function(values, old_name, new_name) {
+    values <- values %||% character(0)
+    if (length(values) == 0 || is.null(names(values))) {
+      return(values)
+    }
+    value_names <- names(values)
+    value_names[value_names == old_name] <- new_name
+    names(values) <- value_names
+    values[!duplicated(names(values), fromLast = TRUE)]
+  }
+
+  rename_info_names <- function(info, old_name, new_name, var_label = NULL) {
+    if (!is.data.frame(info) || !"name" %in% names(info)) {
+      return(info)
+    }
+    matched <- as.character(info$name) == old_name
+    info$name[matched] <- new_name
+    if (!is.null(var_label) && "var_label" %in% names(info)) {
+      info$var_label[matched] <- as.character(var_label)
+    }
+    info
+  }
+
+  rename_existing_variable <- function(old_name, new_name, var_label = NULL) {
+    old_name <- trimws(as.character(old_name %||% ""))
+    new_name <- trimws(as.character(new_name %||% ""))
+    current_names <- names(dataset())
+    if (!nzchar(old_name) || !old_name %in% current_names) {
+      showNotification("Select a variable to rename.", type = "warning", duration = 5)
+      return(invisible(FALSE))
+    }
+    if (!nzchar(new_name)) {
+      showNotification("Enter the new variable name.", type = "warning", duration = 5)
+      return(invisible(FALSE))
+    }
+    if (identical(old_name, new_name) && is.null(var_label)) {
+      showNotification("The new variable name is the same as the current name.", type = "warning", duration = 5)
+      return(invisible(FALSE))
+    }
+    if (new_name %in% setdiff(current_names, old_name)) {
+      showNotification(sprintf("Variable already exists: %s", new_name), type = "warning", duration = 5)
+      return(invisible(FALSE))
+    }
+
+    source_names <- tryCatch(names(source_dataset()), error = function(e) character(0))
+    rename_map <- renamed_variables()
+    source_name <- names(rename_map)[match(old_name, as.character(rename_map))]
+    if (length(source_name) == 0 || is.na(source_name) || !nzchar(source_name)) {
+      source_name <- old_name
+    }
+    if (source_name %in% source_names) {
+      if (identical(new_name, source_name)) {
+        rename_map <- rename_map[names(rename_map) != source_name]
+      } else {
+        rename_map[source_name] <- new_name
+      }
+      rename_map <- rename_map[names(rename_map) %in% source_names]
+      rename_map <- rename_map[nzchar(as.character(rename_map)) & names(rename_map) != as.character(rename_map)]
+      renamed_variables(rename_map)
+    }
+
+    current_calculated <- as.data.frame(calculated_variables() %||% data.frame(check.names = FALSE), stringsAsFactors = FALSE, check.names = FALSE)
+    if (is.data.frame(current_calculated) && old_name %in% names(current_calculated)) {
+      calculated_names <- names(current_calculated)
+      calculated_names[calculated_names == old_name] <- new_name
+      names(current_calculated) <- calculated_names
+      calculated_variables(current_calculated)
+    }
+
+    selected_names(rename_vector_values(selected_names(), old_name, new_name))
+    filter_names(rename_vector_values(filter_names(), old_name, new_name))
+    dependent_names(rename_vector_values(dependent_names(), old_name, new_name))
+    independent_names(rename_vector_values(independent_names(), old_name, new_name))
+    control_names(rename_vector_values(control_names(), old_name, new_name))
+    dependent_order(rename_vector_values(dependent_order(), old_name, new_name))
+    predictor_order(rename_vector_values(predictor_order(), old_name, new_name))
+    hierarchical_block3_names(rename_vector_values(hierarchical_block3_names(), old_name, new_name))
+    reliability_variables(rename_vector_values(reliability_variables(), old_name, new_name))
+    frequency_variables(rename_vector_values(frequency_variables(), old_name, new_name))
+
+    measurement_overrides(rename_named_values(measurement_overrides(), old_name, new_name))
+    label_overrides <- rename_named_values(var_label_overrides(), old_name, new_name)
+    if (!is.null(var_label)) {
+      label_overrides <- merge_named_overrides(label_overrides, stats::setNames(as.character(var_label), new_name))$values
+    }
+    var_label_overrides(label_overrides)
+    restored_variable_info(rename_info_names(restored_variable_info(), old_name, new_name, var_label))
+    step3_variable_info(rename_info_names(step3_variable_info(), old_name, new_name, var_label))
+
+    labels <- category_label_values()
+    if (is.data.frame(labels) && "name" %in% names(labels)) {
+      matched <- as.character(labels$name) == old_name
+      labels$name[matched] <- new_name
+      if (!is.null(var_label) && "var_label" %in% names(labels)) {
+        labels$var_label[matched] <- as.character(var_label)
+      }
+      category_label_values(labels)
+    }
+
+    choices <- if (isTRUE(selection_applied())) selected_names() else names(dataset())
+    update_analysis_choices(session, input, choices)
+    mark_settings_dirty()
+    showNotification(sprintf("Renamed variable: %s -> %s", old_name, new_name), type = "message", duration = 5)
+    invisible(TRUE)
+  }
+
   register_recode_same_handlers(
     input = input,
     output = output,
@@ -741,6 +860,18 @@ create_app_server <- function(app_version) {
     variable_info_fn = variable_info_table,
     labels_fn = var_label_overrides,
     add_calculated_variable_fn = add_calculated_variable,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
+  register_variable_rename_handlers(
+    input = input,
+    output = output,
+    session = session,
+    dataset_fn = dataset,
+    current_data_file_fn = current_data_file,
+    variable_info_fn = variable_info_table,
+    labels_fn = var_label_overrides,
+    rename_variable_fn = rename_existing_variable,
     mark_settings_dirty = mark_settings_dirty
   )
 
@@ -948,6 +1079,7 @@ create_app_server <- function(app_version) {
     variable_table_fn = regression_variable_table,
     category_table_fn = category_label_values,
     labels_fn = var_label_overrides,
+    add_calculated_variable_fn = add_calculated_variable,
     mark_settings_dirty = mark_settings_dirty
   )
 

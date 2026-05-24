@@ -66,23 +66,23 @@ set_data_step_view <- function(active_step_setter, data_view_setter, step, view 
 app_brand_title <- function(version) {
   div(
     class = "brand-title",
-    tags$img(src = "logo-horizontal.png", class = "brand-logo-horizontal", alt = "EasyFlow Statistics logo"),
+    tags$img(src = paste0("logo-horizontal.png?v=", version, "-concept-02-1"), class = "brand-logo-horizontal", alt = "EasyFlow Statistics logo"),
     span(class = "version", paste0("v", version))
   )
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-result-1"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-logo-concept-02-1"))
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-drag-drop-step3-1"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-logo-concept-02-1"))
 }
 
 app_head_tags <- function(version) {
   tags$head(
-    tags$link(rel = "icon", type = "image/png", sizes = "32x32", href = "logo-favicon-32.png"),
-    tags$link(rel = "icon", type = "image/png", sizes = "64x64", href = "logo-favicon-64.png"),
+    tags$link(rel = "icon", type = "image/png", sizes = "32x32", href = paste0("logo-favicon-32.png?v=", version, "-concept-02-1")),
+    tags$link(rel = "icon", type = "image/png", sizes = "64x64", href = paste0("logo-favicon-64.png?v=", version, "-concept-02-1")),
     app_stylesheet_link(version),
     app_script_link(version)
   )

@@ -567,6 +567,47 @@ body {
   min-height: 506px;
 }
 
+.variable-rename-options {
+  grid-column: 5;
+  min-height: 506px;
+}
+
+.variable-rename-transfer-controls {
+  align-items: flex-start;
+  padding-top: 130px;
+}
+
+.variable-rename-queue-title {
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.variable-rename-queue-box {
+  background: #f2f2f2 !important;
+  border-color: #c8c8c8 !important;
+  height: 216px;
+  min-height: 216px;
+  max-height: 216px;
+}
+
+.variable-rename-queue-box .analysis-transfer-option {
+  cursor: default;
+  color: #465569;
+}
+
+.variable-rename-queue-box .analysis-transfer-option:hover:not(.is-selected) {
+  background: rgba(226, 232, 240, 0.65);
+}
+
+.variable-rename-options .form-group {
+  margin-bottom: 14px;
+}
+
+.variable-rename-apply-button {
+  margin-top: 4px;
+  width: 100%;
+}
+
 .recode-different-options {
   grid-column: 5;
   min-height: 506px;
@@ -2089,24 +2130,29 @@ input.variable-select:disabled {
 }
 
 .factor-analysis-options.analysis-options-panel {
-  padding-bottom: 8px;
-  padding-top: 10px;
+  padding: 12px 14px;
 }
 
 .factor-analysis-options .analysis-option-group {
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .factor-analysis-options .analysis-option-title {
   font-size: 16px;
-  line-height: 1.12;
-  margin-bottom: 3px;
+  line-height: 1.15;
+  margin-bottom: 4px;
+}
+
+.factor-analysis-options > .analysis-option-group:nth-child(2) > .analysis-option-title,
+.factor-analysis-options > .analysis-option-group:nth-child(3) > .analysis-option-title,
+.factor-analysis-options > .analysis-option-group:nth-child(4) > .analysis-option-title {
+  margin-bottom: 10px;
 }
 
 .factor-analysis-options .analysis-option-group .checkbox,
 .factor-analysis-options .analysis-option-group .radio {
-  font-size: 13px;
-  line-height: 1.12;
+  font-size: 13.5px;
+  line-height: 1.18;
   margin-bottom: 2px;
   margin-top: 2px;
   min-height: 0;
@@ -2114,8 +2160,13 @@ input.variable-select:disabled {
 
 .factor-analysis-options .analysis-option-group .checkbox label,
 .factor-analysis-options .analysis-option-group .radio label {
-  line-height: 1.2;
+  line-height: 1.18;
   min-height: 0;
+}
+
+.factor-analysis-options > .analysis-option-group:nth-child(6) .checkbox {
+  margin-bottom: 3px;
+  margin-top: 3px;
 }
 
 .factor-analysis-options .form-group {
@@ -2127,7 +2178,7 @@ input.variable-select:disabled {
 }
 
 .factor-analysis-options .ttest-normality-disabled {
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .factor-analysis-options > .analysis-option-group:last-child {
@@ -2153,6 +2204,62 @@ input.variable-select:disabled {
   display: inline-block;
   margin: 0;
   width: 58px !important;
+}
+
+.factor-analysis-options .form-control {
+  font-size: 13.5px;
+}
+
+.factor-save-score-group {
+  padding-top: 0;
+}
+
+.factor-save-name-row {
+  align-items: center;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: auto 106px;
+  justify-content: start;
+  margin: 4px 0 7px 38px;
+}
+
+.factor-save-name-row label {
+  font-size: 13.5px;
+  font-weight: 400;
+  line-height: 1.18;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.factor-save-score-row {
+  align-items: center;
+  display: flex;
+  margin: 4px 0 4px 38px;
+}
+
+.factor-save-score-row .form-group,
+.factor-save-score-row .checkbox {
+  margin: 0;
+}
+
+.factor-save-score-row .checkbox label {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+  padding-left: 0;
+  white-space: nowrap;
+}
+
+.factor-save-score-row .checkbox input[type="checkbox"] {
+  margin-left: 0;
+  margin-top: 0;
+  position: static;
+}
+
+.factor-save-name-input {
+  height: 26px;
+  padding: 3px 6px;
+  width: 106px !important;
 }
 
 .factor-fixed-number-input input.form-control {
@@ -3907,7 +4014,8 @@ pre {
 .reliability-setup-grid > .analysis-transfer-panel:not(.reliability-target-panel) .analysis-transfer-listbox,
 .correlation-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
 .hierarchical-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
-.regression-available-panel .analysis-transfer-listbox {
+.regression-available-panel .analysis-transfer-listbox,
+.variable-rename-source-panel .analysis-transfer-listbox {
   height: 465px !important;
   min-height: 465px !important;
   max-height: 465px !important;
@@ -4006,6 +4114,13 @@ pre {
   transform: translateX(6px);
 }
 
+.variable-rename-transfer-controls {
+  align-items: flex-start !important;
+  justify-content: center;
+  padding-top: 130px !important;
+  transform: translateX(6px);
+}
+
 .ttest-anova-transfer-controls,
 .hierarchical-transfer-controls,
 .regression-transfer-controls {
@@ -4065,7 +4180,9 @@ pre {
 .paired-action-row > #paired_save_control,
 .paired-action-row > #paired_rm_save_control,
 .ttest-anova-action-row > #ttest_anova_save_control,
-.correlation-action-row > #correlation_save_control {
+.correlation-action-row > #correlation_save_control,
+.factor-analysis-action-row > #factor_analysis_save_control,
+.pca-action-row > #pca_save_control {
   grid-column: 5;
   margin-left: 0;
   justify-self: center;
@@ -4079,6 +4196,8 @@ pre {
 .paired-action-row > #paired_rm_reset_control,
 .ttest-anova-action-row > #ttest_anova_reset_control,
 .correlation-action-row > #correlation_reset_control,
+.factor-analysis-action-row > #factor_analysis_reset_control,
+.pca-action-row > #pca_reset_control,
 .hierarchical-action-row > #hierarchical_reset_control,
 .regression-action-row > #regression_reset_control,
 .logistic-action-row > #reset_logistic_block2 {
@@ -4097,6 +4216,8 @@ pre {
 .paired-action-row > #paired_rm_reset_control .analysis-reset-button,
 .ttest-anova-action-row > #ttest_anova_reset_control .analysis-reset-button,
 .correlation-action-row > #correlation_reset_control .analysis-reset-button,
+.factor-analysis-action-row > #factor_analysis_reset_control .analysis-reset-button,
+.pca-action-row > #pca_reset_control .analysis-reset-button,
 .hierarchical-action-row > #hierarchical_reset_control .analysis-reset-button,
 .regression-action-row > #regression_reset_control .analysis-reset-button {
   width: 300px;

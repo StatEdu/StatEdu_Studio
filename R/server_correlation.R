@@ -124,6 +124,16 @@ register_correlation_handlers <- function(
     mark_settings_dirty = mark_settings_dirty
   )
 
+  register_dual_transfer_doubleclick_observers(
+    input = input,
+    available_id = "correlation_available",
+    selected_id = "correlation_selected",
+    selected_values = correlation_variables,
+    all_values_fn = current_selected,
+    active_list = active_correlation_list,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
   observeEvent(input$correlation_move_up, {
     updated <- move_order_item(correlation_variables(), input$correlation_selected, "up")
     if (isTRUE(updated$changed)) {

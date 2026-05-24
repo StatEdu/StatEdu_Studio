@@ -72,6 +72,14 @@ data_editor_missing_values_tab_panel <- function() {
   )
 }
 
+data_editor_variable_rename_tab_panel <- function() {
+  tabPanel(
+    "Rename variable",
+    value = "data_editor_variable_rename",
+    data_editor_variable_rename_panel()
+  )
+}
+
 data_editor_tab_panel <- function() {
   navbarMenu(
     "Data Editor",
@@ -81,6 +89,7 @@ data_editor_tab_panel <- function() {
     data_editor_different_variable_tab_panel(),
     data_editor_variable_calculation_tab_panel(),
     data_editor_variable_transformation_tab_panel(),
-    data_editor_same_variable_tab_panel()
+    data_editor_same_variable_tab_panel(),
+    data_editor_variable_rename_tab_panel()
   )
 }

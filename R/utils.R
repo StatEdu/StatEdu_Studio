@@ -109,6 +109,40 @@ register_dual_transfer_drop_observer <- function(
   invisible(TRUE)
 }
 
+register_dual_transfer_doubleclick_observers <- function(
+  input,
+  available_id,
+  selected_id,
+  selected_values,
+  all_values_fn,
+  active_list = NULL,
+  mark_settings_dirty = NULL,
+  validate_next = NULL
+) {
+  observeEvent(input[[paste0(available_id, "_doubleclick")]], {
+    event <- input[[paste0(available_id, "_doubleclick")]]
+    value <- as.character(event$value %||% "")
+    all_values <- as.character(all_values_fn() %||% character(0))
+    chosen <- intersect(value, all_values)
+    if (length(chosen) == 0) {
+      return()
+    }
+    current <- intersect(as.character(selected_values() %||% character(0)), all_values)
+    next_values <- c(current, setdiff(chosen, current))
+    if (identical(next_values, current)) {
+      return()
+    }
+    if (!is.null(validate_next) && !isTRUE(validate_next(next_values, selected_id, chosen))) {
+      return()
+    }
+    selected_values(next_values)
+    if (!is.null(active_list)) active_list(selected_id)
+    if (!is.null(mark_settings_dirty)) mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  invisible(TRUE)
+}
+
 stat_chisq_label <- function(with_p = FALSE) {
   if (isTRUE(with_p)) "x\u00B2(p)" else "x\u00B2"
 }

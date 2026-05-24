@@ -15,6 +15,32 @@ append_calculated_variables <- function(data, calculated = NULL) {
   data
 }
 
+apply_variable_renames <- function(data, renames = character(0)) {
+  data <- as.data.frame(data, stringsAsFactors = FALSE, check.names = FALSE)
+  if (length(renames) == 0) {
+    return(data)
+  }
+
+  source_names <- names(renames)
+  target_names <- as.character(renames)
+  valid <- !is.na(source_names) & nzchar(source_names) & !is.na(target_names) & nzchar(target_names)
+  source_names <- source_names[valid]
+  target_names <- target_names[valid]
+  if (length(source_names) == 0) {
+    return(data)
+  }
+
+  current_names <- names(data)
+  for (index in seq_along(source_names)) {
+    match_index <- match(source_names[[index]], current_names)
+    if (!is.na(match_index)) {
+      current_names[[match_index]] <- target_names[[index]]
+    }
+  }
+  names(data) <- current_names
+  data
+}
+
 calculated_variable_info_row <- function(
   name,
   values,
@@ -53,7 +79,7 @@ calculated_variable_info_row <- function(
   row
 }
 
-create_data_reactives <- function(input, active_data_file, calculated_variables = NULL) {
+create_data_reactives <- function(input, active_data_file, calculated_variables = NULL, renamed_variables = NULL) {
   current_data_file <- reactive({
     current_data_file_value(input$file, active_data_file())
   })
@@ -66,7 +92,10 @@ create_data_reactives <- function(input, active_data_file, calculated_variables 
 
   raw_dataset <- reactive({
     append_calculated_variables(
-      source_dataset(),
+      apply_variable_renames(
+        source_dataset(),
+        if (is.function(renamed_variables)) renamed_variables() else character(0)
+      ),
       if (is.function(calculated_variables)) calculated_variables() else NULL
     )
   })

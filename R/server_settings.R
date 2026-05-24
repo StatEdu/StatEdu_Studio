@@ -53,6 +53,7 @@ loaded_dataset_reset_handler <- function(
   measurement_overrides,
   step3_variable_info,
   calculated_variables,
+  renamed_variables = NULL,
   var_label_overrides,
   category_label_values,
   selected_names,
@@ -79,6 +80,7 @@ loaded_dataset_reset_handler <- function(
     measurement_overrides(character(0))
     step3_variable_info(NULL)
     calculated_variables(data.frame(check.names = FALSE))
+    if (is.function(renamed_variables)) renamed_variables(character(0))
     var_label_overrides(character(0))
     category_label_values(NULL)
     selected_names(character(0))
@@ -179,6 +181,7 @@ register_settings_reset_handler <- function(
   measurement_overrides,
   step3_variable_info,
   calculated_variables,
+  renamed_variables = NULL,
   pending_settings,
   reset_setup_inputs_fn,
   go_data_step_fn,
@@ -202,6 +205,7 @@ register_settings_reset_handler <- function(
     measurement_overrides(character(0))
     step3_variable_info(NULL)
     calculated_variables(data.frame(check.names = FALSE))
+    if (is.function(renamed_variables)) renamed_variables(character(0))
     pending_settings(NULL)
     session$sendCustomMessage("easyflow-clear-data-session", list())
 

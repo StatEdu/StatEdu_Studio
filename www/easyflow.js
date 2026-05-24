@@ -22,6 +22,117 @@
       }
       window.isEasyflowVisibleElement = isEasyflowVisibleElement;
 
+      window.easyflowTransferScrollTops = window.easyflowTransferScrollTops || {};
+      window.easyflowTransferScrollAnchors = window.easyflowTransferScrollAnchors || {};
+      window.easyflowTransferScrollRestoreUntil = window.easyflowTransferScrollRestoreUntil || 0;
+
+      function easyflowVisibleTransferAnchor(listbox) {
+        var options = Array.prototype.slice.call(listbox.querySelectorAll('.analysis-transfer-option'));
+        var scrollTop = listbox.scrollTop || 0;
+        for (var i = 0; i < options.length; i += 1) {
+          var option = options[i];
+          var optionTop = option.offsetTop || 0;
+          var optionBottom = optionTop + (option.offsetHeight || 24);
+          if (optionBottom > scrollTop) {
+            return {
+              value: option.getAttribute('data-value') || '',
+              offset: optionTop - scrollTop
+            };
+          }
+        }
+        return null;
+      }
+
+      function easyflowRememberAllTransferScrolls() {
+        document.querySelectorAll('.analysis-transfer-listbox[data-input-id]').forEach(function(listbox) {
+          var inputId = listbox.getAttribute('data-input-id') || '';
+          if (inputId) {
+            window.easyflowTransferScrollTops[inputId] = listbox.scrollTop || 0;
+            window.easyflowTransferScrollAnchors[inputId] = easyflowVisibleTransferAnchor(listbox);
+          }
+        });
+        window.easyflowTransferScrollRestoreUntil = Date.now() + 1500;
+      }
+      window.easyflowRememberAllTransferScrolls = easyflowRememberAllTransferScrolls;
+
+      function easyflowRestoreRememberedTransferScrolls() {
+        if (Date.now() > (window.easyflowTransferScrollRestoreUntil || 0)) return;
+        var values = window.easyflowTransferScrollTops || {};
+        var anchors = window.easyflowTransferScrollAnchors || {};
+        document.querySelectorAll('.analysis-transfer-listbox[data-input-id]').forEach(function(listbox) {
+          var inputId = listbox.getAttribute('data-input-id') || '';
+          if (!inputId) return;
+          var anchor = anchors[inputId];
+          if (anchor && anchor.value) {
+            var options = Array.prototype.slice.call(listbox.querySelectorAll('.analysis-transfer-option'));
+            var matched = options.find(function(option) {
+              return (option.getAttribute('data-value') || '') === anchor.value;
+            });
+            if (matched) {
+              listbox.scrollTop = Math.max(0, (matched.offsetTop || 0) - (anchor.offset || 0));
+              return;
+            }
+          }
+          if (Object.prototype.hasOwnProperty.call(values, inputId)) {
+            listbox.scrollTop = Math.max(0, values[inputId] || 0);
+          }
+        });
+      }
+
+      function easyflowRestoreRememberedTransferScrollsSoon() {
+        window.setTimeout(easyflowRestoreRememberedTransferScrolls, 0);
+        window.setTimeout(easyflowRestoreRememberedTransferScrolls, 50);
+        window.setTimeout(easyflowRestoreRememberedTransferScrolls, 150);
+        window.setTimeout(easyflowRestoreRememberedTransferScrolls, 300);
+        window.setTimeout(easyflowRestoreRememberedTransferScrolls, 600);
+        window.setTimeout(easyflowRestoreRememberedTransferScrolls, 1000);
+      }
+
+      document.addEventListener('mousedown', function(event) {
+        var button = event.target && event.target.closest
+          ? event.target.closest('.analysis-move-button')
+          : null;
+        if (button) easyflowRememberAllTransferScrolls();
+      }, true);
+
+      document.addEventListener('mousedown', function(event) {
+        var button = event.target && event.target.closest
+          ? event.target.closest('.variable-rename-apply-button')
+          : null;
+        if (button) easyflowRememberAllTransferScrolls();
+      }, true);
+
+      document.addEventListener('dblclick', function(event) {
+        var option = event.target && event.target.closest
+          ? event.target.closest('.analysis-transfer-option')
+          : null;
+        if (option) easyflowRememberAllTransferScrolls();
+      }, true);
+
+      document.addEventListener('shiny:bound', function() {
+        easyflowRestoreRememberedTransferScrollsSoon();
+      });
+
+      document.addEventListener('shiny:value', function() {
+        easyflowRestoreRememberedTransferScrollsSoon();
+      });
+
+      document.addEventListener('shiny:idle', function() {
+        easyflowRestoreRememberedTransferScrollsSoon();
+      });
+
+      function easyflowRegisterTransferScrollRestoreObserver() {
+        if (!window.MutationObserver || !document.body || window.easyflowTransferScrollRestoreObserver) return;
+        window.easyflowTransferScrollRestoreObserver = new MutationObserver(function() {
+          easyflowRestoreRememberedTransferScrollsSoon();
+        });
+        window.easyflowTransferScrollRestoreObserver.observe(document.body, {childList: true, subtree: true});
+      }
+      easyflowRegisterTransferScrollRestoreObserver();
+      document.addEventListener('DOMContentLoaded', easyflowRegisterTransferScrollRestoreObserver);
+      document.addEventListener('shiny:connected', easyflowRegisterTransferScrollRestoreObserver);
+      window.setTimeout(easyflowRegisterTransferScrollRestoreObserver, 0);
+
       window.easyflowTransferFallbackSync = function(listbox) {
         if (!listbox || !listbox.getAttribute) return;
         var inputId = listbox.getAttribute('data-input-id') || '';

@@ -52,6 +52,7 @@ create_server_state <- function() {
     measurement_overrides = reactiveVal(character(0)),
     step3_variable_info = reactiveVal(NULL),
     calculated_variables = reactiveVal(data.frame(check.names = FALSE)),
+    renamed_variables = reactiveVal(character(0)),
     active_data_file = reactiveVal(NULL),
     reset_on_dataset_load = reactiveVal(FALSE),
     unsaved_settings = reactiveVal(FALSE),

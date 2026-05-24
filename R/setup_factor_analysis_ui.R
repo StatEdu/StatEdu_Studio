@@ -16,7 +16,11 @@ factor_analysis_setup_state <- function(
   sort_loadings = TRUE,
   hide_small_loadings = TRUE,
   highlight_problem_values = TRUE,
-  subfactor_reliability = FALSE
+  subfactor_reliability = TRUE,
+  save_factor_means = FALSE,
+  save_factor_sums = FALSE,
+  save_factor_scores = FALSE,
+  save_factor_base_name = "FA"
 ) {
   selected <- as.character(selected_names %||% character(0))
   allowed <- analysis_allowed_variables(selected, variable_table, c("ordered", "continuous"))
@@ -40,7 +44,31 @@ factor_analysis_setup_state <- function(
     sort_loadings = isTRUE(sort_loadings),
     hide_small_loadings = isTRUE(hide_small_loadings),
     highlight_problem_values = isTRUE(highlight_problem_values),
-    subfactor_reliability = isTRUE(subfactor_reliability)
+    subfactor_reliability = isTRUE(subfactor_reliability),
+    save_factor_means = isTRUE(save_factor_means),
+    save_factor_sums = isTRUE(save_factor_sums),
+    save_factor_scores = isTRUE(save_factor_scores),
+    save_factor_base_name = trimws(as.character(save_factor_base_name %||% "FA"))
+  )
+}
+
+factor_analysis_save_name_row <- function(value) {
+  div(
+    class = "factor-save-name-row",
+    tags$label(`for` = "factor_save_factor_base_name", "Variable name"),
+    tags$input(
+      id = "factor_save_factor_base_name",
+      type = "text",
+      class = "form-control factor-save-name-input",
+      value = value
+    )
+  )
+}
+
+factor_analysis_save_score_row <- function(id, label, value) {
+  div(
+    class = "factor-save-score-row",
+    checkboxInput(id, label, value = value, width = NULL)
   )
 }
 
@@ -179,6 +207,14 @@ factor_analysis_setup_panel <- function(state) {
             list(id = "factor_highlight_problem_values", label = "Highlight problem values", value = state$highlight_problem_values),
             list(id = "factor_subfactor_reliability", label = "Subfactor reliability", value = state$subfactor_reliability)
           )
+        ),
+        div(
+          class = "analysis-option-group factor-save-score-group",
+          div(class = "analysis-option-title", "Save scores"),
+          factor_analysis_save_name_row(state$save_factor_base_name),
+          factor_analysis_save_score_row("factor_save_factor_means", "Factor item means", state$save_factor_means),
+          factor_analysis_save_score_row("factor_save_factor_sums", "Factor item sums", state$save_factor_sums),
+          factor_analysis_save_score_row("factor_save_factor_scores", "Factor scores", state$save_factor_scores)
         )
       )
     )

@@ -125,6 +125,16 @@ register_pca_handlers <- function(
     mark_settings_dirty = mark_settings_dirty
   )
 
+  register_dual_transfer_doubleclick_observers(
+    input = input,
+    available_id = "pca_available",
+    selected_id = "pca_selected",
+    selected_values = pca_variables,
+    all_values_fn = current_allowed,
+    active_list = active_pca_list,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
   observeEvent(input$pca_move_up, {
     updated <- move_order_item(pca_variables(), input$pca_selected, "up")
     if (isTRUE(updated$changed)) {

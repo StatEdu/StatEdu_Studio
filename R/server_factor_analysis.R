@@ -9,6 +9,7 @@ register_factor_analysis_handlers <- function(
   variable_table_fn,
   category_table_fn,
   labels_fn,
+  add_calculated_variable_fn = NULL,
   mark_settings_dirty
 ) {
   factor_variables <- reactiveVal(character(0))
@@ -45,7 +46,11 @@ register_factor_analysis_handlers <- function(
         sort_loadings = input$factor_sort_loadings %||% TRUE,
         hide_small_loadings = input$factor_hide_small_loadings %||% TRUE,
         highlight_problem_values = input$factor_highlight_problem_values %||% TRUE,
-        subfactor_reliability = input$factor_subfactor_reliability %||% FALSE
+        subfactor_reliability = input$factor_subfactor_reliability %||% TRUE,
+        save_factor_means = input$factor_save_factor_means %||% FALSE,
+        save_factor_sums = input$factor_save_factor_sums %||% FALSE,
+        save_factor_scores = input$factor_save_factor_scores %||% FALSE,
+        save_factor_base_name = input$factor_save_factor_base_name %||% "FA"
       )
     )
   })
@@ -128,6 +133,16 @@ register_factor_analysis_handlers <- function(
     mark_settings_dirty = mark_settings_dirty
   )
 
+  register_dual_transfer_doubleclick_observers(
+    input = input,
+    available_id = "factor_available",
+    selected_id = "factor_selected",
+    selected_values = factor_variables,
+    all_values_fn = current_allowed,
+    active_list = active_factor_list,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
   observeEvent(input$factor_move_up, {
     updated <- move_order_item(factor_variables(), input$factor_selected, "up")
     if (isTRUE(updated$changed)) {
@@ -168,7 +183,11 @@ register_factor_analysis_handlers <- function(
           sort_loadings = isTRUE(input$factor_sort_loadings %||% TRUE),
           hide_small_loadings = isTRUE(input$factor_hide_small_loadings %||% TRUE),
           highlight_problem_values = isTRUE(input$factor_highlight_problem_values %||% TRUE),
-          subfactor_reliability = isTRUE(input$factor_subfactor_reliability %||% FALSE)
+          subfactor_reliability = isTRUE(input$factor_subfactor_reliability %||% TRUE),
+          save_factor_means = isTRUE(input$factor_save_factor_means %||% FALSE),
+          save_factor_sums = isTRUE(input$factor_save_factor_sums %||% FALSE),
+          save_factor_scores = isTRUE(input$factor_save_factor_scores %||% FALSE),
+          save_factor_base_name = input$factor_save_factor_base_name %||% "FA"
         )
       ),
       error = function(e) {
@@ -178,6 +197,50 @@ register_factor_analysis_handlers <- function(
     )
     if (!is.null(result)) {
       factor_result(result)
+      save_options <- c(
+        means = isTRUE(input$factor_save_factor_means %||% FALSE),
+        sums = isTRUE(input$factor_save_factor_sums %||% FALSE),
+        scores = isTRUE(input$factor_save_factor_scores %||% FALSE)
+      )
+      if (any(save_options) && is.function(add_calculated_variable_fn)) {
+        saved <- tryCatch(
+          {
+            calculated <- factor_analysis_saved_score_outputs(
+              result,
+              include_means = isTRUE(save_options[["means"]]),
+              include_sums = isTRUE(save_options[["sums"]]),
+              include_scores = isTRUE(save_options[["scores"]]),
+              base_name = input$factor_save_factor_base_name %||% "FA"
+            )
+            created <- character(0)
+            score_kinds <- attr(calculated, "score_kinds", exact = TRUE) %||% character(0)
+            for (name in names(calculated)) {
+              kind <- as.character(score_kinds[[name]] %||% "")
+              label <- switch(
+                kind,
+                mean = sprintf("Factor item mean (%s)", name),
+                sum = sprintf("Factor item sum (%s)", name),
+                score = sprintf("Factor score (%s)", name),
+                "Factor analysis calculated variable"
+              )
+              ok <- add_calculated_variable_fn(name, calculated[[name]], var_label = label, measurement = "continuous")
+              if (isTRUE(ok)) {
+                created <- c(created, name)
+              }
+            }
+            created
+          },
+          error = function(e) {
+            showNotification(paste("Failed to save factor score variables:", conditionMessage(e)), type = "warning", duration = 8)
+            character(0)
+          }
+        )
+        if (length(saved) > 0) {
+          showNotification(sprintf("Saved %s factor analysis variable(s): %s", length(saved), paste(saved, collapse = ", ")), type = "message", duration = 7)
+        } else {
+          showNotification("No factor analysis variables were saved.", type = "warning", duration = 5)
+        }
+      }
     }
   })
 

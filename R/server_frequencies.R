@@ -105,6 +105,16 @@ register_frequencies_handlers <- function(
     mark_settings_dirty = mark_settings_dirty
   )
 
+  register_dual_transfer_doubleclick_observers(
+    input = input,
+    available_id = "frequency_available",
+    selected_id = "frequency_selected",
+    selected_values = frequency_variables,
+    all_values_fn = selected_names_fn,
+    active_list = active_frequency_list,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
   observeEvent(input$frequency_move_up, {
     updated <- move_order_item(frequency_variables(), input$frequency_selected, "up")
     if (isTRUE(updated$changed)) {

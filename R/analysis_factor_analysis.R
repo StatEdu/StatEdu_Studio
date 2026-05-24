@@ -747,6 +747,150 @@ factor_analysis_subfactor_reliability <- function(result, cutoff = 0.30) {
   )
 }
 
+factor_analysis_primary_assignments <- function(result, cutoff = 0.30) {
+  loadings <- result$loadings
+  if (!is.matrix(loadings) || nrow(loadings) == 0 || ncol(loadings) == 0) {
+    return(data.frame(variable = character(0), factor = character(0), factor_index = integer(0), loading = numeric(0), stringsAsFactors = FALSE))
+  }
+
+  loading_abs <- abs(loadings)
+  primary_factor <- max.col(loading_abs, ties.method = "first")
+  primary_loading <- loading_abs[cbind(seq_len(nrow(loadings)), primary_factor)]
+  keep <- is.finite(primary_loading) & primary_loading >= cutoff
+  if (!any(keep)) {
+    return(data.frame(variable = character(0), factor = character(0), factor_index = integer(0), loading = numeric(0), stringsAsFactors = FALSE))
+  }
+
+  data.frame(
+    variable = rownames(loadings)[keep],
+    factor = colnames(loadings)[primary_factor[keep]],
+    factor_index = primary_factor[keep],
+    loading = loadings[cbind(which(keep), primary_factor[keep])],
+    stringsAsFactors = FALSE
+  )
+}
+
+factor_analysis_row_mean <- function(values) {
+  count <- rowSums(!is.na(values))
+  out <- rowMeans(values, na.rm = TRUE)
+  out[count == 0] <- NA_real_
+  out
+}
+
+factor_analysis_row_sum <- function(values) {
+  count <- rowSums(!is.na(values))
+  out <- rowSums(values, na.rm = TRUE)
+  out[count == 0] <- NA_real_
+  out
+}
+
+factor_analysis_saved_score_name <- function(factor_index, kind, base_name = "FA") {
+  prefix <- switch(
+    as.character(kind),
+    mean = "MF",
+    sum = "SF",
+    score = "FS",
+    "FA"
+  )
+  base_name <- trimws(as.character(base_name %||% "FA"))
+  if (!nzchar(base_name)) {
+    base_name <- "FA"
+  }
+  base_name <- make.names(base_name)
+  paste0(prefix, "_", base_name, as.integer(factor_index))
+}
+
+factor_analysis_factor_score_matrix <- function(result) {
+  factors <- colnames(result$loadings)
+  matrix <- result$matrix
+  out <- matrix(NA_real_, nrow = nrow(matrix), ncol = length(factors))
+  colnames(out) <- factors
+  if (nrow(matrix) == 0 || length(factors) == 0) {
+    return(out)
+  }
+
+  complete_rows <- stats::complete.cases(matrix[, result$variables, drop = FALSE])
+  if (!any(complete_rows)) {
+    return(out)
+  }
+
+  scores <- suppressWarnings(psych::factor.scores(
+    x = as.matrix(matrix[complete_rows, result$variables, drop = FALSE]),
+    f = result$fit,
+    method = "Thurstone"
+  )$scores)
+  scores <- as.matrix(scores)
+  if (ncol(scores) != length(factors)) {
+    stop("Factor scores could not be matched to the estimated factors.", call. = FALSE)
+  }
+  colnames(scores) <- factors
+  out[complete_rows, factors] <- scores[, factors, drop = FALSE]
+  out
+}
+
+factor_analysis_saved_score_outputs <- function(
+  result,
+  include_means = FALSE,
+  include_sums = FALSE,
+  include_scores = FALSE,
+  base_name = "FA",
+  cutoff = 0.30
+) {
+  if (!isTRUE(include_means) && !isTRUE(include_sums) && !isTRUE(include_scores)) {
+    return(data.frame(check.names = FALSE))
+  }
+
+  factors <- colnames(result$loadings)
+  multiple <- length(factors) > 1
+  out <- data.frame(row_id = seq_len(nrow(result$matrix)), check.names = FALSE)
+  out$row_id <- NULL
+  score_kinds <- character(0)
+  append_score_output <- function(name, values, kind) {
+    name <- make.unique(c(names(out), name), sep = "_")[[length(names(out)) + 1L]]
+    out[[name]] <<- values
+    score_kinds[[name]] <<- kind
+  }
+
+  if (isTRUE(include_means) || isTRUE(include_sums)) {
+    assignments <- factor_analysis_primary_assignments(result, cutoff = cutoff)
+    for (factor in factors) {
+      variables <- assignments$variable[assignments$factor == factor]
+      if (length(variables) == 0) {
+        next
+      }
+      values <- as.matrix(result$matrix[, variables, drop = FALSE])
+      if (isTRUE(include_means)) {
+        append_score_output(
+          factor_analysis_saved_score_name(match(factor, factors), "mean", base_name),
+          factor_analysis_row_mean(values),
+          "mean"
+        )
+      }
+      if (isTRUE(include_sums)) {
+        append_score_output(
+          factor_analysis_saved_score_name(match(factor, factors), "sum", base_name),
+          factor_analysis_row_sum(values),
+          "sum"
+        )
+      }
+    }
+  }
+
+  if (isTRUE(include_scores)) {
+    scores <- factor_analysis_factor_score_matrix(result)
+    for (factor in factors) {
+      append_score_output(
+        factor_analysis_saved_score_name(match(factor, factors), "score", base_name),
+        scores[, factor],
+        "score"
+      )
+    }
+  }
+
+  attr(out, "score_kinds") <- score_kinds
+  out
+}
+
 prepare_factor_analysis_results <- function(data, variables, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
   variables <- intersect(as.character(variables %||% character(0)), names(data))
   shiny::validate(shiny::need(length(variables) >= 3, "Select at least three variables for factor analysis."))
