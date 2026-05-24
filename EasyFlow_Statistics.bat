@@ -3,10 +3,10 @@ setlocal EnableExtensions EnableDelayedExpansion
 
 cd /d "%~dp0"
 
-echo Starting easyflow_statistics...
+echo Starting EasyFlow Statistics...
 echo.
 
-echo Closing existing easyflow_statistics process on port 7894, if any...
+echo Closing existing EasyFlow Statistics process on port 7894, if any...
 powershell -NoProfile -Command "$ports = @(7894); foreach ($port in $ports) { Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue } }"
 timeout /t 2 /nobreak >nul
 
@@ -43,5 +43,5 @@ echo.
 "%RSCRIPT%" run_app.R
 
 echo.
-echo easyflow_statistics stopped.
+echo EasyFlow Statistics stopped.
 pause

@@ -332,7 +332,7 @@
 - Added bootstrap sample count and seed number to the regression model overview when bootstrap regression is used.
 - Stabilized regression variable transfer behavior for first-item Shift selection and reduced selection-triggered scroll resets.
 - Increased the regression available variable list height to show 20 variables.
-- Added and refined easyflow_statistics logo concept SVG assets.
+- Added and refined EasyFlow Statistics logo concept SVG assets.
 
 
 ## v0.5.1 - 2026-05-14
@@ -343,7 +343,7 @@
 - Refined regression setup layout, fixed list heights, move button placement, and option checkbox persistence.
 - Added shared table and figure export behavior for analysis outputs.
 - Added Frequencies / Descriptives setup and output scaffolding with shared variable transfer UI.
-- Updated citation metadata for easyflow_statistics.
+- Updated citation metadata for EasyFlow Statistics.
 
 
 ## v0.5.0 - 2026-05-11
@@ -364,7 +364,7 @@
 
 ### Changed
 
-- Renamed the regression tab and page headings from easyflow_statistics to Regression.
+- Renamed the regression tab and page headings from EasyFlow Statistics to Regression.
 
 ### Fixed
 

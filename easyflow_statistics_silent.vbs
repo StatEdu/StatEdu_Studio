@@ -4,4 +4,4 @@ Set fso = CreateObject("Scripting.FileSystemObject")
 appDir = fso.GetParentFolderName(WScript.ScriptFullName)
 shell.CurrentDirectory = appDir
 shell.Environment("PROCESS")("EASYFLOW_SILENT") = "1"
-shell.Run """" & appDir & "\easyflow_statistics.bat" & """", 0, False
+shell.Run """" & appDir & "\EasyFlow_Statistics.bat" & """", 0, False

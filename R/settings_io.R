@@ -127,7 +127,7 @@ settings_embedded_data_file <- function(settings) {
 
   file_name <- settings_scalar(settings$data_file %||% settings$embedded_data_file$name)
   if (!nzchar(file_name)) {
-    file_name <- "easyflow_statistics_data"
+    file_name <- "EasyFlow_Statistics_data"
   }
   extension <- tools::file_ext(file_name)
   if (!supported_data_file_extension(file_name)) {

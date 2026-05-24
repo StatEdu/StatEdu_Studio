@@ -277,11 +277,11 @@ saved_coefficients_table <- function(results, variable_table = NULL, labels = ch
 }
 
 coefficients_csv_filename <- function() {
-  "easyflow_statistics_coefficients.csv"
+  "EasyFlow_Statistics_coefficients.csv"
 }
 
 analysis_results_html_filename <- function() {
-  sprintf("easyflow_statistics_results_%s.html", format(Sys.time(), "%Y%m%d_%H%M%S"))
+  sprintf("EasyFlow_Statistics_results_%s.html", format(Sys.time(), "%Y%m%d_%H%M%S"))
 }
 
 write_coefficients_csv <- function(results, file, variable_table = NULL, labels = character(0), category_table = NULL) {

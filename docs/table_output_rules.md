@@ -1,6 +1,6 @@
-# easyflow_statistics Table Output Rules
+# EasyFlow Statistics Table Output Rules
 
-These rules apply to every analysis result table in easyflow_statistics.
+These rules apply to every analysis result table in EasyFlow Statistics.
 
 ## Export Rules
 

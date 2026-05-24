@@ -1,6 +1,6 @@
-# easyflow_statistics 적용 분석 기법 정리
+# EasyFlow Statistics 적용 분석 기법 정리
 
-이 문서는 현재 easyflow_statistics에 실제 구현된 분석 기법을 탭별로 정리한다.
+이 문서는 현재 EasyFlow Statistics에 실제 구현된 분석 기법을 탭별로 정리한다.
 
 ## 1. Frequencies / Descriptives
 

@@ -39,14 +39,14 @@ open_file_dialog <- function(title, filetypes) {
 
 open_settings_file <- function() {
   open_file_dialog(
-    "Open easyflow_statistics Settings",
+    "Open EasyFlow Statistics Settings",
     "{{JSON settings} {.json}} {{All files} *}"
   )
 }
 
 open_data_file <- function() {
   path <- open_file_dialog(
-    "Open easyflow_statistics Data",
+    "Open EasyFlow Statistics Data",
     "{{Data files} {.sav .csv .dat}} {{SPSS SAV} {.sav}} {{CSV} {.csv}} {{DAT} {.dat}} {{All files} *}"
   )
   if (is.null(path) || !supported_data_file_extension(path)) {
@@ -63,16 +63,16 @@ save_settings_file <- function() {
         on.exit(try(tcltk::tkdestroy(parent), silent = TRUE), add = TRUE)
         as.character(tcltk::tkgetSaveFile(
           parent = parent,
-          title = "Save easyflow_statistics Settings",
-          initialfile = "easyflow_statistics_settings.json",
+          title = "Save EasyFlow Statistics Settings",
+          initialfile = "EasyFlow_Statistics_settings.json",
           filetypes = "{{JSON settings} {.json}} {{All files} *}"
         ))
       } else {
-        folder <- utils::choose.dir(caption = "Choose a folder for easyflow_statistics Settings")
+        folder <- utils::choose.dir(caption = "Choose a folder for EasyFlow Statistics Settings")
         if (is.na(folder) || !nzchar(folder)) {
           character(0)
         } else {
-          file.path(folder, "easyflow_statistics_settings.json")
+          file.path(folder, "EasyFlow_Statistics_settings.json")
         }
       }
     },
