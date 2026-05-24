@@ -89,7 +89,7 @@ body {
 
 .navbar > .container-fluid .navbar-brand,
 .navbar > .container .navbar-brand {
-  height: 56px;
+  height: 66px;
   padding-top: 6px;
   padding-bottom: 6px;
 }
@@ -100,13 +100,13 @@ body {
   gap: 10px;
   font-weight: 700;
   letter-spacing: 0;
-  height: 44px;
+  height: 54px;
 }
 
 .brand-logo-horizontal {
-  width: 158px;
-  height: 44px;
-  flex: 0 0 158px;
+  width: 210px;
+  height: 54px;
+  flex: 0 0 210px;
   object-fit: contain;
   object-position: left center;
   display: block;
