@@ -12,7 +12,11 @@ factor_analysis_setup_state <- function(
   method = "pa",
   rotation = "varimax",
   criterion = "eigen",
-  n_factors = 1
+  n_factors = 1,
+  sort_loadings = TRUE,
+  hide_small_loadings = TRUE,
+  highlight_problem_values = TRUE,
+  subfactor_reliability = FALSE
 ) {
   selected <- as.character(selected_names %||% character(0))
   allowed <- analysis_allowed_variables(selected, variable_table, c("ordered", "continuous"))
@@ -32,7 +36,64 @@ factor_analysis_setup_state <- function(
     method = method,
     rotation = rotation,
     criterion = criterion,
-    n_factors = max(1L, as.integer(n_factors %||% 1L))
+    n_factors = max(1L, as.integer(n_factors %||% 1L)),
+    sort_loadings = isTRUE(sort_loadings),
+    hide_small_loadings = isTRUE(hide_small_loadings),
+    highlight_problem_values = isTRUE(highlight_problem_values),
+    subfactor_reliability = isTRUE(subfactor_reliability)
+  )
+}
+
+factor_analysis_selection_controls <- function(state) {
+  choices <- factor_analysis_criterion_choices()
+  selected <- as.character(state$criterion %||% "eigen")
+  if (!selected %in% unname(choices)) {
+    selected <- "eigen"
+  }
+  radio_input <- function(label, value, extra = NULL, class = "radio", style = NULL, label_style = NULL) {
+    div(
+      class = class,
+      style = style,
+      tags$label(
+        style = label_style,
+        tags$input(
+          type = "radio",
+          name = "factor_criterion",
+          value = value,
+          checked = if (identical(selected, value)) "checked" else NULL
+        ),
+        span(label)
+      ),
+      extra
+    )
+  }
+  div(
+    id = "factor_criterion",
+    class = "form-group shiny-input-radiogroup shiny-input-container",
+    div(
+      class = "shiny-options-group",
+      radio_input("Eigenvalue >= 1.0", "eigen"),
+      radio_input(
+        "Fixed number of factors",
+        "fixed",
+        div(
+          class = "factor-fixed-number-input",
+          style = "display:inline-block;flex:0 0 56px;margin:0;width:56px;",
+          tags$input(
+            id = "factor_n_factors",
+            type = "number",
+            class = "form-control",
+            value = state$n_factors,
+            min = 1,
+            step = 1,
+            style = "display:inline-block;height:30px;min-width:0;padding:3px 6px;width:56px;"
+          )
+        ),
+        class = "radio factor-fixed-radio-row",
+        style = "align-items:center;display:flex;flex-wrap:nowrap;gap:6px;margin-left:36px;width:252px;",
+        label_style = "flex:0 0 auto;margin-bottom:0;white-space:nowrap;"
+      )
+    )
   )
 }
 
@@ -86,11 +147,18 @@ factor_analysis_setup_panel <- function(state) {
             selected = state$normality_method
           )
         ),
-        analysis_radio_group(
-          "Method",
-          "factor_method",
-          factor_analysis_method_choices(),
-          selected = state$method
+        div(
+          class = paste(
+            "analysis-option-group analysis-radio-group factor-method-group",
+            if (isTRUE(state$normality)) "ttest-normality-disabled" else ""
+          ),
+          div(class = "analysis-option-title", "Method"),
+          radioButtons(
+            "factor_method",
+            label = NULL,
+            choices = factor_analysis_method_choices(),
+            selected = state$method
+          )
         ),
         analysis_radio_group(
           "Rotation",
@@ -101,15 +169,15 @@ factor_analysis_setup_panel <- function(state) {
         div(
           class = "analysis-option-group analysis-radio-group factor-selection-group",
           div(class = "analysis-option-title", "Factor selection"),
-          radioButtons(
-            "factor_criterion",
-            label = NULL,
-            choices = factor_analysis_criterion_choices(),
-            selected = state$criterion
-          ),
-          div(
-            class = "factor-fixed-number-input",
-            numericInput("factor_n_factors", "Number of factors", value = state$n_factors, min = 1, step = 1)
+          factor_analysis_selection_controls(state)
+        ),
+        analysis_option_group(
+          "Output",
+          list(
+            list(id = "factor_sort_loadings", label = "Sort loadings by size", value = state$sort_loadings),
+            list(id = "factor_hide_small_loadings", label = "Show loadings >= .30 only", value = state$hide_small_loadings),
+            list(id = "factor_highlight_problem_values", label = "Highlight problem values", value = state$highlight_problem_values),
+            list(id = "factor_subfactor_reliability", label = "Subfactor reliability", value = state$subfactor_reliability)
           )
         )
       )

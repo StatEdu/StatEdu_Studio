@@ -9,6 +9,7 @@ factor_analysis_method_choices <- function() {
 
 factor_analysis_rotation_choices <- function() {
   c(
+    "None" = "none",
     "Varimax" = "varimax",
     "Oblimin" = "oblimin"
   )
@@ -178,13 +179,75 @@ factor_analysis_suitability_tables <- function(corr, n_obs) {
   list(overview = overview, kmo = kmo, bartlett = bartlett)
 }
 
+factor_analysis_model_df <- function(n_variables, n_factors) {
+  ((n_variables - n_factors)^2 - n_variables - n_factors) / 2
+}
+
+factor_analysis_max_factor_count <- function(n_variables) {
+  n_variables <- as.integer(n_variables %||% 0L)
+  if (n_variables < 3) {
+    return(1L)
+  }
+  candidates <- seq_len(max(1L, n_variables - 1L))
+  identified <- candidates[vapply(candidates, function(n_factors) {
+    factor_analysis_model_df(n_variables, n_factors) >= 0
+  }, logical(1))]
+  if (length(identified) == 0) {
+    return(1L)
+  }
+  max(1L, max(identified))
+}
+
 factor_analysis_select_factor_count <- function(eigenvalues, criterion, requested_n = 1L) {
-  max_factors <- max(1L, length(eigenvalues) - 1L)
+  max_factors <- factor_analysis_max_factor_count(length(eigenvalues))
   if (identical(criterion, "fixed")) {
     return(min(max(1L, as.integer(requested_n %||% 1L)), max_factors))
   }
   selected <- sum(is.finite(eigenvalues) & eigenvalues >= 1)
   min(max(1L, selected), max_factors)
+}
+
+factor_analysis_high_correlation_pairs <- function(corr, display_names, threshold = 0.98, max_pairs = 5L) {
+  if (!is.matrix(corr) || ncol(corr) < 2) {
+    return(character(0))
+  }
+  pairs <- which(abs(corr) >= threshold & upper.tri(corr), arr.ind = TRUE)
+  if (!is.matrix(pairs) || nrow(pairs) == 0) {
+    return(character(0))
+  }
+  values <- abs(corr[pairs])
+  pairs <- pairs[order(values, decreasing = TRUE), , drop = FALSE]
+  pairs <- pairs[seq_len(min(nrow(pairs), max_pairs)), , drop = FALSE]
+  vapply(seq_len(nrow(pairs)), function(index) {
+    row_name <- rownames(corr)[pairs[index, "row"]]
+    col_name <- colnames(corr)[pairs[index, "col"]]
+    sprintf(
+      "%s-%s (r=%s)",
+      display_names[[row_name]] %||% row_name,
+      display_names[[col_name]] %||% col_name,
+      format_decimal3(corr[pairs[index, "row"], pairs[index, "col"]])
+    )
+  }, character(1))
+}
+
+factor_analysis_fit_error_message <- function(error, n_factors, n_variables, n_obs, method, rotation, eigenvalues, corr, display_names) {
+  min_eigen <- suppressWarnings(min(eigenvalues, na.rm = TRUE))
+  small_eigen_count <- sum(is.finite(eigenvalues) & eigenvalues < 1e-6)
+  high_pairs <- factor_analysis_high_correlation_pairs(corr, display_names)
+  details <- c(
+    sprintf("Requested factors: %d; variables: %d; complete cases: %d.", n_factors, n_variables, n_obs),
+    sprintf("Method: %s; rotation: %s.", factor_analysis_method_label(method), factor_analysis_rotation_label(rotation)),
+    sprintf("Model df: %s.", format_decimal3(factor_analysis_model_df(n_variables, n_factors))),
+    if (is.finite(min_eigen)) sprintf("Smallest eigenvalue: %s.", format_decimal3(min_eigen)) else "",
+    if (small_eigen_count > 0) sprintf("%d eigenvalue(s) are near zero, suggesting a singular or unstable correlation matrix.", small_eigen_count) else "",
+    if (length(high_pairs) > 0) sprintf("Very highly correlated variable pairs: %s.", paste(high_pairs, collapse = "; ")) else ""
+  )
+  details <- details[nzchar(details)]
+  paste(
+    "Factor analysis could not be estimated. The requested number of factors may be too large, or the correlation matrix may be unstable.",
+    paste(details, collapse = " "),
+    sprintf("Original error: %s", conditionMessage(error))
+  )
 }
 
 factor_analysis_overview_table <- function(result) {
@@ -209,17 +272,264 @@ factor_analysis_loading_table <- function(result, cutoff = 0.30) {
   if (!is.matrix(loadings) || nrow(loadings) == 0) {
     return(NULL)
   }
+  hide_small_loadings <- isTRUE(result$options$hide_small_loadings %||% TRUE)
+  highlight_problem_values <- isTRUE(result$options$highlight_problem_values %||% TRUE)
+  sort_loadings <- isTRUE(result$options$sort_loadings %||% TRUE)
+  loading_abs <- abs(loadings)
+  primary_factor <- max.col(loading_abs, ties.method = "first")
+  primary_loading <- loading_abs[cbind(seq_len(nrow(loading_abs)), primary_factor)]
+  if (isTRUE(sort_loadings)) {
+    row_order <- order(primary_factor, -primary_loading, rownames(loadings), na.last = TRUE)
+    loadings <- loadings[row_order, , drop = FALSE]
+    loading_abs <- abs(loadings)
+    primary_factor <- max.col(loading_abs, ties.method = "first")
+    primary_loading <- loading_abs[cbind(seq_len(nrow(loading_abs)), primary_factor)]
+  }
   factors <- colnames(loadings)
   table <- data.frame(Variable = result$display_names[rownames(loadings)], check.names = FALSE)
-  for (factor in factors) {
-    table[[factor]] <- vapply(loadings[, factor], function(value) {
-      if (!is.finite(value) || abs(value) < cutoff) "" else format_decimal3(value)
+  for (factor_index in seq_along(factors)) {
+    factor <- factors[[factor_index]]
+    table[[factor]] <- vapply(seq_len(nrow(loadings)), function(row_index) {
+      value <- loadings[row_index, factor_index]
+      low_primary <- isTRUE(highlight_problem_values) &&
+        primary_factor[[row_index]] == factor_index &&
+        is.finite(primary_loading[[row_index]]) &&
+        primary_loading[[row_index]] < cutoff
+      if (!is.finite(value) || (isTRUE(hide_small_loadings) && abs(value) < cutoff && !isTRUE(low_primary))) "" else format_decimal3(value)
     }, character(1))
   }
-  table$h2 <- vapply(result$communality[rownames(loadings)], format_decimal3, character(1))
-  table$u2 <- vapply(result$uniqueness[rownames(loadings)], format_decimal3, character(1))
+  table$`h²` <- vapply(result$communality[rownames(loadings)], format_decimal3, character(1))
   table$Complexity <- vapply(result$complexity[rownames(loadings)], format_decimal3, character(1))
+  table <- factor_analysis_loading_reliability_columns(result, table, rownames(loadings), primary_factor, primary_loading, cutoff = cutoff)
+  cell_styles <- factor_analysis_problem_cell_styles(result, rownames(loadings), table, loadings, cutoff = cutoff)
+  if (!isTRUE(hide_small_loadings)) {
+    bold_cells <- do.call(rbind, lapply(seq_along(factors), function(column_index) {
+      rows <- which(abs(loadings[, factors[[column_index]]]) >= cutoff)
+      if (length(rows) == 0) {
+        return(NULL)
+      }
+      data.frame(row = rows, column = factors[[column_index]], stringsAsFactors = FALSE)
+    }))
+    attr(table, "bold_cells") <- bold_cells
+  }
+  table <- factor_analysis_append_loading_summary_rows(result, table, factors)
+  summary_styles <- factor_analysis_loading_summary_styles(table)
+  attr(table, "cell_styles") <- rbind(cell_styles, summary_styles)
   table
+}
+
+factor_analysis_variance_value <- function(accounted, row_name, factor) {
+  if (!is.matrix(accounted) && !is.data.frame(accounted)) {
+    return("")
+  }
+  accounted <- as.data.frame(accounted, check.names = FALSE)
+  if (!row_name %in% rownames(accounted) || !factor %in% names(accounted)) {
+    return("")
+  }
+  value <- suppressWarnings(as.numeric(accounted[row_name, factor]))
+  if (length(value) == 0 || !is.finite(value)) "" else format_decimal3(value)
+}
+
+factor_analysis_append_loading_summary_rows <- function(result, table, factors) {
+  accounted <- result$fit$Vaccounted
+  if ((!is.matrix(accounted) && !is.data.frame(accounted)) || length(factors) == 0) {
+    return(table)
+  }
+  summary_specs <- list(
+    list(label = "Eigenvalue", row = "SS loadings", multiplier = 1),
+    list(label = "Variance %", row = "Proportion Var", multiplier = 100),
+    list(label = "Cumulative variance %", row = "Cumulative Var", multiplier = 100)
+  )
+  rows <- lapply(summary_specs, function(spec) {
+    row <- as.list(stats::setNames(rep("", ncol(table)), names(table)))
+    row$Variable <- spec$label
+    for (factor in factors) {
+      value <- factor_analysis_variance_value(accounted, spec$row, factor)
+      if (nzchar(value) && !identical(spec$multiplier, 1)) {
+        numeric_value <- suppressWarnings(as.numeric(value))
+        value <- if (is.finite(numeric_value)) format_decimal3(numeric_value * spec$multiplier) else ""
+      }
+      row[[factor]] <- value
+    }
+    if (identical(spec$label, "Eigenvalue") && "Reliability" %in% names(table)) {
+      row$Reliability <- factor_analysis_reliability_overview_value(result$subfactor_reliability$total)
+    }
+    as.data.frame(row, check.names = FALSE, stringsAsFactors = FALSE)
+  })
+  out <- rbind(table, do.call(rbind, rows))
+  attr(out, "factor_loading_summary_start") <- nrow(table) + 1L
+  out
+}
+
+factor_analysis_loading_summary_styles <- function(table) {
+  start <- attr(table, "factor_loading_summary_start", exact = TRUE)
+  if (length(start) == 0 || is.null(start) || !is.finite(start) || start > nrow(table)) {
+    return(data.frame(row = integer(0), column = character(0), style = character(0), stringsAsFactors = FALSE))
+  }
+  rows <- seq.int(start, nrow(table))
+  do.call(rbind, lapply(rows, function(row_index) {
+    data.frame(
+      row = row_index,
+      column = names(table),
+      style = paste0(
+        if (identical(row_index, start)) "border-top:2px solid #1f2937;" else "",
+        "font-weight:600;background:#f8fafc;"
+      ),
+      stringsAsFactors = FALSE
+    )
+  }))
+}
+
+factor_analysis_structure_table <- function(result, cutoff = 0.30) {
+  loadings <- result$loadings
+  phi <- result$fit$Phi
+  if (!is.matrix(loadings) || nrow(loadings) == 0 || !is.matrix(phi) || nrow(phi) == 0) {
+    return(NULL)
+  }
+  if (ncol(loadings) != nrow(phi)) {
+    return(NULL)
+  }
+  structure <- loadings %*% phi
+  rownames(structure) <- rownames(loadings)
+  colnames(structure) <- colnames(loadings)
+
+  loading_abs <- abs(loadings)
+  primary_factor <- max.col(loading_abs, ties.method = "first")
+  primary_loading <- loading_abs[cbind(seq_len(nrow(loading_abs)), primary_factor)]
+  if (isTRUE(result$options$sort_loadings %||% TRUE)) {
+    row_order <- order(primary_factor, -primary_loading, rownames(loadings), na.last = TRUE)
+    structure <- structure[row_order, , drop = FALSE]
+  }
+
+  hide_small_loadings <- isTRUE(result$options$hide_small_loadings %||% TRUE)
+  factors <- colnames(structure)
+  table <- data.frame(Variable = result$display_names[rownames(structure)], check.names = FALSE)
+  for (factor in factors) {
+    table[[factor]] <- vapply(structure[, factor], function(value) {
+      if (!is.finite(value) || (isTRUE(hide_small_loadings) && abs(value) < cutoff)) "" else format_decimal3(value)
+    }, character(1))
+  }
+  if (!isTRUE(hide_small_loadings)) {
+    bold_cells <- do.call(rbind, lapply(factors, function(factor) {
+      rows <- which(abs(structure[, factor]) >= cutoff)
+      if (length(rows) == 0) {
+        return(NULL)
+      }
+      data.frame(row = rows, column = factor, stringsAsFactors = FALSE)
+    }))
+    attr(table, "bold_cells") <- bold_cells
+  }
+  table
+}
+
+factor_analysis_reliability_overview_value <- function(result) {
+  table <- result$overview
+  if (!is.data.frame(table) || nrow(table) == 0) {
+    return("")
+  }
+  columns <- c("Cronbach's alpha", "Ordinal alpha", "Reliability")
+  column <- intersect(columns, names(table))[1] %||% character(0)
+  if (!length(column) || !nzchar(column)) {
+    return("")
+  }
+  as.character(table[[column]][[1]] %||% "")
+}
+
+factor_analysis_reliability_deleted_column <- function(table) {
+  columns <- c("Cronbach's alpha if item deleted", "Ordinal alpha if item deleted", "Reliability if item deleted")
+  intersect(columns, names(table))[1] %||% character(0)
+}
+
+factor_analysis_loading_reliability_columns <- function(result, table, row_names, primary_factor, primary_loading, cutoff = 0.30) {
+  if (!isTRUE(result$options$subfactor_reliability %||% FALSE)) {
+    return(table)
+  }
+  table$Reliability <- ""
+  table$`Reliability if deleted` <- ""
+  table$`Item-total r` <- ""
+
+  reliability <- result$subfactor_reliability
+  factors <- reliability$factors %||% list()
+  if (length(factors) == 0) {
+    return(table)
+  }
+  factor_map <- stats::setNames(factors, vapply(factors, function(item) item$subfactor %||% "", character(1)))
+  shown_reliability <- character(0)
+  factor_names <- colnames(result$loadings)
+  for (row_index in seq_along(row_names)) {
+    subfactor <- factor_names[[primary_factor[[row_index]]]]
+    item <- factor_map[[subfactor]]
+    if (is.null(item) || !is.finite(primary_loading[[row_index]]) || primary_loading[[row_index]] < cutoff) {
+      next
+    }
+    if (!subfactor %in% shown_reliability) {
+      table$Reliability[[row_index]] <- factor_analysis_reliability_overview_value(item)
+      shown_reliability <- c(shown_reliability, subfactor)
+    }
+    diagnostics <- item$item_diagnostics
+    item_row <- match(row_names[[row_index]], item$variables %||% character(0))
+    if (!is.data.frame(diagnostics) || is.na(item_row) || item_row > nrow(diagnostics)) {
+      next
+    }
+    deleted_column <- factor_analysis_reliability_deleted_column(diagnostics)
+    if (length(deleted_column) == 1L && nzchar(deleted_column)) {
+      table$`Reliability if deleted`[[row_index]] <- as.character(diagnostics[[deleted_column]][[item_row]] %||% "")
+    }
+    if ("Corrected item-total correlation" %in% names(diagnostics)) {
+      table$`Item-total r`[[row_index]] <- as.character(diagnostics$`Corrected item-total correlation`[[item_row]] %||% "")
+    }
+  }
+  table
+}
+
+factor_analysis_problem_cell_styles <- function(result, row_names, table, loadings = NULL, cutoff = 0.30) {
+  if (length(row_names) == 0 || !is.data.frame(table) || nrow(table) == 0) {
+    return(data.frame(row = integer(0), column = character(0), style = character(0), stringsAsFactors = FALSE))
+  }
+  if (!isTRUE(result$options$highlight_problem_values %||% TRUE)) {
+    return(data.frame(row = integer(0), column = character(0), style = character(0), stringsAsFactors = FALSE))
+  }
+  problem_style <- "color:#991b1b;font-weight:700;background:#fee2e2;"
+  h2_values <- suppressWarnings(as.numeric(result$communality[row_names]))
+  complexity_values <- suppressWarnings(as.numeric(result$complexity[row_names]))
+  rows <- list()
+  if (is.matrix(loadings) && nrow(loadings) == nrow(table) && ncol(loadings) > 0) {
+    loading_abs <- abs(loadings)
+    primary_factor <- max.col(loading_abs, ties.method = "first")
+    primary_loading <- loading_abs[cbind(seq_len(nrow(loading_abs)), primary_factor)]
+    factor_names <- colnames(loadings)
+    low_primary_rows <- which(is.finite(primary_loading) & primary_loading < cutoff)
+    if (length(low_primary_rows) > 0) {
+      rows <- c(rows, list(data.frame(
+        row = low_primary_rows,
+        column = factor_names[primary_factor[low_primary_rows]],
+        style = problem_style,
+        stringsAsFactors = FALSE
+      )))
+    }
+    cross_loading_rows <- do.call(rbind, lapply(seq_len(nrow(loadings)), function(row_index) {
+      columns <- which(is.finite(loading_abs[row_index, ]) & loading_abs[row_index, ] >= cutoff & seq_len(ncol(loadings)) != primary_factor[[row_index]])
+      if (length(columns) == 0) {
+        return(NULL)
+      }
+      data.frame(row = row_index, column = factor_names[columns], style = problem_style, stringsAsFactors = FALSE)
+    }))
+    if (is.data.frame(cross_loading_rows) && nrow(cross_loading_rows) > 0) {
+      rows <- c(rows, list(cross_loading_rows))
+    }
+  }
+  h2_problem_rows <- which(is.finite(h2_values) & (h2_values < 0.30 | h2_values > 0.90 | h2_values > 1))
+  if (length(h2_problem_rows) > 0 && "h²" %in% names(table)) {
+    rows <- c(rows, list(data.frame(row = h2_problem_rows, column = "h²", style = problem_style, stringsAsFactors = FALSE)))
+  }
+  complexity_problem_rows <- which(is.finite(complexity_values) & complexity_values >= 2)
+  if (length(complexity_problem_rows) > 0 && "Complexity" %in% names(table)) {
+    rows <- c(rows, list(data.frame(row = complexity_problem_rows, column = "Complexity", style = problem_style, stringsAsFactors = FALSE)))
+  }
+  if (length(rows) == 0) {
+    return(data.frame(row = integer(0), column = character(0), style = character(0), stringsAsFactors = FALSE))
+  }
+  do.call(rbind, rows)
 }
 
 factor_analysis_variance_table <- function(result) {
@@ -256,6 +566,184 @@ factor_analysis_eigen_table <- function(result) {
     Eigenvalue = vapply(result$eigenvalues, format_decimal3, character(1)),
     Selected = ifelse(seq_along(result$eigenvalues) <= result$n_factors, "Yes", ""),
     check.names = FALSE
+  )
+}
+
+factor_analysis_display_variable <- function(result, variable) {
+  result$display_names[[variable]] %||% variable
+}
+
+factor_analysis_reliability_item_issues <- function(result, subfactor, variables) {
+  rows <- list()
+  if (length(variables) == 0) {
+    return(NULL)
+  }
+  for (variable in variables) {
+    raw <- result$matrix[[variable]]
+    numeric <- suppressWarnings(as.numeric(raw))
+    missing_count <- sum(is.na(raw))
+    numeric_missing_count <- sum(is.na(numeric))
+    conversion_count <- max(0L, numeric_missing_count - missing_count)
+    infinite_count <- sum(is.infinite(numeric), na.rm = TRUE)
+    finite <- numeric[is.finite(numeric)]
+    variance <- if (length(finite) >= 2) stats::var(finite) else NA_real_
+    problems <- character(0)
+    if (missing_count > 0) {
+      problems <- c(problems, sprintf("%d missing value(s)", missing_count))
+    }
+    if (conversion_count > 0) {
+      problems <- c(problems, sprintf("%d value(s) could not be converted to numeric", conversion_count))
+    }
+    if (infinite_count > 0) {
+      problems <- c(problems, sprintf("%d infinite value(s)", infinite_count))
+    }
+    if (length(finite) < 2) {
+      problems <- c(problems, "fewer than two finite numeric values")
+    } else if (!is.finite(variance) || variance <= 0) {
+      problems <- c(problems, "zero variance / constant item")
+    }
+    if (length(problems) > 0) {
+      rows <- c(rows, list(data.frame(
+        Subfactor = subfactor,
+        Item = factor_analysis_display_variable(result, variable),
+        Variable = variable,
+        Problem = paste(unique(problems), collapse = "; "),
+        check.names = FALSE
+      )))
+    }
+  }
+  if (length(rows) == 0) NULL else do.call(rbind, rows)
+}
+
+factor_analysis_reliability_group_reason <- function(result, subfactor, variables, error_message = NULL) {
+  issue_table <- factor_analysis_reliability_item_issues(result, subfactor, variables)
+  item_names <- vapply(variables, factor_analysis_display_variable, character(1), result = result)
+  item_text <- paste(item_names, collapse = ", ")
+  issue_text <- if (is.data.frame(issue_table) && nrow(issue_table) > 0) {
+    paste(sprintf("%s: %s", issue_table$Item, issue_table$Problem), collapse = "; ")
+  } else {
+    ""
+  }
+  pieces <- c(
+    if (nzchar(item_text)) sprintf("Items: %s", item_text) else "",
+    issue_text,
+    if (!is.null(error_message) && nzchar(error_message)) sprintf("Calculation error: %s", error_message) else ""
+  )
+  paste(pieces[nzchar(pieces)], collapse = " | ")
+}
+
+factor_analysis_subfactor_reliability <- function(result, cutoff = 0.30) {
+  if (!isTRUE(result$options$subfactor_reliability %||% FALSE)) {
+    return(NULL)
+  }
+  loadings <- result$loadings
+  if (!is.matrix(loadings) || nrow(loadings) == 0 || ncol(loadings) == 0) {
+    return(NULL)
+  }
+  loading_abs <- abs(loadings)
+  primary_factor <- max.col(loading_abs, ties.method = "first")
+  primary_loading <- loading_abs[cbind(seq_len(nrow(loading_abs)), primary_factor)]
+  factor_names <- colnames(loadings)
+  assignments <- data.frame(
+    variable = rownames(loadings),
+    subfactor = factor_names[primary_factor],
+    primary_loading = primary_loading,
+    stringsAsFactors = FALSE
+  )
+  assignments <- assignments[is.finite(assignments$primary_loading) & assignments$primary_loading >= cutoff, , drop = FALSE]
+  groups <- split(assignments$variable, assignments$subfactor)
+  reliability_options <- list(
+    normality = FALSE,
+    ordinal = FALSE,
+    reliability_if_deleted = TRUE,
+    item_total_correlation = TRUE
+  )
+  skipped <- list()
+  item_issues <- list()
+  factors <- list()
+  total_variables <- result$variables[result$variables %in% assignments$variable]
+  total <- NULL
+  if (length(total_variables) >= 2) {
+    total <- tryCatch(
+      prepare_reliability_results(
+        data = result$matrix,
+        variables = total_variables,
+        variable_info = result$variable_info,
+        labels = result$labels,
+        category_table = result$category_table,
+        options = reliability_options
+      ),
+      error = function(e) {
+        skipped <<- c(skipped, list(data.frame(
+          Subfactor = "Total",
+          Items = length(total_variables),
+          Reason = factor_analysis_reliability_group_reason(result, "Total", total_variables, conditionMessage(e)),
+          check.names = FALSE
+        )))
+        NULL
+      }
+    )
+    if (!is.null(total)) {
+      total$subfactor <- "Total"
+      total$assigned_variables <- total_variables
+    }
+  } else {
+    skipped <- c(skipped, list(data.frame(
+      Subfactor = "Total",
+      Items = length(total_variables),
+      Reason = factor_analysis_reliability_group_reason(result, "Total", total_variables, "Fewer than two items with primary loading >= .30"),
+      check.names = FALSE
+    )))
+  }
+  for (subfactor in factor_names) {
+    variables <- as.character(groups[[subfactor]] %||% character(0))
+    issue_table <- factor_analysis_reliability_item_issues(result, subfactor, variables)
+    if (is.data.frame(issue_table) && nrow(issue_table) > 0) {
+      item_issues <- c(item_issues, list(issue_table))
+    }
+    if (length(variables) < 2) {
+      skipped <- c(skipped, list(data.frame(
+        Subfactor = subfactor,
+        Items = length(variables),
+        Reason = factor_analysis_reliability_group_reason(result, subfactor, variables, "Fewer than two items with primary loading >= .30"),
+        check.names = FALSE
+      )))
+      next
+    }
+    item <- tryCatch(
+      prepare_reliability_results(
+        data = result$matrix,
+        variables = variables,
+        variable_info = result$variable_info,
+        labels = result$labels,
+        category_table = result$category_table,
+        options = reliability_options
+      ),
+      error = function(e) {
+        skipped <<- c(skipped, list(data.frame(
+          Subfactor = subfactor,
+          Items = length(variables),
+          Reason = factor_analysis_reliability_group_reason(result, subfactor, variables, conditionMessage(e)),
+          check.names = FALSE
+        )))
+        NULL
+      }
+    )
+    if (!is.null(item)) {
+      item$subfactor <- subfactor
+      item$assigned_variables <- variables
+      factors <- c(factors, list(item))
+    }
+  }
+  list(
+    type = "reliability_factors",
+    total = total,
+    factors = factors,
+    skipped = if (length(skipped) > 0) do.call(rbind, skipped) else NULL,
+    item_issues = if (length(item_issues) > 0) do.call(rbind, item_issues) else NULL,
+    options = reliability_options,
+    source = "factor_analysis",
+    cutoff = cutoff
   )
 }
 
@@ -308,16 +796,35 @@ prepare_factor_analysis_results <- function(data, variables, variable_info = NUL
   if (!rotation %in% unname(factor_analysis_rotation_choices())) rotation <- "varimax"
   criterion <- as.character(options$criterion %||% "eigen")
   if (!criterion %in% unname(factor_analysis_criterion_choices())) criterion <- "eigen"
-  n_factors <- factor_analysis_select_factor_count(eigenvalues, criterion, options$n_factors %||% 1L)
+  requested_n_factors <- max(1L, as.integer(options$n_factors %||% 1L))
+  max_factors <- factor_analysis_max_factor_count(length(eigenvalues))
+  shiny::validate(shiny::need(
+    !identical(criterion, "fixed") || requested_n_factors <= max_factors,
+    sprintf(
+      "Requested factor count (%d) is too high for %d variables. Use %d or fewer factors, or select more variables.",
+      requested_n_factors,
+      length(eigenvalues),
+      max_factors
+    )
+  ))
+  n_factors <- factor_analysis_select_factor_count(eigenvalues, criterion, requested_n_factors)
 
-  fit <- suppressWarnings(suppressMessages(psych::fa(
-    r = corr,
-    nfactors = n_factors,
-    n.obs = nrow(complete),
-    rotate = rotation,
-    fm = method,
-    warnings = FALSE
-  )))
+  fit <- tryCatch(
+    suppressWarnings(suppressMessages(psych::fa(
+      r = corr,
+      nfactors = n_factors,
+      n.obs = nrow(complete),
+      rotate = rotation,
+      fm = method,
+      warnings = FALSE
+    ))),
+    error = function(e) {
+      stop(
+        factor_analysis_fit_error_message(e, n_factors, length(variables), nrow(complete), method, rotation, eigenvalues, corr, display_names),
+        call. = FALSE
+      )
+    }
+  )
 
   loadings <- as.matrix(unclass(fit$loadings))
   rownames(loadings) <- variables
@@ -353,7 +860,9 @@ prepare_factor_analysis_results <- function(data, variables, variable_info = NUL
     category_table = category_table
   )
   result$overview <- factor_analysis_overview_table(result)
+  result$subfactor_reliability <- factor_analysis_subfactor_reliability(result)
   result$loadings_table <- factor_analysis_loading_table(result)
+  result$structure_table <- factor_analysis_structure_table(result)
   result$variance_table <- factor_analysis_variance_table(result)
   result$factor_correlation_table <- factor_analysis_factor_correlation_table(result)
   result$eigen_table <- factor_analysis_eigen_table(result)

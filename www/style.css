@@ -2088,19 +2088,79 @@ input.variable-select:disabled {
   margin-bottom: 0;
 }
 
-.factor-fixed-number-input {
-  margin: 4px 0 0 36px;
-  max-width: 260px;
+.factor-analysis-options.analysis-options-panel {
+  padding-bottom: 8px;
+  padding-top: 10px;
 }
 
-.factor-fixed-number-input .form-group {
+.factor-analysis-options .analysis-option-group {
+  margin-bottom: 6px;
+}
+
+.factor-analysis-options .analysis-option-title {
+  font-size: 16px;
+  line-height: 1.12;
+  margin-bottom: 3px;
+}
+
+.factor-analysis-options .analysis-option-group .checkbox,
+.factor-analysis-options .analysis-option-group .radio {
+  font-size: 13px;
+  line-height: 1.12;
+  margin-bottom: 2px;
+  margin-top: 2px;
+  min-height: 0;
+}
+
+.factor-analysis-options .analysis-option-group .checkbox label,
+.factor-analysis-options .analysis-option-group .radio label {
+  line-height: 1.2;
+  min-height: 0;
+}
+
+.factor-analysis-options .form-group {
   margin-bottom: 0;
 }
 
-.factor-fixed-number-input label {
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 4px;
+.factor-analysis-options .shiny-options-group {
+  margin-bottom: 0;
+}
+
+.factor-analysis-options .ttest-normality-disabled {
+  margin-bottom: 6px;
+}
+
+.factor-analysis-options > .analysis-option-group:last-child {
+  margin-bottom: 0;
+}
+
+.factor-fixed-radio-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  width: auto;
+}
+
+.factor-fixed-radio-row label {
+  flex: 0 0 auto;
+  margin-bottom: 0;
+  white-space: nowrap;
+  width: auto !important;
+}
+
+.factor-fixed-number-input {
+  display: inline-block;
+  margin: 0;
+  width: 58px !important;
+}
+
+.factor-fixed-number-input input.form-control {
+  display: inline-block;
+  height: 28px;
+  min-width: 0;
+  padding: 3px 6px;
+  width: 58px !important;
 }
 
 .ttest-anova-action-row {

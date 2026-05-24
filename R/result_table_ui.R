@@ -39,6 +39,7 @@ result_body_cell_style <- function(first = FALSE, last = FALSE, compact = FALSE,
     "padding:", padding, ";line-height:1.35;border-left:0;border-right:0;",
     "border-top:0;border-bottom:", if (isTRUE(last)) "0" else "1px solid #d7dde5", ";",
     "vertical-align:middle;background:transparent;white-space:nowrap;",
+    "font-variant-numeric:tabular-nums lining-nums;font-feature-settings:'tnum' 1,'lnum' 1;",
     "min-width:", width, ";",
     "white-space:pre-line;",
     "text-align:", if (isTRUE(first)) "left" else "right", ";"
@@ -75,6 +76,26 @@ result_cell_note_marker <- function(table, row_index, column) {
   }
   matched <- markers[markers$row == row_index & markers$column == column, , drop = FALSE]
   if (nrow(matched) == 0) "" else as.character(matched$marker[[1]])
+}
+
+result_cell_bold <- function(table, row_index, column) {
+  bold_cells <- attr(table, "bold_cells", exact = TRUE)
+  if (!is.data.frame(bold_cells) || nrow(bold_cells) == 0) {
+    return(FALSE)
+  }
+  any(bold_cells$row == row_index & bold_cells$column == column)
+}
+
+result_cell_style_extra <- function(table, row_index, column) {
+  cell_styles <- attr(table, "cell_styles", exact = TRUE)
+  if (!is.data.frame(cell_styles) || nrow(cell_styles) == 0) {
+    return("")
+  }
+  matched <- cell_styles[cell_styles$row == row_index & cell_styles$column == column, , drop = FALSE]
+  if (nrow(matched) == 0 || !"style" %in% names(matched)) {
+    return("")
+  }
+  paste(as.character(matched$style), collapse = "")
 }
 
 result_cell_content <- function(value, marker = "") {
@@ -189,16 +210,22 @@ coefficient_html_table <- function(
           tags$tr(lapply(seq_along(columns), function(column_index) {
             column <- columns[[column_index]]
             marker <- result_cell_note_marker(table, row_index, column)
+            content <- result_cell_content(table[[column]][[row_index]] %||% "", marker)
+            bold_style <- if (isTRUE(result_cell_bold(table, row_index, column)) && nzchar(as.character(table[[column]][[row_index]] %||% ""))) "font-weight:700;" else ""
             tags$td(
-              style = result_body_cell_style(
-                column_index == 1,
-                row_index == nrow(table),
-                compact = compact,
-                compact_font_size = compact_font_size,
-                compact_width = compact_width,
-                compact_first_width = compact_first_width
+              style = paste0(
+                result_body_cell_style(
+                  column_index == 1,
+                  row_index == nrow(table),
+                  compact = compact,
+                  compact_font_size = compact_font_size,
+                  compact_width = compact_width,
+                  compact_first_width = compact_first_width
+                ),
+                bold_style,
+                result_cell_style_extra(table, row_index, column)
               ),
-              result_cell_content(table[[column]][[row_index]] %||% "", marker)
+              content
             )
           }))
         })

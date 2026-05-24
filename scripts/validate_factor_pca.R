@@ -42,12 +42,292 @@ factor_result <- prepare_factor_analysis_results(
     method = "pa",
     rotation = "varimax",
     criterion = "eigen",
-    n_factors = 1
+    n_factors = 1,
+    sort_loadings = TRUE,
+    hide_small_loadings = TRUE,
+    highlight_problem_values = TRUE
   )
 )
 expect_true(identical(factor_result$method, "pa"), "Expected default factor method to remain principal axis factoring")
-expect_true(is.data.frame(factor_result$loadings_table) && nrow(factor_result$loadings_table) == ncol(data), "Expected factor loading table")
+expect_true(is.data.frame(factor_result$loadings_table) && nrow(factor_result$loadings_table) == ncol(data) + 3L, "Expected factor loading table with variance summary rows")
 expect_true(is.data.frame(factor_result$eigen_table) && nrow(factor_result$eigen_table) == ncol(data), "Expected factor eigenvalue table")
+expected_loading_order <- {
+  loading_abs <- abs(factor_result$loadings)
+  primary_factor <- max.col(loading_abs, ties.method = "first")
+  primary_loading <- loading_abs[cbind(seq_len(nrow(loading_abs)), primary_factor)]
+  names(data)[order(primary_factor, -primary_loading, rownames(factor_result$loadings), na.last = TRUE)]
+}
+expected_loading_labels <- unname(factor_result$display_names[expected_loading_order])
+expect_true(
+  identical(as.character(factor_result$loadings_table$Variable[seq_along(expected_loading_labels)]), expected_loading_labels),
+  "Expected factor loading table to be sorted by primary factor and loading size"
+)
+expect_true(
+  identical(tail(as.character(factor_result$loadings_table$Variable), 3), c("Eigenvalue", "Variance %", "Cumulative variance %")),
+  "Expected factor loading table to end with eigenvalue and variance summary rows"
+)
+factor_columns <- colnames(factor_result$loadings)
+expect_true(
+  all(vapply(factor_result$loadings_table[tail(seq_len(nrow(factor_result$loadings_table)), 3), factor_columns, drop = FALSE], function(column) all(nzchar(as.character(column))), logical(1))),
+  "Expected factor loading summary rows to contain values under factor columns"
+)
+factor_unsorted <- prepare_factor_analysis_results(
+  data,
+  variables = names(data),
+  variable_info = variable_info,
+  options = list(
+    normality = FALSE,
+    method = "pa",
+    rotation = "varimax",
+    criterion = "eigen",
+    n_factors = 1,
+    sort_loadings = FALSE,
+    hide_small_loadings = TRUE,
+    highlight_problem_values = TRUE
+  )
+)
+expect_true(
+  identical(as.character(factor_unsorted$loadings_table$Variable[seq_along(names(data))]), unname(factor_unsorted$display_names[names(data)])),
+  "Expected factor loading table to keep selected input order when sorting is disabled"
+)
+expect_true("h²" %in% names(factor_result$loadings_table), "Expected factor loading table to label communality as h²")
+expect_true(!"u2" %in% names(factor_result$loadings_table), "Expected factor loading table to omit uniqueness")
+factor_problem <- factor_result
+problem_rows <- rownames(factor_problem$loadings)[seq_len(min(2, nrow(factor_problem$loadings)))]
+factor_problem$communality[problem_rows[[1]]] <- 0.20
+if (length(problem_rows) >= 2) {
+  factor_problem$complexity[problem_rows[[2]]] <- 2.25
+}
+factor_problem$loadings_table <- factor_analysis_loading_table(factor_problem)
+problem_styles <- attr(factor_problem$loadings_table, "cell_styles")
+expect_true(
+  is.data.frame(problem_styles) &&
+    nrow(problem_styles) >= length(problem_rows) &&
+    any(grepl("background:#fee2e2", problem_styles$style, fixed = TRUE)),
+  "Expected problematic h² and complexity values to be marked with red background display"
+)
+factor_problem_html <- as.character(htmltools::renderTags(coefficient_html_table(factor_problem$loadings_table))$html)
+expect_true(
+  grepl("background:#fee2e2", factor_problem_html, fixed = TRUE),
+  "Expected problematic h² and complexity values to render with red background"
+)
+factor_problem$options$highlight_problem_values <- FALSE
+factor_problem$loadings_table <- factor_analysis_loading_table(factor_problem)
+expect_true(
+  !any(grepl("background:#fee2e2", attr(factor_problem$loadings_table, "cell_styles")$style, fixed = TRUE)),
+  "Expected problem highlighting to be disabled when the option is unchecked"
+)
+
+factor_all_loadings <- prepare_factor_analysis_results(
+  data,
+  variables = names(data),
+  variable_info = variable_info,
+  options = list(
+    normality = FALSE,
+    method = "pa",
+    rotation = "varimax",
+    criterion = "fixed",
+    n_factors = 2,
+    hide_small_loadings = FALSE,
+    highlight_problem_values = TRUE
+  )
+)
+factor_columns <- colnames(factor_all_loadings$loadings)
+expect_true(
+  all(vapply(factor_all_loadings$loadings_table[factor_columns], function(column) all(nzchar(as.character(column))), logical(1))),
+  "Expected all factor loadings to be displayed when the cutoff filter is disabled"
+)
+expect_true(
+  is.data.frame(attr(factor_all_loadings$loadings_table, "bold_cells")) &&
+    nrow(attr(factor_all_loadings$loadings_table, "bold_cells")) > 0,
+  "Expected large loadings to be marked for bold display when all loadings are shown"
+)
+factor_all_html <- as.character(htmltools::renderTags(coefficient_html_table(factor_all_loadings$loadings_table))$html)
+expect_true(grepl("font-weight:700", factor_all_html, fixed = TRUE), "Expected large loadings to render in bold")
+
+factor_no_rotation <- prepare_factor_analysis_results(
+  data,
+  variables = names(data),
+  variable_info = variable_info,
+  options = list(
+    normality = FALSE,
+    method = "pa",
+    rotation = "none",
+    criterion = "fixed",
+    n_factors = 2
+  )
+)
+expect_true(identical(factor_no_rotation$rotation, "none"), "Expected factor analysis to support no rotation")
+expect_true(is.null(factor_no_rotation$structure_table), "Expected no structure matrix when rotation does not estimate factor correlations")
+
+factor_oblimin <- prepare_factor_analysis_results(
+  data,
+  variables = names(data),
+  variable_info = variable_info,
+  options = list(
+    normality = FALSE,
+    method = "pa",
+    rotation = "oblimin",
+    criterion = "fixed",
+    n_factors = 2
+  )
+)
+expect_true(
+  is.data.frame(factor_oblimin$structure_table) &&
+    nrow(factor_oblimin$structure_table) == ncol(data) &&
+    all(colnames(factor_oblimin$loadings) %in% names(factor_oblimin$structure_table)),
+  "Expected oblique rotation to include a structure matrix"
+)
+factor_oblimin_html <- as.character(htmltools::renderTags(factor_analysis_results_ui(factor_oblimin))$html)
+expect_true(
+  grepl("Structure matrix", factor_oblimin_html, fixed = TRUE) &&
+    grepl("pattern matrix shows unique factor contributions", factor_oblimin_html, fixed = TRUE),
+  "Expected oblique factor analysis UI to render the structure matrix and interpretation note"
+)
+
+too_many_factor_error <- tryCatch(
+  {
+    prepare_factor_analysis_results(
+      data,
+      variables = names(data),
+      variable_info = variable_info,
+      options = list(
+        normality = FALSE,
+        method = "pa",
+        rotation = "varimax",
+        criterion = "fixed",
+        n_factors = 3
+      )
+    )
+    ""
+  },
+  error = conditionMessage
+)
+expect_true(
+  grepl("Requested factor count", too_many_factor_error, fixed = TRUE) &&
+    grepl("Use 2 or fewer factors", too_many_factor_error, fixed = TRUE),
+  "Expected fixed factor counts that are too high for the number of variables to show a clear message"
+)
+
+factor_with_reliability <- prepare_factor_analysis_results(
+  data,
+  variables = names(data),
+  variable_info = variable_info,
+  options = list(
+    normality = FALSE,
+    method = "pa",
+    rotation = "varimax",
+    criterion = "fixed",
+    n_factors = 2,
+    subfactor_reliability = TRUE
+  )
+)
+expect_true(
+  identical(factor_with_reliability$subfactor_reliability$type, "reliability_factors"),
+  "Expected factor analysis to attach subfactor reliability results when the option is enabled"
+)
+expect_true(
+  length(factor_with_reliability$subfactor_reliability$factors) > 0,
+  "Expected at least one subfactor reliability estimate"
+)
+expect_true(
+  is.list(factor_with_reliability$subfactor_reliability$total),
+  "Expected overall reliability estimate when subfactor reliability is enabled"
+)
+factor_reliability_overview <- reliability_factor_overview_table(factor_with_reliability$subfactor_reliability)
+factor_reliability_items <- reliability_factor_item_analysis_table(factor_with_reliability$subfactor_reliability)
+expect_true(
+  is.data.frame(factor_reliability_overview) && nrow(factor_reliability_overview) > 0,
+  "Expected subfactor reliability overview table"
+)
+expect_true(
+  is.data.frame(factor_reliability_items) &&
+    any(c("Cronbach's alpha if item deleted", "Ordinal alpha if item deleted", "Reliability if item deleted") %in% names(factor_reliability_items)) &&
+    "Corrected item-total correlation" %in% names(factor_reliability_items),
+  "Expected subfactor item-deleted reliability and item-total correlation output"
+)
+expect_true(
+  all(c("Reliability", "Reliability if deleted", "Item-total r") %in% names(factor_with_reliability$loadings_table)),
+  "Expected subfactor reliability columns to be appended to the factor loading table"
+)
+expect_true(
+  sum(nzchar(as.character(factor_with_reliability$loadings_table$Reliability))) ==
+    length(factor_with_reliability$subfactor_reliability$factors) + 1L,
+  "Expected subfactor reliability to appear on each subfactor first item and overall reliability on the Eigenvalue row"
+)
+expect_true(
+  nzchar(as.character(factor_with_reliability$loadings_table$Reliability[factor_with_reliability$loadings_table$Variable == "Eigenvalue"])),
+  "Expected overall reliability to appear in the Reliability column on the Eigenvalue row"
+)
+factor_reliability_html <- as.character(htmltools::renderTags(factor_analysis_results_ui(factor_with_reliability))$html)
+expect_true(
+  grepl("Reliability if deleted", factor_reliability_html, fixed = TRUE) &&
+    grepl("Item-total r", factor_reliability_html, fixed = TRUE) &&
+    grepl("complete cases within each item set", factor_reliability_html, fixed = TRUE) &&
+    grepl("parallel analysis", factor_reliability_html, fixed = TRUE) &&
+    !grepl("Reliability by subfactor", factor_reliability_html, fixed = TRUE),
+  "Expected factor analysis UI to include subfactor reliability and interpretation notes in the loading table only"
+)
+factor_negative_note_result <- factor_with_reliability
+negative_primary <- max.col(abs(factor_negative_note_result$loadings), ties.method = "first")[[1]]
+factor_negative_note_result$loadings[1, negative_primary] <- -abs(factor_negative_note_result$loadings[1, negative_primary])
+expect_true(
+  grepl("Potential reverse-keyed items", factor_analysis_negative_primary_note(factor_negative_note_result), fixed = TRUE),
+  "Expected negative primary loadings to be noted as potential reverse-keyed items"
+)
+
+factor_issue_result <- factor_with_reliability
+factor_issue_result$matrix$x1[[1]] <- Inf
+factor_issue_result$matrix$x2 <- 1
+factor_issue_result$subfactor_reliability <- factor_analysis_subfactor_reliability(factor_issue_result)
+expect_true(
+  is.data.frame(factor_issue_result$subfactor_reliability$item_issues) &&
+    all(c("Subfactor", "Item", "Variable", "Problem") %in% names(factor_issue_result$subfactor_reliability$item_issues)) &&
+    any(factor_issue_result$subfactor_reliability$item_issues$Variable == "x1") &&
+    any(factor_issue_result$subfactor_reliability$item_issues$Variable == "x2"),
+  "Expected subfactor reliability diagnostics to identify problematic items"
+)
+factor_issue_note <- factor_analysis_reliability_note(factor_issue_result)
+expect_true(
+  grepl("x1", factor_issue_note, fixed = TRUE) &&
+    grepl("x2", factor_issue_note, fixed = TRUE) &&
+    grepl("infinite", factor_issue_note, fixed = TRUE) &&
+    grepl("zero variance", factor_issue_note, fixed = TRUE),
+  "Expected subfactor reliability note to describe item-level problems"
+)
+
+ordered_info <- variable_info
+ordered_info$measurement[[1]] <- "ordered"
+factor_ordered_note_result <- factor_result
+factor_ordered_note_result$variable_info <- ordered_info
+factor_ordered_html <- as.character(htmltools::renderTags(factor_analysis_results_ui(factor_ordered_note_result))$html)
+expect_true(
+  grepl("Ordinal variables are currently analyzed with Pearson correlations", factor_ordered_html, fixed = TRUE),
+  "Expected Pearson correlation note when ordinal variables are included in factor analysis"
+)
+
+factor_loading_problem <- factor_all_loadings
+factor_loading_problem$options$hide_small_loadings <- TRUE
+factor_loading_problem$options$highlight_problem_values <- TRUE
+factor_loading_problem$loadings[1, ] <- 0.05
+factor_loading_problem$loadings[1, 1] <- 0.25
+if (ncol(factor_loading_problem$loadings) >= 2) {
+  factor_loading_problem$loadings[2, 1] <- 0.72
+  factor_loading_problem$loadings[2, 2] <- 0.42
+}
+factor_loading_problem$loadings_table <- factor_analysis_loading_table(factor_loading_problem)
+factor_loading_problem_styles <- attr(factor_loading_problem$loadings_table, "cell_styles")
+expect_true(
+  is.data.frame(factor_loading_problem_styles) &&
+    any(grepl("background:#fee2e2", factor_loading_problem_styles$style, fixed = TRUE)),
+  "Expected low primary and high cross-loadings to be marked with red background"
+)
+factor_loading_problem_html <- as.character(htmltools::renderTags(coefficient_html_table(factor_loading_problem$loadings_table))$html)
+expect_true(
+  grepl(".250", factor_loading_problem_html, fixed = TRUE) &&
+    grepl("background:#fee2e2", factor_loading_problem_html, fixed = TRUE),
+  "Expected low primary loading to be shown and highlighted when problem highlighting is enabled"
+)
 
 factor_ml <- prepare_factor_analysis_results(
   data,

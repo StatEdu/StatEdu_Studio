@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.9.1 - 2026-05-24
+
+### Changed
+
+- Refined exploratory factor analysis output with sorted loading matrices, optional small-loading filtering, problem-value highlighting, communalities, complexity, eigenvalue and variance summaries, and oblique structure matrices.
+- Added optional subfactor reliability summaries directly beside the factor loading matrix.
+- Improved factor analysis diagnostics for normality-driven extraction method selection, high fixed-factor counts, missing or infinite values, and item-level reliability issues.
+- Tightened the factor analysis option panel layout so all options fit within the standard three-column setup block.
+
+
 ## v0.9.0 - 2026-05-24
 
 ### Changed

@@ -1439,6 +1439,17 @@
           window.setTimeout(updateTtestNormalityTree, 0);
         }
 
+        function updateFactorNormalityOptions() {
+          var normality = document.getElementById('factor_normality');
+          if (!normality) return;
+          setTtestNormalityDisabled('.factor-normality-method-group', !normality.checked);
+          setTtestNormalityDisabled('.factor-method-group', normality.checked);
+        }
+
+        function scheduleFactorNormalityOptionsUpdate() {
+          window.setTimeout(updateFactorNormalityOptions, 0);
+        }
+
         document.addEventListener('change', function(event) {
           var target = event.target;
           if (!target || !target.matches) return;
@@ -1451,23 +1462,37 @@
             }
             scheduleTtestNormalityTreeUpdate();
           }
+          if (target.matches('#factor_normality')) {
+            scheduleFactorNormalityOptionsUpdate();
+          }
         }, true);
 
         document.addEventListener('shiny:value', scheduleTtestNormalityTreeUpdate);
         document.addEventListener('shiny:bound', scheduleTtestNormalityTreeUpdate);
         document.addEventListener('shiny:connected', scheduleTtestNormalityTreeUpdate);
+        document.addEventListener('shiny:value', scheduleFactorNormalityOptionsUpdate);
+        document.addEventListener('shiny:bound', scheduleFactorNormalityOptionsUpdate);
+        document.addEventListener('shiny:connected', scheduleFactorNormalityOptionsUpdate);
         if (window.MutationObserver) {
-          new MutationObserver(scheduleTtestNormalityTreeUpdate).observe(document.documentElement, {
+          new MutationObserver(function() {
+            scheduleTtestNormalityTreeUpdate();
+            scheduleFactorNormalityOptionsUpdate();
+          }).observe(document.documentElement, {
             childList: true,
             subtree: true
           });
         }
         if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', scheduleTtestNormalityTreeUpdate);
+          document.addEventListener('DOMContentLoaded', function() {
+            scheduleTtestNormalityTreeUpdate();
+            scheduleFactorNormalityOptionsUpdate();
+          });
         } else {
           scheduleTtestNormalityTreeUpdate();
+          scheduleFactorNormalityOptionsUpdate();
         }
         window.easyflowUpdateTtestNormalityTree = updateTtestNormalityTree;
+        window.easyflowUpdateFactorNormalityOptions = updateFactorNormalityOptions;
       })();
 
       document.addEventListener('click', function(event) {

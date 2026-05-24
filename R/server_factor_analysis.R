@@ -41,7 +41,11 @@ register_factor_analysis_handlers <- function(
         method = input$factor_method %||% "pa",
         rotation = input$factor_rotation %||% "varimax",
         criterion = input$factor_criterion %||% "eigen",
-        n_factors = input$factor_n_factors %||% 1
+        n_factors = input$factor_n_factors %||% 1,
+        sort_loadings = input$factor_sort_loadings %||% TRUE,
+        hide_small_loadings = input$factor_hide_small_loadings %||% TRUE,
+        highlight_problem_values = input$factor_highlight_problem_values %||% TRUE,
+        subfactor_reliability = input$factor_subfactor_reliability %||% FALSE
       )
     )
   })
@@ -160,7 +164,11 @@ register_factor_analysis_handlers <- function(
           method = input$factor_method %||% "pa",
           rotation = input$factor_rotation %||% "varimax",
           criterion = input$factor_criterion %||% "eigen",
-          n_factors = input$factor_n_factors %||% 1
+          n_factors = input$factor_n_factors %||% 1,
+          sort_loadings = isTRUE(input$factor_sort_loadings %||% TRUE),
+          hide_small_loadings = isTRUE(input$factor_hide_small_loadings %||% TRUE),
+          highlight_problem_values = isTRUE(input$factor_highlight_problem_values %||% TRUE),
+          subfactor_reliability = isTRUE(input$factor_subfactor_reliability %||% FALSE)
         )
       ),
       error = function(e) {

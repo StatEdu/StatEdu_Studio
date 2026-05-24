@@ -939,6 +939,9 @@ save_factor_analysis_excel_file <- function(result, file) {
     used_sheets <- add_excel_table_sheet(workbook, "Normality", result$normality_table, used_sheets)
   }
   used_sheets <- add_excel_table_sheet(workbook, "Loadings", result$loadings_table, used_sheets, title = "Pattern / loading matrix")
+  if (is.data.frame(result$structure_table) && nrow(result$structure_table) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Structure", result$structure_table, used_sheets, title = "Structure matrix")
+  }
   if (is.data.frame(result$variance_table) && nrow(result$variance_table) > 0) {
     used_sheets <- add_excel_table_sheet(workbook, "Variance", result$variance_table, used_sheets, title = "Variance explained")
   }
