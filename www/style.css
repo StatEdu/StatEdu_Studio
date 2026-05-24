@@ -1,7 +1,7 @@
 body {
   background: #f6f8fb;
   color: #1f2933;
-  scroll-padding-top: 58px;
+  scroll-padding-top: 88px;
 }
 
 .navbar {
@@ -89,7 +89,7 @@ body {
 
 .navbar > .container-fluid .navbar-brand,
 .navbar > .container .navbar-brand {
-  height: 66px;
+  height: 84px;
   padding-top: 6px;
   padding-bottom: 6px;
 }
@@ -100,13 +100,13 @@ body {
   gap: 10px;
   font-weight: 700;
   letter-spacing: 0;
-  height: 54px;
+  height: 72px;
 }
 
 .brand-logo-horizontal {
-  width: 210px;
-  height: 54px;
-  flex: 0 0 210px;
+  width: 270px;
+  height: 72px;
+  flex: 0 0 270px;
   object-fit: contain;
   object-position: left center;
   display: block;
