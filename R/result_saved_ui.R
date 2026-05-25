@@ -59,6 +59,7 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     ".report-cover-license-logo { display: block; max-height: 42px; max-width: 160px; object-fit: contain; }",
     ".report-cover-license-label { color: #627d98; display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 3px; }",
     ".report-cover-license-value { color: #102a43; display: block; font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }",
+    ".report-watermark { color: rgba(15, 23, 42, 0.075); font-size: 72px; font-weight: 800; left: 50%; letter-spacing: .12em; line-height: 1; pointer-events: none; position: fixed; text-transform: uppercase; top: 50%; transform: translate(-50%, -50%) rotate(-28deg); white-space: nowrap; z-index: 9999; }",
     ".report-cover-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 28px; color: #334e68; font-size: 14px; line-height: 1.45; border-top: 2px solid #102a43; padding-top: 18px; position: relative; z-index: 1; }",
     ".report-cover-meta-item { min-width: 0; }",
     ".report-cover-meta-label { color: #627d98; display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }",
@@ -134,6 +135,7 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     "  .report-cover-license { gap: 5mm !important; margin-bottom: 6mm !important; }",
     "  .report-cover-license-logo { max-height: 12mm !important; max-width: 42mm !important; }",
     "  .report-cover-license-value { font-size: 10.5pt !important; }",
+    "  .report-watermark { color: rgba(15, 23, 42, 0.07) !important; font-size: 52pt !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }",
     "  .report-cover-meta { font-size: 9.5pt !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }",
     "  .report-cover-footer { font-size: 8.5pt !important; }",
     "  .report-body-heading { display: none !important; }",
@@ -197,6 +199,7 @@ saved_results_viewer_css <- function(max_width = 1280) {
   paste(
     "body { background: #ffffff !important; color: #2f3a46; font-family: Arial, Helvetica, sans-serif; font-size: 16px; margin: 0; }",
     sprintf(".page-shell { max-width: %dpx; margin: 24px auto; padding: 0 18px; }", max_width),
+    ".report-watermark { color: rgba(15, 23, 42, 0.075); font-size: 72px; font-weight: 800; left: 50%; letter-spacing: .12em; line-height: 1; pointer-events: none; position: fixed; text-transform: uppercase; top: 50%; transform: translate(-50%, -50%) rotate(-28deg); white-space: nowrap; z-index: 9999; }",
     ".saved-results-meta { color: #52606d; margin: 4px 0 18px; font-size: 13px; }",
     ".regression-result-panel { background: #ffffff; border: 1px solid #d9e2ec; border-radius: 6px; padding: 18px 20px; margin-bottom: 22px; }",
     ".result-section.regression-result-panel, .regression-result-panel { max-width: 100%; overflow-x: auto; box-sizing: border-box; }",
@@ -259,9 +262,15 @@ saved_results_document <- function(title, content, max_width = 1280, css_path = 
   } else {
     saved_results_viewer_css(max_width)
   }
+  watermark <- if (identical(cover_text$edition, "development")) {
+    div("DEVELOPMENT VERSION", class = "report-watermark")
+  } else {
+    NULL
+  }
   body_content <- if (isTRUE(report_mode)) {
     div(
       class = "page-shell",
+      watermark,
       div(
         class = "report-cover",
         div(
@@ -309,6 +318,7 @@ saved_results_document <- function(title, content, max_width = 1280, css_path = 
   } else {
     div(
       class = "page-shell",
+      watermark,
       h1(title),
       div(class = "saved-results-meta", sprintf("Saved: %s", saved_time)),
       content
