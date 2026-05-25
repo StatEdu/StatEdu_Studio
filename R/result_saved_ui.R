@@ -17,11 +17,26 @@ saved_results_cover_text <- function() {
   if (!edition %in% c("free", "development", "personal", "institution")) {
     edition <- "development"
   }
+  organization <- trimws(Sys.getenv("EASYFLOW_REPORT_ORGANIZATION", ""))
+  user <- trimws(Sys.getenv("EASYFLOW_REPORT_USER", ""))
+  organization_logo <- trimws(Sys.getenv("EASYFLOW_REPORT_ORGANIZATION_LOGO", ""))
+
+  if (identical(edition, "development")) {
+    organization <- if (nzchar(organization)) organization else "statedu.com"
+    user <- if (nzchar(user)) user else "StatEdu 통계연구소"
+    organization_logo <- if (nzchar(organization_logo)) organization_logo else file.path("www", "statedu_logo.png")
+  } else if (identical(edition, "personal")) {
+    organization <- ""
+    organization_logo <- ""
+  } else if (identical(edition, "institution")) {
+    organization <- if (nzchar(organization)) organization else "Institution"
+  }
 
   list(
     edition = edition,
-    organization = trimws(Sys.getenv("EASYFLOW_REPORT_ORGANIZATION", "")),
-    user = trimws(Sys.getenv("EASYFLOW_REPORT_USER", "")),
+    organization = organization,
+    user = user,
+    organization_logo = organization_logo,
     footer = trimws(Sys.getenv("EASYFLOW_REPORT_FOOTER", "Prepared with EasyFlow Statistics"))
   )
 }
@@ -40,6 +55,10 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     ".report-cover-title { color: #102a43; font-size: 46px; font-weight: 700; line-height: 1.08; margin: 14px 0 16px; letter-spacing: 0; }",
     ".report-cover-subtitle { color: #486581; font-size: 18px; line-height: 1.55; margin: 0; max-width: 620px; }",
     ".report-cover-divider { width: 96px; height: 3px; background: #0f766e; margin-top: 34px; }",
+    ".report-cover-license { align-items: center; display: flex; gap: 16px; margin-bottom: 18px; position: relative; z-index: 1; }",
+    ".report-cover-license-logo { display: block; max-height: 42px; max-width: 160px; object-fit: contain; }",
+    ".report-cover-license-label { color: #627d98; display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 3px; }",
+    ".report-cover-license-value { color: #102a43; display: block; font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }",
     ".report-cover-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 28px; color: #334e68; font-size: 14px; line-height: 1.45; border-top: 2px solid #102a43; padding-top: 18px; position: relative; z-index: 1; }",
     ".report-cover-meta-item { min-width: 0; }",
     ".report-cover-meta-label { color: #627d98; display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }",
@@ -112,6 +131,9 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     "  .report-cover-main { padding-top: 36mm !important; }",
     "  .report-cover-title { font-size: 28pt !important; margin: 4mm 0 5mm !important; }",
     "  .report-cover-subtitle { font-size: 11pt !important; }",
+    "  .report-cover-license { gap: 5mm !important; margin-bottom: 6mm !important; }",
+    "  .report-cover-license-logo { max-height: 12mm !important; max-width: 42mm !important; }",
+    "  .report-cover-license-value { font-size: 10.5pt !important; }",
     "  .report-cover-meta { font-size: 9.5pt !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }",
     "  .report-cover-footer { font-size: 8.5pt !important; }",
     "  .report-body-heading { display: none !important; }",
@@ -200,8 +222,37 @@ saved_results_document <- function(title, content, max_width = 1280, css_path = 
   saved_time <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
   logo_uri <- saved_results_image_data_uri(file.path("www", "logo-horizontal.png"))
   cover_text <- saved_results_cover_text()
+  organization_logo_uri <- if (nzchar(cover_text$organization_logo)) saved_results_image_data_uri(cover_text$organization_logo) else ""
   cover_target <- if (nzchar(cover_text$organization)) cover_text$organization else "Internal analysis report"
   cover_user <- if (nzchar(cover_text$user)) cover_text$user else "EasyFlow Statistics user"
+  cover_license_name <- if (identical(cover_text$edition, "institution") && nzchar(cover_text$organization)) {
+    cover_text$organization
+  } else if (nzchar(cover_text$user)) {
+    cover_text$user
+  } else {
+    ""
+  }
+  cover_license_label <- if (identical(cover_text$edition, "development")) {
+    "Development owner"
+  } else if (identical(cover_text$edition, "institution")) {
+    "Institution"
+  } else {
+    "Licensed user"
+  }
+  cover_meta_items <- list()
+  if (!identical(cover_text$edition, "personal") && nzchar(cover_text$organization)) {
+    cover_meta_items <- c(cover_meta_items, list(div(class = "report-cover-meta-item", span("Prepared for", class = "report-cover-meta-label"), span(cover_target, class = "report-cover-meta-value"))))
+  }
+  if (!identical(cover_text$edition, "institution") || nzchar(cover_text$user)) {
+    cover_meta_items <- c(cover_meta_items, list(div(class = "report-cover-meta-item", span("Prepared by", class = "report-cover-meta-label"), span(cover_user, class = "report-cover-meta-value"))))
+  }
+  cover_meta_items <- c(
+    cover_meta_items,
+    list(
+      div(class = "report-cover-meta-item", span("Saved", class = "report-cover-meta-label"), span(saved_time, class = "report-cover-meta-value")),
+      div(class = "report-cover-meta-item", span("Application", class = "report-cover-meta-label"), span("EasyFlow Statistics", class = "report-cover-meta-value"))
+    )
+  )
   inline_css <- if (isTRUE(report_mode)) {
     saved_results_inline_css(max_width, print_landscape = print_landscape)
   } else {
@@ -228,12 +279,23 @@ saved_results_document <- function(title, content, max_width = 1280, css_path = 
           p("Generated analysis results prepared for review, documentation, and print output.", class = "report-cover-subtitle"),
           div(class = "report-cover-divider")
         ),
+        if (nzchar(organization_logo_uri) || nzchar(cover_license_name)) {
+          div(
+            class = "report-cover-license",
+            if (nzchar(organization_logo_uri)) {
+              tags$img(src = organization_logo_uri, class = "report-cover-license-logo", alt = "Organization logo")
+            },
+            if (nzchar(cover_license_name)) {
+              div(
+                span(cover_license_label, class = "report-cover-license-label"),
+                span(cover_license_name, class = "report-cover-license-value")
+              )
+            }
+          )
+        },
         div(
           class = "report-cover-meta",
-          div(class = "report-cover-meta-item", span("Prepared for", class = "report-cover-meta-label"), span(cover_target, class = "report-cover-meta-value")),
-          div(class = "report-cover-meta-item", span("Prepared by", class = "report-cover-meta-label"), span(cover_user, class = "report-cover-meta-value")),
-          div(class = "report-cover-meta-item", span("Saved", class = "report-cover-meta-label"), span(saved_time, class = "report-cover-meta-value")),
-          div(class = "report-cover-meta-item", span("Application", class = "report-cover-meta-label"), span("EasyFlow Statistics", class = "report-cover-meta-value"))
+          cover_meta_items
         ),
         div(cover_text$footer, class = "report-cover-footer")
       ),

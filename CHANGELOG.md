@@ -9,6 +9,7 @@
 - Improved factor analysis diagnostics table styling and finalized the KMO / Bartlett summary row placement.
 - Kept all five analysis save controls visible in development builds and added PDF / Add result coverage for the remaining analysis modules.
 - Removed PDF cover decoration and internal filename/date print labels, and added bottom-right page numbering.
+- Added edition-aware PDF cover identity handling, including the StatEdu logo and StatEdu 통계연구소 name for development builds.
 
 
 ## v0.9.1 - 2026-05-24
