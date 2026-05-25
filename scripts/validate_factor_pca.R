@@ -63,7 +63,8 @@ expect_true(
   "Expected factor loading table to be sorted by primary factor and loading size"
 )
 expect_true(
-  identical(tail(as.character(factor_result$loadings_table$Variable), 4), c("Eigenvalue", "Variance %", "Cumulative variance %", "KMO=")),
+  identical(head(tail(as.character(factor_result$loadings_table$Variable), 4), 3), c("Eigenvalue", "Variance %", "Cumulative variance %")) &&
+    startsWith(as.character(factor_result$loadings_table$Variable[[nrow(factor_result$loadings_table)]]), "KMO="),
   "Expected factor loading table to end with eigenvalue, variance, and suitability summary rows"
 )
 factor_columns <- colnames(factor_result$loadings)
@@ -150,6 +151,8 @@ factor_all_html <- as.character(htmltools::renderTags(coefficient_html_table(fac
 expect_true(grepl("font-weight:700", factor_all_html, fixed = TRUE), "Expected large loadings to render in bold")
 expect_true(grepl("colspan=", factor_all_html, fixed = TRUE), "Expected factor loading diagnostics row to merge KMO/Bartlett cells")
 expect_true(grepl("text-align:center", factor_all_html, fixed = TRUE), "Expected merged diagnostics row to be center aligned")
+expect_true(grepl("KMO=", factor_all_html, fixed = TRUE), "Expected merged diagnostics row to include KMO label")
+expect_true(grepl("border-top:1px solid #1f2937", factor_all_html, fixed = TRUE), "Expected merged diagnostics row to have a top border")
 
 factor_no_rotation <- prepare_factor_analysis_results(
   data,
