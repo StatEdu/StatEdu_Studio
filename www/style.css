@@ -2299,6 +2299,11 @@ input.variable-select:disabled {
   margin-bottom: 8px;
 }
 
+.pca-options > .analysis-option-group:nth-child(1) > .analysis-option-title,
+.pca-options > .analysis-option-group:nth-child(2) > .analysis-option-title {
+  margin-bottom: 12px;
+}
+
 .pca-options .analysis-option-group .checkbox,
 .pca-options .analysis-option-group .radio {
   font-size: 13.5px;
@@ -2333,9 +2338,9 @@ input.variable-select:disabled {
 .pca-selection-input-row {
   align-items: center;
   display: grid !important;
-  grid-template-columns: 220px 72px;
-  margin-left: 36px;
-  width: 300px;
+  grid-template-columns: minmax(0, 1fr) 66px;
+  margin-left: 28px;
+  width: calc(100% - 28px);
 }
 
 .pca-selection-input-row > label {
@@ -2350,7 +2355,7 @@ input.variable-select:disabled {
   display: inline-flex;
   gap: 4px;
   margin: 0;
-  width: 72px !important;
+  width: 66px !important;
 }
 
 .pca-fixed-number-input input.form-control,
@@ -2358,7 +2363,7 @@ input.variable-select:disabled {
   height: 30px;
   min-width: 0;
   padding: 3px 6px;
-  width: 58px !important;
+  width: 52px !important;
 }
 
 .ttest-anova-action-row {
