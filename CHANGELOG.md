@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.9.4 - 2026-05-25
+
+### Changed
+
+- Refined development-only HTML/PDF watermarks with horizontal EasyFlow and StatEdu branding.
+- Enabled correlation figure export for scatter plot matrices and correlation heatmaps.
+
+
 ## v0.9.3 - 2026-05-25
 
 ### Changed

@@ -210,13 +210,14 @@ register_correlation_handlers <- function(
     if (is.null(result)) {
       return(NULL)
     }
+    has_figures <- isTRUE(result$options$scatter_plot) || isTRUE(result$options$matrix_plot)
     analysis_save_buttons(
       html_button_id = "save_correlation_html_dialog",
       pdf_button_id = "save_correlation_pdf_dialog",
-      figure_button_id = NULL,
+      figure_button_id = if (isTRUE(has_figures)) "save_correlation_figures_dialog" else NULL,
       excel_button_id = "save_correlation_excel_dialog",
       add_result_button_id = "add_correlation_result",
-      has_figures = FALSE
+      has_figures = has_figures
     )
   })
 
@@ -299,6 +300,39 @@ register_correlation_handlers <- function(
       },
       error = function(e) {
         showNotification(paste("Failed to save analysis results:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  })
+
+  observeEvent(input$save_correlation_figures_dialog, {
+    result <- correlation_result()
+    shiny::req(!is.null(result))
+    directory <- choose_figure_save_dir()
+    if (length(directory) == 0 || !nzchar(directory[[1]])) {
+      showNotification("Folder selection dialog was not available or was canceled.", type = "warning", duration = 5)
+      return(invisible(NULL))
+    }
+    tryCatch(
+      {
+        saved <- character(0)
+        if (isTRUE(result$options$scatter_plot)) {
+          file <- file.path(directory, "scatter_plot_correlation.png")
+          save_plot_png_file(draw_correlation_scatter_plot, result, file, width = 8.5, height = 8.5)
+          saved <- c(saved, file)
+        }
+        if (isTRUE(result$options$matrix_plot)) {
+          file <- file.path(directory, "correlation_matrix_heatmap.png")
+          save_plot_png_file(draw_correlation_heatmap, result, file, width = 8, height = 8)
+          saved <- c(saved, file)
+        }
+        if (length(saved) == 0) {
+          showNotification("No figures were selected to save.", type = "warning", duration = 5)
+          return(invisible(NULL))
+        }
+        showNotification(sprintf("Saved %s figure file(s): %s", length(saved), directory), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save figures:", conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
