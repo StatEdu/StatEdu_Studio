@@ -380,10 +380,10 @@ factor_analysis_column_key <- function(name) {
 factor_analysis_loading_suitability_row <- function(result, table) {
   columns <- names(table)
   factors <- colnames(result$loadings)
-  start_column <- "Variable"
+  start_column <- if (length(factors) > 0) factors[[1]] else ""
   h2_index <- match("h2", vapply(columns, factor_analysis_column_key, character(1)))
   end_column <- if (!is.na(h2_index)) columns[[h2_index]] else if (length(factors) > 0) factors[[1]] else start_column
-  if (!start_column %in% columns || !end_column %in% columns) {
+  if (!nzchar(start_column) || !start_column %in% columns || !end_column %in% columns) {
     return(NULL)
   }
   suitability <- result$suitability %||% list()
@@ -418,6 +418,8 @@ factor_analysis_loading_summary_styles <- function(table) {
   if (length(start) == 0 || is.null(start) || !is.finite(start) || start > nrow(table)) {
     return(data.frame(row = integer(0), column = character(0), style = character(0), stringsAsFactors = FALSE))
   }
+  spans <- attr(table, "spanning_cells", exact = TRUE)
+  spanning_rows <- if (is.data.frame(spans) && "row" %in% names(spans)) as.integer(spans$row) else integer(0)
   rows <- seq.int(start, nrow(table))
   do.call(rbind, lapply(rows, function(row_index) {
     data.frame(
@@ -426,7 +428,7 @@ factor_analysis_loading_summary_styles <- function(table) {
       style = paste0(
         if (identical(row_index, start)) {
           "border-top:2px solid #1f2937;"
-        } else if (identical(as.character(table$Variable[[row_index]] %||% ""), "KMO=")) {
+        } else if (row_index %in% spanning_rows) {
           "border-top:1px solid #1f2937;"
         } else {
           ""
