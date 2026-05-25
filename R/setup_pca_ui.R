@@ -98,7 +98,7 @@ pca_selection_controls <- function(state) {
       class = "shiny-options-group",
       radio_input("Eigenvalue >= 1.0", "eigen"),
       radio_input(
-        "Fixed number of components",
+        "Fixed number",
         "fixed",
         div(
           class = "factor-fixed-number-input pca-fixed-number-input",

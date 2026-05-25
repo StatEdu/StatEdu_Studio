@@ -50,7 +50,7 @@ pca_results_ui <- function(result, report_mode = FALSE) {
           result$loadings_table,
           compact = TRUE,
           compact_font_size = 13,
-          compact_width = 76,
+          compact_width = 70,
           compact_first_width = 150,
           compact_min_width = 520,
           note_line = pca_loading_note(result)
@@ -79,7 +79,7 @@ pca_results_ui <- function(result, report_mode = FALSE) {
             compact = TRUE,
             compact_font_size = 13,
             compact_width = 76,
-            compact_first_width = 110,
+            compact_first_width = 100,
             compact_min_width = 420
           )
         )
@@ -120,8 +120,8 @@ pca_results_ui <- function(result, report_mode = FALSE) {
           compact = TRUE,
           compact_font_size = 13,
           compact_width = 86,
-          compact_first_width = 95,
-          compact_min_width = 420
+          compact_first_width = 90,
+          compact_min_width = 360
         )
       )
     )
