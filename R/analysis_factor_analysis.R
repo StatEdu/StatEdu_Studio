@@ -362,13 +362,28 @@ factor_analysis_append_loading_summary_rows <- function(result, table, factors) 
   }
   out <- rbind(table, do.call(rbind, rows))
   attr(out, "factor_loading_summary_start") <- nrow(table) + 1L
+  if (!is.null(suitability_row)) {
+    span <- attr(suitability_row, "spanning_cells", exact = TRUE)
+    if (is.data.frame(span) && nrow(span) > 0) {
+      span$row <- nrow(out)
+      attr(out, "spanning_cells") <- span
+    }
+  }
   out
+}
+
+factor_analysis_column_key <- function(name) {
+  name <- gsub("\u00B2", "2", as.character(name %||% ""), fixed = TRUE)
+  gsub("[^[:alnum:]]+", "", tolower(name))
 }
 
 factor_analysis_loading_suitability_row <- function(result, table) {
   columns <- names(table)
-  value_columns <- setdiff(columns, "Variable")
-  if (length(value_columns) == 0) {
+  factors <- colnames(result$loadings)
+  start_column <- if (length(factors) > 0) factors[[1]] else ""
+  h2_index <- match("h2", vapply(columns, factor_analysis_column_key, character(1)))
+  end_column <- if (!is.na(h2_index)) columns[[h2_index]] else start_column
+  if (!nzchar(start_column) || !start_column %in% columns || !end_column %in% columns) {
     return(NULL)
   }
   suitability <- result$suitability %||% list()
@@ -382,25 +397,21 @@ factor_analysis_loading_suitability_row <- function(result, table) {
   }
   row <- as.list(stats::setNames(rep("", length(columns)), columns))
   row$Variable <- "KMO="
-  row[[value_columns[[1]]]] <- kmo_value
-  if (length(value_columns) >= 3) {
-    row[[value_columns[[2]]]] <- "Bartlett's x2 (p)="
-    row[[value_columns[[3]]]] <- if (nzchar(bartlett_p)) sprintf("%s (%s)", bartlett_value, bartlett_p) else bartlett_value
-  } else if (length(value_columns) >= 2) {
-    row[[value_columns[[2]]]] <- if (nzchar(bartlett_p)) {
-      sprintf("Bartlett's x2 (p)= %s (%s)", bartlett_value, bartlett_p)
-    } else {
-      sprintf("Bartlett's x2 (p)= %s", bartlett_value)
-    }
+  row[[start_column]] <- if (nzchar(bartlett_p)) {
+    sprintf("%s     Bartlett's x2 (p)= %s (%s)", kmo_value, bartlett_value, bartlett_p)
   } else {
-    row$Variable <- if (nzchar(bartlett_p)) {
-      sprintf("KMO= %s   Bartlett's x2 (p)= %s (%s)", kmo_value, bartlett_value, bartlett_p)
-    } else {
-      sprintf("KMO= %s   Bartlett's x2 (p)= %s", kmo_value, bartlett_value)
-    }
-    row[[value_columns[[1]]]] <- ""
+    sprintf("%s     Bartlett's x2 (p)= %s", kmo_value, bartlett_value)
   }
-  as.data.frame(row, check.names = FALSE, stringsAsFactors = FALSE)
+  out <- as.data.frame(row, check.names = FALSE, stringsAsFactors = FALSE)
+  attr(out, "spanning_cells") <- data.frame(
+    row = 1L,
+    start_column = start_column,
+    end_column = end_column,
+    value = row[[start_column]],
+    style = "text-align:center;",
+    stringsAsFactors = FALSE
+  )
+  out
 }
 
 factor_analysis_loading_summary_styles <- function(table) {
@@ -414,7 +425,13 @@ factor_analysis_loading_summary_styles <- function(table) {
       row = row_index,
       column = names(table),
       style = paste0(
-        if (identical(row_index, start)) "border-top:2px solid #1f2937;" else "",
+        if (identical(row_index, start)) {
+          "border-top:2px solid #1f2937;"
+        } else if (identical(as.character(table$Variable[[row_index]] %||% ""), "KMO=")) {
+          "border-top:1px solid #1f2937;"
+        } else {
+          ""
+        },
         "font-weight:600;background:#f8fafc;"
       ),
       stringsAsFactors = FALSE

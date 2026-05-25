@@ -138,7 +138,7 @@ factor_all_loadings <- prepare_factor_analysis_results(
 )
 factor_columns <- colnames(factor_all_loadings$loadings)
 expect_true(
-  all(vapply(factor_all_loadings$loadings_table[factor_columns], function(column) all(nzchar(as.character(column))), logical(1))),
+  all(vapply(factor_all_loadings$loadings_table[seq_len(nrow(factor_all_loadings$loadings)), factor_columns, drop = FALSE], function(column) all(nzchar(as.character(column))), logical(1))),
   "Expected all factor loadings to be displayed when the cutoff filter is disabled"
 )
 expect_true(
@@ -148,6 +148,8 @@ expect_true(
 )
 factor_all_html <- as.character(htmltools::renderTags(coefficient_html_table(factor_all_loadings$loadings_table))$html)
 expect_true(grepl("font-weight:700", factor_all_html, fixed = TRUE), "Expected large loadings to render in bold")
+expect_true(grepl("colspan=", factor_all_html, fixed = TRUE), "Expected factor loading diagnostics row to merge KMO/Bartlett cells")
+expect_true(grepl("text-align:center", factor_all_html, fixed = TRUE), "Expected merged diagnostics row to be center aligned")
 
 factor_no_rotation <- prepare_factor_analysis_results(
   data,

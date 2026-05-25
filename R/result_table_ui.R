@@ -98,6 +98,34 @@ result_cell_style_extra <- function(table, row_index, column) {
   paste(as.character(matched$style), collapse = "")
 }
 
+result_cell_span_start <- function(table, row_index, column) {
+  spans <- attr(table, "spanning_cells", exact = TRUE)
+  if (!is.data.frame(spans) || nrow(spans) == 0) {
+    return(NULL)
+  }
+  matched <- spans[spans$row == row_index & spans$start_column == column, , drop = FALSE]
+  if (nrow(matched) == 0) NULL else matched[1, , drop = FALSE]
+}
+
+result_cell_covered_by_span <- function(table, row_index, column, columns) {
+  spans <- attr(table, "spanning_cells", exact = TRUE)
+  if (!is.data.frame(spans) || nrow(spans) == 0) {
+    return(FALSE)
+  }
+  column_index <- match(column, columns)
+  if (!is.finite(column_index)) {
+    return(FALSE)
+  }
+  any(vapply(seq_len(nrow(spans)), function(index) {
+    if (spans$row[[index]] != row_index || spans$start_column[[index]] == column) {
+      return(FALSE)
+    }
+    start_index <- match(spans$start_column[[index]], columns)
+    end_index <- match(spans$end_column[[index]], columns)
+    is.finite(start_index) && is.finite(end_index) && column_index >= start_index && column_index <= end_index
+  }, logical(1)))
+}
+
 result_cell_content <- function(value, marker = "") {
   value <- as.character(value %||% "")
   marker <- as.character(marker %||% "")
@@ -209,10 +237,24 @@ coefficient_html_table <- function(
         lapply(seq_len(nrow(table)), function(row_index) {
           tags$tr(lapply(seq_along(columns), function(column_index) {
             column <- columns[[column_index]]
+            if (isTRUE(result_cell_covered_by_span(table, row_index, column, columns))) {
+              return(NULL)
+            }
+            span <- result_cell_span_start(table, row_index, column)
             marker <- result_cell_note_marker(table, row_index, column)
-            content <- result_cell_content(table[[column]][[row_index]] %||% "", marker)
+            value <- if (!is.null(span) && "value" %in% names(span)) span$value[[1]] else table[[column]][[row_index]] %||% ""
+            content <- result_cell_content(value, marker)
             bold_style <- if (isTRUE(result_cell_bold(table, row_index, column)) && nzchar(as.character(table[[column]][[row_index]] %||% ""))) "font-weight:700;" else ""
+            colspan <- if (!is.null(span)) {
+              start_index <- match(span$start_column[[1]], columns)
+              end_index <- match(span$end_column[[1]], columns)
+              max(1L, end_index - start_index + 1L)
+            } else {
+              NULL
+            }
+            span_style <- if (!is.null(span) && "style" %in% names(span)) as.character(span$style[[1]] %||% "") else ""
             tags$td(
+              colspan = colspan,
               style = paste0(
                 result_body_cell_style(
                   column_index == 1,
@@ -223,7 +265,8 @@ coefficient_html_table <- function(
                   compact_first_width = compact_first_width
                 ),
                 bold_style,
-                result_cell_style_extra(table, row_index, column)
+                result_cell_style_extra(table, row_index, column),
+                span_style
               ),
               content
             )
