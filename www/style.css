@@ -2285,6 +2285,51 @@ input.variable-select:disabled {
   width: 58px !important;
 }
 
+.pca-options.analysis-options-panel {
+  padding: 12px 14px;
+}
+
+.pca-options .analysis-option-group {
+  margin-bottom: 12px;
+}
+
+.pca-options .analysis-option-title {
+  font-size: 16px;
+  line-height: 1.15;
+  margin-bottom: 8px;
+}
+
+.pca-options .analysis-option-group .checkbox,
+.pca-options .analysis-option-group .radio {
+  font-size: 13.5px;
+  line-height: 1.18;
+  margin-bottom: 4px;
+  margin-top: 4px;
+  min-height: 0;
+}
+
+.pca-options .analysis-option-group .checkbox label,
+.pca-options .analysis-option-group .radio label {
+  line-height: 1.18;
+  min-height: 0;
+}
+
+.pca-options .form-group {
+  margin-bottom: 0;
+}
+
+.pca-options .shiny-options-group {
+  margin-bottom: 0;
+}
+
+.pca-options .form-control {
+  font-size: 13.5px;
+}
+
+.pca-save-score-group {
+  margin-bottom: 0 !important;
+}
+
 .ttest-anova-action-row {
   display: grid;
   grid-template-columns: 326px 50px 326px 310px;

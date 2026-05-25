@@ -406,6 +406,13 @@ expect_true(pca_result$n_components >= 1, "Expected at least one PCA component")
 expect_true(is.data.frame(pca_result$loadings_table) && nrow(pca_result$loadings_table) == ncol(data), "Expected PCA loading table")
 expect_true(is.data.frame(pca_result$variance_table) && nrow(pca_result$variance_table) > 0, "Expected PCA variance table")
 expect_true(is.data.frame(pca_result$eigen_table) && nrow(pca_result$eigen_table) == ncol(data), "Expected PCA eigenvalue table")
+pca_saved_scores <- pca_saved_score_outputs(pca_result, base_name = "PA")
+expect_true(
+  is.data.frame(pca_saved_scores) &&
+    nrow(pca_saved_scores) == nrow(data) &&
+    "PC_PA1" %in% names(pca_saved_scores),
+  "Expected PCA saved score names to honor the user base name"
+)
 
 pca_cumulative <- prepare_pca_results(
   data,

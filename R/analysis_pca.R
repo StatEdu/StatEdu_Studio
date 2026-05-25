@@ -89,15 +89,77 @@ pca_loading_table <- function(result, cutoff = 0.30) {
   if (!is.matrix(loadings) || nrow(loadings) == 0) {
     return(NULL)
   }
+  hide_small_loadings <- isTRUE(result$options$hide_small_loadings %||% TRUE)
+  sort_loadings <- isTRUE(result$options$sort_loadings %||% TRUE)
+  loading_abs <- abs(loadings)
+  primary_component <- max.col(loading_abs, ties.method = "first")
+  primary_loading <- loading_abs[cbind(seq_len(nrow(loadings)), primary_component)]
+  if (isTRUE(sort_loadings)) {
+    row_order <- order(primary_component, -primary_loading, rownames(loadings), na.last = TRUE)
+    loadings <- loadings[row_order, , drop = FALSE]
+    loading_abs <- abs(loadings)
+    primary_component <- primary_component[row_order]
+    primary_loading <- primary_loading[row_order]
+  }
   components <- colnames(loadings)
   table <- data.frame(Variable = result$display_names[rownames(loadings)], check.names = FALSE)
   for (component in components) {
-    table[[component]] <- vapply(loadings[, component], function(value) {
-      if (!is.finite(value) || abs(value) < cutoff) "" else format_decimal3(value)
+    table[[component]] <- vapply(seq_len(nrow(loadings)), function(row_index) {
+      value <- loadings[row_index, component]
+      low_primary <- primary_component[[row_index]] == match(component, components) && is.finite(primary_loading[[row_index]]) && primary_loading[[row_index]] < cutoff
+      if (!is.finite(value) || (isTRUE(hide_small_loadings) && abs(value) < cutoff && !isTRUE(low_primary))) "" else format_decimal3(value)
     }, character(1))
   }
   table$Communality <- vapply(result$communality[rownames(loadings)], format_decimal3, character(1))
   table$Uniqueness <- vapply(result$uniqueness[rownames(loadings)], format_decimal3, character(1))
+  if (!isTRUE(hide_small_loadings)) {
+    bold_cells <- do.call(rbind, lapply(seq_along(components), function(column_index) {
+      rows <- which(loading_abs[, column_index] >= cutoff)
+      if (length(rows) == 0) {
+        return(NULL)
+      }
+      data.frame(row = rows, column = components[[column_index]], stringsAsFactors = FALSE)
+    }))
+    if (is.data.frame(bold_cells) && nrow(bold_cells) > 0) {
+      attr(table, "bold_cells") <- bold_cells
+    }
+  }
+  if (isTRUE(result$options$highlight_problem_values %||% TRUE)) {
+    problem_style <- "color:#991b1b;font-weight:700;background:#fee2e2;"
+    cell_styles <- list()
+    low_primary_rows <- which(is.finite(primary_loading) & primary_loading < cutoff)
+    if (length(low_primary_rows) > 0) {
+      cell_styles[[length(cell_styles) + 1L]] <- data.frame(
+        row = low_primary_rows,
+        column = components[primary_component[low_primary_rows]],
+        style = problem_style,
+        stringsAsFactors = FALSE
+      )
+    }
+    communality <- result$communality[rownames(loadings)]
+    low_communality_rows <- which(is.finite(communality) & communality < 0.40)
+    if (length(low_communality_rows) > 0) {
+      cell_styles[[length(cell_styles) + 1L]] <- data.frame(
+        row = low_communality_rows,
+        column = "Communality",
+        style = problem_style,
+        stringsAsFactors = FALSE
+      )
+    }
+    cross_loading_rows <- do.call(rbind, lapply(seq_len(nrow(loadings)), function(row_index) {
+      columns <- which(is.finite(loading_abs[row_index, ]) & loading_abs[row_index, ] >= cutoff & seq_len(ncol(loadings)) != primary_component[[row_index]])
+      if (length(columns) == 0) {
+        return(NULL)
+      }
+      data.frame(row = row_index, column = components[columns], style = problem_style, stringsAsFactors = FALSE)
+    }))
+    if (is.data.frame(cross_loading_rows) && nrow(cross_loading_rows) > 0) {
+      cell_styles[[length(cell_styles) + 1L]] <- cross_loading_rows
+    }
+    if (length(cell_styles) > 0) {
+      attr(table, "cell_styles") <- do.call(rbind, cell_styles)
+    }
+  }
   table
 }
 
@@ -151,15 +213,17 @@ prepare_pca_results <- function(data, variables, variable_info = NULL, labels = 
   shiny::validate(shiny::need(all(measurements %in% allowed), "Principal component analysis accepts only ordinal or continuous variables."))
 
   matrix <- pca_numeric_matrix(data, variables)
-  complete <- pca_complete_matrix(matrix)
-  shiny::validate(shiny::need(nrow(complete) >= 3, "Not enough complete cases for principal component analysis."))
+  initial_complete <- pca_complete_matrix(matrix)
+  shiny::validate(shiny::need(nrow(initial_complete) >= 3, "Not enough complete cases for principal component analysis."))
 
-  variable_sd <- vapply(complete, stats::sd, numeric(1), na.rm = TRUE)
+  variable_sd <- vapply(initial_complete, stats::sd, numeric(1), na.rm = TRUE)
   non_constant <- names(variable_sd)[is.finite(variable_sd) & variable_sd > 0]
   shiny::validate(shiny::need(length(non_constant) >= 2, "At least two non-constant variables are required."))
   variables <- intersect(variables, non_constant)
   matrix <- matrix[, variables, drop = FALSE]
-  complete <- complete[, variables, drop = FALSE]
+  complete_rows <- which(stats::complete.cases(matrix))
+  complete <- matrix[complete_rows, , drop = FALSE]
+  shiny::validate(shiny::need(nrow(complete) >= 3, "Not enough complete cases for principal component analysis."))
 
   matrix_type <- as.character(options$matrix_type %||% "correlation")
   if (!matrix_type %in% unname(pca_matrix_choices())) matrix_type <- "correlation"
@@ -168,6 +232,13 @@ prepare_pca_results <- function(data, variables, variable_info = NULL, labels = 
   rotation <- as.character(options$rotation %||% "none")
   if (!rotation %in% unname(pca_rotation_choices())) rotation <- "none"
   cumulative_variance <- min(max(as.numeric(options$cumulative_variance %||% 70), 1), 100)
+  options$sort_loadings <- isTRUE(options$sort_loadings %||% TRUE)
+  options$hide_small_loadings <- isTRUE(options$hide_small_loadings %||% TRUE)
+  options$highlight_problem_values <- isTRUE(options$highlight_problem_values %||% TRUE)
+  options$scree_plot <- isTRUE(options$scree_plot %||% TRUE)
+  options$biplot <- isTRUE(options$biplot %||% options$component_plot %||% TRUE)
+  options$save_component_scores <- isTRUE(options$save_component_scores %||% FALSE)
+  options$save_component_base_name <- trimws(as.character(options$save_component_base_name %||% "PCA"))
 
   analysis_matrix <- if (identical(matrix_type, "covariance")) {
     stats::cov(complete, use = "pairwise.complete.obs")
@@ -207,6 +278,7 @@ prepare_pca_results <- function(data, variables, variable_info = NULL, labels = 
     display_names = display_names,
     matrix = matrix,
     complete = complete,
+    complete_rows = complete_rows,
     n_obs = nrow(complete),
     matrix_type = matrix_type,
     rotation = rotation,
@@ -232,4 +304,41 @@ prepare_pca_results <- function(data, variables, variable_info = NULL, labels = 
   result$component_correlation_table <- pca_component_correlation_table(result)
   result$eigen_table <- pca_eigen_table(result)
   result
+}
+
+pca_saved_score_name <- function(component_index, base_name = "PCA") {
+  base_name <- trimws(as.character(base_name %||% "PCA"))
+  if (!nzchar(base_name)) {
+    base_name <- "PCA"
+  }
+  paste0("PC_", base_name, as.integer(component_index))
+}
+
+pca_saved_score_outputs <- function(result, base_name = "PCA") {
+  scores <- result$scores
+  if (!is.data.frame(scores) || ncol(scores) == 0) {
+    stop("Component scores are not available for this PCA result.", call. = FALSE)
+  }
+  components <- colnames(result$loadings)
+  if (length(components) == 0) {
+    components <- names(scores)
+  }
+  row_count <- nrow(result$matrix)
+  complete_rows <- as.integer(result$complete_rows %||% seq_len(nrow(scores)))
+  out <- data.frame(row.names = seq_len(row_count), check.names = FALSE)
+  score_names <- stats::setNames(character(0), character(0))
+  for (component in components) {
+    component_index <- match(component, components)
+    name <- pca_saved_score_name(component_index, base_name)
+    values <- rep(NA_real_, row_count)
+    if (component %in% names(scores)) {
+      values[complete_rows] <- suppressWarnings(as.numeric(scores[[component]]))
+    } else if (component_index <= ncol(scores)) {
+      values[complete_rows] <- suppressWarnings(as.numeric(scores[[component_index]]))
+    }
+    out[[name]] <- values
+    score_names[name] <- component
+  }
+  attr(out, "score_components") <- score_names
+  out
 }

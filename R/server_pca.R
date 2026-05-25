@@ -9,6 +9,7 @@ register_pca_handlers <- function(
   variable_table_fn,
   category_table_fn,
   labels_fn,
+  add_calculated_variable_fn = NULL,
   mark_settings_dirty
 ) {
   pca_variables <- reactiveVal(character(0))
@@ -41,8 +42,13 @@ register_pca_handlers <- function(
         criterion = input$pca_criterion %||% "eigen",
         n_components = input$pca_n_components %||% 1,
         cumulative_variance = input$pca_cumulative_variance %||% 70,
+        sort_loadings = input$pca_sort_loadings %||% TRUE,
+        hide_small_loadings = input$pca_hide_small_loadings %||% TRUE,
+        highlight_problem_values = input$pca_highlight_problem_values %||% TRUE,
         scree_plot = input$pca_scree_plot %||% TRUE,
-        component_plot = input$pca_component_plot %||% TRUE
+        biplot = input$pca_biplot %||% TRUE,
+        save_component_scores = input$pca_save_component_scores %||% FALSE,
+        save_component_base_name = input$pca_save_component_base_name %||% "PCA"
       )
     )
   })
@@ -171,8 +177,13 @@ register_pca_handlers <- function(
           criterion = input$pca_criterion %||% "eigen",
           n_components = input$pca_n_components %||% 1,
           cumulative_variance = input$pca_cumulative_variance %||% 70,
-          scree_plot = isTRUE(input$pca_scree_plot),
-          component_plot = isTRUE(input$pca_component_plot)
+          sort_loadings = isTRUE(input$pca_sort_loadings %||% TRUE),
+          hide_small_loadings = isTRUE(input$pca_hide_small_loadings %||% TRUE),
+          highlight_problem_values = isTRUE(input$pca_highlight_problem_values %||% TRUE),
+          scree_plot = isTRUE(input$pca_scree_plot %||% TRUE),
+          biplot = isTRUE(input$pca_biplot %||% TRUE),
+          save_component_scores = isTRUE(input$pca_save_component_scores %||% FALSE),
+          save_component_base_name = input$pca_save_component_base_name %||% "PCA"
         )
       ),
       error = function(e) {
@@ -182,6 +193,40 @@ register_pca_handlers <- function(
     )
     if (!is.null(result)) {
       pca_result(result)
+      if (isTRUE(input$pca_save_component_scores %||% FALSE) && is.function(add_calculated_variable_fn)) {
+        saved <- tryCatch(
+          {
+            calculated <- pca_saved_score_outputs(
+              result,
+              base_name = input$pca_save_component_base_name %||% "PCA"
+            )
+            created <- character(0)
+            score_components <- attr(calculated, "score_components", exact = TRUE) %||% character(0)
+            for (name in names(calculated)) {
+              component <- as.character(score_components[[name]] %||% name)
+              ok <- add_calculated_variable_fn(
+                name,
+                calculated[[name]],
+                var_label = sprintf("Principal component score (%s)", component),
+                measurement = "continuous"
+              )
+              if (isTRUE(ok)) {
+                created <- c(created, name)
+              }
+            }
+            created
+          },
+          error = function(e) {
+            showNotification(paste("Failed to save PCA score variables:", conditionMessage(e)), type = "warning", duration = 8)
+            character(0)
+          }
+        )
+        if (length(saved) > 0) {
+          showNotification(sprintf("Saved %s PCA score variable(s): %s", length(saved), paste(saved, collapse = ", ")), type = "message", duration = 7)
+        } else {
+          showNotification("No PCA score variables were saved.", type = "warning", duration = 5)
+        }
+      }
     }
   })
 
@@ -199,7 +244,7 @@ register_pca_handlers <- function(
         draw_pca_scree_plot(result)
       }, res = 96)
     }
-    if (isTRUE(result$options$component_plot)) {
+    if (isTRUE(result$options$biplot)) {
       output[[pca_component_plot_id()]] <- renderPlot({
         draw_pca_component_plot(result)
       }, res = 96)
@@ -299,8 +344,8 @@ register_pca_handlers <- function(
           save_plot_png_file(draw_pca_scree_plot, result, file, width = 7, height = 4.8)
           saved <- c(saved, file)
         }
-        if (isTRUE(result$options$component_plot)) {
-          file <- file.path(directory, "component_plot_pca.png")
+        if (isTRUE(result$options$biplot)) {
+          file <- file.path(directory, "biplot_pca.png")
           save_plot_png_file(draw_pca_component_plot, result, file, width = 7, height = 5.6)
           saved <- c(saved, file)
         }

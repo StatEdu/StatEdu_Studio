@@ -12,8 +12,13 @@ pca_setup_state <- function(
   criterion = "eigen",
   n_components = 1,
   cumulative_variance = 70,
+  sort_loadings = TRUE,
+  hide_small_loadings = TRUE,
+  highlight_problem_values = TRUE,
   scree_plot = TRUE,
-  component_plot = TRUE
+  biplot = TRUE,
+  save_component_scores = FALSE,
+  save_component_base_name = "PCA"
 ) {
   selected <- as.character(selected_names %||% character(0))
   allowed <- analysis_allowed_variables(selected, variable_table, c("ordered", "continuous"))
@@ -33,8 +38,86 @@ pca_setup_state <- function(
     criterion = criterion,
     n_components = max(1L, as.integer(n_components %||% 1L)),
     cumulative_variance = min(max(as.numeric(cumulative_variance %||% 70), 1), 100),
+    sort_loadings = isTRUE(sort_loadings),
+    hide_small_loadings = isTRUE(hide_small_loadings),
+    highlight_problem_values = isTRUE(highlight_problem_values),
     scree_plot = isTRUE(scree_plot),
-    component_plot = isTRUE(component_plot)
+    biplot = isTRUE(biplot),
+    save_component_scores = isTRUE(save_component_scores),
+    save_component_base_name = trimws(as.character(save_component_base_name %||% "PCA"))
+  )
+}
+
+pca_save_name_row <- function(value) {
+  div(
+    class = "factor-save-name-row pca-save-name-row",
+    tags$label(`for` = "pca_save_component_base_name", "Variable name"),
+    tags$input(
+      id = "pca_save_component_base_name",
+      type = "text",
+      class = "form-control factor-save-name-input pca-save-name-input",
+      value = value
+    )
+  )
+}
+
+pca_save_score_row <- function(id, label, value) {
+  div(
+    class = "factor-save-score-row pca-save-score-row",
+    checkboxInput(id, label, value = value, width = NULL)
+  )
+}
+
+pca_selection_controls <- function(state) {
+  choices <- pca_criterion_choices()
+  selected <- as.character(state$criterion %||% "eigen")
+  if (!selected %in% unname(choices)) {
+    selected <- "eigen"
+  }
+  radio_input <- function(label, value, extra = NULL, class = "radio", style = NULL, label_style = NULL) {
+    div(
+      class = class,
+      style = style,
+      tags$label(
+        style = label_style,
+        tags$input(
+          type = "radio",
+          name = "pca_criterion",
+          value = value,
+          checked = if (identical(selected, value)) "checked" else NULL
+        ),
+        span(label)
+      ),
+      extra
+    )
+  }
+  div(
+    id = "pca_criterion",
+    class = "form-group shiny-input-radiogroup shiny-input-container",
+    div(
+      class = "shiny-options-group",
+      radio_input("Eigenvalue >= 1.0", "eigen"),
+      radio_input(
+        "Fixed number of components",
+        "fixed",
+        div(
+          class = "factor-fixed-number-input pca-fixed-number-input",
+          style = "display:inline-block;flex:0 0 56px;margin:0;width:56px;",
+          tags$input(
+            id = "pca_n_components",
+            type = "number",
+            class = "form-control",
+            value = state$n_components,
+            min = 1,
+            step = 1,
+            style = "display:inline-block;height:30px;min-width:0;padding:3px 6px;width:56px;"
+          )
+        ),
+        class = "radio factor-fixed-radio-row pca-fixed-radio-row",
+        style = "align-items:center;display:flex;flex-wrap:nowrap;gap:6px;margin-left:36px;width:270px;",
+        label_style = "flex:0 0 auto;margin-bottom:0;white-space:nowrap;"
+      )
+    )
   )
 }
 
@@ -69,32 +152,27 @@ pca_setup_panel <- function(state) {
       class = "correlation-options-column pca-options-column",
       div(
         class = "analysis-options-panel correlation-options pca-options",
-        analysis_radio_group("Matrix", "pca_matrix_type", pca_matrix_choices(), selected = state$matrix_type),
         analysis_radio_group("Rotation", "pca_rotation", pca_rotation_choices(), selected = state$rotation),
         div(
           class = "analysis-option-group analysis-radio-group pca-selection-group",
           div(class = "analysis-option-title", "Component selection"),
-          radioButtons(
-            "pca_criterion",
-            label = NULL,
-            choices = pca_criterion_choices(),
-            selected = state$criterion
-          ),
-          div(
-            class = "factor-fixed-number-input pca-fixed-number-input",
-            numericInput("pca_n_components", "Number of components", value = state$n_components, min = 1, step = 1)
-          ),
-          div(
-            class = "factor-fixed-number-input pca-cumulative-input",
-            numericInput("pca_cumulative_variance", "Cumulative variance (%)", value = state$cumulative_variance, min = 1, max = 100, step = 1)
-          )
+          pca_selection_controls(state)
         ),
         analysis_option_group(
-          "Plot",
+          "Output",
           list(
-            list(id = "pca_scree_plot", label = "scree plot", value = state$scree_plot),
-            list(id = "pca_component_plot", label = "component plot", value = state$component_plot)
+            list(id = "pca_sort_loadings", label = "Sort loadings by size", value = state$sort_loadings),
+            list(id = "pca_hide_small_loadings", label = "Show loadings >= .30 only", value = state$hide_small_loadings),
+            list(id = "pca_highlight_problem_values", label = "Highlight problem values", value = state$highlight_problem_values),
+            list(id = "pca_scree_plot", label = "Scree plot", value = state$scree_plot),
+            list(id = "pca_biplot", label = "Biplot", value = state$biplot)
           )
+        ),
+        div(
+          class = "analysis-option-group factor-save-score-group pca-save-score-group",
+          div(class = "analysis-option-title", "Save scores"),
+          pca_save_name_row(state$save_component_base_name),
+          pca_save_score_row("pca_save_component_scores", "Component scores", state$save_component_scores)
         )
       )
     )

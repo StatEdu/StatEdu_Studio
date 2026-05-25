@@ -1092,6 +1092,7 @@ create_app_server <- function(app_version) {
     variable_table_fn = regression_variable_table,
     category_table_fn = category_label_values,
     labels_fn = var_label_overrides,
+    add_calculated_variable_fn = add_calculated_variable,
     mark_settings_dirty = mark_settings_dirty
   )
 

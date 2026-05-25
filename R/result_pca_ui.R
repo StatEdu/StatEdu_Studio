@@ -14,7 +14,11 @@ pca_plot_size <- function(result, base = 640, per_variable = 18, max_size = 980)
 }
 
 pca_loading_note <- function(result) {
-  "Loadings with absolute values below .30 are hidden. Communality is the variance explained by the retained components."
+  if (isTRUE(result$options$hide_small_loadings %||% TRUE)) {
+    "Loadings with absolute values below .30 are hidden. Communality is the variance explained by the retained components."
+  } else {
+    "All loadings are shown; loadings with absolute values of .30 or higher are bold. Communality is the variance explained by the retained components."
+  }
 }
 
 pca_suitability_note <- function(result) {
@@ -94,10 +98,10 @@ pca_results_ui <- function(result, report_mode = FALSE) {
           }
         )
       },
-      if (isTRUE(options$component_plot)) {
+      if (isTRUE(options$biplot)) {
         div(
           class = "result-section pca-result-section pca-plot-section regression-result-panel",
-          h3("Component plot"),
+          h3("Biplot"),
           if (isTRUE(report_mode)) {
             tags$img(
               src = plot_data_uri(draw_pca_component_plot, result, width = 900, height = 720, res = 120),
@@ -159,8 +163,15 @@ draw_pca_component_plot <- function(result) {
   loadings <- result$loadings
   if (!is.matrix(loadings) || ncol(loadings) < 2) {
     graphics::plot.new()
-    graphics::text(0.5, 0.5, "Component plot requires at least two retained components.", cex = 0.95)
+    graphics::text(0.5, 0.5, "Biplot requires at least two retained components.", cex = 0.95)
     return(invisible(NULL))
+  }
+  scores <- result$scores
+  score_x <- numeric(0)
+  score_y <- numeric(0)
+  if (is.data.frame(scores) && ncol(scores) >= 2) {
+    score_x <- suppressWarnings(as.numeric(scores[[1]]))
+    score_y <- suppressWarnings(as.numeric(scores[[2]]))
   }
   x <- loadings[, 1]
   y <- loadings[, 2]
@@ -169,24 +180,30 @@ draw_pca_component_plot <- function(result) {
   if (!is.finite(max_abs) || max_abs <= 0) {
     max_abs <- 1
   }
-  limit <- min(1.1, max(0.55, max_abs * 1.15))
+  score_limit <- max(abs(c(score_x, score_y)), na.rm = TRUE)
+  if (!is.finite(score_limit) || score_limit <= 0) {
+    score_limit <- max_abs
+  }
+  limit <- max(1, score_limit * 1.1)
+  arrow_scale <- limit / max_abs * 0.78
   graphics::par(mar = c(4.8, 4.8, 2.5, 1.5), cex = 1.08)
   graphics::plot(
-    x,
-    y,
+    score_x,
+    score_y,
     xlim = c(-limit, limit),
     ylim = c(-limit, limit),
     xlab = colnames(loadings)[[1]],
     ylab = colnames(loadings)[[2]],
     pch = 16,
-    cex = 1.05,
-    col = "#1f6fa8",
+    cex = 0.72,
+    col = adjustcolor("#607d9b", alpha.f = 0.45),
     main = "",
     asp = 1
   )
   graphics::abline(h = 0, v = 0, col = "#94a3b8", lty = 2)
-  graphics::symbols(0, 0, circles = 1, inches = FALSE, add = TRUE, fg = "#cbd5e1")
-  graphics::text(x, y, labels = labels, pos = 3, cex = 0.86, col = "#15233a")
+  graphics::arrows(0, 0, x * arrow_scale, y * arrow_scale, length = 0.08, lwd = 1.4, col = "#0fa3a3")
+  graphics::points(x * arrow_scale, y * arrow_scale, pch = 16, cex = 0.9, col = "#0b7285")
+  graphics::text(x * arrow_scale, y * arrow_scale, labels = labels, pos = 3, cex = 0.82, col = "#15233a")
   graphics::box(col = "#1f2937")
   invisible(NULL)
 }
