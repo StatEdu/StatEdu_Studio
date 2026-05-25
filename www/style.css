@@ -2338,9 +2338,11 @@ input.variable-select:disabled {
 .pca-selection-input-row {
   align-items: center;
   display: grid !important;
-  grid-template-columns: minmax(0, 1fr) 66px;
+  column-gap: 8px;
+  grid-template-columns: max-content 78px;
+  justify-content: start;
   margin-left: 28px;
-  width: calc(100% - 28px);
+  width: auto;
 }
 
 .pca-selection-input-row > label {
@@ -2355,7 +2357,7 @@ input.variable-select:disabled {
   display: inline-flex;
   gap: 4px;
   margin: 0;
-  width: 66px !important;
+  width: 78px !important;
 }
 
 .pca-fixed-number-input input.form-control,
@@ -2363,7 +2365,7 @@ input.variable-select:disabled {
   height: 30px;
   min-width: 0;
   padding: 3px 6px;
-  width: 52px !important;
+  width: 58px !important;
 }
 
 .ttest-anova-action-row {
