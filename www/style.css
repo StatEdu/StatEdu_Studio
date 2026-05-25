@@ -45,6 +45,13 @@ body {
   gap: 16px;
 }
 
+.navbar .dropdown-menu > li > a {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  font-size: 15px;
+  line-height: 22px;
+}
+
 .navbar .dropdown-menu > li.dropdown > a.dropdown-toggle .caret {
   margin-left: auto;
   transform: rotate(-90deg);
