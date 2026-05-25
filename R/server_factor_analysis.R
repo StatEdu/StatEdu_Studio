@@ -284,9 +284,10 @@ register_factor_analysis_handlers <- function(
     }
     analysis_save_buttons(
       html_button_id = "save_factor_analysis_html_dialog",
+      pdf_button_id = "save_factor_analysis_pdf_dialog",
       figure_button_id = "save_factor_analysis_figures_dialog",
       excel_button_id = "save_factor_analysis_excel_dialog",
-      add_result_button_id = NULL,
+      add_result_button_id = "add_factor_analysis_result",
       has_figures = TRUE
     )
   })
@@ -309,6 +310,28 @@ register_factor_analysis_handlers <- function(
       },
       error = function(e) {
         showNotification(paste("Failed to save HTML results:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  })
+
+  observeEvent(input$save_factor_analysis_pdf_dialog, {
+    result <- factor_result()
+    shiny::req(!is.null(result))
+    path <- choose_pdf_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) {
+      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      return(invisible(NULL))
+    }
+    if (!grepl("\\.pdf$", path, ignore.case = TRUE)) {
+      path <- paste0(path, ".pdf")
+    }
+    tryCatch(
+      {
+        write_factor_analysis_results_pdf(result, path)
+        showNotification(sprintf("PDF results saved: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save PDF results:", conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
@@ -353,6 +376,12 @@ register_factor_analysis_handlers <- function(
         showNotification(paste("Failed to save figure:", conditionMessage(e)), type = "error", duration = 8)
       }
     )
+  })
+
+  register_add_result_snapshot(input, session, "add_factor_analysis_result", "Factor analysis", function() {
+    result <- factor_result()
+    shiny::req(!is.null(result))
+    saved_factor_analysis_results_html(result)
   })
 
   invisible(TRUE)

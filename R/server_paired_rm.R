@@ -225,6 +225,7 @@ register_paired_rm_handlers <- function(
     if (is.null(result) || !is.null(result$error)) return(NULL)
     analysis_save_buttons(
       html_button_id = "save_paired_rm_html_dialog",
+      pdf_button_id = "save_paired_rm_pdf_dialog",
       figure_button_id = NULL,
       excel_button_id = "save_paired_rm_excel_dialog",
       add_result_button_id = "add_paired_rm_result",
@@ -240,6 +241,16 @@ register_paired_rm_handlers <- function(
     if (!grepl("\\.html?$", path, ignore.case = TRUE)) path <- paste0(path, ".html")
     write_paired_rm_results_html(result, path)
     showNotification(sprintf("HTML results saved: %s", path), type = "message")
+  })
+
+  observeEvent(input$save_paired_rm_pdf_dialog, {
+    result <- paired_rm_result()
+    req(!is.null(result), is.null(result$error))
+    path <- choose_pdf_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
+    if (!grepl("\\.pdf$", path, ignore.case = TRUE)) path <- paste0(path, ".pdf")
+    write_paired_rm_results_pdf(result, path)
+    showNotification(sprintf("PDF results saved: %s", path), type = "message")
   })
 
   observeEvent(input$paired_rm_repeated_doubleclick, {

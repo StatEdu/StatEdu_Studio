@@ -277,9 +277,10 @@ register_pca_handlers <- function(
     }
     analysis_save_buttons(
       html_button_id = "save_pca_html_dialog",
+      pdf_button_id = "save_pca_pdf_dialog",
       figure_button_id = "save_pca_figures_dialog",
       excel_button_id = "save_pca_excel_dialog",
-      add_result_button_id = NULL,
+      add_result_button_id = "add_pca_result",
       has_figures = TRUE
     )
   })
@@ -302,6 +303,28 @@ register_pca_handlers <- function(
       },
       error = function(e) {
         showNotification(paste("Failed to save HTML results:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  })
+
+  observeEvent(input$save_pca_pdf_dialog, {
+    result <- pca_result()
+    shiny::req(!is.null(result))
+    path <- choose_pdf_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) {
+      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      return(invisible(NULL))
+    }
+    if (!grepl("\\.pdf$", path, ignore.case = TRUE)) {
+      path <- paste0(path, ".pdf")
+    }
+    tryCatch(
+      {
+        write_pca_results_pdf(result, path)
+        showNotification(sprintf("PDF results saved: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save PDF results:", conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
@@ -355,6 +378,12 @@ register_pca_handlers <- function(
         showNotification(paste("Failed to save figures:", conditionMessage(e)), type = "error", duration = 8)
       }
     )
+  })
+
+  register_add_result_snapshot(input, session, "add_pca_result", "Principal component analysis", function() {
+    result <- pca_result()
+    shiny::req(!is.null(result))
+    saved_pca_results_html(result)
   })
 
   invisible(TRUE)

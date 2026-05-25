@@ -233,6 +233,7 @@ register_frequencies_handlers <- function(
     }
     analysis_save_buttons(
       html_button_id = "save_frequencies_html_dialog",
+      pdf_button_id = "save_frequencies_pdf_dialog",
       figure_button_id = "save_frequencies_figures_dialog",
       excel_button_id = "save_frequencies_excel_dialog",
       add_result_button_id = "add_frequencies_result"
@@ -302,6 +303,28 @@ register_frequencies_handlers <- function(
       },
       error = function(e) {
         showNotification(paste("Failed to save HTML results:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  })
+
+  observeEvent(input$save_frequencies_pdf_dialog, {
+    result <- frequency_result()
+    shiny::req(!is.null(result))
+    path <- choose_pdf_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) {
+      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      return(invisible(NULL))
+    }
+    if (!grepl("\\.pdf$", path, ignore.case = TRUE)) {
+      path <- paste0(path, ".pdf")
+    }
+    tryCatch(
+      {
+        write_frequencies_results_pdf(result, path)
+        showNotification(sprintf("PDF results saved: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save PDF results:", conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })

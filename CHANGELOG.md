@@ -7,6 +7,7 @@
 - Aligned the principal component analysis loading table with the factor analysis table style, including h², complexity, eigenvalue, variance, cumulative variance, and KMO / Bartlett diagnostics rows while omitting reliability columns.
 - Refined principal component analysis setup controls for matrix choice, cumulative-variance component selection, and aligned component-selection number fields.
 - Improved factor analysis diagnostics table styling and finalized the KMO / Bartlett summary row placement.
+- Kept all five analysis save controls visible in development builds and added PDF / Add result coverage for the remaining analysis modules.
 
 
 ## v0.9.1 - 2026-05-24

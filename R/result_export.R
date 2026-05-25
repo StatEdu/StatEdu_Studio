@@ -445,6 +445,30 @@ write_correlation_results_html <- function(result, file) {
   )
 }
 
+write_frequencies_results_pdf <- function(result, file) {
+  write_pdf_from_html(saved_frequencies_results_html(result, report_mode = TRUE), file)
+}
+
+write_reliability_results_pdf <- function(result, file) {
+  write_pdf_from_html(saved_reliability_results_html(result, report_mode = TRUE), file)
+}
+
+write_ttest_anova_results_pdf <- function(result, file) {
+  write_pdf_from_html(saved_ttest_anova_results_html(result, report_mode = TRUE), file)
+}
+
+write_paired_results_pdf <- function(result, file) {
+  write_pdf_from_html(saved_paired_results_html(result, report_mode = TRUE), file)
+}
+
+write_paired_rm_results_pdf <- function(result, file) {
+  write_pdf_from_html(saved_paired_rm_results_html(result, report_mode = TRUE), file)
+}
+
+write_correlation_results_pdf <- function(result, file) {
+  write_pdf_from_html(saved_correlation_results_html(result, report_mode = TRUE), file)
+}
+
 write_factor_analysis_results_html <- function(result, file) {
   writeLines(
     saved_factor_analysis_results_html(result),
@@ -459,6 +483,14 @@ write_pca_results_html <- function(result, file) {
     file,
     useBytes = TRUE
   )
+}
+
+write_factor_analysis_results_pdf <- function(result, file) {
+  write_pdf_from_html(saved_factor_analysis_results_html(result, report_mode = TRUE), file)
+}
+
+write_pca_results_pdf <- function(result, file) {
+  write_pdf_from_html(saved_pca_results_html(result, report_mode = TRUE), file)
 }
 
 write_crosstab_results_html <- function(result, file) {

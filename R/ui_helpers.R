@@ -24,6 +24,14 @@ analysis_save_feature_enabled <- function(feature, edition = analysis_save_editi
 
 analysis_save_button <- function(id, label, feature, class = "btn-default") {
   if (is.null(id) || !nzchar(id)) {
+    if (identical(analysis_save_edition(), "development")) {
+      return(tags$button(
+        type = "button",
+        class = paste("btn action-button", class, "analysis-save-button"),
+        disabled = "disabled",
+        span(class = "action-label", label)
+      ))
+    }
     return(div(class = "analysis-save-slot analysis-save-slot-empty"))
   }
   enabled <- analysis_save_feature_enabled(feature)
@@ -50,7 +58,7 @@ analysis_save_buttons <- function(
     if (isTRUE(has_figures)) {
       analysis_save_button(figure_button_id, "Save fig", "figure", class = "btn-default")
     } else {
-      div(class = "analysis-save-slot analysis-save-slot-empty")
+      analysis_save_button(NULL, "Save fig", "figure", class = "btn-default")
     },
     analysis_save_button(pdf_button_id, "Save PDF", "pdf", class = "btn-default"),
     analysis_save_button(excel_button_id, "Save Excel", "excel", class = "btn-default"),
