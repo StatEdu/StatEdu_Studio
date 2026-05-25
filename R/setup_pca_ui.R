@@ -102,27 +102,22 @@ pca_selection_controls <- function(state) {
         "fixed",
         div(
           class = "factor-fixed-number-input pca-fixed-number-input",
-          style = "display:inline-block;flex:0 0 56px;margin:0;width:56px;",
           tags$input(
             id = "pca_n_components",
             type = "number",
             class = "form-control",
             value = state$n_components,
             min = 1,
-            step = 1,
-            style = "display:inline-block;height:30px;min-width:0;padding:3px 6px;width:56px;"
+            step = 1
           )
         ),
-        class = "radio factor-fixed-radio-row pca-fixed-radio-row",
-        style = "align-items:center;display:flex;flex-wrap:nowrap;gap:6px;margin-left:36px;width:270px;",
-        label_style = "flex:0 0 auto;margin-bottom:0;white-space:nowrap;"
+        class = "radio factor-fixed-radio-row pca-selection-input-row pca-fixed-radio-row"
       ),
       radio_input(
         "Cumulative variance >=",
         "cumulative",
         div(
           class = "factor-fixed-number-input pca-cumulative-input",
-          style = "align-items:center;display:inline-flex;flex:0 0 auto;gap:4px;margin:0;width:auto;",
           tags$input(
             id = "pca_cumulative_variance",
             type = "number",
@@ -130,14 +125,11 @@ pca_selection_controls <- function(state) {
             value = state$cumulative_variance,
             min = 1,
             max = 100,
-            step = 1,
-            style = "display:inline-block;height:30px;min-width:0;padding:3px 6px;width:58px;"
+            step = 1
           ),
           span("%")
         ),
-        class = "radio factor-fixed-radio-row pca-cumulative-radio-row",
-        style = "align-items:center;display:flex;flex-wrap:nowrap;gap:6px;margin-left:36px;width:270px;",
-        label_style = "flex:0 0 auto;margin-bottom:0;white-space:nowrap;"
+        class = "radio factor-fixed-radio-row pca-selection-input-row pca-cumulative-radio-row"
       )
     )
   )
