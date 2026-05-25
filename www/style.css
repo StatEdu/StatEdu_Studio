@@ -2337,8 +2337,9 @@ input.variable-select:disabled {
 
 .pca-selection-input-row {
   align-items: center;
-  display: flex !important;
+  display: grid !important;
   gap: 8px;
+  grid-template-columns: 198px 72px;
   margin-left: 28px;
   width: max-content;
 }
@@ -2347,6 +2348,7 @@ input.variable-select:disabled {
   margin-bottom: 0;
   min-width: 0;
   white-space: nowrap;
+  width: 198px !important;
 }
 
 .pca-fixed-number-input,
@@ -2355,15 +2357,22 @@ input.variable-select:disabled {
   display: inline-flex;
   gap: 4px;
   margin: 0;
-  width: auto !important;
+  width: 72px !important;
 }
 
 .pca-fixed-number-input input.form-control,
 .pca-cumulative-input input.form-control {
+  box-sizing: border-box;
+  flex: 0 0 58px;
   height: 30px;
+  max-width: 58px;
   min-width: 0;
   padding: 3px 6px;
   width: 58px !important;
+}
+
+.pca-cumulative-input span {
+  flex: 0 0 auto;
 }
 
 .ttest-anova-action-row {
