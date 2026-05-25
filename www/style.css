@@ -4260,7 +4260,7 @@ pre {
   display: grid;
   grid-template-columns: 326px 50px 326px 20px 310px;
   gap: 18px;
-  align-items: center;
+  align-items: start;
   width: 1176px;
   min-width: 1176px;
 }
@@ -4290,6 +4290,7 @@ pre {
 .pca-action-row > #pca_save_control {
   grid-column: 5;
   margin-left: 0;
+  align-self: start;
   justify-self: center;
   transform: translateX(18px);
 }
@@ -4310,6 +4311,7 @@ pre {
   width: 300px;
   min-width: 300px;
   margin-left: 30px;
+  align-self: start;
   justify-self: start;
 }
 
