@@ -1424,20 +1424,35 @@ input.variable-select:disabled {
 }
 
 .coefficient-footnote-value {
-  display: inline-flex;
-  align-items: baseline;
-  justify-content: flex-end;
-  gap: 2px;
+  display: inline-block;
   white-space: nowrap;
-  line-height: inherit;
+  line-height: 1.35;
+  vertical-align: baseline;
 }
 
 .coefficient-footnote-marker {
   display: inline-block;
+  margin-left: 2px;
   font-size: 10px;
   line-height: 1;
-  vertical-align: super;
-  transform: translateY(-0.35em);
+  position: relative;
+  top: -0.52em;
+  vertical-align: baseline;
+}
+
+.coefficient-col-note-marker {
+  width: 16px;
+  min-width: 16px;
+  max-width: 16px;
+}
+
+.coefficient-note-cell-marker {
+  display: inline-block;
+  font-size: 10px;
+  line-height: 1;
+  position: relative;
+  top: -0.72em;
+  vertical-align: baseline;
 }
 
 .analysis-options-panel {
@@ -1984,8 +1999,9 @@ input.variable-select:disabled {
 
 .ttest-anova-options .analysis-option-group .checkbox,
 .ttest-anova-options .analysis-option-group .radio {
-  margin-top: 0;
-  margin-bottom: 0;
+  margin-top: 3px;
+  margin-bottom: 3px;
+  line-height: 1.35;
 }
 
 .ttest-anova-options .analysis-radio-group > .form-group {
@@ -1998,7 +2014,74 @@ input.variable-select:disabled {
 
 .ttest-anova-ordered-significance-option .form-group {
   margin-left: 0 !important;
-  margin-bottom: 3px;
+  margin-bottom: 6px;
+}
+
+.nonparametric-options .ttest-anova-ordered-significance-option {
+  margin-left: 0;
+}
+
+.nonparametric-options .ttest-anova-ordered-significance-option .form-group {
+  width: auto;
+  min-width: 0;
+  max-width: none;
+}
+
+.nonparametric-options .analysis-option-group {
+  margin-bottom: 22px;
+}
+
+.nonparametric-options .analysis-option-group .checkbox,
+.nonparametric-options .analysis-option-group .radio {
+  margin-top: 8px !important;
+  margin-bottom: 8px !important;
+  line-height: 1.45;
+}
+
+.nonparametric-options .analysis-radio-group .shiny-options-group {
+  display: grid;
+  row-gap: 4px;
+}
+
+.nonparametric-options .ttest-anova-ordered-significance-option {
+  margin-bottom: 28px;
+}
+
+.nonparametric-options #nonparametric_post_hoc_method .radio {
+  margin-top: 4px !important;
+  margin-bottom: 4px !important;
+}
+
+.paired-options .analysis-option-group {
+  margin-bottom: 20px;
+}
+
+.paired-options .analysis-option-title {
+  margin-bottom: 10px;
+}
+
+.paired-options .analysis-option-group .checkbox,
+.paired-options .analysis-option-group .radio {
+  margin-top: 7px !important;
+  margin-bottom: 7px !important;
+  line-height: 1.45;
+}
+
+.paired-options .analysis-radio-group > .form-group {
+  margin-left: 36px;
+  margin-top: 10px;
+}
+
+.paired-options .paired-posthoc-group .analysis-option-title {
+  margin-bottom: 18px !important;
+}
+
+.paired-options .paired-posthoc-group > .form-group {
+  margin-top: 0 !important;
+}
+
+.paired-options .paired-rm-time-labels {
+  margin-top: 2px;
 }
 
 .ttest-anova-options .analysis-radio-group > .form-group .radio {
@@ -4285,6 +4368,7 @@ pre {
 .paired-action-row > #paired_save_control,
 .paired-action-row > #paired_rm_save_control,
 .ttest-anova-action-row > #ttest_anova_save_control,
+.nonparametric-action-row > #nonparametric_save_control,
 .correlation-action-row > #correlation_save_control,
 .factor-analysis-action-row > #factor_analysis_save_control,
 .pca-action-row > #pca_save_control {
@@ -4301,6 +4385,7 @@ pre {
 .paired-action-row > #paired_reset_control,
 .paired-action-row > #paired_rm_reset_control,
 .ttest-anova-action-row > #ttest_anova_reset_control,
+.nonparametric-action-row > #nonparametric_reset_control,
 .correlation-action-row > #correlation_reset_control,
 .factor-analysis-action-row > #factor_analysis_reset_control,
 .pca-action-row > #pca_reset_control,
@@ -4322,6 +4407,7 @@ pre {
 .paired-action-row > #paired_reset_control .analysis-reset-button,
 .paired-action-row > #paired_rm_reset_control .analysis-reset-button,
 .ttest-anova-action-row > #ttest_anova_reset_control .analysis-reset-button,
+.nonparametric-action-row > #nonparametric_reset_control .analysis-reset-button,
 .correlation-action-row > #correlation_reset_control .analysis-reset-button,
 .factor-analysis-action-row > #factor_analysis_reset_control .analysis-reset-button,
 .pca-action-row > #pca_reset_control .analysis-reset-button,

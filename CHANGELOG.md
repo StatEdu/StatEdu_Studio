@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.9.5 - 2026-05-25
+
+### Changed
+
+- Added a standalone Nonparametric Tests analysis menu using Mann-Whitney U and Kruskal-Wallis tests.
+- Added median and quartile summary output for standalone nonparametric tests.
+- Added Cliff's delta effect sizes for Mann-Whitney U results.
+- Fixed compact post-hoc lettering so shared non-significant groups receive combined letters.
+- Rendered p-value and effect-size footnote markers in narrow adjacent columns for stable table alignment.
+- Refined Nonparametric Tests and Paired test option-panel spacing.
+
+
 ## v0.9.4 - 2026-05-25
 
 ### Changed

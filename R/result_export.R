@@ -421,6 +421,14 @@ write_ttest_anova_results_html <- function(result, file) {
   )
 }
 
+write_nonparametric_results_html <- function(result, file) {
+  writeLines(
+    saved_nonparametric_results_html(result),
+    file,
+    useBytes = TRUE
+  )
+}
+
 write_paired_results_html <- function(result, file) {
   writeLines(
     saved_paired_results_html(result),
@@ -455,6 +463,10 @@ write_reliability_results_pdf <- function(result, file) {
 
 write_ttest_anova_results_pdf <- function(result, file) {
   write_pdf_from_html(saved_ttest_anova_results_html(result, report_mode = TRUE), file)
+}
+
+write_nonparametric_results_pdf <- function(result, file) {
+  write_pdf_from_html(saved_nonparametric_results_html(result, report_mode = TRUE), file)
 }
 
 write_paired_results_pdf <- function(result, file) {

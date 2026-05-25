@@ -150,6 +150,36 @@ ttest_anova_tab_panel <- function(title = "t-test / ANOVA") {
   )
 }
 
+nonparametric_tab_panel <- function(title = "Nonparametric Tests") {
+  tabPanel(
+    title,
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1("Nonparametric Tests"),
+        div("Run Mann-Whitney U and Kruskal-Wallis tests with rank-based post-hoc options.", class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel ttest-anova-workspace-panel nonparametric-workspace-panel",
+        style = "min-width:980px;overflow-x:auto;",
+        analysis_workspace_heading("Nonparametric tests", "nonparametric"),
+        analysis_workspace_body(
+          "nonparametric",
+          uiOutput("nonparametric_setup"),
+          div(
+            class = "analysis-action-row ttest-anova-action-row nonparametric-action-row",
+            actionButton("run_nonparametric", "Run analysis", class = "btn btn-primary"),
+            uiOutput("nonparametric_reset_control"),
+            uiOutput("nonparametric_save_control")
+          ),
+          uiOutput("nonparametric_results")
+        )
+      )
+    )
+  )
+}
+
 correlation_tab_panel <- function(title = "Correlation") {
   tabPanel(
     title,

@@ -176,11 +176,15 @@ paired_setup_panel <- function(state) {
         },
         if (isTRUE(state$has_three_plus)) {
           tagList(
-            analysis_radio_group(
-              "Post-hoc correction",
-              "paired_adjustment",
-              choices = c("Holm Bonferroni" = "holm", "Bonferroni correction" = "bonferroni"),
-              selected = state$adjustment
+            div(
+              class = "analysis-option-group analysis-radio-group paired-posthoc-group",
+              div(class = "analysis-option-title", "Post-hoc correction"),
+              radioButtons(
+                "paired_adjustment",
+                label = NULL,
+                choices = c("Holm Bonferroni" = "holm", "Bonferroni correction" = "bonferroni"),
+                selected = state$adjustment
+              )
             ),
             paired_time_label_inputs(state$time_labels)
           )

@@ -570,6 +570,16 @@ saved_ttest_anova_results_html <- function(result, css_path = file.path("www", "
   )
 }
 
+saved_nonparametric_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
+  saved_results_document(
+    "EasyFlow Statistics Nonparametric Test Results",
+    tags$div(class = "regression-results", ttest_anova_results_ui(result)),
+    max_width = 1500,
+    css_path = css_path,
+    report_mode = report_mode
+  )
+}
+
 saved_paired_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
   saved_results_document(
     "EasyFlow Statistics Paired Test Results",

@@ -311,13 +311,25 @@ ttest_group_letters <- function(values, groups, p_matrix, ordered = FALSE) {
   letters_pool <- letters
   assigned <- stats::setNames(rep("", length(levels)), levels)
   letter_groups <- list()
+  processed <- character(0)
+  pair_is_shared <- function(first, second) {
+    first <- as.character(first %||% "")
+    second <- as.character(second %||% "")
+    if (!nzchar(first) || !nzchar(second)) return(FALSE)
+    if (identical(first, second)) return(TRUE)
+    if (is.null(p_matrix) || !all(c(first, second) %in% rownames(p_matrix)) || !all(c(first, second) %in% colnames(p_matrix))) {
+      return(FALSE)
+    }
+    p_value <- suppressWarnings(as.numeric(p_matrix[first, second]))
+    !is.na(p_value) && p_value >= .05
+  }
   for (level in levels) {
     placed <- FALSE
     if (length(letter_groups) > 0) {
       for (letter in names(letter_groups)) {
         members <- letter_groups[[letter]]
-        p_values <- vapply(members, function(member) p_matrix[level, member] %||% 0, numeric(1))
-        if (all(!is.na(p_values) & p_values >= .05)) {
+        shared <- vapply(members, function(member) pair_is_shared(level, member), logical(1))
+        if (all(shared)) {
           letter_groups[[letter]] <- c(members, level)
           assigned[[level]] <- paste0(assigned[[level]], letter)
           placed <- TRUE
@@ -326,9 +338,20 @@ ttest_group_letters <- function(values, groups, p_matrix, ordered = FALSE) {
     }
     if (!placed) {
       letter <- letters_pool[[length(letter_groups) + 1]]
-      letter_groups[[letter]] <- level
-      assigned[[level]] <- paste0(assigned[[level]], letter)
+      shared_members <- character(0)
+      for (member in processed) {
+        compatible_with_level <- pair_is_shared(level, member)
+        compatible_with_group <- length(shared_members) == 0 ||
+          all(vapply(shared_members, function(existing) pair_is_shared(member, existing), logical(1)))
+        if (isTRUE(compatible_with_level) && isTRUE(compatible_with_group)) {
+          shared_members <- c(shared_members, member)
+        }
+      }
+      new_members <- c(shared_members, level)
+      letter_groups[[letter]] <- new_members
+      assigned[new_members] <- paste0(assigned[new_members], letter)
     }
+    processed <- c(processed, level)
   }
   assigned[ttest_level_order(names(assigned))]
 }
@@ -484,6 +507,21 @@ ttest_mann_whitney_z <- function(values, groups) {
   variance_u <- n1 * n2 * (n + 1 - tie_correction) / 12
   if (!is.finite(variance_u) || variance_u <= 0) return(NA_real_)
   (u1 - mean_u) / sqrt(variance_u)
+}
+
+ttest_cliffs_delta <- function(values, groups) {
+  data <- data.frame(y = as.numeric(values), g = as.factor(groups))
+  data <- data[stats::complete.cases(data), , drop = FALSE]
+  split_values <- split(data$y, data$g)
+  if (length(split_values) != 2) return(NA_real_)
+  n1 <- length(split_values[[1]])
+  n2 <- length(split_values[[2]])
+  if (n1 < 1 || n2 < 1) return(NA_real_)
+  ranks <- rank(data$y, ties.method = "average")
+  rank_sum_1 <- sum(ranks[data$g == levels(data$g)[[1]]])
+  u1 <- rank_sum_1 - n1 * (n1 + 1) / 2
+  delta <- (2 * u1) / (n1 * n2) - 1
+  if (!is.finite(delta)) NA_real_ else delta
 }
 
 ttest_jt_test <- function(values, groups, alternative = "two.sided") {
@@ -661,6 +699,9 @@ ttest_effect_size <- function(values, groups, test_type) {
   if (identical(test_type, "anova")) {
     return(format_effect_size(ttest_omega_squared(values, groups)))
   }
+  if (identical(test_type, "mw")) {
+    return(format_effect_size(ttest_cliffs_delta(values, groups)))
+  }
   if (identical(test_type, "kw")) {
     return(format_effect_size(ttest_kruskal_epsilon_squared(values, groups)))
   }
@@ -675,9 +716,19 @@ ttest_trend_p <- function(values, groups, normal = FALSE, equal_variance = TRUE,
   format_p(trend$p.value)
 }
 
-ttest_group_summary <- function(values, groups, levels) {
+ttest_group_summary <- function(values, groups, levels, median_iqr = FALSE) {
   lapply(levels, function(level) {
     group_values <- as.numeric(values[as.character(groups) == level])
+    if (isTRUE(median_iqr)) {
+      q <- stats::quantile(group_values, probs = c(.25, .5, .75), na.rm = TRUE, names = FALSE, type = 2)
+      return(data.frame(
+        Value = level,
+        M = ttest_format_decimal(q[[2]], 2),
+        SD = sprintf("%s~%s", ttest_format_decimal(q[[1]], 2), ttest_format_decimal(q[[3]], 2)),
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      ))
+    }
     data.frame(
       Value = level,
       M = ttest_format_decimal(mean(group_values, na.rm = TRUE), 2),
@@ -712,6 +763,7 @@ ttest_effect_size_name <- function(test_type) {
     as.character(test_type %||% ""),
     t = "Hedges' g",
     anova = "omega squared",
+    mw = "Cliff's delta",
     kw = "epsilon squared",
     jt = "r",
     ""
@@ -884,7 +936,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
   dependent_measure <- ttest_measurement(dependent, variable_info)
   factor_measure <- ttest_measurement(factor, variable_info)
   group_count <- length(levels)
-  force_nonparametric <- dependent_measure == "ordered"
+  force_nonparametric <- dependent_measure == "ordered" || isTRUE(options$force_nonparametric)
 
   normality_method <- tolower(as.character(options$normality_method %||% "skew_kurtosis"))
   normality_study_type <- tolower(as.character(options$normality_study_type %||% "survey"))
@@ -892,7 +944,9 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
     normality_study_type <- "survey"
   }
   normality_enabled <- isTRUE(options$normality_enabled %||% TRUE)
-  normality <- if (isTRUE(force_nonparametric)) {
+  normality <- if (isTRUE(options$force_nonparametric)) {
+    list(method = "Nonparametric test", normal = FALSE, detail = "Selected by analysis menu")
+  } else if (isTRUE(force_nonparametric)) {
     list(method = "Ordinal dependent variable", normal = FALSE, detail = "Nonparametric test used")
   } else if (!normality_enabled || identical(normality_method, "none")) {
     list(method = "Normality not checked", normal = TRUE, detail = "Parametric test selected by option")
@@ -991,7 +1045,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
     }
   }
 
-  summaries <- do.call(rbind, ttest_group_summary(values, groups, levels))
+  summaries <- do.call(rbind, ttest_group_summary(values, groups, levels, median_iqr = isTRUE(options$median_iqr)))
   display_values <- ttest_display_levels(factor, summaries$Value, category_table)
   trend_p <- ""
   trend_method <- ""
@@ -1054,7 +1108,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
     normality$method,
     if (isTRUE(normality$normal)) "satisfied" else "not satisfied"
   )
-  if (isTRUE(normality_enabled) && nzchar(normality$detail %||% "")) {
+  if ((isTRUE(normality_enabled) || isTRUE(options$force_nonparametric)) && nzchar(normality$detail %||% "")) {
     normality_text <- sprintf("%s (%s)", normality_text, normality$detail)
   }
 
@@ -1123,6 +1177,10 @@ prepare_ttest_anova_results <- function(
       combined_table <- ttest_bind_result_rows(lapply(dependent_items, function(item) item$table))[, ttest_result_table_columns, drop = FALSE]
       statistic_labels <- vapply(dependent_items, function(item) item$statistic_label %||% "", character(1))
       combined_table <- ttest_apply_statistic_heading(combined_table, statistic_labels)
+      if (isTRUE(options$median_iqr)) {
+        names(combined_table)[names(combined_table) == "M"] <- "Median"
+        names(combined_table)[names(combined_table) == "SD"] <- "Q1~Q3"
+      }
       note_result <- ttest_apply_numbered_notes(combined_table, dependent_items)
       combined_table <- note_result$table
       note_line <- ttest_analysis_note_line(dependent_items)

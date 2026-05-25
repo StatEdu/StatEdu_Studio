@@ -140,6 +140,67 @@ result_cell_content <- function(value, marker = "") {
   )
 }
 
+result_cell_value_without_marker <- function(value, marker = "") {
+  value <- as.character(value %||% "")
+  marker <- as.character(marker %||% "")
+  if (!nzchar(value) || !nzchar(marker)) {
+    return(value)
+  }
+  sub(paste0(marker, "$"), "", value)
+}
+
+coefficient_display_columns <- function(table) {
+  columns <- names(table)
+  markers <- attr(table, "note_markers", exact = TRUE)
+  if (!is.data.frame(markers) || nrow(markers) == 0 || !"column" %in% names(markers)) {
+    return(data.frame(
+      source = columns,
+      label = columns,
+      marker = FALSE,
+      stringsAsFactors = FALSE
+    ))
+  }
+  marker_columns <- intersect(columns, unique(as.character(markers$column)))
+  rows <- list()
+  for (column in columns) {
+    rows[[length(rows) + 1L]] <- data.frame(source = column, label = column, marker = FALSE, stringsAsFactors = FALSE)
+    if (column %in% marker_columns) {
+      rows[[length(rows) + 1L]] <- data.frame(source = column, label = "", marker = TRUE, stringsAsFactors = FALSE)
+    }
+  }
+  do.call(rbind, rows)
+}
+
+coefficient_display_cell_style <- function(table, row_index, column, display_index, display_meta, compact, compact_font_size, compact_width, compact_first_width) {
+  marker_column <- isTRUE(display_meta$marker[[display_index]])
+  source_columns <- display_meta$source[!display_meta$marker]
+  source_index <- match(column, source_columns)
+  style <- result_body_cell_style(
+    display_index == 1,
+    row_index == nrow(table),
+    compact = compact,
+    compact_font_size = compact_font_size,
+    compact_width = compact_width,
+    compact_first_width = compact_first_width
+  )
+  if (isTRUE(marker_column)) {
+    return(paste0(
+      style,
+      "padding-left:2px;padding-right:8px;padding-top:0;min-width:16px;width:16px;text-align:left;vertical-align:top;line-height:1;"
+    ))
+  }
+  next_is_marker <- display_index < nrow(display_meta) &&
+    isTRUE(display_meta$marker[[display_index + 1L]]) &&
+    identical(display_meta$source[[display_index + 1L]], column)
+  if (isTRUE(next_is_marker)) {
+    style <- paste0(style, "padding-right:2px;")
+  }
+  if (is.finite(source_index) && source_index == 1 && display_index != 1) {
+    style <- paste0(style, "text-align:left;")
+  }
+  style
+}
+
 coefficient_column_class <- function(name) {
   normalized <- gsub("[^[:alnum:]]+", "", tolower(as.character(name %||% "")))
   switch(
@@ -213,37 +274,47 @@ coefficient_html_table <- function(
     return(NULL)
   }
   columns <- names(table)
+  display_meta <- coefficient_display_columns(table)
   table_tag <- tags$table(
       class = "coefficient-table",
       style = result_table_style(font_size = if (isTRUE(compact)) compact_font_size else 15, min_width = if (isTRUE(compact)) compact_min_width else 480),
-      tags$colgroup(lapply(columns, function(column) {
-        tags$col(class = coefficient_column_class(column))
+      tags$colgroup(lapply(seq_len(nrow(display_meta)), function(index) {
+        tags$col(class = if (isTRUE(display_meta$marker[[index]])) "coefficient-col-note-marker" else coefficient_column_class(display_meta$source[[index]]))
       })),
       tags$thead(
-        tags$tr(lapply(seq_along(columns), function(index) {
+        tags$tr(lapply(seq_len(nrow(display_meta)), function(index) {
           tags$th(
-            style = result_header_cell_style(
-              index == 1,
-              compact = compact,
-              compact_font_size = compact_font_size,
-              compact_width = compact_width,
-              compact_first_width = compact_first_width
+            style = paste0(
+              result_header_cell_style(
+                index == 1,
+                compact = compact,
+                compact_font_size = compact_font_size,
+                compact_width = compact_width,
+                compact_first_width = compact_first_width
+              ),
+              if (isTRUE(display_meta$marker[[index]])) "padding-left:2px;padding-right:8px;min-width:16px;width:16px;text-align:left;" else "",
+              if (!isTRUE(display_meta$marker[[index]]) && index < nrow(display_meta) && isTRUE(display_meta$marker[[index + 1L]])) "padding-right:2px;" else ""
             ),
-            columns[[index]]
+            display_meta$label[[index]]
           )
         }))
       ),
       tags$tbody(
         lapply(seq_len(nrow(table)), function(row_index) {
-          tags$tr(lapply(seq_along(columns), function(column_index) {
-            column <- columns[[column_index]]
+          tags$tr(lapply(seq_len(nrow(display_meta)), function(column_index) {
+            column <- display_meta$source[[column_index]]
+            marker_column <- isTRUE(display_meta$marker[[column_index]])
             if (isTRUE(result_cell_covered_by_span(table, row_index, column, columns))) {
               return(NULL)
             }
             span <- result_cell_span_start(table, row_index, column)
             marker <- result_cell_note_marker(table, row_index, column)
             value <- if (!is.null(span) && "value" %in% names(span)) span$value[[1]] else table[[column]][[row_index]] %||% ""
-            content <- result_cell_content(value, marker)
+            content <- if (isTRUE(marker_column)) {
+              if (nzchar(marker)) tags$sup(class = "coefficient-note-cell-marker", marker) else ""
+            } else {
+              result_cell_value_without_marker(value, marker)
+            }
             bold_style <- if (isTRUE(result_cell_bold(table, row_index, column)) && nzchar(as.character(table[[column]][[row_index]] %||% ""))) "font-weight:700;" else ""
             colspan <- if (!is.null(span)) {
               start_index <- match(span$start_column[[1]], columns)
@@ -256,9 +327,12 @@ coefficient_html_table <- function(
             tags$td(
               colspan = colspan,
               style = paste0(
-                result_body_cell_style(
-                  column_index == 1,
-                  row_index == nrow(table),
+                coefficient_display_cell_style(
+                  table,
+                  row_index,
+                  column,
+                  column_index,
+                  display_meta,
                   compact = compact,
                   compact_font_size = compact_font_size,
                   compact_width = compact_width,
@@ -278,7 +352,7 @@ coefficient_html_table <- function(
           tags$tr(
             class = "coefficient-fit-row",
             tags$td(
-              colspan = length(columns),
+              colspan = nrow(display_meta),
               style = "padding:9px 18px;line-height:1.45;border-left:0;border-right:0;border-top:2px solid #1f2937;border-bottom:0;text-align:center;font-weight:500;",
               fit_line
             )
@@ -288,7 +362,7 @@ coefficient_html_table <- function(
             tags$tr(
               class = "coefficient-fit-row coefficient-dw-row",
               tags$td(
-                colspan = length(columns),
+                colspan = nrow(display_meta),
                 style = "padding:9px 18px;line-height:1.45;border-left:0;border-right:0;border-top:1px solid #d7dde5;border-bottom:0;text-align:center;font-weight:500;",
                 line
               )
@@ -302,7 +376,7 @@ coefficient_html_table <- function(
             tags$tr(
               class = "coefficient-fit-row coefficient-dw-row",
               tags$td(
-                colspan = length(columns),
+                colspan = nrow(display_meta),
                 style = "padding:9px 18px;line-height:1.45;border-left:0;border-right:0;border-top:1px solid #d7dde5;border-bottom:0;text-align:center;font-weight:500;",
                 line
               )
