@@ -105,16 +105,16 @@ body {
 .brand-title {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   font-weight: 700;
   letter-spacing: 0;
   height: 72px;
 }
 
 .brand-logo-horizontal {
-  width: 270px;
+  width: 218px;
   height: 72px;
-  flex: 0 0 270px;
+  flex: 0 0 218px;
   object-fit: contain;
   object-position: left center;
   display: block;
