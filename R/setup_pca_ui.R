@@ -116,6 +116,28 @@ pca_selection_controls <- function(state) {
         class = "radio factor-fixed-radio-row pca-fixed-radio-row",
         style = "align-items:center;display:flex;flex-wrap:nowrap;gap:6px;margin-left:36px;width:270px;",
         label_style = "flex:0 0 auto;margin-bottom:0;white-space:nowrap;"
+      ),
+      radio_input(
+        "Cumulative variance >=",
+        "cumulative",
+        div(
+          class = "factor-fixed-number-input pca-cumulative-input",
+          style = "align-items:center;display:inline-flex;flex:0 0 auto;gap:4px;margin:0;width:auto;",
+          tags$input(
+            id = "pca_cumulative_variance",
+            type = "number",
+            class = "form-control",
+            value = state$cumulative_variance,
+            min = 1,
+            max = 100,
+            step = 1,
+            style = "display:inline-block;height:30px;min-width:0;padding:3px 6px;width:58px;"
+          ),
+          span("%")
+        ),
+        class = "radio factor-fixed-radio-row pca-cumulative-radio-row",
+        style = "align-items:center;display:flex;flex-wrap:nowrap;gap:6px;margin-left:36px;width:270px;",
+        label_style = "flex:0 0 auto;margin-bottom:0;white-space:nowrap;"
       )
     )
   )
@@ -152,6 +174,7 @@ pca_setup_panel <- function(state) {
       class = "correlation-options-column pca-options-column",
       div(
         class = "analysis-options-panel correlation-options pca-options",
+        analysis_radio_group("Matrix", "pca_matrix_type", pca_matrix_choices(), selected = state$matrix_type),
         analysis_radio_group("Rotation", "pca_rotation", pca_rotation_choices(), selected = state$rotation),
         div(
           class = "analysis-option-group analysis-radio-group pca-selection-group",
