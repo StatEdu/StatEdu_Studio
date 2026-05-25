@@ -2339,7 +2339,7 @@ input.variable-select:disabled {
   align-items: center;
   display: grid !important;
   gap: 8px;
-  grid-template-columns: 198px 72px;
+  grid-template-columns: 170px 72px;
   margin-left: 28px;
   width: max-content;
 }
@@ -2348,7 +2348,7 @@ input.variable-select:disabled {
   margin-bottom: 0;
   min-width: 0;
   white-space: nowrap;
-  width: 198px !important;
+  width: 170px !important;
 }
 
 .pca-fixed-number-input,
