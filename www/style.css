@@ -2337,12 +2337,10 @@ input.variable-select:disabled {
 
 .pca-selection-input-row {
   align-items: center;
-  display: grid !important;
-  column-gap: 8px;
-  grid-template-columns: max-content 78px;
-  justify-content: start;
+  display: flex !important;
+  gap: 8px;
   margin-left: 28px;
-  width: auto;
+  width: max-content;
 }
 
 .pca-selection-input-row > label {
@@ -2357,7 +2355,7 @@ input.variable-select:disabled {
   display: inline-flex;
   gap: 4px;
   margin: 0;
-  width: 78px !important;
+  width: auto !important;
 }
 
 .pca-fixed-number-input input.form-control,
