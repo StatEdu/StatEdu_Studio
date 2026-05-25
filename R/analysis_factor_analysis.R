@@ -356,9 +356,51 @@ factor_analysis_append_loading_summary_rows <- function(result, table, factors) 
     }
     as.data.frame(row, check.names = FALSE, stringsAsFactors = FALSE)
   })
+  suitability_row <- factor_analysis_loading_suitability_row(result, table)
+  if (!is.null(suitability_row)) {
+    rows <- c(rows, list(suitability_row))
+  }
   out <- rbind(table, do.call(rbind, rows))
   attr(out, "factor_loading_summary_start") <- nrow(table) + 1L
   out
+}
+
+factor_analysis_loading_suitability_row <- function(result, table) {
+  columns <- names(table)
+  value_columns <- setdiff(columns, "Variable")
+  if (length(value_columns) == 0) {
+    return(NULL)
+  }
+  suitability <- result$suitability %||% list()
+  kmo <- suitability$kmo
+  bartlett <- suitability$bartlett
+  kmo_value <- if (!is.null(kmo) && is.finite(kmo$MSA)) format_decimal3(kmo$MSA) else ""
+  bartlett_value <- if (!is.null(bartlett) && is.finite(bartlett$chisq)) format_decimal3(bartlett$chisq) else ""
+  bartlett_p <- if (!is.null(bartlett) && is.finite(bartlett$p.value)) format_p(bartlett$p.value) else ""
+  if (!nzchar(kmo_value) && !nzchar(bartlett_value)) {
+    return(NULL)
+  }
+  row <- as.list(stats::setNames(rep("", length(columns)), columns))
+  row$Variable <- "KMO="
+  row[[value_columns[[1]]]] <- kmo_value
+  if (length(value_columns) >= 3) {
+    row[[value_columns[[2]]]] <- "Bartlett's x2 (p)="
+    row[[value_columns[[3]]]] <- if (nzchar(bartlett_p)) sprintf("%s (%s)", bartlett_value, bartlett_p) else bartlett_value
+  } else if (length(value_columns) >= 2) {
+    row[[value_columns[[2]]]] <- if (nzchar(bartlett_p)) {
+      sprintf("Bartlett's x2 (p)= %s (%s)", bartlett_value, bartlett_p)
+    } else {
+      sprintf("Bartlett's x2 (p)= %s", bartlett_value)
+    }
+  } else {
+    row$Variable <- if (nzchar(bartlett_p)) {
+      sprintf("KMO= %s   Bartlett's x2 (p)= %s (%s)", kmo_value, bartlett_value, bartlett_p)
+    } else {
+      sprintf("KMO= %s   Bartlett's x2 (p)= %s", kmo_value, bartlett_value)
+    }
+    row[[value_columns[[1]]]] <- ""
+  }
+  as.data.frame(row, check.names = FALSE, stringsAsFactors = FALSE)
 }
 
 factor_analysis_loading_summary_styles <- function(table) {

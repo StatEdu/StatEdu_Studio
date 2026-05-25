@@ -49,7 +49,7 @@ factor_result <- prepare_factor_analysis_results(
   )
 )
 expect_true(identical(factor_result$method, "pa"), "Expected default factor method to remain principal axis factoring")
-expect_true(is.data.frame(factor_result$loadings_table) && nrow(factor_result$loadings_table) == ncol(data) + 3L, "Expected factor loading table with variance summary rows")
+expect_true(is.data.frame(factor_result$loadings_table) && nrow(factor_result$loadings_table) == ncol(data) + 4L, "Expected factor loading table with variance and suitability summary rows")
 expect_true(is.data.frame(factor_result$eigen_table) && nrow(factor_result$eigen_table) == ncol(data), "Expected factor eigenvalue table")
 expected_loading_order <- {
   loading_abs <- abs(factor_result$loadings)
@@ -63,13 +63,17 @@ expect_true(
   "Expected factor loading table to be sorted by primary factor and loading size"
 )
 expect_true(
-  identical(tail(as.character(factor_result$loadings_table$Variable), 3), c("Eigenvalue", "Variance %", "Cumulative variance %")),
-  "Expected factor loading table to end with eigenvalue and variance summary rows"
+  identical(tail(as.character(factor_result$loadings_table$Variable), 4), c("Eigenvalue", "Variance %", "Cumulative variance %", "KMO=")),
+  "Expected factor loading table to end with eigenvalue, variance, and suitability summary rows"
 )
 factor_columns <- colnames(factor_result$loadings)
 expect_true(
-  all(vapply(factor_result$loadings_table[tail(seq_len(nrow(factor_result$loadings_table)), 3), factor_columns, drop = FALSE], function(column) all(nzchar(as.character(column))), logical(1))),
+  all(vapply(factor_result$loadings_table[seq.int(nrow(factor_result$loadings_table) - 3L, nrow(factor_result$loadings_table) - 1L), factor_columns, drop = FALSE], function(column) all(nzchar(as.character(column))), logical(1))),
   "Expected factor loading summary rows to contain values under factor columns"
+)
+expect_true(
+  any(grepl("Bartlett's x2 \\(p\\)=", as.character(unlist(factor_result$loadings_table[nrow(factor_result$loadings_table), , drop = FALSE])))),
+  "Expected factor loading summary rows to include KMO and Bartlett diagnostics"
 )
 factor_unsorted <- prepare_factor_analysis_results(
   data,
