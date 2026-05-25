@@ -80,7 +80,7 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-paired-options-3"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-nonparametric-paired-3"))
 }
 
 app_script_link <- function(version) {
@@ -104,6 +104,7 @@ enabled_analysis_tabs <- function() {
     paired_rm = TRUE,
     ttest_anova = TRUE,
     nonparametric = TRUE,
+    nonparametric_paired = TRUE,
     correlation = TRUE,
     factor_analysis = TRUE,
     pca = TRUE,

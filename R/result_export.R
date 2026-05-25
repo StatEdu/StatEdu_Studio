@@ -429,6 +429,14 @@ write_nonparametric_results_html <- function(result, file) {
   )
 }
 
+write_nonparametric_paired_results_html <- function(result, file) {
+  writeLines(
+    saved_nonparametric_paired_results_html(result),
+    file,
+    useBytes = TRUE
+  )
+}
+
 write_paired_results_html <- function(result, file) {
   writeLines(
     saved_paired_results_html(result),
@@ -467,6 +475,10 @@ write_ttest_anova_results_pdf <- function(result, file) {
 
 write_nonparametric_results_pdf <- function(result, file) {
   write_pdf_from_html(saved_nonparametric_results_html(result, report_mode = TRUE), file)
+}
+
+write_nonparametric_paired_results_pdf <- function(result, file) {
+  write_pdf_from_html(saved_nonparametric_paired_results_html(result, report_mode = TRUE), file)
 }
 
 write_paired_results_pdf <- function(result, file) {
@@ -1168,14 +1180,17 @@ add_paired_grouped_excel_sheet <- function(workbook, sheet_name, table, used_she
   show_effect_size <- isTRUE(show_effect_size) && paired_has_effect(table)
   effect_labels <- if (show_effect_size) paired_effect_labels(table) else character(0)
   if (identical(type, "scale")) {
+    center_label <- if (isTRUE(attr(table, "median_iqr", exact = TRUE))) "Median" else "M"
+    spread_label <- if (isTRUE(attr(table, "median_iqr", exact = TRUE))) "Q1~Q3" else "SD"
     export_columns <- c("Variable", "Pre_M", "Pre_SD", "Post_M", "Post_SD", "Statistic", "p")
     export <- table[, export_columns, drop = FALSE]
     for (label in effect_labels) {
       export[[label]] <- vapply(seq_len(nrow(table)), function(index) paired_effect_value_for_label(table, index, label), character(1))
     }
     statistic_label <- paired_scale_statistic_label(table)
-    header_top <- c("Variable", "Pre", "", "Post", "", statistic_label, "p", effect_labels)
-    header_bottom <- c("", "M", "SD", "M", "SD", "", "", rep("", length(effect_labels)))
+    effect_header_labels <- vapply(effect_labels, paired_effect_header_text, character(1), label_count = length(effect_labels))
+    header_top <- c("Variable", "Pre", "", "Post", "", statistic_label, "p", effect_header_labels)
+    header_bottom <- c("", center_label, spread_label, center_label, spread_label, "", "", rep("", length(effect_labels)))
     merge_cols <- c(list(1, 2:3, 4:5, 6, 7), as.list(seq_along(effect_labels) + 7L))
     widths <- c(28, 12, 12, 12, 12, 12, 12, rep(14, length(effect_labels)))
   } else {
@@ -1190,7 +1205,8 @@ add_paired_grouped_excel_sheet <- function(workbook, sheet_name, table, used_she
       export[[label]] <- vapply(seq_len(nrow(table)), function(index) paired_effect_value_for_label(table, index, label), character(1))
     }
     statistic_label <- paired_count_statistic_label(table)
-    header_top <- c("Variable", "Pre", "Post", rep("", max(0, length(post_columns) - 1L)), if (include_statistic) statistic_label, "p", effect_labels)
+    effect_header_labels <- vapply(effect_labels, paired_effect_header_text, character(1), label_count = length(effect_labels))
+    header_top <- c("Variable", "Pre", "Post", rep("", max(0, length(post_columns) - 1L)), if (include_statistic) statistic_label, "p", effect_header_labels)
     header_bottom <- c("", "", post_labels, if (include_statistic) "", "", rep("", length(effect_labels)))
     merge_cols <- c(
       list(1, 2),
@@ -1297,7 +1313,7 @@ add_paired_rm_grouped_excel_sheet <- function(workbook, sheet_name, table, used_
   header_bottom <- c(
     "",
     "",
-    rep(if (identical(type, "count")) c("0", "1") else c("M", "SD"), length(time_labels)),
+    rep(if (identical(type, "count")) c("0", "1") else if (isTRUE(attr(table, "median_iqr", exact = TRUE))) c("Median", "Q1~Q3") else c("M", "SD"), length(time_labels)),
     "",
     "",
     if (include_es) c(paste0(as.character(table$ES_overall_label[[1]] %||% "overall"), " (a)"), paste0(es_labels, " (b)")),
@@ -1387,6 +1403,91 @@ save_ttest_anova_excel_file <- function(result, file) {
   invisible(file)
 }
 
+save_nonparametric_paired_excel_file <- function(result, file) {
+  workbook <- openxlsx::createWorkbook()
+  used_sheets <- character(0)
+  write_part <- function(part, prefix = "") {
+    if (identical(part$type, "nonparametric_paired_rm")) {
+      if (is.data.frame(part$display_table) && nrow(part$display_table) > 0) {
+        table <- part$display_table
+        attr(table, "median_iqr") <- isTRUE(part$options$median_iqr)
+        if (!isTRUE(part$options$effect_size)) {
+          drop_columns <- c("ES_overall", "ES_overall_label", "PairwiseEffectSizeLabel", "EffectSizeLabel", grep("^ES_[0-9]+_[0-9]+(_label)?$", names(table), value = TRUE))
+          table <- table[, setdiff(names(table), drop_columns), drop = FALSE]
+        }
+        used_sheets <<- add_paired_rm_grouped_excel_sheet(
+          workbook,
+          paste0(prefix, "Repeated summary"),
+          table,
+          used_sheets,
+          note = paired_rm_table_method_note(table),
+          title = "Nonparametric paired test: continuous / ordinal",
+          type = "scale"
+        )
+      }
+      if (is.data.frame(part$count_table) && nrow(part$count_table) > 0) {
+        used_sheets <<- add_paired_rm_grouped_excel_sheet(
+          workbook,
+          paste0(prefix, "Repeated n"),
+          part$count_table,
+          used_sheets,
+          note = paired_rm_table_method_note(part$count_table),
+          title = "Nonparametric paired test: binary",
+          type = "count"
+        )
+      }
+      if (is.data.frame(part$posthoc) && nrow(part$posthoc) > 0) {
+        used_sheets <<- add_ttest_anova_result_sheet(
+          workbook,
+          paste0(prefix, "Posthoc"),
+          nonparametric_paired_posthoc_display_table(part),
+          paired_rm_posthoc_note(part),
+          used_sheets,
+          title = "Post-hoc pairwise comparisons"
+        )
+      }
+    } else {
+      if (is.data.frame(part$scale_table) && nrow(part$scale_table) > 0) {
+        table <- part$scale_table
+        attr(table, "median_iqr") <- isTRUE(part$options$median_iqr)
+        used_sheets <<- add_paired_grouped_excel_sheet(
+          workbook,
+          paste0(prefix, "Paired summary"),
+          table,
+          used_sheets,
+          title = "Nonparametric paired test: summary",
+          type = "scale",
+          note = paired_method_note(table, show_effect_size = isTRUE(part$options$effect_size)),
+          show_effect_size = isTRUE(part$options$effect_size)
+        )
+      }
+      if (is.data.frame(part$count_table) && nrow(part$count_table) > 0) {
+        used_sheets <<- add_paired_grouped_excel_sheet(
+          workbook,
+          paste0(prefix, "Paired n"),
+          part$count_table,
+          used_sheets,
+          title = "Nonparametric paired test: n by level",
+          type = "count",
+          note = paired_count_method_note(part, show_effect_size = isTRUE(part$options$effect_size)),
+          show_effect_size = isTRUE(part$options$effect_size)
+        )
+      }
+    }
+  }
+  if (identical(result$type, "nonparametric_paired_combined")) {
+    write_part(result$paired, "Two ")
+    write_part(result$paired_rm, "Repeated ")
+  } else {
+    write_part(result)
+  }
+  if (length(used_sheets) == 0) {
+    used_sheets <- add_ttest_anova_result_sheet(workbook, "Nonparametric paired", result$table, "", used_sheets, title = "Nonparametric paired test")
+  }
+  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
+  invisible(file)
+}
+
 save_paired_excel_file <- function(result, file) {
   if (identical(result$type, "paired_rm")) {
     return(save_paired_rm_excel_file(result, file))
@@ -1404,7 +1505,7 @@ save_paired_excel_file <- function(result, file) {
         used_sheets,
         title = "Paired test: M and SD",
         type = "scale",
-        note = paired_method_note(paired_part$scale_table),
+        note = paired_method_note(paired_part$scale_table, show_effect_size = isTRUE(paired_part$options$effect_size)),
         show_effect_size = isTRUE(paired_part$options$effect_size)
       )
     }
@@ -1416,7 +1517,7 @@ save_paired_excel_file <- function(result, file) {
         used_sheets,
         title = "Paired test: n by level",
         type = "count",
-        note = paired_count_method_note(paired_part),
+        note = paired_count_method_note(paired_part, show_effect_size = isTRUE(paired_part$options$effect_size)),
         show_effect_size = isTRUE(paired_part$options$effect_size)
       )
     }
@@ -1483,7 +1584,7 @@ save_paired_excel_file <- function(result, file) {
       used_sheets,
       title = "Paired test: M and SD",
       type = "scale",
-      note = paired_method_note(result$scale_table),
+      note = paired_method_note(result$scale_table, show_effect_size = isTRUE(result$options$effect_size)),
       show_effect_size = isTRUE(result$options$effect_size)
     )
   }
@@ -1495,7 +1596,7 @@ save_paired_excel_file <- function(result, file) {
       used_sheets,
       title = "Paired test: n by level",
       type = "count",
-      note = paired_count_method_note(result),
+      note = paired_count_method_note(result, show_effect_size = isTRUE(result$options$effect_size)),
       show_effect_size = isTRUE(result$options$effect_size)
     )
   }

@@ -17,7 +17,7 @@ register_paired_handlers <- function(
   bowker <- reactiveVal(TRUE)
   effect_size <- reactiveVal(TRUE)
   cohen_d <- reactiveVal(TRUE)
-  adjustment <- reactiveVal("holm")
+  adjustment <- reactiveVal("bonferroni")
   paired_result <- reactiveVal(NULL)
 
   current_selected <- reactive(as.character(selected_names_fn() %||% character(0)))
@@ -87,7 +87,7 @@ register_paired_handlers <- function(
   }, ignoreInit = TRUE)
 
   observeEvent(input$paired_adjustment, {
-    adjustment(as.character(input$paired_adjustment %||% "holm"))
+    adjustment(as.character(input$paired_adjustment %||% "bonferroni"))
   }, ignoreInit = TRUE)
 
   observe({

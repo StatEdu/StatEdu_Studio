@@ -96,6 +96,7 @@ analysis_tab_panel <- function(analysis_tabs = enabled_analysis_tabs()) {
     if (isTRUE(analysis_tabs[["ttest_anova"]])) ttest_anova_tab_panel("t-test / ANOVA"),
     if (isTRUE(analysis_tabs[["nonparametric"]])) nonparametric_tab_panel("Nonparametric Tests"),
     if (isTRUE(analysis_tabs[["paired"]]) || isTRUE(analysis_tabs[["paired_rm"]])) paired_tab_panel("Paired test"),
+    if (isTRUE(analysis_tabs[["nonparametric_paired"]])) nonparametric_paired_tab_panel("Nonparametric Paired"),
     if (isTRUE(analysis_tabs[["correlation"]])) correlation_tab_panel("Correlation"),
     if (isTRUE(analysis_tabs[["factor_analysis"]])) factor_analysis_tab_panel("Factor Analysis"),
     if (isTRUE(analysis_tabs[["pca"]])) pca_tab_panel("Principal Components"),

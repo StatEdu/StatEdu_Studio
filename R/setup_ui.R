@@ -89,6 +89,37 @@ paired_tab_panel <- function(title = "Paired test") {
   )
 }
 
+nonparametric_paired_tab_panel <- function(title = "Nonparametric Paired") {
+  tabPanel(
+    title,
+    value = "nonparametric_paired",
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1("Nonparametric Paired Test"),
+        div("Select two or more repeated-measures variables at a time to create nonparametric paired rows.", class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel paired-workspace-panel",
+        style = "min-width:980px;overflow-x:auto;",
+        analysis_workspace_heading("Nonparametric paired test", "nonparametric_paired"),
+        analysis_workspace_body(
+          "nonparametric_paired",
+          uiOutput("nonparametric_paired_setup"),
+          div(
+            class = "analysis-action-row paired-action-row",
+            actionButton("run_nonparametric_paired", "Run analysis", class = "btn btn-primary"),
+            uiOutput("nonparametric_paired_reset_control"),
+            uiOutput("nonparametric_paired_save_control")
+          ),
+          uiOutput("nonparametric_paired_results")
+        )
+      )
+    )
+  )
+}
+
 paired_rm_tab_panel <- function(title = "Paired test (3+)") {
   tabPanel(
     title,

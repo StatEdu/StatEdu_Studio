@@ -4366,6 +4366,7 @@ pre {
 .frequencies-action-row > #frequencies_save_control,
 .frequencies-action-row > #crosstab_save_control,
 .paired-action-row > #paired_save_control,
+.paired-action-row > #nonparametric_paired_save_control,
 .paired-action-row > #paired_rm_save_control,
 .ttest-anova-action-row > #ttest_anova_save_control,
 .nonparametric-action-row > #nonparametric_save_control,
@@ -4383,6 +4384,7 @@ pre {
 .frequencies-action-row > #frequencies_reset_control,
 .frequencies-action-row > #crosstab_reset_control,
 .paired-action-row > #paired_reset_control,
+.paired-action-row > #nonparametric_paired_reset_control,
 .paired-action-row > #paired_rm_reset_control,
 .ttest-anova-action-row > #ttest_anova_reset_control,
 .nonparametric-action-row > #nonparametric_reset_control,
@@ -4405,6 +4407,7 @@ pre {
 .frequencies-action-row > #frequencies_reset_control .analysis-reset-button,
 .frequencies-action-row > #crosstab_reset_control .analysis-reset-button,
 .paired-action-row > #paired_reset_control .analysis-reset-button,
+.paired-action-row > #nonparametric_paired_reset_control .analysis-reset-button,
 .paired-action-row > #paired_rm_reset_control .analysis-reset-button,
 .ttest-anova-action-row > #ttest_anova_reset_control .analysis-reset-button,
 .nonparametric-action-row > #nonparametric_reset_control .analysis-reset-button,
@@ -4499,6 +4502,12 @@ pre {
 }
 
 .paired-setup-grid > .analysis-transfer-panel.paired-rm-target-panel .analysis-transfer-listbox[data-input-id="paired_pairs"] {
+  height: 439px !important;
+  min-height: 439px !important;
+  max-height: 439px !important;
+}
+
+.paired-setup-grid > .analysis-transfer-panel.paired-rm-target-panel .analysis-transfer-listbox[data-input-id="nonparametric_paired_repeated"] {
   height: 439px !important;
   min-height: 439px !important;
   max-height: 439px !important;

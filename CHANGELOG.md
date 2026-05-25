@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.9.6 - 2026-05-25
+
+### Changed
+
+- Added a standalone Nonparametric Paired Test menu using Wilcoxon signed-rank and Friedman tests.
+- Added Bonferroni and Holm-Bonferroni paired post-hoc options, with Bonferroni as the default for paired menus.
+- Added median and Q1~Q3 output and Wilcoxon effect-size notes for nonparametric paired results.
+- Aligned paired and nonparametric paired result table headers, footnote markers, export output, and action-button layout.
+
+
 ## v0.9.5 - 2026-05-25
 
 ### Changed

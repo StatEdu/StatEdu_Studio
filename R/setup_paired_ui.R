@@ -78,7 +78,7 @@ paired_setup_state <- function(
   bowker = TRUE,
   effect_size = TRUE,
   cohen_d = TRUE,
-  adjustment = "holm",
+  adjustment = "bonferroni",
   time_labels = NULL
 ) {
   selected <- as.character(selected_names %||% character(0))
@@ -182,7 +182,7 @@ paired_setup_panel <- function(state) {
               radioButtons(
                 "paired_adjustment",
                 label = NULL,
-                choices = c("Holm Bonferroni" = "holm", "Bonferroni correction" = "bonferroni"),
+                choices = c("Bonferroni correction" = "bonferroni", "Holm Bonferroni" = "holm"),
                 selected = state$adjustment
               )
             ),

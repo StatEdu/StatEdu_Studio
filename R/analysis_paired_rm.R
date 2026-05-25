@@ -375,7 +375,7 @@ paired_rm_display_table <- function(result) {
   posthoc_methods <- unique(as.character(result$posthoc$Method %||% ""))
   posthoc_methods <- posthoc_methods[nzchar(posthoc_methods)]
   row[["PosthocMethodLabel"]] <- paste(posthoc_methods, collapse = ", ")
-  row[["PosthocAdjustmentLabel"]] <- if (identical(result$options$posthoc_adjustment %||% "holm", "bonferroni")) "Bonferroni correction" else "Holm Bonferroni"
+  row[["PosthocAdjustmentLabel"]] <- if (identical(result$options$posthoc_adjustment %||% "bonferroni", "holm")) "Holm Bonferroni" else "Bonferroni correction"
   row[["Method"]] <- result$table$Method[[1]]
   row[["EffectSizeLabel"]] <- result$table$`Effect size`[[1]] %||% ""
   for (column in c("Wilks' lambda", "GG epsilon", "GG p")) {
@@ -423,7 +423,7 @@ paired_rm_binary_display_table <- function(result, values, variable_info, labels
   posthoc_methods <- unique(as.character(result$posthoc$Method %||% ""))
   posthoc_methods <- posthoc_methods[nzchar(posthoc_methods)]
   row[["PosthocMethodLabel"]] <- paste(posthoc_methods, collapse = ", ")
-  row[["PosthocAdjustmentLabel"]] <- if (identical(result$options$posthoc_adjustment %||% "holm", "bonferroni")) "Bonferroni correction" else "Holm Bonferroni"
+  row[["PosthocAdjustmentLabel"]] <- if (identical(result$options$posthoc_adjustment %||% "bonferroni", "holm")) "Holm Bonferroni" else "Bonferroni correction"
   row[["Method"]] <- result$table$Method[[1]]
   row
 }
@@ -438,7 +438,7 @@ prepare_paired_rm_single_result <- function(data, variables, variable_info = NUL
   shiny::validate(shiny::need(measurement %in% c("continuous", "ordered", "binary"), "Paired test (3+) supports continuous, ordinal, or binary variables."))
   values <- paired_rm_complete_matrix(data, variables, measurement)
   shiny::validate(shiny::need(nrow(values) > 1, "Not enough complete repeated-measures cases."))
-  adjustment <- if (identical(options$posthoc_adjustment %||% "holm", "bonferroni")) "bonferroni" else "holm"
+  adjustment <- if (identical(options$posthoc_adjustment %||% "bonferroni", "holm")) "holm" else "bonferroni"
 
   if (identical(measurement, "continuous")) {
     y <- as.matrix(values)

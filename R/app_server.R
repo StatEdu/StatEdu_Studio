@@ -1046,6 +1046,18 @@ create_app_server <- function(app_version) {
     mark_settings_dirty = mark_settings_dirty
   )
 
+  register_nonparametric_paired_handlers(
+    input = input,
+    output = output,
+    session = session,
+    selected_names_fn = selected_names,
+    variable_table_fn = regression_variable_table,
+    dataset_fn = dataset,
+    category_table_fn = category_label_values,
+    labels_fn = var_label_overrides,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
   register_paired_handlers(
     input = input,
     output = output,

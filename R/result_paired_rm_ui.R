@@ -111,12 +111,12 @@ paired_rm_table_method_note <- function(table) {
 }
 
 paired_rm_posthoc_note <- function(result) {
-  adjustment <- if (identical(result$options$posthoc_adjustment %||% "holm", "bonferroni")) "Bonferroni correction" else "Holm Bonferroni"
+  adjustment <- if (identical(result$options$posthoc_adjustment %||% "bonferroni", "holm")) "Holm Bonferroni" else "Bonferroni correction"
   methods <- unique(as.character(result$posthoc$Method %||% ""))
   methods <- methods[nzchar(methods)]
   effect_methods <- character(0)
-  if (any(identical(methods, "Paired t-test"))) effect_methods <- c(effect_methods, "Hedges' g")
-  if (any(identical(methods, "Wilcoxon signed-rank test"))) effect_methods <- c(effect_methods, "r")
+  if (any(methods == "Paired t-test")) effect_methods <- c(effect_methods, "Hedges' g")
+  if (any(methods == "Wilcoxon signed-rank test")) effect_methods <- c(effect_methods, "r")
   parts <- c(paste0("P values were adjusted using ", adjustment, "."))
   if (length(effect_methods) > 0) {
     parts <- c(parts, paste0("Effect size: ", paste(effect_methods, collapse = ", "), "."))
@@ -143,6 +143,8 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
     if (length(labels) > 0) labels[[1]] else sub("^ES_", "", es_columns[[index]])
   }, character(1))
   include_es <- "ES_overall" %in% names(table) || length(es_columns) > 0
+  center_label <- if (isTRUE(attr(table, "median_iqr", exact = TRUE))) "Median" else "M"
+  spread_label <- if (isTRUE(attr(table, "median_iqr", exact = TRUE))) "Q1~Q3" else "SD"
   header_style <- function(first = FALSE) {
     paste0(result_header_cell_style(first, compact = TRUE, compact_width = 44, compact_first_width = 148), if (!isTRUE(first)) "text-align:center;" else "")
   }
@@ -186,8 +188,8 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
       tags$tr(
         lapply(time_indices, function(index) {
           tagList(
-            tags$th(style = header_style(FALSE), if (identical(type, "count")) "0" else "M"),
-            tags$th(style = header_style(FALSE), if (identical(type, "count")) "1" else "SD")
+            tags$th(style = header_style(FALSE), if (identical(type, "count")) "0" else center_label),
+            tags$th(style = header_style(FALSE), if (identical(type, "count")) "1" else spread_label)
           )
         }),
         if (include_es) tags$th(style = header_style(FALSE), paired_rm_sup_header(as.character(table$ES_overall_label[[1]] %||% "overall"), "a")),
