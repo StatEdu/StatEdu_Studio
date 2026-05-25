@@ -32,7 +32,6 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     sprintf(".page-shell { max-width: %dpx; margin: 24px auto; padding: 0 18px; }", max_width),
     ".report-cover { min-height: 720px; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid #d9e2ec; border-radius: 8px; margin-bottom: 28px; padding: 42px 48px 38px; background: #fbfdff; box-shadow: 0 12px 28px rgba(16, 42, 67, 0.08); position: relative; overflow: hidden; }",
     ".report-cover::before { content: ''; position: absolute; left: 0; top: 0; width: 10px; height: 100%; background: #0f766e; }",
-    ".report-cover::after { content: ''; position: absolute; right: 48px; top: 112px; width: 112px; height: 4px; background: #f59e0b; }",
     ".report-cover-brand { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; position: relative; z-index: 1; }",
     ".report-cover-logo { display: block; width: 280px; max-width: 46%; height: auto; }",
     ".report-cover-kicker { color: #0f766e; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }",
@@ -99,10 +98,9 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     ".frequency-plot-card h4, .correlation-plot-card h4, .residual-plot-card h4 { margin: 0 0 8px; font-size: 15px; color: #15233a; }",
     ".frequency-plot-card img { display: block; width: 420px; height: 320px; }",
     ".correlation-plot-card img { display: block; width: 720px; height: 520px; max-width: 100%; }",
-    ".print-page-date, .print-page-file { display: none; }",
     "@media print {",
-    "  @page { size: A4 portrait; margin: 12mm; }",
-    "  @page easyflow-landscape { size: A4 landscape; margin: 10mm; }",
+    "  @page { size: A4 portrait; margin: 12mm; @bottom-right { content: counter(page) '/' counter(pages); color: #627d98; font-size: 8pt; } }",
+    "  @page easyflow-landscape { size: A4 landscape; margin: 10mm; @bottom-right { content: counter(page) '/' counter(pages); color: #627d98; font-size: 8pt; } }",
     "  * { box-sizing: border-box; }",
     "  body { margin: 0 !important; color: #000000; font-size: 10.5pt; }",
     "  .page-shell { width: 100%; max-width: 186mm !important; margin: 0 auto !important; padding: 0 !important; }",
@@ -110,7 +108,6 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     "  h1 { font-size: 18pt; margin: 0 0 8pt; }",
     "  .report-cover { min-height: 245mm; margin: 0 !important; padding: 16mm 14mm 12mm !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; break-after: page; page-break-after: always; }",
     "  .report-cover::before { width: 3mm !important; }",
-    "  .report-cover::after { right: 14mm !important; top: 42mm !important; width: 34mm !important; height: 1.2mm !important; }",
     "  .report-cover-logo { width: 72mm !important; max-width: 72mm !important; }",
     "  .report-cover-main { padding-top: 36mm !important; }",
     "  .report-cover-title { font-size: 28pt !important; margin: 4mm 0 5mm !important; }",
@@ -118,8 +115,6 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     "  .report-cover-meta { font-size: 9.5pt !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }",
     "  .report-cover-footer { font-size: 8.5pt !important; }",
     "  .report-body-heading { display: none !important; }",
-    "  .print-page-date { display: block !important; position: fixed; top: -8mm; right: 0; color: #627d98; font-size: 8pt; z-index: 1000; }",
-    "  .print-page-file { display: block !important; position: fixed; left: 0; bottom: -8mm; color: #627d98; font-size: 8pt; z-index: 1000; }",
     "  .saved-results-meta { font-size: 8.5pt; margin-bottom: 10pt; }",
     "  .regression-result-panel, .result-section.regression-result-panel { width: 100% !important; max-width: 100% !important; overflow: visible !important; padding: 8pt 0 !important; border-left: 0 !important; border-right: 0 !important; border-radius: 0 !important; break-inside: auto; page-break-inside: auto; }",
     "  .regression-results > .regression-result-panel:has(table) { break-before: page; page-break-before: always; }",
@@ -215,8 +210,6 @@ saved_results_document <- function(title, content, max_width = 1280, css_path = 
   body_content <- if (isTRUE(report_mode)) {
     div(
       class = "page-shell",
-      div(saved_time, class = "print-page-date"),
-      div("", class = "print-page-file"),
       div(
         class = "report-cover",
         div(
@@ -263,16 +256,7 @@ saved_results_document <- function(title, content, max_width = 1280, css_path = 
       tags$meta(charset = "UTF-8"),
       tags$title(title),
       tags$style(htmltools::HTML(css)),
-      tags$style(htmltools::HTML(inline_css)),
-      if (isTRUE(report_mode)) tags$script(htmltools::HTML(
-        "document.addEventListener('DOMContentLoaded', function() {
-  var el = document.querySelector('.print-page-file');
-  if (!el) return;
-  var path = decodeURIComponent(window.location.pathname || '');
-  var parts = path.split(/[\\\\/]/).filter(Boolean);
-  el.textContent = parts.length ? parts[parts.length - 1] : document.title;
-});"
-      ))
+      tags$style(htmltools::HTML(inline_css))
     ),
     tags$body(
       class = if (isTRUE(print_landscape)) "print-mixed-landscape" else "print-portrait",

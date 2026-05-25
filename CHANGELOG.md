@@ -8,6 +8,7 @@
 - Refined principal component analysis setup controls for matrix choice, cumulative-variance component selection, and aligned component-selection number fields.
 - Improved factor analysis diagnostics table styling and finalized the KMO / Bartlett summary row placement.
 - Kept all five analysis save controls visible in development builds and added PDF / Add result coverage for the remaining analysis modules.
+- Removed PDF cover decoration and internal filename/date print labels, and added bottom-right page numbering.
 
 
 ## v0.9.1 - 2026-05-24
