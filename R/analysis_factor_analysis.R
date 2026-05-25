@@ -407,7 +407,7 @@ factor_analysis_loading_suitability_row <- function(result, table) {
     start_column = start_column,
     end_column = end_column,
     value = row[[start_column]],
-    style = "border-top:1px solid #1f2937;text-align:center;",
+    style = "border-top:2px solid #1f2937;text-align:center;",
     stringsAsFactors = FALSE
   )
   out
@@ -429,7 +429,7 @@ factor_analysis_loading_summary_styles <- function(table) {
         if (identical(row_index, start)) {
           "border-top:2px solid #1f2937;"
         } else if (row_index %in% spanning_rows) {
-          "border-top:1px solid #1f2937;"
+          "border-top:2px solid #1f2937;"
         } else {
           ""
         },

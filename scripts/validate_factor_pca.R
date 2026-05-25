@@ -151,7 +151,7 @@ expect_true(grepl("font-weight:700", factor_all_html, fixed = TRUE), "Expected l
 expect_true(grepl("colspan=", factor_all_html, fixed = TRUE), "Expected factor loading diagnostics row to merge KMO/Bartlett cells")
 expect_true(grepl("text-align:center", factor_all_html, fixed = TRUE), "Expected merged diagnostics row to be center aligned")
 expect_true(grepl("KMO=", factor_all_html, fixed = TRUE), "Expected merged diagnostics row to include KMO label")
-expect_true(grepl("border-top:1px solid #1f2937", factor_all_html, fixed = TRUE), "Expected merged diagnostics row to have a top border")
+expect_true(grepl("border-top:2px solid #1f2937", factor_all_html, fixed = TRUE), "Expected merged diagnostics row to have a visible top border")
 factor_all_spans <- attr(factor_all_loadings$loadings_table, "spanning_cells", exact = TRUE)
 expect_true(
   is.data.frame(factor_all_spans) &&
