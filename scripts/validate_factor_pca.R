@@ -417,7 +417,18 @@ pca_result <- prepare_pca_results(
   )
 )
 expect_true(pca_result$n_components >= 1, "Expected at least one PCA component")
-expect_true(is.data.frame(pca_result$loadings_table) && nrow(pca_result$loadings_table) == ncol(data), "Expected PCA loading table")
+expect_true(is.data.frame(pca_result$loadings_table) && nrow(pca_result$loadings_table) == ncol(data) + 4, "Expected PCA loading table with summary rows")
+expect_true("h²" %in% names(pca_result$loadings_table), "Expected PCA loading table to use h²")
+expect_true("Complexity" %in% names(pca_result$loadings_table), "Expected PCA loading table to include complexity")
+expect_true(!"Uniqueness" %in% names(pca_result$loadings_table), "Expected PCA loading table to omit uniqueness")
+expect_true(!any(c("Reliability", "Reliability if deleted", "Item-total r") %in% names(pca_result$loadings_table)), "Expected PCA loading table to omit reliability columns")
+expect_true(
+  identical(tail(as.character(pca_result$loadings_table$Variable), 4), c("Eigenvalue", "Variance %", "Cumulative variance %", "")),
+  "Expected PCA loading table to include factor-style summary rows"
+)
+pca_table_html <- as.character(htmltools::renderTags(coefficient_html_table(pca_result$loadings_table))$html)
+expect_true(grepl("KMO=", pca_table_html, fixed = TRUE), "Expected PCA loading table to include KMO diagnostics")
+expect_true(grepl("colspan=", pca_table_html, fixed = TRUE), "Expected PCA diagnostics row to merge loading columns")
 expect_true(is.data.frame(pca_result$variance_table) && nrow(pca_result$variance_table) > 0, "Expected PCA variance table")
 expect_true(is.data.frame(pca_result$eigen_table) && nrow(pca_result$eigen_table) == ncol(data), "Expected PCA eigenvalue table")
 pca_saved_scores <- pca_saved_score_outputs(pca_result, base_name = "PA")

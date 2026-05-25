@@ -15,9 +15,9 @@ pca_plot_size <- function(result, base = 640, per_variable = 18, max_size = 980)
 
 pca_loading_note <- function(result) {
   if (isTRUE(result$options$hide_small_loadings %||% TRUE)) {
-    "Loadings with absolute values below .30 are hidden. Communality is the variance explained by the retained components."
+    "Loadings with absolute values below .30 are hidden. Variables are sorted by primary component and descending absolute loading. h² is communality, and complexity summarizes cross-loading pattern. Eigenvalue, variance %, cumulative variance %, and KMO/Bartlett diagnostics are shown at the bottom of the loading matrix."
   } else {
-    "All loadings are shown; loadings with absolute values of .30 or higher are bold. Communality is the variance explained by the retained components."
+    "All loadings are shown; loadings with absolute values of .30 or higher are bold. h² is communality, and complexity summarizes cross-loading pattern. Eigenvalue, variance %, cumulative variance %, and KMO/Bartlett diagnostics are shown at the bottom of the loading matrix."
   }
 }
 

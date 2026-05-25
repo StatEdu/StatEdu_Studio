@@ -90,6 +90,7 @@ pca_loading_table <- function(result, cutoff = 0.30) {
     return(NULL)
   }
   hide_small_loadings <- isTRUE(result$options$hide_small_loadings %||% TRUE)
+  highlight_problem_values <- isTRUE(result$options$highlight_problem_values %||% TRUE)
   sort_loadings <- isTRUE(result$options$sort_loadings %||% TRUE)
   loading_abs <- abs(loadings)
   primary_component <- max.col(loading_abs, ties.method = "first")
@@ -98,69 +99,54 @@ pca_loading_table <- function(result, cutoff = 0.30) {
     row_order <- order(primary_component, -primary_loading, rownames(loadings), na.last = TRUE)
     loadings <- loadings[row_order, , drop = FALSE]
     loading_abs <- abs(loadings)
-    primary_component <- primary_component[row_order]
-    primary_loading <- primary_loading[row_order]
+    primary_component <- max.col(loading_abs, ties.method = "first")
+    primary_loading <- loading_abs[cbind(seq_len(nrow(loading_abs)), primary_component)]
   }
   components <- colnames(loadings)
   table <- data.frame(Variable = result$display_names[rownames(loadings)], check.names = FALSE)
-  for (component in components) {
+  for (component_index in seq_along(components)) {
+    component <- components[[component_index]]
     table[[component]] <- vapply(seq_len(nrow(loadings)), function(row_index) {
-      value <- loadings[row_index, component]
-      low_primary <- primary_component[[row_index]] == match(component, components) && is.finite(primary_loading[[row_index]]) && primary_loading[[row_index]] < cutoff
+      value <- loadings[row_index, component_index]
+      low_primary <- isTRUE(highlight_problem_values) &&
+        primary_component[[row_index]] == component_index &&
+        is.finite(primary_loading[[row_index]]) &&
+        primary_loading[[row_index]] < cutoff
       if (!is.finite(value) || (isTRUE(hide_small_loadings) && abs(value) < cutoff && !isTRUE(low_primary))) "" else format_decimal3(value)
     }, character(1))
   }
-  table$Communality <- vapply(result$communality[rownames(loadings)], format_decimal3, character(1))
-  table$Uniqueness <- vapply(result$uniqueness[rownames(loadings)], format_decimal3, character(1))
+  table$`h²` <- vapply(result$communality[rownames(loadings)], format_decimal3, character(1))
+  table$Complexity <- vapply(result$complexity[rownames(loadings)], format_decimal3, character(1))
+  cell_styles <- factor_analysis_problem_cell_styles(result, rownames(loadings), table, loadings, cutoff = cutoff)
   if (!isTRUE(hide_small_loadings)) {
     bold_cells <- do.call(rbind, lapply(seq_along(components), function(column_index) {
-      rows <- which(loading_abs[, column_index] >= cutoff)
+      rows <- which(abs(loadings[, components[[column_index]]]) >= cutoff)
       if (length(rows) == 0) {
         return(NULL)
       }
       data.frame(row = rows, column = components[[column_index]], stringsAsFactors = FALSE)
     }))
-    if (is.data.frame(bold_cells) && nrow(bold_cells) > 0) {
-      attr(table, "bold_cells") <- bold_cells
-    }
+    attr(table, "bold_cells") <- bold_cells
   }
-  if (isTRUE(result$options$highlight_problem_values %||% TRUE)) {
-    problem_style <- "color:#991b1b;font-weight:700;background:#fee2e2;"
-    cell_styles <- list()
-    low_primary_rows <- which(is.finite(primary_loading) & primary_loading < cutoff)
-    if (length(low_primary_rows) > 0) {
-      cell_styles[[length(cell_styles) + 1L]] <- data.frame(
-        row = low_primary_rows,
-        column = components[primary_component[low_primary_rows]],
-        style = problem_style,
-        stringsAsFactors = FALSE
-      )
-    }
-    communality <- result$communality[rownames(loadings)]
-    low_communality_rows <- which(is.finite(communality) & communality < 0.40)
-    if (length(low_communality_rows) > 0) {
-      cell_styles[[length(cell_styles) + 1L]] <- data.frame(
-        row = low_communality_rows,
-        column = "Communality",
-        style = problem_style,
-        stringsAsFactors = FALSE
-      )
-    }
-    cross_loading_rows <- do.call(rbind, lapply(seq_len(nrow(loadings)), function(row_index) {
-      columns <- which(is.finite(loading_abs[row_index, ]) & loading_abs[row_index, ] >= cutoff & seq_len(ncol(loadings)) != primary_component[[row_index]])
-      if (length(columns) == 0) {
-        return(NULL)
-      }
-      data.frame(row = row_index, column = components[columns], style = problem_style, stringsAsFactors = FALSE)
-    }))
-    if (is.data.frame(cross_loading_rows) && nrow(cross_loading_rows) > 0) {
-      cell_styles[[length(cell_styles) + 1L]] <- cross_loading_rows
-    }
-    if (length(cell_styles) > 0) {
-      attr(table, "cell_styles") <- do.call(rbind, cell_styles)
-    }
-  }
+  table <- factor_analysis_append_loading_summary_rows(result, table, components)
+  summary_styles <- factor_analysis_loading_summary_styles(table)
+  attr(table, "cell_styles") <- rbind(cell_styles, summary_styles)
   table
+}
+
+pca_loading_complexity <- function(loadings, fit = NULL) {
+  fit_complexity <- fit$complexity %||% NULL
+  if (!is.null(fit_complexity) && length(fit_complexity) == nrow(loadings)) {
+    complexity <- suppressWarnings(as.numeric(fit_complexity))
+    names(complexity) <- rownames(loadings)
+    return(complexity)
+  }
+  loading_square <- loadings^2
+  numerator <- rowSums(loading_square, na.rm = TRUE)^2
+  denominator <- rowSums(loading_square^2, na.rm = TRUE)
+  complexity <- ifelse(is.finite(denominator) & denominator > 0, numerator / denominator, NA_real_)
+  names(complexity) <- rownames(loadings)
+  complexity
 }
 
 pca_variance_table <- function(result) {
@@ -291,6 +277,7 @@ prepare_pca_results <- function(data, variables, variable_info = NULL, labels = 
     loadings = loadings,
     communality = fit$communality,
     uniqueness = fit$uniquenesses,
+    complexity = pca_loading_complexity(loadings, fit),
     scores = scores,
     suitability = suitability,
     options = options,
