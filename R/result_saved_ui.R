@@ -250,6 +250,7 @@ saved_results_document <- function(title, content, max_width = 1280, css_path = 
     cover_meta_items,
     list(
       div(class = "report-cover-meta-item", span("Saved", class = "report-cover-meta-label"), span(saved_time, class = "report-cover-meta-value")),
+      div(class = "report-cover-meta-item", span("Output date", class = "report-cover-meta-label"), span(saved_time, class = "report-cover-meta-value")),
       div(class = "report-cover-meta-item", span("Application", class = "report-cover-meta-label"), span("EasyFlow Statistics", class = "report-cover-meta-value"))
     )
   )
