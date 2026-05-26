@@ -150,9 +150,24 @@ stopifnot(is.factor(group_result))
 stopifnot(identical(is.na(group_result), c(FALSE, TRUE, FALSE, FALSE, FALSE)))
 
 message("Checking formula-based variable transformation helpers...")
+stopifnot(identical(transform_quote_variable("q1"), "q1"))
+stopifnot(identical(transform_quote_variable("q 1"), "`q 1`"))
+stopifnot(identical(transform_template_expression("row_mean", c("q1", "q2")), "row_mean(q1, q2)"))
+stopifnot(identical(transform_template_expression("row_sum", c("q 1", "q-2")), "row_sum(`q 1`, `q-2`)"))
+stopifnot(identical(transform_template_expression("reverse_1_5", "q1"), "6 - q1"))
+stopifnot(identical(transform_template_expression("high_low_mean", "score"), "if_else(score >= mean(score, na.rm = TRUE), 'high', 'low')"))
+displayed_functions <- unique(unlist(transform_function_groups(), use.names = FALSE))
+stopifnot(all(displayed_functions %in% names(transform_allowed_functions())))
+stopifnot(identical(transform_function_template("row_mean", c("q1", "q2")), "row_mean(q1, q2)"))
+stopifnot(identical(transform_function_template("round", "score"), "round(score, 2)"))
+stopifnot(identical(transform_function_template("if_else", "score"), "if_else(score >= 0, 'yes', 'no')"))
+stopifnot(identical(transform_function_template("paste0", c("group", "id")), "paste0(group, '_', id)"))
+stopifnot(identical(transform_function_template("today"), "today()"))
 transform_data <- data.frame(
   x = c(1, 2, 3),
   y = c(10, 20, 30),
+  `q 1` = c(2, 4, 6),
+  `q-2` = c(1, 3, 5),
   txt = c("a", "b", "c"),
   start = as.Date(c("2026-01-01", "2026-01-02", "2026-01-03")),
   end = as.Date(c("2026-01-03", "2026-01-05", "2026-01-07")),
@@ -174,6 +189,8 @@ date_result <- transform_eval_expression(transform_data, "date_diff(end, start)"
 stopifnot(identical(date_result, c(2, 3, 4)))
 stats_result <- transform_eval_expression(transform_data, "row_mean(x, y)")
 stopifnot(identical(stats_result, c(5.5, 11, 16.5)))
+quoted_result <- transform_eval_expression(transform_data, "row_sum(`q 1`, `q-2`)")
+stopifnot(identical(quoted_result, c(3, 7, 11)))
 blocked <- tryCatch({
   transform_eval_expression(transform_data, "system('whoami')")
   FALSE
