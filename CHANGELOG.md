@@ -74,7 +74,7 @@
 - Kept factor analysis and principal component analysis out of Add result until their final Result table format is decided.
 
 
-## v0.8.12 - 2026-05-23
+## v0.8.12
 
 ### Changed
 
@@ -83,13 +83,13 @@
 - Added validation coverage for factor analysis and PCA calculations and exports.
 
 
-## v0.8.11 - 2026-05-23
+## v0.8.11
 
 ### Changed
 
 - Restored the navbar brand to use the horizontal EasyFlow Statistics logo image instead of composing the logo from an icon and HTML text.
 
-## v0.8.10 - 2026-05-23
+## v0.8.10
 
 ### Changed
 
@@ -102,7 +102,7 @@
 - Added formula-based variable transformation for creating new variables from numeric, text, statistical, date, and conditional expressions.
 - Reorganized Data Editor commands and consolidated recoding into a single Recode variable workflow with same-variable and new-variable targets.
 
-## v0.8.7 - 2026-05-22
+## v0.8.7
 
 ### Changed
 
@@ -112,7 +112,7 @@
 - Narrowed compact hierarchical regression statistic columns for easier table scanning.
 
 
-## v0.8.6 - 2026-05-21
+## v0.8.6
 
 ### Changed
 
@@ -121,7 +121,7 @@
 - Kept Step 3 review controls consistent with the current Data workflow layout.
 
 
-## v0.8.4 - 2026-05-20
+## v0.8.4
 
 ### Changed
 
@@ -130,7 +130,7 @@
 - Preserved source variable measurement levels when automatic reverse coding creates new variables or overwrites existing variables.
 
 
-## v0.8.3 - 2026-05-20
+## v0.8.3
 
 ### Changed
 
@@ -142,7 +142,7 @@
 - Restored transfer-list multi-selection behavior for Ctrl / Shift / Ctrl+A while preserving stable Shiny input synchronization.
 
 
-## v0.8.2 - 2026-05-20
+## v0.8.2
 
 ### Changed
 
@@ -151,7 +151,7 @@
 - Refined the t-test / ANOVA option panel spacing so post-hoc and effect-size controls fit within the setup panel.
 - Added same-variable recoding support in the Data editor.
 
-## v0.8.1 - 2026-05-19
+## v0.8.1
 
 ### Changed
 
@@ -161,7 +161,7 @@
 - Updated paired-test layout sizing and Data tab branding.
 
 
-## v0.8.0 - 2026-05-19
+## v0.8.0
 
 ### Changed
 
@@ -171,7 +171,7 @@
 - Updated regression and hierarchical regression block handling so empty leading blocks are compacted before running models.
 
 
-## v0.7.11 - 2026-05-19
+## v0.7.11
 
 ### Changed
 
@@ -183,7 +183,7 @@
 - Added validation coverage for t-test / ANOVA note rendering and expanded Cross-tabulation validation coverage.
 
 
-## v0.7.10 - 2026-05-18
+## v0.7.10
 
 ### Changed
 
@@ -193,7 +193,7 @@
 - Added validation coverage for cross-tabulation statistics, rendering, variable ordering, and export helpers.
 
 
-## v0.7.9 - 2026-05-18
+## v0.7.9
 
 ### Changed
 
@@ -203,7 +203,7 @@
 - Added calculator validation coverage for HINT8, EQ-5D, metabolic syndrome, FRS, ASCVD10, and metabolic severity.
 
 
-## v0.7.7 - 2026-05-18
+## v0.7.7
 
 ### Changed
 
@@ -211,13 +211,13 @@
 - Kept the HINT8 setup panels visible after loading data even when no ordered variables are available.
 - Tightened HINT8 initial-value panel spacing.
 
-## v0.7.6 - 2026-05-18
+## v0.7.6
 
 ### Changed
 
 - Changed the EQ-5D calculator initial values display from a long reference list to a compact dimension-by-level matrix.
 
-## v0.7.5 - 2026-05-18
+## v0.7.5
 
 ### Changed
 
@@ -228,7 +228,7 @@
 - Standardized regression and hierarchical regression save-button layout and enabled sr2, f2, and VIF options by default.
 - Fixed repeated save-dialog prompts after canceling and reduced analysis menu tab activation errors.
 
-## v0.7.4 - 2026-05-18
+## v0.7.4
 
 ### Changed
 
@@ -237,7 +237,7 @@
 - Improved nested menu handling so Analysis and Calculator submenus use normal Shiny tab activation.
 - Reduced analysis setup delays by avoiding unnecessary Data Step 3 table flushing and repeated variable-info summaries during menu navigation.
 
-## v0.7.3 - 2026-05-17
+## v0.7.3
 
 ### Changed
 
@@ -247,7 +247,7 @@
 - Standardized result table note rendering so notes match the table width across analysis outputs.
 
 
-## v0.7.2 - 2026-05-17
+## v0.7.2
 
 ### Changed
 
@@ -256,14 +256,14 @@
 - Adjusted Reliability list sizing, result-table widths, and header alignment.
 
 
-## v0.7.1 - 2026-05-17
+## v0.7.1
 
 ### Changed
 
 - Refined Paired test (3+) repeated-measures labels, grouped result headers, post-hoc notes, and effect-size annotations.
 - Standardized analysis transfer-list heights and transfer-button alignment across Reliability, Frequencies, Paired test, t-test/ANOVA, Correlation, Regression, and Hierarchical workflows.
 
-## v0.7.0 - 2026-05-17
+## v0.7.0
 
 ### Added
 
@@ -276,7 +276,7 @@
 - Adjusted paired test selection panels to use grouped repeated-measures rows and more compact target list heights.
 
 
-## v0.6.8 - 2026-05-17
+## v0.6.8
 
 ### Added
 
@@ -285,21 +285,21 @@
 - Added HTML and Excel export support for paired test tables and assumption-check notes.
 
 
-## v0.6.7 - 2026-05-17
+## v0.6.7
 
 ### Changed
 
 - Re-centered analysis transfer buttons by removing the shared downward offset and aligning the two-button regression/t-test layouts to their target block rows.
 
 
-## v0.6.6 - 2026-05-17
+## v0.6.6
 
 ### Changed
 
 - Regression and hierarchical regression now display categorical coefficients as `variable:level` and include the default reference row even when no explicit reference value is set in the Data tab.
 
 
-## v0.6.5 - 2026-05-17
+## v0.6.5
 
 ### Changed
 
@@ -307,14 +307,14 @@
 - Restored the hierarchical regression save-button placement to the 0.5.7 action-row position.
 
 
-## v0.6.4 - 2026-05-17
+## v0.6.4
 
 ### Changed
 
 - Applied significance-level stars to the correlation coefficient matrix when the significance levels option is selected.
 
 
-## v0.6.3 - 2026-05-17
+## v0.6.3
 
 ### Changed
 
@@ -323,7 +323,7 @@
 - Moved the hierarchical regression save-button block back under the third setup block.
 
 
-## v0.6.2 - 2026-05-17
+## v0.6.2
 
 ### Changed
 
@@ -331,14 +331,14 @@
 - Re-aligned analysis variable-transfer buttons after the shared setup-panel geometry changes.
 
 
-## v0.6.1 - 2026-05-17
+## v0.6.1
 
 ### Changed
 
 - Fixed measurement-level propagation so Step 3 variable type changes are applied immediately in Reliability, Frequencies, t-test/ANOVA, Correlation, Regression, and Hierarchical setup lists.
 
 
-## v0.6.0 - 2026-05-17
+## v0.6.0
 
 ### Changed
 
@@ -348,7 +348,7 @@
 - Added `psych` as the reliability-analysis engine for alpha, omega, and polychoric-based ordinal coefficients.
 
 
-## v0.5.7 - 2026-05-17
+## v0.5.7
 
 ### Changed
 
@@ -358,7 +358,7 @@
 - Tuned hierarchical regression result table column widths and padding for wide three-model outputs with effect-size columns.
 
 
-## v0.5.6 - 2026-05-16
+## v0.5.6
 
 ### Changed
 
@@ -369,7 +369,7 @@
 - Standardized setup panel block geometry for non-hierarchical analysis tabs.
 
 
-## v0.5.5 - 2026-05-16
+## v0.5.5
 
 ### Changed
 
@@ -379,7 +379,7 @@
 - Updated local run package requirements for newly used analysis dependencies.
 
 
-## v0.5.4 - 2026-05-16
+## v0.5.4
 
 ### Changed
 
@@ -390,7 +390,7 @@
 - Refined hierarchical regression table spacing, separator lines, and chi-square statistic labeling.
 
 
-## v0.5.2 - 2026-05-14
+## v0.5.2
 
 ### Changed
 
@@ -400,7 +400,7 @@
 - Added and refined EasyFlow Statistics logo concept SVG assets.
 
 
-## v0.5.1 - 2026-05-14
+## v0.5.1
 
 ### Changed
 
@@ -411,7 +411,7 @@
 - Updated citation metadata for EasyFlow Statistics.
 
 
-## v0.5.0 - 2026-05-11
+## v0.5.0
 
 ### Added
 
@@ -425,7 +425,7 @@
 - Grouped count models as Poisson / Negative binomial / Zero-inflated and retained Gamma for positive continuous outcomes.
 - Updated Generalized reporting options to use exp(B) as IRR / ratio.
 
-## v0.4.1 - 2026-05-11
+## v0.4.1
 
 ### Changed
 
@@ -435,7 +435,7 @@
 
 - Fixed empty VIF warning text handling that could show `missing value where TRUE/FALSE needed`.
 
-## v0.4.0 - 2026-05-11
+## v0.4.0
 
 ### Added
 
@@ -456,7 +456,7 @@
 - Fixed settings save errors when no categorical variables are selected.
 - Prevented blank measurement names from being stored in measurement overrides.
 
-## v0.3.1 - 2026-05-11
+## v0.3.1
 
 ### Changed
 
@@ -466,7 +466,7 @@
 - Displayed dependent variables by label only when labels exist, otherwise by variable name.
 - Displayed effect size guidelines once after the coefficient tables.
 
-## v0.2.0 - 2026-05-11
+## v0.2.0
 
 ### Added
 
@@ -489,14 +489,14 @@
 - Fixed saved settings loading and propagation of variable labels, measurements, references, and value labels across steps.
 - Fixed bootstrap stop handling and progress display placement.
 
-## v0.1.2 - 2026-05-11
+## v0.1.2
 
 ### Added
 
 - Added Up/Down controls under Dependent Variables in the regression setup screen.
 - Preserved dependent variable order in saved settings and summary displays.
 
-## v0.1.1 - 2026-05-11
+## v0.1.1
 
 ### Fixed
 
@@ -504,7 +504,7 @@
 - Changed the Step 3 apply button to submit the current DataTables checkbox state.
 - Preserved and synced `var_label`, `reference`, `value`, and `label` edits while DataTables redraws.
 
-## v0.1.0 - 2026-05-08
+## v0.1.0
 
 ### Added
 
