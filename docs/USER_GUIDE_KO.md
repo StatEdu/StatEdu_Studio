@@ -1,15 +1,100 @@
-# EasyFlow Statistics 사용자 안내서
+# **EasyFlow Statistics** 사용자 안내서
 
-이 문서는 EasyFlow Statistics의 설치, 실행, 사용 방법을 설명합니다.
+이 문서는 **EasyFlow Statistics** 0.9.8을 실제로 사용하는 절차를 설명합니다. 앱 실행, 데이터 열기, 변수 선택, 분석 실행, 결과 저장처럼 사용자가 화면에서 따라 해야 하는 작업 흐름을 다룹니다. 구현된 분석 기법 목록은 `ANALYSIS_METHODS_KO.md`, 방법 선택 기준과 해석상 주의점은 `METHOD_NOTES_KO.md`를 참고합니다.
 
-## 실행
+## 1. 앱 실행
 
-`EasyFlow_Statistics.bat`을 더블클릭합니다.
+**EasyFlow Statistics**는 Windows PC에서 로컬로 실행되는 Shiny 앱입니다. 데이터는 사용자의 PC에서 분석되며 외부 서버로 전송되지 않습니다.
 
-## 데이터
+1. **EasyFlow Statistics** 폴더를 엽니다.
+2. `EasyFlow_Statistics.bat`을 더블클릭합니다.
+3. 브라우저가 열리면 `127.0.0.1:7894` 주소에서 앱을 사용합니다.
 
-현재 프로토타입은 CSV 파일을 지원합니다.
+같은 포트에서 이전 **EasyFlow Statistics** 세션이 실행 중이면 런처가 해당 세션을 정리한 뒤 새 세션을 시작합니다.
 
-## 분석
+![데이터 작업 흐름](assets/user-guide/data-workflow.png)
 
-종속변수와 독립변수를 선택한 뒤 분석을 실행합니다.
+## 2. 데이터 열기
+
+Data 메뉴에서 SPSS SAV, Excel, CSV, DAT 파일을 불러옵니다. 파일을 연 뒤에는 원자료 표, 변수명, 변수 라벨, 값 라벨을 확인합니다.
+
+데이터를 불러온 직후에는 다음을 먼저 확인하는 것이 좋습니다.
+
+- 변수명이 분석에 사용할 수 있는 형태인지 확인합니다.
+- 값 라벨이 의도한 범주와 맞는지 확인합니다.
+- 결측값 코드가 실제 결측으로 처리되어야 하는지 확인합니다.
+- 숫자로 저장된 범주형 변수의 measurement level을 확인합니다.
+
+## 3. 데이터 편집과 전처리
+
+Data Editor 메뉴에는 분석 전 정리 작업을 위한 기능이 모여 있습니다.
+
+![데이터 편집 메뉴](assets/user-guide/data-editor-menu.png)
+
+주요 기능은 다음과 같습니다.
+
+- Auto Coding Error Check: 범위 밖 값이나 정수로 입력되어야 하는 변수의 오류를 확인합니다.
+- Auto Likert Conversion: 텍스트 Likert 응답을 숫자형 점수로 변환합니다.
+- Auto Missing Values: 결측값으로 보이는 코드를 찾아 `NA`로 처리합니다.
+- Auto Reverse Coding: 역문항을 새 변수로 생성합니다.
+- Auto Variable Calculation: 여러 변수의 행 단위 합계나 평균을 계산합니다.
+- Variable Transformation: 빠른 공식 또는 사용자 식으로 새 변수를 만듭니다.
+- Recode Variable: 기존 값을 다른 값으로 재코딩합니다.
+- Rename Variable: 변수명과 라벨을 정리합니다.
+
+## 4. 변수 속성 확인
+
+분석 전 Step 3에서 measurement level을 반드시 확인합니다. **EasyFlow Statistics**는 measurement level을 바탕으로 가능한 분석 방법을 자동 또는 반자동으로 선택합니다.
+
+- `continuous`: 평균 비교, 상관, 회귀 등에 사용합니다.
+- `ordered`: 순서형 범주 또는 ordinal 문항으로 사용합니다.
+- `binary`: 두 수준의 범주형 변수로 사용합니다.
+- `category`: 순서가 없는 범주형 변수로 사용합니다.
+
+## 5. 분석 메뉴 사용
+
+Analysis 메뉴에서 분석 종류를 선택합니다.
+
+![분석 메뉴](assets/user-guide/analysis-menu.png)
+
+분석 화면의 기본 흐름은 대체로 같습니다.
+
+1. 왼쪽 변수 목록에서 변수를 선택합니다.
+2. 종속변수, 독립변수, 그룹 변수, 반복측정 변수 등 필요한 영역으로 변수를 이동합니다.
+3. 옵션을 선택합니다.
+4. Run 버튼으로 분석을 실행합니다.
+5. 결과표, 경고, skipped analyses 또는 skipped models를 확인합니다.
+
+![t-test와 ANOVA 화면](assets/user-guide/ttest-anova-screen.png)
+
+## 6. 결과 확인
+
+Result 탭에서는 실행한 분석 결과를 모아 봅니다. 결과는 분석별 표, 경고, 진단 결과, 저장 옵션으로 구성됩니다.
+
+![결과 탭](assets/user-guide/result-tab.png)
+
+결과를 해석할 때는 p 값만 보지 말고 다음을 함께 확인합니다.
+
+- 어떤 분석 방법이 선택되었는가
+- Warnings가 있는가
+- Skipped analyses 또는 skipped models가 있는가
+- 효과크기와 신뢰구간이 결론과 같은 방향인가
+- 표본 수와 결측 처리 방식이 충분한가
+
+## 7. 결과 저장
+
+Result 탭에서 HTML, PDF, Excel, Word 형식으로 저장할 수 있습니다. 저장 결과에는 화면에 표시된 분석표와 주요 경고가 포함됩니다.
+
+보고서나 논문에 사용할 때는 저장된 표를 그대로 붙이기보다, 분석 방법과 가정 진단 결과를 함께 서술하는 것이 좋습니다.
+
+## 8. About과 문서
+
+About 메뉴에는 순수 About 정보와 문서가 분리되어 있습니다.
+
+![About 메뉴](assets/user-guide/about-menu.png)
+
+- About: 버전, 개발자, 이메일, 실행 환경, 인용 정보를 확인합니다.
+- Overview: 프로젝트 개요, R 버전, 사용 R 패키지 정보를 확인합니다.
+- User Guide: 실제 앱 조작 절차를 확인합니다.
+- Analysis Methods: 구현된 분석 메뉴와 출력 항목을 확인합니다.
+- Method Notes: 기준값, 가정 진단, 참고문헌, 해석상 주의점을 확인합니다.

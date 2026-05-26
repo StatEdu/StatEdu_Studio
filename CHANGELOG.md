@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.9.8 - 2026-05-26
+
+### Changed
+
+- Added the About menu with Overview, User Guide, Analysis Methods, Method Notes, and application information pages.
+- Expanded Korean documentation for user guidance, implemented analysis methods, method notes, package/runtime overview, criteria, and references.
+- Clarified regression residual homoscedasticity wording and cross-tabulation trend method labels.
+- Added 20,000 as a documented bootstrap resampling option and kept 50,000 as the recommended option.
+- Standardized documentation naming so **EasyFlow Statistics** is written in full and emphasized consistently.
+
 ## v0.9.7 - 2026-05-26
 
 ### Changed

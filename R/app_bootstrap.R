@@ -12,6 +12,7 @@ required_packages <- c(
   "haven",
   "readr",
   "htmltools",
+  "markdown",
   "openxlsx",
   "officer",
   "flextable",

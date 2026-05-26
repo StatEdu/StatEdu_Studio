@@ -27,7 +27,7 @@ crosstab_test_table <- function(result) {
 crosstab_notes_ui <- function(result) {
   notes <- c(result$association$note)
   if (!is.null(result$trend)) {
-    notes <- c(notes, "Trend analysis was added as Armitage trend analysis.")
+    notes <- c(notes, crosstab_trend_note_text(crosstab_trend_note_key(result)))
   }
   if (nzchar(as.character(result$trend_note %||% ""))) {
     notes <- c(notes, result$trend_note)
@@ -234,7 +234,7 @@ crosstab_trend_note_text <- function(key) {
     key,
     "trend:cochran_armitage" = "Cochran-Armitage trend test was used for p for trend.",
     "trend:ordered_score" = "Score-based ordered-by-ordered trend association was used for p for trend.",
-    "Armitage trend analysis was used for p for trend."
+    "Trend analysis was used for p for trend."
   )
 }
 

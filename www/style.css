@@ -5638,3 +5638,148 @@ pre {
   height: 720px;
   width: 100%;
 }
+
+.about-workspace-panel {
+  padding-top: 12px;
+}
+
+.about-application-document {
+  color: #15233a;
+  font-size: 16px;
+  line-height: 1.7;
+  max-width: 900px;
+}
+
+.about-application-document h2 {
+  color: #102a43;
+  font-size: 32px;
+  line-height: 1.2;
+  margin: 0 0 10px;
+}
+
+.about-application-document h3 {
+  border-top: 1px solid #e6edf3;
+  color: #243b53;
+  font-size: 21px;
+  line-height: 1.3;
+  margin: 28px 0 10px;
+  padding-top: 18px;
+}
+
+.about-info-grid {
+  border-top: 1px solid #d9e2ec;
+  margin-top: 18px;
+}
+
+.about-info-row {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  border-bottom: 1px solid #d9e2ec;
+  min-height: 48px;
+}
+
+.about-info-label {
+  background: #f7fafc;
+  color: #34495e;
+  font-weight: 700;
+  padding: 12px 14px;
+}
+
+.about-info-value {
+  color: #15233a;
+  padding: 12px 14px;
+  overflow-wrap: anywhere;
+}
+
+.about-info-value a,
+.about-application-document a {
+  color: #0f766e;
+  font-weight: 700;
+}
+
+.about-markdown-document {
+  color: #15233a;
+  font-size: 16px;
+  line-height: 1.72;
+  max-width: 1000px;
+}
+
+.about-markdown-document h1 {
+  color: #102a43;
+  font-size: 32px;
+  line-height: 1.2;
+  margin: 0 0 20px;
+}
+
+.about-markdown-document h2 {
+  border-top: 1px solid #e6edf3;
+  color: #102a43;
+  font-size: 24px;
+  line-height: 1.25;
+  margin: 32px 0 14px;
+  padding-top: 20px;
+}
+
+.about-markdown-document h3 {
+  color: #243b53;
+  font-size: 19px;
+  line-height: 1.3;
+  margin: 22px 0 10px;
+}
+
+.about-markdown-document p,
+.about-markdown-document ul,
+.about-markdown-document ol,
+.about-markdown-document table,
+.about-markdown-document pre {
+  margin-bottom: 14px;
+}
+
+.about-markdown-document ul,
+.about-markdown-document ol {
+  padding-left: 24px;
+}
+
+.about-markdown-document code {
+  background: #eef4f8;
+  border-radius: 4px;
+  color: #102a43;
+  font-size: 0.95em;
+  padding: 2px 5px;
+}
+
+.about-markdown-document pre {
+  background: #f7fafc;
+  border: 1px solid #d9e2ec;
+  border-radius: 6px;
+  color: #102a43;
+  font-size: 15px;
+  padding: 14px;
+  white-space: pre-wrap;
+}
+
+.about-markdown-document img {
+  border: 1px solid #d9e2ec;
+  border-radius: 8px;
+  display: block;
+  height: auto;
+  margin: 16px 0 22px;
+  max-width: 100%;
+}
+
+.about-markdown-document table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.about-markdown-document th,
+.about-markdown-document td {
+  border: 1px solid #d9e2ec;
+  padding: 9px 11px;
+  vertical-align: top;
+}
+
+.about-markdown-document th {
+  background: #f7fafc;
+  font-weight: 700;
+}

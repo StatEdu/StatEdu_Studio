@@ -557,7 +557,7 @@ prepare_single_regression_result <- function(
     diagnostics = data.frame(
       Assumption = c(
         "Residual normality: Lilliefors corrected K-S test",
-        "Homoscedasticity: Breusch-Pagan test"
+        "Residual homoscedasticity: Breusch-Pagan test"
       ),
       Statistic = c(unname(normality$statistic), unname(homogeneity$statistic)),
       p = c(format_p(normality$p.value), format_p(homogeneity$p.value)),

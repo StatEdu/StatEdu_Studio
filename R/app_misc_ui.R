@@ -1,4 +1,4 @@
-# Result and About menu placeholders.
+# Result and About menu UI.
 
 result_tab_panel <- function() {
   tabPanel(
@@ -29,7 +29,69 @@ result_tab_panel <- function() {
   )
 }
 
-about_tab_panel <- function() {
+about_markdown_document <- function(path) {
+  if (!file.exists(path)) {
+    return(div(class = "empty-message", sprintf("Document not found: %s", path)))
+  }
+  div(
+    class = "about-markdown-document",
+    shiny::includeMarkdown(path)
+  )
+}
+
+about_info_row <- function(label, value) {
+  div(
+    class = "about-info-row",
+    div(class = "about-info-label", label),
+    div(class = "about-info-value", value)
+  )
+}
+
+about_citation_field <- function(field, fallback = "") {
+  path <- "CITATION.cff"
+  if (!file.exists(path)) {
+    return(fallback)
+  }
+  lines <- readLines(path, warn = FALSE, encoding = "UTF-8")
+  pattern <- paste0("^", field, ":\\s*\"?([^\"\n]+)\"?\\s*$")
+  match <- grep(pattern, lines, value = TRUE)
+  if (length(match) == 0) {
+    return(fallback)
+  }
+  sub(pattern, "\\1", match[[1]])
+}
+
+about_application_document <- function(version) {
+  release_date <- about_citation_field("date-released", "2026-05-26")
+  doi <- about_citation_field("doi", "10.22934/statedu.easyflow.statistics")
+  repository <- about_citation_field("repository-code", "https://github.com/StatEdu/easyflow_statistics_dev")
+
+  div(
+    class = "about-application-document",
+    h2("EasyFlow Statistics"),
+    p("A local Shiny application for assumption-guided statistical analysis and publication-ready result tables."),
+    div(
+      class = "about-info-grid",
+      about_info_row("Version", paste0("v", version)),
+      about_info_row("Release date", release_date),
+      about_info_row("Developer", "IL HYUN LEE"),
+      about_info_row("Organization", "StatEdu"),
+      about_info_row("Contact", tags$a(href = "mailto:dr.leeilhyun@gmail.com", "dr.leeilhyun@gmail.com")),
+      about_info_row("Runtime", "Local Windows Shiny app"),
+      about_info_row("Data handling", "Data are analyzed locally on the user's PC and are not sent to an external server."),
+      about_info_row("Repository", tags$a(href = repository, target = "_blank", rel = "noopener noreferrer", repository)),
+      about_info_row("DOI", tags$a(href = paste0("https://doi.org/", doi), target = "_blank", rel = "noopener noreferrer", doi))
+    ),
+    h3("Citation"),
+    p(sprintf(
+      "LEE, I. H. (2026). EasyFlow Statistics (Version %s) [Computer software]. https://doi.org/%s",
+      version,
+      doi
+    ))
+  )
+}
+
+about_info_tab_panel <- function(version) {
   tabPanel(
     "About",
     value = "about",
@@ -38,14 +100,44 @@ about_tab_panel <- function() {
       div(
         class = "app-heading",
         h1("About"),
-        div("EasyFlow Statistics application information.", class = "app-subtitle")
+        div("Version, developer information, and documentation.", class = "app-subtitle")
       ),
       div(
-        class = "workspace-panel frequencies-workspace-panel",
+        class = "workspace-panel frequencies-workspace-panel about-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        h3("EasyFlow Statistics"),
-        div(class = "empty-message", div("Version, citation, and application information will be shown here."))
+        about_application_document(version)
       )
     )
+  )
+}
+
+about_markdown_tab_panel <- function(title, value, path, subtitle = "EasyFlow Statistics documentation.") {
+  tabPanel(
+    title,
+    value = value,
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1(title),
+        div(subtitle, class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel about-workspace-panel",
+        style = "min-width:980px;overflow-x:auto;",
+        about_markdown_document(path)
+      )
+    )
+  )
+}
+
+about_tab_panel <- function(version) {
+  navbarMenu(
+    "About",
+    about_markdown_tab_panel("Overview", "about_overview", "README.md", "Project scope, current version, validation, and citation."),
+    about_markdown_tab_panel("User Guide", "about_user_guide", file.path("docs", "USER_GUIDE_KO.md"), "Step-by-step operating guide for loading data, selecting variables, running analyses, and saving results."),
+    about_markdown_tab_panel("Analysis Methods", "about_analysis_methods", file.path("docs", "ANALYSIS_METHODS_KO.md"), "Implementation inventory of analysis menus, statistical outputs, tables, and export coverage."),
+    about_markdown_tab_panel("Method Notes", "about_method_notes", file.path("docs", "METHOD_NOTES_KO.md"), "Interpretive notes on method choice, assumptions, warnings, and result interpretation."),
+    about_info_tab_panel(version)
   )
 }

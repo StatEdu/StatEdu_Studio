@@ -1,45 +1,26 @@
-# EasyFlow Statistics 제품 계획
+# **EasyFlow Statistics** 제품 계획
 
-## 기본 방향
+**EasyFlow Statistics**는 Windows 로컬 실행형 Shiny 앱으로 개발한다. 사용자는 R 또는 RStudio를 직접 열지 않고 `EasyFlow_Statistics.bat`을 더블클릭하여 앱을 실행한다.
 
-EasyFlow Statistics은 Windows 로컬 실행형 Shiny 앱으로 개발한다. 사용자는 R 또는 RStudio를 직접 열지 않고 `EasyFlow_Statistics.bat`을 더블클릭하여 앱을 실행한다.
+## 제품 방향
 
-앱 UI와 결과표는 영어로 작성하고, 매뉴얼은 영어와 한국어 두 가지로 제공한다.
+- 통계 초보자도 데이터 열기, 변수 확인, 분석 실행, 결과 저장까지 한 흐름으로 진행할 수 있게 한다.
+- measurement level을 중심으로 분석 가능성과 방법 선택을 안내한다.
+- 분석이 불가능한 조합은 전체 실행을 중단하지 않고 경고와 skipped result로 분리한다.
+- 결과표는 연구 보고서나 논문 작성에 옮기기 쉽게 정리한다.
 
-## 핵심 기능
+## 0.9.8 정리 범위
 
-- 데이터 파일 열기
-- 설정 불러오기 및 저장하기
-- EasyFlow Statistics 분석 메뉴
-- 분석 결과 불러오기 및 저장하기
-- 다중회귀분석
-- 위계적 회귀분석
-- PROCESS-style 매개 및 조절 모형 직접 구현
-- 논문용 결과표 및 해석문 출력
+- About과 문서를 분리하고 About 아래 메뉴 구조로 배치한다.
+- User Guide, Analysis Methods, Method Notes의 용도를 명확히 구분한다.
+- User Guide에는 실제 메뉴 화면을 포함한다.
+- Overview에는 현재 버전, 개발자 정보, R 버전, 사용 R 패키지 정보를 포함한다.
+- Method Notes에는 분석 선택 기준, 기준값, 참고문헌, 본문 인용 위치를 포함한다.
+- **EasyFlow Statistics** 분석 메뉴의 방법명을 모호하지 않게 표시한다.
 
-## 회귀분석 자동 분기
+## 다음 개선 후보
 
-잔차 정규성 검정과 등분산성 검정을 기준으로 다음 네 가지 방식 중 하나를 적용한다.
-
-| Residual normality | Homoscedasticity | Method |
-|---|---|---|
-| satisfied | satisfied | OLS |
-| satisfied | violated | HC3 robust SE |
-| violated | satisfied | Bootstrap CI and bootstrap p |
-| violated | violated | HC3 robust SE plus bootstrap CI and bootstrap p |
-
-## Durbin-Watson
-
-Durbin-Watson 임계값은 `easyflow_statistics_3.0.xlsx`의 `Durbin-Watson` 시트를 사용한다.
-
-- dU range: `DP1:EI2000`
-- dL range: `EL1:FE2000`
-- lookup rule: `INDEX(range, n, p)`
-
-범주형 변수가 더미변수로 확장된 경우 `p`는 원 변수 수가 아니라 실제 회귀설계행렬의 절편 제외 열 수로 계산한다.
-
-## 배포 전략
-
-- Private repository: 개발용
-- Public repository: 안정판 공개 및 릴리스용
-- Public release에는 소스코드, 문서, 검증 노트, 예제 데이터를 포함한다.
+- 샘플 데이터와 튜토리얼 시나리오 추가.
+- 주요 분석별 예시 해석 문장 추가.
+- 결과표 스타일과 저장 문서 서식 고도화.
+- 문서의 영어판 확장.

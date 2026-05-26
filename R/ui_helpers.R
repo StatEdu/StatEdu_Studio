@@ -132,6 +132,6 @@ app_ui <- function(version) {
 
     result_tab_panel(),
 
-    about_tab_panel()
+    about_tab_panel(version)
   )
 }

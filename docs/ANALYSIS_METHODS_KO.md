@@ -1,231 +1,116 @@
-# EasyFlow Statistics 적용 분석 기법 정리
+# **EasyFlow Statistics** 적용 분석 기법 정리
 
-이 문서는 현재 EasyFlow Statistics에 실제 구현된 분석 기법을 탭별로 정리한다.
+이 문서는 **EasyFlow Statistics** 0.9.8에 실제 구현된 분석 기법과 출력 항목을 메뉴별로 정리한다. 사용자가 확인해야 할 것은 "어떤 메뉴에서 어떤 검정, 통계량, 표, 저장 기능이 제공되는가"이다. 분석 방법을 왜 선택하는지와 기준값 해석은 `METHOD_NOTES_KO.md`를 참고한다.
 
-## 1. Frequencies / Descriptives
+## 문서 용도
 
-### 범주형 변수
+- User Guide: 앱 실행, 데이터 열기, 변수 선택, 분석 실행, 결과 저장 같은 실제 조작 절차를 설명한다.
+- Analysis Methods: 구현된 분석 메뉴, 검정, 통계량, 출력표, 저장 범위를 목록으로 정리한다.
+- Method Notes: 분석 선택 기준, 가정 진단, 기준값, 경고 해석, 참고문헌을 설명한다.
 
-- 빈도표
-- 백분율
-- `n(%)` 형식 요약
-- 값 라벨이 지정된 경우 라벨 반영
+## 데이터와 변수 준비
 
-### 연속형 변수
+- SPSS SAV, Excel, CSV, DAT 파일을 불러온다.
+- 원자료와 값 라벨을 확인하고, 변수명과 변수 라벨을 함께 표시한다.
+- measurement level은 `continuous`, `ordered`, `binary`, `category`로 정리한다.
+- 자동 코딩 오류 확인, Likert 변환, 결측값 처리, 역코딩, 변수 계산, 변수 변환, 재코딩, 변수명 변경 메뉴를 제공한다.
 
-- N
-- 결측 수
-- 평균
-- 표준편차
-- `M ± SD`
-- 중앙값
-- IQR
-- `IQR(Q1~Q3)`
-- 최솟값
-- 최댓값
-- 왜도
-- 첨도
+## 빈도분석과 기술통계
 
-## 2. t-test / ANOVA
+- 범주형 변수: 빈도, 백분율, 유효 백분율, 누적 백분율을 표시한다.
+- 연속형 변수: N, 결측 수, 평균, 표준편차, 중앙값, IQR, 최솟값, 최댓값, 왜도, 첨도를 표시한다.
+- 결과는 화면표, 저장 결과, Excel/Word/PDF/HTML 출력으로 연결된다.
 
-### 정규성 판단
+## 교차표 분석
 
-옵션에 따라 다음 방법을 사용한다.
+- Pearson chi-square test를 기본 관련성 검정으로 사용한다.
+- 기대빈도가 부족한 경우 Fisher's exact test 또는 Fisher's exact test with Monte Carlo simulation을 사용한다.
+- 2 x k 또는 k x 2 순서형 비교에서는 Cochran-Armitage trend test를 사용한다.
+- ordered x ordered 조합에서는 score-based ordered-by-ordered trend association을 사용한다.
+- 효과크기는 odds ratio, Cramer's V, trend odds ratio, Goodman-Kruskal gamma를 표시한다.
+- 사후 비교와 셀별 빈도, 백분율, 경고 메시지를 함께 제공한다.
 
-- 왜도/첨도 기준
-- Kolmogorov-Smirnov test
-- Shapiro-Wilk test
+## t-test / ANOVA
 
-정규성 옵션을 사용하지 않으면 모수 분석을 기본으로 선택한다. 종속변수가 ordinal이면 비모수 분석을 사용한다.
+- 두 집단 비교: independent samples t-test, Welch t-test, Mann-Whitney U test / Wilcoxon rank-sum test.
+- 세 집단 이상 비교: one-way ANOVA, Welch ANOVA, Kruskal-Wallis test.
+- 정규성 진단은 왜도/첨도, Kolmogorov-Smirnov test, Shapiro-Wilk test 옵션을 사용한다.
+- 등분산성은 Levene 방식 검정으로 확인한다.
+- 사후검정은 주검정에 따라 Tukey HSD, Duncan, Scheffe, Bonferroni, Games-Howell, pairwise Wilcoxon을 사용한다.
+- 비모수 사후검정 p 값 보정은 Bonferroni correction 또는 Holm Bonferroni 중 선택한다.
+- 효과크기는 Hedges' g, omega squared, Cliff's delta, epsilon squared를 제공한다.
 
-### 등분산성
+## 비모수 검정
 
-- Levene 방식의 등분산 검정
-- 각 집단의 중앙값 기준 절대편차에 대해 ANOVA를 적용해 p 값을 산출
+- Mann-Whitney U test / Wilcoxon rank-sum test와 Kruskal-Wallis test를 제공한다.
+- 순위 기반 검정 결과와 함께 중앙값, IQR, 효과크기, 사후 비교를 확인할 수 있다.
 
-### 두 집단 비교
+## Paired Tests
 
-정규성과 등분산성 결과에 따라 자동 선택한다.
+- 두 반복측정값: paired t-test 또는 Wilcoxon signed-rank test를 사용한다.
+- 세 시점 이상 반복측정: standard repeated-measures ANOVA, repeated-measures ANOVA with Wilks' lambda / Greenhouse-Geisser correction, Friedman test, Cochran's Q test를 사용한다.
+- paired post-hoc은 paired t-test, Wilcoxon signed-rank test, McNemar test를 사용하며 Bonferroni correction 또는 Holm Bonferroni를 적용할 수 있다.
 
-- Independent samples t-test
-- Welch t-test
-- Mann-Whitney U test / Wilcoxon rank-sum test
+## 상관분석
 
-### 세 집단 이상 비교
+- continuous x continuous: 정규성 기준에 따라 Pearson 또는 Spearman을 자동 선택한다.
+- continuous x binary: point-biserial correlation을 사용한다.
+- ordered 조합: Spearman을 사용한다.
+- binary x binary: phi coefficient를 사용한다.
+- nominal 조합: eta 또는 Cramer's V를 사용한다.
+- 옵션에 따라 polyserial, polychoric, tetrachoric correlation을 포함한 latent-variable correlation 세트를 추가할 수 있다.
 
-정규성과 등분산성 결과에 따라 자동 선택한다.
+## 신뢰도 분석
 
-- One-way ANOVA
-- Welch ANOVA
-- Kruskal-Wallis test
+- Cronbach's alpha와 McDonald's omega total을 제공한다.
+- item-total correlation, alpha if item deleted, omega 관련 지표를 표시한다.
+- ordinal 문항에서는 polychoric 기반 지표를 보조적으로 확인할 수 있다.
 
-### 사후검정
+## 요인분석
 
-ANOVA 계열 또는 Kruskal-Wallis 결과가 유의한 경우 사후검정을 출력한다.
+- 탐색적 요인분석을 제공한다.
+- 추출 방법은 principal axis factoring 또는 maximum likelihood를 사용한다.
+- 회전은 none, Varimax, Oblimin 중 선택한다.
+- 요인 수는 eigenvalue >= 1.0 또는 사용자가 지정한 fixed number of factors를 사용한다.
+- KMO, Bartlett test, 적재량, 공통성, complexity, 요인점수 저장 옵션을 제공한다.
 
-- Tukey HSD
-- Duncan multiple range test
-- Scheffe post-hoc test
-- Bonferroni post-hoc test
-- Games-Howell
-- Pairwise Wilcoxon rank-sum test with Bonferroni correction
+## 주성분분석
 
-### 추가 출력
+- Pearson matrix 또는 polychoric matrix를 사용할 수 있다.
+- 성분 수는 eigenvalue >= 1.0, fixed number of components, cumulative variance 기준 중 선택한다.
+- KMO, Bartlett test, component loading, scree plot, component plot을 제공한다.
 
-- 집단별 M, SD
-- t, F, z, 또는 chi-square 통계량
-- p 값
-- Effect size 옵션
-- Trend analysis 옵션
-- Ordered significance notation 옵션
+## 선형회귀
 
-## 3. Correlation
+- `stats::lm` 기반 선형회귀를 사용한다.
+- 잔차 정규성은 Lilliefors corrected Kolmogorov-Smirnov test로 확인한다.
+- 잔차의 등분산성(residual homoscedasticity)은 Breusch-Pagan test로 확인한다.
+- 자기상관은 Durbin-Watson statistic과 dL/dU 기준을 사용한다.
+- 다중공선성은 VIF로 확인한다.
+- 가정 진단 결과에 따라 OLS regression, OLS regression with HC3 robust standard errors, Bootstrap regression, Bootstrap regression with HC3 robust standard errors를 표시한다.
+- Bootstrap 반복 수는 1,000, 5,000, 10,000, 20,000, 50,000 중 선택할 수 있다.
 
-상관분석은 변수의 measurement level에 따라 자동으로 방법을 선택한다. 결과는 하삼각 행렬 형태로 출력한다.
+## 위계적 회귀
 
-### 기본 자동 선택
+- 예측변수를 블록 단위로 추가한다.
+- 각 단계의 R², adjusted R², ΔR², nested model comparison p 값을 제공한다.
+- 각 모델에는 선형회귀와 같은 잔차 진단, VIF, bootstrap, robust standard errors 로직을 적용한다.
 
-| X 변수 | Y 변수 | 기본 방법 |
-|---|---|---|
-| Continuous | Continuous | Pearson |
-| Continuous | Binary | Point-biserial |
-| Continuous | Ordinal | Spearman |
-| Ordinal | Ordinal | Spearman |
-| Ordinal | Binary | Spearman |
-| Binary | Binary | Phi |
-| Nominal | Continuous | Eta |
-| Nominal / mixed categorical | Nominal / mixed categorical | Cramer's V |
+## 로지스틱 회귀
 
-### Latent-variable correlations 옵션
+- binary dependent: binary logistic regression.
+- ordered dependent: ordinal logistic regression.
+- categorical dependent: multinomial logistic regression.
+- odds ratio, confidence interval, model fit, sparse cell, separation risk, VIF 경고를 확인한다.
 
-고급 옵션을 선택하면 기본 상관행렬 아래에 latent-variable correlation 세트를 추가 출력한다.
+## Penalized Regression
 
-- Continuous x Ordinal/Binary: Polyserial
-- Ordinal/Binary x Ordinal/Binary: Polychoric
-- Binary x Binary: Tetrachoric
-- Continuous x Continuous: Pearson 유지
-- Nominal 관련 조합: Eta 또는 Cramer's V 유지
+- Ridge regression, LASSO regression, Elastic Net regression을 제공한다.
+- 심각한 다중공선성이나 예측변수 구조 점검이 필요할 때 보조 분석으로 사용한다.
+- `glmnet` 기반 정규화 경로와 선택된 계수를 확인한다.
 
-### 상관분석 출력
+## 저장과 출력
 
-- Correlation / association coefficients 행렬
-- p-value & 95% CI 행렬
-- Methods 행렬
-- Reason 행렬: reason 옵션 선택 시 출력
-- Normality table: continuous 변수만 왜도/첨도 평가, 비연속형 변수는 not assessed. 이 표는 진단용이며 continuous-continuous 상관계수 선택에는 사용하지 않는다.
-- Scatter plot matrix: continuous 변수만 표시
-- Correlation matrix heatmap
-
-## 4. Regression
-
-### 기본 모델
-
-- 다중선형회귀
-- `stats::lm`
-- 여러 종속변수를 선택하면 종속변수별로 모델을 적합
-- 범주형/이분형/순서형 예측변수는 기준범주를 사용해 더미화된 계수로 출력
-
-### 가정 진단
-
-- 잔차 정규성: Lilliefors corrected Kolmogorov-Smirnov test
-- 등분산성: Breusch-Pagan test
-- 자기상관: Durbin-Watson statistic
-- Durbin-Watson dL/dU 임계값을 이용한 판단
-
-### 자동 분석 방식 선택
-
-잔차 정규성과 등분산성 결과에 따라 출력 방식을 자동 선택한다.
-
-| 잔차 정규성 | 등분산성 | 적용 방식 |
-|---|---|---|
-| 만족 | 만족 | OLS regression |
-| 만족 | 불만족 | OLS regression with HC3 robust standard errors |
-| 불만족 | 만족 | Bootstrap regression |
-| 불만족 | 불만족 | Bootstrap regression with HC3 robust standard errors |
-
-### 회귀계수 출력
-
-- B
-- SE 또는 HC3 SE
-- beta
-- t
-- p
-- Bootstrap 사용 시 Boot SE, LLCI, ULCI, Boot p
-- F(p)
-- R² 및 adjusted R²
-- Durbin-Watson d
-- 잔차 정규성 z(p)
-- Breusch-Pagan chi-square(p)
-
-### 옵션 출력
-
-- sr²
-- f²
-- VIF
-- 잔차 진단 그림
-- Severe VIF가 있는 경우 Ridge / LASSO / Elastic Net 실행 버튼
-
-## 5. Hierarchical Regression
-
-### 모델 구성
-
-위계적 회귀분석은 최대 3개 블록으로 구성된다.
-
-- Model 1: Block 1
-- Model 2: Block 1 + Block 2
-- Model 3: Block 1 + Block 2 + Block 3
-
-현재 UI는 종속변수 영역과 하나의 활성 Block만 표시하며, Block 1/2/3 상태는 내부적으로 계속 유지된다.
-
-### 분석 방법
-
-각 단계 모델은 Regression과 동일한 선형회귀 및 진단 로직을 사용한다.
-
-- `stats::lm`
-- Lilliefors corrected Kolmogorov-Smirnov test
-- Breusch-Pagan test
-- HC3 robust standard errors
-- Bootstrap confidence interval / bootstrap p
-- Durbin-Watson statistic
-
-### 추가 비교 지표
-
-- 각 모델의 F(p)
-- 각 모델의 R² 및 adjusted R²
-- ΔR²
-- ΔR²의 nested model comparison p 값
-- Durbin-Watson d
-- 잔차 정규성 z(p)
-- Breusch-Pagan chi-square(p)
-
-### 옵션 출력
-
-- sr²
-- f²
-- VIF
-- 잔차 진단 그림
-
-## 6. Penalized Regression
-
-회귀분석 결과에서 심각한 다중공선성이 탐지되는 경우 보조 분석으로 실행할 수 있다.
-
-- Ridge
-- LASSO
-- Elastic Net
-
-출력은 선택/유지된 예측변수와 모델별 요약을 포함한다.
-
-## 7. 저장 및 출력
-
-현재 구현된 저장 기능은 다음과 같다.
-
-- Excel table 저장
-- Figure 저장
-- HTML 저장
-
-HTML 저장은 모든 주요 분석 결과에서 공통 표 스타일을 사용하도록 정리되어 있다.
-
-## 8. 아직 구현 전이거나 향후 확장 영역
-
-- Generalized regression 탭은 현재 scaffold 상태이며 실제 분석 모델은 아직 구현 전이다.
-- 상관분석의 heterogeneous correlation matrix는 현재 개별 조합별 자동 선택 방식으로 구현되어 있으며, 별도 패키지 기반 통합 행렬 함수는 향후 확장 가능 영역이다.
+- 분석 결과는 앱 화면의 Result 탭에서 모아 볼 수 있다.
+- HTML, PDF, Excel, Word 저장을 지원한다.
+- 표, 경고, skipped analyses, skipped models, 선택된 분석 방법, 효과크기, 신뢰구간을 함께 저장한다.

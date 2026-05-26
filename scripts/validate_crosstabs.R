@@ -47,7 +47,7 @@ expect_true(identical(fisher_result$association$method, "Fisher's exact test"), 
 expect_close(fisher_result$association$p, 0.4857143, tolerance = 1e-6, label = "Fisher p-value")
 expect_close(fisher_result$effect_sizes$Estimate[fisher_result$effect_sizes$Effect == "Cramer's V"], 0.500, tolerance = 1e-3, label = "Cramer's V")
 
-message("Checking 2 x k Armitage trend analysis...")
+message("Checking 2 x k Cochran-Armitage trend test...")
 trend_2xk <- prepare_crosstab_results(
   data,
   row_var = "outcome",
@@ -55,7 +55,7 @@ trend_2xk <- prepare_crosstab_results(
   variable_info = variable_info,
   options = list(row_percent = TRUE, column_percent = FALSE, total_percent = FALSE, trend = TRUE)
 )
-expect_true(identical(trend_2xk$trend$method, "Armitage trend analysis"), "Expected Armitage trend analysis for 2 x k")
+expect_true(identical(trend_2xk$trend$method, "Cochran-Armitage trend test"), "Expected Cochran-Armitage trend test for 2 x k")
 expect_close(trend_2xk$trend$statistic, 0.2051282, tolerance = 1e-6, label = "2 x k trend statistic")
 expect_close(trend_2xk$trend$odds_ratio, 0.6595042, tolerance = 1e-6, label = "Trend odds ratio")
 
@@ -67,7 +67,7 @@ trend_ordered <- prepare_crosstab_results(
   variable_info = variable_info,
   options = list(row_percent = TRUE, column_percent = FALSE, total_percent = FALSE, trend = TRUE)
 )
-expect_true(identical(trend_ordered$trend$method, "Armitage trend analysis"), "Expected Armitage trend analysis for ordered x ordered")
+expect_true(identical(trend_ordered$trend$method, "Score-based ordered-by-ordered trend association"), "Expected score-based ordered trend association for ordered x ordered")
 expect_close(trend_ordered$trend$gamma, 0.2, tolerance = 1e-6, label = "Gamma")
 
 message("Checking result table rendering...")

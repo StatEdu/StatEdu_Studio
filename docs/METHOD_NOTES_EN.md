@@ -1,14 +1,14 @@
 # Method Notes
 
-EasyFlow Statistics applies regression diagnostics before selecting the inferential output.
+**EasyFlow Statistics** applies regression diagnostics before selecting the inferential output.
 
 ## Normality
 
 Residual normality is evaluated using the Lilliefors corrected Kolmogorov-Smirnov test.
 
-## Homoscedasticity
+## Residual Homoscedasticity
 
-Homoscedasticity is evaluated using the Breusch-Pagan test.
+Residual homoscedasticity is evaluated using the Breusch-Pagan test.
 
 ## Robust Standard Errors
 
