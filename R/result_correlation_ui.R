@@ -100,6 +100,14 @@ correlation_reason_display_table <- function(source) {
   table[, intersect(c("Variable1", "Variable2", "Method", "Reason"), names(table)), drop = FALSE]
 }
 
+correlation_omitted_display_table <- function(result) {
+  table <- result$omitted_table
+  if (!is.data.frame(table) || nrow(table) == 0) {
+    return(NULL)
+  }
+  table
+}
+
 correlation_matrix_set_ui <- function(result, source = NULL, title_prefix = "") {
   source <- source %||% result
   options <- result$options %||% list()
@@ -183,6 +191,7 @@ correlation_results_ui <- function(result) {
     return(empty_message("No correlation results to show."))
   }
   options <- result$options %||% list()
+  omitted_table <- correlation_omitted_display_table(result)
   tagList(
     div(
       class = "correlation-results regression-results",
@@ -195,6 +204,13 @@ correlation_results_ui <- function(result) {
           class = "result-section correlation-result-section regression-result-panel",
           h3("Normality"),
           coefficient_html_table(correlation_normality_display_table(result))
+        )
+      },
+      if (is.data.frame(omitted_table) && nrow(omitted_table) > 0) {
+        div(
+          class = "result-section correlation-result-section regression-result-panel",
+          h3("Omitted variables"),
+          coefficient_html_table(omitted_table)
         )
       },
       if (isTRUE(options$scatter_plot)) {

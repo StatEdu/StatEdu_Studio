@@ -1,5 +1,24 @@
 # HTML table builders for result output.
 
+analysis_result_table_section <- function(title, table, class = "result-section regression-result-panel", table_fn = coefficient_html_table) {
+  if (!analysis_has_rows(table)) {
+    return(NULL)
+  }
+  tags$div(
+    class = class,
+    tags$h3(title),
+    table_fn(table)
+  )
+}
+
+analysis_warning_section <- function(table, class = "result-section regression-result-panel") {
+  analysis_result_table_section("Warnings", table, class = class)
+}
+
+analysis_skipped_section <- function(table, title = "Skipped analyses", class = "result-section regression-result-panel") {
+  analysis_result_table_section(title, table, class = class)
+}
+
 result_table_style <- function(font_size = 15, min_width = 480) {
   paste(
     sprintf("width:auto;min-width:%dpx;border-collapse:collapse;border-spacing:0;", min_width),

@@ -74,6 +74,13 @@ nonparametric_paired_results_ui <- function(result) {
           tags$h3("Post-hoc pairwise comparisons"),
           coefficient_html_table(nonparametric_paired_posthoc_display_table(result), note_line = paired_rm_posthoc_note(result))
         )
+      },
+      if (is.data.frame(result$skipped) && nrow(result$skipped) > 0) {
+        tags$div(
+          class = "result-section paired-result-section regression-result-panel",
+          tags$h3("Skipped repeated-measures rows"),
+          coefficient_html_table(result$skipped)
+        )
       }
     ))
   }
@@ -100,6 +107,20 @@ nonparametric_paired_results_ui <- function(result) {
           paired_grouped_table(result$count_table, "count", show_effect_size = isTRUE(result$options$effect_size)),
           result_note_tag(paired_count_method_note(result, show_effect_size = isTRUE(result$options$effect_size)))
         )
+      )
+    },
+    if (is.data.frame(result$warnings) && nrow(result$warnings) > 0) {
+      tags$div(
+        class = "result-section paired-result-section regression-result-panel",
+        tags$h3("Warnings"),
+        coefficient_html_table(result$warnings)
+      )
+    },
+    if (is.data.frame(result$skipped) && nrow(result$skipped) > 0) {
+      tags$div(
+        class = "result-section paired-result-section regression-result-panel",
+        tags$h3("Skipped pairs"),
+        coefficient_html_table(result$skipped)
       )
     }
   )

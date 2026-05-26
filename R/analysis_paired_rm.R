@@ -11,6 +11,12 @@ paired_rm_complete_matrix <- function(data, variables, measurement) {
   values[keep, , drop = FALSE]
 }
 
+paired_rm_has_within_subject_change <- function(values) {
+  if (!is.data.frame(values) && !is.matrix(values)) return(FALSE)
+  if (nrow(values) == 0 || ncol(values) < 2) return(FALSE)
+  any(apply(as.matrix(values), 1, function(row) length(unique(row[!is.na(row)])) > 1))
+}
+
 paired_rm_method_label <- function(method) {
   switch(
     method,
@@ -156,6 +162,33 @@ paired_rm_group_label <- function(variables, variable_info, labels, category_tab
   paste(
     vapply(variables, paired_display_name, character(1), variable_info = variable_info, labels = labels, category_table = category_table),
     collapse = " - "
+  )
+}
+
+paired_rm_skipped_result <- function(variables, variable_info = NULL, labels = character(0), category_table = NULL, options = list(), reason = "") {
+  variables <- as.character(variables %||% character(0))
+  group_label <- if (length(variables) > 0) paired_rm_group_label(variables, variable_info, labels, category_table) else ""
+  skipped <- data.frame(
+    `Repeated variables` = group_label,
+    Method = "Repeated-measures test",
+    N = "",
+    Reason = reason,
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+  list(
+    type = "paired_rm",
+    measurement = "Skipped",
+    variables = variables,
+    group_label = group_label,
+    table = NULL,
+    display_table = NULL,
+    count_table = NULL,
+    summary = NULL,
+    posthoc = NULL,
+    assumption = NULL,
+    skipped = skipped,
+    options = options
   )
 }
 
@@ -430,14 +463,29 @@ paired_rm_binary_display_table <- function(result, values, variable_info, labels
 
 prepare_paired_rm_single_result <- function(data, variables, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
   variables <- as.character(variables %||% character(0))
-  shiny::validate(shiny::need(length(variables) >= 3, "Select three or more repeated-measures variables."))
+  if (length(variables) < 3) {
+    stop("Select three or more repeated-measures variables.", call. = FALSE)
+  }
+  if (!all(variables %in% names(data))) {
+    missing <- setdiff(variables, names(data))
+    stop(sprintf("Variable(s) were not found in the active data: %s.", paste(missing, collapse = ", ")), call. = FALSE)
+  }
   measurements <- paired_measurement_lookup(variable_info)
   levels <- vapply(variables, function(name) named_value(measurements, name, "continuous"), character(1))
-  shiny::validate(shiny::need(length(unique(levels)) == 1, "Repeated-measures variables must have the same measurement level."))
+  if (length(unique(levels)) != 1) {
+    stop(sprintf("Repeated-measures variables have different measurement levels: %s.", paste(sprintf("%s=%s", variables, levels), collapse = ", ")), call. = FALSE)
+  }
   measurement <- levels[[1]]
-  shiny::validate(shiny::need(measurement %in% c("continuous", "ordered", "binary"), "Paired test (3+) supports continuous, ordinal, or binary variables."))
+  if (!measurement %in% c("continuous", "ordered", "binary")) {
+    stop("Paired test (3+) supports continuous, ordinal, or binary variables.", call. = FALSE)
+  }
   values <- paired_rm_complete_matrix(data, variables, measurement)
-  shiny::validate(shiny::need(nrow(values) > 1, "Not enough complete repeated-measures cases."))
+  if (nrow(values) < 2) {
+    stop("At least two complete repeated-measures cases are required.", call. = FALSE)
+  }
+  if (!paired_rm_has_within_subject_change(values)) {
+    stop("All repeated measurements are identical within subjects; no repeated-measures test was performed.", call. = FALSE)
+  }
   adjustment <- if (identical(options$posthoc_adjustment %||% "bonferroni", "holm")) "holm" else "bonferroni"
 
   if (identical(measurement, "continuous")) {
@@ -530,7 +578,10 @@ prepare_paired_rm_results <- function(data, variables = NULL, variable_groups = 
   groups <- lapply(groups, as.character)
   shiny::validate(shiny::need(length(groups) > 0, "Select one or more repeated-measures rows."))
   results <- lapply(groups, function(group) {
-    prepare_paired_rm_single_result(data, group, variable_info, labels, category_table, options)
+    tryCatch(
+      prepare_paired_rm_single_result(data, group, variable_info, labels, category_table, options),
+      error = function(e) paired_rm_skipped_result(group, variable_info, labels, category_table, options, conditionMessage(e))
+    )
   })
   if (length(results) == 1L) return(results[[1]])
 
@@ -541,6 +592,7 @@ prepare_paired_rm_results <- function(data, variables = NULL, variable_groups = 
   posthoc <- paired_rm_bind_rows(lapply(results, function(result) paired_rm_tag_table(result$posthoc, result$group_label)))
   assumptions <- Filter(Negate(is.null), lapply(results, function(result) paired_rm_tag_table(result$assumption, result$group_label)))
   assumption <- if (length(assumptions) > 0) do.call(rbind, assumptions) else NULL
+  skipped <- paired_rm_bind_rows(lapply(results, function(result) result$skipped))
   list(
     type = "paired_rm",
     measurement = paste(unique(vapply(results, `[[`, character(1), "measurement")), collapse = ", "),
@@ -552,6 +604,7 @@ prepare_paired_rm_results <- function(data, variables = NULL, variable_groups = 
     summary = summary,
     posthoc = posthoc,
     assumption = assumption,
+    skipped = skipped,
     options = options
   )
 }

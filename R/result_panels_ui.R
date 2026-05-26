@@ -674,6 +674,8 @@ hierarchical_results_panel <- function(
   plot_blocks = NULL
 ) {
   groups <- hierarchical_result_groups(results)
+  warnings <- attr(results, "warnings")
+  skipped <- attr(results, "skipped")
   div(
     class = "regression-results hierarchical-results",
     div(
@@ -681,6 +683,8 @@ hierarchical_results_panel <- function(
       h3("Model overview"),
       model_overview_html_table(model_overview_data_frame(results, variable_table, labels))
     ),
+    analysis_warning_section(warnings, class = "regression-result-panel"),
+    analysis_skipped_section(skipped, title = "Skipped models", class = "regression-result-panel"),
     lapply(groups, function(group) {
       hierarchical_coefficient_result_block(
         group,
@@ -776,6 +780,8 @@ regression_results_panel <- function(
   plot_blocks = NULL
 ) {
   show_penalized <- is.list(penalized)
+  warnings <- attr(results, "warnings")
+  skipped <- attr(results, "skipped")
   div(
     class = "regression-results",
     div(
@@ -783,6 +789,8 @@ regression_results_panel <- function(
       h3("Model overview"),
       model_overview_html_table(model_overview_data_frame(results, variable_table, labels))
     ),
+    analysis_warning_section(warnings, class = "regression-result-panel"),
+    analysis_skipped_section(skipped, title = "Skipped models", class = "regression-result-panel"),
     penalized_result_block(penalized),
     lapply(seq_along(results), function(index) {
       regression_coefficient_result_block(

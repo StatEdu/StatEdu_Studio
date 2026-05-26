@@ -55,6 +55,55 @@ format_effect_size <- function(x) {
   format_decimal3(x)
 }
 
+analysis_bind_rows <- function(rows) {
+  rows <- Filter(function(row) is.data.frame(row) && nrow(row) > 0, rows %||% list())
+  if (length(rows) == 0) {
+    return(data.frame(stringsAsFactors = FALSE))
+  }
+  columns <- unique(unlist(lapply(rows, names), use.names = FALSE))
+  rows <- lapply(rows, function(row) {
+    missing_columns <- setdiff(columns, names(row))
+    for (column in missing_columns) {
+      row[[column]] <- ""
+    }
+    row <- row[, columns, drop = FALSE]
+    rownames(row) <- NULL
+    row
+  })
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
+analysis_message_table <- function(messages, column = "Warning") {
+  messages <- unique(as.character(messages %||% character(0)))
+  messages <- messages[!is.na(messages) & nzchar(messages)]
+  if (length(messages) == 0) {
+    return(data.frame(stringsAsFactors = FALSE))
+  }
+  stats::setNames(data.frame(messages, stringsAsFactors = FALSE, check.names = FALSE), column)
+}
+
+analysis_warning_table <- function(messages) {
+  analysis_message_table(messages, "Warning")
+}
+
+analysis_guard_row <- function(type, target, predictors = "", n = NA_integer_, message = "") {
+  data.frame(
+    Type = as.character(type %||% ""),
+    Target = as.character(target %||% ""),
+    Predictors = as.character(predictors %||% ""),
+    N = if (is.na(n)) "" else as.character(n),
+    Message = as.character(message %||% ""),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
+analysis_has_rows <- function(table) {
+  is.data.frame(table) && nrow(table) > 0
+}
+
 register_dual_transfer_drop_observer <- function(
   input,
   session,

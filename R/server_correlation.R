@@ -23,6 +23,10 @@ register_correlation_handlers <- function(
   })
 
   output$correlation_setup <- renderUI({
+    current_data <- tryCatch(dataset_fn(), error = function(e) NULL)
+    if (!is.data.frame(current_data)) {
+      return(setup_empty_message("Reconnect the data file in the Data tab before setting up correlation analysis."))
+    }
     selected <- current_selected()
     if (length(selected) == 0) {
       return(setup_empty_message("Complete Step 2 in the Data tab before setting up correlation analysis."))
@@ -35,6 +39,7 @@ register_correlation_handlers <- function(
         labels = labels_fn(),
         selected_available = isolate(input$correlation_available),
         selected_selected = isolate(input$correlation_selected),
+        continuous_method = input$correlation_continuous_method %||% "auto",
         normality = input$correlation_normality %||% TRUE,
         latent_correlations = input$correlation_latent_correlations,
         reason = input$correlation_reason %||% TRUE,
@@ -155,26 +160,81 @@ register_correlation_handlers <- function(
   correlation_result <- reactiveVal(NULL)
 
   observeEvent(input$run_correlation, {
-    if (length(correlation_variables()) < 2) {
+    selected_variables <- as.character(correlation_variables() %||% character(0))
+    if (length(selected_variables) < 2) {
       showNotification("Select at least two variables for correlation analysis.", type = "warning", duration = 5)
       return()
     }
-    result <- prepare_correlation_results(
-      data = dataset_fn(),
-      variables = correlation_variables(),
-      variable_info = variable_table_fn(),
-      labels = labels_fn(),
-      category_table = category_table_fn(),
-      options = list(
-        normality = isTRUE(input$correlation_normality),
-        latent_correlations = isTRUE(input$correlation_latent_correlations),
-        reason = isTRUE(input$correlation_reason),
-        p_ci = isTRUE(input$correlation_p_ci),
-        significance_levels = isTRUE(input$correlation_significance_levels),
-        scatter_plot = isTRUE(input$correlation_scatter_plot),
-        matrix_plot = isTRUE(input$correlation_matrix_plot)
-      )
+
+    current_data <- tryCatch(dataset_fn(), error = function(e) e)
+    if (inherits(current_data, "error") || !is.data.frame(current_data)) {
+      detail <- conditionMessage(current_data)
+      if (!nzchar(detail)) {
+        detail <- sprintf(
+          "The active data table is not available. Selected variables: %s. Reopen the data file and apply Step 2 variable selection.",
+          paste(head(selected_variables, 8), collapse = ", ")
+        )
+      }
+      message("Correlation analysis failed before data preparation: ", detail)
+      showNotification(paste("Correlation analysis failed:", detail), type = "error", duration = 8)
+      return()
+    }
+    current_variable_table <- tryCatch(variable_table_fn(), error = function(e) NULL)
+    current_labels <- tryCatch(labels_fn(), error = function(e) character(0))
+    current_category_table <- tryCatch(category_table_fn(), error = function(e) NULL)
+
+    result <- tryCatch(
+      prepare_correlation_results(
+        data = current_data,
+        variables = selected_variables,
+        variable_info = current_variable_table,
+        labels = current_labels,
+        category_table = current_category_table,
+        options = list(
+          continuous_method = input$correlation_continuous_method %||% "auto",
+          normality = isTRUE(input$correlation_normality),
+          latent_correlations = isTRUE(input$correlation_latent_correlations),
+          reason = isTRUE(input$correlation_reason),
+          p_ci = isTRUE(input$correlation_p_ci),
+          significance_levels = isTRUE(input$correlation_significance_levels),
+          scatter_plot = isTRUE(input$correlation_scatter_plot),
+          matrix_plot = isTRUE(input$correlation_matrix_plot)
+        )
+      ),
+      error = function(e) {
+        detail <- conditionMessage(e)
+        if (!nzchar(detail)) {
+          matched <- intersect(selected_variables, names(current_data))
+          missing <- setdiff(selected_variables, names(current_data))
+          counts <- if (length(matched) > 0) {
+            measurements <- stats::setNames(
+              vapply(matched, correlation_measurement, character(1), variable_info = current_variable_table),
+              matched
+            )
+            valid <- vapply(matched, function(name) {
+              values <- correlation_analysis_vector(current_data[[name]], measurements[[name]])
+              sum(!is.na(values))
+            }, integer(1))
+            unique_values <- vapply(matched, function(name) {
+              values <- correlation_analysis_vector(current_data[[name]], measurements[[name]])
+              length(unique(values[!is.na(values)]))
+            }, integer(1))
+            stats::setNames(sprintf("N %s, unique %s", valid, unique_values), matched)
+          } else {
+            character(0)
+          }
+          count_text <- if (length(counts) > 0) paste(sprintf("%s=%s", names(counts), counts), collapse = "; ") else "none"
+          missing_text <- if (length(missing) > 0) paste(sprintf(" Missing from data: %s.", paste(head(missing, 5), collapse = ", "))) else ""
+          detail <- paste0("At least two selected variables must have three or more valid values and at least two unique values. Current counts: ", count_text, ".", missing_text)
+        }
+        message("Correlation analysis failed: ", detail)
+        showNotification(paste("Correlation analysis failed:", detail), type = "error", duration = 8)
+        NULL
+      }
     )
+    if (is.null(result)) {
+      return()
+    }
     correlation_result(result)
   })
 

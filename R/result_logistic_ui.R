@@ -609,8 +609,12 @@ logistic_result_groups <- function(results) {
 
 logistic_results_panel <- function(results, variable_table = NULL, labels = character(0), category_table = NULL, show_b = FALSE, show_se = FALSE, show_mcfadden = FALSE, show_cox_snell = FALSE, split_ci = FALSE) {
   groups <- logistic_result_groups(results)
+  warnings <- attr(results, "warnings")
+  skipped <- attr(results, "skipped")
   div(
     class = "logistic-results",
+    analysis_warning_section(warnings, class = "regression-result-panel logistic-result-panel"),
+    analysis_skipped_section(skipped, title = "Skipped models", class = "regression-result-panel logistic-result-panel"),
     lapply(groups, function(group) {
       if (length(group) > 1L) {
         logistic_hierarchical_result_block(group, variable_table, labels, category_table, show_b, show_se, show_mcfadden, show_cox_snell, split_ci)

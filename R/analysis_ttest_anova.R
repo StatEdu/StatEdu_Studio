@@ -40,6 +40,52 @@ ttest_sample_sd <- function(values) {
   stats::sd(values)
 }
 
+ttest_skipped_item <- function(dependent, factor, reason, n = NA_integer_, variable_info = NULL, labels = character(0), category_table = NULL) {
+  data.frame(
+    `Dependent variable` = ttest_display_variable(dependent, variable_info, labels, category_table),
+    `Independent variable` = ttest_display_variable(factor, variable_info, labels, category_table),
+    N = if (is.na(n)) "" else as.character(n),
+    Reason = reason,
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
+ttest_warning_item <- function(dependent, factor, message, variable_info = NULL, labels = character(0), category_table = NULL) {
+  data.frame(
+    `Dependent variable` = ttest_display_variable(dependent, variable_info, labels, category_table),
+    `Independent variable` = ttest_display_variable(factor, variable_info, labels, category_table),
+    Warning = message,
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
+ttest_safe_call <- function(expr, fallback = NULL) {
+  suppressWarnings(tryCatch(expr, error = function(e) fallback))
+}
+
+ttest_group_counts <- function(groups, levels = NULL) {
+  groups <- as.character(groups)
+  if (is.null(levels)) {
+    levels <- ttest_level_order(unique(groups))
+  }
+  stats::setNames(vapply(levels, function(level) sum(groups == level, na.rm = TRUE), integer(1)), levels)
+}
+
+ttest_zero_sd_groups <- function(values, groups, levels = NULL) {
+  values <- as.numeric(values)
+  groups <- as.character(groups)
+  if (is.null(levels)) {
+    levels <- ttest_level_order(unique(groups))
+  }
+  levels[vapply(levels, function(level) {
+    group_values <- values[groups == level]
+    group_values <- group_values[!is.na(group_values)]
+    length(group_values) >= 2 && isTRUE(ttest_sample_sd(group_values) == 0)
+  }, logical(1))]
+}
+
 ttest_normality_skew_kurtosis <- function(values) {
   values <- as.numeric(values)
   values <- values[!is.na(values)]
@@ -903,23 +949,7 @@ ttest_analysis_note_line <- function(items) {
 }
 
 ttest_bind_result_rows <- function(rows) {
-  rows <- Filter(function(row) is.data.frame(row) && nrow(row) > 0, rows)
-  if (length(rows) == 0) {
-    return(data.frame(stringsAsFactors = FALSE))
-  }
-  columns <- unique(unlist(lapply(rows, names), use.names = FALSE))
-  rows <- lapply(rows, function(row) {
-    missing_columns <- setdiff(columns, names(row))
-    for (column in missing_columns) {
-      row[[column]] <- ""
-    }
-    row <- row[, columns, drop = FALSE]
-    rownames(row) <- NULL
-    row
-  })
-  out <- do.call(rbind, rows)
-  rownames(out) <- NULL
-  out
+  analysis_bind_rows(rows)
 }
 
 ttest_single_result <- function(data, dependent, factor, variable_info, labels, category_table, options) {
@@ -930,13 +960,63 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
   groups <- groups[keep]
   levels <- ttest_level_order(unique(groups))
   if (length(levels) < 2 || length(values) < 3) {
-    return(NULL)
+    return(list(
+      skipped = ttest_skipped_item(
+        dependent,
+        factor,
+        "At least two groups and three complete observations are required.",
+        length(values),
+        variable_info,
+        labels,
+        category_table
+      )
+    ))
   }
 
   dependent_measure <- ttest_measurement(dependent, variable_info)
   factor_measure <- ttest_measurement(factor, variable_info)
   group_count <- length(levels)
   force_nonparametric <- dependent_measure == "ordered" || isTRUE(options$force_nonparametric)
+  counts <- ttest_group_counts(groups, levels)
+  small_groups <- names(counts)[counts < 2]
+  if (length(small_groups) > 0) {
+    return(list(
+      skipped = ttest_skipped_item(
+        dependent,
+        factor,
+        sprintf("Each group must have at least 2 valid observations. Insufficient group(s): %s.", paste(small_groups, collapse = ", ")),
+        length(values),
+        variable_info,
+        labels,
+        category_table
+      )
+    ))
+  }
+  if (length(unique(values)) < 2) {
+    return(list(
+      skipped = ttest_skipped_item(
+        dependent,
+        factor,
+        "The dependent variable has no variance after complete-case filtering.",
+        length(values),
+        variable_info,
+        labels,
+        category_table
+      )
+    ))
+  }
+  warning_rows <- list()
+  zero_sd_groups <- ttest_zero_sd_groups(values, groups, levels)
+  if (length(zero_sd_groups) > 0) {
+    warning_rows[[length(warning_rows) + 1]] <- ttest_warning_item(
+      dependent,
+      factor,
+      sprintf("Zero standard deviation in group(s): %s. Variance-sensitive statistics may be unavailable or interpreted cautiously.", paste(zero_sd_groups, collapse = ", ")),
+      variable_info,
+      labels,
+      category_table
+    )
+  }
 
   normality_method <- tolower(as.character(options$normality_method %||% "skew_kurtosis"))
   normality_study_type <- tolower(as.character(options$normality_study_type %||% "survey"))
@@ -982,14 +1062,42 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
     if (parametric) {
       levene_p <- ttest_levene_p(values, groups)
       equal_variance <- is.na(levene_p) || levene_p >= .05
-      fit <- stats::t.test(values ~ as.factor(groups), var.equal = isTRUE(equal_variance))
+      fit <- ttest_safe_call(stats::t.test(values ~ as.factor(groups), var.equal = isTRUE(equal_variance)))
+      if (is.null(fit)) {
+        return(list(
+          skipped = ttest_skipped_item(
+            dependent,
+            factor,
+            "Independent samples t-test could not be computed, commonly because one or more groups have zero variance.",
+            length(values),
+            variable_info,
+            labels,
+            category_table
+          ),
+          warnings = ttest_bind_result_rows(warning_rows)
+        ))
+      }
       statistic <- unname(fit$statistic)
       statistic_label <- "t"
       p_value <- fit$p.value
       analysis <- if (isTRUE(equal_variance)) "Independent samples t-test" else "Welch t-test"
       test_type <- "t"
     } else {
-      fit <- suppressWarnings(stats::wilcox.test(values ~ as.factor(groups), exact = FALSE))
+      fit <- ttest_safe_call(stats::wilcox.test(values ~ as.factor(groups), exact = FALSE))
+      if (is.null(fit)) {
+        return(list(
+          skipped = ttest_skipped_item(
+            dependent,
+            factor,
+            "Mann-Whitney U test could not be computed for this variable-group combination.",
+            length(values),
+            variable_info,
+            labels,
+            category_table
+          ),
+          warnings = ttest_bind_result_rows(warning_rows)
+        ))
+      }
       statistic <- ttest_mann_whitney_z(values, groups)
       statistic_label <- "z"
       p_value <- fit$p.value
@@ -1000,8 +1108,22 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
     levene_p <- ttest_levene_p(values, groups)
     equal_variance <- is.na(levene_p) || levene_p >= .05
     if (isTRUE(equal_variance)) {
-      fit <- stats::aov(values ~ as.factor(groups))
-      fit_summary <- summary(fit)[[1]]
+      fit <- ttest_safe_call(stats::aov(values ~ as.factor(groups)))
+      fit_summary <- if (is.null(fit)) NULL else ttest_safe_call(summary(fit)[[1]])
+      if (is.null(fit_summary)) {
+        return(list(
+          skipped = ttest_skipped_item(
+            dependent,
+            factor,
+            "One-way ANOVA could not be computed for this variable-group combination.",
+            length(values),
+            variable_info,
+            labels,
+            category_table
+          ),
+          warnings = ttest_bind_result_rows(warning_rows)
+        ))
+      }
       statistic <- as.numeric(fit_summary[["F value"]][[1]])
       statistic_label <- "F"
       p_value <- as.numeric(fit_summary[["Pr(>F)"]][[1]])
@@ -1010,11 +1132,43 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
       if (!is.na(p_value) && p_value < .05) {
         method <- tolower(options$post_hoc_method %||% "scheffe")
         posthoc_label <- switch(method, tukey = "Tukey HSD", duncan = "Duncan multiple range test", bonferroni = "Bonferroni post-hoc test", "Scheffe post-hoc test")
-        p_matrix <- ttest_parametric_anova_pairwise(values, groups, method)
-        letters <- ttest_group_letters(values, groups, p_matrix, ordered = FALSE)
+        p_matrix <- ttest_safe_call(ttest_parametric_anova_pairwise(values, groups, method))
+        if (!is.null(p_matrix)) {
+          letters <- ttest_safe_call(ttest_group_letters(values, groups, p_matrix, ordered = FALSE))
+        } else {
+          posthoc_label <- ""
+        }
       }
     } else {
-      fit <- stats::oneway.test(values ~ as.factor(groups), var.equal = FALSE)
+      if (length(zero_sd_groups) > 0) {
+        return(list(
+          skipped = ttest_skipped_item(
+            dependent,
+            factor,
+            "Welch ANOVA was not performed because one or more groups have zero variance.",
+            length(values),
+            variable_info,
+            labels,
+            category_table
+          ),
+          warnings = ttest_bind_result_rows(warning_rows)
+        ))
+      }
+      fit <- ttest_safe_call(stats::oneway.test(values ~ as.factor(groups), var.equal = FALSE))
+      if (is.null(fit)) {
+        return(list(
+          skipped = ttest_skipped_item(
+            dependent,
+            factor,
+            "Welch ANOVA could not be computed for this variable-group combination.",
+            length(values),
+            variable_info,
+            labels,
+            category_table
+          ),
+          warnings = ttest_bind_result_rows(warning_rows)
+        ))
+      }
       statistic <- unname(fit$statistic)
       statistic_label <- "F"
       p_value <- fit$p.value
@@ -1022,12 +1176,30 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
       test_type <- "anova"
       if (!is.na(p_value) && p_value < .05) {
         posthoc_label <- "Games-Howell"
-        p_matrix <- ttest_games_howell_pairwise(values, groups)
-        letters <- ttest_group_letters(values, groups, p_matrix, ordered = FALSE)
+        p_matrix <- ttest_safe_call(ttest_games_howell_pairwise(values, groups))
+        if (!is.null(p_matrix)) {
+          letters <- ttest_safe_call(ttest_group_letters(values, groups, p_matrix, ordered = FALSE))
+        } else {
+          posthoc_label <- ""
+        }
       }
     }
   } else {
-    fit <- stats::kruskal.test(values ~ as.factor(groups))
+    fit <- ttest_safe_call(stats::kruskal.test(values ~ as.factor(groups)))
+    if (is.null(fit)) {
+      return(list(
+        skipped = ttest_skipped_item(
+          dependent,
+          factor,
+          "Kruskal-Wallis test could not be computed for this variable-group combination.",
+          length(values),
+          variable_info,
+          labels,
+          category_table
+        ),
+        warnings = ttest_bind_result_rows(warning_rows)
+      ))
+    }
     statistic <- unname(fit$statistic)
     statistic_label <- stat_chisq_label()
     p_value <- fit$p.value
@@ -1040,8 +1212,12 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
       }
       correction_label <- if (identical(method, "holm")) "Holm Bonferroni" else "Bonferroni correction"
       posthoc_label <- sprintf("Pairwise Wilcoxon rank-sum test with %s", correction_label)
-      p_matrix <- ttest_nonparametric_pairwise(values, groups, method)
-      letters <- ttest_group_letters(values, groups, p_matrix, ordered = FALSE)
+      p_matrix <- ttest_safe_call(ttest_nonparametric_pairwise(values, groups, method))
+      if (!is.null(p_matrix)) {
+        letters <- ttest_safe_call(ttest_group_letters(values, groups, p_matrix, ordered = FALSE))
+      } else {
+        posthoc_label <- ""
+      }
     }
   }
 
@@ -1050,21 +1226,23 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
   trend_p <- ""
   trend_method <- ""
   if (isTRUE(options$trend_analysis) && factor_measure == "ordered") {
-    trend_result <- ttest_trend_analysis(
+    trend_result <- ttest_safe_call(ttest_trend_analysis(
       values,
       groups,
       normal = parametric,
       equal_variance = isTRUE(equal_variance),
       ordinal = dependent_measure == "ordered",
       robust = isTRUE(options$robust_trend)
-    )
-    trend_p <- format_p(trend_result$p.value)
-    trend_method <- trend_result$method %||% ""
+    ))
+    if (!is.null(trend_result)) {
+      trend_p <- format_p(trend_result$p.value)
+      trend_method <- trend_result$method %||% ""
+    }
   }
   p_note <- ttest_p_note(test_type, analysis)
   trend_note <- ttest_trend_note(trend_method)
   effect_size_text <- if (isTRUE(options$effect_size)) {
-    ttest_effect_size(values, groups, test_type)
+    ttest_safe_call(ttest_effect_size(values, groups, test_type), "")
   } else {
     ""
   }
@@ -1101,7 +1279,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
     rows[["post-hoc"]] <- ttest_lookup_letters(letters, summaries$Value)
   }
   rows <- rows[, ttest_result_table_columns, drop = FALSE]
-  posthoc_table <- ttest_posthoc_table(factor, levels, p_matrix, posthoc_label, variable_info, labels, category_table)
+  posthoc_table <- ttest_safe_call(ttest_posthoc_table(factor, levels, p_matrix, posthoc_label, variable_info, labels, category_table), data.frame(stringsAsFactors = FALSE))
 
   normality_text <- sprintf(
     "%s: %s",
@@ -1145,7 +1323,8 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
       trend_key = trend_note$key %||% "",
       trend_symbol = trend_note$symbol %||% "",
       trend_note = trend_note$note %||% ""
-    )
+    ),
+    warnings = ttest_bind_result_rows(warning_rows)
   )
 }
 
@@ -1165,11 +1344,25 @@ prepare_ttest_anova_results <- function(
   factors <- intersect(as.character(factors %||% character(0)), names(data))
   results <- list()
   overview_rows <- list()
+  warning_rows <- list()
+  skipped_rows <- list()
   for (dependent in dependents) {
     dependent_items <- list()
     for (factor in factors) {
-      item <- ttest_single_result(data, dependent, factor, variable_info, labels, category_table, options)
-      if (is.null(item)) next
+      item <- tryCatch(
+        ttest_single_result(data, dependent, factor, variable_info, labels, category_table, options),
+        error = function(e) {
+          list(skipped = ttest_skipped_item(dependent, factor, conditionMessage(e), NA_integer_, variable_info, labels, category_table))
+        }
+      )
+      if (is.data.frame(item$warnings) && nrow(item$warnings) > 0) {
+        warning_rows[[length(warning_rows) + 1]] <- item$warnings
+      }
+      if (is.data.frame(item$skipped) && nrow(item$skipped) > 0) {
+        skipped_rows[[length(skipped_rows) + 1]] <- item$skipped
+        next
+      }
+      if (is.null(item) || !is.data.frame(item$table)) next
       dependent_items[[length(dependent_items) + 1]] <- item
       overview_rows[[length(overview_rows) + 1]] <- item$overview
     }
@@ -1207,6 +1400,8 @@ prepare_ttest_anova_results <- function(
     factors = factors,
     overview = overview,
     results = results,
+    warnings = ttest_bind_result_rows(warning_rows),
+    skipped = ttest_bind_result_rows(skipped_rows),
     options = options
   )
 }
@@ -1226,6 +1421,12 @@ ttest_anova_results_ui <- function(result) {
       model_overview_html_table(result$overview)
     )
   )
+
+  warning_section <- analysis_warning_section(result$warnings)
+  if (!is.null(warning_section)) sections[[length(sections) + 1]] <- warning_section
+
+  skipped_section <- analysis_skipped_section(result$skipped, title = "Skipped analyses")
+  if (!is.null(skipped_section)) sections[[length(sections) + 1]] <- skipped_section
 
   for (item in result$results %||% list()) {
     sections[[length(sections) + 1]] <- tags$div(

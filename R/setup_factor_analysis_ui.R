@@ -7,6 +7,7 @@ factor_analysis_setup_state <- function(
   labels = character(0),
   selected_available = character(0),
   selected_selected = character(0),
+  matrix_type = "pearson",
   normality = FALSE,
   normality_method = "skew_kurt",
   method = "pa",
@@ -35,6 +36,7 @@ factor_analysis_setup_state <- function(
     selected_items = analysis_variable_items(factor_variables, variable_table, labels),
     selected_selected = selected_order_items(selected_selected, factor_variables),
     move_disabled = length(allowed) == 0,
+    matrix_type = if (matrix_type %in% unname(factor_analysis_matrix_choices())) matrix_type else "pearson",
     normality = isTRUE(normality),
     normality_method = normality_method,
     method = method,
@@ -156,6 +158,12 @@ factor_analysis_setup_panel <- function(state) {
       class = "correlation-options-column factor-analysis-options-column",
       div(
         class = "analysis-options-panel correlation-options factor-analysis-options",
+        analysis_radio_group(
+          "Matrix",
+          "factor_matrix_type",
+          factor_analysis_matrix_choices(),
+          selected = state$matrix_type
+        ),
         analysis_option_group(
           "Assumption",
           list(

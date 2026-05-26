@@ -191,4 +191,49 @@ expect_true(
   "Expected Nonparametric Tests tab to be enabled"
 )
 
+message("Checking t-test / ANOVA guards and partial skips...")
+guard_data <- data.frame(
+  y_valid = c(1, 2, 3, 6, 7, 8),
+  y_constant = rep(5, 6),
+  y_zero_group_sd = c(1, 1, 1, 2, 3, 4),
+  g_good = rep(c("A", "B"), each = 3),
+  g_small = c("A", "A", "B", "B", "C", "B"),
+  stringsAsFactors = FALSE
+)
+guard_result <- prepare_ttest_anova_results(
+  guard_data,
+  dependents = c("y_valid", "y_constant", "y_zero_group_sd"),
+  factors = c("g_good", "g_small"),
+  options = list(effect_size = TRUE, normality_enabled = FALSE)
+)
+expect_true(
+  length(guard_result$results) >= 1 && any(guard_result$overview$`Dependent variable` == "y_valid"),
+  "Expected valid t-test / ANOVA combinations to continue running"
+)
+expect_true(
+  is.data.frame(guard_result$skipped) && nrow(guard_result$skipped) >= 2,
+  "Expected invalid t-test / ANOVA combinations to be collected as skipped analyses"
+)
+expect_true(
+  any(grepl("at least 2 valid observations", guard_result$skipped$Reason, fixed = TRUE)),
+  "Expected group-size guard to skip only the invalid combination"
+)
+expect_true(
+  any(grepl("no variance", guard_result$skipped$Reason, fixed = TRUE)),
+  "Expected zero dependent variance to be skipped"
+)
+expect_true(
+  is.data.frame(guard_result$warnings) && any(grepl("Zero standard deviation", guard_result$warnings$Warning, fixed = TRUE)),
+  "Expected zero group standard deviation warning"
+)
+guard_html <- as.character(tags_to_html(ttest_anova_results_ui(guard_result)))
+expect_true(grepl("<h3>Warnings</h3>", guard_html, fixed = TRUE), "Expected warnings section in t-test / ANOVA HTML")
+expect_true(grepl("<h3>Skipped analyses</h3>", guard_html, fixed = TRUE), "Expected skipped analyses section in t-test / ANOVA HTML")
+
+guard_xlsx <- tempfile(fileext = ".xlsx")
+save_ttest_anova_excel_file(guard_result, guard_xlsx)
+guard_sheets <- openxlsx::getSheetNames(guard_xlsx)
+expect_true("Warnings" %in% guard_sheets, "Expected t-test / ANOVA warnings Excel sheet")
+expect_true("Skipped analyses" %in% guard_sheets, "Expected t-test / ANOVA skipped Excel sheet")
+
 message("All t-test / ANOVA validations passed.")

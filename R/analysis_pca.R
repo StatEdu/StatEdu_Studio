@@ -3,7 +3,8 @@
 pca_matrix_choices <- function() {
   c(
     "Correlation matrix" = "correlation",
-    "Covariance matrix" = "covariance"
+    "Covariance matrix" = "covariance",
+    "Polychoric correlation" = "polychoric"
   )
 }
 
@@ -49,6 +50,8 @@ pca_measurements_for <- factor_analysis_measurements_for
 pca_numeric_matrix <- factor_analysis_numeric_matrix
 pca_complete_matrix <- factor_analysis_complete_matrix
 pca_display_names <- factor_analysis_display_names
+pca_warning_table <- factor_analysis_warning_table
+pca_sample_warnings <- factor_analysis_sample_warnings
 
 pca_suitability_tables <- function(corr, n_obs) {
   factor_analysis_suitability_tables(corr, n_obs)
@@ -226,23 +229,39 @@ prepare_pca_results <- function(data, variables, variable_info = NULL, labels = 
   options$save_component_scores <- isTRUE(options$save_component_scores %||% FALSE)
   options$save_component_base_name <- trimws(as.character(options$save_component_base_name %||% "PCA"))
 
-  analysis_matrix <- if (identical(matrix_type, "covariance")) {
+  matrix_result <- NULL
+  analysis_matrix <- if (identical(matrix_type, "polychoric")) {
+    matrix_result <- factor_analysis_correlation_matrix(complete, measurements[variables], "polychoric")
+    matrix_type <- matrix_result$matrix_type
+    matrix_result$matrix
+  } else if (identical(matrix_type, "covariance")) {
     stats::cov(complete, use = "pairwise.complete.obs")
   } else {
-    stats::cor(complete, use = "pairwise.complete.obs")
+    matrix_result <- factor_analysis_correlation_matrix(complete, measurements[variables], "pearson")
+    matrix_result$matrix
   }
   shiny::validate(shiny::need(is.matrix(analysis_matrix) && all(is.finite(analysis_matrix)), "The PCA matrix could not be estimated."))
   diag(analysis_matrix) <- if (identical(matrix_type, "covariance")) diag(analysis_matrix) else 1
   eigenvalues <- eigen(analysis_matrix, symmetric = TRUE, only.values = TRUE)$values
   n_components <- pca_select_component_count(eigenvalues, criterion, options$n_components %||% 1L, cumulative_variance)
 
-  fit <- suppressWarnings(suppressMessages(psych::principal(
-    complete,
-    nfactors = n_components,
-    rotate = rotation,
-    scores = TRUE,
-    covar = identical(matrix_type, "covariance")
-  )))
+  fit <- if (identical(matrix_type, "polychoric")) {
+    suppressWarnings(suppressMessages(psych::principal(
+      r = analysis_matrix,
+      nfactors = n_components,
+      rotate = rotation,
+      scores = FALSE,
+      covar = FALSE
+    )))
+  } else {
+    suppressWarnings(suppressMessages(psych::principal(
+      complete,
+      nfactors = n_components,
+      rotate = rotation,
+      scores = TRUE,
+      covar = identical(matrix_type, "covariance")
+    )))
+  }
 
   display_names <- pca_display_names(variables, variable_info, labels, category_table)
   loadings <- as.matrix(unclass(fit$loadings))
@@ -254,9 +273,18 @@ prepare_pca_results <- function(data, variables, variable_info = NULL, labels = 
     scores <- NULL
   }
 
-  suitability_corr <- stats::cor(complete, use = "pairwise.complete.obs")
+  suitability_corr <- if (identical(matrix_type, "polychoric")) {
+    analysis_matrix
+  } else {
+    stats::cor(complete, use = "pairwise.complete.obs")
+  }
   diag(suitability_corr) <- 1
   suitability <- pca_suitability_tables(suitability_corr, nrow(complete))
+  warnings <- pca_warning_table(c(
+    if (is.list(matrix_result)) matrix_result$warnings else character(0),
+    pca_sample_warnings(nrow(complete), length(variables), "PCA"),
+    if (identical(matrix_type, "polychoric") && isTRUE(options$save_component_scores)) "Component scores are not available when PCA is fitted from a polychoric correlation matrix."
+  ))
 
   result <- list(
     type = "pca",
@@ -267,6 +295,7 @@ prepare_pca_results <- function(data, variables, variable_info = NULL, labels = 
     complete_rows = complete_rows,
     n_obs = nrow(complete),
     matrix_type = matrix_type,
+    requested_matrix_type = options$matrix_type %||% "correlation",
     rotation = rotation,
     criterion = criterion,
     cumulative_variance = cumulative_variance,
@@ -280,6 +309,7 @@ prepare_pca_results <- function(data, variables, variable_info = NULL, labels = 
     complexity = pca_loading_complexity(loadings, fit),
     scores = scores,
     suitability = suitability,
+    warnings = warnings,
     options = options,
     variable_info = variable_info,
     labels = labels,

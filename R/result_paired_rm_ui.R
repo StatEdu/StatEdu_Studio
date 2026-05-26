@@ -243,7 +243,12 @@ paired_rm_results_ui <- function(result) {
         )
       )
     },
-    if ((!is.data.frame(result$display_table) || nrow(result$display_table) == 0) && (!is.data.frame(result$count_table) || nrow(result$count_table) == 0)) {
+    if (
+      (!is.data.frame(result$display_table) || nrow(result$display_table) == 0) &&
+        (!is.data.frame(result$count_table) || nrow(result$count_table) == 0) &&
+        is.data.frame(result$table) &&
+        nrow(result$table) > 0
+    ) {
       tags$div(
         class = "result-section paired-result-section regression-result-panel",
         tags$h3("Repeated-measures test"),
@@ -262,6 +267,13 @@ paired_rm_results_ui <- function(result) {
         class = "result-section paired-result-section regression-result-panel",
         tags$h3("Assumption check"),
         coefficient_html_table(result$assumption)
+      )
+    },
+    if (is.data.frame(result$skipped) && nrow(result$skipped) > 0) {
+      tags$div(
+        class = "result-section paired-result-section regression-result-panel",
+        tags$h3("Skipped repeated-measures rows"),
+        coefficient_html_table(result$skipped)
       )
     }
   )

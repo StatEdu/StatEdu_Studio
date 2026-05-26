@@ -108,4 +108,47 @@ stopifnot(length(multinom_result) == 1L)
 stopifnot(identical(multinom_result[[1]]$method, "Multinomial logistic regression"))
 stopifnot(is.data.frame(multinom_result[[1]]$coef_table))
 
+guard_data <- data.frame(
+  y_ok = factor(c(rep(0, 20), rep(1, 20))),
+  y_one = factor(rep(1, 40)),
+  x = rnorm(40),
+  x_constant = rep(1, 40),
+  group = factor(c(rep("A", 19), "B", rep("B", 20))),
+  stringsAsFactors = FALSE
+)
+guard_info <- data.frame(
+  name = c("y_ok", "y_one", "x", "x_constant", "group"),
+  measurement = c("binary", "binary", "continuous", "continuous", "category"),
+  stringsAsFactors = FALSE
+)
+guard_result <- prepare_logistic_analysis_results(
+  guard_data,
+  dependents = c("y_ok", "y_one"),
+  block1 = "x",
+  variable_info = guard_info
+)
+stopifnot(length(guard_result) == 1L)
+stopifnot(is.data.frame(attr(guard_result, "skipped")))
+stopifnot(any(grepl("fewer than two observed outcome levels", attr(guard_result, "skipped")$Message, fixed = TRUE)))
+guard_html <- as.character(htmltools::renderTags(logistic_results_panel(guard_result, variable_table = guard_info))$html)
+stopifnot(grepl("<h3>Skipped models</h3>", guard_html, fixed = TRUE))
+
+constant_predictor_result <- prepare_logistic_analysis_results(
+  guard_data,
+  dependents = "y_ok",
+  block1 = "x_constant",
+  variable_info = guard_info
+)
+stopifnot(length(constant_predictor_result) == 0L)
+stopifnot(any(grepl("Constant predictor", attr(constant_predictor_result, "skipped")$Message, fixed = TRUE)))
+
+sparse_result <- prepare_logistic_analysis_results(
+  guard_data,
+  dependents = "y_ok",
+  block1 = "group",
+  variable_info = guard_info
+)
+stopifnot(length(sparse_result) == 1L)
+stopifnot(any(grepl("Zero cell", sparse_result[[1]]$notes, fixed = TRUE)))
+
 cat("Logistic analysis validation passed.\n")

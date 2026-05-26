@@ -218,6 +218,20 @@ paired_results_ui <- function(result) {
         tags$h3("Assumption check"),
         coefficient_html_table(result$checks)
       )
+    },
+    if (is.data.frame(result$warnings) && nrow(result$warnings) > 0) {
+      tags$div(
+        class = "result-section paired-result-section regression-result-panel",
+        tags$h3("Warnings"),
+        coefficient_html_table(result$warnings)
+      )
+    },
+    if (is.data.frame(result$skipped) && nrow(result$skipped) > 0) {
+      tags$div(
+        class = "result-section paired-result-section regression-result-panel",
+        tags$h3("Skipped pairs"),
+        coefficient_html_table(result$skipped)
+      )
     }
   )
 }

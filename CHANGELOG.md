@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.9.7 - 2026-05-26
+
+### Changed
+
+- Added automatic correlation method selection with Pearson for normal continuous pairs and Spearman for non-normal or ordinal pairs.
+- Added guard conditions so correlation, paired tests, t-test / ANOVA, regression, and logistic regression skip invalid variables or models instead of stopping the full analysis.
+- Added warning and skipped-result output for low sample size, zero variance, all ties, sparse cells, separation risk, rank deficiency, and VIF thresholds.
+- Added Pearson / polychoric matrix options for factor analysis and PCA, with ordinal-data guidance and sample-size warnings.
+- Consolidated warning and skipped-output helpers across result screens and Excel exports.
+
+
 ## v0.9.6 - 2026-05-25
 
 ### Changed

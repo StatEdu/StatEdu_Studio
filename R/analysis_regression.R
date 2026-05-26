@@ -150,6 +150,90 @@ prepare_regression_model_data_static <- function(data, variables, variable_info 
   data
 }
 
+regression_guard_row <- function(dependent, predictors, reason, n = NA_integer_, variable_info = NULL, labels = character(0), type = "Skipped") {
+  data.frame(
+    Type = type,
+    `Dependent variable` = display_variable_name_static(dependent, variable_info, labels, label_only = TRUE),
+    Predictors = paste(vapply(predictors, display_variable_name_static, character(1), table = variable_info, labels = labels, label_only = TRUE), collapse = ", "),
+    N = if (is.na(n)) "" else as.character(n),
+    Message = reason,
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
+regression_bind_guard_rows <- function(rows) {
+  analysis_bind_rows(rows)
+}
+
+regression_constant_predictors <- function(frame, predictors) {
+  predictors <- intersect(as.character(predictors %||% character(0)), names(frame))
+  predictors[vapply(predictors, function(name) {
+    values <- frame[[name]]
+    if (is.factor(values)) {
+      values <- droplevels(values)
+      return(nlevels(values) < 2)
+    }
+    values <- values[!is.na(values)]
+    length(unique(values)) < 2
+  }, logical(1))]
+}
+
+regression_preflight <- function(data, dependent, predictors, formula, variable_info = NULL, labels = character(0)) {
+  frame <- tryCatch(stats::model.frame(formula, data = data, na.action = stats::na.omit), error = function(e) e)
+  if (inherits(frame, "error")) {
+    return(list(ok = FALSE, skipped = regression_guard_row(dependent, predictors, conditionMessage(frame), NA_integer_, variable_info, labels)))
+  }
+  n <- nrow(frame)
+  if (n < 3) {
+    return(list(ok = FALSE, skipped = regression_guard_row(dependent, predictors, "At least 3 complete cases are required.", n, variable_info, labels)))
+  }
+  y <- frame[[dependent]]
+  if (length(unique(stats::na.omit(y))) < 2) {
+    return(list(ok = FALSE, skipped = regression_guard_row(dependent, predictors, "The dependent variable has no variance after complete-case filtering.", n, variable_info, labels)))
+  }
+  constant_predictors <- regression_constant_predictors(frame, predictors)
+  if (length(constant_predictors) > 0) {
+    return(list(ok = FALSE, skipped = regression_guard_row(
+      dependent,
+      predictors,
+      sprintf("Constant predictor(s) after complete-case filtering: %s.", paste(constant_predictors, collapse = ", ")),
+      n,
+      variable_info,
+      labels
+    )))
+  }
+  model_matrix <- tryCatch(stats::model.matrix(formula, data = frame), error = function(e) e)
+  if (inherits(model_matrix, "error")) {
+    return(list(ok = FALSE, skipped = regression_guard_row(dependent, predictors, conditionMessage(model_matrix), n, variable_info, labels)))
+  }
+  rank <- qr(model_matrix)$rank
+  residual_df <- n - rank
+  if (residual_df < 1) {
+    return(list(ok = FALSE, skipped = regression_guard_row(
+      dependent,
+      predictors,
+      sprintf("Residual degrees of freedom are insufficient (N=%d, model rank=%d).", n, rank),
+      n,
+      variable_info,
+      labels
+    )))
+  }
+  warnings <- list()
+  if (rank < ncol(model_matrix)) {
+    warnings[[length(warnings) + 1L]] <- regression_guard_row(
+      dependent,
+      predictors,
+      "Model matrix is rank deficient; one or more coefficients may be aliased because of perfect multicollinearity.",
+      n,
+      variable_info,
+      labels,
+      type = "Warning"
+    )
+  }
+  list(ok = TRUE, frame = frame, n = n, rank = rank, residual_df = residual_df, warnings = regression_bind_guard_rows(warnings))
+}
+
 coefficient_collinearity <- function(model_matrix) {
   terms <- colnames(model_matrix)
   vif <- stats::setNames(rep(NA_real_, length(terms)), terms)
@@ -404,6 +488,10 @@ prepare_single_regression_result <- function(
     reference_values = reference_values
   )
   formula <- make_formula(dependent, predictors)
+  preflight <- regression_preflight(data, dependent, predictors, formula, variable_info = variable_info)
+  if (!isTRUE(preflight$ok)) {
+    return(list(result = NULL, job = NULL, skipped = preflight$skipped, warnings = preflight$warnings))
+  }
   model <- stats::lm(formula, data = data)
   resid_model <- stats::residuals(model)
 
@@ -501,7 +589,8 @@ prepare_single_regression_result <- function(
     bootstrap_seed = bootstrap_seed,
     coef_table = coef_table,
     boot_table = NULL,
-    predictors = predictors
+    predictors = predictors,
+    warnings = preflight$warnings
   )
 
   if (!isTRUE(use_bootstrap)) {
@@ -549,24 +638,33 @@ prepare_regression_analysis_results <- function(
   shiny::validate(shiny::need(length(predictors) > 0, "Select at least one predictor."))
 
   prepared <- lapply(dependents, function(dependent) {
-    prepare_single_regression_result(
-      dependent = dependent,
-      data = data,
-      predictors = predictors,
-      variable_info = variable_info,
-      reference_values = reference_values,
-      boot_r = boot_r,
-      seed = seed
+    tryCatch(
+      prepare_single_regression_result(
+        dependent = dependent,
+        data = data,
+        predictors = predictors,
+        variable_info = variable_info,
+        reference_values = reference_values,
+        boot_r = boot_r,
+        seed = seed
+      ),
+      error = function(e) list(result = NULL, job = NULL, skipped = regression_guard_row(dependent, predictors, conditionMessage(e), NA_integer_, variable_info))
     )
   })
 
-  results <- lapply(prepared, `[[`, "result")
+  skipped <- regression_bind_guard_rows(lapply(prepared, `[[`, "skipped"))
+  warnings <- regression_bind_guard_rows(lapply(prepared, `[[`, "warnings"))
+  results <- Filter(Negate(is.null), lapply(prepared, `[[`, "result"))
+  shiny::validate(shiny::need(length(results) > 0 || is.data.frame(skipped) && nrow(skipped) > 0, "No regression model could be prepared."))
+  result_index_lookup <- cumsum(vapply(prepared, function(item) !is.null(item$result), logical(1)))
   jobs <- Filter(Negate(is.null), lapply(seq_along(prepared), function(index) {
     job <- prepared[[index]]$job
     if (is.null(job)) return(NULL)
-    job$result_index <- index
+    job$result_index <- result_index_lookup[[index]]
     job
   }))
+  attr(results, "warnings") <- warnings
+  attr(results, "skipped") <- skipped
 
   list(results = results, jobs = jobs)
 }
@@ -638,15 +736,25 @@ prepare_hierarchical_analysis_results <- function(
       if (length(predictors) == 0) {
         next
       }
-      prepared <- prepare_single_regression_result(
-        dependent = dependent,
-        data = data,
-        predictors = predictors,
-        variable_info = variable_info,
-        reference_values = reference_values,
-        boot_r = boot_r,
-        seed = seed
+      prepared <- tryCatch(
+        prepare_single_regression_result(
+          dependent = dependent,
+          data = data,
+          predictors = predictors,
+          variable_info = variable_info,
+          reference_values = reference_values,
+          boot_r = boot_r,
+          seed = seed
+        ),
+        error = function(e) list(result = NULL, job = NULL, skipped = regression_guard_row(dependent, predictors, conditionMessage(e), NA_integer_, variable_info))
       )
+      if (!is.null(prepared$warnings) && is.data.frame(prepared$warnings) && nrow(prepared$warnings) > 0) {
+        attr(results, "warnings") <- regression_bind_guard_rows(list(attr(results, "warnings"), prepared$warnings))
+      }
+      if (!is.null(prepared$skipped) && is.data.frame(prepared$skipped) && nrow(prepared$skipped) > 0) {
+        attr(results, "skipped") <- regression_bind_guard_rows(list(attr(results, "skipped"), prepared$skipped))
+        next
+      }
       result <- prepared$result
       result$hierarchical <- TRUE
       result$hierarchical_step <- steps[[step_index]]$name
@@ -663,6 +771,7 @@ prepare_hierarchical_analysis_results <- function(
     }
   }
 
-  shiny::validate(shiny::need(length(results) > 0, "No hierarchical regression model could be prepared."))
+  skipped <- attr(results, "skipped")
+  shiny::validate(shiny::need(length(results) > 0 || is.data.frame(skipped) && nrow(skipped) > 0, "No hierarchical regression model could be prepared."))
   list(results = results, jobs = jobs)
 }

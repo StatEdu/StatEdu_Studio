@@ -38,6 +38,7 @@ pca_results_ui <- function(result, report_mode = FALSE) {
         h3("Principal component analysis"),
         coefficient_html_table(result$overview)
       ),
+      analysis_warning_section(result$warnings, class = "result-section pca-result-section regression-result-panel"),
       div(
         class = "result-section pca-result-section regression-result-panel",
         h3("Suitability"),

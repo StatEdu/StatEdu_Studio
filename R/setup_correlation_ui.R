@@ -7,6 +7,7 @@ correlation_setup_state <- function(
   labels = character(0),
   selected_available = character(0),
   selected_selected = character(0),
+  continuous_method = "auto",
   normality = TRUE,
   latent_correlations = FALSE,
   reason = TRUE,
@@ -27,6 +28,7 @@ correlation_setup_state <- function(
     selected_items = analysis_variable_items(correlation_variables, variable_table, labels),
     selected_selected = selected_order_items(selected_selected, correlation_variables),
     move_disabled = length(selected) == 0,
+    continuous_method = correlation_continuous_method_value(continuous_method),
     normality = isTRUE(normality),
     latent_correlations = isTRUE(latent_correlations),
     reason = isTRUE(reason),
@@ -35,6 +37,21 @@ correlation_setup_state <- function(
     scatter_plot = isTRUE(scatter_plot),
     matrix_plot = isTRUE(matrix_plot)
   )
+}
+
+correlation_continuous_method_choices <- function() {
+  c(
+    "Auto" = "auto",
+    "Pearson" = "pearson",
+    "Spearman" = "spearman",
+    "Kendall" = "kendall"
+  )
+}
+
+correlation_continuous_method_value <- function(value) {
+  value <- as.character(value %||% "auto")
+  choices <- unname(correlation_continuous_method_choices())
+  if (value %in% choices) value else "auto"
 }
 
 correlation_setup_panel <- function(state) {
@@ -76,6 +93,12 @@ correlation_setup_panel <- function(state) {
             list(id = "correlation_normality", label = "normality diagnostics", value = state$normality),
             list(id = "correlation_reason", label = "reason", value = state$reason)
           )
+        ),
+        analysis_radio_group(
+          "Continuous method",
+          "correlation_continuous_method",
+          correlation_continuous_method_choices(),
+          selected = state$continuous_method
         ),
         div(
           class = "analysis-option-group",

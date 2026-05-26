@@ -134,6 +134,19 @@ add_excel_table_sheet <- function(workbook, sheet_name, table, used_sheets, merg
   c(used_sheets, sheet_name)
 }
 
+add_optional_excel_table_sheet <- function(workbook, sheet_name, table, used_sheets, title = NULL, ...) {
+  if (!analysis_has_rows(table)) {
+    return(used_sheets)
+  }
+  add_excel_table_sheet(workbook, sheet_name, table, used_sheets, title = title %||% sheet_name, ...)
+}
+
+add_analysis_warning_skipped_sheets <- function(workbook, used_sheets, warnings = NULL, skipped = NULL, skipped_title = "Skipped analyses") {
+  used_sheets <- add_optional_excel_table_sheet(workbook, "Warnings", warnings, used_sheets, title = "Warnings")
+  used_sheets <- add_optional_excel_table_sheet(workbook, skipped_title, skipped, used_sheets, title = skipped_title)
+  used_sheets
+}
+
 add_regression_result_sheet <- function(
   workbook,
   sheet_name,
@@ -226,6 +239,9 @@ save_analysis_excel_workbook <- function(
     used_sheets,
     merge_shared_independent = TRUE
   )
+  warnings <- attr(results, "warnings")
+  skipped <- attr(results, "skipped")
+  used_sheets <- add_analysis_warning_skipped_sheets(workbook, used_sheets, warnings, skipped, skipped_title = "Skipped models")
 
   for (index in seq_along(results)) {
     used_sheets <- add_regression_result_sheet(
@@ -974,6 +990,10 @@ save_correlation_excel_file <- function(result, file) {
   if (isTRUE(result$options$normality) && is.data.frame(normality_table) && nrow(normality_table) > 0) {
     used_sheets <- add_excel_table_sheet(workbook, "Normality", normality_table, used_sheets)
   }
+  omitted_table <- correlation_omitted_display_table(result)
+  if (is.data.frame(omitted_table) && nrow(omitted_table) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Omitted variables", omitted_table, used_sheets)
+  }
   if (is.list(result$latent)) {
     used_sheets <- add_excel_table_sheet(
       workbook,
@@ -990,6 +1010,7 @@ save_factor_analysis_excel_file <- function(result, file) {
   workbook <- openxlsx::createWorkbook()
   used_sheets <- character(0)
   used_sheets <- add_excel_table_sheet(workbook, "Overview", result$overview, used_sheets, title = "Factor analysis")
+  used_sheets <- add_optional_excel_table_sheet(workbook, "Warnings", result$warnings, used_sheets)
   used_sheets <- add_excel_table_sheet(workbook, "Suitability", result$suitability$overview, used_sheets)
   if (is.data.frame(result$normality_table) && nrow(result$normality_table) > 0) {
     used_sheets <- add_excel_table_sheet(workbook, "Normality", result$normality_table, used_sheets)
@@ -1013,6 +1034,7 @@ save_pca_excel_file <- function(result, file) {
   workbook <- openxlsx::createWorkbook()
   used_sheets <- character(0)
   used_sheets <- add_excel_table_sheet(workbook, "Overview", result$overview, used_sheets, title = "Principal component analysis")
+  used_sheets <- add_optional_excel_table_sheet(workbook, "Warnings", result$warnings, used_sheets)
   used_sheets <- add_excel_table_sheet(workbook, "Suitability", result$suitability$overview, used_sheets)
   used_sheets <- add_excel_table_sheet(workbook, "Loadings", result$loadings_table, used_sheets, title = "Component loadings")
   if (is.data.frame(result$variance_table) && nrow(result$variance_table) > 0) {
@@ -1379,6 +1401,7 @@ save_ttest_anova_excel_file <- function(result, file) {
     used_sheets,
     title = "Model overview"
   )
+  used_sheets <- add_analysis_warning_skipped_sheets(workbook, used_sheets, result$warnings, result$skipped, skipped_title = "Skipped analyses")
   for (item in result$results %||% list()) {
     used_sheets <- add_ttest_anova_result_sheet(
       workbook,
@@ -1406,6 +1429,14 @@ save_ttest_anova_excel_file <- function(result, file) {
 save_nonparametric_paired_excel_file <- function(result, file) {
   workbook <- openxlsx::createWorkbook()
   used_sheets <- character(0)
+  write_paired_guard_sheets <- function(part, prefix = "") {
+    if (is.data.frame(part$warnings) && nrow(part$warnings) > 0) {
+      used_sheets <<- add_ttest_anova_result_sheet(workbook, paste0(prefix, "Warnings"), part$warnings, "", used_sheets, title = "Warnings")
+    }
+    if (is.data.frame(part$skipped) && nrow(part$skipped) > 0) {
+      used_sheets <<- add_ttest_anova_result_sheet(workbook, paste0(prefix, "Skipped"), part$skipped, "", used_sheets, title = "Skipped pairs")
+    }
+  }
   write_part <- function(part, prefix = "") {
     if (identical(part$type, "nonparametric_paired_rm")) {
       if (is.data.frame(part$display_table) && nrow(part$display_table) > 0) {
@@ -1446,6 +1477,7 @@ save_nonparametric_paired_excel_file <- function(result, file) {
           title = "Post-hoc pairwise comparisons"
         )
       }
+      write_paired_guard_sheets(part, prefix)
     } else {
       if (is.data.frame(part$scale_table) && nrow(part$scale_table) > 0) {
         table <- part$scale_table
@@ -1473,6 +1505,7 @@ save_nonparametric_paired_excel_file <- function(result, file) {
           show_effect_size = isTRUE(part$options$effect_size)
         )
       }
+      write_paired_guard_sheets(part, prefix)
     }
   }
   if (identical(result$type, "nonparametric_paired_combined")) {
@@ -1494,6 +1527,14 @@ save_paired_excel_file <- function(result, file) {
   }
   workbook <- openxlsx::createWorkbook()
   used_sheets <- character(0)
+  write_paired_guard_sheets <- function(part, prefix = "") {
+    if (is.data.frame(part$warnings) && nrow(part$warnings) > 0) {
+      used_sheets <<- add_ttest_anova_result_sheet(workbook, paste0(prefix, "Warnings"), part$warnings, "", used_sheets, title = "Warnings")
+    }
+    if (is.data.frame(part$skipped) && nrow(part$skipped) > 0) {
+      used_sheets <<- add_ttest_anova_result_sheet(workbook, paste0(prefix, "Skipped"), part$skipped, "", used_sheets, title = "Skipped pairs")
+    }
+  }
   if (identical(result$type, "paired_combined")) {
     paired_part <- result$paired
     rm_part <- result$paired_rm
@@ -1531,6 +1572,7 @@ save_paired_excel_file <- function(result, file) {
         title = "Paired assumption check"
       )
     }
+    write_paired_guard_sheets(paired_part, "Paired ")
     if (is.data.frame(rm_part$display_table) && nrow(rm_part$display_table) > 0) {
       used_sheets <- add_paired_rm_grouped_excel_sheet(
         workbook,
@@ -1572,6 +1614,9 @@ save_paired_excel_file <- function(result, file) {
         used_sheets,
         title = "Repeated-measures assumption check"
       )
+    }
+    if (is.data.frame(rm_part$skipped) && nrow(rm_part$skipped) > 0) {
+      used_sheets <- add_ttest_anova_result_sheet(workbook, "Repeated skipped", rm_part$skipped, "", used_sheets, title = "Skipped repeated-measures rows")
     }
     openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
     return(invisible(file))
@@ -1620,6 +1665,7 @@ save_paired_excel_file <- function(result, file) {
       title = "Assumption check"
     )
   }
+  write_paired_guard_sheets(result)
   openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
   invisible(file)
 }
@@ -1678,6 +1724,9 @@ save_paired_rm_excel_file <- function(result, file) {
       used_sheets,
       title = "Assumption check"
     )
+  }
+  if (is.data.frame(result$skipped) && nrow(result$skipped) > 0) {
+    used_sheets <- add_ttest_anova_result_sheet(workbook, "Skipped", result$skipped, "", used_sheets, title = "Skipped repeated-measures rows")
   }
   openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
   invisible(file)

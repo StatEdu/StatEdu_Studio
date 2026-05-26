@@ -63,7 +63,11 @@ factor_analysis_note <- function(result) {
     "Variables are shown in the selected input order."
   }
   ordinal_note <- if (isTRUE(factor_analysis_has_ordered_variables(result))) {
-    "Ordinal variables are currently analyzed with Pearson correlations."
+    if (identical(result$matrix_type %||% "pearson", "polychoric")) {
+      "Ordinal variables were analyzed with a polychoric correlation matrix."
+    } else {
+      "Ordinal variables were analyzed with Pearson correlations; polychoric correlation is recommended for ordinal item sets."
+    }
   } else {
     ""
   }
@@ -158,6 +162,7 @@ factor_analysis_results_ui <- function(result, report_mode = FALSE) {
         h3("Factor analysis"),
         coefficient_html_table(result$overview)
       ),
+      analysis_warning_section(result$warnings, class = "result-section factor-analysis-result-section regression-result-panel"),
       div(
         class = "result-section factor-analysis-result-section regression-result-panel",
         h3("Suitability"),

@@ -37,6 +37,23 @@ correlation_numeric_vector <- function(values) {
   suppressWarnings(as.numeric(values))
 }
 
+correlation_ordered_score <- function(values) {
+  if (is.character(values) || is.factor(values)) {
+    values <- as.character(values)
+    values[!nzchar(trimws(values))] <- NA_character_
+  }
+  numeric <- suppressWarnings(as.numeric(values))
+  non_missing <- values[!is.na(values)]
+  if (length(non_missing) == 0) {
+    return(numeric)
+  }
+  if (sum(!is.na(numeric)) >= 3) {
+    return(numeric)
+  }
+  ordered_values <- frequency_value_order(non_missing)
+  as.numeric(match(as.character(values), ordered_values))
+}
+
 correlation_binary_score <- function(values) {
   if (is.factor(values)) {
     raw <- as.character(values)
@@ -44,7 +61,8 @@ correlation_binary_score <- function(values) {
     raw <- as.character(values)
   }
   raw[is.na(values)] <- NA_character_
-  levels <- sort(unique(raw[!is.na(raw) & nzchar(raw)]))
+  raw[!is.na(raw) & !nzchar(trimws(raw))] <- NA_character_
+  levels <- sort(unique(raw[!is.na(raw)]))
   if (length(levels) != 2) {
     return(rep(NA_real_, length(values)))
   }
@@ -54,6 +72,7 @@ correlation_binary_score <- function(values) {
 correlation_factor_vector <- function(values) {
   raw <- as.character(values)
   raw[is.na(values)] <- NA_character_
+  raw[!is.na(raw) & !nzchar(trimws(raw))] <- NA_character_
   factor(raw)
 }
 
@@ -61,7 +80,7 @@ correlation_analysis_vector <- function(values, measurement) {
   switch(
     measurement,
     continuous = correlation_numeric_vector(values),
-    ordered = correlation_numeric_vector(values),
+    ordered = correlation_ordered_score(values),
     binary = correlation_binary_score(values),
     category = correlation_factor_vector(values),
     correlation_numeric_vector(values)
@@ -142,10 +161,21 @@ correlation_sig <- function(p) {
   ""
 }
 
+correlation_normality_satisfied <- function(normality_table, name) {
+  if (!is.data.frame(normality_table) || nrow(normality_table) == 0 || !"Name" %in% names(normality_table)) {
+    return(FALSE)
+  }
+  row <- normality_table[as.character(normality_table$Name) == as.character(name), , drop = FALSE]
+  if (nrow(row) == 0 || !"normal" %in% names(row)) {
+    return(FALSE)
+  }
+  isTRUE(row$normal[[1]])
+}
+
 correlation_method_for_pair <- function(
   x_measure,
   y_measure,
-  continuous_method = "pearson",
+  continuous_method = "auto",
   x_name = NULL,
   y_name = NULL,
   normality_table = NULL,
@@ -153,9 +183,17 @@ correlation_method_for_pair <- function(
 ) {
   pair <- sort(c(x_measure, y_measure))
   if (identical(pair, c("continuous", "continuous"))) {
-    method <- continuous_method %||% "pearson"
-    method <- if (method %in% c("pearson", "spearman", "kendall")) method else "pearson"
-    return(list(method = method, label = tools::toTitleCase(method), reason = sprintf("%s selected for two continuous variables.", tools::toTitleCase(method))))
+    method <- as.character(continuous_method %||% "auto")
+    method <- if (method %in% c("auto", "pearson", "spearman", "kendall")) method else "auto"
+    if (identical(method, "auto")) {
+      x_normal <- isTRUE(normality_checked) && correlation_normality_satisfied(normality_table, x_name)
+      y_normal <- isTRUE(normality_checked) && correlation_normality_satisfied(normality_table, y_name)
+      if (isTRUE(x_normal) && isTRUE(y_normal)) {
+        return(list(method = "pearson", label = "Pearson", reason = "Auto selected Pearson because both continuous variables satisfied normality."))
+      }
+      return(list(method = "spearman", label = "Spearman", reason = "Auto selected Spearman because at least one continuous variable did not satisfy normality."))
+    }
+    return(list(method = method, label = tools::toTitleCase(method), reason = sprintf("%s was selected for two continuous variables.", tools::toTitleCase(method))))
   }
   if (all(pair %in% c("continuous", "binary"))) {
     return(list(method = "point_biserial", label = "Point-biserial", reason = "Point-biserial was selected for a continuous variable and a binary variable."))
@@ -312,7 +350,7 @@ correlation_pair_result <- function(
   y_name,
   x_measure,
   y_measure,
-  continuous_method = "pearson",
+  continuous_method = "auto",
   normality_table = NULL,
   normality_checked = FALSE
 ) {
@@ -470,8 +508,17 @@ prepare_correlation_results <- function(
   category_table = NULL,
   options = list()
 ) {
-  variables <- intersect(as.character(variables %||% character(0)), names(data))
-  shiny::validate(shiny::need(length(variables) >= 2, "Select at least two variables for correlation analysis."))
+  requested_variables <- as.character(variables %||% character(0))
+  variables <- intersect(requested_variables, names(data))
+  if (length(variables) < 2) {
+    missing <- setdiff(requested_variables, names(data))
+    detail <- if (length(missing) > 0) {
+      sprintf("Selected variables were not found in the active data: %s.", paste(head(missing, 5), collapse = ", "))
+    } else {
+      "Select at least two variables for correlation analysis."
+    }
+    stop(detail, call. = FALSE)
+  }
 
   measurements <- stats::setNames(
     vapply(variables, correlation_measurement, character(1), variable_info = variable_info),
@@ -481,11 +528,29 @@ prepare_correlation_results <- function(
     values <- correlation_analysis_vector(data[[name]], measurements[[name]])
     sum(!is.na(values))
   }, integer(1))
-  variables <- names(valid_counts)[valid_counts >= 3]
-  shiny::validate(shiny::need(length(variables) >= 2, "At least two selected variables must have three or more valid values."))
+  unique_counts <- vapply(variables, function(name) {
+    values <- correlation_analysis_vector(data[[name]], measurements[[name]])
+    length(unique(values[!is.na(values)]))
+  }, integer(1))
+  keep_variables <- valid_counts >= 3 & unique_counts >= 2
+  omitted_names <- names(valid_counts)[!keep_variables]
+  variables <- names(valid_counts)[keep_variables]
+  if (length(variables) < 2) {
+    count_text <- paste(sprintf("%s=N %s, unique %s", names(valid_counts), valid_counts, unique_counts), collapse = "; ")
+    stop(sprintf("At least two selected variables must have three or more valid values and at least two unique values. Current counts: %s.", count_text), call. = FALSE)
+  }
   measurements <- measurements[variables]
 
-  normality_checked <- isTRUE(options$normality)
+  continuous_method <- as.character(options$continuous_method %||% "auto")
+  if (!continuous_method %in% c("auto", "pearson", "spearman", "kendall")) {
+    continuous_method <- "auto"
+  }
+  options$continuous_method <- continuous_method
+  normality_checked <- isTRUE(options$normality) || identical(continuous_method, "auto")
+  if (identical(continuous_method, "auto") && !isTRUE(options$normality)) {
+    options$normality <- TRUE
+    options$normality_for_auto <- TRUE
+  }
   normality_table <- if (isTRUE(normality_checked)) {
     correlation_normality_summary(data, variables, variable_info, labels, category_table)
   } else {
@@ -506,7 +571,7 @@ prepare_correlation_results <- function(
         y_name,
         measurements[[x_name]],
         measurements[[y_name]],
-        "pearson",
+        continuous_method,
         normality_table = normality_table,
         normality_checked = normality_checked
       )
@@ -536,6 +601,21 @@ prepare_correlation_results <- function(
     data = data[, variables, drop = FALSE],
     options = options,
     normality_table = normality_table,
+    omitted_table = if (length(omitted_names) > 0) {
+      data.frame(
+        Variable = vapply(omitted_names, correlation_variable_display_name, character(1), variable_info = variable_info, labels = labels, category_table = category_table),
+        `Valid N` = as.integer(valid_counts[omitted_names]),
+        `Unique values` = as.integer(unique_counts[omitted_names]),
+        Reason = ifelse(
+          valid_counts[omitted_names] < 3,
+          "Omitted because fewer than three valid values were available.",
+          "Omitted because fewer than two unique values were available."
+        ),
+        check.names = FALSE
+      )
+    } else {
+      NULL
+    },
     pairwise_table = primary$pairwise_table,
     correlation_matrix = primary$correlation_matrix,
     p_matrix = primary$p_matrix,

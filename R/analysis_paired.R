@@ -15,12 +15,33 @@ paired_variable_measurement <- function(name, variable_info = NULL) {
   if (value %in% c("binary", "category", "ordered", "continuous")) value else "continuous"
 }
 
+paired_measurement_label <- function(measurement) {
+  switch(
+    measurement,
+    continuous = "Continuous",
+    ordered = "Ordinal",
+    binary = "Binary",
+    category = "Categorical",
+    measurement
+  )
+}
+
 paired_display_name <- function(name, variable_info = NULL, labels = character(0), category_table = NULL) {
   correlation_variable_display_name(name, variable_info, labels, category_table)
 }
 
 paired_numeric <- function(x) {
-  suppressWarnings(as.numeric(as.character(x)))
+  if (is.character(x) || is.factor(x)) {
+    values <- as.character(x)
+    values[!nzchar(trimws(values))] <- NA_character_
+    numeric <- suppressWarnings(as.numeric(values))
+    if (sum(!is.na(numeric)) >= 2) {
+      return(numeric)
+    }
+    ordered_values <- frequency_value_order(values[!is.na(values)])
+    return(as.numeric(match(values, ordered_values)))
+  }
+  suppressWarnings(as.numeric(x))
 }
 
 paired_complete_data <- function(x, y) {
@@ -186,6 +207,58 @@ paired_wilcoxon_r <- function(p, diff) {
   direction * z / sqrt(n)
 }
 
+paired_diff_guard <- function(diff, require_variance = FALSE) {
+  diff <- diff[is.finite(diff)]
+  n <- length(diff)
+  if (n < 2) {
+    return("At least two complete paired cases are required.")
+  }
+  nonzero <- diff[diff != 0]
+  if (length(nonzero) == 0) {
+    return("The paired differences are all zero; no paired test was performed.")
+  }
+  if (isTRUE(require_variance)) {
+    sd_diff <- stats::sd(diff)
+    if (!is.finite(sd_diff) || sd_diff <= 0) {
+      return("The paired differences have zero variance; paired t-test was not performed.")
+    }
+  }
+  ""
+}
+
+paired_wilcoxon_note <- function(diff) {
+  diff <- diff[is.finite(diff)]
+  if (length(diff) == 0) return("")
+  notes <- character(0)
+  zero_count <- sum(diff == 0)
+  if (zero_count > 0) {
+    notes <- c(notes, sprintf("%d zero difference(s) were omitted from the Wilcoxon signed-rank calculation.", zero_count))
+  }
+  nonzero_abs <- abs(diff[diff != 0])
+  if (length(nonzero_abs) > length(unique(nonzero_abs))) {
+    notes <- c(notes, "Tied absolute differences were present; the large-sample Wilcoxon approximation was used.")
+  }
+  paste(notes, collapse = " ")
+}
+
+paired_skipped_item <- function(pair_label, level, method, n, reason) {
+  data.frame(
+    Pair = pair_label,
+    Level = level,
+    Method = method,
+    N = n,
+    Reason = reason,
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
+paired_safe_pair_label <- function(first, second, variable_info = NULL, labels = character(0), category_table = NULL) {
+  first_label <- if (length(first) > 0 && nzchar(first[[1]] %||% "")) paired_display_name(first[[1]], variable_info, labels, category_table) else ""
+  second_label <- if (length(second) > 0 && nzchar(second[[1]] %||% "")) paired_display_name(second[[1]], variable_info, labels, category_table) else ""
+  sprintf("%s - %s", first_label %||% first, second_label %||% second)
+}
+
 paired_odds_ratio <- function(table) {
   if (nrow(table) != 2 || ncol(table) != 2) return(NA_real_)
   b <- as.numeric(table[1, 2])
@@ -236,6 +309,10 @@ paired_analyze_pair <- function(data, first, second, measurement, variable_info,
     check <- paired_diff_assumption(diff)
     use_t <- !isTRUE(options$assumption_check) || isTRUE(check$normal)
     if (isTRUE(use_t)) {
+      guard <- paired_diff_guard(diff, require_variance = TRUE)
+      if (nzchar(guard)) {
+        return(list(result = paired_skipped_item(pair_label, "Continuous", "Paired t-test", pair$n, guard), scale = NULL, count = NULL, check = paired_check_table(pair_label, check), skipped = paired_skipped_item(pair_label, "Continuous", "Paired t-test", pair$n, guard)))
+      }
       test <- suppressWarnings(stats::t.test(pair$y, pair$x, paired = TRUE))
       method <- "Paired t-test"
       statistic <- unname(as.numeric(test$statistic))
@@ -249,6 +326,10 @@ paired_analyze_pair <- function(data, first, second, measurement, variable_info,
         paired_effect_value(effects$g)
       }
     } else {
+      guard <- paired_diff_guard(diff, require_variance = FALSE)
+      if (nzchar(guard)) {
+        return(list(result = paired_skipped_item(pair_label, "Continuous", "Wilcoxon signed-rank test", pair$n, guard), scale = NULL, count = NULL, check = paired_check_table(pair_label, check), skipped = paired_skipped_item(pair_label, "Continuous", "Wilcoxon signed-rank test", pair$n, guard)))
+      }
       test <- suppressWarnings(stats::wilcox.test(pair$y, pair$x, paired = TRUE, exact = FALSE))
       method <- "Wilcoxon signed-rank test"
       statistic <- unname(as.numeric(test$statistic))
@@ -285,13 +366,19 @@ paired_analyze_pair <- function(data, first, second, measurement, variable_info,
         check.names = FALSE
       ),
       count = NULL,
-      check = paired_check_table(pair_label, check)
+      check = paired_check_table(pair_label, check),
+      skipped = NULL,
+      warning = paired_wilcoxon_note(diff)
     ))
   }
 
   if (identical(measurement, "ordered")) {
     pair <- paired_complete_data(paired_numeric(x_raw), paired_numeric(y_raw))
     diff <- pair$y - pair$x
+    guard <- paired_diff_guard(diff, require_variance = FALSE)
+    if (nzchar(guard)) {
+      return(list(result = paired_skipped_item(pair_label, "Ordinal", "Wilcoxon signed-rank test", pair$n, guard), scale = NULL, count = NULL, check = NULL, skipped = paired_skipped_item(pair_label, "Ordinal", "Wilcoxon signed-rank test", pair$n, guard)))
+    }
     test <- suppressWarnings(stats::wilcox.test(pair$y, pair$x, paired = TRUE, exact = FALSE))
     p <- as.numeric(test$p.value)
     return(list(
@@ -312,12 +399,18 @@ paired_analyze_pair <- function(data, first, second, measurement, variable_info,
         check.names = FALSE
       ),
       count = NULL,
-      check = NULL
+      check = NULL,
+      skipped = NULL,
+      warning = paired_wilcoxon_note(diff)
     ))
   }
 
   pair <- paired_complete_data(as.character(x_raw), as.character(y_raw))
   tab <- paired_category_table(pair$x, pair$y)
+  if (pair$n < 2 || nrow(tab) < 2 || ncol(tab) < 2) {
+    reason <- "At least two complete paired cases with at least two observed categories are required."
+    return(list(result = paired_skipped_item(pair_label, if (identical(measurement, "binary")) "Binary" else "Categorical", "Paired categorical test", pair$n, reason), scale = NULL, count = NULL, count_method = "", check = NULL, skipped = paired_skipped_item(pair_label, if (identical(measurement, "binary")) "Binary" else "Categorical", "Paired categorical test", pair$n, reason)))
+  }
   if (identical(measurement, "binary") && nrow(tab) == 2 && ncol(tab) == 2) {
     b <- as.numeric(tab[1, 2])
     c <- as.numeric(tab[2, 1])
@@ -332,7 +425,8 @@ paired_analyze_pair <- function(data, first, second, measurement, variable_info,
       scale = NULL,
       count = paired_count_rows(pair_label, method, tab, statistic_label, format_decimal3(res$statistic), format_p(res$p), effect_label, effect, first, category_table),
       count_method = method,
-      check = NULL
+      check = NULL,
+      skipped = NULL
     ))
   }
 
@@ -343,7 +437,8 @@ paired_analyze_pair <- function(data, first, second, measurement, variable_info,
     scale = NULL,
     count = paired_count_rows(pair_label, method, tab, stat_chisq_label(FALSE), format_decimal3(res$statistic), format_p(res$p), "", "", first, category_table),
     count_method = method,
-    check = NULL
+    check = NULL,
+    skipped = NULL
   )
 }
 
@@ -356,9 +451,20 @@ prepare_paired_results <- function(data, first, second, variable_info = NULL, la
   items <- lapply(seq_along(first), function(index) {
     x <- first[[index]]
     y <- second[[index]]
+    pair_label <- paired_safe_pair_label(x, y, variable_info, labels, category_table)
+    if (!all(c(x, y) %in% names(data))) {
+      missing <- setdiff(c(x, y), names(data))
+      reason <- sprintf("Skipped because variable(s) were not found in the active data: %s.", paste(missing, collapse = ", "))
+      skipped <- paired_skipped_item(pair_label, "Unknown", "Paired test", 0L, reason)
+      return(list(result = skipped, scale = NULL, count = NULL, count_method = "", check = NULL, skipped = skipped))
+    }
     m1 <- named_value(measurements, x, "continuous")
     m2 <- named_value(measurements, y, "continuous")
-    shiny::validate(shiny::need(identical(m1, m2), sprintf("Paired variables must have the same measurement level: %s and %s.", x, y)))
+    if (!identical(m1, m2)) {
+      reason <- sprintf("Skipped because paired variables have different measurement levels (%s vs %s).", m1, m2)
+      skipped <- paired_skipped_item(pair_label, sprintf("%s/%s", paired_measurement_label(m1), paired_measurement_label(m2)), "Paired test", 0L, reason)
+      return(list(result = skipped, scale = NULL, count = NULL, count_method = "", check = NULL, skipped = skipped))
+    }
     paired_analyze_pair(data, x, y, m1, variable_info, labels, category_table, options)
   })
   result_tables <- lapply(items, `[[`, "result")
@@ -389,6 +495,15 @@ prepare_paired_results <- function(data, first, second, variable_info = NULL, la
   count_methods <- count_methods[nzchar(count_methods)]
   checks <- Filter(Negate(is.null), lapply(items, `[[`, "check"))
   check_table <- if (length(checks) > 0) do.call(rbind, checks) else NULL
+  skipped <- Filter(Negate(is.null), lapply(items, `[[`, "skipped"))
+  skipped_table <- if (length(skipped) > 0) do.call(rbind, skipped) else NULL
+  warnings <- lapply(items, function(item) {
+    note <- as.character(item$warning %||% "")
+    if (!nzchar(note)) return(NULL)
+    data.frame(Pair = item$scale$Variable[[1]] %||% "", Warning = note, stringsAsFactors = FALSE, check.names = FALSE)
+  })
+  warnings <- Filter(Negate(is.null), warnings)
+  warning_table <- if (length(warnings) > 0) do.call(rbind, warnings) else NULL
   list(
     type = "paired",
     table = result_table,
@@ -396,6 +511,8 @@ prepare_paired_results <- function(data, first, second, variable_info = NULL, la
     count_table = count_table,
     count_methods = count_methods,
     checks = check_table,
+    skipped = skipped_table,
+    warnings = warning_table,
     options = options
   )
 }

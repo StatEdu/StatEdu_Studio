@@ -341,9 +341,28 @@ factor_ordered_note_result <- factor_result
 factor_ordered_note_result$variable_info <- ordered_info
 factor_ordered_html <- as.character(htmltools::renderTags(factor_analysis_results_ui(factor_ordered_note_result))$html)
 expect_true(
-  grepl("Ordinal variables are currently analyzed with Pearson correlations", factor_ordered_html, fixed = TRUE),
+  grepl("Ordinal variables were analyzed with Pearson correlations", factor_ordered_html, fixed = TRUE),
   "Expected Pearson correlation note when ordinal variables are included in factor analysis"
 )
+
+ordinal_data <- as.data.frame(replicate(5, sample(1:5, 150, replace = TRUE)), check.names = FALSE)
+names(ordinal_data) <- paste0("o", seq_len(5))
+ordinal_info <- data.frame(
+  name = names(ordinal_data),
+  var_label = paste("Ordinal", seq_len(5)),
+  measurement = "ordered",
+  stringsAsFactors = FALSE
+)
+factor_poly <- prepare_factor_analysis_results(
+  ordinal_data,
+  variables = names(ordinal_data),
+  variable_info = ordinal_info,
+  options = list(matrix_type = "polychoric", normality = FALSE, method = "pa", criterion = "fixed", n_factors = 1)
+)
+expect_true(identical(factor_poly$matrix_type, "polychoric"), "Expected factor analysis to use polychoric matrix when requested for ordinal items")
+expect_true(identical(factor_poly$overview$Matrix[[1]], "Polychoric correlation"), "Expected factor analysis overview to show polychoric matrix")
+factor_poly_html <- as.character(htmltools::renderTags(factor_analysis_results_ui(factor_poly))$html)
+expect_true(grepl("polychoric correlation matrix", factor_poly_html, fixed = TRUE), "Expected factor analysis HTML to describe polychoric matrix")
 
 factor_loading_problem <- factor_all_loadings
 factor_loading_problem$options$hide_small_loadings <- TRUE
@@ -438,6 +457,18 @@ expect_true(
     "PC_PA1" %in% names(pca_saved_scores),
   "Expected PCA saved score names to honor the user base name"
 )
+
+pca_poly <- prepare_pca_results(
+  ordinal_data,
+  variables = names(ordinal_data),
+  variable_info = ordinal_info,
+  options = list(matrix_type = "polychoric", criterion = "fixed", n_components = 2, rotation = "none", save_component_scores = TRUE)
+)
+expect_true(identical(pca_poly$matrix_type, "polychoric"), "Expected PCA to use polychoric matrix when requested for ordinal items")
+expect_true(identical(pca_poly$overview$Matrix[[1]], "Polychoric correlation"), "Expected PCA overview to show polychoric matrix")
+expect_true(is.data.frame(pca_poly$warnings) && any(grepl("Component scores are not available", pca_poly$warnings$Warning, fixed = TRUE)), "Expected PCA polychoric score warning")
+pca_poly_html <- as.character(htmltools::renderTags(pca_results_ui(pca_poly))$html)
+expect_true(grepl("<h3>Warnings</h3>", pca_poly_html, fixed = TRUE), "Expected PCA warnings section for polychoric score warning")
 
 pca_cumulative <- prepare_pca_results(
   data,

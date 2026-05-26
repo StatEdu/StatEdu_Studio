@@ -22,6 +22,13 @@ factor_analysis_criterion_choices <- function() {
   )
 }
 
+factor_analysis_matrix_choices <- function() {
+  c(
+    "Pearson correlation" = "pearson",
+    "Polychoric correlation" = "polychoric"
+  )
+}
+
 factor_analysis_normality_method_choices <- function() {
   c(
     "Skewness / kurtosis" = "skew_kurt",
@@ -44,6 +51,11 @@ factor_analysis_criterion_label <- function(criterion, n_factors = NULL) {
     return(sprintf("Fixed number of factors: %s", as.integer(n_factors %||% 1L)))
   }
   "Eigenvalue >= 1.0"
+}
+
+factor_analysis_matrix_label <- function(matrix_type) {
+  choices <- factor_analysis_matrix_choices()
+  names(choices)[match(matrix_type, choices)] %||% matrix_type
 }
 
 factor_analysis_normality_method_label <- function(method) {
@@ -74,6 +86,64 @@ factor_analysis_complete_matrix <- function(matrix) {
     return(matrix[0, , drop = FALSE])
   }
   matrix[stats::complete.cases(matrix), , drop = FALSE]
+}
+
+factor_analysis_warning_table <- function(messages) {
+  analysis_warning_table(messages)
+}
+
+factor_analysis_sample_warnings <- function(n_obs, n_variables, analysis = "analysis") {
+  messages <- character(0)
+  if (is.finite(n_obs) && n_obs < 100) {
+    messages <- c(messages, sprintf("Sample size is N=%d. A common rule of thumb recommends N >= 100 for %s.", n_obs, analysis))
+  }
+  ratio <- if (is.finite(n_variables) && n_variables > 0) n_obs / n_variables else NA_real_
+  if (is.finite(ratio) && ratio < 5) {
+    messages <- c(messages, sprintf("The subject-to-variable ratio is %.1f:1. A common rule of thumb recommends at least 5:1, preferably 10:1.", ratio))
+  } else if (is.finite(ratio) && ratio < 10) {
+    messages <- c(messages, sprintf("The subject-to-variable ratio is %.1f:1. Interpret the solution cautiously; 10:1 is often recommended.", ratio))
+  }
+  messages
+}
+
+factor_analysis_correlation_matrix <- function(complete, measurements, matrix_type = "pearson") {
+  complete <- as.data.frame(complete, check.names = FALSE)
+  measurements <- as.character(measurements %||% character(0))
+  matrix_type <- as.character(matrix_type %||% "pearson")
+  warnings <- character(0)
+  has_ordered <- any(measurements == "ordered", na.rm = TRUE)
+  has_continuous <- any(measurements == "continuous", na.rm = TRUE)
+
+  pearson_matrix <- function() {
+    corr <- stats::cor(complete, use = "pairwise.complete.obs")
+    diag(corr) <- 1
+    corr
+  }
+
+  if (identical(matrix_type, "polychoric")) {
+    if (has_continuous) {
+      warnings <- c(warnings, "Polychoric correlation was requested, but continuous variables are included. Pearson correlation was used for this mixed variable set.")
+      return(list(matrix = pearson_matrix(), matrix_type = "pearson", requested_matrix_type = "polychoric", warnings = warnings))
+    }
+    ordered_complete <- as.data.frame(lapply(complete, function(values) ordered(values)), check.names = FALSE)
+    corr <- tryCatch(
+      suppressWarnings(suppressMessages(psych::polychoric(ordered_complete, correct = 0)$rho)),
+      error = function(e) {
+        warnings <<- c(warnings, sprintf("Polychoric correlation could not be estimated (%s). Pearson correlation was used instead.", conditionMessage(e)))
+        NULL
+      }
+    )
+    if (is.matrix(corr) && all(is.finite(corr))) {
+      diag(corr) <- 1
+      return(list(matrix = corr, matrix_type = "polychoric", requested_matrix_type = "polychoric", warnings = warnings))
+    }
+    return(list(matrix = pearson_matrix(), matrix_type = "pearson", requested_matrix_type = "polychoric", warnings = warnings))
+  }
+
+  if (isTRUE(has_ordered)) {
+    warnings <- c(warnings, "Ordinal variables are included. Pearson correlation is allowed, but polychoric correlation is recommended for ordinal item sets.")
+  }
+  list(matrix = pearson_matrix(), matrix_type = "pearson", requested_matrix_type = "pearson", warnings = warnings)
 }
 
 factor_analysis_display_names <- function(variables, variable_info = NULL, labels = character(0), category_table = NULL) {
@@ -255,6 +325,7 @@ factor_analysis_overview_table <- function(result) {
     N = result$n_obs,
     Variables = length(result$variables),
     Factors = result$n_factors,
+    Matrix = factor_analysis_matrix_label(result$matrix_type %||% "pearson"),
     Method = factor_analysis_method_label(result$method),
     Rotation = factor_analysis_rotation_label(result$rotation),
     Criterion = factor_analysis_criterion_label(result$criterion, result$n_factors),
@@ -970,10 +1041,17 @@ prepare_factor_analysis_results <- function(data, variables, variable_info = NUL
   matrix <- matrix[, variables, drop = FALSE]
   complete <- complete[, variables, drop = FALSE]
 
-  corr <- stats::cor(complete, use = "pairwise.complete.obs")
+  matrix_type <- as.character(options$matrix_type %||% "pearson")
+  if (!matrix_type %in% unname(factor_analysis_matrix_choices())) matrix_type <- "pearson"
+  matrix_result <- factor_analysis_correlation_matrix(complete, measurements[variables], matrix_type)
+  corr <- matrix_result$matrix
   shiny::validate(shiny::need(is.matrix(corr) && all(is.finite(corr)), "The correlation matrix could not be estimated."))
   diag(corr) <- 1
   eigenvalues <- eigen(corr, symmetric = TRUE, only.values = TRUE)$values
+  warnings <- factor_analysis_warning_table(c(
+    matrix_result$warnings,
+    factor_analysis_sample_warnings(nrow(complete), length(variables), "factor analysis")
+  ))
 
   display_names <- factor_analysis_display_names(variables, variable_info, labels, category_table)
   normality_method <- as.character(options$normality_method %||% "skew_kurt")
@@ -1042,6 +1120,8 @@ prepare_factor_analysis_results <- function(data, variables, variable_info = NUL
     matrix = matrix,
     complete = complete,
     n_obs = nrow(complete),
+    matrix_type = matrix_result$matrix_type,
+    requested_matrix_type = matrix_result$requested_matrix_type,
     method = method,
     requested_method = requested_method,
     rotation = rotation,
@@ -1055,6 +1135,7 @@ prepare_factor_analysis_results <- function(data, variables, variable_info = NUL
     uniqueness = fit$uniquenesses,
     complexity = fit$complexity,
     suitability = suitability,
+    warnings = warnings,
     normality_table = normality,
     normality_method = normality_method,
     normality_decision = normality_decision,

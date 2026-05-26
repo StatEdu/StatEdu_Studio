@@ -37,6 +37,7 @@ register_factor_analysis_handlers <- function(
         labels = labels_fn(),
         selected_available = isolate(input$factor_available),
         selected_selected = isolate(input$factor_selected),
+        matrix_type = input$factor_matrix_type %||% "pearson",
         normality = input$factor_normality %||% FALSE,
         normality_method = input$factor_normality_method %||% "skew_kurt",
         method = input$factor_method %||% "pa",
@@ -175,6 +176,7 @@ register_factor_analysis_handlers <- function(
         category_table = category_table_fn(),
         options = list(
           normality = isTRUE(input$factor_normality),
+          matrix_type = input$factor_matrix_type %||% "pearson",
           normality_method = input$factor_normality_method %||% "skew_kurt",
           method = input$factor_method %||% "pa",
           rotation = input$factor_rotation %||% "varimax",
