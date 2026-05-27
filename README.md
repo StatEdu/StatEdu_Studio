@@ -8,9 +8,9 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.9`
+Current development version: `0.9.10`
 
-Version 0.9.9 refines the Recode Variable workflow with queued recode rules, editable applied-variable entries, automatic source and output measurement handling, missing-value recoding through `NA`, unmatched-value notices, and aligned three-panel controls.
+Version 0.9.10 adds the Electron beta installer workflow, improves Korean CSV/XLSX import handling, preserves reviewed variable measurements when settings are loaded, and limits Frequencies / Descriptives output columns to statistics that match the selected variable types.
 
 ## Current Scope
 
@@ -70,7 +70,7 @@ The app will open at `127.0.0.1` in the default browser. The launcher searches f
 
 ## Validation
 
-Version 0.9.9 includes validation scripts for calculators, data import, data editing, cross-tabulation, correlation auto-selection, factor analysis / PCA, logistic analysis and UI, paired guard handling, p-value formatting, regression coefficient output, and t-test / ANOVA guard handling.
+Version 0.9.10 includes validation scripts for calculators, data import, data editing, cross-tabulation, correlation auto-selection, factor analysis / PCA, logistic analysis and UI, paired guard handling, p-value formatting, regression coefficient output, and t-test / ANOVA guard handling.
 
 Run validation scripts from the repository root with Rscript, for example:
 
@@ -82,7 +82,7 @@ Run validation scripts from the repository root with Rscript, for example:
 
 If you use **EasyFlow Statistics** in your research, please cite:
 
-LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.9) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
+LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.10) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
 
 ## Development Model
 

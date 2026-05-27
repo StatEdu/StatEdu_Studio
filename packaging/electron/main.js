@@ -1,0 +1,188 @@
+const { app, BrowserWindow, dialog } = require("electron");
+const { spawn, spawnSync } = require("child_process");
+const fs = require("fs");
+const http = require("http");
+const net = require("net");
+const path = require("path");
+
+let mainWindow = null;
+let shinyProcess = null;
+let isQuitting = false;
+
+function appBaseDir() {
+  return app.getAppPath();
+}
+
+function bundledAppDir() {
+  return path.join(appBaseDir(), "app");
+}
+
+function appVersion() {
+  const versionPath = path.join(bundledAppDir(), "VERSION");
+  try {
+    return fs.readFileSync(versionPath, "utf8").trim();
+  } catch (error) {
+    return app.getVersion();
+  }
+}
+
+function windowTitle() {
+  return `EasyFlow Statistics Beta v${appVersion()}`;
+}
+
+function bundledRscriptPath() {
+  return path.join(appBaseDir(), "runtime", "R-4.5.2", "bin", "x64", "Rscript.exe");
+}
+
+function bundledRBinPath() {
+  return path.join(appBaseDir(), "runtime", "R-4.5.2", "bin", "x64");
+}
+
+function bundledRLibraryPath() {
+  return path.join(appBaseDir(), "runtime", "R-4.5.2", "library");
+}
+
+function getFreePort() {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = address && address.port;
+      server.close(() => resolve(port));
+    });
+  });
+}
+
+function waitForShiny(port, timeoutMs = 45000) {
+  const startedAt = Date.now();
+  return new Promise((resolve, reject) => {
+    const probe = () => {
+      const request = http.get(`http://127.0.0.1:${port}/`, (response) => {
+        response.resume();
+        if (response.statusCode && response.statusCode < 500) {
+          resolve();
+          return;
+        }
+        retry();
+      });
+      request.on("error", retry);
+      request.setTimeout(1500, () => {
+        request.destroy();
+        retry();
+      });
+    };
+    const retry = () => {
+      if (Date.now() - startedAt > timeoutMs) {
+        reject(new Error("EasyFlow Statistics did not start in time."));
+        return;
+      }
+      setTimeout(probe, 700);
+    };
+    probe();
+  });
+}
+
+async function startShiny() {
+  const rscript = bundledRscriptPath();
+  const appDir = bundledAppDir();
+  if (!fs.existsSync(rscript)) {
+    throw new Error(`Bundled Rscript was not found: ${rscript}`);
+  }
+  if (!fs.existsSync(path.join(appDir, "run_app.R"))) {
+    throw new Error(`Bundled EasyFlow app was not found: ${appDir}`);
+  }
+
+  const port = await getFreePort();
+  const env = {
+    ...process.env,
+    EASYFLOW_PORT: String(port),
+    EASYFLOW_LAUNCH_BROWSER: "false",
+    EASYFLOW_NO_PACKAGE_INSTALL: "true",
+    R_HOME: path.join(appBaseDir(), "runtime", "R-4.5.2"),
+    R_LIBS_USER: bundledRLibraryPath(),
+    PATH: `${bundledRBinPath()};${process.env.PATH || ""}`
+  };
+
+  shinyProcess = spawn(rscript, ["run_app.R"], {
+    cwd: appDir,
+    env,
+    windowsHide: true,
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+
+  shinyProcess.stdout.on("data", (data) => process.stdout.write(data));
+  shinyProcess.stderr.on("data", (data) => process.stderr.write(data));
+  shinyProcess.on("exit", () => {
+    shinyProcess = null;
+  });
+
+  await waitForShiny(port);
+  return `http://127.0.0.1:${port}/?t=${Date.now()}`;
+}
+
+function stopShiny() {
+  const processToStop = shinyProcess;
+  shinyProcess = null;
+  if (processToStop && processToStop.pid && !processToStop.killed) {
+    if (process.platform === "win32") {
+      spawnSync("taskkill", ["/pid", String(processToStop.pid), "/t", "/f"], {
+        windowsHide: true,
+        stdio: "ignore"
+      });
+    } else {
+      processToStop.kill("SIGTERM");
+    }
+  }
+}
+
+async function createWindow() {
+  app.setName("EasyFlow Statistics Beta");
+  mainWindow = new BrowserWindow({
+    width: 1440,
+    height: 920,
+    minWidth: 1120,
+    minHeight: 760,
+    title: windowTitle(),
+    autoHideMenuBar: true,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true
+    }
+  });
+
+  mainWindow.on("page-title-updated", (event) => {
+    event.preventDefault();
+    mainWindow.setTitle(windowTitle());
+  });
+
+  mainWindow.on("close", () => {
+    if (!isQuitting) {
+      isQuitting = true;
+      stopShiny();
+      setTimeout(() => app.exit(0), 100);
+    }
+  });
+
+  try {
+    const url = await startShiny();
+    await mainWindow.loadURL(url);
+  } catch (error) {
+    dialog.showErrorBox("EasyFlow Statistics Beta", error.message);
+    app.quit();
+  }
+}
+
+app.whenReady().then(createWindow);
+
+app.on("window-all-closed", () => {
+  isQuitting = true;
+  stopShiny();
+  app.quit();
+});
+
+app.on("before-quit", () => {
+  isQuitting = true;
+  stopShiny();
+});

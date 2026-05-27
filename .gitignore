@@ -13,5 +13,9 @@ data/hint8.json
 *.log
 *.tmp
 easyflow_statistics_*.zip
+dist/
+packaging/electron/app/
+packaging/electron/runtime/
+packaging/electron/node_modules/
 공모/
 

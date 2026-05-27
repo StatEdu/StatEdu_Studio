@@ -92,17 +92,124 @@ copy_data_file_for_reading <- function(path, original_name = path) {
   tmp_path
 }
 
+csv_encoding_score <- function(data) {
+  text <- names(data)
+  character_columns <- vapply(data, is.character, logical(1))
+  if (any(character_columns)) {
+    samples <- unlist(lapply(data[character_columns], function(column) utils::head(stats::na.omit(as.character(column)), 20)), use.names = FALSE)
+    text <- c(text, samples)
+  }
+  text <- text[nzchar(text)]
+  if (length(text) == 0) {
+    return(0)
+  }
+  invalid_count <- sum(is.na(suppressWarnings(iconv(text, from = "", to = "UTF-8"))))
+  replacement_count <- sum(suppressWarnings(grepl("\uFFFD", text, fixed = TRUE)))
+  latin1_supplement_count <- sum(suppressWarnings(grepl("[\u00A0-\u00FF]", text)))
+  cjk_count <- sum(suppressWarnings(grepl("[\u3130-\u318F\uAC00-\uD7AF]", text)))
+  (cjk_count * 10) - (invalid_count * 1000) - (replacement_count * 100) - (latin1_supplement_count * 4)
+}
+
+repair_text_encoding <- function(values) {
+  if (length(values) == 0) {
+    return(values)
+  }
+  values <- as.character(values)
+  repaired <- values
+  broken <- is.na(suppressWarnings(iconv(repaired, from = "", to = "UTF-8"))) |
+    suppressWarnings(grepl("\uFFFD", repaired, fixed = TRUE))
+  if (!any(broken, na.rm = TRUE)) {
+    return(values)
+  }
+  for (encoding in c("CP949", "EUC-KR", "UTF-8", "latin1")) {
+    converted <- suppressWarnings(iconv(values[broken], from = encoding, to = "UTF-8"))
+    usable <- !is.na(converted)
+    if (any(usable)) {
+      repaired[which(broken)[usable]] <- converted[usable]
+      broken[which(broken)[usable]] <- FALSE
+    }
+    if (!any(broken, na.rm = TRUE)) {
+      break
+    }
+  }
+  repaired
+}
+
+normalize_text_encoding <- function(data) {
+  if (is.null(data)) {
+    return(data)
+  }
+  names(data) <- repair_text_encoding(names(data))
+  data[] <- lapply(data, function(column) {
+    if (is.character(column)) {
+      return(repair_text_encoding(column))
+    }
+    column
+  })
+  data
+}
+
+read_csv_robust <- function(path, csv_header = TRUE) {
+  encodings <- c("UTF-8", "UTF-8-BOM", "CP949", "EUC-KR", "latin1")
+  best_result <- NULL
+  best_score <- -Inf
+  errors <- character(0)
+
+  for (encoding in encodings) {
+    result <- tryCatch(
+      suppressWarnings(
+        {
+          read_encoding <- if (identical(encoding, "UTF-8-BOM")) "UTF-8" else encoding
+          readr::read_csv(
+            path,
+            col_names = csv_header,
+            locale = readr::locale(encoding = read_encoding),
+            show_col_types = FALSE,
+            progress = FALSE
+          )
+        }
+      ),
+      error = function(e) {
+        errors <<- c(errors, sprintf("%s: %s", encoding, conditionMessage(e)))
+        NULL
+      }
+    )
+    if (is.null(result)) {
+      next
+    }
+    score <- csv_encoding_score(result)
+    if (score > best_score) {
+      best_score <- score
+      best_result <- result
+    }
+  }
+
+  if (!is.null(best_result)) {
+    return(normalize_text_encoding(best_result))
+  }
+
+  stop(
+    paste0(
+      "Could not read the CSV file. Tried encodings: ",
+      paste(encodings, collapse = ", "),
+      ". Last errors: ",
+      paste(utils::tail(errors, 3), collapse = " | ")
+    ),
+    call. = FALSE
+  )
+}
+
 read_input_data <- function(path, original_name, csv_header = TRUE, dat_delimiter = "whitespace", dat_has_names = FALSE) {
   ext <- tolower(tools::file_ext(original_name))
   read_path <- copy_data_file_for_reading(path, original_name)
   on.exit(unlink(read_path), add = TRUE)
 
   if (identical(ext, "sav")) {
-    return(read_sav_robust(read_path))
+    return(normalize_text_encoding(read_sav_robust(read_path)))
   }
 
   if (identical(ext, "csv")) {
-    return(readr::read_csv(read_path, col_names = csv_header, show_col_types = FALSE, progress = FALSE))
+    return(read_csv_robust(read_path, csv_header = csv_header))
   }
 
   if (identical(ext, "xlsx")) {
@@ -112,7 +219,7 @@ read_input_data <- function(path, original_name, csv_header = TRUE, dat_delimite
         call. = FALSE
       )
     }
-    return(openxlsx::read.xlsx(read_path, detectDates = TRUE))
+    return(normalize_text_encoding(openxlsx::read.xlsx(read_path, detectDates = TRUE)))
   }
 
   if (identical(ext, "dat")) {

@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.9.10 - 2026-05-27
+
+### Changed
+
+- Added the Electron beta packaging workflow with bundled R runtime support, a desktop window launcher, installer metadata, and EasyFlow icon assets.
+- Improved Korean CSV and Excel import handling by trying common encodings and normalizing imported names and character values.
+- Preserved reviewed binary, categorical, and ordinal measurements when settings are saved or loaded so Analysis menus use the same variable types as Data review.
+- Limited Frequencies / Descriptives result columns to statistics that match the selected variable types.
+- Added beta-watermark and Word-export placeholder refinements for result export.
+
 ## v0.9.9 - 2026-05-27
 
 ### Changed

@@ -24,8 +24,36 @@ frequency_summary_column <- function() {
   "n(%) or M \u00b1 SD"
 }
 
+frequency_summary_columns <- function(result, options) {
+  has_categorical <- length(as.character(result$categorical %||% character(0))) > 0
+  has_continuous <- length(as.character(result$continuous %||% character(0))) > 0
+  columns <- c("Variable", "Value")
+
+  if (isTRUE(options$n_percent) && isTRUE(options$mean_sd)) {
+    if (isTRUE(has_categorical) && isTRUE(has_continuous)) {
+      return(c(columns, frequency_summary_column()))
+    }
+    if (isTRUE(has_categorical)) {
+      return(c(columns, "n (%)"))
+    }
+    if (isTRUE(has_continuous)) {
+      return(c(columns, "M \u00b1 SD"))
+    }
+    return(columns)
+  }
+
+  if (isTRUE(has_categorical)) {
+    columns <- c(columns, "n", "%")
+  }
+  if (isTRUE(has_continuous)) {
+    columns <- c(columns, "M", "SD")
+  }
+  columns
+}
+
 frequency_combined_table <- function(result, options) {
   variables <- as.character(result$variables %||% character(0))
+  has_continuous <- length(as.character(result$continuous %||% character(0))) > 0
   descriptive <- result$descriptive_table
   categorical_tables <- result$categorical_tables %||% list()
   categorical_by_name <- list()
@@ -66,6 +94,8 @@ frequency_combined_table <- function(result, options) {
         Kurtosis = frequency_format_value(row[["Kurtosis"]])
       )
       output_row[[frequency_summary_column()]] <- frequency_compact_summary(row, TRUE)
+      output_row[["M \u00b1 SD"]] <- frequency_compact_summary(row, TRUE)
+      output_row[["n (%)"]] <- ""
       rows[[length(rows) + 1]] <- output_row
       next
     }
@@ -89,6 +119,8 @@ frequency_combined_table <- function(result, options) {
           Kurtosis = ""
         )
         output_row[[frequency_summary_column()]] <- frequency_compact_summary(row, FALSE)
+        output_row[["M \u00b1 SD"]] <- ""
+        output_row[["n (%)"]] <- frequency_compact_summary(row, FALSE)
         rows[[length(rows) + 1]] <- output_row
       }
     }
@@ -99,18 +131,14 @@ frequency_combined_table <- function(result, options) {
   }
 
   table <- do.call(rbind, lapply(rows, as.data.frame, stringsAsFactors = FALSE, check.names = FALSE))
-  columns <- if (isTRUE(options$n_percent) && isTRUE(options$mean_sd)) {
-    c("Variable", "Value", frequency_summary_column())
-  } else {
-    c("Variable", "Value", "n", "%", "M", "SD")
-  }
-  if (isTRUE(options$min_max)) {
+  columns <- frequency_summary_columns(result, options)
+  if (isTRUE(has_continuous) && isTRUE(options$min_max)) {
     columns <- c(columns, "Min", "Max")
   }
-  if (isTRUE(options$median_iqr)) {
+  if (isTRUE(has_continuous) && isTRUE(options$median_iqr)) {
     columns <- c(columns, "Median", "IQR(Q1~Q3)")
   }
-  if (isTRUE(options$skew_kurtosis)) {
+  if (isTRUE(has_continuous) && isTRUE(options$skew_kurtosis)) {
     columns <- c(columns, "Skewness", "Kurtosis")
   }
   table[, intersect(columns, names(table)), drop = FALSE]

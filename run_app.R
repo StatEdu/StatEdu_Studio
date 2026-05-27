@@ -27,6 +27,12 @@ missing_packages <- required_packages[
 ]
 
 if (length(missing_packages) > 0) {
+  if (identical(tolower(Sys.getenv("EASYFLOW_NO_PACKAGE_INSTALL", "false")), "true")) {
+    stop(
+      sprintf("Required R packages are missing from the bundled runtime: %s", paste(missing_packages, collapse = ", ")),
+      call. = FALSE
+    )
+  }
   install.packages(missing_packages, repos = "https://cloud.r-project.org")
 }
 
@@ -39,7 +45,11 @@ shiny::runApp(
   appDir = ".",
   host = "127.0.0.1",
   port = port,
-  launch.browser = function(url) {
-    utils::browseURL(sprintf("%s?t=%s", url, as.integer(Sys.time())))
+  launch.browser = if (identical(tolower(Sys.getenv("EASYFLOW_LAUNCH_BROWSER", "true")), "false")) {
+    FALSE
+  } else {
+    function(url) {
+      utils::browseURL(sprintf("%s?t=%s", url, as.integer(Sys.time())))
+    }
   }
 )

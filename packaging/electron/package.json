@@ -1,0 +1,53 @@
+{
+  "name": "easyflow-statistics-beta",
+  "version": "0.9.10",
+  "description": "EasyFlow Statistics beta desktop installer",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis --x64"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "com.statedu.easyflow.statistics.beta",
+    "productName": "EasyFlow Statistics Beta",
+    "asar": false,
+    "directories": {
+      "output": "../../dist/electron"
+    },
+    "afterPack": "scripts/afterPack.js",
+    "files": [
+      "main.js",
+      "package.json",
+      "app/**/*",
+      "runtime/**/*"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "EasyFlow_Statistics_Beta_Setup_${version}.${ext}"
+    },
+    "nsis": {
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "EasyFlow Statistics Beta",
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}

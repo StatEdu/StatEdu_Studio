@@ -203,13 +203,30 @@ settings_measurement_overrides <- function(settings) {
     saved <- saved[nzchar(names(saved)) & saved %in% c("binary", "category", "ordered", "continuous")]
   }
 
+  category_measurements <- settings_category_measurements(settings$category_value_labels %||% NULL)
+  if (length(category_measurements) > 0) {
+    saved[names(category_measurements)] <- category_measurements
+  }
+
   overrides <- settings_named_vector(settings$measurement_overrides)
   overrides <- overrides[nzchar(names(overrides)) & overrides %in% c("binary", "category", "ordered", "continuous")]
   if (length(overrides) > 0) {
     names(overrides) <- sub("^.*\\.", "", names(overrides))
   }
   saved[names(overrides)] <- overrides
+  if (length(category_measurements) > 0) {
+    saved[names(category_measurements)] <- category_measurements
+  }
   saved
+}
+
+settings_category_measurements <- function(table) {
+  if (!is.data.frame(table) || !all(c("name", "measurement") %in% names(table))) {
+    return(character(0))
+  }
+  measurements <- stats::setNames(as.character(table$measurement), as.character(table$name))
+  measurements <- measurements[nzchar(names(measurements)) & measurements %in% c("binary", "category", "ordered")]
+  measurements
 }
 
 settings_restore_state <- function(settings) {
@@ -310,6 +327,11 @@ prepare_settings_payload_data <- function(
   overrides <- measurement_overrides %||% character(0)
   if (length(direct_measurements) > 0) {
     overrides[names(direct_measurements)] <- direct_measurements
+  }
+
+  category_measurements <- settings_category_measurements(category_table)
+  if (length(category_measurements) > 0) {
+    overrides[names(category_measurements)] <- category_measurements
   }
 
   dependent <- as.character(dependent_variables %||% character(0))
