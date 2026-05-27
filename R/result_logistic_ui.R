@@ -762,7 +762,6 @@ logistic_results_panel <- function(results, variable_table = NULL, labels = char
       }
     }),
     logistic_assumption_review_block(results, variable_table, labels, category_table),
-    analysis_warning_section(warnings, class = "regression-result-panel logistic-result-panel"),
-    analysis_skipped_section(skipped, title = "Skipped models", class = "regression-result-panel logistic-result-panel")
+    analysis_diagnostics_section(warnings, skipped, title = "Warnings / skipped models", class = "regression-result-panel logistic-result-panel")
   )
 }

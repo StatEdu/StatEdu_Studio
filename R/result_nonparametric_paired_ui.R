@@ -50,7 +50,7 @@ nonparametric_paired_results_ui <- function(result) {
       class = "regression-results paired-results paired-rm-results nonparametric-paired-results",
       if (is.data.frame(result$display_table) && nrow(result$display_table) > 0) {
         tags$div(
-          class = "result-section paired-result-section regression-result-panel",
+          class = "result-section paired-result-section regression-result-panel landscape-table-panel",
           tags$h3("Nonparametric paired test: continuous / ordinal"),
           result_table_with_notes(
             nonparametric_paired_rm_table(result, "scale"),
@@ -60,7 +60,7 @@ nonparametric_paired_results_ui <- function(result) {
       },
       if (is.data.frame(result$count_table) && nrow(result$count_table) > 0) {
         tags$div(
-          class = "result-section paired-result-section regression-result-panel",
+          class = "result-section paired-result-section regression-result-panel landscape-table-panel",
           tags$h3("Nonparametric paired test: binary"),
           result_table_with_notes(
             nonparametric_paired_rm_table(result, "count"),
@@ -70,14 +70,14 @@ nonparametric_paired_results_ui <- function(result) {
       },
       if (is.data.frame(result$posthoc) && nrow(result$posthoc) > 0) {
         tags$div(
-          class = "result-section paired-result-section regression-result-panel",
+          class = "result-section paired-result-section regression-result-panel landscape-table-panel",
           tags$h3("Post-hoc pairwise comparisons"),
           coefficient_html_table(nonparametric_paired_posthoc_display_table(result), note_line = paired_rm_posthoc_note(result))
         )
       },
       if (is.data.frame(result$skipped) && nrow(result$skipped) > 0) {
         tags$div(
-          class = "result-section paired-result-section regression-result-panel",
+          class = "result-section paired-result-section regression-result-panel landscape-table-panel",
           tags$h3("Skipped repeated-measures rows"),
           coefficient_html_table(result$skipped)
         )

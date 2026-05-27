@@ -45,7 +45,7 @@ pca_results_ui <- function(result, report_mode = FALSE) {
         coefficient_html_table(result$suitability$overview, note_line = pca_suitability_note(result))
       ),
       div(
-        class = "result-section pca-result-section regression-result-panel landscape-table-panel",
+        class = "result-section pca-result-section regression-result-panel",
         h3("Component loadings"),
         coefficient_html_table(
           result$loadings_table,
@@ -59,7 +59,7 @@ pca_results_ui <- function(result, report_mode = FALSE) {
       ),
       if (is.data.frame(result$variance_table) && nrow(result$variance_table) > 0) {
         div(
-          class = "result-section pca-result-section regression-result-panel landscape-table-panel",
+          class = "result-section pca-result-section regression-result-panel",
           h3("Variance explained"),
           coefficient_html_table(
             result$variance_table,
@@ -73,7 +73,7 @@ pca_results_ui <- function(result, report_mode = FALSE) {
       },
       if (is.data.frame(result$component_correlation_table) && nrow(result$component_correlation_table) > 0) {
         div(
-          class = "result-section pca-result-section regression-result-panel landscape-table-panel",
+          class = "result-section pca-result-section regression-result-panel",
           h3("Component correlations"),
           coefficient_html_table(
             result$component_correlation_table,
@@ -114,7 +114,7 @@ pca_results_ui <- function(result, report_mode = FALSE) {
         )
       },
       div(
-        class = "result-section pca-result-section regression-result-panel landscape-table-panel",
+        class = "result-section pca-result-section regression-result-panel",
         h3("Eigenvalues"),
         coefficient_html_table(
           result$eigen_table,

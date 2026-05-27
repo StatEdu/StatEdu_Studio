@@ -1819,7 +1819,7 @@ input.variable-select:disabled {
 
 .coefficient-footnote-marker {
   display: inline-block;
-  margin-left: 2px;
+  margin-left: 1px;
   font-size: 10px;
   line-height: 1;
   position: relative;

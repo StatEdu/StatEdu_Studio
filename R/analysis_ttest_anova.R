@@ -1660,11 +1660,8 @@ ttest_anova_results_ui <- function(result) {
     )
   }
 
-  warning_section <- analysis_warning_section(result$warnings)
-  if (!is.null(warning_section)) sections[[length(sections) + 1]] <- warning_section
-
-  skipped_section <- analysis_skipped_section(result$skipped, title = "Skipped analyses")
-  if (!is.null(skipped_section)) sections[[length(sections) + 1]] <- skipped_section
+  diagnostics_section <- analysis_diagnostics_section(result$warnings, result$skipped)
+  if (!is.null(diagnostics_section)) sections[[length(sections) + 1]] <- diagnostics_section
 
   do.call(tagList, sections)
 }

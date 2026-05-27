@@ -19,6 +19,42 @@ analysis_skipped_section <- function(table, title = "Skipped analyses", class = 
   analysis_result_table_section(title, table, class = class)
 }
 
+analysis_diagnostics_row <- function(table, type) {
+  if (!analysis_has_rows(table)) {
+    return(NULL)
+  }
+  pick <- function(candidates) {
+    matched <- intersect(candidates, names(table))
+    if (length(matched) == 0) {
+      return(rep("", nrow(table)))
+    }
+    as.character(table[[matched[[1]]]])
+  }
+  data.frame(
+    Type = rep(type, nrow(table)),
+    `Dependent variable` = pick(c("Dependent variable", "Dependent", "Outcome")),
+    `Independent variable` = pick(c("Independent variable", "Independent", "Predictor", "Variable")),
+    N = pick(c("N", "n")),
+    Message = pick(c("Warning", "Reason", "Message")),
+    check.names = FALSE
+  )
+}
+
+analysis_diagnostics_section <- function(warnings, skipped, title = "Warnings / skipped analyses", class = "result-section regression-result-panel") {
+  rows <- Filter(Negate(is.null), list(
+    analysis_diagnostics_row(warnings, "Warning"),
+    analysis_diagnostics_row(skipped, "Skipped")
+  ))
+  if (length(rows) == 0) {
+    return(NULL)
+  }
+  table <- do.call(rbind, rows)
+  if (all(!nzchar(table$N))) {
+    table$N <- NULL
+  }
+  analysis_result_table_section(title, table, class = class)
+}
+
 result_table_style <- function(font_size = 15, min_width = 480) {
   paste(
     sprintf("width:auto;min-width:%dpx;border-collapse:collapse;border-spacing:0;", min_width),
@@ -170,24 +206,12 @@ result_cell_value_without_marker <- function(value, marker = "") {
 
 coefficient_display_columns <- function(table) {
   columns <- names(table)
-  markers <- attr(table, "note_markers", exact = TRUE)
-  if (!is.data.frame(markers) || nrow(markers) == 0 || !"column" %in% names(markers)) {
-    return(data.frame(
-      source = columns,
-      label = columns,
-      marker = FALSE,
-      stringsAsFactors = FALSE
-    ))
-  }
-  marker_columns <- intersect(columns, unique(as.character(markers$column)))
-  rows <- list()
-  for (column in columns) {
-    rows[[length(rows) + 1L]] <- data.frame(source = column, label = column, marker = FALSE, stringsAsFactors = FALSE)
-    if (column %in% marker_columns) {
-      rows[[length(rows) + 1L]] <- data.frame(source = column, label = "", marker = TRUE, stringsAsFactors = FALSE)
-    }
-  }
-  do.call(rbind, rows)
+  data.frame(
+    source = columns,
+    label = columns,
+    marker = FALSE,
+    stringsAsFactors = FALSE
+  )
 }
 
 coefficient_display_cell_style <- function(table, row_index, column, display_index, display_meta, compact, compact_font_size, compact_width, compact_first_width) {
@@ -303,6 +327,7 @@ coefficient_html_table <- function(
       tags$thead(
         tags$tr(lapply(seq_len(nrow(display_meta)), function(index) {
           tags$th(
+            class = if (isTRUE(display_meta$marker[[index]])) "coefficient-note-marker-cell" else NULL,
             style = paste0(
               result_header_cell_style(
                 index == 1,
@@ -332,7 +357,7 @@ coefficient_html_table <- function(
             content <- if (isTRUE(marker_column)) {
               if (nzchar(marker)) tags$sup(class = "coefficient-note-cell-marker", marker) else ""
             } else {
-              result_cell_value_without_marker(value, marker)
+              result_cell_content(value, marker)
             }
             bold_style <- if (isTRUE(result_cell_bold(table, row_index, column)) && nzchar(as.character(table[[column]][[row_index]] %||% ""))) "font-weight:700;" else ""
             colspan <- if (!is.null(span)) {
@@ -344,6 +369,7 @@ coefficient_html_table <- function(
             }
             span_style <- if (!is.null(span) && "style" %in% names(span)) as.character(span$style[[1]] %||% "") else ""
             tags$td(
+              class = if (isTRUE(marker_column)) "coefficient-note-marker-cell" else NULL,
               colspan = colspan,
               style = paste0(
                 coefficient_display_cell_style(

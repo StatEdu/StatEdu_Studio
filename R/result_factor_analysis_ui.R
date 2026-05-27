@@ -176,7 +176,7 @@ factor_analysis_results_ui <- function(result, report_mode = FALSE) {
         )
       },
       div(
-        class = "result-section factor-analysis-result-section regression-result-panel landscape-table-panel",
+        class = "result-section factor-analysis-result-section regression-result-panel",
         h3("Pattern / loading matrix"),
         coefficient_html_table(
           result$loadings_table,
@@ -190,7 +190,7 @@ factor_analysis_results_ui <- function(result, report_mode = FALSE) {
       ),
       if (is.data.frame(result$structure_table) && nrow(result$structure_table) > 0) {
         div(
-          class = "result-section factor-analysis-result-section regression-result-panel landscape-table-panel",
+          class = "result-section factor-analysis-result-section regression-result-panel",
           h3("Structure matrix"),
           coefficient_html_table(
             result$structure_table,
@@ -205,7 +205,7 @@ factor_analysis_results_ui <- function(result, report_mode = FALSE) {
       },
       if (is.data.frame(result$variance_table) && nrow(result$variance_table) > 0) {
         div(
-          class = "result-section factor-analysis-result-section regression-result-panel landscape-table-panel",
+          class = "result-section factor-analysis-result-section regression-result-panel",
           h3("Variance explained"),
           coefficient_html_table(
             result$variance_table,
@@ -219,7 +219,7 @@ factor_analysis_results_ui <- function(result, report_mode = FALSE) {
       },
       if (is.data.frame(result$factor_correlation_table) && nrow(result$factor_correlation_table) > 0) {
         div(
-          class = "result-section factor-analysis-result-section regression-result-panel landscape-table-panel",
+          class = "result-section factor-analysis-result-section regression-result-panel",
           h3("Factor correlations"),
           coefficient_html_table(
             result$factor_correlation_table,
@@ -248,7 +248,7 @@ factor_analysis_results_ui <- function(result, report_mode = FALSE) {
         }
       ),
       div(
-        class = "result-section factor-analysis-result-section regression-result-panel landscape-table-panel",
+        class = "result-section factor-analysis-result-section regression-result-panel",
         h3("Eigenvalues"),
         coefficient_html_table(
           result$eigen_table,

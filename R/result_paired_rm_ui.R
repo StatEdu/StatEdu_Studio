@@ -248,6 +248,17 @@ paired_rm_posthoc_note <- function(result) {
   paste(parts, collapse = " ")
 }
 
+paired_rm_grouped_column_class <- function(column) {
+  if (identical(column, "Repeated variables")) return("paired-rm-col-variable")
+  if (identical(column, "N")) return("paired-rm-col-n")
+  if (grepl("^Time[0-9]+_(M|SD|0|1)$", column)) return("paired-rm-col-time")
+  if (identical(column, "Statistic")) return("paired-rm-col-stat")
+  if (identical(column, "p")) return("paired-rm-col-p")
+  if (identical(column, "ES_overall") || grepl("^ES_[0-9]+_[0-9]+$", column)) return("paired-rm-col-es")
+  if (identical(column, "Post-hoc")) return("paired-rm-col-posthoc")
+  "paired-rm-col-default"
+}
+
 paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
   type <- match.arg(type)
   if (!is.data.frame(table) || nrow(table) == 0) return(NULL)
@@ -299,6 +310,9 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
   tags$table(
     class = "coefficient-table paired-grouped-table paired-rm-grouped-table",
     style = result_table_style(font_size = 13, min_width = 520),
+    tags$colgroup(lapply(body_columns, function(column) {
+      tags$col(class = paired_rm_grouped_column_class(column))
+    })),
     tags$thead(
       tags$tr(
         tags$th(rowspan = 2, style = header_style(TRUE), "Repeated variables"),
@@ -356,7 +370,7 @@ paired_rm_results_ui <- function(result) {
     },
     if (is.data.frame(result$display_table) && nrow(result$display_table) > 0) {
       tags$div(
-        class = "result-section paired-result-section regression-result-panel",
+        class = "result-section paired-result-section regression-result-panel landscape-table-panel",
         tags$h3("Repeated-measures test: continuous / ordinal"),
         result_table_with_notes(
           paired_rm_grouped_table(result$display_table, "scale"),
@@ -366,7 +380,7 @@ paired_rm_results_ui <- function(result) {
     },
     if (is.data.frame(result$count_table) && nrow(result$count_table) > 0) {
       tags$div(
-        class = "result-section paired-result-section regression-result-panel",
+        class = "result-section paired-result-section regression-result-panel landscape-table-panel",
         tags$h3("Repeated-measures test: binary"),
         result_table_with_notes(
           paired_rm_grouped_table(result$count_table, "count"),
@@ -381,14 +395,14 @@ paired_rm_results_ui <- function(result) {
         nrow(result$table) > 0
     ) {
       tags$div(
-        class = "result-section paired-result-section regression-result-panel",
+        class = "result-section paired-result-section regression-result-panel landscape-table-panel",
         tags$h3("Repeated-measures test"),
         coefficient_html_table(result$table, note_line = paired_rm_method_note(result))
       )
     },
     if (is.data.frame(result$posthoc) && nrow(result$posthoc) > 0) {
       tags$div(
-        class = "result-section paired-result-section regression-result-panel",
+        class = "result-section paired-result-section regression-result-panel landscape-table-panel",
         tags$h3("Post-hoc pairwise comparisons"),
         coefficient_html_table(result$posthoc, note_line = paired_rm_posthoc_note(result))
       )
@@ -400,12 +414,6 @@ paired_rm_results_ui <- function(result) {
         model_overview_html_table(paired_rm_assumption_review_table(result))
       )
     },
-    if (is.data.frame(result$skipped) && nrow(result$skipped) > 0) {
-      tags$div(
-        class = "result-section paired-result-section regression-result-panel",
-        tags$h3("Skipped repeated-measures rows"),
-        coefficient_html_table(result$skipped)
-      )
-    }
+    analysis_diagnostics_section(NULL, result$skipped, title = "Warnings / skipped repeated-measures rows")
   )
 }

@@ -230,6 +230,14 @@ paired_effect_value_for_label <- function(table, row_index, effect_label) {
   values[[index]]
 }
 
+paired_grouped_column_class <- function(column) {
+  if (identical(column, "Variable")) return("paired-two-col-variable")
+  if (column %in% c("Pre_M", "Pre_SD", "Post_M", "Post_SD")) return("paired-two-col-summary")
+  if (column %in% c("Statistic", "p")) return("paired-two-col-stat")
+  if (startsWith(column, "Effect:")) return("paired-two-col-effect")
+  "paired-two-col-default"
+}
+
 paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_size = FALSE) {
   type <- match.arg(type)
   if (!is.data.frame(table) || nrow(table) == 0) return(NULL)
@@ -276,8 +284,11 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
     )
   }
   tags$table(
-    class = "coefficient-table paired-grouped-table",
+    class = "coefficient-table paired-grouped-table paired-two-grouped-table",
     style = result_table_style(font_size = 15, min_width = 640),
+    tags$colgroup(lapply(body_columns, function(column) {
+      tags$col(class = paired_grouped_column_class(column))
+    })),
     tags$thead(headers),
     tags$tbody(
       lapply(seq_len(nrow(table)), function(row_index) {
@@ -353,19 +364,6 @@ paired_results_ui <- function(result) {
         model_overview_html_table(paired_assumption_review_table(result))
       )
     },
-    if (is.data.frame(result$warnings) && nrow(result$warnings) > 0) {
-      tags$div(
-        class = "result-section paired-result-section regression-result-panel",
-        tags$h3("Warnings"),
-        coefficient_html_table(result$warnings)
-      )
-    },
-    if (is.data.frame(result$skipped) && nrow(result$skipped) > 0) {
-      tags$div(
-        class = "result-section paired-result-section regression-result-panel",
-        tags$h3("Skipped pairs"),
-        coefficient_html_table(result$skipped)
-      )
-    }
+    analysis_diagnostics_section(result$warnings, result$skipped, title = "Warnings / skipped pairs")
   )
 }

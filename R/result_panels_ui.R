@@ -9,9 +9,9 @@ coefficient_result_ui <- function(table, result, show_sr2 = FALSE, show_f2 = FAL
   coefficient_html_table(table, fit_line, stat_lines, warning_line, note_line)
 }
 
-coefficient_result_block <- function(title, content) {
+coefficient_result_block <- function(title, content, landscape = FALSE) {
   div(
-    class = "regression-result-panel landscape-table-panel",
+    class = paste("regression-result-panel", if (isTRUE(landscape)) "landscape-table-panel" else ""),
     h3(title),
     content
   )
@@ -657,7 +657,8 @@ hierarchical_coefficient_result_block <- function(
       hierarchical_summary_values(group),
       hierarchical_coefficient_note_line(group[[final_index]], show_vif, show_sr2, show_f2),
       hierarchical_model_note_lines(group, variable_table, labels)
-    )
+    ),
+    landscape = TRUE
   )
 }
 
@@ -698,8 +699,7 @@ hierarchical_results_panel <- function(
     }),
     regression_reference_summary_block(results, variable_table, labels, show_sr2, show_f2),
     regression_assumption_review_block(results, variable_table, labels),
-    analysis_warning_section(warnings, class = "regression-result-panel"),
-    analysis_skipped_section(skipped, title = "Skipped models", class = "regression-result-panel"),
+    analysis_diagnostics_section(warnings, skipped, title = "Warnings / skipped models", class = "regression-result-panel"),
     plot_blocks
   )
 }
@@ -810,8 +810,7 @@ regression_results_panel <- function(
     }),
     regression_reference_summary_block(results, variable_table, labels, show_sr2, show_f2),
     regression_assumption_review_block(results, variable_table, labels),
-    analysis_warning_section(warnings, class = "regression-result-panel"),
-    analysis_skipped_section(skipped, title = "Skipped models", class = "regression-result-panel"),
+    analysis_diagnostics_section(warnings, skipped, title = "Warnings / skipped models", class = "regression-result-panel"),
     if (!isTRUE(show_penalized)) {
       plot_blocks
     }
