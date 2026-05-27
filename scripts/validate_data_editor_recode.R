@@ -26,6 +26,60 @@ label_rules <- data.frame(old = c("1", "2"), new = c("low", "high"), stringsAsFa
 label_result <- recode_same_values(c(1, 2, 3), label_rules, keep_unmatched = TRUE)
 stopifnot(identical(label_result, c("low", "high", "3")))
 
+missing_to_value_rules <- data.frame(old = "NA", new = "0", stringsAsFactors = FALSE)
+missing_to_value_result <- recode_same_values(c(1, NA, 3), missing_to_value_rules, keep_unmatched = TRUE)
+stopifnot(identical(missing_to_value_result, c(1, 0, 3)))
+
+blank_to_value_result <- recode_same_values(c("A", "", "B"), missing_to_value_rules, keep_unmatched = TRUE)
+stopifnot(identical(blank_to_value_result, c("A", "0", "B")))
+
+value_to_missing_rules <- data.frame(old = "2", new = "NA", stringsAsFactors = FALSE)
+value_to_missing_result <- recode_same_values(c(1, 2, 3), value_to_missing_rules, keep_unmatched = TRUE)
+stopifnot(identical(value_to_missing_result, c(1, NA, 3)))
+
+single_rule_result <- recode_apply_single_rules(
+  c(1, 2, 3),
+  data.frame(old = "2", new = "20", stringsAsFactors = FALSE),
+  keep_unmatched = TRUE
+)
+stopifnot(identical(single_rule_result, c(1, 20, 3)))
+single_unmatched_entry <- list(
+  rule_type = "single",
+  keep_unmatched = TRUE,
+  single_rules = data.frame(old = "2", new = "20", stringsAsFactors = FALSE)
+)
+stopifnot(identical(recode_unmatched_values(c(1, 2, 3), single_unmatched_entry), c("1", "3")))
+stopifnot(grepl("1, 3", recode_unmatched_message(c(1, 2, 3), single_unmatched_entry), fixed = TRUE))
+single_unmatched_entry$keep_unmatched <- FALSE
+stopifnot(identical(recode_unmatched_message(c(1, 2, 3), single_unmatched_entry), NULL))
+
+category_rule_input <- list(
+  recode_same_cat_lower_to = 2,
+  recode_same_cat_lower_upper_op = "le",
+  recode_same_cat_lower_new = "low",
+  recode_same_cat_middle_from_1 = 2,
+  recode_same_cat_middle_lower_op_1 = "gt",
+  recode_same_cat_middle_to_1 = 4,
+  recode_same_cat_middle_upper_op_1 = "lt",
+  recode_same_cat_middle_new_1 = "mid",
+  recode_same_cat_upper_from = 4,
+  recode_same_cat_upper_lower_op = "ge",
+  recode_same_cat_upper_new = "high"
+)
+category_rule_result <- recode_apply_category_rules(c(1, 2, 3, 4, 5), category_rule_input, middle_count = 1, keep_unmatched = TRUE)
+stopifnot(identical(category_rule_result, c("low", "low", "mid", "high", "high")))
+category_missing_input <- category_rule_input
+category_missing_input$recode_same_cat_middle_new_1 <- "NA"
+category_missing_result <- recode_apply_category_rules(c(1, 2, 3, 4, 5), category_missing_input, middle_count = 1, keep_unmatched = TRUE)
+stopifnot(identical(category_missing_result, c("low", "low", NA, "high", "high")))
+category_unmatched_entry <- list(
+  rule_type = "category",
+  keep_unmatched = TRUE,
+  category_input = category_rule_input,
+  middle_count = 1L
+)
+stopifnot(identical(recode_unmatched_values(c("1", "2", "3", "4", "x"), category_unmatched_entry), "x"))
+
 reverse_result <- reverse_score_values(c(1, 2, 3, 4, 5, NA), minimum = 1, maximum = 5)
 stopifnot(identical(reverse_result, c(5, 4, 3, 2, 1, NA)))
 
@@ -59,6 +113,51 @@ stopifnot(grepl('tabindex="-1"', display_issues$`Corrected value`[[1]], fixed = 
 stopifnot(identical(recode_new_variable_name("{variable}_R", "q1"), "q1_R"))
 stopifnot(identical(recode_new_variable_name("_rev", "q1", literal = FALSE), "q1_rev"))
 stopifnot(identical(recode_new_variable_name("custom_name", "q1", literal = TRUE), "custom_name"))
+
+measurement_info <- data.frame(
+  name = c("group", "rank", "score"),
+  measurement = c("binary", "ordered", "continuous"),
+  stringsAsFactors = FALSE
+)
+stopifnot(identical(recode_default_rule_type("group", measurement_info), "single"))
+stopifnot(identical(recode_default_rule_type("rank", measurement_info), "single"))
+stopifnot(identical(recode_default_rule_type("score", measurement_info), "category"))
+
+single_two_entry <- list(
+  rule_type = "single",
+  single_rules = data.frame(old = c("0", "1"), new = c("1", "2"), stringsAsFactors = FALSE)
+)
+single_three_entry <- list(
+  rule_type = "single",
+  single_rules = data.frame(old = c("1", "2", "3"), new = c("1", "2", "3"), stringsAsFactors = FALSE)
+)
+category_two_entry <- list(
+  rule_type = "category",
+  middle_count = 1L,
+  category_input = list(
+    recode_same_cat_lower_new = "1",
+    recode_same_cat_middle_new_1 = "2",
+    recode_same_cat_upper_new = ""
+  )
+)
+category_three_entry <- list(
+  rule_type = "category",
+  middle_count = 1L,
+  category_input = list(
+    recode_same_cat_lower_new = "1",
+    recode_same_cat_middle_new_1 = "2",
+    recode_same_cat_upper_new = "3"
+  )
+)
+empty_entry <- list(rule_type = "single", single_rules = data.frame(old = character(0), new = character(0)))
+
+stopifnot(identical(recode_infer_output_measurement(empty_entry, "ordered"), NULL))
+stopifnot(identical(recode_infer_output_measurement(single_two_entry, "ordered"), "binary"))
+stopifnot(identical(recode_infer_output_measurement(single_three_entry, "ordered"), "ordered"))
+stopifnot(identical(recode_infer_output_measurement(single_three_entry, "category"), "category"))
+stopifnot(identical(recode_infer_output_measurement(category_two_entry, "continuous"), "binary"))
+stopifnot(identical(recode_infer_output_measurement(category_three_entry, "continuous"), "ordered"))
+stopifnot(identical(recode_infer_output_measurement(category_three_entry, "category"), "category"))
 
 message("Checking automatic variable calculation helpers...")
 calculation_data <- data.frame(

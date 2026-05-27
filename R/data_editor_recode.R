@@ -18,6 +18,19 @@ normalize_recode_same_rules <- function(rules) {
   rules[nzchar(rules$old), , drop = FALSE]
 }
 
+recode_missing_marker <- function(value) {
+  marker <- toupper(trimws(as.character(value %||% "")))
+  marker %in% c("NA", "N/A", "MISSING")
+}
+
+recode_output_value <- function(value) {
+  value <- trimws(as.character(value %||% ""))
+  if (recode_missing_marker(value)) {
+    return(NA_character_)
+  }
+  value
+}
+
 recode_same_values <- function(values, rules, keep_unmatched = TRUE) {
   rules <- normalize_recode_same_rules(rules)
   if (nrow(rules) == 0) {
@@ -28,8 +41,13 @@ recode_same_values <- function(values, rules, keep_unmatched = TRUE) {
   output <- if (isTRUE(keep_unmatched)) source else rep(NA, length(source))
   source_text <- trimws(as.character(source))
   for (index in seq_len(nrow(rules))) {
-    matched <- !is.na(source) & identical(FALSE, is.na(rules$old[[index]])) & source_text == rules$old[[index]]
-    output[matched] <- rules$new[[index]]
+    old_value <- trimws(as.character(rules$old[[index]] %||% ""))
+    matched <- if (recode_missing_marker(old_value)) {
+      is.na(source) | !nzchar(source_text)
+    } else {
+      !is.na(source) & nzchar(source_text) & source_text == old_value
+    }
+    output[matched] <- recode_output_value(rules$new[[index]])
   }
 
   numeric_candidate <- suppressWarnings(as.numeric(output))
@@ -45,6 +63,28 @@ recode_numeric_values <- function(values) {
     return(as.numeric(values))
   }
   suppressWarnings(as.numeric(as.character(values)))
+}
+
+recode_scalar_numeric <- function(value) {
+  value <- suppressWarnings(as.numeric(value %||% NA_real_))
+  if (length(value) == 0 || !is.finite(value[[1]])) {
+    return(NA_real_)
+  }
+  value[[1]]
+}
+
+recode_observed_values <- function(values, limit = 6L) {
+  values <- values[!is.na(values)]
+  text <- trimws(as.character(values))
+  text <- text[nzchar(text)]
+  unique_values <- unique(text)
+  numeric_values <- suppressWarnings(as.numeric(unique_values))
+  if (length(unique_values) > 0 && all(!is.na(numeric_values))) {
+    unique_values <- unique_values[order(numeric_values)]
+  } else {
+    unique_values <- sort(unique_values)
+  }
+  utils::head(unique_values, limit)
 }
 
 reverse_score_values <- function(values, minimum = NULL, maximum = NULL) {
@@ -207,6 +247,51 @@ recode_source_measurement <- function(variable_info, variable, data = NULL) {
   "continuous"
 }
 
+recode_default_rule_type <- function(variable, variable_info = NULL, data = NULL) {
+  measurement <- tolower(recode_source_measurement(variable_info, variable, data))
+  if (measurement %in% c("binary", "ordered", "category", "categorical")) {
+    return("single")
+  }
+  if (identical(measurement, "continuous")) {
+    return("category")
+  }
+  "single"
+}
+
+recode_infer_output_measurement <- function(entry, source_measurement = NULL) {
+  source_measurement <- tolower(as.character(source_measurement %||% ""))
+  values <- character(0)
+  if (identical(as.character(entry$rule_type %||% "single"), "category")) {
+    category_input <- entry$category_input %||% list()
+    values <- c(
+      category_input$recode_same_cat_lower_new %||% "",
+      vapply(seq_len(max(1L, as.integer(entry$middle_count %||% 1L))), function(index) {
+        category_input[[paste0("recode_same_cat_middle_new_", index)]] %||% ""
+      }, character(1)),
+      category_input$recode_same_cat_upper_new %||% ""
+    )
+  } else {
+    rules <- normalize_recode_same_rules(entry$single_rules %||% empty_recode_same_rules())
+    values <- rules$new
+  }
+  values <- unique(trimws(as.character(values)))
+  values <- values[nzchar(values)]
+  values <- values[!vapply(values, recode_missing_marker, logical(1))]
+  if (length(values) == 0L) {
+    return(NULL)
+  }
+  if (length(values) <= 2L) {
+    return("binary")
+  }
+  if (source_measurement %in% c("category", "categorical")) {
+    return("category")
+  }
+  if (source_measurement %in% c("ordered", "continuous")) {
+    return("ordered")
+  }
+  NULL
+}
+
 variable_calculation_choices <- function() {
   c(
     "Mean" = "mean",
@@ -306,6 +391,279 @@ recode_same_rules_from_input <- function(input, prefix = "recode_same") {
     new = vapply(seq_len(count), function(index) as.character(input[[paste0(prefix, "_new_", index)]] %||% ""), character(1)),
     stringsAsFactors = FALSE
   )
+}
+
+recode_rule_label <- function(input) {
+  type <- as.character(input$recode_same_rule_type %||% "single")
+  if (identical(type, "category")) {
+    return("Categorize values")
+  }
+  "Single value recode"
+}
+
+recode_single_rules_from_input <- function(input, count) {
+  count <- max(1L, as.integer(count %||% 1L))
+  rules <- data.frame(
+    old = vapply(seq_len(count), function(index) as.character(input[[paste0("recode_same_single_old_", index)]] %||% ""), character(1)),
+    new = vapply(seq_len(count), function(index) as.character(input[[paste0("recode_same_single_new_", index)]] %||% ""), character(1)),
+    stringsAsFactors = FALSE
+  )
+  normalize_recode_same_rules(rules)
+}
+
+recode_apply_single_rules <- function(values, rules, keep_unmatched = TRUE) {
+  recode_same_values(values, rules, keep_unmatched = keep_unmatched)
+}
+
+recode_category_middle_rules_from_input <- function(input, count) {
+  count <- max(1L, as.integer(count %||% 1L))
+  lapply(seq_len(count), function(index) {
+    list(
+      from = recode_scalar_numeric(input[[paste0("recode_same_cat_middle_from_", index)]]),
+      lower_op = as.character(input[[paste0("recode_same_cat_middle_lower_op_", index)]] %||% "ge"),
+      to = recode_scalar_numeric(input[[paste0("recode_same_cat_middle_to_", index)]]),
+      upper_op = as.character(input[[paste0("recode_same_cat_middle_upper_op_", index)]] %||% "lt"),
+      new = trimws(as.character(input[[paste0("recode_same_cat_middle_new_", index)]] %||% ""))
+    )
+  })
+}
+
+recode_apply_category_rules <- function(values, input, middle_count = 1L, keep_unmatched = TRUE) {
+  numeric_values <- recode_numeric_values(values)
+  output <- if (isTRUE(keep_unmatched)) as.vector(values) else rep(NA, length(values))
+
+  assign_matches <- function(matches, new_value) {
+    new_value <- trimws(as.character(new_value %||% ""))
+    if (!nzchar(new_value)) {
+      return()
+    }
+    output[matches & !is.na(matches)] <<- recode_output_value(new_value)
+  }
+
+  lower_to <- recode_scalar_numeric(input$recode_same_cat_lower_to)
+  if (is.finite(lower_to)) {
+    upper_op <- as.character(input$recode_same_cat_lower_upper_op %||% "lt")
+    matches <- if (identical(upper_op, "le")) numeric_values <= lower_to else numeric_values < lower_to
+    assign_matches(matches, input$recode_same_cat_lower_new)
+  }
+
+  for (rule in recode_category_middle_rules_from_input(input, middle_count)) {
+    if (is.finite(rule$from) && is.finite(rule$to)) {
+      lower_match <- if (identical(rule$lower_op, "gt")) numeric_values > rule$from else numeric_values >= rule$from
+      upper_match <- if (identical(rule$upper_op, "le")) numeric_values <= rule$to else numeric_values < rule$to
+      assign_matches(lower_match & upper_match, rule$new)
+    }
+  }
+
+  upper_from <- recode_scalar_numeric(input$recode_same_cat_upper_from)
+  if (is.finite(upper_from)) {
+    lower_op <- as.character(input$recode_same_cat_upper_lower_op %||% "ge")
+    matches <- if (identical(lower_op, "gt")) numeric_values > upper_from else numeric_values >= upper_from
+    assign_matches(matches, input$recode_same_cat_upper_new)
+  }
+
+  numeric_candidate <- suppressWarnings(as.numeric(output))
+  non_missing_text <- trimws(as.character(output[!is.na(output)]))
+  if (length(non_missing_text) > 0 && all(nzchar(non_missing_text)) && all(!is.na(numeric_candidate[!is.na(output)]))) {
+    return(numeric_candidate)
+  }
+  output
+}
+
+recode_unmatched_values <- function(values, entry, limit = 20L) {
+  values <- values[!is.na(values)]
+  if (length(values) == 0) {
+    return(character(0))
+  }
+  value_text <- trimws(as.character(values))
+  present <- nzchar(value_text)
+
+  if (identical(as.character(entry$rule_type %||% "single"), "category")) {
+    numeric_values <- recode_numeric_values(values)
+    input <- entry$category_input %||% list()
+    matched <- rep(FALSE, length(values))
+
+    lower_to <- recode_scalar_numeric(input$recode_same_cat_lower_to)
+    lower_new <- trimws(as.character(input$recode_same_cat_lower_new %||% ""))
+    if (is.finite(lower_to) && nzchar(lower_new)) {
+      upper_op <- as.character(input$recode_same_cat_lower_upper_op %||% "lt")
+      matched <- matched | if (identical(upper_op, "le")) numeric_values <= lower_to else numeric_values < lower_to
+    }
+
+    for (rule in recode_category_middle_rules_from_input(input, entry$middle_count %||% 1L)) {
+      if (is.finite(rule$from) && is.finite(rule$to) && nzchar(rule$new)) {
+        lower_match <- if (identical(rule$lower_op, "gt")) numeric_values > rule$from else numeric_values >= rule$from
+        upper_match <- if (identical(rule$upper_op, "le")) numeric_values <= rule$to else numeric_values < rule$to
+        matched <- matched | (lower_match & upper_match)
+      }
+    }
+
+    upper_from <- recode_scalar_numeric(input$recode_same_cat_upper_from)
+    upper_new <- trimws(as.character(input$recode_same_cat_upper_new %||% ""))
+    if (is.finite(upper_from) && nzchar(upper_new)) {
+      lower_op <- as.character(input$recode_same_cat_upper_lower_op %||% "ge")
+      matched <- matched | if (identical(lower_op, "gt")) numeric_values > upper_from else numeric_values >= upper_from
+    }
+
+    matched[is.na(matched)] <- FALSE
+    unmatched <- value_text[present & !matched]
+  } else {
+    rules <- normalize_recode_same_rules(entry$single_rules %||% empty_recode_same_rules())
+    old_values <- trimws(as.character(rules$old))
+    unmatched <- value_text[present & !value_text %in% old_values]
+  }
+
+  unique_values <- unique(unmatched)
+  utils::head(unique_values, limit)
+}
+
+recode_unmatched_message <- function(values, entry) {
+  if (!isTRUE(entry$keep_unmatched)) {
+    return(NULL)
+  }
+  unmatched <- recode_unmatched_values(values, entry)
+  if (length(unmatched) == 0) {
+    return(NULL)
+  }
+  all_unmatched <- recode_unmatched_values(values, entry, limit = .Machine$integer.max)
+  suffix <- if (length(all_unmatched) > length(unmatched)) ", ..." else ""
+  sprintf("Unmatched values kept as-is: %s%s", paste(unmatched, collapse = ", "), suffix)
+}
+
+recode_entry_values <- function(values, entry) {
+  if (identical(as.character(entry$rule_type %||% "single"), "category")) {
+    return(recode_apply_category_rules(
+      values,
+      entry$category_input %||% list(),
+      middle_count = entry$middle_count %||% 1L,
+      keep_unmatched = isTRUE(entry$keep_unmatched)
+    ))
+  }
+  recode_apply_single_rules(
+    values,
+    entry$single_rules %||% empty_recode_same_rules(),
+    keep_unmatched = isTRUE(entry$keep_unmatched)
+  )
+}
+
+recode_current_entry_from_input <- function(input, single_count, middle_count) {
+  target <- as.character(input$recode_same_target %||% "same")
+  if (!target %in% c("same", "new")) {
+    target <- "same"
+  }
+  old_variable <- trimws(as.character(input$recode_same_old_variable %||% ""))
+  new_variable <- if (identical(target, "same")) old_variable else trimws(as.character(input$recode_same_new_name %||% ""))
+  rule_type <- as.character(input$recode_same_rule_type %||% "single")
+  if (!rule_type %in% c("single", "category")) {
+    rule_type <- "single"
+  }
+  measurement <- trimws(as.character(input$recode_same_measurement %||% ""))
+
+  category_input <- list(
+    recode_same_cat_lower_to = input$recode_same_cat_lower_to %||% "",
+    recode_same_cat_lower_upper_op = input$recode_same_cat_lower_upper_op %||% "lt",
+    recode_same_cat_lower_new = input$recode_same_cat_lower_new %||% "",
+    recode_same_cat_upper_from = input$recode_same_cat_upper_from %||% "",
+    recode_same_cat_upper_lower_op = input$recode_same_cat_upper_lower_op %||% "ge",
+    recode_same_cat_upper_new = input$recode_same_cat_upper_new %||% ""
+  )
+  middle_count <- max(1L, as.integer(middle_count %||% 1L))
+  for (index in seq_len(middle_count)) {
+    category_input[[paste0("recode_same_cat_middle_from_", index)]] <- input[[paste0("recode_same_cat_middle_from_", index)]] %||% ""
+    category_input[[paste0("recode_same_cat_middle_lower_op_", index)]] <- input[[paste0("recode_same_cat_middle_lower_op_", index)]] %||% "ge"
+    category_input[[paste0("recode_same_cat_middle_to_", index)]] <- input[[paste0("recode_same_cat_middle_to_", index)]] %||% ""
+    category_input[[paste0("recode_same_cat_middle_upper_op_", index)]] <- input[[paste0("recode_same_cat_middle_upper_op_", index)]] %||% "lt"
+    category_input[[paste0("recode_same_cat_middle_new_", index)]] <- input[[paste0("recode_same_cat_middle_new_", index)]] %||% ""
+  }
+
+  list(
+    old = old_variable,
+    new = new_variable,
+    target = target,
+    rule_type = rule_type,
+    rule = if (identical(rule_type, "category")) "Categorize values" else "Single value recode",
+    measurement = if (nzchar(measurement)) measurement else NULL,
+    keep_unmatched = isTRUE(input$recode_same_keep_unmatched),
+    single_rules = recode_single_rules_from_input(input, single_count),
+    category_input = category_input,
+    middle_count = middle_count
+  )
+}
+
+recode_applied_table_ui <- function(entries = list(), selected_index = NULL) {
+  if (length(entries) == 0) {
+    rows <- list(tags$tr(tags$td(colspan = 4, class = "recode-builder-empty-cell", "No variables queued yet.")))
+  } else {
+    rows <- lapply(seq_along(entries), function(index) {
+      entry <- entries[[index]]
+      select_call <- sprintf(
+        "Shiny.setInputValue('recode_same_queue_select',{index:%s,nonce:Date.now()+Math.random()},{priority:'event'});",
+        index
+      )
+      delete_call <- sprintf(
+        "event.stopPropagation();Shiny.setInputValue('recode_same_queue_delete',{index:%s,nonce:Date.now()+Math.random()},{priority:'event'});",
+        index
+      )
+      tags$tr(
+        class = if (identical(as.integer(selected_index %||% NA_integer_), index)) "is-selected" else NULL,
+        onclick = select_call,
+        tags$td(as.character(entry$old %||% "")),
+        tags$td(as.character(entry$new %||% "")),
+        tags$td(as.character(entry$rule %||% "")),
+        tags$td(tags$button(type = "button", class = "btn btn-default btn-xs recode-builder-delete-button", onclick = delete_call, "Delete"))
+      )
+    })
+  }
+
+  tags$table(
+    class = "recode-builder-applied-table",
+    tags$thead(tags$tr(tags$th("Old variable"), tags$th("New variable"), tags$th("Rule"), tags$th(""))),
+    tags$tbody(rows)
+  )
+}
+
+recode_single_rules_ui <- function(count, input = NULL) {
+  count <- max(2L, as.integer(count %||% 2L))
+  tagList(
+    div(
+      class = "recode-builder-rule-header recode-builder-single-header",
+      span("Existing value"),
+      span("New value")
+    ),
+    div(
+      class = "recode-builder-single-rules",
+      lapply(seq_len(count), function(index) {
+        div(
+          class = "recode-builder-single-row",
+          textInput(
+            paste0("recode_same_single_old_", index),
+            NULL,
+            value = isolate(input[[paste0("recode_same_single_old_", index)]] %||% ""),
+            width = "100%"
+          ),
+          textInput(
+            paste0("recode_same_single_new_", index),
+            NULL,
+            value = isolate(input[[paste0("recode_same_single_new_", index)]] %||% ""),
+            width = "100%"
+          )
+        )
+      })
+    )
+  )
+}
+
+recode_category_middle_rows_ui <- function(count, input = NULL) {
+  count <- max(1L, as.integer(count %||% 1L))
+  tagList(lapply(seq_len(count), function(index) {
+    div(class = "recode-builder-category-row recode-builder-category-middle-row",
+      textInput(paste0("recode_same_cat_middle_from_", index), NULL, value = isolate(input[[paste0("recode_same_cat_middle_from_", index)]] %||% ""), width = "100%"),
+      selectInput(paste0("recode_same_cat_middle_lower_op_", index), NULL, choices = c("\u2265" = "ge", ">" = "gt"), selected = isolate(input[[paste0("recode_same_cat_middle_lower_op_", index)]] %||% "ge"), selectize = FALSE, width = "100%"),
+      textInput(paste0("recode_same_cat_middle_to_", index), NULL, value = isolate(input[[paste0("recode_same_cat_middle_to_", index)]] %||% ""), width = "100%"),
+      selectInput(paste0("recode_same_cat_middle_upper_op_", index), NULL, choices = c("<" = "lt", "\u2264" = "le"), selected = isolate(input[[paste0("recode_same_cat_middle_upper_op_", index)]] %||% "lt"), selectize = FALSE, width = "100%"),
+      textInput(paste0("recode_same_cat_middle_new_", index), NULL, value = isolate(input[[paste0("recode_same_cat_middle_new_", index)]] %||% ""), width = "100%")
+    )
+  }))
 }
 
 coding_error_check_setup_panel <- function(file, data, variable_info, labels = character(0), selected_variables = character(0), input = NULL) {
@@ -655,10 +1013,7 @@ recode_same_setup_panel <- function(file, data, variable_info, labels = characte
   }
 
   variables <- names(data)
-  selected_variables <- intersect(as.character(selected_variables %||% character(0)), variables)
-  available <- setdiff(variables, selected_variables)
-  selected_available <- selected_order_items(isolate(input$recode_same_available) %||% character(0), available)
-  selected_selected <- selected_order_items(isolate(input$recode_same_selected) %||% character(0), selected_variables)
+  selected_available <- selected_order_items(isolate(input$recode_same_available) %||% character(0), variables)
   measurement_choices <- c(
     "Keep current type" = "",
     "Binary" = "binary",
@@ -670,79 +1025,100 @@ recode_same_setup_panel <- function(file, data, variable_info, labels = characte
   if (!current_target %in% c("same", "new")) {
     current_target <- "same"
   }
-  current_pattern <- isolate(input$recode_same_new_name) %||% "{variable}_recode"
+  current_old <- isolate(input$recode_same_old_variable) %||% selected_available %||% ""
+  current_new <- isolate(input$recode_same_new_name) %||% ""
 
   div(
-    class = "recode-same-setup-grid",
+    class = "recode-same-setup-grid recode-builder-grid",
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
       analysis_field_label_tag("Variables"),
       analysis_transfer_listbox_input(
         "recode_same_available",
-        items = analysis_variable_items(available, variable_info, labels),
+        items = analysis_variable_items(variables, variable_info, labels),
         selected = selected_available,
-        size = 18
+        size = 19
       )
     ),
     div(
-      class = "analysis-transfer-controls recode-same-transfer-controls",
-      actionButton(
-        "recode_same_move",
-        ">",
-        class = "btn btn-default analysis-move-button",
-        disabled = if (length(available) == 0 && length(selected_variables) == 0) "disabled" else NULL
-      )
-    ),
-    div(
-      class = "analysis-transfer-column analysis-transfer-panel",
-      analysis_field_label_tag("Variables to recode", analysis_allowed_measurements_all()),
-      analysis_transfer_listbox_input(
-        "recode_same_selected",
-        items = analysis_variable_items(selected_variables, variable_info, labels),
-        selected = selected_selected,
-        size = 18
+      class = "analysis-transfer-column analysis-transfer-panel recode-builder-target-panel",
+      div(class = "analysis-option-title", "Variable target"),
+      div(
+        class = "recode-builder-name-row",
+        textInput("recode_same_old_variable", "Old variable", value = current_old, width = "100%"),
+        textInput("recode_same_new_name", "New variable name", value = current_new, width = "100%")
       ),
       div(
-        class = "dependent-order-actions",
-        actionButton("recode_same_up", "Up", class = "btn-default btn-sm"),
-        actionButton("recode_same_down", "Down", class = "btn-default btn-sm")
-      )
+        class = "analysis-option-group recode-auto-options recode-builder-target-choice",
+        radioButtons(
+          "recode_same_target",
+          label = NULL,
+          choices = c("Same name" = "same", "Different name" = "new"),
+          selected = current_target,
+          inline = TRUE
+        )
+      ),
+      div(class = "variable-rename-queue-title", "Applied variables"),
+      div(class = "recode-builder-applied-list", uiOutput("recode_same_applied_list")),
+      tags$script(HTML(paste0(
+        "(function(){\n",
+        "  function toggleRecodeNewName(){\n",
+        "    var same = $('input[name=\"recode_same_target\"]:checked').val() === 'same';\n",
+        "    $('#recode_same_new_name').prop('disabled', same);\n",
+        "  }\n",
+        "  setTimeout(toggleRecodeNewName, 0);\n",
+        "  $(document).off('change.easyflowRecodeSameTarget', 'input[name=\"recode_same_target\"]');\n",
+        "  $(document).on('change.easyflowRecodeSameTarget', 'input[name=\"recode_same_target\"]', toggleRecodeNewName);\n",
+        "})();"
+      )))
     ),
     div(
-      class = "analysis-options-column analysis-options-panel recode-same-options",
+      class = "analysis-options-column analysis-options-panel recode-same-options recode-builder-rule-panel",
       div(class = "analysis-option-group",
-        div(class = "analysis-option-title", "Rules"),
-        tags$table(
-          class = "recode-rule-table",
-          tags$thead(tags$tr(tags$th("Old value"), tags$th("New value"))),
-          tags$tbody(
-            lapply(seq_len(recode_same_rule_count()), function(index) {
-              tags$tr(
-                tags$td(textInput(paste0("recode_same_old_", index), NULL, value = "", width = "100%")),
-                tags$td(textInput(paste0("recode_same_new_", index), NULL, value = "", width = "100%"))
-              )
-            })
+        div(class = "analysis-option-title", "Recoding rules"),
+        radioButtons(
+          "recode_same_rule_type",
+          label = NULL,
+          choices = c("Single value recode" = "single", "Categorize values" = "category"),
+          selected = isolate(input$recode_same_rule_type) %||% "single"
+        ),
+        conditionalPanel(
+          condition = "input.recode_same_rule_type == 'single'",
+          uiOutput("recode_same_single_rules")
+        ),
+        conditionalPanel(
+          condition = "input.recode_same_rule_type == 'category'",
+          div(
+            class = "recode-builder-category-rules",
+            div(
+              class = "recode-builder-rule-header recode-builder-category-header",
+              span("From"),
+              span("Op"),
+              span("To"),
+              span("Op"),
+              span("New")
+            ),
+            div(class = "recode-builder-category-row",
+              span(class = "recode-builder-range-anchor", "Min"),
+              span(),
+              textInput("recode_same_cat_lower_to", NULL, value = isolate(input$recode_same_cat_lower_to) %||% "", width = "100%"),
+              selectInput("recode_same_cat_lower_upper_op", NULL, choices = c("<" = "lt", "\u2264" = "le"), selected = isolate(input$recode_same_cat_lower_upper_op) %||% "lt", selectize = FALSE, width = "100%"),
+              textInput("recode_same_cat_lower_new", NULL, value = isolate(input$recode_same_cat_lower_new) %||% "", width = "100%")
+            ),
+            uiOutput("recode_same_category_middle_rules"),
+            div(class = "recode-builder-category-row",
+              textInput("recode_same_cat_upper_from", NULL, value = isolate(input$recode_same_cat_upper_from) %||% "", width = "100%"),
+              selectInput("recode_same_cat_upper_lower_op", NULL, choices = c("\u2265" = "ge", ">" = "gt"), selected = isolate(input$recode_same_cat_upper_lower_op) %||% "ge", selectize = FALSE, width = "100%"),
+              span(class = "recode-builder-range-anchor", "Max"),
+              span(),
+              textInput("recode_same_cat_upper_new", NULL, value = isolate(input$recode_same_cat_upper_new) %||% "", width = "100%")
+            )
           )
         )
       ),
       checkboxInput("recode_same_keep_unmatched", "Keep unmatched values", value = TRUE),
       selectInput("recode_same_measurement", "Measurement after recoding", choices = measurement_choices, selected = "", selectize = FALSE),
-      div(class = "analysis-option-group recode-auto-options",
-        div(class = "analysis-option-title", "Save result to"),
-        radioButtons(
-          "recode_same_target",
-          label = NULL,
-          choices = c("Same variables" = "same", "New variables" = "new"),
-          selected = current_target
-        )
-      ),
-      conditionalPanel(
-        condition = "input.recode_same_target == 'new'",
-        div(class = "analysis-option-group recode-new-name-options",
-          textInput("recode_same_new_name", "New variable name", value = current_pattern, width = "100%"),
-          div(class = "recode-help-text", "Use {variable} for the original variable name, for example {variable}_recode.")
-        )
-      )
+      actionButton("add_recode_same", "Add", class = "btn btn-primary recode-builder-apply-button")
     )
   )
 }
@@ -762,8 +1138,8 @@ data_editor_same_variable_panel <- function() {
         "recode_same",
         uiOutput("recode_same_setup"),
         div(
-          class = "analysis-action-row recode-same-action-row",
-          actionButton("apply_recode_same", "Apply recoding", class = "btn btn-primary"),
+          class = "analysis-action-row recode-same-action-row recode-builder-action-row",
+          actionButton("apply_recode_same", "Apply", class = "btn btn-primary"),
           uiOutput("recode_same_reset_control")
         ),
         uiOutput("recode_same_message"),
@@ -790,6 +1166,11 @@ register_recode_same_handlers <- function(
   selected_variables <- reactiveVal(character(0))
   active_list <- reactiveVal(NULL)
   last_message <- reactiveVal(NULL)
+  applied_entries <- reactiveVal(list())
+  selected_queue_index <- reactiveVal(NULL)
+  single_rule_count <- reactiveVal(2L)
+  single_rule_max <- reactiveVal(NULL)
+  category_middle_count <- reactiveVal(1L)
 
   output$recode_same_setup <- renderUI({
     recode_same_setup_panel(
@@ -819,6 +1200,8 @@ register_recode_same_handlers <- function(
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
     if (is.null(data)) {
       selected_variables(character(0))
+      applied_entries(list())
+      selected_queue_index(NULL)
       return()
     }
     current <- selected_variables()
@@ -828,7 +1211,96 @@ register_recode_same_handlers <- function(
     }
   })
 
-  observeEvent(input$recode_same_available_active, active_list("recode_same_available"), ignoreInit = TRUE)
+  output$recode_same_single_rules <- renderUI({
+    recode_single_rules_ui(single_rule_count(), input)
+  })
+
+  output$recode_same_category_middle_rules <- renderUI({
+    recode_category_middle_rows_ui(category_middle_count(), input)
+  })
+
+  observe({
+    count <- single_rule_count()
+    last_new <- trimws(as.character(input[[paste0("recode_same_single_new_", count)]] %||% ""))
+    max_count <- single_rule_max()
+    can_grow <- is.null(max_count) || count < max_count
+    if (nzchar(last_new) && isTRUE(can_grow)) {
+      single_rule_count(count + 1L)
+    }
+  })
+
+  observe({
+    count <- category_middle_count()
+    last_new <- trimws(as.character(input[[paste0("recode_same_cat_middle_new_", count)]] %||% ""))
+    if (nzchar(last_new)) {
+      category_middle_count(count + 1L)
+    }
+  })
+
+  observe({
+    data <- tryCatch(dataset_fn(), error = function(e) NULL)
+    variable_info <- tryCatch(variable_info_fn(), error = function(e) NULL)
+    entry <- recode_current_entry_from_input(input, single_rule_count(), category_middle_count())
+    if (!nzchar(entry$old)) {
+      return()
+    }
+    source_measurement <- recode_source_measurement(variable_info, entry$old, data)
+    inferred <- recode_infer_output_measurement(entry, source_measurement)
+    current <- as.character(input$recode_same_measurement %||% "")
+    if (!is.null(inferred) && !identical(current, inferred)) {
+      updateSelectInput(session, "recode_same_measurement", selected = inferred)
+    }
+  })
+
+  observeEvent(input$recode_same_available_active, {
+    active_list("recode_same_available")
+    value <- as.character(input$recode_same_available %||% character(0))
+    value <- value[nzchar(value)]
+    if (length(value) > 0) {
+      selected_name <- value[[1]]
+      data <- tryCatch(dataset_fn(), error = function(e) NULL)
+      variable_info <- tryCatch(variable_info_fn(), error = function(e) NULL)
+      source_measurement <- tolower(recode_source_measurement(variable_info, selected_name, data))
+      selected_queue_index(NULL)
+      updateTextInput(session, "recode_same_old_variable", value = selected_name)
+      updateRadioButtons(
+        session,
+        "recode_same_rule_type",
+        selected = recode_default_rule_type(
+          selected_name,
+          variable_info = variable_info,
+          data = data
+        )
+      )
+      if (source_measurement %in% c("binary", "ordered", "category", "categorical") &&
+          !is.null(data) && selected_name %in% names(data)) {
+        values <- recode_observed_values(data[[selected_name]], limit = 20L)
+        row_count <- if (identical(source_measurement, "binary")) {
+          2L
+        } else {
+          max(2L, length(values) + 1L)
+        }
+        single_rule_count(row_count)
+        single_rule_max(if (identical(source_measurement, "binary")) 2L else NULL)
+        session$onFlushed(function() {
+          for (row_index in seq_len(row_count)) {
+            updateTextInput(
+              session,
+              paste0("recode_same_single_old_", row_index),
+              value = if (length(values) >= row_index) values[[row_index]] else ""
+            )
+            updateTextInput(session, paste0("recode_same_single_new_", row_index), value = "")
+          }
+        }, once = TRUE)
+      } else {
+        single_rule_max(NULL)
+      }
+      if (identical(as.character(input$recode_same_target %||% "same"), "new") &&
+          !nzchar(trimws(as.character(input$recode_same_new_name %||% "")))) {
+        updateTextInput(session, "recode_same_new_name", value = paste0(selected_name, "_recode"))
+      }
+    }
+  }, ignoreInit = TRUE)
   observeEvent(input$recode_same_selected_active, active_list("recode_same_selected"), ignoreInit = TRUE)
 
   observe({
@@ -897,13 +1369,18 @@ register_recode_same_handlers <- function(
   })
 
   output$recode_same_reset_control <- renderUI({
-    analysis_reset_button("reset_recode_same", enabled = length(selected_variables()) > 0)
+    analysis_reset_button("reset_recode_same", enabled = length(selected_variables()) > 0 || length(applied_entries()) > 0)
   })
 
   observeEvent(input$reset_recode_same, {
-    if (length(selected_variables()) == 0) return()
+    if (length(selected_variables()) == 0 && length(applied_entries()) == 0) return()
     selected_variables(character(0))
     last_message(NULL)
+    applied_entries(list())
+    selected_queue_index(NULL)
+    single_rule_count(2L)
+    single_rule_max(NULL)
+    category_middle_count(1L)
     session$sendCustomMessage(
       "easyflow-clear-transfer-selection",
       list(inputIds = c("recode_same_available", "recode_same_selected"))
@@ -913,19 +1390,33 @@ register_recode_same_handlers <- function(
 
   recoded_preview <- reactive({
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
-    variables <- intersect(selected_variables(), names(data %||% data.frame()))
-    if (is.null(data) || length(variables) == 0) {
+    variable <- as.character(input$recode_same_old_variable %||% "")
+    variable <- variable[nzchar(variable)]
+    variable <- if (length(variable) > 0) variable[[1]] else ""
+    if (is.null(data) || !nzchar(variable) || !variable %in% names(data)) {
       return(data.frame())
     }
-    rules <- recode_same_rules_from_input(input)
-    preview <- as.data.frame(data[seq_len(min(20L, nrow(data))), variables, drop = FALSE], stringsAsFactors = FALSE, check.names = FALSE)
-    for (name in variables) {
-      preview[[name]] <- recode_same_values(preview[[name]], rules, keep_unmatched = isTRUE(input$recode_same_keep_unmatched))
+    rows <- seq_len(min(20L, nrow(data)))
+    values <- data[[variable]][rows]
+    if (identical(as.character(input$recode_same_rule_type %||% "single"), "category")) {
+      recoded <- recode_apply_category_rules(values, input, middle_count = category_middle_count(), keep_unmatched = isTRUE(input$recode_same_keep_unmatched))
+    } else {
+      recoded <- recode_apply_single_rules(
+        values,
+        recode_single_rules_from_input(input, single_rule_count()),
+        keep_unmatched = isTRUE(input$recode_same_keep_unmatched)
+      )
     }
+    preview <- data.frame(
+      Row = rows,
+      `Old value` = values,
+      `New value` = recoded,
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
     if (identical(as.character(input$recode_same_target %||% "same"), "new")) {
-      names(preview) <- vapply(names(preview), function(name) {
-        recode_new_variable_name(input$recode_same_new_name %||% "{variable}_recode", name, literal = length(variables) == 1)
-      }, character(1))
+      preview_name <- trimws(as.character(input$recode_same_new_name %||% ""))
+      names(preview)[[3]] <- if (nzchar(preview_name)) preview_name else "New value"
     }
     preview
   })
@@ -937,6 +1428,69 @@ register_recode_same_handlers <- function(
     }
     DT::datatable(preview, rownames = FALSE, options = list(pageLength = 20, lengthChange = FALSE, scrollX = TRUE))
   })
+
+  output$recode_same_applied_list <- renderUI({
+    recode_applied_table_ui(applied_entries(), selected_queue_index())
+  })
+
+  load_recode_entry <- function(entry, index = NULL) {
+    selected_queue_index(index)
+    updateTextInput(session, "recode_same_old_variable", value = entry$old %||% "")
+    updateTextInput(session, "recode_same_new_name", value = if (identical(entry$target, "new")) entry$new %||% "" else "")
+    updateRadioButtons(session, "recode_same_target", selected = entry$target %||% "same")
+    updateRadioButtons(session, "recode_same_rule_type", selected = entry$rule_type %||% "single")
+    updateCheckboxInput(session, "recode_same_keep_unmatched", value = isTRUE(entry$keep_unmatched))
+    updateSelectInput(session, "recode_same_measurement", selected = entry$measurement %||% "")
+
+    rules <- normalize_recode_same_rules(entry$single_rules %||% empty_recode_same_rules())
+    single_rule_count(max(2L, nrow(rules) + 1L))
+    single_rule_max(NULL)
+    middle_count <- max(1L, as.integer(entry$middle_count %||% 1L))
+    category_middle_count(middle_count)
+    single_count_snapshot <- max(2L, nrow(rules) + 1L)
+    middle_count_snapshot <- middle_count
+    session$onFlushed(function() {
+      for (row_index in seq_len(single_count_snapshot)) {
+        updateTextInput(session, paste0("recode_same_single_old_", row_index), value = if (row_index <= nrow(rules)) rules$old[[row_index]] else "")
+        updateTextInput(session, paste0("recode_same_single_new_", row_index), value = if (row_index <= nrow(rules)) rules$new[[row_index]] else "")
+      }
+      category_input <- entry$category_input %||% list()
+      updateTextInput(session, "recode_same_cat_lower_to", value = category_input$recode_same_cat_lower_to %||% "")
+      updateSelectInput(session, "recode_same_cat_lower_upper_op", selected = category_input$recode_same_cat_lower_upper_op %||% "lt")
+      updateTextInput(session, "recode_same_cat_lower_new", value = category_input$recode_same_cat_lower_new %||% "")
+      for (row_index in seq_len(middle_count_snapshot)) {
+        updateTextInput(session, paste0("recode_same_cat_middle_from_", row_index), value = category_input[[paste0("recode_same_cat_middle_from_", row_index)]] %||% "")
+        updateSelectInput(session, paste0("recode_same_cat_middle_lower_op_", row_index), selected = category_input[[paste0("recode_same_cat_middle_lower_op_", row_index)]] %||% "ge")
+        updateTextInput(session, paste0("recode_same_cat_middle_to_", row_index), value = category_input[[paste0("recode_same_cat_middle_to_", row_index)]] %||% "")
+        updateSelectInput(session, paste0("recode_same_cat_middle_upper_op_", row_index), selected = category_input[[paste0("recode_same_cat_middle_upper_op_", row_index)]] %||% "lt")
+        updateTextInput(session, paste0("recode_same_cat_middle_new_", row_index), value = category_input[[paste0("recode_same_cat_middle_new_", row_index)]] %||% "")
+      }
+      updateTextInput(session, "recode_same_cat_upper_from", value = category_input$recode_same_cat_upper_from %||% "")
+      updateSelectInput(session, "recode_same_cat_upper_lower_op", selected = category_input$recode_same_cat_upper_lower_op %||% "ge")
+      updateTextInput(session, "recode_same_cat_upper_new", value = category_input$recode_same_cat_upper_new %||% "")
+    }, once = TRUE)
+  }
+
+  observeEvent(input$recode_same_queue_select, {
+    index <- suppressWarnings(as.integer(input$recode_same_queue_select$index %||% NA_integer_))
+    entries <- applied_entries()
+    if (!is.finite(index) || index < 1L || index > length(entries)) {
+      return()
+    }
+    load_recode_entry(entries[[index]], index)
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$recode_same_queue_delete, {
+    index <- suppressWarnings(as.integer(input$recode_same_queue_delete$index %||% NA_integer_))
+    entries <- applied_entries()
+    if (!is.finite(index) || index < 1L || index > length(entries)) {
+      return()
+    }
+    entries <- entries[-index]
+    applied_entries(entries)
+    selected_queue_index(NULL)
+    last_message("Removed queued recode rule.")
+  }, ignoreInit = TRUE)
 
   output$recode_same_reverse_summary <- DT::renderDT({
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
@@ -955,53 +1509,97 @@ register_recode_same_handlers <- function(
     div(class = "recode-same-status", message)
   })
 
+  observeEvent(input$add_recode_same, {
+    data <- tryCatch(dataset_fn(), error = function(e) NULL)
+    if (is.null(data)) {
+      showNotification("Load a data file before adding a recode rule.", type = "warning", duration = 5)
+      return()
+    }
+    variable_info <- tryCatch(variable_info_fn(), error = function(e) NULL)
+    entry <- recode_current_entry_from_input(input, single_rule_count(), category_middle_count())
+    if (!nzchar(entry$old) || !entry$old %in% names(data)) {
+      showNotification("Select an old variable to add.", type = "warning", duration = 5)
+      return()
+    }
+    if (identical(entry$target, "new") && !nzchar(entry$new)) {
+      showNotification("Enter a new variable name.", type = "warning", duration = 5)
+      return()
+    }
+    if (identical(entry$rule_type, "single") && nrow(entry$single_rules) == 0) {
+        showNotification("Enter at least one existing value to recode.", type = "warning", duration = 5)
+        return()
+    }
+    inferred_measurement <- recode_infer_output_measurement(entry, recode_source_measurement(variable_info, entry$old, data))
+    if (!is.null(inferred_measurement)) {
+      entry$measurement <- inferred_measurement
+      updateSelectInput(session, "recode_same_measurement", selected = inferred_measurement)
+    }
+    unmatched_message <- recode_unmatched_message(data[[entry$old]], entry)
+
+    entries <- applied_entries()
+    index <- suppressWarnings(as.integer(selected_queue_index() %||% NA_integer_))
+    if (is.finite(index) && index >= 1L && index <= length(entries)) {
+      entries[[index]] <- entry
+      status <- sprintf("Updated queued recode rule: %s -> %s", entry$old, entry$new)
+    } else {
+      entries <- c(entries, list(entry))
+      status <- sprintf("Added queued recode rule: %s -> %s", entry$old, entry$new)
+    }
+    if (!is.null(unmatched_message)) {
+      status <- paste(status, unmatched_message)
+      showNotification(unmatched_message, type = "message", duration = 8)
+    }
+    last_message(status)
+    applied_entries(entries)
+    selected_queue_index(NULL)
+  }, ignoreInit = TRUE)
+
   observeEvent(input$apply_recode_same, {
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
     if (is.null(data)) {
       showNotification("Load a data file before recoding.", type = "warning", duration = 5)
       return()
     }
-    variables <- intersect(selected_variables(), names(data))
-    if (length(variables) == 0) {
-      showNotification("Select at least one variable to recode.", type = "warning", duration = 5)
+    entries <- applied_entries()
+    if (length(entries) == 0) {
+      showNotification("Add at least one recode rule before applying.", type = "warning", duration = 5)
       return()
     }
-    rules <- normalize_recode_same_rules(recode_same_rules_from_input(input))
-    if (nrow(rules) == 0) {
-      showNotification("Enter at least one old value to recode.", type = "warning", duration = 5)
-      return()
-    }
-
-    measurement <- as.character(input$recode_same_measurement %||% "")
-    if (!nzchar(measurement)) measurement <- NULL
-    target <- as.character(input$recode_same_target %||% "same")
-    if (!target %in% c("same", "new")) {
-      target <- "same"
-    }
-    if (identical(target, "new") && !is.function(add_calculated_variable_fn)) {
+    if (any(vapply(entries, function(entry) identical(entry$target, "new"), logical(1))) && !is.function(add_calculated_variable_fn)) {
       showNotification("New-variable recoding is not available in this session.", type = "warning", duration = 5)
       return()
     }
 
+    working_data <- data
     changed <- character(0)
-    for (name in variables) {
-      values <- recode_same_values(data[[name]], rules, keep_unmatched = isTRUE(input$recode_same_keep_unmatched))
-      ok <- if (identical(target, "new")) {
-        pattern <- input$recode_same_new_name %||% "{variable}_recode"
-        new_name <- recode_new_variable_name(pattern, name, literal = length(variables) == 1)
-        add_calculated_variable_fn(new_name, values, var_label = sprintf("%s recoded", name), measurement = measurement)
+    for (entry in entries) {
+      if (!nzchar(entry$old) || !entry$old %in% names(working_data)) {
+        showNotification(sprintf("Queued variable is not available: %s", entry$old), type = "warning", duration = 5)
+        return()
+      }
+      if (identical(entry$target, "new") && !nzchar(entry$new)) {
+        showNotification(sprintf("Queued rule for %s has no new variable name.", entry$old), type = "warning", duration = 5)
+        return()
+      }
+      values <- recode_entry_values(working_data[[entry$old]], entry)
+      ok <- if (identical(entry$target, "new")) {
+        add_calculated_variable_fn(entry$new, values, var_label = sprintf("%s recoded", entry$old), measurement = entry$measurement)
       } else {
-        update_existing_variable_fn(name, values, measurement = measurement)
+        update_existing_variable_fn(entry$old, values, measurement = entry$measurement)
       }
       if (isTRUE(ok)) {
-        changed <- c(changed, if (identical(target, "new")) new_name else name)
+        output_name <- if (identical(entry$target, "new")) entry$new else entry$old
+        working_data[[output_name]] <- values
+        changed <- c(changed, output_name)
       }
     }
     if (length(changed) == 0) {
-      last_message("No variables were recoded.")
+      last_message("No queued recode rules were applied.")
       return()
     }
-    last_message(sprintf("Recoded %s variable(s): %s", length(changed), paste(changed, collapse = ", ")))
+    applied_entries(list())
+    selected_queue_index(NULL)
+    last_message(sprintf("Applied %s queued recode rule(s): %s", length(changed), paste(changed, collapse = ", ")))
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 

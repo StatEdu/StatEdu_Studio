@@ -571,6 +571,186 @@ body {
   box-sizing: border-box;
 }
 
+.recode-builder-grid {
+  grid-template-columns: 326px 326px minmax(0, 404px);
+  gap: 24px;
+}
+
+.recode-builder-target-panel,
+.recode-builder-rule-panel {
+  grid-column: auto;
+  min-height: 568px;
+}
+
+.recode-builder-grid > .analysis-transfer-panel {
+  min-height: 568px;
+}
+
+.recode-builder-name-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.recode-builder-name-row .form-group,
+.recode-builder-target-choice .form-group {
+  margin-bottom: 8px;
+}
+
+.recode-builder-target-choice {
+  margin-top: 4px;
+  margin-bottom: 14px;
+}
+
+.recode-builder-target-choice .shiny-options-group {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.recode-builder-target-choice .radio-inline {
+  margin-left: 0;
+  padding-left: 20px;
+}
+
+.recode-builder-applied-list {
+  min-height: 320px;
+  border: 1px solid #d5e2ec;
+  border-radius: 6px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.recode-builder-applied-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.recode-builder-applied-table th,
+.recode-builder-applied-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #d5e2ec;
+  color: #102a43;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: left;
+  word-break: break-word;
+}
+
+.recode-builder-applied-table tbody tr {
+  cursor: pointer;
+}
+
+.recode-builder-applied-table tbody tr.is-selected td {
+  background: #e7f0fb;
+}
+
+.recode-builder-applied-table th {
+  background: #f8fbfd;
+  font-weight: 700;
+}
+
+.recode-builder-empty-cell {
+  color: #6b7c8f !important;
+  text-align: center !important;
+}
+
+.recode-builder-rule-header {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 6px;
+  color: #334e68;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.recode-builder-single-header,
+.recode-builder-single-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.recode-builder-single-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recode-builder-single-row {
+  display: grid;
+  gap: 10px;
+}
+
+.recode-builder-single-row .form-group {
+  margin-bottom: 0;
+}
+
+.recode-builder-category-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recode-builder-category-header,
+.recode-builder-category-row,
+.recode-builder-category-middle-row {
+  grid-template-columns: 50px 46px 50px 46px minmax(0, 1fr);
+}
+
+.recode-builder-category-row {
+  display: grid;
+  gap: 8px;
+  align-items: center;
+}
+
+.recode-builder-range-anchor {
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d5e2ec;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #334e68;
+  font-size: 12px;
+}
+
+.recode-builder-category-row span:not(.recode-builder-range-anchor) {
+  color: #334e68;
+  font-size: 12px;
+}
+
+.recode-builder-category-row .form-group,
+.recode-builder-category-middle-row .form-group {
+  margin-bottom: 0;
+}
+
+.recode-builder-category-row .form-control,
+.recode-builder-category-middle-row .form-control,
+.recode-builder-single-row .form-control {
+  height: 30px;
+  padding: 4px 8px;
+}
+
+.recode-builder-category-row select.form-control,
+.recode-builder-category-middle-row select.form-control {
+  padding-left: 6px;
+  padding-right: 6px;
+  text-align: center;
+}
+
+.recode-builder-apply-button {
+  width: 100%;
+  margin-top: 14px;
+}
+
+.recode-builder-delete-button {
+  width: 100%;
+  padding: 2px 6px;
+  font-size: 11px;
+}
+
 .variable-transform-grid {
   display: grid;
   grid-template-columns: 326px minmax(0, 796px);
@@ -766,6 +946,10 @@ body {
   min-height: 506px;
 }
 
+.recode-builder-grid .recode-same-options {
+  grid-column: auto;
+}
+
 .variable-rename-options {
   grid-column: 5;
   min-height: 506px;
@@ -950,6 +1134,25 @@ body {
 .recode-same-action-row > [id$="_reset_control"] .analysis-reset-button {
   width: 300px;
   min-width: 300px;
+}
+
+.recode-builder-action-row {
+  grid-template-columns: 300px 300px;
+  gap: 18px;
+  width: 1140px;
+  min-width: 1140px;
+  padding-left: 30px;
+  box-sizing: border-box;
+}
+
+.recode-builder-action-row > .btn {
+  grid-column: 1;
+  margin-left: 0;
+}
+
+.recode-builder-action-row > [id$="_reset_control"] {
+  grid-column: 2;
+  margin-left: 0;
 }
 
 .recode-same-status {

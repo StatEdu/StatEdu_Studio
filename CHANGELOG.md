@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.9.9 - 2026-05-27
+
+### Changed
+
+- Redesigned the same-variable recode workflow around a queued `Add` step and a final `Apply` step so recode rules can be reviewed before data are changed.
+- Added editable queued recode rules with row selection, delete controls, automatic variable-type defaults, and automatic output measurement inference.
+- Added single-value recoding support for observed category values, missing-value markers, unmatched-value notices, and recoding values to or from `NA`.
+- Refined categorize-value recoding controls, range operators, panel alignment, action button placement, and Recode Variable layout spacing.
+
+
 ## v0.9.8 - 2026-05-26
 
 ### Changed
