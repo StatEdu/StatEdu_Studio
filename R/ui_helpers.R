@@ -13,6 +13,9 @@ analysis_save_edition <- function() {
 }
 
 analysis_save_feature_enabled <- function(feature, edition = analysis_save_edition()) {
+  if (identical(feature, "word")) {
+    return(FALSE)
+  }
   if (identical(edition, "development")) {
     return(TRUE)
   }
@@ -38,8 +41,9 @@ analysis_save_button <- function(id, label, feature, class = "btn-default") {
   tags$button(
     id = id,
     type = "button",
-    class = paste("btn action-button", class, "analysis-save-button"),
+    class = paste("btn action-button", class, "analysis-save-button", paste0("analysis-save-button-", feature)),
     disabled = if (!isTRUE(enabled)) "disabled" else NULL,
+    title = if (identical(feature, "word")) "Coming soon" else NULL,
     span(class = "action-label", label)
   )
 }
@@ -80,7 +84,7 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-nonparametric-paired-3"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-word-placeholder"))
 }
 
 app_script_link <- function(version) {

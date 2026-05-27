@@ -44,35 +44,40 @@ saved_results_cover_text <- function() {
 saved_results_development_watermark <- function(logo_uri, organization_logo_uri, organization_name) {
   stat_edu_name <- "StatEdu, Institute of Statistics"
   stat_edu_site <- if (nzchar(organization_name)) organization_name else "statedu.com"
-  div(
-    class = "report-watermark",
+  watermark_content <- div(
+    class = "report-watermark-inner",
     div(
-      class = "report-watermark-inner",
+      class = "report-watermark-brand-row",
       div(
-        class = "report-watermark-brand-row",
-        div(
-          class = "report-watermark-item report-watermark-item-efs",
-          if (nzchar(logo_uri)) {
-            tags$img(src = logo_uri, class = "report-watermark-logo report-watermark-logo-efs", alt = "EasyFlow Statistics logo")
-          } else {
-            span("EasyFlow Statistics", class = "report-watermark-name")
-          }
-        ),
-        div(class = "report-watermark-divider"),
-        div(
-          class = "report-watermark-item report-watermark-item-statedu",
-          if (nzchar(organization_logo_uri)) {
-            tags$img(src = organization_logo_uri, class = "report-watermark-logo report-watermark-logo-statedu", alt = stat_edu_name)
-          } else {
-            div(
-              span(stat_edu_name, class = "report-watermark-subname"),
-              span(stat_edu_site, class = "report-watermark-site")
-            )
-          }
-        ),
-        div("DEVELOPMENT", class = "report-watermark-edition")
-      )
+        class = "report-watermark-item report-watermark-item-efs",
+        if (nzchar(logo_uri)) {
+          tags$img(src = logo_uri, class = "report-watermark-logo report-watermark-logo-efs", alt = "EasyFlow Statistics logo")
+        } else {
+          span("EasyFlow Statistics", class = "report-watermark-name")
+        }
+      ),
+      div(class = "report-watermark-divider"),
+      div(
+        class = "report-watermark-item report-watermark-item-statedu",
+        if (nzchar(organization_logo_uri)) {
+          tags$img(src = organization_logo_uri, class = "report-watermark-logo report-watermark-logo-statedu", alt = stat_edu_name)
+        } else {
+          div(
+            span(stat_edu_name, class = "report-watermark-subname"),
+            span(stat_edu_site, class = "report-watermark-site")
+          )
+        }
+      ),
+      div("DEVELOPMENT", class = "report-watermark-edition")
+    ),
+    div(
+      "BETA VERSION - This software is under active development and may contain errors or bugs.",
+      class = "report-watermark-beta"
     )
+  )
+  tagList(
+    div(class = "report-watermark report-watermark-upper", watermark_content),
+    div(class = "report-watermark report-watermark-lower", watermark_content)
   )
 }
 
@@ -94,7 +99,9 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     ".report-cover-license-logo { display: block; max-height: 42px; max-width: 160px; object-fit: contain; }",
     ".report-cover-license-label { color: #627d98; display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 3px; }",
     ".report-cover-license-value { color: #102a43; display: block; font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }",
-    ".report-watermark { left: 50%; pointer-events: none; position: fixed; top: 50%; transform: translate(-50%, -50%) rotate(-24deg); z-index: 9999; }",
+    ".report-watermark { left: 50%; pointer-events: none; position: fixed; transform: translate(-50%, -50%) rotate(-24deg); z-index: 9999; }",
+    ".report-watermark-upper { top: 34%; }",
+    ".report-watermark-lower { top: 68%; }",
     ".report-watermark-inner { color: #102a43; opacity: .12; text-align: center; }",
     ".report-watermark-brand-row { align-items: center; display: flex; gap: 26px; justify-content: center; min-width: 830px; }",
     ".report-watermark-item { align-items: center; display: flex; flex-direction: column; gap: 5px; justify-content: center; }",
@@ -106,6 +113,7 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     ".report-watermark-site { color: #486581; display: block; font-size: 13px; font-weight: 700; letter-spacing: .08em; line-height: 1.1; white-space: nowrap; }",
     ".report-watermark-divider { background: #0fa3a3; height: 92px; width: 3px; }",
     ".report-watermark-edition { border: 2px solid #102a43; border-radius: 999px; color: #102a43; font-size: 18px; font-weight: 800; letter-spacing: .18em; padding: 8px 16px; text-transform: uppercase; white-space: nowrap; }",
+    ".report-watermark-beta { color: #102a43; font-size: 24px; font-weight: 900; letter-spacing: .04em; line-height: 1.25; margin-top: 18px; text-transform: uppercase; white-space: nowrap; }",
     ".report-cover-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 28px; color: #334e68; font-size: 14px; line-height: 1.45; border-top: 2px solid #102a43; padding-top: 18px; position: relative; z-index: 1; }",
     ".report-cover-meta-item { min-width: 0; }",
     ".report-cover-meta-label { color: #627d98; display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }",
@@ -190,6 +198,7 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     "  .report-watermark-site { font-size: 7pt !important; }",
     "  .report-watermark-divider { height: 20mm !important; width: .8mm !important; }",
     "  .report-watermark-edition { font-size: 8.5pt !important; padding: 2mm 4mm !important; }",
+    "  .report-watermark-beta { font-size: 11pt !important; margin-top: 4.5mm !important; }",
     "  .report-cover-meta { font-size: 9.5pt !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }",
     "  .report-cover-footer { font-size: 8.5pt !important; }",
     "  .report-body-heading { display: none !important; }",
@@ -253,7 +262,9 @@ saved_results_viewer_css <- function(max_width = 1280) {
   paste(
     "body { background: #ffffff !important; color: #2f3a46; font-family: Arial, Helvetica, sans-serif; font-size: 16px; margin: 0; }",
     sprintf(".page-shell { max-width: %dpx; margin: 24px auto; padding: 0 18px; }", max_width),
-    ".report-watermark { left: 50%; pointer-events: none; position: fixed; top: 50%; transform: translate(-50%, -50%) rotate(-24deg); z-index: 9999; }",
+    ".report-watermark { left: 50%; pointer-events: none; position: fixed; transform: translate(-50%, -50%) rotate(-24deg); z-index: 9999; }",
+    ".report-watermark-upper { top: 34%; }",
+    ".report-watermark-lower { top: 68%; }",
     ".report-watermark-inner { color: #102a43; opacity: .12; text-align: center; }",
     ".report-watermark-brand-row { align-items: center; display: flex; gap: 26px; justify-content: center; min-width: 830px; }",
     ".report-watermark-item { align-items: center; display: flex; flex-direction: column; gap: 5px; justify-content: center; }",
@@ -265,6 +276,7 @@ saved_results_viewer_css <- function(max_width = 1280) {
     ".report-watermark-site { color: #486581; display: block; font-size: 13px; font-weight: 700; letter-spacing: .08em; line-height: 1.1; white-space: nowrap; }",
     ".report-watermark-divider { background: #0fa3a3; height: 92px; width: 3px; }",
     ".report-watermark-edition { border: 2px solid #102a43; border-radius: 999px; color: #102a43; font-size: 18px; font-weight: 800; letter-spacing: .18em; padding: 8px 16px; text-transform: uppercase; white-space: nowrap; }",
+    ".report-watermark-beta { color: #102a43; font-size: 24px; font-weight: 900; letter-spacing: .04em; line-height: 1.25; margin-top: 18px; text-transform: uppercase; white-space: nowrap; }",
     ".saved-results-meta { color: #52606d; margin: 4px 0 18px; font-size: 13px; }",
     ".regression-result-panel { background: #ffffff; border: 1px solid #d9e2ec; border-radius: 6px; padding: 18px 20px; margin-bottom: 22px; }",
     ".result-section.regression-result-panel, .regression-result-panel { max-width: 100%; overflow-x: auto; box-sizing: border-box; }",
