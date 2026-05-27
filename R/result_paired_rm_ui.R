@@ -30,6 +30,130 @@ paired_rm_p_value_cell <- function(value, marker) {
   )
 }
 
+paired_rm_short_method <- function(value) {
+  value <- as.character(value %||% "")
+  switch(
+    value,
+    "Standard RM ANOVA" = "RM ANOVA",
+    "RM ANOVA + Greenhouse-Geisser correction" = "RM ANOVA + GG",
+    "RM ANOVA + Wilks' lambda / GG correction" = "RM ANOVA + Wilks",
+    "Friedman test" = "Friedman",
+    "Cochran's Q test" = "Cochran Q",
+    value
+  )
+}
+
+paired_rm_assumption_value <- function(table, group, statistic, column = "Result") {
+  if (!is.data.frame(table) || nrow(table) == 0) return("")
+  matched <- table
+  if ("Repeated variables" %in% names(matched)) {
+    matched <- matched[as.character(matched$`Repeated variables`) == group, , drop = FALSE]
+  }
+  if (!"Statistics" %in% names(matched)) return("")
+  matched <- matched[as.character(matched$Statistics) == statistic, , drop = FALSE]
+  if (nrow(matched) == 0 || !column %in% names(matched)) return("")
+  as.character(matched[[column]][[1]] %||% "")
+}
+
+paired_rm_normality_summary <- function(result, group) {
+  method <- paired_rm_assumption_value(result$assumption, group, "Normality method", "Value")
+  normality <- paired_rm_assumption_value(result$assumption, group, "Normality", "Result")
+  normality <- switch(normality, Satisfied = "\ub9cc\uc871", `Not satisfied` = "\ubd88\ub9cc\uc871", normality)
+  if (!nzchar(method) && !nzchar(normality)) return("")
+  if (!nzchar(normality)) return(method)
+  paste(method, normality)
+}
+
+paired_rm_sphericity_summary <- function(result, group) {
+  p_value <- paired_rm_assumption_value(result$assumption, group, "Sphericity p", "Value")
+  sphericity <- paired_rm_assumption_value(result$assumption, group, "Sphericity", "Result")
+  sphericity <- switch(sphericity, Satisfied = "\ub9cc\uc871", `Not satisfied` = "\ubd88\ub9cc\uc871", sphericity)
+  if (!nzchar(p_value) && !nzchar(sphericity)) return("")
+  parts <- c(if (nzchar(p_value)) paste0("p=", p_value) else "", sphericity)
+  paste(parts[nzchar(parts)], collapse = " ")
+}
+
+paired_rm_reason_summary <- function(result, group, row) {
+  normality <- paired_rm_assumption_value(result$assumption, group, "Normality", "Result")
+  sphericity <- paired_rm_assumption_value(result$assumption, group, "Sphericity", "Result")
+  posthoc <- as.character(row$`Post-hoc`[[1]] %||% "")
+  parts <- c(
+    if (identical(normality, "Satisfied")) "\uc815\uaddc\uc131 \ub9cc\uc871" else if (identical(normality, "Not satisfied")) "\uc815\uaddc\uc131 \ubd88\ub9cc\uc871" else "",
+    if (identical(sphericity, "Satisfied")) "\uad6c\ud615\uc131 \ub9cc\uc871" else if (identical(sphericity, "Not satisfied")) "\uad6c\ud615\uc131 \ubd88\ub9cc\uc871" else "",
+    if (nzchar(posthoc)) "\uc0ac\ud6c4\ubd84\uc11d \uc788\uc74c" else ""
+  )
+  paste(parts[nzchar(parts)], collapse = "\n")
+}
+
+paired_rm_overview_source <- function(result) {
+  if (is.data.frame(result$display_table) && nrow(result$display_table) > 0) return(result$display_table)
+  if (is.data.frame(result$count_table) && nrow(result$count_table) > 0) return(result$count_table)
+  result$table
+}
+
+paired_rm_model_overview_table <- function(result) {
+  table <- paired_rm_overview_source(result)
+  if (!is.data.frame(table) || nrow(table) == 0) return(NULL)
+  group_column <- if ("Repeated variables" %in% names(table)) "Repeated variables" else names(table)[[1]]
+  rows <- list()
+  for (index in seq_len(nrow(table))) {
+    item <- table[index, , drop = FALSE]
+    group <- as.character(item[[group_column]][[1]] %||% "")
+    values <- stats::setNames(
+      list(
+        as.character(item$N[[1]] %||% ""),
+        paired_rm_short_method(item$Method[[1]] %||% ""),
+        paired_rm_reason_summary(result, group, item)
+      ),
+      c("N", "\ubd84\uc11d", "\uc0ac\uc720")
+    )
+    metric_index <- 0L
+    for (metric in names(values)) {
+      metric_index <- metric_index + 1L
+      rows[[length(rows) + 1L]] <- data.frame(
+        `Repeated variables` = if (metric_index == 1L) group else "",
+        Item = metric,
+        Result = values[[metric]],
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      )
+    }
+  }
+  if (length(rows) == 0) NULL else do.call(rbind, rows)
+}
+
+paired_rm_assumption_review_table <- function(result) {
+  table <- paired_rm_overview_source(result)
+  if (!is.data.frame(table) || nrow(table) == 0) return(NULL)
+  group_column <- if ("Repeated variables" %in% names(table)) "Repeated variables" else names(table)[[1]]
+  rows <- list()
+  for (index in seq_len(nrow(table))) {
+    item <- table[index, , drop = FALSE]
+    group <- as.character(item[[group_column]][[1]] %||% "")
+    values <- stats::setNames(
+      list(
+        paired_rm_normality_summary(result, group),
+        paired_rm_sphericity_summary(result, group),
+        as.character(item$`Post-hoc`[[1]] %||% ""),
+        "stats"
+      ),
+      c("\uc815\uaddc\uc131", "\uad6c\ud615\uc131", "\uc0ac\ud6c4\ubd84\uc11d", "\ud328\ud0a4\uc9c0")
+    )
+    metric_index <- 0L
+    for (metric in names(values)) {
+      metric_index <- metric_index + 1L
+      rows[[length(rows) + 1L]] <- data.frame(
+        `Repeated variables` = if (metric_index == 1L) group else "",
+        Item = metric,
+        Result = values[[metric]],
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      )
+    }
+  }
+  if (length(rows) == 0) NULL else do.call(rbind, rows)
+}
+
 paired_rm_sup_header <- function(label, marker) {
   tags$span(
     style = "white-space:nowrap;",
@@ -223,6 +347,13 @@ paired_rm_results_ui <- function(result) {
   }
   tags$div(
     class = "regression-results paired-results paired-rm-results",
+    if (is.data.frame(paired_rm_model_overview_table(result)) && nrow(paired_rm_model_overview_table(result)) > 0) {
+      tags$div(
+        class = "result-section paired-result-section regression-result-panel",
+        tags$h3("Model overview"),
+        model_overview_html_table(paired_rm_model_overview_table(result))
+      )
+    },
     if (is.data.frame(result$display_table) && nrow(result$display_table) > 0) {
       tags$div(
         class = "result-section paired-result-section regression-result-panel",
@@ -262,11 +393,11 @@ paired_rm_results_ui <- function(result) {
         coefficient_html_table(result$posthoc, note_line = paired_rm_posthoc_note(result))
       )
     },
-    if (isTRUE(result$options$assumption_check) && is.data.frame(result$assumption) && nrow(result$assumption) > 0) {
+    if (is.data.frame(paired_rm_assumption_review_table(result)) && nrow(paired_rm_assumption_review_table(result)) > 0) {
       tags$div(
         class = "result-section paired-result-section regression-result-panel",
-        tags$h3("Assumption check"),
-        coefficient_html_table(result$assumption)
+        tags$h3("\uac00\uc815 \uac80\ud1a0"),
+        model_overview_html_table(paired_rm_assumption_review_table(result))
       )
     },
     if (is.data.frame(result$skipped) && nrow(result$skipped) > 0) {

@@ -48,7 +48,8 @@ register_pca_handlers <- function(
         scree_plot = input$pca_scree_plot %||% TRUE,
         biplot = input$pca_biplot %||% TRUE,
         save_component_scores = input$pca_save_component_scores %||% FALSE,
-        save_component_base_name = input$pca_save_component_base_name %||% "PCA"
+        save_component_base_name = input$pca_save_component_base_name %||% "PCA",
+        options_tab = isolate(input$pca_options_tab) %||% "Model"
       )
     )
   })

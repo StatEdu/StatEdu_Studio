@@ -3,7 +3,7 @@
 # table lines, title rows, column widths, and alignment stay consistent.
 
 excel_sheet_name <- function(name, used = character(0)) {
-  name <- gsub("[\\\\/\\?\\*\\[\\]:]", " ", as.character(name %||% "Sheet"))
+  name <- gsub("[\\\\/:*?\\[\\]]", " ", as.character(name %||% "Sheet"), perl = TRUE)
   name <- trimws(gsub("\\s+", " ", name))
   if (!nzchar(name)) {
     name <- "Sheet"
@@ -225,6 +225,7 @@ save_analysis_excel_workbook <- function(
   coefficient_tables,
   sheet_names,
   titles,
+  assumption_review_table = NULL,
   show_vif = FALSE,
   show_sr2 = FALSE,
   show_f2 = FALSE
@@ -239,9 +240,6 @@ save_analysis_excel_workbook <- function(
     used_sheets,
     merge_shared_independent = TRUE
   )
-  warnings <- attr(results, "warnings")
-  skipped <- attr(results, "skipped")
-  used_sheets <- add_analysis_warning_skipped_sheets(workbook, used_sheets, warnings, skipped, skipped_title = "Skipped models")
 
   for (index in seq_along(results)) {
     used_sheets <- add_regression_result_sheet(
@@ -256,6 +254,12 @@ save_analysis_excel_workbook <- function(
       title = titles[[index]]
     )
   }
+  if (is.data.frame(assumption_review_table) && nrow(assumption_review_table) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Assumption review", assumption_review_table, used_sheets, title = "Assumption review")
+  }
+  warnings <- attr(results, "warnings")
+  skipped <- attr(results, "skipped")
+  used_sheets <- add_analysis_warning_skipped_sheets(workbook, used_sheets, warnings, skipped, skipped_title = "Skipped models")
 
   openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
 }
@@ -629,6 +633,7 @@ save_analysis_excel_file <- function(
     payload$coefficient_tables,
     payload$sheet_names,
     payload$titles,
+    assumption_review_table = regression_assumption_review_data_frame(results, variable_table, labels),
     show_vif = show_vif,
     show_sr2 = show_sr2,
     show_f2 = show_f2
@@ -847,6 +852,13 @@ save_hierarchical_excel_file <- function(
       title = sprintf("Hierarchical Regression(%s)", dependent_label)
     )
   }
+  assumption_review <- regression_assumption_review_data_frame(results, variable_table, labels)
+  if (is.data.frame(assumption_review) && nrow(assumption_review) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Assumption review", assumption_review, used_sheets, title = "Assumption review")
+  }
+  warnings <- attr(results, "warnings")
+  skipped <- attr(results, "skipped")
+  used_sheets <- add_analysis_warning_skipped_sheets(workbook, used_sheets, warnings, skipped, skipped_title = "Skipped models")
   openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
   invisible(file)
 }
@@ -1394,6 +1406,15 @@ add_paired_rm_grouped_excel_sheet <- function(workbook, sheet_name, table, used_
 save_ttest_anova_excel_file <- function(result, file) {
   workbook <- openxlsx::createWorkbook()
   used_sheets <- character(0)
+  if (is.data.frame(result$assumption_review) && nrow(result$assumption_review) > 0) {
+    used_sheets <- add_excel_table_sheet(
+      workbook,
+      "Assumption review",
+      result$assumption_review,
+      used_sheets,
+      title = "Assumption review"
+    )
+  }
   used_sheets <- add_excel_table_sheet(
     workbook,
     "Model overview",
@@ -1538,6 +1559,16 @@ save_paired_excel_file <- function(result, file) {
   if (identical(result$type, "paired_combined")) {
     paired_part <- result$paired
     rm_part <- result$paired_rm
+    paired_overview <- paired_model_overview_table(paired_part)
+    paired_assumption_review <- paired_assumption_review_table(paired_part)
+    rm_overview <- paired_rm_model_overview_table(rm_part)
+    rm_assumption_review <- paired_rm_assumption_review_table(rm_part)
+    if (is.data.frame(paired_overview) && nrow(paired_overview) > 0) {
+      used_sheets <- add_excel_table_sheet(workbook, "Paired overview", paired_overview, used_sheets, title = "Model overview")
+    }
+    if (is.data.frame(rm_overview) && nrow(rm_overview) > 0) {
+      used_sheets <- add_excel_table_sheet(workbook, "Repeated overview", rm_overview, used_sheets, title = "Model overview")
+    }
     if (is.data.frame(paired_part$scale_table) && nrow(paired_part$scale_table) > 0) {
       used_sheets <- add_paired_grouped_excel_sheet(
         workbook,
@@ -1571,6 +1602,9 @@ save_paired_excel_file <- function(result, file) {
         used_sheets,
         title = "Paired assumption check"
       )
+    }
+    if (is.data.frame(paired_assumption_review) && nrow(paired_assumption_review) > 0) {
+      used_sheets <- add_excel_table_sheet(workbook, "Paired assumption review", paired_assumption_review, used_sheets, title = "Assumption review")
     }
     write_paired_guard_sheets(paired_part, "Paired ")
     if (is.data.frame(rm_part$display_table) && nrow(rm_part$display_table) > 0) {
@@ -1615,11 +1649,19 @@ save_paired_excel_file <- function(result, file) {
         title = "Repeated-measures assumption check"
       )
     }
+    if (is.data.frame(rm_assumption_review) && nrow(rm_assumption_review) > 0) {
+      used_sheets <- add_excel_table_sheet(workbook, "Repeated assumption review", rm_assumption_review, used_sheets, title = "Assumption review")
+    }
     if (is.data.frame(rm_part$skipped) && nrow(rm_part$skipped) > 0) {
       used_sheets <- add_ttest_anova_result_sheet(workbook, "Repeated skipped", rm_part$skipped, "", used_sheets, title = "Skipped repeated-measures rows")
     }
     openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
     return(invisible(file))
+  }
+  overview <- paired_model_overview_table(result)
+  assumption_review <- paired_assumption_review_table(result)
+  if (is.data.frame(overview) && nrow(overview) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Model overview", overview, used_sheets, title = "Model overview")
   }
   if (is.data.frame(result$scale_table) && nrow(result$scale_table) > 0) {
     used_sheets <- add_paired_grouped_excel_sheet(
@@ -1665,6 +1707,9 @@ save_paired_excel_file <- function(result, file) {
       title = "Assumption check"
     )
   }
+  if (is.data.frame(assumption_review) && nrow(assumption_review) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Assumption review", assumption_review, used_sheets, title = "Assumption review")
+  }
   write_paired_guard_sheets(result)
   openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
   invisible(file)
@@ -1673,6 +1718,11 @@ save_paired_excel_file <- function(result, file) {
 save_paired_rm_excel_file <- function(result, file) {
   workbook <- openxlsx::createWorkbook()
   used_sheets <- character(0)
+  overview <- paired_rm_model_overview_table(result)
+  assumption_review <- paired_rm_assumption_review_table(result)
+  if (is.data.frame(overview) && nrow(overview) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Model overview", overview, used_sheets, title = "Model overview")
+  }
   if (is.data.frame(result$display_table) && nrow(result$display_table) > 0) {
     used_sheets <- add_paired_rm_grouped_excel_sheet(
       workbook,
@@ -1724,6 +1774,9 @@ save_paired_rm_excel_file <- function(result, file) {
       used_sheets,
       title = "Assumption check"
     )
+  }
+  if (is.data.frame(assumption_review) && nrow(assumption_review) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Assumption review", assumption_review, used_sheets, title = "Assumption review")
   }
   if (is.data.frame(result$skipped) && nrow(result$skipped) > 0) {
     used_sheets <- add_ttest_anova_result_sheet(workbook, "Skipped", result$skipped, "", used_sheets, title = "Skipped repeated-measures rows")

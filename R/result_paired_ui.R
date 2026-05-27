@@ -93,6 +93,133 @@ paired_p_value_cell <- function(value, marker) {
   )
 }
 
+paired_short_method <- function(value) {
+  value <- as.character(value %||% "")
+  switch(
+    value,
+    "Paired t-test" = "paired t",
+    "Wilcoxon signed-rank test" = "Wilcoxon",
+    "McNemar test" = "McNemar",
+    "Exact McNemar test" = "Exact McNemar",
+    "Stuart-Maxwell test" = "Stuart-Maxwell",
+    "Bowker symmetry test" = "Bowker",
+    value
+  )
+}
+
+paired_check_summary <- function(check_row) {
+  if (!is.data.frame(check_row) || nrow(check_row) == 0) return("")
+  method <- as.character(check_row$`Check Result`[[1]] %||% "")
+  if (identical(method, "Skewness/Kurtosis")) {
+    skewness <- as.character(check_row$Skewness[[1]] %||% "")
+    kurtosis <- as.character(check_row$Kurtosis[[1]] %||% "")
+    return(sprintf("skew=%s, kurtosis=%s", skewness, kurtosis))
+  }
+  if (identical(method, "Shapiro-Wilk")) {
+    w <- as.character(check_row$`Shapiro-Wilk W`[[1]] %||% "")
+    p <- as.character(check_row$`Shapiro-Wilk p`[[1]] %||% "")
+    if (nzchar(w)) return(sprintf("S-W W=%s(%s)", w, p))
+    return(sprintf("S-W p=%s", p))
+  }
+  method
+}
+
+paired_check_satisfied_label <- function(check_row) {
+  if (!is.data.frame(check_row) || nrow(check_row) == 0) return("")
+  method <- as.character(check_row$`Check Result`[[1]] %||% "")
+  if (identical(method, "Skewness/Kurtosis")) {
+    skewness <- suppressWarnings(as.numeric(check_row$Skewness[[1]]))
+    kurtosis <- suppressWarnings(as.numeric(check_row$Kurtosis[[1]]))
+    if (is.na(skewness) || is.na(kurtosis)) return("")
+    return(if (abs(skewness) <= 2 && abs(kurtosis) <= 7) "\uc815\uaddc\uc131 \ub9cc\uc871" else "\uc815\uaddc\uc131 \ubd88\ub9cc\uc871")
+  }
+  if (identical(method, "Shapiro-Wilk")) {
+    p_text <- as.character(check_row$`Shapiro-Wilk p`[[1]] %||% "")
+    if (!nzchar(p_text)) return("")
+    p_value <- suppressWarnings(as.numeric(sub("^<", "", p_text)))
+    if (is.na(p_value)) return("")
+    return(if (p_value >= .05) "\uc815\uaddc\uc131 \ub9cc\uc871" else "\uc815\uaddc\uc131 \ubd88\ub9cc\uc871")
+  }
+  ""
+}
+
+paired_model_overview_table <- function(result) {
+  if (!is.list(result) || !is.data.frame(result$table) || nrow(result$table) == 0) {
+    return(NULL)
+  }
+  rows <- list()
+  for (index in seq_len(nrow(result$table))) {
+    item <- result$table[index, , drop = FALSE]
+    pair <- as.character(item$Pair[[1]] %||% "")
+    check_row <- if (is.data.frame(result$checks) && "Pair" %in% names(result$checks)) {
+      result$checks[as.character(result$checks$Pair) == pair, , drop = FALSE]
+    } else {
+      NULL
+    }
+    reason_parts <- c(
+      paired_check_satisfied_label(check_row),
+      if ("Level" %in% names(item) && as.character(item$Level[[1]] %||% "") %in% c("Binary", "Categorical")) as.character(item$Level[[1]]) else ""
+    )
+    reason_parts <- reason_parts[nzchar(reason_parts)]
+    values <- stats::setNames(
+      list(
+        as.character(item$N[[1]] %||% ""),
+        paired_short_method(item$Method[[1]]),
+        paste(reason_parts, collapse = "\n")
+      ),
+      c("N", "\ubd84\uc11d", "\uc0ac\uc720")
+    )
+    metric_index <- 0L
+    for (metric in names(values)) {
+      metric_index <- metric_index + 1L
+      rows[[length(rows) + 1L]] <- data.frame(
+        Pair = if (metric_index == 1L) pair else "",
+        Item = metric,
+        Result = values[[metric]],
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      )
+    }
+  }
+  if (length(rows) == 0) NULL else do.call(rbind, rows)
+}
+
+paired_assumption_review_table <- function(result) {
+  if (!is.list(result) || !is.data.frame(result$table) || nrow(result$table) == 0) {
+    return(NULL)
+  }
+  rows <- list()
+  for (index in seq_len(nrow(result$table))) {
+    item <- result$table[index, , drop = FALSE]
+    pair <- as.character(item$Pair[[1]] %||% "")
+    check_row <- if (is.data.frame(result$checks) && "Pair" %in% names(result$checks)) {
+      result$checks[as.character(result$checks$Pair) == pair, , drop = FALSE]
+    } else {
+      NULL
+    }
+    values <- stats::setNames(
+      list(
+        paired_check_summary(check_row),
+        if (is.data.frame(check_row) && nrow(check_row) > 0) as.character(check_row$Outliers[[1]] %||% "") else "",
+        "stats"
+      ),
+      c("\uc815\uaddc\uc131", "\uc774\uc0c1\uac12", "\ud328\ud0a4\uc9c0")
+    )
+    metric_index <- 0L
+    for (metric in names(values)) {
+      metric_index <- metric_index + 1L
+      rows[[length(rows) + 1L]] <- data.frame(
+        Pair = if (metric_index == 1L) pair else "",
+        Item = metric,
+        Result = values[[metric]],
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      )
+    }
+  }
+  if (length(rows) == 0) NULL else do.call(rbind, rows)
+}
+
 paired_effect_value_for_label <- function(table, row_index, effect_label) {
   value <- as.character(table$Effect[[row_index]] %||% "")
   if (!nzchar(value)) return("")
@@ -192,6 +319,13 @@ paired_results_ui <- function(result) {
   }
   tags$div(
     class = "regression-results paired-results",
+    if (is.data.frame(paired_model_overview_table(result)) && nrow(paired_model_overview_table(result)) > 0) {
+      tags$div(
+        class = "result-section paired-result-section regression-result-panel",
+        tags$h3("Model overview"),
+        model_overview_html_table(paired_model_overview_table(result))
+      )
+    },
     if (is.data.frame(result$scale_table) && nrow(result$scale_table) > 0) {
       tags$div(
         class = "result-section paired-result-section regression-result-panel",
@@ -212,11 +346,11 @@ paired_results_ui <- function(result) {
         )
       )
     },
-    if (isTRUE(result$options$assumption_check) && is.data.frame(result$checks) && nrow(result$checks) > 0) {
+    if (is.data.frame(paired_assumption_review_table(result)) && nrow(paired_assumption_review_table(result)) > 0) {
       tags$div(
         class = "result-section paired-result-section regression-result-panel",
-        tags$h3("Assumption check"),
-        coefficient_html_table(result$checks)
+        tags$h3("\uac00\uc815 \uac80\ud1a0"),
+        model_overview_html_table(paired_assumption_review_table(result))
       )
     },
     if (is.data.frame(result$warnings) && nrow(result$warnings) > 0) {

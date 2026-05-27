@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.9.11 - 2026-05-27
+
+### Changed
+
+- Added compact model-overview and assumption-review summaries for paired tests, t-test / ANOVA, regression, and logistic regression outputs.
+- Moved detailed assumption diagnostics into dedicated review tables and kept model overviews focused on N, analysis method, and concise reasons.
+- Added tabbed option panels for factor analysis, PCA, and t-test / ANOVA, with tab-state preservation and refined option spacing.
+- Updated regression effect-size defaults to show f2 by default and leave sr2 unchecked.
+
+
 ## v0.9.10 - 2026-05-27
 
 ### Changed

@@ -77,7 +77,8 @@ register_ttest_anova_handlers <- function(
         post_hoc_method = isolate(post_hoc_method_value()),
         nonparametric_post_hoc_method = isolate(nonparametric_post_hoc_method_value()),
         ordered_significance = isolate(ordered_significance_value()),
-        effect_size = isolate(effect_size_value())
+        effect_size = isolate(effect_size_value()),
+        options_tab = isolate(input$ttest_anova_options_tab) %||% "Assumption"
       )
     )
   })

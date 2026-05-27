@@ -21,7 +21,8 @@ factor_analysis_setup_state <- function(
   save_factor_means = FALSE,
   save_factor_sums = FALSE,
   save_factor_scores = FALSE,
-  save_factor_base_name = "FA"
+  save_factor_base_name = "FA",
+  options_tab = "Model"
 ) {
   selected <- as.character(selected_names %||% character(0))
   allowed <- analysis_allowed_variables(selected, variable_table, c("ordered", "continuous"))
@@ -50,7 +51,8 @@ factor_analysis_setup_state <- function(
     save_factor_means = isTRUE(save_factor_means),
     save_factor_sums = isTRUE(save_factor_sums),
     save_factor_scores = isTRUE(save_factor_scores),
-    save_factor_base_name = trimws(as.character(save_factor_base_name %||% "FA"))
+    save_factor_base_name = trimws(as.character(save_factor_base_name %||% "FA")),
+    options_tab = if (options_tab %in% c("Model", "Output", "Scores")) options_tab else "Model"
   )
 }
 
@@ -99,7 +101,7 @@ factor_analysis_selection_controls <- function(state) {
   }
   div(
     id = "factor_criterion",
-    class = "form-group shiny-input-radiogroup shiny-input-container",
+    class = "form-group shiny-input-radiogroup shiny-input-container factor-selection-compact",
     div(
       class = "shiny-options-group",
       radio_input("Eigenvalue >= 1.0", "eigen"),
@@ -120,7 +122,7 @@ factor_analysis_selection_controls <- function(state) {
           )
         ),
         class = "radio factor-fixed-radio-row",
-        style = "align-items:center;display:flex;flex-wrap:nowrap;gap:6px;margin-left:36px;width:252px;",
+        style = "align-items:center;display:flex;flex-wrap:nowrap;gap:6px;margin-left:0;width:252px;",
         label_style = "flex:0 0 auto;margin-bottom:0;white-space:nowrap;"
       )
     )
@@ -158,71 +160,95 @@ factor_analysis_setup_panel <- function(state) {
       class = "correlation-options-column factor-analysis-options-column",
       div(
         class = "analysis-options-panel correlation-options factor-analysis-options",
-        analysis_radio_group(
-          "Matrix",
-          "factor_matrix_type",
-          factor_analysis_matrix_choices(),
-          selected = state$matrix_type
-        ),
-        analysis_option_group(
-          "Assumption",
-          list(
-            list(id = "factor_normality", label = "normality test", value = state$normality)
-          )
-        ),
-        div(
-          class = paste(
-            "analysis-option-group analysis-radio-group factor-normality-method-group",
-            if (!isTRUE(state$normality)) "ttest-normality-disabled" else ""
+        div(class = "analysis-option-title factor-options-title", "Options"),
+        tabsetPanel(
+          id = "factor_options_tab",
+          type = "tabs",
+          selected = state$options_tab,
+          tabPanel(
+            "Model",
+            div(
+              class = "factor-options-tab-content",
+              analysis_radio_group(
+                "Matrix",
+                "factor_matrix_type",
+                factor_analysis_matrix_choices(),
+                selected = state$matrix_type
+              ),
+              analysis_option_group(
+                "Assumption",
+                list(
+                  list(id = "factor_normality", label = "normality test", value = state$normality)
+                )
+              ),
+              div(
+                class = paste(
+                  "analysis-option-group analysis-radio-group factor-normality-method-group",
+                  if (!isTRUE(state$normality)) "ttest-normality-disabled" else ""
+                ),
+                div(class = "analysis-option-title", "Normality method"),
+                radioButtons(
+                  "factor_normality_method",
+                  label = NULL,
+                  choices = factor_analysis_normality_method_choices(),
+                  selected = state$normality_method
+                )
+              ),
+              div(
+                class = paste(
+                  "analysis-option-group analysis-radio-group factor-method-group",
+                  if (isTRUE(state$normality)) "ttest-normality-disabled" else ""
+                ),
+                div(class = "analysis-option-title", "Method"),
+                radioButtons(
+                  "factor_method",
+                  label = NULL,
+                  choices = factor_analysis_method_choices(),
+                  selected = state$method
+                )
+              ),
+              analysis_radio_group(
+                "Rotation",
+                "factor_rotation",
+                factor_analysis_rotation_choices(),
+                selected = state$rotation
+              ),
+              div(
+                class = "analysis-option-group analysis-radio-group factor-selection-group",
+                div(class = "analysis-option-title", "Factor selection"),
+                factor_analysis_selection_controls(state)
+              )
+            )
           ),
-          div(class = "analysis-option-title", "Normality method"),
-          radioButtons(
-            "factor_normality_method",
-            label = NULL,
-            choices = factor_analysis_normality_method_choices(),
-            selected = state$normality_method
-          )
-        ),
-        div(
-          class = paste(
-            "analysis-option-group analysis-radio-group factor-method-group",
-            if (isTRUE(state$normality)) "ttest-normality-disabled" else ""
+          tabPanel(
+            "Output",
+            div(
+              class = "factor-options-tab-content",
+              analysis_option_group(
+                "Output",
+                list(
+                  list(id = "factor_sort_loadings", label = "Sort loadings by size", value = state$sort_loadings),
+                  list(id = "factor_hide_small_loadings", label = "Show loadings >= .30 only", value = state$hide_small_loadings),
+                  list(id = "factor_highlight_problem_values", label = "Highlight problem values", value = state$highlight_problem_values),
+                  list(id = "factor_subfactor_reliability", label = "Subfactor reliability", value = state$subfactor_reliability)
+                )
+              )
+            )
           ),
-          div(class = "analysis-option-title", "Method"),
-          radioButtons(
-            "factor_method",
-            label = NULL,
-            choices = factor_analysis_method_choices(),
-            selected = state$method
+          tabPanel(
+            "Scores",
+            div(
+              class = "factor-options-tab-content",
+              div(
+                class = "analysis-option-group factor-save-score-group",
+                div(class = "analysis-option-title", "Save scores"),
+                factor_analysis_save_name_row(state$save_factor_base_name),
+                factor_analysis_save_score_row("factor_save_factor_means", "Factor item means", state$save_factor_means),
+                factor_analysis_save_score_row("factor_save_factor_sums", "Factor item sums", state$save_factor_sums),
+                factor_analysis_save_score_row("factor_save_factor_scores", "Factor scores", state$save_factor_scores)
+              )
+            )
           )
-        ),
-        analysis_radio_group(
-          "Rotation",
-          "factor_rotation",
-          factor_analysis_rotation_choices(),
-          selected = state$rotation
-        ),
-        div(
-          class = "analysis-option-group analysis-radio-group factor-selection-group",
-          div(class = "analysis-option-title", "Factor selection"),
-          factor_analysis_selection_controls(state)
-        ),
-        analysis_option_group(
-          "Output",
-          list(
-            list(id = "factor_sort_loadings", label = "Sort loadings by size", value = state$sort_loadings),
-            list(id = "factor_hide_small_loadings", label = "Show loadings >= .30 only", value = state$hide_small_loadings),
-            list(id = "factor_highlight_problem_values", label = "Highlight problem values", value = state$highlight_problem_values),
-            list(id = "factor_subfactor_reliability", label = "Subfactor reliability", value = state$subfactor_reliability)
-          )
-        ),
-        div(
-          class = "analysis-option-group factor-save-score-group",
-          div(class = "analysis-option-title", "Save scores"),
-          factor_analysis_save_name_row(state$save_factor_base_name),
-          factor_analysis_save_score_row("factor_save_factor_means", "Factor item means", state$save_factor_means),
-          factor_analysis_save_score_row("factor_save_factor_sums", "Factor item sums", state$save_factor_sums),
-          factor_analysis_save_score_row("factor_save_factor_scores", "Factor scores", state$save_factor_scores)
         )
       )
     )

@@ -51,7 +51,8 @@ register_factor_analysis_handlers <- function(
         save_factor_means = input$factor_save_factor_means %||% FALSE,
         save_factor_sums = input$factor_save_factor_sums %||% FALSE,
         save_factor_scores = input$factor_save_factor_scores %||% FALSE,
-        save_factor_base_name = input$factor_save_factor_base_name %||% "FA"
+        save_factor_base_name = input$factor_save_factor_base_name %||% "FA",
+        options_tab = isolate(input$factor_options_tab) %||% "Model"
       )
     )
   })

@@ -416,16 +416,88 @@ model_overview_html_table <- function(table) {
   if (!is.data.frame(table) || nrow(table) == 0) {
     return(NULL)
   }
+  left_columns <- if ("Item" %in% names(table)) {
+    if (identical(names(table)[[1]], "Item")) 1L else 2L
+  } else {
+    1L
+  }
+  compact_overview <- "Item" %in% names(table)
+  if (isTRUE(compact_overview)) {
+    n_cols <- ncol(table)
+    value_cols <- max(1L, n_cols - left_columns)
+    left_width <- if (left_columns == 1L) 96L else 160L
+    table_width <- min(760L, left_width + value_cols * 140L)
+    value_width <- max(96L, floor((table_width - left_width) / value_cols))
+    table_tag <- tags$table(
+      class = "table shiny-table combined-model-overview-table compact-model-overview-table",
+      style = paste(
+        sprintf("width:%dpx;max-width:100%%;min-width:0;table-layout:fixed;", table_width),
+        "border-collapse:collapse;border-spacing:0;border-top:2px solid #1f2937;border-bottom:2px solid #1f2937;",
+        "color:#2f3a46;font-size:12px;background:transparent;"
+      ),
+      tags$colgroup(
+        tags$col(style = "width:96px;"),
+        if (left_columns >= 2L) tags$col(style = "width:64px;"),
+        lapply(seq_len(value_cols), function(unused) {
+          tags$col(style = sprintf("width:%dpx;", value_width))
+        })
+      ),
+      tags$thead(tags$tr(lapply(seq_along(names(table)), function(index) {
+        tags$th(
+          style = paste(
+            "padding:6px 8px;line-height:1.3;border-left:0;border-right:0;border-bottom:2px solid #1f2937;",
+            "vertical-align:middle;font-weight:700;background:transparent;white-space:normal;overflow-wrap:anywhere;",
+            "text-align:", if (index <= left_columns) "left" else "center", ";"
+          ),
+          names(table)[[index]]
+        )
+      }))),
+      tags$tbody(lapply(seq_len(nrow(table)), function(row_index) {
+        values <- table[row_index, , drop = TRUE]
+        tags$tr(lapply(seq_along(values), function(index) {
+          tags$td(
+            style = paste(
+              "padding:6px 8px;line-height:1.35;border-left:0;border-right:0;",
+              "border-bottom:", if (row_index == nrow(table)) "0" else "1px solid #d7dde5", ";",
+              "vertical-align:top;background:transparent;white-space:pre-line;overflow-wrap:anywhere;word-break:normal;",
+              "font-variant-numeric:tabular-nums lining-nums;font-feature-settings:'tnum' 1,'lnum' 1;",
+              "text-align:", if (index <= left_columns) "left" else "center", ";"
+            ),
+            values[[index]]
+          )
+        }))
+      }))
+    )
+    return(result_table_with_notes(table_tag))
+  }
+  overview_header_style <- function(index) {
+    style <- result_header_cell_style(index <= left_columns, compact = compact_overview, compact_font_size = 12, compact_width = 88, compact_first_width = 118)
+    if (isTRUE(compact_overview)) {
+      style <- paste0(style, "min-width:0;white-space:normal;overflow-wrap:anywhere;")
+    }
+    style
+  }
+  overview_body_style <- function(index, last) {
+    style <- result_body_cell_style(index <= left_columns, last, compact = compact_overview, compact_font_size = 12, compact_width = 88, compact_first_width = 118)
+    if (isTRUE(compact_overview)) {
+      style <- paste0(style, "min-width:0;white-space:pre-line;overflow-wrap:anywhere;word-break:normal;")
+    }
+    style
+  }
   table_tag <- tags$table(
     class = "table shiny-table combined-model-overview-table",
-    style = result_table_style(),
+    style = if (isTRUE(compact_overview)) {
+      paste0(result_table_style(font_size = 12, min_width = 360), "width:100%;min-width:0;max-width:100%;table-layout:fixed;")
+    } else {
+      result_table_style()
+    },
     tags$thead(tags$tr(lapply(seq_along(names(table)), function(index) {
-      tags$th(style = result_header_cell_style(index == 1), names(table)[[index]])
+      tags$th(style = overview_header_style(index), names(table)[[index]])
     }))),
     tags$tbody(lapply(seq_len(nrow(table)), function(row_index) {
       values <- table[row_index, , drop = TRUE]
       tags$tr(lapply(seq_along(values), function(index) {
-        tags$td(style = result_body_cell_style(index == 1, row_index == nrow(table)), values[[index]])
+        tags$td(style = overview_body_style(index, row_index == nrow(table)), values[[index]])
       }))
     }))
   )

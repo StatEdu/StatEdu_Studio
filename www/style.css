@@ -2378,10 +2378,14 @@ input.variable-select:disabled {
 }
 
 .ttest-anova-options .analysis-option-subtitle {
-  margin: 4px 0 8px 18px;
+  margin: 10px 0 14px 18px;
   color: #002b50;
   font-size: 14px;
   font-weight: 400;
+}
+
+.ttest-anova-options-tab-content .analysis-option-subtitle + .form-group {
+  margin-top: 0;
 }
 
 .ttest-anova-options .analysis-option-group .checkbox,
@@ -2618,14 +2622,98 @@ input.variable-select:disabled {
   padding: 12px 14px;
 }
 
+.factor-options-title {
+  margin-bottom: 14px !important;
+}
+
+.factor-analysis-options .nav-tabs {
+  border-bottom: 1px solid #c9d9e8;
+  display: flex;
+  gap: 4px;
+  margin: 0 0 18px 0;
+}
+
+.analysis-tabbed-options .nav-tabs {
+  border-bottom: 1px solid #c9d9e8;
+  display: flex;
+  gap: 4px;
+  margin: 0 0 18px 0;
+}
+
+.factor-analysis-options .nav-tabs > li {
+  float: none;
+  flex: 1 1 0;
+  margin: 0;
+}
+
+.analysis-tabbed-options .nav-tabs > li {
+  float: none;
+  flex: 1 1 0;
+  margin: 0;
+}
+
+.factor-analysis-options .nav-tabs > li > a {
+  border: 1px solid #bfd2e4;
+  border-radius: 6px 6px 0 0;
+  color: #0b2a4a;
+  font-size: 13.5px;
+  line-height: 1.2;
+  margin: 0;
+  padding: 9px 8px;
+  text-align: center;
+  width: 100%;
+}
+
+.analysis-tabbed-options .nav-tabs > li > a {
+  border: 1px solid #bfd2e4;
+  border-radius: 6px 6px 0 0;
+  color: #0b2a4a;
+  font-size: 13.5px;
+  line-height: 1.2;
+  margin: 0;
+  padding: 9px 8px;
+  text-align: center;
+  width: 100%;
+}
+
+.factor-analysis-options .nav-tabs > li.active > a,
+.factor-analysis-options .nav-tabs > li.active > a:focus,
+.factor-analysis-options .nav-tabs > li.active > a:hover {
+  background: #ffffff;
+  border-color: #9fbad3 #9fbad3 #ffffff;
+  color: #082747;
+  font-weight: 700;
+}
+
+.analysis-tabbed-options .nav-tabs > li.active > a,
+.analysis-tabbed-options .nav-tabs > li.active > a:focus,
+.analysis-tabbed-options .nav-tabs > li.active > a:hover {
+  background: #ffffff;
+  border-color: #9fbad3 #9fbad3 #ffffff;
+  color: #082747;
+  font-weight: 700;
+}
+
+.factor-options-tab-content {
+  min-height: 452px;
+  padding-top: 4px;
+}
+
+.pca-options-tab-content,
+.ttest-anova-options-tab-content {
+  min-height: 452px;
+  padding-bottom: 14px;
+  padding-top: 14px;
+}
+
 .factor-analysis-options .analysis-option-group {
-  margin-bottom: 8px;
+  margin-bottom: 14px;
 }
 
 .factor-analysis-options .analysis-option-title {
   font-size: 16px;
   line-height: 1.15;
-  margin-bottom: 4px;
+  margin-bottom: 12px;
 }
 
 .factor-analysis-options > .analysis-option-group:nth-child(2) > .analysis-option-title,
@@ -2638,8 +2726,8 @@ input.variable-select:disabled {
 .factor-analysis-options .analysis-option-group .radio {
   font-size: 13.5px;
   line-height: 1.18;
-  margin-bottom: 2px;
-  margin-top: 2px;
+  margin-bottom: 4px;
+  margin-top: 3px;
   min-height: 0;
 }
 
@@ -2654,6 +2742,11 @@ input.variable-select:disabled {
   margin-top: 3px;
 }
 
+.factor-analysis-options .tab-pane .analysis-option-group .checkbox {
+  margin-bottom: 9px;
+  margin-top: 7px;
+}
+
 .factor-analysis-options .form-group {
   margin-bottom: 0;
 }
@@ -2663,11 +2756,16 @@ input.variable-select:disabled {
 }
 
 .factor-analysis-options .ttest-normality-disabled {
-  margin-bottom: 8px;
+  margin-bottom: 14px;
 }
 
 .factor-analysis-options > .analysis-option-group:last-child {
   margin-bottom: 0;
+}
+
+.factor-selection-compact .shiny-options-group {
+  display: grid;
+  gap: 2px;
 }
 
 .factor-fixed-radio-row {
@@ -2705,7 +2803,7 @@ input.variable-select:disabled {
   gap: 6px;
   grid-template-columns: auto 106px;
   justify-content: start;
-  margin: 4px 0 7px 38px;
+  margin: 8px 0 14px 38px;
 }
 
 .factor-save-name-row label {
@@ -2719,7 +2817,7 @@ input.variable-select:disabled {
 .factor-save-score-row {
   align-items: center;
   display: flex;
-  margin: 4px 0 4px 38px;
+  margin: 8px 0 8px 38px;
 }
 
 .factor-save-score-row .form-group,
@@ -2766,7 +2864,7 @@ input.variable-select:disabled {
 .pca-options .analysis-option-title {
   font-size: 16px;
   line-height: 1.15;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .pca-options > .analysis-option-group:nth-child(1) > .analysis-option-title,
@@ -2799,6 +2897,42 @@ input.variable-select:disabled {
 
 .pca-options .form-control {
   font-size: 13.5px;
+}
+
+.pca-options-tab-content .analysis-option-group,
+.ttest-anova-options-tab-content .analysis-option-group {
+  margin-bottom: 18px;
+}
+
+.pca-options-tab-content .analysis-option-title,
+.ttest-anova-options-tab-content .analysis-option-title {
+  margin-bottom: 14px;
+}
+
+.pca-options-tab-content .analysis-option-group .checkbox,
+.pca-options-tab-content .analysis-option-group .radio,
+.ttest-anova-options-tab-content .analysis-option-group .checkbox,
+.ttest-anova-options-tab-content .analysis-option-group .radio,
+.ttest-anova-options-tab-content .ttest-normality-study-choice,
+.ttest-anova-options-tab-content .ttest-normality-method-choice {
+  line-height: 1.38;
+  margin-bottom: 5px !important;
+  margin-top: 5px !important;
+}
+
+.factor-analysis-options .tab-pane .analysis-option-title,
+.pca-options-tab-content .analysis-option-title {
+  margin-bottom: 14px;
+}
+
+.factor-analysis-options .tab-pane .factor-save-score-row {
+  margin-bottom: 6px;
+  margin-top: 6px;
+}
+
+.factor-analysis-options .tab-pane .factor-save-score-row .checkbox {
+  margin-bottom: 0;
+  margin-top: 0;
 }
 
 .pca-save-score-group {

@@ -31,7 +31,8 @@ ttest_anova_setup_state <- function(
   nonparametric_post_hoc_method = NULL,
   post_hoc = FALSE,
   ordered_significance = FALSE,
-  effect_size = TRUE
+  effect_size = TRUE,
+  options_tab = "Assumption"
 ) {
   selected <- as.character(selected_names %||% character(0))
   dependent_variables <- intersect(as.character(dependent_variables %||% character(0)), selected)
@@ -127,6 +128,11 @@ ttest_anova_setup_state <- function(
     post_hoc = isTRUE(post_hoc),
     ordered_significance = isTRUE(ordered_significance),
     effect_size = isTRUE(effect_size),
+    options_tab = if (as.character(options_tab %||% "Assumption") %in% c("Assumption", "Post-hoc", "Output")) {
+      as.character(options_tab %||% "Assumption")
+    } else {
+      "Assumption"
+    },
     move_disabled = length(selected) == 0
   )
 }
@@ -224,107 +230,131 @@ ttest_anova_setup_panel <- function(state) {
     div(
       class = "ttest-anova-options-column",
       div(
-        class = "analysis-options-panel ttest-anova-options",
-        div(
-          class = "analysis-option-group ttest-normality-options",
-          div(class = "analysis-option-title", "Normality"),
-          div(
-            class = "ttest-normality-level ttest-normality-level-1",
-            checkboxInput(
-              "ttest_anova_normality_enabled",
-              "Normality",
-              value = state$normality_enabled
-            )
-          ),
-          div(
-            id = "ttest_anova_normality_study_type",
-            class = paste(
-              "form-group shiny-input-radiogroup shiny-input-container analysis-option-subgroup ttest-normality-subgroup ttest-normality-study-options",
-              if (!normality_on) "ttest-normality-disabled" else ""
-            ),
+        class = "analysis-options-panel ttest-anova-options analysis-tabbed-options",
+        div(class = "analysis-option-title factor-options-title", "Options"),
+        tabsetPanel(
+          id = "ttest_anova_options_tab",
+          type = "tabs",
+          selected = state$options_tab,
+          tabPanel(
+            "Assumption",
             div(
-              class = "shiny-options-group ttest-normality-study-options-group",
+              class = "factor-options-tab-content ttest-anova-options-tab-content",
               div(
-                class = "ttest-normality-study-block ttest-normality-survey-study",
+                class = "analysis-option-group ttest-normality-options",
+                div(class = "analysis-option-title", "Normality"),
                 div(
                   class = "ttest-normality-level ttest-normality-level-2",
-                  normality_study_radio("survey", "Survey study")
-                ),
-                div(
-                  class = paste(
-                    "ttest-normality-branch ttest-normality-survey-branch",
-                    if (!survey_active) "ttest-normality-disabled" else ""
-                  ),
-                  div(
-                    class = "ttest-normality-level ttest-normality-level-3",
-                    normality_method_radio_group(
-                      "ttest_anova_survey_normality_method",
-                      state$survey_normality_choices,
-                      state$survey_normality_method
-                    )
+                  checkboxInput(
+                    "ttest_anova_normality_enabled",
+                    "Normality",
+                    value = state$normality_enabled
                   )
-                )
-              ),
-              div(
-                class = "ttest-normality-study-block ttest-normality-experimental-study",
-                div(
-                  class = "ttest-normality-level ttest-normality-level-2",
-                  normality_study_radio("experimental", "Experimental study")
                 ),
                 div(
+                  id = "ttest_anova_normality_study_type",
                   class = paste(
-                    "ttest-normality-branch ttest-normality-experimental-branch",
-                    if (!experimental_active) "ttest-normality-disabled" else ""
+                    "form-group shiny-input-radiogroup shiny-input-container analysis-option-subgroup ttest-normality-subgroup ttest-normality-study-options",
+                    if (!normality_on) "ttest-normality-disabled" else ""
                   ),
                   div(
-                    class = "ttest-normality-level ttest-normality-level-3",
-                    normality_method_radio_group(
-                      "ttest_anova_experimental_normality_method",
-                      state$experimental_normality_choices,
-                      state$experimental_normality_method
+                    class = "shiny-options-group ttest-normality-study-options-group",
+                    div(
+                      class = "ttest-normality-study-block ttest-normality-survey-study",
+                      div(
+                        class = "ttest-normality-level ttest-normality-level-2",
+                        normality_study_radio("survey", "Survey study")
+                      ),
+                      div(
+                        class = paste(
+                          "ttest-normality-branch ttest-normality-survey-branch",
+                          if (!survey_active) "ttest-normality-disabled" else ""
+                        ),
+                        div(
+                          class = "ttest-normality-level ttest-normality-level-3",
+                          normality_method_radio_group(
+                            "ttest_anova_survey_normality_method",
+                            state$survey_normality_choices,
+                            state$survey_normality_method
+                          )
+                        )
+                      )
+                    ),
+                    div(
+                      class = "ttest-normality-study-block ttest-normality-experimental-study",
+                      div(
+                        class = "ttest-normality-level ttest-normality-level-2",
+                        normality_study_radio("experimental", "Experimental study")
+                      ),
+                      div(
+                        class = paste(
+                          "ttest-normality-branch ttest-normality-experimental-branch",
+                          if (!experimental_active) "ttest-normality-disabled" else ""
+                        ),
+                        div(
+                          class = "ttest-normality-level ttest-normality-level-3",
+                          normality_method_radio_group(
+                            "ttest_anova_experimental_normality_method",
+                            state$experimental_normality_choices,
+                            state$experimental_normality_method
+                          )
+                        )
+                      )
                     )
                   )
                 )
               )
             )
-          )
-        ),
-        analysis_option_group(
-          "Trend analysis",
-          list(
-            list(id = "ttest_anova_trend_analysis", label = "Trend analysis", value = state$trend_analysis)
-          )
-        ),
-        div(
-          class = "analysis-option-group analysis-radio-group",
-          div(class = "analysis-option-title", "Post-hoc"),
-          div(
-            class = "ttest-anova-ordered-significance-option",
-            checkboxInput(
-              "ttest_anova_ordered_significance",
-              "Ordered significance notation",
-              value = state$ordered_significance
+          ),
+          tabPanel(
+            "Post-hoc",
+            div(
+              class = "factor-options-tab-content ttest-anova-options-tab-content",
+              div(
+                class = "analysis-option-group analysis-radio-group",
+                div(class = "analysis-option-title", "Post-hoc"),
+                div(
+                  class = "ttest-anova-ordered-significance-option",
+                  checkboxInput(
+                    "ttest_anova_ordered_significance",
+                    "Ordered significance notation",
+                    value = state$ordered_significance
+                  )
+                ),
+                div(class = "analysis-option-subtitle", "ANOVA"),
+                radioButtons(
+                  "ttest_anova_post_hoc_method",
+                  label = NULL,
+                  choices = state$post_hoc_choices,
+                  selected = state$post_hoc_method
+                ),
+                div(class = "analysis-option-subtitle", "Nonparametric"),
+                radioButtons(
+                  "ttest_anova_nonparametric_post_hoc_method",
+                  label = NULL,
+                  choices = state$nonparametric_post_hoc_choices,
+                  selected = state$nonparametric_post_hoc_method
+                )
+              )
             )
           ),
-          div(class = "analysis-option-subtitle", "ANOVA"),
-          radioButtons(
-            "ttest_anova_post_hoc_method",
-            label = NULL,
-            choices = state$post_hoc_choices,
-            selected = state$post_hoc_method
-          ),
-          div(class = "analysis-option-subtitle", "Nonparametric"),
-          radioButtons(
-            "ttest_anova_nonparametric_post_hoc_method",
-            label = NULL,
-            choices = state$nonparametric_post_hoc_choices,
-            selected = state$nonparametric_post_hoc_method
-          )
-        ),
-        analysis_option_group(
-          "Effect size",
-          list(
-            list(id = "ttest_anova_effect_size", label = "Effect size", value = state$effect_size)
+          tabPanel(
+            "Output",
+            div(
+              class = "factor-options-tab-content ttest-anova-options-tab-content",
+              analysis_option_group(
+                "Trend analysis",
+                list(
+                  list(id = "ttest_anova_trend_analysis", label = "Trend analysis", value = state$trend_analysis)
+                )
+              ),
+              analysis_option_group(
+                "Effect size",
+                list(
+                  list(id = "ttest_anova_effect_size", label = "Effect size", value = state$effect_size)
+                )
+              )
+            )
           )
         )
       )

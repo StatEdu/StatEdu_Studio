@@ -849,7 +849,7 @@ result_entry_tables <- function(entry, entry_index = 1L) {
     )
     tables[[index]] <- list(
       title = title,
-      sheet_name = sprintf("%02d %s", entry_index, title),
+      sheet_name = excel_sheet_name(sprintf("%02d %s", entry_index, title)),
       table = table
     )
   }

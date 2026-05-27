@@ -73,11 +73,13 @@ paired_diff_assumption <- function(diff) {
   }
   skew <- if (n >= 3) as.numeric(psych::skew(diff, na.rm = TRUE, type = 2)) else NA_real_
   kurt <- if (n >= 4) as.numeric(psych::kurtosi(diff, na.rm = TRUE, type = 2)) else NA_real_
-  sw <- if (n >= 3 && n <= 5000 && stats::sd(diff, na.rm = TRUE) > 0) {
-    suppressWarnings(stats::shapiro.test(diff)$p.value)
+  sw_test <- if (n >= 3 && n <= 5000 && stats::sd(diff, na.rm = TRUE) > 0) {
+    suppressWarnings(stats::shapiro.test(diff))
   } else {
-    NA_real_
+    NULL
   }
+  sw <- if (is.null(sw_test)) NA_real_ else as.numeric(sw_test$p.value)
+  sw_w <- if (is.null(sw_test)) NA_real_ else unname(as.numeric(sw_test$statistic))
   if (n >= 30) {
     normal <- is.finite(skew) && is.finite(kurt) && abs(skew) < 2 && abs(kurt) < 7
     method <- "Skewness/Kurtosis"
@@ -89,6 +91,7 @@ paired_diff_assumption <- function(diff) {
     n = n,
     skewness = skew,
     kurtosis = kurt,
+    shapiro_w = sw_w,
     shapiro_p = sw,
     normal = normal,
     outliers = paired_outlier_summary(diff),
@@ -101,6 +104,7 @@ paired_check_table <- function(pair_label, check) {
   data.frame(
     Pair = pair_label,
     `Check Result` = check$method,
+    `Shapiro-Wilk W` = if (is.finite(check$shapiro_w)) format_decimal3(check$shapiro_w) else "",
     `Shapiro-Wilk p` = if (is.finite(check$shapiro_p)) format_p(check$shapiro_p) else "",
     Skewness = format_decimal3(check$skewness),
     Kurtosis = format_decimal3(check$kurtosis),

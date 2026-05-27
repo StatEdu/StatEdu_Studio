@@ -683,8 +683,6 @@ hierarchical_results_panel <- function(
       h3("Model overview"),
       model_overview_html_table(model_overview_data_frame(results, variable_table, labels))
     ),
-    analysis_warning_section(warnings, class = "regression-result-panel"),
-    analysis_skipped_section(skipped, title = "Skipped models", class = "regression-result-panel"),
     lapply(groups, function(group) {
       hierarchical_coefficient_result_block(
         group,
@@ -699,6 +697,9 @@ hierarchical_results_panel <- function(
       )
     }),
     regression_reference_summary_block(results, variable_table, labels, show_sr2, show_f2),
+    regression_assumption_review_block(results, variable_table, labels),
+    analysis_warning_section(warnings, class = "regression-result-panel"),
+    analysis_skipped_section(skipped, title = "Skipped models", class = "regression-result-panel"),
     plot_blocks
   )
 }
@@ -747,22 +748,26 @@ regression_reference_summary_block <- function(
   show_f2 = FALSE
 ) {
   effect_panel <- effect_size_reference_panel(show_sr2, show_f2)
-  dw_table <- combined_dw_data_frame(results, variable_table, labels)
   has_effect <- !is.null(effect_panel)
-  has_dw <- is.data.frame(dw_table) && nrow(dw_table) > 0
-  if (!has_effect && !has_dw) {
+  if (!has_effect) {
     return(NULL)
   }
 
   div(
     class = "regression-result-panel reference-summary-panel",
-    if (has_effect) effect_panel,
-    if (has_effect && has_dw) tags$div(class = "reference-summary-divider"),
-    if (has_dw) tags$div(
-      class = "durbin-watson-panel",
-      h3("Durbin-Watson"),
-      combined_dw_html_table(dw_table)
-    )
+    effect_panel
+  )
+}
+
+regression_assumption_review_block <- function(results, variable_table = NULL, labels = character(0)) {
+  table <- regression_assumption_review_data_frame(results, variable_table, labels)
+  if (!is.data.frame(table) || nrow(table) == 0) {
+    return(NULL)
+  }
+  div(
+    class = "regression-result-panel assumption-review-panel",
+    h3("\uac00\uc815 \uac80\ud1a0"),
+    model_overview_html_table(table)
   )
 }
 
@@ -789,8 +794,6 @@ regression_results_panel <- function(
       h3("Model overview"),
       model_overview_html_table(model_overview_data_frame(results, variable_table, labels))
     ),
-    analysis_warning_section(warnings, class = "regression-result-panel"),
-    analysis_skipped_section(skipped, title = "Skipped models", class = "regression-result-panel"),
     penalized_result_block(penalized),
     lapply(seq_along(results), function(index) {
       regression_coefficient_result_block(
@@ -806,6 +809,9 @@ regression_results_panel <- function(
       )
     }),
     regression_reference_summary_block(results, variable_table, labels, show_sr2, show_f2),
+    regression_assumption_review_block(results, variable_table, labels),
+    analysis_warning_section(warnings, class = "regression-result-panel"),
+    analysis_skipped_section(skipped, title = "Skipped models", class = "regression-result-panel"),
     if (!isTRUE(show_penalized)) {
       plot_blocks
     }

@@ -427,6 +427,146 @@ logistic_fit_summary_values <- function(result, show_mcfadden = FALSE, show_cox_
   values[nzchar(unlist(values))]
 }
 
+logistic_overview_column_label <- function(result, variable_table = NULL, labels = character(0), category_table = NULL) {
+  dependent_label <- logistic_dependent_title_label(result$dependent, variable_table, labels, category_table)
+  step <- as.character(result$hierarchical_step %||% "")
+  if (nzchar(step)) {
+    sprintf("%s %s", dependent_label, step)
+  } else {
+    dependent_label
+  }
+}
+
+logistic_package_label <- function(result) {
+  method <- as.character(result$method %||% "")
+  packages <- c("stats")
+  if (grepl("Ordinal", method)) {
+    packages <- c(packages, "MASS")
+  }
+  if (grepl("Multinomial", method)) {
+    packages <- c(packages, "nnet")
+  }
+  paste(vapply(unique(packages), package_version_label, character(1)), collapse = "; ")
+}
+
+logistic_model_overview_data_frame <- function(results, variable_table = NULL, labels = character(0), category_table = NULL) {
+  if (!is.list(results) || length(results) == 0) {
+    return(data.frame())
+  }
+  rows <- c("N", "\ubd84\uc11d", "\uc0ac\uc720")
+  logistic_overview_reason <- function(result) {
+    notes <- logistic_result_notes(result)
+    parts <- character(0)
+    if (!is.null(result$parallel)) {
+      parts <- c(parts, if (!is.na(result$parallel$p) && result$parallel$p > .05) "\ube44\ub840\uc624\uc988 \ub9cc\uc871" else "\ube44\ub840\uc624\uc988 \ubd88\ub9cc\uc871")
+    }
+    if (nzchar(logistic_note_match(notes, "EPV|Sparse|Zero cell|Rare event"))) {
+      parts <- c(parts, "EPV/sparse \uc8fc\uc758")
+    }
+    if (nzchar(logistic_note_match(notes, "separation"))) {
+      parts <- c(parts, "\ubd84\ub9ac \uc8fc\uc758")
+    }
+    max_vif <- suppressWarnings(as.numeric(result$max_vif %||% NA_real_))
+    if (!is.na(max_vif) && max_vif > 10) {
+      parts <- c(parts, "\ub2e4\uc911\uacf5\uc120\uc131 \uc704\ud5d8")
+    } else if (!is.na(max_vif) && max_vif > 5) {
+      parts <- c(parts, "\ub2e4\uc911\uacf5\uc120\uc131 \uc8fc\uc758")
+    }
+    if (length(parts) == 0) {
+      parts <- "\ud2b9\uc774 \uc0ac\ud56d \uc5c6\uc74c"
+    }
+    paste(parts[nzchar(parts)], collapse = "\n")
+  }
+  values <- lapply(results, function(result) {
+    c(
+      N = as.character(result$n),
+      "\ubd84\uc11d" = as.character(result$method %||% ""),
+      "\uc0ac\uc720" = logistic_overview_reason(result)
+    )
+  })
+  table <- data.frame(Item = rows, stringsAsFactors = FALSE, check.names = FALSE)
+  for (index in seq_along(results)) {
+    table[[logistic_overview_column_label(results[[index]], variable_table, labels, category_table)]] <- unname(values[[index]][rows])
+  }
+  table
+}
+
+logistic_note_match <- function(notes, pattern) {
+  notes <- as.character(notes %||% character(0))
+  matched <- notes[grepl(pattern, notes, ignore.case = TRUE)]
+  paste(matched[nzchar(matched)], collapse = "\n")
+}
+
+logistic_parallel_summary <- function(result) {
+  if (is.null(result$parallel)) {
+    return("")
+  }
+  p <- result$parallel$p
+  decision <- if (!is.na(p) && p > .05) "\ube44\ub840\uc624\uc988 \uac00\uc815 \ub9cc\uc871" else "\ube44\ub840\uc624\uc988 \uac00\uc815 \ubd88\ub9cc\uc871"
+  sprintf("x\u00b2=%s(%s)\n%s", format_decimal3(result$parallel$chisq), format_p(p), decision)
+}
+
+logistic_vif_summary_text <- function(result) {
+  value <- suppressWarnings(as.numeric(result$max_vif %||% NA_real_))
+  if (is.na(value)) {
+    return("")
+  }
+  decision <- if (value <= 5) {
+    "\ub2e4\uc911\uacf5\uc120\uc131 \ubb38\uc81c \uc5c6\uc74c"
+  } else if (value <= 10) {
+    "\ub2e4\uc911\uacf5\uc120\uc131 \uc8fc\uc758"
+  } else {
+    "\ub2e4\uc911\uacf5\uc120\uc131 \uc704\ud5d8"
+  }
+  sprintf("max VIF=%s\n%s", format_decimal3(value), decision)
+}
+
+logistic_assumption_review_data_frame <- function(results, variable_table = NULL, labels = character(0), category_table = NULL) {
+  if (!is.list(results) || length(results) == 0) {
+    return(data.frame())
+  }
+  rows <- c("\ube44\ub840\uc624\uc988", "EPV / sparse", "\ubd84\ub9ac", "VIF", "\ud328\ud0a4\uc9c0")
+  values <- lapply(results, function(result) {
+    notes <- logistic_result_notes(result)
+    c(
+      "\ube44\ub840\uc624\uc988" = logistic_parallel_summary(result),
+      "EPV / sparse" = logistic_note_match(notes, "EPV|Sparse|Zero cell|Rare event"),
+      "\ubd84\ub9ac" = logistic_note_match(notes, "separation"),
+      VIF = logistic_vif_summary_text(result),
+      "\ud328\ud0a4\uc9c0" = logistic_package_label(result)
+    )
+  })
+  table <- data.frame(Item = rows, stringsAsFactors = FALSE, check.names = FALSE)
+  for (index in seq_along(results)) {
+    table[[logistic_overview_column_label(results[[index]], variable_table, labels, category_table)]] <- unname(values[[index]][rows])
+  }
+  table
+}
+
+logistic_model_overview_block <- function(results, variable_table = NULL, labels = character(0), category_table = NULL) {
+  table <- logistic_model_overview_data_frame(results, variable_table, labels, category_table)
+  if (!is.data.frame(table) || nrow(table) == 0) {
+    return(NULL)
+  }
+  div(
+    class = "regression-result-panel logistic-result-panel model-overview-panel",
+    h3("Model overview"),
+    model_overview_html_table(table)
+  )
+}
+
+logistic_assumption_review_block <- function(results, variable_table = NULL, labels = character(0), category_table = NULL) {
+  table <- logistic_assumption_review_data_frame(results, variable_table, labels, category_table)
+  if (!is.data.frame(table) || nrow(table) == 0) {
+    return(NULL)
+  }
+  div(
+    class = "regression-result-panel logistic-result-panel assumption-review-panel",
+    h3("\uac00\uc815 \uac80\ud1a0"),
+    model_overview_html_table(table)
+  )
+}
+
 logistic_hierarchical_footer_row <- function(label, values, model_columns, first = FALSE) {
   cells <- list(tags$td(
     colspan = 2,
@@ -613,14 +753,16 @@ logistic_results_panel <- function(results, variable_table = NULL, labels = char
   skipped <- attr(results, "skipped")
   div(
     class = "logistic-results",
-    analysis_warning_section(warnings, class = "regression-result-panel logistic-result-panel"),
-    analysis_skipped_section(skipped, title = "Skipped models", class = "regression-result-panel logistic-result-panel"),
+    logistic_model_overview_block(results, variable_table, labels, category_table),
     lapply(groups, function(group) {
       if (length(group) > 1L) {
         logistic_hierarchical_result_block(group, variable_table, labels, category_table, show_b, show_se, show_mcfadden, show_cox_snell, split_ci)
       } else {
         logistic_result_block(group[[1]], variable_table, labels, category_table, show_b, show_se, show_mcfadden, show_cox_snell, split_ci)
       }
-    })
+    }),
+    logistic_assumption_review_block(results, variable_table, labels, category_table),
+    analysis_warning_section(warnings, class = "regression-result-panel logistic-result-panel"),
+    analysis_skipped_section(skipped, title = "Skipped models", class = "regression-result-panel logistic-result-panel")
   )
 }

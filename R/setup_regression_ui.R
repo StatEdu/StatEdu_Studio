@@ -11,7 +11,7 @@ regression_setup_state <- function(
   selected_predictor = NULL,
   bootstrap_value = NULL,
   seed_value = NULL,
-  show_sr2 = TRUE,
+  show_sr2 = FALSE,
   show_f2 = TRUE,
   show_vif = TRUE
 ) {
@@ -46,7 +46,7 @@ regression_setup_state <- function(
     bootstrap_choices = bootstrap_choices,
     current_bootstrap = normalized_bootstrap_resamples(bootstrap_value, bootstrap_choices),
     current_seed = seed_value %||% default_seed(),
-    show_sr2 = setup_option_checked(show_sr2, default = TRUE),
+    show_sr2 = setup_option_checked(show_sr2, default = FALSE),
     show_f2 = setup_option_checked(show_f2, default = TRUE),
     show_vif = setup_option_checked(show_vif, default = TRUE)
   )
@@ -107,7 +107,7 @@ regression_setup_panel <- function(
   bootstrap_choices,
   current_bootstrap,
   current_seed,
-  show_sr2 = TRUE,
+  show_sr2 = FALSE,
   show_f2 = TRUE,
   show_vif = TRUE
 ) {

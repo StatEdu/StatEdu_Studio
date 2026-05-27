@@ -108,6 +108,7 @@ ttest_normality_ks <- function(values, groups) {
 
   levels <- ttest_level_order(unique(groups))
   p_values <- stats::setNames(rep(NA_real_, length(levels)), levels)
+  statistics <- stats::setNames(rep(NA_real_, length(levels)), levels)
   for (level in levels) {
     group_values <- values[groups == level]
     group_values <- group_values[!is.na(group_values)]
@@ -115,14 +116,22 @@ ttest_normality_ks <- function(values, groups) {
       next
     }
     standardized <- as.numeric(scale(group_values))
-    p_values[[level]] <- suppressWarnings(stats::ks.test(standardized, "pnorm")$p.value)
+    test <- suppressWarnings(stats::ks.test(standardized, "pnorm"))
+    statistics[[level]] <- unname(test$statistic)
+    p_values[[level]] <- test$p.value
   }
   available <- p_values[!is.na(p_values)]
   normal <- length(available) > 0 && all(available >= .05)
+  available_statistics <- statistics[names(available)]
   list(
     method = "Kolmogorov-Smirnov by group",
     normal = normal,
-    detail = paste(sprintf("%s=%s", names(available), vapply(available, format_p, character(1))), collapse = ", ")
+    detail = paste(sprintf(
+      "%s: K-S D=%s(%s)",
+      names(available),
+      vapply(available_statistics, format_decimal3, character(1)),
+      vapply(available, format_p, character(1))
+    ), collapse = "\n")
   )
 }
 
@@ -139,11 +148,12 @@ ttest_normality_ks_overall <- function(values) {
     ))
   }
   standardized <- as.numeric(scale(values))
-  p_value <- suppressWarnings(stats::ks.test(standardized, "pnorm")$p.value)
+  test <- suppressWarnings(stats::ks.test(standardized, "pnorm"))
+  p_value <- test$p.value
   list(
     method = "Kolmogorov-Smirnov",
     normal = !is.na(p_value) && p_value >= .05,
-    detail = sprintf("p=%s", format_p(p_value))
+    detail = sprintf("K-S D=%s(%s)", format_decimal3(unname(test$statistic)), format_p(p_value))
   )
 }
 
@@ -156,18 +166,27 @@ ttest_normality_shapiro <- function(values, groups) {
 
   levels <- ttest_level_order(unique(groups))
   p_values <- stats::setNames(rep(NA_real_, length(levels)), levels)
+  statistics <- stats::setNames(rep(NA_real_, length(levels)), levels)
   for (level in levels) {
     group_values <- values[groups == level]
     group_values <- group_values[!is.na(group_values)]
     if (length(group_values) < 3 || length(group_values) > 5000 || isTRUE(stats::sd(group_values) == 0)) {
       next
     }
-    p_values[[level]] <- suppressWarnings(stats::shapiro.test(group_values)$p.value)
+    test <- suppressWarnings(stats::shapiro.test(group_values))
+    statistics[[level]] <- unname(test$statistic)
+    p_values[[level]] <- test$p.value
   }
   available <- p_values[!is.na(p_values)]
   normal <- length(available) > 0 && all(available >= .05)
   detail <- if (length(available) > 0) {
-    paste(sprintf("%s=%s", names(available), vapply(available, format_p, character(1))), collapse = ", ")
+    available_statistics <- statistics[names(available)]
+    paste(sprintf(
+      "%s: S-W W=%s(%s)",
+      names(available),
+      vapply(available_statistics, format_decimal3, character(1)),
+      vapply(available, format_p, character(1))
+    ), collapse = "\n")
   } else {
     "No valid group for Shapiro-Wilk test"
   }
@@ -190,11 +209,12 @@ ttest_normality_shapiro_overall <- function(values) {
       detail = "No valid sample for Shapiro-Wilk test"
     ))
   }
-  p_value <- suppressWarnings(stats::shapiro.test(values)$p.value)
+  test <- suppressWarnings(stats::shapiro.test(values))
+  p_value <- test$p.value
   list(
     method = "Shapiro-Wilk",
     normal = !is.na(p_value) && p_value >= .05,
-    detail = sprintf("p=%s", format_p(p_value))
+    detail = sprintf("S-W W=%s(%s)", format_decimal3(unname(test$statistic)), format_p(p_value))
   )
 }
 
@@ -1281,13 +1301,10 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
   rows <- rows[, ttest_result_table_columns, drop = FALSE]
   posthoc_table <- ttest_safe_call(ttest_posthoc_table(factor, levels, p_matrix, posthoc_label, variable_info, labels, category_table), data.frame(stringsAsFactors = FALSE))
 
-  normality_text <- sprintf(
-    "%s: %s",
-    normality$method,
-    if (isTRUE(normality$normal)) "satisfied" else "not satisfied"
-  )
-  if ((isTRUE(normality_enabled) || isTRUE(options$force_nonparametric)) && nzchar(normality$detail %||% "")) {
-    normality_text <- sprintf("%s (%s)", normality_text, normality$detail)
+  normality_text <- if ((isTRUE(normality_enabled) || isTRUE(options$force_nonparametric)) && nzchar(normality$detail %||% "")) {
+    normality$detail
+  } else {
+    normality$method
   }
 
   overview <- data.frame(
@@ -1325,6 +1342,188 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
       trend_note = trend_note$note %||% ""
     ),
     warnings = ttest_bind_result_rows(warning_rows)
+  )
+}
+
+ttest_model_overview_wide <- function(overview, dependents = NULL, variable_info = NULL, labels = character(0), category_table = NULL) {
+  if (!is.data.frame(overview) || nrow(overview) == 0 || "Message" %in% names(overview)) {
+    return(overview)
+  }
+  if (!all(c("Dependent variable", "Independent variable") %in% names(overview))) {
+    return(overview)
+  }
+
+  dependents <- as.character(dependents %||% character(0))
+  dependent_labels <- if (length(dependents) > 0) {
+    vapply(dependents, ttest_display_variable, character(1), variable_info = variable_info, labels = labels, category_table = category_table)
+  } else {
+    unique(as.character(overview$`Dependent variable`))
+  }
+  dependent_labels <- unique(dependent_labels[nzchar(dependent_labels)])
+  factors <- unique(as.character(overview$`Independent variable`))
+  short_analysis <- function(value) {
+    value <- as.character(value %||% "")
+    switch(
+      value,
+      "Independent samples t-test" = "t-test",
+      "Welch t-test" = "Welch t",
+      "One-way ANOVA" = "ANOVA",
+      "Welch ANOVA" = "Welch",
+      "Kruskal-Wallis test" = "K-W",
+      "Mann-Whitney U test" = "M-W",
+      value
+    )
+  }
+  normality_satisfied <- function(value) {
+    value <- as.character(value %||% "")
+    if (!nzchar(value)) {
+      return("")
+    }
+    p_values <- suppressWarnings(as.numeric(unlist(regmatches(value, gregexpr("(?<=\\()[<>.]?[0-9.]+(?=\\))", value, perl = TRUE)))))
+    if (length(p_values) > 0 && any(!is.na(p_values))) {
+      return(if (all(p_values[!is.na(p_values)] >= .05)) "정규성 만족" else "정규성 불만족")
+    }
+    numeric_values <- suppressWarnings(as.numeric(unlist(regmatches(value, gregexpr("-?[0-9.]+", value)))))
+    if (grepl("skew\\s*=|kurtosis\\s*=", value, ignore.case = TRUE) && length(numeric_values) >= 2) {
+      skew <- numeric_values[[1]]
+      kurtosis <- numeric_values[[2]]
+      return(if (!is.na(skew) && !is.na(kurtosis) && abs(skew) <= 2 && abs(kurtosis) <= 7) "정규성 만족" else "정규성 불만족")
+    }
+    ""
+  }
+  homogeneity_satisfied <- function(value) {
+    value <- as.character(value %||% "")
+    if (!nzchar(value)) {
+      return("")
+    }
+    if (identical(value, "<.001")) {
+      return("등분산성 불만족")
+    }
+    p_value <- suppressWarnings(as.numeric(sub("^<", "", value)))
+    if (is.na(p_value)) {
+      return("")
+    }
+    if (p_value >= .05) "등분산성 만족" else "등분산성 불만족"
+  }
+  metric_values <- function(row, metric) {
+    if (identical(metric, "Reason")) {
+      parts <- c(
+        if ("Normality" %in% names(row)) normality_satisfied(row$Normality) else "",
+        if ("Homogeneity p" %in% names(row)) homogeneity_satisfied(row$`Homogeneity p`) else "",
+        if ("Post-hoc" %in% names(row) && nzchar(row$`Post-hoc` %||% "")) "사후분석 있음" else ""
+      )
+      parts <- parts[nzchar(parts)]
+      return(paste(parts, collapse = "\n"))
+    }
+    if (identical(metric, "Analysis")) {
+      return(short_analysis(row[[metric]][[1]]))
+    }
+    as.character(row[[metric]][[1]] %||% "")
+  }
+  metrics <- intersect(c("N", "Analysis"), names(overview))
+  metrics <- c(metrics, "Reason")
+  metric_labels <- c(N = "N", Analysis = "분석", Reason = "사유")
+  rows <- list()
+
+  for (factor in factors) {
+    for (metric_index in seq_along(metrics)) {
+      metric <- metrics[[metric_index]]
+      row <- c(
+        `Independent variable` = if (metric_index == 1) factor else "",
+        Item = unname(metric_labels[[metric]] %||% metric)
+      )
+      for (dependent in dependent_labels) {
+        matched <- overview[
+          as.character(overview$`Dependent variable`) == dependent &
+            as.character(overview$`Independent variable`) == factor,
+          ,
+          drop = FALSE
+        ]
+        row[[make.names(dependent, unique = TRUE)]] <- if (nrow(matched) > 0) metric_values(matched[1, , drop = FALSE], metric) else ""
+      }
+      rows[[length(rows) + 1]] <- row
+    }
+  }
+
+  output <- as.data.frame(do.call(rbind, rows), stringsAsFactors = FALSE, check.names = FALSE)
+  names(output) <- c("Independent variable", "Item", dependent_labels)
+  output
+}
+
+ttest_assumption_review_wide <- function(overview, dependents = NULL, variable_info = NULL, labels = character(0), category_table = NULL) {
+  if (!is.data.frame(overview) || nrow(overview) == 0 || "Message" %in% names(overview)) {
+    return(NULL)
+  }
+  if (!all(c("Dependent variable", "Independent variable") %in% names(overview))) {
+    return(NULL)
+  }
+
+  dependents <- as.character(dependents %||% character(0))
+  dependent_labels <- if (length(dependents) > 0) {
+    vapply(dependents, ttest_display_variable, character(1), variable_info = variable_info, labels = labels, category_table = category_table)
+  } else {
+    unique(as.character(overview$`Dependent variable`))
+  }
+  dependent_labels <- unique(dependent_labels[nzchar(dependent_labels)])
+  factors <- unique(as.character(overview$`Independent variable`))
+  metrics <- c("Normality", "Homogeneity p", "Post-hoc", "Package")
+  metric_labels <- c(
+    Normality = "정규성",
+    `Homogeneity p` = "등분산성",
+    `Post-hoc` = "사후분석",
+    Package = "패키지"
+  )
+  rows <- list()
+
+  for (factor in factors) {
+    for (metric_index in seq_along(metrics)) {
+      metric <- metrics[[metric_index]]
+      row <- c(
+        `Independent variable` = if (metric_index == 1) factor else "",
+        Item = unname(metric_labels[[metric]] %||% metric)
+      )
+      for (dependent in dependent_labels) {
+        matched <- overview[
+          as.character(overview$`Dependent variable`) == dependent &
+            as.character(overview$`Independent variable`) == factor,
+          ,
+          drop = FALSE
+        ]
+        row[[make.names(dependent, unique = TRUE)]] <- if (nrow(matched) > 0 && metric %in% names(matched)) {
+          as.character(matched[[metric]][[1]] %||% "")
+        } else {
+          ""
+        }
+      }
+      rows[[length(rows) + 1]] <- row
+    }
+  }
+
+  output <- as.data.frame(do.call(rbind, rows), stringsAsFactors = FALSE, check.names = FALSE)
+  names(output) <- c("Independent variable", "Item", dependent_labels)
+  output
+}
+
+ttest_result_flat_overview <- function(result) {
+  rows <- lapply(result$results %||% list(), function(item) item$overview)
+  rows <- rows[vapply(rows, is.data.frame, logical(1))]
+  if (length(rows) == 0) {
+    return(NULL)
+  }
+  ttest_bind_result_rows(rows)
+}
+
+ttest_result_overview_tables <- function(result) {
+  flat <- ttest_result_flat_overview(result)
+  if (!is.data.frame(flat) || nrow(flat) == 0) {
+    return(list(
+      assumption_review = result$assumption_review,
+      overview = result$overview
+    ))
+  }
+  list(
+    assumption_review = ttest_assumption_review_wide(flat, result$dependents %||% character(0)),
+    overview = ttest_model_overview_wide(flat, result$dependents %||% character(0))
   )
 }
 
@@ -1374,6 +1573,9 @@ prepare_ttest_anova_results <- function(
         names(combined_table)[names(combined_table) == "M"] <- "Median"
         names(combined_table)[names(combined_table) == "SD"] <- "Q1~Q3"
       }
+      if (!isTRUE(options$trend_analysis) && "p for trend" %in% names(combined_table)) {
+        combined_table[["p for trend"]] <- NULL
+      }
       note_result <- ttest_apply_numbered_notes(combined_table, dependent_items)
       combined_table <- note_result$table
       note_line <- ttest_analysis_note_line(dependent_items)
@@ -1389,15 +1591,26 @@ prepare_ttest_anova_results <- function(
       )
     }
   }
-  overview <- if (length(overview_rows) > 0) {
+  flat_overview <- if (length(overview_rows) > 0) {
     ttest_bind_result_rows(overview_rows)
   } else {
+    NULL
+  }
+  overview <- if (is.data.frame(flat_overview) && nrow(flat_overview) > 0) {
+    ttest_model_overview_wide(flat_overview, dependents, variable_info, labels, category_table)
+  } else {
     data.frame(Message = "No valid t-test / ANOVA result.", stringsAsFactors = FALSE)
+  }
+  assumption_review <- if (is.data.frame(flat_overview) && nrow(flat_overview) > 0) {
+    ttest_assumption_review_wide(flat_overview, dependents, variable_info, labels, category_table)
+  } else {
+    NULL
   }
   list(
     type = "ttest_anova",
     dependents = dependents,
     factors = factors,
+    assumption_review = assumption_review,
     overview = overview,
     results = results,
     warnings = ttest_bind_result_rows(warning_rows),
@@ -1414,19 +1627,15 @@ ttest_anova_results_ui <- function(result) {
     return(tags$div(class = "analysis-error", result$error))
   }
 
+  overview_tables <- ttest_result_overview_tables(result)
+
   sections <- list(
     tags$div(
       class = "result-section regression-result-panel",
       tags$h3("Model overview"),
-      model_overview_html_table(result$overview)
+      model_overview_html_table(overview_tables$overview)
     )
   )
-
-  warning_section <- analysis_warning_section(result$warnings)
-  if (!is.null(warning_section)) sections[[length(sections) + 1]] <- warning_section
-
-  skipped_section <- analysis_skipped_section(result$skipped, title = "Skipped analyses")
-  if (!is.null(skipped_section)) sections[[length(sections) + 1]] <- skipped_section
 
   for (item in result$results %||% list()) {
     sections[[length(sections) + 1]] <- tags$div(
@@ -1442,6 +1651,20 @@ ttest_anova_results_ui <- function(result) {
       }
     )
   }
+
+  if (is.data.frame(overview_tables$assumption_review) && nrow(overview_tables$assumption_review) > 0) {
+    sections[[length(sections) + 1]] <- tags$div(
+      class = "result-section regression-result-panel",
+      tags$h3("가정 검토"),
+      model_overview_html_table(overview_tables$assumption_review)
+    )
+  }
+
+  warning_section <- analysis_warning_section(result$warnings)
+  if (!is.null(warning_section)) sections[[length(sections) + 1]] <- warning_section
+
+  skipped_section <- analysis_skipped_section(result$skipped, title = "Skipped analyses")
+  if (!is.null(skipped_section)) sections[[length(sections) + 1]] <- skipped_section
 
   do.call(tagList, sections)
 }

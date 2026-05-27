@@ -18,7 +18,8 @@ pca_setup_state <- function(
   scree_plot = TRUE,
   biplot = TRUE,
   save_component_scores = FALSE,
-  save_component_base_name = "PCA"
+  save_component_base_name = "PCA",
+  options_tab = "Model"
 ) {
   selected <- as.character(selected_names %||% character(0))
   allowed <- analysis_allowed_variables(selected, variable_table, c("ordered", "continuous"))
@@ -44,7 +45,12 @@ pca_setup_state <- function(
     scree_plot = isTRUE(scree_plot),
     biplot = isTRUE(biplot),
     save_component_scores = isTRUE(save_component_scores),
-    save_component_base_name = trimws(as.character(save_component_base_name %||% "PCA"))
+    save_component_base_name = trimws(as.character(save_component_base_name %||% "PCA")),
+    options_tab = if (as.character(options_tab %||% "Model") %in% c("Model", "Output", "Scores")) {
+      as.character(options_tab %||% "Model")
+    } else {
+      "Model"
+    }
   )
 }
 
@@ -165,29 +171,53 @@ pca_setup_panel <- function(state) {
     div(
       class = "correlation-options-column pca-options-column",
       div(
-        class = "analysis-options-panel correlation-options pca-options",
-        analysis_radio_group("Matrix", "pca_matrix_type", pca_matrix_choices(), selected = state$matrix_type),
-        analysis_radio_group("Rotation", "pca_rotation", pca_rotation_choices(), selected = state$rotation),
-        div(
-          class = "analysis-option-group analysis-radio-group pca-selection-group",
-          div(class = "analysis-option-title", "Component selection"),
-          pca_selection_controls(state)
-        ),
-        analysis_option_group(
-          "Output",
-          list(
-            list(id = "pca_sort_loadings", label = "Sort loadings by size", value = state$sort_loadings),
-            list(id = "pca_hide_small_loadings", label = "Show loadings >= .30 only", value = state$hide_small_loadings),
-            list(id = "pca_highlight_problem_values", label = "Highlight problem values", value = state$highlight_problem_values),
-            list(id = "pca_scree_plot", label = "Scree plot", value = state$scree_plot),
-            list(id = "pca_biplot", label = "Biplot", value = state$biplot)
+        class = "analysis-options-panel correlation-options pca-options analysis-tabbed-options",
+        div(class = "analysis-option-title factor-options-title", "Options"),
+        tabsetPanel(
+          id = "pca_options_tab",
+          type = "tabs",
+          selected = state$options_tab,
+          tabPanel(
+            "Model",
+            div(
+              class = "factor-options-tab-content pca-options-tab-content",
+              analysis_radio_group("Matrix", "pca_matrix_type", pca_matrix_choices(), selected = state$matrix_type),
+              analysis_radio_group("Rotation", "pca_rotation", pca_rotation_choices(), selected = state$rotation),
+              div(
+                class = "analysis-option-group analysis-radio-group pca-selection-group",
+                div(class = "analysis-option-title", "Component selection"),
+                pca_selection_controls(state)
+              )
+            )
+          ),
+          tabPanel(
+            "Output",
+            div(
+              class = "factor-options-tab-content pca-options-tab-content",
+              analysis_option_group(
+                "Output",
+                list(
+                  list(id = "pca_sort_loadings", label = "Sort loadings by size", value = state$sort_loadings),
+                  list(id = "pca_hide_small_loadings", label = "Show loadings >= .30 only", value = state$hide_small_loadings),
+                  list(id = "pca_highlight_problem_values", label = "Highlight problem values", value = state$highlight_problem_values),
+                  list(id = "pca_scree_plot", label = "Scree plot", value = state$scree_plot),
+                  list(id = "pca_biplot", label = "Biplot", value = state$biplot)
+                )
+              )
+            )
+          ),
+          tabPanel(
+            "Scores",
+            div(
+              class = "factor-options-tab-content pca-options-tab-content",
+              div(
+                class = "analysis-option-group factor-save-score-group pca-save-score-group",
+                div(class = "analysis-option-title", "Save scores"),
+                pca_save_name_row(state$save_component_base_name),
+                pca_save_score_row("pca_save_component_scores", "Component scores", state$save_component_scores)
+              )
+            )
           )
-        ),
-        div(
-          class = "analysis-option-group factor-save-score-group pca-save-score-group",
-          div(class = "analysis-option-title", "Save scores"),
-          pca_save_name_row(state$save_component_base_name),
-          pca_save_score_row("pca_save_component_scores", "Component scores", state$save_component_scores)
         )
       )
     )
