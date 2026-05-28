@@ -1420,6 +1420,32 @@ ttest_model_overview_wide <- function(overview, dependents = NULL, variable_info
     }
     as.character(row[[metric]][[1]] %||% "")
   }
+  rows <- list()
+  for (factor in factors) {
+    for (dependent in dependent_labels) {
+      matched <- overview[
+        as.character(overview$`Dependent variable`) == dependent &
+          as.character(overview$`Independent variable`) == factor,
+        ,
+        drop = FALSE
+      ]
+      if (nrow(matched) == 0) next
+      row <- data.frame(
+        factor,
+        dependent,
+        metric_values(matched[1, , drop = FALSE], "N"),
+        metric_values(matched[1, , drop = FALSE], "Analysis"),
+        metric_values(matched[1, , drop = FALSE], "Reason"),
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      )
+      names(row) <- c("Independent variable", "Dependent variable", "N", "\ubd84\uc11d\ubc29\ubc95", "\uc0ac\uc720")
+      rows[[length(rows) + 1L]] <- row
+    }
+  }
+  if (length(rows) > 0) {
+    return(do.call(rbind, rows))
+  }
   metrics <- intersect(c("N", "Analysis"), names(overview))
   metrics <- c(metrics, "Reason")
   metric_labels <- c(N = "N", Analysis = "분석", Reason = "사유")

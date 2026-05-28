@@ -51,6 +51,13 @@ format_decimal3 <- function(x) {
   sub("^0\\.", ".", text)
 }
 
+format_decimal2 <- function(x) {
+  if (is.na(x)) return("")
+  text <- sprintf("%.2f", x)
+  text <- sub("^-0\\.", "-.", text)
+  sub("^0\\.", ".", text)
+}
+
 format_effect_size <- function(x) {
   format_decimal3(x)
 }

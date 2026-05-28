@@ -3299,7 +3299,7 @@ input.variable-select:disabled {
   display: grid;
   grid-template-columns: 326px 50px 326px 20px 310px;
   gap: 18px;
-  align-items: center;
+  align-items: start;
   width: 1176px;
   min-width: 1176px;
 }
@@ -3307,6 +3307,7 @@ input.variable-select:disabled {
 .regression-action-row > .btn {
   grid-column: 1;
   justify-self: start;
+  align-self: start;
   margin-left: 30px;
   width: 300px;
   min-width: 300px;
@@ -3364,18 +3365,6 @@ input.variable-select:disabled {
   box-shadow: none !important;
   cursor: not-allowed !important;
   filter: grayscale(1);
-}
-
-.analysis-save-button-word,
-.analysis-save-button-word:disabled,
-.analysis-save-button-word[disabled] {
-  background: rgba(255, 255, 255, 0.08) !important;
-  border: 1px dashed rgba(15, 118, 110, 0.42) !important;
-  color: rgba(15, 42, 67, 0.42) !important;
-  opacity: 1 !important;
-  box-shadow: none !important;
-  cursor: not-allowed !important;
-  filter: none !important;
 }
 
 #frequencies_results {
@@ -4638,7 +4627,7 @@ pre {
   display: grid;
   grid-template-columns: 326px 50px 326px 20px 310px;
   gap: 18px;
-  align-items: center;
+  align-items: start;
   width: 1176px;
   min-width: 1176px;
 }
@@ -4646,6 +4635,7 @@ pre {
 .regression-action-row > .btn {
   grid-column: 1;
   justify-self: start;
+  align-self: start;
   margin-left: 30px;
   width: 300px;
   min-width: 300px;

@@ -220,6 +220,43 @@ paired_assumption_review_table <- function(result) {
   if (length(rows) == 0) NULL else do.call(rbind, rows)
 }
 
+paired_combined_review_table <- function(paired_table, paired_rm_table) {
+  normalize <- function(table, first_name) {
+    if (!is.data.frame(table) || nrow(table) == 0) {
+      return(NULL)
+    }
+    names(table)[[1]] <- first_name
+    table
+  }
+  rows <- Filter(Negate(is.null), list(
+    normalize(paired_table, "Pair"),
+    normalize(paired_rm_table, "Pair")
+  ))
+  if (length(rows) == 0) {
+    return(NULL)
+  }
+  do.call(rbind, rows)
+}
+
+paired_combined_diagnostics_table <- function(result, field) {
+  rows <- Filter(function(table) is.data.frame(table) && nrow(table) > 0, list(
+    result$paired[[field]],
+    result$paired_rm[[field]]
+  ))
+  if (length(rows) == 0) {
+    return(NULL)
+  }
+  columns <- unique(unlist(lapply(rows, names), use.names = FALSE))
+  rows <- lapply(rows, function(table) {
+    missing <- setdiff(columns, names(table))
+    for (column in missing) {
+      table[[column]] <- ""
+    }
+    table[, columns, drop = FALSE]
+  })
+  do.call(rbind, rows)
+}
+
 paired_effect_value_for_label <- function(table, row_index, effect_label) {
   value <- as.character(table$Effect[[row_index]] %||% "")
   if (!nzchar(value)) return("")
@@ -232,6 +269,7 @@ paired_effect_value_for_label <- function(table, row_index, effect_label) {
 
 paired_grouped_column_class <- function(column) {
   if (identical(column, "Variable")) return("paired-two-col-variable")
+  if (identical(column, "post-hoc")) return("paired-two-col-posthoc")
   if (column %in% c("Pre_M", "Pre_SD", "Post_M", "Post_SD")) return("paired-two-col-summary")
   if (column %in% c("Statistic", "p")) return("paired-two-col-stat")
   if (startsWith(column, "Effect:")) return("paired-two-col-effect")
@@ -256,13 +294,20 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
         tags$th(colspan = 2, style = result_header_cell_style(FALSE), "Post"),
         tags$th(rowspan = 2, style = result_header_cell_style(FALSE), statistic_label),
         tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "p"),
-        lapply(effect_labels, function(label) tags$th(rowspan = 2, style = result_header_cell_style(FALSE), paired_effect_header_text(label, length(effect_labels))))
+        if (length(effect_labels) == 1L) {
+          tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "Effect size")
+        } else if (length(effect_labels) > 1L) {
+          tags$th(colspan = length(effect_labels), style = paste0(result_header_cell_style(FALSE), "text-align:center;"), "Effect size")
+        }
       ),
       tags$tr(
         tags$th(style = result_header_cell_style(FALSE), center_label),
         tags$th(style = result_header_cell_style(FALSE), spread_label),
         tags$th(style = result_header_cell_style(FALSE), center_label),
-        tags$th(style = result_header_cell_style(FALSE), spread_label)
+        tags$th(style = result_header_cell_style(FALSE), spread_label),
+        if (length(effect_labels) > 1L) {
+          lapply(effect_labels, function(label) tags$th(style = result_header_cell_style(FALSE), label))
+        }
       )
     )
   } else {
@@ -278,9 +323,18 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
         tags$th(colspan = length(post_columns), style = result_header_cell_style(FALSE), "Post"),
         if (include_statistic) tags$th(rowspan = 2, style = result_header_cell_style(FALSE), statistic_label),
         tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "p"),
-        lapply(effect_labels, function(label) tags$th(rowspan = 2, style = result_header_cell_style(FALSE), paired_effect_header_text(label, length(effect_labels))))
+        if (length(effect_labels) == 1L) {
+          tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "Effect size")
+        } else if (length(effect_labels) > 1L) {
+          tags$th(colspan = length(effect_labels), style = paste0(result_header_cell_style(FALSE), "text-align:center;"), "Effect size")
+        }
       ),
-      tags$tr(lapply(post_labels, function(label) tags$th(style = result_header_cell_style(FALSE), label)))
+      tags$tr(
+        lapply(post_labels, function(label) tags$th(style = result_header_cell_style(FALSE), label)),
+        if (length(effect_labels) > 1L) {
+          lapply(effect_labels, function(label) tags$th(style = result_header_cell_style(FALSE), label))
+        }
+      )
     )
   }
   tags$table(
@@ -322,10 +376,94 @@ paired_results_ui <- function(result) {
     return(paired_rm_results_ui(result))
   }
   if (identical(result$type, "paired_combined")) {
+    overview_table <- paired_combined_review_table(
+      paired_model_overview_table(result$paired),
+      paired_rm_model_overview_table(result$paired_rm)
+    )
+    assumption_table <- paired_combined_review_table(
+      paired_assumption_review_table(result$paired),
+      paired_rm_assumption_review_table(result$paired_rm)
+    )
     return(tags$div(
       class = "regression-results paired-results paired-combined-results",
-      paired_results_ui(result$paired),
-      paired_rm_results_ui(result$paired_rm)
+      if (is.data.frame(overview_table) && nrow(overview_table) > 0) {
+        tags$div(
+          class = "result-section paired-result-section regression-result-panel",
+          tags$h3("Model overview"),
+          model_overview_html_table(overview_table)
+        )
+      },
+      if (is.data.frame(result$paired$scale_table) && nrow(result$paired$scale_table) > 0) {
+        tags$div(
+          class = "result-section paired-result-section regression-result-panel",
+          tags$h3("Paired test: continuous / ordinal"),
+          result_table_with_notes(
+            paired_grouped_table(result$paired$scale_table, "scale", show_effect_size = isTRUE(result$paired$options$effect_size)),
+            result_note_tag(paired_method_note(result$paired$scale_table, show_effect_size = isTRUE(result$paired$options$effect_size)))
+          )
+        )
+      },
+      if (is.data.frame(result$paired$count_table) && nrow(result$paired$count_table) > 0) {
+        tags$div(
+          class = "result-section paired-result-section regression-result-panel",
+          tags$h3("Paired test: binary / categorical"),
+          result_table_with_notes(
+            paired_grouped_table(result$paired$count_table, "count", show_effect_size = isTRUE(result$paired$options$effect_size)),
+            result_note_tag(paired_count_method_note(result$paired, show_effect_size = isTRUE(result$paired$options$effect_size)))
+          )
+        )
+      },
+      if (is.data.frame(result$paired_rm$display_table) && nrow(result$paired_rm$display_table) > 0) {
+        tags$div(
+          class = "result-section paired-result-section regression-result-panel landscape-table-panel",
+          tags$h3("Repeated-measures test: continuous / ordinal"),
+          result_table_with_notes(
+            paired_rm_grouped_table(result$paired_rm$display_table, "scale"),
+            result_note_tag(paired_rm_table_method_note(result$paired_rm$display_table))
+          )
+        )
+      },
+      if (is.data.frame(result$paired_rm$count_table) && nrow(result$paired_rm$count_table) > 0) {
+        tags$div(
+          class = "result-section paired-result-section regression-result-panel landscape-table-panel",
+          tags$h3("Repeated-measures test: binary"),
+          result_table_with_notes(
+            paired_rm_grouped_table(result$paired_rm$count_table, "count"),
+            result_note_tag(paired_rm_table_method_note(result$paired_rm$count_table))
+          )
+        )
+      },
+      if (
+        (!is.data.frame(result$paired_rm$display_table) || nrow(result$paired_rm$display_table) == 0) &&
+          (!is.data.frame(result$paired_rm$count_table) || nrow(result$paired_rm$count_table) == 0) &&
+          is.data.frame(result$paired_rm$table) &&
+          nrow(result$paired_rm$table) > 0
+      ) {
+        tags$div(
+          class = "result-section paired-result-section regression-result-panel landscape-table-panel",
+          tags$h3("Repeated-measures test"),
+          coefficient_html_table(result$paired_rm$table, note_line = paired_rm_method_note(result$paired_rm))
+        )
+      },
+      if (is.data.frame(result$paired_rm$posthoc) && nrow(result$paired_rm$posthoc) > 0) {
+        tags$div(
+          class = "result-section paired-result-section regression-result-panel landscape-table-panel",
+          tags$h3("Post-hoc pairwise comparisons"),
+          coefficient_html_table(result$paired_rm$posthoc, note_line = paired_rm_posthoc_note(result$paired_rm))
+        )
+      },
+      if (is.data.frame(assumption_table) && nrow(assumption_table) > 0) {
+        tags$div(
+          class = "result-section paired-result-section regression-result-panel",
+          tags$h3("\uac00\uc815 \uac80\ud1a0"),
+          model_overview_html_table(assumption_table)
+        )
+      },
+      analysis_diagnostics_section(
+        paired_combined_diagnostics_table(result, "warnings"),
+        paired_combined_diagnostics_table(result, "skipped"),
+        title = "Warnings / skipped repeated-measures rows"
+      )
     ))
   }
   tags$div(

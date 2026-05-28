@@ -39,6 +39,29 @@ analysis_excel_styles <- function() {
 
 regression_excel_styles <- analysis_excel_styles
 
+excel_apply_title_row <- function(workbook, sheet_name, title, n_cols, styles, row = 1L) {
+  openxlsx::writeData(workbook, sheet_name, title, startRow = row, startCol = 1, colNames = FALSE)
+  openxlsx::mergeCells(workbook, sheet_name, cols = seq_len(n_cols), rows = row)
+  openxlsx::addStyle(workbook, sheet_name, styles$title, rows = row, cols = 1, gridExpand = TRUE, stack = TRUE)
+}
+
+excel_apply_note_row <- function(workbook, sheet_name, note, row, n_cols, widths, styles, min_height = 42) {
+  if (length(note) == 0 || !nzchar(note[[1]] %||% "")) {
+    return(invisible(FALSE))
+  }
+  openxlsx::writeData(workbook, sheet_name, note[[1]], startRow = row, startCol = 1, colNames = FALSE)
+  openxlsx::mergeCells(workbook, sheet_name, cols = seq_len(n_cols), rows = row)
+  openxlsx::addStyle(workbook, sheet_name, styles$note, rows = row, cols = 1, gridExpand = TRUE, stack = TRUE)
+  openxlsx::setRowHeights(workbook, sheet_name, rows = row, heights = excel_note_row_height(note[[1]], widths, min_height = min_height))
+  invisible(TRUE)
+}
+
+excel_apply_two_tier_header_style <- function(workbook, sheet_name, header_row, subheader_row, n_cols, styles) {
+  openxlsx::addStyle(workbook, sheet_name, styles$top, rows = header_row, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+  openxlsx::addStyle(workbook, sheet_name, styles$group_header, rows = header_row, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+  openxlsx::addStyle(workbook, sheet_name, styles$header, rows = subheader_row, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+}
+
 excel_note_row_height <- function(text, widths, min_height = 48, line_height = 15, padding = 10) {
   text <- paste(as.character(text %||% ""), collapse = "\n")
   widths <- as.numeric(widths %||% numeric(0))
@@ -1263,9 +1286,7 @@ add_paired_grouped_excel_sheet <- function(workbook, sheet_name, table, used_she
   body_rows <- body_start:(body_start + nrow(export) - 1L)
   n_cols <- ncol(export)
 
-  openxlsx::writeData(workbook, sheet_name, title, startRow = title_row, startCol = 1, colNames = FALSE)
-  openxlsx::mergeCells(workbook, sheet_name, cols = seq_len(n_cols), rows = title_row)
-  openxlsx::addStyle(workbook, sheet_name, styles$title, rows = title_row, cols = 1, gridExpand = TRUE, stack = TRUE)
+  excel_apply_title_row(workbook, sheet_name, title, n_cols, styles, row = title_row)
 
   openxlsx::writeData(workbook, sheet_name, t(header_top), startRow = header_row, startCol = 1, colNames = FALSE)
   openxlsx::writeData(workbook, sheet_name, t(header_bottom), startRow = subheader_row, startCol = 1, colNames = FALSE)
@@ -1277,8 +1298,7 @@ add_paired_grouped_excel_sheet <- function(workbook, sheet_name, table, used_she
       openxlsx::mergeCells(workbook, sheet_name, cols = cols, rows = header_row)
     }
   }
-  openxlsx::addStyle(workbook, sheet_name, styles$top, rows = header_row, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
-  openxlsx::addStyle(workbook, sheet_name, styles$header, rows = header_row:subheader_row, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+  excel_apply_two_tier_header_style(workbook, sheet_name, header_row, subheader_row, n_cols, styles)
   openxlsx::addStyle(workbook, sheet_name, styles$body, rows = body_rows, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
   openxlsx::addStyle(workbook, sheet_name, styles$left, rows = body_rows, cols = 1, gridExpand = TRUE, stack = TRUE)
   if (identical(type, "count")) {
@@ -1287,10 +1307,7 @@ add_paired_grouped_excel_sheet <- function(workbook, sheet_name, table, used_she
   openxlsx::addStyle(workbook, sheet_name, styles$bottom, rows = body_start + nrow(export) - 1L, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
   if (length(note) > 0 && nzchar(note[[1]])) {
     note_row <- body_start + nrow(export) + 1L
-    openxlsx::writeData(workbook, sheet_name, note[[1]], startRow = note_row, startCol = 1, colNames = FALSE)
-    openxlsx::mergeCells(workbook, sheet_name, cols = seq_len(n_cols), rows = note_row)
-    openxlsx::addStyle(workbook, sheet_name, styles$note, rows = note_row, cols = 1, gridExpand = TRUE, stack = TRUE)
-    openxlsx::setRowHeights(workbook, sheet_name, rows = note_row, heights = excel_note_row_height(note[[1]], widths, min_height = 36))
+    excel_apply_note_row(workbook, sheet_name, note, note_row, n_cols, widths, styles, min_height = 36)
   }
   openxlsx::setColWidths(workbook, sheet_name, cols = seq_len(n_cols), widths = widths)
   openxlsx::freezePane(workbook, sheet_name, firstActiveRow = body_start)
@@ -1374,9 +1391,7 @@ add_paired_rm_grouped_excel_sheet <- function(workbook, sheet_name, table, used_
   body_rows <- body_start:(body_start + nrow(export) - 1L)
   n_cols <- ncol(export)
 
-  openxlsx::writeData(workbook, sheet_name, title, startRow = title_row, startCol = 1, colNames = FALSE)
-  openxlsx::mergeCells(workbook, sheet_name, cols = seq_len(n_cols), rows = title_row)
-  openxlsx::addStyle(workbook, sheet_name, styles$title, rows = title_row, cols = 1, gridExpand = TRUE, stack = TRUE)
+  excel_apply_title_row(workbook, sheet_name, title, n_cols, styles, row = title_row)
   openxlsx::writeData(workbook, sheet_name, t(header_top), startRow = header_row, startCol = 1, colNames = FALSE)
   openxlsx::writeData(workbook, sheet_name, t(header_bottom), startRow = subheader_row, startCol = 1, colNames = FALSE)
   openxlsx::writeData(workbook, sheet_name, export, startRow = body_start, startCol = 1, colNames = FALSE, withFilter = FALSE)
@@ -1387,16 +1402,13 @@ add_paired_rm_grouped_excel_sheet <- function(workbook, sheet_name, table, used_
       openxlsx::mergeCells(workbook, sheet_name, cols = cols, rows = header_row)
     }
   }
-  openxlsx::addStyle(workbook, sheet_name, styles$top, rows = header_row, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
-  openxlsx::addStyle(workbook, sheet_name, styles$header, rows = header_row:subheader_row, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
+  excel_apply_two_tier_header_style(workbook, sheet_name, header_row, subheader_row, n_cols, styles)
   openxlsx::addStyle(workbook, sheet_name, styles$body, rows = body_rows, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
   openxlsx::addStyle(workbook, sheet_name, styles$left, rows = body_rows, cols = 1, gridExpand = TRUE, stack = TRUE)
   openxlsx::addStyle(workbook, sheet_name, styles$bottom, rows = body_start + nrow(export) - 1L, cols = seq_len(n_cols), gridExpand = TRUE, stack = TRUE)
   if (length(note) > 0 && nzchar(note[[1]])) {
     note_row <- body_start + nrow(export) + 1L
-    openxlsx::writeData(workbook, sheet_name, note[[1]], startRow = note_row, startCol = 1, colNames = FALSE)
-    openxlsx::mergeCells(workbook, sheet_name, cols = seq_len(n_cols), rows = note_row)
-    openxlsx::addStyle(workbook, sheet_name, styles$note, rows = note_row, cols = 1, gridExpand = TRUE, stack = TRUE)
+    excel_apply_note_row(workbook, sheet_name, note, note_row, n_cols, widths, styles, min_height = 36)
   }
   openxlsx::setColWidths(workbook, sheet_name, cols = seq_len(n_cols), widths = widths[seq_len(n_cols)])
   openxlsx::freezePane(workbook, sheet_name, firstActiveRow = body_start)

@@ -91,7 +91,7 @@ partial_prepared <- prepare_regression_analysis_results(
 expect_true(length(partial_prepared$results) == 1L, "Expected valid regression model to continue when another dependent variable is skipped")
 expect_true(any(grepl("no variance", attr(partial_prepared$results, "skipped")$Message, fixed = TRUE)), "Expected constant dependent variable to be skipped")
 panel_html <- as.character(htmltools::renderTags(regression_results_panel(partial_prepared$results, variable_table = guard_info))$html)
-expect_true(grepl("<h3>Skipped models</h3>", panel_html, fixed = TRUE), "Expected skipped regression section to render")
+expect_true(grepl("<h3>Warnings / skipped models</h3>", panel_html, fixed = TRUE), "Expected skipped regression section to render")
 guard_xlsx <- tempfile(fileext = ".xlsx")
 save_analysis_excel_file(partial_prepared$results, guard_xlsx, variable_table = guard_info)
 expect_true("Skipped models" %in% openxlsx::getSheetNames(guard_xlsx), "Expected skipped regression Excel sheet")

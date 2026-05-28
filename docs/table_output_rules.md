@@ -6,8 +6,17 @@ These rules apply to every analysis result table in **EasyFlow Statistics**.
 
 - Every analysis with computed results should show `Save tables` and `Save figures` in the same action area.
 - `Save tables` exports Excel workbooks (`.xlsx`).
+- Excel table export must preserve the displayed analysis table structure. If the result table has a two-level header, the Excel sheet must also use a two-level header with the same merged header groups.
+- Excel table borders follow the displayed table rule: solid line at the table top, solid line at the table bottom, solid line below the final header row, and transparent/no vertical borders unless a result table explicitly displays them.
+- Excel cell `A1` contains the table title and is merged across the used table width.
+- A long title in `A1` must not determine the width of column A. Column widths are fixed from the result table layout, not from title text length.
+- Excel notes and footnotes are written in a row merged across the exact table width and wrap inside that merged width.
+- PDF report export uses A4 paper.
+- Word report export uses B5 paper.
+- PDF and Word tables must fit inside the printable page width with a small left and right safety margin so no table content is clipped.
+- PDF and Word exports should preserve the displayed result-table structure, ordering, and alignment rules from the analysis result screen.
 - Each exported table is written to its own worksheet.
-- Cell `A1` contains the table title and is merged across the used table width.
+- For Excel exports, cell `A1` contains the table title and is merged across the used table width.
 - The exported table starts on row 3.
 - Exported tables use thin solid lines at the table top, header bottom, and table bottom.
 - Figure exports use a folder picker and save separate PNG files.

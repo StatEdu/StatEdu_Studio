@@ -1,5 +1,40 @@
 # Changelog
 
+## v0.9.13 - 2026-05-28
+
+### Changed
+
+- Enabled supported Word result export and standardized export rules across Word, PDF, and Excel.
+- Added publication-oriented Word output with cover and methods pages, main-table-only selection, table notes, superscript markers, and B5 portrait default with landscape only for wide tables.
+- Refined paired, repeated-measures, t-test/ANOVA, correlation, regression, hierarchical regression, and logistic result table widths, headers, post-hoc columns, and footer statistics for PDF/Word output.
+- Improved Excel export so titles, two-level headers, borders, merged notes, and fixed column widths preserve the displayed result table structure.
+- Increased the Electron desktop startup window size and stabilized regression setup action-row alignment after results render.
+- Rebuilt the Windows beta installer for version 0.9.13.
+
+## v0.9.12 - 2026-05-27
+
+### Changed
+
+- Refined PDF and publication result layouts for paired, repeated-measures paired, nonparametric paired, factor analysis, PCA, logistic regression, and t-test / ANOVA outputs.
+- Improved result table spacing, model overview alignment, and beta-watermark sizing for exported reports.
+- Tightened result display wording so compact summaries stay focused on methods, N, assumptions, and concise decision notes.
+- Standardized PDF export on A4 and Word export on B5, with result tables fitted inside the printable page width while preserving displayed table alignment rules.
+- Expanded landscape PDF table fitting for repeated-measures paired-test effect-size columns and hierarchical regression coefficient tables.
+- Standardized Excel table export rules so two-level headers, title rows, table border lines, fixed column widths, and merged note rows match the displayed result-table layout.
+- Enabled the Result tab Word export button for editions that support result export.
+- Matched Word table header/body font styling, activated the visible Word save button style, used two-decimal means/standard deviations for paired summaries, and combined mixed paired-test overview/assumption/diagnostic tables.
+- Preserved two-level table headers in Word export, filtered report logos out of Word body output, added landscape Word sections for wide repeated-measures and hierarchical tables, and tightened PDF margins/column widths for paired, repeated-measures, and hierarchical result tables.
+- Changed t-test / ANOVA model overviews to show N, analysis method, and reason as direct columns, and rendered multi-model regression overviews with two-level dependent/model headers.
+- Forced repeated-measures paired PDF tables to the landscape page width, added first-level header rules for hierarchical tables, and scoped Word landscape sections so the default document remains B5 portrait.
+- Widened post-hoc and tolerance columns, enlarged PDF report covers, grouped paired-test effect sizes under a two-level header, restored Word superscript note markers and table notes, and merged repeated regression footer rows in Word output.
+- Reduced Word table-note font size, carried all rendered table notes into Word output, superscripted hierarchical model header markers, and merged hierarchical footer statistics once per model.
+- Labeled Block 1-only runs from the hierarchical regression screen as ordinary regression when adding them to the saved Result collection.
+- Changed Word result export to include paper-ready main tables only, start each table on its own page, keep figures at rendered size without upscaling, and use landscape only for wide paired/hierarchical tables and correlation matrices with at least 10 variables.
+- Centered regression footer statistics in Word and applied a strong top rule above F(p), with residual homoscedasticity shown as a single x²(p) footer item.
+- Increased the Electron desktop startup window size, added Word cover and analysis-method pages, placed regression figures two per page, and excluded t-test/ANOVA post-hoc detail tables from Word paper-table export.
+- Refined Word table export spacing, frequency/descriptive column widths, regression summary rows, landscape section transitions, and figure sizing to reduce wrapping, excess whitespace, and blank pages.
+- Stabilized regression action-row alignment after results render, strengthened Word post-hoc table filtering, widened combined n(%)/M±SD and IQR columns, and tightened wide correlation table sizing.
+
 ## v0.9.11 - 2026-05-27
 
 ### Changed

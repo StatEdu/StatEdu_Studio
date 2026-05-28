@@ -151,8 +151,8 @@ paired_rm_summary_table <- function(y, variable_info, labels, category_table) {
   data.frame(
     Time = vapply(colnames(y), paired_display_name, character(1), variable_info = variable_info, labels = labels, category_table = category_table),
     N = nrow(y),
-    M = apply(y, 2, function(x) format_decimal3(mean(x, na.rm = TRUE))),
-    SD = apply(y, 2, function(x) format_decimal3(stats::sd(x, na.rm = TRUE))),
+    M = apply(y, 2, function(x) format_decimal2(mean(x, na.rm = TRUE))),
+    SD = apply(y, 2, function(x) format_decimal2(stats::sd(x, na.rm = TRUE))),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )

@@ -131,7 +131,7 @@ stopifnot(length(guard_result) == 1L)
 stopifnot(is.data.frame(attr(guard_result, "skipped")))
 stopifnot(any(grepl("fewer than two observed outcome levels", attr(guard_result, "skipped")$Message, fixed = TRUE)))
 guard_html <- as.character(htmltools::renderTags(logistic_results_panel(guard_result, variable_table = guard_info))$html)
-stopifnot(grepl("<h3>Skipped models</h3>", guard_html, fixed = TRUE))
+stopifnot(grepl("<h3>Warnings / skipped models</h3>", guard_html, fixed = TRUE))
 
 constant_predictor_result <- prepare_logistic_analysis_results(
   guard_data,

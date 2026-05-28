@@ -355,7 +355,10 @@ register_hierarchical_save_handlers <- function(
     )
   })
 
-  register_add_result_snapshot(input, session, "add_hierarchical_result", "Hierarchical regression", function() {
+  register_add_result_snapshot(input, session, "add_hierarchical_result", function() {
+    results <- tryCatch(analyses_fn(), error = function(e) NULL)
+    if (regression_results_are_hierarchical(results)) "Hierarchical regression" else "Regression"
+  }, function() {
     shiny::req(!is.null(input$run_hierarchical), input$run_hierarchical > 0)
     results <- analyses_fn()
     if (regression_results_are_hierarchical(results)) {

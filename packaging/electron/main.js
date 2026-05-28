@@ -139,8 +139,8 @@ function stopShiny() {
 async function createWindow() {
   app.setName("EasyFlow Statistics Beta");
   mainWindow = new BrowserWindow({
-    width: 1440,
-    height: 920,
+    width: 1536,
+    height: 1000,
     minWidth: 1120,
     minHeight: 760,
     title: windowTitle(),

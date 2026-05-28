@@ -47,10 +47,10 @@ expect_true(grepl("2\\. Welch test was used because homogeneity of variance was 
 expect_true(grepl("3\\. Effect size = omega squared\\.", note), "Expected numbered omega squared note")
 
 html <- as.character(tags_to_html(ttest_anova_results_ui(result)))
-expect_true(grepl('class="coefficient-col-note-marker"', html, fixed = TRUE), "Expected a narrow footnote marker column to render")
-expect_true(grepl('class="coefficient-note-cell-marker">1</sup>', html, fixed = TRUE), "Expected Hedges' g marker to render as superscript in a separate cell")
-expect_true(grepl('class="coefficient-note-cell-marker">2</sup>', html, fixed = TRUE), "Expected p-value marker to render as superscript in a separate cell")
-expect_true(grepl('class="coefficient-note-cell-marker">3</sup>', html, fixed = TRUE), "Expected omega squared marker to render as superscript in a separate cell")
+expect_true(!grepl('class="coefficient-col-note-marker"', html, fixed = TRUE), "Expected footnote markers to render inline without a narrow marker column")
+expect_true(grepl('class="coefficient-footnote-marker">1</sup>', html, fixed = TRUE), "Expected Hedges' g marker to render as inline superscript")
+expect_true(grepl('class="coefficient-footnote-marker">2</sup>', html, fixed = TRUE), "Expected p-value marker to render as inline superscript")
+expect_true(grepl('class="coefficient-footnote-marker">3</sup>', html, fixed = TRUE), "Expected omega squared marker to render as inline superscript")
 
 message("Checking t-test / ANOVA post-hoc table...")
 posthoc_data <- data.frame(
@@ -135,7 +135,7 @@ nonparametric_result <- prepare_ttest_anova_results(
     effect_size = TRUE
   )
 )
-nonparametric_overview <- nonparametric_result$overview
+nonparametric_overview <- ttest_result_flat_overview(nonparametric_result)
 expect_true(
   any(grepl("Mann-Whitney U", nonparametric_overview$Analysis, fixed = TRUE)),
   "Expected forced nonparametric two-group result to use Mann-Whitney U"
@@ -149,8 +149,9 @@ expect_true(
   "Expected significant Kruskal-Wallis results to include pairwise Wilcoxon post-hoc output"
 )
 expect_true(
-  ncol(nonparametric_result$results[[1]]$table) == length(ttest_result_table_columns) &&
-    all(names(nonparametric_result$results[[1]]$table)[-5] == ttest_result_table_columns[-5]),
+  all(names(nonparametric_result$results[[1]]$table) == c(
+    "Variable", "Value", "M", "SD", "z/x²", "p", "Effect size", "post-hoc"
+  )),
   "Expected standalone nonparametric results to use the t-test / ANOVA table shape, with only the statistic label adapted"
 )
 expect_true(
@@ -227,8 +228,10 @@ expect_true(
   "Expected zero group standard deviation warning"
 )
 guard_html <- as.character(tags_to_html(ttest_anova_results_ui(guard_result)))
-expect_true(grepl("<h3>Warnings</h3>", guard_html, fixed = TRUE), "Expected warnings section in t-test / ANOVA HTML")
-expect_true(grepl("<h3>Skipped analyses</h3>", guard_html, fixed = TRUE), "Expected skipped analyses section in t-test / ANOVA HTML")
+expect_true(
+  grepl("<h3>Warnings / skipped analyses</h3>", guard_html, fixed = TRUE),
+  "Expected combined warnings / skipped analyses section in t-test / ANOVA HTML"
+)
 
 guard_xlsx <- tempfile(fileext = ".xlsx")
 save_ttest_anova_excel_file(guard_result, guard_xlsx)

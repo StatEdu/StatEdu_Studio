@@ -8,9 +8,9 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.10`
+Current development version: `0.9.13`
 
-Version 0.9.10 adds the Electron beta installer workflow, improves Korean CSV/XLSX import handling, preserves reviewed variable measurements when settings are loaded, and limits Frequencies / Descriptives output columns to statistics that match the selected variable types.
+Version 0.9.13 finalizes publication-oriented result export, with visible Word export, B5/A4 output rules, paper-ready Word table selection, cover/method pages, and tighter wide-table handling for paired, correlation, and regression outputs.
 
 ## Current Scope
 

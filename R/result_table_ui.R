@@ -454,6 +454,61 @@ model_overview_html_table <- function(table) {
     left_width <- if (left_columns == 1L) 96L else 160L
     table_width <- min(760L, left_width + value_cols * 140L)
     value_width <- max(96L, floor((table_width - left_width) / value_cols))
+    value_names <- names(table)[seq.int(left_columns + 1L, n_cols)]
+    model_header_match <- regexec("^(.*)\\s+(Model\\s+[0-9]+)$", value_names)
+    model_header_parts <- regmatches(value_names, model_header_match)
+    use_model_header <- length(value_names) > 1L && all(vapply(model_header_parts, length, integer(1)) == 3L)
+    header_tag <- if (isTRUE(use_model_header)) {
+      group_names <- vapply(model_header_parts, `[[`, character(1), 2L)
+      model_names <- vapply(model_header_parts, `[[`, character(1), 3L)
+      grouped_headers <- list()
+      for (left_index in seq_len(left_columns)) {
+        grouped_headers <- c(grouped_headers, list(tags$th(
+          rowspan = 2,
+          style = paste(
+            "padding:6px 8px;line-height:1.3;border-left:0;border-right:0;border-bottom:2px solid #1f2937;",
+            "vertical-align:middle;font-weight:700;background:transparent;white-space:normal;overflow-wrap:anywhere;",
+            "text-align:left;"
+          ),
+          names(table)[[left_index]]
+        )))
+      }
+      for (group in unique(group_names)) {
+        grouped_headers <- c(grouped_headers, list(tags$th(
+          colspan = sum(group_names == group),
+          style = paste(
+            "padding:6px 8px;line-height:1.3;border-left:0;border-right:0;border-bottom:2px solid #1f2937;",
+            "vertical-align:middle;font-weight:700;background:transparent;white-space:normal;overflow-wrap:anywhere;",
+            "text-align:center;"
+          ),
+          group
+        )))
+      }
+      tags$thead(
+        do.call(tags$tr, grouped_headers),
+        tags$tr(lapply(model_names, function(name) {
+          tags$th(
+            style = paste(
+              "padding:6px 8px;line-height:1.3;border-left:0;border-right:0;border-bottom:2px solid #1f2937;",
+              "vertical-align:middle;font-weight:700;background:transparent;white-space:normal;overflow-wrap:anywhere;",
+              "text-align:center;"
+            ),
+            name
+          )
+        }))
+      )
+    } else {
+      tags$thead(tags$tr(lapply(seq_along(names(table)), function(index) {
+        tags$th(
+          style = paste(
+            "padding:6px 8px;line-height:1.3;border-left:0;border-right:0;border-bottom:2px solid #1f2937;",
+            "vertical-align:middle;font-weight:700;background:transparent;white-space:normal;overflow-wrap:anywhere;",
+            "text-align:", if (index <= left_columns) "left" else "center", ";"
+          ),
+          names(table)[[index]]
+        )
+      })))
+    }
     table_tag <- tags$table(
       class = "table shiny-table combined-model-overview-table compact-model-overview-table",
       style = paste(
@@ -468,16 +523,7 @@ model_overview_html_table <- function(table) {
           tags$col(style = sprintf("width:%dpx;", value_width))
         })
       ),
-      tags$thead(tags$tr(lapply(seq_along(names(table)), function(index) {
-        tags$th(
-          style = paste(
-            "padding:6px 8px;line-height:1.3;border-left:0;border-right:0;border-bottom:2px solid #1f2937;",
-            "vertical-align:middle;font-weight:700;background:transparent;white-space:normal;overflow-wrap:anywhere;",
-            "text-align:", if (index <= left_columns) "left" else "center", ";"
-          ),
-          names(table)[[index]]
-        )
-      }))),
+      header_tag,
       tags$tbody(lapply(seq_len(nrow(table)), function(row_index) {
         values <- table[row_index, , drop = TRUE]
         tags$tr(lapply(seq_along(values), function(index) {
