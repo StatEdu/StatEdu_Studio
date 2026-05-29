@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.9.25 - 2026-05-29
+
+### Fixed
+
+- Aligned Regression Add result / Word export with the on-screen coefficient table by preserving categorical reference rows, value labels, and the single-line model fit summary.
+- Used a landscape Word section for wide regression coefficient tables so saved Word output better matches the displayed result table.
+
+
 ## v0.9.24 - 2026-05-29
 
 ### Fixed

@@ -1322,6 +1322,7 @@ result_docx_wide_table <- function(table_info) {
   is_correlation <- grepl("Correlation / association coefficients", title, fixed = TRUE)
   correlation_variables <- if (isTRUE(is_correlation) && is.data.frame(table_info$table)) max(0L, ncol(table_info$table) - 1L) else 0L
   grepl("paired-rm-grouped-table|hierarchical-coefficient-table", table_class) ||
+    (grepl("coefficient-table", table_class) && is.data.frame(table_info$table) && ncol(table_info$table) >= 8L) ||
     (isTRUE(is_correlation) && correlation_variables >= 10L)
 }
 
@@ -1441,18 +1442,6 @@ result_docx_prepare_body <- function(table, table_info) {
   }
   table[[1]] <- trimws(as.character(table[[1]]))
   table_class <- as.character(table_info$class %||% "")
-  if (grepl("coefficient-table", table_class) && !grepl("hierarchical-coefficient-table|paired-grouped-table", table_class)) {
-    for (row_index in seq_len(nrow(table))) {
-      row <- as.character(unlist(table[row_index, , drop = TRUE], use.names = FALSE))
-      non_empty <- unique(row[nzchar(row)])
-      if (length(non_empty) == 1L) {
-        summary_values <- result_docx_regression_fit_summary(non_empty[[1]], ncol(table))
-        if (!is.null(summary_values)) {
-          table[row_index, ] <- as.list(summary_values)
-        }
-      }
-    }
-  }
   table
 }
 

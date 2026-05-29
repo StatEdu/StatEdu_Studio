@@ -96,4 +96,63 @@ guard_xlsx <- tempfile(fileext = ".xlsx")
 save_analysis_excel_file(partial_prepared$results, guard_xlsx, variable_table = guard_info)
 expect_true("Skipped models" %in% openxlsx::getSheetNames(guard_xlsx), "Expected skipped regression Excel sheet")
 
+message("Checking regression saved Result / Word table parity...")
+regression_data <- data.frame(
+  y = c(1, 2, 3, 4, 5, 6, 7, 8),
+  sex = rep(c("male", "female"), 4),
+  age = rep(c("20s", "30s"), each = 4),
+  x = c(2, 3, 4, 5, 6, 7, 8, 9),
+  stringsAsFactors = FALSE
+)
+regression_info <- data.frame(
+  name = c("y", "sex", "age", "x"),
+  var_label = c("QoL", "\uc131\ubcc4", "\uc5f0\ub839\ub300", "x"),
+  role = "",
+  measurement = c("continuous", "binary", "category", "continuous"),
+  stringsAsFactors = FALSE
+)
+regression_categories <- data.frame(
+  name = c("sex", "age"),
+  var_label = c("\uc131\ubcc4", "\uc5f0\ub839\ub300"),
+  reference = c("male", "20s"),
+  value_1 = c("male", "20s"),
+  label_1 = c("male", "20\ub300"),
+  value_2 = c("female", "30s"),
+  label_2 = c("female", "30\ub300"),
+  stringsAsFactors = FALSE,
+  check.names = FALSE
+)
+regression_prepared <- prepare_regression_analysis_results(
+  regression_data,
+  dependents = "y",
+  predictors = c("sex", "age", "x"),
+  variable_info = regression_info,
+  reference_values = regression_reference_values_static(regression_categories)
+)
+regression_html <- saved_analysis_results_html(
+  regression_prepared$results,
+  variable_table = regression_info,
+  category_table = regression_categories,
+  refs = regression_reference_values_static(regression_categories),
+  value_labels = category_value_label_lookup_static(regression_categories),
+  show_f2 = TRUE,
+  show_vif = TRUE
+)
+expect_true(grepl("\uc131\ubcc4:male", regression_html, fixed = TRUE), "Expected saved HTML to include the same categorical reference row as the on-screen regression table")
+expect_true(grepl("\uc131\ubcc4:female", regression_html, fixed = TRUE), "Expected saved HTML to use value labels for categorical coefficient rows")
+entry <- list(title = "Regression", saved_at = "2026-05-29 00:00:00", html = regression_html)
+docx_tables <- result_entry_tables(entry)
+coefficient_tables <- Filter(function(item) grepl("coefficient-table", as.character(item$class %||% "")), docx_tables)
+expect_true(length(coefficient_tables) >= 1L, "Expected saved regression entry to expose a coefficient table for Word export")
+docx_body <- coefficient_tables[[1]]$docx$body
+expect_true(any(docx_body[[1]] == "\uc131\ubcc4:male"), "Expected Word payload to retain categorical reference rows")
+expect_true(any(docx_body[[1]] == "\uc5f0\ub839\ub300:20\ub300"), "Expected Word payload to retain category reference labels")
+fit_rows <- apply(docx_body, 1, function(row) any(grepl("R\u00b2\\(adj\\. R\u00b2\\)", row)))
+expect_true(any(fit_rows), "Expected Word payload to retain the displayed single-line model fit row")
+fit_row <- docx_body[which(fit_rows)[[1]], , drop = FALSE]
+fit_values <- unique(as.character(fit_row[nzchar(as.character(fit_row))]))
+expect_true(length(fit_values) == 1L, "Expected Word payload to keep the model fit row as one merged display value")
+expect_true(!any(as.character(fit_row) %in% c("F", "p", "R\u00b2", "adj. R\u00b2")), "Expected Word payload not to split the model fit row into separate F, p, R2, and adjusted R2 cells")
+expect_true(isTRUE(result_docx_wide_table(coefficient_tables[[1]])), "Expected wide regression coefficient tables to use a landscape Word section")
+
 message("All regression coefficient validations passed.")

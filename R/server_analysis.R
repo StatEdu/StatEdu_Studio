@@ -367,6 +367,8 @@ register_hierarchical_save_handlers <- function(
         variable_table = variable_table_fn(),
         labels = labels_fn(),
         category_table = category_table_fn(),
+        refs = regression_reference_values_static(category_table_fn()),
+        value_labels = category_value_label_lookup_static(category_table_fn()),
         show_sr2 = input$hierarchical_show_sr2,
         show_f2 = input$hierarchical_show_f2,
         show_vif = input$hierarchical_show_vif
@@ -377,6 +379,8 @@ register_hierarchical_save_handlers <- function(
         variable_table = variable_table_fn(),
         labels = labels_fn(),
         category_table = category_table_fn(),
+        refs = regression_reference_values_static(category_table_fn()),
+        value_labels = category_value_label_lookup_static(category_table_fn()),
         show_sr2 = input$hierarchical_show_sr2,
         show_f2 = input$hierarchical_show_f2,
         show_vif = input$hierarchical_show_vif
@@ -535,6 +539,8 @@ register_analysis_save_handlers <- function(
       variable_table = variable_table_fn(),
       labels = labels_fn(),
       category_table = category_table_fn(),
+      refs = regression_reference_values_static(category_table_fn()),
+      value_labels = category_value_label_lookup_static(category_table_fn()),
       show_sr2 = input$show_sr2,
       show_f2 = input$show_f2,
       show_vif = input$show_vif
