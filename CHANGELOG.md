@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.9.23 - 2026-05-29
+
+### Fixed
+
+- Replaced the PowerShell-based desktop data-file picker with R's native Windows `choose.files()` dialog so Open data file appears reliably from the installed Electron app.
+
+
 ## v0.9.22 - 2026-05-29
 
 ### Fixed
