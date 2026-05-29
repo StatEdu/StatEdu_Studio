@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.9.14 - 2026-05-29
+
+### Changed
+
+- Added GPL application licensing, source-code offer text, and About pages for bundled desktop source/license notices.
+- Added generated OSS notices, license report, bundled license text collection, and release smoke checks for Electron/R installer builds.
+- Added bundled R runtime prune reporting and exact Electron/electron-builder version pins.
+- Reduced installed desktop startup overhead and added startup timing diagnostics.
+- Removed the Shiny startup session close guard that could leave the installed desktop app on a disabled grey screen.
+- Rebuilt the Windows beta installer for version 0.9.14.
+
 ## v0.9.13 - 2026-05-28
 
 ### Changed

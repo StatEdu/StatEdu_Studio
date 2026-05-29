@@ -39,6 +39,20 @@ about_markdown_document <- function(path) {
   )
 }
 
+about_text_document <- function(path) {
+  if (!file.exists(path)) {
+    return(div(
+      class = "empty-message",
+      sprintf("Document not found: %s. This file is generated during the Electron packaging step.", path)
+    ))
+  }
+  lines <- readLines(path, warn = FALSE, encoding = "UTF-8")
+  div(
+    class = "about-markdown-document",
+    tags$pre(class = "license-notice-text", paste(lines, collapse = "\n"))
+  )
+}
+
 about_info_row <- function(label, value) {
   div(
     class = "about-info-row",
@@ -131,6 +145,49 @@ about_markdown_tab_panel <- function(title, value, path, subtitle = "EasyFlow St
   )
 }
 
+about_license_tab_panel <- function() {
+  tabPanel(
+    "Open Source Licenses",
+    value = "about_oss_licenses",
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1("Open Source Licenses"),
+        div("Third-party license notices for bundled runtime components.", class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel about-workspace-panel",
+        style = "min-width:980px;overflow-x:auto;",
+        about_text_document("THIRD-PARTY-NOTICES.txt")
+      )
+    )
+  )
+}
+
+about_source_license_tab_panel <- function() {
+  tabPanel(
+    "Source & License",
+    value = "about_source_license",
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1("Source & License"),
+        div("EasyFlow Statistics source availability and application license.", class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel about-workspace-panel",
+        style = "min-width:980px;overflow-x:auto;",
+        h3("Source Code Offer"),
+        about_text_document("SOURCE-OFFER.txt"),
+        h3("Application License"),
+        about_text_document("LICENSE")
+      )
+    )
+  )
+}
+
 about_tab_panel <- function(version) {
   navbarMenu(
     "About",
@@ -138,6 +195,8 @@ about_tab_panel <- function(version) {
     about_markdown_tab_panel("User Guide", "about_user_guide", file.path("docs", "USER_GUIDE_KO.md"), "Step-by-step operating guide for loading data, selecting variables, running analyses, and saving results."),
     about_markdown_tab_panel("Analysis Methods", "about_analysis_methods", file.path("docs", "ANALYSIS_METHODS_KO.md"), "Implementation inventory of analysis menus, statistical outputs, tables, and export coverage."),
     about_markdown_tab_panel("Method Notes", "about_method_notes", file.path("docs", "METHOD_NOTES_KO.md"), "Interpretive notes on method choice, assumptions, warnings, and result interpretation."),
+    about_source_license_tab_panel(),
+    about_license_tab_panel(),
     about_info_tab_panel(version)
   )
 }

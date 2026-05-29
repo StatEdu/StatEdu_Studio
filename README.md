@@ -8,9 +8,9 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.13`
+Current development version: `0.9.14`
 
-Version 0.9.13 finalizes publication-oriented result export, with visible Word export, B5/A4 output rules, paper-ready Word table selection, cover/method pages, and tighter wide-table handling for paired, correlation, and regression outputs.
+Version 0.9.14 adds desktop release hardening for bundled Electron/R distribution, including OSS license notices, source-code offer text, exact Electron pins, runtime prune reporting, startup diagnostics, and smoke checks.
 
 ## Current Scope
 

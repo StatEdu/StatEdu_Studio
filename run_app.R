@@ -19,12 +19,13 @@ required_packages <- c(
   "glmnet",
   "agricolae",
   "psych",
-  "polycor"
+  "polycor",
+  "MASS",
+  "nnet"
 )
 
-missing_packages <- required_packages[
-  !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
-]
+installed_package_names <- rownames(utils::installed.packages())
+missing_packages <- setdiff(required_packages, installed_package_names)
 
 if (length(missing_packages) > 0) {
   if (identical(tolower(Sys.getenv("EASYFLOW_NO_PACKAGE_INSTALL", "false")), "true")) {
@@ -41,6 +42,16 @@ if (is.na(port) || port <= 0) {
   port <- 7894
 }
 
+append_easyflow_query <- function(url) {
+  token <- Sys.getenv("EASYFLOW_TOKEN", "")
+  params <- c(
+    if (nzchar(token)) paste0("token=", utils::URLencode(token, reserved = TRUE)) else character(0),
+    paste0("t=", as.integer(Sys.time()))
+  )
+  separator <- if (grepl("\\?", url, fixed = FALSE)) "&" else "?"
+  paste0(url, separator, paste(params, collapse = "&"))
+}
+
 shiny::runApp(
   appDir = ".",
   host = "127.0.0.1",
@@ -49,7 +60,7 @@ shiny::runApp(
     FALSE
   } else {
     function(url) {
-      utils::browseURL(sprintf("%s?t=%s", url, as.integer(Sys.time())))
+      utils::browseURL(append_easyflow_query(url))
     }
   }
 )

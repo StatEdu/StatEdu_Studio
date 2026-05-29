@@ -1,0 +1,38 @@
+EasyFlow Statistics Source Code and License Notice
+==================================================
+
+EasyFlow Statistics is distributed with source code available from:
+
+  https://github.com/StatEdu/easyflow_statistics_dev
+
+The EasyFlow Statistics application source code is intended to be
+distributed under the GNU General Public License, version 2 or later
+(GPL-2.0-or-later). See the LICENSE file included with this distribution.
+
+This installer also bundles third-party components, including Electron,
+Chromium, R, and CRAN packages. Their package names, versions, licenses,
+and source URLs are listed in THIRD-PARTY-NOTICES.txt and
+license_report.csv. Full license texts collected during packaging are in
+the LICENSES directory.
+
+Corresponding source for third-party components is available from the
+upstream projects listed in license_report.csv, including:
+
+  R Project: https://www.r-project.org/
+  CRAN:      https://cran.r-project.org/
+  Electron: https://www.electronjs.org/
+
+For packaged R components, the distributed binary runtime is built from
+the R Project and CRAN package sources identified by package name and
+version in license_report.csv. If a source archive or license text is
+missing from this distribution, contact:
+
+  dr.leeilhyun@gmail.com
+
+GPL/LGPL note:
+Some bundled R packages are licensed under GPL or LGPL terms. Users may
+copy, modify, and redistribute those components under their respective
+licenses. LGPL components may impose additional requirements related to
+replacement or relinking of the LGPL-covered library. This notice does
+not replace the individual third-party license terms.
+

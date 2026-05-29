@@ -42,7 +42,7 @@ ensure_required_packages <- function(packages = required_packages) {
 load_app_packages <- function(packages = required_packages) {
   ensure_required_packages(packages)
   for (package in packages) {
-    library(package, character.only = TRUE)
+    suppressPackageStartupMessages(library(package, character.only = TRUE))
   }
   invisible(TRUE)
 }

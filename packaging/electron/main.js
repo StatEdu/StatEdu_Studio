@@ -1,5 +1,6 @@
 const { app, BrowserWindow, dialog } = require("electron");
 const { spawn, spawnSync } = require("child_process");
+const crypto = require("crypto");
 const fs = require("fs");
 const http = require("http");
 const net = require("net");
@@ -8,6 +9,25 @@ const path = require("path");
 let mainWindow = null;
 let shinyProcess = null;
 let isQuitting = false;
+let startupLogPath = null;
+
+function startupLogFile() {
+  if (!startupLogPath) {
+    startupLogPath = path.join(app.getPath("userData"), "logs", "startup.log");
+  }
+  return startupLogPath;
+}
+
+function logStartup(message) {
+  const line = `${new Date().toISOString()} ${message}\n`;
+  try {
+    const file = startupLogFile();
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.appendFileSync(file, line, "utf8");
+  } catch (error) {
+    // Logging must never block app startup.
+  }
+}
 
 function appBaseDir() {
   return app.getAppPath();
@@ -84,8 +104,10 @@ function waitForShiny(port, timeoutMs = 45000) {
 }
 
 async function startShiny() {
+  const startedAt = Date.now();
   const rscript = bundledRscriptPath();
   const appDir = bundledAppDir();
+  logStartup("startShiny begin");
   if (!fs.existsSync(rscript)) {
     throw new Error(`Bundled Rscript was not found: ${rscript}`);
   }
@@ -94,11 +116,14 @@ async function startShiny() {
   }
 
   const port = await getFreePort();
+  const token = crypto.randomBytes(32).toString("hex");
   const env = {
     ...process.env,
     EASYFLOW_PORT: String(port),
     EASYFLOW_LAUNCH_BROWSER: "false",
     EASYFLOW_NO_PACKAGE_INSTALL: "true",
+    EASYFLOW_TOKEN: token,
+    EASYFLOW_STARTUP_LOG: startupLogFile(),
     R_HOME: path.join(appBaseDir(), "runtime", "R-4.5.2"),
     R_LIBS_USER: bundledRLibraryPath(),
     PATH: `${bundledRBinPath()};${process.env.PATH || ""}`
@@ -114,11 +139,13 @@ async function startShiny() {
   shinyProcess.stdout.on("data", (data) => process.stdout.write(data));
   shinyProcess.stderr.on("data", (data) => process.stderr.write(data));
   shinyProcess.on("exit", () => {
+    logStartup("R process exited");
     shinyProcess = null;
   });
 
   await waitForShiny(port);
-  return `http://127.0.0.1:${port}/?t=${Date.now()}`;
+  logStartup(`Shiny ready in ${Date.now() - startedAt}ms`);
+  return `http://127.0.0.1:${port}/?token=${token}&t=${Date.now()}`;
 }
 
 function stopShiny() {
@@ -137,6 +164,7 @@ function stopShiny() {
 }
 
 async function createWindow() {
+  logStartup("createWindow begin");
   app.setName("EasyFlow Statistics Beta");
   mainWindow = new BrowserWindow({
     width: 1536,
@@ -168,7 +196,9 @@ async function createWindow() {
   try {
     const url = await startShiny();
     await mainWindow.loadURL(url);
+    logStartup("BrowserWindow loaded Shiny URL");
   } catch (error) {
+    logStartup(`startup failed: ${error.message}`);
     dialog.showErrorBox("EasyFlow Statistics Beta", error.message);
     app.quit();
   }

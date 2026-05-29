@@ -6097,6 +6097,16 @@ pre {
   white-space: pre-wrap;
 }
 
+.about-markdown-document .license-notice-text {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  max-height: 68vh;
+  overflow: auto;
+  padding: 14px 16px;
+  white-space: pre-wrap;
+}
+
 .about-markdown-document img {
   border: 1px solid #d9e2ec;
   border-radius: 8px;

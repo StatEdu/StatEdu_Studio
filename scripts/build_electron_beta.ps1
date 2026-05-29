@@ -101,6 +101,14 @@ try {
     New-Item -ItemType Directory -Path (Split-Path $target -Parent) -Force | Out-Null
     Copy-Item -LiteralPath $source -Destination $target -Force
   }
+
+  foreach ($file in @("LICENSE", "SOURCE-OFFER.txt")) {
+    $source = Join-Path $repoRoot $file
+    if (Test-Path -LiteralPath $source) {
+      $target = Join-Path $appStage $file
+      Copy-Item -LiteralPath $source -Destination $target -Force
+    }
+  }
 } finally {
   Pop-Location
 }
@@ -134,6 +142,27 @@ cat(packages, sep = "\n")
   foreach ($package in $requiredPackages) {
     Copy-R-Package $package $libraryPaths $runtimeLibrary | Out-Null
   }
+}
+
+if (Test-Path -LiteralPath (Join-Path $runtimeStage "bin\x64\Rscript.exe")) {
+  Write-Host "Pruning bundled R runtime packages"
+  Invoke-Native (Join-Path $runtimeStage "bin\x64\Rscript.exe") @(
+    (Join-Path $repoRoot "scripts\prune_r_runtime.R"),
+    "--repo-root=$repoRoot",
+    "--runtime-root=$runtimeStage",
+    "--output-dir=$appStage",
+    "--execute"
+  )
+
+  Write-Host "Generating third-party license notices"
+  Invoke-Native (Join-Path $runtimeStage "bin\x64\Rscript.exe") @(
+    (Join-Path $repoRoot "scripts\generate_oss_notices.R"),
+    "--repo-root=$repoRoot",
+    "--runtime-root=$runtimeStage",
+    "--output-dir=$appStage"
+  )
+} else {
+  Write-Warning "R runtime was not found; third-party license notices were not generated."
 }
 
 $npm = Find-Npm

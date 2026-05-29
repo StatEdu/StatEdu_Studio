@@ -3,13 +3,13 @@
 create_app_server <- function(app_version) {
   force(app_version)
   function(input, output, session) {
-  session$onSessionEnded(function() {
-    if (identical(Sys.getenv("EASYFLOW_STOP_ON_SESSION_END"), "1")) {
-      stopApp()
-    }
-  })
+    session$onSessionEnded(function() {
+      if (identical(Sys.getenv("EASYFLOW_STOP_ON_SESSION_END"), "1")) {
+        stopApp()
+      }
+    })
 
-  server_state <- create_server_state()
+    server_state <- create_server_state()
   data_view <- server_state$data_view
   active_step <- server_state$active_step
   selected_names <- server_state$selected_names
