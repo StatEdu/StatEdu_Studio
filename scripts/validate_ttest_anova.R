@@ -78,6 +78,27 @@ expect_true(
   grepl("white-space:nowrap;overflow-wrap:normal;word-break:normal;", manual_marker_html, fixed = TRUE),
   "Expected p/effect-size cells to prevent value-marker wrapping"
 )
+attr_marker_table <- data.frame(
+  Variable = "x",
+  p = ".008",
+  `Effect size` = ".022",
+  check.names = FALSE
+)
+attr(attr_marker_table, "note_markers") <- data.frame(
+  row = c(1L, 1L),
+  column = c("p", "Effect size"),
+  marker = c("8", "1"),
+  stringsAsFactors = FALSE
+)
+attr_marker_html <- as.character(tags_to_html(coefficient_html_table(attr_marker_table)))
+expect_true(
+  grepl("\\.008\\s*<sup class=\"coefficient-footnote-marker\">8</sup>", attr_marker_html, perl = TRUE),
+  "Expected p=.008 with marker 8 to retain all three decimal places"
+)
+expect_true(
+  grepl("\\.022\\s*<sup class=\"coefficient-footnote-marker\">1</sup>", attr_marker_html, perl = TRUE),
+  "Expected effect size=.022 with marker 1 to retain all three decimal places"
+)
 
 message("Checking t-test / ANOVA post-hoc table...")
 posthoc_data <- data.frame(

@@ -146,8 +146,20 @@ result_split_inline_marker <- function(value, marker = "", column = "") {
     return(c(value = value, marker = ""))
   }
   if (nzchar(marker)) {
-    pattern <- paste0("\\s*", marker, "$")
-    return(c(value = trimws(sub(pattern, "", value)), marker = marker))
+    spaced_pattern <- paste0("\\s+", marker, "$")
+    if (grepl(spaced_pattern, value, perl = TRUE)) {
+      return(c(value = trimws(sub(spaced_pattern, "", value, perl = TRUE)), marker = marker))
+    }
+    compact_pattern <- paste0(marker, "$")
+    compact_value <- sub(compact_pattern, "", value, perl = TRUE)
+    compact_marker_appended <- !identical(compact_value, value) && (
+      grepl("^-?\\.[0-9]{4,}$", value, perl = TRUE) ||
+        grepl("^<\\.001[1-9][0-9]?$", value, perl = TRUE)
+    )
+    if (isTRUE(compact_marker_appended)) {
+      return(c(value = compact_value, marker = marker))
+    }
+    return(c(value = value, marker = marker))
   }
   if (!result_note_marker_column(column)) {
     return(c(value = value, marker = ""))

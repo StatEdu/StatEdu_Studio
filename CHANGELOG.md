@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.9.24 - 2026-05-29
+
+### Fixed
+
+- Fixed t-test / ANOVA and nonparametric result table rendering so p-values such as `.008` and effect sizes such as `.022` keep all three decimal places when their footnote marker uses the same trailing digit.
+
+
 ## v0.9.23 - 2026-05-29
 
 ### Fixed

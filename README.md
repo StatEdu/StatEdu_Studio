@@ -8,9 +8,9 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.23`
+Current development version: `0.9.24`
 
-Version 0.9.23 uses R's native Windows file picker directly for data imports in the desktop build.
+Version 0.9.24 fixes t-test / ANOVA p-value and effect-size rendering when footnote markers share the same digit as the displayed value.
 
 ## Current Scope
 
@@ -82,7 +82,7 @@ Run validation scripts from the repository root with Rscript, for example:
 
 If you use **EasyFlow Statistics** in your research, please cite:
 
-LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.23) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
+LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.24) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
 
 ## Development Model
 
