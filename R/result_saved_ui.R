@@ -733,6 +733,42 @@ saved_correlation_results_html <- function(result, css_path = file.path("www", "
   )
 }
 
+saved_logistic_results_html <- function(
+  results,
+  variable_table = NULL,
+  labels = character(0),
+  category_table = NULL,
+  show_b = FALSE,
+  show_se = FALSE,
+  show_mcfadden = FALSE,
+  show_cox_snell = FALSE,
+  split_ci = FALSE,
+  css_path = file.path("www", "style.css"),
+  report_mode = FALSE
+) {
+  saved_results_document(
+    "EasyFlow Statistics Logistic Regression Results",
+    tags$div(
+      class = "regression-results",
+      logistic_results_panel(
+        results,
+        variable_table = variable_table,
+        labels = labels,
+        category_table = category_table,
+        show_b = show_b,
+        show_se = show_se,
+        show_mcfadden = show_mcfadden,
+        show_cox_snell = show_cox_snell,
+        split_ci = split_ci
+      )
+    ),
+    max_width = 1500,
+    css_path = css_path,
+    print_landscape = TRUE,
+    report_mode = report_mode
+  )
+}
+
 saved_factor_analysis_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
   saved_results_document(
     "EasyFlow Statistics Factor Analysis Results",

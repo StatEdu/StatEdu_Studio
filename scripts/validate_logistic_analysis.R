@@ -79,6 +79,45 @@ split_rendered <- as.character(htmltools::renderTags(logistic_results_panel(
 stopifnot(grepl("LLCI", split_rendered, fixed = TRUE))
 stopifnot(grepl("ULCI", split_rendered, fixed = TRUE))
 
+saved_html <- saved_logistic_results_html(
+  referenced_result,
+  variable_table = binary_info,
+  category_table = category_table,
+  show_b = TRUE,
+  show_se = TRUE,
+  show_mcfadden = TRUE,
+  show_cox_snell = TRUE,
+  split_ci = TRUE
+)
+stopifnot(grepl("EasyFlow Statistics Logistic Regression Results", saved_html, fixed = TRUE))
+stopifnot(grepl("LLCI", saved_html, fixed = TRUE))
+html_file <- tempfile(fileext = ".html")
+write_logistic_results_html(
+  referenced_result,
+  html_file,
+  variable_table = binary_info,
+  category_table = category_table,
+  show_b = TRUE,
+  show_se = TRUE,
+  show_mcfadden = TRUE,
+  show_cox_snell = TRUE,
+  split_ci = TRUE
+)
+stopifnot(file.exists(html_file), file.info(html_file)$size > 0)
+excel_file <- tempfile(fileext = ".xlsx")
+save_logistic_excel_file(
+  referenced_result,
+  excel_file,
+  variable_table = binary_info,
+  category_table = category_table,
+  show_b = TRUE,
+  show_se = TRUE,
+  show_mcfadden = TRUE,
+  show_cox_snell = TRUE,
+  split_ci = TRUE
+)
+stopifnot(file.exists(excel_file), file.info(excel_file)$size > 0)
+
 ordered_data <- data.frame(
   y = ordered(rep(1:3, each = 50)),
   x = rnorm(150),

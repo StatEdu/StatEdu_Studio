@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.9.18 - 2026-05-29
+
+### Added
+
+- Added the standard five-slot save control row to Logistic Regression results.
+- Added Logistic Regression export support for HTML, PDF, Excel, and the saved Result collection.
+
 ## v0.9.17 - 2026-05-29
 
 ### Fixed

@@ -45,7 +45,8 @@ required_fragments <- c(
   "95% CI (LLCI, ULCI)",
   "McFadden R",
   "Cox &amp; Snell R",
-  "Run logistic"
+  "Run logistic",
+  "logistic_save_control"
 )
 for (fragment in required_fragments) {
   if (!grepl(fragment, html, fixed = TRUE)) {

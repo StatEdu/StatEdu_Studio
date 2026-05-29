@@ -271,7 +271,7 @@ logistic_setup_panel <- function(setup, status_message = NULL) {
         disabled = if (length(unique(c(setup$dependents, setup$block1, setup$block2, setup$block3))) == 0) "disabled" else NULL,
         "Reset setting"
       ),
-      div(class = "analysis-save-slot analysis-save-slot-empty")
+      uiOutput("logistic_save_control")
     )
   )
 }

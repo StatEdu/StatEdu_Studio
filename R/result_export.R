@@ -504,6 +504,35 @@ write_correlation_results_html <- function(result, file) {
   )
 }
 
+write_logistic_results_html <- function(
+  results,
+  file,
+  variable_table = NULL,
+  labels = character(0),
+  category_table = NULL,
+  show_b = FALSE,
+  show_se = FALSE,
+  show_mcfadden = FALSE,
+  show_cox_snell = FALSE,
+  split_ci = FALSE
+) {
+  writeLines(
+    saved_logistic_results_html(
+      results,
+      variable_table = variable_table,
+      labels = labels,
+      category_table = category_table,
+      show_b = show_b,
+      show_se = show_se,
+      show_mcfadden = show_mcfadden,
+      show_cox_snell = show_cox_snell,
+      split_ci = split_ci
+    ),
+    file,
+    useBytes = TRUE
+  )
+}
+
 write_frequencies_results_pdf <- function(result, file) {
   write_pdf_from_html(saved_frequencies_results_html(result, report_mode = TRUE), file)
 }
@@ -534,6 +563,35 @@ write_paired_rm_results_pdf <- function(result, file) {
 
 write_correlation_results_pdf <- function(result, file) {
   write_pdf_from_html(saved_correlation_results_html(result, report_mode = TRUE), file)
+}
+
+write_logistic_results_pdf <- function(
+  results,
+  file,
+  variable_table = NULL,
+  labels = character(0),
+  category_table = NULL,
+  show_b = FALSE,
+  show_se = FALSE,
+  show_mcfadden = FALSE,
+  show_cox_snell = FALSE,
+  split_ci = FALSE
+) {
+  write_pdf_from_html(
+    saved_logistic_results_html(
+      results,
+      variable_table = variable_table,
+      labels = labels,
+      category_table = category_table,
+      show_b = show_b,
+      show_se = show_se,
+      show_mcfadden = show_mcfadden,
+      show_cox_snell = show_cox_snell,
+      split_ci = split_ci,
+      report_mode = TRUE
+    ),
+    file
+  )
 }
 
 write_factor_analysis_results_html <- function(result, file) {
@@ -882,6 +940,111 @@ save_hierarchical_excel_file <- function(
   warnings <- attr(results, "warnings")
   skipped <- attr(results, "skipped")
   used_sheets <- add_analysis_warning_skipped_sheets(workbook, used_sheets, warnings, skipped, skipped_title = "Skipped models")
+  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
+  invisible(file)
+}
+
+logistic_export_table <- function(
+  result,
+  variable_table = NULL,
+  labels = character(0),
+  category_table = NULL,
+  show_b = FALSE,
+  show_se = FALSE,
+  show_mcfadden = FALSE,
+  show_cox_snell = FALSE,
+  split_ci = FALSE
+) {
+  headers <- c("Variable", "Value", logistic_coef_headers(show_b, show_se, split_ci))
+  rows <- logistic_coefficient_rows(
+    result,
+    variable_table = variable_table,
+    labels = labels,
+    category_table = category_table,
+    show_b = show_b,
+    show_se = show_se,
+    split_ci = split_ci
+  )
+  table_rows <- lapply(rows, function(row) {
+    values <- as.character(row$values %||% character(0))
+    length(values) <- length(headers)
+    values[is.na(values)] <- ""
+    stats::setNames(as.list(values), headers)
+  })
+  summaries <- logistic_fit_summary_values(result, show_mcfadden = show_mcfadden, show_cox_snell = show_cox_snell)
+  summary_labels <- c(
+    x2 = "x2(p)",
+    r2 = "R2",
+    delta_r2 = "Delta R2",
+    delta_x2 = "Delta x2(p)",
+    aic = "AIC, BIC",
+    parallel = "Parallel lines x2(p)",
+    status = "Status"
+  )
+  for (key in names(summaries)) {
+    values <- rep("", length(headers))
+    values[[1]] <- summary_labels[[key]] %||% key
+    values[[2]] <- as.character(summaries[[key]] %||% "")
+    table_rows[[length(table_rows) + 1L]] <- stats::setNames(as.list(values), headers)
+  }
+  if (length(table_rows) == 0) {
+    return(data.frame())
+  }
+  as.data.frame(do.call(rbind, table_rows), stringsAsFactors = FALSE, check.names = FALSE)
+}
+
+save_logistic_excel_file <- function(
+  results,
+  file,
+  variable_table = NULL,
+  labels = character(0),
+  category_table = NULL,
+  show_b = FALSE,
+  show_se = FALSE,
+  show_mcfadden = FALSE,
+  show_cox_snell = FALSE,
+  split_ci = FALSE
+) {
+  workbook <- openxlsx::createWorkbook()
+  used_sheets <- character(0)
+  overview <- logistic_model_overview_data_frame(results, variable_table, labels, category_table)
+  if (is.data.frame(overview) && nrow(overview) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Model overview", overview, used_sheets, title = "Model overview")
+  }
+  for (index in seq_along(results %||% list())) {
+    result <- results[[index]]
+    title <- logistic_result_title(result, variable_table, labels, category_table)
+    if (!is.null(result$hierarchical_step) && nzchar(result$hierarchical_step %||% "")) {
+      title <- sprintf("%s - %s", title, result$hierarchical_step)
+    }
+    sheet_name <- sprintf("%s %s", logistic_dependent_title_label(result$dependent, variable_table, labels, category_table), logistic_model_label(result, index))
+    table <- logistic_export_table(
+      result,
+      variable_table = variable_table,
+      labels = labels,
+      category_table = category_table,
+      show_b = show_b,
+      show_se = show_se,
+      show_mcfadden = show_mcfadden,
+      show_cox_snell = show_cox_snell,
+      split_ci = split_ci
+    )
+    used_sheets <- add_excel_table_sheet(workbook, sheet_name, table, used_sheets, title = title)
+  }
+  assumption_review <- logistic_assumption_review_data_frame(results, variable_table, labels, category_table)
+  if (is.data.frame(assumption_review) && nrow(assumption_review) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Assumption review", assumption_review, used_sheets, title = "Assumption review")
+  }
+  used_sheets <- add_analysis_warning_skipped_sheets(
+    workbook,
+    used_sheets,
+    attr(results, "warnings"),
+    attr(results, "skipped"),
+    skipped_title = "Skipped models"
+  )
+  if (length(used_sheets) == 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Logistic regression", data.frame(Message = "No logistic regression results.", stringsAsFactors = FALSE), used_sheets)
+  }
   openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
   invisible(file)
 }

@@ -8,9 +8,9 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.17`
+Current development version: `0.9.18`
 
-Version 0.9.17 makes advanced latent-variable correlations replace the primary correlation method set, so eligible pairs show Polyserial, Polychoric, or Tetrachoric directly in the Methods table.
+Version 0.9.18 adds the standard analysis save controls to Logistic Regression, including HTML, PDF, Excel, and Result collection export.
 
 ## Current Scope
 

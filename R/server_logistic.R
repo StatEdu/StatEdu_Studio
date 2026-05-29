@@ -157,6 +157,33 @@ register_logistic_handlers <- function(
     )
   })
 
+  current_logistic_export_options <- function() {
+    list(
+      results = logistic_results(),
+      variable_table = variable_table_fn(),
+      labels = labels_fn(),
+      category_table = category_table_fn(),
+      show_b = logistic_show_b_se(),
+      show_se = logistic_show_b_se(),
+      show_mcfadden = logistic_show_extra_r2(),
+      show_cox_snell = logistic_show_extra_r2(),
+      split_ci = logistic_split_ci()
+    )
+  }
+
+  output$logistic_save_control <- renderUI({
+    results <- logistic_results()
+    if (is.null(results) || length(results) == 0) return(NULL)
+    analysis_save_buttons(
+      html_button_id = "save_logistic_html_dialog",
+      pdf_button_id = "save_logistic_pdf_dialog",
+      figure_button_id = NULL,
+      excel_button_id = "save_logistic_excel_dialog",
+      add_result_button_id = "add_logistic_result",
+      has_figures = FALSE
+    )
+  })
+
   register_analysis_data_viewer_handlers(
     input = input,
     output = output,
@@ -298,6 +325,85 @@ register_logistic_handlers <- function(
       }
     )
   }, ignoreInit = TRUE)
+
+  observeEvent(input$save_logistic_html_dialog, {
+    options <- current_logistic_export_options()
+    shiny::req(!is.null(options$results), length(options$results) > 0)
+    path <- choose_html_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
+    if (!grepl("\\.html?$", path, ignore.case = TRUE)) path <- paste0(path, ".html")
+    write_logistic_results_html(
+      options$results,
+      path,
+      variable_table = options$variable_table,
+      labels = options$labels,
+      category_table = options$category_table,
+      show_b = options$show_b,
+      show_se = options$show_se,
+      show_mcfadden = options$show_mcfadden,
+      show_cox_snell = options$show_cox_snell,
+      split_ci = options$split_ci
+    )
+    showNotification(sprintf("HTML results saved: %s", path), type = "message")
+  })
+
+  observeEvent(input$save_logistic_pdf_dialog, {
+    options <- current_logistic_export_options()
+    shiny::req(!is.null(options$results), length(options$results) > 0)
+    path <- choose_pdf_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
+    if (!grepl("\\.pdf$", path, ignore.case = TRUE)) path <- paste0(path, ".pdf")
+    write_logistic_results_pdf(
+      options$results,
+      path,
+      variable_table = options$variable_table,
+      labels = options$labels,
+      category_table = options$category_table,
+      show_b = options$show_b,
+      show_se = options$show_se,
+      show_mcfadden = options$show_mcfadden,
+      show_cox_snell = options$show_cox_snell,
+      split_ci = options$split_ci
+    )
+    showNotification(sprintf("PDF results saved: %s", path), type = "message")
+  })
+
+  observeEvent(input$save_logistic_excel_dialog, {
+    options <- current_logistic_export_options()
+    shiny::req(!is.null(options$results), length(options$results) > 0)
+    path <- choose_excel_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
+    if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) path <- paste0(path, ".xlsx")
+    save_logistic_excel_file(
+      options$results,
+      path,
+      variable_table = options$variable_table,
+      labels = options$labels,
+      category_table = options$category_table,
+      show_b = options$show_b,
+      show_se = options$show_se,
+      show_mcfadden = options$show_mcfadden,
+      show_cox_snell = options$show_cox_snell,
+      split_ci = options$split_ci
+    )
+    showNotification(sprintf("Analysis results saved: %s", path), type = "message")
+  })
+
+  register_add_result_snapshot(input, session, "add_logistic_result", "Logistic regression", function() {
+    options <- current_logistic_export_options()
+    shiny::req(!is.null(options$results), length(options$results) > 0)
+    saved_logistic_results_html(
+      options$results,
+      variable_table = options$variable_table,
+      labels = options$labels,
+      category_table = options$category_table,
+      show_b = options$show_b,
+      show_se = options$show_se,
+      show_mcfadden = options$show_mcfadden,
+      show_cox_snell = options$show_cox_snell,
+      split_ci = options$split_ci
+    )
+  })
 
   observeEvent(input$reset_logistic_block2, {
     if (length(unique(c(logistic_dependents(), logistic_block1(), logistic_block2(), logistic_block3()))) == 0) {
