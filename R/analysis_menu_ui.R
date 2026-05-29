@@ -91,18 +91,18 @@ logistic_regression_tab_panel <- function() {
 analysis_tab_panel <- function(analysis_tabs = enabled_analysis_tabs()) {
   navbarMenu(
     "Analysis",
-    if (isTRUE(analysis_tabs[["frequencies"]])) frequencies_tab_panel("Frequencies / Descriptives"),
-    crosstab_tab_panel(),
-    if (isTRUE(analysis_tabs[["ttest_anova"]])) ttest_anova_tab_panel("t-test / ANOVA"),
-    if (isTRUE(analysis_tabs[["nonparametric"]])) nonparametric_tab_panel("Nonparametric Tests"),
-    if (isTRUE(analysis_tabs[["paired"]]) || isTRUE(analysis_tabs[["paired_rm"]])) paired_tab_panel("Paired test"),
-    if (isTRUE(analysis_tabs[["nonparametric_paired"]])) nonparametric_paired_tab_panel("Nonparametric Paired"),
-    if (isTRUE(analysis_tabs[["correlation"]])) correlation_tab_panel("Correlation"),
-    if (isTRUE(analysis_tabs[["factor_analysis"]])) factor_analysis_tab_panel("Factor Analysis"),
-    if (isTRUE(analysis_tabs[["pca"]])) pca_tab_panel("Principal Components"),
-    if (isTRUE(analysis_tabs[["reliability"]])) reliability_tab_panel("Reliability"),
-    if (isTRUE(analysis_tabs[["hierarchical"]])) hierarchical_tab_panel("Regression"),
-    if (isTRUE(analysis_tabs[["generalized"]])) generalized_tab_panel("Generalized"),
-    logistic_regression_tab_panel()
+    if (isTRUE(analysis_tabs[["frequencies"]])) lazy_tab_panel("Frequencies / Descriptives", "Frequencies / Descriptives", "lazy_analysis_frequencies"),
+    lazy_tab_panel("Cross-tabulation Analysis", "analysis_crosstabs", "lazy_analysis_crosstabs"),
+    if (isTRUE(analysis_tabs[["ttest_anova"]])) lazy_tab_panel("t-test / ANOVA", "t-test / ANOVA", "lazy_analysis_ttest_anova"),
+    if (isTRUE(analysis_tabs[["nonparametric"]])) lazy_tab_panel("Nonparametric Tests", "Nonparametric Tests", "lazy_analysis_nonparametric"),
+    if (isTRUE(analysis_tabs[["paired"]]) || isTRUE(analysis_tabs[["paired_rm"]])) lazy_tab_panel("Paired test", "Paired test", "lazy_analysis_paired"),
+    if (isTRUE(analysis_tabs[["nonparametric_paired"]])) lazy_tab_panel("Nonparametric Paired", "Nonparametric Paired", "lazy_analysis_nonparametric_paired"),
+    if (isTRUE(analysis_tabs[["correlation"]])) lazy_tab_panel("Correlation", "Correlation", "lazy_analysis_correlation"),
+    if (isTRUE(analysis_tabs[["factor_analysis"]])) lazy_tab_panel("Factor Analysis", "Factor Analysis", "lazy_analysis_factor_analysis"),
+    if (isTRUE(analysis_tabs[["pca"]])) lazy_tab_panel("Principal Components", "Principal Components", "lazy_analysis_pca"),
+    if (isTRUE(analysis_tabs[["reliability"]])) lazy_tab_panel("Reliability", "Reliability", "lazy_analysis_reliability"),
+    if (isTRUE(analysis_tabs[["hierarchical"]])) lazy_tab_panel("Regression", "Regression", "lazy_analysis_hierarchical"),
+    if (isTRUE(analysis_tabs[["generalized"]])) lazy_tab_panel("Generalized", "Generalized", "lazy_analysis_generalized"),
+    lazy_tab_panel("Logistic Regression", "analysis_logistic_regression", "lazy_analysis_logistic")
   )
 }

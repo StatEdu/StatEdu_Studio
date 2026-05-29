@@ -46,6 +46,44 @@ create_app_server <- function(app_version) {
   mark_settings_dirty <- dirty_handlers$mark_settings_dirty
   mark_settings_clean <- dirty_handlers$mark_settings_clean
 
+  output$lazy_data_editor_coding_error_check <- renderUI(data_editor_coding_error_check_panel())
+  output$lazy_data_editor_likert <- renderUI(data_editor_likert_panel())
+  output$lazy_data_editor_missing_values <- renderUI(data_editor_missing_panel())
+  output$lazy_data_editor_recode_different <- renderUI(data_editor_different_variable_panel())
+  output$lazy_data_editor_variable_calculation <- renderUI(data_editor_variable_calculation_panel())
+  output$lazy_data_editor_variable_transformation <- renderUI(data_editor_variable_transformation_panel())
+  output$lazy_data_editor_recode_same <- renderUI(data_editor_same_variable_panel())
+  output$lazy_data_editor_variable_rename <- renderUI(data_editor_variable_rename_panel())
+
+  output$lazy_calculator_hint8 <- renderUI(tab_panel_content(hint8_calculator_tab_panel()))
+  output$lazy_calculator_eq5d <- renderUI(tab_panel_content(eq5d_calculator_tab_panel()))
+  output$lazy_calculator_metabolic <- renderUI(tab_panel_content(metabolic_calculator_tab_panel()))
+  output$lazy_calculator_frs <- renderUI(tab_panel_content(frs_calculator_tab_panel()))
+  output$lazy_calculator_ascvd10 <- renderUI(tab_panel_content(ascvd10_calculator_tab_panel()))
+  output$lazy_calculator_metabolic_severity <- renderUI(tab_panel_content(metabolic_severity_calculator_tab_panel()))
+
+  output$lazy_analysis_frequencies <- renderUI(tab_panel_content(frequencies_tab_panel("Frequencies / Descriptives")))
+  output$lazy_analysis_crosstabs <- renderUI(tab_panel_content(crosstab_tab_panel()))
+  output$lazy_analysis_ttest_anova <- renderUI(tab_panel_content(ttest_anova_tab_panel("t-test / ANOVA")))
+  output$lazy_analysis_nonparametric <- renderUI(tab_panel_content(nonparametric_tab_panel("Nonparametric Tests")))
+  output$lazy_analysis_paired <- renderUI(tab_panel_content(paired_tab_panel("Paired test")))
+  output$lazy_analysis_nonparametric_paired <- renderUI(tab_panel_content(nonparametric_paired_tab_panel("Nonparametric Paired")))
+  output$lazy_analysis_correlation <- renderUI(tab_panel_content(correlation_tab_panel("Correlation")))
+  output$lazy_analysis_factor_analysis <- renderUI(tab_panel_content(factor_analysis_tab_panel("Factor Analysis")))
+  output$lazy_analysis_pca <- renderUI(tab_panel_content(pca_tab_panel("Principal Components")))
+  output$lazy_analysis_reliability <- renderUI(tab_panel_content(reliability_tab_panel("Reliability")))
+  output$lazy_analysis_hierarchical <- renderUI(tab_panel_content(hierarchical_tab_panel("Regression")))
+  output$lazy_analysis_generalized <- renderUI(tab_panel_content(generalized_tab_panel("Generalized")))
+  output$lazy_analysis_logistic <- renderUI(tab_panel_content(logistic_regression_tab_panel()))
+
+  output$lazy_about_overview <- renderUI(tab_panel_content(about_markdown_tab_panel("Overview", "about_overview", "README.md", "Project scope, current version, validation, and citation.")))
+  output$lazy_about_user_guide <- renderUI(tab_panel_content(about_markdown_tab_panel("User Guide", "about_user_guide", file.path("docs", "USER_GUIDE_KO.md"), "Step-by-step operating guide for loading data, selecting variables, running analyses, and saving results.")))
+  output$lazy_about_analysis_methods <- renderUI(tab_panel_content(about_markdown_tab_panel("Analysis Methods", "about_analysis_methods", file.path("docs", "ANALYSIS_METHODS_KO.md"), "Implementation inventory of analysis menus, statistical outputs, tables, and export coverage.")))
+  output$lazy_about_method_notes <- renderUI(tab_panel_content(about_markdown_tab_panel("Method Notes", "about_method_notes", file.path("docs", "METHOD_NOTES_KO.md"), "Interpretive notes on method choice, assumptions, warnings, and result interpretation.")))
+  output$lazy_about_source_license <- renderUI(tab_panel_content(about_source_license_tab_panel()))
+  output$lazy_about_oss_licenses <- renderUI(tab_panel_content(about_license_tab_panel()))
+  output$lazy_about_info <- renderUI(tab_panel_content(about_info_tab_panel(app_version)))
+
   go_data_step <- function(step, view = "info") {
     set_data_step_view(active_step, data_view, step, view)
   }

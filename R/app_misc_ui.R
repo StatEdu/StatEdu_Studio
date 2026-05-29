@@ -191,12 +191,12 @@ about_source_license_tab_panel <- function() {
 about_tab_panel <- function(version) {
   navbarMenu(
     "About",
-    about_markdown_tab_panel("Overview", "about_overview", "README.md", "Project scope, current version, validation, and citation."),
-    about_markdown_tab_panel("User Guide", "about_user_guide", file.path("docs", "USER_GUIDE_KO.md"), "Step-by-step operating guide for loading data, selecting variables, running analyses, and saving results."),
-    about_markdown_tab_panel("Analysis Methods", "about_analysis_methods", file.path("docs", "ANALYSIS_METHODS_KO.md"), "Implementation inventory of analysis menus, statistical outputs, tables, and export coverage."),
-    about_markdown_tab_panel("Method Notes", "about_method_notes", file.path("docs", "METHOD_NOTES_KO.md"), "Interpretive notes on method choice, assumptions, warnings, and result interpretation."),
-    about_source_license_tab_panel(),
-    about_license_tab_panel(),
-    about_info_tab_panel(version)
+    lazy_tab_panel("Overview", "about_overview", "lazy_about_overview"),
+    lazy_tab_panel("User Guide", "about_user_guide", "lazy_about_user_guide"),
+    lazy_tab_panel("Analysis Methods", "about_analysis_methods", "lazy_about_analysis_methods"),
+    lazy_tab_panel("Method Notes", "about_method_notes", "lazy_about_method_notes"),
+    lazy_tab_panel("Source & License", "about_source_license", "lazy_about_source_license"),
+    lazy_tab_panel("Open Source Licenses", "about_oss_licenses", "lazy_about_oss_licenses"),
+    lazy_tab_panel("About", "about", "lazy_about_info")
   )
 }

@@ -8,9 +8,9 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.19`
+Current development version: `0.9.20`
 
-Version 0.9.19 reduces installed desktop startup time by loading only the packages needed for the initial Shiny UI and deferring analysis/export package namespaces until use.
+Version 0.9.20 reduces the initial Shiny page payload by lazily rendering non-Data tabs only when opened.
 
 ## Current Scope
 

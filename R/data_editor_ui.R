@@ -83,13 +83,13 @@ data_editor_variable_rename_tab_panel <- function() {
 data_editor_tab_panel <- function() {
   navbarMenu(
     "Data Editor",
-    data_editor_coding_error_check_tab_panel(),
-    data_editor_likert_tab_panel(),
-    data_editor_missing_values_tab_panel(),
-    data_editor_different_variable_tab_panel(),
-    data_editor_variable_calculation_tab_panel(),
-    data_editor_variable_transformation_tab_panel(),
-    data_editor_same_variable_tab_panel(),
-    data_editor_variable_rename_tab_panel()
+    lazy_tab_panel("Auto coding error check", "data_editor_coding_error_check", "lazy_data_editor_coding_error_check"),
+    lazy_tab_panel("Auto Likert conversion", "data_editor_likert", "lazy_data_editor_likert"),
+    lazy_tab_panel("Auto missing values", "data_editor_missing_values", "lazy_data_editor_missing_values"),
+    lazy_tab_panel("Auto reverse coding", "data_editor_recode_different", "lazy_data_editor_recode_different"),
+    lazy_tab_panel("Auto variable calculation", "data_editor_variable_calculation", "lazy_data_editor_variable_calculation"),
+    lazy_tab_panel("Variable transformation", "data_editor_variable_transformation", "lazy_data_editor_variable_transformation"),
+    lazy_tab_panel("Recode variable", "data_editor_recode_same", "lazy_data_editor_recode_same"),
+    lazy_tab_panel("Rename variable", "data_editor_variable_rename", "lazy_data_editor_variable_rename")
   )
 }

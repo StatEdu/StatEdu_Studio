@@ -165,12 +165,12 @@ hint8_calculator_tab_panel <- function() {
 calculator_tab_panel <- function() {
   navbarMenu(
     "Calculator",
-    hint8_calculator_tab_panel(),
-    eq5d_calculator_tab_panel(),
-    metabolic_calculator_tab_panel(),
-    frs_calculator_tab_panel(),
-    ascvd10_calculator_tab_panel(),
-    metabolic_severity_calculator_tab_panel()
+    lazy_tab_panel("HINT8", "calculator_hint8", "lazy_calculator_hint8"),
+    lazy_tab_panel("EQ-5D", "calculator_eq5d", "lazy_calculator_eq5d"),
+    lazy_tab_panel("Metabolic syndrome", "calculator_metabolic", "lazy_calculator_metabolic"),
+    lazy_tab_panel("Framingham risk score", "calculator_frs", "lazy_calculator_frs"),
+    lazy_tab_panel("ASCVD10", "calculator_ascvd10", "lazy_calculator_ascvd10"),
+    lazy_tab_panel("Metabolic severity", "calculator_metabolic_severity", "lazy_calculator_metabolic_severity")
   )
 }
 

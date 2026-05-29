@@ -96,6 +96,21 @@ app_head_tags <- function(version) {
   )
 }
 
+lazy_tab_panel <- function(title, value, output_id) {
+  tabPanel(
+    title,
+    value = value,
+    uiOutput(output_id)
+  )
+}
+
+tab_panel_content <- function(panel) {
+  if (inherits(panel, "shiny.tag") && identical(panel$name, "div")) {
+    return(tagList(panel$children))
+  }
+  panel
+}
+
 enabled_analysis_tabs <- function() {
   c(
     reliability = TRUE,

@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.9.20 - 2026-05-29
+
+### Changed
+
+- Reduced the initial Shiny page payload by rendering Data Editor, Calculator, Analysis, and About tab bodies only when those tabs are opened.
+
 ## v0.9.19 - 2026-05-29
 
 ### Changed
