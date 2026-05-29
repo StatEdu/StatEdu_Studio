@@ -96,11 +96,12 @@ mixed_result <- prepare_correlation_results(
   variable_info = variable_info,
   options = list(continuous_method = "auto", normality = FALSE, reason = TRUE, latent_correlations = TRUE)
 )
-expect_true(any(mixed_result$pairwise_table$Method == "Point-biserial"), "Expected continuous-binary pair to use point-biserial")
-expect_true(any(mixed_result$pairwise_table$Method == "Eta"), "Expected continuous-nominal pair to use Eta")
-expect_true(any(mixed_result$pairwise_table$Method == "Cramer's V"), "Expected categorical pairs to use Cramer's V")
+expect_true(any(mixed_result$pairwise_table$Method == "Polyserial"), "Expected latent continuous-binary/ordinal pairs to use polyserial")
+expect_true(any(mixed_result$pairwise_table$Method == "Polychoric"), "Expected latent ordinal/binary pairs to use polychoric")
+expect_true(any(mixed_result$pairwise_table$Method == "Eta"), "Expected continuous-nominal pair to retain Eta")
+expect_true(any(mixed_result$pairwise_table$Method == "Cramer's V"), "Expected nominal categorical pairs to retain Cramer's V")
 expect_true(is.data.frame(mixed_result$omitted_table) && any(mixed_result$omitted_table$Variable == "blank_ordinal"), "Expected sparse ordinal variable to be reported as omitted")
 expect_true(isTRUE(mixed_result$options$normality), "Expected auto method to retain normality diagnostics for traceability")
-expect_true(is.list(mixed_result$latent) && nrow(mixed_result$latent$pairwise_table) > 0, "Expected latent correlation result set")
+expect_true(is.null(mixed_result$latent), "Expected latent correlations to replace the primary method set instead of rendering as a duplicate result set")
 
 message("All correlation auto validations passed.")

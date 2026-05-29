@@ -560,39 +560,30 @@ prepare_correlation_results <- function(
     vapply(variables, correlation_variable_display_name, character(1), variable_info = variable_info, labels = labels, category_table = category_table),
     variables
   )
+  use_latent_correlations <- isTRUE(options$latent_correlations)
   pair_results <- list()
   for (i in seq_len(length(variables) - 1)) {
     for (j in seq.int(i + 1, length(variables))) {
       x_name <- variables[[i]]
       y_name <- variables[[j]]
-      pair <- correlation_pair_result(
-        data,
-        x_name,
-        y_name,
-        measurements[[x_name]],
-        measurements[[y_name]],
-        continuous_method,
-        normality_table = normality_table,
-        normality_checked = normality_checked
-      )
+      pair <- if (isTRUE(use_latent_correlations)) {
+        correlation_latent_pair_result(data, x_name, y_name, measurements[[x_name]], measurements[[y_name]])
+      } else {
+        correlation_pair_result(
+          data,
+          x_name,
+          y_name,
+          measurements[[x_name]],
+          measurements[[y_name]],
+          continuous_method,
+          normality_table = normality_table,
+          normality_checked = normality_checked
+        )
+      }
       pair_results[[length(pair_results) + 1]] <- list(x_name = x_name, y_name = y_name, result = pair)
     }
   }
   primary <- correlation_pair_rows_and_matrices(data, variables, display_names, measurements, pair_results)
-
-  latent <- NULL
-  if (isTRUE(options$latent_correlations)) {
-    latent_pair_results <- list()
-    for (i in seq_len(length(variables) - 1)) {
-      for (j in seq.int(i + 1, length(variables))) {
-        x_name <- variables[[i]]
-        y_name <- variables[[j]]
-        pair <- correlation_latent_pair_result(data, x_name, y_name, measurements[[x_name]], measurements[[y_name]])
-        latent_pair_results[[length(latent_pair_results) + 1]] <- list(x_name = x_name, y_name = y_name, result = pair)
-      }
-    }
-    latent <- correlation_pair_rows_and_matrices(data, variables, display_names, measurements, latent_pair_results)
-  }
 
   list(
     variables = variables,
@@ -621,7 +612,7 @@ prepare_correlation_results <- function(
     p_matrix = primary$p_matrix,
     ci_matrix = primary$ci_matrix,
     method_matrix = primary$method_matrix,
-    latent = latent,
+    latent = NULL,
     matrix_method = "heterogeneous"
   )
 }

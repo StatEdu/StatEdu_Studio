@@ -8,9 +8,9 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.16`
+Current development version: `0.9.17`
 
-Version 0.9.16 fixes p-value and effect-size footnote wrapping in t-test / ANOVA and standalone nonparametric result tables.
+Version 0.9.17 makes advanced latent-variable correlations replace the primary correlation method set, so eligible pairs show Polyserial, Polychoric, or Tetrachoric directly in the Methods table.
 
 ## Current Scope
 

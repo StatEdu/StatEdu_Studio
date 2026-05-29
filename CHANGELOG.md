@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.9.17 - 2026-05-29
+
+### Fixed
+
+- Changed Correlation > Advanced correlations so latent-variable correlations replace the primary method set instead of rendering as a separate duplicate result set.
+- Eligible continuous-ordinal/binary pairs now show Polyserial directly in the main Methods table when latent-variable correlations are enabled.
+
 ## v0.9.16 - 2026-05-29
 
 ### Fixed
