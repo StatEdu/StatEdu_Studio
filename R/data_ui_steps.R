@@ -191,6 +191,8 @@ apply_step3_review_inline_js <- function() {
 
 data_steps_state <- function(
   file = NULL,
+  pending_file = NULL,
+  excel_sheets = character(0),
   open_data = NULL,
   restored_info = NULL,
   step = "step1",
@@ -205,14 +207,21 @@ data_steps_state <- function(
   has_calculated_variables = FALSE
 ) {
   has_open_data <- !is.null(file)
+  has_pending_excel <- is.list(pending_file) && isTRUE(pending_file$excel_pending)
   list(
     step = step,
     has_open_data = has_open_data,
+    has_pending_excel = has_pending_excel,
     has_data = has_open_data || !is.null(restored_info),
     applied = isTRUE(applied),
     role_applied = isTRUE(role_applied),
     role = role,
     data_file_name = if (has_open_data) file$name else "",
+    pending_data_file_name = if (has_pending_excel) pending_file$name else "",
+    excel_sheets = excel_sheets,
+    excel_sheet = if (has_pending_excel) pending_file$excel_sheet %||% "" else "",
+    excel_start_cell = if (has_pending_excel) pending_file$excel_start_cell %||% "A1" else "A1",
+    excel_col_names = if (has_pending_excel) isTRUE(pending_file$excel_col_names %||% TRUE) else TRUE,
     data_n_variables = if (has_open_data && !is.null(open_data)) ncol(open_data) else 0,
     data_n_rows = if (has_open_data && !is.null(open_data)) nrow(open_data) else 0,
     restored_data_file_name = restored_data_file_name,
@@ -228,11 +237,17 @@ data_steps_state <- function(
 data_steps_panel <- function(
   step,
   has_open_data,
+  has_pending_excel = FALSE,
   has_data,
   applied,
   role_applied,
   role,
   data_file_name,
+  pending_data_file_name = "",
+  excel_sheets = character(0),
+  excel_sheet = "",
+  excel_start_cell = "A1",
+  excel_col_names = TRUE,
   data_n_variables,
   data_n_rows,
   restored_data_file_name,
@@ -268,7 +283,28 @@ data_steps_panel <- function(
           }
         )
       } else {
-        tagList(
+        if (isTRUE(has_pending_excel)) {
+          tagList(
+            div(pending_data_file_name, class = "step-summary-title"),
+            div("Choose Excel import options, preview the data, then import.", class = "step-note"),
+            selectInput(
+              "excel_import_sheet",
+              "Sheet",
+              choices = excel_sheets,
+              selected = if (nzchar(excel_sheet)) excel_sheet else if (length(excel_sheets) > 0) excel_sheets[[1]] else ""
+            ),
+            textInput("excel_import_start_cell", "Data starts at", value = excel_start_cell %||% "A1", placeholder = "A1 or B4"),
+            checkboxInput("excel_import_col_names", "First row contains variable names", value = isTRUE(excel_col_names)),
+            div(
+              class = "excel-import-actions",
+              actionButton("preview_excel_import", "Preview", class = "btn btn-default"),
+              actionButton("apply_excel_import", "Import", class = "btn btn-primary"),
+              actionButton("cancel_excel_import", "Cancel", class = "btn btn-default")
+            ),
+            div(class = "excel-import-preview-wrap", DT::DTOutput("excel_import_preview"))
+          )
+        } else {
+          tagList(
           actionButton("browse_data_file", "Open data file"),
           checkboxInput("header", "CSV first row contains variable names", TRUE),
           selectInput(
@@ -278,7 +314,8 @@ data_steps_panel <- function(
             selected = "whitespace"
           ),
           checkboxInput("dat_has_names", "DAT first row contains variable names", FALSE)
-        )
+          )
+        }
       }
     ),
     if (has_data) {

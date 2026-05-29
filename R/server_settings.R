@@ -129,6 +129,37 @@ register_loaded_dataset_observer <- function(
 }
 
 register_data_input_observers <- function(input, active_data_file, reset_on_dataset_load, mark_settings_dirty) {
+  excel_pending_file_value <- function(path) {
+    sheets <- excel_sheet_names(path, basename(path))
+    first_sheet <- if (length(sheets) > 0) sheets[[1]] else ""
+    list(
+      path = path,
+      name = basename(path),
+      restored = FALSE,
+      excel_pending = TRUE,
+      excel_sheet = first_sheet,
+      excel_start_cell = "A1",
+      excel_col_names = TRUE
+    )
+  }
+
+  update_pending_excel_options <- function(import = FALSE) {
+    file <- active_data_file()
+    if (!is.list(file) || !isTRUE(file$excel_pending)) {
+      return(FALSE)
+    }
+    sheet <- as.character(input$excel_import_sheet %||% file$excel_sheet %||% "")
+    start_cell <- normalize_excel_start_cell(input$excel_import_start_cell %||% file$excel_start_cell %||% "A1")
+    file$excel_sheet <- sheet
+    file$excel_start_cell <- start_cell
+    file$excel_col_names <- isTRUE(input$excel_import_col_names %||% file$excel_col_names %||% TRUE)
+    if (isTRUE(import)) {
+      file$excel_pending <- FALSE
+    }
+    active_data_file(file)
+    TRUE
+  }
+
   observeEvent(input$file, {
     reset_on_dataset_load(TRUE)
     active_data_file(NULL)
@@ -153,9 +184,48 @@ register_data_input_observers <- function(input, active_data_file, reset_on_data
       return()
     }
 
-    reset_on_dataset_load(TRUE)
-    active_data_file(list(path = data_path, name = basename(data_path), restored = FALSE))
+    if (excel_data_file_extension(data_path)) {
+      active_data_file(excel_pending_file_value(data_path))
+      reset_on_dataset_load(FALSE)
+    } else {
+      reset_on_dataset_load(TRUE)
+      active_data_file(list(path = data_path, name = basename(data_path), restored = FALSE))
+    }
     mark_settings_dirty()
+  })
+
+  observeEvent(input$preview_excel_import, {
+    tryCatch(
+      {
+        update_pending_excel_options(import = FALSE)
+      },
+      error = function(e) {
+        showNotification(paste("Excel preview failed:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  })
+
+  observeEvent(input$apply_excel_import, {
+    tryCatch(
+      {
+        if (isTRUE(update_pending_excel_options(import = TRUE))) {
+          reset_on_dataset_load(TRUE)
+          mark_settings_dirty()
+          showNotification("Excel import options applied.", type = "message")
+        }
+      },
+      error = function(e) {
+        showNotification(paste("Excel import failed:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  })
+
+  observeEvent(input$cancel_excel_import, {
+    file <- active_data_file()
+    if (is.list(file) && isTRUE(file$excel_pending)) {
+      active_data_file(NULL)
+      showNotification("Excel import canceled.", type = "message")
+    }
   })
 
   invisible(TRUE)

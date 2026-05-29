@@ -209,6 +209,68 @@ read_excel_legacy <- function(path) {
   normalize_text_encoding(as.data.frame(readxl::read_excel(path), stringsAsFactors = FALSE, check.names = FALSE))
 }
 
+excel_data_file_extension <- function(name) {
+  tolower(tools::file_ext(as.character(name %||% ""))) %in% c("xlsx", "xls")
+}
+
+normalize_excel_start_cell <- function(value = "A1") {
+  value <- toupper(trimws(as.character(value %||% "A1")))
+  if (length(value) == 0 || !nzchar(value[[1]])) {
+    value <- "A1"
+  }
+  value <- value[[1]]
+  if (!grepl("^[A-Z]+[1-9][0-9]*$", value)) {
+    stop("Excel start cell must use A1 notation, for example A1 or B4.", call. = FALSE)
+  }
+  value
+}
+
+excel_sheet_names <- function(path, original_name = path) {
+  if (!requireNamespace("readxl", quietly = TRUE)) {
+    stop(
+      "Excel sheet selection requires the CRAN package 'readxl'. Install it with install.packages(\"readxl\").",
+      call. = FALSE
+    )
+  }
+  read_path <- copy_data_file_for_reading(path, original_name)
+  on.exit(unlink(read_path), add = TRUE)
+  readxl::excel_sheets(read_path)
+}
+
+read_excel_configured <- function(path, sheet = NULL, start_cell = "A1", col_names = TRUE, n_max = Inf) {
+  if (!requireNamespace("readxl", quietly = TRUE)) {
+    stop(
+      "Excel files with sheet/start-cell options require the CRAN package 'readxl'. Install it with install.packages(\"readxl\").",
+      call. = FALSE
+    )
+  }
+  if (!requireNamespace("cellranger", quietly = TRUE)) {
+    stop(
+      "Excel start-cell imports require the CRAN package 'cellranger'. Install it with install.packages(\"cellranger\").",
+      call. = FALSE
+    )
+  }
+  start_cell <- normalize_excel_start_cell(start_cell)
+  args <- list(
+    path = path,
+    range = cellranger::anchored(start_cell, dim = c(NA, NA)),
+    col_names = isTRUE(col_names)
+  )
+  if (!is.null(sheet) && nzchar(as.character(sheet %||% ""))) {
+    args$sheet <- as.character(sheet)
+  }
+  if (is.finite(n_max)) {
+    args$n_max <- as.integer(n_max)
+  }
+  normalize_text_encoding(as.data.frame(do.call(readxl::read_excel, args), stringsAsFactors = FALSE, check.names = FALSE))
+}
+
+read_excel_preview <- function(path, original_name, sheet = NULL, start_cell = "A1", col_names = TRUE, n_max = 20) {
+  read_path <- copy_data_file_for_reading(path, original_name)
+  on.exit(unlink(read_path), add = TRUE)
+  utils::head(read_excel_configured(read_path, sheet = sheet, start_cell = start_cell, col_names = col_names), n_max)
+}
+
 read_sas_robust <- function(path, ext = "sas7bdat") {
   if (!requireNamespace("haven", quietly = TRUE)) {
     stop(
@@ -234,7 +296,16 @@ read_stata_robust <- function(path) {
   normalize_text_encoding(haven::read_dta(path))
 }
 
-read_input_data <- function(path, original_name, csv_header = TRUE, dat_delimiter = "whitespace", dat_has_names = FALSE) {
+read_input_data <- function(
+  path,
+  original_name,
+  csv_header = TRUE,
+  dat_delimiter = "whitespace",
+  dat_has_names = FALSE,
+  excel_sheet = NULL,
+  excel_start_cell = "A1",
+  excel_col_names = TRUE
+) {
   ext <- tolower(tools::file_ext(original_name))
   read_path <- copy_data_file_for_reading(path, original_name)
   on.exit(unlink(read_path), add = TRUE)
@@ -247,7 +318,7 @@ read_input_data <- function(path, original_name, csv_header = TRUE, dat_delimite
     return(read_csv_robust(read_path, csv_header = csv_header))
   }
 
-  if (identical(ext, "xlsx")) {
+  if (identical(ext, "xlsx") && (is.null(excel_sheet) || (!nzchar(excel_sheet))) && identical(normalize_excel_start_cell(excel_start_cell), "A1") && isTRUE(excel_col_names)) {
     if (!requireNamespace("openxlsx", quietly = TRUE)) {
       stop(
         "Excel files require the CRAN package 'openxlsx'. Install it with install.packages(\"openxlsx\").",
@@ -257,8 +328,8 @@ read_input_data <- function(path, original_name, csv_header = TRUE, dat_delimite
     return(normalize_text_encoding(openxlsx::read.xlsx(read_path, detectDates = TRUE)))
   }
 
-  if (identical(ext, "xls")) {
-    return(read_excel_legacy(read_path))
+  if (ext %in% c("xlsx", "xls")) {
+    return(read_excel_configured(read_path, sheet = excel_sheet, start_cell = excel_start_cell, col_names = excel_col_names))
   }
 
   if (ext %in% c("sas7bdat", "xpt")) {
@@ -294,7 +365,8 @@ valid_data_file_path <- function(path) {
 valid_data_file_value <- function(file) {
   is.list(file) &&
     valid_data_file_path(file$path) &&
-    supported_data_file_extension(file$name %||% file$path)
+    supported_data_file_extension(file$name %||% file$path) &&
+    !isTRUE(file$excel_pending)
 }
 
 current_data_file_value <- function(uploaded, active_file = NULL) {
@@ -320,7 +392,10 @@ read_current_data_file <- function(file, input) {
     file$name,
     csv_header = input$header,
     dat_delimiter = input$dat_delimiter %||% "whitespace",
-    dat_has_names = isTRUE(input$dat_has_names)
+    dat_has_names = isTRUE(input$dat_has_names),
+    excel_sheet = file$excel_sheet %||% NULL,
+    excel_start_cell = file$excel_start_cell %||% "A1",
+    excel_col_names = isTRUE(file$excel_col_names %||% TRUE)
   )
 }
 

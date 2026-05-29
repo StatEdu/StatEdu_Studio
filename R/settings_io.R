@@ -135,7 +135,13 @@ settings_embedded_data_file <- function(settings) {
   }
   restored_path <- tempfile("easyflow_data_", fileext = if (nzchar(extension)) paste0(".", extension) else "")
   writeBin(jsonlite::base64_dec(settings_scalar(embedded)), restored_path)
-  list(path = restored_path, name = file_name, restored = TRUE)
+  file <- list(path = restored_path, name = file_name, restored = TRUE)
+  if (excel_data_file_extension(file_name) && is.list(settings$data_file_options)) {
+    file$excel_sheet <- settings_scalar(settings$data_file_options$excel_sheet %||% "")
+    file$excel_start_cell <- settings_scalar(settings$data_file_options$excel_start_cell %||% "A1")
+    file$excel_col_names <- isTRUE(settings$data_file_options$excel_col_names %||% TRUE)
+  }
+  file
 }
 
 settings_external_data_file <- function(settings, settings_path = NULL) {
@@ -143,7 +149,13 @@ settings_external_data_file <- function(settings, settings_path = NULL) {
   if (!nzchar(path)) {
     return(NULL)
   }
-  list(path = path, name = basename(path), restored = TRUE)
+  file <- list(path = path, name = basename(path), restored = TRUE)
+  if (excel_data_file_extension(file$name) && is.list(settings$data_file_options)) {
+    file$excel_sheet <- settings_scalar(settings$data_file_options$excel_sheet %||% "")
+    file$excel_start_cell <- settings_scalar(settings$data_file_options$excel_start_cell %||% "A1")
+    file$excel_col_names <- isTRUE(settings$data_file_options$excel_col_names %||% TRUE)
+  }
+  file
 }
 
 settings_external_data_switch <- function(settings, settings_path = NULL, current_data_file = NULL) {
@@ -158,7 +170,13 @@ settings_external_data_switch <- function(settings, settings_path = NULL, curren
     return(NULL)
   }
 
-  list(path = settings_data_path, name = basename(settings_data_path), restored = TRUE)
+  file <- list(path = settings_data_path, name = basename(settings_data_path), restored = TRUE)
+  if (excel_data_file_extension(file$name) && is.list(settings$data_file_options)) {
+    file$excel_sheet <- settings_scalar(settings$data_file_options$excel_sheet %||% "")
+    file$excel_start_cell <- settings_scalar(settings$data_file_options$excel_start_cell %||% "A1")
+    file$excel_col_names <- isTRUE(settings$data_file_options$excel_col_names %||% TRUE)
+  }
+  file
 }
 
 settings_restored_data_file <- function(settings, settings_path = NULL) {
@@ -377,6 +395,7 @@ build_settings_object <- function(
   active_step,
   data_view,
   data_file,
+  data_file_options = NULL,
   variable_info,
   measurement_overrides,
   var_label_overrides,
@@ -402,6 +421,7 @@ build_settings_object <- function(
     active_step = active_step,
     data_view = data_view,
     data_file = data_file,
+    data_file_options = data_file_options %||% list(),
     data_variables = I(variable_names),
     data_variable_info = I(if (is.null(variable_info)) list() else variable_info),
     measurement_overrides = as.list(measurement_overrides),
@@ -432,6 +452,7 @@ prepare_current_settings_object <- function(
   active_step,
   data_view,
   data_file,
+  data_file_options = NULL,
   variable_info = NULL,
   measurement_overrides = character(0),
   direct_measurements = character(0),
@@ -470,6 +491,7 @@ prepare_current_settings_object <- function(
       active_step = active_step,
       data_view = data_view,
       data_file = data_file,
+      data_file_options = data_file_options,
       variable_info = payload$variable_info,
       measurement_overrides = payload$measurement_overrides,
       var_label_overrides = payload$var_label_overrides,
@@ -540,6 +562,15 @@ create_current_settings_fn <- function(
 ) {
   function() {
     file <- current_data_file_fn()
+    data_file_options <- if (!is.null(file) && excel_data_file_extension(file$name %||% file$path)) {
+      list(
+        excel_sheet = file$excel_sheet %||% "",
+        excel_start_cell = file$excel_start_cell %||% "A1",
+        excel_col_names = isTRUE(file$excel_col_names %||% TRUE)
+      )
+    } else {
+      NULL
+    }
     variable_info <- current_settings_variable_info(
       step3_info = step3_variable_info_fn(),
       restored_info = restored_variable_info_fn(),
@@ -555,6 +586,7 @@ create_current_settings_fn <- function(
       active_step = active_step_fn(),
       data_view = data_view_fn(),
       data_file = if (is.null(file)) restored_data_file_fn() else file$name,
+      data_file_options = data_file_options,
       variable_info = variable_info,
       measurement_overrides = measurement_overrides(),
       direct_measurements = character(0),

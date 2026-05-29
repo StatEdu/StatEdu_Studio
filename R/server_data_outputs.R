@@ -3,6 +3,7 @@
 register_data_workspace_outputs <- function(
   output,
   current_data_file_fn,
+  active_data_file_fn = NULL,
   dataset_fn,
   restored_variable_info_fn,
   active_step_fn,
@@ -22,10 +23,17 @@ register_data_workspace_outputs <- function(
 ) {
   output$data_steps <- renderUI({
     file <- current_data_file_fn()
+    pending_file <- if (is.function(active_data_file_fn)) active_data_file_fn() else NULL
+    excel_sheets <- character(0)
+    if (is.list(pending_file) && isTRUE(pending_file$excel_pending)) {
+      excel_sheets <- tryCatch(excel_sheet_names(pending_file$path, pending_file$name), error = function(e) character(0))
+    }
     calculated <- if (is.function(calculated_variables_fn)) calculated_variables_fn() else NULL
     renamed <- if (is.function(renamed_variables_fn)) renamed_variables_fn() else character(0)
     state <- data_steps_state(
       file = file,
+      pending_file = pending_file,
+      excel_sheets = excel_sheets,
       open_data = if (!is.null(file)) dataset_fn() else NULL,
       restored_info = restored_variable_info_fn(),
       step = active_step_fn(),
@@ -40,6 +48,26 @@ register_data_workspace_outputs <- function(
       has_calculated_variables = (is.data.frame(calculated) && ncol(calculated) > 0) || length(renamed) > 0
     )
     do.call(data_steps_panel, state)
+  })
+
+  output$excel_import_preview <- DT::renderDT({
+    pending_file <- if (is.function(active_data_file_fn)) active_data_file_fn() else NULL
+    if (!is.list(pending_file) || !isTRUE(pending_file$excel_pending)) {
+      return(DT::datatable(data.frame(Message = "No Excel file is pending import."), rownames = FALSE, options = list(dom = "t")))
+    }
+    tryCatch({
+      preview <- read_excel_preview(
+        pending_file$path,
+        pending_file$name,
+        sheet = pending_file$excel_sheet %||% NULL,
+        start_cell = pending_file$excel_start_cell %||% "A1",
+        col_names = isTRUE(pending_file$excel_col_names %||% TRUE),
+        n_max = 20
+      )
+      DT::datatable(preview, rownames = FALSE, options = list(dom = "tip", pageLength = 10, scrollX = TRUE))
+    }, error = function(error) {
+      DT::datatable(data.frame(Message = conditionMessage(error), check.names = FALSE), rownames = FALSE, options = list(dom = "t"))
+    })
   })
 
   output$data_loaded_message <- renderText({

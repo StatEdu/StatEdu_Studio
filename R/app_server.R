@@ -484,6 +484,7 @@ create_app_server <- function(app_version) {
   register_data_workspace_outputs(
     output,
     current_data_file_fn = current_data_file,
+    active_data_file_fn = active_data_file,
     dataset_fn = dataset,
     restored_variable_info_fn = restored_variable_info,
     active_step_fn = active_step,

@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.9.26 - 2026-05-29
+
+### Added
+
+- Added a two-step Excel import flow with sheet selection, A1-style start cell selection, header-row control, and a preview before loading the dataset.
+- Preserved selected Excel import options in saved settings for reopened Excel data files.
+
+
 ## v0.9.25 - 2026-05-29
 
 ### Fixed

@@ -9,6 +9,7 @@ required_packages <- c(
   "haven",
   "readr",
   "readxl",
+  "cellranger",
   "htmltools",
   "markdown",
   "openxlsx",

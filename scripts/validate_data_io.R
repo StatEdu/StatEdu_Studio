@@ -50,6 +50,37 @@ stopifnot(nrow(xlsx_data) == 2)
 stopifnot(identical(names(xlsx_data), names(korean_data)))
 stopifnot(identical(as.character(xlsx_data[["\uc131\ubcc4"]]), korean_data[["\uc131\ubcc4"]]))
 
+message("Checking XLSX sheet and start-cell reads...")
+multi_xlsx_path <- tempfile(pattern = "easyflow multi sheet xlsx ", fileext = ".xlsx")
+workbook <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(workbook, "Notes")
+openxlsx::writeData(workbook, "Notes", data.frame(note = "not data"))
+openxlsx::addWorksheet(workbook, "Data")
+openxlsx::writeData(workbook, "Data", "title row", startCol = 1, startRow = 1, colNames = FALSE)
+openxlsx::writeData(workbook, "Data", korean_data, startCol = 2, startRow = 4)
+openxlsx::saveWorkbook(workbook, multi_xlsx_path, overwrite = TRUE)
+stopifnot(identical(excel_sheet_names(multi_xlsx_path, "source.xlsx"), c("Notes", "Data")))
+configured_xlsx_data <- read_input_data(
+  multi_xlsx_path,
+  "source.xlsx",
+  excel_sheet = "Data",
+  excel_start_cell = "B4",
+  excel_col_names = TRUE
+)
+stopifnot(nrow(configured_xlsx_data) == 2)
+stopifnot(identical(names(configured_xlsx_data), names(korean_data)))
+preview_xlsx_data <- read_excel_preview(
+  multi_xlsx_path,
+  "source.xlsx",
+  sheet = "Data",
+  start_cell = "B4",
+  col_names = TRUE,
+  n_max = 1
+)
+stopifnot(nrow(preview_xlsx_data) == 1)
+pending_excel_file <- list(path = multi_xlsx_path, name = "source.xlsx", excel_pending = TRUE)
+stopifnot(is.null(current_data_file_value(NULL, pending_excel_file)))
+
 message("Checking legacy XLS reads...")
 xls_example <- readxl::readxl_example("datasets.xls")
 if (nzchar(xls_example) && file.exists(xls_example)) {
@@ -107,6 +138,6 @@ copy_path <- copy_data_file_for_reading(csv_path, "source.csv")
 stopifnot(file.exists(copy_path))
 stopifnot(grepl("^easyflow_data_", basename(copy_path)))
 unlink(copy_path)
-unlink(c(csv_path, cp949_path, xlsx_path, dta_path, xpt_path, sas_path, dat_path))
+unlink(c(csv_path, cp949_path, xlsx_path, multi_xlsx_path, dta_path, xpt_path, sas_path, dat_path))
 
 message("All data IO validations passed.")
