@@ -59,6 +59,25 @@ expect_true(
     grepl("vertical-align: super;", style_text, fixed = TRUE),
   "Expected inline footnote markers to use zero-width superscript styling so numeric values remain aligned"
 )
+manual_marker_table <- data.frame(
+  Variable = "x",
+  p = ".229 1",
+  `Effect size` = "-.099 2",
+  check.names = FALSE
+)
+manual_marker_html <- as.character(tags_to_html(coefficient_html_table(manual_marker_table)))
+expect_true(
+  grepl("\\.229\\s*<sup class=\"coefficient-footnote-marker\">1</sup>", manual_marker_html, perl = TRUE),
+  "Expected spaced p-value marker to be split into a non-wrapping superscript"
+)
+expect_true(
+  grepl("-\\.099\\s*<sup class=\"coefficient-footnote-marker\">2</sup>", manual_marker_html, perl = TRUE),
+  "Expected spaced effect-size marker to be split into a non-wrapping superscript"
+)
+expect_true(
+  grepl("white-space:nowrap;overflow-wrap:normal;word-break:normal;", manual_marker_html, fixed = TRUE),
+  "Expected p/effect-size cells to prevent value-marker wrapping"
+)
 
 message("Checking t-test / ANOVA post-hoc table...")
 posthoc_data <- data.frame(

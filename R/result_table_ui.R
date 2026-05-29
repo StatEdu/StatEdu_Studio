@@ -133,6 +133,38 @@ result_cell_note_marker <- function(table, row_index, column) {
   if (nrow(matched) == 0) "" else as.character(matched$marker[[1]])
 }
 
+result_note_marker_column <- function(column) {
+  key <- result_column_key(column)
+  key %in% c("p", "pfortrend", "effectsize") ||
+    grepl("effect|hedges|cohen|eta|omega|epsilon|cliff|bootp", key)
+}
+
+result_split_inline_marker <- function(value, marker = "", column = "") {
+  value <- as.character(value %||% "")
+  marker <- as.character(marker %||% "")
+  if (!nzchar(value)) {
+    return(c(value = value, marker = ""))
+  }
+  if (nzchar(marker)) {
+    pattern <- paste0("\\s*", marker, "$")
+    return(c(value = trimws(sub(pattern, "", value)), marker = marker))
+  }
+  if (!result_note_marker_column(column)) {
+    return(c(value = value, marker = ""))
+  }
+  spaced <- regexec("^(.+?)\\s+([1-9][0-9]?)$", value, perl = TRUE)
+  spaced_match <- regmatches(value, spaced)[[1]]
+  if (length(spaced_match) == 3L) {
+    return(c(value = trimws(spaced_match[[2]]), marker = spaced_match[[3]]))
+  }
+  compact <- regexec("^((?:<\\.001)|(?:-?\\.?[0-9]+(?:\\.[0-9]+)?))([1-9][0-9]?)$", value, perl = TRUE)
+  compact_match <- regmatches(value, compact)[[1]]
+  if (length(compact_match) == 3L && nchar(compact_match[[2]]) >= 3L) {
+    return(c(value = compact_match[[2]], marker = compact_match[[3]]))
+  }
+  c(value = value, marker = "")
+}
+
 result_cell_bold <- function(table, row_index, column) {
   bold_cells <- attr(table, "bold_cells", exact = TRUE)
   if (!is.data.frame(bold_cells) || nrow(bold_cells) == 0) {
@@ -181,16 +213,16 @@ result_cell_covered_by_span <- function(table, row_index, column, columns) {
   }, logical(1)))
 }
 
-result_cell_content <- function(value, marker = "") {
-  value <- as.character(value %||% "")
-  marker <- as.character(marker %||% "")
+result_cell_content <- function(value, marker = "", column = "") {
+  split <- result_split_inline_marker(value, marker, column)
+  value <- split[["value"]]
+  marker <- split[["marker"]]
   if (!nzchar(value) || !nzchar(marker)) {
     return(value)
   }
-  base <- sub(paste0(marker, "$"), "", value)
   tags$span(
     class = "coefficient-footnote-value",
-    base,
+    value,
     tags$sup(class = "coefficient-footnote-marker", marker)
   )
 }
@@ -240,6 +272,9 @@ coefficient_display_cell_style <- function(table, row_index, column, display_ind
   }
   if (is.finite(source_index) && source_index == 1 && display_index != 1) {
     style <- paste0(style, "text-align:left;")
+  }
+  if (result_note_marker_column(column)) {
+    style <- paste0(style, "white-space:nowrap;overflow-wrap:normal;word-break:normal;")
   }
   style
 }
@@ -357,7 +392,7 @@ coefficient_html_table <- function(
             content <- if (isTRUE(marker_column)) {
               if (nzchar(marker)) tags$sup(class = "coefficient-note-cell-marker", marker) else ""
             } else {
-              result_cell_content(value, marker)
+              result_cell_content(value, marker, column)
             }
             bold_style <- if (isTRUE(result_cell_bold(table, row_index, column)) && nzchar(as.character(table[[column]][[row_index]] %||% ""))) "font-weight:700;" else ""
             colspan <- if (!is.null(span)) {

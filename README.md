@@ -8,9 +8,9 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.15`
+Current development version: `0.9.16`
 
-Version 0.9.15 fixes t-test / ANOVA inline footnote marker alignment so effect-size values remain numerically aligned while retaining superscript note markers.
+Version 0.9.16 fixes p-value and effect-size footnote wrapping in t-test / ANOVA and standalone nonparametric result tables.
 
 ## Current Scope
 

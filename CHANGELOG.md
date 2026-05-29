@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.9.16 - 2026-05-29
+
+### Fixed
+
+- Fixed p-value and effect-size footnote wrapping in t-test / ANOVA and standalone nonparametric result tables.
+
 ## v0.9.15 - 2026-05-29
 
 ### Fixed
