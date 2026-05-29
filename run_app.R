@@ -8,6 +8,7 @@ required_packages <- c(
   "jsonlite",
   "haven",
   "readr",
+  "readxl",
   "htmltools",
   "markdown",
   "openxlsx",

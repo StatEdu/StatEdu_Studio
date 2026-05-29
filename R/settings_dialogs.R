@@ -47,7 +47,7 @@ open_settings_file <- function() {
 open_data_file <- function() {
   path <- open_file_dialog(
     "Open EasyFlow Statistics Data",
-    "{{Data files} {.sav .csv .dat}} {{SPSS SAV} {.sav}} {{CSV} {.csv}} {{DAT} {.dat}} {{All files} *}"
+    "{{Data files} {.sav .sas7bdat .xpt .dta .xlsx .xls .csv .dat}} {{SPSS SAV} {.sav}} {{SAS} {.sas7bdat .xpt}} {{Stata} {.dta}} {{Excel} {.xlsx .xls}} {{CSV} {.csv}} {{DAT} {.dat}} {{All files} *}"
   )
   if (is.null(path) || !supported_data_file_extension(path)) {
     return(NULL)

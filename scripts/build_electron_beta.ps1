@@ -127,7 +127,7 @@ if (-not $SkipRuntimeCopy) {
   $dependencyScript = @"
 required <- c(
   "shiny", "DT", "lmtest", "sandwich", "nortest", "boot", "jsonlite", "haven",
-  "readr", "htmltools", "markdown", "openxlsx", "officer", "flextable", "xml2",
+  "readr", "readxl", "htmltools", "markdown", "openxlsx", "officer", "flextable", "xml2",
   "rvest", "callr", "glmnet", "agricolae", "psych", "polycor"
 )
 db <- installed.packages()

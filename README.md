@@ -8,14 +8,14 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.20`
+Current development version: `0.9.21`
 
-Version 0.9.20 reduces the initial Shiny page payload by lazily rendering non-Data tabs only when opened.
+Version 0.9.21 adds legacy Excel, SAS, and Stata import support while keeping the existing temporary-copy read path for cloud-synced files.
 
 ## Current Scope
 
 - Local Windows launcher through `EasyFlow_Statistics.bat`
-- Local data import for SAV, CSV, XLSX, and DAT files
+- Local data import for SPSS SAV, SAS, Stata, Excel XLS/XLSX, CSV, and DAT files
 - Cloud-synced file handling by copying data files to a temporary local read path before import
 - Data workflow with file loading, variable selection, measurement-level review, variable labels, and categorical value labels
 - Data Editor tools for coding error checks, Likert conversion, missing-value handling, reverse coding, calculated variables, formula-based variable transformation, recoding, and renaming
@@ -51,7 +51,7 @@ Some installed package binaries may have been built under a newer patch-level R 
 | Area | Packages | Role in **EasyFlow Statistics** |
 |---|---|---|
 | App UI | `shiny`, `DT`, `htmltools`, `markdown` | Shiny app shell, interactive tables, HTML helpers, and About documentation rendering |
-| Data import | `haven`, `readr`, `openxlsx` | SAV, CSV, DAT, and XLSX import |
+| Data import | `haven`, `readr`, `readxl`, `openxlsx` | SAV, SAS, Stata, CSV, DAT, XLS, and XLSX import |
 | Settings and data helpers | `jsonlite`, `xml2`, `rvest`, `callr` | JSON settings, HTML/XML processing, and background R process support |
 | Regression diagnostics | `lmtest`, `sandwich`, `nortest`, `boot` | Breusch-Pagan test, HC3 robust standard errors, Lilliefors normality test, and bootstrap inference |
 | Linear / generalized models | `MASS`, `nnet` | Ordered logistic and multinomial model support |
@@ -82,7 +82,7 @@ Run validation scripts from the repository root with Rscript, for example:
 
 If you use **EasyFlow Statistics** in your research, please cite:
 
-LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.10) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
+LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.21) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
 
 ## Development Model
 

@@ -2,7 +2,7 @@
 
 empty_variable_table <- function() {
   DT::datatable(
-    data.frame(Message = "Read a SAV, CSV, or DAT file to show variable information."),
+    data.frame(Message = "Read a SAV, SAS, Stata, Excel, CSV, or DAT file to show variable information."),
     rownames = FALSE,
     options = list(dom = "t")
   )
@@ -10,7 +10,7 @@ empty_variable_table <- function() {
 
 empty_category_label_table <- function() {
   DT::datatable(
-    data.frame(Message = "Read a SAV, CSV, or DAT file first.", check.names = FALSE),
+    data.frame(Message = "Read a SAV, SAS, Stata, Excel, CSV, or DAT file first.", check.names = FALSE),
     rownames = FALSE,
     options = list(dom = "t")
   )

@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.9.21 - 2026-05-29
+
+### Added
+
+- Added data import support for legacy Excel `.xls`, SAS `.sas7bdat` / `.xpt`, and Stata `.dta` files.
+- Updated the data-file picker, Data tab copy, and data IO validation coverage for the expanded import formats.
+
+
 ## v0.9.20 - 2026-05-29
 
 ### Changed

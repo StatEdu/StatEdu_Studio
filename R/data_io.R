@@ -199,6 +199,41 @@ read_csv_robust <- function(path, csv_header = TRUE) {
   )
 }
 
+read_excel_legacy <- function(path) {
+  if (!requireNamespace("readxl", quietly = TRUE)) {
+    stop(
+      "Legacy Excel XLS files require the CRAN package 'readxl'. Install it with install.packages(\"readxl\").",
+      call. = FALSE
+    )
+  }
+  normalize_text_encoding(as.data.frame(readxl::read_excel(path), stringsAsFactors = FALSE, check.names = FALSE))
+}
+
+read_sas_robust <- function(path, ext = "sas7bdat") {
+  if (!requireNamespace("haven", quietly = TRUE)) {
+    stop(
+      "SAS files require the CRAN package 'haven'. Install it with install.packages(\"haven\").",
+      call. = FALSE
+    )
+  }
+  result <- if (identical(ext, "xpt")) {
+    haven::read_xpt(path)
+  } else {
+    haven::read_sas(path)
+  }
+  normalize_text_encoding(result)
+}
+
+read_stata_robust <- function(path) {
+  if (!requireNamespace("haven", quietly = TRUE)) {
+    stop(
+      "Stata DTA files require the CRAN package 'haven'. Install it with install.packages(\"haven\").",
+      call. = FALSE
+    )
+  }
+  normalize_text_encoding(haven::read_dta(path))
+}
+
 read_input_data <- function(path, original_name, csv_header = TRUE, dat_delimiter = "whitespace", dat_has_names = FALSE) {
   ext <- tolower(tools::file_ext(original_name))
   read_path <- copy_data_file_for_reading(path, original_name)
@@ -222,6 +257,18 @@ read_input_data <- function(path, original_name, csv_header = TRUE, dat_delimite
     return(normalize_text_encoding(openxlsx::read.xlsx(read_path, detectDates = TRUE)))
   }
 
+  if (identical(ext, "xls")) {
+    return(read_excel_legacy(read_path))
+  }
+
+  if (ext %in% c("sas7bdat", "xpt")) {
+    return(read_sas_robust(read_path, ext = ext))
+  }
+
+  if (identical(ext, "dta")) {
+    return(read_stata_robust(read_path))
+  }
+
   if (identical(ext, "dat")) {
     if (identical(dat_delimiter, "comma")) {
       return(readr::read_delim(read_path, delim = ",", col_names = dat_has_names, show_col_types = FALSE, progress = FALSE))
@@ -236,7 +283,7 @@ read_input_data <- function(path, original_name, csv_header = TRUE, dat_delimite
 }
 
 supported_data_file_extension <- function(name) {
-  tolower(tools::file_ext(as.character(name %||% ""))) %in% c("sav", "csv", "dat", "xlsx")
+  tolower(tools::file_ext(as.character(name %||% ""))) %in% c("sav", "sas7bdat", "xpt", "dta", "csv", "dat", "xlsx", "xls")
 }
 
 valid_data_file_path <- function(path) {
@@ -266,7 +313,7 @@ current_data_file_value <- function(uploaded, active_file = NULL) {
 
 read_current_data_file <- function(file, input) {
   if (!valid_data_file_value(file)) {
-    stop("No supported data file is available. Use a SAV, CSV, or DAT file.", call. = FALSE)
+    stop("No supported data file is available. Use a SAV, SAS, Stata, Excel, CSV, or DAT file.", call. = FALSE)
   }
   read_input_data(
     file$path,
