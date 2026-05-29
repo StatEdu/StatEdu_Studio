@@ -24,16 +24,15 @@ required_packages <- c(
   "nnet"
 )
 
-installed_package_names <- rownames(utils::installed.packages())
-missing_packages <- setdiff(required_packages, installed_package_names)
+no_package_install <- identical(tolower(Sys.getenv("EASYFLOW_NO_PACKAGE_INSTALL", "false")), "true")
+missing_packages <- character(0)
+
+if (!isTRUE(no_package_install)) {
+  installed_package_names <- rownames(utils::installed.packages())
+  missing_packages <- setdiff(required_packages, installed_package_names)
+}
 
 if (length(missing_packages) > 0) {
-  if (identical(tolower(Sys.getenv("EASYFLOW_NO_PACKAGE_INSTALL", "false")), "true")) {
-    stop(
-      sprintf("Required R packages are missing from the bundled runtime: %s", paste(missing_packages, collapse = ", ")),
-      call. = FALSE
-    )
-  }
   install.packages(missing_packages, repos = "https://cloud.r-project.org")
 }
 

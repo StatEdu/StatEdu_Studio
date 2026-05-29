@@ -8,9 +8,9 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.18`
+Current development version: `0.9.19`
 
-Version 0.9.18 adds the standard analysis save controls to Logistic Regression, including HTML, PDF, Excel, and Result collection export.
+Version 0.9.19 reduces installed desktop startup time by loading only the packages needed for the initial Shiny UI and deferring analysis/export package namespaces until use.
 
 ## Current Scope
 

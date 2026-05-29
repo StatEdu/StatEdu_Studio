@@ -97,7 +97,7 @@ function waitForShiny(port, timeoutMs = 45000) {
         reject(new Error("EasyFlow Statistics did not start in time."));
         return;
       }
-      setTimeout(probe, 700);
+      setTimeout(probe, 150);
     };
     probe();
   });
@@ -195,8 +195,10 @@ async function createWindow() {
 
   try {
     const url = await startShiny();
+    const loadStartedAt = Date.now();
+    logStartup("BrowserWindow loadURL begin");
     await mainWindow.loadURL(url);
-    logStartup("BrowserWindow loaded Shiny URL");
+    logStartup(`BrowserWindow loaded Shiny URL in ${Date.now() - loadStartedAt}ms`);
   } catch (error) {
     logStartup(`startup failed: ${error.message}`);
     dialog.showErrorBox("EasyFlow Statistics Beta", error.message);

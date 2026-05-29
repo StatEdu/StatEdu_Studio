@@ -27,6 +27,8 @@ required_packages <- c(
   "nnet"
 )
 
+startup_packages <- c("shiny", "DT")
+
 ensure_required_packages <- function(packages = required_packages) {
   missing_packages <- packages[!vapply(packages, requireNamespace, logical(1), quietly = TRUE)]
   if (length(missing_packages) > 0) {
@@ -39,9 +41,15 @@ ensure_required_packages <- function(packages = required_packages) {
   invisible(TRUE)
 }
 
-load_app_packages <- function(packages = required_packages) {
-  ensure_required_packages(packages)
-  for (package in packages) {
+load_app_packages <- function(
+  packages = required_packages,
+  attach_packages = startup_packages,
+  check = !identical(tolower(Sys.getenv("EASYFLOW_NO_PACKAGE_INSTALL", "false")), "true")
+) {
+  if (isTRUE(check)) {
+    ensure_required_packages(packages)
+  }
+  for (package in attach_packages) {
     suppressPackageStartupMessages(library(package, character.only = TRUE))
   }
   invisible(TRUE)

@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.9.19 - 2026-05-29
+
+### Changed
+
+- Reduced installed desktop startup time by attaching only Shiny and DT during initial app boot.
+- Skipped redundant bundled-runtime package scans during Electron startup; package availability remains covered by build and release smoke checks.
+- Shortened Electron's Shiny readiness polling interval and added separate BrowserWindow load timing diagnostics.
+
 ## v0.9.18 - 2026-05-29
 
 ### Added
