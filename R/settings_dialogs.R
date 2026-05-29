@@ -13,7 +13,59 @@ topmost_tk_parent <- function() {
   parent
 }
 
+windows_open_file_dialog <- function(title, filter) {
+  if (!identical(.Platform$OS.type, "windows")) {
+    return(NULL)
+  }
+  powershell <- Sys.which("powershell.exe")
+  if (!nzchar(powershell)) {
+    powershell <- Sys.which("powershell")
+  }
+  if (!nzchar(powershell)) {
+    return(NULL)
+  }
+
+  script <- paste(
+    "Add-Type -AssemblyName System.Windows.Forms;",
+    "Add-Type -AssemblyName System.Drawing;",
+    "$form = New-Object System.Windows.Forms.Form;",
+    "$form.TopMost = $true;",
+    "$form.StartPosition = 'CenterScreen';",
+    "$form.Width = 1; $form.Height = 1;",
+    "$dialog = New-Object System.Windows.Forms.OpenFileDialog;",
+    sprintf("$dialog.Title = %s;", shQuote(title, type = "cmd")),
+    sprintf("$dialog.Filter = %s;", shQuote(filter, type = "cmd")),
+    "$dialog.RestoreDirectory = $true;",
+    "$result = $dialog.ShowDialog($form);",
+    "if ($result -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Write-Output $dialog.FileName }",
+    "$form.Dispose();",
+    sep = " "
+  )
+  output <- tryCatch(
+    system2(
+      powershell,
+      args = c("-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-Command", script),
+      stdout = TRUE,
+      stderr = FALSE
+    ),
+    error = function(e) character(0)
+  )
+  output <- output[nzchar(output)]
+  if (length(output) == 0) {
+    return(NULL)
+  }
+  output[[1]]
+}
+
 open_file_dialog <- function(title, filetypes) {
+  windows_filter <- attr(filetypes, "windows_filter", exact = TRUE)
+  if (!is.null(windows_filter)) {
+    windows_path <- windows_open_file_dialog(title, windows_filter)
+    if (!is.null(windows_path) && nzchar(windows_path) && !dir.exists(windows_path)) {
+      return(windows_path)
+    }
+  }
+
   path <- tryCatch(
     {
       if (requireNamespace("tcltk", quietly = TRUE)) {
@@ -45,9 +97,21 @@ open_settings_file <- function() {
 }
 
 open_data_file <- function() {
+  filetypes <- "{{Data files} {.sav .sas7bdat .xpt .dta .xlsx .xls .csv .dat}} {{SPSS SAV} {.sav}} {{SAS} {.sas7bdat .xpt}} {{Stata} {.dta}} {{Excel} {.xlsx .xls}} {{CSV} {.csv}} {{DAT} {.dat}} {{All files} *}"
+  attr(filetypes, "windows_filter") <- paste(
+    "Data files (*.sav;*.sas7bdat;*.xpt;*.dta;*.xlsx;*.xls;*.csv;*.dat)|*.sav;*.sas7bdat;*.xpt;*.dta;*.xlsx;*.xls;*.csv;*.dat",
+    "SPSS SAV (*.sav)|*.sav",
+    "SAS (*.sas7bdat;*.xpt)|*.sas7bdat;*.xpt",
+    "Stata (*.dta)|*.dta",
+    "Excel (*.xlsx;*.xls)|*.xlsx;*.xls",
+    "CSV (*.csv)|*.csv",
+    "DAT (*.dat)|*.dat",
+    "All files (*.*)|*.*",
+    sep = "|"
+  )
   path <- open_file_dialog(
     "Open EasyFlow Statistics Data",
-    "{{Data files} {.sav .sas7bdat .xpt .dta .xlsx .xls .csv .dat}} {{SPSS SAV} {.sav}} {{SAS} {.sas7bdat .xpt}} {{Stata} {.dta}} {{Excel} {.xlsx .xls}} {{CSV} {.csv}} {{DAT} {.dat}} {{All files} *}"
+    filetypes
   )
   if (is.null(path) || !supported_data_file_extension(path)) {
     return(NULL)

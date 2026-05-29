@@ -8,9 +8,9 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.21`
+Current development version: `0.9.22`
 
-Version 0.9.21 adds legacy Excel, SAS, and Stata import support while keeping the existing temporary-copy read path for cloud-synced files.
+Version 0.9.22 uses a Windows-native data file picker in the desktop build so Excel and other supported data files open reliably from Electron.
 
 ## Current Scope
 
@@ -82,7 +82,7 @@ Run validation scripts from the repository root with Rscript, for example:
 
 If you use **EasyFlow Statistics** in your research, please cite:
 
-LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.21) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
+LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.22) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
 
 ## Development Model
 

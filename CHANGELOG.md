@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.9.22 - 2026-05-29
+
+### Fixed
+
+- Switched the desktop data-file picker to a Windows-native dialog before falling back to Tcl/Tk, reducing cases where the file dialog opens behind Electron or does not appear.
+- Kept Excel, SAS, Stata, CSV, DAT, and SPSS filters visible in the data-file picker.
+
+
 ## v0.9.21 - 2026-05-29
 
 ### Added
