@@ -195,6 +195,7 @@ about_tab_panel <- function(version) {
     lazy_tab_panel("User Guide", "about_user_guide", "lazy_about_user_guide"),
     lazy_tab_panel("Analysis Methods", "about_analysis_methods", "lazy_about_analysis_methods"),
     lazy_tab_panel("Method Notes", "about_method_notes", "lazy_about_method_notes"),
+    lazy_tab_panel("Version History", "about_version_history", "lazy_about_version_history"),
     lazy_tab_panel("Source & License", "about_source_license", "lazy_about_source_license"),
     lazy_tab_panel("Open Source Licenses", "about_oss_licenses", "lazy_about_oss_licenses"),
     lazy_tab_panel("About", "about", "lazy_about_info")

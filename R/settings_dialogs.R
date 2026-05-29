@@ -115,7 +115,7 @@ save_settings_file <- function() {
         as.character(tcltk::tkgetSaveFile(
           parent = parent,
           title = "Save EasyFlow Statistics Settings",
-          initialfile = "EasyFlow_Statistics_settings.json",
+          initialfile = "EFS_settings.json",
           filetypes = "{{JSON settings} {.json}} {{All files} *}"
         ))
       } else {
@@ -123,7 +123,7 @@ save_settings_file <- function() {
         if (is.na(folder) || !nzchar(folder)) {
           character(0)
         } else {
-          file.path(folder, "EasyFlow_Statistics_settings.json")
+          file.path(folder, "EFS_settings.json")
         }
       }
     },

@@ -240,7 +240,7 @@ plot_data_uri <- function(plot_function, result, width = 420, height = 420, res 
 }
 
 choose_excel_save_path <- function() {
-  default_name <- sprintf("EasyFlow_Statistics_results_%s.xlsx", format(Sys.time(), "%Y%m%d_%H%M%S"))
+  default_name <- sprintf("EFS_results_%s.xlsx", format(Sys.time(), "%Y%m%d_%H%M%S"))
   title <- "Save EasyFlow Statistics Results"
   if (.Platform$OS.type == "windows") {
     path <- choose_windows_save_file(default_name, title)
@@ -272,7 +272,7 @@ choose_excel_save_path <- function() {
 }
 
 choose_data_csv_save_path <- function() {
-  default_name <- sprintf("EasyFlow_Statistics_data_%s.csv", format(Sys.time(), "%Y%m%d_%H%M%S"))
+  default_name <- sprintf("EFS_data_%s.csv", format(Sys.time(), "%Y%m%d_%H%M%S"))
   title <- "Save EasyFlow Statistics Data"
   if (.Platform$OS.type == "windows") {
     path <- choose_windows_save_file(default_name, title, "CSV File (*.csv)|*.csv|All Files (*.*)|*.*", "csv")
@@ -304,7 +304,7 @@ choose_data_csv_save_path <- function() {
 }
 
 choose_html_save_path <- function() {
-  default_name <- sprintf("EasyFlow_Statistics_results_%s.html", format(Sys.time(), "%Y%m%d_%H%M%S"))
+  default_name <- sprintf("EFS_results_%s.html", format(Sys.time(), "%Y%m%d_%H%M%S"))
   title <- "Save EasyFlow Statistics HTML Results"
   if (.Platform$OS.type == "windows") {
     path <- choose_windows_save_file(default_name, title, "HTML File (*.html)|*.html|All Files (*.*)|*.*", "html")
@@ -336,7 +336,7 @@ choose_html_save_path <- function() {
 }
 
 choose_pdf_save_path <- function() {
-  default_name <- sprintf("EasyFlow_Statistics_results_%s.pdf", format(Sys.time(), "%Y%m%d_%H%M%S"))
+  default_name <- sprintf("EFS_results_%s.pdf", format(Sys.time(), "%Y%m%d_%H%M%S"))
   title <- "Save EasyFlow Statistics PDF Results"
   if (.Platform$OS.type == "windows") {
     path <- choose_windows_save_file(default_name, title, "PDF File (*.pdf)|*.pdf|All Files (*.*)|*.*", "pdf")
@@ -361,7 +361,7 @@ choose_pdf_save_path <- function() {
 }
 
 choose_word_save_path <- function() {
-  default_name <- sprintf("EasyFlow_Statistics_results_%s.docx", format(Sys.time(), "%Y%m%d_%H%M%S"))
+  default_name <- sprintf("EFS_results_%s.docx", format(Sys.time(), "%Y%m%d_%H%M%S"))
   title <- "Save EasyFlow Statistics Word Results"
   if (.Platform$OS.type == "windows") {
     path <- choose_windows_save_file(default_name, title, "Word Document (*.docx)|*.docx|All Files (*.*)|*.*", "docx")

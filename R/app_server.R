@@ -80,6 +80,7 @@ create_app_server <- function(app_version) {
   output$lazy_about_user_guide <- renderUI(tab_panel_content(about_markdown_tab_panel("User Guide", "about_user_guide", file.path("docs", "USER_GUIDE_KO.md"), "Step-by-step operating guide for loading data, selecting variables, running analyses, and saving results.")))
   output$lazy_about_analysis_methods <- renderUI(tab_panel_content(about_markdown_tab_panel("Analysis Methods", "about_analysis_methods", file.path("docs", "ANALYSIS_METHODS_KO.md"), "Implementation inventory of analysis menus, statistical outputs, tables, and export coverage.")))
   output$lazy_about_method_notes <- renderUI(tab_panel_content(about_markdown_tab_panel("Method Notes", "about_method_notes", file.path("docs", "METHOD_NOTES_KO.md"), "Interpretive notes on method choice, assumptions, warnings, and result interpretation.")))
+  output$lazy_about_version_history <- renderUI(tab_panel_content(about_markdown_tab_panel("Version History", "about_version_history", "CHANGELOG.md", "Release notes and version history.")))
   output$lazy_about_source_license <- renderUI(tab_panel_content(about_source_license_tab_panel()))
   output$lazy_about_oss_licenses <- renderUI(tab_panel_content(about_license_tab_panel()))
   output$lazy_about_info <- renderUI(tab_panel_content(about_info_tab_panel(app_version)))

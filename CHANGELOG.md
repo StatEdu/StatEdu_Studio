@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.9.27 - 2026-05-29
+
+### Changed
+
+- Shortened user-facing default export filenames from `EasyFlow_Statistics_...` to the `EFS_...` prefix for result, data, settings, and generated export files.
+
+### Added
+
+- Added About > Version History so the bundled changelog can be reviewed inside the desktop app.
+
+
 ## v0.9.26 - 2026-05-29
 
 ### Added
