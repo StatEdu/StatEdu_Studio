@@ -8,9 +8,9 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.14`
+Current development version: `0.9.15`
 
-Version 0.9.14 adds desktop release hardening for bundled Electron/R distribution, including OSS license notices, source-code offer text, exact Electron pins, runtime prune reporting, startup diagnostics, and smoke checks.
+Version 0.9.15 fixes t-test / ANOVA inline footnote marker alignment so effect-size values remain numerically aligned while retaining superscript note markers.
 
 ## Current Scope
 

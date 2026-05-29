@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.9.15 - 2026-05-29
+
+### Fixed
+
+- Fixed t-test / ANOVA inline footnote marker styling so effect-size values remain aligned while keeping leading-zero suppression.
+
 ## v0.9.14 - 2026-05-29
 
 ### Changed

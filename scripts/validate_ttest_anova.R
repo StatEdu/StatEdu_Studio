@@ -51,6 +51,14 @@ expect_true(!grepl('class="coefficient-col-note-marker"', html, fixed = TRUE), "
 expect_true(grepl('class="coefficient-footnote-marker">1</sup>', html, fixed = TRUE), "Expected Hedges' g marker to render as inline superscript")
 expect_true(grepl('class="coefficient-footnote-marker">2</sup>', html, fixed = TRUE), "Expected p-value marker to render as inline superscript")
 expect_true(grepl('class="coefficient-footnote-marker">3</sup>', html, fixed = TRUE), "Expected omega squared marker to render as inline superscript")
+style_css <- readLines(file.path(repo_root, "www", "style.css"), warn = FALSE, encoding = "UTF-8")
+style_text <- paste(style_css, collapse = "\n")
+expect_true(
+  grepl(".coefficient-footnote-marker", style_text, fixed = TRUE) &&
+    grepl("width: 0;", style_text, fixed = TRUE) &&
+    grepl("vertical-align: super;", style_text, fixed = TRUE),
+  "Expected inline footnote markers to use zero-width superscript styling so numeric values remain aligned"
+)
 
 message("Checking t-test / ANOVA post-hoc table...")
 posthoc_data <- data.frame(
