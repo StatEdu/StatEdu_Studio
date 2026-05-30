@@ -80,11 +80,11 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-factor-select-options"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-factor-assumption-select"))
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-factor-select-options"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-factor-assumption-select"))
 }
 
 app_head_tags <- function(version) {

@@ -36,6 +36,13 @@ factor_analysis_normality_method_choices <- function() {
   )
 }
 
+factor_analysis_assumption_choices <- function() {
+  c(
+    "None" = "none",
+    factor_analysis_normality_method_choices()
+  )
+}
+
 factor_analysis_method_label <- function(method) {
   choices <- factor_analysis_method_choices()
   names(choices)[match(method, choices)] %||% method

@@ -1,5 +1,30 @@
 # Server handlers for factor analysis setup.
 
+factor_analysis_input_assumption <- function(input) {
+  assumption <- input$factor_assumption %||% ""
+  if (!nzchar(assumption)) {
+    assumption <- if (isTRUE(input$factor_normality %||% FALSE)) {
+      input$factor_normality_method %||% "skew_kurt"
+    } else {
+      "none"
+    }
+  }
+  assumption <- as.character(assumption %||% "none")
+  if (!assumption %in% unname(factor_analysis_assumption_choices())) {
+    assumption <- "none"
+  }
+  assumption
+}
+
+factor_analysis_assumption_normality <- function(assumption) {
+  !identical(as.character(assumption %||% "none"), "none")
+}
+
+factor_analysis_assumption_method <- function(assumption) {
+  assumption <- as.character(assumption %||% "none")
+  if (identical(assumption, "none")) "skew_kurt" else assumption
+}
+
 register_factor_analysis_handlers <- function(
   input,
   output,
@@ -29,6 +54,7 @@ register_factor_analysis_handlers <- function(
     if (length(selected) == 0) {
       return(setup_empty_message("Complete Step 2 in the Data tab before setting up factor analysis."))
     }
+    assumption <- factor_analysis_input_assumption(input)
     factor_analysis_setup_panel(
       factor_analysis_setup_state(
         selected_names = selected,
@@ -38,8 +64,8 @@ register_factor_analysis_handlers <- function(
         selected_available = isolate(input$factor_available),
         selected_selected = isolate(input$factor_selected),
         matrix_type = input$factor_matrix_type %||% "pearson",
-        normality = input$factor_normality %||% FALSE,
-        normality_method = input$factor_normality_method %||% "skew_kurt",
+        normality = factor_analysis_assumption_normality(assumption),
+        normality_method = factor_analysis_assumption_method(assumption),
         method = input$factor_method %||% "pa",
         rotation = input$factor_rotation %||% "varimax",
         criterion = input$factor_criterion %||% "eigen",
@@ -168,6 +194,7 @@ register_factor_analysis_handlers <- function(
       showNotification("Select at least three variables for factor analysis.", type = "warning", duration = 5)
       return()
     }
+    assumption <- factor_analysis_input_assumption(input)
     result <- tryCatch(
       prepare_factor_analysis_results(
         data = dataset_fn(),
@@ -176,9 +203,9 @@ register_factor_analysis_handlers <- function(
         labels = labels_fn(),
         category_table = category_table_fn(),
         options = list(
-          normality = isTRUE(input$factor_normality),
+          normality = factor_analysis_assumption_normality(assumption),
           matrix_type = input$factor_matrix_type %||% "pearson",
-          normality_method = input$factor_normality_method %||% "skew_kurt",
+          normality_method = factor_analysis_assumption_method(assumption),
           method = input$factor_method %||% "pa",
           rotation = input$factor_rotation %||% "varimax",
           criterion = input$factor_criterion %||% "eigen",

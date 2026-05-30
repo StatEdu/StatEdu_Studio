@@ -1551,10 +1551,9 @@
         }
 
         function updateFactorNormalityOptions() {
-          var normality = document.getElementById('factor_normality');
-          if (!normality) return;
-          setTtestNormalityDisabled('.factor-normality-method-group', !normality.checked);
-          setTtestNormalityDisabled('.factor-method-group', normality.checked);
+          var assumption = document.getElementById('factor_assumption');
+          if (!assumption) return;
+          setTtestNormalityDisabled('.factor-method-group', assumption.value !== 'none');
         }
 
         function scheduleFactorNormalityOptionsUpdate() {
@@ -1573,7 +1572,7 @@
             }
             scheduleTtestNormalityTreeUpdate();
           }
-          if (target.matches('#factor_normality')) {
+          if (target.matches('#factor_assumption')) {
             scheduleFactorNormalityOptionsUpdate();
           }
         }, true);

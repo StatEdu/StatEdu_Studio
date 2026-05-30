@@ -28,7 +28,7 @@ setup_state <- factor_analysis_setup_state(
 setup_html <- as.character(htmltools::renderTags(factor_analysis_setup_panel(setup_state))$html)
 expect_true(
   all(vapply(
-    c("factor_matrix_type", "factor_normality_method", "factor_method", "factor_rotation"),
+    c("factor_matrix_type", "factor_assumption", "factor_method", "factor_rotation"),
     function(id) grepl(sprintf("<select[^>]+id=\"%s\"", id), setup_html, perl = TRUE),
     logical(1)
   )),
@@ -36,11 +36,16 @@ expect_true(
 )
 expect_true(
   !any(vapply(
-    c("factor_matrix_type", "factor_normality_method", "factor_method", "factor_rotation"),
+    c("factor_matrix_type", "factor_assumption", "factor_method", "factor_rotation"),
     function(id) grepl(sprintf("type=\"radio\"[^>]+name=\"%s\"", id), setup_html, perl = TRUE),
     logical(1)
   )),
   "Expected compact select controls to replace model option radio groups"
+)
+expect_true(
+  !grepl("factor_normality_method", setup_html, fixed = TRUE) &&
+    !grepl("factor_normality", setup_html, fixed = TRUE),
+  "Expected assumption select to replace the separate normality checkbox and method select"
 )
 expect_true(
   grepl("type=\"radio\"[^>]+name=\"factor_criterion\"", setup_html, perl = TRUE),

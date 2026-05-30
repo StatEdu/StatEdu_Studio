@@ -28,6 +28,11 @@ factor_analysis_setup_state <- function(
   allowed <- analysis_allowed_variables(selected, variable_table, c("ordered", "continuous"))
   factor_variables <- intersect(as.character(factor_variables %||% character(0)), allowed)
   available <- setdiff(allowed, factor_variables)
+  normality_method <- as.character(normality_method %||% "skew_kurt")
+  if (!normality_method %in% unname(factor_analysis_normality_method_choices())) {
+    normality_method <- "skew_kurt"
+  }
+  assumption <- if (isTRUE(normality)) normality_method else "none"
 
   list(
     available = available,
@@ -40,6 +45,7 @@ factor_analysis_setup_state <- function(
     matrix_type = if (matrix_type %in% unname(factor_analysis_matrix_choices())) matrix_type else "pearson",
     normality = isTRUE(normality),
     normality_method = normality_method,
+    assumption = assumption,
     method = method,
     rotation = rotation,
     criterion = criterion,
@@ -198,19 +204,11 @@ factor_analysis_setup_panel <- function(state) {
                 factor_analysis_matrix_choices(),
                 selected = state$matrix_type
               ),
-              analysis_option_group(
-                "Assumption",
-                list(
-                  list(id = "factor_normality", label = "normality test", value = state$normality)
-                )
-              ),
               factor_analysis_select_group(
-                "Normality method",
-                "factor_normality_method",
-                factor_analysis_normality_method_choices(),
-                selected = state$normality_method,
-                extra_class = "factor-normality-method-group",
-                disabled = !isTRUE(state$normality)
+                "Assumption",
+                "factor_assumption",
+                factor_analysis_assumption_choices(),
+                selected = state$assumption
               ),
               factor_analysis_select_group(
                 "Method",
