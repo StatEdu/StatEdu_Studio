@@ -14,6 +14,15 @@ expect_true <- function(value, label) {
   if (!isTRUE(value)) stop(label, call. = FALSE)
 }
 
+html_h3_titles <- function(html) {
+  matches <- gregexpr("<h3>([^<]+)</h3>", html, perl = TRUE)[[1]]
+  if (length(matches) == 0 || matches[[1]] == -1) {
+    return(character(0))
+  }
+  headings <- regmatches(html, list(matches))[[1]]
+  sub("^<h3>([^<]+)</h3>$", "\\1", headings)
+}
+
 message("Checking factor analysis setup option layout...")
 setup_variables <- c("age", "x11", "x12", "x13", "x21", "x22", "x23", "x24", "y", "y1", "y2", "y3")
 setup_state <- factor_analysis_setup_state(
@@ -103,6 +112,11 @@ expect_true(
 expect_true(
   identical(tail(as.character(factor_result$loadings_table$Variable), 4), c("Eigenvalue", "Variance %", "Cumulative variance %", "")),
   "Expected factor loading table to end with eigenvalue, variance, and suitability summary rows"
+)
+factor_result_html <- as.character(htmltools::renderTags(factor_analysis_results_ui(factor_result))$html)
+expect_true(
+  identical(html_h3_titles(factor_result_html)[1:2], c("Factor analysis", "Pattern / loading matrix")),
+  "Expected factor analysis UI to show the overview table first and pattern/loading matrix second"
 )
 factor_columns <- colnames(factor_result$loadings)
 expect_true(
@@ -235,6 +249,10 @@ expect_true(
   grepl("Structure matrix", factor_oblimin_html, fixed = TRUE) &&
     grepl("pattern matrix shows unique factor contributions", factor_oblimin_html, fixed = TRUE),
   "Expected oblique factor analysis UI to render the structure matrix and interpretation note"
+)
+expect_true(
+  identical(html_h3_titles(factor_oblimin_html)[1:3], c("Factor analysis", "Pattern / loading matrix", "Structure matrix")),
+  "Expected oblique factor analysis UI to show the structure matrix third"
 )
 
 too_many_factor_error <- tryCatch(
@@ -483,6 +501,11 @@ expect_true(
   identical(tail(as.character(pca_result$loadings_table$Variable), 4), c("Eigenvalue", "Variance %", "Cumulative variance %", "")),
   "Expected PCA loading table to include factor-style summary rows"
 )
+pca_result_html <- as.character(htmltools::renderTags(pca_results_ui(pca_result))$html)
+expect_true(
+  identical(html_h3_titles(pca_result_html)[1:2], c("Principal component analysis", "Component loadings")),
+  "Expected PCA UI to show the overview table first and component loadings second"
+)
 pca_table_html <- as.character(htmltools::renderTags(coefficient_html_table(pca_result$loadings_table))$html)
 expect_true(grepl("KMO=", pca_table_html, fixed = TRUE), "Expected PCA loading table to include KMO diagnostics")
 expect_true(grepl("colspan=", pca_table_html, fixed = TRUE), "Expected PCA diagnostics row to merge loading columns")
@@ -526,15 +549,29 @@ expect_true(identical(pca_cumulative$criterion, "cumulative"), "Expected cumulat
 
 factor_html <- tempfile(fileext = ".html")
 factor_xlsx <- tempfile(fileext = ".xlsx")
+factor_oblimin_xlsx <- tempfile(fileext = ".xlsx")
 pca_html <- tempfile(fileext = ".html")
 pca_xlsx <- tempfile(fileext = ".xlsx")
 write_factor_analysis_results_html(factor_result, factor_html)
 save_factor_analysis_excel_file(factor_result, factor_xlsx)
+save_factor_analysis_excel_file(factor_oblimin, factor_oblimin_xlsx)
 write_pca_results_html(pca_result, pca_html)
 save_pca_excel_file(pca_result, pca_xlsx)
 expect_true(file.exists(factor_html) && file.info(factor_html)$size > 0, "Expected factor analysis HTML export")
 expect_true(file.exists(factor_xlsx) && file.info(factor_xlsx)$size > 0, "Expected factor analysis Excel export")
+expect_true(
+  identical(openxlsx::getSheetNames(factor_xlsx)[1:2], c("Overview", "Loadings")),
+  "Expected factor analysis Excel export to put loadings directly after overview"
+)
+expect_true(
+  identical(openxlsx::getSheetNames(factor_oblimin_xlsx)[1:3], c("Overview", "Loadings", "Structure")),
+  "Expected oblique factor analysis Excel export to put structure matrix third"
+)
 expect_true(file.exists(pca_html) && file.info(pca_html)$size > 0, "Expected PCA HTML export")
 expect_true(file.exists(pca_xlsx) && file.info(pca_xlsx)$size > 0, "Expected PCA Excel export")
+expect_true(
+  identical(openxlsx::getSheetNames(pca_xlsx)[1:2], c("Overview", "Loadings")),
+  "Expected PCA Excel export to put component loadings directly after overview"
+)
 
 message("Factor analysis and PCA validations passed.")

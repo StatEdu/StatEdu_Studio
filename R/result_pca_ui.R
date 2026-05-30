@@ -38,12 +38,6 @@ pca_results_ui <- function(result, report_mode = FALSE) {
         h3("Principal component analysis"),
         coefficient_html_table(result$overview)
       ),
-      analysis_warning_section(result$warnings, class = "result-section pca-result-section regression-result-panel"),
-      div(
-        class = "result-section pca-result-section regression-result-panel",
-        h3("Suitability"),
-        coefficient_html_table(result$suitability$overview, note_line = pca_suitability_note(result))
-      ),
       div(
         class = "result-section pca-result-section regression-result-panel",
         h3("Component loadings"),
@@ -56,6 +50,12 @@ pca_results_ui <- function(result, report_mode = FALSE) {
           compact_min_width = 520,
           note_line = pca_loading_note(result)
         )
+      ),
+      analysis_warning_section(result$warnings, class = "result-section pca-result-section regression-result-panel"),
+      div(
+        class = "result-section pca-result-section regression-result-panel",
+        h3("Suitability"),
+        coefficient_html_table(result$suitability$overview, note_line = pca_suitability_note(result))
       ),
       if (is.data.frame(result$variance_table) && nrow(result$variance_table) > 0) {
         div(

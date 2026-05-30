@@ -1263,14 +1263,14 @@ save_factor_analysis_excel_file <- function(result, file) {
   workbook <- openxlsx::createWorkbook()
   used_sheets <- character(0)
   used_sheets <- add_excel_table_sheet(workbook, "Overview", result$overview, used_sheets, title = "Factor analysis")
+  used_sheets <- add_excel_table_sheet(workbook, "Loadings", result$loadings_table, used_sheets, title = "Pattern / loading matrix")
+  if (is.data.frame(result$structure_table) && nrow(result$structure_table) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Structure", result$structure_table, used_sheets, title = "Structure matrix")
+  }
   used_sheets <- add_optional_excel_table_sheet(workbook, "Warnings", result$warnings, used_sheets)
   used_sheets <- add_excel_table_sheet(workbook, "Suitability", result$suitability$overview, used_sheets)
   if (is.data.frame(result$normality_table) && nrow(result$normality_table) > 0) {
     used_sheets <- add_excel_table_sheet(workbook, "Normality", result$normality_table, used_sheets)
-  }
-  used_sheets <- add_excel_table_sheet(workbook, "Loadings", result$loadings_table, used_sheets, title = "Pattern / loading matrix")
-  if (is.data.frame(result$structure_table) && nrow(result$structure_table) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Structure", result$structure_table, used_sheets, title = "Structure matrix")
   }
   if (is.data.frame(result$variance_table) && nrow(result$variance_table) > 0) {
     used_sheets <- add_excel_table_sheet(workbook, "Variance", result$variance_table, used_sheets, title = "Variance explained")
@@ -1287,9 +1287,9 @@ save_pca_excel_file <- function(result, file) {
   workbook <- openxlsx::createWorkbook()
   used_sheets <- character(0)
   used_sheets <- add_excel_table_sheet(workbook, "Overview", result$overview, used_sheets, title = "Principal component analysis")
+  used_sheets <- add_excel_table_sheet(workbook, "Loadings", result$loadings_table, used_sheets, title = "Component loadings")
   used_sheets <- add_optional_excel_table_sheet(workbook, "Warnings", result$warnings, used_sheets)
   used_sheets <- add_excel_table_sheet(workbook, "Suitability", result$suitability$overview, used_sheets)
-  used_sheets <- add_excel_table_sheet(workbook, "Loadings", result$loadings_table, used_sheets, title = "Component loadings")
   if (is.data.frame(result$variance_table) && nrow(result$variance_table) > 0) {
     used_sheets <- add_excel_table_sheet(workbook, "Variance", result$variance_table, used_sheets, title = "Variance explained")
   }

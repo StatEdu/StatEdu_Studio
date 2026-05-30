@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.9.28 - 2026-05-30
+
+### Fixed
+
+- Brought Windows data/settings open dialogs to the foreground by using a topmost WinForms owner instead of the native R file picker.
+- Moved Factor Analysis and PCA loading tables directly after their overview tables in on-screen, HTML/PDF, and Excel output.
+
+
 ## v0.9.27 - 2026-05-29
 
 ### Changed
