@@ -6,6 +6,8 @@
 
 - Brought Windows data/settings open dialogs to the foreground by using a topmost WinForms owner instead of the native R file picker.
 - Moved Factor Analysis and PCA loading tables directly after their overview tables in on-screen, HTML/PDF, and Excel output.
+- Fixed About > Open Source Licenses so generated third-party notices are resolved from the bundled app path and license metadata is grouped by direct EFS packages, bundled dependencies, R base/recommended packages, and the R runtime.
+- Replaced the Windows launcher port-cleanup step with a `netstat` / `taskkill` path to avoid startup hanging while closing an existing app process on port 7894.
 
 
 ## v0.9.27 - 2026-05-29

@@ -7,8 +7,10 @@ echo Starting EasyFlow Statistics...
 echo.
 
 echo Closing existing EasyFlow Statistics process on port 7894, if any...
-powershell -NoProfile -Command "$ports = @(7894); foreach ($port in $ports) { Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue } }"
-timeout /t 2 /nobreak >nul
+for /f "tokens=5" %%P in ('netstat -ano ^| findstr /C:":7894" ^| findstr /C:"LISTENING"') do (
+    if not "%%P"=="0" taskkill /F /PID %%P >nul 2>nul
+)
+timeout /t 1 /nobreak >nul
 
 set "RSCRIPT="
 

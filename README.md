@@ -8,9 +8,9 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.27`
+Current development version: `0.9.28`
 
-Version 0.9.27 adds an About > Version History page and shortens user-facing default export filenames to the `EFS_` prefix.
+Version 0.9.28 brings Windows data/settings open dialogs to the foreground, moves Factor Analysis and PCA loading tables directly after their overview tables, clarifies bundled open-source license notices, and avoids launcher hangs while closing an existing app process on port 7894.
 
 ## Current Scope
 
@@ -82,7 +82,7 @@ Run validation scripts from the repository root with Rscript, for example:
 
 If you use **EasyFlow Statistics** in your research, please cite:
 
-LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.27) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
+LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.28) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
 
 ## Development Model
 

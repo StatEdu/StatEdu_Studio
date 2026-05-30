@@ -30,27 +30,96 @@ result_tab_panel <- function() {
 }
 
 about_markdown_document <- function(path) {
-  if (!file.exists(path)) {
+  resolved_path <- about_resolve_document_path(path)
+  if (!nzchar(resolved_path)) {
     return(div(class = "empty-message", sprintf("Document not found: %s", path)))
   }
   div(
     class = "about-markdown-document",
-    shiny::includeMarkdown(path)
+    shiny::includeMarkdown(resolved_path)
   )
 }
 
+about_document_roots <- function() {
+  roots <- c(
+    getwd(),
+    normalizePath(".", winslash = "/", mustWork = FALSE),
+    Sys.getenv("EASYFLOW_APP_DIR", ""),
+    file.path(getwd(), "dist", "electron", "win-unpacked", "resources", "app", "app")
+  )
+  unique(normalizePath(roots[nzchar(roots)], winslash = "/", mustWork = FALSE))
+}
+
+about_resolve_document_path <- function(path) {
+  if (file.exists(path)) {
+    return(path)
+  }
+  candidates <- file.path(about_document_roots(), path)
+  existing <- candidates[file.exists(candidates)]
+  if (length(existing) > 0) {
+    return(existing[[1]])
+  }
+  ""
+}
+
 about_text_document <- function(path) {
-  if (!file.exists(path)) {
+  resolved_path <- about_resolve_document_path(path)
+  if (!nzchar(resolved_path)) {
     return(div(
       class = "empty-message",
       sprintf("Document not found: %s. This file is generated during the Electron packaging step.", path)
     ))
   }
-  lines <- readLines(path, warn = FALSE, encoding = "UTF-8")
+  lines <- readLines(resolved_path, warn = FALSE, encoding = "UTF-8")
   div(
     class = "about-markdown-document",
     tags$pre(class = "license-notice-text", paste(lines, collapse = "\n"))
   )
+}
+
+about_license_report_document <- function(path = "license_report.csv") {
+  resolved_path <- about_resolve_document_path(path)
+  if (!nzchar(resolved_path)) {
+    return(NULL)
+  }
+  report <- tryCatch(
+    utils::read.csv(resolved_path, stringsAsFactors = FALSE, check.names = FALSE),
+    error = function(e) NULL
+  )
+  if (!is.data.frame(report) || nrow(report) == 0) {
+    return(NULL)
+  }
+  if (!"Scope" %in% names(report) && "Package" %in% names(report)) {
+    report$Scope <- ifelse(
+      report$Package == "R",
+      "R runtime",
+      ifelse(report$Package %in% required_packages, "Direct EFS package", "Bundled dependency")
+    )
+  }
+  columns <- intersect(c("Scope", "Component", "Version", "License", "URL", "Notes"), names(report))
+  if (length(columns) == 0) {
+    return(NULL)
+  }
+  div(
+    class = "about-markdown-document",
+    h3("License report"),
+    tags$table(
+      class = "about-license-report-table",
+      tags$thead(tags$tr(lapply(columns, tags$th))),
+      tags$tbody(lapply(seq_len(nrow(report)), function(row_index) {
+        tags$tr(lapply(columns, function(column) tags$td(as.character(report[[column]][[row_index]] %||% ""))))
+      }))
+    )
+  )
+}
+
+about_oss_license_document <- function() {
+  notices <- about_text_document("THIRD-PARTY-NOTICES.txt")
+  report <- about_license_report_document()
+  if (is.null(report)) {
+    return(notices)
+  }
+  tagList(notices, report)
 }
 
 about_info_row <- function(label, value) {
@@ -159,7 +228,7 @@ about_license_tab_panel <- function() {
       div(
         class = "workspace-panel frequencies-workspace-panel about-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        about_text_document("THIRD-PARTY-NOTICES.txt")
+        about_oss_license_document()
       )
     )
   )

@@ -20,6 +20,8 @@ if (!dir.exists(runtime_library)) {
   stop("Runtime R library was not found: ", runtime_library, call. = FALSE)
 }
 
+source(file.path(repo_root, "R", "app_bootstrap.R"), local = TRUE)
+
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 licenses_dir <- file.path(output_dir, "LICENSES")
 if (dir.exists(licenses_dir)) {
@@ -106,6 +108,17 @@ copy_runtime_license_files <- function() {
 db <- installed.packages(lib.loc = runtime_library)
 packages <- sort(rownames(db))
 
+package_scope <- function(package, description) {
+  priority <- description_field(description, "Priority")
+  if (package %in% required_packages) {
+    return("Direct EFS package")
+  }
+  if (!is.na(priority) && priority %in% c("base", "recommended")) {
+    return("R base/recommended")
+  }
+  "Bundled dependency"
+}
+
 rows <- lapply(packages, function(package) {
   package_dir <- file.path(runtime_library, package)
   description <- read.dcf(file.path(package_dir, "DESCRIPTION"))[1, ]
@@ -113,6 +126,7 @@ rows <- lapply(packages, function(package) {
   version <- description_field(description, "Version")
   data.frame(
     Component = paste0("R package: ", package),
+    Scope = package_scope(package, description),
     Package = package,
     Version = version,
     License = license,
@@ -130,6 +144,7 @@ report <- do.call(rbind, rows)
 runtime_license_files <- copy_runtime_license_files()
 runtime_row <- data.frame(
   Component = "R runtime",
+  Scope = "R runtime",
   Package = "R",
   Version = paste(R.version$major, R.version$minor, sep = "."),
   License = "GPL-2 | GPL-3; LGPL applies to selected R libraries where stated",
@@ -142,7 +157,10 @@ runtime_row <- data.frame(
 )
 
 report <- rbind(runtime_row, report)
-report <- report[order(report$Risk, report$Component), ]
+scope_order <- c("R runtime", "Direct EFS package", "Bundled dependency", "R base/recommended")
+report$Scope <- factor(report$Scope, levels = scope_order)
+report <- report[order(report$Scope, report$Risk, report$Component), ]
+report$Scope <- as.character(report$Scope)
 
 write.csv(
   report,
@@ -159,15 +177,22 @@ notice_lines <- c(
   "This notice is generated from the bundled R runtime at build time.",
   "",
   "License summary:",
+  paste0("- ", names(sort(table(report$Scope))), ": ", as.integer(sort(table(report$Scope)))),
+  "",
+  "License risk summary:",
   paste0("- ", names(sort(table(report$Risk))), ": ", as.integer(sort(table(report$Risk)))),
   "",
-  "R runtime and bundled R packages:",
-  sprintf(
-    "- %s %s -- %s",
-    report$Package,
-    report$Version,
-    report$License
-  ),
+  "R runtime:",
+  sprintf("- %s %s -- %s", runtime_row$Package, runtime_row$Version, runtime_row$License),
+  "",
+  "Direct EFS R packages:",
+  sprintf("- %s %s -- %s", report$Package[report$Scope == "Direct EFS package"], report$Version[report$Scope == "Direct EFS package"], report$License[report$Scope == "Direct EFS package"]),
+  "",
+  "Bundled R package dependencies:",
+  sprintf("- %s %s -- %s", report$Package[report$Scope == "Bundled dependency"], report$Version[report$Scope == "Bundled dependency"], report$License[report$Scope == "Bundled dependency"]),
+  "",
+  "R base/recommended packages bundled with the runtime:",
+  sprintf("- %s %s -- %s", report$Package[report$Scope == "R base/recommended"], report$Version[report$Scope == "R base/recommended"], report$License[report$Scope == "R base/recommended"]),
   "",
   "Full package license metadata is available in license_report.csv.",
   "License text files copied from bundled packages are available in LICENSES/.",

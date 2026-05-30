@@ -120,6 +120,7 @@ async function startShiny() {
   const env = {
     ...process.env,
     EASYFLOW_PORT: String(port),
+    EASYFLOW_APP_DIR: appDir,
     EASYFLOW_LAUNCH_BROWSER: "false",
     EASYFLOW_NO_PACKAGE_INSTALL: "true",
     EASYFLOW_TOKEN: token,
