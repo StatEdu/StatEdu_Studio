@@ -16,11 +16,11 @@ expect_identical <- function(actual, expected, label) {
 }
 
 message("Checking shared p-value formatting...")
-expect_identical(format_p(0), ".000", "zero p-value")
-expect_identical(format_p(0.0004), ".000", "small p-value")
-expect_identical(format_p(".000"), ".000", "rounded string p-value")
-expect_identical(format_p("0.000"), ".000", "zero string p-value")
-expect_identical(format_p("<.001"), ".000", "legacy less-than p-value")
+expect_identical(format_p(0), "<.001", "zero p-value")
+expect_identical(format_p(0.0004), "<.001", "small p-value")
+expect_identical(format_p(".000"), "<.001", "rounded string p-value")
+expect_identical(format_p("0.000"), "<.001", "zero string p-value")
+expect_identical(format_p("<.001"), "<.001", "legacy less-than p-value")
 expect_identical(format_p(0.001), ".001", "threshold p-value")
 expect_identical(format_p(0.0456), ".046", "regular p-value")
 message("All p-value formatting validations passed.")

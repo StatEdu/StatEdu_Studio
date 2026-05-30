@@ -995,19 +995,36 @@ result_docx_format_number <- function(value, digits, drop_zero = TRUE) {
     marker <- marker_match
     text <- sub("\\s+[0-9]+$", "", text)
   }
-  less_than <- startsWith(text, "<")
+  if (startsWith(text, "<")) {
+    return(paste0(text, marker))
+  }
   numeric_text <- sub("^<", "", text)
   number <- suppressWarnings(as.numeric(numeric_text))
   if (is.na(number)) {
     return(trimws(paste0(value)))
   }
-  if (isTRUE(less_than) && number <= .001) {
-    number <- 0
-  }
   output <- sprintf(paste0("%.", digits, "f"), number)
   if (isTRUE(drop_zero)) {
     output <- sub("^-0\\.", "-.", output)
     output <- sub("^0\\.", ".", output)
+  }
+  paste0(output, marker)
+}
+
+result_docx_format_p <- function(value) {
+  text <- trimws(as.character(value %||% ""))
+  if (!nzchar(text)) {
+    return(text)
+  }
+  marker <- ""
+  marker_match <- regmatches(text, regexpr("\\s+[0-9]+$", text))
+  if (length(marker_match) > 0 && nzchar(marker_match)) {
+    marker <- marker_match
+    text <- sub("\\s+[0-9]+$", "", text)
+  }
+  output <- format_p(text)
+  if (is.na(output)) {
+    return(trimws(paste0(value)))
   }
   paste0(output, marker)
 }
@@ -1026,7 +1043,7 @@ result_docx_normalize_table <- function(table, headers = NULL) {
     if (label %in% c("m", "sd", "median") || grepl("^q1|q3|q1~q3$", label)) {
       formatter <- function(value) result_docx_format_number(value, 2)
     } else if (label %in% c("p", "p for trend") || grepl("\\bp\\b", label)) {
-      formatter <- function(value) result_docx_format_number(value, 3)
+      formatter <- result_docx_format_p
     } else if (label %in% c("t", "f", "t/f", "z", "w", "q") || grepl("statistic|hedges|cohen|effect|eta|omega|epsilon|cliff|f²|f2|sr2|r$", label)) {
       formatter <- function(value) result_docx_format_number(value, 3)
     }

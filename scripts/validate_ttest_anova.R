@@ -17,8 +17,8 @@ expect_true <- function(value, label) {
 
 message("Checking p-value formatting and note-marker parsing...")
 expect_true(identical(format_p(.179), ".179"), "Expected p=.179 to keep three decimals without a leading zero")
-expect_true(identical(format_p(.0004), ".000"), "Expected p<.001 to display as .000")
-expect_true(identical(format_p("<.001"), ".000"), "Expected legacy <.001 p-values to normalize to .000")
+expect_true(identical(format_p(.0004), "<.001"), "Expected p<.001 to display as <.001")
+expect_true(identical(format_p("<.001"), "<.001"), "Expected legacy <.001 p-values to remain <.001")
 plain_p_split <- result_split_inline_marker(".179", "", "p")
 expect_true(
   identical(unname(plain_p_split), c(".179", "")),

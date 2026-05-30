@@ -38,12 +38,13 @@ format_p <- function(p) {
     value <- suppressWarnings(as.numeric(sub("^\\.", "0.", value_text)))
     if (is.na(value)) return(text)
     if (isTRUE(less_than) && value <= .001) {
-      value <- 0
+      return("<.001")
     }
   } else {
     value <- suppressWarnings(as.numeric(p[[1]]))
   }
   if (is.na(value)) return(NA_character_)
+  if (value < .001) return("<.001")
   sub("^0\\.", ".", sprintf("%.3f", value))
 }
 
