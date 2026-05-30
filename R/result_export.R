@@ -39,6 +39,58 @@ analysis_excel_styles <- function() {
 
 regression_excel_styles <- analysis_excel_styles
 
+excel_p_value_column <- function(column) {
+  key <- tolower(gsub("[^a-z0-9]+", "", as.character(column %||% "")))
+  key %in% c("p", "pvalue", "padjusted", "pfortrend", "ggp") ||
+    grepl("(normality|homogeneity|sphericity|shapirowilk|bootstrap|boot).*p$", key)
+}
+
+excel_split_p_marker <- function(value) {
+  text <- trimws(as.character(value %||% ""))
+  if (!nzchar(text)) {
+    return(list(value = text, marker = ""))
+  }
+  spaced_marker <- regexpr("\\s+[0-9]+$", text, perl = TRUE)
+  if (spaced_marker[[1]] > 0) {
+    marker <- regmatches(text, spaced_marker)
+    text <- sub("\\s+[0-9]+$", "", text, perl = TRUE)
+    return(list(value = trimws(text), marker = marker))
+  }
+  compact_marker <- regexec("^((?:<\\.001)|(?:-?\\.[0-9]{3,}))([1-9][0-9]?)$", text, perl = TRUE)
+  compact_parts <- regmatches(text, compact_marker)[[1]]
+  if (length(compact_parts) == 3L) {
+    return(list(value = compact_parts[[2]], marker = compact_parts[[3]]))
+  }
+  list(value = text, marker = "")
+}
+
+excel_format_p_value <- function(value) {
+  if (length(value) == 0 || is.na(value)) {
+    return("")
+  }
+  if (is.numeric(value)) {
+    formatted <- format_p(value)
+    return(if (is.na(formatted)) "" else formatted)
+  }
+  parts <- excel_split_p_marker(value)
+  formatted <- format_p(parts$value)
+  if (is.na(formatted)) {
+    return(trimws(as.character(value %||% "")))
+  }
+  paste0(formatted, parts$marker)
+}
+
+excel_normalize_p_columns <- function(table) {
+  if (!is.data.frame(table) || nrow(table) == 0 || ncol(table) == 0) {
+    return(table)
+  }
+  p_columns <- names(table)[vapply(names(table), excel_p_value_column, logical(1))]
+  for (column in p_columns) {
+    table[[column]] <- vapply(table[[column]], excel_format_p_value, character(1))
+  }
+  table
+}
+
 excel_apply_title_row <- function(workbook, sheet_name, title, n_cols, styles, row = 1L) {
   openxlsx::writeData(workbook, sheet_name, title, startRow = row, startCol = 1, colNames = FALSE)
   openxlsx::mergeCells(workbook, sheet_name, cols = seq_len(n_cols), rows = row)
@@ -108,6 +160,7 @@ add_excel_table_sheet <- function(workbook, sheet_name, table, used_sheets, merg
   title <- title %||% sheet_name
   openxlsx::addWorksheet(workbook, sheet_name)
   if (is.data.frame(table) && nrow(table) > 0) {
+    table <- excel_normalize_p_columns(table)
     n_cols <- ncol(table)
     title_row <- 1L
     header_row <- 3L
@@ -194,6 +247,7 @@ add_regression_result_sheet <- function(
   openxlsx::addStyle(workbook, sheet_name, styles$title, rows = 1, cols = 1, gridExpand = TRUE, stack = TRUE)
 
   if (is.data.frame(table) && nrow(table) > 0 && ncol(table) > 0) {
+    table <- excel_normalize_p_columns(table)
     openxlsx::writeData(workbook, sheet_name, table, startRow = data_start_row, startCol = 1, withFilter = FALSE)
     openxlsx::addStyle(workbook, sheet_name, styles$top, rows = header_row, cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
     openxlsx::addStyle(workbook, sheet_name, styles$header, rows = header_row, cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
@@ -794,6 +848,7 @@ add_hierarchical_result_sheet <- function(workbook, sheet_name, table, note, mod
   title <- title %||% sheet_name
   openxlsx::addWorksheet(workbook, sheet_name)
   if (is.data.frame(table) && nrow(table) > 0 && ncol(table) > 0) {
+    table <- excel_normalize_p_columns(table)
     n_cols <- ncol(table)
     title_row <- 1L
     header_top_row <- 3L
@@ -1346,6 +1401,7 @@ add_ttest_anova_result_sheet <- function(workbook, sheet_name, table, note, used
   openxlsx::addWorksheet(workbook, sheet_name)
 
   if (is.data.frame(table) && nrow(table) > 0 && ncol(table) > 0) {
+    table <- excel_normalize_p_columns(table)
     n_cols <- ncol(table)
     title_row <- 1L
     header_row <- 3L
@@ -1441,6 +1497,7 @@ add_paired_grouped_excel_sheet <- function(workbook, sheet_name, table, used_she
   if (any(nzchar(method_markers)) && "p" %in% names(export)) {
     export$p <- ifelse(nzchar(as.character(export$p)), paste0(export$p, method_markers), export$p)
   }
+  export <- excel_normalize_p_columns(export)
 
   title_row <- 1L
   header_row <- 3L
@@ -1518,6 +1575,7 @@ add_paired_rm_grouped_excel_sheet <- function(workbook, sheet_name, table, used_
   )
   export_columns <- export_columns[export_columns %in% names(table)]
   export <- table[, export_columns, drop = FALSE]
+  export <- excel_normalize_p_columns(export)
   time_labels <- vapply(time_indices, function(index) {
     labels <- as.character(table[[paste0("Time", index, "_label")]] %||% "")
     labels <- labels[nzchar(labels)]
