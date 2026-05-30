@@ -33,14 +33,17 @@ format_p <- function(p) {
   if (is.character(p[[1]])) {
     text <- trimws(p[[1]])
     if (!nzchar(text)) return("")
-    if (startsWith(text, "<")) return(text)
-    value <- suppressWarnings(as.numeric(sub("^\\.", "0.", text)))
+    less_than <- startsWith(text, "<")
+    value_text <- sub("^<", "", text)
+    value <- suppressWarnings(as.numeric(sub("^\\.", "0.", value_text)))
     if (is.na(value)) return(text)
+    if (isTRUE(less_than) && value <= .001) {
+      value <- 0
+    }
   } else {
     value <- suppressWarnings(as.numeric(p[[1]]))
   }
   if (is.na(value)) return(NA_character_)
-  if (value < .001) return("<.001")
   sub("^0\\.", ".", sprintf("%.3f", value))
 }
 

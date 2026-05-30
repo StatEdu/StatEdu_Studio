@@ -986,7 +986,7 @@ result_html_table_cells <- function(table_node) {
 
 result_docx_format_number <- function(value, digits, drop_zero = TRUE) {
   text <- trimws(as.character(value %||% ""))
-  if (!nzchar(text) || identical(text, "<.001")) {
+  if (!nzchar(text)) {
     return(text)
   }
   marker <- ""
@@ -995,10 +995,14 @@ result_docx_format_number <- function(value, digits, drop_zero = TRUE) {
     marker <- marker_match
     text <- sub("\\s+[0-9]+$", "", text)
   }
+  less_than <- startsWith(text, "<")
   numeric_text <- sub("^<", "", text)
   number <- suppressWarnings(as.numeric(numeric_text))
   if (is.na(number)) {
     return(trimws(paste0(value)))
+  }
+  if (isTRUE(less_than) && number <= .001) {
+    number <- 0
   }
   output <- sprintf(paste0("%.", digits, "f"), number)
   if (isTRUE(drop_zero)) {
@@ -1022,10 +1026,7 @@ result_docx_normalize_table <- function(table, headers = NULL) {
     if (label %in% c("m", "sd", "median") || grepl("^q1|q3|q1~q3$", label)) {
       formatter <- function(value) result_docx_format_number(value, 2)
     } else if (label %in% c("p", "p for trend") || grepl("\\bp\\b", label)) {
-      formatter <- function(value) {
-        text <- trimws(as.character(value %||% ""))
-        if (identical(text, "<.001")) text else result_docx_format_number(text, 3)
-      }
+      formatter <- function(value) result_docx_format_number(value, 3)
     } else if (label %in% c("t", "f", "t/f", "z", "w", "q") || grepl("statistic|hedges|cohen|effect|eta|omega|epsilon|cliff|f²|f2|sr2|r$", label)) {
       formatter <- function(value) result_docx_format_number(value, 3)
     }
@@ -1052,9 +1053,9 @@ result_docx_split_marker <- function(value, label) {
   if (length(spaced_match) == 3L) {
     return(c(value = trimws(spaced_match[[2]]), marker = spaced_match[[3]]))
   }
-  compact <- regexec("^((?:<\\.001)|(?:-?\\.?[0-9]+(?:\\.[0-9]+)?))([1-9][0-9]?)$", text, perl = TRUE)
+  compact <- regexec("^((?:<\\.001)|(?:-?(?:0)?\\.[0-9]{3,}))([1-9][0-9]?)$", text, perl = TRUE)
   compact_match <- regmatches(text, compact)[[1]]
-  if (length(compact_match) == 3L && nchar(compact_match[[2]]) >= 3L) {
+  if (length(compact_match) == 3L) {
     return(c(value = compact_match[[2]], marker = compact_match[[3]]))
   }
   c(value = text, marker = "")

@@ -169,9 +169,9 @@ result_split_inline_marker <- function(value, marker = "", column = "") {
   if (length(spaced_match) == 3L) {
     return(c(value = trimws(spaced_match[[2]]), marker = spaced_match[[3]]))
   }
-  compact <- regexec("^((?:<\\.001)|(?:-?\\.?[0-9]+(?:\\.[0-9]+)?))([1-9][0-9]?)$", value, perl = TRUE)
+  compact <- regexec("^((?:<\\.001)|(?:-?(?:0)?\\.[0-9]{3,}))([1-9][0-9]?)$", value, perl = TRUE)
   compact_match <- regmatches(value, compact)[[1]]
-  if (length(compact_match) == 3L && nchar(compact_match[[2]]) >= 3L) {
+  if (length(compact_match) == 3L) {
     return(c(value = compact_match[[2]], marker = compact_match[[3]]))
   }
   c(value = value, marker = "")

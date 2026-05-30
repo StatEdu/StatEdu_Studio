@@ -15,6 +15,26 @@ expect_true <- function(value, label) {
   if (!isTRUE(value)) stop(label, call. = FALSE)
 }
 
+message("Checking p-value formatting and note-marker parsing...")
+expect_true(identical(format_p(.179), ".179"), "Expected p=.179 to keep three decimals without a leading zero")
+expect_true(identical(format_p(.0004), ".000"), "Expected p<.001 to display as .000")
+expect_true(identical(format_p("<.001"), ".000"), "Expected legacy <.001 p-values to normalize to .000")
+plain_p_split <- result_split_inline_marker(".179", "", "p")
+expect_true(
+  identical(unname(plain_p_split), c(".179", "")),
+  "Expected p=.179 without metadata not to split 9 into a note marker"
+)
+compact_marker_split <- result_split_inline_marker(".1799", "", "p")
+expect_true(
+  identical(unname(compact_marker_split), c(".179", "9")),
+  "Expected compact p=.179 with marker 9 to split after three decimals"
+)
+docx_plain_p_split <- result_docx_split_marker(".179", "p")
+expect_true(
+  identical(unname(docx_plain_p_split), c(".179", "")),
+  "Expected DOCX p=.179 without metadata not to split 9 into a note marker"
+)
+
 message("Checking t-test / ANOVA numbered notes...")
 data <- data.frame(
   y = c(1:20, 1:20),
