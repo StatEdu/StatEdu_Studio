@@ -201,7 +201,7 @@ logistic_setup_panel <- function(setup, status_message = NULL) {
       div(
         class = "analysis-transfer-column analysis-transfer-panel logistic-available-panel",
         analysis_field_label_tag("Variables"),
-        analysis_transfer_listbox_input("logistic_available", items = setup$available_items, selected = setup$available_selected, size = 19)
+        analysis_transfer_listbox_input("logistic_available", items = setup$available_items, selected = setup$available_selected, size = 17)
       ),
       div(
         class = "hierarchical-target-stack hierarchical-target-stack-compact logistic-target-stack",
@@ -221,7 +221,7 @@ logistic_setup_panel <- function(setup, status_message = NULL) {
             "logistic_y",
             setup$dependent_items,
             setup$dependent_selected,
-            4,
+            3,
             "move_logistic_dependent_up",
             "move_logistic_dependent_down",
             logistic_dependent_measurements()
@@ -243,7 +243,7 @@ logistic_setup_panel <- function(setup, status_message = NULL) {
             active_block$input_id,
             active_block$items,
             active_block$selected,
-            8,
+            7,
             active_block$move_up_id,
             active_block$move_down_id,
             logistic_predictor_measurements()

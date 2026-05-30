@@ -29,7 +29,7 @@ regression_setup_state <- function(
     available_choices = display_variable_choices_with_measurements(available, variable_table, labels),
     available_items = variable_choice_items(available, variable_table, labels),
     available_selected = available_selected,
-    available_list_size = 19,
+    available_list_size = 17,
     add_dependent_disabled = length(available) == 0,
     add_predictor_disabled = length(available) == 0,
     remove_dependent_disabled = length(ordered_dependents) == 0,
@@ -37,12 +37,12 @@ regression_setup_state <- function(
     dependent_choices = display_variable_choices_with_measurements(ordered_dependents, variable_table, labels),
     dependent_items = variable_choice_items(ordered_dependents, variable_table, labels),
     dependent_selected = dependent_selected,
-    dependent_list_size = 4,
+    dependent_list_size = 3,
     predictor_choices = display_variable_choices_with_measurements(ordered_predictors, variable_table, labels),
     predictor_items = variable_choice_items(ordered_predictors, variable_table, labels),
     ordered_predictors = ordered_predictors,
     predictor_selected = predictor_selected,
-    predictor_list_size = 10,
+    predictor_list_size = 9,
     bootstrap_choices = bootstrap_choices,
     current_bootstrap = normalized_bootstrap_resamples(bootstrap_value, bootstrap_choices),
     current_seed = seed_value %||% default_seed(),
@@ -151,7 +151,7 @@ regression_setup_panel <- function(
           "y",
           items = dependent_items,
           selected = dependent_selected,
-          size = 4
+          size = 3
           ),
           div(
             class = "dependent-order-actions",
@@ -166,7 +166,7 @@ regression_setup_panel <- function(
             "predictor_order",
             items = predictor_items,
             selected = predictor_selected,
-            size = 10
+            size = 9
           ),
           div(
             class = "predictor-order-actions",

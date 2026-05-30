@@ -187,7 +187,7 @@ ttest_anova_setup_panel <- function(state) {
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
       analysis_field_label_tag("Variables"),
-      analysis_transfer_listbox_input("ttest_available", state$available_items, selected = state$available_selected, size = 19)
+      analysis_transfer_listbox_input("ttest_available", state$available_items, selected = state$available_selected, size = 17)
     ),
     div(
       class = "analysis-transfer-controls ttest-anova-transfer-controls",
@@ -209,7 +209,7 @@ ttest_anova_setup_panel <- function(state) {
       div(
         class = "analysis-transfer-column analysis-transfer-panel ttest-anova-dependent-panel",
         analysis_field_label_tag("Dependent Variables", c("ordered", "continuous")),
-        analysis_transfer_listbox_input("ttest_dependents", state$dependent_items, selected = state$dependent_selected, size = 4),
+        analysis_transfer_listbox_input("ttest_dependents", state$dependent_items, selected = state$dependent_selected, size = 3),
         div(
           class = "analysis-order-actions ttest-anova-order-actions",
           actionButton("ttest_dependent_up", "Up", class = "btn-default btn-sm"),
@@ -219,7 +219,7 @@ ttest_anova_setup_panel <- function(state) {
       div(
         class = "analysis-transfer-column analysis-transfer-panel ttest-anova-factor-panel",
         analysis_field_label_tag("Independent Variables", c("binary", "category", "ordered")),
-        analysis_transfer_listbox_input("ttest_factors", state$factor_items, selected = state$factor_selected, size = 10),
+        analysis_transfer_listbox_input("ttest_factors", state$factor_items, selected = state$factor_selected, size = 9),
         div(
           class = "analysis-order-actions ttest-anova-order-actions",
           actionButton("ttest_factor_up", "Up", class = "btn-default btn-sm"),

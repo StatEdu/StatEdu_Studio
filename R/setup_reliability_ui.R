@@ -72,7 +72,7 @@ reliability_setup_panel <- function(state) {
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
       analysis_field_label_tag("Variables"),
-      analysis_transfer_listbox_input("reliability_available", state$available_items, selected = state$available_selected, size = 19)
+      analysis_transfer_listbox_input("reliability_available", state$available_items, selected = state$available_selected, size = 17)
     ),
     div(
       class = "analysis-transfer-controls",
@@ -88,7 +88,7 @@ reliability_setup_panel <- function(state) {
         "reliability_selected",
         state$selected_items,
         selected = state$selected_selected,
-        size = if (isTRUE(state$subfactor_enabled)) 17 else 18,
+        size = if (isTRUE(state$subfactor_enabled)) 15 else 16,
         important_height = TRUE,
         height_offset = if (isTRUE(state$subfactor_enabled)) -7 else 0
       ),

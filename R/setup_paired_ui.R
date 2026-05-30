@@ -137,7 +137,7 @@ paired_setup_panel <- function(state) {
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
       analysis_field_label_tag("Variables"),
-      analysis_transfer_listbox_input("paired_available", state$available_items, selected = state$available_selected, size = 19)
+      analysis_transfer_listbox_input("paired_available", state$available_items, selected = state$available_selected, size = 17)
     ),
     div(
       class = "analysis-transfer-controls ttest-anova-transfer-controls paired-transfer-controls",
@@ -146,7 +146,7 @@ paired_setup_panel <- function(state) {
     div(
       class = "analysis-transfer-column analysis-transfer-panel paired-target-panel paired-rm-target-panel",
       analysis_field_label_tag("Repeated-measures variables", c("binary", "category", "ordered", "continuous")),
-      analysis_transfer_listbox_input("paired_pairs", state$repeated_items, selected = state$repeated_selected, size = 18, important_height = TRUE),
+      analysis_transfer_listbox_input("paired_pairs", state$repeated_items, selected = state$repeated_selected, size = 16, important_height = TRUE),
       div(class = "analysis-order-actions paired-order-actions", actionButton("paired_pair_up", "Up", class = "btn-default btn-sm"), actionButton("paired_pair_down", "Down", class = "btn-default btn-sm"))
     ),
     div(

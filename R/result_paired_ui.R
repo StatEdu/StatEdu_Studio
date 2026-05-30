@@ -276,6 +276,18 @@ paired_grouped_column_class <- function(column) {
   "paired-two-col-default"
 }
 
+paired_grouped_column_widths <- function(body_columns) {
+  effect_count <- sum(startsWith(body_columns, "Effect:"))
+  fixed_width <- 20 + 9 * sum(body_columns %in% c("Statistic", "p")) + 10 * effect_count
+  summary_count <- sum(body_columns %in% c("Pre_M", "Pre_SD", "Post_M", "Post_SD"))
+  summary_width <- if (summary_count > 0) max(9, (100 - fixed_width) / summary_count) else 10
+  widths <- rep(summary_width, length(body_columns))
+  widths[body_columns == "Variable"] <- 20
+  widths[body_columns %in% c("Statistic", "p")] <- 9
+  widths[startsWith(body_columns, "Effect:")] <- 10
+  stats::setNames(widths, body_columns)
+}
+
 paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_size = FALSE) {
   type <- match.arg(type)
   if (!is.data.frame(table) || nrow(table) == 0) return(NULL)
@@ -290,8 +302,8 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
     headers <- list(
       tags$tr(
         tags$th(rowspan = 2, style = result_header_cell_style(TRUE), "Variable"),
-        tags$th(colspan = 2, style = result_header_cell_style(FALSE), "Pre"),
-        tags$th(colspan = 2, style = result_header_cell_style(FALSE), "Post"),
+        tags$th(colspan = 2, style = paste0(result_header_cell_style(FALSE), "text-align:center;"), "Pre"),
+        tags$th(colspan = 2, style = paste0(result_header_cell_style(FALSE), "text-align:center;"), "Post"),
         tags$th(rowspan = 2, style = result_header_cell_style(FALSE), statistic_label),
         tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "p"),
         if (length(effect_labels) == 1L) {
@@ -320,7 +332,7 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
       tags$tr(
         tags$th(rowspan = 2, style = result_header_cell_style(TRUE), "Variable"),
         tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "Pre"),
-        tags$th(colspan = length(post_columns), style = result_header_cell_style(FALSE), "Post"),
+        tags$th(colspan = length(post_columns), style = paste0(result_header_cell_style(FALSE), "text-align:center;"), "Post"),
         if (include_statistic) tags$th(rowspan = 2, style = result_header_cell_style(FALSE), statistic_label),
         tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "p"),
         if (length(effect_labels) == 1L) {
@@ -337,11 +349,25 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
       )
     )
   }
+  column_widths <- paired_grouped_column_widths(body_columns)
+  table_width <- max(640L, min(900L, 150L + (length(body_columns) - 1L) * 86L))
+  body_style <- function(first = FALSE, last = FALSE) {
+    paste0(
+      result_body_cell_style(first, last),
+      if (isTRUE(first)) "white-space:normal;" else "white-space:nowrap;"
+    )
+  }
   tags$table(
     class = "coefficient-table paired-grouped-table paired-two-grouped-table",
-    style = result_table_style(font_size = 15, min_width = 640),
+    style = paste0(
+      result_table_style(font_size = 14, min_width = 640),
+      sprintf("table-layout:fixed;width:%dpx;max-width:100%%;", table_width)
+    ),
     tags$colgroup(lapply(body_columns, function(column) {
-      tags$col(class = paired_grouped_column_class(column))
+      tags$col(
+        class = paired_grouped_column_class(column),
+        style = sprintf("width:%.3f%% !important;", column_widths[[column]])
+      )
     })),
     tags$thead(headers),
     tags$tbody(
@@ -350,7 +376,7 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
           column <- body_columns[[column_index]]
           marker <- if (identical(column, "p")) paired_method_marker_for_row(table, row_index) else ""
           tags$td(
-            style = result_body_cell_style(column_index == 1, row_index == nrow(table)),
+            style = body_style(column_index == 1, row_index == nrow(table)),
             if (identical(column, "p")) {
               paired_p_value_cell(table[[column]][[row_index]], marker)
             } else if (startsWith(column, "Effect:")) {

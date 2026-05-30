@@ -259,6 +259,34 @@ paired_rm_grouped_column_class <- function(column) {
   "paired-rm-col-default"
 }
 
+paired_rm_grouped_column_widths <- function(body_columns) {
+  widths <- rep(0, length(body_columns))
+  names(widths) <- body_columns
+  has_posthoc <- "Post-hoc" %in% body_columns
+  es_columns <- body_columns[body_columns == "ES_overall" | grepl("^ES_[0-9]+_[0-9]+$", body_columns)]
+  time_columns <- body_columns[grepl("^Time[0-9]+_(M|SD|0|1)$", body_columns)]
+
+  widths[body_columns == "Repeated variables"] <- 15
+  widths[body_columns == "N"] <- 5
+  widths[body_columns == "Statistic"] <- 6
+  widths[body_columns == "p"] <- 5
+  widths[body_columns == "Post-hoc"] <- if (has_posthoc) 15 else 0
+  widths[body_columns %in% es_columns] <- if (length(es_columns) > 0) 6 else 0
+
+  fixed_width <- sum(widths)
+  time_width <- if (length(time_columns) > 0) {
+    max(3, (100 - fixed_width) / length(time_columns))
+  } else {
+    0
+  }
+  widths[body_columns %in% time_columns] <- time_width
+  total <- sum(widths)
+  if (is.finite(total) && total > 100) {
+    widths <- widths / total * 100
+  }
+  widths
+}
+
 paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
   type <- match.arg(type)
   if (!is.data.frame(table) || nrow(table) == 0) return(NULL)
@@ -284,7 +312,10 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
     paste0(result_header_cell_style(first, compact = TRUE, compact_width = 44, compact_first_width = 148), if (!isTRUE(first)) "text-align:center;" else "")
   }
   body_style <- function(first = FALSE, last = FALSE) {
-    result_body_cell_style(first, last, compact = TRUE, compact_width = 44, compact_first_width = 148)
+    paste0(
+      result_body_cell_style(first, last, compact = TRUE, compact_width = 44, compact_first_width = 148),
+      if (isTRUE(first)) "white-space:normal;" else "white-space:nowrap;"
+    )
   }
   body_columns <- c(
     "Repeated variables",
@@ -301,6 +332,7 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
     "Post-hoc"
   )
   body_columns <- body_columns[body_columns %in% names(table)]
+  column_widths <- paired_rm_grouped_column_widths(body_columns)
   time_header <- lapply(time_indices, function(index) {
     labels <- as.character(table[[paste0("Time", index, "_label")]] %||% "")
     labels <- labels[nzchar(labels)]
@@ -309,9 +341,15 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
   })
   tags$table(
     class = "coefficient-table paired-grouped-table paired-rm-grouped-table",
-    style = result_table_style(font_size = 13, min_width = 520),
+    style = paste0(
+      result_table_style(font_size = 12, min_width = 520),
+      "table-layout:fixed;width:100%;min-width:0;max-width:100%;"
+    ),
     tags$colgroup(lapply(body_columns, function(column) {
-      tags$col(class = paired_rm_grouped_column_class(column))
+      tags$col(
+        class = paired_rm_grouped_column_class(column),
+        style = sprintf("width:%.3f%% !important;", column_widths[[column]])
+      )
     })),
     tags$thead(
       tags$tr(

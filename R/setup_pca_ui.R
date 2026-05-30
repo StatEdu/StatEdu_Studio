@@ -147,7 +147,7 @@ pca_setup_panel <- function(state) {
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
       analysis_field_label_tag("Variables", c("ordered", "continuous")),
-      analysis_transfer_listbox_input("pca_available", state$available_items, selected = state$available_selected, size = 19)
+      analysis_transfer_listbox_input("pca_available", state$available_items, selected = state$available_selected, size = 17)
     ),
     div(
       class = "analysis-transfer-controls correlation-transfer-controls",
@@ -161,7 +161,7 @@ pca_setup_panel <- function(state) {
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
       analysis_field_label_tag("Selected Variables", c("ordered", "continuous")),
-      analysis_transfer_listbox_input("pca_selected", state$selected_items, selected = state$selected_selected, size = 19),
+      analysis_transfer_listbox_input("pca_selected", state$selected_items, selected = state$selected_selected, size = 17),
       div(
         class = "analysis-order-actions correlation-order-actions",
         actionButton("pca_move_up", "Up", class = "btn-default btn-sm"),

@@ -180,7 +180,7 @@ hierarchical_setup_panel <- function(setup, status_message) {
           "hierarchical_available",
           items = setup$available_items,
           selected = setup$available_selected,
-          size = 19
+          size = 17
         )
       ),
       div(
@@ -201,7 +201,7 @@ hierarchical_setup_panel <- function(setup, status_message) {
             "hierarchical_y",
             setup$dependent_items,
             setup$dependent_selected,
-            4,
+            3,
             "move_hierarchical_dependent_up",
             "move_hierarchical_dependent_down",
             "continuous"
@@ -223,7 +223,7 @@ hierarchical_setup_panel <- function(setup, status_message) {
             active_block$input_id,
             active_block$items,
             active_block$selected,
-            8,
+            7,
             active_block$move_up_id,
             active_block$move_down_id,
             analysis_allowed_measurements_all()

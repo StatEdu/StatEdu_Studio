@@ -1453,7 +1453,7 @@ input.variable-select:disabled {
 
 .analysis-transfer-panel {
   width: 326px;
-  min-height: 568px;
+  min-height: 520px;
 }
 
 .frequencies-setup-grid > .analysis-transfer-panel,
@@ -1466,8 +1466,8 @@ input.variable-select:disabled {
 .regression-setup-grid > .analysis-transfer-panel,
 .regression-setup-grid > .regression-target-column,
 .regression-setup-grid > .regression-options {
-  height: 568px;
-  min-height: 568px;
+  height: 520px;
+  min-height: 520px;
   box-sizing: border-box;
 }
 
@@ -2188,7 +2188,7 @@ input.variable-select:disabled {
   grid-template-columns: 326px 50px 326px 310px;
   gap: 18px;
   align-items: stretch;
-  grid-auto-rows: 568px;
+  grid-auto-rows: 520px;
   margin-top: 18px;
   width: 1138px;
   min-width: 1138px;
@@ -2200,7 +2200,7 @@ input.variable-select:disabled {
 }
 
 .ttest-anova-setup-grid > .analysis-transfer-panel {
-  min-height: 568px;
+  min-height: 520px;
 }
 
 .ttest-anova-target-column {
@@ -2215,7 +2215,7 @@ input.variable-select:disabled {
 
 .ttest-anova-transfer-controls {
   flex-direction: column;
-  gap: 184px;
+  gap: 160px;
 }
 
 .ttest-anova-transfer-button-group {
@@ -2236,8 +2236,8 @@ input.variable-select:disabled {
 }
 
 .ttest-anova-options.analysis-options-panel {
-  min-height: 568px;
-  height: 568px;
+  min-height: 520px;
+  height: 520px;
   width: 310px;
 }
 
@@ -3007,7 +3007,7 @@ input.variable-select:disabled {
   grid-template-columns: 326px 50px 326px 310px;
   gap: 18px;
   align-items: stretch;
-  grid-auto-rows: 568px;
+  grid-auto-rows: 520px;
   margin-top: 18px;
   width: 1138px;
   min-width: 1138px;
@@ -3019,7 +3019,7 @@ input.variable-select:disabled {
 }
 
 .correlation-setup-grid > .analysis-transfer-panel {
-  min-height: 568px;
+  min-height: 520px;
 }
 
 .correlation-transfer-controls {
@@ -3039,8 +3039,8 @@ input.variable-select:disabled {
 }
 
 .correlation-options.analysis-options-panel {
-  min-height: 568px;
-  height: 568px;
+  min-height: 520px;
+  height: 520px;
   width: 310px;
 }
 
@@ -3199,7 +3199,7 @@ input.variable-select:disabled {
   grid-template-columns: 326px 50px 326px 20px 310px;
   gap: 18px;
   align-items: stretch;
-  grid-auto-rows: 568px;
+  grid-auto-rows: 520px;
   margin-top: 18px;
   width: 1176px;
   min-width: 1176px;
@@ -3211,7 +3211,7 @@ input.variable-select:disabled {
 }
 
 .regression-setup-grid > .analysis-transfer-panel {
-  min-height: 568px;
+  min-height: 520px;
 }
 
 .regression-target-column {
@@ -3219,7 +3219,7 @@ input.variable-select:disabled {
   grid-template-rows: auto auto;
   gap: 24px;
   width: 326px;
-  height: 568px;
+  height: 520px;
 }
 
 .regression-target-column .analysis-transfer-panel {
@@ -3234,27 +3234,27 @@ input.variable-select:disabled {
 }
 
 .regression-dependent-panel .analysis-transfer-listbox {
-  height: 96px !important;
-  min-height: 96px;
-  max-height: 96px;
+  height: 72px !important;
+  min-height: 72px;
+  max-height: 72px;
 }
 
 .regression-independent-panel .analysis-transfer-listbox {
-  height: 248px !important;
-  min-height: 248px !important;
-  max-height: 248px !important;
+  height: 224px !important;
+  min-height: 224px !important;
+  max-height: 224px !important;
 }
 
 .regression-available-panel .analysis-transfer-listbox {
-  height: 465px !important;
-  min-height: 465px !important;
-  max-height: 465px !important;
+  height: 417px !important;
+  min-height: 417px !important;
+  max-height: 417px !important;
   margin-top: 0;
 }
 
 .regression-transfer-controls {
   flex-direction: column;
-  gap: 186px;
+  gap: 162px;
   transform: translateX(6px);
 }
 
@@ -3272,7 +3272,7 @@ input.variable-select:disabled {
   align-content: initial;
   margin-left: 0;
   padding-top: 12px;
-  min-height: 568px;
+  min-height: 520px;
   width: 310px;
 }
 
@@ -4526,7 +4526,7 @@ pre {
 }
 
 .regression-setup-grid > .analysis-transfer-panel {
-  min-height: 568px;
+  min-height: 520px;
 }
 
 .regression-target-column {
@@ -4534,7 +4534,7 @@ pre {
   grid-template-rows: auto auto;
   gap: 24px;
   width: 326px;
-  height: 568px;
+  height: 520px;
 }
 
 .regression-target-column .analysis-transfer-panel {
@@ -4543,26 +4543,26 @@ pre {
 
 .regression-transfer-controls {
   flex-direction: column;
-  gap: 186px;
+  gap: 162px;
   transform: translateX(6px);
 }
 
 .regression-dependent-panel .analysis-transfer-listbox {
-  height: 96px !important;
-  min-height: 96px;
-  max-height: 96px;
+  height: 72px !important;
+  min-height: 72px;
+  max-height: 72px;
 }
 
 .regression-independent-panel .analysis-transfer-listbox {
-  height: 248px !important;
-  min-height: 248px !important;
-  max-height: 248px !important;
+  height: 224px !important;
+  min-height: 224px !important;
+  max-height: 224px !important;
 }
 
 .regression-available-panel .analysis-transfer-listbox {
-  height: 465px !important;
-  min-height: 465px !important;
-  max-height: 465px !important;
+  height: 417px !important;
+  min-height: 417px !important;
+  max-height: 417px !important;
   margin-top: 0;
 }
 
@@ -4576,8 +4576,8 @@ pre {
   align-content: initial;
   margin-left: 0;
   padding-top: 12px;
-  min-height: 568px !important;
-  height: 568px;
+  min-height: 520px !important;
+  height: 520px;
   width: 310px;
 }
 
@@ -4726,11 +4726,10 @@ pre {
 .reliability-setup-grid > .analysis-transfer-panel:not(.reliability-target-panel) .analysis-transfer-listbox,
 .correlation-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
 .hierarchical-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
-.regression-available-panel .analysis-transfer-listbox,
-.variable-rename-source-panel .analysis-transfer-listbox {
-  height: 465px !important;
-  min-height: 465px !important;
-  max-height: 465px !important;
+.regression-available-panel .analysis-transfer-listbox {
+  height: 417px !important;
+  min-height: 417px !important;
+  max-height: 417px !important;
 }
 
 .frequencies-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
@@ -4738,55 +4737,61 @@ pre {
 .correlation-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
 .ttest-anova-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
 .paired-setup-grid > .analysis-transfer-panel:not(.paired-rm-target-panel) .analysis-transfer-listbox {
-  height: 465px !important;
-  min-height: 465px !important;
-  max-height: 465px !important;
+  height: 417px !important;
+  min-height: 417px !important;
+  max-height: 417px !important;
 }
 
 .ttest-anova-dependent-panel .analysis-transfer-listbox,
 .hierarchical-target-panel .analysis-transfer-listbox,
 .regression-dependent-panel .analysis-transfer-listbox {
-  height: 96px !important;
-  min-height: 96px;
-  max-height: 96px;
+  height: 72px !important;
+  min-height: 72px;
+  max-height: 72px;
 }
 
 .ttest-anova-factor-panel .analysis-transfer-listbox {
-  height: 248px !important;
-  min-height: 248px !important;
-  max-height: 248px !important;
+  height: 224px !important;
+  min-height: 224px !important;
+  max-height: 224px !important;
 }
 
 .regression-independent-panel .analysis-transfer-listbox {
-  height: 248px !important;
-  min-height: 248px !important;
-  max-height: 248px !important;
+  height: 224px !important;
+  min-height: 224px !important;
+  max-height: 224px !important;
+}
+
+.hierarchical-target-panel .analysis-transfer-listbox[style*="72px"] {
+  height: 72px !important;
+  min-height: 72px;
+  max-height: 72px;
 }
 
 .hierarchical-target-panel .analysis-transfer-listbox[style*="144px"] {
-  height: 144px !important;
-  min-height: 144px;
-  max-height: 144px;
+  height: 120px !important;
+  min-height: 120px;
+  max-height: 120px;
 }
 
 .hierarchical-target-panel .analysis-transfer-listbox[style*="96px"] {
-  height: 96px !important;
-  min-height: 96px;
-  max-height: 96px;
+  height: 72px !important;
+  min-height: 72px;
+  max-height: 72px;
 }
 
 .hierarchical-dependent-panel .analysis-transfer-listbox,
 .hierarchical-block2-panel .analysis-transfer-listbox,
 .hierarchical-block3-panel .analysis-transfer-listbox {
-  height: 48px !important;
-  min-height: 48px;
-  max-height: 48px;
+  height: 72px !important;
+  min-height: 72px;
+  max-height: 72px;
 }
 
 .hierarchical-block1-panel .analysis-transfer-listbox {
-  height: 144px !important;
-  min-height: 144px;
-  max-height: 144px;
+  height: 168px !important;
+  min-height: 168px;
+  max-height: 168px;
 }
 
 .hierarchical-list-size-2 .analysis-transfer-listbox {
@@ -4796,15 +4801,21 @@ pre {
 }
 
 .hierarchical-list-size-4 .analysis-transfer-listbox {
-  height: 96px !important;
-  min-height: 96px !important;
-  max-height: 96px !important;
+  height: 72px !important;
+  min-height: 72px !important;
+  max-height: 72px !important;
 }
 
 .hierarchical-list-size-6 .analysis-transfer-listbox {
-  height: 144px !important;
-  min-height: 144px !important;
-  max-height: 144px !important;
+  height: 120px !important;
+  min-height: 120px !important;
+  max-height: 120px !important;
+}
+
+.hierarchical-list-size-7 .analysis-transfer-listbox {
+  height: 168px !important;
+  min-height: 168px !important;
+  max-height: 168px !important;
 }
 
 .frequencies-setup-grid > .analysis-transfer-panel,
@@ -4812,7 +4823,7 @@ pre {
 .ttest-anova-setup-grid > .analysis-transfer-panel,
 .hierarchical-setup-grid > .analysis-transfer-panel,
 .regression-setup-grid > .analysis-transfer-panel {
-  min-height: 568px;
+  min-height: 520px;
 }
 
 .analysis-transfer-controls,
@@ -4963,7 +4974,7 @@ pre {
 .correlation-options-column,
 .hierarchical-options.analysis-options-panel,
 .regression-options.analysis-options-panel {
-  min-height: 568px;
+  min-height: 520px;
 }
 
 .frequencies-setup-grid,
@@ -4973,7 +4984,7 @@ pre {
 .correlation-setup-grid,
 .regression-setup-grid {
   align-items: stretch;
-  grid-auto-rows: 568px;
+  grid-auto-rows: 520px;
 }
 
 .frequencies-setup-grid > .analysis-transfer-panel,
@@ -4991,25 +5002,25 @@ pre {
 .regression-setup-grid > .analysis-transfer-panel,
 .regression-setup-grid > .regression-target-column,
 .regression-setup-grid > .regression-options.analysis-options-panel {
-  height: 568px;
-  min-height: 568px;
+  height: 520px;
+  min-height: 520px;
   box-sizing: border-box;
 }
 
 .ttest-anova-options.analysis-options-panel,
 .correlation-options.analysis-options-panel,
 .regression-options.analysis-options-panel {
-  height: 568px;
-  min-height: 568px;
+  height: 520px;
+  min-height: 520px;
 }
 
 .ttest-anova-target-column {
-  grid-template-rows: 198px 352px;
-  height: 568px;
+  grid-template-rows: 174px 328px;
+  height: 520px;
 }
 
 .paired-transfer-controls {
-  height: 568px;
+  height: 520px;
 }
 
 .paired-transfer-controls {
@@ -5020,21 +5031,21 @@ pre {
 }
 
 .paired-rm-target-panel .analysis-transfer-listbox {
-  height: 439px !important;
-  min-height: 439px !important;
-  max-height: 439px !important;
+  height: 391px !important;
+  min-height: 391px !important;
+  max-height: 391px !important;
 }
 
 .paired-setup-grid > .analysis-transfer-panel.paired-rm-target-panel .analysis-transfer-listbox[data-input-id="paired_pairs"] {
-  height: 439px !important;
-  min-height: 439px !important;
-  max-height: 439px !important;
+  height: 391px !important;
+  min-height: 391px !important;
+  max-height: 391px !important;
 }
 
 .paired-setup-grid > .analysis-transfer-panel.paired-rm-target-panel .analysis-transfer-listbox[data-input-id="nonparametric_paired_repeated"] {
-  height: 439px !important;
-  min-height: 439px !important;
-  max-height: 439px !important;
+  height: 391px !important;
+  min-height: 391px !important;
+  max-height: 391px !important;
 }
 
 .paired-target-panel {
@@ -5091,15 +5102,15 @@ pre {
 }
 
 .reliability-setup-grid > .analysis-transfer-panel.reliability-target-panel.reliability-subfactor-off .analysis-transfer-listbox {
-  height: 432px !important;
-  min-height: 432px !important;
-  max-height: 432px !important;
+  height: 384px !important;
+  min-height: 384px !important;
+  max-height: 384px !important;
 }
 
 .reliability-setup-grid > .analysis-transfer-panel.reliability-target-panel.reliability-subfactor-on .analysis-transfer-listbox {
-  height: 401px !important;
-  min-height: 401px !important;
-  max-height: 401px !important;
+  height: 353px !important;
+  min-height: 353px !important;
+  max-height: 353px !important;
 }
 
 .reliability-target-panel.reliability-subfactor-off .analysis-transfer-listbox {
@@ -5130,46 +5141,83 @@ pre {
   padding: 4px 8px;
 }
 
+.paired-two-grouped-table,
+.paired-rm-grouped-table {
+  table-layout: fixed;
+}
+
+.paired-two-grouped-table {
+  font-size: 14px;
+}
+
+.paired-rm-grouped-table {
+  width: 100%;
+  max-width: 100%;
+  font-size: 12px;
+}
+
+.paired-two-grouped-table th,
+.paired-two-grouped-table td,
 .paired-rm-grouped-table th,
 .paired-rm-grouped-table td {
   padding: 4px 5px;
   white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: keep-all;
 }
 
+.paired-two-grouped-table th[colspan],
+.paired-rm-grouped-table th[colspan] {
+  text-align: center;
+}
+
+.paired-two-grouped-table th:first-child,
+.paired-two-grouped-table td:first-child,
 .paired-rm-grouped-table th:first-child,
-.paired-rm-grouped-table td:first-child,
+.paired-rm-grouped-table td:first-child {
+  text-align: left;
+  white-space: normal;
+}
+
+.paired-two-grouped-table th:not(:first-child),
+.paired-two-grouped-table td:not(:first-child),
+.paired-rm-grouped-table th:not(:first-child),
+.paired-rm-grouped-table td:not(:first-child) {
+  text-align: right;
+}
+
 .paired-rm-grouped-table th:last-child,
 .paired-rm-grouped-table td:last-child {
-  white-space: normal;
+  white-space: nowrap;
 }
 
 
 .regression-target-column {
-  grid-template-rows: 198px 352px;
-  height: 568px;
+  grid-template-rows: 174px 328px;
+  height: 520px;
 }
 
 .hierarchical-setup-grid > .analysis-transfer-panel,
 .hierarchical-options.analysis-options-panel {
-  min-height: 616px;
+  min-height: 520px;
 }
 
 .hierarchical-setup-grid {
   align-items: stretch;
-  grid-auto-rows: 568px;
+  grid-auto-rows: 520px;
 }
 
 .hierarchical-setup-grid > .analysis-transfer-panel,
 .hierarchical-target-stack-compact,
 .hierarchical-options.analysis-options-panel {
-  height: 568px;
-  min-height: 568px;
+  height: 520px;
+  min-height: 520px;
   box-sizing: border-box;
 }
 
 .hierarchical-target-stack-compact {
   display: grid;
-  grid-template-rows: 198px 352px;
+  grid-template-rows: 174px 328px;
   gap: 18px;
 }
 
@@ -5193,22 +5241,22 @@ pre {
 }
 
 .hierarchical-target-panel.hierarchical-dependent-panel .analysis-transfer-listbox,
-.hierarchical-dependent-panel.hierarchical-list-size-4 .analysis-transfer-listbox {
-  height: 96px !important;
-  min-height: 96px !important;
-  max-height: 96px !important;
+.hierarchical-dependent-panel.hierarchical-list-size-3 .analysis-transfer-listbox {
+  height: 72px !important;
+  min-height: 72px !important;
+  max-height: 72px !important;
 }
 
 .hierarchical-active-block-row .analysis-transfer-listbox {
-  height: 210px !important;
-  min-height: 210px !important;
-  max-height: 210px !important;
+  height: 186px !important;
+  min-height: 186px !important;
+  max-height: 186px !important;
 }
 
 .crosstab-target-column {
   grid-template-rows: auto auto !important;
   height: auto !important;
-  min-height: 568px !important;
+  min-height: 520px !important;
 }
 
 .crosstab-workspace-heading,
@@ -5240,15 +5288,15 @@ pre {
 }
 
 .crosstab-column-panel .analysis-transfer-listbox {
-  height: 96px !important;
-  min-height: 96px !important;
-  max-height: 96px !important;
+  height: 72px !important;
+  min-height: 72px !important;
+  max-height: 72px !important;
 }
 
 .crosstab-row-panel .analysis-transfer-listbox {
-  height: 248px !important;
-  min-height: 248px !important;
-  max-height: 248px !important;
+  height: 224px !important;
+  min-height: 224px !important;
+  max-height: 224px !important;
 }
 
 .regression-result-panel .crosstab-main-table > tbody > tr > td.crosstab-stat-cell {
@@ -6120,6 +6168,204 @@ pre {
 .about-markdown-document table {
   border-collapse: collapse;
   width: 100%;
+}
+
+/* Laptop viewport tuning. */
+@media (max-width: 1440px) and (min-width: 901px) {
+  body {
+    scroll-padding-top: 72px;
+  }
+
+  .navbar > .container-fluid .navbar-brand,
+  .navbar > .container .navbar-brand {
+    height: 68px;
+    padding-bottom: 5px;
+    padding-top: 5px;
+  }
+
+  .navbar .navbar-nav > li > a {
+    min-height: 68px;
+    padding-bottom: 24px;
+    padding-top: 24px;
+    font-size: 15px;
+  }
+
+  .brand-title {
+    height: 58px;
+    gap: 6px;
+  }
+
+  .brand-logo-horizontal {
+    width: 176px;
+    height: 58px;
+    flex-basis: 176px;
+  }
+
+  .version {
+    font-size: 11px;
+  }
+
+  .page-shell {
+    max-width: 1280px;
+    margin-top: 14px;
+    padding-left: 22px;
+    padding-right: 22px;
+  }
+
+  .app-heading {
+    margin-bottom: 14px;
+  }
+
+  .app-heading h1 {
+    font-size: 30px;
+  }
+
+  .toolbar,
+  .workspace-panel,
+  .result-panel {
+    padding: 14px;
+  }
+
+  .content-grid,
+  .analysis-layout,
+  .regression-layout {
+    gap: 14px;
+  }
+
+  .analysis-workspace-heading {
+    margin-bottom: 14px;
+  }
+
+  .analysis-workspace-heading,
+  .analysis-data-viewer-panel,
+  .frequencies-setup-grid,
+  .reliability-setup-grid,
+  .paired-setup-grid,
+  .ttest-anova-setup-grid,
+  .correlation-setup-grid,
+  .hierarchical-setup-grid,
+  .regression-setup-grid,
+  .logistic-setup-grid,
+  .reliability-action-row,
+  .frequencies-action-row,
+  .paired-action-row,
+  .ttest-anova-action-row,
+  .correlation-action-row,
+  .hierarchical-action-row,
+  .regression-action-row,
+  .logistic-action-row,
+  #likert_groups,
+  #likert_groups_wrapper,
+  .likert-review-grid,
+  .likert-action-row {
+    width: 1050px !important;
+    min-width: 1050px !important;
+    max-width: 1050px !important;
+  }
+
+  .frequencies-setup-grid,
+  .reliability-setup-grid,
+  .paired-setup-grid,
+  .ttest-anova-setup-grid,
+  .correlation-setup-grid,
+  .hierarchical-setup-grid,
+  .regression-setup-grid,
+  .logistic-setup-grid,
+  .reliability-action-row,
+  .frequencies-action-row,
+  .paired-action-row,
+  .ttest-anova-action-row,
+  .correlation-action-row,
+  .hierarchical-action-row,
+  .regression-action-row,
+  .logistic-action-row {
+    grid-template-columns: 304px 44px 304px 16px 286px !important;
+    gap: 16px !important;
+  }
+
+  .frequencies-setup-grid,
+  .reliability-setup-grid,
+  .paired-setup-grid,
+  .ttest-anova-setup-grid,
+  .correlation-setup-grid,
+  .hierarchical-setup-grid,
+  .regression-setup-grid,
+  .logistic-setup-grid {
+    padding: 16px;
+  }
+
+  .analysis-transfer-column,
+  .analysis-transfer-panel,
+  .ttest-anova-target-column,
+  .regression-target-column,
+  .hierarchical-target-column {
+    width: 304px;
+  }
+
+  .analysis-options-panel,
+  .ttest-anova-options-column,
+  .correlation-options-column,
+  .hierarchical-options.analysis-options-panel,
+  .regression-options.analysis-options-panel {
+    width: 286px;
+  }
+
+  .analysis-save-action {
+    gap: 5px;
+  }
+
+  .analysis-save-button {
+    min-width: 0;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+}
+
+@media (max-width: 1440px) and (min-width: 901px) and (max-height: 850px) {
+  .page-shell {
+    margin-top: 10px;
+  }
+
+  .workspace-panel h3,
+  .analysis-workspace-heading {
+    margin-bottom: 12px;
+  }
+
+  .frequencies-setup-grid,
+  .reliability-setup-grid,
+  .ttest-anova-setup-grid,
+  .correlation-setup-grid,
+  .regression-setup-grid,
+  .frequencies-setup-grid > .analysis-transfer-panel,
+  .frequencies-setup-grid > .analysis-options-panel,
+  .ttest-anova-setup-grid > .analysis-transfer-panel,
+  .ttest-anova-setup-grid > .ttest-anova-target-column,
+  .ttest-anova-setup-grid > .ttest-anova-options-column,
+  .correlation-setup-grid > .analysis-transfer-panel,
+  .correlation-setup-grid > .correlation-options-column,
+  .regression-setup-grid > .analysis-transfer-panel,
+  .regression-setup-grid > .regression-target-column,
+  .regression-setup-grid > .regression-options {
+    height: 520px;
+    min-height: 520px;
+  }
+
+  .frequencies-setup-grid,
+  .reliability-setup-grid,
+  .ttest-anova-setup-grid,
+  .correlation-setup-grid {
+    grid-auto-rows: 520px;
+  }
+
+  .frequencies-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
+  .reliability-setup-grid > .analysis-transfer-panel:not(.reliability-target-panel) .analysis-transfer-listbox,
+  .correlation-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
+  .ttest-anova-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
+  .paired-setup-grid > .analysis-transfer-panel:not(.paired-rm-target-panel) .analysis-transfer-listbox {
+    height: 417px !important;
+    min-height: 417px !important;
+    max-height: 417px !important;
+  }
 }
 
 .about-markdown-document th,

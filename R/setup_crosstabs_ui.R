@@ -62,7 +62,7 @@ crosstab_setup_panel <- function(state) {
     div(
       class = "analysis-transfer-column analysis-transfer-panel regression-available-panel crosstab-available-panel",
       analysis_field_label_tag("Variables", crosstab_allowed_measurements()),
-      analysis_transfer_listbox_input("crosstab_available", state$available_items, selected = state$available_selected, size = 19)
+      analysis_transfer_listbox_input("crosstab_available", state$available_items, selected = state$available_selected, size = 17)
     ),
     div(
       class = "analysis-transfer-controls regression-transfer-controls crosstab-transfer-controls",
@@ -84,7 +84,7 @@ crosstab_setup_panel <- function(state) {
       div(
         class = "analysis-transfer-column analysis-transfer-panel regression-dependent-panel crosstab-column-panel",
         analysis_field_label_tag("Column variable", crosstab_allowed_measurements()),
-        analysis_transfer_listbox_input("crosstab_col", state$col_items, selected = state$col_selected, size = 4),
+        analysis_transfer_listbox_input("crosstab_col", state$col_items, selected = state$col_selected, size = 3),
         div(
           class = "analysis-order-actions crosstab-order-actions",
           actionButton("crosstab_col_up", "Up", class = "btn-default btn-sm"),
@@ -94,7 +94,7 @@ crosstab_setup_panel <- function(state) {
       div(
         class = "analysis-transfer-column analysis-transfer-panel regression-independent-panel crosstab-row-panel",
         analysis_field_label_tag("Row variable", crosstab_allowed_measurements()),
-        analysis_transfer_listbox_input("crosstab_row", state$row_items, selected = state$row_selected, size = 10),
+        analysis_transfer_listbox_input("crosstab_row", state$row_items, selected = state$row_selected, size = 9),
         div(
           class = "analysis-order-actions crosstab-order-actions",
           actionButton("crosstab_row_up", "Up", class = "btn-default btn-sm"),
