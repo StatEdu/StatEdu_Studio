@@ -2708,7 +2708,7 @@ input.variable-select:disabled {
 }
 
 .factor-analysis-options .analysis-option-group {
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .factor-analysis-options .analysis-option-title {
@@ -2750,6 +2750,27 @@ input.variable-select:disabled {
 
 .factor-analysis-options .form-group {
   margin-bottom: 0;
+}
+
+.factor-analysis-options .factor-select-group .analysis-option-title {
+  font-size: 15px;
+  margin-bottom: 6px;
+}
+
+.factor-analysis-options .factor-select-group select.form-control {
+  background-color: #ffffff;
+  border-color: #b9cbe0;
+  box-shadow: none;
+  font-size: 13.5px;
+  height: 32px;
+  line-height: 1.2;
+  padding: 4px 8px;
+  width: 100%;
+}
+
+.factor-analysis-options .factor-select-group select.form-control:disabled {
+  background-color: #edf3f7;
+  color: #6f7f8d;
 }
 
 .factor-analysis-options .shiny-options-group {

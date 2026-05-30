@@ -1515,7 +1515,7 @@
           document.querySelectorAll(selector).forEach(function(container) {
             container.classList.toggle('ttest-normality-disabled', disabled);
             container.setAttribute('aria-disabled', disabled ? 'true' : 'false');
-            container.querySelectorAll('input').forEach(function(input) {
+            container.querySelectorAll('input, select, textarea, button').forEach(function(input) {
               input.disabled = disabled;
             });
           });

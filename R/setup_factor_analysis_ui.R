@@ -76,6 +76,29 @@ factor_analysis_save_score_row <- function(id, label, value) {
   )
 }
 
+factor_analysis_select_group <- function(title, id, choices, selected, extra_class = "", disabled = FALSE) {
+  selected <- as.character(selected %||% unname(choices)[[1]])
+  if (!selected %in% unname(choices)) {
+    selected <- unname(choices)[[1]]
+  }
+  div(
+    class = paste(
+      "analysis-option-group factor-select-group",
+      extra_class,
+      if (isTRUE(disabled)) "ttest-normality-disabled" else ""
+    ),
+    div(class = "analysis-option-title", title),
+    selectInput(
+      id,
+      label = NULL,
+      choices = choices,
+      selected = selected,
+      width = "100%",
+      selectize = FALSE
+    )
+  )
+}
+
 factor_analysis_selection_controls <- function(state) {
   choices <- factor_analysis_criterion_choices()
   selected <- as.character(state$criterion %||% "eigen")
@@ -169,7 +192,7 @@ factor_analysis_setup_panel <- function(state) {
             "Model",
             div(
               class = "factor-options-tab-content",
-              analysis_radio_group(
+              factor_analysis_select_group(
                 "Matrix",
                 "factor_matrix_type",
                 factor_analysis_matrix_choices(),
@@ -181,33 +204,23 @@ factor_analysis_setup_panel <- function(state) {
                   list(id = "factor_normality", label = "normality test", value = state$normality)
                 )
               ),
-              div(
-                class = paste(
-                  "analysis-option-group analysis-radio-group factor-normality-method-group",
-                  if (!isTRUE(state$normality)) "ttest-normality-disabled" else ""
-                ),
-                div(class = "analysis-option-title", "Normality method"),
-                radioButtons(
-                  "factor_normality_method",
-                  label = NULL,
-                  choices = factor_analysis_normality_method_choices(),
-                  selected = state$normality_method
-                )
+              factor_analysis_select_group(
+                "Normality method",
+                "factor_normality_method",
+                factor_analysis_normality_method_choices(),
+                selected = state$normality_method,
+                extra_class = "factor-normality-method-group",
+                disabled = !isTRUE(state$normality)
               ),
-              div(
-                class = paste(
-                  "analysis-option-group analysis-radio-group factor-method-group",
-                  if (isTRUE(state$normality)) "ttest-normality-disabled" else ""
-                ),
-                div(class = "analysis-option-title", "Method"),
-                radioButtons(
-                  "factor_method",
-                  label = NULL,
-                  choices = factor_analysis_method_choices(),
-                  selected = state$method
-                )
+              factor_analysis_select_group(
+                "Method",
+                "factor_method",
+                factor_analysis_method_choices(),
+                selected = state$method,
+                extra_class = "factor-method-group",
+                disabled = isTRUE(state$normality)
               ),
-              analysis_radio_group(
+              factor_analysis_select_group(
                 "Rotation",
                 "factor_rotation",
                 factor_analysis_rotation_choices(),

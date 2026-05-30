@@ -14,6 +14,39 @@ expect_true <- function(value, label) {
   if (!isTRUE(value)) stop(label, call. = FALSE)
 }
 
+message("Checking factor analysis setup option layout...")
+setup_variables <- c("age", "x11", "x12", "x13", "x21", "x22", "x23", "x24", "y", "y1", "y2", "y3")
+setup_state <- factor_analysis_setup_state(
+  selected_names = setup_variables,
+  factor_variables = setup_variables[1:4],
+  variable_table = data.frame(
+    name = setup_variables,
+    measurement = rep("continuous", length(setup_variables)),
+    stringsAsFactors = FALSE
+  )
+)
+setup_html <- as.character(htmltools::renderTags(factor_analysis_setup_panel(setup_state))$html)
+expect_true(
+  all(vapply(
+    c("factor_matrix_type", "factor_normality_method", "factor_method", "factor_rotation"),
+    function(id) grepl(sprintf("<select[^>]+id=\"%s\"", id), setup_html, perl = TRUE),
+    logical(1)
+  )),
+  "Expected factor analysis model options to use compact select controls"
+)
+expect_true(
+  !any(vapply(
+    c("factor_matrix_type", "factor_normality_method", "factor_method", "factor_rotation"),
+    function(id) grepl(sprintf("type=\"radio\"[^>]+name=\"%s\"", id), setup_html, perl = TRUE),
+    logical(1)
+  )),
+  "Expected compact select controls to replace model option radio groups"
+)
+expect_true(
+  grepl("type=\"radio\"[^>]+name=\"factor_criterion\"", setup_html, perl = TRUE),
+  "Expected factor selection to remain a radio group with the fixed-factor number input"
+)
+
 set.seed(42)
 n <- 180
 latent1 <- rnorm(n)
