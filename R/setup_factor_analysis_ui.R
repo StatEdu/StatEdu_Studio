@@ -205,7 +205,7 @@ factor_analysis_setup_panel <- function(state) {
                 selected = state$matrix_type
               ),
               factor_analysis_select_group(
-                "Assumption",
+                "Normality",
                 "factor_assumption",
                 factor_analysis_assumption_choices(),
                 selected = state$assumption

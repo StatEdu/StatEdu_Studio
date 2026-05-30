@@ -45,7 +45,7 @@ expect_true(
 expect_true(
   !grepl("factor_normality_method", setup_html, fixed = TRUE) &&
     !grepl("factor_normality", setup_html, fixed = TRUE),
-  "Expected assumption select to replace the separate normality checkbox and method select"
+  "Expected normality select to replace the separate normality checkbox and method select"
 )
 expect_true(
   grepl("type=\"radio\"[^>]+name=\"factor_criterion\"", setup_html, perl = TRUE),
