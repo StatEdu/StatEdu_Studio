@@ -139,20 +139,16 @@ factor_analysis_selection_controls <- function(state) {
         "fixed",
         div(
           class = "factor-fixed-number-input",
-          style = "display:inline-block;flex:0 0 56px;margin:0;width:56px;",
           tags$input(
             id = "factor_n_factors",
             type = "number",
             class = "form-control",
             value = state$n_factors,
             min = 1,
-            step = 1,
-            style = "display:inline-block;height:30px;min-width:0;padding:3px 6px;width:56px;"
+            step = 1
           )
         ),
-        class = "radio factor-fixed-radio-row",
-        style = "align-items:center;display:flex;flex-wrap:nowrap;gap:6px;margin-left:0;width:252px;",
-        label_style = "flex:0 0 auto;margin-bottom:0;white-space:nowrap;"
+        class = "radio factor-fixed-radio-row"
       )
     )
   )

@@ -2787,19 +2787,39 @@ input.variable-select:disabled {
 
 .factor-selection-compact .shiny-options-group {
   display: grid;
-  gap: 2px;
+  gap: 8px;
+  margin-left: 28px;
+}
+
+.factor-selection-compact .radio {
+  margin: 0;
+}
+
+.factor-selection-compact .radio label {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+  line-height: 1.2;
+  margin: 0;
+  padding-left: 0;
+  white-space: nowrap;
+}
+
+.factor-selection-compact .radio input[type="radio"] {
+  margin: 0;
+  position: static;
 }
 
 .factor-fixed-radio-row {
   align-items: center;
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 6px;
-  width: auto;
+  display: grid !important;
+  gap: 8px;
+  grid-template-columns: minmax(0, max-content) 58px;
+  width: max-content;
 }
 
 .factor-fixed-radio-row label {
-  flex: 0 0 auto;
+  min-width: 0;
   margin-bottom: 0;
   white-space: nowrap;
   width: auto !important;
