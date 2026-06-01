@@ -77,6 +77,8 @@ app_module_files <- c(
   "analysis_ttest_anova.R",
   "analysis_regression.R",
   "analysis_logistic.R",
+  "sample_size.R",
+  "sample_size_ui.R",
   "data_editor_recode.R",
   "data_editor_likert.R",
   "data_editor_missing.R",

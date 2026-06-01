@@ -8,9 +8,9 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.28`
+Current development version: `0.9.29`
 
-Version 0.9.28 brings Windows data/settings open dialogs to the foreground, moves Factor Analysis and PCA loading tables directly after their overview tables, clarifies bundled open-source license notices, and avoids launcher hangs while closing an existing app process on port 7894.
+Version 0.9.29 adds standalone Sample Size and Effect Size menus with reference-backed calculators for common study designs, including t-test, ANOVA / ANCOVA, GEE, LMM, nonparametric tests, proportions, chi-square, McNemar, regression, and survival workflows.
 
 ## Current Scope
 
@@ -32,6 +32,7 @@ Version 0.9.28 brings Windows data/settings open dialogs to the foreground, move
 - Hierarchical regression with block-wise model comparison
 - Logistic regression for binary, ordered, and categorical dependent variables
 - Penalized regression helpers for severe multicollinearity cases
+- Standalone sample size, power, and effect size calculators with method notes and references
 - Result saving to HTML, PDF, Excel, figures, and accumulated Result collections
 - Result collection export to HTML, PDF, Excel, and Word
 
@@ -82,7 +83,7 @@ Run validation scripts from the repository root with Rscript, for example:
 
 If you use **EasyFlow Statistics** in your research, please cite:
 
-LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.28) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
+LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.29) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
 
 ## Development Model
 

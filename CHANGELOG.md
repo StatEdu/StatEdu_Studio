@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.9.29 - 2026-06-01
+
+### Added
+
+- Added standalone Sample Size and Effect Size top-level menus after Analysis.
+- Added reference-backed sample size, power, and effect size calculators for t-test, ANOVA / ANCOVA, GEE, LMM, nonparametric, proportion, chi-square, McNemar, regression, survival, and additional planning workflows.
+- Added focused validation coverage for sample size, achieved power, and effect-size calculation wrappers.
+
+### Changed
+
+- Reworked the sample size and effect size screens into the shared three-block workflow used by analysis setup panels.
+- Reorganized Sample Size and Effect Size menu order by study-design family.
+- Updated t-test effect-size output so selected-method results are emphasized and convertible effect sizes are shown without non-effect-size intermediate values.
+
 ## v0.9.28 - 2026-05-30
 
 ### Fixed

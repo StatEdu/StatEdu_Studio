@@ -840,6 +840,12 @@
       });
 
       document.addEventListener('click', function(event) {
+        var button = event.target && event.target.closest ? event.target.closest('button[id^="effect_size_"][id$="_calculate"]') : null;
+        if (!button || !window.Shiny) return;
+        Shiny.setInputValue(button.id, Date.now() + Math.random(), {priority: 'event'});
+      }, true);
+
+      document.addEventListener('click', function(event) {
         var navLink = event.target && event.target.closest ? event.target.closest('.navbar-nav a') : null;
         if (navLink) {
           var activeTopLink = document.querySelector('.navbar-nav > li.active > a');

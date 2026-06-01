@@ -76,6 +76,8 @@ create_app_server <- function(app_version) {
   output$lazy_analysis_generalized <- renderUI(tab_panel_content(generalized_tab_panel("Generalized")))
   output$lazy_analysis_logistic <- renderUI(tab_panel_content(logistic_regression_tab_panel()))
 
+  register_sample_size_server(input, output, session)
+
   output$lazy_about_overview <- renderUI(tab_panel_content(about_markdown_tab_panel("Overview", "about_overview", "README.md", "Project scope, current version, validation, and citation.")))
   output$lazy_about_user_guide <- renderUI(tab_panel_content(about_markdown_tab_panel("User Guide", "about_user_guide", file.path("docs", "USER_GUIDE_KO.md"), "Step-by-step operating guide for loading data, selecting variables, running analyses, and saving results.")))
   output$lazy_about_analysis_methods <- renderUI(tab_panel_content(about_markdown_tab_panel("Analysis Methods", "about_analysis_methods", file.path("docs", "ANALYSIS_METHODS_KO.md"), "Implementation inventory of analysis menus, statistical outputs, tables, and export coverage.")))

@@ -84,7 +84,7 @@ app_stylesheet_link <- function(version) {
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-factor-assumption-select"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-effect-size-click"))
 }
 
 app_head_tags <- function(version) {
@@ -144,6 +144,10 @@ app_ui <- function(version) {
     calculator_tab_panel(),
 
     analysis_tab_panel(analysis_tabs),
+
+    sample_size_tab_panel(),
+
+    effect_size_tab_panel(),
 
     result_tab_panel(),
 
