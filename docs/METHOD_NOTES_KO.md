@@ -291,6 +291,8 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 이 절은 Sample Size, Power, Effect Size 메뉴의 계산 근거를 정리한다. 앱의 기본 목표 검정력은 `.95`이며, 사용자가 연구 분야의 관례에 맞추어 `.80`, `.90` 등으로 바꿀 수 있다. 표본 수 결과에서 최종 최소 표본 수는 `n (...)` 행으로 굵게 표시한다. 탈락률을 입력하면 `n (... with dropout)`을 추가로 표시한다.
 
+계산 결과는 연구계획서 작성 단계의 정량적 근거를 제공하기 위한 값이다. 실제 연구에서는 모집 가능성, 측정 신뢰도, 결측 구조, 군 배정 제약, 분석에서 사용할 공변량, 중도탈락, 다중비교 계획을 함께 검토한다. 특히 작은 표본, 희귀 사건, 매우 큰 효과크기, 매우 작은 효과크기에서는 근사식이 불안정할 수 있으므로 민감도 분석을 함께 보고하는 것이 좋다.
+
 ### 18.1 공통 기호
 
 - `alpha`: 제1종 오류율.
@@ -304,6 +306,15 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 - `m`: 반복측정 시점 수 또는 cluster size.
 - `DE`: design effect.
 - $B$: 회귀계수. log link 모형에서는 $\mathrm{ratio} = \exp(B)$.
+
+**공통 해석 원칙.**
+
+- `n`은 특별히 구분하지 않는 한 전체 분석에 필요한 최소 표본 수다. 두 집단 설계에서는 allocation ratio에 따라 group 1, group 2 표본 수를 함께 표시한다.
+- 목표 검정력 기반 계산은 "해당 효과크기가 실제로 존재한다면 유의하게 탐지할 확률"을 계산한다. 효과크기가 임상적·교육적·실무적으로 중요한지는 별도 판단이다.
+- 정밀도 기반 계산은 p 값 검정력이 아니라 신뢰구간 half-width를 목표로 한다. 따라서 Precision / CI와 Reliability precision 메뉴에서는 power 입력이 의미가 없다.
+- `dropout rate (%)`는 분석 가능한 최종 표본 수를 확보하기 위한 모집 표본 수 보정이다. 보정은 일반적으로 $n_{\mathrm{recruit}} = \lceil n/(1-\mathrm{dropout}) \rceil$로 계산한다.
+- 시뮬레이션 기반 메뉴는 난수와 반복 수의 영향을 받는다. 보고서에는 반복 수, seed 사용 여부, 목표 alpha와 power를 함께 적는다.
+- 변환된 효과크기는 비교와 계획을 돕기 위한 근사값이다. 예를 들어 OR에서 d로의 변환, AUC에서 d로의 변환은 원래 분석 척도를 완전히 대체하지 않는다.
 
 ### 18.2 t-test
 
@@ -336,6 +347,13 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 - one-sample, paired, independent t-test는 가능한 경우 noncentral t 분포를 사용한다.
 - 비균등 배정의 두 집단 근사는 $n_1$과 $n_2 = r n_1$의 표준오차에 기반한다.
 
+**입력과 보고.**
+
+- `d`는 표준화 평균차이므로 SD 선택이 중요하다. 독립 두 집단은 pooled SD, 단일표본은 표본 SD, 대응표본은 차이값 SD를 기준으로 한다.
+- 대응표본에서 `dz`는 반복측정 간 상관을 포함한 차이값 표준화 효과다. 독립집단 d와 같은 척도로 단순 비교하지 않는다.
+- 독립 두 집단에서 allocation ratio가 1이 아니면 총 표본 수가 같은 효과크기에서도 증가한다. 작은 집단의 표본 수가 너무 낮아지지 않는지 확인한다.
+- 보고 예: "two-sided alpha = .05, power = .95, Cohen's d = 0.50을 가정하여 독립 두 집단 t-test 표본 수를 계산하였다."
+
 **참고문헌.** Cohen (1988), Hedges (1981), Lakens (2013), R Core Team `stats::power.t.test`.
 
 ### 18.3 Proportion
@@ -364,6 +382,13 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 - 한 비율 또는 두 비율 비교는 정규근사 검정력 공식을 사용한다.
 - allocation ratio가 있으면 group 2 표본 수를 $n_2 = r n_1$로 둔다.
 
+**입력과 보고.**
+
+- 비율은 반드시 0과 1 사이의 확률로 입력한다. 70%는 `0.70`으로 입력한다.
+- risk difference는 절대 차이, risk ratio와 odds ratio는 비율 척도다. 같은 자료라도 척도에 따라 효과크기 해석이 달라진다.
+- 사건 확률이 매우 낮거나 매우 높으면 정규근사 표본 수가 불안정할 수 있다. 이 경우 exact 또는 simulation 기반 계획을 추가로 검토한다.
+- Cohen's h는 비율 차이를 arcsine 변환 척도로 표준화한 값이다. 메타분석이나 계획 계산에는 유용하지만, 결과 보고에서는 원 비율과 차이를 함께 제시한다.
+
 **참고문헌.** Cohen (1988), Fleiss, Levin, & Paik (2003), Chow et al. (2017), Haddock, Rindskopf, & Shadish (1998).
 
 ### 18.4 Chi-square
@@ -391,6 +416,13 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 - $\lambda = Nw^2$를 noncentral chi-square의 noncentrality parameter로 사용한다.
 - df는 goodness-of-fit 또는 contingency table 구조에서 입력한다.
+
+**입력과 보고.**
+
+- Cohen's w는 관찰 또는 예상 범주확률이 귀무가설의 기대확률에서 얼마나 벗어나는지 나타내는 전체 효과크기다.
+- contingency table에서는 df가 $(r-1)(c-1)$이고, goodness-of-fit에서는 일반적으로 범주 수 - 1이다.
+- Phi는 2 x 2 표에서 자연스럽고, 더 큰 표에서는 Cramer's V가 해석이 안정적이다.
+- 기대빈도가 작은 범주가 많으면 chi-square 근사 자체가 약하므로, 표본 수 계획에서도 범주 병합 가능성을 먼저 검토한다.
 
 **참고문헌.** Cohen (1988), Cramer (1946), Rea & Parker (2014).
 
@@ -425,6 +457,13 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 - Pearson correlation 검정은 Fisher z 변환을 사용한다.
 - 귀무상관이 0인 경우 근사 표준오차는 $SE_z = 1/\sqrt{n-3}$이다.
 
+**입력과 보고.**
+
+- Fisher z는 상관계수의 표준오차를 안정화하기 위한 변환값이다. 최종 해석은 보통 raw r로 보고한다.
+- Cohen's q는 두 상관계수의 단순 차이 $r_1-r_2$가 아니라 Fisher z 변환 후 차이다.
+- R-squared에서 r로 변환할 때 부호는 알 수 없다. 방향이 중요한 연구에서는 회귀계수나 원 상관계수를 확인해야 한다.
+- Spearman, Kendall 상관의 표본 수 계획은 Pearson/Fisher z 근사를 사용할 수 있지만, 순위상관의 정확한 검정력과는 다를 수 있다.
+
 **참고문헌.** Cohen (1988), Fisher (1921), Rosenthal (1994), Cohen, Cohen, West, & Aiken (2003).
 
 ### 18.6 ANOVA
@@ -455,6 +494,13 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 - one-way ANOVA는 Cohen's f와 noncentral F 근사를 사용한다.
 - repeated-measures ANOVA는 반복측정 상관과 Greenhouse-Geisser epsilon으로 효과적인 정보량을 보정한다.
+
+**입력과 보고.**
+
+- Cohen's f는 집단 평균들이 전체 평균에서 얼마나 떨어져 있는지의 전체 효과크기다. 특정 두 집단 차이를 계획하려면 t-test 또는 post-hoc 대비 계획을 별도로 고려한다.
+- partial eta squared는 연구 설계와 포함된 요인에 따라 값이 달라질 수 있어, 다른 연구와 비교할 때 주의한다.
+- repeated-measures 설계에서는 시점 간 상관이 높을수록 변화 검출력이 커질 수 있지만, sphericity 위반은 Greenhouse-Geisser epsilon으로 보정한다.
+- 불균형 집단 설계에서는 균형 설계보다 필요한 총 표본 수가 커질 수 있다.
 
 **참고문헌.** Cohen (1988), Lakens (2013), Olejnik & Algina (2003), Kreidler et al. (2013).
 
@@ -487,6 +533,13 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 - ranked ANCOVA는 rank transformation과 asymptotic relative efficiency penalty를 반영한다.
 - MANOVA는 Pillai 또는 Wilks 기반 효과를 F-style noncentrality로 근사한다.
 
+**입력과 보고.**
+
+- ANCOVA에서 공변량 R-squared는 종속변수의 잔차분산을 얼마나 줄이는지에 대한 계획값이다. 과대평가하면 필요한 표본 수가 과소추정될 수 있다.
+- 공변량은 사전에 정한 변수여야 하며, 분석 후 임의로 추가한 공변량으로 표본 수 근거를 역산하는 것은 권장되지 않는다.
+- MANOVA 효과크기는 여러 종속변수의 결합 효과다. 개별 종속변수의 해석은 사후 단변량 분석이나 계획된 대비와 함께 본다.
+- ranked ANCOVA는 정규성에 덜 민감하지만, 평균 차이보다는 순위 기반 위치 차이를 검정한다.
+
 **참고문헌.** Cohen (1988), Borm, Fransen, & Lemmens (2007), Muller & Peterson (1984), Quade (1967), Conover & Iman (1982), Kreidler et al. (2013).
 
 ### 18.8 Nonparametric
@@ -516,6 +569,13 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 - Mann-Whitney와 Wilcoxon 계열은 대응 t-test 효과크기를 asymptotic relative efficiency로 보정해 근사한다.
 - Kruskal-Wallis와 Friedman은 large-sample noncentral chi-square 근사를 사용한다.
 
+**입력과 보고.**
+
+- rank-biserial r은 한 집단의 값이 다른 집단보다 클 가능성의 차이를 순위 기반으로 표현한다. 평균 차이 d와 같은 의미가 아니다.
+- Kruskal-Wallis epsilon squared와 Friedman Kendall's W는 omnibus 효과크기다. 어느 집단 또는 어느 시점이 다른지는 사후검정으로 확인한다.
+- 비모수 검정의 표본 수 계산은 분포 형태, ties, scale granularity에 민감하다. Likert 문항처럼 ties가 많은 자료에서는 계산 결과를 보수적으로 해석한다.
+- 메타분석에서는 원 연구가 보고한 순위 기반 효과크기와 표준오차가 있으면 그것을 우선하고, d 또는 r 변환은 보조 근사로 보고한다.
+
 **참고문헌.** Cliff (1993), Kerby (2014), Tomczak & Tomczak (2014), Kruskal & Wallis (1952), Friedman (1937), Kendall & Smith (1939), Noether (1987).
 
 ### 18.9 McNemar
@@ -543,6 +603,12 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 **표본 수와 검정력.**
 
 - paired binary test는 discordant probabilities `p01`, `p10`에 대한 normal approximation을 사용한다.
+
+**입력과 보고.**
+
+- McNemar 검정의 정보는 일치 셀이 아니라 discordant pair, 즉 01과 10 셀에서 나온다. 전체 표본 수가 커도 discordant pair가 적으면 검정력이 낮다.
+- matched-pair OR은 $p_{01}/p_{10}$ 또는 $b/c$로 해석한다. zero cell이 있으면 continuity correction 때문에 OR과 log OR이 근사값이 된다.
+- 표본 수 계획에는 예상 변화 방향과 discordant 비율을 명시한다.
 
 **참고문헌.** McNemar (1947), Connor (1987), Dupont (1988), Fleiss, Levin, & Paik (2003).
 
@@ -577,6 +643,14 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 - Logistic regression은 Hsieh-style Wald approximation을 사용하고 event probability, predictor prevalence, covariate R-squared를 반영한다.
 - Mediation은 Sobel, Monte Carlo percentile CI, bootstrap CI simulation 중 선택한다. Monte Carlo와 bootstrap 방법은 시간이 걸리므로 진행률과 Stop 버튼을 제공한다.
 
+**입력과 보고.**
+
+- 선형회귀의 $f^2$는 모델 또는 추가 블록이 설명하는 분산 비율에 기반한다. 전체 모델 $R^2$와 증분 $\Delta R^2$를 혼동하지 않는다.
+- logistic regression의 OR은 log-odds 척도 효과다. Chinn 근사의 d는 비교 편의를 위한 변환이며, 실제 보고에서는 OR과 신뢰구간을 우선한다.
+- Mediation에서 $\beta_a$와 $\beta_b$는 표준화 경로계수다. 앱의 "Mediation standardized indirect effect"는 $ab$를 계산하며, 이것은 d가 아니라 표준화 간접효과다.
+- Monte Carlo와 bootstrap mediation은 반복 수가 클수록 안정적이지만 시간이 길어진다. 최종 보고에는 방법, 반복 수, CI 기준을 함께 적는다.
+- 공변량 수가 많으면 자유도가 줄고 검정력이 낮아진다. 표본 수 계획에는 최종 모형에 포함할 예측변수/공변량 수를 반영한다.
+
 **참고문헌.** Cohen (1988), Cohen, Cohen, West, & Aiken (2003), Chinn (2000), Hsieh, Bloch, & Larsen (1998), Fritz & MacKinnon (2007), MacKinnon, Lockwood, & Williams (2004), Preacher & Selig (2012).
 
 ### 18.11 GEE
@@ -606,6 +680,13 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
   $$
 - unstructured correlation은 pairwise correlation matrix에서 평균 정보량을 근사한다. 세 시점이면 `r12, r13, r23`을 입력한다.
 
+**입력과 보고.**
+
+- GEE는 marginal mean 또는 population-average 효과를 계획한다. subject-specific random effect 해석이 필요한 경우 LMM/GLMM 계획과 구분한다.
+- working correlation은 검정력과 표본 수 계획의 정보량을 조정하기 위한 가정이다. 실제 GEE 추정에서는 robust sandwich SE가 working correlation 오지정에 어느 정도 강건하지만, 계획 단계에서는 상관 가정이 n에 영향을 준다.
+- AR(1)은 가까운 시점일수록 상관이 높다는 가정이고, exchangeable은 모든 시점 쌍의 상관이 같다는 가정이다. unstructured는 가장 유연하지만 입력값이 많아진다.
+- binary GEE에서는 Cohen's h가 비율 차이의 계획 효과크기이며, 최종 결과 보고에서는 marginal risk difference, risk ratio, OR 중 연구 목적에 맞는 척도를 함께 제시한다.
+
 **참고문헌.** Liang & Zeger (1986), Diggle, Heagerty, Liang, & Zeger (2002), Fleiss, Levin, & Paik (2003), Cohen (1988).
 
 ### 18.12 LMM
@@ -632,6 +713,13 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 - GLIMMPSE-style 방식은 group/time mean vector, residual SD, repeated-measures correlation matrix를 사용해 데이터를 시뮬레이션하고 `nlme::gls`로 time 또는 group x time hypothesis를 검정한다.
 - correlation structure는 independent, exchangeable, AR(1), unstructured를 지원한다.
 
+**입력과 보고.**
+
+- residual SD는 모형이 설명하지 못한 within-subject 오차의 표준편차다. 원자료 전체 SD와 다를 수 있다.
+- ICC 또는 repeated-measures correlation이 클수록 같은 대상 내 관측치가 덜 독립적이다. 변화량 또는 interaction 검정에서는 상관 구조에 따라 검정력이 달라진다.
+- mean vector 방식에서는 마지막-처음 변화량만 보지 말고 전체 시간 패턴이 연구가설과 맞는지 확인한다.
+- 시뮬레이션 결과는 반복 수와 난수 변동의 영향을 받는다. 동일 조건에서 표본 수 경계가 흔들리면 반복 수를 늘려 재계산한다.
+
 **참고문헌.** Muller & Stewart (2006), Guo & Johnson (1996), Kreidler et al. (2013), Pinheiro & Bates (2000), Cohen (1988).
 
 ### 18.13 Survival / Cox
@@ -649,6 +737,13 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 - Schoenfeld event-based approximation을 사용한다.
 - 필요한 events는 $\log(HR)$, alpha, power, allocation fraction으로 계산하고, 전체 event probability로 나누어 총 표본 수로 변환한다.
 - allocation fraction은 `p1 * p2` 정보량에 반영된다.
+
+**입력과 보고.**
+
+- Cox/log-rank 표본 수의 핵심은 전체 대상 수보다 사건 수(events)다. 추적 기간이 짧거나 사건확률이 낮으면 같은 HR에서도 필요한 모집 n이 커진다.
+- HR이 1에 가까울수록 효과가 작아져 필요한 사건 수가 급격히 증가한다.
+- allocation ratio가 불균형하면 정보량 $p_1p_2$가 줄어 필요한 사건 수가 증가한다.
+- proportional hazards 가정이 약한 연구에서는 Schoenfeld 근사가 실제 검정력과 다를 수 있으므로 생존곡선 형태와 추적손실을 추가로 검토한다.
 
 **참고문헌.** Schoenfeld (1983), Freedman (1982), Lachin & Foulkes (1986), Parmar, Torri, & Stewart (1998), Tierney et al. (2007).
 
@@ -671,6 +766,13 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 - mean 또는 proportion difference에 대한 one-sided non-inferiority 또는 TOST equivalence normal approximation을 사용한다.
 - Effect Size 메뉴에서는 제외하고 Sample Size의 계획 기준으로 다룬다.
 
+**입력과 보고.**
+
+- margin $\Delta$는 통계적으로 편한 값이 아니라 임상적·실무적으로 허용 가능한 최대 차이다. 가능하면 선행연구나 전문가 합의로 정한다.
+- non-inferiority는 "더 나쁘지 않음"을 보이는 설계이고, equivalence는 양쪽 경계 안에 있음을 보이는 설계다. 두 설계의 가설 방향을 혼동하지 않는다.
+- 관찰 또는 기대 차이 $\hat{\theta}$가 margin에 가까울수록 필요한 표본 수가 커진다.
+- 결과 보고에서는 margin, 방향, one-sided alpha 또는 TOST alpha, 분석척도(raw difference, standardized difference, proportion difference)를 명확히 적는다.
+
 **참고문헌.** Schuirmann (1987), Blackwelder (1982), Julious (2004), Chow et al. (2017).
 
 ### 18.15 ROC AUC and Diagnostic Accuracy
@@ -691,6 +793,13 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 - ROC AUC vs null은 Hanley-McNeil AUC variance approximation을 사용한다.
 - sensitivity/specificity 정밀도 계산은 Sample Size에서 Buderer precision formula를 사용하되, Effect Size 메뉴에서는 AUC만 유지한다.
+
+**입력과 보고.**
+
+- AUC는 무작위 양성 사례가 무작위 음성 사례보다 높은 점수를 받을 확률로 해석할 수 있다.
+- null AUC는 보통 0.50이지만, 기존 검사와 비교하는 연구라면 기준 AUC를 다르게 둘 수 있다.
+- AUC에서 d로의 변환은 equal-variance binormal 가정에 기반한 근사다. 최종 진단정확도 보고에서는 AUC, 신뢰구간, sensitivity, specificity, cutoff를 함께 제시한다.
+- case-control 비율이 극단적으로 불균형하면 AUC 분산과 필요한 표본 수가 한쪽 집단에 의해 좌우될 수 있다.
 
 **참고문헌.** Hanley & McNeil (1982), Hajian-Tilaki (2014), Buderer (1996), Obuchowski & McClish (1997).
 
@@ -715,6 +824,13 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
   \operatorname{Var}(Y) = \mu + \alpha\mu^2
   $$
 - Single rate precision은 Poisson rate confidence interval normal approximation으로 person-time을 계산한다.
+
+**입력과 보고.**
+
+- Poisson과 negative binomial의 log link에서는 회귀계수 $B$가 log ratio이고, ratio는 $\exp(B)$다.
+- Negative binomial은 overdispersion을 허용한다. dispersion parameter가 클수록 같은 평균 차이를 탐지하는 데 더 많은 표본 또는 person-time이 필요하다.
+- Gamma regression mean ratio는 양수 연속 outcome의 평균 비율 효과를 나타낸다. count outcome의 incidence rate ratio와 이름은 비슷하지만 자료형과 분산가정이 다르다.
+- rate 분석에서는 관찰 시간 또는 노출량 offset이 해석에 필수다. 표본 수와 person-time을 혼동하지 않는다.
 
 **참고문헌.** Signorini (1991), Zhu & Lakkis (2014), McCullagh & Nelder (1989), Chow et al. (2017).
 
@@ -742,6 +858,13 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 - parallel cluster trial은 individually randomized two-group sample size를 design effect로 inflate한 뒤 whole clusters로 반올림한다.
 - stepped-wedge trial은 fixed period effects와 random cluster intercept를 가진 mixed model simulation을 사용한다.
 
+**입력과 보고.**
+
+- cluster trial의 표본 수는 개인 수와 cluster 수를 함께 결정해야 한다. 개인 수만 충분해도 cluster 수가 적으면 추론이 불안정하다.
+- ICC가 작아 보여도 cluster size가 크면 design effect가 커질 수 있다.
+- cluster size가 불균형하면 단순 $DE = 1+(m-1)ICC$보다 실제 design effect가 커질 수 있다.
+- stepped-wedge 설계에서는 기간 효과, intervention rollout 순서, cluster-period 수가 검정력에 큰 영향을 준다.
+
 **참고문헌.** Donner & Klar (2000), Hayes & Bennett (1999), Hayes & Moulton (2017), Eldridge & Kerry (2012), Hussey & Hughes (2007), Hemming et al. (2011), Woertman et al. (2013).
 
 ### 18.18 Precision / CI
@@ -768,6 +891,13 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 - 이 메뉴는 p 값 검정력이 아니라 confidence interval precision을 계획한다.
 - Precision 메뉴의 두 번째 target은 `Achieved precision`으로 표시한다.
 
+**입력과 보고.**
+
+- desired CI half-width는 신뢰구간의 반폭이다. 예를 들어 평균 차이의 95% CI가 $\pm 0.10$ 안에 들어오길 원하면 half-width는 0.10이다.
+- half-width가 작을수록 필요한 표본 수가 제곱 비율로 증가한다.
+- proportion precision에서 보수적 계획이 필요하면 $p=0.50$을 사용한다. 이때 $p(1-p)$가 최대가 된다.
+- correlation precision은 raw r 척도에서 원하는 반폭을 만족하도록 Fisher z 척도에서 탐색한다. r이 0에 가까울 때와 1에 가까울 때 필요한 n이 달라질 수 있다.
+
 **참고문헌.** Cochran (1977), Hulley et al. (2013), Bonett & Wright (2000), Kelley & Maxwell (2003), Fisher (1921).
 
 ### 18.19 Reliability / Agreement
@@ -789,6 +919,13 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 **표본 수와 검정력.**
 
 - Reliability / Agreement 메뉴는 현재 required sample size만 계산한다. 검정력 target은 UI에서 표시하지 않는다.
+
+**입력과 보고.**
+
+- Cronbach's alpha precision은 신뢰구간 폭을 목표로 한다. 문항 수가 많으면 alpha 추정의 분산이 줄지만, 문항 수보다 작은 n은 해석상 부적절하므로 앱은 최소 $items+1$ 규칙을 적용한다.
+- ICC는 설계 유형, rater 수, 측정 단위에 따라 해석이 달라진다. 표본 수 근거에는 사용한 ICC 형태를 함께 명시한다.
+- Cohen's kappa는 범주 유병률과 marginal imbalance에 민감하다. 앱의 precision 근사는 equal category prevalence를 단순 가정으로 사용하므로, 불균형 범주에서는 보수적으로 검토한다.
+- Bland-Altman LoA precision은 두 방법의 평균 차이와 차이값 SD에 기반한다. 두 방법의 측정오차가 범위에 따라 달라지는 proportional bias가 있으면 추가 진단이 필요하다.
 
 **참고문헌.** Bonett (2002a, 2002b), Donner & Eliasziw (1987), Walter, Eliasziw, & Donner (1998), Sim & Wright (2005), Bland & Altman (1986), Lu et al. (2016).
 
@@ -830,17 +967,33 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
   $$
 - 이 df 근사는 빠른 계획용 휴리스틱이며, 실제 lavaan/SEM 모형의 constraints, cross-loading, residual covariance, identification 조건과 다를 수 있다.
 
+**df 입력 방식.**
+
+- `Enter model df directly`는 사용자가 lavaan, Mplus, AMOS 등에서 확인한 실제 model df를 입력하는 방식이다. 가장 정확한 입력이다.
+- `Estimate from model counts`는 latent variables, measured variables, structural paths를 이용해 대략적인 df를 계산한다. 이 방식은 초기 연구계획 단계의 빠른 근사용이다.
+- 측정변수 수가 너무 적거나 free parameter 근사가 observed moments보다 크면 df가 0 이하가 될 수 있다. 이 경우 모형이 과포화 또는 식별 불충분일 수 있으므로 표본 수 계산보다 모형 구조를 먼저 점검한다.
+
 **표본 수와 검정력.**
 
 - RMSEA close-fit/not-close-fit은 noncentral chi-square distribution을 사용한다.
 - parameter-level Monte Carlo는 standardized SEM/CFA parameter estimate distribution에서 반복 추출해 검정력을 추정한다.
 - model complexity heuristic은 cases-per-free-parameter, observed/latent variable burden, structural path burden, standardized loading/path detectability 중 최대값을 권장 n으로 둔다.
 
+**입력과 보고.**
+
+- close-fit test는 귀무 RMSEA가 충분히 작다는 가정과 대안 RMSEA가 더 나쁜 fit이라는 가정으로 poor fit 탐지를 계획한다.
+- not-close-fit test는 대안 RMSEA가 귀무 RMSEA보다 작아야 한다. 이 방향이 맞지 않으면 앱은 오류 메시지를 표시한다.
+- RMSEA 기반 표본 수는 모형 전체 fit에 대한 계획이다. 특정 loading, path, latent correlation의 검정력과는 다를 수 있다.
+- standardized parameter effect는 표준화 경로계수 또는 적재량 자체를 효과크기로 본다. 작은 path를 탐지하려면 RMSEA 전체 fit 기준보다 더 큰 n이 필요할 수 있다.
+- SEM/CFA 표본 수는 단일 공식으로 결정하기 어렵다. 앱 결과에서는 RMSEA power, parameter detectability, model complexity heuristic을 함께 보고하고, 최종 n은 연구목적에 맞게 보수적으로 선택한다.
+
 **참고문헌.** MacCallum, Browne, & Sugawara (1996), Preacher & Coffman (2006), Kim (2005), Muthen & Muthen (2002), Wolf et al. (2013), Bentler & Chou (1987), Jackson (2003), Westland (2010), Kline (2023).
 
 ### 18.21 계산 중단 기능
 
 시뮬레이션 기반 계산은 별도 background R process에서 실행된다. 진행률은 progress file에 기록되고 Shiny session이 주기적으로 읽어 화면에 표시한다. `Stop` 버튼을 누르면 해당 process를 kill하고 progress file을 삭제한 뒤 `Calculation stopped.` 상태를 결과 영역에 표시한다. 이 기능은 긴 Monte Carlo, bootstrap, LMM, stepped-wedge simulation에서 사용자가 계산을 멈출 수 있도록 하기 위한 것이다.
+
+중단된 계산은 결과로 해석하지 않는다. 중단 후 같은 조건으로 다시 계산하면 새 background process가 시작된다. 긴 계산에서는 먼저 낮은 simulation 반복 수로 입력값과 방향을 확인한 뒤, 최종 보고용으로 반복 수를 높이는 절차가 효율적이다.
 
 ### 18.22 Sample Size 관련 참고문헌
 
