@@ -49,6 +49,21 @@
         window.setTimeout(function() { scheduleEasyflowTypesetMath(document); }, 1000);
       };
 
+      window.easyflowStartMathJaxPolling = function() {
+        if (window.easyflowMathJaxPollingStarted) return;
+        window.easyflowMathJaxPollingStarted = true;
+        var attempts = 0;
+        var timer = window.setInterval(function() {
+          attempts += 1;
+          if (window.MathJax && window.MathJax.typesetPromise) {
+            window.clearInterval(timer);
+            window.easyflowMathJaxReady();
+          } else if (attempts >= 80) {
+            window.clearInterval(timer);
+          }
+        }, 250);
+      };
+
       window.easyflowTransferScrollTops = window.easyflowTransferScrollTops || {};
       window.easyflowTransferScrollAnchors = window.easyflowTransferScrollAnchors || {};
       window.easyflowTransferScrollRestoreUntil = window.easyflowTransferScrollRestoreUntil || 0;
@@ -1642,6 +1657,7 @@
           scheduleFactorNormalityOptionsUpdate();
         }
         scheduleEasyflowTypesetMath(document);
+        window.easyflowStartMathJaxPolling();
         window.easyflowUpdateTtestNormalityTree = updateTtestNormalityTree;
         window.easyflowUpdateFactorNormalityOptions = updateFactorNormalityOptions;
       })();

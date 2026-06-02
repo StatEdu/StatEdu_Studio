@@ -6177,6 +6177,17 @@ pre {
   padding: 2px 5px;
 }
 
+.about-markdown-document mjx-container {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.about-markdown-document mjx-container[jax="CHTML"][display="true"] {
+  margin: 8px 0 12px 0;
+  text-align: left !important;
+}
+
 .about-markdown-document pre {
   background: #f7fafc;
   border: 1px solid #d9e2ec;
