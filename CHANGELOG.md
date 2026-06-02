@@ -9,6 +9,7 @@
 - Added LMM unstructured correlation inputs and SEM/CFA model-count degrees-of-freedom estimation.
 - Standardized required-sample-size result emphasis with explicit `n` labels and 0.95 default power.
 - Expanded Korean User Guide, Analysis Methods, and Method Notes for sample-size, power, and effect-size workflows with formulas and references.
+- Bundled local MathJax assets for offline formula rendering in Method Notes.
 
 
 ## v0.9.29 - 2026-06-01

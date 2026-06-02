@@ -108,7 +108,7 @@ app_head_tags <- function(version) {
       id = "MathJax-script",
       defer = "defer",
       onload = "if (window.easyflowMathJaxReady) window.easyflowMathJaxReady();",
-      src = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"
+      src = paste0("mathjax/tex-chtml.js?v=", version, "-local")
     ),
     app_script_link(version)
   )
