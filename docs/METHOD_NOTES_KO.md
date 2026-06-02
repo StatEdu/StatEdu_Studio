@@ -296,29 +296,45 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 - `alpha`: 제1종 오류율.
 - `power`: 목표 검정력, 보통 `1 - beta`.
 - `z_p`: 표준정규분포의 p 분위수.
-- `d`: Cohen's d 계열 표준화 평균차.
-- `f`: Cohen's f.
-- `f2`: Cohen's f squared.
+- \(d\): Cohen's d 계열 표준화 평균차.
+- \(f\): Cohen's f.
+- \(f^2\): Cohen's f squared.
 - `r`: Pearson correlation.
 - `rho`: repeated-measures 또는 cluster correlation.
 - `m`: 반복측정 시점 수 또는 cluster size.
 - `DE`: design effect.
-- `B`: 회귀계수. log link 모형에서는 `ratio = exp(B)`.
+- \(B\): 회귀계수. log link 모형에서는 \(\mathrm{ratio} = \exp(B)\).
 
 ### 18.2 t-test
 
 **효과크기.**
 
-- 독립 두 집단 Cohen's d: `d = (M1 - M2) / SD_pooled`.
-- `SD_pooled = sqrt(((n1 - 1)SD1^2 + (n2 - 1)SD2^2) / (n1 + n2 - 2))`.
-- Hedges' g: `g = J d`, `J = 1 - 3 / (4df - 1)`.
-- 단일표본 d: `d = (M - M0) / SD`.
-- 대응표본 dz: `dz = mean(D) / SD_D`.
+- 독립 두 집단 Cohen's d:
+  \[
+  d = \frac{M_1 - M_2}{SD_{\mathrm{pooled}}}
+  \]
+- pooled standard deviation:
+  \[
+  SD_{\mathrm{pooled}} =
+  \sqrt{\frac{(n_1 - 1)SD_1^2 + (n_2 - 1)SD_2^2}{n_1 + n_2 - 2}}
+  \]
+- Hedges' g:
+  \[
+  g = Jd,\qquad J = 1 - \frac{3}{4df - 1}
+  \]
+- 단일표본 d:
+  \[
+  d = \frac{M - M_0}{SD}
+  \]
+- 대응표본 dz:
+  \[
+  d_z = \frac{\bar{D}}{SD_D}
+  \]
 
 **표본 수와 검정력.**
 
 - one-sample, paired, independent t-test는 가능한 경우 noncentral t 분포를 사용한다.
-- 비균등 배정의 두 집단 근사는 `n1`과 `n2 = ratio * n1`의 표준오차에 기반한다.
+- 비균등 배정의 두 집단 근사는 \(n_1\)과 \(n_2 = r n_1\)의 표준오차에 기반한다.
 
 **참고문헌.** Cohen (1988), Hedges (1981), Lakens (2013), R Core Team `stats::power.t.test`.
 
@@ -326,15 +342,27 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 **효과크기.**
 
-- Risk difference: `RD = p1 - p2`.
-- Risk ratio: `RR = p1 / p2`.
-- Odds ratio: `OR = [p1 / (1 - p1)] / [p2 / (1 - p2)]`.
-- Cohen's h: `h = 2 asin(sqrt(p1)) - 2 asin(sqrt(p2))`.
+- Risk difference:
+  \[
+  RD = p_1 - p_2
+  \]
+- Risk ratio:
+  \[
+  RR = \frac{p_1}{p_2}
+  \]
+- Odds ratio:
+  \[
+  OR = \frac{p_1/(1-p_1)}{p_2/(1-p_2)}
+  \]
+- Cohen's h:
+  \[
+  h = 2\sin^{-1}\sqrt{p_1} - 2\sin^{-1}\sqrt{p_2}
+  \]
 
 **표본 수와 검정력.**
 
 - 한 비율 또는 두 비율 비교는 정규근사 검정력 공식을 사용한다.
-- allocation ratio가 있으면 group 2 표본 수를 `n2 = ratio * n1`로 둔다.
+- allocation ratio가 있으면 group 2 표본 수를 \(n_2 = r n_1\)로 둔다.
 
 **참고문헌.** Cohen (1988), Fleiss, Levin, & Paik (2003), Chow et al. (2017), Haddock, Rindskopf, & Shadish (1998).
 
@@ -342,14 +370,26 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 **효과크기.**
 
-- Cohen's w: `w = sqrt(sum((p_observed - p_expected)^2 / p_expected))`.
-- 통계량에서 w: `w = sqrt(chi-square / N)`.
-- Phi: `phi = sqrt(chi-square / N)`.
-- Cramer's V: `V = sqrt(chi-square / [N * min(r - 1, c - 1)])`.
+- Cohen's w:
+  \[
+  w = \sqrt{\sum_i \frac{(p_{\mathrm{obs},i} - p_{\mathrm{exp},i})^2}{p_{\mathrm{exp},i}}}
+  \]
+- 통계량에서 w:
+  \[
+  w = \sqrt{\frac{\chi^2}{N}}
+  \]
+- Phi:
+  \[
+  \phi = \sqrt{\frac{\chi^2}{N}}
+  \]
+- Cramer's V:
+  \[
+  V = \sqrt{\frac{\chi^2}{N \min(r-1, c-1)}}
+  \]
 
 **표본 수와 검정력.**
 
-- `lambda = N * w^2`를 noncentral chi-square의 noncentrality parameter로 사용한다.
+- \(\lambda = Nw^2\)를 noncentral chi-square의 noncentrality parameter로 사용한다.
 - df는 goodness-of-fit 또는 contingency table 구조에서 입력한다.
 
 **참고문헌.** Cohen (1988), Cramer (1946), Rea & Parker (2014).
@@ -358,16 +398,32 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 **효과크기.**
 
-- t 통계량에서 r: `r = sign(t) * sqrt(t^2 / (t^2 + df))`.
-- 1 자유도 F 통계량에서 r: `r = sqrt(F / (F + df_error))`.
-- R-squared에서 r: `r = sqrt(R^2)`. 부호는 R-squared만으로 알 수 없다.
-- Fisher's z: `z = atanh(r)`.
-- Cohen's q: `q = atanh(r1) - atanh(r2)`.
+- t 통계량에서 r:
+  \[
+  r = \operatorname{sign}(t)\sqrt{\frac{t^2}{t^2 + df}}
+  \]
+- 1 자유도 F 통계량에서 r:
+  \[
+  r = \sqrt{\frac{F}{F + df_{\mathrm{error}}}}
+  \]
+- R-squared에서 r:
+  \[
+  r = \sqrt{R^2}
+  \]
+  부호는 R-squared만으로 알 수 없다.
+- Fisher's z:
+  \[
+  z = \operatorname{atanh}(r)
+  \]
+- Cohen's q:
+  \[
+  q = \operatorname{atanh}(r_1) - \operatorname{atanh}(r_2)
+  \]
 
 **표본 수와 검정력.**
 
 - Pearson correlation 검정은 Fisher z 변환을 사용한다.
-- 귀무상관이 0인 경우 근사 표준오차는 `SE_z = 1 / sqrt(n - 3)`이다.
+- 귀무상관이 0인 경우 근사 표준오차는 \(SE_z = 1/\sqrt{n-3}\)이다.
 
 **참고문헌.** Cohen (1988), Fisher (1921), Rosenthal (1994), Cohen, Cohen, West, & Aiken (2003).
 
@@ -375,10 +431,25 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 **효과크기.**
 
-- Cohen's f: `f = sqrt(eta^2 / (1 - eta^2))`.
-- partial eta squared에서 f: `f = sqrt(partial_eta^2 / (1 - partial_eta^2))`.
-- F 통계량에서 partial eta squared: `partial_eta^2 = F * df_effect / (F * df_effect + df_error)`.
-- partial omega squared 근사: `(F * df_effect - df_effect) / (F * df_effect + df_error + 1)`, 0보다 작으면 0으로 둔다.
+- Cohen's f:
+  \[
+  f = \sqrt{\frac{\eta^2}{1-\eta^2}}
+  \]
+- partial eta squared에서 f:
+  \[
+  f = \sqrt{\frac{\eta_p^2}{1-\eta_p^2}}
+  \]
+- F 통계량에서 partial eta squared:
+  \[
+  \eta_p^2 = \frac{F\,df_{\mathrm{effect}}}{F\,df_{\mathrm{effect}} + df_{\mathrm{error}}}
+  \]
+- partial omega squared 근사:
+  \[
+  \omega_p^2 \approx
+  \frac{F\,df_{\mathrm{effect}} - df_{\mathrm{effect}}}
+       {F\,df_{\mathrm{effect}} + df_{\mathrm{error}} + 1}
+  \]
+  0보다 작으면 0으로 둔다.
 
 **표본 수와 검정력.**
 
@@ -391,10 +462,24 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 **효과크기.**
 
-- ANCOVA 보정 f: `f_adjusted = f / sqrt(1 - R2_covariate)`.
-- partial eta squared에서 f: `f = sqrt(partial_eta^2 / (1 - partial_eta^2))`.
-- Pillai's trace V에서 MANOVA 계획 효과: `f2 = V / (1 - V)`, `f = sqrt(f2)`.
-- Wilks' lambda 변환: `s = min(number of dependent variables, groups - 1)`, `eta2 = 1 - lambda^(1/s)`, `f2 = eta2 / (1 - eta2)`.
+- ANCOVA 보정 f:
+  \[
+  f_{\mathrm{adjusted}} = \frac{f}{\sqrt{1 - R^2_{\mathrm{covariate}}}}
+  \]
+- partial eta squared에서 f:
+  \[
+  f = \sqrt{\frac{\eta_p^2}{1-\eta_p^2}}
+  \]
+- Pillai's trace V에서 MANOVA 계획 효과:
+  \[
+  f^2 = \frac{V}{1-V},\qquad f=\sqrt{f^2}
+  \]
+- Wilks' lambda 변환:
+  \[
+  s = \min(p, g-1),\qquad
+  \eta^2 = 1 - \Lambda^{1/s},\qquad
+  f^2 = \frac{\eta^2}{1-\eta^2}
+  \]
 
 **표본 수와 검정력.**
 
@@ -408,10 +493,23 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 **효과크기.**
 
-- Mann-Whitney rank-biserial r: `r_rb = 2U / (n1 n2) - 1`.
-- paired Wilcoxon rank-biserial r: `r_rb = (W+ - W-) / (W+ + W-)`.
-- Kruskal-Wallis epsilon squared: `epsilon^2 = (H - k + 1) / (N - k)`, 0보다 작으면 0으로 둔다.
-- Friedman Kendall's W: `W = chi-square_Friedman / [N * (m - 1)]`.
+- Mann-Whitney rank-biserial r:
+  \[
+  r_{\mathrm{rb}} = \frac{2U}{n_1 n_2} - 1
+  \]
+- paired Wilcoxon rank-biserial r:
+  \[
+  r_{\mathrm{rb}} = \frac{W_+ - W_-}{W_+ + W_-}
+  \]
+- Kruskal-Wallis epsilon squared:
+  \[
+  \varepsilon^2 = \frac{H-k+1}{N-k}
+  \]
+  0보다 작으면 0으로 둔다.
+- Friedman Kendall's W:
+  \[
+  W = \frac{\chi^2_{\mathrm{Friedman}}}{N(m-1)}
+  \]
 
 **표본 수와 검정력.**
 
@@ -424,10 +522,23 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 **효과크기.**
 
-- matched-pair odds ratio: `OR = p01 / p10`.
-- log odds ratio: `log(OR)`.
-- discordant table에서 `OR = b / c`; zero discordant cell이 있으면 0.5 continuity correction을 사용한다.
-- Cohen's g: `g = p01 / (p01 + p10) - 0.5`.
+- matched-pair odds ratio:
+  \[
+  OR = \frac{p_{01}}{p_{10}}
+  \]
+- log odds ratio:
+  \[
+  \log(OR)
+  \]
+- discordant table에서:
+  \[
+  OR = \frac{b}{c}
+  \]
+  zero discordant cell이 있으면 0.5 continuity correction을 사용한다.
+- Cohen's g:
+  \[
+  g = \frac{p_{01}}{p_{01}+p_{10}} - 0.5
+  \]
 
 **표본 수와 검정력.**
 
@@ -439,11 +550,26 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 **효과크기.**
 
-- Multiple regression f2: `f2 = R2 / (1 - R2)`.
-- Hierarchical f2: `f2 = (R2_full - R2_reduced) / (1 - R2_full)`.
-- Logistic OR의 d 근사: `d = log(OR) * sqrt(3) / pi`.
-- Moderation interaction f2: `f2 = delta_R2 / (1 - delta_R2)`.
-- Mediation indirect effect: `ab = beta_a * beta_b`.
+- Multiple regression f squared:
+  \[
+  f^2 = \frac{R^2}{1-R^2}
+  \]
+- Hierarchical f squared:
+  \[
+  f^2 = \frac{R^2_{\mathrm{full}} - R^2_{\mathrm{reduced}}}{1-R^2_{\mathrm{full}}}
+  \]
+- Logistic OR의 d 근사:
+  \[
+  d \approx \frac{\log(OR)\sqrt{3}}{\pi}
+  \]
+- Moderation interaction f squared:
+  \[
+  f^2 = \frac{\Delta R^2}{1-\Delta R^2}
+  \]
+- Mediation indirect effect:
+  \[
+  ab = \beta_a \beta_b
+  \]
 
 **표본 수와 검정력.**
 
@@ -457,15 +583,27 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 **효과크기.**
 
-- continuous mean difference: `d = (mean1 - mean2) / SD`.
-- change difference: `d = [(post - pre)_1 - (post - pre)_2] / SD`.
-- parameter effect: `d = B_group*time / SD`.
+- continuous mean difference:
+  \[
+  d = \frac{\bar{Y}_1 - \bar{Y}_2}{SD}
+  \]
+- change difference:
+  \[
+  d = \frac{(\mathrm{post}-\mathrm{pre})_1 - (\mathrm{post}-\mathrm{pre})_2}{SD}
+  \]
+- parameter effect:
+  \[
+  d = \frac{B_{\mathrm{group}\times\mathrm{time}}}{SD}
+  \]
 - binary outcome: Cohen's h를 사용한다.
 
 **표본 수와 검정력.**
 
 - 독립 두 집단 검정을 baseline으로 두고 repeated-measures design effect로 보정한다.
-- exchangeable 구조의 대표식: `DE = 1 + (m - 1)rho`.
+- exchangeable 구조의 대표식:
+  \[
+  DE = 1 + (m-1)\rho
+  \]
 - unstructured correlation은 pairwise correlation matrix에서 평균 정보량을 근사한다. 세 시점이면 `r12, r13, r23`을 입력한다.
 
 **참고문헌.** Liang & Zeger (1986), Diggle, Heagerty, Liang, & Zeger (2002), Fleiss, Levin, & Paik (2003), Cohen (1988).
@@ -474,9 +612,19 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 **효과크기.**
 
-- standardized fixed effect: `d = B / residual SD`.
-- GLIMMPSE-style standardized change effect: `d = last-minus-first mean contrast / residual SD`.
-- 단순 repeated-measures planning effect: `d * sqrt(m / [1 + (m - 1)ICC])`.
+- standardized fixed effect:
+  \[
+  d = \frac{B}{SD_{\mathrm{residual}}}
+  \]
+- GLIMMPSE-style standardized change effect:
+  \[
+  d = \frac{\bar{Y}_{\mathrm{last}}-\bar{Y}_{\mathrm{first}}}{SD_{\mathrm{residual}}}
+  \]
+- 단순 repeated-measures planning effect:
+  \[
+  d_{\mathrm{planning}} =
+  d\sqrt{\frac{m}{1+(m-1)ICC}}
+  \]
 
 **표본 수와 검정력.**
 
@@ -490,13 +638,16 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 **효과크기.**
 
-- log hazard ratio: `log(HR)`.
-- 메타분석이나 Cox 모델 효과 보고에서는 `log(HR)`와 표준오차를 주로 사용한다.
+- log hazard ratio:
+  \[
+  \log(HR)
+  \]
+- 메타분석이나 Cox 모델 효과 보고에서는 \(\log(HR)\)와 표준오차를 주로 사용한다.
 
 **표본 수와 검정력.**
 
 - Schoenfeld event-based approximation을 사용한다.
-- 필요한 events는 `log(HR)`, alpha, power, allocation fraction으로 계산하고, 전체 event probability로 나누어 총 표본 수로 변환한다.
+- 필요한 events는 \(\log(HR)\), alpha, power, allocation fraction으로 계산하고, 전체 event probability로 나누어 총 표본 수로 변환한다.
 - allocation fraction은 `p1 * p2` 정보량에 반영된다.
 
 **참고문헌.** Schoenfeld (1983), Freedman (1982), Lachin & Foulkes (1986), Parmar, Torri, & Stewart (1998), Tierney et al. (2007).
@@ -505,8 +656,14 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 **계획량.**
 
-- Equivalence distance: `margin - abs(observed effect)`.
-- Non-inferiority distance: `margin + observed effect` for a `-margin` boundary.
+- Equivalence distance:
+  \[
+  D_{\mathrm{equiv}} = \Delta - |\hat{\theta}|
+  \]
+- Non-inferiority distance for a \(-\Delta\) boundary:
+  \[
+  D_{\mathrm{NI}} = \Delta + \hat{\theta}
+  \]
 - mean outcome은 SD로 표준화하고, proportion outcome은 pooled Bernoulli SD로 표준화한다.
 
 **표본 수와 검정력.**
@@ -521,8 +678,14 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 **효과크기.**
 
 - AUC는 효과크기로 직접 보고한다.
-- AUC difference: `AUC - null AUC`.
-- AUC-based approximate Cohen's d: `d = sqrt(2) * qnorm(AUC)`.
+- AUC difference:
+  \[
+  \Delta_{\mathrm{AUC}} = AUC - AUC_0
+  \]
+- AUC-based approximate Cohen's d:
+  \[
+  d \approx \sqrt{2}\,\Phi^{-1}(AUC)
+  \]
 
 **표본 수와 검정력.**
 
@@ -535,13 +698,22 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 **효과크기.**
 
-- Poisson 또는 negative binomial log link: `IRR = exp(B)`, `B = log(IRR)`.
-- Gamma regression log link: `mean ratio = exp(B)`, `B = log(mean ratio)`.
+- Poisson 또는 negative binomial log link:
+  \[
+  IRR = \exp(B),\qquad B = \log(IRR)
+  \]
+- Gamma regression log link:
+  \[
+  \mathrm{mean\ ratio} = \exp(B),\qquad B = \log(\mathrm{mean\ ratio})
+  \]
 
 **표본 수와 검정력.**
 
 - Poisson rates는 independent incidence rates의 Wald normal approximation을 사용한다.
-- Negative binomial rates는 `Var(Y) = mu + dispersion * mu^2`로 variance inflation을 반영한다.
+- Negative binomial rates는 다음 variance inflation을 반영한다.
+  \[
+  \operatorname{Var}(Y) = \mu + \alpha\mu^2
+  \]
 - Single rate precision은 Poisson rate confidence interval normal approximation으로 person-time을 계산한다.
 
 **참고문헌.** Signorini (1991), Zhu & Lakkis (2014), McCullagh & Nelder (1989), Chow et al. (2017).
@@ -550,10 +722,20 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 **계획량.**
 
-- Cluster design effect: `DE = 1 + (m - 1)ICC`.
-- continuous cluster planning effect: `d_adjusted = d / sqrt(DE)`.
+- Cluster design effect:
+  \[
+  DE = 1 + (m-1)ICC
+  \]
+- continuous cluster planning effect:
+  \[
+  d_{\mathrm{adjusted}} = \frac{d}{\sqrt{DE}}
+  \]
 - binary outcome은 Cohen's h를 같은 방식으로 보정한다.
-- stepped-wedge 근사 planning effect: `d / sqrt(DE * periods / (periods - 1))`.
+- stepped-wedge 근사 planning effect:
+  \[
+  d_{\mathrm{SW}} =
+  \frac{d}{\sqrt{DE \cdot \frac{P}{P-1}}}
+  \]
 
 **표본 수와 검정력.**
 
@@ -566,10 +748,20 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 **계획량.**
 
-- Mean CI precision: `n = (z * SD / d)^2`, 여기서 `d`는 desired CI half-width.
-- Proportion CI precision: `n = z^2 p(1 - p) / d^2`.
+- Mean CI precision:
+  \[
+  n = \left(\frac{z\,SD}{h}\right)^2
+  \]
+  여기서 \(h\)는 desired CI half-width다.
+- Proportion CI precision:
+  \[
+  n = \frac{z^2p(1-p)}{h^2}
+  \]
 - Correlation CI precision은 Fisher z 변환에서 원하는 raw-r half-width를 만족하는 n을 탐색한다.
-- 표준화 half-width: `desired CI half-width / SD`.
+- 표준화 half-width:
+  \[
+  h_{\mathrm{std}} = \frac{h}{SD}
+  \]
 
 **표본 수와 검정력.**
 
@@ -582,11 +774,17 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 **계획량과 효과크기.**
 
-- Cronbach's alpha precision은 `log(1 - alpha)` 변환 기반 normal approximation을 사용한다.
-- alpha 표본 수는 문항 수보다 작게 나오지 않도록 `n >= items + 1` 규칙을 적용한다.
+- Cronbach's alpha precision은 다음 변환 기반 normal approximation을 사용한다.
+  \[
+  \log(1-\alpha)
+  \]
+- alpha 표본 수는 문항 수보다 작게 나오지 않도록 \(n \ge items + 1\) 규칙을 적용한다.
 - ICC precision은 Fisher z-style approximation을 사용한다.
 - Cohen's kappa precision은 equal category prevalence를 가정한 large-sample normal approximation을 사용한다.
-- Bland-Altman limits of agreement: `mean difference +/- 1.96 * SD_difference`.
+- Bland-Altman limits of agreement:
+  \[
+  \bar{D} \pm 1.96\,SD_D
+  \]
 
 **표본 수와 검정력.**
 
@@ -598,18 +796,38 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 **계획량과 효과크기.**
 
-- RMSEA model-level power: `lambda = (N - 1) * df * RMSEA^2`.
-- close-fit test는 poor fit을 탐지하는 방향으로 `alternative RMSEA > null RMSEA`를 요구한다.
-- not-close-fit test는 close fit을 지지하는 방향으로 `alternative RMSEA < null RMSEA`를 요구한다.
-- RMSEA effect: `alternative RMSEA - null RMSEA`.
+- RMSEA model-level power:
+  \[
+  \lambda = (N-1)\,df\,RMSEA^2
+  \]
+- close-fit test는 poor fit을 탐지하는 방향으로 \(RMSEA_A > RMSEA_0\)를 요구한다.
+- not-close-fit test는 close fit을 지지하는 방향으로 \(RMSEA_A < RMSEA_0\)를 요구한다.
+- RMSEA effect:
+  \[
+  \Delta_{RMSEA} = RMSEA_A - RMSEA_0
+  \]
 - standardized parameter effect는 loading, path, latent correlation의 예상 표준화 계수다.
-- Fisher z 변환: `z = atanh(parameter)`.
+- Fisher z 변환:
+  \[
+  z = \operatorname{atanh}(\theta)
+  \]
 
 **df 근사.**
 
-- observed moments: `p(p + 1) / 2`, 여기서 `p`는 measured variables 수.
-- free parameters 근사: `(p - k) + p + k + structural_paths`, 여기서 `k`는 latent variables 수.
-- estimated df: `observed moments - free parameters`.
+- observed moments:
+  \[
+  M_{\mathrm{obs}} = \frac{p(p+1)}{2}
+  \]
+  여기서 \(p\)는 measured variables 수다.
+- free parameters 근사:
+  \[
+  q \approx (p-k) + p + k + s
+  \]
+  여기서 \(k\)는 latent variables 수, \(s\)는 structural paths 수다.
+- estimated df:
+  \[
+  df \approx M_{\mathrm{obs}} - q
+  \]
 - 이 df 근사는 빠른 계획용 휴리스틱이며, 실제 lavaan/SEM 모형의 constraints, cross-loading, residual covariance, identification 조건과 다를 수 있다.
 
 **표본 수와 검정력.**

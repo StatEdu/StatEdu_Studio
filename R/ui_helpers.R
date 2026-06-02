@@ -84,7 +84,7 @@ app_stylesheet_link <- function(version) {
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-effect-size-click"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-mathjax-docs"))
 }
 
 app_head_tags <- function(version) {
@@ -92,6 +92,23 @@ app_head_tags <- function(version) {
     tags$link(rel = "icon", type = "image/png", sizes = "32x32", href = paste0("logo-favicon-32.png?v=", version, "-concept-02-8")),
     tags$link(rel = "icon", type = "image/png", sizes = "64x64", href = paste0("logo-favicon-64.png?v=", version, "-concept-02-8")),
     app_stylesheet_link(version),
+    tags$script(HTML(
+      "window.MathJax = {
+        tex: {
+          inlineMath: [['\\\\(', '\\\\)']],
+          displayMath: [['\\\\[', '\\\\]']],
+          processEscapes: true
+        },
+        options: {
+          skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      };"
+    )),
+    tags$script(
+      id = "MathJax-script",
+      async = "async",
+      src = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"
+    ),
     app_script_link(version)
   )
 }

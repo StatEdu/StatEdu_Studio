@@ -22,6 +22,24 @@
       }
       window.isEasyflowVisibleElement = isEasyflowVisibleElement;
 
+      window.easyflowTypesetMath = function(root) {
+        root = root || document;
+        if (!root.querySelector || !root.querySelector('.about-markdown-document')) return;
+        if (window.MathJax && window.MathJax.typesetPromise) {
+          window.MathJax.typesetPromise([root]).catch(function(error) {
+            if (window.console && window.console.warn) {
+              window.console.warn('MathJax typeset failed', error);
+            }
+          });
+        }
+      };
+
+      function scheduleEasyflowTypesetMath(root) {
+        window.setTimeout(function() {
+          window.easyflowTypesetMath(root || document);
+        }, 0);
+      }
+
       window.easyflowTransferScrollTops = window.easyflowTransferScrollTops || {};
       window.easyflowTransferScrollAnchors = window.easyflowTransferScrollAnchors || {};
       window.easyflowTransferScrollRestoreUntil = window.easyflowTransferScrollRestoreUntil || 0;
@@ -1586,6 +1604,12 @@
         document.addEventListener('shiny:value', scheduleTtestNormalityTreeUpdate);
         document.addEventListener('shiny:bound', scheduleTtestNormalityTreeUpdate);
         document.addEventListener('shiny:connected', scheduleTtestNormalityTreeUpdate);
+        document.addEventListener('shiny:value', function(event) {
+          scheduleEasyflowTypesetMath(event.target || document);
+        });
+        document.addEventListener('shiny:bound', function(event) {
+          scheduleEasyflowTypesetMath(event.target || document);
+        });
         document.addEventListener('shiny:value', scheduleFactorNormalityOptionsUpdate);
         document.addEventListener('shiny:bound', scheduleFactorNormalityOptionsUpdate);
         document.addEventListener('shiny:connected', scheduleFactorNormalityOptionsUpdate);
@@ -1593,6 +1617,7 @@
           new MutationObserver(function() {
             scheduleTtestNormalityTreeUpdate();
             scheduleFactorNormalityOptionsUpdate();
+            scheduleEasyflowTypesetMath(document);
           }).observe(document.documentElement, {
             childList: true,
             subtree: true
@@ -1607,6 +1632,7 @@
           scheduleTtestNormalityTreeUpdate();
           scheduleFactorNormalityOptionsUpdate();
         }
+        scheduleEasyflowTypesetMath(document);
         window.easyflowUpdateTtestNormalityTree = updateTtestNormalityTree;
         window.easyflowUpdateFactorNormalityOptions = updateFactorNormalityOptions;
       })();
