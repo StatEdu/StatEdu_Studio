@@ -80,7 +80,7 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-measurement-level-icons"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-doc-measurement-icons"))
 }
 
 app_script_link <- function(version) {

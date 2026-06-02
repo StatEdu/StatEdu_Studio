@@ -6207,6 +6207,16 @@ pre {
   text-align: left !important;
 }
 
+.about-markdown-document li > .measurement-symbol,
+.about-markdown-document p .measurement-symbol {
+  margin-right: 4px;
+  vertical-align: -3px;
+}
+
+.about-markdown-document li .measurement-symbol + code {
+  margin-left: 2px;
+}
+
 .about-markdown-document pre {
   background: #f7fafc;
   border: 1px solid #d9e2ec;
