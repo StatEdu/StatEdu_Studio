@@ -95,8 +95,8 @@ app_head_tags <- function(version) {
     tags$script(HTML(
       "window.MathJax = {
         tex: {
-          inlineMath: [['\\\\(', '\\\\)']],
-          displayMath: [['\\\\[', '\\\\]']],
+          inlineMath: [['$', '$'], ['\\\\(', '\\\\)']],
+          displayMath: [['$$', '$$'], ['\\\\[', '\\\\]']],
           processEscapes: true
         },
         options: {
