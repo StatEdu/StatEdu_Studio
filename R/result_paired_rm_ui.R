@@ -403,7 +403,8 @@ paired_rm_results_ui <- function(result) {
         tags$h3("Repeated-measures test: continuous / ordinal"),
         result_table_with_notes(
           paired_rm_grouped_table(result$display_table, "scale"),
-          result_note_tag(paired_rm_table_method_note(result$display_table))
+          result_note_tag(paired_rm_table_method_note(result$display_table)),
+          class = "result-table-with-note paired-fit-table-wrap"
         )
       )
     },
@@ -413,7 +414,8 @@ paired_rm_results_ui <- function(result) {
         tags$h3("Repeated-measures test: binary"),
         result_table_with_notes(
           paired_rm_grouped_table(result$count_table, "count"),
-          result_note_tag(paired_rm_table_method_note(result$count_table))
+          result_note_tag(paired_rm_table_method_note(result$count_table)),
+          class = "result-table-with-note paired-fit-table-wrap"
         )
       )
     },
@@ -443,6 +445,11 @@ paired_rm_results_ui <- function(result) {
         model_overview_html_table(paired_rm_assumption_review_table(result))
       )
     },
-    analysis_diagnostics_section(NULL, result$skipped, title = "Warnings / skipped repeated-measures rows")
+    analysis_diagnostics_section(
+      NULL,
+      result$skipped,
+      title = "Warnings / skipped repeated-measures rows",
+      class = "result-section paired-result-section regression-result-panel paired-diagnostics-panel"
+    )
   )
 }

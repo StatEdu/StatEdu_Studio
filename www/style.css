@@ -3621,6 +3621,73 @@ input.variable-select:disabled {
   box-sizing: border-box;
 }
 
+.result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) {
+  width: min(100%, 710px);
+}
+
+.result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) > .result-table-with-note,
+.result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) > .frequency-table-wrap,
+.result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) > table,
+.result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) .result-table-with-note > table {
+  width: 100% !important;
+  max-width: 100%;
+}
+
+.result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed;
+}
+
+.result-section.regression-result-panel.landscape-table-panel {
+  width: min(100%, 1070px);
+}
+
+.result-section.regression-result-panel.landscape-table-panel > .result-table-with-note,
+.result-section.regression-result-panel.landscape-table-panel > .hierarchical-table-wrap,
+.result-section.regression-result-panel.landscape-table-panel > .hierarchical-table-scroll,
+.result-section.regression-result-panel.landscape-table-panel > table,
+.result-section.regression-result-panel.landscape-table-panel .result-table-with-note > table {
+  width: 100% !important;
+  max-width: 100%;
+}
+
+.result-section.regression-result-panel.landscape-table-panel table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed;
+}
+
+.regression-results > .regression-result-panel:not(.landscape-table-panel):not(.model-overview-panel):not(.assumption-review-panel):not(.reference-summary-panel):not(.diagnostic-plots-section):not(.frequency-plots-section):not(.correlation-plot-section):not(.logistic-diagnostics-panel) {
+  width: min(100%, 710px);
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.regression-results > .regression-result-panel:not(.landscape-table-panel):not(.model-overview-panel):not(.assumption-review-panel):not(.reference-summary-panel):not(.diagnostic-plots-section):not(.frequency-plots-section):not(.correlation-plot-section):not(.logistic-diagnostics-panel) table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed;
+}
+
+.regression-results > .regression-result-panel.landscape-table-panel {
+  width: min(100%, 1070px);
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.regression-results > .regression-result-panel.landscape-table-panel table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed;
+}
+
 .regression-result-panel h3 {
   margin: 0 0 10px;
   font-size: 17px;
@@ -3657,6 +3724,86 @@ input.variable-select:disabled {
 .regression-result-panel table > tbody > tr:last-child > td,
 .regression-result-panel table > tbody > tr:last-child > th {
   border-bottom: 0;
+}
+
+.logistic-diagnostics-panel {
+  width: 980px;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.logistic-diagnostics-panel .coefficient-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.logistic-diagnostics-panel .coefficient-table th,
+.logistic-diagnostics-panel .coefficient-table td {
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+
+.logistic-diagnostics-panel .coefficient-table th:nth-child(1),
+.logistic-diagnostics-panel .coefficient-table td:nth-child(1) {
+  width: 72px !important;
+  min-width: 72px !important;
+  max-width: 72px !important;
+}
+
+.logistic-diagnostics-panel .coefficient-table th:nth-child(2),
+.logistic-diagnostics-panel .coefficient-table td:nth-child(2) {
+  width: 150px !important;
+  min-width: 150px !important;
+  max-width: 150px !important;
+}
+
+.logistic-diagnostics-panel .coefficient-table th:nth-child(3),
+.logistic-diagnostics-panel .coefficient-table td:nth-child(3) {
+  width: 210px !important;
+  min-width: 210px !important;
+  max-width: 210px !important;
+}
+
+.logistic-diagnostics-panel .coefficient-table th:nth-child(4),
+.logistic-diagnostics-panel .coefficient-table td:nth-child(4) {
+  width: 58px !important;
+  min-width: 58px !important;
+  max-width: 58px !important;
+}
+
+.logistic-diagnostics-panel .coefficient-table th:nth-child(5),
+.logistic-diagnostics-panel .coefficient-table td:nth-child(5) {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+}
+
+.assumption-review-panel .combined-model-overview-table {
+  width: 420px !important;
+  min-width: 420px !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.assumption-review-panel .combined-model-overview-table th:first-child,
+.assumption-review-panel .combined-model-overview-table td:first-child {
+  width: 92px !important;
+  min-width: 92px !important;
+  max-width: 92px !important;
+}
+
+.assumption-review-panel .combined-model-overview-table th:not(:first-child),
+.assumption-review-panel .combined-model-overview-table td:not(:first-child) {
+  width: 300px !important;
+  min-width: 300px !important;
+  max-width: 300px !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
 }
 
 .model-overview-panel table {
@@ -5251,6 +5398,67 @@ pre {
   white-space: nowrap;
 }
 
+.paired-fit-table-wrap,
+.paired-diagnostics-panel {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.result-section.paired-result-section {
+  width: min(100%, 710px) !important;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.result-section.paired-result-section.landscape-table-panel {
+  width: min(100%, 1070px) !important;
+}
+
+.paired-fit-table-wrap .coefficient-table,
+.paired-diagnostics-panel .coefficient-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.paired-fit-table-wrap .paired-rm-grouped-table {
+  font-size: 11px !important;
+}
+
+.paired-fit-table-wrap .paired-two-grouped-table {
+  font-size: 13px !important;
+}
+
+.paired-fit-table-wrap .coefficient-table th,
+.paired-fit-table-wrap .coefficient-table td,
+.paired-diagnostics-panel .coefficient-table th,
+.paired-diagnostics-panel .coefficient-table td {
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+}
+
+.paired-fit-table-wrap .coefficient-table td:not(:first-child),
+.paired-fit-table-wrap .coefficient-table th:not(:first-child) {
+  text-align: center;
+}
+
+.paired-fit-table-wrap .coefficient-note,
+.paired-diagnostics-panel .coefficient-note,
+.paired-diagnostics-panel .coefficient-warning {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
 
 .regression-target-column {
   grid-template-rows: 174px 328px;
@@ -6018,9 +6226,25 @@ pre {
 
 .result-toolbar {
   display: flex;
+  align-items: center;
   gap: 8px;
-  justify-content: flex-end;
+  justify-content: space-between;
   margin: 0 0 14px;
+}
+
+.result-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.result-toolbar-primary {
+  justify-content: flex-start;
+}
+
+.result-toolbar-export {
+  justify-content: flex-end;
 }
 
 .saved-result-count {

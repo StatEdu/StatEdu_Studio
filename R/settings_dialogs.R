@@ -141,9 +141,10 @@ open_file_dialog <- function(title, filetypes) {
 }
 
 open_settings_file <- function() {
-  filetypes <- "{{JSON settings} {.json}} {{All files} *}"
+  filetypes <- "{{EasyFlow Settings} {.efs-settings}} {{JSON settings} {.json}} {{All files} *}"
   attr(filetypes, "windows_filters") <- matrix(
     c(
+      "EasyFlow Settings", "*.efs-settings",
       "JSON settings", "*.json",
       "All files", "*.*"
     ),
@@ -188,15 +189,16 @@ save_settings_file <- function() {
         as.character(tcltk::tkgetSaveFile(
           parent = parent,
           title = "Save EasyFlow Statistics Settings",
-          initialfile = "EFS_settings.json",
-          filetypes = "{{JSON settings} {.json}} {{All files} *}"
+          initialfile = "EFS_settings.efs-settings",
+          defaultextension = ".efs-settings",
+          filetypes = "{{EasyFlow Settings} {.efs-settings}} {{JSON settings} {.json}} {{All files} *}"
         ))
       } else {
         folder <- utils::choose.dir(caption = "Choose a folder for EasyFlow Statistics Settings")
         if (is.na(folder) || !nzchar(folder)) {
           character(0)
         } else {
-          file.path(folder, "EFS_settings.json")
+          file.path(folder, "EFS_settings.efs-settings")
         }
       }
     },
@@ -209,7 +211,7 @@ save_settings_file <- function() {
 
   path <- path[[1]]
   if (!nzchar(tools::file_ext(path))) {
-    path <- paste0(path, ".json")
+    path <- paste0(path, ".efs-settings")
   }
   path
 }

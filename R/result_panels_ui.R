@@ -658,7 +658,7 @@ hierarchical_coefficient_result_block <- function(
       hierarchical_coefficient_note_line(group[[final_index]], show_vif, show_sr2, show_f2),
       hierarchical_model_note_lines(group, variable_table, labels)
     ),
-    landscape = TRUE
+    landscape = length(group) >= 3L
   )
 }
 

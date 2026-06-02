@@ -617,6 +617,7 @@ write_settings_json_file <- function(settings, path) {
   if (is.null(path) || !nzchar(path)) {
     stop("A settings file path is required.", call. = FALSE)
   }
+  settings$type <- "easyflow_settings"
   writeLines(
     as.character(jsonlite::toJSON(settings, pretty = TRUE, auto_unbox = TRUE)),
     con = path,
@@ -626,4 +627,13 @@ write_settings_json_file <- function(settings, path) {
     path = path,
     var_label_count = length(settings$var_label_overrides %||% list())
   ))
+}
+
+read_settings_json_file <- function(path) {
+  settings <- jsonlite::fromJSON(path)
+  type <- as.character(settings$type %||% "")
+  if (nzchar(type) && !identical(type, "easyflow_settings")) {
+    stop("This file is not an EasyFlow Settings file.", call. = FALSE)
+  }
+  settings
 }

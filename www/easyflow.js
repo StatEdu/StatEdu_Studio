@@ -1109,6 +1109,96 @@
       document.addEventListener('shiny:connected', registerEasyflowDirtyHandler);
       window.setTimeout(registerEasyflowDirtyHandler, 0);
 
+      function easyflowBlobToDataUrl(blob) {
+        return new Promise(function(resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function() { resolve(reader.result); };
+          reader.onerror = function() { reject(reader.error); };
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      async function easyflowInlineSnapshotImages(source, clone) {
+        var sourceImages = source.querySelectorAll ? source.querySelectorAll('img') : [];
+        var cloneImages = clone.querySelectorAll ? clone.querySelectorAll('img') : [];
+        for (var i = 0; i < sourceImages.length && i < cloneImages.length; i += 1) {
+          var sourceImage = sourceImages[i];
+          var cloneImage = cloneImages[i];
+          var src = sourceImage.currentSrc || sourceImage.src || cloneImage.getAttribute('src') || '';
+          if (!src || src.indexOf('data:') === 0) continue;
+          try {
+            var response = await fetch(src, { credentials: 'same-origin' });
+            if (!response.ok) continue;
+            var dataUrl = await easyflowBlobToDataUrl(await response.blob());
+            cloneImage.setAttribute('src', dataUrl);
+            cloneImage.removeAttribute('srcset');
+          } catch (error) {
+            if (window.console && window.console.warn) {
+              window.console.warn('EasyFlow result image snapshot failed', error);
+            }
+          }
+        }
+      }
+
+      function easyflowInlineSnapshotCanvases(source, clone) {
+        var sourceCanvases = source.querySelectorAll ? source.querySelectorAll('canvas') : [];
+        var cloneCanvases = clone.querySelectorAll ? clone.querySelectorAll('canvas') : [];
+        for (var i = 0; i < sourceCanvases.length && i < cloneCanvases.length; i += 1) {
+          try {
+            var dataUrl = sourceCanvases[i].toDataURL('image/png');
+            var img = document.createElement('img');
+            img.setAttribute('src', dataUrl);
+            img.setAttribute('alt', cloneCanvases[i].getAttribute('aria-label') || 'Result figure');
+            img.style.maxWidth = '100%';
+            cloneCanvases[i].parentNode.replaceChild(img, cloneCanvases[i]);
+          } catch (error) {
+            if (window.console && window.console.warn) {
+              window.console.warn('EasyFlow result canvas snapshot failed', error);
+            }
+          }
+        }
+      }
+
+      async function easyflowSnapshotHtml(element) {
+        var clone = element.cloneNode(true);
+        easyflowInlineSnapshotCanvases(element, clone);
+        await easyflowInlineSnapshotImages(element, clone);
+        return clone.innerHTML || '';
+      }
+
+      function registerEasyflowResultSnapshotHandler() {
+        if (!window.Shiny || window.easyflowResultSnapshotHandlerRegistered) return;
+        window.easyflowResultSnapshotHandlerRegistered = true;
+        Shiny.addCustomMessageHandler('easyflow-capture-result-snapshot', function(message) {
+          (async function() {
+            var inputId = message && message.inputId ? String(message.inputId) : '';
+            var outputId = message && message.outputId ? String(message.outputId) : '';
+            var element = outputId ? document.getElementById(outputId) : null;
+            var payload = {
+              outputId: outputId,
+              html: '',
+              text: '',
+              error: '',
+              nonce: Date.now() + Math.random()
+            };
+            if (!inputId) return;
+            if (!element) {
+              payload.error = 'Result output was not found.';
+            } else {
+              payload.text = (element.textContent || '').replace(/\s+/g, ' ').trim();
+              payload.html = await easyflowSnapshotHtml(element);
+              if (!payload.html || !payload.text) {
+                payload.error = 'No analysis result is available to add.';
+              }
+            }
+            Shiny.setInputValue(inputId, payload, { priority: 'event' });
+          })();
+        });
+      }
+      registerEasyflowResultSnapshotHandler();
+      document.addEventListener('shiny:connected', registerEasyflowResultSnapshotHandler);
+      window.setTimeout(registerEasyflowResultSnapshotHandler, 0);
+
       window.addEventListener('beforeunload', function(event) {
         if (!window.easyflowSettingsDirty) return;
         event.preventDefault();

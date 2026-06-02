@@ -127,7 +127,8 @@ nonparametric_paired_results_ui <- function(result) {
           tags$h3("Nonparametric paired test: continuous / ordinal"),
           result_table_with_notes(
             nonparametric_paired_rm_table(result, "scale"),
-            result_note_tag(paired_rm_table_method_note(nonparametric_paired_rm_note_table(result)))
+            result_note_tag(paired_rm_table_method_note(nonparametric_paired_rm_note_table(result))),
+            class = "result-table-with-note paired-fit-table-wrap"
           )
         )
       },
@@ -137,7 +138,8 @@ nonparametric_paired_results_ui <- function(result) {
           tags$h3("Nonparametric paired test: binary"),
           result_table_with_notes(
             nonparametric_paired_rm_table(result, "count"),
-            result_note_tag(paired_rm_table_method_note(result$count_table))
+            result_note_tag(paired_rm_table_method_note(result$count_table)),
+            class = "result-table-with-note paired-fit-table-wrap"
           )
         )
       },
@@ -150,7 +152,7 @@ nonparametric_paired_results_ui <- function(result) {
       },
       if (is.data.frame(result$skipped) && nrow(result$skipped) > 0) {
         tags$div(
-          class = "result-section paired-result-section regression-result-panel landscape-table-panel",
+          class = "result-section paired-result-section regression-result-panel landscape-table-panel paired-diagnostics-panel",
           tags$h3("Skipped repeated-measures rows"),
           coefficient_html_table(result$skipped)
         )
@@ -176,7 +178,8 @@ nonparametric_paired_results_ui <- function(result) {
         tags$h3("Nonparametric paired test: continuous / ordinal"),
         result_table_with_notes(
           paired_grouped_table(result$scale_table, "scale", show_effect_size = isTRUE(result$options$effect_size)),
-          result_note_tag(paired_method_note(result$scale_table, show_effect_size = isTRUE(result$options$effect_size)))
+          result_note_tag(paired_method_note(result$scale_table, show_effect_size = isTRUE(result$options$effect_size))),
+          class = "result-table-with-note paired-fit-table-wrap"
         )
       )
     },
@@ -186,20 +189,21 @@ nonparametric_paired_results_ui <- function(result) {
         tags$h3("Nonparametric paired test: binary / categorical"),
         result_table_with_notes(
           paired_grouped_table(result$count_table, "count", show_effect_size = isTRUE(result$options$effect_size)),
-          result_note_tag(paired_count_method_note(result, show_effect_size = isTRUE(result$options$effect_size)))
+          result_note_tag(paired_count_method_note(result, show_effect_size = isTRUE(result$options$effect_size))),
+          class = "result-table-with-note paired-fit-table-wrap"
         )
       )
     },
     if (is.data.frame(result$warnings) && nrow(result$warnings) > 0) {
       tags$div(
-        class = "result-section paired-result-section regression-result-panel",
+        class = "result-section paired-result-section regression-result-panel paired-diagnostics-panel",
         tags$h3("Warnings"),
         coefficient_html_table(result$warnings)
       )
     },
     if (is.data.frame(result$skipped) && nrow(result$skipped) > 0) {
       tags$div(
-        class = "result-section paired-result-section regression-result-panel",
+        class = "result-section paired-result-section regression-result-panel paired-diagnostics-panel",
         tags$h3("Skipped pairs"),
         coefficient_html_table(result$skipped)
       )

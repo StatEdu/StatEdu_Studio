@@ -416,7 +416,8 @@ paired_results_ui <- function(result) {
           tags$h3("Paired test: continuous / ordinal"),
           result_table_with_notes(
             paired_grouped_table(result$paired$scale_table, "scale", show_effect_size = isTRUE(result$paired$options$effect_size)),
-            result_note_tag(paired_method_note(result$paired$scale_table, show_effect_size = isTRUE(result$paired$options$effect_size)))
+            result_note_tag(paired_method_note(result$paired$scale_table, show_effect_size = isTRUE(result$paired$options$effect_size))),
+            class = "result-table-with-note paired-fit-table-wrap"
           )
         )
       },
@@ -426,7 +427,8 @@ paired_results_ui <- function(result) {
           tags$h3("Paired test: binary / categorical"),
           result_table_with_notes(
             paired_grouped_table(result$paired$count_table, "count", show_effect_size = isTRUE(result$paired$options$effect_size)),
-            result_note_tag(paired_count_method_note(result$paired, show_effect_size = isTRUE(result$paired$options$effect_size)))
+            result_note_tag(paired_count_method_note(result$paired, show_effect_size = isTRUE(result$paired$options$effect_size))),
+            class = "result-table-with-note paired-fit-table-wrap"
           )
         )
       },
@@ -436,7 +438,8 @@ paired_results_ui <- function(result) {
           tags$h3("Repeated-measures test: continuous / ordinal"),
           result_table_with_notes(
             paired_rm_grouped_table(result$paired_rm$display_table, "scale"),
-            result_note_tag(paired_rm_table_method_note(result$paired_rm$display_table))
+            result_note_tag(paired_rm_table_method_note(result$paired_rm$display_table)),
+            class = "result-table-with-note paired-fit-table-wrap"
           )
         )
       },
@@ -446,7 +449,8 @@ paired_results_ui <- function(result) {
           tags$h3("Repeated-measures test: binary"),
           result_table_with_notes(
             paired_rm_grouped_table(result$paired_rm$count_table, "count"),
-            result_note_tag(paired_rm_table_method_note(result$paired_rm$count_table))
+            result_note_tag(paired_rm_table_method_note(result$paired_rm$count_table)),
+            class = "result-table-with-note paired-fit-table-wrap"
           )
         )
       },
@@ -479,7 +483,8 @@ paired_results_ui <- function(result) {
       analysis_diagnostics_section(
         paired_combined_diagnostics_table(result, "warnings"),
         paired_combined_diagnostics_table(result, "skipped"),
-        title = "Warnings / skipped repeated-measures rows"
+        title = "Warnings / skipped repeated-measures rows",
+        class = "result-section paired-result-section regression-result-panel paired-diagnostics-panel"
       )
     ))
   }
@@ -498,7 +503,8 @@ paired_results_ui <- function(result) {
         tags$h3("Paired test: continuous / ordinal"),
         result_table_with_notes(
           paired_grouped_table(result$scale_table, "scale", show_effect_size = isTRUE(result$options$effect_size)),
-          result_note_tag(paired_method_note(result$scale_table, show_effect_size = isTRUE(result$options$effect_size)))
+          result_note_tag(paired_method_note(result$scale_table, show_effect_size = isTRUE(result$options$effect_size))),
+          class = "result-table-with-note paired-fit-table-wrap"
         )
       )
     },
@@ -508,7 +514,8 @@ paired_results_ui <- function(result) {
         tags$h3("Paired test: binary / categorical"),
         result_table_with_notes(
           paired_grouped_table(result$count_table, "count", show_effect_size = isTRUE(result$options$effect_size)),
-          result_note_tag(paired_count_method_note(result, show_effect_size = isTRUE(result$options$effect_size)))
+          result_note_tag(paired_count_method_note(result, show_effect_size = isTRUE(result$options$effect_size))),
+          class = "result-table-with-note paired-fit-table-wrap"
         )
       )
     },
@@ -519,6 +526,11 @@ paired_results_ui <- function(result) {
         model_overview_html_table(paired_assumption_review_table(result))
       )
     },
-    analysis_diagnostics_section(result$warnings, result$skipped, title = "Warnings / skipped pairs")
+    analysis_diagnostics_section(
+      result$warnings,
+      result$skipped,
+      title = "Warnings / skipped pairs",
+      class = "result-section paired-result-section regression-result-panel paired-diagnostics-panel"
+    )
   )
 }

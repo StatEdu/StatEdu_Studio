@@ -138,6 +138,16 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     ".regression-results { border-top: 0 !important; padding-top: 0 !important; }",
     ".regression-result-panel { background: #ffffff; border: 1px solid #d9e2ec; border-radius: 6px; padding: 18px 20px; margin-bottom: 22px; break-inside: avoid; page-break-inside: avoid; }",
     ".result-section.regression-result-panel { width: max-content; max-width: 100%; overflow-x: auto; box-sizing: border-box; }",
+    ".result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) { width: min(100%, 710px); }",
+    ".result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) > .result-table-with-note, .result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) > .frequency-table-wrap, .result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) > table, .result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) .result-table-with-note > table { width: 100% !important; max-width: 100%; }",
+    ".result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed; }",
+    ".result-section.regression-result-panel.landscape-table-panel { width: min(100%, 1070px); }",
+    ".result-section.regression-result-panel.landscape-table-panel > .result-table-with-note, .result-section.regression-result-panel.landscape-table-panel > .hierarchical-table-wrap, .result-section.regression-result-panel.landscape-table-panel > .hierarchical-table-scroll, .result-section.regression-result-panel.landscape-table-panel > table, .result-section.regression-result-panel.landscape-table-panel .result-table-with-note > table { width: 100% !important; max-width: 100%; }",
+    ".result-section.regression-result-panel.landscape-table-panel table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed; }",
+    ".regression-results > .regression-result-panel:not(.landscape-table-panel):not(.model-overview-panel):not(.assumption-review-panel):not(.reference-summary-panel):not(.diagnostic-plots-section):not(.frequency-plots-section):not(.correlation-plot-section):not(.logistic-diagnostics-panel) { width: min(100%, 710px); max-width: 100%; overflow-x: hidden; box-sizing: border-box; }",
+    ".regression-results > .regression-result-panel:not(.landscape-table-panel):not(.model-overview-panel):not(.assumption-review-panel):not(.reference-summary-panel):not(.diagnostic-plots-section):not(.frequency-plots-section):not(.correlation-plot-section):not(.logistic-diagnostics-panel) table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed; }",
+    ".regression-results > .regression-result-panel.landscape-table-panel { width: min(100%, 1070px); max-width: 100%; overflow-x: hidden; box-sizing: border-box; }",
+    ".regression-results > .regression-result-panel.landscape-table-panel table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed; }",
     ".regression-result-panel h3 { color: #15233a; font-size: 22px; font-weight: 700; margin: 0 0 12px; }",
     ".regression-result-panel table { width: auto; min-width: 440px; border-collapse: collapse !important; border-spacing: 0 !important; border-top: 2px solid #1f2937 !important; border-bottom: 2px solid #1f2937 !important; color: #2f3a46; font-size: 16px; background: transparent; }",
     ".regression-result-panel table th, .regression-result-panel table td { padding: 9px 16px; line-height: 1.45; border-left: 0 !important; border-right: 0 !important; border-bottom: 1px solid #d7dde5; vertical-align: middle; background: transparent; }",
@@ -220,17 +230,17 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     "  .report-cover-footer { font-size: 8.5pt !important; }",
     "  .report-body-heading { display: none !important; }",
     "  .saved-results-meta { font-size: 8.5pt; margin-bottom: 10pt; }",
-    "  .regression-result-panel, .result-section.regression-result-panel { width: 100% !important; max-width: 100% !important; overflow: visible !important; padding: 8pt 2mm !important; box-sizing: border-box !important; border-left: 0 !important; border-right: 0 !important; border-radius: 0 !important; break-inside: auto; page-break-inside: auto; }",
+    "  .regression-result-panel, .result-section.regression-result-panel { width: 188mm !important; max-width: 100% !important; overflow: visible !important; padding: 8pt 2mm !important; box-sizing: border-box !important; border-left: 0 !important; border-right: 0 !important; border-radius: 0 !important; break-inside: auto; page-break-inside: auto; margin-left: auto !important; margin-right: auto !important; }",
     "  .regression-results > .regression-result-panel:has(table) { break-before: page; page-break-before: always; }",
-    "  body.print-mixed-landscape .regression-results .landscape-table-panel { page: easyflow-landscape; width: 100% !important; max-width: 285mm !important; margin-left: auto !important; margin-right: auto !important; break-before: page; page-break-before: always; break-after: page; page-break-after: always; }",
+    "  body.print-mixed-landscape .regression-results .landscape-table-panel { page: easyflow-landscape; width: 283mm !important; max-width: 283mm !important; margin-left: auto !important; margin-right: auto !important; break-before: page; page-break-before: always; break-after: page; page-break-after: always; }",
     "  body.print-mixed-landscape .landscape-table-panel table { width: 100% !important; max-width: 100% !important; min-width: 0 !important; table-layout: fixed !important; }",
     "  body.print-mixed-landscape .landscape-table-panel .result-table-with-note, body.print-mixed-landscape .landscape-table-panel .hierarchical-table-wrap, body.print-mixed-landscape .landscape-table-panel .hierarchical-table-scroll { width: calc(100% - 2mm) !important; max-width: calc(100% - 2mm) !important; margin-left: auto !important; margin-right: auto !important; }",
     "  .regression-results > .regression-result-panel:first-child { break-before: auto; page-break-before: auto; }",
     "  .regression-results > .diagnostic-plots-section, .regression-results > .frequency-plots-section, .regression-results > .correlation-plot-section { break-before: auto !important; page-break-before: auto !important; break-inside: auto !important; page-break-inside: auto !important; }",
     "  .regression-result-panel h3 { font-size: 13pt; margin: 0 0 6pt; }",
-    "  .result-table-with-note, .frequency-table-wrap, .hierarchical-table-wrap, .hierarchical-table-scroll { display: block !important; width: calc(100% - 4mm) !important; max-width: calc(100% - 4mm) !important; margin-left: auto !important; margin-right: auto !important; overflow: visible !important; }",
+    "  .result-table-with-note, .frequency-table-wrap, .hierarchical-table-wrap, .hierarchical-table-scroll { display: block !important; width: 100% !important; max-width: 100% !important; margin-left: auto !important; margin-right: auto !important; overflow: visible !important; }",
     "  table, .regression-result-panel table, .coefficient-table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed !important; font-size: 10.5pt !important; box-sizing: border-box !important; }",
-    "  .regression-result-panel > table { width: calc(100% - 4mm) !important; max-width: calc(100% - 4mm) !important; margin-left: auto !important; margin-right: auto !important; }",
+    "  .regression-result-panel > table { width: 100% !important; max-width: 100% !important; margin-left: auto !important; margin-right: auto !important; }",
     "  .hierarchical-coefficient-table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed !important; font-size: 8.2pt !important; box-sizing: border-box !important; }",
     "  .coefficient-table col { width: auto !important; }",
     "  .coefficient-table col.coefficient-col-note-marker { width: 12px !important; min-width: 12px !important; max-width: 12px !important; }",
@@ -255,7 +265,7 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     "  body.print-mixed-landscape .paired-rm-grouped-table col.paired-rm-col-p { width: 4% !important; }",
     "  body.print-mixed-landscape .paired-rm-grouped-table col.paired-rm-col-es { width: 5.2% !important; }",
     "  body.print-mixed-landscape .paired-rm-grouped-table col.paired-rm-col-posthoc { width: 12% !important; }",
-    "  body.print-mixed-landscape .landscape-table-panel .paired-rm-grouped-table { width: 283mm !important; max-width: 283mm !important; min-width: 283mm !important; }",
+    "  body.print-mixed-landscape .landscape-table-panel .paired-rm-grouped-table { width: 100% !important; max-width: 100% !important; min-width: 0 !important; }",
     "  thead { display: table-header-group; }",
     "  tfoot { display: table-footer-group; }",
     "  tr { break-inside: avoid; page-break-inside: avoid; }",
@@ -334,6 +344,16 @@ saved_results_viewer_css <- function(max_width = 1280) {
     ".saved-results-meta { color: #52606d; margin: 4px 0 18px; font-size: 13px; }",
     ".regression-result-panel { background: #ffffff; border: 1px solid #d9e2ec; border-radius: 6px; padding: 18px 20px; margin-bottom: 22px; }",
     ".result-section.regression-result-panel, .regression-result-panel { max-width: 100%; overflow-x: auto; box-sizing: border-box; }",
+    ".result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) { width: min(100%, 710px); }",
+    ".result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) > .result-table-with-note, .result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) > .frequency-table-wrap, .result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) > table, .result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) .result-table-with-note > table { width: 100% !important; max-width: 100%; }",
+    ".result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed; }",
+    ".result-section.regression-result-panel.landscape-table-panel { width: min(100%, 1070px); }",
+    ".result-section.regression-result-panel.landscape-table-panel > .result-table-with-note, .result-section.regression-result-panel.landscape-table-panel > .hierarchical-table-wrap, .result-section.regression-result-panel.landscape-table-panel > .hierarchical-table-scroll, .result-section.regression-result-panel.landscape-table-panel > table, .result-section.regression-result-panel.landscape-table-panel .result-table-with-note > table { width: 100% !important; max-width: 100%; }",
+    ".result-section.regression-result-panel.landscape-table-panel table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed; }",
+    ".regression-results > .regression-result-panel:not(.landscape-table-panel):not(.model-overview-panel):not(.assumption-review-panel):not(.reference-summary-panel):not(.diagnostic-plots-section):not(.frequency-plots-section):not(.correlation-plot-section):not(.logistic-diagnostics-panel) { width: min(100%, 710px); max-width: 100%; overflow-x: hidden; box-sizing: border-box; }",
+    ".regression-results > .regression-result-panel:not(.landscape-table-panel):not(.model-overview-panel):not(.assumption-review-panel):not(.reference-summary-panel):not(.diagnostic-plots-section):not(.frequency-plots-section):not(.correlation-plot-section):not(.logistic-diagnostics-panel) table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed; }",
+    ".regression-results > .regression-result-panel.landscape-table-panel { width: min(100%, 1070px); max-width: 100%; overflow-x: hidden; box-sizing: border-box; }",
+    ".regression-results > .regression-result-panel.landscape-table-panel table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed; }",
     ".regression-result-panel h3 { color: #15233a; font-size: 22px; font-weight: 700; margin: 0 0 12px; }",
     ".regression-result-panel table, .coefficient-table { width: auto; min-width: 480px; border-collapse: collapse !important; border-spacing: 0 !important; border-top: 2px solid #1f2937 !important; border-bottom: 2px solid #1f2937 !important; color: #2f3a46; font-size: 15px; background: transparent; }",
     ".regression-result-panel table th, .regression-result-panel table td { padding: 9px 16px; line-height: 1.45; border-left: 0 !important; border-right: 0 !important; border-bottom: 1px solid #d7dde5; vertical-align: middle; background: transparent; white-space: nowrap; }",
@@ -535,6 +555,7 @@ saved_hierarchical_results_html <- function(
   css_path = file.path("www", "style.css"),
   report_mode = FALSE
 ) {
+  print_landscape <- any(vapply(hierarchical_result_groups(results), function(group) length(group) >= 3L, logical(1)))
   saved_results_document(
     "EasyFlow Statistics Hierarchical Results",
     hierarchical_results_panel(
@@ -556,7 +577,7 @@ saved_hierarchical_results_html <- function(
     ),
     max_width = 1500,
     css_path = css_path,
-    print_landscape = TRUE,
+    print_landscape = print_landscape,
     report_mode = report_mode
   )
 }
@@ -654,7 +675,7 @@ saved_nonparametric_paired_results_html <- function(result, css_path = file.path
     tags$div(class = "regression-results", nonparametric_paired_results_ui(result)),
     max_width = 1500,
     css_path = css_path,
-    print_landscape = TRUE,
+    print_landscape = identical(result$type, "nonparametric_paired_rm") || identical(result$type, "nonparametric_paired_combined"),
     report_mode = report_mode
   )
 }
@@ -665,7 +686,7 @@ saved_paired_results_html <- function(result, css_path = file.path("www", "style
     tags$div(class = "regression-results", paired_results_ui(result)),
     max_width = 1500,
     css_path = css_path,
-    print_landscape = TRUE,
+    print_landscape = identical(result$type, "paired_rm") || identical(result$type, "paired_combined"),
     report_mode = report_mode
   )
 }
@@ -684,6 +705,7 @@ saved_paired_rm_results_html <- function(result, css_path = file.path("www", "st
 saved_correlation_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
   options <- result$options %||% list()
   normality_table <- correlation_normality_display_table(result)
+  print_landscape <- length(result$variables %||% character(0)) >= 10L
   saved_results_document(
     "EasyFlow Statistics Correlation Results",
     tags$div(
@@ -732,7 +754,7 @@ saved_correlation_results_html <- function(result, css_path = file.path("www", "
     ),
     max_width = 1500,
     css_path = css_path,
-    print_landscape = TRUE,
+    print_landscape = print_landscape,
     report_mode = report_mode
   )
 }
@@ -750,6 +772,7 @@ saved_logistic_results_html <- function(
   css_path = file.path("www", "style.css"),
   report_mode = FALSE
 ) {
+  print_landscape <- any(vapply(logistic_result_groups(results), function(group) length(group) >= 3L, logical(1)))
   saved_results_document(
     "EasyFlow Statistics Logistic Regression Results",
     tags$div(
@@ -768,7 +791,7 @@ saved_logistic_results_html <- function(
     ),
     max_width = 1500,
     css_path = css_path,
-    print_landscape = TRUE,
+    print_landscape = print_landscape,
     report_mode = report_mode
   )
 }
@@ -806,10 +829,83 @@ saved_crosstab_results_html <- function(result, css_path = file.path("www", "sty
 result_accumulator_store <- function(session) {
   store <- session$userData$result_entries
   if (is.null(store) || !is.function(store)) {
-    store <- reactiveVal(list())
+    store <- reactiveVal(read_result_snapshot_store())
     session$userData$result_entries <- store
   }
   store
+}
+
+result_snapshot_store_path <- function() {
+  configured <- trimws(Sys.getenv("EASYFLOW_RESULT_STORE", ""))
+  if (nzchar(configured)) {
+    return(configured)
+  }
+  file.path("data", "EasyFlow_Statistics_results.json")
+}
+
+normalize_result_snapshot_entry <- function(entry, index = 1L) {
+  if (!is.list(entry)) {
+    return(NULL)
+  }
+  title <- as.character(entry$title %||% "")
+  saved_at <- as.character(entry$saved_at %||% "")
+  html <- as.character(entry$html %||% "")
+  if (!nzchar(html)) {
+    return(NULL)
+  }
+  if (!nzchar(title)) {
+    title <- "Analysis result"
+  }
+  if (!nzchar(saved_at)) {
+    saved_at <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+  }
+  id <- as.character(entry$id %||% "")
+  if (!nzchar(id)) {
+    id <- paste0("saved_result_", index, "_", as.integer(Sys.time()))
+  }
+  list(id = id, title = title, saved_at = saved_at, html = html)
+}
+
+normalize_result_snapshot_entries <- function(entries) {
+  if (is.data.frame(entries)) {
+    entries <- lapply(seq_len(nrow(entries)), function(index) as.list(entries[index, , drop = FALSE]))
+  }
+  if (!is.list(entries) || length(entries) == 0) {
+    return(list())
+  }
+  normalized <- lapply(seq_along(entries), function(index) normalize_result_snapshot_entry(entries[[index]], index))
+  Filter(Negate(is.null), normalized)
+}
+
+read_result_snapshot_store <- function(path = result_snapshot_store_path()) {
+  if (!file.exists(path)) {
+    return(list())
+  }
+  payload <- tryCatch(jsonlite::fromJSON(path, simplifyVector = FALSE), error = function(e) NULL)
+  type <- as.character(payload$type %||% "")
+  if (nzchar(type) && !identical(type, "easyflow_result_history")) {
+    stop("This file is not an EasyFlow Result file.", call. = FALSE)
+  }
+  entries <- if (is.list(payload) && !is.null(payload$entries)) payload$entries else payload
+  normalize_result_snapshot_entries(entries)
+}
+
+write_result_snapshot_store <- function(entries, path = result_snapshot_store_path()) {
+  entries <- normalize_result_snapshot_entries(entries)
+  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+  payload <- list(
+    type = "easyflow_result_history",
+    version = 1L,
+    saved_at = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+    entries = entries
+  )
+  tryCatch(
+    {
+      writeLines(as.character(jsonlite::toJSON(payload, pretty = TRUE, auto_unbox = TRUE)), path, useBytes = TRUE)
+      TRUE
+    },
+    error = function(e) FALSE
+  )
 }
 
 append_result_snapshot <- function(session, title, html) {
@@ -823,7 +919,9 @@ append_result_snapshot <- function(session, title, html) {
     saved_at = saved_at,
     html = html
   )
-  store(c(entries, list(entry)))
+  updated <- c(entries, list(entry))
+  store(updated)
+  write_result_snapshot_store(updated)
   entry
 }
 
@@ -1276,7 +1374,8 @@ result_entry_images <- function(entry) {
 result_docx_page_spec <- function(landscape = FALSE) {
   width <- if (isTRUE(landscape)) 10.12 else 7.17
   height <- if (isTRUE(landscape)) 7.17 else 10.12
-  margin <- if (isTRUE(landscape)) 0.45 else 0.55
+  table_width <- if (isTRUE(landscape)) 890 / 96 else 590 / 96
+  margin <- max(0.25, (width - table_width) / 2)
   list(
     width = width,
     height = height,
@@ -1284,7 +1383,7 @@ result_docx_page_spec <- function(landscape = FALSE) {
     margin_right = margin,
     margin_top = margin,
     margin_bottom = margin,
-    table_width = width - (margin * 2)
+    table_width = table_width
   )
 }
 
@@ -1340,11 +1439,12 @@ result_docx_portrait_section <- function() {
 
 result_docx_wide_table <- function(table_info) {
   table_class <- as.character(table_info$class %||% "")
+  context_class <- as.character(table_info$context_class %||% "")
   title <- as.character(table_info$title %||% "")
   is_correlation <- grepl("Correlation / association coefficients", title, fixed = TRUE)
   correlation_variables <- if (isTRUE(is_correlation) && is.data.frame(table_info$table)) max(0L, ncol(table_info$table) - 1L) else 0L
-  grepl("paired-rm-grouped-table|hierarchical-coefficient-table", table_class) ||
-    (grepl("coefficient-table", table_class) && is.data.frame(table_info$table) && ncol(table_info$table) >= 8L) ||
+  grepl("landscape-table-panel", context_class) ||
+    grepl("paired-rm-grouped-table", table_class) ||
     (isTRUE(is_correlation) && correlation_variables >= 10L)
 }
 
@@ -1738,7 +1838,6 @@ write_result_collection_docx <- function(entries, file) {
   entry_tables <- lapply(seq_along(entries), function(entry_index) {
     Filter(result_docx_main_table, result_entry_tables(entries[[entry_index]], entry_index))
   })
-  document <- result_docx_cover(document, entries)
   document <- result_docx_methods_page(document, entries, entry_tables)
   content_count <- 0L
   for (entry_index in seq_along(entries)) {
@@ -1806,7 +1905,7 @@ register_result_accumulator_outputs <- function(input, output, session) {
       return(saved_results_empty_ui())
     }
     tagList(
-      div(class = "saved-result-count", sprintf("%s result(s) saved in this session.", length(entries))),
+      div(class = "saved-result-count", sprintf("%s result(s) saved in Result history.", length(entries))),
       div(
         class = "saved-result-list",
         lapply(seq_along(entries), function(index) saved_result_entry_ui(entries[[index]], index))
@@ -1816,7 +1915,53 @@ register_result_accumulator_outputs <- function(input, output, session) {
 
   observeEvent(input$clear_saved_results, {
     store(list())
+    write_result_snapshot_store(list())
     showNotification("Saved results cleared.", type = "message", duration = 3)
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$save_result_history_dialog, {
+    tryCatch(
+      {
+        entries <- result_entries_for_export(store)
+        path <- choose_result_history_save_path()
+        if (length(path) == 0 || !nzchar(path[[1]])) {
+          showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+          return(invisible(NULL))
+        }
+        if (!grepl("\\.(efs-result|json)$", path, ignore.case = TRUE)) {
+          path <- paste0(path, ".efs-result")
+        }
+        if (!isTRUE(write_result_snapshot_store(entries, path))) {
+          stop("Could not write the Result file.", call. = FALSE)
+        }
+        showNotification(sprintf("Result saved: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save Result:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$open_result_history_dialog, {
+    tryCatch(
+      {
+        path <- choose_result_history_open_path()
+        if (length(path) == 0 || !nzchar(path[[1]])) {
+          showNotification("Open dialog was not available or was canceled.", type = "warning", duration = 5)
+          return(invisible(NULL))
+        }
+        entries <- read_result_snapshot_store(path)
+        if (length(entries) == 0) {
+          stop("The selected file does not contain saved Result entries.", call. = FALSE)
+        }
+        store(entries)
+        write_result_snapshot_store(entries)
+        showNotification(sprintf("Result opened: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to open Result:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
   }, ignoreInit = TRUE)
 
   observeEvent(input$save_result_collection_html_dialog, {
@@ -1906,30 +2051,87 @@ register_result_accumulator_outputs <- function(input, output, session) {
   invisible(TRUE)
 }
 
-register_add_result_snapshot <- function(input, session, button_id, title, html_fn) {
+result_snapshot_document_html <- function(title, html) {
+  saved_results_document(
+    title,
+    htmltools::HTML(html),
+    max_width = 1500,
+    css_path = file.path("www", "style.css")
+  )
+}
+
+register_add_result_snapshot <- function(input, session, button_id, title, output_id = NULL, html_fn = NULL) {
   if (is.null(button_id) || !nzchar(button_id)) {
     return(invisible(FALSE))
   }
+
+  if (is.function(output_id) && is.null(html_fn)) {
+    html_fn <- output_id
+    output_id <- NULL
+  }
+
+  snapshot_input_id <- paste0(button_id, "_snapshot")
+
+  add_snapshot <- function(html) {
+    if (length(html) == 0 || is.null(html) || !nzchar(as.character(html)[[1]])) {
+      stop("No analysis result is available to add.")
+    }
+    resolved_title <- if (is.function(title)) title() else title
+    resolved_title <- as.character(resolved_title %||% "")
+    if (!nzchar(resolved_title)) {
+      resolved_title <- "Analysis result"
+    }
+    append_result_snapshot(session, resolved_title, as.character(html)[[1]])
+    updateNavbarPage(session, "main_menu", selected = "result")
+    showNotification(sprintf("Added to Result: %s", resolved_title), type = "message", duration = 3)
+  }
+
   observeEvent(input[[button_id]], {
     tryCatch(
       {
-        html <- html_fn()
-        if (length(html) == 0 || is.null(html) || !nzchar(as.character(html)[[1]])) {
-          stop("No analysis result is available to add.")
+        if (!is.null(output_id) && nzchar(output_id)) {
+          session$sendCustomMessage(
+            "easyflow-capture-result-snapshot",
+            list(
+              outputId = output_id,
+              inputId = snapshot_input_id,
+              nonce = as.numeric(Sys.time())
+            )
+          )
+          return(invisible(NULL))
         }
-        resolved_title <- if (is.function(title)) title() else title
-        resolved_title <- as.character(resolved_title %||% "")
-        if (!nzchar(resolved_title)) {
-          resolved_title <- "Analysis result"
+        if (!is.function(html_fn)) {
+          stop("No result output is registered for Add result.")
         }
-        append_result_snapshot(session, resolved_title, as.character(html)[[1]])
-        updateNavbarPage(session, "main_menu", selected = "result")
-        showNotification(sprintf("Added to Result: %s", resolved_title), type = "message", duration = 3)
+        add_snapshot(html_fn())
       },
       error = function(e) {
         showNotification(paste("Failed to add result:", conditionMessage(e)), type = "error", duration = 8)
       }
     )
   }, ignoreInit = TRUE)
+
+  observeEvent(input[[snapshot_input_id]], {
+    tryCatch(
+      {
+        payload <- input[[snapshot_input_id]]
+        error <- as.character(payload$error %||% "")
+        if (nzchar(error)) {
+          stop(error)
+        }
+        fragment <- as.character(payload$html %||% "")
+        resolved_title <- if (is.function(title)) title() else title
+        resolved_title <- as.character(resolved_title %||% "")
+        if (!nzchar(resolved_title)) {
+          resolved_title <- "Analysis result"
+        }
+        add_snapshot(result_snapshot_document_html(resolved_title, fragment))
+      },
+      error = function(e) {
+        showNotification(paste("Failed to add result:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  }, ignoreInit = TRUE)
+
   invisible(TRUE)
 }

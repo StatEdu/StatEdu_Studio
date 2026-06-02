@@ -467,11 +467,7 @@ register_nonparametric_handlers <- function(
     )
   })
 
-  register_add_result_snapshot(input, session, "add_nonparametric_result", "Nonparametric Tests", function() {
-    result <- nonparametric_result()
-    shiny::req(!is.null(result), is.null(result$error))
-    saved_nonparametric_results_html(result)
-  })
+  register_add_result_snapshot(input, session, "add_nonparametric_result", "Nonparametric Tests", "nonparametric_results")
 
   invisible(TRUE)
 }

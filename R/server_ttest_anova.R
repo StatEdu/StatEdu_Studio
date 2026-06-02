@@ -566,11 +566,7 @@ register_ttest_anova_handlers <- function(
     )
   })
 
-  register_add_result_snapshot(input, session, "add_ttest_anova_result", "t-test / ANOVA", function() {
-    result <- ttest_anova_result()
-    shiny::req(!is.null(result), is.null(result$error))
-    saved_ttest_anova_results_html(result)
-  })
+  register_add_result_snapshot(input, session, "add_ttest_anova_result", "t-test / ANOVA", "ttest_anova_results")
 
   invisible(TRUE)
 }

@@ -98,7 +98,7 @@ correlation_model_overview_reason <- function(reason) {
   reason
 }
 
-correlation_model_overview_wrap <- function(text, width = 28L) {
+correlation_model_overview_wrap <- function(text, width = 24L) {
   text <- trimws(as.character(text %||% ""))
   if (!nzchar(text)) return("")
   wrapped <- strwrap(text, width = width, simplify = TRUE)
@@ -144,7 +144,7 @@ correlation_model_overview_matrix_display_table <- function(result, source = NUL
         styled_cells[[length(styled_cells) + 1L]] <- data.frame(
           row = row,
           column = column,
-          style = "text-align:center;white-space:pre-line;overflow-wrap:anywhere;word-break:normal;min-width:120px;max-width:150px;width:150px;",
+          style = "text-align:center;white-space:pre-line;overflow-wrap:anywhere;word-break:normal;min-width:86px;max-width:112px;width:104px;",
           stringsAsFactors = FALSE
         )
       }
@@ -170,23 +170,24 @@ correlation_matrix_set_ui <- function(result, source = NULL, title_prefix = "") 
   main_table <- correlation_matrix_display_table(result, source)
   p_table <- correlation_p_matrix_display_table(result, source)
   overview_table <- correlation_model_overview_matrix_display_table(result, source)
+  landscape_class <- if (length(result$variables %||% character(0)) >= 10L) " landscape-table-panel" else ""
   tagList(
     if (is.data.frame(overview_table) && nrow(overview_table) > 0) {
       div(
-        class = "result-section correlation-result-section regression-result-panel landscape-table-panel",
+        class = paste0("result-section correlation-result-section regression-result-panel", landscape_class),
         h3(paste0(title_prefix, "Model overview")),
         coefficient_html_table(
           overview_table,
           compact = TRUE,
           compact_font_size = 11,
-          compact_width = 120,
-          compact_first_width = 104,
+          compact_width = 88,
+          compact_first_width = 82,
           compact_min_width = 280
         )
       )
     },
     div(
-      class = "result-section correlation-result-section regression-result-panel landscape-table-panel",
+      class = paste0("result-section correlation-result-section regression-result-panel", landscape_class),
       h3(paste0(title_prefix, "Correlation / association coefficients")),
       coefficient_html_table(
         main_table,
@@ -197,7 +198,7 @@ correlation_matrix_set_ui <- function(result, source = NULL, title_prefix = "") 
     ),
     if (isTRUE(options$p_ci) && is.data.frame(p_table) && nrow(p_table) > 0) {
       div(
-        class = "result-section correlation-result-section regression-result-panel landscape-table-panel",
+        class = paste0("result-section correlation-result-section regression-result-panel", landscape_class),
         h3(paste0(title_prefix, "p-value & 95% CI")),
         coefficient_html_table(
           p_table,

@@ -17,7 +17,7 @@ analysis_save_feature_enabled <- function(feature, edition = analysis_save_editi
     return(TRUE)
   }
   if (identical(edition, "personal") || identical(edition, "institution")) {
-    return(feature %in% c("html", "pdf", "figure", "excel", "word", "add_result"))
+    return(feature %in% c("html", "pdf", "figure", "excel", "word", "add_result", "result_history"))
   }
   feature %in% c("html", "pdf", "figure")
 }

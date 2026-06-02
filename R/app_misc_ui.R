@@ -17,11 +17,19 @@ result_tab_panel <- function() {
         h3("Result"),
         div(
           class = "result-toolbar",
-          analysis_save_button("save_result_collection_html_dialog", "Save HTML", "html", class = "btn-default"),
-          analysis_save_button("save_result_collection_pdf_dialog", "Save PDF", "pdf", class = "btn-default"),
-          analysis_save_button("save_result_collection_excel_dialog", "Save Excel", "excel", class = "btn-default"),
-          analysis_save_button("save_result_collection_word_dialog", "Save Word", "word", class = "btn-default"),
-          actionButton("clear_saved_results", "Clear results", class = "btn-default")
+          div(
+            class = "result-toolbar-group result-toolbar-primary",
+            actionButton("open_result_history_dialog", "Open result", class = "btn-default"),
+            analysis_save_button("save_result_history_dialog", "Save result", "result_history", class = "btn-default"),
+            actionButton("clear_saved_results", "Clear results", class = "btn-default")
+          ),
+          div(
+            class = "result-toolbar-group result-toolbar-export",
+            analysis_save_button("save_result_collection_html_dialog", "Save HTML", "html", class = "btn-default"),
+            analysis_save_button("save_result_collection_pdf_dialog", "Save PDF", "pdf", class = "btn-default"),
+            analysis_save_button("save_result_collection_excel_dialog", "Save Excel", "excel", class = "btn-default"),
+            analysis_save_button("save_result_collection_word_dialog", "Save Word", "word", class = "btn-default")
+          )
         ),
         uiOutput("saved_results_list")
       )

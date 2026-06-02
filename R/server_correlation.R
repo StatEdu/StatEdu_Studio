@@ -396,11 +396,7 @@ register_correlation_handlers <- function(
     )
   })
 
-  register_add_result_snapshot(input, session, "add_correlation_result", "Correlation", function() {
-    result <- correlation_result()
-    shiny::req(!is.null(result))
-    saved_correlation_results_html(result)
-  })
+  register_add_result_snapshot(input, session, "add_correlation_result", "Correlation", "correlation_results")
 
   invisible(TRUE)
 }

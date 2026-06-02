@@ -204,7 +204,7 @@ reliability_header_label <- function(column) {
 
 reliability_column_width <- function(column, first = FALSE) {
   if (isTRUE(first)) {
-    return("128px")
+    return("104px")
   }
   if (column %in% c("Reliability if item deleted", "Total items if item deleted")) {
     return("92px")
@@ -224,8 +224,14 @@ reliability_column_width <- function(column, first = FALSE) {
   if (column %in% c("Cronbach's alpha", "Pearson omega", "Ordinal alpha", "Ordinal omega", "Reliability")) {
     return(if (identical(column, "Cronbach's alpha")) "92px" else "82px")
   }
+  if (column %in% c("Skewness", "Kurtosis")) {
+    return("66px")
+  }
+  if (column %in% c("Min", "Max", "M", "SD")) {
+    return("46px")
+  }
   if (column %in% c("Item", "Subfactor")) {
-    return("128px")
+    return("104px")
   }
   "52px"
 }

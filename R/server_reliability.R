@@ -443,11 +443,7 @@ register_reliability_handlers <- function(
     )
   })
 
-  register_add_result_snapshot(input, session, "add_reliability_result", "Reliability", function() {
-    result <- reliability_result()
-    shiny::req(!is.null(result))
-    saved_reliability_results_html(result)
-  })
+  register_add_result_snapshot(input, session, "add_reliability_result", "Reliability", "reliability_results")
 
   invisible(TRUE)
 }
