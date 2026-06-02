@@ -1229,15 +1229,9 @@ save_correlation_excel_file <- function(result, file) {
       used_sheets
     )
   }
-  used_sheets <- add_excel_table_sheet(
-    workbook,
-    "Methods",
-    correlation_method_matrix_display_table(result),
-    used_sheets
-  )
-  reason_table <- correlation_reason_display_table(result)
-  if (isTRUE(result$options$reason) && is.data.frame(reason_table) && nrow(reason_table) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Reason", reason_table, used_sheets)
+  overview_table <- correlation_model_overview_matrix_display_table(result)
+  if (is.data.frame(overview_table) && nrow(overview_table) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Model overview", overview_table, used_sheets)
   }
   normality_table <- correlation_normality_display_table(result)
   if (isTRUE(result$options$normality) && is.data.frame(normality_table) && nrow(normality_table) > 0) {

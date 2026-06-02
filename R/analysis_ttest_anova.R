@@ -1361,6 +1361,7 @@ ttest_model_overview_wide <- function(overview, dependents = NULL, variable_info
   }
   dependent_labels <- unique(dependent_labels[nzchar(dependent_labels)])
   factors <- unique(as.character(overview$`Independent variable`))
+
   short_analysis <- function(value) {
     value <- as.character(value %||% "")
     switch(
@@ -1376,87 +1377,51 @@ ttest_model_overview_wide <- function(overview, dependents = NULL, variable_info
   }
   normality_satisfied <- function(value) {
     value <- as.character(value %||% "")
-    if (!nzchar(value)) {
-      return("")
-    }
+    if (!nzchar(value)) return("")
     p_values <- suppressWarnings(as.numeric(unlist(regmatches(value, gregexpr("(?<=\\()[<>.]?[0-9.]+(?=\\))", value, perl = TRUE)))))
     if (length(p_values) > 0 && any(!is.na(p_values))) {
-      return(if (all(p_values[!is.na(p_values)] >= .05)) "정규성 만족" else "정규성 불만족")
+      return(if (all(p_values[!is.na(p_values)] >= .05)) "\uc815\uaddc\uc131 \ub9cc\uc871" else "\uc815\uaddc\uc131 \ubd88\ub9cc\uc871")
     }
     numeric_values <- suppressWarnings(as.numeric(unlist(regmatches(value, gregexpr("-?[0-9.]+", value)))))
     if (grepl("skew\\s*=|kurtosis\\s*=", value, ignore.case = TRUE) && length(numeric_values) >= 2) {
       skew <- numeric_values[[1]]
       kurtosis <- numeric_values[[2]]
-      return(if (!is.na(skew) && !is.na(kurtosis) && abs(skew) <= 2 && abs(kurtosis) <= 7) "정규성 만족" else "정규성 불만족")
+      return(if (!is.na(skew) && !is.na(kurtosis) && abs(skew) <= 2 && abs(kurtosis) <= 7) "\uc815\uaddc\uc131 \ub9cc\uc871" else "\uc815\uaddc\uc131 \ubd88\ub9cc\uc871")
     }
     ""
   }
   homogeneity_satisfied <- function(value) {
     value <- as.character(value %||% "")
-    if (!nzchar(value)) {
-      return("")
-    }
-    if (identical(value, "<.001")) {
-      return("등분산성 불만족")
-    }
+    if (!nzchar(value)) return("")
+    if (identical(value, "<.001")) return("\ub4f1\ubd84\uc0b0\uc131 \ubd88\ub9cc\uc871")
     p_value <- suppressWarnings(as.numeric(sub("^<", "", value)))
-    if (is.na(p_value)) {
-      return("")
-    }
-    if (p_value >= .05) "등분산성 만족" else "등분산성 불만족"
+    if (is.na(p_value)) return("")
+    if (p_value >= .05) "\ub4f1\ubd84\uc0b0\uc131 \ub9cc\uc871" else "\ub4f1\ubd84\uc0b0\uc131 \ubd88\ub9cc\uc871"
   }
   metric_values <- function(row, metric) {
     if (identical(metric, "Reason")) {
       parts <- c(
         if ("Normality" %in% names(row)) normality_satisfied(row$Normality) else "",
         if ("Homogeneity p" %in% names(row)) homogeneity_satisfied(row$`Homogeneity p`) else "",
-        if ("Post-hoc" %in% names(row) && nzchar(row$`Post-hoc` %||% "")) "사후분석 있음" else ""
+        if ("Post-hoc" %in% names(row) && nzchar(row$`Post-hoc` %||% "")) "\uc0ac\ud6c4\ubd84\uc11d \uc788\uc74c" else ""
       )
-      parts <- parts[nzchar(parts)]
-      return(paste(parts, collapse = "\n"))
+      return(paste(parts[nzchar(parts)], collapse = "\n"))
     }
     if (identical(metric, "Analysis")) {
       return(short_analysis(row[[metric]][[1]]))
     }
     as.character(row[[metric]][[1]] %||% "")
   }
-  rows <- list()
-  for (factor in factors) {
-    for (dependent in dependent_labels) {
-      matched <- overview[
-        as.character(overview$`Dependent variable`) == dependent &
-          as.character(overview$`Independent variable`) == factor,
-        ,
-        drop = FALSE
-      ]
-      if (nrow(matched) == 0) next
-      row <- data.frame(
-        factor,
-        dependent,
-        metric_values(matched[1, , drop = FALSE], "N"),
-        metric_values(matched[1, , drop = FALSE], "Analysis"),
-        metric_values(matched[1, , drop = FALSE], "Reason"),
-        stringsAsFactors = FALSE,
-        check.names = FALSE
-      )
-      names(row) <- c("Independent variable", "Dependent variable", "N", "\ubd84\uc11d\ubc29\ubc95", "\uc0ac\uc720")
-      rows[[length(rows) + 1L]] <- row
-    }
-  }
-  if (length(rows) > 0) {
-    return(do.call(rbind, rows))
-  }
-  metrics <- intersect(c("N", "Analysis"), names(overview))
-  metrics <- c(metrics, "Reason")
-  metric_labels <- c(N = "N", Analysis = "분석", Reason = "사유")
-  rows <- list()
 
+  metrics <- c(intersect(c("N", "Analysis"), names(overview)), "Reason")
+  metric_labels <- c(N = "N", Analysis = "\ubd84\uc11d", Reason = "\uc0ac\uc720")
+  rows <- list()
   for (factor in factors) {
     for (metric_index in seq_along(metrics)) {
       metric <- metrics[[metric_index]]
       row <- c(
         `Independent variable` = if (metric_index == 1) factor else "",
-        Item = unname(metric_labels[[metric]] %||% metric)
+        Item = metric_labels[[metric]]
       )
       for (dependent in dependent_labels) {
         matched <- overview[
@@ -1465,12 +1430,14 @@ ttest_model_overview_wide <- function(overview, dependents = NULL, variable_info
           ,
           drop = FALSE
         ]
-        row[[make.names(dependent, unique = TRUE)]] <- if (nrow(matched) > 0) metric_values(matched[1, , drop = FALSE], metric) else ""
+        row[[dependent]] <- if (nrow(matched) > 0) metric_values(matched[1, , drop = FALSE], metric) else ""
       }
-      rows[[length(rows) + 1]] <- row
+      rows[[length(rows) + 1L]] <- row
     }
   }
-
+  if (length(rows) == 0) {
+    return(overview)
+  }
   output <- as.data.frame(do.call(rbind, rows), stringsAsFactors = FALSE, check.names = FALSE)
   names(output) <- c("Independent variable", "Item", dependent_labels)
   output
@@ -1494,10 +1461,10 @@ ttest_assumption_review_wide <- function(overview, dependents = NULL, variable_i
   factors <- unique(as.character(overview$`Independent variable`))
   metrics <- c("Normality", "Homogeneity p", "Post-hoc", "Package")
   metric_labels <- c(
-    Normality = "정규성",
-    `Homogeneity p` = "등분산성",
-    `Post-hoc` = "사후분석",
-    Package = "패키지"
+    Normality = "\uc815\uaddc\uc131",
+    `Homogeneity p` = "\ub4f1\ubd84\uc0b0\uc131",
+    `Post-hoc` = "\uc0ac\ud6c4\ubd84\uc11d",
+    Package = "\ud328\ud0a4\uc9c0"
   )
   rows <- list()
 
@@ -1515,7 +1482,7 @@ ttest_assumption_review_wide <- function(overview, dependents = NULL, variable_i
           ,
           drop = FALSE
         ]
-        row[[make.names(dependent, unique = TRUE)]] <- if (nrow(matched) > 0 && metric %in% names(matched)) {
+        row[[dependent]] <- if (nrow(matched) > 0 && metric %in% names(matched)) {
           as.character(matched[[metric]][[1]] %||% "")
         } else {
           ""

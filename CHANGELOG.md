@@ -9,6 +9,7 @@
 - Added LMM unstructured correlation inputs and SEM/CFA model-count degrees-of-freedom estimation.
 - Standardized required-sample-size result emphasis with explicit `n` labels and 0.95 default power.
 - Expanded Korean User Guide, Analysis Methods, and Method Notes for sample-size, power, and effect-size workflows with formulas and references.
+- Refreshed Korean Analysis Methods documentation for the 0.9.30 analysis outputs, including Model overview behavior for t-test/ANOVA, paired tests, nonparametric paired tests, and correlation.
 - Bundled local MathJax assets for offline formula rendering in Method Notes.
 
 

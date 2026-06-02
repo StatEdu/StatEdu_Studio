@@ -161,25 +161,16 @@ paired_model_overview_table <- function(result) {
       if ("Level" %in% names(item) && as.character(item$Level[[1]] %||% "") %in% c("Binary", "Categorical")) as.character(item$Level[[1]]) else ""
     )
     reason_parts <- reason_parts[nzchar(reason_parts)]
-    values <- stats::setNames(
-      list(
-        as.character(item$N[[1]] %||% ""),
-        paired_short_method(item$Method[[1]]),
-        paste(reason_parts, collapse = "\n")
-      ),
-      c("N", "\ubd84\uc11d", "\uc0ac\uc720")
+    row <- data.frame(
+      Pair = pair,
+      N = as.character(item$N[[1]] %||% ""),
+      Analysis = paired_short_method(item$Method[[1]]),
+      Reason = paste(reason_parts, collapse = "\n"),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
     )
-    metric_index <- 0L
-    for (metric in names(values)) {
-      metric_index <- metric_index + 1L
-      rows[[length(rows) + 1L]] <- data.frame(
-        Pair = if (metric_index == 1L) pair else "",
-        Item = metric,
-        Result = values[[metric]],
-        stringsAsFactors = FALSE,
-        check.names = FALSE
-      )
-    }
+    names(row) <- c("Pair", "N", "\ubd84\uc11d \ubc29\ubc95", "\uc774\uc720")
+    rows[[length(rows) + 1L]] <- row
   }
   if (length(rows) == 0) NULL else do.call(rbind, rows)
 }

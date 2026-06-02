@@ -276,7 +276,10 @@ guard_result <- prepare_ttest_anova_results(
   options = list(effect_size = TRUE, normality_enabled = FALSE)
 )
 expect_true(
-  length(guard_result$results) >= 1 && any(guard_result$overview$`Dependent variable` == "y_valid"),
+  length(guard_result$results) >= 1 &&
+    is.data.frame(guard_result$overview) &&
+    "y_valid" %in% names(guard_result$overview) &&
+    any(nzchar(as.character(guard_result$overview$y_valid %||% ""))),
   "Expected valid t-test / ANOVA combinations to continue running"
 )
 expect_true(

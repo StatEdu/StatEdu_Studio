@@ -99,25 +99,16 @@ paired_rm_model_overview_table <- function(result) {
   for (index in seq_len(nrow(table))) {
     item <- table[index, , drop = FALSE]
     group <- as.character(item[[group_column]][[1]] %||% "")
-    values <- stats::setNames(
-      list(
-        as.character(item$N[[1]] %||% ""),
-        paired_rm_short_method(item$Method[[1]] %||% ""),
-        paired_rm_reason_summary(result, group, item)
-      ),
-      c("N", "\ubd84\uc11d", "\uc0ac\uc720")
+    row <- data.frame(
+      `Repeated variables` = group,
+      N = as.character(item$N[[1]] %||% ""),
+      Analysis = paired_rm_short_method(item$Method[[1]] %||% ""),
+      Reason = paired_rm_reason_summary(result, group, item),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
     )
-    metric_index <- 0L
-    for (metric in names(values)) {
-      metric_index <- metric_index + 1L
-      rows[[length(rows) + 1L]] <- data.frame(
-        `Repeated variables` = if (metric_index == 1L) group else "",
-        Item = metric,
-        Result = values[[metric]],
-        stringsAsFactors = FALSE,
-        check.names = FALSE
-      )
-    }
+    names(row) <- c("Repeated variables", "N", "\ubd84\uc11d \ubc29\ubc95", "\uc774\uc720")
+    rows[[length(rows) + 1L]] <- row
   }
   if (length(rows) == 0) NULL else do.call(rbind, rows)
 }
