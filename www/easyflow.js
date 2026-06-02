@@ -175,6 +175,33 @@
         }, 250);
       };
 
+      window.easyflowUpdateMeasurementControl = function(select) {
+        if (!select) return;
+        var value = String(select.value || '');
+        if (value === 'ordinal') value = 'ordered';
+        if (value === 'nominal') value = 'category';
+        var label = value === 'ordered' ? 'ordinal' : value;
+        var wrapper = select.closest ? select.closest('.measurement-control') : null;
+        var symbol = wrapper && wrapper.querySelector ? wrapper.querySelector('.measurement-symbol') : null;
+        if (!symbol) return;
+        ['continuous', 'binary', 'category', 'ordered'].forEach(function(level) {
+          symbol.classList.remove('measurement-' + level);
+        });
+        if (value) {
+          symbol.classList.add('measurement-' + value);
+        }
+        symbol.setAttribute('title', label);
+        symbol.setAttribute('aria-label', label);
+      };
+
+      window.easyflowRefreshMeasurementControls = function(root) {
+        root = root || document;
+        if (!root.querySelectorAll) return;
+        root.querySelectorAll('.measurement-control select.measurement-select').forEach(function(select) {
+          window.easyflowUpdateMeasurementControl(select);
+        });
+      };
+
       window.easyflowTransferScrollTops = window.easyflowTransferScrollTops || {};
       window.easyflowTransferScrollAnchors = window.easyflowTransferScrollAnchors || {};
       window.easyflowTransferScrollRestoreUntil = window.easyflowTransferScrollRestoreUntil || 0;
@@ -1609,8 +1636,12 @@
 
       function easyflowStartMoveButtonObserver() {
         easyflowUpdateMoveButtonClasses();
+        window.easyflowRefreshMeasurementControls(document);
         if (!window.MutationObserver || !document.body) return;
-        var observer = new MutationObserver(easyflowUpdateMoveButtonClasses);
+        var observer = new MutationObserver(function() {
+          easyflowUpdateMoveButtonClasses();
+          window.easyflowRefreshMeasurementControls(document);
+        });
         observer.observe(document.body, {
           childList: true,
           subtree: true,
@@ -1643,6 +1674,7 @@
           (select.id || '').indexOf('measurement_input_') === 0 ||
           ['binary', 'category', 'ordered', 'continuous'].every(function(value) { return optionValues.indexOf(value) >= 0; });
         if (!isMeasurementSelect) return;
+        window.easyflowUpdateMeasurementControl(select);
 
         var name = select.getAttribute('data-name') || '';
         if (!name) {

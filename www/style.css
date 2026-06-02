@@ -3928,6 +3928,25 @@ input.variable-select:disabled {
   background: #b45309;
 }
 
+.measurement-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 132px;
+}
+
+.measurement-control .measurement-symbol {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.measurement-control .measurement-select {
+  flex: 1 1 auto;
+  min-width: 96px;
+}
+
 .measurement-symbol {
   position: relative;
   flex: 0 0 16px;
