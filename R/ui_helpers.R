@@ -80,11 +80,11 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-doc-measurement-icons"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-doc-measurement-auto-icons"))
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-measurement-level-icons"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-doc-measurement-auto-icons"))
 }
 
 app_head_tags <- function(version) {

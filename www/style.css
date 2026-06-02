@@ -6217,6 +6217,22 @@ pre {
   margin-left: 2px;
 }
 
+.about-markdown-document .measurement-term {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  vertical-align: -3px;
+}
+
+.about-markdown-document .measurement-term .measurement-symbol {
+  flex: 0 0 16px;
+}
+
+.about-markdown-document .measurement-term code {
+  margin: 0;
+}
+
 .about-markdown-document pre {
   background: #f7fafc;
   border: 1px solid #d9e2ec;

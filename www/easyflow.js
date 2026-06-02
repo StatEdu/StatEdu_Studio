@@ -106,6 +106,9 @@
       window.easyflowTypesetMath = function(root) {
         root = root || document;
         if (!root.querySelector || !root.querySelector('.about-markdown-document')) return;
+        if (window.easyflowDecorateMeasurementTerms) {
+          window.easyflowDecorateMeasurementTerms(root);
+        }
         if (!window.MathJax || (!window.MathJax.tex2svgPromise && !window.MathJax.tex2chtmlPromise && !window.MathJax.typesetPromise)) {
           window.easyflowMathJaxPending = true;
           return;
@@ -199,6 +202,121 @@
         if (!root.querySelectorAll) return;
         root.querySelectorAll('.measurement-control select.measurement-select').forEach(function(select) {
           window.easyflowUpdateMeasurementControl(select);
+        });
+      };
+
+      function easyflowMeasurementTermInfo(term) {
+        var raw = String(term || '');
+        var value = raw.toLowerCase();
+        if (value === 'ordinal') value = 'ordered';
+        if (value === 'nominal') value = 'category';
+        if (['continuous', 'binary', 'category', 'ordered'].indexOf(value) < 0) return null;
+        return {
+          value: value,
+          label: value === 'ordered' ? 'ordinal' : value,
+          text: raw
+        };
+      }
+
+      function easyflowMeasurementIconNode(info) {
+        var symbol = document.createElement('span');
+        symbol.className = 'measurement-symbol measurement-' + info.value;
+        symbol.setAttribute('title', info.label);
+        symbol.setAttribute('aria-label', info.label);
+        return symbol;
+      }
+
+      function easyflowMeasurementTermNode(term, codeNode) {
+        var info = easyflowMeasurementTermInfo(term);
+        if (!info) return null;
+        var wrapper = document.createElement('span');
+        wrapper.className = 'measurement-term measurement-term-' + info.value;
+        wrapper.appendChild(easyflowMeasurementIconNode(info));
+        if (codeNode) {
+          wrapper.appendChild(codeNode);
+        } else {
+          var text = document.createElement('span');
+          text.className = 'measurement-term-text';
+          text.textContent = info.text;
+          wrapper.appendChild(text);
+        }
+        return wrapper;
+      }
+
+      function easyflowSkipMeasurementTermNode(node) {
+        var parent = node && node.parentElement;
+        while (parent) {
+          var tagName = parent.tagName ? parent.tagName.toLowerCase() : '';
+          if (tagName === 'script' || tagName === 'noscript' || tagName === 'style' ||
+              tagName === 'textarea' || tagName === 'pre' || tagName === 'mjx-container') {
+            return true;
+          }
+          if (parent.classList &&
+              (parent.classList.contains('measurement-term') || parent.classList.contains('measurement-symbol'))) {
+            return true;
+          }
+          parent = parent.parentElement;
+        }
+        return false;
+      }
+
+      window.easyflowDecorateMeasurementTerms = function(root) {
+        root = root || document;
+        if (!root.querySelectorAll) return;
+        var documents = root.classList && root.classList.contains('about-markdown-document') ?
+          [root] :
+          Array.prototype.slice.call(root.querySelectorAll('.about-markdown-document'));
+        var termPattern = /\b(continuous|binary|category|ordered|ordinal|nominal)\b/g;
+
+        documents.forEach(function(doc) {
+          doc.querySelectorAll('code').forEach(function(code) {
+            if (!code.parentNode || code.closest('.measurement-term')) return;
+            var text = (code.textContent || '').trim();
+            if (!easyflowMeasurementTermInfo(text)) return;
+            var clone = code.cloneNode(true);
+            code.parentNode.replaceChild(easyflowMeasurementTermNode(text, clone), code);
+          });
+
+          var walker = document.createTreeWalker(
+            doc,
+            NodeFilter.SHOW_TEXT,
+            {
+              acceptNode: function(node) {
+                if (!node.nodeValue || !termPattern.test(node.nodeValue)) {
+                  termPattern.lastIndex = 0;
+                  return NodeFilter.FILTER_REJECT;
+                }
+                termPattern.lastIndex = 0;
+                if (easyflowSkipMeasurementTermNode(node)) return NodeFilter.FILTER_REJECT;
+                return NodeFilter.FILTER_ACCEPT;
+              }
+            }
+          );
+          var nodes = [];
+          var node;
+          while ((node = walker.nextNode())) {
+            nodes.push(node);
+          }
+          nodes.forEach(function(textNode) {
+            var text = textNode.nodeValue;
+            var fragment = document.createDocumentFragment();
+            var lastIndex = 0;
+            var match;
+            termPattern.lastIndex = 0;
+            while ((match = termPattern.exec(text)) !== null) {
+              if (match.index > lastIndex) {
+                fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+              }
+              fragment.appendChild(easyflowMeasurementTermNode(match[1]));
+              lastIndex = termPattern.lastIndex;
+            }
+            if (lastIndex < text.length) {
+              fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+            }
+            if (textNode.parentNode) {
+              textNode.parentNode.replaceChild(fragment, textNode);
+            }
+          });
         });
       };
 
@@ -1637,10 +1755,12 @@
       function easyflowStartMoveButtonObserver() {
         easyflowUpdateMoveButtonClasses();
         window.easyflowRefreshMeasurementControls(document);
+        window.easyflowDecorateMeasurementTerms(document);
         if (!window.MutationObserver || !document.body) return;
         var observer = new MutationObserver(function() {
           easyflowUpdateMoveButtonClasses();
           window.easyflowRefreshMeasurementControls(document);
+          window.easyflowDecorateMeasurementTerms(document);
         });
         observer.observe(document.body, {
           childList: true,

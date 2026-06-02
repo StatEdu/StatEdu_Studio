@@ -12,10 +12,10 @@
 
 분석 방법 선택의 핵심 입력은 변수의 measurement level이다.
 
-- <span class="measurement-symbol measurement-continuous" title="continuous" aria-label="continuous"></span> `continuous`: 평균, 표준편차, Pearson correlation, t-test, ANOVA, 선형회귀 등에 사용한다.
-- <span class="measurement-symbol measurement-ordered" title="ordinal" aria-label="ordinal"></span> `ordered`: 순서가 있는 범주형 변수로 보며 Spearman, Wilcoxon, Kruskal-Wallis, polychoric 옵션 등에 사용할 수 있다.
-- <span class="measurement-symbol measurement-binary" title="binary" aria-label="binary"></span> `binary`: 두 수준을 가진 변수로 보며 phi, point-biserial, binary logistic regression 등에 사용한다.
-- <span class="measurement-symbol measurement-category" title="nominal" aria-label="nominal"></span> `category`: 순서가 없는 범주형 변수로 보며 교차표, Cramer's V, 더미변수 기반 회귀 등에 사용한다.
+- `continuous`: 평균, 표준편차, Pearson correlation, t-test, ANOVA, 선형회귀 등에 사용한다.
+- `ordered`: 순서가 있는 범주형 변수로 보며 Spearman, Wilcoxon, Kruskal-Wallis, polychoric 옵션 등에 사용할 수 있다.
+- `binary`: 두 수준을 가진 변수로 보며 phi, point-biserial, binary logistic regression 등에 사용한다.
+- `category`: 순서가 없는 범주형 변수로 보며 교차표, Cramer's V, 더미변수 기반 회귀 등에 사용한다.
 
 SAV 파일에서 가져온 값 라벨과 사용자가 Step 3에서 수정한 변수 라벨은 결과표의 가독성을 높이는 데 사용된다. 분석 전 Step 3에서 measurement level과 라벨을 확인하는 것이 중요하다.
 
@@ -85,11 +85,11 @@ Paired test는 같은 대상에서 두 시점 또는 두 조건을 반복 측정
 
 상관분석은 변수 조합과 measurement level에 따라 방법을 자동 선택한다.
 
-- <span class="measurement-symbol measurement-continuous" title="continuous" aria-label="continuous"></span> continuous x <span class="measurement-symbol measurement-continuous" title="continuous" aria-label="continuous"></span> continuous: 기본적으로 자동 선택한다. 정규성이 지지되는 경우 Pearson, 그렇지 않으면 Spearman을 사용한다.
-- <span class="measurement-symbol measurement-continuous" title="continuous" aria-label="continuous"></span> continuous x <span class="measurement-symbol measurement-binary" title="binary" aria-label="binary"></span> binary: point-biserial correlation을 사용한다.
-- <span class="measurement-symbol measurement-continuous" title="continuous" aria-label="continuous"></span> continuous x <span class="measurement-symbol measurement-ordered" title="ordinal" aria-label="ordinal"></span> ordered 또는 <span class="measurement-symbol measurement-ordered" title="ordinal" aria-label="ordinal"></span> ordered 조합: Spearman을 사용한다.
-- <span class="measurement-symbol measurement-binary" title="binary" aria-label="binary"></span> binary x <span class="measurement-symbol measurement-binary" title="binary" aria-label="binary"></span> binary: phi coefficient를 사용한다.
-- <span class="measurement-symbol measurement-category" title="nominal" aria-label="nominal"></span> nominal 조합: eta 또는 Cramer's V를 사용한다.
+- continuous x continuous: 기본적으로 자동 선택한다. 정규성이 지지되는 경우 Pearson, 그렇지 않으면 Spearman을 사용한다.
+- continuous x binary: point-biserial correlation을 사용한다.
+- continuous x ordered 또는 ordered 조합: Spearman을 사용한다.
+- binary x binary: phi coefficient를 사용한다.
+- nominal 조합: eta 또는 Cramer's V를 사용한다.
 
 옵션을 선택하면 latent-variable correlation 세트를 추가로 표시할 수 있다. 이 세트에서는 continuous x ordered 또는 continuous x binary 조합에 polyserial correlation, ordered/binary x ordered/binary 조합에 polychoric 또는 tetrachoric correlation을 사용한다.
 
