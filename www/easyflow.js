@@ -22,18 +22,128 @@
       }
       window.isEasyflowVisibleElement = isEasyflowVisibleElement;
 
+      function easyflowSkipsMathNode(node) {
+        var parent = node && node.parentElement;
+        while (parent) {
+          var tagName = parent.tagName ? parent.tagName.toLowerCase() : '';
+          if (tagName === 'script' || tagName === 'noscript' || tagName === 'style' ||
+              tagName === 'textarea' || tagName === 'pre' || tagName === 'code' ||
+              tagName === 'mjx-container') {
+            return true;
+          }
+          if (parent.classList && parent.classList.contains('MathJax')) {
+            return true;
+          }
+          parent = parent.parentElement;
+        }
+        return false;
+      }
+
+      async function easyflowReplaceMathInTextNode(node) {
+        if (!node || !node.parentNode || !node.nodeValue || node.nodeValue.indexOf('$') < 0) return false;
+        var text = node.nodeValue;
+        var pattern = /(\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$)/g;
+        var fragment = document.createDocumentFragment();
+        var lastIndex = 0;
+        var changed = false;
+        var match;
+
+        while ((match = pattern.exec(text)) !== null) {
+          if (match.index > lastIndex) {
+            fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+          }
+
+          var display = typeof match[2] !== 'undefined';
+          var tex = (display ? match[2] : match[3]).trim();
+          if (!tex) {
+            fragment.appendChild(document.createTextNode(match[0]));
+          } else {
+            try {
+              fragment.appendChild(await window.MathJax.tex2chtmlPromise(tex, { display: display }));
+              changed = true;
+            } catch (error) {
+              fragment.appendChild(document.createTextNode(match[0]));
+              if (window.console && window.console.warn) {
+                window.console.warn('MathJax conversion failed', tex, error);
+              }
+            }
+          }
+
+          lastIndex = pattern.lastIndex;
+        }
+
+        if (!changed) return false;
+        if (lastIndex < text.length) {
+          fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+        }
+        node.parentNode.replaceChild(fragment, node);
+        return true;
+      }
+
+      function easyflowCollectMathTextNodes(root) {
+        var nodes = [];
+        var pattern = /(\$\$[\s\S]+?\$\$|\$[^$\n]+?\$)/;
+        var walker = document.createTreeWalker(
+          root,
+          NodeFilter.SHOW_TEXT,
+          {
+            acceptNode: function(node) {
+              if (!node.nodeValue || node.nodeValue.indexOf('$') < 0) return NodeFilter.FILTER_REJECT;
+              if (!pattern.test(node.nodeValue)) return NodeFilter.FILTER_REJECT;
+              if (easyflowSkipsMathNode(node)) return NodeFilter.FILTER_REJECT;
+              return NodeFilter.FILTER_ACCEPT;
+            }
+          }
+        );
+        var node;
+        while ((node = walker.nextNode())) {
+          nodes.push(node);
+        }
+        return nodes;
+      }
+
       window.easyflowTypesetMath = function(root) {
         root = root || document;
         if (!root.querySelector || !root.querySelector('.about-markdown-document')) return;
-        if (window.MathJax && window.MathJax.typesetPromise) {
+        if (!window.MathJax || (!window.MathJax.tex2chtmlPromise && !window.MathJax.typesetPromise)) {
+          window.easyflowMathJaxPending = true;
+          return;
+        }
+        if (!window.MathJax.tex2chtmlPromise && window.MathJax.typesetPromise) {
           window.MathJax.typesetPromise([root]).catch(function(error) {
             if (window.console && window.console.warn) {
               window.console.warn('MathJax typeset failed', error);
             }
           });
-        } else {
-          window.easyflowMathJaxPending = true;
+          return;
         }
+        if (window.easyflowMathJaxRendering) {
+          window.easyflowMathJaxPending = true;
+          return;
+        }
+
+        window.easyflowMathJaxRendering = true;
+        (async function() {
+          var documents = root.classList && root.classList.contains('about-markdown-document') ?
+            [root] :
+            Array.prototype.slice.call(root.querySelectorAll('.about-markdown-document'));
+          for (var i = 0; i < documents.length; i += 1) {
+            var nodes = easyflowCollectMathTextNodes(documents[i]);
+            for (var j = 0; j < nodes.length; j += 1) {
+              await easyflowReplaceMathInTextNode(nodes[j]);
+            }
+          }
+          if (window.MathJax.startup && window.MathJax.startup.document &&
+              window.MathJax.startup.document.updateDocument) {
+            window.MathJax.startup.document.updateDocument();
+          }
+        })().finally(function() {
+          window.easyflowMathJaxRendering = false;
+          if (window.easyflowMathJaxPending) {
+            window.easyflowMathJaxPending = false;
+            scheduleEasyflowTypesetMath(root);
+          }
+        });
       };
 
       function scheduleEasyflowTypesetMath(root) {
@@ -55,7 +165,7 @@
         var attempts = 0;
         var timer = window.setInterval(function() {
           attempts += 1;
-          if (window.MathJax && window.MathJax.typesetPromise) {
+          if (window.MathJax && (window.MathJax.tex2chtmlPromise || window.MathJax.typesetPromise)) {
             window.clearInterval(timer);
             window.easyflowMathJaxReady();
           } else if (attempts >= 80) {

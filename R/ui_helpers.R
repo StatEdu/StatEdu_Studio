@@ -84,7 +84,7 @@ app_stylesheet_link <- function(version) {
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-mathjax-poll"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-mathjax-convert"))
 }
 
 app_head_tags <- function(version) {
