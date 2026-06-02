@@ -41,11 +41,19 @@ sample_size_tab_panel <- function() {
     item("equivalence"),
     item("diagnostic"),
     item("rates"),
-    item("cluster"),
-    item("precision"),
     item("reliability"),
     item("sem")
   )
+}
+
+sample_size_target_choices <- function(method) {
+  if (identical(method, "reliability")) {
+    return(c("Required sample size" = "sample_size"))
+  }
+  if (identical(method, "precision")) {
+    return(c("Required sample size" = "sample_size", "Achieved precision" = "power"))
+  }
+  c("Required sample size" = "sample_size", "Power" = "power")
 }
 
 effect_size_tab_panel <- function() {
@@ -67,13 +75,8 @@ effect_size_tab_panel <- function() {
     item("regression"),
     item("survival"),
     item("correlation"),
-    item("equivalence"),
     item("diagnostic"),
-    item("rates"),
-    item("cluster"),
-    item("precision"),
-    item("reliability"),
-    item("sem")
+    item("rates")
   )
 }
 
@@ -127,7 +130,6 @@ effect_size_analysis_panel <- function(method) {
                   "Independent means (M, SD, n)" = "independent_means",
                   "Independent t-test (t, n1, n2)" = "independent_t_n",
                   "Independent t-test (t, df; equal n)" = "independent_t_df_equal",
-                  "Point-biserial r" = "independent_r",
                   "Paired means (mean difference, SD difference)" = "paired_means",
                   "Paired t-test (t, pairs)" = "paired_t",
                   "One-sample mean (M, SD)" = "one_sample_mean",
@@ -273,6 +275,7 @@ effect_size_analysis_panel <- function(method) {
                 "effect_size_correlation_design",
                 label = NULL,
                 choices = c(
+                  "Point-biserial r" = "point_biserial",
                   "Pearson r from t statistic" = "r_from_t",
                   "Pearson r from F statistic" = "r_from_f",
                   "Pearson r from R-squared" = "r_from_r2",
@@ -322,12 +325,11 @@ effect_size_analysis_panel <- function(method) {
                 "effect_size_anova_design",
                 label = NULL,
                 choices = c(
-                  "Cohen's f from eta squared" = "f_from_eta2",
-                  "Cohen's f from partial eta squared" = "f_from_partial_eta2",
                   "Partial eta squared from F" = "partial_eta_from_f",
-                  "Partial omega squared from F" = "omega_from_f"
+                  "Cohen's f from eta squared" = "f_from_eta2",
+                  "Cohen's f from partial eta squared" = "f_from_partial_eta2"
                 ),
-                selected = "f_from_eta2"
+                selected = "partial_eta_from_f"
               )
             ),
             div(
@@ -370,12 +372,13 @@ effect_size_analysis_panel <- function(method) {
                 "effect_size_ancova_design",
                 label = NULL,
                 choices = c(
+                  "ANCOVA partial eta squared from F" = "ancova_partial_eta_from_f",
                   "ANCOVA adjusted Cohen's f" = "ancova_adjusted_f",
                   "ANCOVA Cohen's f from partial eta squared" = "ancova_f_from_partial_eta2",
-                  "ANCOVA partial eta squared from F" = "ancova_partial_eta_from_f",
-                  "MANOVA Pillai's trace to f2" = "manova_pillai"
+                  "MANOVA Pillai's trace to f2" = "manova_pillai",
+                  "MANOVA Wilks' lambda to f2" = "manova_wilks"
                 ),
-                selected = "ancova_adjusted_f"
+                selected = "ancova_partial_eta_from_f"
               )
             ),
             div(
@@ -516,7 +519,6 @@ effect_size_analysis_panel <- function(method) {
                   "Multiple regression f2 from R-squared" = "f2_from_r2",
                   "Hierarchical regression f2 from R-squared increase" = "hierarchical_f2",
                   "Logistic regression OR conversion" = "logistic_or",
-                  "Mediation standardized indirect effect" = "mediation_ab",
                   "Moderation interaction f2" = "moderation_f2"
                 ),
                 selected = "f2_from_r2"
@@ -562,11 +564,13 @@ effect_size_analysis_panel <- function(method) {
                 "effect_size_gee_design",
                 label = NULL,
                 choices = c(
-                  "Continuous outcome d from means" = "continuous_means",
+                  "Follow-up estimated means" = "continuous_followup_means",
+                  "Pre-post change means" = "continuous_change_means",
+                  "Group x time B" = "continuous_parameter_b",
                   "Continuous outcome supplied d" = "continuous_d",
                   "Binary outcome from proportions" = "binary_props"
                 ),
-                selected = "continuous_means"
+                selected = "continuous_followup_means"
               )
             ),
             div(
@@ -655,8 +659,7 @@ effect_size_analysis_panel <- function(method) {
                 "effect_size_survival_design",
                 label = NULL,
                 choices = c(
-                  "Hazard ratio to log hazard ratio" = "hazard_ratio",
-                  "Schoenfeld planning signal" = "schoenfeld_signal"
+                  "Hazard ratio to log hazard ratio" = "hazard_ratio"
                 ),
                 selected = "hazard_ratio"
               )
@@ -725,19 +728,19 @@ effect_size_analysis_panel <- function(method) {
   }
   if (identical(method, "diagnostic")) {
     return(tabPanel(
-      "Diagnostic Accuracy",
+      "ROC AUC",
       value = "effect_size_diagnostic",
       div(
         class = "page-shell",
         div(
           class = "app-heading",
-          h1("Diagnostic Accuracy"),
-          div("Calculate diagnostic accuracy effect sizes for sensitivity, specificity, and ROC AUC.", class = "app-subtitle")
+          h1("ROC AUC"),
+          div("Calculate ROC AUC effect sizes for diagnostic accuracy analyses.", class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
-          h3("Diagnostic Accuracy Effect Size"),
+          h3("ROC AUC Effect Size"),
           div(
             class = "sample-size-grid",
             div(
@@ -747,11 +750,9 @@ effect_size_analysis_panel <- function(method) {
                 "effect_size_diagnostic_design",
                 label = NULL,
                 choices = c(
-                  "Sensitivity vs reference" = "sensitivity",
-                  "Specificity vs reference" = "specificity",
                   "ROC AUC vs null" = "auc"
                 ),
-                selected = "sensitivity"
+                selected = "auc"
               )
             ),
             div(
@@ -772,19 +773,19 @@ effect_size_analysis_panel <- function(method) {
   }
   if (identical(method, "rates")) {
     return(tabPanel(
-      "Poisson / Rates",
+      "Count / Rate Regression",
       value = "effect_size_rates",
       div(
         class = "page-shell",
         div(
           class = "app-heading",
-          h1("Poisson / Rates"),
-          div("Calculate incidence-rate effect sizes for Poisson and negative binomial analyses.", class = "app-subtitle")
+          h1("Count / Rate Regression"),
+          div("Calculate ratio-scale effect sizes for Poisson, negative binomial, and gamma regression models.", class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
-          h3("Poisson / Rates Effect Size"),
+          h3("Count / Rate Regression Effect Size"),
           div(
             class = "sample-size-grid",
             div(
@@ -794,11 +795,11 @@ effect_size_analysis_panel <- function(method) {
                 "effect_size_rates_design",
                 label = NULL,
                 choices = c(
-                  "Two Poisson rates" = "two_rate_ratio",
-                  "Two negative binomial rates" = "negative_binomial",
-                  "Single rate vs reference" = "single_rate"
+                  "Poisson incidence rate ratio" = "poisson_irr",
+                  "Negative binomial incidence rate ratio" = "negative_binomial_irr",
+                  "Gamma mean ratio" = "gamma_mean_ratio"
                 ),
-                selected = "two_rate_ratio"
+                selected = "poisson_irr"
               )
             ),
             div(
@@ -920,7 +921,7 @@ effect_size_analysis_panel <- function(method) {
         div(
           class = "app-heading",
           h1("Reliability / Agreement"),
-          div("Calculate reliability and agreement effect sizes for precision planning.", class = "app-subtitle")
+          div("Calculate agreement effect sizes.", class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
@@ -935,12 +936,9 @@ effect_size_analysis_panel <- function(method) {
                 "effect_size_reliability_design",
                 label = NULL,
                 choices = c(
-                  "Cronbach's alpha" = "alpha",
-                  "ICC reliability" = "icc",
-                  "Cohen's kappa" = "kappa",
-                  "Bland-Altman LoA" = "bland_altman"
+                  "Cohen's kappa" = "kappa"
                 ),
-                selected = "alpha"
+                selected = "kappa"
               )
             ),
             div(
@@ -968,7 +966,7 @@ effect_size_analysis_panel <- function(method) {
         div(
           class = "app-heading",
           h1("SEM / CFA"),
-          div("Calculate SEM/CFA effect sizes for RMSEA, standardized parameters, and model complexity.", class = "app-subtitle")
+          div("Calculate standardized SEM/CFA parameter effects.", class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
@@ -983,11 +981,9 @@ effect_size_analysis_panel <- function(method) {
                 "effect_size_sem_design",
                 label = NULL,
                 choices = c(
-                  "RMSEA effect" = "rmsea",
-                  "Standardized parameter" = "parameter",
-                  "Model complexity" = "complexity"
+                  "Standardized parameter" = "parameter"
                 ),
-                selected = "rmsea"
+                selected = "parameter"
               )
             ),
             div(
@@ -1080,6 +1076,9 @@ effect_size_proportion_inputs_ui <- function(input) {
 
 effect_size_correlation_inputs_ui <- function(input) {
   design <- sample_size_choice(input$effect_size_correlation_design, "r_from_t")
+  if (identical(design, "point_biserial")) {
+    return(textInput("effect_size_correlation_r", "Point-biserial r", value = "0.25"))
+  }
   if (identical(design, "r_from_t")) {
     return(tagList(
       textInput("effect_size_correlation_t", "t statistic", value = "2.5"),
@@ -1114,13 +1113,13 @@ effect_size_anova_inputs_ui <- function(input) {
   }
   tagList(
     textInput("effect_size_anova_f", "F statistic", value = "4.5"),
-    textInput("effect_size_anova_df_effect", "Effect degrees of freedom", value = "2"),
-    textInput("effect_size_anova_df_error", "Error degrees of freedom", value = "87")
+    textInput("effect_size_anova_groups", "Number of groups", value = "3"),
+    textInput("effect_size_anova_total_n", "Total sample size", value = "90")
   )
 }
 
 effect_size_ancova_inputs_ui <- function(input) {
-  design <- sample_size_choice(input$effect_size_ancova_design, "ancova_adjusted_f")
+  design <- sample_size_choice(input$effect_size_ancova_design, "ancova_partial_eta_from_f")
   if (identical(design, "ancova_adjusted_f")) {
     return(tagList(
       textInput("effect_size_ancova_f", "Unadjusted Cohen's f", value = "0.25"),
@@ -1133,10 +1132,17 @@ effect_size_ancova_inputs_ui <- function(input) {
   if (identical(design, "manova_pillai")) {
     return(textInput("effect_size_ancova_pillai", "Pillai's trace V", value = "0.10"))
   }
+  if (identical(design, "manova_wilks")) {
+    return(tagList(
+      textInput("effect_size_ancova_wilks", "Wilks' lambda", value = "0.90"),
+      textInput("effect_size_ancova_dependent_variables", "Number of dependent variables", value = "2"),
+      textInput("effect_size_ancova_groups", "Number of groups", value = "3")
+    ))
+  }
   tagList(
     textInput("effect_size_ancova_f_statistic", "F statistic", value = "4.5"),
-    textInput("effect_size_ancova_df_effect", "Effect degrees of freedom", value = "2"),
-    textInput("effect_size_ancova_df_error", "Error degrees of freedom", value = "87")
+    textInput("effect_size_ancova_groups", "Number of groups", value = "3"),
+    textInput("effect_size_ancova_total_n", "Total sample size", value = "90")
   )
 }
 
@@ -1194,26 +1200,55 @@ effect_size_regression_inputs_ui <- function(input) {
   if (identical(design, "logistic_or")) {
     return(textInput("effect_size_regression_or", "Odds ratio", value = "1.80"))
   }
-  if (identical(design, "mediation_ab")) {
-    return(tagList(
-      textInput("effect_size_regression_a", "Standardized path a", value = "0.30"),
-      textInput("effect_size_regression_b", "Standardized path b", value = "0.30")
-    ))
-  }
   if (identical(design, "moderation_f2")) {
     return(textInput("effect_size_regression_delta_r2", "Interaction delta R-squared", value = "0.05"))
   }
   textInput("effect_size_regression_r2", "R-squared", value = "0.13")
 }
 
-effect_size_gee_inputs_ui <- function(input) {
-  design <- sample_size_choice(input$effect_size_gee_design, "continuous_means")
+effect_size_gee_sd_inputs_ui <- function(input) {
+  mode <- sample_size_choice(input$effect_size_gee_sd_mode, "direct")
   tagList(
-    if (identical(design, "continuous_means")) {
+    selectInput(
+      "effect_size_gee_sd_mode",
+      "Common SD input",
+      choices = c("Enter common outcome SD" = "direct", "Calculate pooled SD from group SDs" = "pooled"),
+      selected = mode
+    ),
+    if (identical(mode, "pooled")) {
       tagList(
-        textInput("effect_size_gee_mean1", "Mean 1", value = "0.50"),
-        textInput("effect_size_gee_mean2", "Mean 2", value = "0"),
-        textInput("effect_size_gee_sd", "SD", value = "1")
+        textInput("effect_size_gee_n1", "Group 1 n", value = "50"),
+        textInput("effect_size_gee_sd1", "Group 1 SD", value = "1"),
+        textInput("effect_size_gee_n2", "Group 2 n", value = "50"),
+        textInput("effect_size_gee_sd2", "Group 2 SD", value = "1")
+      )
+    } else {
+      textInput("effect_size_gee_sd", "Common outcome SD", value = "1")
+    }
+  )
+}
+
+effect_size_gee_inputs_ui <- function(input) {
+  design <- sample_size_choice(input$effect_size_gee_design, "continuous_followup_means")
+  tagList(
+    if (identical(design, "continuous_means") || identical(design, "continuous_followup_means")) {
+      tagList(
+        textInput("effect_size_gee_mean1", "Group 1 estimated mean", value = "0.50"),
+        textInput("effect_size_gee_mean2", "Group 2 estimated mean", value = "0"),
+        effect_size_gee_sd_inputs_ui(input)
+      )
+    } else if (identical(design, "continuous_change_means")) {
+      tagList(
+        textInput("effect_size_gee_pre_mean1", "Group 1 pre mean", value = "0"),
+        textInput("effect_size_gee_post_mean1", "Group 1 post mean", value = "0.50"),
+        textInput("effect_size_gee_pre_mean2", "Group 2 pre mean", value = "0"),
+        textInput("effect_size_gee_post_mean2", "Group 2 post mean", value = "0"),
+        effect_size_gee_sd_inputs_ui(input)
+      )
+    } else if (identical(design, "continuous_parameter_b")) {
+      tagList(
+        textInput("effect_size_gee_coefficient", "Group x time parameter estimate B", value = "0.50"),
+        effect_size_gee_sd_inputs_ui(input)
       )
     } else if (identical(design, "continuous_d")) {
       textInput("effect_size_gee_d", "Effect size d", value = "0.50")
@@ -1222,15 +1257,7 @@ effect_size_gee_inputs_ui <- function(input) {
         textInput("effect_size_gee_p1", "Proportion 1", value = "0.50"),
         textInput("effect_size_gee_p2", "Proportion 2", value = "0.65")
       )
-    },
-    textInput("effect_size_gee_time_points", "Time points", value = "3"),
-    selectInput(
-      "effect_size_gee_correlation_structure",
-      "Working correlation",
-      choices = c("Exchangeable" = "exchangeable", "AR(1)" = "ar1"),
-      selected = sample_size_choice(input$effect_size_gee_correlation_structure, "exchangeable")
-    ),
-    textInput("effect_size_gee_rho", "Working correlation rho", value = "0.30")
+    }
   )
 }
 
@@ -1263,25 +1290,22 @@ effect_size_lmm_inputs_ui <- function(input) {
         selectInput(
           "effect_size_lmm_correlation_structure",
           "Correlation structure",
-          choices = c("Exchangeable" = "exchangeable", "AR(1)" = "ar1"),
+          choices = c("Exchangeable" = "exchangeable", "AR(1)" = "ar1", "Unstructured" = "unstructured"),
           selected = sample_size_choice(input$effect_size_lmm_correlation_structure, "exchangeable")
         ),
-        textInput("effect_size_lmm_rho", "Correlation rho", value = "0.50")
+        if (identical(sample_size_choice(input$effect_size_lmm_correlation_structure, "exchangeable"), "unstructured")) {
+          textInput("effect_size_lmm_correlations", "Pairwise correlations", value = "0.50, 0.30, 0.50")
+        } else {
+          textInput("effect_size_lmm_rho", "Correlation rho", value = "0.50")
+        }
       )
     }
   )
 }
 
 effect_size_survival_inputs_ui <- function(input) {
-  design <- sample_size_choice(input$effect_size_survival_design, "hazard_ratio")
   tagList(
-    textInput("effect_size_survival_hr", "Hazard ratio", value = "0.70"),
-    if (identical(design, "schoenfeld_signal")) {
-      tagList(
-        textInput("effect_size_survival_event_probability", "Overall event probability", value = "0.60"),
-        textInput("effect_size_survival_ratio", "Allocation ratio (Group 2 / Group 1)", value = "1")
-      )
-    }
+    textInput("effect_size_survival_hr", "Hazard ratio", value = "0.70")
   )
 }
 
@@ -1310,36 +1334,25 @@ effect_size_equivalence_inputs_ui <- function(input) {
 }
 
 effect_size_diagnostic_inputs_ui <- function(input) {
-  design <- sample_size_choice(input$effect_size_diagnostic_design, "sensitivity")
-  if (identical(design, "auc")) {
-    return(tagList(
-      textInput("effect_size_diagnostic_auc", "AUC", value = "0.75"),
-      textInput("effect_size_diagnostic_null_auc", "Null AUC", value = "0.50")
-    ))
-  }
   tagList(
-    textInput(
-      if (identical(design, "sensitivity")) "effect_size_diagnostic_sensitivity" else "effect_size_diagnostic_specificity",
-      if (identical(design, "sensitivity")) "Sensitivity" else "Specificity",
-      value = "0.85"
-    ),
-    textInput("effect_size_diagnostic_reference", "Reference value", value = "0.70")
+    textInput("effect_size_diagnostic_auc", "AUC", value = "0.75"),
+    textInput("effect_size_diagnostic_null_auc", "Null AUC", value = "0.50")
   )
 }
 
 effect_size_rates_inputs_ui <- function(input) {
-  design <- sample_size_choice(input$effect_size_rates_design, "two_rate_ratio")
+  input_scale <- sample_size_choice(input$effect_size_rates_input_scale, "ratio")
   tagList(
-    textInput("effect_size_rates_rate1", if (identical(design, "single_rate")) "Observed rate" else "Rate 1", value = "0.30"),
-    if (identical(design, "single_rate")) {
-      textInput("effect_size_rates_reference_rate", "Reference rate", value = "0.20")
+    selectInput(
+      "effect_size_rates_input_scale",
+      "Input scale",
+      choices = c("Ratio" = "ratio", "Regression coefficient B" = "log_ratio"),
+      selected = input_scale
+    ),
+    if (identical(input_scale, "log_ratio")) {
+      textInput("effect_size_rates_log_ratio", "Regression coefficient B", value = "0.405")
     } else {
-      tagList(
-        textInput("effect_size_rates_rate2", "Rate 2", value = "0.20"),
-        if (identical(design, "negative_binomial")) {
-          textInput("effect_size_rates_dispersion", "Dispersion", value = "0.50")
-        }
-      )
+      textInput("effect_size_rates_ratio", "Ratio", value = "1.50")
     }
   )
 }
@@ -1366,7 +1379,7 @@ effect_size_cluster_inputs_ui <- function(input) {
 effect_size_precision_inputs_ui <- function(input) {
   parameter <- sample_size_choice(input$effect_size_precision_parameter, "mean")
   tagList(
-    textInput("effect_size_precision_half_width", "Desired half-width", value = "0.10"),
+    textInput("effect_size_precision_half_width", "Desired CI half-width", value = "0.10"),
     if (identical(parameter, "mean")) {
       tagList(
         textInput("effect_size_precision_estimate", "Expected mean", value = "1"),
@@ -1381,60 +1394,25 @@ effect_size_precision_inputs_ui <- function(input) {
 }
 
 effect_size_reliability_inputs_ui <- function(input) {
-  design <- sample_size_choice(input$effect_size_reliability_design, "alpha")
-  if (identical(design, "bland_altman")) {
-    return(textInput("effect_size_reliability_sd_difference", "SD of paired differences", value = "1"))
-  }
   tagList(
-    textInput("effect_size_reliability_value", "Expected reliability", value = "0.80"),
-    textInput("effect_size_reliability_reference", "Reference reliability", value = "0.70"),
-    if (identical(design, "alpha")) {
-      textInput("effect_size_reliability_items", "Number of items", value = "5")
-    } else if (identical(design, "icc")) {
-      textInput("effect_size_reliability_items", "Raters / measurements", value = "2")
-    } else {
-      textInput("effect_size_reliability_categories", "Categories", value = "2")
-    }
+    textInput("effect_size_reliability_value", "Cohen's kappa", value = "0.80"),
+    textInput("effect_size_reliability_categories", "Categories", value = "2")
   )
 }
 
 effect_size_sem_inputs_ui <- function(input) {
-  design <- sample_size_choice(input$effect_size_sem_design, "rmsea")
-  if (identical(design, "parameter")) {
-    return(tagList(
-      selectInput(
-        "effect_size_sem_parameter_type",
-        "Parameter type",
-        choices = c(
-          "Standardized loading" = "loading",
-          "Standardized path" = "path",
-          "Latent correlation" = "correlation"
-        ),
-        selected = sample_size_choice(input$effect_size_sem_parameter_type, "path")
-      ),
-      textInput("effect_size_sem_parameter", "Expected standardized parameter", value = "0.30")
-    ))
-  }
-  if (identical(design, "complexity")) {
-    return(tagList(
-      textInput("effect_size_sem_latent_variables", "Latent variables", value = "3"),
-      textInput("effect_size_sem_measured_variables", "Measured variables", value = "12"),
-      textInput("effect_size_sem_structural_paths", "Structural paths", value = "3"),
-      textInput("effect_size_sem_free_parameters", "Free parameters", value = "30"),
-      textInput("effect_size_sem_expected_loading", "Expected standardized loading", value = "0.50"),
-      textInput("effect_size_sem_expected_path", "Expected standardized path", value = "0.30"),
-      selectInput(
-        "effect_size_sem_complexity",
-        "Model complexity",
-        choices = c("Simple" = "simple", "Moderate" = "moderate", "Complex" = "complex"),
-        selected = sample_size_choice(input$effect_size_sem_complexity, "moderate")
-      )
-    ))
-  }
   tagList(
-    textInput("effect_size_sem_df", "Model degrees of freedom", value = "50"),
-    textInput("effect_size_sem_null_rmsea", "Null RMSEA", value = "0.05"),
-    textInput("effect_size_sem_alternative_rmsea", "Alternative RMSEA", value = "0.08")
+    selectInput(
+      "effect_size_sem_parameter_type",
+      "Parameter type",
+      choices = c(
+        "Standardized loading" = "loading",
+        "Standardized path" = "path",
+        "Latent correlation" = "correlation"
+      ),
+      selected = sample_size_choice(input$effect_size_sem_parameter_type, "path")
+    ),
+    textInput("effect_size_sem_parameter", "Expected standardized parameter", value = "0.30")
   )
 }
 
@@ -1467,6 +1445,7 @@ sample_size_analysis_panel <- function(method) {
   labels <- c(sample_size_method_labels(), effectsize = "Effect Size Calculator")
   title <- labels[[method]] %||% "Sample Size"
   is_effect_size <- identical(method, "effectsize")
+  target_choices <- sample_size_target_choices(method)
   tabPanel(
     title,
     value = paste0("sample_size_", method),
@@ -1516,12 +1495,23 @@ sample_size_analysis_panel <- function(method) {
                 selected = "independent_means"
               )
             } else {
-              radioButtons(
-                paste0("sample_size_", method, "_target"),
-                label = NULL,
-                choices = c("Required sample size" = "sample_size", "Power" = "power"),
-                selected = "sample_size"
-              )
+              if (length(target_choices) == 1L) {
+                tagList(
+                  tags$div(class = "sample-size-fixed-target", names(target_choices)[[1]]),
+                  tags$input(
+                    id = paste0("sample_size_", method, "_target"),
+                    type = "hidden",
+                    value = target_choices[[1]]
+                  )
+                )
+              } else {
+                radioButtons(
+                  paste0("sample_size_", method, "_target"),
+                  label = NULL,
+                  choices = target_choices,
+                  selected = "sample_size"
+                )
+              }
             }
           ),
           div(
@@ -1545,7 +1535,7 @@ sample_size_common_inputs <- function(method, target, show_ratio = FALSE, show_t
   tagList(
     textInput(paste0("sample_size_", method, "_alpha"), "Alpha", value = "0.05"),
     if (identical(target, "sample_size")) {
-      textInput(paste0("sample_size_", method, "_power"), "Power", value = "0.80")
+      textInput(paste0("sample_size_", method, "_power"), "Power", value = "0.95")
     } else {
       textInput(paste0("sample_size_", method, "_n"), n_label, value = "100")
     },
@@ -1618,6 +1608,8 @@ sample_size_inputs_ui <- function(method, input) {
   lmm_design <- input$sample_size_lmm_design %||% "two_group_repeated"
   lmm_n_label <- if (identical(lmm_design, "two_group_repeated")) "Participants per group" else "Participants"
   sem_test <- input$sample_size_sem_test %||% "close_fit"
+  sem_null_rmsea_default <- if (identical(sem_test, "not_close_fit")) "0.08" else "0.05"
+  sem_alternative_rmsea_default <- if (identical(sem_test, "not_close_fit")) "0.05" else "0.08"
   switch(
     method,
     effectsize = tagList(
@@ -1820,9 +1812,9 @@ sample_size_inputs_ui <- function(method, input) {
             ),
             selected = input$sample_size_regression_mediation_method %||% "monte_carlo"
           ),
-          textInput("sample_size_regression_a", "Standardized path a", value = "0.30"),
-          textInput("sample_size_regression_b", "Standardized path b", value = "0.30"),
-          textInput("sample_size_regression_covariates", "Covariates", value = "0"),
+          textInput("sample_size_regression_a", "Path a beta: predictor -> mediator", value = "0.30"),
+          textInput("sample_size_regression_b", "Path b beta: mediator -> outcome", value = "0.30"),
+          textInput("sample_size_regression_covariates", "Number of covariates", value = "0"),
           if (identical(input$sample_size_regression_mediation_method %||% "monte_carlo", "bootstrap")) {
             tagList(
               textInput("sample_size_regression_simulations", "Simulations", value = "30"),
@@ -1863,10 +1855,14 @@ sample_size_inputs_ui <- function(method, input) {
       selectInput(
         "sample_size_gee_correlation_structure",
         "Working correlation",
-        choices = c("Exchangeable" = "exchangeable", "AR(1)" = "ar1"),
+        choices = c("Exchangeable" = "exchangeable", "AR(1)" = "ar1", "Unstructured" = "unstructured"),
         selected = input$sample_size_gee_correlation_structure %||% "exchangeable"
       ),
-      textInput("sample_size_gee_rho", "Working correlation rho", value = "0.30"),
+      if (identical(input$sample_size_gee_correlation_structure %||% "exchangeable", "unstructured")) {
+        textInput("sample_size_gee_correlations", "Pairwise correlations", value = "0.30, 0.20, 0.30")
+      } else {
+        textInput("sample_size_gee_rho", "Working correlation rho", value = "0.30")
+      },
       sample_size_common_inputs("gee", target, show_ratio = TRUE, n_label = "Sample size per group")
     ),
     lmm = tagList(
@@ -1895,10 +1891,14 @@ sample_size_inputs_ui <- function(method, input) {
           selectInput(
             "sample_size_lmm_correlation_structure",
             "Correlation structure",
-            choices = c("Exchangeable" = "exchangeable", "AR(1)" = "ar1"),
+            choices = c("Exchangeable" = "exchangeable", "AR(1)" = "ar1", "Unstructured" = "unstructured"),
             selected = input$sample_size_lmm_correlation_structure %||% "exchangeable"
           ),
-          textInput("sample_size_lmm_rho", "Correlation rho", value = "0.50")
+          if (identical(input$sample_size_lmm_correlation_structure %||% "exchangeable", "unstructured")) {
+            textInput("sample_size_lmm_correlations", "Pairwise correlations", value = "0.50, 0.30, 0.50")
+          } else {
+            textInput("sample_size_lmm_rho", "Correlation rho", value = "0.50")
+          }
         )
       } else {
         tagList(
@@ -1957,13 +1957,13 @@ sample_size_inputs_ui <- function(method, input) {
         tagList(
           textInput("sample_size_diagnostic_sensitivity", "Expected sensitivity", value = "0.85"),
           textInput("sample_size_diagnostic_prevalence", "Prevalence", value = "0.30"),
-          textInput("sample_size_diagnostic_precision", "Desired half-width", value = "0.08")
+          textInput("sample_size_diagnostic_precision", "Desired CI half-width", value = "0.08")
         )
       } else if (identical(diagnostic_design, "specificity")) {
         tagList(
           textInput("sample_size_diagnostic_specificity", "Expected specificity", value = "0.85"),
           textInput("sample_size_diagnostic_prevalence", "Prevalence", value = "0.30"),
-          textInput("sample_size_diagnostic_precision", "Desired half-width", value = "0.08")
+          textInput("sample_size_diagnostic_precision", "Desired CI half-width", value = "0.08")
         )
       } else {
         tagList(
@@ -1987,7 +1987,7 @@ sample_size_inputs_ui <- function(method, input) {
         selected = precision_parameter
       ),
       textInput("sample_size_precision_confidence", "Confidence level", value = "0.95"),
-      textInput("sample_size_precision_half_width", "Desired half-width", value = "0.10"),
+      textInput("sample_size_precision_half_width", "Desired CI half-width", value = "0.10"),
       if (identical(precision_parameter, "mean")) {
         textInput("sample_size_precision_sd", "SD", value = "1")
       } else if (identical(precision_parameter, "proportion")) {
@@ -2021,7 +2021,7 @@ sample_size_inputs_ui <- function(method, input) {
       if (rates_design %in% c("two_rate_ratio", "negative_binomial")) {
         textInput("sample_size_rates_rate2", "Rate 2", value = "0.20")
       } else {
-        textInput("sample_size_rates_half_width", "Desired half-width", value = "0.05")
+        textInput("sample_size_rates_half_width", "Desired CI half-width", value = "0.05")
       },
       if (identical(rates_design, "negative_binomial")) {
         textInput("sample_size_rates_dispersion", "Dispersion", value = "0.50")
@@ -2090,7 +2090,7 @@ sample_size_inputs_ui <- function(method, input) {
         value = if (identical(reliability_design, "bland_altman")) "1" else "0.80"
       ),
       textInput("sample_size_reliability_confidence", "Confidence level", value = "0.95"),
-      textInput("sample_size_reliability_half_width", "Desired half-width", value = "0.10"),
+      textInput("sample_size_reliability_half_width", "Desired CI half-width", value = "0.10"),
       if (identical(reliability_design, "alpha")) {
         textInput("sample_size_reliability_items", "Number of items", value = "5")
       } else if (identical(reliability_design, "icc")) {
@@ -2152,9 +2152,26 @@ sample_size_inputs_ui <- function(method, input) {
         )
       } else {
         tagList(
-          textInput("sample_size_sem_df", "Model degrees of freedom", value = "50"),
-          textInput("sample_size_sem_null_rmsea", "Null RMSEA", value = "0.05"),
-          textInput("sample_size_sem_alternative_rmsea", "Alternative RMSEA", value = "0.08")
+          selectInput(
+            "sample_size_sem_df_source",
+            "Model df input",
+            choices = c(
+              "Estimate from model counts" = "structure",
+              "Enter model df directly" = "direct"
+            ),
+            selected = input$sample_size_sem_df_source %||% "structure"
+          ),
+          if (identical(input$sample_size_sem_df_source %||% "structure", "direct")) {
+            textInput("sample_size_sem_df", "Model degrees of freedom", value = "50")
+          } else {
+            tagList(
+              textInput("sample_size_sem_latent_variables", "Latent variables", value = "3"),
+              textInput("sample_size_sem_measured_variables", "Measured variables", value = "12"),
+              textInput("sample_size_sem_structural_paths", "Structural paths", value = "3")
+            )
+          },
+          textInput("sample_size_sem_null_rmsea", "Null RMSEA", value = sem_null_rmsea_default),
+          textInput("sample_size_sem_alternative_rmsea", "Alternative RMSEA", value = sem_alternative_rmsea_default)
         )
       },
       sample_size_common_inputs("sem", target, show_tail = FALSE, n_label = "Sample size")
@@ -2170,6 +2187,11 @@ sample_size_result_table <- function(result) {
       tags$th(label),
       tags$td(value)
     )
+  }
+  sample_size_n_label <- function(label) {
+    label <- label %||% "Total"
+    if (grepl("^n\\b", label, ignore.case = TRUE)) return(label)
+    sprintf("n (%s)", label)
   }
   add_section <- function(label) {
     rows[[length(rows) + 1L]] <<- tags$tr(
@@ -2210,22 +2232,29 @@ sample_size_result_table <- function(result) {
     if (!is.null(result$r_squared)) add_row("R-squared", sprintf("%.3f", result$r_squared))
     if (!is.null(result$unadjusted_cohen_f)) add_row("Unadjusted Cohen's f", sprintf("%.3f", result$unadjusted_cohen_f))
     if (!is.null(result$partial_eta_squared)) add_row("Partial eta squared", sprintf("%.3f", result$partial_eta_squared))
+    if (!is.null(result$multivariate_eta_squared)) add_row("Multivariate eta squared", sprintf("%.3f", result$multivariate_eta_squared))
     if (!is.null(result$omega_squared)) add_row("Omega squared", sprintf("%.3f", result$omega_squared))
     if (!is.null(result$full_r_squared)) add_row("Full model R-squared", sprintf("%.3f", result$full_r_squared))
     if (!is.null(result$reduced_r_squared)) add_row("Reduced model R-squared", sprintf("%.3f", result$reduced_r_squared))
     if (!is.null(result$delta_r_squared)) add_row("Delta R-squared", sprintf("%.3f", result$delta_r_squared))
-    if (!is.null(result$indirect_effect)) add_row("Indirect effect ab", sprintf("%.3f", result$indirect_effect))
-    if (!is.null(result$a_path)) add_row("Path a", sprintf("%.3f", result$a_path))
-    if (!is.null(result$b_path)) add_row("Path b", sprintf("%.3f", result$b_path))
+    if (!is.null(result$indirect_effect)) add_row("Indirect effect beta a*b", sprintf("%.3f", result$indirect_effect))
+    if (!is.null(result$a_path)) add_row("Path a beta", sprintf("%.3f", result$a_path))
+    if (!is.null(result$b_path)) add_row("Path b beta", sprintf("%.3f", result$b_path))
     if (!is.null(result$covariate_r2)) add_row("Covariate R-squared", sprintf("%.3f", result$covariate_r2))
-    if (!is.null(result$planning_effect_size)) add_row("Planning effect", sprintf("%.3f", result$planning_effect_size))
-    if (!is.null(result$design_effect)) add_row("Design effect", sprintf("%.3f", result$design_effect))
-    if (!is.null(result$time_points)) add_row("Time points", result$time_points)
-    if (!is.null(result$working_correlation)) add_row("Working correlation", result$working_correlation)
     if (!is.null(result$intraclass_correlation)) add_row("ICC", sprintf("%.3f", result$intraclass_correlation))
+    if (!is.null(result$mean_difference)) add_row("Mean difference", sprintf("%.3f", result$mean_difference))
+    if (!is.null(result$parameter_estimate)) add_row("Group x time B", sprintf("%.3f", result$parameter_estimate))
+    if (!is.null(result$common_outcome_sd)) add_row("Common outcome SD", sprintf("%.3f", result$common_outcome_sd))
+    if (!is.null(result$common_sd_method)) add_row("Common SD method", result$common_sd_method)
+    if (!is.null(result$group1_n)) add_row("Group 1 n", result$group1_n)
+    if (!is.null(result$group1_sd)) add_row("Group 1 SD", sprintf("%.3f", result$group1_sd))
+    if (!is.null(result$group2_n)) add_row("Group 2 n", result$group2_n)
+    if (!is.null(result$group2_sd)) add_row("Group 2 SD", sprintf("%.3f", result$group2_sd))
     if (!is.null(result$change_difference)) add_row("Change difference", sprintf("%.3f", result$change_difference))
     if (!is.null(result$residual_sd)) add_row("Residual SD", sprintf("%.3f", result$residual_sd))
     if (!is.null(result$pillai_trace)) add_row("Pillai's trace V", sprintf("%.3f", result$pillai_trace))
+    if (!is.null(result$wilks_lambda)) add_row("Wilks' lambda", sprintf("%.3f", result$wilks_lambda))
+    if (!is.null(result$dependent_variables)) add_row("Dependent variables", result$dependent_variables)
     if (!is.null(result$rank_biserial)) add_row("Rank-biserial r", sprintf("%.3f", result$rank_biserial))
     if (!is.null(result$cliffs_delta)) add_row("Cliff's delta", sprintf("%.3f", result$cliffs_delta))
     if (!is.null(result$epsilon_squared)) add_row("Epsilon squared", sprintf("%.3f", result$epsilon_squared))
@@ -2236,10 +2265,6 @@ sample_size_result_table <- function(result) {
     if (!is.null(result$discordant_pairs)) add_row("Discordant pairs", result$discordant_pairs)
     if (!is.null(result$hazard_ratio)) add_row("Hazard ratio", sprintf("%.3f", result$hazard_ratio))
     if (!is.null(result$log_hazard_ratio)) add_row("log hazard ratio", sprintf("%.3f", result$log_hazard_ratio))
-    if (!is.null(result$event_probability)) add_row("Event probability", sprintf("%.3f", result$event_probability))
-    if (!is.null(result$allocation_ratio)) add_row("Allocation ratio", sprintf("%.3f", result$allocation_ratio))
-    if (!is.null(result$information_fraction)) add_row("Information fraction", sprintf("%.3f", result$information_fraction))
-    if (!is.null(result$schoenfeld_signal)) add_row("Schoenfeld signal", sprintf("%.3f", result$schoenfeld_signal))
     if (!is.null(result$observed_effect)) add_row("Observed effect", sprintf("%.3f", result$observed_effect))
     if (!is.null(result$equivalence_margin)) add_row("Margin", sprintf("%.3f", result$equivalence_margin))
     if (!is.null(result$distance_to_margin)) add_row("Distance to margin", sprintf("%.3f", result$distance_to_margin))
@@ -2256,6 +2281,10 @@ sample_size_result_table <- function(result) {
     if (!is.null(result$null_auc)) add_row("Null AUC", sprintf("%.3f", result$null_auc))
     if (!is.null(result$auc_difference)) add_row("AUC difference", sprintf("%.3f", result$auc_difference))
     if (!is.null(result$auc_cohen_d)) add_row("AUC Cohen's d", sprintf("%.3f", result$auc_cohen_d))
+    if (!is.null(result$incidence_rate_ratio)) add_row("Incidence rate ratio", sprintf("%.3f", result$incidence_rate_ratio))
+    if (!is.null(result$log_incidence_rate_ratio)) add_row("log incidence rate ratio", sprintf("%.3f", result$log_incidence_rate_ratio))
+    if (!is.null(result$mean_ratio)) add_row("Mean ratio", sprintf("%.3f", result$mean_ratio))
+    if (!is.null(result$log_mean_ratio)) add_row("log mean ratio", sprintf("%.3f", result$log_mean_ratio))
     if (!is.null(result$rate1)) add_row("Rate 1", sprintf("%.3f", result$rate1))
     if (!is.null(result$rate2)) add_row("Rate 2", sprintf("%.3f", result$rate2))
     if (!is.null(result$reference_rate)) add_row("Reference rate", sprintf("%.3f", result$reference_rate))
@@ -2307,10 +2336,22 @@ sample_size_result_table <- function(result) {
   }
   if (!is.null(result$power)) {
     add_row("Power", sprintf("%.3f", result$power))
+    if (!is.null(result$df)) add_row("Model df", result$df)
+    if (!is.null(result$observed_moments)) add_row("Observed moments", result$observed_moments)
+    if (!is.null(result$free_parameters)) add_row("Free parameters", result$free_parameters)
+    if (!is.null(result$latent_variables)) add_row("Latent variables", result$latent_variables)
+    if (!is.null(result$measured_variables)) add_row("Measured variables", result$measured_variables)
+    if (!is.null(result$structural_paths)) add_row("Structural paths", result$structural_paths)
     if (!is.null(result$parameter_rule_n)) add_row("Parameter-ratio rule", result$parameter_rule_n)
     if (!is.null(result$structure_rule_n)) add_row("Model-structure rule", result$structure_rule_n)
     if (!is.null(result$design_effect)) add_row("Design effect", sprintf("%.3f", result$design_effect))
     if (!is.null(result$total_observations)) add_row("Total observations", result$total_observations)
+    if (!is.null(result$hazard_ratio)) add_row("Hazard ratio", sprintf("%.3f", result$hazard_ratio))
+    if (!is.null(result$log_hazard_ratio)) add_row("log hazard ratio", sprintf("%.3f", result$log_hazard_ratio))
+    if (!is.null(result$event_probability)) add_row("Event probability", sprintf("%.3f", result$event_probability))
+    if (!is.null(result$allocation_ratio)) add_row("Allocation ratio", sprintf("%.3f", result$allocation_ratio))
+    if (!is.null(result$information_fraction)) add_row("Information fraction", sprintf("%.3f", result$information_fraction))
+    if (!is.null(result$schoenfeld_signal)) add_row("Schoenfeld planning signal", sprintf("%.3f", result$schoenfeld_signal))
     return(tags$table(class = "sample-size-result-table", tags$tbody(rows)))
   }
 
@@ -2331,13 +2372,31 @@ sample_size_result_table <- function(result) {
   if (!is.null(result$per_group)) add_row("Per group", result$per_group)
   if (!is.null(result$per_cell)) add_row("Per cell", result$per_cell)
   if (!is.null(result$required_events)) add_row("Required events", result$required_events)
+  if (!is.null(result$a_path)) add_row("Path a beta", sprintf("%.3f", result$a_path))
+  if (!is.null(result$b_path)) add_row("Path b beta", sprintf("%.3f", result$b_path))
+  if (!is.null(result$indirect_effect)) add_row("Indirect effect beta a*b", sprintf("%.3f", result$indirect_effect))
+  if (!is.null(result$covariates)) add_row("Covariates", result$covariates)
+  if (!is.null(result$df)) add_row("Model df", result$df)
+  if (!is.null(result$observed_moments)) add_row("Observed moments", result$observed_moments)
+  if (!is.null(result$free_parameters)) add_row("Free parameters", result$free_parameters)
+  if (!is.null(result$latent_variables)) add_row("Latent variables", result$latent_variables)
+  if (!is.null(result$measured_variables)) add_row("Measured variables", result$measured_variables)
+  if (!is.null(result$structural_paths)) add_row("Structural paths", result$structural_paths)
   if (!is.null(result$parameter_rule_n)) add_row("Parameter-ratio rule", result$parameter_rule_n)
   if (!is.null(result$structure_rule_n)) add_row("Model-structure rule", result$structure_rule_n)
   if (!is.null(result$effect_rule_n)) add_row("Effect-detectability rule", result$effect_rule_n)
-  if (!is.null(result$total)) add_row(result$total_label %||% "Total", result$total)
+  if (!is.null(result$precision_total)) add_row("Precision formula n", result$precision_total)
+  if (!is.null(result$minimum_subjects)) add_row("Minimum subjects rule", result$minimum_subjects)
+  if (!is.null(result$total)) add_row(sample_size_n_label(result$total_label %||% "Total"), result$total, primary = TRUE)
   if (!is.null(result$total_observations)) add_row("Total observations", result$total_observations)
   if (!is.null(result$estimated_power)) add_row("Estimated power", sprintf("%.3f", result$estimated_power))
   if (!is.null(result$achieved_half_width)) add_row("Achieved half-width", sprintf("%.3f", result$achieved_half_width))
+  if (!is.null(result$hazard_ratio)) add_row("Hazard ratio", sprintf("%.3f", result$hazard_ratio))
+  if (!is.null(result$log_hazard_ratio)) add_row("log hazard ratio", sprintf("%.3f", result$log_hazard_ratio))
+  if (!is.null(result$event_probability)) add_row("Event probability", sprintf("%.3f", result$event_probability))
+  if (!is.null(result$allocation_ratio)) add_row("Allocation ratio", sprintf("%.3f", result$allocation_ratio))
+  if (!is.null(result$information_fraction)) add_row("Information fraction", sprintf("%.3f", result$information_fraction))
+  if (!is.null(result$schoenfeld_signal)) add_row("Schoenfeld planning signal", sprintf("%.3f", result$schoenfeld_signal))
 
   if (has_dropout) {
     add_section(sprintf("Adjusted for dropout (%.1f%%)", result$dropout_rate * 100))
@@ -2345,7 +2404,7 @@ sample_size_result_table <- function(result) {
     if (!is.null(result$adjusted_group2)) add_row("Group 2 with dropout", result$adjusted_group2)
     if (!is.null(result$adjusted_per_group)) add_row("Per group with dropout", result$adjusted_per_group)
     if (!is.null(result$adjusted_per_cell)) add_row("Per cell with dropout", result$adjusted_per_cell)
-    if (!is.null(result$adjusted_total)) add_row(result$adjusted_total_label %||% "Total with dropout", result$adjusted_total)
+    if (!is.null(result$adjusted_total)) add_row(sample_size_n_label(result$adjusted_total_label %||% "Total with dropout"), result$adjusted_total, primary = TRUE)
     if (!is.null(result$adjusted_total_observations)) add_row("Total observations with dropout", result$adjusted_total_observations)
   }
 
@@ -2406,7 +2465,9 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     effect_correlation = list(
-      formula = if (grepl("t statistic", design)) {
+      formula = if (grepl("Point-biserial", design)) {
+        "Point-biserial r is Pearson r for a binary and continuous variable; for a two-group contrast, d = 2r / sqrt(1 - r^2)."
+      } else if (grepl("t statistic", design)) {
         "r = sign(t) * sqrt(t^2 / (t^2 + df))."
       } else if (grepl("F statistic", design)) {
         "For a one-degree-of-freedom effect, r = sqrt(F / (F + df_error))."
@@ -2425,9 +2486,9 @@ sample_size_method_details <- function(method, result) {
     ),
     effect_anova = list(
       formula = if (grepl("eta squared from F", design, ignore.case = TRUE)) {
-        "Partial eta squared = F * df_effect / (F * df_effect + df_error); Cohen's f = sqrt(partial eta-squared / [1 - partial eta-squared])."
+        "For one-way ANOVA, df_effect = groups - 1 and df_error = total N - groups; partial eta squared = F * df_effect / (F * df_effect + df_error); omega squared is also reported; Cohen's f = sqrt(partial eta-squared / [1 - partial eta-squared])."
       } else if (grepl("omega", design, ignore.case = TRUE)) {
-        "Partial omega squared is approximated as (F * df_effect - df_effect) / (F * df_effect + df_error + 1), bounded at 0."
+        "For one-way ANOVA, df_effect = groups - 1 and df_error = total N - groups; partial omega squared is approximated as (F * df_effect - df_effect) / (F * df_effect + df_error + 1), bounded at 0."
       } else {
         "Cohen's f = sqrt(eta-squared / [1 - eta-squared]); the same conversion is used for partial eta-squared."
       },
@@ -2442,8 +2503,10 @@ sample_size_method_details <- function(method, result) {
         "ANCOVA adjusted f = unadjusted f / sqrt(1 - covariate R-squared)."
       } else if (grepl("Pillai", design)) {
         "For MANOVA planning, f2 = Pillai's V / (1 - Pillai's V), and f = sqrt(f2)."
+      } else if (grepl("Wilks", design)) {
+        "For MANOVA planning, Wilks' lambda is converted using s = min(number of dependent variables, groups - 1): eta2 = 1 - lambda^(1/s), f2 = eta2 / (1 - eta2), and f = sqrt(f2)."
       } else if (grepl("F$", design)) {
-        "Partial eta squared = F * df_effect / (F * df_effect + df_error); Cohen's f = sqrt(partial eta-squared / [1 - partial eta-squared])."
+        "For one-way ANCOVA/group contrast planning, df_effect = groups - 1 and df_error = total N - groups; partial eta squared = F * df_effect / (F * df_effect + df_error); Cohen's f = sqrt(partial eta-squared / [1 - partial eta-squared])."
       } else {
         "Cohen's f = sqrt(partial eta-squared / [1 - partial eta-squared])."
       },
@@ -2488,8 +2551,6 @@ sample_size_method_details <- function(method, result) {
         "Incremental Cohen's f2 = (R2_full - R2_reduced) / (1 - R2_full)."
       } else if (grepl("Logistic", design)) {
         "log odds ratio = log(OR); approximate Cohen's d = log(OR) * sqrt(3) / pi."
-      } else if (grepl("Mediation", design)) {
-        "Standardized indirect effect = a x b."
       } else if (grepl("Moderation", design)) {
         "Interaction Cohen's f2 = delta R-squared / (1 - delta R-squared)."
       } else {
@@ -2498,17 +2559,20 @@ sample_size_method_details <- function(method, result) {
       references = c(
         cohen,
         "Cohen, J., Cohen, P., West, S. G., & Aiken, L. S. (2003). Applied Multiple Regression/Correlation Analysis for the Behavioral Sciences (3rd ed.). Lawrence Erlbaum.",
-        "Chinn, S. (2000). A simple method for converting an odds ratio to effect size for use in meta-analysis. Statistics in Medicine, 19(22), 3127-3131.",
-        "Preacher, K. J., & Kelley, K. (2011). Effect size measures for mediation models. Psychological Methods, 16(2), 93-115."
+        "Chinn, S. (2000). A simple method for converting an odds ratio to effect size for use in meta-analysis. Statistics in Medicine, 19(22), 3127-3131."
       )
     ),
     effect_gee = list(
       formula = if (grepl("binary", design, ignore.case = TRUE)) {
         "Cohen's h = 2 asin(sqrt(p1)) - 2 asin(sqrt(p2)); planning effect = h / sqrt(design effect)."
       } else if (grepl("supplied", design, ignore.case = TRUE)) {
-        "Uses supplied Cohen's d; planning effect = d / sqrt(design effect)."
+        "Uses supplied Cohen's d."
+      } else if (grepl("change", design, ignore.case = TRUE)) {
+        "Cohen's d = [(post - pre) group 1 - (post - pre) group 2] / common outcome SD."
+      } else if (grepl("parameter", design, ignore.case = TRUE)) {
+        "Cohen's d = GEE group x time parameter estimate B / common outcome SD."
       } else {
-        "Cohen's d = (M1 - M2) / SD; planning effect = d / sqrt(design effect)."
+        "Cohen's d = (estimated mean group 1 - estimated mean group 2) / common outcome SD."
       },
       references = c(
         cohen,
@@ -2531,15 +2595,10 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     effect_survival = list(
-      formula = if (grepl("Schoenfeld", design)) {
-        "Schoenfeld planning signal = |log(HR)| * sqrt(event probability * allocation information fraction), where allocation information fraction = p1 * p2."
-      } else {
-        "Log hazard ratio = log(HR)."
-      },
+      formula = "Log hazard ratio = log(HR). For survival meta-analysis, use log(HR) with its standard error.",
       references = c(
-        "Schoenfeld, D. A. (1983). Sample-size formula for the proportional-hazards regression model. Biometrics, 39(2), 499-503.",
-        "Freedman, L. S. (1982). Tables of the number of patients required in clinical trials using the logrank test. Statistics in Medicine, 1(2), 121-129.",
-        "Machin, D., Campbell, M. J., Tan, S. B., & Tan, S. H. (2018). Sample Sizes for Clinical, Laboratory and Epidemiology Studies (4th ed.). Wiley."
+        "Parmar, M. K. B., Torri, V., & Stewart, L. (1998). Extracting summary statistics to perform meta-analyses of the published literature for survival endpoints. Statistics in Medicine, 17(24), 2815-2834.",
+        "Tierney, J. F., Stewart, L. A., Ghersi, D., Burdett, S., & Sydes, M. R. (2007). Practical methods for incorporating summary time-to-event data into meta-analysis. Trials, 8, 16."
       )
     ),
     effect_equivalence = list(
@@ -2555,29 +2614,22 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     effect_diagnostic = list(
-      formula = if (grepl("AUC", design)) {
-        "AUC difference = AUC - null AUC; approximate Cohen's d = sqrt(2) * qnorm(AUC)."
-      } else {
-        "Diagnostic difference = observed accuracy - reference accuracy; logit difference = qlogis(observed) - qlogis(reference)."
-      },
+      formula = "AUC is reported directly; AUC difference = AUC - null AUC; approximate Cohen's d = sqrt(2) * qnorm(AUC).",
       references = c(
         "Hanley, J. A., & McNeil, B. J. (1982). The meaning and use of the area under a receiver operating characteristic (ROC) curve. Radiology, 143(1), 29-36.",
-        "Buderer, N. M. F. (1996). Statistical methodology: I. Incorporating the prevalence of disease into the sample size calculation for sensitivity and specificity. Academic Emergency Medicine, 3(9), 895-900.",
         "Hajian-Tilaki, K. (2014). Sample size estimation in diagnostic test studies of biomedical informatics. Journal of Biomedical Informatics, 48, 193-204."
       )
     ),
     effect_rates = list(
-      formula = if (grepl("negative binomial", design, ignore.case = TRUE)) {
-        "Rate ratio = rate1 / rate2; negative binomial standardized difference uses variance rate + dispersion * rate^2."
-      } else if (grepl("Single", design)) {
-        "Rate difference = observed rate - reference rate; rate ratio = observed rate / reference rate."
+      formula = if (grepl("Gamma", design, ignore.case = TRUE)) {
+        "For gamma regression with a log link, mean ratio = exp(beta), and log mean ratio = beta."
       } else {
-        "Rate ratio = rate1 / rate2; log rate ratio = log(rate1 / rate2); Poisson standardized difference = (rate1 - rate2) / sqrt(pooled rate)."
+        "For Poisson and negative binomial regression with a log link, incidence rate ratio = exp(beta), and log incidence rate ratio = beta."
       },
       references = c(
         "Signorini, D. F. (1991). Sample size for Poisson regression. Biometrika, 78(2), 446-450.",
         "Zhu, H., & Lakkis, H. (2014). Sample size calculation for comparing two negative binomial rates. Statistics in Medicine, 33(3), 376-387.",
-        "Fleiss, J. L., Levin, B., & Paik, M. C. (2003). Statistical Methods for Rates and Proportions (3rd ed.). Wiley."
+        "McCullagh, P., & Nelder, J. A. (1989). Generalized Linear Models (2nd ed.). Chapman and Hall."
       )
     ),
     effect_cluster = list(
@@ -2614,7 +2666,7 @@ sample_size_method_details <- function(method, result) {
       } else if (grepl("ICC", design)) {
         "ICC difference = ICC - reference ICC; transformed ICC uses Fisher's z."
       } else if (grepl("kappa", design, ignore.case = TRUE)) {
-        "Kappa difference = kappa - reference kappa; observed agreement assumes equal category prevalence."
+        "Cohen's kappa is reported directly; observed agreement assumes equal category prevalence."
       } else {
         "Bland-Altman limits of agreement are mean difference +/- 1.96 * SD of paired differences."
       },
@@ -2742,7 +2794,7 @@ sample_size_method_details <- function(method, result) {
       }
     ),
     gee = list(
-      formula = "Uses an independent two-group test as a baseline and multiplies by a working-correlation design effect for repeated observations.",
+      formula = "Uses an independent two-group test as a baseline and multiplies by a repeated-measures design effect from the working correlation. For unstructured correlation, enter upper-triangle pairwise correlations, for example r12, r13, r23 for three time points.",
       references = c(
         "Liang, K.-Y., & Zeger, S. L. (1986). Longitudinal data analysis using generalized linear models. Biometrika, 73(1), 13-22.",
         "Diggle, P. J., Heagerty, P., Liang, K.-Y., & Zeger, S. L. (2002). Analysis of Longitudinal Data (2nd ed.). Oxford University Press."
@@ -2750,7 +2802,7 @@ sample_size_method_details <- function(method, result) {
     ),
     lmm = list(
       formula = if (grepl("GLIMMPSE-style", design)) {
-        "Uses simulation-based power from user-specified time-specific means, residual SD, and repeated-measures correlation; nlme::gls tests the time or group x time hypothesis across simulated datasets."
+        "Uses simulation-based power from user-specified time-specific means, residual SD, and repeated-measures correlation; nlme::gls tests the time or group x time hypothesis across simulated datasets. For unstructured correlation, enter upper-triangle pairwise correlations, for example r12, r13, r23 for three time points."
       } else {
         "Uses simulation-based power: repeated-measures data are generated from the specified fixed effect, time points, ICC, and random-intercept LMM, then nlme::lme p-values are counted across simulations."
       },
@@ -2909,7 +2961,10 @@ sample_size_results_ui <- function(result) {
           `aria-valuenow` = "0",
           style = "width:0%;"
         )
-      )
+      ),
+      if (!is.null(result$cancel_id)) {
+        actionButton(result$cancel_id, "Stop", class = "btn btn-default btn-sm sample-size-stop")
+      }
     ))
   }
   if (!is.null(result$error)) {
@@ -3018,9 +3073,9 @@ sample_size_calculate <- function(method, input, progress = NULL) {
         odds_ratio = as.numeric(input$sample_size_regression_or),
         p0 = as.numeric(input$sample_size_regression_p0),
         predictor_prevalence = as.numeric(input$sample_size_regression_predictor_prevalence %||% 0.5),
-        covariate_r2 = as.numeric(input$sample_size_regression_covariate_r2 %||% 0),
-        alternative = alternative,
-        mediation_method = input$sample_size_regression_mediation_method %||% "monte_carlo",
+      covariate_r2 = as.numeric(input$sample_size_regression_covariate_r2 %||% 0),
+      alternative = alternative,
+      mediation_method = input$sample_size_regression_mediation_method %||% "monte_carlo",
         mediation_simulations = as.numeric(input$sample_size_regression_simulations %||% 30),
         mediation_bootstraps = as.numeric(input$sample_size_regression_bootstraps %||% 100),
         progress = progress
@@ -3039,7 +3094,8 @@ sample_size_calculate <- function(method, input, progress = NULL) {
         dropout = dropout,
         time_points = as.numeric(input$sample_size_gee_time_points),
         rho = as.numeric(input$sample_size_gee_rho),
-        structure = input$sample_size_gee_correlation_structure %||% "exchangeable"
+        structure = input$sample_size_gee_correlation_structure %||% "exchangeable",
+        correlations = input$sample_size_gee_correlations
       ),
       lmm = sample_size_lmm(
         target = target,
@@ -3058,6 +3114,7 @@ sample_size_calculate <- function(method, input, progress = NULL) {
         residual_sd = as.numeric(input$sample_size_lmm_residual_sd),
         rho = as.numeric(input$sample_size_lmm_rho),
         structure = input$sample_size_lmm_correlation_structure %||% "exchangeable",
+        correlations = input$sample_size_lmm_correlations,
         progress = progress
       ),
       survival = sample_size_survival(
@@ -3169,6 +3226,7 @@ sample_size_calculate <- function(method, input, progress = NULL) {
         target = target,
         test = input$sample_size_sem_test %||% "close_fit",
         df = as.numeric(input$sample_size_sem_df),
+        df_source = input$sample_size_sem_df_source %||% "structure",
         null_rmsea = as.numeric(input$sample_size_sem_null_rmsea),
         alternative_rmsea = as.numeric(input$sample_size_sem_alternative_rmsea),
         parameter_type = input$sample_size_sem_parameter_type %||% "path",
@@ -3277,12 +3335,12 @@ effect_size_correlation_calculate <- function(input) {
 effect_size_anova_calculate <- function(input) {
   tryCatch({
     result <- sample_size_effect_size_anova(
-      design = sample_size_choice(input$effect_size_anova_design, "f_from_eta2"),
+      design = sample_size_choice(input$effect_size_anova_design, "partial_eta_from_f"),
       eta_squared = as.numeric(input$effect_size_anova_eta2),
       partial_eta_squared = as.numeric(input$effect_size_anova_partial_eta2),
       f_value = as.numeric(input$effect_size_anova_f),
-      df_effect = as.numeric(input$effect_size_anova_df_effect),
-      df_error = as.numeric(input$effect_size_anova_df_error)
+      groups = as.numeric(input$effect_size_anova_groups),
+      total_n = as.numeric(input$effect_size_anova_total_n)
     )
     details <- sample_size_method_details("effect_anova", result)
     result$formula_note <- details$formula
@@ -3294,14 +3352,16 @@ effect_size_anova_calculate <- function(input) {
 effect_size_ancova_calculate <- function(input) {
   tryCatch({
     result <- sample_size_effect_size_ancova(
-      design = sample_size_choice(input$effect_size_ancova_design, "ancova_adjusted_f"),
+      design = sample_size_choice(input$effect_size_ancova_design, "ancova_partial_eta_from_f"),
       effect_size_f = as.numeric(input$effect_size_ancova_f),
       covariate_r2 = as.numeric(input$effect_size_ancova_covariate_r2),
       partial_eta_squared = as.numeric(input$effect_size_ancova_partial_eta2),
       pillai_trace = as.numeric(input$effect_size_ancova_pillai),
+      wilks_lambda = as.numeric(input$effect_size_ancova_wilks),
+      dependent_variables = as.numeric(input$effect_size_ancova_dependent_variables),
       f_value = as.numeric(input$effect_size_ancova_f_statistic),
-      df_effect = as.numeric(input$effect_size_ancova_df_effect),
-      df_error = as.numeric(input$effect_size_ancova_df_error)
+      groups = as.numeric(input$effect_size_ancova_groups),
+      total_n = as.numeric(input$effect_size_ancova_total_n)
     )
     details <- sample_size_method_details("effect_ancova", result)
     result$formula_note <- details$formula
@@ -3356,8 +3416,6 @@ effect_size_regression_calculate <- function(input) {
       full_r_squared = as.numeric(input$effect_size_regression_full_r2),
       reduced_r_squared = as.numeric(input$effect_size_regression_reduced_r2),
       odds_ratio = as.numeric(input$effect_size_regression_or),
-      a_path = as.numeric(input$effect_size_regression_a),
-      b_path = as.numeric(input$effect_size_regression_b),
       interaction_delta_r2 = as.numeric(input$effect_size_regression_delta_r2)
     )
     details <- sample_size_method_details("effect_regression", result)
@@ -3369,18 +3427,38 @@ effect_size_regression_calculate <- function(input) {
 
 effect_size_gee_calculate <- function(input) {
   tryCatch({
+    sd_mode <- sample_size_choice(input$effect_size_gee_sd_mode, "direct")
+    common_sd <- if (identical(sd_mode, "pooled")) {
+      sample_size_pooled_sd(
+        n1 = as.numeric(input$effect_size_gee_n1),
+        sd1 = as.numeric(input$effect_size_gee_sd1),
+        n2 = as.numeric(input$effect_size_gee_n2),
+        sd2 = as.numeric(input$effect_size_gee_sd2)
+      )
+    } else {
+      as.numeric(input$effect_size_gee_sd)
+    }
     result <- sample_size_effect_size_gee(
-      design = sample_size_choice(input$effect_size_gee_design, "continuous_means"),
+      design = sample_size_choice(input$effect_size_gee_design, "continuous_followup_means"),
       mean1 = as.numeric(input$effect_size_gee_mean1),
       mean2 = as.numeric(input$effect_size_gee_mean2),
-      sd = as.numeric(input$effect_size_gee_sd),
+      pre_mean1 = as.numeric(input$effect_size_gee_pre_mean1),
+      post_mean1 = as.numeric(input$effect_size_gee_post_mean1),
+      pre_mean2 = as.numeric(input$effect_size_gee_pre_mean2),
+      post_mean2 = as.numeric(input$effect_size_gee_post_mean2),
+      coefficient = as.numeric(input$effect_size_gee_coefficient),
+      sd = common_sd,
       effect_size = as.numeric(input$effect_size_gee_d),
       p1 = as.numeric(input$effect_size_gee_p1),
-      p2 = as.numeric(input$effect_size_gee_p2),
-      time_points = as.numeric(input$effect_size_gee_time_points),
-      rho = as.numeric(input$effect_size_gee_rho),
-      structure = sample_size_choice(input$effect_size_gee_correlation_structure, "exchangeable")
+      p2 = as.numeric(input$effect_size_gee_p2)
     )
+    if (identical(sd_mode, "pooled")) {
+      result$common_sd_method <- "Pooled SD from group n and SD"
+      result$group1_n <- as.numeric(input$effect_size_gee_n1)
+      result$group1_sd <- as.numeric(input$effect_size_gee_sd1)
+      result$group2_n <- as.numeric(input$effect_size_gee_n2)
+      result$group2_sd <- as.numeric(input$effect_size_gee_sd2)
+    }
     details <- sample_size_method_details("effect_gee", result)
     result$formula_note <- details$formula
     result$references <- details$references
@@ -3400,7 +3478,8 @@ effect_size_lmm_calculate <- function(input) {
       time_points = as.numeric(input$effect_size_lmm_time_points),
       icc = as.numeric(input$effect_size_lmm_icc),
       rho = as.numeric(input$effect_size_lmm_rho),
-      structure = sample_size_choice(input$effect_size_lmm_correlation_structure, "exchangeable")
+      structure = sample_size_choice(input$effect_size_lmm_correlation_structure, "exchangeable"),
+      correlations = input$effect_size_lmm_correlations
     )
     details <- sample_size_method_details("effect_lmm", result)
     result$formula_note <- details$formula
@@ -3413,9 +3492,7 @@ effect_size_survival_calculate <- function(input) {
   tryCatch({
     result <- sample_size_effect_size_survival(
       design = sample_size_choice(input$effect_size_survival_design, "hazard_ratio"),
-      hazard_ratio = as.numeric(input$effect_size_survival_hr),
-      event_probability = as.numeric(input$effect_size_survival_event_probability),
-      ratio = as.numeric(input$effect_size_survival_ratio %||% 1)
+      hazard_ratio = as.numeric(input$effect_size_survival_hr)
     )
     details <- sample_size_method_details("effect_survival", result)
     result$formula_note <- details$formula
@@ -3445,10 +3522,7 @@ effect_size_equivalence_calculate <- function(input) {
 effect_size_diagnostic_calculate <- function(input) {
   tryCatch({
     result <- sample_size_effect_size_diagnostic(
-      design = sample_size_choice(input$effect_size_diagnostic_design, "sensitivity"),
-      sensitivity = as.numeric(input$effect_size_diagnostic_sensitivity),
-      specificity = as.numeric(input$effect_size_diagnostic_specificity),
-      reference = as.numeric(input$effect_size_diagnostic_reference),
+      design = sample_size_choice(input$effect_size_diagnostic_design, "auc"),
       auc = as.numeric(input$effect_size_diagnostic_auc),
       null_auc = as.numeric(input$effect_size_diagnostic_null_auc %||% 0.5)
     )
@@ -3462,11 +3536,10 @@ effect_size_diagnostic_calculate <- function(input) {
 effect_size_rates_calculate <- function(input) {
   tryCatch({
     result <- sample_size_effect_size_rates(
-      design = sample_size_choice(input$effect_size_rates_design, "two_rate_ratio"),
-      rate1 = as.numeric(input$effect_size_rates_rate1),
-      rate2 = as.numeric(input$effect_size_rates_rate2),
-      reference_rate = as.numeric(input$effect_size_rates_reference_rate),
-      dispersion = as.numeric(input$effect_size_rates_dispersion %||% 0)
+      design = sample_size_choice(input$effect_size_rates_design, "poisson_irr"),
+      input_scale = sample_size_choice(input$effect_size_rates_input_scale, "ratio"),
+      ratio = as.numeric(input$effect_size_rates_ratio),
+      log_ratio = as.numeric(input$effect_size_rates_log_ratio)
     )
     details <- sample_size_method_details("effect_rates", result)
     result$formula_note <- details$formula
@@ -3513,9 +3586,8 @@ effect_size_precision_calculate <- function(input) {
 effect_size_reliability_calculate <- function(input) {
   tryCatch({
     result <- sample_size_effect_size_reliability(
-      design = sample_size_choice(input$effect_size_reliability_design, "alpha"),
+      design = sample_size_choice(input$effect_size_reliability_design, "kappa"),
       reliability = as.numeric(input$effect_size_reliability_value),
-      reference = as.numeric(input$effect_size_reliability_reference),
       items = as.numeric(input$effect_size_reliability_items %||% 2),
       categories = as.numeric(input$effect_size_reliability_categories %||% 2),
       sd_difference = as.numeric(input$effect_size_reliability_sd_difference)
@@ -3530,7 +3602,7 @@ effect_size_reliability_calculate <- function(input) {
 effect_size_sem_calculate <- function(input) {
   tryCatch({
     result <- sample_size_effect_size_sem(
-      design = sample_size_choice(input$effect_size_sem_design, "rmsea"),
+      design = sample_size_choice(input$effect_size_sem_design, "parameter"),
       df = as.numeric(input$effect_size_sem_df),
       null_rmsea = as.numeric(input$effect_size_sem_null_rmsea),
       alternative_rmsea = as.numeric(input$effect_size_sem_alternative_rmsea),
@@ -3631,6 +3703,7 @@ sample_size_input_snapshot <- function(method, input) {
     sem = list(
       sample_size_sem_target = target,
       sample_size_sem_test = input$sample_size_sem_test %||% "close_fit",
+      sample_size_sem_df_source = input$sample_size_sem_df_source %||% "structure",
       sample_size_sem_parameter_type = isolate(input$sample_size_sem_parameter_type %||% "path"),
       sample_size_sem_complexity = isolate(input$sample_size_sem_complexity %||% "moderate")
     ),
@@ -3638,9 +3711,46 @@ sample_size_input_snapshot <- function(method, input) {
   )
 }
 
+sample_size_progress_message <- function(path) {
+  if (!file.exists(path)) return(NULL)
+  lines <- tryCatch(readLines(path, warn = FALSE), error = function(e) character(0))
+  lines <- lines[nzchar(lines)]
+  if (length(lines) == 0) return(NULL)
+  tryCatch(jsonlite::fromJSON(lines[[length(lines)]]), error = function(e) NULL)
+}
+
+sample_size_start_background_job <- function(method, input_snapshot, progress_path, app_dir) {
+  callr::r_bg(
+    func = function(method, input_snapshot, progress_path, app_dir) {
+      setwd(app_dir)
+      suppressPackageStartupMessages(library(shiny))
+      source(file.path("R", "utils.R"))
+      source(file.path("R", "sample_size.R"))
+      source(file.path("R", "sample_size_ui.R"))
+      progress <- function(value, text = "Calculating...") {
+        message <- jsonlite::toJSON(
+          list(value = as.numeric(value), text = as.character(text)),
+          auto_unbox = TRUE
+        )
+        cat(message, "\n", file = progress_path, append = TRUE)
+      }
+      sample_size_calculate(method, input_snapshot, progress = progress)
+    },
+    args = list(
+      method = method,
+      input_snapshot = input_snapshot,
+      progress_path = progress_path,
+      app_dir = app_dir
+    ),
+    supervise = TRUE
+  )
+}
+
 register_sample_size_server <- function(input, output, session) {
   methods <- names(sample_size_method_labels())
   results <- stats::setNames(lapply(methods, function(x) reactiveVal(NULL)), methods)
+  sample_size_jobs <- reactiveVal(list())
+  sample_size_job_timer <- reactiveTimer(500)
   effect_size_results <- list(effectsize = reactiveVal(NULL))
   effect_size_ttest_result <- reactiveVal(NULL)
   effect_size_proportion_result <- reactiveVal(NULL)
@@ -3703,6 +3813,62 @@ register_sample_size_server <- function(input, output, session) {
     reliability = effect_size_reliability_calculate,
     sem = effect_size_sem_calculate
   )
+
+  observeEvent(input$sample_size_sem_test, {
+    if (identical(input$sample_size_sem_test, "not_close_fit")) {
+      updateTextInput(session, "sample_size_sem_null_rmsea", value = "0.08")
+      updateTextInput(session, "sample_size_sem_alternative_rmsea", value = "0.05")
+    } else if (identical(input$sample_size_sem_test, "close_fit")) {
+      updateTextInput(session, "sample_size_sem_null_rmsea", value = "0.05")
+      updateTextInput(session, "sample_size_sem_alternative_rmsea", value = "0.08")
+    }
+  }, ignoreInit = TRUE)
+
+  observe({
+    sample_size_job_timer()
+    jobs <- sample_size_jobs()
+    if (length(jobs) == 0) return()
+    changed <- FALSE
+    for (method_name in names(jobs)) {
+      job <- jobs[[method_name]]
+      progress_message <- sample_size_progress_message(job$progress_path)
+      if (!is.null(progress_message)) {
+        session$sendCustomMessage(
+          "sample-size-progress",
+          list(
+            id = job$progress_id,
+            value = progress_message$value %||% 0,
+            text = progress_message$text %||% "Calculating..."
+          )
+        )
+      }
+      if (job$process$is_alive()) next
+      result <- tryCatch(
+        job$process$get_result(),
+        error = function(e) {
+          stderr <- tryCatch(job$process$read_error(), error = function(read_error) "")
+          message <- conditionMessage(e)
+          if (nzchar(stderr)) message <- paste(message, stderr, sep = "\n")
+          list(error = message)
+        }
+      )
+      results[[method_name]](result)
+      try(unlink(job$progress_path), silent = TRUE)
+      jobs[[method_name]] <- NULL
+      changed <- TRUE
+    }
+    if (isTRUE(changed)) sample_size_jobs(jobs)
+  })
+
+  session$onSessionEnded(function() {
+    jobs <- sample_size_jobs()
+    for (job in jobs) {
+      if (!is.null(job$process) && job$process$is_alive()) {
+        try(job$process$kill(), silent = TRUE)
+      }
+      try(unlink(job$progress_path), silent = TRUE)
+    }
+  })
 
   for (effect_method in names(effect_size_method_labels())) {
     local({
@@ -3835,18 +4001,51 @@ register_sample_size_server <- function(input, output, session) {
       output[[paste0("lazy_sample_size_", method_local)]] <- renderUI(tab_panel_content(sample_size_analysis_panel(method_local)))
       output[[paste0("sample_size_", method_local, "_inputs")]] <- renderUI(sample_size_inputs_ui(method_local, sample_size_input_snapshot(method_local, input)))
       output[[paste0("sample_size_", method_local, "_results")]] <- renderUI(sample_size_results_ui(results[[method_local]]()))
+      observeEvent(input[[paste0("sample_size_", method_local, "_stop")]], {
+        jobs <- sample_size_jobs()
+        job <- jobs[[method_local]]
+        if (is.null(job)) return()
+        if (!is.null(job$process) && job$process$is_alive()) {
+          try(job$process$kill(), silent = TRUE)
+        }
+        try(unlink(job$progress_path), silent = TRUE)
+        jobs[[method_local]] <- NULL
+        sample_size_jobs(jobs)
+        results[[method_local]](list(error = "Calculation stopped."))
+      }, ignoreInit = TRUE)
       observeEvent(input[[paste0("sample_size_", method_local, "_calculate")]], {
         progress_id <- paste0("sample_size_", method_local, "_progress")
-        results[[method_local]](list(progress = TRUE, id = progress_id, text = "Calculating... 0%"))
-        progress <- function(value, text = "Calculating...") {
-          session$sendCustomMessage(
-            "sample-size-progress",
-            list(id = progress_id, value = value, text = text)
-          )
+        stop_id <- paste0("sample_size_", method_local, "_stop")
+        jobs <- sample_size_jobs()
+        existing_job <- jobs[[method_local]]
+        if (!is.null(existing_job)) {
+          if (!is.null(existing_job$process) && existing_job$process$is_alive()) {
+            try(existing_job$process$kill(), silent = TRUE)
+          }
+          try(unlink(existing_job$progress_path), silent = TRUE)
+          jobs[[method_local]] <- NULL
+          sample_size_jobs(jobs)
         }
-        result <- sample_size_calculate(method_local, input, progress = progress)
-        progress(1, "Complete")
-        results[[method_local]](result)
+        results[[method_local]](list(progress = TRUE, id = progress_id, cancel_id = stop_id, text = "Starting... 1%"))
+        progress_path <- tempfile(sprintf("easyflow_%s_progress_", method_local), fileext = ".jsonl")
+        input_snapshot <- isolate(reactiveValuesToList(input))
+        job_process <- sample_size_start_background_job(
+          method = method_local,
+          input_snapshot = input_snapshot,
+          progress_path = progress_path,
+          app_dir = getwd()
+        )
+        jobs <- sample_size_jobs()
+        jobs[[method_local]] <- list(
+          process = job_process,
+          progress_path = progress_path,
+          progress_id = progress_id
+        )
+        sample_size_jobs(jobs)
+        session$sendCustomMessage(
+          "sample-size-progress",
+          list(id = progress_id, value = 0.01, text = "Starting")
+        )
       })
       if (identical(method_local, "lmm")) {
         observeEvent(input$sample_size_lmm_mode, {

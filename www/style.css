@@ -6539,6 +6539,12 @@ pre {
   margin-top: 8px;
 }
 
+.sample-size-fixed-target {
+  color: #102a43;
+  font-size: 14px;
+  margin: 8px 0;
+}
+
 .sample-size-result-table {
   width: 100%;
   border-collapse: collapse;

@@ -15,8 +15,8 @@ sample_size_method_labels <- function() {
     survival = "Survival / Cox",
     correlation = "Correlation",
     equivalence = "Equivalence / NI",
-    diagnostic = "Diagnostic Accuracy",
-    rates = "Poisson / Rates",
+    diagnostic = "ROC AUC",
+    rates = "Count / Rate Regression",
     cluster = "Cluster Trial",
     precision = "Precision / CI",
     reliability = "Reliability / Agreement",
@@ -25,7 +25,8 @@ sample_size_method_labels <- function() {
 }
 
 effect_size_method_labels <- function() {
-  sample_size_method_labels()
+  labels <- sample_size_method_labels()
+  labels[setdiff(names(labels), c("equivalence", "cluster", "precision", "reliability", "sem"))]
 }
 
 sample_size_ttest_effect_conversions <- function(d, df = NULL) {
@@ -379,6 +380,23 @@ sample_size_effect_size_correlation <- function(
   df = NULL,
   r_squared = NULL
 ) {
+  if (identical(design, "point_biserial")) {
+    sample_size_validate_probability(abs(r), "Point-biserial r", lower = 0, upper = 1)
+    if (abs(r) >= 1) stop("Point-biserial r must be less than 1 in absolute value.", call. = FALSE)
+    d <- 2 * r / sqrt(1 - r^2)
+    conversions <- sample_size_ttest_effect_conversions(d)
+    return(c(list(
+      result_type = "effect_size",
+      design_label = "Point-biserial correlation",
+      primary_effect_size = r,
+      primary_effect_size_label = "Point-biserial r",
+      correlation_r = r,
+      r_squared = r^2,
+      fisher_z = atanh(r),
+      method_note = "For a two-group contrast, point-biserial r can be converted to Cohen's d as d = 2r / sqrt(1 - r^2)."
+    ), conversions))
+  }
+
   if (identical(design, "fisher_z")) {
     if (!is.finite(r) || abs(r) >= 1) stop("Correlation r must be finite and less than 1 in absolute value.", call. = FALSE)
     z <- atanh(r)
@@ -464,7 +482,9 @@ sample_size_effect_size_anova <- function(
   partial_eta_squared = NULL,
   f_value = NULL,
   df_effect = NULL,
-  df_error = NULL
+  df_error = NULL,
+  groups = NULL,
+  total_n = NULL
 ) {
   if (identical(design, "f_from_eta2")) {
     sample_size_validate_probability(eta_squared, "Eta squared", lower = 0, upper = 1)
@@ -495,8 +515,17 @@ sample_size_effect_size_anova <- function(
   }
 
   sample_size_validate_positive(f_value, "F statistic")
-  sample_size_validate_positive(df_effect, "Effect degrees of freedom")
-  sample_size_validate_positive(df_error, "Error degrees of freedom")
+  if (!is.null(groups) || !is.null(total_n)) {
+    sample_size_validate_positive(groups, "Number of groups")
+    sample_size_validate_positive(total_n, "Total sample size")
+    if (groups < 2) stop("Number of groups must be at least 2.", call. = FALSE)
+    if (total_n <= groups) stop("Total sample size must be greater than the number of groups.", call. = FALSE)
+    df_effect <- groups - 1
+    df_error <- total_n - groups
+  } else {
+    sample_size_validate_positive(df_effect, "Effect degrees of freedom")
+    sample_size_validate_positive(df_error, "Error degrees of freedom")
+  }
   partial_eta <- (f_value * df_effect) / (f_value * df_effect + df_error)
   cohen_f <- sqrt(partial_eta / (1 - partial_eta))
   partial_omega <- max(0, (f_value * df_effect - df_effect) / (f_value * df_effect + df_error + 1))
@@ -510,7 +539,7 @@ sample_size_effect_size_anova <- function(
       omega_squared = partial_omega,
       partial_eta_squared = partial_eta,
       cohen_f = cohen_f,
-      method_note = "Partial omega squared is approximated from F, effect df, and error df."
+      method_note = "Partial omega squared is approximated from F, number of groups, and total sample size."
     ))
   }
 
@@ -522,7 +551,7 @@ sample_size_effect_size_anova <- function(
     partial_eta_squared = partial_eta,
     cohen_f = cohen_f,
     omega_squared = partial_omega,
-    method_note = "Partial eta squared = F * df_effect / (F * df_effect + df_error)."
+    method_note = "For one-way ANOVA, df_effect = groups - 1 and df_error = total N - groups; partial eta squared = F * df_effect / (F * df_effect + df_error)."
   )
 }
 
@@ -532,9 +561,13 @@ sample_size_effect_size_ancova <- function(
   covariate_r2 = NULL,
   partial_eta_squared = NULL,
   pillai_trace = NULL,
+  wilks_lambda = NULL,
+  dependent_variables = NULL,
   f_value = NULL,
   df_effect = NULL,
-  df_error = NULL
+  df_error = NULL,
+  groups = NULL,
+  total_n = NULL
 ) {
   if (identical(design, "ancova_adjusted_f")) {
     sample_size_validate_positive(effect_size_f, "Unadjusted Cohen's f")
@@ -584,9 +617,42 @@ sample_size_effect_size_ancova <- function(
     ))
   }
 
+  if (identical(design, "manova_wilks")) {
+    sample_size_validate_probability(wilks_lambda, "Wilks' lambda", lower = 0, upper = 1)
+    sample_size_validate_positive(dependent_variables, "Number of dependent variables")
+    sample_size_validate_positive(groups, "Number of groups")
+    if (groups < 2) stop("Number of groups must be at least 2.", call. = FALSE)
+    s <- min(dependent_variables, groups - 1)
+    multivariate_eta <- 1 - wilks_lambda^(1 / s)
+    f_squared <- multivariate_eta / (1 - multivariate_eta)
+    cohen_f <- sqrt(f_squared)
+    return(list(
+      result_type = "effect_size",
+      design_label = "MANOVA effect size from Wilks' lambda",
+      primary_effect_size = wilks_lambda,
+      primary_effect_size_label = "Wilks' lambda",
+      wilks_lambda = wilks_lambda,
+      dependent_variables = dependent_variables,
+      groups = groups,
+      multivariate_eta_squared = multivariate_eta,
+      f_squared = f_squared,
+      cohen_f = cohen_f,
+      method_note = "Wilks' lambda is transformed with s = min(number of dependent variables, groups - 1): eta2 = 1 - lambda^(1/s), f2 = eta2 / (1 - eta2)."
+    ))
+  }
+
   sample_size_validate_positive(f_value, "F statistic")
-  sample_size_validate_positive(df_effect, "Effect degrees of freedom")
-  sample_size_validate_positive(df_error, "Error degrees of freedom")
+  if (!is.null(groups) || !is.null(total_n)) {
+    sample_size_validate_positive(groups, "Number of groups")
+    sample_size_validate_positive(total_n, "Total sample size")
+    if (groups < 2) stop("Number of groups must be at least 2.", call. = FALSE)
+    if (total_n <= groups) stop("Total sample size must be greater than the number of groups.", call. = FALSE)
+    df_effect <- groups - 1
+    df_error <- total_n - groups
+  } else {
+    sample_size_validate_positive(df_effect, "Effect degrees of freedom")
+    sample_size_validate_positive(df_error, "Error degrees of freedom")
+  }
   partial_eta <- (f_value * df_effect) / (f_value * df_effect + df_error)
   cohen_f <- sqrt(partial_eta / (1 - partial_eta))
   list(
@@ -596,7 +662,7 @@ sample_size_effect_size_ancova <- function(
     primary_effect_size_label = "Partial eta squared",
     partial_eta_squared = partial_eta,
     cohen_f = cohen_f,
-    method_note = "Partial eta squared = F * df_effect / (F * df_effect + df_error)."
+    method_note = "For one-way ANCOVA/group contrast planning, df_effect = groups - 1 and df_error = total N - groups; partial eta squared = F * df_effect / (F * df_effect + df_error)."
   )
 }
 
@@ -751,8 +817,6 @@ sample_size_effect_size_regression <- function(
   full_r_squared = NULL,
   reduced_r_squared = NULL,
   odds_ratio = NULL,
-  a_path = NULL,
-  b_path = NULL,
   interaction_delta_r2 = NULL
 ) {
   if (identical(design, "f2_from_r2")) {
@@ -808,22 +872,6 @@ sample_size_effect_size_regression <- function(
     ))
   }
 
-  if (identical(design, "mediation_ab")) {
-    if (!is.finite(a_path)) stop("Standardized path a must be numeric.", call. = FALSE)
-    if (!is.finite(b_path)) stop("Standardized path b must be numeric.", call. = FALSE)
-    indirect <- a_path * b_path
-    return(list(
-      result_type = "effect_size",
-      design_label = "Mediation standardized indirect effect",
-      primary_effect_size = indirect,
-      primary_effect_size_label = "Standardized indirect effect ab",
-      indirect_effect = indirect,
-      a_path = a_path,
-      b_path = b_path,
-      method_note = "Standardized indirect effect = a x b."
-    ))
-  }
-
   sample_size_validate_probability(interaction_delta_r2, "Interaction delta R-squared", lower = 0, upper = 1)
   f2 <- interaction_delta_r2 / (1 - interaction_delta_r2)
   list(
@@ -841,51 +889,83 @@ sample_size_effect_size_gee <- function(
   design = "continuous_means",
   mean1 = NULL,
   mean2 = NULL,
+  pre_mean1 = NULL,
+  post_mean1 = NULL,
+  pre_mean2 = NULL,
+  post_mean2 = NULL,
+  coefficient = NULL,
   sd = NULL,
   effect_size = NULL,
   p1 = NULL,
   p2 = NULL,
   time_points = 3,
   rho = 0.3,
-  structure = "exchangeable"
+  structure = "exchangeable",
+  correlations = NULL
 ) {
-  design_effect <- sample_size_gee_design_effect(time_points, rho, structure)
-  structure_label <- if (identical(structure, "ar1")) "AR(1)" else "Exchangeable"
-  design_note <- sprintf("Planning effect is divided by sqrt(design effect %.3f) for %s working correlation.", design_effect, structure_label)
-
-  if (identical(design, "continuous_means")) {
-    sample_size_validate_positive(sd, "SD")
-    if (!is.finite(mean1) || !is.finite(mean2)) stop("Means must be numeric.", call. = FALSE)
-    d <- (mean1 - mean2) / sd
-    return(list(
+  continuous_result <- function(d, label, note, contrast = NULL) {
+    out <- list(
       result_type = "effect_size",
-      design_label = "GEE continuous outcome standardized mean difference",
+      design_label = label,
       primary_effect_size = d,
       primary_effect_size_label = "Cohen's d",
       effect_size_d = d,
       effect_size_label = "Cohen's d",
-      planning_effect_size = d / sqrt(design_effect),
-      design_effect = design_effect,
-      time_points = as.integer(time_points),
-      working_correlation = structure_label,
-      method_note = paste("Cohen's d = (M1 - M2) / SD.", design_note)
+      common_outcome_sd = sd,
+      method_note = note
+    )
+    if (!is.null(contrast)) out$mean_difference <- contrast
+    out
+  }
+
+  if (identical(design, "continuous_means") || identical(design, "continuous_followup_means")) {
+    sample_size_validate_positive(sd, "Common outcome SD")
+    if (!is.finite(mean1) || !is.finite(mean2)) stop("Means must be numeric.", call. = FALSE)
+    contrast <- mean1 - mean2
+    d <- contrast / sd
+    return(continuous_result(
+      d,
+      "GEE follow-up estimated mean difference",
+      "Cohen's d = (estimated mean group 1 - estimated mean group 2) / common outcome SD.",
+      contrast
     ))
+  }
+
+  if (identical(design, "continuous_change_means")) {
+    sample_size_validate_positive(sd, "Common outcome SD")
+    if (!is.finite(pre_mean1) || !is.finite(post_mean1) || !is.finite(pre_mean2) || !is.finite(post_mean2)) {
+      stop("Pre and post means must be numeric.", call. = FALSE)
+    }
+    contrast <- (post_mean1 - pre_mean1) - (post_mean2 - pre_mean2)
+    d <- contrast / sd
+    return(continuous_result(
+      d,
+      "GEE pre-post change difference",
+      "Cohen's d = [(post - pre) group 1 - (post - pre) group 2] / common outcome SD.",
+      contrast
+    ))
+  }
+
+  if (identical(design, "continuous_parameter_b")) {
+    sample_size_validate_positive(sd, "Common outcome SD")
+    if (!is.finite(coefficient)) stop("Parameter estimate B must be numeric.", call. = FALSE)
+    d <- coefficient / sd
+    result <- continuous_result(
+      d,
+      "GEE group x time parameter estimate standardized effect",
+      "Cohen's d = GEE group x time parameter estimate B / common outcome SD.",
+      coefficient
+    )
+    result$parameter_estimate <- coefficient
+    return(result)
   }
 
   if (identical(design, "continuous_d")) {
     sample_size_validate_positive(abs(effect_size), "Effect size d")
-    return(list(
-      result_type = "effect_size",
-      design_label = "GEE continuous outcome supplied standardized mean difference",
-      primary_effect_size = effect_size,
-      primary_effect_size_label = "Cohen's d",
-      effect_size_d = effect_size,
-      effect_size_label = "Cohen's d",
-      planning_effect_size = effect_size / sqrt(design_effect),
-      design_effect = design_effect,
-      time_points = as.integer(time_points),
-      working_correlation = structure_label,
-      method_note = paste("Uses the supplied standardized mean difference d.", design_note)
+    return(continuous_result(
+      effect_size,
+      "GEE continuous outcome supplied standardized mean difference",
+      "Uses the supplied standardized mean difference d."
     ))
   }
 
@@ -908,11 +988,7 @@ sample_size_effect_size_gee <- function(
     log_odds_ratio = log(odds_ratio),
     proportion1 = p1,
     proportion2 = p2,
-    planning_effect_size = h / sqrt(design_effect),
-    design_effect = design_effect,
-    time_points = as.integer(time_points),
-    working_correlation = structure_label,
-    method_note = paste("Cohen's h = 2 asin(sqrt(p1)) - 2 asin(sqrt(p2)).", design_note)
+    method_note = "Cohen's h = 2 asin(sqrt(p1)) - 2 asin(sqrt(p2))."
   )
 }
 
@@ -926,7 +1002,8 @@ sample_size_effect_size_lmm <- function(
   time_points = 3,
   icc = 0.3,
   rho = 0.5,
-  structure = "exchangeable"
+  structure = "exchangeable",
+  correlations = NULL
 ) {
   repeated_planning_effect <- function(d, measurements, correlation) {
     design_effect <- 1 + (measurements - 1) * correlation
@@ -961,12 +1038,12 @@ sample_size_effect_size_lmm <- function(
   sample_size_validate_positive(residual_sd, "Residual SD")
   time_points <- length(g1)
   if (time_points < 2) stop("At least two time points are required.", call. = FALSE)
-  sample_size_validate_probability(rho, "Correlation rho", lower = -1, upper = 1)
-  structure_label <- if (identical(structure, "ar1")) "AR(1)" else "Exchangeable"
-  mean_correlation <- if (identical(structure, "ar1")) {
-    cors <- sample_size_lmm_correlation_matrix(time_points, rho, structure)
+  structure_label <- sample_size_lmm_structure_label(structure)
+  mean_correlation <- if (identical(structure, "ar1") || identical(structure, "unstructured")) {
+    cors <- sample_size_lmm_correlation_matrix(time_points, rho, structure, correlations)
     mean(cors[upper.tri(cors)])
   } else {
+    sample_size_validate_probability(rho, "Correlation rho", lower = -1, upper = 1)
     rho
   }
 
@@ -1002,9 +1079,7 @@ sample_size_effect_size_lmm <- function(
 
 sample_size_effect_size_survival <- function(
   design = "hazard_ratio",
-  hazard_ratio = NULL,
-  event_probability = NULL,
-  ratio = 1
+  hazard_ratio = NULL
 ) {
   if (!is.finite(hazard_ratio) || hazard_ratio <= 0 || isTRUE(all.equal(hazard_ratio, 1))) {
     stop("Hazard ratio must be greater than 0 and different from 1.", call. = FALSE)
@@ -1019,23 +1094,6 @@ sample_size_effect_size_survival <- function(
     log_hazard_ratio = log_hr,
     method_note = "Log hazard ratio = log(HR)."
   )
-
-  if (identical(design, "schoenfeld_signal")) {
-    sample_size_validate_probability(event_probability, "Overall event probability")
-    sample_size_validate_positive(ratio, "Allocation ratio")
-    allocation_group1 <- 1 / (1 + ratio)
-    allocation_group2 <- ratio / (1 + ratio)
-    information_fraction <- allocation_group1 * allocation_group2
-    signal <- abs(log_hr) * sqrt(event_probability * information_fraction)
-    result$design_label <- "Survival / Cox Schoenfeld planning signal"
-    result$primary_effect_size <- signal
-    result$primary_effect_size_label <- "Schoenfeld planning signal"
-    result$event_probability <- event_probability
-    result$allocation_ratio <- ratio
-    result$information_fraction <- information_fraction
-    result$schoenfeld_signal <- signal
-    result$method_note <- "Schoenfeld planning signal = |log(HR)| * sqrt(event probability * allocation information fraction)."
-  }
 
   result
 }
@@ -1097,36 +1155,10 @@ sample_size_effect_size_equivalence <- function(
 }
 
 sample_size_effect_size_diagnostic <- function(
-  design = "sensitivity",
-  sensitivity = NULL,
-  specificity = NULL,
-  reference = NULL,
+  design = "auc",
   auc = NULL,
   null_auc = 0.5
 ) {
-  if (design %in% c("sensitivity", "specificity")) {
-    value <- if (identical(design, "sensitivity")) sensitivity else specificity
-    label <- if (identical(design, "sensitivity")) "Sensitivity" else "Specificity"
-    sample_size_validate_probability(value, label)
-    sample_size_validate_probability(reference, "Reference value")
-    logit_value <- stats::qlogis(value)
-    logit_reference <- stats::qlogis(reference)
-    difference <- value - reference
-    logit_difference <- logit_value - logit_reference
-    return(list(
-      result_type = "effect_size",
-      design_label = paste(label, "effect vs reference"),
-      primary_effect_size = difference,
-      primary_effect_size_label = paste(label, "difference"),
-      diagnostic_value = value,
-      reference_value = reference,
-      diagnostic_difference = difference,
-      logit_effect = logit_value,
-      logit_difference = logit_difference,
-      method_note = paste(label, "difference = observed value - reference value; logit difference uses qlogis(value) - qlogis(reference).")
-    ))
-  }
-
   sample_size_validate_probability(auc, "AUC")
   sample_size_validate_probability(null_auc, "Null AUC")
   if (auc <= null_auc) stop("AUC must be greater than null AUC.", call. = FALSE)
@@ -1135,73 +1167,59 @@ sample_size_effect_size_diagnostic <- function(
   list(
     result_type = "effect_size",
     design_label = "ROC AUC effect vs null",
-    primary_effect_size = auc_difference,
-    primary_effect_size_label = "AUC difference",
+    primary_effect_size = auc,
+    primary_effect_size_label = "AUC",
     auc = auc,
     null_auc = null_auc,
     auc_difference = auc_difference,
     auc_cohen_d = auc_d,
-    method_note = "AUC difference = AUC - null AUC; approximate Cohen's d = sqrt(2) * qnorm(AUC)."
+    method_note = "AUC is reported directly; AUC difference = AUC - null AUC; approximate Cohen's d = sqrt(2) * qnorm(AUC)."
   )
 }
 
 sample_size_effect_size_rates <- function(
-  design = "two_rate_ratio",
-  rate1 = NULL,
-  rate2 = NULL,
-  reference_rate = NULL,
-  dispersion = 0
+  design = "poisson_irr",
+  input_scale = "ratio",
+  ratio = NULL,
+  log_ratio = NULL
 ) {
-  sample_size_validate_positive(rate1, if (identical(design, "single_rate")) "Expected rate" else "Rate 1")
-
-  if (identical(design, "single_rate")) {
-    sample_size_validate_positive(reference_rate, "Reference rate")
-    rate_difference <- rate1 - reference_rate
-    rate_ratio <- rate1 / reference_rate
-    return(list(
-      result_type = "effect_size",
-      design_label = "Single Poisson rate vs reference",
-      primary_effect_size = rate_difference,
-      primary_effect_size_label = "Rate difference",
-      rate1 = rate1,
-      reference_rate = reference_rate,
-      rate_difference = rate_difference,
-      rate_ratio = rate_ratio,
-      log_rate_ratio = log(rate_ratio),
-      method_note = "Rate difference = observed rate - reference rate; rate ratio = observed rate / reference rate."
-    ))
+  if (identical(input_scale, "log_ratio")) {
+    if (!is.finite(log_ratio) || isTRUE(all.equal(log_ratio, 0))) {
+      stop("log ratio must be finite and different from 0.", call. = FALSE)
+    }
+    log_effect <- log_ratio
+    effect_ratio <- exp(log_ratio)
+  } else {
+    sample_size_validate_positive(ratio, "Ratio")
+    if (isTRUE(all.equal(ratio, 1))) stop("Ratio must be different from 1.", call. = FALSE)
+    effect_ratio <- ratio
+    log_effect <- log(ratio)
   }
 
-  sample_size_validate_positive(rate2, "Rate 2")
-  if (isTRUE(all.equal(rate1, rate2))) stop("Rate 1 and Rate 2 must be different.", call. = FALSE)
-  if (!is.finite(dispersion) || dispersion < 0) stop("Dispersion must be greater than or equal to 0.", call. = FALSE)
-
-  rate_difference <- rate1 - rate2
-  rate_ratio <- rate1 / rate2
-  log_rate_ratio <- log(rate_ratio)
-  pooled_rate <- (rate1 + rate2) / 2
-  poisson_standardized_difference <- rate_difference / sqrt(pooled_rate)
+  is_gamma <- identical(design, "gamma_mean_ratio")
+  ratio_label <- if (is_gamma) "Mean ratio" else "Incidence rate ratio"
+  design_label <- switch(
+    design,
+    negative_binomial_irr = "Negative binomial regression incidence rate ratio",
+    gamma_mean_ratio = "Gamma regression mean ratio",
+    "Poisson regression incidence rate ratio"
+  )
   result <- list(
     result_type = "effect_size",
-    design_label = if (identical(design, "negative_binomial")) "Negative binomial rate effect" else "Poisson rate effect",
-    primary_effect_size = rate_ratio,
-    primary_effect_size_label = "Rate ratio",
-    rate1 = rate1,
-    rate2 = rate2,
-    rate_difference = rate_difference,
-    rate_ratio = rate_ratio,
-    log_rate_ratio = log_rate_ratio,
-    poisson_standardized_difference = poisson_standardized_difference,
-    method_note = "Rate ratio = rate1 / rate2; Poisson standardized difference = (rate1 - rate2) / sqrt(pooled rate)."
+    design_label = design_label,
+    primary_effect_size = effect_ratio,
+    primary_effect_size_label = ratio_label,
+    ratio = effect_ratio,
+    log_ratio = log_effect,
+    method_note = sprintf("%s = exp(beta); log %s = beta from a log-link regression model.", ratio_label, tolower(ratio_label))
   )
 
-  if (identical(design, "negative_binomial")) {
-    variance1 <- rate1 + dispersion * rate1^2
-    variance2 <- rate2 + dispersion * rate2^2
-    nb_standardized_difference <- rate_difference / sqrt((variance1 + variance2) / 2)
-    result$dispersion <- dispersion
-    result$negative_binomial_standardized_difference <- nb_standardized_difference
-    result$method_note <- "Negative binomial standardized difference uses variance rate + dispersion * rate^2 for each group."
+  if (is_gamma) {
+    result$mean_ratio <- effect_ratio
+    result$log_mean_ratio <- log_effect
+  } else {
+    result$incidence_rate_ratio <- effect_ratio
+    result$log_incidence_rate_ratio <- log_effect
   }
 
   result
@@ -1287,7 +1305,7 @@ sample_size_effect_size_precision <- function(
   proportion = NULL,
   r = NULL
 ) {
-  sample_size_validate_positive(half_width, "Desired half-width")
+  sample_size_validate_positive(half_width, "Desired CI half-width")
 
   if (identical(parameter, "mean")) {
     sample_size_validate_positive(sd, "SD")
@@ -1372,6 +1390,24 @@ sample_size_effect_size_reliability <- function(
   }
 
   sample_size_validate_probability(reliability, "Expected reliability")
+  if (identical(design, "kappa")) {
+    categories <- as.integer(categories)
+    if (!is.finite(categories) || categories < 2) stop("Number of categories must be at least 2.", call. = FALSE)
+    pe <- 1 / categories
+    observed_agreement <- reliability * (1 - pe) + pe
+    return(list(
+      result_type = "effect_size",
+      design_label = "Cohen's kappa agreement effect",
+      primary_effect_size = reliability,
+      primary_effect_size_label = "Cohen's kappa",
+      reliability = reliability,
+      categories = categories,
+      chance_agreement = pe,
+      observed_agreement = observed_agreement,
+      method_note = "Cohen's kappa is reported directly; observed agreement assumes equal category prevalence."
+    ))
+  }
+
   sample_size_validate_probability(reference, "Reference reliability")
   reliability_difference <- reliability - reference
 
@@ -1417,25 +1453,7 @@ sample_size_effect_size_reliability <- function(
     ))
   }
 
-  categories <- as.integer(categories)
-  if (!is.finite(categories) || categories < 2) stop("Number of categories must be at least 2.", call. = FALSE)
-  pe <- 1 / categories
-  observed_agreement <- reliability * (1 - pe) + pe
-  reference_observed_agreement <- reference * (1 - pe) + pe
-  list(
-    result_type = "effect_size",
-    design_label = "Cohen's kappa effect vs reference",
-    primary_effect_size = reliability_difference,
-    primary_effect_size_label = "Kappa difference",
-    reliability = reliability,
-    reference_reliability = reference,
-    reliability_difference = reliability_difference,
-    categories = categories,
-    chance_agreement = pe,
-    observed_agreement = observed_agreement,
-    transformed_difference = observed_agreement - reference_observed_agreement,
-    method_note = "Kappa difference = kappa - reference kappa; observed agreement assumes equal category prevalence."
-  )
+  stop("Unsupported reliability effect-size design.", call. = FALSE)
 }
 
 sample_size_effect_size_sem <- function(
@@ -2463,18 +2481,60 @@ sample_size_regression <- function(
       adjusted_total = sample_size_drop_adjust(total_n, dropout),
       adjusted_total_label = "Participants with dropout",
       dropout_rate = dropout,
+      a_path = if (identical(design, "mediation")) a_path else NULL,
+      b_path = if (identical(design, "mediation")) b_path else NULL,
+      indirect_effect = if (identical(design, "mediation")) a_path * b_path else NULL,
+      covariates = if (identical(design, "mediation")) covariates else NULL,
       method_note = method_note
     ))
   }
 
   sample_size_validate_positive(n, "Total sample size")
-  list(power = power_for_total(n), design_label = design_label, method_note = method_note)
+  list(
+    power = power_for_total(n),
+    design_label = design_label,
+    a_path = if (identical(design, "mediation")) a_path else NULL,
+    b_path = if (identical(design, "mediation")) b_path else NULL,
+    indirect_effect = if (identical(design, "mediation")) a_path * b_path else NULL,
+    covariates = if (identical(design, "mediation")) covariates else NULL,
+    method_note = method_note
+  )
 }
 
-sample_size_gee_design_effect <- function(time_points, rho, structure = "exchangeable") {
+sample_size_pooled_sd <- function(n1, sd1, n2, sd2) {
+  sample_size_validate_positive(n1, "Group 1 n")
+  sample_size_validate_positive(sd1, "Group 1 SD")
+  sample_size_validate_positive(n2, "Group 2 n")
+  sample_size_validate_positive(sd2, "Group 2 SD")
+  df <- n1 + n2 - 2
+  if (!is.finite(df) || df <= 0) stop("Combined degrees of freedom must be greater than 0.", call. = FALSE)
+  sqrt(((n1 - 1) * sd1^2 + (n2 - 1) * sd2^2) / df)
+}
+
+sample_size_gee_structure_label <- function(structure) {
+  switch(
+    structure,
+    ar1 = "AR(1)",
+    unstructured = "Unstructured",
+    "Exchangeable"
+  )
+}
+
+sample_size_gee_design_effect <- function(time_points, rho, structure = "exchangeable", correlations = NULL) {
   time_points <- as.integer(time_points)
   if (!is.finite(time_points) || time_points < 2) {
     stop("Time points must be at least 2.", call. = FALSE)
+  }
+  if (identical(structure, "unstructured")) {
+    values <- sample_size_parse_numeric_vector(correlations, "Unstructured working correlations")
+    expected <- time_points * (time_points - 1) / 2
+    if (length(values) != expected) {
+      stop(sprintf("Unstructured working correlations must include %d pairwise correlations for %d time points.", expected, time_points), call. = FALSE)
+    }
+    if (any(values < 0 | values >= 1)) {
+      stop("Unstructured working correlations must be greater than or equal to 0 and less than 1.", call. = FALSE)
+    }
+    return(1 + 2 * sum(values) / time_points)
   }
   if (!is.finite(rho) || rho < 0 || rho >= 1) {
     stop("Working correlation rho must be greater than or equal to 0 and less than 1.", call. = FALSE)
@@ -2500,12 +2560,13 @@ sample_size_gee <- function(
   dropout = 0,
   time_points = 3,
   rho = 0.3,
-  structure = "exchangeable"
+  structure = "exchangeable",
+  correlations = NULL
 ) {
   sample_size_validate_probability(alpha, "Alpha")
   sample_size_validate_positive(ratio, "Allocation ratio")
-  design_effect <- sample_size_gee_design_effect(time_points, rho, structure)
-  structure_label <- if (identical(structure, "ar1")) "AR(1)" else "Exchangeable"
+  design_effect <- sample_size_gee_design_effect(time_points, rho, structure, correlations)
+  structure_label <- sample_size_gee_structure_label(structure)
   design_label <- paste("GEE", if (identical(outcome, "binary")) "binary outcome" else "continuous outcome")
   method_note <- sprintf(
     "Approximate GEE sample size using independent-sample calculation multiplied by design effect %.3f (%s working correlation).",
@@ -2676,13 +2737,52 @@ sample_size_parse_numeric_vector <- function(x, name) {
   numbers
 }
 
-sample_size_lmm_correlation_matrix <- function(time_points, rho, structure = "exchangeable") {
+sample_size_lmm_structure_label <- function(structure) {
+  switch(
+    structure,
+    ar1 = "AR(1)",
+    unstructured = "Unstructured",
+    "Exchangeable"
+  )
+}
+
+sample_size_lmm_correlation_matrix <- function(time_points, rho, structure = "exchangeable", correlations = NULL) {
+  time_points <- as.integer(time_points)
+  if (!is.finite(time_points) || time_points < 2L) {
+    stop("Time points must be at least 2.", call. = FALSE)
+  }
+  if (identical(structure, "unstructured")) {
+    values <- sample_size_parse_numeric_vector(correlations, "Unstructured correlations")
+    expected <- time_points * (time_points - 1L) / 2L
+    if (length(values) != expected) {
+      stop(sprintf("Unstructured correlations must include %d pairwise correlations for %d time points.", expected, time_points), call. = FALSE)
+    }
+    if (any(values <= -1 | values >= 1)) {
+      stop("Unstructured correlations must be greater than -1 and less than 1.", call. = FALSE)
+    }
+    corr <- diag(1, time_points)
+    corr[upper.tri(corr)] <- values
+    corr <- t(corr)
+    corr[upper.tri(corr)] <- values
+    if (inherits(try(chol(corr), silent = TRUE), "try-error")) {
+      stop("Unstructured correlations must form a positive definite correlation matrix.", call. = FALSE)
+    }
+    return(corr)
+  }
   sample_size_validate_probability(rho, "Correlation rho", lower = -1, upper = 1)
   index <- seq_len(time_points)
   if (identical(structure, "ar1")) {
-    return(rho^abs(outer(index, index, "-")))
+    corr <- rho^abs(outer(index, index, "-"))
+    if (inherits(try(chol(corr), silent = TRUE), "try-error")) {
+      stop("Correlation rho must form a positive definite AR(1) correlation matrix.", call. = FALSE)
+    }
+    return(corr)
   }
-  matrix(rho, nrow = time_points, ncol = time_points) + diag(1 - rho, time_points)
+  corr <- matrix(rho, nrow = time_points, ncol = time_points) + diag(1 - rho, time_points)
+  if (inherits(try(chol(corr), silent = TRUE), "try-error")) {
+    stop("Correlation rho must form a positive definite exchangeable correlation matrix.", call. = FALSE)
+  }
+  corr
 }
 
 sample_size_lmm_generate_profiles <- function(n, means, sigma) {
@@ -2698,6 +2798,7 @@ sample_size_lmm_glimmpse_power_once <- function(
   residual_sd,
   rho,
   structure,
+  correlations,
   alpha,
   simulations,
   progress = NULL
@@ -2708,7 +2809,7 @@ sample_size_lmm_glimmpse_power_once <- function(
   participants <- as.integer(round(participants))
   simulations <- max(20L, as.integer(simulations))
   time_points <- length(group1_means)
-  sigma <- residual_sd^2 * sample_size_lmm_correlation_matrix(time_points, rho, structure)
+  sigma <- residual_sd^2 * sample_size_lmm_correlation_matrix(time_points, rho, structure, correlations)
   significant <- logical(simulations)
 
   for (sim_index in seq_len(simulations)) {
@@ -2737,6 +2838,8 @@ sample_size_lmm_glimmpse_power_once <- function(
     if (!is.null(group)) data$group <- group
     correlation <- if (identical(structure, "ar1")) {
       nlme::corAR1(value = rho, form = ~ time_index | id)
+    } else if (identical(structure, "unstructured")) {
+      nlme::corSymm(value = sample_size_parse_numeric_vector(correlations, "Unstructured correlations"), form = ~ time_index | id)
     } else {
       nlme::corCompSymm(value = rho, form = ~ 1 | id)
     }
@@ -2770,6 +2873,7 @@ sample_size_lmm_glimmpse_power <- function(
   residual_sd,
   rho,
   structure,
+  correlations,
   alpha,
   simulations,
   progress = NULL
@@ -2792,6 +2896,7 @@ sample_size_lmm_glimmpse_power <- function(
     residual_sd,
     rho,
     structure,
+    correlations,
     alpha,
     simulations,
     progress = progress
@@ -2815,6 +2920,7 @@ sample_size_lmm <- function(
   residual_sd = 1,
   rho = 0.5,
   structure = "exchangeable",
+  correlations = NULL,
   progress = NULL
 ) {
   sample_size_validate_probability(alpha, "Alpha")
@@ -2836,7 +2942,8 @@ sample_size_lmm <- function(
       group2_means <- group1_means
     }
     sample_size_validate_positive(residual_sd, "Residual SD")
-    sample_size_lmm_correlation_matrix(time_points, rho, structure)
+    sample_size_lmm_correlation_matrix(time_points, rho, structure, correlations)
+    structure_label <- sample_size_lmm_structure_label(structure)
     design_label <- if (identical(design, "one_group_repeated")) {
       "LMM GLIMMPSE-style one-group repeated measures"
     } else {
@@ -2844,7 +2951,7 @@ sample_size_lmm <- function(
     }
     method_note <- sprintf(
       "GLIMMPSE-style mean/covariance simulation using nlme::gls with %s repeated-measures correlation (%s simulations).",
-      if (identical(structure, "ar1")) "AR(1)" else "exchangeable",
+      structure_label,
       simulations
     )
     power_function <- function(participants, progress = NULL) {
@@ -2856,6 +2963,7 @@ sample_size_lmm <- function(
         residual_sd,
         rho,
         structure,
+        correlations,
         alpha,
         simulations,
         progress = progress
@@ -2971,6 +3079,7 @@ sample_size_survival <- function(
   allocation_group2 <- ratio / (1 + ratio)
   information_fraction <- allocation_group1 * allocation_group2
   log_hr <- abs(log(hazard_ratio))
+  schoenfeld_signal <- log_hr * sqrt(event_probability * information_fraction)
   za <- sample_size_z_alpha(alpha, alternative)
   design_label <- "Log-rank / Cox proportional hazards"
   method_note <- "Schoenfeld event-based log-rank/Cox approximation using hazard ratio, allocation ratio, and overall event probability."
@@ -2993,6 +3102,12 @@ sample_size_survival <- function(
       adjusted_group2 = adjusted_group2,
       adjusted_total = adjusted_group1 + adjusted_group2,
       dropout_rate = dropout,
+      hazard_ratio = hazard_ratio,
+      log_hazard_ratio = log(hazard_ratio),
+      event_probability = event_probability,
+      allocation_ratio = ratio,
+      information_fraction = information_fraction,
+      schoenfeld_signal = schoenfeld_signal,
       method_note = method_note
     ))
   }
@@ -3004,6 +3119,12 @@ sample_size_survival <- function(
     power = achieved_power,
     design_label = design_label,
     required_events = observed_events,
+    hazard_ratio = hazard_ratio,
+    log_hazard_ratio = log(hazard_ratio),
+    event_probability = event_probability,
+    allocation_ratio = ratio,
+    information_fraction = information_fraction,
+    schoenfeld_signal = schoenfeld_signal,
     method_note = method_note
   )
 }
@@ -3234,11 +3355,11 @@ sample_size_precision <- function(
     ))
   }
 
-  sample_size_validate_positive(half_width, "Desired half-width")
+  sample_size_validate_positive(half_width, "Desired CI half-width")
   if (identical(parameter, "correlation")) {
     z_half <- atanh(min(0.999999, r + half_width)) - atanh(r)
     if (!is.finite(z_half) || z_half <= 0) {
-      stop("Desired half-width is not valid for the expected correlation.", call. = FALSE)
+      stop("Desired CI half-width is not valid for the expected correlation.", call. = FALSE)
     }
     total <- sample_size_round_up((z / z_half)^2 + 3)
   } else {
@@ -3318,7 +3439,7 @@ sample_size_rates <- function(
   za <- sample_size_z_alpha(alpha, alternative)
 
   if (identical(design, "single_rate_precision")) {
-    sample_size_validate_positive(half_width, "Desired half-width")
+    sample_size_validate_positive(half_width, "Desired CI half-width")
     design_label <- "Single Poisson rate precision"
     method_note <- "Normal approximation for estimating one Poisson incidence rate with a specified confidence interval half-width."
     if (identical(target, "sample_size")) {
@@ -3650,7 +3771,7 @@ sample_size_reliability <- function(
     stop("Reliability / Agreement currently calculates required sample size only.", call. = FALSE)
   }
   sample_size_validate_probability(confidence_level, "Confidence level")
-  sample_size_validate_positive(half_width, "Desired half-width")
+  sample_size_validate_positive(half_width, "Desired CI half-width")
   z <- stats::qnorm(1 - (1 - confidence_level) / 2)
 
   if (identical(design, "bland_altman")) {
@@ -3664,9 +3785,14 @@ sample_size_reliability <- function(
     if (!is.finite(items) || items < 2) stop("Number of items must be at least 2.", call. = FALSE)
     transformed <- log(1 - reliability)
     se_target <- half_width / max(1e-8, 1 - reliability)
-    total <- sample_size_round_up((z / se_target)^2 + 2)
+    precision_total <- sample_size_round_up((z / se_target)^2 + 2)
+    minimum_subjects <- items + 1L
+    total <- max(precision_total, minimum_subjects)
     design_label <- "Cronbach's alpha precision"
-    method_note <- sprintf("Bonett-style log(1 - alpha) normal approximation for coefficient alpha precision with %s items.", items)
+    method_note <- sprintf(
+      "Bonett-style log(1 - alpha) normal approximation for coefficient alpha precision with %s items; final n is not allowed below items + 1.",
+      items
+    )
   } else if (identical(design, "icc")) {
     sample_size_validate_probability(reliability, "Expected reliability")
     items <- as.integer(items)
@@ -3695,6 +3821,8 @@ sample_size_reliability <- function(
     adjusted_total = sample_size_drop_adjust(total, dropout),
     adjusted_total_label = "Subjects with dropout",
     dropout_rate = dropout,
+    precision_total = if (identical(design, "alpha")) precision_total else NULL,
+    minimum_subjects = if (identical(design, "alpha")) minimum_subjects else NULL,
     method_note = method_note
   )
 }
@@ -3840,10 +3968,40 @@ sample_size_sem_complexity <- function(
   )
 }
 
+sample_size_sem_estimated_df <- function(latent_variables, measured_variables, structural_paths) {
+  latent_variables <- as.integer(latent_variables)
+  measured_variables <- as.integer(measured_variables)
+  structural_paths <- as.integer(structural_paths)
+  if (!is.finite(latent_variables) || latent_variables < 1) stop("Latent variables must be at least 1.", call. = FALSE)
+  if (!is.finite(measured_variables) || measured_variables < latent_variables) {
+    stop("Measured variables must be at least the number of latent variables.", call. = FALSE)
+  }
+  if (!is.finite(structural_paths) || structural_paths < 0) stop("Structural paths must be 0 or greater.", call. = FALSE)
+
+  observed_moments <- measured_variables * (measured_variables + 1) / 2
+  free_loadings <- measured_variables - latent_variables
+  residual_variances <- measured_variables
+  latent_variances <- latent_variables
+  free_parameters <- free_loadings + residual_variances + latent_variances + structural_paths
+  df <- observed_moments - free_parameters
+  if (!is.finite(df) || df < 1) {
+    stop("Estimated model degrees of freedom must be at least 1. Add measured variables or simplify the model.", call. = FALSE)
+  }
+  list(
+    df = as.integer(round(df)),
+    observed_moments = as.integer(round(observed_moments)),
+    free_parameters = as.integer(round(free_parameters)),
+    latent_variables = latent_variables,
+    measured_variables = measured_variables,
+    structural_paths = structural_paths
+  )
+}
+
 sample_size_sem <- function(
   target,
   test = "close_fit",
   df,
+  df_source = "direct",
   null_rmsea,
   alternative_rmsea,
   parameter_type = "path",
@@ -3939,6 +4097,12 @@ sample_size_sem <- function(
     return(list(power = power_for_n(n), design_label = design_label, method_note = method_note))
   }
 
+  estimated_df <- NULL
+  if (identical(df_source, "structure")) {
+    estimated_df <- sample_size_sem_estimated_df(latent_variables, measured_variables, structural_paths)
+    df <- estimated_df$df
+  }
+
   df <- as.integer(df)
   if (!is.finite(df) || df < 1) stop("Model degrees of freedom must be at least 1.", call. = FALSE)
   sample_size_validate_probability(null_rmsea, "Null RMSEA")
@@ -3951,7 +4115,11 @@ sample_size_sem <- function(
   }
 
   design_label <- if (identical(test, "not_close_fit")) "SEM/CFA RMSEA not-close-fit test" else "SEM/CFA RMSEA close-fit test"
-  method_note <- "MacCallum-Browne-Sugawara RMSEA power analysis using the noncentral chi-square distribution."
+  method_note <- if (identical(df_source, "structure")) {
+    "MacCallum-Browne-Sugawara RMSEA power analysis using estimated model df from observed variables, latent variables, and structural paths."
+  } else {
+    "MacCallum-Browne-Sugawara RMSEA power analysis using the noncentral chi-square distribution."
+  }
   power_for_n <- function(total_n) {
     lambda_null <- max(0, (total_n - 1) * df * null_rmsea^2)
     lambda_alt <- max(0, (total_n - 1) * df * alternative_rmsea^2)
@@ -3967,7 +4135,7 @@ sample_size_sem <- function(
   if (identical(target, "sample_size")) {
     sample_size_validate_probability(power, "Power")
     total <- sample_size_find_discrete_n(power_for_n, max(5, df + 2), power)
-    return(list(
+    return(c(list(
       design_label = design_label,
       total = total,
       total_label = "Participants",
@@ -3976,11 +4144,11 @@ sample_size_sem <- function(
       dropout_rate = dropout,
       estimated_power = power_for_n(total),
       method_note = method_note
-    ))
+    ), estimated_df))
   }
 
   sample_size_validate_positive(n, "Sample size")
-  list(power = power_for_n(n), design_label = design_label, method_note = method_note)
+  c(list(power = power_for_n(n), design_label = design_label, method_note = method_note), estimated_df)
 }
 
 sample_size_chisquare <- function(target, df, effect_size, alpha, power = NULL, n = NULL, dropout = 0) {

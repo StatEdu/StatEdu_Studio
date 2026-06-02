@@ -8,6 +8,7 @@ if (!file.exists(file.path(repo_root, "R", "app_bootstrap.R"))) {
 
 source(file.path(repo_root, "R", "app_bootstrap.R"))
 source_app_modules(dir = file.path(repo_root, "R"))
+suppressPackageStartupMessages(library(shiny))
 
 expect_true <- function(value, label) {
   if (!isTRUE(value)) stop(label, call. = FALSE)
@@ -66,6 +67,7 @@ expect_true(chisquare_power >= 0.8 && chisquare_power_previous < 0.8, "Expected 
 survival <- sample_size_survival("sample_size", hazard_ratio = 0.7, event_probability = 0.5, alpha = 0.05, power = 0.8, ratio = 1)
 survival_power <- sample_size_survival("power", hazard_ratio = 0.7, event_probability = 0.5, alpha = 0.05, n = survival$total, ratio = 1)$power
 expect_true(survival$total >= survival$required_events && survival_power >= 0.8, "Expected survival total N to cover required events and target power")
+expect_true(near(survival$schoenfeld_signal, abs(log(0.7)) * sqrt(0.5 * 0.25)), "Expected survival sample size result to report Schoenfeld planning signal")
 
 dropout <- sample_size_ttest("sample_size", "two_sample", 0.5, 0.05, power = 0.8, dropout = 0.1)
 expect_true(dropout$adjusted_group1 == ceiling(dropout$group1 / 0.9), "Expected dropout adjustment to round each group upward")
@@ -122,11 +124,15 @@ correlation_from_r2 <- sample_size_effect_size_correlation("r_from_r2", r_square
 expect_true(near(correlation_from_r2$correlation_r, 0.3), "Expected r from R-squared to equal sqrt(R-squared)")
 correlation_q <- sample_size_effect_size_correlation("cohens_q", r1 = 0.5, r2 = 0.3)
 expect_true(near(correlation_q$cohens_q, atanh(0.5) - atanh(0.3)), "Expected Cohen's q to equal Fisher-z difference")
+correlation_point_biserial <- sample_size_effect_size_correlation("point_biserial", r = 0.25)
+expect_true(near(correlation_point_biserial$effect_size_d, 2 * 0.25 / sqrt(1 - 0.25^2)), "Expected point-biserial r to convert to Cohen's d")
 
 anova_f <- sample_size_effect_size_anova("f_from_eta2", eta_squared = 0.06)
 expect_true(near(anova_f$cohen_f, sqrt(0.06 / 0.94)), "Expected Cohen's f to convert from eta squared")
 anova_partial_eta <- sample_size_effect_size_anova("partial_eta_from_f", f_value = 4.5, df_effect = 2, df_error = 87)
 expect_true(near(anova_partial_eta$partial_eta_squared, 4.5 * 2 / (4.5 * 2 + 87)), "Expected partial eta squared to convert from F")
+anova_partial_eta_n <- sample_size_effect_size_anova("partial_eta_from_f", f_value = 4.5, groups = 3, total_n = 90)
+expect_true(near(anova_partial_eta_n$partial_eta_squared, anova_partial_eta$partial_eta_squared), "Expected ANOVA F conversion to derive df from groups and total N")
 anova_omega <- sample_size_effect_size_anova("omega_from_f", f_value = 4.5, df_effect = 2, df_error = 87)
 expect_true(is.finite(anova_omega$omega_squared) && anova_omega$omega_squared >= 0, "Expected partial omega squared from F to be finite and nonnegative")
 
@@ -134,8 +140,12 @@ ancova_adjusted <- sample_size_effect_size_ancova("ancova_adjusted_f", effect_si
 expect_true(near(ancova_adjusted$cohen_f, 0.25 / sqrt(0.70)), "Expected ANCOVA adjusted f to apply covariate R-squared correction")
 ancova_partial_eta <- sample_size_effect_size_ancova("ancova_partial_eta_from_f", f_value = 4.5, df_effect = 2, df_error = 87)
 expect_true(near(ancova_partial_eta$partial_eta_squared, 4.5 * 2 / (4.5 * 2 + 87)), "Expected ANCOVA partial eta squared to convert from F")
+ancova_partial_eta_n <- sample_size_effect_size_ancova("ancova_partial_eta_from_f", f_value = 4.5, groups = 3, total_n = 90)
+expect_true(near(ancova_partial_eta_n$partial_eta_squared, ancova_partial_eta$partial_eta_squared), "Expected ANCOVA F conversion to derive df from groups and total N")
 manova_pillai <- sample_size_effect_size_ancova("manova_pillai", pillai_trace = 0.10)
 expect_true(near(manova_pillai$f_squared, 0.10 / 0.90), "Expected MANOVA Pillai trace to convert to f-squared")
+manova_wilks <- sample_size_effect_size_ancova("manova_wilks", wilks_lambda = 0.90, dependent_variables = 2, groups = 3)
+expect_true(near(manova_wilks$f_squared, 0.90^(-1 / 2) - 1), "Expected MANOVA Wilks' lambda to convert to f-squared")
 
 nonparam_u <- sample_size_effect_size_nonparametric("rank_biserial_from_u", u = 700, n1 = 50, n2 = 50)
 expect_true(near(nonparam_u$rank_biserial, 2 * 700 / (50 * 50) - 1), "Expected rank-biserial r from U")
@@ -159,13 +169,27 @@ regression_hier <- sample_size_effect_size_regression("hierarchical_f2", full_r_
 expect_true(near(regression_hier$f_squared, 0.15 / 0.75), "Expected hierarchical regression f-squared to use incremental R-squared")
 regression_logistic <- sample_size_effect_size_regression("logistic_or", odds_ratio = 1.8)
 expect_true(near(regression_logistic$effect_size_d, log(1.8) * sqrt(3) / pi), "Expected logistic OR conversion to approximate Cohen's d")
-regression_mediation <- sample_size_effect_size_regression("mediation_ab", a_path = 0.3, b_path = 0.2)
-expect_true(near(regression_mediation$indirect_effect, 0.06), "Expected mediation indirect effect to equal a times b")
+regression_mediation_sample <- sample_size_regression("sample_size", design = "mediation", a_path = 0.3, b_path = 0.3, covariates = 2, alpha = 0.05, power = 0.8, mediation_method = "sobel")
+expect_true(near(regression_mediation_sample$indirect_effect, 0.09), "Expected mediation sample-size result to report indirect effect a*b")
+expect_true(regression_mediation_sample$covariates == 2, "Expected mediation sample-size result to report covariate count")
+regression_mediation_ui <- htmltools::renderTags(sample_size_inputs_ui("regression", list(
+  sample_size_regression_target = "sample_size",
+  sample_size_regression_design = "mediation"
+)))$html
+expect_true(grepl("Path a beta: predictor -&gt; mediator", regression_mediation_ui, fixed = TRUE), "Expected mediation UI to explain path a beta")
+expect_true(grepl("Path b beta: mediator -&gt; outcome", regression_mediation_ui, fixed = TRUE), "Expected mediation UI to explain path b beta")
+expect_true(grepl("Number of covariates", regression_mediation_ui, fixed = TRUE), "Expected mediation UI to label covariate count")
 
-gee_continuous <- sample_size_effect_size_gee("continuous_means", mean1 = 0.5, mean2 = 0, sd = 1, time_points = 3, rho = 0.3)
+gee_continuous <- sample_size_effect_size_gee("continuous_means", mean1 = 0.5, mean2 = 0, sd = 1)
 expect_true(near(gee_continuous$effect_size_d, 0.5), "Expected GEE continuous d to equal standardized mean difference")
-expect_true(near(gee_continuous$design_effect, 1 + (3 - 1) * 0.3), "Expected GEE exchangeable design effect")
-gee_binary <- sample_size_effect_size_gee("binary_props", p1 = 0.5, p2 = 0.65, time_points = 3, rho = 0.3)
+expect_true(is.null(gee_continuous$design_effect), "Expected GEE effect-size calculator to omit planning design effect")
+gee_change <- sample_size_effect_size_gee("continuous_change_means", pre_mean1 = 0, post_mean1 = 0.5, pre_mean2 = 0.1, post_mean2 = 0.2, sd = 1)
+expect_true(near(gee_change$effect_size_d, 0.4), "Expected GEE change-score contrast to convert to Cohen's d")
+gee_parameter <- sample_size_effect_size_gee("continuous_parameter_b", coefficient = 0.5, sd = 2)
+expect_true(near(gee_parameter$effect_size_d, 0.25), "Expected GEE parameter estimate B to convert to Cohen's d")
+gee_pooled_sd <- sample_size_pooled_sd(n1 = 50, sd1 = 1, n2 = 50, sd2 = 2)
+expect_true(near(gee_pooled_sd, sqrt(((50 - 1) * 1^2 + (50 - 1) * 2^2) / 98)), "Expected pooled SD from group n and SD")
+gee_binary <- sample_size_effect_size_gee("binary_props", p1 = 0.5, p2 = 0.65)
 expect_true(
   near(gee_binary$cohens_h, 2 * asin(sqrt(0.5)) - 2 * asin(sqrt(0.65))),
   "Expected GEE binary Cohen's h from proportions"
@@ -175,28 +199,29 @@ lmm_simple <- sample_size_effect_size_lmm("simple_fixed", effect_size = 0.3, tim
 expect_true(near(lmm_simple$design_effect, 1 + (3 - 1) * 0.3), "Expected LMM simple design effect from ICC")
 lmm_glimmpse <- sample_size_effect_size_lmm("glimmpse_vectors", lmm_design = "two_group_repeated", group1_means = "0, 0.2, 0.4", group2_means = "0, 0.1, 0.8", residual_sd = 1, rho = 0.5)
 expect_true(near(lmm_glimmpse$effect_size_d, 0.4), "Expected LMM GLIMMPSE-style group-by-time effect from change contrast")
+lmm_unstructured_corr <- sample_size_lmm_correlation_matrix(3, NA, "unstructured", "0.5, 0.3, 0.5")
+expect_true(near(lmm_unstructured_corr[1, 2], 0.5) && near(lmm_unstructured_corr[1, 3], 0.3) && near(lmm_unstructured_corr[2, 3], 0.5), "Expected LMM unstructured correlations to fill the upper-triangle pairs")
+lmm_unstructured <- sample_size_effect_size_lmm("glimmpse_vectors", lmm_design = "two_group_repeated", group1_means = "0, 0.2, 0.4", group2_means = "0, 0.1, 0.8", residual_sd = 1, structure = "unstructured", correlations = "0.5, 0.3, 0.5")
+expect_true(near(lmm_unstructured$design_effect, 1 + 2 * mean(c(0.5, 0.3, 0.5))), "Expected LMM unstructured design effect to use mean pairwise correlation")
 
 survival_hr <- sample_size_effect_size_survival("hazard_ratio", hazard_ratio = 0.7)
 expect_true(near(survival_hr$log_hazard_ratio, log(0.7)), "Expected survival log hazard ratio to equal log(HR)")
-survival_signal <- sample_size_effect_size_survival("schoenfeld_signal", hazard_ratio = 0.7, event_probability = 0.6, ratio = 1)
-expect_true(near(survival_signal$schoenfeld_signal, abs(log(0.7)) * sqrt(0.6 * 0.25)), "Expected Schoenfeld planning signal")
 
 equivalence_mean <- sample_size_effect_size_equivalence("mean", "equivalence", true_difference = 0.1, margin = 0.5, sd = 1)
 expect_true(near(equivalence_mean$standardized_distance, 0.4), "Expected equivalence standardized distance from margin")
 equivalence_prop <- sample_size_effect_size_equivalence("proportion", "noninferiority", margin = 0.1, p1 = 0.8, p2 = 0.78)
 expect_true(near(equivalence_prop$observed_effect, 0.02), "Expected equivalence proportion effect to equal p1 - p2")
 
-diagnostic_sens <- sample_size_effect_size_diagnostic("sensitivity", sensitivity = 0.85, reference = 0.70)
-expect_true(near(diagnostic_sens$diagnostic_difference, 0.15), "Expected sensitivity effect to equal observed minus reference")
 diagnostic_auc <- sample_size_effect_size_diagnostic("auc", auc = 0.75, null_auc = 0.50)
+expect_true(near(diagnostic_auc$primary_effect_size, 0.75), "Expected diagnostic effect-size primary value to be AUC")
 expect_true(near(diagnostic_auc$auc_cohen_d, sqrt(2) * stats::qnorm(0.75)), "Expected AUC to Cohen's d conversion")
 
-rates_poisson <- sample_size_effect_size_rates("two_rate_ratio", rate1 = 0.3, rate2 = 0.2)
-expect_true(near(rates_poisson$rate_ratio, 1.5), "Expected rate ratio to equal rate1 / rate2")
-rates_single <- sample_size_effect_size_rates("single_rate", rate1 = 0.3, reference_rate = 0.2)
-expect_true(near(rates_single$rate_difference, 0.1), "Expected single rate difference from reference")
-rates_nb <- sample_size_effect_size_rates("negative_binomial", rate1 = 0.3, rate2 = 0.2, dispersion = 0.5)
-expect_true(is.finite(rates_nb$negative_binomial_standardized_difference), "Expected negative binomial standardized difference to be finite")
+rates_poisson <- sample_size_effect_size_rates("poisson_irr", ratio = 1.5)
+expect_true(near(rates_poisson$incidence_rate_ratio, 1.5) && near(rates_poisson$log_incidence_rate_ratio, log(1.5)), "Expected Poisson IRR to convert to log IRR")
+rates_nb <- sample_size_effect_size_rates("negative_binomial_irr", input_scale = "log_ratio", log_ratio = log(1.5))
+expect_true(near(rates_nb$incidence_rate_ratio, 1.5), "Expected negative binomial log IRR to convert to IRR")
+rates_gamma <- sample_size_effect_size_rates("gamma_mean_ratio", ratio = 1.25)
+expect_true(near(rates_gamma$log_mean_ratio, log(1.25)), "Expected gamma mean ratio to convert to log mean ratio")
 
 cluster_cont <- sample_size_effect_size_cluster("parallel_continuous", effect_size = 0.5, cluster_size = 20, icc = 0.05)
 expect_true(near(cluster_cont$design_effect, 1 + (20 - 1) * 0.05), "Expected cluster design effect")
@@ -218,6 +243,11 @@ reliability_icc <- sample_size_effect_size_reliability("icc", reliability = 0.8,
 expect_true(near(reliability_icc$transformed_difference, atanh(0.8) - atanh(0.7)), "Expected ICC Fisher z difference")
 reliability_ba <- sample_size_effect_size_reliability("bland_altman", sd_difference = 1)
 expect_true(near(reliability_ba$loa_total_width, 3.92), "Expected Bland-Altman LoA total width")
+reliability_kappa <- sample_size_effect_size_reliability("kappa", reliability = 0.8, categories = 2)
+expect_true(near(reliability_kappa$primary_effect_size, 0.8), "Expected Cohen's kappa effect to report kappa directly")
+reliability_alpha_sample <- sample_size_reliability("sample_size", design = "alpha", reliability = 0.8, confidence_level = 0.95, half_width = 0.10, items = 20)
+expect_true(reliability_alpha_sample$total >= 21, "Expected Cronbach alpha sample size to be at least items + 1")
+expect_true(reliability_alpha_sample$minimum_subjects == 21, "Expected Cronbach alpha minimum-subjects rule to equal items + 1")
 
 sem_rmsea <- sample_size_effect_size_sem("rmsea", df = 50, null_rmsea = 0.05, alternative_rmsea = 0.08)
 expect_true(near(sem_rmsea$ncp_difference_per_n, 50 * (0.08^2 - 0.05^2)), "Expected SEM RMSEA NCP difference")
@@ -225,6 +255,61 @@ sem_parameter <- sample_size_effect_size_sem("parameter", parameter_type = "path
 expect_true(near(sem_parameter$fisher_z, atanh(0.3)), "Expected SEM parameter Fisher z")
 sem_complexity <- sample_size_effect_size_sem("complexity", latent_variables = 3, measured_variables = 12, structural_paths = 3, free_parameters = 30, expected_loading = 0.5, expected_path = 0.3)
 expect_true(near(sem_complexity$structure_burden_per_parameter, (10 * 12 + 20 * 3 + 15 * 3) / 30), "Expected SEM burden per free parameter")
+sem_estimated_df <- sample_size_sem_estimated_df(latent_variables = 3, measured_variables = 12, structural_paths = 3)
+expect_true(sem_estimated_df$df == 51, "Expected SEM df estimate from latent, measured, and path counts")
+sem_direct_ui <- htmltools::renderTags(sample_size_inputs_ui("sem", list(
+  sample_size_sem_target = "sample_size",
+  sample_size_sem_test = "close_fit",
+  sample_size_sem_df_source = "direct"
+)))$html
+expect_true(grepl("Model degrees of freedom", sem_direct_ui, fixed = TRUE), "Expected SEM direct df input to show model df field")
+expect_true(!grepl("Latent variables", sem_direct_ui, fixed = TRUE), "Expected SEM direct df input to hide structure-count fields")
+sem_structure_ui <- htmltools::renderTags(sample_size_inputs_ui("sem", list(
+  sample_size_sem_target = "sample_size",
+  sample_size_sem_test = "close_fit",
+  sample_size_sem_df_source = "structure"
+)))$html
+expect_true(grepl("Latent variables", sem_structure_ui, fixed = TRUE), "Expected SEM structure df input to show latent variable field")
+expect_true(!grepl("Model degrees of freedom", sem_structure_ui, fixed = TRUE), "Expected SEM structure df input to hide direct df field")
+sem_not_close_ui <- htmltools::renderTags(sample_size_inputs_ui("sem", list(
+  sample_size_sem_target = "sample_size",
+  sample_size_sem_test = "not_close_fit",
+  sample_size_sem_df_source = "structure"
+)))$html
+expect_true(grepl('id="sample_size_sem_null_rmsea"', sem_not_close_ui, fixed = TRUE) && grepl('value="0.08"', sem_not_close_ui, fixed = TRUE), "Expected SEM not-close-fit default null RMSEA to be 0.08")
+expect_true(grepl('id="sample_size_sem_alternative_rmsea"', sem_not_close_ui, fixed = TRUE) && grepl('value="0.05"', sem_not_close_ui, fixed = TRUE), "Expected SEM not-close-fit default alternative RMSEA to be 0.05")
+sem_result_html <- htmltools::renderTags(sample_size_results_ui(sample_size_sem(
+  target = "sample_size",
+  test = "close_fit",
+  df_source = "structure",
+  latent_variables = 4,
+  measured_variables = 16,
+  structural_paths = 6,
+  null_rmsea = 0.05,
+  alternative_rmsea = 0.08,
+  alpha = 0.05,
+  power = 0.95
+)))$html
+expect_true(grepl("n (Participants)", sem_result_html, fixed = TRUE), "Expected final SEM sample size row to be labeled with n")
+expect_true(grepl("sample-size-primary-effect", sem_result_html, fixed = TRUE), "Expected final SEM sample size row to be emphasized")
+sem_not_close_result <- sample_size_sem(
+  target = "sample_size",
+  test = "not_close_fit",
+  df_source = "structure",
+  latent_variables = 3,
+  measured_variables = 12,
+  structural_paths = 3,
+  null_rmsea = 0.08,
+  alternative_rmsea = 0.05,
+  alpha = 0.05,
+  power = 0.95
+)
+expect_true(sem_not_close_result$total > 0, "Expected SEM not-close-fit default values to calculate a positive sample size")
+ttest_default_power_ui <- htmltools::renderTags(sample_size_inputs_ui("ttest", list(sample_size_ttest_target = "sample_size")))$html
+expect_true(grepl('value="0.95"', ttest_default_power_ui, fixed = TRUE), "Expected sample-size power default to be 0.95")
+reliability_panel_html <- htmltools::renderTags(sample_size_analysis_panel("reliability"))$html
+expect_true(!grepl(">Power<", reliability_panel_html, fixed = TRUE), "Expected Reliability / Agreement sample-size panel to hide unsupported Power target")
+expect_true(grepl('id="sample_size_reliability_target"', reliability_panel_html, fixed = TRUE), "Expected Reliability / Agreement panel to keep a hidden sample-size target")
 
 message("Checking effect-size UI calculation wrappers...")
 effect_input <- function(values) {
@@ -286,9 +371,7 @@ effect_wrapper_cases <- list(
     effect_size_gee_mean1 = "0.50",
     effect_size_gee_mean2 = "0",
     effect_size_gee_sd = "1",
-    effect_size_gee_time_points = "3",
-    effect_size_gee_rho = "0.30",
-    effect_size_gee_correlation_structure = "exchangeable"
+    effect_size_gee_sd_mode = "direct"
   ))),
   lmm = function() effect_size_lmm_calculate(effect_input(list(
     effect_size_lmm_design = "simple_fixed",
@@ -309,14 +392,14 @@ effect_wrapper_cases <- list(
     effect_size_equivalence_sd = "1"
   ))),
   diagnostic = function() effect_size_diagnostic_calculate(effect_input(list(
-    effect_size_diagnostic_design = "sensitivity",
-    effect_size_diagnostic_sensitivity = "0.85",
-    effect_size_diagnostic_reference = "0.70"
+    effect_size_diagnostic_design = "auc",
+    effect_size_diagnostic_auc = "0.75",
+    effect_size_diagnostic_null_auc = "0.50"
   ))),
   rates = function() effect_size_rates_calculate(effect_input(list(
-    effect_size_rates_design = "two_rate_ratio",
-    effect_size_rates_rate1 = "0.30",
-    effect_size_rates_rate2 = "0.20"
+    effect_size_rates_design = "poisson_irr",
+    effect_size_rates_input_scale = "ratio",
+    effect_size_rates_ratio = "1.50"
   ))),
   cluster = function() effect_size_cluster_calculate(effect_input(list(
     effect_size_cluster_design = "parallel_continuous",
@@ -331,16 +414,14 @@ effect_wrapper_cases <- list(
     effect_size_precision_sd = "1"
   ))),
   reliability = function() effect_size_reliability_calculate(effect_input(list(
-    effect_size_reliability_design = "alpha",
+    effect_size_reliability_design = "kappa",
     effect_size_reliability_value = "0.80",
-    effect_size_reliability_reference = "0.70",
-    effect_size_reliability_items = "5"
+    effect_size_reliability_categories = "2"
   ))),
   sem = function() effect_size_sem_calculate(effect_input(list(
-    effect_size_sem_design = "rmsea",
-    effect_size_sem_df = "50",
-    effect_size_sem_null_rmsea = "0.05",
-    effect_size_sem_alternative_rmsea = "0.08"
+    effect_size_sem_design = "parameter",
+    effect_size_sem_parameter_type = "path",
+    effect_size_sem_parameter = "0.30"
   )))
 )
 
@@ -359,7 +440,7 @@ base_input <- function(method, target = "sample_size") {
   input[[paste0("sample_size_", method, "_alternative")]] <- "two.sided"
   input[[paste0("sample_size_", method, "_ratio")]] <- "1"
   if (identical(target, "sample_size")) {
-    input[[paste0("sample_size_", method, "_power")]] <- "0.80"
+    input[[paste0("sample_size_", method, "_power")]] <- "0.95"
     input[[paste0("sample_size_", method, "_dropout")]] <- "0"
   } else {
     input[[paste0("sample_size_", method, "_n")]] <- "100"
@@ -391,7 +472,7 @@ cases <- list(
   cluster = merge_input(base_input("cluster"), list(sample_size_cluster_design = "parallel", sample_size_cluster_outcome = "continuous", sample_size_cluster_effect = "0.50", sample_size_cluster_p1 = "0.50", sample_size_cluster_p2 = "0.65", sample_size_cluster_size = "20", sample_size_cluster_icc = "0.05", sample_size_cluster_periods = "4", sample_size_cluster_simulations = "20")),
   precision = merge_input(base_input("precision"), list(sample_size_precision_parameter = "mean", sample_size_precision_confidence = "0.95", sample_size_precision_half_width = "0.10", sample_size_precision_sd = "1", sample_size_precision_proportion = "0.50", sample_size_precision_r = "0.30")),
   reliability = merge_input(base_input("reliability"), list(sample_size_reliability_design = "alpha", sample_size_reliability_value = "0.80", sample_size_reliability_confidence = "0.95", sample_size_reliability_half_width = "0.10", sample_size_reliability_items = "5", sample_size_reliability_categories = "2")),
-  sem = merge_input(base_input("sem"), list(sample_size_sem_test = "close_fit", sample_size_sem_df = "50", sample_size_sem_null_rmsea = "0.05", sample_size_sem_alternative_rmsea = "0.08"))
+  sem = merge_input(base_input("sem"), list(sample_size_sem_test = "close_fit", sample_size_sem_df_source = "structure", sample_size_sem_latent_variables = "3", sample_size_sem_measured_variables = "12", sample_size_sem_structural_paths = "3", sample_size_sem_null_rmsea = "0.05", sample_size_sem_alternative_rmsea = "0.08"))
 )
 
 for (method in names(cases)) {
