@@ -108,7 +108,7 @@ app_head_tags <- function(version) {
       id = "MathJax-script",
       defer = "defer",
       onload = "if (window.easyflowMathJaxReady) window.easyflowMathJaxReady();",
-      src = paste0("mathjax/tex-chtml.js?v=", version, "-local")
+      src = paste0("mathjax/tex-svg.js?v=", version, "-local")
     ),
     app_script_link(version)
   )
