@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.9.31 - 2026-06-02
+
+### Changed
+
+- Added Result history save/open files with a dedicated `.efs-result` type marker.
+- Separated saved settings files into `.efs-settings` with type validation.
+- Changed Add result to preserve the currently rendered analysis result snapshot instead of rebuilding the output.
+- Standardized result table widths and landscape export rules across analysis output, Result history, HTML, PDF, and Word.
+- Refined Model overview and warning table layouts for correlation, paired tests, factor analysis, reliability, and logistic regression.
+- Removed the Word export cover page so saved Result documents start directly with methods and results.
+
+
 ## v0.9.30 - 2026-06-02
 
 ### Changed

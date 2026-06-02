@@ -8,9 +8,9 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.30`
+Current development version: `0.9.31`
 
-Version 0.9.30 refines the standalone Sample Size, Power, and Effect Size workflows with stoppable background calculations, explicit final `n` rows, LMM unstructured correlations, SEM/CFA model-count df estimation, and expanded Korean guide/methodology notes.
+Version 0.9.31 refines Result history snapshots, save/open file handling, Word/PDF/HTML table widths, landscape export rules, and Model overview layout behavior.
 
 ## Current Scope
 
@@ -74,7 +74,7 @@ The app will open at `127.0.0.1` in the default browser. The launcher searches f
 
 Version 0.9.10 includes validation scripts for calculators, data import, data editing, cross-tabulation, correlation auto-selection, factor analysis / PCA, logistic analysis and UI, paired guard handling, p-value formatting, regression coefficient output, and t-test / ANOVA guard handling.
 
-Version 0.9.30 also includes comparison outputs for sample-size and effect-size calculators. Effect-size comparisons use `effectsize` as a validation reference where its definitions match the app calculation; `effectsize` is not required at runtime.
+Version 0.9.31 also includes comparison outputs for sample-size and effect-size calculators. Effect-size comparisons use `effectsize` as a validation reference where its definitions match the app calculation; `effectsize` is not required at runtime.
 
 Run validation scripts from the repository root with Rscript, for example:
 
@@ -86,7 +86,7 @@ Run validation scripts from the repository root with Rscript, for example:
 
 If you use **EasyFlow Statistics** in your research, please cite:
 
-LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.30) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
+LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.31) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
 
 ## Development Model
 
