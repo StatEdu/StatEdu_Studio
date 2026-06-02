@@ -293,6 +293,70 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 계산 결과는 연구계획서 작성 단계의 정량적 근거를 제공하기 위한 값이다. 실제 연구에서는 모집 가능성, 측정 신뢰도, 결측 구조, 군 배정 제약, 분석에서 사용할 공변량, 중도탈락, 다중비교 계획을 함께 검토한다. 특히 작은 표본, 희귀 사건, 매우 큰 효과크기, 매우 작은 효과크기에서는 근사식이 불안정할 수 있으므로 민감도 분석을 함께 보고하는 것이 좋다.
 
+### 18.0 표본 수 계산 검증 비교 요약
+
+아래 표는 대표 입력 조건에서 앱의 표본 수 결과를 G*Power-equivalent 공식, 공인 R 패키지, 또는 문헌 기준식과 비교한 것이다. 비교는 최종 보고에 사용하는 올림값 기준으로 판단했다. `match`는 최종 올림값이 일치한다는 뜻이고, `near`는 같은 기준식 계열에서 1명 또는 1 cluster 수준의 작은 차이가 있는 경우다. `not directly comparable`은 현재 설치·검토한 R 패키지 중 앱의 계산 목표와 1:1로 대응되는 기준 함수를 확인하지 못한 경우다.
+
+| 구분 | 방법 | 비교 기준 | 단위 | 앱 결과 | 기준 올림값 | 차이 | 판정 |
+|---|---|---|---|---:|---:|---:|---|
+| G*Power 비교 가능 | t-test | G*Power-equivalent | per group | 64 | 64 | 0 | match |
+| G*Power 비교 가능 | Paired t-test | G*Power-equivalent | pairs | 34 | 34 | 0 | match |
+| G*Power 비교 가능 | One-sample t-test | G*Power-equivalent | participants | 34 | 34 | 0 | match |
+| G*Power 비교 가능 | ANOVA | G*Power-equivalent | total N | 159 | 159 | 0 | match |
+| G*Power 비교 가능 | Chi-square | G*Power-equivalent | total N | 122 | 122 | 0 | match |
+| G*Power 비교 가능 | Correlation | G*Power-equivalent | participants | 85 | 85 | 0 | match |
+| G*Power 비교 가능 | Linear regression | G*Power-equivalent | total N | 134 | 134 | 0 | match |
+| G*Power 비교 가능 | Two proportions | G*Power-equivalent | per group | 170 | 170 | 0 | match |
+| G*Power 비교 가능 | One proportion | G*Power-equivalent | participants | 80 | 80 | 0 | match |
+| G*Power 비교 가능 | ANCOVA | G*Power-equivalent noncentral F | total N | 90 | 90 | 0 | match |
+| G*Power 외 | GEE | repeated-measures design effect | participants per group | 103 | 103 | 0 | match |
+| G*Power 외 | LMM | `longpower::diggle.linear.power` | participants per group | 146 | 146 | 0 | match |
+| G*Power 외 | Survival / Cox | Schoenfeld event formula | total participants | 618 | 618 | 0 | match |
+| G*Power 외 | Equivalence / TOST | `TOSTER::power_t_TOST` | participants per group | 70 | 70 | 0 | match |
+| G*Power 외 | Diagnostic accuracy | `epiR::epi.ssdxsesp` | total participants | 1230 | 1230 | 0 | match |
+| G*Power 외 | ROC AUC | direct package comparator not available | cases | 28 | NA | NA | not directly comparable |
+| G*Power 외 | Count / rates | Wald two-rate formula | person-time per group | 79 | 79 | 0 | match |
+| G*Power 외 | Cluster trial | `WebPower::wp.crt2arm` | clusters total | 16 | 16 | 0 | match |
+| G*Power 외 | Precision / CI | normal CI precision formula | participants | 97 | 97 | 0 | match |
+| G*Power 외 | Reliability / agreement | direct package comparator not available | subjects | 36 | NA | NA | not directly comparable |
+| G*Power 외 | SEM / CFA | `WebPower::wp.sem.rmsea` | participants | 214 | 214 | 0 | match |
+
+요약하면 G*Power와 직접 비교 가능한 10개 항목은 모두 최종 올림값 기준으로 일치했다. G*Power가 직접 제공하지 않는 항목 중 GEE, LMM, Survival/Cox, mean equivalence/TOST, diagnostic accuracy, count/rate, cluster trial, precision/CI, SEM/CFA도 앱의 최종 올림 규칙을 적용하면 공인 패키지 또는 기준식과 일치했다. ROC AUC와 reliability/agreement는 현재 앱의 계산 목표와 1:1로 맞는 설치 패키지 기준 함수를 확인하지 못해 문헌식 기반 계산으로 유지한다.
+
+### 18.0.1 효과크기 계산 검증 비교 요약
+
+아래 표는 대표 입력 조건에서 앱의 효과크기 결과를 `effectsize` 패키지 또는 동일 정의의 표준 공식과 비교한 것이다. 효과크기는 표본 수처럼 올림 규칙이 없으므로 원값 차이를 기준으로 판단했다. 같은 효과크기 메뉴 안에서 원척도와 변환척도를 함께 제공하는 경우에는 `비교 효과크기` 열에 비교 대상을 명시했다.
+
+| 방법 | 비교 효과크기 | 조건 | 앱 값 | 기준 값 | 차이 | 판정 |
+|---|---|---|---:|---:|---:|---|
+| t-test | Cohen's d | Independent t, equal n: t=2.5, df=78 | 0.559017 | 0.559017 | 0 | match |
+| Proportion | Cohen's h | p1=.65, p2=.50 | 0.304693 | 0.304693 | 0 | match |
+| Chi-square | Cramer's V | Chi-square=12.5, N=200, 3x4 table | 0.176777 | 0.176777 | 0 | match |
+| Correlation | Pearson r | t=2.5, df=78 | 0.272367 | 0.272367 | 0 | match |
+| ANOVA | Partial eta squared | F=5.2, df_effect=2, df_error=87 | 0.106776 | 0.106776 | 0 | match |
+| ANCOVA | Adjusted Cohen's f | unadjusted f=.25, covariate R2=.30 | 0.298807 | 0.298807 | 0 | match |
+| Nonparametric | Rank-biserial r | Mann-Whitney U=1200, n1=40, n2=45 | 0.333333 | 0.333333 | 0 | match |
+| McNemar | Matched-pair odds ratio | Discordant counts b=18, c=10 | 1.800000 | 1.800000 | 0 | match |
+| Regression | Cohen's f-squared | Multiple regression R2=.20 | 0.250000 | 0.250000 | 0 | match |
+| GEE | Cohen's h | Binary marginal proportions p1=.65, p2=.50 | 0.304693 | 0.304693 | 0 | match |
+| LMM | Standardized fixed effect | simple fixed effect d=.30, m=3, ICC=.30 | 0.300000 | 0.300000 | 0 | match |
+| LMM | Repeated-measures planning effect | simple fixed effect d=.30, m=3, ICC=.30 | 0.410792 | 0.410792 | 0 | match |
+| Survival / Cox | Hazard ratio | HR=.70 | 0.700000 | 0.700000 | 0 | match |
+| Survival / Cox | log hazard ratio | HR=.70 | -0.356675 | -0.356675 | 0 | match |
+| Equivalence / NI | Standardized distance to margin | Mean equivalence: difference=.05, margin=.20, SD=1 | 0.150000 | 0.150000 | 0 | match |
+| ROC AUC | AUC | AUC=.70 vs null=.50 | 0.700000 | 0.700000 | 0 | match |
+| ROC AUC | Approximate Cohen's d | AUC=.70 vs null=.50 | 0.741614 | 0.741614 | 0 | match |
+| Count / Rate Regression | Incidence rate ratio | IRR=1.50 | 1.500000 | 1.500000 | 0 | match |
+| Count / Rate Regression | log incidence rate ratio | IRR=1.50 | 0.405465 | 0.405465 | 0 | match |
+| Cluster Trial | Planning effect size | parallel continuous: d=.50, m=20, ICC=.05 | 0.358057 | 0.358057 | 0 | match |
+| Precision / CI | Standardized half-width | Mean estimate=10, half-width=1.5, SD=6 | 0.250000 | 0.250000 | 0 | match |
+| Reliability / Agreement | Alpha difference | alpha=.80 vs reference=.70, items=5 | 0.100000 | 0.100000 | 0 | match |
+| Reliability / Agreement | Average inter-item r | alpha=.80 vs reference=.70, items=5 | 0.444444 | 0.444444 | 0 | match |
+| SEM / CFA | RMSEA difference | df=20, RMSEA0=.05, RMSEA1=.08 | 0.030000 | 0.030000 | 0 | match |
+| SEM / CFA | NCP difference per N | df=20, RMSEA0=.05, RMSEA1=.08 | 0.078000 | 0.078000 | 0 | match |
+
+효과크기 검증에서는 25개 비교 항목이 모두 동일 정의의 기준값과 일치했다. 단, `effectsize::t_to_d`의 기본 독립 t 변환은 `2t/sqrt(df_error)` 근사를 사용하므로, equal-n 독립 t의 정확식 `2t/sqrt(df + 2)`를 쓰는 앱 값과 약간 다르다. 따라서 t-test 비교에서는 G*Power와 동일한 equal-n 정확식을 기준값으로 사용했다. Cramer's V는 `effectsize` 패키지의 기본 bias-adjusted V가 아니라 앱 정의와 같은 unadjusted V(`adjust=FALSE`)와 비교했다.
+
 ### 18.1 공통 기호
 
 - `alpha`: 제1종 오류율.
@@ -693,23 +757,60 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 **효과크기.**
 
-- standardized fixed effect:
+- standardized fixed effect (Cohen's d와 유사한 표준화 고정효과):
   $$
-  d = \frac{B}{SD_{\mathrm{residual}}}
+  d_{\mathrm{LMM}} = \frac{B}{SD_{\mathrm{residual}}}
   $$
 - GLIMMPSE-style standardized change effect:
   $$
-  d = \frac{\bar{Y}_{\mathrm{last}}-\bar{Y}_{\mathrm{first}}}{SD_{\mathrm{residual}}}
+  d_{\mathrm{change}} =
+  \frac{\bar{Y}_{\mathrm{last}}-\bar{Y}_{\mathrm{first}}}
+       {SD_{\mathrm{residual}}}
   $$
 - 단순 repeated-measures planning effect:
   $$
   d_{\mathrm{planning}} =
-  d\sqrt{\frac{m}{1+(m-1)ICC}}
+  d_{\mathrm{LMM}}\sqrt{\frac{m}{1+(m-1)ICC}}
   $$
 
 **표본 수와 검정력.**
 
-- simple LMM은 지정한 fixed effect, time points, ICC, random-intercept 구조로 데이터를 시뮬레이션하고 `nlme::lme` p 값을 반복 계산한다.
+- simple two-group repeated LMM은 `longpower::diggle.linear.power`를 사용해 longitudinal linear model의 slope/change difference 검정력을 계산한다. effect size는 residual SD로 표준화한 group x time slope/change 차이로 해석한다.
+
+  two-group repeated design:
+  $$
+  y_{gij}=d_{\mathrm{LMM}}g_it_j+b_i+\epsilon_{gij}
+  $$
+
+  exchangeable random-intercept correlation:
+  $$
+  R_{jk} =
+  \begin{cases}
+  1, & j=k\\
+  ICC, & j\ne k
+  \end{cases}
+  $$
+
+  longpower sample-size search:
+  $$
+  n^\ast=\left\lceil n_{\mathrm{Diggle}}\right\rceil
+  $$
+
+- simple one-group repeated LMM은 longpower의 two-group slope difference 구조와 직접 일치하지 않으므로 기존 Monte Carlo 시뮬레이션을 사용한다. 앱은 반복측정 데이터를 생성하고 `nlme::lme`로 모형을 적합한 뒤, `time` 고정효과의 p 값이 alpha보다 작은 비율을 검정력으로 추정한다.
+
+  one-group repeated design:
+  $$
+  y_{ij}=d_{\mathrm{LMM}}t_j+b_i+\epsilon_{ij}
+  $$
+
+  simulation power estimate:
+  $$
+  \widehat{Power}(n)=
+  \frac{1}{S}\sum_{s=1}^{S}
+  I\left(p_s<\alpha\right)
+  $$
+
+  여기서 $S$는 simulation 반복 수, $t_j$는 0에서 1까지 균등 배치한 time score, $g_i$는 group indicator다.
 - GLIMMPSE-style 방식은 group/time mean vector, residual SD, repeated-measures correlation matrix를 사용해 데이터를 시뮬레이션하고 `nlme::gls`로 time 또는 group x time hypothesis를 검정한다.
 - correlation structure는 independent, exchangeable, AR(1), unstructured를 지원한다.
 
@@ -763,7 +864,8 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 **표본 수와 검정력.**
 
-- mean 또는 proportion difference에 대한 one-sided non-inferiority 또는 TOST equivalence normal approximation을 사용한다.
+- mean difference equivalence는 `TOSTER::power_t_TOST`를 사용해 exact t 기반 two-sample TOST 검정력을 계산한다.
+- mean non-inferiority, proportion difference equivalence/non-inferiority, unequal allocation처럼 TOSTER two-sample mean equivalence 조건과 직접 맞지 않는 경우에는 one-sided non-inferiority 또는 TOST equivalence normal approximation을 사용한다.
 - Effect Size 메뉴에서는 제외하고 Sample Size의 계획 기준으로 다룬다.
 
 **입력과 보고.**
@@ -773,7 +875,7 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 - 관찰 또는 기대 차이 $\hat{\theta}$가 margin에 가까울수록 필요한 표본 수가 커진다.
 - 결과 보고에서는 margin, 방향, one-sided alpha 또는 TOST alpha, 분석척도(raw difference, standardized difference, proportion difference)를 명확히 적는다.
 
-**참고문헌.** Schuirmann (1987), Blackwelder (1982), Julious (2004), Chow et al. (2017).
+**참고문헌.** Lakens, Scheel, & Isager (2018), Schuirmann (1987), Blackwelder (1982), Julious (2004), Chow et al. (2017).
 
 ### 18.15 ROC AUC and Diagnostic Accuracy
 
@@ -855,7 +957,8 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 
 **표본 수와 검정력.**
 
-- parallel cluster trial은 individually randomized two-group sample size를 design effect로 inflate한 뒤 whole clusters로 반올림한다.
+- parallel continuous cluster trial은 `WebPower::wp.crt2arm`을 사용해 2-arm CRT의 총 cluster 수를 계산한다. 앱은 WebPower의 raw total clusters를 균형배정에 맞춰 group별 cluster 수로 올림한다.
+- parallel binary cluster trial 또는 WebPower 조건과 직접 맞지 않는 경우에는 individually randomized two-group sample size를 design effect로 inflate한 뒤 whole clusters로 반올림한다.
 - stepped-wedge trial은 fixed period effects와 random cluster intercept를 가진 mixed model simulation을 사용한다.
 
 **입력과 보고.**
@@ -865,7 +968,7 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 - cluster size가 불균형하면 단순 $DE = 1+(m-1)ICC$보다 실제 design effect가 커질 수 있다.
 - stepped-wedge 설계에서는 기간 효과, intervention rollout 순서, cluster-period 수가 검정력에 큰 영향을 준다.
 
-**참고문헌.** Donner & Klar (2000), Hayes & Bennett (1999), Hayes & Moulton (2017), Eldridge & Kerry (2012), Hussey & Hughes (2007), Hemming et al. (2011), Woertman et al. (2013).
+**참고문헌.** Zhang & Yuan (2018), Donner & Klar (2000), Hayes & Bennett (1999), Hayes & Moulton (2017), Eldridge & Kerry (2012), Hussey & Hughes (2007), Hemming et al. (2011), Woertman et al. (2013).
 
 ### 18.18 Precision / CI
 
@@ -1033,6 +1136,7 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 - Kreidler, S. M., Muller, K. E., Grunwald, G. K., Ringham, B. M., Coker-Dukowitz, Z. T., Sakhadeo, U. R., Baron, A. E., & Glueck, D. H. (2013). GLIMMPSE: Online power computation for linear models with and without a baseline covariate. *Journal of Statistical Software*, 54(10).
 - Lachin, J. M., & Foulkes, M. A. (1986). Evaluation of sample size and power for analyses of survival. *Biometrics*, 42(3), 507-519.
 - Lakens, D. (2013). Calculating and reporting effect sizes to facilitate cumulative science. *Frontiers in Psychology*, 4, 863.
+- Lakens, D., Scheel, A. M., & Isager, P. M. (2018). Equivalence testing for psychological research: A tutorial. *Advances in Methods and Practices in Psychological Science*, 1(2), 259-269.
 - Liang, K.-Y., & Zeger, S. L. (1986). Longitudinal data analysis using generalized linear models. *Biometrika*, 73(1), 13-22.
 - MacCallum, R. C., Browne, M. W., & Sugawara, H. M. (1996). Power analysis and determination of sample size for covariance structure modeling. *Psychological Methods*, 1(2), 130-149.
 - MacKinnon, D. P., Lockwood, C. M., & Williams, J. (2004). Confidence limits for the indirect effect. *Multivariate Behavioral Research*, 39(1), 99-128.
@@ -1058,4 +1162,5 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 - Westland, J. C. (2010). Lower bounds on sample size in structural equation modeling. *Electronic Commerce Research and Applications*, 9(6), 476-487.
 - Wolf, E. J., Harrington, K. M., Clark, S. L., & Miller, M. W. (2013). Sample size requirements for structural equation models. *Educational and Psychological Measurement*, 73(6), 913-934.
 - Woertman, W., de Hoop, E., Moerbeek, M., Zuidema, S. U., Gerritsen, D. L., & Teerenstra, S. (2013). Stepped wedge designs could reduce the required sample size. *Journal of Clinical Epidemiology*, 66(7), 752-758.
+- Zhang, Z., & Yuan, K.-H. (2018). *Practical Statistical Power Analysis Using Webpower and R*. ISDSA Press.
 - Zhu, H., & Lakkis, H. (2014). Sample size calculation for comparing two negative binomial rates. *Statistics in Medicine*, 33(3), 376-387.

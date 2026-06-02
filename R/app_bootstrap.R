@@ -25,6 +25,9 @@ required_packages <- c(
   "agricolae",
   "psych",
   "polycor",
+  "longpower",
+  "WebPower",
+  "TOSTER",
   "MASS",
   "nnet"
 )

@@ -2726,6 +2726,88 @@ sample_size_lmm_power <- function(
   sample_size_lmm_power_once(participants, design, effect_size, alpha, time_points, icc, simulations, progress = progress)
 }
 
+sample_size_lmm_longpower <- function(
+  target,
+  design,
+  effect_size,
+  alpha,
+  power = NULL,
+  n = NULL,
+  dropout = 0,
+  time_points = 3,
+  icc = 0.3
+) {
+  if (!identical(design, "two_group_repeated")) {
+    return(NULL)
+  }
+  if (!requireNamespace("longpower", quietly = TRUE)) {
+    return(NULL)
+  }
+
+  time_value <- seq(0, 1, length.out = time_points)
+  correlation <- matrix(icc, nrow = time_points, ncol = time_points) + diag(1 - icc, time_points)
+  method_note <- "Closed-form LMM longitudinal slope/change power using longpower::diggle.linear.power with exchangeable random-intercept correlation. The standardized fixed effect is treated as the group x time slope/change difference per residual SD."
+  design_label <- "LMM two-group repeated measures"
+
+  if (identical(target, "sample_size")) {
+    sample_size_validate_probability(power, "Power")
+    estimate <- longpower::diggle.linear.power(
+      n = NULL,
+      delta = effect_size,
+      t = time_value,
+      sigma2 = 1,
+      R = correlation,
+      sig.level = alpha,
+      power = power
+    )
+    raw_group <- as.numeric(estimate$n[[1]])
+    participants <- sample_size_round_up(raw_group)
+    achieved <- longpower::diggle.linear.power(
+      n = participants,
+      delta = effect_size,
+      t = time_value,
+      sigma2 = 1,
+      R = correlation,
+      sig.level = alpha
+    )$power
+    adjusted_participants <- sample_size_drop_adjust(participants, dropout)
+    return(list(
+      design_label = design_label,
+      group1 = participants,
+      group2 = participants,
+      total = participants * 2L,
+      adjusted_group1 = adjusted_participants,
+      adjusted_group2 = adjusted_participants,
+      adjusted_total = adjusted_participants * 2L,
+      dropout_rate = dropout,
+      total_observations = participants * time_points * 2L,
+      adjusted_total_observations = adjusted_participants * time_points * 2L,
+      estimated_power = achieved,
+      raw_group_n = raw_group,
+      raw_total_n = raw_group * 2,
+      engine = "longpower",
+      method_note = method_note
+    ))
+  }
+
+  sample_size_validate_positive(n, "Participants per group")
+  achieved <- longpower::diggle.linear.power(
+    n = n,
+    delta = effect_size,
+    t = time_value,
+    sigma2 = 1,
+    R = correlation,
+    sig.level = alpha
+  )$power
+  list(
+    power = achieved,
+    design_label = design_label,
+    total_observations = as.integer(round(n)) * time_points * 2L,
+    engine = "longpower",
+    method_note = method_note
+  )
+}
+
 sample_size_parse_numeric_vector <- function(x, name) {
   if (is.numeric(x) && length(x) > 1L) return(as.numeric(x))
   values <- unlist(strsplit(as.character(x %||% ""), "[,;[:space:]]+"))
@@ -2924,10 +3006,11 @@ sample_size_lmm <- function(
   progress = NULL
 ) {
   sample_size_validate_probability(alpha, "Alpha")
-  simulations <- as.integer(simulations)
-  if (!is.finite(simulations) || simulations < 20) {
+  simulations <- as.integer(simulations %||% 100)
+  if (!length(simulations) || !is.finite(simulations[[1]]) || simulations[[1]] < 20) {
     stop("Simulations must be at least 20.", call. = FALSE)
   }
+  simulations <- simulations[[1]]
 
   if (identical(mode, "glimmpse")) {
     group1_means <- sample_size_parse_numeric_vector(group1_means, "Group 1 means")
@@ -2975,6 +3058,20 @@ sample_size_lmm <- function(
     time_points <- as.integer(time_points)
     if (!is.finite(time_points) || time_points < 2) {
       stop("Time points must be at least 2.", call. = FALSE)
+    }
+    longpower_result <- sample_size_lmm_longpower(
+      target = target,
+      design = design,
+      effect_size = effect_size,
+      alpha = alpha,
+      power = power,
+      n = n,
+      dropout = dropout,
+      time_points = time_points,
+      icc = icc
+    )
+    if (!is.null(longpower_result)) {
+      return(longpower_result)
     }
     design_label <- if (identical(design, "one_group_repeated")) {
       "LMM one-group repeated measures"
@@ -3129,6 +3226,91 @@ sample_size_survival <- function(
   )
 }
 
+sample_size_equivalence_toster <- function(
+  target,
+  outcome,
+  objective,
+  true_difference,
+  margin,
+  sd,
+  alpha,
+  power = NULL,
+  n = NULL,
+  dropout = 0,
+  ratio = 1
+) {
+  if (!identical(outcome, "mean") || !identical(objective, "equivalence") || !isTRUE(all.equal(ratio, 1))) {
+    return(NULL)
+  }
+  if (!requireNamespace("TOSTER", quietly = TRUE)) {
+    return(NULL)
+  }
+  sample_size_validate_positive(sd, "SD")
+  if (abs(true_difference) >= margin) {
+    stop("Expected true difference must be inside the equivalence margin.", call. = FALSE)
+  }
+
+  design_label <- "Equivalence two means"
+  method_note <- "Exact t-based two-sample TOST equivalence power using TOSTER::power_t_TOST. The margin and expected true difference are entered on the raw mean-difference scale."
+
+  if (identical(target, "sample_size")) {
+    sample_size_validate_probability(power, "Power")
+    estimate <- TOSTER::power_t_TOST(
+      n = NULL,
+      delta = true_difference,
+      sd = sd,
+      eqb = margin,
+      alpha = alpha,
+      power = power,
+      type = "two.sample"
+    )
+    raw_group <- as.numeric(estimate$n)
+    group1 <- sample_size_round_up(raw_group)
+    group2 <- group1
+    achieved <- TOSTER::power_t_TOST(
+      n = group1,
+      delta = true_difference,
+      sd = sd,
+      eqb = margin,
+      alpha = alpha,
+      type = "two.sample"
+    )$power
+    adjusted_group1 <- sample_size_drop_adjust(group1, dropout)
+    adjusted_group2 <- sample_size_drop_adjust(group2, dropout)
+    return(list(
+      design_label = design_label,
+      group1 = group1,
+      group2 = group2,
+      total = group1 + group2,
+      adjusted_group1 = adjusted_group1,
+      adjusted_group2 = adjusted_group2,
+      adjusted_total = adjusted_group1 + adjusted_group2,
+      dropout_rate = dropout,
+      estimated_power = achieved,
+      raw_group_n = raw_group,
+      raw_total_n = raw_group * 2,
+      engine = "TOSTER",
+      method_note = method_note
+    ))
+  }
+
+  sample_size_validate_positive(n, "Sample size per group")
+  achieved <- TOSTER::power_t_TOST(
+    n = n,
+    delta = true_difference,
+    sd = sd,
+    eqb = margin,
+    alpha = alpha,
+    type = "two.sample"
+  )$power
+  list(
+    power = achieved,
+    design_label = design_label,
+    engine = "TOSTER",
+    method_note = method_note
+  )
+}
+
 sample_size_equivalence <- function(
   target,
   outcome = "mean",
@@ -3147,6 +3329,22 @@ sample_size_equivalence <- function(
   sample_size_validate_positive(margin, "Margin")
   sample_size_validate_probability(alpha, "Alpha")
   sample_size_validate_positive(ratio, "Allocation ratio")
+  toster_result <- sample_size_equivalence_toster(
+    target = target,
+    outcome = outcome,
+    objective = objective,
+    true_difference = true_difference,
+    margin = margin,
+    sd = sd,
+    alpha = alpha,
+    power = power,
+    n = n,
+    dropout = dropout,
+    ratio = ratio
+  )
+  if (!is.null(toster_result)) {
+    return(toster_result)
+  }
   group_variance_multiplier <- 1 + 1 / ratio
   is_equivalence <- identical(objective, "equivalence")
   objective_label <- if (is_equivalence) "Equivalence" else "Non-inferiority"
@@ -3504,6 +3702,101 @@ sample_size_rates <- function(
   list(power = power_for_time(n), design_label = design_label, method_note = method_note)
 }
 
+sample_size_cluster_webpower <- function(
+  target,
+  outcome,
+  effect_size,
+  alpha,
+  power = NULL,
+  n = NULL,
+  dropout = 0,
+  cluster_size = 20,
+  icc = 0.05,
+  ratio = 1,
+  alternative = "two.sided"
+) {
+  if (!identical(outcome, "continuous") || !identical(alternative, "two.sided") || !isTRUE(all.equal(ratio, 1))) {
+    return(NULL)
+  }
+  if (!requireNamespace("WebPower", quietly = TRUE)) {
+    return(NULL)
+  }
+
+  sample_size_validate_positive(abs(effect_size), "Effect size d")
+  cluster_size_int <- ceiling(cluster_size)
+  design_label <- "Cluster trial continuous outcome"
+  method_note <- "Parallel 2-arm continuous cluster randomized trial using WebPower::wp.crt2arm. The app rounds the required total clusters up to balanced clusters per group."
+
+  if (identical(target, "sample_size")) {
+    sample_size_validate_probability(power, "Power")
+    estimate <- WebPower::wp.crt2arm(
+      n = cluster_size,
+      f = effect_size,
+      icc = icc,
+      power = power,
+      alpha = alpha,
+      alternative = "two.sided"
+    )
+    raw_total_clusters <- as.numeric(estimate$J)
+    clusters_per_group <- sample_size_round_up(raw_total_clusters / 2)
+    total_clusters <- clusters_per_group * 2L
+    group1 <- clusters_per_group * cluster_size_int
+    group2 <- clusters_per_group * cluster_size_int
+    adjusted_group1 <- sample_size_drop_adjust(group1, dropout)
+    adjusted_group2 <- sample_size_drop_adjust(group2, dropout)
+    achieved <- WebPower::wp.crt2arm(
+      J = total_clusters,
+      n = cluster_size,
+      f = effect_size,
+      icc = icc,
+      alpha = alpha,
+      alternative = "two.sided"
+    )$power
+    return(list(
+      design_label = design_label,
+      group1 = group1,
+      group2 = group2,
+      total = group1 + group2,
+      adjusted_group1 = adjusted_group1,
+      adjusted_group2 = adjusted_group2,
+      adjusted_total = adjusted_group1 + adjusted_group2,
+      dropout_rate = dropout,
+      clusters_group1 = clusters_per_group,
+      clusters_group2 = clusters_per_group,
+      total_clusters = total_clusters,
+      raw_total_clusters = raw_total_clusters,
+      cluster_size = cluster_size_int,
+      total_observations = total_clusters * cluster_size_int,
+      adjusted_total_observations = adjusted_group1 + adjusted_group2,
+      estimated_power = achieved,
+      engine = "WebPower",
+      method_note = method_note
+    ))
+  }
+
+  sample_size_validate_positive(n, "Sample size per group")
+  clusters_per_group <- sample_size_round_up(n / cluster_size_int)
+  total_clusters <- clusters_per_group * 2L
+  achieved <- WebPower::wp.crt2arm(
+    J = total_clusters,
+    n = cluster_size,
+    f = effect_size,
+    icc = icc,
+    alpha = alpha,
+    alternative = "two.sided"
+  )$power
+  list(
+    power = achieved,
+    design_label = design_label,
+    clusters_group1 = clusters_per_group,
+    clusters_group2 = clusters_per_group,
+    total_clusters = total_clusters,
+    total_observations = total_clusters * cluster_size_int,
+    engine = "WebPower",
+    method_note = method_note
+  )
+}
+
 sample_size_cluster <- function(
   target,
   design = "parallel",
@@ -3539,6 +3832,22 @@ sample_size_cluster <- function(
       simulations = simulations,
       progress = progress
     ))
+  }
+  webpower_result <- sample_size_cluster_webpower(
+    target = target,
+    outcome = outcome,
+    effect_size = effect_size,
+    alpha = alpha,
+    power = power,
+    n = n,
+    dropout = dropout,
+    cluster_size = cluster_size,
+    icc = icc,
+    ratio = ratio,
+    alternative = alternative
+  )
+  if (!is.null(webpower_result)) {
+    return(webpower_result)
   }
   design_effect <- 1 + (cluster_size - 1) * icc
   design_label <- if (identical(outcome, "binary")) "Cluster trial binary outcome" else "Cluster trial continuous outcome"

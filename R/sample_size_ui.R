@@ -1907,7 +1907,9 @@ sample_size_inputs_ui <- function(method, input) {
           textInput("sample_size_lmm_icc", "ICC / random intercept proportion", value = "0.30")
         )
       },
-      textInput("sample_size_lmm_simulations", "Simulations", value = "100"),
+      if (identical(lmm_mode, "glimmpse") || identical(lmm_design, "one_group_repeated")) {
+        textInput("sample_size_lmm_simulations", "Simulations", value = "100")
+      },
       sample_size_common_inputs("lmm", target, show_tail = FALSE, n_label = lmm_n_label)
     ),
     survival = tagList(
@@ -2369,6 +2371,8 @@ sample_size_result_table <- function(result) {
   if (!is.null(result$group2)) add_row("Group 2", result$group2)
   if (!is.null(result$clusters_group1)) add_row("Clusters Group 1", result$clusters_group1)
   if (!is.null(result$clusters_group2)) add_row("Clusters Group 2", result$clusters_group2)
+  if (!is.null(result$total_clusters)) add_row("Clusters Total", result$total_clusters)
+  if (!is.null(result$raw_total_clusters)) add_row("Raw total clusters", sprintf("%.3f", result$raw_total_clusters))
   if (!is.null(result$per_group)) add_row("Per group", result$per_group)
   if (!is.null(result$per_cell)) add_row("Per cell", result$per_cell)
   if (!is.null(result$required_events)) add_row("Required events", result$required_events)
@@ -2413,15 +2417,19 @@ sample_size_result_table <- function(result) {
 
 sample_size_method_details <- function(method, result) {
   design <- result$design_label %||% ""
+  if (!length(design) || is.na(design[[1]])) design <- ""
+  has_design <- function(pattern, ignore.case = FALSE) {
+    isTRUE(grepl(pattern, design, ignore.case = ignore.case))
+  }
   cohen <- "Cohen, J. (1988). Statistical Power Analysis for the Behavioral Sciences (2nd ed.). Lawrence Erlbaum."
   chow <- "Chow, S.-C., Shao, J., Wang, H., & Lokhnygina, Y. (2017). Sample Size Calculations in Clinical Research (3rd ed.). CRC Press."
 
   switch(
     method,
     effectsize = list(
-      formula = if (grepl("Paired", design)) {
+      formula = if (has_design("Paired")) {
         "Cohen's dz = mean paired difference / SD of paired differences."
-      } else if (grepl("One-sample", design)) {
+      } else if (has_design("One-sample")) {
         "Cohen's d = (sample mean - null mean) / SD."
       } else {
         "Cohen's d = (M1 - M2) / pooled SD; Hedges' g = J x d with J = 1 - 3 / (4df - 1)."
@@ -2433,11 +2441,11 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     effect_proportion = list(
-      formula = if (grepl("Cohen", design)) {
+      formula = if (has_design("Cohen")) {
         "Cohen's h = 2 asin(sqrt(p1)) - 2 asin(sqrt(p2))."
-      } else if (grepl("Risk difference", design)) {
+      } else if (has_design("Risk difference")) {
         "Risk difference = p1 - p2."
-      } else if (grepl("Risk ratio", design)) {
+      } else if (has_design("Risk ratio")) {
         "Risk ratio = p1 / p2."
       } else {
         "Odds ratio = [p1 / (1 - p1)] / [p2 / (1 - p2)]; 2x2 tables with a zero cell use a 0.5 continuity correction."
@@ -2449,11 +2457,11 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     effect_chisquare = list(
-      formula = if (grepl("category proportions", design)) {
+      formula = if (has_design("category proportions")) {
         "Cohen's w = sqrt(sum((p_observed - p_expected)^2 / p_expected))."
-      } else if (grepl("Cramer's", design)) {
+      } else if (has_design("Cramer's")) {
         "Cramer's V = sqrt(chi-square / [N * min(r - 1, c - 1)])."
-      } else if (grepl("Phi", design)) {
+      } else if (has_design("Phi")) {
         "Phi = sqrt(chi-square / N)."
       } else {
         "Cohen's w = sqrt(chi-square / N)."
@@ -2465,15 +2473,15 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     effect_correlation = list(
-      formula = if (grepl("Point-biserial", design)) {
+      formula = if (has_design("Point-biserial")) {
         "Point-biserial r is Pearson r for a binary and continuous variable; for a two-group contrast, d = 2r / sqrt(1 - r^2)."
-      } else if (grepl("t statistic", design)) {
+      } else if (has_design("t statistic")) {
         "r = sign(t) * sqrt(t^2 / (t^2 + df))."
-      } else if (grepl("F statistic", design)) {
+      } else if (has_design("F statistic")) {
         "For a one-degree-of-freedom effect, r = sqrt(F / (F + df_error))."
-      } else if (grepl("R-squared", design)) {
+      } else if (has_design("R-squared")) {
         "r = sqrt(R-squared); the sign is not identifiable from R-squared alone."
-      } else if (grepl("Fisher", design)) {
+      } else if (has_design("Fisher")) {
         "Fisher's z = atanh(r)."
       } else {
         "Cohen's q = atanh(r1) - atanh(r2)."
@@ -2485,9 +2493,9 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     effect_anova = list(
-      formula = if (grepl("eta squared from F", design, ignore.case = TRUE)) {
+      formula = if (has_design("eta squared from F", ignore.case = TRUE)) {
         "For one-way ANOVA, df_effect = groups - 1 and df_error = total N - groups; partial eta squared = F * df_effect / (F * df_effect + df_error); omega squared is also reported; Cohen's f = sqrt(partial eta-squared / [1 - partial eta-squared])."
-      } else if (grepl("omega", design, ignore.case = TRUE)) {
+      } else if (has_design("omega", ignore.case = TRUE)) {
         "For one-way ANOVA, df_effect = groups - 1 and df_error = total N - groups; partial omega squared is approximated as (F * df_effect - df_effect) / (F * df_effect + df_error + 1), bounded at 0."
       } else {
         "Cohen's f = sqrt(eta-squared / [1 - eta-squared]); the same conversion is used for partial eta-squared."
@@ -2499,13 +2507,13 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     effect_ancova = list(
-      formula = if (grepl("adjusted Cohen", design)) {
+      formula = if (has_design("adjusted Cohen")) {
         "ANCOVA adjusted f = unadjusted f / sqrt(1 - covariate R-squared)."
-      } else if (grepl("Pillai", design)) {
+      } else if (has_design("Pillai")) {
         "For MANOVA planning, f2 = Pillai's V / (1 - Pillai's V), and f = sqrt(f2)."
-      } else if (grepl("Wilks", design)) {
+      } else if (has_design("Wilks")) {
         "For MANOVA planning, Wilks' lambda is converted using s = min(number of dependent variables, groups - 1): eta2 = 1 - lambda^(1/s), f2 = eta2 / (1 - eta2), and f = sqrt(f2)."
-      } else if (grepl("F$", design)) {
+      } else if (has_design("F$")) {
         "For one-way ANCOVA/group contrast planning, df_effect = groups - 1 and df_error = total N - groups; partial eta squared = F * df_effect / (F * df_effect + df_error); Cohen's f = sqrt(partial eta-squared / [1 - partial eta-squared])."
       } else {
         "Cohen's f = sqrt(partial eta-squared / [1 - partial eta-squared])."
@@ -2517,11 +2525,11 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     effect_nonparametric = list(
-      formula = if (grepl("Mann-Whitney", design)) {
+      formula = if (has_design("Mann-Whitney")) {
         "Rank-biserial r = 2U / (n1 n2) - 1; this is equivalent to Cliff's delta orientation."
-      } else if (grepl("paired Wilcoxon", design)) {
+      } else if (has_design("paired Wilcoxon")) {
         "Paired rank-biserial r = (W+ - W-) / (W+ + W-)."
-      } else if (grepl("Kruskal", design)) {
+      } else if (has_design("Kruskal")) {
         "Epsilon squared = (H - k + 1) / (N - k), bounded at 0."
       } else {
         "Kendall's W = Friedman chi-square / [N * (m - 1)]."
@@ -2533,9 +2541,9 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     effect_mcnemar = list(
-      formula = if (grepl("table", design)) {
+      formula = if (has_design("table")) {
         "Matched-pair odds ratio = b / c for discordant pairs; if either discordant cell is zero, a 0.5 continuity correction is used."
-      } else if (grepl("Cohen", design)) {
+      } else if (has_design("Cohen")) {
         "Cohen's g = p01 / (p01 + p10) - 0.5 for the discordant-pair direction."
       } else {
         "Matched-pair odds ratio = p01 / p10; log odds ratio = log(p01 / p10)."
@@ -2547,11 +2555,11 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     effect_regression = list(
-      formula = if (grepl("Hierarchical", design)) {
+      formula = if (has_design("Hierarchical")) {
         "Incremental Cohen's f2 = (R2_full - R2_reduced) / (1 - R2_full)."
-      } else if (grepl("Logistic", design)) {
+      } else if (has_design("Logistic")) {
         "log odds ratio = log(OR); approximate Cohen's d = log(OR) * sqrt(3) / pi."
-      } else if (grepl("Moderation", design)) {
+      } else if (has_design("Moderation")) {
         "Interaction Cohen's f2 = delta R-squared / (1 - delta R-squared)."
       } else {
         "Cohen's f2 = R-squared / (1 - R-squared)."
@@ -2563,13 +2571,13 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     effect_gee = list(
-      formula = if (grepl("binary", design, ignore.case = TRUE)) {
+      formula = if (has_design("binary", ignore.case = TRUE)) {
         "Cohen's h = 2 asin(sqrt(p1)) - 2 asin(sqrt(p2)); planning effect = h / sqrt(design effect)."
-      } else if (grepl("supplied", design, ignore.case = TRUE)) {
+      } else if (has_design("supplied", ignore.case = TRUE)) {
         "Uses supplied Cohen's d."
-      } else if (grepl("change", design, ignore.case = TRUE)) {
+      } else if (has_design("change", ignore.case = TRUE)) {
         "Cohen's d = [(post - pre) group 1 - (post - pre) group 2] / common outcome SD."
-      } else if (grepl("parameter", design, ignore.case = TRUE)) {
+      } else if (has_design("parameter", ignore.case = TRUE)) {
         "Cohen's d = GEE group x time parameter estimate B / common outcome SD."
       } else {
         "Cohen's d = (estimated mean group 1 - estimated mean group 2) / common outcome SD."
@@ -2582,7 +2590,7 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     effect_lmm = list(
-      formula = if (grepl("GLIMMPSE", design, ignore.case = TRUE)) {
+      formula = if (has_design("GLIMMPSE", ignore.case = TRUE)) {
         "Standardized change effect = last-minus-first mean contrast / residual SD; planning effect = d * sqrt(m / design effect)."
       } else {
         "Repeated-measures planning effect = standardized fixed effect * sqrt(m / [1 + (m - 1)ICC])."
@@ -2602,7 +2610,7 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     effect_equivalence = list(
-      formula = if (grepl("Equivalence", design)) {
+      formula = if (has_design("Equivalence")) {
         "Equivalence distance = margin - abs(observed effect); standardized distance divides this value by SD or pooled Bernoulli SD."
       } else {
         "Non-inferiority distance = margin + observed effect for a -margin boundary; standardized distance divides this value by SD or pooled Bernoulli SD."
@@ -2621,7 +2629,7 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     effect_rates = list(
-      formula = if (grepl("Gamma", design, ignore.case = TRUE)) {
+      formula = if (has_design("Gamma", ignore.case = TRUE)) {
         "For gamma regression with a log link, mean ratio = exp(beta), and log mean ratio = beta."
       } else {
         "For Poisson and negative binomial regression with a log link, incidence rate ratio = exp(beta), and log incidence rate ratio = beta."
@@ -2633,9 +2641,9 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     effect_cluster = list(
-      formula = if (grepl("binary", design, ignore.case = TRUE)) {
+      formula = if (has_design("binary", ignore.case = TRUE)) {
         "Cohen's h is adjusted for cluster planning as h / sqrt(1 + (m - 1)ICC)."
-      } else if (grepl("Stepped", design)) {
+      } else if (has_design("Stepped")) {
         "Planning effect applies d / sqrt([1 + (m - 1)ICC] * periods / [periods - 1])."
       } else {
         "Continuous cluster planning effect = d / sqrt(1 + (m - 1)ICC)."
@@ -2647,9 +2655,9 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     effect_precision = list(
-      formula = if (grepl("Mean", design)) {
+      formula = if (has_design("Mean")) {
         "Standardized half-width = desired mean CI half-width / SD."
-      } else if (grepl("Proportion", design)) {
+      } else if (has_design("Proportion")) {
         "Bernoulli-standardized half-width = desired proportion CI half-width / sqrt(p[1 - p])."
       } else {
         "Correlation precision uses Fisher's z transformation; z half-width is computed from r +/- desired raw-r half-width."
@@ -2661,11 +2669,11 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     effect_reliability = list(
-      formula = if (grepl("alpha", design, ignore.case = TRUE)) {
+      formula = if (has_design("alpha", ignore.case = TRUE)) {
         "Alpha difference = alpha - reference alpha; Bonett-style transformed alpha uses log(1 - alpha)."
-      } else if (grepl("ICC", design)) {
+      } else if (has_design("ICC")) {
         "ICC difference = ICC - reference ICC; transformed ICC uses Fisher's z."
-      } else if (grepl("kappa", design, ignore.case = TRUE)) {
+      } else if (has_design("kappa", ignore.case = TRUE)) {
         "Cohen's kappa is reported directly; observed agreement assumes equal category prevalence."
       } else {
         "Bland-Altman limits of agreement are mean difference +/- 1.96 * SD of paired differences."
@@ -2678,9 +2686,9 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     effect_sem = list(
-      formula = if (grepl("RMSEA", design)) {
+      formula = if (has_design("RMSEA")) {
         "RMSEA effect is alternative RMSEA - null RMSEA; noncentrality difference per N = df * (RMSEA_alt^2 - RMSEA_null^2)."
-      } else if (grepl("parameter", design, ignore.case = TRUE) || grepl("path|loading|correlation", design, ignore.case = TRUE)) {
+      } else if (has_design("parameter", ignore.case = TRUE) || has_design("path|loading|correlation", ignore.case = TRUE)) {
         "Standardized SEM parameter effect is the expected standardized coefficient; Fisher's z = atanh(parameter)."
       } else {
         "Complexity effect summarizes observed/latent/path burden per free parameter plus Fisher-z transformed expected loading and path effects."
@@ -2699,17 +2707,17 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     nonparametric = list(
-      formula = if (grepl("Kruskal|Friedman", design)) {
+      formula = if (has_design("Kruskal|Friedman")) {
         "Uses a large-sample noncentral chi-square approximation for rank-based omnibus tests."
       } else {
         "Approximates Wilcoxon/Mann-Whitney sample size from the corresponding t-test effect size using asymptotic relative efficiency."
       },
-      references = if (grepl("Kruskal", design)) {
+      references = if (has_design("Kruskal")) {
         c(
           "Kruskal, W. H., & Wallis, W. A. (1952). Use of ranks in one-criterion variance analysis. Journal of the American Statistical Association, 47(260), 583-621.",
           "Noether, G. E. (1987). Sample size determination for some common nonparametric tests. Journal of the American Statistical Association, 82(398), 645-647."
         )
-      } else if (grepl("Friedman", design)) {
+      } else if (has_design("Friedman")) {
         c(
           "Friedman, M. (1937). The use of ranks to avoid the assumption of normality implicit in the analysis of variance. Journal of the American Statistical Association, 32(200), 675-701.",
           "Kendall, M. G., & Smith, B. B. (1939). The problem of m rankings. The Annals of Mathematical Statistics, 10(3), 275-287."
@@ -2737,7 +2745,7 @@ sample_size_method_details <- function(method, result) {
       references = c(cohen)
     ),
     anova = list(
-      formula = if (grepl("Kruskal|Friedman", design)) {
+      formula = if (has_design("Kruskal|Friedman")) {
         "Uses large-sample chi-square approximation for rank-based omnibus tests."
       } else {
         "Uses Cohen's f with noncentral F approximation; repeated-measures options adjust by average correlation and epsilon."
@@ -2748,19 +2756,19 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     ancova = list(
-      formula = if (grepl("MANOVA", design)) {
+      formula = if (has_design("MANOVA")) {
         "Uses an approximate MANOVA power calculation by transforming Pillai's trace V to f2 = V / (1 - V), then applying an F-style noncentrality approximation."
-      } else if (grepl("Ranked", design)) {
+      } else if (has_design("Ranked")) {
         "Uses an ANCOVA noncentral F approximation after rank transformation, with covariate R-squared residual-variance adjustment and asymptotic relative efficiency penalty."
       } else {
         "Uses an ANCOVA noncentral F approximation with effect size f adjusted by the covariate-explained residual variance: f_adjusted = f / sqrt(1 - R2)."
       },
-      references = if (grepl("MANOVA", design)) {
+      references = if (has_design("MANOVA")) {
         c(
           "Muller, K. E., & Peterson, B. L. (1984). Practical methods for computing power in testing the multivariate general linear hypothesis. Computational Statistics & Data Analysis, 2(2), 143-158.",
           "Kreidler, S. M., Muller, K. E., Grunwald, G. K., Ringham, B. M., Coker-Dukowitz, Z. T., Sakhadeo, U. R., Baron, A. E., & Glueck, D. H. (2013). GLIMMPSE: Online power computation for linear models with and without a baseline covariate. Journal of Statistical Software, 54(10)."
         )
-      } else if (grepl("Ranked", design)) {
+      } else if (has_design("Ranked")) {
         c(
           "Quade, D. (1967). Rank analysis of covariance. Journal of the American Statistical Association, 62(320), 1187-1200.",
           "Conover, W. J., & Iman, R. L. (1982). Analysis of covariance using the rank transformation. Biometrics, 38(3), 715-724.",
@@ -2774,16 +2782,16 @@ sample_size_method_details <- function(method, result) {
       }
     ),
     regression = list(
-      formula = if (grepl("Logistic", design)) {
+      formula = if (has_design("Logistic")) {
         "Uses a Hsieh-style Wald approximation for a logistic regression odds ratio with event probability, predictor prevalence, and covariate R-squared adjustment."
-      } else if (grepl("Mediation", design)) {
+      } else if (has_design("Mediation")) {
         "Uses Sobel, Monte Carlo percentile confidence interval, or bootstrap confidence interval simulation for the indirect effect."
       } else {
         "Uses Cohen's f2 with a noncentral F test for overall, incremental, or interaction-term regression effects."
       },
-      references = if (grepl("Logistic", design)) {
+      references = if (has_design("Logistic")) {
         c("Hsieh, F. Y., Bloch, D. A., & Larsen, M. D. (1998). A simple method of sample size calculation for linear and logistic regression. Statistics in Medicine, 17(14), 1623-1634.")
-      } else if (grepl("Mediation", design)) {
+      } else if (has_design("Mediation")) {
         c(
           "Fritz, M. S., & MacKinnon, D. P. (2007). Required sample size to detect the mediated effect. Psychological Science, 18(3), 233-239.",
           "MacKinnon, D. P., Lockwood, C. M., & Williams, J. (2004). Confidence limits for the indirect effect: Distribution of the product and resampling methods. Multivariate Behavioral Research, 39(1), 99-128.",
@@ -2801,12 +2809,15 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     lmm = list(
-      formula = if (grepl("GLIMMPSE-style", design)) {
+      formula = if (has_design("GLIMMPSE-style")) {
         "Uses simulation-based power from user-specified time-specific means, residual SD, and repeated-measures correlation; nlme::gls tests the time or group x time hypothesis across simulated datasets. For unstructured correlation, enter upper-triangle pairwise correlations, for example r12, r13, r23 for three time points."
+      } else if (identical(result$engine, "longpower")) {
+        "Uses longpower::diggle.linear.power for closed-form longitudinal linear model slope/change power with exchangeable random-intercept correlation. The standardized fixed effect is treated as the group x time slope/change difference per residual SD."
       } else {
         "Uses simulation-based power: repeated-measures data are generated from the specified fixed effect, time points, ICC, and random-intercept LMM, then nlme::lme p-values are counted across simulations."
       },
       references = c(
+        "Diggle, P. J., Heagerty, P., Liang, K.-Y., & Zeger, S. L. (2002). Analysis of Longitudinal Data (2nd ed.). Oxford University Press.",
         "Kreidler, S. M., Muller, K. E., Grunwald, G. K., Ringham, B. M., Coker-Dukowitz, Z. T., Sakhadeo, U. R., Baron, A. E., & Glueck, D. H. (2013). GLIMMPSE: Online power computation for linear models with and without a baseline covariate. Journal of Statistical Software, 54(10).",
         "Pinheiro, J. C., & Bates, D. M. (2000). Mixed-Effects Models in S and S-PLUS. Springer."
       )
@@ -2820,15 +2831,20 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     equivalence = list(
-      formula = "Uses normal-approximation sample size for one-sided non-inferiority or TOST equivalence tests on a mean or proportion difference.",
+      formula = if (identical(result$engine, "TOSTER")) {
+        "Uses TOSTER::power_t_TOST for exact t-based two-sample TOST equivalence power on a mean difference."
+      } else {
+        "Uses normal-approximation sample size for one-sided non-inferiority or TOST equivalence tests on a mean or proportion difference."
+      },
       references = c(
+        "Lakens, D., Scheel, A. M., & Isager, P. M. (2018). Equivalence testing for psychological research: A tutorial. Advances in Methods and Practices in Psychological Science, 1(2), 259-269.",
         "Blackwelder, W. C. (1982). Proving the null hypothesis in clinical trials. Controlled Clinical Trials, 3(4), 345-353.",
         "Julious, S. A. (2004). Sample sizes for clinical trials with Normal data. Statistics in Medicine, 23(12), 1921-1986.",
         "Chow, S.-C., Shao, J., Wang, H., & Lokhnygina, Y. (2017). Sample Size Calculations in Clinical Research (3rd ed.). CRC Press."
       )
     ),
     diagnostic = list(
-      formula = if (grepl("ROC", design)) {
+      formula = if (has_design("ROC")) {
         "Uses the Hanley-McNeil AUC variance approximation to test one ROC AUC against a null AUC."
       } else {
         "Uses Buderer's precision-based formula for sensitivity or specificity, incorporating disease prevalence and desired confidence interval half-width."
@@ -2840,9 +2856,9 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     precision = list(
-      formula = if (grepl("Correlation", design)) {
+      formula = if (has_design("Correlation")) {
         "Uses Fisher's z transformation to approximate the sample size needed for a desired correlation confidence interval half-width."
-      } else if (grepl("Proportion", design)) {
+      } else if (has_design("Proportion")) {
         "Uses the normal-approximation formula n = z^2 p(1-p) / d^2 for a desired proportion confidence interval half-width."
       } else {
         "Uses the normal-approximation formula n = (z SD / d)^2 for a desired mean confidence interval half-width."
@@ -2862,9 +2878,9 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     rates = list(
-      formula = if (grepl("negative binomial", design, ignore.case = TRUE)) {
+      formula = if (has_design("negative binomial", ignore.case = TRUE)) {
         "Uses a Wald approximation for two negative binomial rates with variance inflated by dispersion: Var(Y) = mu + dispersion * mu^2."
-      } else if (grepl("Single", design)) {
+      } else if (has_design("Single")) {
         "Uses the normal approximation to a Poisson rate confidence interval to estimate required person-time for a desired half-width."
       } else {
         "Uses a Wald normal approximation for comparing two independent Poisson incidence rates with a person-time allocation ratio."
@@ -2876,12 +2892,15 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     cluster = list(
-      formula = if (grepl("Stepped-wedge", design)) {
+      formula = if (has_design("Stepped-wedge")) {
         "Uses simulation-based power for a cross-sectional stepped-wedge cluster trial fitted with fixed period effects and a random cluster intercept."
+      } else if (identical(result$engine, "WebPower")) {
+        "Uses WebPower::wp.crt2arm for a parallel 2-arm continuous cluster randomized trial. The returned total cluster count is rounded up to balanced clusters per group."
       } else {
         "Uses the standard design effect DE = 1 + (m - 1) ICC to inflate an individually randomized two-group sample size, then rounds to whole clusters."
       },
       references = c(
+        "Zhang, Z., & Yuan, K.-H. (2018). Practical Statistical Power Analysis Using Webpower and R. ISDSA Press.",
         "Donner, A., & Klar, N. (2000). Design and Analysis of Cluster Randomization Trials in Health Research. Arnold.",
         "Hayes, R. J., & Bennett, S. (1999). Simple sample size calculation for cluster-randomized trials. International Journal of Epidemiology, 28(2), 319-326.",
         "Eldridge, S., & Kerry, S. (2012). A Practical Guide to Cluster Randomised Trials in Health Services Research. Wiley.",
@@ -2891,11 +2910,11 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     reliability = list(
-      formula = if (grepl("Bland-Altman", design)) {
+      formula = if (has_design("Bland-Altman")) {
         "Uses an approximate confidence interval precision formula for Bland-Altman limits of agreement based on the SD of paired differences."
-      } else if (grepl("alpha", design, ignore.case = TRUE)) {
+      } else if (has_design("alpha", ignore.case = TRUE)) {
         "Uses an approximate normal method for Cronbach's alpha precision based on the log(1 - alpha) transformation."
-      } else if (grepl("ICC", design)) {
+      } else if (has_design("ICC")) {
         "Uses an approximate Fisher z precision method for intraclass correlation reliability."
       } else {
         "Uses a large-sample normal approximation for Cohen's kappa precision assuming equal category prevalence."
@@ -2910,21 +2929,21 @@ sample_size_method_details <- function(method, result) {
       )
     ),
     sem = list(
-      formula = if (grepl("complexity heuristic", design, ignore.case = TRUE)) {
+      formula = if (has_design("complexity heuristic", ignore.case = TRUE)) {
         "Uses a model-complexity planning estimate: cases-per-free-parameter, observed/latent variable and structural path burden, and approximate detectability of expected standardized loading/path coefficients. The recommended N is the maximum of the component rules."
-      } else if (grepl("parameter-level", design, ignore.case = TRUE)) {
+      } else if (has_design("parameter-level", ignore.case = TRUE)) {
         "Uses approximate Monte Carlo draws from a standardized SEM/CFA parameter estimate distribution. The standard error is based on a Fisher-z-style large-sample approximation with a model-complexity effective sample size adjustment."
       } else {
         "Uses RMSEA-based SEM/CFA model-level power with noncentrality parameter lambda = (N - 1) df RMSEA^2 and the noncentral chi-square distribution."
       },
-      references = if (grepl("complexity heuristic", design, ignore.case = TRUE)) {
+      references = if (has_design("complexity heuristic", ignore.case = TRUE)) {
         c(
           "Bentler, P. M., & Chou, C.-P. (1987). Practical issues in structural modeling. Sociological Methods & Research, 16(1), 78-117.",
           "Jackson, D. L. (2003). Revisiting sample size and number of parameter estimates: Some support for the N:q hypothesis. Structural Equation Modeling, 10(1), 128-141.",
           "Wolf, E. J., Harrington, K. M., Clark, S. L., & Miller, M. W. (2013). Sample size requirements for structural equation models: An evaluation of power, bias, and solution propriety. Educational and Psychological Measurement, 73(6), 913-934.",
           "Westland, J. C. (2010). Lower bounds on sample size in structural equation modeling. Electronic Commerce Research and Applications, 9(6), 476-487."
         )
-      } else if (grepl("parameter-level", design, ignore.case = TRUE)) {
+      } else if (has_design("parameter-level", ignore.case = TRUE)) {
         c(
           "Muthen, L. K., & Muthen, B. O. (2002). How to use a Monte Carlo study to decide on sample size and determine power. Structural Equation Modeling, 9(4), 599-620.",
           "Wolf, E. J., Harrington, K. M., Clark, S. L., & Miller, M. W. (2013). Sample size requirements for structural equation models: An evaluation of power, bias, and solution propriety. Educational and Psychological Measurement, 73(6), 913-934.",
@@ -3108,11 +3127,11 @@ sample_size_calculate <- function(method, input, progress = NULL) {
         dropout = dropout,
         time_points = as.numeric(input$sample_size_lmm_time_points),
         icc = as.numeric(input$sample_size_lmm_icc),
-        simulations = as.numeric(input$sample_size_lmm_simulations),
+        simulations = as.numeric(input$sample_size_lmm_simulations %||% 100),
         group1_means = input$sample_size_lmm_group1_means,
         group2_means = input$sample_size_lmm_group2_means,
         residual_sd = as.numeric(input$sample_size_lmm_residual_sd),
-        rho = as.numeric(input$sample_size_lmm_rho),
+        rho = as.numeric(input$sample_size_lmm_rho %||% 0.5),
         structure = input$sample_size_lmm_correlation_structure %||% "exchangeable",
         correlations = input$sample_size_lmm_correlations,
         progress = progress
