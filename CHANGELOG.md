@@ -8,6 +8,7 @@
 - Added stoppable background sample-size calculations with progress reporting.
 - Added LMM unstructured correlation inputs and SEM/CFA model-count degrees-of-freedom estimation.
 - Standardized required-sample-size result emphasis with explicit `n` labels and 0.95 default power.
+- Expanded Korean User Guide, Analysis Methods, and Method Notes for sample-size, power, and effect-size workflows with formulas and references.
 
 
 ## v0.9.29 - 2026-06-01

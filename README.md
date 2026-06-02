@@ -8,9 +8,9 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.29`
+Current development version: `0.9.30`
 
-Version 0.9.29 adds standalone Sample Size and Effect Size menus with reference-backed calculators for common study designs, including t-test, ANOVA / ANCOVA, GEE, LMM, nonparametric tests, proportions, chi-square, McNemar, regression, and survival workflows.
+Version 0.9.30 refines the standalone Sample Size, Power, and Effect Size workflows with stoppable background calculations, explicit final `n` rows, LMM unstructured correlations, SEM/CFA model-count df estimation, and expanded Korean guide/methodology notes.
 
 ## Current Scope
 

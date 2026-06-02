@@ -286,3 +286,405 @@ HTML, PDF, Excel, Word 저장 결과는 앱 화면의 결과표를 연구 보고
 - Tibshirani, R. (1996). Regression shrinkage and selection via the lasso. *Journal of the Royal Statistical Society, Series B*, 58(1), 267-288.
 - White, H. (1980). A heteroskedasticity-consistent covariance matrix estimator and a direct test for heteroskedasticity. *Econometrica*, 48(4), 817-838.
 - Zou, H., & Hastie, T. (2005). Regularization and variable selection via the elastic net. *Journal of the Royal Statistical Society, Series B*, 67(2), 301-320.
+
+## 18. Sample Size, Power, Effect Size 방법론 노트
+
+이 절은 Sample Size, Power, Effect Size 메뉴의 계산 근거를 정리한다. 앱의 기본 목표 검정력은 `.95`이며, 사용자가 연구 분야의 관례에 맞추어 `.80`, `.90` 등으로 바꿀 수 있다. 표본 수 결과에서 최종 최소 표본 수는 `n (...)` 행으로 굵게 표시한다. 탈락률을 입력하면 `n (... with dropout)`을 추가로 표시한다.
+
+### 18.1 공통 기호
+
+- `alpha`: 제1종 오류율.
+- `power`: 목표 검정력, 보통 `1 - beta`.
+- `z_p`: 표준정규분포의 p 분위수.
+- `d`: Cohen's d 계열 표준화 평균차.
+- `f`: Cohen's f.
+- `f2`: Cohen's f squared.
+- `r`: Pearson correlation.
+- `rho`: repeated-measures 또는 cluster correlation.
+- `m`: 반복측정 시점 수 또는 cluster size.
+- `DE`: design effect.
+- `B`: 회귀계수. log link 모형에서는 `ratio = exp(B)`.
+
+### 18.2 t-test
+
+**효과크기.**
+
+- 독립 두 집단 Cohen's d: `d = (M1 - M2) / SD_pooled`.
+- `SD_pooled = sqrt(((n1 - 1)SD1^2 + (n2 - 1)SD2^2) / (n1 + n2 - 2))`.
+- Hedges' g: `g = J d`, `J = 1 - 3 / (4df - 1)`.
+- 단일표본 d: `d = (M - M0) / SD`.
+- 대응표본 dz: `dz = mean(D) / SD_D`.
+
+**표본 수와 검정력.**
+
+- one-sample, paired, independent t-test는 가능한 경우 noncentral t 분포를 사용한다.
+- 비균등 배정의 두 집단 근사는 `n1`과 `n2 = ratio * n1`의 표준오차에 기반한다.
+
+**참고문헌.** Cohen (1988), Hedges (1981), Lakens (2013), R Core Team `stats::power.t.test`.
+
+### 18.3 Proportion
+
+**효과크기.**
+
+- Risk difference: `RD = p1 - p2`.
+- Risk ratio: `RR = p1 / p2`.
+- Odds ratio: `OR = [p1 / (1 - p1)] / [p2 / (1 - p2)]`.
+- Cohen's h: `h = 2 asin(sqrt(p1)) - 2 asin(sqrt(p2))`.
+
+**표본 수와 검정력.**
+
+- 한 비율 또는 두 비율 비교는 정규근사 검정력 공식을 사용한다.
+- allocation ratio가 있으면 group 2 표본 수를 `n2 = ratio * n1`로 둔다.
+
+**참고문헌.** Cohen (1988), Fleiss, Levin, & Paik (2003), Chow et al. (2017), Haddock, Rindskopf, & Shadish (1998).
+
+### 18.4 Chi-square
+
+**효과크기.**
+
+- Cohen's w: `w = sqrt(sum((p_observed - p_expected)^2 / p_expected))`.
+- 통계량에서 w: `w = sqrt(chi-square / N)`.
+- Phi: `phi = sqrt(chi-square / N)`.
+- Cramer's V: `V = sqrt(chi-square / [N * min(r - 1, c - 1)])`.
+
+**표본 수와 검정력.**
+
+- `lambda = N * w^2`를 noncentral chi-square의 noncentrality parameter로 사용한다.
+- df는 goodness-of-fit 또는 contingency table 구조에서 입력한다.
+
+**참고문헌.** Cohen (1988), Cramer (1946), Rea & Parker (2014).
+
+### 18.5 Correlation
+
+**효과크기.**
+
+- t 통계량에서 r: `r = sign(t) * sqrt(t^2 / (t^2 + df))`.
+- 1 자유도 F 통계량에서 r: `r = sqrt(F / (F + df_error))`.
+- R-squared에서 r: `r = sqrt(R^2)`. 부호는 R-squared만으로 알 수 없다.
+- Fisher's z: `z = atanh(r)`.
+- Cohen's q: `q = atanh(r1) - atanh(r2)`.
+
+**표본 수와 검정력.**
+
+- Pearson correlation 검정은 Fisher z 변환을 사용한다.
+- 귀무상관이 0인 경우 근사 표준오차는 `SE_z = 1 / sqrt(n - 3)`이다.
+
+**참고문헌.** Cohen (1988), Fisher (1921), Rosenthal (1994), Cohen, Cohen, West, & Aiken (2003).
+
+### 18.6 ANOVA
+
+**효과크기.**
+
+- Cohen's f: `f = sqrt(eta^2 / (1 - eta^2))`.
+- partial eta squared에서 f: `f = sqrt(partial_eta^2 / (1 - partial_eta^2))`.
+- F 통계량에서 partial eta squared: `partial_eta^2 = F * df_effect / (F * df_effect + df_error)`.
+- partial omega squared 근사: `(F * df_effect - df_effect) / (F * df_effect + df_error + 1)`, 0보다 작으면 0으로 둔다.
+
+**표본 수와 검정력.**
+
+- one-way ANOVA는 Cohen's f와 noncentral F 근사를 사용한다.
+- repeated-measures ANOVA는 반복측정 상관과 Greenhouse-Geisser epsilon으로 효과적인 정보량을 보정한다.
+
+**참고문헌.** Cohen (1988), Lakens (2013), Olejnik & Algina (2003), Kreidler et al. (2013).
+
+### 18.7 ANCOVA / MANOVA
+
+**효과크기.**
+
+- ANCOVA 보정 f: `f_adjusted = f / sqrt(1 - R2_covariate)`.
+- partial eta squared에서 f: `f = sqrt(partial_eta^2 / (1 - partial_eta^2))`.
+- Pillai's trace V에서 MANOVA 계획 효과: `f2 = V / (1 - V)`, `f = sqrt(f2)`.
+- Wilks' lambda 변환: `s = min(number of dependent variables, groups - 1)`, `eta2 = 1 - lambda^(1/s)`, `f2 = eta2 / (1 - eta2)`.
+
+**표본 수와 검정력.**
+
+- ANCOVA는 covariate가 설명하는 잔차분산을 반영한 noncentral F 근사를 사용한다.
+- ranked ANCOVA는 rank transformation과 asymptotic relative efficiency penalty를 반영한다.
+- MANOVA는 Pillai 또는 Wilks 기반 효과를 F-style noncentrality로 근사한다.
+
+**참고문헌.** Cohen (1988), Borm, Fransen, & Lemmens (2007), Muller & Peterson (1984), Quade (1967), Conover & Iman (1982), Kreidler et al. (2013).
+
+### 18.8 Nonparametric
+
+**효과크기.**
+
+- Mann-Whitney rank-biserial r: `r_rb = 2U / (n1 n2) - 1`.
+- paired Wilcoxon rank-biserial r: `r_rb = (W+ - W-) / (W+ + W-)`.
+- Kruskal-Wallis epsilon squared: `epsilon^2 = (H - k + 1) / (N - k)`, 0보다 작으면 0으로 둔다.
+- Friedman Kendall's W: `W = chi-square_Friedman / [N * (m - 1)]`.
+
+**표본 수와 검정력.**
+
+- Mann-Whitney와 Wilcoxon 계열은 대응 t-test 효과크기를 asymptotic relative efficiency로 보정해 근사한다.
+- Kruskal-Wallis와 Friedman은 large-sample noncentral chi-square 근사를 사용한다.
+
+**참고문헌.** Cliff (1993), Kerby (2014), Tomczak & Tomczak (2014), Kruskal & Wallis (1952), Friedman (1937), Kendall & Smith (1939), Noether (1987).
+
+### 18.9 McNemar
+
+**효과크기.**
+
+- matched-pair odds ratio: `OR = p01 / p10`.
+- log odds ratio: `log(OR)`.
+- discordant table에서 `OR = b / c`; zero discordant cell이 있으면 0.5 continuity correction을 사용한다.
+- Cohen's g: `g = p01 / (p01 + p10) - 0.5`.
+
+**표본 수와 검정력.**
+
+- paired binary test는 discordant probabilities `p01`, `p10`에 대한 normal approximation을 사용한다.
+
+**참고문헌.** McNemar (1947), Connor (1987), Dupont (1988), Fleiss, Levin, & Paik (2003).
+
+### 18.10 Regression
+
+**효과크기.**
+
+- Multiple regression f2: `f2 = R2 / (1 - R2)`.
+- Hierarchical f2: `f2 = (R2_full - R2_reduced) / (1 - R2_full)`.
+- Logistic OR의 d 근사: `d = log(OR) * sqrt(3) / pi`.
+- Moderation interaction f2: `f2 = delta_R2 / (1 - delta_R2)`.
+- Mediation indirect effect: `ab = beta_a * beta_b`.
+
+**표본 수와 검정력.**
+
+- 선형회귀 전체/증분/상호작용 효과는 Cohen's f2와 noncentral F 검정을 사용한다.
+- Logistic regression은 Hsieh-style Wald approximation을 사용하고 event probability, predictor prevalence, covariate R-squared를 반영한다.
+- Mediation은 Sobel, Monte Carlo percentile CI, bootstrap CI simulation 중 선택한다. Monte Carlo와 bootstrap 방법은 시간이 걸리므로 진행률과 Stop 버튼을 제공한다.
+
+**참고문헌.** Cohen (1988), Cohen, Cohen, West, & Aiken (2003), Chinn (2000), Hsieh, Bloch, & Larsen (1998), Fritz & MacKinnon (2007), MacKinnon, Lockwood, & Williams (2004), Preacher & Selig (2012).
+
+### 18.11 GEE
+
+**효과크기.**
+
+- continuous mean difference: `d = (mean1 - mean2) / SD`.
+- change difference: `d = [(post - pre)_1 - (post - pre)_2] / SD`.
+- parameter effect: `d = B_group*time / SD`.
+- binary outcome: Cohen's h를 사용한다.
+
+**표본 수와 검정력.**
+
+- 독립 두 집단 검정을 baseline으로 두고 repeated-measures design effect로 보정한다.
+- exchangeable 구조의 대표식: `DE = 1 + (m - 1)rho`.
+- unstructured correlation은 pairwise correlation matrix에서 평균 정보량을 근사한다. 세 시점이면 `r12, r13, r23`을 입력한다.
+
+**참고문헌.** Liang & Zeger (1986), Diggle, Heagerty, Liang, & Zeger (2002), Fleiss, Levin, & Paik (2003), Cohen (1988).
+
+### 18.12 LMM
+
+**효과크기.**
+
+- standardized fixed effect: `d = B / residual SD`.
+- GLIMMPSE-style standardized change effect: `d = last-minus-first mean contrast / residual SD`.
+- 단순 repeated-measures planning effect: `d * sqrt(m / [1 + (m - 1)ICC])`.
+
+**표본 수와 검정력.**
+
+- simple LMM은 지정한 fixed effect, time points, ICC, random-intercept 구조로 데이터를 시뮬레이션하고 `nlme::lme` p 값을 반복 계산한다.
+- GLIMMPSE-style 방식은 group/time mean vector, residual SD, repeated-measures correlation matrix를 사용해 데이터를 시뮬레이션하고 `nlme::gls`로 time 또는 group x time hypothesis를 검정한다.
+- correlation structure는 independent, exchangeable, AR(1), unstructured를 지원한다.
+
+**참고문헌.** Muller & Stewart (2006), Guo & Johnson (1996), Kreidler et al. (2013), Pinheiro & Bates (2000), Cohen (1988).
+
+### 18.13 Survival / Cox
+
+**효과크기.**
+
+- log hazard ratio: `log(HR)`.
+- 메타분석이나 Cox 모델 효과 보고에서는 `log(HR)`와 표준오차를 주로 사용한다.
+
+**표본 수와 검정력.**
+
+- Schoenfeld event-based approximation을 사용한다.
+- 필요한 events는 `log(HR)`, alpha, power, allocation fraction으로 계산하고, 전체 event probability로 나누어 총 표본 수로 변환한다.
+- allocation fraction은 `p1 * p2` 정보량에 반영된다.
+
+**참고문헌.** Schoenfeld (1983), Freedman (1982), Lachin & Foulkes (1986), Parmar, Torri, & Stewart (1998), Tierney et al. (2007).
+
+### 18.14 Equivalence / Non-inferiority
+
+**계획량.**
+
+- Equivalence distance: `margin - abs(observed effect)`.
+- Non-inferiority distance: `margin + observed effect` for a `-margin` boundary.
+- mean outcome은 SD로 표준화하고, proportion outcome은 pooled Bernoulli SD로 표준화한다.
+
+**표본 수와 검정력.**
+
+- mean 또는 proportion difference에 대한 one-sided non-inferiority 또는 TOST equivalence normal approximation을 사용한다.
+- Effect Size 메뉴에서는 제외하고 Sample Size의 계획 기준으로 다룬다.
+
+**참고문헌.** Schuirmann (1987), Blackwelder (1982), Julious (2004), Chow et al. (2017).
+
+### 18.15 ROC AUC and Diagnostic Accuracy
+
+**효과크기.**
+
+- AUC는 효과크기로 직접 보고한다.
+- AUC difference: `AUC - null AUC`.
+- AUC-based approximate Cohen's d: `d = sqrt(2) * qnorm(AUC)`.
+
+**표본 수와 검정력.**
+
+- ROC AUC vs null은 Hanley-McNeil AUC variance approximation을 사용한다.
+- sensitivity/specificity 정밀도 계산은 Sample Size에서 Buderer precision formula를 사용하되, Effect Size 메뉴에서는 AUC만 유지한다.
+
+**참고문헌.** Hanley & McNeil (1982), Hajian-Tilaki (2014), Buderer (1996), Obuchowski & McClish (1997).
+
+### 18.16 Count / Rate Regression
+
+**효과크기.**
+
+- Poisson 또는 negative binomial log link: `IRR = exp(B)`, `B = log(IRR)`.
+- Gamma regression log link: `mean ratio = exp(B)`, `B = log(mean ratio)`.
+
+**표본 수와 검정력.**
+
+- Poisson rates는 independent incidence rates의 Wald normal approximation을 사용한다.
+- Negative binomial rates는 `Var(Y) = mu + dispersion * mu^2`로 variance inflation을 반영한다.
+- Single rate precision은 Poisson rate confidence interval normal approximation으로 person-time을 계산한다.
+
+**참고문헌.** Signorini (1991), Zhu & Lakkis (2014), McCullagh & Nelder (1989), Chow et al. (2017).
+
+### 18.17 Cluster Trial
+
+**계획량.**
+
+- Cluster design effect: `DE = 1 + (m - 1)ICC`.
+- continuous cluster planning effect: `d_adjusted = d / sqrt(DE)`.
+- binary outcome은 Cohen's h를 같은 방식으로 보정한다.
+- stepped-wedge 근사 planning effect: `d / sqrt(DE * periods / (periods - 1))`.
+
+**표본 수와 검정력.**
+
+- parallel cluster trial은 individually randomized two-group sample size를 design effect로 inflate한 뒤 whole clusters로 반올림한다.
+- stepped-wedge trial은 fixed period effects와 random cluster intercept를 가진 mixed model simulation을 사용한다.
+
+**참고문헌.** Donner & Klar (2000), Hayes & Bennett (1999), Hayes & Moulton (2017), Eldridge & Kerry (2012), Hussey & Hughes (2007), Hemming et al. (2011), Woertman et al. (2013).
+
+### 18.18 Precision / CI
+
+**계획량.**
+
+- Mean CI precision: `n = (z * SD / d)^2`, 여기서 `d`는 desired CI half-width.
+- Proportion CI precision: `n = z^2 p(1 - p) / d^2`.
+- Correlation CI precision은 Fisher z 변환에서 원하는 raw-r half-width를 만족하는 n을 탐색한다.
+- 표준화 half-width: `desired CI half-width / SD`.
+
+**표본 수와 검정력.**
+
+- 이 메뉴는 p 값 검정력이 아니라 confidence interval precision을 계획한다.
+- Precision 메뉴의 두 번째 target은 `Achieved precision`으로 표시한다.
+
+**참고문헌.** Cochran (1977), Hulley et al. (2013), Bonett & Wright (2000), Kelley & Maxwell (2003), Fisher (1921).
+
+### 18.19 Reliability / Agreement
+
+**계획량과 효과크기.**
+
+- Cronbach's alpha precision은 `log(1 - alpha)` 변환 기반 normal approximation을 사용한다.
+- alpha 표본 수는 문항 수보다 작게 나오지 않도록 `n >= items + 1` 규칙을 적용한다.
+- ICC precision은 Fisher z-style approximation을 사용한다.
+- Cohen's kappa precision은 equal category prevalence를 가정한 large-sample normal approximation을 사용한다.
+- Bland-Altman limits of agreement: `mean difference +/- 1.96 * SD_difference`.
+
+**표본 수와 검정력.**
+
+- Reliability / Agreement 메뉴는 현재 required sample size만 계산한다. 검정력 target은 UI에서 표시하지 않는다.
+
+**참고문헌.** Bonett (2002a, 2002b), Donner & Eliasziw (1987), Walter, Eliasziw, & Donner (1998), Sim & Wright (2005), Bland & Altman (1986), Lu et al. (2016).
+
+### 18.20 SEM / CFA
+
+**계획량과 효과크기.**
+
+- RMSEA model-level power: `lambda = (N - 1) * df * RMSEA^2`.
+- close-fit test는 poor fit을 탐지하는 방향으로 `alternative RMSEA > null RMSEA`를 요구한다.
+- not-close-fit test는 close fit을 지지하는 방향으로 `alternative RMSEA < null RMSEA`를 요구한다.
+- RMSEA effect: `alternative RMSEA - null RMSEA`.
+- standardized parameter effect는 loading, path, latent correlation의 예상 표준화 계수다.
+- Fisher z 변환: `z = atanh(parameter)`.
+
+**df 근사.**
+
+- observed moments: `p(p + 1) / 2`, 여기서 `p`는 measured variables 수.
+- free parameters 근사: `(p - k) + p + k + structural_paths`, 여기서 `k`는 latent variables 수.
+- estimated df: `observed moments - free parameters`.
+- 이 df 근사는 빠른 계획용 휴리스틱이며, 실제 lavaan/SEM 모형의 constraints, cross-loading, residual covariance, identification 조건과 다를 수 있다.
+
+**표본 수와 검정력.**
+
+- RMSEA close-fit/not-close-fit은 noncentral chi-square distribution을 사용한다.
+- parameter-level Monte Carlo는 standardized SEM/CFA parameter estimate distribution에서 반복 추출해 검정력을 추정한다.
+- model complexity heuristic은 cases-per-free-parameter, observed/latent variable burden, structural path burden, standardized loading/path detectability 중 최대값을 권장 n으로 둔다.
+
+**참고문헌.** MacCallum, Browne, & Sugawara (1996), Preacher & Coffman (2006), Kim (2005), Muthen & Muthen (2002), Wolf et al. (2013), Bentler & Chou (1987), Jackson (2003), Westland (2010), Kline (2023).
+
+### 18.21 계산 중단 기능
+
+시뮬레이션 기반 계산은 별도 background R process에서 실행된다. 진행률은 progress file에 기록되고 Shiny session이 주기적으로 읽어 화면에 표시한다. `Stop` 버튼을 누르면 해당 process를 kill하고 progress file을 삭제한 뒤 `Calculation stopped.` 상태를 결과 영역에 표시한다. 이 기능은 긴 Monte Carlo, bootstrap, LMM, stepped-wedge simulation에서 사용자가 계산을 멈출 수 있도록 하기 위한 것이다.
+
+### 18.22 Sample Size 관련 참고문헌
+
+- Bentler, P. M., & Chou, C.-P. (1987). Practical issues in structural modeling. *Sociological Methods & Research*, 16(1), 78-117.
+- Blackwelder, W. C. (1982). Proving the null hypothesis in clinical trials. *Controlled Clinical Trials*, 3(4), 345-353.
+- Bonett, D. G. (2002). Sample size requirements for testing and estimating coefficient alpha. *Journal of Educational and Behavioral Statistics*, 27(4), 335-340.
+- Bonett, D. G. (2002). Sample size requirements for estimating intraclass correlations with desired precision. *Statistics in Medicine*, 21(9), 1331-1335.
+- Bonett, D. G., & Wright, T. A. (2000). Sample size requirements for estimating Pearson, Kendall and Spearman correlations. *Psychometrika*, 65(1), 23-28.
+- Borm, G. F., Fransen, J., & Lemmens, W. A. J. G. (2007). A simple sample size formula for analysis of covariance in randomized clinical trials. *Journal of Clinical Epidemiology*, 60(12), 1234-1238.
+- Buderer, N. M. F. (1996). Statistical methodology: I. Incorporating the prevalence of disease into the sample size calculation for sensitivity and specificity. *Academic Emergency Medicine*, 3(9), 895-900.
+- Chinn, S. (2000). A simple method for converting an odds ratio to effect size for use in meta-analysis. *Statistics in Medicine*, 19(22), 3127-3131.
+- Chow, S.-C., Shao, J., Wang, H., & Lokhnygina, Y. (2017). *Sample Size Calculations in Clinical Research* (3rd ed.). CRC Press.
+- Cohen, J. (1988). *Statistical Power Analysis for the Behavioral Sciences* (2nd ed.). Lawrence Erlbaum.
+- Cohen, J., Cohen, P., West, S. G., & Aiken, L. S. (2003). *Applied Multiple Regression/Correlation Analysis for the Behavioral Sciences* (3rd ed.). Lawrence Erlbaum.
+- Connor, R. J. (1987). Sample size for testing differences in proportions for the paired-sample design. *Biometrics*, 43(1), 207-211.
+- Conover, W. J., & Iman, R. L. (1982). Analysis of covariance using the rank transformation. *Biometrics*, 38(3), 715-724.
+- Donner, A., & Eliasziw, M. (1987). Sample size requirements for reliability studies. *Statistics in Medicine*, 6(4), 441-448.
+- Donner, A., & Klar, N. (2000). *Design and Analysis of Cluster Randomization Trials in Health Research*. Arnold.
+- Dupont, W. D. (1988). Power calculations for matched case-control studies. *Biometrics*, 44(4), 1157-1168.
+- Eldridge, S., & Kerry, S. (2012). *A Practical Guide to Cluster Randomised Trials in Health Services Research*. Wiley.
+- Fleiss, J. L., Levin, B., & Paik, M. C. (2003). *Statistical Methods for Rates and Proportions* (3rd ed.). Wiley.
+- Freedman, L. S. (1982). Tables of the number of patients required in clinical trials using the logrank test. *Statistics in Medicine*, 1(2), 121-129.
+- Fritz, M. S., & MacKinnon, D. P. (2007). Required sample size to detect the mediated effect. *Psychological Science*, 18(3), 233-239.
+- Guo, Y., & Johnson, W. D. (1996). Sample size and power for the generalized linear mixed model. *Statistics in Medicine*, 15(12), 1295-1307.
+- Hajian-Tilaki, K. (2014). Sample size estimation in diagnostic test studies of biomedical informatics. *Journal of Biomedical Informatics*, 48, 193-204.
+- Hanley, J. A., & McNeil, B. J. (1982). The meaning and use of the area under a receiver operating characteristic (ROC) curve. *Radiology*, 143(1), 29-36.
+- Hayes, R. J., & Bennett, S. (1999). Simple sample size calculation for cluster-randomized trials. *International Journal of Epidemiology*, 28(2), 319-326.
+- Hayes, R. J., & Moulton, L. H. (2017). *Cluster Randomised Trials* (2nd ed.). CRC Press.
+- Hemming, K., Girling, A. J., Sitch, A. J., Marsh, J., & Lilford, R. J. (2011). Sample size calculations for cluster randomised controlled trials with a fixed number of clusters. *BMC Medical Research Methodology*, 11, 102.
+- Hedges, L. V. (1981). Distribution theory for Glass's estimator of effect size and related estimators. *Journal of Educational Statistics*, 6(2), 107-128.
+- Hsieh, F. Y., Bloch, D. A., & Larsen, M. D. (1998). A simple method of sample size calculation for linear and logistic regression. *Statistics in Medicine*, 17(14), 1623-1634.
+- Hussey, M. A., & Hughes, J. P. (2007). Design and analysis of stepped wedge cluster randomized trials. *Contemporary Clinical Trials*, 28(2), 182-191.
+- Jackson, D. L. (2003). Revisiting sample size and number of parameter estimates: Some support for the N:q hypothesis. *Structural Equation Modeling*, 10(1), 128-141.
+- Julious, S. A. (2004). Sample sizes for clinical trials with Normal data. *Statistics in Medicine*, 23(12), 1921-1986.
+- Kim, K. H. (2005). The relation among fit indexes, power, and sample size in structural equation modeling. *Structural Equation Modeling*, 12(3), 368-390.
+- Kline, R. B. (2023). *Principles and Practice of Structural Equation Modeling* (5th ed.). Guilford Press.
+- Kreidler, S. M., Muller, K. E., Grunwald, G. K., Ringham, B. M., Coker-Dukowitz, Z. T., Sakhadeo, U. R., Baron, A. E., & Glueck, D. H. (2013). GLIMMPSE: Online power computation for linear models with and without a baseline covariate. *Journal of Statistical Software*, 54(10).
+- Lachin, J. M., & Foulkes, M. A. (1986). Evaluation of sample size and power for analyses of survival. *Biometrics*, 42(3), 507-519.
+- Lakens, D. (2013). Calculating and reporting effect sizes to facilitate cumulative science. *Frontiers in Psychology*, 4, 863.
+- Liang, K.-Y., & Zeger, S. L. (1986). Longitudinal data analysis using generalized linear models. *Biometrika*, 73(1), 13-22.
+- MacCallum, R. C., Browne, M. W., & Sugawara, H. M. (1996). Power analysis and determination of sample size for covariance structure modeling. *Psychological Methods*, 1(2), 130-149.
+- MacKinnon, D. P., Lockwood, C. M., & Williams, J. (2004). Confidence limits for the indirect effect. *Multivariate Behavioral Research*, 39(1), 99-128.
+- McCullagh, P., & Nelder, J. A. (1989). *Generalized Linear Models* (2nd ed.). Chapman and Hall.
+- McNemar, Q. (1947). Note on the sampling error of the difference between correlated proportions or percentages. *Psychometrika*, 12(2), 153-157.
+- Muller, K. E., & Peterson, B. L. (1984). Practical methods for computing power in testing the multivariate general linear hypothesis. *Computational Statistics & Data Analysis*, 2(2), 143-158.
+- Muller, K. E., & Stewart, P. W. (2006). *Linear Model Theory: Univariate, Multivariate, and Mixed Models*. Wiley.
+- Muthen, L. K., & Muthen, B. O. (2002). How to use a Monte Carlo study to decide on sample size and determine power. *Structural Equation Modeling*, 9(4), 599-620.
+- Noether, G. E. (1987). Sample size determination for some common nonparametric tests. *Journal of the American Statistical Association*, 82(398), 645-647.
+- Obuchowski, N. A., & McClish, D. K. (1997). Sample size determination for diagnostic accuracy studies involving binormal ROC curve indices. *Statistics in Medicine*, 16(13), 1529-1542.
+- Olejnik, S., & Algina, J. (2003). Generalized eta and omega squared statistics. *Psychological Methods*, 8(4), 434-447.
+- Parmar, M. K. B., Torri, V., & Stewart, L. (1998). Extracting summary statistics for survival endpoints. *Statistics in Medicine*, 17(24), 2815-2834.
+- Pinheiro, J. C., & Bates, D. M. (2000). *Mixed-Effects Models in S and S-PLUS*. Springer.
+- Preacher, K. J., & Coffman, D. L. (2006). Computing power and minimum sample size for RMSEA.
+- Preacher, K. J., & Selig, J. P. (2012). Advantages of Monte Carlo confidence intervals for indirect effects. *Communication Methods and Measures*, 6(2), 77-98.
+- Quade, D. (1967). Rank analysis of covariance. *Journal of the American Statistical Association*, 62(320), 1187-1200.
+- Schuirmann, D. J. (1987). A comparison of the two one-sided tests procedure and the power approach for assessing equivalence. *Journal of Pharmacokinetics and Biopharmaceutics*, 15(6), 657-680.
+- Schoenfeld, D. A. (1983). Sample-size formula for the proportional-hazards regression model. *Biometrics*, 39(2), 499-503.
+- Signorini, D. F. (1991). Sample size for Poisson regression. *Biometrika*, 78(2), 446-450.
+- Sim, J., & Wright, C. C. (2005). The kappa statistic in reliability studies. *Physical Therapy*, 85(3), 257-268.
+- Tierney, J. F., Stewart, L. A., Ghersi, D., Burdett, S., & Sydes, M. R. (2007). Practical methods for incorporating summary time-to-event data into meta-analysis. *Trials*, 8, 16.
+- Walter, S. D., Eliasziw, M., & Donner, A. (1998). Sample size and optimal designs for reliability studies. *Statistics in Medicine*, 17(1), 101-110.
+- Westland, J. C. (2010). Lower bounds on sample size in structural equation modeling. *Electronic Commerce Research and Applications*, 9(6), 476-487.
+- Wolf, E. J., Harrington, K. M., Clark, S. L., & Miller, M. W. (2013). Sample size requirements for structural equation models. *Educational and Psychological Measurement*, 73(6), 913-934.
+- Woertman, W., de Hoop, E., Moerbeek, M., Zuidema, S. U., Gerritsen, D. L., & Teerenstra, S. (2013). Stepped wedge designs could reduce the required sample size. *Journal of Clinical Epidemiology*, 66(7), 752-758.
+- Zhu, H., & Lakkis, H. (2014). Sample size calculation for comparing two negative binomial rates. *Statistics in Medicine*, 33(3), 376-387.

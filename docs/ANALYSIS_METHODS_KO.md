@@ -114,3 +114,59 @@
 - 분석 결과는 앱 화면의 Result 탭에서 모아 볼 수 있다.
 - HTML, PDF, Excel, Word 저장을 지원한다.
 - 표, 경고, skipped analyses, skipped models, 선택된 분석 방법, 효과크기, 신뢰구간을 함께 저장한다.
+
+## Sample Size, Power, Effect Size 메뉴
+
+버전 0.9.30 기준으로 다음 연구계획 계산 메뉴를 제공한다. Sample Size 메뉴는 최소 표본 수와 주어진 표본 수에서의 검정력을 계산하고, Effect Size 메뉴는 표본 수 계산에 투입할 효과크기 또는 변환 가능한 효과크기를 계산한다.
+
+### 공통 출력
+
+- `Calculated sample size`: 최소 표본 수 계산 결과. 최종 표본 수는 굵은 `n (...)` 행으로 표시한다.
+- `Calculated power`: 입력한 표본 수에서의 검정력.
+- `Calculated from selected method`: 선택한 방법으로 산출한 주요 효과크기 또는 주요 계산값.
+- `Converted effect sizes`: 같은 입력에서 변환 가능한 보조 효과크기.
+- `Formula / approximation`: 앱에서 사용한 공식 또는 근사 방식.
+- `References`: 계산 근거 문헌.
+
+### Sample Size 메뉴 목록
+
+| 메뉴 | 제공 계산 | 주요 입력 |
+|---|---|---|
+| t-test | one-sample, paired, two independent groups 표본 수 및 검정력 | Cohen's d 또는 dz, alpha, power, allocation ratio |
+| ANOVA | one-way ANOVA, repeated-measures ANOVA, Friedman/Kruskal 계열 계획 | Cohen's f, groups, repeated measures, correlation, epsilon |
+| ANCOVA / MANOVA | ANCOVA, ranked ANCOVA, MANOVA 계획 | f, covariate R-squared, Pillai's V, dependent variables |
+| GEE | repeated binary/continuous outcome 계획 | effect size, time points, working correlation, rho |
+| LMM | simple LMM simulation, GLIMMPSE-style mean vectors | fixed effect or mean vectors, residual SD, correlation structure, simulations |
+| Nonparametric | Mann-Whitney, Wilcoxon signed-rank, Kruskal-Wallis, Friedman | rank-based effect approximation, groups, measurements |
+| Proportion | one/two proportions | p1, p2, alpha, power, allocation ratio |
+| Chi-square | goodness-of-fit/contingency chi-square | Cohen's w, df |
+| McNemar | paired binary proportions | discordant probabilities p01, p10 |
+| Regression | multiple regression f2, hierarchical f2, logistic OR, mediation, moderation | f2, OR, paths a/b, covariates |
+| Survival / Cox | Cox/log-rank event-based planning | hazard ratio, event probability, allocation ratio |
+| Correlation | Pearson correlation | r, alpha, power |
+| Equivalence / NI | mean/proportion equivalence or non-inferiority | margin, expected difference, SD or proportions |
+| ROC AUC | AUC vs null | AUC, null AUC, case/control ratio |
+| Count / Rate Regression | Poisson, negative binomial, gamma/rate ratio planning | rate ratio or mean ratio, exposure/person-time, dispersion |
+| Reliability / Agreement | Cronbach alpha, ICC, kappa, Bland-Altman precision | expected reliability, CI half-width, items/raters/categories |
+| SEM / CFA | RMSEA close-fit/not-close-fit, parameter Monte Carlo, complexity heuristic | df or model counts, RMSEA, standardized parameter, model complexity |
+
+### Effect Size 메뉴 목록
+
+| 메뉴 | 제공 효과크기 |
+|---|---|
+| t-test | Cohen's d, Hedges' g, one-sample d, paired dz |
+| ANOVA | eta squared, partial eta squared, omega squared, Cohen's f |
+| ANCOVA / MANOVA | adjusted f, partial eta squared, Pillai/Wilks 변환 |
+| GEE | standardized mean/change/parameter effect, binary h |
+| LMM | standardized fixed effect, GLIMMPSE-style standardized change effect |
+| Nonparametric | rank-biserial r, Cliff's delta, epsilon squared, Kendall's W |
+| Proportion | Cohen's h, risk difference, risk ratio, odds ratio |
+| Chi-square | Cohen's w, phi, Cramer's V |
+| McNemar | matched-pair odds ratio, log odds ratio, Cohen's g |
+| Regression | Cohen's f2, incremental f2, OR to d approximation, moderation f2 |
+| Survival / Cox | hazard ratio and log hazard ratio |
+| Correlation | Pearson r, Fisher's z, R-squared, Cohen's q |
+| ROC AUC | AUC, AUC difference, AUC-based approximate Cohen's d |
+| Count / Rate Regression | incidence rate ratio, gamma mean ratio, regression coefficient B |
+
+Effect Size 메뉴에서는 분석 결과의 효과를 보고하는 데 직접 쓰기 어려운 단순 계획 규칙, 정밀도 half-width, equivalence margin distance, SEM/CFA complexity score를 제외한다. 이러한 항목은 Sample Size 메뉴의 계획 계산으로 남겨 둔다.
