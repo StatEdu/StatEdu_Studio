@@ -31,6 +31,8 @@
               window.console.warn('MathJax typeset failed', error);
             }
           });
+        } else {
+          window.easyflowMathJaxPending = true;
         }
       };
 
@@ -39,6 +41,13 @@
           window.easyflowTypesetMath(root || document);
         }, 0);
       }
+
+      window.easyflowMathJaxReady = function() {
+        window.easyflowMathJaxPending = false;
+        scheduleEasyflowTypesetMath(document);
+        window.setTimeout(function() { scheduleEasyflowTypesetMath(document); }, 250);
+        window.setTimeout(function() { scheduleEasyflowTypesetMath(document); }, 1000);
+      };
 
       window.easyflowTransferScrollTops = window.easyflowTransferScrollTops || {};
       window.easyflowTransferScrollAnchors = window.easyflowTransferScrollAnchors || {};

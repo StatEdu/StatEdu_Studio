@@ -84,7 +84,7 @@ app_stylesheet_link <- function(version) {
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-mathjax-docs"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-mathjax-retry"))
 }
 
 app_head_tags <- function(version) {
@@ -106,7 +106,8 @@ app_head_tags <- function(version) {
     )),
     tags$script(
       id = "MathJax-script",
-      async = "async",
+      defer = "defer",
+      onload = "if (window.easyflowMathJaxReady) window.easyflowMathJaxReady();",
       src = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"
     ),
     app_script_link(version)
