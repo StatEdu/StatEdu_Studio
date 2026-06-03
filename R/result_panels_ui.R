@@ -508,7 +508,7 @@ hierarchical_coefficient_html_table <- function(
       "border-top:2px solid #1f2937;border-bottom:2px solid #1f2937;",
       "text-align:left;font-weight:700;width:232px;min-width:232px;max-width:232px;white-space:nowrap;"
     ),
-    "Term"
+    "Variable"
   ))
   for (index in seq_along(model_tables)) {
     header_groups <- c(header_groups, list(tags$th(

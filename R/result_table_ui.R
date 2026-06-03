@@ -250,9 +250,11 @@ result_cell_value_without_marker <- function(value, marker = "") {
 
 coefficient_display_columns <- function(table) {
   columns <- names(table)
+  labels <- columns
+  labels[result_column_key(labels) == "term"] <- "Variable"
   data.frame(
     source = columns,
-    label = columns,
+    label = labels,
     marker = FALSE,
     stringsAsFactors = FALSE
   )
