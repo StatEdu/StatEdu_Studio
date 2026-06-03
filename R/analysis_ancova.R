@@ -244,13 +244,39 @@ ancova_prediction_grid <- function(fit_data, factor, covariates) {
 
 ancova_adjusted_means <- function(model, fit_data, factor, covariates) {
   grid <- ancova_prediction_grid(fit_data, factor, covariates)
-  prediction <- stats::predict(model, newdata = grid, se.fit = TRUE)
-  data.frame(
+  prediction_warning <- ""
+  prediction <- withCallingHandlers(
+    stats::predict(model, newdata = grid, se.fit = TRUE),
+    warning = function(w) {
+      message <- conditionMessage(w)
+      if (grepl("rank-deficient|non-estim", message, ignore.case = TRUE)) {
+        prediction_warning <<- message
+        invokeRestart("muffleWarning")
+      }
+    }
+  )
+  non_estim <- attr(prediction$fit, "non-estim", exact = TRUE)
+  if (is.null(non_estim)) {
+    non_estim <- attr(prediction, "non-estim", exact = TRUE)
+  }
+  fit <- as.numeric(prediction$fit)
+  se <- as.numeric(prediction$se.fit)
+  non_estim_index <- suppressWarnings(as.integer(non_estim))
+  non_estim_index <- non_estim_index[is.finite(non_estim_index) & non_estim_index >= 1L & non_estim_index <= length(fit)]
+  if (length(non_estim_index) > 0L) {
+    fit[non_estim_index] <- NA_real_
+    se[non_estim_index] <- NA_real_
+  }
+  out <- data.frame(
     Level = as.character(grid[[factor]]),
-    Estimate = as.numeric(prediction$fit),
-    SE = as.numeric(prediction$se.fit),
+    Estimate = fit,
+    SE = se,
     stringsAsFactors = FALSE
   )
+  if (nzchar(prediction_warning) || length(non_estim_index) > 0L) {
+    attr(out, "warning") <- "Some adjusted means could not be estimated because the fitted ANCOVA model is rank-deficient."
+  }
+  out
 }
 
 ancova_pairwise_p_matrix <- function(model, newdata, factor, robust = FALSE, adjustment = "bonferroni") {
@@ -307,6 +333,7 @@ ancova_pairwise_p_matrix <- function(model, newdata, factor, robust = FALSE, adj
 
 ancova_result_table <- function(model, fit_data, dependent, factor, covariates, method, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
   adjusted <- ancova_adjusted_means(model, fit_data, factor, covariates)
+  adjusted_warning <- attr(adjusted, "warning", exact = TRUE)
   group_stat <- ancova_group_stat(model, method, factor)
   level_labels <- ttest_display_levels(factor, adjusted$Level, category_table)
   rows <- data.frame(
@@ -349,7 +376,9 @@ ancova_result_table <- function(model, fit_data, dependent, factor, covariates, 
       adjustment = posthoc_method
     )
     rows[["post-hoc"]] <- ""
-    if (isTRUE(options$ordered_significance) && !is.null(p_matrix)) {
+    if (any(!is.finite(adjusted$Estimate))) {
+      rows[["post-hoc"]] <- ""
+    } else if (isTRUE(options$ordered_significance) && !is.null(p_matrix)) {
       level_label_map <- stats::setNames(ttest_display_levels(factor, adjusted$Level, category_table), adjusted$Level)
       notation <- ttest_ordered_significance_notation(
         adjusted$Estimate,
@@ -362,6 +391,9 @@ ancova_result_table <- function(model, fit_data, dependent, factor, covariates, 
       letters <- ttest_group_letters(adjusted$Estimate, adjusted$Level, p_matrix, ordered = FALSE)
       rows[["post-hoc"]] <- ttest_lookup_letters(letters, adjusted$Level)
     }
+  }
+  if (nzchar(adjusted_warning %||% "")) {
+    attr(rows, "warning") <- adjusted_warning
   }
   rows
 }
@@ -448,7 +480,10 @@ ancova_single_result <- function(data, dependent, factor, covariates, variable_i
   }
   model <- stats::lm(ancova_formula(dependent, factor, covariates, interaction = interaction), data = fit_data)
   table <- ancova_result_table(model, fit_data, dependent, factor, covariates, method, variable_info, labels, category_table, options)
-  posthoc_note <- if (nlevels(fit_data[[factor]]) >= 3L) {
+  adjusted_mean_warning <- attr(table, "warning", exact = TRUE)
+  posthoc_note <- if (nlevels(fit_data[[factor]]) >= 3L && nzchar(adjusted_mean_warning %||% "")) {
+    "Post-hoc comparisons were omitted because at least one adjusted mean was not estimable."
+  } else if (nlevels(fit_data[[factor]]) >= 3L) {
     posthoc_method <- as.character(options$posthoc_method %||% "bonferroni")
     if (!posthoc_method %in% c("bonferroni", "holm")) posthoc_method <- "bonferroni"
     adjustment_note <- if (identical(posthoc_method, "holm")) {
@@ -489,7 +524,8 @@ ancova_single_result <- function(data, dependent, factor, covariates, variable_i
       posthoc_note,
       if (identical(method, "Robust ANCOVA (HC3)")) "Group effect F and p use HC3 robust covariance." else NULL,
       if (identical(method, "Ranked ANCOVA")) "Ranked ANCOVA uses rank-transformed dependent variable and continuous covariates; categorical covariates are dummy-coded." else NULL,
-      if (identical(method, "Interaction ANCOVA")) "Group effects should be interpreted with group x covariate interactions." else NULL
+      if (identical(method, "Interaction ANCOVA")) "Group effects should be interpreted with group x covariate interactions." else NULL,
+      adjusted_mean_warning
     )
   )
 }

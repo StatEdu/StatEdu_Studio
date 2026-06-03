@@ -63,6 +63,28 @@ stopifnot(length(categorical_covariate$results) == 1L)
 stopifnot(is.factor(categorical_covariate$results[[1]]$fit_data$site))
 stopifnot(any(grepl("^site", colnames(stats::model.matrix(categorical_covariate$results[[1]]$model)))))
 
+data_rank_deficient <- data.frame(
+  y = 1:6,
+  group = rep(c("A", "B", "C"), each = 2),
+  x = rep(c(0, 1, 0), each = 2)
+)
+variable_info_rank_deficient <- data.frame(
+  name = c("y", "group", "x"),
+  measurement = c("continuous", "category", "continuous"),
+  stringsAsFactors = FALSE
+)
+captured_warnings <- character(0)
+rank_deficient_result <- withCallingHandlers(
+  prepare_ancova_results(data_rank_deficient, "y", "group", "x", variable_info_rank_deficient),
+  warning = function(w) {
+    captured_warnings <<- c(captured_warnings, conditionMessage(w))
+    invokeRestart("muffleWarning")
+  }
+)
+stopifnot(!any(grepl("rank-deficient|non-estim", captured_warnings, ignore.case = TRUE)))
+stopifnot(length(rank_deficient_result$results) == 1L)
+stopifnot(grepl("rank-deficient", rank_deficient_result$results[[1]]$note, fixed = TRUE))
+
 plots <- prepare_ancova_results(
   data_basic,
   "y",
