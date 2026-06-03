@@ -58,19 +58,43 @@ result <- prepare_ttest_anova_results(
 
 table <- result$results[[1]]$table
 note <- result$results[[1]]$note
+table_markers <- attr(table, "note_markers", exact = TRUE)
 
-expect_true(grepl("[0-9]$", table[["Effect size"]][[1]]), "Expected first effect-size value to include a numbered marker")
-expect_true(grepl("[0-9]$", table[["p"]][[3]]), "Expected Welch ANOVA p-value to include a numbered marker")
-expect_true(grepl("[0-9]$", table[["Effect size"]][[3]]), "Expected second effect-size value to include a numbered marker")
+expect_true(!grepl("\\([0-9.]+,[0-9.]+\\)", table[[5]][[3]], perl = TRUE), "Expected default ANOVA F statistic to omit degrees of freedom")
+df_result <- prepare_ttest_anova_results(
+  data,
+  dependents = "y",
+  factors = c("g2", "g3"),
+  variable_info = variable_info,
+  options = list(effect_size = TRUE, normality_enabled = FALSE, show_df = TRUE)
+)
+expect_true(grepl("\\([0-9.]+,[0-9.]+\\)", df_result$results[[1]]$table[[5]][[3]], perl = TRUE), "Expected enabled ANOVA F statistic to include df1 and df2")
+mean_sd_result <- prepare_ttest_anova_results(
+  data,
+  dependents = "y",
+  factors = c("g2", "g3"),
+  variable_info = variable_info,
+  options = list(effect_size = TRUE, normality_enabled = FALSE, mean_sd = TRUE)
+)
+expect_true("M \u00B1 SD" %in% names(mean_sd_result$results[[1]]$table), "Expected enabled mean-SD display column")
+expect_true(!("M" %in% names(mean_sd_result$results[[1]]$table)), "Expected mean-SD display to omit separate M column")
+expect_true(!("SD" %in% names(mean_sd_result$results[[1]]$table)), "Expected mean-SD display to omit separate SD column")
+expect_true(grepl("\u00B1", mean_sd_result$results[[1]]$table[["M \u00B1 SD"]][[1]], fixed = TRUE), "Expected M plus/minus SD value")
+expect_true(grepl("M \u00B1 SD = mean \u00B1 standard deviation.", mean_sd_result$results[[1]]$note, fixed = TRUE), "Expected mean-SD note")
+expect_true(is.data.frame(table_markers), "Expected numbered note metadata")
+expect_true(any(table_markers$row == 1L & table_markers$column == "Effect size"), "Expected first effect-size value to include a numbered marker")
+expect_true(!any(table_markers$row == 3L & table_markers$column == "p"), "Expected single Welch ANOVA method note to omit a p-value marker")
+expect_true(any(table_markers$row == 3L & table_markers$column == "Effect size"), "Expected second effect-size value to include a numbered marker")
 expect_true(grepl("1\\. Effect size = Hedges' g\\.", note), "Expected numbered Hedges' g note")
-expect_true(grepl("2\\. Welch test was used because homogeneity of variance was not satisfied\\.", note), "Expected numbered Welch note")
-expect_true(grepl("3\\. Effect size = omega squared\\.", note), "Expected numbered omega squared note")
+expect_true(grepl("Welch test was used because homogeneity of variance was not satisfied\\.", note), "Expected unnumbered Welch note")
+expect_true(grepl("2\\. Effect size = omega squared\\.", note), "Expected numbered omega squared note")
+expect_true(regexpr("Welch test", note, fixed = TRUE) < regexpr("Post-hoc:", note, fixed = TRUE), "Expected analysis-method notes before post-hoc notes")
+expect_true(regexpr("Post-hoc:", note, fixed = TRUE) < regexpr("Effect size", note, fixed = TRUE), "Expected post-hoc notes before effect-size notes")
 
 html <- as.character(tags_to_html(ttest_anova_results_ui(result)))
 expect_true(!grepl('class="coefficient-col-note-marker"', html, fixed = TRUE), "Expected footnote markers to render inline without a narrow marker column")
 expect_true(grepl('class="coefficient-footnote-marker">1</sup>', html, fixed = TRUE), "Expected Hedges' g marker to render as inline superscript")
-expect_true(grepl('class="coefficient-footnote-marker">2</sup>', html, fixed = TRUE), "Expected p-value marker to render as inline superscript")
-expect_true(grepl('class="coefficient-footnote-marker">3</sup>', html, fixed = TRUE), "Expected omega squared marker to render as inline superscript")
+expect_true(grepl('class="coefficient-footnote-marker">2</sup>', html, fixed = TRUE), "Expected omega squared marker to render as inline superscript")
 style_css <- readLines(file.path(repo_root, "www", "style.css"), warn = FALSE, encoding = "UTF-8")
 style_text <- paste(style_css, collapse = "\n")
 expect_true(
@@ -227,8 +251,8 @@ expect_true(
   "Expected standalone nonparametric overview to identify menu-selected nonparametric tests"
 )
 expect_true(
-  grepl("[0-9]$", nonparametric_result$results[[1]]$table[["Effect size"]][[1]]),
-  "Expected Mann-Whitney U results to include a Cliff's delta effect-size marker"
+  any((attr(nonparametric_result$results[[1]]$table, "note_markers", exact = TRUE) %||% data.frame())$column == "Effect size"),
+  "Expected mixed nonparametric effect-size notes to include value markers"
 )
 expect_true(
   grepl("Effect size = Cliff's delta", nonparametric_result$results[[1]]$note, fixed = TRUE),

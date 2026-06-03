@@ -603,6 +603,34 @@ save_analysis_figures_to_dir <- function(results, directory, variable_table = NU
   save_analysis_figure_files(results, directory, variable_table, labels)
 }
 
+save_ancova_figure_files <- function(result, directory, variable_table = NULL, labels = character(0)) {
+  saved <- character(0)
+  for (item in result$results %||% list()) {
+    options <- item$options %||% list()
+    dependent_label <- safe_file_stem(display_variable_name_static(item$dependent, variable_table, labels, label_only = TRUE))
+    jobs <- list()
+    if (isTRUE(options$plot_adjusted_means)) {
+      jobs <- c(jobs, list(list(name = "adjusted_mean", label = "Adjusted mean", fn = draw_ancova_adjusted_mean_plot)))
+    }
+    if (isTRUE(options$plot_raw_overlay)) {
+      jobs <- c(jobs, list(list(name = "raw_overlay", label = "Raw overlay", fn = draw_ancova_raw_overlay_plot)))
+    }
+    if (isTRUE(options$plot_regression_lines)) {
+      jobs <- c(jobs, list(list(name = "regression_lines", label = "Regression lines", fn = draw_ancova_regression_lines_plot)))
+    }
+    for (job in jobs) {
+      file <- file.path(directory, sprintf("ANCOVA_%s(%s).png", job$name, dependent_label))
+      save_plot_png_file(job$fn, item, file, width = 6.4, height = 4.6)
+      saved <- c(saved, file)
+    }
+  }
+  saved
+}
+
+save_ancova_figures_to_dir <- function(result, directory, variable_table = NULL, labels = character(0)) {
+  save_ancova_figure_files(result, directory, variable_table, labels)
+}
+
 save_hierarchical_figure_files <- function(results, directory, variable_table = NULL, labels = character(0)) {
   saved <- character(0)
   for (result in results) {

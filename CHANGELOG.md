@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.9.32 - 2026-06-03
+
+### Changed
+
+- Added ANCOVA result presentation refinements, including tighter table width handling and right-aligned test statistics.
+- Added SPSS-style LMM effect-size conversion for omnibus F/df partial eta squared and covariance-based pairwise dz.
+- Added GLMM effect-size conversion for binary logit, count log-link, and Gaussian fixed-effect outputs.
+- Updated Korean User Guide, Analysis Methods, and Method Notes for the new ANCOVA, LMM, GEE, and GLMM effect-size workflows.
+- Refined Effect Size input handling so LMM omnibus and pairwise calculations can run from either available input set.
+
 ## v0.9.31 - 2026-06-02
 
 ### Changed
@@ -10,6 +20,7 @@
 - Standardized result table widths and landscape export rules across analysis output, Result history, HTML, PDF, and Word.
 - Refined Model overview and warning table layouts for correlation, paired tests, factor analysis, reliability, and logistic regression.
 - Removed the Word export cover page so saved Result documents start directly with methods and results.
+- Added ANCOVA with automatic standard, HC3 robust, ranked, and interaction-model selection plus HTML, PDF, Excel, and Result history export support.
 
 
 ## v0.9.30 - 2026-06-02

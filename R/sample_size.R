@@ -26,7 +26,8 @@ sample_size_method_labels <- function() {
 
 effect_size_method_labels <- function() {
   labels <- sample_size_method_labels()
-  labels[setdiff(names(labels), c("equivalence", "cluster", "precision", "reliability", "sem"))]
+  labels <- labels[setdiff(names(labels), c("equivalence", "cluster", "precision", "reliability", "sem"))]
+  append(labels, c(glmm = "GLMM"), after = which(names(labels) == "gee"))
 }
 
 sample_size_ttest_effect_conversions <- function(d, df = NULL) {
@@ -992,6 +993,122 @@ sample_size_effect_size_gee <- function(
   )
 }
 
+sample_size_effect_size_glmm <- function(
+  design = "binary_logit",
+  input_scale = "coefficient",
+  coefficient = NULL,
+  odds_ratio = NULL,
+  incidence_rate_ratio = NULL,
+  p1 = NULL,
+  p2 = NULL,
+  rate1 = NULL,
+  rate2 = NULL,
+  sd = NULL
+) {
+  if (identical(design, "binary_logit")) {
+    if (identical(input_scale, "odds_ratio")) {
+      sample_size_validate_positive(odds_ratio, "Odds ratio")
+      coefficient <- log(odds_ratio)
+    } else {
+      if (!is.finite(coefficient)) stop("Logit fixed-effect coefficient B must be numeric.", call. = FALSE)
+      odds_ratio <- exp(coefficient)
+    }
+    d <- coefficient * sqrt(3) / pi
+    return(list(
+      result_type = "effect_size",
+      design_label = "GLMM binary logit fixed effect",
+      primary_effect_size = odds_ratio,
+      primary_effect_size_label = "Odds ratio",
+      odds_ratio = odds_ratio,
+      log_odds_ratio = coefficient,
+      fixed_effect_coefficient = coefficient,
+      effect_size_d = d,
+      effect_size_label = "Approximate latent-scale d",
+      method_note = "For a binary logit GLMM, the model-scale fixed effect is log(OR). Approximate latent-scale d = log(OR) * sqrt(3) / pi."
+    ))
+  }
+
+  if (identical(design, "binary_probabilities")) {
+    sample_size_validate_probability(p1, "Proportion 1")
+    sample_size_validate_probability(p2, "Proportion 2")
+    odds1 <- p1 / (1 - p1)
+    odds2 <- p2 / (1 - p2)
+    odds_ratio <- odds1 / odds2
+    log_or <- log(odds_ratio)
+    h <- 2 * asin(sqrt(p1)) - 2 * asin(sqrt(p2))
+    return(list(
+      result_type = "effect_size",
+      design_label = "GLMM binary outcome probabilities",
+      primary_effect_size = odds_ratio,
+      primary_effect_size_label = "Odds ratio",
+      proportion1 = p1,
+      proportion2 = p2,
+      risk_difference = p1 - p2,
+      odds_ratio = odds_ratio,
+      log_odds_ratio = log_or,
+      cohens_h = h,
+      effect_size_d = log_or * sqrt(3) / pi,
+      effect_size_label = "Approximate latent-scale d",
+      method_note = "For binary outcomes, probabilities are converted to odds ratio; Cohen's h is also reported for the marginal proportion contrast."
+    ))
+  }
+
+  if (identical(design, "count_log")) {
+    if (identical(input_scale, "incidence_rate_ratio")) {
+      sample_size_validate_positive(incidence_rate_ratio, "Incidence rate ratio")
+      coefficient <- log(incidence_rate_ratio)
+    } else {
+      if (!is.finite(coefficient)) stop("Log fixed-effect coefficient B must be numeric.", call. = FALSE)
+      incidence_rate_ratio <- exp(coefficient)
+    }
+    return(list(
+      result_type = "effect_size",
+      design_label = "GLMM count log-link fixed effect",
+      primary_effect_size = incidence_rate_ratio,
+      primary_effect_size_label = "Incidence rate ratio",
+      incidence_rate_ratio = incidence_rate_ratio,
+      log_incidence_rate_ratio = coefficient,
+      fixed_effect_coefficient = coefficient,
+      method_note = "For a Poisson or negative-binomial GLMM with log link, the model-scale fixed effect is log(IRR), and IRR = exp(B)."
+    ))
+  }
+
+  if (identical(design, "count_rates")) {
+    sample_size_validate_positive(rate1, "Rate 1")
+    sample_size_validate_positive(rate2, "Rate 2")
+    rate_ratio <- rate1 / rate2
+    return(list(
+      result_type = "effect_size",
+      design_label = "GLMM count outcome rates",
+      primary_effect_size = rate_ratio,
+      primary_effect_size_label = "Rate ratio",
+      rate1 = rate1,
+      rate2 = rate2,
+      rate_difference = rate1 - rate2,
+      rate_ratio = rate_ratio,
+      log_rate_ratio = log(rate_ratio),
+      incidence_rate_ratio = rate_ratio,
+      log_incidence_rate_ratio = log(rate_ratio),
+      method_note = "For count outcomes with a log link, the marginal rate ratio is equivalent to IRR when offsets/exposure are handled consistently."
+    ))
+  }
+
+  sample_size_validate_positive(sd, "Residual SD")
+  if (!is.finite(coefficient)) stop("Gaussian fixed-effect coefficient B must be numeric.", call. = FALSE)
+  d <- coefficient / sd
+  list(
+    result_type = "effect_size",
+    design_label = "GLMM Gaussian identity-link fixed effect",
+    primary_effect_size = d,
+    primary_effect_size_label = "Cohen's d",
+    effect_size_d = d,
+    effect_size_label = "Cohen's d",
+    fixed_effect_coefficient = coefficient,
+    residual_sd = sd,
+    method_note = "For a Gaussian identity-link mixed model, standardized effect d = fixed-effect coefficient B / residual SD."
+  )
+}
+
 sample_size_effect_size_lmm <- function(
   design = "simple_fixed",
   lmm_design = "two_group_repeated",
@@ -999,6 +1116,13 @@ sample_size_effect_size_lmm <- function(
   group1_means = NULL,
   group2_means = NULL,
   residual_sd = NULL,
+  f_statistic = NULL,
+  df_effect = NULL,
+  df_error = NULL,
+  mean_difference = NULL,
+  variance_i = NULL,
+  variance_j = NULL,
+  covariance_ij = NULL,
   time_points = 3,
   icc = 0.3,
   rho = 0.5,
@@ -1032,6 +1156,66 @@ sample_size_effect_size_lmm <- function(
       intraclass_correlation = icc,
       method_note = "Repeated-measures planning effect = standardized fixed effect * sqrt(m / [1 + (m - 1)ICC])."
     ))
+  }
+
+  if (identical(design, "spss_output")) {
+    finite_set <- function(values, expected) {
+      length(values) == expected && all(is.finite(values))
+    }
+    has_omnibus <- finite_set(c(f_statistic, df_effect, df_error), 3L)
+    has_pairwise <- finite_set(c(mean_difference, variance_i, variance_j, covariance_ij), 4L)
+    if (!isTRUE(has_omnibus) && !isTRUE(has_pairwise)) {
+      stop("Enter either F/df for the omnibus fixed effect or mean difference plus variance/covariance for a pairwise comparison.", call. = FALSE)
+    }
+    result <- list(
+      result_type = "effect_size",
+      design_label = "LMM SPSS output",
+      method_note = character(0)
+    )
+    if (isTRUE(has_omnibus)) {
+      sample_size_validate_positive(f_statistic, "F statistic")
+      sample_size_validate_positive(df_effect, "Numerator degrees of freedom")
+      sample_size_validate_positive(df_error, "Denominator degrees of freedom")
+      partial_eta <- (f_statistic * df_effect) / ((f_statistic * df_effect) + df_error)
+      cohen_f <- sqrt(partial_eta / max(1e-8, 1 - partial_eta))
+      result$design_label <- "LMM SPSS output: fixed-effect omnibus test"
+      result$primary_effect_size <- partial_eta
+      result$primary_effect_size_label <- "Partial eta squared"
+      result$partial_eta_squared <- partial_eta
+      result$cohen_f <- cohen_f
+      result$f_statistic <- f_statistic
+      result$df_effect <- df_effect
+      result$df_error <- df_error
+      result$method_note <- c(
+        result$method_note,
+        "For the LMM fixed-effect omnibus test, partial eta squared is approximated from the SPSS F test as F * df_effect / (F * df_effect + df_error)."
+      )
+    }
+    if (isTRUE(has_pairwise)) {
+      sample_size_validate_positive(variance_i, "Variance for time I")
+      sample_size_validate_positive(variance_j, "Variance for time J")
+      sd_difference <- sqrt(variance_i + variance_j - 2 * covariance_ij)
+      sample_size_validate_positive(sd_difference, "SD of paired difference")
+      result$cohens_dz <- mean_difference / sd_difference
+      result$effect_size_d <- result$cohens_dz
+      result$effect_size_label <- "Cohen's dz"
+      if (!isTRUE(has_omnibus)) {
+        result$design_label <- "LMM SPSS output: pairwise comparison"
+        result$primary_effect_size <- result$cohens_dz
+        result$primary_effect_size_label <- "Cohen's dz"
+      }
+      result$mean_difference <- mean_difference
+      result$variance_i <- variance_i
+      result$variance_j <- variance_j
+      result$covariance_ij <- covariance_ij
+      result$sd_difference <- sd_difference
+      result$method_note <- c(
+        result$method_note,
+        "Pairwise Cohen's dz is calculated as mean difference / sqrt(Var_i + Var_j - 2Cov_ij), using the LMM covariance estimates."
+      )
+    }
+    result$method_note <- paste(result$method_note, collapse = " ")
+    return(result)
   }
 
   g1 <- sample_size_parse_numeric_vector(group1_means, "Group 1 means")

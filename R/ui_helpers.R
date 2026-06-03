@@ -136,6 +136,7 @@ enabled_analysis_tabs <- function() {
     paired = TRUE,
     paired_rm = TRUE,
     ttest_anova = TRUE,
+    ancova = TRUE,
     nonparametric = TRUE,
     nonparametric_paired = TRUE,
     correlation = TRUE,

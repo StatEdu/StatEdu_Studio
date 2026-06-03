@@ -518,6 +518,14 @@ write_ttest_anova_results_html <- function(result, file) {
   )
 }
 
+write_ancova_results_html <- function(result, file, variable_table = NULL, labels = character(0)) {
+  writeLines(
+    saved_ancova_results_html(result, variable_table, labels),
+    file,
+    useBytes = TRUE
+  )
+}
+
 write_nonparametric_results_html <- function(result, file) {
   writeLines(
     saved_nonparametric_results_html(result),
@@ -597,6 +605,10 @@ write_reliability_results_pdf <- function(result, file) {
 
 write_ttest_anova_results_pdf <- function(result, file) {
   write_pdf_from_html(saved_ttest_anova_results_html(result, report_mode = TRUE), file)
+}
+
+write_ancova_results_pdf <- function(result, file, variable_table = NULL, labels = character(0)) {
+  write_pdf_from_html(saved_ancova_results_html(result, variable_table, labels, report_mode = TRUE), file)
 }
 
 write_nonparametric_results_pdf <- function(result, file) {
@@ -1351,7 +1363,7 @@ crosstab_excel_group_table <- function(results) {
 crosstab_excel_group_note <- function(results) {
   method_notes <- crosstab_method_footnotes(results)
   method_lines <- if (is.data.frame(method_notes) && nrow(method_notes) > 0) {
-    sprintf("%s. %s", method_notes$marker, method_notes$note)
+    ifelse(nzchar(method_notes$marker), sprintf("%s. %s", method_notes$marker, method_notes$note), method_notes$note)
   } else {
     character(0)
   }
@@ -1670,6 +1682,33 @@ save_ttest_anova_excel_file <- function(result, file) {
       )
     }
   }
+  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
+  invisible(file)
+}
+
+save_ancova_excel_file <- function(result, file, variable_table = NULL, labels = character(0)) {
+  workbook <- openxlsx::createWorkbook()
+  used_sheets <- character(0)
+  overview <- ancova_model_overview_table(result, variable_table, labels)
+  if (is.data.frame(overview) && nrow(overview) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Model overview", overview, used_sheets, title = "Model overview")
+  }
+  combined <- ancova_combined_result_table(result, variable_table, labels)
+  if (is.data.frame(combined) && nrow(combined) > 0) {
+    used_sheets <- add_ttest_anova_result_sheet(
+      workbook,
+      "ANCOVA table",
+      combined,
+      ancova_combined_note(result, variable_table, labels),
+      used_sheets,
+      title = "ANCOVA table"
+    )
+  }
+  assumption <- ancova_assumption_review_table(result, variable_table, labels)
+  if (is.data.frame(assumption) && nrow(assumption) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Assumption review", assumption, used_sheets, title = "Assumption review")
+  }
+  used_sheets <- add_analysis_warning_skipped_sheets(workbook, used_sheets, NULL, result$skipped, skipped_title = "Skipped analyses")
   openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
   invisible(file)
 }

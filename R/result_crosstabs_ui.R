@@ -275,7 +275,16 @@ crosstab_method_footnotes <- function(results) {
     return(data.frame(marker = character(0), type = character(0), key = character(0), note = character(0), stringsAsFactors = FALSE))
   }
   out <- do.call(rbind, rows)
-  out$marker <- as.character(seq_len(nrow(out)))
+  out$marker <- ""
+  marker_index <- 0L
+  for (type in unique(out$type)) {
+    rows_for_type <- which(out$type == type)
+    if (length(rows_for_type) <= 1L) next
+    for (row_index in rows_for_type) {
+      marker_index <- marker_index + 1L
+      out$marker[[row_index]] <- as.character(marker_index)
+    }
+  }
   out[, c("marker", "type", "key", "note")]
 }
 
@@ -401,7 +410,7 @@ crosstab_column_group_table_ui <- function(results, method_notes = crosstab_meth
 
 crosstab_column_group_notes_ui <- function(results, method_notes = crosstab_method_footnotes(results)) {
   method_lines <- if (is.data.frame(method_notes) && nrow(method_notes) > 0) {
-    sprintf("%s. %s", method_notes$marker, method_notes$note)
+    ifelse(nzchar(method_notes$marker), sprintf("%s. %s", method_notes$marker, method_notes$note), method_notes$note)
   } else {
     character(0)
   }

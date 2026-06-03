@@ -67,6 +67,7 @@ effect_size_tab_panel <- function() {
     item("anova"),
     item("ancova"),
     item("gee"),
+    item("glmm"),
     item("lmm"),
     item("nonparametric"),
     item("proportion"),
@@ -81,7 +82,7 @@ effect_size_tab_panel <- function() {
 }
 
 effect_size_analysis_panel <- function(method) {
-  if (!method %in% c("ttest", "proportion", "chisquare", "correlation", "anova", "ancova", "nonparametric", "mcnemar", "regression", "gee", "lmm", "survival", "equivalence", "diagnostic", "rates", "cluster", "precision", "reliability", "sem")) {
+  if (!method %in% c("ttest", "proportion", "chisquare", "correlation", "anova", "ancova", "nonparametric", "mcnemar", "regression", "gee", "glmm", "lmm", "survival", "equivalence", "diagnostic", "rates", "cluster", "precision", "reliability", "sem")) {
     labels <- effect_size_method_labels()
     title <- labels[[method]] %||% "Effect Size"
     return(tabPanel(
@@ -589,6 +590,55 @@ effect_size_analysis_panel <- function(method) {
       )
     ))
   }
+  if (identical(method, "glmm")) {
+    return(tabPanel(
+      "GLMM",
+      value = "effect_size_glmm",
+      div(
+        class = "page-shell",
+        div(
+          class = "app-heading",
+          h1("GLMM"),
+          div("Calculate generalized linear mixed model effect sizes by outcome family and link.", class = "app-subtitle")
+        ),
+        div(
+          class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
+          style = "min-width:980px;overflow-x:auto;",
+          h3("GLMM Effect Size"),
+          div(
+            class = "sample-size-grid",
+            div(
+              class = "step-block sample-size-block sample-size-block1",
+              h3("1. Effect size"),
+              radioButtons(
+                "effect_size_glmm_design",
+                label = NULL,
+                choices = c(
+                  "Binary logit fixed effect" = "binary_logit",
+                  "Binary outcome probabilities" = "binary_probabilities",
+                  "Count log-link fixed effect" = "count_log",
+                  "Count outcome rates" = "count_rates",
+                  "Gaussian fixed effect" = "continuous_gaussian"
+                ),
+                selected = "binary_logit"
+              )
+            ),
+            div(
+              class = "step-block sample-size-block sample-size-block2",
+              h3("2. Inputs"),
+              uiOutput("effect_size_glmm_inputs"),
+              effect_size_action_button("effect_size_glmm_calculate")
+            ),
+            div(
+              class = "step-block sample-size-block sample-size-block3",
+              h3("3. Results"),
+              uiOutput("effect_size_glmm_results")
+            )
+          )
+        )
+      )
+    ))
+  }
   if (identical(method, "lmm")) {
     return(tabPanel(
       "LMM",
@@ -614,7 +664,8 @@ effect_size_analysis_panel <- function(method) {
                 label = NULL,
                 choices = c(
                   "Simple standardized fixed effect" = "simple_fixed",
-                  "GLIMMPSE-style mean vectors" = "glimmpse_vectors"
+                  "GLIMMPSE-style mean vectors" = "glimmpse_vectors",
+                  "SPSS LMM output (F, df, covariance)" = "spss_output"
                 ),
                 selected = "simple_fixed"
               )
@@ -1261,9 +1312,74 @@ effect_size_gee_inputs_ui <- function(input) {
   )
 }
 
+effect_size_glmm_inputs_ui <- function(input) {
+  design <- sample_size_choice(input$effect_size_glmm_design, "binary_logit")
+  if (identical(design, "binary_logit")) {
+    scale <- sample_size_choice(input$effect_size_glmm_binary_scale, "coefficient")
+    return(tagList(
+      selectInput(
+        "effect_size_glmm_binary_scale",
+        "Input scale",
+        choices = c("Logit coefficient B" = "coefficient", "Odds ratio" = "odds_ratio"),
+        selected = scale
+      ),
+      if (identical(scale, "odds_ratio")) {
+        textInput("effect_size_glmm_or", "Odds ratio", value = "1.80")
+      } else {
+        textInput("effect_size_glmm_coefficient", "Logit fixed-effect coefficient B", value = "0.588")
+      }
+    ))
+  }
+  if (identical(design, "binary_probabilities")) {
+    return(tagList(
+      textInput("effect_size_glmm_p1", "Proportion 1", value = "0.65"),
+      textInput("effect_size_glmm_p2", "Proportion 2", value = "0.50")
+    ))
+  }
+  if (identical(design, "count_log")) {
+    scale <- sample_size_choice(input$effect_size_glmm_count_scale, "coefficient")
+    return(tagList(
+      selectInput(
+        "effect_size_glmm_count_scale",
+        "Input scale",
+        choices = c("Log fixed-effect coefficient B" = "coefficient", "Incidence rate ratio" = "incidence_rate_ratio"),
+        selected = scale
+      ),
+      if (identical(scale, "incidence_rate_ratio")) {
+        textInput("effect_size_glmm_irr", "Incidence rate ratio", value = "1.50")
+      } else {
+        textInput("effect_size_glmm_coefficient", "Log fixed-effect coefficient B", value = "0.405")
+      }
+    ))
+  }
+  if (identical(design, "count_rates")) {
+    return(tagList(
+      textInput("effect_size_glmm_rate1", "Rate 1", value = "1.50"),
+      textInput("effect_size_glmm_rate2", "Rate 2", value = "1.00")
+    ))
+  }
+  tagList(
+    textInput("effect_size_glmm_coefficient", "Fixed-effect coefficient B", value = "0.50"),
+    textInput("effect_size_glmm_sd", "Residual SD", value = "1")
+  )
+}
+
 effect_size_lmm_inputs_ui <- function(input) {
   design <- sample_size_choice(input$effect_size_lmm_design, "simple_fixed")
   lmm_design <- sample_size_choice(input$effect_size_lmm_lmm_design, "two_group_repeated")
+  if (identical(design, "spss_output")) {
+    return(tagList(
+      h4("Omnibus fixed effect"),
+      textInput("effect_size_lmm_f_statistic", "F statistic", value = "28.061"),
+      textInput("effect_size_lmm_df_effect", "Numerator df", value = "3"),
+      textInput("effect_size_lmm_df_error", "Denominator df", value = "23.057"),
+      h4("Optional pairwise comparison"),
+      textInput("effect_size_lmm_mean_difference", "Mean difference (I - J)", value = "0.824"),
+      textInput("effect_size_lmm_variance_i", "Variance at time I", value = "0.326"),
+      textInput("effect_size_lmm_variance_j", "Variance at time J", value = "0.199"),
+      textInput("effect_size_lmm_covariance_ij", "Covariance I,J", value = "0.117")
+    ))
+  }
   tagList(
     selectInput(
       "effect_size_lmm_lmm_design",
@@ -2244,7 +2360,15 @@ sample_size_result_table <- function(result) {
     if (!is.null(result$b_path)) add_row("Path b beta", sprintf("%.3f", result$b_path))
     if (!is.null(result$covariate_r2)) add_row("Covariate R-squared", sprintf("%.3f", result$covariate_r2))
     if (!is.null(result$intraclass_correlation)) add_row("ICC", sprintf("%.3f", result$intraclass_correlation))
+    if (!is.null(result$f_statistic)) add_row("F statistic", sprintf("%.3f", result$f_statistic))
+    if (!is.null(result$df_effect)) add_row("Numerator df", sprintf("%.3f", result$df_effect))
+    if (!is.null(result$df_error)) add_row("Denominator df", sprintf("%.3f", result$df_error))
     if (!is.null(result$mean_difference)) add_row("Mean difference", sprintf("%.3f", result$mean_difference))
+    if (!is.null(result$fixed_effect_coefficient)) add_row("Fixed effect B", sprintf("%.3f", result$fixed_effect_coefficient))
+    if (!is.null(result$cohens_dz)) add_row("Cohen's dz", sprintf("%.3f", result$cohens_dz))
+    if (!is.null(result$variance_i)) add_row("Variance time I", sprintf("%.3f", result$variance_i))
+    if (!is.null(result$variance_j)) add_row("Variance time J", sprintf("%.3f", result$variance_j))
+    if (!is.null(result$covariance_ij)) add_row("Covariance I,J", sprintf("%.3f", result$covariance_ij))
     if (!is.null(result$parameter_estimate)) add_row("Group x time B", sprintf("%.3f", result$parameter_estimate))
     if (!is.null(result$common_outcome_sd)) add_row("Common outcome SD", sprintf("%.3f", result$common_outcome_sd))
     if (!is.null(result$common_sd_method)) add_row("Common SD method", result$common_sd_method)
@@ -2589,8 +2713,25 @@ sample_size_method_details <- function(method, result) {
         "Fleiss, J. L., Levin, B., & Paik, M. C. (2003). Statistical Methods for Rates and Proportions (3rd ed.). Wiley."
       )
     ),
+    effect_glmm = list(
+      formula = if (has_design("binary", ignore.case = TRUE)) {
+        "Binary logit GLMM: log(OR) = B, OR = exp(B), approximate latent-scale d = log(OR) * sqrt(3) / pi. For probabilities, odds ratio and Cohen's h are both reported."
+      } else if (has_design("count|rate", ignore.case = TRUE)) {
+        "Count GLMM with log link: log(IRR) = B, IRR = exp(B). For rates, rate ratio = rate1 / rate2."
+      } else {
+        "Gaussian identity-link mixed model: Cohen's d = fixed-effect coefficient B / residual SD."
+      },
+      references = c(
+        cohen,
+        "Chinn, S. (2000). A simple method for converting an odds ratio to effect size for use in meta-analysis. Statistics in Medicine, 19(22), 3127-3131.",
+        "Haddock, C. K., Rindskopf, D., & Shadish, W. R. (1998). Using odds ratios as effect sizes for meta-analysis of dichotomous data: A primer on methods and issues. Psychological Methods, 3(3), 339-353.",
+        "McCullagh, P., & Nelder, J. A. (1989). Generalized Linear Models (2nd ed.). Chapman and Hall."
+      )
+    ),
     effect_lmm = list(
-      formula = if (has_design("GLIMMPSE", ignore.case = TRUE)) {
+      formula = if (has_design("SPSS", ignore.case = TRUE)) {
+        "Omnibus partial eta squared = F * df_effect / (F * df_effect + df_error). Optional pairwise Cohen's dz = mean difference / sqrt(Var_i + Var_j - 2Cov_ij)."
+      } else if (has_design("GLIMMPSE", ignore.case = TRUE)) {
         "Standardized change effect = last-minus-first mean contrast / residual SD; planning effect = d * sqrt(m / design effect)."
       } else {
         "Repeated-measures planning effect = standardized fixed effect * sqrt(m / [1 + (m - 1)ICC])."
@@ -3485,6 +3626,31 @@ effect_size_gee_calculate <- function(input) {
   }, error = function(e) list(error = conditionMessage(e)))
 }
 
+effect_size_glmm_calculate <- function(input) {
+  tryCatch({
+    result <- sample_size_effect_size_glmm(
+      design = sample_size_choice(input$effect_size_glmm_design, "binary_logit"),
+      input_scale = if (identical(sample_size_choice(input$effect_size_glmm_design, "binary_logit"), "count_log")) {
+        sample_size_choice(input$effect_size_glmm_count_scale, "coefficient")
+      } else {
+        sample_size_choice(input$effect_size_glmm_binary_scale, "coefficient")
+      },
+      coefficient = as.numeric(input$effect_size_glmm_coefficient),
+      odds_ratio = as.numeric(input$effect_size_glmm_or),
+      incidence_rate_ratio = as.numeric(input$effect_size_glmm_irr),
+      p1 = as.numeric(input$effect_size_glmm_p1),
+      p2 = as.numeric(input$effect_size_glmm_p2),
+      rate1 = as.numeric(input$effect_size_glmm_rate1),
+      rate2 = as.numeric(input$effect_size_glmm_rate2),
+      sd = as.numeric(input$effect_size_glmm_sd)
+    )
+    details <- sample_size_method_details("effect_glmm", result)
+    result$formula_note <- details$formula
+    result$references <- details$references
+    result
+  }, error = function(e) list(error = conditionMessage(e)))
+}
+
 effect_size_lmm_calculate <- function(input) {
   tryCatch({
     result <- sample_size_effect_size_lmm(
@@ -3494,6 +3660,13 @@ effect_size_lmm_calculate <- function(input) {
       group1_means = input$effect_size_lmm_group1_means,
       group2_means = input$effect_size_lmm_group2_means,
       residual_sd = as.numeric(input$effect_size_lmm_residual_sd),
+      f_statistic = as.numeric(input$effect_size_lmm_f_statistic),
+      df_effect = as.numeric(input$effect_size_lmm_df_effect),
+      df_error = as.numeric(input$effect_size_lmm_df_error),
+      mean_difference = as.numeric(input$effect_size_lmm_mean_difference),
+      variance_i = as.numeric(input$effect_size_lmm_variance_i),
+      variance_j = as.numeric(input$effect_size_lmm_variance_j),
+      covariance_ij = as.numeric(input$effect_size_lmm_covariance_ij),
       time_points = as.numeric(input$effect_size_lmm_time_points),
       icc = as.numeric(input$effect_size_lmm_icc),
       rho = as.numeric(input$effect_size_lmm_rho),
@@ -3781,6 +3954,7 @@ register_sample_size_server <- function(input, output, session) {
   effect_size_mcnemar_result <- reactiveVal(NULL)
   effect_size_regression_result <- reactiveVal(NULL)
   effect_size_gee_result <- reactiveVal(NULL)
+  effect_size_glmm_result <- reactiveVal(NULL)
   effect_size_lmm_result <- reactiveVal(NULL)
   effect_size_survival_result <- reactiveVal(NULL)
   effect_size_equivalence_result <- reactiveVal(NULL)
@@ -3801,6 +3975,7 @@ register_sample_size_server <- function(input, output, session) {
     mcnemar = effect_size_mcnemar_result,
     regression = effect_size_regression_result,
     gee = effect_size_gee_result,
+    glmm = effect_size_glmm_result,
     lmm = effect_size_lmm_result,
     survival = effect_size_survival_result,
     equivalence = effect_size_equivalence_result,
@@ -3822,6 +3997,7 @@ register_sample_size_server <- function(input, output, session) {
     mcnemar = effect_size_mcnemar_calculate,
     regression = effect_size_regression_calculate,
     gee = effect_size_gee_calculate,
+    glmm = effect_size_glmm_calculate,
     lmm = effect_size_lmm_calculate,
     survival = effect_size_survival_calculate,
     equivalence = effect_size_equivalence_calculate,
@@ -3951,6 +4127,11 @@ register_sample_size_server <- function(input, output, session) {
   output$effect_size_gee_results <- renderUI(sample_size_results_ui(effect_size_gee_result()))
   observeEvent(input$effect_size_gee_calculate, {
     effect_size_gee_result(effect_size_gee_calculate(input))
+  })
+  output$effect_size_glmm_inputs <- renderUI(effect_size_glmm_inputs_ui(input))
+  output$effect_size_glmm_results <- renderUI(sample_size_results_ui(effect_size_glmm_result()))
+  observeEvent(input$effect_size_glmm_calculate, {
+    effect_size_glmm_result(effect_size_glmm_calculate(input))
   })
   output$effect_size_lmm_inputs <- renderUI(effect_size_lmm_inputs_ui(input))
   output$effect_size_lmm_results <- renderUI(sample_size_results_ui(effect_size_lmm_result()))

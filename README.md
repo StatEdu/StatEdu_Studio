@@ -8,9 +8,9 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.31`
+Current development version: `0.9.32`
 
-Version 0.9.31 refines Result history snapshots, save/open file handling, Word/PDF/HTML table widths, landscape export rules, and Model overview layout behavior.
+Version 0.9.32 adds ANCOVA workflows, SPSS-style LMM effect-size conversion, GLMM effect-size conversion, and refined analysis table layouts.
 
 ## Current Scope
 
@@ -22,6 +22,7 @@ Version 0.9.31 refines Result history snapshots, save/open file handling, Word/P
 - Frequencies / descriptives for categorical and continuous variables
 - Cross-tabulation analysis for binary, ordered, and categorical variables
 - t-test / ANOVA with normality checks, homoscedasticity checks, post-hoc options, effect sizes, trend options, and nonparametric fallbacks
+- ANCOVA with automatic selection among standard ANCOVA, Robust ANCOVA (HC3), Ranked ANCOVA, and Interaction ANCOVA
 - Standalone nonparametric tests using Mann-Whitney U and Kruskal-Wallis workflows
 - Paired tests and repeated-measures paired workflows for two or more repeated measurements
 - Standalone nonparametric paired tests using Wilcoxon signed-rank and Friedman workflows
@@ -74,7 +75,7 @@ The app will open at `127.0.0.1` in the default browser. The launcher searches f
 
 Version 0.9.10 includes validation scripts for calculators, data import, data editing, cross-tabulation, correlation auto-selection, factor analysis / PCA, logistic analysis and UI, paired guard handling, p-value formatting, regression coefficient output, and t-test / ANOVA guard handling.
 
-Version 0.9.31 also includes comparison outputs for sample-size and effect-size calculators. Effect-size comparisons use `effectsize` as a validation reference where its definitions match the app calculation; `effectsize` is not required at runtime.
+Version 0.9.32 also includes comparison outputs for sample-size and effect-size calculators and validation coverage for ANCOVA method selection and export. Effect-size comparisons use `effectsize` as a validation reference where its definitions match the app calculation; `effectsize` is not required at runtime.
 
 Run validation scripts from the repository root with Rscript, for example:
 
@@ -86,7 +87,7 @@ Run validation scripts from the repository root with Rscript, for example:
 
 If you use **EasyFlow Statistics** in your research, please cite:
 
-LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.31) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
+LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.32) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
 
 ## Development Model
 

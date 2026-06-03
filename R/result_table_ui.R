@@ -285,8 +285,11 @@ coefficient_display_cell_style <- function(table, row_index, column, display_ind
   if (is.finite(source_index) && source_index == 1 && display_index != 1) {
     style <- paste0(style, "text-align:left;")
   }
-  if (result_note_marker_column(column)) {
+  if (result_note_marker_column(column) || result_column_key(column) %in% c("msd", "mse")) {
     style <- paste0(style, "white-space:nowrap;overflow-wrap:normal;word-break:normal;")
+  }
+  if (result_column_key(column) %in% c("statistic", "t", "f", "tf", "fstatistic")) {
+    style <- paste0(style, "text-align:right;white-space:nowrap;overflow-wrap:normal;word-break:normal;")
   }
   style
 }
@@ -296,6 +299,13 @@ coefficient_column_class <- function(name) {
   switch(
     normalized,
     term = "coefficient-col-term",
+    variable = "coefficient-col-term",
+    value = "coefficient-col-value",
+    label = "coefficient-col-reference",
+    statistic = "coefficient-col-statistic",
+    f = "coefficient-col-statistic",
+    msd = "coefficient-col-stat",
+    mse = "coefficient-col-stat",
     b = "coefficient-col-b",
     reference = "coefficient-col-reference",
     t = "coefficient-col-compact",

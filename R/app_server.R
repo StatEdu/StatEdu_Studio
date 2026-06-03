@@ -65,6 +65,7 @@ create_app_server <- function(app_version) {
   output$lazy_analysis_frequencies <- renderUI(tab_panel_content(frequencies_tab_panel("Frequencies / Descriptives")))
   output$lazy_analysis_crosstabs <- renderUI(tab_panel_content(crosstab_tab_panel()))
   output$lazy_analysis_ttest_anova <- renderUI(tab_panel_content(ttest_anova_tab_panel("t-test / ANOVA")))
+  output$lazy_analysis_ancova <- renderUI(tab_panel_content(ancova_tab_panel("ANCOVA")))
   output$lazy_analysis_nonparametric <- renderUI(tab_panel_content(nonparametric_tab_panel("Nonparametric Tests")))
   output$lazy_analysis_paired <- renderUI(tab_panel_content(paired_tab_panel("Paired test")))
   output$lazy_analysis_nonparametric_paired <- renderUI(tab_panel_content(nonparametric_paired_tab_panel("Nonparametric Paired")))
@@ -1065,6 +1066,18 @@ create_app_server <- function(app_version) {
   )
 
   register_ttest_anova_handlers(
+    input = input,
+    output = output,
+    session = session,
+    selected_names_fn = selected_names,
+    variable_table_fn = regression_variable_table,
+    dataset_fn = dataset,
+    category_table_fn = category_label_values,
+    labels_fn = var_label_overrides,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
+  register_ancova_handlers(
     input = input,
     output = output,
     session = session,

@@ -807,6 +807,24 @@ ttest_group_summary <- function(values, groups, levels, median_iqr = FALSE) {
 
 ttest_result_table_columns <- c("Variable", "Value", "M", "SD", "Statistic", "p", "Effect size", "p for trend", "post-hoc")
 
+ttest_statistic_df_text <- function(value) {
+  value <- suppressWarnings(as.numeric(value))
+  if (!is.finite(value)) return("")
+  if (abs(value - round(value)) < 1e-8) {
+    return(as.character(as.integer(round(value))))
+  }
+  format_decimal3(value)
+}
+
+ttest_format_statistic <- function(statistic, df = numeric(0)) {
+  stat_text <- format_decimal3(statistic)
+  if (!nzchar(stat_text)) return("")
+  df <- suppressWarnings(as.numeric(df))
+  df <- df[is.finite(df)]
+  if (length(df) == 0L) return(stat_text)
+  paste0(stat_text, "(", paste(vapply(df, ttest_statistic_df_text, character(1)), collapse = ","), ")")
+}
+
 ttest_statistic_heading <- function(labels) {
   labels <- unique(as.character(labels %||% character(0)))
   labels <- labels[nzchar(labels)]
@@ -886,7 +904,17 @@ ttest_numbered_notes <- function(items) {
   }
   out <- do.call(rbind, rows)
   out <- out[!duplicated(ttest_note_key(out$type, out$key)), , drop = FALSE]
-  out$marker <- as.character(seq_len(nrow(out)))
+  out$marker <- ""
+  marker_index <- 0L
+  note_type_order <- c("method", "trend", "effect")
+  for (type in note_type_order[note_type_order %in% unique(out$type)]) {
+    rows_for_type <- which(out$type == type)
+    if (length(rows_for_type) <= 1L) next
+    for (row_index in rows_for_type) {
+      marker_index <- marker_index + 1L
+      out$marker[[row_index]] <- as.character(marker_index)
+    }
+  }
   out[, c("marker", "type", "key", "note")]
 }
 
@@ -961,9 +989,27 @@ ttest_analysis_note_line <- function(items) {
   }, character(1))
   posthoc_notes <- unique(posthoc_notes[nzchar(posthoc_notes)])
   notes <- ttest_numbered_notes(items)
-  parts <- if (is.data.frame(notes) && nrow(notes) > 0) sprintf("%s. %s", notes$marker, notes$note) else character(0)
+  format_note_rows <- function(note_rows) {
+    if (!is.data.frame(note_rows) || nrow(note_rows) == 0) return(character(0))
+    ifelse(nzchar(note_rows$marker), sprintf("%s. %s", note_rows$marker, note_rows$note), note_rows$note)
+  }
+  analysis_parts <- if (is.data.frame(notes) && nrow(notes) > 0) {
+    format_note_rows(notes[notes$type %in% c("method", "trend"), , drop = FALSE])
+  } else {
+    character(0)
+  }
+  effect_parts <- if (is.data.frame(notes) && nrow(notes) > 0) {
+    format_note_rows(notes[notes$type == "effect", , drop = FALSE])
+  } else {
+    character(0)
+  }
+  parts <- analysis_parts
   if (length(posthoc_notes) > 0) {
     parts <- c(parts, sprintf("Post-hoc: %s.", paste(posthoc_notes, collapse = ", ")))
+  }
+  parts <- c(parts, effect_parts)
+  if (any(vapply(items, function(item) isTRUE(item$notes$mean_sd), logical(1)))) {
+    parts <- c(parts, "M \u00B1 SD = mean \u00B1 standard deviation.")
   }
   paste(parts, collapse = " ")
 }
@@ -1071,6 +1117,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
   equal_variance <- NA
   analysis <- ""
   statistic <- NA_real_
+  statistic_df <- numeric(0)
   statistic_label <- ""
   p_value <- NA_real_
   test_type <- ""
@@ -1098,6 +1145,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
         ))
       }
       statistic <- unname(fit$statistic)
+      statistic_df <- unname(fit$parameter)
       statistic_label <- "t"
       p_value <- fit$p.value
       analysis <- if (isTRUE(equal_variance)) "Independent samples t-test" else "Welch t-test"
@@ -1145,6 +1193,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
         ))
       }
       statistic <- as.numeric(fit_summary[["F value"]][[1]])
+      statistic_df <- c(as.numeric(fit_summary[["Df"]][[1]]), as.numeric(fit_summary[["Df"]][[2]]))
       statistic_label <- "F"
       p_value <- as.numeric(fit_summary[["Pr(>F)"]][[1]])
       analysis <- "One-way ANOVA"
@@ -1190,6 +1239,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
         ))
       }
       statistic <- unname(fit$statistic)
+      statistic_df <- unname(fit$parameter)
       statistic_label <- "F"
       p_value <- fit$p.value
       analysis <- "Welch ANOVA"
@@ -1221,6 +1271,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
       ))
     }
     statistic <- unname(fit$statistic)
+    statistic_df <- unname(fit$parameter)
     statistic_label <- stat_chisq_label()
     p_value <- fit$p.value
     analysis <- "Kruskal-Wallis test"
@@ -1280,11 +1331,23 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
     check.names = FALSE
   )
   rows$Variable[[1]] <- ttest_display_variable(factor, variable_info, labels, category_table)
-  rows$Statistic[[1]] <- format_decimal3(statistic)
+  rows$Statistic[[1]] <- if (isTRUE(options$show_df)) {
+    ttest_format_statistic(statistic, statistic_df)
+  } else {
+    format_decimal3(statistic)
+  }
   p_text <- format_p(p_value)
   rows$p[[1]] <- if (is.na(p_text)) "" else paste0(p_text, p_note$symbol %||% "")
   rows[["Effect size"]][[1]] <- effect_size_text
   rows[["p for trend"]][[1]] <- if (is.na(trend_p) || !nzchar(trend_p)) "" else paste0(trend_p, trend_note$symbol %||% "")
+  if (isTRUE(options$mean_sd)) {
+    rows[["M \u00B1 SD"]] <- ifelse(
+      nzchar(rows$M) & nzchar(rows$SD),
+      paste0(rows$M, "\u00A0\u00B1\u00A0", rows$SD),
+      ""
+    )
+    rows <- rows[, c("Variable", "Value", "M \u00B1 SD", "Statistic", "p", "Effect size", "p for trend", "post-hoc"), drop = FALSE]
+  }
 
   if (nzchar(posthoc_label) && isTRUE(options$ordered_significance) && !is.null(p_matrix)) {
     level_labels <- stats::setNames(ttest_display_levels(factor, levels, category_table), levels)
@@ -1298,7 +1361,9 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
   } else if (nzchar(posthoc_label)) {
     rows[["post-hoc"]] <- ttest_lookup_letters(letters, summaries$Value)
   }
-  rows <- rows[, ttest_result_table_columns, drop = FALSE]
+  if (!isTRUE(options$mean_sd)) {
+    rows <- rows[, ttest_result_table_columns, drop = FALSE]
+  }
   posthoc_table <- ttest_safe_call(ttest_posthoc_table(factor, levels, p_matrix, posthoc_label, variable_info, labels, category_table), data.frame(stringsAsFactors = FALSE))
 
   normality_text <- if ((isTRUE(normality_enabled) || isTRUE(options$force_nonparametric)) && nzchar(normality$detail %||% "")) {
@@ -1339,7 +1404,8 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
       trend = trend_method,
       trend_key = trend_note$key %||% "",
       trend_symbol = trend_note$symbol %||% "",
-      trend_note = trend_note$note %||% ""
+      trend_note = trend_note$note %||% "",
+      mean_sd = isTRUE(options$mean_sd)
     ),
     warnings = ttest_bind_result_rows(warning_rows)
   )
@@ -1559,10 +1625,15 @@ prepare_ttest_anova_results <- function(
       overview_rows[[length(overview_rows) + 1]] <- item$overview
     }
     if (length(dependent_items) > 0) {
-      combined_table <- ttest_bind_result_rows(lapply(dependent_items, function(item) item$table))[, ttest_result_table_columns, drop = FALSE]
+      result_columns <- if (isTRUE(options$mean_sd)) {
+        c("Variable", "Value", "M \u00B1 SD", "Statistic", "p", "Effect size", "p for trend", "post-hoc")
+      } else {
+        ttest_result_table_columns
+      }
+      combined_table <- ttest_bind_result_rows(lapply(dependent_items, function(item) item$table))[, result_columns, drop = FALSE]
       statistic_labels <- vapply(dependent_items, function(item) item$statistic_label %||% "", character(1))
       combined_table <- ttest_apply_statistic_heading(combined_table, statistic_labels)
-      if (isTRUE(options$median_iqr)) {
+      if (isTRUE(options$median_iqr) && !isTRUE(options$mean_sd)) {
         names(combined_table)[names(combined_table) == "M"] <- "Median"
         names(combined_table)[names(combined_table) == "SD"] <- "Q1~Q3"
       }

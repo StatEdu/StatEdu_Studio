@@ -2241,6 +2241,20 @@ input.variable-select:disabled {
   width: 310px;
 }
 
+.ancova-options .ancova-option-heading {
+  font-size: 16px;
+  line-height: 1.25;
+  font-weight: 700;
+  color: #002b4f;
+  margin-top: 12px;
+  margin-bottom: 6px;
+}
+
+.ancova-options .ancova-option-heading:first-of-type {
+  margin-top: 6px;
+}
+
+
 .ttest-anova-method-panel .form-group,
 .ttest-anova-method-panel .form-control,
 .ttest-anova-method-panel select,
@@ -2509,7 +2523,7 @@ input.variable-select:disabled {
 }
 
 .ttest-normality-level-2 {
-  margin-left: 58px !important;
+  margin-left: 8px !important;
 }
 
 .ttest-normality-level-3 {
@@ -2544,7 +2558,7 @@ input.variable-select:disabled {
 .ttest-normality-branch {
   display: block !important;
   margin-top: 0 !important;
-  margin-left: 86px !important;
+  margin-left: 28px !important;
   width: auto !important;
   transition: opacity 120ms ease;
 }
@@ -3034,7 +3048,8 @@ input.variable-select:disabled {
   grid-column: 1;
 }
 
-.ttest-anova-action-row > #ttest_anova_save_control {
+.ttest-anova-action-row > #ttest_anova_save_control,
+.ancova-action-row > #ancova_save_control {
   grid-column: 4;
 }
 
@@ -5111,6 +5126,7 @@ pre {
 .paired-action-row > #nonparametric_paired_save_control,
 .paired-action-row > #paired_rm_save_control,
 .ttest-anova-action-row > #ttest_anova_save_control,
+.ancova-action-row > #ancova_save_control,
 .nonparametric-action-row > #nonparametric_save_control,
 .correlation-action-row > #correlation_save_control,
 .factor-analysis-action-row > #factor_analysis_save_control,
@@ -5129,6 +5145,7 @@ pre {
 .paired-action-row > #nonparametric_paired_reset_control,
 .paired-action-row > #paired_rm_reset_control,
 .ttest-anova-action-row > #ttest_anova_reset_control,
+.ancova-action-row > #ancova_reset_control,
 .nonparametric-action-row > #nonparametric_reset_control,
 .correlation-action-row > #correlation_reset_control,
 .factor-analysis-action-row > #factor_analysis_reset_control,
@@ -5152,6 +5169,7 @@ pre {
 .paired-action-row > #nonparametric_paired_reset_control .analysis-reset-button,
 .paired-action-row > #paired_rm_reset_control .analysis-reset-button,
 .ttest-anova-action-row > #ttest_anova_reset_control .analysis-reset-button,
+.ancova-action-row > #ancova_reset_control .analysis-reset-button,
 .nonparametric-action-row > #nonparametric_reset_control .analysis-reset-button,
 .correlation-action-row > #correlation_reset_control .analysis-reset-button,
 .factor-analysis-action-row > #factor_analysis_reset_control .analysis-reset-button,
@@ -6767,6 +6785,11 @@ pre {
   padding-bottom: 5px;
 }
 
+.sample-size-block2 .form-control,
+.sample-size-block2 .selectize-control {
+  width: 100%;
+}
+
 .sample-size-block2 .selectize-control.single .selectize-input {
   height: auto;
   line-height: 1.35;
@@ -6795,11 +6818,13 @@ pre {
 
 .sample-size-block1 .form-group {
   margin-bottom: 42px;
+  margin-left: 0;
 }
 
 .sample-size-block1 .radio {
   margin-top: 8px;
   margin-bottom: 12px;
+  margin-left: 0;
 }
 
 .sample-size-block1 .radio label {
@@ -6876,6 +6901,21 @@ pre {
   margin-top: 12px;
 }
 
+.coefficient-table .coefficient-col-value {
+  width: 112px;
+  min-width: 112px;
+}
+
+.coefficient-table .coefficient-col-statistic,
+.coefficient-table .coefficient-col-stat {
+  min-width: 82px;
+}
+
+.ancova-result-panel .coefficient-table .coefficient-col-statistic,
+.ancova-result-panel .coefficient-table .coefficient-col-stat {
+  min-width: 92px;
+}
+
 .sample-size-references {
   color: #23384d;
   font-size: 12px;
@@ -6918,4 +6958,117 @@ pre {
   height: 100%;
   transition: width 180ms ease;
   width: 0;
+}
+
+/* ANCOVA setup final overrides: keep three target panels inside the target block. */
+.ttest-anova-setup-grid.ancova-setup-grid {
+  grid-auto-rows: 520px !important;
+}
+
+.ttest-anova-setup-grid.ancova-setup-grid > .analysis-transfer-panel,
+.ttest-anova-setup-grid.ancova-setup-grid > .ancova-target-column,
+.ttest-anova-setup-grid.ancova-setup-grid > .ttest-anova-options-column {
+  height: 520px !important;
+  min-height: 520px !important;
+  max-height: 520px !important;
+}
+
+.ttest-anova-setup-grid.ancova-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox {
+  height: 376px !important;
+  min-height: 376px !important;
+  max-height: 376px !important;
+}
+
+.ttest-anova-setup-grid.ancova-setup-grid > .ancova-target-column {
+  display: grid !important;
+  grid-template-rows: 130px 112px 242px !important;
+  gap: 18px !important;
+  overflow: hidden !important;
+  width: 326px !important;
+  min-width: 326px !important;
+  max-width: 326px !important;
+}
+
+.ttest-anova-setup-grid.ancova-setup-grid .ancova-target-column > .analysis-transfer-panel {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+}
+
+.ttest-anova-setup-grid.ancova-setup-grid .ancova-target-column .analysis-field-label {
+  margin-bottom: 8px !important;
+}
+
+.ttest-anova-setup-grid.ancova-setup-grid .ancova-dependent-panel .analysis-transfer-listbox {
+  height: 46px !important;
+  min-height: 46px !important;
+  max-height: 46px !important;
+}
+
+.ttest-anova-setup-grid.ancova-setup-grid .ancova-factor-panel .analysis-transfer-listbox {
+  height: 48px !important;
+  min-height: 48px !important;
+  max-height: 48px !important;
+}
+
+.ttest-anova-setup-grid.ancova-setup-grid .ancova-covariate-panel .analysis-transfer-listbox {
+  height: 138px !important;
+  min-height: 138px !important;
+  max-height: 138px !important;
+}
+
+.ttest-anova-setup-grid.ancova-setup-grid .ancova-transfer-controls {
+  display: grid !important;
+  grid-template-rows: 130px 112px 242px !important;
+  gap: 18px !important;
+  height: 520px !important;
+  padding-top: 0 !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transform: translateX(6px);
+}
+
+.ancova-options.analysis-tabbed-options,
+.ancova-options .tab-content {
+  min-height: 0;
+}
+
+.ancova-action-row {
+  display: grid !important;
+  grid-template-columns: 326px 50px 326px 20px 310px !important;
+  gap: 18px !important;
+  width: 1176px !important;
+  min-width: 1176px !important;
+  align-items: start !important;
+}
+
+.ancova-action-row > #run_ancova {
+  grid-column: 1 !important;
+  justify-self: start !important;
+  margin-left: 30px !important;
+  width: 300px !important;
+  min-width: 300px !important;
+}
+
+.ancova-action-row > #ancova_reset_control {
+  grid-column: 3 !important;
+  justify-self: start !important;
+  margin-left: 30px !important;
+  width: 300px !important;
+  min-width: 300px !important;
+}
+
+.ancova-action-row > #ancova_save_control {
+  grid-column: 5 !important;
+  justify-self: center !important;
+  align-self: start !important;
+  margin-left: 0 !important;
+  transform: translateX(18px) !important;
+}
+
+.ancova-action-row > #ancova_save_control .analysis-save-action {
+  justify-content: center !important;
+  width: 310px !important;
+  max-width: 310px !important;
 }

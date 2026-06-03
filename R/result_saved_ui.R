@@ -659,6 +659,16 @@ saved_ttest_anova_results_html <- function(result, css_path = file.path("www", "
   )
 }
 
+saved_ancova_results_html <- function(result, variable_table = NULL, labels = character(0), css_path = file.path("www", "style.css"), report_mode = FALSE) {
+  saved_results_document(
+    "EasyFlow Statistics ANCOVA Results",
+    tags$div(class = "regression-results", ancova_results_ui(result, variable_table, labels)),
+    max_width = 1500,
+    css_path = css_path,
+    report_mode = report_mode
+  )
+}
+
 saved_nonparametric_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
   saved_results_document(
     "EasyFlow Statistics Nonparametric Test Results",
