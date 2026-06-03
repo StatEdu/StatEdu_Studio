@@ -80,11 +80,11 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-regression-term-width"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-options-indent"))
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-regression-term-width"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-options-indent"))
 }
 
 app_head_tags <- function(version) {
