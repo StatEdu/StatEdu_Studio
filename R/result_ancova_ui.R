@@ -8,6 +8,7 @@ ancova_model_overview_table <- function(result, variable_table = NULL, labels = 
       Covariates = paste(vapply(item$covariates, display_variable_name_static, character(1), table = variable_table, labels = labels, label_only = TRUE), collapse = " + "),
       N = item$n,
       Analysis = item$method,
+      `Sum of squares` = ancova_sum_of_squares_label(item$sum_of_squares %||% "type2"),
       Reason = item$reason,
       check.names = FALSE,
       stringsAsFactors = FALSE
@@ -21,14 +22,119 @@ ancova_assumption_review_table <- function(result, variable_table = NULL, labels
     data.frame(
       DV = display_variable_name_static(item$dependent, variable_table, labels, label_only = TRUE),
       Group = display_variable_name_static(item$factor, variable_table, labels, label_only = TRUE),
-      `Normality method` = item$assumptions$normality_method %||% "",
-      `Normality p` = format_p(item$assumptions$normality_p),
+      `Residual normality p` = format_p(item$assumptions$normality_p),
       `Homogeneity p` = format_p(item$assumptions$homogeneity_p),
       `Slope p` = format_p(item$assumptions$slope_p),
+      Linearity = item$assumptions$linearity_summary %||% "",
+      Collinearity = item$collinearity$summary %||% "",
+      Influence = item$influence$summary %||% "",
       check.names = FALSE,
       stringsAsFactors = FALSE
     )
   })
+  ttest_bind_result_rows(rows)
+}
+
+ancova_normality_review_table <- function(result, variable_table = NULL, labels = character(0)) {
+  rows <- lapply(result$results %||% list(), function(item) {
+    data.frame(
+      DV = display_variable_name_static(item$dependent, variable_table, labels, label_only = TRUE),
+      `Outcome method` = item$assumptions$outcome_normality_method %||% "",
+      `Outcome p` = format_p(item$assumptions$outcome_normality_p),
+      `Residual method` = item$assumptions$normality_method %||% "",
+      `Residual p` = format_p(item$assumptions$normality_p),
+      Note = "Outcome normality is descriptive; residual normality drives ANCOVA method selection.",
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+  })
+  ttest_bind_result_rows(rows)
+}
+
+ancova_linearity_review_table <- function(result, variable_table = NULL, labels = character(0)) {
+  rows <- list()
+  for (item in result$results %||% list()) {
+    table <- item$assumptions$linearity_table
+    if (!is.data.frame(table) || nrow(table) == 0) next
+    rows[[length(rows) + 1L]] <- data.frame(
+      DV = display_variable_name_static(item$dependent, variable_table, labels, label_only = TRUE),
+      Covariate = vapply(table$Covariate, display_variable_name_static, character(1), table = variable_table, labels = labels, label_only = TRUE),
+      `Quadratic p` = format_p(table$p),
+      Status = table$Status,
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+  }
+  ttest_bind_result_rows(rows)
+}
+
+ancova_interaction_terms_review_table <- function(result, variable_table = NULL, labels = character(0)) {
+  rows <- list()
+  for (item in result$results %||% list()) {
+    table <- item$interaction_terms
+    if (!is.data.frame(table) || nrow(table) == 0) next
+    rows[[length(rows) + 1L]] <- data.frame(
+      DV = display_variable_name_static(item$dependent, variable_table, labels, label_only = TRUE),
+      table,
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+  }
+  ttest_bind_result_rows(rows)
+}
+
+ancova_simple_effects_review_table <- function(result, variable_table = NULL, labels = character(0)) {
+  rows <- list()
+  for (item in result$results %||% list()) {
+    table <- item$simple_effects
+    if (!is.data.frame(table) || nrow(table) == 0) next
+    table$Covariate <- vapply(table$Covariate, display_variable_name_static, character(1), table = variable_table, labels = labels, label_only = TRUE)
+    rows[[length(rows) + 1L]] <- data.frame(
+      DV = display_variable_name_static(item$dependent, variable_table, labels, label_only = TRUE),
+      table,
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+  }
+  ttest_bind_result_rows(rows)
+}
+
+ancova_collinearity_review_table <- function(result, variable_table = NULL, labels = character(0)) {
+  rows <- list()
+  for (item in result$results %||% list()) {
+    table <- item$collinearity$table
+    if (!is.data.frame(table) || nrow(table) == 0) next
+    rows[[length(rows) + 1L]] <- data.frame(
+      DV = display_variable_name_static(item$dependent, variable_table, labels, label_only = TRUE),
+      Term = table$Term,
+      Tolerance = ancova_format_decimal3_vec(table$Tolerance),
+      VIF = ancova_format_decimal3_vec(table$VIF),
+      Status = table$Status,
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+  }
+  ttest_bind_result_rows(rows)
+}
+
+ancova_influence_review_table <- function(result, variable_table = NULL, labels = character(0)) {
+  rows <- list()
+  for (item in result$results %||% list()) {
+    table <- item$influence$table
+    if (!is.data.frame(table) || nrow(table) == 0 || !"Flag" %in% names(table)) next
+    table <- table[nzchar(as.character(table$Flag)), , drop = FALSE]
+    if (nrow(table) == 0) next
+    rows[[length(rows) + 1L]] <- data.frame(
+      DV = display_variable_name_static(item$dependent, variable_table, labels, label_only = TRUE),
+      Case = table$Case,
+      `Studentized residual` = ancova_format_decimal3_vec(table$`Studentized residual`),
+      Leverage = ancova_format_decimal3_vec(table$Leverage),
+      `Cook's D` = ancova_format_decimal3_vec(table$`Cook's D`),
+      Flag = table$Flag,
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+  }
   ttest_bind_result_rows(rows)
 }
 
@@ -115,19 +221,20 @@ ancova_combined_note_spec <- function(result, variable_table = NULL, labels = ch
   item_methods <- vapply(items, function(item) item$method %||% "", character(1))
   method_specific_markers <- length(unique_text(item_methods)) > 1L
   method_lines <- character(0)
+  ss_lines <- character(0)
   posthoc_lines <- character(0)
   effect_lines <- character(0)
   display_lines <- character(0)
 
   method_note_text <- function(method) {
     if (identical(method, "Robust ANCOVA (HC3)")) {
-      return("Robust ANCOVA (HC3): group effect F, p, and post-hoc contrasts use HC3 robust covariance.")
+      return("Robust ANCOVA (HC3): group effect F, p, and post-hoc contrasts use HC3 robust covariance; Type II/III robust tests use the selected sum-of-squares type.")
     }
     if (identical(method, "Ranked ANCOVA")) {
-      return("Ranked ANCOVA: rank-transformed dependent variable and continuous covariates are used; categorical covariates are dummy-coded.")
+      return("Ranked ANCOVA: rank-transformed dependent variable and continuous covariates are used; adjusted means are on the rank scale, not the original outcome scale.")
     }
     if (identical(method, "Interaction ANCOVA")) {
-      return("Interaction ANCOVA: group effects should be interpreted with group x covariate interactions.")
+      return("Interaction ANCOVA: group x covariate interaction was detected; interpret group differences conditionally across covariate values rather than as a single adjusted mean difference.")
     }
     sprintf("Analysis method: %s.", method)
   }
@@ -140,6 +247,16 @@ ancova_combined_note_spec <- function(result, variable_table = NULL, labels = ch
       method_markers[[method]] <- marker
       method_lines <- c(method_lines, sprintf("%s. %s", marker, method_note_text(method)))
     }
+  }
+
+  ss_types <- unique_text(vapply(items, function(item) item$sum_of_squares %||% "type2", character(1)))
+  if (length(ss_types) <= 1L) {
+    ss_lines <- c(ss_lines, ancova_sum_of_squares_note(if (length(ss_types) > 0L) ss_types[[1]] else "type2"))
+  } else {
+    ss_lines <- c(ss_lines, paste(vapply(ss_types, ancova_sum_of_squares_note, character(1)), collapse = " "))
+  }
+  if (any(vapply(items, function(item) identical(item$method, "Interaction ANCOVA") && !identical(item$sum_of_squares %||% "type2", "type3"), logical(1)))) {
+    ss_lines <- c(ss_lines, "Type III SS is recommended for interaction models.")
   }
 
   posthoc_items <- items[vapply(items, function(item) {
@@ -158,9 +275,11 @@ ancova_combined_note_spec <- function(result, variable_table = NULL, labels = ch
   }
   posthoc_note_text <- function(item) {
     parts <- strsplit(posthoc_key(item), "\r", fixed = TRUE)[[1]]
+    target <- if (identical(item$method, "Ranked ANCOVA")) "adjusted rank means" else "adjusted means"
     sprintf(
-      "Post-hoc: %s pairwise model contrasts of adjusted means; displayed with %s.",
+      "Post-hoc: %s pairwise model contrasts of %s; displayed with %s.",
       parts[[1]],
+      target,
       parts[[2]]
     )
   }
@@ -190,10 +309,15 @@ ancova_combined_note_spec <- function(result, variable_table = NULL, labels = ch
     effect_lines <- c(effect_lines, sprintf("Effect size = %s.", if (length(effect_labels) > 0) effect_labels[[1]] else "partial eta squared"))
   }
   if (any(vapply(items, function(item) isTRUE(item$options$mean_se), logical(1)))) {
-    display_lines <- c(display_lines, "M \u00B1 SE = adjusted mean \u00B1 standard error.")
+    if (any(vapply(items, function(item) identical(item$method, "Ranked ANCOVA"), logical(1)))) {
+      display_lines <- c(display_lines, "Rank M \u00B1 SE = adjusted rank mean \u00B1 standard error.")
+    }
+    if (any(vapply(items, function(item) !identical(item$method, "Ranked ANCOVA"), logical(1)))) {
+      display_lines <- c(display_lines, "M \u00B1 SE = adjusted mean \u00B1 standard error.")
+    }
   }
   list(
-    lines = c(method_lines, posthoc_lines, effect_lines, display_lines),
+    lines = c(method_lines, ss_lines, posthoc_lines, effect_lines, display_lines),
     markers = markers,
     method_markers = method_markers,
     method_specific_markers = method_specific_markers,
@@ -258,6 +382,7 @@ draw_ancova_adjusted_mean_plot <- function(item) {
   old_par <- graphics::par(no.readonly = TRUE)
   on.exit(graphics::par(old_par), add = TRUE)
   graphics::par(mar = c(5, 4.2, 2, 1), cex.axis = .85)
+  adjusted_label <- if (identical(item$method, "Ranked ANCOVA")) "Adjusted rank mean" else "Adjusted mean"
   graphics::plot(
     NA_real_,
     NA_real_,
@@ -265,7 +390,7 @@ draw_ancova_adjusted_mean_plot <- function(item) {
     xaxt = "n",
     xlim = c(.45, nrow(adjusted) + .55),
     xlab = item$factor,
-    ylab = "Adjusted mean",
+    ylab = adjusted_label,
     ylim = y_limits,
     main = ""
   )
@@ -318,7 +443,7 @@ draw_ancova_raw_overlay_plot <- function(item) {
   match_index <- match(adjusted$Level, levels)
   graphics::points(match_index, adjusted$Estimate, pch = 18, cex = 1.35, col = "#b91c1c")
   graphics::lines(match_index, adjusted$Estimate, col = "#b91c1c", lwd = 1.1)
-  graphics::legend("topright", legend = "Adjusted mean", pch = 18, col = "#b91c1c", bty = "n", cex = .8)
+  graphics::legend("topright", legend = if (identical(item$method, "Ranked ANCOVA")) "Adjusted rank mean" else "Adjusted mean", pch = 18, col = "#b91c1c", bty = "n", cex = .8)
 }
 
 draw_ancova_regression_lines_plot <- function(item) {
@@ -383,8 +508,10 @@ ancova_plot_sections <- function(item) {
       )
     )
   }
-  if (isTRUE(options$plot_adjusted_means)) add_plot("Adjusted mean error bar plot (95% CI)", draw_ancova_adjusted_mean_plot)
-  if (isTRUE(options$plot_raw_overlay)) add_plot("Raw data + adjusted mean overlay", draw_ancova_raw_overlay_plot)
+  adjusted_title <- if (identical(item$method, "Ranked ANCOVA")) "Adjusted rank mean error bar plot (95% CI)" else "Adjusted mean error bar plot (95% CI)"
+  overlay_title <- if (identical(item$method, "Ranked ANCOVA")) "Ranked data + adjusted rank mean overlay" else "Raw data + adjusted mean overlay"
+  if (isTRUE(options$plot_adjusted_means)) add_plot(adjusted_title, draw_ancova_adjusted_mean_plot)
+  if (isTRUE(options$plot_raw_overlay)) add_plot(overlay_title, draw_ancova_raw_overlay_plot)
   if (isTRUE(options$plot_regression_lines)) add_plot("Covariate-adjusted regression lines", draw_ancova_regression_lines_plot)
   sections
 }
@@ -399,7 +526,8 @@ ancova_model_overview_html_table <- function(table) {
     Covariates = "88px",
     N = "44px",
     Analysis = "96px",
-    Reason = "310px"
+    `Sum of squares` = "88px",
+    Reason = "250px"
   )
   width_for <- function(name) column_widths[[name]] %||% "90px"
   header_style <- function(index) {
@@ -471,6 +599,62 @@ ancova_results_ui <- function(result, variable_table = NULL, labels = character(
       )
     )
   }
+  assumption <- ancova_assumption_review_table(result, variable_table, labels)
+  if (is.data.frame(assumption) && nrow(assumption) > 0) {
+    sections[[length(sections) + 1L]] <- tags$div(
+      class = "result-section regression-result-panel ancova-assumption-panel",
+      tags$h3("Assumption summary"),
+      model_overview_html_table(assumption)
+    )
+  }
+  interaction_terms <- ancova_interaction_terms_review_table(result, variable_table, labels)
+  if (is.data.frame(interaction_terms) && nrow(interaction_terms) > 0) {
+    sections[[length(sections) + 1L]] <- tags$div(
+      class = "result-section regression-result-panel ancova-interaction-terms-panel",
+      tags$h3("Interaction terms"),
+      model_overview_html_table(interaction_terms)
+    )
+  }
+  simple_effects <- ancova_simple_effects_review_table(result, variable_table, labels)
+  if (is.data.frame(simple_effects) && nrow(simple_effects) > 0) {
+    sections[[length(sections) + 1L]] <- tags$div(
+      class = "result-section regression-result-panel ancova-simple-effects-panel",
+      tags$h3("Simple group effects"),
+      model_overview_html_table(simple_effects)
+    )
+  }
+  normality <- ancova_normality_review_table(result, variable_table, labels)
+  if (is.data.frame(normality) && nrow(normality) > 0) {
+    sections[[length(sections) + 1L]] <- tags$div(
+      class = "result-section regression-result-panel ancova-normality-panel",
+      tags$h3("Normality diagnostics"),
+      model_overview_html_table(normality)
+    )
+  }
+  linearity <- ancova_linearity_review_table(result, variable_table, labels)
+  if (is.data.frame(linearity) && nrow(linearity) > 0) {
+    sections[[length(sections) + 1L]] <- tags$div(
+      class = "result-section regression-result-panel ancova-linearity-panel",
+      tags$h3("Covariate linearity check"),
+      model_overview_html_table(linearity)
+    )
+  }
+  collinearity <- ancova_collinearity_review_table(result, variable_table, labels)
+  if (is.data.frame(collinearity) && nrow(collinearity) > 0) {
+    sections[[length(sections) + 1L]] <- tags$div(
+      class = "result-section regression-result-panel ancova-collinearity-panel",
+      tags$h3("Collinearity diagnostics"),
+      model_overview_html_table(collinearity)
+    )
+  }
+  influence <- ancova_influence_review_table(result, variable_table, labels)
+  if (is.data.frame(influence) && nrow(influence) > 0) {
+    sections[[length(sections) + 1L]] <- tags$div(
+      class = "result-section regression-result-panel ancova-influence-panel",
+      tags$h3("Influence diagnostics"),
+      model_overview_html_table(influence)
+    )
+  }
   for (item in result$results %||% list()) {
     plot_sections <- ancova_plot_sections(item)
     if (length(plot_sections) > 0) {
@@ -480,14 +664,6 @@ ancova_results_ui <- function(result, variable_table = NULL, labels = character(
         do.call(tagList, plot_sections)
       )
     }
-  }
-  assumption <- ancova_assumption_review_table(result, variable_table, labels)
-  if (is.data.frame(assumption) && nrow(assumption) > 0) {
-    sections[[length(sections) + 1L]] <- tags$div(
-      class = "result-section regression-result-panel ancova-assumption-panel",
-      tags$h3("Assumption review"),
-      model_overview_html_table(assumption)
-    )
   }
   diagnostics <- analysis_diagnostics_section(NULL, result$skipped, title = "Warnings / skipped models")
   if (!is.null(diagnostics)) {

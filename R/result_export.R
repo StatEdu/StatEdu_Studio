@@ -1706,7 +1706,31 @@ save_ancova_excel_file <- function(result, file, variable_table = NULL, labels =
   }
   assumption <- ancova_assumption_review_table(result, variable_table, labels)
   if (is.data.frame(assumption) && nrow(assumption) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Assumption review", assumption, used_sheets, title = "Assumption review")
+    used_sheets <- add_excel_table_sheet(workbook, "Assumption summary", assumption, used_sheets, title = "Assumption summary")
+  }
+  normality <- ancova_normality_review_table(result, variable_table, labels)
+  if (is.data.frame(normality) && nrow(normality) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Normality diagnostics", normality, used_sheets, title = "Normality diagnostics")
+  }
+  interaction_terms <- ancova_interaction_terms_review_table(result, variable_table, labels)
+  if (is.data.frame(interaction_terms) && nrow(interaction_terms) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Interaction terms", interaction_terms, used_sheets, title = "Interaction terms")
+  }
+  simple_effects <- ancova_simple_effects_review_table(result, variable_table, labels)
+  if (is.data.frame(simple_effects) && nrow(simple_effects) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Simple effects", simple_effects, used_sheets, title = "Simple group effects")
+  }
+  linearity <- ancova_linearity_review_table(result, variable_table, labels)
+  if (is.data.frame(linearity) && nrow(linearity) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Linearity diagnostics", linearity, used_sheets, title = "Covariate linearity check")
+  }
+  collinearity <- ancova_collinearity_review_table(result, variable_table, labels)
+  if (is.data.frame(collinearity) && nrow(collinearity) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Collinearity diagnostics", collinearity, used_sheets, title = "Collinearity diagnostics")
+  }
+  influence <- ancova_influence_review_table(result, variable_table, labels)
+  if (is.data.frame(influence) && nrow(influence) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Influence diagnostics", influence, used_sheets, title = "Influence diagnostics")
   }
   used_sheets <- add_analysis_warning_skipped_sheets(workbook, used_sheets, NULL, result$skipped, skipped_title = "Skipped analyses")
   openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)

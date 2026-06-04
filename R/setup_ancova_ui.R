@@ -1,5 +1,15 @@
 # ANCOVA setup UI.
 
+ancova_option_help <- function(label, help) {
+  tags$span(
+    class = "easyflow-option-help",
+    tabindex = "0",
+    title = help,
+    `data-tooltip` = help,
+    label
+  )
+}
+
 ancova_setup_state <- function(
   selected_names,
   dependent_variables = character(0),
@@ -14,6 +24,7 @@ ancova_setup_state <- function(
   normality_enabled = TRUE,
   normality_method = "lillie",
   force_ranked = FALSE,
+  sum_of_squares = "type2",
   ordered_significance = FALSE,
   posthoc_method = "bonferroni",
   show_df = FALSE,
@@ -37,6 +48,7 @@ ancova_setup_state <- function(
     normality_enabled = isTRUE(normality_enabled),
     normality_method = as.character(normality_method %||% "lillie"),
     force_ranked = isTRUE(force_ranked),
+    sum_of_squares = as.character(sum_of_squares %||% "type2"),
     ordered_significance = isTRUE(ordered_significance),
     posthoc_method = as.character(posthoc_method %||% "bonferroni"),
     show_df = isTRUE(show_df),
@@ -94,46 +106,79 @@ ancova_setup_panel <- function(state) {
           id = "ancova_options_tab",
           type = "tabs",
           tabPanel(
-            "Normality",
+            "Checks",
             div(
               class = "factor-options-tab-content ttest-anova-options-tab-content ancova-options-tab-content",
               div(
                 class = "analysis-option-group",
-                div(class = "analysis-option-title", "Normality"),
-                checkboxInput("ancova_normality_enabled", "Normality", value = isTRUE(state$normality_enabled)),
-                div(class = "analysis-option-subtitle", "Method"),
+                div(class = "analysis-option-title", "Residual normality"),
+                checkboxInput(
+                  "ancova_normality_enabled",
+                  ancova_option_help("Check residual normality", "Tests model residuals, not the raw dependent variable."),
+                  value = isTRUE(state$normality_enabled)
+                ),
+                div(class = "analysis-option-subtitle", "Residual test method"),
                 radioButtons(
                   "ancova_normality_method",
                   label = NULL,
-                  choices = c(
-                    "Lilliefors (K-S)" = "lillie",
-                    "Shapiro-Wilk" = "shapiro"
+                  choiceNames = list(
+                    ancova_option_help("Lilliefors (K-S)", "Default residual normality test; suitable for larger samples than Shapiro-Wilk."),
+                    ancova_option_help("Shapiro-Wilk", "Residual normality test commonly used for small to moderate samples.")
+                  ),
+                  choiceValues = c(
+                    "lillie",
+                    "shapiro"
                   ),
                   selected = state$normality_method
                 ),
-                checkboxInput("ancova_force_ranked", "Ranked ANCOVA", value = isTRUE(state$force_ranked)),
-                div(class = "analysis-option-note", "Auto mode selects ANCOVA, Robust ANCOVA (HC3), Ranked ANCOVA, or Interaction ANCOVA from assumptions.")
+                checkboxInput(
+                  "ancova_force_ranked",
+                  ancova_option_help("Ranked ANCOVA", "Force rank-transformed ANCOVA even when the residual normality test is not significant."),
+                  value = isTRUE(state$force_ranked)
+                ),
+                div(class = "analysis-option-note", "Auto mode uses model residuals. Raw dependent-variable normality is descriptive, not the ANCOVA decision rule.")
               )
             )
           ),
           tabPanel(
-            "Post-hoc",
+            "Model",
             div(
               class = "factor-options-tab-content ttest-anova-options-tab-content ancova-options-tab-content",
               div(
                 class = "analysis-option-group",
-                div(class = "analysis-option-title", "Post-hoc"),
-                checkboxInput("ancova_ordered_significance", "Ordered significance notation", value = isTRUE(state$ordered_significance)),
-                div(class = "analysis-option-subtitle", "p-value adjustment"),
+                div(class = "analysis-option-title", "Sum of squares"),
                 radioButtons(
-                  "ancova_posthoc_method",
+                  "ancova_sum_of_squares",
                   label = NULL,
-                  choices = c(
-                    "Bonferroni correction (BC)" = "bonferroni",
-                    "Holm-Bonferroni method" = "holm"
+                  choiceNames = list(
+                    ancova_option_help("Type II SS (recommended)", "Default for standard ANCOVA."),
+                    ancova_option_help("Type I SS (sequential)", "Order-dependent sequential test."),
+                    ancova_option_help("Type III SS", "Recommended for interaction models.")
                   ),
-                  selected = state$posthoc_method
+                  choiceValues = c("type2", "type1", "type3"),
+                  selected = state$sum_of_squares
                 ),
+                div(
+                  class = "ancova-ss-explanation",
+                  conditionalPanel(
+                    condition = "input.ancova_sum_of_squares == 'type2' || input.ancova_sum_of_squares == null",
+                    div(class = "ancova-ss-explanation-title", "Type II SS"),
+                    div("Recommended for standard ANCOVA without interaction."),
+                    div("Tests group effects after covariate and main-effect adjustment.")
+                  ),
+                  conditionalPanel(
+                    condition = "input.ancova_sum_of_squares == 'type1'",
+                    div(class = "ancova-ss-explanation-title", "Type I SS"),
+                    div("Sequential tests based on model term order."),
+                    div("Use only when entry order is planned; results can change if term order changes.")
+                  ),
+                  conditionalPanel(
+                    condition = "input.ancova_sum_of_squares == 'type3'",
+                    div(class = "ancova-ss-explanation-title", "Type III SS"),
+                    div("Tests each effect conditional on all other model terms."),
+                    div("Recommended for interaction models and SPSS/SAS GLM comparison.")
+                  )
+                )
               )
             )
           ),
@@ -141,19 +186,39 @@ ancova_setup_panel <- function(state) {
             "Output",
             div(
               class = "factor-options-tab-content ttest-anova-options-tab-content ancova-options-tab-content",
+              div(
+                class = "analysis-option-group",
+                div(class = "analysis-option-title", "Post-hoc"),
+                checkboxInput(
+                  "ancova_ordered_significance",
+                  ancova_option_help("Ordered significance notation", "Display pairwise adjusted-mean differences as ordered significance markers instead of compact letters."),
+                  value = isTRUE(state$ordered_significance)
+                ),
+                div(class = "analysis-option-subtitle", "p-value adjustment"),
+                radioButtons(
+                  "ancova_posthoc_method",
+                  label = NULL,
+                  choiceNames = list(
+                    ancova_option_help("Bonferroni correction (BC)", "Conservative familywise p-value adjustment for pairwise adjusted-mean contrasts."),
+                    ancova_option_help("Holm-Bonferroni method", "Stepwise familywise p-value adjustment; usually less conservative than Bonferroni.")
+                  ),
+                  choiceValues = c("bonferroni", "holm"),
+                  selected = state$posthoc_method
+                )
+              ),
               analysis_option_group(
                 "Statistic",
                 list(
-                  list(id = "ancova_show_df", label = "Degrees of freedom", value = state$show_df),
-                  list(id = "ancova_mean_se", label = "M \u00B1 SE", value = state$mean_se)
+                  list(id = "ancova_show_df", label = ancova_option_help("Degrees of freedom", "Show F statistics with numerator and denominator degrees of freedom."), value = state$show_df),
+                  list(id = "ancova_mean_se", label = ancova_option_help("M \u00B1 SE", "Combine adjusted mean and standard error into one compact column."), value = state$mean_se)
                 )
               ),
               analysis_option_group(
                 "Plots",
                 list(
-                  list(id = "ancova_plot_adjusted_means", label = "Adjusted mean error bar plot (95% CI)", value = state$plot_adjusted_means),
-                  list(id = "ancova_plot_raw_overlay", label = "Raw data + adjusted mean overlay", value = state$plot_raw_overlay),
-                  list(id = "ancova_plot_regression_lines", label = "Covariate-adjusted regression lines", value = state$plot_regression_lines)
+                  list(id = "ancova_plot_adjusted_means", label = ancova_option_help("Adjusted mean error bar plot (95% CI)", "Plot adjusted means with 95% confidence intervals."), value = state$plot_adjusted_means),
+                  list(id = "ancova_plot_raw_overlay", label = ancova_option_help("Raw data + adjusted mean overlay", "Overlay observed values with model-adjusted group means."), value = state$plot_raw_overlay),
+                  list(id = "ancova_plot_regression_lines", label = ancova_option_help("Covariate-adjusted regression lines", "Plot fitted group regression lines across the selected covariate."), value = state$plot_regression_lines)
                 )
               )
             )

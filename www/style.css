@@ -1868,6 +1868,60 @@ input.variable-select:disabled {
   font-weight: 400;
 }
 
+.easyflow-option-help {
+  border-bottom: 1px dotted rgba(0, 43, 79, 0.45);
+  cursor: help;
+  outline: none;
+  position: relative;
+}
+
+.easyflow-option-help::after {
+  background: #102a43;
+  border-radius: 6px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.22);
+  color: #ffffff;
+  content: attr(data-tooltip);
+  display: none;
+  font-size: 12px;
+  font-weight: 400;
+  left: 50%;
+  line-height: 1.35;
+  max-width: 260px;
+  min-width: 210px;
+  padding: 8px 10px;
+  position: absolute;
+  text-align: left;
+  top: auto;
+  bottom: calc(100% + 9px);
+  transform: translateX(-50%);
+  white-space: normal;
+  z-index: 8000;
+}
+
+.easyflow-option-help::before {
+  border: 6px solid transparent;
+  border-top-color: #102a43;
+  content: "";
+  display: none;
+  left: 50%;
+  position: absolute;
+  top: auto;
+  bottom: calc(100% + 3px);
+  transform: translateX(-50%);
+  z-index: 8001;
+}
+
+.analysis-option-group label:hover .easyflow-option-help::after,
+.analysis-option-group label:hover .easyflow-option-help::before,
+.analysis-option-group label:focus-within .easyflow-option-help::after,
+.analysis-option-group label:focus-within .easyflow-option-help::before,
+.easyflow-option-help:hover::after,
+.easyflow-option-help:hover::before,
+.easyflow-option-help:focus::after,
+.easyflow-option-help:focus::before {
+  display: block;
+}
+
 .analysis-transfer-option {
   cursor: grab;
   user-select: none;
@@ -2254,6 +2308,30 @@ input.variable-select:disabled {
   margin-top: 6px;
 }
 
+.ancova-ss-explanation {
+  background: #ffffff;
+  border: 1px solid #c7d7e5;
+  border-radius: 6px;
+  color: #243b53;
+  font-size: 12.5px;
+  line-height: 1.28;
+  margin-top: 8px;
+  padding: 8px 10px;
+  width: 250px;
+}
+
+.ancova-ss-explanation-title {
+  color: #002b50;
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.25;
+  margin-bottom: 4px;
+}
+
+.ancova-ss-explanation div + div {
+  margin-top: 3px;
+}
+
 
 .ttest-anova-method-panel .form-group,
 .ttest-anova-method-panel .form-control,
@@ -2405,8 +2483,8 @@ input.variable-select:disabled {
 
 .ttest-anova-options .analysis-option-group .checkbox,
 .ttest-anova-options .analysis-option-group .radio {
-  margin-top: 3px;
-  margin-bottom: 3px;
+  margin-top: 2px;
+  margin-bottom: 2px;
   line-height: 1.35;
 }
 
@@ -2688,6 +2766,7 @@ input.variable-select:disabled {
   margin: 0;
   padding: 9px 8px;
   text-align: center;
+  white-space: nowrap;
   width: 100%;
 }
 
@@ -7057,6 +7136,36 @@ pre {
 .ancova-options.analysis-tabbed-options,
 .ancova-options .tab-content {
   min-height: 0;
+  overflow: visible;
+}
+
+.ancova-options .tab-pane,
+.ancova-options .analysis-option-group,
+.ancova-options label {
+  overflow: visible;
+}
+
+.ancova-options .analysis-option-group {
+  margin-bottom: 8px;
+}
+
+.ancova-options .analysis-option-title {
+  margin-bottom: 6px;
+}
+
+.ancova-options .analysis-option-subtitle {
+  margin-bottom: 6px;
+  margin-top: 8px;
+}
+
+.ancova-options .analysis-option-note {
+  font-size: 12.5px;
+  line-height: 1.28;
+  margin-top: 10px;
+}
+
+.ancova-options .tab-pane .analysis-option-group:last-child {
+  margin-bottom: 0;
 }
 
 .ancova-action-row {

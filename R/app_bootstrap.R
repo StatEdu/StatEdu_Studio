@@ -7,6 +7,7 @@ required_packages <- c(
   "lmtest",
   "sandwich",
   "nortest",
+  "car",
   "boot",
   "jsonlite",
   "haven",

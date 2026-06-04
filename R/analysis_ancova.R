@@ -73,6 +73,40 @@ ancova_partial_eta2 <- function(f_value, df1, df2) {
   (f_value * df1) / (f_value * df1 + df2)
 }
 
+ancova_sum_of_squares_type <- function(options = list(), method = NULL) {
+  value <- tolower(as.character(options$sum_of_squares %||% "type2"))
+  if (!value %in% c("type1", "type2", "type3")) value <- "type2"
+  if (identical(method, "Interaction ANCOVA") && is.null(options$sum_of_squares)) value <- "type3"
+  value
+}
+
+ancova_sum_of_squares_label <- function(type) {
+  switch(
+    tolower(as.character(type %||% "type2")),
+    type1 = "Type I SS",
+    type3 = "Type III SS",
+    "Type II SS"
+  )
+}
+
+ancova_sum_of_squares_note <- function(type) {
+  switch(
+    tolower(as.character(type %||% "type2")),
+    type1 = "Sum of squares: Type I. Tests are sequential and depend on model term order.",
+    type3 = "Sum of squares: Type III. Effects are tested conditional on all other model terms.",
+    "Sum of squares: Type II. Group effect is tested after adjustment for covariates."
+  )
+}
+
+ancova_fit_lm <- function(formula, data, sum_of_squares = "type2") {
+  if (identical(tolower(as.character(sum_of_squares)), "type3")) {
+    old_contrasts <- getOption("contrasts")
+    on.exit(options(contrasts = old_contrasts), add = TRUE)
+    options(contrasts = c("contr.sum", "contr.poly"))
+  }
+  stats::lm(formula, data = data)
+}
+
 ancova_rank_data <- function(data, variables) {
   ranked <- data
   for (variable in variables) {
@@ -130,6 +164,54 @@ ancova_formula <- function(dependent, factor, covariates, interaction = FALSE) {
   stats::as.formula(sprintf("`%s` ~ %s", dependent, paste(rhs, collapse = " + ")))
 }
 
+ancova_linearity_diagnostics <- function(clean_data, dependent, factor, covariates) {
+  numeric_covariates <- covariates[vapply(covariates, function(name) is.numeric(clean_data[[name]]), logical(1))]
+  if (length(numeric_covariates) == 0) {
+    return(list(rows = data.frame(), min_p = NA_real_, flagged = character(0), summary = "No continuous covariate"))
+  }
+  rows <- lapply(numeric_covariates, function(covariate) {
+    values <- suppressWarnings(as.numeric(clean_data[[covariate]]))
+    if (sum(is.finite(values)) < 4L || stats::sd(values, na.rm = TRUE) <= 0) {
+      return(data.frame(Covariate = covariate, p = NA_real_, Status = "not testable", stringsAsFactors = FALSE))
+    }
+    squared_name <- paste0(covariate, "__squared")
+    diagnostic_data <- clean_data
+    centered <- values - mean(values, na.rm = TRUE)
+    diagnostic_data[[squared_name]] <- centered^2
+    base_model <- tryCatch(stats::lm(ancova_formula(dependent, factor, covariates), data = diagnostic_data), error = function(e) NULL)
+    extended_model <- tryCatch(stats::lm(ancova_formula(dependent, factor, c(covariates, squared_name)), data = diagnostic_data), error = function(e) NULL)
+    comparison <- if (!is.null(base_model) && !is.null(extended_model)) {
+      tryCatch(stats::anova(base_model, extended_model), error = function(e) NULL)
+    } else {
+      NULL
+    }
+    p_value <- if (!is.null(comparison) && "Pr(>F)" %in% names(comparison) && nrow(comparison) >= 2L) {
+      suppressWarnings(as.numeric(comparison[["Pr(>F)"]][[2]]))
+    } else {
+      NA_real_
+    }
+    data.frame(
+      Covariate = covariate,
+      p = p_value,
+      Status = if (is.finite(p_value) && p_value < 0.05) "possible nonlinearity" else if (is.finite(p_value)) "no clear nonlinearity" else "not testable",
+      stringsAsFactors = FALSE
+    )
+  })
+  rows <- ttest_bind_result_rows(rows)
+  flagged <- if (is.data.frame(rows) && nrow(rows) > 0 && "p" %in% names(rows)) {
+    rows$Covariate[is.finite(rows$p) & rows$p < 0.05]
+  } else {
+    character(0)
+  }
+  min_p <- if (is.data.frame(rows) && nrow(rows) > 0 && any(is.finite(rows$p))) min(rows$p[is.finite(rows$p)]) else NA_real_
+  summary <- if (length(flagged) > 0) {
+    paste("Possible nonlinearity:", paste(flagged, collapse = ", "))
+  } else {
+    "No clear nonlinearity"
+  }
+  list(rows = rows, min_p = min_p, flagged = flagged, summary = summary)
+}
+
 ancova_hc3_group_test <- function(model, factor) {
   coefficient_names <- names(stats::coef(model))
   normalized <- gsub("`", "", coefficient_names, fixed = TRUE)
@@ -154,25 +236,83 @@ ancova_hc3_group_test <- function(model, factor) {
   list(f = f_value, df1 = df1, df2 = df2, p = stats::pf(f_value, df1, df2, lower.tail = FALSE))
 }
 
-ancova_anova_table <- function(model, method, factor) {
-  anova_table <- as.data.frame(stats::anova(model))
+ancova_effect_table <- function(model, sum_of_squares = "type2", robust = FALSE) {
+  sum_of_squares <- ancova_sum_of_squares_type(list(sum_of_squares = sum_of_squares))
+  if (identical(sum_of_squares, "type1")) {
+    anova_table <- as.data.frame(stats::anova(model))
+    return(data.frame(
+      Source = rownames(anova_table),
+      df = suppressWarnings(as.numeric(anova_table[["Df"]])),
+      sum_sq = suppressWarnings(as.numeric(anova_table[["Sum Sq"]])),
+      mean_sq = suppressWarnings(as.numeric(anova_table[["Mean Sq"]])),
+      f = suppressWarnings(as.numeric(anova_table[["F value"]])),
+      p = suppressWarnings(as.numeric(anova_table[["Pr(>F)"]])) ,
+      stringsAsFactors = FALSE
+    ))
+  }
+  type_number <- if (identical(sum_of_squares, "type3")) 3L else 2L
+  anova_table <- tryCatch(
+    suppressMessages(as.data.frame(car::Anova(
+      model,
+      type = type_number,
+      white.adjust = if (isTRUE(robust)) "hc3" else FALSE
+    ))),
+    error = function(e) NULL
+  )
+  if (is.null(anova_table)) {
+    return(ancova_effect_table(model, "type1", robust = FALSE))
+  }
   terms <- rownames(anova_table)
+  keep_terms <- !terms %in% c("(Intercept)", "Residuals", "Error")
+  anova_table <- anova_table[keep_terms, , drop = FALSE]
+  sum_sq_column <- intersect(c("Sum Sq", "Sum Sq."), names(anova_table))
+  f_column <- intersect(c("F value", "F"), names(anova_table))
+  p_column <- intersect(c("Pr(>F)", "Pr(>Chisq)", "Pr(>Chisq.)"), names(anova_table))
+  data.frame(
+    Source = rownames(anova_table),
+    df = suppressWarnings(as.numeric(anova_table[["Df"]])),
+    sum_sq = if (length(sum_sq_column) > 0) suppressWarnings(as.numeric(anova_table[[sum_sq_column[[1]]]])) else NA_real_,
+    mean_sq = NA_real_,
+    f = if (length(f_column) > 0) suppressWarnings(as.numeric(anova_table[[f_column[[1]]]])) else NA_real_,
+    p = if (length(p_column) > 0) suppressWarnings(as.numeric(anova_table[[p_column[[1]]]])) else NA_real_,
+    stringsAsFactors = FALSE
+  )
+}
+
+ancova_source_row <- function(effect_table, term) {
+  row_index <- match(term, effect_table$Source)
+  if (is.na(row_index)) {
+    matches <- grep(sprintf("^`?%s`?$", term), effect_table$Source)
+    row_index <- if (length(matches) > 0) matches[[1]] else NA_integer_
+  }
+  row_index
+}
+
+ancova_anova_table <- function(model, method, factor, sum_of_squares = "type2") {
+  anova_table <- ancova_effect_table(model, sum_of_squares)
+  df2 <- stats::df.residual(model)
+  if (nrow(anova_table) == 0) {
+    return(data.frame())
+  }
+  mean_sq <- anova_table$mean_sq
+  missing_mean_sq <- !is.finite(mean_sq) & is.finite(anova_table$sum_sq) & is.finite(anova_table$df) & anova_table$df > 0
+  mean_sq[missing_mean_sq] <- anova_table$sum_sq[missing_mean_sq] / anova_table$df[missing_mean_sq]
   out <- data.frame(
-    Source = terms,
-    df = ifelse(is.na(anova_table[["Df"]]), "", as.character(as.integer(anova_table[["Df"]]))),
-    `Sum Sq` = ancova_format_decimal3_vec(anova_table[["Sum Sq"]]),
-    `Mean Sq` = ancova_format_decimal3_vec(anova_table[["Mean Sq"]]),
+    Source = anova_table$Source,
+    df = ifelse(is.na(anova_table$df), "", as.character(as.integer(anova_table$df))),
+    `Sum Sq` = ancova_format_decimal3_vec(anova_table$sum_sq),
+    `Mean Sq` = ancova_format_decimal3_vec(mean_sq),
     F = vapply(
       seq_len(nrow(anova_table)),
-      function(index) ancova_format_f_with_df(anova_table[["F value"]][[index]], anova_table[["Df"]][[index]], stats::df.residual(model)),
+      function(index) ancova_format_f_with_df(anova_table$f[[index]], anova_table$df[[index]], df2),
       character(1)
     ),
-    p = ancova_format_p_vec(anova_table[["Pr(>F)"]]),
+    p = ancova_format_p_vec(anova_table$p),
     `partial eta2` = ancova_format_decimal3_vec(mapply(
       ancova_partial_eta2,
-      anova_table[["F value"]],
-      anova_table[["Df"]],
-      stats::df.residual(model)
+      anova_table$f,
+      anova_table$df,
+      df2
     )),
     check.names = FALSE,
     stringsAsFactors = FALSE
@@ -189,8 +329,25 @@ ancova_anova_table <- function(model, method, factor) {
   out
 }
 
-ancova_group_stat <- function(model, method, factor) {
+ancova_group_stat <- function(model, method, factor, sum_of_squares = "type2") {
   if (identical(method, "Robust ANCOVA (HC3)")) {
+    if (!identical(sum_of_squares, "type1")) {
+      robust_table <- ancova_effect_table(model, sum_of_squares, robust = TRUE)
+      row_index <- ancova_source_row(robust_table, factor)
+      if (!is.na(row_index)) {
+        f_value <- suppressWarnings(as.numeric(robust_table$f[[row_index]]))
+        df1 <- suppressWarnings(as.numeric(robust_table$df[[row_index]]))
+        df2 <- stats::df.residual(model)
+        p_value <- suppressWarnings(as.numeric(robust_table$p[[row_index]]))
+        return(list(
+          f = f_value,
+          df1 = df1,
+          df2 = df2,
+          p = p_value,
+          effect_size = ancova_partial_eta2(f_value, df1, df2)
+        ))
+      }
+    }
     robust <- ancova_hc3_group_test(model, factor)
     return(list(
       f = robust$f,
@@ -201,19 +358,15 @@ ancova_group_stat <- function(model, method, factor) {
     ))
   }
 
-  anova_table <- as.data.frame(stats::anova(model))
-  row_index <- match(factor, rownames(anova_table))
-  if (is.na(row_index)) {
-    matches <- grep(sprintf("^`?%s`?$", factor), rownames(anova_table))
-    row_index <- if (length(matches) > 0) matches[[1]] else NA_integer_
-  }
+  anova_table <- ancova_effect_table(model, sum_of_squares)
+  row_index <- ancova_source_row(anova_table, factor)
   if (is.na(row_index)) {
     return(list(f = NA_real_, df1 = NA_real_, df2 = stats::df.residual(model), p = NA_real_, effect_size = NA_real_))
   }
-  f_value <- suppressWarnings(as.numeric(anova_table[["F value"]][[row_index]]))
-  df1 <- suppressWarnings(as.numeric(anova_table[["Df"]][[row_index]]))
+  f_value <- suppressWarnings(as.numeric(anova_table$f[[row_index]]))
+  df1 <- suppressWarnings(as.numeric(anova_table$df[[row_index]]))
   df2 <- stats::df.residual(model)
-  p_value <- suppressWarnings(as.numeric(anova_table[["Pr(>F)"]][[row_index]]))
+  p_value <- suppressWarnings(as.numeric(anova_table$p[[row_index]]))
   list(
     f = f_value,
     df1 = df1,
@@ -331,15 +484,224 @@ ancova_pairwise_p_matrix <- function(model, newdata, factor, robust = FALSE, adj
   p_matrix
 }
 
+ancova_interaction_terms_table <- function(model, sum_of_squares = "type3") {
+  effect_table <- ancova_effect_table(model, sum_of_squares)
+  if (!is.data.frame(effect_table) || nrow(effect_table) == 0) {
+    return(data.frame())
+  }
+  rows <- grepl(":", effect_table$Source, fixed = TRUE)
+  if (!any(rows)) {
+    return(data.frame())
+  }
+  interactions <- effect_table[rows, , drop = FALSE]
+  data.frame(
+    Term = interactions$Source,
+    df = ancova_format_decimal3_vec(interactions$df),
+    F = ancova_format_decimal3_vec(interactions$f),
+    p = ancova_format_p_vec(interactions$p),
+    `partial eta2` = ancova_format_decimal3_vec(mapply(
+      ancova_partial_eta2,
+      interactions$f,
+      interactions$df,
+      stats::df.residual(model)
+    )),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+}
+
+ancova_conditional_grid <- function(fit_data, factor, covariates, overrides = list()) {
+  grid <- ancova_prediction_grid(fit_data, factor, covariates)
+  if (length(overrides) > 0) {
+    for (name in names(overrides)) {
+      if (!name %in% names(grid)) next
+      values <- fit_data[[name]]
+      if (is.numeric(values)) {
+        grid[[name]] <- as.numeric(overrides[[name]])
+      } else {
+        value_levels <- if (is.factor(values)) levels(values) else unique(as.character(stats::na.omit(values)))
+        grid[[name]] <- factor(rep(as.character(overrides[[name]]), nrow(grid)), levels = value_levels)
+      }
+    }
+  }
+  grid
+}
+
+ancova_pairwise_contrasts <- function(model, newdata, factor) {
+  levels <- as.character(newdata[[factor]])
+  if (length(levels) < 2L) {
+    return(data.frame())
+  }
+  terms_object <- stats::delete.response(stats::terms(model))
+  x_matrix <- stats::model.matrix(terms_object, newdata, contrasts.arg = model$contrasts)
+  coefficients <- stats::coef(model)
+  keep <- names(coefficients)[!is.na(coefficients)]
+  keep <- keep[keep %in% colnames(x_matrix)]
+  if (length(keep) == 0) {
+    return(data.frame())
+  }
+  x_matrix <- x_matrix[, keep, drop = FALSE]
+  coefficients <- coefficients[keep]
+  covariance <- stats::vcov(model)
+  covariance <- covariance[keep, keep, drop = FALSE]
+  pairs <- utils::combn(seq_along(levels), 2L, simplify = FALSE)
+  rows <- lapply(pairs, function(pair) {
+    contrast <- x_matrix[pair[[1]], , drop = TRUE] - x_matrix[pair[[2]], , drop = TRUE]
+    estimate <- as.numeric(sum(contrast * coefficients))
+    se <- sqrt(as.numeric(t(contrast) %*% covariance %*% contrast))
+    t_value <- if (is.finite(se) && se > 0) estimate / se else NA_real_
+    p_value <- if (is.finite(t_value)) 2 * stats::pt(abs(t_value), df = stats::df.residual(model), lower.tail = FALSE) else NA_real_
+    data.frame(
+      Contrast = paste0(levels[[pair[[1]]]], " - ", levels[[pair[[2]]]]),
+      Estimate = estimate,
+      SE = se,
+      t = t_value,
+      p = p_value,
+      stringsAsFactors = FALSE
+    )
+  })
+  ttest_bind_result_rows(rows)
+}
+
+ancova_simple_effects_table <- function(model, fit_data, factor, covariates) {
+  numeric_covariates <- covariates[vapply(covariates, function(name) is.numeric(fit_data[[name]]), logical(1))]
+  if (length(numeric_covariates) == 0) {
+    return(data.frame())
+  }
+  rows <- list()
+  for (covariate in numeric_covariates) {
+    values <- suppressWarnings(as.numeric(fit_data[[covariate]]))
+    mean_value <- mean(values, na.rm = TRUE)
+    sd_value <- stats::sd(values, na.rm = TRUE)
+    if (!is.finite(mean_value) || !is.finite(sd_value) || sd_value <= 0) next
+    probes <- data.frame(
+      `Covariate value` = c("Mean - 1 SD", "Mean", "Mean + 1 SD"),
+      value = c(mean_value - sd_value, mean_value, mean_value + sd_value),
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+    for (index in seq_len(nrow(probes))) {
+      newdata <- ancova_conditional_grid(fit_data, factor, covariates, stats::setNames(list(probes$value[[index]]), covariate))
+      contrasts <- ancova_pairwise_contrasts(model, newdata, factor)
+      if (!is.data.frame(contrasts) || nrow(contrasts) == 0) next
+      rows[[length(rows) + 1L]] <- data.frame(
+        Covariate = covariate,
+        `Covariate value` = probes$`Covariate value`[[index]],
+        Value = format_decimal3(probes$value[[index]]),
+        Contrast = contrasts$Contrast,
+        Estimate = ancova_format_decimal3_vec(contrasts$Estimate),
+        SE = ancova_format_decimal3_vec(contrasts$SE),
+        t = ancova_format_decimal3_vec(contrasts$t),
+        p = ancova_format_p_vec(contrasts$p),
+        check.names = FALSE,
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  ttest_bind_result_rows(rows)
+}
+
+ancova_collinearity_diagnostics <- function(model) {
+  model_matrix <- stats::model.matrix(model)
+  rank <- qr(model_matrix)$rank
+  rank_deficient <- rank < ncol(model_matrix)
+  collinearity <- coefficient_collinearity(model_matrix)
+  terms <- setdiff(colnames(model_matrix), "(Intercept)")
+  if (length(terms) == 0) {
+    return(list(table = data.frame(), max_vif = NA_real_, summary = "No predictors", rank_deficient = rank_deficient))
+  }
+  vif_values <- suppressWarnings(as.numeric(collinearity$vif[terms]))
+  tolerance_values <- suppressWarnings(as.numeric(collinearity$tolerance[terms]))
+  status <- ifelse(
+    is.infinite(vif_values) | isTRUE(rank_deficient),
+    "severe collinearity",
+    ifelse(
+      is.finite(vif_values) & vif_values > 10,
+      "VIF > 10",
+      ifelse(is.finite(vif_values) & vif_values > 5, "VIF > 5", "acceptable")
+    )
+  )
+  table <- data.frame(
+    Term = terms,
+    Tolerance = tolerance_values,
+    VIF = vif_values,
+    Status = status,
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+  finite_vif <- vif_values[is.finite(vif_values)]
+  max_vif <- if (any(is.infinite(vif_values))) Inf else if (length(finite_vif) > 0) max(finite_vif, na.rm = TRUE) else NA_real_
+  summary <- if (isTRUE(rank_deficient)) {
+    "Rank deficient"
+  } else if (is.infinite(max_vif) || (is.finite(max_vif) && max_vif > 10)) {
+    sprintf("High collinearity (max VIF=%s)", format_decimal3(max_vif))
+  } else if (is.finite(max_vif) && max_vif > 5) {
+    sprintf("Moderate collinearity (max VIF=%s)", format_decimal3(max_vif))
+  } else if (is.finite(max_vif)) {
+    sprintf("Acceptable (max VIF=%s)", format_decimal3(max_vif))
+  } else {
+    "Not testable"
+  }
+  list(table = table, max_vif = max_vif, summary = summary, rank_deficient = rank_deficient)
+}
+
+ancova_influence_diagnostics <- function(model) {
+  n <- stats::nobs(model)
+  p <- length(stats::coef(model)[!is.na(stats::coef(model))])
+  if (!is.finite(n) || n <= 0 || !is.finite(p) || p <= 0) {
+    return(list(table = data.frame(), summary = "Not testable", flagged_n = NA_integer_))
+  }
+  studentized <- tryCatch(stats::rstudent(model), error = function(e) rep(NA_real_, n))
+  leverage <- tryCatch(stats::hatvalues(model), error = function(e) rep(NA_real_, n))
+  cooks <- tryCatch(stats::cooks.distance(model), error = function(e) rep(NA_real_, n))
+  row_ids <- names(studentized)
+  if (is.null(row_ids) || length(row_ids) != length(studentized)) {
+    row_ids <- as.character(seq_along(studentized))
+  }
+  leverage_cutoff <- 2 * p / n
+  cooks_cutoff <- 4 / n
+  flagged <- (is.finite(studentized) & abs(studentized) > 3) |
+    (is.finite(leverage) & leverage > leverage_cutoff) |
+    (is.finite(cooks) & cooks > cooks_cutoff)
+  table <- data.frame(
+    Case = row_ids,
+    `Studentized residual` = studentized,
+    Leverage = leverage,
+    `Cook's D` = cooks,
+    Flag = ifelse(flagged, "flagged", ""),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+  max_abs_studentized <- if (any(is.finite(studentized))) max(abs(studentized), na.rm = TRUE) else NA_real_
+  max_leverage <- if (any(is.finite(leverage))) max(leverage, na.rm = TRUE) else NA_real_
+  max_cooks <- if (any(is.finite(cooks))) max(cooks, na.rm = TRUE) else NA_real_
+  flagged_n <- sum(flagged, na.rm = TRUE)
+  summary <- if (flagged_n > 0) {
+    sprintf("Flagged cases=%d; max Cook's D=%s", flagged_n, format_decimal3(max_cooks))
+  } else {
+    "No influential cases flagged"
+  }
+  list(
+    table = table,
+    flagged_n = flagged_n,
+    max_abs_studentized = max_abs_studentized,
+    max_leverage = max_leverage,
+    max_cooks = max_cooks,
+    leverage_cutoff = leverage_cutoff,
+    cooks_cutoff = cooks_cutoff,
+    summary = summary
+  )
+}
+
 ancova_result_table <- function(model, fit_data, dependent, factor, covariates, method, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
   adjusted <- ancova_adjusted_means(model, fit_data, factor, covariates)
   adjusted_warning <- attr(adjusted, "warning", exact = TRUE)
-  group_stat <- ancova_group_stat(model, method, factor)
+  sum_of_squares <- ancova_sum_of_squares_type(options, method)
+  group_stat <- ancova_group_stat(model, method, factor, sum_of_squares)
   level_labels <- ttest_display_levels(factor, adjusted$Level, category_table)
   rows <- data.frame(
     Variable = "",
     Label = level_labels,
-    `Adjusted mean` = ancova_format_decimal3_vec(adjusted$Estimate),
     SE = ancova_format_decimal3_vec(adjusted$SE),
     F = "",
     p = "",
@@ -347,6 +709,9 @@ ancova_result_table <- function(model, fit_data, dependent, factor, covariates, 
     check.names = FALSE,
     stringsAsFactors = FALSE
   )
+  estimate_column <- if (identical(method, "Ranked ANCOVA")) "Adjusted rank mean" else "Adjusted mean"
+  rows[[estimate_column]] <- ancova_format_decimal3_vec(adjusted$Estimate)
+  rows <- rows[, c("Variable", "Label", estimate_column, "SE", "F", "p", "Effect size"), drop = FALSE]
   rows$Variable[[1]] <- ttest_display_variable(factor, variable_info, labels, category_table)
   rows$F[[1]] <- if (isTRUE(options$show_df)) {
     ancova_format_f_with_df(group_stat$f, group_stat$df1, group_stat$df2)
@@ -356,12 +721,13 @@ ancova_result_table <- function(model, fit_data, dependent, factor, covariates, 
   rows$p[[1]] <- format_p(group_stat$p)
   rows$`Effect size`[[1]] <- format_decimal3(group_stat$effect_size)
   if (isTRUE(options$mean_se)) {
-    rows[["M \u00B1 SE"]] <- ifelse(
-      nzchar(rows[["Adjusted mean"]]) & nzchar(rows$SE),
-      paste0(rows[["Adjusted mean"]], "\u00A0\u00B1\u00A0", rows$SE),
+    combined_column <- if (identical(method, "Ranked ANCOVA")) "Rank M \u00B1 SE" else "M \u00B1 SE"
+    rows[[combined_column]] <- ifelse(
+      nzchar(rows[[estimate_column]]) & nzchar(rows$SE),
+      paste0(rows[[estimate_column]], "\u00A0\u00B1\u00A0", rows$SE),
       ""
     )
-    rows <- rows[, c("Variable", "Label", "M \u00B1 SE", "F", "p", "Effect size"), drop = FALSE]
+    rows <- rows[, c("Variable", "Label", combined_column, "F", "p", "Effect size"), drop = FALSE]
   }
 
   if (nrow(rows) >= 3L) {
@@ -397,8 +763,8 @@ ancova_result_table <- function(model, fit_data, dependent, factor, covariates, 
   }
   rows
 }
-ancova_residual_normality_test <- function(residuals, method = "lillie") {
-  residuals <- residuals[is.finite(residuals)]
+ancova_normality_test <- function(values, method = "lillie") {
+  residuals <- values[is.finite(values)]
   method <- as.character(method %||% "lillie")
   if (identical(method, "shapiro") && length(residuals) >= 3L && length(residuals) <= 5000L) {
     test <- tryCatch(stats::shapiro.test(residuals), error = function(e) NULL)
@@ -410,8 +776,10 @@ ancova_residual_normality_test <- function(residuals, method = "lillie") {
 
 ancova_assumptions <- function(model, clean_data, dependent, factor, covariates, options = list()) {
   residuals <- stats::residuals(model)
-  normality <- ancova_residual_normality_test(residuals, options$normality_method %||% "lillie")
+  normality <- ancova_normality_test(residuals, options$normality_method %||% "lillie")
+  outcome_normality <- ancova_normality_test(clean_data[[dependent]], options$normality_method %||% "lillie")
   homogeneity <- tryCatch(lmtest::bptest(model), error = function(e) NULL)
+  linearity <- ancova_linearity_diagnostics(clean_data, dependent, factor, covariates)
   interaction_p <- NA_real_
   if (length(covariates) > 0) {
     interaction_model <- tryCatch(stats::lm(ancova_formula(dependent, factor, covariates, interaction = TRUE), data = clean_data), error = function(e) NULL)
@@ -426,8 +794,14 @@ ancova_assumptions <- function(model, clean_data, dependent, factor, covariates,
   list(
     normality_method = normality$method %||% "Lilliefors (K-S)",
     normality_p = normality$p.value %||% NA_real_,
+    outcome_normality_method = outcome_normality$method %||% "Lilliefors (K-S)",
+    outcome_normality_p = outcome_normality$p.value %||% NA_real_,
     homogeneity_p = if (!is.null(homogeneity)) homogeneity$p.value else NA_real_,
-    slope_p = interaction_p
+    slope_p = interaction_p,
+    linearity_p = linearity$min_p,
+    linearity_summary = linearity$summary,
+    linearity_flagged = linearity$flagged,
+    linearity_table = linearity$rows
   )
 }
 
@@ -473,13 +847,18 @@ ancova_single_result <- function(data, dependent, factor, covariates, variable_i
   base_model <- stats::lm(ancova_formula(dependent, factor, covariates), data = clean)
   assumptions <- ancova_assumptions(base_model, clean, dependent, factor, covariates, options)
   method <- ancova_choose_method(assumptions, options)
+  sum_of_squares <- ancova_sum_of_squares_type(options, method)
   fit_data <- clean
   interaction <- identical(method, "Interaction ANCOVA")
   if (identical(method, "Ranked ANCOVA")) {
     fit_data <- ancova_rank_data(clean, c(dependent, covariates))
   }
-  model <- stats::lm(ancova_formula(dependent, factor, covariates, interaction = interaction), data = fit_data)
+  model <- ancova_fit_lm(ancova_formula(dependent, factor, covariates, interaction = interaction), fit_data, sum_of_squares)
   table <- ancova_result_table(model, fit_data, dependent, factor, covariates, method, variable_info, labels, category_table, options)
+  interaction_terms <- if (identical(method, "Interaction ANCOVA")) ancova_interaction_terms_table(model, sum_of_squares) else data.frame()
+  simple_effects <- if (identical(method, "Interaction ANCOVA")) ancova_simple_effects_table(model, fit_data, factor, covariates) else data.frame()
+  collinearity <- ancova_collinearity_diagnostics(model)
+  influence <- ancova_influence_diagnostics(model)
   adjusted_mean_warning <- attr(table, "warning", exact = TRUE)
   posthoc_note <- if (nlevels(fit_data[[factor]]) >= 3L && nzchar(adjusted_mean_warning %||% "")) {
     "Post-hoc comparisons were omitted because at least one adjusted mean was not estimable."
@@ -496,10 +875,11 @@ ancova_single_result <- function(data, dependent, factor, covariates, variable_i
     } else {
       "using the fitted model covariance"
     }
+    contrast_target <- if (identical(method, "Ranked ANCOVA")) "adjusted rank means" else "adjusted means"
     if (isTRUE(options$ordered_significance)) {
-      sprintf("Post-hoc: %s pairwise model contrasts of adjusted means, %s; displayed with ordered significance notation.", adjustment_note, covariance_note)
+      sprintf("Post-hoc: %s pairwise model contrasts of %s, %s; displayed with ordered significance notation.", adjustment_note, contrast_target, covariance_note)
     } else {
-      sprintf("Post-hoc: %s pairwise model contrasts of adjusted means, %s; displayed with compact letter notation.", adjustment_note, covariance_note)
+      sprintf("Post-hoc: %s pairwise model contrasts of %s, %s; displayed with compact letter notation.", adjustment_note, contrast_target, covariance_note)
     }
   } else {
     NULL
@@ -510,9 +890,14 @@ ancova_single_result <- function(data, dependent, factor, covariates, variable_i
     covariates = covariates,
     n = stats::nobs(model),
     method = method,
+    sum_of_squares = sum_of_squares,
     reason = ancova_method_reason(method, assumptions),
     assumptions = assumptions,
     table = table,
+    interaction_terms = interaction_terms,
+    simple_effects = simple_effects,
+    collinearity = collinearity,
+    influence = influence,
     model = model,
     clean_data = clean,
     fit_data = fit_data,
@@ -521,10 +906,19 @@ ancova_single_result <- function(data, dependent, factor, covariates, variable_i
       "Analysis method:",
       method,
       "Effect size = partial eta squared.",
+      ancova_sum_of_squares_note(sum_of_squares),
       posthoc_note,
-      if (identical(method, "Robust ANCOVA (HC3)")) "Group effect F and p use HC3 robust covariance." else NULL,
-      if (identical(method, "Ranked ANCOVA")) "Ranked ANCOVA uses rank-transformed dependent variable and continuous covariates; categorical covariates are dummy-coded." else NULL,
-      if (identical(method, "Interaction ANCOVA")) "Group effects should be interpreted with group x covariate interactions." else NULL,
+      if (identical(method, "Robust ANCOVA (HC3)") && identical(sum_of_squares, "type1")) "Group effect F and p use an HC3 robust coefficient Wald test; Type I sequential sums of squares are not used for the robust group test." else NULL,
+      if (identical(method, "Robust ANCOVA (HC3)") && !identical(sum_of_squares, "type1")) "Group effect F and p use HC3 robust covariance with the selected Type II/III test." else NULL,
+      if (identical(method, "Ranked ANCOVA")) "Ranked ANCOVA uses rank-transformed dependent variable and continuous covariates; adjusted means are reported on the rank scale, not the original outcome scale." else NULL,
+      if (identical(method, "Interaction ANCOVA")) "Group x covariate interaction was detected. Interpret group differences conditionally across covariate values rather than as a single adjusted mean difference." else NULL,
+      if (identical(method, "Interaction ANCOVA") && is.data.frame(simple_effects) && nrow(simple_effects) > 0) "Simple group effects are reported at covariate mean and mean +/- 1 SD." else NULL,
+      if (identical(method, "Interaction ANCOVA") && !identical(sum_of_squares, "type3")) "Type III SS is recommended for interaction models." else NULL,
+      if (length(assumptions$linearity_flagged %||% character(0)) > 0) paste("Possible covariate-outcome nonlinearity detected:", paste(assumptions$linearity_flagged, collapse = ", "), ".") else NULL,
+      if (isTRUE(collinearity$rank_deficient)) "Model matrix is rank deficient; one or more coefficients may be aliased because of perfect multicollinearity." else NULL,
+      if (!isTRUE(collinearity$rank_deficient) && is.finite(collinearity$max_vif) && collinearity$max_vif > 10) sprintf("Multicollinearity warning: VIF exceeds 10 (max VIF = %s).", format_decimal3(collinearity$max_vif)) else NULL,
+      if (!isTRUE(collinearity$rank_deficient) && is.finite(collinearity$max_vif) && collinearity$max_vif > 5 && collinearity$max_vif <= 10) sprintf("Multicollinearity caution: VIF exceeds 5 (max VIF = %s).", format_decimal3(collinearity$max_vif)) else NULL,
+      if (is.finite(influence$flagged_n) && influence$flagged_n > 0) sprintf("Influence diagnostics flagged %d case(s) by studentized residual, leverage, or Cook's D.", influence$flagged_n) else NULL,
       adjusted_mean_warning
     )
   )

@@ -18,6 +18,7 @@ register_ancova_handlers <- function(
   normality_enabled_value <- reactiveVal(TRUE)
   normality_method_value <- reactiveVal("lillie")
   force_ranked_value <- reactiveVal(FALSE)
+  sum_of_squares_value <- reactiveVal("type2")
   ordered_significance_value <- reactiveVal(FALSE)
   posthoc_method_value <- reactiveVal("bonferroni")
   show_df_value <- reactiveVal(FALSE)
@@ -49,6 +50,7 @@ register_ancova_handlers <- function(
       normality_enabled = isolate(normality_enabled_value()),
       normality_method = isolate(normality_method_value()),
       force_ranked = isolate(force_ranked_value()),
+      sum_of_squares = isolate(sum_of_squares_value()),
       ordered_significance = isolate(ordered_significance_value()),
       posthoc_method = isolate(posthoc_method_value()),
       show_df = isolate(show_df_value()),
@@ -86,6 +88,13 @@ register_ancova_handlers <- function(
     value <- as.character(input$ancova_normality_method %||% "lillie")
     if (!value %in% c("lillie", "shapiro")) value <- "lillie"
     normality_method_value(value)
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$ancova_sum_of_squares, {
+    value <- as.character(input$ancova_sum_of_squares %||% "type2")
+    if (!value %in% c("type1", "type2", "type3")) value <- "type2"
+    sum_of_squares_value(value)
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
@@ -312,6 +321,7 @@ register_ancova_handlers <- function(
           normality_enabled = isTRUE(normality_enabled_value()),
           normality_method = normality_method_value(),
           force_ranked = isTRUE(force_ranked_value()),
+          sum_of_squares = sum_of_squares_value(),
           ordered_significance = isTRUE(ordered_significance_value()),
           posthoc_method = posthoc_method_value(),
           show_df = isTRUE(show_df_value()),

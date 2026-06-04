@@ -25,8 +25,70 @@ stopifnot(length(result$results) == 1L)
 stopifnot(is.data.frame(result$results[[1]]$table))
 stopifnot(all(c("Variable", "Label", "Adjusted mean", "SE", "F", "p", "Effect size", "post-hoc") %in% names(result$results[[1]]$table)))
 stopifnot(nrow(result$results[[1]]$table) == 3L)
+stopifnot(identical(result$results[[1]]$sum_of_squares, "type2"))
+stopifnot(grepl("Sum of squares: Type II", result$results[[1]]$note, fixed = TRUE))
+stopifnot(is.data.frame(result$results[[1]]$assumptions$linearity_table))
+assumption_review <- ancova_assumption_review_table(result, variable_info)
+stopifnot("Residual normality p" %in% names(assumption_review))
+stopifnot("Linearity" %in% names(assumption_review))
+stopifnot("Collinearity" %in% names(assumption_review))
+stopifnot("Influence" %in% names(assumption_review))
+normality_review <- ancova_normality_review_table(result, variable_info)
+stopifnot("Outcome p" %in% names(normality_review))
+stopifnot("Residual p" %in% names(normality_review))
+stopifnot(any(grepl("descriptive", normality_review$Note, fixed = TRUE)))
+stopifnot(is.data.frame(result$results[[1]]$collinearity$table))
+stopifnot(is.data.frame(result$results[[1]]$influence$table))
+stopifnot(is.finite(result$results[[1]]$assumptions$outcome_normality_p))
 stopifnot(!grepl("\\([0-9.]+,[0-9.]+\\)", result$results[[1]]$table$F[[1]], perl = TRUE))
 stopifnot(grepl("Bonferroni-corrected", result$results[[1]]$note, fixed = TRUE))
+
+data_collinear <- data_basic
+data_collinear$x2 <- data_collinear$x + rnorm(nrow(data_collinear), sd = 0.001)
+variable_info_collinear <- data.frame(
+  name = c("y", "group", "x", "x2"),
+  measurement = c("continuous", "category", "continuous", "continuous"),
+  stringsAsFactors = FALSE
+)
+collinear <- prepare_ancova_results(data_collinear, "y", "group", c("x", "x2"), variable_info_collinear, options = list(normality_enabled = FALSE))
+stopifnot(is.finite(collinear$results[[1]]$collinearity$max_vif))
+stopifnot(collinear$results[[1]]$collinearity$max_vif > 10)
+stopifnot(grepl("Multicollinearity warning", collinear$results[[1]]$note, fixed = TRUE))
+collinearity_review <- ancova_collinearity_review_table(collinear, variable_info_collinear)
+stopifnot(is.data.frame(collinearity_review), any(collinearity_review$Status == "VIF > 10"))
+
+data_influence <- data_basic
+data_influence$y[[1]] <- data_influence$y[[1]] + 25
+influence <- prepare_ancova_results(data_influence, "y", "group", "x", variable_info, options = list(normality_enabled = FALSE))
+stopifnot(influence$results[[1]]$influence$flagged_n > 0)
+stopifnot(grepl("Influence diagnostics flagged", influence$results[[1]]$note, fixed = TRUE))
+influence_review <- ancova_influence_review_table(influence, variable_info)
+stopifnot(is.data.frame(influence_review), nrow(influence_review) > 0)
+
+data_nonlinear <- data.frame(
+  y = (seq(-2, 2, length.out = 80)^2) + rnorm(80, sd = 0.05),
+  group = rep(c("A", "B"), each = 40),
+  x = seq(-2, 2, length.out = 80)
+)
+variable_info_nonlinear <- data.frame(
+  name = c("y", "group", "x"),
+  measurement = c("continuous", "binary", "continuous"),
+  stringsAsFactors = FALSE
+)
+nonlinear <- prepare_ancova_results(data_nonlinear, "y", "group", "x", variable_info_nonlinear, options = list(normality_enabled = FALSE))
+stopifnot(length(nonlinear$results[[1]]$assumptions$linearity_flagged) == 1L)
+stopifnot(grepl("Possible covariate-outcome nonlinearity", nonlinear$results[[1]]$note, fixed = TRUE))
+linearity_review <- ancova_linearity_review_table(nonlinear, variable_info_nonlinear)
+stopifnot(is.data.frame(linearity_review), nrow(linearity_review) == 1L)
+stopifnot(identical(linearity_review$Status[[1]], "possible nonlinearity"))
+
+type1_result <- prepare_ancova_results(data_basic, "y", "group", "x", variable_info, options = list(sum_of_squares = "type1"))
+stopifnot(identical(type1_result$results[[1]]$sum_of_squares, "type1"))
+stopifnot(grepl("Sum of squares: Type I", type1_result$results[[1]]$note, fixed = TRUE))
+
+type3_result <- prepare_ancova_results(data_basic, "y", "group", "x", variable_info, options = list(sum_of_squares = "type3"))
+stopifnot(identical(type3_result$results[[1]]$sum_of_squares, "type3"))
+stopifnot(grepl("Sum of squares: Type III", type3_result$results[[1]]$note, fixed = TRUE))
 
 df_result <- prepare_ancova_results(data_basic, "y", "group", "x", variable_info, options = list(show_df = TRUE))
 stopifnot(grepl("\\([0-9.]+,[0-9.]+\\)", df_result$results[[1]]$table$F[[1]], perl = TRUE))
@@ -112,6 +174,7 @@ combined_markers <- attr(combined, "note_markers", exact = TRUE)
 stopifnot(is.null(combined_markers) || !any(combined_markers$column %in% c("DV", "Effect size", "post-hoc")))
 combined_note <- ancova_combined_note(multi, variable_info_multi)
 stopifnot(grepl("Analysis method:", combined_note, fixed = TRUE))
+stopifnot(grepl("Sum of squares: Type II", combined_note, fixed = TRUE))
 stopifnot(grepl("Effect size", combined_note, fixed = TRUE))
 stopifnot(grepl("Post-hoc:", combined_note, fixed = TRUE))
 stopifnot(!grepl("y: Analysis method", combined_note, fixed = TRUE))
@@ -120,6 +183,8 @@ stopifnot(!grepl("y2: Analysis method", combined_note, fixed = TRUE))
 overview <- ancova_model_overview_table(result, variable_info)
 stopifnot(is.data.frame(overview), nrow(overview) == 1L)
 stopifnot("Analysis" %in% names(overview))
+stopifnot("Sum of squares" %in% names(overview))
+stopifnot(identical(overview[["Sum of squares"]][[1]], "Type II SS"))
 
 data_two_group <- subset(data_basic, group %in% c("A", "B"))
 data_two_group$group <- droplevels(factor(data_two_group$group))
@@ -130,6 +195,9 @@ stopifnot(nrow(two_group$results[[1]]$table) == 2L)
 
 ranked <- prepare_ancova_results(data_basic, "y", "group", "x", variable_info, options = list(force_ranked = TRUE))
 stopifnot(identical(ranked$results[[1]]$method, "Ranked ANCOVA"))
+stopifnot("Adjusted rank mean" %in% names(ranked$results[[1]]$table))
+stopifnot(!("Adjusted mean" %in% names(ranked$results[[1]]$table)))
+stopifnot(grepl("rank scale", ranked$results[[1]]$note, fixed = TRUE))
 
 mixed_method <- multi
 mixed_method$results[[2]] <- ranked$results[[1]]
@@ -166,18 +234,49 @@ variable_info_interaction <- data.frame(
 )
 interaction <- prepare_ancova_results(data_interaction, "y", "group", "x", variable_info_interaction)
 stopifnot(identical(interaction$results[[1]]$method, "Interaction ANCOVA"))
+stopifnot(is.data.frame(interaction$results[[1]]$interaction_terms), nrow(interaction$results[[1]]$interaction_terms) >= 1L)
+stopifnot(is.data.frame(interaction$results[[1]]$simple_effects), nrow(interaction$results[[1]]$simple_effects) == 3L)
+stopifnot(grepl("Simple group effects", as.character(ancova_results_ui(interaction, variable_info_interaction)), fixed = TRUE))
+stopifnot(grepl("Simple group effects are reported", interaction$results[[1]]$note, fixed = TRUE))
 
 html <- as.character(ancova_results_ui(result, variable_info))
 stopifnot(grepl("Model overview", html, fixed = TRUE))
 stopifnot(grepl("ANCOVA table", html, fixed = TRUE))
+stopifnot(grepl("Assumption summary", html, fixed = TRUE))
+stopifnot(grepl("Normality diagnostics", html, fixed = TRUE))
 
 html_file <- tempfile(fileext = ".html")
 write_ancova_results_html(result, html_file, variable_info)
 stopifnot(file.exists(html_file))
-stopifnot(grepl("Model overview", paste(readLines(html_file, warn = FALSE), collapse = " "), fixed = TRUE))
+html_text <- paste(readLines(html_file, warn = FALSE), collapse = " ")
+stopifnot(grepl("Model overview", html_text, fixed = TRUE))
+stopifnot(grepl("Assumption summary", html_text, fixed = TRUE))
+stopifnot(grepl("Normality diagnostics", html_text, fixed = TRUE))
+
+report_html <- saved_ancova_results_html(result, variable_info, report_mode = TRUE)
+stopifnot(grepl("Assumption summary", report_html, fixed = TRUE))
+stopifnot(grepl("Normality diagnostics", report_html, fixed = TRUE))
+
+if (nzchar(find_pdf_chromium())) {
+  pdf_file <- tempfile(fileext = ".pdf")
+  write_ancova_results_pdf(result, pdf_file, variable_info)
+  stopifnot(file.exists(pdf_file))
+  stopifnot(file.info(pdf_file)$size > 0)
+}
 
 excel_file <- tempfile(fileext = ".xlsx")
 save_ancova_excel_file(result, excel_file, variable_info)
 stopifnot(file.exists(excel_file))
+excel_sheets <- openxlsx::getSheetNames(excel_file)
+stopifnot("Assumption summary" %in% excel_sheets)
+stopifnot("Normality diagnostics" %in% excel_sheets)
+stopifnot("Linearity diagnostics" %in% excel_sheets)
+stopifnot("Collinearity diagnostics" %in% excel_sheets)
+
+interaction_excel_file <- tempfile(fileext = ".xlsx")
+save_ancova_excel_file(interaction, interaction_excel_file, variable_info_interaction)
+interaction_excel_sheets <- openxlsx::getSheetNames(interaction_excel_file)
+stopifnot("Interaction terms" %in% interaction_excel_sheets)
+stopifnot("Simple effects" %in% interaction_excel_sheets)
 
 cat("All ANCOVA validations passed.\n")
