@@ -618,6 +618,21 @@ save_ancova_figure_files <- function(result, directory, variable_table = NULL, l
     if (isTRUE(options$plot_regression_lines)) {
       jobs <- c(jobs, list(list(name = "regression_lines", label = "Regression lines", fn = draw_ancova_regression_lines_plot)))
     }
+    if (isTRUE(options$plot_linearity_diagnostics)) {
+      for (covariate in ancova_numeric_covariates(item)) {
+        plot_item <- item
+        plot_item$linearity_covariate <- covariate
+        plot_function <- local({
+          local_item <- plot_item
+          function(unused) draw_ancova_linearity_diagnostic_plot(local_item)
+        })
+        jobs <- c(jobs, list(list(
+          name = sprintf("linearity_%s", safe_file_stem(covariate)),
+          label = sprintf("Linearity diagnostic %s", covariate),
+          fn = plot_function
+        )))
+      }
+    }
     for (job in jobs) {
       file <- file.path(directory, sprintf("ANCOVA_%s(%s).png", job$name, dependent_label))
       save_plot_png_file(job$fn, item, file, width = 6.4, height = 4.6)

@@ -13,6 +13,9 @@ analysis_save_edition <- function() {
 }
 
 analysis_save_feature_enabled <- function(feature, edition = analysis_save_edition()) {
+  if (feature %in% c("html", "pdf", "word")) {
+    return(FALSE)
+  }
   if (identical(edition, "development")) {
     return(TRUE)
   }
@@ -80,11 +83,11 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-options-indent"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-posthoc-header-break"))
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-options-indent"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-ancova-sort"))
 }
 
 app_head_tags <- function(version) {

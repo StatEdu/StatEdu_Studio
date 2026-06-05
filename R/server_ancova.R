@@ -16,7 +16,11 @@ register_ancova_handlers <- function(
   covariates <- reactiveVal(character(0))
   active_list <- reactiveVal(NULL)
   normality_enabled_value <- reactiveVal(TRUE)
-  normality_method_value <- reactiveVal("lillie")
+  normality_method_value <- reactiveVal("auto")
+  homogeneity_method_value <- reactiveVal("levene")
+  auto_method_value <- reactiveVal("auto")
+  decision_alpha_value <- reactiveVal(0.05)
+  influence_sensitivity_value <- reactiveVal(FALSE)
   force_ranked_value <- reactiveVal(FALSE)
   sum_of_squares_value <- reactiveVal("type2")
   ordered_significance_value <- reactiveVal(FALSE)
@@ -26,6 +30,7 @@ register_ancova_handlers <- function(
   plot_adjusted_means_value <- reactiveVal(TRUE)
   plot_raw_overlay_value <- reactiveVal(FALSE)
   plot_regression_lines_value <- reactiveVal(FALSE)
+  plot_linearity_diagnostics_value <- reactiveVal(FALSE)
   result_value <- reactiveVal(NULL)
 
   current_selected <- reactive(as.character(selected_names_fn() %||% character(0)))
@@ -49,6 +54,10 @@ register_ancova_handlers <- function(
       selected_covariates = isolate(input$ancova_covariates),
       normality_enabled = isolate(normality_enabled_value()),
       normality_method = isolate(normality_method_value()),
+      homogeneity_method = isolate(homogeneity_method_value()),
+      auto_method = isolate(auto_method_value()),
+      decision_alpha = isolate(decision_alpha_value()),
+      influence_sensitivity = isolate(influence_sensitivity_value()),
       force_ranked = isolate(force_ranked_value()),
       sum_of_squares = isolate(sum_of_squares_value()),
       ordered_significance = isolate(ordered_significance_value()),
@@ -57,7 +66,8 @@ register_ancova_handlers <- function(
       mean_se = isolate(mean_se_value()),
       plot_adjusted_means = isolate(plot_adjusted_means_value()),
       plot_raw_overlay = isolate(plot_raw_overlay_value()),
-      plot_regression_lines = isolate(plot_regression_lines_value())
+      plot_regression_lines = isolate(plot_regression_lines_value()),
+      plot_linearity_diagnostics = isolate(plot_linearity_diagnostics_value())
     ))
   })
 
@@ -85,9 +95,35 @@ register_ancova_handlers <- function(
   }, ignoreInit = TRUE)
 
   observeEvent(input$ancova_normality_method, {
-    value <- as.character(input$ancova_normality_method %||% "lillie")
-    if (!value %in% c("lillie", "shapiro")) value <- "lillie"
+    value <- as.character(input$ancova_normality_method %||% "auto")
+    if (!value %in% c("auto", "lillie", "shapiro")) value <- "auto"
     normality_method_value(value)
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$ancova_homogeneity_method, {
+    value <- as.character(input$ancova_homogeneity_method %||% "levene")
+    if (!value %in% c("levene", "brown_forsythe", "breusch_pagan", "white")) value <- "levene"
+    homogeneity_method_value(value)
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$ancova_auto_method, {
+    value <- as.character(input$ancova_auto_method %||% "auto")
+    if (!value %in% c("auto", "warn")) value <- "auto"
+    auto_method_value(value)
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$ancova_decision_alpha, {
+    value <- suppressWarnings(as.numeric(input$ancova_decision_alpha %||% 0.05))
+    if (!is.finite(value) || value < 0.01 || value > 0.20) value <- 0.05
+    decision_alpha_value(value)
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$ancova_influence_sensitivity, {
+    influence_sensitivity_value(isTRUE(input$ancova_influence_sensitivity))
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
@@ -132,6 +168,11 @@ register_ancova_handlers <- function(
 
   observeEvent(input$ancova_plot_regression_lines, {
     plot_regression_lines_value(isTRUE(input$ancova_plot_regression_lines))
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$ancova_plot_linearity_diagnostics, {
+    plot_linearity_diagnostics_value(isTRUE(input$ancova_plot_linearity_diagnostics))
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
@@ -320,6 +361,10 @@ register_ancova_handlers <- function(
         options = list(
           normality_enabled = isTRUE(normality_enabled_value()),
           normality_method = normality_method_value(),
+          homogeneity_method = homogeneity_method_value(),
+          auto_method = auto_method_value(),
+          decision_alpha = decision_alpha_value(),
+          influence_sensitivity = isTRUE(influence_sensitivity_value()),
           force_ranked = isTRUE(force_ranked_value()),
           sum_of_squares = sum_of_squares_value(),
           ordered_significance = isTRUE(ordered_significance_value()),
@@ -328,7 +373,8 @@ register_ancova_handlers <- function(
           mean_se = isTRUE(mean_se_value()),
           plot_adjusted_means = isTRUE(plot_adjusted_means_value()),
           plot_raw_overlay = isTRUE(plot_raw_overlay_value()),
-          plot_regression_lines = isTRUE(plot_regression_lines_value())
+          plot_regression_lines = isTRUE(plot_regression_lines_value()),
+          plot_linearity_diagnostics = isTRUE(plot_linearity_diagnostics_value())
         )
       ),
       error = function(e) list(error = conditionMessage(e))

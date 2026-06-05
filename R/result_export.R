@@ -91,6 +91,14 @@ excel_normalize_p_columns <- function(table) {
   table
 }
 
+excel_display_column_names <- function(table) {
+  if (!is.data.frame(table) || ncol(table) == 0) {
+    return(table)
+  }
+  names(table)[tolower(gsub("[^a-z0-9]+", "", names(table))) == "effectsize"] <- "ES"
+  table
+}
+
 excel_apply_title_row <- function(workbook, sheet_name, title, n_cols, styles, row = 1L) {
   openxlsx::writeData(workbook, sheet_name, title, startRow = row, startCol = 1, colNames = FALSE)
   openxlsx::mergeCells(workbook, sheet_name, cols = seq_len(n_cols), rows = row)
@@ -161,6 +169,7 @@ add_excel_table_sheet <- function(workbook, sheet_name, table, used_sheets, merg
   openxlsx::addWorksheet(workbook, sheet_name)
   if (is.data.frame(table) && nrow(table) > 0) {
     table <- excel_normalize_p_columns(table)
+    table <- excel_display_column_names(table)
     n_cols <- ncol(table)
     title_row <- 1L
     header_row <- 3L
@@ -248,6 +257,7 @@ add_regression_result_sheet <- function(
 
   if (is.data.frame(table) && nrow(table) > 0 && ncol(table) > 0) {
     table <- excel_normalize_p_columns(table)
+    table <- excel_display_column_names(table)
     openxlsx::writeData(workbook, sheet_name, table, startRow = data_start_row, startCol = 1, withFilter = FALSE)
     openxlsx::addStyle(workbook, sheet_name, styles$top, rows = header_row, cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
     openxlsx::addStyle(workbook, sheet_name, styles$header, rows = header_row, cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
@@ -861,6 +871,7 @@ add_hierarchical_result_sheet <- function(workbook, sheet_name, table, note, mod
   openxlsx::addWorksheet(workbook, sheet_name)
   if (is.data.frame(table) && nrow(table) > 0 && ncol(table) > 0) {
     table <- excel_normalize_p_columns(table)
+    table <- excel_display_column_names(table)
     n_cols <- ncol(table)
     title_row <- 1L
     header_top_row <- 3L
@@ -1408,6 +1419,7 @@ add_ttest_anova_result_sheet <- function(workbook, sheet_name, table, note, used
 
   if (is.data.frame(table) && nrow(table) > 0 && ncol(table) > 0) {
     table <- excel_normalize_p_columns(table)
+    table <- excel_display_column_names(table)
     n_cols <- ncol(table)
     title_row <- 1L
     header_row <- 3L
@@ -1716,6 +1728,10 @@ save_ancova_excel_file <- function(result, file, variable_table = NULL, labels =
   if (is.data.frame(interaction_terms) && nrow(interaction_terms) > 0) {
     used_sheets <- add_excel_table_sheet(workbook, "Interaction terms", interaction_terms, used_sheets, title = "Interaction terms")
   }
+  slope_homogeneity <- ancova_slope_homogeneity_review_table(result, variable_table, labels)
+  if (is.data.frame(slope_homogeneity) && nrow(slope_homogeneity) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Slope homogeneity", slope_homogeneity, used_sheets, title = "Regression slope homogeneity")
+  }
   simple_effects <- ancova_simple_effects_review_table(result, variable_table, labels)
   if (is.data.frame(simple_effects) && nrow(simple_effects) > 0) {
     used_sheets <- add_excel_table_sheet(workbook, "Simple effects", simple_effects, used_sheets, title = "Simple group effects")
@@ -1731,6 +1747,10 @@ save_ancova_excel_file <- function(result, file, variable_table = NULL, labels =
   influence <- ancova_influence_review_table(result, variable_table, labels)
   if (is.data.frame(influence) && nrow(influence) > 0) {
     used_sheets <- add_excel_table_sheet(workbook, "Influence diagnostics", influence, used_sheets, title = "Influence diagnostics")
+  }
+  influence_sensitivity <- ancova_influence_sensitivity_review_table(result, variable_table, labels)
+  if (is.data.frame(influence_sensitivity) && nrow(influence_sensitivity) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Influence sensitivity", influence_sensitivity, used_sheets, title = "Influence sensitivity analysis")
   }
   used_sheets <- add_analysis_warning_skipped_sheets(workbook, used_sheets, NULL, result$skipped, skipped_title = "Skipped analyses")
   openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)

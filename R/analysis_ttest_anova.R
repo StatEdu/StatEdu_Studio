@@ -756,6 +756,83 @@ ttest_distribute_ordered_posthoc <- function(rows, notation) {
   rows
 }
 
+analysis_apply_ordered_posthoc_markers <- function(rows, estimates, levels, p_matrix, label_column = NULL, alpha = .05) {
+  if (!is.data.frame(rows) || !"post-hoc" %in% names(rows)) {
+    return(rows)
+  }
+  if (is.null(label_column)) {
+    label_column <- intersect(c("Label", "Value"), names(rows))[[1]] %||% ""
+  }
+  if (!nzchar(label_column) || !label_column %in% names(rows)) {
+    return(rows)
+  }
+  all_estimates <- suppressWarnings(as.numeric(estimates))
+  all_levels <- as.character(levels)
+  valid <- is.finite(all_estimates) & nzchar(all_levels)
+  if (!any(valid) || is.null(p_matrix) || length(p_matrix) == 0) {
+    return(rows)
+  }
+  estimates <- all_estimates[valid]
+  levels <- all_levels[valid]
+  if (length(levels) < 2L) {
+    return(rows)
+  }
+
+  marker_sequence <- c(letters, paste0(rep(letters, each = length(letters)), letters))
+  marker_map <- stats::setNames(marker_sequence[seq_along(levels)], levels)
+  ordered_low_to_high <- levels[order(estimates, decreasing = FALSE, na.last = NA)]
+  estimate_map <- stats::setNames(estimates, levels)
+
+  ordered_high_to_low <- rev(ordered_low_to_high)
+  statements <- character(0)
+  for (higher in ordered_high_to_low) {
+    lower_markers <- character(0)
+    for (candidate in ordered_low_to_high) {
+      if (identical(higher, candidate)) next
+      if (!all(c(higher, candidate) %in% rownames(p_matrix)) || !all(c(higher, candidate) %in% colnames(p_matrix))) next
+      if (!is.finite(estimate_map[[higher]]) || !is.finite(estimate_map[[candidate]]) || estimate_map[[higher]] <= estimate_map[[candidate]]) next
+      p_value <- suppressWarnings(as.numeric(p_matrix[higher, candidate] %||% NA_real_))
+      if (is.finite(p_value) && p_value < alpha) {
+        lower_markers <- c(lower_markers, named_value(marker_map, candidate, ""))
+      }
+    }
+    lower_markers <- unique(lower_markers[nzchar(lower_markers)])
+    higher_marker <- named_value(marker_map, higher, "")
+    if (length(lower_markers) > 0L && nzchar(higher_marker)) {
+      statements <- c(statements, sprintf("%s>%s", higher_marker, paste(lower_markers, collapse = ",")))
+    }
+  }
+  if (length(statements) == 0L) {
+    return(rows)
+  }
+
+  marker_rows <- list()
+  for (row_index in seq_len(min(nrow(rows), length(all_levels)))) {
+    level <- all_levels[[row_index]] %||% ""
+    marker <- named_value(marker_map, level, "")
+    if (nzchar(marker) && nzchar(as.character(rows[[label_column]][[row_index]] %||% ""))) {
+      marker_rows[[length(marker_rows) + 1L]] <- data.frame(
+        row = row_index,
+        column = label_column,
+        marker = marker,
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  if (length(marker_rows) > 0L) {
+    existing <- attr(rows, "note_markers", exact = TRUE)
+    marker_table <- do.call(rbind, marker_rows)
+    attr(rows, "note_markers") <- if (is.data.frame(existing) && nrow(existing) > 0) {
+      rbind(existing, marker_table)
+    } else {
+      marker_table
+    }
+  }
+  rows[["post-hoc"]] <- ""
+  rows[["post-hoc"]][[1]] <- paste(unique(statements), collapse = "; ")
+  rows
+}
+
 ttest_effect_size <- function(values, groups, test_type) {
   data <- ttest_analysis_data(values, groups)
   if (nrow(data) == 0) return("")
@@ -896,7 +973,7 @@ ttest_numbered_notes <- function(items) {
     notes <- item$notes %||% list()
     add_note("method", notes$p_key %||% "", notes$p_note %||% "")
     effect <- notes$effect_size %||% ""
-    if (nzchar(effect)) add_note("effect", effect, paste0("Effect size = ", effect, "."))
+    if (nzchar(effect)) add_note("effect", effect, paste0("ES = effect size (", effect, ")."))
     add_note("trend", notes$trend_key %||% "", notes$trend_note %||% "")
   }
   if (length(rows) == 0) {
@@ -931,6 +1008,14 @@ ttest_append_marker <- function(value, marker) {
   paste0(value, marker)
 }
 
+ttest_preserve_note_markers <- function(source, target) {
+  markers <- attr(source, "note_markers", exact = TRUE)
+  if (is.data.frame(markers) && nrow(markers) > 0) {
+    attr(target, "note_markers") <- markers
+  }
+  target
+}
+
 ttest_apply_numbered_notes <- function(table, items) {
   notes <- ttest_numbered_notes(items)
   if (!is.data.frame(table) || nrow(table) == 0 || nrow(notes) == 0) {
@@ -938,6 +1023,10 @@ ttest_apply_numbered_notes <- function(table, items) {
   }
 
   cell_markers <- list()
+  existing_markers <- attr(table, "note_markers", exact = TRUE)
+  if (is.data.frame(existing_markers) && nrow(existing_markers) > 0) {
+    cell_markers <- lapply(seq_len(nrow(existing_markers)), function(index) existing_markers[index, , drop = FALSE])
+  }
   add_cell_marker <- function(row, column, marker) {
     marker <- as.character(marker %||% "")
     if (!nzchar(marker)) return()
@@ -973,7 +1062,7 @@ ttest_apply_numbered_notes <- function(table, items) {
     row_start <- row_start + n_rows
   }
   if (length(cell_markers) > 0) {
-    attr(table, "note_markers") <- do.call(rbind, cell_markers)
+    attr(table, "note_markers") <- ttest_bind_result_rows(cell_markers)
   }
   list(table = table, notes = notes)
 }
@@ -1015,7 +1104,29 @@ ttest_analysis_note_line <- function(items) {
 }
 
 ttest_bind_result_rows <- function(rows) {
-  analysis_bind_rows(rows)
+  rows <- Filter(function(row) is.data.frame(row) && nrow(row) > 0, rows %||% list())
+  if (length(rows) == 0) {
+    return(data.frame(stringsAsFactors = FALSE))
+  }
+  marker_rows <- list()
+  row_offset <- 0L
+  for (row in rows) {
+    markers <- attr(row, "note_markers", exact = TRUE)
+    if (is.data.frame(markers) && nrow(markers) > 0) {
+      markers <- markers[nzchar(as.character(markers$marker %||% "")), , drop = FALSE]
+      if (nrow(markers) > 0) {
+        markers$row <- as.integer(markers$row) + row_offset
+        marker_rows[[length(marker_rows) + 1L]] <- markers
+      }
+    }
+    row_offset <- row_offset + nrow(row)
+  }
+  out <- analysis_bind_rows(rows)
+  if (length(marker_rows) > 0) {
+    markers <- analysis_bind_rows(marker_rows)
+    attr(out, "note_markers") <- markers
+  }
+  out
 }
 
 ttest_single_result <- function(data, dependent, factor, variable_info, labels, category_table, options) {
@@ -1350,19 +1461,18 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
   }
 
   if (nzchar(posthoc_label) && isTRUE(options$ordered_significance) && !is.null(p_matrix)) {
-    level_labels <- stats::setNames(ttest_display_levels(factor, levels, category_table), levels)
-    ordered_posthoc <- ttest_ordered_significance_notation(
-      values,
-      groups,
-      p_matrix,
-      labels = level_labels
+    rows <- analysis_apply_ordered_posthoc_markers(
+      rows,
+      estimates = suppressWarnings(as.numeric(summaries$M)),
+      levels = summaries$Value,
+      p_matrix = p_matrix,
+      label_column = "Value"
     )
-    rows <- ttest_distribute_ordered_posthoc(rows, ordered_posthoc)
   } else if (nzchar(posthoc_label)) {
     rows[["post-hoc"]] <- ttest_lookup_letters(letters, summaries$Value)
   }
   if (!isTRUE(options$mean_sd)) {
-    rows <- rows[, ttest_result_table_columns, drop = FALSE]
+    rows <- ttest_preserve_note_markers(rows, rows[, ttest_result_table_columns, drop = FALSE])
   }
   posthoc_table <- ttest_safe_call(ttest_posthoc_table(factor, levels, p_matrix, posthoc_label, variable_info, labels, category_table), data.frame(stringsAsFactors = FALSE))
 
@@ -1630,7 +1740,8 @@ prepare_ttest_anova_results <- function(
       } else {
         ttest_result_table_columns
       }
-      combined_table <- ttest_bind_result_rows(lapply(dependent_items, function(item) item$table))[, result_columns, drop = FALSE]
+      combined_table <- ttest_bind_result_rows(lapply(dependent_items, function(item) item$table))
+      combined_table <- ttest_preserve_note_markers(combined_table, combined_table[, result_columns, drop = FALSE])
       statistic_labels <- vapply(dependent_items, function(item) item$statistic_label %||% "", character(1))
       combined_table <- ttest_apply_statistic_heading(combined_table, statistic_labels)
       if (isTRUE(options$median_iqr) && !isTRUE(options$mean_sd)) {
@@ -1695,7 +1806,7 @@ ttest_anova_results_ui <- function(result) {
 
   sections <- list(
     tags$div(
-      class = "result-section regression-result-panel",
+      class = "result-section regression-result-panel ttest-anova-overview-panel",
       tags$h3("Model overview"),
       model_overview_html_table(overview_tables$overview)
     )
@@ -1703,7 +1814,7 @@ ttest_anova_results_ui <- function(result) {
 
   for (item in result$results %||% list()) {
     sections[[length(sections) + 1]] <- tags$div(
-      class = "result-section regression-result-panel",
+      class = "result-section regression-result-panel ttest-anova-result-panel",
       tags$h3(item$title),
       coefficient_html_table(item$table, note_line = item$note %||% ""),
       if (is.data.frame(item$posthoc) && nrow(item$posthoc) > 0) {

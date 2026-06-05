@@ -9,7 +9,7 @@ paired_scale_statistic_label <- function(table) {
 paired_effect_header_label <- function(table) {
   labels <- unique(as.character(table$EffectLabel %||% ""))
   labels <- labels[nzchar(labels)]
-  if (length(labels) == 1L) labels[[1]] else "Effect size"
+  if (length(labels) == 1L) labels[[1]] else "ES"
 }
 
 paired_effect_labels <- function(table) {
@@ -20,7 +20,7 @@ paired_effect_labels <- function(table) {
 }
 
 paired_effect_header_text <- function(label, label_count = 1L) {
-  if (label_count == 1L) "Effect size" else label
+  if (label_count == 1L) "ES" else label
 }
 
 paired_count_statistic_label <- function(table) {
@@ -44,9 +44,9 @@ paired_effect_note <- function(table, show_effect_size = TRUE) {
   labels <- paired_effect_labels(table)
   if (length(labels) == 0) return("")
   if (length(labels) == 1L) {
-    paste0("Effect size = ", labels[[1]], ".")
+    paste0("ES = effect size (", labels[[1]], ").")
   } else {
-    paste0("Effect sizes = ", paste(labels, collapse = ", "), ".")
+    paste0("ES = effect size (", paste(labels, collapse = ", "), ").")
   }
 }
 
@@ -298,9 +298,9 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
         tags$th(rowspan = 2, style = result_header_cell_style(FALSE), statistic_label),
         tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "p"),
         if (length(effect_labels) == 1L) {
-          tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "Effect size")
+          tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "ES")
         } else if (length(effect_labels) > 1L) {
-          tags$th(colspan = length(effect_labels), style = paste0(result_header_cell_style(FALSE), "text-align:center;"), "Effect size")
+          tags$th(colspan = length(effect_labels), style = paste0(result_header_cell_style(FALSE), "text-align:center;"), "ES")
         }
       ),
       tags$tr(
@@ -327,9 +327,9 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
         if (include_statistic) tags$th(rowspan = 2, style = result_header_cell_style(FALSE), statistic_label),
         tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "p"),
         if (length(effect_labels) == 1L) {
-          tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "Effect size")
+          tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "ES")
         } else if (length(effect_labels) > 1L) {
-          tags$th(colspan = length(effect_labels), style = paste0(result_header_cell_style(FALSE), "text-align:center;"), "Effect size")
+          tags$th(colspan = length(effect_labels), style = paste0(result_header_cell_style(FALSE), "text-align:center;"), "ES")
         }
       ),
       tags$tr(

@@ -1957,8 +1957,19 @@
           setTtestNormalityDisabled('.factor-method-group', assumption.value !== 'none');
         }
 
+        function updateAncovaNormalityOptions() {
+          var normality = document.getElementById('ancova_normality_enabled');
+          var method = document.getElementById('ancova_normality_method');
+          if (!normality || !method) return;
+          setTtestNormalityDisabled('.ancova-normality-method-block', !normality.checked);
+        }
+
         function scheduleFactorNormalityOptionsUpdate() {
           window.setTimeout(updateFactorNormalityOptions, 0);
+        }
+
+        function scheduleAncovaNormalityOptionsUpdate() {
+          window.setTimeout(updateAncovaNormalityOptions, 0);
         }
 
         document.addEventListener('change', function(event) {
@@ -1976,6 +1987,15 @@
           if (target.matches('#factor_assumption')) {
             scheduleFactorNormalityOptionsUpdate();
           }
+          if (target.matches('#ancova_normality_enabled')) {
+            scheduleAncovaNormalityOptionsUpdate();
+          }
+        }, true);
+        document.addEventListener('click', function(event) {
+          var target = event.target;
+          if (target && target.matches && target.matches('#ancova_normality_enabled')) {
+            scheduleAncovaNormalityOptionsUpdate();
+          }
         }, true);
 
         document.addEventListener('shiny:value', scheduleTtestNormalityTreeUpdate);
@@ -1990,10 +2010,14 @@
         document.addEventListener('shiny:value', scheduleFactorNormalityOptionsUpdate);
         document.addEventListener('shiny:bound', scheduleFactorNormalityOptionsUpdate);
         document.addEventListener('shiny:connected', scheduleFactorNormalityOptionsUpdate);
+        document.addEventListener('shiny:value', scheduleAncovaNormalityOptionsUpdate);
+        document.addEventListener('shiny:bound', scheduleAncovaNormalityOptionsUpdate);
+        document.addEventListener('shiny:connected', scheduleAncovaNormalityOptionsUpdate);
         if (window.MutationObserver) {
           new MutationObserver(function() {
             scheduleTtestNormalityTreeUpdate();
             scheduleFactorNormalityOptionsUpdate();
+            scheduleAncovaNormalityOptionsUpdate();
             scheduleEasyflowTypesetMath(document);
           }).observe(document.documentElement, {
             childList: true,
@@ -2004,15 +2028,82 @@
           document.addEventListener('DOMContentLoaded', function() {
             scheduleTtestNormalityTreeUpdate();
             scheduleFactorNormalityOptionsUpdate();
+            scheduleAncovaNormalityOptionsUpdate();
           });
         } else {
           scheduleTtestNormalityTreeUpdate();
           scheduleFactorNormalityOptionsUpdate();
+          scheduleAncovaNormalityOptionsUpdate();
         }
         scheduleEasyflowTypesetMath(document);
         window.easyflowStartMathJaxPolling();
         window.easyflowUpdateTtestNormalityTree = updateTtestNormalityTree;
         window.easyflowUpdateFactorNormalityOptions = updateFactorNormalityOptions;
+        window.easyflowUpdateAncovaNormalityOptions = updateAncovaNormalityOptions;
+      })();
+
+      (function() {
+        function parseSortValue(text, type) {
+          var value = (text || '').replace(/\s+/g, ' ').trim();
+          if (type !== 'numeric') return value.toLocaleLowerCase();
+          var cleaned = value
+            .replace(/[<>,]/g, '')
+            .replace(/^\./, '0.')
+            .replace(/^-\./, '-0.');
+          var parsed = parseFloat(cleaned);
+          return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
+        }
+
+        function updateSortIndicators(table, activeButton, direction) {
+          table.querySelectorAll('.ancova-sort-button').forEach(function(button) {
+            var indicator = button.querySelector('.ancova-sort-indicator');
+            var isActive = button === activeButton;
+            button.classList.toggle('is-active', isActive);
+            button.setAttribute('aria-sort', isActive ? (direction === 'asc' ? 'ascending' : 'descending') : 'none');
+            if (indicator) {
+              indicator.textContent = isActive ? (direction === 'asc' ? '\u25b4' : '\u25be') : '\u25be';
+            }
+          });
+        }
+
+        function sortAncovaDiagnosticsTable(button) {
+          var table = button.closest('table');
+          var tbody = table ? table.querySelector('tbody') : null;
+          if (!tbody) return;
+          var column = parseInt(button.getAttribute('data-sort-column') || '0', 10) - 1;
+          if (column < 0) return;
+          var type = button.getAttribute('data-sort-type') || 'text';
+          var previousColumn = table.getAttribute('data-sort-column') || '';
+          var previousDirection = table.getAttribute('data-sort-direction') || '';
+          var defaultDirection = button.getAttribute('data-sort-default') || 'asc';
+          var direction = previousColumn === String(column) && previousDirection === defaultDirection
+            ? (defaultDirection === 'asc' ? 'desc' : 'asc')
+            : defaultDirection;
+          var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+          rows.sort(function(a, b) {
+            var aCell = a.children[column];
+            var bCell = b.children[column];
+            var aValue = parseSortValue(aCell ? aCell.textContent : '', type);
+            var bValue = parseSortValue(bCell ? bCell.textContent : '', type);
+            if (aValue < bValue) return direction === 'asc' ? -1 : 1;
+            if (aValue > bValue) return direction === 'asc' ? 1 : -1;
+            return 0;
+          });
+          rows.forEach(function(row) {
+            tbody.appendChild(row);
+          });
+          table.setAttribute('data-sort-column', String(column));
+          table.setAttribute('data-sort-direction', direction);
+          updateSortIndicators(table, button, direction);
+        }
+        window.easyflowSortAncovaDiagnosticsTable = sortAncovaDiagnosticsTable;
+
+        document.addEventListener('click', function(event) {
+          var button = event.target && event.target.closest ? event.target.closest('.ancova-sort-button') : null;
+          if (!button) return;
+          event.preventDefault();
+          sortAncovaDiagnosticsTable(button);
+        });
       })();
 
       document.addEventListener('click', function(event) {

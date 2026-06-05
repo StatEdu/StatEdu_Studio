@@ -192,9 +192,9 @@ crosstab_general_effect_info <- function(result) {
   matched <- table[table$Effect == preferred, , drop = FALSE]
   if (nrow(matched) == 0) return(empty)
   note <- if (identical(preferred, "Odds ratio")) {
-    "ES = odds ratio."
+    "ES = effect size (odds ratio)."
   } else {
-    "ES = Cramer's V."
+    "ES = effect size (Cramer's V)."
   }
   list(value = matched$Estimate[[1]], key = preferred, note = note)
 }
@@ -203,9 +203,9 @@ crosstab_effect_note_text <- function(key) {
   key <- as.character(key %||% "")
   switch(
     key,
-    "Odds ratio" = "ES = odds ratio.",
-    "Cramer's V" = "ES = Cramer's V.",
-    if (nzchar(key)) paste0("ES = ", key, ".") else ""
+    "Odds ratio" = "ES = effect size (odds ratio).",
+    "Cramer's V" = "ES = effect size (Cramer's V).",
+    if (nzchar(key)) paste0("ES = effect size (", key, ").") else ""
   )
 }
 

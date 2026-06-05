@@ -126,7 +126,7 @@ if (-not $SkipRuntimeCopy) {
   $runtimeLibrary = Join-Path $runtimeStage "library"
   $dependencyScript = @"
 required <- c(
-  "shiny", "DT", "lmtest", "sandwich", "nortest", "boot", "jsonlite", "haven",
+  "shiny", "DT", "car", "lmtest", "sandwich", "nortest", "boot", "jsonlite", "haven",
   "readr", "readxl", "cellranger", "htmltools", "markdown", "openxlsx", "officer", "flextable", "xml2",
   "rvest", "callr", "glmnet", "agricolae", "psych", "polycor", "longpower", "WebPower", "TOSTER"
 )

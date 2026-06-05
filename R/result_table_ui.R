@@ -55,22 +55,22 @@ analysis_diagnostics_section <- function(warnings, skipped, title = "Warnings / 
   analysis_result_table_section(title, table, class = class)
 }
 
-result_table_style <- function(font_size = 15, min_width = 480) {
+result_table_style <- function(font_size = 12, min_width = 480) {
   paste(
     sprintf("width:auto;min-width:%dpx;border-collapse:collapse;border-spacing:0;", min_width),
     "border-top:2px solid #1f2937;border-bottom:2px solid #1f2937;",
-    sprintf("color:#2f3a46;font-size:%dpx;background:transparent;", font_size)
+    sprintf("color:#2f3a46;font-size:%spx;background:transparent;", as.character(font_size))
   )
 }
 
 result_header_cell_style <- function(first = FALSE, compact = FALSE, compact_font_size = 12, compact_width = 62, compact_first_width = 118) {
-  padding <- if (isTRUE(compact)) "7px 12px" else "9px 18px"
+  padding <- if (isTRUE(compact)) "5px 7px" else "5px 7px"
   width <- if (isTRUE(first)) {
-    if (isTRUE(compact)) paste0(compact_first_width, "px") else "150px"
+    if (isTRUE(compact)) paste0(compact_first_width, "px") else "90px"
   } else if (isTRUE(compact)) {
     paste0(compact_width, "px")
   } else {
-    "86px"
+    "58px"
   }
   paste0(
     "padding:", padding, ";line-height:1.35;border-left:0;border-right:0;",
@@ -82,18 +82,18 @@ result_header_cell_style <- function(first = FALSE, compact = FALSE, compact_fon
 }
 
 result_body_cell_style <- function(first = FALSE, last = FALSE, compact = FALSE, compact_font_size = 12, compact_width = 62, compact_first_width = 118) {
-  padding <- if (isTRUE(compact)) "7px 12px" else "9px 18px"
+  padding <- if (isTRUE(compact)) "5px 7px" else "5px 7px"
   width <- if (isTRUE(first)) {
-    if (isTRUE(compact)) paste0(compact_first_width, "px") else "150px"
+    if (isTRUE(compact)) paste0(compact_first_width, "px") else "90px"
   } else if (isTRUE(compact)) {
     paste0(compact_width, "px")
   } else {
-    "86px"
+    "58px"
   }
   paste0(
     "padding:", padding, ";line-height:1.35;border-left:0;border-right:0;",
     "border-top:0;border-bottom:", if (isTRUE(last)) "0" else "1px solid #d7dde5", ";",
-    "vertical-align:middle;background:transparent;white-space:nowrap;",
+    "vertical-align:middle;background:transparent;white-space:normal;",
     "font-variant-numeric:tabular-nums lining-nums;font-feature-settings:'tnum' 1,'lnum' 1;",
     "min-width:", width, ";",
     "white-space:pre-line;",
@@ -252,11 +252,27 @@ coefficient_display_columns <- function(table) {
   columns <- names(table)
   labels <- columns
   labels[result_column_key(labels) == "term"] <- "Variable"
+  labels[result_column_key(labels) == "effectsize"] <- "ES"
+  labels[result_column_key(labels) == "posthoc"] <- "post\n-hoc"
   data.frame(
     source = columns,
     label = labels,
     marker = FALSE,
     stringsAsFactors = FALSE
+  )
+}
+
+result_header_content <- function(label) {
+  label <- as.character(label %||% "")
+  if (!grepl("\n", label, fixed = TRUE)) {
+    return(label)
+  }
+  parts <- strsplit(label, "\n", fixed = TRUE)[[1]]
+  tags$span(
+    class = "coefficient-header-break",
+    lapply(parts, function(part) {
+      tags$span(part)
+    })
   )
 }
 
@@ -287,7 +303,10 @@ coefficient_display_cell_style <- function(table, row_index, column, display_ind
   if (is.finite(source_index) && source_index == 1 && display_index != 1) {
     style <- paste0(style, "text-align:left;")
   }
-  if (result_note_marker_column(column) || result_column_key(column) %in% c("msd", "mse")) {
+  if (result_note_marker_column(column) || result_column_key(column) %in% c("msd", "mse", "rankmse")) {
+    style <- paste0(style, "white-space:nowrap;overflow-wrap:normal;word-break:normal;")
+  }
+  if (nzchar(result_cell_note_marker(table, row_index, column))) {
     style <- paste0(style, "white-space:nowrap;overflow-wrap:normal;word-break:normal;")
   }
   if (result_column_key(column) %in% c("statistic", "t", "f", "tf", "fstatistic")) {
@@ -305,13 +324,16 @@ coefficient_column_class <- function(name) {
     value = "coefficient-col-value",
     label = "coefficient-col-reference",
     statistic = "coefficient-col-statistic",
-    f = "coefficient-col-statistic",
-    msd = "coefficient-col-stat",
-    mse = "coefficient-col-stat",
+    f = "coefficient-col-f",
+    msd = "coefficient-col-mse",
+    mse = "coefficient-col-mse",
+    rankmse = "coefficient-col-mse",
     b = "coefficient-col-b",
     reference = "coefficient-col-reference",
     t = "coefficient-col-compact",
-    p = "coefficient-col-compact",
+    p = "coefficient-col-p",
+    effectsize = "coefficient-col-effect-size",
+    posthoc = "coefficient-col-posthoc",
     sr2 = "coefficient-col-compact",
     f2 = "coefficient-col-compact",
     vif = "coefficient-col-compact",
@@ -379,14 +401,18 @@ coefficient_html_table <- function(
   display_meta <- coefficient_display_columns(table)
   table_tag <- tags$table(
       class = "coefficient-table",
-      style = result_table_style(font_size = if (isTRUE(compact)) compact_font_size else 15, min_width = if (isTRUE(compact)) compact_min_width else 480),
+      style = result_table_style(font_size = if (isTRUE(compact)) compact_font_size else 12, min_width = if (isTRUE(compact)) compact_min_width else 480),
       tags$colgroup(lapply(seq_len(nrow(display_meta)), function(index) {
         tags$col(class = if (isTRUE(display_meta$marker[[index]])) "coefficient-col-note-marker" else coefficient_column_class(display_meta$source[[index]]))
       })),
       tags$thead(
         tags$tr(lapply(seq_len(nrow(display_meta)), function(index) {
           tags$th(
-            class = if (isTRUE(display_meta$marker[[index]])) "coefficient-note-marker-cell" else NULL,
+            class = if (isTRUE(display_meta$marker[[index]])) {
+              "coefficient-note-marker-cell"
+            } else {
+              coefficient_column_class(display_meta$source[[index]])
+            },
             style = paste0(
               result_header_cell_style(
                 index == 1,
@@ -398,7 +424,7 @@ coefficient_html_table <- function(
               if (isTRUE(display_meta$marker[[index]])) "padding-left:2px;padding-right:8px;min-width:16px;width:16px;text-align:left;" else "",
               if (!isTRUE(display_meta$marker[[index]]) && index < nrow(display_meta) && isTRUE(display_meta$marker[[index + 1L]])) "padding-right:2px;" else ""
             ),
-            display_meta$label[[index]]
+            result_header_content(display_meta$label[[index]])
           )
         }))
       ),
@@ -428,7 +454,7 @@ coefficient_html_table <- function(
             }
             span_style <- if (!is.null(span) && "style" %in% names(span)) as.character(span$style[[1]] %||% "") else ""
             tags$td(
-              class = if (isTRUE(marker_column)) "coefficient-note-marker-cell" else NULL,
+              class = if (isTRUE(marker_column)) "coefficient-note-marker-cell" else coefficient_column_class(column),
               colspan = colspan,
               style = paste0(
                 coefficient_display_cell_style(

@@ -94,7 +94,7 @@ expect_true(grepl("205\\(59.9\\)", display_html), "Expected cross-tabulation cel
 expect_true(grepl("1\\(\u00A05.0\\)", crosstab_cell_text(1, 5), fixed = FALSE), "Expected compact n(percent) to pad percentages under 10")
 expect_true(!grepl("OR=", display_html), "Expected ES cell to omit effect size type")
 expect_true(grepl("2.120", display_html), "Expected ES cell to include numeric estimate")
-expect_true(grepl("ES = odds ratio", display_notes), "Expected ES type note")
+expect_true(grepl("ES = effect size (odds ratio)", display_notes, fixed = TRUE), "Expected ES type note")
 
 split_display_result <- display_result
 split_display_result$options$split_count_percent <- TRUE

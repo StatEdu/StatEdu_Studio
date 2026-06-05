@@ -196,7 +196,7 @@ paired_rm_table_method_note <- function(table) {
   if (length(pairwise_effect_methods) > 0) {
     effect_parts <- c(effect_parts, paste0("b pairwise = ", paste(pairwise_effect_methods, collapse = ", ")))
   }
-  effect_note <- if (length(effect_parts) > 0) paste0("Effect size: ", paste(effect_parts, collapse = "; "), ".") else ""
+  effect_note <- if (length(effect_parts) > 0) paste0("ES = effect size (", paste(effect_parts, collapse = "; "), ").") else ""
   posthoc_methods <- unique(as.character(table$PosthocMethodLabel %||% ""))
   posthoc_methods <- posthoc_methods[nzchar(posthoc_methods)]
   posthoc_adjustments <- unique(as.character(table$PosthocAdjustmentLabel %||% ""))
@@ -234,7 +234,7 @@ paired_rm_posthoc_note <- function(result) {
   if (any(methods == "Wilcoxon signed-rank test")) effect_methods <- c(effect_methods, "r")
   parts <- c(paste0("P values were adjusted using ", adjustment, "."))
   if (length(effect_methods) > 0) {
-    parts <- c(parts, paste0("Effect size: ", paste(effect_methods, collapse = ", "), "."))
+    parts <- c(parts, paste0("ES = effect size (", paste(effect_methods, collapse = ", "), ")."))
   }
   paste(parts, collapse = " ")
 }

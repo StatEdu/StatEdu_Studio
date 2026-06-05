@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.9.33 - 2026-06-06
+
+### Changed
+
+- Expanded ANCOVA assumption diagnostics with Levene as the default variance check, optional Brown-Forsythe / Breusch-Pagan / White test checks, slope-homogeneity detail tables, complete-case reporting, residual-linearity plots, and influence sensitivity analysis.
+- Added ANCOVA automatic-method controls so users can keep automatic selection or report assumption warnings while retaining the standard ANCOVA model.
+- Refined shared result-table rendering for 9 pt table fonts, fixed-width portrait / landscape tables, 1.5x on-screen preview scaling, common post-hoc markers, ES column labels, and two-line post-hoc headers.
+- Reorganized ANCOVA Assumptions / Model / Output options and aligned option spacing, indentation, and result notes.
+
 ## v0.9.32 - 2026-06-03
 
 ### Changed
@@ -759,4 +768,3 @@
 - HC3 robust standard errors.
 - Bootstrap confidence intervals.
 - Durbin-Watson dL/dU lookup using `C:/StatEdu/easyflow_statistics/easyflow_statistics_3.0.xlsx`.
-

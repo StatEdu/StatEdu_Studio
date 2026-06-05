@@ -43,7 +43,7 @@ effect_size_reference_panel <- function(show_sr2 = FALSE, show_f2 = FALSE) {
   table_tag <- tags$table(
     class = "effect-size-reference-table",
     tags$thead(tags$tr(
-      tags$th("Effect size"),
+      tags$th("ES"),
       tags$th("Reference"),
       tags$th("Small"),
       tags$th("Medium"),

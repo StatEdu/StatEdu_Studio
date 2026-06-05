@@ -85,11 +85,11 @@ expect_true(is.data.frame(table_markers), "Expected numbered note metadata")
 expect_true(any(table_markers$row == 1L & table_markers$column == "Effect size"), "Expected first effect-size value to include a numbered marker")
 expect_true(!any(table_markers$row == 3L & table_markers$column == "p"), "Expected single Welch ANOVA method note to omit a p-value marker")
 expect_true(any(table_markers$row == 3L & table_markers$column == "Effect size"), "Expected second effect-size value to include a numbered marker")
-expect_true(grepl("1\\. Effect size = Hedges' g\\.", note), "Expected numbered Hedges' g note")
+expect_true(grepl("1\\. ES = effect size \\(Hedges' g\\)\\.", note), "Expected numbered Hedges' g note")
 expect_true(grepl("Welch test was used because homogeneity of variance was not satisfied\\.", note), "Expected unnumbered Welch note")
-expect_true(grepl("2\\. Effect size = omega squared\\.", note), "Expected numbered omega squared note")
+expect_true(grepl("2\\. ES = effect size \\(omega squared\\)\\.", note), "Expected numbered omega squared note")
 expect_true(regexpr("Welch test", note, fixed = TRUE) < regexpr("Post-hoc:", note, fixed = TRUE), "Expected analysis-method notes before post-hoc notes")
-expect_true(regexpr("Post-hoc:", note, fixed = TRUE) < regexpr("Effect size", note, fixed = TRUE), "Expected post-hoc notes before effect-size notes")
+expect_true(regexpr("Post-hoc:", note, fixed = TRUE) < regexpr("ES = effect size", note, fixed = TRUE), "Expected post-hoc notes before effect-size notes")
 
 html <- as.character(tags_to_html(ttest_anova_results_ui(result)))
 expect_true(!grepl('class="coefficient-col-note-marker"', html, fixed = TRUE), "Expected footnote markers to render inline without a narrow marker column")
@@ -206,6 +206,39 @@ expect_true(
   "Expected compact post-hoc letters to mark non-significant bridge groups as ab"
 )
 
+ordered_marker_data <- data.frame(
+  y = c(1:20, 10:29, 30:49),
+  group = rep(c("A", "B", "C"), each = 20),
+  stringsAsFactors = FALSE
+)
+ordered_marker_info <- data.frame(
+  name = c("y", "group"),
+  measurement = c("continuous", "category"),
+  stringsAsFactors = FALSE
+)
+ordered_marker_result <- prepare_ttest_anova_results(
+  ordered_marker_data,
+  dependents = "y",
+  factors = "group",
+  variable_info = ordered_marker_info,
+  options = list(effect_size = TRUE, normality_enabled = FALSE, ordered_significance = TRUE)
+)
+ordered_marker_table <- ordered_marker_result$results[[1]]$table
+ordered_marker_rows <- attr(ordered_marker_table, "note_markers", exact = TRUE)
+expect_true(
+  is.data.frame(ordered_marker_rows) &&
+    all(c("a", "b", "c") %in% ordered_marker_rows$marker) &&
+    all(ordered_marker_rows$column == "Value") &&
+    identical(ordered_marker_rows$marker[order(ordered_marker_rows$row)], c("a", "b", "c")),
+  "Expected ordered post-hoc markers to be attached to Value cells in displayed value order"
+)
+ordered_marker_html <- as.character(tags_to_html(ttest_anova_results_ui(ordered_marker_result)))
+expect_true(
+  grepl("coefficient-footnote-marker", ordered_marker_html, fixed = TRUE) &&
+    (grepl("c&gt;a,b", ordered_marker_html, fixed = TRUE) || grepl("c>a,b", ordered_marker_html, fixed = TRUE)),
+  "Expected ordered post-hoc markers to render as superscripts with marker comparisons"
+)
+
 message("Checking standalone nonparametric test helpers...")
 nonparametric_data <- data.frame(
   group2 = rep(c("A", "B"), each = 12),
@@ -255,7 +288,7 @@ expect_true(
   "Expected mixed nonparametric effect-size notes to include value markers"
 )
 expect_true(
-  grepl("Effect size = Cliff's delta", nonparametric_result$results[[1]]$note, fixed = TRUE),
+  grepl("ES = effect size (Cliff's delta)", nonparametric_result$results[[1]]$note, fixed = TRUE),
   "Expected Mann-Whitney U results to label the effect size as Cliff's delta"
 )
 
