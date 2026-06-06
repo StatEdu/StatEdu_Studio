@@ -381,11 +381,7 @@ register_pca_handlers <- function(
     )
   })
 
-  register_add_result_snapshot(input, session, "add_pca_result", "Principal component analysis", function() {
-    result <- pca_result()
-    shiny::req(!is.null(result))
-    saved_pca_results_html(result)
-  })
+  register_add_result_snapshot(input, session, "add_pca_result", "Principal component analysis", "pca_results")
 
   invisible(TRUE)
 }

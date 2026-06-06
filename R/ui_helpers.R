@@ -13,11 +13,14 @@ analysis_save_edition <- function() {
 }
 
 analysis_save_feature_enabled <- function(feature, edition = analysis_save_edition()) {
+  if (feature %in% c("html", "pdf", "word")) {
+    return(FALSE)
+  }
   if (identical(edition, "development")) {
     return(TRUE)
   }
   if (identical(edition, "personal") || identical(edition, "institution")) {
-    return(feature %in% c("html", "pdf", "figure", "excel", "word", "add_result"))
+    return(feature %in% c("html", "pdf", "figure", "excel", "word", "add_result", "result_history"))
   }
   feature %in% c("html", "pdf", "figure")
 }
@@ -80,11 +83,11 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-factor-assumption-select"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-posthoc-header-break"))
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-factor-assumption-select"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-ancova-sort"))
 }
 
 app_head_tags <- function(version) {
@@ -92,6 +95,24 @@ app_head_tags <- function(version) {
     tags$link(rel = "icon", type = "image/png", sizes = "32x32", href = paste0("logo-favicon-32.png?v=", version, "-concept-02-8")),
     tags$link(rel = "icon", type = "image/png", sizes = "64x64", href = paste0("logo-favicon-64.png?v=", version, "-concept-02-8")),
     app_stylesheet_link(version),
+    tags$script(HTML(
+      "window.MathJax = {
+        tex: {
+          inlineMath: [['$', '$'], ['\\\\(', '\\\\)']],
+          displayMath: [['$$', '$$'], ['\\\\[', '\\\\]']],
+          processEscapes: true
+        },
+        options: {
+          skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      };"
+    )),
+    tags$script(
+      id = "MathJax-script",
+      defer = "defer",
+      onload = "if (window.easyflowMathJaxReady) window.easyflowMathJaxReady();",
+      src = paste0("mathjax/tex-svg.js?v=", version, "-local")
+    ),
     app_script_link(version)
   )
 }
@@ -118,6 +139,7 @@ enabled_analysis_tabs <- function() {
     paired = TRUE,
     paired_rm = TRUE,
     ttest_anova = TRUE,
+    ancova = TRUE,
     nonparametric = TRUE,
     nonparametric_paired = TRUE,
     correlation = TRUE,
@@ -144,6 +166,10 @@ app_ui <- function(version) {
     calculator_tab_panel(),
 
     analysis_tab_panel(analysis_tabs),
+
+    sample_size_tab_panel(),
+
+    effect_size_tab_panel(),
 
     result_tab_panel(),
 

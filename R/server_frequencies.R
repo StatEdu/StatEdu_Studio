@@ -329,11 +329,7 @@ register_frequencies_handlers <- function(
     )
   })
 
-  register_add_result_snapshot(input, session, "add_frequencies_result", "Frequencies / Descriptives", function() {
-    result <- frequency_result()
-    shiny::req(!is.null(result))
-    saved_frequencies_results_html(result)
-  })
+  register_add_result_snapshot(input, session, "add_frequencies_result", "Frequencies / Descriptives", "frequencies_results")
 
   invisible(TRUE)
 }

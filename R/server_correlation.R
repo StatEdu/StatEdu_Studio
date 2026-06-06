@@ -42,7 +42,6 @@ register_correlation_handlers <- function(
         continuous_method = input$correlation_continuous_method %||% "auto",
         normality = input$correlation_normality %||% TRUE,
         latent_correlations = input$correlation_latent_correlations,
-        reason = input$correlation_reason %||% TRUE,
         p_ci = input$correlation_p_ci %||% TRUE,
         significance_levels = input$correlation_significance_levels %||% TRUE,
         scatter_plot = input$correlation_scatter_plot %||% TRUE,
@@ -194,7 +193,7 @@ register_correlation_handlers <- function(
           continuous_method = input$correlation_continuous_method %||% "auto",
           normality = isTRUE(input$correlation_normality),
           latent_correlations = isTRUE(input$correlation_latent_correlations),
-          reason = isTRUE(input$correlation_reason),
+          reason = TRUE,
           p_ci = isTRUE(input$correlation_p_ci),
           significance_levels = isTRUE(input$correlation_significance_levels),
           scatter_plot = isTRUE(input$correlation_scatter_plot),
@@ -397,11 +396,7 @@ register_correlation_handlers <- function(
     )
   })
 
-  register_add_result_snapshot(input, session, "add_correlation_result", "Correlation", function() {
-    result <- correlation_result()
-    shiny::req(!is.null(result))
-    saved_correlation_results_html(result)
-  })
+  register_add_result_snapshot(input, session, "add_correlation_result", "Correlation", "correlation_results")
 
   invisible(TRUE)
 }

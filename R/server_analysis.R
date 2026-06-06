@@ -358,35 +358,7 @@ register_hierarchical_save_handlers <- function(
   register_add_result_snapshot(input, session, "add_hierarchical_result", function() {
     results <- tryCatch(analyses_fn(), error = function(e) NULL)
     if (regression_results_are_hierarchical(results)) "Hierarchical regression" else "Regression"
-  }, function() {
-    shiny::req(!is.null(input$run_hierarchical), input$run_hierarchical > 0)
-    results <- analyses_fn()
-    if (regression_results_are_hierarchical(results)) {
-      saved_hierarchical_results_html(
-        results,
-        variable_table = variable_table_fn(),
-        labels = labels_fn(),
-        category_table = category_table_fn(),
-        refs = regression_reference_values_static(category_table_fn()),
-        value_labels = category_value_label_lookup_static(category_table_fn()),
-        show_sr2 = input$hierarchical_show_sr2,
-        show_f2 = input$hierarchical_show_f2,
-        show_vif = input$hierarchical_show_vif
-      )
-    } else {
-      saved_analysis_results_html(
-        results,
-        variable_table = variable_table_fn(),
-        labels = labels_fn(),
-        category_table = category_table_fn(),
-        refs = regression_reference_values_static(category_table_fn()),
-        value_labels = category_value_label_lookup_static(category_table_fn()),
-        show_sr2 = input$hierarchical_show_sr2,
-        show_f2 = input$hierarchical_show_f2,
-        show_vif = input$hierarchical_show_vif
-      )
-    }
-  })
+  }, "hierarchical_results")
 
   invisible(TRUE)
 }
@@ -532,20 +504,7 @@ register_analysis_save_handlers <- function(
     )
   })
 
-  register_add_result_snapshot(input, session, "add_regression_result", "Regression", function() {
-    shiny::req(!is.null(input$run), input$run > 0)
-    saved_analysis_results_html(
-      analyses_fn(),
-      variable_table = variable_table_fn(),
-      labels = labels_fn(),
-      category_table = category_table_fn(),
-      refs = regression_reference_values_static(category_table_fn()),
-      value_labels = category_value_label_lookup_static(category_table_fn()),
-      show_sr2 = input$show_sr2,
-      show_f2 = input$show_f2,
-      show_vif = input$show_vif
-    )
-  })
+  register_add_result_snapshot(input, session, "add_regression_result", "Regression", "regression_results")
 
   invisible(TRUE)
 }

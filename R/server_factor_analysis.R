@@ -408,11 +408,7 @@ register_factor_analysis_handlers <- function(
     )
   })
 
-  register_add_result_snapshot(input, session, "add_factor_analysis_result", "Factor analysis", function() {
-    result <- factor_result()
-    shiny::req(!is.null(result))
-    saved_factor_analysis_results_html(result)
-  })
+  register_add_result_snapshot(input, session, "add_factor_analysis_result", "Factor analysis", "factor_analysis_results")
 
   invisible(TRUE)
 }

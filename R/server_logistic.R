@@ -389,21 +389,7 @@ register_logistic_handlers <- function(
     showNotification(sprintf("Analysis results saved: %s", path), type = "message")
   })
 
-  register_add_result_snapshot(input, session, "add_logistic_result", "Logistic regression", function() {
-    options <- current_logistic_export_options()
-    shiny::req(!is.null(options$results), length(options$results) > 0)
-    saved_logistic_results_html(
-      options$results,
-      variable_table = options$variable_table,
-      labels = options$labels,
-      category_table = options$category_table,
-      show_b = options$show_b,
-      show_se = options$show_se,
-      show_mcfadden = options$show_mcfadden,
-      show_cox_snell = options$show_cox_snell,
-      split_ci = options$split_ci
-    )
-  })
+  register_add_result_snapshot(input, session, "add_logistic_result", "Logistic regression", "logistic_results")
 
   observeEvent(input$reset_logistic_block2, {
     if (length(unique(c(logistic_dependents(), logistic_block1(), logistic_block2(), logistic_block3()))) == 0) {

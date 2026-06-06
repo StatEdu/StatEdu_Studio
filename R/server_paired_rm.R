@@ -276,9 +276,5 @@ register_paired_rm_handlers <- function(
     showNotification(sprintf("Analysis results saved: %s", path), type = "message")
   })
 
-  register_add_result_snapshot(input, session, "add_paired_rm_result", "Paired test 3+", function() {
-    result <- paired_rm_result()
-    shiny::req(!is.null(result), is.null(result$error))
-    saved_paired_rm_results_html(result)
-  })
+  register_add_result_snapshot(input, session, "add_paired_rm_result", "Paired test 3+", "paired_rm_results")
 }

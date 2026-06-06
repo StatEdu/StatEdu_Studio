@@ -246,10 +246,6 @@ register_nonparametric_paired_handlers <- function(
     showNotification(sprintf("Analysis results saved: %s", path), type = "message")
   })
 
-  register_add_result_snapshot(input, session, "add_nonparametric_paired_result", "Nonparametric Paired Test", function() {
-    result <- result_value()
-    shiny::req(!is.null(result), is.null(result$error))
-    saved_nonparametric_paired_results_html(result)
-  })
+  register_add_result_snapshot(input, session, "add_nonparametric_paired_result", "Nonparametric Paired Test", "nonparametric_paired_results")
   invisible(TRUE)
 }

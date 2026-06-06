@@ -160,7 +160,14 @@ factor_analysis_results_ui <- function(result, report_mode = FALSE) {
       div(
         class = "result-section factor-analysis-result-section regression-result-panel",
         h3("Factor analysis"),
-        coefficient_html_table(result$overview)
+        coefficient_html_table(
+          result$overview,
+          compact = TRUE,
+          compact_font_size = 14,
+          compact_width = 108,
+          compact_first_width = 48,
+          compact_min_width = 600
+        )
       ),
       div(
         class = "result-section factor-analysis-result-section regression-result-panel",

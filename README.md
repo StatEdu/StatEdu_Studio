@@ -8,9 +8,9 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.28`
+Current development version: `0.9.33`
 
-Version 0.9.28 brings Windows data/settings open dialogs to the foreground, moves Factor Analysis and PCA loading tables directly after their overview tables, clarifies bundled open-source license notices, and avoids launcher hangs while closing an existing app process on port 7894.
+Version 0.9.33 expands ANCOVA assumption diagnostics, automatic-method controls, sensitivity analysis, and reporting notes. Version 0.9.32 added ANCOVA workflows, SPSS-style LMM effect-size conversion, GLMM effect-size conversion, and refined analysis table layouts.
 
 ## Current Scope
 
@@ -22,6 +22,7 @@ Version 0.9.28 brings Windows data/settings open dialogs to the foreground, move
 - Frequencies / descriptives for categorical and continuous variables
 - Cross-tabulation analysis for binary, ordered, and categorical variables
 - t-test / ANOVA with normality checks, homoscedasticity checks, post-hoc options, effect sizes, trend options, and nonparametric fallbacks
+- ANCOVA with automatic or warning-only selection among standard ANCOVA, Robust ANCOVA (HC3), Ranked ANCOVA, and Interaction ANCOVA, plus Levene / Brown-Forsythe / Breusch-Pagan / fitted-value White-style variance checks, slope-homogeneity diagnostics, complete-case reporting, linearity plots, and influence sensitivity analysis
 - Standalone nonparametric tests using Mann-Whitney U and Kruskal-Wallis workflows
 - Paired tests and repeated-measures paired workflows for two or more repeated measurements
 - Standalone nonparametric paired tests using Wilcoxon signed-rank and Friedman workflows
@@ -32,6 +33,7 @@ Version 0.9.28 brings Windows data/settings open dialogs to the foreground, move
 - Hierarchical regression with block-wise model comparison
 - Logistic regression for binary, ordered, and categorical dependent variables
 - Penalized regression helpers for severe multicollinearity cases
+- Standalone sample size, power, and effect size calculators with method notes and references
 - Result saving to HTML, PDF, Excel, figures, and accumulated Result collections
 - Result collection export to HTML, PDF, Excel, and Word
 
@@ -53,11 +55,12 @@ Some installed package binaries may have been built under a newer patch-level R 
 | App UI | `shiny`, `DT`, `htmltools`, `markdown` | Shiny app shell, interactive tables, HTML helpers, and About documentation rendering |
 | Data import | `haven`, `readr`, `readxl`, `openxlsx` | SAV, SAS, Stata, CSV, DAT, XLS, and XLSX import |
 | Settings and data helpers | `jsonlite`, `xml2`, `rvest`, `callr` | JSON settings, HTML/XML processing, and background R process support |
-| Regression diagnostics | `lmtest`, `sandwich`, `nortest`, `boot` | Breusch-Pagan test, HC3 robust standard errors, Lilliefors normality test, and bootstrap inference |
+| Regression diagnostics | `car`, `lmtest`, `sandwich`, `nortest`, `boot` | Type II/III ANCOVA tables, Levene-style variance checks, Breusch-Pagan test, HC3 robust standard errors, Lilliefors normality test, and bootstrap inference |
 | Linear / generalized models | `MASS`, `nnet` | Ordered logistic and multinomial model support |
 | Penalized regression | `glmnet` | Ridge, LASSO, and Elastic Net helper analyses |
 | Post-hoc and group comparison | `agricolae` | Multiple-comparison procedures used in ANOVA-style workflows |
 | Reliability, factor analysis, and correlations | `psych`, `polycor` | Reliability coefficients, factor/PCA helpers, polychoric/polyserial/tetrachoric correlation support |
+| Sample size and power | `longpower`, `WebPower`, `TOSTER` | Longitudinal LMM power, cluster trial / SEM power, and exact TOST equivalence calculations |
 | Report export | `officer`, `flextable`, `openxlsx` | Word, table, and Excel output |
 
 ## Local Run
@@ -72,6 +75,8 @@ The app will open at `127.0.0.1` in the default browser. The launcher searches f
 
 Version 0.9.10 includes validation scripts for calculators, data import, data editing, cross-tabulation, correlation auto-selection, factor analysis / PCA, logistic analysis and UI, paired guard handling, p-value formatting, regression coefficient output, and t-test / ANOVA guard handling.
 
+Version 0.9.33 includes validation coverage for ANCOVA method selection, assumption diagnostics, plotting, sensitivity analysis, actual-data export, and adjacent result formatting paths. Effect-size comparisons use `effectsize` as a validation reference where its definitions match the app calculation; `effectsize` is not required at runtime.
+
 Run validation scripts from the repository root with Rscript, for example:
 
 ```powershell
@@ -82,7 +87,7 @@ Run validation scripts from the repository root with Rscript, for example:
 
 If you use **EasyFlow Statistics** in your research, please cite:
 
-LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.28) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
+LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.33) [Computer software]. https://doi.org/10.22934/statedu.easyflow.statistics
 
 ## Development Model
 

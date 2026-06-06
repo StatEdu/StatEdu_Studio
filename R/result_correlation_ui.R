@@ -73,31 +73,87 @@ correlation_p_matrix_display_table <- function(result, source = NULL) {
   data.frame(Variable = rownames(matrix), ` ` = "95% CI\np", table, check.names = FALSE)
 }
 
-correlation_method_matrix_display_table <- function(result, source = NULL) {
+correlation_model_overview_reason <- function(reason) {
+  reason <- trimws(as.character(reason %||% ""))
+  if (!nzchar(reason)) return("")
+  reason <- sub("^Auto selected [^ ]+ because ", "", reason)
+  reason <- sub("^[^\\.]+ was selected because ", "", reason)
+  reason <- sub("^[^\\.]+ was selected for ", "", reason)
+  reason <- sub("^[^\\.]+ was retained because ", "", reason)
+  reason <- sub("^[^\\.]+ was retained for ", "", reason)
+  reason <- sub("^[^\\.]+ was retained as ", "", reason)
+  reason <- sub("\\.$", "", reason)
+  reason <- switch(
+    reason,
+    "both continuous variables satisfied normality" = "normality satisfied",
+    "at least one continuous variable did not satisfy normality" = "normality not satisfied",
+    "one variable is ordinal; polyserial can be added as an advanced option" = "ordinal variable; polyserial optional",
+    "two ordinal variables; polychoric can be added as an advanced option" = "ordinal variables; polychoric optional",
+    "binary-ordinal variables; polychoric can be added as an advanced option" = "binary-ordinal; polychoric optional",
+    "a continuous variable and a binary variable" = "continuous-binary",
+    "a nominal and continuous variable; ANOVA is recommended for detailed group comparison" = "nominal-continuous; ANOVA for group comparison",
+    "categorical variables" = "categorical variables",
+    reason
+  )
+  reason
+}
+
+correlation_model_overview_wrap <- function(text, width = 24L) {
+  text <- trimws(as.character(text %||% ""))
+  if (!nzchar(text)) return("")
+  wrapped <- strwrap(text, width = width, simplify = TRUE)
+  paste(wrapped, collapse = "\n")
+}
+
+correlation_model_overview_matrix_display_table <- function(result, source = NULL) {
   source <- source %||% result
   matrix <- source$method_matrix
+  pairwise_table <- source$pairwise_table
   if (!is.matrix(matrix) || nrow(matrix) == 0) {
     return(NULL)
+  }
+  reason_map <- list()
+  if (is.data.frame(pairwise_table) && nrow(pairwise_table) > 0 && all(c("Variable1", "Variable2", "Reason") %in% names(pairwise_table))) {
+    for (index in seq_len(nrow(pairwise_table))) {
+      v1 <- as.character(pairwise_table$Variable1[[index]] %||% "")
+      v2 <- as.character(pairwise_table$Variable2[[index]] %||% "")
+      reason <- correlation_model_overview_reason(pairwise_table$Reason[[index]] %||% "")
+      reason_map[[paste(v1, v2, sep = "\r")]] <- reason
+      reason_map[[paste(v2, v1, sep = "\r")]] <- reason
+    }
   }
   out <- matrix("", nrow = nrow(matrix), ncol = ncol(matrix))
   for (row in seq_len(nrow(matrix))) {
     for (col in seq_len(ncol(matrix))) {
       if (row > col) {
-        out[row, col] <- matrix[row, col] %||% ""
+        method <- matrix[row, col] %||% ""
+        reason <- reason_map[[paste(rownames(matrix)[[row]], colnames(matrix)[[col]], sep = "\r")]] %||% ""
+        parts <- c(method, correlation_model_overview_wrap(reason))
+        parts <- parts[nzchar(parts)]
+        out[row, col] <- paste(parts, collapse = "\n")
       }
     }
   }
   table <- as.data.frame(out, check.names = FALSE)
   names(table) <- colnames(matrix)
-  data.frame(Variable = rownames(matrix), table, check.names = FALSE)
-}
-
-correlation_reason_display_table <- function(source) {
-  table <- source$pairwise_table
-  if (!is.data.frame(table) || nrow(table) == 0) {
-    return(NULL)
+  out_table <- data.frame(Variable = rownames(matrix), table, check.names = FALSE)
+  styled_cells <- list()
+  for (row in seq_len(nrow(out_table))) {
+    for (column in names(out_table)[-1L]) {
+      if (nzchar(as.character(out_table[[column]][[row]] %||% ""))) {
+        styled_cells[[length(styled_cells) + 1L]] <- data.frame(
+          row = row,
+          column = column,
+          style = "text-align:center;white-space:pre-line;overflow-wrap:anywhere;word-break:normal;min-width:86px;max-width:112px;width:104px;",
+          stringsAsFactors = FALSE
+        )
+      }
+    }
   }
-  table[, intersect(c("Variable1", "Variable2", "Method", "Reason"), names(table)), drop = FALSE]
+  if (length(styled_cells) > 0) {
+    attr(out_table, "cell_styles") <- do.call(rbind, styled_cells)
+  }
+  out_table
 }
 
 correlation_omitted_display_table <- function(result) {
@@ -113,11 +169,25 @@ correlation_matrix_set_ui <- function(result, source = NULL, title_prefix = "") 
   options <- result$options %||% list()
   main_table <- correlation_matrix_display_table(result, source)
   p_table <- correlation_p_matrix_display_table(result, source)
-  method_table <- correlation_method_matrix_display_table(result, source)
-  reason_table <- correlation_reason_display_table(source)
+  overview_table <- correlation_model_overview_matrix_display_table(result, source)
+  landscape_class <- if (length(result$variables %||% character(0)) >= 10L) " landscape-table-panel" else ""
   tagList(
+    if (is.data.frame(overview_table) && nrow(overview_table) > 0) {
+      div(
+        class = paste0("result-section correlation-result-section regression-result-panel", landscape_class),
+        h3(paste0(title_prefix, "Model overview")),
+        coefficient_html_table(
+          overview_table,
+          compact = TRUE,
+          compact_font_size = 11,
+          compact_width = 88,
+          compact_first_width = 82,
+          compact_min_width = 280
+        )
+      )
+    },
     div(
-      class = "result-section correlation-result-section regression-result-panel landscape-table-panel",
+      class = paste0("result-section correlation-result-section regression-result-panel", landscape_class),
       h3(paste0(title_prefix, "Correlation / association coefficients")),
       coefficient_html_table(
         main_table,
@@ -128,7 +198,7 @@ correlation_matrix_set_ui <- function(result, source = NULL, title_prefix = "") 
     ),
     if (isTRUE(options$p_ci) && is.data.frame(p_table) && nrow(p_table) > 0) {
       div(
-        class = "result-section correlation-result-section regression-result-panel landscape-table-panel",
+        class = paste0("result-section correlation-result-section regression-result-panel", landscape_class),
         h3(paste0(title_prefix, "p-value & 95% CI")),
         coefficient_html_table(
           p_table,
@@ -138,27 +208,6 @@ correlation_matrix_set_ui <- function(result, source = NULL, title_prefix = "") 
           compact_first_width = 104,
           compact_min_width = 280
         )
-      )
-    },
-    if (is.data.frame(method_table) && nrow(method_table) > 0) {
-      div(
-        class = "result-section correlation-result-section regression-result-panel landscape-table-panel",
-        h3(paste0(title_prefix, "Methods")),
-        coefficient_html_table(
-          method_table,
-          compact = TRUE,
-          compact_font_size = 12,
-          compact_width = 50,
-          compact_first_width = 104,
-          compact_min_width = 280
-        )
-      )
-    },
-    if (isTRUE(options$reason) && is.data.frame(reason_table) && nrow(reason_table) > 0) {
-      div(
-        class = "result-section correlation-result-section regression-result-panel landscape-table-panel",
-        h3(paste0(title_prefix, "Reason")),
-        coefficient_html_table(reason_table)
       )
     }
   )

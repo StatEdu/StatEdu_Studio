@@ -96,6 +96,43 @@ choose_windows_save_file <- function(
   run_windows_dialog_script(script)
 }
 
+choose_windows_open_file <- function(
+  title,
+  filter = "EasyFlow Result (*.efs-result)|*.efs-result|JSON File (*.json)|*.json|All Files (*.*)|*.*"
+) {
+  if (.Platform$OS.type != "windows") {
+    return(character(0))
+  }
+  script <- paste(
+    "Add-Type -AssemblyName System.Windows.Forms;",
+    "Add-Type -AssemblyName System.Drawing;",
+    "$owner = New-Object System.Windows.Forms.Form;",
+    "$owner.TopMost = $true;",
+    "$owner.ShowInTaskbar = $false;",
+    "$owner.StartPosition = 'CenterScreen';",
+    "$owner.Size = New-Object System.Drawing.Size(1,1);",
+    "$owner.Opacity = 0;",
+    "$dialog = New-Object System.Windows.Forms.OpenFileDialog;",
+    "$dialog.Title =", ps_quote(title), ";",
+    "$dialog.Filter =", ps_quote(filter), ";",
+    "$dialog.FilterIndex = 1;",
+    "$dialog.Multiselect = $false;",
+    "$dialog.CheckFileExists = $true;",
+    "$dialog.CheckPathExists = $true;",
+    "$owner.Show();",
+    "$owner.Activate();",
+    "if ($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) {",
+    "[Console]::Out.WriteLine($dialog.FileName)",
+    "} else {",
+    "[Console]::Out.WriteLine(", ps_quote(windows_dialog_cancel_marker), ")",
+    "}",
+    "$dialog.Dispose();",
+    "$owner.Close();",
+    "$owner.Dispose();"
+  )
+  run_windows_dialog_script(script)
+}
+
 choose_windows_directory <- function(caption) {
   if (.Platform$OS.type != "windows") {
     return(character(0))
@@ -147,6 +184,22 @@ choose_tk_save_file <- function(default_name, title, extension, filetypes) {
   character(0)
 }
 
+choose_tk_open_file <- function(title, filetypes) {
+  if (requireNamespace("tcltk", quietly = TRUE)) {
+    path <- tryCatch(
+      as.character(tcltk::tkgetOpenFile(
+        filetypes = filetypes,
+        title = title
+      )),
+      error = function(e) character(0)
+    )
+    if (is_dialog_path(path)) {
+      return(path[[1]])
+    }
+  }
+  character(0)
+}
+
 choose_rstudio_save_file <- function(default_name, caption, filter) {
   if (requireNamespace("rstudioapi", quietly = TRUE) && isTRUE(rstudioapi::isAvailable())) {
     path <- tryCatch(
@@ -156,6 +209,25 @@ choose_rstudio_save_file <- function(default_name, caption, filter) {
         path = file.path(getwd(), default_name),
         filter = filter,
         existing = FALSE
+      ),
+      error = function(e) character(0)
+    )
+    if (is_dialog_path(path)) {
+      return(path[[1]])
+    }
+  }
+  character(0)
+}
+
+choose_rstudio_open_file <- function(caption, filter) {
+  if (requireNamespace("rstudioapi", quietly = TRUE) && isTRUE(rstudioapi::isAvailable())) {
+    path <- tryCatch(
+      rstudioapi::selectFile(
+        caption = caption,
+        label = "Open",
+        path = getwd(),
+        filter = filter,
+        existing = TRUE
       ),
       error = function(e) character(0)
     )
@@ -335,6 +407,62 @@ choose_html_save_path <- function() {
   choose_tk_save_file(default_name, title, ".html", "{{HTML File} {.html}} {{All Files} {*}}")
 }
 
+choose_result_history_save_path <- function() {
+  default_name <- sprintf("EFS_result_history_%s.efs-result", format(Sys.time(), "%Y%m%d_%H%M%S"))
+  title <- "Save EasyFlow Statistics Result History"
+  if (.Platform$OS.type == "windows") {
+    path <- choose_windows_save_file(default_name, title, "EasyFlow Result (*.efs-result)|*.efs-result|JSON File (*.json)|*.json|All Files (*.*)|*.*", "efs-result")
+    if (is_windows_dialog_cancel(path)) {
+      return(character(0))
+    }
+    if (is_dialog_path(path)) {
+      return(path[[1]])
+    }
+  }
+  if (.Platform$OS.type == "windows") {
+    path <- choose_tk_save_file(default_name, title, ".efs-result", "{{EasyFlow Result} {.efs-result}} {{JSON File} {.json}} {{All Files} {*}}")
+    if (is_dialog_path(path)) {
+      return(path[[1]])
+    }
+  }
+  path <- choose_rstudio_save_file(default_name, title, "EasyFlow Result (*.efs-result)")
+  if (is_dialog_path(path)) {
+    return(path[[1]])
+  }
+  choose_tk_save_file(default_name, title, ".efs-result", "{{EasyFlow Result} {.efs-result}} {{JSON File} {.json}} {{All Files} {*}}")
+}
+
+choose_result_history_open_path <- function() {
+  title <- "Open EasyFlow Statistics Result History"
+  if (.Platform$OS.type == "windows") {
+    path <- choose_windows_open_file(title, "EasyFlow Result (*.efs-result)|*.efs-result|JSON File (*.json)|*.json|All Files (*.*)|*.*")
+    if (is_windows_dialog_cancel(path)) {
+      return(character(0))
+    }
+    if (is_dialog_path(path)) {
+      return(path[[1]])
+    }
+  }
+  if (.Platform$OS.type == "windows") {
+    path <- choose_tk_open_file(title, "{{EasyFlow Result} {.efs-result}} {{JSON File} {.json}} {{All Files} {*}}")
+    if (is_dialog_path(path)) {
+      return(path[[1]])
+    }
+  }
+  if (.Platform$OS.type == "windows") {
+    filters <- matrix(c("EasyFlow Result", "*.efs-result", "JSON File", "*.json", "All Files", "*.*"), ncol = 2, byrow = TRUE)
+    path <- utils::choose.files(caption = title, multi = FALSE, filters = filters, index = 1)
+    if (is_dialog_path(path)) {
+      return(path[[1]])
+    }
+  }
+  path <- choose_rstudio_open_file(title, "EasyFlow Result (*.efs-result)")
+  if (is_dialog_path(path)) {
+    return(path[[1]])
+  }
+  choose_tk_open_file(title, "{{EasyFlow Result} {.efs-result}} {{JSON File} {.json}} {{All Files} {*}}")
+}
+
 choose_pdf_save_path <- function() {
   default_name <- sprintf("EFS_results_%s.pdf", format(Sys.time(), "%Y%m%d_%H%M%S"))
   title <- "Save EasyFlow Statistics PDF Results"
@@ -473,6 +601,49 @@ save_analysis_figure_files <- function(results, directory, variable_table = NULL
 
 save_analysis_figures_to_dir <- function(results, directory, variable_table = NULL, labels = character(0)) {
   save_analysis_figure_files(results, directory, variable_table, labels)
+}
+
+save_ancova_figure_files <- function(result, directory, variable_table = NULL, labels = character(0)) {
+  saved <- character(0)
+  for (item in result$results %||% list()) {
+    options <- item$options %||% list()
+    dependent_label <- safe_file_stem(display_variable_name_static(item$dependent, variable_table, labels, label_only = TRUE))
+    jobs <- list()
+    if (isTRUE(options$plot_adjusted_means)) {
+      jobs <- c(jobs, list(list(name = "adjusted_mean", label = "Adjusted mean", fn = draw_ancova_adjusted_mean_plot)))
+    }
+    if (isTRUE(options$plot_raw_overlay)) {
+      jobs <- c(jobs, list(list(name = "raw_overlay", label = "Raw overlay", fn = draw_ancova_raw_overlay_plot)))
+    }
+    if (isTRUE(options$plot_regression_lines)) {
+      jobs <- c(jobs, list(list(name = "regression_lines", label = "Regression lines", fn = draw_ancova_regression_lines_plot)))
+    }
+    if (isTRUE(options$plot_linearity_diagnostics)) {
+      for (covariate in ancova_numeric_covariates(item)) {
+        plot_item <- item
+        plot_item$linearity_covariate <- covariate
+        plot_function <- local({
+          local_item <- plot_item
+          function(unused) draw_ancova_linearity_diagnostic_plot(local_item)
+        })
+        jobs <- c(jobs, list(list(
+          name = sprintf("linearity_%s", safe_file_stem(covariate)),
+          label = sprintf("Linearity diagnostic %s", covariate),
+          fn = plot_function
+        )))
+      }
+    }
+    for (job in jobs) {
+      file <- file.path(directory, sprintf("ANCOVA_%s(%s).png", job$name, dependent_label))
+      save_plot_png_file(job$fn, item, file, width = 6.4, height = 4.6)
+      saved <- c(saved, file)
+    }
+  }
+  saved
+}
+
+save_ancova_figures_to_dir <- function(result, directory, variable_table = NULL, labels = character(0)) {
+  save_ancova_figure_files(result, directory, variable_table, labels)
 }
 
 save_hierarchical_figure_files <- function(results, directory, variable_table = NULL, labels = character(0)) {

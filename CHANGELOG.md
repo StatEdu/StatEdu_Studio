@@ -1,5 +1,64 @@
 # Changelog
 
+## v0.9.33 - 2026-06-06
+
+### Changed
+
+- Expanded ANCOVA assumption diagnostics with Levene as the default variance check, optional Brown-Forsythe / Breusch-Pagan / White test checks, slope-homogeneity detail tables, complete-case reporting, residual-linearity plots, and influence sensitivity analysis.
+- Added ANCOVA automatic-method controls so users can keep automatic selection or report assumption warnings while retaining the standard ANCOVA model.
+- Refined shared result-table rendering for 9 pt table fonts, fixed-width portrait / landscape tables, 1.5x on-screen preview scaling, common post-hoc markers, ES column labels, and two-line post-hoc headers.
+- Reorganized ANCOVA Assumptions / Model / Output options and aligned option spacing, indentation, and result notes.
+
+## v0.9.32 - 2026-06-03
+
+### Changed
+
+- Added ANCOVA result presentation refinements, including tighter table width handling and right-aligned test statistics.
+- Added SPSS-style LMM effect-size conversion for omnibus F/df partial eta squared and covariance-based pairwise dz.
+- Added GLMM effect-size conversion for binary logit, count log-link, and Gaussian fixed-effect outputs.
+- Updated Korean User Guide, Analysis Methods, and Method Notes for the new ANCOVA, LMM, GEE, and GLMM effect-size workflows.
+- Refined Effect Size input handling so LMM omnibus and pairwise calculations can run from either available input set.
+
+## v0.9.31 - 2026-06-02
+
+### Changed
+
+- Added Result history save/open files with a dedicated `.efs-result` type marker.
+- Separated saved settings files into `.efs-settings` with type validation.
+- Changed Add result to preserve the currently rendered analysis result snapshot instead of rebuilding the output.
+- Standardized result table widths and landscape export rules across analysis output, Result history, HTML, PDF, and Word.
+- Refined Model overview and warning table layouts for correlation, paired tests, factor analysis, reliability, and logistic regression.
+- Removed the Word export cover page so saved Result documents start directly with methods and results.
+- Added ANCOVA with automatic standard, HC3 robust, ranked, and interaction-model selection plus HTML, PDF, Excel, and Result history export support.
+
+
+## v0.9.30 - 2026-06-02
+
+### Changed
+
+- Refined sample-size and effect-size calculators by removing non-effect-size workflows from effect-size menus.
+- Added stoppable background sample-size calculations with progress reporting.
+- Added LMM unstructured correlation inputs and SEM/CFA model-count degrees-of-freedom estimation.
+- Standardized required-sample-size result emphasis with explicit `n` labels and 0.95 default power.
+- Expanded Korean User Guide, Analysis Methods, and Method Notes for sample-size, power, and effect-size workflows with formulas and references.
+- Refreshed Korean Analysis Methods documentation for the 0.9.30 analysis outputs, including Model overview behavior for t-test/ANOVA, paired tests, nonparametric paired tests, and correlation.
+- Bundled local MathJax assets for offline formula rendering in Method Notes.
+
+
+## v0.9.29 - 2026-06-01
+
+### Added
+
+- Added standalone Sample Size and Effect Size top-level menus after Analysis.
+- Added reference-backed sample size, power, and effect size calculators for t-test, ANOVA / ANCOVA, GEE, LMM, nonparametric, proportion, chi-square, McNemar, regression, survival, and additional planning workflows.
+- Added focused validation coverage for sample size, achieved power, and effect-size calculation wrappers.
+
+### Changed
+
+- Reworked the sample size and effect size screens into the shared three-block workflow used by analysis setup panels.
+- Reorganized Sample Size and Effect Size menu order by study-design family.
+- Updated t-test effect-size output so selected-method results are emphasized and convertible effect sizes are shown without non-effect-size intermediate values.
+
 ## v0.9.28 - 2026-05-30
 
 ### Fixed
@@ -709,4 +768,3 @@
 - HC3 robust standard errors.
 - Bootstrap confidence intervals.
 - Durbin-Watson dL/dU lookup using `C:/StatEdu/easyflow_statistics/easyflow_statistics_3.0.xlsx`.
-

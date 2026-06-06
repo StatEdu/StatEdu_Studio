@@ -43,7 +43,7 @@ effect_size_reference_panel <- function(show_sr2 = FALSE, show_f2 = FALSE) {
   table_tag <- tags$table(
     class = "effect-size-reference-table",
     tags$thead(tags$tr(
-      tags$th("Effect size"),
+      tags$th("ES"),
       tags$th("Reference"),
       tags$th("Small"),
       tags$th("Medium"),
@@ -508,7 +508,7 @@ hierarchical_coefficient_html_table <- function(
       "border-top:2px solid #1f2937;border-bottom:2px solid #1f2937;",
       "text-align:left;font-weight:700;width:232px;min-width:232px;max-width:232px;white-space:nowrap;"
     ),
-    "Term"
+    "Variable"
   ))
   for (index in seq_along(model_tables)) {
     header_groups <- c(header_groups, list(tags$th(
@@ -658,7 +658,7 @@ hierarchical_coefficient_result_block <- function(
       hierarchical_coefficient_note_line(group[[final_index]], show_vif, show_sr2, show_f2),
       hierarchical_model_note_lines(group, variable_table, labels)
     ),
-    landscape = TRUE
+    landscape = length(group) >= 3L
   )
 }
 

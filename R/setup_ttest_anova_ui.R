@@ -32,7 +32,9 @@ ttest_anova_setup_state <- function(
   post_hoc = FALSE,
   ordered_significance = FALSE,
   effect_size = TRUE,
-  options_tab = "Assumption"
+  show_df = FALSE,
+  mean_sd = FALSE,
+  options_tab = "Normality"
 ) {
   selected <- as.character(selected_names %||% character(0))
   dependent_variables <- intersect(as.character(dependent_variables %||% character(0)), selected)
@@ -128,10 +130,12 @@ ttest_anova_setup_state <- function(
     post_hoc = isTRUE(post_hoc),
     ordered_significance = isTRUE(ordered_significance),
     effect_size = isTRUE(effect_size),
-    options_tab = if (as.character(options_tab %||% "Assumption") %in% c("Assumption", "Post-hoc", "Output")) {
-      as.character(options_tab %||% "Assumption")
+    show_df = isTRUE(show_df),
+    mean_sd = isTRUE(mean_sd),
+    options_tab = if (as.character(options_tab %||% "Normality") %in% c("Normality", "Post-hoc", "Output")) {
+      as.character(options_tab %||% "Normality")
     } else {
-      "Assumption"
+      "Normality"
     },
     move_disabled = length(selected) == 0
   )
@@ -237,7 +241,7 @@ ttest_anova_setup_panel <- function(state) {
           type = "tabs",
           selected = state$options_tab,
           tabPanel(
-            "Assumption",
+            "Normality",
             div(
               class = "factor-options-tab-content ttest-anova-options-tab-content",
               div(
@@ -352,6 +356,13 @@ ttest_anova_setup_panel <- function(state) {
                 "Effect size",
                 list(
                   list(id = "ttest_anova_effect_size", label = "Effect size", value = state$effect_size)
+                )
+              ),
+              analysis_option_group(
+                "Statistic",
+                list(
+                  list(id = "ttest_anova_show_df", label = "Degrees of freedom", value = state$show_df),
+                  list(id = "ttest_anova_mean_sd", label = "M \u00B1 SD", value = state$mean_sd)
                 )
               )
             )

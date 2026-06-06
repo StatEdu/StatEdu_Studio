@@ -1812,20 +1812,24 @@ input.variable-select:disabled {
 
 .coefficient-footnote-value {
   display: inline-block;
+  position: relative;
+  padding-right: 0.38em;
   white-space: nowrap;
-  line-height: 1.35;
+  line-height: inherit;
   vertical-align: baseline;
 }
 
 .coefficient-footnote-marker {
-  display: inline-block;
-  width: 0;
-  margin-left: 1px;
-  font-size: 10px;
-  line-height: 0;
-  position: static;
+  display: block;
+  position: absolute;
+  top: -0.34em;
+  right: 0;
+  width: auto;
+  margin-left: 0;
+  font-size: 60%;
+  line-height: 1;
   text-align: left;
-  vertical-align: super;
+  vertical-align: baseline;
 }
 
 .coefficient-col-note-marker {
@@ -1841,6 +1845,14 @@ input.variable-select:disabled {
   position: relative;
   top: -0.72em;
   vertical-align: baseline;
+}
+
+.coefficient-header-break {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0;
+  line-height: 1.05;
+  white-space: nowrap;
 }
 
 .analysis-options-panel {
@@ -1866,6 +1878,60 @@ input.variable-select:disabled {
 
 .analysis-option-group .radio label {
   font-weight: 400;
+}
+
+.easyflow-option-help {
+  border-bottom: 1px dotted rgba(0, 43, 79, 0.45);
+  cursor: help;
+  outline: none;
+  position: relative;
+}
+
+.easyflow-option-help::after {
+  background: #102a43;
+  border-radius: 6px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.22);
+  color: #ffffff;
+  content: attr(data-tooltip);
+  display: none;
+  font-size: 12px;
+  font-weight: 400;
+  left: 50%;
+  line-height: 1.35;
+  max-width: 260px;
+  min-width: 210px;
+  padding: 8px 10px;
+  position: absolute;
+  text-align: left;
+  top: auto;
+  bottom: calc(100% + 9px);
+  transform: translateX(-50%);
+  white-space: normal;
+  z-index: 8000;
+}
+
+.easyflow-option-help::before {
+  border: 6px solid transparent;
+  border-top-color: #102a43;
+  content: "";
+  display: none;
+  left: 50%;
+  position: absolute;
+  top: auto;
+  bottom: calc(100% + 3px);
+  transform: translateX(-50%);
+  z-index: 8001;
+}
+
+.analysis-option-group label:hover .easyflow-option-help::after,
+.analysis-option-group label:hover .easyflow-option-help::before,
+.analysis-option-group label:focus-within .easyflow-option-help::after,
+.analysis-option-group label:focus-within .easyflow-option-help::before,
+.easyflow-option-help:hover::after,
+.easyflow-option-help:hover::before,
+.easyflow-option-help:focus::after,
+.easyflow-option-help:focus::before {
+  display: block;
 }
 
 .analysis-transfer-option {
@@ -2241,6 +2307,44 @@ input.variable-select:disabled {
   width: 310px;
 }
 
+.ancova-options .ancova-option-heading {
+  font-size: 16px;
+  line-height: 1.25;
+  font-weight: 700;
+  color: #002b4f;
+  margin-top: 12px;
+  margin-bottom: 6px;
+}
+
+.ancova-options .ancova-option-heading:first-of-type {
+  margin-top: 6px;
+}
+
+.ancova-ss-explanation {
+  background: #ffffff;
+  border: 1px solid #c7d7e5;
+  border-radius: 6px;
+  color: #243b53;
+  font-size: 12.5px;
+  line-height: 1.28;
+  margin-top: 8px;
+  padding: 8px 10px;
+  width: 250px;
+}
+
+.ancova-ss-explanation-title {
+  color: #002b50;
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.25;
+  margin-bottom: 4px;
+}
+
+.ancova-ss-explanation div + div {
+  margin-top: 3px;
+}
+
+
 .ttest-anova-method-panel .form-group,
 .ttest-anova-method-panel .form-control,
 .ttest-anova-method-panel select,
@@ -2391,8 +2495,8 @@ input.variable-select:disabled {
 
 .ttest-anova-options .analysis-option-group .checkbox,
 .ttest-anova-options .analysis-option-group .radio {
-  margin-top: 3px;
-  margin-bottom: 3px;
+  margin-top: 2px;
+  margin-bottom: 2px;
   line-height: 1.35;
 }
 
@@ -2509,11 +2613,11 @@ input.variable-select:disabled {
 }
 
 .ttest-normality-level-2 {
-  margin-left: 58px !important;
+  margin-left: 34px !important;
 }
 
 .ttest-normality-level-3 {
-  margin-left: 0 !important;
+  margin-left: 34px !important;
 }
 
 .ttest-normality-study-options,
@@ -2534,6 +2638,10 @@ input.variable-select:disabled {
   align-items: unset !important;
 }
 
+.ttest-normality-study-block > .ttest-normality-branch > .ttest-normality-level-3 {
+  margin-left: 34px !important;
+}
+
 .ttest-normality-study-block {
   width: 100%;
   display: block !important;
@@ -2544,7 +2652,7 @@ input.variable-select:disabled {
 .ttest-normality-branch {
   display: block !important;
   margin-top: 0 !important;
-  margin-left: 86px !important;
+  margin-left: 24px !important;
   width: auto !important;
   transition: opacity 120ms ease;
 }
@@ -2674,6 +2782,7 @@ input.variable-select:disabled {
   margin: 0;
   padding: 9px 8px;
   text-align: center;
+  white-space: nowrap;
   width: 100%;
 }
 
@@ -2697,12 +2806,6 @@ input.variable-select:disabled {
 
 .factor-options-tab-content {
   min-height: 452px;
-  padding-top: 4px;
-}
-
-.pca-options-tab-content,
-.ttest-anova-options-tab-content {
-  min-height: 452px;
   padding-bottom: 14px;
   padding-top: 14px;
 }
@@ -2713,6 +2816,7 @@ input.variable-select:disabled {
 
 .factor-analysis-options .analysis-option-title {
   font-size: 16px;
+  font-weight: 700;
   line-height: 1.15;
   margin-bottom: 12px;
 }
@@ -2905,6 +3009,7 @@ input.variable-select:disabled {
 
 .pca-options .analysis-option-title {
   font-size: 16px;
+  font-weight: 700;
   line-height: 1.15;
   margin-bottom: 12px;
 }
@@ -2946,9 +3051,20 @@ input.variable-select:disabled {
   margin-bottom: 18px;
 }
 
+.factor-options-tab-content .analysis-option-title,
 .pca-options-tab-content .analysis-option-title,
 .ttest-anova-options-tab-content .analysis-option-title {
+  color: #002b50;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.15;
   margin-bottom: 14px;
+}
+
+.factor-options-tab-content > .analysis-option-group:first-child > .analysis-option-title,
+.pca-options-tab-content > .analysis-option-group:first-child > .analysis-option-title,
+.ttest-anova-options-tab-content > .analysis-option-group:first-child > .analysis-option-title {
+  margin-top: 0;
 }
 
 .pca-options-tab-content .analysis-option-group .checkbox,
@@ -3034,7 +3150,8 @@ input.variable-select:disabled {
   grid-column: 1;
 }
 
-.ttest-anova-action-row > #ttest_anova_save_control {
+.ttest-anova-action-row > #ttest_anova_save_control,
+.ancova-action-row > #ancova_save_control {
   grid-column: 4;
 }
 
@@ -3596,8 +3713,10 @@ input.variable-select:disabled {
 }
 
 .regression-results {
+  --result-display-scale: 1.5;
+  --result-table-font-size: 12px;
   display: grid;
-  gap: 16px;
+  gap: calc(16px * var(--result-display-scale));
   margin-top: 22px;
   padding-top: 18px;
   border-top: 1px solid #e5e7eb;
@@ -3612,6 +3731,7 @@ input.variable-select:disabled {
   background: #ffffff;
   border: 1px solid #d9e2ec;
   border-radius: 6px;
+  zoom: 1.5 !important;
 }
 
 .result-section.regression-result-panel {
@@ -3621,9 +3741,199 @@ input.variable-select:disabled {
   box-sizing: border-box;
 }
 
+.result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) {
+  width: min(100%, 590px);
+}
+
+.result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) > .result-table-with-note,
+.result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) > .frequency-table-wrap,
+.result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) > table,
+.result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) .result-table-with-note > table {
+  width: 100% !important;
+  max-width: 100%;
+}
+
+.result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed;
+}
+
+.result-section.regression-result-panel.landscape-table-panel {
+  width: min(100%, 890px);
+}
+
+.result-section.regression-result-panel.landscape-table-panel > .result-table-with-note,
+.result-section.regression-result-panel.landscape-table-panel > .hierarchical-table-wrap,
+.result-section.regression-result-panel.landscape-table-panel > .hierarchical-table-scroll,
+.result-section.regression-result-panel.landscape-table-panel > table,
+.result-section.regression-result-panel.landscape-table-panel .result-table-with-note > table {
+  width: 100% !important;
+  max-width: 100%;
+}
+
+.result-section.regression-result-panel.landscape-table-panel table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed;
+}
+
+.regression-results > .regression-result-panel:not(.landscape-table-panel):not(.model-overview-panel):not(.assumption-review-panel):not(.reference-summary-panel):not(.diagnostic-plots-section):not(.frequency-plots-section):not(.correlation-plot-section):not(.logistic-diagnostics-panel) {
+  width: min(100%, 590px);
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.regression-results > .regression-result-panel.ancova-model-overview-panel,
+.regression-results > .regression-result-panel.ancova-result-panel,
+.regression-results > .regression-result-panel.ancova-assumption-panel,
+.regression-results > .regression-result-panel.ancova-interaction-terms-panel,
+.regression-results > .regression-result-panel.ancova-slope-homogeneity-panel,
+.regression-results > .regression-result-panel.ancova-simple-effects-panel,
+.regression-results > .regression-result-panel.ancova-normality-panel,
+.regression-results > .regression-result-panel.ancova-linearity-panel,
+.regression-results > .regression-result-panel.ancova-collinearity-panel,
+.regression-results > .regression-result-panel.ancova-influence-panel,
+.regression-results > .regression-result-panel.ancova-influence-sensitivity-panel,
+.regression-results > .regression-result-panel.ancova-plots-panel {
+  width: min(100%, 590px);
+  max-width: 100%;
+  overflow-x: visible;
+}
+
+.regression-results > .regression-result-panel.ancova-model-overview-panel > .result-table-with-note,
+.regression-results > .regression-result-panel.ancova-result-panel > .result-table-with-note,
+.regression-results > .regression-result-panel.ancova-assumption-panel > .result-table-with-note,
+.regression-results > .regression-result-panel.ancova-interaction-terms-panel > .result-table-with-note,
+.regression-results > .regression-result-panel.ancova-slope-homogeneity-panel > .result-table-with-note,
+.regression-results > .regression-result-panel.ancova-simple-effects-panel > .result-table-with-note,
+.regression-results > .regression-result-panel.ancova-normality-panel > .result-table-with-note,
+.regression-results > .regression-result-panel.ancova-linearity-panel > .result-table-with-note,
+.regression-results > .regression-result-panel.ancova-collinearity-panel > .result-table-with-note,
+.regression-results > .regression-result-panel.ancova-influence-panel > .result-table-with-note,
+.regression-results > .regression-result-panel.ancova-influence-sensitivity-panel > .result-table-with-note {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: visible;
+}
+
+.regression-results > .regression-result-panel.ancova-model-overview-panel .result-table-with-note > table,
+.regression-results > .regression-result-panel.ancova-result-panel .result-table-with-note > table,
+.regression-results > .regression-result-panel.ancova-assumption-panel .result-table-with-note > table,
+.regression-results > .regression-result-panel.ancova-interaction-terms-panel .result-table-with-note > table,
+.regression-results > .regression-result-panel.ancova-slope-homogeneity-panel .result-table-with-note > table,
+.regression-results > .regression-result-panel.ancova-simple-effects-panel .result-table-with-note > table,
+.regression-results > .regression-result-panel.ancova-normality-panel .result-table-with-note > table,
+.regression-results > .regression-result-panel.ancova-linearity-panel .result-table-with-note > table,
+.regression-results > .regression-result-panel.ancova-collinearity-panel .result-table-with-note > table,
+.regression-results > .regression-result-panel.ancova-influence-panel .result-table-with-note > table,
+.regression-results > .regression-result-panel.ancova-influence-sensitivity-panel .result-table-with-note > table {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.regression-results > .regression-result-panel:not(.landscape-table-panel):not(.model-overview-panel):not(.assumption-review-panel):not(.reference-summary-panel):not(.diagnostic-plots-section):not(.frequency-plots-section):not(.correlation-plot-section):not(.logistic-diagnostics-panel) table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed;
+}
+
+.regression-results > .regression-result-panel:not(.landscape-table-panel):not(.model-overview-panel):not(.assumption-review-panel):not(.reference-summary-panel):not(.diagnostic-plots-section):not(.frequency-plots-section):not(.correlation-plot-section):not(.logistic-diagnostics-panel) .coefficient-table .coefficient-col-term {
+  width: 210px;
+  min-width: 210px;
+}
+
+.regression-results > .regression-result-panel:not(.landscape-table-panel):not(.model-overview-panel):not(.assumption-review-panel):not(.reference-summary-panel):not(.diagnostic-plots-section):not(.frequency-plots-section):not(.correlation-plot-section):not(.logistic-diagnostics-panel) .coefficient-table th:first-child,
+.regression-results > .regression-result-panel:not(.landscape-table-panel):not(.model-overview-panel):not(.assumption-review-panel):not(.reference-summary-panel):not(.diagnostic-plots-section):not(.frequency-plots-section):not(.correlation-plot-section):not(.logistic-diagnostics-panel) .coefficient-table td:first-child {
+  width: 210px;
+  min-width: 210px;
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: keep-all;
+}
+
+.regression-results > .regression-result-panel:not(.landscape-table-panel):not(.model-overview-panel):not(.assumption-review-panel):not(.reference-summary-panel):not(.diagnostic-plots-section):not(.frequency-plots-section):not(.correlation-plot-section):not(.logistic-diagnostics-panel) .coefficient-table th:not(:first-child),
+.regression-results > .regression-result-panel:not(.landscape-table-panel):not(.model-overview-panel):not(.assumption-review-panel):not(.reference-summary-panel):not(.diagnostic-plots-section):not(.frequency-plots-section):not(.correlation-plot-section):not(.logistic-diagnostics-panel) .coefficient-table td:not(:first-child) {
+  min-width: 0 !important;
+  padding-left: 8px;
+  padding-right: 8px;
+  text-align: right;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.regression-results > .ttest-anova-result-panel table {
+  font-size: var(--result-table-font-size) !important;
+  table-layout: fixed;
+}
+
+.regression-results > .ttest-anova-result-panel .coefficient-table th,
+.regression-results > .ttest-anova-result-panel .coefficient-table td {
+  box-sizing: border-box;
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+  font-size: var(--result-table-font-size) !important;
+}
+
+.regression-results > .ttest-anova-result-panel .coefficient-table .coefficient-col-term,
+.regression-results > .ttest-anova-result-panel .coefficient-table th:nth-child(1),
+.regression-results > .ttest-anova-result-panel .coefficient-table td:nth-child(1) {
+  width: 74px !important;
+  min-width: 74px !important;
+}
+
+.regression-results > .ttest-anova-result-panel .coefficient-table .coefficient-col-value,
+.regression-results > .ttest-anova-result-panel .coefficient-table th:nth-child(2),
+.regression-results > .ttest-anova-result-panel .coefficient-table td:nth-child(2) {
+  width: 96px !important;
+  min-width: 96px !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+.regression-results > .ttest-anova-result-panel .coefficient-table .coefficient-col-stat,
+.regression-results > .ttest-anova-result-panel .coefficient-table .coefficient-col-statistic {
+  width: 52px !important;
+  min-width: 52px !important;
+}
+
+.regression-results > .ttest-anova-result-panel .coefficient-table .coefficient-col-p,
+.regression-results > .ttest-anova-result-panel .coefficient-table .coefficient-col-effect-size {
+  width: 50px !important;
+  min-width: 50px !important;
+}
+
+.regression-results > .ttest-anova-result-panel .coefficient-table .coefficient-col-posthoc {
+  width: 76px !important;
+  min-width: 76px !important;
+  white-space: pre-line !important;
+  overflow-wrap: anywhere !important;
+}
+
+.regression-results > .regression-result-panel.landscape-table-panel {
+  width: min(100%, 890px);
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.regression-results > .regression-result-panel.landscape-table-panel table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed;
+  font-size: var(--result-table-font-size);
+}
+
 .regression-result-panel h3 {
-  margin: 0 0 10px;
-  font-size: 17px;
+  margin: 0 0 8px;
+  font-size: 15px;
 }
 
 .regression-result-panel table {
@@ -3635,12 +3945,16 @@ input.variable-select:disabled {
   border-collapse: collapse;
   border-spacing: 0;
   background: transparent;
+  font-size: var(--result-table-font-size);
 }
 
 .regression-result-panel table > thead > tr > th,
 .regression-result-panel table > tbody > tr > th,
-.regression-result-panel table > tbody > tr > td {
-  padding: 7px 14px;
+.regression-result-panel table > tbody > tr > td,
+.regression-result-panel table > tfoot > tr > th,
+.regression-result-panel table > tfoot > tr > td {
+  font-size: var(--result-table-font-size) !important;
+  padding: 5px 7px;
   border-top: 0;
   border-right: 0;
   border-left: 0;
@@ -3657,6 +3971,86 @@ input.variable-select:disabled {
 .regression-result-panel table > tbody > tr:last-child > td,
 .regression-result-panel table > tbody > tr:last-child > th {
   border-bottom: 0;
+}
+
+.logistic-diagnostics-panel {
+  width: 590px;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.logistic-diagnostics-panel .coefficient-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.logistic-diagnostics-panel .coefficient-table th,
+.logistic-diagnostics-panel .coefficient-table td {
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+
+.logistic-diagnostics-panel .coefficient-table th:nth-child(1),
+.logistic-diagnostics-panel .coefficient-table td:nth-child(1) {
+  width: 72px !important;
+  min-width: 72px !important;
+  max-width: 72px !important;
+}
+
+.logistic-diagnostics-panel .coefficient-table th:nth-child(2),
+.logistic-diagnostics-panel .coefficient-table td:nth-child(2) {
+  width: 150px !important;
+  min-width: 150px !important;
+  max-width: 150px !important;
+}
+
+.logistic-diagnostics-panel .coefficient-table th:nth-child(3),
+.logistic-diagnostics-panel .coefficient-table td:nth-child(3) {
+  width: 210px !important;
+  min-width: 210px !important;
+  max-width: 210px !important;
+}
+
+.logistic-diagnostics-panel .coefficient-table th:nth-child(4),
+.logistic-diagnostics-panel .coefficient-table td:nth-child(4) {
+  width: 58px !important;
+  min-width: 58px !important;
+  max-width: 58px !important;
+}
+
+.logistic-diagnostics-panel .coefficient-table th:nth-child(5),
+.logistic-diagnostics-panel .coefficient-table td:nth-child(5) {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+}
+
+.assumption-review-panel .combined-model-overview-table {
+  width: 420px !important;
+  min-width: 420px !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.assumption-review-panel .combined-model-overview-table th:first-child,
+.assumption-review-panel .combined-model-overview-table td:first-child {
+  width: 92px !important;
+  min-width: 92px !important;
+  max-width: 92px !important;
+}
+
+.assumption-review-panel .combined-model-overview-table th:not(:first-child),
+.assumption-review-panel .combined-model-overview-table td:not(:first-child) {
+  width: 300px !important;
+  min-width: 300px !important;
+  max-width: 300px !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
 }
 
 .model-overview-panel table {
@@ -3926,6 +4320,25 @@ input.variable-select:disabled {
 
 .measurement-icon.measurement-ordered {
   background: #b45309;
+}
+
+.measurement-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 132px;
+}
+
+.measurement-control .measurement-symbol {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.measurement-control .measurement-select {
+  flex: 1 1 auto;
+  min-width: 96px;
 }
 
 .measurement-symbol {
@@ -4264,9 +4677,9 @@ table {
 .coefficient-note {
   caption-side: bottom;
   color: #52606d;
-  font-size: 14px;
-  line-height: 1.55;
-  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  margin-top: 6px;
   padding-top: 4px;
   text-align: left;
   white-space: normal;
@@ -4339,7 +4752,7 @@ table {
 
 .effect-size-reference-table {
   width: 100%;
-  max-width: 780px;
+  max-width: 590px;
   border-collapse: collapse;
   border-top: 2px solid #1f2937;
   border-bottom: 2px solid #1f2937;
@@ -4945,6 +5358,7 @@ pre {
 .paired-action-row > #nonparametric_paired_save_control,
 .paired-action-row > #paired_rm_save_control,
 .ttest-anova-action-row > #ttest_anova_save_control,
+.ancova-action-row > #ancova_save_control,
 .nonparametric-action-row > #nonparametric_save_control,
 .correlation-action-row > #correlation_save_control,
 .factor-analysis-action-row > #factor_analysis_save_control,
@@ -4963,6 +5377,7 @@ pre {
 .paired-action-row > #nonparametric_paired_reset_control,
 .paired-action-row > #paired_rm_reset_control,
 .ttest-anova-action-row > #ttest_anova_reset_control,
+.ancova-action-row > #ancova_reset_control,
 .nonparametric-action-row > #nonparametric_reset_control,
 .correlation-action-row > #correlation_reset_control,
 .factor-analysis-action-row > #factor_analysis_reset_control,
@@ -4986,6 +5401,7 @@ pre {
 .paired-action-row > #nonparametric_paired_reset_control .analysis-reset-button,
 .paired-action-row > #paired_rm_reset_control .analysis-reset-button,
 .ttest-anova-action-row > #ttest_anova_reset_control .analysis-reset-button,
+.ancova-action-row > #ancova_reset_control .analysis-reset-button,
 .nonparametric-action-row > #nonparametric_reset_control .analysis-reset-button,
 .correlation-action-row > #correlation_reset_control .analysis-reset-button,
 .factor-analysis-action-row > #factor_analysis_reset_control .analysis-reset-button,
@@ -5230,6 +5646,67 @@ pre {
 .paired-rm-grouped-table th:last-child,
 .paired-rm-grouped-table td:last-child {
   white-space: nowrap;
+}
+
+.paired-fit-table-wrap,
+.paired-diagnostics-panel {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.result-section.paired-result-section {
+  width: min(100%, 590px) !important;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.result-section.paired-result-section.landscape-table-panel {
+  width: min(100%, 890px) !important;
+}
+
+.paired-fit-table-wrap .coefficient-table,
+.paired-diagnostics-panel .coefficient-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.paired-fit-table-wrap .paired-rm-grouped-table {
+  font-size: 11px !important;
+}
+
+.paired-fit-table-wrap .paired-two-grouped-table {
+  font-size: 13px !important;
+}
+
+.paired-fit-table-wrap .coefficient-table th,
+.paired-fit-table-wrap .coefficient-table td,
+.paired-diagnostics-panel .coefficient-table th,
+.paired-diagnostics-panel .coefficient-table td {
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+}
+
+.paired-fit-table-wrap .coefficient-table td:not(:first-child),
+.paired-fit-table-wrap .coefficient-table th:not(:first-child) {
+  text-align: center;
+}
+
+.paired-fit-table-wrap .coefficient-note,
+.paired-diagnostics-panel .coefficient-note,
+.paired-diagnostics-panel .coefficient-warning {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 
@@ -5999,9 +6476,25 @@ pre {
 
 .result-toolbar {
   display: flex;
+  align-items: center;
   gap: 8px;
-  justify-content: flex-end;
+  justify-content: space-between;
   margin: 0 0 14px;
+}
+
+.result-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.result-toolbar-primary {
+  justify-content: flex-start;
+}
+
+.result-toolbar-export {
+  justify-content: flex-end;
 }
 
 .saved-result-count {
@@ -6175,6 +6668,43 @@ pre {
   color: #102a43;
   font-size: 0.95em;
   padding: 2px 5px;
+}
+
+.about-markdown-document mjx-container {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.about-markdown-document mjx-container[jax="CHTML"][display="true"] {
+  margin: 8px 0 12px 0;
+  text-align: left !important;
+}
+
+.about-markdown-document li > .measurement-symbol,
+.about-markdown-document p .measurement-symbol {
+  margin-right: 4px;
+  vertical-align: -3px;
+}
+
+.about-markdown-document li .measurement-symbol + code {
+  margin-left: 2px;
+}
+
+.about-markdown-document .measurement-term {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  vertical-align: -3px;
+}
+
+.about-markdown-document .measurement-term .measurement-symbol {
+  flex: 0 0 16px;
+}
+
+.about-markdown-document .measurement-term code {
+  margin: 0;
 }
 
 .about-markdown-document pre {
@@ -6419,4 +6949,745 @@ pre {
 .about-markdown-document th {
   background: #f7fafc;
   font-weight: 700;
+}
+
+.sample-size-workspace-panel {
+  min-width: 980px;
+}
+
+.sample-size-grid {
+  display: grid;
+  grid-template-columns: 326px 50px 326px 20px 310px;
+  gap: 18px;
+  align-items: stretch;
+  grid-auto-rows: 690px;
+  width: 1140px;
+  min-width: 1140px;
+  margin-top: 18px;
+  padding: 18px;
+  background: #f4f8fb;
+  border: 1px solid #e1eaf2;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.sample-size-block {
+  border: 1px solid #d7e2eb;
+  border-radius: 8px;
+  padding: 18px;
+  background: #eef4f8;
+  height: 100%;
+  min-height: 690px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  box-shadow: 0 1px 1px rgba(15, 23, 42, 0.03);
+}
+
+.sample-size-block1 {
+  grid-column: 1;
+}
+
+.sample-size-block2 {
+  grid-column: 3;
+}
+
+.sample-size-block3 {
+  grid-column: 5;
+}
+
+.sample-size-block h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 16px;
+}
+
+.sample-size-block .form-group {
+  margin-bottom: 12px;
+}
+
+.sample-size-block label {
+  margin-bottom: 5px;
+}
+
+.sample-size-block .form-control,
+.sample-size-block .selectize-input {
+  min-height: 32px;
+  height: 34px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+.sample-size-block2 .form-control,
+.sample-size-block2 .selectize-control {
+  width: 100%;
+}
+
+.sample-size-block2 .selectize-control.single .selectize-input {
+  height: auto;
+  line-height: 1.35;
+  min-height: 34px;
+  white-space: normal;
+}
+
+.sample-size-block2 .selectize-control.single .selectize-input > div {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.sample-size-block2 .selectize-dropdown-content .option {
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.sample-size-block1 {
+  padding-bottom: 60px;
+}
+
+.sample-size-block1 h3 {
+  margin-bottom: 50px;
+}
+
+.sample-size-block1 .form-group {
+  margin-bottom: 42px;
+  margin-left: 0;
+}
+
+.sample-size-block1 .radio {
+  margin-top: 8px;
+  margin-bottom: 12px;
+  margin-left: 0;
+}
+
+.sample-size-block1 .radio label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.45;
+}
+
+.sample-size-block1 .radio input[type="radio"] {
+  position: static;
+  margin: 0;
+}
+
+.sample-size-calculate {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.sample-size-fixed-target {
+  color: #102a43;
+  font-size: 14px;
+  margin: 8px 0;
+}
+
+.sample-size-result-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+  background: #ffffff;
+  font-size: 11.5px;
+}
+
+.sample-size-result-table th,
+.sample-size-result-table td {
+  font-size: 11.5px !important;
+  border-bottom: 1px solid #d7e2eb;
+  padding: 5px 7px;
+  text-align: left;
+}
+
+.sample-size-result-table th {
+  width: 58%;
+  color: #102a43;
+  font-weight: 600;
+}
+
+.sample-size-result-table .sample-size-result-section th {
+  background: #f4f8fb;
+  border-top: 2px solid #b8c8d6;
+  border-bottom: 1px solid #c8d7e3;
+  color: #334e68;
+  font-size: 12.5px;
+  letter-spacing: 0;
+  padding-top: 10px;
+  padding-bottom: 7px;
+  text-align: left;
+}
+
+.sample-size-result-table td {
+  text-align: right;
+  padding-right: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sample-size-result-table .sample-size-primary-effect th,
+.sample-size-result-table .sample-size-primary-effect td {
+  color: #001f3f;
+  font-weight: 800;
+}
+
+.sample-size-method-note {
+  color: #334e68;
+  font-size: 11px;
+  line-height: 1.35;
+  margin-top: 12px;
+}
+
+.sample-size-results,
+.sample-size-result,
+.sample-size-result-card,
+.sample-size-result-panel {
+  width: min(100%, 590px);
+  max-width: 100%;
+  zoom: 1.5 !important;
+}
+
+.coefficient-table .coefficient-col-value {
+  width: 112px;
+  min-width: 112px;
+}
+
+.coefficient-table .coefficient-col-statistic,
+.coefficient-table .coefficient-col-stat {
+  min-width: 82px;
+}
+
+.ancova-result-panel .coefficient-table .coefficient-col-statistic,
+.ancova-result-panel .coefficient-table .coefficient-col-stat {
+  min-width: 38px !important;
+  width: 38px !important;
+}
+
+.ancova-result-panel .coefficient-table .coefficient-col-p {
+  min-width: 44px !important;
+  width: 44px !important;
+  text-align: right !important;
+  white-space: nowrap !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+
+.ancova-result-panel .coefficient-table .coefficient-col-effect-size {
+  min-width: 44px !important;
+  width: 44px !important;
+  text-align: right !important;
+  white-space: nowrap !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+
+.ancova-result-panel .coefficient-table .coefficient-col-f {
+  min-width: 76px !important;
+  width: 76px !important;
+  text-align: right !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+
+.ancova-result-panel .coefficient-table .coefficient-col-mse {
+  min-width: 82px !important;
+  width: 82px !important;
+  text-align: right !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+
+.ancova-result-panel .coefficient-table .coefficient-col-reference {
+  min-width: 96px !important;
+  width: 96px !important;
+}
+
+.ancova-result-panel .coefficient-table .coefficient-col-posthoc {
+  min-width: 48px !important;
+  width: 48px !important;
+  white-space: pre-line !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+
+.ancova-result-panel .coefficient-table .coefficient-col-value {
+  min-width: 58px !important;
+  width: 58px !important;
+}
+
+.ancova-result-panel .coefficient-table .coefficient-col-term {
+  min-width: 72px !important;
+  width: 72px !important;
+}
+
+.ancova-result-panel .coefficient-table th,
+.ancova-result-panel .coefficient-table td {
+  box-sizing: border-box;
+  padding-left: 3px !important;
+  padding-right: 3px !important;
+  font-size: var(--result-table-font-size) !important;
+}
+
+.sample-size-references {
+  color: #23384d;
+  font-size: 12px;
+  line-height: 1.35;
+  margin-top: 12px;
+}
+
+.sample-size-references ul {
+  margin: 6px 0 0 18px;
+  padding: 0;
+}
+
+.sample-size-references li {
+  margin-bottom: 5px;
+}
+
+.sample-size-progress {
+  background: #ffffff;
+  border: 1px solid #c8d7e3;
+  border-radius: 6px;
+  padding: 14px;
+}
+
+.sample-size-progress-text {
+  color: #102a43;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.sample-size-progress-track {
+  background: #e6eef5;
+  border-radius: 999px;
+  height: 12px;
+  overflow: hidden;
+}
+
+.sample-size-progress-bar {
+  background: #2f7dbd;
+  height: 100%;
+  transition: width 180ms ease;
+  width: 0;
+}
+
+/* ANCOVA setup final overrides: keep three target panels inside the target block. */
+.ttest-anova-setup-grid.ancova-setup-grid {
+  grid-auto-rows: 520px !important;
+}
+
+.ttest-anova-setup-grid.ancova-setup-grid > .analysis-transfer-panel,
+.ttest-anova-setup-grid.ancova-setup-grid > .ancova-target-column,
+.ttest-anova-setup-grid.ancova-setup-grid > .ttest-anova-options-column {
+  height: 520px !important;
+  min-height: 520px !important;
+  max-height: 520px !important;
+}
+
+.ttest-anova-setup-grid.ancova-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox {
+  height: 417px !important;
+  min-height: 417px !important;
+  max-height: 417px !important;
+}
+
+.ttest-anova-setup-grid.ancova-setup-grid > .ancova-target-column {
+  display: grid !important;
+  grid-template-rows: 150px 92px 242px !important;
+  gap: 18px !important;
+  overflow: hidden !important;
+  width: 326px !important;
+  min-width: 326px !important;
+  max-width: 326px !important;
+}
+
+.ttest-anova-setup-grid.ancova-setup-grid .ancova-target-column > .analysis-transfer-panel {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+}
+
+.ttest-anova-setup-grid.ancova-setup-grid .ancova-target-column .analysis-field-label {
+  margin-bottom: 8px !important;
+}
+
+.ttest-anova-setup-grid.ancova-setup-grid .ancova-dependent-panel .analysis-transfer-listbox {
+  height: 58px !important;
+  min-height: 58px !important;
+  max-height: 58px !important;
+}
+
+.ttest-anova-setup-grid.ancova-setup-grid .ancova-factor-panel .analysis-transfer-listbox {
+  height: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+}
+
+.ttest-anova-setup-grid.ancova-setup-grid .ancova-covariate-panel .analysis-transfer-listbox {
+  height: 138px !important;
+  min-height: 138px !important;
+  max-height: 138px !important;
+}
+
+.ttest-anova-setup-grid.ancova-setup-grid .ancova-transfer-controls {
+  display: grid !important;
+  grid-template-rows: 150px 92px 242px !important;
+  gap: 18px !important;
+  height: 520px !important;
+  padding-top: 0 !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transform: translateX(6px);
+}
+
+.ancova-options.analysis-tabbed-options,
+.ancova-options .tab-content {
+  min-height: 0;
+  overflow: visible;
+}
+
+.ancova-options .tab-pane,
+.ancova-options .analysis-option-group,
+.ancova-options label {
+  overflow: visible;
+}
+
+.ancova-options .analysis-option-group {
+  margin-bottom: 8px;
+}
+
+.ancova-options .ancova-decision-controls {
+  display: block;
+}
+
+.ancova-options .ancova-decision-controls .form-group {
+  margin-bottom: 0;
+}
+
+.ancova-options .ancova-alpha-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.ancova-options .ancova-alpha-control .form-group {
+  margin-bottom: 0;
+}
+
+.ancova-options .ancova-alpha-label {
+  margin: 0;
+  min-width: 54px;
+  font-weight: 600;
+}
+
+.ancova-options .ancova-alpha-control input[type="number"],
+.ancova-options .ancova-alpha-control .form-control {
+  width: 84px !important;
+  min-width: 84px !important;
+  max-width: 84px !important;
+}
+
+.ancova-options .radio-inline,
+.ancova-options .checkbox {
+  margin-right: 10px;
+}
+
+.ancova-options .analysis-option-title {
+  color: #002b50;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.15;
+  margin-bottom: 14px;
+}
+
+.ancova-options .analysis-option-subtitle {
+  margin-bottom: 6px;
+  margin-top: 8px;
+}
+
+.ancova-options .analysis-option-note {
+  font-size: 12.5px;
+  line-height: 1.28;
+  margin-top: 10px;
+}
+
+.ancova-options .tab-pane .analysis-option-group:last-child {
+  margin-bottom: 0;
+}
+
+.ancova-model-options .analysis-option-group {
+  margin-bottom: 10px;
+}
+
+.ancova-model-options .radio {
+  margin-bottom: 4px !important;
+  margin-top: 0 !important;
+}
+
+.ancova-model-options .radio label {
+  line-height: 1.22;
+}
+
+.ancova-model-options .ancova-ss-explanation {
+  margin-left: 8px;
+  margin-top: 10px;
+  width: 258px;
+}
+
+.ancova-model-options .ancova-decision-controls .shiny-options-group {
+  display: grid;
+  grid-template-columns: 1fr;
+  row-gap: 3px;
+  margin-left: 36px;
+  max-width: 220px;
+}
+
+.ancova-model-options .ancova-decision-controls .radio-inline {
+  margin-left: 0 !important;
+}
+
+.ancova-model-options .ancova-alpha-control {
+  display: grid;
+  grid-template-columns: 54px 84px;
+  column-gap: 0;
+  margin-top: 8px;
+  align-items: center;
+}
+
+.ancova-model-options .ancova-alpha-label {
+  min-width: 0;
+  width: 54px;
+}
+
+.ancova-model-options .analysis-option-note {
+  font-size: 12px;
+  line-height: 1.15;
+  margin: 6px 0 0 0;
+}
+
+.ancova-model-options .checkbox {
+  margin-bottom: 2px !important;
+  margin-left: 37px;
+  margin-top: 7px !important;
+}
+
+.ancova-model-options .checkbox label {
+  font-size: 12.8px;
+  line-height: 1.16;
+}
+
+.ancova-model-options .analysis-option-group:last-child {
+  margin-bottom: 0;
+}
+
+.ancova-output-options {
+  margin-top: 0;
+}
+
+.ancova-output-options .analysis-option-group {
+  margin-bottom: -5px;
+}
+
+.ancova-output-options .analysis-option-title {
+  margin-bottom: 10px;
+}
+
+.ancova-output-options .analysis-option-subtitle {
+  margin-bottom: 18px;
+  margin-top: 2px;
+}
+
+.ancova-output-options .form-group,
+.ancova-output-options .shiny-input-container {
+  margin-bottom: 0 !important;
+}
+
+.ancova-output-options .checkbox,
+.ancova-output-options .radio {
+  margin-bottom: -1px !important;
+  margin-top: 0 !important;
+  min-height: 18px !important;
+}
+
+.ancova-output-options .checkbox label,
+.ancova-output-options .radio label {
+  font-size: 12.4px;
+  line-height: 17px;
+  max-width: 286px;
+  padding-left: 22px;
+  width: 286px;
+}
+
+.ancova-output-options .checkbox input[type="checkbox"],
+.ancova-output-options .radio input[type="radio"] {
+  margin-left: -22px;
+  margin-top: 2px;
+}
+
+.ancova-output-options .analysis-option-group:last-child .checkbox {
+  margin-bottom: -1px !important;
+}
+
+.ancova-checks-options {
+  padding-top: 14px !important;
+}
+
+.ancova-checks-options .analysis-option-group {
+  margin-bottom: 8px;
+}
+
+.ancova-checks-options .analysis-option-title {
+  margin-bottom: 10px;
+}
+
+.ancova-checks-options .analysis-option-subtitle {
+  margin-bottom: 6px;
+  margin-left: 20px;
+  margin-top: 8px;
+}
+
+.ancova-checks-options .analysis-option-note {
+  font-size: 12.2px;
+  line-height: 1.2;
+  margin-top: 5px;
+}
+
+.ancova-checks-options .checkbox {
+  margin-bottom: -1px !important;
+  margin-left: 37px;
+  margin-top: 0 !important;
+  min-height: 18px !important;
+}
+
+.ancova-checks-options .radio {
+  margin-bottom: -1px !important;
+  margin-left: 36px;
+  margin-top: 0 !important;
+  min-height: 18px !important;
+}
+
+.ancova-checks-options .checkbox label,
+.ancova-checks-options .radio label {
+  font-size: 12.4px;
+  line-height: 17px;
+}
+
+.ancova-checks-options #ancova_normality_method .shiny-options-group,
+.ancova-checks-options #ancova_homogeneity_method .shiny-options-group {
+  display: grid;
+  grid-template-columns: 1fr;
+  row-gap: 0;
+}
+
+.ancova-checks-options #ancova_normality_method .radio:nth-child(n+2) {
+  margin-left: 54px;
+}
+
+.ancova-checks-options #ancova_normality_method .radio:nth-child(n+2) label {
+  font-size: 12.2px;
+}
+
+.ancova-normality-method-block.ttest-normality-disabled {
+  opacity: 0.38;
+}
+
+.ancova-checks-options:has(#ancova_normality_enabled:not(:checked)) .ancova-normality-method-block {
+  opacity: 0.38;
+  pointer-events: none;
+}
+
+.ancova-normality-method-block.ttest-normality-disabled .analysis-option-subtitle,
+.ancova-normality-method-block.ttest-normality-disabled .analysis-option-note,
+.ancova-normality-method-block.ttest-normality-disabled label,
+.ancova-normality-method-block.ttest-normality-disabled span {
+  color: #7f8d99 !important;
+}
+
+.ancova-diagnostics-table .ancova-sort-button {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-weight: 700;
+  gap: 3px;
+  justify-content: center;
+  line-height: 1.15;
+  margin: 0;
+  max-width: 100%;
+  padding: 0;
+  text-align: center;
+  white-space: normal;
+}
+
+.ancova-diagnostics-table .ancova-sort-button:hover,
+.ancova-diagnostics-table .ancova-sort-button:focus-visible {
+  color: #0b65b9;
+  outline: 0;
+}
+
+.ancova-diagnostics-table .ancova-sort-button:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ancova-diagnostics-table .ancova-sort-indicator {
+  color: #64748b;
+  font-size: 9px;
+  line-height: 1;
+}
+
+.ancova-diagnostics-table .ancova-sort-button.is-active .ancova-sort-indicator {
+  color: #0b65b9;
+}
+
+.ancova-checks-options:has(#ancova_normality_enabled:not(:checked)) .ancova-normality-method-block .analysis-option-subtitle,
+.ancova-checks-options:has(#ancova_normality_enabled:not(:checked)) .ancova-normality-method-block .analysis-option-note,
+.ancova-checks-options:has(#ancova_normality_enabled:not(:checked)) .ancova-normality-method-block label,
+.ancova-checks-options:has(#ancova_normality_enabled:not(:checked)) .ancova-normality-method-block span {
+  color: #7f8d99 !important;
+  cursor: not-allowed;
+}
+
+.ancova-action-row {
+  display: grid !important;
+  grid-template-columns: 326px 50px 326px 20px 310px !important;
+  gap: 18px !important;
+  width: 1176px !important;
+  min-width: 1176px !important;
+  align-items: start !important;
+}
+
+.ancova-action-row > #run_ancova {
+  grid-column: 1 !important;
+  justify-self: start !important;
+  margin-left: 30px !important;
+  width: 300px !important;
+  min-width: 300px !important;
+}
+
+.ancova-action-row > #ancova_reset_control {
+  grid-column: 3 !important;
+  justify-self: start !important;
+  margin-left: 30px !important;
+  width: 300px !important;
+  min-width: 300px !important;
+}
+
+.ancova-action-row > #ancova_save_control {
+  grid-column: 5 !important;
+  justify-self: center !important;
+  align-self: start !important;
+  margin-left: 0 !important;
+  transform: translateX(18px) !important;
+}
+
+.ancova-action-row > #ancova_save_control .analysis-save-action {
+  justify-content: center !important;
+  width: 310px !important;
+  max-width: 310px !important;
 }

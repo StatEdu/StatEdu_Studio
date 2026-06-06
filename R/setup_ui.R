@@ -181,6 +181,36 @@ ttest_anova_tab_panel <- function(title = "t-test / ANOVA") {
   )
 }
 
+ancova_tab_panel <- function(title = "ANCOVA") {
+  tabPanel(
+    title,
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1("ANCOVA"),
+        div("Run covariate-adjusted group comparisons with ANCOVA, robust ANCOVA, ranked ANCOVA, and interaction ANCOVA.", class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel ttest-anova-workspace-panel ancova-workspace-panel",
+        style = "min-width:980px;overflow-x:auto;",
+        analysis_workspace_heading("ANCOVA", "ancova"),
+        analysis_workspace_body(
+          "ancova",
+          uiOutput("ancova_setup"),
+          div(
+            class = "analysis-action-row ttest-anova-action-row ancova-action-row",
+            actionButton("run_ancova", "Run analysis", class = "btn btn-primary"),
+            uiOutput("ancova_reset_control"),
+            uiOutput("ancova_save_control")
+          ),
+          uiOutput("ancova_results")
+        )
+      )
+    )
+  )
+}
+
 nonparametric_tab_panel <- function(title = "Nonparametric Tests") {
   tabPanel(
     title,

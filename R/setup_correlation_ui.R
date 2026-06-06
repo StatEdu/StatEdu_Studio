@@ -10,7 +10,6 @@ correlation_setup_state <- function(
   continuous_method = "auto",
   normality = TRUE,
   latent_correlations = FALSE,
-  reason = TRUE,
   p_ci = TRUE,
   significance_levels = TRUE,
   scatter_plot = TRUE,
@@ -31,7 +30,6 @@ correlation_setup_state <- function(
     continuous_method = correlation_continuous_method_value(continuous_method),
     normality = isTRUE(normality),
     latent_correlations = isTRUE(latent_correlations),
-    reason = isTRUE(reason),
     p_ci = isTRUE(p_ci),
     significance_levels = isTRUE(significance_levels),
     scatter_plot = isTRUE(scatter_plot),
@@ -90,8 +88,7 @@ correlation_setup_panel <- function(state) {
           list(
             list(id = "correlation_p_ci", label = "p-value & 95% CI", value = state$p_ci),
             list(id = "correlation_significance_levels", label = "significance levels", value = state$significance_levels),
-            list(id = "correlation_normality", label = "normality diagnostics", value = state$normality),
-            list(id = "correlation_reason", label = "reason", value = state$reason)
+            list(id = "correlation_normality", label = "normality diagnostics", value = state$normality)
           )
         ),
         analysis_radio_group(

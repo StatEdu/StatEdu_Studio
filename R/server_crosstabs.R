@@ -461,11 +461,7 @@ register_crosstab_handlers <- function(
     )
   }, ignoreInit = TRUE)
 
-  register_add_result_snapshot(input, session, "add_crosstab_result", "Cross-tabulation", function() {
-    result <- crosstab_result()
-    shiny::req(!is.null(result))
-    saved_crosstab_results_html(result)
-  })
+  register_add_result_snapshot(input, session, "add_crosstab_result", "Cross-tabulation", "crosstab_results")
 
   invisible(TRUE)
 }

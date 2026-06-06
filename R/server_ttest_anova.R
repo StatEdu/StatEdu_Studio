@@ -43,6 +43,8 @@ register_ttest_anova_handlers <- function(
   trend_analysis_value <- reactiveVal(FALSE)
   ordered_significance_value <- reactiveVal(FALSE)
   effect_size_value <- reactiveVal(TRUE)
+  show_df_value <- reactiveVal(FALSE)
+  mean_sd_value <- reactiveVal(FALSE)
 
   current_selected <- reactive({
     as.character(selected_names_fn() %||% character(0))
@@ -78,7 +80,9 @@ register_ttest_anova_handlers <- function(
         nonparametric_post_hoc_method = isolate(nonparametric_post_hoc_method_value()),
         ordered_significance = isolate(ordered_significance_value()),
         effect_size = isolate(effect_size_value()),
-        options_tab = isolate(input$ttest_anova_options_tab) %||% "Assumption"
+        show_df = isolate(show_df_value()),
+        mean_sd = isolate(mean_sd_value()),
+        options_tab = isolate(input$ttest_anova_options_tab) %||% "Normality"
       )
     )
   })
@@ -166,6 +170,14 @@ register_ttest_anova_handlers <- function(
 
   observeEvent(input$ttest_anova_effect_size, {
     effect_size_value(isTRUE(input$ttest_anova_effect_size))
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$ttest_anova_show_df, {
+    show_df_value(isTRUE(input$ttest_anova_show_df))
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$ttest_anova_mean_sd, {
+    mean_sd_value(isTRUE(input$ttest_anova_mean_sd))
   }, ignoreInit = TRUE)
 
   observe({
@@ -440,7 +452,9 @@ register_ttest_anova_handlers <- function(
         post_hoc_method = post_hoc_method,
         nonparametric_post_hoc_method = nonparametric_post_hoc_method,
         ordered_significance = isTRUE(ordered_significance_value()),
-        effect_size = isTRUE(effect_size_value())
+        effect_size = isTRUE(effect_size_value()),
+        show_df = isTRUE(show_df_value()),
+        mean_sd = isTRUE(mean_sd_value())
       )
     result <- tryCatch(
       prepare_ttest_anova_results(
@@ -566,11 +580,7 @@ register_ttest_anova_handlers <- function(
     )
   })
 
-  register_add_result_snapshot(input, session, "add_ttest_anova_result", "t-test / ANOVA", function() {
-    result <- ttest_anova_result()
-    shiny::req(!is.null(result), is.null(result$error))
-    saved_ttest_anova_results_html(result)
-  })
+  register_add_result_snapshot(input, session, "add_ttest_anova_result", "t-test / ANOVA", "ttest_anova_results")
 
   invisible(TRUE)
 }

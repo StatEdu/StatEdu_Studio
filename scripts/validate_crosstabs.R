@@ -94,7 +94,7 @@ expect_true(grepl("205\\(59.9\\)", display_html), "Expected cross-tabulation cel
 expect_true(grepl("1\\(\u00A05.0\\)", crosstab_cell_text(1, 5), fixed = FALSE), "Expected compact n(percent) to pad percentages under 10")
 expect_true(!grepl("OR=", display_html), "Expected ES cell to omit effect size type")
 expect_true(grepl("2.120", display_html), "Expected ES cell to include numeric estimate")
-expect_true(grepl("ES = odds ratio", display_notes), "Expected ES type note")
+expect_true(grepl("ES = effect size (odds ratio)", display_notes, fixed = TRUE), "Expected ES type note")
 
 split_display_result <- display_result
 split_display_result$options$split_count_percent <- TRUE
@@ -168,8 +168,8 @@ multi_result_html <- renderTags(crosstab_results_ui(list(display_result, display
 expect_true(identical(length(gregexpr("Cross-tabulation:", multi_result_html, fixed = TRUE)[[1]]), 1L), "Expected one result panel per column variable")
 expect_true(grepl("sex", multi_result_html, fixed = TRUE), "Expected first row variable in column-grouped table")
 expect_true(grepl("age_group", multi_result_html, fixed = TRUE), "Expected second row variable in column-grouped table")
-expect_true(length(gregexpr('class="crosstab-footnote-marker">1</sup>', multi_result_html, fixed = TRUE)[[1]]) >= 2, "Expected identical test methods to share the same p-value footnote marker")
-expect_true(identical(length(gregexpr("1. Pearson chi-square test was used.", multi_result_html, fixed = TRUE)[[1]]), 1L), "Expected identical test method note to appear once")
+expect_true(!grepl('class="crosstab-footnote-marker">', multi_result_html, fixed = TRUE), "Expected identical methods and effect sizes to omit value markers")
+expect_true(identical(length(gregexpr("Pearson chi-square test was used.", multi_result_html, fixed = TRUE)[[1]]), 1L), "Expected identical test method note to appear once")
 expect_true(!grepl("Tests:", multi_result_html, fixed = TRUE), "Expected grouped result to omit the separate tests table")
 expect_true(!grepl("<h3>Effect size</h3>", multi_result_html, fixed = TRUE), "Expected grouped result to omit the separate effect size table")
 
@@ -237,6 +237,6 @@ save_crosstab_excel_file(list(trend_2xk), trend_xlsx)
 expect_true(file.exists(trend_xlsx) && file.info(trend_xlsx)$size > 0, "Expected crosstab trend Excel export file")
 trend_export <- crosstab_excel_group_table(list(trend_2xk))
 expect_true("p for trend" %in% names(trend_export), "Expected p for trend in crosstab Excel export table")
-expect_true(grepl("[0-9]$", trend_export[["p for trend"]][[1]]), "Expected p for trend Excel value to include a note marker")
+expect_true(identical(trend_export[["p for trend"]][[1]], crosstab_trend_p_text(trend_2xk)), "Expected single trend method to omit an Excel note marker")
 
 message("All cross-tabulation validations passed.")

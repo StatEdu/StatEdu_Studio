@@ -756,6 +756,83 @@ ttest_distribute_ordered_posthoc <- function(rows, notation) {
   rows
 }
 
+analysis_apply_ordered_posthoc_markers <- function(rows, estimates, levels, p_matrix, label_column = NULL, alpha = .05) {
+  if (!is.data.frame(rows) || !"post-hoc" %in% names(rows)) {
+    return(rows)
+  }
+  if (is.null(label_column)) {
+    label_column <- intersect(c("Label", "Value"), names(rows))[[1]] %||% ""
+  }
+  if (!nzchar(label_column) || !label_column %in% names(rows)) {
+    return(rows)
+  }
+  all_estimates <- suppressWarnings(as.numeric(estimates))
+  all_levels <- as.character(levels)
+  valid <- is.finite(all_estimates) & nzchar(all_levels)
+  if (!any(valid) || is.null(p_matrix) || length(p_matrix) == 0) {
+    return(rows)
+  }
+  estimates <- all_estimates[valid]
+  levels <- all_levels[valid]
+  if (length(levels) < 2L) {
+    return(rows)
+  }
+
+  marker_sequence <- c(letters, paste0(rep(letters, each = length(letters)), letters))
+  marker_map <- stats::setNames(marker_sequence[seq_along(levels)], levels)
+  ordered_low_to_high <- levels[order(estimates, decreasing = FALSE, na.last = NA)]
+  estimate_map <- stats::setNames(estimates, levels)
+
+  ordered_high_to_low <- rev(ordered_low_to_high)
+  statements <- character(0)
+  for (higher in ordered_high_to_low) {
+    lower_markers <- character(0)
+    for (candidate in ordered_low_to_high) {
+      if (identical(higher, candidate)) next
+      if (!all(c(higher, candidate) %in% rownames(p_matrix)) || !all(c(higher, candidate) %in% colnames(p_matrix))) next
+      if (!is.finite(estimate_map[[higher]]) || !is.finite(estimate_map[[candidate]]) || estimate_map[[higher]] <= estimate_map[[candidate]]) next
+      p_value <- suppressWarnings(as.numeric(p_matrix[higher, candidate] %||% NA_real_))
+      if (is.finite(p_value) && p_value < alpha) {
+        lower_markers <- c(lower_markers, named_value(marker_map, candidate, ""))
+      }
+    }
+    lower_markers <- unique(lower_markers[nzchar(lower_markers)])
+    higher_marker <- named_value(marker_map, higher, "")
+    if (length(lower_markers) > 0L && nzchar(higher_marker)) {
+      statements <- c(statements, sprintf("%s>%s", higher_marker, paste(lower_markers, collapse = ",")))
+    }
+  }
+  if (length(statements) == 0L) {
+    return(rows)
+  }
+
+  marker_rows <- list()
+  for (row_index in seq_len(min(nrow(rows), length(all_levels)))) {
+    level <- all_levels[[row_index]] %||% ""
+    marker <- named_value(marker_map, level, "")
+    if (nzchar(marker) && nzchar(as.character(rows[[label_column]][[row_index]] %||% ""))) {
+      marker_rows[[length(marker_rows) + 1L]] <- data.frame(
+        row = row_index,
+        column = label_column,
+        marker = marker,
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  if (length(marker_rows) > 0L) {
+    existing <- attr(rows, "note_markers", exact = TRUE)
+    marker_table <- do.call(rbind, marker_rows)
+    attr(rows, "note_markers") <- if (is.data.frame(existing) && nrow(existing) > 0) {
+      rbind(existing, marker_table)
+    } else {
+      marker_table
+    }
+  }
+  rows[["post-hoc"]] <- ""
+  rows[["post-hoc"]][[1]] <- paste(unique(statements), collapse = "; ")
+  rows
+}
+
 ttest_effect_size <- function(values, groups, test_type) {
   data <- ttest_analysis_data(values, groups)
   if (nrow(data) == 0) return("")
@@ -806,6 +883,24 @@ ttest_group_summary <- function(values, groups, levels, median_iqr = FALSE) {
 }
 
 ttest_result_table_columns <- c("Variable", "Value", "M", "SD", "Statistic", "p", "Effect size", "p for trend", "post-hoc")
+
+ttest_statistic_df_text <- function(value) {
+  value <- suppressWarnings(as.numeric(value))
+  if (!is.finite(value)) return("")
+  if (abs(value - round(value)) < 1e-8) {
+    return(as.character(as.integer(round(value))))
+  }
+  format_decimal3(value)
+}
+
+ttest_format_statistic <- function(statistic, df = numeric(0)) {
+  stat_text <- format_decimal3(statistic)
+  if (!nzchar(stat_text)) return("")
+  df <- suppressWarnings(as.numeric(df))
+  df <- df[is.finite(df)]
+  if (length(df) == 0L) return(stat_text)
+  paste0(stat_text, "(", paste(vapply(df, ttest_statistic_df_text, character(1)), collapse = ","), ")")
+}
 
 ttest_statistic_heading <- function(labels) {
   labels <- unique(as.character(labels %||% character(0)))
@@ -878,7 +973,7 @@ ttest_numbered_notes <- function(items) {
     notes <- item$notes %||% list()
     add_note("method", notes$p_key %||% "", notes$p_note %||% "")
     effect <- notes$effect_size %||% ""
-    if (nzchar(effect)) add_note("effect", effect, paste0("Effect size = ", effect, "."))
+    if (nzchar(effect)) add_note("effect", effect, paste0("ES = effect size (", effect, ")."))
     add_note("trend", notes$trend_key %||% "", notes$trend_note %||% "")
   }
   if (length(rows) == 0) {
@@ -886,7 +981,17 @@ ttest_numbered_notes <- function(items) {
   }
   out <- do.call(rbind, rows)
   out <- out[!duplicated(ttest_note_key(out$type, out$key)), , drop = FALSE]
-  out$marker <- as.character(seq_len(nrow(out)))
+  out$marker <- ""
+  marker_index <- 0L
+  note_type_order <- c("method", "trend", "effect")
+  for (type in note_type_order[note_type_order %in% unique(out$type)]) {
+    rows_for_type <- which(out$type == type)
+    if (length(rows_for_type) <= 1L) next
+    for (row_index in rows_for_type) {
+      marker_index <- marker_index + 1L
+      out$marker[[row_index]] <- as.character(marker_index)
+    }
+  }
   out[, c("marker", "type", "key", "note")]
 }
 
@@ -903,6 +1008,14 @@ ttest_append_marker <- function(value, marker) {
   paste0(value, marker)
 }
 
+ttest_preserve_note_markers <- function(source, target) {
+  markers <- attr(source, "note_markers", exact = TRUE)
+  if (is.data.frame(markers) && nrow(markers) > 0) {
+    attr(target, "note_markers") <- markers
+  }
+  target
+}
+
 ttest_apply_numbered_notes <- function(table, items) {
   notes <- ttest_numbered_notes(items)
   if (!is.data.frame(table) || nrow(table) == 0 || nrow(notes) == 0) {
@@ -910,6 +1023,10 @@ ttest_apply_numbered_notes <- function(table, items) {
   }
 
   cell_markers <- list()
+  existing_markers <- attr(table, "note_markers", exact = TRUE)
+  if (is.data.frame(existing_markers) && nrow(existing_markers) > 0) {
+    cell_markers <- lapply(seq_len(nrow(existing_markers)), function(index) existing_markers[index, , drop = FALSE])
+  }
   add_cell_marker <- function(row, column, marker) {
     marker <- as.character(marker %||% "")
     if (!nzchar(marker)) return()
@@ -945,7 +1062,7 @@ ttest_apply_numbered_notes <- function(table, items) {
     row_start <- row_start + n_rows
   }
   if (length(cell_markers) > 0) {
-    attr(table, "note_markers") <- do.call(rbind, cell_markers)
+    attr(table, "note_markers") <- ttest_bind_result_rows(cell_markers)
   }
   list(table = table, notes = notes)
 }
@@ -961,15 +1078,55 @@ ttest_analysis_note_line <- function(items) {
   }, character(1))
   posthoc_notes <- unique(posthoc_notes[nzchar(posthoc_notes)])
   notes <- ttest_numbered_notes(items)
-  parts <- if (is.data.frame(notes) && nrow(notes) > 0) sprintf("%s. %s", notes$marker, notes$note) else character(0)
+  format_note_rows <- function(note_rows) {
+    if (!is.data.frame(note_rows) || nrow(note_rows) == 0) return(character(0))
+    ifelse(nzchar(note_rows$marker), sprintf("%s. %s", note_rows$marker, note_rows$note), note_rows$note)
+  }
+  analysis_parts <- if (is.data.frame(notes) && nrow(notes) > 0) {
+    format_note_rows(notes[notes$type %in% c("method", "trend"), , drop = FALSE])
+  } else {
+    character(0)
+  }
+  effect_parts <- if (is.data.frame(notes) && nrow(notes) > 0) {
+    format_note_rows(notes[notes$type == "effect", , drop = FALSE])
+  } else {
+    character(0)
+  }
+  parts <- analysis_parts
   if (length(posthoc_notes) > 0) {
     parts <- c(parts, sprintf("Post-hoc: %s.", paste(posthoc_notes, collapse = ", ")))
+  }
+  parts <- c(parts, effect_parts)
+  if (any(vapply(items, function(item) isTRUE(item$notes$mean_sd), logical(1)))) {
+    parts <- c(parts, "M \u00B1 SD = mean \u00B1 standard deviation.")
   }
   paste(parts, collapse = " ")
 }
 
 ttest_bind_result_rows <- function(rows) {
-  analysis_bind_rows(rows)
+  rows <- Filter(function(row) is.data.frame(row) && nrow(row) > 0, rows %||% list())
+  if (length(rows) == 0) {
+    return(data.frame(stringsAsFactors = FALSE))
+  }
+  marker_rows <- list()
+  row_offset <- 0L
+  for (row in rows) {
+    markers <- attr(row, "note_markers", exact = TRUE)
+    if (is.data.frame(markers) && nrow(markers) > 0) {
+      markers <- markers[nzchar(as.character(markers$marker %||% "")), , drop = FALSE]
+      if (nrow(markers) > 0) {
+        markers$row <- as.integer(markers$row) + row_offset
+        marker_rows[[length(marker_rows) + 1L]] <- markers
+      }
+    }
+    row_offset <- row_offset + nrow(row)
+  }
+  out <- analysis_bind_rows(rows)
+  if (length(marker_rows) > 0) {
+    markers <- analysis_bind_rows(marker_rows)
+    attr(out, "note_markers") <- markers
+  }
+  out
 }
 
 ttest_single_result <- function(data, dependent, factor, variable_info, labels, category_table, options) {
@@ -1071,6 +1228,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
   equal_variance <- NA
   analysis <- ""
   statistic <- NA_real_
+  statistic_df <- numeric(0)
   statistic_label <- ""
   p_value <- NA_real_
   test_type <- ""
@@ -1098,6 +1256,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
         ))
       }
       statistic <- unname(fit$statistic)
+      statistic_df <- unname(fit$parameter)
       statistic_label <- "t"
       p_value <- fit$p.value
       analysis <- if (isTRUE(equal_variance)) "Independent samples t-test" else "Welch t-test"
@@ -1145,6 +1304,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
         ))
       }
       statistic <- as.numeric(fit_summary[["F value"]][[1]])
+      statistic_df <- c(as.numeric(fit_summary[["Df"]][[1]]), as.numeric(fit_summary[["Df"]][[2]]))
       statistic_label <- "F"
       p_value <- as.numeric(fit_summary[["Pr(>F)"]][[1]])
       analysis <- "One-way ANOVA"
@@ -1190,6 +1350,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
         ))
       }
       statistic <- unname(fit$statistic)
+      statistic_df <- unname(fit$parameter)
       statistic_label <- "F"
       p_value <- fit$p.value
       analysis <- "Welch ANOVA"
@@ -1221,6 +1382,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
       ))
     }
     statistic <- unname(fit$statistic)
+    statistic_df <- unname(fit$parameter)
     statistic_label <- stat_chisq_label()
     p_value <- fit$p.value
     analysis <- "Kruskal-Wallis test"
@@ -1280,25 +1442,38 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
     check.names = FALSE
   )
   rows$Variable[[1]] <- ttest_display_variable(factor, variable_info, labels, category_table)
-  rows$Statistic[[1]] <- format_decimal3(statistic)
+  rows$Statistic[[1]] <- if (isTRUE(options$show_df)) {
+    ttest_format_statistic(statistic, statistic_df)
+  } else {
+    format_decimal3(statistic)
+  }
   p_text <- format_p(p_value)
   rows$p[[1]] <- if (is.na(p_text)) "" else paste0(p_text, p_note$symbol %||% "")
   rows[["Effect size"]][[1]] <- effect_size_text
   rows[["p for trend"]][[1]] <- if (is.na(trend_p) || !nzchar(trend_p)) "" else paste0(trend_p, trend_note$symbol %||% "")
+  if (isTRUE(options$mean_sd)) {
+    rows[["M \u00B1 SD"]] <- ifelse(
+      nzchar(rows$M) & nzchar(rows$SD),
+      paste0(rows$M, "\u00A0\u00B1\u00A0", rows$SD),
+      ""
+    )
+    rows <- rows[, c("Variable", "Value", "M \u00B1 SD", "Statistic", "p", "Effect size", "p for trend", "post-hoc"), drop = FALSE]
+  }
 
   if (nzchar(posthoc_label) && isTRUE(options$ordered_significance) && !is.null(p_matrix)) {
-    level_labels <- stats::setNames(ttest_display_levels(factor, levels, category_table), levels)
-    ordered_posthoc <- ttest_ordered_significance_notation(
-      values,
-      groups,
-      p_matrix,
-      labels = level_labels
+    rows <- analysis_apply_ordered_posthoc_markers(
+      rows,
+      estimates = suppressWarnings(as.numeric(summaries$M)),
+      levels = summaries$Value,
+      p_matrix = p_matrix,
+      label_column = "Value"
     )
-    rows <- ttest_distribute_ordered_posthoc(rows, ordered_posthoc)
   } else if (nzchar(posthoc_label)) {
     rows[["post-hoc"]] <- ttest_lookup_letters(letters, summaries$Value)
   }
-  rows <- rows[, ttest_result_table_columns, drop = FALSE]
+  if (!isTRUE(options$mean_sd)) {
+    rows <- ttest_preserve_note_markers(rows, rows[, ttest_result_table_columns, drop = FALSE])
+  }
   posthoc_table <- ttest_safe_call(ttest_posthoc_table(factor, levels, p_matrix, posthoc_label, variable_info, labels, category_table), data.frame(stringsAsFactors = FALSE))
 
   normality_text <- if ((isTRUE(normality_enabled) || isTRUE(options$force_nonparametric)) && nzchar(normality$detail %||% "")) {
@@ -1339,7 +1514,8 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
       trend = trend_method,
       trend_key = trend_note$key %||% "",
       trend_symbol = trend_note$symbol %||% "",
-      trend_note = trend_note$note %||% ""
+      trend_note = trend_note$note %||% "",
+      mean_sd = isTRUE(options$mean_sd)
     ),
     warnings = ttest_bind_result_rows(warning_rows)
   )
@@ -1361,6 +1537,7 @@ ttest_model_overview_wide <- function(overview, dependents = NULL, variable_info
   }
   dependent_labels <- unique(dependent_labels[nzchar(dependent_labels)])
   factors <- unique(as.character(overview$`Independent variable`))
+
   short_analysis <- function(value) {
     value <- as.character(value %||% "")
     switch(
@@ -1376,87 +1553,51 @@ ttest_model_overview_wide <- function(overview, dependents = NULL, variable_info
   }
   normality_satisfied <- function(value) {
     value <- as.character(value %||% "")
-    if (!nzchar(value)) {
-      return("")
-    }
+    if (!nzchar(value)) return("")
     p_values <- suppressWarnings(as.numeric(unlist(regmatches(value, gregexpr("(?<=\\()[<>.]?[0-9.]+(?=\\))", value, perl = TRUE)))))
     if (length(p_values) > 0 && any(!is.na(p_values))) {
-      return(if (all(p_values[!is.na(p_values)] >= .05)) "정규성 만족" else "정규성 불만족")
+      return(if (all(p_values[!is.na(p_values)] >= .05)) "\uc815\uaddc\uc131 \ub9cc\uc871" else "\uc815\uaddc\uc131 \ubd88\ub9cc\uc871")
     }
     numeric_values <- suppressWarnings(as.numeric(unlist(regmatches(value, gregexpr("-?[0-9.]+", value)))))
     if (grepl("skew\\s*=|kurtosis\\s*=", value, ignore.case = TRUE) && length(numeric_values) >= 2) {
       skew <- numeric_values[[1]]
       kurtosis <- numeric_values[[2]]
-      return(if (!is.na(skew) && !is.na(kurtosis) && abs(skew) <= 2 && abs(kurtosis) <= 7) "정규성 만족" else "정규성 불만족")
+      return(if (!is.na(skew) && !is.na(kurtosis) && abs(skew) <= 2 && abs(kurtosis) <= 7) "\uc815\uaddc\uc131 \ub9cc\uc871" else "\uc815\uaddc\uc131 \ubd88\ub9cc\uc871")
     }
     ""
   }
   homogeneity_satisfied <- function(value) {
     value <- as.character(value %||% "")
-    if (!nzchar(value)) {
-      return("")
-    }
-    if (identical(value, "<.001")) {
-      return("등분산성 불만족")
-    }
+    if (!nzchar(value)) return("")
+    if (identical(value, "<.001")) return("\ub4f1\ubd84\uc0b0\uc131 \ubd88\ub9cc\uc871")
     p_value <- suppressWarnings(as.numeric(sub("^<", "", value)))
-    if (is.na(p_value)) {
-      return("")
-    }
-    if (p_value >= .05) "등분산성 만족" else "등분산성 불만족"
+    if (is.na(p_value)) return("")
+    if (p_value >= .05) "\ub4f1\ubd84\uc0b0\uc131 \ub9cc\uc871" else "\ub4f1\ubd84\uc0b0\uc131 \ubd88\ub9cc\uc871"
   }
   metric_values <- function(row, metric) {
     if (identical(metric, "Reason")) {
       parts <- c(
         if ("Normality" %in% names(row)) normality_satisfied(row$Normality) else "",
         if ("Homogeneity p" %in% names(row)) homogeneity_satisfied(row$`Homogeneity p`) else "",
-        if ("Post-hoc" %in% names(row) && nzchar(row$`Post-hoc` %||% "")) "사후분석 있음" else ""
+        if ("Post-hoc" %in% names(row) && nzchar(row$`Post-hoc` %||% "")) "\uc0ac\ud6c4\ubd84\uc11d \uc788\uc74c" else ""
       )
-      parts <- parts[nzchar(parts)]
-      return(paste(parts, collapse = "\n"))
+      return(paste(parts[nzchar(parts)], collapse = "\n"))
     }
     if (identical(metric, "Analysis")) {
       return(short_analysis(row[[metric]][[1]]))
     }
     as.character(row[[metric]][[1]] %||% "")
   }
-  rows <- list()
-  for (factor in factors) {
-    for (dependent in dependent_labels) {
-      matched <- overview[
-        as.character(overview$`Dependent variable`) == dependent &
-          as.character(overview$`Independent variable`) == factor,
-        ,
-        drop = FALSE
-      ]
-      if (nrow(matched) == 0) next
-      row <- data.frame(
-        factor,
-        dependent,
-        metric_values(matched[1, , drop = FALSE], "N"),
-        metric_values(matched[1, , drop = FALSE], "Analysis"),
-        metric_values(matched[1, , drop = FALSE], "Reason"),
-        stringsAsFactors = FALSE,
-        check.names = FALSE
-      )
-      names(row) <- c("Independent variable", "Dependent variable", "N", "\ubd84\uc11d\ubc29\ubc95", "\uc0ac\uc720")
-      rows[[length(rows) + 1L]] <- row
-    }
-  }
-  if (length(rows) > 0) {
-    return(do.call(rbind, rows))
-  }
-  metrics <- intersect(c("N", "Analysis"), names(overview))
-  metrics <- c(metrics, "Reason")
-  metric_labels <- c(N = "N", Analysis = "분석", Reason = "사유")
-  rows <- list()
 
+  metrics <- c(intersect(c("N", "Analysis"), names(overview)), "Reason")
+  metric_labels <- c(N = "N", Analysis = "\ubd84\uc11d", Reason = "\uc0ac\uc720")
+  rows <- list()
   for (factor in factors) {
     for (metric_index in seq_along(metrics)) {
       metric <- metrics[[metric_index]]
       row <- c(
         `Independent variable` = if (metric_index == 1) factor else "",
-        Item = unname(metric_labels[[metric]] %||% metric)
+        Item = metric_labels[[metric]]
       )
       for (dependent in dependent_labels) {
         matched <- overview[
@@ -1465,12 +1606,14 @@ ttest_model_overview_wide <- function(overview, dependents = NULL, variable_info
           ,
           drop = FALSE
         ]
-        row[[make.names(dependent, unique = TRUE)]] <- if (nrow(matched) > 0) metric_values(matched[1, , drop = FALSE], metric) else ""
+        row[[dependent]] <- if (nrow(matched) > 0) metric_values(matched[1, , drop = FALSE], metric) else ""
       }
-      rows[[length(rows) + 1]] <- row
+      rows[[length(rows) + 1L]] <- row
     }
   }
-
+  if (length(rows) == 0) {
+    return(overview)
+  }
   output <- as.data.frame(do.call(rbind, rows), stringsAsFactors = FALSE, check.names = FALSE)
   names(output) <- c("Independent variable", "Item", dependent_labels)
   output
@@ -1494,10 +1637,10 @@ ttest_assumption_review_wide <- function(overview, dependents = NULL, variable_i
   factors <- unique(as.character(overview$`Independent variable`))
   metrics <- c("Normality", "Homogeneity p", "Post-hoc", "Package")
   metric_labels <- c(
-    Normality = "정규성",
-    `Homogeneity p` = "등분산성",
-    `Post-hoc` = "사후분석",
-    Package = "패키지"
+    Normality = "\uc815\uaddc\uc131",
+    `Homogeneity p` = "\ub4f1\ubd84\uc0b0\uc131",
+    `Post-hoc` = "\uc0ac\ud6c4\ubd84\uc11d",
+    Package = "\ud328\ud0a4\uc9c0"
   )
   rows <- list()
 
@@ -1515,7 +1658,7 @@ ttest_assumption_review_wide <- function(overview, dependents = NULL, variable_i
           ,
           drop = FALSE
         ]
-        row[[make.names(dependent, unique = TRUE)]] <- if (nrow(matched) > 0 && metric %in% names(matched)) {
+        row[[dependent]] <- if (nrow(matched) > 0 && metric %in% names(matched)) {
           as.character(matched[[metric]][[1]] %||% "")
         } else {
           ""
@@ -1606,10 +1749,16 @@ prepare_ttest_anova_results <- function(
       overview_rows[[length(overview_rows) + 1]] <- item$overview
     }
     if (length(dependent_items) > 0) {
-      combined_table <- ttest_bind_result_rows(lapply(dependent_items, function(item) item$table))[, ttest_result_table_columns, drop = FALSE]
+      result_columns <- if (isTRUE(options$mean_sd)) {
+        c("Variable", "Value", "M \u00B1 SD", "Statistic", "p", "Effect size", "p for trend", "post-hoc")
+      } else {
+        ttest_result_table_columns
+      }
+      combined_table <- ttest_bind_result_rows(lapply(dependent_items, function(item) item$table))
+      combined_table <- ttest_preserve_note_markers(combined_table, combined_table[, result_columns, drop = FALSE])
       statistic_labels <- vapply(dependent_items, function(item) item$statistic_label %||% "", character(1))
       combined_table <- ttest_apply_statistic_heading(combined_table, statistic_labels)
-      if (isTRUE(options$median_iqr)) {
+      if (isTRUE(options$median_iqr) && !isTRUE(options$mean_sd)) {
         names(combined_table)[names(combined_table) == "M"] <- "Median"
         names(combined_table)[names(combined_table) == "SD"] <- "Q1~Q3"
       }
@@ -1671,7 +1820,7 @@ ttest_anova_results_ui <- function(result) {
 
   sections <- list(
     tags$div(
-      class = "result-section regression-result-panel",
+      class = "result-section regression-result-panel ttest-anova-overview-panel",
       tags$h3("Model overview"),
       model_overview_html_table(overview_tables$overview)
     )
@@ -1679,7 +1828,7 @@ ttest_anova_results_ui <- function(result) {
 
   for (item in result$results %||% list()) {
     sections[[length(sections) + 1]] <- tags$div(
-      class = "result-section regression-result-panel",
+      class = "result-section regression-result-panel ttest-anova-result-panel",
       tags$h3(item$title),
       coefficient_html_table(item$table, note_line = item$note %||% ""),
       if (is.data.frame(item$posthoc) && nrow(item$posthoc) > 0) {

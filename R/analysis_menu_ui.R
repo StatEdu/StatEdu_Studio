@@ -94,6 +94,7 @@ analysis_tab_panel <- function(analysis_tabs = enabled_analysis_tabs()) {
     if (isTRUE(analysis_tabs[["frequencies"]])) lazy_tab_panel("Frequencies / Descriptives", "Frequencies / Descriptives", "lazy_analysis_frequencies"),
     lazy_tab_panel("Cross-tabulation Analysis", "analysis_crosstabs", "lazy_analysis_crosstabs"),
     if (isTRUE(analysis_tabs[["ttest_anova"]])) lazy_tab_panel("t-test / ANOVA", "t-test / ANOVA", "lazy_analysis_ttest_anova"),
+    if (isTRUE(analysis_tabs[["ancova"]])) lazy_tab_panel("ANCOVA", "ANCOVA", "lazy_analysis_ancova"),
     if (isTRUE(analysis_tabs[["nonparametric"]])) lazy_tab_panel("Nonparametric Tests", "Nonparametric Tests", "lazy_analysis_nonparametric"),
     if (isTRUE(analysis_tabs[["paired"]]) || isTRUE(analysis_tabs[["paired_rm"]])) lazy_tab_panel("Paired test", "Paired test", "lazy_analysis_paired"),
     if (isTRUE(analysis_tabs[["nonparametric_paired"]])) lazy_tab_panel("Nonparametric Paired", "Nonparametric Paired", "lazy_analysis_nonparametric_paired"),

@@ -711,15 +711,25 @@ merge_variable_info_state <- function(
 }
 
 measurement_select_html <- function(name, value, source_order) {
+  value <- tolower(as.character(value %||% ""))
+  if (identical(value, "ordinal")) value <- "ordered"
+  if (identical(value, "nominal")) value <- "category"
   choices <- unique(c("binary", "category", "ordered", "continuous", value))
+  choices <- choices[nzchar(choices)]
   choice_labels <- ifelse(choices == "ordered", "ordinal", choices)
   sprintf(
     paste0(
+      '<span class="measurement-control">',
+      '<span class="measurement-symbol measurement-%s" title="%s" aria-label="%s"></span>',
       '<select id="measurement_input_%s" class="measurement-select" data-name="%s" ',
       'onchange="if(window.Shiny){Shiny.setInputValue(&quot;variable_measurement_update&quot;,',
       '{name:this.getAttribute(&quot;data-name&quot;),value:this.value,nonce:Date.now()+Math.random()},',
-      '{priority:&quot;event&quot;});}">%s</select>'
+      '{priority:&quot;event&quot;});} if(window.easyflowUpdateMeasurementControl){window.easyflowUpdateMeasurementControl(this);}">%s</select>',
+      '</span>'
     ),
+    htmltools::htmlEscape(value),
+    htmltools::htmlEscape(ifelse(value == "ordered", "ordinal", value)),
+    htmltools::htmlEscape(ifelse(value == "ordered", "ordinal", value)),
     htmltools::htmlEscape(source_order),
     htmltools::htmlEscape(name),
     paste(

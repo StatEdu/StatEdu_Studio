@@ -326,7 +326,7 @@ register_settings_load_handler <- function(
     if (is.null(settings_path)) {
       return()
     }
-    apply_settings_object(jsonlite::fromJSON(settings_path), settings_path)
+    apply_settings_object(read_settings_json_file(settings_path), settings_path)
   })
 
   invisible(apply_settings_object)

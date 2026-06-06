@@ -91,6 +91,14 @@ excel_normalize_p_columns <- function(table) {
   table
 }
 
+excel_display_column_names <- function(table) {
+  if (!is.data.frame(table) || ncol(table) == 0) {
+    return(table)
+  }
+  names(table)[tolower(gsub("[^a-z0-9]+", "", names(table))) == "effectsize"] <- "ES"
+  table
+}
+
 excel_apply_title_row <- function(workbook, sheet_name, title, n_cols, styles, row = 1L) {
   openxlsx::writeData(workbook, sheet_name, title, startRow = row, startCol = 1, colNames = FALSE)
   openxlsx::mergeCells(workbook, sheet_name, cols = seq_len(n_cols), rows = row)
@@ -161,6 +169,7 @@ add_excel_table_sheet <- function(workbook, sheet_name, table, used_sheets, merg
   openxlsx::addWorksheet(workbook, sheet_name)
   if (is.data.frame(table) && nrow(table) > 0) {
     table <- excel_normalize_p_columns(table)
+    table <- excel_display_column_names(table)
     n_cols <- ncol(table)
     title_row <- 1L
     header_row <- 3L
@@ -248,6 +257,7 @@ add_regression_result_sheet <- function(
 
   if (is.data.frame(table) && nrow(table) > 0 && ncol(table) > 0) {
     table <- excel_normalize_p_columns(table)
+    table <- excel_display_column_names(table)
     openxlsx::writeData(workbook, sheet_name, table, startRow = data_start_row, startCol = 1, withFilter = FALSE)
     openxlsx::addStyle(workbook, sheet_name, styles$top, rows = header_row, cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
     openxlsx::addStyle(workbook, sheet_name, styles$header, rows = header_row, cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
@@ -518,6 +528,14 @@ write_ttest_anova_results_html <- function(result, file) {
   )
 }
 
+write_ancova_results_html <- function(result, file, variable_table = NULL, labels = character(0)) {
+  writeLines(
+    saved_ancova_results_html(result, variable_table, labels),
+    file,
+    useBytes = TRUE
+  )
+}
+
 write_nonparametric_results_html <- function(result, file) {
   writeLines(
     saved_nonparametric_results_html(result),
@@ -597,6 +615,10 @@ write_reliability_results_pdf <- function(result, file) {
 
 write_ttest_anova_results_pdf <- function(result, file) {
   write_pdf_from_html(saved_ttest_anova_results_html(result, report_mode = TRUE), file)
+}
+
+write_ancova_results_pdf <- function(result, file, variable_table = NULL, labels = character(0)) {
+  write_pdf_from_html(saved_ancova_results_html(result, variable_table, labels, report_mode = TRUE), file)
 }
 
 write_nonparametric_results_pdf <- function(result, file) {
@@ -849,6 +871,7 @@ add_hierarchical_result_sheet <- function(workbook, sheet_name, table, note, mod
   openxlsx::addWorksheet(workbook, sheet_name)
   if (is.data.frame(table) && nrow(table) > 0 && ncol(table) > 0) {
     table <- excel_normalize_p_columns(table)
+    table <- excel_display_column_names(table)
     n_cols <- ncol(table)
     title_row <- 1L
     header_top_row <- 3L
@@ -1229,15 +1252,9 @@ save_correlation_excel_file <- function(result, file) {
       used_sheets
     )
   }
-  used_sheets <- add_excel_table_sheet(
-    workbook,
-    "Methods",
-    correlation_method_matrix_display_table(result),
-    used_sheets
-  )
-  reason_table <- correlation_reason_display_table(result)
-  if (isTRUE(result$options$reason) && is.data.frame(reason_table) && nrow(reason_table) > 0) {
-    used_sheets <- add_excel_table_sheet(workbook, "Reason", reason_table, used_sheets)
+  overview_table <- correlation_model_overview_matrix_display_table(result)
+  if (is.data.frame(overview_table) && nrow(overview_table) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Model overview", overview_table, used_sheets)
   }
   normality_table <- correlation_normality_display_table(result)
   if (isTRUE(result$options$normality) && is.data.frame(normality_table) && nrow(normality_table) > 0) {
@@ -1357,7 +1374,7 @@ crosstab_excel_group_table <- function(results) {
 crosstab_excel_group_note <- function(results) {
   method_notes <- crosstab_method_footnotes(results)
   method_lines <- if (is.data.frame(method_notes) && nrow(method_notes) > 0) {
-    sprintf("%s. %s", method_notes$marker, method_notes$note)
+    ifelse(nzchar(method_notes$marker), sprintf("%s. %s", method_notes$marker, method_notes$note), method_notes$note)
   } else {
     character(0)
   }
@@ -1402,6 +1419,7 @@ add_ttest_anova_result_sheet <- function(workbook, sheet_name, table, note, used
 
   if (is.data.frame(table) && nrow(table) > 0 && ncol(table) > 0) {
     table <- excel_normalize_p_columns(table)
+    table <- excel_display_column_names(table)
     n_cols <- ncol(table)
     title_row <- 1L
     header_row <- 3L
@@ -1676,6 +1694,65 @@ save_ttest_anova_excel_file <- function(result, file) {
       )
     }
   }
+  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
+  invisible(file)
+}
+
+save_ancova_excel_file <- function(result, file, variable_table = NULL, labels = character(0)) {
+  workbook <- openxlsx::createWorkbook()
+  used_sheets <- character(0)
+  overview <- ancova_model_overview_table(result, variable_table, labels)
+  if (is.data.frame(overview) && nrow(overview) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Model overview", overview, used_sheets, title = "Model overview")
+  }
+  combined <- ancova_combined_result_table(result, variable_table, labels)
+  if (is.data.frame(combined) && nrow(combined) > 0) {
+    used_sheets <- add_ttest_anova_result_sheet(
+      workbook,
+      "ANCOVA table",
+      combined,
+      ancova_combined_note(result, variable_table, labels),
+      used_sheets,
+      title = "ANCOVA table"
+    )
+  }
+  assumption <- ancova_assumption_review_table(result, variable_table, labels)
+  if (is.data.frame(assumption) && nrow(assumption) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Assumption summary", assumption, used_sheets, title = "Assumption summary")
+  }
+  normality <- ancova_normality_review_table(result, variable_table, labels)
+  if (is.data.frame(normality) && nrow(normality) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Normality diagnostics", normality, used_sheets, title = "Normality diagnostics")
+  }
+  interaction_terms <- ancova_interaction_terms_review_table(result, variable_table, labels)
+  if (is.data.frame(interaction_terms) && nrow(interaction_terms) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Interaction terms", interaction_terms, used_sheets, title = "Interaction terms")
+  }
+  slope_homogeneity <- ancova_slope_homogeneity_review_table(result, variable_table, labels)
+  if (is.data.frame(slope_homogeneity) && nrow(slope_homogeneity) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Slope homogeneity", slope_homogeneity, used_sheets, title = "Regression slope homogeneity")
+  }
+  simple_effects <- ancova_simple_effects_review_table(result, variable_table, labels)
+  if (is.data.frame(simple_effects) && nrow(simple_effects) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Simple effects", simple_effects, used_sheets, title = "Simple group effects")
+  }
+  linearity <- ancova_linearity_review_table(result, variable_table, labels)
+  if (is.data.frame(linearity) && nrow(linearity) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Linearity diagnostics", linearity, used_sheets, title = "Covariate linearity check")
+  }
+  collinearity <- ancova_collinearity_review_table(result, variable_table, labels)
+  if (is.data.frame(collinearity) && nrow(collinearity) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Collinearity diagnostics", collinearity, used_sheets, title = "Collinearity diagnostics")
+  }
+  influence <- ancova_influence_review_table(result, variable_table, labels)
+  if (is.data.frame(influence) && nrow(influence) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Influence diagnostics", influence, used_sheets, title = "Influence diagnostics")
+  }
+  influence_sensitivity <- ancova_influence_sensitivity_review_table(result, variable_table, labels)
+  if (is.data.frame(influence_sensitivity) && nrow(influence_sensitivity) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Influence sensitivity", influence_sensitivity, used_sheets, title = "Influence sensitivity analysis")
+  }
+  used_sheets <- add_analysis_warning_skipped_sheets(workbook, used_sheets, NULL, result$skipped, skipped_title = "Skipped analyses")
   openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
   invisible(file)
 }

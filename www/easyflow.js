@@ -22,6 +22,304 @@
       }
       window.isEasyflowVisibleElement = isEasyflowVisibleElement;
 
+      function easyflowSkipsMathNode(node) {
+        var parent = node && node.parentElement;
+        while (parent) {
+          var tagName = parent.tagName ? parent.tagName.toLowerCase() : '';
+          if (tagName === 'script' || tagName === 'noscript' || tagName === 'style' ||
+              tagName === 'textarea' || tagName === 'pre' || tagName === 'code' ||
+              tagName === 'mjx-container') {
+            return true;
+          }
+          if (parent.classList && parent.classList.contains('MathJax')) {
+            return true;
+          }
+          parent = parent.parentElement;
+        }
+        return false;
+      }
+
+      async function easyflowReplaceMathInTextNode(node) {
+        if (!node || !node.parentNode || !node.nodeValue) return false;
+        var text = node.nodeValue;
+        var pattern = /(\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\$([^$\n]+?)\$|\\\(([\s\S]+?)\\\))/g;
+        var fragment = document.createDocumentFragment();
+        var lastIndex = 0;
+        var changed = false;
+        var match;
+
+        while ((match = pattern.exec(text)) !== null) {
+          if (match.index > lastIndex) {
+            fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+          }
+
+          var display = typeof match[2] !== 'undefined' || typeof match[3] !== 'undefined';
+          var tex = (match[2] || match[3] || match[4] || match[5] || '').trim();
+          if (!tex) {
+            fragment.appendChild(document.createTextNode(match[0]));
+          } else {
+            try {
+              var converter = window.MathJax.tex2svgPromise || window.MathJax.tex2chtmlPromise;
+              fragment.appendChild(await converter.call(window.MathJax, tex, { display: display }));
+              changed = true;
+            } catch (error) {
+              fragment.appendChild(document.createTextNode(match[0]));
+              if (window.console && window.console.warn) {
+                window.console.warn('MathJax conversion failed', tex, error);
+              }
+            }
+          }
+
+          lastIndex = pattern.lastIndex;
+        }
+
+        if (!changed) return false;
+        if (lastIndex < text.length) {
+          fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+        }
+        node.parentNode.replaceChild(fragment, node);
+        return true;
+      }
+
+      function easyflowCollectMathTextNodes(root) {
+        var nodes = [];
+        var pattern = /(\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\$[^$\n]+?\$|\\\([\s\S]+?\\\))/;
+        var walker = document.createTreeWalker(
+          root,
+          NodeFilter.SHOW_TEXT,
+          {
+            acceptNode: function(node) {
+              if (!node.nodeValue || (node.nodeValue.indexOf('$') < 0 && node.nodeValue.indexOf('\\') < 0)) return NodeFilter.FILTER_REJECT;
+              if (!pattern.test(node.nodeValue)) return NodeFilter.FILTER_REJECT;
+              if (easyflowSkipsMathNode(node)) return NodeFilter.FILTER_REJECT;
+              return NodeFilter.FILTER_ACCEPT;
+            }
+          }
+        );
+        var node;
+        while ((node = walker.nextNode())) {
+          nodes.push(node);
+        }
+        return nodes;
+      }
+
+      window.easyflowTypesetMath = function(root) {
+        root = root || document;
+        if (!root.querySelector || !root.querySelector('.about-markdown-document')) return;
+        if (window.easyflowDecorateMeasurementTerms) {
+          window.easyflowDecorateMeasurementTerms(root);
+        }
+        if (!window.MathJax || (!window.MathJax.tex2svgPromise && !window.MathJax.tex2chtmlPromise && !window.MathJax.typesetPromise)) {
+          window.easyflowMathJaxPending = true;
+          return;
+        }
+        if (!window.MathJax.tex2svgPromise && !window.MathJax.tex2chtmlPromise && window.MathJax.typesetPromise) {
+          window.MathJax.typesetPromise([root]).catch(function(error) {
+            if (window.console && window.console.warn) {
+              window.console.warn('MathJax typeset failed', error);
+            }
+          });
+          return;
+        }
+        if (window.easyflowMathJaxRendering) {
+          window.easyflowMathJaxPending = true;
+          return;
+        }
+
+        window.easyflowMathJaxRendering = true;
+        (async function() {
+          var documents = root.classList && root.classList.contains('about-markdown-document') ?
+            [root] :
+            Array.prototype.slice.call(root.querySelectorAll('.about-markdown-document'));
+          for (var i = 0; i < documents.length; i += 1) {
+            var nodes = easyflowCollectMathTextNodes(documents[i]);
+            for (var j = 0; j < nodes.length; j += 1) {
+              await easyflowReplaceMathInTextNode(nodes[j]);
+            }
+          }
+          if (window.MathJax.startup && window.MathJax.startup.document &&
+              window.MathJax.startup.document.updateDocument) {
+            window.MathJax.startup.document.updateDocument();
+          }
+        })().finally(function() {
+          window.easyflowMathJaxRendering = false;
+          if (window.easyflowMathJaxPending) {
+            window.easyflowMathJaxPending = false;
+            scheduleEasyflowTypesetMath(root);
+          }
+        });
+      };
+
+      function scheduleEasyflowTypesetMath(root) {
+        window.setTimeout(function() {
+          window.easyflowTypesetMath(root || document);
+        }, 0);
+      }
+
+      window.easyflowMathJaxReady = function() {
+        window.easyflowMathJaxPending = false;
+        scheduleEasyflowTypesetMath(document);
+        window.setTimeout(function() { scheduleEasyflowTypesetMath(document); }, 250);
+        window.setTimeout(function() { scheduleEasyflowTypesetMath(document); }, 1000);
+      };
+
+      window.easyflowStartMathJaxPolling = function() {
+        if (window.easyflowMathJaxPollingStarted) return;
+        window.easyflowMathJaxPollingStarted = true;
+        var attempts = 0;
+        var timer = window.setInterval(function() {
+          attempts += 1;
+          if (window.MathJax && (window.MathJax.tex2svgPromise || window.MathJax.tex2chtmlPromise || window.MathJax.typesetPromise)) {
+            window.clearInterval(timer);
+            window.easyflowMathJaxReady();
+          } else if (attempts >= 80) {
+            window.clearInterval(timer);
+          }
+        }, 250);
+      };
+
+      window.easyflowUpdateMeasurementControl = function(select) {
+        if (!select) return;
+        var value = String(select.value || '');
+        if (value === 'ordinal') value = 'ordered';
+        if (value === 'nominal') value = 'category';
+        var label = value === 'ordered' ? 'ordinal' : value;
+        var wrapper = select.closest ? select.closest('.measurement-control') : null;
+        var symbol = wrapper && wrapper.querySelector ? wrapper.querySelector('.measurement-symbol') : null;
+        if (!symbol) return;
+        ['continuous', 'binary', 'category', 'ordered'].forEach(function(level) {
+          symbol.classList.remove('measurement-' + level);
+        });
+        if (value) {
+          symbol.classList.add('measurement-' + value);
+        }
+        symbol.setAttribute('title', label);
+        symbol.setAttribute('aria-label', label);
+      };
+
+      window.easyflowRefreshMeasurementControls = function(root) {
+        root = root || document;
+        if (!root.querySelectorAll) return;
+        root.querySelectorAll('.measurement-control select.measurement-select').forEach(function(select) {
+          window.easyflowUpdateMeasurementControl(select);
+        });
+      };
+
+      function easyflowMeasurementTermInfo(term) {
+        var raw = String(term || '');
+        var value = raw.toLowerCase();
+        if (value === 'ordinal') value = 'ordered';
+        if (value === 'nominal') value = 'category';
+        if (['continuous', 'binary', 'category', 'ordered'].indexOf(value) < 0) return null;
+        return {
+          value: value,
+          label: value === 'ordered' ? 'ordinal' : value,
+          text: raw
+        };
+      }
+
+      function easyflowMeasurementIconNode(info) {
+        var symbol = document.createElement('span');
+        symbol.className = 'measurement-symbol measurement-' + info.value;
+        symbol.setAttribute('title', info.label);
+        symbol.setAttribute('aria-label', info.label);
+        return symbol;
+      }
+
+      function easyflowMeasurementTermNode(term, codeNode) {
+        var info = easyflowMeasurementTermInfo(term);
+        if (!info) return null;
+        var wrapper = document.createElement('span');
+        wrapper.className = 'measurement-term measurement-term-' + info.value;
+        wrapper.appendChild(easyflowMeasurementIconNode(info));
+        if (codeNode) {
+          wrapper.appendChild(codeNode);
+        } else {
+          var text = document.createElement('span');
+          text.className = 'measurement-term-text';
+          text.textContent = info.text;
+          wrapper.appendChild(text);
+        }
+        return wrapper;
+      }
+
+      function easyflowSkipMeasurementTermNode(node) {
+        var parent = node && node.parentElement;
+        while (parent) {
+          var tagName = parent.tagName ? parent.tagName.toLowerCase() : '';
+          if (tagName === 'script' || tagName === 'noscript' || tagName === 'style' ||
+              tagName === 'textarea' || tagName === 'pre' || tagName === 'mjx-container') {
+            return true;
+          }
+          if (parent.classList &&
+              (parent.classList.contains('measurement-term') || parent.classList.contains('measurement-symbol'))) {
+            return true;
+          }
+          parent = parent.parentElement;
+        }
+        return false;
+      }
+
+      window.easyflowDecorateMeasurementTerms = function(root) {
+        root = root || document;
+        if (!root.querySelectorAll) return;
+        var documents = root.classList && root.classList.contains('about-markdown-document') ?
+          [root] :
+          Array.prototype.slice.call(root.querySelectorAll('.about-markdown-document'));
+        var termPattern = /\b(continuous|binary|category|ordered|ordinal|nominal)\b/g;
+
+        documents.forEach(function(doc) {
+          doc.querySelectorAll('code').forEach(function(code) {
+            if (!code.parentNode || code.closest('.measurement-term')) return;
+            var text = (code.textContent || '').trim();
+            if (!easyflowMeasurementTermInfo(text)) return;
+            var clone = code.cloneNode(true);
+            code.parentNode.replaceChild(easyflowMeasurementTermNode(text, clone), code);
+          });
+
+          var walker = document.createTreeWalker(
+            doc,
+            NodeFilter.SHOW_TEXT,
+            {
+              acceptNode: function(node) {
+                if (!node.nodeValue || !termPattern.test(node.nodeValue)) {
+                  termPattern.lastIndex = 0;
+                  return NodeFilter.FILTER_REJECT;
+                }
+                termPattern.lastIndex = 0;
+                if (easyflowSkipMeasurementTermNode(node)) return NodeFilter.FILTER_REJECT;
+                return NodeFilter.FILTER_ACCEPT;
+              }
+            }
+          );
+          var nodes = [];
+          var node;
+          while ((node = walker.nextNode())) {
+            nodes.push(node);
+          }
+          nodes.forEach(function(textNode) {
+            var text = textNode.nodeValue;
+            var fragment = document.createDocumentFragment();
+            var lastIndex = 0;
+            var match;
+            termPattern.lastIndex = 0;
+            while ((match = termPattern.exec(text)) !== null) {
+              if (match.index > lastIndex) {
+                fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+              }
+              fragment.appendChild(easyflowMeasurementTermNode(match[1]));
+              lastIndex = termPattern.lastIndex;
+            }
+            if (lastIndex < text.length) {
+              fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+            }
+            if (textNode.parentNode) {
+              textNode.parentNode.replaceChild(fragment, textNode);
+            }
+          });
+        });
+      };
+
       window.easyflowTransferScrollTops = window.easyflowTransferScrollTops || {};
       window.easyflowTransferScrollAnchors = window.easyflowTransferScrollAnchors || {};
       window.easyflowTransferScrollRestoreUntil = window.easyflowTransferScrollRestoreUntil || 0;
@@ -811,6 +1109,96 @@
       document.addEventListener('shiny:connected', registerEasyflowDirtyHandler);
       window.setTimeout(registerEasyflowDirtyHandler, 0);
 
+      function easyflowBlobToDataUrl(blob) {
+        return new Promise(function(resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function() { resolve(reader.result); };
+          reader.onerror = function() { reject(reader.error); };
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      async function easyflowInlineSnapshotImages(source, clone) {
+        var sourceImages = source.querySelectorAll ? source.querySelectorAll('img') : [];
+        var cloneImages = clone.querySelectorAll ? clone.querySelectorAll('img') : [];
+        for (var i = 0; i < sourceImages.length && i < cloneImages.length; i += 1) {
+          var sourceImage = sourceImages[i];
+          var cloneImage = cloneImages[i];
+          var src = sourceImage.currentSrc || sourceImage.src || cloneImage.getAttribute('src') || '';
+          if (!src || src.indexOf('data:') === 0) continue;
+          try {
+            var response = await fetch(src, { credentials: 'same-origin' });
+            if (!response.ok) continue;
+            var dataUrl = await easyflowBlobToDataUrl(await response.blob());
+            cloneImage.setAttribute('src', dataUrl);
+            cloneImage.removeAttribute('srcset');
+          } catch (error) {
+            if (window.console && window.console.warn) {
+              window.console.warn('EasyFlow result image snapshot failed', error);
+            }
+          }
+        }
+      }
+
+      function easyflowInlineSnapshotCanvases(source, clone) {
+        var sourceCanvases = source.querySelectorAll ? source.querySelectorAll('canvas') : [];
+        var cloneCanvases = clone.querySelectorAll ? clone.querySelectorAll('canvas') : [];
+        for (var i = 0; i < sourceCanvases.length && i < cloneCanvases.length; i += 1) {
+          try {
+            var dataUrl = sourceCanvases[i].toDataURL('image/png');
+            var img = document.createElement('img');
+            img.setAttribute('src', dataUrl);
+            img.setAttribute('alt', cloneCanvases[i].getAttribute('aria-label') || 'Result figure');
+            img.style.maxWidth = '100%';
+            cloneCanvases[i].parentNode.replaceChild(img, cloneCanvases[i]);
+          } catch (error) {
+            if (window.console && window.console.warn) {
+              window.console.warn('EasyFlow result canvas snapshot failed', error);
+            }
+          }
+        }
+      }
+
+      async function easyflowSnapshotHtml(element) {
+        var clone = element.cloneNode(true);
+        easyflowInlineSnapshotCanvases(element, clone);
+        await easyflowInlineSnapshotImages(element, clone);
+        return clone.innerHTML || '';
+      }
+
+      function registerEasyflowResultSnapshotHandler() {
+        if (!window.Shiny || window.easyflowResultSnapshotHandlerRegistered) return;
+        window.easyflowResultSnapshotHandlerRegistered = true;
+        Shiny.addCustomMessageHandler('easyflow-capture-result-snapshot', function(message) {
+          (async function() {
+            var inputId = message && message.inputId ? String(message.inputId) : '';
+            var outputId = message && message.outputId ? String(message.outputId) : '';
+            var element = outputId ? document.getElementById(outputId) : null;
+            var payload = {
+              outputId: outputId,
+              html: '',
+              text: '',
+              error: '',
+              nonce: Date.now() + Math.random()
+            };
+            if (!inputId) return;
+            if (!element) {
+              payload.error = 'Result output was not found.';
+            } else {
+              payload.text = (element.textContent || '').replace(/\s+/g, ' ').trim();
+              payload.html = await easyflowSnapshotHtml(element);
+              if (!payload.html || !payload.text) {
+                payload.error = 'No analysis result is available to add.';
+              }
+            }
+            Shiny.setInputValue(inputId, payload, { priority: 'event' });
+          })();
+        });
+      }
+      registerEasyflowResultSnapshotHandler();
+      document.addEventListener('shiny:connected', registerEasyflowResultSnapshotHandler);
+      window.setTimeout(registerEasyflowResultSnapshotHandler, 0);
+
       window.addEventListener('beforeunload', function(event) {
         if (!window.easyflowSettingsDirty) return;
         event.preventDefault();
@@ -838,6 +1226,12 @@
           nonce: Date.now() + Math.random()
         }, {priority: 'event'});
       });
+
+      document.addEventListener('click', function(event) {
+        var button = event.target && event.target.closest ? event.target.closest('button[id^="effect_size_"][id$="_calculate"]') : null;
+        if (!button || !window.Shiny) return;
+        Shiny.setInputValue(button.id, Date.now() + Math.random(), {priority: 'event'});
+      }, true);
 
       document.addEventListener('click', function(event) {
         var navLink = event.target && event.target.closest ? event.target.closest('.navbar-nav a') : null;
@@ -1450,8 +1844,14 @@
 
       function easyflowStartMoveButtonObserver() {
         easyflowUpdateMoveButtonClasses();
+        window.easyflowRefreshMeasurementControls(document);
+        window.easyflowDecorateMeasurementTerms(document);
         if (!window.MutationObserver || !document.body) return;
-        var observer = new MutationObserver(easyflowUpdateMoveButtonClasses);
+        var observer = new MutationObserver(function() {
+          easyflowUpdateMoveButtonClasses();
+          window.easyflowRefreshMeasurementControls(document);
+          window.easyflowDecorateMeasurementTerms(document);
+        });
         observer.observe(document.body, {
           childList: true,
           subtree: true,
@@ -1484,6 +1884,7 @@
           (select.id || '').indexOf('measurement_input_') === 0 ||
           ['binary', 'category', 'ordered', 'continuous'].every(function(value) { return optionValues.indexOf(value) >= 0; });
         if (!isMeasurementSelect) return;
+        window.easyflowUpdateMeasurementControl(select);
 
         var name = select.getAttribute('data-name') || '';
         if (!name) {
@@ -1556,8 +1957,19 @@
           setTtestNormalityDisabled('.factor-method-group', assumption.value !== 'none');
         }
 
+        function updateAncovaNormalityOptions() {
+          var normality = document.getElementById('ancova_normality_enabled');
+          var method = document.getElementById('ancova_normality_method');
+          if (!normality || !method) return;
+          setTtestNormalityDisabled('.ancova-normality-method-block', !normality.checked);
+        }
+
         function scheduleFactorNormalityOptionsUpdate() {
           window.setTimeout(updateFactorNormalityOptions, 0);
+        }
+
+        function scheduleAncovaNormalityOptionsUpdate() {
+          window.setTimeout(updateAncovaNormalityOptions, 0);
         }
 
         document.addEventListener('change', function(event) {
@@ -1575,18 +1987,38 @@
           if (target.matches('#factor_assumption')) {
             scheduleFactorNormalityOptionsUpdate();
           }
+          if (target.matches('#ancova_normality_enabled')) {
+            scheduleAncovaNormalityOptionsUpdate();
+          }
+        }, true);
+        document.addEventListener('click', function(event) {
+          var target = event.target;
+          if (target && target.matches && target.matches('#ancova_normality_enabled')) {
+            scheduleAncovaNormalityOptionsUpdate();
+          }
         }, true);
 
         document.addEventListener('shiny:value', scheduleTtestNormalityTreeUpdate);
         document.addEventListener('shiny:bound', scheduleTtestNormalityTreeUpdate);
         document.addEventListener('shiny:connected', scheduleTtestNormalityTreeUpdate);
+        document.addEventListener('shiny:value', function(event) {
+          scheduleEasyflowTypesetMath(event.target || document);
+        });
+        document.addEventListener('shiny:bound', function(event) {
+          scheduleEasyflowTypesetMath(event.target || document);
+        });
         document.addEventListener('shiny:value', scheduleFactorNormalityOptionsUpdate);
         document.addEventListener('shiny:bound', scheduleFactorNormalityOptionsUpdate);
         document.addEventListener('shiny:connected', scheduleFactorNormalityOptionsUpdate);
+        document.addEventListener('shiny:value', scheduleAncovaNormalityOptionsUpdate);
+        document.addEventListener('shiny:bound', scheduleAncovaNormalityOptionsUpdate);
+        document.addEventListener('shiny:connected', scheduleAncovaNormalityOptionsUpdate);
         if (window.MutationObserver) {
           new MutationObserver(function() {
             scheduleTtestNormalityTreeUpdate();
             scheduleFactorNormalityOptionsUpdate();
+            scheduleAncovaNormalityOptionsUpdate();
+            scheduleEasyflowTypesetMath(document);
           }).observe(document.documentElement, {
             childList: true,
             subtree: true
@@ -1596,13 +2028,82 @@
           document.addEventListener('DOMContentLoaded', function() {
             scheduleTtestNormalityTreeUpdate();
             scheduleFactorNormalityOptionsUpdate();
+            scheduleAncovaNormalityOptionsUpdate();
           });
         } else {
           scheduleTtestNormalityTreeUpdate();
           scheduleFactorNormalityOptionsUpdate();
+          scheduleAncovaNormalityOptionsUpdate();
         }
+        scheduleEasyflowTypesetMath(document);
+        window.easyflowStartMathJaxPolling();
         window.easyflowUpdateTtestNormalityTree = updateTtestNormalityTree;
         window.easyflowUpdateFactorNormalityOptions = updateFactorNormalityOptions;
+        window.easyflowUpdateAncovaNormalityOptions = updateAncovaNormalityOptions;
+      })();
+
+      (function() {
+        function parseSortValue(text, type) {
+          var value = (text || '').replace(/\s+/g, ' ').trim();
+          if (type !== 'numeric') return value.toLocaleLowerCase();
+          var cleaned = value
+            .replace(/[<>,]/g, '')
+            .replace(/^\./, '0.')
+            .replace(/^-\./, '-0.');
+          var parsed = parseFloat(cleaned);
+          return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
+        }
+
+        function updateSortIndicators(table, activeButton, direction) {
+          table.querySelectorAll('.ancova-sort-button').forEach(function(button) {
+            var indicator = button.querySelector('.ancova-sort-indicator');
+            var isActive = button === activeButton;
+            button.classList.toggle('is-active', isActive);
+            button.setAttribute('aria-sort', isActive ? (direction === 'asc' ? 'ascending' : 'descending') : 'none');
+            if (indicator) {
+              indicator.textContent = isActive ? (direction === 'asc' ? '\u25b4' : '\u25be') : '\u25be';
+            }
+          });
+        }
+
+        function sortAncovaDiagnosticsTable(button) {
+          var table = button.closest('table');
+          var tbody = table ? table.querySelector('tbody') : null;
+          if (!tbody) return;
+          var column = parseInt(button.getAttribute('data-sort-column') || '0', 10) - 1;
+          if (column < 0) return;
+          var type = button.getAttribute('data-sort-type') || 'text';
+          var previousColumn = table.getAttribute('data-sort-column') || '';
+          var previousDirection = table.getAttribute('data-sort-direction') || '';
+          var defaultDirection = button.getAttribute('data-sort-default') || 'asc';
+          var direction = previousColumn === String(column) && previousDirection === defaultDirection
+            ? (defaultDirection === 'asc' ? 'desc' : 'asc')
+            : defaultDirection;
+          var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+          rows.sort(function(a, b) {
+            var aCell = a.children[column];
+            var bCell = b.children[column];
+            var aValue = parseSortValue(aCell ? aCell.textContent : '', type);
+            var bValue = parseSortValue(bCell ? bCell.textContent : '', type);
+            if (aValue < bValue) return direction === 'asc' ? -1 : 1;
+            if (aValue > bValue) return direction === 'asc' ? 1 : -1;
+            return 0;
+          });
+          rows.forEach(function(row) {
+            tbody.appendChild(row);
+          });
+          table.setAttribute('data-sort-column', String(column));
+          table.setAttribute('data-sort-direction', direction);
+          updateSortIndicators(table, button, direction);
+        }
+        window.easyflowSortAncovaDiagnosticsTable = sortAncovaDiagnosticsTable;
+
+        document.addEventListener('click', function(event) {
+          var button = event.target && event.target.closest ? event.target.closest('.ancova-sort-button') : null;
+          if (!button) return;
+          event.preventDefault();
+          sortAncovaDiagnosticsTable(button);
+        });
       })();
 
       document.addEventListener('click', function(event) {

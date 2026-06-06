@@ -727,7 +727,10 @@ logistic_hierarchical_result_block <- function(group, variable_table = NULL, lab
   notes <- unique(unlist(lapply(group, logistic_result_notes), use.names = FALSE))
   methods <- unique(vapply(group, logistic_method_label, character(1)))
   div(
-    class = "regression-result-panel logistic-result-panel logistic-hierarchical-result-panel",
+    class = paste(
+      "regression-result-panel logistic-result-panel logistic-hierarchical-result-panel",
+      if (length(group) >= 3L) "landscape-table-panel" else ""
+    ),
     h3(logistic_result_title(first_result, variable_table, labels, category_table)),
     logistic_hierarchical_result_table(group, variable_table, labels, category_table, show_b, show_se, show_mcfadden, show_cox_snell, split_ci),
     lapply(methods, function(method) div(method, class = "result-note logistic-result-method")),
@@ -762,6 +765,11 @@ logistic_results_panel <- function(results, variable_table = NULL, labels = char
       }
     }),
     logistic_assumption_review_block(results, variable_table, labels, category_table),
-    analysis_diagnostics_section(warnings, skipped, title = "Warnings / skipped models", class = "regression-result-panel logistic-result-panel")
+    analysis_diagnostics_section(
+      warnings,
+      skipped,
+      title = "Warnings / skipped models",
+      class = "regression-result-panel logistic-result-panel logistic-diagnostics-panel"
+    )
   )
 }

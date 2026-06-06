@@ -9,7 +9,7 @@ paired_scale_statistic_label <- function(table) {
 paired_effect_header_label <- function(table) {
   labels <- unique(as.character(table$EffectLabel %||% ""))
   labels <- labels[nzchar(labels)]
-  if (length(labels) == 1L) labels[[1]] else "Effect size"
+  if (length(labels) == 1L) labels[[1]] else "ES"
 }
 
 paired_effect_labels <- function(table) {
@@ -20,7 +20,7 @@ paired_effect_labels <- function(table) {
 }
 
 paired_effect_header_text <- function(label, label_count = 1L) {
-  if (label_count == 1L) "Effect size" else label
+  if (label_count == 1L) "ES" else label
 }
 
 paired_count_statistic_label <- function(table) {
@@ -44,9 +44,9 @@ paired_effect_note <- function(table, show_effect_size = TRUE) {
   labels <- paired_effect_labels(table)
   if (length(labels) == 0) return("")
   if (length(labels) == 1L) {
-    paste0("Effect size = ", labels[[1]], ".")
+    paste0("ES = effect size (", labels[[1]], ").")
   } else {
-    paste0("Effect sizes = ", paste(labels, collapse = ", "), ".")
+    paste0("ES = effect size (", paste(labels, collapse = ", "), ").")
   }
 }
 
@@ -161,25 +161,16 @@ paired_model_overview_table <- function(result) {
       if ("Level" %in% names(item) && as.character(item$Level[[1]] %||% "") %in% c("Binary", "Categorical")) as.character(item$Level[[1]]) else ""
     )
     reason_parts <- reason_parts[nzchar(reason_parts)]
-    values <- stats::setNames(
-      list(
-        as.character(item$N[[1]] %||% ""),
-        paired_short_method(item$Method[[1]]),
-        paste(reason_parts, collapse = "\n")
-      ),
-      c("N", "\ubd84\uc11d", "\uc0ac\uc720")
+    row <- data.frame(
+      Pair = pair,
+      N = as.character(item$N[[1]] %||% ""),
+      Analysis = paired_short_method(item$Method[[1]]),
+      Reason = paste(reason_parts, collapse = "\n"),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
     )
-    metric_index <- 0L
-    for (metric in names(values)) {
-      metric_index <- metric_index + 1L
-      rows[[length(rows) + 1L]] <- data.frame(
-        Pair = if (metric_index == 1L) pair else "",
-        Item = metric,
-        Result = values[[metric]],
-        stringsAsFactors = FALSE,
-        check.names = FALSE
-      )
-    }
+    names(row) <- c("Pair", "N", "\ubd84\uc11d \ubc29\ubc95", "\uc774\uc720")
+    rows[[length(rows) + 1L]] <- row
   }
   if (length(rows) == 0) NULL else do.call(rbind, rows)
 }
@@ -307,9 +298,9 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
         tags$th(rowspan = 2, style = result_header_cell_style(FALSE), statistic_label),
         tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "p"),
         if (length(effect_labels) == 1L) {
-          tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "Effect size")
+          tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "ES")
         } else if (length(effect_labels) > 1L) {
-          tags$th(colspan = length(effect_labels), style = paste0(result_header_cell_style(FALSE), "text-align:center;"), "Effect size")
+          tags$th(colspan = length(effect_labels), style = paste0(result_header_cell_style(FALSE), "text-align:center;"), "ES")
         }
       ),
       tags$tr(
@@ -336,9 +327,9 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
         if (include_statistic) tags$th(rowspan = 2, style = result_header_cell_style(FALSE), statistic_label),
         tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "p"),
         if (length(effect_labels) == 1L) {
-          tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "Effect size")
+          tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "ES")
         } else if (length(effect_labels) > 1L) {
-          tags$th(colspan = length(effect_labels), style = paste0(result_header_cell_style(FALSE), "text-align:center;"), "Effect size")
+          tags$th(colspan = length(effect_labels), style = paste0(result_header_cell_style(FALSE), "text-align:center;"), "ES")
         }
       ),
       tags$tr(
@@ -425,7 +416,8 @@ paired_results_ui <- function(result) {
           tags$h3("Paired test: continuous / ordinal"),
           result_table_with_notes(
             paired_grouped_table(result$paired$scale_table, "scale", show_effect_size = isTRUE(result$paired$options$effect_size)),
-            result_note_tag(paired_method_note(result$paired$scale_table, show_effect_size = isTRUE(result$paired$options$effect_size)))
+            result_note_tag(paired_method_note(result$paired$scale_table, show_effect_size = isTRUE(result$paired$options$effect_size))),
+            class = "result-table-with-note paired-fit-table-wrap"
           )
         )
       },
@@ -435,7 +427,8 @@ paired_results_ui <- function(result) {
           tags$h3("Paired test: binary / categorical"),
           result_table_with_notes(
             paired_grouped_table(result$paired$count_table, "count", show_effect_size = isTRUE(result$paired$options$effect_size)),
-            result_note_tag(paired_count_method_note(result$paired, show_effect_size = isTRUE(result$paired$options$effect_size)))
+            result_note_tag(paired_count_method_note(result$paired, show_effect_size = isTRUE(result$paired$options$effect_size))),
+            class = "result-table-with-note paired-fit-table-wrap"
           )
         )
       },
@@ -445,7 +438,8 @@ paired_results_ui <- function(result) {
           tags$h3("Repeated-measures test: continuous / ordinal"),
           result_table_with_notes(
             paired_rm_grouped_table(result$paired_rm$display_table, "scale"),
-            result_note_tag(paired_rm_table_method_note(result$paired_rm$display_table))
+            result_note_tag(paired_rm_table_method_note(result$paired_rm$display_table)),
+            class = "result-table-with-note paired-fit-table-wrap"
           )
         )
       },
@@ -455,7 +449,8 @@ paired_results_ui <- function(result) {
           tags$h3("Repeated-measures test: binary"),
           result_table_with_notes(
             paired_rm_grouped_table(result$paired_rm$count_table, "count"),
-            result_note_tag(paired_rm_table_method_note(result$paired_rm$count_table))
+            result_note_tag(paired_rm_table_method_note(result$paired_rm$count_table)),
+            class = "result-table-with-note paired-fit-table-wrap"
           )
         )
       },
@@ -488,7 +483,8 @@ paired_results_ui <- function(result) {
       analysis_diagnostics_section(
         paired_combined_diagnostics_table(result, "warnings"),
         paired_combined_diagnostics_table(result, "skipped"),
-        title = "Warnings / skipped repeated-measures rows"
+        title = "Warnings / skipped repeated-measures rows",
+        class = "result-section paired-result-section regression-result-panel paired-diagnostics-panel"
       )
     ))
   }
@@ -507,7 +503,8 @@ paired_results_ui <- function(result) {
         tags$h3("Paired test: continuous / ordinal"),
         result_table_with_notes(
           paired_grouped_table(result$scale_table, "scale", show_effect_size = isTRUE(result$options$effect_size)),
-          result_note_tag(paired_method_note(result$scale_table, show_effect_size = isTRUE(result$options$effect_size)))
+          result_note_tag(paired_method_note(result$scale_table, show_effect_size = isTRUE(result$options$effect_size))),
+          class = "result-table-with-note paired-fit-table-wrap"
         )
       )
     },
@@ -517,7 +514,8 @@ paired_results_ui <- function(result) {
         tags$h3("Paired test: binary / categorical"),
         result_table_with_notes(
           paired_grouped_table(result$count_table, "count", show_effect_size = isTRUE(result$options$effect_size)),
-          result_note_tag(paired_count_method_note(result, show_effect_size = isTRUE(result$options$effect_size)))
+          result_note_tag(paired_count_method_note(result, show_effect_size = isTRUE(result$options$effect_size))),
+          class = "result-table-with-note paired-fit-table-wrap"
         )
       )
     },
@@ -528,6 +526,11 @@ paired_results_ui <- function(result) {
         model_overview_html_table(paired_assumption_review_table(result))
       )
     },
-    analysis_diagnostics_section(result$warnings, result$skipped, title = "Warnings / skipped pairs")
+    analysis_diagnostics_section(
+      result$warnings,
+      result$skipped,
+      title = "Warnings / skipped pairs",
+      class = "result-section paired-result-section regression-result-panel paired-diagnostics-panel"
+    )
   )
 }

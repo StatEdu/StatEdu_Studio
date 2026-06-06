@@ -65,6 +65,7 @@ create_app_server <- function(app_version) {
   output$lazy_analysis_frequencies <- renderUI(tab_panel_content(frequencies_tab_panel("Frequencies / Descriptives")))
   output$lazy_analysis_crosstabs <- renderUI(tab_panel_content(crosstab_tab_panel()))
   output$lazy_analysis_ttest_anova <- renderUI(tab_panel_content(ttest_anova_tab_panel("t-test / ANOVA")))
+  output$lazy_analysis_ancova <- renderUI(tab_panel_content(ancova_tab_panel("ANCOVA")))
   output$lazy_analysis_nonparametric <- renderUI(tab_panel_content(nonparametric_tab_panel("Nonparametric Tests")))
   output$lazy_analysis_paired <- renderUI(tab_panel_content(paired_tab_panel("Paired test")))
   output$lazy_analysis_nonparametric_paired <- renderUI(tab_panel_content(nonparametric_paired_tab_panel("Nonparametric Paired")))
@@ -75,6 +76,8 @@ create_app_server <- function(app_version) {
   output$lazy_analysis_hierarchical <- renderUI(tab_panel_content(hierarchical_tab_panel("Regression")))
   output$lazy_analysis_generalized <- renderUI(tab_panel_content(generalized_tab_panel("Generalized")))
   output$lazy_analysis_logistic <- renderUI(tab_panel_content(logistic_regression_tab_panel()))
+
+  register_sample_size_server(input, output, session)
 
   output$lazy_about_overview <- renderUI(tab_panel_content(about_markdown_tab_panel("Overview", "about_overview", "README.md", "Project scope, current version, validation, and citation.")))
   output$lazy_about_user_guide <- renderUI(tab_panel_content(about_markdown_tab_panel("User Guide", "about_user_guide", file.path("docs", "USER_GUIDE_KO.md"), "Step-by-step operating guide for loading data, selecting variables, running analyses, and saving results.")))
@@ -1063,6 +1066,18 @@ create_app_server <- function(app_version) {
   )
 
   register_ttest_anova_handlers(
+    input = input,
+    output = output,
+    session = session,
+    selected_names_fn = selected_names,
+    variable_table_fn = regression_variable_table,
+    dataset_fn = dataset,
+    category_table_fn = category_label_values,
+    labels_fn = var_label_overrides,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
+  register_ancova_handlers(
     input = input,
     output = output,
     session = session,

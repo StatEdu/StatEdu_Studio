@@ -153,6 +153,6 @@ fit_row <- docx_body[which(fit_rows)[[1]], , drop = FALSE]
 fit_values <- unique(as.character(fit_row[nzchar(as.character(fit_row))]))
 expect_true(length(fit_values) == 1L, "Expected Word payload to keep the model fit row as one merged display value")
 expect_true(!any(as.character(fit_row) %in% c("F", "p", "R\u00b2", "adj. R\u00b2")), "Expected Word payload not to split the model fit row into separate F, p, R2, and adjusted R2 cells")
-expect_true(isTRUE(result_docx_wide_table(coefficient_tables[[1]])), "Expected wide regression coefficient tables to use a landscape Word section")
+expect_true(!isTRUE(result_docx_wide_table(coefficient_tables[[1]])), "Expected ordinary regression coefficient tables to stay in a portrait Word section")
 
 message("All regression coefficient validations passed.")

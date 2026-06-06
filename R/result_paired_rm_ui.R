@@ -99,25 +99,16 @@ paired_rm_model_overview_table <- function(result) {
   for (index in seq_len(nrow(table))) {
     item <- table[index, , drop = FALSE]
     group <- as.character(item[[group_column]][[1]] %||% "")
-    values <- stats::setNames(
-      list(
-        as.character(item$N[[1]] %||% ""),
-        paired_rm_short_method(item$Method[[1]] %||% ""),
-        paired_rm_reason_summary(result, group, item)
-      ),
-      c("N", "\ubd84\uc11d", "\uc0ac\uc720")
+    row <- data.frame(
+      `Repeated variables` = group,
+      N = as.character(item$N[[1]] %||% ""),
+      Analysis = paired_rm_short_method(item$Method[[1]] %||% ""),
+      Reason = paired_rm_reason_summary(result, group, item),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
     )
-    metric_index <- 0L
-    for (metric in names(values)) {
-      metric_index <- metric_index + 1L
-      rows[[length(rows) + 1L]] <- data.frame(
-        `Repeated variables` = if (metric_index == 1L) group else "",
-        Item = metric,
-        Result = values[[metric]],
-        stringsAsFactors = FALSE,
-        check.names = FALSE
-      )
-    }
+    names(row) <- c("Repeated variables", "N", "\ubd84\uc11d \ubc29\ubc95", "\uc774\uc720")
+    rows[[length(rows) + 1L]] <- row
   }
   if (length(rows) == 0) NULL else do.call(rbind, rows)
 }
@@ -205,7 +196,7 @@ paired_rm_table_method_note <- function(table) {
   if (length(pairwise_effect_methods) > 0) {
     effect_parts <- c(effect_parts, paste0("b pairwise = ", paste(pairwise_effect_methods, collapse = ", ")))
   }
-  effect_note <- if (length(effect_parts) > 0) paste0("Effect size: ", paste(effect_parts, collapse = "; "), ".") else ""
+  effect_note <- if (length(effect_parts) > 0) paste0("ES = effect size (", paste(effect_parts, collapse = "; "), ").") else ""
   posthoc_methods <- unique(as.character(table$PosthocMethodLabel %||% ""))
   posthoc_methods <- posthoc_methods[nzchar(posthoc_methods)]
   posthoc_adjustments <- unique(as.character(table$PosthocAdjustmentLabel %||% ""))
@@ -243,7 +234,7 @@ paired_rm_posthoc_note <- function(result) {
   if (any(methods == "Wilcoxon signed-rank test")) effect_methods <- c(effect_methods, "r")
   parts <- c(paste0("P values were adjusted using ", adjustment, "."))
   if (length(effect_methods) > 0) {
-    parts <- c(parts, paste0("Effect size: ", paste(effect_methods, collapse = ", "), "."))
+    parts <- c(parts, paste0("ES = effect size (", paste(effect_methods, collapse = ", "), ")."))
   }
   paste(parts, collapse = " ")
 }
@@ -412,7 +403,8 @@ paired_rm_results_ui <- function(result) {
         tags$h3("Repeated-measures test: continuous / ordinal"),
         result_table_with_notes(
           paired_rm_grouped_table(result$display_table, "scale"),
-          result_note_tag(paired_rm_table_method_note(result$display_table))
+          result_note_tag(paired_rm_table_method_note(result$display_table)),
+          class = "result-table-with-note paired-fit-table-wrap"
         )
       )
     },
@@ -422,7 +414,8 @@ paired_rm_results_ui <- function(result) {
         tags$h3("Repeated-measures test: binary"),
         result_table_with_notes(
           paired_rm_grouped_table(result$count_table, "count"),
-          result_note_tag(paired_rm_table_method_note(result$count_table))
+          result_note_tag(paired_rm_table_method_note(result$count_table)),
+          class = "result-table-with-note paired-fit-table-wrap"
         )
       )
     },
@@ -452,6 +445,11 @@ paired_rm_results_ui <- function(result) {
         model_overview_html_table(paired_rm_assumption_review_table(result))
       )
     },
-    analysis_diagnostics_section(NULL, result$skipped, title = "Warnings / skipped repeated-measures rows")
+    analysis_diagnostics_section(
+      NULL,
+      result$skipped,
+      title = "Warnings / skipped repeated-measures rows",
+      class = "result-section paired-result-section regression-result-panel paired-diagnostics-panel"
+    )
   )
 }
