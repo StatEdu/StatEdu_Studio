@@ -3920,8 +3920,13 @@ input.variable-select:disabled {
 .regression-results > .ttest-anova-result-panel .coefficient-table-show-df .coefficient-col-statistic {
   width: 112px !important;
   min-width: 112px !important;
+  padding-right: 12px !important;
   text-align: right !important;
   white-space: nowrap !important;
+}
+
+.regression-results > .ttest-anova-result-panel .coefficient-table-show-df .coefficient-col-p {
+  padding-left: 12px !important;
 }
 
 .regression-results > .ttest-anova-result-panel .coefficient-table-show-df:not(.coefficient-table-mean-sd) .coefficient-col-stat {
@@ -3930,8 +3935,8 @@ input.variable-select:disabled {
 }
 
 .regression-results > .ttest-anova-result-panel .coefficient-table-show-df:not(.coefficient-table-mean-sd) .coefficient-col-statistic {
-  width: 128px !important;
-  min-width: 128px !important;
+  width: 144px !important;
+  min-width: 144px !important;
 }
 
 .regression-results > .ttest-anova-result-panel .coefficient-table .coefficient-col-p,

@@ -276,6 +276,28 @@ result_header_content <- function(label) {
   )
 }
 
+coefficient_show_df_column_width <- function(table, column) {
+  if (!isTRUE(attr(table, "show_df", exact = TRUE))) {
+    return(NA_integer_)
+  }
+  column_key <- result_column_key(column)
+  if (column_key %in% c("m", "sd") && !isTRUE(attr(table, "mean_sd", exact = TRUE))) {
+    return(44L)
+  }
+  if (column_key %in% c("statistic", "t", "f", "tf", "fstatistic")) {
+    return(if (isTRUE(attr(table, "mean_sd", exact = TRUE))) 112L else 144L)
+  }
+  NA_integer_
+}
+
+coefficient_show_df_width_style <- function(table, column) {
+  width <- coefficient_show_df_column_width(table, column)
+  if (!is.finite(width)) {
+    return("")
+  }
+  paste0("width:", width, "px !important;min-width:", width, "px !important;max-width:", width, "px !important;")
+}
+
 coefficient_display_cell_style <- function(table, row_index, column, display_index, display_meta, compact, compact_font_size, compact_width, compact_first_width) {
   marker_column <- isTRUE(display_meta$marker[[display_index]])
   source_columns <- display_meta$source[!display_meta$marker]
@@ -310,12 +332,12 @@ coefficient_display_cell_style <- function(table, row_index, column, display_ind
   if (nzchar(result_cell_note_marker(table, row_index, column))) {
     style <- paste0(style, "white-space:nowrap;overflow-wrap:normal;word-break:normal;")
   }
-  if (isTRUE(attr(table, "show_df", exact = TRUE)) && column_key %in% c("m", "sd") && !isTRUE(attr(table, "mean_sd", exact = TRUE))) {
-    style <- paste0(style, "width:44px;min-width:44px;max-width:44px;")
-  }
+  style <- paste0(style, coefficient_show_df_width_style(table, column))
   if (isTRUE(attr(table, "show_df", exact = TRUE)) && column_key %in% c("statistic", "t", "f", "tf", "fstatistic")) {
-    width <- if (isTRUE(attr(table, "mean_sd", exact = TRUE))) 112L else 128L
-    style <- paste0(style, "width:", width, "px;min-width:", width, "px;max-width:", width, "px;")
+    style <- paste0(style, "padding-right:12px !important;")
+  }
+  if (isTRUE(attr(table, "show_df", exact = TRUE)) && column_key == "p") {
+    style <- paste0(style, "padding-left:12px !important;")
   }
   if (column_key %in% c("statistic", "t", "f", "tf", "fstatistic")) {
     style <- paste0(style, "text-align:right;white-space:nowrap;overflow-wrap:normal;word-break:normal;")
@@ -417,7 +439,10 @@ coefficient_html_table <- function(
       class = table_class,
       style = result_table_style(font_size = if (isTRUE(compact)) compact_font_size else 12, min_width = if (isTRUE(compact)) compact_min_width else 480),
       tags$colgroup(lapply(seq_len(nrow(display_meta)), function(index) {
-        tags$col(class = if (isTRUE(display_meta$marker[[index]])) "coefficient-col-note-marker" else coefficient_column_class(display_meta$source[[index]]))
+        tags$col(
+          class = if (isTRUE(display_meta$marker[[index]])) "coefficient-col-note-marker" else coefficient_column_class(display_meta$source[[index]]),
+          style = if (isTRUE(display_meta$marker[[index]])) "" else coefficient_show_df_width_style(table, display_meta$source[[index]])
+        )
       })),
       tags$thead(
         tags$tr(lapply(seq_len(nrow(display_meta)), function(index) {
@@ -435,6 +460,7 @@ coefficient_html_table <- function(
                 compact_width = compact_width,
                 compact_first_width = compact_first_width
               ),
+              if (isTRUE(display_meta$marker[[index]])) "" else coefficient_show_df_width_style(table, display_meta$source[[index]]),
               if (isTRUE(display_meta$marker[[index]])) "padding-left:2px;padding-right:8px;min-width:16px;width:16px;text-align:left;" else "",
               if (!isTRUE(display_meta$marker[[index]]) && index < nrow(display_meta) && isTRUE(display_meta$marker[[index + 1L]])) "padding-right:2px;" else ""
             ),
