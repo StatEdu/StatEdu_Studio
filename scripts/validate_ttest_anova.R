@@ -105,10 +105,13 @@ overview_4 <- prepare_ttest_anova_results(
   options = list(effect_size = TRUE, normality_enabled = FALSE)
 )
 overview_4_table <- ttest_result_overview_tables(overview_4)$overview
+overview_4_assumption <- ttest_result_overview_tables(overview_4)$assumption_review
 overview_4_html <- as.character(tags_to_html(ttest_anova_results_ui(overview_4)))
 expect_true(identical(attr(overview_4_table, "dependent_count", exact = TRUE), 4L), "Expected four-variable overview to retain dependent count")
-expect_true(grepl("width:590px", as.character(tags_to_html(model_overview_html_table(overview_4_table))), fixed = TRUE), "Expected up-to-four-variable overview table to use portrait width")
+expect_true(identical(attr(overview_4_assumption, "dependent_count", exact = TRUE), 4L), "Expected four-variable assumption review to retain dependent count")
+expect_true(grepl("width:100%", as.character(tags_to_html(model_overview_html_table(overview_4_table))), fixed = TRUE), "Expected overview table to fill its current container")
 expect_true(!grepl("ttest-anova-overview-panel landscape-table-panel", overview_4_html, fixed = TRUE), "Expected four-variable overview to stay portrait")
+expect_true(!grepl("ttest-anova-assumption-review-panel landscape-table-panel", overview_4_html, fixed = TRUE), "Expected four-variable assumption review to stay portrait")
 
 overview_5 <- prepare_ttest_anova_results(
   overview_layout_data,
@@ -118,11 +121,14 @@ overview_5 <- prepare_ttest_anova_results(
   options = list(effect_size = TRUE, normality_enabled = FALSE)
 )
 overview_5_table <- ttest_result_overview_tables(overview_5)$overview
+overview_5_assumption <- ttest_result_overview_tables(overview_5)$assumption_review
 overview_5_html <- as.character(tags_to_html(ttest_anova_results_ui(overview_5)))
 overview_5_saved <- as.character(saved_ttest_anova_results_html(overview_5, report_mode = TRUE))
 expect_true(identical(attr(overview_5_table, "dependent_count", exact = TRUE), 5L), "Expected five-variable overview to retain dependent count")
-expect_true(grepl("width:890px", as.character(tags_to_html(model_overview_html_table(overview_5_table))), fixed = TRUE), "Expected five-variable overview table to use landscape width")
+expect_true(identical(attr(overview_5_assumption, "dependent_count", exact = TRUE), 5L), "Expected five-variable assumption review to retain dependent count")
+expect_true(grepl("width:100%", as.character(tags_to_html(model_overview_html_table(overview_5_table))), fixed = TRUE), "Expected five-variable overview table to fill its current container")
 expect_true(grepl("ttest-anova-overview-panel landscape-table-panel", overview_5_html, fixed = TRUE), "Expected five-variable overview panel to use landscape class")
+expect_true(grepl("ttest-anova-assumption-review-panel landscape-table-panel", overview_5_html, fixed = TRUE), "Expected five-variable assumption review panel to use landscape class")
 expect_true(grepl("print-mixed-landscape", overview_5_saved, fixed = TRUE), "Expected saved five-variable t-test / ANOVA report to enable mixed landscape print mode")
 
 expect_true(is.data.frame(table_markers), "Expected numbered note metadata")

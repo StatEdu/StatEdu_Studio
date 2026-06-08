@@ -1682,6 +1682,7 @@ ttest_assumption_review_wide <- function(overview, dependents = NULL, variable_i
 
   output <- as.data.frame(do.call(rbind, rows), stringsAsFactors = FALSE, check.names = FALSE)
   names(output) <- c("Independent variable", "Item", dependent_labels)
+  attr(output, "dependent_count") <- length(dependent_labels)
   output
 }
 
@@ -1816,6 +1817,7 @@ ttest_anova_results_ui <- function(result) {
 
   overview_tables <- ttest_result_overview_tables(result)
   overview_landscape_class <- if (isTRUE(ttest_model_overview_landscape(overview_tables$overview))) " landscape-table-panel" else ""
+  assumption_landscape_class <- if (isTRUE(ttest_model_overview_landscape(overview_tables$assumption_review))) " landscape-table-panel" else ""
 
   sections <- list(
     tags$div(
@@ -1842,7 +1844,7 @@ ttest_anova_results_ui <- function(result) {
 
   if (is.data.frame(overview_tables$assumption_review) && nrow(overview_tables$assumption_review) > 0) {
     sections[[length(sections) + 1]] <- tags$div(
-      class = "result-section regression-result-panel",
+      class = paste0("result-section regression-result-panel ttest-anova-assumption-review-panel", assumption_landscape_class),
       tags$h3("가정 검토"),
       model_overview_html_table(overview_tables$assumption_review)
     )

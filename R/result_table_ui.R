@@ -538,8 +538,9 @@ model_overview_html_table <- function(table) {
     value_cols <- max(1L, n_cols - left_columns)
     left_width <- if (left_columns == 1L) 96L else 160L
     target_width <- if (value_cols >= 5L) 890L else 590L
-    table_width <- target_width
-    value_width <- max(96L, floor((table_width - left_width) / value_cols))
+    first_width_pct <- 96 / target_width * 100
+    item_width_pct <- if (left_columns >= 2L) 64 / target_width * 100 else 0
+    value_width_pct <- max(6, (100 - first_width_pct - item_width_pct) / value_cols)
     value_names <- names(table)[seq.int(left_columns + 1L, n_cols)]
     model_header_match <- regexec("^(.*)\\s+(Model\\s+[0-9]+)$", value_names)
     model_header_parts <- regmatches(value_names, model_header_match)
@@ -598,15 +599,15 @@ model_overview_html_table <- function(table) {
     table_tag <- tags$table(
       class = "table shiny-table combined-model-overview-table compact-model-overview-table",
       style = paste(
-        sprintf("width:%dpx;max-width:100%%;min-width:0;table-layout:fixed;", table_width),
+        "width:100%;max-width:100%;min-width:0;table-layout:fixed;",
         "border-collapse:collapse;border-spacing:0;border-top:2px solid #1f2937;border-bottom:2px solid #1f2937;",
         "color:#2f3a46;font-size:12px;background:transparent;"
       ),
       tags$colgroup(
-        tags$col(style = "width:96px;"),
-        if (left_columns >= 2L) tags$col(style = "width:64px;"),
+        tags$col(style = sprintf("width:%.4f%%;", first_width_pct)),
+        if (left_columns >= 2L) tags$col(style = sprintf("width:%.4f%%;", item_width_pct)),
         lapply(seq_len(value_cols), function(unused) {
-          tags$col(style = sprintf("width:%dpx;", value_width))
+          tags$col(style = sprintf("width:%.4f%%;", value_width_pct))
         })
       ),
       header_tag,
