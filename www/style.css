@@ -3939,37 +3939,61 @@ input.variable-select:disabled {
   min-width: 144px !important;
 }
 
-.regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis.coefficient-table-mean-sd .coefficient-col-statistic {
-  width: 132px !important;
-  min-width: 132px !important;
+.regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis .coefficient-col-term {
+  width: 110px !important;
+  min-width: 110px !important;
 }
 
-.regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis:not(.coefficient-table-mean-sd) .coefficient-col-stat,
+.regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis.coefficient-table-mean-sd .coefficient-col-value {
+  width: 135px !important;
+  min-width: 135px !important;
+}
+
+.regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis:not(.coefficient-table-mean-sd) .coefficient-col-value {
+  width: 130px !important;
+  min-width: 130px !important;
+}
+
+.regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis.coefficient-table-mean-sd .coefficient-col-mse {
+  width: 128px !important;
+  min-width: 128px !important;
+}
+
+.regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis.coefficient-table-mean-sd .coefficient-col-statistic {
+  width: 158px !important;
+  min-width: 158px !important;
+}
+
+.regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis:not(.coefficient-table-mean-sd) .coefficient-col-stat {
+  width: 50px !important;
+  min-width: 50px !important;
+}
+
 .regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis:not(.coefficient-table-mean-sd) .coefficient-col-p,
 .regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis:not(.coefficient-table-mean-sd) .coefficient-col-effect-size {
-  width: 42px !important;
-  min-width: 42px !important;
+  width: 54px !important;
+  min-width: 54px !important;
 }
 
 .regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis:not(.coefficient-table-mean-sd) .coefficient-col-statistic {
-  width: 136px !important;
-  min-width: 136px !important;
+  width: 170px !important;
+  min-width: 170px !important;
 }
 
 .regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis.coefficient-table-mean-sd .coefficient-col-p,
 .regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis.coefficient-table-mean-sd .coefficient-col-effect-size {
-  width: 42px !important;
-  min-width: 42px !important;
+  width: 54px !important;
+  min-width: 54px !important;
 }
 
 .regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis.coefficient-table-mean-sd .coefficient-col-p-trend {
-  width: 72px !important;
-  min-width: 72px !important;
+  width: 94px !important;
+  min-width: 94px !important;
 }
 
 .regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis:not(.coefficient-table-mean-sd) .coefficient-col-p-trend {
-  width: 84px !important;
-  min-width: 84px !important;
+  width: 100px !important;
+  min-width: 100px !important;
 }
 
 .regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis .coefficient-col-p-trend {
@@ -3977,8 +4001,8 @@ input.variable-select:disabled {
 }
 
 .regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis .coefficient-col-posthoc {
-  width: 66px !important;
-  min-width: 66px !important;
+  width: 76px !important;
+  min-width: 76px !important;
 }
 
 .regression-results > .ttest-anova-result-panel .coefficient-table .coefficient-col-p,

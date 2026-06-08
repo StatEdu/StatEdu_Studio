@@ -123,7 +123,8 @@ expect_true("p for trend" %in% names(ordered_trend_table), "Expected ordered ind
 expect_true(isTRUE(attr(ordered_trend_table, "trend_analysis", exact = TRUE)), "Expected ordered trend result tables to retain display metadata")
 expect_true(grepl("coefficient-table-trend-analysis", ordered_trend_html, fixed = TRUE), "Expected ordered trend result tables to render with a dedicated CSS class")
 expect_true(grepl("coefficient-col-p-trend", ordered_trend_html, fixed = TRUE), "Expected p for trend cells to render with a dedicated column class")
-expect_true(grepl("width:132px !important;min-width:132px !important;max-width:132px !important;", ordered_trend_html, fixed = TRUE), "Expected mean-SD show-df trend statistic cells to use the widened inline width")
+expect_true(grepl("width:128px !important;min-width:128px !important;max-width:128px !important;", ordered_trend_html, fixed = TRUE), "Expected mean-SD trend column to use the widened inline width")
+expect_true(grepl("width:158px !important;min-width:158px !important;max-width:158px !important;", ordered_trend_html, fixed = TRUE), "Expected mean-SD show-df trend statistic cells to use the widened inline width")
 ordered_trend_df_result <- prepare_ttest_anova_results(
   trend_candidate_data,
   dependents = "y",
@@ -132,8 +133,10 @@ ordered_trend_df_result <- prepare_ttest_anova_results(
   options = list(effect_size = TRUE, normality_enabled = FALSE, show_df = TRUE, trend_analysis = TRUE)
 )
 ordered_trend_df_html <- as.character(tags_to_html(ttest_anova_results_ui(ordered_trend_df_result)))
-expect_true(grepl("width:136px !important;min-width:136px !important;max-width:136px !important;", ordered_trend_df_html, fixed = TRUE), "Expected show-df trend statistic cells to use the adjusted inline width")
-expect_true(grepl("width:84px !important;min-width:84px !important;max-width:84px !important;", ordered_trend_df_html, fixed = TRUE), "Expected show-df trend p-for-trend cells to use the widened inline width")
+expect_true(grepl("width:110px !important;min-width:110px !important;max-width:110px !important;", ordered_trend_df_html, fixed = TRUE), "Expected show-df trend variable cells to use the widened inline width")
+expect_true(grepl("width:130px !important;min-width:130px !important;max-width:130px !important;", ordered_trend_df_html, fixed = TRUE), "Expected show-df trend value cells to use the widened inline width")
+expect_true(grepl("width:170px !important;min-width:170px !important;max-width:170px !important;", ordered_trend_df_html, fixed = TRUE), "Expected show-df trend statistic cells to use the adjusted inline width")
+expect_true(grepl("width:100px !important;min-width:100px !important;max-width:100px !important;", ordered_trend_df_html, fixed = TRUE), "Expected show-df trend p-for-trend cells to use the widened inline width")
 mean_sd_result <- prepare_ttest_anova_results(
   data,
   dependents = "y",

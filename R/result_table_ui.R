@@ -284,22 +284,31 @@ coefficient_show_df_column_width <- function(table, column) {
   mean_sd <- isTRUE(attr(table, "mean_sd", exact = TRUE))
   trend_analysis <- isTRUE(attr(table, "trend_analysis", exact = TRUE))
   if (isTRUE(trend_analysis)) {
+    if (column_key == "variable") {
+      return(110L)
+    }
+    if (column_key == "value") {
+      return(if (isTRUE(mean_sd)) 135L else 130L)
+    }
+    if (column_key %in% c("msd", "mse", "rankmse")) {
+      return(128L)
+    }
     if (column_key %in% c("p", "effectsize")) {
-      return(if (isTRUE(mean_sd)) 42L else 44L)
+      return(if (isTRUE(mean_sd)) 54L else 54L)
     }
     if (column_key == "pfortrend") {
-      return(if (isTRUE(mean_sd)) 72L else 84L)
+      return(if (isTRUE(mean_sd)) 94L else 100L)
     }
     if (column_key == "posthoc") {
-      return(66L)
+      return(76L)
     }
   }
   if (column_key %in% c("m", "sd") && !isTRUE(mean_sd)) {
-    return(if (isTRUE(trend_analysis)) 42L else 44L)
+    return(if (isTRUE(trend_analysis)) 50L else 44L)
   }
   if (column_key %in% c("statistic", "t", "f", "tf", "fstatistic")) {
     if (isTRUE(trend_analysis)) {
-      return(if (isTRUE(mean_sd)) 132L else 136L)
+      return(if (isTRUE(mean_sd)) 158L else 170L)
     }
     return(if (isTRUE(mean_sd)) 112L else 144L)
   }
