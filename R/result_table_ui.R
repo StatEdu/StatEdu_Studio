@@ -399,8 +399,12 @@ coefficient_html_table <- function(
   }
   columns <- names(table)
   display_meta <- coefficient_display_columns(table)
+  table_class <- paste(
+    "coefficient-table",
+    if (isTRUE(attr(table, "show_df", exact = TRUE))) "coefficient-table-show-df" else ""
+  )
   table_tag <- tags$table(
-      class = "coefficient-table",
+      class = table_class,
       style = result_table_style(font_size = if (isTRUE(compact)) compact_font_size else 12, min_width = if (isTRUE(compact)) compact_min_width else 480),
       tags$colgroup(lapply(seq_len(nrow(display_meta)), function(index) {
         tags$col(class = if (isTRUE(display_meta$marker[[index]])) "coefficient-col-note-marker" else coefficient_column_class(display_meta$source[[index]]))
