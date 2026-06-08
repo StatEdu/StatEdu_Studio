@@ -74,6 +74,16 @@ df_result_html <- as.character(tags_to_html(ttest_anova_results_ui(df_result)))
 expect_true(grepl("coefficient-table-show-df", df_result_html, fixed = TRUE), "Expected show-df result tables to render with a dedicated CSS class")
 expect_true(grepl("coefficient-col-statistic", df_result_html, fixed = TRUE), "Expected show-df statistic cells to render with a dedicated statistic column class")
 expect_true(!grepl("coefficient-table-show-df", as.character(tags_to_html(ttest_anova_results_ui(result))), fixed = TRUE), "Expected ordinary result tables not to use show-df CSS class")
+mean_sd_df_result <- prepare_ttest_anova_results(
+  data,
+  dependents = "y",
+  factors = c("g2", "g3"),
+  variable_info = variable_info,
+  options = list(effect_size = TRUE, normality_enabled = FALSE, mean_sd = TRUE, show_df = TRUE)
+)
+mean_sd_df_html <- as.character(tags_to_html(ttest_anova_results_ui(mean_sd_df_result)))
+expect_true(isTRUE(attr(mean_sd_df_result$results[[1]]$table, "mean_sd", exact = TRUE)), "Expected mean-SD result tables to retain display metadata")
+expect_true(grepl("coefficient-table-mean-sd", mean_sd_df_html, fixed = TRUE), "Expected mean-SD result tables to render with a dedicated CSS class")
 mean_sd_result <- prepare_ttest_anova_results(
   data,
   dependents = "y",

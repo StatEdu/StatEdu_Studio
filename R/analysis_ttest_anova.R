@@ -1769,6 +1769,9 @@ prepare_ttest_anova_results <- function(
       if (isTRUE(options$show_df)) {
         attr(combined_table, "show_df") <- TRUE
       }
+      if (isTRUE(options$mean_sd)) {
+        attr(combined_table, "mean_sd") <- TRUE
+      }
       note_line <- ttest_analysis_note_line(dependent_items)
       posthoc_table <- ttest_bind_result_rows(lapply(dependent_items, function(item) item$posthoc))
       results[[length(results) + 1]] <- list(

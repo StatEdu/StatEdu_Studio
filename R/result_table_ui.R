@@ -402,7 +402,8 @@ coefficient_html_table <- function(
   display_meta <- coefficient_display_columns(table)
   table_class <- paste(
     "coefficient-table",
-    if (isTRUE(attr(table, "show_df", exact = TRUE))) "coefficient-table-show-df" else ""
+    if (isTRUE(attr(table, "show_df", exact = TRUE))) "coefficient-table-show-df" else "",
+    if (isTRUE(attr(table, "mean_sd", exact = TRUE))) "coefficient-table-mean-sd" else ""
   )
   table_tag <- tags$table(
       class = table_class,
