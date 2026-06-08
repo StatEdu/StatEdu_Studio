@@ -654,11 +654,13 @@ saved_reliability_results_html <- function(result, css_path = file.path("www", "
 }
 
 saved_ttest_anova_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
+  print_landscape <- length(result$dependents %||% character(0)) >= 5L
   saved_results_document(
     "EasyFlow Statistics t-test / ANOVA Results",
     tags$div(class = "regression-results", ttest_anova_results_ui(result)),
     max_width = 1500,
     css_path = css_path,
+    print_landscape = print_landscape,
     report_mode = report_mode
   )
 }

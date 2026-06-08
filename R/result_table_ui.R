@@ -537,7 +537,8 @@ model_overview_html_table <- function(table) {
     n_cols <- ncol(table)
     value_cols <- max(1L, n_cols - left_columns)
     left_width <- if (left_columns == 1L) 96L else 160L
-    table_width <- min(760L, left_width + value_cols * 140L)
+    target_width <- if (value_cols >= 5L) 890L else 590L
+    table_width <- target_width
     value_width <- max(96L, floor((table_width - left_width) / value_cols))
     value_names <- names(table)[seq.int(left_columns + 1L, n_cols)]
     model_header_match <- regexec("^(.*)\\s+(Model\\s+[0-9]+)$", value_names)

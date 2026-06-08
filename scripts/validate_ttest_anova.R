@@ -81,6 +81,50 @@ expect_true(!("M" %in% names(mean_sd_result$results[[1]]$table)), "Expected mean
 expect_true(!("SD" %in% names(mean_sd_result$results[[1]]$table)), "Expected mean-SD display to omit separate SD column")
 expect_true(grepl("\u00B1", mean_sd_result$results[[1]]$table[["M \u00B1 SD"]][[1]], fixed = TRUE), "Expected M plus/minus SD value")
 expect_true(grepl("M \u00B1 SD = mean \u00B1 standard deviation.", mean_sd_result$results[[1]]$note, fixed = TRUE), "Expected mean-SD note")
+
+message("Checking t-test / ANOVA model overview orientation...")
+overview_layout_data <- data.frame(
+  group = rep(c("A", "B"), each = 20),
+  y1 = c(1:20, 2:21),
+  y2 = c(2:21, 3:22),
+  y3 = c(3:22, 4:23),
+  y4 = c(4:23, 5:24),
+  y5 = c(5:24, 6:25),
+  stringsAsFactors = FALSE
+)
+overview_layout_info <- data.frame(
+  name = c("group", paste0("y", 1:5)),
+  measurement = c("binary", rep("continuous", 5)),
+  stringsAsFactors = FALSE
+)
+overview_4 <- prepare_ttest_anova_results(
+  overview_layout_data,
+  dependents = paste0("y", 1:4),
+  factors = "group",
+  variable_info = overview_layout_info,
+  options = list(effect_size = TRUE, normality_enabled = FALSE)
+)
+overview_4_table <- ttest_result_overview_tables(overview_4)$overview
+overview_4_html <- as.character(tags_to_html(ttest_anova_results_ui(overview_4)))
+expect_true(identical(attr(overview_4_table, "dependent_count", exact = TRUE), 4L), "Expected four-variable overview to retain dependent count")
+expect_true(grepl("width:590px", as.character(tags_to_html(model_overview_html_table(overview_4_table))), fixed = TRUE), "Expected up-to-four-variable overview table to use portrait width")
+expect_true(!grepl("ttest-anova-overview-panel landscape-table-panel", overview_4_html, fixed = TRUE), "Expected four-variable overview to stay portrait")
+
+overview_5 <- prepare_ttest_anova_results(
+  overview_layout_data,
+  dependents = paste0("y", 1:5),
+  factors = "group",
+  variable_info = overview_layout_info,
+  options = list(effect_size = TRUE, normality_enabled = FALSE)
+)
+overview_5_table <- ttest_result_overview_tables(overview_5)$overview
+overview_5_html <- as.character(tags_to_html(ttest_anova_results_ui(overview_5)))
+overview_5_saved <- as.character(saved_ttest_anova_results_html(overview_5, report_mode = TRUE))
+expect_true(identical(attr(overview_5_table, "dependent_count", exact = TRUE), 5L), "Expected five-variable overview to retain dependent count")
+expect_true(grepl("width:890px", as.character(tags_to_html(model_overview_html_table(overview_5_table))), fixed = TRUE), "Expected five-variable overview table to use landscape width")
+expect_true(grepl("ttest-anova-overview-panel landscape-table-panel", overview_5_html, fixed = TRUE), "Expected five-variable overview panel to use landscape class")
+expect_true(grepl("print-mixed-landscape", overview_5_saved, fixed = TRUE), "Expected saved five-variable t-test / ANOVA report to enable mixed landscape print mode")
+
 expect_true(is.data.frame(table_markers), "Expected numbered note metadata")
 expect_true(any(table_markers$row == 1L & table_markers$column == "Effect size"), "Expected first effect-size value to include a numbered marker")
 expect_true(!any(table_markers$row == 3L & table_markers$column == "p"), "Expected single Welch ANOVA method note to omit a p-value marker")

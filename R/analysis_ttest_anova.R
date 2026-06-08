@@ -1614,7 +1614,21 @@ ttest_model_overview_wide <- function(overview, dependents = NULL, variable_info
   }
   output <- as.data.frame(do.call(rbind, rows), stringsAsFactors = FALSE, check.names = FALSE)
   names(output) <- c("Independent variable", "Item", dependent_labels)
+  attr(output, "dependent_count") <- length(dependent_labels)
   output
+}
+
+ttest_model_overview_landscape <- function(table) {
+  count <- attr(table, "dependent_count", exact = TRUE)
+  if (is.null(count)) {
+    left_columns <- if ("Item" %in% names(table)) {
+      if (identical(names(table)[[1]], "Item")) 1L else 2L
+    } else {
+      1L
+    }
+    count <- max(0L, ncol(table) - left_columns)
+  }
+  is.finite(count) && as.integer(count) >= 5L
 }
 
 ttest_assumption_review_wide <- function(overview, dependents = NULL, variable_info = NULL, labels = character(0), category_table = NULL) {
@@ -1801,10 +1815,11 @@ ttest_anova_results_ui <- function(result) {
   }
 
   overview_tables <- ttest_result_overview_tables(result)
+  overview_landscape_class <- if (isTRUE(ttest_model_overview_landscape(overview_tables$overview))) " landscape-table-panel" else ""
 
   sections <- list(
     tags$div(
-      class = "result-section regression-result-panel ttest-anova-overview-panel",
+      class = paste0("result-section regression-result-panel ttest-anova-overview-panel", overview_landscape_class),
       tags$h3("Model overview"),
       model_overview_html_table(overview_tables$overview)
     )
