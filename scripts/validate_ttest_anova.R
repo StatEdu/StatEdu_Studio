@@ -70,7 +70,9 @@ df_result <- prepare_ttest_anova_results(
 )
 expect_true(grepl("\\([0-9.]+,[0-9.]+\\)", df_result$results[[1]]$table[[5]][[3]], perl = TRUE), "Expected enabled ANOVA F statistic to include df1 and df2")
 expect_true(isTRUE(attr(df_result$results[[1]]$table, "show_df", exact = TRUE)), "Expected show-df result tables to retain display metadata")
-expect_true(grepl("coefficient-table-show-df", as.character(tags_to_html(ttest_anova_results_ui(df_result))), fixed = TRUE), "Expected show-df result tables to render with a dedicated CSS class")
+df_result_html <- as.character(tags_to_html(ttest_anova_results_ui(df_result)))
+expect_true(grepl("coefficient-table-show-df", df_result_html, fixed = TRUE), "Expected show-df result tables to render with a dedicated CSS class")
+expect_true(grepl("coefficient-col-statistic", df_result_html, fixed = TRUE), "Expected show-df statistic cells to render with a dedicated statistic column class")
 expect_true(!grepl("coefficient-table-show-df", as.character(tags_to_html(ttest_anova_results_ui(result))), fixed = TRUE), "Expected ordinary result tables not to use show-df CSS class")
 mean_sd_result <- prepare_ttest_anova_results(
   data,

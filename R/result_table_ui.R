@@ -324,6 +324,7 @@ coefficient_column_class <- function(name) {
     value = "coefficient-col-value",
     label = "coefficient-col-reference",
     statistic = "coefficient-col-statistic",
+    tf = "coefficient-col-statistic",
     f = "coefficient-col-f",
     msd = "coefficient-col-mse",
     mse = "coefficient-col-mse",
