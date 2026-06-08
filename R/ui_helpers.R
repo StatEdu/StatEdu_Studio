@@ -13,16 +13,13 @@ analysis_save_edition <- function() {
 }
 
 analysis_save_feature_enabled <- function(feature, edition = analysis_save_edition()) {
-  if (feature %in% c("html", "pdf", "word")) {
-    return(FALSE)
-  }
   if (identical(edition, "development")) {
     return(TRUE)
   }
   if (identical(edition, "personal") || identical(edition, "institution")) {
     return(feature %in% c("html", "pdf", "figure", "excel", "word", "add_result", "result_history"))
   }
-  feature %in% c("html", "pdf", "figure")
+  feature %in% c("html", "pdf", "figure", "word")
 }
 
 analysis_save_button <- function(id, label, feature, class = "btn-default") {
