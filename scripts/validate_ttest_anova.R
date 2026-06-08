@@ -73,6 +73,7 @@ expect_true(isTRUE(attr(df_result$results[[1]]$table, "show_df", exact = TRUE)),
 df_result_html <- as.character(tags_to_html(ttest_anova_results_ui(df_result)))
 expect_true(grepl("coefficient-table-show-df", df_result_html, fixed = TRUE), "Expected show-df result tables to render with a dedicated CSS class")
 expect_true(grepl("coefficient-col-statistic", df_result_html, fixed = TRUE), "Expected show-df statistic cells to render with a dedicated statistic column class")
+expect_true(grepl("width:128px;min-width:128px;max-width:128px;text-align:right", df_result_html, fixed = TRUE), "Expected show-df statistic cells to carry inline right-aligned width")
 expect_true(!grepl("coefficient-table-show-df", as.character(tags_to_html(ttest_anova_results_ui(result))), fixed = TRUE), "Expected ordinary result tables not to use show-df CSS class")
 mean_sd_df_result <- prepare_ttest_anova_results(
   data,
@@ -84,6 +85,7 @@ mean_sd_df_result <- prepare_ttest_anova_results(
 mean_sd_df_html <- as.character(tags_to_html(ttest_anova_results_ui(mean_sd_df_result)))
 expect_true(isTRUE(attr(mean_sd_df_result$results[[1]]$table, "mean_sd", exact = TRUE)), "Expected mean-SD result tables to retain display metadata")
 expect_true(grepl("coefficient-table-mean-sd", mean_sd_df_html, fixed = TRUE), "Expected mean-SD result tables to render with a dedicated CSS class")
+expect_true(grepl("width:112px;min-width:112px;max-width:112px;text-align:right", mean_sd_df_html, fixed = TRUE), "Expected mean-SD show-df statistic cells to keep their inline width")
 mean_sd_result <- prepare_ttest_anova_results(
   data,
   dependents = "y",

@@ -280,6 +280,7 @@ coefficient_display_cell_style <- function(table, row_index, column, display_ind
   marker_column <- isTRUE(display_meta$marker[[display_index]])
   source_columns <- display_meta$source[!display_meta$marker]
   source_index <- match(column, source_columns)
+  column_key <- result_column_key(column)
   style <- result_body_cell_style(
     display_index == 1,
     row_index == nrow(table),
@@ -303,13 +304,20 @@ coefficient_display_cell_style <- function(table, row_index, column, display_ind
   if (is.finite(source_index) && source_index == 1 && display_index != 1) {
     style <- paste0(style, "text-align:left;")
   }
-  if (result_note_marker_column(column) || result_column_key(column) %in% c("msd", "mse", "rankmse")) {
+  if (result_note_marker_column(column) || column_key %in% c("msd", "mse", "rankmse")) {
     style <- paste0(style, "white-space:nowrap;overflow-wrap:normal;word-break:normal;")
   }
   if (nzchar(result_cell_note_marker(table, row_index, column))) {
     style <- paste0(style, "white-space:nowrap;overflow-wrap:normal;word-break:normal;")
   }
-  if (result_column_key(column) %in% c("statistic", "t", "f", "tf", "fstatistic")) {
+  if (isTRUE(attr(table, "show_df", exact = TRUE)) && column_key %in% c("m", "sd") && !isTRUE(attr(table, "mean_sd", exact = TRUE))) {
+    style <- paste0(style, "width:44px;min-width:44px;max-width:44px;")
+  }
+  if (isTRUE(attr(table, "show_df", exact = TRUE)) && column_key %in% c("statistic", "t", "f", "tf", "fstatistic")) {
+    width <- if (isTRUE(attr(table, "mean_sd", exact = TRUE))) 112L else 128L
+    style <- paste0(style, "width:", width, "px;min-width:", width, "px;max-width:", width, "px;")
+  }
+  if (column_key %in% c("statistic", "t", "f", "tf", "fstatistic")) {
     style <- paste0(style, "text-align:right;white-space:nowrap;overflow-wrap:normal;word-break:normal;")
   }
   style
