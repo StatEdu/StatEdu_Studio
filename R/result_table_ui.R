@@ -281,11 +281,27 @@ coefficient_show_df_column_width <- function(table, column) {
     return(NA_integer_)
   }
   column_key <- result_column_key(column)
-  if (column_key %in% c("m", "sd") && !isTRUE(attr(table, "mean_sd", exact = TRUE))) {
-    return(44L)
+  mean_sd <- isTRUE(attr(table, "mean_sd", exact = TRUE))
+  trend_analysis <- isTRUE(attr(table, "trend_analysis", exact = TRUE))
+  if (isTRUE(trend_analysis)) {
+    if (column_key %in% c("p", "effectsize")) {
+      return(if (isTRUE(mean_sd)) 42L else 44L)
+    }
+    if (column_key == "pfortrend") {
+      return(if (isTRUE(mean_sd)) 72L else 84L)
+    }
+    if (column_key == "posthoc") {
+      return(66L)
+    }
+  }
+  if (column_key %in% c("m", "sd") && !isTRUE(mean_sd)) {
+    return(if (isTRUE(trend_analysis)) 42L else 44L)
   }
   if (column_key %in% c("statistic", "t", "f", "tf", "fstatistic")) {
-    return(if (isTRUE(attr(table, "mean_sd", exact = TRUE))) 112L else 144L)
+    if (isTRUE(trend_analysis)) {
+      return(if (isTRUE(mean_sd)) 132L else 136L)
+    }
+    return(if (isTRUE(mean_sd)) 112L else 144L)
   }
   NA_integer_
 }
@@ -339,6 +355,9 @@ coefficient_display_cell_style <- function(table, row_index, column, display_ind
   if (isTRUE(attr(table, "show_df", exact = TRUE)) && column_key == "p") {
     style <- paste0(style, "padding-left:12px !important;")
   }
+  if (isTRUE(attr(table, "trend_analysis", exact = TRUE)) && column_key == "pfortrend") {
+    style <- paste0(style, "white-space:nowrap;overflow-wrap:normal;word-break:normal;")
+  }
   if (column_key %in% c("statistic", "t", "f", "tf", "fstatistic")) {
     style <- paste0(style, "text-align:right;white-space:nowrap;overflow-wrap:normal;word-break:normal;")
   }
@@ -363,6 +382,7 @@ coefficient_column_class <- function(name) {
     reference = "coefficient-col-reference",
     t = "coefficient-col-compact",
     p = "coefficient-col-p",
+    pfortrend = "coefficient-col-p-trend",
     effectsize = "coefficient-col-effect-size",
     posthoc = "coefficient-col-posthoc",
     sr2 = "coefficient-col-compact",
@@ -433,7 +453,8 @@ coefficient_html_table <- function(
   table_class <- paste(
     "coefficient-table",
     if (isTRUE(attr(table, "show_df", exact = TRUE))) "coefficient-table-show-df" else "",
-    if (isTRUE(attr(table, "mean_sd", exact = TRUE))) "coefficient-table-mean-sd" else ""
+    if (isTRUE(attr(table, "mean_sd", exact = TRUE))) "coefficient-table-mean-sd" else "",
+    if (isTRUE(attr(table, "trend_analysis", exact = TRUE))) "coefficient-table-trend-analysis" else ""
   )
   table_tag <- tags$table(
       class = table_class,

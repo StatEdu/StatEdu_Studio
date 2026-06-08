@@ -87,6 +87,53 @@ mean_sd_df_html <- as.character(tags_to_html(ttest_anova_results_ui(mean_sd_df_r
 expect_true(isTRUE(attr(mean_sd_df_result$results[[1]]$table, "mean_sd", exact = TRUE)), "Expected mean-SD result tables to retain display metadata")
 expect_true(grepl("coefficient-table-mean-sd", mean_sd_df_html, fixed = TRUE), "Expected mean-SD result tables to render with a dedicated CSS class")
 expect_true(grepl("width:112px !important;min-width:112px !important;max-width:112px !important;", mean_sd_df_html, fixed = TRUE), "Expected mean-SD show-df statistic cells to keep their inline width")
+trend_candidate_data <- data.frame(
+  y = c(1.2, 1.4, 1.5, 1.6, 1.7, 2.4, 2.5, 2.7, 2.8, 2.9, 3.4, 3.6, 3.7, 3.8, 3.9),
+  nominal_group = rep(c("A", "B", "C"), each = 5),
+  ordered_group = rep(c("low", "middle", "high"), each = 5),
+  stringsAsFactors = FALSE
+)
+trend_candidate_info <- data.frame(
+  name = c("y", "nominal_group", "ordered_group"),
+  measurement = c("continuous", "category", "ordered"),
+  stringsAsFactors = FALSE
+)
+nominal_trend_result <- prepare_ttest_anova_results(
+  trend_candidate_data,
+  dependents = "y",
+  factors = "nominal_group",
+  variable_info = trend_candidate_info,
+  options = list(effect_size = TRUE, normality_enabled = FALSE, show_df = TRUE, trend_analysis = TRUE)
+)
+nominal_trend_table <- nominal_trend_result$results[[1]]$table
+nominal_trend_html <- as.character(tags_to_html(ttest_anova_results_ui(nominal_trend_result)))
+expect_true(!("p for trend" %in% names(nominal_trend_table)), "Expected trend option not to add a trend column without an ordered independent variable")
+expect_true(!grepl("trend analysis", nominal_trend_result$results[[1]]$note, fixed = TRUE), "Expected trend option not to add a trend note without an ordered independent variable")
+expect_true(!grepl("coefficient-table-trend-analysis", nominal_trend_html, fixed = TRUE), "Expected non-ordered trend option not to use trend table spacing")
+ordered_trend_result <- prepare_ttest_anova_results(
+  trend_candidate_data,
+  dependents = "y",
+  factors = "ordered_group",
+  variable_info = trend_candidate_info,
+  options = list(effect_size = TRUE, normality_enabled = FALSE, show_df = TRUE, mean_sd = TRUE, trend_analysis = TRUE)
+)
+ordered_trend_table <- ordered_trend_result$results[[1]]$table
+ordered_trend_html <- as.character(tags_to_html(ttest_anova_results_ui(ordered_trend_result)))
+expect_true("p for trend" %in% names(ordered_trend_table), "Expected ordered independent variable to keep the trend column")
+expect_true(isTRUE(attr(ordered_trend_table, "trend_analysis", exact = TRUE)), "Expected ordered trend result tables to retain display metadata")
+expect_true(grepl("coefficient-table-trend-analysis", ordered_trend_html, fixed = TRUE), "Expected ordered trend result tables to render with a dedicated CSS class")
+expect_true(grepl("coefficient-col-p-trend", ordered_trend_html, fixed = TRUE), "Expected p for trend cells to render with a dedicated column class")
+expect_true(grepl("width:132px !important;min-width:132px !important;max-width:132px !important;", ordered_trend_html, fixed = TRUE), "Expected mean-SD show-df trend statistic cells to use the widened inline width")
+ordered_trend_df_result <- prepare_ttest_anova_results(
+  trend_candidate_data,
+  dependents = "y",
+  factors = "ordered_group",
+  variable_info = trend_candidate_info,
+  options = list(effect_size = TRUE, normality_enabled = FALSE, show_df = TRUE, trend_analysis = TRUE)
+)
+ordered_trend_df_html <- as.character(tags_to_html(ttest_anova_results_ui(ordered_trend_df_result)))
+expect_true(grepl("width:136px !important;min-width:136px !important;max-width:136px !important;", ordered_trend_df_html, fixed = TRUE), "Expected show-df trend statistic cells to use the adjusted inline width")
+expect_true(grepl("width:84px !important;min-width:84px !important;max-width:84px !important;", ordered_trend_df_html, fixed = TRUE), "Expected show-df trend p-for-trend cells to use the widened inline width")
 mean_sd_result <- prepare_ttest_anova_results(
   data,
   dependents = "y",

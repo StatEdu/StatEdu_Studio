@@ -1761,7 +1761,10 @@ prepare_ttest_anova_results <- function(
         names(combined_table)[names(combined_table) == "M"] <- "Median"
         names(combined_table)[names(combined_table) == "SD"] <- "Q1~Q3"
       }
-      if (!isTRUE(options$trend_analysis) && "p for trend" %in% names(combined_table)) {
+      has_trend_result <- any(vapply(dependent_items, function(item) {
+        nzchar(as.character(item$notes$trend %||% ""))
+      }, logical(1)))
+      if (!isTRUE(has_trend_result) && "p for trend" %in% names(combined_table)) {
         combined_table[["p for trend"]] <- NULL
       }
       note_result <- ttest_apply_numbered_notes(combined_table, dependent_items)
@@ -1771,6 +1774,9 @@ prepare_ttest_anova_results <- function(
       }
       if (isTRUE(options$mean_sd)) {
         attr(combined_table, "mean_sd") <- TRUE
+      }
+      if (isTRUE(has_trend_result)) {
+        attr(combined_table, "trend_analysis") <- TRUE
       }
       note_line <- ttest_analysis_note_line(dependent_items)
       posthoc_table <- ttest_bind_result_rows(lapply(dependent_items, function(item) item$posthoc))
