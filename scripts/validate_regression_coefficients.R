@@ -155,4 +155,31 @@ expect_true(length(fit_values) == 1L, "Expected Word payload to keep the model f
 expect_true(!any(as.character(fit_row) %in% c("F", "p", "R\u00b2", "adj. R\u00b2")), "Expected Word payload not to split the model fit row into separate F, p, R2, and adjusted R2 cells")
 expect_true(!isTRUE(result_docx_wide_table(coefficient_tables[[1]])), "Expected ordinary regression coefficient tables to stay in a portrait Word section")
 
+message("Checking bootstrap regression coefficient table spacing...")
+bootstrap_display_table <- data.frame(
+  Term = c("(Intercept)", "group:yes", "group:no", "sex:female", "education:university"),
+  B = c("2.527", ".065", "reference", ".013", "reference"),
+  `Boot SE` = c(".863", ".036", "", ".039", ""),
+  LLCI = c(".762", "-.008", "", "-.063", ""),
+  ULCI = c("4.218", ".132", "", ".088", ""),
+  `Boot p` = c(".008", ".080", "", ".759", ""),
+  f2 = c("", ".006", "", ".000", ""),
+  Tolerance = c("", ".932", "", ".892", ""),
+  VIF = c("", "1.073", "", "1.121", ""),
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+names(bootstrap_display_table)[names(bootstrap_display_table) == "f2"] <- "f\u00B2"
+attr(bootstrap_display_table, "bootstrap_regression") <- TRUE
+bootstrap_table_html <- as.character(tags_to_html(coefficient_html_table(bootstrap_display_table)))
+expect_true(grepl("coefficient-table-bootstrap-regression", bootstrap_table_html, fixed = TRUE), "Expected bootstrap regression tables to use a dedicated CSS class")
+expect_true(grepl("coefficient-col-boot-se", bootstrap_table_html, fixed = TRUE), "Expected Boot SE to use a dedicated column class")
+expect_true(grepl("coefficient-col-ci", bootstrap_table_html, fixed = TRUE), "Expected bootstrap CI columns to use a dedicated column class")
+expect_true(grepl("coefficient-col-boot-p", bootstrap_table_html, fixed = TRUE), "Expected Boot p to use a dedicated column class")
+expect_true(grepl("coefficient-col-vif", bootstrap_table_html, fixed = TRUE), "Expected VIF to use a dedicated column class")
+expect_true(grepl("width:330px !important;min-width:330px !important;max-width:330px !important;", bootstrap_table_html, fixed = TRUE), "Expected bootstrap term cells to keep enough width")
+expect_true(grepl("width:78px !important;min-width:78px !important;max-width:78px !important;", bootstrap_table_html, fixed = TRUE), "Expected Boot SE cells to keep enough width")
+expect_true(grepl("width:92px !important;min-width:92px !important;max-width:92px !important;", bootstrap_table_html, fixed = TRUE), "Expected Tolerance cells to keep enough width")
+expect_true(grepl("width:60px !important;min-width:60px !important;max-width:60px !important;", bootstrap_table_html, fixed = TRUE), "Expected VIF cells to keep enough width")
+
 message("All regression coefficient validations passed.")

@@ -277,10 +277,20 @@ result_header_content <- function(label) {
 }
 
 coefficient_show_df_column_width <- function(table, column) {
+  column_key <- result_column_key(column)
+  if (isTRUE(attr(table, "bootstrap_regression", exact = TRUE))) {
+    if (column_key == "term") return(330L)
+    if (column_key == "b") return(56L)
+    if (column_key %in% c("bootse", "hc3se")) return(78L)
+    if (column_key %in% c("llci", "ulci")) return(68L)
+    if (column_key == "bootp") return(72L)
+    if (column_key %in% c("sr2", "f2")) return(48L)
+    if (column_key == "tolerance") return(92L)
+    if (column_key == "vif") return(60L)
+  }
   if (!isTRUE(attr(table, "show_df", exact = TRUE))) {
     return(NA_integer_)
   }
-  column_key <- result_column_key(column)
   mean_sd <- isTRUE(attr(table, "mean_sd", exact = TRUE))
   trend_analysis <- isTRUE(attr(table, "trend_analysis", exact = TRUE))
   if (isTRUE(trend_analysis)) {
@@ -388,6 +398,11 @@ coefficient_column_class <- function(name) {
     mse = "coefficient-col-mse",
     rankmse = "coefficient-col-mse",
     b = "coefficient-col-b",
+    bootse = "coefficient-col-boot-se",
+    hc3se = "coefficient-col-boot-se",
+    llci = "coefficient-col-ci",
+    ulci = "coefficient-col-ci",
+    bootp = "coefficient-col-boot-p",
     reference = "coefficient-col-reference",
     t = "coefficient-col-compact",
     p = "coefficient-col-p",
@@ -396,7 +411,7 @@ coefficient_column_class <- function(name) {
     posthoc = "coefficient-col-posthoc",
     sr2 = "coefficient-col-compact",
     f2 = "coefficient-col-compact",
-    vif = "coefficient-col-compact",
+    vif = "coefficient-col-vif",
     tolerance = "coefficient-col-tolerance",
     "coefficient-col-stat"
   )
@@ -463,7 +478,8 @@ coefficient_html_table <- function(
     "coefficient-table",
     if (isTRUE(attr(table, "show_df", exact = TRUE))) "coefficient-table-show-df" else "",
     if (isTRUE(attr(table, "mean_sd", exact = TRUE))) "coefficient-table-mean-sd" else "",
-    if (isTRUE(attr(table, "trend_analysis", exact = TRUE))) "coefficient-table-trend-analysis" else ""
+    if (isTRUE(attr(table, "trend_analysis", exact = TRUE))) "coefficient-table-trend-analysis" else "",
+    if (isTRUE(attr(table, "bootstrap_regression", exact = TRUE))) "coefficient-table-bootstrap-regression" else ""
   )
   table_tag <- tags$table(
       class = table_class,

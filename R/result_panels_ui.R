@@ -2,6 +2,9 @@
 
 coefficient_result_ui <- function(table, result, show_sr2 = FALSE, show_f2 = FALSE, show_vif = FALSE) {
   table <- filter_coefficient_export_table(table, show_sr2, show_f2, show_vif)
+  if (isTRUE(result$use_bootstrap)) {
+    attr(table, "bootstrap_regression") <- TRUE
+  }
   fit_line <- coefficient_fit_line(result)
   stat_lines <- coefficient_stat_lines(result)
   warning_line <- coefficient_vif_warning_line(result)

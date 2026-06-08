@@ -3883,6 +3883,55 @@ input.variable-select:disabled {
   word-break: normal;
 }
 
+.regression-results > .regression-result-panel .coefficient-table-bootstrap-regression {
+  table-layout: fixed;
+}
+
+.regression-results > .regression-result-panel .coefficient-table-bootstrap-regression th,
+.regression-results > .regression-result-panel .coefficient-table-bootstrap-regression td {
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+}
+
+.regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-term {
+  width: 330px !important;
+  min-width: 330px !important;
+}
+
+.regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-b {
+  width: 56px !important;
+  min-width: 56px !important;
+}
+
+.regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-boot-se {
+  width: 78px !important;
+  min-width: 78px !important;
+}
+
+.regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-ci {
+  width: 68px !important;
+  min-width: 68px !important;
+}
+
+.regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-boot-p {
+  width: 72px !important;
+  min-width: 72px !important;
+}
+
+.regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-compact {
+  width: 48px !important;
+  min-width: 48px !important;
+}
+
+.regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-tolerance {
+  width: 92px !important;
+  min-width: 92px !important;
+}
+
+.regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-vif {
+  width: 60px !important;
+  min-width: 60px !important;
+}
 .regression-results > .ttest-anova-result-panel table {
   font-size: var(--result-table-font-size) !important;
   table-layout: fixed;
