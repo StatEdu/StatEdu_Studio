@@ -232,6 +232,10 @@ expect_true(
     identical(ordered_marker_rows$marker[order(ordered_marker_rows$row)], c("a", "b", "c")),
   "Expected ordered post-hoc markers to be attached to Value cells in displayed value order"
 )
+expect_true(
+  identical(as.character(ordered_marker_table[["post-hoc"]][1:2]), c("c>a,b", "b>a")),
+  "Expected multi-line ordered post-hoc notation to use subsequent table rows instead of line breaks in one cell"
+)
 ordered_marker_html <- as.character(tags_to_html(ttest_anova_results_ui(ordered_marker_result)))
 expect_true(
   grepl("coefficient-footnote-marker", ordered_marker_html, fixed = TRUE) &&

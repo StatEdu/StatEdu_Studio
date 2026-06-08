@@ -828,9 +828,7 @@ analysis_apply_ordered_posthoc_markers <- function(rows, estimates, levels, p_ma
       marker_table
     }
   }
-  rows[["post-hoc"]] <- ""
-  rows[["post-hoc"]][[1]] <- paste(unique(statements), collapse = "; ")
-  rows
+  ttest_distribute_ordered_posthoc(rows, paste(unique(statements), collapse = "; "))
 }
 
 ttest_effect_size <- function(values, groups, test_type) {
