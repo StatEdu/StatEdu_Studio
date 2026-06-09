@@ -115,6 +115,33 @@ register_paired_handlers <- function(
     updateActionButton(session, "paired_pair_move", label = if (identical(active_list(), "paired_pairs") && length(input$paired_pairs %||% character(0)) > 0) "<" else ">")
   })
 
+  add_paired_group <- function(source_values) {
+    source_values <- as.character(source_values %||% character(0))
+    if (length(source_values) < 2L) {
+      showNotification("Select two or more repeated-measures variables to create one paired row.", type = "warning")
+      return(FALSE)
+    }
+    measurements <- paired_measurement_lookup(current_variable_table())
+    levels <- vapply(source_values, function(name) named_value(measurements, name, "continuous"), character(1))
+    if (length(unique(levels)) > 1) {
+      showNotification("Repeated-measures variables must have the same measurement level.", type = "warning")
+      return(FALSE)
+    }
+    if (length(source_values) >= 3L && identical(levels[[1]], "category")) {
+      showNotification("Categorical paired tests with three or more repeated measurements will be supported after 1.0. Use two repeated measurements for now.", type = "warning")
+      return(FALSE)
+    }
+    groups <- repeated_groups()
+    existing_values <- paired_group_values(groups)
+    next_value <- paired_group_values(list(source_values))
+    if (!next_value %in% existing_values) {
+      repeated_groups(c(groups, list(source_values)))
+    }
+    active_list("paired_pairs")
+    mark_settings_dirty()
+    TRUE
+  }
+
   observeEvent(input$paired_pair_move, {
     if (identical(active_list(), "paired_pairs")) {
       selected_groups <- intersect(as.character(input$paired_pairs %||% character(0)), paired_group_values(repeated_groups()))
@@ -131,30 +158,15 @@ register_paired_handlers <- function(
         input$paired_available_selection_order,
         selected
       )
-      if (length(source_values) < 2L) {
-        showNotification("Select two or more repeated-measures variables to create one paired row.", type = "warning")
-        return()
-      }
-      measurements <- paired_measurement_lookup(current_variable_table())
-      levels <- vapply(source_values, function(name) named_value(measurements, name, "continuous"), character(1))
-      if (length(unique(levels)) > 1) {
-        showNotification("Repeated-measures variables must have the same measurement level.", type = "warning")
-        return()
-      }
-      if (length(source_values) >= 3L && identical(levels[[1]], "category")) {
-        showNotification("Categorical paired tests with three or more repeated measurements will be supported after 1.0. Use two repeated measurements for now.", type = "warning")
-        return()
-      }
-      groups <- repeated_groups()
-      existing_values <- paired_group_values(groups)
-      next_value <- paired_group_values(list(source_values))
-      if (!next_value %in% existing_values) {
-        repeated_groups(c(groups, list(source_values)))
-      }
-      active_list("paired_pairs")
-      mark_settings_dirty()
+      add_paired_group(source_values)
     }
   })
+
+  observeEvent(input$paired_pair_move_ordered, {
+    payload <- input$paired_pair_move_ordered
+    source_values <- paired_keep_selected_order(payload$values, current_selected())
+    add_paired_group(source_values)
+  }, ignoreInit = TRUE)
 
   observeEvent(input$paired_pairs_doubleclick, {
     selected_groups <- intersect(

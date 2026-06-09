@@ -154,6 +154,53 @@ paired_time_label_inputs <- function(time_labels) {
 }
 
 paired_setup_panel <- function(state) {
+  primary_options <- tagList(
+    analysis_option_group(
+      "Assumption",
+      list(list(id = "paired_assumption_check", label = "Check assumptions", value = state$assumption_check))
+    ),
+    analysis_option_group(
+      "Categorical",
+      list(list(id = "paired_bowker", label = "Bowker symmetry test", value = state$bowker))
+    ),
+    analysis_option_group(
+      "Effect size",
+      list(
+        list(id = "paired_effect_size", label = "Effect size", value = state$effect_size),
+        list(id = "paired_cohen_d", label = "Cohen's d for paired t-test", value = state$cohen_d)
+      )
+    ),
+    analysis_option_group(
+      "Summary",
+      list(
+        list(id = "paired_mean_sd", label = "M \u00B1 SD", value = state$mean_sd),
+        list(id = "paired_median_iqr", label = "Median(Q1~Q3)", value = state$median_iqr)
+      )
+    )
+  )
+  repeated_options <- tagList(
+    div(
+      class = "analysis-option-group analysis-radio-group paired-posthoc-group",
+      div(class = "analysis-option-title", "Post-hoc correction"),
+      radioButtons(
+        "paired_adjustment",
+        label = NULL,
+        choices = c("Bonferroni correction" = "bonferroni", "Holm Bonferroni" = "holm"),
+        selected = state$adjustment
+      )
+    ),
+    paired_time_label_inputs(state$time_labels)
+  )
+  options_content <- if (isTRUE(state$has_three_plus)) {
+    tabsetPanel(
+      id = "paired_options_tabs",
+      type = "tabs",
+      tabPanel("Options", primary_options),
+      tabPanel("Repeated", repeated_options)
+    )
+  } else {
+    primary_options
+  }
   div(
     class = "ttest-anova-setup-grid paired-setup-grid paired-rm-setup-grid",
     div(
@@ -175,45 +222,7 @@ paired_setup_panel <- function(state) {
       class = "ttest-anova-options-column",
       div(
         class = "analysis-options-panel ttest-anova-options paired-options",
-        analysis_option_group(
-          "Assumption",
-          list(list(id = "paired_assumption_check", label = "Check assumptions", value = state$assumption_check))
-        ),
-        analysis_option_group(
-          "Categorical",
-          list(list(id = "paired_bowker", label = "Bowker symmetry test", value = state$bowker))
-        ),
-        analysis_option_group(
-          "Effect size",
-          list(
-            list(id = "paired_effect_size", label = "Effect size", value = state$effect_size),
-            list(id = "paired_cohen_d", label = "Cohen's d for paired t-test", value = state$cohen_d)
-          )
-        ),
-        analysis_option_group(
-          "Summary",
-          list(
-            list(id = "paired_mean_sd", label = "M \u00B1 SD", value = state$mean_sd),
-            list(id = "paired_median_iqr", label = "Median(Q1~Q3)", value = state$median_iqr)
-          )
-        ),
-        if (isTRUE(state$has_three_plus)) {
-          tagList(
-            div(
-              class = "analysis-option-group analysis-radio-group paired-posthoc-group",
-              div(class = "analysis-option-title", "Post-hoc correction"),
-              radioButtons(
-                "paired_adjustment",
-                label = NULL,
-                choices = c("Bonferroni correction" = "bonferroni", "Holm Bonferroni" = "holm"),
-                selected = state$adjustment
-              )
-            ),
-            paired_time_label_inputs(state$time_labels)
-          )
-        } else {
-          NULL
-        }
+        options_content
       )
     )
   )

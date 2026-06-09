@@ -71,6 +71,8 @@ paired_three_setup_html <- as.character(htmltools::renderTags(paired_setup_panel
 expect_true(grepl("paired_mean_sd", paired_three_setup_html, fixed = TRUE), "Expected paired M +/- SD option to remain visible with 3+ repeated variables")
 expect_true(grepl("paired_median_iqr", paired_three_setup_html, fixed = TRUE), "Expected paired Median(Q1~Q3) option to remain visible with 3+ repeated variables")
 expect_true(grepl("Repeated variable labels", paired_three_setup_html, fixed = TRUE), "Expected repeated variable labels to be added for 3+ repeated variables")
+expect_true(grepl("paired_options_tabs", paired_three_setup_html, fixed = TRUE), "Expected paired 3+ options to render in tabs")
+expect_true(grepl(">Options<", paired_three_setup_html, fixed = TRUE) && grepl(">Repeated<", paired_three_setup_html, fixed = TRUE), "Expected paired 3+ options to split default and repeated settings into tabs")
 
 valid <- prepare_paired_results(data, "pre", "post", variable_info, options = list(assumption_check = FALSE, effect_size = TRUE))
 expect_true(is.data.frame(valid$scale_table) && nrow(valid$scale_table) == 1, "Expected valid paired t-test scale table")

@@ -398,6 +398,25 @@
         }
       }, true);
 
+      document.addEventListener('click', function(event) {
+        var button = event.target && event.target.closest
+          ? event.target.closest('#paired_pair_move')
+          : null;
+        if (!button || button.disabled) return;
+        var availableListbox = easyflowFindTransferListboxByInputId('paired_available');
+        var values = availableListbox ? easyflowTransferSelectedValues(availableListbox) : [];
+        if (values.length < 2) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+        if (window.Shiny && Shiny.setInputValue) {
+          Shiny.setInputValue('paired_pair_move_ordered', {
+            values: values,
+            nonce: Date.now() + Math.random()
+          }, {priority: 'event'});
+        }
+      }, true);
+
       document.addEventListener('mousedown', function(event) {
         var button = event.target && event.target.closest
           ? event.target.closest('.variable-rename-apply-button')
