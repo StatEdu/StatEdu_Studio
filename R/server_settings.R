@@ -303,10 +303,14 @@ register_settings_load_handler <- function(
   restore_settings_state_fn,
   current_data_file_fn,
   restored_variable_info_fn,
-  mark_settings_clean
+  mark_settings_clean,
+  clear_results_fn = NULL
 ) {
   apply_settings_object <- function(settings, settings_path = NULL) {
     suppress_dirty_tracking(TRUE)
+    if (is.function(clear_results_fn)) {
+      clear_results_fn()
+    }
     restore_settings_state_fn(settings, settings_path)
     session$onFlushed(function() {
       suppress_dirty_tracking(FALSE)

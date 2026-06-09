@@ -467,7 +467,8 @@ create_app_server <- function(app_version) {
     restore_settings_state_fn = restore_settings_state,
     current_data_file_fn = current_data_file,
     restored_variable_info_fn = restored_variable_info,
-    mark_settings_clean = mark_settings_clean
+    mark_settings_clean = mark_settings_clean,
+    clear_results_fn = function() clear_result_accumulator_store(session)
   )
 
   save_settings_to_file <- register_settings_save_handler(

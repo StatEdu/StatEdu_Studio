@@ -903,10 +903,19 @@ saved_crosstab_results_html <- function(result, css_path = file.path("www", "sty
 result_accumulator_store <- function(session) {
   store <- session$userData$result_entries
   if (is.null(store) || !is.function(store)) {
-    store <- reactiveVal(read_result_snapshot_store())
+    store <- reactiveVal(list())
     session$userData$result_entries <- store
   }
   store
+}
+
+clear_result_accumulator_store <- function(session, persist = TRUE) {
+  store <- result_accumulator_store(session)
+  store(list())
+  if (isTRUE(persist)) {
+    write_result_snapshot_store(list())
+  }
+  invisible(TRUE)
 }
 
 result_snapshot_store_path <- function() {
