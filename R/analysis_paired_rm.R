@@ -22,7 +22,7 @@ paired_rm_method_label <- function(method) {
     method,
     rm_anova = "Standard RM ANOVA",
     rm_anova_gg = "RM ANOVA + Greenhouse-Geisser correction",
-    rm_anova_wilks = "RM ANOVA + Wilks' lambda / GG correction",
+    rm_anova_wilks = "RM ANOVA + Wilks' lambda",
     friedman = "Friedman test",
     cochran = "Cochran's Q test",
     method
@@ -519,10 +519,7 @@ prepare_paired_rm_single_result <- function(data, variables, variable_info = NUL
       main[["ES"]] <- paired_effect_value(paired_rm_kendalls_w(unname(as.numeric(test$statistic)), nrow(y), ncol(y)))
       posthoc <- paired_rm_posthoc_scale(as.data.frame(y), "Wilcoxon signed-rank test", adjustment, variable_info, labels, category_table)
     } else if (identical(method_key, "rm_anova_wilks")) {
-      gg_df1 <- sphericity$epsilon * anova$df1
-      gg_df2 <- sphericity$epsilon * anova$df2
-      gg_p <- stats::pf(anova$f, gg_df1, gg_df2, lower.tail = FALSE)
-      main <- data.frame(Method = paired_rm_method_label(method_key), N = nrow(y), Statistic = "F", Value = format_decimal3(wilks$f), df1 = format_decimal3(wilks$df1), df2 = format_decimal3(wilks$df2), p = format_p(wilks$p), `Wilks' lambda` = format_decimal3(wilks$lambda), `GG epsilon` = format_decimal3(sphericity$epsilon), `GG p` = format_p(gg_p), stringsAsFactors = FALSE, check.names = FALSE)
+      main <- data.frame(Method = paired_rm_method_label(method_key), N = nrow(y), Statistic = "F", Value = format_decimal3(wilks$f), df1 = format_decimal3(wilks$df1), df2 = format_decimal3(wilks$df2), p = format_p(wilks$p), `Wilks' lambda` = format_decimal3(wilks$lambda), stringsAsFactors = FALSE, check.names = FALSE)
       main[["Effect size"]] <- "partial eta squared"
       main[["ES"]] <- paired_effect_value(paired_rm_partial_eta_squared(anova))
       posthoc <- paired_rm_posthoc_scale(as.data.frame(y), "Paired t-test", adjustment, variable_info, labels, category_table)

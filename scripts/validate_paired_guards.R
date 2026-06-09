@@ -179,8 +179,21 @@ expect_true(grepl("pre", rm_marker_html, fixed = TRUE) && grepl(">a</sup>", rm_m
 expect_true(grepl("post1", rm_marker_html, fixed = TRUE) && grepl(">b</sup>", rm_marker_html, fixed = TRUE), "Expected paired RM HTML header to mark post1 as b")
 expect_true(grepl("post2", rm_marker_html, fixed = TRUE) && grepl(">c</sup>", rm_marker_html, fixed = TRUE), "Expected paired RM HTML header to mark post2 as c")
 expect_true(grepl("white-space:nowrap;[^>]*>F</th>", rm_marker_html, perl = TRUE), "Expected paired RM Statistic header to stay on one line")
-mixed_method_marker_table <- data.frame(Method = c("Friedman test", "RM ANOVA + Wilks' lambda / GG correction"), stringsAsFactors = FALSE)
+mixed_method_marker_table <- data.frame(Method = c("Friedman test", "RM ANOVA + Wilks' lambda"), stringsAsFactors = FALSE)
 expect_true(identical(unname(paired_rm_method_marker_map(mixed_method_marker_table)), c("1", "2")), "Expected paired RM p-value method markers to use numeric markers")
+wilks_note_table <- data.frame(
+  `Repeated variables` = "x1 - x2 - x3",
+  Method = "RM ANOVA + Wilks' lambda",
+  `Wilks' lambda` = ".393",
+  `GG epsilon` = ".970",
+  `GG p` = "<.001",
+  stringsAsFactors = FALSE,
+  check.names = FALSE
+)
+wilks_note <- paired_rm_table_method_note(wilks_note_table)
+expect_true(grepl("RM ANOVA + Wilks' lambda", wilks_note, fixed = TRUE), "Expected paired RM note to state the Wilks method")
+expect_true(grepl("Wilks' lambda = .393", wilks_note, fixed = TRUE), "Expected paired RM note to include only the Wilks detail used for the test")
+expect_true(!grepl("GG epsilon", wilks_note, fixed = TRUE) && !grepl("GG p", wilks_note, fixed = TRUE), "Expected paired RM Wilks note not to mix in GG details")
 
 nonparam_rm_result <- prepare_nonparametric_paired_rm_results(
   data,

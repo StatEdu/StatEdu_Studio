@@ -36,7 +36,7 @@ paired_rm_short_method <- function(value) {
     value,
     "Standard RM ANOVA" = "RM ANOVA",
     "RM ANOVA + Greenhouse-Geisser correction" = "RM ANOVA + GG",
-    "RM ANOVA + Wilks' lambda / GG correction" = "RM ANOVA + Wilks",
+    "RM ANOVA + Wilks' lambda" = "RM ANOVA + Wilks",
     "Friedman test" = "Friedman",
     "Cochran's Q test" = "Cochran Q",
     value
@@ -210,13 +210,14 @@ paired_rm_table_method_note <- function(table) {
   correction_notes <- vapply(seq_len(nrow(table)), function(index) {
     group <- as.character(table$`Repeated variables`[[index]] %||% "")
     details <- character(0)
-    if ("Wilks' lambda" %in% names(table) && nzchar(as.character(table$`Wilks' lambda`[[index]] %||% ""))) {
+    method <- as.character(table$Method[[index]] %||% "")
+    if (identical(method, "RM ANOVA + Wilks' lambda") && "Wilks' lambda" %in% names(table) && nzchar(as.character(table$`Wilks' lambda`[[index]] %||% ""))) {
       details <- c(details, paste0("Wilks' lambda = ", table$`Wilks' lambda`[[index]]))
     }
-    if ("GG epsilon" %in% names(table) && nzchar(as.character(table$`GG epsilon`[[index]] %||% ""))) {
+    if (identical(method, "RM ANOVA + Greenhouse-Geisser correction") && "GG epsilon" %in% names(table) && nzchar(as.character(table$`GG epsilon`[[index]] %||% ""))) {
       details <- c(details, paste0("GG epsilon = ", table$`GG epsilon`[[index]]))
     }
-    if ("GG p" %in% names(table) && nzchar(as.character(table$`GG p`[[index]] %||% ""))) {
+    if (identical(method, "RM ANOVA + Greenhouse-Geisser correction") && "GG p" %in% names(table) && nzchar(as.character(table$`GG p`[[index]] %||% ""))) {
       details <- c(details, paste0("GG p = ", table$`GG p`[[index]]))
     }
     if (length(details) == 0) return("")
