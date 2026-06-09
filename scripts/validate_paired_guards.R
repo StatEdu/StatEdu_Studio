@@ -63,6 +63,13 @@ expect_true(
   identical(paired_transfer_selection_order(c("x5", "QoL"), c("QoL", "x5"), c("x5", "QoL")), c("QoL", "x5")),
   "Expected paired transfer selection order to override DOM list order"
 )
+paired_two_setup <- paired_setup_state(
+  selected_names = c("x1", "x2"),
+  repeated_groups = list(c("x1", "x2"))
+)
+paired_two_setup_html <- as.character(htmltools::renderTags(paired_setup_panel(paired_two_setup))$html)
+expect_true(grepl("paired_options_tabs", paired_two_setup_html, fixed = TRUE), "Expected paired options tabs to render before a 3+ row exists")
+expect_true(grepl("paired-options-disabled-tab", paired_two_setup_html, fixed = TRUE), "Expected paired repeated options tab to be disabled before a 3+ row exists")
 paired_three_setup <- paired_setup_state(
   selected_names = c("x1", "x2", "x3"),
   repeated_groups = list(c("x1", "x2", "x3"))
@@ -73,6 +80,7 @@ expect_true(grepl("paired_median_iqr", paired_three_setup_html, fixed = TRUE), "
 expect_true(grepl("Repeated variable labels", paired_three_setup_html, fixed = TRUE), "Expected repeated variable labels to be added for 3+ repeated variables")
 expect_true(grepl("paired_options_tabs", paired_three_setup_html, fixed = TRUE), "Expected paired 3+ options to render in tabs")
 expect_true(grepl(">Options<", paired_three_setup_html, fixed = TRUE) && grepl(">Repeated<", paired_three_setup_html, fixed = TRUE), "Expected paired 3+ options to split default and repeated settings into tabs")
+expect_true(!grepl("paired-options-disabled-tab", paired_three_setup_html, fixed = TRUE), "Expected paired repeated options tab to be enabled with a 3+ row")
 
 valid <- prepare_paired_results(data, "pre", "post", variable_info, options = list(assumption_check = FALSE, effect_size = TRUE))
 expect_true(is.data.frame(valid$scale_table) && nrow(valid$scale_table) == 1, "Expected valid paired t-test scale table")

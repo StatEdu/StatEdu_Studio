@@ -22,6 +22,17 @@
       }
       window.isEasyflowVisibleElement = isEasyflowVisibleElement;
 
+      document.addEventListener('click', function(event) {
+        if (!event.target || !event.target.closest) return;
+        var disabledPairedTab = event.target.closest('.paired-options-disabled-tab');
+        if (!disabledPairedTab) return;
+        var tabLink = disabledPairedTab.closest('a');
+        if (!tabLink) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+      }, true);
+
       function easyflowSkipsMathNode(node) {
         var parent = node && node.parentElement;
         while (parent) {

@@ -191,16 +191,28 @@ paired_setup_panel <- function(state) {
     ),
     paired_time_label_inputs(state$time_labels)
   )
-  options_content <- if (isTRUE(state$has_three_plus)) {
-    tabsetPanel(
-      id = "paired_options_tabs",
-      type = "tabs",
-      tabPanel("Options", primary_options),
-      tabPanel("Repeated", repeated_options)
-    )
+  repeated_tab_title <- if (isTRUE(state$has_three_plus)) {
+    "Repeated"
   } else {
-    primary_options
+    tags$span(class = "paired-options-disabled-tab", "Repeated")
   }
+  repeated_tab_content <- if (isTRUE(state$has_three_plus)) {
+    repeated_options
+  } else {
+    div(class = "paired-options-disabled-content")
+  }
+  options_content <- tabsetPanel(
+    id = "paired_options_tabs",
+    type = "tabs",
+    tabPanel(
+      "Options",
+      div(class = "factor-options-tab-content ttest-anova-options-tab-content paired-options-tab-content", primary_options)
+    ),
+    tabPanel(
+      repeated_tab_title,
+      div(class = "factor-options-tab-content ttest-anova-options-tab-content paired-options-tab-content", repeated_tab_content)
+    )
+  )
   div(
     class = "ttest-anova-setup-grid paired-setup-grid paired-rm-setup-grid",
     div(
@@ -221,7 +233,7 @@ paired_setup_panel <- function(state) {
     div(
       class = "ttest-anova-options-column",
       div(
-        class = "analysis-options-panel ttest-anova-options paired-options",
+        class = "analysis-options-panel ttest-anova-options paired-options analysis-tabbed-options",
         options_content
       )
     )

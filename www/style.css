@@ -2556,20 +2556,30 @@ input.variable-select:disabled {
   margin-bottom: 10px;
 }
 
-.paired-options .nav-tabs {
-  margin: 0 0 14px;
-}
-
-.paired-options .nav-tabs > li > a {
-  padding: 6px 12px;
-}
-
 .paired-options .tab-content {
   max-height: 500px;
   overflow-y: auto;
   overflow-x: hidden;
 }
 
+.paired-options .paired-options-disabled-tab {
+  color: #7b8794;
+  cursor: not-allowed;
+}
+
+.paired-options .nav-tabs > li > a:has(.paired-options-disabled-tab),
+.paired-options .nav-tabs > li > a:has(.paired-options-disabled-tab):focus,
+.paired-options .nav-tabs > li > a:has(.paired-options-disabled-tab):hover {
+  background: #f4f7fb;
+  border-color: #d4dde8;
+  color: #7b8794;
+  cursor: not-allowed;
+  font-weight: 400;
+}
+
+.paired-options-disabled-content {
+  min-height: 320px;
+}
 .paired-options .analysis-option-group .checkbox,
 .paired-options .analysis-option-group .radio {
   margin-top: 7px !important;
