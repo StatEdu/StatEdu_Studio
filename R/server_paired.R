@@ -104,7 +104,7 @@ register_paired_handlers <- function(
 
   observe({
     selected <- current_selected()
-    groups <- lapply(repeated_groups(), function(group) intersect(as.character(group), selected))
+    groups <- lapply(repeated_groups(), paired_keep_selected_order, selected = selected)
     repeated_groups(groups[lengths(groups) >= 2L])
   })
 

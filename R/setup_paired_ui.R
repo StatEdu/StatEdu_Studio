@@ -51,6 +51,12 @@ paired_group_from_values <- function(values) {
   groups[lengths(groups) >= 2L]
 }
 
+paired_keep_selected_order <- function(group, selected) {
+  group <- as.character(group %||% character(0))
+  selected <- as.character(selected %||% character(0))
+  group[group %in% selected]
+}
+
 paired_group_items <- function(groups, variable_table = NULL, labels = character(0)) {
   groups <- groups %||% list()
   if (length(groups) == 0) return(list())
@@ -84,7 +90,7 @@ paired_setup_state <- function(
   time_labels = NULL
 ) {
   selected <- as.character(selected_names %||% character(0))
-  repeated_groups <- lapply(repeated_groups %||% list(), function(group) intersect(as.character(group), selected))
+  repeated_groups <- lapply(repeated_groups %||% list(), paired_keep_selected_order, selected = selected)
   repeated_groups <- repeated_groups[lengths(repeated_groups) >= 2L]
   group_values <- paired_group_values(repeated_groups)
   grouped_variables <- unique(unlist(repeated_groups, use.names = FALSE))

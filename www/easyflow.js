@@ -1256,6 +1256,7 @@
       }, true);
 
       var easyflowTransferLastIndexByInput = {};
+      var easyflowTransferSelectionCounter = 0;
       var easyflowActiveTransferListbox = null;
       var easyflowActiveTransferInputId = null;
 
@@ -1266,12 +1267,29 @@
       function easyflowTransferSelectedValues(listbox) {
         return easyflowTransferOptions(listbox)
           .filter(function(option) { return option.classList.contains('is-selected'); })
+          .sort(function(a, b) {
+            var aOrder = parseInt(a.getAttribute('data-selected-order') || '0', 10);
+            var bOrder = parseInt(b.getAttribute('data-selected-order') || '0', 10);
+            if (Number.isNaN(aOrder)) aOrder = 0;
+            if (Number.isNaN(bOrder)) bOrder = 0;
+            if (aOrder && bOrder && aOrder !== bOrder) return aOrder - bOrder;
+            if (aOrder && !bOrder) return -1;
+            if (!aOrder && bOrder) return 1;
+            return 0;
+          })
           .map(function(option) { return option.getAttribute('data-value'); });
       }
 
       function easyflowTransferSetSelected(option, selected) {
+        var wasSelected = option.classList.contains('is-selected');
         option.classList.toggle('is-selected', selected);
         option.setAttribute('aria-selected', selected ? 'true' : 'false');
+        if (selected && !wasSelected) {
+          easyflowTransferSelectionCounter += 1;
+          option.setAttribute('data-selected-order', String(easyflowTransferSelectionCounter));
+        } else if (!selected) {
+          option.removeAttribute('data-selected-order');
+        }
       }
 
       function easyflowTransferOptionValue(option) {
