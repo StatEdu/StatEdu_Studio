@@ -1080,21 +1080,24 @@ ttest_analysis_note_line <- function(items) {
     if (!is.data.frame(note_rows) || nrow(note_rows) == 0) return(character(0))
     ifelse(nzchar(note_rows$marker), sprintf("%s. %s", note_rows$marker, note_rows$note), note_rows$note)
   }
-  analysis_parts <- if (is.data.frame(notes) && nrow(notes) > 0) {
-    format_note_rows(notes[notes$type %in% c("method", "trend"), , drop = FALSE])
+  marker_parts <- if (is.data.frame(notes) && nrow(notes) > 0) {
+    marker_notes <- notes[nzchar(notes$marker), , drop = FALSE]
+    if (nrow(marker_notes) > 0) {
+      marker_notes <- marker_notes[order(suppressWarnings(as.integer(marker_notes$marker))), , drop = FALSE]
+    }
+    format_note_rows(marker_notes)
   } else {
     character(0)
   }
-  effect_parts <- if (is.data.frame(notes) && nrow(notes) > 0) {
-    format_note_rows(notes[notes$type == "effect", , drop = FALSE])
+  unmarked_parts <- if (is.data.frame(notes) && nrow(notes) > 0) {
+    format_note_rows(notes[!nzchar(notes$marker), , drop = FALSE])
   } else {
     character(0)
   }
-  parts <- analysis_parts
+  parts <- c(marker_parts, unmarked_parts)
   if (length(posthoc_notes) > 0) {
     parts <- c(parts, sprintf("Post-hoc: %s.", paste(posthoc_notes, collapse = ", ")))
   }
-  parts <- c(parts, effect_parts)
   if (any(vapply(items, function(item) isTRUE(item$notes$mean_sd), logical(1)))) {
     parts <- c(parts, "M \u00B1 SD = mean \u00B1 standard deviation.")
   }
