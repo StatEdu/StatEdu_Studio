@@ -11,7 +11,7 @@ paired_rm_method_marker_map <- function(table) {
   methods <- unique(as.character(table$Method))
   methods <- methods[nzchar(methods)]
   if (length(methods) <= 1L) return(character(0))
-  stats::setNames(letters[seq_along(methods)], methods)
+  stats::setNames(as.character(seq_along(methods)), methods)
 }
 
 paired_rm_method_marker_for_row <- function(table, row_index) {
@@ -259,7 +259,7 @@ paired_rm_grouped_column_widths <- function(body_columns) {
 
   widths[body_columns == "Repeated variables"] <- 15
   widths[body_columns == "N"] <- 5
-  widths[body_columns == "Statistic"] <- 6
+  widths[body_columns == "Statistic"] <- 8
   widths[body_columns == "p"] <- 5
   widths[body_columns == "Post-hoc"] <- if (has_posthoc) 15 else 0
   widths[body_columns %in% es_columns] <- if (length(es_columns) > 0) 6 else 0
@@ -350,7 +350,7 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
         tags$th(rowspan = 2, style = header_style(TRUE), "Repeated variables"),
         tags$th(rowspan = 2, style = header_style(FALSE), "N"),
         time_header,
-        tags$th(rowspan = 2, style = header_style(FALSE), statistic_label),
+        tags$th(rowspan = 2, style = paste0(header_style(FALSE), "white-space:nowrap;"), statistic_label),
         tags$th(rowspan = 2, style = header_style(FALSE), "p"),
         if (include_es) tags$th(colspan = 1L + length(es_columns), style = header_style(FALSE), "ES"),
         tags$th(rowspan = 2, style = header_style(FALSE), "Post-hoc")

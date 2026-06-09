@@ -178,6 +178,9 @@ expect_true(grepl("landscape-table-panel", rm_marker_html, fixed = TRUE), "Expec
 expect_true(grepl("pre", rm_marker_html, fixed = TRUE) && grepl(">a</sup>", rm_marker_html, fixed = TRUE), "Expected paired RM HTML header to mark pre as a")
 expect_true(grepl("post1", rm_marker_html, fixed = TRUE) && grepl(">b</sup>", rm_marker_html, fixed = TRUE), "Expected paired RM HTML header to mark post1 as b")
 expect_true(grepl("post2", rm_marker_html, fixed = TRUE) && grepl(">c</sup>", rm_marker_html, fixed = TRUE), "Expected paired RM HTML header to mark post2 as c")
+expect_true(grepl("white-space:nowrap;[^>]*>F</th>", rm_marker_html, perl = TRUE), "Expected paired RM Statistic header to stay on one line")
+mixed_method_marker_table <- data.frame(Method = c("Friedman test", "RM ANOVA + Wilks' lambda / GG correction"), stringsAsFactors = FALSE)
+expect_true(identical(unname(paired_rm_method_marker_map(mixed_method_marker_table)), c("1", "2")), "Expected paired RM p-value method markers to use numeric markers")
 
 nonparam_rm_result <- prepare_nonparametric_paired_rm_results(
   data,

@@ -2,6 +2,7 @@
       window.easyflowVarLabels = window.easyflowVarLabels || {};
       window.easyflowMeasurements = window.easyflowMeasurements || {};
       window.easyflowCodingErrorFixValues = window.easyflowCodingErrorFixValues || {};
+      window.easyflowTransferSelectionOrderByInput = window.easyflowTransferSelectionOrderByInput || {};
 
       window.easyflowRestoreCodingErrorFixInputs = function(root) {
         root = root || document;
@@ -475,7 +476,8 @@
       window.easyflowTransferFallbackSync = function(listbox) {
         if (!listbox || !listbox.getAttribute) return;
         var inputId = listbox.getAttribute('data-input-id') || '';
-        var values = Array.prototype.slice.call(listbox.querySelectorAll('.analysis-transfer-option.is-selected'))
+        var selectedOptions = Array.prototype.slice.call(listbox.querySelectorAll('.analysis-transfer-option.is-selected'));
+        var values = selectedOptions
           .sort(function(a, b) {
             var aOrder = parseInt(a.getAttribute('data-selected-order') || '0', 10);
             var bOrder = parseInt(b.getAttribute('data-selected-order') || '0', 10);
@@ -488,6 +490,24 @@
           })
           .map(function(option) { return option.getAttribute('data-value') || ''; })
           .filter(function(value) { return value !== ''; });
+        var hasExplicitOrder = selectedOptions.some(function(option) {
+          var order = parseInt(option.getAttribute('data-selected-order') || '0', 10);
+          return !Number.isNaN(order) && order > 0;
+        });
+        var storedOrder = inputId ? (window.easyflowTransferSelectionOrderByInput[inputId] || []) : [];
+        if (!hasExplicitOrder && storedOrder.length > 0) {
+          values = storedOrder
+            .filter(function(value) { return values.indexOf(value) >= 0; })
+            .concat(values.filter(function(value) { return storedOrder.indexOf(value) < 0; }));
+        }
+        if (inputId) {
+          window.easyflowTransferSelectionOrderByInput[inputId] = values.slice();
+          selectedOptions.forEach(function(option) {
+            var value = option.getAttribute('data-value') || '';
+            var index = values.indexOf(value);
+            if (index >= 0) option.setAttribute('data-selected-order', String(index + 1));
+          });
+        }
         var select = inputId ? document.getElementById(inputId) : null;
         if (select) {
           easyflowTransferSyncHiddenSelect(select, values);
@@ -1337,9 +1357,14 @@
       }
 
       function easyflowTransferSelectedValues(listbox) {
-        return easyflowTransferOptions(listbox)
+        var inputId = listbox ? (listbox.getAttribute('data-input-id') || '') : '';
+        var selectedOptions = easyflowTransferOptions(listbox)
           .filter(function(option) { return option.classList.contains('is-selected'); })
-          .sort(function(a, b) {
+        var hasExplicitOrder = selectedOptions.some(function(option) {
+          var order = parseInt(option.getAttribute('data-selected-order') || '0', 10);
+          return !Number.isNaN(order) && order > 0;
+        });
+        var values = selectedOptions.sort(function(a, b) {
             var aOrder = parseInt(a.getAttribute('data-selected-order') || '0', 10);
             var bOrder = parseInt(b.getAttribute('data-selected-order') || '0', 10);
             if (Number.isNaN(aOrder)) aOrder = 0;
@@ -1350,6 +1375,13 @@
             return 0;
           })
           .map(function(option) { return option.getAttribute('data-value'); });
+        var storedOrder = inputId ? (window.easyflowTransferSelectionOrderByInput[inputId] || []) : [];
+        if (!hasExplicitOrder && storedOrder.length > 0) {
+          values = storedOrder
+            .filter(function(value) { return values.indexOf(value) >= 0; })
+            .concat(values.filter(function(value) { return storedOrder.indexOf(value) < 0; }));
+        }
+        return values;
       }
 
       function easyflowTransferSetSelected(option, selected) {
@@ -1420,6 +1452,7 @@
           }
         }
         if (window.Shiny && inputId) {
+          window.easyflowTransferSelectionOrderByInput[inputId] = values.slice();
           Shiny.setInputValue(inputId, values, {priority: 'event'});
           Shiny.setInputValue(inputId + '_selection_order', values, {priority: 'event'});
         }
