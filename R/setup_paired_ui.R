@@ -179,30 +179,24 @@ paired_setup_panel <- function(state) {
           "Assumption",
           list(list(id = "paired_assumption_check", label = "Check assumptions", value = state$assumption_check))
         ),
-        if (isTRUE(state$has_two) || !isTRUE(state$has_three_plus)) {
-          tagList(
-            analysis_option_group(
-              "Categorical",
-              list(list(id = "paired_bowker", label = "Bowker symmetry test", value = state$bowker))
-            ),
-            analysis_option_group(
-              "Effect size",
-              list(
-                list(id = "paired_effect_size", label = "Effect size", value = state$effect_size),
-                list(id = "paired_cohen_d", label = "Cohen's d for paired t-test", value = state$cohen_d)
-              )
-            ),
-            analysis_option_group(
-              "Summary",
-              list(
-                list(id = "paired_mean_sd", label = "M \u00B1 SD", value = state$mean_sd),
-                list(id = "paired_median_iqr", label = "Median(Q1~Q3)", value = state$median_iqr)
-              )
-            )
+        analysis_option_group(
+          "Categorical",
+          list(list(id = "paired_bowker", label = "Bowker symmetry test", value = state$bowker))
+        ),
+        analysis_option_group(
+          "Effect size",
+          list(
+            list(id = "paired_effect_size", label = "Effect size", value = state$effect_size),
+            list(id = "paired_cohen_d", label = "Cohen's d for paired t-test", value = state$cohen_d)
           )
-        } else {
-          NULL
-        },
+        ),
+        analysis_option_group(
+          "Summary",
+          list(
+            list(id = "paired_mean_sd", label = "M \u00B1 SD", value = state$mean_sd),
+            list(id = "paired_median_iqr", label = "Median(Q1~Q3)", value = state$median_iqr)
+          )
+        ),
         if (isTRUE(state$has_three_plus)) {
           tagList(
             div(

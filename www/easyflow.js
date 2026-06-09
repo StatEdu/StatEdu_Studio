@@ -449,9 +449,7 @@
           .filter(function(value) { return value !== ''; });
         var select = inputId ? document.getElementById(inputId) : null;
         if (select) {
-          Array.prototype.forEach.call(select.options, function(option) {
-            option.selected = values.indexOf(option.value) >= 0;
-          });
+          easyflowTransferSyncHiddenSelect(select, values);
           if (window.jQuery) {
             window.jQuery(select).trigger('change');
           } else {
@@ -1323,6 +1321,30 @@
         }
       }
 
+      function easyflowTransferSyncHiddenSelect(select, values) {
+        if (!select) return;
+        var valueOrder = {};
+        values.forEach(function(value, index) {
+          valueOrder[value] = index + 1;
+        });
+        var options = Array.prototype.slice.call(select.options);
+        options
+          .sort(function(a, b) {
+            var aOrder = valueOrder[a.value] || 0;
+            var bOrder = valueOrder[b.value] || 0;
+            if (aOrder && bOrder && aOrder !== bOrder) return aOrder - bOrder;
+            if (aOrder && !bOrder) return -1;
+            if (!aOrder && bOrder) return 1;
+            return options.indexOf(a) - options.indexOf(b);
+          })
+          .forEach(function(option) {
+            select.appendChild(option);
+          });
+        Array.prototype.forEach.call(select.options, function(option) {
+          option.selected = values.indexOf(option.value) >= 0;
+        });
+      }
+
       function easyflowTransferOptionValue(option) {
         return option ? (option.getAttribute('data-value') || '') : '';
       }
@@ -1347,9 +1369,7 @@
         var select = inputId ? document.getElementById(inputId) : null;
         var values = easyflowTransferSelectedValues(listbox);
         if (select) {
-          Array.prototype.forEach.call(select.options, function(option) {
-            option.selected = values.indexOf(option.value) >= 0;
-          });
+          easyflowTransferSyncHiddenSelect(select, values);
           if (window.jQuery) {
             window.jQuery(select).trigger('change');
           } else {
