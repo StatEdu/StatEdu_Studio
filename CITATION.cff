@@ -9,5 +9,5 @@ authors:
     given-names: "IL HYUN"
 repository-code: "https://github.com/StatEdu/easyflow_statistics_dev"
 url: "https://github.com/StatEdu/easyflow_statistics_dev"
-doi: "10.22934/statedu.easyflow.statistics"
+doi: "10.22934/easyflow.statistics"
 abstract: "EasyFlow Statistics is a local Shiny application for statistical analysis."

@@ -411,17 +411,23 @@
 
       document.addEventListener('click', function(event) {
         var button = event.target && event.target.closest
-          ? event.target.closest('#paired_pair_move')
+          ? event.target.closest('#paired_pair_move, #paired_rm_move, #nonparametric_paired_move')
           : null;
         if (!button || button.disabled) return;
-        var availableListbox = easyflowFindTransferListboxByInputId('paired_available');
+        var inputMap = {
+          paired_pair_move: 'paired_available',
+          paired_rm_move: 'paired_rm_available',
+          nonparametric_paired_move: 'nonparametric_paired_available'
+        };
+        var inputId = inputMap[button.id] || '';
+        var availableListbox = inputId ? easyflowFindTransferListboxByInputId(inputId) : null;
         var values = availableListbox ? easyflowTransferSelectedValues(availableListbox) : [];
         if (values.length < 2) return;
         event.preventDefault();
         event.stopPropagation();
         if (event.stopImmediatePropagation) event.stopImmediatePropagation();
         if (window.Shiny && Shiny.setInputValue) {
-          Shiny.setInputValue('paired_pair_move_ordered', {
+          Shiny.setInputValue(button.id + '_ordered', {
             values: values,
             nonce: Date.now() + Math.random()
           }, {priority: 'event'});

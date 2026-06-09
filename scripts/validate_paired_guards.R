@@ -16,6 +16,7 @@ expect_true <- function(value, label) {
 }
 
 message("Checking paired guard conditions...")
+expect_true(grepl('doi: "10.22934/easyflow.statistics"', paste(readLines(file.path(repo_root, "CITATION.cff"), warn = FALSE), collapse = "\n"), fixed = TRUE), "Expected EFS citation DOI to use the registered easyflow.statistics DOI")
 data <- data.frame(
   pre = c(1, 2, 3, 4, 5),
   post = c(2, 3, 5, 7, 11),
@@ -156,6 +157,27 @@ rm_result <- prepare_paired_rm_results(
 )
 expect_true(is.data.frame(rm_result$display_table) && nrow(rm_result$display_table) == 1, "Expected valid RM row to still be analyzed")
 expect_true(is.data.frame(rm_result$skipped) && grepl("identical within subjects", rm_result$skipped$Reason[[1]], fixed = TRUE), "Expected invalid RM row to be skipped")
+
+rm_marker_data <- data.frame(
+  pre = c(1, 2, 3, 3, 4, 5),
+  post1 = c(2, 4, 5, 5, 6, 7),
+  post2 = c(4, 6, 7, 8, 9, 10)
+)
+rm_marker_info <- data.frame(name = names(rm_marker_data), measurement = rep("continuous", 3), stringsAsFactors = FALSE)
+rm_marker_result <- prepare_paired_rm_results(
+  rm_marker_data,
+  variable_groups = list(c("pre", "post1", "post2")),
+  variable_info = rm_marker_info,
+  options = list(assumption_check = FALSE)
+)
+expect_true(identical(as.character(rm_marker_result$display_table$Time1_marker[[1]]), "a") && identical(as.character(rm_marker_result$display_table$Time2_marker[[1]]), "b") && identical(as.character(rm_marker_result$display_table$Time3_marker[[1]]), "c"), "Expected paired RM display table to assign time markers a/b/c")
+expect_true(all(c("a-b", "a-c") %in% as.character(rm_marker_result$display_table[1, c("ES_1_2_label", "ES_1_3_label")])), "Expected paired RM pairwise ES labels to use time markers")
+expect_true(grepl("b>a", as.character(rm_marker_result$display_table$`Post-hoc`[[1]]), fixed = TRUE) || grepl("c>a", as.character(rm_marker_result$display_table$`Post-hoc`[[1]]), fixed = TRUE), "Expected paired RM post-hoc notation to use time markers")
+rm_marker_html <- as.character(htmltools::renderTags(paired_rm_results_ui(rm_marker_result))$html)
+expect_true(grepl("landscape-table-panel", rm_marker_html, fixed = TRUE), "Expected paired RM 3+ result table to use landscape layout")
+expect_true(grepl("pre", rm_marker_html, fixed = TRUE) && grepl(">a</sup>", rm_marker_html, fixed = TRUE), "Expected paired RM HTML header to mark pre as a")
+expect_true(grepl("post1", rm_marker_html, fixed = TRUE) && grepl(">b</sup>", rm_marker_html, fixed = TRUE), "Expected paired RM HTML header to mark post1 as b")
+expect_true(grepl("post2", rm_marker_html, fixed = TRUE) && grepl(">c</sup>", rm_marker_html, fixed = TRUE), "Expected paired RM HTML header to mark post2 as c")
 
 nonparam_rm_result <- prepare_nonparametric_paired_rm_results(
   data,

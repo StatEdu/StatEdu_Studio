@@ -1610,14 +1610,20 @@ add_paired_rm_grouped_excel_sheet <- function(workbook, sheet_name, table, used_
     labels <- labels[nzchar(labels)]
     if (length(labels) > 0) labels[[1]] else paste0("Time ", index)
   }, character(1))
-  header_top <- c("Repeated variables", "N", as.vector(rbind(time_labels, rep("", length(time_labels)))), statistic_label, "p", if (include_es) c("ES", rep("", length(es_columns))), "Post-hoc (c)")
+  time_markers <- vapply(time_indices, function(index) {
+    markers <- as.character(table[[paste0("Time", index, "_marker")]] %||% "")
+    markers <- markers[nzchar(markers)]
+    if (length(markers) > 0) markers[[1]] else letters[[index]]
+  }, character(1))
+  time_header_labels <- sprintf("%s (%s)", time_labels, time_markers)
+  header_top <- c("Repeated variables", "N", as.vector(rbind(time_header_labels, rep("", length(time_header_labels)))), statistic_label, "p", if (include_es) c("ES", rep("", length(es_columns))), "Post-hoc")
   header_bottom <- c(
     "",
     "",
     rep(if (identical(type, "count")) c("0", "1") else if (isTRUE(attr(table, "median_iqr", exact = TRUE))) c("Median", "Q1~Q3") else c("M", "SD"), length(time_labels)),
     "",
     "",
-    if (include_es) c(paste0(as.character(table$ES_overall_label[[1]] %||% "overall"), " (a)"), paste0(es_labels, " (b)")),
+    if (include_es) c(as.character(table$ES_overall_label[[1]] %||% "overall"), es_labels),
     ""
   )
   merge_cols <- c(list(1, 2), lapply(seq_along(time_indices), function(index) {

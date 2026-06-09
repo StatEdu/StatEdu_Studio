@@ -339,7 +339,12 @@ paired_rm_option_time_labels <- function(options, n) {
   ifelse(nzchar(labels), labels, defaults)
 }
 
-paired_rm_pairwise_effects <- function(result, variables, time_labels, contrast_labels) {
+paired_rm_time_markers <- function(n) {
+  if (n <= 0) return(character(0))
+  letters[seq_len(n)]
+}
+
+paired_rm_pairwise_effects <- function(result, variables, contrast_markers, contrast_labels) {
   posthoc <- result$posthoc
   if (!is.data.frame(posthoc) || nrow(posthoc) == 0 || !"ES" %in% names(posthoc)) {
     return(list(columns = character(0), labels = character(0), values = character(0)))
@@ -359,7 +364,7 @@ paired_rm_pairwise_effects <- function(result, variables, time_labels, contrast_
     row <- posthoc[posthoc$Contrast %in% c(contrast, reverse), , drop = FALSE]
     column <- sprintf("ES_%d_%d", i, j)
     columns <- c(columns, column)
-    labels <- c(labels, sprintf("%s-%s", time_labels[[i]], time_labels[[j]]))
+    labels <- c(labels, sprintf("%s-%s", contrast_markers[[first]], contrast_markers[[second]]))
     values <- c(values, if (nrow(row) > 0) as.character(row$ES[[1]] %||% "") else "")
   }
   list(columns = columns, labels = labels, values = values)
@@ -371,7 +376,9 @@ paired_rm_display_table <- function(result) {
     return(result$table)
   }
   time_labels <- paired_rm_option_time_labels(result$options %||% list(), nrow(result$summary))
+  time_markers <- paired_rm_time_markers(length(time_labels))
   contrast_labels <- stats::setNames(as.character(result$summary$Time %||% variables), variables)
+  contrast_markers <- stats::setNames(time_markers, variables)
   means <- stats::setNames(suppressWarnings(as.numeric(sub("^\\.", "0.", result$summary$M))), variables)
   row <- data.frame(
     `Repeated variables` = result$group_label,
@@ -381,6 +388,7 @@ paired_rm_display_table <- function(result) {
   )
   for (index in seq_along(time_labels)) {
     row[[paste0("Time", index, "_label")]] <- time_labels[[index]]
+    row[[paste0("Time", index, "_marker")]] <- time_markers[[index]]
     row[[paste0("Time", index, "_M")]] <- result$summary$M[[index]]
     row[[paste0("Time", index, "_SD")]] <- result$summary$SD[[index]]
   }
@@ -399,12 +407,12 @@ paired_rm_display_table <- function(result) {
     if (any(methods == "Paired t-test")) row[["PairwiseEffectSizeLabel"]] <- "Hedges' g"
     if (any(methods == "Wilcoxon signed-rank test")) row[["PairwiseEffectSizeLabel"]] <- "r"
   }
-  pairwise_effects <- paired_rm_pairwise_effects(result, variables, time_labels, contrast_labels)
+  pairwise_effects <- paired_rm_pairwise_effects(result, variables, contrast_markers, contrast_labels)
   for (index in seq_along(pairwise_effects$columns)) {
     row[[paste0(pairwise_effects$columns[[index]], "_label")]] <- pairwise_effects$labels[[index]]
     row[[pairwise_effects$columns[[index]]]] <- pairwise_effects$values[[index]]
   }
-  row[["Post-hoc"]] <- paired_rm_posthoc_notation(variables, result$posthoc, means, stats::setNames(time_labels, variables), contrast_labels)
+  row[["Post-hoc"]] <- paired_rm_posthoc_notation(variables, result$posthoc, means, contrast_markers, contrast_labels)
   posthoc_methods <- unique(as.character(result$posthoc$Method %||% ""))
   posthoc_methods <- posthoc_methods[nzchar(posthoc_methods)]
   row[["PosthocMethodLabel"]] <- paste(posthoc_methods, collapse = ", ")
@@ -433,10 +441,12 @@ paired_rm_binary_display_table <- function(result, values, variable_info, labels
   variables <- as.character(result$variables %||% character(0))
   if (length(variables) == 0) return(result$table)
   time_labels <- paired_rm_option_time_labels(result$options %||% list(), length(variables))
+  time_markers <- paired_rm_time_markers(length(time_labels))
   contrast_labels <- stats::setNames(
     vapply(variables, paired_display_name, character(1), variable_info = variable_info, labels = labels, category_table = category_table),
     variables
   )
+  contrast_markers <- stats::setNames(time_markers, variables)
   row <- data.frame(
     `Repeated variables` = result$group_label,
     N = result$table$N[[1]],
@@ -446,13 +456,14 @@ paired_rm_binary_display_table <- function(result, values, variable_info, labels
   for (index in seq_along(variables)) {
     value <- as.character(values[[variables[[index]]]])
     row[[paste0("Time", index, "_label")]] <- time_labels[[index]]
+    row[[paste0("Time", index, "_marker")]] <- time_markers[[index]]
     row[[paste0("Time", index, "_0")]] <- sum(value == "0", na.rm = TRUE)
     row[[paste0("Time", index, "_1")]] <- sum(value == "1", na.rm = TRUE)
   }
   row[["StatisticLabel"]] <- result$table$Statistic[[1]]
   row[["Statistic"]] <- result$table$Value[[1]]
   row[["p"]] <- result$table$p[[1]]
-  row[["Post-hoc"]] <- paired_rm_posthoc_notation(variables, result$posthoc, NULL, stats::setNames(time_labels, variables), contrast_labels)
+  row[["Post-hoc"]] <- paired_rm_posthoc_notation(variables, result$posthoc, NULL, contrast_markers, contrast_labels)
   posthoc_methods <- unique(as.character(result$posthoc$Method %||% ""))
   posthoc_methods <- posthoc_methods[nzchar(posthoc_methods)]
   row[["PosthocMethodLabel"]] <- paste(posthoc_methods, collapse = ", ")

@@ -191,10 +191,10 @@ paired_rm_table_method_note <- function(table) {
   pairwise_effect_methods <- pairwise_effect_methods[nzchar(pairwise_effect_methods)]
   effect_parts <- character(0)
   if (length(overall_effect_methods) > 0) {
-    effect_parts <- c(effect_parts, paste0("a overall = ", paste(overall_effect_methods, collapse = ", ")))
+    effect_parts <- c(effect_parts, paste0("overall = ", paste(overall_effect_methods, collapse = ", ")))
   }
   if (length(pairwise_effect_methods) > 0) {
-    effect_parts <- c(effect_parts, paste0("b pairwise = ", paste(pairwise_effect_methods, collapse = ", ")))
+    effect_parts <- c(effect_parts, paste0("pairwise = ", paste(pairwise_effect_methods, collapse = ", ")))
   }
   effect_note <- if (length(effect_parts) > 0) paste0("ES = effect size (", paste(effect_parts, collapse = "; "), ").") else ""
   posthoc_methods <- unique(as.character(table$PosthocMethodLabel %||% ""))
@@ -203,7 +203,7 @@ paired_rm_table_method_note <- function(table) {
   posthoc_adjustments <- posthoc_adjustments[nzchar(posthoc_adjustments)]
   posthoc_note <- if (length(posthoc_methods) > 0) {
     adjustment_text <- if (length(posthoc_adjustments) == 1L) paste0(" with ", posthoc_adjustments[[1]], " adjustment") else ""
-    paste0("Post-hoc: c ", paste(posthoc_methods, collapse = ", "), adjustment_text, ".")
+    paste0("Post-hoc: ", paste(posthoc_methods, collapse = ", "), adjustment_text, ".")
   } else {
     ""
   }
@@ -328,7 +328,10 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
     labels <- as.character(table[[paste0("Time", index, "_label")]] %||% "")
     labels <- labels[nzchar(labels)]
     label <- if (length(labels) > 0) labels[[1]] else paste0("Time ", index)
-    tags$th(colspan = 2, style = header_style(FALSE), label)
+    markers <- as.character(table[[paste0("Time", index, "_marker")]] %||% "")
+    markers <- markers[nzchar(markers)]
+    marker <- if (length(markers) > 0) markers[[1]] else letters[[index]]
+    tags$th(colspan = 2, style = header_style(FALSE), paired_rm_sup_header(label, marker))
   })
   tags$table(
     class = "coefficient-table paired-grouped-table paired-rm-grouped-table",
@@ -350,7 +353,7 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
         tags$th(rowspan = 2, style = header_style(FALSE), statistic_label),
         tags$th(rowspan = 2, style = header_style(FALSE), "p"),
         if (include_es) tags$th(colspan = 1L + length(es_columns), style = header_style(FALSE), "ES"),
-        tags$th(rowspan = 2, style = header_style(FALSE), paired_rm_sup_header("Post-hoc", "c"))
+        tags$th(rowspan = 2, style = header_style(FALSE), "Post-hoc")
       ),
       tags$tr(
         lapply(time_indices, function(index) {
@@ -359,8 +362,8 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
             tags$th(style = header_style(FALSE), if (identical(type, "count")) "1" else spread_label)
           )
         }),
-        if (include_es) tags$th(style = header_style(FALSE), paired_rm_sup_header(as.character(table$ES_overall_label[[1]] %||% "overall"), "a")),
-        lapply(es_labels, function(label) tags$th(style = header_style(FALSE), paired_rm_sup_header(label, "b")))
+        if (include_es) tags$th(style = header_style(FALSE), as.character(table$ES_overall_label[[1]] %||% "overall")),
+        lapply(es_labels, function(label) tags$th(style = header_style(FALSE), label))
       )
     ),
     tags$tbody(
