@@ -93,7 +93,11 @@ register_nonparametric_paired_handlers <- function(
 
   add_group <- function(source_values) {
     selected <- current_selected()
-    source_values <- intersect(as.character(source_values %||% character(0)), selected)
+    source_values <- paired_transfer_selection_order(
+      source_values,
+      input$nonparametric_paired_available_selection_order,
+      selected
+    )
     if (length(source_values) < 2L) {
       showNotification("Select two or more repeated-measures variables to create one paired row.", type = "warning")
       return(FALSE)

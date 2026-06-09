@@ -59,6 +59,10 @@ ordered_nonparametric_state <- nonparametric_paired_setup_state(
   repeated_groups = list(c("QoL", "x5"))
 )
 expect_true(identical(ordered_nonparametric_state$repeated_groups[[1]], c("QoL", "x5")), "Expected nonparametric paired setup to preserve the user's selected order within a pair")
+expect_true(
+  identical(paired_transfer_selection_order(c("x5", "QoL"), c("QoL", "x5"), c("x5", "QoL")), c("QoL", "x5")),
+  "Expected paired transfer selection order to override DOM list order"
+)
 
 valid <- prepare_paired_results(data, "pre", "post", variable_info, options = list(assumption_check = FALSE, effect_size = TRUE))
 expect_true(is.data.frame(valid$scale_table) && nrow(valid$scale_table) == 1, "Expected valid paired t-test scale table")

@@ -97,7 +97,11 @@ register_paired_rm_handlers <- function(
       mark_settings_dirty()
     } else {
       selected <- current_selected()
-      source_values <- intersect(as.character(input$paired_rm_available %||% character(0)), selected)
+      source_values <- paired_transfer_selection_order(
+        input$paired_rm_available,
+        input$paired_rm_available_selection_order,
+        selected
+      )
       if (length(source_values) < 3L) {
         showNotification("Select three or more variables to create one repeated-measures row.", type = "warning")
         return()

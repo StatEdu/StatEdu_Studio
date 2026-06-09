@@ -57,6 +57,18 @@ paired_keep_selected_order <- function(group, selected) {
   group[group %in% selected]
 }
 
+paired_transfer_selection_order <- function(values, order_values = NULL, selected = NULL) {
+  values <- as.character(values %||% character(0))
+  order_values <- as.character(order_values %||% character(0))
+  selected <- as.character(selected %||% character(0))
+  if (length(selected) > 0) {
+    values <- values[values %in% selected]
+    order_values <- order_values[order_values %in% selected]
+  }
+  ordered <- order_values[order_values %in% values]
+  c(ordered, values[!values %in% ordered])
+}
+
 paired_group_items <- function(groups, variable_table = NULL, labels = character(0)) {
   groups <- groups %||% list()
   if (length(groups) == 0) return(list())

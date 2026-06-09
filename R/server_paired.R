@@ -126,7 +126,11 @@ register_paired_handlers <- function(
       mark_settings_dirty()
     } else {
       selected <- current_selected()
-      source_values <- intersect(as.character(input$paired_available %||% character(0)), selected)
+      source_values <- paired_transfer_selection_order(
+        input$paired_available,
+        input$paired_available_selection_order,
+        selected
+      )
       if (length(source_values) < 2L) {
         showNotification("Select two or more repeated-measures variables to create one paired row.", type = "warning")
         return()

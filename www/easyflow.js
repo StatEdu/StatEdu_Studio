@@ -1327,6 +1327,7 @@
         }
         if (window.Shiny && inputId) {
           Shiny.setInputValue(inputId, values, {priority: 'event'});
+          Shiny.setInputValue(inputId + '_selection_order', values, {priority: 'event'});
         }
       }
 
