@@ -285,19 +285,27 @@ paired_grouped_column_class <- function(column) {
   "paired-two-col-default"
 }
 
-paired_grouped_column_widths <- function(body_columns) {
+paired_grouped_column_widths <- function(body_columns, table = NULL) {
+  median_summary <- is.data.frame(table) &&
+    "SummaryCenter" %in% names(table) &&
+    any(as.character(table$SummaryCenter %||% "") == "Median", na.rm = TRUE)
+  mean_sd <- isTRUE(attr(table, "mean_sd", exact = TRUE))
   effect_count <- sum(startsWith(body_columns, "Effect:"))
-  statistic_width <- if ("Statistic" %in% body_columns) 16 else 0
-  p_width <- if ("p" %in% body_columns) 8 else 0
-  effect_width <- 8 * effect_count
-  fixed_width <- 22 + statistic_width + p_width + effect_width
-  summary_count <- sum(body_columns %in% c("Pre_M", "Pre_SD", "Post_M", "Post_SD", "Pre_MS", "Post_MS"))
-  summary_width <- if (summary_count > 0) max(9, (100 - fixed_width) / summary_count) else 10
+  variable_width <- if (isTRUE(median_summary)) 20 else 22
+  statistic_width <- if ("Statistic" %in% body_columns) if (isTRUE(median_summary)) 17 else 16 else 0
+  p_width <- if ("p" %in% body_columns) if (isTRUE(median_summary)) 7 else 8 else 0
+  effect_single_width <- if (isTRUE(median_summary)) 7 else 8
+  effect_width <- effect_single_width * effect_count
+  fixed_width <- variable_width + statistic_width + p_width + effect_width
+  summary_columns <- c("Pre_M", "Pre_SD", "Post_M", "Post_SD", "Pre_MS", "Post_MS")
+  summary_count <- sum(body_columns %in% summary_columns)
+  minimum_summary_width <- if (isTRUE(median_summary) && isTRUE(mean_sd)) 18 else if (isTRUE(median_summary)) 8.5 else 9
+  summary_width <- if (summary_count > 0) max(minimum_summary_width, (100 - fixed_width) / summary_count) else 10
   widths <- rep(summary_width, length(body_columns))
-  widths[body_columns == "Variable"] <- 22
+  widths[body_columns == "Variable"] <- variable_width
   widths[body_columns == "Statistic"] <- statistic_width
   widths[body_columns == "p"] <- p_width
-  widths[startsWith(body_columns, "Effect:")] <- 8
+  widths[startsWith(body_columns, "Effect:")] <- effect_single_width
   stats::setNames(widths, body_columns)
 }
 
@@ -309,13 +317,14 @@ paired_summary_header_labels <- function(table) {
   spreads <- unique(as.character(table$SummarySpread %||% "SD"))
   centers <- centers[nzchar(centers)]
   spreads <- spreads[nzchar(spreads)]
+  mixed_median <- length(centers) > 1L || any(centers == "Median")
   list(
     center = if (length(centers) == 1L) centers[[1]] else "M/Median",
     spread = if (length(spreads) == 1L) spreads[[1]] else "SD/Q1~Q3",
     combined = if (length(centers) == 1L && identical(centers[[1]], "Median")) {
       "Median(Q1~Q3)"
-    } else if (length(centers) > 1L || any(centers == "Median")) {
-      "M \u00B1 SD / Median(Q1~Q3)"
+    } else if (isTRUE(mixed_median)) {
+      "M\u00B1SD/Median(Q1~Q3)"
     } else {
       "M \u00B1 SD"
     }
@@ -403,8 +412,16 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
       )
     )
   }
-  column_widths <- paired_grouped_column_widths(body_columns)
-  table_width <- max(640L, min(900L, 150L + (length(body_columns) - 1L) * 86L))
+  column_widths <- paired_grouped_column_widths(body_columns, table)
+  median_summary <- isTRUE(identical(type, "scale")) &&
+    is.data.frame(table) &&
+    "SummaryCenter" %in% names(table) &&
+    any(as.character(table$SummaryCenter %||% "") == "Median", na.rm = TRUE)
+  table_width <- if (isTRUE(median_summary)) {
+    if (isTRUE(mean_sd)) 840L else 900L
+  } else {
+    max(640L, min(900L, 150L + (length(body_columns) - 1L) * 86L))
+  }
   body_style <- function(first = FALSE, last = FALSE) {
     paste0(
       result_body_cell_style(first, last),
