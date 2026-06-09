@@ -62,7 +62,7 @@ too_few <- prepare_paired_results(data, "one_pre", "one_post", variable_info, op
 expect_true(is.data.frame(too_few$skipped) && grepl("At least two complete paired cases", too_few$skipped$Reason[[1]], fixed = TRUE), "Expected N<2 paired case to be skipped")
 too_few_html <- as.character(htmltools::renderTags(paired_results_ui(too_few))$html)
 expect_true(grepl("diagnostics-message-table", too_few_html, fixed = TRUE), "Expected paired warning/skipped diagnostics to use message-width table")
-expect_true(grepl("width:64.000% !important", too_few_html, fixed = TRUE), "Expected paired warning/skipped diagnostics Message column to be widest")
+expect_true(grepl("width:58.000% !important", too_few_html, fixed = TRUE), "Expected paired warning/skipped diagnostics Message column to remain widest")
 
 binary <- prepare_paired_results(data, "binary_pre", "binary_post", variable_info, options = list(effect_size = TRUE))
 binary_html <- as.character(htmltools::renderTags(paired_results_ui(binary))$html)

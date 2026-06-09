@@ -64,7 +64,7 @@ analysis_diagnostics_html_table <- function(table) {
   widths <- rep(14, length(columns))
   names(widths) <- columns
   widths[columns == "Type"] <- 10
-  widths[columns %in% c("Dependent variable", "Independent variable")] <- 10
+  widths[columns %in% c("Dependent variable", "Independent variable")] <- 13
   widths[columns == "N"] <- 6
   widths[columns == "Message"] <- max(50, 100 - sum(widths[columns != "Message"]))
   if (!is.finite(message_index)) {
