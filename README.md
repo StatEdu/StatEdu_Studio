@@ -8,9 +8,9 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.33`
+Current development version: `0.9.34`
 
-Version 0.9.33 expands ANCOVA assumption diagnostics, automatic-method controls, sensitivity analysis, and reporting notes. Version 0.9.32 added ANCOVA workflows, SPSS-style LMM effect-size conversion, GLMM effect-size conversion, and refined analysis table layouts.
+Version 0.9.34 refines paired and repeated-measures result tables, restores result export actions, registers the EasyFlow Statistics DOI, and clarifies repeated-measures method notes. Version 0.9.33 expanded ANCOVA assumption diagnostics, automatic-method controls, sensitivity analysis, and reporting notes.
 
 ## Current Scope
 
@@ -75,7 +75,7 @@ The app will open at `127.0.0.1` in the default browser. The launcher searches f
 
 Version 0.9.10 includes validation scripts for calculators, data import, data editing, cross-tabulation, correlation auto-selection, factor analysis / PCA, logistic analysis and UI, paired guard handling, p-value formatting, regression coefficient output, and t-test / ANOVA guard handling.
 
-Version 0.9.33 includes validation coverage for ANCOVA method selection, assumption diagnostics, plotting, sensitivity analysis, actual-data export, and adjacent result formatting paths. Effect-size comparisons use `effectsize` as a validation reference where its definitions match the app calculation; `effectsize` is not required at runtime.
+Version 0.9.34 includes validation coverage for ANCOVA method selection, assumption diagnostics, plotting, sensitivity analysis, actual-data export, and adjacent result formatting paths. Effect-size comparisons use `effectsize` as a validation reference where its definitions match the app calculation; `effectsize` is not required at runtime.
 
 Run validation scripts from the repository root with Rscript, for example:
 
@@ -87,7 +87,7 @@ Run validation scripts from the repository root with Rscript, for example:
 
 If you use **EasyFlow Statistics** in your research, please cite:
 
-LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.33) [Computer software]. https://doi.org/10.22934/easyflow.statistics
+LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.34) [Computer software]. https://doi.org/10.22934/easyflow.statistics
 
 ## Development Model
 

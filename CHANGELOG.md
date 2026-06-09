@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.9.34 - 2026-06-09
+
+### Changed
+
+- Refined paired and repeated-measures result tables for summary display options, statistic alignment, effect-size labels, warnings, and assumption-review output.
+- Fixed paired repeated-measures variable ordering so displayed pairs follow the user's selection order.
+- Kept paired setup option tabs visible while enabling repeated-variable labels only for three or more repeated measures.
+- Clarified repeated-measures method notes so Wilks' lambda and Greenhouse-Geisser details are not reported as a combined method.
+- Updated citation metadata to use the registered EasyFlow Statistics DOI.
+
 ## v0.9.33 - 2026-06-06
 
 ### Changed
