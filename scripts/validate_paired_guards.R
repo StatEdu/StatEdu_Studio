@@ -95,7 +95,7 @@ expect_true(grepl("r = Wilcoxon signed-rank effect size", paired_median_iqr_html
 expect_true(grepl("table-layout:fixed;width:900px", paired_median_iqr_html, fixed = TRUE), "Expected paired Median(Q1~Q3)-only table to use the wider option layout")
 paired_mixed_median_iqr <- prepare_paired_results(data, c("pre", "ord_pre"), c("post", "ord_post"), variable_info, options = list(assumption_check = TRUE, effect_size = TRUE, median_iqr = TRUE))
 paired_mixed_median_iqr_html <- as.character(htmltools::renderTags(paired_results_ui(paired_mixed_median_iqr))$html)
-expect_true(grepl("M/\\s*<br/>\\s*Median", paired_mixed_median_iqr_html, perl = TRUE) && grepl("SD/\\s*<br/>\\s*Q1~Q3", paired_mixed_median_iqr_html, perl = TRUE), "Expected mixed median split headers to render as two lines")
+expect_true(grepl("M/Median", paired_mixed_median_iqr_html, fixed = TRUE) && grepl("SD/\\s*<br/>\\s*Q1~Q3", paired_mixed_median_iqr_html, perl = TRUE), "Expected mixed median split headers to render without crowding")
 
 paired_combined_median <- prepare_paired_results(data, "ord_pre", "ord_post", variable_info, options = list(assumption_check = TRUE, effect_size = TRUE, mean_sd = TRUE, median_iqr = TRUE))
 paired_combined_median_html <- as.character(htmltools::renderTags(paired_results_ui(paired_combined_median))$html)

@@ -306,15 +306,15 @@ paired_grouped_column_widths <- function(body_columns, table = NULL) {
     any(as.character(table$SummaryCenter %||% "") == "Median", na.rm = TRUE)
   mean_sd <- isTRUE(attr(table, "mean_sd", exact = TRUE))
   effect_count <- sum(startsWith(body_columns, "Effect:"))
-  variable_width <- if (isTRUE(median_summary)) 20 else 22
-  statistic_width <- if ("Statistic" %in% body_columns) if (isTRUE(median_summary)) 17 else 16 else 0
-  p_width <- if ("p" %in% body_columns) if (isTRUE(median_summary)) 7 else 8 else 0
-  effect_single_width <- if (isTRUE(median_summary)) 7 else 8
+  variable_width <- if (isTRUE(median_summary)) 17 else 22
+  statistic_width <- if ("Statistic" %in% body_columns) if (isTRUE(median_summary)) 15 else 16 else 0
+  p_width <- if ("p" %in% body_columns) if (isTRUE(median_summary)) 6 else 8 else 0
+  effect_single_width <- if (isTRUE(median_summary)) 6 else 8
   effect_width <- effect_single_width * effect_count
   fixed_width <- variable_width + statistic_width + p_width + effect_width
   summary_columns <- c("Pre_M", "Pre_SD", "Post_M", "Post_SD", "Pre_MS", "Post_MS")
   summary_count <- sum(body_columns %in% summary_columns)
-  minimum_summary_width <- if (isTRUE(median_summary) && isTRUE(mean_sd)) 18 else if (isTRUE(median_summary)) 8.5 else 9
+  minimum_summary_width <- if (isTRUE(median_summary) && isTRUE(mean_sd)) 18 else if (isTRUE(median_summary)) 10.5 else 9
   summary_width <- if (summary_count > 0) max(minimum_summary_width, (100 - fixed_width) / summary_count) else 10
   widths <- rep(summary_width, length(body_columns))
   widths[body_columns == "Variable"] <- variable_width
@@ -334,7 +334,7 @@ paired_summary_header_labels <- function(table) {
   spreads <- spreads[nzchar(spreads)]
   mixed_median <- length(centers) > 1L || any(centers == "Median")
   list(
-    center = if (length(centers) == 1L) centers[[1]] else "M/\nMedian",
+    center = if (length(centers) == 1L) centers[[1]] else "M/Median",
     spread = if (length(spreads) == 1L) spreads[[1]] else "SD/\nQ1~Q3",
     combined = if (length(centers) == 1L && identical(centers[[1]], "Median")) {
       "Median(Q1~Q3)"
@@ -449,7 +449,11 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
   body_style <- function(first = FALSE, last = FALSE) {
     paste0(
       result_body_cell_style(first, last),
-      if (isTRUE(first)) "white-space:normal;" else "white-space:nowrap;"
+      if (isTRUE(first)) {
+        "white-space:normal;"
+      } else {
+        "white-space:nowrap !important;overflow-wrap:normal !important;word-break:normal !important;"
+      }
     )
   }
   tags$table(
