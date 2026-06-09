@@ -390,7 +390,12 @@
         var button = event.target && event.target.closest
           ? event.target.closest('.analysis-move-button')
           : null;
-        if (button) easyflowRememberAllTransferScrolls();
+        if (button) {
+          document.querySelectorAll('.analysis-transfer-listbox[data-input-id]').forEach(function(listbox) {
+            if (window.easyflowTransferFallbackSync) window.easyflowTransferFallbackSync(listbox);
+          });
+          easyflowRememberAllTransferScrolls();
+        }
       }, true);
 
       document.addEventListener('mousedown', function(event) {
@@ -494,7 +499,9 @@
               item.removeAttribute('data-selected-order');
             });
           }
-          options.slice(start, end + 1).forEach(function(item) {
+          var fallbackRange = options.slice(start, end + 1);
+          if (index < lastIndex) fallbackRange.reverse();
+          fallbackRange.forEach(function(item) {
             if (!item.classList.contains('is-selected')) {
               easyflowTransferSelectionCounter += 1;
               item.setAttribute('data-selected-order', String(easyflowTransferSelectionCounter));
@@ -1456,7 +1463,9 @@
           var start = Math.min(lastIndex, index);
           var end = Math.max(lastIndex, index);
           if (!event.ctrlKey && !event.metaKey) easyflowTransferClear(listbox);
-          options.slice(start, end + 1).forEach(function(item) {
+          var range = options.slice(start, end + 1);
+          if (index < lastIndex) range.reverse();
+          range.forEach(function(item) {
             easyflowTransferSetSelected(item, true);
           });
         } else if (event.ctrlKey || event.metaKey) {
