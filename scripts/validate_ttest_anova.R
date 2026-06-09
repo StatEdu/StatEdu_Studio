@@ -122,6 +122,7 @@ ordered_trend_html <- as.character(tags_to_html(ttest_anova_results_ui(ordered_t
 expect_true("p for trend" %in% names(ordered_trend_table), "Expected ordered independent variable to keep the trend column")
 expect_true(isTRUE(attr(ordered_trend_table, "trend_analysis", exact = TRUE)), "Expected ordered trend result tables to retain display metadata")
 expect_true(grepl("coefficient-table-trend-analysis", ordered_trend_html, fixed = TRUE), "Expected ordered trend result tables to render with a dedicated CSS class")
+expect_true(grepl("width:100% !important;min-width:0 !important;max-width:100% !important;table-layout:fixed;", ordered_trend_html, fixed = TRUE), "Expected ordered trend result tables to fit inside the result panel")
 expect_true(grepl("coefficient-col-p-trend", ordered_trend_html, fixed = TRUE), "Expected p for trend cells to render with a dedicated column class")
 expect_true(grepl("width:116px !important;min-width:116px !important;max-width:116px !important;", ordered_trend_html, fixed = TRUE), "Expected mean-SD trend column to use the adjusted inline width")
 expect_true(grepl("width:144px !important;min-width:144px !important;max-width:144px !important;", ordered_trend_html, fixed = TRUE), "Expected mean-SD show-df trend statistic cells to use the adjusted inline width")

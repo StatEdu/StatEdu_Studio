@@ -529,9 +529,16 @@ coefficient_html_table <- function(
     if (isTRUE(attr(table, "trend_analysis", exact = TRUE))) "coefficient-table-trend-analysis" else "",
     if (isTRUE(attr(table, "bootstrap_regression", exact = TRUE))) "coefficient-table-bootstrap-regression" else ""
   )
+  table_style <- result_table_style(
+    font_size = if (isTRUE(compact)) compact_font_size else 12,
+    min_width = if (isTRUE(compact)) compact_min_width else 480
+  )
+  if (isTRUE(attr(table, "trend_analysis", exact = TRUE))) {
+    table_style <- paste0(table_style, "width:100% !important;min-width:0 !important;max-width:100% !important;table-layout:fixed;")
+  }
   table_tag <- tags$table(
       class = table_class,
-      style = result_table_style(font_size = if (isTRUE(compact)) compact_font_size else 12, min_width = if (isTRUE(compact)) compact_min_width else 480),
+      style = table_style,
       tags$colgroup(lapply(seq_len(nrow(display_meta)), function(index) {
         tags$col(
           class = if (isTRUE(display_meta$marker[[index]])) "coefficient-col-note-marker" else coefficient_column_class(display_meta$source[[index]]),

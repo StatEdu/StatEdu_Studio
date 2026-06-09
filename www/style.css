@@ -3937,6 +3937,24 @@ input.variable-select:disabled {
   table-layout: fixed;
 }
 
+.regression-results > .ttest-anova-result-panel {
+  overflow-x: hidden !important;
+}
+
+.regression-results > .ttest-anova-result-panel > .result-table-with-note {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+.regression-results > .ttest-anova-result-panel .result-table-with-note > table,
+.regression-results > .ttest-anova-result-panel .coefficient-table-trend-analysis {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+
 .regression-results > .ttest-anova-result-panel .coefficient-table th,
 .regression-results > .ttest-anova-result-panel .coefficient-table td {
   box-sizing: border-box;
