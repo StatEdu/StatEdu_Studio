@@ -52,7 +52,55 @@ analysis_diagnostics_section <- function(warnings, skipped, title = "Warnings / 
   if (all(!nzchar(table$N))) {
     table$N <- NULL
   }
-  analysis_result_table_section(title, table, class = class)
+  analysis_result_table_section(title, table, class = class, table_fn = analysis_diagnostics_html_table)
+}
+
+analysis_diagnostics_html_table <- function(table) {
+  if (!analysis_has_rows(table)) {
+    return(NULL)
+  }
+  columns <- names(table)
+  message_index <- match("Message", columns)
+  widths <- rep(14, length(columns))
+  names(widths) <- columns
+  widths[columns == "Type"] <- 10
+  widths[columns %in% c("Dependent variable", "Independent variable")] <- 10
+  widths[columns == "N"] <- 6
+  widths[columns == "Message"] <- max(50, 100 - sum(widths[columns != "Message"]))
+  if (!is.finite(message_index)) {
+    widths <- rep(100 / length(columns), length(columns))
+    names(widths) <- columns
+  }
+  body_style <- function(column, last = FALSE) {
+    paste0(
+      "padding:5px 7px;line-height:1.35;border-left:0;border-right:0;border-top:0;border-bottom:",
+      if (isTRUE(last)) "0" else "1px solid #d7dde5",
+      ";vertical-align:middle;background:transparent;white-space:normal;",
+      "font-variant-numeric:tabular-nums lining-nums;font-feature-settings:'tnum' 1,'lnum' 1;",
+      "text-align:", if (identical(column, "Message")) "left" else "left", ";"
+    )
+  }
+  tags$table(
+    class = "coefficient-table diagnostics-message-table",
+    style = paste0(result_table_style(font_size = 12, min_width = 640), "table-layout:fixed;width:100%;max-width:100%;"),
+    tags$colgroup(lapply(columns, function(column) {
+      tags$col(style = sprintf("width:%.3f%% !important;", widths[[column]]))
+    })),
+    tags$thead(tags$tr(lapply(columns, function(column) {
+      tags$th(
+        style = paste0(
+          result_header_cell_style(identical(column, columns[[1]])),
+          if (identical(column, "Message")) "text-align:left;" else ""
+        ),
+        column
+      )
+    }))),
+    tags$tbody(lapply(seq_len(nrow(table)), function(row_index) {
+      tags$tr(lapply(columns, function(column) {
+        tags$td(style = body_style(column, row_index == nrow(table)), as.character(table[[column]][[row_index]] %||% ""))
+      }))
+    }))
+  )
 }
 
 result_table_style <- function(font_size = 12, min_width = 480) {

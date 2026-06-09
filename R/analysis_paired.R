@@ -46,11 +46,18 @@ paired_numeric <- function(x) {
 
 paired_complete_data <- function(x, y) {
   keep <- !is.na(x) & !is.na(y)
-  list(x = x[keep], y = y[keep], n = sum(keep))
+  ids <- names(x)
+  if (is.null(ids) || length(ids) != length(x) || all(!nzchar(as.character(ids)))) {
+    ids <- as.character(seq_along(x))
+  }
+  list(x = x[keep], y = y[keep], id = ids[keep], n = sum(keep))
 }
 
-paired_outlier_summary <- function(diff) {
-  diff <- diff[is.finite(diff)]
+paired_outlier_summary <- function(diff, ids = NULL) {
+  finite <- is.finite(diff)
+  diff <- diff[finite]
+  ids <- as.character(ids %||% seq_along(finite))
+  ids <- ids[finite]
   if (length(diff) < 4) {
     return("None detected")
   }
@@ -61,12 +68,26 @@ paired_outlier_summary <- function(diff) {
   }
   lower <- q[[1]] - 3 * iqr
   upper <- q[[2]] + 3 * iqr
-  count <- sum(diff < lower | diff > upper, na.rm = TRUE)
-  if (count > 0) sprintf("%s detected", count) else "None detected"
+  outlier <- diff < lower | diff > upper
+  count <- sum(outlier, na.rm = TRUE)
+  if (count == 0) {
+    return("None detected")
+  }
+  severity <- pmax(lower - diff[outlier], diff[outlier] - upper, na.rm = TRUE)
+  ordered_ids <- ids[outlier][order(severity, decreasing = TRUE)]
+  listed_ids <- head(ordered_ids[nzchar(ordered_ids)], 5L)
+  if (length(listed_ids) > 0) {
+    sprintf("%s detected (IDs: %s)", count, paste(listed_ids, collapse = ", "))
+  } else {
+    sprintf("%s detected", count)
+  }
 }
 
-paired_diff_assumption <- function(diff) {
-  diff <- diff[is.finite(diff)]
+paired_diff_assumption <- function(diff, ids = NULL) {
+  finite <- is.finite(diff)
+  ids <- as.character(ids %||% seq_along(diff))
+  ids <- ids[finite]
+  diff <- diff[finite]
   n <- length(diff)
   if (n == 0) {
     return(list(n = 0L, skewness = NA_real_, kurtosis = NA_real_, shapiro_p = NA_real_, normal = FALSE, outliers = "None detected", method = "none"))
@@ -94,7 +115,7 @@ paired_diff_assumption <- function(diff) {
     shapiro_w = sw_w,
     shapiro_p = sw,
     normal = normal,
-    outliers = paired_outlier_summary(diff),
+    outliers = paired_outlier_summary(diff, ids),
     method = method
   )
 }
@@ -338,7 +359,7 @@ paired_analyze_pair <- function(data, first, second, measurement, variable_info,
   if (identical(measurement, "continuous")) {
     pair <- paired_complete_data(paired_numeric(x_raw), paired_numeric(y_raw))
     diff <- pair$y - pair$x
-    check <- paired_diff_assumption(diff)
+    check <- paired_diff_assumption(diff, pair$id)
     use_t <- !isTRUE(options$assumption_check) || isTRUE(check$normal)
     if (isTRUE(use_t)) {
       guard <- paired_diff_guard(diff, require_variance = TRUE)

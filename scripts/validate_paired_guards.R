@@ -32,6 +32,8 @@ data <- data.frame(
   t1 = c(1, 2, 3, 4, 5),
   t2 = c(1, 2, 3, 4, 5),
   t3 = c(1, 2, 3, 4, 5),
+  binary_pre = c("yes", "yes", "no", "no", "yes"),
+  binary_post = c("yes", "no", "no", "yes", "no"),
   stringsAsFactors = FALSE
 )
 variable_info <- data.frame(
@@ -39,7 +41,7 @@ variable_info <- data.frame(
   measurement = c(
     "continuous", "continuous", "continuous", "continuous", "continuous",
     "continuous", "continuous", "ordinal", "ordinal", "ordinal", "continuous",
-    "continuous", "continuous", "continuous", "continuous"
+    "continuous", "continuous", "continuous", "continuous", "binary", "binary"
   ),
   stringsAsFactors = FALSE
 )
@@ -58,6 +60,13 @@ expect_true(is.data.frame(zero_variance$skipped) && grepl("zero variance", zero_
 
 too_few <- prepare_paired_results(data, "one_pre", "one_post", variable_info, options = list(assumption_check = TRUE, effect_size = TRUE))
 expect_true(is.data.frame(too_few$skipped) && grepl("At least two complete paired cases", too_few$skipped$Reason[[1]], fixed = TRUE), "Expected N<2 paired case to be skipped")
+too_few_html <- as.character(htmltools::renderTags(paired_results_ui(too_few))$html)
+expect_true(grepl("diagnostics-message-table", too_few_html, fixed = TRUE), "Expected paired warning/skipped diagnostics to use message-width table")
+expect_true(grepl("width:64.000% !important", too_few_html, fixed = TRUE), "Expected paired warning/skipped diagnostics Message column to be widest")
+
+binary <- prepare_paired_results(data, "binary_pre", "binary_post", variable_info, options = list(effect_size = TRUE))
+binary_html <- as.character(htmltools::renderTags(paired_results_ui(binary))$html)
+expect_true(grepl("<th[^>]*text-align:left[^>]*>\\s*Pre\\s*</th>", binary_html, perl = TRUE), "Expected paired binary/categorical Pre header to be left aligned")
 
 mismatch <- prepare_paired_results(data, c("pre", "same_pre"), c("post", "same_post"), variable_info_mixed, options = list(assumption_check = FALSE, effect_size = TRUE))
 expect_true(is.data.frame(mismatch$skipped) && any(grepl("different measurement levels", mismatch$skipped$Reason, fixed = TRUE)), "Expected measurement-mismatched pair to be skipped")
@@ -85,6 +94,11 @@ paired_combined_median <- prepare_paired_results(data, "ord_pre", "ord_post", va
 paired_combined_median_html <- as.character(htmltools::renderTags(paired_results_ui(paired_combined_median))$html)
 expect_true(grepl("Median(Q1~Q3)", paired_combined_median_html, fixed = TRUE), "Expected paired M +/- SD plus Median(Q1~Q3) options to render a combined median header")
 expect_true(grepl("(", paired_combined_median$scale_table$Pre_MS[[1]], fixed = TRUE), "Expected paired M +/- SD plus Median(Q1~Q3) options to combine median and Q1~Q3 in one cell")
+
+outlier_data <- data.frame(pre = rep(0, 10), post = c(-2, -1, 0, 1, 2, 3, 4, 5, 100, -80))
+outlier_info <- data.frame(name = names(outlier_data), measurement = c("continuous", "continuous"), stringsAsFactors = FALSE)
+outlier_result <- prepare_paired_results(outlier_data, "pre", "post", outlier_info, options = list(assumption_check = TRUE, effect_size = TRUE))
+expect_true(grepl("2 detected \\(IDs: 9, 10\\)", outlier_result$checks$Outliers[[1]], perl = TRUE), "Expected paired outlier summary to list top outlier IDs by severity")
 
 nonparam_ties <- prepare_nonparametric_paired_results(data, "tie_pre", "tie_post", variable_info, options = list(effect_size = TRUE, median_iqr = TRUE))
 expect_true(is.data.frame(nonparam_ties$warnings) && grepl("Tied absolute differences", nonparam_ties$warnings$Warning[[1]], fixed = TRUE), "Expected Wilcoxon tied-difference warning")

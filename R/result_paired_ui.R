@@ -381,7 +381,7 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
     headers <- list(
       tags$tr(
         tags$th(rowspan = 2, style = result_header_cell_style(TRUE), "Variable"),
-        tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "Pre"),
+        tags$th(rowspan = 2, style = paste0(result_header_cell_style(FALSE), "text-align:left;"), "Pre"),
         tags$th(colspan = length(post_columns), style = paste0(result_header_cell_style(FALSE), "text-align:center;"), "Post"),
         if (include_statistic) tags$th(rowspan = 2, style = result_header_cell_style(FALSE), statistic_label),
         tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "p"),
@@ -426,7 +426,10 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
           column <- body_columns[[column_index]]
           marker <- if (identical(column, "p")) paired_method_marker_for_row(table, row_index) else ""
           tags$td(
-            style = body_style(column_index == 1, row_index == nrow(table)),
+            style = paste0(
+              body_style(column_index == 1, row_index == nrow(table)),
+              if (identical(type, "count") && identical(column, "Pre")) "text-align:left;" else ""
+            ),
             if (identical(column, "p")) {
               paired_p_value_cell(table[[column]][[row_index]], marker)
             } else if (startsWith(column, "Effect:")) {
