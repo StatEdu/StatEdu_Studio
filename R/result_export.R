@@ -1474,19 +1474,30 @@ add_paired_grouped_excel_sheet <- function(workbook, sheet_name, table, used_she
   show_effect_size <- isTRUE(show_effect_size) && paired_has_effect(table)
   effect_labels <- if (show_effect_size) paired_effect_labels(table) else character(0)
   if (identical(type, "scale")) {
-    center_label <- if (isTRUE(attr(table, "median_iqr", exact = TRUE))) "Median" else "M"
-    spread_label <- if (isTRUE(attr(table, "median_iqr", exact = TRUE))) "Q1~Q3" else "SD"
-    export_columns <- c("Variable", "Pre_M", "Pre_SD", "Post_M", "Post_SD", "Statistic", "p")
+    summary_labels <- paired_summary_header_labels(table)
+    mean_sd <- isTRUE(attr(table, "mean_sd", exact = TRUE))
+    export_columns <- if (isTRUE(mean_sd)) {
+      c("Variable", "Pre_MS", "Post_MS", "Statistic", "p")
+    } else {
+      c("Variable", "Pre_M", "Pre_SD", "Post_M", "Post_SD", "Statistic", "p")
+    }
     export <- table[, export_columns, drop = FALSE]
     for (label in effect_labels) {
       export[[label]] <- vapply(seq_len(nrow(table)), function(index) paired_effect_value_for_label(table, index, label), character(1))
     }
     statistic_label <- paired_scale_statistic_label(table)
     effect_header_labels <- vapply(effect_labels, paired_effect_header_text, character(1), label_count = length(effect_labels))
-    header_top <- c("Variable", "Pre", "", "Post", "", statistic_label, "p", effect_header_labels)
-    header_bottom <- c("", center_label, spread_label, center_label, spread_label, "", "", rep("", length(effect_labels)))
-    merge_cols <- c(list(1, 2:3, 4:5, 6, 7), as.list(seq_along(effect_labels) + 7L))
-    widths <- c(28, 12, 12, 12, 12, 12, 12, rep(14, length(effect_labels)))
+    if (isTRUE(mean_sd)) {
+      header_top <- c("Variable", "Pre", "Post", statistic_label, "p", effect_header_labels)
+      header_bottom <- c("", summary_labels$combined, summary_labels$combined, "", "", rep("", length(effect_labels)))
+      merge_cols <- c(list(1, 2, 3, 4, 5), as.list(seq_along(effect_labels) + 5L))
+      widths <- c(28, 18, 18, 14, 12, rep(14, length(effect_labels)))
+    } else {
+      header_top <- c("Variable", "Pre", "", "Post", "", statistic_label, "p", effect_header_labels)
+      header_bottom <- c("", summary_labels$center, summary_labels$spread, summary_labels$center, summary_labels$spread, "", "", rep("", length(effect_labels)))
+      merge_cols <- c(list(1, 2:3, 4:5, 6, 7), as.list(seq_along(effect_labels) + 7L))
+      widths <- c(28, 12, 12, 12, 12, 14, 12, rep(14, length(effect_labels)))
+    }
   } else {
     post_columns <- grep("^Post_", names(table), value = TRUE)
     post_labels <- sub("^Post_", "", post_columns)
@@ -1883,11 +1894,11 @@ save_paired_excel_file <- function(result, file) {
       used_sheets <- add_paired_grouped_excel_sheet(
         workbook,
         "Paired M SD",
-        paired_part$scale_table,
+        paired_scale_display_table(paired_part),
         used_sheets,
         title = "Paired test: M and SD",
         type = "scale",
-        note = paired_method_note(paired_part$scale_table, show_effect_size = isTRUE(paired_part$options$effect_size)),
+        note = paired_method_note(paired_scale_display_table(paired_part), show_effect_size = isTRUE(paired_part$options$effect_size)),
         show_effect_size = isTRUE(paired_part$options$effect_size)
       )
     }
@@ -1977,11 +1988,11 @@ save_paired_excel_file <- function(result, file) {
     used_sheets <- add_paired_grouped_excel_sheet(
       workbook,
       "Paired M SD",
-      result$scale_table,
+      paired_scale_display_table(result),
       used_sheets,
       title = "Paired test: M and SD",
       type = "scale",
-      note = paired_method_note(result$scale_table, show_effect_size = isTRUE(result$options$effect_size)),
+      note = paired_method_note(paired_scale_display_table(result), show_effect_size = isTRUE(result$options$effect_size)),
       show_effect_size = isTRUE(result$options$effect_size)
     )
   }

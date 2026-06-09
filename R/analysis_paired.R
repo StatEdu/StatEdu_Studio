@@ -184,6 +184,34 @@ paired_effect_value <- function(value) {
   format_effect_size(value)
 }
 
+paired_summary_values <- function(values, median_iqr = FALSE) {
+  values <- values[is.finite(values)]
+  if (length(values) == 0) {
+    return(list(center = "", spread = "", combined = "", center_label = "M", spread_label = "SD"))
+  }
+  if (isTRUE(median_iqr)) {
+    q <- stats::quantile(values, probs = c(.25, .5, .75), na.rm = TRUE, names = FALSE)
+    center <- format_decimal2(q[[2]])
+    spread <- sprintf("%s~%s", format_decimal2(q[[1]]), format_decimal2(q[[3]]))
+    return(list(
+      center = center,
+      spread = spread,
+      combined = sprintf("%s (%s)", center, spread),
+      center_label = "Median",
+      spread_label = "Q1~Q3"
+    ))
+  }
+  center <- format_decimal2(mean(values, na.rm = TRUE))
+  spread <- format_decimal2(stats::sd(values, na.rm = TRUE))
+  list(
+    center = center,
+    spread = spread,
+    combined = sprintf("%s \u00B1 %s", center, spread),
+    center_label = "M",
+    spread_label = "SD"
+  )
+}
+
 paired_hedges_correction <- function(n) {
   if (!is.finite(n) || n <= 1) return(NA_real_)
   df <- n - 1
@@ -342,6 +370,9 @@ paired_analyze_pair <- function(data, first, second, measurement, variable_info,
       effect_label <- "r"
       effect <- paired_effect_value(paired_wilcoxon_r(p, diff))
     }
+    use_median_iqr <- isTRUE(options$median_iqr) && identical(method, "Wilcoxon signed-rank test")
+    pre_summary <- paired_summary_values(pair$x, median_iqr = use_median_iqr)
+    post_summary <- paired_summary_values(pair$y, median_iqr = use_median_iqr)
     return(list(
       result = data.frame(
         Pair = pair_label,
@@ -356,10 +387,14 @@ paired_analyze_pair <- function(data, first, second, measurement, variable_info,
       ),
       scale = data.frame(
         Variable = pair_label,
-        Pre_M = format_decimal2(mean(pair$x, na.rm = TRUE)),
-        Pre_SD = format_decimal2(stats::sd(pair$x, na.rm = TRUE)),
-        Post_M = format_decimal2(mean(pair$y, na.rm = TRUE)),
-        Post_SD = format_decimal2(stats::sd(pair$y, na.rm = TRUE)),
+        Pre_M = pre_summary$center,
+        Pre_SD = pre_summary$spread,
+        Pre_MS = pre_summary$combined,
+        Post_M = post_summary$center,
+        Post_SD = post_summary$spread,
+        Post_MS = post_summary$combined,
+        SummaryCenter = pre_summary$center_label,
+        SummarySpread = pre_summary$spread_label,
         Method = method,
         StatisticLabel = if (identical(method, "Paired t-test")) "t" else "W",
         Statistic = format_decimal3(statistic),
@@ -385,14 +420,21 @@ paired_analyze_pair <- function(data, first, second, measurement, variable_info,
     }
     test <- suppressWarnings(stats::wilcox.test(pair$y, pair$x, paired = TRUE, exact = FALSE))
     p <- as.numeric(test$p.value)
+    use_median_iqr <- isTRUE(options$median_iqr)
+    pre_summary <- paired_summary_values(pair$x, median_iqr = use_median_iqr)
+    post_summary <- paired_summary_values(pair$y, median_iqr = use_median_iqr)
     return(list(
       result = data.frame(Pair = pair_label, Level = "Ordinal", Method = "Wilcoxon signed-rank test", N = pair$n, Statistic = format_decimal3(unname(as.numeric(test$statistic))), df = "", p = format_p(p), stringsAsFactors = FALSE, check.names = FALSE),
       scale = data.frame(
         Variable = pair_label,
-        Pre_M = format_decimal2(mean(pair$x, na.rm = TRUE)),
-        Pre_SD = format_decimal2(stats::sd(pair$x, na.rm = TRUE)),
-        Post_M = format_decimal2(mean(pair$y, na.rm = TRUE)),
-        Post_SD = format_decimal2(stats::sd(pair$y, na.rm = TRUE)),
+        Pre_M = pre_summary$center,
+        Pre_SD = pre_summary$spread,
+        Pre_MS = pre_summary$combined,
+        Post_M = post_summary$center,
+        Post_SD = post_summary$spread,
+        Post_MS = post_summary$combined,
+        SummaryCenter = pre_summary$center_label,
+        SummarySpread = pre_summary$spread_label,
         Method = "Wilcoxon signed-rank test",
         StatisticLabel = "W",
         Statistic = format_decimal3(unname(as.numeric(test$statistic))),

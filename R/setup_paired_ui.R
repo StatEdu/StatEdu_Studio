@@ -78,6 +78,8 @@ paired_setup_state <- function(
   bowker = TRUE,
   effect_size = TRUE,
   cohen_d = TRUE,
+  mean_sd = FALSE,
+  median_iqr = FALSE,
   adjustment = "bonferroni",
   time_labels = NULL
 ) {
@@ -107,6 +109,8 @@ paired_setup_state <- function(
     bowker = isTRUE(bowker),
     effect_size = isTRUE(effect_size),
     cohen_d = isTRUE(cohen_d),
+    mean_sd = isTRUE(mean_sd),
+    median_iqr = isTRUE(median_iqr),
     adjustment = if (identical(adjustment, "bonferroni")) "bonferroni" else "holm",
     time_labels = time_labels,
     has_two = any(lengths(repeated_groups) == 2L),
@@ -168,6 +172,13 @@ paired_setup_panel <- function(state) {
               list(
                 list(id = "paired_effect_size", label = "Effect size", value = state$effect_size),
                 list(id = "paired_cohen_d", label = "Cohen's d for paired t-test", value = state$cohen_d)
+              )
+            ),
+            analysis_option_group(
+              "Summary",
+              list(
+                list(id = "paired_mean_sd", label = "M \u00B1 SD", value = state$mean_sd),
+                list(id = "paired_median_iqr", label = "Median(Q1~Q3)", value = state$median_iqr)
               )
             )
           )

@@ -65,6 +65,22 @@ expect_true(is.data.frame(mismatch$skipped) && any(grepl("different measurement 
 ordinal <- prepare_paired_results(data, "ord_pre", "ord_post", variable_info, options = list(assumption_check = TRUE, effect_size = TRUE))
 expect_true(is.data.frame(ordinal$scale_table) && identical(ordinal$scale_table$Method[[1]], "Wilcoxon signed-rank test"), "Expected text ordinal pair to use Wilcoxon")
 
+paired_mean_sd <- prepare_paired_results(data, "pre", "post", variable_info, options = list(assumption_check = FALSE, effect_size = TRUE, mean_sd = TRUE))
+paired_mean_sd_html <- as.character(htmltools::renderTags(paired_results_ui(paired_mean_sd))$html)
+expect_true(grepl("M \u00B1 SD", paired_mean_sd_html, fixed = TRUE), "Expected paired M +/- SD option to render a combined summary header")
+expect_true(grepl("3.00 \u00B1 1.58", paired_mean_sd_html, fixed = TRUE), "Expected paired M +/- SD option to combine mean and SD in one cell")
+
+paired_median_iqr <- prepare_paired_results(data, "ord_pre", "ord_post", variable_info, options = list(assumption_check = TRUE, effect_size = TRUE, median_iqr = TRUE))
+expect_true(identical(paired_median_iqr$scale_table$SummaryCenter[[1]], "Median"), "Expected paired Median(Q1~Q3) option to use median summaries for Wilcoxon rows")
+expect_true(grepl("~", paired_median_iqr$scale_table$Pre_SD[[1]], fixed = TRUE), "Expected paired Median(Q1~Q3) option to place Q1~Q3 in the spread cell")
+paired_median_iqr_html <- as.character(htmltools::renderTags(paired_results_ui(paired_median_iqr))$html)
+expect_true(grepl("Median", paired_median_iqr_html, fixed = TRUE) && grepl("Q1~Q3", paired_median_iqr_html, fixed = TRUE), "Expected paired Median(Q1~Q3) option to render split median and Q1~Q3 headers")
+
+paired_combined_median <- prepare_paired_results(data, "ord_pre", "ord_post", variable_info, options = list(assumption_check = TRUE, effect_size = TRUE, mean_sd = TRUE, median_iqr = TRUE))
+paired_combined_median_html <- as.character(htmltools::renderTags(paired_results_ui(paired_combined_median))$html)
+expect_true(grepl("Median(Q1~Q3)", paired_combined_median_html, fixed = TRUE), "Expected paired M +/- SD plus Median(Q1~Q3) options to render a combined median header")
+expect_true(grepl("(", paired_combined_median$scale_table$Pre_MS[[1]], fixed = TRUE), "Expected paired M +/- SD plus Median(Q1~Q3) options to combine median and Q1~Q3 in one cell")
+
 nonparam_ties <- prepare_nonparametric_paired_results(data, "tie_pre", "tie_post", variable_info, options = list(effect_size = TRUE, median_iqr = TRUE))
 expect_true(is.data.frame(nonparam_ties$warnings) && grepl("Tied absolute differences", nonparam_ties$warnings$Warning[[1]], fixed = TRUE), "Expected Wilcoxon tied-difference warning")
 

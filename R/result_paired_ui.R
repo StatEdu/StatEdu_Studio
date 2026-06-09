@@ -261,7 +261,7 @@ paired_effect_value_for_label <- function(table, row_index, effect_label) {
 paired_grouped_column_class <- function(column) {
   if (identical(column, "Variable")) return("paired-two-col-variable")
   if (identical(column, "post-hoc")) return("paired-two-col-posthoc")
-  if (column %in% c("Pre_M", "Pre_SD", "Post_M", "Post_SD")) return("paired-two-col-summary")
+  if (column %in% c("Pre_M", "Pre_SD", "Post_M", "Post_SD", "Pre_MS", "Post_MS")) return("paired-two-col-summary")
   if (column %in% c("Statistic", "p")) return("paired-two-col-stat")
   if (startsWith(column, "Effect:")) return("paired-two-col-effect")
   "paired-two-col-default"
@@ -269,14 +269,42 @@ paired_grouped_column_class <- function(column) {
 
 paired_grouped_column_widths <- function(body_columns) {
   effect_count <- sum(startsWith(body_columns, "Effect:"))
-  fixed_width <- 20 + 9 * sum(body_columns %in% c("Statistic", "p")) + 10 * effect_count
-  summary_count <- sum(body_columns %in% c("Pre_M", "Pre_SD", "Post_M", "Post_SD"))
+  fixed_width <- 22 + 11 * sum(body_columns %in% c("Statistic", "p")) + 11 * effect_count
+  summary_count <- sum(body_columns %in% c("Pre_M", "Pre_SD", "Post_M", "Post_SD", "Pre_MS", "Post_MS"))
   summary_width <- if (summary_count > 0) max(9, (100 - fixed_width) / summary_count) else 10
   widths <- rep(summary_width, length(body_columns))
-  widths[body_columns == "Variable"] <- 20
-  widths[body_columns %in% c("Statistic", "p")] <- 9
-  widths[startsWith(body_columns, "Effect:")] <- 10
+  widths[body_columns == "Variable"] <- 22
+  widths[body_columns %in% c("Statistic", "p")] <- 11
+  widths[startsWith(body_columns, "Effect:")] <- 11
   stats::setNames(widths, body_columns)
+}
+
+paired_summary_header_labels <- function(table) {
+  if (!"SummaryCenter" %in% names(table) && isTRUE(attr(table, "median_iqr", exact = TRUE))) {
+    return(list(center = "Median", spread = "Q1~Q3", combined = "Median(Q1~Q3)"))
+  }
+  centers <- unique(as.character(table$SummaryCenter %||% "M"))
+  spreads <- unique(as.character(table$SummarySpread %||% "SD"))
+  centers <- centers[nzchar(centers)]
+  spreads <- spreads[nzchar(spreads)]
+  list(
+    center = if (length(centers) == 1L) centers[[1]] else "M/Median",
+    spread = if (length(spreads) == 1L) spreads[[1]] else "SD/Q1~Q3",
+    combined = if (length(centers) == 1L && identical(centers[[1]], "Median")) {
+      "Median(Q1~Q3)"
+    } else if (length(centers) > 1L || any(centers == "Median")) {
+      "M \u00B1 SD / Median(Q1~Q3)"
+    } else {
+      "M \u00B1 SD"
+    }
+  )
+}
+
+paired_scale_display_table <- function(result) {
+  table <- result$scale_table
+  if (!is.data.frame(table) || nrow(table) == 0) return(table)
+  attr(table, "mean_sd") <- isTRUE(result$options$mean_sd)
+  table
 }
 
 paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_size = FALSE) {
@@ -284,32 +312,45 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
   if (!is.data.frame(table) || nrow(table) == 0) return(NULL)
   show_effect_size <- isTRUE(show_effect_size) && paired_has_effect(table)
   effect_labels <- if (show_effect_size) paired_effect_labels(table) else character(0)
-  center_label <- if (isTRUE(attr(table, "median_iqr", exact = TRUE))) "Median" else "M"
-  spread_label <- if (isTRUE(attr(table, "median_iqr", exact = TRUE))) "Q1~Q3" else "SD"
+  summary_labels <- paired_summary_header_labels(table)
+  mean_sd <- isTRUE(attr(table, "mean_sd", exact = TRUE))
   if (identical(type, "scale")) {
-    body_columns <- c("Variable", "Pre_M", "Pre_SD", "Post_M", "Post_SD", "Statistic", "p")
+    body_columns <- if (isTRUE(mean_sd)) {
+      c("Variable", "Pre_MS", "Post_MS", "Statistic", "p")
+    } else {
+      c("Variable", "Pre_M", "Pre_SD", "Post_M", "Post_SD", "Statistic", "p")
+    }
     body_columns <- c(body_columns, paste0("Effect:", effect_labels))
     statistic_label <- paired_scale_statistic_label(table)
     headers <- list(
       tags$tr(
         tags$th(rowspan = 2, style = result_header_cell_style(TRUE), "Variable"),
-        tags$th(colspan = 2, style = paste0(result_header_cell_style(FALSE), "text-align:center;"), "Pre"),
-        tags$th(colspan = 2, style = paste0(result_header_cell_style(FALSE), "text-align:center;"), "Post"),
-        tags$th(rowspan = 2, style = result_header_cell_style(FALSE), statistic_label),
+        tags$th(colspan = if (isTRUE(mean_sd)) 1 else 2, style = paste0(result_header_cell_style(FALSE), "text-align:center;white-space:nowrap;"), "Pre"),
+        tags$th(colspan = if (isTRUE(mean_sd)) 1 else 2, style = paste0(result_header_cell_style(FALSE), "text-align:center;white-space:nowrap;"), "Post"),
+        tags$th(rowspan = 2, style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), statistic_label),
         tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "p"),
         if (length(effect_labels) == 1L) {
-          tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "ES")
+          tags$th(rowspan = 2, style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), "ES")
         } else if (length(effect_labels) > 1L) {
-          tags$th(colspan = length(effect_labels), style = paste0(result_header_cell_style(FALSE), "text-align:center;"), "ES")
+          tags$th(colspan = length(effect_labels), style = paste0(result_header_cell_style(FALSE), "text-align:center;white-space:nowrap;"), "ES")
         }
       ),
       tags$tr(
-        tags$th(style = result_header_cell_style(FALSE), center_label),
-        tags$th(style = result_header_cell_style(FALSE), spread_label),
-        tags$th(style = result_header_cell_style(FALSE), center_label),
-        tags$th(style = result_header_cell_style(FALSE), spread_label),
+        if (isTRUE(mean_sd)) {
+          tagList(
+            tags$th(style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), summary_labels$combined),
+            tags$th(style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), summary_labels$combined)
+          )
+        } else {
+          tagList(
+            tags$th(style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), summary_labels$center),
+            tags$th(style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), summary_labels$spread),
+            tags$th(style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), summary_labels$center),
+            tags$th(style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), summary_labels$spread)
+          )
+        },
         if (length(effect_labels) > 1L) {
-          lapply(effect_labels, function(label) tags$th(style = result_header_cell_style(FALSE), label))
+          lapply(effect_labels, function(label) tags$th(style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), label))
         }
       )
     )
@@ -415,8 +456,8 @@ paired_results_ui <- function(result) {
           class = "result-section paired-result-section regression-result-panel",
           tags$h3("Paired test: continuous / ordinal"),
           result_table_with_notes(
-            paired_grouped_table(result$paired$scale_table, "scale", show_effect_size = isTRUE(result$paired$options$effect_size)),
-            result_note_tag(paired_method_note(result$paired$scale_table, show_effect_size = isTRUE(result$paired$options$effect_size))),
+            paired_grouped_table(paired_scale_display_table(result$paired), "scale", show_effect_size = isTRUE(result$paired$options$effect_size)),
+            result_note_tag(paired_method_note(paired_scale_display_table(result$paired), show_effect_size = isTRUE(result$paired$options$effect_size))),
             class = "result-table-with-note paired-fit-table-wrap"
           )
         )
@@ -502,8 +543,8 @@ paired_results_ui <- function(result) {
         class = "result-section paired-result-section regression-result-panel",
         tags$h3("Paired test: continuous / ordinal"),
         result_table_with_notes(
-          paired_grouped_table(result$scale_table, "scale", show_effect_size = isTRUE(result$options$effect_size)),
-          result_note_tag(paired_method_note(result$scale_table, show_effect_size = isTRUE(result$options$effect_size))),
+          paired_grouped_table(paired_scale_display_table(result), "scale", show_effect_size = isTRUE(result$options$effect_size)),
+          result_note_tag(paired_method_note(paired_scale_display_table(result), show_effect_size = isTRUE(result$options$effect_size))),
           class = "result-table-with-note paired-fit-table-wrap"
         )
       )

@@ -17,6 +17,8 @@ register_paired_handlers <- function(
   bowker <- reactiveVal(TRUE)
   effect_size <- reactiveVal(TRUE)
   cohen_d <- reactiveVal(TRUE)
+  mean_sd <- reactiveVal(FALSE)
+  median_iqr <- reactiveVal(FALSE)
   adjustment <- reactiveVal("bonferroni")
   paired_result <- reactiveVal(NULL)
 
@@ -52,6 +54,8 @@ register_paired_handlers <- function(
       bowker = isolate(bowker()),
       effect_size = isolate(effect_size()),
       cohen_d = isolate(cohen_d()),
+      mean_sd = isolate(mean_sd()),
+      median_iqr = isolate(median_iqr()),
       adjustment = isolate(adjustment()),
       time_labels = isolate(current_time_labels())
     ))
@@ -84,6 +88,14 @@ register_paired_handlers <- function(
 
   observeEvent(input$paired_cohen_d, {
     cohen_d(isTRUE(input$paired_cohen_d))
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$paired_mean_sd, {
+    mean_sd(isTRUE(input$paired_mean_sd))
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$paired_median_iqr, {
+    median_iqr(isTRUE(input$paired_median_iqr))
   }, ignoreInit = TRUE)
 
   observeEvent(input$paired_adjustment, {
@@ -230,6 +242,8 @@ register_paired_handlers <- function(
           bowker = isTRUE(bowker()),
           effect_size = isTRUE(effect_size()),
           cohen_d = isTRUE(cohen_d()),
+          mean_sd = isTRUE(mean_sd()),
+          median_iqr = isTRUE(median_iqr()),
           posthoc_adjustment = adjustment(),
           time_labels = current_time_labels()
         )
