@@ -20,7 +20,25 @@ paired_effect_labels <- function(table) {
 }
 
 paired_effect_header_text <- function(label, label_count = 1L) {
-  if (label_count == 1L) "ES" else label
+  label <- trimws(as.character(label %||% ""))
+  switch(
+    label,
+    "Hedges' g" = "g",
+    "Cohen's d" = "d",
+    r = "r",
+    label
+  )
+}
+
+paired_effect_note_text <- function(label) {
+  label <- trimws(as.character(label %||% ""))
+  switch(
+    label,
+    r = "r = Wilcoxon signed-rank effect size",
+    "Hedges' g" = "g = Hedges' g",
+    "Cohen's d" = "d = Cohen's d",
+    label
+  )
 }
 
 paired_count_statistic_label <- function(table) {
@@ -44,9 +62,9 @@ paired_effect_note <- function(table, show_effect_size = TRUE) {
   labels <- paired_effect_labels(table)
   if (length(labels) == 0) return("")
   if (length(labels) == 1L) {
-    paste0("ES = effect size (", labels[[1]], ").")
+    paste0("ES = effect size (", paired_effect_note_text(labels[[1]]), ").")
   } else {
-    paste0("ES = effect size (", paste(labels, collapse = ", "), ").")
+    paste0("ES = effect size (", paste(vapply(labels, paired_effect_note_text, character(1)), collapse = ", "), ").")
   }
 }
 
@@ -330,7 +348,7 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
         tags$th(rowspan = 2, style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), statistic_label),
         tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "p"),
         if (length(effect_labels) == 1L) {
-          tags$th(rowspan = 2, style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), "ES")
+          tags$th(rowspan = 2, style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), paired_effect_header_text(effect_labels[[1]], 1L))
         } else if (length(effect_labels) > 1L) {
           tags$th(colspan = length(effect_labels), style = paste0(result_header_cell_style(FALSE), "text-align:center;white-space:nowrap;"), "ES")
         }
@@ -350,7 +368,7 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
           )
         },
         if (length(effect_labels) > 1L) {
-          lapply(effect_labels, function(label) tags$th(style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), label))
+          lapply(effect_labels, function(label) tags$th(style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), paired_effect_header_text(label, length(effect_labels))))
         }
       )
     )
@@ -368,7 +386,7 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
         if (include_statistic) tags$th(rowspan = 2, style = result_header_cell_style(FALSE), statistic_label),
         tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "p"),
         if (length(effect_labels) == 1L) {
-          tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "ES")
+          tags$th(rowspan = 2, style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), paired_effect_header_text(effect_labels[[1]], 1L))
         } else if (length(effect_labels) > 1L) {
           tags$th(colspan = length(effect_labels), style = paste0(result_header_cell_style(FALSE), "text-align:center;"), "ES")
         }
@@ -376,7 +394,7 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
       tags$tr(
         lapply(post_labels, function(label) tags$th(style = result_header_cell_style(FALSE), label)),
         if (length(effect_labels) > 1L) {
-          lapply(effect_labels, function(label) tags$th(style = result_header_cell_style(FALSE), label))
+          lapply(effect_labels, function(label) tags$th(style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), paired_effect_header_text(label, length(effect_labels))))
         }
       )
     )
