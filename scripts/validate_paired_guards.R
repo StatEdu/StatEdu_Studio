@@ -93,12 +93,18 @@ expect_true(grepl("Median", paired_median_iqr_html, fixed = TRUE) && grepl("Q1~Q
 expect_true(grepl(">\\s*r\\s*</th>", paired_median_iqr_html, perl = TRUE), "Expected paired Wilcoxon effect-size header to use r abbreviation")
 expect_true(grepl("r = Wilcoxon signed-rank effect size", paired_median_iqr_html, fixed = TRUE), "Expected paired effect-size note to explain r")
 expect_true(grepl("table-layout:fixed;width:900px", paired_median_iqr_html, fixed = TRUE), "Expected paired Median(Q1~Q3)-only table to use the wider option layout")
+paired_mixed_median_iqr <- prepare_paired_results(data, c("pre", "ord_pre"), c("post", "ord_post"), variable_info, options = list(assumption_check = TRUE, effect_size = TRUE, median_iqr = TRUE))
+paired_mixed_median_iqr_html <- as.character(htmltools::renderTags(paired_results_ui(paired_mixed_median_iqr))$html)
+expect_true(grepl("M/\\s*<br/>\\s*Median", paired_mixed_median_iqr_html, perl = TRUE) && grepl("SD/\\s*<br/>\\s*Q1~Q3", paired_mixed_median_iqr_html, perl = TRUE), "Expected mixed median split headers to render as two lines")
 
 paired_combined_median <- prepare_paired_results(data, "ord_pre", "ord_post", variable_info, options = list(assumption_check = TRUE, effect_size = TRUE, mean_sd = TRUE, median_iqr = TRUE))
 paired_combined_median_html <- as.character(htmltools::renderTags(paired_results_ui(paired_combined_median))$html)
 expect_true(grepl("Median(Q1~Q3)", paired_combined_median_html, fixed = TRUE), "Expected paired M +/- SD plus Median(Q1~Q3) options to render a combined median header")
 expect_true(grepl("(", paired_combined_median$scale_table$Pre_MS[[1]], fixed = TRUE), "Expected paired M +/- SD plus Median(Q1~Q3) options to combine median and Q1~Q3 in one cell")
 expect_true(grepl("table-layout:fixed;width:840px", paired_combined_median_html, fixed = TRUE), "Expected paired M +/- SD plus Median(Q1~Q3) table to use the combined option layout")
+paired_mixed_combined_median <- prepare_paired_results(data, c("pre", "ord_pre"), c("post", "ord_post"), variable_info, options = list(assumption_check = TRUE, effect_size = TRUE, mean_sd = TRUE, median_iqr = TRUE))
+paired_mixed_combined_median_html <- as.character(htmltools::renderTags(paired_results_ui(paired_mixed_combined_median))$html)
+expect_true(grepl("M \u00B1 SD /\\s*<br/>\\s*Median\\(Q1~Q3\\)", paired_mixed_combined_median_html, perl = TRUE), "Expected paired M +/- SD plus Median(Q1~Q3) header to render as two lines")
 
 outlier_data <- data.frame(pre = rep(0, 10), post = c(-2, -1, 0, 1, 2, 3, 4, 5, 100, -80))
 outlier_info <- data.frame(name = names(outlier_data), measurement = c("continuous", "continuous"), stringsAsFactors = FALSE)

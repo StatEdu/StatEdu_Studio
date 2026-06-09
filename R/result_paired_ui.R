@@ -41,6 +41,21 @@ paired_effect_note_text <- function(label) {
   )
 }
 
+paired_header_label_content <- function(label) {
+  parts <- strsplit(as.character(label %||% ""), "\n", fixed = TRUE)[[1]]
+  if (length(parts) <= 1L) {
+    return(label)
+  }
+  tags$span(
+    lapply(seq_along(parts), function(index) {
+      tagList(
+        if (index > 1L) tags$br(),
+        parts[[index]]
+      )
+    })
+  )
+}
+
 paired_count_statistic_label <- function(table) {
   labels <- unique(as.character(table$StatisticLabel %||% ""))
   labels <- labels[nzchar(labels)]
@@ -319,12 +334,12 @@ paired_summary_header_labels <- function(table) {
   spreads <- spreads[nzchar(spreads)]
   mixed_median <- length(centers) > 1L || any(centers == "Median")
   list(
-    center = if (length(centers) == 1L) centers[[1]] else "M/Median",
-    spread = if (length(spreads) == 1L) spreads[[1]] else "SD/Q1~Q3",
+    center = if (length(centers) == 1L) centers[[1]] else "M/\nMedian",
+    spread = if (length(spreads) == 1L) spreads[[1]] else "SD/\nQ1~Q3",
     combined = if (length(centers) == 1L && identical(centers[[1]], "Median")) {
       "Median(Q1~Q3)"
     } else if (isTRUE(mixed_median)) {
-      "M\u00B1SD/Median(Q1~Q3)"
+      "M \u00B1 SD /\nMedian(Q1~Q3)"
     } else {
       "M \u00B1 SD"
     }
@@ -346,6 +361,15 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
   summary_labels <- paired_summary_header_labels(table)
   mean_sd <- isTRUE(attr(table, "mean_sd", exact = TRUE))
   if (identical(type, "scale")) {
+    summary_header_style <- paste0(
+      result_header_cell_style(FALSE),
+      "white-space:normal;line-height:1.22;",
+      if (is.data.frame(table) && "SummaryCenter" %in% names(table) && any(as.character(table$SummaryCenter %||% "") == "Median", na.rm = TRUE)) {
+        "font-size:13px;"
+      } else {
+        ""
+      }
+    )
     body_columns <- if (isTRUE(mean_sd)) {
       c("Variable", "Pre_MS", "Post_MS", "Statistic", "p")
     } else {
@@ -369,15 +393,15 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
       tags$tr(
         if (isTRUE(mean_sd)) {
           tagList(
-            tags$th(style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), summary_labels$combined),
-            tags$th(style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), summary_labels$combined)
+            tags$th(style = summary_header_style, paired_header_label_content(summary_labels$combined)),
+            tags$th(style = summary_header_style, paired_header_label_content(summary_labels$combined))
           )
         } else {
           tagList(
-            tags$th(style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), summary_labels$center),
-            tags$th(style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), summary_labels$spread),
-            tags$th(style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), summary_labels$center),
-            tags$th(style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), summary_labels$spread)
+            tags$th(style = summary_header_style, paired_header_label_content(summary_labels$center)),
+            tags$th(style = summary_header_style, paired_header_label_content(summary_labels$spread)),
+            tags$th(style = summary_header_style, paired_header_label_content(summary_labels$center)),
+            tags$th(style = summary_header_style, paired_header_label_content(summary_labels$spread))
           )
         },
         if (length(effect_labels) > 1L) {
