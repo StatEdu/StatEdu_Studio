@@ -81,6 +81,8 @@ expect_true(grepl("3.00 \u00B1 1.58", paired_mean_sd_html, fixed = TRUE), "Expec
 expect_true(grepl(">\\s*g\\s*</th>", paired_mean_sd_html, perl = TRUE) && grepl(">\\s*d\\s*</th>", paired_mean_sd_html, perl = TRUE), "Expected paired effect-size headers to use g and d abbreviations")
 expect_true(!grepl(">\\s*Hedges' g\\s*</th>", paired_mean_sd_html, perl = TRUE) && !grepl(">\\s*Cohen's d\\s*</th>", paired_mean_sd_html, perl = TRUE), "Expected paired effect-size headers to omit full effect-size names")
 expect_true(grepl("g = Hedges' g", paired_mean_sd_html, fixed = TRUE) && grepl("d = Cohen's d", paired_mean_sd_html, fixed = TRUE), "Expected paired effect-size note to explain g and d")
+expect_true(grepl('class="paired-two-col-stat" style="width:16.000% !important;"', paired_mean_sd_html, fixed = TRUE), "Expected paired Statistic column to be widened")
+expect_true(grepl('class="paired-two-col-effect" style="width:8.000% !important;"', paired_mean_sd_html, fixed = TRUE), "Expected paired ES columns to be narrowed")
 
 paired_median_iqr <- prepare_paired_results(data, "ord_pre", "ord_post", variable_info, options = list(assumption_check = TRUE, effect_size = TRUE, median_iqr = TRUE))
 expect_true(identical(paired_median_iqr$scale_table$SummaryCenter[[1]], "Median"), "Expected paired Median(Q1~Q3) option to use median summaries for Wilcoxon rows")

@@ -287,13 +287,17 @@ paired_grouped_column_class <- function(column) {
 
 paired_grouped_column_widths <- function(body_columns) {
   effect_count <- sum(startsWith(body_columns, "Effect:"))
-  fixed_width <- 22 + 11 * sum(body_columns %in% c("Statistic", "p")) + 11 * effect_count
+  statistic_width <- if ("Statistic" %in% body_columns) 16 else 0
+  p_width <- if ("p" %in% body_columns) 8 else 0
+  effect_width <- 8 * effect_count
+  fixed_width <- 22 + statistic_width + p_width + effect_width
   summary_count <- sum(body_columns %in% c("Pre_M", "Pre_SD", "Post_M", "Post_SD", "Pre_MS", "Post_MS"))
   summary_width <- if (summary_count > 0) max(9, (100 - fixed_width) / summary_count) else 10
   widths <- rep(summary_width, length(body_columns))
   widths[body_columns == "Variable"] <- 22
-  widths[body_columns %in% c("Statistic", "p")] <- 11
-  widths[startsWith(body_columns, "Effect:")] <- 11
+  widths[body_columns == "Statistic"] <- statistic_width
+  widths[body_columns == "p"] <- p_width
+  widths[startsWith(body_columns, "Effect:")] <- 8
   stats::setNames(widths, body_columns)
 }
 
