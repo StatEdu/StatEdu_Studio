@@ -87,21 +87,34 @@ create_data_reactives <- function(input, active_data_file, calculated_variables 
   source_dataset <- reactive({
     file <- current_data_file()
     req(file)
-    read_current_data_file(file, input)
+    easyflow_time_expr(
+      "read_current_data_file",
+      read_current_data_file(file, input),
+      detail = sprintf("file=%s", basename(as.character(file$name %||% file$path %||% "")))
+    )
   })
 
   raw_dataset <- reactive({
-    append_calculated_variables(
-      apply_variable_renames(
-        source_dataset(),
-        if (is.function(renamed_variables)) renamed_variables() else character(0)
+    easyflow_time_expr(
+      "raw_dataset",
+      append_calculated_variables(
+        apply_variable_renames(
+          source_dataset(),
+          if (is.function(renamed_variables)) renamed_variables() else character(0)
+        ),
+        if (is.function(calculated_variables)) calculated_variables() else NULL
       ),
-      if (is.function(calculated_variables)) calculated_variables() else NULL
+      detail = sprintf("file=%s", basename(as.character((current_data_file() %||% list())$name %||% "")))
     )
   })
 
   dataset <- reactive({
-    prepare_data(raw_dataset())
+    data <- raw_dataset()
+    easyflow_time_expr(
+      "prepare_data",
+      prepare_data(data),
+      detail = sprintf("vars=%s rows=%s", ncol(data), nrow(data))
+    )
   })
 
   list(
@@ -401,6 +414,7 @@ create_restore_settings_state_fn <- function(
   restore_settings_for_current_data_fn
 ) {
   function(settings, settings_path = NULL) {
+    start <- Sys.time()
     restored <- settings_restore_state(settings)
     selected <- restored$selected
     dependent <- restored$dependent
@@ -411,25 +425,31 @@ create_restore_settings_state_fn <- function(
 
     data_switch <- settings_external_data_switch(settings, settings_path, current_data_file_fn())
     if (!is.null(data_switch)) {
+      message(sprintf("[EasyFlow timing] restore_settings_state: data switch -> %s", data_switch$path %||% ""))
       pending_settings(settings)
       reset_on_dataset_load(FALSE)
       active_data_file(data_switch)
+      easyflow_log_timing("restore_settings_state queued data switch", start)
       return()
     }
 
     if (is.null(current_data_file_fn())) {
       pending_settings(settings)
       if (restore_settings_data_file_fn(settings, settings_path)) {
+        message("[EasyFlow timing] restore_settings_state: restored data file from settings")
+        easyflow_log_timing("restore_settings_state restored data file", start)
         return()
       }
       pending_settings(NULL)
     }
 
     if (restore_settings_variable_info_only_fn(settings, selected, dependent, independent, controls, saved_info, restored)) {
+      easyflow_log_timing("restore_settings_state variable info only", start)
       return()
     }
 
     restore_settings_for_current_data_fn(settings, selected, dependent, independent, controls, saved_info, restored)
+    easyflow_log_timing("restore_settings_state current data", start)
   }
 }
 
@@ -470,4 +490,3 @@ update_analysis_choices <- function(session, input, cols) {
   updateSelectizeInput(session, "covariates", choices = cols, selected = intersect(input$covariates %||% character(0), cols), server = TRUE)
   invisible(TRUE)
 }
-

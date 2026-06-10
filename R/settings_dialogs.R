@@ -104,6 +104,26 @@ windows_open_file_dialog <- function(title, filters) {
   list(attempted = TRUE, path = output[[1]])
 }
 
+windows_choose_file_dialog <- function(title, filters) {
+  if (!identical(.Platform$OS.type, "windows") || !exists("choose.files", envir = asNamespace("utils"))) {
+    return(list(attempted = FALSE, path = NULL))
+  }
+  path <- tryCatch(
+    utils::choose.files(caption = title, multi = FALSE, filters = filters, index = 1),
+    error = function(e) {
+      message("Windows choose.files dialog failed: ", conditionMessage(e))
+      NULL
+    }
+  )
+  if (is.null(path)) {
+    return(list(attempted = FALSE, path = NULL))
+  }
+  if (!is_open_dialog_path(path)) {
+    return(list(attempted = TRUE, path = NULL))
+  }
+  list(attempted = TRUE, path = path[[1]])
+}
+
 open_file_dialog <- function(title, filetypes) {
   windows_filters <- attr(filetypes, "windows_filters", exact = TRUE)
   if (!is.null(windows_filters)) {
@@ -112,6 +132,15 @@ open_file_dialog <- function(title, filetypes) {
       windows_path <- windows_result$path
       if (!is.null(windows_path) && nzchar(windows_path) && !dir.exists(windows_path)) {
         return(windows_path)
+      }
+      return(NULL)
+    }
+
+    choose_result <- windows_choose_file_dialog(title, windows_filters)
+    if (isTRUE(choose_result$attempted)) {
+      choose_path <- choose_result$path
+      if (!is.null(choose_path) && nzchar(choose_path) && !dir.exists(choose_path)) {
+        return(choose_path)
       }
       return(NULL)
     }
@@ -215,4 +244,3 @@ save_settings_file <- function() {
   }
   path
 }
-

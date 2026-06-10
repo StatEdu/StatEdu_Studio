@@ -386,6 +386,7 @@ data_steps_panel <- function(
                   "document.querySelectorAll('.step3-labels-section').forEach(function(section){section.style.display=next==='labels'?'':'none';});",
                   "document.querySelectorAll('.step3-variables-section').forEach(function(section){section.style.display=next==='variables'?'':'none';});",
                   "window.easyflowStep3View=next;",
+                  "if(window.Shiny){Shiny.setInputValue('step3_panel_view',next,{priority:'event'});}",
                   "})(this); return false;"
                 ),
                 tags$span(`data-step3-label` = TRUE, class = "is-active", "Labels"),

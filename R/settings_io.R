@@ -165,6 +165,8 @@ settings_external_data_switch <- function(settings, settings_path = NULL, curren
   } else {
     normalizePath(current_data_file$path, winslash = "/", mustWork = FALSE)
   }
+  settings_data_path <- if (nzchar(settings_data_path)) normalizePath(settings_data_path, winslash = "/", mustWork = FALSE) else ""
+  current_path <- if (nzchar(current_path)) normalizePath(current_path, winslash = "/", mustWork = FALSE) else ""
 
   if (!nzchar(settings_data_path) || identical(settings_data_path, current_path)) {
     return(NULL)
@@ -630,7 +632,11 @@ write_settings_json_file <- function(settings, path) {
 }
 
 read_settings_json_file <- function(path) {
-  settings <- jsonlite::fromJSON(path)
+  settings <- easyflow_time_expr(
+    "read_settings_json_file",
+    jsonlite::fromJSON(path),
+    detail = sprintf("file=%s", basename(as.character(path %||% "")))
+  )
   type <- as.character(settings$type %||% "")
   if (nzchar(type) && !identical(type, "easyflow_settings")) {
     stop("This file is not an EasyFlow Settings file.", call. = FALSE)

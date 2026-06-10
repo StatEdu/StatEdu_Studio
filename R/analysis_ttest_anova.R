@@ -1707,8 +1707,8 @@ ttest_result_overview_tables <- function(result) {
     ))
   }
   list(
-    assumption_review = ttest_assumption_review_wide(flat, result$dependents %||% character(0)),
-    overview = ttest_model_overview_wide(flat, result$dependents %||% character(0))
+    assumption_review = ttest_assumption_review_wide(flat),
+    overview = ttest_model_overview_wide(flat)
   )
 }
 

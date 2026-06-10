@@ -172,9 +172,22 @@ app_module_files <- c(
   "app_server.R"
 )
 
+latent_mplus_enabled <- function() FALSE
+latent_mplus_head_tags <- function(version) NULL
+latent_menu_tab <- function() NULL
+register_latent_mplus_server <- function(...) invisible(FALSE)
+
+optional_app_module_files <- c(
+  latent_mplus = "latent_mplus_module.R"
+)
+
 source_app_modules <- function(files = app_module_files, dir = "R") {
   for (file in files) {
     source(file.path(dir, file), local = FALSE)
+  }
+  latent_module_file <- file.path(dir, optional_app_module_files[["latent_mplus"]])
+  if (file.exists(latent_module_file)) {
+    source(latent_module_file, local = FALSE)
   }
   invisible(TRUE)
 }

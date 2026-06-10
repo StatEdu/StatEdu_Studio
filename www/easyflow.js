@@ -1044,6 +1044,9 @@
         document.querySelectorAll('.step3-variables-section').forEach(function(section) {
           section.style.display = window.easyflowStep3View === 'variables' ? '' : 'none';
         });
+        if (window.Shiny) {
+          Shiny.setInputValue('step3_panel_view', window.easyflowStep3View, {priority: 'event'});
+        }
         return false;
       };
 
@@ -1058,6 +1061,9 @@
         document.querySelectorAll('.step3-variables-section').forEach(function(section) {
           section.style.display = window.easyflowStep3View === 'variables' ? '' : 'none';
         });
+        if (window.Shiny) {
+          Shiny.setInputValue('step3_panel_view', window.easyflowStep3View, {priority: 'event'});
+        }
       }
 
       document.addEventListener('DOMContentLoaded', initializeEasyflowStep3View);

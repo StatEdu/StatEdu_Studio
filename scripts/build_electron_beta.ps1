@@ -93,6 +93,8 @@ try {
   $appFiles = git ls-files |
     Where-Object {
       $_ -notmatch "^(packaging/|dist/)" -and
+      $_ -notmatch "^R/latent_mplus_module\.R$" -and
+      $_ -notmatch "^modules/latent_mplus/" -and
       $_ -notmatch "^easyflow_statistics_.*\.zip$"
     }
   foreach ($file in $appFiles) {

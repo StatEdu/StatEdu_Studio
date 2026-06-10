@@ -185,6 +185,32 @@ create_app_server <- function(app_version) {
     measurement_overrides_fn = measurement_overrides,
     labels_fn = var_label_overrides
   )
+  latent_mplus_registered <- reactiveVal(FALSE)
+  observeEvent(input$main_menu, {
+    if (!isTRUE(latent_mplus_enabled()) || isTRUE(latent_mplus_registered())) {
+      return()
+    }
+    current_tab <- as.character(input$main_menu %||% "")
+    if (!startsWith(current_tab, "latent_")) {
+      return()
+    }
+    easyflow_time_expr(
+      "register_latent_mplus_server",
+      register_latent_mplus_server(
+        input = input,
+        output = output,
+        session = session,
+        app_version = app_version,
+        current_data_file = current_data_file,
+        variable_info_table = variable_info_table,
+        active_data_file = active_data_file,
+        reset_on_dataset_load = reset_on_dataset_load,
+        available_variable_names = available_variable_names
+      ),
+      detail = sprintf("tab=%s", current_tab)
+    )
+    latent_mplus_registered(TRUE)
+  }, ignoreInit = FALSE)
   table_input_collectors <- create_table_input_collectors(input, variable_info_table)
   merge_state_into_info <- create_merge_state_into_info_fn(
     measurement_overrides = measurement_overrides,
@@ -605,6 +631,7 @@ create_app_server <- function(app_version) {
   )
 
   register_data_table_outputs(
+    input,
     output,
     current_data_file_fn = current_data_file,
     dataset_fn = dataset,
@@ -1471,4 +1498,3 @@ create_app_server <- function(app_version) {
 
   }
 }
-

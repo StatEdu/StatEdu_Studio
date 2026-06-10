@@ -8,9 +8,9 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.34`
+Current development version: `0.9.35`
 
-Version 0.9.34 refines paired and repeated-measures result tables, restores result export actions, registers the EasyFlow Statistics DOI, and clarifies repeated-measures method notes. Version 0.9.33 expanded ANCOVA assumption diagnostics, automatic-method controls, sensitivity analysis, and reporting notes.
+Version 0.9.35 integrates the developer Latent Mplus workflow with EasyFlow data handling, adds Results-based latent output review, improves latent table and figure presentation, and fixes t-test / ANOVA assumption overview output. Version 0.9.34 refined paired and repeated-measures result tables, restored result export actions, registered the EasyFlow Statistics DOI, and clarified repeated-measures method notes.
 
 ## Current Scope
 
@@ -75,7 +75,7 @@ The app will open at `127.0.0.1` in the default browser. The launcher searches f
 
 Version 0.9.10 includes validation scripts for calculators, data import, data editing, cross-tabulation, correlation auto-selection, factor analysis / PCA, logistic analysis and UI, paired guard handling, p-value formatting, regression coefficient output, and t-test / ANOVA guard handling.
 
-Version 0.9.34 includes validation coverage for ANCOVA method selection, assumption diagnostics, plotting, sensitivity analysis, actual-data export, and adjacent result formatting paths. Effect-size comparisons use `effectsize` as a validation reference where its definitions match the app calculation; `effectsize` is not required at runtime.
+Version 0.9.35 includes validation coverage for latent module loading, latent result table rendering, data-load timing paths, and t-test / ANOVA overview table generation. Version 0.9.34 includes validation coverage for ANCOVA method selection, assumption diagnostics, plotting, sensitivity analysis, actual-data export, and adjacent result formatting paths. Effect-size comparisons use `effectsize` as a validation reference where its definitions match the app calculation; `effectsize` is not required at runtime.
 
 Run validation scripts from the repository root with Rscript, for example:
 
@@ -87,9 +87,8 @@ Run validation scripts from the repository root with Rscript, for example:
 
 If you use **EasyFlow Statistics** in your research, please cite:
 
-LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.34) [Computer software]. https://doi.org/10.22934/easyflow.statistics
+LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.35) [Computer software]. https://doi.org/10.22934/easyflow.statistics
 
 ## Development Model
 
 This project is developed privately and released publicly after validation. Public releases should include source code, documentation, example data, and validation notes.
-

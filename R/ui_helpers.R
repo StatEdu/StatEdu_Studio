@@ -80,11 +80,11 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-posthoc-header-break"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-latent-workflow-20260606"))
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-ancova-sort"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-data-latent-perf"))
 }
 
 app_head_tags <- function(version) {
@@ -154,7 +154,10 @@ app_ui <- function(version) {
   navbarPage(
     title = app_brand_title(version),
     id = "main_menu",
-    header = app_head_tags(version),
+    header = tagList(
+      app_head_tags(version),
+      if (latent_mplus_enabled()) latent_mplus_head_tags(version)
+    ),
 
     data_tab_panel(),
 
@@ -167,6 +170,8 @@ app_ui <- function(version) {
     sample_size_tab_panel(),
 
     effect_size_tab_panel(),
+
+    if (latent_mplus_enabled()) latent_menu_tab(),
 
     result_tab_panel(),
 

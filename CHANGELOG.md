@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.9.35 - 2026-06-10
+
+### Added
+
+- Added the developer Latent Mplus workflow as an optional EasyFlow module with Data, Setup, and Results steps.
+- Added latent role saving/loading, subset-condition handling, selected-order preservation, and Results-based progress message review.
+- Added latent output routing under the loaded data file folder, including output, Mplus temporary files, run logs, Excel tables, and 600 dpi figures.
+- Added selected Mplus native plot display and color indicator-profile figure variants.
+
+### Changed
+
+- Aligned latent Results tables and figures to a B5-oriented display frame with left-aligned output, compact table rendering, and B5 portrait figure scaling.
+- Improved Data-tab load/settings/reset timing paths and deferred latent server registration until a latent tab is opened.
+- Hid LCA-only latent result tables for LPA output and removed internal BCH class key tables from the Results display.
+- Updated Electron beta packaging to exclude the developer-only Latent Mplus module from public beta staging.
+
+### Fixed
+
+- Fixed t-test / ANOVA assumption review and model overview tables so assumption-check output is populated.
+- Reset latent roles/results when a new data file is loaded while preserving explicitly restored YAML settings.
+- Preserved latent variable-table scroll position when assigning roles.
+- Moved latent run-progress messages from Setup to Results during analysis runs.
+
 ## v0.9.34 - 2026-06-09
 
 ### Changed
