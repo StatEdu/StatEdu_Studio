@@ -513,7 +513,8 @@ create_app_server <- function(app_version) {
   register_data_view_toggle_observers(input, data_view, active_step, selection_applied, go_data_step)
 
   register_data_workspace_outputs(
-    output,
+    input = input,
+    output = output,
     current_data_file_fn = current_data_file,
     active_data_file_fn = active_data_file,
     dataset_fn = dataset,
@@ -715,6 +716,10 @@ create_app_server <- function(app_version) {
     current_calculated[[name]] <- values
     calculated_variables(current_calculated)
 
+    if (!is.null(measurement) && nzchar(measurement)) {
+      measurement_overrides(merge_named_overrides(measurement_overrides(), stats::setNames(measurement, name))$values)
+    }
+
     info <- tryCatch(variable_info_table(), error = function(e) NULL)
     stage3 <- step3_variable_info()
     base_row <- if (is.data.frame(stage3) && name %in% as.character(stage3$name)) {
@@ -734,19 +739,20 @@ create_app_server <- function(app_version) {
         var_label = current_label,
         measurement = measurement %||% current_measurement
       )
+      if ("source_order" %in% names(row) && "source_order" %in% names(base_row)) {
+        row$source_order <- base_row$source_order[[1]]
+      }
       common <- intersect(names(row), names(base_row))
       for (column in common) {
         base_row[[column]] <- row[[column]]
       }
       if (is.data.frame(stage3) && name %in% as.character(stage3$name)) {
-        stage3[match(name, as.character(stage3$name)), names(base_row)] <- base_row
+        common_stage <- intersect(names(base_row), names(stage3))
+        stage3[match(name, as.character(stage3$name)), common_stage] <- base_row[, common_stage, drop = FALSE]
         step3_variable_info(stage3)
       }
     }
 
-    if (!is.null(measurement) && nzchar(measurement)) {
-      measurement_overrides(merge_named_overrides(measurement_overrides(), stats::setNames(measurement, name))$values)
-    }
     update_analysis_choices(session, input, selected_names())
     mark_settings_dirty()
     invisible(TRUE)

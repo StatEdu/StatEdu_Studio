@@ -3,7 +3,7 @@
 paired_rm_statistic_label <- function(table) {
   labels <- unique(as.character(table$StatisticLabel %||% ""))
   labels <- labels[nzchar(labels)]
-  if (length(labels) == 1L) labels[[1]] else "Statistic"
+  if (length(labels) == 1L) labels[[1]] else paste(labels, collapse = " / ")
 }
 
 paired_rm_method_marker_map <- function(table) {
@@ -21,8 +21,50 @@ paired_rm_method_marker_for_row <- function(table, row_index) {
   named_value(marker_map, method, "")
 }
 
+paired_rm_effect_key <- function(table, row_index) {
+  overall <- as.character(table$EffectSizeLabel[[row_index]] %||% "")
+  pairwise <- as.character(table$PairwiseEffectSizeLabel[[row_index]] %||% "")
+  paste(overall, pairwise, sep = "\r")
+}
+
+paired_rm_effect_marker_map <- function(table) {
+  if (!is.data.frame(table) || nrow(table) == 0) return(character(0))
+  keys <- vapply(seq_len(nrow(table)), function(index) paired_rm_effect_key(table, index), character(1))
+  labels <- vapply(seq_len(nrow(table)), function(index) {
+    overall <- as.character(table$EffectSizeLabel[[index]] %||% "")
+    pairwise <- as.character(table$PairwiseEffectSizeLabel[[index]] %||% "")
+    pieces <- c(
+      if (nzchar(overall)) paste0("overall = ", overall) else "",
+      if (nzchar(pairwise)) paste0("pairwise = ", pairwise) else ""
+    )
+    paste(pieces[nzchar(pieces)], collapse = ", ")
+  }, character(1))
+  keys <- keys[nzchar(labels)]
+  if (length(unique(keys)) <= 1L) return(character(0))
+  markers <- c("\u2020", "\u2021", "\u00A7", "\u00B6", "#")
+  unique_keys <- unique(keys)
+  marker_values <- markers[seq_along(unique_keys)]
+  names(marker_values) <- unique_keys
+  marker_values
+}
+
+paired_rm_effect_marker_for_row <- function(table, row_index) {
+  marker_map <- paired_rm_effect_marker_map(table)
+  if (length(marker_map) == 0) return("")
+  named_value(marker_map, paired_rm_effect_key(table, row_index), "")
+}
+
 paired_rm_p_value_cell <- function(value, marker) {
   if (!nzchar(marker %||% "")) return(value %||% "")
+  tags$span(
+    style = "white-space:nowrap;",
+    value %||% "",
+    tags$sup(style = "margin-left:2px;font-size:75%;vertical-align:super;", marker)
+  )
+}
+
+paired_rm_marker_cell <- function(value, marker) {
+  if (!nzchar(marker %||% "") || !nzchar(as.character(value %||% ""))) return(value %||% "")
   tags$span(
     style = "white-space:nowrap;",
     value %||% "",
@@ -153,6 +195,14 @@ paired_rm_sup_header <- function(label, marker) {
   )
 }
 
+paired_rm_header_label_content <- function(label) {
+  parts <- strsplit(as.character(label %||% ""), "\n", fixed = TRUE)[[1]]
+  if (length(parts) <= 1L) return(label)
+  tags$span(lapply(seq_along(parts), function(index) {
+    tagList(if (index > 1L) tags$br(), parts[[index]])
+  }))
+}
+
 paired_rm_method_note <- function(result) {
   table <- result$display_table %||% result$count_table %||% result$table
   methods <- unique(as.character(table$Method %||% ""))
@@ -185,17 +235,31 @@ paired_rm_table_method_note <- function(table) {
   } else {
     ""
   }
-  overall_effect_methods <- unique(as.character(table$EffectSizeLabel %||% ""))
-  overall_effect_methods <- overall_effect_methods[nzchar(overall_effect_methods)]
-  pairwise_effect_methods <- unique(as.character(table$PairwiseEffectSizeLabel %||% ""))
-  pairwise_effect_methods <- pairwise_effect_methods[nzchar(pairwise_effect_methods)]
-  effect_parts <- character(0)
-  if (length(overall_effect_methods) > 0) {
-    effect_parts <- c(effect_parts, paste0("overall = ", paste(overall_effect_methods, collapse = ", ")))
+  effect_marker_map <- paired_rm_effect_marker_map(table)
+  effect_parts <- if (length(effect_marker_map) > 0) {
+    vapply(seq_len(nrow(table)), function(index) {
+      marker <- paired_rm_effect_marker_for_row(table, index)
+      overall <- as.character(table$EffectSizeLabel[[index]] %||% "")
+      pairwise <- as.character(table$PairwiseEffectSizeLabel[[index]] %||% "")
+      pieces <- c(
+        if (nzchar(overall)) paste0("overall = ", overall) else "",
+        if (nzchar(pairwise)) paste0("pairwise = ", pairwise) else ""
+      )
+      pieces <- pieces[nzchar(pieces)]
+      if (!nzchar(marker) || length(pieces) == 0) return("")
+      paste0(marker, " ", paste(pieces, collapse = ", "))
+    }, character(1))
+  } else {
+    overall_effect_methods <- unique(as.character(table$EffectSizeLabel %||% ""))
+    overall_effect_methods <- overall_effect_methods[nzchar(overall_effect_methods)]
+    pairwise_effect_methods <- unique(as.character(table$PairwiseEffectSizeLabel %||% ""))
+    pairwise_effect_methods <- pairwise_effect_methods[nzchar(pairwise_effect_methods)]
+    c(
+      if (length(overall_effect_methods) > 0) paste0("overall = ", paste(overall_effect_methods, collapse = ", ")) else "",
+      if (length(pairwise_effect_methods) > 0) paste0("pairwise = ", paste(pairwise_effect_methods, collapse = ", ")) else ""
+    )
   }
-  if (length(pairwise_effect_methods) > 0) {
-    effect_parts <- c(effect_parts, paste0("pairwise = ", paste(pairwise_effect_methods, collapse = ", ")))
-  }
+  effect_parts <- effect_parts[nzchar(effect_parts)]
   effect_note <- if (length(effect_parts) > 0) paste0("ES = effect size (", paste(effect_parts, collapse = "; "), ").") else ""
   posthoc_methods <- unique(as.character(table$PosthocMethodLabel %||% ""))
   posthoc_methods <- posthoc_methods[nzchar(posthoc_methods)]
@@ -243,7 +307,7 @@ paired_rm_posthoc_note <- function(result) {
 paired_rm_grouped_column_class <- function(column) {
   if (identical(column, "Repeated variables")) return("paired-rm-col-variable")
   if (identical(column, "N")) return("paired-rm-col-n")
-  if (grepl("^Time[0-9]+_(M|SD|0|1)$", column)) return("paired-rm-col-time")
+  if (grepl("^Time[0-9]+_(M|SD|MS|Median|IQR|MedianIQR|Summary|0|1)$", column)) return("paired-rm-col-time")
   if (identical(column, "Statistic")) return("paired-rm-col-stat")
   if (identical(column, "p")) return("paired-rm-col-p")
   if (identical(column, "ES_overall") || grepl("^ES_[0-9]+_[0-9]+$", column)) return("paired-rm-col-es")
@@ -256,7 +320,7 @@ paired_rm_grouped_column_widths <- function(body_columns) {
   names(widths) <- body_columns
   has_posthoc <- "Post-hoc" %in% body_columns
   es_columns <- body_columns[body_columns == "ES_overall" | grepl("^ES_[0-9]+_[0-9]+$", body_columns)]
-  time_columns <- body_columns[grepl("^Time[0-9]+_(M|SD|0|1)$", body_columns)]
+  time_columns <- body_columns[grepl("^Time[0-9]+_(M|SD|MS|Median|IQR|MedianIQR|Summary|0|1)$", body_columns)]
 
   widths[body_columns == "Repeated variables"] <- 15
   widths[body_columns == "N"] <- 5
@@ -279,6 +343,79 @@ paired_rm_grouped_column_widths <- function(body_columns) {
   widths
 }
 
+paired_rm_scale_summary_columns <- function(time_indices, table) {
+  mean_sd <- isTRUE(attr(table, "mean_sd", exact = TRUE))
+  median_iqr <- isTRUE(attr(table, "median_iqr", exact = TRUE))
+  if (isTRUE(mean_sd) || isTRUE(median_iqr)) {
+    if (isTRUE(mean_sd) && isTRUE(median_iqr)) {
+      return(paste0("Time", time_indices, "_Summary"))
+    }
+    columns <- character(0)
+    for (index in time_indices) {
+      if (isTRUE(mean_sd)) columns <- c(columns, paste0("Time", index, "_MS"))
+      if (isTRUE(median_iqr)) columns <- c(columns, paste0("Time", index, "_MedianIQR"))
+    }
+    return(columns)
+  }
+  as.vector(rbind(paste0("Time", time_indices, "_M"), paste0("Time", time_indices, "_SD")))
+}
+
+paired_rm_scale_summary_labels <- function(table) {
+  mean_sd <- isTRUE(attr(table, "mean_sd", exact = TRUE))
+  median_iqr <- isTRUE(attr(table, "median_iqr", exact = TRUE))
+  if (isTRUE(mean_sd) || isTRUE(median_iqr)) {
+    if (isTRUE(mean_sd) && isTRUE(median_iqr)) {
+      return("M \u00B1 SD/\nMedian(Q1~Q3)")
+    }
+    labels <- character(0)
+    if (isTRUE(mean_sd)) labels <- c(labels, "M \u00B1 SD")
+    if (isTRUE(median_iqr)) labels <- c(labels, "Median(Q1~Q3)")
+    return(labels)
+  }
+  c("M", "SD")
+}
+
+paired_rm_table_with_options <- function(table, options = list()) {
+  if (is.data.frame(table)) {
+    attr(table, "mean_sd") <- isTRUE(options$mean_sd)
+    attr(table, "median_iqr") <- isTRUE(options$median_iqr)
+  }
+  table
+}
+
+paired_rm_fill_summary_columns <- function(table, time_indices) {
+  if (!is.data.frame(table) || length(time_indices) == 0) return(table)
+  for (index in time_indices) {
+    m_col <- paste0("Time", index, "_M")
+    sd_col <- paste0("Time", index, "_SD")
+    ms_col <- paste0("Time", index, "_MS")
+    median_iqr_col <- paste0("Time", index, "_MedianIQR")
+    summary_col <- paste0("Time", index, "_Summary")
+    if (!ms_col %in% names(table) && all(c(m_col, sd_col) %in% names(table))) {
+      table[[ms_col]] <- ifelse(
+        nzchar(as.character(table[[m_col]] %||% "")) | nzchar(as.character(table[[sd_col]] %||% "")),
+        sprintf("%s \u00B1 %s", table[[m_col]], table[[sd_col]]),
+        ""
+      )
+    }
+    if (!median_iqr_col %in% names(table) && all(c(m_col, sd_col) %in% names(table))) {
+      table[[median_iqr_col]] <- ifelse(
+        nzchar(as.character(table[[m_col]] %||% "")) | nzchar(as.character(table[[sd_col]] %||% "")),
+        sprintf("%s (%s)", table[[m_col]], table[[sd_col]]),
+        ""
+      )
+    }
+    if (!summary_col %in% names(table)) {
+      if (isTRUE(attr(table, "median_iqr", exact = TRUE))) {
+        table[[summary_col]] <- table[[median_iqr_col]] %||% ""
+      } else if (isTRUE(attr(table, "mean_sd", exact = TRUE))) {
+        table[[summary_col]] <- table[[ms_col]] %||% ""
+      }
+    }
+  }
+  table
+}
+
 paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
   type <- match.arg(type)
   if (!is.data.frame(table) || nrow(table) == 0) return(NULL)
@@ -288,6 +425,7 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
   }
   time_indices <- as.integer(sub("^Time([0-9]+)_label$", "\\1", time_label_columns))
   time_indices <- sort(time_indices)
+  table <- paired_rm_fill_summary_columns(table, time_indices)
   statistic_label <- paired_rm_statistic_label(table)
   es_columns <- grep("^ES_[0-9]+_[0-9]+$", names(table), value = TRUE)
   es_label_columns <- paste0(es_columns, "_label")
@@ -298,8 +436,7 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
     if (length(labels) > 0) labels[[1]] else sub("^ES_", "", es_columns[[index]])
   }, character(1))
   include_es <- "ES_overall" %in% names(table) || length(es_columns) > 0
-  center_label <- if (isTRUE(attr(table, "median_iqr", exact = TRUE))) "Median" else "M"
-  spread_label <- if (isTRUE(attr(table, "median_iqr", exact = TRUE))) "Q1~Q3" else "SD"
+  summary_labels <- paired_rm_scale_summary_labels(table)
   header_style <- function(first = FALSE) {
     paste0(result_header_cell_style(first, compact = TRUE, compact_width = 44, compact_first_width = 148), if (!isTRUE(first)) "text-align:center;" else "")
   }
@@ -315,7 +452,7 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
     if (identical(type, "count")) {
       as.vector(rbind(paste0("Time", time_indices, "_0"), paste0("Time", time_indices, "_1")))
     } else {
-      as.vector(rbind(paste0("Time", time_indices, "_M"), paste0("Time", time_indices, "_SD")))
+      paired_rm_scale_summary_columns(time_indices, table)
     },
     "Statistic",
     "p",
@@ -332,7 +469,7 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
     markers <- as.character(table[[paste0("Time", index, "_marker")]] %||% "")
     markers <- markers[nzchar(markers)]
     marker <- if (length(markers) > 0) markers[[1]] else letters[[index]]
-    tags$th(colspan = 2, style = header_style(FALSE), paired_rm_sup_header(label, marker))
+    tags$th(colspan = if (identical(type, "count")) 2L else length(summary_labels), style = header_style(FALSE), paired_rm_sup_header(label, marker))
   })
   tags$table(
     class = "coefficient-table paired-grouped-table paired-rm-grouped-table",
@@ -358,10 +495,8 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
       ),
       tags$tr(
         lapply(time_indices, function(index) {
-          tagList(
-            tags$th(style = header_style(FALSE), if (identical(type, "count")) "0" else center_label),
-            tags$th(style = header_style(FALSE), if (identical(type, "count")) "1" else spread_label)
-          )
+          labels <- if (identical(type, "count")) c("0", "1") else summary_labels
+          tagList(lapply(labels, function(label) tags$th(style = header_style(FALSE), paired_rm_header_label_content(label))))
         }),
         if (include_es) tags$th(style = header_style(FALSE), as.character(table$ES_overall_label[[1]] %||% "overall")),
         lapply(es_labels, function(label) tags$th(style = header_style(FALSE), label))
@@ -375,6 +510,8 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
             style = body_style(column_index == 1, row_index == nrow(table)),
             if (identical(column, "p")) {
               paired_rm_p_value_cell(table[[column]][[row_index]], paired_rm_method_marker_for_row(table, row_index))
+            } else if (identical(column, "ES_overall") || grepl("^ES_[0-9]+_[0-9]+$", column)) {
+              paired_rm_marker_cell(table[[column]][[row_index]], paired_rm_effect_marker_for_row(table, row_index))
             } else {
               table[[column]][[row_index]] %||% ""
             }
@@ -406,7 +543,7 @@ paired_rm_results_ui <- function(result) {
         class = "result-section paired-result-section regression-result-panel landscape-table-panel",
         tags$h3("Repeated-measures test: continuous / ordinal"),
         result_table_with_notes(
-          paired_rm_grouped_table(result$display_table, "scale"),
+          paired_rm_grouped_table(paired_rm_table_with_options(result$display_table, result$options), "scale"),
           result_note_tag(paired_rm_table_method_note(result$display_table)),
           class = "result-table-with-note paired-fit-table-wrap"
         )

@@ -148,11 +148,30 @@ paired_rm_kendalls_w <- function(statistic, n, k) {
 }
 
 paired_rm_summary_table <- function(y, variable_info, labels, category_table) {
+  median_values <- apply(y, 2, function(x) {
+    values <- x[is.finite(x)]
+    if (length(values) == 0) {
+      return(list(median = "", iqr = "", combined = ""))
+    }
+    q <- stats::quantile(values, probs = c(.25, .5, .75), na.rm = TRUE, names = FALSE)
+    median <- format_decimal2(q[[2]])
+    q1 <- format_decimal2(q[[1]])
+    q3 <- format_decimal2(q[[3]])
+    list(
+      median = median,
+      iqr = sprintf("%s~%s", q1, q3),
+      combined = sprintf("%s (%s~%s)", median, q1, q3)
+    )
+  })
   data.frame(
     Time = vapply(colnames(y), paired_display_name, character(1), variable_info = variable_info, labels = labels, category_table = category_table),
     N = nrow(y),
     M = apply(y, 2, function(x) format_decimal2(mean(x, na.rm = TRUE))),
     SD = apply(y, 2, function(x) format_decimal2(stats::sd(x, na.rm = TRUE))),
+    M_SD = apply(y, 2, function(x) sprintf("%s \u00B1 %s", format_decimal2(mean(x, na.rm = TRUE)), format_decimal2(stats::sd(x, na.rm = TRUE)))),
+    Median = vapply(median_values, `[[`, character(1), "median"),
+    `Q1~Q3` = vapply(median_values, `[[`, character(1), "iqr"),
+    Median_IQR = vapply(median_values, `[[`, character(1), "combined"),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
@@ -219,7 +238,7 @@ paired_rm_posthoc_scale <- function(y, method, adjustment, variable_info, labels
       p <- if (is.null(test)) NA_real_ else as.numeric(test$p.value)
       label <- "W"
       effect_label <- "r"
-      effect <- paired_effect_value(paired_wilcoxon_r(p, z - x))
+      effect <- paired_effect_value(paired_wilcoxon_r(p, z - x, statistic))
     }
     list(pair = pair, label = label, statistic = statistic, p = p, effect_label = effect_label, effect = effect)
   })
@@ -386,11 +405,26 @@ paired_rm_display_table <- function(result) {
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
+  method <- as.character(result$table$Method[[1]] %||% "")
+  use_method_median <- isTRUE(result$options$median_iqr) &&
+    (identical(method, "Friedman test") || grepl("Wilcoxon", paste(as.character(result$posthoc$Method %||% ""), collapse = " "), fixed = TRUE))
+  use_method_mean_sd <- isTRUE(result$options$mean_sd) && !isTRUE(use_method_median)
   for (index in seq_along(time_labels)) {
     row[[paste0("Time", index, "_label")]] <- time_labels[[index]]
     row[[paste0("Time", index, "_marker")]] <- time_markers[[index]]
     row[[paste0("Time", index, "_M")]] <- result$summary$M[[index]]
     row[[paste0("Time", index, "_SD")]] <- result$summary$SD[[index]]
+    row[[paste0("Time", index, "_MS")]] <- result$summary$M_SD[[index]]
+    row[[paste0("Time", index, "_Median")]] <- result$summary$Median[[index]]
+    row[[paste0("Time", index, "_IQR")]] <- result$summary$`Q1~Q3`[[index]]
+    row[[paste0("Time", index, "_MedianIQR")]] <- result$summary$Median_IQR[[index]]
+    row[[paste0("Time", index, "_Summary")]] <- if (isTRUE(use_method_median)) {
+      result$summary$Median_IQR[[index]]
+    } else if (isTRUE(use_method_mean_sd)) {
+      result$summary$M_SD[[index]]
+    } else {
+      ""
+    }
   }
   statistic_label <- as.character(result$table$Statistic[[1]] %||% "Statistic")
   row[["StatisticLabel"]] <- statistic_label
@@ -434,6 +468,8 @@ paired_rm_display_table <- function(result) {
       row[["Sphericity p"]] <- sphericity_p_row$Value[[1]] %||% ""
     }
   }
+  attr(row, "mean_sd") <- isTRUE(result$options$mean_sd)
+  attr(row, "median_iqr") <- isTRUE(result$options$median_iqr)
   row
 }
 
@@ -595,6 +631,10 @@ prepare_paired_rm_results <- function(data, variables = NULL, variable_groups = 
 
   table <- paired_rm_bind_rows(lapply(results, function(result) paired_rm_tag_table(result$table, result$group_label)))
   display_table <- paired_rm_bind_rows(lapply(results, function(result) result$display_table))
+  if (is.data.frame(display_table)) {
+    attr(display_table, "mean_sd") <- isTRUE(options$mean_sd)
+    attr(display_table, "median_iqr") <- isTRUE(options$median_iqr)
+  }
   count_table <- paired_rm_bind_rows(lapply(results, function(result) result$count_table))
   summary <- paired_rm_bind_rows(lapply(results, function(result) paired_rm_tag_table(result$summary, result$group_label)))
   posthoc <- paired_rm_bind_rows(lapply(results, function(result) paired_rm_tag_table(result$posthoc, result$group_label)))

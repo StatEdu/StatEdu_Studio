@@ -1,6 +1,7 @@
 # Server output handlers for the Data tab workspace and tables.
 
 register_data_workspace_outputs <- function(
+  input,
   output,
   current_data_file_fn,
   active_data_file_fn = NULL,
@@ -59,9 +60,9 @@ register_data_workspace_outputs <- function(
       preview <- read_excel_preview(
         pending_file$path,
         pending_file$name,
-        sheet = pending_file$excel_sheet %||% NULL,
-        start_cell = pending_file$excel_start_cell %||% "A1",
-        col_names = isTRUE(pending_file$excel_col_names %||% TRUE),
+        sheet = as.character(input$excel_import_sheet %||% pending_file$excel_sheet %||% NULL),
+        start_cell = normalize_excel_start_cell(input$excel_import_start_cell %||% pending_file$excel_start_cell %||% "A1"),
+        col_names = isTRUE(input$excel_import_col_names %||% pending_file$excel_col_names %||% TRUE),
         n_max = 20
       )
       DT::datatable(preview, rownames = FALSE, options = list(dom = "tip", pageLength = 10, scrollX = TRUE))
@@ -70,7 +71,28 @@ register_data_workspace_outputs <- function(
     })
   })
 
+  output$data_excel_pending <- reactive({
+    pending_file <- if (is.function(active_data_file_fn)) active_data_file_fn() else NULL
+    is.list(pending_file) && isTRUE(pending_file$excel_pending)
+  })
+  outputOptions(output, "data_excel_pending", suspendWhenHidden = FALSE)
+
+  output$excel_import_note <- renderText({
+    pending_file <- if (is.function(active_data_file_fn)) active_data_file_fn() else NULL
+    if (!is.list(pending_file) || !isTRUE(pending_file$excel_pending)) {
+      return("")
+    }
+    sprintf(
+      "Reviewing %s. Choose sheet and start-cell options on the left, then import.",
+      pending_file$name %||% "Excel file"
+    )
+  })
+
   output$data_loaded_message <- renderText({
+    pending_file <- if (is.function(active_data_file_fn)) active_data_file_fn() else NULL
+    if (is.list(pending_file) && isTRUE(pending_file$excel_pending)) {
+      return(sprintf("Excel file selected: %s. Review the sheet on the right, then import.", pending_file$name %||% "Excel file"))
+    }
     file <- current_data_file_fn()
     state <- data_loaded_message_state(
       file = file,

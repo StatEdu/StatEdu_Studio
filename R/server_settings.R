@@ -200,17 +200,6 @@ register_data_input_observers <- function(input, active_data_file, reset_on_data
     easyflow_log_timing("browse_data_file queued load", start, sprintf("file=%s", basename(data_path)))
   })
 
-  observeEvent(input$preview_excel_import, {
-    tryCatch(
-      {
-        update_pending_excel_options(import = FALSE)
-      },
-      error = function(e) {
-        showNotification(paste("Excel preview failed:", conditionMessage(e)), type = "error", duration = 8)
-      }
-    )
-  })
-
   observeEvent(input$apply_excel_import, {
     tryCatch(
       {

@@ -345,8 +345,30 @@ factor_analysis_overview_table <- function(result) {
   table
 }
 
+factor_analysis_factor_order <- function(names) {
+  names <- as.character(names %||% character(0))
+  if (length(names) == 0) return(integer(0))
+  numeric_suffix <- suppressWarnings(as.integer(sub("^.*?(\\d+)$", "\\1", names)))
+  prefix <- sub("\\d+$", "", names)
+  if (all(is.finite(numeric_suffix))) {
+    return(order(prefix, numeric_suffix, names, na.last = TRUE))
+  }
+  order(names, na.last = TRUE)
+}
+
+factor_analysis_order_factor_names <- function(names) {
+  names <- as.character(names %||% character(0))
+  names[factor_analysis_factor_order(names)]
+}
+
+factor_analysis_reorder_factor_matrix <- function(matrix) {
+  if (!is.matrix(matrix) || ncol(matrix) == 0) return(matrix)
+  order_index <- factor_analysis_factor_order(colnames(matrix))
+  matrix[, order_index, drop = FALSE]
+}
+
 factor_analysis_loading_table <- function(result, cutoff = 0.30) {
-  loadings <- result$loadings
+  loadings <- factor_analysis_reorder_factor_matrix(result$loadings)
   if (!is.matrix(loadings) || nrow(loadings) == 0) {
     return(NULL)
   }
@@ -457,7 +479,7 @@ factor_analysis_column_key <- function(name) {
 
 factor_analysis_loading_suitability_row <- function(result, table) {
   columns <- names(table)
-  factors <- colnames(result$loadings)
+  factors <- intersect(factor_analysis_order_factor_names(colnames(result$loadings)), columns)
   start_column <- if (length(factors) > 0) factors[[1]] else ""
   h2_index <- match("h2", vapply(columns, factor_analysis_column_key, character(1)))
   end_column <- if (!is.na(h2_index)) columns[[h2_index]] else if (length(factors) > 0) factors[[1]] else start_column
@@ -519,13 +541,17 @@ factor_analysis_loading_summary_styles <- function(table) {
 }
 
 factor_analysis_structure_table <- function(result, cutoff = 0.30) {
-  loadings <- result$loadings
+  loadings <- factor_analysis_reorder_factor_matrix(result$loadings)
   phi <- result$fit$Phi
   if (!is.matrix(loadings) || nrow(loadings) == 0 || !is.matrix(phi) || nrow(phi) == 0) {
     return(NULL)
   }
   if (ncol(loadings) != nrow(phi)) {
     return(NULL)
+  }
+  factor_names <- colnames(loadings)
+  if (!is.null(rownames(phi)) && !is.null(colnames(phi)) && all(factor_names %in% rownames(phi)) && all(factor_names %in% colnames(phi))) {
+    phi <- phi[factor_names, factor_names, drop = FALSE]
   }
   structure <- loadings %*% phi
   rownames(structure) <- rownames(loadings)
@@ -676,6 +702,8 @@ factor_analysis_variance_table <- function(result) {
     return(NULL)
   }
   table <- as.data.frame(accounted, check.names = FALSE)
+  factor_columns <- factor_analysis_order_factor_names(names(table))
+  table <- table[, factor_columns, drop = FALSE]
   table <- data.frame(Index = rownames(table), table, check.names = FALSE)
   for (column in setdiff(names(table), "Index")) {
     table[[column]] <- vapply(table[[column]], format_decimal3, character(1))
@@ -688,6 +716,10 @@ factor_analysis_factor_correlation_table <- function(result) {
   phi <- result$fit$Phi
   if (!is.matrix(phi) || nrow(phi) == 0) {
     return(NULL)
+  }
+  factor_names <- factor_analysis_order_factor_names(colnames(phi))
+  if (length(factor_names) > 0 && !is.null(rownames(phi)) && all(factor_names %in% rownames(phi))) {
+    phi <- phi[factor_names, factor_names, drop = FALSE]
   }
   table <- as.data.frame(phi, check.names = FALSE)
   table <- data.frame(Factor = rownames(phi), table, check.names = FALSE)

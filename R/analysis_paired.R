@@ -249,10 +249,21 @@ paired_t_effects <- function(diff) {
   list(d = d, g = g)
 }
 
-paired_wilcoxon_r <- function(p, diff) {
+paired_wilcoxon_r <- function(p, diff, statistic = NA_real_) {
   diff <- diff[is.finite(diff)]
+  diff <- diff[diff != 0]
   n <- length(diff)
-  if (!is.finite(p) || p <= 0 || n <= 0) return(NA_real_)
+  if (n <= 0) return(NA_real_)
+  statistic <- suppressWarnings(as.numeric(statistic))
+  if (is.finite(statistic)) {
+    expected <- n * (n + 1) / 4
+    sd_w <- sqrt(n * (n + 1) * (2 * n + 1) / 24)
+    if (is.finite(sd_w) && sd_w > 0) {
+      return((statistic - expected) / sd_w / sqrt(n))
+    }
+  }
+  if (!is.finite(p)) return(NA_real_)
+  p <- max(p, 1e-300)
   z <- stats::qnorm(p / 2, lower.tail = FALSE)
   direction <- sign(stats::median(diff, na.rm = TRUE))
   if (!is.finite(direction) || direction == 0) direction <- sign(mean(diff, na.rm = TRUE))
@@ -389,7 +400,7 @@ paired_analyze_pair <- function(data, first, second, measurement, variable_info,
       df <- NA_real_
       p <- as.numeric(test$p.value)
       effect_label <- "r"
-      effect <- paired_effect_value(paired_wilcoxon_r(p, diff))
+      effect <- paired_effect_value(paired_wilcoxon_r(p, diff, statistic))
     }
     use_median_iqr <- isTRUE(options$median_iqr) && identical(method, "Wilcoxon signed-rank test")
     pre_summary <- paired_summary_values(pair$x, median_iqr = use_median_iqr)
@@ -461,7 +472,7 @@ paired_analyze_pair <- function(data, first, second, measurement, variable_info,
         Statistic = format_decimal3(unname(as.numeric(test$statistic))),
         p = format_p(p),
         EffectLabel = "r",
-        Effect = paired_effect_value(paired_wilcoxon_r(p, diff)),
+        Effect = paired_effect_value(paired_wilcoxon_r(p, diff, unname(as.numeric(test$statistic)))),
         stringsAsFactors = FALSE,
         check.names = FALSE
       ),

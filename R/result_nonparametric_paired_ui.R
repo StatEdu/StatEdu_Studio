@@ -13,6 +13,7 @@ nonparametric_paired_rm_table <- function(result, type = c("scale", "count")) {
   table <- if (identical(type, "count")) result$count_table else result$display_table
   if (!is.data.frame(table) || nrow(table) == 0) return(NULL)
   if (identical(type, "scale")) {
+    attr(table, "mean_sd") <- FALSE
     attr(table, "median_iqr") <- isTRUE(result$options$median_iqr)
     if (!isTRUE(result$options$effect_size)) {
       drop_columns <- c(

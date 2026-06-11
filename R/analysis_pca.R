@@ -88,7 +88,7 @@ pca_overview_table <- function(result) {
 }
 
 pca_loading_table <- function(result, cutoff = 0.30) {
-  loadings <- result$loadings
+  loadings <- factor_analysis_reorder_factor_matrix(result$loadings)
   if (!is.matrix(loadings) || nrow(loadings) == 0) {
     return(NULL)
   }
@@ -158,6 +158,8 @@ pca_variance_table <- function(result) {
     return(NULL)
   }
   table <- as.data.frame(accounted, check.names = FALSE)
+  component_columns <- factor_analysis_order_factor_names(names(table))
+  table <- table[, component_columns, drop = FALSE]
   table <- data.frame(Index = rownames(table), table, check.names = FALSE)
   for (column in setdiff(names(table), "Index")) {
     table[[column]] <- vapply(table[[column]], format_decimal3, character(1))
@@ -170,6 +172,10 @@ pca_component_correlation_table <- function(result) {
   phi <- result$fit$Phi
   if (!is.matrix(phi) || nrow(phi) == 0) {
     return(NULL)
+  }
+  component_names <- factor_analysis_order_factor_names(colnames(phi))
+  if (length(component_names) > 0 && !is.null(rownames(phi)) && all(component_names %in% rownames(phi))) {
+    phi <- phi[component_names, component_names, drop = FALSE]
   }
   table <- as.data.frame(phi, check.names = FALSE)
   table <- data.frame(Component = rownames(phi), table, check.names = FALSE)

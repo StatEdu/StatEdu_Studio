@@ -548,7 +548,7 @@ paired_results_ui <- function(result) {
           class = "result-section paired-result-section regression-result-panel landscape-table-panel",
           tags$h3("Repeated-measures test: continuous / ordinal"),
           result_table_with_notes(
-            paired_rm_grouped_table(result$paired_rm$display_table, "scale"),
+            paired_rm_grouped_table(paired_rm_table_with_options(result$paired_rm$display_table, result$paired_rm$options), "scale"),
             result_note_tag(paired_rm_table_method_note(result$paired_rm$display_table)),
             class = "result-table-with-note paired-fit-table-wrap"
           )

@@ -435,6 +435,46 @@
         }
       }, true);
 
+      document.addEventListener('click', function(event) {
+        var button = event.target && event.target.closest
+          ? event.target.closest('#coding_error_move, #recode_different_move, #variable_calculation_move')
+          : null;
+        if (!button || button.disabled) return;
+        var inputMap = {
+          coding_error_move: ['coding_error_available', 'coding_error_selected'],
+          recode_different_move: ['recode_different_available', 'recode_different_selected'],
+          variable_calculation_move: ['variable_calculation_available', 'variable_calculation_selected']
+        };
+        var ids = inputMap[button.id] || [];
+        var availableListbox = ids[0] ? document.querySelector('.analysis-transfer-listbox[data-input-id="' + ids[0] + '"]') : null;
+        var selectedListbox = ids[1] ? document.querySelector('.analysis-transfer-listbox[data-input-id="' + ids[1] + '"]') : null;
+        var selectedValues = selectedListbox ? easyflowTransferSelectedValues(selectedListbox) : [];
+        var availableValues = availableListbox ? easyflowTransferSelectedValues(availableListbox) : [];
+        var source = '';
+        var values = [];
+        if (selectedListbox && (easyflowActiveTransferListbox === selectedListbox || window.easyflowFallbackActiveTransferListbox === selectedListbox) && selectedValues.length > 0) {
+          source = 'selected';
+          values = selectedValues;
+        } else if (availableValues.length > 0) {
+          source = 'available';
+          values = availableValues;
+        } else if (selectedValues.length > 0) {
+          source = 'selected';
+          values = selectedValues;
+        }
+        if (!source || values.length === 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+        if (window.Shiny && Shiny.setInputValue) {
+          Shiny.setInputValue(button.id + '_direct', {
+            source: source,
+            values: values,
+            nonce: Date.now() + Math.random()
+          }, {priority: 'event'});
+        }
+      }, true);
+
       document.addEventListener('mousedown', function(event) {
         var button = event.target && event.target.closest
           ? event.target.closest('.variable-rename-apply-button')
@@ -697,6 +737,46 @@
 
       registerEasyflowDataSessionHandler();
       document.addEventListener('shiny:connected', registerEasyflowDataSessionHandler);
+
+      function registerEasyflowMeasurementUpdateHandler() {
+        if (!window.Shiny || !Shiny.addCustomMessageHandler || window.easyflowMeasurementUpdateHandlerRegistered) {
+          return;
+        }
+        window.easyflowMeasurementUpdateHandlerRegistered = true;
+        Shiny.addCustomMessageHandler('easyflow-update-measurements', function(message) {
+          window.easyflowMeasurements = window.easyflowMeasurements || {};
+          Object.keys(message || {}).forEach(function(name) {
+            var value = message[name] || '';
+            if (!name || !value) return;
+            window.easyflowMeasurements[name] = value;
+            document.querySelectorAll('select.measurement-select[data-name], select.category-measurement-select[data-name]').forEach(function(select) {
+              if (select.getAttribute('data-name') !== name) return;
+              select.value = value;
+              if (window.jQuery) {
+                window.jQuery(select).trigger('change');
+              } else {
+                select.dispatchEvent(new Event('change', {bubbles: true}));
+              }
+            });
+          });
+        });
+      }
+
+      registerEasyflowMeasurementUpdateHandler();
+      document.addEventListener('shiny:connected', registerEasyflowMeasurementUpdateHandler);
+
+      function registerEasyflowLikertSelectionHandler() {
+        if (!window.Shiny || !Shiny.addCustomMessageHandler || window.easyflowLikertSelectionHandlerRegistered) {
+          return;
+        }
+        window.easyflowLikertSelectionHandlerRegistered = true;
+        Shiny.addCustomMessageHandler('easyflow-clear-likert-selection', function(message) {
+          window.easyflowLikertSelected = '';
+        });
+      }
+
+      registerEasyflowLikertSelectionHandler();
+      document.addEventListener('shiny:connected', registerEasyflowLikertSelectionHandler);
 
       window.easyflowSelectVariableIconOption = function(option) {
         if (!option) return;

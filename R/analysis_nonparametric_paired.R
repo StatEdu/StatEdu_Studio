@@ -75,7 +75,7 @@ nonparametric_paired_analyze_pair <- function(data, first, second, measurement, 
         Statistic = format_decimal3(statistic),
         p = format_p(p),
         EffectLabel = "r",
-        Effect = paired_effect_value(paired_wilcoxon_r(p, diff)),
+        Effect = paired_effect_value(paired_wilcoxon_r(p, diff, statistic)),
         stringsAsFactors = FALSE,
         check.names = FALSE
       ),

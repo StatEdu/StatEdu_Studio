@@ -286,7 +286,7 @@ data_steps_panel <- function(
         if (isTRUE(has_pending_excel)) {
           tagList(
             div(pending_data_file_name, class = "step-summary-title"),
-            div("Choose Excel import options, preview the data, then import.", class = "step-note"),
+            div("Choose Excel import options, review the data on the right, then import.", class = "step-note"),
             selectInput(
               "excel_import_sheet",
               "Sheet",
@@ -297,11 +297,9 @@ data_steps_panel <- function(
             checkboxInput("excel_import_col_names", "First row contains variable names", value = isTRUE(excel_col_names)),
             div(
               class = "excel-import-actions",
-              actionButton("preview_excel_import", "Preview", class = "btn btn-default"),
               actionButton("apply_excel_import", "Import", class = "btn btn-primary"),
               actionButton("cancel_excel_import", "Cancel", class = "btn btn-default")
-            ),
-            div(class = "excel-import-preview-wrap", DT::DTOutput("excel_import_preview"))
+            )
           )
         } else {
           tagList(

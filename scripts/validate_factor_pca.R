@@ -356,7 +356,7 @@ expect_true(
 )
 factor_reliability_html <- as.character(htmltools::renderTags(factor_analysis_results_ui(factor_with_reliability))$html)
 expect_true(
-  grepl("Reliability if deleted", factor_reliability_html, fixed = TRUE) &&
+  grepl("Rel. if deleted", factor_reliability_html, fixed = TRUE) &&
     grepl("Item-total r", factor_reliability_html, fixed = TRUE) &&
     grepl("complete cases within each item set", factor_reliability_html, fixed = TRUE) &&
     grepl("parallel analysis", factor_reliability_html, fixed = TRUE) &&

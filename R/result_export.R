@@ -586,7 +586,7 @@ write_logistic_results_html <- function(
   show_se = FALSE,
   show_mcfadden = FALSE,
   show_cox_snell = FALSE,
-  split_ci = FALSE
+  split_ci = TRUE
 ) {
   writeLines(
     saved_logistic_results_html(
@@ -651,7 +651,7 @@ write_logistic_results_pdf <- function(
   show_se = FALSE,
   show_mcfadden = FALSE,
   show_cox_snell = FALSE,
-  split_ci = FALSE
+  split_ci = TRUE
 ) {
   write_pdf_from_html(
     saved_logistic_results_html(
@@ -1031,7 +1031,7 @@ logistic_export_table <- function(
   show_se = FALSE,
   show_mcfadden = FALSE,
   show_cox_snell = FALSE,
-  split_ci = FALSE
+  split_ci = TRUE
 ) {
   headers <- c("Variable", "Value", logistic_coef_headers(show_b, show_se, split_ci))
   rows <- logistic_coefficient_rows(
@@ -1081,7 +1081,7 @@ save_logistic_excel_file <- function(
   show_se = FALSE,
   show_mcfadden = FALSE,
   show_cox_snell = FALSE,
-  split_ci = FALSE
+  split_ci = TRUE
 ) {
   workbook <- openxlsx::createWorkbook()
   used_sheets <- character(0)
@@ -1578,6 +1578,7 @@ add_paired_rm_grouped_excel_sheet <- function(workbook, sheet_name, table, used_
     return(add_ttest_anova_result_sheet(workbook, sheet_name, table, note, used_sheets, title = title))
   }
   time_indices <- sort(as.integer(sub("^Time([0-9]+)_label$", "\\1", time_label_columns)))
+  table <- paired_rm_fill_summary_columns(table, time_indices)
   statistic_label <- paired_rm_statistic_label(table)
   es_columns <- grep("^ES_[0-9]+_[0-9]+$", names(table), value = TRUE)
   es_label_columns <- paste0(es_columns, "_label")
@@ -1593,6 +1594,17 @@ add_paired_rm_grouped_excel_sheet <- function(workbook, sheet_name, table, used_
     "N",
     if (identical(type, "count")) {
       as.vector(rbind(paste0("Time", time_indices, "_0"), paste0("Time", time_indices, "_1")))
+    } else if (isTRUE(attr(table, "mean_sd", exact = TRUE)) || isTRUE(attr(table, "median_iqr", exact = TRUE))) {
+      if (isTRUE(attr(table, "mean_sd", exact = TRUE)) && isTRUE(attr(table, "median_iqr", exact = TRUE))) {
+        paste0("Time", time_indices, "_Summary")
+      } else {
+      columns <- character(0)
+      for (index in time_indices) {
+        if (isTRUE(attr(table, "mean_sd", exact = TRUE))) columns <- c(columns, paste0("Time", index, "_MS"))
+        if (isTRUE(attr(table, "median_iqr", exact = TRUE))) columns <- c(columns, paste0("Time", index, "_MedianIQR"))
+      }
+      columns
+      }
     } else {
       as.vector(rbind(paste0("Time", time_indices, "_M"), paste0("Time", time_indices, "_SD")))
     },
@@ -1616,29 +1628,42 @@ add_paired_rm_grouped_excel_sheet <- function(workbook, sheet_name, table, used_
     if (length(markers) > 0) markers[[1]] else letters[[index]]
   }, character(1))
   time_header_labels <- sprintf("%s (%s)", time_labels, time_markers)
-  header_top <- c("Repeated variables", "N", as.vector(rbind(time_header_labels, rep("", length(time_header_labels)))), statistic_label, "p", if (include_es) c("ES", rep("", length(es_columns))), "Post-hoc")
+  summary_labels <- if (identical(type, "count")) {
+    c("0", "1")
+  } else if (isTRUE(attr(table, "mean_sd", exact = TRUE)) || isTRUE(attr(table, "median_iqr", exact = TRUE))) {
+    if (isTRUE(attr(table, "mean_sd", exact = TRUE)) && isTRUE(attr(table, "median_iqr", exact = TRUE))) {
+      "M \u00B1 SD/\nMedian(Q1~Q3)"
+    } else {
+    c(if (isTRUE(attr(table, "mean_sd", exact = TRUE))) "M \u00B1 SD", if (isTRUE(attr(table, "median_iqr", exact = TRUE))) "Median(Q1~Q3)")
+    }
+  } else {
+    c("M", "SD")
+  }
+  columns_per_time <- length(summary_labels)
+  time_top <- unlist(lapply(time_header_labels, function(label) c(label, rep("", columns_per_time - 1L))), use.names = FALSE)
+  header_top <- c("Repeated variables", "N", time_top, statistic_label, "p", if (include_es) c("ES", rep("", length(es_columns))), "Post-hoc")
   header_bottom <- c(
     "",
     "",
-    rep(if (identical(type, "count")) c("0", "1") else if (isTRUE(attr(table, "median_iqr", exact = TRUE))) c("Median", "Q1~Q3") else c("M", "SD"), length(time_labels)),
+    rep(summary_labels, length(time_labels)),
     "",
     "",
     if (include_es) c(as.character(table$ES_overall_label[[1]] %||% "overall"), es_labels),
     ""
   )
   merge_cols <- c(list(1, 2), lapply(seq_along(time_indices), function(index) {
-    start <- 3 + (index - 1L) * 2L
-    start:(start + 1L)
+    start <- 3 + (index - 1L) * columns_per_time
+    start:(start + columns_per_time - 1L)
   }))
   if (include_es) {
-    es_start <- 3 + length(time_indices) * 2L + 2L
+    es_start <- 3 + length(time_indices) * columns_per_time + 2L
     merge_cols <- c(merge_cols, list(es_start:(es_start + length(es_columns))))
     tail_start <- es_start + length(es_columns) + 1L
   } else {
-    tail_start <- 3 + length(time_indices) * 2L
+    tail_start <- 3 + length(time_indices) * columns_per_time
   }
   merge_cols <- c(merge_cols, as.list(seq.int(tail_start, ncol(export))))
-  widths <- c(16, 6, rep(7, length(time_indices) * 2L), 8, 8, if (include_es) rep(8, 1L + length(es_columns)), 16)
+  widths <- c(16, 6, rep(if (columns_per_time == 1L) 12 else 10, length(time_indices) * columns_per_time), 8, 8, if (include_es) rep(8, 1L + length(es_columns)), 16)
 
   title_row <- 1L
   header_row <- 3L
@@ -1935,12 +1960,13 @@ save_paired_excel_file <- function(result, file) {
     }
     write_paired_guard_sheets(paired_part, "Paired ")
     if (is.data.frame(rm_part$display_table) && nrow(rm_part$display_table) > 0) {
+      table <- paired_rm_table_with_options(rm_part$display_table, rm_part$options)
       used_sheets <- add_paired_rm_grouped_excel_sheet(
         workbook,
         "Repeated M SD",
-        rm_part$display_table,
+        table,
         used_sheets,
-        note = paired_rm_table_method_note(rm_part$display_table),
+        note = paired_rm_table_method_note(table),
         title = "Repeated-measures test: continuous / ordinal",
         type = "scale"
       )
@@ -2051,12 +2077,13 @@ save_paired_rm_excel_file <- function(result, file) {
     used_sheets <- add_excel_table_sheet(workbook, "Model overview", overview, used_sheets, title = "Model overview")
   }
   if (is.data.frame(result$display_table) && nrow(result$display_table) > 0) {
+    table <- paired_rm_table_with_options(result$display_table, result$options)
     used_sheets <- add_paired_rm_grouped_excel_sheet(
       workbook,
       "Repeated M SD",
-      result$display_table,
+      table,
       used_sheets,
-      note = paired_rm_table_method_note(result$display_table),
+      note = paired_rm_table_method_note(table),
       title = "Repeated-measures test: continuous / ordinal",
       type = "scale"
     )

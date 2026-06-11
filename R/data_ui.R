@@ -17,22 +17,37 @@ data_tab_panel <- function() {
         div(
           class = "workspace-panel",
           div(class = "load-message", textOutput("data_loaded_message")),
-          div(
-            class = "workspace-header",
-            h3(textOutput("data_view_title")),
-            uiOutput("data_view_toggle")
+          conditionalPanel(
+            condition = "output.data_excel_pending === true",
+            div(
+              class = "excel-import-main-panel",
+              div(
+                class = "workspace-header",
+                h3("Excel Import Review")
+              ),
+              div(class = "excel-import-note", textOutput("excel_import_note")),
+              div(class = "excel-import-preview-wrap excel-import-preview-main", DTOutput("excel_import_preview"))
+            )
           ),
           conditionalPanel(
-            condition = "output.data_view === 'info'",
-            DTOutput("variable_table")
-          ),
-          conditionalPanel(
-            condition = "output.data_view === 'preview'",
-            DTOutput("data_preview_table")
-          ),
-          conditionalPanel(
-            condition = "output.data_view === 'labels'",
+            condition = "output.data_excel_pending !== true",
             tagList(
+              div(
+                class = "workspace-header",
+                h3(textOutput("data_view_title")),
+                uiOutput("data_view_toggle")
+              ),
+              conditionalPanel(
+                condition = "output.data_view === 'info'",
+                DTOutput("variable_table")
+              ),
+              conditionalPanel(
+                condition = "output.data_view === 'preview'",
+                DTOutput("data_preview_table")
+              ),
+              conditionalPanel(
+                condition = "output.data_view === 'labels'",
+                tagList(
               div(
                 class = "data-table-section step3-labels-section",
                 h4("Categorical value labels"),
@@ -43,6 +58,8 @@ data_tab_panel <- function() {
                 style = "display: none;",
                 h4("Selected variables"),
                 DTOutput("selected_variable_edit_table")
+              )
+                )
               )
             )
           )

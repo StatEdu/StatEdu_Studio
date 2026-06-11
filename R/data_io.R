@@ -465,8 +465,9 @@ variable_summary_table <- function(data, input, raw_data = data) {
   easyflow_time_expr("variable_summary_table", {
     raw_data <- as.data.frame(raw_data, stringsAsFactors = FALSE, check.names = TRUE)
     rows <- lapply(seq_along(data), function(i) {
+      name <- names(data)[[i]]
       values <- data[[i]]
-      raw_values <- raw_data[[i]]
+      raw_values <- if (name %in% names(raw_data)) raw_data[[name]] else raw_data[[i]]
       present <- stats::na.omit(as.vector(values))
       measurement <- infer_measurement(values)
       value_labels <- value_label_pairs(raw_values, values, measurement = measurement)
@@ -474,7 +475,7 @@ variable_summary_table <- function(data, input, raw_data = data) {
         c(
           list(
             source_order = i,
-            name = names(data)[[i]],
+            name = name,
             var_label = variable_label(raw_values),
             measurement = measurement,
             storage_type = class(values)[1],

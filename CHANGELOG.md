@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.9.36 - 2026-06-11
+
+### Added
+
+- Added an editable custom Likert detection dictionary manager with registered dictionary review, detail display, editing, and deletion.
+- Added broader validation coverage for logistic analysis, data editor recoding, factor/PCA, correlation, paired tests, data I/O, and result history.
+
+### Changed
+
+- Refined B5-oriented result-table rendering across logistic regression, factor analysis, PCA, reliability, paired/repeated tests, correlation, and saved result views.
+- Improved Excel import review flow by moving the sheet preview to the main review panel and simplifying import controls.
+- Updated Likert conversion so converted variables carry the requested post-conversion measurement type.
+
+### Fixed
+
+- Fixed select-button movement in data editor variable lists after Excel import.
+- Fixed automatic missing-value detection and Likert detection refresh paths after conversion/import.
+- Fixed hierarchical logistic regression table placement, reference cells, VIF display, and confidence-interval option handling.
+- Fixed factor/PCA loading column order and compact table headers for B5 portrait output.
+
 ## v0.9.35 - 2026-06-10
 
 ### Added
