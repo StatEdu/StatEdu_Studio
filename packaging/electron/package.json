@@ -1,6 +1,6 @@
 {
   "name": "easyflow-statistics-beta",
-  "version": "0.9.36",
+  "version": "0.9.37",
   "description": "EasyFlow Statistics beta desktop installer",
   "main": "main.js",
   "private": true,

@@ -45,7 +45,46 @@ likert_dictionary <- function(custom = NULL) {
     frequency_ko_5 = c("전혀 없음", "드물게", "가끔", "자주", "항상"),
     agreement_en_5 = c("strongly disagree", "disagree", "neutral", "agree", "strongly agree"),
     satisfaction_en_5 = c("very dissatisfied", "dissatisfied", "neutral", "satisfied", "very satisfied"),
-    frequency_en_5 = c("never", "rarely", "sometimes", "often", "always")
+    frequency_en_5 = c("never", "rarely", "sometimes", "often", "always"),
+    importance_ko_4_common = c(
+      "\uc804\ud600 \uc911\uc694\ud558\uc9c0 \uc54a\uc74c",
+      "\uc911\uc694\ud558\uc9c0 \uc54a\uc74c",
+      "\uc911\uc694\ud568",
+      "\ub9e4\uc6b0 \uc911\uc694\ud568"
+    ),
+    awareness_ko_4_common = c(
+      "\uc804\ud600 \ubaa8\ub984",
+      "\ubaa8\ub984",
+      "\uc54c\uace0 \uc788\uc74c",
+      "\ub9e4\uc6b0 \uc798 \uc54c\uace0 \uc788\uc74c"
+    ),
+    agreement_ko_4_common = c(
+      "\uc804\ud600 \uadf8\ub807\uc9c0 \uc54a\ub2e4",
+      "\uadf8\ub807\uc9c0 \uc54a\ub2e4",
+      "\uadf8\ub807\ub2e4",
+      "\ub9e4\uc6b0 \uadf8\ub807\ub2e4"
+    ),
+    satisfaction_ko_4_common = c(
+      "\uc804\ud600 \ub9cc\uc871\ud558\uc9c0 \uc54a\uc74c",
+      "\ub9cc\uc871\ud558\uc9c0 \uc54a\uc74c",
+      "\ub9cc\uc871\ud568",
+      "\ub9e4\uc6b0 \ub9cc\uc871\ud568"
+    ),
+    need_ko_4_common = c(
+      "\uc804\ud600 \ud544\uc694\ud558\uc9c0 \uc54a\uc74c",
+      "\ud544\uc694\ud558\uc9c0 \uc54a\uc74c",
+      "\ud544\uc694\ud568",
+      "\ub9e4\uc6b0 \ud544\uc694\ud568"
+    ),
+    agreement_ko_4 = c("전혀 아니다", "아니다", "그렇다", "매우 그렇다"),
+    agreement_ko_4_alt = c("전혀 그렇지 않다", "그렇지 않다", "그렇다", "매우 그렇다"),
+    agreement_ko_4_formal = c("매우 그렇지 않다", "그렇지 않다", "그렇다", "매우 그렇다"),
+    satisfaction_ko_4 = c("매우 불만족", "불만족", "만족", "매우 만족"),
+    importance_ko_4 = c("전혀 중요하지 않다", "중요하지 않다", "중요하다", "매우 중요하다"),
+    frequency_ko_4 = c("전혀 없음", "드물게", "자주", "항상"),
+    agreement_en_4 = c("strongly disagree", "disagree", "agree", "strongly agree"),
+    satisfaction_en_4 = c("very dissatisfied", "dissatisfied", "satisfied", "very satisfied"),
+    frequency_en_4 = c("never", "rarely", "often", "always")
   )
   if (length(custom %||% list()) > 0) {
     dictionaries <- c(dictionaries, custom)
@@ -254,7 +293,11 @@ detect_likert_mapping <- function(values, dictionaries = likert_dictionary()) {
   }
 
   normalized_values <- likert_normalize_label(unique_values)
-  for (dict_name in names(dictionaries)) {
+  dictionary_names <- names(dictionaries)
+  dictionary_sizes <- vapply(dictionaries, length, integer(1))
+  exact_names <- dictionary_names[dictionary_sizes == length(unique_values)]
+  superset_names <- dictionary_names[dictionary_sizes != length(unique_values)]
+  for (dict_name in c(exact_names, superset_names)) {
     labels <- dictionaries[[dict_name]]
     normalized_labels <- likert_normalize_label(labels)
     matched <- match(normalized_values, normalized_labels)
@@ -487,8 +530,51 @@ likert_review_panel_ui <- function(choices, mapping) {
 likert_custom_dictionary_ui <- function() {
   div(
     class = "likert-custom-dictionary",
-    tags$details(
-      tags$summary("Add detection dictionary"),
+    singleton(tags$script(HTML(
+      "
+      (function() {
+        if (window.easyflowLikertDisclosureBound) return;
+        window.easyflowLikertDisclosureBound = true;
+        document.addEventListener('click', function(event) {
+          var button = event.target.closest('.likert-disclosure-button[data-efs-toggle-target]');
+          if (!button) return;
+          event.preventDefault();
+          var target = document.getElementById(button.getAttribute('data-efs-toggle-target'));
+          if (!target) return;
+          var topBefore = button.getBoundingClientRect().top;
+          var shouldOpen = target.hasAttribute('hidden');
+          if (shouldOpen) {
+            target.removeAttribute('hidden');
+          } else {
+            target.setAttribute('hidden', 'hidden');
+          }
+          button.classList.toggle('is-open', shouldOpen);
+          button.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+          var icon = button.querySelector('.likert-toggle-icon');
+          if (icon) icon.textContent = shouldOpen ? '-' : '+';
+          var shinyInput = button.getAttribute('data-efs-toggle-input');
+          if (shinyInput && window.Shiny) {
+            Shiny.setInputValue(shinyInput, shouldOpen, {priority: 'event'});
+          }
+          window.requestAnimationFrame(function() {
+            window.scrollBy(0, button.getBoundingClientRect().top - topBefore);
+          });
+        });
+      })();
+      "
+    ))),
+    tags$button(
+      type = "button",
+      class = "likert-disclosure-button likert-primary-toggle",
+      `data-efs-toggle-target` = "likert-custom-dictionary-panel",
+      `aria-expanded` = "false",
+      span(class = "likert-toggle-icon", "+"),
+      span("Add detection dictionary")
+    ),
+    div(
+      id = "likert-custom-dictionary-panel",
+      class = "likert-disclosure-panel",
+      hidden = "hidden",
       div(
         class = "likert-custom-grid",
         textInput(
@@ -558,13 +644,6 @@ likert_dictionary_manager_ui <- function(built_in, custom, selected = NULL) {
   if (is.null(selected) || !selected %in% unname(entries)) {
     selected <- unname(entries)[[1]]
   }
-  selected_type <- sub("::.*$", "", selected)
-  selected_name <- sub("^[^:]+::", "", selected)
-  selected_labels <- if (identical(selected_type, "custom")) custom[[selected_name]] else built_in[[selected_name]]
-  selected_labels <- trimws(as.character(selected_labels %||% character(0)))
-  selected_labels <- selected_labels[nzchar(selected_labels)]
-  is_custom <- identical(selected_type, "custom")
-
   div(
     class = "likert-dictionary-manager",
     div(
@@ -585,9 +664,45 @@ likert_dictionary_manager_ui <- function(built_in, custom, selected = NULL) {
         })
       )
     ),
+    uiOutput("likert_dictionary_detail_panel")
+  )
+}
+
+likert_dictionary_detail_ui <- function(built_in, custom, selected = NULL) {
+  built_in <- built_in %||% list()
+  custom <- custom %||% list()
+  built_in_entries <- if (length(built_in) > 0) {
+    stats::setNames(paste0("built_in::", names(built_in)), names(built_in))
+  } else {
+    character(0)
+  }
+  custom_entries <- if (length(custom) > 0) {
+    stats::setNames(paste0("custom::", names(custom)), names(custom))
+  } else {
+    character(0)
+  }
+  entries <- c(
+    built_in_entries,
+    custom_entries
+  )
+  if (length(entries) == 0) {
+    return(div(class = "likert-dictionary-empty", "No detection dictionaries are registered."))
+  }
+
+  if (is.null(selected) || !selected %in% unname(entries)) {
+    selected <- unname(entries)[[1]]
+  }
+  selected_type <- sub("::.*$", "", selected)
+  selected_name <- sub("^[^:]+::", "", selected)
+  selected_labels <- if (identical(selected_type, "custom")) custom[[selected_name]] else built_in[[selected_name]]
+  selected_labels <- trimws(as.character(selected_labels %||% character(0)))
+  selected_labels <- selected_labels[nzchar(selected_labels)]
+  is_custom <- identical(selected_type, "custom")
+
+  div(
+    class = "likert-dictionary-detail-panel",
+    div(class = "likert-dictionary-panel-title", if (is_custom) "Edit selected dictionary" else "View selected dictionary"),
     div(
-      class = "likert-dictionary-detail-panel",
-      div(class = "likert-dictionary-panel-title", if (is_custom) "Edit selected dictionary" else "View selected dictionary"),
       if (is_custom) {
         tagList(
           textInput("likert_dictionary_edit_name", "Detection name", value = selected_name, width = "260px"),
@@ -701,22 +816,38 @@ register_likert_conversion_handlers <- function(
   output$likert_custom_dictionary_status <- renderUI({
     built_in <- likert_dictionary()
     custom <- custom_dictionaries()
+    registry_open <- isTRUE(input$likert_dictionary_registry_open)
+    selected_current <- isolate(selected_dictionary())
     manager <- div(
       class = "likert-dictionary-registry",
       div(
         class = "likert-custom-status-title",
         sprintf("Registered detection dictionaries: %s built-in, %s custom", length(built_in), length(custom))
       ),
-      likert_dictionary_manager_ui(built_in, custom, selected_dictionary())
+      likert_dictionary_manager_ui(built_in, custom, selected_current)
     )
     div(
       class = "likert-custom-status",
-      tags$details(
-        class = "likert-dictionary-registry-toggle",
-        tags$summary("Show registered detection dictionaries"),
+      tags$button(
+        type = "button",
+        class = paste("likert-disclosure-button likert-secondary-toggle", if (registry_open) "is-open" else ""),
+        `data-efs-toggle-target` = "likert-dictionary-registry-panel",
+        `data-efs-toggle-input` = "likert_dictionary_registry_open",
+        `aria-expanded` = if (registry_open) "true" else "false",
+        span(class = "likert-toggle-icon", if (registry_open) "-" else "+"),
+        span("Show registered detection dictionaries")
+      ),
+      div(
+        id = "likert-dictionary-registry-panel",
+        class = "likert-disclosure-panel",
+        hidden = if (registry_open) NULL else "hidden",
         manager
       )
     )
+  })
+
+  output$likert_dictionary_detail_panel <- renderUI({
+    likert_dictionary_detail_ui(likert_dictionary(), custom_dictionaries(), selected_dictionary())
   })
 
   observeEvent(input$likert_dictionary_selected, {
@@ -854,12 +985,12 @@ register_likert_conversion_handlers <- function(
         autoWidth = FALSE,
         ordering = FALSE,
         columnDefs = list(
-          list(width = "34px", targets = 0, orderable = FALSE, searchable = FALSE, className = "dt-center likert-select-col"),
+          list(width = "58px", targets = 0, orderable = FALSE, searchable = FALSE, className = "dt-center likert-select-col"),
           list(width = "76px", targets = 1, className = "likert-group-col"),
-          list(width = "680px", targets = 2, className = "likert-variables-col"),
+          list(width = "650px", targets = 2, className = "likert-variables-col"),
           list(width = "56px", targets = 3, className = "dt-center likert-count-col"),
           list(width = "56px", targets = 4, className = "dt-center likert-levels-col"),
-          list(width = "112px", targets = 5, className = "likert-dictionary-col")
+          list(width = "140px", targets = 5, className = "likert-dictionary-col")
         ),
         drawCallback = DT::JS(
           "function(settings){",

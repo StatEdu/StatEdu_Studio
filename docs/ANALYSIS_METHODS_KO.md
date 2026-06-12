@@ -1,6 +1,6 @@
 # EasyFlow Statistics 분석 방법 정리
 
-이 문서는 **EasyFlow Statistics** 0.9.34에 실제 구현된 분석 메뉴와 주요 출력 항목을 정리한다. 목적은 사용자가 "어떤 메뉴에서 어떤 검정, 통계량, 표, 저장 기능이 제공되는가"를 빠르게 확인하는 것이다. 분석 방법을 선택하는 기준과 해석상 주의점은 `METHOD_NOTES_KO.md`를 참고한다.
+이 문서는 **EasyFlow Statistics** 0.9.37에 실제 구현된 분석 메뉴와 주요 출력 항목을 정리한다. 목적은 사용자가 "어떤 메뉴에서 어떤 검정, 통계량, 표, 저장 기능이 제공되는가"를 빠르게 확인하는 것이다. 분석 방법을 선택하는 기준과 해석상 주의점은 `METHOD_NOTES_KO.md`를 참고한다.
 
 ## 문서 용도
 
@@ -19,7 +19,7 @@
 
 - 주요 분석 결과는 화면과 Result 탭에 표시한다.
 - HTML, PDF, Excel, Word 저장을 지원한다.
-- 여러 분석에서 `Model overview`를 제공하며, 0.9.34 기준으로 t-test/ANOVA, paired test, nonparametric paired test, correlation 등에서 N, 분석 방법, 선택 이유를 표 형태로 확인할 수 있다.
+- 여러 분석에서 `Model overview`를 제공하며, 0.9.37 기준으로 t-test/ANOVA, paired test, nonparametric paired test, correlation 등에서 N, 분석 방법, 선택 이유를 표 형태로 확인할 수 있다.
 - 분석 불가능 항목은 전체 분석을 중단하지 않고 Warnings, Skipped analyses, Skipped models 형태로 분리해 표시한다.
 
 ## 빈도분석과 기술통계
@@ -59,7 +59,7 @@
 - 범주형 paired 비교: McNemar test, exact McNemar test, Stuart-Maxwell test, Bowker symmetry test.
 - 세 시점 이상 반복측정: standard repeated-measures ANOVA, repeated-measures ANOVA with Wilks' lambda / Greenhouse-Geisser correction, Friedman test, Cochran's Q test.
 - paired post-hoc은 paired t-test, Wilcoxon signed-rank test, McNemar test를 사용하며 Bonferroni correction 또는 Holm Bonferroni를 적용할 수 있다.
-- 0.9.34 기준으로 paired test와 nonparametric paired test 모두 `Model overview`에 N, 분석 방법, 이유를 표시한다.
+- 0.9.37 기준으로 paired test와 nonparametric paired test 모두 `Model overview`에 N, 분석 방법, 이유를 표시한다.
 
 ## 상관분석
 
@@ -69,7 +69,7 @@
 - binary x binary: phi coefficient를 사용한다.
 - nominal 조합: eta 또는 Cramer's V를 사용한다.
 - 옵션에 따라 latent-variable correlation 세트를 추가할 수 있으며, polyserial, polychoric, tetrachoric correlation을 사용한다.
-- 0.9.34 기준으로 별도 reason 체크박스 없이 `Model overview`를 항상 표시한다. 이 표는 correlation matrix 형식으로 각 변수쌍의 분석 방법과 짧은 선택 이유를 함께 표시한다.
+- 0.9.37 기준으로 별도 reason 체크박스 없이 `Model overview`를 항상 표시한다. 이 표는 correlation matrix 형식으로 각 변수쌍의 분석 방법과 짧은 선택 이유를 함께 표시한다.
 
 ## 신뢰도 분석
 
@@ -128,7 +128,7 @@
 
 ## Sample Size, Power, Effect Size 메뉴
 
-버전 0.9.34 기준으로 연구계획 계산 메뉴를 제공한다. Sample Size 메뉴는 최소 표본 수와 주어진 표본 수에서의 검정력을 계산하고, Effect Size 메뉴는 표본 수 계산에 투입할 효과크기 또는 변환 가능한 효과크기를 계산한다.
+버전 0.9.37 기준으로 연구계획 계산 메뉴를 제공한다. Sample Size 메뉴는 최소 표본 수와 주어진 표본 수에서의 검정력을 계산하고, Effect Size 메뉴는 표본 수 계산에 투입할 효과크기 또는 변환 가능한 효과크기를 계산한다.
 
 ### 공통 출력
 

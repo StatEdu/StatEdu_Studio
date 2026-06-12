@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.9.37 - 2026-06-12
+
+### Added
+
+- Added 4-point Korean and English Likert detection dictionaries corresponding to the existing 5-point detection sets.
+- Added an animated action-overlay walkthrough to the Korean in-app user guide using bundled guide images.
+
+### Changed
+
+- Refined the Likert custom detection dictionary UI so registered dictionaries open from a button, display in a list box, and show selected dictionary details in a side panel.
+- Prioritized exact-level Likert dictionary matches before compatible superset matches so 4-point responses are detected as 4-point scales.
+- Adjusted user guide overlay timing and box positions for the data-loading, t-test / ANOVA, and result-review walkthrough.
+
+### Fixed
+
+- Preserved scroll position when opening or selecting registered Likert detection dictionaries.
+- Improved Likert detection table column widths for select and detection-name columns.
+
 ## v0.9.36 - 2026-06-11
 
 ### Added

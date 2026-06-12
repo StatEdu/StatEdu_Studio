@@ -6755,6 +6755,77 @@ pre {
   margin: 12px 0 16px;
 }
 
+.likert-disclosure-button {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 7px 12px;
+  border-radius: 6px;
+  font-weight: 700;
+}
+
+.likert-disclosure-button .likert-toggle-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.likert-primary-toggle {
+  border: 1px solid #0f766e;
+  background: #0f766e;
+  color: #fff;
+}
+
+.likert-primary-toggle .likert-toggle-icon {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.likert-primary-toggle:hover,
+.likert-primary-toggle:focus,
+.likert-primary-toggle.is-open {
+  background: #0d625b;
+  border-color: #0d625b;
+  color: #fff;
+  outline: none;
+}
+
+.likert-secondary-toggle {
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0b3558;
+}
+
+.likert-secondary-toggle .likert-toggle-icon {
+  background: #e2e8f0;
+  color: #0b3558;
+}
+
+.likert-secondary-toggle:hover,
+.likert-secondary-toggle:focus,
+.likert-secondary-toggle.is-open {
+  background: #e6fffb;
+  border-color: #0f766e;
+  color: #064e3b;
+  outline: none;
+}
+
+.likert-disclosure-panel {
+  margin-top: 12px;
+}
+
+.likert-disclosure-panel[hidden] {
+  display: none !important;
+}
+
 .likert-custom-dictionary > details {
   border: 1px solid #cbd5e1;
   border-radius: 6px;
@@ -6890,7 +6961,7 @@ pre {
 
 .likert-dictionary-manager {
   display: grid;
-  grid-template-columns: 340px minmax(0, 1fr);
+  grid-template-columns: minmax(430px, 0.46fr) minmax(460px, 0.54fr);
   gap: 18px;
   align-items: start;
   margin-top: 10px;
@@ -6909,6 +6980,7 @@ pre {
 
 .likert-dictionary-listbox {
   width: 100%;
+  min-width: 420px;
   min-height: 180px;
   padding: 6px;
   border: 1px solid #cbd5e1;
