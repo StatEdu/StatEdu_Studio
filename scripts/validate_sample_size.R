@@ -172,6 +172,20 @@ expect_true(near(regression_logistic$effect_size_d, log(1.8) * sqrt(3) / pi), "E
 regression_mediation_sample <- sample_size_regression("sample_size", design = "mediation", a_path = 0.3, b_path = 0.3, covariates = 2, alpha = 0.05, power = 0.8, mediation_method = "sobel")
 expect_true(near(regression_mediation_sample$indirect_effect, 0.09), "Expected mediation sample-size result to report indirect effect a*b")
 expect_true(regression_mediation_sample$covariates == 2, "Expected mediation sample-size result to report covariate count")
+regression_mediation_fritz <- sample_size_regression(
+  "sample_size",
+  design = "mediation",
+  alpha = 0.05,
+  power = 0.8,
+  mediation_method = "fritz_mackinnon",
+  a_effect = "small",
+  b_effect = "small",
+  fritz_mackinnon_test = "bias_corrected_bootstrap"
+)
+expect_true(regression_mediation_fritz$total == 462, "Expected Fritz & MacKinnon S-S bias-corrected bootstrap sample size to equal Table 3")
+expect_true(near(regression_mediation_fritz$a_path, 0.14), "Expected Fritz & MacKinnon small a path to equal .14")
+expect_true(near(regression_mediation_fritz$b_path, 0.14), "Expected Fritz & MacKinnon small b path to equal .14")
+expect_true(regression_mediation_fritz$mediation_method == "fritz_mackinnon", "Expected mediation method to be reported for method-specific references")
 regression_mediation_ui <- htmltools::renderTags(sample_size_inputs_ui("regression", list(
   sample_size_regression_target = "sample_size",
   sample_size_regression_design = "mediation"

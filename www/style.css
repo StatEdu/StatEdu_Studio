@@ -7683,11 +7683,11 @@ pre {
 
 .sample-size-grid {
   display: grid;
-  grid-template-columns: 326px 50px 326px 20px 310px;
+  grid-template-columns: 326px 50px 326px 20px minmax(310px, 1fr);
   gap: 18px;
   align-items: stretch;
   grid-auto-rows: 690px;
-  width: 1140px;
+  width: 100%;
   min-width: 1140px;
   margin-top: 18px;
   padding: 18px;
@@ -8517,8 +8517,8 @@ select[id$="_active_role"]:focus {
 .sample-size-result,
 .sample-size-result-card,
 .sample-size-result-panel {
-  width: min(100%, 590px);
-  max-width: 100%;
+  width: 100%;
+  max-width: none;
   zoom: 1.5 !important;
 }
 

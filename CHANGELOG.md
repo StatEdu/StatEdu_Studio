@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.9.38 - 2026-06-15
+
+### Added
+
+- Added Fritz & MacKinnon (2007) empirical mediation sample-size table estimates for .80 power.
+- Added method-specific mediation references for Fritz & MacKinnon, Monte Carlo, bootstrap, and Sobel mediation sample-size calculations.
+
+### Changed
+
+- Widened the Sample Size results block on larger windows while preserving the existing three-block layout at 1280px-width displays.
+
 ## v0.9.37 - 2026-06-12
 
 ### Added
