@@ -26,7 +26,12 @@ required_packages <- c(
   "WebPower",
   "TOSTER",
   "MASS",
-  "nnet"
+  "nnet",
+  "geepack",
+  "mice",
+  "lme4",
+  "lmerTest",
+  "plm"
 )
 
 no_package_install <- identical(tolower(Sys.getenv("EASYFLOW_NO_PACKAGE_INSTALL", "false")), "true")

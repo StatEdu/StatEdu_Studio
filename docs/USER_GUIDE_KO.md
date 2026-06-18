@@ -1,6 +1,6 @@
 # **EasyFlow Statistics** 사용자 안내서
 
-이 문서는 **EasyFlow Statistics** 0.9.38을 실제로 사용하는 절차를 설명합니다. 앱 실행, 데이터 열기, 변수 선택, 분석 실행, 결과 저장처럼 사용자가 화면에서 따라 해야 하는 작업 흐름을 다룹니다. 구현된 분석 기법 목록은 `ANALYSIS_METHODS_KO.md`, 방법 선택 기준과 해석상 주의점은 `METHOD_NOTES_KO.md`를 참고합니다.
+이 문서는 **EasyFlow Statistics** 0.9.39을 실제로 사용하는 절차를 설명합니다. 앱 실행, 데이터 열기, 변수 선택, 분석 실행, 결과 저장처럼 사용자가 화면에서 따라 해야 하는 작업 흐름을 다룹니다. 구현된 분석 기법 목록은 `ANALYSIS_METHODS_KO.md`, 방법 선택 기준과 해석상 주의점은 `METHOD_NOTES_KO.md`를 참고합니다.
 
 ## 1. 앱 실행
 
@@ -150,6 +150,21 @@ Analysis 메뉴에서 분석 종류를 선택합니다.
 4. Run 버튼으로 분석을 실행합니다.
 5. 결과표, 경고, skipped analyses 또는 skipped models를 확인합니다.
 
+### Longitudinal / Panel Models 사용 절차
+
+반복측정, 군집자료, 패널자료처럼 한 대상 또는 군집에서 여러 시점의 관측값이 있는 long-format 데이터는 `Analysis > Longitudinal / Panel Models`에서 분석합니다.
+
+1. Data 탭에서 Step 2 변수 선택을 적용합니다.
+2. 왼쪽 `Variables` 목록에서 변수를 선택한 뒤 `>` 버튼으로 `Model variables` 영역에 이동합니다.
+3. `Outcome`, `Subject / Cluster ID`, `Time variable`은 각각 하나씩만 지정합니다.
+4. 설명변수는 `Predictors`에 여러 개 지정할 수 있습니다.
+5. `Options > Model`에서 분석기법을 선택합니다. GEE와 GLMM은 outcome family와 관련 옵션을 표시합니다. Count outcome은 Poisson과 negative binomial을 따로 고르지 않고 `Count: Poisson or negative binomial / log`로 선택하면, 프로그램이 과분산 screening 후 최종 family를 결정합니다. LMM / GLMM은 random slope 옵션을 `Terms` 탭에 표시합니다. Panel FE / RE는 패널모형에 필요한 옵션만 표시합니다.
+6. `Options > Checks`에서 가정 검토를 켜고, 선택한 분석기법에 맞는 세부 가정 항목을 선택합니다.
+7. `Run model`을 눌러 분석을 실행합니다.
+8. 결과에서 model overview, data structure, missing data, publication-ready estimates, assumption checks, recommended analysis, sensitivity analysis results, manuscript text, SCI reporting checklist를 확인합니다.
+
+모형 선택은 연구 질문에 맞춰 결정합니다. GEE는 population-averaged effect, LMM / GLMM은 subject-specific effect, Panel FE는 within-unit change와 time-invariant confounding 통제, Panel RE는 unit effect가 predictors와 독립이라는 가정이 타당할 때 사용합니다.
+
 ## 7. 결과 확인
 
 Result 탭에서는 실행한 분석 결과를 모아 봅니다. 결과는 분석별 표, 경고, 진단 결과, 저장 옵션으로 구성됩니다.
@@ -182,7 +197,7 @@ About 메뉴에는 순수 About 정보와 문서가 분리되어 있습니다.
 
 ## 10. Sample Size, Power, Effect Size 메뉴
 
-버전 0.9.38 기준으로 Sample Size와 Effect Size 메뉴가 별도 상위 메뉴로 제공된다. 이 메뉴는 연구계획 단계에서 필요한 최소 표본 수 `n`, 이미 정한 표본 수에서의 검정력, 그리고 표본수 계산에 넣을 효과크기를 계산하기 위한 도구다.
+버전 0.9.39 기준으로 Sample Size와 Effect Size 메뉴가 별도 상위 메뉴로 제공된다. 이 메뉴는 연구계획 단계에서 필요한 최소 표본 수 `n`, 이미 정한 표본 수에서의 검정력, 그리고 표본수 계산에 넣을 효과크기를 계산하기 위한 도구다.
 
 ### Sample Size 사용 절차
 

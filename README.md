@@ -8,9 +8,9 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.38`
+Current development version: `0.9.39`
 
-Version 0.9.38 adds Fritz & MacKinnon (2007) empirical mediation sample-size estimates, method-specific mediation references, and a wider adaptive Sample Size results panel. Version 0.9.37 refines the data-editor Likert conversion workflow with 4-point dictionaries, a reviewable custom detection dictionary manager, and updated in-app user guide overlays. Version 0.9.36 refined B5-oriented result tables, Excel import review, logistic/factor/PCA output, and data-editor conversion flows.
+Version 0.9.39 adds the Longitudinal / Panel Models workflow with GEE, LMM, GLMM, panel fixed effects, panel random effects, model-specific assumption checks, missing-data sensitivity engines, longitudinal weights, exposure offsets, count-family screening, and SCI-style reporting. Version 0.9.38 adds Fritz & MacKinnon (2007) empirical mediation sample-size estimates, method-specific mediation references, and a wider adaptive Sample Size results panel. Version 0.9.37 refines the data-editor Likert conversion workflow with 4-point dictionaries, a reviewable custom detection dictionary manager, and updated in-app user guide overlays.
 
 ## Current Scope
 
@@ -32,6 +32,7 @@ Version 0.9.38 adds Fritz & MacKinnon (2007) empirical mediation sample-size est
 - Linear regression with assumption-guided OLS, HC3 robust standard errors, bootstrap confidence intervals, and combined HC3 plus bootstrap output
 - Hierarchical regression with block-wise model comparison
 - Logistic regression for binary, ordered, and categorical dependent variables
+- Longitudinal / panel models with GEE, LMM, GLMM, panel fixed effects, and panel random effects for long-format repeated-measures or clustered data, including model-specific assumption checks, longitudinal analysis weights, missing-data handling options, MI/IPW/WGEE sensitivity engines, recommended alternatives, sensitivity comparisons, and SCI-style reporting tables
 - Penalized regression helpers for severe multicollinearity cases
 - Standalone sample size, power, and effect size calculators with method notes and references
 - Result saving to HTML, PDF, Excel, figures, and accumulated Result collections
@@ -56,7 +57,7 @@ Some installed package binaries may have been built under a newer patch-level R 
 | Data import | `haven`, `readr`, `readxl`, `openxlsx` | SAV, SAS, Stata, CSV, DAT, XLS, and XLSX import |
 | Settings and data helpers | `jsonlite`, `xml2`, `rvest`, `callr` | JSON settings, HTML/XML processing, and background R process support |
 | Regression diagnostics | `car`, `lmtest`, `sandwich`, `nortest`, `boot` | Type II/III ANCOVA tables, Levene-style variance checks, Breusch-Pagan test, HC3 robust standard errors, Lilliefors normality test, and bootstrap inference |
-| Linear / generalized models | `MASS`, `nnet` | Ordered logistic and multinomial model support |
+| Linear / generalized models | `MASS`, `nnet`, `geepack`, `mice`, `lme4`, `lmerTest`, `plm` | Ordered logistic, multinomial, GEE, MI sensitivity, mixed-effects, and panel model support |
 | Penalized regression | `glmnet` | Ridge, LASSO, and Elastic Net helper analyses |
 | Post-hoc and group comparison | `agricolae` | Multiple-comparison procedures used in ANOVA-style workflows |
 | Reliability, factor analysis, and correlations | `psych`, `polycor` | Reliability coefficients, factor/PCA helpers, polychoric/polyserial/tetrachoric correlation support |
@@ -75,7 +76,7 @@ The app will open at `127.0.0.1` in the default browser. The launcher searches f
 
 Version 0.9.10 includes validation scripts for calculators, data import, data editing, cross-tabulation, correlation auto-selection, factor analysis / PCA, logistic analysis and UI, paired guard handling, p-value formatting, regression coefficient output, and t-test / ANOVA guard handling.
 
-Version 0.9.38 includes validation coverage for Fritz & MacKinnon mediation sample-size table values and method-specific mediation reporting. Version 0.9.37 includes validation coverage for data-editor recoding and Likert detection paths. Version 0.9.36 includes validation coverage for logistic analysis, data editor recoding, factor/PCA, correlation, paired tests, data I/O, and result history. Effect-size comparisons use `effectsize` as a validation reference where its definitions match the app calculation; `effectsize` is not required at runtime.
+Version 0.9.39 includes validation coverage for longitudinal / panel model fitting, setup UI structure, missing-data handling, assumption-check catalogs, HTML export, Excel export, sensitivity comparisons, exposure offsets, count-family screening, and SCI reporting sections. Version 0.9.38 includes validation coverage for Fritz & MacKinnon mediation sample-size table values and method-specific mediation reporting. Version 0.9.37 includes validation coverage for data-editor recoding and Likert detection paths. Version 0.9.36 includes validation coverage for logistic analysis, data editor recoding, factor/PCA, correlation, paired tests, data I/O, and result history. Effect-size comparisons use `effectsize` as a validation reference where its definitions match the app calculation; `effectsize` is not required at runtime.
 
 Run validation scripts from the repository root with Rscript, for example:
 
@@ -87,7 +88,7 @@ Run validation scripts from the repository root with Rscript, for example:
 
 If you use **EasyFlow Statistics** in your research, please cite:
 
-LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.38) [Computer software]. https://doi.org/10.22934/easyflow.statistics
+LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.39) [Computer software]. https://doi.org/10.22934/easyflow.statistics
 
 ## Development Model
 

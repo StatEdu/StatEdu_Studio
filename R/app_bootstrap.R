@@ -30,7 +30,11 @@ required_packages <- c(
   "WebPower",
   "TOSTER",
   "MASS",
-  "nnet"
+  "nnet",
+  "geepack",
+  "lme4",
+  "lmerTest",
+  "plm"
 )
 
 startup_packages <- c("shiny", "DT")
@@ -82,6 +86,7 @@ app_module_files <- c(
   "analysis_ancova.R",
   "analysis_regression.R",
   "analysis_logistic.R",
+  "analysis_longitudinal.R",
   "sample_size.R",
   "sample_size_ui.R",
   "data_editor_recode.R",
@@ -110,6 +115,7 @@ app_module_files <- c(
   "server_frequencies.R",
   "server_crosstabs.R",
   "server_logistic.R",
+  "server_longitudinal.R",
   "server_paired.R",
   "server_paired_rm.R",
   "server_ttest_anova.R",
@@ -148,6 +154,7 @@ app_module_files <- c(
   "setup_regression_ui.R",
   "setup_hierarchical_ui.R",
   "setup_logistic_ui.R",
+  "setup_longitudinal_ui.R",
   "setup_generalized_ui.R",
   "result_table_ui.R",
   "result_penalized_ui.R",
@@ -156,6 +163,7 @@ app_module_files <- c(
   "result_frequencies_ui.R",
   "result_crosstabs_ui.R",
   "result_logistic_ui.R",
+  "result_longitudinal_ui.R",
   "result_paired_ui.R",
   "result_paired_rm_ui.R",
   "result_nonparametric_paired_ui.R",

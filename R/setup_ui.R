@@ -418,6 +418,31 @@ generalized_tab_panel <- function(title = "Generalized") {
   )
 }
 
+longitudinal_tab_panel <- function(title = "Longitudinal / Panel Models") {
+  tabPanel(
+    title,
+    value = "analysis_longitudinal",
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1("Longitudinal / Panel Models"),
+        div("Run GEE, mixed-effects, and panel regression models for long-format repeated-measures or clustered data.", class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel longitudinal-workspace-panel",
+        style = "min-width:980px;overflow-x:auto;",
+        analysis_workspace_heading("Longitudinal / Panel Models", "longitudinal"),
+        analysis_workspace_body(
+          "longitudinal",
+          uiOutput("longitudinal_setup"),
+          uiOutput("longitudinal_results")
+        )
+      )
+    )
+  )
+}
+
 setup_empty_message <- function(message) {
   div(
     class = "frequencies-setup-grid easyflow-empty-setup-grid",

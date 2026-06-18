@@ -80,7 +80,7 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-latent-workflow-20260606"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-longitudinal-weight-help-20260618"))
 }
 
 app_script_link <- function(version) {
@@ -144,6 +144,7 @@ enabled_analysis_tabs <- function() {
     pca = TRUE,
     regression = FALSE,
     hierarchical = TRUE,
+    longitudinal = TRUE,
     generalized = FALSE
   )
 }

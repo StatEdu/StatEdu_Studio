@@ -93,6 +93,30 @@ function Assert-FileNotContains {
   Write-Host "[ok] $Label"
 }
 
+function Assert-AppBootstrapModulesTracked {
+  $git = Get-Command "git.exe" -ErrorAction SilentlyContinue
+  if (-not $git) {
+    $git = Get-Command "git" -ErrorAction SilentlyContinue
+  }
+  if (-not $git) {
+    throw "git was not found; cannot validate tracked app module files."
+  }
+
+  $tracked = & $git.Source -C $RepoRoot ls-files
+  if ($LASTEXITCODE -ne 0) {
+    throw "git ls-files failed while validating app module files."
+  }
+  $bootstrapText = Get-Content -LiteralPath (Join-Path $RepoRoot "R\app_bootstrap.R") -Raw
+  $modules = [regex]::Matches($bootstrapText, '"([^"]+\.R)"') |
+    ForEach-Object { "R/" + $_.Groups[1].Value } |
+    Sort-Object -Unique
+  $missing = @($modules | Where-Object { $_ -notin $tracked })
+  if ($missing.Count -gt 0) {
+    throw "R module(s) referenced by app_bootstrap.R are not tracked by git and would be omitted from git ls-files based packaging: $($missing -join ', ')"
+  }
+  Write-Host "[ok] app_bootstrap R modules are tracked"
+}
+
 Assert-JsonVersionPin
 
 Assert-Path (Join-Path $RepoRoot "docs\RELEASE_CHECKLIST.md") "release checklist"
@@ -107,6 +131,7 @@ Assert-FileContains (Join-Path $RepoRoot "R\app_misc_ui.R") "Source & License" "
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "contextIsolation:\s*true" "contextIsolation enabled"
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "nodeIntegration:\s*false" "nodeIntegration disabled"
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "sandbox:\s*true" "sandbox enabled"
+Assert-AppBootstrapModulesTracked
 
 if (-not $SkipUnpackedChecks) {
   Assert-Path $ElectronOutDir "unpacked Electron output"

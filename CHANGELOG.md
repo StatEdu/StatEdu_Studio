@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.9.39 - 2026-06-18
+
+### Added
+
+- Added a separate `Analysis > Longitudinal / Panel Models` workflow for GEE, LMM, GLMM, panel fixed-effects, and panel random-effects models.
+- Added model-specific assumption checks, recommended alternatives, automated sensitivity comparisons, publication-ready estimates, manuscript text, SCI reporting checklist, and software-version reporting for longitudinal / panel model results.
+- Added a longitudinal / panel Missing options tab with primary missing-data handling, actual MI/IPW/WGEE sensitivity engines, and report-level missing-data method tracking.
+- Added longitudinal analysis weights with a single weight-variable target, sampling/longitudinal/IPW/combined weight types, trimming, normalized final weights, and effective sample size reporting.
+- Added optional exposure / offset handling for longitudinal count/rate models, including `log(exposure)` offsets in primary and sensitivity fits.
+- Added count-model zero-inflation screening details comparing observed and Poisson-expected zero proportions.
+- Added HTML, PDF, Excel, and saved Result collection support for longitudinal / panel model outputs.
+- Added validation coverage for longitudinal / panel model fitting, setup UI structure, assumption-check catalogs, HTML export, Excel export, sensitivity comparisons, and SCI reporting sections.
+
+### Changed
+
+- Aligned the Longitudinal / Panel Models setup screen with the existing t-test / ANOVA-style transfer layout and conditionally shows only model-relevant options.
+- Merged longitudinal / panel Model and Terms options so model type, fixed-time terms, and random-effect terms are configured in one tab.
+- Changed the default GEE working correlation to exchangeable, while AR(1) fits now pass subject/time wave ordering to `geepack::geeglm`.
+- Relabeled negative-binomial count fits for GEE as marginal negative-binomial GLM with subject-cluster robust SE because geepack does not provide native negative-binomial GEE.
+- Clarified that the optional Cluster ID is used as an additional random-intercept grouping variable for LMM/GLMM and is not applied to the selected GEE/panel primary fit.
+- Kept zero-inflated and hurdle count models out of the default longitudinal / panel module to avoid adding heavy optional package dependencies; excess-zero findings are reported as screening guidance.
+- Updated README, Korean User Guide, Analysis Methods, and Method Notes documentation for the new longitudinal / panel workflow.
+
 ## v0.9.38 - 2026-06-15
 
 ### Added

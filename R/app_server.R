@@ -74,6 +74,7 @@ create_app_server <- function(app_version) {
   output$lazy_analysis_pca <- renderUI(tab_panel_content(pca_tab_panel("Principal Components")))
   output$lazy_analysis_reliability <- renderUI(tab_panel_content(reliability_tab_panel("Reliability")))
   output$lazy_analysis_hierarchical <- renderUI(tab_panel_content(hierarchical_tab_panel("Regression")))
+  output$lazy_analysis_longitudinal <- renderUI(tab_panel_content(longitudinal_tab_panel("Longitudinal / Panel Models")))
   output$lazy_analysis_generalized <- renderUI(tab_panel_content(generalized_tab_panel("Generalized")))
   output$lazy_analysis_logistic <- renderUI(tab_panel_content(logistic_regression_tab_panel()))
 
@@ -1088,6 +1089,18 @@ create_app_server <- function(app_version) {
   )
 
   register_logistic_handlers(
+    input = input,
+    output = output,
+    session = session,
+    selected_names_fn = selected_names,
+    dataset_fn = dataset,
+    variable_table_fn = regression_variable_table,
+    labels_fn = var_label_overrides,
+    category_table_fn = category_label_values,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
+  register_longitudinal_handlers(
     input = input,
     output = output,
     session = session,

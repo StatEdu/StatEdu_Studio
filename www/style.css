@@ -6555,7 +6555,8 @@ pre {
 .correlation-setup-grid,
 .hierarchical-setup-grid,
 .regression-setup-grid,
-.logistic-setup-grid {
+.logistic-setup-grid,
+.longitudinal-setup-grid {
   grid-template-columns: 326px 50px 326px 20px 310px !important;
   gap: 18px !important;
   width: 1140px !important;
@@ -6577,7 +6578,8 @@ pre {
 .correlation-action-row,
 .hierarchical-action-row,
 .regression-action-row,
-.logistic-action-row {
+.logistic-action-row,
+.longitudinal-action-row {
   grid-template-columns: 326px 50px 326px 20px 310px !important;
   gap: 18px !important;
   width: 1140px !important;
@@ -6587,6 +6589,351 @@ pre {
 
 .logistic-action-row {
   margin-bottom: 28px;
+}
+
+.longitudinal-setup-grid {
+  display: grid;
+  grid-template-columns: 326px 50px 326px 20px 340px !important;
+  gap: 18px !important;
+  align-items: start;
+  margin-top: 18px;
+  width: 1170px !important;
+  min-width: 1170px !important;
+  max-width: 1170px !important;
+  padding: 18px;
+  background: #f4f8fb;
+  border: 1px solid #e1eaf2;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.longitudinal-available-panel,
+.longitudinal-target-block,
+.longitudinal-options.analysis-options-panel {
+  height: 570px;
+  min-height: 570px !important;
+  box-sizing: border-box;
+}
+
+.longitudinal-available-panel {
+  width: 326px !important;
+}
+
+.longitudinal-available-panel .analysis-transfer-listbox {
+  height: 500px !important;
+  min-height: 500px !important;
+  max-height: 500px !important;
+}
+
+.longitudinal-target-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 326px !important;
+  padding-top: 14px;
+}
+
+.longitudinal-block-title {
+  margin-bottom: 0;
+}
+
+.longitudinal-target-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.longitudinal-transfer-controls {
+  position: relative;
+  height: 570px;
+  box-sizing: border-box;
+  transform: translateX(6px);
+}
+
+.longitudinal-transfer-controls .analysis-move-button {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.longitudinal-transfer-controls .analysis-move-button:nth-child(1) {
+  top: 81px;
+}
+
+.longitudinal-transfer-controls .analysis-move-button:nth-child(2) {
+  top: 149px;
+}
+
+.longitudinal-transfer-controls .analysis-move-button:nth-child(3) {
+  top: 217px;
+}
+
+.longitudinal-transfer-controls .analysis-move-button:nth-child(4) {
+  top: 285px;
+}
+
+.longitudinal-transfer-controls .analysis-move-button:nth-child(5) {
+  top: 410px;
+}
+
+.longitudinal-target-field {
+  display: block;
+}
+
+.longitudinal-field-body {
+  min-width: 0;
+}
+
+.longitudinal-field-body .analysis-field-label {
+  margin-bottom: 7px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.longitudinal-field-body .analysis-field-label > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.longitudinal-field-body .analysis-allowed-measurements {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.longitudinal-field-body .analysis-transfer-listbox {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.longitudinal-outcome-field .analysis-transfer-listbox,
+.longitudinal-id-field .analysis-transfer-listbox,
+.longitudinal-cluster-field .analysis-transfer-listbox,
+.longitudinal-time-field .analysis-transfer-listbox,
+.longitudinal-weight-field .analysis-transfer-listbox {
+  height: 34px !important;
+  min-height: 34px !important;
+  max-height: 34px !important;
+  overflow-y: hidden !important;
+}
+
+.longitudinal-predictors-field .analysis-transfer-listbox {
+  height: 124px !important;
+  min-height: 124px !important;
+  max-height: 124px !important;
+}
+
+.longitudinal-options.analysis-options-panel {
+  grid-column: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 340px;
+}
+
+.longitudinal-options .nav-tabs > li > a {
+  padding-left: 4px;
+  padding-right: 4px;
+  font-size: 12px;
+}
+
+.longitudinal-options-tab-content {
+  padding-top: 14px;
+}
+
+.longitudinal-model-options-tab-content > .analysis-option-group + .analysis-option-group {
+  margin-top: 18px;
+}
+
+.longitudinal-model-options-tab-content > .analysis-option-group:first-child > .regression-field + .regression-field {
+  margin-top: 8px;
+}
+
+.longitudinal-missing-options-tab-content > .analysis-option-group + .analysis-option-group {
+  margin-top: 20px;
+}
+
+.longitudinal-missing-detail {
+  width: 280px;
+  margin-top: 8px;
+  color: #334155;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.longitudinal-option-help {
+  width: 280px;
+  margin: 6px 0 12px 0;
+  color: #334155;
+  font-size: 12px;
+  line-height: 1.38;
+}
+
+.longitudinal-weight-options-tab-content .regression-field {
+  margin-bottom: 10px;
+}
+
+.longitudinal-weight-options-tab-content .regression-field + .regression-field {
+  margin-top: 12px;
+}
+
+.longitudinal-weight-options-disabled select:disabled {
+  color: #64748b;
+  background: #f1f5f9;
+  cursor: not-allowed;
+}
+
+.longitudinal-disabled-notice {
+  width: 280px;
+  margin: 0 0 10px 0;
+  padding: 10px 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.longitudinal-disabled-notice strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #0f2f6f;
+  font-size: 12px;
+}
+
+.longitudinal-disabled-notice p {
+  margin: 4px 0 0 0;
+}
+
+.longitudinal-missing-strategy-detail ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.longitudinal-missing-strategy-detail li {
+  margin-bottom: 6px;
+}
+
+.longitudinal-missing-advanced-group .checkbox {
+  margin-top: 4px;
+  margin-bottom: 6px;
+}
+
+.longitudinal-missing-advanced-group .checkbox label {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.longitudinal-options .analysis-option-subtitle {
+  margin: 10px 0 7px 0;
+  color: #002b50;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.longitudinal-check-option-list {
+  display: grid;
+  gap: 4px;
+  margin-top: 2px;
+  margin-left: 0;
+}
+
+.longitudinal-check-option-list .form-group {
+  margin: 0;
+}
+
+.longitudinal-check-option-list .checkbox {
+  margin: 0 0 0 36px;
+}
+
+.longitudinal-check-option-list label {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.longitudinal-check-options-muted {
+  opacity: 0.62;
+}
+
+.longitudinal-checks-options:has(#longitudinal_assumption_checks:not(:checked)) .longitudinal-check-option-list {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.longitudinal-checks-options:has(#longitudinal_assumption_checks:not(:checked)) .longitudinal-check-option-list label,
+.longitudinal-checks-options:has(#longitudinal_assumption_checks:not(:checked)) .longitudinal-check-option-list input {
+  cursor: not-allowed;
+}
+
+.longitudinal-options .regression-field,
+.longitudinal-options .form-group,
+.longitudinal-options .selectize-control,
+.longitudinal-options .form-control,
+.longitudinal-options select {
+  width: 280px;
+  min-width: 280px;
+  max-width: 280px;
+  box-sizing: border-box;
+}
+
+.longitudinal-action-row {
+  display: grid;
+  grid-template-columns: 326px 50px 326px 20px 340px !important;
+  gap: 18px !important;
+  align-items: start;
+  width: 1170px !important;
+  min-width: 1170px !important;
+  max-width: 1170px !important;
+  margin-bottom: 28px;
+}
+
+.longitudinal-action-row > .btn {
+  grid-column: 1;
+  justify-self: start;
+  margin-left: 30px;
+  width: 300px;
+  min-width: 300px;
+}
+
+.longitudinal-action-row > #reset_longitudinal {
+  grid-column: 3;
+  width: 300px;
+  min-width: 300px;
+  margin-left: 0;
+  justify-self: center;
+  transform: none;
+}
+
+.longitudinal-action-row > #longitudinal_save_control {
+  grid-column: 5;
+  margin-left: 0;
+  align-self: start;
+  justify-self: center;
+  transform: none;
+}
+
+.longitudinal-recommendation-list {
+  margin: 8px 0 14px 18px;
+  padding: 0;
+}
+
+.longitudinal-recommendation-list li {
+  margin-bottom: 6px;
+  line-height: 1.45;
+}
+
+.longitudinal-publication-notes {
+  margin: 8px 0 14px 22px;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.longitudinal-publication-notes li {
+  margin-bottom: 5px;
 }
 
 .logistic-action-row > #reset_logistic_block2 {
