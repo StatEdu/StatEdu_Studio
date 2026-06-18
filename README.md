@@ -8,9 +8,9 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.39`
+Current development version: `0.9.40`
 
-Version 0.9.39 adds the Longitudinal / Panel Models workflow with GEE, LMM, GLMM, panel fixed effects, panel random effects, model-specific assumption checks, missing-data sensitivity engines, longitudinal weights, exposure offsets, count-family screening, and SCI-style reporting. It also activates the GLM workflow for Gaussian, binary logistic, Gamma, and count models with tabbed model, missing-data, assumption-check, publication-note, SCI-checklist, and manuscript-text outputs. Version 0.9.38 adds Fritz & MacKinnon (2007) empirical mediation sample-size estimates, method-specific mediation references, and a wider adaptive Sample Size results panel. Version 0.9.37 refines the data-editor Likert conversion workflow with 4-point dictionaries, a reviewable custom detection dictionary manager, and updated in-app user guide overlays.
+Version 0.9.40 starts the next development cycle after the 0.9.39 beta release. Version 0.9.39 adds the Longitudinal / Panel Models workflow with GEE, LMM, GLMM, panel fixed effects, panel random effects, model-specific assumption checks, missing-data sensitivity engines, longitudinal weights, exposure offsets, count-family screening, and SCI-style reporting. It also activates the GLM workflow for Gaussian, binary logistic, Gamma, and count models with tabbed model, missing-data, assumption-check, publication-note, SCI-checklist, and manuscript-text outputs. Version 0.9.38 adds Fritz & MacKinnon (2007) empirical mediation sample-size estimates, method-specific mediation references, and a wider adaptive Sample Size results panel.
 
 ## Current Scope
 
@@ -89,7 +89,7 @@ Run validation scripts from the repository root with Rscript, for example:
 
 If you use **EasyFlow Statistics** in your research, please cite:
 
-LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.39) [Computer software]. https://doi.org/10.22934/easyflow.statistics
+LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.40) [Computer software]. https://doi.org/10.22934/easyflow.statistics
 
 ## Development Model
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.9.40 - Unreleased
+
+### Changed
+
+- Bumped development metadata after the 0.9.39 beta release.
+
 ## v0.9.39 - 2026-06-18
 
 ### Added
