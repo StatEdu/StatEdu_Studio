@@ -34,7 +34,8 @@ required_packages <- c(
   "geepack",
   "lme4",
   "lmerTest",
-  "plm"
+  "plm",
+  "mice"
 )
 
 startup_packages <- c("shiny", "DT")
@@ -86,6 +87,7 @@ app_module_files <- c(
   "analysis_ancova.R",
   "analysis_regression.R",
   "analysis_logistic.R",
+  "analysis_generalized.R",
   "analysis_longitudinal.R",
   "sample_size.R",
   "sample_size_ui.R",
@@ -115,6 +117,7 @@ app_module_files <- c(
   "server_frequencies.R",
   "server_crosstabs.R",
   "server_logistic.R",
+  "server_generalized.R",
   "server_longitudinal.R",
   "server_paired.R",
   "server_paired_rm.R",
@@ -164,6 +167,7 @@ app_module_files <- c(
   "result_crosstabs_ui.R",
   "result_logistic_ui.R",
   "result_longitudinal_ui.R",
+  "result_generalized_ui.R",
   "result_paired_ui.R",
   "result_paired_rm_ui.R",
   "result_nonparametric_paired_ui.R",

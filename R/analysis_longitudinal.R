@@ -145,7 +145,7 @@ longitudinal_weight_trim_detail <- function(trim) {
 longitudinal_missing_method_choices <- function(model_type = NULL) {
   c(
     "Complete-case: row-wise" = "row_complete",
-    "Likelihood available observations (MAR)" = "available",
+    "Likelihood-based MAR: available repeated measures" = "available",
     "Complete-subject analysis" = "subject_complete"
   )
 }
@@ -171,7 +171,7 @@ longitudinal_missing_strategy_choices <- function(model_type = NULL) {
   }
   if (model_type %in% c("lmm", "glmm")) {
     return(c(
-      "Likelihood available observations (MAR)" = "available",
+      "Likelihood-based MAR: available repeated measures" = "available",
       "Complete-case: row-wise" = "row_complete",
       "Complete-subject analysis" = "subject_complete",
       "Multiple imputation (MI)" = "mi",
@@ -234,7 +234,7 @@ longitudinal_resolve_missing_method <- function(method) {
 longitudinal_missing_method_label <- function(method) {
   switch(
     longitudinal_resolve_missing_method(method),
-    available = "likelihood-based available-observation analysis under MAR",
+    available = "likelihood-based mixed-model analysis using available repeated measures under a MAR assumption",
     subject_complete = "complete-subject analysis",
     "complete-case analysis using row-wise complete observations"
   )
@@ -246,11 +246,11 @@ longitudinal_missing_method_detail <- function(method, model_type = NULL) {
   switch(
     method,
     available = if (model_type %in% c("lmm", "glmm")) {
-      "Uses observed repeated-measures records in the likelihood framework. This is the usual primary approach for LMM / GLMM when outcome missingness is plausibly Missing at Random (MAR); report the MAR assumption and add MI or IPW sensitivity when covariates or dropout mechanisms are important."
+      "Fits the unbalanced LMM / GLMM likelihood using observed repeated-measure records with complete selected model variables. A subject is not removed only because an outcome is missing at another visit, but rows with missing outcome, covariates, ID, or time for the fitted model are not imputed. This is appropriate as the primary mixed-model analysis when the MAR assumption is defensible; add MI or IPW sensitivity when covariate missingness or dropout mechanisms are important."
     } else if (identical(model_type, "gee")) {
-      "Plain GEE is not likelihood-based. Available observations can be fitted, but MAR dropout should be supported with MI, IPW, or WGEE sensitivity analysis."
+      "Plain GEE is not likelihood-based. Available model rows can be fitted, but MAR dropout should be supported with MI, IPW, or WGEE sensitivity analysis."
     } else {
-      "Uses the observed panel records available for the fitted model. Report whether the panel is balanced, and add MI or weighting sensitivity when missingness may depend on observed history."
+      "Uses rows with observed selected model variables. Report whether the panel is balanced, and add MI or weighting sensitivity when missingness may depend on observed history."
     },
     subject_complete = "Keeps only subjects / clusters with complete records on selected analysis variables. This is conservative and easy to report, but can reduce power and introduce bias when dropout is related to observed outcomes or covariates.",
     "Drops rows with missing selected analysis variables before fitting the model. This is transparent, but it is strongest when missingness is plausibly MCAR or when missingness is minimal."
@@ -285,9 +285,9 @@ longitudinal_missing_strategy_details <- function(strategies, model_type = NULL)
   unname(vapply(keys, function(key) {
     switch(
       key,
-      mi = "MI: imputes incomplete outcomes/covariates with mice, fits the selected model in each imputed dataset, and pools estimates using Rubin's rules.",
-      ipw = "IPW: estimates observation probabilities and refits the selected model with inverse-probability weights.",
-      wgee = "WGEE: refits GEE with inverse-probability observation weights for MAR dropout sensitivity.",
+      mi = "MI: standard mice-based missing-data sensitivity analysis. It imputes incomplete selected model variables, fits the selected model in each imputed dataset, and pools estimates using Rubin's rules; it is not a dedicated multilevel MI engine.",
+      ipw = "IPW: sensitivity analysis that estimates complete-observation probabilities from observed predictors and refits the selected model with inverse-probability weights. Positivity and weight stability should be reviewed.",
+      wgee = "WGEE: GEE-only sensitivity analysis that refits GEE with inverse-probability observation weights for MAR dropout sensitivity. Positivity and weight construction should be reported.",
       ""
     )
   }, character(1)))
@@ -555,20 +555,21 @@ longitudinal_count_family_selection <- function(
   nb_bic <- if (nb_ok) longitudinal_screening_metric(nb_fit, "bic") else NA_real_
   selected <- if (is.finite(dispersion) && dispersion > threshold && nb_ok) "negative_binomial" else "poisson"
   decision <- if (identical(selected, "negative_binomial")) {
-    "Poisson overdispersion exceeded the screening threshold and negative binomial fit was available."
+    "Poisson overdispersion exceeded the prespecified screening threshold and negative binomial fit was available."
   } else if (!poisson_ok) {
     "Poisson screening failed; Poisson family is retained for fitting and model errors will be reported if fitting fails."
   } else if (!is.finite(dispersion)) {
     "Poisson dispersion could not be computed; Poisson family is retained."
   } else if (dispersion > threshold) {
-    "Poisson overdispersion exceeded the threshold, but negative binomial screening did not fit; Poisson family is retained with overdispersion warning."
+    "Poisson overdispersion exceeded the prespecified threshold, but negative binomial screening did not fit; Poisson family is retained with overdispersion warning."
   } else {
-    "Poisson dispersion did not exceed the screening threshold."
+    "Poisson dispersion did not exceed the prespecified screening threshold."
   }
   details <- data.frame(
     Item = c(
       "Requested family",
       "Count decision",
+      "Selection rule",
       "Poisson dispersion ratio",
       "Overdispersion threshold",
       "Observed zero proportion",
@@ -584,6 +585,7 @@ longitudinal_count_family_selection <- function(
     Value = c(
       "Count: Poisson or negative binomial / log",
       switch(selected, poisson = "Poisson / log", negative_binomial = "Negative binomial / log", selected),
+      "Dispersion-threshold screening selects Poisson versus negative binomial; AIC/BIC are reported as supplementary fit diagnostics, not as the automatic selection rule.",
       longitudinal_format_number_static(dispersion),
       longitudinal_format_number_static(threshold),
       longitudinal_format_number_static(zero_screen$observed),
@@ -630,10 +632,10 @@ longitudinal_required_package <- function(model_type) {
 longitudinal_guard_row <- function(outcome, id, time, predictors, reason, n = NA_integer_, variable_info = NULL, type = "Skipped") {
   data.frame(
     Type = type,
-    Outcome = display_variable_name_static(outcome, variable_info, character(0), label_only = TRUE),
+    `Dependent variable` = display_variable_name_static(outcome, variable_info, character(0), label_only = TRUE),
     ID = display_variable_name_static(id, variable_info, character(0), label_only = TRUE),
     Time = display_variable_name_static(time, variable_info, character(0), label_only = TRUE),
-    Predictors = paste(vapply(predictors, display_variable_name_static, character(1), table = variable_info, labels = character(0), label_only = TRUE), collapse = ", "),
+    `Independent variables` = paste(vapply(predictors, display_variable_name_static, character(1), table = variable_info, labels = character(0), label_only = TRUE), collapse = ", "),
     N = if (is.na(n)) "" else as.character(n),
     Message = reason,
     stringsAsFactors = FALSE,
@@ -879,6 +881,27 @@ longitudinal_panel_coef_table <- function(model) {
   longitudinal_coef_table_from_matrix(test, exponentiate = FALSE)
 }
 
+longitudinal_panel_driscoll_kraay_summary <- function(model) {
+  hc1 <- lmtest::coeftest(model, vcov. = plm::vcovHC(model, type = "HC1", cluster = "group"))
+  dk <- lmtest::coeftest(model, vcov. = plm::vcovSCC(model, type = "HC1"))
+  hc1_se <- suppressWarnings(as.numeric(hc1[, 2]))
+  dk_se <- suppressWarnings(as.numeric(dk[, 2]))
+  names(hc1_se) <- rownames(hc1)
+  names(dk_se) <- rownames(dk)
+  shared <- intersect(names(hc1_se), names(dk_se))
+  ratios <- dk_se[shared] / hc1_se[shared]
+  ratios <- ratios[is.finite(ratios) & ratios > 0]
+  if (length(ratios) == 0) {
+    stop("No comparable coefficient standard errors were returned.")
+  }
+  sprintf(
+    "max DK/HC1 SE ratio=%s; median=%s; terms=%s",
+    longitudinal_format_number_static(max(ratios)),
+    longitudinal_format_number_static(stats::median(ratios)),
+    length(ratios)
+  )
+}
+
 longitudinal_fit_model <- function(data, outcome, id, time, terms, model_type, family, corstr, random_slope = FALSE, exponentiate = FALSE, weights = NULL, cluster = character(0), offset = character(0)) {
   formula <- longitudinal_formula(outcome, terms, offset = offset)
   if (!is.null(weights)) {
@@ -1111,7 +1134,7 @@ longitudinal_check_response_family <- function(family, model_type) {
     "Outcome family / link",
     "Reviewed",
     interpretation = sprintf("The fitted %s uses %s.", longitudinal_model_label(model_type, family), label),
-    recommendation = "Confirm that the selected family matches the outcome scale; for count outcomes, review the Poisson dispersion result and the Poisson versus negative binomial decision."
+    recommendation = "Confirm that the selected family matches the outcome scale; for count outcomes, review the Poisson dispersion-threshold screening and treat AIC/BIC as supplementary diagnostics."
   )
 }
 
@@ -1766,6 +1789,26 @@ longitudinal_sensitivity_analysis_results <- function(
           "Available",
           "Compare FE and RE estimates and interpret with the Hausman test and study design."
         )
+        dk_summary <- tryCatch(longitudinal_panel_driscoll_kraay_summary(fit$model), error = function(e) e)
+        if (inherits(dk_summary, "error")) {
+          add_row(
+            "Panel covariance sensitivity",
+            sprintf("%s: Driscoll-Kraay SE", label),
+            "Failed",
+            "SE ratio vs HC1",
+            "",
+            conditionMessage(dk_summary)
+          )
+        } else {
+          add_row(
+            "Panel covariance sensitivity",
+            sprintf("%s: Driscoll-Kraay SE", label),
+            "Computed",
+            "SE ratio vs HC1",
+            dk_summary,
+            "Use as sensitivity inference when cross-sectional dependence or common shocks are plausible; report the chosen covariance estimator explicitly."
+          )
+        }
       }
     }
     hausman <- tryCatch({
@@ -1827,6 +1870,55 @@ longitudinal_effective_sample_size <- function(weights) {
   sum(weights)^2 / sum(weights^2)
 }
 
+longitudinal_ipw_diagnostics <- function(probability, weights, clipped_probability = NULL, raw_weights = NULL, clipped_weights = NULL, model_terms = character(0), fallback = "") {
+  probability <- suppressWarnings(as.numeric(probability))
+  probability <- probability[is.finite(probability)]
+  weights <- suppressWarnings(as.numeric(weights))
+  weights <- weights[is.finite(weights) & weights > 0]
+  clipped_probability <- suppressWarnings(as.numeric(clipped_probability %||% probability))
+  clipped_probability <- clipped_probability[is.finite(clipped_probability)]
+  clipped_weights <- suppressWarnings(as.numeric(clipped_weights %||% weights))
+  clipped_weights <- clipped_weights[is.finite(clipped_weights) & clipped_weights > 0]
+  raw_weights <- suppressWarnings(as.numeric(raw_weights %||% weights))
+  raw_weights <- raw_weights[is.finite(raw_weights) & raw_weights > 0]
+  probability_clipped <- if (length(probability) > 0 && length(clipped_probability) == length(probability)) {
+    sum(abs(clipped_probability - probability) > .Machine$double.eps^0.5, na.rm = TRUE)
+  } else {
+    NA_integer_
+  }
+  weight_clipped <- if (length(clipped_weights) > 0 && length(raw_weights) == length(clipped_weights)) {
+    sum(abs(clipped_weights - raw_weights) > .Machine$double.eps^0.5, na.rm = TRUE)
+  } else {
+    NA_integer_
+  }
+  data.frame(
+    Item = c(
+      "IPW observation model variables",
+      "Predicted observation probability: min",
+      "Predicted observation probability: median",
+      "Predicted observation probability: max",
+      "Probability clipping count",
+      "Generated IPW summary",
+      "Generated IPW effective sample size",
+      "Weight clipping count",
+      "IPW diagnostic note"
+    ),
+    Value = c(
+      if (length(model_terms) > 0) paste(model_terms, collapse = ", ") else "Intercept only",
+      if (length(probability) > 0) longitudinal_format_number_static(min(probability)) else "",
+      if (length(probability) > 0) longitudinal_format_number_static(stats::median(probability)) else "",
+      if (length(probability) > 0) longitudinal_format_number_static(max(probability)) else "",
+      if (is.finite(probability_clipped)) as.character(probability_clipped) else "",
+      longitudinal_weight_stats_text(weights),
+      if (length(weights) > 0) longitudinal_format_number_static(longitudinal_effective_sample_size(weights)) else "",
+      if (is.finite(weight_clipped)) as.character(weight_clipped) else "",
+      if (nzchar(fallback)) fallback else "Review positivity and generated-weight stability; report the observation model and clipping."
+    ),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
 longitudinal_weight_summary_table <- function(
   weight_variable = character(0),
   weight_type = "none",
@@ -1834,6 +1926,7 @@ longitudinal_weight_summary_table <- function(
   base_weights = NULL,
   ipw_weights = NULL,
   final_weights = NULL,
+  ipw_diagnostics = NULL,
   note = ""
 ) {
   weight_type <- longitudinal_resolve_weight_type(weight_type)
@@ -1864,7 +1957,14 @@ longitudinal_weight_summary_table <- function(
     ),
     stringsAsFactors = FALSE,
     check.names = FALSE
-  )
+  ) |>
+    (function(table) {
+      if (is.data.frame(ipw_diagnostics) && nrow(ipw_diagnostics) > 0) {
+        rbind(table, ipw_diagnostics)
+      } else {
+        table
+      }
+    })()
 }
 
 longitudinal_prepare_analysis_weights <- function(
@@ -1886,6 +1986,7 @@ longitudinal_prepare_analysis_weights <- function(
       weights = NULL,
       base_weights = NULL,
       ipw_weights = NULL,
+      ipw_diagnostics = data.frame(),
       summary = longitudinal_weight_summary_table(weight, weight_type, trim, note = "No analysis weights were applied."),
       note = "No analysis weights were applied."
     ))
@@ -1910,10 +2011,12 @@ longitudinal_prepare_analysis_weights <- function(
   }
 
   ipw_weights <- NULL
+  ipw_diagnostics <- data.frame()
   ipw_note <- ""
   if (weight_type %in% c("ipw", "combined")) {
     ipw <- longitudinal_ipw_weights(raw_prepared, analyzed_data, outcome, id, time, terms)
     ipw_weights <- ipw$weights
+    ipw_diagnostics <- ipw$diagnostics
     ipw_note <- ipw$note
   }
 
@@ -1942,7 +2045,8 @@ longitudinal_prepare_analysis_weights <- function(
     weights = final_weights,
     base_weights = base_weights,
     ipw_weights = ipw_weights,
-    summary = longitudinal_weight_summary_table(weight, weight_type, trim, base_weights, ipw_weights, final_weights, note),
+    ipw_diagnostics = ipw_diagnostics,
+    summary = longitudinal_weight_summary_table(weight, weight_type, trim, base_weights, ipw_weights, final_weights, ipw_diagnostics, note),
     note = note
   )
 }
@@ -2120,7 +2224,7 @@ longitudinal_mi_sensitivity_results <- function(
   if (length(tables) == 0) {
     return(longitudinal_missing_sensitivity_failure(strategy, paste(failures, collapse = "; ")))
   }
-  note <- sprintf("Pooled across %s imputed dataset(s) using Rubin-style total variance.", length(tables))
+  note <- sprintf("Standard mice-based MI sensitivity; pooled across %s imputed dataset(s) using Rubin-style total variance. This is not a dedicated multilevel MI engine.", length(tables))
   if (!identical(weight_type, "none")) {
     note <- paste(note, sprintf("Weights: %s.", longitudinal_weight_type_label(weight_type)))
   }
@@ -2135,7 +2239,12 @@ longitudinal_ipw_weights <- function(raw_prepared, analyzed_data, outcome, id, t
   observed <- stats::complete.cases(raw_prepared[, variables, drop = FALSE])
   analyzed_index <- match(rownames(analyzed_data), rownames(raw_prepared))
   if (length(unique(observed)) < 2 || anyNA(analyzed_index)) {
-    return(list(weights = rep(1, nrow(analyzed_data)), note = "Observation status had no variation; unit weights were used."))
+    weights <- rep(1, nrow(analyzed_data))
+    return(list(
+      weights = weights,
+      diagnostics = longitudinal_ipw_diagnostics(rep(1, nrow(analyzed_data)), weights, fallback = "Observation status had no variation; unit weights were used."),
+      note = "Observation status had no variation; unit weights were used."
+    ))
   }
   candidate_terms <- intersect(unique(c(time, setdiff(terms, outcome))), names(raw_prepared))
   candidate_terms <- candidate_terms[vapply(candidate_terms, function(name) {
@@ -2148,7 +2257,11 @@ longitudinal_ipw_weights <- function(raw_prepared, analyzed_data, outcome, id, t
     probability <- mean(observed)
     weights <- rep(1 / probability, nrow(analyzed_data))
     weights <- weights / mean(weights)
-    return(list(weights = weights, note = "No fully observed predictors were available for the observation model; intercept-only IPW was used."))
+    return(list(
+      weights = weights,
+      diagnostics = longitudinal_ipw_diagnostics(rep(probability, nrow(analyzed_data)), weights, model_terms = character(0), fallback = "No fully observed predictors were available for the observation model; intercept-only IPW was used. Treat this as a weak IPW sensitivity analysis."),
+      note = "No fully observed predictors were available for the observation model; intercept-only IPW was used. Treat this as a weak IPW sensitivity analysis."
+    ))
   }
   formula <- stats::reformulate(candidate_terms, response = ".easyflow_observed")
   fit <- tryCatch(stats::glm(formula, data = weight_data, family = stats::binomial()), error = function(e) e)
@@ -2156,16 +2269,22 @@ longitudinal_ipw_weights <- function(raw_prepared, analyzed_data, outcome, id, t
     probability <- mean(observed)
     weights <- rep(1 / probability, nrow(analyzed_data))
     weights <- weights / mean(weights)
-    return(list(weights = weights, note = sprintf("Observation model failed (%s); intercept-only IPW was used.", conditionMessage(fit))))
+    note <- sprintf("Observation model failed (%s); intercept-only IPW was used. Treat this as a weak IPW sensitivity analysis.", conditionMessage(fit))
+    return(list(
+      weights = weights,
+      diagnostics = longitudinal_ipw_diagnostics(rep(probability, nrow(analyzed_data)), weights, model_terms = character(0), fallback = note),
+      note = note
+    ))
   }
-  probability <- suppressWarnings(stats::predict(fit, newdata = raw_prepared[analyzed_index, , drop = FALSE], type = "response"))
-  probability <- pmin(pmax(probability, 0.05), 0.99)
-  weights <- 1 / probability
-  weights <- pmin(weights, stats::quantile(weights, 0.99, na.rm = TRUE))
-  weights <- weights / mean(weights, na.rm = TRUE)
+  raw_probability <- suppressWarnings(stats::predict(fit, newdata = raw_prepared[analyzed_index, , drop = FALSE], type = "response"))
+  probability <- pmin(pmax(raw_probability, 0.05), 0.99)
+  raw_weights <- 1 / probability
+  clipped_weights <- pmin(raw_weights, stats::quantile(raw_weights, 0.99, na.rm = TRUE))
+  weights <- clipped_weights / mean(clipped_weights, na.rm = TRUE)
   list(
     weights = weights,
-    note = sprintf("Observation model: %s; weights clipped to [%.3f, %.3f] and normalized to mean 1.", paste(candidate_terms, collapse = ", "), min(weights, na.rm = TRUE), max(weights, na.rm = TRUE))
+    diagnostics = longitudinal_ipw_diagnostics(raw_probability, weights, probability, raw_weights, clipped_weights, candidate_terms),
+    note = sprintf("Observation model: %s; weights clipped to [%.3f, %.3f] and normalized to mean 1. Report these variables and review positivity/weight stability.", paste(candidate_terms, collapse = ", "), min(weights, na.rm = TRUE), max(weights, na.rm = TRUE))
   )
 }
 
@@ -2336,10 +2455,17 @@ longitudinal_manuscript_text <- function(result) {
     result$clusters %||% "",
     result$time_points %||% ""
   )
-  missing_summary <- sprintf(
-    "%s observations were excluded because of missing values in selected analysis variables.",
-    result$missing_excluded %||% 0
-  )
+  missing_summary <- if (result$model_type %in% c("lmm", "glmm") && identical(result$missing_method %||% "", "available")) {
+    sprintf(
+      "%s model row(s) were excluded because selected variables were missing in that row; subjects with other observed visits remained in the likelihood-based analysis under the MAR assumption.",
+      result$missing_excluded %||% 0
+    )
+  } else {
+    sprintf(
+      "%s observations were excluded because of missing values in selected analysis variables.",
+      result$missing_excluded %||% 0
+    )
+  }
   weight_sentence <- if (!identical(result$weight_type %||% "none", "none")) {
     ess <- if (is.data.frame(result$weight_summary)) result$weight_summary$Value[result$weight_summary$Item == "Effective sample size"] else ""
     sprintf("Analysis weights were applied as %s with effective sample size %s.", longitudinal_weight_type_label(result$weight_type), ess %||% "")
@@ -2349,7 +2475,7 @@ longitudinal_manuscript_text <- function(result) {
   missing_engine_sentence <- if (is.data.frame(result$missing_sensitivity_results) && nrow(result$missing_sensitivity_results) > 0) {
     fitted <- sum(result$missing_sensitivity_results$Status %in% "Fitted", na.rm = TRUE)
     failed <- sum(result$missing_sensitivity_results$Status %in% "Failed", na.rm = TRUE)
-    sprintf("Missing-data sensitivity engines were run for %s (%s fitted row(s), %s failed row(s)).", paste(result$missing_strategy_labels %||% character(0), collapse = ", "), fitted, failed)
+    sprintf("Missing-data sensitivity engines were run for %s (%s fitted row(s), %s failed row(s)); MI/IPW/WGEE outputs should be reported as sensitivity analyses unless the missing-data model is prespecified as primary.", paste(result$missing_strategy_labels %||% character(0), collapse = ", "), fitted, failed)
   } else {
     "No MI/IPW/WGEE missing-data sensitivity engine was selected."
   }
@@ -2404,18 +2530,26 @@ longitudinal_publication_notes <- function(result) {
   } else {
     "B is reported on the model scale."
   }
-  missing_note <- sprintf(
-    "Missing data were handled using %s; %s observation(s) were excluded because of missing selected analysis variables.",
-    result$missing_method_label %||% "complete-case analysis using row-wise complete observations",
-    result$missing_excluded %||% 0
-  )
+  missing_note <- if (result$model_type %in% c("lmm", "glmm") && identical(result$missing_method %||% "", "available")) {
+    sprintf(
+      "Missing data were handled using %s; %s model row(s) with missing selected variables were excluded, while subjects with other observed repeated measures remained in the likelihood.",
+      result$missing_method_label %||% "likelihood-based mixed-model analysis using available repeated measures under a MAR assumption",
+      result$missing_excluded %||% 0
+    )
+  } else {
+    sprintf(
+      "Missing data were handled using %s; %s observation(s) were excluded because of missing selected analysis variables.",
+      result$missing_method_label %||% "complete-case analysis using row-wise complete observations",
+      result$missing_excluded %||% 0
+    )
+  }
   weight_note <- if (!identical(result$weight_type %||% "none", "none")) {
     sprintf("Analysis weights: %s; %s.", longitudinal_weight_type_label(result$weight_type), result$weight_summary$Value[result$weight_summary$Item == "Final weight summary"] %||% "")
   } else {
     "No analysis weights were applied."
   }
   advanced_missing_note <- if (is.data.frame(result$missing_sensitivity_results) && nrow(result$missing_sensitivity_results) > 0) {
-    sprintf("Missing-data sensitivity engines were run: %s.", paste(unique(result$missing_sensitivity_results$Strategy), collapse = ", "))
+    sprintf("Missing-data sensitivity engines were run: %s. Interpret these as sensitivity analyses and report the imputation or weighting model assumptions.", paste(unique(result$missing_sensitivity_results$Strategy), collapse = ", "))
   } else {
     "Missing-data sensitivity analysis with MI/IPW/WGEE was not selected."
   }

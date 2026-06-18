@@ -150,18 +150,32 @@ Analysis 메뉴에서 분석 종류를 선택합니다.
 4. Run 버튼으로 분석을 실행합니다.
 5. 결과표, 경고, skipped analyses 또는 skipped models를 확인합니다.
 
+### Generalized Linear Model (GLM) 사용 절차
+
+독립 관측자료에서 연속형, 이분형, 양수 편향형, count outcome을 회귀분석할 때는 `Analysis > Generalized Linear Model (GLM)`을 사용합니다. 반복측정, 군집자료, 패널자료는 GLM이 아니라 `Longitudinal / Panel Models`에서 분석합니다.
+
+1. 왼쪽 `Variables` 목록에서 종속변수를 선택한 뒤 `Dependent variable`로 이동합니다. 종속변수는 하나만 지정합니다.
+2. 설명변수는 `Independent variables`로 이동합니다. 순서는 `Up`, `Down` 버튼으로 조정할 수 있습니다.
+3. rate 또는 person-time 분석처럼 노출량 보정이 필요하면 하나의 양수 변수를 `Exposure / offset`에 지정합니다.
+4. `Options > Model`에서 outcome family와 link function을 선택합니다. Auto를 선택하면 프로그램이 변수 유형과 값 구조로 Gaussian, Binary, Gamma, Count 후보를 판정합니다.
+5. Count outcome은 Poisson과 negative binomial을 따로 고르지 않고 `Count`로 선택합니다. 프로그램이 Poisson dispersion, zero screen, 가능한 AIC/BIC 정보를 확인해 Poisson 또는 negative binomial 결과를 보고합니다.
+6. `Options > Missing`에서 complete-case, MI, IPW 중 결측 처리 또는 결측 민감도 분석 방식을 선택합니다.
+7. `Options > Checks`에서 family/link, 잔차 또는 과분산, separation/sparse cell, 영향점, VIF 등 필요한 가정 검토를 선택합니다.
+8. `Run GLM`을 눌러 분석을 실행하고, 결과에서 decision summary, coefficient table, assumption checks, missing-data summary, software versions를 확인합니다.
+
 ### Longitudinal / Panel Models 사용 절차
 
 반복측정, 군집자료, 패널자료처럼 한 대상 또는 군집에서 여러 시점의 관측값이 있는 long-format 데이터는 `Analysis > Longitudinal / Panel Models`에서 분석합니다.
 
 1. Data 탭에서 Step 2 변수 선택을 적용합니다.
 2. 왼쪽 `Variables` 목록에서 변수를 선택한 뒤 `>` 버튼으로 `Model variables` 영역에 이동합니다.
-3. `Outcome`, `Subject / Cluster ID`, `Time variable`은 각각 하나씩만 지정합니다.
-4. 설명변수는 `Predictors`에 여러 개 지정할 수 있습니다.
+3. `Dependent variable`, `Subject ID`, `Cluster ID (optional)`, `Time variable`은 각각 하나씩만 지정합니다.
+4. 설명변수는 `Independent variables`에 여러 개 지정할 수 있습니다.
 5. `Options > Model`에서 분석기법을 선택합니다. GEE와 GLMM은 outcome family와 관련 옵션을 표시합니다. Count outcome은 Poisson과 negative binomial을 따로 고르지 않고 `Count: Poisson or negative binomial / log`로 선택하면, 프로그램이 과분산 screening 후 최종 family를 결정합니다. LMM / GLMM은 random slope 옵션을 `Terms` 탭에 표시합니다. Panel FE / RE는 패널모형에 필요한 옵션만 표시합니다.
-6. `Options > Checks`에서 가정 검토를 켜고, 선택한 분석기법에 맞는 세부 가정 항목을 선택합니다.
-7. `Run model`을 눌러 분석을 실행합니다.
-8. 결과에서 model overview, data structure, missing data, publication-ready estimates, assumption checks, recommended analysis, sensitivity analysis results, manuscript text, SCI reporting checklist를 확인합니다.
+6. `Options > Missing`에서 결측 처리 방식을 선택합니다. LMM / GLMM의 기본값은 `Likelihood-based MAR: available repeated measures`이며, 관측된 반복측정 행을 사용해 mixed-model likelihood를 적합합니다. 한 방문의 outcome 결측 때문에 대상자 전체를 제거하지는 않지만, 해당 모델 행의 outcome, 공변량, ID, time 결측은 대체하지 않습니다. 공변량 결측이나 dropout 메커니즘이 중요하면 MI 또는 IPW를 민감도 분석으로 추가합니다.
+7. `Options > Checks`에서 가정 검토를 켜고, 선택한 분석기법에 맞는 세부 가정 항목을 선택합니다.
+8. `Run model`을 눌러 분석을 실행합니다.
+9. 결과에서 model overview, data structure, missing data, publication-ready estimates, assumption checks, recommended analysis, sensitivity analysis results, manuscript text, SCI reporting checklist를 확인합니다.
 
 모형 선택은 연구 질문에 맞춰 결정합니다. GEE는 population-averaged effect, LMM / GLMM은 subject-specific effect, Panel FE는 within-unit change와 time-invariant confounding 통제, Panel RE는 unit effect가 predictors와 독립이라는 가정이 타당할 때 사용합니다.
 

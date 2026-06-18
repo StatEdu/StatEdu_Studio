@@ -40,7 +40,7 @@ required_fragments <- c(
   "logistic_available",
   "logistic_y",
   "logistic_block1",
-  "Dependent Variables (2)",
+  "Dependent variables (2)",
   "B, SE",
   "95% CI (LLCI, ULCI)",
   "McFadden R",

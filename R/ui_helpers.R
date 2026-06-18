@@ -145,7 +145,7 @@ enabled_analysis_tabs <- function() {
     regression = FALSE,
     hierarchical = TRUE,
     longitudinal = TRUE,
-    generalized = FALSE
+    generalized = TRUE
   )
 }
 

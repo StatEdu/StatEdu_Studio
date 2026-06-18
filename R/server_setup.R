@@ -1133,26 +1133,6 @@ register_setup_outputs <- function(
     )
   })
 
-  output$generalized_setup <- renderUI({
-    selected <- as.character(selected_names_fn() %||% character(0))
-    if (length(selected) == 0) {
-      return(setup_empty_message("Complete Step 2 in the Data tab before setting up generalized regression."))
-    }
-
-    setup <- generalized_setup_state(
-      ordered_dependents = sync_dependent_order_fn(update_input = FALSE),
-      ordered_predictors = sync_predictor_order_fn(update_input = FALSE),
-      available_predictors = predictor_candidates_fn(),
-      variable_table = regression_variable_table_fn(),
-      labels = var_label_overrides_fn()
-    )
-
-    generalized_setup_panel_from_state(
-      setup,
-      setup_status_message(selection_applied_fn(), roles_applied_fn())
-    )
-  })
-
   invisible(TRUE)
 }
 

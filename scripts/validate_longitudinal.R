@@ -139,8 +139,17 @@ glmm_count_results <- validate_model("glmm", outcome = "count_y", family = "coun
 gee_count_offset_results <- validate_model("gee", outcome = "count_y", family = "count", exposure = "person_time")
 validate_model("gee", outcome = "gamma_y", family = "gamma")
 validate_model("glmm", outcome = "gamma_y", family = "gamma")
-validate_model("panel_fe")
-validate_model("panel_re")
+panel_fe_results <- validate_model("panel_fe")
+panel_re_results <- validate_model("panel_re")
+
+if (!any(panel_fe_results[[1]]$sensitivity_results$Analysis %in% "Panel covariance sensitivity") ||
+    !any(grepl("Driscoll-Kraay SE", panel_fe_results[[1]]$sensitivity_results$Comparison, fixed = TRUE))) {
+  stop("Panel FE sensitivity results should include Driscoll-Kraay covariance screening.")
+}
+if (!any(panel_re_results[[1]]$sensitivity_results$Analysis %in% "Panel covariance sensitivity") ||
+    !any(grepl("Driscoll-Kraay SE", panel_re_results[[1]]$sensitivity_results$Comparison, fixed = TRUE))) {
+  stop("Panel RE sensitivity results should include Driscoll-Kraay covariance screening.")
+}
 
 if (!identical(gee_count_results[[1]]$requested_family, "count") || !gee_count_results[[1]]$family %in% c("poisson", "negative_binomial")) {
   stop("GEE count family should resolve to Poisson or negative binomial.")
@@ -150,6 +159,10 @@ if (!identical(glmm_count_results[[1]]$requested_family, "count") || !glmm_count
 }
 if (!is.data.frame(gee_count_results[[1]]$fit_details) || !"Poisson dispersion ratio" %in% gee_count_results[[1]]$fit_details$Item) {
   stop("Count family results should report Poisson dispersion screening.")
+}
+if (!"Selection rule" %in% gee_count_results[[1]]$fit_details$Item ||
+    !any(grepl("AIC/BIC are reported as supplementary", gee_count_results[[1]]$fit_details$Value, fixed = TRUE))) {
+  stop("Count family results should report dispersion-threshold selection and supplementary AIC/BIC interpretation.")
 }
 if (!"Zero-inflation ratio" %in% gee_count_results[[1]]$fit_details$Item) {
   stop("Count family results should report zero-inflation screening.")
@@ -176,11 +189,20 @@ if (!identical(auto_count_results[[1]]$requested_family, "count") || !auto_count
 
 publication_results <- validate_model("lmm")
 available_results <- validate_model("lmm", missing_method = "available", missing_strategies = c("mi", "ipw"))
-if (!identical(available_results[[1]]$missing_method, "available") || !grepl("MAR", available_results[[1]]$missing_method_label, fixed = TRUE)) {
-  stop("Expected available repeated-measures missing-data handling to be retained in results.")
+if (!identical(available_results[[1]]$missing_method, "available") ||
+    !grepl("available repeated measures", available_results[[1]]$missing_method_label, fixed = TRUE) ||
+    !grepl("MAR", available_results[[1]]$missing_method_label, fixed = TRUE)) {
+  stop("Expected likelihood-based mixed-model MAR missing-data handling to be retained in results.")
+}
+if (!any(grepl("subjects with other observed visits remained", available_results[[1]]$manuscript_text$SuggestedText, fixed = TRUE))) {
+  stop("Expected LMM/GLMM manuscript text to distinguish available repeated measures from subject-level complete-case deletion.")
 }
 if (!all(c("mi", "ipw") %in% available_results[[1]]$missing_strategies) || length(available_results[[1]]$missing_strategy_notes) != 2) {
   stop("Expected MI/IPW missing-data sensitivity strategy notes.")
+}
+if (!any(grepl("standard mice-based", available_results[[1]]$missing_strategy_notes, fixed = TRUE)) ||
+    !any(grepl("Positivity and weight stability", available_results[[1]]$missing_strategy_notes, fixed = TRUE))) {
+  stop("Expected SCI-oriented MI/IPW sensitivity limitations in missing-data notes.")
 }
 missing_engine_results <- validate_model("lmm", missing_method = "available", missing_strategies = c("mi", "ipw"), missing_imputations = 3L, missing_iterations = 3L, data_input = missing_data)
 missing_sensitivity <- missing_engine_results[[1]]$missing_sensitivity_results
@@ -189,6 +211,10 @@ if (!is.data.frame(missing_sensitivity) || nrow(missing_sensitivity) == 0 || !an
 }
 if (!any(missing_sensitivity$Status %in% "Fitted")) {
   stop("Expected at least one fitted missing-data sensitivity result.")
+}
+if (!any(grepl("not a dedicated multilevel MI engine", missing_sensitivity$Note, fixed = TRUE), na.rm = TRUE) ||
+    !any(grepl("positivity/weight stability", missing_sensitivity$Note, fixed = TRUE), na.rm = TRUE)) {
+  stop("Expected MI/IPW sensitivity result notes to describe multilevel-MI and positivity limitations.")
 }
 gee_missing_engine_results <- validate_model("gee", missing_method = "row_complete", missing_strategies = c("mi", "wgee"), data_input = missing_data)
 gee_missing_sensitivity <- gee_missing_engine_results[[1]]$missing_sensitivity_results
@@ -221,6 +247,14 @@ if (!identical(weighted_result$weight_type, "combined") || !"long_weight" %in% w
 }
 if (is.null(weighted_result$analysis_weights) || length(weighted_result$analysis_weights) != weighted_result$n || !all(is.finite(weighted_result$analysis_weights))) {
   stop("Expected final analysis weights for each analyzed row.")
+}
+if (!all(c(
+  "Predicted observation probability: min",
+  "Generated IPW summary",
+  "Generated IPW effective sample size",
+  "Weight clipping count"
+) %in% weighted_result$weight_summary$Item)) {
+  stop("Expected longitudinal IPW positivity and weight-stability diagnostics in the weight summary.")
 }
 if (!is.data.frame(weighted_result$missing_sensitivity_results) || !any(weighted_result$missing_sensitivity_results$Strategy %in% "Weighted GEE (WGEE)")) {
   stop("Expected weighted GEE sensitivity results with selected analysis weights.")
@@ -277,13 +311,14 @@ setup_state <- longitudinal_setup_state(
 )
 setup_html <- as.character(longitudinal_setup_panel(setup_state, setup_status_message(TRUE, TRUE)))
 if (!identical(setup_state$missing_method, "available")) {
-  stop("LMM setup should default missing-data handling to available observations under MAR.")
+  stop("LMM setup should default missing-data handling to available model rows under a MAR assumption.")
 }
 required_setup_fragments <- c(
   "longitudinal-setup-grid",
   "longitudinal-available-panel",
   "longitudinal-transfer-controls",
   "longitudinal-core-block",
+  "longitudinal-predictors-block",
   "longitudinal-options",
   "id=\"longitudinal_outcome\"",
   "id=\"longitudinal_id\"",
@@ -295,7 +330,10 @@ required_setup_fragments <- c(
   "id=\"longitudinal_cluster_move\"",
   "id=\"longitudinal_time_move\"",
   "id=\"longitudinal_predictors_move\"",
+  "Panel structure",
   "Model variables",
+  "Dependent variable",
+  "Independent variables",
   "Subject ID",
   "Cluster ID (optional)",
   "Checks for selected model",
@@ -501,8 +539,8 @@ missing_setup_html <- as.character(longitudinal_setup_panel(missing_setup_state,
 if (!grepl("id=\"longitudinal_missing_strategy\"", missing_setup_html, fixed = TRUE) || !grepl("Complete-case: row-wise", missing_setup_html, fixed = TRUE) || !grepl("Weighted GEE (WGEE)", missing_setup_html, fixed = TRUE)) {
   stop("Missing tab should show a single model-specific missing-data strategy selector.")
 }
-if (grepl("Likelihood available observations", missing_setup_html, fixed = TRUE)) {
-  stop("GEE missing-data selector should not offer likelihood-based MAR handling.")
+if (grepl("Likelihood-based MAR", missing_setup_html, fixed = TRUE)) {
+  stop("GEE missing-data selector should not offer mixed-model likelihood-based MAR handling.")
 }
 if (!grepl("Rubin", missing_setup_html, fixed = TRUE) || !grepl("id=\"longitudinal_missing_imputations\"", missing_setup_html, fixed = TRUE) || !grepl("id=\"longitudinal_missing_iterations\"", missing_setup_html, fixed = TRUE)) {
   stop("Missing tab should show selected MI explanation and MI settings.")
@@ -523,7 +561,9 @@ lmm_missing_setup_state <- longitudinal_setup_state(
   options_tab = "Missing"
 )
 lmm_missing_setup_html <- as.character(longitudinal_setup_panel(lmm_missing_setup_state, NULL))
-if (!grepl("Likelihood available observations", lmm_missing_setup_html, fixed = TRUE) || grepl("Weighted GEE (WGEE)", lmm_missing_setup_html, fixed = TRUE)) {
+if (!grepl("Likelihood-based MAR: available repeated measures", lmm_missing_setup_html, fixed = TRUE) ||
+    !grepl("A subject is not removed only because an outcome is missing at another visit", lmm_missing_setup_html, fixed = TRUE) ||
+    grepl("Weighted GEE (WGEE)", lmm_missing_setup_html, fixed = TRUE)) {
   stop("LMM missing-data selector should offer likelihood MAR handling but not WGEE.")
 }
 
@@ -539,7 +579,7 @@ panel_missing_setup_state <- longitudinal_setup_state(
   options_tab = "Missing"
 )
 panel_missing_setup_html <- as.character(longitudinal_setup_panel(panel_missing_setup_state, NULL))
-if (grepl("Likelihood available observations", panel_missing_setup_html, fixed = TRUE) || grepl("Weighted GEE (WGEE)", panel_missing_setup_html, fixed = TRUE)) {
+if (grepl("Likelihood-based MAR", panel_missing_setup_html, fixed = TRUE) || grepl("Weighted GEE (WGEE)", panel_missing_setup_html, fixed = TRUE)) {
   stop("Panel missing-data selector should not offer likelihood MAR handling or WGEE.")
 }
 

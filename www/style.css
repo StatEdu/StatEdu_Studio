@@ -4417,15 +4417,6 @@ input.variable-select:disabled {
   color: #ffffff;
 }
 
-.generalized-options {
-  min-width: 330px;
-}
-
-.generalized-option-field .form-group,
-.generalized-option-field select {
-  width: 100%;
-}
-
 .penalized-coefficients {
   margin-top: 12px;
 }
@@ -6591,15 +6582,22 @@ pre {
   margin-bottom: 28px;
 }
 
+.longitudinal-action-row {
+  grid-template-columns: 326px 50px 280px 280px 340px !important;
+  width: 1384px !important;
+  min-width: 1384px !important;
+  max-width: 1384px !important;
+}
+
 .longitudinal-setup-grid {
   display: grid;
-  grid-template-columns: 326px 50px 326px 20px 340px !important;
+  grid-template-columns: 326px 50px 280px 280px 340px !important;
   gap: 18px !important;
   align-items: start;
   margin-top: 18px;
-  width: 1170px !important;
-  min-width: 1170px !important;
-  max-width: 1170px !important;
+  width: 1384px !important;
+  min-width: 1384px !important;
+  max-width: 1384px !important;
   padding: 18px;
   background: #f4f8fb;
   border: 1px solid #e1eaf2;
@@ -6629,8 +6627,16 @@ pre {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  width: 326px !important;
+  width: 280px !important;
   padding-top: 14px;
+}
+
+.longitudinal-core-block {
+  grid-column: 3;
+}
+
+.longitudinal-predictors-block {
+  grid-column: 4;
 }
 
 .longitudinal-block-title {
@@ -6640,7 +6646,7 @@ pre {
 .longitudinal-target-fields {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .longitudinal-transfer-controls {
@@ -6673,7 +6679,11 @@ pre {
 }
 
 .longitudinal-transfer-controls .analysis-move-button:nth-child(5) {
-  top: 410px;
+  top: 337px;
+}
+
+.longitudinal-transfer-controls .analysis-move-button:nth-child(6) {
+  top: 390px;
 }
 
 .longitudinal-target-field {
@@ -6712,6 +6722,7 @@ pre {
 .longitudinal-id-field .analysis-transfer-listbox,
 .longitudinal-cluster-field .analysis-transfer-listbox,
 .longitudinal-time-field .analysis-transfer-listbox,
+.longitudinal-exposure-field .analysis-transfer-listbox,
 .longitudinal-weight-field .analysis-transfer-listbox {
   height: 34px !important;
   min-height: 34px !important;
@@ -6720,9 +6731,9 @@ pre {
 }
 
 .longitudinal-predictors-field .analysis-transfer-listbox {
-  height: 124px !important;
-  min-height: 124px !important;
-  max-height: 124px !important;
+  height: 370px !important;
+  min-height: 370px !important;
+  max-height: 370px !important;
 }
 
 .longitudinal-options.analysis-options-panel {
@@ -6731,6 +6742,246 @@ pre {
   flex-direction: column;
   gap: 10px;
   width: 340px;
+}
+
+.generalized-workspace-panel {
+  width: 1140px;
+  min-width: 1140px;
+  max-width: 1140px;
+  overflow-x: auto;
+}
+
+.generalized-setup-grid {
+  display: grid;
+  grid-template-columns: 326px 50px 326px 20px 310px !important;
+  gap: 18px !important;
+  align-items: start;
+  width: 1140px !important;
+  min-width: 1140px !important;
+  max-width: 1140px !important;
+}
+
+.generalized-setup-grid > .regression-available-panel,
+.generalized-setup-grid > .regression-target-column,
+.generalized-setup-grid > .generalized-options.analysis-options-panel {
+  height: 520px !important;
+  min-height: 520px !important;
+  box-sizing: border-box;
+}
+
+.generalized-setup-grid > .regression-target-column {
+  grid-column: 3;
+  display: block;
+  height: 520px !important;
+  min-height: 520px !important;
+}
+
+.generalized-setup-grid > .generalized-options.analysis-options-panel {
+  grid-column: 5 !important;
+  grid-row: 1 !important;
+  margin-left: 0 !important;
+  padding-top: 14px !important;
+  gap: 6px !important;
+  height: 520px !important;
+  min-height: 520px !important;
+  max-height: 520px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden;
+}
+
+.generalized-model-block {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 520px !important;
+  min-height: 520px !important;
+  padding-top: 14px;
+}
+
+.generalized-model-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.generalized-predictors-field {
+  margin-top: 16px;
+}
+
+.generalized-model-block .analysis-transfer-listbox {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.generalized-outcome-field .analysis-transfer-listbox,
+.generalized-exposure-field .analysis-transfer-listbox {
+  height: 34px !important;
+  min-height: 34px !important;
+  max-height: 34px !important;
+  overflow-y: hidden !important;
+}
+
+.generalized-predictors-field .analysis-transfer-listbox {
+  height: 224px !important;
+  min-height: 224px !important;
+  max-height: 224px !important;
+}
+
+.generalized-model-block .analysis-field-label {
+  margin-bottom: 7px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.generalized-model-block .analysis-field-label > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.generalized-transfer-controls {
+  position: relative;
+  height: 520px;
+  box-sizing: border-box;
+  transform: translateX(6px);
+}
+
+.generalized-transfer-controls .analysis-move-button {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.generalized-transfer-controls .analysis-move-button:nth-child(1) {
+  top: 84px;
+}
+
+.generalized-transfer-controls .analysis-move-button:nth-child(2) {
+  top: 176px;
+}
+
+.generalized-transfer-controls .analysis-move-button:nth-child(3) {
+  top: 326px;
+}
+
+.generalized-options .analysis-option-title {
+  margin-top: 0;
+  margin-bottom: 6px;
+}
+
+.generalized-options .nav-tabs {
+  border-bottom: 1px solid #bcd7ef;
+  margin-bottom: 14px;
+}
+
+.generalized-options .nav-tabs > li > a {
+  padding: 8px 13px;
+  font-size: 13px;
+}
+
+.generalized-options-tab-content {
+  padding: 8px 4px 0 0;
+}
+
+.generalized-options .generalized-reporting-title {
+  margin-top: 8px;
+}
+
+.generalized-options .generalized-section-title {
+  margin-top: 8px;
+}
+
+.generalized-options .form-group,
+.generalized-options .selectize-control,
+.generalized-options .form-control,
+.generalized-options select {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+.generalized-options .form-group {
+  margin-bottom: 7px;
+}
+
+.generalized-options .checkbox {
+  margin: 5px 0 5px 18px;
+  font-size: 14px;
+}
+
+.generalized-options .checkbox label {
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.generalized-help-text {
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.35;
+  margin: -2px 0 2px 18px;
+}
+
+.generalized-missing-detail {
+  margin-left: 0;
+  margin-bottom: 14px;
+}
+
+.generalized-mi-settings {
+  margin-top: 12px;
+}
+
+.generalized-mi-settings .form-group {
+  margin-bottom: 8px;
+}
+
+.generalized-check-options {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.generalized-check-options .checkbox {
+  margin-left: 34px;
+}
+
+.generalized-check-options-disabled {
+  color: #94a3b8;
+}
+
+.generalized-action-row {
+  display: grid !important;
+  grid-template-columns: 326px 50px 326px 20px 310px !important;
+  gap: 18px !important;
+  width: 1140px !important;
+  min-width: 1140px !important;
+  max-width: 1140px !important;
+  margin-top: 18px !important;
+  align-items: start;
+}
+
+.generalized-action-row > #run_generalized {
+  grid-column: 1;
+  width: 300px;
+  min-width: 300px;
+  margin-left: 30px;
+  justify-self: start;
+}
+
+.generalized-action-row > #generalized_reset_control {
+  grid-column: 3;
+  width: 300px;
+  min-width: 300px;
+  margin-left: 30px;
+  justify-self: start;
+}
+
+.generalized-action-row > #generalized_reset_control .analysis-reset-button {
+  width: 300px;
+  min-width: 300px;
 }
 
 .longitudinal-options .nav-tabs > li > a {
@@ -7897,6 +8148,9 @@ pre {
   .hierarchical-action-row,
   .regression-action-row,
   .logistic-action-row,
+  .generalized-workspace-panel,
+  .generalized-setup-grid,
+  .generalized-action-row,
   #likert_groups,
   #likert_groups_wrapper,
   .likert-custom-dictionary,
@@ -7922,7 +8176,8 @@ pre {
   .correlation-action-row,
   .hierarchical-action-row,
   .regression-action-row,
-  .logistic-action-row {
+  .logistic-action-row,
+  .generalized-action-row {
     grid-template-columns: 304px 44px 304px 16px 286px !important;
     gap: 16px !important;
   }

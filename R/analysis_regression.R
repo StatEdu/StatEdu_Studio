@@ -154,7 +154,7 @@ regression_guard_row <- function(dependent, predictors, reason, n = NA_integer_,
   data.frame(
     Type = type,
     `Dependent variable` = display_variable_name_static(dependent, variable_info, labels, label_only = TRUE),
-    Predictors = paste(vapply(predictors, display_variable_name_static, character(1), table = variable_info, labels = labels, label_only = TRUE), collapse = ", "),
+    `Independent variables` = paste(vapply(predictors, display_variable_name_static, character(1), table = variable_info, labels = labels, label_only = TRUE), collapse = ", "),
     N = if (is.na(n)) "" else as.character(n),
     Message = reason,
     stringsAsFactors = FALSE,

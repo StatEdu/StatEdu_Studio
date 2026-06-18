@@ -1,38 +1,4 @@
-required_packages <- c(
-  "shiny",
-  "DT",
-  "lmtest",
-  "sandwich",
-  "nortest",
-  "boot",
-  "jsonlite",
-  "haven",
-  "readr",
-  "readxl",
-  "cellranger",
-  "htmltools",
-  "markdown",
-  "openxlsx",
-  "officer",
-  "flextable",
-  "xml2",
-  "rvest",
-  "callr",
-  "glmnet",
-  "agricolae",
-  "psych",
-  "polycor",
-  "longpower",
-  "WebPower",
-  "TOSTER",
-  "MASS",
-  "nnet",
-  "geepack",
-  "mice",
-  "lme4",
-  "lmerTest",
-  "plm"
-)
+source(file.path("R", "app_bootstrap.R"), local = TRUE)
 
 no_package_install <- identical(tolower(Sys.getenv("EASYFLOW_NO_PACKAGE_INSTALL", "false")), "true")
 missing_packages <- character(0)

@@ -123,7 +123,7 @@ analysis_guard_row <- function(type, target, predictors = "", n = NA_integer_, m
   data.frame(
     Type = as.character(type %||% ""),
     Target = as.character(target %||% ""),
-    Predictors = as.character(predictors %||% ""),
+    `Independent variables` = as.character(predictors %||% ""),
     N = if (is.na(n)) "" else as.character(n),
     Message = as.character(message %||% ""),
     stringsAsFactors = FALSE,

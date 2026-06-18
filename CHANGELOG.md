@@ -10,8 +10,13 @@
 - Added longitudinal analysis weights with a single weight-variable target, sampling/longitudinal/IPW/combined weight types, trimming, normalized final weights, and effective sample size reporting.
 - Added optional exposure / offset handling for longitudinal count/rate models, including `log(exposure)` offsets in primary and sensitivity fits.
 - Added count-model zero-inflation screening details comparing observed and Poisson-expected zero proportions.
+- Added an active `Analysis > GLM` workflow for Gaussian, binary logistic, Gamma, and count GLMs, reusing the GEE count-family screening approach for Poisson vs negative-binomial model selection.
+- Added GLM SCI-oriented reporting details for complete-case missing-data handling, count-family Poisson/negative-binomial selection, logistic EPV/separation/sparse-cell screening, independent-observation review, influence diagnostics, publication table notes, reporting checklists, and suggested manuscript text.
+- Added tabbed GLM options with a Missing tab for complete-case, multiple imputation, and inverse-probability weighted missing-data handling.
+- Added GLM documentation in the Korean User Guide, Analysis Methods, and Method Notes covering family/link selection, missing-data sensitivity, robust SE options, count overdispersion, and SCI reporting expectations.
+- Added HTML, PDF, Excel, and saved Result collection support for GLM outputs, including publication notes, SCI checklists, manuscript text, and software-version sheets.
 - Added HTML, PDF, Excel, and saved Result collection support for longitudinal / panel model outputs.
-- Added validation coverage for longitudinal / panel model fitting, setup UI structure, assumption-check catalogs, HTML export, Excel export, sensitivity comparisons, and SCI reporting sections.
+- Added validation coverage for longitudinal / panel model fitting, GLM fitting, setup UI structure, assumption-check catalogs, HTML export, Excel export, sensitivity comparisons, and SCI reporting sections.
 
 ### Changed
 
@@ -20,8 +25,13 @@
 - Changed the default GEE working correlation to exchangeable, while AR(1) fits now pass subject/time wave ordering to `geepack::geeglm`.
 - Relabeled negative-binomial count fits for GEE as marginal negative-binomial GLM with subject-cluster robust SE because geepack does not provide native negative-binomial GEE.
 - Clarified that the optional Cluster ID is used as an additional random-intercept grouping variable for LMM/GLMM and is not applied to the selected GEE/panel primary fit.
+- Clarified LMM/GLMM missing-data handling as likelihood-based MAR analysis using available repeated measures, with MI/IPW kept as sensitivity analyses rather than the default primary fit.
 - Kept zero-inflated and hurdle count models out of the default longitudinal / panel module to avoid adding heavy optional package dependencies; excess-zero findings are reported as screening guidance.
-- Updated README, Korean User Guide, Analysis Methods, and Method Notes documentation for the new longitudinal / panel workflow.
+- Replaced the old Generalized scaffold with the working GLM setup, run handler, coefficient table, fit statistics, robust SE option, overdispersion check, and optional VIF diagnostics.
+- Aligned `run_app.R` with `R/app_bootstrap.R` so launcher-time package installation uses the same required-package list as the app runtime.
+- Updated the Electron runtime pin to 39.8.6 and refreshed the lockfile after package-audit review.
+- Hardened the Electron beta build script so it can locate Rscript outside PATH and does not fail on the optional latent Mplus module excluded from the packaged app.
+- Updated README, Korean User Guide, Analysis Methods, and Method Notes documentation for the new longitudinal / panel and GLM workflows.
 
 ## v0.9.38 - 2026-06-15
 

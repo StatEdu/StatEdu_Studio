@@ -104,7 +104,7 @@ analysis_tab_panel <- function(analysis_tabs = enabled_analysis_tabs()) {
     if (isTRUE(analysis_tabs[["reliability"]])) lazy_tab_panel("Reliability", "Reliability", "lazy_analysis_reliability"),
     if (isTRUE(analysis_tabs[["hierarchical"]])) lazy_tab_panel("Regression", "Regression", "lazy_analysis_hierarchical"),
     if (isTRUE(analysis_tabs[["longitudinal"]])) lazy_tab_panel("Longitudinal / Panel Models", "Longitudinal / Panel Models", "lazy_analysis_longitudinal"),
-    if (isTRUE(analysis_tabs[["generalized"]])) lazy_tab_panel("Generalized", "Generalized", "lazy_analysis_generalized"),
+    if (isTRUE(analysis_tabs[["generalized"]])) lazy_tab_panel("GLM", "Generalized Linear Model (GLM)", "lazy_analysis_generalized"),
     lazy_tab_panel("Logistic Regression", "analysis_logistic_regression", "lazy_analysis_logistic")
   )
 }

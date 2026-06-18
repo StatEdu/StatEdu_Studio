@@ -450,17 +450,8 @@ longitudinal_setup_panel <- function(state, status_message = NULL) {
         longitudinal_move_button("longitudinal_predictors_move", state$move_disabled && length(state$predictors) == 0)
       ),
       longitudinal_target_block(
-        "Model variables",
+        "Panel structure",
         block_class = "longitudinal-core-block",
-        longitudinal_target_field(
-          "longitudinal_outcome",
-          title = "Outcome",
-          items = state$outcome_items,
-          selected = state$outcome_selected,
-          size = 1,
-          allowed_measurements = analysis_allowed_measurements_all(),
-          field_class = "longitudinal-outcome-field"
-        ),
         longitudinal_target_field(
           "longitudinal_id",
           title = "Subject ID",
@@ -496,10 +487,23 @@ longitudinal_setup_panel <- function(state, status_message = NULL) {
           size = 1,
           allowed_measurements = c("continuous"),
           field_class = "longitudinal-exposure-field"
+        )
+      ),
+      longitudinal_target_block(
+        "Model variables",
+        block_class = "longitudinal-predictors-block",
+        longitudinal_target_field(
+          "longitudinal_outcome",
+          title = "Dependent variable",
+          items = state$outcome_items,
+          selected = state$outcome_selected,
+          size = 1,
+          allowed_measurements = analysis_allowed_measurements_all(),
+          field_class = "longitudinal-outcome-field"
         ),
         longitudinal_target_field(
           "longitudinal_predictors",
-          title = sprintf("Predictors (%s)", length(state$predictors)),
+          title = sprintf("Independent variables (%s)", length(state$predictors)),
           items = state$predictor_items,
           selected = state$predictor_selected,
           size = 13,
