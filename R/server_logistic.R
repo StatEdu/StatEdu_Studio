@@ -22,6 +22,10 @@ register_logistic_handlers <- function(
   logistic_split_ci <- reactiveVal(FALSE)
   logistic_results <- reactiveVal(NULL)
 
+  logistic_output_split_ci <- function() {
+    !isTRUE(logistic_split_ci())
+  }
+
   normalize_selected <- function(values) {
     intersect(as.character(values %||% character(0)), as.character(selected_names_fn() %||% character(0)))
   }
@@ -153,7 +157,7 @@ register_logistic_handlers <- function(
       show_se = logistic_show_b_se(),
       show_mcfadden = logistic_show_extra_r2(),
       show_cox_snell = logistic_show_extra_r2(),
-      split_ci = logistic_split_ci()
+      split_ci = logistic_output_split_ci()
     )
   })
 
@@ -167,7 +171,7 @@ register_logistic_handlers <- function(
       show_se = logistic_show_b_se(),
       show_mcfadden = logistic_show_extra_r2(),
       show_cox_snell = logistic_show_extra_r2(),
-      split_ci = logistic_split_ci()
+      split_ci = logistic_output_split_ci()
     )
   }
 

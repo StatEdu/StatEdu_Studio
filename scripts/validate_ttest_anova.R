@@ -69,6 +69,75 @@ df_result <- prepare_ttest_anova_results(
   options = list(effect_size = TRUE, normality_enabled = FALSE, show_df = TRUE)
 )
 expect_true(grepl("\\([0-9.]+,[0-9.]+\\)", df_result$results[[1]]$table[[5]][[3]], perl = TRUE), "Expected enabled ANOVA F statistic to include df1 and df2")
+expect_true(isTRUE(attr(df_result$results[[1]]$table, "show_df", exact = TRUE)), "Expected show-df result tables to retain display metadata")
+df_result_html <- as.character(tags_to_html(ttest_anova_results_ui(df_result)))
+expect_true(grepl("coefficient-table-show-df", df_result_html, fixed = TRUE), "Expected show-df result tables to render with a dedicated CSS class")
+expect_true(grepl("coefficient-col-statistic", df_result_html, fixed = TRUE), "Expected show-df statistic cells to render with a dedicated statistic column class")
+expect_true(grepl("width:144px !important;min-width:144px !important;max-width:144px !important;", df_result_html, fixed = TRUE), "Expected show-df statistic cells to carry a wide inline width")
+expect_true(grepl("padding-left:12px !important;", df_result_html, fixed = TRUE), "Expected show-df p cells to carry separation padding")
+expect_true(!grepl("coefficient-table-show-df", as.character(tags_to_html(ttest_anova_results_ui(result))), fixed = TRUE), "Expected ordinary result tables not to use show-df CSS class")
+mean_sd_df_result <- prepare_ttest_anova_results(
+  data,
+  dependents = "y",
+  factors = c("g2", "g3"),
+  variable_info = variable_info,
+  options = list(effect_size = TRUE, normality_enabled = FALSE, mean_sd = TRUE, show_df = TRUE)
+)
+mean_sd_df_html <- as.character(tags_to_html(ttest_anova_results_ui(mean_sd_df_result)))
+expect_true(isTRUE(attr(mean_sd_df_result$results[[1]]$table, "mean_sd", exact = TRUE)), "Expected mean-SD result tables to retain display metadata")
+expect_true(grepl("coefficient-table-mean-sd", mean_sd_df_html, fixed = TRUE), "Expected mean-SD result tables to render with a dedicated CSS class")
+expect_true(grepl("width:112px !important;min-width:112px !important;max-width:112px !important;", mean_sd_df_html, fixed = TRUE), "Expected mean-SD show-df statistic cells to keep their inline width")
+trend_candidate_data <- data.frame(
+  y = c(1.2, 1.4, 1.5, 1.6, 1.7, 2.4, 2.5, 2.7, 2.8, 2.9, 3.4, 3.6, 3.7, 3.8, 3.9),
+  nominal_group = rep(c("A", "B", "C"), each = 5),
+  ordered_group = rep(c("low", "middle", "high"), each = 5),
+  stringsAsFactors = FALSE
+)
+trend_candidate_info <- data.frame(
+  name = c("y", "nominal_group", "ordered_group"),
+  measurement = c("continuous", "category", "ordered"),
+  stringsAsFactors = FALSE
+)
+nominal_trend_result <- prepare_ttest_anova_results(
+  trend_candidate_data,
+  dependents = "y",
+  factors = "nominal_group",
+  variable_info = trend_candidate_info,
+  options = list(effect_size = TRUE, normality_enabled = FALSE, show_df = TRUE, trend_analysis = TRUE)
+)
+nominal_trend_table <- nominal_trend_result$results[[1]]$table
+nominal_trend_html <- as.character(tags_to_html(ttest_anova_results_ui(nominal_trend_result)))
+expect_true(!("p for trend" %in% names(nominal_trend_table)), "Expected trend option not to add a trend column without an ordered independent variable")
+expect_true(!grepl("trend analysis", nominal_trend_result$results[[1]]$note, fixed = TRUE), "Expected trend option not to add a trend note without an ordered independent variable")
+expect_true(!grepl("coefficient-table-trend-analysis", nominal_trend_html, fixed = TRUE), "Expected non-ordered trend option not to use trend table spacing")
+ordered_trend_result <- prepare_ttest_anova_results(
+  trend_candidate_data,
+  dependents = "y",
+  factors = "ordered_group",
+  variable_info = trend_candidate_info,
+  options = list(effect_size = TRUE, normality_enabled = FALSE, show_df = TRUE, mean_sd = TRUE, trend_analysis = TRUE)
+)
+ordered_trend_table <- ordered_trend_result$results[[1]]$table
+ordered_trend_html <- as.character(tags_to_html(ttest_anova_results_ui(ordered_trend_result)))
+expect_true("p for trend" %in% names(ordered_trend_table), "Expected ordered independent variable to keep the trend column")
+expect_true(isTRUE(attr(ordered_trend_table, "trend_analysis", exact = TRUE)), "Expected ordered trend result tables to retain display metadata")
+expect_true(grepl("coefficient-table-trend-analysis", ordered_trend_html, fixed = TRUE), "Expected ordered trend result tables to render with a dedicated CSS class")
+expect_true(grepl("width:100% !important;min-width:0 !important;max-width:100% !important;table-layout:fixed;", ordered_trend_html, fixed = TRUE), "Expected ordered trend result tables to fit inside the result panel")
+expect_true(grepl("coefficient-col-p-trend", ordered_trend_html, fixed = TRUE), "Expected p for trend cells to render with a dedicated column class")
+expect_true(grepl("width:116px !important;min-width:116px !important;max-width:116px !important;", ordered_trend_html, fixed = TRUE), "Expected mean-SD trend column to use the adjusted inline width")
+expect_true(grepl("width:144px !important;min-width:144px !important;max-width:144px !important;", ordered_trend_html, fixed = TRUE), "Expected mean-SD show-df trend statistic cells to use the adjusted inline width")
+ordered_trend_df_result <- prepare_ttest_anova_results(
+  trend_candidate_data,
+  dependents = "y",
+  factors = "ordered_group",
+  variable_info = trend_candidate_info,
+  options = list(effect_size = TRUE, normality_enabled = FALSE, show_df = TRUE, trend_analysis = TRUE)
+)
+ordered_trend_df_html <- as.character(tags_to_html(ttest_anova_results_ui(ordered_trend_df_result)))
+expect_true(grepl("width:82px !important;min-width:82px !important;max-width:82px !important;", ordered_trend_df_html, fixed = TRUE), "Expected show-df trend variable cells to use the compact inline width")
+expect_true(grepl("width:104px !important;min-width:104px !important;max-width:104px !important;", ordered_trend_df_html, fixed = TRUE), "Expected show-df trend value cells to use the compact inline width")
+expect_true(grepl("width:158px !important;min-width:158px !important;max-width:158px !important;", ordered_trend_df_html, fixed = TRUE), "Expected show-df trend statistic cells to use the adjusted inline width")
+expect_true(grepl("width:86px !important;min-width:86px !important;max-width:86px !important;", ordered_trend_df_html, fixed = TRUE), "Expected show-df trend p-for-trend cells to use the compact inline width")
 mean_sd_result <- prepare_ttest_anova_results(
   data,
   dependents = "y",
@@ -81,6 +150,56 @@ expect_true(!("M" %in% names(mean_sd_result$results[[1]]$table)), "Expected mean
 expect_true(!("SD" %in% names(mean_sd_result$results[[1]]$table)), "Expected mean-SD display to omit separate SD column")
 expect_true(grepl("\u00B1", mean_sd_result$results[[1]]$table[["M \u00B1 SD"]][[1]], fixed = TRUE), "Expected M plus/minus SD value")
 expect_true(grepl("M \u00B1 SD = mean \u00B1 standard deviation.", mean_sd_result$results[[1]]$note, fixed = TRUE), "Expected mean-SD note")
+
+message("Checking t-test / ANOVA model overview orientation...")
+overview_layout_data <- data.frame(
+  group = rep(c("A", "B"), each = 20),
+  y1 = c(1:20, 2:21),
+  y2 = c(2:21, 3:22),
+  y3 = c(3:22, 4:23),
+  y4 = c(4:23, 5:24),
+  y5 = c(5:24, 6:25),
+  stringsAsFactors = FALSE
+)
+overview_layout_info <- data.frame(
+  name = c("group", paste0("y", 1:5)),
+  measurement = c("binary", rep("continuous", 5)),
+  stringsAsFactors = FALSE
+)
+overview_4 <- prepare_ttest_anova_results(
+  overview_layout_data,
+  dependents = paste0("y", 1:4),
+  factors = "group",
+  variable_info = overview_layout_info,
+  options = list(effect_size = TRUE, normality_enabled = FALSE)
+)
+overview_4_table <- ttest_result_overview_tables(overview_4)$overview
+overview_4_assumption <- ttest_result_overview_tables(overview_4)$assumption_review
+overview_4_html <- as.character(tags_to_html(ttest_anova_results_ui(overview_4)))
+expect_true(identical(attr(overview_4_table, "dependent_count", exact = TRUE), 4L), "Expected four-variable overview to retain dependent count")
+expect_true(identical(attr(overview_4_assumption, "dependent_count", exact = TRUE), 4L), "Expected four-variable assumption review to retain dependent count")
+expect_true(grepl("width:100%", as.character(tags_to_html(model_overview_html_table(overview_4_table))), fixed = TRUE), "Expected overview table to fill its current container")
+expect_true(!grepl("ttest-anova-overview-panel landscape-table-panel", overview_4_html, fixed = TRUE), "Expected four-variable overview to stay portrait")
+expect_true(!grepl("ttest-anova-assumption-review-panel landscape-table-panel", overview_4_html, fixed = TRUE), "Expected four-variable assumption review to stay portrait")
+
+overview_5 <- prepare_ttest_anova_results(
+  overview_layout_data,
+  dependents = paste0("y", 1:5),
+  factors = "group",
+  variable_info = overview_layout_info,
+  options = list(effect_size = TRUE, normality_enabled = FALSE)
+)
+overview_5_table <- ttest_result_overview_tables(overview_5)$overview
+overview_5_assumption <- ttest_result_overview_tables(overview_5)$assumption_review
+overview_5_html <- as.character(tags_to_html(ttest_anova_results_ui(overview_5)))
+overview_5_saved <- as.character(saved_ttest_anova_results_html(overview_5, report_mode = TRUE))
+expect_true(identical(attr(overview_5_table, "dependent_count", exact = TRUE), 5L), "Expected five-variable overview to retain dependent count")
+expect_true(identical(attr(overview_5_assumption, "dependent_count", exact = TRUE), 5L), "Expected five-variable assumption review to retain dependent count")
+expect_true(grepl("width:100%", as.character(tags_to_html(model_overview_html_table(overview_5_table))), fixed = TRUE), "Expected five-variable overview table to fill its current container")
+expect_true(grepl("ttest-anova-overview-panel landscape-table-panel", overview_5_html, fixed = TRUE), "Expected five-variable overview panel to use landscape class")
+expect_true(grepl("ttest-anova-assumption-review-panel landscape-table-panel", overview_5_html, fixed = TRUE), "Expected five-variable assumption review panel to use landscape class")
+expect_true(grepl("print-mixed-landscape", overview_5_saved, fixed = TRUE), "Expected saved five-variable t-test / ANOVA report to enable mixed landscape print mode")
+
 expect_true(is.data.frame(table_markers), "Expected numbered note metadata")
 expect_true(any(table_markers$row == 1L & table_markers$column == "Effect size"), "Expected first effect-size value to include a numbered marker")
 expect_true(!any(table_markers$row == 3L & table_markers$column == "p"), "Expected single Welch ANOVA method note to omit a p-value marker")
@@ -88,8 +207,8 @@ expect_true(any(table_markers$row == 3L & table_markers$column == "Effect size")
 expect_true(grepl("1\\. ES = effect size \\(Hedges' g\\)\\.", note), "Expected numbered Hedges' g note")
 expect_true(grepl("Welch test was used because homogeneity of variance was not satisfied\\.", note), "Expected unnumbered Welch note")
 expect_true(grepl("2\\. ES = effect size \\(omega squared\\)\\.", note), "Expected numbered omega squared note")
-expect_true(regexpr("Welch test", note, fixed = TRUE) < regexpr("Post-hoc:", note, fixed = TRUE), "Expected analysis-method notes before post-hoc notes")
-expect_true(regexpr("Post-hoc:", note, fixed = TRUE) < regexpr("ES = effect size", note, fixed = TRUE), "Expected post-hoc notes before effect-size notes")
+expect_true(regexpr("1. ES = effect size", note, fixed = TRUE) < regexpr("Post-hoc:", note, fixed = TRUE), "Expected numbered note markers before post-hoc notes")
+expect_true(regexpr("2. ES = effect size", note, fixed = TRUE) < regexpr("Post-hoc:", note, fixed = TRUE), "Expected all numbered note markers before post-hoc notes")
 
 html <- as.character(tags_to_html(ttest_anova_results_ui(result)))
 expect_true(!grepl('class="coefficient-col-note-marker"', html, fixed = TRUE), "Expected footnote markers to render inline without a narrow marker column")
@@ -251,6 +370,10 @@ expect_true(
     all(ordered_marker_rows$column == "Value") &&
     identical(ordered_marker_rows$marker[order(ordered_marker_rows$row)], c("a", "b", "c")),
   "Expected ordered post-hoc markers to be attached to Value cells in displayed value order"
+)
+expect_true(
+  identical(as.character(ordered_marker_table[["post-hoc"]][1:2]), c("c>a,b", "b>a")),
+  "Expected multi-line ordered post-hoc notation to use subsequent table rows instead of line breaks in one cell"
 )
 ordered_marker_html <- as.character(tags_to_html(ttest_anova_results_ui(ordered_marker_result)))
 expect_true(

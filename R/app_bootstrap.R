@@ -30,7 +30,12 @@ required_packages <- c(
   "WebPower",
   "TOSTER",
   "MASS",
-  "nnet"
+  "nnet",
+  "geepack",
+  "lme4",
+  "lmerTest",
+  "plm",
+  "mice"
 )
 
 startup_packages <- c("shiny", "DT")
@@ -82,6 +87,8 @@ app_module_files <- c(
   "analysis_ancova.R",
   "analysis_regression.R",
   "analysis_logistic.R",
+  "analysis_generalized.R",
+  "analysis_longitudinal.R",
   "sample_size.R",
   "sample_size_ui.R",
   "data_editor_recode.R",
@@ -110,6 +117,8 @@ app_module_files <- c(
   "server_frequencies.R",
   "server_crosstabs.R",
   "server_logistic.R",
+  "server_generalized.R",
+  "server_longitudinal.R",
   "server_paired.R",
   "server_paired_rm.R",
   "server_ttest_anova.R",
@@ -148,6 +157,7 @@ app_module_files <- c(
   "setup_regression_ui.R",
   "setup_hierarchical_ui.R",
   "setup_logistic_ui.R",
+  "setup_longitudinal_ui.R",
   "setup_generalized_ui.R",
   "result_table_ui.R",
   "result_penalized_ui.R",
@@ -156,6 +166,8 @@ app_module_files <- c(
   "result_frequencies_ui.R",
   "result_crosstabs_ui.R",
   "result_logistic_ui.R",
+  "result_longitudinal_ui.R",
+  "result_generalized_ui.R",
   "result_paired_ui.R",
   "result_paired_rm_ui.R",
   "result_nonparametric_paired_ui.R",
@@ -172,9 +184,22 @@ app_module_files <- c(
   "app_server.R"
 )
 
+latent_mplus_enabled <- function() FALSE
+latent_mplus_head_tags <- function(version) NULL
+latent_menu_tab <- function() NULL
+register_latent_mplus_server <- function(...) invisible(FALSE)
+
+optional_app_module_files <- c(
+  latent_mplus = "latent_mplus_module.R"
+)
+
 source_app_modules <- function(files = app_module_files, dir = "R") {
   for (file in files) {
     source(file.path(dir, file), local = FALSE)
+  }
+  latent_module_file <- file.path(dir, optional_app_module_files[["latent_mplus"]])
+  if (file.exists(latent_module_file)) {
+    source(latent_module_file, local = FALSE)
   }
   invisible(TRUE)
 }

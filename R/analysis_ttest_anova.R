@@ -828,9 +828,7 @@ analysis_apply_ordered_posthoc_markers <- function(rows, estimates, levels, p_ma
       marker_table
     }
   }
-  rows[["post-hoc"]] <- ""
-  rows[["post-hoc"]][[1]] <- paste(unique(statements), collapse = "; ")
-  rows
+  ttest_distribute_ordered_posthoc(rows, paste(unique(statements), collapse = "; "))
 }
 
 ttest_effect_size <- function(values, groups, test_type) {
@@ -1082,21 +1080,24 @@ ttest_analysis_note_line <- function(items) {
     if (!is.data.frame(note_rows) || nrow(note_rows) == 0) return(character(0))
     ifelse(nzchar(note_rows$marker), sprintf("%s. %s", note_rows$marker, note_rows$note), note_rows$note)
   }
-  analysis_parts <- if (is.data.frame(notes) && nrow(notes) > 0) {
-    format_note_rows(notes[notes$type %in% c("method", "trend"), , drop = FALSE])
+  marker_parts <- if (is.data.frame(notes) && nrow(notes) > 0) {
+    marker_notes <- notes[nzchar(notes$marker), , drop = FALSE]
+    if (nrow(marker_notes) > 0) {
+      marker_notes <- marker_notes[order(suppressWarnings(as.integer(marker_notes$marker))), , drop = FALSE]
+    }
+    format_note_rows(marker_notes)
   } else {
     character(0)
   }
-  effect_parts <- if (is.data.frame(notes) && nrow(notes) > 0) {
-    format_note_rows(notes[notes$type == "effect", , drop = FALSE])
+  unmarked_parts <- if (is.data.frame(notes) && nrow(notes) > 0) {
+    format_note_rows(notes[!nzchar(notes$marker), , drop = FALSE])
   } else {
     character(0)
   }
-  parts <- analysis_parts
+  parts <- c(marker_parts, unmarked_parts)
   if (length(posthoc_notes) > 0) {
     parts <- c(parts, sprintf("Post-hoc: %s.", paste(posthoc_notes, collapse = ", ")))
   }
-  parts <- c(parts, effect_parts)
   if (any(vapply(items, function(item) isTRUE(item$notes$mean_sd), logical(1)))) {
     parts <- c(parts, "M \u00B1 SD = mean \u00B1 standard deviation.")
   }
@@ -1616,7 +1617,21 @@ ttest_model_overview_wide <- function(overview, dependents = NULL, variable_info
   }
   output <- as.data.frame(do.call(rbind, rows), stringsAsFactors = FALSE, check.names = FALSE)
   names(output) <- c("Independent variable", "Item", dependent_labels)
+  attr(output, "dependent_count") <- length(dependent_labels)
   output
+}
+
+ttest_model_overview_landscape <- function(table) {
+  count <- attr(table, "dependent_count", exact = TRUE)
+  if (is.null(count)) {
+    left_columns <- if ("Item" %in% names(table)) {
+      if (identical(names(table)[[1]], "Item")) 1L else 2L
+    } else {
+      1L
+    }
+    count <- max(0L, ncol(table) - left_columns)
+  }
+  is.finite(count) && as.integer(count) >= 5L
 }
 
 ttest_assumption_review_wide <- function(overview, dependents = NULL, variable_info = NULL, labels = character(0), category_table = NULL) {
@@ -1670,6 +1685,7 @@ ttest_assumption_review_wide <- function(overview, dependents = NULL, variable_i
 
   output <- as.data.frame(do.call(rbind, rows), stringsAsFactors = FALSE, check.names = FALSE)
   names(output) <- c("Independent variable", "Item", dependent_labels)
+  attr(output, "dependent_count") <- length(dependent_labels)
   output
 }
 
@@ -1762,11 +1778,23 @@ prepare_ttest_anova_results <- function(
         names(combined_table)[names(combined_table) == "M"] <- "Median"
         names(combined_table)[names(combined_table) == "SD"] <- "Q1~Q3"
       }
-      if (!isTRUE(options$trend_analysis) && "p for trend" %in% names(combined_table)) {
+      has_trend_result <- any(vapply(dependent_items, function(item) {
+        nzchar(as.character(item$notes$trend %||% ""))
+      }, logical(1)))
+      if (!isTRUE(has_trend_result) && "p for trend" %in% names(combined_table)) {
         combined_table[["p for trend"]] <- NULL
       }
       note_result <- ttest_apply_numbered_notes(combined_table, dependent_items)
       combined_table <- note_result$table
+      if (isTRUE(options$show_df)) {
+        attr(combined_table, "show_df") <- TRUE
+      }
+      if (isTRUE(options$mean_sd)) {
+        attr(combined_table, "mean_sd") <- TRUE
+      }
+      if (isTRUE(has_trend_result)) {
+        attr(combined_table, "trend_analysis") <- TRUE
+      }
       note_line <- ttest_analysis_note_line(dependent_items)
       posthoc_table <- ttest_bind_result_rows(lapply(dependent_items, function(item) item$posthoc))
       results[[length(results) + 1]] <- list(
@@ -1817,10 +1845,12 @@ ttest_anova_results_ui <- function(result) {
   }
 
   overview_tables <- ttest_result_overview_tables(result)
+  overview_landscape_class <- if (isTRUE(ttest_model_overview_landscape(overview_tables$overview))) " landscape-table-panel" else ""
+  assumption_landscape_class <- if (isTRUE(ttest_model_overview_landscape(overview_tables$assumption_review))) " landscape-table-panel" else ""
 
   sections <- list(
     tags$div(
-      class = "result-section regression-result-panel ttest-anova-overview-panel",
+      class = paste0("result-section regression-result-panel ttest-anova-overview-panel", overview_landscape_class),
       tags$h3("Model overview"),
       model_overview_html_table(overview_tables$overview)
     )
@@ -1843,7 +1873,7 @@ ttest_anova_results_ui <- function(result) {
 
   if (is.data.frame(overview_tables$assumption_review) && nrow(overview_tables$assumption_review) > 0) {
     sections[[length(sections) + 1]] <- tags$div(
-      class = "result-section regression-result-panel",
+      class = paste0("result-section regression-result-panel ttest-anova-assumption-review-panel", assumption_landscape_class),
       tags$h3("가정 검토"),
       model_overview_html_table(overview_tables$assumption_review)
     )

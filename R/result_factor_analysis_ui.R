@@ -150,6 +150,89 @@ factor_analysis_reliability_note <- function(result) {
   )
 }
 
+factor_analysis_b5_panel <- function(..., class = "") {
+  div(
+    class = paste("result-section factor-analysis-result-section regression-result-panel", class),
+    style = "width:min(100%,688px);max-width:688px;overflow-x:hidden;box-sizing:border-box;",
+    ...
+  )
+}
+
+factor_analysis_apply_column_widths <- function(table, widths = NULL) {
+  if (!is.data.frame(table) || ncol(table) == 0) {
+    return(table)
+  }
+  if (is.null(widths)) {
+    widths <- rep(100 / ncol(table), ncol(table))
+  }
+  if (length(widths) != ncol(table)) {
+    widths <- rep(100 / ncol(table), ncol(table))
+  }
+  attr(table, "compact_column_widths") <- as.numeric(widths)
+  table
+}
+
+factor_analysis_overview_table_ui <- function(result) {
+  table <- result$overview
+  if (!is.data.frame(table) || ncol(table) == 0) return(NULL)
+  base_widths <- c(
+    N = 8,
+    Variables = 12,
+    Factors = 10,
+    Matrix = 14,
+    Method = 16,
+    Rotation = 12,
+    Criterion = 16,
+    `Normality check` = 16,
+    Normality = 12
+  )
+  widths <- unname(base_widths[names(table)])
+  widths[!is.finite(widths)] <- 100 / ncol(table)
+  widths <- widths / sum(widths) * 100
+  factor_analysis_apply_column_widths(table, widths)
+}
+
+factor_analysis_loading_table_ui <- function(table, result) {
+  if (!is.data.frame(table) || ncol(table) == 0) return(table)
+  factor_names <- colnames(result$loadings %||% matrix(nrow = 0, ncol = 0))
+  rename_map <- c(
+    Reliability = "Rel.",
+    `Reliability if deleted` = "Rel. if deleted",
+    `Item-total` = "Item-total r"
+  )
+  cell_styles <- attr(table, "cell_styles", exact = TRUE)
+  if (is.data.frame(cell_styles) && "column" %in% names(cell_styles)) {
+    matched <- match(cell_styles$column, names(rename_map))
+    cell_styles$column[!is.na(matched)] <- unname(rename_map[matched[!is.na(matched)]])
+    attr(table, "cell_styles") <- cell_styles
+  }
+  bold_cells <- attr(table, "bold_cells", exact = TRUE)
+  if (is.data.frame(bold_cells) && "column" %in% names(bold_cells)) {
+    matched <- match(bold_cells$column, names(rename_map))
+    bold_cells$column[!is.na(matched)] <- unname(rename_map[matched[!is.na(matched)]])
+    attr(table, "bold_cells") <- bold_cells
+  }
+  names(table)[names(table) == "Reliability"] <- "Rel."
+  names(table)[names(table) == "Reliability if deleted"] <- "Rel. if deleted"
+  names(table)[names(table) == "Item-total"] <- "Item-total r"
+  columns <- names(table)
+  first_width <- if (ncol(table) >= 8L) 24 else 30
+  fixed <- rep(NA_real_, length(columns))
+  fixed[columns == "Variable"] <- first_width
+  fixed[factor_analysis_column_key(columns) %in% c("h2", "communality") | grepl("^h", tolower(columns))] <- 7
+  fixed[factor_analysis_column_key(columns) == "complexity"] <- 9
+  fixed[columns == "Rel."] <- 8
+  fixed[columns == "Rel. if deleted"] <- 13
+  fixed[columns == "Item-total r"] <- 11
+  factor_indices <- which(columns %in% factor_names)
+  remaining <- 100 - sum(fixed[is.finite(fixed)])
+  if (length(factor_indices) > 0) {
+    fixed[factor_indices] <- remaining / length(factor_indices)
+  }
+  fixed[!is.finite(fixed)] <- max(6, remaining / max(1, sum(!is.finite(fixed))))
+  factor_analysis_apply_column_widths(table, fixed / sum(fixed) * 100)
+}
+
 factor_analysis_results_ui <- function(result, report_mode = FALSE) {
   if (is.null(result)) {
     return(NULL)
@@ -157,89 +240,82 @@ factor_analysis_results_ui <- function(result, report_mode = FALSE) {
   tagList(
     div(
       class = "factor-analysis-results regression-results",
-      div(
-        class = "result-section factor-analysis-result-section regression-result-panel",
+      factor_analysis_b5_panel(
         h3("Factor analysis"),
         coefficient_html_table(
-          result$overview,
+          factor_analysis_overview_table_ui(result),
           compact = TRUE,
-          compact_font_size = 14,
-          compact_width = 108,
-          compact_first_width = 48,
-          compact_min_width = 600
+          compact_font_size = 11,
+          compact_width = 62,
+          compact_first_width = 44,
+          compact_min_width = 320
         )
       ),
-      div(
-        class = "result-section factor-analysis-result-section regression-result-panel",
+      factor_analysis_b5_panel(
         h3("Pattern / loading matrix"),
         coefficient_html_table(
-          result$loadings_table,
+          factor_analysis_loading_table_ui(result$loadings_table, result),
           compact = TRUE,
-          compact_font_size = 13,
-          compact_width = 70,
-          compact_first_width = 150,
-          compact_min_width = 520,
+          compact_font_size = 10,
+          compact_width = 48,
+          compact_first_width = 138,
+          compact_min_width = 320,
           note_line = factor_analysis_note(result)
         )
       ),
       if (is.data.frame(result$structure_table) && nrow(result$structure_table) > 0) {
-        div(
-          class = "result-section factor-analysis-result-section regression-result-panel",
+        factor_analysis_b5_panel(
           h3("Structure matrix"),
           coefficient_html_table(
-            result$structure_table,
+            factor_analysis_loading_table_ui(result$structure_table, result),
             compact = TRUE,
-            compact_font_size = 13,
-            compact_width = 70,
-            compact_first_width = 150,
-            compact_min_width = 520,
+            compact_font_size = 10,
+            compact_width = 48,
+            compact_first_width = 138,
+            compact_min_width = 320,
             note_line = factor_analysis_structure_note(result)
           )
         )
       },
       analysis_warning_section(result$warnings, class = "result-section factor-analysis-result-section regression-result-panel"),
-      div(
-        class = "result-section factor-analysis-result-section regression-result-panel",
+      factor_analysis_b5_panel(
         h3("Suitability"),
         coefficient_html_table(result$suitability$overview, note_line = factor_analysis_suitability_note(result))
       ),
       if (is.data.frame(result$normality_table) && nrow(result$normality_table) > 0) {
-        div(
-          class = "result-section factor-analysis-result-section regression-result-panel",
+        factor_analysis_b5_panel(
           h3("Normality"),
           coefficient_html_table(result$normality_table, note_line = factor_analysis_normality_note(result))
         )
       },
       if (is.data.frame(result$variance_table) && nrow(result$variance_table) > 0) {
-        div(
-          class = "result-section factor-analysis-result-section regression-result-panel",
+        factor_analysis_b5_panel(
           h3("Variance explained"),
           coefficient_html_table(
-            result$variance_table,
+            factor_analysis_apply_column_widths(result$variance_table),
             compact = TRUE,
-            compact_font_size = 13,
-            compact_width = 86,
-            compact_first_width = 130,
-            compact_min_width = 520
+            compact_font_size = 11,
+            compact_width = 58,
+            compact_first_width = 104,
+            compact_min_width = 320
           )
         )
       },
       if (is.data.frame(result$factor_correlation_table) && nrow(result$factor_correlation_table) > 0) {
-        div(
-          class = "result-section factor-analysis-result-section regression-result-panel",
+        factor_analysis_b5_panel(
           h3("Factor correlations"),
           coefficient_html_table(
-            result$factor_correlation_table,
+            factor_analysis_apply_column_widths(result$factor_correlation_table),
             compact = TRUE,
-            compact_font_size = 13,
-            compact_width = 76,
-            compact_first_width = 100,
-            compact_min_width = 420
+            compact_font_size = 11,
+            compact_width = 54,
+            compact_first_width = 82,
+            compact_min_width = 320
           )
         )
       },
-      div(
-        class = "result-section factor-analysis-result-section factor-analysis-plot-section regression-result-panel",
+      factor_analysis_b5_panel(
+        class = "factor-analysis-plot-section",
         h3("Scree plot"),
         if (isTRUE(report_mode)) {
           tags$img(
@@ -254,16 +330,15 @@ factor_analysis_results_ui <- function(result, report_mode = FALSE) {
           )
         }
       ),
-      div(
-        class = "result-section factor-analysis-result-section regression-result-panel",
+      factor_analysis_b5_panel(
         h3("Eigenvalues"),
         coefficient_html_table(
-          result$eigen_table,
+          factor_analysis_apply_column_widths(result$eigen_table),
           compact = TRUE,
-          compact_font_size = 13,
-          compact_width = 86,
-          compact_first_width = 90,
-          compact_min_width = 360
+          compact_font_size = 11,
+          compact_width = 56,
+          compact_first_width = 74,
+          compact_min_width = 320
         )
       )
     )

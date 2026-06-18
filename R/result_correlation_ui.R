@@ -51,6 +51,30 @@ correlation_matrix_display_table <- function(result, source = NULL) {
   )
 }
 
+correlation_matrix_variable_note <- function(source = NULL) {
+  matrix <- source$correlation_matrix %||% NULL
+  if (!is.matrix(matrix) || nrow(matrix) < 5L) return("")
+  labels <- rownames(matrix)
+  if (is.null(labels) || length(labels) == 0) labels <- colnames(matrix)
+  if (is.null(labels) || length(labels) == 0) return("")
+  paste(sprintf("x%d = %s", seq_along(labels), labels), collapse = "; ")
+}
+
+correlation_compact_matrix_labels <- function(table, source = NULL, label_start_column = 2L) {
+  matrix <- source$correlation_matrix %||% NULL
+  if (!is.data.frame(table) || !is.matrix(matrix) || nrow(matrix) < 5L) return(table)
+  labels <- paste0("x", seq_len(nrow(matrix)))
+  table$Variable <- labels[seq_len(nrow(table))]
+  column_indices <- seq.int(label_start_column, min(ncol(table), label_start_column + length(labels) - 1L))
+  names(table)[column_indices] <- labels[seq_along(column_indices)]
+  if (ncol(table) > 1L) {
+    first_width <- 6
+    other_width <- (100 - first_width) / (ncol(table) - 1L)
+    attr(table, "compact_column_widths") <- c(first_width, rep(other_width, ncol(table) - 1L))
+  }
+  table
+}
+
 correlation_p_matrix_display_table <- function(result, source = NULL) {
   source <- source %||% result
   matrix <- source$p_matrix
@@ -70,7 +94,7 @@ correlation_p_matrix_display_table <- function(result, source = NULL) {
   }
   table <- as.data.frame(out, check.names = FALSE)
   names(table) <- colnames(matrix)
-  data.frame(Variable = rownames(matrix), ` ` = "95% CI\np", table, check.names = FALSE)
+  data.frame(Variable = rownames(matrix), table, check.names = FALSE)
 }
 
 correlation_model_overview_reason <- function(reason) {
@@ -105,32 +129,58 @@ correlation_model_overview_wrap <- function(text, width = 24L) {
   paste(wrapped, collapse = "\n")
 }
 
+correlation_method_abbreviation <- function(label) {
+  label <- trimws(as.character(label %||% ""))
+  normalized <- tolower(label)
+  switch(
+    normalized,
+    pearson = "r",
+    spearman = "rho",
+    kendall = "tau",
+    "point-biserial" = "r_pb",
+    phi = "phi",
+    "cramer's v" = "V",
+    eta = "eta",
+    polyserial = "polyser",
+    polychoric = "polychor",
+    tetrachoric = "tetra",
+    label
+  )
+}
+
+correlation_method_abbreviation_note <- function(table) {
+  if (!is.data.frame(table) || nrow(table) == 0) return("")
+  values <- unique(unlist(table[-1L], use.names = FALSE))
+  values <- values[nzchar(values %||% "")]
+  if (length(values) == 0) return("")
+  descriptions <- c(
+    r = "Pearson correlation",
+    rho = "Spearman correlation",
+    tau = "Kendall's tau",
+    r_pb = "point-biserial correlation",
+    phi = "phi coefficient",
+    V = "Cramer's V",
+    eta = "eta coefficient",
+    polyser = "polyserial correlation",
+    polychor = "polychoric correlation",
+    tetra = "tetrachoric correlation"
+  )
+  used <- unique(values[values %in% names(descriptions)])
+  if (length(used) == 0) return("")
+  paste(sprintf("%s = %s", used, descriptions[used]), collapse = "; ")
+}
+
 correlation_model_overview_matrix_display_table <- function(result, source = NULL) {
   source <- source %||% result
   matrix <- source$method_matrix
-  pairwise_table <- source$pairwise_table
   if (!is.matrix(matrix) || nrow(matrix) == 0) {
     return(NULL)
-  }
-  reason_map <- list()
-  if (is.data.frame(pairwise_table) && nrow(pairwise_table) > 0 && all(c("Variable1", "Variable2", "Reason") %in% names(pairwise_table))) {
-    for (index in seq_len(nrow(pairwise_table))) {
-      v1 <- as.character(pairwise_table$Variable1[[index]] %||% "")
-      v2 <- as.character(pairwise_table$Variable2[[index]] %||% "")
-      reason <- correlation_model_overview_reason(pairwise_table$Reason[[index]] %||% "")
-      reason_map[[paste(v1, v2, sep = "\r")]] <- reason
-      reason_map[[paste(v2, v1, sep = "\r")]] <- reason
-    }
   }
   out <- matrix("", nrow = nrow(matrix), ncol = ncol(matrix))
   for (row in seq_len(nrow(matrix))) {
     for (col in seq_len(ncol(matrix))) {
       if (row > col) {
-        method <- matrix[row, col] %||% ""
-        reason <- reason_map[[paste(rownames(matrix)[[row]], colnames(matrix)[[col]], sep = "\r")]] %||% ""
-        parts <- c(method, correlation_model_overview_wrap(reason))
-        parts <- parts[nzchar(parts)]
-        out[row, col] <- paste(parts, collapse = "\n")
+        out[row, col] <- correlation_method_abbreviation(matrix[row, col] %||% "")
       }
     }
   }
@@ -144,7 +194,7 @@ correlation_model_overview_matrix_display_table <- function(result, source = NUL
         styled_cells[[length(styled_cells) + 1L]] <- data.frame(
           row = row,
           column = column,
-          style = "text-align:center;white-space:pre-line;overflow-wrap:anywhere;word-break:normal;min-width:86px;max-width:112px;width:104px;",
+          style = "text-align:center;white-space:nowrap;overflow-wrap:normal;word-break:normal;min-width:42px;max-width:70px;width:56px;",
           stringsAsFactors = FALSE
         )
       }
@@ -170,43 +220,64 @@ correlation_matrix_set_ui <- function(result, source = NULL, title_prefix = "") 
   main_table <- correlation_matrix_display_table(result, source)
   p_table <- correlation_p_matrix_display_table(result, source)
   overview_table <- correlation_model_overview_matrix_display_table(result, source)
-  landscape_class <- if (length(result$variables %||% character(0)) >= 10L) " landscape-table-panel" else ""
+  main_table <- correlation_compact_matrix_labels(main_table, source, label_start_column = 2L)
+  p_table <- correlation_compact_matrix_labels(p_table, source, label_start_column = 2L)
+  overview_table <- correlation_compact_matrix_labels(overview_table, source, label_start_column = 2L)
+  variable_note <- correlation_matrix_variable_note(source)
+  compact_label_mode <- nzchar(variable_note)
+  variable_count <- length(result$variables %||% character(0))
+  overview_note <- c(
+    correlation_method_abbreviation_note(overview_table),
+    variable_note
+  )
+  overview_note <- paste(overview_note[nzchar(overview_note)], collapse = "\n")
+  coefficient_note <- c(
+    if (!nzchar(title_prefix) && isTRUE(options$significance_levels)) "* p < .05; ** p < .01; *** p < .001" else "",
+    variable_note
+  )
+  coefficient_note <- paste(coefficient_note[nzchar(coefficient_note)], collapse = "\n")
+  matrix_landscape_class <- if (variable_count >= 12L) " landscape-table-panel" else ""
+  pci_landscape_class <- if (variable_count >= 6L) " landscape-table-panel" else ""
   tagList(
     if (is.data.frame(overview_table) && nrow(overview_table) > 0) {
       div(
-        class = paste0("result-section correlation-result-section regression-result-panel", landscape_class),
+        class = paste0("result-section correlation-result-section regression-result-panel", matrix_landscape_class),
         h3(paste0(title_prefix, "Model overview")),
         coefficient_html_table(
           overview_table,
           compact = TRUE,
           compact_font_size = 11,
-          compact_width = 88,
-          compact_first_width = 82,
-          compact_min_width = 280
+          compact_width = if (isTRUE(compact_label_mode)) 58 else 88,
+          compact_first_width = if (isTRUE(compact_label_mode)) 42 else 82,
+          compact_min_width = 280,
+          note_line = if (nzchar(overview_note)) overview_note else NULL
         )
       )
     },
     div(
-      class = paste0("result-section correlation-result-section regression-result-panel", landscape_class),
+      class = paste0("result-section correlation-result-section regression-result-panel", matrix_landscape_class),
       h3(paste0(title_prefix, "Correlation / association coefficients")),
       coefficient_html_table(
         main_table,
         compact = TRUE,
         compact_font_size = 13,
-        note_line = if (!nzchar(title_prefix) && isTRUE(options$significance_levels)) "* p < .05; ** p < .01; *** p < .001" else NULL
+        compact_width = if (isTRUE(compact_label_mode)) 66 else 62,
+        compact_first_width = if (isTRUE(compact_label_mode)) 42 else 118,
+        note_line = if (nzchar(coefficient_note)) coefficient_note else NULL
       )
     ),
     if (isTRUE(options$p_ci) && is.data.frame(p_table) && nrow(p_table) > 0) {
       div(
-        class = paste0("result-section correlation-result-section regression-result-panel", landscape_class),
+        class = paste0("result-section correlation-result-section regression-result-panel", pci_landscape_class),
         h3(paste0(title_prefix, "p-value & 95% CI")),
         coefficient_html_table(
           p_table,
           compact = TRUE,
           compact_font_size = 12,
-          compact_width = 50,
-          compact_first_width = 104,
-          compact_min_width = 280
+          compact_width = if (isTRUE(compact_label_mode)) 54 else 50,
+          compact_first_width = if (isTRUE(compact_label_mode)) 42 else 104,
+          compact_min_width = 280,
+          note_line = paste(c("Values are 95% CI and p.", variable_note)[nzchar(c("Values are 95% CI and p.", variable_note))], collapse = "\n")
         )
       )
     }
@@ -226,9 +297,15 @@ correlation_plot_height <- function(result, base = 560, per_variable = 28, max_h
   paste0(min(max_height, max(base, 180 + count * per_variable)), "px")
 }
 
-correlation_square_plot_size <- function(result, base = 640, per_variable = 26, max_size = 860) {
+correlation_square_plot_size <- function(result, base = 500, per_variable = 14, max_size = 620) {
   count <- length(result$variables %||% character(0))
   paste0(min(max_size, max(base, 180 + count * per_variable)), "px")
+}
+
+correlation_plot_note <- function(result) {
+  matrix <- result$correlation_matrix %||% NULL
+  if (!is.matrix(matrix) || nrow(matrix) < 6L) return(NULL)
+  result_note_tag(correlation_matrix_variable_note(result))
 }
 
 correlation_results_ui <- function(result) {
@@ -268,9 +345,10 @@ correlation_results_ui <- function(result) {
           h3("Scatter plot matrix"),
           plotOutput(
             correlation_scatter_plot_id(),
-            width = correlation_square_plot_size(result, base = 1160, per_variable = 46, max_size = 1480),
-            height = correlation_square_plot_size(result, base = 1160, per_variable = 46, max_size = 1480)
-          )
+            width = correlation_square_plot_size(result),
+            height = correlation_square_plot_size(result)
+          ),
+          correlation_plot_note(result)
         )
       },
       if (isTRUE(options$matrix_plot)) {
@@ -279,9 +357,10 @@ correlation_results_ui <- function(result) {
           h3("Correlation matrix heatmap"),
           plotOutput(
             correlation_heatmap_plot_id(),
-            width = correlation_square_plot_size(result, base = 980, per_variable = 46, max_size = 1360),
-            height = correlation_square_plot_size(result, base = 980, per_variable = 46, max_size = 1360)
-          )
+            width = correlation_square_plot_size(result),
+            height = correlation_square_plot_size(result)
+          ),
+          correlation_plot_note(result)
         )
       }
     )
@@ -303,7 +382,11 @@ draw_correlation_scatter_plot <- function(result) {
   plot_data <- data.frame(lapply(plot_vars, function(name) {
     correlation_analysis_vector(data[[name]], measurements[[name]])
   }), check.names = FALSE)
-  names(plot_data) <- unname(result$labels[plot_vars])
+  plot_labels <- unname(result$labels[plot_vars])
+  if (length(plot_labels) >= 6L) {
+    plot_labels <- paste0("x", seq_along(plot_labels))
+  }
+  names(plot_data) <- plot_labels
   plot_data <- plot_data[, vapply(plot_data, function(values) sum(!is.na(values)) >= 3 && stats::sd(values, na.rm = TRUE) > 0, logical(1)), drop = FALSE]
   if (ncol(plot_data) < 2) {
     graphics::plot.new()
@@ -329,7 +412,7 @@ draw_correlation_scatter_plot <- function(result) {
     mar = c(0.35, 0.35, 0.35, 0.35),
     mgp = c(1.4, 0.35, 0),
     tck = -0.02,
-    cex = 1.12
+    cex = if (n >= 6L) 0.9 else 1.05
   )
   for (row in seq_len(n)) {
     for (col in seq_len(n)) {
@@ -351,7 +434,7 @@ draw_correlation_scatter_plot <- function(result) {
           frame.plot = TRUE
         )
         graphics::rect(h$breaks[-length(h$breaks)], 0, h$breaks[-1], h$counts, col = "#dbeafe", border = "#8aa4c2")
-        graphics::text(mean(ranges[[col]]), max(h$counts, 1) * 0.84, names(plot_data)[[col]], cex = 1.22, font = 2, col = "#15233a")
+        graphics::text(mean(ranges[[col]]), max(h$counts, 1) * 0.84, names(plot_data)[[col]], cex = if (n >= 6L) 1.05 else 1.16, font = 2, col = "#15233a")
       } else {
         graphics::plot(
           x,
@@ -399,7 +482,15 @@ draw_correlation_heatmap <- function(result) {
   labels_x <- colnames(matrix)
   labels_y <- rev(rownames(matrix))
   n <- ncol(values)
-  graphics::par(mar = c(11, 12, 3, 7), xpd = NA, cex = 1.22)
+  if (n >= 6L) {
+    labels_x <- paste0("x", seq_len(n))
+    labels_y <- rev(labels_x)
+  }
+  graphics::par(
+    mar = if (n >= 6L) c(4.5, 4.5, 2, 5.5) else c(11, 12, 3, 7),
+    xpd = NA,
+    cex = if (n >= 6L) 0.95 else 1.12
+  )
   palette <- grDevices::colorRampPalette(c("#2b6cb0", "#f7fafc", "#c2410c"))(121)
   graphics::image(
     x = seq_len(ncol(values)),

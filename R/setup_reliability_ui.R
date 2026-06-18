@@ -103,15 +103,35 @@ reliability_setup_panel <- function(state) {
       analysis_option_group(
         "Method",
         list(
-          list(id = "reliability_normality", label = "Normality", value = state$normality),
-          list(id = "reliability_ordinal", label = "Ordinal alpha / Ordinal omega", value = state$ordinal)
+          list(
+            id = "reliability_normality",
+            label = "Normality",
+            value = state$normality,
+            tooltip = "Check item skewness and kurtosis. Continuous items use Pearson reliability when normality is acceptable; otherwise ordinal reliability is used."
+          ),
+          list(
+            id = "reliability_ordinal",
+            label = "Ordinal alpha / Ordinal omega",
+            value = state$ordinal,
+            tooltip = "Force ordinal reliability coefficients from a polychoric correlation matrix. Use this for ordinal response scales."
+          )
         )
       ),
       analysis_option_group(
         "Item diagnostics",
         list(
-          list(id = "reliability_if_deleted", label = "Reliability if item deleted", value = state$reliability_if_deleted),
-          list(id = "reliability_item_total_correlation", label = "Item-total correlation", value = state$item_total_correlation)
+          list(
+            id = "reliability_if_deleted",
+            label = "Reliability if item deleted",
+            value = state$reliability_if_deleted,
+            tooltip = "Report the reliability coefficient after deleting each item."
+          ),
+          list(
+            id = "reliability_item_total_correlation",
+            label = "Item-total correlation",
+            value = state$item_total_correlation,
+            tooltip = "Report corrected item-total correlation and full item-total correlation for each item."
+          )
         )
       )
     )

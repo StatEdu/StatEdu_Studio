@@ -2391,6 +2391,58 @@ sample_size_mediation_power <- function(total_n, a_path, b_path, covariates, alp
   stats::pnorm(z_effect - zcrit)
 }
 
+sample_size_mediation_fritz_mackinnon_table <- function(a_effect, b_effect, test = "bias_corrected_bootstrap") {
+  effect_values <- c(small = 0.14, halfway = 0.26, medium = 0.39, large = 0.59)
+  effect_labels <- c(small = "Small", halfway = "Halfway", medium = "Medium", large = "Large")
+  test_labels <- c(
+    baron_kenny_complete = "Baron & Kenny causal steps (c' = 0)",
+    baron_kenny_small = "Baron & Kenny causal steps (c' = .14)",
+    baron_kenny_medium = "Baron & Kenny causal steps (c' = .39)",
+    baron_kenny_large = "Baron & Kenny causal steps (c' = .59)",
+    joint_significance = "Joint significance",
+    sobel = "Sobel / first-order delta",
+    prodclin = "PRODCLIN / distribution of the product",
+    percentile_bootstrap = "Percentile bootstrap",
+    bias_corrected_bootstrap = "Bias-corrected bootstrap"
+  )
+  sample_size_validate_choice <- function(value, choices, label) {
+    value <- as.character(value %||% "")
+    if (!value %in% choices) {
+      stop(sprintf("%s must be one of: %s.", label, paste(choices, collapse = ", ")), call. = FALSE)
+    }
+    value
+  }
+  a_effect <- sample_size_validate_choice(a_effect, names(effect_values), "Path a effect size")
+  b_effect <- sample_size_validate_choice(b_effect, names(effect_values), "Path b effect size")
+  test <- sample_size_validate_choice(test, names(test_labels), "Fritz & MacKinnon test")
+
+  table_values <- list(
+    baron_kenny_complete = c(SS = 20886, SH = 6323, SM = 3039, SL = 1561, HS = 6070, HH = 1830, HM = 883, HL = 445, MS = 2682, MH = 820, MM = 397, ML = 204, LS = 1184, LH = 364, LM = 175, LL = 92),
+    baron_kenny_small = c(SS = 562, SH = 445, SM = 427, SL = 414, HS = 444, HH = 224, HM = 179, HL = 153, MS = 425, MH = 178, MM = 118, ML = 88, LS = 411, LH = 147, LM = 84, LL = 53),
+    baron_kenny_medium = c(SS = 531, SH = 403, SM = 402, SL = 403, HS = 405, HH = 158, HM = 124, HL = 119, MS = 405, MH = 125, MM = 75, ML = 59, LS = 405, LH = 122, LM = 60, LL = 38),
+    baron_kenny_large = c(SS = 530, SH = 404, SM = 402, SL = 403, HS = 406, HH = 158, HM = 124, HL = 120, MS = 405, MH = 125, MM = 74, ML = 58, LS = 404, LH = 122, LM = 59, LL = 36),
+    joint_significance = c(SS = 530, SH = 402, SM = 403, SL = 403, HS = 407, HH = 159, HM = 124, HL = 120, MS = 405, MH = 125, MM = 74, ML = 58, LS = 405, LH = 122, LM = 59, LL = 36),
+    sobel = c(SS = 667, SH = 450, SM = 422, SL = 412, HS = 450, HH = 196, HM = 144, HL = 127, MS = 421, MH = 145, MM = 90, ML = 66, LS = 410, LH = 129, LM = 67, LL = 42),
+    prodclin = c(SS = 539, SH = 402, SM = 401, SL = 402, HS = 402, HH = 161, HM = 125, HL = 120, MS = 404, MH = 124, MM = 74, ML = 57, LS = 404, LH = 121, LM = 58, LL = 35),
+    percentile_bootstrap = c(SS = 558, SH = 412, SM = 406, SL = 398, HS = 414, HH = 162, HM = 126, HL = 122, MS = 404, MH = 124, MM = 78, ML = 59, LS = 401, LH = 123, LM = 59, LL = 36),
+    bias_corrected_bootstrap = c(SS = 462, SH = 377, SM = 400, SL = 385, HS = 368, HH = 148, HM = 115, HL = 118, MS = 391, MH = 116, MM = 71, ML = 53, LS = 396, LH = 115, LM = 54, LL = 34)
+  )
+
+  condition <- paste0(substr(effect_labels[[a_effect]], 1, 1), substr(effect_labels[[b_effect]], 1, 1))
+  list(
+    total = unname(table_values[[test]][[condition]]),
+    condition = condition,
+    a_effect = a_effect,
+    b_effect = b_effect,
+    a_path = unname(effect_values[[a_effect]]),
+    b_path = unname(effect_values[[b_effect]]),
+    a_effect_label = effect_labels[[a_effect]],
+    b_effect_label = effect_labels[[b_effect]],
+    test = test,
+    test_label = test_labels[[test]]
+  )
+}
+
 sample_size_mediation_monte_carlo_power <- function(
   total_n,
   a_path,
@@ -2548,6 +2600,9 @@ sample_size_regression <- function(
   interaction_terms = 1,
   a_path = NULL,
   b_path = NULL,
+  a_effect = "medium",
+  b_effect = "medium",
+  fritz_mackinnon_test = "bias_corrected_bootstrap",
   covariates = 0,
   odds_ratio = NULL,
   p0 = NULL,
@@ -2579,6 +2634,39 @@ sample_size_regression <- function(
       alternative = alternative
     ))
   } else if (identical(design, "mediation")) {
+    if (identical(mediation_method, "fritz_mackinnon")) {
+      if (!identical(target, "sample_size")) {
+        stop("Fritz & MacKinnon empirical table is available only for required sample size, not achieved power.", call. = FALSE)
+      }
+      sample_size_validate_probability(power, "Power")
+      if (abs(power - 0.8) > 1e-8) {
+        stop("Fritz & MacKinnon (2007) empirical table is fixed at power = .80. Set Power to 0.80 or choose another mediation method.", call. = FALSE)
+      }
+      fm <- sample_size_mediation_fritz_mackinnon_table(a_effect, b_effect, fritz_mackinnon_test)
+      total_n <- fm$total
+      return(list(
+        design_label = "Mediation effect",
+        total = total_n,
+        total_label = "Participants",
+        adjusted_total = sample_size_drop_adjust(total_n, dropout),
+        adjusted_total_label = "Participants with dropout",
+        dropout_rate = dropout,
+        a_path = fm$a_path,
+        b_path = fm$b_path,
+        indirect_effect = fm$a_path * fm$b_path,
+        a_effect_label = fm$a_effect_label,
+        b_effect_label = fm$b_effect_label,
+        fritz_mackinnon_condition = fm$condition,
+        fritz_mackinnon_test = fm$test_label,
+        mediation_method = mediation_method,
+        method_note = sprintf(
+          "Fritz & MacKinnon (2007) empirical Table 3 estimate for .80 power using %s and %s path effects with the %s test.",
+          tolower(fm$a_effect_label),
+          tolower(fm$b_effect_label),
+          fm$test_label
+        )
+      ))
+    }
     if (!is.finite(a_path) || abs(a_path) <= 0 || abs(a_path) >= 1) {
       stop("Path a must be greater than 0 and less than 1 in absolute value.", call. = FALSE)
     }
@@ -2669,6 +2757,7 @@ sample_size_regression <- function(
       b_path = if (identical(design, "mediation")) b_path else NULL,
       indirect_effect = if (identical(design, "mediation")) a_path * b_path else NULL,
       covariates = if (identical(design, "mediation")) covariates else NULL,
+      mediation_method = if (identical(design, "mediation")) mediation_method else NULL,
       method_note = method_note
     ))
   }
@@ -2681,6 +2770,7 @@ sample_size_regression <- function(
     b_path = if (identical(design, "mediation")) b_path else NULL,
     indirect_effect = if (identical(design, "mediation")) a_path * b_path else NULL,
     covariates = if (identical(design, "mediation")) covariates else NULL,
+    mediation_method = if (identical(design, "mediation")) mediation_method else NULL,
     method_note = method_note
   )
 }

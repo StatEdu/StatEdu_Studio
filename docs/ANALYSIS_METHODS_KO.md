@@ -1,6 +1,6 @@
 # EasyFlow Statistics 분석 방법 정리
 
-이 문서는 **EasyFlow Statistics** 0.9.33에 실제 구현된 분석 메뉴와 주요 출력 항목을 정리한다. 목적은 사용자가 "어떤 메뉴에서 어떤 검정, 통계량, 표, 저장 기능이 제공되는가"를 빠르게 확인하는 것이다. 분석 방법을 선택하는 기준과 해석상 주의점은 `METHOD_NOTES_KO.md`를 참고한다.
+이 문서는 **EasyFlow Statistics** 0.9.39에 실제 구현된 분석 메뉴와 주요 출력 항목을 정리한다. 목적은 사용자가 "어떤 메뉴에서 어떤 검정, 통계량, 표, 저장 기능이 제공되는가"를 빠르게 확인하는 것이다. 분석 방법을 선택하는 기준과 해석상 주의점은 `METHOD_NOTES_KO.md`를 참고한다.
 
 ## 문서 용도
 
@@ -19,7 +19,7 @@
 
 - 주요 분석 결과는 화면과 Result 탭에 표시한다.
 - HTML, PDF, Excel, Word 저장을 지원한다.
-- 여러 분석에서 `Model overview`를 제공하며, 0.9.33 기준으로 t-test/ANOVA, paired test, nonparametric paired test, correlation 등에서 N, 분석 방법, 선택 이유를 표 형태로 확인할 수 있다.
+- 여러 분석에서 `Model overview`를 제공하며, 0.9.39 기준으로 t-test/ANOVA, paired test, nonparametric paired test, correlation 등에서 N, 분석 방법, 선택 이유를 표 형태로 확인할 수 있다.
 - 분석 불가능 항목은 전체 분석을 중단하지 않고 Warnings, Skipped analyses, Skipped models 형태로 분리해 표시한다.
 
 ## 빈도분석과 기술통계
@@ -59,7 +59,7 @@
 - 범주형 paired 비교: McNemar test, exact McNemar test, Stuart-Maxwell test, Bowker symmetry test.
 - 세 시점 이상 반복측정: standard repeated-measures ANOVA, repeated-measures ANOVA with Wilks' lambda / Greenhouse-Geisser correction, Friedman test, Cochran's Q test.
 - paired post-hoc은 paired t-test, Wilcoxon signed-rank test, McNemar test를 사용하며 Bonferroni correction 또는 Holm Bonferroni를 적용할 수 있다.
-- 0.9.33 기준으로 paired test와 nonparametric paired test 모두 `Model overview`에 N, 분석 방법, 이유를 표시한다.
+- 0.9.39 기준으로 paired test와 nonparametric paired test 모두 `Model overview`에 N, 분석 방법, 이유를 표시한다.
 
 ## 상관분석
 
@@ -69,7 +69,7 @@
 - binary x binary: phi coefficient를 사용한다.
 - nominal 조합: eta 또는 Cramer's V를 사용한다.
 - 옵션에 따라 latent-variable correlation 세트를 추가할 수 있으며, polyserial, polychoric, tetrachoric correlation을 사용한다.
-- 0.9.33 기준으로 별도 reason 체크박스 없이 `Model overview`를 항상 표시한다. 이 표는 correlation matrix 형식으로 각 변수쌍의 분석 방법과 짧은 선택 이유를 함께 표시한다.
+- 0.9.39 기준으로 별도 reason 체크박스 없이 `Model overview`를 항상 표시한다. 이 표는 correlation matrix 형식으로 각 변수쌍의 분석 방법과 짧은 선택 이유를 함께 표시한다.
 
 ## 신뢰도 분석
 
@@ -114,11 +114,37 @@
 - categorical dependent: multinomial logistic regression.
 - odds ratio, confidence interval, model fit, sparse cell, separation risk, VIF 경고를 제공한다.
 
+## 일반화선형모형(GLM)
+
+- 독립 관측자료의 Gaussian, binary logistic, Gamma, count regression을 `Generalized Linear Model (GLM)` 메뉴에서 분석한다.
+- 입력은 종속변수, 선택적 exposure/offset 변수, 독립변수로 구성한다. Offset/exposure는 하나의 양수 변수만 허용하며 log link count 또는 rate model에서 `offset(log(exposure))`로 사용한다.
+- Outcome family는 Auto, Gaussian(identity), Binary(logit), Gamma(log), Count(Poisson 또는 negative binomial, log link)를 제공한다. Auto는 변수 유형과 관측값 구조를 이용해 binary, count, Gamma, Gaussian 순서로 후보를 판정한다.
+- Count family는 Poisson과 negative binomial을 별도 primary 메뉴로 나누지 않고 하나의 Count 옵션으로 통합한다. 앱은 Poisson을 먼저 적합해 dispersion ratio와 zero screen을 보고하고, 사전 지정한 dispersion threshold를 넘고 negative binomial 적합이 가능하면 negative binomial을 권장 또는 선택한다. AIC/BIC는 자동 선택 기준이 아니라 보조 적합도 진단으로 함께 보고한다.
+- Missing 탭은 complete-case, multiple imputation(MI), inverse probability weighting(IPW)을 제공한다. MI는 `mice` 기반 standard MI이며, 반복측정 또는 군집 구조를 직접 모델링하는 전용 결측 엔진은 아니다. MI와 IPW는 사전 지정한 primary 분석이 아니라면 주 분석과 별도로 결측 민감도 결과로 보고한다.
+- Checks 탭은 family/link 적합성, Gaussian 잔차 진단, logistic sparse cell/separation risk, count overdispersion/zero screen, 영향점 진단, 선택적 VIF를 표시한다.
+- Reporting/Inference 옵션은 exp(B) 보고와 model-based 또는 HC0-HC3 robust standard errors를 제공한다. 기본 robust SE는 HC1이다.
+- 결과에는 model decision summary, missing-data summary, variable coding, publication-ready coefficient table, publication table notes, SCI reporting checklist, suggested manuscript text, assumption checks, warnings, software/package versions, 저장/내보내기 결과가 포함된다.
+
 ## Penalized Regression
 
 - Ridge regression, LASSO regression, Elastic Net regression을 제공한다.
 - 다중공선성이 있거나 예측변수 구조 탐색이 필요한 경우 보조 분석으로 사용할 수 있다.
 - `glmnet` 기반 정규화 경로와 선택 계수를 확인한다.
+
+## 종단 / 패널 모형
+
+- long-format 반복측정, 군집자료, 패널자료는 별도 `Longitudinal / Panel Models` 메뉴에서 분석한다.
+- 필수 설정은 종속변수, Subject ID, 시간 변수, 예측변수 또는 시간 고정효과, 분석 모형이다. LMM/GLMM에서는 상위 군집이 있으면 `Cluster ID (optional)`을 별도로 지정할 수 있다.
+- 제공하는 5가지 분석은 GEE, LMM, GLMM, 패널 고정효과 모형, 패널 확률효과 모형이다.
+- GEE는 `geepack::geeglm`을 사용해 모집단 평균 효과를 추정하고 robust sandwich 표준오차를 보고한다. Outcome family는 Auto, Linear(Gaussian), Binary(logit), Gamma(log), Count(log)로 선택한다. Count는 Poisson으로 1차 screening을 하고 사전 지정한 dispersion threshold를 넘으면 negative binomial을 최종 family로 선택한다. Negative binomial GEE는 `MASS::glm.nb`와 subject-cluster robust SE를 이용한 marginal negative binomial 보조 구현으로 처리한다.
+- GEE working correlation 기본값은 시간 순서가 있는 반복측정 자료에 맞춰 AR(1)로 둔다. 필요하면 exchangeable, independence, unstructured로 바꿔 민감도 분석을 확인한다.
+- LMM은 `lmerTest::lmer`를 사용한다. Subject ID에는 random intercept를 두고, 필요하면 시간 random slope와 추가 Cluster ID random intercept를 포함한다.
+- GLMM은 binomial, Poisson, Gamma에는 `lme4::glmer`, negative binomial에는 `lme4::glmer.nb`를 사용한다. UI에서는 Poisson과 negative binomial을 Count로 통합하고, Poisson dispersion-threshold screening과 가능한 AIC/BIC 정보를 fit details에 보고한다. AIC/BIC는 보조 진단이며 자동 선택 기준은 아니다. 계수는 link scale에서 subject-specific 효과로 해석하며 logit/log link에서는 exp(B)를 함께 보고할 수 있다.
+- 패널 고정효과와 패널 확률효과 모형은 `plm::plm`을 사용한다. 계수 표준오차는 group-clustered HC1 공분산을 사용한다.
+- Missing 탭은 분석기법별로 적용 가능한 방법만 표시한다. GEE는 complete-case, complete-subject, MI, IPW, WGEE를 제공하고, LMM/GLMM은 `Likelihood-based MAR: available repeated measures`, complete-case, complete-subject, MI, IPW를 제공한다. LMM/GLMM 기본 옵션은 관측된 반복측정 행을 사용해 unbalanced mixed-model likelihood를 적합하는 방식이다. 한 시점 outcome이 결측이라고 대상자 전체를 제거하지는 않지만, 해당 모델 행에서 outcome, 공변량, ID, time이 결측이면 그 행은 적합에 사용하지 않는다. 공변량 결측까지 FIML로 대체한다는 뜻은 아니며, 공변량 결측이나 dropout 메커니즘이 중요하면 MI 또는 IPW 민감도 분석을 함께 보고한다. MI는 `mice` 기반 standard MI 민감도 분석이며 전용 multilevel MI는 아니다. Panel FE/RE는 complete-case, complete-subject, MI, IPW를 제공한다.
+- Weights 탭은 가중치 변수를 선택한 뒤 sampling/baseline weight, time-varying longitudinal weight, analysis weight x generated IPW 중 적용 방식을 선택한다. LMM/GLMM에서는 routine primary fit의 가중치 적용을 권장하지 않으므로 가중치 선택을 비활성화하고 no weights로 적합한다.
+- 가정 검토는 분석기법별로 다르게 표시한다. GEE는 family/link, working correlation, within-cluster correlation, overdispersion을 확인한다. LMM은 convergence/singular fit, random-effect structure, random-effect normality, residual normality, residual variance, serial correlation을 확인한다. GLMM은 family/link, convergence/singular fit, random-effect structure, serial correlation, overdispersion을 확인한다. 패널 모형은 exogeneity/design review, heteroskedasticity, serial correlation, cross-sectional dependence, Hausman FE vs RE를 확인한다. 패널 FE/RE sensitivity 표에는 group-clustered HC1 표준오차와 Driscoll-Kraay 표준오차 계산 가능 여부 및 SE ratio를 함께 제시한다.
+- 결과에는 model overview, data structure, missing-data summary, publication-ready estimates, coefficient table, fit details, assumption checks, recommended alternatives, automated sensitivity comparisons, manuscript-ready text, SCI reporting checklist, software versions, warnings, skipped-model diagnostics, HTML/PDF/Excel/Add result export가 포함된다.
 
 ## 저장과 출력
 
@@ -128,7 +154,7 @@
 
 ## Sample Size, Power, Effect Size 메뉴
 
-버전 0.9.33 기준으로 연구계획 계산 메뉴를 제공한다. Sample Size 메뉴는 최소 표본 수와 주어진 표본 수에서의 검정력을 계산하고, Effect Size 메뉴는 표본 수 계산에 투입할 효과크기 또는 변환 가능한 효과크기를 계산한다.
+버전 0.9.39 기준으로 연구계획 계산 메뉴를 제공한다. Sample Size 메뉴는 최소 표본 수와 주어진 표본 수에서의 검정력을 계산하고, Effect Size 메뉴는 표본 수 계산에 투입할 효과크기 또는 변환 가능한 효과크기를 계산한다.
 
 ### 공통 출력
 

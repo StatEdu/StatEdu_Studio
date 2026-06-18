@@ -20,7 +20,40 @@ paired_effect_labels <- function(table) {
 }
 
 paired_effect_header_text <- function(label, label_count = 1L) {
-  if (label_count == 1L) "ES" else label
+  label <- trimws(as.character(label %||% ""))
+  switch(
+    label,
+    "Hedges' g" = "g",
+    "Cohen's d" = "d",
+    r = "r",
+    label
+  )
+}
+
+paired_effect_note_text <- function(label) {
+  label <- trimws(as.character(label %||% ""))
+  switch(
+    label,
+    r = "r = Wilcoxon signed-rank effect size",
+    "Hedges' g" = "g = Hedges' g",
+    "Cohen's d" = "d = Cohen's d",
+    label
+  )
+}
+
+paired_header_label_content <- function(label) {
+  parts <- strsplit(as.character(label %||% ""), "\n", fixed = TRUE)[[1]]
+  if (length(parts) <= 1L) {
+    return(label)
+  }
+  tags$span(
+    lapply(seq_along(parts), function(index) {
+      tagList(
+        if (index > 1L) tags$br(),
+        parts[[index]]
+      )
+    })
+  )
 }
 
 paired_count_statistic_label <- function(table) {
@@ -44,9 +77,9 @@ paired_effect_note <- function(table, show_effect_size = TRUE) {
   labels <- paired_effect_labels(table)
   if (length(labels) == 0) return("")
   if (length(labels) == 1L) {
-    paste0("ES = effect size (", labels[[1]], ").")
+    paste0("ES = effect size (", paired_effect_note_text(labels[[1]]), ").")
   } else {
-    paste0("ES = effect size (", paste(labels, collapse = ", "), ").")
+    paste0("ES = effect size (", paste(vapply(labels, paired_effect_note_text, character(1)), collapse = ", "), ").")
   }
 }
 
@@ -261,22 +294,63 @@ paired_effect_value_for_label <- function(table, row_index, effect_label) {
 paired_grouped_column_class <- function(column) {
   if (identical(column, "Variable")) return("paired-two-col-variable")
   if (identical(column, "post-hoc")) return("paired-two-col-posthoc")
-  if (column %in% c("Pre_M", "Pre_SD", "Post_M", "Post_SD")) return("paired-two-col-summary")
+  if (column %in% c("Pre_M", "Pre_SD", "Post_M", "Post_SD", "Pre_MS", "Post_MS")) return("paired-two-col-summary")
   if (column %in% c("Statistic", "p")) return("paired-two-col-stat")
   if (startsWith(column, "Effect:")) return("paired-two-col-effect")
   "paired-two-col-default"
 }
 
-paired_grouped_column_widths <- function(body_columns) {
+paired_grouped_column_widths <- function(body_columns, table = NULL) {
+  median_summary <- is.data.frame(table) &&
+    "SummaryCenter" %in% names(table) &&
+    any(as.character(table$SummaryCenter %||% "") == "Median", na.rm = TRUE)
+  mean_sd <- isTRUE(attr(table, "mean_sd", exact = TRUE))
   effect_count <- sum(startsWith(body_columns, "Effect:"))
-  fixed_width <- 20 + 9 * sum(body_columns %in% c("Statistic", "p")) + 10 * effect_count
-  summary_count <- sum(body_columns %in% c("Pre_M", "Pre_SD", "Post_M", "Post_SD"))
-  summary_width <- if (summary_count > 0) max(9, (100 - fixed_width) / summary_count) else 10
+  variable_width <- if (isTRUE(median_summary)) 17 else 22
+  statistic_width <- if ("Statistic" %in% body_columns) if (isTRUE(median_summary)) 15 else 16 else 0
+  p_width <- if ("p" %in% body_columns) if (isTRUE(median_summary)) 6 else 8 else 0
+  effect_single_width <- if (isTRUE(median_summary)) 6 else 8
+  effect_width <- effect_single_width * effect_count
+  fixed_width <- variable_width + statistic_width + p_width + effect_width
+  summary_columns <- c("Pre_M", "Pre_SD", "Post_M", "Post_SD", "Pre_MS", "Post_MS")
+  summary_count <- sum(body_columns %in% summary_columns)
+  minimum_summary_width <- if (isTRUE(median_summary) && isTRUE(mean_sd)) 18 else if (isTRUE(median_summary)) 10.5 else 9
+  summary_width <- if (summary_count > 0) max(minimum_summary_width, (100 - fixed_width) / summary_count) else 10
   widths <- rep(summary_width, length(body_columns))
-  widths[body_columns == "Variable"] <- 20
-  widths[body_columns %in% c("Statistic", "p")] <- 9
-  widths[startsWith(body_columns, "Effect:")] <- 10
+  widths[body_columns == "Variable"] <- variable_width
+  widths[body_columns == "Statistic"] <- statistic_width
+  widths[body_columns == "p"] <- p_width
+  widths[startsWith(body_columns, "Effect:")] <- effect_single_width
   stats::setNames(widths, body_columns)
+}
+
+paired_summary_header_labels <- function(table) {
+  if (!"SummaryCenter" %in% names(table) && isTRUE(attr(table, "median_iqr", exact = TRUE))) {
+    return(list(center = "Median", spread = "Q1~Q3", combined = "Median(Q1~Q3)"))
+  }
+  centers <- unique(as.character(table$SummaryCenter %||% "M"))
+  spreads <- unique(as.character(table$SummarySpread %||% "SD"))
+  centers <- centers[nzchar(centers)]
+  spreads <- spreads[nzchar(spreads)]
+  mixed_median <- length(centers) > 1L || any(centers == "Median")
+  list(
+    center = if (length(centers) == 1L) centers[[1]] else "M/Median",
+    spread = if (length(spreads) == 1L) spreads[[1]] else "SD/\nQ1~Q3",
+    combined = if (length(centers) == 1L && identical(centers[[1]], "Median")) {
+      "Median(Q1~Q3)"
+    } else if (isTRUE(mixed_median)) {
+      "M \u00B1 SD /\nMedian(Q1~Q3)"
+    } else {
+      "M \u00B1 SD"
+    }
+  )
+}
+
+paired_scale_display_table <- function(result) {
+  table <- result$scale_table
+  if (!is.data.frame(table) || nrow(table) == 0) return(table)
+  attr(table, "mean_sd") <- isTRUE(result$options$mean_sd)
+  table
 }
 
 paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_size = FALSE) {
@@ -284,32 +358,54 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
   if (!is.data.frame(table) || nrow(table) == 0) return(NULL)
   show_effect_size <- isTRUE(show_effect_size) && paired_has_effect(table)
   effect_labels <- if (show_effect_size) paired_effect_labels(table) else character(0)
-  center_label <- if (isTRUE(attr(table, "median_iqr", exact = TRUE))) "Median" else "M"
-  spread_label <- if (isTRUE(attr(table, "median_iqr", exact = TRUE))) "Q1~Q3" else "SD"
+  summary_labels <- paired_summary_header_labels(table)
+  mean_sd <- isTRUE(attr(table, "mean_sd", exact = TRUE))
   if (identical(type, "scale")) {
-    body_columns <- c("Variable", "Pre_M", "Pre_SD", "Post_M", "Post_SD", "Statistic", "p")
+    summary_header_style <- paste0(
+      result_header_cell_style(FALSE),
+      "white-space:normal;line-height:1.22;",
+      if (is.data.frame(table) && "SummaryCenter" %in% names(table) && any(as.character(table$SummaryCenter %||% "") == "Median", na.rm = TRUE)) {
+        "font-size:13px;"
+      } else {
+        ""
+      }
+    )
+    body_columns <- if (isTRUE(mean_sd)) {
+      c("Variable", "Pre_MS", "Post_MS", "Statistic", "p")
+    } else {
+      c("Variable", "Pre_M", "Pre_SD", "Post_M", "Post_SD", "Statistic", "p")
+    }
     body_columns <- c(body_columns, paste0("Effect:", effect_labels))
     statistic_label <- paired_scale_statistic_label(table)
     headers <- list(
       tags$tr(
         tags$th(rowspan = 2, style = result_header_cell_style(TRUE), "Variable"),
-        tags$th(colspan = 2, style = paste0(result_header_cell_style(FALSE), "text-align:center;"), "Pre"),
-        tags$th(colspan = 2, style = paste0(result_header_cell_style(FALSE), "text-align:center;"), "Post"),
-        tags$th(rowspan = 2, style = result_header_cell_style(FALSE), statistic_label),
+        tags$th(colspan = if (isTRUE(mean_sd)) 1 else 2, style = paste0(result_header_cell_style(FALSE), "text-align:center;white-space:nowrap;"), "Pre"),
+        tags$th(colspan = if (isTRUE(mean_sd)) 1 else 2, style = paste0(result_header_cell_style(FALSE), "text-align:center;white-space:nowrap;"), "Post"),
+        tags$th(rowspan = 2, style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), statistic_label),
         tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "p"),
         if (length(effect_labels) == 1L) {
-          tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "ES")
+          tags$th(rowspan = 2, style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), paired_effect_header_text(effect_labels[[1]], 1L))
         } else if (length(effect_labels) > 1L) {
-          tags$th(colspan = length(effect_labels), style = paste0(result_header_cell_style(FALSE), "text-align:center;"), "ES")
+          tags$th(colspan = length(effect_labels), style = paste0(result_header_cell_style(FALSE), "text-align:center;white-space:nowrap;"), "ES")
         }
       ),
       tags$tr(
-        tags$th(style = result_header_cell_style(FALSE), center_label),
-        tags$th(style = result_header_cell_style(FALSE), spread_label),
-        tags$th(style = result_header_cell_style(FALSE), center_label),
-        tags$th(style = result_header_cell_style(FALSE), spread_label),
+        if (isTRUE(mean_sd)) {
+          tagList(
+            tags$th(style = summary_header_style, paired_header_label_content(summary_labels$combined)),
+            tags$th(style = summary_header_style, paired_header_label_content(summary_labels$combined))
+          )
+        } else {
+          tagList(
+            tags$th(style = summary_header_style, paired_header_label_content(summary_labels$center)),
+            tags$th(style = summary_header_style, paired_header_label_content(summary_labels$spread)),
+            tags$th(style = summary_header_style, paired_header_label_content(summary_labels$center)),
+            tags$th(style = summary_header_style, paired_header_label_content(summary_labels$spread))
+          )
+        },
         if (length(effect_labels) > 1L) {
-          lapply(effect_labels, function(label) tags$th(style = result_header_cell_style(FALSE), label))
+          lapply(effect_labels, function(label) tags$th(style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), paired_effect_header_text(label, length(effect_labels))))
         }
       )
     )
@@ -322,12 +418,12 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
     headers <- list(
       tags$tr(
         tags$th(rowspan = 2, style = result_header_cell_style(TRUE), "Variable"),
-        tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "Pre"),
+        tags$th(rowspan = 2, style = paste0(result_header_cell_style(FALSE), "text-align:left;"), "Pre"),
         tags$th(colspan = length(post_columns), style = paste0(result_header_cell_style(FALSE), "text-align:center;"), "Post"),
         if (include_statistic) tags$th(rowspan = 2, style = result_header_cell_style(FALSE), statistic_label),
         tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "p"),
         if (length(effect_labels) == 1L) {
-          tags$th(rowspan = 2, style = result_header_cell_style(FALSE), "ES")
+          tags$th(rowspan = 2, style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), paired_effect_header_text(effect_labels[[1]], 1L))
         } else if (length(effect_labels) > 1L) {
           tags$th(colspan = length(effect_labels), style = paste0(result_header_cell_style(FALSE), "text-align:center;"), "ES")
         }
@@ -335,17 +431,29 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
       tags$tr(
         lapply(post_labels, function(label) tags$th(style = result_header_cell_style(FALSE), label)),
         if (length(effect_labels) > 1L) {
-          lapply(effect_labels, function(label) tags$th(style = result_header_cell_style(FALSE), label))
+          lapply(effect_labels, function(label) tags$th(style = paste0(result_header_cell_style(FALSE), "white-space:nowrap;"), paired_effect_header_text(label, length(effect_labels))))
         }
       )
     )
   }
-  column_widths <- paired_grouped_column_widths(body_columns)
-  table_width <- max(640L, min(900L, 150L + (length(body_columns) - 1L) * 86L))
+  column_widths <- paired_grouped_column_widths(body_columns, table)
+  median_summary <- isTRUE(identical(type, "scale")) &&
+    is.data.frame(table) &&
+    "SummaryCenter" %in% names(table) &&
+    any(as.character(table$SummaryCenter %||% "") == "Median", na.rm = TRUE)
+  table_width <- if (isTRUE(median_summary)) {
+    if (isTRUE(mean_sd)) 840L else 900L
+  } else {
+    max(640L, min(900L, 150L + (length(body_columns) - 1L) * 86L))
+  }
   body_style <- function(first = FALSE, last = FALSE) {
     paste0(
       result_body_cell_style(first, last),
-      if (isTRUE(first)) "white-space:normal;" else "white-space:nowrap;"
+      if (isTRUE(first)) {
+        "white-space:normal;"
+      } else {
+        "white-space:nowrap !important;overflow-wrap:normal !important;word-break:normal !important;"
+      }
     )
   }
   tags$table(
@@ -367,7 +475,10 @@ paired_grouped_table <- function(table, type = c("scale", "count"), show_effect_
           column <- body_columns[[column_index]]
           marker <- if (identical(column, "p")) paired_method_marker_for_row(table, row_index) else ""
           tags$td(
-            style = body_style(column_index == 1, row_index == nrow(table)),
+            style = paste0(
+              body_style(column_index == 1, row_index == nrow(table)),
+              if (identical(type, "count") && identical(column, "Pre")) "text-align:left;" else ""
+            ),
             if (identical(column, "p")) {
               paired_p_value_cell(table[[column]][[row_index]], marker)
             } else if (startsWith(column, "Effect:")) {
@@ -415,8 +526,8 @@ paired_results_ui <- function(result) {
           class = "result-section paired-result-section regression-result-panel",
           tags$h3("Paired test: continuous / ordinal"),
           result_table_with_notes(
-            paired_grouped_table(result$paired$scale_table, "scale", show_effect_size = isTRUE(result$paired$options$effect_size)),
-            result_note_tag(paired_method_note(result$paired$scale_table, show_effect_size = isTRUE(result$paired$options$effect_size))),
+            paired_grouped_table(paired_scale_display_table(result$paired), "scale", show_effect_size = isTRUE(result$paired$options$effect_size)),
+            result_note_tag(paired_method_note(paired_scale_display_table(result$paired), show_effect_size = isTRUE(result$paired$options$effect_size))),
             class = "result-table-with-note paired-fit-table-wrap"
           )
         )
@@ -437,7 +548,7 @@ paired_results_ui <- function(result) {
           class = "result-section paired-result-section regression-result-panel landscape-table-panel",
           tags$h3("Repeated-measures test: continuous / ordinal"),
           result_table_with_notes(
-            paired_rm_grouped_table(result$paired_rm$display_table, "scale"),
+            paired_rm_grouped_table(paired_rm_table_with_options(result$paired_rm$display_table, result$paired_rm$options), "scale"),
             result_note_tag(paired_rm_table_method_note(result$paired_rm$display_table)),
             class = "result-table-with-note paired-fit-table-wrap"
           )
@@ -502,8 +613,8 @@ paired_results_ui <- function(result) {
         class = "result-section paired-result-section regression-result-panel",
         tags$h3("Paired test: continuous / ordinal"),
         result_table_with_notes(
-          paired_grouped_table(result$scale_table, "scale", show_effect_size = isTRUE(result$options$effect_size)),
-          result_note_tag(paired_method_note(result$scale_table, show_effect_size = isTRUE(result$options$effect_size))),
+          paired_grouped_table(paired_scale_display_table(result), "scale", show_effect_size = isTRUE(result$options$effect_size)),
+          result_note_tag(paired_method_note(paired_scale_display_table(result), show_effect_size = isTRUE(result$options$effect_size))),
           class = "result-table-with-note paired-fit-table-wrap"
         )
       )

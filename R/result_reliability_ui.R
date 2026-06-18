@@ -13,7 +13,7 @@ reliability_item_analysis_table <- function(result) {
   if (!is.data.frame(descriptives) || nrow(descriptives) == 0) {
     return(NULL)
   }
-  descriptive_columns <- c("Item", "N", "Missing", "Min", "Max", "M", "SD")
+  descriptive_columns <- c("Item", "N", "Min", "Max", "M", "SD")
   if (isTRUE(options$normality)) {
     descriptive_columns <- c(descriptive_columns, "Skewness", "Kurtosis")
   }
@@ -141,7 +141,8 @@ reliability_method_note <- function(result) {
   } else {
     ""
   }
-  paste(c(sprintf("Recommended reliability method: %s.", recommended), reason, normality_note), collapse = " ")
+  abbreviation_note <- "Table abbreviations: alpha = Cronbach's alpha or ordinal alpha; omega = Pearson omega or ordinal omega; r = correlation."
+  paste(c(sprintf("Recommended reliability method: %s.", recommended), reason, normality_note, abbreviation_note), collapse = " ")
 }
 
 reliability_item_analysis_note <- function(result) {
@@ -171,98 +172,126 @@ reliability_item_analysis_note <- function(result) {
   if (isTRUE(options$reliability_if_deleted)) {
     notes <- c(notes, "A dash (-) indicates that the coefficient could not be estimated for that item-deleted model.")
   }
+  notes <- c(notes, "Table abbreviations: alpha = Cronbach's alpha or ordinal alpha; omega = Pearson omega or ordinal omega; r = correlation.")
   paste(notes, collapse = " ")
 }
 
-reliability_note_tag <- function(text, width = 620) {
+reliability_note_tag <- function(text, width = 688) {
   if (length(text) == 0 || !nzchar(text[[1]])) {
     return(NULL)
   }
   div(
     class = "coefficient-note reliability-note",
-    style = sprintf("width:%dpx;overflow-wrap:break-word;word-break:normal;", as.integer(width)),
+    style = sprintf("width:min(100%%,%dpx);max-width:%dpx;overflow-wrap:break-word;word-break:normal;", as.integer(width), as.integer(width)),
     text
   )
 }
 
 reliability_header_label <- function(column) {
   if (identical(column, "Total items if item deleted")) {
-    return(htmltools::HTML("Total items if<br>item deleted"))
+    return(htmltools::HTML("Total<br>if deleted"))
   }
   switch(
     column,
-    `Reliability if item deleted` = htmltools::HTML("Reliability if<br>item deleted"),
-    `Corrected item-total correlation` = htmltools::HTML("Corrected<br>item-total<br>correlation"),
-    `Item-total correlation` = htmltools::HTML("Item-total<br>correlation"),
-    `Cronbach's alpha if item deleted` = htmltools::HTML("Cronbach's alpha if<br>item deleted"),
-    `Pearson omega if item deleted` = htmltools::HTML("Pearson omega if<br>item deleted"),
-    `Ordinal alpha if item deleted` = htmltools::HTML("Ordinal alpha if<br>item deleted"),
-    `Ordinal omega if item deleted` = htmltools::HTML("Ordinal omega if<br>item deleted"),
+    `Measurement level` = htmltools::HTML("Measure"),
+    `Cronbach's alpha` = htmltools::HTML("alpha"),
+    `Pearson omega` = htmltools::HTML("omega"),
+    `Ordinal alpha` = htmltools::HTML("alpha"),
+    `Ordinal omega` = htmltools::HTML("omega"),
+    `Reliability` = htmltools::HTML("Rel."),
+    `Reliability if item deleted` = htmltools::HTML("Rel.<br>if deleted"),
+    `Corrected item-total correlation` = htmltools::HTML("Corrected r"),
+    `Item-total correlation` = htmltools::HTML("Item-total<br>r"),
+    `Cronbach's alpha if item deleted` = htmltools::HTML("alpha<br>if deleted"),
+    `Pearson omega if item deleted` = htmltools::HTML("omega<br>if deleted"),
+    `Ordinal alpha if item deleted` = htmltools::HTML("alpha<br>if deleted"),
+    `Ordinal omega if item deleted` = htmltools::HTML("omega<br>if deleted"),
+    `Skewness` = htmltools::HTML("Skew"),
+    `Kurtosis` = htmltools::HTML("Kurt"),
     column
   )
 }
 
-reliability_column_width <- function(column, first = FALSE) {
+reliability_display_table <- function(table) {
+  if (!is.data.frame(table) || nrow(table) == 0) {
+    return(table)
+  }
+  table
+}
+
+reliability_column_weight <- function(column, first = FALSE) {
   if (isTRUE(first)) {
-    return("104px")
+    return(16)
   }
   if (column %in% c("Reliability if item deleted", "Total items if item deleted")) {
-    return("92px")
+    return(8)
   }
   if (column %in% c("Corrected item-total correlation", "Item-total correlation")) {
-    return("92px")
+    return(if (identical(column, "Corrected item-total correlation")) 10 else 8)
   }
   if (column %in% c("Cronbach's alpha if item deleted", "Pearson omega if item deleted", "Ordinal alpha if item deleted", "Ordinal omega if item deleted")) {
-    return("96px")
+    return(8)
   }
   if (identical(column, "Method")) {
-    return("260px")
+    return(18)
   }
   if (identical(column, "Measurement level")) {
-    return("112px")
+    return(10)
   }
   if (column %in% c("Cronbach's alpha", "Pearson omega", "Ordinal alpha", "Ordinal omega", "Reliability")) {
-    return(if (identical(column, "Cronbach's alpha")) "92px" else "82px")
+    return(9)
   }
   if (column %in% c("Skewness", "Kurtosis")) {
-    return("66px")
+    return(6)
   }
   if (column %in% c("Min", "Max", "M", "SD")) {
-    return("46px")
+    return(5)
+  }
+  if (identical(column, "Missing")) {
+    return(5)
   }
   if (column %in% c("Item", "Subfactor")) {
-    return("104px")
+    return(13)
   }
-  "52px"
+  6
+}
+
+reliability_column_width <- function(column, first = FALSE) {
+  paste0(reliability_column_weight(column, first), "%")
+}
+
+reliability_column_widths <- function(columns) {
+  weights <- vapply(seq_along(columns), function(index) {
+    reliability_column_weight(columns[[index]], first = index == 1L)
+  }, numeric(1))
+  if (!any(is.finite(weights)) || sum(weights, na.rm = TRUE) <= 0) {
+    return(rep(100 / length(columns), length(columns)))
+  }
+  weights / sum(weights, na.rm = TRUE) * 100
 }
 
 reliability_table_width <- function(table, min_width = 360) {
-  if (!is.data.frame(table) || ncol(table) == 0) {
-    return(min_width)
-  }
-  column_widths <- vapply(seq_along(table), function(index) {
-    column <- names(table)[[index]]
-    width <- reliability_column_width(column, first = index == 1)
-    suppressWarnings(as.numeric(gsub("[^0-9.]", "", width)))
-  }, numeric(1))
-  total <- sum(column_widths[is.finite(column_widths)], na.rm = TRUE)
-  max(as.integer(min_width), as.integer(total))
+  688L
 }
 
-reliability_cell_style <- function(column, first = FALSE, header = FALSE, last = FALSE, group_start = FALSE) {
+reliability_cell_style <- function(column, first = FALSE, header = FALSE, last = FALSE, group_start = FALSE, width = NULL) {
   left_aligned <- !isTRUE(header) && (isTRUE(first) || identical(column, "Method"))
-  normal_space <- isTRUE(header) || identical(column, "Method")
+  no_wrap_header <- column %in% c("Corrected item-total correlation")
+  normal_space <- (isTRUE(header) && !isTRUE(no_wrap_header)) || identical(column, "Method") || isTRUE(first)
   paste0(
-    "padding:", if (isTRUE(header)) "5px 4px" else "4px 4px", ";",
-    "line-height:1.2;border-left:0;border-right:0;",
+    "padding:", if (isTRUE(header)) "4px 3px" else "4px 3px", ";",
+    "line-height:", if (isTRUE(header)) "1.12" else "1.2", ";border-left:0;border-right:0;",
     "border-top:", if (isTRUE(group_start)) "2px solid #1f2937" else "0", ";",
     "border-bottom:", if (isTRUE(last)) "0" else if (isTRUE(header)) "2px solid #1f2937" else "1px solid #d7dde5", ";",
     "vertical-align:middle;background:transparent;",
     "box-sizing:border-box;",
     "font-weight:", if (isTRUE(header)) "700" else "400", ";",
+    "font-size:", if (isTRUE(header)) "11px" else "12px", ";",
     "white-space:", if (isTRUE(normal_space)) "normal" else "nowrap", ";",
-    "min-width:", reliability_column_width(column, first), ";",
-    "max-width:", reliability_column_width(column, first), ";",
+    "overflow-wrap:", if (isTRUE(normal_space)) "break-word" else "normal", ";",
+    "word-break:normal;",
+    "width:", if (!is.null(width)) sprintf("%.4f%%", width) else reliability_column_width(column, first), ";",
+    "min-width:0;max-width:none;",
     "text-align:", if (isTRUE(header)) "center" else if (isTRUE(left_aligned)) "left" else "right", ";"
   )
 }
@@ -271,15 +300,23 @@ reliability_html_table <- function(table, min_width = 360) {
   if (!is.data.frame(table) || nrow(table) == 0) {
     return(NULL)
   }
+  table <- reliability_display_table(table)
   columns <- names(table)
+  widths <- reliability_column_widths(columns)
   tags$table(
     class = "coefficient-table reliability-table",
-    style = result_table_style(font_size = 14, min_width = min_width),
+    style = paste0(
+      result_table_style(font_size = 12, min_width = 0),
+      "width:100%;min-width:0;max-width:100%;table-layout:fixed;box-sizing:border-box;"
+    ),
+    tags$colgroup(lapply(widths, function(width) {
+      tags$col(style = sprintf("width:%.4f%%;", width))
+    })),
     tags$thead(
       tags$tr(lapply(seq_along(columns), function(index) {
         column <- columns[[index]]
         tags$th(
-          style = reliability_cell_style(column, first = index == 1, header = TRUE),
+          style = reliability_cell_style(column, first = index == 1, header = TRUE, width = widths[[index]]),
           reliability_header_label(column)
         )
       }))
@@ -296,7 +333,8 @@ reliability_html_table <- function(table, min_width = 360) {
               column,
               first = column_index == 1,
               last = row_index == nrow(table),
-              group_start = group_start
+              group_start = group_start,
+              width = widths[[column_index]]
             ),
             table[[column]][[row_index]] %||% ""
           )
@@ -312,9 +350,9 @@ reliability_results_ui <- function(result) {
   }
   if (identical(result$type %||% "", "reliability_factors")) {
     overview <- reliability_factor_overview_table(result)
-    overview_width <- reliability_table_width(overview, min_width = 720)
+    overview_width <- reliability_table_width(overview, min_width = 688)
     item_analysis <- reliability_factor_item_analysis_table(result)
-    item_analysis_width <- reliability_table_width(item_analysis, min_width = 760)
+    item_analysis_width <- reliability_table_width(item_analysis, min_width = 688)
     item_note <- reliability_item_analysis_note((result$factors %||% list(result$total))[[1]])
     if (is.data.frame(item_analysis) && nrow(item_analysis) > 0 && "Total items if item deleted" %in% names(item_analysis)) {
       item_note <- paste(
@@ -327,12 +365,14 @@ reliability_results_ui <- function(result) {
         class = "reliability-results regression-results",
         div(
           class = "result-section reliability-result-section regression-result-panel",
+          style = "width:min(100%,688px);max-width:688px;overflow-x:hidden;box-sizing:border-box;",
           h3("Reliability by subfactor"),
           reliability_html_table(overview, min_width = overview_width)
         ),
         if (is.data.frame(item_analysis) && nrow(item_analysis) > 0) {
           div(
             class = "result-section reliability-result-section regression-result-panel",
+            style = "width:min(100%,688px);max-width:688px;overflow-x:hidden;box-sizing:border-box;",
             h3("Item analysis"),
             result_table_with_notes(
               reliability_html_table(item_analysis, min_width = item_analysis_width),
@@ -345,13 +385,14 @@ reliability_results_ui <- function(result) {
   }
   item_analysis <- reliability_item_analysis_table(result)
   overview <- reliability_overview_table(result)
-  overview_width <- reliability_table_width(overview, min_width = 620)
-  item_analysis_width <- reliability_table_width(item_analysis, min_width = 760)
+  overview_width <- reliability_table_width(overview, min_width = 688)
+  item_analysis_width <- reliability_table_width(item_analysis, min_width = 688)
   tagList(
     div(
       class = "reliability-results regression-results",
       div(
         class = "result-section reliability-result-section regression-result-panel",
+        style = "width:min(100%,688px);max-width:688px;overflow-x:hidden;box-sizing:border-box;",
         h3("Reliability"),
         result_table_with_notes(
           reliability_html_table(overview, min_width = overview_width),
@@ -361,6 +402,7 @@ reliability_results_ui <- function(result) {
       if (is.data.frame(item_analysis) && nrow(item_analysis) > 0) {
         div(
           class = "result-section reliability-result-section regression-result-panel",
+          style = "width:min(100%,688px);max-width:688px;overflow-x:hidden;box-sizing:border-box;",
           h3("Item analysis"),
           result_table_with_notes(
             reliability_html_table(item_analysis, min_width = item_analysis_width),

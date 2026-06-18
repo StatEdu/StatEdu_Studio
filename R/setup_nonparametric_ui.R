@@ -80,7 +80,7 @@ nonparametric_setup_panel <- function(state) {
       class = "ttest-anova-target-column",
       div(
         class = "analysis-transfer-column analysis-transfer-panel ttest-anova-dependent-panel",
-        analysis_field_label_tag("Dependent Variables", c("ordered", "continuous")),
+        analysis_field_label_tag("Dependent variables", c("ordered", "continuous")),
         analysis_transfer_listbox_input("nonparametric_dependents", state$dependent_items, selected = state$dependent_selected, size = 3),
         div(
           class = "analysis-order-actions ttest-anova-order-actions",

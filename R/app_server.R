@@ -74,7 +74,8 @@ create_app_server <- function(app_version) {
   output$lazy_analysis_pca <- renderUI(tab_panel_content(pca_tab_panel("Principal Components")))
   output$lazy_analysis_reliability <- renderUI(tab_panel_content(reliability_tab_panel("Reliability")))
   output$lazy_analysis_hierarchical <- renderUI(tab_panel_content(hierarchical_tab_panel("Regression")))
-  output$lazy_analysis_generalized <- renderUI(tab_panel_content(generalized_tab_panel("Generalized")))
+  output$lazy_analysis_longitudinal <- renderUI(tab_panel_content(longitudinal_tab_panel("Longitudinal / Panel Models")))
+  output$lazy_analysis_generalized <- renderUI(tab_panel_content(generalized_tab_panel("GLM")))
   output$lazy_analysis_logistic <- renderUI(tab_panel_content(logistic_regression_tab_panel()))
 
   register_sample_size_server(input, output, session)
@@ -185,6 +186,32 @@ create_app_server <- function(app_version) {
     measurement_overrides_fn = measurement_overrides,
     labels_fn = var_label_overrides
   )
+  latent_mplus_registered <- reactiveVal(FALSE)
+  observeEvent(input$main_menu, {
+    if (!isTRUE(latent_mplus_enabled()) || isTRUE(latent_mplus_registered())) {
+      return()
+    }
+    current_tab <- as.character(input$main_menu %||% "")
+    if (!startsWith(current_tab, "latent_")) {
+      return()
+    }
+    easyflow_time_expr(
+      "register_latent_mplus_server",
+      register_latent_mplus_server(
+        input = input,
+        output = output,
+        session = session,
+        app_version = app_version,
+        current_data_file = current_data_file,
+        variable_info_table = variable_info_table,
+        active_data_file = active_data_file,
+        reset_on_dataset_load = reset_on_dataset_load,
+        available_variable_names = available_variable_names
+      ),
+      detail = sprintf("tab=%s", current_tab)
+    )
+    latent_mplus_registered(TRUE)
+  }, ignoreInit = FALSE)
   table_input_collectors <- create_table_input_collectors(input, variable_info_table)
   merge_state_into_info <- create_merge_state_into_info_fn(
     measurement_overrides = measurement_overrides,
@@ -467,7 +494,8 @@ create_app_server <- function(app_version) {
     restore_settings_state_fn = restore_settings_state,
     current_data_file_fn = current_data_file,
     restored_variable_info_fn = restored_variable_info,
-    mark_settings_clean = mark_settings_clean
+    mark_settings_clean = mark_settings_clean,
+    clear_results_fn = function() clear_result_accumulator_store(session)
   )
 
   save_settings_to_file <- register_settings_save_handler(
@@ -486,7 +514,8 @@ create_app_server <- function(app_version) {
   register_data_view_toggle_observers(input, data_view, active_step, selection_applied, go_data_step)
 
   register_data_workspace_outputs(
-    output,
+    input = input,
+    output = output,
     current_data_file_fn = current_data_file,
     active_data_file_fn = active_data_file,
     dataset_fn = dataset,
@@ -604,6 +633,7 @@ create_app_server <- function(app_version) {
   )
 
   register_data_table_outputs(
+    input,
     output,
     current_data_file_fn = current_data_file,
     dataset_fn = dataset,
@@ -687,6 +717,10 @@ create_app_server <- function(app_version) {
     current_calculated[[name]] <- values
     calculated_variables(current_calculated)
 
+    if (!is.null(measurement) && nzchar(measurement)) {
+      measurement_overrides(merge_named_overrides(measurement_overrides(), stats::setNames(measurement, name))$values)
+    }
+
     info <- tryCatch(variable_info_table(), error = function(e) NULL)
     stage3 <- step3_variable_info()
     base_row <- if (is.data.frame(stage3) && name %in% as.character(stage3$name)) {
@@ -706,19 +740,20 @@ create_app_server <- function(app_version) {
         var_label = current_label,
         measurement = measurement %||% current_measurement
       )
+      if ("source_order" %in% names(row) && "source_order" %in% names(base_row)) {
+        row$source_order <- base_row$source_order[[1]]
+      }
       common <- intersect(names(row), names(base_row))
       for (column in common) {
         base_row[[column]] <- row[[column]]
       }
       if (is.data.frame(stage3) && name %in% as.character(stage3$name)) {
-        stage3[match(name, as.character(stage3$name)), names(base_row)] <- base_row
+        common_stage <- intersect(names(base_row), names(stage3))
+        stage3[match(name, as.character(stage3$name)), common_stage] <- base_row[, common_stage, drop = FALSE]
         step3_variable_info(stage3)
       }
     }
 
-    if (!is.null(measurement) && nzchar(measurement)) {
-      measurement_overrides(merge_named_overrides(measurement_overrides(), stats::setNames(measurement, name))$values)
-    }
     update_analysis_choices(session, input, selected_names())
     mark_settings_dirty()
     invisible(TRUE)
@@ -1054,6 +1089,30 @@ create_app_server <- function(app_version) {
   )
 
   register_logistic_handlers(
+    input = input,
+    output = output,
+    session = session,
+    selected_names_fn = selected_names,
+    dataset_fn = dataset,
+    variable_table_fn = regression_variable_table,
+    labels_fn = var_label_overrides,
+    category_table_fn = category_label_values,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
+  register_longitudinal_handlers(
+    input = input,
+    output = output,
+    session = session,
+    selected_names_fn = selected_names,
+    dataset_fn = dataset,
+    variable_table_fn = regression_variable_table,
+    labels_fn = var_label_overrides,
+    category_table_fn = category_label_values,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
+  register_generalized_handlers(
     input = input,
     output = output,
     session = session,
@@ -1470,4 +1529,3 @@ create_app_server <- function(app_version) {
 
   }
 }
-

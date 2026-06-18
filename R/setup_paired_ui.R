@@ -51,6 +51,24 @@ paired_group_from_values <- function(values) {
   groups[lengths(groups) >= 2L]
 }
 
+paired_keep_selected_order <- function(group, selected) {
+  group <- as.character(group %||% character(0))
+  selected <- as.character(selected %||% character(0))
+  group[group %in% selected]
+}
+
+paired_transfer_selection_order <- function(values, order_values = NULL, selected = NULL) {
+  values <- as.character(values %||% character(0))
+  order_values <- as.character(order_values %||% character(0))
+  selected <- as.character(selected %||% character(0))
+  if (length(selected) > 0) {
+    values <- values[values %in% selected]
+    order_values <- order_values[order_values %in% selected]
+  }
+  ordered <- order_values[order_values %in% values]
+  c(ordered, values[!values %in% ordered])
+}
+
 paired_group_items <- function(groups, variable_table = NULL, labels = character(0)) {
   groups <- groups %||% list()
   if (length(groups) == 0) return(list())
@@ -78,11 +96,13 @@ paired_setup_state <- function(
   bowker = TRUE,
   effect_size = TRUE,
   cohen_d = TRUE,
+  mean_sd = FALSE,
+  median_iqr = FALSE,
   adjustment = "bonferroni",
   time_labels = NULL
 ) {
   selected <- as.character(selected_names %||% character(0))
-  repeated_groups <- lapply(repeated_groups %||% list(), function(group) intersect(as.character(group), selected))
+  repeated_groups <- lapply(repeated_groups %||% list(), paired_keep_selected_order, selected = selected)
   repeated_groups <- repeated_groups[lengths(repeated_groups) >= 2L]
   group_values <- paired_group_values(repeated_groups)
   grouped_variables <- unique(unlist(repeated_groups, use.names = FALSE))
@@ -107,6 +127,8 @@ paired_setup_state <- function(
     bowker = isTRUE(bowker),
     effect_size = isTRUE(effect_size),
     cohen_d = isTRUE(cohen_d),
+    mean_sd = isTRUE(mean_sd),
+    median_iqr = isTRUE(median_iqr),
     adjustment = if (identical(adjustment, "bonferroni")) "bonferroni" else "holm",
     time_labels = time_labels,
     has_two = any(lengths(repeated_groups) == 2L),
@@ -132,6 +154,65 @@ paired_time_label_inputs <- function(time_labels) {
 }
 
 paired_setup_panel <- function(state) {
+  primary_options <- tagList(
+    analysis_option_group(
+      "Assumption",
+      list(list(id = "paired_assumption_check", label = "Check assumptions", value = state$assumption_check))
+    ),
+    analysis_option_group(
+      "Categorical",
+      list(list(id = "paired_bowker", label = "Bowker symmetry test", value = state$bowker))
+    ),
+    analysis_option_group(
+      "Effect size",
+      list(
+        list(id = "paired_effect_size", label = "Effect size", value = state$effect_size),
+        list(id = "paired_cohen_d", label = "Cohen's d for paired t-test", value = state$cohen_d)
+      )
+    ),
+    analysis_option_group(
+      "Summary",
+      list(
+        list(id = "paired_mean_sd", label = "M \u00B1 SD", value = state$mean_sd),
+        list(id = "paired_median_iqr", label = "Median(Q1~Q3)", value = state$median_iqr)
+      )
+    )
+  )
+  repeated_options <- tagList(
+    div(
+      class = "analysis-option-group analysis-radio-group paired-posthoc-group",
+      div(class = "analysis-option-title", "Post-hoc correction"),
+      radioButtons(
+        "paired_adjustment",
+        label = NULL,
+        choices = c("Bonferroni correction" = "bonferroni", "Holm Bonferroni" = "holm"),
+        selected = state$adjustment
+      )
+    ),
+    paired_time_label_inputs(state$time_labels)
+  )
+  repeated_tab_title <- if (isTRUE(state$has_three_plus)) {
+    "Repeated"
+  } else {
+    tags$span(class = "paired-options-disabled-tab", "Repeated")
+  }
+  repeated_tab_content <- if (isTRUE(state$has_three_plus)) {
+    repeated_options
+  } else {
+    div(class = "paired-options-disabled-content")
+  }
+  options_content <- tabsetPanel(
+    id = "paired_options_tabs",
+    type = "tabs",
+    tabPanel(
+      "Options",
+      div(class = "factor-options-tab-content ttest-anova-options-tab-content paired-options-tab-content", primary_options)
+    ),
+    tabPanel(
+      repeated_tab_title,
+      div(class = "factor-options-tab-content ttest-anova-options-tab-content paired-options-tab-content", repeated_tab_content)
+    )
+  )
   div(
     class = "ttest-anova-setup-grid paired-setup-grid paired-rm-setup-grid",
     div(
@@ -152,45 +233,8 @@ paired_setup_panel <- function(state) {
     div(
       class = "ttest-anova-options-column",
       div(
-        class = "analysis-options-panel ttest-anova-options paired-options",
-        analysis_option_group(
-          "Assumption",
-          list(list(id = "paired_assumption_check", label = "Check assumptions", value = state$assumption_check))
-        ),
-        if (isTRUE(state$has_two) || !isTRUE(state$has_three_plus)) {
-          tagList(
-            analysis_option_group(
-              "Categorical",
-              list(list(id = "paired_bowker", label = "Bowker symmetry test", value = state$bowker))
-            ),
-            analysis_option_group(
-              "Effect size",
-              list(
-                list(id = "paired_effect_size", label = "Effect size", value = state$effect_size),
-                list(id = "paired_cohen_d", label = "Cohen's d for paired t-test", value = state$cohen_d)
-              )
-            )
-          )
-        } else {
-          NULL
-        },
-        if (isTRUE(state$has_three_plus)) {
-          tagList(
-            div(
-              class = "analysis-option-group analysis-radio-group paired-posthoc-group",
-              div(class = "analysis-option-title", "Post-hoc correction"),
-              radioButtons(
-                "paired_adjustment",
-                label = NULL,
-                choices = c("Bonferroni correction" = "bonferroni", "Holm Bonferroni" = "holm"),
-                selected = state$adjustment
-              )
-            ),
-            paired_time_label_inputs(state$time_labels)
-          )
-        } else {
-          NULL
-        }
+        class = "analysis-options-panel ttest-anova-options paired-options analysis-tabbed-options",
+        options_content
       )
     )
   )

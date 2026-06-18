@@ -1729,6 +1729,30 @@ register_coding_error_check_handlers <- function(
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
+  observeEvent(input$coding_error_move_direct, {
+    data <- tryCatch(dataset_fn(), error = function(e) NULL)
+    if (is.null(data)) return()
+    variables <- names(data)
+    current <- intersect(selected_variables(), variables)
+    payload <- input$coding_error_move_direct %||% list()
+    source <- as.character(payload$source %||% "")
+    chosen <- intersect(as.character(payload$values %||% character(0)), variables)
+    if (identical(source, "selected")) {
+      chosen <- intersect(chosen, current)
+      if (length(chosen) == 0) return()
+      selected_variables(setdiff(current, chosen))
+      active_list("coding_error_available")
+    } else {
+      chosen <- intersect(chosen, setdiff(variables, current))
+      if (length(chosen) == 0) return()
+      selected_variables(c(current, chosen))
+      active_list("coding_error_selected")
+    }
+    last_issues(data.frame())
+    correction_values(character(0))
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
   observeEvent(input$coding_error_selected_doubleclick, {
     current <- selected_variables()
     chosen <- intersect(as.character(input$coding_error_selected_doubleclick$value %||% ""), current)
@@ -2095,6 +2119,30 @@ register_recode_different_handlers <- function(
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
+  observeEvent(input$recode_different_move_direct, {
+    data <- tryCatch(dataset_fn(), error = function(e) NULL)
+    if (is.null(data)) return()
+    variables <- names(data)
+    current <- intersect(selected_variables(), variables)
+    payload <- input$recode_different_move_direct %||% list()
+    source <- as.character(payload$source %||% "")
+    chosen <- intersect(as.character(payload$values %||% character(0)), variables)
+    if (identical(source, "selected")) {
+      chosen <- intersect(chosen, current)
+      if (length(chosen) == 0) return()
+      selected_variables(setdiff(current, chosen))
+      active_list("recode_different_available")
+    } else {
+      chosen <- intersect(chosen, setdiff(variables, current))
+      if (length(chosen) == 0) return()
+      selected_variables(c(current, chosen))
+      active_list("recode_different_selected")
+    }
+    last_issues(data.frame())
+    output_variables(character(0))
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
   observeEvent(input$recode_different_selected_doubleclick, {
     current <- selected_variables()
     chosen <- intersect(as.character(input$recode_different_selected_doubleclick$value %||% ""), current)
@@ -2324,6 +2372,31 @@ register_variable_calculation_handlers <- function(
     if (length(chosen) == 0) return()
     selected_variables(c(current, chosen))
     active_list("variable_calculation_selected")
+    preview_data(data.frame(check.names = FALSE))
+    output_variables(character(0))
+    reliability_result(NULL)
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$variable_calculation_move_direct, {
+    data <- tryCatch(dataset_fn(), error = function(e) NULL)
+    if (is.null(data)) return()
+    variables <- names(data)
+    current <- intersect(selected_variables(), variables)
+    payload <- input$variable_calculation_move_direct %||% list()
+    source <- as.character(payload$source %||% "")
+    chosen <- intersect(as.character(payload$values %||% character(0)), variables)
+    if (identical(source, "selected")) {
+      chosen <- intersect(chosen, current)
+      if (length(chosen) == 0) return()
+      selected_variables(setdiff(current, chosen))
+      active_list("variable_calculation_available")
+    } else {
+      chosen <- intersect(chosen, setdiff(variables, current))
+      if (length(chosen) == 0) return()
+      selected_variables(c(current, chosen))
+      active_list("variable_calculation_selected")
+    }
     preview_data(data.frame(check.names = FALSE))
     output_variables(character(0))
     reliability_result(NULL)

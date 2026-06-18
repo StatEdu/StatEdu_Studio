@@ -142,7 +142,13 @@ analysis_option_group <- function(title, options) {
     class = "analysis-option-group",
     div(class = "analysis-option-title", title),
     lapply(options, function(option) {
-      checkboxInput(option$id, option$label, value = isTRUE(option$value))
+      control <- checkboxInput(option$id, option$label, value = isTRUE(option$value))
+      tooltip <- option$tooltip %||% ""
+      if (nzchar(tooltip)) {
+        div(title = tooltip, control)
+      } else {
+        control
+      }
     })
   )
 }

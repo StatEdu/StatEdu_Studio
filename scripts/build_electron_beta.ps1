@@ -28,6 +28,26 @@ function Find-Npm {
   throw "npm.cmd was not found. Install Node.js LTS with npm before building the Electron installer."
 }
 
+function Find-Rscript {
+  $command = Get-Command "Rscript.exe" -ErrorAction SilentlyContinue
+  if (-not $command) {
+    $command = Get-Command "Rscript" -ErrorAction SilentlyContinue
+  }
+  if ($command) {
+    return $command.Source
+  }
+  $candidates = @(
+    "C:\Program Files\R\R-4.5.2\bin\x64\Rscript.exe",
+    "C:\Program Files\R\R-4.5.2\bin\Rscript.exe"
+  )
+  foreach ($candidate in $candidates) {
+    if (Test-Path -LiteralPath $candidate) {
+      return $candidate
+    }
+  }
+  throw "Rscript.exe was not found. Install R or pass -RHome to the build script."
+}
+
 function Invoke-Native {
   param(
     [string]$FilePath,
@@ -93,8 +113,21 @@ try {
   $appFiles = git ls-files |
     Where-Object {
       $_ -notmatch "^(packaging/|dist/)" -and
+      $_ -notmatch "^R/latent_mplus_module\.R$" -and
+      $_ -notmatch "^modules/latent_mplus/" -and
       $_ -notmatch "^easyflow_statistics_.*\.zip$"
     }
+  $bootstrapText = Get-Content -LiteralPath (Join-Path $repoRoot "R\app_bootstrap.R") -Raw
+  $bootstrapModules = [regex]::Matches($bootstrapText, '"([^"]+\.R)"') |
+    ForEach-Object { "R/" + $_.Groups[1].Value } |
+    Where-Object {
+      $_ -notmatch "^R/latent_mplus_module\.R$"
+    } |
+    Sort-Object -Unique
+  $missingTrackedModules = @($bootstrapModules | Where-Object { $_ -notin $appFiles })
+  if ($missingTrackedModules.Count -gt 0) {
+    throw "R module(s) referenced by app_bootstrap.R are not tracked by git and would be omitted from the Electron app stage: $($missingTrackedModules -join ', ')"
+  }
   foreach ($file in $appFiles) {
     $source = Join-Path $repoRoot ($file -replace "/", "\")
     $target = Join-Path $appStage ($file -replace "/", "\")
@@ -115,7 +148,8 @@ try {
 
 if (-not $SkipRuntimeCopy) {
   if (-not $RHome) {
-    $RHome = (& "Rscript" -e "cat(normalizePath(R.home(), winslash='\\', mustWork=TRUE))")
+    $hostRscript = Find-Rscript
+    $RHome = (& $hostRscript -e "cat(normalizePath(R.home(), winslash='\\', mustWork=TRUE))")
   }
   if (-not (Test-Path -LiteralPath (Join-Path $RHome "bin\x64\Rscript.exe"))) {
     throw "Rscript.exe was not found under RHome: $RHome"
@@ -125,11 +159,8 @@ if (-not $SkipRuntimeCopy) {
 
   $runtimeLibrary = Join-Path $runtimeStage "library"
   $dependencyScript = @"
-required <- c(
-  "shiny", "DT", "car", "lmtest", "sandwich", "nortest", "boot", "jsonlite", "haven",
-  "readr", "readxl", "cellranger", "htmltools", "markdown", "openxlsx", "officer", "flextable", "xml2",
-  "rvest", "callr", "glmnet", "agricolae", "psych", "polycor", "longpower", "WebPower", "TOSTER"
-)
+source(file.path("$($repoRoot -replace "\\", "/")", "R", "app_bootstrap.R"), local = TRUE)
+required <- required_packages
 db <- installed.packages()
 deps <- tools::package_dependencies(required, db = db, which = c("Depends", "Imports", "LinkingTo"), recursive = TRUE)
 packages <- sort(unique(c(required, unlist(deps, use.names = FALSE))))

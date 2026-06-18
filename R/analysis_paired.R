@@ -46,11 +46,18 @@ paired_numeric <- function(x) {
 
 paired_complete_data <- function(x, y) {
   keep <- !is.na(x) & !is.na(y)
-  list(x = x[keep], y = y[keep], n = sum(keep))
+  ids <- names(x)
+  if (is.null(ids) || length(ids) != length(x) || all(!nzchar(as.character(ids)))) {
+    ids <- as.character(seq_along(x))
+  }
+  list(x = x[keep], y = y[keep], id = ids[keep], n = sum(keep))
 }
 
-paired_outlier_summary <- function(diff) {
-  diff <- diff[is.finite(diff)]
+paired_outlier_summary <- function(diff, ids = NULL) {
+  finite <- is.finite(diff)
+  diff <- diff[finite]
+  ids <- as.character(ids %||% seq_along(finite))
+  ids <- ids[finite]
   if (length(diff) < 4) {
     return("None detected")
   }
@@ -61,12 +68,26 @@ paired_outlier_summary <- function(diff) {
   }
   lower <- q[[1]] - 3 * iqr
   upper <- q[[2]] + 3 * iqr
-  count <- sum(diff < lower | diff > upper, na.rm = TRUE)
-  if (count > 0) sprintf("%s detected", count) else "None detected"
+  outlier <- diff < lower | diff > upper
+  count <- sum(outlier, na.rm = TRUE)
+  if (count == 0) {
+    return("None detected")
+  }
+  severity <- pmax(lower - diff[outlier], diff[outlier] - upper, na.rm = TRUE)
+  ordered_ids <- ids[outlier][order(severity, decreasing = TRUE)]
+  listed_ids <- head(ordered_ids[nzchar(ordered_ids)], 5L)
+  if (length(listed_ids) > 0) {
+    sprintf("%s detected (IDs: %s)", count, paste(listed_ids, collapse = ", "))
+  } else {
+    sprintf("%s detected", count)
+  }
 }
 
-paired_diff_assumption <- function(diff) {
-  diff <- diff[is.finite(diff)]
+paired_diff_assumption <- function(diff, ids = NULL) {
+  finite <- is.finite(diff)
+  ids <- as.character(ids %||% seq_along(diff))
+  ids <- ids[finite]
+  diff <- diff[finite]
   n <- length(diff)
   if (n == 0) {
     return(list(n = 0L, skewness = NA_real_, kurtosis = NA_real_, shapiro_p = NA_real_, normal = FALSE, outliers = "None detected", method = "none"))
@@ -94,7 +115,7 @@ paired_diff_assumption <- function(diff) {
     shapiro_w = sw_w,
     shapiro_p = sw,
     normal = normal,
-    outliers = paired_outlier_summary(diff),
+    outliers = paired_outlier_summary(diff, ids),
     method = method
   )
 }
@@ -184,6 +205,34 @@ paired_effect_value <- function(value) {
   format_effect_size(value)
 }
 
+paired_summary_values <- function(values, median_iqr = FALSE) {
+  values <- values[is.finite(values)]
+  if (length(values) == 0) {
+    return(list(center = "", spread = "", combined = "", center_label = "M", spread_label = "SD"))
+  }
+  if (isTRUE(median_iqr)) {
+    q <- stats::quantile(values, probs = c(.25, .5, .75), na.rm = TRUE, names = FALSE)
+    center <- format_decimal2(q[[2]])
+    spread <- sprintf("%s~%s", format_decimal2(q[[1]]), format_decimal2(q[[3]]))
+    return(list(
+      center = center,
+      spread = spread,
+      combined = sprintf("%s (%s)", center, spread),
+      center_label = "Median",
+      spread_label = "Q1~Q3"
+    ))
+  }
+  center <- format_decimal2(mean(values, na.rm = TRUE))
+  spread <- format_decimal2(stats::sd(values, na.rm = TRUE))
+  list(
+    center = center,
+    spread = spread,
+    combined = sprintf("%s \u00B1 %s", center, spread),
+    center_label = "M",
+    spread_label = "SD"
+  )
+}
+
 paired_hedges_correction <- function(n) {
   if (!is.finite(n) || n <= 1) return(NA_real_)
   df <- n - 1
@@ -200,10 +249,21 @@ paired_t_effects <- function(diff) {
   list(d = d, g = g)
 }
 
-paired_wilcoxon_r <- function(p, diff) {
+paired_wilcoxon_r <- function(p, diff, statistic = NA_real_) {
   diff <- diff[is.finite(diff)]
+  diff <- diff[diff != 0]
   n <- length(diff)
-  if (!is.finite(p) || p <= 0 || n <= 0) return(NA_real_)
+  if (n <= 0) return(NA_real_)
+  statistic <- suppressWarnings(as.numeric(statistic))
+  if (is.finite(statistic)) {
+    expected <- n * (n + 1) / 4
+    sd_w <- sqrt(n * (n + 1) * (2 * n + 1) / 24)
+    if (is.finite(sd_w) && sd_w > 0) {
+      return((statistic - expected) / sd_w / sqrt(n))
+    }
+  }
+  if (!is.finite(p)) return(NA_real_)
+  p <- max(p, 1e-300)
   z <- stats::qnorm(p / 2, lower.tail = FALSE)
   direction <- sign(stats::median(diff, na.rm = TRUE))
   if (!is.finite(direction) || direction == 0) direction <- sign(mean(diff, na.rm = TRUE))
@@ -310,7 +370,7 @@ paired_analyze_pair <- function(data, first, second, measurement, variable_info,
   if (identical(measurement, "continuous")) {
     pair <- paired_complete_data(paired_numeric(x_raw), paired_numeric(y_raw))
     diff <- pair$y - pair$x
-    check <- paired_diff_assumption(diff)
+    check <- paired_diff_assumption(diff, pair$id)
     use_t <- !isTRUE(options$assumption_check) || isTRUE(check$normal)
     if (isTRUE(use_t)) {
       guard <- paired_diff_guard(diff, require_variance = TRUE)
@@ -340,8 +400,11 @@ paired_analyze_pair <- function(data, first, second, measurement, variable_info,
       df <- NA_real_
       p <- as.numeric(test$p.value)
       effect_label <- "r"
-      effect <- paired_effect_value(paired_wilcoxon_r(p, diff))
+      effect <- paired_effect_value(paired_wilcoxon_r(p, diff, statistic))
     }
+    use_median_iqr <- isTRUE(options$median_iqr) && identical(method, "Wilcoxon signed-rank test")
+    pre_summary <- paired_summary_values(pair$x, median_iqr = use_median_iqr)
+    post_summary <- paired_summary_values(pair$y, median_iqr = use_median_iqr)
     return(list(
       result = data.frame(
         Pair = pair_label,
@@ -356,10 +419,14 @@ paired_analyze_pair <- function(data, first, second, measurement, variable_info,
       ),
       scale = data.frame(
         Variable = pair_label,
-        Pre_M = format_decimal2(mean(pair$x, na.rm = TRUE)),
-        Pre_SD = format_decimal2(stats::sd(pair$x, na.rm = TRUE)),
-        Post_M = format_decimal2(mean(pair$y, na.rm = TRUE)),
-        Post_SD = format_decimal2(stats::sd(pair$y, na.rm = TRUE)),
+        Pre_M = pre_summary$center,
+        Pre_SD = pre_summary$spread,
+        Pre_MS = pre_summary$combined,
+        Post_M = post_summary$center,
+        Post_SD = post_summary$spread,
+        Post_MS = post_summary$combined,
+        SummaryCenter = pre_summary$center_label,
+        SummarySpread = pre_summary$spread_label,
         Method = method,
         StatisticLabel = if (identical(method, "Paired t-test")) "t" else "W",
         Statistic = format_decimal3(statistic),
@@ -385,20 +452,27 @@ paired_analyze_pair <- function(data, first, second, measurement, variable_info,
     }
     test <- suppressWarnings(stats::wilcox.test(pair$y, pair$x, paired = TRUE, exact = FALSE))
     p <- as.numeric(test$p.value)
+    use_median_iqr <- isTRUE(options$median_iqr)
+    pre_summary <- paired_summary_values(pair$x, median_iqr = use_median_iqr)
+    post_summary <- paired_summary_values(pair$y, median_iqr = use_median_iqr)
     return(list(
       result = data.frame(Pair = pair_label, Level = "Ordinal", Method = "Wilcoxon signed-rank test", N = pair$n, Statistic = format_decimal3(unname(as.numeric(test$statistic))), df = "", p = format_p(p), stringsAsFactors = FALSE, check.names = FALSE),
       scale = data.frame(
         Variable = pair_label,
-        Pre_M = format_decimal2(mean(pair$x, na.rm = TRUE)),
-        Pre_SD = format_decimal2(stats::sd(pair$x, na.rm = TRUE)),
-        Post_M = format_decimal2(mean(pair$y, na.rm = TRUE)),
-        Post_SD = format_decimal2(stats::sd(pair$y, na.rm = TRUE)),
+        Pre_M = pre_summary$center,
+        Pre_SD = pre_summary$spread,
+        Pre_MS = pre_summary$combined,
+        Post_M = post_summary$center,
+        Post_SD = post_summary$spread,
+        Post_MS = post_summary$combined,
+        SummaryCenter = pre_summary$center_label,
+        SummarySpread = pre_summary$spread_label,
         Method = "Wilcoxon signed-rank test",
         StatisticLabel = "W",
         Statistic = format_decimal3(unname(as.numeric(test$statistic))),
         p = format_p(p),
         EffectLabel = "r",
-        Effect = paired_effect_value(paired_wilcoxon_r(p, diff)),
+        Effect = paired_effect_value(paired_wilcoxon_r(p, diff, unname(as.numeric(test$statistic)))),
         stringsAsFactors = FALSE,
         check.names = FALSE
       ),

@@ -2,6 +2,20 @@
 
 coefficient_result_ui <- function(table, result, show_sr2 = FALSE, show_f2 = FALSE, show_vif = FALSE) {
   table <- filter_coefficient_export_table(table, show_sr2, show_f2, show_vif)
+  if (isTRUE(result$use_bootstrap)) {
+    attr(table, "bootstrap_regression") <- TRUE
+    keys <- result_column_key(names(table))
+    widths <- rep(8, length(keys))
+    widths[keys == "term"] <- 36
+    widths[keys == "b"] <- 10
+    widths[keys %in% c("bootse", "hc3se")] <- 12
+    widths[keys %in% c("llci", "ulci")] <- 10
+    widths[keys == "bootp"] <- 10
+    widths[keys %in% c("sr2", "f2")] <- 8
+    widths[keys == "tolerance"] <- 11
+    widths[keys == "vif"] <- 8
+    attr(table, "compact_column_widths") <- widths / sum(widths, na.rm = TRUE) * 100
+  }
   fit_line <- coefficient_fit_line(result)
   stat_lines <- coefficient_stat_lines(result)
   warning_line <- coefficient_vif_warning_line(result)
@@ -387,7 +401,7 @@ hierarchical_term_cell_style <- function(last = FALSE) {
     "padding:9px 18px;line-height:1.45;border-left:0;border-right:0;",
     "border-top:0;border-bottom:", if (isTRUE(last)) "0" else "1px solid #d7dde5", ";",
     "vertical-align:middle;background:transparent;",
-    "width:232px;min-width:232px;max-width:232px;",
+    "width:auto;min-width:0;max-width:none;",
     "text-align:left;white-space:normal;overflow-wrap:break-word;word-break:keep-all;"
   )
 }
@@ -413,7 +427,7 @@ hierarchical_footer_row <- function(label, values, model_columns, first = FALSE)
     style = paste0(
       "padding:9px 18px;line-height:1.45;border-left:0;border-right:0;",
       "border-top:", top_border, ";border-bottom:0;text-align:left;",
-      "width:232px;min-width:232px;max-width:232px;white-space:normal;overflow-wrap:break-word;"
+      "width:auto;min-width:0;max-width:none;white-space:normal;overflow-wrap:break-word;"
     ),
     label
   ))
@@ -433,17 +447,64 @@ hierarchical_footer_row <- function(label, values, model_columns, first = FALSE)
   do.call(tags$tr, c(list(class = "coefficient-fit-row"), cells))
 }
 
+hierarchical_stat_column_weight <- function(column) {
+  key <- result_column_key(column)
+  if (key %in% c("bootp")) return(0.82)
+  if (key %in% c("llci", "ulci", "p", "sr2", "f2", "tolerance", "vif")) return(0.75)
+  if (key %in% c("bootse", "hc3se")) return(1.05)
+  1
+}
+
+hierarchical_stat_header_label <- function(column) {
+  key <- result_column_key(column)
+  switch(
+    key,
+    bootse = "Boot\nSE",
+    hc3se = "HC3\nSE",
+    bootp = "Boot\np",
+    tolerance = "Tol",
+    column
+  )
+}
+
+hierarchical_table_column_percentages <- function(model_columns) {
+  model_count <- length(model_columns)
+  separator_count <- max(model_count - 1L, 0L)
+  term_percent <- if (model_count <= 2L) 22 else 14
+  separator_percent <- if (separator_count > 0L) 0.8 else 0
+  weights <- unlist(lapply(model_columns, function(columns) {
+    vapply(columns, hierarchical_stat_column_weight, numeric(1))
+  }), use.names = FALSE)
+  available <- max(10, 100 - term_percent - separator_count * separator_percent)
+  stat_percents <- if (length(weights) > 0 && sum(weights, na.rm = TRUE) > 0) {
+    weights / sum(weights, na.rm = TRUE) * available
+  } else {
+    numeric(0)
+  }
+  list(
+    term = term_percent,
+    separator = separator_percent,
+    stats = stat_percents
+  )
+}
+
 hierarchical_table_colgroup <- function(model_columns) {
-  cols <- list(tags$col(class = "hierarchical-term-col"))
+  percentages <- hierarchical_table_column_percentages(model_columns)
+  stat_index <- 0L
+  cols <- list(tags$col(class = "hierarchical-term-col", style = sprintf("width:%.4f%%;", percentages$term)))
   for (index in seq_along(model_columns)) {
     cols <- c(
       cols,
       lapply(model_columns[[index]], function(column) {
-        tags$col(class = hierarchical_stat_column_class(column))
+        stat_index <<- stat_index + 1L
+        tags$col(
+          class = hierarchical_stat_column_class(column),
+          style = sprintf("width:%.4f%%;", percentages$stats[[stat_index]] %||% 0)
+        )
       })
     )
     if (index < length(model_columns)) {
-      cols <- c(cols, list(tags$col(class = "hierarchical-separator-col")))
+      cols <- c(cols, list(tags$col(class = "hierarchical-separator-col", style = sprintf("width:%.4f%%;", percentages$separator))))
     }
   }
   do.call(tags$colgroup, cols)
@@ -506,7 +567,7 @@ hierarchical_coefficient_html_table <- function(
     style = paste0(
       "padding:9px 18px;line-height:1.45;border-left:0;border-right:0;",
       "border-top:2px solid #1f2937;border-bottom:2px solid #1f2937;",
-      "text-align:left;font-weight:700;width:232px;min-width:232px;max-width:232px;white-space:nowrap;"
+      "text-align:left;font-weight:700;width:auto;min-width:0;max-width:none;white-space:nowrap;"
     ),
     "Variable"
   ))
@@ -531,7 +592,7 @@ hierarchical_coefficient_html_table <- function(
     sub_headers <- c(sub_headers, lapply(columns, function(column) {
       tags$th(
         style = paste0(hierarchical_stat_cell_style(column, header = TRUE), "font-weight:700;"),
-        column
+        result_header_content(hierarchical_stat_header_label(column))
       )
     }))
     if (index < length(model_columns)) {
@@ -581,12 +642,7 @@ hierarchical_coefficient_html_table <- function(
 
   table <- tags$table(
     class = "coefficient-table hierarchical-coefficient-table",
-    style = sprintf(
-      "%s width: %dpx; min-width: %dpx; table-layout: fixed;",
-      result_table_style(),
-      hierarchical_table_width(model_columns),
-      hierarchical_table_width(model_columns)
-    ),
+    style = paste0(result_table_style(font_size = 12, min_width = 0), "width:100% !important;min-width:0 !important;max-width:100% !important;table-layout:fixed;"),
     hierarchical_table_colgroup(model_columns),
     tags$thead(
       do.call(tags$tr, header_groups),

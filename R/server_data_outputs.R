@@ -1,6 +1,7 @@
 # Server output handlers for the Data tab workspace and tables.
 
 register_data_workspace_outputs <- function(
+  input,
   output,
   current_data_file_fn,
   active_data_file_fn = NULL,
@@ -59,9 +60,9 @@ register_data_workspace_outputs <- function(
       preview <- read_excel_preview(
         pending_file$path,
         pending_file$name,
-        sheet = pending_file$excel_sheet %||% NULL,
-        start_cell = pending_file$excel_start_cell %||% "A1",
-        col_names = isTRUE(pending_file$excel_col_names %||% TRUE),
+        sheet = as.character(input$excel_import_sheet %||% pending_file$excel_sheet %||% NULL),
+        start_cell = normalize_excel_start_cell(input$excel_import_start_cell %||% pending_file$excel_start_cell %||% "A1"),
+        col_names = isTRUE(input$excel_import_col_names %||% pending_file$excel_col_names %||% TRUE),
         n_max = 20
       )
       DT::datatable(preview, rownames = FALSE, options = list(dom = "tip", pageLength = 10, scrollX = TRUE))
@@ -70,7 +71,28 @@ register_data_workspace_outputs <- function(
     })
   })
 
+  output$data_excel_pending <- reactive({
+    pending_file <- if (is.function(active_data_file_fn)) active_data_file_fn() else NULL
+    is.list(pending_file) && isTRUE(pending_file$excel_pending)
+  })
+  outputOptions(output, "data_excel_pending", suspendWhenHidden = FALSE)
+
+  output$excel_import_note <- renderText({
+    pending_file <- if (is.function(active_data_file_fn)) active_data_file_fn() else NULL
+    if (!is.list(pending_file) || !isTRUE(pending_file$excel_pending)) {
+      return("")
+    }
+    sprintf(
+      "Reviewing %s. Choose sheet and start-cell options on the left, then import.",
+      pending_file$name %||% "Excel file"
+    )
+  })
+
   output$data_loaded_message <- renderText({
+    pending_file <- if (is.function(active_data_file_fn)) active_data_file_fn() else NULL
+    if (is.list(pending_file) && isTRUE(pending_file$excel_pending)) {
+      return(sprintf("Excel file selected: %s. Review the sheet on the right, then import.", pending_file$name %||% "Excel file"))
+    }
     file <- current_data_file_fn()
     state <- data_loaded_message_state(
       file = file,
@@ -108,6 +130,7 @@ register_data_workspace_outputs <- function(
 }
 
 register_data_table_outputs <- function(
+  input,
   output,
   current_data_file_fn,
   dataset_fn,
@@ -119,7 +142,9 @@ register_data_table_outputs <- function(
   category_label_table_data_fn
 ) {
   output$selected_variable_edit_table <- DT::renderDT({
+    req(identical(input$step3_panel_view %||% "labels", "variables"))
     tryCatch({
+      start <- Sys.time()
       selected <- selected_names_fn()
       table_info <- variable_info_table_fn()
       if (is.null(table_info) || length(selected) == 0) {
@@ -133,7 +158,7 @@ register_data_table_outputs <- function(
         selection_applied = FALSE,
         measurement_overrides = measurement_overrides_fn()
       )
-      DT::datatable(
+      out <- DT::datatable(
         table_state$table_data,
         rownames = FALSE,
         escape = FALSE,
@@ -146,6 +171,8 @@ register_data_table_outputs <- function(
           script = variable_table_callback_script()
         )
       )
+      easyflow_log_timing("render selected_variable_edit_table", start, sprintf("rows=%s", nrow(table_state$table_data)))
+      out
     }, error = function(error) {
       message("Selected variable edit table render error: ", conditionMessage(error))
       empty_variable_table()
@@ -172,7 +199,7 @@ register_data_table_outputs <- function(
           options = list(dom = "t", paging = FALSE, ordering = FALSE)
         ))
       }
-      DT::datatable(
+      out <- DT::datatable(
         table_data,
         rownames = FALSE,
         escape = FALSE,
@@ -180,6 +207,7 @@ register_data_table_outputs <- function(
         selection = "none",
         options = selected_variable_summary_table_options()
       )
+      out
     }, error = function(error) {
       message("Selected variable summary render error: ", conditionMessage(error))
       empty_selected_variable_summary_table()
@@ -187,7 +215,9 @@ register_data_table_outputs <- function(
   })
 
   output$category_label_table <- DT::renderDT({
+    req(identical(input$step3_panel_view %||% "labels", "labels"))
     tryCatch({
+      start <- Sys.time()
       table_data <- category_label_table_data_fn()
       if (is.null(table_data)) {
         return(empty_category_label_table())
@@ -204,7 +234,7 @@ register_data_table_outputs <- function(
 
       column_defs <- category_label_column_defs(table_data)
 
-      DT::datatable(
+      out <- DT::datatable(
         table_data,
         rownames = FALSE,
         escape = FALSE,
@@ -213,6 +243,8 @@ register_data_table_outputs <- function(
         options = category_label_table_options(column_defs),
         callback = category_label_table_callback()
       )
+      easyflow_log_timing("render category_label_table", start, sprintf("rows=%s cols=%s", nrow(table_data), ncol(table_data)))
+      out
     }, error = function(error) {
       message("Category label table render error: ", conditionMessage(error))
       empty_category_label_table()
@@ -220,6 +252,7 @@ register_data_table_outputs <- function(
   })
 
   output$data_preview_table <- DT::renderDT({
+    start <- Sys.time()
     if (is.null(current_data_file_fn())) {
       return(empty_data_preview_table())
     }
@@ -228,7 +261,9 @@ register_data_table_outputs <- function(
       selected <- selected_names_fn()
       data <- data[, intersect(selected, names(data)), drop = FALSE]
     }
-    data_preview_datatable(data)
+    out <- data_preview_datatable(data)
+    easyflow_log_timing("render data_preview_table", start, sprintf("vars=%s rows=%s", ncol(data), nrow(data)))
+    out
   })
 
   invisible(TRUE)
@@ -250,6 +285,7 @@ register_variable_table_output <- function(
   measurement_overrides_fn
 ) {
   output$variable_table <- DT::renderDT({
+    start <- Sys.time()
     if (is.null(current_data_file_fn()) && is.null(restored_variable_info_fn())) {
       return(empty_variable_table())
     }
@@ -273,7 +309,7 @@ register_variable_table_output <- function(
     )
     checked_names <- table_state$checked_names
     table_data <- table_state$table_data
-    DT::datatable(
+    out <- DT::datatable(
       table_data,
       rownames = FALSE,
       escape = FALSE,
@@ -286,6 +322,8 @@ register_variable_table_output <- function(
         script = variable_table_callback_script()
       )
     )
+    easyflow_log_timing("render variable_table", start, sprintf("rows=%s selection_applied=%s", nrow(table_data), isTRUE(selection_applied_fn())))
+    out
   })
 
   invisible(TRUE)

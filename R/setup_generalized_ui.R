@@ -1,161 +1,225 @@
-# Generalized regression setup UI state and panel.
+# Generalized linear model setup UI state and panel.
 
 generalized_setup_state <- function(
-  ordered_dependents,
-  ordered_predictors,
-  available_predictors,
+  selected_names,
+  outcome,
+  exposure = character(0),
+  predictors,
   variable_table,
-  labels = character(0)
+  labels = character(0),
+  selected_available = NULL,
+  selected_outcome = NULL,
+  selected_exposure = NULL,
+  selected_predictor = NULL,
+  family = "auto",
+  link = "default",
+  robust = TRUE,
+  se_type = NULL,
+  overdispersion = TRUE,
+  assumption_checks = TRUE,
+  exponentiate = TRUE,
+  show_vif = FALSE,
+  missing_strategy = "complete",
+  missing_imputations = 5L,
+  missing_iterations = 5L,
+  options_tab = "Model"
 ) {
+  selected_names <- as.character(selected_names %||% character(0))
+  outcome <- utils::head(intersect(as.character(outcome %||% character(0)), selected_names), 1)
+  if (length(outcome) == 1 && !isTRUE(generalized_outcome_allowed(outcome, variable_table))) {
+    outcome <- character(0)
+  }
+  exposure <- utils::head(intersect(as.character(exposure %||% character(0)), selected_names), 1)
+  if (length(exposure) == 1 && !isTRUE(generalized_offset_allowed(exposure, variable_table))) {
+    exposure <- character(0)
+  }
+  predictors <- setdiff(intersect(as.character(predictors %||% character(0)), selected_names), unique(c(outcome, exposure)))
+  available <- setdiff(selected_names, unique(c(outcome, exposure, predictors)))
+  family <- generalized_resolve_family(family)
+  link <- generalized_resolve_link(family, link)
+  se_type <- generalized_resolve_se_type(se_type, robust = robust)
+
   list(
-    available_predictors = available_predictors,
-    available_choices = display_variable_choices_with_measurements(available_predictors, variable_table, labels),
-    available_list_size = 18,
-    dependent_choices = display_variable_choices_with_measurements(ordered_dependents, variable_table, labels),
-    ordered_dependents = ordered_dependents,
-    dependent_list_size = setup_list_size(ordered_dependents),
-    predictor_choices = display_variable_choices_with_measurements(ordered_predictors, variable_table, labels),
-    ordered_predictors = ordered_predictors,
-    predictor_list_size = setup_list_size(ordered_predictors),
-    family_choices = generalized_family_choices(),
-    link_choices = generalized_link_choices()
+    available = available,
+    available_items = variable_choice_items(available, variable_table, labels),
+    available_selected = selected_order_items(selected_available, available),
+    outcome = outcome,
+    outcome_items = variable_choice_items(outcome, variable_table, labels),
+    outcome_selected = selected_order_items(selected_outcome, outcome),
+    exposure = exposure,
+    exposure_items = variable_choice_items(exposure, variable_table, labels),
+    exposure_selected = selected_order_items(selected_exposure, exposure),
+    predictors = predictors,
+    predictor_items = variable_choice_items(predictors, variable_table, labels),
+    predictor_selected = selected_order_items(selected_predictor, predictors),
+    family = family,
+    link = link,
+    robust = !identical(se_type, "model"),
+    se_type = se_type,
+    overdispersion = setup_option_checked(overdispersion, default = TRUE),
+    assumption_checks = setup_option_checked(assumption_checks, default = TRUE),
+    exponentiate = setup_option_checked(exponentiate, default = TRUE),
+    show_vif = setup_option_checked(show_vif, default = FALSE),
+    missing_strategy = generalized_resolve_missing_strategy(missing_strategy),
+    missing_strategy_detail = generalized_missing_strategy_detail(missing_strategy),
+    missing_imputations = generalized_resolve_mi_count(missing_imputations, default = 5L, minimum = 2L),
+    missing_iterations = generalized_resolve_mi_count(missing_iterations, default = 5L, minimum = 1L),
+    options_tab = as.character(options_tab %||% "Model")[[1]],
+    run_disabled = length(outcome) != 1 || length(predictors) == 0
   )
 }
 
-generalized_setup_panel_from_state <- function(setup, status_message) {
-  generalized_setup_panel(
-    status_message = status_message,
-    available_predictors = setup$available_predictors,
-    available_choices = setup$available_choices,
-    available_list_size = setup$available_list_size,
-    dependent_choices = setup$dependent_choices,
-    ordered_dependents = setup$ordered_dependents,
-    dependent_list_size = setup$dependent_list_size,
-    predictor_choices = setup$predictor_choices,
-    ordered_predictors = setup$ordered_predictors,
-    predictor_list_size = setup$predictor_list_size,
-    family_choices = setup$family_choices,
-    link_choices = setup$link_choices
-  )
-}
-
-
-
-generalized_setup_panel <- function(
-  status_message,
-  available_predictors,
-  available_choices,
-  available_list_size,
-  dependent_choices,
-  ordered_dependents,
-  dependent_list_size,
-  predictor_choices,
-  ordered_predictors,
-  predictor_list_size,
-  family_choices,
-  link_choices
-) {
+generalized_setup_panel <- function(state, status_message = NULL) {
   tagList(
     if (!is.null(status_message)) {
       div(status_message, class = "regression-warning")
     },
     div(
-      class = "regression-fields",
+      class = "regression-setup-grid generalized-setup-grid",
       div(
-        class = "regression-variables-panel",
+        class = "analysis-transfer-column analysis-transfer-panel regression-available-panel",
+        analysis_field_label_tag("Variables"),
+        analysis_transfer_listbox_input(
+          "generalized_available",
+          items = state$available_items,
+          selected = state$available_selected,
+          size = 17
+        )
+      ),
+      div(
+        class = "analysis-transfer-controls regression-transfer-controls generalized-transfer-controls",
+        actionButton("generalized_outcome_move", ">", class = "btn btn-default analysis-move-button"),
+        actionButton("generalized_exposure_move", ">", class = "btn btn-default analysis-move-button"),
+        actionButton("generalized_predictors_move", ">", class = "btn btn-default analysis-move-button")
+      ),
+      div(
+        class = "regression-target-column",
         div(
-          class = "regression-setup-variable-box",
-          div("Variables", class = "regression-setup-variable-title"),
-          if (length(available_predictors) == 0) {
-            div("No predictor variables selected.", class = "regression-variable-empty")
-          } else {
-            selectInput(
-              "generalized_available_predictors",
-              label = NULL,
-              choices = available_choices,
-              selected = utils::head(available_predictors, 1),
-              multiple = FALSE,
-              selectize = FALSE,
-              size = available_list_size
+          class = "analysis-transfer-column analysis-transfer-panel generalized-model-block",
+          div(class = "analysis-option-title longitudinal-block-title", "Model variables"),
+          div(
+            class = "generalized-model-fields",
+            div(
+              class = "generalized-target-field generalized-outcome-field",
+              analysis_field_label_tag("Dependent variable", c("continuous", "binary")),
+              analysis_transfer_listbox_input(
+                "generalized_outcome",
+                items = state$outcome_items,
+                selected = state$outcome_selected,
+                size = 1
+              )
+            ),
+            div(
+              class = "generalized-target-field generalized-exposure-field",
+              analysis_field_label_tag("Exposure / offset (optional)", "continuous"),
+              analysis_transfer_listbox_input(
+                "generalized_exposure",
+                items = state$exposure_items,
+                selected = state$exposure_selected,
+                size = 1
+              )
             )
-          }
-        )
-      ),
-      div(
-        class = "variable-transfer-actions",
-        tags$button(">", type = "button", class = "btn btn-default btn-sm variable-transfer-button", disabled = "disabled"),
-        tags$button("<", type = "button", class = "btn btn-default btn-sm variable-transfer-button", disabled = "disabled")
-      ),
-      div(
-        class = "regression-field",
-        tags$label("Dependent Variables", `for` = "generalized_y", class = "control-label"),
-        selectInput(
-          "generalized_y",
-          label = NULL,
-          choices = dependent_choices,
-          selected = utils::head(ordered_dependents, 1),
-          multiple = FALSE,
-          selectize = FALSE,
-          size = dependent_list_size
-        ),
-        div(
-          class = "dependent-order-actions",
-          tags$button("Up", type = "button", class = "btn btn-default btn-sm", disabled = "disabled"),
-          tags$button("Down", type = "button", class = "btn btn-default btn-sm", disabled = "disabled")
-        )
-      ),
-      div(
-        class = "regression-field",
-        tags$label("Independent Variables", class = "control-label"),
-        selectInput(
-          "generalized_predictor_order",
-          label = NULL,
-          choices = predictor_choices,
-          selected = utils::head(ordered_predictors, 1),
-          multiple = FALSE,
-          selectize = FALSE,
-          size = predictor_list_size
-        ),
-        div(
-          class = "predictor-order-actions",
-          tags$button("Up", type = "button", class = "btn btn-default btn-sm", disabled = "disabled"),
-          tags$button("Down", type = "button", class = "btn btn-default btn-sm", disabled = "disabled")
-        )
-      ),
-      div(
-        class = "regression-options generalized-options",
-        div(
-          class = "regression-field generalized-option-field",
-          selectInput(
-            "generalized_family",
-            "Outcome model",
-            choices = family_choices,
-            selected = "count",
-            selectize = FALSE
+          ),
+          div(
+            class = "generalized-target-field generalized-predictors-field",
+            analysis_field_label_tag("Independent variables", c("binary", "category", "ordered", "continuous")),
+            analysis_transfer_listbox_input(
+              "generalized_predictors",
+              items = state$predictor_items,
+              selected = state$predictor_selected,
+              size = 8
+            ),
+            div(
+              class = "predictor-order-actions",
+              actionButton("generalized_predictor_up", "Up", class = "btn-default btn-sm"),
+              actionButton("generalized_predictor_down", "Down", class = "btn-default btn-sm")
+            )
           )
-        ),
-        div(
-          class = "regression-field generalized-option-field",
-          selectInput(
-            "generalized_link",
-            "Link function",
-            choices = link_choices,
-            selected = "default",
-            selectize = FALSE
+        )
+      ),
+      div(
+        class = "analysis-options-column analysis-options-panel regression-options generalized-options",
+        div("Options", class = "analysis-option-title"),
+        tabsetPanel(
+          id = "generalized_options_tab",
+          selected = state$options_tab,
+          tabPanel(
+            "Model",
+            div(
+              class = "generalized-options-tab-content",
+              selectInput(
+                "generalized_family",
+                "Outcome family",
+                choices = generalized_family_choices(),
+                selected = state$family,
+                selectize = FALSE
+              ),
+              selectInput(
+                "generalized_link",
+                "Link function",
+                choices = generalized_link_choices(state$family),
+                selected = state$link,
+                selectize = FALSE
+              ),
+              div("Reporting", class = "analysis-option-title generalized-reporting-title"),
+              checkboxInput("generalized_exponentiate", "Report exp(B) for logit / log-link models", value = state$exponentiate),
+              div("Inference", class = "analysis-option-title generalized-section-title"),
+              selectInput(
+                "generalized_se_type",
+                "Standard errors",
+                choices = generalized_se_type_choices(),
+                selected = state$se_type,
+                selectize = FALSE
+              )
+            )
+          ),
+          tabPanel(
+            "Missing",
+            div(
+              class = "generalized-options-tab-content generalized-missing-options-tab-content",
+              selectInput(
+                "generalized_missing_strategy",
+                "Missing-data strategy",
+                choices = generalized_missing_strategy_choices(),
+                selected = state$missing_strategy,
+                selectize = FALSE
+              ),
+              div(state$missing_strategy_detail, class = "generalized-help-text generalized-missing-detail"),
+              if (identical(state$missing_strategy, "mi")) {
+                div(
+                  class = "generalized-mi-settings",
+                  div(class = "analysis-option-subtitle", "Multiple imputation settings"),
+                  numericInput("generalized_missing_imputations", "MI datasets", value = state$missing_imputations, min = 2, max = 50, step = 1),
+                  numericInput("generalized_missing_iterations", "MI iterations", value = state$missing_iterations, min = 1, max = 50, step = 1)
+                )
+              }
+            )
+          ),
+          tabPanel(
+            "Checks",
+            div(
+              class = "generalized-options-tab-content",
+              checkboxInput("generalized_assumption_checks", "Run assumption checks and recommendations", value = state$assumption_checks),
+              tags$fieldset(
+                disabled = if (isTRUE(state$assumption_checks)) NULL else "disabled",
+                class = if (isTRUE(state$assumption_checks)) "generalized-check-options" else "generalized-check-options generalized-check-options-disabled",
+                checkboxInput("generalized_overdispersion", "Poisson / negative-binomial screening", value = state$overdispersion),
+                checkboxInput("generalized_show_vif", "Collinearity diagnostics (VIF)", value = state$show_vif)
+              )
+            )
           )
-        ),
-        div(
-          class = "regression-effect-options",
-          checkboxInput("generalized_exponentiate", "Report exp(B): IRR / ratio", value = TRUE),
-          checkboxInput("generalized_robust_se", "Robust standard errors", value = TRUE),
-          checkboxInput("generalized_overdispersion", "Overdispersion check", value = TRUE),
-          checkboxInput("generalized_show_vif", "Collinearity diagnostics(VIF)", value = FALSE)
         )
       )
     ),
     div(
-      class = "regression-actions",
-      tags$button("Run generalized", type = "button", class = "btn btn-primary", disabled = "disabled")
+      class = "regression-actions generalized-action-row",
+      actionButton(
+        "run_generalized",
+        "Run GLM",
+        class = "btn btn-primary",
+        disabled = if (isTRUE(state$run_disabled)) "disabled" else NULL
+      ),
+      uiOutput("generalized_reset_control")
     )
   )
 }

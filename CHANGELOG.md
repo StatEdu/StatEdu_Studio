@@ -1,5 +1,120 @@
 # Changelog
 
+## v0.9.39 - 2026-06-18
+
+### Added
+
+- Added a separate `Analysis > Longitudinal / Panel Models` workflow for GEE, LMM, GLMM, panel fixed-effects, and panel random-effects models.
+- Added model-specific assumption checks, recommended alternatives, automated sensitivity comparisons, publication-ready estimates, manuscript text, SCI reporting checklist, and software-version reporting for longitudinal / panel model results.
+- Added a longitudinal / panel Missing options tab with primary missing-data handling, actual MI/IPW/WGEE sensitivity engines, and report-level missing-data method tracking.
+- Added longitudinal analysis weights with a single weight-variable target, sampling/longitudinal/IPW/combined weight types, trimming, normalized final weights, and effective sample size reporting.
+- Added optional exposure / offset handling for longitudinal count/rate models, including `log(exposure)` offsets in primary and sensitivity fits.
+- Added count-model zero-inflation screening details comparing observed and Poisson-expected zero proportions.
+- Added an active `Analysis > GLM` workflow for Gaussian, binary logistic, Gamma, and count GLMs, reusing the GEE count-family screening approach for Poisson vs negative-binomial model selection.
+- Added GLM SCI-oriented reporting details for complete-case missing-data handling, count-family Poisson/negative-binomial selection, logistic EPV/separation/sparse-cell screening, independent-observation review, influence diagnostics, publication table notes, reporting checklists, and suggested manuscript text.
+- Added tabbed GLM options with a Missing tab for complete-case, multiple imputation, and inverse-probability weighted missing-data handling.
+- Added GLM documentation in the Korean User Guide, Analysis Methods, and Method Notes covering family/link selection, missing-data sensitivity, robust SE options, count overdispersion, and SCI reporting expectations.
+- Added HTML, PDF, Excel, and saved Result collection support for GLM outputs, including publication notes, SCI checklists, manuscript text, and software-version sheets.
+- Added HTML, PDF, Excel, and saved Result collection support for longitudinal / panel model outputs.
+- Added validation coverage for longitudinal / panel model fitting, GLM fitting, setup UI structure, assumption-check catalogs, HTML export, Excel export, sensitivity comparisons, and SCI reporting sections.
+
+### Changed
+
+- Aligned the Longitudinal / Panel Models setup screen with the existing t-test / ANOVA-style transfer layout and conditionally shows only model-relevant options.
+- Merged longitudinal / panel Model and Terms options so model type, fixed-time terms, and random-effect terms are configured in one tab.
+- Changed the default GEE working correlation to exchangeable, while AR(1) fits now pass subject/time wave ordering to `geepack::geeglm`.
+- Relabeled negative-binomial count fits for GEE as marginal negative-binomial GLM with subject-cluster robust SE because geepack does not provide native negative-binomial GEE.
+- Clarified that the optional Cluster ID is used as an additional random-intercept grouping variable for LMM/GLMM and is not applied to the selected GEE/panel primary fit.
+- Clarified LMM/GLMM missing-data handling as likelihood-based MAR analysis using available repeated measures, with MI/IPW kept as sensitivity analyses rather than the default primary fit.
+- Kept zero-inflated and hurdle count models out of the default longitudinal / panel module to avoid adding heavy optional package dependencies; excess-zero findings are reported as screening guidance.
+- Replaced the old Generalized scaffold with the working GLM setup, run handler, coefficient table, fit statistics, robust SE option, overdispersion check, and optional VIF diagnostics.
+- Aligned `run_app.R` with `R/app_bootstrap.R` so launcher-time package installation uses the same required-package list as the app runtime.
+- Updated the Electron runtime pin to 39.8.6 and refreshed the lockfile after package-audit review.
+- Hardened the Electron beta build script so it can locate Rscript outside PATH and does not fail on the optional latent Mplus module excluded from the packaged app.
+- Updated README, Korean User Guide, Analysis Methods, and Method Notes documentation for the new longitudinal / panel and GLM workflows.
+
+## v0.9.38 - 2026-06-15
+
+### Added
+
+- Added Fritz & MacKinnon (2007) empirical mediation sample-size table estimates for .80 power.
+- Added method-specific mediation references for Fritz & MacKinnon, Monte Carlo, bootstrap, and Sobel mediation sample-size calculations.
+
+### Changed
+
+- Widened the Sample Size results block on larger windows while preserving the existing three-block layout at 1280px-width displays.
+
+## v0.9.37 - 2026-06-12
+
+### Added
+
+- Added 4-point Korean and English Likert detection dictionaries corresponding to the existing 5-point detection sets.
+- Added an animated action-overlay walkthrough to the Korean in-app user guide using bundled guide images.
+
+### Changed
+
+- Refined the Likert custom detection dictionary UI so registered dictionaries open from a button, display in a list box, and show selected dictionary details in a side panel.
+- Prioritized exact-level Likert dictionary matches before compatible superset matches so 4-point responses are detected as 4-point scales.
+- Adjusted user guide overlay timing and box positions for the data-loading, t-test / ANOVA, and result-review walkthrough.
+
+### Fixed
+
+- Preserved scroll position when opening or selecting registered Likert detection dictionaries.
+- Improved Likert detection table column widths for select and detection-name columns.
+
+## v0.9.36 - 2026-06-11
+
+### Added
+
+- Added an editable custom Likert detection dictionary manager with registered dictionary review, detail display, editing, and deletion.
+- Added broader validation coverage for logistic analysis, data editor recoding, factor/PCA, correlation, paired tests, data I/O, and result history.
+
+### Changed
+
+- Refined B5-oriented result-table rendering across logistic regression, factor analysis, PCA, reliability, paired/repeated tests, correlation, and saved result views.
+- Improved Excel import review flow by moving the sheet preview to the main review panel and simplifying import controls.
+- Updated Likert conversion so converted variables carry the requested post-conversion measurement type.
+
+### Fixed
+
+- Fixed select-button movement in data editor variable lists after Excel import.
+- Fixed automatic missing-value detection and Likert detection refresh paths after conversion/import.
+- Fixed hierarchical logistic regression table placement, reference cells, VIF display, and confidence-interval option handling.
+- Fixed factor/PCA loading column order and compact table headers for B5 portrait output.
+
+## v0.9.35 - 2026-06-10
+
+### Added
+
+- Added the developer Latent Mplus workflow as an optional EasyFlow module with Data, Setup, and Results steps.
+- Added latent role saving/loading, subset-condition handling, selected-order preservation, and Results-based progress message review.
+- Added latent output routing under the loaded data file folder, including output, Mplus temporary files, run logs, Excel tables, and 600 dpi figures.
+- Added selected Mplus native plot display and color indicator-profile figure variants.
+
+### Changed
+
+- Aligned latent Results tables and figures to a B5-oriented display frame with left-aligned output, compact table rendering, and B5 portrait figure scaling.
+- Improved Data-tab load/settings/reset timing paths and deferred latent server registration until a latent tab is opened.
+- Hid LCA-only latent result tables for LPA output and removed internal BCH class key tables from the Results display.
+- Updated Electron beta packaging to exclude the developer-only Latent Mplus module from public beta staging.
+
+### Fixed
+
+- Fixed t-test / ANOVA assumption review and model overview tables so assumption-check output is populated.
+- Reset latent roles/results when a new data file is loaded while preserving explicitly restored YAML settings.
+- Preserved latent variable-table scroll position when assigning roles.
+- Moved latent run-progress messages from Setup to Results during analysis runs.
+
+## v0.9.34 - 2026-06-09
+
+### Changed
+
+- Refined paired and repeated-measures result tables for summary display options, statistic alignment, effect-size labels, warnings, and assumption-review output.
+- Fixed paired repeated-measures variable ordering so displayed pairs follow the user's selection order.
+- Kept paired setup option tabs visible while enabling repeated-variable labels only for three or more repeated measures.
+- Clarified repeated-measures method notes so Wilks' lambda and Greenhouse-Geisser details are not reported as a combined method.
+- Updated citation metadata to use the registered EasyFlow Statistics DOI.
+
 ## v0.9.33 - 2026-06-06
 
 ### Changed

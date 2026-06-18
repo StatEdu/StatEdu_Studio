@@ -80,7 +80,7 @@ register_nonparametric_paired_handlers <- function(
 
   observe({
     selected <- current_selected()
-    groups <- lapply(repeated_groups(), function(group) intersect(as.character(group), selected))
+    groups <- lapply(repeated_groups(), paired_keep_selected_order, selected = selected)
     repeated_groups(groups[lengths(groups) >= 2L])
   })
 
@@ -91,9 +91,13 @@ register_nonparametric_paired_handlers <- function(
     updateActionButton(session, "nonparametric_paired_move", label = if (identical(active_list(), "nonparametric_paired_repeated") && length(input$nonparametric_paired_repeated %||% character(0)) > 0) "<" else ">")
   })
 
-  add_group <- function(source_values) {
+  add_group <- function(source_values, order_values = NULL) {
     selected <- current_selected()
-    source_values <- intersect(as.character(source_values %||% character(0)), selected)
+    source_values <- paired_transfer_selection_order(
+      source_values,
+      order_values %||% input$nonparametric_paired_available_selection_order,
+      selected
+    )
     if (length(source_values) < 2L) {
       showNotification("Select two or more repeated-measures variables to create one paired row.", type = "warning")
       return(FALSE)
@@ -136,6 +140,12 @@ register_nonparametric_paired_handlers <- function(
       add_group(input$nonparametric_paired_available)
     }
   })
+
+  observeEvent(input$nonparametric_paired_move_ordered, {
+    payload <- input$nonparametric_paired_move_ordered
+    values <- as.character(payload$values %||% character(0))
+    add_group(values, values)
+  }, ignoreInit = TRUE)
 
   observeEvent(input$nonparametric_paired_repeated_doubleclick, {
     remove_group(input$nonparametric_paired_repeated_doubleclick$value)

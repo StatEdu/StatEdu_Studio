@@ -102,7 +102,10 @@ correlation_setup_panel <- function(state) {
           div(class = "analysis-option-title", "Advanced correlations"),
           checkboxInput(
             "correlation_latent_correlations",
-            "Use latent-variable correlations",
+            tags$span(
+              "Use latent-variable correlations",
+              title = "Use polyserial, polychoric, and tetrachoric correlations when variable measurement levels support latent-response correlation estimates. Nominal pairs still use eta or Cramer's V."
+            ),
             value = state$latent_correlations
           )
         ),

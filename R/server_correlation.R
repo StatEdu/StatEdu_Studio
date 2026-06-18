@@ -376,12 +376,12 @@ register_correlation_handlers <- function(
         saved <- character(0)
         if (isTRUE(result$options$scatter_plot)) {
           file <- file.path(directory, "scatter_plot_correlation.png")
-          save_plot_png_file(draw_correlation_scatter_plot, result, file, width = 8.5, height = 8.5)
+          save_plot_png_file(draw_correlation_scatter_plot, result, file, dpi = 600, width = 8.5, height = 8.5)
           saved <- c(saved, file)
         }
         if (isTRUE(result$options$matrix_plot)) {
           file <- file.path(directory, "correlation_matrix_heatmap.png")
-          save_plot_png_file(draw_correlation_heatmap, result, file, width = 8, height = 8)
+          save_plot_png_file(draw_correlation_heatmap, result, file, dpi = 600, width = 8, height = 8)
           saved <- c(saved, file)
         }
         if (length(saved) == 0) {

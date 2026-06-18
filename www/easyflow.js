@@ -2,6 +2,7 @@
       window.easyflowVarLabels = window.easyflowVarLabels || {};
       window.easyflowMeasurements = window.easyflowMeasurements || {};
       window.easyflowCodingErrorFixValues = window.easyflowCodingErrorFixValues || {};
+      window.easyflowTransferSelectionOrderByInput = window.easyflowTransferSelectionOrderByInput || {};
 
       window.easyflowRestoreCodingErrorFixInputs = function(root) {
         root = root || document;
@@ -21,6 +22,17 @@
         return element.getClientRects().length > 0;
       }
       window.isEasyflowVisibleElement = isEasyflowVisibleElement;
+
+      document.addEventListener('click', function(event) {
+        if (!event.target || !event.target.closest) return;
+        var disabledPairedTab = event.target.closest('.paired-options-disabled-tab');
+        if (!disabledPairedTab) return;
+        var tabLink = disabledPairedTab.closest('a');
+        if (!tabLink) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+      }, true);
 
       function easyflowSkipsMathNode(node) {
         var parent = node && node.parentElement;
@@ -390,7 +402,77 @@
         var button = event.target && event.target.closest
           ? event.target.closest('.analysis-move-button')
           : null;
-        if (button) easyflowRememberAllTransferScrolls();
+        if (button) {
+          document.querySelectorAll('.analysis-transfer-listbox[data-input-id]').forEach(function(listbox) {
+            if (window.easyflowTransferFallbackSync) window.easyflowTransferFallbackSync(listbox);
+          });
+          easyflowRememberAllTransferScrolls();
+        }
+      }, true);
+
+      document.addEventListener('click', function(event) {
+        var button = event.target && event.target.closest
+          ? event.target.closest('#paired_pair_move, #paired_rm_move, #nonparametric_paired_move')
+          : null;
+        if (!button || button.disabled) return;
+        var inputMap = {
+          paired_pair_move: 'paired_available',
+          paired_rm_move: 'paired_rm_available',
+          nonparametric_paired_move: 'nonparametric_paired_available'
+        };
+        var inputId = inputMap[button.id] || '';
+        var availableListbox = inputId ? easyflowFindTransferListboxByInputId(inputId) : null;
+        var values = availableListbox ? easyflowTransferSelectedValues(availableListbox) : [];
+        if (values.length < 2) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+        if (window.Shiny && Shiny.setInputValue) {
+          Shiny.setInputValue(button.id + '_ordered', {
+            values: values,
+            nonce: Date.now() + Math.random()
+          }, {priority: 'event'});
+        }
+      }, true);
+
+      document.addEventListener('click', function(event) {
+        var button = event.target && event.target.closest
+          ? event.target.closest('#coding_error_move, #recode_different_move, #variable_calculation_move')
+          : null;
+        if (!button || button.disabled) return;
+        var inputMap = {
+          coding_error_move: ['coding_error_available', 'coding_error_selected'],
+          recode_different_move: ['recode_different_available', 'recode_different_selected'],
+          variable_calculation_move: ['variable_calculation_available', 'variable_calculation_selected']
+        };
+        var ids = inputMap[button.id] || [];
+        var availableListbox = ids[0] ? document.querySelector('.analysis-transfer-listbox[data-input-id="' + ids[0] + '"]') : null;
+        var selectedListbox = ids[1] ? document.querySelector('.analysis-transfer-listbox[data-input-id="' + ids[1] + '"]') : null;
+        var selectedValues = selectedListbox ? easyflowTransferSelectedValues(selectedListbox) : [];
+        var availableValues = availableListbox ? easyflowTransferSelectedValues(availableListbox) : [];
+        var source = '';
+        var values = [];
+        if (selectedListbox && (easyflowActiveTransferListbox === selectedListbox || window.easyflowFallbackActiveTransferListbox === selectedListbox) && selectedValues.length > 0) {
+          source = 'selected';
+          values = selectedValues;
+        } else if (availableValues.length > 0) {
+          source = 'available';
+          values = availableValues;
+        } else if (selectedValues.length > 0) {
+          source = 'selected';
+          values = selectedValues;
+        }
+        if (!source || values.length === 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+        if (window.Shiny && Shiny.setInputValue) {
+          Shiny.setInputValue(button.id + '_direct', {
+            source: source,
+            values: values,
+            nonce: Date.now() + Math.random()
+          }, {priority: 'event'});
+        }
       }, true);
 
       document.addEventListener('mousedown', function(event) {
@@ -434,14 +516,41 @@
       window.easyflowTransferFallbackSync = function(listbox) {
         if (!listbox || !listbox.getAttribute) return;
         var inputId = listbox.getAttribute('data-input-id') || '';
-        var values = Array.prototype.slice.call(listbox.querySelectorAll('.analysis-transfer-option.is-selected'))
+        var selectedOptions = Array.prototype.slice.call(listbox.querySelectorAll('.analysis-transfer-option.is-selected'));
+        var values = selectedOptions
+          .sort(function(a, b) {
+            var aOrder = parseInt(a.getAttribute('data-selected-order') || '0', 10);
+            var bOrder = parseInt(b.getAttribute('data-selected-order') || '0', 10);
+            if (Number.isNaN(aOrder)) aOrder = 0;
+            if (Number.isNaN(bOrder)) bOrder = 0;
+            if (aOrder && bOrder && aOrder !== bOrder) return aOrder - bOrder;
+            if (aOrder && !bOrder) return -1;
+            if (!aOrder && bOrder) return 1;
+            return 0;
+          })
           .map(function(option) { return option.getAttribute('data-value') || ''; })
           .filter(function(value) { return value !== ''; });
+        var hasExplicitOrder = selectedOptions.some(function(option) {
+          var order = parseInt(option.getAttribute('data-selected-order') || '0', 10);
+          return !Number.isNaN(order) && order > 0;
+        });
+        var storedOrder = inputId ? (window.easyflowTransferSelectionOrderByInput[inputId] || []) : [];
+        if (!hasExplicitOrder && storedOrder.length > 0) {
+          values = storedOrder
+            .filter(function(value) { return values.indexOf(value) >= 0; })
+            .concat(values.filter(function(value) { return storedOrder.indexOf(value) < 0; }));
+        }
+        if (inputId) {
+          window.easyflowTransferSelectionOrderByInput[inputId] = values.slice();
+          selectedOptions.forEach(function(option) {
+            var value = option.getAttribute('data-value') || '';
+            var index = values.indexOf(value);
+            if (index >= 0) option.setAttribute('data-selected-order', String(index + 1));
+          });
+        }
         var select = inputId ? document.getElementById(inputId) : null;
         if (select) {
-          Array.prototype.forEach.call(select.options, function(option) {
-            option.selected = values.indexOf(option.value) >= 0;
-          });
+          easyflowTransferSyncHiddenSelect(select, values);
           if (window.jQuery) {
             window.jQuery(select).trigger('change');
           } else {
@@ -450,6 +559,7 @@
         }
         if (window.Shiny && inputId) {
           Shiny.setInputValue(inputId, values, {priority: 'event'});
+          Shiny.setInputValue(inputId + '_selection_order', values, {priority: 'event'});
           Shiny.setInputValue(inputId + '_active', Date.now() + Math.random(), {priority: 'event'});
         }
       };
@@ -482,9 +592,16 @@
             options.forEach(function(item) {
               item.classList.remove('is-selected');
               item.setAttribute('aria-selected', 'false');
+              item.removeAttribute('data-selected-order');
             });
           }
-          options.slice(start, end + 1).forEach(function(item) {
+          var fallbackRange = options.slice(start, end + 1);
+          if (index < lastIndex) fallbackRange.reverse();
+          fallbackRange.forEach(function(item) {
+            if (!item.classList.contains('is-selected')) {
+              easyflowTransferSelectionCounter += 1;
+              item.setAttribute('data-selected-order', String(easyflowTransferSelectionCounter));
+            }
             item.classList.add('is-selected');
             item.setAttribute('aria-selected', 'true');
           });
@@ -492,13 +609,22 @@
           var selected = !option.classList.contains('is-selected');
           option.classList.toggle('is-selected', selected);
           option.setAttribute('aria-selected', selected ? 'true' : 'false');
+          if (selected) {
+            easyflowTransferSelectionCounter += 1;
+            option.setAttribute('data-selected-order', String(easyflowTransferSelectionCounter));
+          } else {
+            option.removeAttribute('data-selected-order');
+          }
         } else {
           options.forEach(function(item) {
             item.classList.remove('is-selected');
             item.setAttribute('aria-selected', 'false');
+            item.removeAttribute('data-selected-order');
           });
           option.classList.add('is-selected');
           option.setAttribute('aria-selected', 'true');
+          easyflowTransferSelectionCounter += 1;
+          option.setAttribute('data-selected-order', String(easyflowTransferSelectionCounter));
         }
         listbox.setAttribute('data-last-index', String(index));
         window.easyflowTransferFallbackSync(listbox);
@@ -516,6 +642,12 @@
           return option.classList.contains('is-selected');
         });
         options.forEach(function(option) {
+          if (!allSelected && !option.classList.contains('is-selected')) {
+            easyflowTransferSelectionCounter += 1;
+            option.setAttribute('data-selected-order', String(easyflowTransferSelectionCounter));
+          } else if (allSelected) {
+            option.removeAttribute('data-selected-order');
+          }
           option.classList.toggle('is-selected', !allSelected);
           option.setAttribute('aria-selected', !allSelected ? 'true' : 'false');
         });
@@ -605,6 +737,46 @@
 
       registerEasyflowDataSessionHandler();
       document.addEventListener('shiny:connected', registerEasyflowDataSessionHandler);
+
+      function registerEasyflowMeasurementUpdateHandler() {
+        if (!window.Shiny || !Shiny.addCustomMessageHandler || window.easyflowMeasurementUpdateHandlerRegistered) {
+          return;
+        }
+        window.easyflowMeasurementUpdateHandlerRegistered = true;
+        Shiny.addCustomMessageHandler('easyflow-update-measurements', function(message) {
+          window.easyflowMeasurements = window.easyflowMeasurements || {};
+          Object.keys(message || {}).forEach(function(name) {
+            var value = message[name] || '';
+            if (!name || !value) return;
+            window.easyflowMeasurements[name] = value;
+            document.querySelectorAll('select.measurement-select[data-name], select.category-measurement-select[data-name]').forEach(function(select) {
+              if (select.getAttribute('data-name') !== name) return;
+              select.value = value;
+              if (window.jQuery) {
+                window.jQuery(select).trigger('change');
+              } else {
+                select.dispatchEvent(new Event('change', {bubbles: true}));
+              }
+            });
+          });
+        });
+      }
+
+      registerEasyflowMeasurementUpdateHandler();
+      document.addEventListener('shiny:connected', registerEasyflowMeasurementUpdateHandler);
+
+      function registerEasyflowLikertSelectionHandler() {
+        if (!window.Shiny || !Shiny.addCustomMessageHandler || window.easyflowLikertSelectionHandlerRegistered) {
+          return;
+        }
+        window.easyflowLikertSelectionHandlerRegistered = true;
+        Shiny.addCustomMessageHandler('easyflow-clear-likert-selection', function(message) {
+          window.easyflowLikertSelected = '';
+        });
+      }
+
+      registerEasyflowLikertSelectionHandler();
+      document.addEventListener('shiny:connected', registerEasyflowLikertSelectionHandler);
 
       window.easyflowSelectVariableIconOption = function(option) {
         if (!option) return;
@@ -952,6 +1124,9 @@
         document.querySelectorAll('.step3-variables-section').forEach(function(section) {
           section.style.display = window.easyflowStep3View === 'variables' ? '' : 'none';
         });
+        if (window.Shiny) {
+          Shiny.setInputValue('step3_panel_view', window.easyflowStep3View, {priority: 'event'});
+        }
         return false;
       };
 
@@ -966,6 +1141,9 @@
         document.querySelectorAll('.step3-variables-section').forEach(function(section) {
           section.style.display = window.easyflowStep3View === 'variables' ? '' : 'none';
         });
+        if (window.Shiny) {
+          Shiny.setInputValue('step3_panel_view', window.easyflowStep3View, {priority: 'event'});
+        }
       }
 
       document.addEventListener('DOMContentLoaded', initializeEasyflowStep3View);
@@ -1256,6 +1434,7 @@
       }, true);
 
       var easyflowTransferLastIndexByInput = {};
+      var easyflowTransferSelectionCounter = 0;
       var easyflowActiveTransferListbox = null;
       var easyflowActiveTransferInputId = null;
 
@@ -1264,14 +1443,67 @@
       }
 
       function easyflowTransferSelectedValues(listbox) {
-        return easyflowTransferOptions(listbox)
+        var inputId = listbox ? (listbox.getAttribute('data-input-id') || '') : '';
+        var selectedOptions = easyflowTransferOptions(listbox)
           .filter(function(option) { return option.classList.contains('is-selected'); })
+        var hasExplicitOrder = selectedOptions.some(function(option) {
+          var order = parseInt(option.getAttribute('data-selected-order') || '0', 10);
+          return !Number.isNaN(order) && order > 0;
+        });
+        var values = selectedOptions.sort(function(a, b) {
+            var aOrder = parseInt(a.getAttribute('data-selected-order') || '0', 10);
+            var bOrder = parseInt(b.getAttribute('data-selected-order') || '0', 10);
+            if (Number.isNaN(aOrder)) aOrder = 0;
+            if (Number.isNaN(bOrder)) bOrder = 0;
+            if (aOrder && bOrder && aOrder !== bOrder) return aOrder - bOrder;
+            if (aOrder && !bOrder) return -1;
+            if (!aOrder && bOrder) return 1;
+            return 0;
+          })
           .map(function(option) { return option.getAttribute('data-value'); });
+        var storedOrder = inputId ? (window.easyflowTransferSelectionOrderByInput[inputId] || []) : [];
+        if (!hasExplicitOrder && storedOrder.length > 0) {
+          values = storedOrder
+            .filter(function(value) { return values.indexOf(value) >= 0; })
+            .concat(values.filter(function(value) { return storedOrder.indexOf(value) < 0; }));
+        }
+        return values;
       }
 
       function easyflowTransferSetSelected(option, selected) {
+        var wasSelected = option.classList.contains('is-selected');
         option.classList.toggle('is-selected', selected);
         option.setAttribute('aria-selected', selected ? 'true' : 'false');
+        if (selected && !wasSelected) {
+          easyflowTransferSelectionCounter += 1;
+          option.setAttribute('data-selected-order', String(easyflowTransferSelectionCounter));
+        } else if (!selected) {
+          option.removeAttribute('data-selected-order');
+        }
+      }
+
+      function easyflowTransferSyncHiddenSelect(select, values) {
+        if (!select) return;
+        var valueOrder = {};
+        values.forEach(function(value, index) {
+          valueOrder[value] = index + 1;
+        });
+        var options = Array.prototype.slice.call(select.options);
+        options
+          .sort(function(a, b) {
+            var aOrder = valueOrder[a.value] || 0;
+            var bOrder = valueOrder[b.value] || 0;
+            if (aOrder && bOrder && aOrder !== bOrder) return aOrder - bOrder;
+            if (aOrder && !bOrder) return -1;
+            if (!aOrder && bOrder) return 1;
+            return options.indexOf(a) - options.indexOf(b);
+          })
+          .forEach(function(option) {
+            select.appendChild(option);
+          });
+        Array.prototype.forEach.call(select.options, function(option) {
+          option.selected = values.indexOf(option.value) >= 0;
+        });
       }
 
       function easyflowTransferOptionValue(option) {
@@ -1298,9 +1530,7 @@
         var select = inputId ? document.getElementById(inputId) : null;
         var values = easyflowTransferSelectedValues(listbox);
         if (select) {
-          Array.prototype.forEach.call(select.options, function(option) {
-            option.selected = values.indexOf(option.value) >= 0;
-          });
+          easyflowTransferSyncHiddenSelect(select, values);
           if (window.jQuery) {
             window.jQuery(select).trigger('change');
           } else {
@@ -1308,7 +1538,9 @@
           }
         }
         if (window.Shiny && inputId) {
+          window.easyflowTransferSelectionOrderByInput[inputId] = values.slice();
           Shiny.setInputValue(inputId, values, {priority: 'event'});
+          Shiny.setInputValue(inputId + '_selection_order', values, {priority: 'event'});
         }
       }
 
@@ -1386,7 +1618,9 @@
           var start = Math.min(lastIndex, index);
           var end = Math.max(lastIndex, index);
           if (!event.ctrlKey && !event.metaKey) easyflowTransferClear(listbox);
-          options.slice(start, end + 1).forEach(function(item) {
+          var range = options.slice(start, end + 1);
+          if (index < lastIndex) range.reverse();
+          range.forEach(function(item) {
             easyflowTransferSetSelected(item, true);
           });
         } else if (event.ctrlKey || event.metaKey) {

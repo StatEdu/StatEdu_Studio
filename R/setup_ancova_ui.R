@@ -89,14 +89,14 @@ ancova_setup_panel <- function(state) {
       div(
         class = "analysis-transfer-column analysis-transfer-panel ancova-dependent-panel",
         style = "height:150px !important;min-height:0 !important;max-height:150px !important;overflow:hidden !important;",
-        analysis_field_label_tag("Dependent Variables", c("ordered", "continuous")),
+        analysis_field_label_tag("Dependent variables", c("ordered", "continuous")),
         analysis_transfer_listbox_input("ancova_dependents", state$dependent_items, selected = state$dependent_selected, size = 3, important_height = TRUE),
         div(class = "analysis-order-actions ttest-anova-order-actions", actionButton("ancova_dependent_up", "Up", class = "btn-default btn-sm"), actionButton("ancova_dependent_down", "Down", class = "btn-default btn-sm"))
       ),
       div(
         class = "analysis-transfer-column analysis-transfer-panel ancova-factor-panel",
         style = "height:92px !important;min-height:0 !important;max-height:92px !important;overflow:hidden !important;",
-        analysis_field_label_tag("Independent Variable", c("binary", "category", "ordered")),
+        analysis_field_label_tag("Independent variable", c("binary", "category", "ordered")),
         analysis_transfer_listbox_input("ancova_factor", state$factor_items, selected = state$factor_selected, size = 1, important_height = TRUE)
       ),
       div(

@@ -139,11 +139,35 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     ".regression-result-panel { background: #ffffff; border: 1px solid #d9e2ec; border-radius: 6px; padding: 18px 20px; margin-bottom: 22px; break-inside: avoid; page-break-inside: avoid; }",
     ".result-section.regression-result-panel { width: max-content; max-width: 100%; overflow-x: auto; box-sizing: border-box; }",
     ".result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) { width: min(100%, 590px); }",
+    ".logistic-results > .result-section.regression-result-panel:not(.landscape-table-panel):not(.logistic-diagnostics-panel) { width: min(100%, 590px); max-width: 100%; overflow-x: hidden; box-sizing: border-box; }",
+    ".logistic-results > .result-section.regression-result-panel:not(.landscape-table-panel):not(.logistic-diagnostics-panel) > table, .logistic-results > .result-section.regression-result-panel:not(.landscape-table-panel):not(.logistic-diagnostics-panel) .result-table-with-note > table, .logistic-results > .result-section.regression-result-panel:not(.landscape-table-panel):not(.logistic-diagnostics-panel) .logistic-result-table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed; }",
     ".result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) > .result-table-with-note, .result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) > .frequency-table-wrap, .result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) > table, .result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) .result-table-with-note > table { width: 100% !important; max-width: 100%; }",
     ".result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed; }",
     ".result-section.regression-result-panel.landscape-table-panel { width: min(100%, 890px); }",
     ".result-section.regression-result-panel.landscape-table-panel > .result-table-with-note, .result-section.regression-result-panel.landscape-table-panel > .hierarchical-table-wrap, .result-section.regression-result-panel.landscape-table-panel > .hierarchical-table-scroll, .result-section.regression-result-panel.landscape-table-panel > table, .result-section.regression-result-panel.landscape-table-panel .result-table-with-note > table { width: 100% !important; max-width: 100%; }",
     ".result-section.regression-result-panel.landscape-table-panel table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed; }",
+    ".result-section.regression-result-panel.ttest-anova-overview-panel, .result-section.regression-result-panel.ttest-anova-assumption-review-panel { width: 100% !important; max-width: 100% !important; overflow-x: hidden !important; }",
+    ".result-section.regression-result-panel.ttest-anova-overview-panel > .result-table-with-note, .result-section.regression-result-panel.ttest-anova-assumption-review-panel > .result-table-with-note, .result-section.regression-result-panel.ttest-anova-overview-panel .result-table-with-note > table, .result-section.regression-result-panel.ttest-anova-assumption-review-panel .result-table-with-note > table { width: 100% !important; max-width: 100% !important; min-width: 0 !important; }",
+    ".regression-results > .ttest-anova-result-panel { overflow-x: hidden !important; }",
+    ".regression-results > .ttest-anova-result-panel > .result-table-with-note { width: 100% !important; max-width: 100% !important; overflow-x: hidden !important; }",
+    ".regression-results > .ttest-anova-result-panel .result-table-with-note > table, .regression-results > .ttest-anova-result-panel .coefficient-table-trend-analysis { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df .coefficient-col-statistic { width: 112px !important; min-width: 112px !important; padding-right: 12px !important; text-align: right !important; white-space: nowrap !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df .coefficient-col-p { padding-left: 12px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df:not(.coefficient-table-mean-sd) .coefficient-col-stat { width: 44px !important; min-width: 44px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df:not(.coefficient-table-mean-sd) .coefficient-col-statistic { width: 144px !important; min-width: 144px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis .coefficient-col-term { width: 82px !important; min-width: 82px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis.coefficient-table-mean-sd .coefficient-col-value { width: 112px !important; min-width: 112px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis:not(.coefficient-table-mean-sd) .coefficient-col-value { width: 104px !important; min-width: 104px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis.coefficient-table-mean-sd .coefficient-col-mse { width: 116px !important; min-width: 116px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis.coefficient-table-mean-sd .coefficient-col-statistic { width: 144px !important; min-width: 144px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis:not(.coefficient-table-mean-sd) .coefficient-col-stat { width: 46px !important; min-width: 46px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis:not(.coefficient-table-mean-sd) .coefficient-col-p, .regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis:not(.coefficient-table-mean-sd) .coefficient-col-effect-size { width: 50px !important; min-width: 50px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis:not(.coefficient-table-mean-sd) .coefficient-col-statistic { width: 158px !important; min-width: 158px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis.coefficient-table-mean-sd .coefficient-col-p, .regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis.coefficient-table-mean-sd .coefficient-col-effect-size { width: 50px !important; min-width: 50px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis.coefficient-table-mean-sd .coefficient-col-p-trend { width: 82px !important; min-width: 82px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis:not(.coefficient-table-mean-sd) .coefficient-col-p-trend { width: 86px !important; min-width: 86px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis .coefficient-col-p-trend { white-space: nowrap !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis .coefficient-col-posthoc { width: 68px !important; min-width: 68px !important; }",
     ".regression-results > .regression-result-panel:not(.landscape-table-panel):not(.model-overview-panel):not(.assumption-review-panel):not(.reference-summary-panel):not(.diagnostic-plots-section):not(.frequency-plots-section):not(.correlation-plot-section):not(.logistic-diagnostics-panel) { width: min(100%, 590px); max-width: 100%; overflow-x: hidden; box-sizing: border-box; }",
     ".regression-results > .regression-result-panel:not(.landscape-table-panel):not(.model-overview-panel):not(.assumption-review-panel):not(.reference-summary-panel):not(.diagnostic-plots-section):not(.frequency-plots-section):not(.correlation-plot-section):not(.logistic-diagnostics-panel) table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed; }",
     ".regression-results > .regression-result-panel:not(.landscape-table-panel):not(.model-overview-panel):not(.assumption-review-panel):not(.reference-summary-panel):not(.diagnostic-plots-section):not(.frequency-plots-section):not(.correlation-plot-section):not(.logistic-diagnostics-panel) .coefficient-table .coefficient-col-term, .regression-results > .regression-result-panel:not(.landscape-table-panel):not(.model-overview-panel):not(.assumption-review-panel):not(.reference-summary-panel):not(.diagnostic-plots-section):not(.frequency-plots-section):not(.correlation-plot-section):not(.logistic-diagnostics-panel) .coefficient-table th:first-child, .regression-results > .regression-result-panel:not(.landscape-table-panel):not(.model-overview-panel):not(.assumption-review-panel):not(.reference-summary-panel):not(.diagnostic-plots-section):not(.frequency-plots-section):not(.correlation-plot-section):not(.logistic-diagnostics-panel) .coefficient-table td:first-child { width: 210px; min-width: 210px; white-space: normal; overflow-wrap: normal; word-break: keep-all; }",
@@ -152,14 +176,24 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     ".regression-result-panel h3 { color: #15233a; font-size: 15px; font-weight: 700; margin: 0 0 8px; }",
     ".regression-result-panel table { width: auto; min-width: 440px; border-collapse: collapse !important; border-spacing: 0 !important; border-top: 2px solid #1f2937 !important; border-bottom: 2px solid #1f2937 !important; color: #2f3a46; font-size: 12px; background: transparent; }",
     ".regression-result-panel table th, .regression-result-panel table td { padding: 5px 7px; line-height: 1.35; border-left: 0 !important; border-right: 0 !important; border-bottom: 1px solid #d7dde5; vertical-align: middle; background: transparent; font-size: 12px !important; }",
-    ".regression-result-panel table thead th { border-bottom: 2px solid #1f2937 !important; font-weight: 700; }",
+    ".regression-result-panel table thead th { border-bottom: 2px solid #1f2937 !important; font-weight: 700; font-size: 11px !important; }",
     ".regression-result-panel table tbody tr:last-child td, .regression-result-panel table tbody tr:last-child th { border-bottom: 0 !important; }",
     ".regression-result-panel table th:first-child, .regression-result-panel table td:first-child { text-align: left !important; }",
     ".regression-result-panel table th:not(:first-child), .regression-result-panel table td:not(:first-child) { text-align: right !important; }",
+    ".regression-results > .regression-result-panel .coefficient-table-bootstrap-regression { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed; }",
+    ".regression-results > .regression-result-panel .coefficient-table-bootstrap-regression th, .regression-results > .regression-result-panel .coefficient-table-bootstrap-regression td { padding-left: 4px !important; padding-right: 4px !important; }",
+    ".regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-term { width: 36% !important; min-width: 0 !important; max-width: none !important; }",
+    ".regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-b { width: 10% !important; min-width: 0 !important; }",
+    ".regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-boot-se { width: 12% !important; min-width: 0 !important; }",
+    ".regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-ci { width: 10% !important; min-width: 0 !important; }",
+    ".regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-boot-p { width: 10% !important; min-width: 0 !important; }",
+    ".regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-compact { width: 8% !important; min-width: 0 !important; }",
+    ".regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-tolerance { width: 11% !important; min-width: 0 !important; }",
+    ".regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-vif { width: 8% !important; min-width: 0 !important; }",
     ".coefficient-table { table-layout: auto; }",
     ".coefficient-table th:first-child, .coefficient-table td:first-child { text-align: left !important; }",
     ".coefficient-table th:not(:first-child) { text-align: right !important; }",
-    ".coefficient-table thead th { border-top: 2px solid #1f2937 !important; border-bottom: 2px solid #1f2937 !important; font-weight: 700; }",
+    ".coefficient-table thead th { border-top: 2px solid #1f2937 !important; border-bottom: 2px solid #1f2937 !important; font-weight: 700; font-size: 11px !important; }",
     ".coefficient-table tbody td:not(:first-child), .coefficient-table tfoot td:not(:first-child) { text-align: right !important; }",
     ".coefficient-footnote-value { display: inline-block; position: relative; padding-right: .38em; white-space: nowrap; line-height: inherit; vertical-align: baseline; }",
     ".coefficient-footnote-marker { display: block; width: auto; margin-left: 0; font-size: 60%; line-height: 1; position: absolute; top: -.34em; right: 0; text-align: left; vertical-align: baseline; }",
@@ -174,20 +208,18 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     ".result-table-with-note > .coefficient-table, .result-table-with-note > table { display: table; }",
     ".result-table-with-note .coefficient-note, .result-table-with-note .coefficient-warning { width: 0; min-width: 100%; max-width: none; box-sizing: border-box; }",
     ".hierarchical-table-wrap { max-width: none; }",
-    ".hierarchical-table-scroll { max-width: 100%; overflow-x: auto; }",
-    ".hierarchical-coefficient-table { border-top: 0 !important; table-layout: fixed !important; width: auto; }",
+    ".hierarchical-table-scroll { max-width: 100%; overflow-x: hidden; }",
+    ".hierarchical-coefficient-table { border-top: 0 !important; table-layout: fixed !important; width: 100% !important; min-width: 0 !important; max-width: 100% !important; }",
     ".hierarchical-coefficient-table thead tr:first-child th { border-top: 2px solid #1f2937 !important; border-bottom: 0 !important; }",
     ".hierarchical-coefficient-table thead tr:first-child th:first-child { border-bottom: 2px solid #1f2937 !important; }",
     ".hierarchical-coefficient-table .hierarchical-model-header { text-align: center !important; font-weight: 700; border-bottom: 2px solid #1f2937 !important; }",
     ".hierarchical-coefficient-table thead tr:last-child th { border-top: 0 !important; border-bottom: 2px solid #1f2937 !important; }",
-    ".hierarchical-coefficient-table thead tr:last-child th:not(.hierarchical-model-separator) { text-align: right !important; }",
+    ".hierarchical-coefficient-table thead tr:last-child th:not(.hierarchical-model-separator) { text-align: center !important; }",
     ".hierarchical-coefficient-table tbody td:not(:first-child):not(.hierarchical-model-separator) { text-align: right !important; }",
-    ".hierarchical-coefficient-table thead tr:first-child th:first-child, .hierarchical-coefficient-table tbody td:first-child, .hierarchical-coefficient-table tfoot td:first-child { width: 240px; min-width: 240px; max-width: 240px; white-space: normal; overflow-wrap: break-word; word-break: keep-all; }",
-    ".hierarchical-coefficient-table .hierarchical-term-col { width: 240px; }",
-    ".hierarchical-coefficient-table .hierarchical-stat-col { width: 78px; }",
-    ".hierarchical-coefficient-table .hierarchical-separator-col { width: 10px; }",
-    ".hierarchical-coefficient-table thead tr:last-child th:not(.hierarchical-model-separator), .hierarchical-coefficient-table td:not(:first-child):not(.hierarchical-model-separator) { width: 78px; min-width: 78px; max-width: 78px; padding-left: 8px; padding-right: 8px; overflow-wrap: normal; white-space: nowrap; }",
-    ".hierarchical-coefficient-table .hierarchical-model-separator { width: 10px; min-width: 10px; max-width: 10px; padding: 0 !important; background: transparent !important; }",
+    ".hierarchical-coefficient-table thead tr:first-child th:first-child, .hierarchical-coefficient-table tbody td:first-child, .hierarchical-coefficient-table tfoot td:first-child { width: auto !important; min-width: 0 !important; max-width: none !important; white-space: normal; overflow-wrap: break-word; word-break: keep-all; }",
+    ".hierarchical-coefficient-table .hierarchical-term-col, .hierarchical-coefficient-table .hierarchical-stat-col, .hierarchical-coefficient-table .hierarchical-stat-col-narrow, .hierarchical-coefficient-table .hierarchical-separator-col { min-width: 0 !important; }",
+    ".hierarchical-coefficient-table thead tr:last-child th:not(.hierarchical-model-separator), .hierarchical-coefficient-table td:not(:first-child):not(.hierarchical-model-separator) { width: auto !important; min-width: 0 !important; max-width: none !important; padding-left: 4px; padding-right: 4px; overflow-wrap: normal; white-space: nowrap; }",
+    ".hierarchical-coefficient-table .hierarchical-model-separator { width: auto !important; min-width: 0 !important; max-width: none !important; padding: 0 !important; background: transparent !important; }",
     ".hierarchical-coefficient-table .hierarchical-model-header-separator { border-bottom: 0 !important; }",
     ".hierarchical-coefficient-table .hierarchical-model-subheader-separator { border-bottom: 2px solid #1f2937 !important; }",
     ".hierarchical-coefficient-table tfoot .coefficient-fit-row td { border-top: 1px solid #d7dde5 !important; border-bottom: 0 !important; }",
@@ -202,14 +234,14 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     ".frequency-plot-card img { display: block; width: 420px; height: 320px; }",
     ".correlation-plot-card img { display: block; width: 720px; height: 520px; max-width: 100%; }",
     "@media print {",
-    "  @page { size: A4 portrait; margin: 10mm 8mm; @bottom-right { content: counter(page) '/' counter(pages); color: #627d98; font-size: 8pt; } }",
-    "  @page easyflow-landscape { size: A4 landscape; margin: 6mm; @bottom-right { content: counter(page) '/' counter(pages); color: #627d98; font-size: 8pt; } }",
+    "  @page { size: B5 portrait; margin: 10mm; @bottom-right { content: counter(page) '/' counter(pages); color: #627d98; font-size: 8pt; } }",
+    "  @page easyflow-landscape { size: B5 landscape; margin: 7mm; @bottom-right { content: counter(page) '/' counter(pages); color: #627d98; font-size: 8pt; } }",
     "  * { box-sizing: border-box; }",
     "  body { margin: 0 !important; color: #000000; font-size: 10.5pt; }",
-    "  .page-shell { width: 100%; max-width: 194mm !important; margin: 0 auto !important; padding: 0 !important; }",
+    "  .page-shell { width: 100%; max-width: 156mm !important; margin: 0 auto !important; padding: 0 !important; }",
     "  body.print-mixed-landscape .page-shell { max-width: 100% !important; }",
     "  h1 { font-size: 18pt; margin: 0 0 8pt; }",
-    "  .report-cover { height: 273mm; min-height: 273mm; margin: 0 !important; padding: 18mm 14mm 16mm !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; break-after: page; page-break-after: always; }",
+    "  .report-cover { height: 230mm; min-height: 230mm; margin: 0 !important; padding: 16mm 12mm 14mm !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; break-after: page; page-break-after: always; }",
     "  .report-cover::before { width: 3mm !important; }",
     "  .report-cover-logo { width: 82mm !important; max-width: 82mm !important; }",
     "  .report-cover-main { padding-bottom: 10mm !important; padding-top: 38mm !important; }",
@@ -219,7 +251,7 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     "  .report-cover-license-logo { max-height: 12mm !important; max-width: 42mm !important; }",
     "  .report-cover-license-value { font-size: 10.5pt !important; }",
     "  .report-watermark-inner { opacity: .11 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }",
-    "  .report-watermark-brand-row { gap: 6mm !important; min-width: 178mm !important; }",
+    "  .report-watermark-brand-row { gap: 6mm !important; min-width: 156mm !important; }",
     "  .report-watermark-logo-efs { max-height: 19mm !important; max-width: 76mm !important; }",
     "  .report-watermark-logo-statedu { max-height: 16mm !important; max-width: 62mm !important; }",
     "  .report-watermark-name { font-size: 13pt !important; }",
@@ -232,9 +264,9 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     "  .report-cover-footer { font-size: 8.5pt !important; }",
     "  .report-body-heading { display: none !important; }",
     "  .saved-results-meta { font-size: 8.5pt; margin-bottom: 10pt; }",
-    "  .regression-result-panel, .result-section.regression-result-panel { width: 188mm !important; max-width: 100% !important; overflow: visible !important; padding: 8pt 2mm !important; box-sizing: border-box !important; border-left: 0 !important; border-right: 0 !important; border-radius: 0 !important; break-inside: auto; page-break-inside: auto; margin-left: auto !important; margin-right: auto !important; }",
+    "  .regression-result-panel, .result-section.regression-result-panel { width: 156mm !important; max-width: 100% !important; overflow: visible !important; padding: 8pt 2mm !important; box-sizing: border-box !important; border-left: 0 !important; border-right: 0 !important; border-radius: 0 !important; break-inside: auto; page-break-inside: auto; margin-left: auto !important; margin-right: auto !important; }",
     "  .regression-results > .regression-result-panel:has(table) { break-before: page; page-break-before: always; }",
-    "  body.print-mixed-landscape .regression-results .landscape-table-panel { page: easyflow-landscape; width: 283mm !important; max-width: 283mm !important; margin-left: auto !important; margin-right: auto !important; break-before: page; page-break-before: always; break-after: page; page-break-after: always; }",
+    "  body.print-mixed-landscape .regression-results .landscape-table-panel { page: easyflow-landscape; width: 236mm !important; max-width: 236mm !important; margin-left: auto !important; margin-right: auto !important; break-before: page; page-break-before: always; break-after: page; page-break-after: always; }",
     "  body.print-mixed-landscape .landscape-table-panel table { width: 100% !important; max-width: 100% !important; min-width: 0 !important; table-layout: fixed !important; }",
     "  body.print-mixed-landscape .landscape-table-panel .result-table-with-note, body.print-mixed-landscape .landscape-table-panel .hierarchical-table-wrap, body.print-mixed-landscape .landscape-table-panel .hierarchical-table-scroll { width: calc(100% - 2mm) !important; max-width: calc(100% - 2mm) !important; margin-left: auto !important; margin-right: auto !important; }",
     "  .regression-results > .regression-result-panel:first-child { break-before: auto; page-break-before: auto; }",
@@ -244,20 +276,16 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     "  table, .regression-result-panel table, .coefficient-table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed !important; font-size: 9pt !important; box-sizing: border-box !important; }",
     "  .regression-result-panel > table { width: 100% !important; max-width: 100% !important; margin-left: auto !important; margin-right: auto !important; }",
     "  .hierarchical-coefficient-table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed !important; font-size: 8.2pt !important; box-sizing: border-box !important; }",
-    "  .coefficient-table col { width: auto !important; }",
+    "  .coefficient-table:not(.hierarchical-coefficient-table) col { width: auto !important; }",
     "  .coefficient-table col.coefficient-col-note-marker { width: 12px !important; min-width: 12px !important; max-width: 12px !important; }",
     "  .coefficient-table .coefficient-col-term, .coefficient-table .coefficient-col-b, .coefficient-table .coefficient-col-reference, .coefficient-table .coefficient-col-tolerance, .coefficient-table .coefficient-col-compact, .coefficient-table .coefficient-col-stat { width: auto !important; }",
-    "  .hierarchical-coefficient-table .hierarchical-term-col { width: 30% !important; }",
-    "  .hierarchical-coefficient-table .hierarchical-stat-col { width: 62px !important; }",
-    "  .hierarchical-coefficient-table .hierarchical-separator-col { width: 6px !important; }",
-    "  body.print-mixed-landscape .hierarchical-coefficient-table .hierarchical-term-col { width: 34% !important; }",
-    "  body.print-mixed-landscape .hierarchical-coefficient-table .hierarchical-stat-col { width: 58px !important; }",
+    "  .hierarchical-coefficient-table col { min-width: 0 !important; max-width: none !important; }",
     "  .hierarchical-coefficient-table, .correlation-result-section table { font-size: 7.2pt !important; }",
     "  .paired-two-grouped-table { table-layout: fixed !important; font-size: 9.2pt !important; }",
     "  .paired-two-grouped-table col.paired-two-col-variable { width: 18% !important; }",
     "  .paired-two-grouped-table col.paired-two-col-summary { width: 8% !important; }",
-    "  .paired-two-grouped-table col.paired-two-col-stat { width: 7.5% !important; }",
-    "  .paired-two-grouped-table col.paired-two-col-effect { width: 8.5% !important; }",
+    "  .paired-two-grouped-table col.paired-two-col-stat { width: 10% !important; }",
+    "  .paired-two-grouped-table col.paired-two-col-effect { width: 7% !important; }",
     "  .paired-two-grouped-table col.paired-two-col-posthoc { width: 12% !important; }",
     "  body.print-mixed-landscape .paired-rm-grouped-table { width: 100% !important; max-width: 100% !important; table-layout: fixed !important; font-size: 8.1pt !important; }",
     "  body.print-mixed-landscape .paired-rm-grouped-table col.paired-rm-col-variable { width: 15% !important; }",
@@ -273,6 +301,7 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     "  tr { break-inside: avoid; page-break-inside: avoid; }",
     "  th, td, .regression-result-panel table th, .regression-result-panel table td { padding: 5px 7px !important; white-space: normal !important; overflow-wrap: anywhere !important; word-break: normal !important; }",
     "  .coefficient-table th, .coefficient-table td { padding: 5px 7px !important; line-height: 1.35 !important; white-space: normal !important; overflow-wrap: anywhere !important; word-break: normal !important; }",
+    "  .coefficient-table thead th, .regression-result-panel table thead th { font-size: 8pt !important; font-weight: 700 !important; }",
     "  .paired-two-grouped-table th, .paired-two-grouped-table td { padding: 3px 4px !important; overflow-wrap: normal !important; word-break: keep-all !important; }",
     "  .paired-two-grouped-table thead tr:first-child th[colspan] { text-align: center !important; }",
     "  .paired-two-grouped-table th:not(:first-child), .paired-two-grouped-table td:not(:first-child) { white-space: nowrap !important; }",
@@ -348,11 +377,35 @@ saved_results_viewer_css <- function(max_width = 1280) {
     ".regression-result-panel { background: #ffffff; border: 1px solid #d9e2ec; border-radius: 6px; padding: 18px 20px; margin-bottom: 22px; }",
     ".result-section.regression-result-panel, .regression-result-panel { max-width: 100%; overflow-x: auto; box-sizing: border-box; }",
     ".result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) { width: min(100%, 590px); }",
+    ".logistic-results > .result-section.regression-result-panel:not(.landscape-table-panel):not(.logistic-diagnostics-panel) { width: min(100%, 590px); max-width: 100%; overflow-x: hidden; box-sizing: border-box; }",
+    ".logistic-results > .result-section.regression-result-panel:not(.landscape-table-panel):not(.logistic-diagnostics-panel) > table, .logistic-results > .result-section.regression-result-panel:not(.landscape-table-panel):not(.logistic-diagnostics-panel) .result-table-with-note > table, .logistic-results > .result-section.regression-result-panel:not(.landscape-table-panel):not(.logistic-diagnostics-panel) .logistic-result-table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed; }",
     ".result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) > .result-table-with-note, .result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) > .frequency-table-wrap, .result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) > table, .result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) .result-table-with-note > table { width: 100% !important; max-width: 100%; }",
     ".result-section.regression-result-panel:not(.landscape-table-panel):not(.paired-result-section):not(.logistic-diagnostics-panel) table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed; }",
     ".result-section.regression-result-panel.landscape-table-panel { width: min(100%, 890px); }",
     ".result-section.regression-result-panel.landscape-table-panel > .result-table-with-note, .result-section.regression-result-panel.landscape-table-panel > .hierarchical-table-wrap, .result-section.regression-result-panel.landscape-table-panel > .hierarchical-table-scroll, .result-section.regression-result-panel.landscape-table-panel > table, .result-section.regression-result-panel.landscape-table-panel .result-table-with-note > table { width: 100% !important; max-width: 100%; }",
     ".result-section.regression-result-panel.landscape-table-panel table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed; }",
+    ".result-section.regression-result-panel.ttest-anova-overview-panel, .result-section.regression-result-panel.ttest-anova-assumption-review-panel { width: 100% !important; max-width: 100% !important; overflow-x: hidden !important; }",
+    ".result-section.regression-result-panel.ttest-anova-overview-panel > .result-table-with-note, .result-section.regression-result-panel.ttest-anova-assumption-review-panel > .result-table-with-note, .result-section.regression-result-panel.ttest-anova-overview-panel .result-table-with-note > table, .result-section.regression-result-panel.ttest-anova-assumption-review-panel .result-table-with-note > table { width: 100% !important; max-width: 100% !important; min-width: 0 !important; }",
+    ".regression-results > .ttest-anova-result-panel { overflow-x: hidden !important; }",
+    ".regression-results > .ttest-anova-result-panel > .result-table-with-note { width: 100% !important; max-width: 100% !important; overflow-x: hidden !important; }",
+    ".regression-results > .ttest-anova-result-panel .result-table-with-note > table, .regression-results > .ttest-anova-result-panel .coefficient-table-trend-analysis { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df .coefficient-col-statistic { width: 112px !important; min-width: 112px !important; padding-right: 12px !important; text-align: right !important; white-space: nowrap !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df .coefficient-col-p { padding-left: 12px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df:not(.coefficient-table-mean-sd) .coefficient-col-stat { width: 44px !important; min-width: 44px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df:not(.coefficient-table-mean-sd) .coefficient-col-statistic { width: 144px !important; min-width: 144px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis .coefficient-col-term { width: 82px !important; min-width: 82px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis.coefficient-table-mean-sd .coefficient-col-value { width: 112px !important; min-width: 112px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis:not(.coefficient-table-mean-sd) .coefficient-col-value { width: 104px !important; min-width: 104px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis.coefficient-table-mean-sd .coefficient-col-mse { width: 116px !important; min-width: 116px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis.coefficient-table-mean-sd .coefficient-col-statistic { width: 144px !important; min-width: 144px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis:not(.coefficient-table-mean-sd) .coefficient-col-stat { width: 46px !important; min-width: 46px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis:not(.coefficient-table-mean-sd) .coefficient-col-p, .regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis:not(.coefficient-table-mean-sd) .coefficient-col-effect-size { width: 50px !important; min-width: 50px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis:not(.coefficient-table-mean-sd) .coefficient-col-statistic { width: 158px !important; min-width: 158px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis.coefficient-table-mean-sd .coefficient-col-p, .regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis.coefficient-table-mean-sd .coefficient-col-effect-size { width: 50px !important; min-width: 50px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis.coefficient-table-mean-sd .coefficient-col-p-trend { width: 82px !important; min-width: 82px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis:not(.coefficient-table-mean-sd) .coefficient-col-p-trend { width: 86px !important; min-width: 86px !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis .coefficient-col-p-trend { white-space: nowrap !important; }",
+    ".regression-results > .ttest-anova-result-panel .coefficient-table-show-df.coefficient-table-trend-analysis .coefficient-col-posthoc { width: 68px !important; min-width: 68px !important; }",
     ".regression-results > .regression-result-panel:not(.landscape-table-panel):not(.model-overview-panel):not(.assumption-review-panel):not(.reference-summary-panel):not(.diagnostic-plots-section):not(.frequency-plots-section):not(.correlation-plot-section):not(.logistic-diagnostics-panel) { width: min(100%, 590px); max-width: 100%; overflow-x: hidden; box-sizing: border-box; }",
     ".regression-results > .regression-result-panel:not(.landscape-table-panel):not(.model-overview-panel):not(.assumption-review-panel):not(.reference-summary-panel):not(.diagnostic-plots-section):not(.frequency-plots-section):not(.correlation-plot-section):not(.logistic-diagnostics-panel) table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed; }",
     ".regression-results > .regression-result-panel:not(.landscape-table-panel):not(.model-overview-panel):not(.assumption-review-panel):not(.reference-summary-panel):not(.diagnostic-plots-section):not(.frequency-plots-section):not(.correlation-plot-section):not(.logistic-diagnostics-panel) .coefficient-table .coefficient-col-term, .regression-results > .regression-result-panel:not(.landscape-table-panel):not(.model-overview-panel):not(.assumption-review-panel):not(.reference-summary-panel):not(.diagnostic-plots-section):not(.frequency-plots-section):not(.correlation-plot-section):not(.logistic-diagnostics-panel) .coefficient-table th:first-child, .regression-results > .regression-result-panel:not(.landscape-table-panel):not(.model-overview-panel):not(.assumption-review-panel):not(.reference-summary-panel):not(.frequency-plots-section):not(.diagnostic-plots-section):not(.correlation-plot-section):not(.logistic-diagnostics-panel) .coefficient-table td:first-child { width: 210px; min-width: 210px; white-space: normal; overflow-wrap: normal; word-break: keep-all; }",
@@ -361,9 +414,19 @@ saved_results_viewer_css <- function(max_width = 1280) {
     ".regression-result-panel h3 { color: #15233a; font-size: 15px; font-weight: 700; margin: 0 0 8px; }",
     ".regression-result-panel table, .coefficient-table { width: auto; min-width: 440px; border-collapse: collapse !important; border-spacing: 0 !important; border-top: 2px solid #1f2937 !important; border-bottom: 2px solid #1f2937 !important; color: #2f3a46; font-size: 12px; background: transparent; }",
     ".regression-result-panel table th, .regression-result-panel table td { padding: 5px 7px; line-height: 1.35; border-left: 0 !important; border-right: 0 !important; border-bottom: 1px solid #d7dde5; vertical-align: middle; background: transparent; white-space: nowrap; font-size: 12px !important; }",
-    ".regression-result-panel table thead th { border-bottom: 2px solid #1f2937 !important; font-weight: 700; }",
+    ".regression-result-panel table thead th { border-bottom: 2px solid #1f2937 !important; font-weight: 700; font-size: 11px !important; }",
     ".regression-result-panel table th:first-child, .regression-result-panel table td:first-child { text-align: left !important; }",
     ".regression-result-panel table th:not(:first-child), .regression-result-panel table td:not(:first-child) { text-align: right !important; }",
+    ".regression-results > .regression-result-panel .coefficient-table-bootstrap-regression { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed; }",
+    ".regression-results > .regression-result-panel .coefficient-table-bootstrap-regression th, .regression-results > .regression-result-panel .coefficient-table-bootstrap-regression td { padding-left: 4px !important; padding-right: 4px !important; }",
+    ".regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-term { width: 36% !important; min-width: 0 !important; max-width: none !important; }",
+    ".regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-b { width: 10% !important; min-width: 0 !important; }",
+    ".regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-boot-se { width: 12% !important; min-width: 0 !important; }",
+    ".regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-ci { width: 10% !important; min-width: 0 !important; }",
+    ".regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-boot-p { width: 10% !important; min-width: 0 !important; }",
+    ".regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-compact { width: 8% !important; min-width: 0 !important; }",
+    ".regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-tolerance { width: 11% !important; min-width: 0 !important; }",
+    ".regression-results > .regression-result-panel .coefficient-table-bootstrap-regression .coefficient-col-vif { width: 8% !important; min-width: 0 !important; }",
         ".coefficient-table.crosstab-main-table > thead > tr > th.crosstab-col-head, .regression-result-panel .crosstab-main-table > thead > tr > th.crosstab-col-head { text-align: center !important; }",
         ".coefficient-table.crosstab-main-table > tbody > tr > td.crosstab-row-label, .regression-result-panel .crosstab-main-table > tbody > tr > td.crosstab-row-label { text-align: left !important; }",
         ".result-table-with-note, .frequency-table-wrap, .hierarchical-table-wrap, .hierarchical-table-scroll { max-width: 100%; overflow-x: auto; }",
@@ -654,11 +717,13 @@ saved_reliability_results_html <- function(result, css_path = file.path("www", "
 }
 
 saved_ttest_anova_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
+  print_landscape <- length(result$dependents %||% character(0)) >= 5L
   saved_results_document(
     "EasyFlow Statistics t-test / ANOVA Results",
     tags$div(class = "regression-results", ttest_anova_results_ui(result)),
     max_width = 1500,
     css_path = css_path,
+    print_landscape = print_landscape,
     report_mode = report_mode
   )
 }
@@ -719,7 +784,8 @@ saved_paired_rm_results_html <- function(result, css_path = file.path("www", "st
 saved_correlation_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
   options <- result$options %||% list()
   normality_table <- correlation_normality_display_table(result)
-  print_landscape <- length(result$variables %||% character(0)) >= 10L
+  variable_count <- length(result$variables %||% character(0))
+  print_landscape <- variable_count >= 12L || (isTRUE(options$p_ci) && variable_count >= 6L)
   saved_results_document(
     "EasyFlow Statistics Correlation Results",
     tags$div(
@@ -742,11 +808,12 @@ saved_correlation_results_html <- function(result, css_path = file.path("www", "
           tags$div(
             class = "correlation-plot-card",
             tags$img(
-              src = plot_data_uri(draw_correlation_scatter_plot, result, width = 1480, height = 1480),
-              width = "1480",
-              height = "1480",
+              src = plot_data_uri(draw_correlation_scatter_plot, result, width = 900, height = 900),
+              width = "720",
+              height = "720",
               alt = "Scatter plot matrix"
-            )
+            ),
+            correlation_plot_note(result)
           )
         )
       },
@@ -757,11 +824,12 @@ saved_correlation_results_html <- function(result, css_path = file.path("www", "
           tags$div(
             class = "correlation-plot-card",
             tags$img(
-              src = plot_data_uri(draw_correlation_heatmap, result, width = 1360, height = 1360),
-              width = "1360",
-              height = "1360",
+              src = plot_data_uri(draw_correlation_heatmap, result, width = 900, height = 900),
+              width = "720",
+              height = "720",
               alt = "Correlation matrix heatmap"
-            )
+            ),
+            correlation_plot_note(result)
           )
         )
       }
@@ -782,7 +850,7 @@ saved_logistic_results_html <- function(
   show_se = FALSE,
   show_mcfadden = FALSE,
   show_cox_snell = FALSE,
-  split_ci = FALSE,
+  split_ci = TRUE,
   css_path = file.path("www", "style.css"),
   report_mode = FALSE
 ) {
@@ -843,10 +911,19 @@ saved_crosstab_results_html <- function(result, css_path = file.path("www", "sty
 result_accumulator_store <- function(session) {
   store <- session$userData$result_entries
   if (is.null(store) || !is.function(store)) {
-    store <- reactiveVal(read_result_snapshot_store())
+    store <- reactiveVal(list())
     session$userData$result_entries <- store
   }
   store
+}
+
+clear_result_accumulator_store <- function(session, persist = TRUE) {
+  store <- result_accumulator_store(session)
+  store(list())
+  if (isTRUE(persist)) {
+    write_result_snapshot_store(list())
+  }
+  invisible(TRUE)
 }
 
 result_snapshot_store_path <- function() {
@@ -1156,7 +1233,7 @@ result_docx_normalize_table <- function(table, headers = NULL) {
       formatter <- function(value) result_docx_format_number(value, 2)
     } else if (label %in% c("p", "p for trend") || grepl("\\bp\\b", label)) {
       formatter <- result_docx_format_p
-    } else if (label %in% c("t", "f", "t/f", "z", "w", "q") || grepl("statistic|hedges|cohen|effect|eta|omega|epsilon|cliff|f²|f2|sr2|r$", label)) {
+    } else if (label %in% c("t", "f", "t/f", "z", "w", "q") || grepl("statistic|hedges|cohen|effect|eta|omega|epsilon|cliff|f吏?f2|sr2|r$", label)) {
       formatter <- function(value) result_docx_format_number(value, 3)
     }
     if (!is.null(formatter)) {
@@ -1789,22 +1866,22 @@ result_docx_method_sentence <- function(entry, tables) {
   note_text <- if (length(notes) > 0) paste(notes, collapse = " ") else ""
   lowered <- tolower(title)
   if (grepl("hierarchical", lowered)) {
-    method <- "위계적 회귀분석을 실시하였다."
+    method <- "?袁㏉??????브쑴苑????쇰뻻?????"
   } else if (grepl("regression", lowered)) {
-    method <- "회귀분석을 실시하였다."
+    method <- "????브쑴苑????쇰뻻?????"
   } else if (grepl("t-test|anova", lowered)) {
-    method <- "t-test/ANOVA를 실시하였다."
+    method <- "t-test/ANOVA????쇰뻻?????"
   } else if (grepl("paired", lowered)) {
-    method <- "대응표본 분석을 실시하였다."
+    method <- "???臾볥ご癰??브쑴苑????쇰뻻?????"
   } else if (grepl("correlation", lowered)) {
-    method <- "상관분석을 실시하였다."
+    method <- "?怨??브쑴苑????쇰뻻?????"
   } else {
-    method <- sprintf("%s 분석을 실시하였다.", title)
+    method <- sprintf("%s ?브쑴苑????쇰뻻?????", title)
   }
   reason <- if (nzchar(note_text)) {
-    sprintf(" 분석 결과표의 주석에 제시된 기준과 사유에 따라 실제 사용된 분석기법을 적용하였다: %s", note_text)
+    sprintf(" ?브쑴苑?野껉퀗???뽰벥 雅뚯눘苑????뽯뻻??疫꿸퀣?????????怨뺤뵬 ??쇱젫 ??????브쑴苑띷묾怨뺤씩???怨몄뒠????? %s", note_text)
   } else {
-    " 분석 결과표에 제시된 기준에 따라 실제 사용된 분석기법을 적용하였다."
+    " ?브쑴苑?野껉퀗???뽯퓠 ??뽯뻻??疫꿸퀣????怨뺤뵬 ??쇱젫 ??????브쑴苑띷묾怨뺤씩???怨몄뒠?????"
   }
   paste0(method, reason)
 }

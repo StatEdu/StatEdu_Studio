@@ -75,7 +75,7 @@ register_paired_rm_handlers <- function(
 
   observe({
     selected <- current_selected()
-    groups <- lapply(repeated_groups(), function(group) intersect(as.character(group), selected))
+    groups <- lapply(repeated_groups(), paired_keep_selected_order, selected = selected)
     repeated_groups(groups[lengths(groups) >= 3L])
   })
 
@@ -85,6 +85,30 @@ register_paired_rm_handlers <- function(
   observe({
     updateActionButton(session, "paired_rm_move", label = if (identical(active_list(), "paired_rm_repeated") && length(input$paired_rm_repeated %||% character(0)) > 0) "<" else ">")
   })
+
+  add_rm_group <- function(source_values) {
+    selected <- current_selected()
+    source_values <- paired_transfer_selection_order(source_values, source_values, selected)
+    if (length(source_values) < 3L) {
+      showNotification("Select three or more variables to create one repeated-measures row.", type = "warning")
+      return(FALSE)
+    }
+    measurements <- paired_measurement_lookup(current_variable_table())
+    levels <- vapply(source_values, function(name) named_value(measurements, name, "continuous"), character(1))
+    if (length(unique(levels)) > 1) {
+      showNotification("Repeated-measures variables must have the same measurement level.", type = "warning")
+      return(FALSE)
+    }
+    groups <- repeated_groups()
+    existing_values <- paired_rm_group_values(groups)
+    next_value <- paired_rm_group_values(list(source_values))
+    if (!next_value %in% existing_values) {
+      repeated_groups(c(groups, list(source_values)))
+    }
+    active_list("paired_rm_repeated")
+    mark_settings_dirty()
+    TRUE
+  }
 
   observeEvent(input$paired_rm_move, {
     if (identical(active_list(), "paired_rm_repeated")) {
@@ -96,28 +120,19 @@ register_paired_rm_handlers <- function(
       active_list("paired_rm_available")
       mark_settings_dirty()
     } else {
-      selected <- current_selected()
-      source_values <- intersect(as.character(input$paired_rm_available %||% character(0)), selected)
-      if (length(source_values) < 3L) {
-        showNotification("Select three or more variables to create one repeated-measures row.", type = "warning")
-        return()
-      }
-      measurements <- paired_measurement_lookup(current_variable_table())
-      levels <- vapply(source_values, function(name) named_value(measurements, name, "continuous"), character(1))
-      if (length(unique(levels)) > 1) {
-        showNotification("Repeated-measures variables must have the same measurement level.", type = "warning")
-        return()
-      }
-      groups <- repeated_groups()
-      existing_values <- paired_rm_group_values(groups)
-      next_value <- paired_rm_group_values(list(source_values))
-      if (!next_value %in% existing_values) {
-        repeated_groups(c(groups, list(source_values)))
-      }
-      active_list("paired_rm_repeated")
-      mark_settings_dirty()
+      source_values <- paired_transfer_selection_order(
+        input$paired_rm_available,
+        input$paired_rm_available_selection_order,
+        current_selected()
+      )
+      add_rm_group(source_values)
     }
   })
+
+  observeEvent(input$paired_rm_move_ordered, {
+    payload <- input$paired_rm_move_ordered
+    add_rm_group(as.character(payload$values %||% character(0)))
+  }, ignoreInit = TRUE)
 
   observeEvent(input$analysis_transfer_drop, {
     drop <- input$analysis_transfer_drop

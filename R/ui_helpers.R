@@ -13,16 +13,13 @@ analysis_save_edition <- function() {
 }
 
 analysis_save_feature_enabled <- function(feature, edition = analysis_save_edition()) {
-  if (feature %in% c("html", "pdf", "word")) {
-    return(FALSE)
-  }
   if (identical(edition, "development")) {
     return(TRUE)
   }
   if (identical(edition, "personal") || identical(edition, "institution")) {
     return(feature %in% c("html", "pdf", "figure", "excel", "word", "add_result", "result_history"))
   }
-  feature %in% c("html", "pdf", "figure")
+  feature %in% c("html", "pdf", "figure", "word")
 }
 
 analysis_save_button <- function(id, label, feature, class = "btn-default") {
@@ -83,11 +80,11 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-posthoc-header-break"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-longitudinal-weight-help-20260618"))
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-ancova-sort"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-data-latent-perf"))
 }
 
 app_head_tags <- function(version) {
@@ -147,7 +144,8 @@ enabled_analysis_tabs <- function() {
     pca = TRUE,
     regression = FALSE,
     hierarchical = TRUE,
-    generalized = FALSE
+    longitudinal = TRUE,
+    generalized = TRUE
   )
 }
 
@@ -157,7 +155,10 @@ app_ui <- function(version) {
   navbarPage(
     title = app_brand_title(version),
     id = "main_menu",
-    header = app_head_tags(version),
+    header = tagList(
+      app_head_tags(version),
+      if (latent_mplus_enabled()) latent_mplus_head_tags(version)
+    ),
 
     data_tab_panel(),
 
@@ -170,6 +171,8 @@ app_ui <- function(version) {
     sample_size_tab_panel(),
 
     effect_size_tab_panel(),
+
+    if (latent_mplus_enabled()) latent_menu_tab(),
 
     result_tab_panel(),
 

@@ -17,6 +17,8 @@ register_paired_handlers <- function(
   bowker <- reactiveVal(TRUE)
   effect_size <- reactiveVal(TRUE)
   cohen_d <- reactiveVal(TRUE)
+  mean_sd <- reactiveVal(FALSE)
+  median_iqr <- reactiveVal(FALSE)
   adjustment <- reactiveVal("bonferroni")
   paired_result <- reactiveVal(NULL)
 
@@ -52,6 +54,8 @@ register_paired_handlers <- function(
       bowker = isolate(bowker()),
       effect_size = isolate(effect_size()),
       cohen_d = isolate(cohen_d()),
+      mean_sd = isolate(mean_sd()),
+      median_iqr = isolate(median_iqr()),
       adjustment = isolate(adjustment()),
       time_labels = isolate(current_time_labels())
     ))
@@ -86,13 +90,21 @@ register_paired_handlers <- function(
     cohen_d(isTRUE(input$paired_cohen_d))
   }, ignoreInit = TRUE)
 
+  observeEvent(input$paired_mean_sd, {
+    mean_sd(isTRUE(input$paired_mean_sd))
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$paired_median_iqr, {
+    median_iqr(isTRUE(input$paired_median_iqr))
+  }, ignoreInit = TRUE)
+
   observeEvent(input$paired_adjustment, {
     adjustment(as.character(input$paired_adjustment %||% "bonferroni"))
   }, ignoreInit = TRUE)
 
   observe({
     selected <- current_selected()
-    groups <- lapply(repeated_groups(), function(group) intersect(as.character(group), selected))
+    groups <- lapply(repeated_groups(), paired_keep_selected_order, selected = selected)
     repeated_groups(groups[lengths(groups) >= 2L])
   })
 
@@ -102,6 +114,33 @@ register_paired_handlers <- function(
   observe({
     updateActionButton(session, "paired_pair_move", label = if (identical(active_list(), "paired_pairs") && length(input$paired_pairs %||% character(0)) > 0) "<" else ">")
   })
+
+  add_paired_group <- function(source_values) {
+    source_values <- as.character(source_values %||% character(0))
+    if (length(source_values) < 2L) {
+      showNotification("Select two or more repeated-measures variables to create one paired row.", type = "warning")
+      return(FALSE)
+    }
+    measurements <- paired_measurement_lookup(current_variable_table())
+    levels <- vapply(source_values, function(name) named_value(measurements, name, "continuous"), character(1))
+    if (length(unique(levels)) > 1) {
+      showNotification("Repeated-measures variables must have the same measurement level.", type = "warning")
+      return(FALSE)
+    }
+    if (length(source_values) >= 3L && identical(levels[[1]], "category")) {
+      showNotification("Categorical paired tests with three or more repeated measurements will be supported after 1.0. Use two repeated measurements for now.", type = "warning")
+      return(FALSE)
+    }
+    groups <- repeated_groups()
+    existing_values <- paired_group_values(groups)
+    next_value <- paired_group_values(list(source_values))
+    if (!next_value %in% existing_values) {
+      repeated_groups(c(groups, list(source_values)))
+    }
+    active_list("paired_pairs")
+    mark_settings_dirty()
+    TRUE
+  }
 
   observeEvent(input$paired_pair_move, {
     if (identical(active_list(), "paired_pairs")) {
@@ -114,31 +153,20 @@ register_paired_handlers <- function(
       mark_settings_dirty()
     } else {
       selected <- current_selected()
-      source_values <- intersect(as.character(input$paired_available %||% character(0)), selected)
-      if (length(source_values) < 2L) {
-        showNotification("Select two or more repeated-measures variables to create one paired row.", type = "warning")
-        return()
-      }
-      measurements <- paired_measurement_lookup(current_variable_table())
-      levels <- vapply(source_values, function(name) named_value(measurements, name, "continuous"), character(1))
-      if (length(unique(levels)) > 1) {
-        showNotification("Repeated-measures variables must have the same measurement level.", type = "warning")
-        return()
-      }
-      if (length(source_values) >= 3L && identical(levels[[1]], "category")) {
-        showNotification("Categorical paired tests with three or more repeated measurements will be supported after 1.0. Use two repeated measurements for now.", type = "warning")
-        return()
-      }
-      groups <- repeated_groups()
-      existing_values <- paired_group_values(groups)
-      next_value <- paired_group_values(list(source_values))
-      if (!next_value %in% existing_values) {
-        repeated_groups(c(groups, list(source_values)))
-      }
-      active_list("paired_pairs")
-      mark_settings_dirty()
+      source_values <- paired_transfer_selection_order(
+        input$paired_available,
+        input$paired_available_selection_order,
+        selected
+      )
+      add_paired_group(source_values)
     }
   })
+
+  observeEvent(input$paired_pair_move_ordered, {
+    payload <- input$paired_pair_move_ordered
+    source_values <- paired_keep_selected_order(payload$values, current_selected())
+    add_paired_group(source_values)
+  }, ignoreInit = TRUE)
 
   observeEvent(input$paired_pairs_doubleclick, {
     selected_groups <- intersect(
@@ -230,6 +258,8 @@ register_paired_handlers <- function(
           bowker = isTRUE(bowker()),
           effect_size = isTRUE(effect_size()),
           cohen_d = isTRUE(cohen_d()),
+          mean_sd = isTRUE(mean_sd()),
+          median_iqr = isTRUE(median_iqr()),
           posthoc_adjustment = adjustment(),
           time_labels = current_time_labels()
         )

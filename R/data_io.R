@@ -11,7 +11,7 @@ prepare_data <- function(data) {
   data
 }
 
-read_sav_robust <- function(path) {
+read_sav_robust <- function(path, copy_to_ascii = TRUE) {
   if (!requireNamespace("haven", quietly = TRUE)) {
     stop(
       "SPSS SAV files require the CRAN package 'haven'. Install it with install.packages(\"haven\").",
@@ -24,14 +24,16 @@ read_sav_robust <- function(path) {
 
   # Some Windows/R setups fail when haven reads an uploaded file from a
   # non-ASCII or extensionless temporary path. Copy to an ASCII .sav path first.
-  tmp_path <- tempfile(pattern = "easyflow_sav_", fileext = ".sav")
-  copied <- tryCatch(
-    file.copy(source_path, tmp_path, overwrite = TRUE),
-    error = function(e) FALSE
-  )
-  if (isTRUE(copied) && file.exists(tmp_path)) {
-    read_path <- tmp_path
-    on.exit(unlink(tmp_path), add = TRUE)
+  if (isTRUE(copy_to_ascii)) {
+    tmp_path <- tempfile(pattern = "easyflow_sav_", fileext = ".sav")
+    copied <- tryCatch(
+      file.copy(source_path, tmp_path, overwrite = TRUE),
+      error = function(e) FALSE
+    )
+    if (isTRUE(copied) && file.exists(tmp_path)) {
+      read_path <- tmp_path
+      on.exit(unlink(tmp_path), add = TRUE)
+    }
   }
 
   supports_encoding <- "encoding" %in% names(formals(haven::read_sav))
@@ -311,7 +313,7 @@ read_input_data <- function(
   on.exit(unlink(read_path), add = TRUE)
 
   if (identical(ext, "sav")) {
-    return(normalize_text_encoding(read_sav_robust(read_path)))
+    return(normalize_text_encoding(read_sav_robust(read_path, copy_to_ascii = FALSE)))
   }
 
   if (identical(ext, "csv")) {
@@ -435,11 +437,14 @@ variable_label <- function(x) {
   as.character(label[[1]])
 }
 
-value_label_pairs <- function(x, prepared_x = x, max_pairs = 6) {
+value_label_pairs <- function(x, prepared_x = x, max_pairs = 6, measurement = NULL) {
   labelled_values <- attr(x, "labels", exact = TRUE)
   if (!is.null(labelled_values) && length(labelled_values) > 0) {
     values <- as.character(unname(labelled_values))
     labels <- names(labelled_values)
+  } else if (identical(measurement, "continuous")) {
+    values <- character(0)
+    labels <- character(0)
   } else {
     values <- sort(unique(stats::na.omit(as.vector(prepared_x))))
     values <- as.character(utils::head(values, max_pairs))
@@ -457,24 +462,36 @@ value_label_pairs <- function(x, prepared_x = x, max_pairs = 6) {
 }
 
 variable_summary_table <- function(data, input, raw_data = data) {
-  raw_data <- as.data.frame(raw_data, stringsAsFactors = FALSE, check.names = TRUE)
-  labels <- vapply(seq_along(data), function(i) variable_label(raw_data[[i]]), character(1))
-  value_labels <- do.call(rbind, lapply(seq_along(data), function(i) {
-    as.data.frame(as.list(value_label_pairs(raw_data[[i]], data[[i]])), stringsAsFactors = FALSE, check.names = FALSE)
-  }))
-  cbind(data.frame(
-    source_order = seq_along(data),
-    name = names(data),
-    var_label = labels,
-    measurement = vapply(data, infer_measurement, character(1)),
-    storage_type = vapply(data, function(x) class(x)[1], character(1)),
-    n_unique = vapply(data, function(x) length(unique(stats::na.omit(as.vector(x)))), integer(1)),
-    n_missing = vapply(data, function(x) sum(is.na(x)), integer(1)),
-    min_value = vapply(data, variable_min, character(1)),
-    max_value = vapply(data, variable_max, character(1)),
-    stringsAsFactors = FALSE,
-    check.names = FALSE
-  ), value_labels)
+  easyflow_time_expr("variable_summary_table", {
+    raw_data <- as.data.frame(raw_data, stringsAsFactors = FALSE, check.names = TRUE)
+    rows <- lapply(seq_along(data), function(i) {
+      name <- names(data)[[i]]
+      values <- data[[i]]
+      raw_values <- if (name %in% names(raw_data)) raw_data[[name]] else raw_data[[i]]
+      present <- stats::na.omit(as.vector(values))
+      measurement <- infer_measurement(values)
+      value_labels <- value_label_pairs(raw_values, values, measurement = measurement)
+      as.data.frame(
+        c(
+          list(
+            source_order = i,
+            name = name,
+            var_label = variable_label(raw_values),
+            measurement = measurement,
+            storage_type = class(values)[1],
+            n_unique = length(unique(present)),
+            n_missing = sum(is.na(values)),
+            min_value = variable_min(values),
+            max_value = variable_max(values)
+          ),
+          as.list(value_labels)
+        ),
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      )
+    })
+    do.call(rbind, rows)
+  }, detail = sprintf("vars=%s rows=%s", ncol(data), nrow(data)))
 }
 
 apply_measurement_overrides <- function(table_data, overrides = character(0)) {
@@ -885,4 +902,3 @@ collect_measurement_inputs_from_table <- function(variable_info_fn, input) {
     allowed_values = c("binary", "category", "ordered", "continuous")
   )
 }
-

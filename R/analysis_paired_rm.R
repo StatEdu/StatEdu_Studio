@@ -22,7 +22,7 @@ paired_rm_method_label <- function(method) {
     method,
     rm_anova = "Standard RM ANOVA",
     rm_anova_gg = "RM ANOVA + Greenhouse-Geisser correction",
-    rm_anova_wilks = "RM ANOVA + Wilks' lambda / GG correction",
+    rm_anova_wilks = "RM ANOVA + Wilks' lambda",
     friedman = "Friedman test",
     cochran = "Cochran's Q test",
     method
@@ -148,11 +148,30 @@ paired_rm_kendalls_w <- function(statistic, n, k) {
 }
 
 paired_rm_summary_table <- function(y, variable_info, labels, category_table) {
+  median_values <- apply(y, 2, function(x) {
+    values <- x[is.finite(x)]
+    if (length(values) == 0) {
+      return(list(median = "", iqr = "", combined = ""))
+    }
+    q <- stats::quantile(values, probs = c(.25, .5, .75), na.rm = TRUE, names = FALSE)
+    median <- format_decimal2(q[[2]])
+    q1 <- format_decimal2(q[[1]])
+    q3 <- format_decimal2(q[[3]])
+    list(
+      median = median,
+      iqr = sprintf("%s~%s", q1, q3),
+      combined = sprintf("%s (%s~%s)", median, q1, q3)
+    )
+  })
   data.frame(
     Time = vapply(colnames(y), paired_display_name, character(1), variable_info = variable_info, labels = labels, category_table = category_table),
     N = nrow(y),
     M = apply(y, 2, function(x) format_decimal2(mean(x, na.rm = TRUE))),
     SD = apply(y, 2, function(x) format_decimal2(stats::sd(x, na.rm = TRUE))),
+    M_SD = apply(y, 2, function(x) sprintf("%s \u00B1 %s", format_decimal2(mean(x, na.rm = TRUE)), format_decimal2(stats::sd(x, na.rm = TRUE)))),
+    Median = vapply(median_values, `[[`, character(1), "median"),
+    `Q1~Q3` = vapply(median_values, `[[`, character(1), "iqr"),
+    Median_IQR = vapply(median_values, `[[`, character(1), "combined"),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
@@ -219,7 +238,7 @@ paired_rm_posthoc_scale <- function(y, method, adjustment, variable_info, labels
       p <- if (is.null(test)) NA_real_ else as.numeric(test$p.value)
       label <- "W"
       effect_label <- "r"
-      effect <- paired_effect_value(paired_wilcoxon_r(p, z - x))
+      effect <- paired_effect_value(paired_wilcoxon_r(p, z - x, statistic))
     }
     list(pair = pair, label = label, statistic = statistic, p = p, effect_label = effect_label, effect = effect)
   })
@@ -339,7 +358,12 @@ paired_rm_option_time_labels <- function(options, n) {
   ifelse(nzchar(labels), labels, defaults)
 }
 
-paired_rm_pairwise_effects <- function(result, variables, time_labels, contrast_labels) {
+paired_rm_time_markers <- function(n) {
+  if (n <= 0) return(character(0))
+  letters[seq_len(n)]
+}
+
+paired_rm_pairwise_effects <- function(result, variables, contrast_markers, contrast_labels) {
   posthoc <- result$posthoc
   if (!is.data.frame(posthoc) || nrow(posthoc) == 0 || !"ES" %in% names(posthoc)) {
     return(list(columns = character(0), labels = character(0), values = character(0)))
@@ -359,7 +383,7 @@ paired_rm_pairwise_effects <- function(result, variables, time_labels, contrast_
     row <- posthoc[posthoc$Contrast %in% c(contrast, reverse), , drop = FALSE]
     column <- sprintf("ES_%d_%d", i, j)
     columns <- c(columns, column)
-    labels <- c(labels, sprintf("%s-%s", time_labels[[i]], time_labels[[j]]))
+    labels <- c(labels, sprintf("%s-%s", contrast_markers[[first]], contrast_markers[[second]]))
     values <- c(values, if (nrow(row) > 0) as.character(row$ES[[1]] %||% "") else "")
   }
   list(columns = columns, labels = labels, values = values)
@@ -371,7 +395,9 @@ paired_rm_display_table <- function(result) {
     return(result$table)
   }
   time_labels <- paired_rm_option_time_labels(result$options %||% list(), nrow(result$summary))
+  time_markers <- paired_rm_time_markers(length(time_labels))
   contrast_labels <- stats::setNames(as.character(result$summary$Time %||% variables), variables)
+  contrast_markers <- stats::setNames(time_markers, variables)
   means <- stats::setNames(suppressWarnings(as.numeric(sub("^\\.", "0.", result$summary$M))), variables)
   row <- data.frame(
     `Repeated variables` = result$group_label,
@@ -379,10 +405,26 @@ paired_rm_display_table <- function(result) {
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
+  method <- as.character(result$table$Method[[1]] %||% "")
+  use_method_median <- isTRUE(result$options$median_iqr) &&
+    (identical(method, "Friedman test") || grepl("Wilcoxon", paste(as.character(result$posthoc$Method %||% ""), collapse = " "), fixed = TRUE))
+  use_method_mean_sd <- isTRUE(result$options$mean_sd) && !isTRUE(use_method_median)
   for (index in seq_along(time_labels)) {
     row[[paste0("Time", index, "_label")]] <- time_labels[[index]]
+    row[[paste0("Time", index, "_marker")]] <- time_markers[[index]]
     row[[paste0("Time", index, "_M")]] <- result$summary$M[[index]]
     row[[paste0("Time", index, "_SD")]] <- result$summary$SD[[index]]
+    row[[paste0("Time", index, "_MS")]] <- result$summary$M_SD[[index]]
+    row[[paste0("Time", index, "_Median")]] <- result$summary$Median[[index]]
+    row[[paste0("Time", index, "_IQR")]] <- result$summary$`Q1~Q3`[[index]]
+    row[[paste0("Time", index, "_MedianIQR")]] <- result$summary$Median_IQR[[index]]
+    row[[paste0("Time", index, "_Summary")]] <- if (isTRUE(use_method_median)) {
+      result$summary$Median_IQR[[index]]
+    } else if (isTRUE(use_method_mean_sd)) {
+      result$summary$M_SD[[index]]
+    } else {
+      ""
+    }
   }
   statistic_label <- as.character(result$table$Statistic[[1]] %||% "Statistic")
   row[["StatisticLabel"]] <- statistic_label
@@ -399,12 +441,12 @@ paired_rm_display_table <- function(result) {
     if (any(methods == "Paired t-test")) row[["PairwiseEffectSizeLabel"]] <- "Hedges' g"
     if (any(methods == "Wilcoxon signed-rank test")) row[["PairwiseEffectSizeLabel"]] <- "r"
   }
-  pairwise_effects <- paired_rm_pairwise_effects(result, variables, time_labels, contrast_labels)
+  pairwise_effects <- paired_rm_pairwise_effects(result, variables, contrast_markers, contrast_labels)
   for (index in seq_along(pairwise_effects$columns)) {
     row[[paste0(pairwise_effects$columns[[index]], "_label")]] <- pairwise_effects$labels[[index]]
     row[[pairwise_effects$columns[[index]]]] <- pairwise_effects$values[[index]]
   }
-  row[["Post-hoc"]] <- paired_rm_posthoc_notation(variables, result$posthoc, means, stats::setNames(time_labels, variables), contrast_labels)
+  row[["Post-hoc"]] <- paired_rm_posthoc_notation(variables, result$posthoc, means, contrast_markers, contrast_labels)
   posthoc_methods <- unique(as.character(result$posthoc$Method %||% ""))
   posthoc_methods <- posthoc_methods[nzchar(posthoc_methods)]
   row[["PosthocMethodLabel"]] <- paste(posthoc_methods, collapse = ", ")
@@ -426,6 +468,8 @@ paired_rm_display_table <- function(result) {
       row[["Sphericity p"]] <- sphericity_p_row$Value[[1]] %||% ""
     }
   }
+  attr(row, "mean_sd") <- isTRUE(result$options$mean_sd)
+  attr(row, "median_iqr") <- isTRUE(result$options$median_iqr)
   row
 }
 
@@ -433,10 +477,12 @@ paired_rm_binary_display_table <- function(result, values, variable_info, labels
   variables <- as.character(result$variables %||% character(0))
   if (length(variables) == 0) return(result$table)
   time_labels <- paired_rm_option_time_labels(result$options %||% list(), length(variables))
+  time_markers <- paired_rm_time_markers(length(time_labels))
   contrast_labels <- stats::setNames(
     vapply(variables, paired_display_name, character(1), variable_info = variable_info, labels = labels, category_table = category_table),
     variables
   )
+  contrast_markers <- stats::setNames(time_markers, variables)
   row <- data.frame(
     `Repeated variables` = result$group_label,
     N = result$table$N[[1]],
@@ -446,13 +492,14 @@ paired_rm_binary_display_table <- function(result, values, variable_info, labels
   for (index in seq_along(variables)) {
     value <- as.character(values[[variables[[index]]]])
     row[[paste0("Time", index, "_label")]] <- time_labels[[index]]
+    row[[paste0("Time", index, "_marker")]] <- time_markers[[index]]
     row[[paste0("Time", index, "_0")]] <- sum(value == "0", na.rm = TRUE)
     row[[paste0("Time", index, "_1")]] <- sum(value == "1", na.rm = TRUE)
   }
   row[["StatisticLabel"]] <- result$table$Statistic[[1]]
   row[["Statistic"]] <- result$table$Value[[1]]
   row[["p"]] <- result$table$p[[1]]
-  row[["Post-hoc"]] <- paired_rm_posthoc_notation(variables, result$posthoc, NULL, stats::setNames(time_labels, variables), contrast_labels)
+  row[["Post-hoc"]] <- paired_rm_posthoc_notation(variables, result$posthoc, NULL, contrast_markers, contrast_labels)
   posthoc_methods <- unique(as.character(result$posthoc$Method %||% ""))
   posthoc_methods <- posthoc_methods[nzchar(posthoc_methods)]
   row[["PosthocMethodLabel"]] <- paste(posthoc_methods, collapse = ", ")
@@ -508,10 +555,7 @@ prepare_paired_rm_single_result <- function(data, variables, variable_info = NUL
       main[["ES"]] <- paired_effect_value(paired_rm_kendalls_w(unname(as.numeric(test$statistic)), nrow(y), ncol(y)))
       posthoc <- paired_rm_posthoc_scale(as.data.frame(y), "Wilcoxon signed-rank test", adjustment, variable_info, labels, category_table)
     } else if (identical(method_key, "rm_anova_wilks")) {
-      gg_df1 <- sphericity$epsilon * anova$df1
-      gg_df2 <- sphericity$epsilon * anova$df2
-      gg_p <- stats::pf(anova$f, gg_df1, gg_df2, lower.tail = FALSE)
-      main <- data.frame(Method = paired_rm_method_label(method_key), N = nrow(y), Statistic = "F", Value = format_decimal3(wilks$f), df1 = format_decimal3(wilks$df1), df2 = format_decimal3(wilks$df2), p = format_p(wilks$p), `Wilks' lambda` = format_decimal3(wilks$lambda), `GG epsilon` = format_decimal3(sphericity$epsilon), `GG p` = format_p(gg_p), stringsAsFactors = FALSE, check.names = FALSE)
+      main <- data.frame(Method = paired_rm_method_label(method_key), N = nrow(y), Statistic = "F", Value = format_decimal3(wilks$f), df1 = format_decimal3(wilks$df1), df2 = format_decimal3(wilks$df2), p = format_p(wilks$p), `Wilks' lambda` = format_decimal3(wilks$lambda), stringsAsFactors = FALSE, check.names = FALSE)
       main[["Effect size"]] <- "partial eta squared"
       main[["ES"]] <- paired_effect_value(paired_rm_partial_eta_squared(anova))
       posthoc <- paired_rm_posthoc_scale(as.data.frame(y), "Paired t-test", adjustment, variable_info, labels, category_table)
@@ -587,6 +631,10 @@ prepare_paired_rm_results <- function(data, variables = NULL, variable_groups = 
 
   table <- paired_rm_bind_rows(lapply(results, function(result) paired_rm_tag_table(result$table, result$group_label)))
   display_table <- paired_rm_bind_rows(lapply(results, function(result) result$display_table))
+  if (is.data.frame(display_table)) {
+    attr(display_table, "mean_sd") <- isTRUE(options$mean_sd)
+    attr(display_table, "median_iqr") <- isTRUE(options$median_iqr)
+  }
   count_table <- paired_rm_bind_rows(lapply(results, function(result) result$count_table))
   summary <- paired_rm_bind_rows(lapply(results, function(result) paired_rm_tag_table(result$summary, result$group_label)))
   posthoc <- paired_rm_bind_rows(lapply(results, function(result) paired_rm_tag_table(result$posthoc, result$group_label)))

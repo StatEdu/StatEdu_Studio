@@ -1,6 +1,6 @@
 {
   "name": "easyflow-statistics-beta",
-  "version": "0.9.33",
+  "version": "0.9.39",
   "description": "EasyFlow Statistics beta desktop installer",
   "main": "main.js",
   "private": true,
@@ -9,7 +9,7 @@
     "dist": "electron-builder --win nsis --x64"
   },
   "devDependencies": {
-    "electron": "38.8.6",
+    "electron": "39.8.6",
     "electron-builder": "26.8.1"
   },
   "build": {

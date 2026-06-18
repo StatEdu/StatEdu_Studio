@@ -13,6 +13,11 @@ source_app_modules(dir = file.path(repo_root, "R"))
 
 set.seed(1001)
 
+count_fixed <- function(pattern, text) {
+  matches <- gregexpr(pattern, text, fixed = TRUE)[[1]]
+  if (identical(matches[[1]], -1L)) 0L else length(matches)
+}
+
 binary_data <- data.frame(
   y = factor(rep(0:1, each = 60)),
   group = factor(rep(1:3, 40)),
@@ -79,6 +84,76 @@ split_rendered <- as.character(htmltools::renderTags(logistic_results_panel(
 stopifnot(grepl("LLCI", split_rendered, fixed = TRUE))
 stopifnot(grepl("ULCI", split_rendered, fixed = TRUE))
 
+binary_hierarchical_data <- binary_data
+binary_hierarchical_data$block2 <- rnorm(nrow(binary_hierarchical_data))
+binary_hierarchical_info <- rbind(
+  binary_info,
+  data.frame(name = "block2", measurement = "continuous", stringsAsFactors = FALSE)
+)
+binary_hierarchical_result <- prepare_logistic_analysis_results(
+  binary_hierarchical_data,
+  "y",
+  c("group", "x"),
+  "block2",
+  variable_info = binary_hierarchical_info,
+  reference_values = refs
+)
+stopifnot(length(binary_hierarchical_result) == 2L)
+binary_hierarchical_rows <- logistic_coefficient_rows(
+  binary_hierarchical_result[[2]],
+  variable_table = binary_hierarchical_info,
+  category_table = category_table,
+  split_ci = TRUE
+)
+stopifnot(length(binary_hierarchical_rows) > 0L)
+stopifnot(any(vapply(binary_hierarchical_rows, function(row) any(nzchar(row$values[3:length(row$values)])), logical(1))))
+binary_hierarchical_html <- as.character(htmltools::renderTags(logistic_results_panel(
+  binary_hierarchical_result,
+  variable_table = binary_hierarchical_info,
+  category_table = category_table,
+  split_ci = TRUE
+))$html)
+stopifnot(grepl("logistic-hierarchical-table", binary_hierarchical_html, fixed = TRUE))
+stopifnot(grepl("Model 1", binary_hierarchical_html, fixed = TRUE))
+stopifnot(grepl("Model 2", binary_hierarchical_html, fixed = TRUE))
+stopifnot(grepl("LLCI", binary_hierarchical_html, fixed = TRUE))
+stopifnot(grepl("ULCI", binary_hierarchical_html, fixed = TRUE))
+stopifnot(!grepl("landscape-table-panel", binary_hierarchical_html, fixed = TRUE))
+stopifnot(grepl("width:100% !important;min-width:0 !important;max-width:100% !important;table-layout:fixed;", binary_hierarchical_html, fixed = TRUE))
+
+binary_three_step_result <- prepare_logistic_analysis_results(
+  binary_hierarchical_data,
+  "y",
+  "group",
+  "x",
+  "block2",
+  variable_info = binary_hierarchical_info,
+  reference_values = refs
+)
+stopifnot(length(binary_three_step_result) == 3L)
+binary_three_step_html <- as.character(htmltools::renderTags(logistic_results_panel(
+  binary_three_step_result,
+  variable_table = binary_hierarchical_info,
+  category_table = category_table,
+  show_b = TRUE,
+  show_se = TRUE,
+  split_ci = TRUE
+))$html)
+stopifnot(grepl("landscape-table-panel", binary_three_step_html, fixed = TRUE))
+stopifnot(grepl("fit-width-hierarchical-table", binary_three_step_html, fixed = TRUE))
+stopifnot(grepl("Model 3", binary_three_step_html, fixed = TRUE))
+stopifnot(grepl("reference", binary_three_step_html, fixed = TRUE))
+stopifnot(grepl("1.", binary_three_step_html, fixed = TRUE))
+binary_three_step_table_html <- as.character(htmltools::renderTags(logistic_hierarchical_result_table(
+  binary_three_step_result,
+  variable_table = binary_hierarchical_info,
+  category_table = category_table,
+  show_b = TRUE,
+  show_se = TRUE,
+  split_ci = TRUE
+))$html)
+stopifnot(count_fixed(">VIF<", binary_three_step_table_html) == 1L)
+
 saved_html <- saved_logistic_results_html(
   referenced_result,
   variable_table = binary_info,
@@ -132,6 +207,16 @@ ordered_result <- prepare_logistic_analysis_results(ordered_data, "y", "x", "blo
 stopifnot(length(ordered_result) == 2L)
 stopifnot(!is.null(ordered_result[[2]]$delta_r2))
 stopifnot(!is.null(ordered_result[[1]]$parallel))
+ordered_hier_html <- as.character(htmltools::renderTags(logistic_results_panel(
+  ordered_result,
+  variable_table = ordered_info,
+  show_mcfadden = TRUE,
+  show_cox_snell = TRUE,
+  split_ci = FALSE
+))$html)
+stopifnot(grepl("logistic-hierarchical-table", ordered_hier_html, fixed = TRUE))
+stopifnot(grepl("<div style=\"white-space:nowrap;\">Nagelkerke R", ordered_hier_html, fixed = TRUE))
+stopifnot(grepl("<div style=\"white-space:nowrap;\">McFadden R", ordered_hier_html, fixed = TRUE))
 
 multinom_data <- data.frame(
   y = factor(rep(1:3, each = 50)),
@@ -146,6 +231,24 @@ multinom_result <- prepare_logistic_analysis_results(multinom_data, "y", "x", va
 stopifnot(length(multinom_result) == 1L)
 stopifnot(identical(multinom_result[[1]]$method, "Multinomial logistic regression"))
 stopifnot(is.data.frame(multinom_result[[1]]$coef_table))
+
+multinom_data$block2 <- rnorm(nrow(multinom_data))
+multinom_hier_info <- rbind(
+  multinom_info,
+  data.frame(name = "block2", measurement = "continuous", stringsAsFactors = FALSE)
+)
+multinom_hier_result <- prepare_logistic_analysis_results(multinom_data, "y", "x", "block2", variable_info = multinom_hier_info)
+stopifnot(length(multinom_hier_result) == 2L)
+multinom_hier_html <- as.character(htmltools::renderTags(logistic_results_panel(
+  multinom_hier_result,
+  variable_table = multinom_hier_info,
+  show_b = TRUE,
+  show_se = TRUE,
+  split_ci = TRUE
+))$html)
+stopifnot(count_fixed("Constant", multinom_hier_html) >= 2L)
+stopifnot(grepl("(2 vs 1)", multinom_hier_html, fixed = TRUE))
+stopifnot(grepl("(3 vs 1)", multinom_hier_html, fixed = TRUE))
 
 guard_data <- data.frame(
   y_ok = factor(c(rep(0, 20), rep(1, 20))),

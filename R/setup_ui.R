@@ -388,30 +388,47 @@ hierarchical_tab_panel <- function(title = "Regression") {
   )
 }
 
-generalized_tab_panel <- function(title = "Generalized") {
+generalized_tab_panel <- function(title = "GLM") {
   tabPanel(
     title,
+    value = "analysis_generalized",
     div(
       class = "page-shell",
       div(
         class = "app-heading",
-        h1("Generalized"),
-        div("Review selected variables and prepare generalized regression analysis.", class = "app-subtitle")
+        h1("Generalized Linear Model (GLM)"),
+        div("Run Gaussian, logistic, gamma, Poisson, and negative-binomial generalized linear models.", class = "app-subtitle")
       ),
       div(
-        class = "regression-layout",
-        div(
-          class = "side-panel",
-          uiOutput("generalized_variable_list")
-        ),
-        div(
-          class = "workspace-panel",
-          h3("Generalized"),
-          uiOutput("generalized_setup"),
-          div(
-            class = "empty-message regression-results-empty",
-            "Generalized regression models are not implemented yet."
-          )
+        class = "workspace-panel frequencies-workspace-panel generalized-workspace-panel",
+        h3("Generalized Linear Model (GLM)"),
+        uiOutput("generalized_setup"),
+        uiOutput("generalized_save_control"),
+        uiOutput("generalized_results")
+      )
+    )
+  )
+}
+
+longitudinal_tab_panel <- function(title = "Longitudinal / Panel Models") {
+  tabPanel(
+    title,
+    value = "analysis_longitudinal",
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1("Longitudinal / Panel Models"),
+        div("Run GEE, mixed-effects, and panel regression models for long-format repeated-measures or clustered data.", class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel longitudinal-workspace-panel",
+        style = "min-width:980px;overflow-x:auto;",
+        analysis_workspace_heading("Longitudinal / Panel Models", "longitudinal"),
+        analysis_workspace_body(
+          "longitudinal",
+          uiOutput("longitudinal_setup"),
+          uiOutput("longitudinal_results")
         )
       )
     )
@@ -497,22 +514,6 @@ restore_setup_inputs <- function(session, settings) {
   if (!is.null(settings$seed)) {
     updateNumericInput(session, "seed", value = settings$seed)
   }
-}
-
-generalized_family_choices <- function() {
-  c(
-    "Poisson / Negative binomial / Zero-inflated (count)" = "count",
-    "Gamma (positive continuous)" = "gamma"
-  )
-}
-
-generalized_link_choices <- function() {
-  c(
-    "Default for family" = "default",
-    "log" = "log",
-    "identity" = "identity",
-    "inverse" = "inverse"
-  )
 }
 
 setup_list_size <- function(items, min_size = 4, max_size = 10) {
@@ -671,8 +672,8 @@ regression_role_variable_list <- function(
   }
 
   tagList(
-    variable_block("Dependent Variables", intersect(dependent, selected)),
-    variable_block("Independent Variables", intersect(independent, selected)),
+    variable_block("Dependent variables", intersect(dependent, selected)),
+    variable_block("Independent variables", intersect(independent, selected)),
     variable_block("Covariates", intersect(controls, selected))
   )
 }

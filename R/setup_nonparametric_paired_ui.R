@@ -13,7 +13,7 @@ nonparametric_paired_setup_state <- function(
   time_labels = NULL
 ) {
   selected <- as.character(selected_names %||% character(0))
-  repeated_groups <- lapply(repeated_groups %||% list(), function(group) intersect(as.character(group), selected))
+  repeated_groups <- lapply(repeated_groups %||% list(), paired_keep_selected_order, selected = selected)
   repeated_groups <- repeated_groups[lengths(repeated_groups) >= 2L]
   group_values <- paired_group_values(repeated_groups)
   grouped_variables <- unique(unlist(repeated_groups, use.names = FALSE))

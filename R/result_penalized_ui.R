@@ -35,7 +35,7 @@ penalized_result_block <- function(result) {
       "penalized-coefficient-comparison-table",
       "Coefficients are estimated at \u03BBmin. A coefficient of 0 in LASSO or Elastic Net indicates that the predictor was not selected."
     ),
-    h4("Table 3. Predictors retained by penalized regression"),
+    h4("Table 3. Independent variables retained by penalized regression"),
     render_simple_table(result$selected_predictors, "penalized-selected-table")
   )
 }

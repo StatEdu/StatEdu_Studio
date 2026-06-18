@@ -146,7 +146,7 @@ regression_setup_panel <- function(
         class = "regression-target-column",
         div(
           class = "analysis-transfer-column analysis-transfer-panel regression-dependent-panel",
-          analysis_field_label_tag("Dependent Variables", "continuous"),
+          analysis_field_label_tag("Dependent variables", "continuous"),
           analysis_transfer_listbox_input(
           "y",
           items = dependent_items,
@@ -161,7 +161,7 @@ regression_setup_panel <- function(
         ),
         div(
           class = "analysis-transfer-column analysis-transfer-panel regression-independent-panel",
-          analysis_field_label_tag("Independent Variables", c("binary", "category", "ordered", "continuous")),
+          analysis_field_label_tag("Independent variables", c("binary", "category", "ordered", "continuous")),
           analysis_transfer_listbox_input(
             "predictor_order",
             items = predictor_items,

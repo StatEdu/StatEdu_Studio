@@ -5,7 +5,7 @@ missing_common_numeric_codes <- function() {
 }
 
 missing_common_text_codes <- function() {
-  c(
+  unique(c(
     "",
     ".",
     "NA",
@@ -13,11 +13,38 @@ missing_common_text_codes <- function() {
     "NULL",
     "missing",
     "none",
+    "not applicable",
+    "unknown",
+    "don't know",
+    "dont know",
     "\ubaa8\ub984",
+    "\uc798 \ubaa8\ub984",
+    "\ubaa8\ub974\uaca0\uc74c",
     "\ubb34\uc751\ub2f5",
+    "\ubbf8\uc751\ub2f5",
+    "\uc751\ub2f5\uac70\ubd80",
     "\ud574\ub2f9\uc5c6\uc74c",
-    "\uacb0\uce21"
-  )
+    "\ud574\ub2f9 \uc5c6\uc74c",
+    "\ube44\ud574\ub2f9",
+    "\uacb0\uce21",
+    "\uc5c6\uc74c",
+    "\uc54c \uc218 \uc5c6\uc74c",
+    as.character(setdiff(missing_common_numeric_codes(), 9))
+  ))
+}
+
+missing_normalize_text_code <- function(x) {
+  x <- tolower(trimws(as.character(x %||% "")))
+  gsub("[[:space:]]+", "", x)
+}
+
+missing_existing_na_summary <- function(data) {
+  if (is.null(data) || !is.data.frame(data) || ncol(data) == 0) {
+    return(list(total = 0L, variables = character(0)))
+  }
+  counts <- vapply(data, function(values) sum(is.na(values)), integer(1))
+  variables <- names(counts)[counts > 0]
+  list(total = sum(counts), variables = variables)
 }
 
 missing_display_value <- function(value, value_type = "text") {
@@ -122,13 +149,19 @@ missing_detect_text_candidates <- function(values, variable, source_index) {
   if (length(present) == 0) {
     return(NULL)
   }
-  normalized <- tolower(present)
+  normalized <- missing_normalize_text_code(present)
   storage_type <- missing_value_storage_type(values)
   rows <- list()
+  seen_codes <- character(0)
   for (code in missing_common_text_codes()) {
     code_text <- as.character(code)
+    normalized_code <- missing_normalize_text_code(code_text)
+    if (normalized_code %in% seen_codes) {
+      next
+    }
+    seen_codes <- c(seen_codes, normalized_code)
     matched <- if (nzchar(code_text)) {
-      normalized == tolower(code_text)
+      normalized == normalized_code
     } else {
       !nzchar(present)
     }
@@ -212,7 +245,7 @@ apply_missing_value_rules <- function(values, rules) {
     }
     text <- trimws(as.character(as.vector(output)))
     matched <- if (nzchar(rule_value)) {
-      !is.na(text) & tolower(text) == tolower(rule_value)
+      !is.na(text) & missing_normalize_text_code(text) == missing_normalize_text_code(rule_value)
     } else {
       !is.na(text) & !nzchar(text)
     }
@@ -270,8 +303,8 @@ register_missing_value_handlers <- function(
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
     detect_missing_value_candidates(
       data,
-      detect_numeric = isTRUE(input$missing_detect_numeric),
-      detect_text = isTRUE(input$missing_detect_text)
+      detect_numeric = isTRUE(input$missing_detect_numeric %||% TRUE),
+      detect_text = isTRUE(input$missing_detect_text %||% TRUE)
     )
   })
 
@@ -280,11 +313,33 @@ register_missing_value_handlers <- function(
     if (is.null(file)) {
       return(div(class = "empty-message", div("Load a data file before detecting missing values.")))
     }
+    data <- tryCatch(dataset_fn(), error = function(e) NULL)
+    na_summary <- missing_existing_na_summary(data)
     table <- candidates()
     if (is.null(table) || nrow(table) == 0) {
-      return(div(class = "empty-message", div("No likely missing-value codes were detected in the current data.")))
+      if (na_summary$total > 0) {
+        visible_variables <- head(na_summary$variables, 8)
+        variable_text <- paste(visible_variables, collapse = ", ")
+        if (length(na_summary$variables) > length(visible_variables)) {
+          variable_text <- sprintf("%s, ...", variable_text)
+        }
+        return(div(
+          class = "empty-message",
+          div(sprintf(
+            "No coded missing values were detected. Existing NA values are already treated as missing: %s value(s) across %s variable(s).",
+            na_summary$total,
+            length(na_summary$variables)
+          )),
+          div(class = "small-muted", variable_text)
+        ))
+      }
+      return(div(class = "empty-message", div("No coded missing values or existing NA values were detected in the current data.")))
     }
-    div(class = "recode-same-status", sprintf("%s candidate code(s) detected across %s variable(s). Select rows to convert them to NA.", nrow(table), length(unique(table$variable))))
+    status <- sprintf("%s candidate code(s) detected across %s variable(s). Select rows to convert them to NA.", nrow(table), length(unique(table$variable)))
+    if (na_summary$total > 0) {
+      status <- sprintf("%s Existing NA values are already missing: %s value(s).", status, na_summary$total)
+    }
+    div(class = "recode-same-status", status)
   })
 
   output$missing_value_candidates <- DT::renderDT({

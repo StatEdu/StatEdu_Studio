@@ -4,6 +4,26 @@
   if (is.null(x)) y else x
 }
 
+easyflow_timing_enabled <- function() {
+  !identical(tolower(Sys.getenv("EASYFLOW_TIMING", "1")), "0")
+}
+
+easyflow_log_timing <- function(label, start, detail = "") {
+  if (!isTRUE(easyflow_timing_enabled())) {
+    return(invisible(FALSE))
+  }
+  elapsed <- as.numeric(difftime(Sys.time(), start, units = "secs"))
+  suffix <- if (nzchar(as.character(detail %||% ""))) paste0(" ", detail) else ""
+  message(sprintf("[EasyFlow timing] %s: %.3fs%s", label, elapsed, suffix))
+  invisible(TRUE)
+}
+
+easyflow_time_expr <- function(label, expr, detail = "") {
+  start <- Sys.time()
+  on.exit(easyflow_log_timing(label, start, detail), add = TRUE)
+  force(expr)
+}
+
 named_value <- function(x, name, default = "") {
   name <- as.character(name %||% "")
   name <- if (length(name) == 0 || is.na(name[[1]])) "" else name[[1]]
@@ -103,7 +123,7 @@ analysis_guard_row <- function(type, target, predictors = "", n = NA_integer_, m
   data.frame(
     Type = as.character(type %||% ""),
     Target = as.character(target %||% ""),
-    Predictors = as.character(predictors %||% ""),
+    `Independent variables` = as.character(predictors %||% ""),
     N = if (is.na(n)) "" else as.character(n),
     Message = as.character(message %||% ""),
     stringsAsFactors = FALSE,

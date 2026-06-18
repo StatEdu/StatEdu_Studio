@@ -1647,11 +1647,11 @@ sample_size_analysis_panel <- function(method) {
   )
 }
 
-sample_size_common_inputs <- function(method, target, show_ratio = FALSE, show_tail = TRUE, n_label = "Sample size") {
+sample_size_common_inputs <- function(method, target, show_ratio = FALSE, show_tail = TRUE, n_label = "Sample size", power_value = "0.95") {
   tagList(
     textInput(paste0("sample_size_", method, "_alpha"), "Alpha", value = "0.05"),
     if (identical(target, "sample_size")) {
-      textInput(paste0("sample_size_", method, "_power"), "Power", value = "0.95")
+      textInput(paste0("sample_size_", method, "_power"), "Power", value = power_value)
     } else {
       textInput(paste0("sample_size_", method, "_n"), n_label, value = "100")
     },
@@ -1917,21 +1917,59 @@ sample_size_inputs_ui <- function(method, input) {
           textInput("sample_size_regression_covariate_r2", "Covariate R-squared", value = "0")
         )
       } else if (identical(regression_design, "mediation")) {
+        mediation_method <- input$sample_size_regression_mediation_method %||% "monte_carlo"
         tagList(
           selectInput(
             "sample_size_regression_mediation_method",
             "Mediation method",
             choices = c(
+              "Fritz & MacKinnon empirical table (.80 power)" = "fritz_mackinnon",
               "Monte Carlo indirect effect CI" = "monte_carlo",
               "Bootstrap indirect effect CI (slow)" = "bootstrap",
               "Sobel approximation" = "sobel"
             ),
-            selected = input$sample_size_regression_mediation_method %||% "monte_carlo"
+            selected = mediation_method
           ),
-          textInput("sample_size_regression_a", "Path a beta: predictor -> mediator", value = "0.30"),
-          textInput("sample_size_regression_b", "Path b beta: mediator -> outcome", value = "0.30"),
-          textInput("sample_size_regression_covariates", "Number of covariates", value = "0"),
-          if (identical(input$sample_size_regression_mediation_method %||% "monte_carlo", "bootstrap")) {
+          if (identical(mediation_method, "fritz_mackinnon")) {
+            tagList(
+              selectInput(
+                "sample_size_regression_a_effect",
+                "Path a effect size",
+                choices = c("Small (.14)" = "small", "Halfway (.26)" = "halfway", "Medium (.39)" = "medium", "Large (.59)" = "large"),
+                selected = input$sample_size_regression_a_effect %||% "medium"
+              ),
+              selectInput(
+                "sample_size_regression_b_effect",
+                "Path b effect size",
+                choices = c("Small (.14)" = "small", "Halfway (.26)" = "halfway", "Medium (.39)" = "medium", "Large (.59)" = "large"),
+                selected = input$sample_size_regression_b_effect %||% "medium"
+              ),
+              selectInput(
+                "sample_size_regression_fritz_test",
+                "Fritz & MacKinnon test",
+                choices = c(
+                  "Bias-corrected bootstrap" = "bias_corrected_bootstrap",
+                  "Percentile bootstrap" = "percentile_bootstrap",
+                  "PRODCLIN / distribution of the product" = "prodclin",
+                  "Joint significance" = "joint_significance",
+                  "Sobel / first-order delta" = "sobel",
+                  "Baron & Kenny, c' = 0" = "baron_kenny_complete",
+                  "Baron & Kenny, c' = .14" = "baron_kenny_small",
+                  "Baron & Kenny, c' = .39" = "baron_kenny_medium",
+                  "Baron & Kenny, c' = .59" = "baron_kenny_large"
+                ),
+                selected = input$sample_size_regression_fritz_test %||% "bias_corrected_bootstrap"
+              ),
+              div(class = "sample-size-method-note", "This empirical table is fixed at power = .80; set Power to 0.80.")
+            )
+          } else {
+            tagList(
+              textInput("sample_size_regression_a", "Path a beta: predictor -> mediator", value = "0.30"),
+              textInput("sample_size_regression_b", "Path b beta: mediator -> outcome", value = "0.30"),
+              textInput("sample_size_regression_covariates", "Number of covariates", value = "0")
+            )
+          },
+          if (identical(mediation_method, "bootstrap")) {
             tagList(
               textInput("sample_size_regression_simulations", "Simulations", value = "30"),
               textInput("sample_size_regression_bootstraps", "Bootstrap samples", value = "100")
@@ -1949,7 +1987,8 @@ sample_size_inputs_ui <- function(method, input) {
         "regression",
         target,
         show_tail = regression_design %in% c("logistic", "mediation"),
-        n_label = "Total sample size"
+        n_label = "Total sample size",
+        power_value = if (identical(regression_design, "mediation") && identical(input$sample_size_regression_mediation_method %||% "monte_carlo", "fritz_mackinnon")) "0.80" else "0.95"
       )
     ),
     gee = tagList(
@@ -2502,6 +2541,10 @@ sample_size_result_table <- function(result) {
   if (!is.null(result$required_events)) add_row("Required events", result$required_events)
   if (!is.null(result$a_path)) add_row("Path a beta", sprintf("%.3f", result$a_path))
   if (!is.null(result$b_path)) add_row("Path b beta", sprintf("%.3f", result$b_path))
+  if (!is.null(result$a_effect_label)) add_row("Path a effect size", result$a_effect_label)
+  if (!is.null(result$b_effect_label)) add_row("Path b effect size", result$b_effect_label)
+  if (!is.null(result$fritz_mackinnon_condition)) add_row("Fritz & MacKinnon condition", result$fritz_mackinnon_condition)
+  if (!is.null(result$fritz_mackinnon_test)) add_row("Fritz & MacKinnon test", result$fritz_mackinnon_test)
   if (!is.null(result$indirect_effect)) add_row("Indirect effect beta a*b", sprintf("%.3f", result$indirect_effect))
   if (!is.null(result$covariates)) add_row("Covariates", result$covariates)
   if (!is.null(result$df)) add_row("Model df", result$df)
@@ -2926,17 +2969,40 @@ sample_size_method_details <- function(method, result) {
       formula = if (has_design("Logistic")) {
         "Uses a Hsieh-style Wald approximation for a logistic regression odds ratio with event probability, predictor prevalence, and covariate R-squared adjustment."
       } else if (has_design("Mediation")) {
-        "Uses Sobel, Monte Carlo percentile confidence interval, or bootstrap confidence interval simulation for the indirect effect."
+        switch(
+          result$mediation_method %||% "",
+          fritz_mackinnon = "Uses Fritz & MacKinnon (2007) empirical Table 3 sample-size estimates for .80 power to detect the mediated effect.",
+          monte_carlo = "Uses a Monte Carlo percentile confidence interval simulation for the indirect effect.",
+          bootstrap = "Uses bootstrap confidence interval simulation for the indirect effect.",
+          sobel = "Uses a Sobel / first-order delta approximation for the indirect effect.",
+          "Uses Sobel, Monte Carlo percentile confidence interval, bootstrap confidence interval simulation, or Fritz & MacKinnon empirical table estimates for the indirect effect."
+        )
       } else {
         "Uses Cohen's f2 with a noncentral F test for overall, incremental, or interaction-term regression effects."
       },
       references = if (has_design("Logistic")) {
         c("Hsieh, F. Y., Bloch, D. A., & Larsen, M. D. (1998). A simple method of sample size calculation for linear and logistic regression. Statistics in Medicine, 17(14), 1623-1634.")
       } else if (has_design("Mediation")) {
-        c(
-          "Fritz, M. S., & MacKinnon, D. P. (2007). Required sample size to detect the mediated effect. Psychological Science, 18(3), 233-239.",
-          "MacKinnon, D. P., Lockwood, C. M., & Williams, J. (2004). Confidence limits for the indirect effect: Distribution of the product and resampling methods. Multivariate Behavioral Research, 39(1), 99-128.",
-          "Preacher, K. J., & Selig, J. P. (2012). Advantages of Monte Carlo confidence intervals for indirect effects. Communication Methods and Measures, 6(2), 77-98."
+        switch(
+          result$mediation_method %||% "",
+          fritz_mackinnon = c("Fritz, M. S., & MacKinnon, D. P. (2007). Required sample size to detect the mediated effect. Psychological Science, 18(3), 233-239."),
+          monte_carlo = c(
+            "Preacher, K. J., & Selig, J. P. (2012). Advantages of Monte Carlo confidence intervals for indirect effects. Communication Methods and Measures, 6(2), 77-98.",
+            "MacKinnon, D. P., Lockwood, C. M., & Williams, J. (2004). Confidence limits for the indirect effect: Distribution of the product and resampling methods. Multivariate Behavioral Research, 39(1), 99-128."
+          ),
+          bootstrap = c(
+            "MacKinnon, D. P., Lockwood, C. M., & Williams, J. (2004). Confidence limits for the indirect effect: Distribution of the product and resampling methods. Multivariate Behavioral Research, 39(1), 99-128.",
+            "Efron, B., & Tibshirani, R. J. (1993). An Introduction to the Bootstrap. Chapman & Hall/CRC."
+          ),
+          sobel = c(
+            "Sobel, M. E. (1982). Asymptotic confidence intervals for indirect effects in structural equation models. Sociological Methodology, 13, 290-312.",
+            "MacKinnon, D. P., Lockwood, C. M., Hoffman, J. M., West, S. G., & Sheets, V. (2002). A comparison of methods to test mediation and other intervening variable effects. Psychological Methods, 7(1), 83-104."
+          ),
+          c(
+            "Fritz, M. S., & MacKinnon, D. P. (2007). Required sample size to detect the mediated effect. Psychological Science, 18(3), 233-239.",
+            "MacKinnon, D. P., Lockwood, C. M., & Williams, J. (2004). Confidence limits for the indirect effect: Distribution of the product and resampling methods. Multivariate Behavioral Research, 39(1), 99-128.",
+            "Preacher, K. J., & Selig, J. P. (2012). Advantages of Monte Carlo confidence intervals for indirect effects. Communication Methods and Measures, 6(2), 77-98."
+          )
         )
       } else {
         c(cohen, "Hsieh, F. Y., Bloch, D. A., & Larsen, M. D. (1998). A simple method of sample size calculation for linear and logistic regression. Statistics in Medicine, 17(14), 1623-1634.")
@@ -3153,6 +3219,13 @@ sample_size_calculate <- function(method, input, progress = NULL) {
   ratio <- as.numeric(input[[paste0("sample_size_", method, "_ratio")]] %||% 1)
   alternative <- input[[paste0("sample_size_", method, "_alternative")]] %||% "two.sided"
   dropout <- as.numeric(input[[paste0("sample_size_", method, "_dropout")]] %||% 0) / 100
+  if (
+    identical(method, "regression") &&
+      identical(input$sample_size_regression_design %||% "multiple", "mediation") &&
+      identical(input$sample_size_regression_mediation_method %||% "monte_carlo", "fritz_mackinnon")
+  ) {
+    power <- 0.8
+  }
 
   tryCatch({
     result <- switch(
@@ -3229,6 +3302,9 @@ sample_size_calculate <- function(method, input, progress = NULL) {
         interaction_terms = as.numeric(input$sample_size_regression_interactions),
         a_path = as.numeric(input$sample_size_regression_a),
         b_path = as.numeric(input$sample_size_regression_b),
+        a_effect = input$sample_size_regression_a_effect %||% "medium",
+        b_effect = input$sample_size_regression_b_effect %||% "medium",
+        fritz_mackinnon_test = input$sample_size_regression_fritz_test %||% "bias_corrected_bootstrap",
         covariates = as.numeric(input$sample_size_regression_covariates %||% 0),
         odds_ratio = as.numeric(input$sample_size_regression_or),
         p0 = as.numeric(input$sample_size_regression_p0),

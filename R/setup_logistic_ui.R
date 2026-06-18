@@ -112,7 +112,7 @@ logistic_active_block_setup <- function(setup) {
     block2 = list(
       index = 2L,
       name = "block2",
-      title = sprintf("Block 2: Predictors (%s)", length(setup$block2)),
+      title = sprintf("Block 2: Independent variables (%s)", length(setup$block2)),
       input_id = "logistic_block2",
       items = setup$block2_items,
       selected = setup$block2_selected,
@@ -123,7 +123,7 @@ logistic_active_block_setup <- function(setup) {
     block3 = list(
       index = 3L,
       name = "block3",
-      title = sprintf("Block 3: Predictors (%s)", length(setup$block3)),
+      title = sprintf("Block 3: Independent variables (%s)", length(setup$block3)),
       input_id = "logistic_block3",
       items = setup$block3_items,
       selected = setup$block3_selected,
@@ -217,7 +217,7 @@ logistic_setup_panel <- function(setup, status_message = NULL) {
             )
           ),
           logistic_target_panel(
-            sprintf("Dependent Variables (%s)", length(setup$dependents)),
+            sprintf("Dependent variables (%s)", length(setup$dependents)),
             "logistic_y",
             setup$dependent_items,
             setup$dependent_selected,
