@@ -214,6 +214,26 @@ html <- as.character(tags_to_html(ttest_anova_results_ui(result)))
 expect_true(!grepl('class="coefficient-col-note-marker"', html, fixed = TRUE), "Expected footnote markers to render inline without a narrow marker column")
 expect_true(grepl('class="coefficient-footnote-marker">1</sup>', html, fixed = TRUE), "Expected Hedges' g marker to render as inline superscript")
 expect_true(grepl('class="coefficient-footnote-marker">2</sup>', html, fixed = TRUE), "Expected omega squared marker to render as inline superscript")
+
+labeled_info <- data.frame(
+  name = c("y", "g2"),
+  var_label = c("Outcome label", "Group label"),
+  measurement = c("continuous", "binary"),
+  stringsAsFactors = FALSE
+)
+labeled_result <- prepare_ttest_anova_results(
+  data,
+  dependents = "y",
+  factors = "g2",
+  variable_info = labeled_info,
+  options = list(effect_size = TRUE, normality_enabled = FALSE)
+)
+labeled_html <- as.character(tags_to_html(ttest_anova_results_ui(labeled_result)))
+expect_true(grepl("<h3>Model overview</h3>", labeled_html, fixed = TRUE), "Expected labeled t-test HTML to include the Model overview section")
+expect_true(grepl("Outcome label", labeled_html, fixed = TRUE), "Expected labeled t-test Model overview to preserve dependent-variable labels")
+expect_true(grepl("Group label", labeled_html, fixed = TRUE), "Expected labeled t-test Model overview to preserve grouping-variable labels")
+expect_true(grepl("t-test", labeled_html, fixed = TRUE), "Expected labeled t-test Model overview to show the selected analysis")
+
 style_css <- readLines(file.path(repo_root, "www", "style.css"), warn = FALSE, encoding = "UTF-8")
 style_text <- paste(style_css, collapse = "\n")
 expect_true(

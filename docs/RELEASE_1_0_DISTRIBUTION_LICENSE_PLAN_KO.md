@@ -1,119 +1,119 @@
-# EasyFlow Statistics 1.0 ����/���̼���/������Ʈ ��ȹ
+﻿# EasyFlow Statistics 1.0 배포/라이센스/업데이트 계획
 
-�ۼ���: 2026-06-07
-���� ����: 0.9.34 beta
-��ǥ ����: 1.0 ���� ����
+작성일: 2026-06-07  
+기준 버전: 0.9.33 beta  
+목표 버전: 1.0 정식 배포
 
-�� ������ 0.9.34 beta���� 1.0 ���� �������� ��ȯ�� �� ������ ����, ������Ʈ, ���̼���, ��ǰ ��� ��å�� �����Ѵ�.
+이 문서는 0.9.33 beta에서 1.0 정식 버전으로 전환할 때 구현할 배포, 업데이트, 라이센스, 제품 등급 정책을 정리한다.
 
-## ��ȯ �����δ�
+## 전환 리마인더
 
-0.9.34, 0.9.35, 0.9.36 ���� ��� ����ȭ�� ����Ǹ� 1.0 ���� ���� ��ȯ ���θ� �ٽ� �����Ѵ�. Ư�� 0.9.37 �̻����� �ö󰡰ų�, �� ��� �߰����� ����ȭ/���� �غ� �� �߿��� ������ �Ǹ� �� ������ �ٽ� ���� Free/Pro/Latent ���� �и�, ���̼��� ����, activation ����, ������Ʈ Ȯ�� ���, installer ���� ������ ���� ������� �ø���.
+0.9.34, 0.9.35, 0.9.36 이후 기능 안정화가 진행되면 1.0 정식 배포 전환 여부를 다시 검토한다. 특히 0.9.37 이상으로 올라가거나, 새 기능 추가보다 안정화/배포 준비가 더 중요한 시점이 되면 이 문서를 다시 열어 Free/Pro/Latent 권한 분리, 라이센스 서버, activation 관리, 업데이트 확인 기능, installer 배포 인프라를 구현 대상으로 올린다.
 
-������ �غ� �� ���� ��ȣ�� ���̸� 1.0 ��ȯ ȸ�Ǹ� �����Ѵ�.
+릴리스 준비 중 다음 신호가 보이면 1.0 전환 회의를 진행한다.
 
-- �ֿ� ���м� ����� �� �̻� ū ���� ���� ���� ����ȭ��
-- ���ǥ/�������� ������ ���/����� �ۼ��� ����� ����ȭ��
-- �ű� ��� �߰����� ����, ���̼���, ������Ʈ, ����ȭ�� ������ ��
-- 0.9.37 �̻� �������� beta ����ǥ�� ��� ������ ������ �پ��
-- ����ڿ��� �����ǰ� Pro���� ���̸� ��Ȯ�� ������ �� ����
+- 주요 통계분석 기능이 더 이상 큰 구조 변경 없이 안정화됨
+- 결과표/내보내기 형식이 논문/보고서 작성에 충분히 안정화됨
+- 신규 기능 추가보다 배포, 라이센스, 업데이트, 문서화가 병목이 됨
+- 0.9.37 이상 버전에서 beta 꼬리표를 계속 유지할 실익이 줄어듦
+- 사용자에게 무료판과 Pro판의 차이를 명확히 설명할 수 있음
 
-## ��ǰ ��� ��å
+## 제품 등급 정책
 
-1.0 ���� ������ �м� ��� ��ü�� ����ȭ���� �ʴ´�. ���� �����ǿ����� ���м� ����� �Ⱓ ���� ���� �����Ӱ� ����� �� �ִ�. ���� ������ �� ���� ������ import, ��� export, ��� ����/���� workflow�� �����Ѵ�.
+1.0 정식 버전은 분석 기능 자체를 유료화하지 않는다. 무료 배포판에서도 통계분석 기능은 기간 제한 없이 자유롭게 사용할 수 있다. 유료 버전은 더 넓은 데이터 import, 고급 export, 결과 누적/저장 workflow를 제공한다.
 
 ### Free
 
-- �Ⱓ ���� ����
-- ���м� ��� ��ü ��� ����
-- CSV ������ �ҷ����� ����
-- Stata ������ �ҷ����� ����
-- HTML ��� ���� ����
-- Figure ���� ����
-- PDF, Excel, Word �������� �Ұ�
-- Add Result ��� �Ұ�
-- Result collection ����/�ҷ����� �Ұ�
+- 기간 제한 없음
+- 통계분석 기능 전체 사용 가능
+- CSV 데이터 불러오기 가능
+- Stata 데이터 불러오기 가능
+- HTML 결과 저장 가능
+- Figure 저장 가능
+- PDF, Excel, Word 내보내기 불가
+- Add Result 기능 불가
+- Result collection 저장/불러오기 불가
 
 ### Personal Pro
 
-���� ����:
+예상 가격:
 
-- ���� �� 120,000��
-- �ؿ� ���� �� 90 USD
+- 연간 약 120,000원
+- 해외 가격 약 90 USD
 
-���� ���:
+포함 기능:
 
-- Free ��� ��ü ����
-- Excel ������ �ҷ�����
-- SPSS ������ �ҷ�����
-- SAS ������ �ҷ�����
-- PDF ��� ��������
-- Excel ��� ��������
-- Word ��� ��������
-- Add Result�� �м� ��� ����
-- Result collection ����/�ҷ�����
+- Free 기능 전체 포함
+- Excel 데이터 불러오기
+- SPSS 데이터 불러오기
+- SAS 데이터 불러오기
+- PDF 결과 내보내기
+- Excel 결과 내보내기
+- Word 결과 내보내기
+- Add Result로 분석 결과 누적
+- Result collection 저장/불러오기
 
 ### Latent Add-in
 
-���� ����:
+예상 가격:
 
-- ���� �� 50,000��
-- �ؿ� ���� �� 30 USD
+- 연간 약 50,000원
+- 해외 가격 약 30 USD
 
-��å:
+정책:
 
-- Personal Pro ��� add-in���� ��Ѵ�.
-- Mplus ��ü�� �������� �ʴ´�.
-- ����ڴ� ������ ��ǰ Mplus ���̼����� �ʿ��ϴ�.
+- Personal Pro 기반 add-in으로 운영한다.
+- Mplus 자체는 포함하지 않는다.
+- 사용자는 별도의 정품 Mplus 라이센스가 필요하다.
 
-���� ���:
+포함 기능:
 
-- Mplus input ����
-- Mplus ���� ����
+- Mplus input 생성
+- Mplus 실행 연동
 - Mplus output parsing
-- LCA/LTA/mixture ���� ��� ����
-- transition/result table �ڵ�ȭ
+- LCA/LTA/mixture 관련 결과 정리
+- transition/result table 자동화
 
-���� ����:
+권장 문구:
 
-> Latent Add-in�� Mplus ����, �Է����� ����, ���� �ڵ�ȭ, ��� ���� ����� �����մϴ�. Mplus ���α׷� �� Mplus ���̼����� ������ �ʿ��մϴ�.
+> Latent Add-in은 Mplus 연동, 입력파일 생성, 실행 자동화, 결과 정리 기능을 제공합니다. Mplus 프로그램 및 Mplus 라이센스는 별도로 필요합니다.
 
-## ���� ��å
+## 배포 정책
 
-1.0 ������ installer�� ���� �ٿ�ε�� �����Ѵ�. ������ ���� ���Ϸ� ������ �ʴ´�. ���� ���δ� �� ���� ���̼��� �������� �����Ѵ�.
+1.0 배포판 installer는 공개 다운로드로 배포한다. 구매자 전용 파일로 숨기지 않는다. 유료 여부는 앱 내부 라이센스 권한으로 제어한다.
 
-��ġ���� ũ��� �� 400MB�� �����Ѵ�. �Ϲ� ��ȣ���ÿ��� ���� �����ϸ� �ٿ�ε� Ʈ���� ���� ������ Ŀ�� �� �����Ƿ�, ���� ���� ������ ��뷮 ���� ������ �����/CDN�� ����Ѵ�.
+설치파일 크기는 약 400MB로 예상한다. 일반 웹호스팅에서 직접 전송하면 다운로드 트래픽 비용과 제한이 커질 수 있으므로, 실제 파일 전송은 대용량 파일 배포용 저장소/CDN이 담당한다.
 
-���� ����:
+권장 구조:
 
 ```text
 efs-stat.com/download
-  -> �ٿ�ε� ������
+  -> 다운로드 페이지
 
 download.efs-stat.com
-  -> Cloudflare R2 public bucket �Ǵ� ���� object storage/CDN
+  -> Cloudflare R2 public bucket 또는 동급 object storage/CDN
   -> EFS_Setup_1.0.0.exe
   -> checksum / manifest / release notes
 
 license.efs-stat.com
-  -> ���̼��� ����
-  -> Pro/Latent ���� Ȯ��
-  -> activation ����
+  -> 라이센스 인증
+  -> Pro/Latent 권한 확인
+  -> activation 관리
 ```
 
-1�� ���� ���� �����:
+1차 권장 배포 저장소:
 
 - Cloudflare R2
 - custom domain: `download.efs-stat.com`
-- R2 public bucket + Cloudflare cache ���
-- egress ����� ���� ������ �켱 �����Ѵ�.
+- R2 public bucket + Cloudflare cache 사용
+- egress 비용이 없는 구조를 우선 검토한다.
 
-���� ���� ä��:
+보조 배포 채널:
 
-- GitHub Releases�� beta �Ǵ� mirror �뵵�� ����� �� �ִ�.
-- ���� ��� ������ �� ä���� R2 �Ǵ� ���� object storage/CDN���� �д�.
+- GitHub Releases는 beta 또는 mirror 용도로 사용할 수 있다.
+- 정식 상용 배포의 주 채널은 R2 또는 동급 object storage/CDN으로 둔다.
 
-���� ���� ��:
+배포 파일 예:
 
 ```text
 /windows/EFS_Setup_1.0.0.exe
@@ -122,35 +122,35 @@ license.efs-stat.com
 /release-notes/1.0.0.html
 ```
 
-�߿� ��Ģ:
+중요 원칙:
 
-- Ȩ������ ������ 400MB installer�� ���� �������� �ʴ´�.
-- Ȩ�������� �ٿ�ε� ��ư�� release notes�� �����Ѵ�.
-- ���� installer ������ `download.efs-stat.com`���� �����Ѵ�.
-- installer�� �����Ǿ �ȴ�. Pro/Latent ����� ���̼��� �������θ� ������.
+- 홈페이지 서버가 400MB installer를 직접 전송하지 않는다.
+- 홈페이지는 다운로드 버튼과 release notes만 제공한다.
+- 실제 installer 파일은 `download.efs-stat.com`에서 전송한다.
+- installer는 공개되어도 된다. Pro/Latent 기능은 라이센스 권한으로만 열린다.
 
-## ������Ʈ ��å
+## 업데이트 정책
 
-1.0 ���� �����ǿ��� ������Ʈ Ȯ�� ��ɰ� ������Ʈ ���� ����� �����Ѵ�.
+1.0 정식 배포판에는 업데이트 확인 기능과 업데이트 실행 기능을 포함한다.
 
-�� �޴� ��:
+앱 메뉴 예:
 
 ```text
 Help > Check for Updates
 Help > About EFS
 ```
 
-������Ʈ Ȯ�� �帧:
+업데이트 확인 흐름:
 
 ```text
-1. �� ���� �� �Ǵ� ����ڰ� Check for Updates Ŭ��
-2. latest.json Ȯ��
-3. ���� ������ latest_version ��
-4. �� ������ ������ release notes�� ������Ʈ ��ư ǥ��
-5. �ʼ� ������Ʈ�̸� ���� �� ������Ʈ �䱸
+1. 앱 실행 시 또는 사용자가 Check for Updates 클릭
+2. latest.json 확인
+3. 현재 버전과 latest_version 비교
+4. 새 버전이 있으면 release notes와 업데이트 버튼 표시
+5. 필수 업데이트이면 실행 전 업데이트 요구
 ```
 
-`latest.json` ��:
+`latest.json` 예:
 
 ```json
 {
@@ -164,30 +164,30 @@ Help > About EFS
 }
 ```
 
-������Ʈ ���� �帧:
+업데이트 실행 흐름:
 
 ```text
-1. update manifest���� download_url Ȯ��
-2. installer �Ǵ� update package �ٿ�ε�
-3. SHA256 checksum ����
-4. �����ϸ� �ڵ� ���� ����
-5. ���� �� ����
-6. installer/updater ����
-7. �� ���� ����
+1. update manifest에서 download_url 확인
+2. installer 또는 update package 다운로드
+3. SHA256 checksum 검증
+4. 가능하면 코드 서명 검증
+5. 현재 앱 종료
+6. installer/updater 실행
+7. 새 버전 실행
 ```
 
-1�� ������ ��ü ��ġ���� ��ٿ�ε� ������� ����ϴ�.
+1차 구현은 전체 설치파일 재다운로드 방식으로 충분하다.
 
 ```text
-1��: EFS_Setup_1.0.3.exe ��ü �ٿ�ε�
-2��: EFS_Update_1.0.2_to_1.0.3.exe ��ġ �ٿ�ε� ����
+1차: EFS_Setup_1.0.3.exe 전체 다운로드
+2차: EFS_Update_1.0.2_to_1.0.3.exe 패치 다운로드 검토
 ```
 
-## ���̼��� ���� ��å
+## 라이센스 서버 정책
 
-�������� �׻� ���� �����ؾ� �Ѵ�. ���̼��� ������ �� ���� �㰡�� �ƴ϶� Pro/Latent ��� ������ �����Ѵ�.
+무료판은 항상 실행 가능해야 한다. 라이센스 서버는 앱 실행 허가가 아니라 Pro/Latent 기능 권한을 관리한다.
 
-���� ���� ����:
+권장 서버 구조:
 
 ```text
 EFS app
@@ -196,14 +196,14 @@ EFS app
     -> PostgreSQL DB
 ```
 
-���� �ʱ� ����:
+권장 초기 스택:
 
-- FastAPI �Ǵ� Node.js
+- FastAPI 또는 Node.js
 - PostgreSQL
-- Render, Railway, Fly.io, Lightsail, DigitalOcean, Cloudtype �� �ϳ�
-- HTTPS �ʼ�
+- Render, Railway, Fly.io, Lightsail, DigitalOcean, Cloudtype 중 하나
+- HTTPS 필수
 
-�ʿ� API:
+필요 API:
 
 ```text
 POST /license/activate
@@ -215,7 +215,7 @@ POST /license/deactivate-current
 GET  /updates/latest
 ```
 
-���� DB �ٽ� ���̺�:
+서버 DB 핵심 테이블:
 
 ```text
 licenses
@@ -242,52 +242,52 @@ activations
 - status
 ```
 
-���̼��� Ű ������ �����ϸ� DB�� �������� �ʰ� hash�� �����Ѵ�.
+라이센스 키 원본은 가능하면 DB에 저장하지 않고 hash로 저장한다.
 
-## Device Activation ��å
+## Device Activation 정책
 
-Personal Pro�� �⺻������ 1 ���̼����� �ִ� 2�� Ȱ��ȭ�� ����Ѵ�.
+Personal Pro는 기본적으로 1 라이센스당 최대 2대 활성화를 허용한다.
 
-��� �ĺ��� �ʱ⿡�� random device id ������� �����Ѵ�.
+기기 식별은 초기에는 random device id 기반으로 시작한다.
 
-�ʱ� ���:
-
-```text
-1. �� ���� ���� �� random device_id ����
-2. ���ÿ� ��ȣȭ ����
-3. �������� device_id_hash ���
-4. max_activations = 2 �������� Ȱ��ȭ ����
-```
-
-���� ����:
+초기 방식:
 
 ```text
-device_id + hardware fingerprint ���� ����
+1. 앱 최초 실행 시 random device_id 생성
+2. 로컬에 암호화 저장
+3. 서버에는 device_id_hash 등록
+4. max_activations = 2 기준으로 활성화 제한
 ```
 
-MAC address �ܵ� ����� ������� �ʴ´�. ��Ʈ��ũ ����� ����, VPN, ���� �����, �������� �̽�, ���� ���ɼ� ������ �������� ����.
+추후 보강:
 
-����� ǥ�� ����:
+```text
+device_id + hardware fingerprint 보조 정보
+```
 
-- ��� �̸�
+MAC address 단독 기반은 사용하지 않는다. 네트워크 어댑터 변경, VPN, 가상 어댑터, 개인정보 이슈, 변경 가능성 때문에 안정성이 낮다.
+
+사용자 표시 정보:
+
+- 기기 이름
 - OS
-- �� ����
-- ���� Ȱ��ȭ��
-- ������ �����
-- ���� ��� ����
+- 앱 버전
+- 최초 활성화일
+- 마지막 사용일
+- 현재 기기 여부
 
-����ڿ��� ǥ������ ���� ����:
+사용자에게 표시하지 않을 정보:
 
 - raw device_id
-- fingerprint ����
+- fingerprint 원본
 - fingerprint hash
-- license_key ����
+- license_key 원본
 
-## ����� Activation ���� ���
+## 사용자 Activation 관리 기능
 
-����ڴ� �� �ȿ��� ���� Ȱ��ȭ�� ��⸦ Ȯ���ϰ�, Ư�� ��⸦ ��Ȱ��ȭ�� �� �־�� �Ѵ�.
+사용자는 앱 안에서 현재 활성화된 기기를 확인하고, 특정 기기를 비활성화할 수 있어야 한다.
 
-�� �޴� ��:
+앱 메뉴 예:
 
 ```text
 License > Enter License Key
@@ -296,7 +296,7 @@ License > Manage Activations
 License > Deactivate This Device
 ```
 
-ȭ�� ��:
+화면 예:
 
 ```text
 EFS Personal Pro
@@ -318,63 +318,63 @@ Activated devices
    [Deactivate]
 ```
 
-�� ��ǻ�Ϳ��� 2�� ������ �� ���:
+새 컴퓨터에서 2대 제한이 찬 경우:
 
 ```text
 This license is already activated on 2 devices.
 Please deactivate one device below to continue.
 ```
 
-���� ��Ȱ��ȭ ��å:
+원격 비활성화 정책:
 
-- ����ڰ� Ư�� activation�� ��Ȱ��ȭ�ϸ� �������� �ش� activation status�� `deactivated`�� �����Ѵ�.
-- ��Ȱ��ȭ�� ��ǻ�ʹ� ���� validate �� Pro ������ �Ұ� Free ���� ��ȯ�Ѵ�.
-- �������� grace period�� ���� ������ ��� ���ܵ��� �ʰ� �ִ� grace period ���� �� �ݿ��� �� �ִ�.
+- 사용자가 특정 activation을 비활성화하면 서버에서 해당 activation status를 `deactivated`로 변경한다.
+- 비활성화된 컴퓨터는 다음 validate 때 Pro 권한을 잃고 Free 모드로 전환한다.
+- 오프라인 grace period가 남아 있으면 즉시 차단되지 않고 최대 grace period 종료 후 반영될 수 있다.
 
-���� ����:
+남용 방지:
 
-- ���� ��� ��Ȱ��ȭ�� ����Ѵ�.
-- ���� ��� ��Ȱ��ȭ�� �� 2-3ȸ ���� �����ϴ� ����� �����Ѵ�.
-- �ʰ� �� ������ reset �Ǵ� ����������� ó���Ѵ�.
+- 현재 기기 비활성화는 허용한다.
+- 원격 기기 비활성화는 월 2-3회 정도 제한하는 방안을 검토한다.
+- 초과 시 관리자 reset 또는 고객지원으로 처리한다.
 
-## Offline Grace ��å
+## Offline Grace 정책
 
-���ͳ� ������ ��� �ֱ� ���� ���� ���� �Ⱓ�� Pro ����� ����� �� �ְ� �Ѵ�.
+인터넷 연결이 없어도 최근 인증 이후 일정 기간은 Pro 기능을 사용할 수 있게 한다.
 
-���尪:
+권장값:
 
 ```text
 offline_grace_days = 14
 ```
 
-�帧:
+흐름:
 
 ```text
-1. �� ����
-2. ���� signed license token Ȯ��
-3. �ֱ� validate�� 14�� �̳��̸� Pro ��� �ӽ� ���
-4. ���ͳ� ����Ǹ� ���� validate ����
-5. ����, revoke, deactivated �����̸� Free ���� ��ȯ
-6. 14�� �ʰ� �� validate ������ Free ���� ��ȯ
+1. 앱 실행
+2. 로컬 signed license token 확인
+3. 최근 validate가 14일 이내이면 Pro 기능 임시 허용
+4. 인터넷 연결되면 서버 validate 수행
+5. 만료, revoke, deactivated 상태이면 Free 모드로 전환
+6. 14일 초과 시 validate 전까지 Free 모드로 전환
 ```
 
-���� ����� ���� ���� ���ο� ������� �׻� ��� �����ؾ� �Ѵ�.
+무료 기능은 서버 연결 여부와 관계없이 항상 사용 가능해야 한다.
 
-## Feature Flag ��å
+## Feature Flag 정책
 
-Pro ����� UI�� �ƴ϶� ���� ���� �Լ������� ������ Ȯ���Ѵ�.
+Pro 기능은 UI뿐 아니라 실제 실행 함수에서도 권한을 확인한다.
 
-��:
+예:
 
 ```text
 UI:
-- PDF export ��ư ��Ȱ��ȭ �Ǵ� Pro ǥ��
+- PDF export 버튼 비활성화 또는 Pro 표시
 
 Server/action:
-- PDF export ���� �������� license_check("export_pdf") Ȯ��
+- PDF export 실행 직전에도 license_check("export_pdf") 확인
 ```
 
-��� �÷��� ��:
+기능 플래그 예:
 
 ```json
 {
@@ -398,7 +398,7 @@ Server/action:
 }
 ```
 
-Free �⺻ ����:
+Free 기본 권한:
 
 ```text
 import_csv = true
@@ -408,7 +408,7 @@ export_figure = true
 all_analysis = true
 ```
 
-Pro ����:
+Pro 권한:
 
 ```text
 import_excel = true
@@ -421,67 +421,67 @@ add_result = true
 save_result_project = true
 ```
 
-Latent ����:
+Latent 권한:
 
 ```text
 latent_addin = true
 ```
 
-## 1.0 ���� üũ����Ʈ
+## 1.0 구현 체크리스트
 
-### �� ����
+### 앱 내부
 
-- Free/Pro/Latent edition state ���� ��� �߰�
-- feature flag ��ȸ �Լ� �߰�
-- ������ import ����� Free/Pro �������� �б�
-- PDF/Excel/Word export�� Pro �������� �б�
-- Add Result�� Result collection ����/�ҷ����⸦ Pro �������� �б�
-- Latent/Mplus �޴��� Latent Add-in �������� �б�
-- License Status UI �߰�
-- Manage Activations UI �߰�
-- Check for Updates UI �߰�
-- updater download/checksum/installer ���� �帧 �߰�
-- offline grace ó�� �߰�
+- Free/Pro/Latent edition state 관리 모듈 추가
+- feature flag 조회 함수 추가
+- 데이터 import 기능을 Free/Pro 권한으로 분기
+- PDF/Excel/Word export를 Pro 권한으로 분기
+- Add Result와 Result collection 저장/불러오기를 Pro 권한으로 분기
+- Latent/Mplus 메뉴를 Latent Add-in 권한으로 분기
+- License Status UI 추가
+- Manage Activations UI 추가
+- Check for Updates UI 추가
+- updater download/checksum/installer 실행 흐름 추가
+- offline grace 처리 추가
 
-### ����/API
+### 서버/API
 
-- license server scaffold �ۼ�
-- license activation API ����
-- license validation API ����
-- activations list API ����
-- deactivate current device API ����
-- deactivate selected device API ����
-- update manifest API �Ǵ� static latest.json ����
-- �����ڿ� license �߱�/����/activation reset ��� ����
+- license server scaffold 작성
+- license activation API 구현
+- license validation API 구현
+- activations list API 구현
+- deactivate current device API 구현
+- deactivate selected device API 구현
+- update manifest API 또는 static latest.json 배포
+- 관리자용 license 발급/만료/activation reset 기능 구현
 
-### ���� ������
+### 배포 인프라
 
-- `download.efs-stat.com` �غ�
-- R2 bucket �Ǵ� ���� object storage �غ�
-- `license.efs-stat.com` �غ�
-- HTTPS ����
-- installer ����, checksum, latest.json ���ε� ���� ����
-- release notes ������ �غ�
+- `download.efs-stat.com` 준비
+- R2 bucket 또는 동급 object storage 준비
+- `license.efs-stat.com` 준비
+- HTTPS 적용
+- installer 파일, checksum, latest.json 업로드 절차 정리
+- release notes 페이지 준비
 
-### �/��å
+### 운영/정책
 
-- ����ǥ Ȯ��
-- ����/Pro/Latent ��� ��ǥ Ȯ��
-- Mplus ���� ���̼��� �ʿ� ���� ���
-- ��������ó����ħ �غ�
-- �̿��� �غ�
-- ���̼��� ȯ��/��� reset ��å �غ�
-- �ڵ� ���� ������ ����
+- 가격표 확정
+- 무료/Pro/Latent 기능 비교표 확정
+- Mplus 별도 라이센스 필요 문구 명시
+- 개인정보처리방침 준비
+- 이용약관 준비
+- 라이센스 환불/기기 reset 정책 준비
+- 코드 서명 인증서 검토
 
-## 1.0 ���� ����
+## 1.0 성공 기준
 
-- ������ installer�� �ٿ�ε��Ͽ� �Ⱓ ���� ���� Free ����� ����� �� �ִ�.
-- Free ����ڴ� ��� �м��� ������ �� �ִ�.
-- Free ����ڴ� CSV/Stata import, HTML ����, figure ������ ����� �� �ִ�.
-- Free ����ڴ� Pro import/export/result-management ����� ������ �� ����.
-- Pro ���̼����� �Է��ϸ� Excel/SPSS/SAS import, PDF/Excel/Word export, Add Result, Result ����/�ҷ����Ⱑ ������.
-- ����ڴ� Ȱ��ȭ�� ��� ����� Ȯ���ϰ� ���� ��Ȱ��ȭ�� �� �ִ�.
-- 2�� Ȱ��ȭ ������ �������� �����Ѵ�.
-- ������ ���� �� 14�� ���� offline grace�� �����Ѵ�.
-- �ۿ��� �ֽ� ���� Ȯ�ΰ� ������Ʈ �ٿ�ε尡 �����ϴ�.
-- installer �ٿ�ε� Ʈ������ �Ϲ� ��ȣ������ �ƴ϶� object storage/CDN���� ó���ȴ�.
+- 누구나 installer를 다운로드하여 기간 제한 없이 Free 기능을 사용할 수 있다.
+- Free 사용자는 모든 분석을 실행할 수 있다.
+- Free 사용자는 CSV/Stata import, HTML 저장, figure 저장을 사용할 수 있다.
+- Free 사용자는 Pro import/export/result-management 기능을 실행할 수 없다.
+- Pro 라이센스를 입력하면 Excel/SPSS/SAS import, PDF/Excel/Word export, Add Result, Result 저장/불러오기가 열린다.
+- 사용자는 활성화된 기기 목록을 확인하고 직접 비활성화할 수 있다.
+- 2대 활성화 제한이 서버에서 동작한다.
+- 마지막 인증 후 14일 동안 offline grace가 동작한다.
+- 앱에서 최신 버전 확인과 업데이트 다운로드가 가능하다.
+- installer 다운로드 트래픽은 일반 웹호스팅이 아니라 object storage/CDN에서 처리된다.

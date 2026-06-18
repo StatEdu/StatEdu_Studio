@@ -1699,16 +1699,30 @@ ttest_result_flat_overview <- function(result) {
 }
 
 ttest_result_overview_tables <- function(result) {
+  overview <- result$overview
+  assumption_review <- result$assumption_review
+  if (is.data.frame(overview) && nrow(overview) > 0) {
+    return(list(
+      assumption_review = assumption_review,
+      overview = overview
+    ))
+  }
+
   flat <- ttest_result_flat_overview(result)
   if (!is.data.frame(flat) || nrow(flat) == 0) {
     return(list(
-      assumption_review = result$assumption_review,
-      overview = result$overview
+      assumption_review = assumption_review,
+      overview = overview
     ))
   }
+
   list(
-    assumption_review = ttest_assumption_review_wide(flat),
-    overview = ttest_model_overview_wide(flat)
+    assumption_review = if (is.data.frame(assumption_review) && nrow(assumption_review) > 0) {
+      assumption_review
+    } else {
+      ttest_assumption_review_wide(flat, result$dependents %||% character(0))
+    },
+    overview = ttest_model_overview_wide(flat, result$dependents %||% character(0))
   )
 }
 
