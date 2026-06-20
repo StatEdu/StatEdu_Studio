@@ -54,8 +54,8 @@ body {
 
 .navbar .dropdown-menu > li.analysis-menu-group > a.analysis-menu-group-toggle {
   min-width: 230px;
-  font-weight: 600;
-  color: #27394f;
+  font-weight: 500;
+  color: #334155;
 }
 
 .navbar .dropdown-menu > li.analysis-menu-group > .analysis-menu-submenu {

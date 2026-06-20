@@ -683,7 +683,11 @@
             },
             {
               title: 'Group Comparisons',
-              values: ['t-test / ANOVA', 'Paired test', 'ANCOVA', 'Nonparametric Tests', 'Nonparametric Paired']
+              values: ['t-test / ANOVA', 'Paired test', 'ANCOVA']
+            },
+            {
+              title: 'Nonparametric Tests',
+              values: ['Nonparametric Tests', 'Nonparametric Paired']
             },
             {
               title: 'Association & Measurement',
