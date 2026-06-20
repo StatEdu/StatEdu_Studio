@@ -80,11 +80,11 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-longitudinal-weight-help-20260618"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-brand-menu-groups-20260620"))
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-shiny-input-ready-guard"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-analysis-menu-groups-20260620"))
 }
 
 app_head_tags <- function(version) {

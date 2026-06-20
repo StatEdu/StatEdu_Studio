@@ -675,7 +675,78 @@
 
       function registerEasyflowNestedDropdownMenus() {
         if (!window.jQuery) return;
+        function groupAnalysisDropdownItems() {
+          var groups = [
+            {
+              title: 'Descriptives & Tables',
+              values: ['Frequencies / Descriptives', 'analysis_crosstabs']
+            },
+            {
+              title: 'Group Comparisons',
+              values: ['t-test / ANOVA', 'Paired test', 'ANCOVA', 'Nonparametric Tests', 'Nonparametric Paired']
+            },
+            {
+              title: 'Association & Measurement',
+              values: ['Correlation', 'Reliability', 'Factor Analysis', 'Principal Components']
+            },
+            {
+              title: 'Regression & Models',
+              values: ['Regression', 'Generalized Linear Model (GLM)', 'analysis_logistic_regression']
+            },
+            {
+              title: 'Longitudinal / Panel',
+              values: ['Longitudinal / Panel Models']
+            }
+          ];
+          var analysisItem = window.jQuery('.navbar-nav > li.dropdown > a.dropdown-toggle')
+            .filter(function() {
+              return window.jQuery(this).clone().children().remove().end().text().trim() === 'Analysis';
+            })
+            .parent()
+            .first();
+          if (!analysisItem.length) return;
+          var menu = analysisItem.children('ul.dropdown-menu').first();
+          if (!menu.length || menu.attr('data-analysis-menu-grouped') === 'true') return;
+
+          var existingItems = {};
+          menu.children('li').each(function() {
+            var item = window.jQuery(this);
+            var link = item.children('a[data-value]').first();
+            if (!link.length) return;
+            existingItems[String(link.attr('data-value'))] = item.detach();
+          });
+
+          groups.forEach(function(group) {
+            var groupItems = [];
+            group.values.forEach(function(value) {
+              if (existingItems[value]) {
+                groupItems.push(existingItems[value]);
+                delete existingItems[value];
+              }
+            });
+            if (groupItems.length === 0) return;
+            var groupNode = window.jQuery('<li class="dropdown analysis-menu-group" role="presentation"></li>');
+            var groupLink = window.jQuery(
+              '<a href="#" class="dropdown-toggle analysis-menu-group-toggle" role="menuitem" tabindex="-1" aria-haspopup="true">' +
+              '<span class="analysis-menu-group-label"></span><b class="caret"></b></a>'
+            );
+            groupLink.find('.analysis-menu-group-label').text(group.title);
+            var submenu = window.jQuery('<ul class="dropdown-menu analysis-menu-submenu" role="menu"></ul>');
+            groupItems.forEach(function(item) {
+              submenu.append(item);
+            });
+            groupNode.append(groupLink, submenu);
+            menu.append(groupNode);
+          });
+
+          Object.keys(existingItems).forEach(function(value) {
+            menu.append(existingItems[value]);
+          });
+          menu.attr('data-analysis-menu-grouped', 'true');
+        }
+
         function configureNestedDropdownToggles() {
+          groupAnalysisDropdownItems();
           window.jQuery('.dropdown-menu .dropdown-toggle')
             .removeAttr('data-toggle')
             .removeAttr('data-bs-toggle')

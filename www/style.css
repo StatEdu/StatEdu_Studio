@@ -1,7 +1,7 @@
 body {
   background: #f6f8fb;
   color: #1f2933;
-  scroll-padding-top: 88px;
+  scroll-padding-top: 76px;
 }
 
 .navbar {
@@ -52,6 +52,16 @@ body {
   line-height: 22px;
 }
 
+.navbar .dropdown-menu > li.analysis-menu-group > a.analysis-menu-group-toggle {
+  min-width: 230px;
+  font-weight: 600;
+  color: #27394f;
+}
+
+.navbar .dropdown-menu > li.analysis-menu-group > .analysis-menu-submenu {
+  min-width: 230px;
+}
+
 .navbar .dropdown-menu > li.dropdown > a.dropdown-toggle .caret {
   margin-left: auto;
   transform: rotate(-90deg);
@@ -96,39 +106,39 @@ body {
 
 .navbar > .container-fluid .navbar-brand,
 .navbar > .container .navbar-brand {
-  height: 84px;
-  padding-top: 6px;
-  padding-bottom: 6px;
+  height: 72px;
+  padding-top: 5px;
+  padding-bottom: 5px;
 }
 
 .navbar .navbar-nav > li > a {
-  min-height: 84px;
-  padding-top: 32px;
-  padding-bottom: 32px;
-  font-size: 16px;
+  min-height: 72px;
+  padding-top: 26px;
+  padding-bottom: 26px;
+  font-size: 15px;
   line-height: 20px;
 }
 
 .brand-title {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 14px;
   font-weight: 700;
   letter-spacing: 0;
-  height: 72px;
+  height: 62px;
 }
 
 .brand-logo-horizontal {
-  width: 218px;
-  height: 72px;
-  flex: 0 0 218px;
+  width: 188px;
+  height: 62px;
+  flex: 0 0 188px;
   object-fit: contain;
   object-position: left center;
   display: block;
 }
 
 .version {
-  margin-left: 2px;
+  margin-left: 4px;
   font-size: 12px;
   font-weight: 500;
   color: #7aa5d8;
@@ -8134,27 +8144,27 @@ pre {
 
   .navbar > .container-fluid .navbar-brand,
   .navbar > .container .navbar-brand {
-    height: 68px;
+    height: 64px;
     padding-bottom: 5px;
     padding-top: 5px;
   }
 
   .navbar .navbar-nav > li > a {
-    min-height: 68px;
-    padding-bottom: 24px;
-    padding-top: 24px;
+    min-height: 64px;
+    padding-bottom: 22px;
+    padding-top: 22px;
     font-size: 15px;
   }
 
   .brand-title {
-    height: 58px;
-    gap: 6px;
+    height: 54px;
+    gap: 12px;
   }
 
   .brand-logo-horizontal {
-    width: 176px;
-    height: 58px;
-    flex-basis: 176px;
+    width: 164px;
+    height: 54px;
+    flex-basis: 164px;
   }
 
   .version {
