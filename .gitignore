@@ -16,6 +16,7 @@ data/hint8.json
 *.log
 *.tmp
 easyflow_statistics_*.zip
+StatEdu_Studio_*.zip
 dist/
 output/
 outputs/

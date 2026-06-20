@@ -115,7 +115,8 @@ try {
       $_ -notmatch "^(packaging/|dist/)" -and
       $_ -notmatch "^R/latent_mplus_module\.R$" -and
       $_ -notmatch "^modules/latent_mplus/" -and
-      $_ -notmatch "^easyflow_statistics_.*\.zip$"
+      $_ -notmatch "^easyflow_statistics_.*\.zip$" -and
+      $_ -notmatch "^StatEdu_Studio_.*\.zip$"
     }
   $bootstrapText = Get-Content -LiteralPath (Join-Path $repoRoot "R\app_bootstrap.R") -Raw
   $bootstrapModules = [regex]::Matches($bootstrapText, '"([^"]+\.R)"') |
