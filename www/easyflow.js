@@ -774,7 +774,16 @@
             item.siblings('.dropdown.open').removeClass('open');
           })
           .on('click.easyflowAnalysisMegaMenu', '.analysis-mega-menu .analysis-menu-section-items a[data-value]', function() {
-            window.jQuery(this).closest('.navbar-nav > li.dropdown').removeClass('open');
+            var link = window.jQuery(this);
+            var menu = link.closest('.analysis-mega-menu');
+            var markActive = function() {
+              menu.find('li.active, .analysis-menu-section.active').removeClass('active');
+              link.parent('li').addClass('active');
+              link.closest('.analysis-menu-section').addClass('active');
+            };
+            markActive();
+            window.setTimeout(markActive, 0);
+            link.closest('.navbar-nav > li.dropdown').removeClass('open');
           })
           .on('hidden.bs.dropdown.easyflowNestedDropdown', '.navbar-nav > .dropdown', function() {
             window.jQuery(this).find('.dropdown.open').removeClass('open');
