@@ -3724,7 +3724,7 @@ build_latent_setup_yaml <- function(app_version, module_id, input, current_data_
   })
 
   list(
-    easyflow_latent_mplus = list(
+    statedu_studio_latent_mplus = list(
       version = app_version,
       saved_at = format(Sys.time(), "%Y-%m-%d %H:%M:%S %z"),
       module = if (module_id %in% c("lca", "lpa", "mixed")) "mixture" else module_id
