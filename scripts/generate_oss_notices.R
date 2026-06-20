@@ -1,4 +1,4 @@
-# Generate third-party license notices for the bundled EasyFlow runtime.
+# Generate third-party license notices for the bundled StatEdu Studio runtime.
 
 args <- commandArgs(trailingOnly = TRUE)
 
@@ -151,7 +151,7 @@ runtime_row <- data.frame(
   Risk = "GPL",
   URL = "https://www.r-project.org/Licenses/",
   LicenseFiles = paste(runtime_license_files, collapse = "; "),
-  Notes = "Bundled runtime. Public releases should provide corresponding EasyFlow source and preserve R license notices.",
+  Notes = "Bundled runtime. Public releases should provide corresponding StatEdu Studio source and preserve R license notices.",
   stringsAsFactors = FALSE,
   check.names = FALSE
 )

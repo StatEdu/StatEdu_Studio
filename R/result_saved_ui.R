@@ -975,7 +975,7 @@ read_result_snapshot_store <- function(path = result_snapshot_store_path()) {
   payload <- tryCatch(jsonlite::fromJSON(path, simplifyVector = FALSE), error = function(e) NULL)
   type <- as.character(payload$type %||% "")
   if (nzchar(type) && !identical(type, "easyflow_result_history")) {
-    stop("This file is not an EasyFlow Result file.", call. = FALSE)
+    stop("This file is not a StatEdu Studio Result file.", call. = FALSE)
   }
   entries <- if (is.list(payload) && !is.null(payload$entries)) payload$entries else payload
   normalize_result_snapshot_entries(entries)
