@@ -133,18 +133,61 @@
 
 ## 종단 / 패널 모형
 
+### 기본 설정과 제공 모형
+
 - long-format 반복측정, 군집자료, 패널자료는 별도 `Longitudinal / Panel Models` 메뉴에서 분석한다.
-- 필수 설정은 종속변수, Subject ID, 시간 변수, 예측변수 또는 시간 고정효과, 분석 모형이다. LMM/GLMM에서는 상위 군집이 있으면 `Cluster ID (optional)`을 별도로 지정할 수 있다.
+- 필수 설정은 종속변수, Subject ID, 시간 변수, 예측변수 또는 시간 고정효과, 분석 모형이다.
+- LMM/GLMM에서는 상위 군집이 있으면 `Cluster ID (optional)`을 별도로 지정할 수 있다.
 - 제공하는 5가지 분석은 GEE, LMM, GLMM, 패널 고정효과 모형, 패널 확률효과 모형이다.
-- GEE는 `geepack::geeglm`을 사용해 모집단 평균 효과를 추정하고 robust sandwich 표준오차를 보고한다. Outcome family는 Auto, Linear(Gaussian), Binary(logit), Gamma(log), Count(log)로 선택한다. Count는 Poisson으로 1차 screening을 하고 사전 지정한 dispersion threshold를 넘으면 negative binomial을 최종 family로 선택한다. Negative binomial GEE는 `MASS::glm.nb`와 subject-cluster robust SE를 이용한 marginal negative binomial 보조 구현으로 처리한다.
-- GEE working correlation 기본값은 시간 순서가 있는 반복측정 자료에 맞춰 AR(1)로 둔다. 필요하면 exchangeable, independence, unstructured로 바꿔 민감도 분석을 확인한다.
-- LMM은 `lmerTest::lmer`를 사용한다. Subject ID에는 random intercept를 두고, 필요하면 시간 random slope와 추가 Cluster ID random intercept를 포함한다.
-- GLMM은 binomial, Poisson, Gamma에는 `lme4::glmer`, negative binomial에는 `lme4::glmer.nb`를 사용한다. UI에서는 Poisson과 negative binomial을 Count로 통합하고, Poisson dispersion-threshold screening과 가능한 AIC/BIC 정보를 fit details에 보고한다. AIC/BIC는 보조 진단이며 자동 선택 기준은 아니다. 계수는 link scale에서 subject-specific 효과로 해석하며 logit/log link에서는 exp(B)를 함께 보고할 수 있다.
-- 패널 고정효과와 패널 확률효과 모형은 `plm::plm`을 사용한다. 계수 표준오차는 group-clustered HC1 공분산을 사용한다.
-- Missing 탭은 분석기법별로 적용 가능한 방법만 표시한다. GEE는 complete-case, complete-subject, MI, IPW, WGEE를 제공하고, LMM/GLMM은 `Likelihood-based MAR: available repeated measures`, complete-case, complete-subject, MI, IPW를 제공한다. LMM/GLMM 기본 옵션은 관측된 반복측정 행을 사용해 unbalanced mixed-model likelihood를 적합하는 방식이다. 한 시점 outcome이 결측이라고 대상자 전체를 제거하지는 않지만, 해당 모델 행에서 outcome, 공변량, ID, time이 결측이면 그 행은 적합에 사용하지 않는다. 공변량 결측까지 FIML로 대체한다는 뜻은 아니며, 공변량 결측이나 dropout 메커니즘이 중요하면 MI 또는 IPW 민감도 분석을 함께 보고한다. MI는 `mice` 기반 standard MI 민감도 분석이며 전용 multilevel MI는 아니다. Panel FE/RE는 complete-case, complete-subject, MI, IPW를 제공한다.
-- Weights 탭은 가중치 변수를 선택한 뒤 sampling/baseline weight, time-varying longitudinal weight, analysis weight x generated IPW 중 적용 방식을 선택한다. LMM/GLMM에서는 routine primary fit의 가중치 적용을 권장하지 않으므로 가중치 선택을 비활성화하고 no weights로 적합한다.
-- 가정 검토는 분석기법별로 다르게 표시한다. GEE는 family/link, working correlation, within-cluster correlation, overdispersion을 확인한다. LMM은 convergence/singular fit, random-effect structure, random-effect normality, residual normality, residual variance, serial correlation을 확인한다. GLMM은 family/link, convergence/singular fit, random-effect structure, serial correlation, overdispersion을 확인한다. 패널 모형은 exogeneity/design review, heteroskedasticity, serial correlation, cross-sectional dependence, Hausman FE vs RE를 확인한다. 패널 FE/RE sensitivity 표에는 group-clustered HC1 표준오차와 Driscoll-Kraay 표준오차 계산 가능 여부 및 SE ratio를 함께 제시한다.
-- 결과에는 model overview, data structure, missing-data summary, publication-ready estimates, coefficient table, fit details, assumption checks, recommended alternatives, automated sensitivity comparisons, manuscript-ready text, SCI reporting checklist, software versions, warnings, skipped-model diagnostics, HTML/PDF/Excel/Add result export가 포함된다.
+
+### GEE
+
+- GEE는 `geepack::geeglm`을 사용해 모집단 평균 효과를 추정하고 robust sandwich 표준오차를 보고한다.
+- Outcome family는 Auto, Linear(Gaussian), Binary(logit), Gamma(log), Count(log)로 선택한다.
+- Count는 Poisson으로 1차 screening을 하고 사전 지정한 dispersion threshold를 넘으면 negative binomial을 최종 family로 선택한다.
+- Negative binomial GEE는 `MASS::glm.nb`와 subject-cluster robust SE를 이용한 marginal negative binomial 보조 구현으로 처리한다.
+- GEE working correlation 기본값은 시간 순서가 있는 반복측정 자료에 맞춰 AR(1)로 둔다.
+- 필요하면 exchangeable, independence, unstructured로 바꿔 민감도 분석을 확인한다.
+
+### LMM / GLMM
+
+- LMM은 `lmerTest::lmer`를 사용한다.
+- Subject ID에는 random intercept를 두고, 필요하면 시간 random slope와 추가 Cluster ID random intercept를 포함한다.
+- GLMM은 binomial, Poisson, Gamma에는 `lme4::glmer`, negative binomial에는 `lme4::glmer.nb`를 사용한다.
+- UI에서는 Poisson과 negative binomial을 Count로 통합하고, Poisson dispersion-threshold screening과 가능한 AIC/BIC 정보를 fit details에 보고한다.
+- AIC/BIC는 보조 진단이며 자동 선택 기준은 아니다.
+- 계수는 link scale에서 subject-specific 효과로 해석하며 logit/log link에서는 exp(B)를 함께 보고할 수 있다.
+
+### 패널 FE / RE
+
+- 패널 고정효과와 패널 확률효과 모형은 `plm::plm`을 사용한다.
+- 계수 표준오차는 group-clustered HC1 공분산을 사용한다.
+
+### Missing / Weights
+
+- Missing 탭은 분석기법별로 적용 가능한 방법만 표시한다.
+- GEE는 complete-case, complete-subject, MI, IPW, WGEE를 제공한다.
+- LMM/GLMM은 `Likelihood-based MAR: available repeated measures`, complete-case, complete-subject, MI, IPW를 제공한다.
+- LMM/GLMM 기본 옵션은 관측된 반복측정 행을 사용해 unbalanced mixed-model likelihood를 적합하는 방식이다.
+- 한 시점 outcome이 결측이라고 대상자 전체를 제거하지는 않지만, 해당 모델 행에서 outcome, 공변량, ID, time이 결측이면 그 행은 적합에 사용하지 않는다.
+- 공변량 결측까지 FIML로 대체한다는 뜻은 아니다.
+- 공변량 결측이나 dropout 메커니즘이 중요하면 MI 또는 IPW 민감도 분석을 함께 보고한다.
+- MI는 `mice` 기반 standard MI 민감도 분석이며 전용 multilevel MI는 아니다.
+- Panel FE/RE는 complete-case, complete-subject, MI, IPW를 제공한다.
+- Weights 탭은 가중치 변수를 선택한 뒤 sampling/baseline weight, time-varying longitudinal weight, analysis weight x generated IPW 중 적용 방식을 선택한다.
+- LMM/GLMM에서는 routine primary fit의 가중치 적용을 권장하지 않으므로 가중치 선택을 비활성화하고 no weights로 적합한다.
+
+### 가정 검토와 출력
+
+- 가정 검토는 분석기법별로 다르게 표시한다.
+- GEE는 family/link, working correlation, within-cluster correlation, overdispersion을 확인한다.
+- LMM은 convergence/singular fit, random-effect structure, random-effect normality, residual normality, residual variance, serial correlation을 확인한다.
+- GLMM은 family/link, convergence/singular fit, random-effect structure, serial correlation, overdispersion을 확인한다.
+- 패널 모형은 exogeneity/design review, heteroskedasticity, serial correlation, cross-sectional dependence, Hausman FE vs RE를 확인한다.
+- 패널 FE/RE sensitivity 표에는 group-clustered HC1 표준오차와 Driscoll-Kraay 표준오차 계산 가능 여부 및 SE ratio를 함께 제시한다.
+- 결과에는 model overview, data structure, missing-data summary, publication-ready estimates, coefficient table, fit details, assumption checks가 포함된다.
+- recommended alternatives, automated sensitivity comparisons, manuscript-ready text, SCI reporting checklist, software versions도 함께 제공한다.
+- warnings, skipped-model diagnostics, HTML/PDF/Excel/Add result export가 포함된다.
 
 ## 저장과 출력
 
@@ -169,44 +212,44 @@
 
 | 메뉴 | 제공 계산 | 주요 입력 |
 |---|---|---|
-| t-test | one-sample, paired, two independent groups 표본 수 및 검정력 | Cohen's d 또는 dz, alpha, power, allocation ratio |
-| ANOVA | one-way ANOVA, repeated-measures ANOVA, Friedman/Kruskal 계열 계획 | Cohen's f, groups, repeated measures, correlation, epsilon |
-| ANCOVA / MANOVA | ANCOVA, ranked ANCOVA, MANOVA 계획 | f, covariate R-squared, Pillai's V, dependent variables |
-| GEE | repeated binary/continuous outcome 계획 | marginal effect size, time points, working correlation, rho |
-| LMM | longpower 기반 simple two-group LMM, one-group simulation, GLIMMPSE-style mean vectors | fixed effect or mean vectors, residual SD, correlation structure, simulations |
-| Nonparametric | Mann-Whitney, Wilcoxon signed-rank, Kruskal-Wallis, Friedman | rank-based effect approximation, groups, measurements |
 | Proportion | one/two proportions | p1, p2, alpha, power, allocation ratio |
 | Chi-square | goodness-of-fit/contingency chi-square | Cohen's w, df |
 | McNemar | paired binary proportions | discordant probabilities p01, p10 |
-| Regression | multiple regression f2, hierarchical f2, logistic OR, mediation, moderation | f2, OR, paths a/b, covariates |
-| Survival / Cox | Cox/log-rank event-based planning | hazard ratio, event probability, allocation ratio |
+| t-test | one-sample, paired, two independent groups 표본 수 및 검정력 | Cohen's d 또는 dz, alpha, power, allocation ratio |
+| ANOVA | one-way ANOVA, repeated-measures ANOVA, Friedman/Kruskal 계열 계획 | Cohen's f, groups, repeated measures, correlation, epsilon |
+| ANCOVA / MANOVA | ANCOVA, ranked ANCOVA, MANOVA 계획 | f, covariate R-squared, Pillai's V, dependent variables |
+| Nonparametric | Mann-Whitney, Wilcoxon signed-rank, Kruskal-Wallis, Friedman | rank-based effect approximation, groups, measurements |
 | Correlation | Pearson correlation | r, alpha, power |
-| Equivalence / NI | mean/proportion equivalence or non-inferiority | margin, expected difference, SD or proportions |
-| ROC AUC | AUC vs null | AUC, null AUC, case/control ratio |
-| Count / Rate Regression | Poisson, negative binomial, gamma/rate ratio planning | rate ratio or mean ratio, exposure/person-time, dispersion |
-| Cluster Trial | parallel/stepped-wedge cluster trial planning | cluster size, ICC, effect size, number of periods |
-| Precision / CI | mean/proportion/correlation/diagnostic precision | target half-width, confidence level, SD/proportion/prevalence |
 | Reliability / Agreement | Cronbach alpha, ICC, kappa, Bland-Altman precision | expected reliability, CI half-width, items/raters/categories |
 | SEM / CFA | RMSEA close-fit/not-close-fit, parameter Monte Carlo, complexity heuristic | df or model counts, RMSEA, standardized parameter, model complexity |
+| Regression | multiple regression f2, hierarchical f2, logistic OR, mediation, moderation | f2, OR, paths a/b, covariates |
+| Count / Rate Regression | Poisson, negative binomial, gamma/rate ratio planning | rate ratio or mean ratio, exposure/person-time, dispersion |
+| ROC AUC | AUC vs null | AUC, null AUC, case/control ratio |
+| GEE | repeated binary/continuous outcome 계획 | marginal effect size, time points, working correlation, rho |
+| LMM | longpower 기반 simple two-group LMM, one-group simulation, GLIMMPSE-style mean vectors | fixed effect or mean vectors, residual SD, correlation structure, simulations |
+| Survival / Cox | Cox/log-rank event-based planning | hazard ratio, event probability, allocation ratio |
+| Equivalence / NI | mean/proportion equivalence or non-inferiority | margin, expected difference, SD or proportions |
+| Cluster Trial | parallel/stepped-wedge cluster trial planning | cluster size, ICC, effect size, number of periods |
+| Precision / CI | mean/proportion/correlation/diagnostic precision | target half-width, confidence level, SD/proportion/prevalence |
 
 ### Effect Size 메뉴 목록
 
 | 메뉴 | 제공 효과크기 |
 |---|---|
-| t-test | Cohen's d, Hedges' g, one-sample d, paired dz |
-| ANOVA | eta squared, partial eta squared, omega squared, Cohen's f |
-| ANCOVA / MANOVA | adjusted f, partial eta squared, Cohen's f, Pillai/Wilks 변환 |
-| GEE | standardized mean/change/parameter effect, binary h, OR/IRR 계열 변환 |
-| GLMM | binary logit OR/log OR/latent d, count log-link IRR/log IRR, Gaussian d |
-| LMM | standardized fixed effect, GLIMMPSE-style standardized change effect, SPSS LMM F/df 기반 partial eta squared, 공분산 기반 paired dz |
-| Nonparametric | rank-biserial r, Cliff's delta, epsilon squared, Kendall's W |
 | Proportion | Cohen's h, risk difference, risk ratio, odds ratio |
 | Chi-square | Cohen's w, phi, Cramer's V |
 | McNemar | matched-pair odds ratio, log odds ratio, Cohen's g |
-| Regression | Cohen's f2, incremental f2, OR to d approximation, moderation f2 |
-| Survival / Cox | hazard ratio and log hazard ratio |
+| t-test | Cohen's d, Hedges' g, one-sample d, paired dz |
+| ANOVA | eta squared, partial eta squared, omega squared, Cohen's f |
+| ANCOVA / MANOVA | adjusted f, partial eta squared, Cohen's f, Pillai/Wilks 변환 |
+| Nonparametric | rank-biserial r, Cliff's delta, epsilon squared, Kendall's W |
 | Correlation | Pearson r, Fisher's z, R-squared, Cohen's q |
-| ROC AUC | AUC, AUC difference, AUC-based approximate Cohen's d |
+| Regression | Cohen's f2, incremental f2, OR to d approximation, moderation f2 |
 | Count / Rate Regression | incidence rate ratio, gamma mean ratio, regression coefficient B |
+| ROC AUC | AUC, AUC difference, AUC-based approximate Cohen's d |
+| GEE | standardized mean/change/parameter effect, binary h, OR/IRR 계열 변환 |
+| LMM | standardized fixed effect, GLIMMPSE-style standardized change effect, SPSS LMM F/df 기반 partial eta squared, 공분산 기반 paired dz |
+| GLMM | binary logit OR/log OR/latent d, count log-link IRR/log IRR, Gaussian d |
+| Survival / Cox | hazard ratio and log hazard ratio |
 
 Effect Size 메뉴에서는 분석 결과의 효과를 보고하는 데 직접 쓰기 어려운 단순 계획 규칙, 정밀도 half-width, equivalence margin distance, SEM/CFA complexity score를 제외한다. 이러한 항목은 Sample Size 메뉴의 계획 계산으로 남겨 둔다.

@@ -24,26 +24,7 @@ sample_size_tab_panel <- function() {
   item <- function(method, title = methods[[method]]) {
     lazy_tab_panel(title, paste0("sample_size_", method), paste0("lazy_sample_size_", method))
   }
-  navbarMenu(
-    "Sample Size",
-    item("ttest"),
-    item("anova"),
-    item("ancova"),
-    item("nonparametric"),
-    item("proportion"),
-    item("chisquare"),
-    item("mcnemar"),
-    item("correlation"),
-    item("regression"),
-    item("rates"),
-    item("gee"),
-    item("lmm"),
-    item("survival"),
-    item("diagnostic"),
-    item("equivalence"),
-    item("reliability"),
-    item("sem")
-  )
+  do.call(navbarMenu, c(list("Sample Size"), lapply(names(methods), item)))
 }
 
 sample_size_target_choices <- function(method) {
@@ -61,24 +42,7 @@ effect_size_tab_panel <- function() {
   item <- function(method, title = methods[[method]]) {
     lazy_tab_panel(title, paste0("effect_size_", method), paste0("lazy_effect_size_", method))
   }
-  navbarMenu(
-    "Effect Size",
-    item("ttest"),
-    item("anova"),
-    item("ancova"),
-    item("nonparametric"),
-    item("proportion"),
-    item("chisquare"),
-    item("mcnemar"),
-    item("correlation"),
-    item("regression"),
-    item("rates"),
-    item("gee"),
-    item("lmm"),
-    item("glmm"),
-    item("survival"),
-    item("diagnostic")
-  )
+  do.call(navbarMenu, c(list("Effect Size"), lapply(names(methods), item)))
 }
 
 effect_size_analysis_panel <- function(method) {

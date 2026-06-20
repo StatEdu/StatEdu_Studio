@@ -2,32 +2,32 @@
 
 sample_size_method_labels <- function() {
   c(
-    ttest = "t-test",
-    anova = "ANOVA",
-    ancova = "ANCOVA / MANOVA",
-    gee = "GEE",
-    lmm = "LMM",
-    nonparametric = "Nonparametric",
     proportion = "Proportion",
     chisquare = "Chi-square",
     mcnemar = "McNemar",
-    regression = "Regression",
-    survival = "Survival / Cox",
+    ttest = "t-test",
+    anova = "ANOVA",
+    ancova = "ANCOVA / MANOVA",
+    nonparametric = "Nonparametric",
     correlation = "Correlation",
-    equivalence = "Equivalence / NI",
-    diagnostic = "ROC AUC",
-    rates = "Count / Rate Regression",
-    cluster = "Cluster Trial",
-    precision = "Precision / CI",
     reliability = "Reliability / Agreement",
-    sem = "SEM / CFA"
+    sem = "SEM / CFA",
+    regression = "Regression",
+    rates = "Count / Rate Regression",
+    diagnostic = "ROC AUC",
+    gee = "GEE",
+    lmm = "LMM",
+    survival = "Survival / Cox",
+    equivalence = "Equivalence / NI",
+    cluster = "Cluster Trial",
+    precision = "Precision / CI"
   )
 }
 
 effect_size_method_labels <- function() {
   labels <- sample_size_method_labels()
   labels <- labels[setdiff(names(labels), c("equivalence", "cluster", "precision", "reliability", "sem"))]
-  append(labels, c(glmm = "GLMM"), after = which(names(labels) == "gee"))
+  append(labels, c(glmm = "GLMM"), after = which(names(labels) == "lmm"))
 }
 
 sample_size_ttest_effect_conversions <- function(d, df = NULL) {
