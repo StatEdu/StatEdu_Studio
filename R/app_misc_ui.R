@@ -270,7 +270,7 @@ about_tab_panel <- function(version) {
     "About",
     lazy_tab_panel("Overview", "about_overview", "lazy_about_overview"),
     lazy_tab_panel("User Guide", "about_user_guide", "lazy_about_user_guide"),
-    lazy_tab_panel("Analysis Methods", "about_analysis_methods", "lazy_about_analysis_methods"),
+    lazy_tab_panel("Analyses", "about_analysis_methods", "lazy_about_analysis_methods"),
     lazy_tab_panel("Method Notes", "about_method_notes", "lazy_about_method_notes"),
     lazy_tab_panel("Validation", "about_validation", "lazy_about_validation"),
     lazy_tab_panel("Version History", "about_version_history", "lazy_about_version_history"),
