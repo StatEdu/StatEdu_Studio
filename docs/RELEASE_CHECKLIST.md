@@ -11,6 +11,15 @@ Use this checklist before creating a public beta installer.
 - For the 1.0 release, confirm `docs/RELEASE_1_0_DISTRIBUTION_LICENSE_PLAN_KO.md` has been reviewed and all required Free/Pro/Latent distribution gates are either implemented or explicitly deferred.
 - When the beta version reaches 0.9.37 or later, explicitly decide whether further 0.9.x work should continue or whether the 1.0 distribution/license/update plan should become the primary implementation target.
 
+## Brand and Compatibility
+
+- Confirm visible product surfaces use `StatEdu Studio`, including README, app header, About, launcher text, installer metadata, default export filenames, report covers, favicon, and logo assets.
+- Confirm no visible app page or release artifact uses `EasyFlow Statistics` as the current product name.
+- Keep the registered DOI `10.22934/easyflow.statistics` unless a replacement DOI has been issued and citation materials are intentionally migrated.
+- Keep compatibility identifiers such as `EASYFLOW_*` environment variables, `easyflow_*` JavaScript/R helper names, `easyflow_settings`, `easyflow_result_history`, `.efs-settings`, `.efs-result`, and legacy result-store read paths unless a migration plan and validation coverage exist.
+- Keep historical `CHANGELOG.md` entries as written unless correcting factual errors; older entries may mention EasyFlow because they describe prior product history.
+- Confirm `CITATION.cff`, `SOURCE-OFFER.txt`, and the About repository link point to the actual GitHub source repository.
+
 ## Runtime and Packaging
 
 - Run the R validation scripts that cover changed areas.
