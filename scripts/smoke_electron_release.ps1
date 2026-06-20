@@ -110,6 +110,25 @@ function Assert-NoDistArtifacts {
   Write-Host "[ok] distribution output has no legacy EasyFlow or debug artifacts"
 }
 
+function Assert-ExeVersionInfo {
+  param(
+    [string]$Path,
+    [string]$ExpectedProductName,
+    [string]$ExpectedCompanyName
+  )
+  $versionInfo = (Get-Item -LiteralPath $Path).VersionInfo
+  if ($versionInfo.ProductName -ne $ExpectedProductName) {
+    throw "Unexpected ProductName for $Path`: $($versionInfo.ProductName)"
+  }
+  if ($versionInfo.CompanyName -ne $ExpectedCompanyName) {
+    throw "Unexpected CompanyName for $Path`: $($versionInfo.CompanyName)"
+  }
+  if ($versionInfo.FileDescription -notmatch [regex]::Escape($ExpectedProductName)) {
+    throw "Unexpected FileDescription for $Path`: $($versionInfo.FileDescription)"
+  }
+  Write-Host "[ok] executable version metadata for $ExpectedProductName"
+}
+
 function Assert-AppBootstrapModulesTracked {
   $git = Get-Command "git.exe" -ErrorAction SilentlyContinue
   if (-not $git) {
@@ -153,7 +172,9 @@ Assert-NoDistArtifacts (Join-Path $RepoRoot "dist\electron")
 
 if (-not $SkipUnpackedChecks) {
   Assert-Path $ElectronOutDir "unpacked Electron output"
-  Assert-Path (Join-Path $ElectronOutDir "StatEdu Studio Beta.exe") "Electron executable"
+  $electronExe = Join-Path $ElectronOutDir "StatEdu Studio Beta.exe"
+  Assert-Path $electronExe "Electron executable"
+  Assert-ExeVersionInfo $electronExe "StatEdu Studio Beta" "StatEdu"
   Assert-Path (Join-Path $ElectronOutDir "LICENSE.electron.txt") "Electron license"
   Assert-Path (Join-Path $ElectronOutDir "LICENSES.chromium.html") "Chromium licenses"
   Assert-Path $bundledAppDir "bundled StatEdu Studio app"
