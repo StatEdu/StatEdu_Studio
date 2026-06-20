@@ -1,4 +1,4 @@
-# **StatEdu Studio**
+﻿# **StatEdu Studio**
 
 **StatEdu Studio** is a local Shiny application for assumption-guided statistical analysis and publication-ready result tables.
 
@@ -8,9 +8,9 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.40`
+Current development version: `0.9.41`
 
-Version 0.9.40 rebrands the product-facing application to **StatEdu Studio**, updates the logo, favicon, launcher, installer metadata, default export filenames, About/source references, release checklist, and Electron packaging audit state. It also extends GLM, longitudinal / panel, and reference-category validation coverage. Version 0.9.39 adds the Longitudinal / Panel Models workflow with GEE, LMM, GLMM, panel fixed effects, panel random effects, model-specific assumption checks, missing-data sensitivity engines, longitudinal weights, exposure offsets, count-family screening, and SCI-style reporting. It also activates the GLM workflow for Gaussian, binary logistic, Gamma, and count models with tabbed model, missing-data, assumption-check, publication-note, SCI-checklist, and manuscript-text outputs. Version 0.9.38 adds Fritz & MacKinnon (2007) empirical mediation sample-size estimates, method-specific mediation references, and a wider adaptive Sample Size results panel.
+Version 0.9.41 groups the Analysis, Sample Size, and Effect Size menus into consistent first-level categories and fixes cross-tabulation variable transfer controls. Version 0.9.40 rebrands the product-facing application to **StatEdu Studio**, updates the logo, favicon, launcher, installer metadata, default export filenames, About/source references, release checklist, and Electron packaging audit state. It also extends GLM, longitudinal / panel, and reference-category validation coverage. Version 0.9.39 adds the Longitudinal / Panel Models workflow with GEE, LMM, GLMM, panel fixed effects, panel random effects, model-specific assumption checks, missing-data sensitivity engines, longitudinal weights, exposure offsets, count-family screening, and SCI-style reporting. It also activates the GLM workflow for Gaussian, binary logistic, Gamma, and count models with tabbed model, missing-data, assumption-check, publication-note, SCI-checklist, and manuscript-text outputs. Version 0.9.38 adds Fritz & MacKinnon (2007) empirical mediation sample-size estimates, method-specific mediation references, and a wider adaptive Sample Size results panel.
 
 ## Current Scope
 
@@ -77,7 +77,7 @@ The app will open at `127.0.0.1` in the default browser. The launcher searches f
 
 Version 0.9.10 includes validation scripts for calculators, data import, data editing, cross-tabulation, correlation auto-selection, factor analysis / PCA, logistic analysis and UI, paired guard handling, p-value formatting, regression coefficient output, and t-test / ANOVA guard handling.
 
-Version 0.9.40 extends validation coverage for GLM and longitudinal / panel reporting workflows, missing-data summaries, analysis weights, count-model selection, reference-category reporting, and the external analysis reference comparison table. Version 0.9.39 includes validation coverage for longitudinal / panel model fitting, GLM fitting, setup UI structure, missing-data handling, assumption-check catalogs, HTML export, Excel export, sensitivity comparisons, exposure offsets, count-family screening, robust standard errors, and SCI reporting sections. Version 0.9.38 includes validation coverage for Fritz & MacKinnon mediation sample-size table values and method-specific mediation reporting. Version 0.9.37 includes validation coverage for data-editor recoding and Likert detection paths. Version 0.9.36 includes validation coverage for logistic analysis, data editor recoding, factor/PCA, correlation, paired tests, data I/O, and result history. Effect-size comparisons use `effectsize` as a validation reference where its definitions match the app calculation; `effectsize` is not required at runtime.
+Version 0.9.41 adds UI validation for grouped navigation menus and cross-tabulation transfer controls. Version 0.9.40 extends validation coverage for GLM and longitudinal / panel reporting workflows, missing-data summaries, analysis weights, count-model selection, reference-category reporting, and the external analysis reference comparison table. Version 0.9.39 includes validation coverage for longitudinal / panel model fitting, GLM fitting, setup UI structure, missing-data handling, assumption-check catalogs, HTML export, Excel export, sensitivity comparisons, exposure offsets, count-family screening, robust standard errors, and SCI reporting sections. Version 0.9.38 includes validation coverage for Fritz & MacKinnon mediation sample-size table values and method-specific mediation reporting. Version 0.9.37 includes validation coverage for data-editor recoding and Likert detection paths. Version 0.9.36 includes validation coverage for logistic analysis, data editor recoding, factor/PCA, correlation, paired tests, data I/O, and result history. Effect-size comparisons use `effectsize` as a validation reference where its definitions match the app calculation; `effectsize` is not required at runtime.
 
 Run validation scripts from the repository root with Rscript, for example:
 
@@ -89,7 +89,7 @@ Run validation scripts from the repository root with Rscript, for example:
 
 If you use **StatEdu Studio** in your research, please cite:
 
-LEE, I. H. (2026). **StatEdu Studio** (Version 0.9.40) [Computer software]. https://doi.org/10.22934/statedu.studio
+LEE, I. H. (2026). **StatEdu Studio** (Version 0.9.41) [Computer software]. https://doi.org/10.22934/statedu.studio
 
 ## Development Model
 

@@ -1,9 +1,9 @@
-cff-version: 1.2.0
+﻿cff-version: 1.2.0
 message: "If you use StatEdu Studio in your research, please cite it as below."
 type: software
 title: "StatEdu Studio"
-version: "0.9.40"
-date-released: "2026-06-19"
+version: "0.9.41"
+date-released: "2026-06-20"
 authors:
   - family-names: "LEE"
     given-names: "IL HYUN"

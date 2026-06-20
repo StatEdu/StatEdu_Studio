@@ -115,9 +115,19 @@ register_crosstab_handlers <- function(
     active_crosstab_list("crosstab_col")
   }, ignoreInit = TRUE)
 
+  crosstab_selected_input_items <- function(input_id, order) {
+    selected_order_items(
+      unique(c(
+        input[[input_id]] %||% character(0),
+        input[[paste0(input_id, "_selection_order")]] %||% character(0)
+      )),
+      order
+    )
+  }
+
   observe({
     active <- active_crosstab_list()
-    if (identical(active, "crosstab_row") && length(input$crosstab_row %||% character(0)) > 0) {
+    if (identical(active, "crosstab_row") && length(crosstab_selected_input_items("crosstab_row", current_crosstab_allowed()$row_vars)) > 0) {
       updateActionButton(session, "crosstab_assign_row", label = "<")
     } else {
       updateActionButton(session, "crosstab_assign_row", label = ">")
@@ -126,52 +136,103 @@ register_crosstab_handlers <- function(
 
   observe({
     active <- active_crosstab_list()
-    if (identical(active, "crosstab_col") && length(input$crosstab_col %||% character(0)) > 0) {
+    if (identical(active, "crosstab_col") && length(crosstab_selected_input_items("crosstab_col", current_crosstab_allowed()$col_vars)) > 0) {
       updateActionButton(session, "crosstab_assign_col", label = "<")
     } else {
       updateActionButton(session, "crosstab_assign_col", label = ">")
     }
   })
 
-  observeEvent(input$crosstab_assign_row, {
+  handle_crosstab_assign <- function(target, request = NULL) {
     state <- current_crosstab_allowed()
-    if (identical(active_crosstab_list(), "crosstab_row")) {
-      selected_target <- selected_order_items(input$crosstab_row, state$row_vars)
-      if (length(selected_target) == 0) return()
-      updated <- remove_order_items(state$row_vars, selected_target)
-      crosstab_row_vars(updated$order)
-      active_crosstab_list("crosstab_available")
-      mark_settings_dirty()
-      return()
+    target_id <- paste0("crosstab_", target)
+    target_vars <- if (identical(target, "row")) state$row_vars else state$col_vars
+    direction <- as.character(request$direction %||% "")
+    requested_values <- unique(as.character(request$values %||% character(0)))
+    requested_values <- requested_values[nzchar(requested_values)]
+
+    if (identical(direction, "back") || (identical(active_crosstab_list(), target_id) && !identical(direction, "add"))) {
+      selected_target <- selected_order_items(requested_values, target_vars)
+      if (length(selected_target) == 0) {
+        selected_target <- crosstab_selected_input_items(target_id, target_vars)
+      }
+      if (
+        length(selected_target) == 0 &&
+        length(target_vars) == 1 &&
+        (identical(direction, "back") || identical(active_crosstab_list(), target_id))
+      ) {
+        selected_target <- target_vars
+      }
+      if (length(selected_target) > 0) {
+        updated <- remove_order_items(target_vars, selected_target)
+        if (identical(target, "row")) {
+          crosstab_row_vars(updated$order)
+        } else {
+          crosstab_col_vars(updated$order)
+        }
+        active_crosstab_list("crosstab_available")
+        mark_settings_dirty()
+        return(invisible(TRUE))
+      }
     }
+
     available <- setdiff(state$allowed, c(state$row_vars, state$col_vars))
-    selected <- selected_order_items(input$crosstab_available, available)
-    if (length(selected) == 0) return()
-    updated <- append_order_items(state$row_vars, selected)
-    if (!updated$changed) return()
-    crosstab_row_vars(updated$order)
-    active_crosstab_list("crosstab_row")
+    selected <- selected_order_items(requested_values, available)
+    if (length(selected) == 0) {
+      selected <- crosstab_selected_input_items("crosstab_available", available)
+    }
+    if (length(selected) == 0) return(invisible(FALSE))
+    updated <- append_order_items(target_vars, selected)
+    if (!updated$changed) return(invisible(FALSE))
+    if (identical(target, "row")) {
+      crosstab_row_vars(updated$order)
+    } else {
+      crosstab_col_vars(updated$order)
+    }
+    active_crosstab_list(target_id)
     mark_settings_dirty()
+    invisible(TRUE)
+  }
+
+  observeEvent(input$crosstab_assign_row, {
+    handle_crosstab_assign("row")
   }, ignoreInit = TRUE)
 
   observeEvent(input$crosstab_assign_col, {
+    handle_crosstab_assign("col")
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$crosstab_assign_row_request, {
+    handle_crosstab_assign("row", input$crosstab_assign_row_request)
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$crosstab_assign_col_request, {
+    handle_crosstab_assign("col", input$crosstab_assign_col_request)
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$crosstab_force_col_back, {
     state <- current_crosstab_allowed()
-    if (identical(active_crosstab_list(), "crosstab_col")) {
-      selected_target <- selected_order_items(input$crosstab_col, state$col_vars)
-      if (length(selected_target) == 0) return()
-      updated <- remove_order_items(state$col_vars, selected_target)
-      crosstab_col_vars(updated$order)
-      active_crosstab_list("crosstab_available")
-      mark_settings_dirty()
-      return()
+    selected <- crosstab_selected_input_items("crosstab_col", state$col_vars)
+    if (length(selected) == 0) {
+      selected <- state$col_vars
     }
-    available <- setdiff(state$allowed, c(state$row_vars, state$col_vars))
-    selected <- selected_order_items(input$crosstab_available, available)
     if (length(selected) == 0) return()
-    updated <- append_order_items(state$col_vars, selected)
-    if (!updated$changed) return()
+    updated <- remove_order_items(state$col_vars, selected)
     crosstab_col_vars(updated$order)
-    active_crosstab_list("crosstab_col")
+    active_crosstab_list("crosstab_available")
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$crosstab_force_row_back, {
+    state <- current_crosstab_allowed()
+    selected <- crosstab_selected_input_items("crosstab_row", state$row_vars)
+    if (length(selected) == 0) {
+      selected <- state$row_vars
+    }
+    if (length(selected) == 0) return()
+    updated <- remove_order_items(state$row_vars, selected)
+    crosstab_row_vars(updated$order)
+    active_crosstab_list("crosstab_available")
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 

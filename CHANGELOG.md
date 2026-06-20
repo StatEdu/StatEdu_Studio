@@ -1,6 +1,15 @@
 # Changelog
 
-## v0.9.40 - Unreleased
+## v0.9.41 - 2026-06-20
+
+### Changed
+
+- Grouped the Analysis, Sample Size, and Effect Size navigation menus into consistent first-level statistical categories.
+- Fixed cross-tabulation variable transfer controls so selected column or row variables reliably move back to the available variable list.
+- Adjusted cross-tabulation transfer-button placement for the column and row target panels.
+
+
+## v0.9.40 - 2026-06-20
 
 ### Changed
 

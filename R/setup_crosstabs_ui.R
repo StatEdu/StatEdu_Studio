@@ -69,13 +69,13 @@ crosstab_setup_panel <- function(state) {
       actionButton(
         "crosstab_assign_col",
         ">",
-        class = "btn btn-default analysis-move-button",
+        class = "btn btn-default analysis-move-button crosstab-assign-col-button",
         disabled = if (state$move_disabled) "disabled" else NULL
       ),
       actionButton(
         "crosstab_assign_row",
         ">",
-        class = "btn btn-default analysis-move-button",
+        class = "btn btn-default analysis-move-button crosstab-assign-row-button",
         disabled = if (state$move_disabled) "disabled" else NULL
       )
     ),

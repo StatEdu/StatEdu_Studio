@@ -38,6 +38,37 @@
         if (event.stopImmediatePropagation) event.stopImmediatePropagation();
       }, true);
 
+      function easyflowTransferOptionValues(options) {
+        return Array.prototype.slice.call(options || [])
+          .map(function(option) { return option.getAttribute('data-value') || ''; })
+          .filter(function(value) { return value !== ''; });
+      }
+
+      document.addEventListener('click', function(event) {
+        if (!event.target || !event.target.closest || !window.Shiny) return;
+        var button = event.target.closest('#crosstab_assign_col, #crosstab_assign_row');
+        if (!button) return;
+        var label = (button.textContent || '').trim();
+        var targetInputId = button.id === 'crosstab_assign_col' ? 'crosstab_col' : 'crosstab_row';
+        var targetListbox = document.querySelector('.analysis-transfer-listbox[data-input-id="' + targetInputId + '"]');
+        var selectedTargetOptions = targetListbox
+          ? targetListbox.querySelectorAll('.analysis-transfer-option.is-selected')
+          : [];
+        if (label !== '<' && selectedTargetOptions.length === 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+        var values = easyflowTransferOptionValues(selectedTargetOptions);
+        if (values.length === 0 && label === '<' && targetListbox) {
+          values = easyflowTransferOptionValues(targetListbox.querySelectorAll('.analysis-transfer-option'));
+        }
+        Shiny.setInputValue(
+          button.id === 'crosstab_assign_col' ? 'crosstab_assign_col_request' : 'crosstab_assign_row_request',
+          {direction: 'back', values: values, nonce: Date.now() + Math.random()},
+          {priority: 'event'}
+        );
+      }, true);
+
       function easyflowSkipsMathNode(node) {
         var parent = node && node.parentElement;
         while (parent) {
@@ -675,42 +706,115 @@
 
       function registerEasyflowNestedDropdownMenus() {
         if (!window.jQuery) return;
-        function groupAnalysisDropdownItems() {
-          var groups = [
+        function easyflowGroupedMenuConfigs() {
+          return [
             {
-              title: 'Descriptives & Tables',
-              values: ['Frequencies / Descriptives', 'analysis_crosstabs']
+              menu: 'Analysis',
+              marker: 'analysis',
+              groups: [
+                {
+                  title: 'Descriptives & Tables',
+                  values: ['Frequencies / Descriptives', 'analysis_crosstabs']
+                },
+                {
+                  title: 'Group Comparisons',
+                  values: ['t-test / ANOVA', 'Paired test', 'ANCOVA']
+                },
+                {
+                  title: 'Nonparametric Tests',
+                  values: ['Nonparametric Tests', 'Nonparametric Paired']
+                },
+                {
+                  title: 'Association & Measurement',
+                  values: ['Correlation', 'Reliability', 'Factor Analysis', 'Principal Components']
+                },
+                {
+                  title: 'Regression & Models',
+                  values: ['Regression', 'Generalized Linear Model (GLM)', 'analysis_logistic_regression']
+                },
+                {
+                  title: 'Longitudinal / Panel',
+                  values: ['Longitudinal / Panel Models']
+                }
+              ]
             },
             {
-              title: 'Group Comparisons',
-              values: ['t-test / ANOVA', 'Paired test', 'ANCOVA']
+              menu: 'Sample Size',
+              marker: 'sample-size',
+              groups: [
+                {
+                  title: 'Descriptives & Tables',
+                  values: ['sample_size_proportion', 'sample_size_chisquare', 'sample_size_mcnemar']
+                },
+                {
+                  title: 'Group Comparisons',
+                  values: ['sample_size_ttest', 'sample_size_anova', 'sample_size_ancova']
+                },
+                {
+                  title: 'Nonparametric Tests',
+                  values: ['sample_size_nonparametric']
+                },
+                {
+                  title: 'Association & Measurement',
+                  values: ['sample_size_correlation', 'sample_size_reliability', 'sample_size_sem', 'sample_size_diagnostic']
+                },
+                {
+                  title: 'Regression & Models',
+                  values: ['sample_size_regression', 'sample_size_rates', 'sample_size_survival']
+                },
+                {
+                  title: 'Longitudinal / Panel',
+                  values: ['sample_size_gee', 'sample_size_lmm']
+                },
+                {
+                  title: 'Study Design & Precision',
+                  values: ['sample_size_equivalence', 'sample_size_cluster', 'sample_size_precision']
+                }
+              ]
             },
             {
-              title: 'Nonparametric Tests',
-              values: ['Nonparametric Tests', 'Nonparametric Paired']
-            },
-            {
-              title: 'Association & Measurement',
-              values: ['Correlation', 'Reliability', 'Factor Analysis', 'Principal Components']
-            },
-            {
-              title: 'Regression & Models',
-              values: ['Regression', 'Generalized Linear Model (GLM)', 'analysis_logistic_regression']
-            },
-            {
-              title: 'Longitudinal / Panel',
-              values: ['Longitudinal / Panel Models']
+              menu: 'Effect Size',
+              marker: 'effect-size',
+              groups: [
+                {
+                  title: 'Descriptives & Tables',
+                  values: ['effect_size_proportion', 'effect_size_chisquare', 'effect_size_mcnemar']
+                },
+                {
+                  title: 'Group Comparisons',
+                  values: ['effect_size_ttest', 'effect_size_anova', 'effect_size_ancova']
+                },
+                {
+                  title: 'Nonparametric Tests',
+                  values: ['effect_size_nonparametric']
+                },
+                {
+                  title: 'Association & Measurement',
+                  values: ['effect_size_correlation', 'effect_size_diagnostic']
+                },
+                {
+                  title: 'Regression & Models',
+                  values: ['effect_size_regression', 'effect_size_rates', 'effect_size_survival']
+                },
+                {
+                  title: 'Longitudinal / Panel',
+                  values: ['effect_size_gee', 'effect_size_lmm', 'effect_size_glmm']
+                }
+              ]
             }
           ];
-          var analysisItem = window.jQuery('.navbar-nav > li.dropdown > a.dropdown-toggle')
+        }
+
+        function groupNavbarDropdownItems(config) {
+          var navItem = window.jQuery('.navbar-nav > li.dropdown > a.dropdown-toggle')
             .filter(function() {
-              return window.jQuery(this).clone().children().remove().end().text().trim() === 'Analysis';
+              return window.jQuery(this).clone().children().remove().end().text().trim() === config.menu;
             })
             .parent()
             .first();
-          if (!analysisItem.length) return;
-          var menu = analysisItem.children('ul.dropdown-menu').first();
-          if (!menu.length || menu.attr('data-analysis-menu-grouped') === 'true') return;
+          if (!navItem.length) return;
+          var menu = navItem.children('ul.dropdown-menu').first();
+          if (!menu.length || menu.attr('data-easyflow-menu-grouped') === config.marker) return;
 
           var existingItems = {};
           menu.children('li').each(function() {
@@ -720,7 +824,7 @@
             existingItems[String(link.attr('data-value'))] = item.detach();
           });
 
-          groups.forEach(function(group) {
+          config.groups.forEach(function(group) {
             var groupItems = [];
             group.values.forEach(function(value) {
               if (existingItems[value]) {
@@ -729,8 +833,13 @@
               }
             });
             if (groupItems.length === 0) return;
+            if (groupItems.length === 1) {
+              groupItems[0].addClass('analysis-menu-direct-item');
+              menu.append(groupItems[0]);
+              return;
+            }
             var groupNode = window.jQuery('<li class="analysis-menu-section" role="presentation"></li>');
-            var groupTitle = window.jQuery('<div class="analysis-menu-section-title"></div>').text(group.title);
+            var groupTitle = window.jQuery('<button type="button" class="analysis-menu-section-title" aria-expanded="false"></button>').text(group.title);
             var groupList = window.jQuery('<ul class="analysis-menu-section-items" role="menu"></ul>');
             groupItems.forEach(function(item) {
               groupList.append(item);
@@ -738,6 +847,8 @@
             groupNode.append(groupTitle, groupList);
             if (groupList.children('li.active').length) {
               groupNode.addClass('active');
+              groupNode.addClass('open');
+              groupTitle.attr('aria-expanded', 'true');
             }
             menu.append(groupNode);
           });
@@ -745,7 +856,17 @@
           Object.keys(existingItems).forEach(function(value) {
             menu.append(existingItems[value]);
           });
-          menu.addClass('analysis-mega-menu').attr('data-analysis-menu-grouped', 'true');
+          if (!menu.children('.analysis-menu-section.active').length && !menu.children('li.active').not('.analysis-menu-section').length) {
+            menu.children('.analysis-menu-section').first().addClass('open')
+              .children('.analysis-menu-section-title').attr('aria-expanded', 'true');
+          }
+          menu.addClass('analysis-submenu')
+            .attr('data-easyflow-menu-grouped', config.marker)
+            .attr('data-analysis-menu-grouped', 'true');
+        }
+
+        function groupAnalysisDropdownItems() {
+          easyflowGroupedMenuConfigs().forEach(groupNavbarDropdownItems);
         }
 
         function configureNestedDropdownToggles() {
@@ -773,13 +894,44 @@
             item.toggleClass('open');
             item.siblings('.dropdown.open').removeClass('open');
           })
-          .on('click.easyflowAnalysisMegaMenu', '.analysis-mega-menu .analysis-menu-section-items a[data-value]', function() {
+          .on('mouseenter.easyflowAnalysisSubmenu focusin.easyflowAnalysisSubmenu click.easyflowAnalysisSubmenu', '.analysis-submenu .analysis-menu-section-title', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            var section = window.jQuery(this).closest('.analysis-menu-section');
+            var menu = section.closest('.analysis-submenu');
+            menu.children('.analysis-menu-section').removeClass('open')
+              .children('.analysis-menu-section-title').attr('aria-expanded', 'false');
+            section.addClass('open');
+            window.jQuery(this).attr('aria-expanded', 'true');
+          })
+          .on('mouseenter.easyflowAnalysisDirectItem focusin.easyflowAnalysisDirectItem', '.analysis-submenu > li.analysis-menu-direct-item > a[data-value]', function() {
+            var menu = window.jQuery(this).closest('.analysis-submenu');
+            menu.children('.analysis-menu-section').removeClass('open')
+              .children('.analysis-menu-section-title').attr('aria-expanded', 'false');
+          })
+          .on('click.easyflowAnalysisSubmenu', '.analysis-submenu .analysis-menu-section-items a[data-value]', function() {
             var link = window.jQuery(this);
-            var menu = link.closest('.analysis-mega-menu');
+            var menu = link.closest('.analysis-submenu');
             var markActive = function() {
               menu.find('li.active, .analysis-menu-section.active').removeClass('active');
+              menu.children('.analysis-menu-section').removeClass('open');
               link.parent('li').addClass('active');
-              link.closest('.analysis-menu-section').addClass('active');
+              link.closest('.analysis-menu-section').addClass('active open');
+              menu.find('.analysis-menu-section-title').attr('aria-expanded', 'false');
+              link.closest('.analysis-menu-section').children('.analysis-menu-section-title').attr('aria-expanded', 'true');
+            };
+            markActive();
+            window.setTimeout(markActive, 0);
+            link.closest('.navbar-nav > li.dropdown').removeClass('open');
+          })
+          .on('click.easyflowAnalysisDirectItem', '.analysis-submenu > li.analysis-menu-direct-item > a[data-value]', function() {
+            var link = window.jQuery(this);
+            var menu = link.closest('.analysis-submenu');
+            var markActive = function() {
+              menu.find('li.active, .analysis-menu-section.active').removeClass('active');
+              menu.children('.analysis-menu-section').removeClass('open');
+              menu.find('.analysis-menu-section-title').attr('aria-expanded', 'false');
+              link.parent('li').addClass('active');
             };
             markActive();
             window.setTimeout(markActive, 0);
@@ -1633,6 +1785,8 @@
           Shiny.setInputValue(inputId + '_selection_order', values, {priority: 'event'});
         }
       }
+
+      window.easyflowSyncTransferListbox = easyflowTransferSync;
 
       function easyflowTransferMarkActive(listbox) {
         var inputId = listbox ? listbox.getAttribute('data-input-id') : null;
