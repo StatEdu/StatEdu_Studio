@@ -740,6 +740,9 @@
               submenu.append(item);
             });
             groupNode.append(groupLink, submenu);
+            if (submenu.children('li.active').length) {
+              groupNode.addClass('active');
+            }
             menu.append(groupNode);
           });
 
@@ -747,6 +750,18 @@
             menu.append(existingItems[value]);
           });
           menu.attr('data-analysis-menu-grouped', 'true');
+        }
+
+        function openActiveAnalysisMenuGroup(topDropdown) {
+          var dropdown = window.jQuery(topDropdown);
+          if (!dropdown.children('a.dropdown-toggle').first().text().trim().startsWith('Analysis')) return;
+          var activeGroup = dropdown.find('> ul.dropdown-menu > li.analysis-menu-group.active').first();
+          if (!activeGroup.length) {
+            activeGroup = dropdown.find('> ul.dropdown-menu > li.analysis-menu-group:has(> ul > li.active)').first();
+          }
+          if (!activeGroup.length) return;
+          activeGroup.addClass('open');
+          activeGroup.siblings('.analysis-menu-group.open').removeClass('open');
         }
 
         function configureNestedDropdownToggles() {
@@ -773,6 +788,14 @@
             var item = window.jQuery(this).parent();
             item.toggleClass('open');
             item.siblings('.dropdown.open').removeClass('open');
+          })
+          .on('mouseenter.easyflowNestedDropdown', '.navbar-nav > li.dropdown > ul.dropdown-menu > li.analysis-menu-group', function() {
+            var item = window.jQuery(this);
+            item.addClass('open');
+            item.siblings('.analysis-menu-group.open').removeClass('open');
+          })
+          .on('shown.bs.dropdown.easyflowNestedDropdown click.easyflowNestedDropdown', '.navbar-nav > li.dropdown', function() {
+            openActiveAnalysisMenuGroup(this);
           })
           .on('hidden.bs.dropdown.easyflowNestedDropdown', '.navbar-nav > .dropdown', function() {
             window.jQuery(this).find('.dropdown.open').removeClass('open');

@@ -2064,8 +2064,8 @@ input.variable-select:disabled {
 .analysis-workspace-heading {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 18px;
+  justify-content: flex-start;
+  gap: 14px;
   width: 100%;
   margin-bottom: 18px;
 }
@@ -2088,8 +2088,10 @@ input.variable-select:disabled {
 }
 
 .analysis-data-viewer-button {
-  min-width: 166px;
-  height: 38px;
+  min-width: 148px;
+  height: 34px;
+  padding-left: 14px;
+  padding-right: 14px;
   font-weight: 500;
 }
 
