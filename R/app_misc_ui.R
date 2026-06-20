@@ -159,7 +159,7 @@ about_application_document <- function(version) {
 
   div(
     class = "about-application-document",
-    h2("EasyFlow Statistics"),
+    h2("StatEdu Studio"),
     p("A local Shiny application for assumption-guided statistical analysis and publication-ready result tables."),
     div(
       class = "about-info-grid",
@@ -175,7 +175,7 @@ about_application_document <- function(version) {
     ),
     h3("Citation"),
     p(sprintf(
-      "LEE, I. H. (2026). EasyFlow Statistics (Version %s) [Computer software]. https://doi.org/%s",
+      "LEE, I. H. (2026). StatEdu Studio (Version %s) [Computer software]. https://doi.org/%s",
       version,
       doi
     ))
@@ -202,7 +202,7 @@ about_info_tab_panel <- function(version) {
   )
 }
 
-about_markdown_tab_panel <- function(title, value, path, subtitle = "EasyFlow Statistics documentation.") {
+about_markdown_tab_panel <- function(title, value, path, subtitle = "StatEdu Studio documentation.") {
   tabPanel(
     title,
     value = value,
@@ -251,7 +251,7 @@ about_source_license_tab_panel <- function() {
       div(
         class = "app-heading",
         h1("Source & License"),
-        div("EasyFlow Statistics source availability and application license.", class = "app-subtitle")
+        div("StatEdu Studio source availability and application license.", class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel about-workspace-panel",

@@ -141,10 +141,10 @@ open_file_dialog <- function(title, filetypes) {
 }
 
 open_settings_file <- function() {
-  filetypes <- "{{EasyFlow Settings} {.efs-settings}} {{JSON settings} {.json}} {{All files} *}"
+  filetypes <- "{{StatEdu Studio Settings} {.efs-settings}} {{JSON settings} {.json}} {{All files} *}"
   attr(filetypes, "windows_filters") <- matrix(
     c(
-      "EasyFlow Settings", "*.efs-settings",
+      "StatEdu Studio Settings", "*.efs-settings",
       "JSON settings", "*.json",
       "All files", "*.*"
     ),
@@ -191,7 +191,7 @@ save_settings_file <- function() {
           title = "Save EasyFlow Latent Mplus Settings",
           initialfile = "EFS_settings.efs-settings",
           defaultextension = ".efs-settings",
-          filetypes = "{{EasyFlow Settings} {.efs-settings}} {{JSON settings} {.json}} {{All files} *}"
+          filetypes = "{{StatEdu Studio Settings} {.efs-settings}} {{JSON settings} {.json}} {{All files} *}"
         ))
       } else {
         folder <- utils::choose.dir(caption = "Choose a folder for EasyFlow Latent Mplus Settings")

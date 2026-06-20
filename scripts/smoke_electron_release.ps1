@@ -135,10 +135,10 @@ Assert-AppBootstrapModulesTracked
 
 if (-not $SkipUnpackedChecks) {
   Assert-Path $ElectronOutDir "unpacked Electron output"
-  Assert-Path (Join-Path $ElectronOutDir "EasyFlow Statistics Beta.exe") "Electron executable"
+  Assert-Path (Join-Path $ElectronOutDir "StatEdu Studio Beta.exe") "Electron executable"
   Assert-Path (Join-Path $ElectronOutDir "LICENSE.electron.txt") "Electron license"
   Assert-Path (Join-Path $ElectronOutDir "LICENSES.chromium.html") "Chromium licenses"
-  Assert-Path $bundledAppDir "bundled EasyFlow app"
+  Assert-Path $bundledAppDir "bundled StatEdu Studio app"
   Assert-Path $runtimeDir "bundled R runtime"
   Assert-Path $rscript "bundled Rscript"
   Assert-Path (Join-Path $bundledAppDir "THIRD-PARTY-NOTICES.txt") "third-party notices"

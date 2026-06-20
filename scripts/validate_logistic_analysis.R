@@ -164,7 +164,7 @@ saved_html <- saved_logistic_results_html(
   show_cox_snell = TRUE,
   split_ci = TRUE
 )
-stopifnot(grepl("EasyFlow Statistics Logistic Regression Results", saved_html, fixed = TRUE))
+stopifnot(grepl("StatEdu Studio Logistic Regression Results", saved_html, fixed = TRUE))
 stopifnot(grepl("LLCI", saved_html, fixed = TRUE))
 html_file <- tempfile(fileext = ".html")
 write_logistic_results_html(

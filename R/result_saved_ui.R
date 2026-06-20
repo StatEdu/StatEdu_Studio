@@ -37,7 +37,7 @@ saved_results_cover_text <- function() {
     organization = organization,
     user = user,
     organization_logo = organization_logo,
-    footer = trimws(Sys.getenv("EASYFLOW_REPORT_FOOTER", "Prepared with EasyFlow Statistics"))
+    footer = trimws(Sys.getenv("EASYFLOW_REPORT_FOOTER", "Prepared with StatEdu Studio"))
   )
 }
 
@@ -65,9 +65,9 @@ saved_results_development_watermark <- function(logo_uri, organization_logo_uri,
       div(
         class = "report-watermark-item report-watermark-item-efs",
         if (nzchar(logo_uri)) {
-          tags$img(src = logo_uri, class = "report-watermark-logo report-watermark-logo-efs", alt = "EasyFlow Statistics logo")
+          tags$img(src = logo_uri, class = "report-watermark-logo report-watermark-logo-efs", alt = "StatEdu Studio logo")
         } else {
-          span("EasyFlow Statistics", class = "report-watermark-name")
+          span("StatEdu Studio", class = "report-watermark-name")
         }
       ),
       div(class = "report-watermark-divider"),
@@ -442,12 +442,12 @@ saved_results_document <- function(title, content, max_width = 1280, css_path = 
   css <- if (file.exists(css_path)) paste(readLines(css_path, warn = FALSE), collapse = "\n") else ""
   saved_time <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
   app_version <- saved_results_app_version()
-  app_label <- if (nzchar(app_version)) sprintf("EasyFlow Statistics v%s", app_version) else "EasyFlow Statistics"
+  app_label <- if (nzchar(app_version)) sprintf("StatEdu Studio v%s", app_version) else "StatEdu Studio"
   logo_uri <- saved_results_image_data_uri(file.path("www", "logo-horizontal.png"))
   cover_text <- saved_results_cover_text()
   organization_logo_uri <- if (nzchar(cover_text$organization_logo)) saved_results_image_data_uri(cover_text$organization_logo) else ""
   cover_target <- if (nzchar(cover_text$organization)) cover_text$organization else "Internal analysis report"
-  cover_user <- if (nzchar(cover_text$user)) cover_text$user else "EasyFlow Statistics user"
+  cover_user <- if (nzchar(cover_text$user)) cover_text$user else "StatEdu Studio user"
   cover_license_name <- if (identical(cover_text$edition, "institution") && nzchar(cover_text$organization)) {
     cover_text$organization
   } else if (nzchar(cover_text$user)) {
@@ -496,9 +496,9 @@ saved_results_document <- function(title, content, max_width = 1280, css_path = 
         div(
           class = "report-cover-brand",
           if (nzchar(logo_uri)) {
-            tags$img(src = logo_uri, class = "report-cover-logo", alt = "EasyFlow Statistics")
+            tags$img(src = logo_uri, class = "report-cover-logo", alt = "StatEdu Studio")
           } else {
-            div("EasyFlow Statistics", class = "report-cover-kicker")
+            div("StatEdu Studio", class = "report-cover-kicker")
           },
           div(cover_text$edition, class = "report-cover-edition")
         ),
@@ -573,7 +573,7 @@ saved_analysis_results_html <- function(
   report_mode = FALSE
 ) {
   saved_results_document(
-    "EasyFlow Statistics Results",
+    "StatEdu Studio Results",
     div(
       class = "regression-results",
       div(
@@ -624,7 +624,7 @@ saved_hierarchical_results_html <- function(
 ) {
   print_landscape <- any(vapply(hierarchical_result_groups(results), function(group) length(group) >= 3L, logical(1)))
   saved_results_document(
-    "EasyFlow Statistics Hierarchical Results",
+    "StatEdu Studio Hierarchical Results",
     hierarchical_results_panel(
       results = results,
       variable_table = variable_table,
@@ -690,7 +690,7 @@ saved_frequencies_results_html <- function(result, css_path = file.path("www", "
   options <- result$options %||% list(n_percent = TRUE, mean_sd = TRUE)
   table <- frequency_combined_table(result, options)
   saved_results_document(
-    "EasyFlow Statistics Frequencies Results",
+    "StatEdu Studio Frequencies Results",
     tags$div(
       class = "regression-results",
       tags$div(
@@ -708,7 +708,7 @@ saved_frequencies_results_html <- function(result, css_path = file.path("www", "
 
 saved_reliability_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
   saved_results_document(
-    "EasyFlow Statistics Reliability Results",
+    "StatEdu Studio Reliability Results",
     tags$div(class = "regression-results", reliability_results_ui(result)),
     max_width = 1500,
     css_path = css_path,
@@ -719,7 +719,7 @@ saved_reliability_results_html <- function(result, css_path = file.path("www", "
 saved_ttest_anova_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
   print_landscape <- length(result$dependents %||% character(0)) >= 5L
   saved_results_document(
-    "EasyFlow Statistics t-test / ANOVA Results",
+    "StatEdu Studio t-test / ANOVA Results",
     tags$div(class = "regression-results", ttest_anova_results_ui(result)),
     max_width = 1500,
     css_path = css_path,
@@ -730,7 +730,7 @@ saved_ttest_anova_results_html <- function(result, css_path = file.path("www", "
 
 saved_ancova_results_html <- function(result, variable_table = NULL, labels = character(0), css_path = file.path("www", "style.css"), report_mode = FALSE) {
   saved_results_document(
-    "EasyFlow Statistics ANCOVA Results",
+    "StatEdu Studio ANCOVA Results",
     tags$div(class = "regression-results", ancova_results_ui(result, variable_table, labels)),
     max_width = 1500,
     css_path = css_path,
@@ -740,7 +740,7 @@ saved_ancova_results_html <- function(result, variable_table = NULL, labels = ch
 
 saved_nonparametric_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
   saved_results_document(
-    "EasyFlow Statistics Nonparametric Test Results",
+    "StatEdu Studio Nonparametric Test Results",
     tags$div(class = "regression-results", ttest_anova_results_ui(result)),
     max_width = 1500,
     css_path = css_path,
@@ -750,7 +750,7 @@ saved_nonparametric_results_html <- function(result, css_path = file.path("www",
 
 saved_nonparametric_paired_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
   saved_results_document(
-    "EasyFlow Statistics Nonparametric Paired Test Results",
+    "StatEdu Studio Nonparametric Paired Test Results",
     tags$div(class = "regression-results", nonparametric_paired_results_ui(result)),
     max_width = 1500,
     css_path = css_path,
@@ -761,7 +761,7 @@ saved_nonparametric_paired_results_html <- function(result, css_path = file.path
 
 saved_paired_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
   saved_results_document(
-    "EasyFlow Statistics Paired Test Results",
+    "StatEdu Studio Paired Test Results",
     tags$div(class = "regression-results", paired_results_ui(result)),
     max_width = 1500,
     css_path = css_path,
@@ -772,7 +772,7 @@ saved_paired_results_html <- function(result, css_path = file.path("www", "style
 
 saved_paired_rm_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
   saved_results_document(
-    "EasyFlow Statistics Paired Test 3+ Results",
+    "StatEdu Studio Paired Test 3+ Results",
     tags$div(class = "regression-results", paired_rm_results_ui(result)),
     max_width = 1500,
     css_path = css_path,
@@ -787,7 +787,7 @@ saved_correlation_results_html <- function(result, css_path = file.path("www", "
   variable_count <- length(result$variables %||% character(0))
   print_landscape <- variable_count >= 12L || (isTRUE(options$p_ci) && variable_count >= 6L)
   saved_results_document(
-    "EasyFlow Statistics Correlation Results",
+    "StatEdu Studio Correlation Results",
     tags$div(
       class = "correlation-results regression-results",
       correlation_matrix_set_ui(result),
@@ -856,7 +856,7 @@ saved_logistic_results_html <- function(
 ) {
   print_landscape <- any(vapply(logistic_result_groups(results), function(group) length(group) >= 3L, logical(1)))
   saved_results_document(
-    "EasyFlow Statistics Logistic Regression Results",
+    "StatEdu Studio Logistic Regression Results",
     tags$div(
       class = "regression-results",
       logistic_results_panel(
@@ -880,7 +880,7 @@ saved_logistic_results_html <- function(
 
 saved_factor_analysis_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
   saved_results_document(
-    "EasyFlow Statistics Factor Analysis Results",
+    "StatEdu Studio Factor Analysis Results",
     factor_analysis_results_ui(result, report_mode = TRUE),
     max_width = 1500,
     css_path = css_path,
@@ -890,7 +890,7 @@ saved_factor_analysis_results_html <- function(result, css_path = file.path("www
 
 saved_pca_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
   saved_results_document(
-    "EasyFlow Statistics Principal Component Analysis Results",
+    "StatEdu Studio Principal Component Analysis Results",
     pca_results_ui(result, report_mode = TRUE),
     max_width = 1500,
     css_path = css_path,
@@ -900,7 +900,7 @@ saved_pca_results_html <- function(result, css_path = file.path("www", "style.cs
 
 saved_crosstab_results_html <- function(result, css_path = file.path("www", "style.css"), report_mode = FALSE) {
   saved_results_document(
-    "EasyFlow Statistics Cross-tabulation Results",
+    "StatEdu Studio Cross-tabulation Results",
     tags$div(class = "crosstab-results regression-results", crosstab_results_ui(result)),
     max_width = 1500,
     css_path = css_path,
@@ -975,7 +975,7 @@ read_result_snapshot_store <- function(path = result_snapshot_store_path()) {
   payload <- tryCatch(jsonlite::fromJSON(path, simplifyVector = FALSE), error = function(e) NULL)
   type <- as.character(payload$type %||% "")
   if (nzchar(type) && !identical(type, "easyflow_result_history")) {
-    stop("This file is not an EasyFlow Result file.", call. = FALSE)
+    stop("This file is not a StatEdu Studio Result file.", call. = FALSE)
   }
   entries <- if (is.list(payload) && !is.null(payload$entries)) payload$entries else payload
   normalize_result_snapshot_entries(entries)
@@ -1072,7 +1072,7 @@ result_collection_content <- function(entries) {
 
 saved_result_collection_html <- function(entries, css_path = file.path("www", "style.css"), report_mode = FALSE) {
   saved_results_document(
-    "EasyFlow Statistics Result Collection",
+    "StatEdu Studio Result Collection",
     result_collection_content(entries),
     max_width = 1500,
     css_path = css_path,
@@ -1820,7 +1820,7 @@ result_docx_image_dimensions <- function(image, landscape = FALSE) {
 result_docx_cover <- function(document, entries) {
   cover_text <- saved_results_cover_text()
   app_version <- saved_results_app_version()
-  app_label <- if (nzchar(app_version)) sprintf("EasyFlow Statistics v%s", app_version) else "EasyFlow Statistics"
+  app_label <- if (nzchar(app_version)) sprintf("StatEdu Studio v%s", app_version) else "StatEdu Studio"
   logo_path <- file.path("www", "logo-horizontal.png")
   if (file.exists(logo_path)) {
     document <- officer::body_add_img(document, src = logo_path, width = 3.4, height = 1.03)
@@ -1828,7 +1828,7 @@ result_docx_cover <- function(document, entries) {
   document <- officer::body_add_par(document, "", style = "Normal")
   document <- officer::body_add_par(document, "", style = "Normal")
   document <- officer::body_add_par(document, "STATISTICAL REPORT", style = "Normal")
-  document <- officer::body_add_par(document, "EasyFlow Statistics Result Collection", style = "heading 1")
+  document <- officer::body_add_par(document, "StatEdu Studio Result Collection", style = "heading 1")
   document <- officer::body_add_par(document, "Generated analysis results prepared for review, documentation, and print output.", style = "Normal")
   document <- officer::body_add_par(document, "", style = "Normal")
   document <- officer::body_add_par(document, "", style = "Normal")
@@ -1853,7 +1853,7 @@ result_docx_package_text <- function() {
   }, character(1))
   versions <- versions[nzchar(versions)]
   paste0(
-    "All analyses were performed using EasyFlow Statistics. ",
+    "All analyses were performed using StatEdu Studio. ",
     sprintf("The R statistical computing environment %s was used", getRversion()),
     if (length(versions) > 0) sprintf(", with packages including %s.", paste(versions, collapse = ", ")) else "."
   )

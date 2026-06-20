@@ -47,7 +47,7 @@ function appVersion() {
 }
 
 function windowTitle() {
-  return `EasyFlow Statistics Beta v${appVersion()}`;
+  return `StatEdu Studio Beta v${appVersion()}`;
 }
 
 function bundledRscriptPath() {
@@ -94,7 +94,7 @@ function waitForShiny(port, timeoutMs = 45000) {
     };
     const retry = () => {
       if (Date.now() - startedAt > timeoutMs) {
-        reject(new Error("EasyFlow Statistics did not start in time."));
+        reject(new Error("StatEdu Studio did not start in time."));
         return;
       }
       setTimeout(probe, 150);
@@ -112,7 +112,7 @@ async function startShiny() {
     throw new Error(`Bundled Rscript was not found: ${rscript}`);
   }
   if (!fs.existsSync(path.join(appDir, "run_app.R"))) {
-    throw new Error(`Bundled EasyFlow app was not found: ${appDir}`);
+    throw new Error(`Bundled StatEdu Studio app was not found: ${appDir}`);
   }
 
   const port = await getFreePort();
@@ -166,7 +166,7 @@ function stopShiny() {
 
 async function createWindow() {
   logStartup("createWindow begin");
-  app.setName("EasyFlow Statistics Beta");
+  app.setName("StatEdu Studio Beta");
   mainWindow = new BrowserWindow({
     width: 1536,
     height: 1000,
@@ -202,7 +202,7 @@ async function createWindow() {
     logStartup(`BrowserWindow loaded Shiny URL in ${Date.now() - loadStartedAt}ms`);
   } catch (error) {
     logStartup(`startup failed: ${error.message}`);
-    dialog.showErrorBox("EasyFlow Statistics Beta", error.message);
+    dialog.showErrorBox("StatEdu Studio Beta", error.message);
     app.quit();
   }
 }

@@ -1,4 +1,4 @@
-# Auto-extracted shared functions for easyflow_statistics.
+# Auto-extracted shared functions for StatEdu Studio.
 
 empty_message <- function(text) {
   div(class = "empty-message", text)
@@ -74,7 +74,7 @@ set_data_step_view <- function(active_step_setter, data_view_setter, step, view 
 app_brand_title <- function(version) {
   div(
     class = "brand-title",
-    tags$img(src = paste0("logo-horizontal.png?v=", version, "-concept-02-8"), class = "brand-logo-horizontal", alt = "EasyFlow Statistics logo"),
+    tags$img(src = paste0("logo-horizontal.png?v=", version, "-statedu-studio-final"), class = "brand-logo-horizontal", alt = "StatEdu Studio logo"),
     span(class = "version", paste0("v", version))
   )
 }
@@ -89,8 +89,8 @@ app_script_link <- function(version) {
 
 app_head_tags <- function(version) {
   tags$head(
-    tags$link(rel = "icon", type = "image/png", sizes = "32x32", href = paste0("logo-favicon-32.png?v=", version, "-concept-02-8")),
-    tags$link(rel = "icon", type = "image/png", sizes = "64x64", href = paste0("logo-favicon-64.png?v=", version, "-concept-02-8")),
+    tags$link(rel = "icon", type = "image/png", sizes = "32x32", href = paste0("logo-favicon-32.png?v=", version, "-statedu-studio-final")),
+    tags$link(rel = "icon", type = "image/png", sizes = "64x64", href = paste0("logo-favicon-64.png?v=", version, "-statedu-studio-final")),
     app_stylesheet_link(version),
     tags$script(HTML(
       "window.MathJax = {

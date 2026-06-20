@@ -103,7 +103,7 @@ likert_custom_dictionary_path <- function() {
   if (!nzchar(root)) {
     root <- path.expand("~")
   }
-  file.path(root, "EasyFlow Statistics", "likert_custom_dictionaries.rds")
+  file.path(root, "StatEdu Studio", "likert_custom_dictionaries.rds")
 }
 
 read_likert_custom_dictionaries <- function() {

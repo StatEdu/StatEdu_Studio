@@ -1,10 +1,10 @@
-# **EasyFlow Statistics** User Guide
+# **StatEdu Studio** User Guide
 
-This guide will describe how to install, run, and use **EasyFlow Statistics**.
+This guide will describe how to install, run, and use **StatEdu Studio**.
 
 ## Running the App
 
-Double-click `EasyFlow_Statistics.bat`.
+Double-click `StatEdu_Studio.bat`.
 
 ## Data
 

@@ -639,7 +639,7 @@ read_settings_json_file <- function(path) {
   )
   type <- as.character(settings$type %||% "")
   if (nzchar(type) && !identical(type, "easyflow_settings")) {
-    stop("This file is not an EasyFlow Settings file.", call. = FALSE)
+    stop("This file is not a StatEdu Studio Settings file.", call. = FALSE)
   }
   settings
 }

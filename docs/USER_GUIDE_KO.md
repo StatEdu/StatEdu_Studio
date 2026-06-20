@@ -1,16 +1,16 @@
-# **EasyFlow Statistics** 사용자 안내서
+# **StatEdu Studio** 사용자 안내서
 
-이 문서는 **EasyFlow Statistics** 0.9.39을 실제로 사용하는 절차를 설명합니다. 앱 실행, 데이터 열기, 변수 선택, 분석 실행, 결과 저장처럼 사용자가 화면에서 따라 해야 하는 작업 흐름을 다룹니다. 구현된 분석 기법 목록은 `ANALYSIS_METHODS_KO.md`, 방법 선택 기준과 해석상 주의점은 `METHOD_NOTES_KO.md`를 참고합니다.
+이 문서는 **StatEdu Studio** 0.9.39을 실제로 사용하는 절차를 설명합니다. 앱 실행, 데이터 열기, 변수 선택, 분석 실행, 결과 저장처럼 사용자가 화면에서 따라 해야 하는 작업 흐름을 다룹니다. 구현된 분석 기법 목록은 `ANALYSIS_METHODS_KO.md`, 방법 선택 기준과 해석상 주의점은 `METHOD_NOTES_KO.md`를 참고합니다.
 
 ## 1. 앱 실행
 
-**EasyFlow Statistics**는 Windows PC에서 로컬로 실행되는 Shiny 앱입니다. 데이터는 사용자의 PC에서 분석되며 외부 서버로 전송되지 않습니다.
+**StatEdu Studio**는 Windows PC에서 로컬로 실행되는 Shiny 앱입니다. 데이터는 사용자의 PC에서 분석되며 외부 서버로 전송되지 않습니다.
 
-1. **EasyFlow Statistics** 폴더를 엽니다.
-2. `EasyFlow_Statistics.bat`을 더블클릭합니다.
+1. **StatEdu Studio** 폴더를 엽니다.
+2. `StatEdu_Studio.bat`을 더블클릭합니다.
 3. 브라우저가 열리면 `127.0.0.1:7894` 주소에서 앱을 사용합니다.
 
-같은 포트에서 이전 **EasyFlow Statistics** 세션이 실행 중이면 런처가 해당 세션을 정리한 뒤 새 세션을 시작합니다.
+같은 포트에서 이전 **StatEdu Studio** 세션이 실행 중이면 런처가 해당 세션을 정리한 뒤 새 세션을 시작합니다.
 
 ![데이터 작업 흐름](assets/user-guide/data-workflow.png)
 
@@ -131,7 +131,7 @@ Data Editor 메뉴에는 분석 전 정리 작업을 위한 기능이 모여 있
 
 ## 5. 변수 속성 확인
 
-분석 전 Step 3에서 measurement level을 반드시 확인합니다. **EasyFlow Statistics**는 measurement level을 바탕으로 가능한 분석 방법을 자동 또는 반자동으로 선택합니다.
+분석 전 Step 3에서 measurement level을 반드시 확인합니다. **StatEdu Studio**는 measurement level을 바탕으로 가능한 분석 방법을 자동 또는 반자동으로 선택합니다.
 
 - `continuous`: 평균 비교, 상관, 회귀 등에 사용합니다.
 - `ordered`: 순서형 범주 또는 ordinal 문항으로 사용합니다.

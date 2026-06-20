@@ -1,7 +1,7 @@
 cff-version: 1.2.0
-message: "If you use EasyFlow Statistics in your research, please cite it as below."
+message: "If you use StatEdu Studio in your research, please cite it as below."
 type: software
-title: "EasyFlow Statistics"
+title: "StatEdu Studio"
 version: "0.9.40"
 date-released: "2026-06-19"
 authors:
@@ -10,4 +10,4 @@ authors:
 repository-code: "https://github.com/StatEdu/easyflow_statistics_dev"
 url: "https://github.com/StatEdu/easyflow_statistics_dev"
 doi: "10.22934/easyflow.statistics"
-abstract: "EasyFlow Statistics is a local Shiny application for statistical analysis."
+abstract: "StatEdu Studio is a local Shiny application for statistical analysis."

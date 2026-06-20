@@ -1,7 +1,7 @@
 {
-  "name": "easyflow-statistics-beta",
+  "name": "statedu-studio-beta",
   "version": "0.9.40",
-  "description": "EasyFlow Statistics beta desktop installer",
+  "description": "StatEdu Studio beta desktop installer",
   "main": "main.js",
   "private": true,
   "scripts": {
@@ -13,8 +13,8 @@
     "electron-builder": "26.8.1"
   },
   "build": {
-    "appId": "com.statedu.easyflow.statistics.beta",
-    "productName": "EasyFlow Statistics Beta",
+    "appId": "com.statedu.studio.beta",
+    "productName": "StatEdu Studio Beta",
     "asar": false,
     "directories": {
       "output": "../../dist/electron"
@@ -37,7 +37,7 @@
           ]
         }
       ],
-      "artifactName": "EasyFlow_Statistics_Beta_Setup_${version}.${ext}"
+      "artifactName": "StatEdu_Studio_Beta_Setup_${version}.${ext}"
     },
     "nsis": {
       "installerIcon": "build/icon.ico",
@@ -46,7 +46,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "EasyFlow Statistics Beta",
+      "shortcutName": "StatEdu Studio Beta",
       "deleteAppDataOnUninstall": false
     }
   }

@@ -7,7 +7,7 @@ module.exports = async function afterPack(context) {
   }
   const iconPath = path.join(context.packager.projectDir, "build", "icon.ico");
   const rceditPath = path.join(context.packager.projectDir, "node_modules", "electron-winstaller", "vendor", "rcedit.exe");
-  const exePath = path.join(context.appOutDir, "EasyFlow Statistics Beta.exe");
+  const exePath = path.join(context.appOutDir, "StatEdu Studio Beta.exe");
   const result = spawnSync(rceditPath, [exePath, "--set-icon", iconPath], {
     windowsHide: true,
     stdio: "inherit"

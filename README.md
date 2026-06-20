@@ -1,6 +1,6 @@
-# **EasyFlow Statistics**
+# **StatEdu Studio**
 
-**EasyFlow Statistics** is a local Shiny application for assumption-guided statistical analysis and publication-ready result tables.
+**StatEdu Studio** is a local Shiny application for assumption-guided statistical analysis and publication-ready result tables.
 
 The app runs on the user's own Windows PC and opens in a local browser session. Data are analyzed locally and are not sent to an external server.
 
@@ -14,7 +14,7 @@ Version 0.9.40 starts the next development cycle after the 0.9.39 beta release. 
 
 ## Current Scope
 
-- Local Windows launcher through `EasyFlow_Statistics.bat`
+- Local Windows launcher through `StatEdu_Studio.bat`
 - Local data import for SPSS SAV, SAS, Stata, Excel XLS/XLSX, CSV, and DAT files
 - Cloud-synced file handling by copying data files to a temporary local read path before import
 - Data workflow with file loading, variable selection, measurement-level review, variable labels, and categorical value labels
@@ -52,7 +52,7 @@ Some installed package binaries may have been built under a newer patch-level R 
 
 ## R Packages
 
-| Area | Packages | Role in **EasyFlow Statistics** |
+| Area | Packages | Role in **StatEdu Studio** |
 |---|---|---|
 | App UI | `shiny`, `DT`, `htmltools`, `markdown` | Shiny app shell, interactive tables, HTML helpers, and About documentation rendering |
 | Data import | `haven`, `readr`, `readxl`, `openxlsx` | SAV, SAS, Stata, CSV, DAT, XLS, and XLSX import |
@@ -68,8 +68,8 @@ Some installed package binaries may have been built under a newer patch-level R 
 ## Local Run
 
 1. Install R.
-2. Unzip the **EasyFlow Statistics** folder.
-3. Double-click `EasyFlow_Statistics.bat`.
+2. Unzip the **StatEdu Studio** folder.
+3. Double-click `StatEdu_Studio.bat`.
 
 The app will open at `127.0.0.1` in the default browser. The launcher searches for `Rscript.exe`, installs missing runtime packages through R when needed, and starts the Shiny app on the local PC.
 
@@ -87,9 +87,9 @@ Run validation scripts from the repository root with Rscript, for example:
 
 ## Citation
 
-If you use **EasyFlow Statistics** in your research, please cite:
+If you use **StatEdu Studio** in your research, please cite:
 
-LEE, I. H. (2026). **EasyFlow Statistics** (Version 0.9.40) [Computer software]. https://doi.org/10.22934/easyflow.statistics
+LEE, I. H. (2026). **StatEdu Studio** (Version 0.9.40) [Computer software]. https://doi.org/10.22934/easyflow.statistics
 
 ## Development Model
 

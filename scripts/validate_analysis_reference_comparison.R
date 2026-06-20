@@ -403,7 +403,7 @@ markdown <- c(
   "",
   sprintf("Rows compared: %d", nrow(comparison)),
   "",
-  "This table validates both direct analysis calculations and EasyFlow automatic decision paths. Automatic paths include sparse-cell Fisher switching, non-normal correlation switching to Spearman, t-test/ANOVA switching to Mann-Whitney, Welch, or Kruskal-Wallis, GLM family detection, count overdispersion selection, and longitudinal count-family selection.",
+  "This table validates both direct analysis calculations and StatEdu Studio automatic decision paths. Automatic paths include sparse-cell Fisher switching, non-normal correlation switching to Spearman, t-test/ANOVA switching to Mann-Whitney, Welch, or Kruskal-Wallis, GLM family detection, count overdispersion selection, and longitudinal count-family selection.",
   "",
   "| Menu | Case | Metric | App result | Reference result | Max abs diff | Tolerance | Status | Note |",
   "|---|---|---:|---:|---:|---:|---:|---|---|",
