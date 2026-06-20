@@ -5,7 +5,7 @@ data_tab_panel <- function() {
       class = "page-shell",
       div(
         class = "app-heading",
-        h1("EasyFlow Latent Mplus"),
+        h1("StatEdu Studio Latent Mplus"),
         div("SPSS/SAS/Stata, Excel, CSV, and DAT files can be loaded and summarized before analysis.", class = "app-subtitle")
       ),
       div(

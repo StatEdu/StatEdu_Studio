@@ -1126,7 +1126,7 @@ create_app_server <- function(app_version) {
           if (length(lines) == 0) {
             return()
           }
-          completed <- any(grepl("\\[EasyFlow Latent\\] Run completed:", lines, fixed = FALSE)) ||
+          completed <- any(grepl("\\[StatEdu Studio Latent\\] Run completed:", lines, fixed = FALSE)) ||
             any(grepl("RUN_PIPELINE END", lines, fixed = TRUE))
           failed <- any(grepl("^Error:|Execution halted|\\[ERROR\\]", lines, ignore.case = TRUE))
           if (isTRUE(failed)) {
@@ -1691,7 +1691,7 @@ write_latent_dataset_files <- function(project_root, dataset_id, setup, current_
 
 open_latent_yaml_file <- function() {
   open_file_dialog(
-    "Open EasyFlow Latent YAML",
+    "Open StatEdu Studio Latent YAML",
     "{{YAML settings} {.yml .yaml}} {{All files} *}"
   )
 }
@@ -1709,12 +1709,12 @@ save_latent_yaml_file <- function(default_dataset_id = "") {
         on.exit(try(tcltk::tkdestroy(parent), silent = TRUE), add = TRUE)
         as.character(tcltk::tkgetSaveFile(
           parent = parent,
-          title = "Save EasyFlow Latent YAML",
+          title = "Save StatEdu Studio Latent YAML",
           initialfile = default_file,
           filetypes = "{{YAML settings} {.yml .yaml}} {{All files} *}"
         ))
       } else {
-        folder <- utils::choose.dir(caption = "Choose a folder for EasyFlow Latent YAML")
+        folder <- utils::choose.dir(caption = "Choose a folder for StatEdu Studio Latent YAML")
         if (is.na(folder) || !nzchar(folder)) character(0) else file.path(folder, default_file)
       }
     },
@@ -1877,14 +1877,14 @@ launch_latent_pipeline <- function(project_root, app_root, output_root = NULL, m
     sprintf("from_step <- %s", deparse(from_step)),
     sprintf("to_step <- %s", deparse(to_step)),
     sprintf("run_mplus <- %s", if (isTRUE(run_mplus)) "TRUE" else "FALSE"),
-    "cat('[EasyFlow Latent] Run started:', format(Sys.time(), '%Y-%m-%d %H:%M:%S'), '\\n')",
-    "cat('[EasyFlow Latent] project_root =', project_root, '\\n')",
-    "cat('[EasyFlow Latent] output_root  =', output_root, '\\n')",
-    "cat('[EasyFlow Latent] mplus_tmp    =', mplus_work_root, '\\n')",
-    "cat('[EasyFlow Latent] dataset_id   =', dataset_id, '\\n')",
-    "cat('[EasyFlow Latent] analysis_id  =', analysis_id, '\\n')",
-    "cat('[EasyFlow Latent] from/to      =', from_step, '->', to_step, '\\n')",
-    "cat('[EasyFlow Latent] run_mplus    =', run_mplus, '\\n')",
+    "cat('[StatEdu Studio Latent] Run started:', format(Sys.time(), '%Y-%m-%d %H:%M:%S'), '\\n')",
+    "cat('[StatEdu Studio Latent] project_root =', project_root, '\\n')",
+    "cat('[StatEdu Studio Latent] output_root  =', output_root, '\\n')",
+    "cat('[StatEdu Studio Latent] mplus_tmp    =', mplus_work_root, '\\n')",
+    "cat('[StatEdu Studio Latent] dataset_id   =', dataset_id, '\\n')",
+    "cat('[StatEdu Studio Latent] analysis_id  =', analysis_id, '\\n')",
+    "cat('[StatEdu Studio Latent] from/to      =', from_step, '->', to_step, '\\n')",
+    "cat('[StatEdu Studio Latent] run_mplus    =', run_mplus, '\\n')",
     "engine_output_dir <- file.path(project_root, 'outputs', dataset_id, analysis_id)",
     "app_output_dir <- file.path(output_root, dataset_id, analysis_id)",
     "sync_output_dir <- function(src, dst) {",
@@ -1911,13 +1911,13 @@ launch_latent_pipeline <- function(project_root, app_root, output_root = NULL, m
     "if ('mplus_work_root' %in% names(formals(run_pipeline))) run_args$mplus_work_root <- mplus_work_root",
     "result <- do.call(run_pipeline, run_args)",
     "sync_output_dir(engine_output_dir, app_output_dir)",
-    "cat('[EasyFlow Latent] Output directory:', app_output_dir, '\\n')",
-    "cat('[EasyFlow Latent] Run completed:', format(Sys.time(), '%Y-%m-%d %H:%M:%S'), '\\n')",
+    "cat('[StatEdu Studio Latent] Output directory:', app_output_dir, '\\n')",
+    "cat('[StatEdu Studio Latent] Run completed:', format(Sys.time(), '%Y-%m-%d %H:%M:%S'), '\\n')",
     "print(result)"
   )
   writeLines(script_lines, script_path, useBytes = TRUE)
   writeLines(
-    sprintf("[EasyFlow Latent] Launching background Rscript at %s", format(Sys.time(), "%Y-%m-%d %H:%M:%S")),
+    sprintf("[StatEdu Studio Latent] Launching background Rscript at %s", format(Sys.time(), "%Y-%m-%d %H:%M:%S")),
     log_path,
     useBytes = TRUE
   )
@@ -1931,7 +1931,7 @@ launch_latent_pipeline <- function(project_root, app_root, output_root = NULL, m
     bat_path,
     useBytes = TRUE
   )
-  system2("cmd", c("/c", "start", "\"EasyFlow Latent Run\"", "/min", shQuote(bat_path, type = "cmd")), wait = FALSE)
+  system2("cmd", c("/c", "start", "\"StatEdu Studio Latent Run\"", "/min", shQuote(bat_path, type = "cmd")), wait = FALSE)
 
   list(script_path = script_path, log_path = log_path, bat_path = bat_path)
 }

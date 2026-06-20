@@ -33,7 +33,7 @@ latent_home_tab <- function() {
       class = "page-shell latent-home",
       div(
         class = "app-heading",
-        h1("EasyFlow Latent Mplus"),
+        h1("StatEdu Studio Latent Mplus"),
         div("A local interface for dictionary-driven Mplus latent analysis pipelines.", class = "app-subtitle")
       ),
       div(
@@ -45,7 +45,7 @@ latent_home_tab <- function() {
       div(
         class = "workspace-panel latent-overview-panel",
         h3("Project Shell"),
-        p("This UI shell reuses the EasyFlow block workflow and runs the bundled Latent pipeline through dictionary and CFG.yml files."),
+        p("This UI shell reuses the StatEdu Studio block workflow and runs the bundled Latent pipeline through dictionary and CFG.yml files."),
         div(
           class = "latent-home-actions",
           actionButton("home_open_mixture", "Start Mixture Model", class = "btn btn-primary")
@@ -480,7 +480,7 @@ about_tab <- function(version) {
       div(
         class = "app-heading",
         h1("About"),
-        div(paste0("EasyFlow Latent Mplus v", version), class = "app-subtitle")
+        div(paste0("StatEdu Studio Latent Mplus v", version), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel latent-main-panel",
