@@ -89,7 +89,7 @@ Run validation scripts from the repository root with Rscript, for example:
 
 If you use **StatEdu Studio** in your research, please cite:
 
-LEE, I. H. (2026). **StatEdu Studio** (Version 0.9.40) [Computer software]. https://doi.org/10.22934/easyflow.statistics
+LEE, I. H. (2026). **StatEdu Studio** (Version 0.9.40) [Computer software]. https://doi.org/10.22934/statedu.studio
 
 ## Development Model
 

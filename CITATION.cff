@@ -8,6 +8,6 @@ authors:
   - family-names: "LEE"
     given-names: "IL HYUN"
 repository-code: "https://github.com/StatEdu/StatEdu_Studio_dev"
-url: "https://github.com/StatEdu/StatEdu_Studio_dev"
-doi: "10.22934/easyflow.statistics"
+url: "https://studio.statedu.com"
+doi: "10.22934/statedu.studio"
 abstract: "StatEdu Studio is a local Shiny application for statistical analysis."

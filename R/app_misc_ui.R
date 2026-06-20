@@ -154,7 +154,7 @@ about_citation_field <- function(field, fallback = "") {
 
 about_application_document <- function(version) {
   release_date <- about_citation_field("date-released", "2026-05-26")
-  doi <- about_citation_field("doi", "10.22934/easyflow.statistics")
+  doi <- about_citation_field("doi", "10.22934/statedu.studio")
   repository <- about_citation_field("repository-code", "https://github.com/StatEdu/StatEdu_Studio_dev")
 
   div(
