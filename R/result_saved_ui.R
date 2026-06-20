@@ -931,6 +931,10 @@ result_snapshot_store_path <- function() {
   if (nzchar(configured)) {
     return(configured)
   }
+  file.path("data", "StatEdu_Studio_results.json")
+}
+
+legacy_result_snapshot_store_path <- function() {
   file.path("data", "EasyFlow_Statistics_results.json")
 }
 
@@ -969,6 +973,15 @@ normalize_result_snapshot_entries <- function(entries) {
 }
 
 read_result_snapshot_store <- function(path = result_snapshot_store_path()) {
+  if (!file.exists(path)) {
+    default_path <- result_snapshot_store_path()
+    legacy_path <- legacy_result_snapshot_store_path()
+    if (identical(path, default_path) && file.exists(legacy_path)) {
+      path <- legacy_path
+    } else {
+      return(list())
+    }
+  }
   if (!file.exists(path)) {
     return(list())
   }
