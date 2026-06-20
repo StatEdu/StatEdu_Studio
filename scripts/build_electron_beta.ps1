@@ -216,5 +216,12 @@ try {
   Pop-Location
 }
 
+foreach ($devArtifact in @(".Rhistory", "builder-debug.yml")) {
+  $devArtifactPath = Join-Path $distDir $devArtifact
+  if (Test-Path -LiteralPath $devArtifactPath) {
+    Remove-Item -LiteralPath $devArtifactPath -Force
+  }
+}
+
 Write-Host "Electron installer output:"
 Get-ChildItem -LiteralPath $distDir -Filter "*.exe" | Sort-Object LastWriteTime -Descending | Select-Object FullName, Length, LastWriteTime
