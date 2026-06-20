@@ -93,6 +93,23 @@ function Assert-FileNotContains {
   Write-Host "[ok] $Label"
 }
 
+function Assert-NoDistArtifacts {
+  param(
+    [string]$Path
+  )
+  if (-not (Test-Path -LiteralPath $Path)) {
+    return
+  }
+  $blocked = Get-ChildItem -LiteralPath $Path -Force | Where-Object {
+    $_.Name -match "^EasyFlow_Statistics_Beta_" -or
+    $_.Name -in @(".Rhistory", "builder-debug.yml")
+  }
+  if ($blocked) {
+    throw "Unexpected distribution artifact(s): $($blocked.Name -join ', ')"
+  }
+  Write-Host "[ok] distribution output has no legacy EasyFlow or debug artifacts"
+}
+
 function Assert-AppBootstrapModulesTracked {
   $git = Get-Command "git.exe" -ErrorAction SilentlyContinue
   if (-not $git) {
@@ -132,6 +149,7 @@ Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "contextI
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "nodeIntegration:\s*false" "nodeIntegration disabled"
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "sandbox:\s*true" "sandbox enabled"
 Assert-AppBootstrapModulesTracked
+Assert-NoDistArtifacts (Join-Path $RepoRoot "dist\electron")
 
 if (-not $SkipUnpackedChecks) {
   Assert-Path $ElectronOutDir "unpacked Electron output"

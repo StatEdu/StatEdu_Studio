@@ -28,6 +28,7 @@ Use this checklist before creating a public beta installer.
 - Confirm `runtime_prune_report.csv` exists and contains only `keep` rows, unless an intentional exception is documented.
 - Confirm `electron` and `electron-builder` are exact version pins in `packaging/electron/package.json`.
 - Run `npm ci` from `packaging/electron` before packaging.
+- Confirm `dist/electron` contains only the current `StatEdu_Studio_Beta_Setup_*.exe`, its `.blockmap`, and `win-unpacked`; remove legacy EasyFlow installers and debug artifacts before publishing.
 
 ## Open Source Notices
 
