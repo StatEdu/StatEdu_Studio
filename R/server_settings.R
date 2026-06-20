@@ -256,7 +256,7 @@ register_settings_reset_handler <- function(
     start <- Sys.time()
     message("[EasyFlow timing] reset_session_settings: start")
     suppress_dirty_tracking(TRUE)
-    active_data_file(NULL)
+    active_data_file(list(cleared = TRUE))
     restored_data_file("")
     restored_variable_info(NULL)
     selected_names(character(0))

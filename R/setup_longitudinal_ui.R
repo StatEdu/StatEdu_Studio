@@ -32,6 +32,8 @@ longitudinal_setup_state <- function(
   missing_strategy = NULL,
   missing_imputations = 5L,
   missing_iterations = 5L,
+  mi_outcome = "observed",
+  ipw_auxiliary = character(0),
   weight_type = "none",
   weight_trim = "none",
   options_tab = "Model"
@@ -49,6 +51,8 @@ longitudinal_setup_state <- function(
   predictors <- intersect(as.character(predictors %||% character(0)), selected)
   assigned <- unique(c(outcome, id, cluster, time, exposure, predictors, weight))
   available <- setdiff(selected, assigned)
+  ipw_auxiliary_choices <- available
+  ipw_auxiliary <- intersect(as.character(ipw_auxiliary %||% character(0)), ipw_auxiliary_choices)
 
   include_time <- isTRUE(include_time)
   terms_selected <- include_time || length(predictors) > 0
@@ -118,6 +122,9 @@ longitudinal_setup_state <- function(
     missing_strategy_details = longitudinal_missing_strategy_details(resolved_missing_strategies, current_model),
     missing_imputations = longitudinal_resolve_mi_count(missing_imputations, default = 5L, minimum = 2L, maximum = 50L),
     missing_iterations = longitudinal_resolve_mi_count(missing_iterations, default = 5L, minimum = 1L, maximum = 50L),
+    mi_outcome = longitudinal_resolve_mi_outcome(mi_outcome),
+    ipw_auxiliary = ipw_auxiliary,
+    ipw_auxiliary_choices = display_variable_choices_with_measurements(ipw_auxiliary_choices, variable_table, labels),
     weight_type = resolved_weight_type,
     weight_type_detail = longitudinal_weight_type_detail(resolved_weight_type, current_model),
     weight_trim = longitudinal_resolve_weight_trim(weight_trim),
@@ -441,13 +448,11 @@ longitudinal_setup_panel <- function(state, status_message = NULL) {
         )
       ),
       div(
-        class = "analysis-transfer-controls longitudinal-transfer-controls",
-        longitudinal_move_button("longitudinal_outcome_move", state$move_disabled && length(state$outcome) == 0),
+        class = "analysis-transfer-controls longitudinal-transfer-controls longitudinal-panel-transfer-controls",
         longitudinal_move_button("longitudinal_id_move", state$move_disabled && length(state$id) == 0),
         longitudinal_move_button("longitudinal_cluster_move", state$move_disabled && length(state$cluster) == 0),
         longitudinal_move_button("longitudinal_time_move", state$move_disabled && length(state$time) == 0),
-        longitudinal_move_button("longitudinal_exposure_move", state$move_disabled && length(state$exposure) == 0),
-        longitudinal_move_button("longitudinal_predictors_move", state$move_disabled && length(state$predictors) == 0)
+        longitudinal_move_button("longitudinal_exposure_move", state$move_disabled && length(state$exposure) == 0)
       ),
       longitudinal_target_block(
         "Panel structure",
@@ -488,6 +493,11 @@ longitudinal_setup_panel <- function(state, status_message = NULL) {
           allowed_measurements = c("continuous"),
           field_class = "longitudinal-exposure-field"
         )
+      ),
+      div(
+        class = "analysis-transfer-controls longitudinal-transfer-controls longitudinal-model-transfer-controls",
+        longitudinal_move_button("longitudinal_outcome_move", state$move_disabled && length(state$outcome) == 0),
+        longitudinal_move_button("longitudinal_predictors_move", state$move_disabled && length(state$predictors) == 0)
       ),
       longitudinal_target_block(
         "Model variables",
@@ -594,11 +604,42 @@ longitudinal_setup_panel <- function(state, status_message = NULL) {
                     div(class = "analysis-option-subtitle", "Multiple imputation settings"),
                     div(
                       class = "regression-field",
+                      selectInput(
+                        "longitudinal_mi_outcome",
+                        "Dependent-variable handling",
+                        choices = longitudinal_mi_outcome_choices(),
+                        selected = state$mi_outcome,
+                        selectize = FALSE
+                      )
+                    ),
+                    div(
+                      class = "regression-field",
                       numericInput("longitudinal_missing_imputations", "MI datasets", value = state$missing_imputations, min = 2, max = 50, step = 1)
                     ),
                     div(
                       class = "regression-field",
                       numericInput("longitudinal_missing_iterations", "MI iterations", value = state$missing_iterations, min = 1, max = 50, step = 1)
+                    )
+                  )
+                },
+                if (state$missing_strategy %in% c("ipw", "wgee")) {
+                  div(
+                    class = "longitudinal-ipw-settings",
+                    div(class = "analysis-option-subtitle", "IPW observation model"),
+                    div(
+                      class = "regression-field",
+                      selectizeInput(
+                        "longitudinal_ipw_auxiliary",
+                        "Auxiliary variables",
+                        choices = state$ipw_auxiliary_choices,
+                        selected = state$ipw_auxiliary,
+                        multiple = TRUE,
+                        options = list(plugins = list("remove_button"))
+                      )
+                    ),
+                    div(
+                      class = "longitudinal-missing-detail",
+                      "Auxiliary variables are used only in the missingness/dropout observation model when fully observed; they do not become fixed-effect predictors."
                     )
                   )
                 }
