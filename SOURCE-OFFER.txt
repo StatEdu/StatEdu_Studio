@@ -3,7 +3,7 @@ StatEdu Studio Source Code and License Notice
 
 StatEdu Studio is distributed with source code available from:
 
-  https://github.com/StatEdu/EasyFlow_Statistics_dev
+  https://github.com/StatEdu/StatEdu_Studio_dev
 
 The StatEdu Studio application source code is intended to be
 distributed under the GNU General Public License, version 2 or later
