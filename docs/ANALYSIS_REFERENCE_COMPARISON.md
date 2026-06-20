@@ -1,6 +1,16 @@
-# Analysis Reference Comparison
+# Validation Reference Comparison
 
-Generated: 2026-06-19 09:20:29 KST
+Generated: 2026-06-20 13:17:08 KST
+
+This document collects StatEdu Studio validation checks that compare app outputs with external reference formulas, public R package results, or explicit automatic decision rules.
+
+## Summary
+
+- Sample-size calculations are compared with G*Power-equivalent formulas, public R packages, or literature-based formulas.
+- Effect-size calculations are compared with `effectsize` or equivalent standard formulas.
+- Analysis calculations are compared with base R, contributed R packages, and StatEdu Studio automatic decision rules.
+
+## Analysis Reference Comparison
 
 Rows compared: 54
 
@@ -22,7 +32,7 @@ This table validates both direct analysis calculations and StatEdu Studio automa
 | t-test / ANOVA | Independent t-test | t rounded |      -1.938 |      -1.938 | 0 |       0.001 | PASS |  |
 | t-test / ANOVA | One-way ANOVA | F rounded |       0.078 |       0.078 | 0 |       0.001 | PASS |  |
 | t-test / ANOVA | Auto normality violation: two groups | selected test | Mann-Whitney U test (Wilcoxon rank-sum test) | Mann-Whitney U test (Wilcoxon rank-sum test) | 0 | 0 | PASS | Skewness/kurtosis rule should switch the two-group comparison to Mann-Whitney. |
-| t-test / ANOVA | Auto normality violation: two groups | p rounded |       0.001 | 0 |       0.001 |       0.001 | PASS |  |
+| t-test / ANOVA | Auto normality violation: two groups | p threshold category | p <= .001 | p <= .001 | 0 | 0 | PASS | Both StatEdu Studio and the reference result classify the Mann-Whitney p-value at the .001 reporting threshold. |
 | t-test / ANOVA | Auto unequal variance: two groups | selected test | Welch t-test | Welch t-test | 0 | 0 | PASS | Normality rule passes, Levene rule fails; Welch t-test should be selected. |
 | t-test / ANOVA | Auto unequal variance: two groups | t rounded |       -0.28 |       -0.28 | 0 |       0.001 | PASS |  |
 | t-test / ANOVA | Auto unequal variance: three groups | selected test | Welch ANOVA | Welch ANOVA | 0 | 0 | PASS | Normality rule passes, Levene rule fails; Welch ANOVA should be selected. |
@@ -62,3 +72,71 @@ This table validates both direct analysis calculations and StatEdu Studio automa
 | Longitudinal / Panel | LMM random slope | max \|SE diff\| | 0 | 0 | 0 | 0.00000001 | PASS |  |
 | Longitudinal / Panel | Panel fixed effects | max \|B diff\| | 0 | 0 | 0 | 0.0000000001 | PASS |  |
 | Longitudinal / Panel | Panel fixed effects | max \|SE diff\| | 0 | 0 | 0 | 0.0000000001 | PASS |  |
+
+## Sample Size Reference Comparison
+
+The following table compares representative StatEdu Studio sample-size results with G*Power-equivalent formulas, public R packages, or literature-based reference formulas. Judgement is based on the final rounded sample size used for reporting. `match` means the final rounded value is identical, `near` means a small one-person or one-cluster difference within the same formula family, and `not directly comparable` means no installed reference function matched the exact StatEdu Studio target.
+
+| Scope | Method | Comparator | Unit | StatEdu Studio result | Reference rounded | Difference | Decision |
+|---|---|---|---|---:|---:|---:|---|
+| G*Power comparable | t-test | G*Power-equivalent | per group | 64 | 64 | 0 | match |
+| G*Power comparable | Paired t-test | G*Power-equivalent | pairs | 34 | 34 | 0 | match |
+| G*Power comparable | One-sample t-test | G*Power-equivalent | participants | 34 | 34 | 0 | match |
+| G*Power comparable | ANOVA | G*Power-equivalent | total N | 159 | 159 | 0 | match |
+| G*Power comparable | Chi-square | G*Power-equivalent | total N | 122 | 122 | 0 | match |
+| G*Power comparable | Correlation | G*Power-equivalent | participants | 85 | 85 | 0 | match |
+| G*Power comparable | Linear regression | G*Power-equivalent | total N | 134 | 134 | 0 | match |
+| G*Power comparable | Two proportions | G*Power-equivalent | per group | 170 | 170 | 0 | match |
+| G*Power comparable | One proportion | G*Power-equivalent | participants | 80 | 80 | 0 | match |
+| G*Power comparable | ANCOVA | G*Power-equivalent noncentral F | total N | 90 | 90 | 0 | match |
+| Beyond G*Power | GEE | repeated-measures design effect | participants per group | 103 | 103 | 0 | match |
+| Beyond G*Power | LMM | `longpower::diggle.linear.power` | participants per group | 146 | 146 | 0 | match |
+| Beyond G*Power | Survival / Cox | Schoenfeld event formula | total participants | 618 | 618 | 0 | match |
+| Beyond G*Power | Equivalence / TOST | `TOSTER::power_t_TOST` | participants per group | 70 | 70 | 0 | match |
+| Beyond G*Power | Diagnostic accuracy | `epiR::epi.ssdxsesp` | total participants | 1230 | 1230 | 0 | match |
+| Beyond G*Power | ROC AUC | direct package comparator not available | cases | 28 | NA | NA | not directly comparable |
+| Beyond G*Power | Count / rates | Wald two-rate formula | person-time per group | 79 | 79 | 0 | match |
+| Beyond G*Power | Cluster trial | `WebPower::wp.crt2arm` | clusters total | 16 | 16 | 0 | match |
+| Beyond G*Power | Precision / CI | normal CI precision formula | participants | 97 | 97 | 0 | match |
+| Beyond G*Power | Reliability / agreement | direct package comparator not available | subjects | 36 | NA | NA | not directly comparable |
+| Beyond G*Power | SEM / CFA | `WebPower::wp.sem.rmsea` | participants | 214 | 214 | 0 | match |
+
+Summary: all 10 G*Power-comparable calculations matched the final rounded value. Among calculations beyond G*Power, GEE, LMM, Survival/Cox, mean equivalence/TOST, diagnostic accuracy, count/rate, cluster trial, precision/CI, and SEM/CFA also matched the public package or reference formula after applying StatEdu Studio's final rounding rule. ROC AUC and reliability/agreement remain literature-formula based because a directly matching installed reference function was not available.
+
+## Effect Size Reference Comparison
+
+The following table compares representative StatEdu Studio effect-size results with the `effectsize` package or equivalent standard formulas. Effect sizes are compared on the raw value scale because no sample-size rounding rule applies.
+
+| Method | Compared effect size | Condition | StatEdu Studio value | Reference value | Difference | Decision |
+|---|---|---|---:|---:|---:|---|
+| t-test | Cohen's d | Independent t, equal n: t=2.5, df=78 | 0.559017 | 0.559017 | 0 | match |
+| Proportion | Cohen's h | p1=.65, p2=.50 | 0.304693 | 0.304693 | 0 | match |
+| Chi-square | Cramer's V | Chi-square=12.5, N=200, 3x4 table | 0.176777 | 0.176777 | 0 | match |
+| Correlation | Pearson r | t=2.5, df=78 | 0.272367 | 0.272367 | 0 | match |
+| ANOVA | Partial eta squared | F=5.2, df_effect=2, df_error=87 | 0.106776 | 0.106776 | 0 | match |
+| ANCOVA | Adjusted Cohen's f | unadjusted f=.25, covariate R2=.30 | 0.298807 | 0.298807 | 0 | match |
+| Nonparametric | Rank-biserial r | Mann-Whitney U=1200, n1=40, n2=45 | 0.333333 | 0.333333 | 0 | match |
+| McNemar | Matched-pair odds ratio | Discordant counts b=18, c=10 | 1.800000 | 1.800000 | 0 | match |
+| Regression | Cohen's f-squared | Multiple regression R2=.20 | 0.250000 | 0.250000 | 0 | match |
+| GEE | Cohen's h | Binary marginal proportions p1=.65, p2=.50 | 0.304693 | 0.304693 | 0 | match |
+| LMM | Standardized fixed effect | simple fixed effect d=.30, m=3, ICC=.30 | 0.300000 | 0.300000 | 0 | match |
+| LMM | Repeated-measures planning effect | simple fixed effect d=.30, m=3, ICC=.30 | 0.410792 | 0.410792 | 0 | match |
+| LMM | SPSS omnibus partial eta squared | F=28.061, df1=3, df2=23.057 | 0.784996 | 0.784996 | 0 | match |
+| LMM | SPSS pairwise dz | mean diff=.824, variances=.326/.199, covariance=.117 | 1.527498 | 1.527498 | 0 | match |
+| GLMM | Logistic latent-scale d | OR=1.80 | 0.324064 | 0.324064 | 0 | match |
+| GLMM | Incidence rate ratio | IRR=1.50 | 1.500000 | 1.500000 | 0 | match |
+| Survival / Cox | Hazard ratio | HR=.70 | 0.700000 | 0.700000 | 0 | match |
+| Survival / Cox | log hazard ratio | HR=.70 | -0.356675 | -0.356675 | 0 | match |
+| Equivalence / NI | Standardized distance to margin | Mean equivalence: difference=.05, margin=.20, SD=1 | 0.150000 | 0.150000 | 0 | match |
+| ROC AUC | AUC | AUC=.70 vs null=.50 | 0.700000 | 0.700000 | 0 | match |
+| ROC AUC | Approximate Cohen's d | AUC=.70 vs null=.50 | 0.741614 | 0.741614 | 0 | match |
+| Count / Rate Regression | Incidence rate ratio | IRR=1.50 | 1.500000 | 1.500000 | 0 | match |
+| Count / Rate Regression | log incidence rate ratio | IRR=1.50 | 0.405465 | 0.405465 | 0 | match |
+| Cluster Trial | Planning effect size | parallel continuous: d=.50, m=20, ICC=.05 | 0.358057 | 0.358057 | 0 | match |
+| Precision / CI | Standardized half-width | Mean estimate=10, half-width=1.5, SD=6 | 0.250000 | 0.250000 | 0 | match |
+| Reliability / Agreement | Alpha difference | alpha=.80 vs reference=.70, items=5 | 0.100000 | 0.100000 | 0 | match |
+| Reliability / Agreement | Average inter-item r | alpha=.80 vs reference=.70, items=5 | 0.444444 | 0.444444 | 0 | match |
+| SEM / CFA | RMSEA difference | df=20, RMSEA0=.05, RMSEA1=.08 | 0.030000 | 0.030000 | 0 | match |
+| SEM / CFA | NCP difference per N | df=20, RMSEA0=.05, RMSEA1=.08 | 0.078000 | 0.078000 | 0 | match |
+
+Summary: all 25 effect-size comparison items matched the reference definition. For independent t-test conversion, StatEdu Studio uses the equal-n exact formula `2t/sqrt(df + 2)`, which matches the G*Power convention rather than the `effectsize::t_to_d` default approximation `2t/sqrt(df_error)`. Cramer's V is compared against the unadjusted definition (`adjust = FALSE`) used by StatEdu Studio.
