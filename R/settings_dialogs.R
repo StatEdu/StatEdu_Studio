@@ -218,7 +218,7 @@ save_settings_file <- function() {
         as.character(tcltk::tkgetSaveFile(
           parent = parent,
           title = "Save StatEdu Studio Settings",
-          initialfile = "EFS_settings.efs-settings",
+          initialfile = "StatEdu_Studio_settings.efs-settings",
           defaultextension = ".efs-settings",
           filetypes = "{{StatEdu Studio Settings} {.efs-settings}} {{JSON settings} {.json}} {{All files} *}"
         ))
@@ -227,7 +227,7 @@ save_settings_file <- function() {
         if (is.na(folder) || !nzchar(folder)) {
           character(0)
         } else {
-          file.path(folder, "EFS_settings.efs-settings")
+          file.path(folder, "StatEdu_Studio_settings.efs-settings")
         }
       }
     },

@@ -256,7 +256,7 @@ register_ascvd10_calculator_handlers <- function(input, output, session, dataset
     DT::datatable(utils::head(data[, preview_names, drop = FALSE], 50), rownames = FALSE, filter = "top", options = list(pageLength = 10, scrollX = TRUE))
   })
   output$download_ascvd10_calculator <- downloadHandler(
-    filename = function() paste0("easyflow_ascvd10_", format(Sys.Date(), "%Y%m%d"), ".csv"),
+    filename = function() paste0("StatEdu_Studio_ascvd10_", format(Sys.Date(), "%Y%m%d"), ".csv"),
     content = function(file) {
       data <- result()
       if (is.null(data)) data <- ascvd10_result(dataset_fn(), ascvd10_selected_variables(input))

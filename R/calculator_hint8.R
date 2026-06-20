@@ -380,7 +380,7 @@ register_hint8_calculator_handlers <- function(
 
   output$download_hint8_calculator <- downloadHandler(
     filename = function() {
-      paste0("easyflow_hint8_", format(Sys.Date(), "%Y%m%d"), ".csv")
+      paste0("StatEdu_Studio_hint8_", format(Sys.Date(), "%Y%m%d"), ".csv")
     },
     content = function(file) {
       data <- result()
