@@ -1,4 +1,4 @@
-# Auto-extracted shared functions for easyflow_statistics.
+# Auto-extracted shared functions for StatEdu Studio.
 
 prepare_data <- function(data) {
   data <- as.data.frame(data, stringsAsFactors = FALSE, check.names = TRUE)

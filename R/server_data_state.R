@@ -425,7 +425,7 @@ create_restore_settings_state_fn <- function(
 
     data_switch <- settings_external_data_switch(settings, settings_path, current_data_file_fn())
     if (!is.null(data_switch)) {
-      message(sprintf("[EasyFlow timing] restore_settings_state: data switch -> %s", data_switch$path %||% ""))
+      message(sprintf("[StatEdu timing] restore_settings_state: data switch -> %s", data_switch$path %||% ""))
       pending_settings(settings)
       reset_on_dataset_load(FALSE)
       active_data_file(data_switch)
@@ -436,7 +436,7 @@ create_restore_settings_state_fn <- function(
     if (is.null(current_data_file_fn())) {
       pending_settings(settings)
       if (restore_settings_data_file_fn(settings, settings_path)) {
-        message("[EasyFlow timing] restore_settings_state: restored data file from settings")
+        message("[StatEdu timing] restore_settings_state: restored data file from settings")
         easyflow_log_timing("restore_settings_state restored data file", start)
         return()
       }

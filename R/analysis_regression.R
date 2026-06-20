@@ -1,4 +1,4 @@
-# Auto-extracted shared functions for easyflow_statistics.
+# Auto-extracted shared functions for StatEdu Studio.
 
 regression_dw_table_path <- file.path("data", "durbin_watson_critical_values.csv")
 

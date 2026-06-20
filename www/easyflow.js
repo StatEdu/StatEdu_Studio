@@ -1312,7 +1312,7 @@
             cloneImage.removeAttribute('srcset');
           } catch (error) {
             if (window.console && window.console.warn) {
-              window.console.warn('EasyFlow result image snapshot failed', error);
+              window.console.warn('StatEdu Studio result image snapshot failed', error);
             }
           }
         }
@@ -1331,7 +1331,7 @@
             cloneCanvases[i].parentNode.replaceChild(img, cloneCanvases[i]);
           } catch (error) {
             if (window.console && window.console.warn) {
-              window.console.warn('EasyFlow result canvas snapshot failed', error);
+              window.console.warn('StatEdu Studio result canvas snapshot failed', error);
             }
           }
         }

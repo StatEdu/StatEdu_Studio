@@ -1,4 +1,4 @@
-# App bootstrap helpers for easyflow_statistics.
+# App bootstrap helpers for StatEdu Studio.
 # All statistical analysis dependencies must be CRAN packages.
 
 required_packages <- c(
