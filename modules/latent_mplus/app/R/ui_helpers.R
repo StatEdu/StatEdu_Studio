@@ -16,7 +16,7 @@ app_stylesheet_link <- function(version) {
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-efs-0933-latent"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-shiny-input-ready-guard"))
 }
 
 latent_default_project_root <- function() {

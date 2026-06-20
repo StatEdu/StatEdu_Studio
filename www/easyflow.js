@@ -4,6 +4,10 @@
       window.easyflowCodingErrorFixValues = window.easyflowCodingErrorFixValues || {};
       window.easyflowTransferSelectionOrderByInput = window.easyflowTransferSelectionOrderByInput || {};
 
+      function easyflowCanSetInputValue() {
+        return !!(window.Shiny && typeof Shiny.setInputValue === 'function');
+      }
+
       window.easyflowRestoreCodingErrorFixInputs = function(root) {
         root = root || document;
         var values = window.easyflowCodingErrorFixValues || {};
@@ -1124,7 +1128,7 @@
         document.querySelectorAll('.step3-variables-section').forEach(function(section) {
           section.style.display = window.easyflowStep3View === 'variables' ? '' : 'none';
         });
-        if (window.Shiny) {
+        if (easyflowCanSetInputValue()) {
           Shiny.setInputValue('step3_panel_view', window.easyflowStep3View, {priority: 'event'});
         }
         return false;
@@ -1141,7 +1145,7 @@
         document.querySelectorAll('.step3-variables-section').forEach(function(section) {
           section.style.display = window.easyflowStep3View === 'variables' ? '' : 'none';
         });
-        if (window.Shiny) {
+        if (easyflowCanSetInputValue()) {
           Shiny.setInputValue('step3_panel_view', window.easyflowStep3View, {priority: 'event'});
         }
       }
@@ -1384,7 +1388,7 @@
       });
 
       window.addEventListener('error', function(event) {
-        if (!window.Shiny) return;
+        if (!easyflowCanSetInputValue()) return;
         Shiny.setInputValue('client_js_error', {
           message: event.message || '',
           source: event.filename || '',
@@ -1395,7 +1399,7 @@
       });
 
       window.addEventListener('unhandledrejection', function(event) {
-        if (!window.Shiny) return;
+        if (!easyflowCanSetInputValue()) return;
         Shiny.setInputValue('client_js_error', {
           message: String(event.reason || ''),
           source: 'unhandledrejection',

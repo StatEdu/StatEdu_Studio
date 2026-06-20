@@ -84,7 +84,7 @@ app_stylesheet_link <- function(version) {
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-data-latent-perf"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-shiny-input-ready-guard"))
 }
 
 app_head_tags <- function(version) {
