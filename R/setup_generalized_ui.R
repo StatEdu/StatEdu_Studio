@@ -22,6 +22,8 @@ generalized_setup_state <- function(
   missing_strategy = "complete",
   missing_imputations = 5L,
   missing_iterations = 5L,
+  mi_outcome = "observed",
+  ipw_auxiliary = character(0),
   options_tab = "Model"
 ) {
   selected_names <- as.character(selected_names %||% character(0))
@@ -35,6 +37,8 @@ generalized_setup_state <- function(
   }
   predictors <- setdiff(intersect(as.character(predictors %||% character(0)), selected_names), unique(c(outcome, exposure)))
   available <- setdiff(selected_names, unique(c(outcome, exposure, predictors)))
+  ipw_auxiliary_choices <- available
+  ipw_auxiliary <- intersect(as.character(ipw_auxiliary %||% character(0)), ipw_auxiliary_choices)
   family <- generalized_resolve_family(family)
   link <- generalized_resolve_link(family, link)
   se_type <- generalized_resolve_se_type(se_type, robust = robust)
@@ -59,11 +63,15 @@ generalized_setup_state <- function(
     overdispersion = setup_option_checked(overdispersion, default = TRUE),
     assumption_checks = setup_option_checked(assumption_checks, default = TRUE),
     exponentiate = setup_option_checked(exponentiate, default = TRUE),
+    report_b_se = !setup_option_checked(exponentiate, default = TRUE),
     show_vif = setup_option_checked(show_vif, default = FALSE),
     missing_strategy = generalized_resolve_missing_strategy(missing_strategy),
     missing_strategy_detail = generalized_missing_strategy_detail(missing_strategy),
     missing_imputations = generalized_resolve_mi_count(missing_imputations, default = 5L, minimum = 2L),
     missing_iterations = generalized_resolve_mi_count(missing_iterations, default = 5L, minimum = 1L),
+    mi_outcome = generalized_resolve_mi_outcome(mi_outcome),
+    ipw_auxiliary = ipw_auxiliary,
+    ipw_auxiliary_choices = display_variable_choices_with_measurements(ipw_auxiliary_choices, variable_table, labels),
     options_tab = as.character(options_tab %||% "Model")[[1]],
     run_disabled = length(outcome) != 1 || length(predictors) == 0
   )
@@ -161,8 +169,6 @@ generalized_setup_panel <- function(state, status_message = NULL) {
                 selected = state$link,
                 selectize = FALSE
               ),
-              div("Reporting", class = "analysis-option-title generalized-reporting-title"),
-              checkboxInput("generalized_exponentiate", "Report exp(B) for logit / log-link models", value = state$exponentiate),
               div("Inference", class = "analysis-option-title generalized-section-title"),
               selectInput(
                 "generalized_se_type",
@@ -170,7 +176,8 @@ generalized_setup_panel <- function(state, status_message = NULL) {
                 choices = generalized_se_type_choices(),
                 selected = state$se_type,
                 selectize = FALSE
-              )
+              ),
+              checkboxInput("generalized_report_b_se", "Report B and SE instead of OR / ratio and 95% CI", value = state$report_b_se)
             )
           ),
           tabPanel(
@@ -189,8 +196,33 @@ generalized_setup_panel <- function(state, status_message = NULL) {
                 div(
                   class = "generalized-mi-settings",
                   div(class = "analysis-option-subtitle", "Multiple imputation settings"),
+                  selectInput(
+                    "generalized_mi_outcome",
+                    "Dependent-variable handling",
+                    choices = generalized_mi_outcome_choices(),
+                    selected = state$mi_outcome,
+                    selectize = FALSE
+                  ),
                   numericInput("generalized_missing_imputations", "MI datasets", value = state$missing_imputations, min = 2, max = 50, step = 1),
                   numericInput("generalized_missing_iterations", "MI iterations", value = state$missing_iterations, min = 1, max = 50, step = 1)
+                )
+              },
+              if (identical(state$missing_strategy, "ipw")) {
+                div(
+                  class = "generalized-ipw-settings",
+                  div(class = "analysis-option-subtitle", "IPW observation model"),
+                  selectizeInput(
+                    "generalized_ipw_auxiliary",
+                    "Auxiliary variables",
+                    choices = state$ipw_auxiliary_choices,
+                    selected = state$ipw_auxiliary,
+                    multiple = TRUE,
+                    options = list(plugins = list("remove_button"))
+                  ),
+                  div(
+                    "Auxiliary variables are used only in the complete-case observation model when fully observed; they do not become GLM predictors.",
+                    class = "generalized-help-text"
+                  )
                 )
               }
             )
@@ -219,7 +251,8 @@ generalized_setup_panel <- function(state, status_message = NULL) {
         class = "btn btn-primary",
         disabled = if (isTRUE(state$run_disabled)) "disabled" else NULL
       ),
-      uiOutput("generalized_reset_control")
+      uiOutput("generalized_reset_control"),
+      uiOutput("generalized_save_control")
     )
   )
 }

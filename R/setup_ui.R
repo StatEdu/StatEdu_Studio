@@ -401,10 +401,12 @@ generalized_tab_panel <- function(title = "GLM") {
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel generalized-workspace-panel",
-        h3("Generalized Linear Model (GLM)"),
-        uiOutput("generalized_setup"),
-        uiOutput("generalized_save_control"),
-        uiOutput("generalized_results")
+        analysis_workspace_heading("Generalized Linear Model (GLM)", "generalized"),
+        analysis_workspace_body(
+          "generalized",
+          uiOutput("generalized_setup"),
+          uiOutput("generalized_results")
+        )
       )
     )
   )

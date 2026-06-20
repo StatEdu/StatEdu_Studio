@@ -199,6 +199,8 @@ register_longitudinal_handlers <- function(
       missing_strategy = isolate(input$longitudinal_missing_strategy %||% longitudinal_default_missing_strategy(current_model_type)),
       missing_imputations = isolate(input$longitudinal_missing_imputations %||% 5L),
       missing_iterations = isolate(input$longitudinal_missing_iterations %||% 5L),
+      mi_outcome = isolate(input$longitudinal_mi_outcome %||% "observed"),
+      ipw_auxiliary = isolate(input$longitudinal_ipw_auxiliary %||% character(0)),
       weight_type = isolate(input$longitudinal_weight_type %||% longitudinal_default_weight_type(current_model_type, has_weight)),
       weight_trim = isolate(input$longitudinal_weight_trim %||% "none"),
       options_tab = isolate(input$longitudinal_options_tab %||% "Model")
@@ -527,6 +529,16 @@ register_longitudinal_handlers <- function(
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
+  observeEvent(input$longitudinal_mi_outcome, {
+    longitudinal_results(NULL)
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$longitudinal_ipw_auxiliary, {
+    longitudinal_results(NULL)
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
   observeEvent(input$longitudinal_weight_type, {
     longitudinal_results(NULL)
     refresh_longitudinal_setup()
@@ -610,6 +622,8 @@ register_longitudinal_handlers <- function(
           missing_strategies = longitudinal_missing_strategy_engines(input$longitudinal_missing_strategy, input$longitudinal_model_type),
           missing_imputations = input$longitudinal_missing_imputations %||% 5L,
           missing_iterations = input$longitudinal_missing_iterations %||% 5L,
+          mi_outcome = input$longitudinal_mi_outcome %||% "observed",
+          ipw_auxiliary = input$longitudinal_ipw_auxiliary %||% character(0),
           weight_type = input$longitudinal_weight_type %||% "none",
           weight_trim = input$longitudinal_weight_trim %||% "none",
           variable_info = variable_table_fn(),
@@ -651,6 +665,7 @@ register_longitudinal_handlers <- function(
     updateSelectInput(session, "longitudinal_missing_strategy", selected = longitudinal_default_missing_strategy("gee"))
     updateNumericInput(session, "longitudinal_missing_imputations", value = 5)
     updateNumericInput(session, "longitudinal_missing_iterations", value = 5)
+    updateSelectInput(session, "longitudinal_mi_outcome", selected = "observed")
     lapply(longitudinal_all_check_input_ids(), function(check_input_id) {
       updateCheckboxInput(session, check_input_id, value = TRUE)
     })

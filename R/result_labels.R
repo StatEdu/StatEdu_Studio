@@ -172,6 +172,11 @@ categorical_reference_rows_static <- function(
     row$Term <- term
     if ("B" %in% columns) {
       row$B <- "reference"
+    } else {
+      estimate_column <- intersect(c("OR", "RR", "Mean ratio", "Rate ratio", "exp(B)", "Estimate"), columns)
+      if (length(estimate_column) > 0) {
+        row[[estimate_column[[1]]]] <- "reference"
+      }
     }
     row$.raw_variable <- name
     row$.raw_level <- reference

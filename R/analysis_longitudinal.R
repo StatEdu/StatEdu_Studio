@@ -285,7 +285,7 @@ longitudinal_missing_strategy_details <- function(strategies, model_type = NULL)
   unname(vapply(keys, function(key) {
     switch(
       key,
-      mi = "MI: standard mice-based missing-data sensitivity analysis. It imputes incomplete selected model variables, fits the selected model in each imputed dataset, and pools estimates using Rubin's rules; it is not a dedicated multilevel MI engine.",
+      mi = "MI: standard mice-based missing-data sensitivity analysis. It imputes incomplete selected model variables, including the dependent variable when missing, fits the selected model in each imputed dataset, and pools estimates using Rubin's rules; it is not a dedicated multilevel MI engine and should usually be reported as sensitivity for LMM / GLMM.",
       ipw = "IPW: sensitivity analysis that estimates complete-observation probabilities from observed predictors and refits the selected model with inverse-probability weights. Positivity and weight stability should be reviewed.",
       wgee = "WGEE: GEE-only sensitivity analysis that refits GEE with inverse-probability observation weights for MAR dropout sensitivity. Positivity and weight construction should be reported.",
       ""
@@ -305,6 +305,18 @@ longitudinal_missing_strategy_detail <- function(strategy, model_type = NULL) {
   ""
 }
 
+longitudinal_mi_outcome_choices <- function() {
+  c(
+    "종속변수 관측 행만 사용 (권장)" = "observed",
+    "종속변수 결측까지 대체 - 민감도 분석용" = "impute"
+  )
+}
+
+longitudinal_resolve_mi_outcome <- function(value) {
+  value <- as.character(value %||% "observed")[[1]]
+  if (value %in% unname(longitudinal_mi_outcome_choices())) value else "observed"
+}
+
 longitudinal_measurement_for <- function(name, variable_info = NULL) {
   info <- normalize_regression_variable_info_static(variable_info)
   if (is.null(info) || !name %in% info$name) {
@@ -314,6 +326,22 @@ longitudinal_measurement_for <- function(name, variable_info = NULL) {
   if (identical(measurement, "ordinal")) measurement <- "ordered"
   if (identical(measurement, "nominal")) measurement <- "category"
   measurement
+}
+
+longitudinal_binary_outcome_numeric <- function(values) {
+  if (is.factor(values) || is.character(values) || is.logical(values)) {
+    factor_values <- droplevels(as.factor(values))
+    if (nlevels(factor_values) != 2) {
+      stop("Binary longitudinal models require exactly two observed dependent-variable levels.", call. = FALSE)
+    }
+    return(as.integer(factor_values == levels(factor_values)[[2]]))
+  }
+  observed <- stats::na.omit(values)
+  levels <- sort(unique(observed))
+  if (length(levels) != 2) {
+    stop("Binary longitudinal models require exactly two observed dependent-variable values.", call. = FALSE)
+  }
+  as.integer(values == levels[[2]])
 }
 
 longitudinal_auto_family <- function(data, outcome, variable_info = NULL, family = "auto") {
@@ -647,6 +675,116 @@ longitudinal_bind_guard_rows <- function(rows) {
   analysis_bind_rows(rows)
 }
 
+longitudinal_missing_pattern_summary <- function(raw_prepared, complete, keep, id, time, outcome, terms, cluster = character(0), offset = character(0)) {
+  if (!is.data.frame(raw_prepared) || nrow(raw_prepared) == 0) {
+    return(data.frame(Item = character(0), Value = character(0), stringsAsFactors = FALSE, check.names = FALSE))
+  }
+  complete <- as.logical(complete %||% stats::complete.cases(raw_prepared))
+  keep <- as.logical(keep %||% complete)
+  complete[is.na(complete)] <- FALSE
+  keep[is.na(keep)] <- FALSE
+  variables <- names(raw_prepared)
+  missing_matrix <- is.na(raw_prepared)
+  pattern <- apply(missing_matrix, 1, function(row) {
+    missing_names <- variables[row]
+    if (length(missing_names) == 0) "Complete" else paste(missing_names, collapse = ", ")
+  })
+  pattern_counts <- sort(table(pattern), decreasing = TRUE)
+  most_common_pattern <- if (length(pattern_counts) > 0) {
+    sprintf("%s (n=%s)", names(pattern_counts)[[1]], as.integer(pattern_counts[[1]]))
+  } else {
+    ""
+  }
+  id <- utils::head(intersect(as.character(id %||% character(0)), variables), 1)
+  time <- utils::head(intersect(as.character(time %||% character(0)), variables), 1)
+  outcome <- utils::head(intersect(as.character(outcome %||% character(0)), variables), 1)
+  terms <- intersect(as.character(terms %||% character(0)), variables)
+  cluster <- utils::head(intersect(as.character(cluster %||% character(0)), variables), 1)
+  offset <- utils::head(intersect(as.character(offset %||% character(0)), variables), 1)
+  subject_values <- if (length(id) == 1) raw_prepared[[id]] else NULL
+  subject_observed <- if (!is.null(subject_values)) !is.na(subject_values) else rep(FALSE, nrow(raw_prepared))
+  subject_count <- if (!is.null(subject_values)) length(unique(subject_values[subject_observed])) else NA_integer_
+  incomplete_subject_count <- if (!is.null(subject_values) && any(subject_observed)) {
+    by_subject <- tapply(!complete[subject_observed], subject_values[subject_observed], any)
+    sum(by_subject, na.rm = TRUE)
+  } else {
+    NA_integer_
+  }
+  retained_subject_count <- if (!is.null(subject_values) && any(subject_observed & keep)) {
+    length(unique(subject_values[subject_observed & keep]))
+  } else {
+    NA_integer_
+  }
+  predictor_missing <- if (length(terms) > 0) sum(rowSums(missing_matrix[, terms, drop = FALSE]) > 0) else 0L
+  id_time_missing <- sum(rowSums(missing_matrix[, intersect(c(id, time), variables), drop = FALSE]) > 0)
+  data.frame(
+    Item = c(
+      "Raw rows",
+      "Complete model rows",
+      "Rows retained by selected missing-data method",
+      "Rows excluded by selected missing-data method",
+      "Subjects / clusters in raw data",
+      "Subjects / clusters retained",
+      "Subjects / clusters with any incomplete selected row",
+      "Rows with missing dependent variable",
+      "Rows with any missing model term",
+      "Rows with missing ID or time",
+      "Rows with missing exposure / offset",
+      "Rows with missing higher-level cluster ID",
+      "Distinct missingness patterns",
+      "Most common missingness pattern"
+    ),
+    Value = c(
+      as.character(nrow(raw_prepared)),
+      as.character(sum(complete)),
+      as.character(sum(keep)),
+      as.character(sum(!keep)),
+      if (is.na(subject_count)) "" else as.character(subject_count),
+      if (is.na(retained_subject_count)) "" else as.character(retained_subject_count),
+      if (is.na(incomplete_subject_count)) "" else as.character(incomplete_subject_count),
+      if (length(outcome) == 1) as.character(sum(is.na(raw_prepared[[outcome]]))) else "",
+      as.character(predictor_missing),
+      as.character(id_time_missing),
+      if (length(offset) == 1) as.character(sum(is.na(raw_prepared[[offset]]))) else "0",
+      if (length(cluster) == 1) as.character(sum(is.na(raw_prepared[[cluster]]))) else "0",
+      as.character(length(pattern_counts)),
+      most_common_pattern
+    ),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
+longitudinal_missing_by_time_summary <- function(raw_prepared, time, outcome, variables) {
+  if (!is.data.frame(raw_prepared) || nrow(raw_prepared) == 0) {
+    return(data.frame(Time = character(0), Rows = integer(0), `Complete rows` = integer(0), `Missing dependent variable` = integer(0), `Any missing selected variable` = integer(0), `Any missing %` = numeric(0), stringsAsFactors = FALSE, check.names = FALSE))
+  }
+  time <- utils::head(intersect(as.character(time %||% character(0)), names(raw_prepared)), 1)
+  if (length(time) != 1) {
+    return(data.frame(Time = character(0), Rows = integer(0), `Complete rows` = integer(0), `Missing dependent variable` = integer(0), `Any missing selected variable` = integer(0), `Any missing %` = numeric(0), stringsAsFactors = FALSE, check.names = FALSE))
+  }
+  variables <- intersect(as.character(variables %||% names(raw_prepared)), names(raw_prepared))
+  outcome <- utils::head(intersect(as.character(outcome %||% character(0)), names(raw_prepared)), 1)
+  time_values <- raw_prepared[[time]]
+  levels <- unique(stats::na.omit(time_values))
+  levels <- levels[order(levels)]
+  rows <- lapply(levels, function(level) {
+    index <- which(time_values == level)
+    missing_selected <- rowSums(is.na(raw_prepared[index, variables, drop = FALSE])) > 0
+    data.frame(
+      Time = as.character(level),
+      Rows = length(index),
+      `Complete rows` = sum(!missing_selected),
+      `Missing dependent variable` = if (length(outcome) == 1) sum(is.na(raw_prepared[[outcome]][index])) else NA_integer_,
+      `Any missing selected variable` = sum(missing_selected),
+      `Any missing %` = if (length(index) > 0) 100 * mean(missing_selected) else NA_real_,
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
+  })
+  analysis_bind_rows(rows)
+}
+
 longitudinal_prepare_data <- function(
   data,
   outcome,
@@ -683,6 +821,9 @@ longitudinal_prepare_data <- function(
     variable_info = variable_info,
     reference_values = reference_values
   )
+  if (identical(longitudinal_measurement_for(outcome, variable_info), "binary") && outcome %in% names(prepared)) {
+    prepared[[outcome]] <- longitudinal_binary_outcome_numeric(prepared[[outcome]])
+  }
   raw_prepared <- prepared
   complete <- stats::complete.cases(prepared)
   excluded_subjects <- 0L
@@ -693,6 +834,8 @@ longitudinal_prepare_data <- function(
   } else {
     keep <- complete
   }
+  missing_pattern <- longitudinal_missing_pattern_summary(raw_prepared, complete, keep, id, time, outcome, unique(c(time, predictors, covariates)), cluster, exposure)
+  missing_by_time <- longitudinal_missing_by_time_summary(raw_prepared, time, outcome, variables)
   prepared <- prepared[keep, , drop = FALSE]
   prepared[[id]] <- as.factor(prepared[[id]])
   if (length(cluster) == 1 && cluster %in% names(prepared)) {
@@ -708,6 +851,8 @@ longitudinal_prepare_data <- function(
     missing_method_label = longitudinal_missing_method_label(missing_method),
     excluded_subjects = excluded_subjects,
     raw_prepared = raw_prepared,
+    missing_pattern = missing_pattern,
+    missing_by_time = missing_by_time,
     complete_indicator = complete,
     keep_indicator = keep
   )
@@ -1976,7 +2121,8 @@ longitudinal_prepare_analysis_weights <- function(
   terms,
   weight = character(0),
   weight_type = "none",
-  trim = "none"
+  trim = "none",
+  ipw_auxiliary = character(0)
 ) {
   weight_type <- longitudinal_resolve_weight_type(weight_type)
   trim <- longitudinal_resolve_weight_trim(trim)
@@ -2014,7 +2160,7 @@ longitudinal_prepare_analysis_weights <- function(
   ipw_diagnostics <- data.frame()
   ipw_note <- ""
   if (weight_type %in% c("ipw", "combined")) {
-    ipw <- longitudinal_ipw_weights(raw_prepared, analyzed_data, outcome, id, time, terms)
+    ipw <- longitudinal_ipw_weights(raw_prepared, analyzed_data, outcome, id, time, terms, ipw_auxiliary)
     ipw_weights <- ipw$weights
     ipw_diagnostics <- ipw$diagnostics
     ipw_note <- ipw$note
@@ -2159,6 +2305,7 @@ longitudinal_mi_sensitivity_results <- function(
   weight_trim = "none",
   m = 5L,
   maxit = 5L,
+  mi_outcome = "observed",
   seed = 20260618L,
   cluster = character(0),
   offset = character(0)
@@ -2168,6 +2315,7 @@ longitudinal_mi_sensitivity_results <- function(
     return(longitudinal_missing_sensitivity_failure(strategy, "The mice package is required for MI sensitivity analysis."))
   }
   weight_type <- longitudinal_resolve_weight_type(weight_type)
+  mi_outcome <- longitudinal_resolve_mi_outcome(mi_outcome)
   weight <- utils::head(as.character(weight %||% character(0)), 1)
   variables <- unique(c(outcome, id, time, cluster, offset, terms, if (weight_type %in% c("sampling", "longitudinal", "combined")) weight else character(0)))
   mi_data <- raw_prepared[, intersect(variables, names(raw_prepared)), drop = FALSE]
@@ -2178,6 +2326,7 @@ longitudinal_mi_sensitivity_results <- function(
   if (!anyNA(mi_data)) {
     return(longitudinal_missing_sensitivity_failure(strategy, "No missing values were present in selected model variables; MI was not needed.", status = "Not needed"))
   }
+  observed_outcome <- if (outcome %in% names(mi_data)) !is.na(mi_data[[outcome]]) else rep(TRUE, nrow(mi_data))
   imputed <- tryCatch(
     mice::mice(
       mi_data,
@@ -2200,6 +2349,9 @@ longitudinal_mi_sensitivity_results <- function(
     if (inherits(completed, "error")) {
       failures <- c(failures, sprintf("imputation %s: %s", index, conditionMessage(completed)))
       next
+    }
+    if (identical(mi_outcome, "observed")) {
+      completed <- completed[observed_outcome, , drop = FALSE]
     }
     completed <- completed[stats::complete.cases(completed[, variables, drop = FALSE]), , drop = FALSE]
     if (id %in% names(completed)) completed[[id]] <- as.factor(completed[[id]])
@@ -2224,7 +2376,20 @@ longitudinal_mi_sensitivity_results <- function(
   if (length(tables) == 0) {
     return(longitudinal_missing_sensitivity_failure(strategy, paste(failures, collapse = "; ")))
   }
-  note <- sprintf("Standard mice-based MI sensitivity; pooled across %s imputed dataset(s) using Rubin-style total variance. This is not a dedicated multilevel MI engine.", length(tables))
+  outcome_missing_note <- if (outcome %in% names(mi_data) && anyNA(mi_data[[outcome]])) {
+    if (identical(mi_outcome, "observed")) {
+      "The dependent variable had missing values; rows with originally missing dependent-variable values were excluded from each fitted imputed model."
+    } else {
+      "The dependent variable had missing values and imputed dependent-variable rows were included as a sensitivity analysis."
+    }
+  } else {
+    "The dependent variable had no missing values in the selected MI data."
+  }
+  note <- sprintf(
+    "Standard mice-based MI sensitivity; pooled across %s imputed dataset(s) using Rubin-style total variance. %s This is not a dedicated multilevel MI engine.",
+    length(tables),
+    outcome_missing_note
+  )
   if (!identical(weight_type, "none")) {
     note <- paste(note, sprintf("Weights: %s.", longitudinal_weight_type_label(weight_type)))
   }
@@ -2234,7 +2399,7 @@ longitudinal_mi_sensitivity_results <- function(
   longitudinal_pool_coef_tables(tables, strategy, note, exponentiate)
 }
 
-longitudinal_ipw_weights <- function(raw_prepared, analyzed_data, outcome, id, time, terms) {
+longitudinal_ipw_weights <- function(raw_prepared, analyzed_data, outcome, id, time, terms, auxiliary = character(0)) {
   variables <- intersect(unique(c(outcome, id, time, terms)), names(raw_prepared))
   observed <- stats::complete.cases(raw_prepared[, variables, drop = FALSE])
   analyzed_index <- match(rownames(analyzed_data), rownames(raw_prepared))
@@ -2246,7 +2411,8 @@ longitudinal_ipw_weights <- function(raw_prepared, analyzed_data, outcome, id, t
       note = "Observation status had no variation; unit weights were used."
     ))
   }
-  candidate_terms <- intersect(unique(c(time, setdiff(terms, outcome))), names(raw_prepared))
+  auxiliary <- setdiff(as.character(auxiliary %||% character(0)), variables)
+  candidate_terms <- intersect(unique(c(time, setdiff(terms, outcome), auxiliary)), names(raw_prepared))
   candidate_terms <- candidate_terms[vapply(candidate_terms, function(name) {
     values <- raw_prepared[[name]]
     !anyNA(values) && length(unique(values)) > 1
@@ -2305,14 +2471,15 @@ longitudinal_weighted_missing_sensitivity_results <- function(
   weight_type = "ipw",
   weight_trim = "none",
   cluster = character(0),
-  offset = character(0)
+  offset = character(0),
+  ipw_auxiliary = character(0)
 ) {
   strategy <- if (identical(strategy_key, "wgee")) "Weighted GEE (WGEE)" else "Inverse probability weighting (IPW)"
   if (identical(strategy_key, "wgee") && !identical(model_type, "gee")) {
     return(longitudinal_missing_sensitivity_failure(strategy, "WGEE is only available for GEE models."))
   }
   weights <- tryCatch(
-    longitudinal_prepare_analysis_weights(raw_prepared, analyzed_data, outcome, id, time, terms, weight, weight_type, weight_trim),
+    longitudinal_prepare_analysis_weights(raw_prepared, analyzed_data, outcome, id, time, terms, weight, weight_type, weight_trim, ipw_auxiliary),
     error = function(e) e
   )
   if (inherits(weights, "error")) {
@@ -2369,19 +2536,23 @@ longitudinal_missing_sensitivity_results <- function(
   weight_trim = "none",
   missing_imputations = 5L,
   missing_iterations = 5L,
+  mi_outcome = "observed",
   cluster = character(0),
-  offset = character(0)
+  offset = character(0),
+  ipw_auxiliary = character(0),
+  ipw_raw_prepared = raw_prepared
 ) {
   strategies <- longitudinal_resolve_missing_strategies(strategies, model_type)
   missing_imputations <- longitudinal_resolve_mi_count(missing_imputations, default = 5L, minimum = 2L, maximum = 50L)
   missing_iterations <- longitudinal_resolve_mi_count(missing_iterations, default = 5L, minimum = 1L, maximum = 50L)
+  mi_outcome <- longitudinal_resolve_mi_outcome(mi_outcome)
   rows <- list()
   for (strategy in strategies) {
     result <- switch(
       strategy,
-      mi = longitudinal_mi_sensitivity_results(raw_prepared, outcome, id, time, terms, model_type, family, corstr, random_slope, exponentiate, weight, weight_type, weight_trim, m = missing_imputations, maxit = missing_iterations, cluster = cluster, offset = offset),
-      ipw = longitudinal_weighted_missing_sensitivity_results("ipw", raw_prepared, analyzed_data, outcome, id, time, terms, model_type, family, corstr, random_slope, exponentiate, weight, if (longitudinal_resolve_weight_type(weight_type) %in% c("sampling", "longitudinal", "combined")) "combined" else "ipw", weight_trim, cluster = cluster, offset = offset),
-      wgee = longitudinal_weighted_missing_sensitivity_results("wgee", raw_prepared, analyzed_data, outcome, id, time, terms, model_type, family, corstr, random_slope, exponentiate, weight, if (longitudinal_resolve_weight_type(weight_type) %in% c("sampling", "longitudinal", "combined")) "combined" else "ipw", weight_trim, cluster = cluster, offset = offset),
+      mi = longitudinal_mi_sensitivity_results(raw_prepared, outcome, id, time, terms, model_type, family, corstr, random_slope, exponentiate, weight, weight_type, weight_trim, m = missing_imputations, maxit = missing_iterations, mi_outcome = mi_outcome, cluster = cluster, offset = offset),
+      ipw = longitudinal_weighted_missing_sensitivity_results("ipw", ipw_raw_prepared, analyzed_data, outcome, id, time, terms, model_type, family, corstr, random_slope, exponentiate, weight, if (longitudinal_resolve_weight_type(weight_type) %in% c("sampling", "longitudinal", "combined")) "combined" else "ipw", weight_trim, cluster = cluster, offset = offset, ipw_auxiliary = ipw_auxiliary),
+      wgee = longitudinal_weighted_missing_sensitivity_results("wgee", ipw_raw_prepared, analyzed_data, outcome, id, time, terms, model_type, family, corstr, random_slope, exponentiate, weight, if (longitudinal_resolve_weight_type(weight_type) %in% c("sampling", "longitudinal", "combined")) "combined" else "ipw", weight_trim, cluster = cluster, offset = offset, ipw_auxiliary = ipw_auxiliary),
       data.frame()
     )
     if (is.data.frame(result) && nrow(result) > 0) {
@@ -2655,8 +2826,10 @@ prepare_longitudinal_analysis_result <- function(
   missing_strategies = character(0),
   missing_imputations = 5L,
   missing_iterations = 5L,
+  mi_outcome = "observed",
   weight_type = "none",
   weight_trim = "none",
+  ipw_auxiliary = character(0),
   variable_info = NULL,
   reference_values = character(0)
 ) {
@@ -2669,10 +2842,12 @@ prepare_longitudinal_analysis_result <- function(
   predictors <- intersect(unique(as.character(predictors %||% character(0))), data_names)
   covariates <- intersect(unique(as.character(covariates %||% character(0))), data_names)
   weight <- intersect(utils::head(as.character(weight %||% character(0)), 1), data_names)
+  ipw_auxiliary <- intersect(unique(as.character(ipw_auxiliary %||% character(0))), data_names)
   weight_type <- longitudinal_resolve_weight_type(weight_type)
   weight_trim <- longitudinal_resolve_weight_trim(weight_trim)
   missing_imputations <- longitudinal_resolve_mi_count(missing_imputations, default = 5L, minimum = 2L, maximum = 50L)
   missing_iterations <- longitudinal_resolve_mi_count(missing_iterations, default = 5L, minimum = 1L, maximum = 50L)
+  mi_outcome <- longitudinal_resolve_mi_outcome(mi_outcome)
   shiny::validate(shiny::need(length(outcome) == 1, "Select one outcome variable."))
   shiny::validate(shiny::need(length(id) == 1, "Select one subject / cluster ID variable."))
   shiny::validate(shiny::need(length(time) == 1, "Select one time variable."))
@@ -2689,6 +2864,7 @@ prepare_longitudinal_analysis_result <- function(
   active_weight <- if (weight_type %in% c("sampling", "longitudinal", "combined")) weight else character(0)
   predictors <- setdiff(predictors, c(outcome, id, cluster, time, exposure, active_weight))
   covariates <- setdiff(covariates, c(outcome, id, cluster, time, exposure, predictors, active_weight))
+  ipw_auxiliary <- setdiff(ipw_auxiliary, c(outcome, id, cluster, time, exposure, predictors, covariates, weight))
   terms <- longitudinal_terms(time, predictors, covariates, include_time)
   shiny::validate(shiny::need(length(terms) > 0, "Select at least one predictor/covariate or include time as a fixed effect."))
 
@@ -2698,6 +2874,20 @@ prepare_longitudinal_analysis_result <- function(
   }
 
   prepared <- longitudinal_prepare_data(data, outcome, id, time, exposure, predictors, covariates, effective_cluster, weight, variable_info, reference_values, missing_method)
+  ipw_raw_prepared <- prepared$raw_prepared
+  if (length(ipw_auxiliary) > 0) {
+    auxiliary_data <- data[, ipw_auxiliary, drop = FALSE]
+    auxiliary_data <- prepare_regression_model_data_static(
+      auxiliary_data,
+      ipw_auxiliary,
+      variable_info = variable_info,
+      reference_values = reference_values
+    )
+    auxiliary_data <- auxiliary_data[, setdiff(names(auxiliary_data), names(ipw_raw_prepared)), drop = FALSE]
+    if (ncol(auxiliary_data) > 0) {
+      ipw_raw_prepared <- cbind(ipw_raw_prepared, auxiliary_data)
+    }
+  }
   requested_family <- longitudinal_auto_family(prepared$data, outcome, variable_info, family)
   model_family <- requested_family
   if (identical(model_type, "lmm")) {
@@ -2788,6 +2978,8 @@ prepare_longitudinal_analysis_result <- function(
     missing_strategy_notes = longitudinal_missing_strategy_details(missing_strategies, model_type),
     missing_imputations = missing_imputations,
     missing_iterations = missing_iterations,
+    mi_outcome = mi_outcome,
+    ipw_auxiliary = ipw_auxiliary,
     missing_sensitivity_results = longitudinal_missing_sensitivity_results(
       missing_strategies,
       prepared$raw_prepared,
@@ -2806,10 +2998,15 @@ prepare_longitudinal_analysis_result <- function(
       weight_trim,
       missing_imputations,
       missing_iterations,
+      mi_outcome,
       cluster = effective_cluster,
-      offset = offset_variable
+      offset = offset_variable,
+      ipw_auxiliary = ipw_auxiliary,
+      ipw_raw_prepared = ipw_raw_prepared
     ),
     missing_excluded_subjects = prepared$excluded_subjects,
+    missing_pattern = prepared$missing_pattern,
+    missing_by_time = prepared$missing_by_time,
     weight_type = weight_type,
     weight_trim = weight_trim,
     analysis_weights = analysis_weights$weights,

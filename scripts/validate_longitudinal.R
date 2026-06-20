@@ -35,6 +35,7 @@ data <- data.frame(
   gamma_y = gamma_y,
   person_time = person_time,
   x = x,
+  aux_history = stats::rnorm(length(subject_id)),
   group = group,
   long_weight = runif(length(subject_id), 0.45, 2.2),
   stringsAsFactors = FALSE
@@ -48,11 +49,11 @@ variable_info <- data.frame(
   name = names(data),
   var_label = names(data),
   role = "",
-  measurement = c("category", "category", "continuous", "continuous", "continuous", "binary", "continuous", "continuous", "continuous", "continuous", "category", "continuous"),
+  measurement = c("category", "category", "continuous", "continuous", "continuous", "binary", "continuous", "continuous", "continuous", "continuous", "continuous", "category", "continuous"),
   stringsAsFactors = FALSE
 )
 
-validate_model <- function(model_type, outcome = "continuous_y", family = "auto", cluster = character(0), exposure = character(0), missing_method = "row_complete", missing_strategies = character(0), missing_imputations = 5L, missing_iterations = 5L, data_input = data) {
+validate_model <- function(model_type, outcome = "continuous_y", family = "auto", cluster = character(0), exposure = character(0), missing_method = "row_complete", missing_strategies = character(0), missing_imputations = 5L, missing_iterations = 5L, mi_outcome = "observed", ipw_auxiliary = character(0), data_input = data) {
   results <- prepare_longitudinal_analysis_result(
     data = data_input,
     outcome = outcome,
@@ -68,6 +69,8 @@ validate_model <- function(model_type, outcome = "continuous_y", family = "auto"
     missing_strategies = missing_strategies,
     missing_imputations = missing_imputations,
     missing_iterations = missing_iterations,
+    mi_outcome = mi_outcome,
+    ipw_auxiliary = ipw_auxiliary,
     variable_info = variable_info
   )
   if (!is.list(results) || length(results) != 1) {
@@ -89,6 +92,8 @@ validate_model <- function(model_type, outcome = "continuous_y", family = "auto"
   required_result_fields <- c(
     "data_structure",
     "missing_table",
+    "missing_pattern",
+    "missing_by_time",
     "missing_method",
     "missing_method_label",
     "missing_strategy_notes",
@@ -111,6 +116,12 @@ validate_model <- function(model_type, outcome = "continuous_y", family = "auto"
   if (!is.data.frame(results[[1]]$data_structure) || nrow(results[[1]]$data_structure) == 0) {
     stop("Expected data structure summary for ", model_type)
   }
+  if (!is.data.frame(results[[1]]$missing_pattern) || !any(results[[1]]$missing_pattern$Item == "Distinct missingness patterns")) {
+    stop("Expected missing-data pattern summary for ", model_type)
+  }
+  if (!is.data.frame(results[[1]]$missing_by_time) || nrow(results[[1]]$missing_by_time) == 0) {
+    stop("Expected time-specific missing-data summary for ", model_type)
+  }
   if (!is.data.frame(results[[1]]$reporting_checklist) || nrow(results[[1]]$reporting_checklist) == 0) {
     stop("Expected SCI reporting checklist for ", model_type)
   }
@@ -130,6 +141,36 @@ validate_model <- function(model_type, outcome = "continuous_y", family = "auto"
 }
 
 validate_model("gee")
+
+ohio_binary_path <- file.path("sample", "longitudinal_examples", "longitudinal_gee_ohio_binary.csv")
+if (file.exists(ohio_binary_path)) {
+  ohio_binary <- utils::read.csv(ohio_binary_path, stringsAsFactors = FALSE)
+  ohio_variable_info <- data.frame(
+    name = names(ohio_binary),
+    var_label = names(ohio_binary),
+    role = "",
+    measurement = c("binary", "category", "ordered", "binary"),
+    stringsAsFactors = FALSE
+  )
+  ohio_results <- prepare_longitudinal_analysis_result(
+    data = ohio_binary,
+    outcome = "resp",
+    id = "id",
+    time = "age",
+    predictors = "smoke",
+    model_type = "gee",
+    family = "auto",
+    variable_info = ohio_variable_info
+  )
+  if (!is.list(ohio_results) || length(ohio_results) != 1) {
+    print(attr(ohio_results, "skipped"))
+    stop("Expected the Ohio binary GEE example to fit one model.")
+  }
+  if (!identical(ohio_results[[1]]$family, "binomial")) {
+    stop("Expected the Ohio binary GEE example to resolve to a binomial family.")
+  }
+}
+
 validate_model("lmm")
 validate_model("lmm", cluster = "site_id")
 validate_model("glmm", outcome = "binary_y", family = "binomial")
@@ -204,7 +245,7 @@ if (!any(grepl("standard mice-based", available_results[[1]]$missing_strategy_no
     !any(grepl("Positivity and weight stability", available_results[[1]]$missing_strategy_notes, fixed = TRUE))) {
   stop("Expected SCI-oriented MI/IPW sensitivity limitations in missing-data notes.")
 }
-missing_engine_results <- validate_model("lmm", missing_method = "available", missing_strategies = c("mi", "ipw"), missing_imputations = 3L, missing_iterations = 3L, data_input = missing_data)
+missing_engine_results <- validate_model("lmm", missing_method = "available", missing_strategies = c("mi", "ipw"), missing_imputations = 3L, missing_iterations = 3L, ipw_auxiliary = "aux_history", data_input = missing_data)
 missing_sensitivity <- missing_engine_results[[1]]$missing_sensitivity_results
 if (!is.data.frame(missing_sensitivity) || nrow(missing_sensitivity) == 0 || !any(missing_sensitivity$Strategy %in% "Multiple imputation (MI)") || !any(missing_sensitivity$Strategy %in% "Inverse probability weighting (IPW)")) {
   stop("Expected actual MI and IPW missing-data sensitivity results.")
@@ -212,9 +253,13 @@ if (!is.data.frame(missing_sensitivity) || nrow(missing_sensitivity) == 0 || !an
 if (!any(missing_sensitivity$Status %in% "Fitted")) {
   stop("Expected at least one fitted missing-data sensitivity result.")
 }
-if (!any(grepl("not a dedicated multilevel MI engine", missing_sensitivity$Note, fixed = TRUE), na.rm = TRUE) ||
+if (!any(grepl("originally missing dependent-variable", missing_sensitivity$Note, fixed = TRUE), na.rm = TRUE) ||
+    !any(grepl("not a dedicated multilevel MI engine", missing_sensitivity$Note, fixed = TRUE), na.rm = TRUE) ||
     !any(grepl("positivity/weight stability", missing_sensitivity$Note, fixed = TRUE), na.rm = TRUE)) {
   stop("Expected MI/IPW sensitivity result notes to describe multilevel-MI and positivity limitations.")
+}
+if (!any(grepl("aux_history", missing_sensitivity$Note, fixed = TRUE), na.rm = TRUE)) {
+  stop("Expected selected IPW auxiliary variable to be reported in missing-data sensitivity notes.")
 }
 gee_missing_engine_results <- validate_model("gee", missing_method = "row_complete", missing_strategies = c("mi", "wgee"), data_input = missing_data)
 gee_missing_sensitivity <- gee_missing_engine_results[[1]]$missing_sensitivity_results
@@ -324,11 +369,13 @@ required_setup_fragments <- c(
   "id=\"longitudinal_id\"",
   "id=\"longitudinal_cluster\"",
   "id=\"longitudinal_time\"",
+  "id=\"longitudinal_exposure\"",
   "id=\"longitudinal_predictors\"",
   "id=\"longitudinal_outcome_move\"",
   "id=\"longitudinal_id_move\"",
   "id=\"longitudinal_cluster_move\"",
   "id=\"longitudinal_time_move\"",
+  "id=\"longitudinal_exposure_move\"",
   "id=\"longitudinal_predictors_move\"",
   "Panel structure",
   "Model variables",
@@ -336,6 +383,7 @@ required_setup_fragments <- c(
   "Independent variables",
   "Subject ID",
   "Cluster ID (optional)",
+  "Exposure / offset (optional)",
   "Checks for selected model",
   "longitudinal-checks-options",
   "Convergence / singular fit",
@@ -355,6 +403,24 @@ if (grepl("Outcome family", setup_html, fixed = TRUE)) {
 }
 if (!grepl("Random slope for selected time variable", setup_html, fixed = TRUE)) {
   stop("LMM model tab should show random slope options.")
+}
+
+server_code <- paste(readLines(file.path("R", "server_longitudinal.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+required_drop_fragments <- c(
+  "observeEvent(input$analysis_transfer_drop",
+  "all_transfer_ids <- c(\"longitudinal_available\", target_ids)",
+  "\"longitudinal_outcome\"",
+  "\"longitudinal_id\"",
+  "\"longitudinal_cluster\"",
+  "\"longitudinal_time\"",
+  "\"longitudinal_exposure\"",
+  "\"longitudinal_predictors\"",
+  "target %in% c(\"longitudinal_outcome\", \"longitudinal_id\", \"longitudinal_cluster\", \"longitudinal_time\", \"longitudinal_exposure\")",
+  "identical(target, \"longitudinal_predictors\")"
+)
+missing_drop_fragments <- required_drop_fragments[!vapply(required_drop_fragments, grepl, logical(1), x = server_code, fixed = TRUE)]
+if (length(missing_drop_fragments) > 0) {
+  stop("Longitudinal drag/drop server handling is missing expected fragment(s): ", paste(missing_drop_fragments, collapse = ", "))
 }
 
 weight_setup_state <- longitudinal_setup_state(
@@ -619,14 +685,22 @@ saved_html <- paste(readLines(html_file, warn = FALSE, encoding = "UTF-8"), coll
 if (!grepl("SCI reporting checklist", saved_html, fixed = TRUE) || !grepl("Suggested manuscript text", saved_html, fixed = TRUE)) {
   stop("Saved longitudinal HTML should include SCI reporting and manuscript sections.")
 }
+model_overview_position <- regexpr("Model overview", saved_html, fixed = TRUE)[[1]]
+coefficients_position <- regexpr("Coefficients", saved_html, fixed = TRUE)[[1]]
+if (model_overview_position < 0 || coefficients_position < 0 || coefficients_position < model_overview_position) {
+  stop("Saved longitudinal HTML should show Model overview before Coefficients.")
+}
 
 excel_file <- tempfile(fileext = ".xlsx")
 save_longitudinal_excel_file(publication_results, excel_file, variable_info)
 sheet_names <- openxlsx::getSheetNames(excel_file)
-required_sheets <- c("Model overview", "Weights 1", "Publication table 1", "Table notes 1", "Manuscript text 1", "SCI checklist 1", "Software 1", "Model guide")
+required_sheets <- c("Model overview", "Coefficients 1", "Weights 1", "Missing pattern 1", "Missing by time 1", "Publication table 1", "Table notes 1", "Manuscript text 1", "SCI checklist 1", "Software 1", "Model guide")
 missing_sheets <- setdiff(required_sheets, sheet_names)
 if (length(missing_sheets) > 0) {
   stop("Longitudinal Excel export is missing expected sheet(s): ", paste(missing_sheets, collapse = ", "))
+}
+if (!identical(sheet_names[seq_len(2)], c("Model overview", "Coefficients 1"))) {
+  stop("Longitudinal Excel export should start with Model overview followed by Coefficients.")
 }
 
 selective_results <- prepare_longitudinal_analysis_result(

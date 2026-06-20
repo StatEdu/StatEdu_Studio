@@ -139,11 +139,13 @@ register_generalized_handlers <- function(
       se_type = isolate(input$generalized_se_type %||% NULL),
       overdispersion = isolate(input$generalized_overdispersion %||% TRUE),
       assumption_checks = isolate(input$generalized_assumption_checks %||% TRUE),
-      exponentiate = isolate(input$generalized_exponentiate %||% TRUE),
+      exponentiate = !isTRUE(isolate(input$generalized_report_b_se %||% FALSE)),
       show_vif = isolate(input$generalized_show_vif %||% FALSE),
       missing_strategy = isolate(input$generalized_missing_strategy %||% "complete"),
       missing_imputations = isolate(input$generalized_missing_imputations %||% 5L),
       missing_iterations = isolate(input$generalized_missing_iterations %||% 5L),
+      mi_outcome = isolate(input$generalized_mi_outcome %||% "observed"),
+      ipw_auxiliary = isolate(input$generalized_ipw_auxiliary %||% character(0)),
       options_tab = isolate(input$generalized_options_tab %||% "Model")
     )
     generalized_setup_panel(state, NULL)
@@ -174,6 +176,26 @@ register_generalized_handlers <- function(
       has_figures = FALSE
     )
   })
+
+  register_analysis_data_viewer_handlers(
+    input = input,
+    output = output,
+    prefix = "generalized",
+    title = "GLM Data Viewer",
+    dataset_fn = dataset_fn,
+    selected_names_fn = selected_names_fn,
+    variables_fn = function() unique(c(
+      generalized_outcome(),
+      generalized_exposure(),
+      generalized_predictors()
+    )),
+    extra_variables_fn = function() {
+      as.character(input$generalized_ipw_auxiliary %||% character(0))
+    },
+    variable_table_fn = variable_table_fn,
+    labels_fn = labels_fn,
+    category_table_fn = category_table_fn
+  )
 
   output$generalized_reset_control <- renderUI({
     analysis_reset_button(
@@ -249,6 +271,45 @@ register_generalized_handlers <- function(
     }
   }, ignoreInit = TRUE)
 
+  observeEvent(input$analysis_transfer_drop, {
+    drop <- input$analysis_transfer_drop
+    ids <- c("generalized_available", "generalized_outcome", "generalized_exposure", "generalized_predictors")
+    source <- as.character(drop$source %||% "")
+    target <- as.character(drop$target %||% "")
+    values <- unique(as.character(drop$values %||% character(0)))
+    values <- values[nzchar(values)]
+    if (!source %in% ids || !target %in% ids || identical(source, target) || length(values) == 0) {
+      return()
+    }
+
+    selected <- normalize_selected(values)
+    if (length(selected) == 0) return()
+
+    changed <- FALSE
+    if (identical(target, "generalized_available")) {
+      selected <- intersect(selected, unique(c(generalized_outcome(), generalized_exposure(), generalized_predictors())))
+      if (length(selected) == 0) return()
+      changed <- remove_from_all_targets(selected)
+      active_generalized_list("generalized_available")
+    } else if (identical(target, "generalized_outcome")) {
+      changed <- set_outcome(selected)
+      active_generalized_list("generalized_outcome")
+    } else if (identical(target, "generalized_exposure")) {
+      changed <- set_exposure(selected)
+      active_generalized_list("generalized_exposure")
+    } else if (identical(target, "generalized_predictors")) {
+      changed <- add_predictors(selected)
+      active_generalized_list("generalized_predictors")
+    } else {
+      return()
+    }
+
+    if (!changed) return()
+    generalized_results(NULL)
+    mark_settings_dirty()
+    clear_transfer_selection(ids)
+  }, ignoreInit = TRUE)
+
   observeEvent(input$generalized_predictor_up, {
     updated <- move_order_item(generalized_predictors(), input$generalized_predictors, "up")
     if (updated$changed) {
@@ -283,7 +344,7 @@ register_generalized_handlers <- function(
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
-  observeEvent(input$generalized_exponentiate, {
+  observeEvent(input$generalized_report_b_se, {
     generalized_results(NULL)
     mark_settings_dirty()
   }, ignoreInit = TRUE)
@@ -310,6 +371,16 @@ register_generalized_handlers <- function(
   }, ignoreInit = TRUE)
 
   observeEvent(input$generalized_missing_iterations, {
+    generalized_results(NULL)
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$generalized_mi_outcome, {
+    generalized_results(NULL)
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$generalized_ipw_auxiliary, {
     generalized_results(NULL)
     mark_settings_dirty()
   }, ignoreInit = TRUE)
@@ -343,10 +414,12 @@ register_generalized_handlers <- function(
           overdispersion = isTRUE(input$generalized_overdispersion),
           assumption_checks = isTRUE(input$generalized_assumption_checks),
           show_vif = isTRUE(input$generalized_show_vif),
-          exponentiate = isTRUE(input$generalized_exponentiate),
+          exponentiate = !isTRUE(input$generalized_report_b_se),
           missing_strategy = input$generalized_missing_strategy %||% "complete",
           missing_imputations = input$generalized_missing_imputations %||% 5L,
           missing_iterations = input$generalized_missing_iterations %||% 5L,
+          mi_outcome = input$generalized_mi_outcome %||% "observed",
+          ipw_auxiliary = input$generalized_ipw_auxiliary %||% character(0),
           variable_info = variable_table_fn(),
           labels = labels_fn(),
           category_table = category_table_fn(),

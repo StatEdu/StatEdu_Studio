@@ -94,17 +94,17 @@ analysis_tab_panel <- function(analysis_tabs = enabled_analysis_tabs()) {
     if (isTRUE(analysis_tabs[["frequencies"]])) lazy_tab_panel("Frequencies / Descriptives", "Frequencies / Descriptives", "lazy_analysis_frequencies"),
     lazy_tab_panel("Cross-tabulation Analysis", "analysis_crosstabs", "lazy_analysis_crosstabs"),
     if (isTRUE(analysis_tabs[["ttest_anova"]])) lazy_tab_panel("t-test / ANOVA", "t-test / ANOVA", "lazy_analysis_ttest_anova"),
+    if (isTRUE(analysis_tabs[["paired"]]) || isTRUE(analysis_tabs[["paired_rm"]])) lazy_tab_panel("Paired test", "Paired test", "lazy_analysis_paired"),
     if (isTRUE(analysis_tabs[["ancova"]])) lazy_tab_panel("ANCOVA", "ANCOVA", "lazy_analysis_ancova"),
     if (isTRUE(analysis_tabs[["nonparametric"]])) lazy_tab_panel("Nonparametric Tests", "Nonparametric Tests", "lazy_analysis_nonparametric"),
-    if (isTRUE(analysis_tabs[["paired"]]) || isTRUE(analysis_tabs[["paired_rm"]])) lazy_tab_panel("Paired test", "Paired test", "lazy_analysis_paired"),
     if (isTRUE(analysis_tabs[["nonparametric_paired"]])) lazy_tab_panel("Nonparametric Paired", "Nonparametric Paired", "lazy_analysis_nonparametric_paired"),
     if (isTRUE(analysis_tabs[["correlation"]])) lazy_tab_panel("Correlation", "Correlation", "lazy_analysis_correlation"),
+    if (isTRUE(analysis_tabs[["reliability"]])) lazy_tab_panel("Reliability", "Reliability", "lazy_analysis_reliability"),
     if (isTRUE(analysis_tabs[["factor_analysis"]])) lazy_tab_panel("Factor Analysis", "Factor Analysis", "lazy_analysis_factor_analysis"),
     if (isTRUE(analysis_tabs[["pca"]])) lazy_tab_panel("Principal Components", "Principal Components", "lazy_analysis_pca"),
-    if (isTRUE(analysis_tabs[["reliability"]])) lazy_tab_panel("Reliability", "Reliability", "lazy_analysis_reliability"),
     if (isTRUE(analysis_tabs[["hierarchical"]])) lazy_tab_panel("Regression", "Regression", "lazy_analysis_hierarchical"),
-    if (isTRUE(analysis_tabs[["longitudinal"]])) lazy_tab_panel("Longitudinal / Panel Models", "Longitudinal / Panel Models", "lazy_analysis_longitudinal"),
     if (isTRUE(analysis_tabs[["generalized"]])) lazy_tab_panel("GLM", "Generalized Linear Model (GLM)", "lazy_analysis_generalized"),
-    lazy_tab_panel("Logistic Regression", "analysis_logistic_regression", "lazy_analysis_logistic")
+    lazy_tab_panel("Logistic Regression", "analysis_logistic_regression", "lazy_analysis_logistic"),
+    if (isTRUE(analysis_tabs[["longitudinal"]])) lazy_tab_panel("Longitudinal / Panel Models", "Longitudinal / Panel Models", "lazy_analysis_longitudinal")
   )
 }

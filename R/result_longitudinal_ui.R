@@ -104,6 +104,31 @@ longitudinal_display_missing_table <- function(result) {
   )
 }
 
+longitudinal_display_missing_pattern_table <- function(result) {
+  table <- result$missing_pattern
+  if (!is.data.frame(table) || nrow(table) == 0) {
+    return(data.frame())
+  }
+  data.frame(
+    Item = as.character(table$Item),
+    Value = as.character(table$Value),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
+longitudinal_display_missing_by_time_table <- function(result) {
+  table <- result$missing_by_time
+  if (!is.data.frame(table) || nrow(table) == 0) {
+    return(data.frame())
+  }
+  output <- table
+  if ("Any missing %" %in% names(output)) {
+    output$`Any missing %` <- vapply(output$`Any missing %`, longitudinal_format_number, character(1))
+  }
+  output
+}
+
 longitudinal_display_missing_sensitivity_table <- function(result) {
   table <- result$missing_sensitivity_results
   if (!is.data.frame(table) || nrow(table) == 0) {
@@ -246,6 +271,8 @@ longitudinal_result_block <- function(result, variable_table = NULL, labels = ch
   div(
     class = "result-section regression-result-panel longitudinal-result-panel",
     h3(longitudinal_result_title(result, variable_table, labels)),
+    h4("Coefficients"),
+    longitudinal_coef_html_table(longitudinal_display_coef_table(result)),
     if (nzchar(result$model_rationale %||% "")) {
       tagList(
         h4("Model rationale"),
@@ -267,7 +294,16 @@ longitudinal_result_block <- function(result, variable_table = NULL, labels = ch
     if (is.data.frame(result$missing_table) && nrow(result$missing_table) > 0) {
       tagList(
         h4("Missing data"),
-        model_overview_html_table(longitudinal_display_missing_table(result))
+        model_overview_html_table(longitudinal_display_missing_table(result)),
+        if (is.data.frame(result$missing_pattern) && nrow(result$missing_pattern) > 0) {
+          model_overview_html_table(longitudinal_display_missing_pattern_table(result))
+        },
+        if (is.data.frame(result$missing_by_time) && nrow(result$missing_by_time) > 0) {
+          tagList(
+            h4("Missing data by time"),
+            model_overview_html_table(longitudinal_display_missing_by_time_table(result))
+          )
+        }
       )
     },
     if (is.data.frame(result$missing_sensitivity_results) && nrow(result$missing_sensitivity_results) > 0) {
@@ -288,8 +324,6 @@ longitudinal_result_block <- function(result, variable_table = NULL, labels = ch
         }
       )
     },
-    h4("Detailed coefficient table"),
-    longitudinal_coef_html_table(longitudinal_display_coef_table(result)),
     if (is.data.frame(result$fit_details) && nrow(result$fit_details) > 0) {
       tagList(
         h4("Model fit details"),
@@ -404,7 +438,7 @@ save_longitudinal_excel_file <- function(results, file, variable_table = NULL, l
     result <- results[[index]]
     table <- longitudinal_display_coef_table(result)
     publication_table <- longitudinal_publication_estimate_table(result)
-    title <- longitudinal_result_title(result, variable_table, labels)
+    used_sheets <- add_excel_table_sheet(workbook, sprintf("Coefficients %s", index), table, used_sheets, title = sprintf("Coefficients - Model %s", index))
     if (is.data.frame(result$data_structure) && nrow(result$data_structure) > 0) {
       used_sheets <- add_excel_table_sheet(workbook, sprintf("Data structure %s", index), result$data_structure, used_sheets, title = sprintf("Data structure - Model %s", index))
     }
@@ -416,6 +450,14 @@ save_longitudinal_excel_file <- function(results, file, variable_table = NULL, l
     if (is.data.frame(missing) && nrow(missing) > 0) {
       used_sheets <- add_excel_table_sheet(workbook, sprintf("Missing data %s", index), missing, used_sheets, title = sprintf("Missing data - Model %s", index))
     }
+    missing_pattern <- longitudinal_display_missing_pattern_table(result)
+    if (is.data.frame(missing_pattern) && nrow(missing_pattern) > 0) {
+      used_sheets <- add_excel_table_sheet(workbook, sprintf("Missing pattern %s", index), missing_pattern, used_sheets, title = sprintf("Missing-data pattern - Model %s", index))
+    }
+    missing_by_time <- longitudinal_display_missing_by_time_table(result)
+    if (is.data.frame(missing_by_time) && nrow(missing_by_time) > 0) {
+      used_sheets <- add_excel_table_sheet(workbook, sprintf("Missing by time %s", index), missing_by_time, used_sheets, title = sprintf("Missing data by time - Model %s", index))
+    }
     missing_sensitivity <- longitudinal_display_missing_sensitivity_table(result)
     if (is.data.frame(missing_sensitivity) && nrow(missing_sensitivity) > 0) {
       used_sheets <- add_excel_table_sheet(workbook, sprintf("Missing sensitivity %s", index), missing_sensitivity, used_sheets, title = sprintf("Missing-data sensitivity results - Model %s", index))
@@ -426,7 +468,6 @@ save_longitudinal_excel_file <- function(results, file, variable_table = NULL, l
     if (is.data.frame(result$publication_notes) && nrow(result$publication_notes) > 0) {
       used_sheets <- add_excel_table_sheet(workbook, sprintf("Table notes %s", index), result$publication_notes, used_sheets, title = sprintf("Publication table notes - Model %s", index))
     }
-    used_sheets <- add_excel_table_sheet(workbook, sprintf("Model %s", index), table, used_sheets, title = title)
     if (is.data.frame(result$fit_details) && nrow(result$fit_details) > 0) {
       used_sheets <- add_excel_table_sheet(workbook, sprintf("Fit details %s", index), result$fit_details, used_sheets, title = sprintf("Model fit details - Model %s", index))
     }

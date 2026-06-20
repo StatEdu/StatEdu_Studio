@@ -372,15 +372,18 @@ valid_data_file_value <- function(file) {
 }
 
 current_data_file_value <- function(uploaded, active_file = NULL) {
+  if (is.list(active_file) && isTRUE(active_file$cleared)) {
+    return(NULL)
+  }
+  if (valid_data_file_value(active_file)) {
+    return(active_file)
+  }
   if (!is.null(uploaded)) {
     file <- list(path = uploaded$datapath, name = uploaded$name, restored = FALSE)
     if (valid_data_file_value(file)) {
       return(file)
     }
     return(NULL)
-  }
-  if (valid_data_file_value(active_file)) {
-    return(active_file)
   }
   NULL
 }

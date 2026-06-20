@@ -56,10 +56,29 @@ generalized_missing_strategy_label <- function(strategy) {
 generalized_missing_strategy_detail <- function(strategy) {
   switch(
     generalized_resolve_missing_strategy(strategy),
-    mi = "Uses standard mice-based multiple imputation for incomplete selected GLM variables, fits the selected GLM in each imputed dataset, and pools estimates using Rubin-style total variance. Treat this as a prespecified primary or sensitivity option when missingness is plausibly MAR.",
-    ipw = "Estimates the probability of being a complete case from fully observed predictors and fits the selected GLM with inverse-probability weights. Use this as a sensitivity option when complete-case inclusion may depend on observed covariates, and review positivity/weight stability.",
+    mi = "Uses standard mice-based multiple imputation for incomplete selected GLM variables, including the dependent variable when it is missing. The selected GLM is fitted in each imputed dataset and pooled using Rubin-style total variance. Treat this as a prespecified primary or sensitivity option when missingness is plausibly MAR.",
+    ipw = "Estimates the probability of being a complete case from fully observed predictors and fits the selected GLM with inverse-probability weights. Use this as a sensitivity option when complete-case inclusion may depend on observed covariates, and review positivity/weight stability and the observation model.",
     "Drops rows with missing selected model variables before fitting the GLM. This is transparent, but it is strongest when missingness is minimal or plausibly MCAR."
   )
+}
+
+generalized_mi_outcome_choices <- function() {
+  c(
+    "종속변수 관측 행만 사용 (권장)" = "observed",
+    "종속변수 결측까지 대체 - 민감도 분석용" = "impute"
+  )
+}
+
+generalized_resolve_mi_outcome <- function(value) {
+  value <- as.character(value %||% "observed")[[1]]
+  if (value %in% unname(generalized_mi_outcome_choices())) value else "observed"
+}
+
+generalized_mi_outcome_label <- function(value) {
+  value <- generalized_resolve_mi_outcome(value)
+  labels <- names(generalized_mi_outcome_choices())
+  values <- unname(generalized_mi_outcome_choices())
+  labels[match(value, values)] %||% "종속변수 관측 행만 사용 (권장)"
 }
 
 generalized_resolve_mi_count <- function(value, default = 5L, minimum = 1L, maximum = 50L) {
@@ -260,6 +279,55 @@ generalized_prepare_data <- function(
   prepared
 }
 
+generalized_missing_pattern_summary <- function(raw_prepared, complete_index, outcome, predictors, exposure = character(0)) {
+  if (!is.data.frame(raw_prepared) || nrow(raw_prepared) == 0) {
+    return(data.frame(Item = character(0), Value = character(0), stringsAsFactors = FALSE, check.names = FALSE))
+  }
+  complete_index <- as.logical(complete_index %||% stats::complete.cases(raw_prepared))
+  complete_index[is.na(complete_index)] <- FALSE
+  outcome <- utils::head(intersect(as.character(outcome %||% character(0)), names(raw_prepared)), 1)
+  predictors <- intersect(as.character(predictors %||% character(0)), names(raw_prepared))
+  exposure <- utils::head(intersect(as.character(exposure %||% character(0)), names(raw_prepared)), 1)
+  missing_matrix <- is.na(raw_prepared)
+  pattern <- apply(missing_matrix, 1, function(row) {
+    missing_names <- names(raw_prepared)[row]
+    if (length(missing_names) == 0) "Complete" else paste(missing_names, collapse = ", ")
+  })
+  pattern_counts <- sort(table(pattern), decreasing = TRUE)
+  most_common_pattern <- if (length(pattern_counts) > 0) {
+    sprintf("%s (n=%s)", names(pattern_counts)[[1]], as.integer(pattern_counts[[1]]))
+  } else {
+    ""
+  }
+  outcome_missing <- if (length(outcome) == 1) sum(is.na(raw_prepared[[outcome]])) else NA_integer_
+  predictor_missing <- if (length(predictors) > 0) sum(rowSums(missing_matrix[, predictors, drop = FALSE]) > 0) else 0L
+  exposure_missing <- if (length(exposure) == 1) sum(is.na(raw_prepared[[exposure]])) else 0L
+  data.frame(
+    Item = c(
+      "Raw rows",
+      "Complete model rows",
+      "Rows excluded by complete-case screen",
+      "Rows with missing dependent variable",
+      "Rows with any missing independent variable",
+      "Rows with missing exposure / offset",
+      "Distinct missingness patterns",
+      "Most common missingness pattern"
+    ),
+    Value = c(
+      as.character(nrow(raw_prepared)),
+      as.character(sum(complete_index)),
+      as.character(sum(!complete_index)),
+      if (is.na(outcome_missing)) "" else as.character(outcome_missing),
+      as.character(predictor_missing),
+      as.character(exposure_missing),
+      as.character(length(pattern_counts)),
+      most_common_pattern
+    ),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
 generalized_validate_outcome <- function(data, outcome, family) {
   y <- data[[outcome]]
   if (identical(family, "gamma") && any(y <= 0, na.rm = TRUE)) {
@@ -339,6 +407,10 @@ generalized_metric <- function(model, metric) {
   )
 }
 
+generalized_log_likelihood <- function(model) {
+  tryCatch(as.numeric(stats::logLik(model)), error = function(e) NA_real_)
+}
+
 generalized_coef_table <- function(model, robust = TRUE, exponentiate = FALSE, se_type = NULL) {
   se_type <- generalized_resolve_se_type(se_type, robust = robust)
   coef_matrix <- NULL
@@ -397,6 +469,13 @@ generalized_fit_model <- function(data, formula, family, link, robust, exponenti
     model <- poisson
     threshold <- 1.5
     nb_ok <- !is.null(nb)
+    poisson_loglik <- generalized_log_likelihood(poisson)
+    nb_loglik <- if (nb_ok) generalized_log_likelihood(nb) else NA_real_
+    lr_stat <- if (is.finite(poisson_loglik) && is.finite(nb_loglik)) {
+      max(0, 2 * (nb_loglik - poisson_loglik))
+    } else {
+      NA_real_
+    }
     if (isTRUE(overdispersion_check) && is.finite(dispersion) && dispersion > threshold) {
       if (!is.null(nb)) {
         model <- nb
@@ -428,8 +507,12 @@ generalized_fit_model <- function(data, formula, family, link, robust, exponenti
         "Zero screen",
         "Poisson AIC",
         "Poisson BIC",
+        "Poisson logLik",
         "Negative binomial AIC",
         "Negative binomial BIC",
+        "Negative binomial logLik",
+        "Poisson vs NB LR statistic",
+        "LL comparison note",
         "Decision rule"
       ),
       Value = c(
@@ -444,8 +527,12 @@ generalized_fit_model <- function(data, formula, family, link, robust, exponenti
         if (isTRUE(zero_screen$flag)) "Possible excess zeros; consider zero-inflated or hurdle sensitivity analysis." else "No excess-zero flag by simple Poisson zero screen.",
         format_decimal3(generalized_metric(poisson, "aic")),
         format_decimal3(generalized_metric(poisson, "bic")),
+        format_decimal3(poisson_loglik),
         if (nb_ok) format_decimal3(generalized_metric(nb, "aic")) else "",
         if (nb_ok) format_decimal3(generalized_metric(nb, "bic")) else "",
+        if (nb_ok) format_decimal3(nb_loglik) else "",
+        if (is.finite(lr_stat)) format_decimal3(lr_stat) else "",
+        "LL, AIC, and BIC are supplementary diagnostics; the automatic count-family decision uses the prespecified overdispersion screening rule.",
         decision
       ),
       stringsAsFactors = FALSE,
@@ -567,6 +654,7 @@ generalized_fit_mi <- function(
   overdispersion_check,
   imputations = 5L,
   iterations = 5L,
+  mi_outcome = "observed",
   offset = character(0),
   se_type = NULL,
   seed = 20260618L
@@ -577,6 +665,9 @@ generalized_fit_mi <- function(
   if (!anyNA(raw_prepared)) {
     stop("No missing values were present in selected GLM variables; MI is not needed.", call. = FALSE)
   }
+  outcome <- all.vars(formula)[[1]]
+  mi_outcome <- generalized_resolve_mi_outcome(mi_outcome)
+  observed_outcome <- if (outcome %in% names(raw_prepared)) !is.na(raw_prepared[[outcome]]) else rep(TRUE, nrow(raw_prepared))
   imputed <- mice::mice(
     raw_prepared,
     m = generalized_resolve_mi_count(imputations, minimum = 2L),
@@ -594,7 +685,6 @@ generalized_fit_mi <- function(
       failures <- c(failures, sprintf("imputation %s completion failed: %s", index, conditionMessage(completed)))
       next
     }
-    outcome <- all.vars(formula)[[1]]
     if (identical(family, "binomial")) {
       completed[[outcome]] <- pmin(1, pmax(0, round(suppressWarnings(as.numeric(completed[[outcome]])))))
     } else if (identical(family, "count")) {
@@ -613,6 +703,9 @@ generalized_fit_mi <- function(
       if (!is.finite(positive_min)) positive_min <- .Machine$double.eps
       exposure[!is.finite(exposure) | exposure <= 0] <- positive_min / 2
       completed[[offset]] <- exposure
+    }
+    if (identical(mi_outcome, "observed")) {
+      completed <- completed[observed_outcome, , drop = FALSE]
     }
     completed <- completed[stats::complete.cases(completed), , drop = FALSE]
     fit <- tryCatch(
@@ -634,9 +727,14 @@ generalized_fit_mi <- function(
   first_fit$robust_used <- isTRUE(attr(pooled, "robust_used"))
   first_fit$se_type_requested <- attr(pooled, "se_type_requested") %||% "model"
   first_fit$se_type_used <- attr(pooled, "se_type_used") %||% "model"
+  outcome_note <- if (identical(mi_outcome, "observed")) {
+    "Rows with originally missing dependent-variable values were excluded from each fitted imputed GLM."
+  } else {
+    "Rows with imputed dependent-variable values were included as a sensitivity analysis."
+  }
   first_fit$fit_note <- unique(c(
     first_fit$fit_note,
-    sprintf("Standard mice-based multiple imputation used %d fitted dataset(s); coefficients were pooled using Rubin-style total variance.", length(tables)),
+    sprintf("Standard mice-based multiple imputation used %d fitted dataset(s); coefficients were pooled using Rubin-style total variance. %s", length(tables), outcome_note),
     if (length(failures) > 0) sprintf("MI warnings: %s", paste(failures, collapse = "; ")) else character(0)
   ))
   first_fit
@@ -691,7 +789,7 @@ generalized_ipw_diagnostics <- function(probability, weights, clipped_probabilit
   )
 }
 
-generalized_ipw_weights <- function(raw_prepared, analyzed_data, variables, predictors) {
+generalized_ipw_weights <- function(raw_prepared, analyzed_data, variables, predictors, auxiliary = character(0)) {
   observed <- stats::complete.cases(raw_prepared[, variables, drop = FALSE])
   analyzed_index <- match(rownames(analyzed_data), rownames(raw_prepared))
   if (length(unique(observed)) < 2 || anyNA(analyzed_index)) {
@@ -702,7 +800,8 @@ generalized_ipw_weights <- function(raw_prepared, analyzed_data, variables, pred
       note = "Observation status had no variation; unit weights were used."
     ))
   }
-  candidate_terms <- intersect(predictors, names(raw_prepared))
+  auxiliary <- setdiff(as.character(auxiliary %||% character(0)), variables)
+  candidate_terms <- intersect(unique(c(predictors, auxiliary)), names(raw_prepared))
   candidate_terms <- candidate_terms[vapply(candidate_terms, function(name) {
     values <- raw_prepared[[name]]
     !anyNA(values) && length(unique(values)) > 1
@@ -929,23 +1028,47 @@ generalized_assumption_checks <- function(model, family, dispersion, data, formu
 
 generalized_fit_stats <- function(model, null_model = NULL, se_type = "model") {
   family <- model$family$family %||% ""
+  n <- stats::nobs(model)
+  residual_df <- stats::df.residual(model)
+  log_likelihood <- generalized_log_likelihood(model)
+  gaussian_r2 <- NA_real_
+  gaussian_adjusted_r2 <- NA_real_
   pseudo_r2 <- NA_real_
-  if (!is.null(null_model) && !identical(family, "gaussian")) {
+  if (identical(family, "gaussian")) {
+    deviance <- suppressWarnings(as.numeric(stats::deviance(model)))
+    null_deviance <- suppressWarnings(as.numeric(model$null.deviance %||% NA_real_))
+    if (is.finite(deviance) && is.finite(null_deviance) && null_deviance > 0) {
+      gaussian_r2 <- 1 - deviance / null_deviance
+      if (is.finite(n) && is.finite(residual_df) && residual_df > 0) {
+        gaussian_adjusted_r2 <- 1 - (1 - gaussian_r2) * (n - 1) / residual_df
+      }
+    }
+  } else if (!is.null(null_model)) {
     ll <- tryCatch(as.numeric(stats::logLik(model)), error = function(e) NA_real_)
     ll0 <- tryCatch(as.numeric(stats::logLik(null_model)), error = function(e) NA_real_)
     if (is.finite(ll) && is.finite(ll0) && ll0 != 0) {
       pseudo_r2 <- 1 - ll / ll0
     }
   }
+  r2_items <- if (identical(family, "gaussian")) c("R2", "Adjusted R2") else "McFadden pseudo R2"
+  r2_values <- if (identical(family, "gaussian")) {
+    c(
+      if (is.finite(gaussian_r2)) format_decimal3(gaussian_r2) else "",
+      if (is.finite(gaussian_adjusted_r2)) format_decimal3(gaussian_adjusted_r2) else ""
+    )
+  } else {
+    if (is.finite(pseudo_r2)) format_decimal3(pseudo_r2) else ""
+  }
   data.frame(
-    Item = c("N", "AIC", "BIC", "Residual df", "Dispersion", "McFadden pseudo R2", "Standard errors"),
+    Item = c("N", "Log likelihood", "AIC", "BIC", "Residual df", "Dispersion", r2_items, "Standard errors"),
     Value = c(
-      as.character(stats::nobs(model)),
+      as.character(n),
+      if (is.finite(log_likelihood)) format_decimal3(log_likelihood) else "",
       format_decimal3(stats::AIC(model)),
       format_decimal3(stats::BIC(model)),
-      as.character(stats::df.residual(model)),
+      as.character(residual_df),
       format_decimal3(generalized_overdispersion_ratio(model)),
-      if (is.finite(pseudo_r2)) format_decimal3(pseudo_r2) else "",
+      r2_values,
       generalized_se_type_label(se_type)
     ),
     stringsAsFactors = FALSE,
@@ -1201,8 +1324,8 @@ generalized_publication_notes <- function(result) {
     gaussian = "Gaussian identity-link coefficients are mean differences on the original outcome scale.",
     binomial = "Binomial logit-link coefficients are log odds ratios; exp(B) is interpreted as an odds ratio.",
     gamma = "Gamma log-link coefficients are log mean ratios; exp(B) is interpreted as a mean ratio.",
-    count = "Poisson log-link coefficients are log rate or mean ratios; exp(B) is interpreted as a rate ratio when an exposure offset is used.",
-    negative_binomial = "Negative-binomial log-link coefficients are log rate or mean ratios and account for overdispersion relative to Poisson.",
+    count = "Poisson log-link coefficients are log rate or mean ratios; RR denotes the exponentiated coefficient and is interpreted as a rate ratio when an exposure offset is used.",
+    negative_binomial = "Negative-binomial log-link coefficients are log rate or mean ratios; RR denotes the exponentiated coefficient and accounts for overdispersion relative to Poisson.",
     "GLM coefficients are reported on the selected model link scale."
   )
   se_note <- sprintf("Standard errors are reported as %s.", generalized_se_type_label(result$se_type_used %||% "model"))
@@ -1360,6 +1483,8 @@ prepare_generalized_analysis_result <- function(
   missing_strategy = "complete",
   missing_imputations = 5L,
   missing_iterations = 5L,
+  mi_outcome = "observed",
+  ipw_auxiliary = character(0),
   variable_info = NULL,
   labels = character(0),
   category_table = NULL,
@@ -1391,11 +1516,18 @@ prepare_generalized_analysis_result <- function(
   se_type <- generalized_resolve_se_type(se_type, robust = robust)
   robust <- !identical(se_type, "model")
   variables <- unique(c(outcome, predictors, exposure))
+  ipw_auxiliary <- setdiff(intersect(as.character(ipw_auxiliary %||% character(0)), names(data)), variables)
   missing_strategy <- generalized_resolve_missing_strategy(missing_strategy)
+  mi_outcome <- generalized_resolve_mi_outcome(mi_outcome)
   if (length(reference_values) == 0) {
     reference_values <- regression_reference_values_static(category_table)
   }
   raw_prepared <- generalized_prepare_data(data, variables, outcome, detected_family, variable_info, reference_values, drop_complete = FALSE)
+  ipw_prepared <- if (length(ipw_auxiliary) > 0) {
+    generalized_prepare_data(data, unique(c(variables, ipw_auxiliary)), outcome, detected_family, variable_info, reference_values, drop_complete = FALSE)
+  } else {
+    raw_prepared
+  }
   complete_index <- attr(raw_prepared, "complete_index") %||% stats::complete.cases(raw_prepared)
   coding_levels <- attr(raw_prepared, "coding_levels") %||% list()
   prepared <- raw_prepared[complete_index, , drop = FALSE]
@@ -1405,6 +1537,7 @@ prepare_generalized_analysis_result <- function(
   raw_n <- attr(raw_prepared, "raw_n") %||% nrow(raw_prepared)
   complete_excluded_n <- attr(raw_prepared, "excluded") %||% 0L
   missing_table <- attr(raw_prepared, "missing_table") %||% data.frame()
+  missing_pattern <- generalized_missing_pattern_summary(raw_prepared, complete_index, outcome, predictors, exposure)
   generalized_validate_outcome(raw_prepared, outcome, detected_family)
   generalized_validate_offset(raw_prepared, exposure)
 
@@ -1431,23 +1564,41 @@ prepare_generalized_analysis_result <- function(
       overdispersion,
       imputations = missing_imputations,
       iterations = missing_iterations,
+      mi_outcome = mi_outcome,
       offset = exposure,
       se_type = se_type
     )
     missing_note <- sprintf("Standard mice-based multiple imputation was selected for GLM missing-data handling (m = %d, iterations = %d).", missing_imputations, missing_iterations)
     missing_details <- data.frame(
-      Item = c("Selected strategy", "MI datasets", "MI iterations", "Complete-case rows before MI"),
-      Value = c(generalized_missing_strategy_label(missing_strategy), as.character(missing_imputations), as.character(missing_iterations), sprintf("%d of %d", nrow(prepared), raw_n)),
+      Item = c("Selected strategy", "MI datasets", "MI iterations", "Complete-case rows before MI", "Dependent-variable handling"),
+      Value = c(
+        generalized_missing_strategy_label(missing_strategy),
+        as.character(missing_imputations),
+        as.character(missing_iterations),
+        sprintf("%d of %d", nrow(prepared), raw_n),
+        if (identical(mi_outcome, "observed")) {
+          "Rows with originally missing dependent-variable values are excluded from each fitted imputed GLM."
+        } else if (anyNA(raw_prepared[[outcome]])) {
+          "Rows with imputed dependent-variable values are included as a sensitivity analysis; report this explicitly."
+        } else {
+          "The dependent variable has no missing values in the selected GLM variables."
+        }
+      ),
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
   } else if (identical(missing_strategy, "ipw") && complete_excluded_n > 0) {
-    ipw <- generalized_ipw_weights(raw_prepared, prepared, variables, predictors)
+    ipw <- generalized_ipw_weights(ipw_prepared, prepared, variables, predictors, ipw_auxiliary)
     fit <- generalized_fit_model(prepared, formula, detected_family, link, robust, exponentiate, overdispersion, weights = ipw$weights, se_type = se_type)
     missing_note <- "Inverse-probability weighting was selected for GLM missing-data handling."
     missing_details <- data.frame(
-      Item = c("Selected strategy", "Complete-case rows", "IPW summary"),
-      Value = c(generalized_missing_strategy_label(missing_strategy), sprintf("%d of %d", nrow(prepared), raw_n), ipw$note),
+      Item = c("Selected strategy", "Complete-case rows", "Selected auxiliary variables", "IPW summary"),
+      Value = c(
+        generalized_missing_strategy_label(missing_strategy),
+        sprintf("%d of %d", nrow(prepared), raw_n),
+        if (length(ipw_auxiliary) > 0) paste(ipw_auxiliary, collapse = ", ") else "None selected",
+        ipw$note
+      ),
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
@@ -1550,8 +1701,11 @@ prepare_generalized_analysis_result <- function(
     decision_summary = decision_summary,
     coding_summary = coding_summary,
     missing_table = missing_table,
+    missing_pattern = missing_pattern,
     missing_method = generalized_missing_strategy_label(missing_strategy),
     missing_strategy = missing_strategy,
+    mi_outcome = mi_outcome,
+    ipw_auxiliary = ipw_auxiliary,
     missing_details = missing_details,
     count_details = fit$count_details,
     assumption_checks = assumption_checks,

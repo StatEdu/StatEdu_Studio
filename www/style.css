@@ -4499,6 +4499,20 @@ input.variable-select:disabled {
   border-color: #d9e2ec;
 }
 
+.generalized-results > .generalized-result-panel {
+  width: min(100%, 590px) !important;
+  max-width: 590px !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box;
+}
+
+.generalized-results > .generalized-result-panel table.generalized-result-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+
 .regression-state-line {
   margin-bottom: 10px;
   color: #52606d;
@@ -6583,21 +6597,22 @@ pre {
 }
 
 .longitudinal-action-row {
-  grid-template-columns: 326px 50px 280px 280px 340px !important;
-  width: 1384px !important;
-  min-width: 1384px !important;
-  max-width: 1384px !important;
+  grid-template-columns: 306px 44px 264px 44px 264px 276px !important;
+  width: 1344px !important;
+  min-width: 1344px !important;
+  max-width: 1344px !important;
 }
 
 .longitudinal-setup-grid {
   display: grid;
-  grid-template-columns: 326px 50px 280px 280px 340px !important;
+  grid-template-areas: "available panel-move panel model-move model options";
+  grid-template-columns: 306px 44px 264px 44px 264px 276px !important;
   gap: 18px !important;
   align-items: start;
   margin-top: 18px;
-  width: 1384px !important;
-  min-width: 1384px !important;
-  max-width: 1384px !important;
+  width: 1344px !important;
+  min-width: 1344px !important;
+  max-width: 1344px !important;
   padding: 18px;
   background: #f4f8fb;
   border: 1px solid #e1eaf2;
@@ -6614,7 +6629,10 @@ pre {
 }
 
 .longitudinal-available-panel {
-  width: 326px !important;
+  width: 306px !important;
+  grid-area: available;
+  grid-column: 1;
+  grid-row: 1;
 }
 
 .longitudinal-available-panel .analysis-transfer-listbox {
@@ -6627,16 +6645,20 @@ pre {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  width: 280px !important;
+  width: 264px !important;
   padding-top: 14px;
 }
 
 .longitudinal-core-block {
+  grid-area: panel;
   grid-column: 3;
+  grid-row: 1;
 }
 
 .longitudinal-predictors-block {
-  grid-column: 4;
+  grid-area: model;
+  grid-column: 5;
+  grid-row: 1;
 }
 
 .longitudinal-block-title {
@@ -6653,7 +6675,19 @@ pre {
   position: relative;
   height: 570px;
   box-sizing: border-box;
-  transform: translateX(6px);
+  transform: none;
+}
+
+.longitudinal-panel-transfer-controls {
+  grid-area: panel-move;
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.longitudinal-model-transfer-controls {
+  grid-area: model-move;
+  grid-column: 4;
+  grid-row: 1;
 }
 
 .longitudinal-transfer-controls .analysis-move-button {
@@ -6678,12 +6712,12 @@ pre {
   top: 285px;
 }
 
-.longitudinal-transfer-controls .analysis-move-button:nth-child(5) {
-  top: 337px;
+.longitudinal-model-transfer-controls .analysis-move-button:nth-child(1) {
+  top: 81px;
 }
 
-.longitudinal-transfer-controls .analysis-move-button:nth-child(6) {
-  top: 390px;
+.longitudinal-model-transfer-controls .analysis-move-button:nth-child(2) {
+  top: 337px;
 }
 
 .longitudinal-target-field {
@@ -6737,18 +6771,39 @@ pre {
 }
 
 .longitudinal-options.analysis-options-panel {
-  grid-column: 5;
+  grid-area: options;
+  grid-column: 6;
+  grid-row: 1;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  width: 340px;
+  width: 276px;
 }
 
 .generalized-workspace-panel {
-  width: 1140px;
-  min-width: 1140px;
-  max-width: 1140px;
+  width: 1176px;
+  min-width: 1176px;
+  max-width: 1176px;
   overflow-x: auto;
+}
+
+.generalized-workspace-heading,
+.generalized-data-viewer-panel {
+  width: 1140px !important;
+  min-width: 1140px !important;
+  max-width: 1140px !important;
+}
+
+.longitudinal-workspace-panel,
+.longitudinal-workspace-heading,
+.longitudinal-data-viewer-panel {
+  width: 1344px !important;
+  min-width: 1344px !important;
+  max-width: 1344px !important;
+}
+
+.longitudinal-workspace-panel {
+  overflow-x: hidden !important;
 }
 
 .generalized-setup-grid {
@@ -6846,7 +6901,7 @@ pre {
   position: relative;
   height: 520px;
   box-sizing: border-box;
-  transform: translateX(6px);
+  transform: none;
 }
 
 .generalized-transfer-controls .analysis-move-button {
@@ -6856,15 +6911,15 @@ pre {
 }
 
 .generalized-transfer-controls .analysis-move-button:nth-child(1) {
-  top: 84px;
+  top: 66px;
 }
 
 .generalized-transfer-controls .analysis-move-button:nth-child(2) {
-  top: 176px;
+  top: 144px;
 }
 
 .generalized-transfer-controls .analysis-move-button:nth-child(3) {
-  top: 326px;
+  top: 300px;
 }
 
 .generalized-options .analysis-option-title {
@@ -6982,6 +7037,13 @@ pre {
 .generalized-action-row > #generalized_reset_control .analysis-reset-button {
   width: 300px;
   min-width: 300px;
+}
+
+.generalized-action-row > #generalized_save_control {
+  grid-column: 5;
+  margin-left: 0;
+  align-self: start;
+  justify-self: center;
 }
 
 .longitudinal-options .nav-tabs > li > a {
@@ -7124,20 +7186,20 @@ pre {
 .longitudinal-options .selectize-control,
 .longitudinal-options .form-control,
 .longitudinal-options select {
-  width: 280px;
-  min-width: 280px;
-  max-width: 280px;
+  width: 248px;
+  min-width: 248px;
+  max-width: 248px;
   box-sizing: border-box;
 }
 
 .longitudinal-action-row {
   display: grid;
-  grid-template-columns: 326px 50px 326px 20px 340px !important;
+  grid-template-columns: 306px 44px 264px 44px 264px 276px !important;
   gap: 18px !important;
   align-items: start;
-  width: 1170px !important;
-  min-width: 1170px !important;
-  max-width: 1170px !important;
+  width: 1344px !important;
+  min-width: 1344px !important;
+  max-width: 1344px !important;
   margin-bottom: 28px;
 }
 
@@ -7150,7 +7212,7 @@ pre {
 }
 
 .longitudinal-action-row > #reset_longitudinal {
-  grid-column: 3;
+  grid-column: 3 / 6;
   width: 300px;
   min-width: 300px;
   margin-left: 0;
@@ -7159,7 +7221,7 @@ pre {
 }
 
 .longitudinal-action-row > #longitudinal_save_control {
-  grid-column: 5;
+  grid-column: 6;
   margin-left: 0;
   align-self: start;
   justify-self: center;
@@ -8180,6 +8242,10 @@ pre {
   .generalized-action-row {
     grid-template-columns: 304px 44px 304px 16px 286px !important;
     gap: 16px !important;
+  }
+
+  .generalized-setup-grid > .generalized-options.analysis-options-panel {
+    grid-column: 5 !important;
   }
 
   .frequencies-setup-grid,
