@@ -12,7 +12,7 @@ This build uses the StatEdu Studio 0.9.35 app shell structure for startup loggin
 
 ## Local Run
 
-Double-click `easyflow_latent_mplus.bat`, or run:
+Double-click `statedu_studio_latent_mplus.bat`, or run:
 
 ```r
 shiny::runApp("<repo>/modules/latent_mplus/app")
