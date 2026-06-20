@@ -729,18 +729,14 @@
               }
             });
             if (groupItems.length === 0) return;
-            var groupNode = window.jQuery('<li class="dropdown analysis-menu-group" role="presentation"></li>');
-            var groupLink = window.jQuery(
-              '<a href="#" class="dropdown-toggle analysis-menu-group-toggle" role="menuitem" tabindex="-1" aria-haspopup="true">' +
-              '<span class="analysis-menu-group-label"></span><b class="caret"></b></a>'
-            );
-            groupLink.find('.analysis-menu-group-label').text(group.title);
-            var submenu = window.jQuery('<ul class="dropdown-menu analysis-menu-submenu" role="menu"></ul>');
+            var groupNode = window.jQuery('<li class="analysis-menu-section" role="presentation"></li>');
+            var groupTitle = window.jQuery('<div class="analysis-menu-section-title"></div>').text(group.title);
+            var groupList = window.jQuery('<ul class="analysis-menu-section-items" role="menu"></ul>');
             groupItems.forEach(function(item) {
-              submenu.append(item);
+              groupList.append(item);
             });
-            groupNode.append(groupLink, submenu);
-            if (submenu.children('li.active').length) {
+            groupNode.append(groupTitle, groupList);
+            if (groupList.children('li.active').length) {
               groupNode.addClass('active');
             }
             menu.append(groupNode);
@@ -749,19 +745,7 @@
           Object.keys(existingItems).forEach(function(value) {
             menu.append(existingItems[value]);
           });
-          menu.attr('data-analysis-menu-grouped', 'true');
-        }
-
-        function openActiveAnalysisMenuGroup(topDropdown) {
-          var dropdown = window.jQuery(topDropdown);
-          if (!dropdown.children('a.dropdown-toggle').first().text().trim().startsWith('Analysis')) return;
-          var activeGroup = dropdown.find('> ul.dropdown-menu > li.analysis-menu-group.active').first();
-          if (!activeGroup.length) {
-            activeGroup = dropdown.find('> ul.dropdown-menu > li.analysis-menu-group:has(> ul > li.active)').first();
-          }
-          if (!activeGroup.length) return;
-          activeGroup.addClass('open');
-          activeGroup.siblings('.analysis-menu-group.open').removeClass('open');
+          menu.addClass('analysis-mega-menu').attr('data-analysis-menu-grouped', 'true');
         }
 
         function configureNestedDropdownToggles() {
@@ -789,13 +773,8 @@
             item.toggleClass('open');
             item.siblings('.dropdown.open').removeClass('open');
           })
-          .on('mouseenter.easyflowNestedDropdown', '.navbar-nav > li.dropdown > ul.dropdown-menu > li.analysis-menu-group', function() {
-            var item = window.jQuery(this);
-            item.addClass('open');
-            item.siblings('.analysis-menu-group.open').removeClass('open');
-          })
-          .on('shown.bs.dropdown.easyflowNestedDropdown click.easyflowNestedDropdown', '.navbar-nav > li.dropdown', function() {
-            openActiveAnalysisMenuGroup(this);
+          .on('click.easyflowAnalysisMegaMenu', '.analysis-mega-menu .analysis-menu-section-items a[data-value]', function() {
+            window.jQuery(this).closest('.navbar-nav > li.dropdown').removeClass('open');
           })
           .on('hidden.bs.dropdown.easyflowNestedDropdown', '.navbar-nav > .dropdown', function() {
             window.jQuery(this).find('.dropdown.open').removeClass('open');
