@@ -1,4 +1,4 @@
-# Bootstrap job state management for easyflow_statistics.
+# Bootstrap job state management for StatEdu Studio.
 
 create_bootstrap_manager <- function(
   bootstrap_job,

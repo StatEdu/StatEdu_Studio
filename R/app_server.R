@@ -1,4 +1,4 @@
-# Main Shiny server assembly for easyflow_statistics.
+# Main Shiny server assembly for StatEdu Studio.
 
 create_app_server <- function(app_version) {
   force(app_version)

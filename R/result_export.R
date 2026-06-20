@@ -1,4 +1,4 @@
-# Result export helpers for easyflow_statistics.
+# Result export helpers for StatEdu Studio.
 # All analysis table exports should use these helpers so workbook layout,
 # table lines, title rows, column widths, and alignment stay consistent.
 

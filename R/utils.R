@@ -1,4 +1,4 @@
-# Auto-extracted shared functions for easyflow_statistics.
+# Auto-extracted shared functions for StatEdu Studio.
 
 `%||%` <- function(x, y) {
   if (is.null(x)) y else x
@@ -14,7 +14,7 @@ easyflow_log_timing <- function(label, start, detail = "") {
   }
   elapsed <- as.numeric(difftime(Sys.time(), start, units = "secs"))
   suffix <- if (nzchar(as.character(detail %||% ""))) paste0(" ", detail) else ""
-  message(sprintf("[EasyFlow timing] %s: %.3fs%s", label, elapsed, suffix))
+  message(sprintf("[StatEdu timing] %s: %.3fs%s", label, elapsed, suffix))
   invisible(TRUE)
 }
 

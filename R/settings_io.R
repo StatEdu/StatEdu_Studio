@@ -1,4 +1,4 @@
-# Settings helpers for easyflow_statistics.
+# Settings helpers for StatEdu Studio.
 
 settings_vector <- function(x) {
   if (is.null(x)) return(character(0))

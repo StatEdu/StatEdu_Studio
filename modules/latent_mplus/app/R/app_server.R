@@ -2107,7 +2107,7 @@ latent_select_key_figures <- function(figures, max_n = 6L) {
     }
     row <- figures[idx[[1]], , drop = FALSE]
     row$section_title <- specs$title[[i]]
-    row$source <- "EasyFlow SCI"
+    row$source <- "StatEdu Studio SCI"
     selected[[length(selected) + 1L]] <- row
     selected_names <- c(selected_names, row$figure[[1]])
     if (length(selected) >= max_n) {
@@ -2117,7 +2117,7 @@ latent_select_key_figures <- function(figures, max_n = 6L) {
   if (length(selected) == 0) {
     figures <- figures[seq_len(min(nrow(figures), max_n)), , drop = FALSE]
     figures$section_title <- figures$figure
-    figures$source <- "EasyFlow SCI"
+    figures$source <- "StatEdu Studio SCI"
     return(figures)
   }
   do.call(rbind, selected)

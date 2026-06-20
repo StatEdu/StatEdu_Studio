@@ -181,7 +181,7 @@ register_data_input_observers <- function(input, active_data_file, reset_on_data
 
   observeEvent(input$browse_data_file, {
     start <- Sys.time()
-    message("[EasyFlow timing] browse_data_file: open dialog")
+    message("[StatEdu timing] browse_data_file: open dialog")
     data_path <- open_data_file()
     if (is.null(data_path)) {
       easyflow_log_timing("browse_data_file canceled", start)
@@ -254,7 +254,7 @@ register_settings_reset_handler <- function(
 ) {
   reset_session_settings <- function() {
     start <- Sys.time()
-    message("[EasyFlow timing] reset_session_settings: start")
+    message("[StatEdu timing] reset_session_settings: start")
     suppress_dirty_tracking(TRUE)
     active_data_file(list(cleared = TRUE))
     restored_data_file("")
@@ -311,7 +311,7 @@ register_settings_load_handler <- function(
 ) {
   apply_settings_object <- function(settings, settings_path = NULL) {
     start <- Sys.time()
-    message(sprintf("[EasyFlow timing] apply_settings_object: start file=%s", basename(as.character(settings_path %||% ""))))
+    message(sprintf("[StatEdu timing] apply_settings_object: start file=%s", basename(as.character(settings_path %||% ""))))
     suppress_dirty_tracking(TRUE)
     if (is.function(clear_results_fn)) {
       clear_results_fn()
@@ -337,13 +337,13 @@ register_settings_load_handler <- function(
 
   observeEvent(input$browse_settings_data, {
     browse_start <- Sys.time()
-    message("[EasyFlow timing] browse_settings_data: open dialog")
+    message("[StatEdu timing] browse_settings_data: open dialog")
     settings_path <- open_settings_file()
     if (is.null(settings_path)) {
       easyflow_log_timing("browse_settings_data canceled", browse_start)
       return()
     }
-    message(sprintf("[EasyFlow timing] browse_settings_data: selected %s", settings_path))
+    message(sprintf("[StatEdu timing] browse_settings_data: selected %s", settings_path))
     settings <- read_settings_json_file(settings_path)
     easyflow_log_timing("browse_settings_data before apply", browse_start, sprintf("file=%s", basename(settings_path)))
     apply_settings_object(settings, settings_path)
