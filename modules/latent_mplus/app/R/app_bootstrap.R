@@ -1,4 +1,4 @@
-# App bootstrap helpers for EasyFlow Latent Mplus.
+# App bootstrap helpers for StatEdu Studio Latent Mplus.
 # The app keeps the EFS 0.9.33 shell conventions and adds latent/Mplus helpers.
 
 required_packages <- c(

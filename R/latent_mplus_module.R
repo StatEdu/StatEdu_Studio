@@ -1,4 +1,4 @@
-# Integrated EasyFlow Latent Mplus module.
+# Integrated StatEdu Studio Latent Mplus module.
 
 latent_mplus_module_root <- function() {
   normalizePath(file.path(getwd(), "modules", "latent_mplus", "app"), winslash = "/", mustWork = FALSE)

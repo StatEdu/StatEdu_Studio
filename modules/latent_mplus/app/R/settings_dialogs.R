@@ -151,7 +151,7 @@ open_settings_file <- function() {
     ncol = 2,
     byrow = TRUE
   )
-  open_file_dialog("Open EasyFlow Latent Mplus Settings", filetypes)
+  open_file_dialog("Open StatEdu Studio Latent Mplus Settings", filetypes)
 }
 
 open_data_file <- function() {
@@ -171,7 +171,7 @@ open_data_file <- function() {
     byrow = TRUE
   )
   path <- open_file_dialog(
-    "Open EasyFlow Latent Mplus Data",
+    "Open StatEdu Studio Latent Mplus Data",
     filetypes
   )
   if (is.null(path) || !supported_data_file_extension(path)) {
@@ -188,13 +188,13 @@ save_settings_file <- function() {
         on.exit(try(tcltk::tkdestroy(parent), silent = TRUE), add = TRUE)
         as.character(tcltk::tkgetSaveFile(
           parent = parent,
-          title = "Save EasyFlow Latent Mplus Settings",
+          title = "Save StatEdu Studio Latent Mplus Settings",
           initialfile = "EFS_settings.efs-settings",
           defaultextension = ".efs-settings",
           filetypes = "{{StatEdu Studio Settings} {.efs-settings}} {{JSON settings} {.json}} {{All files} *}"
         ))
       } else {
-        folder <- utils::choose.dir(caption = "Choose a folder for EasyFlow Latent Mplus Settings")
+        folder <- utils::choose.dir(caption = "Choose a folder for StatEdu Studio Latent Mplus Settings")
         if (is.na(folder) || !nzchar(folder)) {
           character(0)
         } else {

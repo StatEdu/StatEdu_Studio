@@ -1,13 +1,13 @@
-# EasyFlow Latent Mplus Module
+# StatEdu Studio Latent Mplus Module
 
 This module is developer-only by default.
 
-The current integration keeps EasyFlow Latent Mplus as a separate local Shiny app and exposes it from StatEdu Studio only when `EFS_ENABLE_LATENT_MPLUS` is enabled.
+The current integration keeps StatEdu Studio Latent Mplus as a separate local Shiny app and exposes it from StatEdu Studio only when `EFS_ENABLE_LATENT_MPLUS` is enabled.
 
 Default development path inside this repository:
 
 ```text
-D:/Program/EasyFlow_Statistics/EasyFlow_Statistics_dev/modules/latent_mplus/app
+<repo>/modules/latent_mplus/app
 ```
 
 Override path:
