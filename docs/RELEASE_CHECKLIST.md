@@ -1,4 +1,4 @@
-# EasyFlow Statistics Release Checklist
+# StatEdu Studio Release Checklist
 
 Use this checklist before creating a public beta installer.
 
@@ -46,7 +46,7 @@ Use this checklist before creating a public beta installer.
 ## Smoke Test
 
 - Run `scripts/smoke_electron_release.ps1` after staging or packaging.
-- Launch `dist/electron/win-unpacked/EasyFlow Statistics Beta.exe`.
+- Launch `dist/electron/win-unpacked/StatEdu Studio Beta.exe`.
 - Confirm first launch opens the app and the About > Open Source Licenses page displays notices.
 - Confirm data import works with paths containing spaces and Korean characters.
 - Confirm at least one analysis and one export path work.

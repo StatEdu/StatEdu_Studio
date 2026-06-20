@@ -313,7 +313,7 @@ plot_data_uri <- function(plot_function, result, width = 420, height = 420, res 
 
 choose_excel_save_path <- function() {
   default_name <- sprintf("EFS_results_%s.xlsx", format(Sys.time(), "%Y%m%d_%H%M%S"))
-  title <- "Save EasyFlow Statistics Results"
+  title <- "Save StatEdu Studio Results"
   if (.Platform$OS.type == "windows") {
     path <- choose_windows_save_file(default_name, title)
     if (is_windows_dialog_cancel(path)) {
@@ -345,7 +345,7 @@ choose_excel_save_path <- function() {
 
 choose_data_csv_save_path <- function() {
   default_name <- sprintf("EFS_data_%s.csv", format(Sys.time(), "%Y%m%d_%H%M%S"))
-  title <- "Save EasyFlow Statistics Data"
+  title <- "Save StatEdu Studio Data"
   if (.Platform$OS.type == "windows") {
     path <- choose_windows_save_file(default_name, title, "CSV File (*.csv)|*.csv|All Files (*.*)|*.*", "csv")
     if (is_windows_dialog_cancel(path)) {
@@ -377,7 +377,7 @@ choose_data_csv_save_path <- function() {
 
 choose_html_save_path <- function() {
   default_name <- sprintf("EFS_results_%s.html", format(Sys.time(), "%Y%m%d_%H%M%S"))
-  title <- "Save EasyFlow Statistics HTML Results"
+  title <- "Save StatEdu Studio HTML Results"
   if (.Platform$OS.type == "windows") {
     path <- choose_windows_save_file(default_name, title, "HTML File (*.html)|*.html|All Files (*.*)|*.*", "html")
     if (is_windows_dialog_cancel(path)) {
@@ -409,7 +409,7 @@ choose_html_save_path <- function() {
 
 choose_result_history_save_path <- function() {
   default_name <- sprintf("EFS_result_history_%s.efs-result", format(Sys.time(), "%Y%m%d_%H%M%S"))
-  title <- "Save EasyFlow Statistics Result History"
+  title <- "Save StatEdu Studio Result History"
   if (.Platform$OS.type == "windows") {
     path <- choose_windows_save_file(default_name, title, "EasyFlow Result (*.efs-result)|*.efs-result|JSON File (*.json)|*.json|All Files (*.*)|*.*", "efs-result")
     if (is_windows_dialog_cancel(path)) {
@@ -433,7 +433,7 @@ choose_result_history_save_path <- function() {
 }
 
 choose_result_history_open_path <- function() {
-  title <- "Open EasyFlow Statistics Result History"
+  title <- "Open StatEdu Studio Result History"
   if (.Platform$OS.type == "windows") {
     path <- choose_windows_open_file(title, "EasyFlow Result (*.efs-result)|*.efs-result|JSON File (*.json)|*.json|All Files (*.*)|*.*")
     if (is_windows_dialog_cancel(path)) {
@@ -465,7 +465,7 @@ choose_result_history_open_path <- function() {
 
 choose_pdf_save_path <- function() {
   default_name <- sprintf("EFS_results_%s.pdf", format(Sys.time(), "%Y%m%d_%H%M%S"))
-  title <- "Save EasyFlow Statistics PDF Results"
+  title <- "Save StatEdu Studio PDF Results"
   if (.Platform$OS.type == "windows") {
     path <- choose_windows_save_file(default_name, title, "PDF File (*.pdf)|*.pdf|All Files (*.*)|*.*", "pdf")
     if (is_windows_dialog_cancel(path)) {
@@ -490,7 +490,7 @@ choose_pdf_save_path <- function() {
 
 choose_word_save_path <- function() {
   default_name <- sprintf("EFS_results_%s.docx", format(Sys.time(), "%Y%m%d_%H%M%S"))
-  title <- "Save EasyFlow Statistics Word Results"
+  title <- "Save StatEdu Studio Word Results"
   if (.Platform$OS.type == "windows") {
     path <- choose_windows_save_file(default_name, title, "Word Document (*.docx)|*.docx|All Files (*.*)|*.*", "docx")
     if (is_windows_dialog_cancel(path)) {
@@ -553,7 +553,7 @@ write_pdf_from_html <- function(html, file) {
 }
 
 choose_figure_save_dir <- function() {
-  caption <- "Choose folder for EasyFlow Statistics figures"
+  caption <- "Choose folder for StatEdu Studio figures"
   if (.Platform$OS.type == "windows") {
     path <- choose_windows_directory(caption)
     if (is_windows_dialog_cancel(path)) {

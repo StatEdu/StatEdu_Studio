@@ -1,4 +1,4 @@
-﻿# EasyFlow Statistics 1.0 배포/라이센스/업데이트 계획
+﻿# StatEdu Studio 1.0 배포/라이센스/업데이트 계획
 
 작성일: 2026-06-07  
 기준 버전: 0.9.33 beta  

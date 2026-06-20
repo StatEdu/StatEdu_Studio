@@ -8,7 +8,7 @@ The app bundles the Latent R/Mplus pipeline, dataset configuration folders, Mplu
 
 Current development version: `0.9.35`
 
-This build uses the EasyFlow Statistics 0.9.35 app shell structure for startup logging, package checks, data import helpers, settings handling, shared UI assets, local browser launching, and B5-oriented result display. The latent/Mplus workflow modules remain specific to EasyFlow Latent Mplus.
+This build uses the StatEdu Studio 0.9.35 app shell structure for startup logging, package checks, data import helpers, settings handling, shared UI assets, local browser launching, and B5-oriented result display. The latent/Mplus workflow modules remain specific to EasyFlow Latent Mplus.
 
 ## Local Run
 

@@ -102,7 +102,7 @@ function Copy-R-Package($packageName, $libraryPaths, $runtimeLibrary) {
   return $false
 }
 
-Write-Host "Preparing EasyFlow Statistics $version Electron beta installer..."
+Write-Host "Preparing StatEdu Studio $version Electron beta installer..."
 
 if (Test-Path -LiteralPath $appStage) {
   Remove-Item -LiteralPath $appStage -Recurse -Force

@@ -180,7 +180,7 @@ open_settings_file <- function() {
     ncol = 2,
     byrow = TRUE
   )
-  open_file_dialog("Open EasyFlow Statistics Settings", filetypes)
+  open_file_dialog("Open StatEdu Studio Settings", filetypes)
 }
 
 open_data_file <- function() {
@@ -200,7 +200,7 @@ open_data_file <- function() {
     byrow = TRUE
   )
   path <- open_file_dialog(
-    "Open EasyFlow Statistics Data",
+    "Open StatEdu Studio Data",
     filetypes
   )
   if (is.null(path) || !supported_data_file_extension(path)) {
@@ -217,13 +217,13 @@ save_settings_file <- function() {
         on.exit(try(tcltk::tkdestroy(parent), silent = TRUE), add = TRUE)
         as.character(tcltk::tkgetSaveFile(
           parent = parent,
-          title = "Save EasyFlow Statistics Settings",
+          title = "Save StatEdu Studio Settings",
           initialfile = "EFS_settings.efs-settings",
           defaultextension = ".efs-settings",
           filetypes = "{{EasyFlow Settings} {.efs-settings}} {{JSON settings} {.json}} {{All files} *}"
         ))
       } else {
-        folder <- utils::choose.dir(caption = "Choose a folder for EasyFlow Statistics Settings")
+        folder <- utils::choose.dir(caption = "Choose a folder for StatEdu Studio Settings")
         if (is.na(folder) || !nzchar(folder)) {
           character(0)
         } else {

@@ -1,6 +1,6 @@
-# **EasyFlow Statistics** Table Output Rules
+# **StatEdu Studio** Table Output Rules
 
-These rules apply to every analysis result table in **EasyFlow Statistics**.
+These rules apply to every analysis result table in **StatEdu Studio**.
 
 ## Export Rules
 

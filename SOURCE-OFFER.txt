@@ -1,11 +1,11 @@
-EasyFlow Statistics Source Code and License Notice
-==================================================
+StatEdu Studio Source Code and License Notice
+=============================================
 
-EasyFlow Statistics is distributed with source code available from:
+StatEdu Studio is distributed with source code available from:
 
   https://github.com/StatEdu/easyflow_statistics_dev
 
-The EasyFlow Statistics application source code is intended to be
+The StatEdu Studio application source code is intended to be
 distributed under the GNU General Public License, version 2 or later
 (GPL-2.0-or-later). See the LICENSE file included with this distribution.
 
@@ -35,4 +35,3 @@ copy, modify, and redistribute those components under their respective
 licenses. LGPL components may impose additional requirements related to
 replacement or relinking of the LGPL-covered library. This notice does
 not replace the individual third-party license terms.
-

@@ -1,4 +1,4 @@
-# Prune bundled R library to the packages required by EasyFlow Statistics.
+# Prune bundled R library to the packages required by StatEdu Studio.
 # Dry-run is the default. Pass --execute to remove extra package directories.
 
 args <- commandArgs(trailingOnly = TRUE)

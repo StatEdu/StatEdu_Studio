@@ -2,7 +2,7 @@
 
 This module is developer-only by default.
 
-The current integration keeps EasyFlow Latent Mplus as a separate local Shiny app and exposes it from EasyFlow Statistics only when `EFS_ENABLE_LATENT_MPLUS` is enabled.
+The current integration keeps EasyFlow Latent Mplus as a separate local Shiny app and exposes it from StatEdu Studio only when `EFS_ENABLE_LATENT_MPLUS` is enabled.
 
 Default development path inside this repository:
 
@@ -22,6 +22,6 @@ Enable in development:
 EFS_ENABLE_LATENT_MPLUS=true
 ```
 
-Mplus is not bundled, distributed, or licensed by EasyFlow Statistics. Latent estimation requires a separately licensed local Mplus installation on the user's PC.
+Mplus is not bundled, distributed, or licensed by StatEdu Studio. Latent estimation requires a separately licensed local Mplus installation on the user's PC.
 
 The release packaging script excludes `R/latent_mplus_module.R` and `modules/latent_mplus/` from the standard Electron beta package. Future public latent-enabled releases should intentionally remove that exclusion and document the separate Mplus requirement.
