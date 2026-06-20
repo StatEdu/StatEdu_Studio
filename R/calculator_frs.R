@@ -288,7 +288,7 @@ register_frs_calculator_handlers <- function(input, output, session, dataset_fn,
     DT::datatable(utils::head(data[, preview_names, drop = FALSE], 50), rownames = FALSE, filter = "top", options = list(pageLength = 10, scrollX = TRUE))
   })
   output$download_frs_calculator <- downloadHandler(
-    filename = function() paste0("easyflow_frs_", format(Sys.Date(), "%Y%m%d"), ".csv"),
+    filename = function() paste0("StatEdu_Studio_frs_", format(Sys.Date(), "%Y%m%d"), ".csv"),
     content = function(file) {
       data <- result()
       if (is.null(data)) data <- frs_result(dataset_fn(), frs_selected_variables(input), lipid_unit = frs_lipid_unit(input))

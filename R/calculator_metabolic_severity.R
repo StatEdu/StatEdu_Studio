@@ -226,7 +226,7 @@ register_metabolic_severity_calculator_handlers <- function(input, output, sessi
   })
 
   output$download_mbss_calculator <- downloadHandler(
-    filename = function() paste0("easyflow_metabolic_severity_", format(Sys.Date(), "%Y%m%d"), ".csv"),
+    filename = function() paste0("StatEdu_Studio_metabolic_severity_", format(Sys.Date(), "%Y%m%d"), ".csv"),
     content = function(file) {
       data <- result()
       if (is.null(data)) data <- metabolic_severity_result(dataset_fn(), metabolic_severity_selected_variables(input))

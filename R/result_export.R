@@ -384,11 +384,11 @@ saved_coefficients_table <- function(results, variable_table = NULL, labels = ch
 }
 
 coefficients_csv_filename <- function() {
-  "EFS_coefficients.csv"
+  "StatEdu_Studio_coefficients.csv"
 }
 
 analysis_results_html_filename <- function() {
-  sprintf("EFS_results_%s.html", format(Sys.time(), "%Y%m%d_%H%M%S"))
+  sprintf("StatEdu_Studio_results_%s.html", format(Sys.time(), "%Y%m%d_%H%M%S"))
 }
 
 write_coefficients_csv <- function(results, file, variable_table = NULL, labels = character(0), category_table = NULL) {

@@ -465,7 +465,7 @@ register_metabolic_calculator_handlers <- function(
 
   output$download_metabolic_calculator <- downloadHandler(
     filename = function() {
-      paste0("easyflow_metabolic_", format(Sys.Date(), "%Y%m%d"), ".csv")
+      paste0("StatEdu_Studio_metabolic_", format(Sys.Date(), "%Y%m%d"), ".csv")
     },
     content = function(file) {
       data <- result()
