@@ -5,6 +5,11 @@
 ### Changed
 
 - Bumped development metadata after the 0.9.39 beta release.
+- Rebranded product-facing surfaces to **StatEdu Studio**, including the app header, About text, launcher naming, installer metadata, favicon, logo assets, and default export filenames.
+- Added brand compatibility release checks documenting which legacy identifiers remain for DOI, environment, path, or backward-compatible data lookup reasons.
+- Guarded Shiny input calls during client startup to avoid early `Shiny.setInputValue` errors before the Shiny client binding is ready.
+- Updated Electron package-audit lock metadata so the transitive `undici` development dependency resolves without npm audit findings.
+- Added Electron package author metadata and ignored `StatEdu_Studio_*.zip` release artifacts during local development and Electron staging.
 
 ## v0.9.39 - 2026-06-18
 
