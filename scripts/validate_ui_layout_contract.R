@@ -73,6 +73,7 @@ rename_ui <- read_project_file("R/data_editor_rename.R")
 recode_ui <- read_project_file("R/data_editor_recode.R")
 missing_ui <- read_project_file("R/data_editor_missing.R")
 easyflow_js <- read_project_file("www/easyflow.js")
+app_server <- read_project_file("R/app_server.R")
 layout_doc <- read_project_file("docs/UI_LAYOUT_CONTRACT.md")
 r_text <- paste(vapply(list.files(file.path(repo_root, "R"), pattern = "\\.R$", full.names = TRUE), function(path) {
   paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -99,6 +100,68 @@ assert_contains(css, ".data-editor-workspace .analysis-workspace-heading", "work
 assert_contains(css, ".data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid)", "standard setup grid rule")
 assert_contains(css, ".data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row)", "standard action row rule")
 assert_contains(css, "grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;", "standard three-block grid columns")
+
+message("Checking Data Editor lazy menu wiring...")
+data_editor_lazy_contract <- data.frame(
+  title = c(
+    "Auto coding error check",
+    "Auto Likert conversion",
+    "Auto missing values",
+    "Wide to Long",
+    "Auto reverse coding",
+    "Auto variable calculation",
+    "Variable transformation",
+    "Recode variable",
+    "Rename variable"
+  ),
+  value = c(
+    "data_editor_coding_error_check",
+    "data_editor_likert",
+    "data_editor_missing_values",
+    "data_editor_wide_long",
+    "data_editor_recode_different",
+    "data_editor_variable_calculation",
+    "data_editor_variable_transformation",
+    "data_editor_recode_same",
+    "data_editor_variable_rename"
+  ),
+  output_id = c(
+    "lazy_data_editor_coding_error_check",
+    "lazy_data_editor_likert",
+    "lazy_data_editor_missing_values",
+    "lazy_data_editor_wide_long",
+    "lazy_data_editor_recode_different",
+    "lazy_data_editor_variable_calculation",
+    "lazy_data_editor_variable_transformation",
+    "lazy_data_editor_recode_same",
+    "lazy_data_editor_variable_rename"
+  ),
+  panel_call = c(
+    "data_editor_coding_error_check_panel()",
+    "data_editor_likert_panel()",
+    "data_editor_missing_panel()",
+    "data_editor_wide_long_panel()",
+    "data_editor_different_variable_panel()",
+    "data_editor_variable_calculation_panel()",
+    "data_editor_variable_transformation_panel()",
+    "data_editor_same_variable_panel()",
+    "data_editor_variable_rename_panel()"
+  ),
+  stringsAsFactors = FALSE
+)
+for (i in seq_len(nrow(data_editor_lazy_contract))) {
+  lazy_row <- data_editor_lazy_contract[i, ]
+  assert_contains(
+    data_editor_ui,
+    sprintf('lazy_tab_panel("%s", "%s", "%s")', lazy_row$title, lazy_row$value, lazy_row$output_id),
+    sprintf("Data Editor lazy menu item: %s", lazy_row$title)
+  )
+  assert_contains(
+    app_server,
+    sprintf("output$%s <- renderUI(%s)", lazy_row$output_id, lazy_row$panel_call),
+    sprintf("Data Editor lazy renderUI target: %s", lazy_row$title)
+  )
+}
 
 message("Checking shared selected-data viewer button contract...")
 assert_contains(analysis_data_viewer_ui, 'analysis_data_viewer_button <- function(id)', "selected-data viewer button helper")
