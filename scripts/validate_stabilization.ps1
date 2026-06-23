@@ -90,6 +90,19 @@ if ($Full) {
 
 Push-Location $RepoRoot
 try {
+  $knownValidationScripts = @($coreValidations + $fullOnlyValidations) | Sort-Object -Unique
+  $allValidationScripts = Get-ChildItem -LiteralPath (Join-Path $RepoRoot "scripts") -Filter "validate_*.R" |
+    ForEach-Object { "scripts\$($_.Name)" } |
+    Sort-Object -Unique
+  $missingFromRunner = @($allValidationScripts | Where-Object { $knownValidationScripts -notcontains $_ })
+  $missingFiles = @($knownValidationScripts | Where-Object { $allValidationScripts -notcontains $_ })
+  if ($missingFromRunner.Count -gt 0) {
+    throw "Validation script(s) not listed in validate_stabilization.ps1: $($missingFromRunner -join ', ')"
+  }
+  if ($missingFiles.Count -gt 0) {
+    throw "Validation script(s) listed but not found: $($missingFiles -join ', ')"
+  }
+
   Invoke-Step "git diff --check" { git diff --check }
 
   foreach ($script in $validations) {
