@@ -66,10 +66,17 @@ assert_equal(readme_current, version, "README current development version")
 
 readme_citation <- extract_match(readme, "\\(Version ([0-9]+\\.[0-9]+\\.[0-9]+)\\) \\[Computer software\\]", "README citation version")
 assert_equal(readme_citation, version, "README citation version")
+assert_contains(readme, "scripts\\validate_stabilization.ps1", "README core stabilization validation command")
+assert_contains(readme, "scripts\\validate_stabilization.ps1 -Full", "README full stabilization validation command")
 
 citation <- read_text("CITATION.cff")
 citation_version <- extract_match(citation, '(?m)^version: "([^"]+)"', "CITATION.cff version")
 assert_equal(citation_version, version, "CITATION.cff version")
+
+release_checklist <- read_text("docs/RELEASE_CHECKLIST.md")
+assert_contains(release_checklist, "0.9.42 stabilization phase", "release checklist stabilization phase")
+assert_contains(release_checklist, "do not add new analysis features before 1.0", "release checklist feature freeze")
+assert_contains(release_checklist, "validate_stabilization.ps1 -Full", "release checklist full validation command")
 
 app_bootstrap <- read_text("R/app_bootstrap.R")
 assert_contains(app_bootstrap, 'read_app_config <- function(version_file = "VERSION")', "main read_app_config VERSION default")

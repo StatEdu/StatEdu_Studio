@@ -9,7 +9,8 @@ Use this checklist before creating a public beta installer.
 - Confirm new source files referenced by `R/app_bootstrap.R` are tracked by git before running the Electron build, because packaging stages files from `git ls-files`.
 - Confirm no private test data, local settings, or generated logs are included in the staged Electron app.
 - For the 1.0 release, confirm `docs/RELEASE_1_0_DISTRIBUTION_LICENSE_PLAN_KO.md` has been reviewed and all required Free/Pro/Latent distribution gates are either implemented or explicitly deferred.
-- When the beta version reaches 0.9.37 or later, explicitly decide whether further 0.9.x work should continue or whether the 1.0 distribution/license/update plan should become the primary implementation target.
+- As of the 0.9.42 stabilization phase, do not add new analysis features before 1.0 unless they are required to fix correctness, data safety, packaging, or validation coverage.
+- Before moving from 0.9.x to 1.0, explicitly decide whether all remaining distribution/license/update plan items are implemented or intentionally deferred.
 
 ## Brand and Compatibility
 

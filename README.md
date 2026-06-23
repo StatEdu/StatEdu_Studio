@@ -79,11 +79,16 @@ Version 0.9.10 includes validation scripts for calculators, data import, data ed
 
 Version 0.9.42 adds validation for wide-to-long reshaping and expanded data-editor recoding behavior. Version 0.9.41 adds UI validation for grouped navigation menus and cross-tabulation transfer controls. Version 0.9.40 extends validation coverage for GLM and longitudinal / panel reporting workflows, missing-data summaries, analysis weights, count-model selection, reference-category reporting, and the external analysis reference comparison table. Version 0.9.39 includes validation coverage for longitudinal / panel model fitting, GLM fitting, setup UI structure, missing-data handling, assumption-check catalogs, HTML export, Excel export, sensitivity comparisons, exposure offsets, count-family screening, robust standard errors, and SCI reporting sections. Version 0.9.38 includes validation coverage for Fritz & MacKinnon mediation sample-size table values and method-specific mediation reporting. Version 0.9.37 includes validation coverage for data-editor recoding and Likert detection paths. Version 0.9.36 includes validation coverage for logistic analysis, data editor recoding, factor/PCA, correlation, paired tests, data I/O, and result history. Effect-size comparisons use `effectsize` as a validation reference where its definitions match the app calculation; `effectsize` is not required at runtime.
 
-Run validation scripts from the repository root with Rscript, for example:
+Run the stabilization validation suite from the repository root before merging
+or packaging:
 
 ```powershell
-& "C:\Program Files\R\R-4.5.2\bin\x64\Rscript.exe" scripts/validate_ttest_anova.R
+powershell -ExecutionPolicy Bypass -File scripts\validate_stabilization.ps1
+powershell -ExecutionPolicy Bypass -File scripts\validate_stabilization.ps1 -Full
 ```
+
+Use individual `scripts/validate_*.R` files only when iterating on a focused
+module before running the stabilization suite.
 
 ## Citation
 
