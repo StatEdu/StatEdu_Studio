@@ -27,8 +27,12 @@ Standard three-block tools use this structure:
 Standard analysis and Data Editor menus use shared geometry variables declared
 on `body` in `www/style.css`:
 
+- `--se-analysis-workspace-width`: standard analysis workspace, heading, data
+  viewer, setup-grid, and action-row width; analysis tools use `1140px`
+- `--se-analysis-grid-columns`: standard analysis three-block column structure
 - `--se-standard-setup-width`: setup grid and action row width; standard
-  three-block tools use `1176px`, including setup-grid padding where relevant
+  Data Editor three-block tools use `1176px`, including setup-grid padding
+  where relevant
 - `--se-standard-panel-width`: Block 1 and Block 2 panel width
 - `--se-standard-options-width`: Block 3 options panel width
 - `--se-standard-panel-height`: panel height

@@ -6,6 +6,8 @@ body {
   --se-standard-inner-button-width: 300px;
   --se-standard-options-button-width: 286px;
   --se-standard-setup-width: 1176px;
+  --se-analysis-workspace-width: 1140px;
+  --se-analysis-grid-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width);
   --se-standard-panel-height: 520px;
   --se-standard-panel-padding: 18px;
   background: #f6f8fb;
@@ -6914,18 +6916,18 @@ pre {
 .regression-setup-grid,
 .logistic-setup-grid,
 .longitudinal-setup-grid {
-  grid-template-columns: 326px 50px 326px 20px 310px !important;
-  gap: 18px !important;
-  width: 1140px !important;
-  min-width: 1140px !important;
-  max-width: 1140px !important;
+  grid-template-columns: var(--se-analysis-grid-columns) !important;
+  gap: var(--se-standard-gap) !important;
+  width: var(--se-analysis-workspace-width) !important;
+  min-width: var(--se-analysis-workspace-width) !important;
+  max-width: var(--se-analysis-workspace-width) !important;
 }
 
 .analysis-workspace-heading,
 .analysis-data-viewer-panel {
-  width: 1140px !important;
-  min-width: 1140px !important;
-  max-width: 1140px !important;
+  width: var(--se-analysis-workspace-width) !important;
+  min-width: var(--se-analysis-workspace-width) !important;
+  max-width: var(--se-analysis-workspace-width) !important;
 }
 
 .reliability-action-row,
@@ -6937,11 +6939,11 @@ pre {
 .regression-action-row,
 .logistic-action-row,
 .longitudinal-action-row {
-  grid-template-columns: 326px 50px 326px 20px 310px !important;
-  gap: 18px !important;
-  width: 1140px !important;
-  min-width: 1140px !important;
-  max-width: 1140px !important;
+  grid-template-columns: var(--se-analysis-grid-columns) !important;
+  gap: var(--se-standard-gap) !important;
+  width: var(--se-analysis-workspace-width) !important;
+  min-width: var(--se-analysis-workspace-width) !important;
+  max-width: var(--se-analysis-workspace-width) !important;
 }
 
 .logistic-action-row {
