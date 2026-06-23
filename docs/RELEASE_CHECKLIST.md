@@ -23,7 +23,8 @@ Use this checklist before creating a public beta installer.
 
 ## Runtime and Packaging
 
-- Run the R validation scripts that cover changed areas.
+- Run `scripts/validate_stabilization.ps1` for the core stabilization suite.
+- Run `scripts/validate_stabilization.ps1 -Full` before packaging a public beta or release candidate.
 - Build from a clean R runtime where possible.
 - Confirm the build runs `scripts/prune_r_runtime.R` before license notice generation.
 - Confirm `runtime_prune_report.csv` exists and contains only `keep` rows, unless an intentional exception is documented.
