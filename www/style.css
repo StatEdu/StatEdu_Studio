@@ -740,8 +740,8 @@ body {
 
 .recode-builder-target-panel,
 .recode-builder-rule-panel {
-  min-height: 520px;
-  height: 520px;
+  min-height: var(--se-standard-panel-height, 520px);
+  height: var(--se-standard-panel-height, 520px);
 }
 
 .recode-builder-grid > .analysis-transfer-panel:first-child {
@@ -759,8 +759,8 @@ body {
 }
 
 .recode-builder-grid > .analysis-transfer-panel {
-  min-height: 520px;
-  height: 520px;
+  min-height: var(--se-standard-panel-height, 520px);
+  height: var(--se-standard-panel-height, 520px);
 }
 
 .recode-builder-grid > .analysis-transfer-panel .analysis-transfer-listbox {
@@ -1840,7 +1840,7 @@ input.variable-select:disabled {
 
 .frequencies-setup-grid {
   display: grid;
-  grid-template-columns: 326px 50px 326px 310px;
+  grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) var(--se-standard-options-width, 310px);
   gap: 18px;
   align-items: stretch;
   grid-auto-rows: 568px;
@@ -1855,7 +1855,7 @@ input.variable-select:disabled {
 }
 
 .analysis-transfer-column {
-  width: 326px;
+  width: var(--se-standard-panel-width, 326px);
 }
 
 .analysis-transfer-panel,
@@ -1869,8 +1869,8 @@ input.variable-select:disabled {
 }
 
 .analysis-transfer-panel {
-  width: 326px;
-  min-height: 520px;
+  width: var(--se-standard-panel-width, 326px);
+  min-height: var(--se-standard-panel-height, 520px);
 }
 
 .frequencies-setup-grid > .analysis-transfer-panel,
@@ -1883,8 +1883,8 @@ input.variable-select:disabled {
 .regression-setup-grid > .analysis-transfer-panel,
 .regression-setup-grid > .regression-target-column,
 .regression-setup-grid > .regression-options {
-  height: 520px;
-  min-height: 520px;
+  height: var(--se-standard-panel-height, 520px);
+  min-height: var(--se-standard-panel-height, 520px);
   box-sizing: border-box;
 }
 
@@ -1920,9 +1920,9 @@ input.variable-select:disabled {
 }
 
 .analysis-transfer-listbox {
-  width: 300px;
-  min-width: 300px;
-  max-width: 300px;
+  width: var(--se-standard-inner-button-width, 300px);
+  min-width: var(--se-standard-inner-button-width, 300px);
+  max-width: var(--se-standard-inner-button-width, 300px);
   overflow-y: auto;
   background: #ffffff;
   border: 1px solid #b8c8d6;
@@ -2274,7 +2274,7 @@ input.variable-select:disabled {
 
 .analysis-options-panel {
   min-height: 330px;
-  width: 310px;
+  width: var(--se-standard-options-width, 310px);
 }
 
 .analysis-option-group .checkbox {
@@ -2423,8 +2423,8 @@ input.variable-select:disabled {
   display: flex;
   align-items: center;
   gap: 6px;
-  width: 300px;
-  min-width: 300px;
+  width: var(--se-standard-inner-button-width, 300px);
+  min-width: var(--se-standard-inner-button-width, 300px);
   margin-left: 30px;
 }
 
@@ -2578,7 +2578,7 @@ input.variable-select:disabled {
 
 .frequencies-action-row {
   display: grid;
-  grid-template-columns: 326px 50px 326px 310px;
+  grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) var(--se-standard-options-width, 310px);
   gap: 18px;
   align-items: center;
   width: 1138px;
@@ -2607,10 +2607,10 @@ input.variable-select:disabled {
 
 .ttest-anova-setup-grid {
   display: grid;
-  grid-template-columns: 326px 50px 326px 310px;
+  grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) var(--se-standard-options-width, 310px);
   gap: 18px;
   align-items: stretch;
-  grid-auto-rows: 520px;
+  grid-auto-rows: var(--se-standard-panel-height, 520px);
   margin-top: 18px;
   width: 1138px;
   min-width: 1138px;
@@ -2622,13 +2622,13 @@ input.variable-select:disabled {
 }
 
 .ttest-anova-setup-grid > .analysis-transfer-panel {
-  min-height: 520px;
+  min-height: var(--se-standard-panel-height, 520px);
 }
 
 .ttest-anova-target-column {
   display: grid;
   gap: 18px;
-  width: 326px;
+  width: var(--se-standard-panel-width, 326px);
 }
 
 .ttest-anova-target-column .analysis-transfer-panel {
@@ -2649,18 +2649,18 @@ input.variable-select:disabled {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  width: 310px;
+  width: var(--se-standard-options-width, 310px);
 }
 
 .ttest-anova-method-panel.analysis-options-panel {
   min-height: 150px;
-  width: 310px;
+  width: var(--se-standard-options-width, 310px);
 }
 
 .ttest-anova-options.analysis-options-panel {
-  min-height: 520px;
-  height: 520px;
-  width: 310px;
+  min-height: var(--se-standard-panel-height, 520px);
+  height: var(--se-standard-panel-height, 520px);
+  width: var(--se-standard-options-width, 310px);
 }
 
 .ancova-options .ancova-option-heading {
@@ -3524,7 +3524,7 @@ input.variable-select:disabled {
 
 .ttest-anova-action-row {
   display: grid;
-  grid-template-columns: 326px 50px 326px 310px;
+  grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) var(--se-standard-options-width, 310px);
   gap: 18px;
   align-items: center;
   width: 1138px;
@@ -3547,10 +3547,10 @@ input.variable-select:disabled {
 
 .correlation-setup-grid {
   display: grid;
-  grid-template-columns: 326px 50px 326px 310px;
+  grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) var(--se-standard-options-width, 310px);
   gap: 18px;
   align-items: stretch;
-  grid-auto-rows: 520px;
+  grid-auto-rows: var(--se-standard-panel-height, 520px);
   margin-top: 18px;
   width: 1138px;
   min-width: 1138px;
@@ -3562,7 +3562,7 @@ input.variable-select:disabled {
 }
 
 .correlation-setup-grid > .analysis-transfer-panel {
-  min-height: 520px;
+  min-height: var(--se-standard-panel-height, 520px);
 }
 
 .correlation-transfer-controls {
@@ -3573,23 +3573,23 @@ input.variable-select:disabled {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  width: 310px;
+  width: var(--se-standard-options-width, 310px);
 }
 
 .correlation-method-panel.analysis-options-panel {
   min-height: 210px;
-  width: 310px;
+  width: var(--se-standard-options-width, 310px);
 }
 
 .correlation-options.analysis-options-panel {
-  min-height: 520px;
-  height: 520px;
-  width: 310px;
+  min-height: var(--se-standard-panel-height, 520px);
+  height: var(--se-standard-panel-height, 520px);
+  width: var(--se-standard-options-width, 310px);
 }
 
 .correlation-action-row {
   display: grid;
-  grid-template-columns: 326px 50px 326px 310px;
+  grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) var(--se-standard-options-width, 310px);
   gap: 18px;
   align-items: center;
   width: 1138px;
@@ -3607,7 +3607,7 @@ input.variable-select:disabled {
 
 .hierarchical-setup-grid {
   display: grid;
-  grid-template-columns: 326px 50px 326px 310px;
+  grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) var(--se-standard-options-width, 310px);
   gap: 18px;
   align-items: start;
   margin-top: 18px;
@@ -3637,7 +3637,7 @@ input.variable-select:disabled {
 .hierarchical-target-column {
   display: grid;
   gap: 18px;
-  width: 326px;
+  width: var(--se-standard-panel-width, 326px);
 }
 
 .hierarchical-target-stack {
@@ -3650,7 +3650,7 @@ input.variable-select:disabled {
 
 .hierarchical-target-row {
   display: grid;
-  grid-template-columns: 50px 326px;
+  grid-template-columns: var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px);
   gap: 18px;
   align-items: center;
 }
@@ -3662,14 +3662,14 @@ input.variable-select:disabled {
 }
 
 .hierarchical-target-row .hierarchical-target-panel {
-  width: 326px;
+  width: var(--se-standard-panel-width, 326px);
   box-sizing: border-box;
 }
 
 .hierarchical-target-row .hierarchical-target-panel .analysis-transfer-listbox {
-  width: 300px;
-  min-width: 300px;
-  max-width: 300px;
+  width: var(--se-standard-inner-button-width, 300px);
+  min-width: var(--se-standard-inner-button-width, 300px);
+  max-width: var(--se-standard-inner-button-width, 300px);
 }
 
 .hierarchical-target-panel.analysis-transfer-panel {
@@ -3701,7 +3701,7 @@ input.variable-select:disabled {
   flex-direction: column;
   gap: 26px;
   min-height: 330px;
-  width: 310px;
+  width: var(--se-standard-options-width, 310px);
 }
 
 .hierarchical-options .regression-field,
@@ -3757,15 +3757,15 @@ input.variable-select:disabled {
 }
 
 .regression-setup-grid > .analysis-transfer-panel {
-  min-height: 520px;
+  min-height: var(--se-standard-panel-height, 520px);
 }
 
 .regression-target-column {
   display: grid;
   grid-template-rows: auto auto;
   gap: 24px;
-  width: 326px;
-  height: 520px;
+  width: var(--se-standard-panel-width, 326px);
+  height: var(--se-standard-panel-height, 520px);
 }
 
 .regression-target-column .analysis-transfer-panel {
@@ -3774,9 +3774,9 @@ input.variable-select:disabled {
 
 .regression-dependent-panel .analysis-transfer-listbox,
 .regression-independent-panel .analysis-transfer-listbox {
-  width: 300px;
-  min-width: 300px;
-  max-width: 300px;
+  width: var(--se-standard-inner-button-width, 300px);
+  min-width: var(--se-standard-inner-button-width, 300px);
+  max-width: var(--se-standard-inner-button-width, 300px);
 }
 
 .regression-dependent-panel .analysis-transfer-listbox {
@@ -3818,8 +3818,8 @@ input.variable-select:disabled {
   align-content: initial;
   margin-left: 0;
   padding-top: 12px;
-  min-height: 520px;
-  width: 310px;
+  min-height: var(--se-standard-panel-height, 520px);
+  width: var(--se-standard-options-width, 310px);
 }
 
 .regression-options .regression-field {
@@ -3856,8 +3856,8 @@ input.variable-select:disabled {
   justify-self: start;
   align-self: start;
   margin-left: 30px;
-  width: 300px;
-  min-width: 300px;
+  width: var(--se-standard-inner-button-width, 300px);
+  min-width: var(--se-standard-inner-button-width, 300px);
 }
 
 .regression-action-row > #penalized_regression_control {
@@ -5697,15 +5697,15 @@ pre {
 }
 
 .regression-setup-grid > .analysis-transfer-panel {
-  min-height: 520px;
+  min-height: var(--se-standard-panel-height, 520px);
 }
 
 .regression-target-column {
   display: grid;
   grid-template-rows: auto auto;
   gap: 24px;
-  width: 326px;
-  height: 520px;
+  width: var(--se-standard-panel-width, 326px);
+  height: var(--se-standard-panel-height, 520px);
 }
 
 .regression-target-column .analysis-transfer-panel {
@@ -5747,9 +5747,9 @@ pre {
   align-content: initial;
   margin-left: 0;
   padding-top: 12px;
-  min-height: 520px !important;
-  height: 520px;
-  width: 310px;
+  min-height: var(--se-standard-panel-height, 520px) !important;
+  height: var(--se-standard-panel-height, 520px);
+  width: var(--se-standard-options-width, 310px);
 }
 
 .hierarchical-options .regression-field,
@@ -5809,8 +5809,8 @@ pre {
   justify-self: start;
   align-self: start;
   margin-left: 30px;
-  width: 300px;
-  min-width: 300px;
+  width: var(--se-standard-inner-button-width, 300px);
+  min-width: var(--se-standard-inner-button-width, 300px);
 }
 
 .regression-action-row > #penalized_regression_control {
@@ -5994,7 +5994,7 @@ pre {
 .ttest-anova-setup-grid > .analysis-transfer-panel,
 .hierarchical-setup-grid > .analysis-transfer-panel,
 .regression-setup-grid > .analysis-transfer-panel {
-  min-height: 520px;
+  min-height: var(--se-standard-panel-height, 520px);
 }
 
 .analysis-transfer-controls,
@@ -6148,7 +6148,7 @@ pre {
 .correlation-options-column,
 .hierarchical-options.analysis-options-panel,
 .regression-options.analysis-options-panel {
-  min-height: 520px;
+  min-height: var(--se-standard-panel-height, 520px);
 }
 
 .frequencies-setup-grid,
@@ -6158,7 +6158,7 @@ pre {
 .correlation-setup-grid,
 .regression-setup-grid {
   align-items: stretch;
-  grid-auto-rows: 520px;
+  grid-auto-rows: var(--se-standard-panel-height, 520px);
 }
 
 .frequencies-setup-grid > .analysis-transfer-panel,
@@ -6176,25 +6176,25 @@ pre {
 .regression-setup-grid > .analysis-transfer-panel,
 .regression-setup-grid > .regression-target-column,
 .regression-setup-grid > .regression-options.analysis-options-panel {
-  height: 520px;
-  min-height: 520px;
+  height: var(--se-standard-panel-height, 520px);
+  min-height: var(--se-standard-panel-height, 520px);
   box-sizing: border-box;
 }
 
 .ttest-anova-options.analysis-options-panel,
 .correlation-options.analysis-options-panel,
 .regression-options.analysis-options-panel {
-  height: 520px;
-  min-height: 520px;
+  height: var(--se-standard-panel-height, 520px);
+  min-height: var(--se-standard-panel-height, 520px);
 }
 
 .ttest-anova-target-column {
   grid-template-rows: 174px 328px;
-  height: 520px;
+  height: var(--se-standard-panel-height, 520px);
 }
 
 .paired-transfer-controls {
-  height: 520px;
+  height: var(--se-standard-panel-height, 520px);
 }
 
 .paired-transfer-controls {
@@ -6429,24 +6429,24 @@ pre {
 
 .regression-target-column {
   grid-template-rows: 174px 328px;
-  height: 520px;
+  height: var(--se-standard-panel-height, 520px);
 }
 
 .hierarchical-setup-grid > .analysis-transfer-panel,
 .hierarchical-options.analysis-options-panel {
-  min-height: 520px;
+  min-height: var(--se-standard-panel-height, 520px);
 }
 
 .hierarchical-setup-grid {
   align-items: stretch;
-  grid-auto-rows: 520px;
+  grid-auto-rows: var(--se-standard-panel-height, 520px);
 }
 
 .hierarchical-setup-grid > .analysis-transfer-panel,
 .hierarchical-target-stack-compact,
 .hierarchical-options.analysis-options-panel {
-  height: 520px;
-  min-height: 520px;
+  height: var(--se-standard-panel-height, 520px);
+  min-height: var(--se-standard-panel-height, 520px);
   box-sizing: border-box;
 }
 
@@ -6491,7 +6491,7 @@ pre {
 .crosstab-target-column {
   grid-template-rows: auto auto !important;
   height: auto !important;
-  min-height: 520px !important;
+  min-height: var(--se-standard-panel-height, 520px) !important;
 }
 
 .crosstab-workspace-heading,
@@ -6515,7 +6515,7 @@ pre {
 
 .crosstab-transfer-controls {
   display: block !important;
-  min-height: 520px !important;
+  min-height: var(--se-standard-panel-height, 520px) !important;
   padding-top: 0 !important;
   position: relative;
 }
@@ -7201,16 +7201,16 @@ pre {
 .generalized-setup-grid > .regression-available-panel,
 .generalized-setup-grid > .regression-target-column,
 .generalized-setup-grid > .generalized-options.analysis-options-panel {
-  height: 520px !important;
-  min-height: 520px !important;
+  height: var(--se-standard-panel-height, 520px) !important;
+  min-height: var(--se-standard-panel-height, 520px) !important;
   box-sizing: border-box;
 }
 
 .generalized-setup-grid > .regression-target-column {
   grid-column: 3;
   display: block;
-  height: 520px !important;
-  min-height: 520px !important;
+  height: var(--se-standard-panel-height, 520px) !important;
+  min-height: var(--se-standard-panel-height, 520px) !important;
 }
 
 .generalized-setup-grid > .generalized-options.analysis-options-panel {
@@ -7219,9 +7219,9 @@ pre {
   margin-left: 0 !important;
   padding-top: 14px !important;
   gap: 6px !important;
-  height: 520px !important;
-  min-height: 520px !important;
-  max-height: 520px !important;
+  height: var(--se-standard-panel-height, 520px) !important;
+  min-height: var(--se-standard-panel-height, 520px) !important;
+  max-height: var(--se-standard-panel-height, 520px) !important;
   width: 100% !important;
   min-width: 0 !important;
   max-width: 100% !important;
@@ -7231,8 +7231,8 @@ pre {
 .generalized-model-block {
   width: 100% !important;
   max-width: 100% !important;
-  height: 520px !important;
-  min-height: 520px !important;
+  height: var(--se-standard-panel-height, 520px) !important;
+  min-height: var(--se-standard-panel-height, 520px) !important;
   padding-top: 14px;
 }
 
@@ -7281,7 +7281,7 @@ pre {
 
 .generalized-transfer-controls {
   position: relative;
-  height: 520px;
+  height: var(--se-standard-panel-height, 520px);
   box-sizing: border-box;
   transform: none;
 }
@@ -7402,23 +7402,23 @@ pre {
 
 .generalized-action-row > #run_generalized {
   grid-column: 1;
-  width: 300px;
-  min-width: 300px;
+  width: var(--se-standard-inner-button-width, 300px);
+  min-width: var(--se-standard-inner-button-width, 300px);
   margin-left: 30px;
   justify-self: start;
 }
 
 .generalized-action-row > #generalized_reset_control {
   grid-column: 3;
-  width: 300px;
-  min-width: 300px;
+  width: var(--se-standard-inner-button-width, 300px);
+  min-width: var(--se-standard-inner-button-width, 300px);
   margin-left: 30px;
   justify-self: start;
 }
 
 .generalized-action-row > #generalized_reset_control .analysis-reset-button {
-  width: 300px;
-  min-width: 300px;
+  width: var(--se-standard-inner-button-width, 300px);
+  min-width: var(--se-standard-inner-button-width, 300px);
 }
 
 .generalized-action-row > #generalized_save_control {
@@ -7607,14 +7607,14 @@ pre {
   grid-column: 1;
   justify-self: start;
   margin-left: 12px;
-  width: 300px;
-  min-width: 300px;
+  width: var(--se-standard-inner-button-width, 300px);
+  min-width: var(--se-standard-inner-button-width, 300px);
 }
 
 .longitudinal-action-row > #reset_longitudinal {
   grid-column: 5;
-  width: 300px;
-  min-width: 300px;
+  width: var(--se-standard-inner-button-width, 300px);
+  min-width: var(--se-standard-inner-button-width, 300px);
   margin-left: 0;
   justify-self: center;
   transform: none;
@@ -7663,16 +7663,16 @@ pre {
 
 .logistic-action-row > #reset_logistic_block2 {
   grid-column: 3;
-  width: 300px;
-  min-width: 300px;
+  width: var(--se-standard-inner-button-width, 300px);
+  min-width: var(--se-standard-inner-button-width, 300px);
   margin-left: 30px;
   justify-self: start;
   transform: none;
 }
 
 .logistic-action-row > #reset_logistic_block2.analysis-reset-button {
-  width: 300px;
-  min-width: 300px;
+  width: var(--se-standard-inner-button-width, 300px);
+  min-width: var(--se-standard-inner-button-width, 300px);
 }
 
 .logistic-options .analysis-option-group .checkbox {
@@ -8723,15 +8723,15 @@ pre {
   .regression-setup-grid > .analysis-transfer-panel,
   .regression-setup-grid > .regression-target-column,
   .regression-setup-grid > .regression-options {
-    height: 520px;
-    min-height: 520px;
+    height: var(--se-standard-panel-height, 520px);
+    min-height: var(--se-standard-panel-height, 520px);
   }
 
   .frequencies-setup-grid,
   .reliability-setup-grid,
   .ttest-anova-setup-grid,
   .correlation-setup-grid {
-    grid-auto-rows: 520px;
+    grid-auto-rows: var(--se-standard-panel-height, 520px);
   }
 
   .frequencies-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox,
@@ -9731,15 +9731,15 @@ select[id$="_active_role"]:focus {
 
 /* ANCOVA setup final overrides: keep three target panels inside the target block. */
 .ttest-anova-setup-grid.ancova-setup-grid {
-  grid-auto-rows: 520px !important;
+  grid-auto-rows: var(--se-standard-panel-height, 520px) !important;
 }
 
 .ttest-anova-setup-grid.ancova-setup-grid > .analysis-transfer-panel,
 .ttest-anova-setup-grid.ancova-setup-grid > .ancova-target-column,
 .ttest-anova-setup-grid.ancova-setup-grid > .ttest-anova-options-column {
-  height: 520px !important;
-  min-height: 520px !important;
-  max-height: 520px !important;
+  height: var(--se-standard-panel-height, 520px) !important;
+  min-height: var(--se-standard-panel-height, 520px) !important;
+  max-height: var(--se-standard-panel-height, 520px) !important;
 }
 
 .ttest-anova-setup-grid.ancova-setup-grid > .analysis-transfer-panel .analysis-transfer-listbox {
@@ -9753,9 +9753,9 @@ select[id$="_active_role"]:focus {
   grid-template-rows: 150px 92px 242px !important;
   gap: 18px !important;
   overflow: hidden !important;
-  width: 326px !important;
-  min-width: 326px !important;
-  max-width: 326px !important;
+  width: var(--se-standard-panel-width, 326px) !important;
+  min-width: var(--se-standard-panel-width, 326px) !important;
+  max-width: var(--se-standard-panel-width, 326px) !important;
 }
 
 .ttest-anova-setup-grid.ancova-setup-grid .ancova-target-column > .analysis-transfer-panel {
@@ -9791,7 +9791,7 @@ select[id$="_active_role"]:focus {
   display: grid !important;
   grid-template-rows: 150px 92px 242px !important;
   gap: 18px !important;
-  height: 520px !important;
+  height: var(--se-standard-panel-height, 520px) !important;
   padding-top: 0 !important;
   align-items: center !important;
   justify-content: center !important;
@@ -10124,16 +10124,16 @@ select[id$="_active_role"]:focus {
   grid-column: 1 !important;
   justify-self: start !important;
   margin-left: 30px !important;
-  width: 300px !important;
-  min-width: 300px !important;
+  width: var(--se-standard-inner-button-width, 300px) !important;
+  min-width: var(--se-standard-inner-button-width, 300px) !important;
 }
 
 .ancova-action-row > #ancova_reset_control {
   grid-column: 3 !important;
   justify-self: start !important;
   margin-left: 30px !important;
-  width: 300px !important;
-  min-width: 300px !important;
+  width: var(--se-standard-inner-button-width, 300px) !important;
+  min-width: var(--se-standard-inner-button-width, 300px) !important;
 }
 
 .ancova-action-row > #ancova_save_control {
@@ -10146,8 +10146,8 @@ select[id$="_active_role"]:focus {
 
 .ancova-action-row > #ancova_save_control .analysis-save-action {
   justify-content: center !important;
-  width: 310px !important;
-  max-width: 310px !important;
+  width: var(--se-standard-options-width, 310px) !important;
+  max-width: var(--se-standard-options-width, 310px) !important;
 }
 
 .latent-result-table-landscape .latent-excel-table,
