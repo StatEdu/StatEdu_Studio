@@ -27,7 +27,8 @@ Standard three-block tools use this structure:
 The shared CSS variables live in `www/style.css` under
 `.data-editor-workspace`:
 
-- `--se-standard-setup-width`: setup grid and action row width
+- `--se-standard-setup-width`: setup grid and action row width; standard
+  three-block tools use the t-test / ANOVA baseline width of `1176px`
 - `--se-standard-panel-width`: Block 1 and Block 2 panel width
 - `--se-standard-options-width`: Block 3 options panel width
 - `--se-standard-panel-height`: panel height

@@ -1216,15 +1216,15 @@ body {
 .wide-long-grid {
   grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) 20px var(--se-standard-options-width, 310px);
   gap: var(--se-standard-gap, 18px);
-  width: var(--se-standard-setup-width, 1140px);
-  min-width: var(--se-standard-setup-width, 1140px);
-  max-width: var(--se-standard-setup-width, 1140px);
+  width: var(--se-standard-setup-width, 1176px);
+  min-width: var(--se-standard-setup-width, 1176px);
+  max-width: var(--se-standard-setup-width, 1176px);
 }
 
 .wide_long-workspace-heading {
-  width: var(--se-standard-setup-width, 1140px) !important;
-  min-width: var(--se-standard-setup-width, 1140px) !important;
-  max-width: var(--se-standard-setup-width, 1140px) !important;
+  width: var(--se-standard-setup-width, 1176px) !important;
+  min-width: var(--se-standard-setup-width, 1176px) !important;
+  max-width: var(--se-standard-setup-width, 1176px) !important;
 }
 
 .wide_long-workspace-heading > .shiny-bound-input,
@@ -1401,8 +1401,8 @@ body {
   gap: var(--se-standard-gap, 18px);
   margin-top: 26px;
   margin-bottom: 14px;
-  min-width: var(--se-standard-setup-width, 1140px);
-  width: var(--se-standard-setup-width, 1140px);
+  min-width: var(--se-standard-setup-width, 1176px);
+  width: var(--se-standard-setup-width, 1176px);
 }
 
 .recode-same-action-row.wide-long-action-row > .wide-long-preview-button {
@@ -10230,7 +10230,7 @@ select[id$="_active_role"]:focus {
   --se-standard-options-width: 310px;
   --se-standard-inner-button-width: 300px;
   --se-standard-options-button-width: 286px;
-  --se-standard-setup-width: 1140px;
+  --se-standard-setup-width: 1176px;
   --se-standard-panel-height: 520px;
   --se-standard-panel-padding: 18px;
 }
@@ -10460,6 +10460,8 @@ select[id$="_active_role"]:focus {
   width: var(--se-standard-setup-width) !important;
   min-width: var(--se-standard-setup-width) !important;
   max-width: var(--se-standard-setup-width) !important;
+  margin-top: 26px !important;
+  margin-bottom: 14px !important;
 }
 
 .data-editor-workspace .recode-builder-action-row > #apply_recode_same {
