@@ -32,6 +32,12 @@ assert_equal <- function(actual, expected, label) {
   }
 }
 
+assert_contains <- function(text, pattern, label) {
+  if (!grepl(pattern, text, fixed = TRUE)) {
+    stop(sprintf("%s missing", label), call. = FALSE)
+  }
+}
+
 message("Checking version metadata...")
 
 version <- read_first_line("VERSION")
@@ -64,5 +70,36 @@ assert_equal(readme_citation, version, "README citation version")
 citation <- read_text("CITATION.cff")
 citation_version <- extract_match(citation, '(?m)^version: "([^"]+)"', "CITATION.cff version")
 assert_equal(citation_version, version, "CITATION.cff version")
+
+app_bootstrap <- read_text("R/app_bootstrap.R")
+assert_contains(app_bootstrap, 'read_app_config <- function(version_file = "VERSION")', "main read_app_config VERSION default")
+assert_contains(app_bootstrap, "version = trimws(readLines(version_file, warn = FALSE)[1])", "main read_app_config VERSION reader")
+
+app_entry <- read_text("app.R")
+assert_contains(app_entry, "app_config <- read_app_config()", "main app config read")
+assert_contains(app_entry, "app_version <- app_config$version", "main app version assignment")
+assert_contains(app_entry, "app_ui(app_version)", "main UI version propagation")
+assert_contains(app_entry, "create_app_server(app_version)", "main server version propagation")
+
+ui_helpers <- read_text("R/ui_helpers.R")
+assert_contains(ui_helpers, 'span(class = "version", paste0("v", version))', "navbar version display")
+assert_contains(ui_helpers, "about_tab_panel(version)", "About version propagation")
+assert_contains(ui_helpers, "app_head_tags(version)", "head asset version propagation")
+
+result_saved_ui <- read_text("R/result_saved_ui.R")
+assert_contains(result_saved_ui, 'saved_results_app_version <- function(version_file = "VERSION")', "saved results VERSION default")
+assert_contains(result_saved_ui, 'Sys.getenv("EASYFLOW_VERSION", "")', "saved results environment version override")
+assert_contains(result_saved_ui, 'readLines(version_file, warn = FALSE)[1]', "saved results VERSION fallback")
+assert_contains(result_saved_ui, 'sprintf("StatEdu Studio v%s", app_version)', "saved results version label")
+
+latent_app <- read_text("modules/latent_mplus/app/app.R")
+assert_contains(latent_app, "app_config <- read_app_config()", "latent app config read")
+assert_contains(latent_app, "app_version <- app_config$version", "latent app version assignment")
+assert_contains(latent_app, "app_ui(app_version)", "latent UI version propagation")
+assert_contains(latent_app, "create_app_server(app_version)", "latent server version propagation")
+
+latent_bootstrap <- read_text("modules/latent_mplus/app/R/app_bootstrap.R")
+assert_contains(latent_bootstrap, 'read_app_config <- function(version_file = "VERSION")', "latent read_app_config VERSION default")
+assert_contains(latent_bootstrap, "list(version = trimws(readLines(version_file, warn = FALSE)[1]))", "latent read_app_config VERSION reader")
 
 cat(sprintf("Version metadata validation passed: %s\n", version))
