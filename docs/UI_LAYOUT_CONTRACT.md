@@ -24,11 +24,19 @@ Standard three-block tools use this structure:
 - Header: `View selected data` aligns with the right edge of the last block.
 - Footer buttons: each command sits under the block it affects.
 
-The shared CSS variables live in `www/style.css` under
-`.data-editor-workspace`:
+Standard analysis menus use the shared analysis geometry in `www/style.css`:
+
+- Setup grid width: `1140px`
+- Action row width: `1140px`
+- Grid columns: `326px 50px 326px 20px 310px`
+- Gap: `18px`
+
+Data Editor standard three-block tools use the same panel geometry, with
+internal grid padding included in the total width. The shared CSS variables
+live in `www/style.css` under `.data-editor-workspace`:
 
 - `--se-standard-setup-width`: setup grid and action row width; standard
-  three-block tools use the t-test / ANOVA baseline width of `1176px`
+  Data Editor three-block tools use `1176px`, including setup-grid padding
 - `--se-standard-panel-width`: Block 1 and Block 2 panel width
 - `--se-standard-options-width`: Block 3 options panel width
 - `--se-standard-panel-height`: panel height

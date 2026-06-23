@@ -29,6 +29,7 @@ assert_not_contains <- function(text, pattern, label) {
 
 css <- read_project_file("www/style.css")
 analysis_data_viewer_ui <- read_project_file("R/analysis_data_viewer.R")
+setup_ui <- read_project_file("R/setup_ui.R")
 data_editor_ui <- read_project_file("R/data_editor_ui.R")
 wide_long_ui <- read_project_file("R/data_editor_wide_long.R")
 rename_ui <- read_project_file("R/data_editor_rename.R")
@@ -61,6 +62,16 @@ if (count_fixed(r_text, '"View selected data"') != 1L) {
 assert_contains(css, ".analysis-workspace-heading", "workspace heading CSS")
 assert_contains(css, "justify-content: space-between;", "workspace heading right-edge alignment")
 assert_contains(css, ".analysis-data-viewer-button", "selected-data viewer button CSS")
+
+message("Checking shared analysis menu geometry contract...")
+assert_contains(setup_ui, 'analysis_workspace_heading("t-test / ANOVA", "ttest_anova")', "t-test / ANOVA baseline heading")
+assert_contains(setup_ui, 'class = "analysis-action-row ttest-anova-action-row"', "t-test / ANOVA baseline action row")
+assert_contains(css, ".ttest-anova-setup-grid,", "t-test / ANOVA setup grid shares standard analysis geometry")
+assert_contains(css, ".ttest-anova-action-row,", "t-test / ANOVA action row shares standard analysis geometry")
+assert_contains(css, "width: 1140px !important;", "standard analysis setup/action width")
+assert_contains(css, ".analysis-workspace-heading,\n.analysis-data-viewer-panel", "standard analysis heading width selector")
+assert_contains(css, ".longitudinal-action-row {\n  grid-template-columns: 330px 40px 320px 40px 320px 330px !important;", "Longitudinal four-block action row exception")
+assert_contains(css, ".longitudinal-setup-grid {\n  display: grid;\n  grid-template-areas: \"available panel-move panel model-move model options\";", "Longitudinal four-block setup exception")
 
 message("Checking Wide to Long menu contract...")
 assert_contains(data_editor_ui, 'lazy_tab_panel("Wide to Long", "data_editor_wide_long", "lazy_data_editor_wide_long")', "Data Editor menu label")
@@ -121,7 +132,8 @@ assert_contains(easyflow_js, "link.closest('.analysis-menu-section').addClass('a
 assert_contains(easyflow_js, "link.closest('.navbar-nav > li.dropdown').removeClass('open');", "grouped menu closes after selection")
 
 message("Checking layout documentation...")
-assert_contains(layout_doc, "t-test / ANOVA baseline width of `1176px`", "documented standard width")
+assert_contains(layout_doc, "Setup grid width: `1140px`", "documented standard analysis setup width")
+assert_contains(layout_doc, "Data Editor three-block tools use `1176px`, including setup-grid padding", "documented Data Editor setup width")
 assert_contains(layout_doc, "Longitudinal / Panel Models: four-block analysis structure", "documented four-block exception")
 assert_contains(layout_doc, "scripts/validate_stabilization.ps1", "documented stabilization validation command")
 
