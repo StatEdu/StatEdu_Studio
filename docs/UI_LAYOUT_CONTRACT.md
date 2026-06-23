@@ -46,6 +46,19 @@ live in `www/style.css` under `.data-editor-workspace`:
 - `--se-standard-options-button-width`: Block 3 footer button width
 - `--se-standard-panel-padding`: setup grid internal padding
 
+### Wide to Long
+
+`Wide to Long` is a standard Data Editor three-block tool, not a layout
+exception. Block 2 may contain both `Repeated columns` and
+`Configured long variables`, but the outer grid still follows the standard
+three-block geometry.
+
+- `Run` sits under Block 1.
+- `Remove` sits under Block 2.
+- `Preview` sits under Block 3.
+- `Set variable` stays inside Block 3 and uses the standard Block 3 button
+  width.
+
 ## Known Exceptions
 
 These screens do not use the standard three-block contract directly:
