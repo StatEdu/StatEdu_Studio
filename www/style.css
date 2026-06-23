@@ -1,4 +1,13 @@
 body {
+  --se-standard-panel-width: 326px;
+  --se-standard-gap: 18px;
+  --se-standard-transfer-width: 50px;
+  --se-standard-options-width: 310px;
+  --se-standard-inner-button-width: 300px;
+  --se-standard-options-button-width: 286px;
+  --se-standard-setup-width: 1176px;
+  --se-standard-panel-height: 520px;
+  --se-standard-panel-padding: 18px;
   background: #f6f8fb;
   color: #1f2933;
   scroll-padding-top: 76px;
@@ -5852,9 +5861,9 @@ pre {
 .correlation-setup-grid,
 .hierarchical-setup-grid,
 .regression-setup-grid {
-  grid-template-columns: 326px 50px 326px 20px 310px;
-  width: 1176px;
-  min-width: 1176px;
+  grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) 20px var(--se-standard-options-width, 310px);
+  width: var(--se-standard-setup-width, 1176px);
+  min-width: var(--se-standard-setup-width, 1176px);
 }
 
 .reliability-action-row,
@@ -5864,9 +5873,9 @@ pre {
 .correlation-action-row,
 .hierarchical-action-row,
 .regression-action-row {
-  grid-template-columns: 326px 50px 326px 20px 310px;
-  width: 1176px;
-  min-width: 1176px;
+  grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) 20px var(--se-standard-options-width, 310px);
+  width: var(--se-standard-setup-width, 1176px);
+  min-width: var(--se-standard-setup-width, 1176px);
 }
 
 .frequencies-setup-grid > .analysis-options-panel,
@@ -6036,11 +6045,11 @@ pre {
 .ttest-anova-action-row,
 .correlation-action-row {
   display: grid;
-  grid-template-columns: 326px 50px 326px 20px 310px;
-  gap: 18px;
+  grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) 20px var(--se-standard-options-width, 310px);
+  gap: var(--se-standard-gap, 18px);
   align-items: start;
-  width: 1176px;
-  min-width: 1176px;
+  width: var(--se-standard-setup-width, 1176px);
+  min-width: var(--se-standard-setup-width, 1176px);
 }
 
 .reliability-action-row > .btn,
@@ -6053,8 +6062,8 @@ pre {
   grid-column: 1;
   justify-self: start;
   margin-left: 30px;
-  width: 300px;
-  min-width: 300px;
+  width: var(--se-standard-inner-button-width, 300px);
+  min-width: var(--se-standard-inner-button-width, 300px);
 }
 
 .reliability-action-row > #reliability_save_control,
@@ -6092,8 +6101,8 @@ pre {
 .regression-action-row > #regression_reset_control,
 .logistic-action-row > #reset_logistic_block2 {
   grid-column: 3;
-  width: 300px;
-  min-width: 300px;
+  width: var(--se-standard-inner-button-width, 300px);
+  min-width: var(--se-standard-inner-button-width, 300px);
   margin-left: 30px;
   align-self: start;
   justify-self: start;
@@ -6114,8 +6123,8 @@ pre {
 .pca-action-row > #pca_reset_control .analysis-reset-button,
 .hierarchical-action-row > #hierarchical_reset_control .analysis-reset-button,
 .regression-action-row > #regression_reset_control .analysis-reset-button {
-  width: 300px;
-  min-width: 300px;
+  width: var(--se-standard-inner-button-width, 300px);
+  min-width: var(--se-standard-inner-button-width, 300px);
 }
 
 .hierarchical-action-row > #hierarchical_save_control {
