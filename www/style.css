@@ -1221,17 +1221,6 @@ body {
   max-width: var(--se-standard-setup-width, 1176px);
 }
 
-.wide_long-workspace-heading {
-  width: var(--se-standard-setup-width, 1176px) !important;
-  min-width: var(--se-standard-setup-width, 1176px) !important;
-  max-width: var(--se-standard-setup-width, 1176px) !important;
-}
-
-.wide_long-workspace-heading > .shiny-bound-input,
-.wide_long-workspace-heading #wide_long_view_data {
-  margin-left: auto !important;
-}
-
 .wide-long-options {
   grid-column: 5;
   height: var(--se-standard-panel-height, 520px) !important;
