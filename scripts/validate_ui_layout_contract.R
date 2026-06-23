@@ -475,6 +475,10 @@ assert_contains(layout_doc, "Longitudinal / Panel Models: four-block analysis st
 assert_contains(layout_doc, "Auto Likert conversion: detection/review workflow", "documented Likert layout exception")
 assert_contains(layout_doc, "Variable transformation: formula-builder workflow", "documented Variable Transformation layout exception")
 assert_contains(layout_doc, "The only remaining hard-coded copy of the standard three-block width is\n`.calculator-action-row`", "documented calculator hardcoded-width exception")
+assert_contains(layout_doc, "## Navigation Contract", "documented navigation contract")
+assert_contains(layout_doc, "Analysis, Sample Size, and Effect Size use grouped dropdown sections.", "documented grouped menu scope")
+assert_contains(layout_doc, "Clicking a navbar item that is already marked active must still call the tab\n  navigation path", "documented already-active navbar click recovery")
+assert_contains(layout_doc, "Data Editor lazy menu items must map one menu item to one server-side lazy\n  output target.", "documented Data Editor lazy menu mapping")
 assert_contains(layout_doc, "scripts/validate_stabilization.ps1", "documented stabilization validation command")
 
 cat("UI layout contract validation passed.\n")

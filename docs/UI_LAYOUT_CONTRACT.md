@@ -83,6 +83,20 @@ The only remaining hard-coded copy of the standard three-block width is
 `.calculator-action-row`, because calculators are explicitly excluded from the
 standard analysis/Data Editor layout contract.
 
+## Navigation Contract
+
+Grouped top-level menus must keep their active state synchronized with the
+visible page:
+
+- Analysis, Sample Size, and Effect Size use grouped dropdown sections.
+- Selecting a nested item must activate the owning top-level menu and clear
+  stale active state from other top-level menus.
+- Clicking a navbar item that is already marked active must still call the tab
+  navigation path so users can return to that page after visiting another
+  top-level menu.
+- Data Editor lazy menu items must map one menu item to one server-side lazy
+  output target.
+
 ## Change Checklist
 
 Before changing menu spacing:
