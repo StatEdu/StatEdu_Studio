@@ -87,6 +87,12 @@ assert_contains(css, ".data-editor-workspace .wide-long-action-row > #run_wide_l
 assert_contains(css, ".data-editor-workspace .wide-long-action-row > #wide_long_remove_spec", "Wide to Long remove placement")
 assert_contains(css, ".data-editor-workspace .wide-long-action-row > #preview_wide_long", "Wide to Long preview placement")
 assert_contains(css, ".data-editor-workspace .wide-long-set-button", "Wide to Long set button placement")
+assert_contains(css, ".data-editor-workspace .wide-long-action-row > #run_wide_long {\n  grid-column: 1 !important;\n}", "Wide to Long run button column")
+assert_contains(css, ".data-editor-workspace .wide-long-action-row > #wide_long_remove_spec {\n  grid-column: 3 !important;\n}", "Wide to Long remove button column")
+assert_contains(css, ".data-editor-workspace .wide-long-action-row > #preview_wide_long {\n  grid-column: 5 !important;\n}", "Wide to Long preview button column")
+assert_contains(css, ".data-editor-workspace .wide-long-set-button {\n  margin-top: auto !important;\n  margin-bottom: 28px !important;", "Wide to Long set button vertical anchor")
+assert_contains(css, "width: var(--se-standard-options-button-width) !important;\n  min-width: var(--se-standard-options-button-width) !important;\n  max-width: var(--se-standard-options-button-width) !important;", "Wide to Long set/preview standard button width")
+assert_contains(css, ".data-editor-workspace .wide-long-action-row {\n  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;", "Wide to Long action row standard columns")
 
 message("Checking Rename Variable menu contract...")
 assert_contains(rename_ui, 'class = "analysis-action-row recode-same-action-row variable-rename-action-row"', "Rename action row")
