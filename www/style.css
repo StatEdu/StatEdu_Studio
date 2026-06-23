@@ -10167,18 +10167,6 @@ select[id$="_active_role"]:focus {
 }
 
 /* Data Editor shared geometry contract: standard three-block tools follow t-test / ANOVA. */
-.data-editor-workspace {
-  --se-standard-panel-width: 326px;
-  --se-standard-gap: 18px;
-  --se-standard-transfer-width: 50px;
-  --se-standard-options-width: 310px;
-  --se-standard-inner-button-width: 300px;
-  --se-standard-options-button-width: 286px;
-  --se-standard-setup-width: 1176px;
-  --se-standard-panel-height: 520px;
-  --se-standard-panel-padding: 18px;
-}
-
 .data-editor-workspace .analysis-workspace-heading,
 .data-editor-workspace .analysis-data-viewer-panel,
 .data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid),
