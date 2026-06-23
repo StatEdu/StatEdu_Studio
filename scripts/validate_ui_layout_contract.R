@@ -51,6 +51,19 @@ assert_count_exact <- function(text, pattern, expected, label) {
   }
 }
 
+extract_between <- function(text, start_pattern, end_pattern, label) {
+  start <- regexpr(start_pattern, text, fixed = TRUE)[[1]]
+  if (start == -1L) {
+    stop(sprintf("UI layout contract missing block start: %s", label), call. = FALSE)
+  }
+  rest <- substr(text, start, nchar(text))
+  end <- regexpr(end_pattern, rest, fixed = TRUE)[[1]]
+  if (end == -1L) {
+    stop(sprintf("UI layout contract missing block end: %s", label), call. = FALSE)
+  }
+  substr(rest, 1L, end - 1L)
+}
+
 css <- read_project_file("www/style.css")
 analysis_data_viewer_ui <- read_project_file("R/analysis_data_viewer.R")
 setup_ui <- read_project_file("R/setup_ui.R")
@@ -210,8 +223,26 @@ assert_contains(easyflow_js, "dropdown.closest('.navbar-nav').children('li.activ
 assert_contains(easyflow_js, "dropdown.addClass('active');", "grouped menu activates clicked top-level menu")
 assert_contains(easyflow_js, "click.easyflowAnalysisSubmenu", "grouped submenu click handler")
 assert_contains(easyflow_js, "click.easyflowAnalysisDirectItem", "grouped direct-item click handler")
-assert_contains(easyflow_js, "link.closest('.analysis-menu-section').addClass('active open');", "grouped submenu active section marker")
-assert_contains(easyflow_js, "link.closest('.navbar-nav > li.dropdown').removeClass('open');", "grouped menu closes after selection")
+submenu_click_handler <- extract_between(
+  easyflow_js,
+  ".on('click.easyflowAnalysisSubmenu', '.analysis-submenu .analysis-menu-section-items a[data-value]'",
+  ".on('click.easyflowAnalysisDirectItem'",
+  "grouped submenu click handler"
+)
+direct_click_handler <- extract_between(
+  easyflow_js,
+  ".on('click.easyflowAnalysisDirectItem', '.analysis-submenu > li.analysis-menu-direct-item > a[data-value]'",
+  ".on('hidden.bs.dropdown.easyflowNestedDropdown'",
+  "grouped direct item click handler"
+)
+assert_contains(submenu_click_handler, "link.closest('.analysis-menu-section').addClass('active open');", "grouped submenu active section marker")
+assert_contains(submenu_click_handler, "markNavbarDropdownActive(link);", "grouped submenu activates owning top-level menu")
+assert_contains(submenu_click_handler, "window.setTimeout(markActive, 0);", "grouped submenu reapplies active state after Shiny navigation")
+assert_contains(submenu_click_handler, "link.closest('.navbar-nav > li.dropdown').removeClass('open');", "grouped submenu closes after selection")
+assert_contains(direct_click_handler, "link.parent('li').addClass('active');", "grouped direct item active marker")
+assert_contains(direct_click_handler, "markNavbarDropdownActive(link);", "grouped direct item activates owning top-level menu")
+assert_contains(direct_click_handler, "window.setTimeout(markActive, 0);", "grouped direct item reapplies active state after Shiny navigation")
+assert_contains(direct_click_handler, "link.closest('.navbar-nav > li.dropdown').removeClass('open');", "grouped direct item closes after selection")
 
 message("Checking layout documentation...")
 assert_contains(layout_doc, "Standard analysis and Data Editor menus use shared geometry variables declared\non `body` in `www/style.css`", "documented global standard geometry variables")
