@@ -158,6 +158,7 @@ assert_contains(easyflow_js, "link.closest('.navbar-nav > li.dropdown').removeCl
 message("Checking layout documentation...")
 assert_contains(layout_doc, "Setup grid width: `1140px`", "documented standard analysis setup width")
 assert_contains(layout_doc, "Data Editor three-block tools use `1176px`, including setup-grid padding", "documented Data Editor setup width")
+assert_contains(layout_doc, "Every standard Data Editor tool must render inside the\n  `.data-editor-workspace` wrapper", "documented Data Editor workspace wrapper requirement")
 assert_contains(layout_doc, "`Wide to Long` is a standard Data Editor three-block tool, not a layout\nexception.", "documented Wide to Long standard layout classification")
 assert_contains(layout_doc, "`Run` sits under Block 1.", "documented Wide to Long run placement")
 assert_contains(layout_doc, "`Remove` sits under Block 2.", "documented Wide to Long remove placement")

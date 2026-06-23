@@ -35,6 +35,8 @@ Data Editor standard three-block tools use the same panel geometry, with
 internal grid padding included in the total width. The shared CSS variables
 live in `www/style.css` under `.data-editor-workspace`:
 
+- Every standard Data Editor tool must render inside the
+  `.data-editor-workspace` wrapper so the shared geometry applies.
 - `--se-standard-setup-width`: setup grid and action row width; standard
   Data Editor three-block tools use `1176px`, including setup-grid padding
 - `--se-standard-panel-width`: Block 1 and Block 2 panel width
