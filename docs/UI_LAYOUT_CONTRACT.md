@@ -24,21 +24,11 @@ Standard three-block tools use this structure:
 - Header: `View selected data` aligns with the right edge of the last block.
 - Footer buttons: each command sits under the block it affects.
 
-Standard analysis menus use the shared analysis geometry in `www/style.css`:
+Standard analysis and Data Editor menus use shared geometry variables declared
+on `body` in `www/style.css`:
 
-- Setup grid width: `1140px`
-- Action row width: `1140px`
-- Grid columns: `326px 50px 326px 20px 310px`
-- Gap: `18px`
-
-Data Editor standard three-block tools use the same panel geometry, with
-internal grid padding included in the total width. The shared CSS variables
-live in `www/style.css` under `.data-editor-workspace`:
-
-- Every standard Data Editor tool must render inside the
-  `.data-editor-workspace` wrapper so the shared geometry applies.
 - `--se-standard-setup-width`: setup grid and action row width; standard
-  Data Editor three-block tools use `1176px`, including setup-grid padding
+  three-block tools use `1176px`, including setup-grid padding where relevant
 - `--se-standard-panel-width`: Block 1 and Block 2 panel width
 - `--se-standard-options-width`: Block 3 options panel width
 - `--se-standard-panel-height`: panel height
@@ -47,6 +37,16 @@ live in `www/style.css` under `.data-editor-workspace`:
 - `--se-standard-inner-button-width`: Block 1 and Block 2 footer button width
 - `--se-standard-options-button-width`: Block 3 footer button width
 - `--se-standard-panel-padding`: setup grid internal padding
+
+Data Editor standard three-block tools use the same panel geometry, with
+internal grid padding included in the total width. `.data-editor-workspace`
+is still required so the Data Editor-specific overrides apply only inside the
+Data Editor menu:
+
+- Every standard Data Editor tool must render inside the
+  `.data-editor-workspace` wrapper so the shared geometry applies.
+- Data Editor-specific width, panel height, transfer alignment, and action-row
+  placement must reference the standard variables instead of hard-coded copies.
 
 ### Wide to Long
 
