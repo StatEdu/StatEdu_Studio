@@ -722,8 +722,8 @@ body {
   grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) 20px var(--se-standard-options-width, 310px);
   gap: var(--se-standard-gap, 18px);
   align-items: stretch;
-  width: var(--se-standard-setup-width, 1140px);
-  min-width: var(--se-standard-setup-width, 1140px);
+  width: var(--se-standard-setup-width, 1176px);
+  min-width: var(--se-standard-setup-width, 1176px);
   padding: var(--se-standard-panel-padding, 18px);
   background: #f4f8fb;
   border: 1px solid #e1eaf2;
@@ -1541,8 +1541,8 @@ body {
 .recode-builder-action-row {
   grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) 20px var(--se-standard-options-width, 310px);
   gap: var(--se-standard-gap, 18px);
-  width: var(--se-standard-setup-width, 1140px);
-  min-width: var(--se-standard-setup-width, 1140px);
+  width: var(--se-standard-setup-width, 1176px);
+  min-width: var(--se-standard-setup-width, 1176px);
   box-sizing: border-box;
 }
 

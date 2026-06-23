@@ -59,6 +59,7 @@ assert_contains(css, "--se-standard-panel-height: 520px;", "standard panel heigh
 assert_contains(css, "--se-standard-options-width: 310px;", "standard options width")
 assert_contains(css, "--se-standard-options-button-width: 286px;", "standard options footer button width")
 assert_not_contains(css, ".data-editor-workspace {\n  --se-standard", "duplicate Data Editor standard variable declarations")
+assert_not_contains(css, "var(--se-standard-setup-width, 1140px)", "stale standard setup width fallback")
 assert_contains(css, ".recode-same-setup-grid {\n  display: grid;\n  grid-template-columns: var(--se-standard-panel-width, 326px)", "base Data Editor setup grid uses shared variables")
 assert_contains(css, ".recode-same-action-row {\n  display: grid;\n  grid-template-columns: var(--se-standard-panel-width, 326px)", "base Data Editor action row uses shared variables")
 assert_contains(css, ".recode-builder-action-row {\n  grid-template-columns: var(--se-standard-panel-width, 326px)", "base Data Editor builder action row uses shared variables")
