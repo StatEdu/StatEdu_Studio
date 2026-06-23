@@ -710,12 +710,12 @@ body {
 
 .recode-same-setup-grid {
   display: grid;
-  grid-template-columns: 326px 50px 326px 20px 310px;
-  gap: 18px;
+  grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) 20px var(--se-standard-options-width, 310px);
+  gap: var(--se-standard-gap, 18px);
   align-items: stretch;
-  width: 1140px;
-  min-width: 1140px;
-  padding: 18px;
+  width: var(--se-standard-setup-width, 1140px);
+  min-width: var(--se-standard-setup-width, 1140px);
+  padding: var(--se-standard-panel-padding, 18px);
   background: #f4f8fb;
   border: 1px solid #e1eaf2;
   border-radius: 8px;
@@ -723,8 +723,8 @@ body {
 }
 
 .recode-builder-grid {
-  grid-template-columns: 326px 50px 326px 20px 310px;
-  gap: 18px;
+  grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) 20px var(--se-standard-options-width, 310px);
+  gap: var(--se-standard-gap, 18px);
 }
 
 .recode-builder-target-panel,
@@ -1501,11 +1501,11 @@ body {
 
 .recode-same-action-row {
   display: grid;
-  grid-template-columns: 326px 50px 326px 20px 310px;
-  gap: 18px;
+  grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) 20px var(--se-standard-options-width, 310px);
+  gap: var(--se-standard-gap, 18px);
   align-items: center;
-  width: 1176px;
-  min-width: 1176px;
+  width: var(--se-standard-setup-width, 1176px);
+  min-width: var(--se-standard-setup-width, 1176px);
 }
 
 .recode-same-action-row > .btn {
@@ -1530,10 +1530,10 @@ body {
 }
 
 .recode-builder-action-row {
-  grid-template-columns: 326px 50px 326px 20px 310px;
-  gap: 18px;
-  width: 1140px;
-  min-width: 1140px;
+  grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) 20px var(--se-standard-options-width, 310px);
+  gap: var(--se-standard-gap, 18px);
+  width: var(--se-standard-setup-width, 1140px);
+  min-width: var(--se-standard-setup-width, 1140px);
   box-sizing: border-box;
 }
 
