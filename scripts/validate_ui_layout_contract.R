@@ -27,6 +27,18 @@ assert_not_contains <- function(text, pattern, label) {
   }
 }
 
+assert_count_at_least <- function(text, pattern, minimum, label) {
+  actual <- count_fixed(text, pattern)
+  if (actual < minimum) {
+    stop(sprintf(
+      "UI layout contract missing: %s; expected at least %s, found %s",
+      label,
+      minimum,
+      actual
+    ), call. = FALSE)
+  }
+}
+
 css <- read_project_file("www/style.css")
 analysis_data_viewer_ui <- read_project_file("R/analysis_data_viewer.R")
 setup_ui <- read_project_file("R/setup_ui.R")
@@ -46,6 +58,10 @@ assert_contains(css, "--se-standard-setup-width: 1176px;", "standard setup width
 assert_contains(css, "--se-standard-panel-height: 520px;", "standard panel height")
 assert_contains(css, "--se-standard-options-width: 310px;", "standard options width")
 assert_contains(css, "--se-standard-options-button-width: 286px;", "standard options footer button width")
+assert_count_at_least(wide_long_ui, "data-editor-workspace", 1L, "Wide to Long workspace wrapper")
+assert_count_at_least(rename_ui, "data-editor-workspace", 1L, "Rename Variable workspace wrapper")
+assert_count_at_least(recode_ui, "data-editor-workspace", 4L, "Recode tools workspace wrappers")
+assert_count_at_least(missing_ui, "data-editor-workspace", 1L, "Missing Values workspace wrapper")
 assert_contains(css, ".data-editor-workspace .analysis-workspace-heading", "workspace heading width rule")
 assert_contains(css, ".data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid)", "standard setup grid rule")
 assert_contains(css, ".data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row)", "standard action row rule")
