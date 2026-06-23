@@ -68,6 +68,7 @@ css <- read_project_file("www/style.css")
 analysis_menu_ui <- read_project_file("R/analysis_menu_ui.R")
 analysis_data_viewer_ui <- read_project_file("R/analysis_data_viewer.R")
 setup_ui <- read_project_file("R/setup_ui.R")
+sample_size_ui <- read_project_file("R/sample_size_ui.R")
 data_editor_ui <- read_project_file("R/data_editor_ui.R")
 wide_long_ui <- read_project_file("R/data_editor_wide_long.R")
 rename_ui <- read_project_file("R/data_editor_rename.R")
@@ -265,6 +266,38 @@ for (i in seq_len(nrow(analysis_lazy_contract))) {
     sprintf("Analysis lazy renderUI target: %s", lazy_row$title)
   )
 }
+
+message("Checking Sample Size / Effect Size lazy menu wiring...")
+assert_contains(
+  sample_size_ui,
+  "sample_size_tab_panel <- function() {\n  methods <- sample_size_method_labels()",
+  "Sample Size menu uses sample_size_method_labels() registry"
+)
+assert_contains(
+  sample_size_ui,
+  'lazy_tab_panel(title, paste0("sample_size_", method), paste0("lazy_sample_size_", method))',
+  "Sample Size lazy menu item ids are generated from method keys"
+)
+assert_contains(
+  sample_size_ui,
+  "for (method in methods) {\n    local({\n      method_local <- method\n      output[[paste0(\"lazy_sample_size_\", method_local)]] <- renderUI(tab_panel_content(sample_size_analysis_panel(method_local)))",
+  "Sample Size lazy renderUI targets are generated from method keys"
+)
+assert_contains(
+  sample_size_ui,
+  "effect_size_tab_panel <- function() {\n  methods <- effect_size_method_labels()",
+  "Effect Size menu uses effect_size_method_labels() registry"
+)
+assert_contains(
+  sample_size_ui,
+  'lazy_tab_panel(title, paste0("effect_size_", method), paste0("lazy_effect_size_", method))',
+  "Effect Size lazy menu item ids are generated from method keys"
+)
+assert_contains(
+  sample_size_ui,
+  "for (effect_method in names(effect_size_method_labels())) {\n    local({\n      effect_method_local <- effect_method\n      output[[paste0(\"lazy_effect_size_\", effect_method_local)]] <- renderUI(tab_panel_content(effect_size_analysis_panel(effect_method_local)))",
+  "Effect Size lazy renderUI targets are generated from method keys"
+)
 
 message("Checking shared analysis menu geometry contract...")
 assert_contains(setup_ui, 'analysis_workspace_heading("t-test / ANOVA", "ttest_anova")', "t-test / ANOVA baseline heading")
