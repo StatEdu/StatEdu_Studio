@@ -153,6 +153,36 @@ function Assert-AppBootstrapModulesTracked {
   Write-Host "[ok] app_bootstrap R modules are tracked"
 }
 
+function Assert-NoTrackedGeneratedArtifacts {
+  $git = Get-Command "git.exe" -ErrorAction SilentlyContinue
+  if (-not $git) {
+    $git = Get-Command "git" -ErrorAction SilentlyContinue
+  }
+  if (-not $git) {
+    throw "git was not found; cannot validate generated artifact tracking."
+  }
+
+  $tracked = & $git.Source -C $RepoRoot ls-files
+  if ($LASTEXITCODE -ne 0) {
+    throw "git ls-files failed while validating generated artifacts."
+  }
+
+  $blockedPrefixes = @(
+    "dist",
+    "packaging/electron/app",
+    "packaging/electron/runtime",
+    "packaging/electron/node_modules"
+  )
+  $blocked = @($tracked | Where-Object {
+    $path = $_
+    $blockedPrefixes | Where-Object { $path -eq $_ -or $path.StartsWith("$($_)/") }
+  })
+  if ($blocked.Count -gt 0) {
+    throw "Generated artifact path(s) are tracked by git: $($blocked -join ', ')"
+  }
+  Write-Host "[ok] generated Electron staging and build artifacts are not tracked"
+}
+
 Assert-JsonVersionPin
 
 Assert-Path (Join-Path $RepoRoot "docs\RELEASE_CHECKLIST.md") "release checklist"
@@ -173,6 +203,7 @@ Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "contextI
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "nodeIntegration:\s*false" "nodeIntegration disabled"
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "sandbox:\s*true" "sandbox enabled"
 Assert-AppBootstrapModulesTracked
+Assert-NoTrackedGeneratedArtifacts
 Assert-NoDistArtifacts (Join-Path $RepoRoot "dist\electron")
 
 if (-not $SkipUnpackedChecks) {
