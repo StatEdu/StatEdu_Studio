@@ -185,7 +185,7 @@ viewer_panel_html <- renderTags(analysis_data_viewer_panel(
 ))$html
 expect_true(grepl("View selected data", renderTags(analysis_data_viewer_button("crosstab_view_data"))$html, fixed = TRUE), "Expected analysis data viewer button")
 expect_true(grepl("Back to analysis", viewer_panel_html, fixed = TRUE), "Expected selected data viewer back button")
-expect_true(grepl("crosstab_viewer_all_step2", viewer_panel_html, fixed = TRUE), "Expected Step 2 scope toggle")
+expect_true(!grepl("crosstab_viewer_all_step2", viewer_panel_html, fixed = TRUE), "Expected worksheet viewer to omit Step 2 scope toggle")
 expect_true(grepl("Value / Label", viewer_panel_html, fixed = TRUE), "Expected value label toggle")
 expect_true(grepl("easyflowTransferOptionDoubleClick", renderTags(crosstab_setup_panel(crosstab_setup_state(
   selected_names = c("group", "dose"),
@@ -196,7 +196,7 @@ expect_true(grepl("easyflowTransferOptionDoubleClick", renderTags(crosstab_setup
 viewer_table_html <- renderTags(analysis_data_viewer_table(data, c("group", "dose"), variable_table = variable_info))$html
 expect_true(grepl("group", viewer_table_html, fixed = TRUE), "Expected selected data viewer table to include group")
 expect_true(grepl("dose", viewer_table_html, fixed = TRUE), "Expected selected data viewer table to include dose")
-expect_true(!grepl("outcome", viewer_table_html, fixed = TRUE), "Expected selected data viewer table to omit unselected columns")
+expect_true(grepl("outcome", viewer_table_html, fixed = TRUE), "Expected worksheet viewer table to include unselected columns")
 expect_true(grepl("analysis-data-viewer-column-heading", viewer_table_html, fixed = TRUE), "Expected selected data viewer table headers to include measurement icons")
 viewer_label_header_html <- renderTags(analysis_data_viewer_table(
   data,

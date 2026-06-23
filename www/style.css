@@ -70,7 +70,7 @@ body {
 
 .analysis-menu-section {
   display: block;
-  position: static;
+  position: relative;
   width: 250px;
 }
 
@@ -239,23 +239,23 @@ body {
 .brand-title {
   display: inline-flex;
   align-items: center;
-  gap: 14px;
+  gap: 5px;
   font-weight: 700;
   letter-spacing: 0;
   height: 62px;
 }
 
 .brand-logo-horizontal {
-  width: 188px;
+  width: 112px;
   height: 62px;
-  flex: 0 0 188px;
+  flex: 0 0 112px;
   object-fit: contain;
   object-position: left center;
   display: block;
 }
 
 .version {
-  margin-left: 4px;
+  margin-left: -2px;
   font-size: 12px;
   font-weight: 500;
   color: #7aa5d8;
@@ -723,18 +723,39 @@ body {
 }
 
 .recode-builder-grid {
-  grid-template-columns: 326px 326px minmax(0, 404px);
-  gap: 24px;
+  grid-template-columns: 326px 50px 326px 20px 310px;
+  gap: 18px;
 }
 
 .recode-builder-target-panel,
 .recode-builder-rule-panel {
-  grid-column: auto;
-  min-height: 568px;
+  min-height: 520px;
+  height: 520px;
+}
+
+.recode-builder-grid > .analysis-transfer-panel:first-child {
+  grid-column: 1;
+}
+
+.recode-builder-target-panel {
+  grid-column: 3;
+}
+
+.recode-builder-rule-panel {
+  grid-column: 5;
+  display: flex;
+  flex-direction: column;
 }
 
 .recode-builder-grid > .analysis-transfer-panel {
-  min-height: 568px;
+  min-height: 520px;
+  height: 520px;
+}
+
+.recode-builder-grid > .analysis-transfer-panel .analysis-transfer-listbox {
+  height: 417px !important;
+  min-height: 417px !important;
+  max-height: 417px !important;
 }
 
 .recode-builder-name-row {
@@ -766,11 +787,13 @@ body {
 }
 
 .recode-builder-applied-list {
-  min-height: 320px;
+  min-height: 260px;
+  height: 260px;
+  max-height: 260px;
   border: 1px solid #d5e2ec;
   border-radius: 6px;
   background: #ffffff;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .recode-builder-applied-table {
@@ -846,7 +869,7 @@ body {
 .recode-builder-category-header,
 .recode-builder-category-row,
 .recode-builder-category-middle-row {
-  grid-template-columns: 50px 46px 50px 46px minmax(0, 1fr);
+  grid-template-columns: 56px 42px 28px 42px 56px minmax(0, 1fr);
 }
 
 .recode-builder-category-row {
@@ -872,6 +895,16 @@ body {
   font-size: 12px;
 }
 
+.recode-builder-range-value,
+.recode-builder-range-operator {
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #334e68;
+  font-weight: 600;
+}
+
 .recode-builder-category-row .form-group,
 .recode-builder-category-middle-row .form-group {
   margin-bottom: 0;
@@ -893,7 +926,7 @@ body {
 
 .recode-builder-apply-button {
   width: 100%;
-  margin-top: 14px;
+  margin-top: auto;
 }
 
 .recode-builder-delete-button {
@@ -1116,20 +1149,20 @@ body {
   margin-bottom: 8px;
 }
 
-.variable-rename-queue-box {
+.variable-rename-queue-listbox-wrap .analysis-transfer-listbox {
   background: #f2f2f2 !important;
   border-color: #c8c8c8 !important;
-  height: 216px;
-  min-height: 216px;
-  max-height: 216px;
+  height: 192px !important;
+  min-height: 192px !important;
+  max-height: 192px !important;
 }
 
-.variable-rename-queue-box .analysis-transfer-option {
-  cursor: default;
+.variable-rename-queue-listbox-wrap .analysis-transfer-option {
+  cursor: pointer;
   color: #465569;
 }
 
-.variable-rename-queue-box .analysis-transfer-option:hover:not(.is-selected) {
+.variable-rename-queue-listbox-wrap .analysis-transfer-option:hover:not(.is-selected) {
   background: rgba(226, 232, 240, 0.65);
 }
 
@@ -1140,6 +1173,280 @@ body {
 .variable-rename-apply-button {
   margin-top: 4px;
   width: 100%;
+}
+
+.missing-values-options {
+  grid-column: 5;
+  min-height: 506px;
+}
+
+.missing-values-selected-panel .analysis-transfer-listbox {
+  height: 430px !important;
+}
+
+.missing-values-action-row {
+  margin-top: 10px;
+  margin-bottom: 18px;
+}
+
+.missing-values-action-cell {
+  grid-column: 1;
+  justify-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 300px;
+  min-width: 300px;
+  margin-left: 30px;
+}
+
+.missing-values-option-row .form-group,
+.missing-values-options .form-group {
+  margin-bottom: 10px;
+}
+
+.missing-values-apply-button {
+  width: 100%;
+}
+
+.missing-values-secondary-button {
+  width: 100%;
+}
+
+.wide-long-grid {
+  grid-template-columns: 326px 50px 326px 20px 310px;
+  gap: 18px;
+  width: 1140px;
+  min-width: 1140px;
+  max-width: 1140px;
+}
+
+.wide_long-workspace-heading {
+  width: 1140px !important;
+  min-width: 1140px !important;
+  max-width: 1140px !important;
+}
+
+.wide_long-workspace-heading > .shiny-bound-input,
+.wide_long-workspace-heading #wide_long_view_data {
+  margin-left: auto !important;
+}
+
+.wide-long-options {
+  grid-column: 5;
+  height: 520px !important;
+  min-height: 520px !important;
+  max-height: 520px !important;
+  overflow: hidden;
+  width: 310px !important;
+}
+
+.wide-long-options .tab-content {
+  min-height: 0;
+}
+
+.wide-long-options-tab-content {
+  min-height: 0 !important;
+  height: 424px;
+  padding-top: 8px;
+  padding-bottom: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.wide-long-source-panel,
+.wide-long-selected-panel {
+  width: 326px !important;
+  height: auto !important;
+  min-height: 520px !important;
+}
+
+.wide-long-selected-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.wide-long-source-panel .analysis-transfer-listbox,
+.wide-long-selected-panel .analysis-transfer-listbox,
+.wide-long-configured-panel .analysis-transfer-listbox {
+  width: 300px !important;
+  min-width: 300px !important;
+  max-width: 300px !important;
+}
+
+.wide-long-source-panel .analysis-transfer-listbox {
+  height: 417px !important;
+  min-height: 417px !important;
+  max-height: 417px !important;
+}
+
+.wide-long-selected-panel > .analysis-transfer-listbox,
+.wide-long-configured-panel .analysis-transfer-listbox {
+  height: 168px !important;
+  min-height: 168px !important;
+  max-height: 168px !important;
+}
+
+.wide-long-transfer-controls {
+  align-items: flex-start !important;
+  padding-top: 130px !important;
+  transform: none !important;
+}
+
+.wide-long-options .form-group {
+  margin-bottom: 6px;
+}
+
+.wide-long-options label {
+  margin-bottom: 5px;
+}
+
+.wide-long-options .form-control {
+  height: 28px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.wide-long-options .radio {
+  margin-top: 2px;
+  margin-bottom: 2px;
+}
+
+.wide-long-options .shiny-input-radiogroup > label {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.wide-long-options .shiny-input-radiogroup > .shiny-options-group {
+  margin-top: 2px;
+}
+
+.wide-long-mapping-title {
+  margin-bottom: 6px;
+}
+
+.wide-long-structure-panel {
+  margin-top: 4px;
+  margin-bottom: 6px;
+  padding-top: 4px;
+  padding-bottom: 3px;
+  border-top: 1px solid #d8e4ee;
+  border-bottom: 1px solid #d8e4ee;
+}
+
+.wide-long-structure-panel .form-group {
+  margin-bottom: 5px;
+}
+
+.wide-long-structure-panel .radio {
+  margin-top: 3px;
+  margin-bottom: 3px;
+}
+
+.wide-long-id-section {
+  margin-bottom: 16px;
+}
+
+.wide-long-id-section .form-group {
+  margin-bottom: 0;
+}
+
+.wide-long-fixed-section {
+  margin-top: 4px;
+}
+
+.wide-long-fixed-section .shiny-input-radiogroup {
+  margin-bottom: 12px;
+}
+
+.wide-long-fixed-section .form-group:last-child {
+  margin-bottom: 0;
+}
+
+.wide-long-id-section .selectize-input,
+.wide-long-fixed-section .selectize-input {
+  min-height: 34px;
+}
+
+.wide-long-count-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 10px;
+}
+
+.wide-long-configured-panel {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid #d8e4ee;
+}
+
+.wide-long-configured-order-actions {
+  margin-top: 2px;
+}
+
+.wide-long-remove-button,
+.wide-long-set-button {
+  width: 100%;
+  margin-bottom: 0;
+}
+
+.wide-long-set-button {
+  margin-top: auto;
+  margin-bottom: 22px;
+}
+
+.recode-same-action-row.wide-long-action-row {
+  display: grid;
+  grid-template-columns: 326px 50px 326px 20px 310px;
+  gap: 18px;
+  margin-top: 26px;
+  margin-bottom: 14px;
+  min-width: 1140px;
+  width: 1140px;
+}
+
+.recode-same-action-row.wide-long-action-row > .wide-long-preview-button {
+  grid-column: 5;
+  justify-self: start;
+  margin-left: 30px;
+  margin-top: 0;
+  width: 286px;
+  min-width: 286px;
+}
+
+.recode-same-action-row.wide-long-action-row > #run_wide_long {
+  grid-column: 1 !important;
+  justify-self: start !important;
+  margin-left: 30px !important;
+  margin-top: 0 !important;
+  width: 300px !important;
+  min-width: 300px !important;
+  max-width: 300px !important;
+}
+
+.recode-same-action-row.wide-long-action-row > #preview_wide_long {
+  grid-column: 5 !important;
+  justify-self: start !important;
+  margin-left: 30px !important;
+  margin-top: 0 !important;
+  width: 286px !important;
+  min-width: 286px !important;
+  max-width: 286px !important;
+}
+
+.recode-same-action-row.wide-long-action-row > #wide_long_remove_spec {
+  grid-column: 3 !important;
+  justify-self: start !important;
+  margin-left: 30px !important;
+  margin-top: 0 !important;
+  width: 300px !important;
+  min-width: 300px !important;
+  max-width: 300px !important;
+}
+
+.wide-long-options textarea.form-control {
+  min-height: 34px;
+  height: 44px;
 }
 
 .recode-different-options {
@@ -1288,22 +1595,35 @@ body {
 }
 
 .recode-builder-action-row {
-  grid-template-columns: 300px 300px;
+  grid-template-columns: 326px 50px 326px 20px 310px;
   gap: 18px;
   width: 1140px;
   min-width: 1140px;
-  padding-left: 30px;
   box-sizing: border-box;
 }
 
 .recode-builder-action-row > .btn {
   grid-column: 1;
-  margin-left: 0;
+  justify-self: start;
+  margin-left: 30px;
+  width: 300px;
+  min-width: 300px;
+  max-width: 300px;
 }
 
 .recode-builder-action-row > [id$="_reset_control"] {
-  grid-column: 2;
-  margin-left: 0;
+  grid-column: 3;
+  justify-self: start;
+  margin-left: 30px;
+  width: 300px;
+  min-width: 300px;
+  max-width: 300px;
+}
+
+.recode-builder-action-row > [id$="_reset_control"] .analysis-reset-button {
+  width: 300px;
+  min-width: 300px;
+  max-width: 300px;
 }
 
 .recode-same-status {
@@ -2181,7 +2501,7 @@ input.variable-select:disabled {
 .analysis-workspace-heading {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
   gap: 14px;
   width: 100%;
   margin-bottom: 18px;
@@ -2225,7 +2545,7 @@ input.variable-select:disabled {
   align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .analysis-data-viewer-header h3 {
@@ -2244,16 +2564,6 @@ input.variable-select:disabled {
   justify-content: flex-end;
   gap: 6px;
   margin-left: auto;
-}
-
-.analysis-data-viewer-scope-control .checkbox {
-  margin: 0;
-  white-space: nowrap;
-}
-
-.analysis-data-viewer-scope-control {
-  padding-top: 8px;
-  margin-right: 0;
 }
 
 .analysis-data-viewer-button-stack {
@@ -2292,59 +2602,6 @@ input.variable-select:disabled {
   color: #ffffff;
   background-color: #337ab7;
   border-color: #2e6da4;
-}
-
-.analysis-data-viewer-variables {
-  margin-bottom: 14px;
-  padding: 12px;
-  border: 1px solid #d9e8f5;
-  border-radius: 6px;
-  background: #ffffff;
-}
-
-.analysis-data-viewer-section-title {
-  margin-bottom: 8px;
-  color: #002b4d;
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.analysis-data-viewer-variable-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.analysis-data-viewer-variable {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  max-width: 320px;
-  padding: 6px 8px;
-  border: 1px solid #d6e4f0;
-  border-radius: 6px;
-  background: #f8fbfe;
-  color: #102a43;
-  font-size: 14px;
-}
-
-.analysis-data-viewer-variable-label {
-  color: #627d98;
-  font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.analysis-data-viewer-variable-name {
-  color: #002b4d;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.analysis-data-viewer-empty {
-  color: #52606d;
-  font-size: 14px;
 }
 
 .analysis-data-viewer-table-wrap {
@@ -2560,6 +2817,10 @@ input.variable-select:disabled {
   display: none;
 }
 
+.coding-error-output:not(:has(table)):not(:has(.coding-error-output-actions)) {
+  display: none;
+}
+
 .variable-calculation-reliability-options {
   margin-top: 34px;
 }
@@ -2571,7 +2832,7 @@ input.variable-select:disabled {
 .coding-error-output-actions {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: -35px;
+  margin-bottom: 8px;
   pointer-events: none;
 }
 
@@ -3526,8 +3787,11 @@ input.variable-select:disabled {
 }
 
 .regression-workspace-panel {
-  min-width: 980px;
-  overflow-x: auto;
+  width: 1140px;
+  min-width: 1140px;
+  max-width: 1140px;
+  padding-right: 8px;
+  overflow-x: hidden;
 }
 
 .regression-setup-grid {
@@ -5464,8 +5728,11 @@ pre {
 }
 
 .regression-workspace-panel {
-  min-width: 980px;
-  overflow-x: auto;
+  width: 1140px;
+  min-width: 1140px;
+  max-width: 1140px;
+  padding-right: 8px;
+  overflow-x: hidden;
 }
 
 .regression-setup-grid {
@@ -6738,22 +7005,23 @@ pre {
 }
 
 .longitudinal-action-row {
-  grid-template-columns: 306px 44px 264px 44px 264px 276px !important;
-  width: 1344px !important;
-  min-width: 1344px !important;
-  max-width: 1344px !important;
+  grid-template-columns: 330px 40px 320px 40px 320px 330px !important;
+  gap: 16px !important;
+  width: 1520px !important;
+  min-width: 1520px !important;
+  max-width: 1520px !important;
 }
 
 .longitudinal-setup-grid {
   display: grid;
   grid-template-areas: "available panel-move panel model-move model options";
-  grid-template-columns: 306px 44px 264px 44px 264px 276px !important;
-  gap: 18px !important;
+  grid-template-columns: 330px 40px 320px 40px 320px 330px !important;
+  gap: 16px !important;
   align-items: start;
   margin-top: 18px;
-  width: 1344px !important;
-  min-width: 1344px !important;
-  max-width: 1344px !important;
+  width: 1520px !important;
+  min-width: 1520px !important;
+  max-width: 1520px !important;
   padding: 18px;
   background: #f4f8fb;
   border: 1px solid #e1eaf2;
@@ -6770,7 +7038,7 @@ pre {
 }
 
 .longitudinal-available-panel {
-  width: 306px !important;
+  width: 330px !important;
   grid-area: available;
   grid-column: 1;
   grid-row: 1;
@@ -6780,13 +7048,16 @@ pre {
   height: 500px !important;
   min-height: 500px !important;
   max-height: 500px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
 }
 
 .longitudinal-target-block {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  width: 264px !important;
+  width: 320px !important;
   padding-top: 14px;
 }
 
@@ -6893,6 +7164,23 @@ pre {
   max-width: 100% !important;
 }
 
+.longitudinal-setup-grid .analysis-transfer-option {
+  min-width: 0;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.longitudinal-setup-grid .analysis-transfer-option .measurement-symbol {
+  flex: 0 0 16px;
+}
+
+.longitudinal-setup-grid .analysis-transfer-option-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .longitudinal-outcome-field .analysis-transfer-listbox,
 .longitudinal-id-field .analysis-transfer-listbox,
 .longitudinal-cluster-field .analysis-transfer-listbox,
@@ -6918,7 +7206,7 @@ pre {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  width: 276px;
+  width: 330px;
 }
 
 .generalized-workspace-panel {
@@ -6936,14 +7224,21 @@ pre {
 }
 
 .longitudinal-workspace-panel,
-.longitudinal-workspace-heading,
 .longitudinal-data-viewer-panel {
-  width: 1344px !important;
-  min-width: 1344px !important;
-  max-width: 1344px !important;
+  width: 1520px !important;
+  min-width: 1520px !important;
+  max-width: 1520px !important;
+}
+
+.longitudinal-workspace-heading {
+  width: 1478px !important;
+  min-width: 1478px !important;
+  max-width: 1478px !important;
+  box-sizing: border-box;
 }
 
 .longitudinal-workspace-panel {
+  padding-right: 16px !important;
   overflow-x: hidden !important;
 }
 
@@ -7210,7 +7505,7 @@ pre {
 }
 
 .longitudinal-missing-detail {
-  width: 280px;
+  width: 306px;
   margin-top: 8px;
   color: #334155;
   font-size: 12px;
@@ -7218,7 +7513,7 @@ pre {
 }
 
 .longitudinal-option-help {
-  width: 280px;
+  width: 306px;
   margin: 6px 0 12px 0;
   color: #334155;
   font-size: 12px;
@@ -7240,7 +7535,7 @@ pre {
 }
 
 .longitudinal-disabled-notice {
-  width: 280px;
+  width: 306px;
   margin: 0 0 10px 0;
   padding: 10px 12px;
   border: 1px solid #bfdbfe;
@@ -7288,6 +7583,21 @@ pre {
   font-weight: 700;
 }
 
+.longitudinal-options .analysis-option-group .checkbox,
+.longitudinal-options .analysis-option-group .radio {
+  margin-left: 24px;
+  max-width: 282px;
+}
+
+.longitudinal-options .checkbox label,
+.longitudinal-options .radio label {
+  display: block;
+  max-width: 278px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+
 .longitudinal-check-option-list {
   display: grid;
   gap: 4px;
@@ -7300,7 +7610,7 @@ pre {
 }
 
 .longitudinal-check-option-list .checkbox {
-  margin: 0 0 0 36px;
+  margin: 0 0 0 24px;
 }
 
 .longitudinal-check-option-list label {
@@ -7327,33 +7637,36 @@ pre {
 .longitudinal-options .selectize-control,
 .longitudinal-options .form-control,
 .longitudinal-options select {
-  width: 248px;
-  min-width: 248px;
-  max-width: 248px;
+  width: 306px;
+  min-width: 306px;
+  max-width: 306px;
   box-sizing: border-box;
 }
 
 .longitudinal-action-row {
   display: grid;
-  grid-template-columns: 306px 44px 264px 44px 264px 276px !important;
-  gap: 18px !important;
+  grid-template-columns: 330px 40px 320px 40px 320px 330px !important;
+  gap: 16px !important;
   align-items: start;
-  width: 1344px !important;
-  min-width: 1344px !important;
-  max-width: 1344px !important;
+  width: 1520px !important;
+  min-width: 1520px !important;
+  max-width: 1520px !important;
+  padding-left: 18px;
+  padding-right: 18px;
+  box-sizing: border-box;
   margin-bottom: 28px;
 }
 
 .longitudinal-action-row > .btn {
   grid-column: 1;
   justify-self: start;
-  margin-left: 30px;
+  margin-left: 12px;
   width: 300px;
   min-width: 300px;
 }
 
 .longitudinal-action-row > #reset_longitudinal {
-  grid-column: 3 / 6;
+  grid-column: 5;
   width: 300px;
   min-width: 300px;
   margin-left: 0;
@@ -7367,6 +7680,18 @@ pre {
   align-self: start;
   justify-self: center;
   transform: none;
+}
+
+.longitudinal-action-row > #longitudinal_save_control .analysis-save-action {
+  grid-template-columns: 118px 118px;
+  width: 246px;
+  gap: 8px 10px;
+}
+
+.longitudinal-action-row > #longitudinal_save_control .analysis-save-action .btn,
+.longitudinal-action-row > #longitudinal_save_control .analysis-save-slot {
+  width: 118px;
+  min-width: 118px;
 }
 
 .longitudinal-recommendation-list {
@@ -8289,13 +8614,13 @@ pre {
 
   .brand-title {
     height: 54px;
-    gap: 12px;
+    gap: 5px;
   }
 
   .brand-logo-horizontal {
-    width: 164px;
+    width: 96px;
     height: 54px;
-    flex-basis: 164px;
+    flex-basis: 96px;
   }
 
   .version {
@@ -9895,4 +10220,254 @@ select[id$="_active_role"]:focus {
 .latent-result-table-nowrap-values .latent-excel-table td:not(:first-child) {
   max-width: none !important;
   white-space: nowrap !important;
+}
+
+/* Data Editor shared geometry: keep standard three-block tools aligned with t-test / ANOVA. */
+.data-editor-workspace .analysis-workspace-heading,
+.data-editor-workspace .analysis-data-viewer-panel,
+.data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid),
+.data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) {
+  width: 1140px !important;
+  min-width: 1140px !important;
+  max-width: 1140px !important;
+  box-sizing: border-box;
+}
+
+.data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid) {
+  grid-template-columns: 326px 50px 326px 20px 310px !important;
+  gap: 18px !important;
+  align-items: stretch !important;
+  grid-auto-rows: 520px !important;
+  padding: 18px !important;
+}
+
+.data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid) > .analysis-transfer-panel,
+.data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid) > .analysis-options-panel {
+  height: 520px !important;
+  min-height: 520px !important;
+  box-sizing: border-box;
+}
+
+.data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid) > .analysis-transfer-panel {
+  width: 326px !important;
+  min-width: 326px !important;
+  max-width: 326px !important;
+}
+
+.data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid) > .analysis-options-panel {
+  width: 310px !important;
+  min-width: 310px !important;
+  max-width: 310px !important;
+}
+
+.data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid) > .analysis-transfer-panel .analysis-transfer-listbox {
+  width: 300px !important;
+  min-width: 300px !important;
+  max-width: 300px !important;
+}
+
+.data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid) > .analysis-transfer-panel:not(.wide-long-selected-panel):not(.variable-rename-target-panel) .analysis-transfer-listbox {
+  height: 417px !important;
+  min-height: 417px !important;
+  max-height: 417px !important;
+}
+
+.data-editor-workspace .recode-same-transfer-controls {
+  align-items: center !important;
+  justify-content: center !important;
+  padding-top: 0 !important;
+  transform: translateX(6px);
+}
+
+.data-editor-workspace .variable-rename-transfer-controls,
+.data-editor-workspace .wide-long-transfer-controls {
+  align-items: flex-start !important;
+  padding-top: 130px !important;
+}
+
+.data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) {
+  display: grid !important;
+  grid-template-columns: 326px 50px 326px 20px 310px !important;
+  gap: 18px !important;
+  align-items: start !important;
+  margin-top: 26px !important;
+  margin-bottom: 14px !important;
+}
+
+.data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) > .btn,
+.data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) > .missing-values-action-cell {
+  grid-column: 1 !important;
+  justify-self: start !important;
+  margin-left: 30px !important;
+  width: 300px !important;
+  min-width: 300px !important;
+  max-width: 300px !important;
+}
+
+.data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) > [id$="_reset_control"] {
+  grid-column: 3 !important;
+  justify-self: start !important;
+  margin-left: 30px !important;
+  width: 300px !important;
+  min-width: 300px !important;
+  max-width: 300px !important;
+}
+
+.data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) > [id$="_reset_control"] .analysis-reset-button {
+  width: 300px !important;
+  min-width: 300px !important;
+  max-width: 300px !important;
+}
+
+.data-editor-workspace .wide-long-action-row > #run_wide_long {
+  grid-column: 1 !important;
+}
+
+.data-editor-workspace .wide-long-action-row > #wide_long_remove_spec {
+  grid-column: 3 !important;
+}
+
+.data-editor-workspace .wide-long-action-row > #preview_wide_long {
+  grid-column: 5 !important;
+}
+
+.data-editor-workspace .variable-rename-target-panel .analysis-transfer-listbox {
+  height: 192px !important;
+  min-height: 192px !important;
+  max-height: 192px !important;
+}
+
+.data-editor-workspace .variable-rename-queue-title {
+  margin-top: 14px !important;
+  margin-bottom: 8px !important;
+}
+
+.data-editor-workspace .variable-rename-action-row > #remove_variable_rename {
+  grid-column: 3 !important;
+  justify-self: start !important;
+  margin-left: 30px !important;
+  width: 300px !important;
+  min-width: 300px !important;
+  max-width: 300px !important;
+}
+
+.data-editor-workspace .wide-long-transfer-controls {
+  transform: none !important;
+}
+
+.data-editor-workspace .wide-long-grid,
+.data-editor-workspace .wide-long-action-row {
+  transform: none !important;
+}
+
+.data-editor-workspace .wide-long-grid {
+  grid-template-columns: 326px 50px 326px 20px 310px !important;
+  gap: 18px !important;
+  width: 1140px !important;
+  min-width: 1140px !important;
+  max-width: 1140px !important;
+}
+
+.data-editor-workspace .wide-long-source-panel,
+.data-editor-workspace .wide-long-selected-panel,
+.data-editor-workspace .wide-long-options {
+  height: 520px !important;
+  min-height: 520px !important;
+  max-height: 520px !important;
+}
+
+.data-editor-workspace .wide-long-options {
+  width: 310px !important;
+  min-width: 310px !important;
+  max-width: 310px !important;
+}
+
+.data-editor-workspace .wide-long-options-tab-content {
+  height: 424px !important;
+  min-height: 0 !important;
+  padding-top: 8px !important;
+  padding-bottom: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.data-editor-workspace .wide-long-set-button {
+  margin-top: auto !important;
+  margin-bottom: 22px !important;
+  width: 100% !important;
+}
+
+.data-editor-workspace .wide-long-action-row > #preview_wide_long {
+  width: 286px !important;
+  min-width: 286px !important;
+  max-width: 286px !important;
+}
+
+.data-editor-workspace .wide-long-action-row {
+  grid-template-columns: 326px 50px 326px 20px 310px !important;
+  gap: 18px !important;
+  width: 1140px !important;
+  min-width: 1140px !important;
+  max-width: 1140px !important;
+}
+
+.data-editor-workspace .recode-builder-grid {
+  grid-template-columns: 326px 50px 326px 20px 310px !important;
+  gap: 18px !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.data-editor-workspace .recode-builder-grid > .analysis-transfer-panel,
+.data-editor-workspace .recode-builder-grid > .analysis-options-panel {
+  height: 520px !important;
+  min-height: 520px !important;
+}
+
+.data-editor-workspace .recode-builder-grid > .analysis-transfer-panel:first-child {
+  grid-column: 1 !important;
+}
+
+.data-editor-workspace .recode-builder-target-panel {
+  grid-column: 3 !important;
+}
+
+.data-editor-workspace .recode-builder-rule-panel {
+  grid-column: 5 !important;
+  width: 310px !important;
+  min-width: 310px !important;
+  max-width: 310px !important;
+}
+
+.data-editor-workspace .recode-builder-action-row {
+  display: grid !important;
+  grid-template-columns: 326px 50px 326px 20px 310px !important;
+  gap: 18px !important;
+  width: 1140px !important;
+  min-width: 1140px !important;
+  max-width: 1140px !important;
+}
+
+.data-editor-workspace .recode-builder-action-row > #apply_recode_same {
+  grid-column: 1 !important;
+  justify-self: start !important;
+  margin-left: 30px !important;
+  width: 300px !important;
+  min-width: 300px !important;
+  max-width: 300px !important;
+}
+
+.data-editor-workspace .recode-builder-action-row > #recode_same_reset_control {
+  grid-column: 3 !important;
+  justify-self: start !important;
+  margin-left: 30px !important;
+  width: 300px !important;
+  min-width: 300px !important;
+  max-width: 300px !important;
+}
+
+.data-editor-workspace .recode-builder-action-row > #recode_same_reset_control .analysis-reset-button {
+  width: 300px !important;
+  min-width: 300px !important;
+  max-width: 300px !important;
 }

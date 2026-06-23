@@ -472,13 +472,15 @@
 
       document.addEventListener('click', function(event) {
         var button = event.target && event.target.closest
-          ? event.target.closest('#coding_error_move, #recode_different_move, #variable_calculation_move')
+          ? event.target.closest('#coding_error_move, #recode_different_move, #variable_calculation_move, #missing_values_move, #wide_long_move')
           : null;
         if (!button || button.disabled) return;
         var inputMap = {
           coding_error_move: ['coding_error_available', 'coding_error_selected'],
           recode_different_move: ['recode_different_available', 'recode_different_selected'],
-          variable_calculation_move: ['variable_calculation_available', 'variable_calculation_selected']
+          variable_calculation_move: ['variable_calculation_available', 'variable_calculation_selected'],
+          missing_values_move: ['missing_values_available', 'missing_values_selected'],
+          wide_long_move: ['wide_long_available', 'wide_long_selected']
         };
         var ids = inputMap[button.id] || [];
         var availableListbox = ids[0] ? document.querySelector('.analysis-transfer-listbox[data-input-id="' + ids[0] + '"]') : null;
@@ -1673,6 +1675,57 @@
             }, {priority: 'event'});
           }
         }
+      }, true);
+
+      function syncEasyflowTopNavbarActive(link) {
+        if (!link || !window.jQuery) return;
+        var item = window.jQuery(link).closest('.navbar-nav > li');
+        if (!item.length) return;
+        window.jQuery('.navbar-nav > li.active').not(item).removeClass('active');
+        item.addClass('active');
+      }
+
+      document.addEventListener('click', function(event) {
+        var navLink = event.target && event.target.closest ? event.target.closest('.navbar-nav a[data-value]') : null;
+        if (!navLink || navLink.classList.contains('dropdown-toggle')) return;
+        var navValue = navLink.getAttribute('data-value') || '';
+        if (!navValue || !window.jQuery) return;
+        window.setTimeout(function() {
+          var link = window.jQuery(navLink);
+          if (!link.length) return;
+          var item = link.parent('li');
+          var wasActive = item.hasClass('active');
+          if (wasActive) {
+            item.removeClass('active');
+          }
+          try {
+            link.tab('show');
+          } catch (error) {
+            if (wasActive) {
+              item.addClass('active');
+            }
+          }
+          syncEasyflowTopNavbarActive(navLink);
+          link.closest('.navbar-nav > li.dropdown').removeClass('open');
+        }, 0);
+      }, true);
+
+      document.addEventListener('click', function(event) {
+        var navLink = event.target && event.target.closest ? event.target.closest('.navbar-nav a[data-value="data_editor_wide_long"]') : null;
+        if (!navLink || navLink.classList.contains('dropdown-toggle')) return;
+        window.setTimeout(function() {
+          if (window.jQuery) {
+            var link = window.jQuery('.navbar-nav a[data-value="data_editor_wide_long"]').first();
+            if (link.length && !link.parent().hasClass('active')) {
+              link.tab('show');
+            }
+          }
+          if (window.Shiny) {
+            Shiny.setInputValue('wide_long_nav_request', {
+              nonce: Date.now() + Math.random()
+            }, {priority: 'event'});
+          }
+        }, 0);
       }, true);
 
       var easyflowTransferLastIndexByInput = {};

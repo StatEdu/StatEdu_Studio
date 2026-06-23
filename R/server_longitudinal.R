@@ -217,7 +217,7 @@ register_longitudinal_handlers <- function(
     if (is.null(results)) {
       return(NULL)
     }
-    longitudinal_results_panel(results, variable_table_fn(), labels_fn())
+    longitudinal_results_panel(results, variable_table_fn(), labels_fn(), category_table_fn())
   })
 
   output$longitudinal_save_control <- renderUI({
@@ -681,7 +681,7 @@ register_longitudinal_handlers <- function(
     path <- choose_html_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
     if (!grepl("\\.html?$", path, ignore.case = TRUE)) path <- paste0(path, ".html")
-    write_longitudinal_results_html(results, path, variable_table_fn(), labels_fn())
+    write_longitudinal_results_html(results, path, variable_table_fn(), labels_fn(), category_table_fn())
     showNotification(sprintf("HTML results saved: %s", path), type = "message")
   })
 
@@ -691,7 +691,7 @@ register_longitudinal_handlers <- function(
     path <- choose_pdf_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
     if (!grepl("\\.pdf$", path, ignore.case = TRUE)) path <- paste0(path, ".pdf")
-    write_longitudinal_results_pdf(results, path, variable_table_fn(), labels_fn())
+    write_longitudinal_results_pdf(results, path, variable_table_fn(), labels_fn(), category_table_fn())
     showNotification(sprintf("PDF results saved: %s", path), type = "message")
   })
 
@@ -701,7 +701,7 @@ register_longitudinal_handlers <- function(
     path <- choose_excel_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
     if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) path <- paste0(path, ".xlsx")
-    save_longitudinal_excel_file(results, path, variable_table_fn(), labels_fn())
+    save_longitudinal_excel_file(results, path, variable_table_fn(), labels_fn(), category_table_fn())
     showNotification(sprintf("Analysis results saved: %s", path), type = "message")
   })
 

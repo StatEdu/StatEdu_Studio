@@ -79,7 +79,7 @@ calculated_variable_info_row <- function(
   row
 }
 
-create_data_reactives <- function(input, active_data_file, calculated_variables = NULL, renamed_variables = NULL) {
+create_data_reactives <- function(input, active_data_file, calculated_variables = NULL, renamed_variables = NULL, user_missing_rules = NULL) {
   current_data_file <- reactive({
     current_data_file_value(input$file, active_data_file())
   })
@@ -112,7 +112,10 @@ create_data_reactives <- function(input, active_data_file, calculated_variables 
     data <- raw_dataset()
     easyflow_time_expr(
       "prepare_data",
-      prepare_data(data),
+      apply_user_missing_rules_to_data(
+        prepare_data(data),
+        if (is.function(user_missing_rules)) user_missing_rules() else NULL
+      ),
       detail = sprintf("vars=%s rows=%s", ncol(data), nrow(data))
     )
   })
@@ -290,7 +293,8 @@ create_apply_restored_settings_basics_fn <- function(
   active_step,
   data_view,
   selected_names,
-  measurement_overrides
+  measurement_overrides,
+  user_missing_rules = NULL
 ) {
   function(settings, restored, selected) {
     var_label_overrides(restored$var_labels)
@@ -305,6 +309,9 @@ create_apply_restored_settings_basics_fn <- function(
 
     restore_setup_inputs(session, settings)
     measurement_overrides(restored$measurement_overrides)
+    if (is.function(user_missing_rules)) {
+      user_missing_rules(restored$user_missing_rules)
+    }
   }
 }
 

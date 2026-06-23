@@ -80,7 +80,7 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-grouped-sample-effect-menus-20260620"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-wide-long-button-width-20260623"))
 }
 
 app_script_link <- function(version) {

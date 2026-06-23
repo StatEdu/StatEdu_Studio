@@ -101,7 +101,7 @@ about_license_report_document <- function(path = "license_report.csv") {
     report$Scope <- ifelse(
       report$Package == "R",
       "R runtime",
-      ifelse(report$Package %in% required_packages, "Direct EFS package", "Bundled dependency")
+      ifelse(report$Package %in% required_packages, "Direct StatEdu Studio package", "Bundled dependency")
     )
   }
   columns <- intersect(c("Scope", "Component", "Version", "License", "URL", "Notes"), names(report))

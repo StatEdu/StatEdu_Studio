@@ -254,30 +254,260 @@ apply_missing_value_rules <- function(values, rules) {
   output
 }
 
+missing_rule_columns <- function() {
+  c("variable", "value", "value_type", "display_value", "matches", "total", "percent", "storage_type", "reason", "confidence", "source_index")
+}
+
+missing_empty_rules <- function() {
+  data.frame(
+    variable = character(0),
+    value = character(0),
+    value_type = character(0),
+    display_value = character(0),
+    matches = integer(0),
+    total = integer(0),
+    percent = numeric(0),
+    storage_type = character(0),
+    reason = character(0),
+    confidence = character(0),
+    source_index = integer(0),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
+normalize_missing_rules <- function(rules, variables = NULL) {
+  columns <- missing_rule_columns()
+  if (is.null(rules) || !is.data.frame(rules) || nrow(rules) == 0) {
+    return(missing_empty_rules())
+  }
+  rules <- as.data.frame(rules, stringsAsFactors = FALSE, check.names = FALSE)
+  missing_columns <- setdiff(columns, names(rules))
+  for (column in missing_columns) {
+    rules[[column]] <- NA
+  }
+  rules <- rules[, columns, drop = FALSE]
+  rules$variable <- as.character(rules$variable %||% "")
+  rules$value <- as.character(rules$value %||% "")
+  rules$value_type <- as.character(rules$value_type %||% "text")
+  rules$display_value <- ifelse(
+    !is.na(rules$display_value) & nzchar(as.character(rules$display_value)),
+    as.character(rules$display_value),
+    mapply(missing_display_value, rules$value, rules$value_type, USE.NAMES = FALSE)
+  )
+  rules$storage_type <- as.character(rules$storage_type %||% rules$value_type)
+  rules$reason <- as.character(rules$reason %||% "")
+  rules$confidence <- as.character(rules$confidence %||% "")
+  rules$matches <- suppressWarnings(as.integer(rules$matches))
+  rules$total <- suppressWarnings(as.integer(rules$total))
+  rules$percent <- suppressWarnings(as.numeric(rules$percent))
+  rules$source_index <- suppressWarnings(as.integer(rules$source_index))
+  rules <- rules[nzchar(rules$variable), , drop = FALSE]
+  if (!is.null(variables)) {
+    rules <- rules[rules$variable %in% as.character(variables), , drop = FALSE]
+  }
+  if (nrow(rules) == 0) {
+    return(missing_empty_rules())
+  }
+  key <- paste(rules$variable, rules$value_type, rules$value, sep = "\r")
+  rules <- rules[!duplicated(key, fromLast = TRUE), , drop = FALSE]
+  rownames(rules) <- NULL
+  rules
+}
+
+merge_missing_user_rules <- function(existing, added, variables = NULL) {
+  existing <- normalize_missing_rules(existing, variables)
+  added <- normalize_missing_rules(added, variables)
+  normalize_missing_rules(rbind(existing, added), variables)
+}
+
+apply_user_missing_rules_to_data <- function(data, rules) {
+  if (!is.data.frame(data)) {
+    return(data)
+  }
+  rules <- normalize_missing_rules(rules, names(data))
+  if (nrow(rules) == 0) {
+    return(data)
+  }
+  output <- data
+  for (variable in unique(as.character(rules$variable))) {
+    if (!variable %in% names(output)) {
+      next
+    }
+    variable_rules <- rules[rules$variable == variable, , drop = FALSE]
+    output[[variable]] <- apply_missing_value_rules(output[[variable]], variable_rules)
+  }
+  output
+}
+
+rename_missing_user_rules <- function(rules, old_name, new_name) {
+  rules <- normalize_missing_rules(rules)
+  if (nrow(rules) == 0) {
+    return(rules)
+  }
+  rules$variable[as.character(rules$variable) == old_name] <- new_name
+  normalize_missing_rules(rules)
+}
+
+missing_manual_codes_from_text <- function(text) {
+  lines <- trimws(unlist(strsplit(as.character(text %||% ""), "\\r?\\n")))
+  lines <- lines[nzchar(lines)]
+  lines[lines %in% c("(blank)", "<blank>")] <- ""
+  unique(lines)
+}
+
+missing_manual_rules <- function(data, variables, codes) {
+  if (is.null(data) || !is.data.frame(data) || length(variables) == 0 || length(codes) == 0) {
+    return(data.frame(check.names = FALSE))
+  }
+  variables <- intersect(as.character(variables %||% character(0)), names(data))
+  codes <- as.character(codes %||% character(0))
+  rows <- list()
+  for (variable in variables) {
+    values <- data[[variable]]
+    present <- values[!is.na(values)]
+    total <- length(present)
+    storage_type <- missing_value_storage_type(values)
+    for (code in codes) {
+      numeric_code <- suppressWarnings(as.numeric(code))
+      numeric_rule <- (is.numeric(values) || is.integer(values)) && !is.logical(values) && !is.na(numeric_code)
+      if (numeric_rule) {
+        matches <- sum(!is.na(values) & as.numeric(values) == numeric_code)
+        value_type <- "numeric"
+        value <- numeric_code
+      } else {
+        text <- trimws(as.character(as.vector(values)))
+        matched <- if (nzchar(code)) {
+          !is.na(text) & missing_normalize_text_code(text) == missing_normalize_text_code(code)
+        } else {
+          !is.na(text) & !nzchar(text)
+        }
+        matches <- sum(matched)
+        value_type <- "text"
+        value <- code
+      }
+      rows[[length(rows) + 1L]] <- missing_candidate_row(
+        variable = variable,
+        value = value,
+        value_type = value_type,
+        matches = matches,
+        total = total,
+        reason = "Manual missing code",
+        confidence = "manual",
+        source_index = match(variable, names(data)),
+        storage_type = storage_type
+      )
+    }
+  }
+  if (length(rows) == 0) {
+    return(data.frame(check.names = FALSE))
+  }
+  output <- do.call(rbind, rows)
+  rownames(output) <- NULL
+  output
+}
+
+missing_values_setup_panel <- function(file, data, variable_info = NULL, labels = character(0), selected_variables = character(0), input = NULL) {
+  if (is.null(file) || is.null(data)) {
+    return(setup_empty_message("Load a data file in the Data tab before converting missing values."))
+  }
+  variables <- names(data)
+  selected_variables <- intersect(as.character(selected_variables %||% character(0)), variables)
+  available <- setdiff(variables, selected_variables)
+  selected_available <- selected_order_items(isolate(input$missing_values_available) %||% character(0), available)
+  selected_selected <- selected_order_items(isolate(input$missing_values_selected) %||% character(0), selected_variables)
+
+  div(
+    class = "recode-same-setup-grid missing-values-setup-grid",
+    div(
+      class = "analysis-transfer-column analysis-transfer-panel",
+      analysis_field_label_tag("Variables"),
+      analysis_transfer_listbox_input(
+        "missing_values_available",
+        items = analysis_variable_items(available, variable_info, labels),
+        selected = selected_available,
+        size = 18
+      )
+    ),
+    div(
+      class = "analysis-transfer-controls recode-same-transfer-controls",
+      actionButton(
+        "missing_values_move",
+        ">",
+        class = "btn btn-default analysis-move-button",
+        disabled = if (length(available) == 0 && length(selected_variables) == 0) "disabled" else NULL
+      )
+    ),
+    div(
+      class = "analysis-transfer-column analysis-transfer-panel missing-values-selected-panel",
+      analysis_field_label_tag("Variables to convert"),
+      analysis_transfer_listbox_input(
+        "missing_values_selected",
+        items = analysis_variable_items(selected_variables, variable_info, labels),
+        selected = selected_selected,
+        size = 13
+      ),
+      div(
+        class = "dependent-order-actions",
+        actionButton("missing_values_up", "Up", class = "btn-default btn-sm"),
+        actionButton("missing_values_down", "Down", class = "btn-default btn-sm")
+      )
+    ),
+    div(class = "variable-rename-grid-spacer"),
+    div(
+      class = "analysis-options-column analysis-options-panel missing-values-options",
+      div(
+        class = "analysis-option-group",
+        div(class = "analysis-option-title", "Detect candidates"),
+        div(
+          class = "missing-values-option-row",
+          checkboxInput("missing_detect_numeric", "Numeric codes", value = TRUE),
+          checkboxInput("missing_detect_text", "Text / blank codes", value = TRUE)
+        ),
+        div(class = "analysis-option-title", "Use codes from"),
+        div(
+          class = "missing-values-option-row",
+          checkboxInput("missing_use_auto", "Selected detected rows", value = TRUE),
+          checkboxInput("missing_use_manual", "Manual codes below", value = FALSE)
+        ),
+        textAreaInput(
+          "missing_manual_codes",
+          "Manual missing codes",
+          value = "",
+          placeholder = "-999\n999\nN/A\n(blank)",
+          rows = 7,
+          width = "100%"
+        ),
+        div(class = "recode-help-text", "Use one code per line. Use (blank) for empty text values.")
+      )
+    )
+  )
+}
+
 data_editor_missing_panel <- function() {
   div(
     class = "page-shell",
     div(
       class = "app-heading",
       h1("Auto Missing Values"),
-      div("Detect likely missing-value codes, review them, and convert selected values to NA before analysis.", class = "app-subtitle")
+      div("Detect likely missing-value codes, review them, and mark selected codes as user missing before analysis.", class = "app-subtitle")
     ),
     div(
       class = "workspace-panel frequencies-workspace-panel data-editor-workspace",
       analysis_workspace_heading("Auto missing value detection", "missing_values"),
       analysis_workspace_body(
         "missing_values",
+        uiOutput("missing_values_setup"),
         div(
-          class = "analysis-action-row recode-same-action-row missing-values-option-row",
-          checkboxInput("missing_detect_numeric", "Detect numeric codes", value = TRUE),
-          checkboxInput("missing_detect_text", "Detect text codes", value = TRUE)
+          class = "analysis-action-row recode-same-action-row missing-values-action-row",
+          div(
+            class = "missing-values-action-cell",
+            actionButton("mark_user_missing_values", "Mark as user missing", class = "btn btn-primary missing-values-apply-button"),
+            actionButton("convert_missing_values_to_na", "Convert to NA", class = "btn btn-default missing-values-secondary-button")
+          )
         ),
         uiOutput("missing_values_status"),
         div(class = "data-editor-result-output", DT::DTOutput("missing_value_candidates")),
-        div(
-          class = "analysis-action-row recode-same-action-row",
-          actionButton("apply_missing_values", "Apply selected", class = "btn btn-primary")
-        ),
         uiOutput("missing_values_message")
       )
     )
@@ -290,10 +520,44 @@ register_missing_value_handlers <- function(
   session,
   dataset_fn,
   current_data_file_fn,
+  selected_names_fn = NULL,
+  variable_info_fn = NULL,
+  labels_fn = NULL,
+  category_table_fn = NULL,
+  user_missing_rules_fn = NULL,
+  set_user_missing_rules_fn = NULL,
   update_existing_variable_fn,
   mark_settings_dirty
 ) {
+  selected_variables <- reactiveVal(character(0))
+  active_list <- reactiveVal(NULL)
   last_message <- reactiveVal(NULL)
+
+  output$missing_values_setup <- renderUI({
+    missing_values_setup_panel(
+      file = current_data_file_fn(),
+      data = tryCatch(dataset_fn(), error = function(e) NULL),
+      variable_info = if (is.function(variable_info_fn)) tryCatch(variable_info_fn(), error = function(e) NULL) else NULL,
+      labels = if (is.function(labels_fn)) labels_fn() else character(0),
+      selected_variables = selected_variables(),
+      input = input
+    )
+  })
+
+  if (is.function(selected_names_fn) && is.function(variable_info_fn)) {
+    register_analysis_data_viewer_handlers(
+      input = input,
+      output = output,
+      prefix = "missing_values",
+      title = "Auto Missing Values Data Viewer",
+      dataset_fn = dataset_fn,
+      selected_names_fn = selected_names_fn,
+      variables_fn = selected_variables,
+      variable_table_fn = variable_info_fn,
+      labels_fn = if (is.function(labels_fn)) labels_fn else function() character(0),
+      category_table_fn = if (is.function(category_table_fn)) category_table_fn else function() data.frame(check.names = FALSE)
+    )
+  }
 
   candidates <- reactive({
     file <- current_data_file_fn()
@@ -301,11 +565,140 @@ register_missing_value_handlers <- function(
       return(data.frame(check.names = FALSE))
     }
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
+    variables <- intersect(selected_variables(), names(data %||% data.frame()))
+    if (length(variables) == 0) {
+      return(data.frame(check.names = FALSE))
+    }
     detect_missing_value_candidates(
-      data,
+      data[, variables, drop = FALSE],
       detect_numeric = isTRUE(input$missing_detect_numeric %||% TRUE),
       detect_text = isTRUE(input$missing_detect_text %||% TRUE)
     )
+  })
+
+  observe({
+    data <- tryCatch(dataset_fn(), error = function(e) NULL)
+    if (is.null(data)) {
+      selected_variables(character(0))
+      last_message(NULL)
+      return()
+    }
+    current <- selected_variables()
+    updated <- intersect(current, names(data))
+    if (!identical(updated, current)) {
+      selected_variables(updated)
+      last_message(NULL)
+    }
+  })
+
+  observeEvent(input$missing_values_available_active, active_list("missing_values_available"), ignoreInit = TRUE)
+  observeEvent(input$missing_values_selected_active, active_list("missing_values_selected"), ignoreInit = TRUE)
+
+  observe({
+    if (identical(active_list(), "missing_values_selected") && length(input$missing_values_selected %||% character(0)) > 0) {
+      updateActionButton(session, "missing_values_move", label = "<")
+    } else {
+      updateActionButton(session, "missing_values_move", label = ">")
+    }
+  })
+
+  observeEvent(input$missing_values_move, {
+    data <- tryCatch(dataset_fn(), error = function(e) NULL)
+    if (is.null(data)) return()
+    variables <- names(data)
+    current <- intersect(selected_variables(), variables)
+    if (identical(active_list(), "missing_values_selected")) {
+      chosen <- intersect(as.character(input$missing_values_selected %||% character(0)), current)
+      if (length(chosen) == 0) return()
+      selected_variables(setdiff(current, chosen))
+      active_list("missing_values_available")
+      last_message(NULL)
+      mark_settings_dirty()
+      return()
+    }
+
+    chosen <- intersect(as.character(input$missing_values_available %||% character(0)), setdiff(variables, current))
+    if (length(chosen) == 0) return()
+    selected_variables(c(current, chosen))
+    active_list("missing_values_selected")
+    last_message(NULL)
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$missing_values_move_direct, {
+    data <- tryCatch(dataset_fn(), error = function(e) NULL)
+    if (is.null(data)) return()
+    variables <- names(data)
+    current <- intersect(selected_variables(), variables)
+    payload <- input$missing_values_move_direct %||% list()
+    source <- as.character(payload$source %||% "")
+    chosen <- intersect(as.character(payload$values %||% character(0)), variables)
+    if (identical(source, "selected")) {
+      chosen <- intersect(chosen, current)
+      if (length(chosen) == 0) return()
+      selected_variables(setdiff(current, chosen))
+      active_list("missing_values_available")
+    } else {
+      chosen <- intersect(chosen, setdiff(variables, current))
+      if (length(chosen) == 0) return()
+      selected_variables(c(current, chosen))
+      active_list("missing_values_selected")
+    }
+    last_message(NULL)
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$missing_values_available_doubleclick, {
+    data <- tryCatch(dataset_fn(), error = function(e) NULL)
+    if (is.null(data)) return()
+    variables <- names(data)
+    current <- intersect(selected_variables(), variables)
+    chosen <- intersect(as.character(input$missing_values_available_doubleclick$value %||% ""), setdiff(variables, current))
+    if (length(chosen) == 0) return()
+    selected_variables(c(current, chosen))
+    active_list("missing_values_selected")
+    last_message(NULL)
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$missing_values_selected_doubleclick, {
+    current <- selected_variables()
+    chosen <- intersect(as.character(input$missing_values_selected_doubleclick$value %||% ""), current)
+    if (length(chosen) == 0) return()
+    selected_variables(setdiff(current, chosen))
+    active_list("missing_values_available")
+    last_message(NULL)
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  register_dual_transfer_drop_observer(
+    input = input,
+    session = session,
+    available_id = "missing_values_available",
+    selected_id = "missing_values_selected",
+    selected_values = selected_variables,
+    all_values_fn = function() names(tryCatch(dataset_fn(), error = function(e) data.frame()) %||% data.frame()),
+    active_list = active_list,
+    mark_settings_dirty = mark_settings_dirty,
+    after_change = function(target, chosen, next_values) {
+      last_message(NULL)
+    }
+  )
+
+  observeEvent(input$missing_values_up, {
+    updated <- move_order_item(selected_variables(), input$missing_values_selected, "up")
+    if (isTRUE(updated$changed)) {
+      selected_variables(updated$order)
+      mark_settings_dirty()
+    }
+  })
+
+  observeEvent(input$missing_values_down, {
+    updated <- move_order_item(selected_variables(), input$missing_values_selected, "down")
+    if (isTRUE(updated$changed)) {
+      selected_variables(updated$order)
+      mark_settings_dirty()
+    }
   })
 
   output$missing_values_status <- renderUI({
@@ -314,6 +707,11 @@ register_missing_value_handlers <- function(
       return(div(class = "empty-message", div("Load a data file before detecting missing values.")))
     }
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
+    variables <- intersect(selected_variables(), names(data %||% data.frame()))
+    if (length(variables) == 0) {
+      return(div(class = "empty-message", div("Select variables to detect or manually convert missing-value codes.")))
+    }
+    data <- data[, variables, drop = FALSE]
     na_summary <- missing_existing_na_summary(data)
     table <- candidates()
     if (is.null(table) || nrow(table) == 0) {
@@ -380,26 +778,102 @@ register_missing_value_handlers <- function(
     div(class = "recode-same-status", message)
   })
 
-  observeEvent(input$apply_missing_values, {
+  selected_missing_rules <- reactive({
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
     table <- candidates()
+    use_auto <- isTRUE(input$missing_use_auto %||% TRUE)
+    use_manual <- isTRUE(input$missing_use_manual %||% FALSE)
+    variables <- intersect(selected_variables(), names(data %||% data.frame()))
     selected <- input$missing_value_candidates_rows_selected %||% integer(0)
     selected <- suppressWarnings(as.integer(selected))
     selected <- selected[is.finite(selected) & selected >= 1 & selected <= nrow(table)]
     if (is.null(data)) {
+      stop("Load a data file before applying missing-value rules.", call. = FALSE)
+    }
+    if (length(variables) == 0) {
+      stop("Select at least one variable to convert.", call. = FALSE)
+    }
+    if (!use_auto && !use_manual) {
+      stop("Choose detected rows, manual codes, or both.", call. = FALSE)
+    }
+    if (use_auto && (is.null(table) || nrow(table) == 0)) {
+      stop("No missing-value candidates are available.", call. = FALSE)
+    }
+    if (use_auto && length(selected) == 0) {
+      stop("Select at least one candidate row to apply.", call. = FALSE)
+    }
+
+    auto_rules <- if (use_auto && !is.null(table) && nrow(table) > 0 && length(selected) > 0) {
+      table[selected, , drop = FALSE]
+    } else {
+      data.frame(check.names = FALSE)
+    }
+    manual_rules <- if (use_manual) {
+      missing_manual_rules(
+        data,
+        variables = variables,
+        codes = missing_manual_codes_from_text(input$missing_manual_codes)
+      )
+    } else {
+      data.frame(check.names = FALSE)
+    }
+    rule_sets <- Filter(function(item) is.data.frame(item) && nrow(item) > 0, list(auto_rules, manual_rules))
+    if (length(rule_sets) == 0) {
+      stop("Select detected rows or enter manual missing-value codes.", call. = FALSE)
+    }
+    rules <- do.call(rbind, rule_sets)
+    rownames(rules) <- NULL
+    normalize_missing_rules(rules, variables)
+  })
+
+  observeEvent(input$mark_user_missing_values, {
+    rules <- tryCatch(
+      selected_missing_rules(),
+      shiny.silent.error = function(e) NULL,
+      error = function(e) {
+        showNotification(conditionMessage(e), type = "warning", duration = 5)
+        NULL
+      }
+    )
+    if (is.null(rules) || nrow(rules) == 0) {
+      return()
+    }
+    if (!is.function(set_user_missing_rules_fn)) {
+      showNotification("User-missing rules are not available in this session.", type = "warning", duration = 5)
+      return()
+    }
+    existing <- if (is.function(user_missing_rules_fn)) user_missing_rules_fn() else data.frame(check.names = FALSE)
+    merged <- merge_missing_user_rules(existing, rules, names(tryCatch(dataset_fn(), error = function(e) data.frame())))
+    set_user_missing_rules_fn(merged)
+    if (is.function(mark_settings_dirty)) {
+      mark_settings_dirty()
+    }
+    variables <- unique(as.character(rules$variable))
+    last_message(sprintf(
+      "Marked %s missing-value rule(s) as user missing for analysis. Original data values are preserved: %s",
+      nrow(rules),
+      paste(variables, collapse = ", ")
+    ))
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$convert_missing_values_to_na, {
+    rules <- tryCatch(
+      selected_missing_rules(),
+      shiny.silent.error = function(e) NULL,
+      error = function(e) {
+        showNotification(conditionMessage(e), type = "warning", duration = 5)
+        NULL
+      }
+    )
+    if (is.null(rules) || nrow(rules) == 0) {
+      return()
+    }
+    data <- tryCatch(dataset_fn(), error = function(e) NULL)
+    if (is.null(data)) {
       showNotification("Load a data file before applying missing-value rules.", type = "warning", duration = 5)
       return()
     }
-    if (is.null(table) || nrow(table) == 0) {
-      showNotification("No missing-value candidates are available.", type = "warning", duration = 5)
-      return()
-    }
-    if (length(selected) == 0) {
-      showNotification("Select at least one candidate row to apply.", type = "warning", duration = 5)
-      return()
-    }
 
-    rules <- table[selected, , drop = FALSE]
     changed_variables <- character(0)
     changed_values <- 0L
     for (variable in unique(as.character(rules$variable))) {

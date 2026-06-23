@@ -2966,6 +2966,7 @@ prepare_longitudinal_analysis_result <- function(
     offset_variable = offset_variable,
     predictors = predictors,
     covariates = covariates,
+    reference_values = reference_values,
     weight = weight,
     terms = terms,
     n = prepared$n,

@@ -87,15 +87,15 @@
 권장 구조:
 
 ```text
-efs-stat.com/download
+studio.statedu.com/download
   -> 다운로드 페이지
 
-download.efs-stat.com
+download.statedu.com
   -> Cloudflare R2 public bucket 또는 동급 object storage/CDN
-  -> EFS_Setup_1.0.0.exe
+  -> StatEdu_Studio_Setup_1.0.0.exe
   -> checksum / manifest / release notes
 
-license.efs-stat.com
+license.statedu.com
   -> 라이센스 인증
   -> Pro/Latent 권한 확인
   -> activation 관리
@@ -104,7 +104,7 @@ license.efs-stat.com
 1차 권장 배포 저장소:
 
 - Cloudflare R2
-- custom domain: `download.efs-stat.com`
+- custom domain: `download.statedu.com`
 - R2 public bucket + Cloudflare cache 사용
 - egress 비용이 없는 구조를 우선 검토한다.
 
@@ -116,8 +116,8 @@ license.efs-stat.com
 배포 파일 예:
 
 ```text
-/windows/EFS_Setup_1.0.0.exe
-/windows/EFS_Setup_1.0.0.exe.sha256
+/windows/StatEdu_Studio_Setup_1.0.0.exe
+/windows/StatEdu_Studio_Setup_1.0.0.exe.sha256
 /windows/latest.json
 /release-notes/1.0.0.html
 ```
@@ -126,7 +126,7 @@ license.efs-stat.com
 
 - 홈페이지 서버가 400MB installer를 직접 전송하지 않는다.
 - 홈페이지는 다운로드 버튼과 release notes만 제공한다.
-- 실제 installer 파일은 `download.efs-stat.com`에서 전송한다.
+- 실제 installer 파일은 `download.statedu.com`에서 전송한다.
 - installer는 공개되어도 된다. Pro/Latent 기능은 라이센스 권한으로만 열린다.
 
 ## 업데이트 정책
@@ -137,7 +137,7 @@ license.efs-stat.com
 
 ```text
 Help > Check for Updates
-Help > About EFS
+Help > About StatEdu Studio
 ```
 
 업데이트 확인 흐름:
@@ -156,10 +156,10 @@ Help > About EFS
 {
   "latest_version": "1.0.3",
   "minimum_supported_version": "1.0.0",
-  "download_url": "https://download.efs-stat.com/windows/EFS_Setup_1.0.3.exe",
+  "download_url": "https://download.statedu.com/windows/StatEdu_Studio_Setup_1.0.3.exe",
   "sha256": "...",
   "size_mb": 412,
-  "release_notes_url": "https://efs-stat.com/releases/1.0.3",
+  "release_notes_url": "https://studio.statedu.com/releases/1.0.3",
   "mandatory": false
 }
 ```
@@ -179,8 +179,8 @@ Help > About EFS
 1차 구현은 전체 설치파일 재다운로드 방식으로 충분하다.
 
 ```text
-1차: EFS_Setup_1.0.3.exe 전체 다운로드
-2차: EFS_Update_1.0.2_to_1.0.3.exe 패치 다운로드 검토
+1차: StatEdu_Studio_Setup_1.0.3.exe 전체 다운로드
+2차: StatEdu_Studio_Update_1.0.2_to_1.0.3.exe 패치 다운로드 검토
 ```
 
 ## 라이센스 서버 정책
@@ -190,8 +190,8 @@ Help > About EFS
 권장 서버 구조:
 
 ```text
-EFS app
-  -> license.efs-stat.com
+StatEdu Studio app
+  -> license.statedu.com
     -> License API server
     -> PostgreSQL DB
 ```
@@ -299,7 +299,7 @@ License > Deactivate This Device
 화면 예:
 
 ```text
-EFS Personal Pro
+StatEdu Studio Personal Pro
 License: active
 Expires: 2027-06-07
 Activations: 2 / 2
@@ -456,9 +456,9 @@ latent_addin = true
 
 ### 배포 인프라
 
-- `download.efs-stat.com` 준비
+- `download.statedu.com` 준비
 - R2 bucket 또는 동급 object storage 준비
-- `license.efs-stat.com` 준비
+- `license.statedu.com` 준비
 - HTTPS 적용
 - installer 파일, checksum, latest.json 업로드 절차 정리
 - release notes 페이지 준비

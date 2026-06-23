@@ -107,7 +107,7 @@ function Assert-NoDistArtifacts {
   if ($blocked) {
     throw "Unexpected distribution artifact(s): $($blocked.Name -join ', ')"
   }
-  Write-Host "[ok] distribution output has no legacy EasyFlow or debug artifacts"
+  Write-Host "[ok] distribution output has no legacy product or debug artifacts"
 }
 
 function Assert-ExeVersionInfo {

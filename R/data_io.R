@@ -392,10 +392,11 @@ read_current_data_file <- function(file, input) {
   if (!valid_data_file_value(file)) {
     stop("No supported data file is available. Use a SAV, SAS, Stata, Excel, CSV, or DAT file.", call. = FALSE)
   }
+  csv_header <- if (!is.null(file$csv_header)) isTRUE(file$csv_header) else isTRUE(input$header)
   read_input_data(
     file$path,
     file$name,
-    csv_header = input$header,
+    csv_header = csv_header,
     dat_delimiter = input$dat_delimiter %||% "whitespace",
     dat_has_names = isTRUE(input$dat_has_names),
     excel_sheet = file$excel_sheet %||% NULL,

@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.9.42 - 2026-06-23
+
+### Added
+
+- Added a Data Editor > Wide to Long workflow for reshaping repeated-measure columns into long-format data before longitudinal / panel analysis.
+- Added validation coverage for wide-to-long reshaping and expanded data-editor recoding checks.
+
+### Changed
+
+- Standardized Data Editor panel, button, spacing, and data-viewer layouts against the t-test / ANOVA dialog pattern.
+- Updated missing-value handling to support both user-missing marking and conversion to system NA.
+- Improved recode and rename workflows with queued-variable removal, aligned target panels, and clearer rule setup.
+- Simplified settings files to the `.studio` format and updated save/load dialogs.
+- Refined longitudinal / panel model layout and reference-category reporting for categorical predictors.
+
 ## v0.9.41 - 2026-06-20
 
 ### Changed

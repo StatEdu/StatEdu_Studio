@@ -7,28 +7,60 @@ longitudinal_format_number <- function(value) {
   format_decimal3(value)
 }
 
-longitudinal_display_coef_table <- function(result) {
+longitudinal_coefficient_predictors <- function(result) {
+  terms <- as.character(result$terms %||% character(0))
+  if (length(terms) == 0) {
+    terms <- unique(c(
+      if (isTRUE(result$include_time %||% TRUE)) result$time else character(0),
+      result$predictors,
+      result$covariates
+    ))
+  }
+  terms[nzchar(terms)]
+}
+
+longitudinal_reference_values <- function(result, category_table = NULL) {
+  refs <- regression_reference_values_static(category_table)
+  result_refs <- result$reference_values %||% character(0)
+  if (length(result_refs) > 0 && !is.null(names(result_refs))) {
+    keep <- nzchar(names(result_refs))
+    refs[names(result_refs)[keep]] <- as.character(result_refs[keep])
+  }
+  refs
+}
+
+longitudinal_display_coef_table <- function(result, variable_table = NULL, labels = character(0), category_table = NULL) {
   table <- result$coef_table
   if (!is.data.frame(table) || nrow(table) == 0) {
     return(data.frame())
   }
   output <- data.frame(
     Term = as.character(table$Term),
-    B = vapply(table$B, longitudinal_format_number, character(1)),
-    SE = vapply(table$SE, longitudinal_format_number, character(1)),
-    Statistic = vapply(table$Statistic, longitudinal_format_number, character(1)),
-    p = vapply(table$p, format_p, character(1)),
-    LLCI = vapply(table$LLCI, longitudinal_format_number, character(1)),
-    ULCI = vapply(table$ULCI, longitudinal_format_number, character(1)),
+    B = table$B,
+    SE = table$SE,
+    Statistic = table$Statistic,
+    p = table$p,
+    LLCI = table$LLCI,
+    ULCI = table$ULCI,
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
   if (isTRUE(result$exponentiate) && all(c("exp(B)", "exp(LLCI)", "exp(ULCI)") %in% names(table))) {
-    output$`exp(B)` <- vapply(table$`exp(B)`, longitudinal_format_number, character(1))
-    output$`exp(LLCI)` <- vapply(table$`exp(LLCI)`, longitudinal_format_number, character(1))
-    output$`exp(ULCI)` <- vapply(table$`exp(ULCI)`, longitudinal_format_number, character(1))
+    output$`exp(B)` <- table$`exp(B)`
+    output$`exp(LLCI)` <- table$`exp(LLCI)`
+    output$`exp(ULCI)` <- table$`exp(ULCI)`
   }
-  output
+  formatted <- coefficient_output_table_with_context(
+    output,
+    predictors = longitudinal_coefficient_predictors(result),
+    variable_info = variable_table,
+    refs = longitudinal_reference_values(result, category_table),
+    value_labels = category_value_label_lookup_static(category_table),
+    labels = labels,
+    category_table = category_table
+  )
+  rownames(formatted) <- NULL
+  formatted
 }
 
 longitudinal_publication_estimate_table <- function(result) {
@@ -261,7 +293,7 @@ longitudinal_coef_html_table <- function(table) {
   )
 }
 
-longitudinal_result_block <- function(result, variable_table = NULL, labels = character(0)) {
+longitudinal_result_block <- function(result, variable_table = NULL, labels = character(0), category_table = NULL) {
   assumption_table <- longitudinal_display_assumption_table(result)
   publication_table <- longitudinal_publication_estimate_table(result)
   recommendations <- as.character(result$recommendations %||% character(0))
@@ -272,7 +304,7 @@ longitudinal_result_block <- function(result, variable_table = NULL, labels = ch
     class = "result-section regression-result-panel longitudinal-result-panel",
     h3(longitudinal_result_title(result, variable_table, labels)),
     h4("Coefficients"),
-    longitudinal_coef_html_table(longitudinal_display_coef_table(result)),
+    longitudinal_coef_html_table(longitudinal_display_coef_table(result, variable_table, labels, category_table)),
     if (nzchar(result$model_rationale %||% "")) {
       tagList(
         h4("Model rationale"),
@@ -376,7 +408,7 @@ longitudinal_result_block <- function(result, variable_table = NULL, labels = ch
   )
 }
 
-longitudinal_results_panel <- function(results, variable_table = NULL, labels = character(0)) {
+longitudinal_results_panel <- function(results, variable_table = NULL, labels = character(0), category_table = NULL) {
   warnings <- attr(results, "warnings")
   skipped <- attr(results, "skipped")
   div(
@@ -388,7 +420,7 @@ longitudinal_results_panel <- function(results, variable_table = NULL, labels = 
         model_overview_html_table(longitudinal_model_overview_table(results, variable_table, labels))
       )
     },
-    lapply(results, longitudinal_result_block, variable_table = variable_table, labels = labels),
+    lapply(results, longitudinal_result_block, variable_table = variable_table, labels = labels, category_table = category_table),
     if (is.list(results) && length(results) > 0) {
       div(
         class = "regression-result-panel assumption-review-panel",
@@ -400,7 +432,7 @@ longitudinal_results_panel <- function(results, variable_table = NULL, labels = 
   )
 }
 
-saved_longitudinal_results_html <- function(results, variable_table = NULL, labels = character(0), css_path = file.path("www", "style.css"), report_mode = FALSE) {
+saved_longitudinal_results_html <- function(results, variable_table = NULL, labels = character(0), category_table = NULL, css_path = file.path("www", "style.css"), report_mode = FALSE) {
   content <- div(
     class = "page-shell",
     div(
@@ -408,7 +440,7 @@ saved_longitudinal_results_html <- function(results, variable_table = NULL, labe
       h1("Longitudinal / Panel Models"),
       div("Longitudinal, clustered, and panel model results.", class = "app-subtitle")
     ),
-    longitudinal_results_panel(results, variable_table, labels)
+    longitudinal_results_panel(results, variable_table, labels, category_table)
   )
   saved_results_document(
     title = "Longitudinal / Panel Models",
@@ -418,16 +450,16 @@ saved_longitudinal_results_html <- function(results, variable_table = NULL, labe
   )
 }
 
-write_longitudinal_results_html <- function(results, file, variable_table = NULL, labels = character(0)) {
-  writeLines(saved_longitudinal_results_html(results, variable_table, labels), file, useBytes = TRUE)
+write_longitudinal_results_html <- function(results, file, variable_table = NULL, labels = character(0), category_table = NULL) {
+  writeLines(saved_longitudinal_results_html(results, variable_table, labels, category_table), file, useBytes = TRUE)
   invisible(file)
 }
 
-write_longitudinal_results_pdf <- function(results, file, variable_table = NULL, labels = character(0)) {
-  write_pdf_from_html(saved_longitudinal_results_html(results, variable_table, labels, report_mode = TRUE), file)
+write_longitudinal_results_pdf <- function(results, file, variable_table = NULL, labels = character(0), category_table = NULL) {
+  write_pdf_from_html(saved_longitudinal_results_html(results, variable_table, labels, category_table, report_mode = TRUE), file)
 }
 
-save_longitudinal_excel_file <- function(results, file, variable_table = NULL, labels = character(0)) {
+save_longitudinal_excel_file <- function(results, file, variable_table = NULL, labels = character(0), category_table = NULL) {
   workbook <- openxlsx::createWorkbook()
   used_sheets <- character(0)
   overview <- longitudinal_model_overview_table(results, variable_table, labels)
@@ -436,7 +468,7 @@ save_longitudinal_excel_file <- function(results, file, variable_table = NULL, l
   }
   for (index in seq_along(results)) {
     result <- results[[index]]
-    table <- longitudinal_display_coef_table(result)
+    table <- longitudinal_display_coef_table(result, variable_table, labels, category_table)
     publication_table <- longitudinal_publication_estimate_table(result)
     used_sheets <- add_excel_table_sheet(workbook, sprintf("Coefficients %s", index), table, used_sheets, title = sprintf("Coefficients - Model %s", index))
     if (is.data.frame(result$data_structure) && nrow(result$data_structure) > 0) {

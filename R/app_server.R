@@ -36,6 +36,7 @@ create_app_server <- function(app_version) {
   step3_variable_info <- server_state$step3_variable_info
   calculated_variables <- server_state$calculated_variables
   renamed_variables <- server_state$renamed_variables
+  user_missing_rules <- server_state$user_missing_rules
   active_data_file <- server_state$active_data_file
   reset_on_dataset_load <- server_state$reset_on_dataset_load
   unsaved_settings <- server_state$unsaved_settings
@@ -49,11 +50,16 @@ create_app_server <- function(app_version) {
   output$lazy_data_editor_coding_error_check <- renderUI(data_editor_coding_error_check_panel())
   output$lazy_data_editor_likert <- renderUI(data_editor_likert_panel())
   output$lazy_data_editor_missing_values <- renderUI(data_editor_missing_panel())
+  output$lazy_data_editor_wide_long <- renderUI(data_editor_wide_long_panel())
   output$lazy_data_editor_recode_different <- renderUI(data_editor_different_variable_panel())
   output$lazy_data_editor_variable_calculation <- renderUI(data_editor_variable_calculation_panel())
   output$lazy_data_editor_variable_transformation <- renderUI(data_editor_variable_transformation_panel())
   output$lazy_data_editor_recode_same <- renderUI(data_editor_same_variable_panel())
   output$lazy_data_editor_variable_rename <- renderUI(data_editor_variable_rename_panel())
+
+  observeEvent(input$wide_long_nav_request, {
+    updateNavbarPage(session, "main_menu", selected = "data_editor_wide_long")
+  }, ignoreInit = TRUE)
 
   output$lazy_calculator_hint8 <- renderUI(tab_panel_content(hint8_calculator_tab_panel()))
   output$lazy_calculator_eq5d <- renderUI(tab_panel_content(eq5d_calculator_tab_panel()))
@@ -97,7 +103,7 @@ create_app_server <- function(app_version) {
   register_client_error_handler(input)
   register_result_accumulator_outputs(input, output, session)
 
-  data_reactives <- create_data_reactives(input, active_data_file, calculated_variables, renamed_variables)
+  data_reactives <- create_data_reactives(input, active_data_file, calculated_variables, renamed_variables, user_missing_rules)
   current_data_file <- data_reactives$current_data_file
   source_dataset <- data_reactives$source_dataset
   raw_dataset <- data_reactives$raw_dataset
@@ -244,7 +250,8 @@ create_app_server <- function(app_version) {
     active_step = active_step,
     data_view = data_view,
     selected_names = selected_names,
-    measurement_overrides = measurement_overrides
+    measurement_overrides = measurement_overrides,
+    user_missing_rules = user_missing_rules
   )
 
   restore_settings_variable_info_only <- create_restore_settings_variable_info_only_fn(
@@ -299,6 +306,7 @@ create_app_server <- function(app_version) {
     step3_variable_info,
     calculated_variables,
     renamed_variables = renamed_variables,
+    user_missing_rules = user_missing_rules,
     var_label_overrides = var_label_overrides,
     category_label_values = category_label_values,
     selected_names,
@@ -482,6 +490,7 @@ create_app_server <- function(app_version) {
     step3_variable_info = step3_variable_info,
     calculated_variables = calculated_variables,
     renamed_variables = renamed_variables,
+    user_missing_rules = user_missing_rules,
     pending_settings = pending_settings,
     reset_setup_inputs_fn = reset_setup_inputs,
     go_data_step_fn = go_data_step,
@@ -760,6 +769,42 @@ create_app_server <- function(app_version) {
     invisible(TRUE)
   }
 
+  replace_current_dataset <- function(data, name = "transformed_data.csv", path = NULL, csv_header = TRUE) {
+    data <- as.data.frame(data, stringsAsFactors = FALSE, check.names = FALSE)
+    if (nrow(data) == 0 || ncol(data) == 0) {
+      showNotification("Transformed data is empty.", type = "warning", duration = 5)
+      return(invisible(FALSE))
+    }
+    data_path <- as.character(path %||% "")
+    if (!nzchar(data_path)) {
+      data_path <- tempfile(pattern = "statedu_data_editor_", fileext = ".csv")
+    }
+    if (!grepl("\\.csv$", data_path, ignore.case = TRUE)) {
+      data_path <- paste0(data_path, ".csv")
+    }
+    tryCatch(
+      {
+        readr::write_excel_csv(data, data_path, na = "")
+        data_path <- normalizePath(data_path, winslash = "/", mustWork = TRUE)
+        reset_on_dataset_load(TRUE)
+        active_data_file(list(
+          path = data_path,
+          name = basename(name %||% data_path),
+          restored = FALSE,
+          loaded_at = format(Sys.time(), "%Y%m%d%H%M%OS6"),
+          csv_header = isTRUE(csv_header)
+        ))
+        mark_settings_dirty()
+        showNotification("Current data was replaced with the reshaped data.", type = "message", duration = 5)
+        invisible(TRUE)
+      },
+      error = function(e) {
+        showNotification(paste("Could not replace the current data:", conditionMessage(e)), type = "error", duration = 8)
+        invisible(FALSE)
+      }
+    )
+  }
+
   rename_vector_values <- function(values, old_name, new_name) {
     values <- as.character(values %||% character(0))
     values[values == old_name] <- new_name
@@ -854,6 +899,7 @@ create_app_server <- function(app_version) {
     var_label_overrides(label_overrides)
     restored_variable_info(rename_info_names(restored_variable_info(), old_name, new_name, var_label))
     step3_variable_info(rename_info_names(step3_variable_info(), old_name, new_name, var_label))
+    user_missing_rules(rename_missing_user_rules(user_missing_rules(), old_name, new_name))
 
     labels <- category_label_values()
     if (is.data.frame(labels) && "name" %in% names(labels)) {
@@ -942,6 +988,18 @@ create_app_server <- function(app_version) {
     mark_settings_dirty = mark_settings_dirty
   )
 
+  register_wide_long_handlers(
+    input = input,
+    output = output,
+    session = session,
+    dataset_fn = dataset,
+    current_data_file_fn = current_data_file,
+    variable_info_fn = variable_info_table,
+    labels_fn = var_label_overrides,
+    replace_dataset_fn = replace_current_dataset,
+    mark_settings_dirty = mark_settings_dirty
+  )
+
   register_variable_rename_handlers(
     input = input,
     output = output,
@@ -973,6 +1031,12 @@ create_app_server <- function(app_version) {
     session = session,
     dataset_fn = dataset,
     current_data_file_fn = current_data_file,
+    selected_names_fn = selected_names,
+    variable_info_fn = variable_info_table,
+    labels_fn = var_label_overrides,
+    category_table_fn = category_label_table_data,
+    user_missing_rules_fn = user_missing_rules,
+    set_user_missing_rules_fn = user_missing_rules,
     update_existing_variable_fn = update_existing_variable,
     mark_settings_dirty = mark_settings_dirty
   )
@@ -1511,6 +1575,7 @@ create_app_server <- function(app_version) {
     control_names_fn = control_names,
     category_label_values_fn = category_label_values,
     category_label_table_data_fn = category_label_table_data,
+    user_missing_rules_fn = user_missing_rules,
     selection_applied_fn = selection_applied,
     roles_applied_fn = roles_applied,
     filter_names_fn = filter_names,

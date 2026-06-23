@@ -171,14 +171,10 @@ analysis_data_viewer_panel <- function(
       class = "analysis-data-viewer-header",
       div(
         h3(title),
-        div("Read-only preview of the variables currently assigned to this analysis.", class = "analysis-data-viewer-subtitle")
+        div("Read-only worksheet preview of the current data.", class = "analysis-data-viewer-subtitle")
       ),
       div(
         class = "analysis-data-viewer-controls",
-        div(
-          class = "analysis-data-viewer-scope-control",
-          checkboxInput(scope_input_id, "Show all Step 2 selected variables", value = isTRUE(all_selected))
-        ),
         div(
           class = "analysis-data-viewer-button-stack",
           actionButton(back_button_id, "Back to analysis", class = "btn btn-primary analysis-data-viewer-action-button"),
@@ -189,11 +185,6 @@ analysis_data_viewer_panel <- function(
           )
         )
       )
-    ),
-    div(
-      class = "analysis-data-viewer-variables",
-      div("Variables", class = "analysis-data-viewer-section-title"),
-      analysis_data_viewer_variable_list(variables, variable_table, labels)
     ),
     div(
       class = "analysis-data-viewer-table-wrap",
@@ -259,15 +250,10 @@ analysis_data_viewer_escape_cells <- function(data) {
 }
 
 analysis_data_viewer_table <- function(data, variables, category_table = NULL, use_labels = FALSE, variable_table = NULL, labels = character(0)) {
-  variables <- as.character(variables %||% character(0))
-  variables <- variables[nzchar(variables)]
   if (!is.data.frame(data) || nrow(data) == 0) {
     return(DT::datatable(data.frame(Message = "No data is loaded.", stringsAsFactors = FALSE), rownames = FALSE, options = list(dom = "t")))
   }
-  variables <- intersect(variables, names(data))
-  if (length(variables) == 0) {
-    return(DT::datatable(data.frame(Message = "No variables are selected for this viewer.", stringsAsFactors = FALSE), rownames = FALSE, options = list(dom = "t")))
-  }
+  variables <- names(data)
   preview <- analysis_data_viewer_labeled_data(data, variables, category_table, use_labels)
   headers <- unname(analysis_data_viewer_column_headers(names(preview), variable_table, labels, use_labels))
   header_json <- jsonlite::toJSON(headers, auto_unbox = TRUE)

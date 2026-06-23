@@ -111,7 +111,7 @@ packages <- sort(rownames(db))
 package_scope <- function(package, description) {
   priority <- description_field(description, "Priority")
   if (package %in% required_packages) {
-    return("Direct EFS package")
+    return("Direct StatEdu Studio package")
   }
   if (!is.na(priority) && priority %in% c("base", "recommended")) {
     return("R base/recommended")
@@ -157,7 +157,7 @@ runtime_row <- data.frame(
 )
 
 report <- rbind(runtime_row, report)
-scope_order <- c("R runtime", "Direct EFS package", "Bundled dependency", "R base/recommended")
+scope_order <- c("R runtime", "Direct StatEdu Studio package", "Bundled dependency", "R base/recommended")
 report$Scope <- factor(report$Scope, levels = scope_order)
 report <- report[order(report$Scope, report$Risk, report$Component), ]
 report$Scope <- as.character(report$Scope)
@@ -185,8 +185,8 @@ notice_lines <- c(
   "R runtime:",
   sprintf("- %s %s -- %s", runtime_row$Package, runtime_row$Version, runtime_row$License),
   "",
-  "Direct EFS R packages:",
-  sprintf("- %s %s -- %s", report$Package[report$Scope == "Direct EFS package"], report$Version[report$Scope == "Direct EFS package"], report$License[report$Scope == "Direct EFS package"]),
+  "Direct StatEdu Studio R packages:",
+  sprintf("- %s %s -- %s", report$Package[report$Scope == "Direct StatEdu Studio package"], report$Version[report$Scope == "Direct StatEdu Studio package"], report$License[report$Scope == "Direct StatEdu Studio package"]),
   "",
   "Bundled R package dependencies:",
   sprintf("- %s %s -- %s", report$Package[report$Scope == "Bundled dependency"], report$Version[report$Scope == "Bundled dependency"], report$License[report$Scope == "Bundled dependency"]),

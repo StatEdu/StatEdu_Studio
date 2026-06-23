@@ -1,6 +1,6 @@
 # Validation Reference Comparison
 
-Generated: 2026-06-20 13:17:08 KST
+Generated: 2026-06-23 22:25:06 KST
 
 This document collects StatEdu Studio validation checks that compare app outputs with external reference formulas, public R package results, or explicit automatic decision rules.
 

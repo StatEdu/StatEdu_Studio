@@ -658,9 +658,10 @@ recode_category_middle_rows_ui <- function(count, input = NULL) {
   tagList(lapply(seq_len(count), function(index) {
     div(class = "recode-builder-category-row recode-builder-category-middle-row",
       textInput(paste0("recode_same_cat_middle_from_", index), NULL, value = isolate(input[[paste0("recode_same_cat_middle_from_", index)]] %||% ""), width = "100%"),
-      selectInput(paste0("recode_same_cat_middle_lower_op_", index), NULL, choices = c("\u2265" = "ge", ">" = "gt"), selected = isolate(input[[paste0("recode_same_cat_middle_lower_op_", index)]] %||% "ge"), selectize = FALSE, width = "100%"),
-      textInput(paste0("recode_same_cat_middle_to_", index), NULL, value = isolate(input[[paste0("recode_same_cat_middle_to_", index)]] %||% ""), width = "100%"),
+      selectInput(paste0("recode_same_cat_middle_lower_op_", index), NULL, choices = c("\u2264" = "ge", "<" = "gt"), selected = isolate(input[[paste0("recode_same_cat_middle_lower_op_", index)]] %||% "ge"), selectize = FALSE, width = "100%"),
+      span(class = "recode-builder-range-value", "x"),
       selectInput(paste0("recode_same_cat_middle_upper_op_", index), NULL, choices = c("<" = "lt", "\u2264" = "le"), selected = isolate(input[[paste0("recode_same_cat_middle_upper_op_", index)]] %||% "lt"), selectize = FALSE, width = "100%"),
+      textInput(paste0("recode_same_cat_middle_to_", index), NULL, value = isolate(input[[paste0("recode_same_cat_middle_to_", index)]] %||% ""), width = "100%"),
       textInput(paste0("recode_same_cat_middle_new_", index), NULL, value = isolate(input[[paste0("recode_same_cat_middle_new_", index)]] %||% ""), width = "100%")
     )
   }))
@@ -761,25 +762,7 @@ data_editor_coding_error_check_panel <- function() {
         uiOutput("coding_error_message"),
         div(
           class = "coding-error-output",
-          div(
-            class = "coding-error-output-actions",
-            tags$button(
-              id = "apply_coding_error_corrections",
-              type = "button",
-              class = "btn btn-default",
-              onclick = paste0(
-                "if(window.Shiny){",
-                "window.easyflowCodingErrorFixValues=window.easyflowCodingErrorFixValues||{};",
-                "document.querySelectorAll('.coding-error-fix-input').forEach(function(el){",
-                "var idx=el.getAttribute('data-coding-error-index');",
-                "if(idx){window.easyflowCodingErrorFixValues[idx]=el.value;}",
-                "});",
-                "Shiny.setInputValue('coding_error_apply_all_values',{values:window.easyflowCodingErrorFixValues,nonce:Date.now()+Math.random()},{priority:'event'});",
-                "}"
-              ),
-              "Apply all corrections"
-            )
-          ),
+          uiOutput("coding_error_correction_actions"),
           DT::DTOutput("coding_error_issues")
         )
       )
@@ -1094,23 +1077,26 @@ recode_same_setup_panel <- function(file, data, variable_info, labels = characte
               class = "recode-builder-rule-header recode-builder-category-header",
               span("From"),
               span("Op"),
-              span("To"),
+              span("Value"),
               span("Op"),
+              span("To"),
               span("New")
             ),
             div(class = "recode-builder-category-row",
               span(class = "recode-builder-range-anchor", "Min"),
-              span(),
-              textInput("recode_same_cat_lower_to", NULL, value = isolate(input$recode_same_cat_lower_to) %||% "", width = "100%"),
+              span(class = "recode-builder-range-operator", "\u2264"),
+              span(class = "recode-builder-range-value", "x"),
               selectInput("recode_same_cat_lower_upper_op", NULL, choices = c("<" = "lt", "\u2264" = "le"), selected = isolate(input$recode_same_cat_lower_upper_op) %||% "lt", selectize = FALSE, width = "100%"),
+              textInput("recode_same_cat_lower_to", NULL, value = isolate(input$recode_same_cat_lower_to) %||% "", width = "100%"),
               textInput("recode_same_cat_lower_new", NULL, value = isolate(input$recode_same_cat_lower_new) %||% "", width = "100%")
             ),
             uiOutput("recode_same_category_middle_rules"),
             div(class = "recode-builder-category-row",
               textInput("recode_same_cat_upper_from", NULL, value = isolate(input$recode_same_cat_upper_from) %||% "", width = "100%"),
-              selectInput("recode_same_cat_upper_lower_op", NULL, choices = c("\u2265" = "ge", ">" = "gt"), selected = isolate(input$recode_same_cat_upper_lower_op) %||% "ge", selectize = FALSE, width = "100%"),
+              selectInput("recode_same_cat_upper_lower_op", NULL, choices = c("\u2264" = "ge", "<" = "gt"), selected = isolate(input$recode_same_cat_upper_lower_op) %||% "ge", selectize = FALSE, width = "100%"),
+              span(class = "recode-builder-range-value", "x"),
+              span(class = "recode-builder-range-operator", "\u2264"),
               span(class = "recode-builder-range-anchor", "Max"),
-              span(),
               textInput("recode_same_cat_upper_new", NULL, value = isolate(input$recode_same_cat_upper_new) %||% "", width = "100%")
             )
           )
@@ -1818,6 +1804,32 @@ register_coding_error_check_handlers <- function(
       return(NULL)
     }
     div(class = "recode-same-status", message)
+  })
+
+  output$coding_error_correction_actions <- renderUI({
+    issues <- last_issues()
+    if (is.null(issues) || nrow(issues) == 0) {
+      return(NULL)
+    }
+    div(
+      class = "coding-error-output-actions",
+      tags$button(
+        id = "apply_coding_error_corrections",
+        type = "button",
+        class = "btn btn-default",
+        onclick = paste0(
+          "if(window.Shiny){",
+          "window.easyflowCodingErrorFixValues=window.easyflowCodingErrorFixValues||{};",
+          "document.querySelectorAll('.coding-error-fix-input').forEach(function(el){",
+          "var idx=el.getAttribute('data-coding-error-index');",
+          "if(idx){window.easyflowCodingErrorFixValues[idx]=el.value;}",
+          "});",
+          "Shiny.setInputValue('coding_error_apply_all_values',{values:window.easyflowCodingErrorFixValues,nonce:Date.now()+Math.random()},{priority:'event'});",
+          "}"
+        ),
+        "Apply all corrections"
+      )
+    )
   })
 
   output$coding_error_issues <- DT::renderDT({

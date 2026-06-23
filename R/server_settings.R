@@ -54,6 +54,7 @@ loaded_dataset_reset_handler <- function(
   step3_variable_info,
   calculated_variables,
   renamed_variables = NULL,
+  user_missing_rules = NULL,
   var_label_overrides,
   category_label_values,
   selected_names,
@@ -81,6 +82,7 @@ loaded_dataset_reset_handler <- function(
     step3_variable_info(NULL)
     calculated_variables(data.frame(check.names = FALSE))
     if (is.function(renamed_variables)) renamed_variables(character(0))
+    if (is.function(user_missing_rules)) user_missing_rules(data.frame(check.names = FALSE))
     var_label_overrides(character(0))
     category_label_values(NULL)
     selected_names(character(0))
@@ -247,6 +249,7 @@ register_settings_reset_handler <- function(
   step3_variable_info,
   calculated_variables,
   renamed_variables = NULL,
+  user_missing_rules = NULL,
   pending_settings,
   reset_setup_inputs_fn,
   go_data_step_fn,
@@ -273,6 +276,7 @@ register_settings_reset_handler <- function(
     step3_variable_info(NULL)
     calculated_variables(data.frame(check.names = FALSE))
     if (is.function(renamed_variables)) renamed_variables(character(0))
+    if (is.function(user_missing_rules)) user_missing_rules(data.frame(check.names = FALSE))
     pending_settings(NULL)
     session$sendCustomMessage("easyflow-clear-data-session", list())
 

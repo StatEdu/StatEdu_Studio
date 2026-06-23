@@ -1,6 +1,6 @@
 {
   "name": "statedu-studio-beta",
-  "version": "0.9.41",
+  "version": "0.9.42",
   "description": "StatEdu Studio beta desktop installer",
   "author": "StatEdu",
   "main": "main.js",

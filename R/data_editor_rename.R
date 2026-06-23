@@ -45,29 +45,49 @@ variable_rename_queue_text <- function(queue) {
   paste(sprintf("%s - %s", queue$old, queue$new), collapse = "\n")
 }
 
-variable_rename_queue_listbox <- function(queue, variable_info = NULL, labels = character(0)) {
+variable_rename_queue_listbox <- function(queue, variable_info = NULL, labels = character(0), selected = character(0)) {
   queue <- normalize_variable_rename_queue(queue)
   old_items <- analysis_variable_items(queue$old, variable_info, labels)
   measurements <- stats::setNames(
     vapply(old_items, function(item) as.character(item$measurement %||% ""), character(1)),
     vapply(old_items, function(item) as.character(item$value %||% ""), character(1))
   )
+  queue_items <- lapply(seq_len(nrow(queue)), function(index) {
+    old_name <- queue$old[[index]]
+    list(
+      value = old_name,
+      label = sprintf("%s - %s", old_name, queue$new[[index]]),
+      measurement = named_value(measurements, old_name, "")
+    )
+  })
   div(
-    class = "analysis-transfer-listbox variable-rename-queue-box",
-    role = "listbox",
-    tabindex = "0",
-    lapply(seq_len(nrow(queue)), function(index) {
-      old_name <- queue$old[[index]]
-      div(
-        class = "analysis-transfer-option variable-rename-queue-option",
-        role = "option",
-        `aria-selected` = "false",
-        `data-value` = old_name,
-        measurement_symbol_tag(named_value(measurements, old_name, "")),
-        span(sprintf("%s - %s", old_name, queue$new[[index]]), class = "analysis-transfer-option-label")
-      )
-    })
+    class = "variable-rename-queue-listbox-wrap",
+    analysis_transfer_listbox_input(
+      "variable_rename_queue",
+      queue_items,
+      selected = selected,
+      size = 8
+    )
   )
+}
+
+remove_variable_rename_targets <- function(queue, queue_selected = character(0), target_selected = character(0)) {
+  queue <- normalize_variable_rename_queue(queue)
+  if (nrow(queue) == 0) {
+    return(character(0))
+  }
+  queue_selected <- intersect(as.character(queue_selected %||% character(0)), queue$old)
+  if (length(queue_selected) > 0) {
+    return(queue_selected)
+  }
+  target_selected <- intersect(as.character(target_selected %||% character(0)), queue$old)
+  if (length(target_selected) > 0) {
+    return(target_selected)
+  }
+  if (nrow(queue) == 1) {
+    return(queue$old[[1]])
+  }
+  character(0)
 }
 
 data_editor_variable_rename_panel <- function() {
@@ -86,7 +106,8 @@ data_editor_variable_rename_panel <- function() {
         uiOutput("variable_rename_setup"),
         div(
           class = "analysis-action-row recode-same-action-row variable-rename-action-row",
-          actionButton("run_variable_rename", "Run", class = "btn btn-primary")
+          actionButton("run_variable_rename", "Run", class = "btn btn-primary"),
+          actionButton("remove_variable_rename", "Remove", class = "btn btn-default variable-rename-remove-button")
         ),
         uiOutput("variable_rename_message")
       )
@@ -125,6 +146,7 @@ variable_rename_setup_panel <- function(
     active_variable <- selected_variables[[1]]
   }
   active_variable <- variable_rename_scalar(active_variable)
+  selected_queue <- selected_order_items(isolate(input$variable_rename_queue) %||% character(0), queue$old)
 
   queued_index <- if (nzchar(active_variable)) match(active_variable, queue$old) else NA_integer_
   active_new_name <- if (!is.na(queued_index)) queue$new[[queued_index]] else active_variable
@@ -162,7 +184,7 @@ variable_rename_setup_panel <- function(
         size = 8
       ),
       div(class = "analysis-option-title variable-rename-queue-title", "Rename variables"),
-      variable_rename_queue_listbox(queue, variable_info, labels)
+      variable_rename_queue_listbox(queue, variable_info, labels, selected = selected_queue)
     ),
     div(class = "variable-rename-grid-spacer"),
     div(
@@ -221,6 +243,10 @@ register_variable_rename_handlers <- function(
 
   observeEvent(input$variable_rename_selected_active, {
     active_rename_list("variable_rename_selected")
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$variable_rename_queue_active, {
+    active_rename_list("variable_rename_queue")
   }, ignoreInit = TRUE)
 
   observe({
@@ -300,6 +326,23 @@ register_variable_rename_handlers <- function(
     )
   }, ignoreInit = TRUE)
 
+  observeEvent(input$variable_rename_queue, {
+    queue <- normalize_variable_rename_queue(rename_queue())
+    selected <- selected_order_items(input$variable_rename_queue, queue$old)
+    active <- variable_rename_scalar(selected_order_item(selected, queue$old))
+    if (!nzchar(active)) {
+      return()
+    }
+    active_rename_list("variable_rename_queue")
+    target_selection(active)
+    queued_index <- match(active, queue$old)
+    if (is.na(queued_index)) {
+      return()
+    }
+    updateTextInput(session, "variable_rename_new_name", value = queue$new[[queued_index]])
+    updateTextAreaInput(session, "variable_rename_label", value = queue$label[[queued_index]])
+  }, ignoreInit = TRUE)
+
   output$variable_rename_message <- renderUI({
     message <- last_message()
     if (is.null(message)) {
@@ -336,6 +379,22 @@ register_variable_rename_handlers <- function(
     )
     rename_queue(queue)
     last_message(sprintf("Queued rename: %s -> %s", old_name, new_name))
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$remove_variable_rename, {
+    queue <- normalize_variable_rename_queue(rename_queue())
+    targets <- remove_variable_rename_targets(
+      queue,
+      queue_selected = input$variable_rename_queue %||% character(0),
+      target_selected = input$variable_rename_selected %||% character(0)
+    )
+    if (length(targets) == 0) {
+      showNotification("Select a queued rename to remove.", type = "warning", duration = 5)
+      return()
+    }
+    rename_queue(queue[!queue$old %in% targets, , drop = FALSE])
+    target_selection(setdiff(target_selection(), targets))
+    last_message(sprintf("Removed queued rename: %s", paste(targets, collapse = ", ")))
   }, ignoreInit = TRUE)
 
   observeEvent(input$run_variable_rename, {

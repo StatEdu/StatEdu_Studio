@@ -2,8 +2,8 @@
 message: "If you use StatEdu Studio in your research, please cite it as below."
 type: software
 title: "StatEdu Studio"
-version: "0.9.41"
-date-released: "2026-06-20"
+version: "0.9.42"
+date-released: "2026-06-23"
 authors:
   - family-names: "LEE"
     given-names: "IL HYUN"

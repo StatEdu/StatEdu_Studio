@@ -545,7 +545,7 @@ display_variable_choices_with_measurements <- function(names, table = NULL, labe
   choice_values <- unname(choices)
   labels_by_value <- stats::setNames(names(choices), choice_values)
   icon_labels <- vapply(variable_names, function(name) {
-    paste(measurement_icon_label(measurements[[name]]), named_value(labels_by_value, name, name))
+    paste(measurement_icon_label(named_value(measurements, name, "")), named_value(labels_by_value, name, name))
   }, character(1))
   stats::setNames(choice_values, icon_labels)
 }
