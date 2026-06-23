@@ -57,6 +57,7 @@ $env:LANG = "English_United States.utf8"
 $coreValidations = @(
   "scripts\validate_version_metadata.R",
   "scripts\validate_brand_metadata.R",
+  "scripts\validate_settings_dialogs.R",
   "scripts\validate_ui_layout_contract.R",
   "scripts\validate_data_editor_wide_long.R",
   "scripts\validate_data_editor_recode.R",

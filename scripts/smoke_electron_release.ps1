@@ -159,6 +159,7 @@ Assert-Path (Join-Path $RepoRoot "docs\RELEASE_CHECKLIST.md") "release checklist
 Assert-Path (Join-Path $RepoRoot "scripts\validate_stabilization.ps1") "stabilization validation runner"
 Assert-Path (Join-Path $RepoRoot "scripts\validate_version_metadata.R") "version metadata validation"
 Assert-Path (Join-Path $RepoRoot "scripts\validate_brand_metadata.R") "brand metadata validation"
+Assert-Path (Join-Path $RepoRoot "scripts\validate_settings_dialogs.R") "settings dialog validation"
 Assert-Path (Join-Path $RepoRoot "scripts\generate_oss_notices.R") "OSS notice generator"
 Assert-Path (Join-Path $RepoRoot "scripts\prune_r_runtime.R") "R runtime prune script"
 Assert-Path (Join-Path $RepoRoot "LICENSE") "application license"

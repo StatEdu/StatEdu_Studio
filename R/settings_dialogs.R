@@ -238,7 +238,7 @@ save_settings_file <- function() {
         as.character(tcltk::tkgetSaveFile(
           parent = parent,
           title = "Save StatEdu Studio Settings",
-          initialfile = default_name,
+          initialfile = "",
           defaultextension = ".studio",
           filetypes = "{{StatEdu Studio Settings} {.studio}}"
         ))
