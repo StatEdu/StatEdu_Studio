@@ -431,8 +431,15 @@ assert_contains(easyflow_js, "function easyflowGroupedMenuConfigs()", "grouped m
 assert_contains(easyflow_js, "function markNavbarDropdownActive(link)", "grouped menu top-level active helper")
 assert_contains(easyflow_js, "dropdown.closest('.navbar-nav').children('li.active').removeClass('active');", "grouped menu clears stale top-level active state")
 assert_contains(easyflow_js, "dropdown.addClass('active');", "grouped menu activates clicked top-level menu")
+assert_contains(easyflow_js, "menu: 'Analysis',\n              marker: 'analysis',", "Analysis grouped menu config")
+assert_contains(easyflow_js, "menu: 'Sample Size',\n              marker: 'sample-size',", "Sample Size grouped menu config")
+assert_contains(easyflow_js, "menu: 'Effect Size',\n              marker: 'effect-size',", "Effect Size grouped menu config")
 assert_contains(easyflow_js, "click.easyflowAnalysisSubmenu", "grouped submenu click handler")
 assert_contains(easyflow_js, "click.easyflowAnalysisDirectItem", "grouped direct-item click handler")
+assert_contains(easyflow_js, "function syncEasyflowTopNavbarActive(link) {", "top navbar active-state sync helper")
+assert_contains(easyflow_js, "event.target.closest('.navbar-nav a[data-value]')", "generic navbar data-value click handler")
+assert_contains(easyflow_js, "link.tab('show');", "generic navbar click reopens already-active tab")
+assert_contains(easyflow_js, "syncEasyflowTopNavbarActive(navLink);", "generic navbar click updates top-level active state")
 submenu_click_handler <- extract_between(
   easyflow_js,
   ".on('click.easyflowAnalysisSubmenu', '.analysis-submenu .analysis-menu-section-items a[data-value]'",
