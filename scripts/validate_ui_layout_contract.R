@@ -10,6 +10,11 @@ read_project_file <- function(path) {
   paste(readLines(file.path(repo_root, path), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 }
 
+count_fixed <- function(text, pattern) {
+  matches <- gregexpr(pattern, text, fixed = TRUE)[[1]]
+  if (identical(matches, -1L)) 0L else length(matches)
+}
+
 assert_contains <- function(text, pattern, label) {
   if (!grepl(pattern, text, fixed = TRUE)) {
     stop(sprintf("UI layout contract missing: %s", label), call. = FALSE)
@@ -23,6 +28,7 @@ assert_not_contains <- function(text, pattern, label) {
 }
 
 css <- read_project_file("www/style.css")
+analysis_data_viewer_ui <- read_project_file("R/analysis_data_viewer.R")
 data_editor_ui <- read_project_file("R/data_editor_ui.R")
 wide_long_ui <- read_project_file("R/data_editor_wide_long.R")
 rename_ui <- read_project_file("R/data_editor_rename.R")
@@ -30,6 +36,9 @@ recode_ui <- read_project_file("R/data_editor_recode.R")
 missing_ui <- read_project_file("R/data_editor_missing.R")
 easyflow_js <- read_project_file("www/easyflow.js")
 layout_doc <- read_project_file("docs/UI_LAYOUT_CONTRACT.md")
+r_text <- paste(vapply(list.files(file.path(repo_root, "R"), pattern = "\\.R$", full.names = TRUE), function(path) {
+  paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+}, character(1)), collapse = "\n")
 
 message("Checking shared Data Editor geometry contract...")
 assert_contains(css, "--se-standard-setup-width: 1176px;", "standard setup width")
@@ -40,6 +49,18 @@ assert_contains(css, ".data-editor-workspace .analysis-workspace-heading", "work
 assert_contains(css, ".data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid)", "standard setup grid rule")
 assert_contains(css, ".data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row)", "standard action row rule")
 assert_contains(css, "grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;", "standard three-block grid columns")
+
+message("Checking shared selected-data viewer button contract...")
+assert_contains(analysis_data_viewer_ui, 'analysis_data_viewer_button <- function(id)', "selected-data viewer button helper")
+assert_contains(analysis_data_viewer_ui, 'actionButton(id, "View selected data", class = "btn btn-default analysis-data-viewer-button")', "selected-data viewer button label")
+assert_contains(analysis_data_viewer_ui, "analysis_workspace_heading <- function(title, prefix)", "workspace heading helper")
+assert_contains(analysis_data_viewer_ui, 'analysis_data_viewer_button(paste0(prefix, "_view_data"))', "workspace heading uses shared viewer button")
+if (count_fixed(r_text, '"View selected data"') != 1L) {
+  stop("UI layout contract missing: View selected data must be created only by analysis_data_viewer_button()", call. = FALSE)
+}
+assert_contains(css, ".analysis-workspace-heading", "workspace heading CSS")
+assert_contains(css, "justify-content: space-between;", "workspace heading right-edge alignment")
+assert_contains(css, ".analysis-data-viewer-button", "selected-data viewer button CSS")
 
 message("Checking Wide to Long menu contract...")
 assert_contains(data_editor_ui, 'lazy_tab_panel("Wide to Long", "data_editor_wide_long", "lazy_data_editor_wide_long")', "Data Editor menu label")
