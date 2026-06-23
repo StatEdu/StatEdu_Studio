@@ -65,6 +65,7 @@ extract_between <- function(text, start_pattern, end_pattern, label) {
 }
 
 css <- read_project_file("www/style.css")
+analysis_menu_ui <- read_project_file("R/analysis_menu_ui.R")
 analysis_data_viewer_ui <- read_project_file("R/analysis_data_viewer.R")
 setup_ui <- read_project_file("R/setup_ui.R")
 data_editor_ui <- read_project_file("R/data_editor_ui.R")
@@ -178,6 +179,92 @@ if (count_fixed(r_text, '"View selected data"') != 1L) {
 assert_contains(css, ".analysis-workspace-heading", "workspace heading CSS")
 assert_contains(css, "justify-content: space-between;", "workspace heading right-edge alignment")
 assert_contains(css, ".analysis-data-viewer-button", "selected-data viewer button CSS")
+
+message("Checking Analysis lazy menu wiring...")
+analysis_lazy_contract <- data.frame(
+  title = c(
+    "Frequencies / Descriptives",
+    "Cross-tabulation Analysis",
+    "t-test / ANOVA",
+    "Paired test",
+    "ANCOVA",
+    "Nonparametric Tests",
+    "Nonparametric Paired",
+    "Correlation",
+    "Reliability",
+    "Factor Analysis",
+    "Principal Components",
+    "Regression",
+    "GLM",
+    "Logistic Regression",
+    "Longitudinal / Panel Models"
+  ),
+  value = c(
+    "Frequencies / Descriptives",
+    "analysis_crosstabs",
+    "t-test / ANOVA",
+    "Paired test",
+    "ANCOVA",
+    "Nonparametric Tests",
+    "Nonparametric Paired",
+    "Correlation",
+    "Reliability",
+    "Factor Analysis",
+    "Principal Components",
+    "Regression",
+    "Generalized Linear Model (GLM)",
+    "analysis_logistic_regression",
+    "Longitudinal / Panel Models"
+  ),
+  output_id = c(
+    "lazy_analysis_frequencies",
+    "lazy_analysis_crosstabs",
+    "lazy_analysis_ttest_anova",
+    "lazy_analysis_paired",
+    "lazy_analysis_ancova",
+    "lazy_analysis_nonparametric",
+    "lazy_analysis_nonparametric_paired",
+    "lazy_analysis_correlation",
+    "lazy_analysis_reliability",
+    "lazy_analysis_factor_analysis",
+    "lazy_analysis_pca",
+    "lazy_analysis_hierarchical",
+    "lazy_analysis_generalized",
+    "lazy_analysis_logistic",
+    "lazy_analysis_longitudinal"
+  ),
+  panel_call = c(
+    'frequencies_tab_panel("Frequencies / Descriptives")',
+    "crosstab_tab_panel()",
+    'ttest_anova_tab_panel("t-test / ANOVA")',
+    'paired_tab_panel("Paired test")',
+    'ancova_tab_panel("ANCOVA")',
+    'nonparametric_tab_panel("Nonparametric Tests")',
+    'nonparametric_paired_tab_panel("Nonparametric Paired")',
+    'correlation_tab_panel("Correlation")',
+    'reliability_tab_panel("Reliability")',
+    'factor_analysis_tab_panel("Factor Analysis")',
+    'pca_tab_panel("Principal Components")',
+    'hierarchical_tab_panel("Regression")',
+    'generalized_tab_panel("GLM")',
+    "logistic_regression_tab_panel()",
+    'longitudinal_tab_panel("Longitudinal / Panel Models")'
+  ),
+  stringsAsFactors = FALSE
+)
+for (i in seq_len(nrow(analysis_lazy_contract))) {
+  lazy_row <- analysis_lazy_contract[i, ]
+  assert_contains(
+    analysis_menu_ui,
+    sprintf('lazy_tab_panel("%s", "%s", "%s")', lazy_row$title, lazy_row$value, lazy_row$output_id),
+    sprintf("Analysis lazy menu item: %s", lazy_row$title)
+  )
+  assert_contains(
+    app_server,
+    sprintf("output$%s <- renderUI(tab_panel_content(%s))", lazy_row$output_id, lazy_row$panel_call),
+    sprintf("Analysis lazy renderUI target: %s", lazy_row$title)
+  )
+}
 
 message("Checking shared analysis menu geometry contract...")
 assert_contains(setup_ui, 'analysis_workspace_heading("t-test / ANOVA", "ttest_anova")', "t-test / ANOVA baseline heading")
