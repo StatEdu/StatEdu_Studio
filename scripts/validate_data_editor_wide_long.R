@@ -3,6 +3,16 @@ source(file.path("R", "data_io.R"))
 source(file.path("R", "server_data_state.R"))
 source(file.path("R", "data_editor_wide_long.R"))
 
+read_project_file <- function(path) {
+  paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+}
+
+assert_contains <- function(text, pattern, label) {
+  if (!grepl(pattern, text, fixed = TRUE)) {
+    stop(sprintf("%s missing", label), call. = FALSE)
+  }
+}
+
 wide <- data.frame(
   id = 1:2,
   sex = c("F", "M"),
@@ -186,5 +196,13 @@ if (is.function(original_choose_data_csv_save_path)) {
   rm("choose_data_csv_save_path", envir = .GlobalEnv)
 }
 unlink(save_result$path)
+
+wide_long_source <- read_project_file(file.path("R", "data_editor_wide_long.R"))
+assert_contains(wide_long_source, "save_wide_long_result_file(result)", "wide-to-long run save handoff")
+assert_contains(wide_long_source, 'target_name <- if (isTRUE(save_result$saved)) basename(save_result$path) else "wide_to_long.csv"', "wide-to-long fallback dataset name")
+assert_contains(wide_long_source, "target_path <- if (isTRUE(save_result$saved)) save_result$path else NULL", "wide-to-long saved path handoff")
+assert_contains(wide_long_source, "replace_dataset_fn(result, name = target_name, path = target_path, csv_header = TRUE)", "wide-to-long dataset replacement")
+assert_contains(wide_long_source, "Wide-to-long data saved and connected", "wide-to-long saved notification")
+assert_contains(wide_long_source, "Save canceled; a temporary data file is connected for this session.", "wide-to-long canceled save message")
 
 cat("Data Editor wide-to-long validation passed.\n")
