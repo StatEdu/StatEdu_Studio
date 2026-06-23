@@ -951,8 +951,8 @@ body {
   grid-template-columns: 326px minmax(0, 796px);
   gap: 18px;
   align-items: stretch;
-  width: 1140px;
-  min-width: 1140px;
+  width: var(--se-analysis-workspace-width);
+  min-width: var(--se-analysis-workspace-width);
   padding: 18px;
   background: #f4f8fb;
   border: 1px solid #e1eaf2;
@@ -1573,7 +1573,7 @@ body {
 }
 
 .recode-same-status {
-  width: 1140px;
+  width: var(--se-analysis-workspace-width);
   margin-top: 18px;
   padding: 12px 16px;
   border: 1px solid #b7d4ea;
@@ -2466,8 +2466,8 @@ input.variable-select:disabled {
 .hierarchical-setup-grid,
 .logistic-setup-grid,
 .analysis-data-viewer-panel {
-  width: 1140px;
-  min-width: 1140px;
+  width: var(--se-analysis-workspace-width);
+  min-width: var(--se-analysis-workspace-width);
 }
 
 .analysis-data-viewer-button {
@@ -2751,8 +2751,8 @@ input.variable-select:disabled {
 
 .data-editor-result-output,
 .coding-error-output {
-  width: 1140px;
-  max-width: 1140px;
+  width: var(--se-analysis-workspace-width);
+  max-width: var(--se-analysis-workspace-width);
   margin-top: 18px;
   box-sizing: border-box;
   overflow-x: auto;
@@ -6497,8 +6497,8 @@ pre {
 .crosstab-workspace-heading,
 .regression-setup-grid.crosstab-setup-grid,
 .analysis-data-viewer-panel {
-  width: 1140px !important;
-  min-width: 1140px !important;
+  width: var(--se-analysis-workspace-width) !important;
+  min-width: var(--se-analysis-workspace-width) !important;
 }
 
 .crosstab-column-panel {
@@ -7695,9 +7695,9 @@ pre {
 .likert-custom-dictionary,
 .likert-review-grid,
 .likert-action-row {
-  width: 1140px;
-  min-width: 1140px;
-  max-width: 1140px;
+  width: var(--se-analysis-workspace-width);
+  min-width: var(--se-analysis-workspace-width);
+  max-width: var(--se-analysis-workspace-width);
 }
 
 .likert-group-table th,
@@ -8768,7 +8768,7 @@ pre {
   align-items: stretch;
   grid-auto-rows: 690px;
   width: 100%;
-  min-width: 1140px;
+  min-width: var(--se-analysis-workspace-width);
   margin-top: 18px;
   padding: 18px;
   background: #f4f8fb;
