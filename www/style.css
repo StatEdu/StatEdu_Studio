@@ -10111,8 +10111,8 @@ select[id$="_active_role"]:focus {
 
 .ancova-action-row {
   display: grid !important;
-  grid-template-columns: 326px 50px 326px 20px 310px !important;
-  gap: 18px !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;
+  gap: var(--se-standard-gap) !important;
   width: 1176px !important;
   min-width: 1176px !important;
   align-items: start !important;
