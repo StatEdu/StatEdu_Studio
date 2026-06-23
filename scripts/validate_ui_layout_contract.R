@@ -198,6 +198,22 @@ assert_contains(recode_ui, 'uiOutput("recode_same_reset_control")', "Recode rese
 assert_contains(css, ".data-editor-workspace .recode-builder-action-row > #apply_recode_same", "Recode apply placement")
 assert_contains(css, ".data-editor-workspace .recode-builder-action-row > #recode_same_reset_control", "Recode reset placement")
 
+message("Checking Auto Reverse Coding menu contract...")
+assert_contains(data_editor_ui, 'lazy_tab_panel("Auto reverse coding", "data_editor_recode_different", "lazy_data_editor_recode_different")', "Auto Reverse Coding menu label")
+assert_contains(recode_ui, 'analysis_workspace_heading("Auto reverse coding", "recode_different")', "Auto Reverse Coding workspace heading")
+assert_contains(recode_ui, 'class = "recode-same-setup-grid recode-different-setup-grid"', "Auto Reverse Coding standard grid")
+assert_contains(recode_ui, '"recode_different_move",', "Auto Reverse Coding transfer button")
+assert_contains(recode_ui, 'actionButton("apply_recode_different", "Run"', "Auto Reverse Coding run button")
+assert_contains(recode_ui, 'uiOutput("recode_different_reset_control")', "Auto Reverse Coding reset control")
+
+message("Checking Auto Variable Calculation menu contract...")
+assert_contains(data_editor_ui, 'lazy_tab_panel("Auto variable calculation", "data_editor_variable_calculation", "lazy_data_editor_variable_calculation")', "Auto Variable Calculation menu label")
+assert_contains(recode_ui, 'analysis_workspace_heading("Auto variable calculation", "variable_calculation")', "Auto Variable Calculation workspace heading")
+assert_contains(recode_ui, 'class = "recode-same-setup-grid recode-different-setup-grid"', "Auto Variable Calculation standard grid")
+assert_contains(recode_ui, '"variable_calculation_move",', "Auto Variable Calculation transfer button")
+assert_contains(recode_ui, 'actionButton("apply_variable_calculation", "Run"', "Auto Variable Calculation run button")
+assert_contains(recode_ui, 'uiOutput("variable_calculation_reset_control")', "Auto Variable Calculation reset control")
+
 message("Checking Auto Coding Error menu contract...")
 assert_contains(recode_ui, 'analysis_workspace_heading("Auto coding error check", "coding_error")', "Coding error workspace heading")
 assert_contains(recode_ui, 'class = "recode-same-setup-grid recode-different-setup-grid"', "Coding error standard grid")
