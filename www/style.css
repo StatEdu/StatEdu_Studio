@@ -3717,11 +3717,11 @@ input.variable-select:disabled {
 
 .hierarchical-action-row {
   display: grid;
-  grid-template-columns: 326px 50px 326px 20px 310px;
-  gap: 18px;
+  grid-template-columns: var(--se-analysis-grid-columns);
+  gap: var(--se-standard-gap);
   align-items: center;
-  width: 1176px;
-  min-width: 1176px;
+  width: var(--se-standard-setup-width);
+  min-width: var(--se-standard-setup-width);
 }
 
 .hierarchical-action-row > .btn {
@@ -3733,22 +3733,22 @@ input.variable-select:disabled {
 }
 
 .regression-workspace-panel {
-  width: 1140px;
-  min-width: 1140px;
-  max-width: 1140px;
+  width: var(--se-analysis-workspace-width);
+  min-width: var(--se-analysis-workspace-width);
+  max-width: var(--se-analysis-workspace-width);
   padding-right: 8px;
   overflow-x: hidden;
 }
 
 .regression-setup-grid {
   display: grid;
-  grid-template-columns: 326px 50px 326px 20px 310px;
-  gap: 18px;
+  grid-template-columns: var(--se-analysis-grid-columns);
+  gap: var(--se-standard-gap);
   align-items: stretch;
-  grid-auto-rows: 520px;
+  grid-auto-rows: var(--se-standard-panel-height);
   margin-top: 18px;
-  width: 1176px;
-  min-width: 1176px;
+  width: var(--se-standard-setup-width);
+  min-width: var(--se-standard-setup-width);
   padding: 18px;
   background: #f4f8fb;
   border: 1px solid #e1eaf2;
@@ -3844,11 +3844,11 @@ input.variable-select:disabled {
 
 .regression-action-row {
   display: grid;
-  grid-template-columns: 326px 50px 326px 20px 310px;
-  gap: 18px;
+  grid-template-columns: var(--se-analysis-grid-columns);
+  gap: var(--se-standard-gap);
   align-items: start;
-  width: 1176px;
-  min-width: 1176px;
+  width: var(--se-standard-setup-width);
+  min-width: var(--se-standard-setup-width);
 }
 
 .regression-action-row > .btn {
@@ -5674,21 +5674,21 @@ pre {
 }
 
 .regression-workspace-panel {
-  width: 1140px;
-  min-width: 1140px;
-  max-width: 1140px;
+  width: var(--se-analysis-workspace-width);
+  min-width: var(--se-analysis-workspace-width);
+  max-width: var(--se-analysis-workspace-width);
   padding-right: 8px;
   overflow-x: hidden;
 }
 
 .regression-setup-grid {
   display: grid;
-  grid-template-columns: 326px 50px 326px 20px 310px;
-  gap: 18px;
+  grid-template-columns: var(--se-analysis-grid-columns);
+  gap: var(--se-standard-gap);
   align-items: start;
   margin-top: 18px;
-  width: 1176px;
-  min-width: 1176px;
+  width: var(--se-standard-setup-width);
+  min-width: var(--se-standard-setup-width);
   padding: 18px;
   background: #f4f8fb;
   border: 1px solid #e1eaf2;
@@ -5797,11 +5797,11 @@ pre {
 
 .regression-action-row {
   display: grid;
-  grid-template-columns: 326px 50px 326px 20px 310px;
-  gap: 18px;
+  grid-template-columns: var(--se-analysis-grid-columns);
+  gap: var(--se-standard-gap);
   align-items: start;
-  width: 1176px;
-  min-width: 1176px;
+  width: var(--se-standard-setup-width);
+  min-width: var(--se-standard-setup-width);
 }
 
 .regression-action-row > .btn {
@@ -7156,17 +7156,17 @@ pre {
 }
 
 .generalized-workspace-panel {
-  width: 1176px;
-  min-width: 1176px;
-  max-width: 1176px;
+  width: var(--se-standard-setup-width);
+  min-width: var(--se-standard-setup-width);
+  max-width: var(--se-standard-setup-width);
   overflow-x: auto;
 }
 
 .generalized-workspace-heading,
 .generalized-data-viewer-panel {
-  width: 1140px !important;
-  min-width: 1140px !important;
-  max-width: 1140px !important;
+  width: var(--se-analysis-workspace-width) !important;
+  min-width: var(--se-analysis-workspace-width) !important;
+  max-width: var(--se-analysis-workspace-width) !important;
 }
 
 .longitudinal-workspace-panel,
@@ -7190,12 +7190,12 @@ pre {
 
 .generalized-setup-grid {
   display: grid;
-  grid-template-columns: 326px 50px 326px 20px 310px !important;
-  gap: 18px !important;
+  grid-template-columns: var(--se-analysis-grid-columns) !important;
+  gap: var(--se-standard-gap) !important;
   align-items: start;
-  width: 1140px !important;
-  min-width: 1140px !important;
-  max-width: 1140px !important;
+  width: var(--se-analysis-workspace-width) !important;
+  min-width: var(--se-analysis-workspace-width) !important;
+  max-width: var(--se-analysis-workspace-width) !important;
 }
 
 .generalized-setup-grid > .regression-available-panel,
@@ -7391,11 +7391,11 @@ pre {
 
 .generalized-action-row {
   display: grid !important;
-  grid-template-columns: 326px 50px 326px 20px 310px !important;
-  gap: 18px !important;
-  width: 1140px !important;
-  min-width: 1140px !important;
-  max-width: 1140px !important;
+  grid-template-columns: var(--se-analysis-grid-columns) !important;
+  gap: var(--se-standard-gap) !important;
+  width: var(--se-analysis-workspace-width) !important;
+  min-width: var(--se-analysis-workspace-width) !important;
+  max-width: var(--se-analysis-workspace-width) !important;
   margin-top: 18px !important;
   align-items: start;
 }
