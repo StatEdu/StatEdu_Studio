@@ -224,12 +224,7 @@ normalize_settings_save_path <- function(path) {
   paste0(path, ".studio")
 }
 
-default_settings_file_name <- function() {
-  sprintf("StatEdu_Studio_settings_%s.studio", format(Sys.time(), "%Y%m%d_%H%M%S"))
-}
-
 save_settings_file <- function() {
-  default_name <- default_settings_file_name()
   path <- tryCatch(
     {
       if (requireNamespace("tcltk", quietly = TRUE)) {
@@ -242,13 +237,15 @@ save_settings_file <- function() {
           defaultextension = ".studio",
           filetypes = "{{StatEdu Studio Settings} {.studio}}"
         ))
+      } else if (.Platform$OS.type == "windows") {
+        utils::choose.files(
+          default = "",
+          caption = "Save StatEdu Studio Settings",
+          multi = FALSE,
+          filters = matrix(c("StatEdu Studio Settings", "*.studio"), ncol = 2, byrow = TRUE)
+        )
       } else {
-        folder <- utils::choose.dir(caption = "Choose a folder for StatEdu Studio Settings")
-        if (is.na(folder) || !nzchar(folder)) {
-          character(0)
-        } else {
-          file.path(folder, default_name)
-        }
+        character(0)
       }
     },
     error = function(e) character(0)

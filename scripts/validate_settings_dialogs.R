@@ -72,7 +72,11 @@ assert_not_contains(open_settings_body, "*.json", "legacy JSON open filter")
 assert_contains(save_settings_body, 'defaultextension = ".studio"', "save settings default extension")
 assert_contains(save_settings_body, 'filetypes = "{{StatEdu Studio Settings} {.studio}}"', "save settings .studio filter")
 assert_contains(save_settings_body, 'initialfile = ""', "blank save settings filename")
+assert_contains(save_settings_body, 'utils::choose.files(', "Windows save settings fallback")
+assert_contains(save_settings_body, 'default = ""', "blank fallback save settings filename")
 assert_not_contains(save_settings_body, 'initialfile = default_name', "default save settings filename")
+assert_not_contains(save_settings_body, 'default_settings_file_name', "legacy generated save settings filename")
+assert_not_contains(save_settings_body, 'default_name', "legacy generated save settings filename variable")
 
 message("Checking settings path normalization...")
 
