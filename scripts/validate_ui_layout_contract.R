@@ -12,7 +12,7 @@ read_project_file <- function(path) {
 
 count_fixed <- function(text, pattern) {
   matches <- gregexpr(pattern, text, fixed = TRUE)[[1]]
-  if (identical(matches, -1L)) 0L else length(matches)
+  if (length(matches) == 1L && matches[[1]] == -1L) 0L else length(matches)
 }
 
 assert_contains <- function(text, pattern, label) {
@@ -125,6 +125,10 @@ assert_contains(css, "width: var(--se-standard-setup-width) !important;\n  min-w
 assert_count_exact(css, "grid-template-columns: 326px 50px 326px 20px 310px;", 1L, "calculator-only hardcoded standard columns")
 assert_count_exact(css, "\n  width: 1176px;", 1L, "calculator-only hardcoded standard setup width")
 assert_count_exact(css, "\n  min-width: 1176px;", 1L, "calculator-only hardcoded standard setup min-width")
+assert_count_exact(css, "\n  width: 1140px;", 0L, "no hardcoded analysis workspace width")
+assert_count_exact(css, "\n  min-width: 1140px;", 0L, "no hardcoded analysis workspace min-width")
+assert_count_exact(css, "\n  max-width: 1140px;", 0L, "no hardcoded analysis workspace max-width")
+assert_count_exact(css, "\n  max-width: 1176px;", 0L, "no hardcoded standard setup max-width")
 
 message("Checking Wide to Long menu contract...")
 assert_contains(data_editor_ui, 'lazy_tab_panel("Wide to Long", "data_editor_wide_long", "lazy_data_editor_wide_long")', "Data Editor menu label")
