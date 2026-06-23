@@ -72,6 +72,6 @@ assert_contains(css, ".data-editor-workspace .recode-builder-action-row > #recod
 message("Checking layout documentation...")
 assert_contains(layout_doc, "t-test / ANOVA baseline width of `1176px`", "documented standard width")
 assert_contains(layout_doc, "Longitudinal / Panel Models: four-block analysis structure", "documented four-block exception")
-assert_contains(layout_doc, "scripts/validate_ui_layout_contract.R", "documented validation command")
+assert_contains(layout_doc, "scripts/validate_stabilization.ps1", "documented stabilization validation command")
 
 cat("UI layout contract validation passed.\n")

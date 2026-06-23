@@ -58,7 +58,7 @@ Before changing menu spacing:
    variables first.
 3. Add per-menu overrides only when the menu has a documented structural reason.
 4. Compare against `t-test / ANOVA` and the affected Data Editor menu.
-5. Run `git diff --check`, `scripts/validate_ui_layout_contract.R`, and the
-   relevant menu validation scripts.
+5. Run `scripts/validate_stabilization.ps1` for the core stabilization checks,
+   or `scripts/validate_stabilization.ps1 -Full` before release packaging.
 6. Check that `View selected data`, setup panels, and footer buttons align with
    the shared geometry.
