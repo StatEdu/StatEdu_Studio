@@ -75,6 +75,9 @@ These screens do not use the standard three-block contract directly:
 - Calculators: input-focused tools
 
 Exception screens should still keep their own internal geometry consistent.
+The only remaining hard-coded copy of the standard three-block width is
+`.calculator-action-row`, because calculators are explicitly excluded from the
+standard analysis/Data Editor layout contract.
 
 ## Change Checklist
 

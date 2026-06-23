@@ -39,6 +39,18 @@ assert_count_at_least <- function(text, pattern, minimum, label) {
   }
 }
 
+assert_count_exact <- function(text, pattern, expected, label) {
+  actual <- count_fixed(text, pattern)
+  if (actual != expected) {
+    stop(sprintf(
+      "UI layout contract mismatch: %s; expected %s, found %s",
+      label,
+      expected,
+      actual
+    ), call. = FALSE)
+  }
+}
+
 css <- read_project_file("www/style.css")
 analysis_data_viewer_ui <- read_project_file("R/analysis_data_viewer.R")
 setup_ui <- read_project_file("R/setup_ui.R")
@@ -110,6 +122,9 @@ assert_contains(css, ".longitudinal-action-row {\n  grid-template-columns: 330px
 assert_contains(css, ".longitudinal-setup-grid {\n  display: grid;\n  grid-template-areas: \"available panel-move panel model-move model options\";", "Longitudinal four-block setup exception")
 assert_contains(css, ".ancova-action-row {\n  display: grid !important;\n  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;\n  gap: var(--se-standard-gap) !important;", "ANCOVA action row uses shared standard variables")
 assert_contains(css, "width: var(--se-standard-setup-width) !important;\n  min-width: var(--se-standard-setup-width) !important;\n  align-items: start !important;\n}\n\n.ancova-action-row > #run_ancova", "ANCOVA action row uses shared standard width")
+assert_count_exact(css, "grid-template-columns: 326px 50px 326px 20px 310px;", 1L, "calculator-only hardcoded standard columns")
+assert_count_exact(css, "\n  width: 1176px;", 1L, "calculator-only hardcoded standard setup width")
+assert_count_exact(css, "\n  min-width: 1176px;", 1L, "calculator-only hardcoded standard setup min-width")
 
 message("Checking Wide to Long menu contract...")
 assert_contains(data_editor_ui, 'lazy_tab_panel("Wide to Long", "data_editor_wide_long", "lazy_data_editor_wide_long")', "Data Editor menu label")
@@ -188,6 +203,7 @@ assert_contains(layout_doc, "`Run` sits under Block 1.", "documented Wide to Lon
 assert_contains(layout_doc, "`Remove` sits under Block 2.", "documented Wide to Long remove placement")
 assert_contains(layout_doc, "`Preview` sits under Block 3.", "documented Wide to Long preview placement")
 assert_contains(layout_doc, "Longitudinal / Panel Models: four-block analysis structure", "documented four-block exception")
+assert_contains(layout_doc, "The only remaining hard-coded copy of the standard three-block width is\n`.calculator-action-row`", "documented calculator hardcoded-width exception")
 assert_contains(layout_doc, "scripts/validate_stabilization.ps1", "documented stabilization validation command")
 
 cat("UI layout contract validation passed.\n")
