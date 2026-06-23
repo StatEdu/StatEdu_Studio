@@ -159,4 +159,32 @@ stopifnot(nrow(same_configured) == 8)
 stopifnot(all(c("id", "group", "time", "x") %in% names(same_configured)))
 stopifnot(identical(paste(same_configured$group, same_configured$time), rep(c("1 1", "1 2", "2 1", "2 2"), 2)))
 
+message("Checking wide-to-long CSV save handoff...")
+saved_csv_base <- tempfile(pattern = "wide_to_long_saved_")
+original_choose_data_csv_save_path <- if (exists("choose_data_csv_save_path", mode = "function")) {
+  get("choose_data_csv_save_path", mode = "function")
+} else {
+  NULL
+}
+assign("choose_data_csv_save_path", function() saved_csv_base, envir = .GlobalEnv)
+save_result <- save_wide_long_result_file(configured_fixed_preview)
+stopifnot(isTRUE(save_result$saved))
+stopifnot(grepl("\\.csv$", save_result$path, ignore.case = TRUE))
+stopifnot(file.exists(save_result$path))
+reloaded <- read_input_data(save_result$path, basename(save_result$path), csv_header = TRUE)
+stopifnot(identical(names(reloaded), names(configured_fixed_preview)))
+stopifnot(nrow(reloaded) == nrow(configured_fixed_preview))
+
+assign("choose_data_csv_save_path", function() character(0), envir = .GlobalEnv)
+cancel_result <- save_wide_long_result_file(configured_fixed_preview)
+stopifnot(!isTRUE(cancel_result$saved))
+stopifnot(identical(cancel_result$path, ""))
+
+if (is.function(original_choose_data_csv_save_path)) {
+  assign("choose_data_csv_save_path", original_choose_data_csv_save_path, envir = .GlobalEnv)
+} else {
+  rm("choose_data_csv_save_path", envir = .GlobalEnv)
+}
+unlink(save_result$path)
+
 cat("Data Editor wide-to-long validation passed.\n")
