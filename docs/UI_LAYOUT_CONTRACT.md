@@ -73,6 +73,10 @@ These screens do not use the standard three-block contract directly:
 - Latent / Mplus: step-based workflow
 - Data tab: data loading and review workflow
 - Calculators: input-focused tools
+- Auto Likert conversion: detection/review workflow with grouped result tables
+  and dictionary controls
+- Variable transformation: formula-builder workflow with a source variable
+  browser and expression editor
 
 Exception screens should still keep their own internal geometry consistent.
 The only remaining hard-coded copy of the standard three-block width is
