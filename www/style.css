@@ -10115,8 +10115,8 @@ select[id$="_active_role"]:focus {
   display: grid !important;
   grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
-  width: 1176px !important;
-  min-width: 1176px !important;
+  width: var(--se-standard-setup-width) !important;
+  min-width: var(--se-standard-setup-width) !important;
   align-items: start !important;
 }
 
