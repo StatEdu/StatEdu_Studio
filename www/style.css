@@ -1214,17 +1214,17 @@ body {
 }
 
 .wide-long-grid {
-  grid-template-columns: 326px 50px 326px 20px 310px;
-  gap: 18px;
-  width: 1140px;
-  min-width: 1140px;
-  max-width: 1140px;
+  grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) 20px var(--se-standard-options-width, 310px);
+  gap: var(--se-standard-gap, 18px);
+  width: var(--se-standard-setup-width, 1140px);
+  min-width: var(--se-standard-setup-width, 1140px);
+  max-width: var(--se-standard-setup-width, 1140px);
 }
 
 .wide_long-workspace-heading {
-  width: 1140px !important;
-  min-width: 1140px !important;
-  max-width: 1140px !important;
+  width: var(--se-standard-setup-width, 1140px) !important;
+  min-width: var(--se-standard-setup-width, 1140px) !important;
+  max-width: var(--se-standard-setup-width, 1140px) !important;
 }
 
 .wide_long-workspace-heading > .shiny-bound-input,
@@ -1234,11 +1234,11 @@ body {
 
 .wide-long-options {
   grid-column: 5;
-  height: 520px !important;
-  min-height: 520px !important;
-  max-height: 520px !important;
+  height: var(--se-standard-panel-height, 520px) !important;
+  min-height: var(--se-standard-panel-height, 520px) !important;
+  max-height: var(--se-standard-panel-height, 520px) !important;
   overflow: hidden;
-  width: 310px !important;
+  width: var(--se-standard-options-width, 310px) !important;
 }
 
 .wide-long-options .tab-content {
@@ -1256,9 +1256,9 @@ body {
 
 .wide-long-source-panel,
 .wide-long-selected-panel {
-  width: 326px !important;
+  width: var(--se-standard-panel-width, 326px) !important;
   height: auto !important;
-  min-height: 520px !important;
+  min-height: var(--se-standard-panel-height, 520px) !important;
 }
 
 .wide-long-selected-panel {
@@ -1269,9 +1269,9 @@ body {
 .wide-long-source-panel .analysis-transfer-listbox,
 .wide-long-selected-panel .analysis-transfer-listbox,
 .wide-long-configured-panel .analysis-transfer-listbox {
-  width: 300px !important;
-  min-width: 300px !important;
-  max-width: 300px !important;
+  width: var(--se-standard-inner-button-width, 300px) !important;
+  min-width: var(--se-standard-inner-button-width, 300px) !important;
+  max-width: var(--se-standard-inner-button-width, 300px) !important;
 }
 
 .wide-long-source-panel .analysis-transfer-listbox {
@@ -1392,17 +1392,17 @@ body {
 
 .wide-long-set-button {
   margin-top: auto;
-  margin-bottom: 22px;
+  margin-bottom: 28px;
 }
 
 .recode-same-action-row.wide-long-action-row {
   display: grid;
-  grid-template-columns: 326px 50px 326px 20px 310px;
-  gap: 18px;
+  grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) 20px var(--se-standard-options-width, 310px);
+  gap: var(--se-standard-gap, 18px);
   margin-top: 26px;
   margin-bottom: 14px;
-  min-width: 1140px;
-  width: 1140px;
+  min-width: var(--se-standard-setup-width, 1140px);
+  width: var(--se-standard-setup-width, 1140px);
 }
 
 .recode-same-action-row.wide-long-action-row > .wide-long-preview-button {
@@ -1410,8 +1410,8 @@ body {
   justify-self: start;
   margin-left: 30px;
   margin-top: 0;
-  width: 286px;
-  min-width: 286px;
+  width: var(--se-standard-options-button-width, 286px);
+  min-width: var(--se-standard-options-button-width, 286px);
 }
 
 .recode-same-action-row.wide-long-action-row > #run_wide_long {
@@ -1419,9 +1419,9 @@ body {
   justify-self: start !important;
   margin-left: 30px !important;
   margin-top: 0 !important;
-  width: 300px !important;
-  min-width: 300px !important;
-  max-width: 300px !important;
+  width: var(--se-standard-inner-button-width, 300px) !important;
+  min-width: var(--se-standard-inner-button-width, 300px) !important;
+  max-width: var(--se-standard-inner-button-width, 300px) !important;
 }
 
 .recode-same-action-row.wide-long-action-row > #preview_wide_long {
@@ -1429,9 +1429,9 @@ body {
   justify-self: start !important;
   margin-left: 30px !important;
   margin-top: 0 !important;
-  width: 286px !important;
-  min-width: 286px !important;
-  max-width: 286px !important;
+  width: var(--se-standard-options-button-width, 286px) !important;
+  min-width: var(--se-standard-options-button-width, 286px) !important;
+  max-width: var(--se-standard-options-button-width, 286px) !important;
 }
 
 .recode-same-action-row.wide-long-action-row > #wide_long_remove_spec {
@@ -1439,9 +1439,9 @@ body {
   justify-self: start !important;
   margin-left: 30px !important;
   margin-top: 0 !important;
-  width: 300px !important;
-  min-width: 300px !important;
-  max-width: 300px !important;
+  width: var(--se-standard-inner-button-width, 300px) !important;
+  min-width: var(--se-standard-inner-button-width, 300px) !important;
+  max-width: var(--se-standard-inner-button-width, 300px) !important;
 }
 
 .wide-long-options textarea.form-control {
@@ -10222,48 +10222,60 @@ select[id$="_active_role"]:focus {
   white-space: nowrap !important;
 }
 
-/* Data Editor shared geometry: keep standard three-block tools aligned with t-test / ANOVA. */
+/* Data Editor shared geometry contract: standard three-block tools follow t-test / ANOVA. */
+.data-editor-workspace {
+  --se-standard-panel-width: 326px;
+  --se-standard-gap: 18px;
+  --se-standard-transfer-width: 50px;
+  --se-standard-options-width: 310px;
+  --se-standard-inner-button-width: 300px;
+  --se-standard-options-button-width: 286px;
+  --se-standard-setup-width: 1140px;
+  --se-standard-panel-height: 520px;
+  --se-standard-panel-padding: 18px;
+}
+
 .data-editor-workspace .analysis-workspace-heading,
 .data-editor-workspace .analysis-data-viewer-panel,
 .data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid),
 .data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) {
-  width: 1140px !important;
-  min-width: 1140px !important;
-  max-width: 1140px !important;
+  width: var(--se-standard-setup-width) !important;
+  min-width: var(--se-standard-setup-width) !important;
+  max-width: var(--se-standard-setup-width) !important;
   box-sizing: border-box;
 }
 
 .data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid) {
-  grid-template-columns: 326px 50px 326px 20px 310px !important;
-  gap: 18px !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;
+  gap: var(--se-standard-gap) !important;
   align-items: stretch !important;
-  grid-auto-rows: 520px !important;
-  padding: 18px !important;
+  grid-auto-rows: var(--se-standard-panel-height) !important;
+  padding: var(--se-standard-panel-padding) !important;
 }
 
 .data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid) > .analysis-transfer-panel,
 .data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid) > .analysis-options-panel {
-  height: 520px !important;
-  min-height: 520px !important;
+  height: var(--se-standard-panel-height) !important;
+  min-height: var(--se-standard-panel-height) !important;
   box-sizing: border-box;
 }
 
 .data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid) > .analysis-transfer-panel {
-  width: 326px !important;
-  min-width: 326px !important;
-  max-width: 326px !important;
+  width: var(--se-standard-panel-width) !important;
+  min-width: var(--se-standard-panel-width) !important;
+  max-width: var(--se-standard-panel-width) !important;
 }
 
 .data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid) > .analysis-options-panel {
-  width: 310px !important;
-  min-width: 310px !important;
-  max-width: 310px !important;
+  width: var(--se-standard-options-width) !important;
+  min-width: var(--se-standard-options-width) !important;
+  max-width: var(--se-standard-options-width) !important;
 }
 
 .data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid) > .analysis-transfer-panel .analysis-transfer-listbox {
-  width: 300px !important;
-  min-width: 300px !important;
-  max-width: 300px !important;
+  width: var(--se-standard-inner-button-width) !important;
+  min-width: var(--se-standard-inner-button-width) !important;
+  max-width: var(--se-standard-inner-button-width) !important;
 }
 
 .data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid) > .analysis-transfer-panel:not(.wide-long-selected-panel):not(.variable-rename-target-panel) .analysis-transfer-listbox {
@@ -10287,8 +10299,8 @@ select[id$="_active_role"]:focus {
 
 .data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) {
   display: grid !important;
-  grid-template-columns: 326px 50px 326px 20px 310px !important;
-  gap: 18px !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;
+  gap: var(--se-standard-gap) !important;
   align-items: start !important;
   margin-top: 26px !important;
   margin-bottom: 14px !important;
@@ -10299,24 +10311,24 @@ select[id$="_active_role"]:focus {
   grid-column: 1 !important;
   justify-self: start !important;
   margin-left: 30px !important;
-  width: 300px !important;
-  min-width: 300px !important;
-  max-width: 300px !important;
+  width: var(--se-standard-inner-button-width) !important;
+  min-width: var(--se-standard-inner-button-width) !important;
+  max-width: var(--se-standard-inner-button-width) !important;
 }
 
 .data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) > [id$="_reset_control"] {
   grid-column: 3 !important;
   justify-self: start !important;
   margin-left: 30px !important;
-  width: 300px !important;
-  min-width: 300px !important;
-  max-width: 300px !important;
+  width: var(--se-standard-inner-button-width) !important;
+  min-width: var(--se-standard-inner-button-width) !important;
+  max-width: var(--se-standard-inner-button-width) !important;
 }
 
 .data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) > [id$="_reset_control"] .analysis-reset-button {
-  width: 300px !important;
-  min-width: 300px !important;
-  max-width: 300px !important;
+  width: var(--se-standard-inner-button-width) !important;
+  min-width: var(--se-standard-inner-button-width) !important;
+  max-width: var(--se-standard-inner-button-width) !important;
 }
 
 .data-editor-workspace .wide-long-action-row > #run_wide_long {
@@ -10346,9 +10358,9 @@ select[id$="_active_role"]:focus {
   grid-column: 3 !important;
   justify-self: start !important;
   margin-left: 30px !important;
-  width: 300px !important;
-  min-width: 300px !important;
-  max-width: 300px !important;
+  width: var(--se-standard-inner-button-width) !important;
+  min-width: var(--se-standard-inner-button-width) !important;
+  max-width: var(--se-standard-inner-button-width) !important;
 }
 
 .data-editor-workspace .wide-long-transfer-controls {
@@ -10361,25 +10373,25 @@ select[id$="_active_role"]:focus {
 }
 
 .data-editor-workspace .wide-long-grid {
-  grid-template-columns: 326px 50px 326px 20px 310px !important;
-  gap: 18px !important;
-  width: 1140px !important;
-  min-width: 1140px !important;
-  max-width: 1140px !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;
+  gap: var(--se-standard-gap) !important;
+  width: var(--se-standard-setup-width) !important;
+  min-width: var(--se-standard-setup-width) !important;
+  max-width: var(--se-standard-setup-width) !important;
 }
 
 .data-editor-workspace .wide-long-source-panel,
 .data-editor-workspace .wide-long-selected-panel,
 .data-editor-workspace .wide-long-options {
-  height: 520px !important;
-  min-height: 520px !important;
-  max-height: 520px !important;
+  height: var(--se-standard-panel-height) !important;
+  min-height: var(--se-standard-panel-height) !important;
+  max-height: var(--se-standard-panel-height) !important;
 }
 
 .data-editor-workspace .wide-long-options {
-  width: 310px !important;
-  min-width: 310px !important;
-  max-width: 310px !important;
+  width: var(--se-standard-options-width) !important;
+  min-width: var(--se-standard-options-width) !important;
+  max-width: var(--se-standard-options-width) !important;
 }
 
 .data-editor-workspace .wide-long-options-tab-content {
@@ -10393,35 +10405,37 @@ select[id$="_active_role"]:focus {
 
 .data-editor-workspace .wide-long-set-button {
   margin-top: auto !important;
-  margin-bottom: 22px !important;
-  width: 100% !important;
+  margin-bottom: 28px !important;
+  width: var(--se-standard-options-button-width) !important;
+  min-width: var(--se-standard-options-button-width) !important;
+  max-width: var(--se-standard-options-button-width) !important;
 }
 
 .data-editor-workspace .wide-long-action-row > #preview_wide_long {
-  width: 286px !important;
-  min-width: 286px !important;
-  max-width: 286px !important;
+  width: var(--se-standard-options-button-width) !important;
+  min-width: var(--se-standard-options-button-width) !important;
+  max-width: var(--se-standard-options-button-width) !important;
 }
 
 .data-editor-workspace .wide-long-action-row {
-  grid-template-columns: 326px 50px 326px 20px 310px !important;
-  gap: 18px !important;
-  width: 1140px !important;
-  min-width: 1140px !important;
-  max-width: 1140px !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;
+  gap: var(--se-standard-gap) !important;
+  width: var(--se-standard-setup-width) !important;
+  min-width: var(--se-standard-setup-width) !important;
+  max-width: var(--se-standard-setup-width) !important;
 }
 
 .data-editor-workspace .recode-builder-grid {
-  grid-template-columns: 326px 50px 326px 20px 310px !important;
-  gap: 18px !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;
+  gap: var(--se-standard-gap) !important;
   height: auto !important;
   min-height: 0 !important;
 }
 
 .data-editor-workspace .recode-builder-grid > .analysis-transfer-panel,
 .data-editor-workspace .recode-builder-grid > .analysis-options-panel {
-  height: 520px !important;
-  min-height: 520px !important;
+  height: var(--se-standard-panel-height) !important;
+  min-height: var(--se-standard-panel-height) !important;
 }
 
 .data-editor-workspace .recode-builder-grid > .analysis-transfer-panel:first-child {
@@ -10434,40 +10448,40 @@ select[id$="_active_role"]:focus {
 
 .data-editor-workspace .recode-builder-rule-panel {
   grid-column: 5 !important;
-  width: 310px !important;
-  min-width: 310px !important;
-  max-width: 310px !important;
+  width: var(--se-standard-options-width) !important;
+  min-width: var(--se-standard-options-width) !important;
+  max-width: var(--se-standard-options-width) !important;
 }
 
 .data-editor-workspace .recode-builder-action-row {
   display: grid !important;
-  grid-template-columns: 326px 50px 326px 20px 310px !important;
-  gap: 18px !important;
-  width: 1140px !important;
-  min-width: 1140px !important;
-  max-width: 1140px !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;
+  gap: var(--se-standard-gap) !important;
+  width: var(--se-standard-setup-width) !important;
+  min-width: var(--se-standard-setup-width) !important;
+  max-width: var(--se-standard-setup-width) !important;
 }
 
 .data-editor-workspace .recode-builder-action-row > #apply_recode_same {
   grid-column: 1 !important;
   justify-self: start !important;
   margin-left: 30px !important;
-  width: 300px !important;
-  min-width: 300px !important;
-  max-width: 300px !important;
+  width: var(--se-standard-inner-button-width) !important;
+  min-width: var(--se-standard-inner-button-width) !important;
+  max-width: var(--se-standard-inner-button-width) !important;
 }
 
 .data-editor-workspace .recode-builder-action-row > #recode_same_reset_control {
   grid-column: 3 !important;
   justify-self: start !important;
   margin-left: 30px !important;
-  width: 300px !important;
-  min-width: 300px !important;
-  max-width: 300px !important;
+  width: var(--se-standard-inner-button-width) !important;
+  min-width: var(--se-standard-inner-button-width) !important;
+  max-width: var(--se-standard-inner-button-width) !important;
 }
 
 .data-editor-workspace .recode-builder-action-row > #recode_same_reset_control .analysis-reset-button {
-  width: 300px !important;
-  min-width: 300px !important;
-  max-width: 300px !important;
+  width: var(--se-standard-inner-button-width) !important;
+  min-width: var(--se-standard-inner-button-width) !important;
+  max-width: var(--se-standard-inner-button-width) !important;
 }
