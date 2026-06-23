@@ -1379,60 +1379,6 @@ body {
   margin-bottom: 0;
 }
 
-.wide-long-set-button {
-  margin-top: auto;
-  margin-bottom: 28px;
-}
-
-.recode-same-action-row.wide-long-action-row {
-  display: grid;
-  grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) 20px var(--se-standard-options-width, 310px);
-  gap: var(--se-standard-gap, 18px);
-  margin-top: 26px;
-  margin-bottom: 14px;
-  min-width: var(--se-standard-setup-width, 1176px);
-  width: var(--se-standard-setup-width, 1176px);
-}
-
-.recode-same-action-row.wide-long-action-row > .wide-long-preview-button {
-  grid-column: 5;
-  justify-self: start;
-  margin-left: 30px;
-  margin-top: 0;
-  width: var(--se-standard-options-button-width, 286px);
-  min-width: var(--se-standard-options-button-width, 286px);
-}
-
-.recode-same-action-row.wide-long-action-row > #run_wide_long {
-  grid-column: 1 !important;
-  justify-self: start !important;
-  margin-left: 30px !important;
-  margin-top: 0 !important;
-  width: var(--se-standard-inner-button-width, 300px) !important;
-  min-width: var(--se-standard-inner-button-width, 300px) !important;
-  max-width: var(--se-standard-inner-button-width, 300px) !important;
-}
-
-.recode-same-action-row.wide-long-action-row > #preview_wide_long {
-  grid-column: 5 !important;
-  justify-self: start !important;
-  margin-left: 30px !important;
-  margin-top: 0 !important;
-  width: var(--se-standard-options-button-width, 286px) !important;
-  min-width: var(--se-standard-options-button-width, 286px) !important;
-  max-width: var(--se-standard-options-button-width, 286px) !important;
-}
-
-.recode-same-action-row.wide-long-action-row > #wide_long_remove_spec {
-  grid-column: 3 !important;
-  justify-self: start !important;
-  margin-left: 30px !important;
-  margin-top: 0 !important;
-  width: var(--se-standard-inner-button-width, 300px) !important;
-  min-width: var(--se-standard-inner-button-width, 300px) !important;
-  max-width: var(--se-standard-inner-button-width, 300px) !important;
-}
-
 .wide-long-options textarea.form-control {
   min-height: 34px;
   height: 44px;
