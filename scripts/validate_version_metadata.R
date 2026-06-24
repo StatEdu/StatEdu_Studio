@@ -76,6 +76,12 @@ latent_readme_current <- extract_match(latent_readme, "Current development versi
 assert_equal(latent_readme_current, version, "latent README current development version")
 assert_contains(latent_readme, paste0("StatEdu Studio ", version, " app shell structure"), "latent README app shell version")
 
+changelog <- read_text("CHANGELOG.md")
+changelog_current <- extract_match(changelog, "(?m)^## v([0-9]+\\.[0-9]+\\.[0-9]+) - ", "CHANGELOG current version")
+assert_equal(changelog_current, version, "CHANGELOG current version")
+assert_contains(changelog, "Added Shiny startup and Electron release smoke checks", "CHANGELOG smoke validation entry")
+assert_contains(changelog, "Hardened release hygiene checks", "CHANGELOG release hygiene entry")
+
 citation <- read_text("CITATION.cff")
 citation_version <- extract_match(citation, '(?m)^version: "([^"]+)"', "CITATION.cff version")
 assert_equal(citation_version, version, "CITATION.cff version")
