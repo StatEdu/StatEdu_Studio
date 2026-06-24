@@ -56,7 +56,7 @@ Some installed package binaries may have been built under a newer patch-level R 
 |---|---|---|
 | App UI | `shiny`, `DT`, `htmltools`, `markdown` | Shiny app shell, interactive tables, HTML helpers, and About documentation rendering |
 | Data import | `haven`, `readr`, `readxl`, `openxlsx` | SAV, SAS, Stata, CSV, DAT, XLS, and XLSX import |
-| Settings and data helpers | `jsonlite`, `xml2`, `rvest`, `callr` | JSON settings, HTML/XML processing, and background R process support |
+| Settings and data helpers | `jsonlite`, `xml2`, `rvest`, `callr` | Settings serialization, HTML/XML processing, and background R process support |
 | Regression diagnostics | `car`, `lmtest`, `sandwich`, `nortest`, `boot` | Type II/III ANCOVA tables, Levene-style variance checks, Breusch-Pagan test, HC3 robust standard errors, Lilliefors normality test, and bootstrap inference |
 | Linear / generalized models | `MASS`, `nnet`, `lmtest`, `sandwich`, `geepack`, `mice`, `lme4`, `lmerTest`, `plm` | GLM robust inference, ordered logistic, multinomial, GEE, MI/IPW sensitivity, mixed-effects, and panel model support |
 | Penalized regression | `glmnet` | Ridge, LASSO, and Elastic Net helper analyses |
