@@ -93,6 +93,16 @@ assert_contains(release_checklist, "validate_stabilization.ps1 -Full", "release 
 assert_contains(release_checklist, "smoke_shiny_app.ps1", "release checklist Shiny smoke test")
 assert_contains(release_checklist, ".Rhistory", "release checklist local artifact hygiene")
 assert_contains(release_checklist, "Electron staging directories are not tracked by git", "release checklist Electron staging hygiene")
+assert_contains(release_checklist, "docs/RELEASE_READINESS_STATUS.md", "release checklist readiness status")
+
+release_readiness <- read_text("docs/RELEASE_READINESS_STATUS.md")
+assert_contains(release_readiness, paste0("Current version: ", version), "release readiness current version")
+assert_contains(release_readiness, "scripts/validate_stabilization.ps1 -Full", "release readiness full validation")
+assert_contains(release_readiness, "scripts/smoke_shiny_app.ps1", "release readiness Shiny smoke")
+assert_contains(release_readiness, "scripts/smoke_electron_release.ps1 -SkipUnpackedChecks", "release readiness Electron smoke")
+assert_contains(release_readiness, "without `-SkipUnpackedChecks`", "release readiness full Electron smoke reminder")
+assert_contains(release_readiness, "HTTP 404", "release readiness DOI status")
+assert_contains(release_readiness, "implemented for 1.0 or explicitly deferred", "release readiness implementation deferral decision")
 
 app_bootstrap <- read_text("R/app_bootstrap.R")
 assert_contains(app_bootstrap, 'read_app_config <- function(version_file = "VERSION")', "main read_app_config VERSION default")
