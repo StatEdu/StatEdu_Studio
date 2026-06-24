@@ -8763,7 +8763,7 @@ pre {
 
 .sample-size-grid {
   display: grid;
-  grid-template-columns: 326px 50px 326px 20px minmax(310px, 1fr);
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px minmax(var(--se-standard-options-width), 1fr);
   gap: 18px;
   align-items: stretch;
   grid-auto-rows: 690px;

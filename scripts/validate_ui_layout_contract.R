@@ -329,6 +329,8 @@ assert_count_exact(css, "grid-template-columns: 326px 50px 326px 20px 310px;", 1
 assert_count_exact(css, "\n  width: 1176px;", 1L, "calculator-only hardcoded standard setup width")
 assert_count_exact(css, "\n  min-width: 1176px;", 1L, "calculator-only hardcoded standard setup min-width")
 assert_contains(css, ".calculator-action-row {\n  display: grid;\n  grid-template-columns: 326px 50px 326px 20px 310px;\n  gap: 18px;\n  align-items: center;\n  width: 1176px;\n  min-width: 1176px;", "calculator action row owns the only hardcoded standard-width exception")
+assert_contains(css, ".sample-size-grid {\n  display: grid;\n  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px minmax(var(--se-standard-options-width), 1fr);", "Sample Size grid uses shared standard variables")
+assert_count_exact(css, "grid-template-columns: 326px 50px 326px 20px minmax(310px, 1fr);", 0L, "no hardcoded sample-size standard grid")
 assert_count_exact(css, "grid-template-columns: 326px 50px 326px 310px;", 0L, "no hardcoded standard four-column grid")
 assert_count_exact(css, "grid-template-columns: 50px 326px;", 0L, "no hardcoded standard transfer-target row")
 assert_count_exact(css, "\n  width: 326px;", 0L, "no hardcoded standard panel width")
