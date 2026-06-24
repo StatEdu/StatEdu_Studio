@@ -1,5 +1,5 @@
 # App bootstrap helpers for StatEdu Studio Latent Mplus.
-# The app keeps the EFS 0.9.33 shell conventions and adds latent/Mplus helpers.
+# The app keeps the legacy shell conventions and adds latent/Mplus helpers.
 
 required_packages <- c(
   "shiny",
