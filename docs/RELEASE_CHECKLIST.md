@@ -8,6 +8,7 @@ Use this checklist before creating a public beta installer, 1.0 release candidat
 - Confirm public release materials include source code, documentation, example data, and validation notes.
 - Review `docs/RELEASE_READINESS_STATUS.md` and update it with the current local validation, packaging, DOI, website, and repository status.
 - Complete `docs/RELEASE_MANUAL_QA.md` for visual, file-dialog, packaged-runtime, and export workflows that automated checks cannot fully prove.
+- Keep the completed manual QA record with the release notes and validation artifacts.
 - Confirm new source files referenced by `R/app_bootstrap.R` are tracked by git before running the Electron build, because packaging stages files from `git ls-files`.
 - Confirm no private test data, local settings, or generated logs are included in the staged Electron app.
 - Confirm `.Rhistory`, `.RData`, local logs, temporary files, local settings, and Electron staging directories are not tracked by git.

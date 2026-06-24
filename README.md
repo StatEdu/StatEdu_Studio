@@ -101,6 +101,10 @@ After Electron packaging is complete, run the full packaged-output preflight:
 powershell -ExecutionPolicy Bypass -File scripts\release_preflight.ps1 -FullElectronSmoke
 ```
 
+After automated checks pass, complete
+[docs/RELEASE_MANUAL_QA.md](docs/RELEASE_MANUAL_QA.md) and keep the completed
+QA record with the release notes and validation artifacts.
+
 Use individual `scripts/validate_*.R` files only when iterating on a focused
 module before running the stabilization suite.
 

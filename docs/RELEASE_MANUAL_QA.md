@@ -19,11 +19,13 @@ re-run after the fix.
 
 ## Preflight
 
-1. Run `scripts/release_preflight.ps1`.
-2. After Electron packaging, run `scripts/release_preflight.ps1 -FullElectronSmoke`.
-3. Confirm the Git working tree is clean.
-4. Confirm `docs/RELEASE_READINESS_STATUS.md` is current.
-5. Confirm `docs/RELEASE_1_0_DECISION_LOG.md` records any public 1.0 deferrals.
+1. Run `scripts/validate_stabilization.ps1 -Full` before packaging.
+2. Run `scripts/release_preflight.ps1`.
+3. After Electron packaging, run `scripts/release_preflight.ps1 -FullElectronSmoke`.
+4. Confirm the Git working tree is clean.
+5. Confirm `docs/RELEASE_READINESS_STATUS.md` is current.
+6. Confirm `docs/RELEASE_1_0_DECISION_LOG.md` records any public 1.0 deferrals.
+7. Keep the completed QA record with the release notes and validation artifacts.
 
 ## App Startup
 

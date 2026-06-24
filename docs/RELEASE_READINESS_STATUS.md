@@ -28,6 +28,7 @@ These are not fully resolved by local validation and must be checked before publ
 - Build the Electron package and run `scripts/smoke_electron_release.ps1` without `-SkipUnpackedChecks`.
 - After packaging, run `scripts/release_preflight.ps1 -FullElectronSmoke`.
 - Complete `docs/RELEASE_MANUAL_QA.md` for visual consistency, file dialogs, packaged runtime behavior, and export handoffs.
+- Keep the completed manual QA record with the release notes and validation artifacts.
 - Launch `dist/electron/win-unpacked/StatEdu Studio Beta.exe` and manually confirm app startup, About > Open Source Licenses, import, analysis, export, and close behavior.
 - Confirm `studio.statedu.com` is live from a normal browser/network path.
 - Register and verify DOI `10.22934/statedu.studio`; it currently returns HTTP 404 from `doi.org`.
