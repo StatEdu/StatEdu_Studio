@@ -16,7 +16,7 @@ This file records release decisions that must be made before changing the projec
 
 | Area | Decision Needed | Current Status | Default Until Decided |
 |---|---|---|---|
-| Electron package | Whether the packaged Windows build passes full unpacked-output smoke checks | 0.9.42 Electron package rebuilt and `scripts/release_preflight.ps1 -FullElectronSmoke` passed on 2026-06-24 | Block public 1.0 installer until manual packaged-app QA is complete |
+| Electron package | Whether the packaged Windows build passes full unpacked-output smoke checks | 0.9.42 Electron package rebuilt; `scripts/release_preflight.ps1 -FullElectronSmoke` and `scripts/smoke_electron_app_lifecycle.ps1` passed on 2026-06-24 | Block public 1.0 installer until manual packaged-app QA is complete |
 | Electron naming | Whether 0.9.x beta packaging names are replaced with final 1.0 names across app display name, package metadata, installer artifact, shortcut name, executable resource strings, and smoke-test expectations | Current 0.9.42 package metadata intentionally uses beta naming | Do not publish public 1.0 installer with beta naming unless explicitly approved |
 | DOI | Whether `10.22934/statedu.studio` is registered and resolves to `https://studio.statedu.com` | Intended DOI is present in README/CITATION/About metadata, but `doi.org` returns HTTP 404 as of the 2026-06-24 local network check | Block public citation claim |
 | Website | Whether `studio.statedu.com` is live and points to the product site | DNS resolves to `statedu.com`, but the 2026-06-24 local network check could not establish the TLS connection | Block public website claim |
