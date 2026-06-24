@@ -29,6 +29,7 @@ The local stabilization checks are passing for the current branch.
 
 These are not fully resolved by local validation and must be checked before publishing a public 1.0 installer.
 
+- Build the Electron package again for the final release candidate and run `scripts/release_preflight.ps1 -FullElectronSmoke`.
 - Complete `docs/RELEASE_MANUAL_QA.md` for visual consistency, file dialogs, packaged runtime behavior, and export handoffs.
 - Keep the completed manual QA record with the release notes and validation artifacts.
 - Launch `dist/electron/win-unpacked/StatEdu Studio Beta.exe` and manually confirm app startup, About > Open Source Licenses, import, analysis, export, and close behavior.
