@@ -34,7 +34,7 @@ Owner: StatEdu Studio
 Item: Electron display name, package metadata, installer artifact, shortcut name, executable resource strings, app data folder, and smoke-test expectations
 Reason: 1.0 is a stable public release line; keeping beta naming would create user confusion and weaken release credibility.
 User-visible claim removed or adjusted: Public 1.0 installer and app surfaces should say StatEdu Studio, not StatEdu Studio Beta.
-Validation/checklist update: Keep 0.9.42 beta metadata unchanged until the actual 1.0 version bump, then update packaging and smoke tests together.
+Validation/checklist update: Keep 0.9.42 beta metadata unchanged until the actual 1.0 version bump, then complete docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md and update packaging and smoke tests together.
 Follow-up version: 1.0.0
 ```
 

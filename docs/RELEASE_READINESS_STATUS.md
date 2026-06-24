@@ -40,6 +40,7 @@ These are not fully resolved by local validation and must be checked before publ
 - Confirm the DOI landing URL resolves to `https://studio.statedu.com`.
 - README, `CITATION.cff`, and About metadata already contain the intended DOI, so verify DOI resolution before any public citation announcement.
 - Replace 0.9.x beta packaging names with final 1.0 release names across Electron display name, package metadata, installer artifact, shortcut name, executable resource strings, and smoke-test expectations, or record an explicit decision to keep beta branding.
+- Complete `docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md` before changing the project version from 0.9.42 to 1.0.0.
 - Free/Pro/Latent gates, license activation, and in-app updates are explicitly deferred for 1.0 in `docs/RELEASE_1_0_DECISION_LOG.md`; do not claim them in public release materials.
 - Decide whether remaining installer/download infrastructure items in `docs/RELEASE_1_0_DISTRIBUTION_LICENSE_PLAN_KO.md` are implemented for 1.0 or explicitly deferred.
 - Record any additional implementation or deferral decisions in `docs/RELEASE_1_0_DECISION_LOG.md`.
