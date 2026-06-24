@@ -82,6 +82,7 @@ re-run after the fix.
 2. Confirm DOI `10.22934/statedu.studio` resolves to `https://studio.statedu.com`.
 3. Confirm final public release notes and packaged validation notes are ready.
 4. Confirm any unimplemented distribution, license, update, or edition-gating items are explicitly deferred in `docs/RELEASE_1_0_DECISION_LOG.md`.
+5. Confirm public release notes and user-visible text do not claim gated editions, license activation, in-app updates, or public installer infrastructure unless the decision log marks those items implemented; if any item is deferred, public text must describe it only as not yet available.
 
 ## QA Record Template
 

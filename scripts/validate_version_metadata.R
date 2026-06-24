@@ -143,6 +143,7 @@ assert_contains(manual_qa, "Wide to Long can save the reshaped CSV output", "man
 assert_contains(manual_qa, "Longitudinal / Panel Models", "manual QA longitudinal workflow")
 assert_contains(manual_qa, "About > Open Source Licenses", "manual QA open source licenses")
 assert_contains(manual_qa, "DOI `10.22934/statedu.studio` resolves to `https://studio.statedu.com`", "manual QA DOI gate")
+assert_contains(manual_qa, "do not claim gated editions, license activation, in-app updates, or public installer infrastructure", "manual QA public release non-claiming gate")
 assert_contains(manual_qa, "QA Record Template", "manual QA record template")
 assert_contains(manual_qa, "release notes and validation artifacts", "manual QA evidence archive")
 assert_contains(manual_qa, "Fix commit:", "manual QA fix commit field")

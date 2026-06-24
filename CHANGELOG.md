@@ -40,6 +40,7 @@
 - Documented the release gate for replacing 0.9.x beta Electron package names before a public 1.0 installer.
 - Aligned Latent Mplus settings dialogs with the `.studio`-only settings file contract.
 - Updated the 1.0 distribution/license/update plan so historical beta-version notes do not read as the current release baseline.
+- Added a manual QA gate that public release notes and user-visible text must not claim unimplemented gated editions, license activation, in-app updates, or public installer infrastructure.
 
 ## v0.9.41 - 2026-06-20
 
