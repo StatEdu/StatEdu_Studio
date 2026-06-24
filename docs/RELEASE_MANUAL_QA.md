@@ -5,6 +5,10 @@ Use this protocol after automated stabilization checks pass and before a public
 tests cannot fully prove, especially visual consistency, file dialogs, packaged
 runtime behavior, and export handoffs.
 
+For each item, record `Pass`, `Fail`, or `NA`. Every `Fail` must reference a
+stabilization defect, the fix commit, and the automated validation that was
+re-run after the fix.
+
 ## Scope
 
 - Do not use this pass to add new analysis features.
@@ -76,3 +80,23 @@ runtime behavior, and export handoffs.
 2. Confirm DOI `10.22934/statedu.studio` resolves.
 3. Confirm final public release notes and packaged validation notes are ready.
 4. Confirm any unimplemented distribution, license, update, or edition-gating items are explicitly deferred in `docs/RELEASE_1_0_DECISION_LOG.md`.
+
+## QA Record Template
+
+```text
+Release candidate:
+Date:
+Tester:
+Environment:
+Git commit:
+Validation command:
+Validation result:
+
+Section:
+Item:
+Status: Pass / Fail / NA
+Evidence:
+Defect or follow-up:
+Fix commit:
+Re-run validation:
+```

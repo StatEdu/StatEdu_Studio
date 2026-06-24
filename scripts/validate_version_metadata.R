@@ -122,12 +122,16 @@ assert_contains(release_readiness, "Register and verify DOI", "release readiness
 
 manual_qa <- read_text("docs/RELEASE_MANUAL_QA.md")
 assert_contains(manual_qa, "Do not use this pass to add new analysis features.", "manual QA feature freeze")
+assert_contains(manual_qa, "record `Pass`, `Fail`, or `NA`", "manual QA status recording")
 assert_contains(manual_qa, "docs/UI_LAYOUT_CONTRACT.md", "manual QA UI layout contract")
 assert_contains(manual_qa, "settings save/load uses only the `.studio` file type", "manual QA settings file type")
 assert_contains(manual_qa, "Wide to Long can save the reshaped CSV output", "manual QA wide-to-long CSV save")
 assert_contains(manual_qa, "Longitudinal / Panel Models", "manual QA longitudinal workflow")
 assert_contains(manual_qa, "About > Open Source Licenses", "manual QA open source licenses")
 assert_contains(manual_qa, "DOI `10.22934/statedu.studio` resolves", "manual QA DOI gate")
+assert_contains(manual_qa, "QA Record Template", "manual QA record template")
+assert_contains(manual_qa, "Fix commit:", "manual QA fix commit field")
+assert_contains(manual_qa, "Re-run validation:", "manual QA rerun validation field")
 
 release_decision_log <- read_text("docs/RELEASE_1_0_DECISION_LOG.md")
 assert_contains(release_decision_log, paste0("Current version: ", version), "release decision log current version")
