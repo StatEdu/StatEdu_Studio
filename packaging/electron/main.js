@@ -51,15 +51,15 @@ function windowTitle() {
 }
 
 function bundledRscriptPath() {
-  return path.join(appBaseDir(), "runtime", "R-4.5.2", "bin", "x64", "Rscript.exe");
+  return path.join(appBaseDir(), "runtime", "R-4.5.3", "bin", "x64", "Rscript.exe");
 }
 
 function bundledRBinPath() {
-  return path.join(appBaseDir(), "runtime", "R-4.5.2", "bin", "x64");
+  return path.join(appBaseDir(), "runtime", "R-4.5.3", "bin", "x64");
 }
 
 function bundledRLibraryPath() {
-  return path.join(appBaseDir(), "runtime", "R-4.5.2", "library");
+  return path.join(appBaseDir(), "runtime", "R-4.5.3", "library");
 }
 
 function getFreePort() {
@@ -125,7 +125,7 @@ async function startShiny() {
     EASYFLOW_NO_PACKAGE_INSTALL: "true",
     EASYFLOW_TOKEN: token,
     EASYFLOW_STARTUP_LOG: startupLogFile(),
-    R_HOME: path.join(appBaseDir(), "runtime", "R-4.5.2"),
+    R_HOME: path.join(appBaseDir(), "runtime", "R-4.5.3"),
     R_LIBS_USER: bundledRLibraryPath(),
     PATH: `${bundledRBinPath()};${process.env.PATH || ""}`
   };

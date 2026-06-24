@@ -38,6 +38,7 @@ Use this checklist before creating a public beta installer, 1.0 release candidat
 - Run `scripts/validate_stabilization.ps1 -Full` before packaging a public beta or release candidate.
 - Run `scripts/release_preflight.ps1` before preparing a release candidate; after packaging, run it with `-FullElectronSmoke`.
 - Build from a clean R runtime where possible.
+- For the 1.0 line, confirm the bundled Windows runtime is `R-4.5.3`.
 - Confirm the build runs `scripts/prune_r_runtime.R` before license notice generation.
 - Confirm `runtime_prune_report.csv` exists and contains only `keep` rows, unless an intentional exception is documented.
 - Confirm `electron` and `electron-builder` are exact version pins in `packaging/electron/package.json`.

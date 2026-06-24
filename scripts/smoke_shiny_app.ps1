@@ -23,8 +23,10 @@ function Find-Rscript {
   }
 
   $candidates = @(
-    "C:\Program Files\R\R-4.5.2\bin\x64\Rscript.exe",
-    "C:\Program Files\R\R-4.5.2\bin\Rscript.exe"
+    "D:\Program\R\R-4.5.3\bin\x64\Rscript.exe",
+    "D:\Program\R\R-4.5.3\bin\Rscript.exe",
+    "C:\Program Files\R\R-4.5.3\bin\x64\Rscript.exe",
+    "C:\Program Files\R\R-4.5.3\bin\Rscript.exe"
   )
   foreach ($candidate in $candidates) {
     if (Test-Path -LiteralPath $candidate) {

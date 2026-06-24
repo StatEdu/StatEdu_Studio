@@ -1,4 +1,4 @@
-﻿# **StatEdu Studio**
+# **StatEdu Studio**
 
 **StatEdu Studio** is a local Shiny application for assumption-guided statistical analysis and publication-ready result tables.
 
@@ -43,7 +43,7 @@ For the full current method inventory, see [docs/ANALYSIS_METHODS_KO.md](docs/AN
 
 ## Runtime Environment
 
-- Tested development environment: R 4.5.2 on Windows
+- Tested development environment: R 4.5.3 on Windows
 - App framework: Shiny local app
 - Package source: declared runtime and analysis dependencies are CRAN packages
 - Execution model: local browser session on `127.0.0.1`; data remain on the user's PC

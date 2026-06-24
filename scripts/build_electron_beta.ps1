@@ -10,7 +10,8 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $version = (Get-Content (Join-Path $repoRoot "VERSION")).Trim()
 $electronDir = Join-Path $repoRoot "packaging\electron"
 $appStage = Join-Path $electronDir "app"
-$runtimeStage = Join-Path $electronDir "runtime\R-4.5.2"
+$runtimeStage = Join-Path $electronDir "runtime\R-4.5.3"
+$runtimeRoot = Join-Path $electronDir "runtime"
 $distDir = Join-Path $repoRoot "dist\electron"
 
 function Find-Npm {
@@ -37,8 +38,10 @@ function Find-Rscript {
     return $command.Source
   }
   $candidates = @(
-    "C:\Program Files\R\R-4.5.2\bin\x64\Rscript.exe",
-    "C:\Program Files\R\R-4.5.2\bin\Rscript.exe"
+    "D:\Program\R\R-4.5.3\bin\x64\Rscript.exe",
+    "D:\Program\R\R-4.5.3\bin\Rscript.exe",
+    "C:\Program Files\R\R-4.5.3\bin\x64\Rscript.exe",
+    "C:\Program Files\R\R-4.5.3\bin\Rscript.exe"
   )
   foreach ($candidate in $candidates) {
     if (Test-Path -LiteralPath $candidate) {
@@ -138,8 +141,29 @@ function Remove-StaleElectronDistArtifacts {
   }
 }
 
+function Remove-StaleRuntimeArtifacts {
+  if (-not (Test-Path -LiteralPath $runtimeRoot)) {
+    return
+  }
+
+  $safeRuntimeRoot = [System.IO.Path]::GetFullPath($runtimeRoot)
+  $currentRuntime = [System.IO.Path]::GetFullPath($runtimeStage)
+  $runtimeDirs = @(Get-ChildItem -LiteralPath $runtimeRoot -Directory -Force | Where-Object {
+    $_.Name -match "^R-\d+\.\d+\.\d+$" -and
+    [System.IO.Path]::GetFullPath($_.FullName) -ne $currentRuntime
+  })
+
+  foreach ($runtimeDir in $runtimeDirs) {
+    if (-not (Test-PathWithin $runtimeDir.FullName $safeRuntimeRoot)) {
+      throw "Refusing to remove runtime outside runtime directory: $($runtimeDir.FullName)"
+    }
+    Remove-Item -LiteralPath $runtimeDir.FullName -Recurse -Force
+  }
+}
+
 Write-Host "Preparing StatEdu Studio $version Electron beta installer..."
 Remove-StaleElectronDistArtifacts
+Remove-StaleRuntimeArtifacts
 
 if (Test-Path -LiteralPath $appStage) {
   Remove-Item -LiteralPath $appStage -Recurse -Force

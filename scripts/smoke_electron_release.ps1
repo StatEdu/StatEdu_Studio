@@ -18,7 +18,7 @@ if (-not $ElectronOutDir) {
 
 $appResourceDir = Join-Path $ElectronOutDir "resources\app"
 $bundledAppDir = Join-Path $appResourceDir "app"
-$runtimeDir = Join-Path $appResourceDir "runtime\R-4.5.2"
+$runtimeDir = Join-Path $appResourceDir "runtime\R-4.5.3"
 $rscript = Join-Path $runtimeDir "bin\x64\Rscript.exe"
 
 function Assert-Path {
