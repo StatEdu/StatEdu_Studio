@@ -12,6 +12,7 @@ The local stabilization checks are passing for the current branch.
 - `scripts/smoke_shiny_app.ps1`: passed
 - `scripts/smoke_electron_release.ps1 -SkipUnpackedChecks`: passed
 - `scripts/release_preflight.ps1`: passed
+- `scripts/smoke_electron_release.ps1` without `-SkipUnpackedChecks`: blocked by stale local Electron output; `dist/electron/win-unpacked` is still packaged as 0.9.40 while source `VERSION` is 0.9.42.
 - Git working tree: clean after validation
 
 ## Confirmed Local Release Hygiene
@@ -19,6 +20,7 @@ The local stabilization checks are passing for the current branch.
 - Version metadata is synchronized across `VERSION`, `README.md`, `CITATION.cff`, and Electron package metadata.
 - Tracked generated artifacts, local settings, `.Rhistory`, `.RData`, logs, temporary files, and Electron staging directories are blocked by release hygiene validation.
 - Shiny startup, Electron security settings, settings dialogs, UI layout contracts, data IO, data editor workflows, and core analysis outputs are covered by automated validation.
+- Full Electron smoke now checks that bundled app metadata and installer artifact names match the current `VERSION`.
 - The 1.0 feature-freeze rule is documented: no new analysis features before 1.0 unless required for correctness, data safety, packaging, or validation coverage.
 
 ## Items Still Required Before Public 1.0

@@ -129,6 +129,62 @@ function Assert-ExeVersionInfo {
   Write-Host "[ok] executable version metadata for $ExpectedProductName"
 }
 
+function Get-ProjectVersion {
+  $versionPath = Join-Path $RepoRoot "VERSION"
+  if (-not (Test-Path -LiteralPath $versionPath)) {
+    throw "VERSION file was not found: $versionPath"
+  }
+  $version = (Get-Content -LiteralPath $versionPath -TotalCount 1).Trim()
+  if (-not $version) {
+    throw "VERSION file is empty."
+  }
+  return $version
+}
+
+function Assert-TextFileEquals {
+  param(
+    [string]$Path,
+    [string]$Expected,
+    [string]$Label
+  )
+  Assert-Path $Path $Label
+  $actual = (Get-Content -LiteralPath $Path -TotalCount 1).Trim()
+  if ($actual -ne $Expected) {
+    throw "$Label does not match current VERSION. Expected $Expected, found $actual."
+  }
+  Write-Host "[ok] $Label matches VERSION $Expected"
+}
+
+function Assert-PackagedOutputVersion {
+  param(
+    [string]$ExpectedVersion
+  )
+  $distDir = Split-Path -Parent $ElectronOutDir
+  $bundledVersionPath = Join-Path $bundledAppDir "VERSION"
+  Assert-TextFileEquals $bundledVersionPath $ExpectedVersion "bundled app version"
+
+  $resourcePackagePath = Join-Path $appResourceDir "package.json"
+  Assert-Path $resourcePackagePath "packaged Electron resource package metadata"
+  $resourcePackage = Get-Content -LiteralPath $resourcePackagePath -Raw | ConvertFrom-Json
+  if ($resourcePackage.version -ne $ExpectedVersion) {
+    throw "Packaged Electron resource version does not match current VERSION. Expected $ExpectedVersion, found $($resourcePackage.version)."
+  }
+  Write-Host "[ok] packaged Electron resource version matches VERSION $ExpectedVersion"
+
+  if (Test-Path -LiteralPath $distDir) {
+    $setupFiles = @(Get-ChildItem -LiteralPath $distDir -File -Filter "StatEdu_Studio_Beta_Setup_*.exe")
+    $expectedSetupName = "StatEdu_Studio_Beta_Setup_$ExpectedVersion.exe"
+    $unexpectedSetupFiles = @($setupFiles | Where-Object { $_.Name -ne $expectedSetupName })
+    if ($unexpectedSetupFiles.Count -gt 0) {
+      throw "Installer artifact version does not match current VERSION. Expected only $expectedSetupName, found: $($unexpectedSetupFiles.Name -join ', ')"
+    }
+    if ($setupFiles.Count -gt 0) {
+      Assert-Path (Join-Path $distDir $expectedSetupName) "current-version installer artifact"
+      Assert-Path (Join-Path $distDir "$expectedSetupName.blockmap") "current-version installer blockmap"
+    }
+  }
+}
+
 function Assert-AppBootstrapModulesTracked {
   $git = Get-Command "git.exe" -ErrorAction SilentlyContinue
   if (-not $git) {
@@ -229,10 +285,12 @@ Assert-NoTrackedGeneratedArtifacts
 Assert-NoDistArtifacts (Join-Path $RepoRoot "dist\electron")
 
 if (-not $SkipUnpackedChecks) {
+  $projectVersion = Get-ProjectVersion
   Assert-Path $ElectronOutDir "unpacked Electron output"
   $electronExe = Join-Path $ElectronOutDir "StatEdu Studio Beta.exe"
   Assert-Path $electronExe "Electron executable"
   Assert-ExeVersionInfo $electronExe "StatEdu Studio Beta" "StatEdu"
+  Assert-PackagedOutputVersion $projectVersion
   Assert-Path (Join-Path $ElectronOutDir "LICENSE.electron.txt") "Electron license"
   Assert-Path (Join-Path $ElectronOutDir "LICENSES.chromium.html") "Chromium licenses"
   Assert-Path $bundledAppDir "bundled StatEdu Studio app"
