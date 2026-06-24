@@ -25,9 +25,10 @@ re-run after the fix.
 4. Confirm the Git working tree is clean.
 5. Confirm `docs/RELEASE_READINESS_STATUS.md` is current.
 6. Confirm `docs/RELEASE_1_0_DECISION_LOG.md` records any public 1.0 deferrals.
-7. For a public 1.0 release candidate, complete
+7. Record the manual QA pass in `docs/RELEASE_1_0_MANUAL_QA_RECORD.md`.
+8. For a public 1.0 release candidate, complete
    `docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md` before packaging.
-8. Keep the completed QA record with the release notes and validation artifacts.
+9. Keep the completed QA record with the release notes and validation artifacts.
 
 ## App Startup
 
