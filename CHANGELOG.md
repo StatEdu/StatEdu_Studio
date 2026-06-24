@@ -43,6 +43,7 @@
 - Added a manual QA gate that public release notes and user-visible text must not claim unimplemented gated editions, license activation, in-app updates, or public installer infrastructure.
 - Replaced Latent Mplus builder placeholder notifications with explicit not-enabled release messages and validation.
 - Reworded the effect-size fallback subtitle so unavailable calculators do not read as future feature promises.
+- Removed an unused Analysis placeholder tab helper from the menu assembly code.
 
 ## v0.9.41 - 2026-06-20
 

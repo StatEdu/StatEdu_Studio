@@ -1,26 +1,5 @@
 # Analysis menu assembly.
 
-analysis_placeholder_tab_panel <- function(title, subtitle, body_title, body_text, value = NULL) {
-  tabPanel(
-    title,
-    value = value,
-    div(
-      class = "page-shell",
-      div(
-        class = "app-heading",
-        h1(title),
-        div(subtitle, class = "app-subtitle")
-      ),
-      div(
-        class = "workspace-panel frequencies-workspace-panel",
-        style = "min-width:980px;overflow-x:auto;",
-        h3(body_title),
-        div(class = "empty-message", div(body_text))
-      )
-    )
-  )
-}
-
 crosstab_tab_panel <- function() {
   tabPanel(
     "Cross-tabulation Analysis",
