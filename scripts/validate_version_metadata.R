@@ -71,6 +71,11 @@ assert_contains(readme, "scripts\\validate_stabilization.ps1 -Full", "README ful
 assert_contains(readme, "scripts\\smoke_shiny_app.ps1", "README Shiny smoke command")
 assert_contains(readme, "scripts\\smoke_electron_release.ps1 -SkipUnpackedChecks", "README Electron smoke command")
 
+latent_readme <- read_text("modules/latent_mplus/app/README.md")
+latent_readme_current <- extract_match(latent_readme, "Current development version: `([^`]+)`", "latent README current development version")
+assert_equal(latent_readme_current, version, "latent README current development version")
+assert_contains(latent_readme, paste0("StatEdu Studio ", version, " app shell structure"), "latent README app shell version")
+
 citation <- read_text("CITATION.cff")
 citation_version <- extract_match(citation, '(?m)^version: "([^"]+)"', "CITATION.cff version")
 assert_equal(citation_version, version, "CITATION.cff version")
