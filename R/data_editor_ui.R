@@ -1,4 +1,4 @@
-# Data editor menu and command placeholders.
+# Data editor menu and command panels.
 
 data_editor_command_panel <- function(title, subtitle, body_title, body_text) {
   div(
