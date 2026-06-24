@@ -32,6 +32,7 @@ These are not fully resolved by local validation and must be checked before publ
 - Confirm `studio.statedu.com` is live from a normal browser/network path.
 - Register and verify DOI `10.22934/statedu.studio`; it currently returns HTTP 404 from `doi.org`.
 - Confirm the DOI landing URL resolves to `https://studio.statedu.com`.
+- README, `CITATION.cff`, and About metadata already contain the intended DOI, so verify DOI resolution before any public citation announcement.
 - Decide whether remaining distribution, license, update, Free/Pro/Latent, and installer infrastructure items in `docs/RELEASE_1_0_DISTRIBUTION_LICENSE_PLAN_KO.md` are implemented for 1.0 or explicitly deferred.
 - Record those implementation or deferral decisions in `docs/RELEASE_1_0_DECISION_LOG.md`.
 - Prepare final public release notes and packaged validation notes.

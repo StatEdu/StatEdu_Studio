@@ -106,6 +106,10 @@ module before running the stabilization suite.
 
 ## Citation
 
+The citation below uses the intended DOI for StatEdu Studio. Before a public
+1.0 release or public citation announcement, confirm that the DOI resolves to
+`https://studio.statedu.com`.
+
 If you use **StatEdu Studio** in your research, please cite:
 
 LEE, I. H. (2026). **StatEdu Studio** (Version 0.9.42) [Computer software]. https://doi.org/10.22934/statedu.studio

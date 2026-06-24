@@ -72,6 +72,7 @@ assert_contains(readme, "scripts\\release_preflight.ps1", "README release prefli
 assert_contains(readme, "scripts\\release_preflight.ps1 -FullElectronSmoke", "README full Electron preflight command")
 assert_contains(readme, "scripts\\smoke_shiny_app.ps1", "README Shiny smoke command")
 assert_contains(readme, "scripts\\smoke_electron_release.ps1 -SkipUnpackedChecks", "README Electron smoke command")
+assert_contains(readme, "Before a public\n1.0 release or public citation announcement", "README DOI public citation gate")
 
 latent_readme <- read_text("modules/latent_mplus/app/README.md")
 latent_readme_current <- extract_match(latent_readme, "Current development version: `([^`]+)`", "latent README current development version")
@@ -122,6 +123,7 @@ assert_contains(release_readiness, "Build the Electron package", "release readin
 assert_contains(release_readiness, "Confirm `studio.statedu.com` is live", "release readiness website blocker")
 assert_contains(release_readiness, "Register and verify DOI", "release readiness DOI blocker")
 assert_contains(release_readiness, "DOI landing URL resolves to `https://studio.statedu.com`", "release readiness DOI landing URL")
+assert_contains(release_readiness, "README, `CITATION.cff`, and About metadata already contain the intended DOI", "release readiness intended DOI metadata warning")
 
 manual_qa <- read_text("docs/RELEASE_MANUAL_QA.md")
 assert_contains(manual_qa, "Do not use this pass to add new analysis features.", "manual QA feature freeze")
@@ -141,6 +143,7 @@ assert_contains(release_decision_log, paste0("Current version: ", version), "rel
 assert_contains(release_decision_log, "No new analysis features before 1.0", "release decision log feature freeze")
 assert_contains(release_decision_log, "Must Decide Before Public 1.0", "release decision log pending decisions")
 assert_contains(release_decision_log, "HTTP 404", "release decision log DOI status")
+assert_contains(release_decision_log, "Intended DOI is present in README/CITATION/About metadata", "release decision log intended DOI metadata warning")
 assert_contains(release_decision_log, "resolves to `https://studio.statedu.com`", "release decision log DOI landing URL")
 assert_contains(release_decision_log, "Block public 1.0 installer", "release decision log package blocker")
 assert_contains(release_decision_log, "Block public citation claim", "release decision log citation blocker")
