@@ -11,6 +11,7 @@ Use this checklist before creating a public beta installer, 1.0 release candidat
 - Confirm no private test data, local settings, or generated logs are included in the staged Electron app.
 - Confirm `.Rhistory`, `.RData`, local logs, temporary files, local settings, and Electron staging directories are not tracked by git.
 - For the 1.0 release, confirm `docs/RELEASE_1_0_DISTRIBUTION_LICENSE_PLAN_KO.md` has been reviewed and all required Free/Pro/Latent distribution gates are either implemented or explicitly deferred.
+- For the 1.0 release, update `docs/RELEASE_1_0_DECISION_LOG.md` with any distribution, license, update, DOI, website, or packaging decisions.
 - As of the 0.9.42 stabilization phase, do not add new analysis features before 1.0 unless they are required to fix correctness, data safety, packaging, or validation coverage.
 - Before moving from 0.9.x to 1.0, explicitly decide whether all remaining distribution/license/update plan items are implemented or intentionally deferred.
 

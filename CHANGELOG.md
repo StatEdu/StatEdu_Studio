@@ -23,6 +23,7 @@
 - Added release hygiene validation to the core stabilization suite so generated Electron staging files and local artifacts cannot be tracked accidentally.
 - Added release readiness status tracking and validation for packaging, DOI, website, and 1.0 deferral decisions.
 - Added a release preflight script that runs full stabilization validation, Shiny startup smoke, and Electron release smoke checks.
+- Added a 1.0 decision log for packaging, DOI, website, edition gating, license, update, and public-release note decisions.
 
 ## v0.9.41 - 2026-06-20
 

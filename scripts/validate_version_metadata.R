@@ -97,6 +97,7 @@ assert_contains(release_checklist, "smoke_shiny_app.ps1", "release checklist Shi
 assert_contains(release_checklist, ".Rhistory", "release checklist local artifact hygiene")
 assert_contains(release_checklist, "Electron staging directories are not tracked by git", "release checklist Electron staging hygiene")
 assert_contains(release_checklist, "docs/RELEASE_READINESS_STATUS.md", "release checklist readiness status")
+assert_contains(release_checklist, "docs/RELEASE_1_0_DECISION_LOG.md", "release checklist decision log")
 
 release_readiness <- read_text("docs/RELEASE_READINESS_STATUS.md")
 assert_contains(release_readiness, paste0("Current version: ", version), "release readiness current version")
@@ -108,6 +109,15 @@ assert_contains(release_readiness, "scripts/smoke_electron_release.ps1 -SkipUnpa
 assert_contains(release_readiness, "without `-SkipUnpackedChecks`", "release readiness full Electron smoke reminder")
 assert_contains(release_readiness, "HTTP 404", "release readiness DOI status")
 assert_contains(release_readiness, "implemented for 1.0 or explicitly deferred", "release readiness implementation deferral decision")
+assert_contains(release_readiness, "docs/RELEASE_1_0_DECISION_LOG.md", "release readiness decision log")
+
+release_decision_log <- read_text("docs/RELEASE_1_0_DECISION_LOG.md")
+assert_contains(release_decision_log, paste0("Current version: ", version), "release decision log current version")
+assert_contains(release_decision_log, "No new analysis features before 1.0", "release decision log feature freeze")
+assert_contains(release_decision_log, "Must Decide Before Public 1.0", "release decision log pending decisions")
+assert_contains(release_decision_log, "HTTP 404", "release decision log DOI status")
+assert_contains(release_decision_log, "Do not claim gated editions", "release decision log edition default")
+assert_contains(release_decision_log, "Do not claim in-app updates", "release decision log update default")
 
 app_bootstrap <- read_text("R/app_bootstrap.R")
 assert_contains(app_bootstrap, 'read_app_config <- function(version_file = "VERSION")', "main read_app_config VERSION default")
