@@ -28,6 +28,7 @@
 - Added a manual QA protocol for release-candidate visual, data, analysis, export, and packaged Electron checks.
 - Linked the manual QA protocol into Electron release smoke checks.
 - Updated release readiness status to record the passing release preflight check.
+- Tightened release metadata validation for unresolved public 1.0 blockers.
 
 ## v0.9.41 - 2026-06-20
 
