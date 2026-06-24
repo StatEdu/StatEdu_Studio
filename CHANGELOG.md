@@ -18,6 +18,7 @@
 - Refined longitudinal / panel model layout and reference-category reporting for categorical predictors.
 - Hardened release hygiene checks for local-only files, generated artifacts, version metadata, and release documentation.
 - Restored the Korean product plan document with current 1.0 stabilization priorities.
+- Updated current Korean user and method documentation references to 0.9.42 and added validation against stale current-version references.
 
 ## v0.9.41 - 2026-06-20
 
