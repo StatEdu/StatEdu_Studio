@@ -106,6 +106,8 @@ assert_contains(css, ".data-editor-workspace .analysis-workspace-heading", "work
 assert_contains(css, ".data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid)", "standard setup grid rule")
 assert_contains(css, ".data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row)", "standard action row rule")
 assert_contains(css, "grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;", "standard three-block grid columns")
+assert_contains(css, ".data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) {\n  display: grid !important;\n  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;\n  gap: var(--se-standard-gap) !important;\n  align-items: start !important;\n  margin-top: 26px !important;\n  margin-bottom: 14px !important;\n}", "standard three-block action row spacing")
+assert_contains(css, ".data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) > .btn,\n.data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) > .missing-values-action-cell {\n  grid-column: 1 !important;\n  justify-self: start !important;\n  margin-left: 30px !important;\n  width: var(--se-standard-inner-button-width) !important;", "standard Block 1 action placement")
 
 message("Checking Data Editor lazy menu wiring...")
 data_editor_lazy_contract <- data.frame(
@@ -367,6 +369,7 @@ assert_contains(css, ".data-editor-workspace .wide-long-action-row > #wide_long_
 assert_contains(css, ".data-editor-workspace .wide-long-action-row > #preview_wide_long {\n  grid-column: 5 !important;\n}", "Wide to Long preview button column")
 assert_contains(css, ".data-editor-workspace .wide-long-set-button {\n  margin-top: auto !important;\n  margin-bottom: 28px !important;", "Wide to Long set button vertical anchor")
 assert_contains(css, "width: var(--se-standard-options-button-width) !important;\n  min-width: var(--se-standard-options-button-width) !important;\n  max-width: var(--se-standard-options-button-width) !important;", "Wide to Long set/preview standard button width")
+assert_contains(css, ".data-editor-workspace .wide-long-action-row > #preview_wide_long {\n  width: var(--se-standard-options-button-width) !important;\n  min-width: var(--se-standard-options-button-width) !important;\n  max-width: var(--se-standard-options-button-width) !important;\n}", "Wide to Long preview matches Block 3 button width")
 assert_contains(css, ".data-editor-workspace .wide-long-action-row {\n  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;", "Wide to Long action row standard columns")
 
 message("Checking Rename Variable menu contract...")
@@ -376,6 +379,7 @@ assert_contains(rename_ui, 'actionButton("remove_variable_rename", "Remove"', "R
 assert_contains(rename_ui, 'class = "recode-same-setup-grid variable-rename-grid"', "Rename standard grid")
 assert_contains(css, ".data-editor-workspace .variable-rename-target-panel .analysis-transfer-listbox", "Rename target list height")
 assert_contains(css, ".data-editor-workspace .variable-rename-action-row > #remove_variable_rename", "Rename remove placement")
+assert_contains(css, ".data-editor-workspace .variable-rename-action-row > #remove_variable_rename {\n  grid-column: 3 !important;\n  justify-self: start !important;\n  margin-left: 30px !important;\n  width: var(--se-standard-inner-button-width) !important;", "Rename remove uses Block 2 action placement")
 
 message("Checking Recode Variable menu contract...")
 assert_contains(recode_ui, 'class = "recode-same-setup-grid recode-builder-grid"', "Recode builder grid")
@@ -384,6 +388,7 @@ assert_contains(recode_ui, 'actionButton("apply_recode_same", "Apply"', "Recode 
 assert_contains(recode_ui, 'uiOutput("recode_same_reset_control")', "Recode reset control")
 assert_contains(css, ".data-editor-workspace .recode-builder-action-row > #apply_recode_same", "Recode apply placement")
 assert_contains(css, ".data-editor-workspace .recode-builder-action-row > #recode_same_reset_control", "Recode reset placement")
+assert_contains(css, ".data-editor-workspace .recode-builder-action-row > #recode_same_reset_control {\n  grid-column: 3 !important;\n  justify-self: start !important;\n  margin-left: 30px !important;\n  width: var(--se-standard-inner-button-width) !important;", "Recode reset uses Block 2 action placement")
 
 message("Checking Auto Reverse Coding menu contract...")
 assert_contains(data_editor_ui, 'lazy_tab_panel("Auto reverse coding", "data_editor_recode_different", "lazy_data_editor_recode_different")', "Auto Reverse Coding menu label")

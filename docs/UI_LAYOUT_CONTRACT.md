@@ -23,6 +23,12 @@ Standard three-block tools use this structure:
 - Block 3: options
 - Header: `View selected data` aligns with the right edge of the last block.
 - Footer buttons: each command sits under the block it affects.
+- Button row: Block 1 commands use column 1, Block 2 commands use column 3,
+  and Block 3 commands use column 5 of the same grid. Do not center footer
+  buttons across the whole workspace.
+- Footer button widths: Block 1 and Block 2 commands use
+  `--se-standard-inner-button-width`; Block 3 commands use
+  `--se-standard-options-button-width`.
 
 Standard analysis and Data Editor menus use shared geometry variables declared
 on `body` in `www/style.css`:
@@ -62,8 +68,11 @@ three-block geometry.
 - `Run` sits under Block 1.
 - `Remove` sits under Block 2.
 - `Preview` sits under Block 3.
-- `Set variable` stays inside Block 3 and uses the standard Block 3 button
-  width.
+- `Set variable` stays inside Block 3, uses the standard Block 3 button width,
+  and is anchored to the bottom of the options content instead of moving when
+  the active tab changes.
+- The two Block 2 list panels should share the available Block 2 height evenly
+  enough that their list bottoms align with the source variable panel.
 
 ## Known Exceptions
 
