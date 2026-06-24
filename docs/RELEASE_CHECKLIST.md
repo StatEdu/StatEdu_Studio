@@ -27,7 +27,8 @@ Use this checklist before creating a public beta installer, 1.0 release candidat
 - For a public 1.0 release, replace 0.9.x beta packaging names with final release names across the Electron app display name, package metadata, installer artifact, shortcut name, executable resource strings, and smoke-test expectations.
 - Confirm the DOI `10.22934/statedu.studio` is registered and resolves to `https://studio.statedu.com` before publishing a public release.
 - Confirm `studio.statedu.com` is live and points to the StatEdu Studio product site before publishing a public release.
-- Keep compatibility identifiers such as `EASYFLOW_*` environment variables, `easyflow_*` JavaScript/R helper names, `easyflow_settings`, `easyflow_result_history`, `.efs-settings`, `.efs-result`, and legacy result-store read paths unless a migration plan and validation coverage exist.
+- Keep backward-compatible internal identifiers such as `EASYFLOW_*` environment variables, `easyflow_*` JavaScript/R helper names, `easyflow_settings`, `easyflow_result_history`, `.efs-result`, and legacy result-store read paths unless a migration plan and validation coverage exist.
+- Do not expose legacy `.efs-settings` or `.json` settings filters in Load settings or Save settings dialogs; public settings dialogs use only `.studio`.
 - Keep historical `CHANGELOG.md` entries as written unless correcting factual errors; older entries may mention EasyFlow because they describe prior product history.
 - Confirm `CITATION.cff`, `SOURCE-OFFER.txt`, and the About repository link point to the actual GitHub source repository.
 

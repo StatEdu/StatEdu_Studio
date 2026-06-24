@@ -93,8 +93,8 @@ assert_equal(
 )
 
 assert_contains("packaging/electron/main.js", "EASYFLOW_TOKEN", "legacy token compatibility identifier")
-assert_contains("docs/RELEASE_CHECKLIST.md", "Keep compatibility identifiers", "compatibility policy")
-assert_contains("docs/RELEASE_CHECKLIST.md", ".efs-settings", "legacy settings compatibility note")
+assert_contains("docs/RELEASE_CHECKLIST.md", "Keep backward-compatible internal identifiers", "compatibility policy")
+assert_contains("docs/RELEASE_CHECKLIST.md", "Do not expose legacy `.efs-settings` or `.json` settings filters", "legacy settings dialog non-exposure note")
 assert_contains("scripts/generate_oss_notices.R", "THIRD-PARTY-NOTICES.txt", "OSS notice output file")
 assert_contains("scripts/generate_oss_notices.R", "license_report.csv", "OSS license report output")
 assert_contains("scripts/generate_oss_notices.R", "public releases must include source code, documentation, example data, and validation notes", "OSS notice public source release policy")

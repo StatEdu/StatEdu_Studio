@@ -44,6 +44,7 @@
 - Replaced Latent Mplus builder placeholder notifications with explicit not-enabled release messages and validation.
 - Reworded the effect-size fallback subtitle so unavailable calculators do not read as future feature promises.
 - Removed an unused Analysis placeholder tab helper from the menu assembly code.
+- Clarified the release checklist so legacy settings formats remain out of public settings dialogs while internal compatibility identifiers remain documented.
 
 ## v0.9.41 - 2026-06-20
 
