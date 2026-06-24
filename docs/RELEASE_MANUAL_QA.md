@@ -77,7 +77,7 @@ re-run after the fix.
 ## Public Release Gates
 
 1. Confirm `studio.statedu.com` is live from a normal browser/network path.
-2. Confirm DOI `10.22934/statedu.studio` resolves.
+2. Confirm DOI `10.22934/statedu.studio` resolves to `https://studio.statedu.com`.
 3. Confirm final public release notes and packaged validation notes are ready.
 4. Confirm any unimplemented distribution, license, update, or edition-gating items are explicitly deferred in `docs/RELEASE_1_0_DECISION_LOG.md`.
 

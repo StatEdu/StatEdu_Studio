@@ -17,7 +17,7 @@ This file records release decisions that must be made before changing the projec
 | Area | Decision Needed | Current Status | Default Until Decided |
 |---|---|---|---|
 | Electron package | Whether the packaged Windows build passes full unpacked-output smoke checks | Not yet packaged in this readiness pass | Block public 1.0 installer |
-| DOI | Whether `10.22934/statedu.studio` is registered and resolves | `doi.org` currently returns HTTP 404 | Block public citation claim |
+| DOI | Whether `10.22934/statedu.studio` is registered and resolves to `https://studio.statedu.com` | `doi.org` currently returns HTTP 404 | Block public citation claim |
 | Website | Whether `studio.statedu.com` is live and points to the product site | Needs normal browser/network confirmation | Block public website claim |
 | Free/Pro/Latent gates | Whether edition gates are implemented for 1.0 or deferred | Pending decision | Do not claim gated editions |
 | License server | Whether activation, validation, device management, and grace-period flows are implemented for 1.0 or deferred | Pending decision | Do not claim license activation |
@@ -38,4 +38,3 @@ User-visible claim removed or adjusted:
 Validation/checklist update:
 Follow-up version:
 ```
-

@@ -102,6 +102,7 @@ assert_contains(release_checklist, "docs/RELEASE_1_0_DECISION_LOG.md", "release 
 assert_contains(release_checklist, "docs/RELEASE_MANUAL_QA.md", "release checklist manual QA")
 assert_contains(release_checklist, "docs/UI_LAYOUT_CONTRACT.md", "release checklist UI layout contract")
 assert_contains(release_checklist, "footer button placement", "release checklist UI footer placement")
+assert_contains(release_checklist, "resolves to `https://studio.statedu.com`", "release checklist DOI landing URL")
 
 release_readiness <- read_text("docs/RELEASE_READINESS_STATUS.md")
 assert_contains(release_readiness, paste0("Current version: ", version), "release readiness current version")
@@ -120,6 +121,7 @@ assert_contains(release_readiness, "Items Still Required Before Public 1.0", "re
 assert_contains(release_readiness, "Build the Electron package", "release readiness package blocker")
 assert_contains(release_readiness, "Confirm `studio.statedu.com` is live", "release readiness website blocker")
 assert_contains(release_readiness, "Register and verify DOI", "release readiness DOI blocker")
+assert_contains(release_readiness, "DOI landing URL resolves to `https://studio.statedu.com`", "release readiness DOI landing URL")
 
 manual_qa <- read_text("docs/RELEASE_MANUAL_QA.md")
 assert_contains(manual_qa, "Do not use this pass to add new analysis features.", "manual QA feature freeze")
@@ -129,7 +131,7 @@ assert_contains(manual_qa, "settings save/load uses only the `.studio` file type
 assert_contains(manual_qa, "Wide to Long can save the reshaped CSV output", "manual QA wide-to-long CSV save")
 assert_contains(manual_qa, "Longitudinal / Panel Models", "manual QA longitudinal workflow")
 assert_contains(manual_qa, "About > Open Source Licenses", "manual QA open source licenses")
-assert_contains(manual_qa, "DOI `10.22934/statedu.studio` resolves", "manual QA DOI gate")
+assert_contains(manual_qa, "DOI `10.22934/statedu.studio` resolves to `https://studio.statedu.com`", "manual QA DOI gate")
 assert_contains(manual_qa, "QA Record Template", "manual QA record template")
 assert_contains(manual_qa, "Fix commit:", "manual QA fix commit field")
 assert_contains(manual_qa, "Re-run validation:", "manual QA rerun validation field")
@@ -139,6 +141,7 @@ assert_contains(release_decision_log, paste0("Current version: ", version), "rel
 assert_contains(release_decision_log, "No new analysis features before 1.0", "release decision log feature freeze")
 assert_contains(release_decision_log, "Must Decide Before Public 1.0", "release decision log pending decisions")
 assert_contains(release_decision_log, "HTTP 404", "release decision log DOI status")
+assert_contains(release_decision_log, "resolves to `https://studio.statedu.com`", "release decision log DOI landing URL")
 assert_contains(release_decision_log, "Block public 1.0 installer", "release decision log package blocker")
 assert_contains(release_decision_log, "Block public citation claim", "release decision log citation blocker")
 assert_contains(release_decision_log, "Block public website claim", "release decision log website blocker")
