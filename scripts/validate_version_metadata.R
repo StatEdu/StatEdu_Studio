@@ -196,6 +196,10 @@ assert_contains(ui_helpers, 'span(class = "version", paste0("v", version))', "na
 assert_contains(ui_helpers, "about_tab_panel(version)", "About version propagation")
 assert_contains(ui_helpers, "app_head_tags(version)", "head asset version propagation")
 
+sample_size_ui <- read_text("R/sample_size_ui.R")
+assert_not_contains(sample_size_ui, "will be added in the same order", "effect-size future placeholder subtitle")
+assert_contains(sample_size_ui, "Effect-size calculator availability follows the selected method.", "effect-size neutral fallback subtitle")
+
 result_saved_ui <- read_text("R/result_saved_ui.R")
 assert_contains(result_saved_ui, 'saved_results_app_version <- function(version_file = "VERSION")', "saved results VERSION default")
 assert_contains(result_saved_ui, 'Sys.getenv("EASYFLOW_VERSION", "")', "saved results environment version override")

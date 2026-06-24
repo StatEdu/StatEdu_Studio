@@ -57,7 +57,7 @@ effect_size_analysis_panel <- function(method) {
         div(
           class = "app-heading",
           h1(title),
-          div("Effect-size calculators will be added in the same order as the sample size menu.", class = "app-subtitle")
+          div("Effect-size calculator availability follows the selected method.", class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
