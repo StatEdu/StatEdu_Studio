@@ -150,6 +150,11 @@ assert_contains(release_decision_log, "Do not claim license activation", "releas
 assert_contains(release_decision_log, "Do not claim in-app updates", "release decision log update default")
 assert_contains(release_decision_log, "Block public release announcement", "release decision log release note blocker")
 
+distribution_plan <- read_text("docs/RELEASE_1_0_DISTRIBUTION_LICENSE_PLAN_KO.md")
+assert_contains(distribution_plan, "planning/reference document only", "distribution plan planning-only status")
+assert_contains(distribution_plan, "Do not claim gated editions, license activation, in-app updates, or public installer infrastructure", "distribution plan non-claiming warning")
+assert_contains(distribution_plan, "구현 완료 또는 명시적 유예로 확정되기 전까지 1.0 공개 기능으로 주장하지 않는다", "distribution plan Korean non-claiming warning")
+
 app_bootstrap <- read_text("R/app_bootstrap.R")
 assert_contains(app_bootstrap, 'read_app_config <- function(version_file = "VERSION")', "main read_app_config VERSION default")
 assert_contains(app_bootstrap, "version = trimws(readLines(version_file, warn = FALSE)[1])", "main read_app_config VERSION reader")
