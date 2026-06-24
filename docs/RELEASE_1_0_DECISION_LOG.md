@@ -17,6 +17,7 @@ This file records release decisions that must be made before changing the projec
 | Area | Decision Needed | Current Status | Default Until Decided |
 |---|---|---|---|
 | Electron package | Whether the packaged Windows build passes full unpacked-output smoke checks | Not yet packaged in this readiness pass | Block public 1.0 installer |
+| Electron naming | Whether 0.9.x beta packaging names are replaced with final 1.0 names across app display name, package metadata, installer artifact, shortcut name, executable resource strings, and smoke-test expectations | Current 0.9.42 package metadata intentionally uses beta naming | Do not publish public 1.0 installer with beta naming unless explicitly approved |
 | DOI | Whether `10.22934/statedu.studio` is registered and resolves to `https://studio.statedu.com` | Intended DOI is present in README/CITATION/About metadata, but `doi.org` currently returns HTTP 404 | Block public citation claim |
 | Website | Whether `studio.statedu.com` is live and points to the product site | Needs normal browser/network confirmation | Block public website claim |
 | Free/Pro/Latent gates | Whether edition gates are implemented for 1.0 or deferred | Pending decision | Do not claim gated editions |

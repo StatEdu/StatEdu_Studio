@@ -24,6 +24,7 @@ Use this checklist before creating a public beta installer, 1.0 release candidat
 
 - Confirm visible product surfaces use `StatEdu Studio`, including README, app header, About, launcher text, installer metadata, default export filenames, report covers, favicon, and logo assets.
 - Confirm no visible app page or release artifact uses `EasyFlow Statistics` as the current product name.
+- For a public 1.0 release, replace 0.9.x beta packaging names with final release names across the Electron app display name, package metadata, installer artifact, shortcut name, executable resource strings, and smoke-test expectations.
 - Confirm the DOI `10.22934/statedu.studio` is registered and resolves to `https://studio.statedu.com` before publishing a public release.
 - Confirm `studio.statedu.com` is live and points to the StatEdu Studio product site before publishing a public release.
 - Keep compatibility identifiers such as `EASYFLOW_*` environment variables, `easyflow_*` JavaScript/R helper names, `easyflow_settings`, `easyflow_result_history`, `.efs-settings`, `.efs-result`, and legacy result-store read paths unless a migration plan and validation coverage exist.
@@ -41,6 +42,7 @@ Use this checklist before creating a public beta installer, 1.0 release candidat
 - Confirm `electron` and `electron-builder` are exact version pins in `packaging/electron/package.json`.
 - Run `npm ci` from `packaging/electron` before packaging.
 - Confirm `dist/electron` contains only the current `StatEdu_Studio_Beta_Setup_*.exe`, its `.blockmap`, and `win-unpacked`; remove legacy EasyFlow installers and debug artifacts before publishing.
+- For 0.9.x beta builds, `StatEdu Studio Beta` and `StatEdu_Studio_Beta_Setup_*` are expected; do not carry those beta names into a public 1.0 installer unless the release is intentionally still branded as beta and that decision is recorded in `docs/RELEASE_1_0_DECISION_LOG.md`.
 
 ## Open Source Notices
 

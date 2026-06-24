@@ -107,6 +107,8 @@ assert_contains(release_checklist, "completed manual QA record", "release checkl
 assert_contains(release_checklist, "docs/UI_LAYOUT_CONTRACT.md", "release checklist UI layout contract")
 assert_contains(release_checklist, "footer button placement", "release checklist UI footer placement")
 assert_contains(release_checklist, "resolves to `https://studio.statedu.com`", "release checklist DOI landing URL")
+assert_contains(release_checklist, "replace 0.9.x beta packaging names with final release names", "release checklist beta package naming gate")
+assert_contains(release_checklist, "do not carry those beta names into a public 1.0 installer", "release checklist public beta naming warning")
 
 release_readiness <- read_text("docs/RELEASE_READINESS_STATUS.md")
 assert_contains(release_readiness, paste0("Current version: ", version), "release readiness current version")
@@ -128,6 +130,8 @@ assert_contains(release_readiness, "Confirm `studio.statedu.com` is live", "rele
 assert_contains(release_readiness, "Register and verify DOI", "release readiness DOI blocker")
 assert_contains(release_readiness, "DOI landing URL resolves to `https://studio.statedu.com`", "release readiness DOI landing URL")
 assert_contains(release_readiness, "README, `CITATION.cff`, and About metadata already contain the intended DOI", "release readiness intended DOI metadata warning")
+assert_contains(release_readiness, "Replace 0.9.x beta packaging names with final 1.0 release names", "release readiness beta package naming gate")
+assert_contains(release_readiness, "record an explicit decision to keep beta branding", "release readiness beta naming decision")
 
 manual_qa <- read_text("docs/RELEASE_MANUAL_QA.md")
 assert_contains(manual_qa, "Do not use this pass to add new analysis features.", "manual QA feature freeze")
@@ -152,6 +156,8 @@ assert_contains(release_decision_log, "HTTP 404", "release decision log DOI stat
 assert_contains(release_decision_log, "Intended DOI is present in README/CITATION/About metadata", "release decision log intended DOI metadata warning")
 assert_contains(release_decision_log, "resolves to `https://studio.statedu.com`", "release decision log DOI landing URL")
 assert_contains(release_decision_log, "Block public 1.0 installer", "release decision log package blocker")
+assert_contains(release_decision_log, "Current 0.9.42 package metadata intentionally uses beta naming", "release decision log beta naming status")
+assert_contains(release_decision_log, "Do not publish public 1.0 installer with beta naming unless explicitly approved", "release decision log beta naming default")
 assert_contains(release_decision_log, "Block public citation claim", "release decision log citation blocker")
 assert_contains(release_decision_log, "Block public website claim", "release decision log website blocker")
 assert_contains(release_decision_log, "Do not claim gated editions", "release decision log edition default")
