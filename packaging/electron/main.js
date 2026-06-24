@@ -46,6 +46,10 @@ function appVersion() {
   }
 }
 
+function publicReleaseFlag() {
+  return /^1\./.test(appVersion()) ? "1" : "0";
+}
+
 function windowTitle() {
   return `StatEdu Studio Beta v${appVersion()}`;
 }
@@ -125,6 +129,7 @@ async function startShiny() {
     EASYFLOW_NO_PACKAGE_INSTALL: "true",
     EASYFLOW_TOKEN: token,
     EASYFLOW_STARTUP_LOG: startupLogFile(),
+    STATEDU_PUBLIC_RELEASE: process.env.STATEDU_PUBLIC_RELEASE || publicReleaseFlag(),
     R_HOME: path.join(appBaseDir(), "runtime", "R-4.5.3"),
     R_LIBS_USER: bundledRLibraryPath(),
     PATH: `${bundledRBinPath()};${process.env.PATH || ""}`

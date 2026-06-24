@@ -30,8 +30,8 @@ based on R 4.5.3.
 - Data Editor workflows for rename, recode, missing-value handling, coding
   checks, and wide-to-long reshaping.
 - Core analysis workflows for descriptive tables, group comparisons,
-  association/measurement, regression, GLM, longitudinal/panel models, sample
-  size, effect size, and selected calculators.
+  association/measurement, regression, GLM, sample size, effect size, and
+  selected calculators.
 - Result export to HTML, PDF, Excel, and the in-app result collection.
 - Windows desktop package with bundled R 4.5.3 runtime and open-source notices.
 
@@ -61,6 +61,8 @@ available in public release text:
 - Free/Pro/Latent edition gates.
 - License activation, device management, or offline grace-period enforcement.
 - In-app update checks or automatic update handoff.
+- Longitudinal / Panel Models public menu exposure.
+- Word result export.
 - Public installer infrastructure beyond the verified download path.
 
 ## Final Publication Checklist

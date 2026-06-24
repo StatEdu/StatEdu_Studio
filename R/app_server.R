@@ -80,7 +80,24 @@ create_app_server <- function(app_version) {
   output$lazy_analysis_pca <- renderUI(tab_panel_content(pca_tab_panel("Principal Components")))
   output$lazy_analysis_reliability <- renderUI(tab_panel_content(reliability_tab_panel("Reliability")))
   output$lazy_analysis_hierarchical <- renderUI(tab_panel_content(hierarchical_tab_panel("Regression")))
-  output$lazy_analysis_longitudinal <- renderUI(tab_panel_content(longitudinal_tab_panel("Longitudinal / Panel Models")))
+  output$lazy_analysis_longitudinal <- renderUI({
+    if (!isTRUE(statedu_feature_enabled("longitudinal", TRUE))) {
+      return(div(
+        class = "page-shell",
+        div(
+          class = "app-heading",
+          h1("Longitudinal / Panel Models"),
+          div("This workflow is not enabled in this release.", class = "app-subtitle")
+        ),
+        div(
+          class = "workspace-panel frequencies-workspace-panel",
+          h3("Longitudinal / Panel Models"),
+          empty_message("Longitudinal / Panel Models is hidden in the public 1.0 release.")
+        )
+      ))
+    }
+    tab_panel_content(longitudinal_tab_panel("Longitudinal / Panel Models"))
+  })
   output$lazy_analysis_generalized <- renderUI(tab_panel_content(generalized_tab_panel("GLM")))
   output$lazy_analysis_logistic <- renderUI(tab_panel_content(logistic_regression_tab_panel()))
 

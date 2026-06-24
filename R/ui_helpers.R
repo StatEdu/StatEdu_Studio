@@ -4,6 +4,52 @@ empty_message <- function(text) {
   div(class = "empty-message", text)
 }
 
+statedu_flag_normalize <- function(value) {
+  value <- value[!is.na(value)]
+  if (length(value) == 0) {
+    return("")
+  }
+  tolower(trimws(as.character(value[[1]])))
+}
+
+statedu_truthy <- function(value) {
+  statedu_flag_normalize(value) %in% c("1", "true", "yes", "on", "public")
+}
+
+statedu_falsey <- function(value) {
+  statedu_flag_normalize(value) %in% c("0", "false", "no", "off", "development")
+}
+
+statedu_feature_env_name <- function(prefix, feature) {
+  paste0(prefix, "_ENABLE_", toupper(gsub("[^A-Za-z0-9]+", "_", feature)))
+}
+
+statedu_public_release <- function() {
+  statedu_truthy(Sys.getenv("STATEDU_PUBLIC_RELEASE", "")) ||
+    statedu_truthy(Sys.getenv("EASYFLOW_PUBLIC_RELEASE", ""))
+}
+
+statedu_feature_enabled <- function(feature, default = TRUE) {
+  env_names <- c(
+    statedu_feature_env_name("STATEDU", feature),
+    statedu_feature_env_name("EASYFLOW", feature)
+  )
+  for (env_name in env_names) {
+    value <- Sys.getenv(env_name, "")
+    if (statedu_truthy(value)) {
+      return(TRUE)
+    }
+    if (statedu_falsey(value)) {
+      return(FALSE)
+    }
+  }
+
+  if (statedu_public_release() && feature %in% c("longitudinal", "word_export")) {
+    return(FALSE)
+  }
+  isTRUE(default)
+}
+
 analysis_save_edition <- function() {
   edition <- tolower(Sys.getenv("EASYFLOW_EDITION", "development"))
   if (!edition %in% c("free", "development", "personal", "institution")) {
@@ -12,7 +58,17 @@ analysis_save_edition <- function() {
   edition
 }
 
+analysis_save_feature_visible <- function(feature) {
+  if (identical(feature, "word")) {
+    return(statedu_feature_enabled("word_export", TRUE))
+  }
+  TRUE
+}
+
 analysis_save_feature_enabled <- function(feature, edition = analysis_save_edition()) {
+  if (!isTRUE(analysis_save_feature_visible(feature))) {
+    return(FALSE)
+  }
   if (identical(edition, "development")) {
     return(TRUE)
   }
@@ -23,6 +79,9 @@ analysis_save_feature_enabled <- function(feature, edition = analysis_save_editi
 }
 
 analysis_save_button <- function(id, label, feature, class = "btn-default") {
+  if (!isTRUE(analysis_save_feature_visible(feature))) {
+    return(NULL)
+  }
   if (is.null(id) || !nzchar(id)) {
     if (identical(analysis_save_edition(), "development")) {
       return(tags$button(
@@ -144,7 +203,7 @@ enabled_analysis_tabs <- function() {
     pca = TRUE,
     regression = FALSE,
     hierarchical = TRUE,
-    longitudinal = TRUE,
+    longitudinal = statedu_feature_enabled("longitudinal", TRUE),
     generalized = TRUE
   )
 }

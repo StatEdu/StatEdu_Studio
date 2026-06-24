@@ -41,6 +41,17 @@ Follow-up version: 1.0.0
 ## Deferred For 1.0
 
 ```text
+Decision: Hide deferred public features for 1.0
+Date: 2026-06-25
+Owner: StatEdu Studio
+Deferred item: Longitudinal / Panel Models public menu exposure and Word result export
+Reason: These surfaces expand public validation and support scope; keep the code path available for internal validation, but do not expose it in the public 1.0 package.
+User-visible claim removed or adjusted: Do not claim Longitudinal / Panel Models or Word result export as public 1.0 features.
+Validation/checklist update: Public 1.0 packaging sets `STATEDU_PUBLIC_RELEASE=1`, which hides Longitudinal / Panel Models and Word export while preserving internal override flags for validation builds.
+Follow-up version: 1.1 or later
+```
+
+```text
 Decision: Defer edition gates for 1.0
 Date: 2026-06-24
 Owner: StatEdu Studio

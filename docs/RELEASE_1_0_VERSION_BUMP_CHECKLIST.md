@@ -72,6 +72,9 @@ actual 1.0.0 version bump starts.
 - Confirm `studio.statedu.com` is live before making a public website claim.
 - Do not claim Free/Pro/Latent gates, license activation, or in-app updates for
   1.0.0; those items are deferred in `docs/RELEASE_1_0_DECISION_LOG.md`.
+- Confirm the packaged public 1.0 app sets `STATEDU_PUBLIC_RELEASE=1` and hides
+  Longitudinal / Panel Models and Word result export, unless an internal
+  validation override explicitly enables them.
 
 ## Required Validation Sequence
 

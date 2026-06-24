@@ -262,11 +262,29 @@ for (i in seq_len(nrow(analysis_lazy_contract))) {
     sprintf('lazy_tab_panel("%s", "%s", "%s")', lazy_row$title, lazy_row$value, lazy_row$output_id),
     sprintf("Analysis lazy menu item: %s", lazy_row$title)
   )
-  assert_contains(
-    app_server,
-    sprintf("output$%s <- renderUI(tab_panel_content(%s))", lazy_row$output_id, lazy_row$panel_call),
-    sprintf("Analysis lazy renderUI target: %s", lazy_row$title)
-  )
+  if (identical(lazy_row$output_id, "lazy_analysis_longitudinal")) {
+    assert_contains(
+      app_server,
+      'output$lazy_analysis_longitudinal <- renderUI({',
+      "Analysis lazy renderUI target: Longitudinal / Panel Models guarded output"
+    )
+    assert_contains(
+      app_server,
+      'statedu_feature_enabled("longitudinal", TRUE)',
+      "Analysis lazy renderUI target: Longitudinal / Panel Models public flag guard"
+    )
+    assert_contains(
+      app_server,
+      lazy_row$panel_call,
+      "Analysis lazy renderUI target: Longitudinal / Panel Models panel call"
+    )
+  } else {
+    assert_contains(
+      app_server,
+      sprintf("output$%s <- renderUI(tab_panel_content(%s))", lazy_row$output_id, lazy_row$panel_call),
+      sprintf("Analysis lazy renderUI target: %s", lazy_row$title)
+    )
+  }
 }
 
 message("Checking Sample Size / Effect Size lazy menu wiring...")

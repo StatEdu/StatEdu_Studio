@@ -2132,6 +2132,10 @@ register_result_accumulator_outputs <- function(input, output, session) {
   }, ignoreInit = TRUE)
 
   observeEvent(input$save_result_collection_word_dialog, {
+    if (!isTRUE(analysis_save_feature_enabled("word"))) {
+      showNotification("Word export is not enabled in this release.", type = "warning", duration = 5)
+      return(invisible(NULL))
+    }
     tryCatch(
       {
         entries <- result_entries_for_export(store)

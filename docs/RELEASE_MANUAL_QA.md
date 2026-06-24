@@ -60,7 +60,7 @@ re-run after the fix.
 
 1. Run t-test / ANOVA as the standard three-block baseline.
 2. Run Regression and Logistic Regression with categorical predictors and confirm reference rows/labels display.
-3. Run Longitudinal / Panel Models for at least one GEE or LMM setup and confirm the four-block layout has right-side breathing room.
+3. For public 1.0 QA, confirm Longitudinal / Panel Models is hidden; for internal validation builds, run at least one GEE or LMM setup and confirm the four-block layout has right-side breathing room.
 4. Confirm nested Analysis menu submenus open adjacent to the selected first-level item.
 5. Confirm result save buttons are available after a successful analysis.
 
@@ -70,7 +70,8 @@ re-run after the fix.
 2. Export at least one analysis to PDF.
 3. Export at least one analysis to Excel.
 4. Add at least one result to the Result collection and reopen it.
-5. Confirm exported filenames use `StatEdu Studio` naming.
+5. For public 1.0 QA, confirm Word result export is hidden; for internal validation builds, confirm Word export still works.
+6. Confirm exported filenames use `StatEdu Studio` naming.
 
 ## Packaged Electron Workflow
 

@@ -72,8 +72,8 @@ R runtime:
 | t-test / ANOVA baseline layout and run path work |  |  |
 | Regression categorical reference rows and labels display |  |  |
 | Logistic Regression categorical reference rows and labels display |  |  |
-| Longitudinal / Panel Models GEE or LMM setup runs |  |  |
-| Longitudinal / Panel Models four-block layout has right-side breathing room |  |  |
+| Public 1.0 hides Longitudinal / Panel Models from the Analysis menu |  |  |
+| Internal validation build can still exercise Longitudinal / Panel Models if enabled |  |  |
 | Nested Analysis submenus open adjacent to selected first-level item |  |  |
 | Result save buttons are available after successful analysis |  |  |
 
@@ -85,6 +85,7 @@ R runtime:
 | PDF export works |  |  |
 | Excel export works |  |  |
 | Result collection add/reopen works |  |  |
+| Public 1.0 hides Word result export |  |  |
 | Exported filenames use `StatEdu Studio` naming |  |  |
 
 ## Packaged Electron Workflow
@@ -108,7 +109,7 @@ R runtime:
 | Final public release notes are ready |  |  |
 | Packaged validation notes are ready |  |  |
 | Deferred distribution/license/update/edition items are recorded |  |  |
-| Public text does not claim deferred gated editions, license activation, or in-app updates |  |  |
+| Public text does not claim deferred gated editions, license activation, in-app updates, Longitudinal / Panel Models, or Word export |  |  |
 
 ## Failures And Fixes
 
