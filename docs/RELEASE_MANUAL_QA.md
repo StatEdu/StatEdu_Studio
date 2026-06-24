@@ -28,7 +28,8 @@ re-run after the fix.
 7. Record the manual QA pass in `docs/RELEASE_1_0_MANUAL_QA_RECORD.md`.
 8. For a public 1.0 release candidate, complete
    `docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md` before packaging.
-9. Keep the completed QA record with the release notes and validation artifacts.
+9. Complete `docs/RELEASE_1_0_PACKAGED_VALIDATION_NOTES.md` after packaging.
+10. Keep the completed QA record with the release notes and validation artifacts.
 
 ## App Startup
 

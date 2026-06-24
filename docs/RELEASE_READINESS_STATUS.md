@@ -47,6 +47,7 @@ These are not fully resolved by local validation and must be checked before publ
 - Decide whether remaining installer/download infrastructure items in `docs/RELEASE_1_0_DISTRIBUTION_LICENSE_PLAN_KO.md` are implemented for 1.0 or explicitly deferred.
 - Record any additional implementation or deferral decisions in `docs/RELEASE_1_0_DECISION_LOG.md`.
 - Prepare final public release notes and packaged validation notes.
+- Public release notes draft and packaged validation notes templates are tracked in `docs/RELEASE_1_0_PUBLIC_NOTES_DRAFT.md` and `docs/RELEASE_1_0_PACKAGED_VALIDATION_NOTES.md`; they still require final 1.0 package evidence before publication.
 
 ## Repository Check
 
