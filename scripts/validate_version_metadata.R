@@ -98,6 +98,8 @@ assert_contains(release_checklist, ".Rhistory", "release checklist local artifac
 assert_contains(release_checklist, "Electron staging directories are not tracked by git", "release checklist Electron staging hygiene")
 assert_contains(release_checklist, "docs/RELEASE_READINESS_STATUS.md", "release checklist readiness status")
 assert_contains(release_checklist, "docs/RELEASE_1_0_DECISION_LOG.md", "release checklist decision log")
+assert_contains(release_checklist, "docs/UI_LAYOUT_CONTRACT.md", "release checklist UI layout contract")
+assert_contains(release_checklist, "footer button placement", "release checklist UI footer placement")
 
 release_readiness <- read_text("docs/RELEASE_READINESS_STATUS.md")
 assert_contains(release_readiness, paste0("Current version: ", version), "release readiness current version")
