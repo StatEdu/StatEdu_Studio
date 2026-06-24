@@ -66,6 +66,7 @@ $coreValidations = @(
   "scripts\validate_regression_coefficients.R",
   "scripts\validate_logistic_analysis.R",
   "scripts\validate_longitudinal.R",
+  "scripts\validate_release_hygiene.R",
   "scripts\validate_data_io.R"
 )
 
