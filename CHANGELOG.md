@@ -35,6 +35,7 @@
 - Clarified release-gate documentation so the DOI target landing URL is `https://studio.statedu.com`.
 - Clarified that the 1.0 distribution, license, and update plan is planning material, not a claim that gated editions, license activation, updater, or public installer infrastructure are implemented.
 - Added a README and release-readiness warning that the intended DOI must resolve before any public 1.0 citation announcement.
+- Tightened source/license notice validation for public release source availability, third-party notices, license reports, and bundled license text references.
 
 ## v0.9.41 - 2026-06-20
 
