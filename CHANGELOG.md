@@ -7,6 +7,7 @@
 - Added a Data Editor > Wide to Long workflow for reshaping repeated-measure columns into long-format data before longitudinal / panel analysis.
 - Added validation coverage for wide-to-long reshaping and expanded data-editor recoding checks.
 - Added Shiny startup and Electron release smoke checks for release-candidate validation.
+- Added documentation UTF-8 validation for release-candidate documentation checks.
 
 ### Changed
 
@@ -16,6 +17,7 @@
 - Simplified settings files to the `.studio` format and updated save/load dialogs.
 - Refined longitudinal / panel model layout and reference-category reporting for categorical predictors.
 - Hardened release hygiene checks for local-only files, generated artifacts, version metadata, and release documentation.
+- Restored the Korean product plan document with current 1.0 stabilization priorities.
 
 ## v0.9.41 - 2026-06-20
 
