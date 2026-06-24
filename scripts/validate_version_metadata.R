@@ -98,6 +98,7 @@ assert_contains(release_checklist, ".Rhistory", "release checklist local artifac
 assert_contains(release_checklist, "Electron staging directories are not tracked by git", "release checklist Electron staging hygiene")
 assert_contains(release_checklist, "docs/RELEASE_READINESS_STATUS.md", "release checklist readiness status")
 assert_contains(release_checklist, "docs/RELEASE_1_0_DECISION_LOG.md", "release checklist decision log")
+assert_contains(release_checklist, "docs/RELEASE_MANUAL_QA.md", "release checklist manual QA")
 assert_contains(release_checklist, "docs/UI_LAYOUT_CONTRACT.md", "release checklist UI layout contract")
 assert_contains(release_checklist, "footer button placement", "release checklist UI footer placement")
 
@@ -109,9 +110,19 @@ assert_contains(release_readiness, "-FullElectronSmoke", "release readiness full
 assert_contains(release_readiness, "scripts/smoke_shiny_app.ps1", "release readiness Shiny smoke")
 assert_contains(release_readiness, "scripts/smoke_electron_release.ps1 -SkipUnpackedChecks", "release readiness Electron smoke")
 assert_contains(release_readiness, "without `-SkipUnpackedChecks`", "release readiness full Electron smoke reminder")
+assert_contains(release_readiness, "docs/RELEASE_MANUAL_QA.md", "release readiness manual QA")
 assert_contains(release_readiness, "HTTP 404", "release readiness DOI status")
 assert_contains(release_readiness, "implemented for 1.0 or explicitly deferred", "release readiness implementation deferral decision")
 assert_contains(release_readiness, "docs/RELEASE_1_0_DECISION_LOG.md", "release readiness decision log")
+
+manual_qa <- read_text("docs/RELEASE_MANUAL_QA.md")
+assert_contains(manual_qa, "Do not use this pass to add new analysis features.", "manual QA feature freeze")
+assert_contains(manual_qa, "docs/UI_LAYOUT_CONTRACT.md", "manual QA UI layout contract")
+assert_contains(manual_qa, "settings save/load uses only the `.studio` file type", "manual QA settings file type")
+assert_contains(manual_qa, "Wide to Long can save the reshaped CSV output", "manual QA wide-to-long CSV save")
+assert_contains(manual_qa, "Longitudinal / Panel Models", "manual QA longitudinal workflow")
+assert_contains(manual_qa, "About > Open Source Licenses", "manual QA open source licenses")
+assert_contains(manual_qa, "DOI `10.22934/statedu.studio` resolves", "manual QA DOI gate")
 
 release_decision_log <- read_text("docs/RELEASE_1_0_DECISION_LOG.md")
 assert_contains(release_decision_log, paste0("Current version: ", version), "release decision log current version")

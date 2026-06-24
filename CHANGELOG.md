@@ -25,6 +25,7 @@
 - Added a release preflight script that runs full stabilization validation, Shiny startup smoke, and Electron release smoke checks.
 - Added a 1.0 decision log for packaging, DOI, website, edition gating, license, update, and public-release note decisions.
 - Tightened the UI layout contract and validation for standard three-block Data Editor button placement.
+- Added a manual QA protocol for release-candidate visual, data, analysis, export, and packaged Electron checks.
 
 ## v0.9.41 - 2026-06-20
 
