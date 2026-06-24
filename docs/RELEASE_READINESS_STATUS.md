@@ -11,6 +11,7 @@ The local stabilization checks are passing for the current branch.
 - `scripts/validate_stabilization.ps1 -Full`: passed
 - `scripts/smoke_shiny_app.ps1`: passed
 - `scripts/smoke_electron_release.ps1 -SkipUnpackedChecks`: passed
+- `scripts/release_preflight.ps1`: available for combined release-candidate checks
 - Git working tree: clean after validation
 
 ## Confirmed Local Release Hygiene
@@ -25,6 +26,7 @@ The local stabilization checks are passing for the current branch.
 These are not fully resolved by local validation and must be checked before publishing a public 1.0 installer.
 
 - Build the Electron package and run `scripts/smoke_electron_release.ps1` without `-SkipUnpackedChecks`.
+- After packaging, run `scripts/release_preflight.ps1 -FullElectronSmoke`.
 - Launch `dist/electron/win-unpacked/StatEdu Studio Beta.exe` and manually confirm app startup, About > Open Source Licenses, import, analysis, export, and close behavior.
 - Confirm `studio.statedu.com` is live from a normal browser/network path.
 - Register and verify DOI `10.22934/statedu.studio`; it currently returns HTTP 404 from `doi.org`.
@@ -36,4 +38,3 @@ These are not fully resolved by local validation and must be checked before publ
 The configured GitHub repository is reachable by git:
 
 `https://github.com/StatEdu/StatEdu_Studio_dev.git`
-

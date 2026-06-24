@@ -28,6 +28,7 @@ Use this checklist before creating a public beta installer, 1.0 release candidat
 
 - Run `scripts/validate_stabilization.ps1` for the core stabilization suite.
 - Run `scripts/validate_stabilization.ps1 -Full` before packaging a public beta or release candidate.
+- Run `scripts/release_preflight.ps1` before preparing a release candidate; after packaging, run it with `-FullElectronSmoke`.
 - Build from a clean R runtime where possible.
 - Confirm the build runs `scripts/prune_r_runtime.R` before license notice generation.
 - Confirm `runtime_prune_report.csv` exists and contains only `keep` rows, unless an intentional exception is documented.
@@ -62,6 +63,7 @@ Use this checklist before creating a public beta installer, 1.0 release candidat
 
 - Run `scripts/smoke_shiny_app.ps1` to confirm the Shiny app starts and returns the StatEdu Studio page over `127.0.0.1`.
 - Run `scripts/smoke_electron_release.ps1` after staging or packaging.
+- Run `scripts/release_preflight.ps1 -FullElectronSmoke` after Electron packaging is complete.
 - Launch `dist/electron/win-unpacked/StatEdu Studio Beta.exe`.
 - Confirm first launch opens the app and the About > Open Source Licenses page displays notices.
 - Confirm data import works with paths containing spaces and Korean characters.
