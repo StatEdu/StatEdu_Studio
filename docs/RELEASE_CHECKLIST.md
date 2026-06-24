@@ -73,6 +73,7 @@ Use this checklist before creating a public beta installer, 1.0 release candidat
 - Run `scripts/smoke_shiny_app.ps1` to confirm the Shiny app starts and returns the StatEdu Studio page over `127.0.0.1`.
 - Run `scripts/smoke_electron_release.ps1` after staging or packaging.
 - Run `scripts/release_preflight.ps1 -FullElectronSmoke` after Electron packaging is complete.
+- Run `scripts/smoke_electron_app_lifecycle.ps1` against `dist/electron/win-unpacked/StatEdu Studio Beta.exe`.
 - Launch `dist/electron/win-unpacked/StatEdu Studio Beta.exe`.
 - Confirm first launch opens the app and the About > Open Source Licenses page displays notices.
 - Confirm data import works with paths containing spaces and Korean characters.

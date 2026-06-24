@@ -72,9 +72,10 @@ re-run after the fix.
 
 1. Launch `dist/electron/win-unpacked/StatEdu Studio Beta.exe`.
 2. Confirm the app opens through `127.0.0.1`.
-3. Confirm closing the Electron window stops the bundled R/Shiny process.
-4. Confirm the packaged app can import data, run one analysis, and export one result.
-5. Confirm About > Open Source Licenses displays bundled notices.
+3. Run `scripts/smoke_electron_app_lifecycle.ps1` to confirm packaged app startup and bundled R/Shiny shutdown.
+4. Confirm closing the Electron window stops the bundled R/Shiny process.
+5. Confirm the packaged app can import data, run one analysis, and export one result.
+6. Confirm About > Open Source Licenses displays bundled notices.
 
 ## Public Release Gates
 
