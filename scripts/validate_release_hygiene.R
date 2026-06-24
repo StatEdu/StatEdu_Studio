@@ -20,6 +20,7 @@ blocked_prefixes <- c(
   "packaging/electron/runtime",
   "packaging/electron/node_modules",
   "output",
+  "outputs",
   "scratch",
   "modules/latent_mplus/app/output",
   "modules/latent_mplus/app/outputs",

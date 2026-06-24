@@ -30,6 +30,7 @@
 - Updated release readiness status to record the passing release preflight check.
 - Tightened release metadata validation for unresolved public 1.0 blockers.
 - Added a manual QA record template and validation for release-candidate QA evidence.
+- Removed tracked generated comparison artifacts from `outputs/` and blocked root output artifacts in release hygiene validation.
 
 ## v0.9.41 - 2026-06-20
 
