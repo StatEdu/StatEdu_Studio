@@ -26,6 +26,7 @@
 - Added a 1.0 decision log for packaging, DOI, website, edition gating, license, update, and public-release note decisions.
 - Tightened the UI layout contract and validation for standard three-block Data Editor button placement.
 - Added a manual QA protocol for release-candidate visual, data, analysis, export, and packaged Electron checks.
+- Linked the manual QA protocol into Electron release smoke checks.
 
 ## v0.9.41 - 2026-06-20
 
