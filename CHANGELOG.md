@@ -38,6 +38,7 @@
 - Tightened source/license notice validation for public release source availability, third-party notices, license reports, and bundled license text references.
 - Aligned release checklist, README, and manual QA guidance so completed QA evidence is kept with release notes and validation artifacts.
 - Documented the release gate for replacing 0.9.x beta Electron package names before a public 1.0 installer.
+- Aligned Latent Mplus settings dialogs with the `.studio`-only settings file contract.
 
 ## v0.9.41 - 2026-06-20
 
