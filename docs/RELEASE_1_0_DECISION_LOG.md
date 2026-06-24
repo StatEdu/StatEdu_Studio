@@ -25,6 +25,19 @@ This file records release decisions that must be made before changing the projec
 | Update system | Whether in-app update checks and installer handoff are implemented for 1.0 or deferred | Deferred for 1.0; in-app update checks remain outside the 1.0 stabilization scope | Do not claim in-app updates |
 | Public release notes | Whether final notes and validation artifacts are ready for public download | Pending packaging | Block public release announcement |
 
+## Decisions For 1.0
+
+```text
+Decision: Remove beta packaging names for public 1.0
+Date: 2026-06-25
+Owner: StatEdu Studio
+Item: Electron display name, package metadata, installer artifact, shortcut name, executable resource strings, app data folder, and smoke-test expectations
+Reason: 1.0 is a stable public release line; keeping beta naming would create user confusion and weaken release credibility.
+User-visible claim removed or adjusted: Public 1.0 installer and app surfaces should say StatEdu Studio, not StatEdu Studio Beta.
+Validation/checklist update: Keep 0.9.42 beta metadata unchanged until the actual 1.0 version bump, then update packaging and smoke tests together.
+Follow-up version: 1.0.0
+```
+
 ## Deferred For 1.0
 
 ```text
