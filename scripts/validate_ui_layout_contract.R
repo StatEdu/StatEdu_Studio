@@ -347,6 +347,8 @@ assert_count_exact(css, "\n  height: 520px !important;", 0L, "no hardcoded impor
 assert_count_exact(css, "\n  min-height: 520px !important;", 0L, "no hardcoded important standard panel min-height")
 assert_count_exact(css, "\n  max-height: 520px !important;", 0L, "no hardcoded important standard panel max-height")
 assert_count_exact(css, "grid-auto-rows: 520px !important;", 0L, "no hardcoded important standard panel grid row height")
+assert_contains(css, ".variable-transform-grid {\n  display: grid;\n  grid-template-columns: var(--se-standard-panel-width) minmax(0, calc(var(--se-analysis-workspace-width) - var(--se-standard-panel-width) - var(--se-standard-gap)));", "Variable transform grid derives columns from shared variables")
+assert_count_exact(css, "grid-template-columns: 326px minmax(0, 796px);", 0L, "no hardcoded variable-transform grid columns")
 assert_count_exact(css, "\n  width: 1140px;", 0L, "no hardcoded analysis workspace width")
 assert_count_exact(css, "\n  min-width: 1140px;", 0L, "no hardcoded analysis workspace min-width")
 assert_count_exact(css, "\n  max-width: 1140px;", 0L, "no hardcoded analysis workspace max-width")

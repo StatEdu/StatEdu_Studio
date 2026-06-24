@@ -948,7 +948,7 @@ body {
 
 .variable-transform-grid {
   display: grid;
-  grid-template-columns: 326px minmax(0, 796px);
+  grid-template-columns: var(--se-standard-panel-width) minmax(0, calc(var(--se-analysis-workspace-width) - var(--se-standard-panel-width) - var(--se-standard-gap)));
   gap: 18px;
   align-items: stretch;
   width: var(--se-analysis-workspace-width);
