@@ -19,6 +19,7 @@
 - Hardened release hygiene checks for local-only files, generated artifacts, version metadata, and release documentation.
 - Restored the Korean product plan document with current 1.0 stabilization priorities.
 - Updated current Korean user and method documentation references to 0.9.42 and added validation against stale current-version references.
+- Marked the 1.0 distribution, license, and update plan as reviewed for the 0.9.42 stabilization phase.
 
 ## v0.9.41 - 2026-06-20
 

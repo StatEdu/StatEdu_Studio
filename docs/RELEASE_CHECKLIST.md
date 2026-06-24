@@ -1,6 +1,6 @@
 # StatEdu Studio Release Checklist
 
-Use this checklist before creating a public beta installer.
+Use this checklist before creating a public beta installer, 1.0 release candidate, or public 1.0 installer.
 
 ## Source and Version
 

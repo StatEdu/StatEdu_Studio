@@ -82,4 +82,25 @@ if (length(missing_terms) > 0) {
   stop(sprintf("PRODUCT_PLAN_KO.md missing expected term(s): %s", paste(missing_terms, collapse = ", ")), call. = FALSE)
 }
 
+release_plan <- paste(readLines("docs/RELEASE_1_0_DISTRIBUTION_LICENSE_PLAN_KO.md", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+required_release_plan_terms <- c(
+  "statedu-release-plan-reviewed-0.9.42",
+  "distribution",
+  "license",
+  "update",
+  "Free",
+  "Personal Pro",
+  "Latent Add-in"
+)
+missing_release_terms <- required_release_plan_terms[!vapply(required_release_plan_terms, grepl, logical(1), release_plan, fixed = TRUE)]
+if (length(missing_release_terms) > 0) {
+  stop(
+    sprintf(
+      "RELEASE_1_0_DISTRIBUTION_LICENSE_PLAN_KO.md missing expected term(s): %s",
+      paste(missing_release_terms, collapse = ", ")
+    ),
+    call. = FALSE
+  )
+}
+
 cat(sprintf("Documentation encoding validation passed: %d tracked documentation files\n", length(doc_files)))
