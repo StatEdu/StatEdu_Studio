@@ -41,16 +41,16 @@ if (-not $RscriptPath) {
 
 $stdoutLog = Join-Path $env:TEMP "statedu_shiny_smoke.out.log"
 $stderrLog = Join-Path $env:TEMP "statedu_shiny_smoke.err.log"
+$runScript = Join-Path $env:TEMP ("statedu_shiny_smoke_" + [guid]::NewGuid().ToString() + ".R")
 foreach ($path in @($stdoutLog, $stderrLog)) {
   if (Test-Path -LiteralPath $path) {
     Remove-Item -LiteralPath $path -Force
   }
 }
 
-$arguments = @(
-  "-e",
-  "shiny::runApp('.', host='127.0.0.1', port=$Port, launch.browser=FALSE)"
-)
+$runScriptText = "shiny::runApp('.', host='127.0.0.1', port=$Port, launch.browser=FALSE)`n"
+[System.IO.File]::WriteAllText($runScript, $runScriptText, [System.Text.UTF8Encoding]::new($false))
+$arguments = @($runScript)
 
 $process = Start-Process `
   -FilePath $RscriptPath `
@@ -94,5 +94,19 @@ try {
 } finally {
   if ($process -and -not $process.HasExited) {
     Stop-Process -Id $process.Id -Force
+    Wait-Process -Id $process.Id -Timeout 5 -ErrorAction SilentlyContinue
+  }
+  if (Test-Path -LiteralPath $runScript) {
+    for ($i = 0; $i -lt 10; $i++) {
+      try {
+        Remove-Item -LiteralPath $runScript -Force
+        break
+      } catch {
+        if ($i -eq 9) {
+          throw
+        }
+        Start-Sleep -Milliseconds 250
+      }
+    }
   }
 }

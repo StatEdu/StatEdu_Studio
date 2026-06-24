@@ -12,7 +12,8 @@ The local stabilization checks are passing for the current branch.
 - `scripts/smoke_shiny_app.ps1`: passed
 - `scripts/smoke_electron_release.ps1 -SkipUnpackedChecks`: passed
 - `scripts/release_preflight.ps1`: passed
-- `scripts/smoke_electron_release.ps1` without `-SkipUnpackedChecks`: blocked by stale local Electron output; `dist/electron/win-unpacked` is still packaged as 0.9.40 while source `VERSION` is 0.9.42.
+- `scripts/smoke_electron_release.ps1` without `-SkipUnpackedChecks`: passed against the rebuilt 0.9.42 Electron output.
+- `scripts/release_preflight.ps1 -FullElectronSmoke`: passed
 - Git working tree: clean after validation
 
 ## Confirmed Local Release Hygiene
@@ -20,15 +21,14 @@ The local stabilization checks are passing for the current branch.
 - Version metadata is synchronized across `VERSION`, `README.md`, `CITATION.cff`, and Electron package metadata.
 - Tracked generated artifacts, local settings, `.Rhistory`, `.RData`, logs, temporary files, and Electron staging directories are blocked by release hygiene validation.
 - Shiny startup, Electron security settings, settings dialogs, UI layout contracts, data IO, data editor workflows, and core analysis outputs are covered by automated validation.
-- Full Electron smoke now checks that bundled app metadata and installer artifact names match the current `VERSION`.
+- Full Electron smoke checks that bundled app metadata and installer artifact names match the current `VERSION`.
+- `dist/electron` has been rebuilt for 0.9.42 and contains only `StatEdu_Studio_Beta_Setup_0.9.42.exe`, its `.blockmap`, and `win-unpacked`.
 - The 1.0 feature-freeze rule is documented: no new analysis features before 1.0 unless required for correctness, data safety, packaging, or validation coverage.
 
 ## Items Still Required Before Public 1.0
 
 These are not fully resolved by local validation and must be checked before publishing a public 1.0 installer.
 
-- Build the Electron package and run `scripts/smoke_electron_release.ps1` without `-SkipUnpackedChecks`.
-- After packaging, run `scripts/release_preflight.ps1 -FullElectronSmoke`.
 - Complete `docs/RELEASE_MANUAL_QA.md` for visual consistency, file dialogs, packaged runtime behavior, and export handoffs.
 - Keep the completed manual QA record with the release notes and validation artifacts.
 - Launch `dist/electron/win-unpacked/StatEdu Studio Beta.exe` and manually confirm app startup, About > Open Source Licenses, import, analysis, export, and close behavior.
