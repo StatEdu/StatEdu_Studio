@@ -68,6 +68,8 @@ readme_citation <- extract_match(readme, "\\(Version ([0-9]+\\.[0-9]+\\.[0-9]+)\
 assert_equal(readme_citation, version, "README citation version")
 assert_contains(readme, "scripts\\validate_stabilization.ps1", "README core stabilization validation command")
 assert_contains(readme, "scripts\\validate_stabilization.ps1 -Full", "README full stabilization validation command")
+assert_contains(readme, "scripts\\smoke_shiny_app.ps1", "README Shiny smoke command")
+assert_contains(readme, "scripts\\smoke_electron_release.ps1 -SkipUnpackedChecks", "README Electron smoke command")
 
 citation <- read_text("CITATION.cff")
 citation_version <- extract_match(citation, '(?m)^version: "([^"]+)"', "CITATION.cff version")
