@@ -30,8 +30,8 @@ These are not fully resolved by local validation and must be checked before publ
 - Complete `docs/RELEASE_MANUAL_QA.md` for visual consistency, file dialogs, packaged runtime behavior, and export handoffs.
 - Keep the completed manual QA record with the release notes and validation artifacts.
 - Launch `dist/electron/win-unpacked/StatEdu Studio Beta.exe` and manually confirm app startup, About > Open Source Licenses, import, analysis, export, and close behavior.
-- Confirm `studio.statedu.com` is live from a normal browser/network path.
-- Register and verify DOI `10.22934/statedu.studio`; it currently returns HTTP 404 from `doi.org`.
+- Confirm `studio.statedu.com` is live from a normal browser/network path; the 2026-06-24 local network check could not establish the TLS connection.
+- Register and verify DOI `10.22934/statedu.studio`; it currently returns HTTP 404 from `doi.org` as of the 2026-06-24 local network check.
 - Confirm the DOI landing URL resolves to `https://studio.statedu.com`.
 - README, `CITATION.cff`, and About metadata already contain the intended DOI, so verify DOI resolution before any public citation announcement.
 - Replace 0.9.x beta packaging names with final 1.0 release names across Electron display name, package metadata, installer artifact, shortcut name, executable resource strings, and smoke-test expectations, or record an explicit decision to keep beta branding.
