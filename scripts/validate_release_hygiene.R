@@ -32,13 +32,24 @@ has_blocked_prefix <- function(path) {
   any(path == blocked_prefixes | startsWith(path, paste0(blocked_prefixes, "/")))
 }
 
+blocked_patterns <- c(
+  "(^|/)\\.Rhistory$",
+  "(^|/)\\.RData$",
+  "(^|/)\\.Ruserdata$",
+  "(^|/)[^/]+\\.(log|tmp|Rout|out)$",
+  "(^|/)EFS_results_[^/]*\\.html$",
+  "(^|/)[^/]*_results_[0-9]{8}_[0-9]{6}\\.html$",
+  "^settings/[^/]+\\.local\\.json$"
+)
+
+has_blocked_pattern <- function(path) {
+  any(vapply(blocked_patterns, function(pattern) {
+    grepl(pattern, path, perl = TRUE)
+  }, logical(1)))
+}
+
 blocked <- tracked[vapply(tracked, function(path) {
-  has_blocked_prefix(path) ||
-    grepl("(^|/)\\.Rhistory$", path, perl = TRUE) ||
-    grepl("(^|/)\\.RData$", path, perl = TRUE) ||
-    grepl("(^|/)\\.Ruserdata$", path, perl = TRUE) ||
-    grepl("(^|/)[^/]+\\.(log|tmp)$", path, perl = TRUE) ||
-    grepl("^settings/[^/]+\\.local\\.json$", path, perl = TRUE)
+  has_blocked_prefix(path) || has_blocked_pattern(path)
 }, logical(1))]
 
 if (length(blocked) > 0) {
