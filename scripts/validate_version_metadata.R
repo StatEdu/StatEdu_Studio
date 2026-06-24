@@ -51,6 +51,9 @@ if (!grepl("^\\d+\\.\\d+\\.\\d+$", version)) {
   stop(sprintf("VERSION must use semantic version format, found: %s", version), call. = FALSE)
 }
 
+latent_version <- read_first_line("modules/latent_mplus/app/VERSION")
+assert_equal(latent_version, version, "modules/latent_mplus/app/VERSION")
+
 read_json <- function(path) {
   if (!requireNamespace("jsonlite", quietly = TRUE)) {
     stop("jsonlite is required for version metadata validation.", call. = FALSE)
