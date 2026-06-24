@@ -187,6 +187,7 @@ Assert-JsonVersionPin
 
 Assert-Path (Join-Path $RepoRoot "docs\RELEASE_CHECKLIST.md") "release checklist"
 Assert-Path (Join-Path $RepoRoot "scripts\validate_stabilization.ps1") "stabilization validation runner"
+Assert-Path (Join-Path $RepoRoot "scripts\smoke_shiny_app.ps1") "Shiny app smoke test"
 Assert-Path (Join-Path $RepoRoot "scripts\validate_version_metadata.R") "version metadata validation"
 Assert-Path (Join-Path $RepoRoot "scripts\validate_brand_metadata.R") "brand metadata validation"
 Assert-Path (Join-Path $RepoRoot "scripts\validate_settings_dialogs.R") "settings dialog validation"
@@ -197,6 +198,7 @@ Assert-Path (Join-Path $RepoRoot "SOURCE-OFFER.txt") "source offer"
 
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "EASYFLOW_TOKEN" "Electron token handoff"
 Assert-FileContains (Join-Path $RepoRoot "docs\RELEASE_CHECKLIST.md") "validate_stabilization\.ps1 -Full" "full stabilization validation in release checklist"
+Assert-FileContains (Join-Path $RepoRoot "docs\RELEASE_CHECKLIST.md") "smoke_shiny_app\.ps1" "Shiny app smoke test in release checklist"
 Assert-FileNotContains (Join-Path $RepoRoot "R\app_server.R") 'session\$close\(\)' "no Shiny startup session close"
 Assert-FileContains (Join-Path $RepoRoot "R\app_misc_ui.R") "Source & License" "Source and License About menu"
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "contextIsolation:\s*true" "contextIsolation enabled"
