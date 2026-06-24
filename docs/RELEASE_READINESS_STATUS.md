@@ -11,7 +11,7 @@ The local stabilization checks are passing for the current branch.
 - `scripts/validate_stabilization.ps1 -Full`: passed
 - `scripts/smoke_shiny_app.ps1`: passed
 - `scripts/smoke_electron_release.ps1 -SkipUnpackedChecks`: passed
-- `scripts/release_preflight.ps1`: available for combined release-candidate checks
+- `scripts/release_preflight.ps1`: passed
 - Git working tree: clean after validation
 
 ## Confirmed Local Release Hygiene
