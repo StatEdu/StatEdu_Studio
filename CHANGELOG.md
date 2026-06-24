@@ -7,7 +7,7 @@
 - Added a Data Editor > Wide to Long workflow for reshaping repeated-measure columns into long-format data before longitudinal / panel analysis.
 - Added validation coverage for wide-to-long reshaping and expanded data-editor recoding checks.
 - Added Shiny startup and Electron release smoke checks for release-candidate validation.
-- Added documentation UTF-8 validation for release-candidate documentation checks.
+- Added tracked documentation UTF-8 validation for release-candidate documentation checks.
 
 ### Changed
 

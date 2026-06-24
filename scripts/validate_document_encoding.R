@@ -30,9 +30,11 @@ assert_valid_utf8 <- function(path) {
   TRUE
 }
 
-doc_files <- list.files("docs", pattern = "\\.md$", recursive = TRUE, full.names = TRUE)
+tracked_document_patterns <- c("\\.md$", "\\.txt$", "\\.cff$")
+tracked_files <- system2("git", c("ls-files"), stdout = TRUE)
+doc_files <- tracked_files[grepl(paste(tracked_document_patterns, collapse = "|"), tracked_files, ignore.case = TRUE)]
 if (length(doc_files) == 0) {
-  stop("No documentation markdown files found.", call. = FALSE)
+  stop("No tracked documentation files found.", call. = FALSE)
 }
 
 invisible(vapply(doc_files, assert_valid_utf8, logical(1)))
@@ -50,4 +52,4 @@ if (length(missing_terms) > 0) {
   stop(sprintf("PRODUCT_PLAN_KO.md missing expected term(s): %s", paste(missing_terms, collapse = ", ")), call. = FALSE)
 }
 
-cat(sprintf("Documentation encoding validation passed: %d markdown files\n", length(doc_files)))
+cat(sprintf("Documentation encoding validation passed: %d tracked documentation files\n", length(doc_files)))
