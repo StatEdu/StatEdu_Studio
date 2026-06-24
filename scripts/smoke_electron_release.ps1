@@ -171,16 +171,33 @@ function Assert-NoTrackedGeneratedArtifacts {
     "dist",
     "packaging/electron/app",
     "packaging/electron/runtime",
-    "packaging/electron/node_modules"
+    "packaging/electron/node_modules",
+    "output",
+    "scratch",
+    "modules/latent_mplus/app/output",
+    "modules/latent_mplus/app/outputs",
+    "modules/latent_mplus/app/mplus_tmp",
+    "modules/latent_mplus/app/settings"
   )
   $blocked = @($tracked | Where-Object {
     $path = $_
-    $blockedPrefixes | Where-Object { $path -eq $_ -or $path.StartsWith("$($_)/") }
+    $blockedByPrefix = $false
+    foreach ($prefix in $blockedPrefixes) {
+      if ($path -eq $prefix -or $path.StartsWith("$prefix/")) {
+        $blockedByPrefix = $true
+      }
+    }
+    $blockedByPrefix -or
+      $path -match '(^|/)\.Rhistory$' -or
+      $path -match '(^|/)\.RData$' -or
+      $path -match '(^|/)\.Ruserdata$' -or
+      $path -match '(^|/)[^/]+\.(log|tmp)$' -or
+      $path -match '^settings/[^/]+\.local\.json$'
   })
   if ($blocked.Count -gt 0) {
-    throw "Generated artifact path(s) are tracked by git: $($blocked -join ', ')"
+    throw "Generated or local-only artifact path(s) are tracked by git: $($blocked -join ', ')"
   }
-  Write-Host "[ok] generated Electron staging and build artifacts are not tracked"
+  Write-Host "[ok] generated and local-only artifacts are not tracked"
 }
 
 Assert-JsonVersionPin
