@@ -102,7 +102,44 @@ function Copy-R-Package($packageName, $libraryPaths, $runtimeLibrary) {
   return $false
 }
 
+function Test-PathWithin {
+  param(
+    [string]$Path,
+    [string]$Root
+  )
+
+  $fullPath = [System.IO.Path]::GetFullPath($Path)
+  $fullRoot = [System.IO.Path]::GetFullPath($Root).TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+  return $fullPath.StartsWith($fullRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+function Remove-StaleElectronDistArtifacts {
+  if (-not (Test-Path -LiteralPath $distDir)) {
+    return
+  }
+
+  $safeDistDir = [System.IO.Path]::GetFullPath($distDir)
+  $currentSetupName = "StatEdu_Studio_Beta_Setup_$version.exe"
+  $currentBlockmapName = "$currentSetupName.blockmap"
+  $artifacts = @(Get-ChildItem -LiteralPath $distDir -File -Force | Where-Object {
+    (
+      $_.Name -match "^StatEdu_Studio_Beta_Setup_.*\.exe(\.blockmap)?$" -and
+      $_.Name -notin @($currentSetupName, $currentBlockmapName)
+    ) -or
+    $_.Name -match "^EasyFlow_Statistics_Beta_.*" -or
+    $_.Name -in @("builder-debug.yml", ".Rhistory")
+  })
+
+  foreach ($artifact in $artifacts) {
+    if (-not (Test-PathWithin $artifact.FullName $safeDistDir)) {
+      throw "Refusing to remove artifact outside dist directory: $($artifact.FullName)"
+    }
+    Remove-Item -LiteralPath $artifact.FullName -Force
+  }
+}
+
 Write-Host "Preparing StatEdu Studio $version Electron beta installer..."
+Remove-StaleElectronDistArtifacts
 
 if (Test-Path -LiteralPath $appStage) {
   Remove-Item -LiteralPath $appStage -Recurse -Force
@@ -222,6 +259,7 @@ foreach ($devArtifact in @(".Rhistory", "builder-debug.yml")) {
     Remove-Item -LiteralPath $devArtifactPath -Force
   }
 }
+Remove-StaleElectronDistArtifacts
 
 Write-Host "Electron installer output:"
 Get-ChildItem -LiteralPath $distDir -Filter "*.exe" | Sort-Object LastWriteTime -Descending | Select-Object FullName, Length, LastWriteTime
