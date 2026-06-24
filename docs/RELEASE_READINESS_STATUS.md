@@ -14,6 +14,7 @@ The local stabilization checks are passing for the current branch.
 - `scripts/release_preflight.ps1`: passed
 - `scripts/smoke_electron_release.ps1` without `-SkipUnpackedChecks`: passed against the rebuilt 0.9.42 Electron output.
 - `scripts/release_preflight.ps1 -FullElectronSmoke`: passed
+- `scripts/smoke_electron_app_lifecycle.ps1`: passed against `dist/electron/win-unpacked/StatEdu Studio Beta.exe`
 - Git working tree: clean after validation
 
 ## Confirmed Local Release Hygiene
@@ -22,6 +23,7 @@ The local stabilization checks are passing for the current branch.
 - Tracked generated artifacts, local settings, `.Rhistory`, `.RData`, logs, temporary files, and Electron staging directories are blocked by release hygiene validation.
 - Shiny startup, Electron security settings, settings dialogs, UI layout contracts, data IO, data editor workflows, and core analysis outputs are covered by automated validation.
 - Full Electron smoke checks that bundled app metadata and installer artifact names match the current `VERSION`.
+- Packaged Electron lifecycle smoke confirms bundled Shiny loads and stops when the Electron window closes.
 - `dist/electron` has been rebuilt for 0.9.42 and contains only `StatEdu_Studio_Beta_Setup_0.9.42.exe`, its `.blockmap`, and `win-unpacked`.
 - The 1.0 feature-freeze rule is documented: no new analysis features before 1.0 unless required for correctness, data safety, packaging, or validation coverage.
 
