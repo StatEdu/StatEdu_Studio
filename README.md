@@ -95,6 +95,12 @@ powershell -ExecutionPolicy Bypass -File scripts\smoke_shiny_app.ps1
 powershell -ExecutionPolicy Bypass -File scripts\smoke_electron_release.ps1 -SkipUnpackedChecks
 ```
 
+After Electron packaging is complete, run the full packaged-output preflight:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\release_preflight.ps1 -FullElectronSmoke
+```
+
 Use individual `scripts/validate_*.R` files only when iterating on a focused
 module before running the stabilization suite.
 

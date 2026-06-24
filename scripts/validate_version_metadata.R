@@ -69,6 +69,7 @@ assert_equal(readme_citation, version, "README citation version")
 assert_contains(readme, "scripts\\validate_stabilization.ps1", "README core stabilization validation command")
 assert_contains(readme, "scripts\\validate_stabilization.ps1 -Full", "README full stabilization validation command")
 assert_contains(readme, "scripts\\release_preflight.ps1", "README release preflight command")
+assert_contains(readme, "scripts\\release_preflight.ps1 -FullElectronSmoke", "README full Electron preflight command")
 assert_contains(readme, "scripts\\smoke_shiny_app.ps1", "README Shiny smoke command")
 assert_contains(readme, "scripts\\smoke_electron_release.ps1 -SkipUnpackedChecks", "README Electron smoke command")
 

@@ -31,6 +31,7 @@
 - Tightened release metadata validation for unresolved public 1.0 blockers.
 - Added a manual QA record template and validation for release-candidate QA evidence.
 - Removed tracked generated comparison artifacts from `outputs/` and blocked root output artifacts in release hygiene validation.
+- Documented the full packaged-output Electron preflight command in the README and version metadata validation.
 
 ## v0.9.41 - 2026-06-20
 
