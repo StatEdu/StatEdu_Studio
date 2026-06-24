@@ -324,6 +324,7 @@ assert_contains(css, ".longitudinal-action-row {\n  grid-template-columns: 330px
 assert_contains(css, ".longitudinal-setup-grid {\n  display: grid;\n  grid-template-areas: \"available panel-move panel model-move model options\";", "Longitudinal four-block setup exception")
 assert_contains(css, ".ancova-action-row {\n  display: grid !important;\n  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;\n  gap: var(--se-standard-gap) !important;", "ANCOVA action row uses shared standard variables")
 assert_contains(css, "width: var(--se-standard-setup-width) !important;\n  min-width: var(--se-standard-setup-width) !important;\n  align-items: start !important;\n}\n\n.ancova-action-row > #run_ancova", "ANCOVA action row uses shared standard width")
+assert_count_exact(css, "1138px", 0L, "no legacy hardcoded analysis workspace width")
 assert_count_exact(css, "grid-template-columns: 326px 50px 326px 20px 310px;", 1L, "calculator-only hardcoded standard columns")
 assert_count_exact(css, "\n  width: 1176px;", 1L, "calculator-only hardcoded standard setup width")
 assert_count_exact(css, "\n  min-width: 1176px;", 1L, "calculator-only hardcoded standard setup min-width")

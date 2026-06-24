@@ -1845,8 +1845,8 @@ input.variable-select:disabled {
   align-items: stretch;
   grid-auto-rows: 568px;
   margin-top: 18px;
-  width: 1138px;
-  min-width: 1138px;
+  width: var(--se-analysis-workspace-width);
+  min-width: var(--se-analysis-workspace-width);
   padding: 18px;
   background: #f4f8fb;
   border: 1px solid #e1eaf2;
@@ -2581,8 +2581,8 @@ input.variable-select:disabled {
   grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) var(--se-standard-options-width, 310px);
   gap: 18px;
   align-items: center;
-  width: 1138px;
-  min-width: 1138px;
+  width: var(--se-analysis-workspace-width);
+  min-width: var(--se-analysis-workspace-width);
 }
 
 .frequencies-action-row > .btn {
@@ -2612,8 +2612,8 @@ input.variable-select:disabled {
   align-items: stretch;
   grid-auto-rows: var(--se-standard-panel-height, 520px);
   margin-top: 18px;
-  width: 1138px;
-  min-width: 1138px;
+  width: var(--se-analysis-workspace-width);
+  min-width: var(--se-analysis-workspace-width);
   padding: 18px;
   background: #f4f8fb;
   border: 1px solid #e1eaf2;
@@ -3527,8 +3527,8 @@ input.variable-select:disabled {
   grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) var(--se-standard-options-width, 310px);
   gap: 18px;
   align-items: center;
-  width: 1138px;
-  min-width: 1138px;
+  width: var(--se-analysis-workspace-width);
+  min-width: var(--se-analysis-workspace-width);
 }
 
 .ttest-anova-action-row > .btn {
@@ -3552,8 +3552,8 @@ input.variable-select:disabled {
   align-items: stretch;
   grid-auto-rows: var(--se-standard-panel-height, 520px);
   margin-top: 18px;
-  width: 1138px;
-  min-width: 1138px;
+  width: var(--se-analysis-workspace-width);
+  min-width: var(--se-analysis-workspace-width);
   padding: 18px;
   background: #f4f8fb;
   border: 1px solid #e1eaf2;
@@ -3592,8 +3592,8 @@ input.variable-select:disabled {
   grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) var(--se-standard-options-width, 310px);
   gap: 18px;
   align-items: center;
-  width: 1138px;
-  min-width: 1138px;
+  width: var(--se-analysis-workspace-width);
+  min-width: var(--se-analysis-workspace-width);
 }
 
 .correlation-action-row > .btn {
@@ -3611,8 +3611,8 @@ input.variable-select:disabled {
   gap: 18px;
   align-items: start;
   margin-top: 18px;
-  width: 1138px;
-  min-width: 1138px;
+  width: var(--se-analysis-workspace-width);
+  min-width: var(--se-analysis-workspace-width);
   padding: 18px;
   background: #f4f8fb;
   border: 1px solid #e1eaf2;
