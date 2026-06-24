@@ -25,7 +25,9 @@ re-run after the fix.
 4. Confirm the Git working tree is clean.
 5. Confirm `docs/RELEASE_READINESS_STATUS.md` is current.
 6. Confirm `docs/RELEASE_1_0_DECISION_LOG.md` records any public 1.0 deferrals.
-7. Keep the completed QA record with the release notes and validation artifacts.
+7. For a public 1.0 release candidate, complete
+   `docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md` before packaging.
+8. Keep the completed QA record with the release notes and validation artifacts.
 
 ## App Startup
 
@@ -70,7 +72,9 @@ re-run after the fix.
 
 ## Packaged Electron Workflow
 
-1. Launch `dist/electron/win-unpacked/StatEdu Studio Beta.exe`.
+1. Launch `dist/electron/win-unpacked/StatEdu Studio Beta.exe` for 0.9.x beta
+   QA, or `dist/electron/win-unpacked/StatEdu Studio.exe` for public 1.0 QA
+   after completing the version-bump checklist.
 2. Confirm the app opens through `127.0.0.1`.
 3. Run `scripts/smoke_electron_app_lifecycle.ps1` to confirm packaged app startup and bundled R/Shiny shutdown.
 4. Confirm closing the Electron window stops the bundled R/Shiny process.
