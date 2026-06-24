@@ -49,6 +49,7 @@ Use this checklist before creating a public beta installer, 1.0 release candidat
 - Run `npm ci` from `packaging/electron` before packaging.
 - Confirm `dist/electron` contains only the current `StatEdu_Studio_Beta_Setup_*.exe`, its `.blockmap`, and `win-unpacked`; remove legacy EasyFlow installers and debug artifacts before publishing.
 - For 0.9.x beta builds, `StatEdu Studio Beta` and `StatEdu_Studio_Beta_Setup_*` are expected; do not carry those beta names into a public 1.0 installer unless the release is intentionally still branded as beta and that decision is recorded in `docs/RELEASE_1_0_DECISION_LOG.md`.
+- Run `scripts\get_release_checksums.ps1` and copy the installer SHA256 into `docs/RELEASE_1_0_PACKAGED_VALIDATION_NOTES.md`.
 
 ## Open Source Notices
 

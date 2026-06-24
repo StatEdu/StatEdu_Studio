@@ -23,6 +23,7 @@ Build machine:
 | `scripts\validate_stabilization.ps1 -RscriptPath 'D:\Program\R\R-4.5.3\bin\x64\Rscript.exe'` |  |  |
 | `scripts\release_preflight.ps1` |  |  |
 | Electron package build command |  |  |
+| `scripts\get_release_checksums.ps1` |  |  |
 | `scripts\smoke_electron_release.ps1` |  |  |
 | `scripts\smoke_electron_app_lifecycle.ps1` |  |  |
 | `scripts\release_preflight.ps1 -FullElectronSmoke` |  |  |

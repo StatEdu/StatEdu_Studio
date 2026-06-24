@@ -122,6 +122,7 @@ assert_contains(release_checklist, "resolves to `https://studio.statedu.com`", "
 assert_contains(release_checklist, "replace 0.9.x beta packaging names with final release names", "release checklist beta package naming gate")
 assert_contains(release_checklist, "do not carry those beta names into a public 1.0 installer", "release checklist public beta naming warning")
 assert_contains(release_checklist, "docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md", "release checklist 1.0 version bump checklist")
+assert_contains(release_checklist, "scripts\\get_release_checksums.ps1", "release checklist checksum helper")
 
 release_readiness <- read_text("docs/RELEASE_READINESS_STATUS.md")
 assert_contains(release_readiness, paste0("Current version: ", version), "release readiness current version")
@@ -199,6 +200,7 @@ packaged_validation_notes <- read_text("docs/RELEASE_1_0_PACKAGED_VALIDATION_NOT
 assert_contains(packaged_validation_notes, "StatEdu Studio 1.0 Packaged Validation Notes", "packaged validation notes title")
 assert_contains(packaged_validation_notes, "Version: 1.0.0", "packaged validation notes version")
 assert_contains(packaged_validation_notes, "Installer SHA256:", "packaged validation notes checksum")
+assert_contains(packaged_validation_notes, "scripts\\get_release_checksums.ps1", "packaged validation notes checksum helper")
 assert_contains(packaged_validation_notes, "D:\\Program\\R\\R-4.5.3", "packaged validation notes R path")
 assert_contains(packaged_validation_notes, "scripts\\release_preflight.ps1 -FullElectronSmoke", "packaged validation notes full Electron preflight")
 assert_contains(packaged_validation_notes, "StatEdu Studio.exe", "packaged validation notes final executable")
@@ -206,6 +208,12 @@ assert_contains(packaged_validation_notes, "R-4.5.3", "packaged validation notes
 assert_contains(packaged_validation_notes, "THIRD-PARTY-NOTICES.txt", "packaged validation notes OSS notices")
 assert_contains(packaged_validation_notes, "DOI `10.22934/statedu.studio` resolves to `https://studio.statedu.com`", "packaged validation notes DOI gate")
 assert_contains(packaged_validation_notes, "Packaged validation status: Complete / Incomplete", "packaged validation notes final status")
+
+checksum_script <- read_text("scripts/get_release_checksums.ps1")
+assert_contains(checksum_script, "Get-FileHash", "checksum helper Get-FileHash")
+assert_contains(checksum_script, "StatEdu_Studio_Setup_$Version.exe", "checksum helper final installer pattern")
+assert_contains(checksum_script, "StatEdu_Studio_Beta_Setup_$Version.exe", "checksum helper beta installer pattern")
+assert_contains(checksum_script, "SHA256", "checksum helper SHA256 algorithm")
 
 release_decision_log <- read_text("docs/RELEASE_1_0_DECISION_LOG.md")
 assert_contains(release_decision_log, paste0("Current version: ", version), "release decision log current version")
