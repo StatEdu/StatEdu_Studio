@@ -38,6 +38,12 @@ assert_contains <- function(text, pattern, label) {
   }
 }
 
+assert_not_contains <- function(text, pattern, label) {
+  if (grepl(pattern, text, fixed = TRUE)) {
+    stop(sprintf("%s should not be present", label), call. = FALSE)
+  }
+}
+
 message("Checking version metadata...")
 
 version <- read_first_line("VERSION")
@@ -201,6 +207,11 @@ assert_contains(latent_app, "app_config <- read_app_config()", "latent app confi
 assert_contains(latent_app, "app_version <- app_config$version", "latent app version assignment")
 assert_contains(latent_app, "app_ui(app_version)", "latent UI version propagation")
 assert_contains(latent_app, "create_app_server(app_version)", "latent server version propagation")
+
+latent_app_server <- read_text("modules/latent_mplus/app/R/app_server.R")
+assert_not_contains(latent_app_server, "builder placeholder", "latent user-facing placeholder builder message")
+assert_contains(latent_app_server, "Dictionary builder is not enabled in this release", "latent dictionary unavailable message")
+assert_contains(latent_app_server, "CFG builder is not enabled in this release", "latent CFG unavailable message")
 
 latent_bootstrap <- read_text("modules/latent_mplus/app/R/app_bootstrap.R")
 assert_contains(latent_bootstrap, 'read_app_config <- function(version_file = "VERSION")', "latent read_app_config VERSION default")

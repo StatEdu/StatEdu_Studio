@@ -41,6 +41,7 @@
 - Aligned Latent Mplus settings dialogs with the `.studio`-only settings file contract.
 - Updated the 1.0 distribution/license/update plan so historical beta-version notes do not read as the current release baseline.
 - Added a manual QA gate that public release notes and user-visible text must not claim unimplemented gated editions, license activation, in-app updates, or public installer infrastructure.
+- Replaced Latent Mplus builder placeholder notifications with explicit not-enabled release messages and validation.
 
 ## v0.9.41 - 2026-06-20
 
