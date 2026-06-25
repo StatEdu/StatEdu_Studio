@@ -36,7 +36,7 @@ These are not fully resolved by local validation and must be checked before publ
 - Build the Electron package again for the final release candidate and run `scripts/release_preflight.ps1 -FullElectronSmoke`.
 - Complete `docs/RELEASE_MANUAL_QA.md` for visual consistency, file dialogs, packaged runtime behavior, and export handoffs.
 - Keep the completed manual QA record with the release notes and validation artifacts.
-- Launch `dist/electron/win-unpacked/StatEdu Studio Beta.exe` and manually confirm app startup, About > Open Source Licenses, import, analysis, export, and close behavior.
+- Launch the generated executable in `dist/electron/win-unpacked` after the final 1.0.0 build and manually confirm app startup, About > Open Source Licenses, import, analysis, export, and close behavior.
 - Confirm `studio.statedu.com` is live from a normal browser/network path; the 2026-06-24 local network check could not establish the TLS connection.
 - Register and verify DOI `10.22934/statedu.studio`; it currently returns HTTP 404 from `doi.org` as of the 2026-06-24 local network check.
 - Confirm the DOI landing URL resolves to `https://studio.statedu.com`.
