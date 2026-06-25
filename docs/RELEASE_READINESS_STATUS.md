@@ -26,6 +26,9 @@ The local stabilization checks are passing for the current branch.
 - Full Electron smoke checks that bundled app metadata and installer artifact names match the current `VERSION`.
 - Packaged Electron lifecycle smoke confirms bundled Shiny loads and stops when the Electron window closes.
 - The current publishable `dist/electron` output has been rebuilt for 0.9.42 with bundled `R-4.5.3`: `StatEdu_Studio_Beta_Setup_0.9.42.exe`, its `.blockmap`, and `win-unpacked`.
+- The public 1.0 Electron build entry point is `scripts/build_electron_release.ps1`,
+  which delegates to the compatibility build implementation and selects final
+  package names from `VERSION`.
 - The 1.0 feature-freeze rule is documented: no new analysis features before 1.0 unless required for correctness, data safety, packaging, or validation coverage.
 - The 1.0 version-bump checklist is tracked in `docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md` and enforced by `scripts/validate_version_metadata.R`.
 

@@ -28,6 +28,17 @@ This file records release decisions that must be made before changing the projec
 ## Decisions For 1.0
 
 ```text
+Decision: Add final release Electron build wrapper
+Date: 2026-06-25
+Owner: StatEdu Studio
+Item: Electron build command naming
+Reason: 1.0 release instructions should not expose a beta-named build command, while keeping the already validated build implementation stable.
+User-visible claim removed or adjusted: Public 1.0 release docs use scripts/build_electron_release.ps1.
+Validation/checklist update: scripts/build_electron_release.ps1 delegates to the compatibility build script, which selects beta or final package names from VERSION.
+Follow-up version: 1.0.0
+```
+
+```text
 Decision: Remove beta packaging names for public 1.0
 Date: 2026-06-25
 Owner: StatEdu Studio

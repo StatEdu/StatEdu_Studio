@@ -121,6 +121,7 @@ assert_contains(release_checklist, "footer button placement", "release checklist
 assert_contains(release_checklist, "resolves to `https://studio.statedu.com`", "release checklist DOI landing URL")
 assert_contains(release_checklist, "confirm the Electron build has switched 0.9.x beta packaging names to final release names", "release checklist beta package naming gate")
 assert_contains(release_checklist, "For public 1.0 builds, `StatEdu Studio` and `StatEdu_Studio_Setup_*` are expected", "release checklist public package naming expectation")
+assert_contains(release_checklist, "scripts\\build_electron_release.ps1", "release checklist final build command")
 assert_contains(release_checklist, "docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md", "release checklist 1.0 version bump checklist")
 assert_contains(release_checklist, "scripts\\get_release_checksums.ps1", "release checklist checksum helper")
 
@@ -222,6 +223,9 @@ assert_contains(checksum_script, "StatEdu_Studio_Setup_$Version.exe", "checksum 
 assert_contains(checksum_script, "StatEdu_Studio_Beta_Setup_$Version.exe", "checksum helper beta installer pattern")
 assert_contains(checksum_script, "SHA256", "checksum helper SHA256 algorithm")
 
+release_build_script <- read_text("scripts/build_electron_release.ps1")
+assert_contains(release_build_script, "build_electron_beta.ps1", "release build wrapper compatibility delegate")
+
 release_decision_log <- read_text("docs/RELEASE_1_0_DECISION_LOG.md")
 assert_contains(release_decision_log, paste0("Current version: ", version), "release decision log current version")
 assert_contains(release_decision_log, "No new analysis features before 1.0", "release decision log feature freeze")
@@ -240,6 +244,7 @@ assert_contains(release_decision_log, "Do not claim in-app updates", "release de
 assert_contains(release_decision_log, "Block public release announcement", "release decision log release note blocker")
 assert_contains(release_decision_log, "Hide deferred public features for 1.0", "release decision log public feature hiding")
 assert_contains(release_decision_log, "STATEDU_PUBLIC_RELEASE=1", "release decision log public release flag")
+assert_contains(release_decision_log, "Add final release Electron build wrapper", "release decision log final build wrapper")
 assert_contains(release_decision_log, "docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md", "release decision log 1.0 version bump checklist")
 
 version_bump_checklist <- read_text("docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md")
@@ -256,6 +261,7 @@ assert_contains(version_bump_checklist, "`scripts/smoke_electron_release.ps1`", 
 assert_contains(version_bump_checklist, "`scripts/smoke_electron_app_lifecycle.ps1`", "1.0 version bump lifecycle smoke")
 assert_contains(version_bump_checklist, "`scripts/validate_brand_metadata.R`", "1.0 version bump brand validation")
 assert_contains(version_bump_checklist, "`scripts/validate_version_metadata.R`", "1.0 version bump version validation")
+assert_contains(version_bump_checklist, "scripts\\build_electron_release.ps1", "1.0 version bump final build command")
 assert_contains(version_bump_checklist, "StatEdu Studio.exe", "1.0 version bump final executable")
 assert_contains(version_bump_checklist, "DOI `10.22934/statedu.studio` resolves", "1.0 version bump DOI gate")
 assert_contains(version_bump_checklist, "Confirm the DOI landing URL is `https://studio.statedu.com`", "1.0 version bump DOI landing URL")

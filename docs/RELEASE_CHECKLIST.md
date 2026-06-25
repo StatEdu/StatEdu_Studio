@@ -43,6 +43,9 @@ Use this checklist before creating a public beta installer, 1.0 release candidat
 - Run `scripts/release_preflight.ps1` before preparing a release candidate; after packaging, run it with `-FullElectronSmoke`.
 - Build from a clean R runtime where possible.
 - For the 1.0 line, confirm the bundled Windows runtime is `R-4.5.3`.
+- For public 1.0 packaging, use `scripts\build_electron_release.ps1`; it
+  delegates to the compatibility build implementation that selects package
+  names from `VERSION`.
 - Confirm the build runs `scripts/prune_r_runtime.R` before license notice generation.
 - Confirm `runtime_prune_report.csv` exists and contains only `keep` rows, unless an intentional exception is documented.
 - Confirm `electron` and `electron-builder` are exact version pins in `packaging/electron/package.json`.

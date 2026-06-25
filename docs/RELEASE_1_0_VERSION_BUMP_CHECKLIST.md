@@ -45,8 +45,8 @@ from beta to final release names when `VERSION` starts with `1.`.
 
 ## Build And Smoke Script Expectations
 
-- Decide whether `scripts/build_electron_beta.ps1` is renamed to a release
-  build script or kept as a compatibility wrapper.
+- Use `scripts/build_electron_release.ps1` for public 1.0 packaging. It
+  delegates to the existing compatibility build implementation.
 - Confirm the Electron build script selected the final release profile for
   `VERSION=1.0.0`.
 - Confirm `scripts/smoke_electron_release.ps1` expects the final setup file
@@ -84,11 +84,8 @@ Run these checks after all version and package-name changes are complete:
 
 ```powershell
 scripts\validate_stabilization.ps1 -RscriptPath 'D:\Program\R\R-4.5.3\bin\x64\Rscript.exe'
-scripts\build_electron_beta.ps1 -RHome 'D:\Program\R\R-4.5.3'
+scripts\build_electron_release.ps1 -RHome 'D:\Program\R\R-4.5.3'
 scripts\smoke_electron_release.ps1
 scripts\smoke_electron_app_lifecycle.ps1
 scripts\release_preflight.ps1 -FullElectronSmoke
 ```
-
-If the build script is renamed for 1.0.0, run the renamed release build command
-in place of `scripts\build_electron_beta.ps1`.

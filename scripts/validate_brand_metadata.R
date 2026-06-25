@@ -101,6 +101,7 @@ assert_equal(
 assert_contains("scripts/build_electron_beta.ps1", "Sync-ElectronPackageMetadata", "Electron package metadata sync")
 assert_contains("scripts/build_electron_beta.ps1", "StatEdu_Studio_Setup", "final 1.0 installer artifact prefix")
 assert_contains("scripts/build_electron_beta.ps1", "com.statedu.studio", "final 1.0 app id")
+assert_contains("scripts/build_electron_release.ps1", "build_electron_beta.ps1", "release build wrapper delegates to compatibility build script")
 
 assert_contains("packaging/electron/main.js", "EASYFLOW_TOKEN", "legacy token compatibility identifier")
 assert_contains("docs/RELEASE_CHECKLIST.md", "Keep backward-compatible internal identifiers", "compatibility policy")
