@@ -28,7 +28,7 @@ Use this checklist before creating a public beta installer, 1.0 release candidat
 
 - Confirm visible product surfaces use `StatEdu Studio`, including README, app header, About, launcher text, installer metadata, default export filenames, report covers, favicon, and logo assets.
 - Confirm no visible app page or release artifact uses `EasyFlow Statistics` as the current product name.
-- For a public 1.0 release, replace 0.9.x beta packaging names with final release names across the Electron app display name, package metadata, installer artifact, shortcut name, executable resource strings, and smoke-test expectations.
+- For a public 1.0 release, confirm the Electron build has switched 0.9.x beta packaging names to final release names across the app display name, package metadata, installer artifact, shortcut name, executable resource strings, and smoke-test expectations.
 - Confirm the DOI `10.22934/statedu.studio` is registered and resolves to `https://studio.statedu.com` before publishing a public release.
 - Confirm `studio.statedu.com` is live and points to the StatEdu Studio product site before publishing a public release.
 - Keep backward-compatible internal identifiers such as `EASYFLOW_*` environment variables, `easyflow_*` JavaScript/R helper names, `easyflow_settings`, `easyflow_result_history`, `.efs-result`, and legacy result-store read paths unless a migration plan and validation coverage exist.
@@ -47,8 +47,8 @@ Use this checklist before creating a public beta installer, 1.0 release candidat
 - Confirm `runtime_prune_report.csv` exists and contains only `keep` rows, unless an intentional exception is documented.
 - Confirm `electron` and `electron-builder` are exact version pins in `packaging/electron/package.json`.
 - Run `npm ci` from `packaging/electron` before packaging.
-- Confirm `dist/electron` contains only the current `StatEdu_Studio_Beta_Setup_*.exe`, its `.blockmap`, and `win-unpacked`; remove legacy EasyFlow installers and debug artifacts before publishing.
-- For 0.9.x beta builds, `StatEdu Studio Beta` and `StatEdu_Studio_Beta_Setup_*` are expected; do not carry those beta names into a public 1.0 installer unless the release is intentionally still branded as beta and that decision is recorded in `docs/RELEASE_1_0_DECISION_LOG.md`.
+- Confirm `dist/electron` contains only the current StatEdu Studio setup `.exe`, its `.blockmap`, and `win-unpacked`; remove legacy EasyFlow installers and debug artifacts before publishing.
+- For 0.9.x beta builds, `StatEdu Studio Beta` and `StatEdu_Studio_Beta_Setup_*` are expected. For public 1.0 builds, `StatEdu Studio` and `StatEdu_Studio_Setup_*` are expected.
 - Run `scripts\get_release_checksums.ps1` and copy the installer SHA256 into `docs/RELEASE_1_0_PACKAGED_VALIDATION_NOTES.md`.
 
 ## Open Source Notices
@@ -79,8 +79,8 @@ Use this checklist before creating a public beta installer, 1.0 release candidat
 - Run `scripts/smoke_shiny_app.ps1` to confirm the Shiny app starts and returns the StatEdu Studio page over `127.0.0.1`.
 - Run `scripts/smoke_electron_release.ps1` after staging or packaging.
 - Run `scripts/release_preflight.ps1 -FullElectronSmoke` after Electron packaging is complete.
-- Run `scripts/smoke_electron_app_lifecycle.ps1` against `dist/electron/win-unpacked/StatEdu Studio Beta.exe`.
-- Launch `dist/electron/win-unpacked/StatEdu Studio Beta.exe`.
+- Run `scripts/smoke_electron_app_lifecycle.ps1` against the generated unpacked executable.
+- Launch the generated unpacked executable from `dist/electron/win-unpacked`.
 - Confirm first launch opens the app and the About > Open Source Licenses page displays notices.
 - Confirm data import works with paths containing spaces and Korean characters.
 - Confirm at least one analysis and one export path work.

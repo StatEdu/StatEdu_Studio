@@ -13,8 +13,33 @@ if (-not $RepoRoot) {
   $RepoRoot = Resolve-Path $RepoRoot
 }
 
+function Get-ProjectVersion {
+  (Get-Content -LiteralPath (Join-Path $RepoRoot "VERSION") -Raw).Trim()
+}
+
+function Get-ElectronReleaseProfile {
+  param([string]$Version)
+
+  if ($Version -match "^1\.") {
+    return [pscustomobject]@{
+      ProductName = "StatEdu Studio"
+      ExeName = "StatEdu Studio.exe"
+      AppDataDirName = "statedu-studio"
+    }
+  }
+
+  [pscustomobject]@{
+    ProductName = "StatEdu Studio Beta"
+    ExeName = "StatEdu Studio Beta.exe"
+    AppDataDirName = "statedu-studio-beta"
+  }
+}
+
+$projectVersion = Get-ProjectVersion
+$releaseProfile = Get-ElectronReleaseProfile -Version $projectVersion
+
 if (-not $ElectronExe) {
-  $ElectronExe = Join-Path $RepoRoot "dist\electron\win-unpacked\StatEdu Studio Beta.exe"
+  $ElectronExe = Join-Path $RepoRoot "dist\electron\win-unpacked\$($releaseProfile.ExeName)"
 }
 
 function Assert-Path {
@@ -83,7 +108,7 @@ Assert-Path $ElectronExe "packaged Electron executable"
 Stop-BundledRProcesses
 Stop-PackagedAppProcesses
 
-$startupLog = Join-Path $env:APPDATA "statedu-studio-beta\logs\startup.log"
+$startupLog = Join-Path $env:APPDATA "$($releaseProfile.AppDataDirName)\logs\startup.log"
 $initialLogLength = 0
 if (Test-Path -LiteralPath $startupLog) {
   $initialLogLength = (Get-Item -LiteralPath $startupLog).Length

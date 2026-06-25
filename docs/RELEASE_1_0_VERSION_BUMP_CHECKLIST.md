@@ -1,8 +1,8 @@
 # StatEdu Studio 1.0 Version Bump Checklist
 
 Use this checklist only when changing the stabilized 0.9.x line to the public
-1.0.0 release line. Keep the current 0.9.42 beta packaging names until the
-actual 1.0.0 version bump starts.
+1.0.0 release line. The Electron build and smoke scripts switch package names
+from beta to final release names when `VERSION` starts with `1.`.
 
 ## Preconditions
 
@@ -18,41 +18,43 @@ actual 1.0.0 version bump starts.
 - `README.md`: update the current version paragraph, citation example, and
   validation summary from `0.9.42` to `1.0.0`.
 - `CITATION.cff`: update `version` and `date-released`.
-- `packaging/electron/package.json`: update `version` to `1.0.0`.
+- `packaging/electron/package.json`: confirm `version` is updated to `1.0.0`
+  by the Electron build metadata sync before packaging.
 - `docs/RELEASE_READINESS_STATUS.md`: change current version and validation
   notes after the 1.0.0 package is rebuilt and tested.
 - `CHANGELOG.md`: add the 1.0.0 release section.
 
-## Remove Beta Packaging Names
+## Confirm Final Packaging Names
 
-- `packaging/electron/package.json`:
-  - change `name` from `statedu-studio-beta` to the final release package name.
-  - change `description` so it no longer says beta.
-  - change `appId` from `com.statedu.studio.beta` to the final app id.
-  - change `productName` from `StatEdu Studio Beta` to `StatEdu Studio`.
-  - change installer `artifactName` from `StatEdu_Studio_Beta_Setup_*` to the
-    final release artifact name.
-  - change `shortcutName` from `StatEdu Studio Beta` to `StatEdu Studio`.
-- `packaging/electron/main.js`:
-  - remove `Beta` from the window title.
-  - change `app.setName(...)` to `StatEdu Studio`.
-  - remove `Beta` from error dialog titles.
-  - confirm the app data folder name is final and documented.
-- `packaging/electron/scripts/afterPack.js`:
-  - update the executable path from `StatEdu Studio Beta.exe`.
-  - update Windows version strings for `FileDescription`, `ProductName`,
-    `InternalName`, and `OriginalFilename`.
+- Run the Electron build after changing `VERSION` to `1.0.0`.
+- Confirm `packaging/electron/package.json` was synchronized to:
+  - `name`: `statedu-studio`
+  - `appId`: `com.statedu.studio`
+  - `productName`: `StatEdu Studio`
+  - `artifactName`: `StatEdu_Studio_Setup_${version}.${ext}`
+  - `shortcutName`: `StatEdu Studio`
+- Confirm the app title, app name, error dialogs, executable resource strings,
+  installer artifact, shortcut, and unpacked executable use `StatEdu Studio`
+  without `Beta`.
+- Confirm `packaging/electron/main.js` uses the final display name when
+  `VERSION` starts with `1.`.
+- Confirm `packaging/electron/scripts/afterPack.js` writes final executable
+  resource strings from the selected Electron `productName`.
+- Confirm the final app data folder name is documented and used by the
+  lifecycle smoke test.
 
 ## Build And Smoke Script Expectations
 
 - Decide whether `scripts/build_electron_beta.ps1` is renamed to a release
   build script or kept as a compatibility wrapper.
-- Update installer cleanup patterns in the Electron build script.
-- Update `scripts/smoke_electron_release.ps1` for the final setup file pattern,
-  executable name, and Windows version strings.
-- Update `scripts/smoke_electron_app_lifecycle.ps1` for the final executable
-  path and app data log path.
-- Update `scripts/validate_brand_metadata.R` for final non-beta package names.
+- Confirm the Electron build script selected the final release profile for
+  `VERSION=1.0.0`.
+- Confirm `scripts/smoke_electron_release.ps1` expects the final setup file
+  pattern, executable name, and Windows version strings.
+- Confirm `scripts/smoke_electron_app_lifecycle.ps1` expects the final
+  executable path and app data log path.
+- Confirm `scripts/validate_brand_metadata.R` passes with final non-beta
+  package names after packaging metadata is synchronized.
 - Update `scripts/validate_version_metadata.R` so validation expects 1.0.0
   metadata and no longer treats beta naming as the current package state.
 

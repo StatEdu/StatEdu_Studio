@@ -50,8 +50,16 @@ function publicReleaseFlag() {
   return /^1\./.test(appVersion()) ? "1" : "0";
 }
 
+function isPublicRelease() {
+  return publicReleaseFlag() === "1";
+}
+
+function appDisplayName() {
+  return isPublicRelease() ? "StatEdu Studio" : "StatEdu Studio Beta";
+}
+
 function windowTitle() {
-  return `StatEdu Studio Beta v${appVersion()}`;
+  return `${appDisplayName()} v${appVersion()}`;
 }
 
 function bundledRscriptPath() {
@@ -171,7 +179,7 @@ function stopShiny() {
 
 async function createWindow() {
   logStartup("createWindow begin");
-  app.setName("StatEdu Studio Beta");
+  app.setName(appDisplayName());
   mainWindow = new BrowserWindow({
     width: 1536,
     height: 1000,
@@ -207,7 +215,7 @@ async function createWindow() {
     logStartup(`BrowserWindow loaded Shiny URL in ${Date.now() - loadStartedAt}ms`);
   } catch (error) {
     logStartup(`startup failed: ${error.message}`);
-    dialog.showErrorBox("StatEdu Studio Beta", error.message);
+    dialog.showErrorBox(appDisplayName(), error.message);
     app.quit();
   }
 }

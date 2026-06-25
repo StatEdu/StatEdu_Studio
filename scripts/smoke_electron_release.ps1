@@ -141,6 +141,24 @@ function Get-ProjectVersion {
   return $version
 }
 
+function Get-ElectronReleaseProfile {
+  param(
+    [string]$Version
+  )
+  if ($Version -match "^1\.") {
+    return [pscustomobject]@{
+      ProductName = "StatEdu Studio"
+      SetupPrefix = "StatEdu_Studio_Setup"
+      ExeName = "StatEdu Studio.exe"
+    }
+  }
+  [pscustomobject]@{
+    ProductName = "StatEdu Studio Beta"
+    SetupPrefix = "StatEdu_Studio_Beta_Setup"
+    ExeName = "StatEdu Studio Beta.exe"
+  }
+}
+
 function Assert-TextFileEquals {
   param(
     [string]$Path,
@@ -172,8 +190,9 @@ function Assert-PackagedOutputVersion {
   Write-Host "[ok] packaged Electron resource version matches VERSION $ExpectedVersion"
 
   if (Test-Path -LiteralPath $distDir) {
-    $setupFiles = @(Get-ChildItem -LiteralPath $distDir -File -Filter "StatEdu_Studio_Beta_Setup_*.exe")
-    $expectedSetupName = "StatEdu_Studio_Beta_Setup_$ExpectedVersion.exe"
+    $profile = Get-ElectronReleaseProfile -Version $ExpectedVersion
+    $setupFiles = @(Get-ChildItem -LiteralPath $distDir -File -Filter "$($profile.SetupPrefix)_*.exe")
+    $expectedSetupName = "$($profile.SetupPrefix)_$ExpectedVersion.exe"
     $unexpectedSetupFiles = @($setupFiles | Where-Object { $_.Name -ne $expectedSetupName })
     if ($unexpectedSetupFiles.Count -gt 0) {
       throw "Installer artifact version does not match current VERSION. Expected only $expectedSetupName, found: $($unexpectedSetupFiles.Name -join ', ')"
@@ -286,10 +305,11 @@ Assert-NoDistArtifacts (Join-Path $RepoRoot "dist\electron")
 
 if (-not $SkipUnpackedChecks) {
   $projectVersion = Get-ProjectVersion
+  $releaseProfile = Get-ElectronReleaseProfile -Version $projectVersion
   Assert-Path $ElectronOutDir "unpacked Electron output"
-  $electronExe = Join-Path $ElectronOutDir "StatEdu Studio Beta.exe"
+  $electronExe = Join-Path $ElectronOutDir $releaseProfile.ExeName
   Assert-Path $electronExe "Electron executable"
-  Assert-ExeVersionInfo $electronExe "StatEdu Studio Beta" "StatEdu"
+  Assert-ExeVersionInfo $electronExe $releaseProfile.ProductName "StatEdu"
   Assert-PackagedOutputVersion $projectVersion
   Assert-Path (Join-Path $ElectronOutDir "LICENSE.electron.txt") "Electron license"
   Assert-Path (Join-Path $ElectronOutDir "LICENSES.chromium.html") "Chromium licenses"

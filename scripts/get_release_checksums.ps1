@@ -29,10 +29,18 @@ function Resolve-InstallerPath {
     return (Resolve-Path -LiteralPath $ExplicitPath).Path
   }
 
-  $candidateNames = @(
-    "StatEdu_Studio_Setup_$Version.exe",
+  $preferredName = if ($Version -match "^1\.") {
+    "StatEdu_Studio_Setup_$Version.exe"
+  } else {
     "StatEdu_Studio_Beta_Setup_$Version.exe"
-  )
+  }
+  $fallbackName = if ($Version -match "^1\.") {
+    "StatEdu_Studio_Beta_Setup_$Version.exe"
+  } else {
+    "StatEdu_Studio_Setup_$Version.exe"
+  }
+
+  $candidateNames = @($preferredName, $fallbackName)
 
   $candidates = @()
   foreach ($name in $candidateNames) {

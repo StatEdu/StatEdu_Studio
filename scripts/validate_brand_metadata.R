@@ -67,8 +67,10 @@ assert_contains("SOURCE-OFFER.txt", "license_report.csv", "source offer license 
 assert_contains("SOURCE-OFFER.txt", "LICENSES directory", "source offer license texts reference")
 assert_contains("R/app_misc_ui.R", 'h2("StatEdu Studio")', "About dialog product title")
 assert_contains("R/app_misc_ui.R", "StatEdu Studio source availability and application license.", "About source/license product text")
-assert_contains("packaging/electron/main.js", 'app.setName("StatEdu Studio Beta")', "Electron app display name")
-assert_contains("packaging/electron/scripts/afterPack.js", '"ProductName", "StatEdu Studio Beta"', "Windows executable product name")
+assert_contains("packaging/electron/main.js", "function appDisplayName()", "Electron dynamic app display name helper")
+assert_contains("packaging/electron/main.js", "app.setName(appDisplayName())", "Electron app display name")
+assert_contains("packaging/electron/scripts/afterPack.js", "context.packager.appInfo.productName", "Windows executable dynamic product name")
+assert_contains("packaging/electron/scripts/afterPack.js", '"OriginalFilename", exeName', "Windows executable dynamic original filename")
 
 electron_package <- read_json("packaging/electron/package.json")
 
@@ -91,6 +93,14 @@ assert_equal(
   "StatEdu Studio Beta",
   "Electron NSIS shortcutName"
 )
+assert_equal(
+  electron_package$build$win$artifactName,
+  'StatEdu_Studio_Beta_Setup_${version}.${ext}',
+  "Electron beta installer artifactName"
+)
+assert_contains("scripts/build_electron_beta.ps1", "Sync-ElectronPackageMetadata", "Electron package metadata sync")
+assert_contains("scripts/build_electron_beta.ps1", "StatEdu_Studio_Setup", "final 1.0 installer artifact prefix")
+assert_contains("scripts/build_electron_beta.ps1", "com.statedu.studio", "final 1.0 app id")
 
 assert_contains("packaging/electron/main.js", "EASYFLOW_TOKEN", "legacy token compatibility identifier")
 assert_contains("docs/RELEASE_CHECKLIST.md", "Keep backward-compatible internal identifiers", "compatibility policy")

@@ -14,6 +14,42 @@ $runtimeStage = Join-Path $electronDir "runtime\R-4.5.3"
 $runtimeRoot = Join-Path $electronDir "runtime"
 $distDir = Join-Path $repoRoot "dist\electron"
 
+function Get-ElectronReleaseProfile {
+  if ($version -match "^1\.") {
+    return [pscustomobject]@{
+      PackageName = "statedu-studio"
+      Description = "StatEdu Studio desktop installer"
+      AppId = "com.statedu.studio"
+      ProductName = "StatEdu Studio"
+      ArtifactPrefix = "StatEdu_Studio_Setup"
+      ShortcutName = "StatEdu Studio"
+    }
+  }
+  [pscustomobject]@{
+    PackageName = "statedu-studio-beta"
+    Description = "StatEdu Studio beta desktop installer"
+    AppId = "com.statedu.studio.beta"
+    ProductName = "StatEdu Studio Beta"
+    ArtifactPrefix = "StatEdu_Studio_Beta_Setup"
+    ShortcutName = "StatEdu Studio Beta"
+  }
+}
+
+function Sync-ElectronPackageMetadata {
+  $profile = Get-ElectronReleaseProfile
+  $packagePath = Join-Path $electronDir "package.json"
+  $package = Get-Content -LiteralPath $packagePath -Raw | ConvertFrom-Json
+  $package.name = $profile.PackageName
+  $package.version = $version
+  $package.description = $profile.Description
+  $package.build.appId = $profile.AppId
+  $package.build.productName = $profile.ProductName
+  $package.build.win.artifactName = "$($profile.ArtifactPrefix)_`${version}.`${ext}"
+  $package.build.nsis.shortcutName = $profile.ShortcutName
+  $package | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $packagePath -Encoding UTF8
+  Write-Host "Electron package metadata: $($profile.ProductName), $($profile.ArtifactPrefix)_$version.exe"
+}
+
 function Find-Npm {
   $wingetNpm = Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages" -Recurse -Filter "npm.cmd" -ErrorAction SilentlyContinue |
     Where-Object { $_.Directory.Name -like "node-v*-win-x64" } |
@@ -122,11 +158,12 @@ function Remove-StaleElectronDistArtifacts {
   }
 
   $safeDistDir = [System.IO.Path]::GetFullPath($distDir)
-  $currentSetupName = "StatEdu_Studio_Beta_Setup_$version.exe"
+  $profile = Get-ElectronReleaseProfile
+  $currentSetupName = "$($profile.ArtifactPrefix)_$version.exe"
   $currentBlockmapName = "$currentSetupName.blockmap"
   $artifacts = @(Get-ChildItem -LiteralPath $distDir -File -Force | Where-Object {
     (
-      $_.Name -match "^StatEdu_Studio_Beta_Setup_.*\.exe(\.blockmap)?$" -and
+      $_.Name -match "^StatEdu_Studio(_Beta)?_Setup_.*\.exe(\.blockmap)?$" -and
       $_.Name -notin @($currentSetupName, $currentBlockmapName)
     ) -or
     $_.Name -match "^EasyFlow_Statistics_Beta_.*" -or
@@ -161,7 +198,8 @@ function Remove-StaleRuntimeArtifacts {
   }
 }
 
-Write-Host "Preparing StatEdu Studio $version Electron beta installer..."
+$releaseProfile = Get-ElectronReleaseProfile
+Write-Host "Preparing $($releaseProfile.ProductName) $version Electron installer..."
 Remove-StaleElectronDistArtifacts
 Remove-StaleRuntimeArtifacts
 
@@ -272,6 +310,7 @@ try {
       Invoke-Native $npm @("install")
     }
   }
+  Sync-ElectronPackageMetadata
   Invoke-Native $npm @("run", "dist", "--", "--publish", "never")
 } finally {
   Pop-Location
