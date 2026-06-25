@@ -70,7 +70,7 @@ Build machine: StatEdu
 |---|---|---|
 | `studio.statedu.com` is live | Not ready / external gate | Homepage infrastructure is not built yet. |
 | DOI `10.22934/statedu.studio` resolves to `https://studio.statedu.com` | Not ready / external gate | DOI/homepage infrastructure is not built yet. |
-| Public release notes contain no deferred feature claims | Pending final review |  |
+| Public release notes contain no deferred feature claims | Pass | Draft release notes list deferred surfaces under Not Included and do not claim gated editions, license activation, in-app updates, Longitudinal / Panel Models, Excel result export, or Word result export as public 1.0 features. |
 | Manual QA record is complete | Pending manual QA | Packaged import and analysis visual workflow passed; DOI/homepage and native save-dialog export gates remain open. |
 
 ## Final Result

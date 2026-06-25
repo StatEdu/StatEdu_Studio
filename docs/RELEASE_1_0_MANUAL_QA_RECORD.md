@@ -109,7 +109,7 @@ R runtime: D:\Program\R\R-4.5.3
 | Final public release notes are ready | Pending final review | Draft exists; final public text still requires gate review. |
 | Packaged validation notes are ready | Pass / Incomplete for publication | [RELEASE_1_0_PACKAGED_VALIDATION_NOTES.md](docs/RELEASE_1_0_PACKAGED_VALIDATION_NOTES.md) records package evidence and remaining gates. |
 | Deferred distribution/license/update/edition items are recorded | Pass | [RELEASE_1_0_DECISION_LOG.md](docs/RELEASE_1_0_DECISION_LOG.md) records deferrals. |
-| Public text does not claim deferred gated editions, license activation, in-app updates, Longitudinal / Panel Models, Excel export, or Word export | Pass / pending final release-note review | README/About browser QA no longer publishes DOI citation; release-note draft still needs final publication review. |
+| Public text does not claim deferred gated editions, license activation, in-app updates, Longitudinal / Panel Models, Excel export, or Word export | Pass | README, About/browser QA, and public release-note draft avoid public claims for deferred gated editions, license activation, in-app updates, Longitudinal / Panel Models, Excel export, and Word export. |
 
 ## Failures And Fixes
 

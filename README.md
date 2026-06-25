@@ -33,11 +33,11 @@ Version 1.0.0 promotes the stabilized public release line, switches Electron pac
 - Hierarchical regression with block-wise model comparison
 - Logistic regression for binary, ordered, and categorical dependent variables
 - Generalized linear models for independent-observation Gaussian, binary logistic, Gamma, and count outcomes, including Poisson versus negative-binomial screening, robust standard-error options, missing-data sensitivity engines, offset/exposure handling, SCI-style diagnostics, publication notes, reporting checklists, and suggested manuscript text
-- Longitudinal / panel models with GEE, LMM, GLMM, panel fixed effects, and panel random effects for long-format repeated-measures or clustered data, including model-specific assumption checks, longitudinal analysis weights, missing-data handling options, MI/IPW/WGEE sensitivity engines, recommended alternatives, sensitivity comparisons, and SCI-style reporting tables
 - Penalized regression helpers for severe multicollinearity cases
 - Standalone sample size, power, and effect size calculators with method notes and references
-- Result saving to HTML, PDF, Excel, figures, and accumulated Result collections
-- Result collection export to HTML, PDF, Excel, and Word
+- Result saving to HTML, PDF, figures, and accumulated Result collections
+- Result collection export to HTML and PDF
+- Public 1.0 hides Longitudinal / Panel Models, Excel result export, and Word result export; those surfaces remain deferred for a later release while internal validation coverage is retained.
 
 For the full current method inventory, see [docs/ANALYSIS_METHODS_KO.md](docs/ANALYSIS_METHODS_KO.md).
 
@@ -58,12 +58,12 @@ Some installed package binaries may have been built under a newer patch-level R 
 | Data import | `haven`, `readr`, `readxl`, `openxlsx` | SAV, SAS, Stata, CSV, DAT, XLS, and XLSX import |
 | Settings and data helpers | `jsonlite`, `xml2`, `rvest`, `callr` | Settings serialization, HTML/XML processing, and background R process support |
 | Regression diagnostics | `car`, `lmtest`, `sandwich`, `nortest`, `boot` | Type II/III ANCOVA tables, Levene-style variance checks, Breusch-Pagan test, HC3 robust standard errors, Lilliefors normality test, and bootstrap inference |
-| Linear / generalized models | `MASS`, `nnet`, `lmtest`, `sandwich`, `geepack`, `mice`, `lme4`, `lmerTest`, `plm` | GLM robust inference, ordered logistic, multinomial, GEE, MI/IPW sensitivity, mixed-effects, and panel model support |
+| Linear / generalized models | `MASS`, `nnet`, `lmtest`, `sandwich`, `geepack`, `mice`, `lme4`, `lmerTest`, `plm` | GLM robust inference, ordered logistic, multinomial, and retained internal validation support for deferred longitudinal / panel workflows |
 | Penalized regression | `glmnet` | Ridge, LASSO, and Elastic Net helper analyses |
 | Post-hoc and group comparison | `agricolae` | Multiple-comparison procedures used in ANOVA-style workflows |
 | Reliability, factor analysis, and correlations | `psych`, `polycor` | Reliability coefficients, factor/PCA helpers, polychoric/polyserial/tetrachoric correlation support |
-| Sample size and power | `longpower`, `WebPower`, `TOSTER` | Longitudinal LMM power, cluster trial / SEM power, and exact TOST equivalence calculations |
-| Report export | `officer`, `flextable`, `openxlsx` | Word, table, and Excel output |
+| Sample size and power | `longpower`, `WebPower`, `TOSTER` | Cluster trial / SEM power, exact TOST equivalence calculations, and retained internal validation support for longitudinal power helpers |
+| Report export | `officer`, `flextable`, `openxlsx` | Report table support and retained internal validation support for deferred Office exports |
 
 ## Local Run
 
