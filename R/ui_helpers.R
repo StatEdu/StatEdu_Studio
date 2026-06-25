@@ -44,7 +44,7 @@ statedu_feature_enabled <- function(feature, default = TRUE) {
     }
   }
 
-  if (statedu_public_release() && feature %in% c("longitudinal", "word_export")) {
+  if (statedu_public_release() && feature %in% c("longitudinal", "excel_export", "word_export")) {
     return(FALSE)
   }
   isTRUE(default)
@@ -59,6 +59,9 @@ analysis_save_edition <- function() {
 }
 
 analysis_save_feature_visible <- function(feature) {
+  if (identical(feature, "excel")) {
+    return(statedu_feature_enabled("excel_export", TRUE))
+  }
   if (identical(feature, "word")) {
     return(statedu_feature_enabled("word_export", TRUE))
   }

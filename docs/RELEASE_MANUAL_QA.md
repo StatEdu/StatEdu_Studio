@@ -68,7 +68,7 @@ re-run after the fix.
 
 1. Export at least one analysis to HTML.
 2. Export at least one analysis to PDF.
-3. Export at least one analysis to Excel.
+3. For public 1.0 QA, confirm Excel result export is hidden; for internal validation builds, confirm Excel export still works.
 4. Add at least one result to the Result collection and reopen it.
 5. For public 1.0 QA, confirm Word result export is hidden; for internal validation builds, confirm Word export still works.
 6. Confirm exported filenames use `StatEdu Studio` naming.

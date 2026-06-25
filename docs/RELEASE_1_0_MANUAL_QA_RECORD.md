@@ -83,7 +83,7 @@ R runtime:
 |---|---|---|
 | HTML export works |  |  |
 | PDF export works |  |  |
-| Excel export works |  |  |
+| Public 1.0 hides Excel result export |  |  |
 | Result collection add/reopen works |  |  |
 | Public 1.0 hides Word result export |  |  |
 | Exported filenames use `StatEdu Studio` naming |  |  |
@@ -109,7 +109,7 @@ R runtime:
 | Final public release notes are ready |  |  |
 | Packaged validation notes are ready |  |  |
 | Deferred distribution/license/update/edition items are recorded |  |  |
-| Public text does not claim deferred gated editions, license activation, in-app updates, Longitudinal / Panel Models, or Word export |  |  |
+| Public text does not claim deferred gated editions, license activation, in-app updates, Longitudinal / Panel Models, Excel export, or Word export |  |  |
 
 ## Failures And Fixes
 

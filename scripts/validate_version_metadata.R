@@ -161,6 +161,7 @@ assert_contains(manual_qa, "docs/UI_LAYOUT_CONTRACT.md", "manual QA UI layout co
 assert_contains(manual_qa, "settings save/load uses only the `.studio` file type", "manual QA settings file type")
 assert_contains(manual_qa, "Wide to Long can save the reshaped CSV output", "manual QA wide-to-long CSV save")
 assert_contains(manual_qa, "confirm Longitudinal / Panel Models is hidden", "manual QA public longitudinal hidden")
+assert_contains(manual_qa, "confirm Excel result export is hidden", "manual QA public excel export hidden")
 assert_contains(manual_qa, "confirm Word result export is hidden", "manual QA public word export hidden")
 assert_contains(manual_qa, "About > Open Source Licenses", "manual QA open source licenses")
 assert_contains(manual_qa, "StatEdu Studio.exe", "manual QA public 1.0 executable")
@@ -181,6 +182,7 @@ assert_contains(manual_qa_record, "R runtime:", "manual QA record R runtime fiel
 assert_contains(manual_qa_record, "docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md", "manual QA record version bump checklist")
 assert_contains(manual_qa_record, "Wide to Long saves reshaped CSV output", "manual QA record wide-to-long CSV")
 assert_contains(manual_qa_record, "Public 1.0 hides Longitudinal / Panel Models", "manual QA record public longitudinal hidden")
+assert_contains(manual_qa_record, "Public 1.0 hides Excel result export", "manual QA record public excel export hidden")
 assert_contains(manual_qa_record, "Public 1.0 hides Word result export", "manual QA record public word export hidden")
 assert_contains(manual_qa_record, "dist/electron/win-unpacked/StatEdu Studio.exe", "manual QA record public executable")
 assert_contains(manual_qa_record, "DOI `10.22934/statedu.studio` resolves to `https://studio.statedu.com`", "manual QA record DOI gate")
@@ -198,6 +200,7 @@ assert_contains(public_notes, "Free/Pro/Latent edition gates", "public notes dra
 assert_contains(public_notes, "License activation", "public notes draft deferred license")
 assert_contains(public_notes, "In-app update checks", "public notes draft deferred updates")
 assert_contains(public_notes, "Longitudinal / Panel Models public menu exposure", "public notes draft deferred longitudinal")
+assert_contains(public_notes, "Excel result export", "public notes draft deferred excel export")
 assert_contains(public_notes, "Word result export", "public notes draft deferred word export")
 
 packaged_validation_notes <- read_text("docs/RELEASE_1_0_PACKAGED_VALIDATION_NOTES.md")
@@ -211,6 +214,7 @@ assert_contains(packaged_validation_notes, "StatEdu Studio.exe", "packaged valid
 assert_contains(packaged_validation_notes, "R-4.5.3", "packaged validation notes R runtime")
 assert_contains(packaged_validation_notes, "THIRD-PARTY-NOTICES.txt", "packaged validation notes OSS notices")
 assert_contains(packaged_validation_notes, "DOI `10.22934/statedu.studio` resolves to `https://studio.statedu.com`", "packaged validation notes DOI gate")
+assert_contains(packaged_validation_notes, "Public 1.0 hides Excel result export", "packaged validation notes public excel export hidden")
 assert_contains(packaged_validation_notes, "Packaged validation status: Complete / Incomplete", "packaged validation notes final status")
 
 checksum_script <- read_text("scripts/get_release_checksums.ps1")
@@ -286,6 +290,7 @@ assert_contains(ui_helpers, "app_head_tags(version)", "head asset version propag
 assert_contains(ui_helpers, "statedu_public_release <- function()", "public release flag helper")
 assert_contains(ui_helpers, "STATEDU_PUBLIC_RELEASE", "public release flag environment")
 assert_contains(ui_helpers, 'statedu_feature_enabled("longitudinal", TRUE)', "public longitudinal feature flag")
+assert_contains(ui_helpers, 'statedu_feature_enabled("excel_export", TRUE)', "public excel export feature flag")
 assert_contains(ui_helpers, 'statedu_feature_enabled("word_export", TRUE)', "public word export feature flag")
 
 electron_main <- read_text("packaging/electron/main.js")
@@ -305,6 +310,8 @@ assert_contains(result_saved_ui, 'saved_results_app_version <- function(version_
 assert_contains(result_saved_ui, 'Sys.getenv("EASYFLOW_VERSION", "")', "saved results environment version override")
 assert_contains(result_saved_ui, 'readLines(version_file, warn = FALSE)[1]', "saved results VERSION fallback")
 assert_contains(result_saved_ui, 'sprintf("StatEdu Studio v%s", app_version)', "saved results version label")
+assert_contains(result_saved_ui, 'analysis_save_feature_enabled("excel")', "saved results Excel export feature guard")
+assert_contains(result_saved_ui, "Excel export is not enabled in this release.", "saved results Excel export hidden message")
 assert_contains(result_saved_ui, 'analysis_save_feature_enabled("word")', "saved results Word export feature guard")
 assert_contains(result_saved_ui, "Word export is not enabled in this release.", "saved results Word export hidden message")
 

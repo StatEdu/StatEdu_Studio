@@ -61,7 +61,7 @@ Build machine:
 | One analysis workflow completes |  |  |
 | HTML export works |  |  |
 | PDF export works |  |  |
-| Excel export works |  |  |
+| Public 1.0 hides Excel result export |  |  |
 
 ## Public Gate Evidence
 

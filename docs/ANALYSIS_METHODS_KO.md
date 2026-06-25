@@ -18,7 +18,7 @@
 ## 공통 결과 출력
 
 - 주요 분석 결과는 화면과 Result 탭에 표시한다.
-- HTML, PDF, Excel, Word 저장을 지원한다.
+- public 1.0에서는 HTML, PDF 저장을 지원한다. Excel, Word 결과 저장은 public 1.0에서 숨겨져 있으며 이후 Pro 기능으로 분리할 예정이다.
 - 여러 분석에서 `Model overview`를 제공하며, 0.9.42 기준으로 t-test/ANOVA, paired test, nonparametric paired test, correlation 등에서 N, 분석 방법, 선택 이유를 표 형태로 확인할 수 있다.
 - 분석 불가능 항목은 전체 분석을 중단하지 않고 Warnings, Skipped analyses, Skipped models 형태로 분리해 표시한다.
 
@@ -26,7 +26,7 @@
 
 - 범주형 변수: 빈도, 백분율, 유효 백분율, 누적 백분율을 표시한다.
 - 연속형 변수: N, 결측 수, 평균, 표준편차, 중앙값, IQR, 최솟값, 최댓값, 왜도, 첨도를 표시한다.
-- 결과는 화면 출력과 Excel/Word/PDF/HTML 저장으로 연결된다.
+- 결과는 화면 출력과 public 1.0 기준 HTML/PDF 저장으로 연결된다. Excel/Word 결과 저장은 public 1.0에서 숨긴다.
 
 ## 교차표 분석
 
@@ -135,7 +135,7 @@
 
 ### 기본 설정과 제공 모형
 
-- long-format 반복측정, 군집자료, 패널자료는 별도 `Longitudinal / Panel Models` 메뉴에서 분석한다.
+- long-format 반복측정, 군집자료, 패널자료용 종단/패널 분석은 내부 검증 대상이지만 public 1.0 메뉴에서는 숨긴다.
 - 필수 설정은 종속변수, Subject ID, 시간 변수, 예측변수 또는 시간 고정효과, 분석 모형이다.
 - LMM/GLMM에서는 상위 군집이 있으면 `Cluster ID (optional)`을 별도로 지정할 수 있다.
 - 제공하는 5가지 분석은 GEE, LMM, GLMM, 패널 고정효과 모형, 패널 확률효과 모형이다.
@@ -192,7 +192,7 @@
 ## 저장과 출력
 
 - 분석 결과는 Result 탭에 모아 볼 수 있다.
-- HTML, PDF, Excel, Word 저장을 지원한다.
+- public 1.0에서는 HTML, PDF 저장을 지원한다. Excel, Word 결과 저장은 public 1.0에서 숨긴다.
 - 표, 경고, skipped analyses, skipped models, 선택된 분석 방법, 효과크기, 신뢰구간을 함께 저장한다.
 
 ## Sample Size, Power, Effect Size 메뉴

@@ -73,7 +73,7 @@ actual 1.0.0 version bump starts.
 - Do not claim Free/Pro/Latent gates, license activation, or in-app updates for
   1.0.0; those items are deferred in `docs/RELEASE_1_0_DECISION_LOG.md`.
 - Confirm the packaged public 1.0 app sets `STATEDU_PUBLIC_RELEASE=1` and hides
-  Longitudinal / Panel Models and Word result export, unless an internal
+  Longitudinal / Panel Models, Excel result export, and Word result export, unless an internal
   validation override explicitly enables them.
 
 ## Required Validation Sequence

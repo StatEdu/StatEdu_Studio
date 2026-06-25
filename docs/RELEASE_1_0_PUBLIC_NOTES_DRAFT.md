@@ -32,7 +32,7 @@ based on R 4.5.3.
 - Core analysis workflows for descriptive tables, group comparisons,
   association/measurement, regression, GLM, sample size, effect size, and
   selected calculators.
-- Result export to HTML, PDF, Excel, and the in-app result collection.
+- Result export to HTML, PDF, and the in-app result collection.
 - Windows desktop package with bundled R 4.5.3 runtime and open-source notices.
 
 ## Validation
@@ -62,6 +62,7 @@ available in public release text:
 - License activation, device management, or offline grace-period enforcement.
 - In-app update checks or automatic update handoff.
 - Longitudinal / Panel Models public menu exposure.
+- Excel result export.
 - Word result export.
 - Public installer infrastructure beyond the verified download path.
 
