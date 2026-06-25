@@ -154,8 +154,12 @@ about_citation_field <- function(field, fallback = "") {
 
 about_application_document <- function(version) {
   release_date <- about_citation_field("date-released", "2026-05-26")
-  doi <- about_citation_field("doi", "10.22934/statedu.studio")
+  doi <- about_citation_field("doi", "")
   repository <- about_citation_field("repository-code", "https://github.com/StatEdu/StatEdu_Studio_dev")
+  citation <- sprintf(
+    "LEE, I. H. (2026). StatEdu Studio (Version %s) [Computer software].",
+    version
+  )
 
   div(
     class = "about-application-document",
@@ -171,14 +175,20 @@ about_application_document <- function(version) {
       about_info_row("Runtime", "Local Windows Shiny app"),
       about_info_row("Data handling", "Data are analyzed locally on the user's PC and are not sent to an external server."),
       about_info_row("Repository", tags$a(href = repository, target = "_blank", rel = "noopener noreferrer", repository)),
-      about_info_row("DOI", tags$a(href = paste0("https://doi.org/", doi), target = "_blank", rel = "noopener noreferrer", doi))
+      about_info_row(
+        "DOI",
+        if (nzchar(doi)) {
+          tags$a(href = paste0("https://doi.org/", doi), target = "_blank", rel = "noopener noreferrer", doi)
+        } else {
+          "Pending registration"
+        }
+      )
     ),
     h3("Citation"),
-    p(sprintf(
-      "LEE, I. H. (2026). StatEdu Studio (Version %s) [Computer software]. https://doi.org/%s",
-      version,
-      doi
-    ))
+    p(citation),
+    if (!nzchar(doi)) {
+      p("A DOI citation will be added after the DOI landing page is live.")
+    }
   )
 }
 

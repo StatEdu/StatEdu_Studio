@@ -2,12 +2,11 @@
 message: "If you use StatEdu Studio in your research, please cite it as below."
 type: software
 title: "StatEdu Studio"
-version: "0.9.42"
-date-released: "2026-06-23"
+version: "1.0.0"
+date-released: "2026-06-25"
 authors:
   - family-names: "LEE"
     given-names: "IL HYUN"
 repository-code: "https://github.com/StatEdu/StatEdu_Studio_dev"
 url: "https://studio.statedu.com"
-doi: "10.22934/statedu.studio"
 abstract: "StatEdu Studio is a local Shiny application for statistical analysis."

@@ -45,8 +45,8 @@ based on R 4.5.3.
 
 ## Public Citation
 
-Do not publish the DOI line until `10.22934/statedu.studio` resolves to
-`https://studio.statedu.com`.
+Do not publish the DOI line until the DOI/homepage infrastructure is built and
+`10.22934/statedu.studio` resolves to `https://studio.statedu.com`.
 
 ```text
 LEE, I. H. (2026). StatEdu Studio (Version 1.0.0) [Computer software].

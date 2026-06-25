@@ -2,22 +2,22 @@
 
 작성일: 2026-06-07  
 초기 작성 기준: 0.9.33 beta
-최근 검토: 2026-06-24, 0.9.42 안정화 단계
-검증 태그: statedu-release-plan-reviewed-0.9.42; distribution; license; update
+최근 검토: 2026-06-25, 1.0.0 릴리스 후보 단계
+검증 태그: statedu-release-plan-reviewed-1.0.0; distribution; license; update
 목표 버전: 1.0 정식 배포
 
 이 문서는 1.0 정식 버전으로 전환하기 전에 검토할 배포, 업데이트, 라이센스, 제품 등급 정책 후보를 정리한다.
-0.9.42 안정화 단계에서는 새 분석 기능을 추가하지 않고, 1.0 전환 전에 각 배포/라이센스/업데이트 항목을 구현할지 명시적으로 유예할지 결정하는 기준 문서로 다시 확인했다.
+1.0.0 릴리스 후보 단계에서는 새 분석 기능을 추가하지 않고, 각 배포/라이센스/업데이트 항목을 구현할지 명시적으로 유예할지 결정하는 기준 문서로 다시 확인했다.
 
 ## 현재 상태
 
-이 문서는 0.9.42 안정화 단계의 planning/reference document only 문서이다. 아래의 Free/Pro/Latent 권한 분리, 라이센스 서버, activation 관리, 업데이트 확인, installer 배포 인프라는 `docs/RELEASE_1_0_DECISION_LOG.md`에서 구현 완료 또는 명시적 유예로 확정되기 전까지 1.0 공개 기능으로 주장하지 않는다.
+이 문서는 1.0.0 릴리스 후보 단계의 planning/reference document only 문서이다. 아래의 Free/Pro/Latent 권한 분리, 라이센스 서버, activation 관리, 업데이트 확인, installer 배포 인프라는 `docs/RELEASE_1_0_DECISION_LOG.md`에서 구현 완료 또는 명시적 유예로 확정되기 전까지 1.0 공개 기능으로 주장하지 않는다.
 
 Do not claim gated editions, license activation, in-app updates, or public installer infrastructure until the decision log marks them implemented or deferred.
 
 ## 전환 리마인더
 
-현재 0.9.42 안정화 단계에서는 1.0 정식 배포 전환 여부를 기능 추가가 아니라 안정화, 검증, 패키징, 라이센스/업데이트 정책 확정 여부로 판단한다. Free/Pro/Latent 권한 분리, 라이센스 서버, activation 관리, 업데이트 확인 기능, installer 배포 인프라는 `docs/RELEASE_1_0_DECISION_LOG.md`에 구현 또는 유예 결정을 기록하기 전까지 구현 대상으로 확정하지 않는다.
+현재 1.0.0 릴리스 후보 단계에서는 정식 배포 여부를 기능 추가가 아니라 검증, 패키징, 라이센스/업데이트 정책 확정 여부로 판단한다. Free/Pro/Latent 권한 분리, 라이센스 서버, activation 관리, 업데이트 확인 기능, installer 배포 인프라는 `docs/RELEASE_1_0_DECISION_LOG.md`에 구현 또는 유예 결정을 기록하기 전까지 구현 대상으로 확정하지 않는다.
 
 릴리스 준비 중 다음 신호가 보이면 1.0 전환 회의를 진행한다.
 

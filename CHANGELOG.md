@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.0 - 2026-06-25
+
+### Changed
+
+- Promoted the stabilized release line to the public 1.0.0 version metadata.
+- Switched Electron package metadata from beta names to final StatEdu Studio release names.
+- Kept deferred public 1.0 claims, DOI verification, website verification, and packaged QA gates explicit in the release documents.
+
 ## v0.9.42 - 2026-06-23
 
 ### Added

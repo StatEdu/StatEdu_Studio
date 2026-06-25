@@ -7,78 +7,79 @@ Windows package. Keep it with the release notes and manual QA record.
 
 ```text
 Version: 1.0.0
-Build date:
-Git commit:
-Installer:
-Installer SHA256:
-Unpacked executable:
-Bundled R runtime:
-Build machine:
+Build date: 2026-06-25
+Git commit: release-candidate commit; verify with `git log -1 --oneline` before publishing
+Installer: dist/electron/StatEdu_Studio_Setup_1.0.0.exe
+Installer SHA256: F05AEB7D597678BF632683836A9B8C93114721588902323379A743A0F1A1A0DA
+Blockmap SHA256: D7DD36A347BC76DEDEF2084A683B28DB9DAFF5F06DDC74CD16C3A42DCC67FD77
+Unpacked executable: dist/electron/win-unpacked/StatEdu Studio.exe
+Bundled R runtime: R-4.5.3 from D:\Program\R\R-4.5.3
+Build machine: StatEdu
 ```
 
 ## Required Commands
 
 | Command | Status | Evidence / Notes |
 |---|---|---|
-| `scripts\validate_stabilization.ps1 -RscriptPath 'D:\Program\R\R-4.5.3\bin\x64\Rscript.exe'` |  |  |
-| `scripts\release_preflight.ps1` |  |  |
-| Electron package build command |  |  |
-| `scripts\get_release_checksums.ps1` |  |  |
-| `scripts\smoke_electron_release.ps1` |  |  |
-| `scripts\smoke_electron_app_lifecycle.ps1` |  |  |
-| `scripts\release_preflight.ps1 -FullElectronSmoke` |  |  |
+| `scripts\validate_stabilization.ps1 -RscriptPath 'D:\Program\R\R-4.5.3\bin\x64\Rscript.exe'` | Pass | Covered through `scripts\release_preflight.ps1 -FullElectronSmoke` on 2026-06-25. |
+| `scripts\release_preflight.ps1` | Pass | Passed for 1.0.0 metadata before packaging on 2026-06-25. |
+| Electron package build command | Pass | `scripts\build_electron_release.ps1 -RHome 'D:\Program\R\R-4.5.3'`; final rebuild after DOI/public-citation cleanup succeeded using `-SkipRuntimeCopy -SkipNpmInstall`. |
+| `scripts\get_release_checksums.ps1` | Pass | Installer and blockmap SHA256 recorded above. |
+| `scripts\smoke_electron_release.ps1` | Pass | Unpacked output, final executable metadata, bundled app version, runtime, and notices passed. |
+| `scripts\smoke_electron_app_lifecycle.ps1` | Pass | Packaged Electron app loaded bundled Shiny URL and closing the app stopped bundled Shiny. |
+| `scripts\release_preflight.ps1 -FullElectronSmoke` | Pass | Passed on 2026-06-25 against `StatEdu_Studio_Setup_1.0.0.exe` and `win-unpacked/StatEdu Studio.exe`. |
 
 ## Package Contents
 
 | Check | Status | Evidence / Notes |
 |---|---|---|
-| Final executable is `StatEdu Studio.exe` for public 1.0 |  |  |
-| Installer artifact uses final non-beta name |  |  |
-| No legacy EasyFlow installer artifacts remain in `dist/electron` |  |  |
-| `win-unpacked` launches successfully |  |  |
-| App opens through `127.0.0.1` |  |  |
-| Closing the Electron window stops bundled R/Shiny |  |  |
-| Open Source Licenses page displays bundled notices |  |  |
+| Final executable is `StatEdu Studio.exe` for public 1.0 | Pass | Verified by `scripts\smoke_electron_release.ps1`. |
+| Installer artifact uses final non-beta name | Pass | `dist/electron/StatEdu_Studio_Setup_1.0.0.exe`. |
+| No legacy EasyFlow installer artifacts remain in `dist/electron` | Pass | `dist/electron` contains only `StatEdu_Studio_Setup_1.0.0.exe`, its `.blockmap`, and `win-unpacked`. |
+| `win-unpacked` launches successfully | Pass | Verified by `scripts\smoke_electron_app_lifecycle.ps1`. |
+| App opens through `127.0.0.1` | Pass | Lifecycle smoke reached the bundled Shiny URL. |
+| Closing the Electron window stops bundled R/Shiny | Pass | Verified by lifecycle smoke. |
+| Open Source Licenses page displays bundled notices | Pass | Browser QA showed Open Source Licenses heading, third-party notices, and license report table. |
 
 ## Runtime And Notices
 
 | Check | Status | Evidence / Notes |
 |---|---|---|
-| Bundled runtime is `R-4.5.3` |  |  |
-| `THIRD-PARTY-NOTICES.txt` present |  |  |
-| `license_report.csv` present |  |  |
-| `LICENSES/` present |  |  |
-| `LICENSE.electron.txt` present in Electron output |  |  |
-| `LICENSES.chromium.html` present in Electron output |  |  |
+| Bundled runtime is `R-4.5.3` | Pass | Verified in `dist/electron/win-unpacked/resources/app/runtime/R-4.5.3`. |
+| `THIRD-PARTY-NOTICES.txt` present | Pass | Verified by `scripts\smoke_electron_release.ps1`. |
+| `license_report.csv` present | Pass | Verified by `scripts\smoke_electron_release.ps1`. |
+| `LICENSES/` present | Pass | Verified by `scripts\smoke_electron_release.ps1`; 101 files. |
+| `LICENSE.electron.txt` present in Electron output | Pass | Verified by `scripts\smoke_electron_release.ps1`. |
+| `LICENSES.chromium.html` present in Electron output | Pass | Verified by `scripts\smoke_electron_release.ps1`. |
 
 ## Data And Export Smoke
 
 | Check | Status | Evidence / Notes |
 |---|---|---|
-| Import path with spaces works |  |  |
-| Import path with Korean characters works |  |  |
-| One Data Editor workflow completes |  |  |
-| One analysis workflow completes |  |  |
-| HTML export works |  |  |
-| PDF export works |  |  |
-| Public 1.0 hides Excel result export |  |  |
+| Import path with spaces works | Pending manual QA |  |
+| Import path with Korean characters works | Pending manual QA |  |
+| One Data Editor workflow completes | Pending manual QA | Automated Data Editor validations passed; packaged visual workflow remains manual QA. |
+| One analysis workflow completes | Pending manual QA | Automated analysis validations passed; packaged visual workflow remains manual QA. |
+| HTML export works | Pending manual QA |  |
+| PDF export works | Pending manual QA |  |
+| Public 1.0 hides Excel result export | Pass | Browser QA with `STATEDU_PUBLIC_RELEASE=1` showed Save HTML and Save PDF, with no Save Excel button. |
 
 ## Public Gate Evidence
 
 | Check | Status | Evidence / Notes |
 |---|---|---|
-| `studio.statedu.com` is live |  |  |
-| DOI `10.22934/statedu.studio` resolves to `https://studio.statedu.com` |  |  |
-| Public release notes contain no deferred feature claims |  |  |
-| Manual QA record is complete |  |  |
+| `studio.statedu.com` is live | Not ready / external gate | Homepage infrastructure is not built yet. |
+| DOI `10.22934/statedu.studio` resolves to `https://studio.statedu.com` | Not ready / external gate | DOI/homepage infrastructure is not built yet. |
+| Public release notes contain no deferred feature claims | Pending final review |  |
+| Manual QA record is complete | Pending manual QA |  |
 
 ## Final Result
 
 ```text
-Packaged validation status: Complete / Incomplete
-Blocking failures:
+Packaged validation status: Incomplete
+Blocking failures: DOI/homepage infrastructure not built; manual QA record incomplete.
 Non-blocking follow-ups:
-Approved package:
+Approved package: Pending
 Approver:
-Date:
+Date: 2026-06-25
 ```

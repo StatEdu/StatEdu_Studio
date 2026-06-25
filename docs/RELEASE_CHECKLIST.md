@@ -20,7 +20,7 @@ Use this checklist before creating a public beta installer, 1.0 release candidat
   panel geometry, and footer button placement.
 - For the 1.0 release, confirm `docs/RELEASE_1_0_DISTRIBUTION_LICENSE_PLAN_KO.md` has been reviewed. Free/Pro/Latent gates, license activation, and in-app updates are deferred for 1.0 unless a later decision log entry changes that status.
 - For the 1.0 release, update `docs/RELEASE_1_0_DECISION_LOG.md` with any distribution, license, update, DOI, website, or packaging decisions.
-- As of the 0.9.42 stabilization phase, do not add new analysis features before 1.0 unless they are required to fix correctness, data safety, packaging, or validation coverage.
+- As of the 1.0.0 release-candidate phase, do not add new analysis features unless they are required to fix correctness, data safety, packaging, or validation coverage.
 - Before moving from 0.9.x to 1.0, explicitly decide whether all remaining distribution/license/update plan items are implemented or intentionally deferred.
 - Before changing version metadata to 1.0.0, complete `docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md` so package names, installer names, smoke-test expectations, DOI checks, and public claims move together.
 

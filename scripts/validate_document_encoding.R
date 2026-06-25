@@ -39,7 +39,7 @@ if (length(doc_files) == 0) {
 
 invisible(vapply(doc_files, assert_valid_utf8, logical(1)))
 
-current_version <- "0.9.42"
+current_version <- "1.0.0"
 current_version_docs <- c(
   "docs/ANALYSIS_METHODS_KO.md",
   "docs/METHOD_NOTES_KO.md",
@@ -84,7 +84,7 @@ if (length(missing_terms) > 0) {
 
 release_plan <- paste(readLines("docs/RELEASE_1_0_DISTRIBUTION_LICENSE_PLAN_KO.md", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 required_release_plan_terms <- c(
-  "statedu-release-plan-reviewed-0.9.42",
+  "statedu-release-plan-reviewed-1.0.0",
   "distribution",
   "license",
   "update",

@@ -16,7 +16,7 @@ expect_true <- function(value, label) {
 }
 
 message("Checking paired guard conditions...")
-expect_true(grepl('doi: "10.22934/statedu.studio"', paste(readLines(file.path(repo_root, "CITATION.cff"), warn = FALSE), collapse = "\n"), fixed = TRUE), "Expected StatEdu Studio citation DOI to use the registered statedu.studio DOI")
+expect_true(!grepl('doi:', paste(readLines(file.path(repo_root, "CITATION.cff"), warn = FALSE), collapse = "\n"), fixed = TRUE), "Expected CITATION.cff to omit DOI until the DOI landing page is live")
 data <- data.frame(
   pre = c(1, 2, 3, 4, 5),
   post = c(2, 3, 5, 7, 11),

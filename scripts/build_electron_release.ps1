@@ -6,18 +6,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$arguments = @()
-if ($RHome) {
-  $arguments += @("-RHome", $RHome)
-}
-if ($SkipRuntimeCopy) {
-  $arguments += "-SkipRuntimeCopy"
-}
-if ($SkipNpmInstall) {
-  $arguments += "-SkipNpmInstall"
-}
-
-& (Join-Path $PSScriptRoot "build_electron_beta.ps1") @arguments
+$buildScript = Join-Path $PSScriptRoot "build_electron_beta.ps1"
+& $buildScript `
+  -RHome $RHome `
+  -SkipRuntimeCopy:$SkipRuntimeCopy.IsPresent `
+  -SkipNpmInstall:$SkipNpmInstall.IsPresent
 if ($LASTEXITCODE -ne 0) {
   exit $LASTEXITCODE
 }

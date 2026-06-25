@@ -85,18 +85,18 @@ assert_equal <- function(actual, expected, label) {
 
 assert_equal(
   electron_package$build$productName,
-  "StatEdu Studio Beta",
+  "StatEdu Studio",
   "Electron build productName"
 )
 assert_equal(
   electron_package$build$nsis$shortcutName,
-  "StatEdu Studio Beta",
+  "StatEdu Studio",
   "Electron NSIS shortcutName"
 )
 assert_equal(
   electron_package$build$win$artifactName,
-  'StatEdu_Studio_Beta_Setup_${version}.${ext}',
-  "Electron beta installer artifactName"
+  'StatEdu_Studio_Setup_${version}.${ext}',
+  "Electron final installer artifactName"
 )
 assert_contains("scripts/build_electron_beta.ps1", "Sync-ElectronPackageMetadata", "Electron package metadata sync")
 assert_contains("scripts/build_electron_beta.ps1", "StatEdu_Studio_Setup", "final 1.0 installer artifact prefix")

@@ -46,7 +46,8 @@ function Sync-ElectronPackageMetadata {
   $package.build.productName = $profile.ProductName
   $package.build.win.artifactName = "$($profile.ArtifactPrefix)_`${version}.`${ext}"
   $package.build.nsis.shortcutName = $profile.ShortcutName
-  $package | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $packagePath -Encoding UTF8
+  $json = ($package | ConvertTo-Json -Depth 20) + [Environment]::NewLine
+  [System.IO.File]::WriteAllText($packagePath, $json, [System.Text.UTF8Encoding]::new($false))
   Write-Host "Electron package metadata: $($profile.ProductName), $($profile.ArtifactPrefix)_$version.exe"
 }
 

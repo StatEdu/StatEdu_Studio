@@ -2,7 +2,7 @@
 
 Last reviewed: 2026-06-24
 
-Current version: 0.9.42
+Current version: 1.0.0
 
 This file records release decisions that must be made before changing the project from the 0.9.x stabilization line to a public 1.0 release. It is intentionally separate from feature planning so stabilization work does not drift into new product scope.
 
@@ -16,10 +16,10 @@ This file records release decisions that must be made before changing the projec
 
 | Area | Decision Needed | Current Status | Default Until Decided |
 |---|---|---|---|
-| Electron package | Whether the packaged Windows build passes full unpacked-output smoke checks | 0.9.42 Electron package rebuilt with bundled `R-4.5.3`; `scripts/release_preflight.ps1 -FullElectronSmoke` and `scripts/smoke_electron_app_lifecycle.ps1` passed on 2026-06-24 | Block public 1.0 installer until manual packaged-app QA is complete |
-| Electron naming | Whether 0.9.x beta packaging names are replaced with final 1.0 names across app display name, package metadata, installer artifact, shortcut name, executable resource strings, and smoke-test expectations | Build and smoke scripts switch from beta to final names when `VERSION` starts with `1.`; current 0.9.42 package metadata intentionally remains beta | Do not publish public 1.0 installer with beta naming unless explicitly approved |
-| DOI | Whether `10.22934/statedu.studio` is registered and resolves to `https://studio.statedu.com` | Intended DOI is present in README/CITATION/About metadata, but `doi.org` returns HTTP 404 as of the 2026-06-24 local network check | Block public citation claim |
-| Website | Whether `studio.statedu.com` is live and points to the product site | DNS resolves to `statedu.com`, but the 2026-06-24 local network check could not establish the TLS connection | Block public website claim |
+| Electron package | Whether the packaged Windows build passes full unpacked-output smoke checks | 1.0.0 metadata has been prepared; final 1.0 Electron package still needs rebuild, full smoke, lifecycle smoke, and manual packaged-app QA | Block public 1.0 installer until final package smoke and manual packaged-app QA are complete |
+| Electron naming | Whether 0.9.x beta packaging names are replaced with final 1.0 names across app display name, package metadata, installer artifact, shortcut name, executable resource strings, and smoke-test expectations | Source metadata now uses final 1.0 package names; generated Electron output still needs final rebuild and verification | Do not publish public 1.0 installer until generated output uses final non-beta naming |
+| DOI | Whether `10.22934/statedu.studio` is registered and resolves to `https://studio.statedu.com` | DOI/homepage infrastructure is not built yet; README, CITATION.cff, and About no longer publish a DOI citation line | Block public citation claim |
+| Website | Whether `studio.statedu.com` is live and points to the product site | Homepage infrastructure is not built yet | Block public website claim |
 | Free/Pro/Latent gates | Whether edition gates are implemented for 1.0 or deferred | Deferred for 1.0; do not add edition gates during the stabilization freeze | Do not claim gated editions |
 | License server | Whether activation, validation, device management, and grace-period flows are implemented for 1.0 or deferred | Deferred for 1.0; license activation remains outside the 1.0 stabilization scope | Do not claim license activation |
 | Update system | Whether in-app update checks and installer handoff are implemented for 1.0 or deferred | Deferred for 1.0; in-app update checks remain outside the 1.0 stabilization scope | Do not claim in-app updates |
@@ -45,7 +45,7 @@ Owner: StatEdu Studio
 Item: Electron display name, package metadata, installer artifact, shortcut name, executable resource strings, app data folder, and smoke-test expectations
 Reason: 1.0 is a stable public release line; keeping beta naming would create user confusion and weaken release credibility.
 User-visible claim removed or adjusted: Public 1.0 installer and app surfaces should say StatEdu Studio, not StatEdu Studio Beta.
-Validation/checklist update: Keep 0.9.42 beta metadata unchanged until the actual 1.0 version bump; Electron packaging and smoke scripts now select final names automatically for VERSION 1.x, and docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md verifies the generated output.
+Validation/checklist update: Source metadata has been bumped to 1.0.0 with final package names; Electron packaging and smoke scripts select final names for VERSION 1.x, and docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md verifies the generated output.
 Follow-up version: 1.0.0
 ```
 
