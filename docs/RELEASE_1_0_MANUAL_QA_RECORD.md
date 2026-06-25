@@ -38,7 +38,7 @@ R runtime: D:\Program\R\R-4.5.3
 | Local Shiny app starts | Pass | `scripts\smoke_shiny_app.ps1` passed through release preflight. |
 | Navbar shows `StatEdu Studio` and expected version | Pass | Browser QA on public-release local app showed StatEdu Studio logo and `v1.0.0`. |
 | About page shows version, source repository, and open-source license entry | Pass | Browser QA showed `v1.0.0`, repository link, DOI `Pending registration`, and Open Source Licenses menu/page. |
-| Repeated top-level menu clicks reopen the selected page correctly | Pending manual QA | Requires visual confirmation. |
+| Repeated top-level menu clicks reopen the selected page correctly | Pass | Packaged-app browser QA navigated Data -> Analysis -> t-test / ANOVA -> Data -> Analysis without a stale active menu blocking the selected page. |
 
 ## Data Workflow
 
@@ -75,14 +75,14 @@ R runtime: D:\Program\R\R-4.5.3
 | Public 1.0 hides Longitudinal / Panel Models from the Analysis menu | Pass | Browser QA with `STATEDU_PUBLIC_RELEASE=1` showed Regression, GLM, and Logistic Regression, with no Longitudinal / Panel Models item. |
 | Internal validation build can still exercise Longitudinal / Panel Models if enabled | Pass | `scripts\validate_longitudinal.R` passed. |
 | Nested Analysis submenus open adjacent to selected first-level item | Pass / Pending visual QA | Grouped menu navigation contract passed; visual sweep remains. |
-| Result save buttons are available after successful analysis | Pending manual QA | Requires packaged UI confirmation. |
+| Result save buttons are available after successful analysis | Pass | Packaged-app browser QA loaded data, completed variable selection, ran t-test / ANOVA, and showed Save HTML, Save PDF, and Add result after the result rendered. |
 
 ## Export Workflow
 
 | Item | Status | Evidence / Notes |
 |---|---|---|
-| HTML export works | Pending manual QA | Requires packaged UI confirmation. |
-| PDF export works | Pending manual QA | Requires packaged UI confirmation. |
+| HTML export works | Pending manual QA | Packaged UI exposed Save HTML after a successful analysis; the native Windows save dialog did not surface in the browser automation environment, so actual file creation remains manual. |
+| PDF export works | Pending manual QA | Packaged UI exposed Save PDF after a successful analysis; the native Windows save dialog did not surface in the browser automation environment, so actual file creation remains manual. |
 | Public 1.0 hides Excel result export | Pass | Browser QA with `STATEDU_PUBLIC_RELEASE=1` showed Save HTML and Save PDF, with no Save Excel button. |
 | Result collection add/reopen works | Pass | `scripts\validate_result_history.R` passed. |
 | Public 1.0 hides Word result export | Pass | Browser QA with `STATEDU_PUBLIC_RELEASE=1` showed Save HTML and Save PDF, with no Save Word button. |
@@ -97,7 +97,7 @@ R runtime: D:\Program\R\R-4.5.3
 | Packaged app opens through `127.0.0.1` | Pass | `scripts\smoke_electron_app_lifecycle.ps1` passed. |
 | `scripts/smoke_electron_app_lifecycle.ps1` passed | Pass | Passed on 2026-06-25. |
 | Closing Electron stops bundled R/Shiny | Pass | Lifecycle smoke passed. |
-| Packaged app imports data, runs one analysis, and exports one result | Pending manual QA | Requires visual packaged workflow. |
+| Packaged app imports data, runs one analysis, and exports one result | Partial / pending export QA | Packaged app imported `03_KSWL.sav`, completed variable selection, and ran t-test / ANOVA on `x1` by `group`; actual HTML/PDF file export remains pending because the native save dialog was not automatable in this pass. |
 | About > Open Source Licenses displays bundled notices | Pass | Browser QA showed Open Source Licenses heading, third-party notices, and license report table. |
 
 ## Public Release Gates
@@ -128,7 +128,7 @@ Final status:
 
 ```text
 Manual QA status: Incomplete
-Blocking failures: DOI/homepage infrastructure not built; visual packaged workflow QA still pending.
+Blocking failures: DOI/homepage infrastructure not built; HTML/PDF native save-dialog export QA still pending.
 Non-blocking follow-ups:
 Approved for public 1.0 packaging: No
 Approver:

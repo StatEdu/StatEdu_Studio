@@ -19,7 +19,7 @@ The local stabilization checks are passing for the current branch.
 - `scripts/smoke_electron_release.ps1`: passed on 2026-06-25 against the rebuilt 1.0.0 final Electron output.
 - `scripts/smoke_electron_app_lifecycle.ps1`: passed on 2026-06-25 against `dist/electron/win-unpacked/StatEdu Studio.exe`.
 - `scripts/release_preflight.ps1 -FullElectronSmoke`: passed on 2026-06-25 against the rebuilt 1.0.0 final Electron output.
-- Git working tree: pending 1.0.0 release-candidate metadata changes
+- Git working tree: 1.0.0 release-candidate metadata changes committed; recheck after the latest manual QA record updates.
 
 ## Confirmed Local Release Hygiene
 
@@ -34,6 +34,9 @@ The local stabilization checks are passing for the current branch.
 - Installer SHA256: `F05AEB7D597678BF632683836A9B8C93114721588902323379A743A0F1A1A0DA`.
 - Blockmap SHA256: `D7DD36A347BC76DEDEF2084A683B28DB9DAFF5F06DDC74CD16C3A42DCC67FD77`.
 - `dist/electron` contains only the final 1.0.0 setup file, its `.blockmap`, and `win-unpacked`.
+- Packaged-app browser QA confirmed the final `win-unpacked/StatEdu Studio.exe`
+  loads through `127.0.0.1`, imports data, completes Data Step 2 and Step 3,
+  runs t-test / ANOVA, and exposes public 1.0 Save HTML and Save PDF buttons.
 - The public 1.0 Electron build entry point is `scripts/build_electron_release.ps1`,
   which delegates to the compatibility build implementation and selects final
   package names from `VERSION`.
@@ -44,10 +47,12 @@ The local stabilization checks are passing for the current branch.
 
 These are not fully resolved by local validation and must be checked before publishing a public 1.0 installer.
 
-- Complete manual packaged-app QA against the rebuilt 1.0.0 release candidate.
+- Complete manual packaged-app QA against the rebuilt 1.0.0 release candidate;
+  the remaining packaged-app QA gap is native Windows save-dialog confirmation
+  for actual HTML/PDF file creation.
 - Complete `docs/RELEASE_MANUAL_QA.md` for visual consistency, file dialogs, packaged runtime behavior, and export handoffs.
 - Keep the completed manual QA record with the release notes and validation artifacts.
-- Launch the generated executable in `dist/electron/win-unpacked` and manually confirm app startup, About > Open Source Licenses, import, analysis, export, and close behavior.
+- Launch the generated executable in `dist/electron/win-unpacked` and manually confirm app startup, About > Open Source Licenses, import, analysis, export, and close behavior. Startup, import, analysis, and About license display have been confirmed; actual export file creation remains pending.
 - Build and publish `studio.statedu.com`; the homepage infrastructure is not built yet.
 - Register and verify DOI `10.22934/statedu.studio`; DOI infrastructure is not built yet.
 - Confirm the DOI landing URL resolves to `https://studio.statedu.com`.

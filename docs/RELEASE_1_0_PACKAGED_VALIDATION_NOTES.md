@@ -59,9 +59,9 @@ Build machine: StatEdu
 | Import path with spaces works | Pending manual QA |  |
 | Import path with Korean characters works | Pending manual QA |  |
 | One Data Editor workflow completes | Pending manual QA | Automated Data Editor validations passed; packaged visual workflow remains manual QA. |
-| One analysis workflow completes | Pending manual QA | Automated analysis validations passed; packaged visual workflow remains manual QA. |
-| HTML export works | Pending manual QA |  |
-| PDF export works | Pending manual QA |  |
+| One analysis workflow completes | Pass | Packaged-app browser QA imported `03_KSWL.sav`, completed Data Step 2 and Step 3, and ran t-test / ANOVA (`x1` by `group`) successfully. |
+| HTML export works | Pending manual QA | Packaged UI showed Save HTML after the successful analysis; actual file creation remains pending because the native Windows save dialog did not surface in browser automation. |
+| PDF export works | Pending manual QA | Packaged UI showed Save PDF after the successful analysis; actual file creation remains pending because the native Windows save dialog did not surface in browser automation. |
 | Public 1.0 hides Excel result export | Pass | Browser QA with `STATEDU_PUBLIC_RELEASE=1` showed Save HTML and Save PDF, with no Save Excel button. |
 
 ## Public Gate Evidence
@@ -71,13 +71,13 @@ Build machine: StatEdu
 | `studio.statedu.com` is live | Not ready / external gate | Homepage infrastructure is not built yet. |
 | DOI `10.22934/statedu.studio` resolves to `https://studio.statedu.com` | Not ready / external gate | DOI/homepage infrastructure is not built yet. |
 | Public release notes contain no deferred feature claims | Pending final review |  |
-| Manual QA record is complete | Pending manual QA |  |
+| Manual QA record is complete | Pending manual QA | Packaged import and analysis visual workflow passed; DOI/homepage and native save-dialog export gates remain open. |
 
 ## Final Result
 
 ```text
 Packaged validation status: Incomplete
-Blocking failures: DOI/homepage infrastructure not built; manual QA record incomplete.
+Blocking failures: DOI/homepage infrastructure not built; native save-dialog HTML/PDF export QA incomplete; manual QA record incomplete.
 Non-blocking follow-ups:
 Approved package: Pending
 Approver:
