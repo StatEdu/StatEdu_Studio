@@ -1,6 +1,6 @@
 source(file.path("R", "app_bootstrap.R"), local = TRUE)
 
-no_package_install <- identical(tolower(Sys.getenv("EASYFLOW_NO_PACKAGE_INSTALL", "false")), "true")
+no_package_install <- identical(tolower(Sys.getenv("STATEDU_NO_PACKAGE_INSTALL", "false")), "true")
 missing_packages <- character(0)
 
 if (!isTRUE(no_package_install)) {
@@ -12,13 +12,13 @@ if (length(missing_packages) > 0) {
   install.packages(missing_packages, repos = "https://cloud.r-project.org")
 }
 
-port <- suppressWarnings(as.integer(Sys.getenv("EASYFLOW_PORT", "7894")))
+port <- suppressWarnings(as.integer(Sys.getenv("STATEDU_PORT", "7894")))
 if (is.na(port) || port <= 0) {
   port <- 7894
 }
 
-append_easyflow_query <- function(url) {
-  token <- Sys.getenv("EASYFLOW_TOKEN", "")
+append_statedu_query <- function(url) {
+  token <- Sys.getenv("STATEDU_TOKEN", "")
   params <- c(
     if (nzchar(token)) paste0("token=", utils::URLencode(token, reserved = TRUE)) else character(0),
     paste0("t=", as.integer(Sys.time()))
@@ -31,11 +31,11 @@ shiny::runApp(
   appDir = ".",
   host = "127.0.0.1",
   port = port,
-  launch.browser = if (identical(tolower(Sys.getenv("EASYFLOW_LAUNCH_BROWSER", "true")), "false")) {
+  launch.browser = if (identical(tolower(Sys.getenv("STATEDU_LAUNCH_BROWSER", "true")), "false")) {
     FALSE
   } else {
     function(url) {
-      utils::browseURL(append_easyflow_query(url))
+      utils::browseURL(append_statedu_query(url))
     }
   }
 )

@@ -12,14 +12,14 @@ saved_results_cover_text <- function() {
   edition <- if (exists("analysis_save_edition", mode = "function")) {
     analysis_save_edition()
   } else {
-    tolower(Sys.getenv("EASYFLOW_EDITION", "development"))
+    tolower(Sys.getenv("STATEDU_EDITION", "development"))
   }
   if (!edition %in% c("free", "development", "personal", "institution")) {
     edition <- "development"
   }
-  organization <- trimws(Sys.getenv("EASYFLOW_REPORT_ORGANIZATION", ""))
-  user <- trimws(Sys.getenv("EASYFLOW_REPORT_USER", ""))
-  organization_logo <- trimws(Sys.getenv("EASYFLOW_REPORT_ORGANIZATION_LOGO", ""))
+  organization <- trimws(Sys.getenv("STATEDU_REPORT_ORGANIZATION", ""))
+  user <- trimws(Sys.getenv("STATEDU_REPORT_USER", ""))
+  organization_logo <- trimws(Sys.getenv("STATEDU_REPORT_ORGANIZATION_LOGO", ""))
 
   if (identical(edition, "development")) {
     organization <- if (nzchar(organization)) organization else "statedu.com"
@@ -37,12 +37,12 @@ saved_results_cover_text <- function() {
     organization = organization,
     user = user,
     organization_logo = organization_logo,
-    footer = trimws(Sys.getenv("EASYFLOW_REPORT_FOOTER", "Prepared with StatEdu Studio"))
+    footer = trimws(Sys.getenv("STATEDU_REPORT_FOOTER", "Prepared with StatEdu Studio"))
   )
 }
 
 saved_results_app_version <- function(version_file = "VERSION") {
-  version <- trimws(Sys.getenv("EASYFLOW_VERSION", ""))
+  version <- trimws(Sys.getenv("STATEDU_VERSION", ""))
   if (nzchar(version)) {
     return(version)
   }
@@ -937,7 +937,7 @@ clear_result_accumulator_store <- function(session, persist = TRUE) {
 }
 
 result_snapshot_store_path <- function() {
-  configured <- trimws(Sys.getenv("EASYFLOW_RESULT_STORE", ""))
+  configured <- trimws(Sys.getenv("STATEDU_RESULT_STORE", ""))
   if (nzchar(configured)) {
     return(configured)
   }
@@ -1476,7 +1476,7 @@ result_entry_images <- function(entry) {
     mime <- sub("^data:([^;]+);base64,.*$", "\\1", src)
     payload <- sub("^data:[^;]+;base64,", "", src)
     extension <- switch(mime, "image/jpeg" = ".jpg", "image/webp" = ".webp", ".png")
-    path <- tempfile("easyflow_result_image_", fileext = extension)
+    path <- tempfile("statedu_result_image_", fileext = extension)
     writeBin(jsonlite::base64_dec(payload), path)
     alt <- xml2::xml_attr(image_nodes[[index]], "alt") %||% sprintf("Figure %s", index)
     width <- suppressWarnings(as.numeric(xml2::xml_attr(image_nodes[[index]], "width") %||% ""))

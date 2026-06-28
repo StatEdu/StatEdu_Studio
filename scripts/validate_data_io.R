@@ -30,14 +30,14 @@ portable_data <- data.frame(
 )
 
 message("Checking copied CSV reads...")
-csv_path <- tempfile(pattern = "easyflow source space ", fileext = ".csv")
+csv_path <- tempfile(pattern = "statedu source space ", fileext = ".csv")
 writeLines(c("x,y", "1,2", "3,4"), csv_path, useBytes = TRUE)
 csv_data <- read_input_data(csv_path, "source.csv", csv_header = TRUE)
 stopifnot(nrow(csv_data) == 2)
 stopifnot(identical(names(csv_data), c("x", "y")))
 
 message("Checking CP949 Korean CSV reads...")
-cp949_path <- tempfile(pattern = "easyflow cp949 csv ", fileext = ".csv")
+cp949_path <- tempfile(pattern = "statedu cp949 csv ", fileext = ".csv")
 cp949_text <- c(
   paste(c(ko_sex, ko_grade, ko_department), collapse = ","),
   paste(c(ko_male, "3", "1"), collapse = ","),
@@ -50,7 +50,7 @@ stopifnot(identical(names(cp949_data), names(korean_data)))
 stopifnot(identical(as.character(cp949_data[[ko_sex]]), korean_data[[ko_sex]]))
 
 message("Checking Korean XLSX reads...")
-xlsx_path <- tempfile(pattern = "easyflow korean xlsx ", fileext = ".xlsx")
+xlsx_path <- tempfile(pattern = "statedu korean xlsx ", fileext = ".xlsx")
 suppressWarnings(openxlsx::write.xlsx(korean_data, xlsx_path, overwrite = TRUE))
 xlsx_data <- read_input_data(xlsx_path, "source.xlsx", csv_header = TRUE)
 stopifnot(nrow(xlsx_data) == 2)
@@ -58,7 +58,7 @@ stopifnot(identical(names(xlsx_data), names(korean_data)))
 stopifnot(identical(as.character(xlsx_data[[ko_sex]]), korean_data[[ko_sex]]))
 
 message("Checking XLSX sheet and start-cell reads...")
-multi_xlsx_path <- tempfile(pattern = "easyflow multi sheet xlsx ", fileext = ".xlsx")
+multi_xlsx_path <- tempfile(pattern = "statedu multi sheet xlsx ", fileext = ".xlsx")
 workbook <- openxlsx::createWorkbook()
 openxlsx::addWorksheet(workbook, "Notes")
 openxlsx::writeData(workbook, "Notes", data.frame(note = "not data"))
@@ -104,14 +104,14 @@ if (nzchar(xls_example) && file.exists(xls_example)) {
 }
 
 message("Checking Stata DTA reads...")
-dta_path <- tempfile(pattern = "easyflow_stata_", fileext = ".dta")
+dta_path <- tempfile(pattern = "statedu_stata_", fileext = ".dta")
 haven::write_dta(portable_data, dta_path)
 dta_data <- read_input_data(dta_path, "source.dta", csv_header = TRUE)
 stopifnot(nrow(dta_data) == 2)
 stopifnot(identical(names(dta_data), names(portable_data)))
 
 message("Checking SAS XPT reads...")
-xpt_path <- tempfile(pattern = "easyflow_sas_xpt_", fileext = ".xpt")
+xpt_path <- tempfile(pattern = "statedu_sas_xpt_", fileext = ".xpt")
 haven::write_xpt(portable_data, xpt_path)
 xpt_data <- read_input_data(xpt_path, "source.xpt", csv_header = TRUE)
 stopifnot(nrow(xpt_data) == 2)
@@ -119,7 +119,7 @@ stopifnot(identical(names(xpt_data), names(portable_data)))
 
 message("Checking SAS7BDAT reads...")
 if (exists("write_sas", envir = asNamespace("haven"), mode = "function")) {
-  sas_path <- tempfile(pattern = "easyflow_sas7bdat_", fileext = ".sas7bdat")
+  sas_path <- tempfile(pattern = "statedu_sas7bdat_", fileext = ".sas7bdat")
   haven::write_sas(portable_data, sas_path)
   sas_data <- read_input_data(sas_path, "source.sas7bdat", csv_header = TRUE)
   stopifnot(nrow(sas_data) == 2)
@@ -130,7 +130,7 @@ if (exists("write_sas", envir = asNamespace("haven"), mode = "function")) {
 }
 
 message("Checking copied DAT reads...")
-dat_path <- tempfile(pattern = "easyflow source dat ", fileext = ".dat")
+dat_path <- tempfile(pattern = "statedu source dat ", fileext = ".dat")
 writeLines(c("1 2", "3 4"), dat_path, useBytes = TRUE)
 dat_data <- read_input_data(dat_path, "source.dat", dat_has_names = FALSE)
 stopifnot(nrow(dat_data) == 2)

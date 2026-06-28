@@ -52,7 +52,7 @@ ensure_required_packages <- function(packages = required_packages) {
 load_app_packages <- function(
   packages = required_packages,
   attach_packages = startup_packages,
-  check = !identical(tolower(Sys.getenv("EASYFLOW_NO_PACKAGE_INSTALL", "false")), "true")
+  check = !identical(tolower(Sys.getenv("STATEDU_NO_PACKAGE_INSTALL", "false")), "true")
 ) {
   if (isTRUE(check)) {
     ensure_required_packages(packages)

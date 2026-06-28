@@ -313,7 +313,7 @@ assert_contains(sample_size_ui, "This effect-size calculator is not available fo
 
 result_saved_ui <- read_text("R/result_saved_ui.R")
 assert_contains(result_saved_ui, 'saved_results_app_version <- function(version_file = "VERSION")', "saved results VERSION default")
-assert_contains(result_saved_ui, 'Sys.getenv("EASYFLOW_VERSION", "")', "saved results environment version override")
+assert_contains(result_saved_ui, 'Sys.getenv("STATEDU_VERSION", "")', "saved results environment version override")
 assert_contains(result_saved_ui, 'readLines(version_file, warn = FALSE)[1]', "saved results VERSION fallback")
 assert_contains(result_saved_ui, 'sprintf("StatEdu Studio v%s", app_version)', "saved results version label")
 assert_contains(result_saved_ui, 'analysis_save_feature_enabled("excel")', "saved results Excel export feature guard")

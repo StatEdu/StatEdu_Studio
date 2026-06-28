@@ -1,6 +1,6 @@
 # File dialog helpers for data and settings files.
 
-open_dialog_cancel_marker <- "__EASYFLOW_OPEN_DIALOG_CANCEL__"
+open_dialog_cancel_marker <- "__STATEDU_OPEN_DIALOG_CANCEL__"
 
 open_dialog_ps_quote <- function(value) {
   paste0("'", gsub("'", "''", enc2utf8(as.character(value %||% "")), fixed = TRUE), "'")

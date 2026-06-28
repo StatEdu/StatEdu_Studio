@@ -81,7 +81,7 @@ about_document_roots <- function() {
   roots <- c(
     getwd(),
     normalizePath(".", winslash = "/", mustWork = FALSE),
-    Sys.getenv("EASYFLOW_APP_DIR", ""),
+    Sys.getenv("STATEDU_APP_DIR", ""),
     file.path(getwd(), "dist", "electron", "win-unpacked", "resources", "app", "app")
   )
   unique(normalizePath(roots[nzchar(roots)], winslash = "/", mustWork = FALSE))
@@ -117,12 +117,12 @@ about_document_specs <- function(language = "ko") {
   }
 
   list(
-    overview = list(title = statedu_utf8("eab09cec9a94"), path = "README_KO.md", subtitle = statedu_utf8("ed9484eba19ceca09ded8ab820ebb294ec9c842c20ed9884ec9eac20ebb284eca0842c20eab280eca69d2c20ec9db8ec9aa920eca095ebb3b4eba5bc20eca09ceab3b5ed95a9eb8b88eb8ba42e")),
-    user_guide = list(title = statedu_utf8("ec82acec9aa9ec9e9020eab080ec9db4eb939c"), path = file.path("docs", "USER_GUIDE_KO.md"), subtitle = statedu_utf8("eb8db0ec9db4ed84b020ebb688eb9facec98a4eab8b02c20ebb380ec889820ec84a0ed839d2c20ebb684ec849d20ec8ba4ed96892c20eab2b0eab3bc20eca080ec9ea520eca088ecb0a8eba5bc20ec9588eb82b4ed95a9eb8b88eb8ba42e")),
-    analysis_methods = list(title = statedu_utf8("ebb684ec849d"), path = file.path("docs", "ANALYSIS_METHODS_KO.md"), subtitle = statedu_utf8("537461744564752053747564696f20312e30ec9d9820ebb684ec849d20eba994eb89b42c20ed86b5eab38420ecb69ceba0a52c20ed919c2c20eb82b4ebb3b4eb82b4eab8b020ebb294ec9c84eba5bc20eca095eba6aced95a9eb8b88eb8ba42e")),
-    method_notes = list(title = statedu_utf8("ebb0a9ebb295eba1a020eb85b8ed8ab8"), path = file.path("docs", "METHOD_NOTES_KO.md"), subtitle = statedu_utf8("ebb684ec849d20ebb0a9ebb29520ec84a0ed839d2c20eab080eca0952c20eab2bdeab3a02c20eab2b0eab3bc20ed95b4ec849dec979020eb8c80ed959c20eb85b8ed8ab8eba5bc20eca09ceab3b5ed95a9eb8b88eb8ba42e")),
-    validation = list(title = statedu_utf8("eab280eca69d"), path = file.path("docs", "ANALYSIS_REFERENCE_COMPARISON_PUBLIC_KO.md"), subtitle = statedu_utf8("eab3b5eab09c20312e3020eab384ec82b0eab3bc20ec9e90eb8f9920ed8c90eb8ba820eab2bdeba19cec9d9820eab8b0eca48020ebb984eab590eba5bc20eca09ceab3b5ed95a9eb8b88eb8ba42e")),
-    version_history = list(title = statedu_utf8("ebb284eca08420eab8b0eba19d"), path = "CHANGELOG_KO.md", subtitle = statedu_utf8("eba6b4eba6acec8aa420eb85b8ed8ab8ec998020ebb284eca08420eab8b0eba19dec9d8420eca09ceab3b5ed95a9eb8b88eb8ba42e"))
+    overview = list(title = statedu_ko("doc_overview_title"), path = "README_KO.md", subtitle = statedu_ko("doc_overview_subtitle")),
+    user_guide = list(title = statedu_ko("doc_user_guide_title"), path = file.path("docs", "USER_GUIDE_KO.md"), subtitle = statedu_ko("doc_user_guide_subtitle")),
+    analysis_methods = list(title = statedu_ko("doc_analyses_title"), path = file.path("docs", "ANALYSIS_METHODS_KO.md"), subtitle = statedu_ko("doc_analyses_subtitle")),
+    method_notes = list(title = statedu_ko("doc_method_notes_title"), path = file.path("docs", "METHOD_NOTES_KO.md"), subtitle = statedu_ko("doc_method_notes_subtitle")),
+    validation = list(title = statedu_ko("doc_validation_title"), path = file.path("docs", "ANALYSIS_REFERENCE_COMPARISON_PUBLIC_KO.md"), subtitle = statedu_ko("doc_validation_subtitle")),
+    version_history = list(title = statedu_ko("doc_version_history_title"), path = "CHANGELOG_KO.md", subtitle = statedu_ko("doc_version_history_subtitle"))
   )
 }
 
@@ -316,7 +316,7 @@ about_preferences_tab_panel <- function(language = statedu_initial_language()) {
           selectInput(
             "app_language",
             statedu_text(language, "Language", statedu_utf8("ec96b8ec96b4")),
-            choices = stats::setNames(c("ko", "en"), c(statedu_utf8("ed959ceab5adec96b4"), "English")),
+            choices = stats::setNames(c("ko", "en"), c(statedu_ko("lang_korean"), "English")),
             selected = language,
             width = "320px",
             selectize = FALSE

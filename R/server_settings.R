@@ -186,10 +186,10 @@ register_data_input_observers <- function(input, active_data_file, reset_on_data
     message("[StatEdu timing] browse_data_file: open dialog")
     data_path <- open_data_file()
     if (is.null(data_path)) {
-      easyflow_log_timing("browse_data_file canceled", start)
+      statedu_log_timing("browse_data_file canceled", start)
       return()
     }
-    easyflow_log_timing("browse_data_file selected", start, sprintf("file=%s", basename(data_path)))
+    statedu_log_timing("browse_data_file selected", start, sprintf("file=%s", basename(data_path)))
 
     if (excel_data_file_extension(data_path)) {
       active_data_file(excel_pending_file_value(data_path))
@@ -199,7 +199,7 @@ register_data_input_observers <- function(input, active_data_file, reset_on_data
       active_data_file(list(path = data_path, name = basename(data_path), restored = FALSE, loaded_at = format(Sys.time(), "%Y%m%d%H%M%OS6")))
     }
     mark_settings_dirty()
-    easyflow_log_timing("browse_data_file queued load", start, sprintf("file=%s", basename(data_path)))
+    statedu_log_timing("browse_data_file queued load", start, sprintf("file=%s", basename(data_path)))
   })
 
   observeEvent(input$apply_excel_import, {
@@ -284,12 +284,12 @@ register_settings_reset_handler <- function(
     go_data_step_fn("step1")
 
     session$onFlushed(function() {
-      easyflow_log_timing("reset_session_settings data flushed", start)
+      statedu_log_timing("reset_session_settings data flushed", start)
       reset_start <- Sys.time()
       reset_setup_inputs_fn(session)
-      easyflow_log_timing("reset_setup_inputs queued", reset_start)
+      statedu_log_timing("reset_setup_inputs queued", reset_start)
       session$onFlushed(function() {
-        easyflow_log_timing("reset_session_settings setup flushed", start)
+        statedu_log_timing("reset_session_settings setup flushed", start)
         suppress_dirty_tracking(FALSE)
         mark_settings_clean()
       }, once = TRUE)
@@ -329,7 +329,7 @@ register_settings_load_handler <- function(
     if (is.function(clear_results_fn)) {
       clear_results_fn()
     }
-    easyflow_time_expr(
+    statedu_time_expr(
       "restore_settings_state",
       restore_settings_state_fn(settings, settings_path),
       detail = sprintf("file=%s", basename(as.character(settings_path %||% "")))
@@ -337,7 +337,7 @@ register_settings_load_handler <- function(
     session$onFlushed(function() {
       suppress_dirty_tracking(FALSE)
       mark_settings_clean()
-      easyflow_log_timing("apply_settings_object flushed", start, sprintf("file=%s", basename(as.character(settings_path %||% ""))))
+      statedu_log_timing("apply_settings_object flushed", start, sprintf("file=%s", basename(as.character(settings_path %||% ""))))
     }, once = TRUE)
     if (!is.null(current_data_file_fn())) {
       showNotification(
@@ -374,12 +374,12 @@ register_settings_load_handler <- function(
     message("[StatEdu timing] browse_settings_data: open dialog")
     settings_path <- open_settings_file()
     if (is.null(settings_path)) {
-      easyflow_log_timing("browse_settings_data canceled", browse_start)
+      statedu_log_timing("browse_settings_data canceled", browse_start)
       return()
     }
     message(sprintf("[StatEdu timing] browse_settings_data: selected %s", settings_path))
     settings <- read_settings_json_file(settings_path)
-    easyflow_log_timing("browse_settings_data before apply", browse_start, sprintf("file=%s", basename(settings_path)))
+    statedu_log_timing("browse_settings_data before apply", browse_start, sprintf("file=%s", basename(settings_path)))
     apply_settings_object(settings, settings_path)
   })
 

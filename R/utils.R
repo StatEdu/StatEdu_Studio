@@ -78,7 +78,7 @@ statedu_initial_language <- function(request = NULL) {
     language <- getOption("statedu.app_language", "")
   }
   if (!nzchar(language)) {
-    language <- Sys.getenv("STATEDU_APP_LANGUAGE", Sys.getenv("EASYFLOW_APP_LANGUAGE", "ko"))
+    language <- Sys.getenv("STATEDU_APP_LANGUAGE", "ko")
   }
   normalize_app_language(language)
 }
@@ -214,12 +214,12 @@ statedu_ui_label <- function(key, language = statedu_initial_language()) {
   parts <- strsplit(value, "\\|", fixed = FALSE)[[1]]
   statedu_text(language, parts[[1]], parts[[length(parts)]])
 }
-easyflow_timing_enabled <- function() {
-  !identical(tolower(Sys.getenv("EASYFLOW_TIMING", "1")), "0")
+statedu_timing_enabled <- function() {
+  !identical(tolower(Sys.getenv("STATEDU_TIMING", "1")), "0")
 }
 
-easyflow_log_timing <- function(label, start, detail = "") {
-  if (!isTRUE(easyflow_timing_enabled())) {
+statedu_log_timing <- function(label, start, detail = "") {
+  if (!isTRUE(statedu_timing_enabled())) {
     return(invisible(FALSE))
   }
   elapsed <- as.numeric(difftime(Sys.time(), start, units = "secs"))
@@ -228,9 +228,9 @@ easyflow_log_timing <- function(label, start, detail = "") {
   invisible(TRUE)
 }
 
-easyflow_time_expr <- function(label, expr, detail = "") {
+statedu_time_expr <- function(label, expr, detail = "") {
   start <- Sys.time()
-  on.exit(easyflow_log_timing(label, start, detail), add = TRUE)
+  on.exit(statedu_log_timing(label, start, detail), add = TRUE)
   force(expr)
 }
 

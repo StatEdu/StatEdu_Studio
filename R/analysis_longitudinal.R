@@ -521,7 +521,7 @@ longitudinal_fit_count_screen_model <- function(
 ) {
   data <- as.data.frame(data)
   if (!is.null(weights)) {
-    data$.easyflow_weights <- suppressWarnings(as.numeric(weights))
+    data$.statedu_weights <- suppressWarnings(as.numeric(weights))
   }
   if (identical(model_type, "glmm")) {
     random <- longitudinal_mixed_random_terms(id, time, cluster, random_slope)
@@ -531,12 +531,12 @@ longitudinal_fit_count_screen_model <- function(
         if (is.null(weights)) {
           lme4::glmer.nb(mixed_formula, data = data, control = lme4::glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000)))
         } else {
-          lme4::glmer.nb(mixed_formula, data = data, weights = .easyflow_weights, control = lme4::glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000)))
+          lme4::glmer.nb(mixed_formula, data = data, weights = .statedu_weights, control = lme4::glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000)))
         }
       } else if (is.null(weights)) {
         lme4::glmer(mixed_formula, data = data, family = stats::poisson(link = "log"), control = lme4::glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000)))
       } else {
-        lme4::glmer(mixed_formula, data = data, weights = .easyflow_weights, family = stats::poisson(link = "log"), control = lme4::glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000)))
+        lme4::glmer(mixed_formula, data = data, weights = .statedu_weights, family = stats::poisson(link = "log"), control = lme4::glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000)))
       }
     }, error = function(e) e))
   }
@@ -545,12 +545,12 @@ longitudinal_fit_count_screen_model <- function(
       if (is.null(weights)) {
         MASS::glm.nb(formula, data = data, link = "log")
       } else {
-        MASS::glm.nb(formula, data = data, weights = .easyflow_weights, link = "log")
+        MASS::glm.nb(formula, data = data, weights = .statedu_weights, link = "log")
       }
     } else if (is.null(weights)) {
       stats::glm(formula, data = data, family = stats::poisson(link = "log"))
     } else {
-      stats::glm(formula, data = data, weights = .easyflow_weights, family = stats::poisson(link = "log"))
+      stats::glm(formula, data = data, weights = .statedu_weights, family = stats::poisson(link = "log"))
     }
   }, error = function(e) e)
 }
@@ -1054,35 +1054,35 @@ longitudinal_fit_model <- function(data, outcome, id, time, terms, model_type, f
     if (length(weights) != nrow(data) || any(!is.finite(weights)) || any(weights <= 0)) {
       stop("Model weights must be positive finite values with one value per analyzed row.")
     }
-    data$.easyflow_weights <- weights
+    data$.statedu_weights <- weights
   }
   if (identical(model_type, "gee")) {
     if (id %in% names(data) && time %in% names(data)) {
       data <- data[order(data[[id]], data[[time]], na.last = TRUE), , drop = FALSE]
     }
     if (identical(family, "negative_binomial")) {
-      data$.easyflow_gee_id <- data[[id]]
+      data$.statedu_gee_id <- data[[id]]
       model <- if (is.null(weights)) {
         MASS::glm.nb(formula, data = data, link = "log")
       } else {
-        MASS::glm.nb(formula, data = data, weights = .easyflow_weights, link = "log")
+        MASS::glm.nb(formula, data = data, weights = .statedu_weights, link = "log")
       }
       return(list(
         model = model,
         formula = formula,
-        coef_table = longitudinal_cluster_robust_coef_table(model, data$.easyflow_gee_id, exponentiate),
+        coef_table = longitudinal_cluster_robust_coef_table(model, data$.statedu_gee_id, exponentiate),
         aic = stats::AIC(model),
         bic = stats::BIC(model),
         fit_note = "Negative binomial count outcomes are fitted as a marginal negative binomial GLM with subject-cluster robust standard errors because geepack does not support a negative binomial working variance. Do not report this row as a native negative-binomial GEE."
       ))
     }
-    data$.easyflow_gee_id <- data[[id]]
-    data$.easyflow_gee_waves <- data[[time]]
+    data$.statedu_gee_id <- data[[id]]
+    data$.statedu_gee_waves <- data[[time]]
     model <- if (is.null(weights)) {
       geepack::geeglm(
         formula,
-        id = .easyflow_gee_id,
-        waves = .easyflow_gee_waves,
+        id = .statedu_gee_id,
+        waves = .statedu_gee_waves,
         data = data,
         family = longitudinal_family_object(family, formula, data, weights),
         corstr = corstr
@@ -1090,10 +1090,10 @@ longitudinal_fit_model <- function(data, outcome, id, time, terms, model_type, f
     } else {
       geepack::geeglm(
         formula,
-        id = .easyflow_gee_id,
-        waves = .easyflow_gee_waves,
+        id = .statedu_gee_id,
+        waves = .statedu_gee_waves,
         data = data,
-        weights = .easyflow_weights,
+        weights = .statedu_weights,
         family = longitudinal_family_object(family, formula, data, weights),
         corstr = corstr
       )
@@ -1106,7 +1106,7 @@ longitudinal_fit_model <- function(data, outcome, id, time, terms, model_type, f
     model <- if (is.null(weights)) {
       lmerTest::lmer(mixed_formula, data = data, REML = FALSE)
     } else {
-      lmerTest::lmer(mixed_formula, data = data, weights = .easyflow_weights, REML = FALSE)
+      lmerTest::lmer(mixed_formula, data = data, weights = .statedu_weights, REML = FALSE)
     }
     return(list(model = model, formula = mixed_formula, coef_table = longitudinal_lmm_coef_table(model), aic = stats::AIC(model), bic = stats::BIC(model), fit_note = NULL))
   }
@@ -1124,7 +1124,7 @@ longitudinal_fit_model <- function(data, outcome, id, time, terms, model_type, f
         lme4::glmer.nb(
           mixed_formula,
           data = data,
-          weights = .easyflow_weights,
+          weights = .statedu_weights,
           control = lme4::glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
         )
       }
@@ -1140,7 +1140,7 @@ longitudinal_fit_model <- function(data, outcome, id, time, terms, model_type, f
         lme4::glmer(
           mixed_formula,
           data = data,
-          weights = .easyflow_weights,
+          weights = .statedu_weights,
           family = longitudinal_family_object(family),
           control = lme4::glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
         )
@@ -1153,7 +1153,7 @@ longitudinal_fit_model <- function(data, outcome, id, time, terms, model_type, f
     model <- if (is.null(weights)) {
       plm::plm(formula, data = data, index = c(id, time), model = panel_model, effect = "individual")
     } else {
-      plm::plm(formula, data = data, weights = .easyflow_weights, index = c(id, time), model = panel_model, effect = "individual")
+      plm::plm(formula, data = data, weights = .statedu_weights, index = c(id, time), model = panel_model, effect = "individual")
     }
     return(list(model = model, formula = formula, coef_table = longitudinal_panel_coef_table(model), aic = NA_real_, bic = NA_real_, fit_note = NULL))
   }
@@ -2418,7 +2418,7 @@ longitudinal_ipw_weights <- function(raw_prepared, analyzed_data, outcome, id, t
     !anyNA(values) && length(unique(values)) > 1
   }, logical(1))]
   weight_data <- raw_prepared
-  weight_data$.easyflow_observed <- as.integer(observed)
+  weight_data$.statedu_observed <- as.integer(observed)
   if (length(candidate_terms) == 0) {
     probability <- mean(observed)
     weights <- rep(1 / probability, nrow(analyzed_data))
@@ -2429,7 +2429,7 @@ longitudinal_ipw_weights <- function(raw_prepared, analyzed_data, outcome, id, t
       note = "No fully observed predictors were available for the observation model; intercept-only IPW was used. Treat this as a weak IPW sensitivity analysis."
     ))
   }
-  formula <- stats::reformulate(candidate_terms, response = ".easyflow_observed")
+  formula <- stats::reformulate(candidate_terms, response = ".statedu_observed")
   fit <- tryCatch(stats::glm(formula, data = weight_data, family = stats::binomial()), error = function(e) e)
   if (inherits(fit, "error")) {
     probability <- mean(observed)

@@ -48,7 +48,7 @@ create_app_server <- function(app_version) {
     try(shiny::addResourcePath("latent_outputs", normalizePath(app_output_root, winslash = "/", mustWork = FALSE)), silent = TRUE)
 
     session$onSessionEnded(function() {
-      if (identical(Sys.getenv("EASYFLOW_STOP_ON_SESSION_END"), "1")) {
+      if (identical(Sys.getenv("STATEDU_STOP_ON_SESSION_END"), "1")) {
         stopApp()
       }
     })

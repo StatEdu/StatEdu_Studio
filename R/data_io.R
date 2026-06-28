@@ -25,7 +25,7 @@ read_sav_robust <- function(path, copy_to_ascii = TRUE) {
   # Some Windows/R setups fail when haven reads an uploaded file from a
   # non-ASCII or extensionless temporary path. Copy to an ASCII .sav path first.
   if (isTRUE(copy_to_ascii)) {
-    tmp_path <- tempfile(pattern = "easyflow_sav_", fileext = ".sav")
+    tmp_path <- tempfile(pattern = "statedu_sav_", fileext = ".sav")
     copied <- tryCatch(
       file.copy(source_path, tmp_path, overwrite = TRUE),
       error = function(e) FALSE
@@ -79,7 +79,7 @@ copy_data_file_for_reading <- function(path, original_name = path) {
   source_path <- normalizePath(path, winslash = "/", mustWork = TRUE)
   extension <- tolower(tools::file_ext(as.character(original_name %||% path)))
   fileext <- if (nzchar(extension)) paste0(".", extension) else ""
-  tmp_path <- tempfile(pattern = "easyflow_data_", fileext = fileext)
+  tmp_path <- tempfile(pattern = "statedu_data_", fileext = fileext)
   copied <- tryCatch(
     file.copy(source_path, tmp_path, overwrite = TRUE),
     error = function(e) FALSE
@@ -473,7 +473,7 @@ value_label_pairs <- function(x, prepared_x = x, max_pairs = 6, measurement = NU
 }
 
 variable_summary_table <- function(data, input, raw_data = data) {
-  easyflow_time_expr("variable_summary_table", {
+  statedu_time_expr("variable_summary_table", {
     raw_data <- as.data.frame(raw_data, stringsAsFactors = FALSE, check.names = TRUE)
     rows <- lapply(seq_along(data), function(i) {
       name <- names(data)[[i]]

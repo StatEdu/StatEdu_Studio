@@ -55,7 +55,7 @@ ensure_required_packages <- function(packages = required_packages) {
 load_app_packages <- function(
   packages = required_packages,
   attach_packages = startup_packages,
-  check = !identical(tolower(Sys.getenv("EASYFLOW_NO_PACKAGE_INSTALL", "false")), "true")
+  check = !identical(tolower(Sys.getenv("STATEDU_NO_PACKAGE_INSTALL", "false")), "true")
 ) {
   if (isTRUE(check)) {
     ensure_required_packages(packages)
@@ -68,6 +68,7 @@ load_app_packages <- function(
 
 app_module_files <- c(
   "utils.R",
+  "labels.R",
   "update_check.R",
   "settings_io.R",
   "settings_dialogs.R",
@@ -197,6 +198,7 @@ optional_app_module_files <- c(
 
 utf8_app_module_files <- c(
   "utils.R",
+  "labels.R",
   "data_editor_ui.R",
   "server_data_outputs.R",
   "ui_helpers.R",

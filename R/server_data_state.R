@@ -87,7 +87,7 @@ create_data_reactives <- function(input, active_data_file, calculated_variables 
   source_dataset <- reactive({
     file <- current_data_file()
     req(file)
-    easyflow_time_expr(
+    statedu_time_expr(
       "read_current_data_file",
       read_current_data_file(file, input),
       detail = sprintf("file=%s", basename(as.character(file$name %||% file$path %||% "")))
@@ -95,7 +95,7 @@ create_data_reactives <- function(input, active_data_file, calculated_variables 
   })
 
   raw_dataset <- reactive({
-    easyflow_time_expr(
+    statedu_time_expr(
       "raw_dataset",
       append_calculated_variables(
         apply_variable_renames(
@@ -110,7 +110,7 @@ create_data_reactives <- function(input, active_data_file, calculated_variables 
 
   dataset <- reactive({
     data <- raw_dataset()
-    easyflow_time_expr(
+    statedu_time_expr(
       "prepare_data",
       apply_user_missing_rules_to_data(
         prepare_data(data),
@@ -439,7 +439,7 @@ create_restore_settings_state_fn <- function(
       pending_settings(settings)
       reset_on_dataset_load(FALSE)
       active_data_file(data_switch)
-      easyflow_log_timing("restore_settings_state queued data switch", start)
+      statedu_log_timing("restore_settings_state queued data switch", start)
       return()
     }
 
@@ -447,19 +447,19 @@ create_restore_settings_state_fn <- function(
       pending_settings(settings)
       if (restore_settings_data_file_fn(settings, settings_path)) {
         message("[StatEdu timing] restore_settings_state: restored data file from settings")
-        easyflow_log_timing("restore_settings_state restored data file", start)
+        statedu_log_timing("restore_settings_state restored data file", start)
         return()
       }
       pending_settings(NULL)
     }
 
     if (restore_settings_variable_info_only_fn(settings, selected, dependent, independent, controls, saved_info, restored)) {
-      easyflow_log_timing("restore_settings_state variable info only", start)
+      statedu_log_timing("restore_settings_state variable info only", start)
       return()
     }
 
     restore_settings_for_current_data_fn(settings, selected, dependent, independent, controls, saved_info, restored)
-    easyflow_log_timing("restore_settings_state current data", start)
+    statedu_log_timing("restore_settings_state current data", start)
   }
 }
 

@@ -4693,7 +4693,7 @@ register_sample_size_server <- function(input, output, session, app_language_fn 
           sample_size_jobs(jobs)
         }
         results[[method_local]](list(progress = TRUE, id = progress_id, cancel_id = stop_id, text = "Starting... 1%"))
-        progress_path <- tempfile(sprintf("easyflow_%s_progress_", method_local), fileext = ".jsonl")
+        progress_path <- tempfile(sprintf("statedu_%s_progress_", method_local), fileext = ".jsonl")
         input_snapshot <- isolate(reactiveValuesToList(input))
         job_process <- sample_size_start_background_job(
           method = method_local,

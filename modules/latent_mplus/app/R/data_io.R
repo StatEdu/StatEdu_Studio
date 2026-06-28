@@ -24,7 +24,7 @@ read_sav_robust <- function(path) {
 
   # Some Windows/R setups fail when haven reads an uploaded file from a
   # non-ASCII or extensionless temporary path. Copy to an ASCII .sav path first.
-  tmp_path <- tempfile(pattern = "easyflow_sav_", fileext = ".sav")
+  tmp_path <- tempfile(pattern = "statedu_sav_", fileext = ".sav")
   copied <- tryCatch(
     file.copy(source_path, tmp_path, overwrite = TRUE),
     error = function(e) FALSE
@@ -77,7 +77,7 @@ copy_data_file_for_reading <- function(path, original_name = path) {
   source_path <- normalizePath(path, winslash = "/", mustWork = TRUE)
   extension <- tolower(tools::file_ext(as.character(original_name %||% path)))
   fileext <- if (nzchar(extension)) paste0(".", extension) else ""
-  tmp_path <- tempfile(pattern = "easyflow_data_", fileext = fileext)
+  tmp_path <- tempfile(pattern = "statedu_data_", fileext = fileext)
   copied <- tryCatch(
     file.copy(source_path, tmp_path, overwrite = TRUE),
     error = function(e) FALSE

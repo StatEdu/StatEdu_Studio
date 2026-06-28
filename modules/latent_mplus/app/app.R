@@ -1,5 +1,5 @@
 startup_log <- function(message) {
-  path <- Sys.getenv("EASYFLOW_STARTUP_LOG", "")
+  path <- Sys.getenv("STATEDU_STARTUP_LOG", "")
   if (!nzchar(path)) {
     return(invisible(FALSE))
   }

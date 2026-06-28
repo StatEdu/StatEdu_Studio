@@ -290,7 +290,7 @@ Assert-Path (Join-Path $RepoRoot "LICENSE") "application license"
 Assert-Path (Join-Path $RepoRoot "SOURCE-OFFER.txt") "source offer"
 Assert-Path (Join-Path $RepoRoot "packaging\electron\build\studio-file.ico") "studio file association icon"
 
-Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "EASYFLOW_TOKEN" "Electron token handoff"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "STATEDU_TOKEN" "Electron token handoff"
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\package.json") '"ext"\s*:\s*"studio"' ".studio file association extension"
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\package.json") '"icon"\s*:\s*"build/studio-file\.ico"' ".studio file association icon path"
 Assert-FileContains (Join-Path $RepoRoot "docs\RELEASE_CHECKLIST.md") "validate_stabilization\.ps1 -Full" "full stabilization validation in release checklist"

@@ -181,7 +181,7 @@ register_data_table_outputs <- function(
           script = variable_table_callback_script(language)
         )
       )
-      easyflow_log_timing("render selected_variable_edit_table", start, sprintf("rows=%s", nrow(table_state$table_data)))
+      statedu_log_timing("render selected_variable_edit_table", start, sprintf("rows=%s", nrow(table_state$table_data)))
       out
     }, error = function(error) {
       message("Selected variable edit table render error: ", conditionMessage(error))
@@ -260,7 +260,7 @@ register_data_table_outputs <- function(
         options = category_label_table_options(column_defs, language),
         callback = category_label_table_callback(language)
       )
-      easyflow_log_timing("render category_label_table", start, sprintf("rows=%s cols=%s", nrow(table_data), ncol(table_data)))
+      statedu_log_timing("render category_label_table", start, sprintf("rows=%s cols=%s", nrow(table_data), ncol(table_data)))
       out
     }, error = function(error) {
       message("Category label table render error: ", conditionMessage(error))
@@ -280,7 +280,7 @@ register_data_table_outputs <- function(
       data <- data[, intersect(selected, names(data)), drop = FALSE]
     }
     out <- data_preview_datatable(data)
-    easyflow_log_timing("render data_preview_table", start, sprintf("vars=%s rows=%s", ncol(data), nrow(data)))
+    statedu_log_timing("render data_preview_table", start, sprintf("vars=%s rows=%s", ncol(data), nrow(data)))
     out
   })
 
@@ -345,7 +345,7 @@ register_variable_table_output <- function(
         script = variable_table_callback_script(language)
       )
     )
-    easyflow_log_timing("render variable_table", start, sprintf("rows=%s selection_applied=%s", nrow(table_data), isTRUE(selection_applied_fn())))
+    statedu_log_timing("render variable_table", start, sprintf("rows=%s selection_applied=%s", nrow(table_data), isTRUE(selection_applied_fn())))
     out
   })
 

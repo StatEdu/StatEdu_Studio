@@ -138,7 +138,7 @@ settings_embedded_data_file <- function(settings) {
   if (!supported_data_file_extension(file_name)) {
     return(NULL)
   }
-  restored_path <- tempfile("easyflow_data_", fileext = if (nzchar(extension)) paste0(".", extension) else "")
+  restored_path <- tempfile("statedu_data_", fileext = if (nzchar(extension)) paste0(".", extension) else "")
   writeBin(jsonlite::base64_dec(settings_scalar(embedded)), restored_path)
   file <- list(path = restored_path, name = file_name, restored = TRUE)
   if (excel_data_file_extension(file_name) && is.list(settings$data_file_options)) {
@@ -429,7 +429,7 @@ build_settings_object <- function(
 ) {
   variable_names <- if (is.null(variable_info)) character(0) else as.character(variable_info$name)
   list(
-    app = "easyflow_statistics",
+    app = "statedu_studio",
     version = app_version,
     app_language = normalize_app_language(app_language),
     data_step = data_step,
@@ -659,7 +659,7 @@ write_settings_json_file <- function(settings, path) {
 }
 
 read_settings_json_file <- function(path) {
-  settings <- easyflow_time_expr(
+  settings <- statedu_time_expr(
     "read_settings_json_file",
     jsonlite::fromJSON(path),
     detail = sprintf("file=%s", basename(as.character(path %||% "")))

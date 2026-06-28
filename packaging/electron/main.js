@@ -157,12 +157,12 @@ async function startShiny() {
   const token = crypto.randomBytes(32).toString("hex");
   const env = {
     ...process.env,
-    EASYFLOW_PORT: String(port),
-    EASYFLOW_APP_DIR: appDir,
-    EASYFLOW_LAUNCH_BROWSER: "false",
-    EASYFLOW_NO_PACKAGE_INSTALL: "true",
-    EASYFLOW_TOKEN: token,
-    EASYFLOW_STARTUP_LOG: startupLogFile(),
+    STATEDU_PORT: String(port),
+    STATEDU_APP_DIR: appDir,
+    STATEDU_LAUNCH_BROWSER: "false",
+    STATEDU_NO_PACKAGE_INSTALL: "true",
+    STATEDU_TOKEN: token,
+    STATEDU_STARTUP_LOG: startupLogFile(),
     STATEDU_OPEN_STUDIO_FILE: launchStudioFile,
     STATEDU_PUBLIC_RELEASE: process.env.STATEDU_PUBLIC_RELEASE || publicReleaseFlag(),
     R_HOME: path.join(appBaseDir(), "runtime", "R-4.5.3"),

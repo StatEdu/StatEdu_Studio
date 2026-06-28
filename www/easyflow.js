@@ -35,10 +35,11 @@
           language = '';
         }
         if (language) return easyflowNormalizeLanguage(language);
-        language = easyflowStoredLanguage();
-        if (language) return language;
+        if (window.easyflowAppLanguage) return easyflowNormalizeLanguage(window.easyflowAppLanguage);
         var initial = document.getElementById('statedu_initial_language');
         if (initial && initial.value) return easyflowNormalizeLanguage(initial.value);
+        language = easyflowStoredLanguage();
+        if (language) return language;
         return 'ko';
       }
 
@@ -51,6 +52,92 @@
         return language;
       }
 
+      function easyflowStaticLabelLanguage() {
+        return easyflowNormalizeLanguage(window.easyflowAppLanguage || easyflowUrlLanguage());
+      }
+
+      function easyflowStaticLanguageLookup(language) {
+        language = easyflowNormalizeLanguage(language);
+        var fromKey = language === 'en' ? 'ko' : 'en';
+        var toKey = language === 'en' ? 'en' : 'ko';
+        var lookup = {};
+        var labels = window.easyflowStaticLanguageLabels || [];
+        Array.prototype.forEach.call(labels, function(row) {
+          if (!row) return;
+          var from = String(row[fromKey] || '').trim();
+          var to = String(row[toKey] || '').trim();
+          if (from && to && from !== to) lookup[from] = to;
+        });
+        return lookup;
+      }
+
+      function easyflowApplyStaticLanguageLabels(language) {
+        language = easyflowNormalizeLanguage(language);
+        var lookup = easyflowStaticLanguageLookup(language);
+        if (!document.querySelectorAll || Object.keys(lookup).length === 0) return;
+        var roots = document.querySelectorAll('.navbar, .navbar-nav, .dropdown-menu');
+        var nodes = [];
+        var seen = typeof Set === 'function' ? new Set() : null;
+        Array.prototype.forEach.call(roots, function(root) {
+          var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+            acceptNode: function(node) {
+              var value = (node.nodeValue || '').trim();
+              return value && Object.prototype.hasOwnProperty.call(lookup, value)
+                ? NodeFilter.FILTER_ACCEPT
+                : NodeFilter.FILTER_REJECT;
+            }
+          });
+          var node;
+          while ((node = walker.nextNode())) {
+            if (seen) {
+              if (seen.has(node)) continue;
+              seen.add(node);
+            }
+            nodes.push(node);
+          }
+        });
+        nodes.forEach(function(textNode) {
+          var text = textNode.nodeValue || '';
+          var trimmed = text.trim();
+          textNode.nodeValue = text.replace(trimmed, lookup[trimmed]);
+        });
+      }
+
+      function easyflowRefreshStaticLanguageLabels(language) {
+        language = easyflowNormalizeLanguage(language);
+        easyflowApplyStaticLanguageLabels(language);
+        if (window.jQuery && typeof easyflowTranslateNavbarLabels === 'function') {
+          easyflowTranslateNavbarLabels();
+        }
+        if (window.jQuery && typeof groupAnalysisDropdownItems === 'function') {
+          groupAnalysisDropdownItems();
+        }
+        easyflowApplyStaticLanguageLabels(language);
+      }
+
+      function easyflowScheduleStaticLanguageLabels() {
+        [0, 50, 250, 750, 1500, 3000].forEach(function(delay) {
+          window.setTimeout(function() {
+            easyflowRefreshStaticLanguageLabels(easyflowStaticLabelLanguage());
+          }, delay);
+        });
+      }
+
+      function easyflowObserveStaticLanguageLabels() {
+        if (!window.MutationObserver || window.easyflowStaticLanguageObserverBound || !document.body) return;
+        window.easyflowStaticLanguageObserverBound = true;
+        var debounceTimer = null;
+        var observer = new MutationObserver(function(mutations) {
+          if (!mutations || mutations.length === 0) return;
+          if (debounceTimer) window.clearTimeout(debounceTimer);
+          debounceTimer = window.setTimeout(function() {
+            debounceTimer = null;
+            easyflowApplyStaticLanguageLabels(easyflowStaticLabelLanguage());
+          }, 80);
+        });
+        observer.observe(document.body, {childList: true, subtree: true});
+      }
+
       function easyflowCurrentLanguage() {
         var urlLanguage = '';
         try {
@@ -61,27 +148,40 @@
         if (urlLanguage) {
           return easyflowSetCurrentLanguage(urlLanguage);
         }
-        var stored = easyflowStoredLanguage();
-        if (stored) {
-          return easyflowSetCurrentLanguage(stored);
-        }
         if (window.easyflowAppLanguage) {
-          return easyflowNormalizeLanguage(window.easyflowAppLanguage);
+          return easyflowSetCurrentLanguage(window.easyflowAppLanguage);
         }
         var initial = document.getElementById('statedu_initial_language');
         if (initial && initial.value) {
           return easyflowSetCurrentLanguage(initial.value);
+        }
+        var stored = easyflowStoredLanguage();
+        if (stored) {
+          return easyflowSetCurrentLanguage(stored);
         }
         return easyflowSetCurrentLanguage(easyflowUrlLanguage());
       }
 
       function easyflowEnsureStoredLanguageUrl() {
         if (easyflowHasUrlLanguage()) return;
-        var stored = easyflowStoredLanguage();
-        if (!stored) return;
+        var activeLanguage = '';
+        if (window.easyflowAppLanguage) {
+          activeLanguage = easyflowNormalizeLanguage(window.easyflowAppLanguage);
+        }
         var initial = document.getElementById('statedu_initial_language');
-        var initialLanguage = initial && initial.value ? easyflowNormalizeLanguage(initial.value) : 'ko';
-        if (stored !== initialLanguage) easyflowApplyLanguageValue(stored);
+        if (!activeLanguage && initial && initial.value) {
+          activeLanguage = easyflowNormalizeLanguage(initial.value);
+        }
+        if (activeLanguage) {
+          easyflowSetCurrentLanguage(activeLanguage);
+          easyflowRefreshStaticLanguageLabels(activeLanguage);
+          try {
+            window.localStorage.setItem('statedu_app_language', activeLanguage);
+          } catch (error) {}
+          return;
+        }
+        var stored = easyflowStoredLanguage();
+        if (stored) easyflowApplyLanguageValue(stored);
       }
 
       window.easyflowSendAppLanguage = function() {
@@ -97,6 +197,7 @@
 
       function easyflowApplyLanguageValue(language) {
         language = easyflowSetCurrentLanguage(language);
+        easyflowRefreshStaticLanguageLabels(language);
         var input = document.getElementById('app_language');
         if (input) {
           input.value = language;
@@ -139,6 +240,7 @@
       };
 
       easyflowSetCurrentLanguage(easyflowUrlLanguage());
+      easyflowScheduleStaticLanguageLabels();
 
       if (window.Shiny && typeof Shiny.addCustomMessageHandler === 'function') {
         window.easyflowLanguageHandlerBound = true;
@@ -156,14 +258,21 @@
         return !!(window.Shiny && typeof Shiny.setInputValue === 'function');
       }
 
-      document.addEventListener('shiny:connected', easyflowScheduleAppLanguageSend);
+      document.addEventListener('shiny:connected', function() {
+        easyflowScheduleAppLanguageSend();
+        easyflowScheduleStaticLanguageLabels();
+      });
       document.addEventListener('DOMContentLoaded', function() {
         easyflowEnsureStoredLanguageUrl();
         easyflowScheduleAppLanguageSend();
+        easyflowScheduleStaticLanguageLabels();
+        easyflowObserveStaticLanguageLabels();
       });
       if (document.readyState !== 'loading') {
         easyflowEnsureStoredLanguageUrl();
         easyflowScheduleAppLanguageSend();
+        easyflowScheduleStaticLanguageLabels();
+        easyflowObserveStaticLanguageLabels();
       }
 
       window.easyflowRestoreCodingErrorFixInputs = function(root) {
