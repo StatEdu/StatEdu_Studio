@@ -371,6 +371,13 @@ valid_data_file_value <- function(file) {
     !isTRUE(file$excel_pending)
 }
 
+valid_pending_excel_file_value <- function(file) {
+  is.list(file) &&
+    isTRUE(file$excel_pending) &&
+    valid_data_file_path(file$path) &&
+    excel_data_file_extension(file$name %||% file$path)
+}
+
 current_data_file_value <- function(uploaded, active_file = NULL) {
   if (is.list(active_file) && isTRUE(active_file$cleared)) {
     return(NULL)
@@ -731,13 +738,14 @@ merge_variable_info_state <- function(
   list(info = info, measurements = updates$measurements, labels = updates$labels)
 }
 
-measurement_select_html <- function(name, value, source_order) {
+measurement_select_html <- function(name, value, source_order, language = statedu_initial_language()) {
   value <- tolower(as.character(value %||% ""))
   if (identical(value, "ordinal")) value <- "ordered"
   if (identical(value, "nominal")) value <- "category"
   choices <- unique(c("binary", "category", "ordered", "continuous", value))
   choices <- choices[nzchar(choices)]
-  choice_labels <- ifelse(choices == "ordered", "ordinal", choices)
+  choice_labels <- vapply(choices, statedu_measurement_label, character(1), language = language)
+  title <- statedu_measurement_label(value, language)
   sprintf(
     paste0(
       '<span class="measurement-control">',
@@ -749,8 +757,8 @@ measurement_select_html <- function(name, value, source_order) {
       '</span>'
     ),
     htmltools::htmlEscape(value),
-    htmltools::htmlEscape(ifelse(value == "ordered", "ordinal", value)),
-    htmltools::htmlEscape(ifelse(value == "ordered", "ordinal", value)),
+    htmltools::htmlEscape(title),
+    htmltools::htmlEscape(title),
     htmltools::htmlEscape(source_order),
     htmltools::htmlEscape(name),
     paste(
@@ -775,7 +783,8 @@ variable_table_display_data <- function(
   controls = character(0),
   selection_applied = FALSE,
   active_role = "dependent",
-  measurement_overrides = character(0)
+  measurement_overrides = character(0),
+  language = statedu_initial_language()
 ) {
   table_data <- apply_measurement_overrides(info, measurement_overrides)
   if (isTRUE(selection_applied)) {
@@ -801,6 +810,7 @@ variable_table_display_data <- function(
     table_data$name,
     table_data$measurement,
     table_data$source_order,
+    MoreArgs = list(language = language),
     USE.NAMES = FALSE
   )
   cbind(
@@ -825,7 +835,8 @@ variable_table_render_state <- function(
   controls = character(0),
   selection_applied = FALSE,
   active_role = "dependent",
-  measurement_overrides = character(0)
+  measurement_overrides = character(0),
+  language = statedu_initial_language()
 ) {
   list(
     checked_names = checked_names,
@@ -839,7 +850,8 @@ variable_table_render_state <- function(
       controls = controls,
       selection_applied = selection_applied,
       active_role = active_role,
-      measurement_overrides = measurement_overrides
+      measurement_overrides = measurement_overrides,
+      language = language
     )
   )
 }

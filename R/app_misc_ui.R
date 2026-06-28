@@ -1,34 +1,35 @@
 # Result and About menu UI.
 
-result_tab_panel <- function() {
+result_tab_panel <- function(language = statedu_initial_language()) {
+  h <- statedu_utf8
   tabPanel(
-    "Result",
+    statedu_ui_label("result", language),
     value = "result",
     div(
       class = "page-shell",
       div(
         class = "app-heading",
-        h1("Result"),
-        div("Review and manage saved analysis results.", class = "app-subtitle")
+        h1(statedu_ui_label("result", language)),
+        div(statedu_text(language, "Review and manage saved analysis results.", h("eca080ec9ea5eb909c20ebb684ec849d20eab2b0eab3bceba5bc20ed9995ec9db8ed9598eab3a020eab480eba6aced95a9eb8b88eb8ba42e")), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        h3("Result"),
+        h3(statedu_ui_label("result", language)),
         div(
           class = "result-toolbar",
           div(
             class = "result-toolbar-group result-toolbar-primary",
-            actionButton("open_result_history_dialog", "Open result", class = "btn-default"),
-            analysis_save_button("save_result_history_dialog", "Save result", "result_history", class = "btn-default"),
-            actionButton("clear_saved_results", "Clear results", class = "btn-default")
+            actionButton("open_result_history_dialog", statedu_text(language, "Open result", h("eab2b0eab3bc20ec97b4eab8b0")), class = "btn-default"),
+            analysis_save_button("save_result_history_dialog", statedu_text(language, "Save result", h("eab2b0eab3bc20eca080ec9ea5")), "result_history", class = "btn-default"),
+            actionButton("clear_saved_results", statedu_text(language, "Clear results", h("eab2b0eab3bc20ebb984ec9ab0eab8b0")), class = "btn-default")
           ),
           div(
             class = "result-toolbar-group result-toolbar-export",
-            analysis_save_button("save_result_collection_html_dialog", "Save HTML", "html", class = "btn-default"),
-            analysis_save_button("save_result_collection_pdf_dialog", "Save PDF", "pdf", class = "btn-default"),
-            analysis_save_button("save_result_collection_excel_dialog", "Save Excel", "excel", class = "btn-default"),
-            analysis_save_button("save_result_collection_word_dialog", "Save Word", "word", class = "btn-default")
+            analysis_save_button("save_result_collection_html_dialog", statedu_ui_label("save_html", language), "html", class = "btn-default"),
+            analysis_save_button("save_result_collection_pdf_dialog", statedu_ui_label("save_pdf", language), "pdf", class = "btn-default"),
+            analysis_save_button("save_result_collection_excel_dialog", statedu_ui_label("save_excel", language), "excel", class = "btn-default"),
+            analysis_save_button("save_result_collection_word_dialog", statedu_ui_label("save_word", language), "word", class = "btn-default")
           )
         ),
         uiOutput("saved_results_list")
@@ -37,14 +38,42 @@ result_tab_panel <- function() {
   )
 }
 
+about_read_utf8_text <- function(path) {
+  info <- file.info(path)
+  if (is.na(info$size) || info$size <= 0) {
+    return("")
+  }
+  bytes <- readBin(path, what = "raw", n = info$size)
+  text <- rawToChar(bytes)
+  Encoding(text) <- "UTF-8"
+  sub("^\ufeff", "", enc2utf8(text))
+}
+
+about_decode_r_unicode_escapes <- function(text) {
+  text <- enc2utf8(text %||% "")
+  tokens <- unique(unlist(regmatches(text, gregexpr("<U\\+[0-9A-Fa-f]{4,6}>", text, perl = TRUE)), use.names = FALSE))
+  for (token in tokens) {
+    code <- sub("^<U\\+([0-9A-Fa-f]{4,6})>$", "\\1", token)
+    decoded <- intToUtf8(strtoi(code, base = 16L))
+    text <- gsub(token, decoded, text, fixed = TRUE, useBytes = TRUE)
+  }
+  enc2utf8(text)
+}
+
 about_markdown_document <- function(path) {
   resolved_path <- about_resolve_document_path(path)
   if (!nzchar(resolved_path)) {
     return(div(class = "empty-message", sprintf("Document not found: %s", path)))
   }
+  text <- enc2utf8(about_read_utf8_text(resolved_path))
+  html <- suppressWarnings(markdown::markdownToHTML(
+    text = text,
+    fragment.only = TRUE,
+    encoding = "UTF-8"
+  ))
   div(
     class = "about-markdown-document",
-    shiny::includeMarkdown(resolved_path)
+    HTML(about_decode_r_unicode_escapes(html))
   )
 }
 
@@ -70,6 +99,33 @@ about_resolve_document_path <- function(path) {
   ""
 }
 
+about_document_language_label <- function(language) {
+  if (identical(normalize_app_language(language), "en")) "English" else "Korean"
+}
+
+about_document_specs <- function(language = "ko") {
+  language <- normalize_app_language(language)
+  if (identical(language, "en")) {
+    return(list(
+      overview = list(title = "Overview", path = "README.md", subtitle = "Project scope, current version, validation, and citation."),
+      user_guide = list(title = "User Guide", path = file.path("docs", "USER_GUIDE_EN.md"), subtitle = "Step-by-step operating guide for loading data, selecting variables, running analyses, and saving results."),
+      analysis_methods = list(title = "Analyses", path = file.path("docs", "ANALYSIS_METHODS_EN.md"), subtitle = "Implementation inventory of analysis menus, statistical outputs, tables, and export coverage."),
+      method_notes = list(title = "Method Notes", path = file.path("docs", "METHOD_NOTES_EN.md"), subtitle = "Interpretive notes on method choice, assumptions, warnings, and result interpretation."),
+      validation = list(title = "Validation", path = file.path("docs", "ANALYSIS_REFERENCE_COMPARISON_PUBLIC.md"), subtitle = "Reference comparisons for public 1.0 calculations and automatic decision paths."),
+      version_history = list(title = "Version History", path = "CHANGELOG.md", subtitle = "Release notes and version history.")
+    ))
+  }
+
+  list(
+    overview = list(title = statedu_utf8("eab09cec9a94"), path = "README_KO.md", subtitle = statedu_utf8("ed9484eba19ceca09ded8ab820ebb294ec9c842c20ed9884ec9eac20ebb284eca0842c20eab280eca69d2c20ec9db8ec9aa920eca095ebb3b4eba5bc20eca09ceab3b5ed95a9eb8b88eb8ba42e")),
+    user_guide = list(title = statedu_utf8("ec82acec9aa9ec9e9020eab080ec9db4eb939c"), path = file.path("docs", "USER_GUIDE_KO.md"), subtitle = statedu_utf8("eb8db0ec9db4ed84b020ebb688eb9facec98a4eab8b02c20ebb380ec889820ec84a0ed839d2c20ebb684ec849d20ec8ba4ed96892c20eab2b0eab3bc20eca080ec9ea520eca088ecb0a8eba5bc20ec9588eb82b4ed95a9eb8b88eb8ba42e")),
+    analysis_methods = list(title = statedu_utf8("ebb684ec849d"), path = file.path("docs", "ANALYSIS_METHODS_KO.md"), subtitle = statedu_utf8("537461744564752053747564696f20312e30ec9d9820ebb684ec849d20eba994eb89b42c20ed86b5eab38420ecb69ceba0a52c20ed919c2c20eb82b4ebb3b4eb82b4eab8b020ebb294ec9c84eba5bc20eca095eba6aced95a9eb8b88eb8ba42e")),
+    method_notes = list(title = statedu_utf8("ebb0a9ebb295eba1a020eb85b8ed8ab8"), path = file.path("docs", "METHOD_NOTES_KO.md"), subtitle = statedu_utf8("ebb684ec849d20ebb0a9ebb29520ec84a0ed839d2c20eab080eca0952c20eab2bdeab3a02c20eab2b0eab3bc20ed95b4ec849dec979020eb8c80ed959c20eb85b8ed8ab8eba5bc20eca09ceab3b5ed95a9eb8b88eb8ba42e")),
+    validation = list(title = statedu_utf8("eab280eca69d"), path = file.path("docs", "ANALYSIS_REFERENCE_COMPARISON_PUBLIC_KO.md"), subtitle = statedu_utf8("eab3b5eab09c20312e3020eab384ec82b0eab3bc20ec9e90eb8f9920ed8c90eb8ba820eab2bdeba19cec9d9820eab8b0eca48020ebb984eab590eba5bc20eca09ceab3b5ed95a9eb8b88eb8ba42e")),
+    version_history = list(title = statedu_utf8("ebb284eca08420eab8b0eba19d"), path = "CHANGELOG_KO.md", subtitle = statedu_utf8("eba6b4eba6acec8aa420eb85b8ed8ab8ec998020ebb284eca08420eab8b0eba19dec9d8420eca09ceab3b5ed95a9eb8b88eb8ba42e"))
+  )
+}
+
 about_text_document <- function(path) {
   resolved_path <- about_resolve_document_path(path)
   if (!nzchar(resolved_path)) {
@@ -78,7 +134,7 @@ about_text_document <- function(path) {
       sprintf("Document not found: %s. This file is generated during the Electron packaging step.", path)
     ))
   }
-  lines <- readLines(resolved_path, warn = FALSE, encoding = "UTF-8")
+  lines <- strsplit(about_read_utf8_text(resolved_path), "\r?\n")[[1]]
   div(
     class = "about-markdown-document",
     tags$pre(class = "license-notice-text", paste(lines, collapse = "\n"))
@@ -152,67 +208,134 @@ about_citation_field <- function(field, fallback = "") {
   sub(pattern, "\\1", match[[1]])
 }
 
-about_application_document <- function(version) {
-  release_date <- about_citation_field("date-released", "2026-05-26")
-  doi <- about_citation_field("doi", "")
-  repository <- about_citation_field("repository-code", "https://github.com/StatEdu/StatEdu_Studio_dev")
-  citation <- sprintf(
-    "LEE, I. H. (2026). StatEdu Studio (Version %s) [Computer software].",
-    version
-  )
-
+about_update_document <- function(language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   div(
     class = "about-application-document",
-    h2("StatEdu Studio"),
-    p("A local Shiny application for assumption-guided statistical analysis and publication-ready result tables."),
     div(
-      class = "about-info-grid",
-      about_info_row("Version", paste0("v", version)),
-      about_info_row("Release date", release_date),
-      about_info_row("Developer", "IL HYUN LEE"),
-      about_info_row("Organization", "StatEdu"),
-      about_info_row("Contact", tags$a(href = "mailto:dr.leeilhyun@gmail.com", "dr.leeilhyun@gmail.com")),
-      about_info_row("Runtime", "Local Windows Shiny app"),
-      about_info_row("Data handling", "Data are analyzed locally on the user's PC and are not sent to an external server."),
-      about_info_row("Repository", tags$a(href = repository, target = "_blank", rel = "noopener noreferrer", repository)),
-      about_info_row(
-        "DOI",
-        if (nzchar(doi)) {
-          tags$a(href = paste0("https://doi.org/", doi), target = "_blank", rel = "noopener noreferrer", doi)
-        } else {
-          "Pending registration"
-        }
-      )
-    ),
-    h3("Citation"),
-    p(citation),
-    if (!nzchar(doi)) {
-      p("A DOI citation will be added after the DOI landing page is live.")
-    }
-  )
-}
-
-about_info_tab_panel <- function(version) {
-  tabPanel(
-    "About",
-    value = "about",
-    div(
-      class = "page-shell",
-      div(
-        class = "app-heading",
-        h1("About"),
-        div("Version, developer information, and documentation.", class = "app-subtitle")
-      ),
-      div(
-        class = "workspace-panel frequencies-workspace-panel about-workspace-panel",
-        style = "min-width:980px;overflow-x:auto;",
-        about_application_document(version)
+      class = "about-update-panel",
+      h2(statedu_text(language, "Updates", statedu_utf8("ec9785eb8db0ec9db4ed8ab8"))),
+      p(statedu_text(
+        language,
+        "Check the public update manifest when you need to confirm the latest release.",
+        statedu_utf8("ebb284ed8abcec9d8420eb8884eba5bc20eb958ceba78c20eab3b5eab09c20ec9785eb8db0ec9db4ed8ab820eca095ebb3b4eba5bc20ed9995ec9db8ed95a9eb8b88eb8ba42e")
+      )),
+      actionButton(
+        "check_updates",
+        statedu_text(language, "Check for updates", statedu_utf8("ec9785eb8db0ec9db4ed8ab820ed9995ec9db8")),
+        class = "btn btn-primary"
       )
     )
   )
 }
 
-about_markdown_tab_panel <- function(title, value, path, subtitle = "StatEdu Studio documentation.") {
+about_application_document <- function(version, language = "ko") {
+  language <- normalize_app_language(language)
+  release_date <- about_citation_field("date-released", "2026-05-26")
+  doi <- about_citation_field("doi", "")
+  repository <- about_citation_field("repository-code", "https://github.com/StatEdu/StatEdu_Studio")
+  citation <- sprintf(
+    "LEE, I. H. (2026). StatEdu Studio (Version %s) [Computer software].",
+    version
+  )
+  doi_citation <- if (nzchar(doi)) {
+    paste(citation, paste0("https://doi.org/", doi))
+  } else {
+    citation
+  }
+
+  div(
+    class = "about-application-document",
+    h2("StatEdu Studio"),
+    p(statedu_text(language,
+      "A local Shiny application for assumption-guided statistical analysis and publication-ready result tables.",
+      statedu_utf8("eab080eca09520eab280ed86a0eba5bc20eab8b0ebb098ec9cbceba19c20ed86b5eab384ebb684ec849dec9d8420ec8898ed9689ed9598eab3a020eb85bcebacb82febb3b4eab3a0ec849cec9aa920eab2b0eab3bced919ceba5bc20ec839dec84b1ed9598eb8a9420eba19cecbbac205368696e7920ec95a0ed948ceba6acecbc80ec9db4ec8598ec9e85eb8b88eb8ba42e")
+    )),
+    div(
+      class = "about-info-grid",
+      about_info_row(statedu_text(language, "Version", statedu_utf8("ebb284eca084")), paste0("v", version)),
+      about_info_row(statedu_text(language, "Release date", statedu_utf8("eba6b4eba6acec8aa420eb82a0eca79c")), release_date),
+      about_info_row(statedu_text(language, "Developer", statedu_utf8("eab09cebb09cec9e90")), "IL HYUN LEE"),
+      about_info_row(statedu_text(language, "Organization", statedu_utf8("eab8b0eab480")), "StatEdu"),
+      about_info_row(statedu_text(language, "Contact", statedu_utf8("ec97b0eb9dbdecb298")), tags$a(href = "mailto:dr.leeilhyun@gmail.com", "dr.leeilhyun@gmail.com")),
+      about_info_row(statedu_text(language, "Runtime", statedu_utf8("ec8ba4ed968920ed9998eab2bd")), statedu_text(language, "Local Windows Shiny app", statedu_utf8("eba19cecbbac2057696e646f7773205368696e7920ec95b1"))),
+      about_info_row(statedu_text(language, "Data handling", statedu_utf8("eb8db0ec9db4ed84b020ecb298eba6ac")), statedu_text(language, "Data are analyzed locally on the user's PC and are not sent to an external server.", statedu_utf8("eb8db0ec9db4ed84b0eb8a9420ec82acec9aa9ec9e90205043ec9790ec849c20eba19cecbbaceba19c20ebb684ec849deb9098eba9b020ec99b8ebb68020ec849cebb284eba19c20eca084ec86a1eb9098eca78020ec958aec8ab5eb8b88eb8ba42e"))),
+      about_info_row(statedu_text(language, "Repository", statedu_utf8("eca080ec9ea5ec868c")), tags$a(href = repository, target = "_blank", rel = "noopener noreferrer", repository)),
+      about_info_row(
+        "DOI",
+        if (nzchar(doi)) {
+          tags$a(href = paste0("https://doi.org/", doi), target = "_blank", rel = "noopener noreferrer", doi)
+        } else {
+          statedu_text(language, "Pending registration", statedu_utf8("eb93b1eba19d20eb8c80eab8b020eca491"))
+        }
+      )
+    ),
+    h3(statedu_text(language, "Citation", statedu_utf8("ec9db8ec9aa9"))),
+    p(doi_citation)
+  )
+}
+
+about_info_tab_panel <- function(version, language = "ko") {
+  language <- normalize_app_language(language)
+  tabPanel(
+    statedu_ui_label("about", language),
+    value = "about",
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1(statedu_ui_label("about", language)),
+        div(statedu_text(language, "Version, developer information, and documentation.", statedu_utf8("ebb284eca0842c20eab09cebb09cec9e9020eca095ebb3b42c20ebacb8ec849c20eca095ebb3b4eba5bc20eca09ceab3b5ed95a9eb8b88eb8ba42e")), class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel about-workspace-panel",
+        style = "min-width:980px;overflow-x:auto;",
+        about_application_document(version, language)
+      )
+    )
+  )
+}
+
+about_preferences_tab_panel <- function(language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
+  tabPanel(
+    statedu_ui_label("preferences", language),
+    value = "about_preferences",
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1(statedu_ui_label("preferences", language)),
+        div(statedu_text(language, "Application-wide settings.", statedu_utf8("ec95b120eca084ecb2b4ec979020eca081ec9aa9eb9098eb8a9420ec84a4eca095ec9e85eb8b88eb8ba42e")), class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel about-workspace-panel preferences-workspace-panel",
+        style = "min-width:980px;overflow-x:auto;",
+        div(
+          class = "session-language-control preferences-language-control",
+          selectInput(
+            "app_language",
+            statedu_text(language, "Language", statedu_utf8("ec96b8ec96b4")),
+            choices = stats::setNames(c("ko", "en"), c(statedu_utf8("ed959ceab5adec96b4"), "English")),
+            selected = language,
+            width = "320px",
+            selectize = FALSE
+          ),
+          actionButton(
+            "apply_app_language",
+            statedu_text(language, "Apply language", statedu_utf8("ec96b8ec96b420eca081ec9aa9")),
+            onclick = "return easyflowApplyAppLanguage();",
+            class = "btn btn-primary"
+          ),
+          div(statedu_text(language, "Applies to in-app UI and documentation. Result tables remain in English.", statedu_utf8("ec95b1205549ec998020ebacb8ec849cec979020eca081ec9aa9eb90a9eb8b88eb8ba42e20eab2b0eab3bced919ceb8a9420ec9881ec96b4eba19c20ec9ca0eca780eb90a9eb8b88eb8ba42e")), class = "step-summary-detail")
+        )
+      )
+    )
+  )
+}
+
+about_markdown_tab_panel <- function(title, value, path, subtitle = "StatEdu Studio documentation.", language = statedu_initial_language()) {
+  options(statedu.app_language = normalize_app_language(language))
   tabPanel(
     title,
     value = value,
@@ -232,16 +355,16 @@ about_markdown_tab_panel <- function(title, value, path, subtitle = "StatEdu Stu
   )
 }
 
-about_license_tab_panel <- function() {
+about_license_tab_panel <- function(language = statedu_initial_language()) {
   tabPanel(
-    "Open Source Licenses",
+    statedu_ui_label("open_source_licenses", language),
     value = "about_oss_licenses",
     div(
       class = "page-shell",
       div(
         class = "app-heading",
-        h1("Open Source Licenses"),
-        div("Third-party license notices for bundled runtime components.", class = "app-subtitle")
+        h1(statedu_ui_label("open_source_licenses", language)),
+        div(statedu_text(language, "Third-party license notices for bundled runtime components.", statedu_utf8("ed95a8eabb9820ebb0b0ed8faceb9098eb8a9420eb9fb0ed8380ec9e8420eab5acec84b1ec9a94ec868cec9d9820eca09c33ec9e9020eb9dbcec9db4ec84a0ec8aa420eab3a0eca780ec9e85eb8b88eb8ba42e")), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel about-workspace-panel",
@@ -252,40 +375,64 @@ about_license_tab_panel <- function() {
   )
 }
 
-about_source_license_tab_panel <- function() {
+about_source_license_tab_panel <- function(language = statedu_initial_language()) {
   tabPanel(
-    "Source & License",
+    statedu_ui_label("source_license", language),
     value = "about_source_license",
     div(
       class = "page-shell",
       div(
         class = "app-heading",
-        h1("Source & License"),
-        div("StatEdu Studio source availability and application license.", class = "app-subtitle")
+        h1(statedu_ui_label("source_license", language)),
+        div(statedu_text(language, "StatEdu Studio source availability and application license.", statedu_utf8("537461744564752053747564696f20ec868cec8aa420eca09ceab3b520ebb294ec9c84ec998020ec95a0ed948ceba6acecbc80ec9db4ec859820eb9dbcec9db4ec84a0ec8aa4ec9e85eb8b88eb8ba42e")), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel about-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        h3("Source Code Offer"),
+        h3(statedu_text(language, "Source Code Offer", statedu_utf8("ec868cec8aa420ecbd94eb939c20eca09ceab3b5"))),
         about_text_document("SOURCE-OFFER.txt"),
-        h3("Application License"),
+        h3(statedu_text(language, "Application License", statedu_utf8("ec95a0ed948ceba6acecbc80ec9db4ec859820eb9dbcec9db4ec84a0ec8aa4"))),
         about_text_document("LICENSE")
       )
     )
   )
 }
 
-about_tab_panel <- function(version) {
+about_update_tab_panel <- function(language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
+  title <- statedu_text(language, "Check for Updates", statedu_utf8("ec9785eb8db0ec9db4ed8ab820ed9995ec9db8"))
+  tabPanel(
+    title,
+    value = "about_update",
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1(title),
+        div(statedu_text(language, "Confirm whether a newer public release is available.", statedu_utf8("ec8388eba19cec9ab420eab3b5eab09c20ebb0b0ed8faceab08020ec9e88eb8a94eca78020ed9995ec9db8ed95a9eb8b88eb8ba42e")), class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel about-workspace-panel",
+        style = "min-width:980px;overflow-x:auto;",
+        about_update_document(language)
+      )
+    )
+  )
+}
+
+about_tab_panel <- function(version, language = statedu_initial_language()) {
   navbarMenu(
-    "About",
-    lazy_tab_panel("Overview", "about_overview", "lazy_about_overview"),
-    lazy_tab_panel("User Guide", "about_user_guide", "lazy_about_user_guide"),
-    lazy_tab_panel("Analyses", "about_analysis_methods", "lazy_about_analysis_methods"),
-    lazy_tab_panel("Method Notes", "about_method_notes", "lazy_about_method_notes"),
-    lazy_tab_panel("Validation", "about_validation", "lazy_about_validation"),
-    lazy_tab_panel("Version History", "about_version_history", "lazy_about_version_history"),
-    lazy_tab_panel("Source & License", "about_source_license", "lazy_about_source_license"),
-    lazy_tab_panel("Open Source Licenses", "about_oss_licenses", "lazy_about_oss_licenses"),
-    lazy_tab_panel("About", "about", "lazy_about_info")
+    statedu_ui_label("about", language),
+    about_preferences_tab_panel(language),
+    lazy_tab_panel(statedu_text(language, "Check for Updates", statedu_utf8("ec9785eb8db0ec9db4ed8ab820ed9995ec9db8")), "about_update", "lazy_about_update"),
+    lazy_tab_panel(statedu_ui_label("overview", language), "about_overview", "lazy_about_overview"),
+    lazy_tab_panel(statedu_ui_label("user_guide", language), "about_user_guide", "lazy_about_user_guide"),
+    lazy_tab_panel(statedu_ui_label("analyses", language), "about_analysis_methods", "lazy_about_analysis_methods"),
+    lazy_tab_panel(statedu_ui_label("method_notes", language), "about_method_notes", "lazy_about_method_notes"),
+    lazy_tab_panel(statedu_ui_label("validation", language), "about_validation", "lazy_about_validation"),
+    lazy_tab_panel(statedu_ui_label("version_history", language), "about_version_history", "lazy_about_version_history"),
+    lazy_tab_panel(statedu_ui_label("source_license", language), "about_source_license", "lazy_about_source_license"),
+    lazy_tab_panel(statedu_ui_label("open_source_licenses", language), "about_oss_licenses", "lazy_about_oss_licenses"),
+    lazy_tab_panel(statedu_ui_label("about", language), "about", "lazy_about_info")
   )
 }

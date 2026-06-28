@@ -317,18 +317,18 @@ logistic_fit_rows <- function(result, show_mcfadden = FALSE, show_cox_snell = FA
   rows <- list(
     list(type = "fit", values = list(logistic_stat_line(logistic_x2_label(), sprintf("%s (%s)", format_decimal3(result$fit$chisq), format_p(result$fit$p)))))
   )
-  r2_values <- c(sprintf("Nagelkerke R%s = %s", "\u00b2", format_decimal3(result$fit$r2[["nagelkerke"]])))
+  r2_values <- c(sprintf("Nagelkerke R2 = %s", format_decimal3(result$fit$r2[["nagelkerke"]])))
   if (isTRUE(show_mcfadden) || isTRUE(show_cox_snell)) {
     r2_values <- c(
       r2_values,
-      sprintf("McFadden R%s = %s", "\u00b2", format_decimal3(result$fit$r2[["mcfadden"]])),
-      sprintf("Cox & Snell R%s = %s", "\u00b2", format_decimal3(result$fit$r2[["cox_snell"]]))
+      sprintf("McFadden R2 = %s", format_decimal3(result$fit$r2[["mcfadden"]])),
+      sprintf("Cox & Snell R2 = %s", format_decimal3(result$fit$r2[["cox_snell"]]))
     )
   }
   rows[[length(rows) + 1L]] <- list(type = "fit", values = list(tags$span(style = "display:inline-block;white-space:normal;", paste(r2_values, collapse = "; "))))
   if (!is.null(result$delta_r2)) {
     rows[[length(rows) + 1L]] <- list(type = "fit", values = list(logistic_stat_line(logistic_sup("Delta R", "2"), format_decimal3(result$delta_r2))))
-    rows[[length(rows) + 1L]] <- list(type = "fit", values = list(logistic_stat_line(logistic_x2_label("\u0394"), sprintf("%s (%s)", format_decimal3(result$delta_chisq), format_p(result$delta_p)))))
+    rows[[length(rows) + 1L]] <- list(type = "fit", values = list(logistic_stat_line(logistic_x2_label("Delta "), sprintf("%s (%s)", format_decimal3(result$delta_chisq), format_p(result$delta_p)))))
   }
   rows[[length(rows) + 1L]] <- list(type = "fit", values = list(tags$span(style = "display:inline-block;white-space:normal;", sprintf("AIC=%s, BIC=%s", format_decimal3(result$fit$aic), format_decimal3(result$fit$bic)))))
   if (!is.null(result$parallel)) {
@@ -492,12 +492,12 @@ logistic_fit_summary_values <- function(result, show_mcfadden = FALSE, show_cox_
   if (isTRUE(result$excluded) || is.null(result$fit)) {
     return(list(status = result$method %||% "Excluded"))
   }
-  r2_values <- c(sprintf("Nagelkerke R\u00b2 = %s", format_decimal3(result$fit$r2[["nagelkerke"]])))
+  r2_values <- c(sprintf("Nagelkerke R2 = %s", format_decimal3(result$fit$r2[["nagelkerke"]])))
   if (isTRUE(show_mcfadden) || isTRUE(show_cox_snell)) {
     r2_values <- c(
       r2_values,
-      sprintf("McFadden R\u00b2 = %s", format_decimal3(result$fit$r2[["mcfadden"]])),
-      sprintf("Cox & Snell R\u00b2 = %s", format_decimal3(result$fit$r2[["cox_snell"]]))
+      sprintf("McFadden R2 = %s", format_decimal3(result$fit$r2[["mcfadden"]])),
+      sprintf("Cox & Snell R2 = %s", format_decimal3(result$fit$r2[["cox_snell"]]))
     )
   }
   r2_value <- if (length(r2_values) > 1L) {
@@ -506,12 +506,12 @@ logistic_fit_summary_values <- function(result, show_mcfadden = FALSE, show_cox_
     r2_values[[1]]
   }
   values <- list(
-    x2 = sprintf("x\u00b2(p) = %s (%s)", format_decimal3(result$fit$chisq), format_p(result$fit$p)),
+    x2 = sprintf("x2(p) = %s (%s)", format_decimal3(result$fit$chisq), format_p(result$fit$p)),
     r2 = r2_value,
-    delta_r2 = if (!is.null(result$delta_r2)) sprintf("\u0394R\u00b2 = %s", format_decimal3(result$delta_r2)) else "",
-    delta_x2 = if (!is.null(result$delta_chisq)) sprintf("\u0394x\u00b2(p) = %s (%s)", format_decimal3(result$delta_chisq), format_p(result$delta_p)) else "",
+    delta_r2 = if (!is.null(result$delta_r2)) sprintf("Delta R2 = %s", format_decimal3(result$delta_r2)) else "",
+    delta_x2 = if (!is.null(result$delta_chisq)) sprintf("Delta x2(p) = %s (%s)", format_decimal3(result$delta_chisq), format_p(result$delta_p)) else "",
     aic = sprintf("AIC=%s, BIC=%s", format_decimal3(result$fit$aic), format_decimal3(result$fit$bic)),
-    parallel = if (!is.null(result$parallel)) sprintf("Parallel lines x\u00b2(p) = %s (%s)", format_decimal3(result$parallel$chisq), format_p(result$parallel$p)) else ""
+    parallel = if (!is.null(result$parallel)) sprintf("Parallel lines x2(p) = %s (%s)", format_decimal3(result$parallel$chisq), format_p(result$parallel$p)) else ""
   )
   keep <- vapply(values, function(value) {
     if (inherits(value, "shiny.tag") || inherits(value, "shiny.tag.list")) {
@@ -548,35 +548,36 @@ logistic_model_overview_data_frame <- function(results, variable_table = NULL, l
   if (!is.list(results) || length(results) == 0) {
     return(data.frame())
   }
-  rows <- c("N", "\ubd84\uc11d", "\uc0ac\uc720")
+  analysis_label <- "Analysis"
+  reason_label <- "Reason"
+  rows <- c("N", analysis_label, reason_label)
   logistic_overview_reason <- function(result) {
     notes <- logistic_result_notes(result)
     parts <- character(0)
     if (!is.null(result$parallel)) {
-      parts <- c(parts, if (!is.na(result$parallel$p) && result$parallel$p > .05) "\ube44\ub840\uc624\uc988 \ub9cc\uc871" else "\ube44\ub840\uc624\uc988 \ubd88\ub9cc\uc871")
+      parts <- c(parts, if (!is.na(result$parallel$p) && result$parallel$p > .05) "Proportional odds met" else "Proportional odds not met")
     }
     if (nzchar(logistic_note_match(notes, "EPV|Sparse|Zero cell|Rare event"))) {
-      parts <- c(parts, "EPV/sparse \uc8fc\uc758")
+      parts <- c(parts, "EPV/sparse warning")
     }
     if (nzchar(logistic_note_match(notes, "separation"))) {
-      parts <- c(parts, "\ubd84\ub9ac \uc8fc\uc758")
+      parts <- c(parts, "Separation warning")
     }
     max_vif <- suppressWarnings(as.numeric(result$max_vif %||% NA_real_))
     if (!is.na(max_vif) && max_vif > 10) {
-      parts <- c(parts, "\ub2e4\uc911\uacf5\uc120\uc131 \uc704\ud5d8")
+      parts <- c(parts, "Multicollinearity risk")
     } else if (!is.na(max_vif) && max_vif > 5) {
-      parts <- c(parts, "\ub2e4\uc911\uacf5\uc120\uc131 \uc8fc\uc758")
+      parts <- c(parts, "Multicollinearity warning")
     }
     if (length(parts) == 0) {
-      parts <- "\ud2b9\uc774 \uc0ac\ud56d \uc5c6\uc74c"
+      parts <- "No notable issues"
     }
     paste(parts[nzchar(parts)], collapse = "\n")
   }
   values <- lapply(results, function(result) {
-    c(
-      N = as.character(result$n),
-      "\ubd84\uc11d" = as.character(result$method %||% ""),
-      "\uc0ac\uc720" = logistic_overview_reason(result)
+    stats::setNames(
+      c(as.character(result$n), as.character(result$method %||% ""), logistic_overview_reason(result)),
+      rows
     )
   })
   table <- data.frame(Item = rows, stringsAsFactors = FALSE, check.names = FALSE)
@@ -612,8 +613,8 @@ logistic_parallel_summary <- function(result) {
     return("")
   }
   p <- result$parallel$p
-  decision <- if (!is.na(p) && p > .05) "\ube44\ub840\uc624\uc988 \uac00\uc815 \ub9cc\uc871" else "\ube44\ub840\uc624\uc988 \uac00\uc815 \ubd88\ub9cc\uc871"
-  sprintf("x\u00b2=%s(%s)\n%s", format_decimal3(result$parallel$chisq), format_p(p), decision)
+  decision <- if (!is.na(p) && p > .05) "Proportional odds assumption met" else "Proportional odds assumption not met"
+  sprintf("x2=%s(%s)\n%s", format_decimal3(result$parallel$chisq), format_p(p), decision)
 }
 
 logistic_vif_summary_text <- function(result) {
@@ -622,11 +623,11 @@ logistic_vif_summary_text <- function(result) {
     return("")
   }
   decision <- if (value <= 5) {
-    "\ub2e4\uc911\uacf5\uc120\uc131 \ubb38\uc81c \uc5c6\uc74c"
+    "No multicollinearity problem"
   } else if (value <= 10) {
-    "\ub2e4\uc911\uacf5\uc120\uc131 \uc8fc\uc758"
+    "Multicollinearity warning"
   } else {
-    "\ub2e4\uc911\uacf5\uc120\uc131 \uc704\ud5d8"
+    "Multicollinearity risk"
   }
   sprintf("max VIF=%s\n%s", format_decimal3(value), decision)
 }
@@ -635,19 +636,25 @@ logistic_assumption_review_data_frame <- function(results, variable_table = NULL
   if (!is.list(results) || length(results) == 0) {
     return(data.frame())
   }
-  rows <- c("\ube44\ub840\uc624\uc988", "EPV / sparse", "\ubd84\ub9ac", "VIF", "\ud328\ud0a4\uc9c0")
+  odds_label <- "Proportional odds"
+  separation_label <- "Separation"
+  package_label <- "Package"
+  rows <- c(odds_label, "EPV / sparse", separation_label, "VIF", package_label)
   values <- lapply(results, function(result) {
     notes <- logistic_result_notes(result)
     epv_sparse <- paste(c(
       logistic_assumption_note_match(notes, "EPV|Sparse|Zero cell|Rare event"),
       logistic_instability_summary(notes)
     ), collapse = "\n")
-    c(
-      "\ube44\ub840\uc624\uc988" = logistic_parallel_summary(result),
-      "EPV / sparse" = epv_sparse,
-      "\ubd84\ub9ac" = logistic_assumption_note_match(notes, "separation"),
-      VIF = logistic_vif_summary_text(result),
-      "\ud328\ud0a4\uc9c0" = logistic_package_label(result)
+    stats::setNames(
+      c(
+        logistic_parallel_summary(result),
+        epv_sparse,
+        logistic_assumption_note_match(notes, "separation"),
+        logistic_vif_summary_text(result),
+        logistic_package_label(result)
+      ),
+      rows
     )
   })
   table <- data.frame(Item = rows, stringsAsFactors = FALSE, check.names = FALSE)
@@ -676,7 +683,7 @@ logistic_assumption_review_block <- function(results, variable_table = NULL, lab
   }
   div(
     class = "regression-result-panel logistic-result-panel assumption-review-panel",
-    h3("\uac00\uc815 \uac80\ud1a0"),
+    h3("Assumption review"),
     model_overview_html_table(table)
   )
 }
@@ -841,12 +848,12 @@ logistic_hierarchical_result_table <- function(group, variable_table = NULL, lab
   summaries <- lapply(group, logistic_fit_summary_values, show_mcfadden = show_mcfadden, show_cox_snell = show_cox_snell)
   footer_labels <- unique(unlist(lapply(summaries, names), use.names = FALSE))
   footer_label_text <- c(
-    x2 = "x\u00b2(p)",
-    r2 = "R\u00b2",
-    delta_r2 = "\u0394R\u00b2",
-    delta_x2 = "\u0394x\u00b2(p)",
+    x2 = "x2(p)",
+    r2 = "R2",
+    delta_r2 = "Delta R2",
+    delta_x2 = "Delta x2(p)",
     aic = "AIC, BIC",
-    parallel = "Parallel lines x\u00b2(p)",
+    parallel = "Parallel lines x2(p)",
     status = "Status"
   )
   footer_rows <- lapply(seq_along(footer_labels), function(index) {

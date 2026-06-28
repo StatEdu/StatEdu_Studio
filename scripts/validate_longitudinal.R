@@ -1,6 +1,7 @@
 source(file.path("R", "app_bootstrap.R"))
 load_app_packages()
 source_app_modules()
+options(statedu.app_language = "en")
 
 required <- c("geepack", "mice", "lme4", "lmerTest", "plm")
 missing <- required[!vapply(required, requireNamespace, logical(1), quietly = TRUE)]

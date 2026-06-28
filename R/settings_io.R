@@ -402,6 +402,7 @@ prepare_settings_payload_data <- function(
 
 build_settings_object <- function(
   app_version,
+  app_language = "ko",
   data_step,
   active_step,
   data_view,
@@ -430,6 +431,7 @@ build_settings_object <- function(
   list(
     app = "easyflow_statistics",
     version = app_version,
+    app_language = normalize_app_language(app_language),
     data_step = data_step,
     active_step = active_step,
     data_view = data_view,
@@ -463,6 +465,7 @@ build_settings_object <- function(
 
 prepare_current_settings_object <- function(
   app_version,
+  app_language = "ko",
   data_step,
   active_step,
   data_view,
@@ -505,6 +508,7 @@ prepare_current_settings_object <- function(
   list(
     settings = build_settings_object(
       app_version = app_version,
+      app_language = app_language,
       data_step = data_step,
       active_step = active_step,
       data_view = data_view,
@@ -554,6 +558,7 @@ current_settings_variable_info <- function(
 
 create_current_settings_fn <- function(
   app_version,
+  app_language_fn = NULL,
   input,
   current_data_file_fn,
   current_data_step_fn,
@@ -603,6 +608,7 @@ create_current_settings_fn <- function(
 
     prepared <- prepare_current_settings_object(
       app_version = app_version,
+      app_language = if (is.function(app_language_fn)) app_language_fn() else input$app_language %||% "ko",
       data_step = current_data_step_fn(),
       active_step = active_step_fn(),
       data_view = data_view_fn(),

@@ -10,6 +10,32 @@ let mainWindow = null;
 let shinyProcess = null;
 let isQuitting = false;
 let startupLogPath = null;
+let launchStudioFile = "";
+let isReloadingStudioFile = false;
+
+function normalizeStudioFileArg(value) {
+  const raw = String(value || "").trim().replace(/^"|"$/g, "");
+  if (!raw || raw.startsWith("--")) {
+    return "";
+  }
+  const resolved = path.resolve(raw);
+  if (path.extname(resolved).toLowerCase() !== ".studio") {
+    return "";
+  }
+  return fs.existsSync(resolved) ? resolved : "";
+}
+
+function findStudioFileArg(argv) {
+  for (const arg of argv || []) {
+    const studioFile = normalizeStudioFileArg(arg);
+    if (studioFile) {
+      return studioFile;
+    }
+  }
+  return "";
+}
+
+launchStudioFile = findStudioFileArg(process.argv);
 
 function startupLogFile() {
   if (!startupLogPath) {
@@ -137,11 +163,16 @@ async function startShiny() {
     EASYFLOW_NO_PACKAGE_INSTALL: "true",
     EASYFLOW_TOKEN: token,
     EASYFLOW_STARTUP_LOG: startupLogFile(),
+    STATEDU_OPEN_STUDIO_FILE: launchStudioFile,
     STATEDU_PUBLIC_RELEASE: process.env.STATEDU_PUBLIC_RELEASE || publicReleaseFlag(),
     R_HOME: path.join(appBaseDir(), "runtime", "R-4.5.3"),
     R_LIBS_USER: bundledRLibraryPath(),
     PATH: `${bundledRBinPath()};${process.env.PATH || ""}`
   };
+
+  if (launchStudioFile) {
+    logStartup(`open studio file: ${launchStudioFile}`);
+  }
 
   shinyProcess = spawn(rscript, ["run_app.R"], {
     cwd: appDir,
@@ -174,6 +205,42 @@ function stopShiny() {
     } else {
       processToStop.kill("SIGTERM");
     }
+  }
+}
+
+function focusMainWindow() {
+  if (!mainWindow) {
+    return;
+  }
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+  mainWindow.focus();
+}
+
+async function reloadStudioFile(filePath) {
+  const studioFile = normalizeStudioFileArg(filePath);
+  if (!studioFile) {
+    return;
+  }
+  launchStudioFile = studioFile;
+  logStartup(`reload studio file: ${launchStudioFile}`);
+  if (!mainWindow || isReloadingStudioFile) {
+    return;
+  }
+  isReloadingStudioFile = true;
+  try {
+    stopShiny();
+    const url = await startShiny();
+    const loadStartedAt = Date.now();
+    await mainWindow.loadURL(url);
+    logStartup(`BrowserWindow reloaded Shiny URL in ${Date.now() - loadStartedAt}ms`);
+    focusMainWindow();
+  } catch (error) {
+    logStartup(`studio file reload failed: ${error.message}`);
+    dialog.showErrorBox(appDisplayName(), error.message);
+  } finally {
+    isReloadingStudioFile = false;
   }
 }
 
@@ -220,7 +287,32 @@ async function createWindow() {
   }
 }
 
-app.whenReady().then(createWindow);
+app.on("open-file", (event, filePath) => {
+  event.preventDefault();
+  if (mainWindow) {
+    reloadStudioFile(filePath);
+  } else {
+    launchStudioFile = normalizeStudioFileArg(filePath) || launchStudioFile;
+  }
+});
+
+const singleInstanceLock = app.requestSingleInstanceLock();
+
+if (!singleInstanceLock) {
+  app.quit();
+} else {
+  app.on("second-instance", (event, argv) => {
+    const studioFile = findStudioFileArg(argv);
+    if (studioFile) {
+      logStartup(`open studio file second-instance: ${studioFile}`);
+      reloadStudioFile(studioFile);
+      return;
+    }
+    focusMainWindow();
+  });
+
+  app.whenReady().then(createWindow);
+}
 
 app.on("window-all-closed", () => {
   isQuitting = true;

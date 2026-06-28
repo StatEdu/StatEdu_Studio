@@ -28,7 +28,8 @@ register_ttest_anova_handlers <- function(
   dataset_fn,
   category_table_fn,
   labels_fn,
-  mark_settings_dirty
+  mark_settings_dirty,
+  app_language_fn = NULL
 ) {
   dependent_variables <- reactiveVal(character(0))
   factor_variables <- reactiveVal(character(0))
@@ -37,6 +38,7 @@ register_ttest_anova_handlers <- function(
   normality_study_type_value <- reactiveVal("survey")
   normality_survey_method_value <- reactiveVal("skew_kurtosis")
   normality_experimental_method_value <- reactiveVal("sw")
+  normality_skew_kurtosis_cutoff_value <- reactiveVal("2_7")
   normality_method_value <- reactiveVal("skew_kurtosis")
   post_hoc_method_value <- reactiveVal("scheffe")
   nonparametric_post_hoc_method_value <- reactiveVal("bonferroni")
@@ -55,9 +57,10 @@ register_ttest_anova_handlers <- function(
   })
 
   output$ttest_anova_setup <- renderUI({
+    language <- statedu_current_language(app_language_fn)
     selected <- current_selected()
     if (length(selected) == 0) {
-      return(setup_empty_message("Complete Step 2 in the Data tab before setting up t-test / ANOVA."))
+      return(setup_empty_message("Complete Step 2 in the Data tab before setting up t-test / ANOVA.", language = language))
     }
     ttest_anova_setup_panel(
       ttest_anova_setup_state(
@@ -75,6 +78,7 @@ register_ttest_anova_handlers <- function(
         normality_method = isolate(normality_method_value()),
         normality_survey_method = isolate(normality_survey_method_value()),
         normality_experimental_method = isolate(normality_experimental_method_value()),
+        normality_skew_kurtosis_cutoff = isolate(normality_skew_kurtosis_cutoff_value()),
         trend_analysis = isolate(trend_analysis_value()),
         post_hoc_method = isolate(post_hoc_method_value()),
         nonparametric_post_hoc_method = isolate(nonparametric_post_hoc_method_value()),
@@ -82,7 +86,8 @@ register_ttest_anova_handlers <- function(
         effect_size = isolate(effect_size_value()),
         show_df = isolate(show_df_value()),
         mean_sd = isolate(mean_sd_value()),
-        options_tab = isolate(input$ttest_anova_options_tab) %||% "Normality"
+        options_tab = isolate(input$ttest_anova_options_tab) %||% "Normality",
+        language = language
       )
     )
   })
@@ -97,7 +102,8 @@ register_ttest_anova_handlers <- function(
     variables_fn = function() unique(c(dependent_variables(), factor_variables())),
     variable_table_fn = variable_table_fn,
     labels_fn = labels_fn,
-    category_table_fn = category_table_fn
+    category_table_fn = category_table_fn,
+    language_fn = app_language_fn
   )
 
   observeEvent(input$ttest_anova_normality_enabled, {
@@ -134,6 +140,14 @@ register_ttest_anova_handlers <- function(
     if (identical(normality_study_type_value(), "survey")) {
       normality_method_value(value)
     }
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$ttest_anova_skew_kurtosis_cutoff, {
+    value <- input$ttest_anova_skew_kurtosis_cutoff %||% "2_7"
+    if (!value %in% c("2_5", "2_7", "3_7")) {
+      value <- "2_7"
+    }
+    normality_skew_kurtosis_cutoff_value(value)
   }, ignoreInit = TRUE)
 
   observeEvent(input$ttest_anova_experimental_normality_method, {
@@ -444,6 +458,7 @@ register_ttest_anova_handlers <- function(
         normality_enabled = normality_enabled,
         normality_study_type = normality_study_type,
         normality_method = normality_method,
+        normality_skew_kurtosis_cutoff = normality_skew_kurtosis_cutoff_value() %||% "2_7",
         normality_skew_kurtosis = normality_enabled && identical(normality_method, "skew_kurtosis"),
         normality_sw = normality_enabled && identical(normality_method, "sw"),
         normality_ks = normality_enabled && identical(normality_method, "ks"),

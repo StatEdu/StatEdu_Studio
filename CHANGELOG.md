@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.0.1 - 2026-06-28
+
+### Changed
+
+- Stabilized Korean/English UI switching across the main menus, setup screens, calculators, documentation pages, and notifications while keeping result tables in English.
+- Updated Data Editor and analysis menus with grouped categories, corrected Korean labels, and aligned button and tab layouts.
+- Refined t-test / ANOVA normality cutoff options, ordered post-hoc marker summaries, and cross-tabulation layout/export behavior.
+- Added calculator output variable-name controls and improved EQ-5D and ASCVD10 calculator panel layouts.
+- Added update-check support, `.studio` file association packaging metadata, and the `.studio` file icon.
+- Updated 1.0 user-guide screenshots and bilingual documentation assets.
+
 ## v1.0.0 - 2026-06-25
 
 ### Changed
@@ -7,6 +18,11 @@
 - Promoted the stabilized release line to the public 1.0.0 version metadata.
 - Switched Electron package metadata from beta names to final StatEdu Studio release names.
 - Kept deferred public 1.0 claims, DOI verification, website verification, and packaged QA gates explicit in the release documents.
+- Updated ordered post-hoc markers to show only directly significant comparisons in mean order, avoiding transitive chains such as `b>a>c` when one pair is not significant.
+- Added width-based cross-tabulation PDF orientation so wide primary tables print landscape while narrower and supporting tables remain portrait.
+- Added selectable skewness/kurtosis normality cutoffs for t-test / ANOVA setup: 2/5, 2/7, and 3/7, with 2/7 remaining the default.
+- Updated the settings save dialog to open in the loaded data file's folder when a data file path is available.
+- Prevented the Excel import review panel from appearing at startup unless a valid pending Excel file path exists.
 
 ## v0.9.42 - 2026-06-23
 
@@ -491,7 +507,7 @@
 - Improved factor analysis diagnostics table styling and finalized the KMO / Bartlett summary row placement.
 - Kept all five analysis save controls visible in development builds and added PDF / Add result coverage for the remaining analysis modules.
 - Removed PDF cover decoration and internal filename/date print labels, and added bottom-right page numbering.
-- Added edition-aware PDF cover identity handling, including the StatEdu logo and StatEdu 통계연구소 name for development builds.
+- Added edition-aware PDF cover identity handling, including the StatEdu logo and StatEdu Statistical Research Institute name for development builds.
 - Added the PDF output date below the saved date on the report cover.
 - Added development-only watermarks to exported HTML and PDF reports.
 

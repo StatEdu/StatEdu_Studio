@@ -307,8 +307,8 @@ longitudinal_missing_strategy_detail <- function(strategy, model_type = NULL) {
 
 longitudinal_mi_outcome_choices <- function() {
   c(
-    "종속변수 관측 행만 사용 (권장)" = "observed",
-    "종속변수 결측까지 대체 - 민감도 분석용" = "impute"
+    "Use rows with observed dependent variable (recommended)" = "observed",
+    "Impute missing dependent variable for sensitivity analysis" = "impute"
   )
 }
 

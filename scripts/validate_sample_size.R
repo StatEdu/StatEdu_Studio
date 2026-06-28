@@ -189,7 +189,7 @@ expect_true(regression_mediation_fritz$mediation_method == "fritz_mackinnon", "E
 regression_mediation_ui <- htmltools::renderTags(sample_size_inputs_ui("regression", list(
   sample_size_regression_target = "sample_size",
   sample_size_regression_design = "mediation"
-)))$html
+), language = "en"))$html
 expect_true(grepl("Path a beta: predictor -&gt; mediator", regression_mediation_ui, fixed = TRUE), "Expected mediation UI to explain path a beta")
 expect_true(grepl("Path b beta: mediator -&gt; outcome", regression_mediation_ui, fixed = TRUE), "Expected mediation UI to explain path b beta")
 expect_true(grepl("Number of covariates", regression_mediation_ui, fixed = TRUE), "Expected mediation UI to label covariate count")
@@ -275,21 +275,21 @@ sem_direct_ui <- htmltools::renderTags(sample_size_inputs_ui("sem", list(
   sample_size_sem_target = "sample_size",
   sample_size_sem_test = "close_fit",
   sample_size_sem_df_source = "direct"
-)))$html
+), language = "en"))$html
 expect_true(grepl("Model degrees of freedom", sem_direct_ui, fixed = TRUE), "Expected SEM direct df input to show model df field")
 expect_true(!grepl("Latent variables", sem_direct_ui, fixed = TRUE), "Expected SEM direct df input to hide structure-count fields")
 sem_structure_ui <- htmltools::renderTags(sample_size_inputs_ui("sem", list(
   sample_size_sem_target = "sample_size",
   sample_size_sem_test = "close_fit",
   sample_size_sem_df_source = "structure"
-)))$html
+), language = "en"))$html
 expect_true(grepl("Latent variables", sem_structure_ui, fixed = TRUE), "Expected SEM structure df input to show latent variable field")
 expect_true(!grepl("Model degrees of freedom", sem_structure_ui, fixed = TRUE), "Expected SEM structure df input to hide direct df field")
 sem_not_close_ui <- htmltools::renderTags(sample_size_inputs_ui("sem", list(
   sample_size_sem_target = "sample_size",
   sample_size_sem_test = "not_close_fit",
   sample_size_sem_df_source = "structure"
-)))$html
+), language = "en"))$html
 expect_true(grepl('id="sample_size_sem_null_rmsea"', sem_not_close_ui, fixed = TRUE) && grepl('value="0.08"', sem_not_close_ui, fixed = TRUE), "Expected SEM not-close-fit default null RMSEA to be 0.08")
 expect_true(grepl('id="sample_size_sem_alternative_rmsea"', sem_not_close_ui, fixed = TRUE) && grepl('value="0.05"', sem_not_close_ui, fixed = TRUE), "Expected SEM not-close-fit default alternative RMSEA to be 0.05")
 sem_result_html <- htmltools::renderTags(sample_size_results_ui(sample_size_sem(
@@ -303,7 +303,7 @@ sem_result_html <- htmltools::renderTags(sample_size_results_ui(sample_size_sem(
   alternative_rmsea = 0.08,
   alpha = 0.05,
   power = 0.95
-)))$html
+), language = "en"))$html
 expect_true(grepl("n (Participants)", sem_result_html, fixed = TRUE), "Expected final SEM sample size row to be labeled with n")
 expect_true(grepl("sample-size-primary-effect", sem_result_html, fixed = TRUE), "Expected final SEM sample size row to be emphasized")
 sem_not_close_result <- sample_size_sem(
@@ -319,9 +319,9 @@ sem_not_close_result <- sample_size_sem(
   power = 0.95
 )
 expect_true(sem_not_close_result$total > 0, "Expected SEM not-close-fit default values to calculate a positive sample size")
-ttest_default_power_ui <- htmltools::renderTags(sample_size_inputs_ui("ttest", list(sample_size_ttest_target = "sample_size")))$html
+ttest_default_power_ui <- htmltools::renderTags(sample_size_inputs_ui("ttest", list(sample_size_ttest_target = "sample_size"), language = "en"))$html
 expect_true(grepl('value="0.95"', ttest_default_power_ui, fixed = TRUE), "Expected sample-size power default to be 0.95")
-reliability_panel_html <- htmltools::renderTags(sample_size_analysis_panel("reliability"))$html
+reliability_panel_html <- htmltools::renderTags(sample_size_analysis_panel("reliability", language = "en"))$html
 expect_true(!grepl(">Power<", reliability_panel_html, fixed = TRUE), "Expected Reliability / Agreement sample-size panel to hide unsupported Power target")
 expect_true(grepl('id="sample_size_reliability_target"', reliability_panel_html, fixed = TRUE), "Expected Reliability / Agreement panel to keep a hidden sample-size target")
 

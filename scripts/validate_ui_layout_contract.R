@@ -145,15 +145,15 @@ data_editor_lazy_contract <- data.frame(
     "lazy_data_editor_variable_rename"
   ),
   panel_call = c(
-    "data_editor_coding_error_check_panel()",
-    "data_editor_likert_panel()",
-    "data_editor_missing_panel()",
-    "data_editor_wide_long_panel()",
-    "data_editor_different_variable_panel()",
-    "data_editor_variable_calculation_panel()",
-    "data_editor_variable_transformation_panel()",
-    "data_editor_same_variable_panel()",
-    "data_editor_variable_rename_panel()"
+    "data_editor_coding_error_check_panel",
+    "data_editor_likert_panel",
+    "data_editor_missing_panel",
+    "data_editor_wide_long_panel",
+    "data_editor_different_variable_panel",
+    "data_editor_variable_calculation_panel",
+    "data_editor_variable_transformation_panel",
+    "data_editor_same_variable_panel",
+    "data_editor_variable_rename_panel"
   ),
   stringsAsFactors = FALSE
 )
@@ -161,21 +161,26 @@ for (i in seq_len(nrow(data_editor_lazy_contract))) {
   lazy_row <- data_editor_lazy_contract[i, ]
   assert_contains(
     data_editor_ui,
-    sprintf('lazy_tab_panel("%s", "%s", "%s")', lazy_row$title, lazy_row$value, lazy_row$output_id),
+    sprintf('statedu_text(language, "%s"', lazy_row$title),
+    sprintf("Data Editor lazy menu translated label: %s", lazy_row$title)
+  )
+  assert_contains(
+    data_editor_ui,
+    sprintf('), "%s", "%s")', lazy_row$value, lazy_row$output_id),
     sprintf("Data Editor lazy menu item: %s", lazy_row$title)
   )
   assert_contains(
     app_server,
-    sprintf("output$%s <- renderUI(%s)", lazy_row$output_id, lazy_row$panel_call),
+    sprintf("output$%s <- renderUI(%s(app_language()))", lazy_row$output_id, lazy_row$panel_call),
     sprintf("Data Editor lazy renderUI target: %s", lazy_row$title)
   )
 }
 
 message("Checking shared selected-data viewer button contract...")
-assert_contains(analysis_data_viewer_ui, 'analysis_data_viewer_button <- function(id)', "selected-data viewer button helper")
-assert_contains(analysis_data_viewer_ui, 'actionButton(id, "View selected data", class = "btn btn-default analysis-data-viewer-button")', "selected-data viewer button label")
-assert_contains(analysis_data_viewer_ui, "analysis_workspace_heading <- function(title, prefix)", "workspace heading helper")
-assert_contains(analysis_data_viewer_ui, 'analysis_data_viewer_button(paste0(prefix, "_view_data"))', "workspace heading uses shared viewer button")
+assert_contains(analysis_data_viewer_ui, 'analysis_data_viewer_button <- function(id, language = statedu_initial_language())', "selected-data viewer button helper")
+assert_contains(analysis_data_viewer_ui, 'statedu_text(language, "View selected data"', "selected-data viewer button label")
+assert_contains(analysis_data_viewer_ui, "analysis_workspace_heading <- function(title, prefix, language = statedu_initial_language())", "workspace heading helper")
+assert_contains(analysis_data_viewer_ui, 'analysis_data_viewer_button(paste0(prefix, "_view_data"), language)', "workspace heading uses shared viewer button")
 if (count_fixed(r_text, '"View selected data"') != 1L) {
   stop("UI layout contract missing: View selected data must be created only by analysis_data_viewer_button()", call. = FALSE)
 }
@@ -237,21 +242,21 @@ analysis_lazy_contract <- data.frame(
     "lazy_analysis_longitudinal"
   ),
   panel_call = c(
-    'frequencies_tab_panel("Frequencies / Descriptives")',
-    "crosstab_tab_panel()",
-    'ttest_anova_tab_panel("t-test / ANOVA")',
-    'paired_tab_panel("Paired test")',
-    'ancova_tab_panel("ANCOVA")',
-    'nonparametric_tab_panel("Nonparametric Tests")',
-    'nonparametric_paired_tab_panel("Nonparametric Paired")',
-    'correlation_tab_panel("Correlation")',
-    'reliability_tab_panel("Reliability")',
-    'factor_analysis_tab_panel("Factor Analysis")',
-    'pca_tab_panel("Principal Components")',
-    'hierarchical_tab_panel("Regression")',
-    'generalized_tab_panel("GLM")',
-    "logistic_regression_tab_panel()",
-    'longitudinal_tab_panel("Longitudinal / Panel Models")'
+    "frequencies_tab_panel",
+    "crosstab_tab_panel",
+    "ttest_anova_tab_panel",
+    "paired_tab_panel",
+    "ancova_tab_panel",
+    "nonparametric_tab_panel",
+    "nonparametric_paired_tab_panel",
+    "correlation_tab_panel",
+    "reliability_tab_panel",
+    "factor_analysis_tab_panel",
+    "pca_tab_panel",
+    "hierarchical_tab_panel",
+    "generalized_tab_panel",
+    "logistic_regression_tab_panel",
+    "longitudinal_tab_panel"
   ),
   stringsAsFactors = FALSE
 )
@@ -259,7 +264,7 @@ for (i in seq_len(nrow(analysis_lazy_contract))) {
   lazy_row <- analysis_lazy_contract[i, ]
   assert_contains(
     analysis_menu_ui,
-    sprintf('lazy_tab_panel("%s", "%s", "%s")', lazy_row$title, lazy_row$value, lazy_row$output_id),
+    sprintf('"%s", "%s")', lazy_row$value, lazy_row$output_id),
     sprintf("Analysis lazy menu item: %s", lazy_row$title)
   )
   if (identical(lazy_row$output_id, "lazy_analysis_longitudinal")) {
@@ -270,7 +275,7 @@ for (i in seq_len(nrow(analysis_lazy_contract))) {
     )
     assert_contains(
       app_server,
-      'statedu_feature_enabled("longitudinal", TRUE)',
+      'statedu_feature_enabled("longitudinal", FALSE)',
       "Analysis lazy renderUI target: Longitudinal / Panel Models public flag guard"
     )
     assert_contains(
@@ -281,7 +286,7 @@ for (i in seq_len(nrow(analysis_lazy_contract))) {
   } else {
     assert_contains(
       app_server,
-      sprintf("output$%s <- renderUI(tab_panel_content(%s))", lazy_row$output_id, lazy_row$panel_call),
+      sprintf("output$%s <- renderUI(tab_panel_content(%s", lazy_row$output_id, lazy_row$panel_call),
       sprintf("Analysis lazy renderUI target: %s", lazy_row$title)
     )
   }
@@ -290,8 +295,8 @@ for (i in seq_len(nrow(analysis_lazy_contract))) {
 message("Checking Sample Size / Effect Size lazy menu wiring...")
 assert_contains(
   sample_size_ui,
-  "sample_size_tab_panel <- function() {\n  methods <- sample_size_method_labels()",
-  "Sample Size menu uses sample_size_method_labels() registry"
+  "sample_size_tab_panel <- function(language = statedu_initial_language()) {\n  methods <- sample_size_method_labels(language)",
+  "Sample Size menu uses language-aware sample_size_method_labels() registry"
 )
 assert_contains(
   sample_size_ui,
@@ -300,13 +305,13 @@ assert_contains(
 )
 assert_contains(
   sample_size_ui,
-  "for (method in methods) {\n    local({\n      method_local <- method\n      output[[paste0(\"lazy_sample_size_\", method_local)]] <- renderUI(tab_panel_content(sample_size_analysis_panel(method_local)))",
-  "Sample Size lazy renderUI targets are generated from method keys"
+  "for (method in methods) {\n    local({\n      method_local <- method\n      output[[paste0(\"lazy_sample_size_\", method_local)]] <- renderUI({\n        tab_panel_content(sample_size_analysis_panel(method_local, sample_size_language()))",
+  "Sample Size lazy renderUI targets are generated from method keys and current language"
 )
 assert_contains(
   sample_size_ui,
-  "effect_size_tab_panel <- function() {\n  methods <- effect_size_method_labels()",
-  "Effect Size menu uses effect_size_method_labels() registry"
+  "effect_size_tab_panel <- function(language = statedu_initial_language()) {\n  methods <- effect_size_method_labels(language)",
+  "Effect Size menu uses language-aware effect_size_method_labels() registry"
 )
 assert_contains(
   sample_size_ui,
@@ -315,12 +320,12 @@ assert_contains(
 )
 assert_contains(
   sample_size_ui,
-  "for (effect_method in names(effect_size_method_labels())) {\n    local({\n      effect_method_local <- effect_method\n      output[[paste0(\"lazy_effect_size_\", effect_method_local)]] <- renderUI(tab_panel_content(effect_size_analysis_panel(effect_method_local)))",
-  "Effect Size lazy renderUI targets are generated from method keys"
+  "for (effect_method in names(effect_size_method_labels())) {\n    local({\n      effect_method_local <- effect_method\n      output[[paste0(\"lazy_effect_size_\", effect_method_local)]] <- renderUI({\n        tab_panel_content(effect_size_analysis_panel(effect_method_local, sample_size_language()))",
+  "Effect Size lazy renderUI targets are generated from method keys and current language"
 )
 
 message("Checking shared analysis menu geometry contract...")
-assert_contains(setup_ui, 'analysis_workspace_heading("t-test / ANOVA", "ttest_anova")', "t-test / ANOVA baseline heading")
+assert_contains(setup_ui, 'analysis_workspace_heading("t-test / ANOVA", "ttest_anova", language)', "t-test / ANOVA baseline heading")
 assert_contains(setup_ui, 'class = "analysis-action-row ttest-anova-action-row"', "t-test / ANOVA baseline action row")
 assert_contains(css, "body {\n  --se-standard-panel-width: 326px;", "global standard layout variables")
 assert_contains(css, "--se-analysis-workspace-width: 1140px;", "standard analysis workspace width variable")
@@ -373,16 +378,16 @@ assert_count_exact(css, "\n  max-width: 1140px;", 0L, "no hardcoded analysis wor
 assert_count_exact(css, "\n  max-width: 1176px;", 0L, "no hardcoded standard setup max-width")
 
 message("Checking Wide to Long menu contract...")
-assert_contains(data_editor_ui, 'lazy_tab_panel("Wide to Long", "data_editor_wide_long", "lazy_data_editor_wide_long")', "Data Editor menu label")
-assert_contains(wide_long_ui, 'h1("Wide to Long")', "Wide to Long page title")
-assert_contains(wide_long_ui, 'analysis_workspace_heading("Wide to long", "wide_long")', "Wide to Long workspace heading")
+assert_contains(data_editor_ui, 'statedu_text(language, "Wide to Long"', "Data Editor menu label")
+assert_contains(wide_long_ui, 'h1(statedu_text(language, "Wide to Long"', "Wide to Long page title")
+assert_contains(wide_long_ui, 'analysis_workspace_heading(statedu_text(language, "Wide to long"', "Wide to Long workspace heading")
 assert_not_contains(wide_long_ui, "Wide to Long Format", "old Wide to Long Format label")
 assert_not_contains(css, ".wide_long-workspace-heading", "Wide to Long-specific workspace heading override")
 assert_not_contains(css, ".recode-same-action-row.wide-long-action-row {\n  display: grid;", "legacy unscoped Wide to Long action-row override")
 assert_contains(wide_long_ui, 'class = "analysis-action-row recode-same-action-row wide-long-action-row"', "Wide to Long action row")
-assert_contains(wide_long_ui, 'actionButton("run_wide_long", "Run"', "Wide to Long run button")
-assert_contains(wide_long_ui, 'actionButton("wide_long_remove_spec", "Remove"', "Wide to Long remove button")
-assert_contains(wide_long_ui, 'actionButton("preview_wide_long", "Preview"', "Wide to Long preview button")
+assert_contains(wide_long_ui, 'actionButton("run_wide_long", analysis_ui_text("Run", language)', "Wide to Long run button")
+assert_contains(wide_long_ui, 'actionButton("wide_long_remove_spec", analysis_ui_text("Remove", language)', "Wide to Long remove button")
+assert_contains(wide_long_ui, 'actionButton("preview_wide_long", analysis_ui_text("Preview", language)', "Wide to Long preview button")
 assert_contains(css, ".data-editor-workspace .wide-long-action-row > #run_wide_long", "Wide to Long run placement")
 assert_contains(css, ".data-editor-workspace .wide-long-action-row > #wide_long_remove_spec", "Wide to Long remove placement")
 assert_contains(css, ".data-editor-workspace .wide-long-action-row > #preview_wide_long", "Wide to Long preview placement")
@@ -397,8 +402,8 @@ assert_contains(css, ".data-editor-workspace .wide-long-action-row {\n  grid-tem
 
 message("Checking Rename Variable menu contract...")
 assert_contains(rename_ui, 'class = "analysis-action-row recode-same-action-row variable-rename-action-row"', "Rename action row")
-assert_contains(rename_ui, 'actionButton("run_variable_rename", "Run"', "Rename run button")
-assert_contains(rename_ui, 'actionButton("remove_variable_rename", "Remove"', "Rename remove button")
+assert_contains(rename_ui, 'actionButton("run_variable_rename", analysis_ui_text("Run", language)', "Rename run button")
+assert_contains(rename_ui, 'actionButton("remove_variable_rename", analysis_ui_text("Remove", language)', "Rename remove button")
 assert_contains(rename_ui, 'class = "recode-same-setup-grid variable-rename-grid"', "Rename standard grid")
 assert_contains(css, ".data-editor-workspace .variable-rename-target-panel .analysis-transfer-listbox", "Rename target list height")
 assert_contains(css, ".data-editor-workspace .variable-rename-action-row > #remove_variable_rename", "Rename remove placement")
@@ -407,50 +412,50 @@ assert_contains(css, ".data-editor-workspace .variable-rename-action-row > #remo
 message("Checking Recode Variable menu contract...")
 assert_contains(recode_ui, 'class = "recode-same-setup-grid recode-builder-grid"', "Recode builder grid")
 assert_contains(recode_ui, 'class = "analysis-action-row recode-same-action-row recode-builder-action-row"', "Recode action row")
-assert_contains(recode_ui, 'actionButton("apply_recode_same", "Apply"', "Recode apply button")
+assert_contains(recode_ui, 'actionButton("apply_recode_same", analysis_ui_text("Apply", language)', "Recode apply button")
 assert_contains(recode_ui, 'uiOutput("recode_same_reset_control")', "Recode reset control")
 assert_contains(css, ".data-editor-workspace .recode-builder-action-row > #apply_recode_same", "Recode apply placement")
 assert_contains(css, ".data-editor-workspace .recode-builder-action-row > #recode_same_reset_control", "Recode reset placement")
 assert_contains(css, ".data-editor-workspace .recode-builder-action-row > #recode_same_reset_control {\n  grid-column: 3 !important;\n  justify-self: start !important;\n  margin-left: 30px !important;\n  width: var(--se-standard-inner-button-width) !important;", "Recode reset uses Block 2 action placement")
 
 message("Checking Auto Reverse Coding menu contract...")
-assert_contains(data_editor_ui, 'lazy_tab_panel("Auto reverse coding", "data_editor_recode_different", "lazy_data_editor_recode_different")', "Auto Reverse Coding menu label")
-assert_contains(recode_ui, 'analysis_workspace_heading("Auto reverse coding", "recode_different")', "Auto Reverse Coding workspace heading")
+assert_contains(data_editor_ui, 'statedu_text(language, "Auto reverse coding"', "Auto Reverse Coding menu label")
+assert_contains(recode_ui, 'analysis_workspace_heading("Auto reverse coding", "recode_different", language = language)', "Auto Reverse Coding workspace heading")
 assert_contains(recode_ui, 'class = "recode-same-setup-grid recode-different-setup-grid"', "Auto Reverse Coding standard grid")
 assert_contains(recode_ui, '"recode_different_move",', "Auto Reverse Coding transfer button")
-assert_contains(recode_ui, 'actionButton("apply_recode_different", "Run"', "Auto Reverse Coding run button")
+assert_contains(recode_ui, 'actionButton("apply_recode_different", analysis_ui_text("Run", language)', "Auto Reverse Coding run button")
 assert_contains(recode_ui, 'uiOutput("recode_different_reset_control")', "Auto Reverse Coding reset control")
 
 message("Checking Auto Variable Calculation menu contract...")
-assert_contains(data_editor_ui, 'lazy_tab_panel("Auto variable calculation", "data_editor_variable_calculation", "lazy_data_editor_variable_calculation")', "Auto Variable Calculation menu label")
-assert_contains(recode_ui, 'analysis_workspace_heading("Auto variable calculation", "variable_calculation")', "Auto Variable Calculation workspace heading")
+assert_contains(data_editor_ui, 'statedu_text(language, "Auto variable calculation"', "Auto Variable Calculation menu label")
+assert_contains(recode_ui, 'analysis_workspace_heading("Auto variable calculation", "variable_calculation", language = language)', "Auto Variable Calculation workspace heading")
 assert_contains(recode_ui, 'class = "recode-same-setup-grid recode-different-setup-grid"', "Auto Variable Calculation standard grid")
 assert_contains(recode_ui, '"variable_calculation_move",', "Auto Variable Calculation transfer button")
-assert_contains(recode_ui, 'actionButton("apply_variable_calculation", "Run"', "Auto Variable Calculation run button")
+assert_contains(recode_ui, 'actionButton("apply_variable_calculation", analysis_ui_text("Run", language)', "Auto Variable Calculation run button")
 assert_contains(recode_ui, 'uiOutput("variable_calculation_reset_control")', "Auto Variable Calculation reset control")
 
 message("Checking Data Editor exception menu contract...")
-assert_contains(likert_ui, 'analysis_workspace_heading("Likert label conversion", "likert")', "Likert exception uses shared workspace heading")
-assert_contains(transform_ui, 'analysis_workspace_heading("Variable transformation", "variable_transform")', "Variable Transformation exception uses shared workspace heading")
+assert_contains(likert_ui, 'analysis_workspace_heading(likert_ui_text("Likert label conversion"', "Likert exception uses shared workspace heading")
+assert_contains(transform_ui, 'analysis_workspace_heading("Variable transformation", "variable_transform", language = language)', "Variable Transformation exception uses shared workspace heading")
 assert_contains(transform_ui, 'class = "variable-transform-grid"', "Variable Transformation exception owns a custom formula-builder grid")
 assert_not_contains(likert_ui, 'class = "recode-same-setup-grid', "Likert exception does not masquerade as standard three-block grid")
 assert_not_contains(transform_ui, 'class = "recode-same-setup-grid', "Variable Transformation exception does not masquerade as standard three-block grid")
 
 message("Checking Auto Coding Error menu contract...")
-assert_contains(recode_ui, 'analysis_workspace_heading("Auto coding error check", "coding_error")', "Coding error workspace heading")
+assert_contains(recode_ui, 'analysis_workspace_heading("Auto coding error check", "coding_error", language = language)', "Coding error workspace heading")
 assert_contains(recode_ui, 'class = "recode-same-setup-grid recode-different-setup-grid"', "Coding error standard grid")
 assert_contains(recode_ui, '"coding_error_move",', "Coding error transfer button")
 assert_contains(recode_ui, 'class = "analysis-action-row recode-same-action-row"', "Coding error action row")
-assert_contains(recode_ui, 'actionButton("apply_coding_error", "Run"', "Coding error run button")
+assert_contains(recode_ui, 'actionButton("apply_coding_error", analysis_ui_text("Run", language)', "Coding error run button")
 assert_contains(recode_ui, 'uiOutput("coding_error_reset_control")', "Coding error reset control")
 
 message("Checking Auto Missing Values menu contract...")
-assert_contains(missing_ui, 'analysis_workspace_heading("Auto missing value detection", "missing_values")', "Missing values workspace heading")
+assert_contains(missing_ui, 'analysis_workspace_heading("Auto missing value detection", "missing_values", language = language)', "Missing values workspace heading")
 assert_contains(missing_ui, 'class = "recode-same-setup-grid missing-values-setup-grid"', "Missing values standard grid")
 assert_contains(missing_ui, '"missing_values_move",', "Missing values transfer button")
 assert_contains(missing_ui, 'class = "analysis-action-row recode-same-action-row missing-values-action-row"', "Missing values action row")
-assert_contains(missing_ui, 'actionButton("mark_user_missing_values", "Mark as user missing"', "Missing values primary action")
-assert_contains(missing_ui, 'actionButton("convert_missing_values_to_na", "Convert to NA"', "Missing values secondary action")
+assert_contains(missing_ui, 'actionButton("mark_user_missing_values", analysis_ui_text("Mark as user missing", language)', "Missing values primary action")
+assert_contains(missing_ui, 'actionButton("convert_missing_values_to_na", analysis_ui_text("Convert to NA", language)', "Missing values secondary action")
 assert_contains(css, ".data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) > .btn,", "standard direct action placement")
 assert_contains(css, ".data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) > .missing-values-action-cell", "Missing values action-cell placement")
 
@@ -459,9 +464,15 @@ assert_contains(easyflow_js, "function easyflowGroupedMenuConfigs()", "grouped m
 assert_contains(easyflow_js, "function markNavbarDropdownActive(link)", "grouped menu top-level active helper")
 assert_contains(easyflow_js, "dropdown.closest('.navbar-nav').children('li.active').removeClass('active');", "grouped menu clears stale top-level active state")
 assert_contains(easyflow_js, "dropdown.addClass('active');", "grouped menu activates clicked top-level menu")
-assert_contains(easyflow_js, "menu: 'Analysis',\n              marker: 'analysis',", "Analysis grouped menu config")
-assert_contains(easyflow_js, "menu: 'Sample Size',\n              marker: 'sample-size',", "Sample Size grouped menu config")
-assert_contains(easyflow_js, "menu: 'Effect Size',\n              marker: 'effect-size',", "Effect Size grouped menu config")
+assert_contains(easyflow_js, "menu: 'Analysis'", "Analysis grouped menu config label")
+assert_contains(easyflow_js, "menuLabels: ['Analysis'", "Analysis grouped menu translated labels")
+assert_contains(easyflow_js, "marker: 'analysis'", "Analysis grouped menu config marker")
+assert_contains(easyflow_js, "menu: 'Sample Size'", "Sample Size grouped menu config label")
+assert_contains(easyflow_js, "menuLabels: ['Sample Size'", "Sample Size grouped menu translated labels")
+assert_contains(easyflow_js, "marker: 'sample-size'", "Sample Size grouped menu config marker")
+assert_contains(easyflow_js, "menu: 'Effect Size'", "Effect Size grouped menu config label")
+assert_contains(easyflow_js, "menuLabels: ['Effect Size'", "Effect Size grouped menu translated labels")
+assert_contains(easyflow_js, "marker: 'effect-size'", "Effect Size grouped menu config marker")
 assert_contains(easyflow_js, "click.easyflowAnalysisSubmenu", "grouped submenu click handler")
 assert_contains(easyflow_js, "click.easyflowAnalysisDirectItem", "grouped direct-item click handler")
 assert_contains(easyflow_js, "function syncEasyflowTopNavbarActive(link) {", "top navbar active-state sync helper")

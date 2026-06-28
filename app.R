@@ -24,8 +24,9 @@ app_config <- read_app_config()
 app_version <- app_config$version
 
 startup_time("source modules", source_app_modules())
+try(shiny::addResourcePath("docs", normalizePath("docs", winslash = "/", mustWork = FALSE)), silent = TRUE)
 
-ui <- startup_time("build ui", app_ui(app_version))
+ui <- startup_time("build ui", function(request) app_ui(app_version, request))
 server <- startup_time("build server", create_app_server(app_version))
 startup_log("app.R ready")
 

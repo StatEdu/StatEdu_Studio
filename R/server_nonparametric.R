@@ -9,7 +9,8 @@ register_nonparametric_handlers <- function(
   dataset_fn,
   category_table_fn,
   labels_fn,
-  mark_settings_dirty
+  mark_settings_dirty,
+  app_language_fn = NULL
 ) {
   dependent_variables <- reactiveVal(character(0))
   factor_variables <- reactiveVal(character(0))
@@ -30,9 +31,10 @@ register_nonparametric_handlers <- function(
   })
 
   output$nonparametric_setup <- renderUI({
+    language <- statedu_current_language(app_language_fn)
     selected <- current_selected()
     if (length(selected) == 0) {
-      return(setup_empty_message("Complete Step 2 in the Data tab before setting up nonparametric tests."))
+      return(setup_empty_message("Complete Step 2 in the Data tab before setting up nonparametric tests.", language = language))
     }
     nonparametric_setup_panel(
       nonparametric_setup_state(
@@ -48,7 +50,8 @@ register_nonparametric_handlers <- function(
         nonparametric_post_hoc_method = isolate(post_hoc_method_value()),
         ordered_significance = isolate(ordered_significance_value()),
         effect_size = isolate(effect_size_value()),
-        median_iqr = isolate(median_iqr_value())
+        median_iqr = isolate(median_iqr_value()),
+        language = language
       )
     )
   })
@@ -63,7 +66,8 @@ register_nonparametric_handlers <- function(
     variables_fn = function() unique(c(dependent_variables(), factor_variables())),
     variable_table_fn = variable_table_fn,
     labels_fn = labels_fn,
-    category_table_fn = category_table_fn
+    category_table_fn = category_table_fn,
+    language_fn = app_language_fn
   )
 
   observeEvent(input$nonparametric_post_hoc_method, {

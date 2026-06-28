@@ -9,7 +9,8 @@ register_generalized_handlers <- function(
   variable_table_fn,
   labels_fn,
   category_table_fn = function() NULL,
-  mark_settings_dirty
+  mark_settings_dirty,
+  app_language_fn = NULL
 ) {
   generalized_outcome <- reactiveVal(character(0))
   generalized_exposure <- reactiveVal(character(0))
@@ -117,10 +118,11 @@ register_generalized_handlers <- function(
   }
 
   output$generalized_setup <- renderUI({
+    language <- statedu_current_language(app_language_fn)
     generalized_setup_revision()
     selected <- as.character(selected_names_fn() %||% character(0))
     if (length(selected) == 0) {
-      return(setup_empty_message("Complete Step 2 in the Data tab before setting up GLM."))
+      return(setup_empty_message("Complete Step 2 in the Data tab before setting up GLM.", language = language))
     }
     sync_current_variables()
     state <- generalized_setup_state(
@@ -146,7 +148,8 @@ register_generalized_handlers <- function(
       missing_iterations = isolate(input$generalized_missing_iterations %||% 5L),
       mi_outcome = isolate(input$generalized_mi_outcome %||% "observed"),
       ipw_auxiliary = isolate(input$generalized_ipw_auxiliary %||% character(0)),
-      options_tab = isolate(input$generalized_options_tab %||% "Model")
+      options_tab = isolate(input$generalized_options_tab %||% "Model"),
+      language = language
     )
     generalized_setup_panel(state, NULL)
   })
@@ -194,7 +197,8 @@ register_generalized_handlers <- function(
     },
     variable_table_fn = variable_table_fn,
     labels_fn = labels_fn,
-    category_table_fn = category_table_fn
+    category_table_fn = category_table_fn,
+    language_fn = app_language_fn
   )
 
   output$generalized_reset_control <- renderUI({

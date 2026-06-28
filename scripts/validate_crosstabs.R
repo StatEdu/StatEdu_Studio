@@ -96,11 +96,120 @@ expect_true(!grepl("OR=", display_html), "Expected ES cell to omit effect size t
 expect_true(grepl("2.120", display_html), "Expected ES cell to include numeric estimate")
 expect_true(grepl("ES = effect size (odds ratio)", display_notes, fixed = TRUE), "Expected ES type note")
 
+no_total_n_result <- display_result
+no_total_n_result$options$total_n <- FALSE
+no_total_n_result$display_table <- crosstab_display_table(
+  no_total_n_result$table,
+  no_total_n_result$row_var,
+  no_total_n_result$col_var,
+  no_total_n_result$variable_info,
+  no_total_n_result$labels,
+  no_total_n_result$category_table,
+  no_total_n_result$options
+)
+no_total_n_html <- renderTags(crosstab_main_table_ui(no_total_n_result))$html
+expect_true(!grepl("crosstab-n-head", no_total_n_html, fixed = TRUE), "Expected total n column header to be hidden when disabled")
+expect_true(!grepl("crosstab-n-cell", no_total_n_html, fixed = TRUE), "Expected total n body cells to be hidden when disabled")
+expect_true(crosstab_primary_table_width(no_total_n_result) < crosstab_primary_table_width(display_result), "Expected total n option to reduce table width")
+expect_true(!"Total" %in% names(no_total_n_result$display_table), "Expected exported display table to omit Total when total n is disabled")
+
 split_display_result <- display_result
 split_display_result$options$split_count_percent <- TRUE
 split_display_html <- renderTags(crosstab_main_table_ui(split_display_result))$html
 expect_true(grepl("crosstab-percent-only-cell", split_display_html, fixed = TRUE), "Expected split n and percent cells")
 expect_true(!grepl("205\\(59.9\\)", split_display_html), "Expected split display to avoid compact n(percent) cells")
+expect_true(!isTRUE(crosstab_primary_table_landscape(display_result)), "Expected compact 2 x 2 crosstab table to remain portrait")
+wide_crosstab_data <- data.frame(
+  row_group = rep(c("A", "B"), each = 15),
+  col_group = rep(rep(seq_len(5), each = 3), times = 2),
+  stringsAsFactors = FALSE
+)
+wide_crosstab_info <- data.frame(
+  name = c("row_group", "col_group"),
+  measurement = c("binary", "ordered"),
+  stringsAsFactors = FALSE
+)
+wide_crosstab_result <- prepare_crosstab_results(
+  wide_crosstab_data,
+  row_var = "row_group",
+  col_var = "col_group",
+  variable_info = wide_crosstab_info,
+  options = list(row_percent = TRUE, column_percent = FALSE, total_percent = FALSE, total_n = FALSE, trend = FALSE)
+)
+wide_crosstab_html <- renderTags(crosstab_single_result_ui(wide_crosstab_result))$html
+expect_true(crosstab_primary_table_width(wide_crosstab_result) <= 820, "Expected the wide test case to rely on column-count landscape detection")
+expect_true(isTRUE(crosstab_primary_table_landscape(wide_crosstab_result)), "Expected crosstab tables with 5 or more column levels to use landscape layout")
+expect_true(grepl("landscape-table-panel", wide_crosstab_html, fixed = TRUE), "Expected wide crosstab primary table section to carry landscape class")
+expect_true(identical(length(gregexpr("landscape-table-panel", wide_crosstab_html, fixed = TRUE)[[1]]), 1L), "Expected only the wide primary crosstab table, not its expected-counts table, to be landscape")
+wide_saved_html <- saved_crosstab_results_html(wide_crosstab_result, report_mode = TRUE)
+expect_true(grepl('class="print-mixed-landscape"', wide_saved_html, fixed = TRUE), "Expected crosstab PDF HTML to enable mixed portrait/landscape output when any primary table is wide")
+
+message("Checking grouped crosstab column alignment...")
+uneven_col_data <- data.frame(
+  first_row = c("A", "A", "B", "B", NA, NA),
+  second_row = c("A", "B", "A", "B", "A", "B"),
+  col_group = c(1, 2, 1, 2, 3, 3),
+  stringsAsFactors = FALSE
+)
+uneven_col_info <- data.frame(
+  name = c("first_row", "second_row", "col_group"),
+  measurement = c("binary", "binary", "ordered"),
+  stringsAsFactors = FALSE
+)
+uneven_result_1 <- prepare_crosstab_results(
+  uneven_col_data,
+  row_var = "first_row",
+  col_var = "col_group",
+  variable_info = uneven_col_info,
+  options = list(row_percent = TRUE, column_percent = FALSE, total_percent = FALSE, trend = FALSE)
+)
+uneven_result_2 <- prepare_crosstab_results(
+  uneven_col_data,
+  row_var = "second_row",
+  col_var = "col_group",
+  variable_info = uneven_col_info,
+  options = list(row_percent = TRUE, column_percent = FALSE, total_percent = FALSE, trend = FALSE)
+)
+uneven_group <- list(uneven_result_1, uneven_result_2)
+expect_true(identical(crosstab_column_group_colnames(uneven_group), c("1", "2", "3")), "Expected grouped crosstab to use the union of column levels")
+uneven_group_html <- renderTags(crosstab_column_group_table_ui(uneven_group))$html
+expect_true(identical(length(gregexpr('class="crosstab-count-col"', uneven_group_html, fixed = TRUE)[[1]]), 3L), "Expected grouped crosstab colgroup to include all unioned column levels")
+expect_true(grepl("<th class=\"crosstab-level-head\">3</th>", uneven_group_html, fixed = TRUE), "Expected grouped crosstab header to include later-only column level")
+uneven_export <- crosstab_excel_group_table(uneven_group)
+expect_true("3" %in% names(uneven_export), "Expected grouped crosstab Excel export to include later-only column level")
+
+message("Checking wide grouped crosstab column splitting...")
+split_col_data <- data.frame(
+  first_row = rep(c("A", "B"), each = 9),
+  second_row = rep(c("C", "D"), length.out = 18),
+  col_group = rep(seq_len(9), 2),
+  stringsAsFactors = FALSE
+)
+split_col_info <- data.frame(
+  name = c("first_row", "second_row", "col_group"),
+  measurement = c("binary", "binary", "nominal"),
+  stringsAsFactors = FALSE
+)
+split_result_1 <- prepare_crosstab_results(
+  split_col_data,
+  row_var = "first_row",
+  col_var = "col_group",
+  variable_info = split_col_info,
+  options = list(row_percent = TRUE, column_percent = FALSE, total_percent = FALSE, total_n = TRUE, trend = FALSE)
+)
+split_result_2 <- prepare_crosstab_results(
+  split_col_data,
+  row_var = "second_row",
+  col_var = "col_group",
+  variable_info = split_col_info,
+  options = list(row_percent = TRUE, column_percent = FALSE, total_percent = FALSE, total_n = TRUE, trend = FALSE)
+)
+split_group <- list(split_result_1, split_result_2)
+split_group_html <- renderTags(crosstab_column_group_ui(split_group))$html
+expect_true(grepl("Cross-tabulation: col_group (1/2)", split_group_html, fixed = TRUE), "Expected wide grouped crosstab to render the first split panel")
+expect_true(grepl("Cross-tabulation: col_group (2/2)", split_group_html, fixed = TRUE), "Expected wide grouped crosstab to render the second split panel")
+expect_true(grepl("<th class=\"crosstab-level-head\">9</th>", split_group_html, fixed = TRUE), "Expected the final split panel to include the last column level")
+
 trend_display_html <- renderTags(crosstab_main_table_ui(trend_2xk))$html
 trend_note_html <- renderTags(crosstab_single_result_ui(trend_2xk))$html
 expect_true(grepl("p for trend", trend_display_html, fixed = TRUE), "Expected p for trend column when trend analysis is requested")
@@ -147,6 +256,7 @@ expect_true(grepl("height:96px", setup_html, fixed = TRUE), "Expected column var
 expect_true(grepl("height:216px", setup_html, fixed = TRUE), "Expected row variable panel to use size 9 height")
 expect_true(regexpr('data-input-id="crosstab_col"', setup_html, fixed = TRUE) < regexpr('data-input-id="crosstab_row"', setup_html, fixed = TRUE), "Expected column variable panel before row variable panel")
 expect_true(grepl("crosstab_split_count_percent", setup_html, fixed = TRUE), "Expected separate n and percent option")
+expect_true(grepl("crosstab_total_n", setup_html, fixed = TRUE), "Expected total n display option")
 expect_true(grepl("crosstab_row_up", setup_html, fixed = TRUE), "Expected row variable move-up button")
 expect_true(grepl("crosstab_row_down", setup_html, fixed = TRUE), "Expected row variable move-down button")
 expect_true(grepl("crosstab_col_up", setup_html, fixed = TRUE), "Expected column variable move-up button")
@@ -181,9 +291,10 @@ viewer_panel_html <- renderTags(analysis_data_viewer_panel(
   back_button_id = "crosstab_back_to_analysis",
   scope_input_id = "crosstab_viewer_all_step2",
   value_label_button_id = "crosstab_value_label_toggle",
-  table_output_id = "crosstab_data_viewer_table"
+  table_output_id = "crosstab_data_viewer_table",
+  language = "en"
 ))$html
-expect_true(grepl("View selected data", renderTags(analysis_data_viewer_button("crosstab_view_data"))$html, fixed = TRUE), "Expected analysis data viewer button")
+expect_true(grepl("View selected data", renderTags(analysis_data_viewer_button("crosstab_view_data", language = "en"))$html, fixed = TRUE), "Expected analysis data viewer button")
 expect_true(grepl("Back to analysis", viewer_panel_html, fixed = TRUE), "Expected selected data viewer back button")
 expect_true(!grepl("crosstab_viewer_all_step2", viewer_panel_html, fixed = TRUE), "Expected worksheet viewer to omit Step 2 scope toggle")
 expect_true(grepl("Value / Label", viewer_panel_html, fixed = TRUE), "Expected value label toggle")
@@ -193,7 +304,7 @@ expect_true(grepl("easyflowTransferOptionDoubleClick", renderTags(crosstab_setup
   row_var = "group",
   col_var = "dose"
 )))$html, fixed = TRUE), "Expected transfer listbox double click handler")
-viewer_table_html <- renderTags(analysis_data_viewer_table(data, c("group", "dose"), variable_table = variable_info))$html
+viewer_table_html <- renderTags(analysis_data_viewer_table(data, c("group", "dose"), variable_table = variable_info, language = "en"))$html
 expect_true(grepl("group", viewer_table_html, fixed = TRUE), "Expected selected data viewer table to include group")
 expect_true(grepl("dose", viewer_table_html, fixed = TRUE), "Expected selected data viewer table to include dose")
 expect_true(grepl("outcome", viewer_table_html, fixed = TRUE), "Expected worksheet viewer table to include unselected columns")
@@ -203,7 +314,8 @@ viewer_label_header_html <- renderTags(analysis_data_viewer_table(
   c("group", "dose"),
   variable_table = variable_info,
   labels = c(group = "Treatment group"),
-  use_labels = TRUE
+  use_labels = TRUE,
+  language = "en"
 ))$html
 expect_true(grepl("Treatment group", viewer_label_header_html, fixed = TRUE), "Expected selected data viewer table header to use variable label in label mode")
 label_preview <- analysis_data_viewer_labeled_data(
@@ -238,5 +350,7 @@ expect_true(file.exists(trend_xlsx) && file.info(trend_xlsx)$size > 0, "Expected
 trend_export <- crosstab_excel_group_table(list(trend_2xk))
 expect_true("p for trend" %in% names(trend_export), "Expected p for trend in crosstab Excel export table")
 expect_true(identical(trend_export[["p for trend"]][[1]], crosstab_trend_p_text(trend_2xk)), "Expected single trend method to omit an Excel note marker")
+no_total_n_export <- crosstab_excel_group_table(list(no_total_n_result))
+expect_true(!"n" %in% names(no_total_n_export), "Expected crosstab Excel export to omit n when total n is disabled")
 
 message("All cross-tabulation validations passed.")

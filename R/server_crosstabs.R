@@ -9,7 +9,8 @@ register_crosstab_handlers <- function(
   variable_table_fn,
   labels_fn,
   category_table_fn,
-  mark_settings_dirty
+  mark_settings_dirty,
+  language_fn = NULL
 ) {
   crosstab_result <- reactiveVal(NULL)
   crosstab_row_vars <- reactiveVal(character(0))
@@ -17,6 +18,12 @@ register_crosstab_handlers <- function(
   active_crosstab_list <- reactiveVal(NULL)
   crosstab_data_viewer_visible <- reactiveVal(FALSE)
   crosstab_data_viewer_label_mode <- reactiveVal(FALSE)
+  crosstab_language <- reactive({
+    if (is.function(language_fn)) {
+      return(normalize_app_language(language_fn()))
+    }
+    statedu_initial_language()
+  })
 
   current_crosstab_allowed <- function() {
     allowed <- analysis_allowed_variables(selected_names_fn(), variable_table_fn(), crosstab_allowed_measurements())
@@ -28,6 +35,7 @@ register_crosstab_handlers <- function(
   }
 
   crosstab_state <- reactive({
+    statedu_current_language(language_fn)
     current <- current_crosstab_allowed()
     crosstab_setup_state(
       selected_names = selected_names_fn(),
@@ -42,13 +50,15 @@ register_crosstab_handlers <- function(
       show_row_percent = input$crosstab_row_percent,
       show_column_percent = input$crosstab_column_percent,
       show_total_percent = input$crosstab_total_percent,
+      show_total_n = input$crosstab_total_n %||% TRUE,
       split_count_percent = input$crosstab_split_count_percent,
       trend = input$crosstab_trend
     )
   })
 
   output$crosstab_setup <- renderUI({
-    crosstab_setup_panel(crosstab_state())
+    language <- statedu_current_language(language_fn)
+    crosstab_setup_panel(crosstab_state(), language)
   })
 
   crosstab_viewer_variables <- reactive({
@@ -88,7 +98,8 @@ register_crosstab_handlers <- function(
       value_label_button_id = "crosstab_value_label_toggle",
       table_output_id = "crosstab_data_viewer_table",
       all_selected = isTRUE(input$crosstab_viewer_all_step2),
-      label_mode = crosstab_data_viewer_label_mode()
+      label_mode = crosstab_data_viewer_label_mode(),
+      language = crosstab_language()
     )
   })
 
@@ -99,7 +110,8 @@ register_crosstab_handlers <- function(
       category_table = category_table_fn(),
       use_labels = crosstab_data_viewer_label_mode(),
       variable_table = variable_table_fn(),
-      labels = labels_fn()
+      labels = labels_fn(),
+      language = crosstab_language()
     )
   })
 
@@ -371,6 +383,7 @@ register_crosstab_handlers <- function(
       row_percent = isTRUE(input$crosstab_row_percent),
       column_percent = isTRUE(input$crosstab_column_percent),
       total_percent = isTRUE(input$crosstab_total_percent),
+      total_n = isTRUE(input$crosstab_total_n %||% TRUE),
       split_count_percent = isTRUE(input$crosstab_split_count_percent),
       trend = isTRUE(input$crosstab_trend)
     )

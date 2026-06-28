@@ -70,7 +70,7 @@ from beta to final release names when `VERSION` starts with `1.`.
 
 - Confirm DOI `10.22934/statedu.studio` resolves before making a public
   citation claim.
-- Confirm the DOI landing URL is `https://studio.statedu.com`.
+- Confirm the DOI landing URL is `https://studio.statedu.com/citation/`.
 - Confirm `studio.statedu.com` is live before making a public website claim.
 - Do not claim Free/Pro/Latent gates, license activation, or in-app updates for
   1.0.0; those items are deferred in `docs/RELEASE_1_0_DECISION_LOG.md`.

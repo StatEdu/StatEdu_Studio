@@ -112,19 +112,20 @@ analysis_save_buttons <- function(
   figure_button_id = NULL,
   excel_button_id = NULL,
   add_result_button_id = NULL,
-  has_figures = TRUE
+  has_figures = TRUE,
+  language = statedu_initial_language()
 ) {
   div(
     class = "analysis-save-action",
-    analysis_save_button(html_button_id, "Save HTML", "html", class = "btn-default"),
+    analysis_save_button(html_button_id, statedu_ui_label("save_html", language), "html", class = "btn-default"),
     if (isTRUE(has_figures)) {
-      analysis_save_button(figure_button_id, "Save fig", "figure", class = "btn-default")
+      analysis_save_button(figure_button_id, statedu_ui_label("save_fig", language), "figure", class = "btn-default")
     } else {
-      analysis_save_button(NULL, "Save fig", "figure", class = "btn-default")
+      analysis_save_button(NULL, statedu_ui_label("save_fig", language), "figure", class = "btn-default")
     },
-    analysis_save_button(pdf_button_id, "Save PDF", "pdf", class = "btn-default"),
-    analysis_save_button(excel_button_id, "Save Excel", "excel", class = "btn-default"),
-    analysis_save_button(add_result_button_id, "Add result", "add_result", class = "btn-primary")
+    analysis_save_button(pdf_button_id, statedu_ui_label("save_pdf", language), "pdf", class = "btn-default"),
+    analysis_save_button(excel_button_id, statedu_ui_label("save_excel", language), "excel", class = "btn-default"),
+    analysis_save_button(add_result_button_id, statedu_ui_label("add_result", language), "add_result", class = "btn-primary")
   )
 }
 
@@ -142,11 +143,20 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-data-editor-layout-contract-1176-20260623"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-language-layout-20260627g"))
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-grouped-sample-effect-menus-20260620"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-navbar-language-20260628a"))
+}
+
+app_language_bootstrap_script <- function(language) {
+  language <- normalize_app_language(language)
+  tags$script(HTML(sprintf(
+    "window.easyflowAppLanguage = '%s'; document.documentElement.lang = '%s';",
+    language,
+    language
+  )))
 }
 
 app_head_tags <- function(version) {
@@ -206,38 +216,41 @@ enabled_analysis_tabs <- function() {
     pca = TRUE,
     regression = FALSE,
     hierarchical = TRUE,
-    longitudinal = statedu_feature_enabled("longitudinal", TRUE),
+    longitudinal = statedu_feature_enabled("longitudinal", FALSE),
     generalized = TRUE
   )
 }
 
-app_ui <- function(version) {
+app_ui <- function(version, request = NULL) {
   analysis_tabs <- enabled_analysis_tabs()
+  language <- statedu_initial_language(request)
 
   navbarPage(
     title = app_brand_title(version),
     id = "main_menu",
     header = tagList(
       app_head_tags(version),
+      app_language_bootstrap_script(language),
+      tags$input(id = "statedu_initial_language", type = "hidden", value = language),
       if (latent_mplus_enabled()) latent_mplus_head_tags(version)
     ),
 
-    data_tab_panel(),
+    data_tab_panel(language),
 
-    data_editor_tab_panel(),
+    data_editor_tab_panel(language),
 
-    calculator_tab_panel(),
+    calculator_tab_panel(language),
 
-    analysis_tab_panel(analysis_tabs),
+    analysis_tab_panel(analysis_tabs, language),
 
-    sample_size_tab_panel(),
+    sample_size_tab_panel(language),
 
-    effect_size_tab_panel(),
+    effect_size_tab_panel(language),
 
     if (latent_mplus_enabled()) latent_menu_tab(),
 
-    result_tab_panel(),
+    result_tab_panel(language),
 
-    about_tab_panel(version)
+    about_tab_panel(version, language)
   )
 }

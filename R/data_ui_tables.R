@@ -1,35 +1,132 @@
 # Data tab DT table renderers and callbacks.
 
-empty_variable_table <- function() {
+empty_variable_table <- function(language = statedu_initial_language()) {
+  message_label <- statedu_text(language, "Message", statedu_utf8("eba994ec8b9ceca780"))
   DT::datatable(
-    data.frame(Message = "Read a SAV, SAS, Stata, Excel, CSV, or DAT file to show variable information."),
+    stats::setNames(
+      data.frame(statedu_text(
+        language,
+        "Read a SAV, SAS, Stata, Excel, CSV, or DAT file to show variable information.",
+        statedu_utf8("ebb380ec889820eca095ebb3b4eba5bc20ebb3b4eba0a4eba9b4205341562c205341532c2053746174612c20457863656c2c2043535620eb9890eb8a942044415420ed8c8cec9dbcec9d8420ec97acec84b8ec9a942e")
+      ), check.names = FALSE),
+      message_label
+    ),
     rownames = FALSE,
     options = list(dom = "t")
   )
 }
 
-empty_category_label_table <- function() {
+empty_category_label_table <- function(language = statedu_initial_language()) {
+  message_label <- statedu_text(language, "Message", statedu_utf8("eba994ec8b9ceca780"))
   DT::datatable(
-    data.frame(Message = "Read a SAV, SAS, Stata, Excel, CSV, or DAT file first.", check.names = FALSE),
+    stats::setNames(
+      data.frame(statedu_text(
+        language,
+        "Read a SAV, SAS, Stata, Excel, CSV, or DAT file first.",
+        statedu_utf8("eba8bceca080205341562c205341532c2053746174612c20457863656c2c2043535620eb9890eb8a942044415420ed8c8cec9dbcec9d8420ec97acec84b8ec9a942e")
+      ), check.names = FALSE),
+      message_label
+    ),
     rownames = FALSE,
     options = list(dom = "t")
   )
 }
 
-empty_selected_variable_summary_table <- function() {
+empty_selected_variable_summary_table <- function(language = statedu_initial_language()) {
+  message_label <- statedu_text(language, "Message", statedu_utf8("eba994ec8b9ceca780"))
   DT::datatable(
-    data.frame(Message = "Apply Step 2 variable selection to review selected variables.", check.names = FALSE),
+    stats::setNames(
+      data.frame(statedu_text(
+        language,
+        "Apply Step 2 variable selection to review selected variables.",
+        statedu_utf8("ec84a0ed839ded959c20ebb380ec8898eba5bc20eab280ed86a0ed9598eba0a4eba9b42053746570203220ebb380ec889820ec84a0ed839dec9d8420eca081ec9aa9ed9598ec84b8ec9a942e")
+      ), check.names = FALSE),
+      message_label
+    ),
     rownames = FALSE,
     options = list(dom = "t")
   )
 }
 
-empty_data_preview_table <- function() {
+empty_data_preview_table <- function(language = statedu_initial_language()) {
+  message_label <- statedu_text(language, "Message", statedu_utf8("eba994ec8b9ceca780"))
   DT::datatable(
-    data.frame(Message = "Reopen the data file to preview data rows."),
+    stats::setNames(
+      data.frame(statedu_text(
+        language,
+        "Reopen the data file to preview data rows.",
+        statedu_utf8("eb8db0ec9db4ed84b020ed9689ec9d8420ebafb8eba6ac20ebb3b4eba0a4eba9b420eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420eb8ba4ec8b9c20ec97acec84b8ec9a942e")
+      ), check.names = FALSE),
+      message_label
+    ),
     rownames = FALSE,
     options = list(dom = "t")
   )
+}
+
+data_table_header_labels <- function(language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
+  h <- statedu_utf8
+  labels <- c(
+    "selected" = statedu_text(language, "selected", h("ec84a0ed839d")),
+    "source_order" = statedu_text(language, "source_order", h("ec9b90eb9e9820ec889cec849c")),
+    "name" = statedu_text(language, "name", h("ebb380ec8898ebaa85")),
+    "var_label" = statedu_text(language, "var_label", h("ebb380ec889820eb9dbcebb2a8")),
+    "role" = statedu_text(language, "role", h("ec97aded95a0")),
+    "measurement" = statedu_text(language, "measurement", h("ecb8a1eca095ec8898eca480")),
+    "storage_type" = statedu_text(language, "storage_type", h("eca080ec9ea520ed9895ec8b9d")),
+    "n_unique" = statedu_text(language, "n_unique", h("eab3a0ec9ca0eab09220ec8898")),
+    "n_missing" = statedu_text(language, "n_missing", h("eab2b0ecb8a1eab09220ec8898")),
+    "min_value" = statedu_text(language, "min_value", h("ecb59cec869feab092")),
+    "max_value" = statedu_text(language, "max_value", h("ecb59ceb8c93eab092")),
+    "Variable" = statedu_text(language, "Variable", h("ebb380ec8898")),
+    "Label" = statedu_text(language, "Label", h("eb9dbcebb2a8")),
+    "Measurement" = statedu_text(language, "Measurement", h("ecb8a1eca095ec8898eca480")),
+    "Reference" = statedu_text(language, "Reference", h("ecb0b8eca1b0eab092")),
+    "Min" = statedu_text(language, "Min", h("ecb59cec869feab092")),
+    "Max" = statedu_text(language, "Max", h("ecb59ceb8c93eab092")),
+    "Missing" = statedu_text(language, "Missing", h("eab2b0ecb8a1eab09220ec8898")),
+    "reference" = statedu_text(language, "reference", h("ecb0b8eca1b0eab092")),
+    "reference_label" = statedu_text(language, "reference_label", h("ecb0b8eca1b020eb9dbcebb2a8"))
+  )
+  for (index in seq_len(11)) {
+    labels[[paste0("value_", index)]] <- paste(statedu_text(language, "value", h("eab092")), index)
+    labels[[paste0("label_", index)]] <- paste(statedu_text(language, "label", h("eab09220eb9dbcebb2a8")), index)
+  }
+  labels
+}
+
+data_table_colnames <- function(columns, language = statedu_initial_language()) {
+  labels <- data_table_header_labels(language)
+  vapply(as.character(columns), function(column) {
+    if (column %in% names(labels)) labels[[column]] else column
+  }, character(1), USE.NAMES = FALSE)
+}
+
+datatable_language_options <- function(language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
+  if (!identical(language, "ko")) {
+    return(NULL)
+  }
+  list(
+    search = statedu_utf8("eab280ec83893a"),
+    lengthMenu = statedu_utf8("5f4d454e555feab09cec94a920ebb3b4eab8b0"),
+    zeroRecords = statedu_utf8("ed919cec8b9ced95a020ec9e90eba38ceab08020ec9786ec8ab5eb8b88eb8ba42e"),
+    emptyTable = statedu_utf8("ec9e90eba38ceab08020ec9786ec8ab5eb8b88eb8ba42e"),
+    info = statedu_utf8("ecb49d205f544f54414c5feab09c20eca491205f53544152545f202d205f454e445f20ed919cec8b9c"),
+    paginate = list(
+      previous = statedu_utf8("ec9db4eca084"),
+      `next` = statedu_utf8("eb8ba4ec9d8c")
+    )
+  )
+}
+
+with_datatable_language <- function(options, language = statedu_initial_language()) {
+  language_options <- datatable_language_options(language)
+  if (!is.null(language_options)) {
+    options$language <- language_options
+  }
+  options
 }
 
 data_preview_table_options <- function() {
@@ -104,7 +201,10 @@ category_label_input_renderer <- function(field_name, unique_index, name_index, 
   )
 }
 
-category_label_measurement_renderer <- function(name_index, source_order_index) {
+category_label_measurement_renderer <- function(name_index, source_order_index, language = statedu_initial_language()) {
+  measurement_choices <- statedu_measurement_choices(language)
+  measurement_values <- unname(measurement_choices)
+  measurement_labels <- names(measurement_choices)
   DT::JS(
     "function(data, type, row, meta) {",
     "  if (type !== 'display') return data;",
@@ -123,9 +223,12 @@ category_label_measurement_renderer <- function(name_index, source_order_index) 
     "  if (name && Object.prototype.hasOwnProperty.call(window.easyflowMeasurements, name)) current = String(window.easyflowMeasurements[name] || current);",
     "  if (current === 'ordinal') current = 'ordered';",
     "  if (current === 'nominal') current = 'category';",
-    "  var values = ['binary', 'category', 'ordered', 'continuous'];",
-    "  var labels = ['binary', 'category', 'ordinal', 'continuous'];",
+    sprintf("  var values = %s;", jsonlite::toJSON(measurement_values, auto_unbox = FALSE)),
+    sprintf("  var labels = %s;", jsonlite::toJSON(measurement_labels, auto_unbox = FALSE)),
     "  var title = current === 'ordered' ? 'ordinal' : current;",
+    "  for (var labelIndex = 0; labelIndex < values.length; labelIndex++) {",
+    "    if (values[labelIndex] === current) title = labels[labelIndex];",
+    "  }",
     "  var html = '<span class=\"measurement-control\"><span class=\"measurement-symbol measurement-' + esc(current) + '\" title=\"' + esc(title) + '\" aria-label=\"' + esc(title) + '\"></span>';",
     "  html += '<select id=\"category_measurement_input_' + esc(sourceOrder) + '\" class=\"measurement-select category-measurement-select\" data-name=\"' + esc(name) + '\" data-field=\"measurement\" onchange=\"if(window.Shiny){Shiny.setInputValue(&quot;variable_measurement_update&quot;,{name:this.getAttribute(&quot;data-name&quot;),value:this.value,nonce:Date.now()+Math.random()},{priority:&quot;event&quot;});} if(window.easyflowUpdateMeasurementControl){window.easyflowUpdateMeasurementControl(this);}\">';",
     "  for (var i = 0; i < values.length; i++) {",
@@ -138,7 +241,7 @@ category_label_measurement_renderer <- function(name_index, source_order_index) 
   )
 }
 
-category_label_column_defs <- function(table_data, edit_columns = category_label_edit_columns()) {
+category_label_column_defs <- function(table_data, edit_columns = category_label_edit_columns(), language = statedu_initial_language()) {
   unique_index <- match("n_unique", names(table_data)) - 1L
   source_order_index <- match("source_order", names(table_data)) - 1L
   name_index <- match("name", names(table_data)) - 1L
@@ -159,7 +262,7 @@ category_label_column_defs <- function(table_data, edit_columns = category_label
       column_defs,
       list(list(
         targets = measurement_index,
-        render = category_label_measurement_renderer(name_index, source_order_index),
+        render = category_label_measurement_renderer(name_index, source_order_index, language),
         orderable = FALSE,
         width = "130px"
       ))
@@ -196,8 +299,8 @@ category_label_column_defs <- function(table_data, edit_columns = category_label
   column_defs
 }
 
-selected_variable_summary_table_options <- function() {
-  list(
+selected_variable_summary_table_options <- function(language = statedu_initial_language()) {
+  with_datatable_language(list(
     dom = '<"variable-table-top"lfp>rt<"variable-table-bottom"ip>',
     pageLength = 20,
     lengthMenu = c(10, 20, 50, 100),
@@ -206,11 +309,11 @@ selected_variable_summary_table_options <- function() {
     scrollX = TRUE,
     autoWidth = TRUE,
     order = list(list(0, "asc"))
-  )
+  ), language)
 }
 
-category_label_table_options <- function(column_defs) {
-  list(
+category_label_table_options <- function(column_defs, language = statedu_initial_language()) {
+  with_datatable_language(list(
     dom = '<"variable-table-top"lfp>rt<"variable-table-bottom"ip>',
     pageLength = 20,
     lengthMenu = c(10, 20, 50, 100),
@@ -220,12 +323,23 @@ category_label_table_options <- function(column_defs) {
     autoWidth = TRUE,
     order = list(list(0, "asc")),
     columnDefs = column_defs
-  )
+  ), language)
 }
 
-category_label_table_callback <- function() {
+category_label_table_callback <- function(language = statedu_initial_language()) {
+  header_labels <- jsonlite::toJSON(as.list(data_table_header_labels(language)), auto_unbox = TRUE)
   DT::JS(
     "var wrapper = $(table.table().container());",
+    sprintf("var easyflowHeaderLabels = %s;", header_labels),
+    "function applyEasyflowHeaderLabels() {",
+    "  table.columns().every(function(index) {",
+    "    var column = table.settings()[0].aoColumns[index];",
+    "    var title = column && column.sTitle ? String(column.sTitle) : '';",
+    "    if (Object.prototype.hasOwnProperty.call(easyflowHeaderLabels, title)) {",
+    "      $(table.column(index).header()).text(easyflowHeaderLabels[title]);",
+    "    }",
+    "  });",
+    "}",
     "function saveCategoryInput(input) {",
     "  Shiny.setInputValue('category_label_cell_input', {",
     "    name: $(input).attr('data-name'),",
@@ -338,6 +452,7 @@ category_label_table_callback <- function() {
     "}",
     "table.off('draw.dt.easyflowCategoryTab').on('draw.dt.easyflowCategoryTab', bindCategoryTabHandlers);",
     "table.off('draw.dt.easyflowCategoryBind').on('draw.dt.easyflowCategoryBind', bindShinyInputs);",
+    "applyEasyflowHeaderLabels();",
     "bindCategoryTabHandlers();",
     "bindShinyInputs();"
   )
@@ -363,8 +478,8 @@ variable_label_input_renderer <- function() {
   )
 }
 
-variable_table_options <- function() {
-  list(
+variable_table_options <- function(language = statedu_initial_language()) {
+  with_datatable_language(list(
     dom = '<"variable-table-top"lfp>rt<"variable-table-bottom"ip>',
     pageLength = 20,
     lengthMenu = c(10, 20, 50, 100),
@@ -378,7 +493,7 @@ variable_table_options <- function() {
       list(visible = FALSE, targets = 1),
       list(targets = 3, render = variable_label_input_renderer(), orderable = FALSE)
     )
-  )
+  ), language)
 }
 
 variable_table_callback <- function(
@@ -405,19 +520,42 @@ variable_table_callback <- function(
   ))
 }
 
-variable_table_callback_script <- function() {
-  "
+variable_table_callback_script <- function(language = statedu_initial_language()) {
+  header_labels <- jsonlite::toJSON(as.list(data_table_header_labels(language)), auto_unbox = TRUE)
+  selected_label <- data_table_header_labels(language)[["selected"]]
+  name_label <- data_table_header_labels(language)[["name"]]
+  original_label <- statedu_text(language, "original", statedu_utf8("ec9b90ebb3b8"))
+  asc_label <- statedu_text(language, "asc", statedu_utf8("ec98a4eba684ecb0a8ec889c"))
+  desc_label <- statedu_text(language, "desc", statedu_utf8("eb82b4eba6bcecb0a8ec889c"))
+  script <- "
         var selected = __SELECTED_NAMES__;
         var dependentOnly = __DEPENDENT_ONLY__;
         var singleSelectRole = __SINGLE_SELECT_ROLE__;
+        var easyflowHeaderLabels = __HEADER_LABELS__;
+        var easyflowSelectedLabel = __SELECTED_LABEL__;
+        var easyflowNameLabel = __NAME_LABEL__;
+        var easyflowOriginalLabel = __ORIGINAL_LABEL__;
+        var easyflowAscLabel = __ASC_LABEL__;
+        var easyflowDescLabel = __DESC_LABEL__;
         window.easyflowSelectedNames = {};
         selected.forEach(function(name) { window.easyflowSelectedNames[name] = true; });
         var selectedHeader = $(table.column(0).header());
         var nameHeader = $(table.column(2).header());
         var nameSortState = 'original';
 
-        selectedHeader.html('<button type=\"button\" class=\"page-select-toggle is-off\">selected</button>');
-        nameHeader.html('<button type=\"button\" class=\"name-sort-toggle\">name <span class=\"sort-mark\">original</span></button>');
+        selectedHeader.html('<button type=\"button\" class=\"page-select-toggle is-off\">' + easyflowSelectedLabel + '</button>');
+        nameHeader.html('<button type=\"button\" class=\"name-sort-toggle\">' + easyflowNameLabel + ' <span class=\"sort-mark\">' + easyflowOriginalLabel + '</span></button>');
+
+        function applyEasyflowHeaderLabels() {
+          table.columns().every(function(index) {
+            if (index === 0 || index === 2) return;
+            var column = table.settings()[0].aoColumns[index];
+            var title = column && column.sTitle ? String(column.sTitle) : '';
+            if (Object.prototype.hasOwnProperty.call(easyflowHeaderLabels, title)) {
+              $(table.column(index).header()).text(easyflowHeaderLabels[title]);
+            }
+          });
+        }
 
         function rememberVariableTablePage() {
           if (window.easyflowVariableTableRestorePending) return;
@@ -763,15 +901,15 @@ variable_table_callback_script <- function() {
           if (nameSortState === 'original') {
             nameSortState = 'asc';
             table.order([2, 'asc']).draw();
-            $(this).find('.sort-mark').text('asc');
+            $(this).find('.sort-mark').text(easyflowAscLabel);
           } else if (nameSortState === 'asc') {
             nameSortState = 'desc';
             table.order([2, 'desc']).draw();
-            $(this).find('.sort-mark').text('desc');
+            $(this).find('.sort-mark').text(easyflowDescLabel);
           } else {
             nameSortState = 'original';
             table.order([1, 'asc']).draw();
-            $(this).find('.sort-mark').text('original');
+            $(this).find('.sort-mark').text(easyflowOriginalLabel);
           }
         });
         table.on('change', 'input.variable-select', function() {
@@ -818,10 +956,18 @@ variable_table_callback_script <- function() {
           .off('mousedown.easyflowMeasurementSnapshot', '#save_settings_data')
           .on('mousedown.easyflowMeasurementSnapshot', '#save_settings_data', syncMeasurementSnapshot);
         window.easyflowCurrentTableState = currentTableState;
+        applyEasyflowHeaderLabels();
         bindShinyInputs();
         restoreMeasurementSelects();
         refreshVariableChecks();
         scheduleVariableTablePageRestore();
         syncVariableSelection();
         "
+  script <- gsub("__HEADER_LABELS__", header_labels, script, fixed = TRUE)
+  script <- gsub("__SELECTED_LABEL__", jsonlite::toJSON(selected_label, auto_unbox = TRUE), script, fixed = TRUE)
+  script <- gsub("__NAME_LABEL__", jsonlite::toJSON(name_label, auto_unbox = TRUE), script, fixed = TRUE)
+  script <- gsub("__ORIGINAL_LABEL__", jsonlite::toJSON(original_label, auto_unbox = TRUE), script, fixed = TRUE)
+  script <- gsub("__ASC_LABEL__", jsonlite::toJSON(asc_label, auto_unbox = TRUE), script, fixed = TRUE)
+  script <- gsub("__DESC_LABEL__", jsonlite::toJSON(desc_label, auto_unbox = TRUE), script, fixed = TRUE)
+  script
 }

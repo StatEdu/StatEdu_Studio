@@ -9,7 +9,8 @@ register_ancova_handlers <- function(
   dataset_fn,
   category_table_fn,
   labels_fn,
-  mark_settings_dirty
+  mark_settings_dirty,
+  app_language_fn = NULL
 ) {
   dependent_variables <- reactiveVal(character(0))
   factor_variable <- reactiveVal(character(0))
@@ -37,9 +38,10 @@ register_ancova_handlers <- function(
   current_variable_table <- reactive(variable_table_fn())
 
   output$ancova_setup <- renderUI({
+    language <- statedu_current_language(app_language_fn)
     selected <- current_selected()
     if (length(selected) == 0) {
-      return(setup_empty_message("Complete Step 2 in the Data tab before setting up ANCOVA."))
+      return(setup_empty_message("Complete Step 2 in the Data tab before setting up ANCOVA.", language = language))
     }
     ancova_setup_panel(ancova_setup_state(
       selected_names = selected,
@@ -67,7 +69,8 @@ register_ancova_handlers <- function(
       plot_adjusted_means = isolate(plot_adjusted_means_value()),
       plot_raw_overlay = isolate(plot_raw_overlay_value()),
       plot_regression_lines = isolate(plot_regression_lines_value()),
-      plot_linearity_diagnostics = isolate(plot_linearity_diagnostics_value())
+      plot_linearity_diagnostics = isolate(plot_linearity_diagnostics_value()),
+      language = language
     ))
   })
 
@@ -81,7 +84,8 @@ register_ancova_handlers <- function(
     variables_fn = function() unique(c(dependent_variables(), factor_variable(), covariates())),
     variable_table_fn = variable_table_fn,
     labels_fn = labels_fn,
-    category_table_fn = category_table_fn
+    category_table_fn = category_table_fn,
+    language_fn = app_language_fn
   )
 
   observeEvent(input$ancova_force_ranked, {

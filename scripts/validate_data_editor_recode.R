@@ -7,6 +7,7 @@ repo_root <- normalizePath(file.path(dirname(script_path), ".."), winslash = "/"
 setwd(repo_root)
 
 source(file.path(repo_root, "R", "utils.R"))
+source(file.path(repo_root, "R", "setup_analysis_ui.R"))
 source(file.path(repo_root, "R", "data_io.R"))
 source(file.path(repo_root, "R", "data_category_labels.R"))
 source(file.path(repo_root, "R", "data_editor_recode.R"))
@@ -179,9 +180,15 @@ stopifnot(all.equal(calculated$SD_scale, c(2, sqrt(2), sqrt(2), NA), check.attri
 stopifnot(all.equal(calculated$Var_scale, c(4, 2, 2, NA), check.attributes = FALSE))
 
 message("Checking automatic Likert detection and conversion helpers...")
+h <- statedu_utf8
+very_dissatisfied <- h("eba7a4ec9ab020ebb688eba78ceca1b1")
+dissatisfied <- h("ebb688eba78ceca1b1")
+neutral <- h("ebb3b4ed86b5")
+satisfied <- h("eba78ceca1b1")
+very_satisfied <- h("eba7a4ec9ab020eba78ceca1b1")
 likert_data <- data.frame(
-  sat1 = c("매우 불만족", "불만족", "보통", "만족", "매우 만족"),
-  sat2 = c("불만족", "보통", "만족", "매우 만족", "매우 불만족"),
+  sat1 = c(very_dissatisfied, dissatisfied, neutral, satisfied, very_satisfied),
+  sat2 = c(dissatisfied, neutral, satisfied, very_satisfied, very_dissatisfied),
   note = c("a", "b", "c", "d", "e"),
   check.names = FALSE
 )
@@ -191,7 +198,7 @@ summary <- likert_group_summary(detected)
 stopifnot(nrow(summary) == 1)
 stopifnot(summary$variable_count[[1]] == 2)
 mapping <- detected$mapping[[1]]
-stopifnot(identical(as.character(mapping$label), c("매우 불만족", "불만족", "보통", "만족", "매우 만족")))
+stopifnot(identical(as.character(mapping$label), c(very_dissatisfied, dissatisfied, neutral, satisfied, very_satisfied)))
 stopifnot(identical(as.numeric(mapping$value), c(1, 2, 3, 4, 5)))
 converted <- recode_likert_values(likert_data$sat1, mapping)
 stopifnot(identical(converted, c(1, 2, 3, 4, 5)))
@@ -199,11 +206,11 @@ reversed <- recode_likert_values(likert_data$sat1, mapping, reverse = TRUE)
 stopifnot(identical(reversed, c(5, 4, 3, 2, 1)))
 payload <- likert_category_payload(c("sat1"), mapping)
 stopifnot(identical(payload$sat1$value_1, "1"))
-stopifnot(identical(payload$sat1$label_5, "매우 만족"))
+stopifnot(identical(payload$sat1$label_5, very_satisfied))
 
 partial_likert_data <- data.frame(
-  item1 = c("1 (전혀 그렇지 않다)", "2 (그렇지 않다)", "3 (보통이다)", "4 (그렇다)", "5 (매우 그렇다)"),
-  item2 = c("2 (그렇지 않다)", "3 (보통이다)", "4 (그렇다)", "5 (매우 그렇다)", "5 (매우 그렇다)"),
+  item1 = c("1 (lowest)", "2 (low)", "3 (middle)", "4 (high)", "5 (highest)"),
+  item2 = c("2 (low)", "3 (middle)", "4 (high)", "5 (highest)", "5 (highest)"),
   check.names = FALSE
 )
 partial_detected <- detect_likert_variables(partial_likert_data)

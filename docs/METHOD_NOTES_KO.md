@@ -380,9 +380,9 @@ HTML, PDF 저장 결과는 앱 화면의 결과표를 연구 보고서나 논문
 - White, H. (1980). A heteroskedasticity-consistent covariance matrix estimator and a direct test for heteroskedasticity. *Econometrica*, 48(4), 817-838.
 - Zou, H., & Hastie, T. (2005). Regularization and variable selection via the elastic net. *Journal of the Royal Statistical Society, Series B*, 67(2), 301-320.
 
-## 19. Sample Size, Power, Effect Size 방법론 노트
+## 19. 표본수, 검정력, 효과크기 방법론 노트
 
-이 절은 Sample Size, Power, Effect Size 메뉴의 계산 근거를 정리한다. 앱의 기본 목표 검정력은 `.95`이며, 사용자가 연구 분야의 관례에 맞추어 `.80`, `.90` 등으로 바꿀 수 있다. 표본 수 결과에서 최종 최소 표본 수는 `n (...)` 행으로 굵게 표시한다. 탈락률을 입력하면 `n (... with dropout)`을 추가로 표시한다.
+이 절은 표본수, 검정력, 효과크기 메뉴의 계산 근거를 정리한다. 앱의 기본 목표 검정력은 `.95`이며, 사용자가 연구 분야의 관례에 맞추어 `.80`, `.90` 등으로 바꿀 수 있다. 표본 수 결과에서 최종 최소 표본 수는 `n (...)` 행으로 굵게 표시한다. 탈락률을 입력하면 `n (... with dropout)`을 추가로 표시한다.
 
 계산 결과는 연구계획서 작성 단계의 정량적 근거를 제공하기 위한 값이다. 실제 연구에서는 모집 가능성, 측정 신뢰도, 결측 구조, 군 배정 제약, 분석에서 사용할 공변량, 중도탈락, 다중비교 계획을 함께 검토한다. 특히 작은 표본, 희귀 사건, 매우 큰 효과크기, 매우 작은 효과크기에서는 근사식이 불안정할 수 있으므로 민감도 분석을 함께 보고하는 것이 좋다.
 
@@ -924,7 +924,7 @@ $$ d_{\mathrm{GLMM}} = \frac{B}{SD_{\mathrm{residual}}} $$
 
 **표본 수와 검정력.**
 
-- 현재 Effect Size 메뉴의 GLMM은 SPSS 또는 다른 mixed model 출력에서 효과크기를 변환하기 위한 계산이다. GLMM 표본 수 계산은 outcome family, link, random effect 구조, cluster/subject 수, 사건율 또는 평균-분산 관계가 함께 필요하므로 단순 closed-form 메뉴로 일반화하지 않는다.
+- 현재 효과크기 메뉴의 GLMM은 SPSS 또는 다른 mixed model 출력에서 효과크기를 변환하기 위한 계산이다. GLMM 표본 수 계산은 outcome family, link, random effect 구조, cluster/subject 수, 사건율 또는 평균-분산 관계가 함께 필요하므로 단순 closed-form 메뉴로 일반화하지 않는다.
 - binary/count GLMM의 표본 수 계획은 가능하면 시뮬레이션 또는 전용 설계식을 사용한다. 앱의 GLMM 효과크기 결과는 그런 계획식에 넣을 입력값을 정리하는 역할을 한다.
 
 **입력과 보고.**
@@ -979,7 +979,7 @@ $$ d_{\mathrm{GLMM}} = \frac{B}{SD_{\mathrm{residual}}} $$
 
 - mean difference equivalence는 `TOSTER::power_t_TOST`를 사용해 exact t 기반 two-sample TOST 검정력을 계산한다.
 - mean non-inferiority, proportion difference equivalence/non-inferiority, unequal allocation처럼 TOSTER two-sample mean equivalence 조건과 직접 맞지 않는 경우에는 one-sided non-inferiority 또는 TOST equivalence normal approximation을 사용한다.
-- Effect Size 메뉴에서는 제외하고 Sample Size의 계획 기준으로 다룬다.
+- 효과크기 메뉴에서는 제외하고 표본수의 계획 기준으로 다룬다.
 
 **입력과 보고.**
 
@@ -1007,7 +1007,7 @@ $$ d_{\mathrm{GLMM}} = \frac{B}{SD_{\mathrm{residual}}} $$
 **표본 수와 검정력.**
 
 - ROC AUC vs null은 Hanley-McNeil AUC variance approximation을 사용한다.
-- sensitivity/specificity 정밀도 계산은 Sample Size에서 Buderer precision formula를 사용하되, Effect Size 메뉴에서는 AUC만 유지한다.
+- sensitivity/specificity 정밀도 계산은 표본수에서 Buderer precision formula를 사용하되, 효과크기 메뉴에서는 AUC만 유지한다.
 
 **입력과 보고.**
 
@@ -1211,7 +1211,7 @@ $$ d_{\mathrm{GLMM}} = \frac{B}{SD_{\mathrm{residual}}} $$
 
 중단된 계산은 결과로 해석하지 않는다. 중단 후 같은 조건으로 다시 계산하면 새 background process가 시작된다. 긴 계산에서는 먼저 낮은 simulation 반복 수로 입력값과 방향을 확인한 뒤, 최종 보고용으로 반복 수를 높이는 절차가 효율적이다.
 
-### 19.23 Sample Size 관련 참고문헌
+### 19.23 표본수 관련 참고문헌
 
 - Bentler, P. M., & Chou, C.-P. (1987). Practical issues in structural modeling. *Sociological Methods & Research*, 16(1), 78-117.
 - Blackwelder, W. C. (1982). Proving the null hypothesis in clinical trials. *Controlled Clinical Trials*, 3(4), 345-353.

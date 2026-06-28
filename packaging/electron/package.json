@@ -1,54 +1,63 @@
 {
-  "name": "statedu-studio",
-  "version": "1.0.0",
-  "description": "StatEdu Studio desktop installer",
-  "author": "StatEdu",
-  "main": "main.js",
-  "private": true,
-  "scripts": {
-    "start": "electron .",
-    "dist": "electron-builder --win nsis --x64"
-  },
-  "devDependencies": {
-    "electron": "39.8.6",
-    "electron-builder": "26.8.1"
-  },
-  "build": {
-    "appId": "com.statedu.studio",
-    "productName": "StatEdu Studio",
-    "asar": false,
-    "directories": {
-      "output": "../../dist/electron"
-    },
-    "afterPack": "scripts/afterPack.js",
-    "files": [
-      "main.js",
-      "package.json",
-      "app/**/*",
-      "runtime/**/*"
-    ],
-    "win": {
-      "icon": "build/icon.ico",
-      "signAndEditExecutable": false,
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "artifactName": "StatEdu_Studio_Setup_${version}.${ext}"
-    },
-    "nsis": {
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico",
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "StatEdu Studio",
-      "deleteAppDataOnUninstall": false
-    }
-  }
+    "name":  "statedu-studio",
+    "version":  "1.0.1",
+    "description":  "StatEdu Studio desktop installer",
+    "author":  "StatEdu",
+    "main":  "main.js",
+    "private":  true,
+    "scripts":  {
+                    "start":  "electron .",
+                    "dist":  "electron-builder --win nsis --x64"
+                },
+    "devDependencies":  {
+                            "electron":  "39.8.6",
+                            "electron-builder":  "26.8.1"
+                        },
+    "build":  {
+                  "appId":  "com.statedu.studio",
+                  "productName":  "StatEdu Studio",
+                  "asar":  false,
+                  "directories":  {
+                                      "output":  "../../dist/electron"
+                                  },
+                  "afterPack":  "scripts/afterPack.js",
+                  "files":  [
+                                "main.js",
+                                "package.json",
+                                "app/**/*",
+                                "runtime/**/*"
+                            ],
+                  "win":  {
+                              "icon":  "build/icon.ico",
+                              "signAndEditExecutable":  false,
+                              "target":  [
+                                             {
+                                                 "target":  "nsis",
+                                                 "arch":  [
+                                                              "x64"
+                                                          ]
+                                             }
+                                         ],
+                              "artifactName":  "StatEdu_Studio_Setup_${version}.${ext}"
+                          },
+                  "nsis":  {
+                               "installerIcon":  "build/icon.ico",
+                               "uninstallerIcon":  "build/icon.ico",
+                               "oneClick":  false,
+                               "allowToChangeInstallationDirectory":  true,
+                               "createDesktopShortcut":  true,
+                               "createStartMenuShortcut":  true,
+                               "shortcutName":  "StatEdu Studio",
+                               "deleteAppDataOnUninstall":  false
+                           },
+                  "fileAssociations":  [
+                                           {
+                                               "ext":  "studio",
+                                               "name":  "StatEdu Studio Settings",
+                                               "description":  "StatEdu Studio Settings",
+                                               "icon":  "build/studio-file.ico",
+                                               "role":  "Editor"
+                                           }
+                                       ]
+              }
 }

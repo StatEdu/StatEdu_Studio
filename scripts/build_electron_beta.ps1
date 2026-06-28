@@ -218,6 +218,11 @@ try {
       $_ -notmatch "^easyflow_statistics_.*\.zip$" -and
       $_ -notmatch "^StatEdu_Studio_.*\.zip$"
     }
+  $requiredUntrackedAppFiles = git ls-files --others --exclude-standard |
+    Where-Object {
+      $_ -match "^(R/update_check\.R|README_KO\.md|CHANGELOG_KO\.md|docs/ANALYSIS_METHODS_EN\.md|docs/ANALYSIS_REFERENCE_COMPARISON_PUBLIC(_KO)?\.md|docs/assets/user-guide/(en|ko)/|www/assets/user-guide/(en|ko)/)"
+    }
+  $appFiles = @($appFiles + $requiredUntrackedAppFiles) | Sort-Object -Unique
   $bootstrapText = Get-Content -LiteralPath (Join-Path $repoRoot "R\app_bootstrap.R") -Raw
   $bootstrapModules = [regex]::Matches($bootstrapText, '"([^"]+\.R)"') |
     ForEach-Object { "R/" + $_.Groups[1].Value } |

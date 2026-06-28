@@ -23,7 +23,7 @@ saved_results_cover_text <- function() {
 
   if (identical(edition, "development")) {
     organization <- if (nzchar(organization)) organization else "statedu.com"
-    user <- if (nzchar(user)) user else "StatEdu 통계연구소"
+    user <- if (nzchar(user)) user else "StatEdu, Institute of Statistics"
     organization_logo <- if (nzchar(organization_logo)) organization_logo else file.path("www", "statedu_logo.png")
   } else if (identical(edition, "personal")) {
     organization <- ""
@@ -326,6 +326,15 @@ saved_results_inline_css <- function(max_width = 1280, print_landscape = FALSE) 
     "  .coefficient-table th:first-child, .coefficient-table td:first-child, .regression-result-panel table th:first-child, .regression-result-panel table td:first-child { text-align: left !important; }",
     "  .coefficient-table.crosstab-main-table > thead > tr > th.crosstab-col-head, .regression-result-panel .crosstab-main-table > thead > tr > th.crosstab-col-head { text-align: center !important; }",
     "  .coefficient-table.crosstab-main-table > tbody > tr > td.crosstab-row-label, .regression-result-panel .crosstab-main-table > tbody > tr > td.crosstab-row-label { text-align: left !important; }",
+    "  body.print-mixed-landscape .landscape-table-panel .crosstab-main-table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed !important; font-size: 6.8pt !important; }",
+    "  body.print-mixed-landscape .landscape-table-panel .crosstab-main-table col.crosstab-row-variable-col { width: 6.5% !important; }",
+    "  body.print-mixed-landscape .landscape-table-panel .crosstab-main-table col.crosstab-row-label-col { width: 5.5% !important; }",
+    "  body.print-mixed-landscape .landscape-table-panel .crosstab-main-table col.crosstab-n-col { width: 7% !important; }",
+    "  body.print-mixed-landscape .landscape-table-panel .crosstab-main-table col.crosstab-count-col { width: auto !important; }",
+    "  body.print-mixed-landscape .landscape-table-panel .crosstab-main-table col.crosstab-stat-col { width: 6% !important; }",
+    "  body.print-mixed-landscape .landscape-table-panel .crosstab-main-table col.crosstab-trend-p-col { width: 7% !important; }",
+    "  body.print-mixed-landscape .landscape-table-panel .crosstab-main-table th, body.print-mixed-landscape .landscape-table-panel .crosstab-main-table td { min-width: 0 !important; padding: 2.5pt 2.5pt !important; overflow: hidden !important; text-overflow: clip !important; white-space: nowrap !important; }",
+    "  body.print-mixed-landscape .landscape-table-panel .crosstab-main-table .crosstab-row-variable, body.print-mixed-landscape .landscape-table-panel .crosstab-main-table .crosstab-row-label { min-width: 0 !important; }",
     "  .coefficient-table .coefficient-fit-row td { border-top: 1px solid #d7dde5 !important; }",
     "  .coefficient-table tfoot .coefficient-fit-row:first-child td { border-top: 2px solid #1f2937 !important; }",
     "  .reference-summary-panel { break-inside: avoid; page-break-inside: avoid; }",
@@ -904,6 +913,7 @@ saved_crosstab_results_html <- function(result, css_path = file.path("www", "sty
     tags$div(class = "crosstab-results regression-results", crosstab_results_ui(result)),
     max_width = 1500,
     css_path = css_path,
+    print_landscape = crosstab_results_landscape(result),
     report_mode = report_mode
   )
 }
@@ -1246,7 +1256,7 @@ result_docx_normalize_table <- function(table, headers = NULL) {
       formatter <- function(value) result_docx_format_number(value, 2)
     } else if (label %in% c("p", "p for trend") || grepl("\\bp\\b", label)) {
       formatter <- result_docx_format_p
-    } else if (label %in% c("t", "f", "t/f", "z", "w", "q") || grepl("statistic|hedges|cohen|effect|eta|omega|epsilon|cliff|f吏?f2|sr2|r$", label)) {
+    } else if (label %in% c("t", "f", "t/f", "z", "w", "q") || grepl("statistic|hedges|cohen|effect|eta|omega|epsilon|cliff|f2|sr2|r$", label)) {
       formatter <- function(value) result_docx_format_number(value, 3)
     }
     if (!is.null(formatter)) {
@@ -1879,49 +1889,22 @@ result_docx_method_sentence <- function(entry, tables) {
   note_text <- if (length(notes) > 0) paste(notes, collapse = " ") else ""
   lowered <- tolower(title)
   if (grepl("hierarchical", lowered)) {
-    method <- "?袁㏉??????브쑴苑????쇰뻻?????"
+    method <- "Hierarchical regression analysis was performed."
   } else if (grepl("regression", lowered)) {
-    method <- "????브쑴苑????쇰뻻?????"
+    method <- "Regression analysis was performed."
   } else if (grepl("t-test|anova", lowered)) {
-    method <- "t-test/ANOVA????쇰뻻?????"
+    method <- "t-test/ANOVA was performed."
   } else if (grepl("paired", lowered)) {
-    method <- "???臾볥ご癰??브쑴苑????쇰뻻?????"
+    method <- "Paired-sample analysis was performed."
   } else if (grepl("correlation", lowered)) {
-    method <- "?怨??브쑴苑????쇰뻻?????"
+    method <- "Correlation analysis was performed."
   } else {
-    method <- sprintf("%s ?브쑴苑????쇰뻻?????", title)
+    method <- sprintf("%s analysis was performed.", title)
   }
   reason <- if (nzchar(note_text)) {
-    sprintf(" ?브쑴苑?野껉퀗???뽰벥 雅뚯눘苑????뽯뻻??疫꿸퀣?????????怨뺤뵬 ??쇱젫 ??????브쑴苑띷묾怨뺤씩???怨몄뒠????? %s", note_text)
+    sprintf(" The analysis method was selected according to the criteria and notes shown in the result tables: %s", note_text)
   } else {
-    " ?브쑴苑?野껉퀗???뽯퓠 ??뽯뻻??疫꿸퀣????怨뺤뵬 ??쇱젫 ??????브쑴苑띷묾怨뺤씩???怨몄뒠?????"
-  }
-  paste0(method, reason)
-}
-
-result_docx_method_sentence <- function(entry, tables) {
-  title <- as.character(entry$title %||% "Analysis")
-  notes <- unique(unlist(lapply(tables, function(table_info) as.character(table_info$notes %||% character(0))), use.names = FALSE))
-  notes <- notes[nzchar(notes)]
-  note_text <- if (length(notes) > 0) paste(notes, collapse = " ") else ""
-  lowered <- tolower(title)
-  if (grepl("hierarchical", lowered)) {
-    method <- "\uc704\uacc4\uc801 \ud68c\uadc0\ubd84\uc11d\uc744 \uc2e4\uc2dc\ud558\uc600\ub2e4."
-  } else if (grepl("regression", lowered)) {
-    method <- "\ud68c\uadc0\ubd84\uc11d\uc744 \uc2e4\uc2dc\ud558\uc600\ub2e4."
-  } else if (grepl("t-test|anova", lowered)) {
-    method <- "t-test/ANOVA\ub97c \uc2e4\uc2dc\ud558\uc600\ub2e4."
-  } else if (grepl("paired", lowered)) {
-    method <- "\ub300\uc751\ud45c\ubcf8 \ubd84\uc11d\uc744 \uc2e4\uc2dc\ud558\uc600\ub2e4."
-  } else if (grepl("correlation", lowered)) {
-    method <- "\uc0c1\uad00\ubd84\uc11d\uc744 \uc2e4\uc2dc\ud558\uc600\ub2e4."
-  } else {
-    method <- sprintf("%s \ubd84\uc11d\uc744 \uc2e4\uc2dc\ud558\uc600\ub2e4.", title)
-  }
-  reason <- if (nzchar(note_text)) {
-    sprintf(" \ubd84\uc11d \uacb0\uacfc\ud45c\uc758 \uc8fc\uc11d\uc5d0 \uc81c\uc2dc\ub41c \uae30\uc900\uacfc \uc0ac\uc720\uc5d0 \ub530\ub77c \uc2e4\uc81c \uc0ac\uc6a9\ub41c \ubd84\uc11d\uae30\ubc95\uc744 \uc801\uc6a9\ud558\uc600\ub2e4: %s", note_text)
-  } else {
-    " \ubd84\uc11d \uacb0\uacfc\ud45c\uc5d0 \uc81c\uc2dc\ub41c \uae30\uc900\uc5d0 \ub530\ub77c \uc2e4\uc81c \uc0ac\uc6a9\ub41c \ubd84\uc11d\uae30\ubc95\uc744 \uc801\uc6a9\ud558\uc600\ub2e4."
+    " The analysis method was selected according to the criteria shown in the result tables."
   }
   paste0(method, reason)
 }

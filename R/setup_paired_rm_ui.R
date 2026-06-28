@@ -39,8 +39,10 @@ paired_rm_setup_state <- function(
   selected_repeated = NULL,
   assumption_check = FALSE,
   adjustment = "holm",
-  time_labels = NULL
+  time_labels = NULL,
+  language = statedu_initial_language()
 ) {
+  language <- normalize_app_language(language)
   selected <- as.character(selected_names %||% character(0))
   repeated_groups <- lapply(repeated_groups %||% list(), paired_keep_selected_order, selected = selected)
   repeated_groups <- repeated_groups[lengths(repeated_groups) >= 3L]
@@ -66,15 +68,17 @@ paired_rm_setup_state <- function(
     assumption_check = isTRUE(assumption_check),
     adjustment = if (identical(adjustment, "bonferroni")) "bonferroni" else "holm",
     time_labels = time_labels,
-    move_disabled = length(selected) == 0
+    move_disabled = length(selected) == 0,
+    language = language
   )
 }
 
-paired_rm_time_label_inputs <- function(time_labels) {
+paired_rm_time_label_inputs <- function(time_labels, language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   labels <- as.character(time_labels %||% paired_rm_time_header_labels(3L))
   div(
     class = "paired-rm-time-labels",
-    div(class = "analysis-option-title", "Repeated variable labels"),
+    div(class = "analysis-option-title", analysis_ui_text("Repeated variable labels", language)),
     lapply(seq_along(labels), function(index) {
       textInput(
         inputId = paste0("paired_rm_time_label_", index),
@@ -87,11 +91,12 @@ paired_rm_time_label_inputs <- function(time_labels) {
 }
 
 paired_rm_setup_panel <- function(state) {
+  language <- normalize_app_language(state$language %||% statedu_initial_language())
   div(
     class = "ttest-anova-setup-grid paired-setup-grid paired-rm-setup-grid",
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
-      analysis_field_label_tag("Variables"),
+      analysis_field_label_tag("Variables", language = language),
       analysis_transfer_listbox_input("paired_rm_available", state$available_items, selected = state$available_selected, size = 17)
     ),
     div(
@@ -100,9 +105,9 @@ paired_rm_setup_panel <- function(state) {
     ),
     div(
       class = "analysis-transfer-column analysis-transfer-panel paired-target-panel paired-rm-target-panel",
-      analysis_field_label_tag("Repeated-measures variables", c("binary", "ordered", "continuous")),
+      analysis_field_label_tag("Repeated-measures variables", c("binary", "ordered", "continuous"), language = language),
       analysis_transfer_listbox_input("paired_rm_repeated", state$repeated_items, selected = state$repeated_selected, size = 17),
-      div(class = "analysis-order-actions paired-order-actions", actionButton("paired_rm_up", "Up", class = "btn-default btn-sm"), actionButton("paired_rm_down", "Down", class = "btn-default btn-sm"))
+      div(class = "analysis-order-actions paired-order-actions", actionButton("paired_rm_up", analysis_ui_text("Up", language), class = "btn-default btn-sm"), actionButton("paired_rm_down", analysis_ui_text("Down", language), class = "btn-default btn-sm"))
     ),
     div(
       class = "ttest-anova-options-column",
@@ -110,15 +115,16 @@ paired_rm_setup_panel <- function(state) {
         class = "analysis-options-panel ttest-anova-options paired-options",
         analysis_option_group(
           "Assumption",
-          list(list(id = "paired_rm_assumption_check", label = "Check assumptions", value = state$assumption_check))
+          list(list(id = "paired_rm_assumption_check", label = "Check assumptions", value = state$assumption_check)),
+          language = language
         ),
         analysis_radio_group(
-          "Post-hoc correction",
+          analysis_ui_text("Post-hoc correction", language),
           "paired_rm_adjustment",
           choices = c("Holm Bonferroni" = "holm", "Bonferroni correction" = "bonferroni"),
           selected = state$adjustment
         ),
-        paired_rm_time_label_inputs(state$time_labels)
+        paired_rm_time_label_inputs(state$time_labels, language)
       )
     )
   )

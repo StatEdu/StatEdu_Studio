@@ -4,8 +4,153 @@
       window.easyflowCodingErrorFixValues = window.easyflowCodingErrorFixValues || {};
       window.easyflowTransferSelectionOrderByInput = window.easyflowTransferSelectionOrderByInput || {};
 
+      function easyflowNormalizeLanguage(language) {
+        var value = String(language || '').trim().toLowerCase();
+        if (value === 'en' || value === 'english') return 'en';
+        return 'ko';
+      }
+
+      function easyflowStoredLanguage() {
+        try {
+          var stored = window.localStorage.getItem('statedu_app_language') || '';
+          return stored ? easyflowNormalizeLanguage(stored) : '';
+        } catch (error) {
+          return '';
+        }
+      }
+
+      function easyflowHasUrlLanguage() {
+        try {
+          return !!(new URL(window.location.href).searchParams.get('lang') || '');
+        } catch (error) {
+          return false;
+        }
+      }
+
+      function easyflowUrlLanguage() {
+        var language = '';
+        try {
+          language = new URL(window.location.href).searchParams.get('lang') || '';
+        } catch (error) {
+          language = '';
+        }
+        if (language) return easyflowNormalizeLanguage(language);
+        language = easyflowStoredLanguage();
+        if (language) return language;
+        var initial = document.getElementById('statedu_initial_language');
+        if (initial && initial.value) return easyflowNormalizeLanguage(initial.value);
+        return 'ko';
+      }
+
+      function easyflowSetCurrentLanguage(language) {
+        language = easyflowNormalizeLanguage(language);
+        window.easyflowAppLanguage = language;
+        if (document.documentElement) {
+          document.documentElement.setAttribute('lang', language);
+        }
+        return language;
+      }
+
+      function easyflowCurrentLanguage() {
+        if (window.easyflowAppLanguage) {
+          return easyflowNormalizeLanguage(window.easyflowAppLanguage);
+        }
+        var initial = document.getElementById('statedu_initial_language');
+        if (initial && initial.value) {
+          return easyflowSetCurrentLanguage(initial.value);
+        }
+        return easyflowSetCurrentLanguage(easyflowUrlLanguage());
+      }
+
+      function easyflowEnsureStoredLanguageUrl() {
+        if (easyflowHasUrlLanguage()) return;
+        var stored = easyflowStoredLanguage();
+        if (!stored) return;
+        var initial = document.getElementById('statedu_initial_language');
+        var initialLanguage = initial && initial.value ? easyflowNormalizeLanguage(initial.value) : 'ko';
+        if (stored !== initialLanguage) easyflowApplyLanguageValue(stored);
+      }
+
+      window.easyflowSendAppLanguage = function() {
+        if (!easyflowCanSetInputValue()) return;
+        Shiny.setInputValue('statedu_url_language', easyflowCurrentLanguage(), {priority: 'event'});
+      };
+
+      function easyflowScheduleAppLanguageSend() {
+        [0, 100, 500, 1000].forEach(function(delay) {
+          window.setTimeout(window.easyflowSendAppLanguage, delay);
+        });
+      }
+
+      function easyflowApplyLanguageValue(language) {
+        language = easyflowSetCurrentLanguage(language);
+        var input = document.getElementById('app_language');
+        if (input) {
+          input.value = language;
+          if (input.selectize && typeof input.selectize.setValue === 'function') {
+            input.selectize.setValue(language, true);
+          }
+        }
+        try {
+          window.localStorage.setItem('statedu_app_language', language);
+        } catch (error) {
+          // Ignore storage failures; the query parameter is the active setting.
+        }
+        if (window.Shiny && typeof Shiny.setInputValue === 'function') {
+          Shiny.setInputValue('app_language', language, {priority: 'event'});
+          Shiny.setInputValue('statedu_url_language', language, {priority: 'event'});
+        }
+        var href = window.location && window.location.href ? window.location.href : '';
+        var url;
+        try {
+          url = new URL(href);
+        } catch (error) {
+          url = new URL('/', window.location.origin || 'http://127.0.0.1');
+        }
+        url.searchParams.set('lang', language);
+        var nextHref = url.toString();
+        if (nextHref === window.location.href) {
+          window.location.reload();
+        } else {
+          window.location.replace(nextHref);
+        }
+        return false;
+      }
+
+      window.easyflowApplyAppLanguage = function() {
+        var input = document.getElementById('app_language');
+        var language = input && input.selectize && typeof input.selectize.getValue === 'function'
+          ? input.selectize.getValue()
+          : (input && input.value ? input.value : 'ko');
+        return easyflowApplyLanguageValue(language);
+      };
+
+      easyflowSetCurrentLanguage(easyflowUrlLanguage());
+
+      if (window.Shiny && typeof Shiny.addCustomMessageHandler === 'function') {
+        window.easyflowLanguageHandlerBound = true;
+        Shiny.addCustomMessageHandler('statedu-apply-language', easyflowApplyLanguageValue);
+      } else {
+        document.addEventListener('shiny:connected', function() {
+          if (window.Shiny && typeof Shiny.addCustomMessageHandler === 'function' && !window.easyflowLanguageHandlerBound) {
+            window.easyflowLanguageHandlerBound = true;
+            Shiny.addCustomMessageHandler('statedu-apply-language', easyflowApplyLanguageValue);
+          }
+        });
+      }
+
       function easyflowCanSetInputValue() {
         return !!(window.Shiny && typeof Shiny.setInputValue === 'function');
+      }
+
+      document.addEventListener('shiny:connected', easyflowScheduleAppLanguageSend);
+      document.addEventListener('DOMContentLoaded', function() {
+        easyflowEnsureStoredLanguageUrl();
+        easyflowScheduleAppLanguageSend();
+      });
+      if (document.readyState !== 'loading') {
+        easyflowEnsureStoredLanguageUrl();
+        easyflowScheduleAppLanguageSend();
       }
 
       window.easyflowRestoreCodingErrorFixInputs = function(root) {
@@ -708,98 +853,372 @@
 
       function registerEasyflowNestedDropdownMenus() {
         if (!window.jQuery) return;
+
+        function easyflowNavbarText(anchor) {
+          return anchor.clone().children().remove().end().text().trim();
+        }
+
+        function easyflowSetNavbarText(anchor, label) {
+          if (!anchor.length || !label) return;
+          var children = anchor.children().detach();
+          anchor.empty().text(label);
+          if (children.length) anchor.append(' ').append(children);
+        }
+
+        function easyflowMenuLabelDictionaries() {
+          return {
+            en: {
+              top: {
+                Data: 'Data',
+                data_editor: 'Data Editor',
+                calculator: 'Calculator',
+                Analysis: 'Analysis',
+                'Sample Size': 'Sample Size',
+                'Effect Size': 'Effect Size',
+                Result: 'Result',
+                About: 'About'
+              },
+              items: {
+                data_editor_coding_error_check: 'Auto coding error check',
+                data_editor_likert: 'Auto Likert conversion',
+                data_editor_missing_values: 'Auto missing values',
+                data_editor_wide_long: 'Wide to Long',
+                data_editor_recode_different: 'Auto reverse coding',
+                data_editor_variable_calculation: 'Auto variable calculation',
+                data_editor_variable_transformation: 'Variable transformation',
+                data_editor_recode_same: 'Recode variable',
+                data_editor_variable_rename: 'Rename variable',
+                calculator_hint8: 'HINT8',
+                calculator_eq5d: 'EQ-5D',
+                calculator_metabolic: 'Metabolic syndrome',
+                calculator_frs: 'Framingham risk score',
+                calculator_ascvd10: 'ASCVD10',
+                calculator_metabolic_severity: 'Metabolic severity',
+                about_overview: 'Overview',
+                about_user_guide: 'User Guide',
+                about_analysis_methods: 'Analyses',
+                about_method_notes: 'Method Notes',
+                about_validation: 'Validation',
+                about_version_history: 'Version History',
+                about_source_license: 'Source & License',
+                about_oss_licenses: 'Open Source Licenses',
+                about: 'About'
+              }
+            },
+            ko: {
+              top: {
+                Data: '\uB370\uC774\uD130',
+                data_editor: '\uB370\uC774\uD130 \uD3B8\uC9D1',
+                calculator: '\uACC4\uC0B0\uAE30',
+                Analysis: '\uBD84\uC11D',
+                'Sample Size': '\uD45C\uBCF8\uC218',
+                'Effect Size': '\uD6A8\uACFC\uD06C\uAE30',
+                Result: '\uACB0\uACFC',
+                About: '\uC815\uBCF4'
+              },
+              items: {
+                data_editor_coding_error_check: '\uC790\uB3D9 \uCF54\uB529 \uC624\uB958 \uD655\uC778',
+                data_editor_likert: 'Likert \uC790\uB3D9 \uBCC0\uD658',
+                data_editor_missing_values: '\uACB0\uCE21\uAC12 \uC790\uB3D9\uCC98\uB9AC',
+                data_editor_wide_long: '\uC640\uC774\uB4DC-\uB871 \uBCC0\uD658',
+                data_editor_recode_different: '\uC5ED\uCF54\uB529 \uC790\uB3D9\uCC98\uB9AC',
+                data_editor_variable_calculation: '\uBCC0\uC218 \uC790\uB3D9 \uACC4\uC0B0',
+                data_editor_variable_transformation: '\uBCC0\uC218 \uBCC0\uD658',
+                data_editor_recode_same: '\uBCC0\uC218 \uB9AC\uCF54\uB529',
+                data_editor_variable_rename: '\uBCC0\uC218\uBA85 \uBCC0\uACBD',
+                calculator_hint8: 'HINT8',
+                calculator_eq5d: 'EQ-5D',
+                calculator_metabolic: '\uB300\uC0AC\uC99D\uD6C4\uAD70',
+                calculator_frs: 'Framingham \uC704\uD5D8\uB3C4',
+                calculator_ascvd10: 'ASCVD10',
+                calculator_metabolic_severity: '\uB300\uC0AC\uC99D\uD6C4\uAD70 \uC911\uC99D\uB3C4',
+                about_overview: '\uAC1C\uC694',
+                about_user_guide: '\uC0AC\uC6A9\uC790 \uC548\uB0B4\uC11C',
+                about_analysis_methods: '\uBD84\uC11D',
+                about_method_notes: '\uBC29\uBC95\uB860 \uB178\uD2B8',
+                about_validation: '\uAC80\uC99D',
+                about_version_history: '\uBC84\uC804 \uC774\uB825',
+                about_source_license: '\uC18C\uC2A4 \uBC0F \uB77C\uC774\uC120\uC2A4',
+                about_oss_licenses: '\uC624\uD508\uC18C\uC2A4 \uB77C\uC774\uC120\uC2A4',
+                about: '\uC815\uBCF4'
+              }
+            }
+          };
+        }
+
+        function easyflowTopLabelLookup() {
+          return {
+            Data: 'Data',
+            '\uB370\uC774\uD130': 'Data',
+            data_editor: 'data_editor',
+            'Data Editor': 'data_editor',
+            '\uB370\uC774\uD130 \uD3B8\uC9D1': 'data_editor',
+            calculator: 'calculator',
+            Calculator: 'calculator',
+            '\uACC4\uC0B0\uAE30': 'calculator',
+            Analysis: 'Analysis',
+            '\uBD84\uC11D': 'Analysis',
+            'Sample Size': 'Sample Size',
+            '\uD45C\uBCF8\uC218': 'Sample Size',
+            'Effect Size': 'Effect Size',
+            '\uD6A8\uACFC\uD06C\uAE30': 'Effect Size',
+            Result: 'Result',
+            '\uACB0\uACFC': 'Result',
+            About: 'About',
+            '\uC815\uBCF4': 'About'
+          };
+        }
+
+        function easyflowTranslateNavbarLabels() {
+          var language = easyflowCurrentLanguage();
+          var dictionaries = easyflowMenuLabelDictionaries();
+          var dictionary = dictionaries[language] || dictionaries.ko;
+          var topLookup = easyflowTopLabelLookup();
+
+          window.jQuery('.navbar-nav > li > a').each(function() {
+            var anchor = window.jQuery(this);
+            var value = String(anchor.attr('data-value') || '');
+            var key = topLookup[value] || topLookup[easyflowNavbarText(anchor)];
+            if (key && dictionary.top[key]) {
+              easyflowSetNavbarText(anchor, dictionary.top[key]);
+            }
+          });
+
+          window.jQuery('.navbar-nav > li.dropdown > ul.dropdown-menu a[data-value]').each(function() {
+            var anchor = window.jQuery(this);
+            var value = String(anchor.attr('data-value') || '');
+            if (dictionary.items[value]) {
+              easyflowSetNavbarText(anchor, dictionary.items[value]);
+            }
+          });
+        }
+
         function easyflowGroupedMenuConfigs() {
           return [
             {
               menu: 'Analysis',
+              menuLabels: ['Analysis', '\uBD84\uC11D'],
               marker: 'analysis',
+              itemLabelsEn: {
+                'Frequencies / Descriptives': 'Frequencies / Descriptives',
+                analysis_crosstabs: 'Cross-tabulation Analysis',
+                't-test / ANOVA': 't-test / ANOVA',
+                'Paired test': 'Paired test',
+                ANCOVA: 'ANCOVA',
+                'Nonparametric Tests': 'Nonparametric Tests',
+                'Nonparametric Paired': 'Nonparametric Paired',
+                Correlation: 'Correlation',
+                Reliability: 'Reliability',
+                'Factor Analysis': 'Factor Analysis',
+                'Principal Components': 'Principal Components',
+                Regression: 'Regression',
+                'Generalized Linear Model (GLM)': 'Generalized Linear Model (GLM)',
+                analysis_logistic_regression: 'Logistic Regression',
+                'Longitudinal / Panel Models': 'Longitudinal / Panel Models'
+              },
+              itemLabelsKo: {
+                'Frequencies / Descriptives': '\uBE48\uB3C4\uBD84\uC11D / \uAE30\uC220\uD1B5\uACC4',
+                analysis_crosstabs: '\uAD50\uCC28\uBD84\uC11D',
+                't-test / ANOVA': 't-test / ANOVA',
+                'Paired test': '\uB300\uC751\uD45C\uBCF8 \uAC80\uC815',
+                ANCOVA: 'ANCOVA',
+                'Nonparametric Tests': '\uBE44\uBAA8\uC218 \uAC80\uC815',
+                'Nonparametric Paired': '\uB300\uC751 \uBE44\uBAA8\uC218 \uAC80\uC815',
+                Correlation: '\uC0C1\uAD00\uBD84\uC11D',
+                Reliability: '\uC2E0\uB8B0\uB3C4',
+                'Factor Analysis': '\uC694\uC778\uBD84\uC11D',
+                'Principal Components': '\uC8FC\uC131\uBD84\uBD84\uC11D',
+                Regression: '\uD68C\uADC0\uBD84\uC11D',
+                'Generalized Linear Model (GLM)': '\uC77C\uBC18\uD654 \uC120\uD615\uBAA8\uD615(GLM)',
+                analysis_logistic_regression: '\uB85C\uC9C0\uC2A4\uD2F1 \uD68C\uADC0',
+                'Longitudinal / Panel Models': '\uC885\uB2E8 / \uD328\uB110 \uBAA8\uD615'
+              },
               groups: [
                 {
                   title: 'Descriptives & Tables',
+                  titleKo: '\uAE30\uC220\uD1B5\uACC4 / \uD45C',
                   values: ['Frequencies / Descriptives', 'analysis_crosstabs']
                 },
                 {
                   title: 'Group Comparisons',
+                  titleKo: '\uC9D1\uB2E8 \uBE44\uAD50',
                   values: ['t-test / ANOVA', 'Paired test', 'ANCOVA']
                 },
                 {
                   title: 'Nonparametric Tests',
+                  titleKo: '\uBE44\uBAA8\uC218 \uAC80\uC815',
                   values: ['Nonparametric Tests', 'Nonparametric Paired']
                 },
                 {
                   title: 'Association & Measurement',
+                  titleKo: '\uC5F0\uAD00 / \uCE21\uC815',
                   values: ['Correlation', 'Reliability', 'Factor Analysis', 'Principal Components']
                 },
                 {
                   title: 'Regression & Models',
+                  titleKo: '\uD68C\uADC0 / \uBAA8\uD615',
                   values: ['Regression', 'Generalized Linear Model (GLM)', 'analysis_logistic_regression']
                 },
                 {
                   title: 'Longitudinal / Panel',
+                  titleKo: '\uC885\uB2E8 / \uD328\uB110',
                   values: ['Longitudinal / Panel Models']
                 }
               ]
             },
             {
               menu: 'Sample Size',
+              menuLabels: ['Sample Size', '\uD45C\uBCF8\uC218'],
               marker: 'sample-size',
+              itemLabelsEn: {
+                sample_size_proportion: 'Proportion',
+                sample_size_chisquare: 'Chi-square',
+                sample_size_mcnemar: 'McNemar',
+                sample_size_ttest: 't-test',
+                sample_size_anova: 'ANOVA',
+                sample_size_ancova: 'ANCOVA / MANOVA',
+                sample_size_nonparametric: 'Nonparametric',
+                sample_size_correlation: 'Correlation',
+                sample_size_reliability: 'Reliability / Agreement',
+                sample_size_sem: 'SEM / CFA',
+                sample_size_regression: 'Regression',
+                sample_size_rates: 'Count / Rate Regression',
+                sample_size_diagnostic: 'ROC AUC',
+                sample_size_gee: 'GEE',
+                sample_size_lmm: 'LMM',
+                sample_size_survival: 'Survival / Cox',
+                sample_size_equivalence: 'Equivalence / NI',
+                sample_size_cluster: 'Cluster Trial',
+                sample_size_precision: 'Precision / CI'
+              },
+              itemLabelsKo: {
+                sample_size_proportion: '\uBE44\uC728',
+                sample_size_chisquare: '\uCE74\uC774\uC81C\uACF1',
+                sample_size_mcnemar: '\uB9E5\uB2C8\uB9C8',
+                sample_size_ttest: 't-test',
+                sample_size_anova: 'ANOVA',
+                sample_size_ancova: 'ANCOVA / MANOVA',
+                sample_size_nonparametric: '\uBE44\uBAA8\uC218',
+                sample_size_correlation: '\uC0C1\uAD00',
+                sample_size_reliability: '\uC2E0\uB8B0\uB3C4 / \uC77C\uCE58\uB3C4',
+                sample_size_sem: '\uAD6C\uC870\uBC29\uC815\uC2DD/\uD655\uC778\uC801\uC694\uC778\uBD84\uC11D',
+                sample_size_regression: '\uD68C\uADC0',
+                sample_size_rates: '\uAC74\uC218 / \uBC1C\uC0DD\uB960 \uD68C\uADC0',
+                sample_size_diagnostic: 'ROC AUC',
+                sample_size_gee: '\uC77C\uBC18\uD654\uCD94\uC815\uBC29\uC815\uC2DD',
+                sample_size_lmm: '\uC120\uD615\uD63C\uD569\uBAA8\uD615',
+                sample_size_survival: '\uC0DD\uC874 / Cox',
+                sample_size_equivalence: '\uB3D9\uB4F1\uC131 / \uBE44\uC5F4\uB4F1\uC131',
+                sample_size_cluster: '\uAD70\uC9D1 \uC5F0\uAD6C',
+                sample_size_precision: '\uC815\uBC00\uB3C4 / \uC2E0\uB8B0\uAD6C\uAC04'
+              },
               groups: [
                 {
                   title: 'Descriptives & Tables',
+                  titleKo: '\uAE30\uC220\uD1B5\uACC4 / \uD45C',
                   values: ['sample_size_proportion', 'sample_size_chisquare', 'sample_size_mcnemar']
                 },
                 {
                   title: 'Group Comparisons',
+                  titleKo: '\uC9D1\uB2E8 \uBE44\uAD50',
                   values: ['sample_size_ttest', 'sample_size_anova', 'sample_size_ancova']
                 },
                 {
                   title: 'Nonparametric Tests',
+                  titleKo: '\uBE44\uBAA8\uC218 \uAC80\uC815',
                   values: ['sample_size_nonparametric']
                 },
                 {
                   title: 'Association & Measurement',
+                  titleKo: '\uC5F0\uAD00 / \uCE21\uC815',
                   values: ['sample_size_correlation', 'sample_size_reliability', 'sample_size_sem', 'sample_size_diagnostic']
                 },
                 {
                   title: 'Regression & Models',
+                  titleKo: '\uD68C\uADC0 / \uBAA8\uD615',
                   values: ['sample_size_regression', 'sample_size_rates', 'sample_size_survival']
                 },
                 {
                   title: 'Longitudinal / Panel',
+                  titleKo: '\uC885\uB2E8 / \uD328\uB110',
                   values: ['sample_size_gee', 'sample_size_lmm']
                 },
                 {
                   title: 'Study Design & Precision',
+                  titleKo: '\uC5F0\uAD6C \uC124\uACC4 / \uC815\uBC00\uB3C4',
                   values: ['sample_size_equivalence', 'sample_size_cluster', 'sample_size_precision']
                 }
               ]
             },
             {
               menu: 'Effect Size',
+              menuLabels: ['Effect Size', '\uD6A8\uACFC\uD06C\uAE30'],
               marker: 'effect-size',
+              itemLabelsEn: {
+                effect_size_proportion: 'Proportion',
+                effect_size_chisquare: 'Chi-square',
+                effect_size_mcnemar: 'McNemar',
+                effect_size_ttest: 't-test',
+                effect_size_anova: 'ANOVA',
+                effect_size_ancova: 'ANCOVA / MANOVA',
+                effect_size_nonparametric: 'Nonparametric',
+                effect_size_correlation: 'Correlation',
+                effect_size_sem: 'SEM / CFA',
+                effect_size_regression: 'Regression',
+                effect_size_rates: 'Count / Rate Regression',
+                effect_size_diagnostic: 'ROC AUC',
+                effect_size_gee: 'GEE',
+                effect_size_lmm: 'LMM',
+                effect_size_glmm: 'GLMM',
+                effect_size_survival: 'Survival / Cox'
+              },
+              itemLabelsKo: {
+                effect_size_proportion: '\uBE44\uC728',
+                effect_size_chisquare: '\uCE74\uC774\uC81C\uACF1',
+                effect_size_mcnemar: '\uB9E5\uB2C8\uB9C8',
+                effect_size_ttest: 't-test',
+                effect_size_anova: 'ANOVA',
+                effect_size_ancova: 'ANCOVA / MANOVA',
+                effect_size_nonparametric: '\uBE44\uBAA8\uC218',
+                effect_size_correlation: '\uC0C1\uAD00',
+                effect_size_sem: '\uAD6C\uC870\uBC29\uC815\uC2DD/\uD655\uC778\uC801\uC694\uC778\uBD84\uC11D',
+                effect_size_regression: '\uD68C\uADC0',
+                effect_size_rates: '\uAC74\uC218 / \uBC1C\uC0DD\uB960 \uD68C\uADC0',
+                effect_size_diagnostic: 'ROC AUC',
+                effect_size_gee: '\uC77C\uBC18\uD654\uCD94\uC815\uBC29\uC815\uC2DD',
+                effect_size_lmm: '\uC120\uD615\uD63C\uD569\uBAA8\uD615',
+                effect_size_glmm: '\uC77C\uBC18\uD654\uC120\uD615\uBAA8\uD615',
+                effect_size_survival: '\uC0DD\uC874 / Cox'
+              },
               groups: [
                 {
                   title: 'Descriptives & Tables',
+                  titleKo: '\uAE30\uC220\uD1B5\uACC4 / \uD45C',
                   values: ['effect_size_proportion', 'effect_size_chisquare', 'effect_size_mcnemar']
                 },
                 {
                   title: 'Group Comparisons',
+                  titleKo: '\uC9D1\uB2E8 \uBE44\uAD50',
                   values: ['effect_size_ttest', 'effect_size_anova', 'effect_size_ancova']
                 },
                 {
                   title: 'Nonparametric Tests',
+                  titleKo: '\uBE44\uBAA8\uC218 \uAC80\uC815',
                   values: ['effect_size_nonparametric']
                 },
                 {
                   title: 'Association & Measurement',
-                  values: ['effect_size_correlation', 'effect_size_diagnostic']
+                  titleKo: '\uC5F0\uAD00 / \uCE21\uC815',
+                  values: ['effect_size_correlation', 'effect_size_sem', 'effect_size_diagnostic']
                 },
                 {
                   title: 'Regression & Models',
+                  titleKo: '\uD68C\uADC0 / \uBAA8\uD615',
                   values: ['effect_size_regression', 'effect_size_rates', 'effect_size_survival']
                 },
                 {
                   title: 'Longitudinal / Panel',
+                  titleKo: '\uC885\uB2E8 / \uD328\uB110',
                   values: ['effect_size_gee', 'effect_size_lmm', 'effect_size_glmm']
                 }
               ]
@@ -808,15 +1227,40 @@
         }
 
         function groupNavbarDropdownItems(config) {
+          var menuLabels = config.menuLabels || [config.menu];
           var navItem = window.jQuery('.navbar-nav > li.dropdown > a.dropdown-toggle')
             .filter(function() {
-              return window.jQuery(this).clone().children().remove().end().text().trim() === config.menu;
+              var label = window.jQuery(this).clone().children().remove().end().text().trim();
+              return menuLabels.indexOf(label) >= 0;
             })
             .parent()
             .first();
           if (!navItem.length) return;
+          var menuLanguage = easyflowCurrentLanguage();
+          var useKorean = menuLanguage === 'ko';
+          var itemLabelsEn = config.itemLabelsEn || {};
+          var itemLabelsKo = config.itemLabelsKo || {};
           var menu = navItem.children('ul.dropdown-menu').first();
-          if (!menu.length || menu.attr('data-easyflow-menu-grouped') === config.marker) return;
+          if (!menu.length) return;
+          if (menu.attr('data-easyflow-menu-grouped') === config.marker) {
+            if (menu.attr('data-easyflow-menu-language') === menuLanguage) return;
+            config.groups.forEach(function(group) {
+              var firstValue = group.values[0];
+              var groupLink = menu.find('a[data-value="' + firstValue + '"]').first();
+              var groupNode = groupLink.closest('.analysis-menu-section');
+              var groupTitleText = useKorean && group.titleKo ? group.titleKo : group.title;
+              if (!groupNode.length) return;
+              groupNode.children('.analysis-menu-section-title').first().text(groupTitleText);
+              group.values.forEach(function(value) {
+                var link = menu.find('a[data-value="' + value + '"]').first();
+                if (!link.length) return;
+                var itemLabel = useKorean ? itemLabelsKo[value] : itemLabelsEn[value];
+                if (itemLabel) link.text(itemLabel);
+              });
+            });
+            menu.attr('data-easyflow-menu-language', menuLanguage);
+            return;
+          }
 
           var existingItems = {};
           menu.children('li').each(function() {
@@ -830,18 +1274,18 @@
             var groupItems = [];
             group.values.forEach(function(value) {
               if (existingItems[value]) {
+                var itemLabel = useKorean ? itemLabelsKo[value] : itemLabelsEn[value];
+                if (itemLabel) {
+                  existingItems[value].children('a[data-value]').first().text(itemLabel);
+                }
                 groupItems.push(existingItems[value]);
                 delete existingItems[value];
               }
             });
             if (groupItems.length === 0) return;
-            if (groupItems.length === 1) {
-              groupItems[0].addClass('analysis-menu-direct-item');
-              menu.append(groupItems[0]);
-              return;
-            }
             var groupNode = window.jQuery('<li class="analysis-menu-section" role="presentation"></li>');
-            var groupTitle = window.jQuery('<button type="button" class="analysis-menu-section-title" aria-expanded="false"></button>').text(group.title);
+            var groupTitleText = useKorean && group.titleKo ? group.titleKo : group.title;
+            var groupTitle = window.jQuery('<button type="button" class="analysis-menu-section-title" aria-expanded="false"></button>').text(groupTitleText);
             var groupList = window.jQuery('<ul class="analysis-menu-section-items" role="menu"></ul>');
             groupItems.forEach(function(item) {
               groupList.append(item);
@@ -864,11 +1308,14 @@
           }
           menu.addClass('analysis-submenu')
             .attr('data-easyflow-menu-grouped', config.marker)
+            .attr('data-easyflow-menu-language', menuLanguage)
             .attr('data-analysis-menu-grouped', 'true');
         }
 
         function groupAnalysisDropdownItems() {
+          easyflowTranslateNavbarLabels();
           easyflowGroupedMenuConfigs().forEach(groupNavbarDropdownItems);
+          easyflowTranslateNavbarLabels();
         }
 
         function configureNestedDropdownToggles() {
@@ -1363,7 +1810,10 @@
           if (selectedSpan) selectedSpan.classList.toggle('is-active', normalized === 'variables');
           return;
         }
-        button.textContent = normalized === 'variables' ? 'Labels' : 'Variables';
+        var language = easyflowCurrentLanguage();
+        button.textContent = language === 'ko'
+          ? (normalized === 'variables' ? '\uB77C\uBCA8' : '\uBCC0\uC218')
+          : (normalized === 'variables' ? 'Labels' : 'Variables');
       }
 
       window.easyflowToggleStep3View = function(button) {
@@ -2482,9 +2932,11 @@
           if (!normality) return;
           var enabled = normality.checked;
           var studyType = selectedRadioValue('ttest_anova_normality_study_type') || 'survey';
+          var surveyMethod = selectedRadioValue('ttest_anova_survey_normality_method') || 'skew_kurtosis';
           setTtestNormalityDisabled('.ttest-normality-study-options', !enabled);
           setTtestNormalityDisabled('.ttest-normality-survey-branch', !enabled || studyType !== 'survey');
           setTtestNormalityDisabled('.ttest-normality-experimental-branch', !enabled || studyType !== 'experimental');
+          setTtestNormalityDisabled('.ttest-skew-kurtosis-cutoff-options', !enabled || studyType !== 'survey' || surveyMethod !== 'skew_kurtosis');
         }
 
         function scheduleTtestNormalityTreeUpdate() {
@@ -2517,7 +2969,8 @@
           if (!target || !target.matches) return;
           if (
             target.matches('#ttest_anova_normality_enabled') ||
-            target.matches('input[name="ttest_anova_normality_study_type"]')
+            target.matches('input[name="ttest_anova_normality_study_type"]') ||
+            target.matches('input[name="ttest_anova_survey_normality_method"]')
           ) {
             if (target.matches('#ttest_anova_normality_enabled') && target.checked) {
               resetTtestNormalityDefaults();

@@ -5,7 +5,8 @@ latent_mplus_module_root <- function() {
 }
 
 latent_mplus_enabled <- function() {
-  file.exists(file.path(latent_mplus_module_root(), "R", "latent_ui.R")) &&
+  isTRUE(statedu_feature_enabled("latent_mplus", FALSE)) &&
+    file.exists(file.path(latent_mplus_module_root(), "R", "latent_ui.R")) &&
     file.exists(file.path(latent_mplus_module_root(), "R", "app_server.R"))
 }
 

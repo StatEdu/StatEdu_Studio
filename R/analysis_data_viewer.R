@@ -1,16 +1,29 @@
 # Shared analysis data viewer helpers.
 
-analysis_data_viewer_button <- function(id) {
-  actionButton(id, "View selected data", class = "btn btn-default analysis-data-viewer-button")
+analysis_data_viewer_button <- function(id, language = statedu_initial_language()) {
+  actionButton(
+    id,
+    statedu_text(language, "View selected data", statedu_utf8("ec84a0ed839d20eb8db0ec9db4ed84b020ebb3b4eab8b0")),
+    class = "btn btn-default analysis-data-viewer-button"
+  )
 }
 
-analysis_workspace_heading <- function(title, prefix) {
+analysis_data_viewer_title <- function(title, language = statedu_initial_language()) {
+  title <- as.character(title %||% "")
+  base_title <- sub(" Data Viewer$", "", title)
+  if (identical(base_title, title)) {
+    return(analysis_ui_text(title, language))
+  }
+  paste(analysis_ui_text(base_title, language), analysis_ui_text("Data Viewer", language))
+}
+
+analysis_workspace_heading <- function(title, prefix, language = statedu_initial_language()) {
   div(
     class = paste("analysis-workspace-heading", paste0(prefix, "-workspace-heading")),
-    h3(title),
+    h3(analysis_ui_text(title, language)),
     conditionalPanel(
       condition = sprintf("output.%s_view_mode !== 'viewer'", prefix),
-      analysis_data_viewer_button(paste0(prefix, "_view_data"))
+      analysis_data_viewer_button(paste0(prefix, "_view_data"), language)
     )
   )
 }
@@ -40,7 +53,8 @@ register_analysis_data_viewer_handlers <- function(
   extra_variables_fn = NULL,
   variable_table_fn,
   labels_fn,
-  category_table_fn
+  category_table_fn,
+  language_fn = NULL
 ) {
   visible <- reactiveVal(FALSE)
   label_mode <- reactiveVal(FALSE)
@@ -51,6 +65,12 @@ register_analysis_data_viewer_handlers <- function(
   mode_output_id <- paste0(prefix, "_view_mode")
   panel_output_id <- paste0(prefix, "_data_viewer")
   table_output_id <- paste0(prefix, "_data_viewer_table")
+  viewer_language <- reactive({
+    if (is.function(language_fn)) {
+      return(normalize_app_language(language_fn()))
+    }
+    statedu_initial_language()
+  })
 
   viewer_variables <- reactive({
     data <- dataset_fn()
@@ -100,7 +120,8 @@ register_analysis_data_viewer_handlers <- function(
       value_label_button_id = label_input_id,
       table_output_id = table_output_id,
       all_selected = isTRUE(input[[scope_input_id]]),
-      label_mode = label_mode()
+      label_mode = label_mode(),
+      language = viewer_language()
     )
   })
 
@@ -111,7 +132,8 @@ register_analysis_data_viewer_handlers <- function(
       category_table = category_table_fn(),
       use_labels = label_mode(),
       variable_table = variable_table_fn(),
-      labels = labels_fn()
+      labels = labels_fn(),
+      language = viewer_language()
     )
   })
 
@@ -130,11 +152,12 @@ analysis_data_viewer_variable_label <- function(name, variable_table = NULL, lab
   trimws(label)
 }
 
-analysis_data_viewer_variable_list <- function(variables, variable_table = NULL, labels = character(0)) {
+analysis_data_viewer_variable_list <- function(variables, variable_table = NULL, labels = character(0), language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   variables <- as.character(variables %||% character(0))
   variables <- variables[nzchar(variables)]
   if (length(variables) == 0) {
-    return(div("No analysis variables are selected.", class = "analysis-data-viewer-empty"))
+    return(div(analysis_ui_text("No analysis variables are selected.", language), class = "analysis-data-viewer-empty"))
   }
   items <- analysis_variable_items(variables, variable_table, labels)
   div(
@@ -163,24 +186,26 @@ analysis_data_viewer_panel <- function(
   value_label_button_id,
   table_output_id,
   all_selected = FALSE,
-  label_mode = FALSE
+  label_mode = FALSE,
+  language = statedu_initial_language()
 ) {
+  language <- normalize_app_language(language)
   div(
     class = "analysis-data-viewer-panel",
     div(
       class = "analysis-data-viewer-header",
       div(
-        h3(title),
-        div("Read-only worksheet preview of the current data.", class = "analysis-data-viewer-subtitle")
+        h3(analysis_data_viewer_title(title, language)),
+        div(analysis_ui_text("Read-only worksheet preview of the current data.", language), class = "analysis-data-viewer-subtitle")
       ),
       div(
         class = "analysis-data-viewer-controls",
         div(
           class = "analysis-data-viewer-button-stack",
-          actionButton(back_button_id, "Back to analysis", class = "btn btn-primary analysis-data-viewer-action-button"),
+          actionButton(back_button_id, analysis_ui_text("Back to analysis", language), class = "btn btn-primary analysis-data-viewer-action-button"),
           actionButton(
             value_label_button_id,
-            "Value / Label",
+            analysis_ui_text("Value / Label", language),
             class = paste("btn btn-default btn-sm analysis-data-value-label-button analysis-data-viewer-action-button", if (isTRUE(label_mode)) "is-active" else "")
           )
         )
@@ -249,9 +274,13 @@ analysis_data_viewer_escape_cells <- function(data) {
   data
 }
 
-analysis_data_viewer_table <- function(data, variables, category_table = NULL, use_labels = FALSE, variable_table = NULL, labels = character(0)) {
+analysis_data_viewer_table <- function(data, variables, category_table = NULL, use_labels = FALSE, variable_table = NULL, labels = character(0), language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   if (!is.data.frame(data) || nrow(data) == 0) {
-    return(DT::datatable(data.frame(Message = "No data is loaded.", stringsAsFactors = FALSE), rownames = FALSE, options = list(dom = "t")))
+    message_label <- analysis_ui_text("Message", language)
+    empty_message <- analysis_ui_text("No data is loaded.", language)
+    empty_data <- stats::setNames(data.frame(empty_message, stringsAsFactors = FALSE), message_label)
+    return(DT::datatable(empty_data, rownames = FALSE, options = list(dom = "t")))
   }
   variables <- names(data)
   preview <- analysis_data_viewer_labeled_data(data, variables, category_table, use_labels)

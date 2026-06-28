@@ -67,7 +67,7 @@ nonparametric_paired_model_overview_table <- function(result) {
         stringsAsFactors = FALSE,
         check.names = FALSE
       )
-      names(row) <- c("Pair", "N", "\ubd84\uc11d \ubc29\ubc95", "\uc774\uc720")
+      names(row) <- c("Pair", "N", "Analysis method", "Reason")
       rows[[length(rows) + 1L]] <- row
     }
   }
@@ -83,9 +83,9 @@ nonparametric_paired_rm_model_overview_table <- function(result) {
     item <- table[index, , drop = FALSE]
     measurement <- as.character(result$measurement %||% "")
     reason <- if (nzchar(measurement)) {
-      paste(measurement, "\ube44\ubaa8\uc218 repeated-measures test")
+      paste(measurement, "nonparametric repeated-measures test")
     } else {
-      "\ube44\ubaa8\uc218 repeated-measures test"
+      "Nonparametric repeated-measures test"
     }
     row <- data.frame(
       `Repeated variables` = as.character(item[[group_column]][[1]] %||% ""),
@@ -95,7 +95,7 @@ nonparametric_paired_rm_model_overview_table <- function(result) {
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
-    names(row) <- c("Repeated variables", "N", "\ubd84\uc11d \ubc29\ubc95", "\uc774\uc720")
+    names(row) <- c("Repeated variables", "N", "Analysis method", "Reason")
     rows[[length(rows) + 1L]] <- row
   }
   if (length(rows) == 0) NULL else do.call(rbind, rows)

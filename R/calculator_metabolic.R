@@ -187,7 +187,8 @@ metabolic_result <- function(data, selected, refs, units = list(wc = "cm", lipid
   result
 }
 
-metabolic_calculator_tab_panel <- function() {
+metabolic_calculator_tab_panel <- function(language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   tabPanel(
     "Metabolic Syndrome",
     value = "calculator_metabolic",
@@ -195,8 +196,8 @@ metabolic_calculator_tab_panel <- function() {
       class = "page-shell",
       div(
         class = "app-heading",
-        h1("Metabolic Syndrome Calculator"),
-        div("Select metabolic syndrome variables, adjust reference cutoffs, and add metabolic_count and metabolic_syndrome to the current data.", class = "app-subtitle")
+        h1(statedu_text(language, "Metabolic Syndrome Calculator", statedu_utf8("eb8c80ec82aceca69ded9b84eab5b020eab384ec82b0eab8b0"))),
+        div(statedu_text(language, "Select metabolic syndrome variables, adjust reference cutoffs, and add metabolic_count and metabolic_syndrome to the current data.", statedu_utf8("eb8c80ec82aceca69ded9b84eab5b020ebb380ec8898eba5bc20ec84a0ed839ded9598eab3a020eab8b0eca480eab092ec9d8420eca1b0eca095ed959c20eb92a4206d657461626f6c69635f636f756e74ec9980206d657461626f6c69635f73796e64726f6d65ec9d8420ed9884ec9eac20eb8db0ec9db4ed84b0ec979020ecb694eab080ed95a9eb8b88eb8ba42e")), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel metabolic-calculator-workspace",
@@ -208,8 +209,8 @@ metabolic_calculator_tab_panel <- function() {
           class = "analysis-action-row calculator-action-row",
           div(
             class = "calculator-action-row-controls",
-            actionButton("run_metabolic_calculator", "Calculate", class = "btn btn-primary"),
-            downloadButton("download_metabolic_calculator", "Download CSV", class = "btn btn-default")
+            actionButton("run_metabolic_calculator", statedu_ui_label("calculate", language), class = "btn btn-primary"),
+            downloadButton("download_metabolic_calculator", statedu_ui_label("download_csv", language), class = "btn btn-default")
           )
         ),
         uiOutput("metabolic_calculator_summary"),
@@ -219,11 +220,11 @@ metabolic_calculator_tab_panel <- function() {
   )
 }
 
-metabolic_item_select_control <- function(id, label, choices, selected = "") {
+metabolic_item_select_control <- function(id, label, choices, selected = "", language = statedu_initial_language()) {
   selectInput(
     paste0("metabolic_", id),
     label,
-    choices = c("Select variable" = "", choices),
+    choices = c(stats::setNames("", statedu_ui_label("select_variable", language)), choices),
     selected = selected,
     width = "100%"
   )
@@ -273,30 +274,32 @@ metabolic_reference_controls <- function(input) {
   )
 }
 
-metabolic_unit_controls <- function(input) {
+metabolic_unit_controls <- function(input, language = statedu_initial_language()) {
   units <- metabolic_unit_inputs(input)
+  language <- normalize_app_language(language)
   tagList(
     div(
       class = "metabolic-unit-control",
-      selectInput("metabolic_wc_unit", "Waist unit", choices = c("cm" = "cm", "inch" = "inch"), selected = units$wc, width = "100%")
+      selectInput("metabolic_wc_unit", statedu_ui_label("waist_unit", language), choices = c("cm" = "cm", "inch" = "inch"), selected = units$wc, width = "100%")
     ),
     div(
       class = "metabolic-unit-control",
-      selectInput("metabolic_glucose_unit", "Glucose unit", choices = c("mg/dL" = "mg_dl", "mmol/L" = "mmol_l"), selected = units$glucose, width = "100%")
+      selectInput("metabolic_glucose_unit", statedu_ui_label("glucose_unit", language), choices = c("mg/dL" = "mg_dl", "mmol/L" = "mmol_l"), selected = units$glucose, width = "100%")
     ),
     div(
       class = "metabolic-unit-control",
-      selectInput("metabolic_lipid_unit", "Lipid unit", choices = c("mg/dL" = "mg_dl", "mmol/L" = "mmol_l"), selected = units$lipid, width = "100%")
+      selectInput("metabolic_lipid_unit", statedu_ui_label("lipid_unit", language), choices = c("mg/dL" = "mg_dl", "mmol/L" = "mmol_l"), selected = units$lipid, width = "100%")
     )
   )
 }
 
-metabolic_reference_set_control <- function(input) {
+metabolic_reference_set_control <- function(input, language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   div(
     class = "metabolic-reference-set-control",
     selectInput(
       "metabolic_reference_set",
-      "Criteria / population",
+      statedu_text(language, "Criteria / population", statedu_utf8("eab8b0eca480202f20eca791eb8ba8")),
       choices = metabolic_reference_set_choices(),
       selected = metabolic_reference_set_id(input),
       width = "100%"
@@ -325,49 +328,50 @@ metabolic_output_table <- function() {
   )
 }
 
-metabolic_calculator_setup_ui <- function(file, data, variable_info, input) {
+metabolic_calculator_setup_ui <- function(file, data, variable_info, input, language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   if (is.null(file)) {
-    return(setup_empty_message("Load a data file in the Data tab before using the metabolic calculator."))
+    return(setup_empty_message(statedu_text(language, "Load a data file in the Data tab before using the metabolic calculator.", statedu_utf8("eb8db0ec9db4ed84b020ed83adec9790ec849c20eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a820ed9b8420eb8c80ec82aceca69ded9b84eab5b020eab384ec82b0eab8b0eba5bc20ec82acec9aa9ed9598ec84b8ec9a942e")), language = language))
   }
   choices <- names(data %||% data.frame())
   if (length(choices) == 0) {
-    return(setup_empty_message("The current data file has no variables."))
+    return(setup_empty_message(statedu_text(language, "The current data file has no variables.", statedu_utf8("ed9884ec9eac20eb8db0ec9db4ed84b020ed8c8cec9dbcec979020ebb380ec8898eab08020ec9786ec8ab5eb8b88eb8ba42e")), language = language))
   }
 
   specs <- metabolic_variable_specs()
   available_items <- analysis_variable_items(choices, variable_info, character(0))
   variable_inputs <- lapply(seq_len(nrow(specs)), function(index) {
     id <- specs$id[[index]]
-    metabolic_item_select_control(id, specs$label[[index]], choices, selected = isolate(input[[paste0("metabolic_", id)]]) %||% "")
+    metabolic_item_select_control(id, specs$label[[index]], choices, selected = isolate(input[[paste0("metabolic_", id)]]) %||% "", language = language)
   })
 
   div(
     class = "frequencies-setup-grid metabolic-setup-grid",
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
-      analysis_field_label_tag("Variables"),
+      analysis_field_label_tag("Variables", language = language),
       analysis_transfer_listbox_input("metabolic_available", available_items, selected = isolate(input$metabolic_available), size = 17)
     ),
     div(class = "analysis-transfer-controls hint8-transfer-spacer"),
     div(
       class = "analysis-transfer-column analysis-transfer-panel metabolic-target-panel",
-      analysis_field_label_tag("Metabolic variables"),
+      analysis_field_label_tag("Metabolic variables", language = language),
       div(class = "metabolic-variable-input-grid", variable_inputs)
     ),
     div(
       class = "analysis-options-column analysis-options-panel metabolic-reference-panel metabolic-syndrome-reference-panel",
-      div(class = "analysis-option-title", "Criteria / Unit"),
-      metabolic_reference_set_control(input),
-      div(class = "metabolic-unit-grid", metabolic_unit_controls(input)),
+      div(class = "analysis-option-title", statedu_ui_label("criteria_unit", language)),
+      metabolic_reference_set_control(input, language = language),
+      div(class = "metabolic-unit-grid", metabolic_unit_controls(input, language = language)),
       div(
         class = if (identical(metabolic_reference_set_id(input), "custom")) "metabolic-reference-custom" else "metabolic-reference-hidden",
-        div(class = "analysis-option-title", "Reference cutoffs"),
+        div(class = "analysis-option-title", statedu_ui_label("reference_cutoffs", language)),
         div(class = "metabolic-reference-grid", metabolic_reference_controls(input))
       ),
       if (!identical(metabolic_reference_set_id(input), "custom")) metabolic_reference_table(input),
-      div(class = "analysis-option-title metabolic-coding-title", "Coding"),
+      div(class = "analysis-option-title metabolic-coding-title", statedu_ui_label("coding", language)),
       metabolic_coding_table(),
-      div(class = "analysis-option-title metabolic-output-title", "Output"),
+      div(class = "analysis-option-title metabolic-output-title", statedu_ui_label("output", language)),
       metabolic_output_table()
     )
   )
@@ -380,18 +384,21 @@ register_metabolic_calculator_handlers <- function(
   dataset_fn,
   current_data_file_fn,
   variable_info_fn,
-  add_calculated_variable_fn
+  add_calculated_variable_fn,
+  language_fn = NULL
 ) {
   output$metabolic_loaded_message <- renderText({
+    statedu_current_language(language_fn)
     file <- current_data_file_fn()
     metabolic_loaded_message_text(file, if (is.null(file)) NULL else dataset_fn())
   })
 
   output$metabolic_calculator_setup <- renderUI({
+    language <- statedu_current_language(language_fn)
     file <- current_data_file_fn()
     data <- if (is.null(file)) NULL else dataset_fn()
     variable_info <- if (is.null(file)) NULL else variable_info_fn()
-    metabolic_calculator_setup_ui(file, data, variable_info, input)
+    metabolic_calculator_setup_ui(file, data, variable_info, input, language = language)
   })
 
   observeEvent(input$metabolic_available, {
@@ -412,8 +419,9 @@ register_metabolic_calculator_handlers <- function(
   }, ignoreInit = TRUE)
 
   result <- eventReactive(input$run_metabolic_calculator, {
+    language <- statedu_current_language(language_fn)
     if (is.null(current_data_file_fn())) {
-      showNotification("Load a data file before calculating metabolic syndrome.", type = "warning", duration = 5)
+      showNotification(statedu_text(language, "Load a data file before calculating metabolic syndrome.", statedu_utf8("eb8c80ec82aceca69ded9b84eab5b0ec9d8420eab384ec82b0ed9598eab8b020eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e")), type = "warning", duration = 5)
       return(NULL)
     }
     tryCatch(
@@ -421,7 +429,7 @@ register_metabolic_calculator_handlers <- function(
         result_data <- metabolic_result(dataset_fn(), metabolic_selected_variables(input), metabolic_reference_inputs(input), metabolic_unit_inputs(input), metabolic_diagnosis_method(input))
         add_calculated_variable_fn("metabolic_count", result_data[["metabolic_count"]], var_label = "Metabolic syndrome criteria count", measurement = "continuous")
         add_calculated_variable_fn("metabolic_syndrome", result_data[["metabolic_syndrome"]], var_label = "Metabolic Syndrome", measurement = "binary")
-        showNotification("metabolic_count and metabolic_syndrome were added to the current data.", type = "message", duration = 5)
+        showNotification(statedu_text(language, "metabolic_count and metabolic_syndrome were added to the current data.", statedu_utf8("6d657461626f6c69635f636f756e74ec9980206d657461626f6c69635f73796e64726f6d65eab08020ed9884ec9eac20eb8db0ec9db4ed84b0ec979020ecb694eab080eb9098ec9788ec8ab5eb8b88eb8ba42e")), type = "message", duration = 5)
         result_data
       },
       error = function(error) {
@@ -432,6 +440,7 @@ register_metabolic_calculator_handlers <- function(
   }, ignoreInit = TRUE)
 
   output$metabolic_calculator_summary <- renderUI({
+    statedu_current_language(language_fn)
     data <- result()
     if (is.null(data)) {
       return(NULL)

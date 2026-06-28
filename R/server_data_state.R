@@ -306,6 +306,9 @@ create_apply_restored_settings_basics_fn <- function(
     if (!is.null(settings$selected_variables)) {
       selected_names(selected)
     }
+    if (!is.null(settings$app_language)) {
+      updateSelectInput(session, "app_language", selected = normalize_app_language(settings$app_language))
+    }
 
     restore_setup_inputs(session, settings)
     measurement_overrides(restored$measurement_overrides)

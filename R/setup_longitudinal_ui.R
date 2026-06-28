@@ -36,8 +36,10 @@ longitudinal_setup_state <- function(
   ipw_auxiliary = character(0),
   weight_type = "none",
   weight_trim = "none",
-  options_tab = "Model"
+  options_tab = "Model",
+  language = statedu_initial_language()
 ) {
+  language <- normalize_app_language(language)
   selected <- as.character(selected_names %||% character(0))
   selected_single <- function(value) {
     utils::head(intersect(as.character(value %||% character(0)), selected), 1)
@@ -132,7 +134,8 @@ longitudinal_setup_state <- function(
     options_tab = resolved_options_tab,
     can_run = length(outcome) == 1 && length(id) == 1 && length(time) == 1 && terms_selected && (!resolved_weight_type %in% c("sampling", "longitudinal", "combined") || length(weight) == 1),
     move_disabled = length(selected) == 0,
-    has_assignment = length(assigned) > 0
+    has_assignment = length(assigned) > 0,
+    language = language
   )
 }
 
@@ -154,7 +157,7 @@ longitudinal_weight_variable_choices <- function(weight, available, variable_tab
       text <- tolower(paste(name, label))
       score <- 0L
       if (grepl("(^|[_ .-])(weight|weights|wt|wgt|ipw|iptw|sampling|survey|longitudinal|panel)([_ .-]|$)", text)) score <- score + 8L
-      if (grepl("weight|weights|가중|가중치", text)) score <- score + 6L
+      if (grepl("weight|weights", text)) score <- score + 6L
       if (grepl("ipw|iptw|inverse probability|probability weight", text)) score <- score + 5L
       if (grepl("sampling|survey|design|longitudinal|panel|baseline|time.varying|time varying", text)) score <- score + 3L
       if (grepl("score|scale|total|sum|outcome|quality|age|time|id|subject", text)) score <- score - 2L
@@ -428,8 +431,9 @@ longitudinal_weights_tab_content <- function(state) {
 }
 
 longitudinal_setup_panel <- function(state, status_message = NULL) {
+  language <- normalize_app_language(state$language %||% statedu_initial_language())
   if (length(state$selected) == 0) {
-    return(setup_empty_message("Complete Step 2 in the Data tab before setting up longitudinal / panel models."))
+    return(setup_empty_message("Complete Step 2 in the Data tab before setting up longitudinal / panel models.", language = language))
   }
   tagList(
     if (!is.null(status_message)) {
@@ -439,7 +443,7 @@ longitudinal_setup_panel <- function(state, status_message = NULL) {
       class = "longitudinal-setup-grid",
       div(
         class = "analysis-transfer-column analysis-transfer-panel longitudinal-available-panel",
-        analysis_field_label_tag("Variables"),
+        analysis_field_label_tag("Variables", language = language),
         analysis_transfer_listbox_input(
           "longitudinal_available",
           items = state$available_items,
@@ -523,15 +527,12 @@ longitudinal_setup_panel <- function(state, status_message = NULL) {
           field_class = "longitudinal-predictors-field"
         )
       ),
-      div(
-        class = "analysis-options-column analysis-options-panel longitudinal-options analysis-tabbed-options",
-        div(class = "analysis-option-title factor-options-title", "Options"),
-        tabsetPanel(
-          id = "longitudinal_options_tab",
-          type = "tabs",
-          selected = state$options_tab,
-          tabPanel(
-            "Model",
+      analysis_options_tabs_panel(
+        id = "longitudinal_options_tab",
+        selected = state$options_tab,
+        class = "analysis-options-column longitudinal-options",
+        tabPanel(
+            analysis_ui_text("Model", language),
             div(
               class = "factor-options-tab-content longitudinal-options-tab-content longitudinal-model-options-tab-content",
               div(
@@ -578,11 +579,11 @@ longitudinal_setup_panel <- function(state, status_message = NULL) {
             )
           ),
           tabPanel(
-            "Weights",
+            analysis_ui_text("Weights", language),
             longitudinal_weights_tab_content(state)
           ),
           tabPanel(
-            "Missing",
+            analysis_ui_text("Missing", language),
             div(
               class = "factor-options-tab-content longitudinal-options-tab-content longitudinal-missing-options-tab-content",
               div(
@@ -650,7 +651,6 @@ longitudinal_setup_panel <- function(state, status_message = NULL) {
             "Checks",
             longitudinal_checks_tab_content(state)
           )
-        )
       )
     ),
     div(

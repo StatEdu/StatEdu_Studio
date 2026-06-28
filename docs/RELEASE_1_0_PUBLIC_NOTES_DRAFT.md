@@ -1,8 +1,8 @@
 # StatEdu Studio 1.0 Public Release Notes Draft
 
 This draft is a source for public-facing 1.0 release notes. Do not publish it
-until manual QA is complete, DOI resolution is verified, and the website is
-live.
+until manual QA and final package evidence are complete. DOI resolution and the
+initial citation landing page have been verified.
 
 ## Release
 
@@ -11,7 +11,7 @@ Product: StatEdu Studio
 Version: 1.0.0
 Release date:
 Download page:
-DOI: Pending registration
+DOI: https://doi.org/10.22934/statedu.studio
 Source repository:
 ```
 
@@ -45,8 +45,7 @@ based on R 4.5.3.
 
 ## Public Citation
 
-Do not publish the DOI line until the DOI/homepage infrastructure is built and
-`10.22934/statedu.studio` resolves to `https://studio.statedu.com`.
+The DOI resolves to the stable StatEdu Studio citation landing page.
 
 ```text
 LEE, I. H. (2026). StatEdu Studio (Version 1.0.0) [Computer software].
@@ -72,5 +71,5 @@ available in public release text:
 - Manual QA record complete.
 - Packaged validation notes complete.
 - `studio.statedu.com` live.
-- DOI resolves to `https://studio.statedu.com`.
+- DOI resolves to `https://studio.statedu.com/citation/`.
 - Public text contains no deferred feature claims.

@@ -73,6 +73,28 @@ re-run after the fix.
 5. For public 1.0 QA, confirm Word result export is hidden; for internal validation builds, confirm Word export still works.
 6. Confirm exported filenames use `StatEdu Studio` naming.
 
+### Native Windows Save-Dialog Confirmation
+
+Use this final check for the packaged public 1.0 build after the direct export
+writer smoke tests pass.
+
+1. Launch `dist/electron/win-unpacked/StatEdu Studio.exe`.
+2. Load `sample/KSWL.sav`.
+3. In Data, select variables and apply the selection.
+4. Run one t-test / ANOVA workflow, for example `x1` by `group`.
+5. Click `Save HTML` and save the native dialog output. The default location
+   should be the folder that contains the loaded data file.
+6. Click `Save PDF` and save the native dialog output in the same folder.
+7. Run:
+
+   ```powershell
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\verify_manual_export_dialog_outputs.ps1 -HtmlPath "<saved-html-path>" -PdfPath "<saved-pdf-path>"
+   ```
+
+8. Record the command output in `docs/RELEASE_1_0_MANUAL_QA_RECORD.md`.
+9. Mark the HTML/PDF native save-dialog items as `Pass` only after both files
+   are verified by the script.
+
 ## Packaged Electron Workflow
 
 1. Launch `dist/electron/win-unpacked/StatEdu Studio Beta.exe` for 0.9.x beta
@@ -87,7 +109,7 @@ re-run after the fix.
 ## Public Release Gates
 
 1. Confirm `studio.statedu.com` is live from a normal browser/network path.
-2. Confirm DOI `10.22934/statedu.studio` resolves to `https://studio.statedu.com`.
+2. Confirm DOI `10.22934/statedu.studio` resolves to `https://studio.statedu.com/citation/`.
 3. Confirm final public release notes and packaged validation notes are ready.
 4. Confirm any unimplemented distribution, license, update, or edition-gating items are explicitly deferred in `docs/RELEASE_1_0_DECISION_LOG.md`.
 5. Confirm public release notes and user-visible text do not claim gated editions, license activation, in-app updates, or public installer infrastructure unless the decision log marks those items implemented; if any item is deferred, public text must describe it only as not yet available.

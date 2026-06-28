@@ -13,8 +13,10 @@ reliability_setup_state <- function(
   ordinal = FALSE,
   subfactor_enabled = FALSE,
   reliability_if_deleted = TRUE,
-  item_total_correlation = TRUE
+  item_total_correlation = TRUE,
+  language = statedu_initial_language()
 ) {
+  language <- normalize_app_language(language)
   selected <- as.character(selected_names %||% character(0))
   if (is.null(factor_blocks)) {
     factor_blocks <- list(as.character(selected_variables %||% character(0)))
@@ -38,40 +40,44 @@ reliability_setup_state <- function(
     normality = isTRUE(normality),
     ordinal = isTRUE(ordinal),
     reliability_if_deleted = isTRUE(reliability_if_deleted),
-    item_total_correlation = isTRUE(item_total_correlation)
+    item_total_correlation = isTRUE(item_total_correlation),
+    language = language
   )
 }
 
 reliability_factor_title_tag <- function(state) {
+  language <- normalize_app_language(state$language %||% statedu_initial_language())
   div(
     class = "reliability-factor-title-row",
     analysis_field_label_tag(
       if (isTRUE(state$subfactor_enabled)) {
-        sprintf("Items - Subfactor %s", state$active_factor)
+        sprintf("%s - %s %s", analysis_ui_text("Items", language), analysis_ui_text("Subfactor", language), state$active_factor)
       } else {
-        "Items"
+        analysis_ui_text("Items", language)
       },
-      c("binary", "ordered", "continuous")
+      c("binary", "ordered", "continuous"),
+      language = language
     ),
-    checkboxInput("reliability_subfactor_enabled", "Subfactor", value = state$subfactor_enabled),
+    checkboxInput("reliability_subfactor_enabled", analysis_ui_text("Subfactor", language), value = state$subfactor_enabled),
     div(
       class = "reliability-factor-nav",
       if (isTRUE(state$subfactor_enabled) && state$active_factor > 1L) {
-        actionButton("reliability_factor_prev", "Previous subfactor", class = "btn-default btn-sm reliability-factor-nav-button")
+        actionButton("reliability_factor_prev", analysis_ui_text("Previous subfactor", language), class = "btn-default btn-sm reliability-factor-nav-button")
       },
       if (isTRUE(state$subfactor_enabled)) {
-        actionButton("reliability_factor_next", "Next subfactor", class = "btn-default btn-sm reliability-factor-nav-button")
+        actionButton("reliability_factor_next", analysis_ui_text("Next subfactor", language), class = "btn-default btn-sm reliability-factor-nav-button")
       }
     )
   )
 }
 
 reliability_setup_panel <- function(state) {
+  language <- normalize_app_language(state$language %||% statedu_initial_language())
   div(
     class = "frequencies-setup-grid reliability-setup-grid",
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
-      analysis_field_label_tag("Variables"),
+      analysis_field_label_tag("Variables", language = language),
       analysis_transfer_listbox_input("reliability_available", state$available_items, selected = state$available_selected, size = 17)
     ),
     div(
@@ -94,8 +100,8 @@ reliability_setup_panel <- function(state) {
       ),
       div(
         class = "analysis-order-actions reliability-order-actions",
-        actionButton("reliability_move_up", "Up", class = "btn-default btn-sm"),
-        actionButton("reliability_move_down", "Down", class = "btn-default btn-sm")
+        actionButton("reliability_move_up", analysis_ui_text("Up", language), class = "btn-default btn-sm"),
+        actionButton("reliability_move_down", analysis_ui_text("Down", language), class = "btn-default btn-sm")
       )
     ),
     div(
@@ -115,7 +121,8 @@ reliability_setup_panel <- function(state) {
             value = state$ordinal,
             tooltip = "Force ordinal reliability coefficients from a polychoric correlation matrix. Use this for ordinal response scales."
           )
-        )
+        ),
+        language = language
       ),
       analysis_option_group(
         "Item diagnostics",
@@ -132,7 +139,8 @@ reliability_setup_panel <- function(state) {
             value = state$item_total_correlation,
             tooltip = "Report corrected item-total correlation and full item-total correlation for each item."
           )
-        )
+        ),
+        language = language
       )
     )
   )

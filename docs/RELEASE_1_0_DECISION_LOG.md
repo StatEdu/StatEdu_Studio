@@ -1,8 +1,8 @@
 # StatEdu Studio 1.0 Decision Log
 
-Last reviewed: 2026-06-25
+Last reviewed: 2026-06-28
 
-Current version: 1.0.0
+Current version: 1.0.1
 
 This file records release decisions that must be made before changing the project from the 0.9.x stabilization line to a public 1.0 release. It is intentionally separate from feature planning so stabilization work does not drift into new product scope.
 
@@ -18,8 +18,8 @@ This file records release decisions that must be made before changing the projec
 |---|---|---|---|
 | Electron package | Whether the packaged Windows build passes full unpacked-output smoke checks | Final 1.0 Electron package was rebuilt and passed full smoke and lifecycle smoke; packaged browser QA confirmed startup, import, and one analysis workflow. Native save-dialog HTML/PDF file creation still needs manual confirmation. | Block public 1.0 installer until native save-dialog export QA is complete |
 | Electron naming | Whether 0.9.x beta packaging names are replaced with final 1.0 names across app display name, package metadata, installer artifact, shortcut name, executable resource strings, and smoke-test expectations | Source metadata now uses final 1.0 package names; generated output now uses non-beta naming and passed `scripts/smoke_electron_release.ps1`. | Do not publish public 1.0 installer until generated output uses final non-beta naming; this naming gate passed for the current 1.0.0 package |
-| DOI | Whether `10.22934/statedu.studio` is registered and resolves to `https://studio.statedu.com` | DOI/homepage infrastructure is not built yet; README, CITATION.cff, and About no longer publish a DOI citation line | Block public citation claim |
-| Website | Whether `studio.statedu.com` is live and points to the product site | Homepage infrastructure is not built yet | Block public website claim |
+| DOI | Whether `10.22934/statedu.studio` is registered and resolves to the StatEdu Studio citation landing page | DOI registration is active and resolves at `https://doi.org/10.22934/statedu.studio`; README, CITATION.cff, and About may publish the DOI citation line | DOI citation claim allowed after final smoke check |
+| Website | Whether `studio.statedu.com` is live and points to the product site | Initial product/citation landing page is live; full commercial homepage remains deferred to the website workstream | Public website claim allowed for the citation/product landing page only |
 | Free/Pro/Latent gates | Whether edition gates are implemented for 1.0 or deferred | Deferred for 1.0; do not add edition gates during the stabilization freeze | Do not claim gated editions |
 | License server | Whether activation, validation, device management, and grace-period flows are implemented for 1.0 or deferred | Deferred for 1.0; license activation remains outside the 1.0 stabilization scope | Do not claim license activation |
 | Update system | Whether in-app update checks and installer handoff are implemented for 1.0 or deferred | Deferred for 1.0; in-app update checks remain outside the 1.0 stabilization scope | Do not claim in-app updates |

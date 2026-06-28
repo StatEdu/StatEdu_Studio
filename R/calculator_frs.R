@@ -153,13 +153,18 @@ frs_result <- function(data, selected, lipid_unit = "mg_dl") {
   result
 }
 
-frs_calculator_tab_panel <- function() {
+frs_calculator_tab_panel <- function(language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   tabPanel(
     "FRS",
     value = "calculator_frs",
     div(
       class = "page-shell",
-      div(class = "app-heading", h1("Framingham Risk Score Calculator"), div("Select variables and add frs_score, frs_cvd10, frs_cvd10_group, and frs_heart_age to the current data.", class = "app-subtitle")),
+      div(
+        class = "app-heading",
+        h1(statedu_text(language, "Framingham Risk Score Calculator", statedu_utf8("4672616d696e6768616d20ec9c84ed9798eb8f8420eab384ec82b0eab8b0"))),
+        div(statedu_text(language, "Select variables and add frs_score, frs_cvd10, frs_cvd10_group, and frs_heart_age to the current data.", statedu_utf8("ebb380ec8898eba5bc20ec84a0ed839ded9598eab3a0206672735f73636f72652c206672735f63766431302c206672735f63766431305f67726f75702c206672735f68656172745f616765eba5bc20ed9884ec9eac20eb8db0ec9db4ed84b0ec979020ecb694eab080ed95a9eb8b88eb8ba42e")), class = "app-subtitle")
+      ),
       div(
         class = "workspace-panel frequencies-workspace-panel metabolic-calculator-workspace",
         style = "min-width:980px;overflow-x:auto;",
@@ -170,8 +175,8 @@ frs_calculator_tab_panel <- function() {
           class = "analysis-action-row calculator-action-row",
           div(
             class = "calculator-action-row-controls",
-            actionButton("run_frs_calculator", "Calculate", class = "btn btn-primary"),
-            downloadButton("download_frs_calculator", "Download CSV", class = "btn btn-default")
+            actionButton("run_frs_calculator", statedu_ui_label("calculate", language), class = "btn btn-primary"),
+            downloadButton("download_frs_calculator", statedu_ui_label("download_csv", language), class = "btn btn-default")
           )
         ),
         uiOutput("frs_calculator_summary"),
@@ -181,38 +186,39 @@ frs_calculator_tab_panel <- function() {
   )
 }
 
-frs_setup_ui <- function(file, data, variable_info, input) {
-  if (is.null(file)) return(setup_empty_message("Load a data file in the Data tab before using the FRS calculator."))
+frs_setup_ui <- function(file, data, variable_info, input, language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
+  if (is.null(file)) return(setup_empty_message(statedu_text(language, "Load a data file in the Data tab before using the FRS calculator.", statedu_utf8("eb8db0ec9db4ed84b020ed83adec9790ec849c20eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a820ed9b842046525320eab384ec82b0eab8b0eba5bc20ec82acec9aa9ed9598ec84b8ec9a942e")), language = language))
   choices <- names(data %||% data.frame())
   specs <- frs_variable_specs()
   available_items <- analysis_variable_items(choices, variable_info, character(0))
   variable_inputs <- lapply(seq_len(nrow(specs)), function(index) {
     id <- specs$id[[index]]
-    selectInput(paste0("frs_", id), specs$label[[index]], choices = c("Select variable" = "", choices), selected = isolate(input[[paste0("frs_", id)]]) %||% "", width = "100%")
+    selectInput(paste0("frs_", id), specs$label[[index]], choices = c(stats::setNames("", statedu_ui_label("select_variable", language)), choices), selected = isolate(input[[paste0("frs_", id)]]) %||% "", width = "100%")
   })
   div(
     class = "frequencies-setup-grid metabolic-setup-grid",
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
-      analysis_field_label_tag("Variables"),
+      analysis_field_label_tag("Variables", language = language),
       analysis_transfer_listbox_input("frs_available", available_items, selected = isolate(input$frs_available), size = 17)
     ),
     div(class = "analysis-transfer-controls hint8-transfer-spacer"),
-      div(class = "analysis-transfer-column analysis-transfer-panel metabolic-target-panel frs-target-panel", analysis_field_label_tag("FRS variables"), div(class = "metabolic-variable-input-grid", variable_inputs)),
+      div(class = "analysis-transfer-column analysis-transfer-panel metabolic-target-panel frs-target-panel", analysis_field_label_tag("FRS variables", language = language), div(class = "metabolic-variable-input-grid", variable_inputs)),
     div(
       class = "analysis-options-column analysis-options-panel metabolic-reference-panel frs-reference-panel",
-      div(class = "analysis-option-title", "Units"),
+      div(class = "analysis-option-title", statedu_ui_label("units", language)),
       div(
         class = "frs-unit-control",
         selectInput(
           "frs_lipid_unit",
-          "Lipid unit",
+          statedu_ui_label("lipid_unit", language),
           choices = c("mg/dL" = "mg_dl", "mmol/L" = "mmol_l"),
           selected = isolate(frs_lipid_unit(input)),
           width = "100%"
         )
       ),
-      div(class = "analysis-option-title", "Coding"),
+      div(class = "analysis-option-title", statedu_ui_label("coding", language)),
       tags$table(
         class = "hint8-initial-table",
         tags$tbody(
@@ -224,7 +230,7 @@ frs_setup_ui <- function(file, data, variable_info, input) {
           tags$tr(tags$td("SBP"), tags$td("mmHg"))
         )
       ),
-      div(class = "analysis-option-title frs-output-title", "Outputs"),
+      div(class = "analysis-option-title frs-output-title", statedu_ui_label("outputs", language)),
       tags$table(
         class = "hint8-initial-table",
         tags$tbody(
@@ -238,15 +244,17 @@ frs_setup_ui <- function(file, data, variable_info, input) {
   )
 }
 
-register_frs_calculator_handlers <- function(input, output, session, dataset_fn, current_data_file_fn, variable_info_fn, add_calculated_variable_fn) {
+register_frs_calculator_handlers <- function(input, output, session, dataset_fn, current_data_file_fn, variable_info_fn, add_calculated_variable_fn, language_fn = NULL) {
   output$frs_loaded_message <- renderText({
+    statedu_current_language(language_fn)
     file <- current_data_file_fn()
     metabolic_loaded_message_text(file, if (is.null(file)) NULL else dataset_fn())
   })
   output$frs_calculator_setup <- renderUI({
+    language <- statedu_current_language(language_fn)
     file <- current_data_file_fn()
     data <- if (is.null(file)) NULL else dataset_fn()
-    frs_setup_ui(file, data, if (is.null(file)) NULL else variable_info_fn(), input)
+    frs_setup_ui(file, data, if (is.null(file)) NULL else variable_info_fn(), input, language = language)
   })
   observeEvent(input$frs_available, {
     picked <- utils::tail(as.character(input$frs_available %||% ""), 1)
@@ -258,8 +266,9 @@ register_frs_calculator_handlers <- function(input, output, session, dataset_fn,
     if (!is.na(empty_index)) updateSelectInput(session, paste0("frs_", names(selected)[[empty_index]]), selected = picked)
   }, ignoreInit = TRUE)
   result <- eventReactive(input$run_frs_calculator, {
+    language <- statedu_current_language(language_fn)
     if (is.null(current_data_file_fn())) {
-      showNotification("Load a data file before calculating FRS.", type = "warning", duration = 5)
+      showNotification(statedu_text(language, "Load a data file before calculating FRS.", statedu_utf8("465253eba5bc20eab384ec82b0ed9598eab8b020eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e")), type = "warning", duration = 5)
       return(NULL)
     }
     tryCatch({
@@ -268,7 +277,7 @@ register_frs_calculator_handlers <- function(input, output, session, dataset_fn,
       add_calculated_variable_fn("frs_cvd10", result_data[["frs_cvd10"]], var_label = "Cardiovascular disease 10 year risk", measurement = "continuous")
       add_calculated_variable_fn("frs_cvd10_group", result_data[["frs_cvd10_group"]], var_label = "CVD 10 year risk group", measurement = "category")
       add_calculated_variable_fn("frs_heart_age", result_data[["frs_heart_age"]], var_label = "Heart age", measurement = "continuous")
-      showNotification("frs_score, frs_cvd10, frs_cvd10_group, and frs_heart_age were added to the current data.", type = "message", duration = 5)
+      showNotification(statedu_text(language, "frs_score, frs_cvd10, frs_cvd10_group, and frs_heart_age were added to the current data.", statedu_utf8("6672735f73636f72652c206672735f63766431302c206672735f63766431305f67726f75702c206672735f68656172745f616765eab08020ed9884ec9eac20eb8db0ec9db4ed84b0ec979020ecb694eab080eb9098ec9788ec8ab5eb8b88eb8ba42e")), type = "message", duration = 5)
       result_data
     }, error = function(error) {
       showNotification(conditionMessage(error), type = "warning", duration = 6)
@@ -276,6 +285,7 @@ register_frs_calculator_handlers <- function(input, output, session, dataset_fn,
     })
   }, ignoreInit = TRUE)
   output$frs_calculator_summary <- renderUI({
+    statedu_current_language(language_fn)
     data <- result()
     if (is.null(data)) return(NULL)
     div(class = "empty-message", div(sprintf("Calculated FRS outputs for %s rows. The variables are available in analysis menus.", nrow(data))))

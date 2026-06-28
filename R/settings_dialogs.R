@@ -224,22 +224,37 @@ normalize_settings_save_path <- function(path) {
   paste0(path, ".studio")
 }
 
-save_settings_file <- function() {
+settings_save_initial_dir <- function(initial_dir = NULL) {
+  initial_dir <- as.character(initial_dir %||% "")
+  if (!nzchar(initial_dir)) {
+    return("")
+  }
+  initial_dir <- normalizePath(initial_dir, winslash = "/", mustWork = FALSE)
+  if (dir.exists(initial_dir)) initial_dir else ""
+}
+
+save_settings_file <- function(initial_dir = NULL) {
+  initial_dir <- settings_save_initial_dir(initial_dir)
   path <- tryCatch(
     {
       if (requireNamespace("tcltk", quietly = TRUE)) {
         parent <- topmost_tk_parent()
         on.exit(try(tcltk::tkdestroy(parent), silent = TRUE), add = TRUE)
-        as.character(tcltk::tkgetSaveFile(
+        args <- list(
           parent = parent,
           title = "Save StatEdu Studio Settings",
           initialfile = "",
           defaultextension = ".studio",
           filetypes = "{{StatEdu Studio Settings} {.studio}}"
-        ))
+        )
+        if (nzchar(initial_dir)) {
+          args$initialdir <- initial_dir
+        }
+        as.character(do.call(tcltk::tkgetSaveFile, args))
       } else if (.Platform$OS.type == "windows") {
+        default_path <- if (nzchar(initial_dir)) file.path(initial_dir, "") else ""
         utils::choose.files(
-          default = "",
+          default = default_path,
           caption = "Save StatEdu Studio Settings",
           multi = FALSE,
           filters = matrix(c("StatEdu Studio Settings", "*.studio"), ncol = 2, byrow = TRUE)

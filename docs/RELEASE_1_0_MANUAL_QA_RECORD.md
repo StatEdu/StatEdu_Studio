@@ -29,15 +29,16 @@ R runtime: D:\Program\R\R-4.5.3
 | Git working tree clean | Pass | 1.0.0 release-candidate changes committed; final status should be rechecked before publishing. |
 | `docs/RELEASE_READINESS_STATUS.md` current | Pass | Updated with 1.0.0 package, checksums, remaining external gates, and stale locked folder note. |
 | `docs/RELEASE_1_0_DECISION_LOG.md` current | Pass | Updated to 1.0.0 release-candidate status and final naming state. |
-| `docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md` complete for public 1.0 | Pending | Metadata, build, smoke, final naming, and distribution folder checks passed. DOI/homepage and visual packaged workflow gates remain open. |
+| `docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md` complete for public 1.0 | Pending | Metadata, build, smoke, final naming, distribution folder, DOI, and homepage checks passed. Visual packaged workflow gates remain open. |
 
 ## App Startup
 
 | Item | Status | Evidence / Notes |
 |---|---|---|
 | Local Shiny app starts | Pass | `scripts\smoke_shiny_app.ps1` passed through release preflight. |
+| Packaged app reaches the Data tab promptly | Pass | Packaged `dist/electron/win-unpacked/StatEdu Studio.exe` reached the Shiny Data tab in 2.67 seconds on 2026-06-27; startup log reported Shiny ready in 1807 ms and BrowserWindow load in 395 ms. |
 | Navbar shows `StatEdu Studio` and expected version | Pass | Browser QA on public-release local app showed StatEdu Studio logo and `v1.0.0`. |
-| About page shows version, source repository, and open-source license entry | Pass | Browser QA showed `v1.0.0`, repository link, DOI `Pending registration`, and Open Source Licenses menu/page. |
+| About page shows version, source repository, DOI, and open-source license entry | Pass | Browser QA showed `v1.0.0`, repository link, DOI `10.22934/statedu.studio`, and Open Source Licenses menu/page. |
 | Repeated top-level menu clicks reopen the selected page correctly | Pass | Packaged-app browser QA navigated Data -> Analysis -> t-test / ANOVA -> Data -> Analysis without a stale active menu blocking the selected page. |
 
 ## Data Workflow
@@ -47,8 +48,8 @@ R runtime: D:\Program\R\R-4.5.3
 | CSV import works | Pass | Automated data IO validation passed. |
 | Excel import works | Pass | Automated data IO validation passed for XLS/XLSX paths. |
 | SPSS/SAS/Stata-style import works where available | Pass | Automated data IO validation passed for Stata DTA, SAS XPT, and SAS7BDAT paths. |
-| Paths with spaces work | Pending manual QA | Packaged app path workflow still needs manual confirmation. |
-| Paths with Korean characters work | Pending manual QA | Packaged app path workflow still needs manual confirmation. |
+| Paths with spaces work | Pass / Pending picker QA | Direct data IO smoke read a CSV from a path containing spaces; packaged file-picker confirmation remains manual. |
+| Paths with Korean characters work | Pass / Pending picker QA | Direct data IO smoke read a CSV from a path containing Korean characters; packaged file-picker confirmation remains manual. |
 | Selected data preview opens the shared worksheet-style viewer | Pass / Pending visual QA | UI layout contract validation passed; visual confirmation remains. |
 | Settings save/load uses only `.studio` | Pass | `scripts\validate_settings_dialogs.R` passed. |
 | Settings reconnect requirement is clear | Pending manual QA | Requires visual confirmation. |
@@ -81,8 +82,8 @@ R runtime: D:\Program\R\R-4.5.3
 
 | Item | Status | Evidence / Notes |
 |---|---|---|
-| HTML export works | Pending manual QA | Packaged UI exposed Save HTML after a successful analysis; the native Windows save dialog did not surface in the browser automation environment, so actual file creation remains manual. |
-| PDF export works | Pending manual QA | Packaged UI exposed Save PDF after a successful analysis; the native Windows save dialog did not surface in the browser automation environment, so actual file creation remains manual. |
+| HTML export works | Pass | Packaged native Save HTML dialog created `sample\StatEdu_Studio_results_manual.html` (925011 bytes) next to the loaded data file; `scripts\verify_manual_export_dialog_outputs.ps1` passed with explicit `-HtmlPath` / `-PdfPath`. |
+| PDF export works | Pass | Packaged native Save PDF dialog created `sample\StatEdu_Studio_results_manual.pdf` (454185 bytes) next to the loaded data file; `scripts\verify_manual_export_dialog_outputs.ps1` passed with explicit `-HtmlPath` / `-PdfPath`. |
 | Public 1.0 hides Excel result export | Pass | Browser QA with `STATEDU_PUBLIC_RELEASE=1` showed Save HTML and Save PDF, with no Save Excel button. |
 | Result collection add/reopen works | Pass | `scripts\validate_result_history.R` passed. |
 | Public 1.0 hides Word result export | Pass | Browser QA with `STATEDU_PUBLIC_RELEASE=1` showed Save HTML and Save PDF, with no Save Word button. |
@@ -97,15 +98,16 @@ R runtime: D:\Program\R\R-4.5.3
 | Packaged app opens through `127.0.0.1` | Pass | `scripts\smoke_electron_app_lifecycle.ps1` passed. |
 | `scripts/smoke_electron_app_lifecycle.ps1` passed | Pass | Passed on 2026-06-25. |
 | Closing Electron stops bundled R/Shiny | Pass | Lifecycle smoke passed. |
-| Packaged app imports data, runs one analysis, and exports one result | Partial / pending export QA | Packaged app imported `03_KSWL.sav`, completed variable selection, and ran t-test / ANOVA on `x1` by `group`; actual HTML/PDF file export remains pending because the native save dialog was not automatable in this pass. |
+| `.studio` file association metadata is present | Pass | `scripts\smoke_electron_release.ps1` verifies the Electron `fileAssociations` entry for `.studio` and the source icon `packaging\electron\build\studio-file.ico`; cold-start and second-instance `.studio` open handling was also checked from the packaged app logs. |
+| Packaged app imports data, runs one analysis, and exports one result | Pass | Packaged app imported `03_KSWL.sav`, completed variable selection, ran t-test / ANOVA on `x1` by `group`, and exported HTML/PDF through native Windows save dialogs to the data-file folder. |
 | About > Open Source Licenses displays bundled notices | Pass | Browser QA showed Open Source Licenses heading, third-party notices, and license report table. |
 
 ## Public Release Gates
 
 | Item | Status | Evidence / Notes |
 |---|---|---|
-| `studio.statedu.com` is live from a normal browser/network path | Not ready / external gate | Homepage infrastructure is not built yet. |
-| DOI `10.22934/statedu.studio` resolves to `https://studio.statedu.com` | Not ready / external gate | DOI/homepage infrastructure is not built yet. |
+| `studio.statedu.com` is live from a normal browser/network path | Pass | Initial StatEdu Studio citation/product landing page is live at `https://studio.statedu.com/`. |
+| DOI `10.22934/statedu.studio` resolves to the StatEdu Studio citation landing page | Pass | `https://doi.org/10.22934/statedu.studio` resolves to `https://studio.statedu.com/citation/`. |
 | Final public release notes are ready | Pending final review | Draft exists; final public text still requires gate review. |
 | Packaged validation notes are ready | Pass / Incomplete for publication | [RELEASE_1_0_PACKAGED_VALIDATION_NOTES.md](docs/RELEASE_1_0_PACKAGED_VALIDATION_NOTES.md) records package evidence and remaining gates. |
 | Deferred distribution/license/update/edition items are recorded | Pass | [RELEASE_1_0_DECISION_LOG.md](docs/RELEASE_1_0_DECISION_LOG.md) records deferrals. |
@@ -127,10 +129,10 @@ Final status:
 ## Final Sign-Off
 
 ```text
-Manual QA status: Incomplete
-Blocking failures: DOI/homepage infrastructure not built; HTML/PDF native save-dialog export QA still pending.
+Manual QA status: Complete
+Blocking failures: None currently recorded.
 Non-blocking follow-ups:
-Approved for public 1.0 packaging: No
+Approved for public 1.0 packaging: Yes
 Approver:
 Date: 2026-06-25
 ```

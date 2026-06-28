@@ -9,7 +9,8 @@ register_longitudinal_handlers <- function(
   variable_table_fn,
   labels_fn,
   category_table_fn,
-  mark_settings_dirty
+  mark_settings_dirty,
+  app_language_fn = NULL
 ) {
   longitudinal_outcome <- reactiveVal(character(0))
   longitudinal_id <- reactiveVal(character(0))
@@ -161,10 +162,11 @@ register_longitudinal_handlers <- function(
   }
 
   output$longitudinal_setup <- renderUI({
+    language <- statedu_current_language(app_language_fn)
     longitudinal_setup_revision()
     selected <- as.character(selected_names_fn() %||% character(0))
     if (length(selected) == 0) {
-      return(setup_empty_message("Complete Step 2 in the Data tab before setting up longitudinal / panel models."))
+      return(setup_empty_message("Complete Step 2 in the Data tab before setting up longitudinal / panel models.", language = language))
     }
 
     sync_current_variables()
@@ -203,7 +205,8 @@ register_longitudinal_handlers <- function(
       ipw_auxiliary = isolate(input$longitudinal_ipw_auxiliary %||% character(0)),
       weight_type = isolate(input$longitudinal_weight_type %||% longitudinal_default_weight_type(current_model_type, has_weight)),
       weight_trim = isolate(input$longitudinal_weight_trim %||% "none"),
-      options_tab = isolate(input$longitudinal_options_tab %||% "Model")
+      options_tab = isolate(input$longitudinal_options_tab %||% "Model"),
+      language = language
     )
     longitudinal_setup_panel(state, setup_status_message(TRUE, TRUE))
   })
@@ -251,7 +254,8 @@ register_longitudinal_handlers <- function(
     )),
     variable_table_fn = variable_table_fn,
     labels_fn = labels_fn,
-    category_table_fn = category_table_fn
+    category_table_fn = category_table_fn,
+    language_fn = app_language_fn
   )
 
   observeEvent(input$longitudinal_available_active, {

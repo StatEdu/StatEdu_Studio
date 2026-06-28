@@ -250,10 +250,11 @@ register_settings_reset_handler <- function(
   calculated_variables,
   renamed_variables = NULL,
   user_missing_rules = NULL,
-  pending_settings,
-  reset_setup_inputs_fn,
-  go_data_step_fn,
-  mark_settings_clean
+    pending_settings,
+    reset_setup_inputs_fn,
+    go_data_step_fn,
+    mark_settings_clean,
+    language_fn = statedu_initial_language
 ) {
   reset_session_settings <- function() {
     start <- Sys.time()
@@ -293,7 +294,14 @@ register_settings_reset_handler <- function(
         mark_settings_clean()
       }, once = TRUE)
     }, once = TRUE)
-    showNotification("Settings were reset.", type = "message")
+    showNotification(
+      statedu_text(
+        language_fn(),
+        "Settings were reset.",
+        statedu_utf8("ec84a4eca095ec9db420ecb488eab8b0ed9994eb9098ec9788ec8ab5eb8b88eb8ba42e")
+      ),
+      type = "message"
+    )
   }
 
   observeEvent(input$reset_settings_data, {
@@ -311,7 +319,8 @@ register_settings_load_handler <- function(
   current_data_file_fn,
   restored_variable_info_fn,
   mark_settings_clean,
-  clear_results_fn = NULL
+  clear_results_fn = NULL,
+  language_fn = statedu_initial_language
 ) {
   apply_settings_object <- function(settings, settings_path = NULL) {
     start <- Sys.time()
@@ -331,11 +340,32 @@ register_settings_load_handler <- function(
       easyflow_log_timing("apply_settings_object flushed", start, sprintf("file=%s", basename(as.character(settings_path %||% ""))))
     }, once = TRUE)
     if (!is.null(current_data_file_fn())) {
-      showNotification("Settings and data file loaded.", type = "message")
+      showNotification(
+        statedu_text(
+          language_fn(),
+          "Settings and data file loaded.",
+          statedu_utf8("ec84a4eca095eab3bc20eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec9994ec8ab5eb8b88eb8ba42e")
+        ),
+        type = "message"
+      )
     } else if (!is.null(restored_variable_info_fn())) {
-      showNotification("Settings loaded. This older settings file does not include the data file.", type = "warning")
+      showNotification(
+        statedu_text(
+          language_fn(),
+          "Settings loaded. This older settings file does not include the data file.",
+          statedu_utf8("ec84a4eca095ec9d8420ebb688eb9facec9994ec8ab5eb8b88eb8ba42e20ec9db420ec9db4eca08420ec84a4eca09520ed8c8cec9dbcec9790eb8a9420eb8db0ec9db4ed84b020ed8c8cec9dbcec9db420ed8faced95a8eb9098ec96b420ec9e88eca78020ec958aec8ab5eb8b88eb8ba42e")
+        ),
+        type = "warning"
+      )
     } else {
-      showNotification("Settings loaded.", type = "message")
+      showNotification(
+        statedu_text(
+          language_fn(),
+          "Settings loaded.",
+          statedu_utf8("ec84a4eca095ec9d8420ebb688eb9facec9994ec8ab5eb8b88eb8ba42e")
+        ),
+        type = "message"
+      )
     }
   }
 
@@ -359,6 +389,7 @@ register_settings_load_handler <- function(
 register_settings_save_handler <- function(
   input,
   current_settings_fn,
+  current_data_file_fn = NULL,
   sync_table_state_fn,
   collect_var_label_inputs_fn,
   merge_var_label_overrides_fn,
@@ -366,10 +397,24 @@ register_settings_save_handler <- function(
   var_label_overrides_fn,
   category_label_values,
   category_label_table_data_fn,
-  mark_settings_clean
+  mark_settings_clean,
+  language_fn = statedu_initial_language
 ) {
+  current_data_file_directory <- function() {
+    if (!is.function(current_data_file_fn)) {
+      return("")
+    }
+    file <- current_data_file_fn()
+    path <- if (is.list(file)) as.character(file$path %||% "") else ""
+    if (!nzchar(path)) {
+      return("")
+    }
+    directory <- dirname(normalizePath(path, winslash = "/", mustWork = FALSE))
+    if (dir.exists(directory)) directory else ""
+  }
+
   save_settings_to_file <- function() {
-    settings_path <- save_settings_file()
+    settings_path <- save_settings_file(initial_dir = current_data_file_directory())
     if (is.null(settings_path)) {
       return()
     }
@@ -378,7 +423,14 @@ register_settings_save_handler <- function(
     saved <- write_settings_json_file(settings, settings_path)
     message(sprintf("Saved settings: %s var_label override(s) -> %s", saved$var_label_count, saved$path))
     mark_settings_clean()
-    showNotification("Settings file was saved.", type = "message")
+    showNotification(
+      statedu_text(
+        language_fn(),
+        "Settings file was saved.",
+        statedu_utf8("ec84a4eca09520ed8c8cec9dbcec9db420eca080ec9ea5eb9098ec9788ec8ab5eb8b88eb8ba42e")
+      ),
+      type = "message"
+    )
   }
 
   observeEvent(input$save_settings_request, {

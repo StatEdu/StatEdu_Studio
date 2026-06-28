@@ -13,9 +13,11 @@ regression_setup_state <- function(
   seed_value = NULL,
   show_sr2 = FALSE,
   show_f2 = TRUE,
-  show_vif = TRUE
+  show_vif = TRUE,
+  language = statedu_initial_language()
 ) {
-  bootstrap_choices <- bootstrap_resample_choices()
+  language <- normalize_app_language(language)
+  bootstrap_choices <- bootstrap_resample_choices(language)
   available <- setdiff(
     as.character(available_predictors %||% character(0)),
     unique(c(as.character(ordered_dependents %||% character(0)), as.character(ordered_predictors %||% character(0))))
@@ -43,6 +45,7 @@ regression_setup_state <- function(
     ordered_predictors = ordered_predictors,
     predictor_selected = predictor_selected,
     predictor_list_size = 9,
+    language = language,
     bootstrap_choices = bootstrap_choices,
     current_bootstrap = normalized_bootstrap_resamples(bootstrap_value, bootstrap_choices),
     current_seed = seed_value %||% default_seed(),
@@ -73,6 +76,7 @@ regression_setup_panel_from_state <- function(setup, status_message) {
     ordered_predictors = setup$ordered_predictors,
     predictor_selected = setup$predictor_selected,
     predictor_list_size = setup$predictor_list_size,
+    language = setup$language,
     bootstrap_choices = setup$bootstrap_choices,
     current_bootstrap = setup$current_bootstrap,
     current_seed = setup$current_seed,
@@ -104,6 +108,7 @@ regression_setup_panel <- function(
   ordered_predictors,
   predictor_selected,
   predictor_list_size,
+  language = statedu_initial_language(),
   bootstrap_choices,
   current_bootstrap,
   current_seed,
@@ -111,6 +116,7 @@ regression_setup_panel <- function(
   show_f2 = TRUE,
   show_vif = TRUE
 ) {
+  language <- normalize_app_language(language)
   tagList(
     if (!is.null(status_message)) {
       div(status_message, class = "regression-warning")
@@ -119,7 +125,7 @@ regression_setup_panel <- function(
       class = "regression-setup-grid",
       div(
         class = "analysis-transfer-column analysis-transfer-panel regression-available-panel",
-        analysis_field_label_tag("Variables"),
+        analysis_field_label_tag("Variables", language = language),
         analysis_transfer_listbox_input(
           "available_predictors",
           items = available_items,
@@ -146,7 +152,7 @@ regression_setup_panel <- function(
         class = "regression-target-column",
         div(
           class = "analysis-transfer-column analysis-transfer-panel regression-dependent-panel",
-          analysis_field_label_tag("Dependent variables", "continuous"),
+          analysis_field_label_tag("Dependent variables", "continuous", language = language),
           analysis_transfer_listbox_input(
           "y",
           items = dependent_items,
@@ -155,13 +161,13 @@ regression_setup_panel <- function(
           ),
           div(
             class = "dependent-order-actions",
-            actionButton("move_dependent_up", "Up", class = "btn-default btn-sm"),
-            actionButton("move_dependent_down", "Down", class = "btn-default btn-sm")
+            actionButton("move_dependent_up", analysis_ui_text("Up", language), class = "btn-default btn-sm"),
+            actionButton("move_dependent_down", analysis_ui_text("Down", language), class = "btn-default btn-sm")
           )
         ),
         div(
           class = "analysis-transfer-column analysis-transfer-panel regression-independent-panel",
-          analysis_field_label_tag("Independent variables", c("binary", "category", "ordered", "continuous")),
+          analysis_field_label_tag("Independent variables", c("binary", "category", "ordered", "continuous"), language = language),
           analysis_transfer_listbox_input(
             "predictor_order",
             items = predictor_items,
@@ -170,8 +176,8 @@ regression_setup_panel <- function(
           ),
           div(
             class = "predictor-order-actions",
-            actionButton("move_predictor_up", "Up", class = "btn-default btn-sm"),
-            actionButton("move_predictor_down", "Down", class = "btn-default btn-sm")
+            actionButton("move_predictor_up", analysis_ui_text("Up", language), class = "btn-default btn-sm"),
+            actionButton("move_predictor_down", analysis_ui_text("Down", language), class = "btn-default btn-sm")
           )
         )
       ),
@@ -179,12 +185,12 @@ regression_setup_panel <- function(
         class = "analysis-options-column analysis-options-panel regression-options",
         div(
           class = "analysis-option-group",
-          div(class = "analysis-option-title", "Bootstrap"),
+          div(class = "analysis-option-title", analysis_ui_text("Bootstrap", language)),
           div(
             class = "regression-field",
             selectInput(
               "boot_r",
-              "Number of bootstrap samples",
+              analysis_ui_text("Number of bootstrap samples", language),
               choices = bootstrap_choices,
               selected = current_bootstrap,
               selectize = FALSE
@@ -192,7 +198,7 @@ regression_setup_panel <- function(
           ),
           div(
             class = "regression-field",
-            numericInput("seed", "Seed number", value = current_seed, min = 1, step = 1)
+            numericInput("seed", analysis_ui_text("Seed number", language), value = current_seed, min = 1, step = 1)
           )
         ),
         analysis_option_group(
@@ -200,22 +206,24 @@ regression_setup_panel <- function(
           list(
             list(id = "show_sr2", label = "sr\u00B2", value = isTRUE(show_sr2)),
             list(id = "show_f2", label = "f\u00B2", value = isTRUE(show_f2))
-          )
+          ),
+          language = language
         ),
         analysis_option_group(
           "Collinearity diagnostics",
           list(
             list(id = "show_vif", label = "VIF", value = isTRUE(show_vif))
-          )
+          ),
+          language = language
         )
       )
     ),
     div(
       class = "analysis-action-row regression-action-row",
       if (!is.null(status_message)) {
-        tags$button("Run regression", type = "button", class = "btn btn-primary", disabled = "disabled")
+        tags$button(analysis_ui_text("Run regression", language), type = "button", class = "btn btn-primary", disabled = "disabled")
       } else {
-        actionButton("run", "Run regression", class = "btn-primary")
+        actionButton("run", analysis_ui_text("Run regression", language), class = "btn-primary")
       },
       uiOutput("regression_reset_control"),
       uiOutput("penalized_regression_control"),

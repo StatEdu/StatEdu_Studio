@@ -99,8 +99,10 @@ paired_setup_state <- function(
   mean_sd = FALSE,
   median_iqr = FALSE,
   adjustment = "bonferroni",
-  time_labels = NULL
+  time_labels = NULL,
+  language = statedu_initial_language()
 ) {
+  language <- normalize_app_language(language)
   selected <- as.character(selected_names %||% character(0))
   repeated_groups <- lapply(repeated_groups %||% list(), paired_keep_selected_order, selected = selected)
   repeated_groups <- repeated_groups[lengths(repeated_groups) >= 2L]
@@ -133,15 +135,17 @@ paired_setup_state <- function(
     time_labels = time_labels,
     has_two = any(lengths(repeated_groups) == 2L),
     has_three_plus = any(lengths(repeated_groups) >= 3L),
-    move_disabled = length(selected) == 0
+    move_disabled = length(selected) == 0,
+    language = language
   )
 }
 
-paired_time_label_inputs <- function(time_labels) {
+paired_time_label_inputs <- function(time_labels, language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   labels <- as.character(time_labels %||% paired_rm_time_header_labels(3L))
   div(
     class = "paired-rm-time-labels",
-    div(class = "analysis-option-title", "Repeated variable labels"),
+    div(class = "analysis-option-title", analysis_ui_text("Repeated variable labels", language)),
     lapply(seq_along(labels), function(index) {
       textInput(
         inputId = paste0("paired_time_label_", index),
@@ -154,34 +158,39 @@ paired_time_label_inputs <- function(time_labels) {
 }
 
 paired_setup_panel <- function(state) {
+  language <- normalize_app_language(state$language %||% statedu_initial_language())
   primary_options <- tagList(
     analysis_option_group(
       "Assumption",
-      list(list(id = "paired_assumption_check", label = "Check assumptions", value = state$assumption_check))
+      list(list(id = "paired_assumption_check", label = "Check assumptions", value = state$assumption_check)),
+      language = language
     ),
     analysis_option_group(
       "Categorical",
-      list(list(id = "paired_bowker", label = "Bowker symmetry test", value = state$bowker))
+      list(list(id = "paired_bowker", label = "Bowker symmetry test", value = state$bowker)),
+      language = language
     ),
     analysis_option_group(
       "Effect size",
       list(
         list(id = "paired_effect_size", label = "Effect size", value = state$effect_size),
         list(id = "paired_cohen_d", label = "Cohen's d for paired t-test", value = state$cohen_d)
-      )
+      ),
+      language = language
     ),
     analysis_option_group(
       "Summary",
       list(
         list(id = "paired_mean_sd", label = "M \u00B1 SD", value = state$mean_sd),
         list(id = "paired_median_iqr", label = "Median(Q1~Q3)", value = state$median_iqr)
-      )
+      ),
+      language = language
     )
   )
   repeated_options <- tagList(
     div(
       class = "analysis-option-group analysis-radio-group paired-posthoc-group",
-      div(class = "analysis-option-title", "Post-hoc correction"),
+      div(class = "analysis-option-title", analysis_ui_text("Post-hoc correction", language)),
       radioButtons(
         "paired_adjustment",
         label = NULL,
@@ -189,27 +198,29 @@ paired_setup_panel <- function(state) {
         selected = state$adjustment
       )
     ),
-    paired_time_label_inputs(state$time_labels)
+    paired_time_label_inputs(state$time_labels, language)
   )
   repeated_tab_title <- if (isTRUE(state$has_three_plus)) {
-    "Repeated"
+    analysis_ui_text("Repeated", language)
   } else {
-    tags$span(class = "paired-options-disabled-tab", "Repeated")
+    tags$span(class = "paired-options-disabled-tab", analysis_ui_text("Repeated", language))
   }
   repeated_tab_content <- if (isTRUE(state$has_three_plus)) {
     repeated_options
   } else {
     div(class = "paired-options-disabled-content")
   }
-  options_content <- tabsetPanel(
+  options_content <- analysis_options_tabs_panel(
     id = "paired_options_tabs",
-    type = "tabs",
+    class = "ttest-anova-options paired-options",
     tabPanel(
-      "Options",
+      analysis_ui_text("Options", language),
+      value = "Options",
       div(class = "factor-options-tab-content ttest-anova-options-tab-content paired-options-tab-content", primary_options)
     ),
     tabPanel(
       repeated_tab_title,
+      value = "Repeated",
       div(class = "factor-options-tab-content ttest-anova-options-tab-content paired-options-tab-content", repeated_tab_content)
     )
   )
@@ -217,7 +228,7 @@ paired_setup_panel <- function(state) {
     class = "ttest-anova-setup-grid paired-setup-grid paired-rm-setup-grid",
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
-      analysis_field_label_tag("Variables"),
+      analysis_field_label_tag("Variables", language = language),
       analysis_transfer_listbox_input("paired_available", state$available_items, selected = state$available_selected, size = 17)
     ),
     div(
@@ -226,16 +237,13 @@ paired_setup_panel <- function(state) {
     ),
     div(
       class = "analysis-transfer-column analysis-transfer-panel paired-target-panel paired-rm-target-panel",
-      analysis_field_label_tag("Repeated-measures variables", c("binary", "category", "ordered", "continuous")),
+      analysis_field_label_tag("Repeated-measures variables", c("binary", "category", "ordered", "continuous"), language = language),
       analysis_transfer_listbox_input("paired_pairs", state$repeated_items, selected = state$repeated_selected, size = 16, important_height = TRUE),
-      div(class = "analysis-order-actions paired-order-actions", actionButton("paired_pair_up", "Up", class = "btn-default btn-sm"), actionButton("paired_pair_down", "Down", class = "btn-default btn-sm"))
+      div(class = "analysis-order-actions paired-order-actions", actionButton("paired_pair_up", analysis_ui_text("Up", language), class = "btn-default btn-sm"), actionButton("paired_pair_down", analysis_ui_text("Down", language), class = "btn-default btn-sm"))
     ),
     div(
       class = "ttest-anova-options-column",
-      div(
-        class = "analysis-options-panel ttest-anova-options paired-options analysis-tabbed-options",
-        options_content
-      )
+      options_content
     )
   )
 }

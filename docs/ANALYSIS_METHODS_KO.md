@@ -4,16 +4,16 @@
 
 ## 문서 용도
 
-- User Guide: 데이터 열기, 변수 선택, 분석 실행, 결과 저장 같은 실제 조작 절차를 설명한다.
-- Analyses: 구현된 분석 메뉴, 검정, 통계량, 출력 범위를 목록으로 정리한다.
-- Method Notes: 분석 선택 기준, 가정 진단, 기준값, 경고 해석, 참고문헌을 설명한다.
+- 사용자 안내서: 데이터 열기, 변수 선택, 분석 실행, 결과 저장 같은 실제 조작 절차를 설명한다.
+- 분석: 구현된 분석 메뉴, 검정, 통계량, 출력 범위를 목록으로 정리한다.
+- 방법론 노트: 분석 선택 기준, 가정 진단, 기준값, 경고 해석, 참고문헌을 설명한다.
 
 ## 데이터와 변수 준비
 
 - SPSS SAV, Excel, CSV, DAT 파일을 불러올 수 있다.
 - 원자료 값, 값 라벨, 변수명, 변수 라벨을 함께 확인한다.
 - measurement level은 `continuous`, `ordered`, `binary`, `category`로 정리한다.
-- 자동 코딩 오류 확인, Likert 변수 처리, 총점/평균점수 계산, 변수명 변경, 변수 재코딩 기능을 제공한다.
+- 자동 코딩 오류 확인, Likert 변수 처리, 총점/평균점수 계산, 변수명 변경, 변수 리코딩 기능을 제공한다.
 
 ## 공통 결과 출력
 
@@ -195,9 +195,9 @@
 - public 1.0에서는 HTML, PDF 저장을 지원한다. Excel, Word 결과 저장은 public 1.0에서 숨긴다.
 - 표, 경고, skipped analyses, skipped models, 선택된 분석 방법, 효과크기, 신뢰구간을 함께 저장한다.
 
-## Sample Size, Power, Effect Size 메뉴
+## 표본수, 검정력, 효과크기 메뉴
 
-버전 1.0.0 기준으로 연구계획 계산 메뉴를 제공한다. Sample Size 메뉴는 최소 표본 수와 주어진 표본 수에서의 검정력을 계산하고, Effect Size 메뉴는 표본 수 계산에 투입할 효과크기 또는 변환 가능한 효과크기를 계산한다.
+버전 1.0.0 기준으로 연구계획 계산 메뉴를 제공한다. 표본수 메뉴는 최소 표본 수와 주어진 표본 수에서의 검정력을 계산하고, 효과크기 메뉴는 표본 수 계산에 투입할 효과크기 또는 변환 가능한 효과크기를 계산한다.
 
 ### 공통 출력
 
@@ -208,7 +208,7 @@
 - `Formula / approximation`: 계산에 사용한 공식 또는 근사 방식.
 - `References`: 계산 근거 문헌.
 
-### Sample Size 메뉴 목록
+### 표본수 메뉴 목록
 
 | 메뉴 | 제공 계산 | 주요 입력 |
 |---|---|---|
@@ -232,7 +232,7 @@
 | Cluster Trial | parallel/stepped-wedge cluster trial planning | cluster size, ICC, effect size, number of periods |
 | Precision / CI | mean/proportion/correlation/diagnostic precision | target half-width, confidence level, SD/proportion/prevalence |
 
-### Effect Size 메뉴 목록
+### 효과크기 메뉴 목록
 
 | 메뉴 | 제공 효과크기 |
 |---|---|
@@ -252,4 +252,4 @@
 | GLMM | binary logit OR/log OR/latent d, count log-link IRR/log IRR, Gaussian d |
 | Survival / Cox | hazard ratio and log hazard ratio |
 
-Effect Size 메뉴에서는 분석 결과의 효과를 보고하는 데 직접 쓰기 어려운 단순 계획 규칙, 정밀도 half-width, equivalence margin distance, SEM/CFA complexity score를 제외한다. 이러한 항목은 Sample Size 메뉴의 계획 계산으로 남겨 둔다.
+효과크기 메뉴에서는 분석 결과의 효과를 보고하는 데 직접 쓰기 어려운 단순 계획 규칙, 정밀도 half-width, equivalence margin distance, SEM/CFA complexity score를 제외한다. 이러한 항목은 표본수 메뉴의 계획 계산으로 남겨 둔다.

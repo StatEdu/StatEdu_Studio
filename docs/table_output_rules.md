@@ -15,6 +15,8 @@ These rules apply to every analysis result table in **StatEdu Studio**.
 - Word report export uses B5 paper.
 - PDF and Word tables must fit inside the printable page width with a small left and right safety margin so no table content is clipped.
 - PDF and Word exports should preserve the displayed result-table structure, ordering, and alignment rules from the analysis result screen.
+- Analysis tables should be exported independently. When an analysis has multiple tables, each table keeps its own portrait or landscape decision instead of forcing the whole report into one orientation.
+- Cross-tabulation primary tables use a width-based PDF orientation rule: compact tables remain portrait, while wide primary tables print landscape. Supporting tables such as expected counts remain portrait unless explicitly given their own landscape rule.
 - Each exported table is written to its own worksheet.
 - For Excel exports, cell `A1` contains the table title and is merged across the used table width.
 - The exported table starts on row 3.

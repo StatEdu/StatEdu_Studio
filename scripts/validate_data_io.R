@@ -9,12 +9,19 @@ setwd(repo_root)
 source(file.path(repo_root, "R", "utils.R"))
 source(file.path(repo_root, "R", "data_io.R"))
 
+ko_sex <- statedu_utf8("ec84b1ebb384")
+ko_grade <- statedu_utf8("ed9599eb8584")
+ko_department <- statedu_utf8("ed9884ec9eaceab7bcebacb4ebb680ec849c")
+ko_male <- statedu_utf8("eb8298eca790")
+ko_female <- statedu_utf8("ec97acec9e90")
+
 korean_data <- data.frame(
-  "\uc131\ubcc4" = c("\ub0a8\uc790", "\uc5ec\uc790"),
-  "\ud559\ub144" = c(3, 2),
-  "\ud604\uc7ac\uadfc\ubb34\ubd80\uc11c" = c(1, 3),
+  V1 = c(ko_male, ko_female),
+  V2 = c(3, 2),
+  V3 = c(1, 3),
   check.names = FALSE
 )
+names(korean_data) <- c(ko_sex, ko_grade, ko_department)
 portable_data <- data.frame(
   sex = c("male", "female"),
   grade = c(3, 2),
@@ -32,23 +39,23 @@ stopifnot(identical(names(csv_data), c("x", "y")))
 message("Checking CP949 Korean CSV reads...")
 cp949_path <- tempfile(pattern = "easyflow cp949 csv ", fileext = ".csv")
 cp949_text <- c(
-  "\uc131\ubcc4,\ud559\ub144,\ud604\uc7ac\uadfc\ubb34\ubd80\uc11c",
-  "\ub0a8\uc790,3,1",
-  "\uc5ec\uc790,2,3"
+  paste(c(ko_sex, ko_grade, ko_department), collapse = ","),
+  paste(c(ko_male, "3", "1"), collapse = ","),
+  paste(c(ko_female, "2", "3"), collapse = ",")
 )
 writeBin(iconv(paste(cp949_text, collapse = "\r\n"), from = "UTF-8", to = "CP949", toRaw = TRUE)[[1]], cp949_path)
 cp949_data <- read_input_data(cp949_path, "source.csv", csv_header = TRUE)
 stopifnot(nrow(cp949_data) == 2)
 stopifnot(identical(names(cp949_data), names(korean_data)))
-stopifnot(identical(as.character(cp949_data[["\uc131\ubcc4"]]), korean_data[["\uc131\ubcc4"]]))
+stopifnot(identical(as.character(cp949_data[[ko_sex]]), korean_data[[ko_sex]]))
 
 message("Checking Korean XLSX reads...")
 xlsx_path <- tempfile(pattern = "easyflow korean xlsx ", fileext = ".xlsx")
-openxlsx::write.xlsx(korean_data, xlsx_path, overwrite = TRUE)
+suppressWarnings(openxlsx::write.xlsx(korean_data, xlsx_path, overwrite = TRUE))
 xlsx_data <- read_input_data(xlsx_path, "source.xlsx", csv_header = TRUE)
 stopifnot(nrow(xlsx_data) == 2)
 stopifnot(identical(names(xlsx_data), names(korean_data)))
-stopifnot(identical(as.character(xlsx_data[["\uc131\ubcc4"]]), korean_data[["\uc131\ubcc4"]]))
+stopifnot(identical(as.character(xlsx_data[[ko_sex]]), korean_data[[ko_sex]]))
 
 message("Checking XLSX sheet and start-cell reads...")
 multi_xlsx_path <- tempfile(pattern = "easyflow multi sheet xlsx ", fileext = ".xlsx")
@@ -57,7 +64,7 @@ openxlsx::addWorksheet(workbook, "Notes")
 openxlsx::writeData(workbook, "Notes", data.frame(note = "not data"))
 openxlsx::addWorksheet(workbook, "Data")
 openxlsx::writeData(workbook, "Data", "title row", startCol = 1, startRow = 1, colNames = FALSE)
-openxlsx::writeData(workbook, "Data", korean_data, startCol = 2, startRow = 4)
+suppressWarnings(openxlsx::writeData(workbook, "Data", korean_data, startCol = 2, startRow = 4))
 openxlsx::saveWorkbook(workbook, multi_xlsx_path, overwrite = TRUE)
 stopifnot(identical(excel_sheet_names(multi_xlsx_path, "source.xlsx"), c("Notes", "Data")))
 configured_xlsx_data <- read_input_data(
@@ -79,7 +86,12 @@ preview_xlsx_data <- read_excel_preview(
 )
 stopifnot(nrow(preview_xlsx_data) == 1)
 pending_excel_file <- list(path = multi_xlsx_path, name = "source.xlsx", excel_pending = TRUE)
+stopifnot(isTRUE(valid_pending_excel_file_value(pending_excel_file)))
 stopifnot(is.null(current_data_file_value(NULL, pending_excel_file)))
+invalid_pending_excel_file <- list(path = "", name = "", excel_pending = TRUE)
+stopifnot(!isTRUE(valid_pending_excel_file_value(invalid_pending_excel_file)))
+missing_pending_excel_file <- list(path = file.path(tempdir(), "missing.xlsx"), name = "missing.xlsx", excel_pending = TRUE)
+stopifnot(!isTRUE(valid_pending_excel_file_value(missing_pending_excel_file)))
 
 message("Checking legacy XLS reads...")
 xls_example <- readxl::readxl_example("datasets.xls")

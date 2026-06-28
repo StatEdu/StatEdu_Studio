@@ -64,8 +64,8 @@ generalized_missing_strategy_detail <- function(strategy) {
 
 generalized_mi_outcome_choices <- function() {
   c(
-    "종속변수 관측 행만 사용 (권장)" = "observed",
-    "종속변수 결측까지 대체 - 민감도 분석용" = "impute"
+    "Use rows with observed dependent variable (recommended)" = "observed",
+    "Impute missing dependent variable for sensitivity analysis" = "impute"
   )
 }
 
@@ -78,7 +78,7 @@ generalized_mi_outcome_label <- function(value) {
   value <- generalized_resolve_mi_outcome(value)
   labels <- names(generalized_mi_outcome_choices())
   values <- unname(generalized_mi_outcome_choices())
-  labels[match(value, values)] %||% "종속변수 관측 행만 사용 (권장)"
+  labels[match(value, values)] %||% "Use rows with observed dependent variable (recommended)"
 }
 
 generalized_resolve_mi_count <- function(value, default = 5L, minimum = 1L, maximum = 50L) {

@@ -407,9 +407,15 @@ missing_manual_rules <- function(data, variables, codes) {
   output
 }
 
-missing_values_setup_panel <- function(file, data, variable_info = NULL, labels = character(0), selected_variables = character(0), input = NULL) {
+missing_values_setup_panel <- function(file, data, variable_info = NULL, labels = character(0), selected_variables = character(0), input = NULL, language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
+  options(statedu.app_language = language)
   if (is.null(file) || is.null(data)) {
-    return(setup_empty_message("Load a data file in the Data tab before converting missing values."))
+    return(setup_empty_message(statedu_text(
+      language,
+      "Load a data file in the Data tab before converting missing values.",
+      statedu_utf8("eb8db0ec9db4ed84b020ed83adec9790ec849c20eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420eba8bceca08020ebb688eb9facec98a820ed9b8420eab2b0ecb8a1eab092ec9d8420ebb380ed9998ed9598ec84b8ec9a942e")
+    ), language = language))
   }
   variables <- names(data)
   selected_variables <- intersect(as.character(selected_variables %||% character(0)), variables)
@@ -421,7 +427,7 @@ missing_values_setup_panel <- function(file, data, variable_info = NULL, labels 
     class = "recode-same-setup-grid missing-values-setup-grid",
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
-      analysis_field_label_tag("Variables"),
+      analysis_field_label_tag("Variables", language = language),
       analysis_transfer_listbox_input(
         "missing_values_available",
         items = analysis_variable_items(available, variable_info, labels),
@@ -440,7 +446,7 @@ missing_values_setup_panel <- function(file, data, variable_info = NULL, labels 
     ),
     div(
       class = "analysis-transfer-column analysis-transfer-panel missing-values-selected-panel",
-      analysis_field_label_tag("Variables to convert"),
+      analysis_field_label_tag("Variables to convert", language = language),
       analysis_transfer_listbox_input(
         "missing_values_selected",
         items = analysis_variable_items(selected_variables, variable_info, labels),
@@ -449,8 +455,8 @@ missing_values_setup_panel <- function(file, data, variable_info = NULL, labels 
       ),
       div(
         class = "dependent-order-actions",
-        actionButton("missing_values_up", "Up", class = "btn-default btn-sm"),
-        actionButton("missing_values_down", "Down", class = "btn-default btn-sm")
+        actionButton("missing_values_up", analysis_ui_text("Up", language), class = "btn-default btn-sm"),
+        actionButton("missing_values_down", analysis_ui_text("Down", language), class = "btn-default btn-sm")
       )
     ),
     div(class = "variable-rename-grid-spacer"),
@@ -458,43 +464,59 @@ missing_values_setup_panel <- function(file, data, variable_info = NULL, labels 
       class = "analysis-options-column analysis-options-panel missing-values-options",
       div(
         class = "analysis-option-group",
-        div(class = "analysis-option-title", "Detect candidates"),
+        div(class = "analysis-option-title", analysis_ui_text("Detect candidates", language)),
         div(
           class = "missing-values-option-row",
-          checkboxInput("missing_detect_numeric", "Numeric codes", value = TRUE),
-          checkboxInput("missing_detect_text", "Text / blank codes", value = TRUE)
+          checkboxInput("missing_detect_numeric", analysis_ui_text("Numeric codes", language), value = TRUE),
+          checkboxInput("missing_detect_text", analysis_ui_text("Text / blank codes", language), value = TRUE)
         ),
-        div(class = "analysis-option-title", "Use codes from"),
+        div(class = "analysis-option-title", analysis_ui_text("Use codes from", language)),
         div(
           class = "missing-values-option-row",
-          checkboxInput("missing_use_auto", "Selected detected rows", value = TRUE),
-          checkboxInput("missing_use_manual", "Manual codes below", value = FALSE)
+          checkboxInput("missing_use_auto", analysis_ui_text("Selected detected rows", language), value = TRUE),
+          checkboxInput("missing_use_manual", analysis_ui_text("Manual codes below", language), value = FALSE)
         ),
         textAreaInput(
           "missing_manual_codes",
-          "Manual missing codes",
+          analysis_ui_text("Manual missing codes", language),
           value = "",
           placeholder = "-999\n999\nN/A\n(blank)",
           rows = 7,
           width = "100%"
         ),
-        div(class = "recode-help-text", "Use one code per line. Use (blank) for empty text values.")
+        div(
+          class = "recode-help-text",
+          statedu_text(
+            language,
+            "Use one code per line. Use (blank) for empty text values.",
+            statedu_utf8("ed959c20eca484ec979020ed9598eb8298ec9d9820ecbd94eb939ceba5bc20ec9e85eba0a5ed9598ec84b8ec9a942e20ebb98820ebacb8ec9e9020eab092ec9d802028626c616e6b29eba5bc20ec82acec9aa9ed9598ec84b8ec9a942e")
+          )
+        )
       )
     )
   )
 }
 
-data_editor_missing_panel <- function() {
+data_editor_missing_panel <- function(language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
+  options(statedu.app_language = language)
   div(
     class = "page-shell",
     div(
       class = "app-heading",
-      h1("Auto Missing Values"),
-      div("Detect likely missing-value codes, review them, and mark selected codes as user missing before analysis.", class = "app-subtitle")
+      h1(statedu_text(language, "Auto Missing Values", statedu_utf8("ec9e90eb8f9920eab2b0ecb8a1eab09220ecb298eba6ac"))),
+      div(
+        statedu_text(
+          language,
+          "Detect likely missing-value codes, review them, and mark selected codes as user missing before analysis.",
+          statedu_utf8("eab2b0ecb8a1eab092ec9cbceba19c20ebb3b4ec9db4eb8a9420ecbd94eb939ceba5bc20eab090eca780ed9598eab3a020eab280ed86a0ed959c20eb92a42c20ebb684ec849d20eca08420ec84a0ed839ded959c20ecbd94eb939ceba5bc20ec82acec9aa9ec9e9020eab2b0ecb8a1eab092ec9cbceba19c20eca780eca095ed95a9eb8b88eb8ba42e")
+        ),
+        class = "app-subtitle"
+      )
     ),
     div(
       class = "workspace-panel frequencies-workspace-panel data-editor-workspace",
-      analysis_workspace_heading("Auto missing value detection", "missing_values"),
+      analysis_workspace_heading("Auto missing value detection", "missing_values", language = language),
       analysis_workspace_body(
         "missing_values",
         uiOutput("missing_values_setup"),
@@ -502,8 +524,8 @@ data_editor_missing_panel <- function() {
           class = "analysis-action-row recode-same-action-row missing-values-action-row",
           div(
             class = "missing-values-action-cell",
-            actionButton("mark_user_missing_values", "Mark as user missing", class = "btn btn-primary missing-values-apply-button"),
-            actionButton("convert_missing_values_to_na", "Convert to NA", class = "btn btn-default missing-values-secondary-button")
+            actionButton("mark_user_missing_values", analysis_ui_text("Mark as user missing", language), class = "btn btn-primary missing-values-apply-button"),
+            actionButton("convert_missing_values_to_na", analysis_ui_text("Convert to NA", language), class = "btn btn-default missing-values-secondary-button")
           )
         ),
         uiOutput("missing_values_status"),
@@ -527,20 +549,23 @@ register_missing_value_handlers <- function(
   user_missing_rules_fn = NULL,
   set_user_missing_rules_fn = NULL,
   update_existing_variable_fn,
-  mark_settings_dirty
+  mark_settings_dirty,
+  language_fn = NULL
 ) {
   selected_variables <- reactiveVal(character(0))
   active_list <- reactiveVal(NULL)
   last_message <- reactiveVal(NULL)
 
   output$missing_values_setup <- renderUI({
+    language <- statedu_current_language(language_fn)
     missing_values_setup_panel(
       file = current_data_file_fn(),
       data = tryCatch(dataset_fn(), error = function(e) NULL),
       variable_info = if (is.function(variable_info_fn)) tryCatch(variable_info_fn(), error = function(e) NULL) else NULL,
       labels = if (is.function(labels_fn)) labels_fn() else character(0),
       selected_variables = selected_variables(),
-      input = input
+      input = input,
+      language = language
     )
   })
 
@@ -549,13 +574,14 @@ register_missing_value_handlers <- function(
       input = input,
       output = output,
       prefix = "missing_values",
-      title = "Auto Missing Values Data Viewer",
+      title = "Auto Missing Value Detection Data Viewer",
       dataset_fn = dataset_fn,
       selected_names_fn = selected_names_fn,
       variables_fn = selected_variables,
       variable_table_fn = variable_info_fn,
       labels_fn = if (is.function(labels_fn)) labels_fn else function() character(0),
-      category_table_fn = if (is.function(category_table_fn)) category_table_fn else function() data.frame(check.names = FALSE)
+      category_table_fn = if (is.function(category_table_fn)) category_table_fn else function() data.frame(check.names = FALSE),
+      language_fn = language_fn
     )
   }
 
@@ -702,14 +728,23 @@ register_missing_value_handlers <- function(
   })
 
   output$missing_values_status <- renderUI({
+    language <- statedu_current_language(language_fn)
     file <- current_data_file_fn()
     if (is.null(file)) {
-      return(div(class = "empty-message", div("Load a data file before detecting missing values.")))
+      return(div(class = "empty-message", div(statedu_text(
+        language,
+        "Load a data file before detecting missing values.",
+        statedu_utf8("eab2b0ecb8a1eab09220ed8390eca78020eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e")
+      ))))
     }
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
     variables <- intersect(selected_variables(), names(data %||% data.frame()))
     if (length(variables) == 0) {
-      return(div(class = "empty-message", div("Select variables to detect or manually convert missing-value codes.")))
+      return(div(class = "empty-message", div(statedu_text(
+        language,
+        "Select variables to detect or manually convert missing-value codes.",
+        statedu_utf8("eab2b0ecb8a1eab09220ecbd94eb939ceba5bc20ed8390eca780ed9598eab1b0eb829820eca781eca09120eab2b0ecb8a1ec9cbceba19c20ebb380ed9998ed95a020ebb380ec8898eba5bc20ec84a0ed839ded9598ec84b8ec9a942e")
+      ))))
     }
     data <- data[, variables, drop = FALSE]
     na_summary <- missing_existing_na_summary(data)
@@ -724,18 +759,42 @@ register_missing_value_handlers <- function(
         return(div(
           class = "empty-message",
           div(sprintf(
-            "No coded missing values were detected. Existing NA values are already treated as missing: %s value(s) across %s variable(s).",
+            statedu_text(
+              language,
+              "No coded missing values were detected. Existing NA values are already treated as missing: %s value(s) across %s variable(s).",
+              paste0(statedu_utf8("ecbd94eb94a9eb909c20eab2b0ecb8a1eab092ec9db420ebb09ceab2aceb9098eca78020ec958aec9598ec8ab5eb8b88eb8ba42e20eab8b0eca1b4204e4120eab092ec9d8020ec9db4ebafb820eab2b0ecb8a1ec9cbceba19c20ecb298eba6aceb90a9eb8b88eb8ba43a"), " %s ", statedu_utf8("eab0922c"), " %s ", statedu_utf8("ebb380ec8898"))
+            ),
             na_summary$total,
             length(na_summary$variables)
           )),
           div(class = "small-muted", variable_text)
         ))
       }
-      return(div(class = "empty-message", div("No coded missing values or existing NA values were detected in the current data.")))
+      return(div(class = "empty-message", div(statedu_text(
+        language,
+        "No coded missing values or existing NA values were detected in the current data.",
+        statedu_utf8("ed9884ec9eac20eb8db0ec9db4ed84b0ec9790ec849c20ecbd94eb94a9eb909c20eab2b0ecb8a1eab09220eb9890eb8a9420eab8b0eca1b4204e4120eab092ec9db420ebb09ceab2aceb9098eca78020ec958aec9598ec8ab5eb8b88eb8ba42e")
+      ))))
     }
-    status <- sprintf("%s candidate code(s) detected across %s variable(s). Select rows to convert them to NA.", nrow(table), length(unique(table$variable)))
+    status <- sprintf(
+      statedu_text(
+        language,
+        "%s candidate code(s) detected across %s variable(s). Select rows to convert them to NA.",
+        paste0("%s ", statedu_utf8("ed9b84ebb3b420ecbd94eb939ceab080"), " %s ", statedu_utf8("eab09c20ebb380ec8898ec9790ec849c20ebb09ceab2aceb9098ec9788ec8ab5eb8b88eb8ba42e20ed9689ec9d8420ec84a0ed839ded95b4204e41eba19c20ebb380ed9998ed9598ec84b8ec9a942e"))
+      ),
+      nrow(table),
+      length(unique(table$variable))
+    )
     if (na_summary$total > 0) {
-      status <- sprintf("%s Existing NA values are already missing: %s value(s).", status, na_summary$total)
+      status <- sprintf(
+        statedu_text(
+          language,
+          "%s Existing NA values are already missing: %s value(s).",
+          paste0("%s ", statedu_utf8("eab8b0eca1b4204e4120eab092ec9d8020ec9db4ebafb820eab2b0ecb8a1ec9e85eb8b88eb8ba43a"), " %s ", statedu_utf8("eab092"))
+        ),
+        status,
+        na_summary$total
+      )
     }
     div(class = "recode-same-status", status)
   })
@@ -771,6 +830,7 @@ register_missing_value_handlers <- function(
   })
 
   output$missing_values_message <- renderUI({
+    statedu_current_language(language_fn)
     message <- last_message()
     if (is.null(message)) {
       return(NULL)
@@ -779,6 +839,7 @@ register_missing_value_handlers <- function(
   })
 
   selected_missing_rules <- reactive({
+    language <- statedu_current_language(language_fn)
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
     table <- candidates()
     use_auto <- isTRUE(input$missing_use_auto %||% TRUE)
@@ -788,19 +849,19 @@ register_missing_value_handlers <- function(
     selected <- suppressWarnings(as.integer(selected))
     selected <- selected[is.finite(selected) & selected >= 1 & selected <= nrow(table)]
     if (is.null(data)) {
-      stop("Load a data file before applying missing-value rules.", call. = FALSE)
+      stop(statedu_text(language, "Load a data file before applying missing-value rules.", statedu_utf8("eab2b0ecb8a1eab09220eab79cecb999ec9d8420eca081ec9aa9ed9598eab8b020eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e")), call. = FALSE)
     }
     if (length(variables) == 0) {
-      stop("Select at least one variable to convert.", call. = FALSE)
+      stop(statedu_text(language, "Select at least one variable to convert.", statedu_utf8("ebb380ed9998ed95a020ebb380ec8898eba5bc20ed9598eb829820ec9db4ec838120ec84a0ed839ded9598ec84b8ec9a942e")), call. = FALSE)
     }
     if (!use_auto && !use_manual) {
-      stop("Choose detected rows, manual codes, or both.", call. = FALSE)
+      stop(statedu_text(language, "Choose detected rows, manual codes, or both.", statedu_utf8("eab090eca78020ed96892c20ec8898eb8f9920ecbd94eb939c20eb9890eb8a9420eb919820eb8ba420ec84a0ed839ded9598ec84b8ec9a942e")), call. = FALSE)
     }
     if (use_auto && (is.null(table) || nrow(table) == 0)) {
-      stop("No missing-value candidates are available.", call. = FALSE)
+      stop(statedu_text(language, "No missing-value candidates are available.", statedu_utf8("ec82acec9aa920eab080eb8aa5ed959c20eab2b0ecb8a1eab09220ed9b84ebb3b4eab08020ec9786ec8ab5eb8b88eb8ba42e")), call. = FALSE)
     }
     if (use_auto && length(selected) == 0) {
-      stop("Select at least one candidate row to apply.", call. = FALSE)
+      stop(statedu_text(language, "Select at least one candidate row to apply.", statedu_utf8("eca081ec9aa9ed95a020ed9b84ebb3b420ed9689ec9d8420ed9598eb829820ec9db4ec838120ec84a0ed839ded9598ec84b8ec9a942e")), call. = FALSE)
     }
 
     auto_rules <- if (use_auto && !is.null(table) && nrow(table) > 0 && length(selected) > 0) {
@@ -819,7 +880,7 @@ register_missing_value_handlers <- function(
     }
     rule_sets <- Filter(function(item) is.data.frame(item) && nrow(item) > 0, list(auto_rules, manual_rules))
     if (length(rule_sets) == 0) {
-      stop("Select detected rows or enter manual missing-value codes.", call. = FALSE)
+      stop(statedu_text(language, "Select detected rows or enter manual missing-value codes.", statedu_utf8("eab090eca78020ed9689ec9d8420ec84a0ed839ded9598eab1b0eb829820ec8898eb8f9920eab2b0ecb8a1eab09220ecbd94eb939ceba5bc20ec9e85eba0a5ed9598ec84b8ec9a942e")), call. = FALSE)
     }
     rules <- do.call(rbind, rule_sets)
     rownames(rules) <- NULL
@@ -827,6 +888,7 @@ register_missing_value_handlers <- function(
   })
 
   observeEvent(input$mark_user_missing_values, {
+    language <- statedu_current_language(language_fn)
     rules <- tryCatch(
       selected_missing_rules(),
       shiny.silent.error = function(e) NULL,
@@ -839,7 +901,15 @@ register_missing_value_handlers <- function(
       return()
     }
     if (!is.function(set_user_missing_rules_fn)) {
-      showNotification("User-missing rules are not available in this session.", type = "warning", duration = 5)
+      showNotification(
+        statedu_text(
+          language,
+          "User-missing rules are not available in this session.",
+          statedu_utf8("ec9db420ec84b8ec8598ec9790ec849ceb8a9420ec82acec9aa9ec9e9020eab2b0ecb8a120eab79cecb999ec9d8420ec82acec9aa9ed95a020ec889820ec9786ec8ab5eb8b88eb8ba42e")
+        ),
+        type = "warning",
+        duration = 5
+      )
       return()
     }
     existing <- if (is.function(user_missing_rules_fn)) user_missing_rules_fn() else data.frame(check.names = FALSE)
@@ -850,13 +920,18 @@ register_missing_value_handlers <- function(
     }
     variables <- unique(as.character(rules$variable))
     last_message(sprintf(
-      "Marked %s missing-value rule(s) as user missing for analysis. Original data values are preserved: %s",
+      statedu_text(
+        language,
+        "Marked %s missing-value rule(s) as user missing for analysis. Original data values are preserved: %s",
+        statedu_utf8("ebb684ec849dec9aa920ec82acec9aa9ec9e9020eab2b0ecb8a1eab092ec9cbceba19c202573eab09c20eab79cecb999ec9d8420ed919cec8b9ced9688ec8ab5eb8b88eb8ba42e20ec9b90ebb3b820eb8db0ec9db4ed84b020eab092ec9d8020ec9ca0eca780eb90a9eb8b88eb8ba43a202573")
+      ),
       nrow(rules),
       paste(variables, collapse = ", ")
     ))
   }, ignoreInit = TRUE)
 
   observeEvent(input$convert_missing_values_to_na, {
+    language <- statedu_current_language(language_fn)
     rules <- tryCatch(
       selected_missing_rules(),
       shiny.silent.error = function(e) NULL,
@@ -870,7 +945,15 @@ register_missing_value_handlers <- function(
     }
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
     if (is.null(data)) {
-      showNotification("Load a data file before applying missing-value rules.", type = "warning", duration = 5)
+      showNotification(
+        statedu_text(
+          language,
+          "Load a data file before applying missing-value rules.",
+          statedu_utf8("eab2b0ecb8a1eab09220eab79cecb999ec9d8420eca081ec9aa9ed9598eab8b020eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e")
+        ),
+        type = "warning",
+        duration = 5
+      )
       return()
     }
 
@@ -895,13 +978,22 @@ register_missing_value_handlers <- function(
     }
 
     if (length(changed_variables) == 0) {
-      last_message("No values were changed.")
+      last_message(statedu_text(language, "No values were changed.", statedu_utf8("ebb380eab2bdeb909c20eab092ec9db420ec9786ec8ab5eb8b88eb8ba42e")))
       return()
     }
     if (is.function(mark_settings_dirty)) {
       mark_settings_dirty()
     }
-    last_message(sprintf("Converted %s value(s) to NA across %s variable(s): %s", changed_values, length(changed_variables), paste(changed_variables, collapse = ", ")))
+    last_message(sprintf(
+      statedu_text(
+        language,
+        "Converted %s value(s) to NA across %s variable(s): %s",
+        statedu_utf8("2573eab09c20eab092ec9d84202573eab09c20ebb380ec8898ec9790ec849c204e41eba19c20ebb380ed9998ed9688ec8ab5eb8b88eb8ba43a202573")
+      ),
+      changed_values,
+      length(changed_variables),
+      paste(changed_variables, collapse = ", ")
+    ))
   }, ignoreInit = TRUE)
 
   invisible(TRUE)

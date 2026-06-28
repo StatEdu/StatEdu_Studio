@@ -9,7 +9,8 @@ register_correlation_handlers <- function(
   variable_table_fn,
   category_table_fn,
   labels_fn,
-  mark_settings_dirty
+  mark_settings_dirty,
+  app_language_fn = NULL
 ) {
   correlation_variables <- reactiveVal(character(0))
   active_correlation_list <- reactiveVal(NULL)
@@ -23,13 +24,14 @@ register_correlation_handlers <- function(
   })
 
   output$correlation_setup <- renderUI({
+    language <- statedu_current_language(app_language_fn)
     current_data <- tryCatch(dataset_fn(), error = function(e) NULL)
     if (!is.data.frame(current_data)) {
-      return(setup_empty_message("Reconnect the data file in the Data tab before setting up correlation analysis."))
+      return(setup_empty_message("Reconnect the data file in the Data tab before setting up correlation analysis.", language = language))
     }
     selected <- current_selected()
     if (length(selected) == 0) {
-      return(setup_empty_message("Complete Step 2 in the Data tab before setting up correlation analysis."))
+      return(setup_empty_message("Complete Step 2 in the Data tab before setting up correlation analysis.", language = language))
     }
     correlation_setup_panel(
       correlation_setup_state(
@@ -45,7 +47,8 @@ register_correlation_handlers <- function(
         p_ci = input$correlation_p_ci %||% TRUE,
         significance_levels = input$correlation_significance_levels %||% TRUE,
         scatter_plot = input$correlation_scatter_plot %||% TRUE,
-        matrix_plot = input$correlation_matrix_plot %||% TRUE
+        matrix_plot = input$correlation_matrix_plot %||% TRUE,
+        language = language
       )
     )
   })
@@ -60,7 +63,8 @@ register_correlation_handlers <- function(
     variables_fn = correlation_variables,
     variable_table_fn = variable_table_fn,
     labels_fn = labels_fn,
-    category_table_fn = category_table_fn
+    category_table_fn = category_table_fn,
+    language_fn = app_language_fn
   )
 
   observe({

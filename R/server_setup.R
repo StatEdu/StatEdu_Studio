@@ -1066,12 +1066,14 @@ register_setup_outputs <- function(
   control_names_fn,
   independent_names_fn,
   hierarchical_block3_current_fn,
-  hierarchical_active_block_fn
+  hierarchical_active_block_fn,
+  app_language_fn = NULL
 ) {
   output$regression_setup <- renderUI({
+    language <- statedu_current_language(app_language_fn)
     selected <- as.character(selected_names_fn() %||% character(0))
     if (length(selected) == 0) {
-      return(setup_empty_message("Complete Step 2 in the Data tab before setting up regression."))
+      return(setup_empty_message("Complete Step 2 in the Data tab before setting up regression.", language = language))
     }
 
     setup <- regression_setup_state(
@@ -1087,7 +1089,8 @@ register_setup_outputs <- function(
       seed_value = isolate(input$seed),
       show_sr2 = isolate(input$show_sr2),
       show_f2 = isolate(input$show_f2),
-      show_vif = isolate(input$show_vif)
+      show_vif = isolate(input$show_vif),
+      language = language
     )
 
     regression_setup_panel_from_state(
@@ -1097,9 +1100,10 @@ register_setup_outputs <- function(
   })
 
   output$hierarchical_setup <- renderUI({
+    language <- statedu_current_language(app_language_fn)
     selected <- as.character(selected_names_fn() %||% character(0))
     if (length(selected) == 0) {
-      return(setup_empty_message("Complete Step 2 in the Data tab before setting up regression."))
+      return(setup_empty_message("Complete Step 2 in the Data tab before setting up regression.", language = language))
     }
 
     block1 <- intersect(control_names_fn(), selected)
@@ -1124,7 +1128,8 @@ register_setup_outputs <- function(
       active_block = hierarchical_active_block_fn(),
       show_sr2 = isolate(input$hierarchical_show_sr2),
       show_f2 = isolate(input$hierarchical_show_f2),
-      show_vif = isolate(input$hierarchical_show_vif)
+      show_vif = isolate(input$hierarchical_show_vif),
+      language = language
     )
 
     hierarchical_setup_panel_from_state(

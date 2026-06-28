@@ -7,10 +7,393 @@ sample_size_choice <- function(value, default) {
   as.character(value[[1]])
 }
 
-effect_size_action_button <- function(input_id) {
+sample_size_ui_text <- function(language = statedu_initial_language(), key) {
+  language <- normalize_app_language(language)
+  switch(
+    key,
+    effect_size = statedu_text(language, "Effect size", statedu_utf8("ed9aa8eab3bced81aceab8b0")),
+    calculate = statedu_text(language, "Calculate", statedu_utf8("eab384ec82b0")),
+    inputs = statedu_text(language, "Inputs", statedu_utf8("ec9e85eba0a5")),
+    results = statedu_text(language, "Results", statedu_utf8("eab2b0eab3bc")),
+    method = statedu_text(language, "Method", statedu_utf8("ebb0a9ebb295")),
+    sample_size = statedu_text(language, "Sample Size", statedu_utf8("ed919cebb3b8ec8898")),
+    assumptions_prompt = statedu_text(language, "Enter assumptions and click Calculate.", statedu_utf8("eab080eca095ec9d8420ec9e85eba0a5ed9598eab3a020eab384ec82b0ec9d8420ed81b4eba6aded9598ec84b8ec9a942e")),
+    calculating = statedu_text(language, "Calculating...", statedu_utf8("eab384ec82b020eca4912e2e2e")),
+    stop = statedu_text(language, "Stop", statedu_utf8("eca491eca780")),
+    formula_approximation = statedu_text(language, "Formula / approximation: ", statedu_utf8("eab3b5ec8b9d202f20eab7bcec82ac3a20")),
+    references = statedu_text(language, "References", statedu_utf8("ecb0b8eab3a0ebacb8ed978c")),
+    effectsize_subtitle = statedu_text(language, "Calculate effect-size inputs used by sample size and power analyses.", statedu_utf8("ed9aa8eab3bced81aceab8b020eab384ec82b0ec979020ec82acec9aa9ed95a020ec9e85eba0a5eab092ec9d8420eab384ec82b0ed95a9eb8b88eb8ba42e")),
+    sample_size_subtitle = statedu_text(language, "Calculate required sample size or achieved power from study assumptions.", statedu_utf8("ec97b0eab5ac20eab080eca095ec9cbceba19c20ecb59cec868c20ed919cebb3b820ec889820eb9890eb8a9420eab280eca095eba0a5ec9d8420eab384ec82b0ed95a9eb8b88eb8ba42e")),
+    key
+  )
+}
+
+sample_size_label <- function(language = statedu_initial_language(), label) {
+  language <- normalize_app_language(language)
+  h <- statedu_utf8
+  switch(
+    label,
+    "Design" = statedu_text(language, "Design", h("ec84a4eab384")),
+    "Alpha" = statedu_text(language, "Alpha", h("ec9ca0ec9d98ec8898eca480")),
+    "Power" = statedu_text(language, "Power", h("eab280eca095eba0a5")),
+    "Minimum sample size" = statedu_text(language, "Minimum sample size", h("ecb59cec868c20ed919cebb3b820ec8898")),
+    "Sample size" = statedu_text(language, "Sample size", h("ed919cebb3b820ec8898")),
+    "Total sample size" = statedu_text(language, "Total sample size", h("eca084ecb2b420ed919cebb3b820ec8898")),
+    "Sample size per group" = statedu_text(language, "Sample size per group", h("eca791eb8ba8ebb38420ed919cebb3b820ec8898")),
+    "Participants" = statedu_text(language, "Participants", h("ecb0b8ec97acec9e9020ec8898")),
+    "Participants per group" = statedu_text(language, "Participants per group", h("eca791eb8ba8ebb38420ecb0b8ec97acec9e9020ec8898")),
+    "Pairs" = statedu_text(language, "Pairs", h("ec8c8d20ec8898")),
+    "Number of pairs" = statedu_text(language, "Number of pairs", h("ec8c8d20ec8898")),
+    "Group 1 n" = statedu_text(language, "Group 1 n", h("eca791eb8ba82031206e")),
+    "Group 2 n" = statedu_text(language, "Group 2 n", h("eca791eb8ba82032206e")),
+    "Group 1 mean" = statedu_text(language, "Group 1 mean", h("eca791eb8ba8203120ed8f89eab7a0")),
+    "Group 2 mean" = statedu_text(language, "Group 2 mean", h("eca791eb8ba8203220ed8f89eab7a0")),
+    "Group 1 SD" = statedu_text(language, "Group 1 SD", h("eca791eb8ba8203120ed919ceca480ed8eb8ecb0a8")),
+    "Group 2 SD" = statedu_text(language, "Group 2 SD", h("eca791eb8ba8203220ed919ceca480ed8eb8ecb0a8")),
+    "Group 1 events" = statedu_text(language, "Group 1 events", h("eca791eb8ba8203120ec82aceab1b420ec8898")),
+    "Group 1 non-events" = statedu_text(language, "Group 1 non-events", h("eca791eb8ba8203120ebb984ec82aceab1b420ec8898")),
+    "Group 2 events" = statedu_text(language, "Group 2 events", h("eca791eb8ba8203220ec82aceab1b420ec8898")),
+    "Group 2 non-events" = statedu_text(language, "Group 2 non-events", h("eca791eb8ba8203220ebb984ec82aceab1b420ec8898")),
+    "Sample mean" = statedu_text(language, "Sample mean", h("ed919cebb3b820ed8f89eab7a0")),
+    "Null mean" = statedu_text(language, "Null mean", h("ec9881eab080ec84a420ed8f89eab7a0")),
+    "Mean paired difference" = statedu_text(language, "Mean paired difference", h("eb8c80ec9d9120ecb0a8ec9db420ed8f89eab7a0")),
+    "SD of paired differences" = statedu_text(language, "SD of paired differences", h("eb8c80ec9d9120ecb0a8ec9db420ed919ceca480ed8eb8ecb0a8")),
+    "SD" = statedu_text(language, "SD", h("ed919ceca480ed8eb8ecb0a8")),
+    "Proportion 1" = statedu_text(language, "Proportion 1", h("ebb984ec9ca82031")),
+    "Proportion 2" = statedu_text(language, "Proportion 2", h("ebb984ec9ca82032")),
+    "Expected proportion" = statedu_text(language, "Expected proportion", h("ec9888ec838120ebb984ec9ca8")),
+    "Degrees of freedom" = statedu_text(language, "Degrees of freedom", h("ec9e90ec9ca0eb8f84")),
+    "Error degrees of freedom" = statedu_text(language, "Error degrees of freedom", h("ec98a4ecb0a820ec9e90ec9ca0eb8f84")),
+    "Number of groups" = statedu_text(language, "Number of groups", h("eca791eb8ba820ec8898")),
+    "Groups" = statedu_text(language, "Groups", h("eca791eb8ba820ec8898")),
+    "Measurements" = statedu_text(language, "Measurements", h("ecb8a1eca09520ec8898")),
+    "Outcome" = statedu_text(language, "Outcome", h("eab2b0eab3bcebb380ec8898")),
+    "Continuous outcome" = statedu_text(language, "Continuous outcome", h("ec97b0ec868ded989520eab2b0eab3bc")),
+    "Binary outcome" = statedu_text(language, "Binary outcome", h("ec9db4ebb684ed989520eab2b0eab3bc")),
+    "Effect to test" = statedu_text(language, "Effect to test", h("eab280eca095ed95a020ed9aa8eab3bc")),
+    "Alternative" = statedu_text(language, "Alternative", h("eb8c80eba6bdeab080ec84a4")),
+    "Two-sided" = statedu_text(language, "Two-sided", h("ec9691ecb8a1")),
+    "One-sided" = statedu_text(language, "One-sided", h("eb8ba8ecb8a1")),
+    "Dropout rate (%)" = statedu_text(language, "Dropout rate (%)", h("ed8388eb9dbdeba5a020282529")),
+    "Allocation ratio (Group 2 / Group 1)" = statedu_text(language, "Allocation ratio (Group 2 / Group 1)", h("ebb0b0eca095ebb9842028eca791eb8ba82032202f20eca791eb8ba8203129")),
+    "Time points" = statedu_text(language, "Time points", h("ec8b9ceca09020ec8898")),
+    "Working correlation" = statedu_text(language, "Working correlation", h("ec9e91ec9785ec8381eab480")),
+    "Pairwise correlations" = statedu_text(language, "Pairwise correlations", h("ec8c8debb38420ec8381eab480")),
+    "Input mode" = statedu_text(language, "Input mode", h("ec9e85eba0a520ebb0a9ec8b9d")),
+    "Correlation structure" = statedu_text(language, "Correlation structure", h("ec8381eab48020eab5aceca1b0")),
+    "Objective" = statedu_text(language, "Objective", h("ebaaa9ed919c")),
+    "Parameter" = statedu_text(language, "Parameter", h("ebaaa8ec8898")),
+    "Confidence level" = statedu_text(language, "Confidence level", h("ec8ba0eba2b0ec8898eca480")),
+    "Desired CI half-width" = statedu_text(language, "Desired CI half-width", h("ebaaa9ed919c20ec8ba0eba2b0eab5aceab08420ebb098ed8fad")),
+    "Expected sensitivity" = statedu_text(language, "Expected sensitivity", h("ec9888ec838120ebafbceab090eb8f84")),
+    "Expected specificity" = statedu_text(language, "Expected specificity", h("ec9888ec838120ed8ab9ec9db4eb8f84")),
+    "Prevalence" = statedu_text(language, "Prevalence", h("ec9ca0ebb391eba5a0")),
+    "Number of cases" = statedu_text(language, "Number of cases", h("ec82aceba18020ec8898")),
+    "Outcome variables" = statedu_text(language, "Outcome variables", h("eab2b0eab3bcebb380ec889820ec8898")),
+    "Covariates" = statedu_text(language, "Covariates", h("eab3b5ebb380eb9f8920ec8898")),
+    "Number of predictors" = statedu_text(language, "Number of predictors", h("ec9888ecb8a1ebb380ec889820ec8898")),
+    "Tested predictors" = statedu_text(language, "Tested predictors", h("eab280eca09520ec9888ecb8a1ebb380ec889820ec8898")),
+    "Total predictors in final model" = statedu_text(language, "Total predictors in final model", h("ecb59ceca28520ebaaa8ed989520eca084ecb2b420ec9888ecb8a1ebb380ec889820ec8898")),
+    "Number of covariates" = statedu_text(language, "Number of covariates", h("eab3b5ebb380eb9f8920ec8898")),
+    "Simulations" = statedu_text(language, "Simulations", h("ec8b9cebaeaceba088ec9db4ec859820ec8898")),
+    "Bootstrap samples" = statedu_text(language, "Bootstrap samples", h("ebb680ed8ab8ec8aa4ed8ab8eb9ea920ed919cebb3b820ec8898")),
+    "Expected reliability" = statedu_text(language, "Expected reliability", h("ec9888ec838120ec8ba0eba2b0eb8f84")),
+    "Number of items" = statedu_text(language, "Number of items", h("ebacb8ed95ad20ec8898")),
+    "Categories" = statedu_text(language, "Categories", h("ebb294eca3bc20ec8898")),
+    "Raters / measurements" = statedu_text(language, "Raters / measurements", h("ed8f89eab080ec9e90202f20ecb8a1eca09520ec8898")),
+    "Model complexity" = statedu_text(language, "Model complexity", h("ebaaa8ed989520ebb3b5ec9ea1eb8f84")),
+    "Parameter type" = statedu_text(language, "Parameter type", h("ebaaa8ec889820ec9ca0ed9895")),
+    "Latent variables" = statedu_text(language, "Latent variables", h("ec9ea0ec9eacebb380ec889820ec8898")),
+    "Measured variables" = statedu_text(language, "Measured variables", h("ecb8a1eca095ebb380ec889820ec8898")),
+    "Structural paths" = statedu_text(language, "Structural paths", h("eab5aceca1b0eab2bdeba19c20ec8898")),
+    "Free parameters" = statedu_text(language, "Free parameters", h("ec9e90ec9ca0ebaaa8ec889820ec8898")),
+    "Model degrees of freedom" = statedu_text(language, "Model degrees of freedom", h("ebaaa8ed989520ec9e90ec9ca0eb8f84")),
+    "Clusters" = statedu_text(language, "Clusters", h("ed81b4eb9facec8aa4ed84b020ec8898")),
+    "Periods" = statedu_text(language, "Periods", h("eab8b0eab08420ec8898")),
+    "Cluster size" = statedu_text(language, "Cluster size", h("ed81b4eb9facec8aa4ed84b020ed81aceab8b0")),
+    "Cluster size per period" = statedu_text(language, "Cluster size per period", h("eab8b0eab084ebb38420ed81b4eb9facec8aa4ed84b020ed81aceab8b0")),
+    "Expected proportion 1" = statedu_text(language, "Expected proportion 1", h("ec9888ec838120ebb984ec9ca82031")),
+    "Expected proportion 2" = statedu_text(language, "Expected proportion 2", h("ec9888ec838120ebb984ec9ca82032")),
+    "Expected rate" = statedu_text(language, "Expected rate", h("ec9888ec838120ebb09cec839deba5a0")),
+    "Rate 1" = statedu_text(language, "Rate 1", h("ebb09cec839deba5a02031")),
+    "Rate 2" = statedu_text(language, "Rate 2", h("ebb09cec839deba5a02032")),
+    "Person-time" = statedu_text(language, "Person-time", h("ec9db8eb8584")),
+    "Person-time in Group 1" = statedu_text(language, "Person-time in Group 1", h("eca791eb8ba8203120ec9db8eb8584")),
+    "Margin" = statedu_text(language, "Margin", h("eba788eca784")),
+    "Expected true difference" = statedu_text(language, "Expected true difference", h("ec9888ec838120ec8ba4eca09c20ecb0a8ec9db4")),
+    "SEM / CFA method" = statedu_text(language, "SEM / CFA method", h("53454d202f2043464120ebb0a9ebb295")),
+    "Model df input" = statedu_text(language, "Model df input", h("ebaaa8ed989520ec9e90ec9ca0eb8f8420ec9e85eba0a5")),
+    "Expected standardized parameter" = statedu_text(language, "Expected standardized parameter", h("ec9888ec838120ed919ceca480ed999420ebaaa8ec8898")),
+    "Expected standardized loading" = statedu_text(language, "Expected standardized loading", h("ec9888ec838120ed919ceca480ed999420eca081ec9eaceab092")),
+    "Expected standardized path" = statedu_text(language, "Expected standardized path", h("ec9888ec838120ed919ceca480ed999420eab2bdeba19c")),
+    "Number of dependent variables" = statedu_text(language, "Number of dependent variables", h("eca285ec868debb380ec889820ec8898")),
+    "Numerator df" = statedu_text(language, "Numerator df", h("ebb684ec9e9020ec9e90ec9ca0eb8f84")),
+    "Denominator df" = statedu_text(language, "Denominator df", h("ebb684ebaaa820ec9e90ec9ca0eb8f84")),
+    "Common SD input" = statedu_text(language, "Common SD input", h("eab3b5ed86b520ed919ceca480ed8eb8ecb0a820ec9e85eba0a5")),
+    "Common outcome SD" = statedu_text(language, "Common outcome SD", h("eab3b5ed86b520eab2b0eab3bc20ed919ceca480ed8eb8ecb0a8")),
+    "Input scale" = statedu_text(language, "Input scale", h("ec9e85eba0a520ecb299eb8f84")),
+    "Rows" = statedu_text(language, "Rows", h("ed968920ec8898")),
+    "Columns" = statedu_text(language, "Columns", h("ec97b420ec8898")),
+    "Observed proportions" = statedu_text(language, "Observed proportions", h("eab480ecb8a120ebb984ec9ca8")),
+    "Expected proportions" = statedu_text(language, "Expected proportions", h("eab8b0eb8c8020ebb984ec9ca8")),
+    "Expected mean" = statedu_text(language, "Expected mean", h("eab8b0eb8c8020ed8f89eab7a0")),
+    "Group 1 estimated mean" = statedu_text(language, "Group 1 estimated mean", h("31eca791eb8ba820ecb694eca09520ed8f89eab7a0")),
+    "Group 2 estimated mean" = statedu_text(language, "Group 2 estimated mean", h("32eca791eb8ba820ecb694eca09520ed8f89eab7a0")),
+    "Group 1 pre mean" = statedu_text(language, "Group 1 pre mean", h("31eca791eb8ba820ec82aceca08420ed8f89eab7a0")),
+    "Group 1 post mean" = statedu_text(language, "Group 1 post mean", h("31eca791eb8ba820ec82aced9b8420ed8f89eab7a0")),
+    "Group 2 pre mean" = statedu_text(language, "Group 2 pre mean", h("32eca791eb8ba820ec82aceca08420ed8f89eab7a0")),
+    "Group 2 post mean" = statedu_text(language, "Group 2 post mean", h("32eca791eb8ba820ec82aced9b8420ed8f89eab7a0")),
+    "Group 1 means by time" = statedu_text(language, "Group 1 means by time", h("31eca791eb8ba820ec8b9ceca090ebb38420ed8f89eab7a0")),
+    "Group 2 means by time" = statedu_text(language, "Group 2 means by time", h("32eca791eb8ba820ec8b9ceca090ebb38420ed8f89eab7a0")),
+    "Standardized fixed effect" = statedu_text(language, "Standardized fixed effect", h("ed919ceca480ed999420eab3a0eca095ed9aa8eab3bc")),
+    "Residual SD" = statedu_text(language, "Residual SD", h("ec9e94ecb0a820ed919ceca480ed8eb8ecb0a8")),
+    "Correlation rho" = statedu_text(language, "Correlation rho", h("ec8381eab4802072686f")),
+    "Ratio" = statedu_text(language, "Ratio", h("ebb984ec9ca8")),
+    "Regression coefficient B" = statedu_text(language, "Regression coefficient B", h("ed9a8ceab780eab384ec88982042")),
+    "Fixed-effect coefficient B" = statedu_text(language, "Fixed-effect coefficient B", h("eab3a0eca095ed9aa8eab3bc20eab384ec88982042")),
+    "Log fixed-effect coefficient B" = statedu_text(language, "Log fixed-effect coefficient B", h("eba19ceab7b820eab3a0eca095ed9aa8eab3bc20eab384ec88982042")),
+    "Logit fixed-effect coefficient B" = statedu_text(language, "Logit fixed-effect coefficient B", h("eba19ceca79320eab3a0eca095ed9aa8eab3bc20eab384ec88982042")),
+    "Incidence rate ratio" = statedu_text(language, "Incidence rate ratio", h("ebb09cec839deba5a0ebb984")),
+    "Odds ratio" = statedu_text(language, "Odds ratio", h("ec98a4eca688ebb984")),
+    "Hazard ratio" = statedu_text(language, "Hazard ratio", h("ec9c84ed9798ebb984")),
+    "Correlation 1" = statedu_text(language, "Correlation 1", h("ec8381eab4802031")),
+    "Correlation 2" = statedu_text(language, "Correlation 2", h("ec8381eab4802032")),
+    "Correlation r" = statedu_text(language, "Correlation r", h("ec8381eab4802072")),
+    "R-squared" = statedu_text(language, "R-squared", h("5220eca09ceab3b1")),
+    "Full model R-squared" = statedu_text(language, "Full model R-squared", h("eca084ecb2b420ebaaa8ed9895205220eca09ceab3b1")),
+    "Reduced model R-squared" = statedu_text(language, "Reduced model R-squared", h("ecb695ec868c20ebaaa8ed9895205220eca09ceab3b1")),
+    "Interaction delta R-squared" = statedu_text(language, "Interaction delta R-squared", h("ec8381ed98b8ec9e91ec9aa920eb8db8ed8380205220eca09ceab3b1")),
+    "Expected r" = statedu_text(language, "Expected r", h("eab8b0eb8c802072")),
+    "Expected AUC" = statedu_text(language, "Expected AUC", h("eab8b0eb8c8020415543")),
+    "Null AUC" = statedu_text(language, "Null AUC", h("ec988120415543")),
+    "Overall event probability" = statedu_text(language, "Overall event probability", h("ec839deca1b420ec82aceab1b420ed9995eba5a0")),
+    "Independent means (M, SD, n)" = statedu_text(language, "Independent means (M, SD, n)", h("eb8f85eba6bded919cebb3b820ed8f89eab7a0")),
+    "Independent t-test (t, n1, n2)" = statedu_text(language, "Independent t-test (t, n1, n2)", h("eb8f85eba6bd20742d74657374")),
+    "Independent t-test (t, df; equal n)" = statedu_text(language, "Independent t-test (t, df; equal n)", h("eb8f85eba6bd20742d74657374")),
+    "Paired means (mean difference, SD difference)" = statedu_text(language, "Paired means (mean difference, SD difference)", h("eb8c80ec9d91ed919cebb3b820ed8f89eab7a0")),
+    "Paired t-test (t, pairs)" = statedu_text(language, "Paired t-test (t, pairs)", h("eb8c80ec9d9120742d74657374")),
+    "One-sample mean (M, SD)" = statedu_text(language, "One-sample mean (M, SD)", h("ec9dbced919cebb3b820ed8f89eab7a0")),
+    "One-sample t-test (t, n)" = statedu_text(language, "One-sample t-test (t, n)", h("ec9dbced919cebb3b820742d74657374")),
+    "Two independent groups" = statedu_text(language, "Two independent groups", h("eb8f85eba6bd20eca791eb8ba8")),
+    "One sample" = statedu_text(language, "One sample", h("ec9dbced919cebb3b8")),
+    "Paired" = statedu_text(language, "Paired", h("eb8c80ec9d91")),
+    "Risk difference" = statedu_text(language, "Risk difference", h("ec9c84ed9798eb8f8420ecb0a8ec9db4")),
+    "Risk ratio" = statedu_text(language, "Risk ratio", h("ec9c84ed9798eb8f8420ebb984")),
+    "Odds ratio from proportions" = statedu_text(language, "Odds ratio from proportions", h("ebb984ec9ca8eba19c20eab384ec82b0ed959c20ec98a4eca688ebb984")),
+    "Odds ratio from 2x2 table" = statedu_text(language, "Odds ratio from 2x2 table", h("32783220ed919ceba19c20eab384ec82b0ed959c20ec98a4eca688ebb984")),
+    "Two independent proportions" = statedu_text(language, "Two independent proportions", h("eb8f85eba6bd20ebb984ec9ca82032eca791eb8ba8")),
+    "One proportion vs 0.50" = statedu_text(language, "One proportion vs 0.50", h("ec9dbcebbb98ebb984ec9ca820767320302e3530")),
+    "Cohen's w from chi-square" = statedu_text(language, "Cohen's w from chi-square", h("ecb9b4ec9db4eca09ceab3b1ec9790ec849c20436f68656e2077")),
+    "Cohen's w from category proportions" = statedu_text(language, "Cohen's w from category proportions", h("ebb294eca3bc20ebb984ec9ca8ec9790ec849c20436f68656e2077")),
+    "Cramer's V" = statedu_text(language, "Cramer's V", h("ed81aceb9e98eba8b82056")),
+    "Phi coefficient" = statedu_text(language, "Phi coefficient", h("ed8c8cec9db420eab384ec8898")),
+    "Effect size d" = statedu_text(language, "Effect size d", h("ed9aa8eab3bced81aceab8b02064")),
+    "Effect size w" = statedu_text(language, "Effect size w", h("ed9aa8eab3bced81aceab8b02077")),
+    "Effect size f" = statedu_text(language, "Effect size f", h("ed9aa8eab3bced81aceab8b02066")),
+    "Effect size f2" = statedu_text(language, "Effect size f2", h("ed9aa8eab3bced81aceab8b0206632")),
+    "Effect size f2 for R2 increase" = statedu_text(language, "Effect size f2 for R2 increase", h("523220eca69deab08020ed9aa8eab3bced81aceab8b0206632")),
+    "Effect size f2 for interaction R2 increase" = statedu_text(language, "Effect size f2 for interaction R2 increase", h("ec8381ed98b8ec9e91ec9aa920523220eca69deab08020ed9aa8eab3bced81aceab8b0206632")),
+    "Effect size d (Cohen's d)" = statedu_text(language, "Effect size d (Cohen's d)", h("ed9aa8eab3bced81aceab8b020642028436f68656e2773206429")),
+    "Effect size dz (paired difference / SD)" = statedu_text(language, "Effect size dz (paired difference / SD)", h("ed9aa8eab3bced81aceab8b020647a")),
+    "Effect size d (mean difference / SD)" = statedu_text(language, "Effect size d (mean difference / SD)", h("ed9aa8eab3bced81aceab8b02064")),
+    "Effect size d (median shift / SD)" = statedu_text(language, "Effect size d (median shift / SD)", h("ed9aa8eab3bced81aceab8b02064")),
+    "Effect size d (approx.)" = statedu_text(language, "Effect size d (approx.)", h("ed9aa8eab3bced81aceab8b020642028eab7bcebbcac2929")),
+    "Effect size W (Kendall's W)" = statedu_text(language, "Effect size W (Kendall's W)", h("ed9aa8eab3bced81aceab8b0205720284b656e64616c6c2773205729")),
+    "Pillai's trace V" = statedu_text(language, "Pillai's trace V", h("50696c6c6169ec9d982074726163652056")),
+    "t statistic" = statedu_text(language, "t statistic", h("7420ed86b5eab384eb9f89")),
+    "F statistic" = statedu_text(language, "F statistic", h("4620ed86b5eab384eb9f89")),
+    "Chi-square statistic" = statedu_text(language, "Chi-square statistic", h("ecb9b4ec9db4eca09ceab3b120ed86b5eab384eb9f89")),
+    "Point-biserial r" = statedu_text(language, "Point-biserial r", h("eca090ec9db4ec97b020ec8381eab4802072")),
+    "Eta squared" = statedu_text(language, "Eta squared", h("ec9790ed8380eca09ceab3b1")),
+    "Partial eta squared" = statedu_text(language, "Partial eta squared", h("ebb680ebb68420ec9790ed8380eca09ceab3b1")),
+    "Unadjusted Cohen's f" = statedu_text(language, "Unadjusted Cohen's f", h("ebb3b4eca09520eca08420436f68656e27732066")),
+    "Wilks' lambda" = statedu_text(language, "Wilks' lambda", h("57696c6b7320eb9e8ceb8ba4")),
+    "Mann-Whitney U" = statedu_text(language, "Mann-Whitney U", h("4d616e6e2d576869746e65792055")),
+    "Positive rank sum W+" = statedu_text(language, "Positive rank sum W+", h("ec9691ec9d9820ec889cec9c84ed95a920572b")),
+    "Negative rank sum W-" = statedu_text(language, "Negative rank sum W-", h("ec9d8cec9d9820ec889cec9c84ed95a920572d")),
+    "Kruskal-Wallis H" = statedu_text(language, "Kruskal-Wallis H", h("4b7275736b616c2d57616c6c69732048")),
+    "Friedman chi-square" = statedu_text(language, "Friedman chi-square", h("46726965646d616e20ecb9b4ec9db4eca09ceab3b1")),
+    "b: negative to positive pairs" = statedu_text(language, "b: negative to positive pairs", h("623a20ec9d8cec84b1ec9790ec849c20ec9691ec84b1ec9cbceba19c20ebb094eb809020ec8c8d")),
+    "c: positive to negative pairs" = statedu_text(language, "c: positive to negative pairs", h("633a20ec9691ec84b1ec9790ec849c20ec9d8cec84b1ec9cbceba19c20ebb094eb809020ec8c8d")),
+    "p01: negative to positive" = statedu_text(language, "p01: negative to positive", h("7030313a20ec9d8cec84b1ec9790ec849c20ec9691ec84b1")),
+    "p10: positive to negative" = statedu_text(language, "p10: positive to negative", h("7031303a20ec9691ec84b1ec9790ec849c20ec9d8cec84b1")),
+    "One-way ANOVA" = statedu_text(language, "One-way ANOVA", h("ec9dbcec9b9020ebb684ec82b0ebb684ec849d")),
+    "Two-way ANOVA" = statedu_text(language, "Two-way ANOVA", h("ec9db4ec9b90ebb684ec82b0ebb684ec849d")),
+    "One-group repeated-measures ANOVA" = statedu_text(language, "One-group repeated-measures ANOVA", h("eb8ba8ec9dbc20eca791eb8ba820ebb098ebb3b5ecb8a1eca09520ebb684ec82b0ebb684ec849d")),
+    "Mixed repeated-measures ANOVA" = statedu_text(language, "Mixed repeated-measures ANOVA", h("ed98bced95a920ebb098ebb3b5ecb8a1eca09520ebb684ec82b0ebb684ec849d")),
+    "Main effect A" = statedu_text(language, "Main effect A", h("eca3bced9aa8eab3bc2041")),
+    "Main effect B" = statedu_text(language, "Main effect B", h("eca3bced9aa8eab3bc2042")),
+    "Interaction A x B" = statedu_text(language, "Interaction A x B", h("ec8381ed98b8ec9e91ec9aa9204120782042")),
+    "Group" = statedu_text(language, "Group", h("eca791eb8ba8")),
+    "Time" = statedu_text(language, "Time", h("ec8b9ceca090")),
+    "Group x Time" = statedu_text(language, "Group x Time", h("eca791eb8ba8207820ec8b9ceca090")),
+    "Covariate R-squared" = statedu_text(language, "Covariate R-squared", h("eab3b5ebb380eb9f892052eca09ceab3b1")),
+    "Factor A levels" = statedu_text(language, "Factor A levels", h("ec9a94ec9db8204120ec8898eca480")),
+    "Factor B levels" = statedu_text(language, "Factor B levels", h("ec9a94ec9db8204220ec8898eca480")),
+    "Average repeated-measures correlation" = statedu_text(language, "Average repeated-measures correlation", h("ed8f89eab7a020ebb098ebb3b5ecb8a1eca09520ec8381eab480")),
+    "Nonsphericity epsilon" = statedu_text(language, "Nonsphericity epsilon", h("eab5aced9895ec84b120ec9c84ebb09820ebb3b4eca095eab092")),
+    "Multiple regression" = statedu_text(language, "Multiple regression", h("eb8ba4eca49120ed9a8ceab780")),
+    "Hierarchical regression" = statedu_text(language, "Hierarchical regression", h("ec9c84eab384eca08120ed9a8ceab780")),
+    "Logistic regression" = statedu_text(language, "Logistic regression", h("eba19ceca780ec8aa4ed8bb120ed9a8ceab780")),
+    "Mediation effect" = statedu_text(language, "Mediation effect", h("eba7a4eab09ced9aa8eab3bc")),
+    "Moderation regression" = statedu_text(language, "Moderation regression", h("eca1b0eca08820ed9a8ceab780")),
+    "Baseline event probability" = statedu_text(language, "Baseline event probability", h("eab8b0ecb48820ec82aceab1b420ed9995eba5a0")),
+    "Predictor prevalence" = statedu_text(language, "Predictor prevalence", h("ec9888ecb8a1ebb380ec889820ec9ca0ebb391eba5a0")),
+    "Interaction terms tested" = statedu_text(language, "Interaction terms tested", h("eab280eca09520ec8381ed98b8ec9e91ec9aa9ed95ad20ec8898")),
+    "Mediation method" = statedu_text(language, "Mediation method", h("eba7a4eab09ced9aa8eab3bc20ebb0a9ebb295")),
+    "Path a effect size" = statedu_text(language, "Path a effect size", h("eab2bdeba19c206120ed9aa8eab3bced81aceab8b0")),
+    "Path b effect size" = statedu_text(language, "Path b effect size", h("eab2bdeba19c206220ed9aa8eab3bced81aceab8b0")),
+    "Path a beta: predictor -> mediator" = statedu_text(language, "Path a beta: predictor -> mediator", h("eab2bdeba19c206120626574613a20ec9888ecb8a1ebb380ec8898202d3e20eba7a4eab09cebb380ec8898")),
+    "Path b beta: mediator -> outcome" = statedu_text(language, "Path b beta: mediator -> outcome", h("eab2bdeba19c206220626574613a20eba7a4eab09cebb380ec8898202d3e20eab2b0eab3bcebb380ec8898")),
+    "Group x time parameter estimate B" = statedu_text(language, "Group x time parameter estimate B", h("eca791eb8ba8207820ec8b9ceab08420ebaaa8ec889820ecb694eca095ecb9982042")),
+    "Mean difference (I - J)" = statedu_text(language, "Mean difference (I - J)", h("ed8f89eab7a020ecb0a8ec9db4202849202d204a29")),
+    "Variance at time I" = statedu_text(language, "Variance at time I", h("ec8b9ceca090204920ebb684ec82b0")),
+    "Variance at time J" = statedu_text(language, "Variance at time J", h("ec8b9ceca090204a20ebb684ec82b0")),
+    "Covariance I,J" = statedu_text(language, "Covariance I,J", h("eab3b5ebb684ec82b020492c4a")),
+    "ICC / random intercept proportion" = statedu_text(language, "ICC / random intercept proportion", h("494343202f20eb9e9ceb8da420eca088ed8eb820ebb984ec9ca8")),
+    "Working correlation rho" = statedu_text(language, "Working correlation rho", h("ec9e91ec9785ec8381eab4802072686f")),
+    "Cohen's kappa" = statedu_text(language, "Cohen's kappa", h("436f68656e2773206b61707061")),
+    "ICC" = statedu_text(language, "ICC", "ICC"),
+    "Null RMSEA" = statedu_text(language, "Null RMSEA", h("ec9881eab080ec84a420524d534541")),
+    "Alternative RMSEA" = statedu_text(language, "Alternative RMSEA", h("eb8c80eba6bdeab080ec84a420524d534541")),
+    "Simple" = statedu_text(language, "Simple", h("eb8ba8ec889c")),
+    "GLIMMPSE-style" = statedu_text(language, "GLIMMPSE-style", h("474c494d4d50534520ebb0a9ec8b9d")),
+    "Exchangeable" = statedu_text(language, "Exchangeable", h("eab590ed9998eab080eb8aa5")),
+    "Unstructured" = statedu_text(language, "Unstructured", h("ebb984eab5aceca1b0ed9994")),
+    "Two-group repeated (Group x Time)" = statedu_text(language, "Two-group repeated (Group x Time)", h("eb919020eca791eb8ba820ebb098ebb3b5ecb8a1eca0952028eca791eb8ba8207820ec8b9ceca09029")),
+    "One-group repeated (Time slope)" = statedu_text(language, "One-group repeated (Time slope)", h("ed959c20eca791eb8ba820ebb098ebb3b5ecb8a1eca0952028ec8b9ceca09020eab8b0ec9ab8eab8b029")),
+    "Non-inferiority" = statedu_text(language, "Non-inferiority", h("ebb984ec97b4eb93b1ec84b1")),
+    "Equivalence" = statedu_text(language, "Equivalence", h("eb8f99eb93b1ec84b1")),
+    "Mean difference" = statedu_text(language, "Mean difference", h("ed8f89eab7a020ecb0a8ec9db4")),
+    "Proportion difference" = statedu_text(language, "Proportion difference", h("ebb984ec9ca820ecb0a8ec9db4")),
+    "Sensitivity precision" = statedu_text(language, "Sensitivity precision", h("ebafbceab090eb8f8420eca095ebb080eb8f84")),
+    "Specificity precision" = statedu_text(language, "Specificity precision", h("ed8ab9ec9db4eb8f8420eca095ebb080eb8f84")),
+    "ROC AUC vs null" = statedu_text(language, "ROC AUC vs null", h("524f432041554320eb8c8020ec9881eab080ec84a4")),
+    "Mean" = statedu_text(language, "Mean", h("ed8f89eab7a0")),
+    "Proportion" = statedu_text(language, "Proportion", h("ebb984ec9ca8")),
+    "Correlation" = statedu_text(language, "Correlation", h("ec8381eab480")),
+    "Two Poisson rates" = statedu_text(language, "Two Poisson rates", h("eb919020ed8facec9584ec86a120ebb984ec9ca8")),
+    "Two negative binomial rates" = statedu_text(language, "Two negative binomial rates", h("eb919020ec9d8cec9db4ed95ad20ebb984ec9ca8")),
+    "Single rate precision" = statedu_text(language, "Single rate precision", h("eb8ba8ec9dbc20ebb984ec9ca820eca095ebb080eb8f84")),
+    "Dispersion" = statedu_text(language, "Dispersion", h("ebb684ec82b0")),
+    "Parallel cluster randomized trial" = statedu_text(language, "Parallel cluster randomized trial", h("ed8f89ed968920eab5b0eca79120ebacb4ec9e91ec9c8420ec8b9ced9798")),
+    "Stepped-wedge cluster trial" = statedu_text(language, "Stepped-wedge cluster trial", h("eab384eb8ba8ed989520eab5b0eca79120ec8b9ced9798")),
+    "Close fit test (detect poor fit)" = statedu_text(language, "Close fit test (detect poor fit)", h("ebb080eca09120eca081ed95a920eab280eca095")),
+    "Not-close-fit test (support close fit)" = statedu_text(language, "Not-close-fit test (support close fit)", h("ebb984ebb080eca09120eca081ed95a920eab280eca095")),
+    "Parameter-level Monte Carlo" = statedu_text(language, "Parameter-level Monte Carlo", h("ebaaa8ec889820ec8898eca480204d6f6e7465204361726c6f")),
+    "Model complexity heuristic" = statedu_text(language, "Model complexity heuristic", h("ebaaa8ed989520ebb3b5ec9ea1eb8f8420ed9cb4eba6acec8aa4ed8bb1")),
+    "Standardized loading" = statedu_text(language, "Standardized loading", h("ed919ceca480ed999420ec9a94ec9db8ebb680ed9598")),
+    "Standardized path" = statedu_text(language, "Standardized path", h("ed919ceca480ed999420eab2bdeba19c")),
+    "Latent correlation" = statedu_text(language, "Latent correlation", h("ec9ea0ec9eacebb380ec889820ec8381eab480")),
+    "Moderate" = statedu_text(language, "Moderate", h("ebb3b4ed86b5")),
+    "Complex" = statedu_text(language, "Complex", h("ebb3b5ec9ea1")),
+    "Estimate from model counts" = statedu_text(language, "Estimate from model counts", h("ebaaa8ed989520ec8898ec9790ec849c20ecb694eca095")),
+    "Enter model df directly" = statedu_text(language, "Enter model df directly", h("ebaaa8ed989520ec9e90ec9ca0eb8f8420eca781eca09120ec9e85eba0a5")),
+    "Point-biserial r" = statedu_text(language, "Point-biserial r", h("eca090ec9691ebb68420ec8381eab4802072")),
+    "Pearson r from t statistic" = statedu_text(language, "Pearson r from t statistic", h("7420ed86b5eab384eb9f89ec9790ec849c2050656172736f6e2072")),
+    "Pearson r from F statistic" = statedu_text(language, "Pearson r from F statistic", h("4620ed86b5eab384eb9f89ec9790ec849c2050656172736f6e2072")),
+    "Pearson r from R-squared" = statedu_text(language, "Pearson r from R-squared", h("52eca09ceab3b1ec9790ec849c2050656172736f6e2072")),
+    "Fisher's z from r" = statedu_text(language, "Fisher's z from r", h("72ec9790ec849c20466973686572207a")),
+    "Cohen's q for two correlations" = statedu_text(language, "Cohen's q for two correlations", h("eb919020ec8381eab480ec9d9820436f68656e2071")),
+    "Partial eta squared from F" = statedu_text(language, "Partial eta squared from F", h("46ec9790ec849c20ebb680ebb68420ec9790ed8380eca09ceab3b1")),
+    "Cohen's f from eta squared" = statedu_text(language, "Cohen's f from eta squared", h("ec9790ed8380eca09ceab3b1ec9790ec849c20436f68656e2066")),
+    "Cohen's f from partial eta squared" = statedu_text(language, "Cohen's f from partial eta squared", h("ebb680ebb68420ec9790ed8380eca09ceab3b1ec9790ec849c20436f68656e2066")),
+    "ANCOVA partial eta squared from F" = statedu_text(language, "ANCOVA partial eta squared from F", h("414e434f56412046ec9790ec849c20ebb680ebb68420ec9790ed8380eca09ceab3b1")),
+    "ANCOVA adjusted Cohen's f" = statedu_text(language, "ANCOVA adjusted Cohen's f", h("414e434f564120ebb3b4eca09520436f68656e2066")),
+    "ANCOVA Cohen's f from partial eta squared" = statedu_text(language, "ANCOVA Cohen's f from partial eta squared", h("414e434f564120ebb680ebb68420ec9790ed8380eca09ceab3b1ec9790ec849c20436f68656e2066")),
+    "MANOVA Pillai's trace to f2" = statedu_text(language, "MANOVA Pillai's trace to f2", h("4d414e4f56412050696c6c6169207472616365ec9790ec849c206632")),
+    "MANOVA Wilks' lambda to f2" = statedu_text(language, "MANOVA Wilks' lambda to f2", h("4d414e4f56412057696c6b73206c616d626461ec9790ec849c206632")),
+    "Rank-biserial r from Mann-Whitney U" = statedu_text(language, "Rank-biserial r from Mann-Whitney U", h("4d616e6e2d576869746e65792055ec9790ec849c20ec889cec9c84ec9691ebb6842072")),
+    "Rank-biserial r for paired Wilcoxon" = statedu_text(language, "Rank-biserial r for paired Wilcoxon", h("eb8c80ec9d912057696c636f786f6e20ec889cec9c84ec9691ebb6842072")),
+    "Kruskal-Wallis epsilon squared" = statedu_text(language, "Kruskal-Wallis epsilon squared", h("4b7275736b616c2d57616c6c697320ec97a1ec8ba4eba1a0eca09ceab3b1")),
+    "Friedman Kendall's W" = statedu_text(language, "Friedman Kendall's W", h("46726965646d616e204b656e64616c6c2057")),
+    "Matched-pair odds ratio from probabilities" = statedu_text(language, "Matched-pair odds ratio from probabilities", h("ed9995eba5a0ec9790ec849c20eb8c80ec9d91ec8c8d20ec98a4eca688ebb984")),
+    "Matched-pair odds ratio from paired 2x2 table" = statedu_text(language, "Matched-pair odds ratio from paired 2x2 table", h("eb8c80ec9d912032783220ed919cec9790ec849c20ec98a4eca688ebb984")),
+    "Cohen's g from discordant probabilities" = statedu_text(language, "Cohen's g from discordant probabilities", h("ebb688ec9dbcecb99820ed9995eba5a0ec9790ec849c20436f68656e2067")),
+    "Multiple regression f2 from R-squared" = statedu_text(language, "Multiple regression f2 from R-squared", h("52eca09ceab3b1ec9790ec849c20eb8ba4eca491ed9a8ceab780206632")),
+    "Hierarchical regression f2 from R-squared increase" = statedu_text(language, "Hierarchical regression f2 from R-squared increase", h("52eca09ceab3b120eca69deab080ec9790ec849c20ec9c84eab384ed9a8ceab780206632")),
+    "Logistic regression OR conversion" = statedu_text(language, "Logistic regression OR conversion", h("eba19ceca780ec8aa4ed8bb120ed9a8ceab780204f5220ebb380ed9998")),
+    "Moderation interaction f2" = statedu_text(language, "Moderation interaction f2", h("eca1b0eca08820ec8381ed98b8ec9e91ec9aa9206632")),
+    "Follow-up estimated means" = statedu_text(language, "Follow-up estimated means", h("ecb694eca081ec8b9ceca09020ecb694eca095ed8f89eab7a0")),
+    "Pre-post change means" = statedu_text(language, "Pre-post change means", h("ec82aceca0842dec82aced9b8420ebb380ed999420ed8f89eab7a0")),
+    "Group x time B" = statedu_text(language, "Group x time B", h("eca791eb8ba8207820ec8b9ceab0842042")),
+    "Continuous outcome supplied d" = statedu_text(language, "Continuous outcome supplied d", h("ec97b0ec868ded989520eab2b0eab3bc206420eca781eca09120ec9e85eba0a5")),
+    "Binary outcome from proportions" = statedu_text(language, "Binary outcome from proportions", h("ebb984ec9ca8ec9790ec849c20ec9db4ebb684ed989520eab2b0eab3bc")),
+    "Binary logit fixed effect" = statedu_text(language, "Binary logit fixed effect", h("ec9db4ebb684ed989520eba19ceca79320eab3a0eca095ed9aa8eab3bc")),
+    "Binary outcome probabilities" = statedu_text(language, "Binary outcome probabilities", h("ec9db4ebb684ed989520eab2b0eab3bc20ed9995eba5a0")),
+    "Count log-link fixed effect" = statedu_text(language, "Count log-link fixed effect", h("ecb9b4ec9ab4ed8ab820eba19ceab7b8eba781ed81ac20eab3a0eca095ed9aa8eab3bc")),
+    "Count outcome rates" = statedu_text(language, "Count outcome rates", h("ecb9b4ec9ab4ed8ab820eab2b0eab3bc20ebb984ec9ca8")),
+    "Gaussian fixed effect" = statedu_text(language, "Gaussian fixed effect", h("eab080ec9ab0ec8b9cec958820eab3a0eca095ed9aa8eab3bc")),
+    "Simple standardized fixed effect" = statedu_text(language, "Simple standardized fixed effect", h("eb8ba8ec889c20ed919ceca480ed999420eab3a0eca095ed9aa8eab3bc")),
+    "GLIMMPSE-style mean vectors" = statedu_text(language, "GLIMMPSE-style mean vectors", h("474c494d4d50534520ebb0a9ec8b9d20ed8f89eab7a020ebb2a1ed84b0")),
+    "SPSS LMM output (F, df, covariance)" = statedu_text(language, "SPSS LMM output (F, df, covariance)", h("53505353204c4d4d20ecb69ceba0a528462c2064662c20eab3b5ebb684ec82b029")),
+    "Hazard ratio to log hazard ratio" = statedu_text(language, "Hazard ratio to log hazard ratio", h("ec9c84ed9798ebb984ec9790ec849c20eba19ceab7b8ec9c84ed9798ebb984")),
+    "Mean difference margin distance" = statedu_text(language, "Mean difference margin distance", h("ed8f89eab7a0ecb0a820eba788eca78420eab1b0eba6ac")),
+    "Proportion difference margin distance" = statedu_text(language, "Proportion difference margin distance", h("ebb984ec9ca8ecb0a820eba788eca78420eab1b0eba6ac")),
+    "Poisson incidence rate ratio" = statedu_text(language, "Poisson incidence rate ratio", h("ed8facec9584ec86a120ebb09cec839deba5a0ebb984")),
+    "Negative binomial incidence rate ratio" = statedu_text(language, "Negative binomial incidence rate ratio", h("ec9d8cec9db4ed95ad20ebb09cec839deba5a0ebb984")),
+    "Gamma mean ratio" = statedu_text(language, "Gamma mean ratio", h("eab090eba78820ed8f89eab7a0ebb984")),
+    "Parallel continuous outcome" = statedu_text(language, "Parallel continuous outcome", h("ed8f89ed968920ec84a4eab38420ec97b0ec868ded989520eab2b0eab3bc")),
+    "Parallel binary outcome" = statedu_text(language, "Parallel binary outcome", h("ed8f89ed968920ec84a4eab38420ec9db4ebb684ed989520eab2b0eab3bc")),
+    "Stepped-wedge continuous outcome" = statedu_text(language, "Stepped-wedge continuous outcome", h("eab384eb8ba8ed989520ec84a4eab38420ec97b0ec868ded989520eab2b0eab3bc")),
+    "Mean CI precision" = statedu_text(language, "Mean CI precision", h("ed8f89eab7a020ec8ba0eba2b0eab5aceab08420eca095ebb080eb8f84")),
+    "Proportion CI precision" = statedu_text(language, "Proportion CI precision", h("ebb984ec9ca820ec8ba0eba2b0eab5aceab08420eca095ebb080eb8f84")),
+    "Correlation CI precision" = statedu_text(language, "Correlation CI precision", h("ec8381eab48020ec8ba0eba2b0eab5aceab08420eca095ebb080eb8f84")),
+    "Cohen's kappa" = statedu_text(language, "Cohen's kappa", h("436f68656e20ecb9b4ed8c8c")),
+    "Standardized parameter" = statedu_text(language, "Standardized parameter", h("ed919ceca480ed999420ebaaa8ec8898")),
+    "Cohen's d for independent means" = statedu_text(language, "Cohen's d for independent means", h("eb8f85eba6bded8f89eab7a020436f68656e2064")),
+    "Hedges' g for independent means" = statedu_text(language, "Hedges' g for independent means", h("eb8f85eba6bded8f89eab7a0204865646765732067")),
+    "Cohen's d for one-sample mean" = statedu_text(language, "Cohen's d for one-sample mean", h("ec9dbced919cebb3b820ed8f89eab7a020436f68656e2064")),
+    "Cohen's dz for paired means" = statedu_text(language, "Cohen's dz for paired means", h("eb8c80ec9d91ed8f89eab7a020436f68656e20647a")),
+    "Mann-Whitney U (two independent groups)" = statedu_text(language, "Mann-Whitney U (two independent groups)", h("4d616e6e2d576869746e6579205528eb919020eb8f85eba6bdeca791eb8ba829")),
+    "Wilcoxon signed-rank (paired samples)" = statedu_text(language, "Wilcoxon signed-rank (paired samples)", h("57696c636f786f6e207369676e65642d72616e6b28eb8c80ec9d91ed919cebb3b829")),
+    "One-sample Wilcoxon signed-rank (median shift)" = statedu_text(language, "One-sample Wilcoxon signed-rank (median shift)", h("ec9dbced919cebb3b82057696c636f786f6e207369676e65642d72616e6b28eca491ec9599eab09220ec9db4eb8f9929")),
+    "Friedman test" = statedu_text(language, "Friedman test", h("46726965646d616e20eab280eca095")),
+    "Fritz & MacKinnon empirical table (.80 power)" = statedu_text(language, "Fritz & MacKinnon empirical table (.80 power)", h("467269747a2026204d61634b696e6e6f6e20eab2bded9798ed919c282e383020eab280eca095eba0a529")),
+    "Monte Carlo indirect effect CI" = statedu_text(language, "Monte Carlo indirect effect CI", h("4d6f6e7465204361726c6f20eab084eca091ed9aa8eab3bc204349")),
+    "Bootstrap indirect effect CI (slow)" = statedu_text(language, "Bootstrap indirect effect CI (slow)", h("426f6f74737472617020eab084eca091ed9aa8eab3bc20434928eb8a90eba6bc29")),
+    "Sobel approximation" = statedu_text(language, "Sobel approximation", h("536f62656c20eab7bcec82ac")),
+    "Small (.14)" = statedu_text(language, "Small (.14)", h("ec9e91ec9d8c282e313429")),
+    "Halfway (.26)" = statedu_text(language, "Halfway (.26)", h("eca491eab08420eca084282e323629")),
+    "Medium (.39)" = statedu_text(language, "Medium (.39)", h("eca491eab084282e333929")),
+    "Large (.59)" = statedu_text(language, "Large (.59)", h("ed81bc282e353929")),
+    "Bias-corrected bootstrap" = statedu_text(language, "Bias-corrected bootstrap", h("ed8eb8ed96a5ebb3b4eca09520626f6f747374726170")),
+    "Percentile bootstrap" = statedu_text(language, "Percentile bootstrap", h("ebb0b1ebb684ec9c8420626f6f747374726170")),
+    "PRODCLIN / distribution of the product" = statedu_text(language, "PRODCLIN / distribution of the product", h("50524f44434c494e202f20eab3b1ec9d9820ebb684ed8fac")),
+    "Joint significance" = statedu_text(language, "Joint significance", h("eab3b5eb8f9920ec9ca0ec9d98ec84b1")),
+    "Sobel / first-order delta" = statedu_text(language, "Sobel / first-order delta", h("536f62656c202f2031ecb0a820eb8db8ed8380")),
+    "Cronbach's alpha" = statedu_text(language, "Cronbach's alpha", h("43726f6e6261636820ec958ced8c8c")),
+    "ICC reliability" = statedu_text(language, "ICC reliability", h("49434320ec8ba0eba2b0eb8f84")),
+    "Bland-Altman LoA" = statedu_text(language, "Bland-Altman LoA", h("426c616e642d416c746d616e20ec9dbcecb998ed959ceab384")),
+    "LMM design" = statedu_text(language, "LMM design", h("4c4d4d20ec84a4eab384")),
+    "Logit coefficient B" = statedu_text(language, "Logit coefficient B", h("eba19ceca79320eab384ec88982042")),
+    "Log fixed-effect coefficient B" = statedu_text(language, "Log fixed-effect coefficient B", h("eba19ceab7b820eab3a0eca095ed9aa8eab3bc20eab384ec88982042")),
+    "Observed / expected difference" = statedu_text(language, "Observed / expected difference", h("ecb694eca0952feab480ecb0b020ecb0a8ec9db4")),
+    label
+  )
+}
+
+sample_size_choice_labels <- function(language, labels) {
+  stats::setNames(labels, vapply(labels, function(label) sample_size_label(language, label), character(1), USE.NAMES = FALSE))
+}
+
+sample_size_step_heading <- function(number, key, language = statedu_initial_language()) {
+  paste0(number, ". ", sample_size_ui_text(language, key))
+}
+
+effect_size_method_title <- function(method, language = statedu_initial_language()) {
+  labels <- effect_size_method_labels(language)
+  labels[[method]] %||% "Effect Size"
+}
+
+effect_size_panel_heading <- function(method, language = statedu_initial_language()) {
+  paste(effect_size_method_title(method, language), sample_size_ui_text(language, "effect_size"))
+}
+
+effect_size_action_button <- function(input_id, language = statedu_initial_language()) {
   actionButton(
     input_id,
-    "Calculate",
+    statedu_ui_label("calculate", language),
     class = "btn btn-primary sample-size-calculate",
     onclick = sprintf(
       "if (typeof Shiny !== 'undefined') Shiny.setInputValue('%s', Date.now() + Math.random(), {priority: 'event'});",
@@ -19,35 +402,38 @@ effect_size_action_button <- function(input_id) {
   )
 }
 
-sample_size_tab_panel <- function() {
-  methods <- sample_size_method_labels()
+sample_size_tab_panel <- function(language = statedu_initial_language()) {
+  methods <- sample_size_method_labels(language)
   item <- function(method, title = methods[[method]]) {
     lazy_tab_panel(title, paste0("sample_size_", method), paste0("lazy_sample_size_", method))
   }
-  do.call(navbarMenu, c(list("Sample Size"), lapply(names(methods), item)))
+  do.call(navbarMenu, c(list(statedu_ui_label("sample_size", language)), lapply(names(methods), item)))
 }
 
-sample_size_target_choices <- function(method) {
+sample_size_target_choices <- function(method, language = statedu_initial_language()) {
+  required_label <- statedu_text(language, "Minimum sample size", statedu_utf8("ecb59cec868c20ed919cebb3b820ec8898"))
+  power_label <- statedu_text(language, "Power", statedu_utf8("eab280eca095eba0a5"))
+  precision_label <- statedu_text(language, "Achieved precision", statedu_utf8("eb8bacec84b120eca095ebb080eb8f84"))
   if (identical(method, "reliability")) {
-    return(c("Required sample size" = "sample_size"))
+    return(stats::setNames("sample_size", required_label))
   }
   if (identical(method, "precision")) {
-    return(c("Required sample size" = "sample_size", "Achieved precision" = "power"))
+    return(stats::setNames(c("sample_size", "power"), c(required_label, precision_label)))
   }
-  c("Required sample size" = "sample_size", "Power" = "power")
+  stats::setNames(c("sample_size", "power"), c(required_label, power_label))
 }
 
-effect_size_tab_panel <- function() {
-  methods <- effect_size_method_labels()
+effect_size_tab_panel <- function(language = statedu_initial_language()) {
+  methods <- effect_size_method_labels(language)
   item <- function(method, title = methods[[method]]) {
     lazy_tab_panel(title, paste0("effect_size_", method), paste0("lazy_effect_size_", method))
   }
-  do.call(navbarMenu, c(list("Effect Size"), lapply(names(methods), item)))
+  do.call(navbarMenu, c(list(statedu_ui_label("effect_size", language)), lapply(names(methods), item)))
 }
 
-effect_size_analysis_panel <- function(method) {
+effect_size_analysis_panel <- function(method, language = statedu_initial_language()) {
   if (!method %in% c("ttest", "proportion", "chisquare", "correlation", "anova", "ancova", "nonparametric", "mcnemar", "regression", "gee", "glmm", "lmm", "survival", "equivalence", "diagnostic", "rates", "cluster", "precision", "reliability", "sem")) {
-    labels <- effect_size_method_labels()
+    labels <- effect_size_method_labels(language)
     title <- labels[[method]] %||% "Effect Size"
     return(tabPanel(
       title,
@@ -57,41 +443,41 @@ effect_size_analysis_panel <- function(method) {
         div(
           class = "app-heading",
           h1(title),
-          div("Effect-size calculator availability follows the selected method.", class = "app-subtitle")
+          div(sample_size_ui_text(language, "effectsize_subtitle"), class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
-          h3(paste(title, "Effect Size")),
-          div(class = "empty-message", "This effect-size calculator is not available for the selected method.")
+          h3(paste(title, sample_size_ui_text(language, "effect_size"))),
+          div(class = "empty-message", statedu_text(language, "This effect-size calculator is not available for the selected method."))
         )
       )
     ))
   }
   if (identical(method, "ttest")) {
     return(tabPanel(
-      "t-test",
+      effect_size_method_title("ttest", language),
       value = "effect_size_ttest",
       div(
         class = "page-shell",
         div(
           class = "app-heading",
-          h1("t-test"),
-          div("Calculate t-test effect sizes used by sample size and power analyses.", class = "app-subtitle")
+          h1(effect_size_method_title("ttest", language)),
+          div(sample_size_ui_text(language, "effectsize_subtitle"), class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
-          h3("t-test Effect Size"),
+          h3(effect_size_panel_heading("ttest", language)),
           div(
             class = "sample-size-grid",
             div(
               class = "step-block sample-size-block sample-size-block1",
-              h3("1. Method"),
+              h3(sample_size_step_heading(1, "method", language)),
               radioButtons(
                 "effect_size_ttest_design",
                 label = NULL,
-                choices = c(
+                choices = sample_size_choice_labels(language, c(
                   "Independent means (M, SD, n)" = "independent_means",
                   "Independent t-test (t, n1, n2)" = "independent_t_n",
                   "Independent t-test (t, df; equal n)" = "independent_t_df_equal",
@@ -99,19 +485,19 @@ effect_size_analysis_panel <- function(method) {
                   "Paired t-test (t, pairs)" = "paired_t",
                   "One-sample mean (M, SD)" = "one_sample_mean",
                   "One-sample t-test (t, n)" = "one_sample_t"
-                ),
+                )),
                 selected = "independent_means"
               )
             ),
             div(
               class = "step-block sample-size-block sample-size-block2",
-              h3("2. Inputs"),
+              h3(sample_size_step_heading(2, "inputs", language)),
               uiOutput("effect_size_ttest_inputs"),
-              effect_size_action_button("effect_size_ttest_calculate")
+              effect_size_action_button("effect_size_ttest_calculate", language)
             ),
             div(
               class = "step-block sample-size-block sample-size-block3",
-              h3("3. Results"),
+              h3(sample_size_step_heading(3, "results", language)),
               uiOutput("effect_size_ttest_results")
             )
           )
@@ -121,46 +507,46 @@ effect_size_analysis_panel <- function(method) {
   }
   if (identical(method, "proportion")) {
     return(tabPanel(
-      "Proportion",
+      effect_size_method_title("proportion", language),
       value = "effect_size_proportion",
       div(
         class = "page-shell",
         div(
           class = "app-heading",
-          h1("Proportion"),
-          div("Calculate proportion effect sizes used by sample size and power analyses.", class = "app-subtitle")
+          h1(effect_size_method_title("proportion", language)),
+          div(sample_size_ui_text(language, "effectsize_subtitle"), class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
-          h3("Proportion Effect Size"),
+          h3(effect_size_panel_heading("proportion", language)),
           div(
             class = "sample-size-grid",
             div(
               class = "step-block sample-size-block sample-size-block1",
-              h3("1. Effect size"),
+              h3(sample_size_step_heading(1, "effect_size", language)),
               radioButtons(
                 "effect_size_proportion_design",
                 label = NULL,
-                choices = c(
+                choices = sample_size_choice_labels(language, c(
                   "Cohen's h" = "cohens_h",
                   "Risk difference" = "risk_difference",
                   "Risk ratio" = "risk_ratio",
                   "Odds ratio from proportions" = "odds_ratio",
                   "Odds ratio from 2x2 table" = "odds_ratio_table"
-                ),
+                )),
                 selected = "cohens_h"
               )
             ),
             div(
               class = "step-block sample-size-block sample-size-block2",
-              h3("2. Inputs"),
+              h3(sample_size_step_heading(2, "inputs", language)),
               uiOutput("effect_size_proportion_inputs"),
-              effect_size_action_button("effect_size_proportion_calculate")
+              effect_size_action_button("effect_size_proportion_calculate", language)
             ),
             div(
               class = "step-block sample-size-block sample-size-block3",
-              h3("3. Results"),
+              h3(sample_size_step_heading(3, "results", language)),
               uiOutput("effect_size_proportion_results")
             )
           )
@@ -170,45 +556,45 @@ effect_size_analysis_panel <- function(method) {
   }
   if (identical(method, "chisquare")) {
     return(tabPanel(
-      "Chi-square",
+      effect_size_method_title("chisquare", language),
       value = "effect_size_chisquare",
       div(
         class = "page-shell",
         div(
           class = "app-heading",
-          h1("Chi-square"),
-          div("Calculate chi-square effect sizes used by sample size and power analyses.", class = "app-subtitle")
+          h1(effect_size_method_title("chisquare", language)),
+          div(sample_size_ui_text(language, "effectsize_subtitle"), class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
-          h3("Chi-square Effect Size"),
+          h3(effect_size_panel_heading("chisquare", language)),
           div(
             class = "sample-size-grid",
             div(
               class = "step-block sample-size-block sample-size-block1",
-              h3("1. Effect size"),
+              h3(sample_size_step_heading(1, "effect_size", language)),
               radioButtons(
                 "effect_size_chisquare_design",
                 label = NULL,
-                choices = c(
+                choices = sample_size_choice_labels(language, c(
                   "Cohen's w from chi-square" = "cohens_w",
                   "Cohen's w from category proportions" = "cohens_w_from_probs",
                   "Cramer's V" = "cramers_v",
                   "Phi coefficient" = "phi"
-                ),
+                )),
                 selected = "cohens_w"
               )
             ),
             div(
               class = "step-block sample-size-block sample-size-block2",
-              h3("2. Inputs"),
+              h3(sample_size_step_heading(2, "inputs", language)),
               uiOutput("effect_size_chisquare_inputs"),
-              effect_size_action_button("effect_size_chisquare_calculate")
+              effect_size_action_button("effect_size_chisquare_calculate", language)
             ),
             div(
               class = "step-block sample-size-block sample-size-block3",
-              h3("3. Results"),
+              h3(sample_size_step_heading(3, "results", language)),
               uiOutput("effect_size_chisquare_results")
             )
           )
@@ -218,47 +604,47 @@ effect_size_analysis_panel <- function(method) {
   }
   if (identical(method, "correlation")) {
     return(tabPanel(
-      "Correlation",
+      effect_size_method_title("correlation", language),
       value = "effect_size_correlation",
       div(
         class = "page-shell",
         div(
           class = "app-heading",
-          h1("Correlation"),
-          div("Calculate correlation effect sizes used by sample size and power analyses.", class = "app-subtitle")
+          h1(effect_size_method_title("correlation", language)),
+          div(sample_size_ui_text(language, "effectsize_subtitle"), class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
-          h3("Correlation Effect Size"),
+          h3(effect_size_panel_heading("correlation", language)),
           div(
             class = "sample-size-grid",
             div(
               class = "step-block sample-size-block sample-size-block1",
-              h3("1. Effect size"),
+              h3(sample_size_step_heading(1, "effect_size", language)),
               radioButtons(
                 "effect_size_correlation_design",
                 label = NULL,
-                choices = c(
+                choices = sample_size_choice_labels(language, c(
                   "Point-biserial r" = "point_biserial",
                   "Pearson r from t statistic" = "r_from_t",
                   "Pearson r from F statistic" = "r_from_f",
                   "Pearson r from R-squared" = "r_from_r2",
                   "Fisher's z from r" = "fisher_z",
                   "Cohen's q for two correlations" = "cohens_q"
-                ),
+                )),
                 selected = "r_from_t"
               )
             ),
             div(
               class = "step-block sample-size-block sample-size-block2",
-              h3("2. Inputs"),
+              h3(sample_size_step_heading(2, "inputs", language)),
               uiOutput("effect_size_correlation_inputs"),
-              effect_size_action_button("effect_size_correlation_calculate")
+              effect_size_action_button("effect_size_correlation_calculate", language)
             ),
             div(
               class = "step-block sample-size-block sample-size-block3",
-              h3("3. Results"),
+              h3(sample_size_step_heading(3, "results", language)),
               uiOutput("effect_size_correlation_results")
             )
           )
@@ -268,44 +654,44 @@ effect_size_analysis_panel <- function(method) {
   }
   if (identical(method, "anova")) {
     return(tabPanel(
-      "ANOVA",
+      effect_size_method_title("anova", language),
       value = "effect_size_anova",
       div(
         class = "page-shell",
         div(
           class = "app-heading",
-          h1("ANOVA"),
-          div("Calculate ANOVA effect sizes used by sample size and power analyses.", class = "app-subtitle")
+          h1(effect_size_method_title("anova", language)),
+          div(sample_size_ui_text(language, "effectsize_subtitle"), class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
-          h3("ANOVA Effect Size"),
+          h3(effect_size_panel_heading("anova", language)),
           div(
             class = "sample-size-grid",
             div(
               class = "step-block sample-size-block sample-size-block1",
-              h3("1. Effect size"),
+              h3(sample_size_step_heading(1, "effect_size", language)),
               radioButtons(
                 "effect_size_anova_design",
                 label = NULL,
-                choices = c(
+                choices = sample_size_choice_labels(language, c(
                   "Partial eta squared from F" = "partial_eta_from_f",
                   "Cohen's f from eta squared" = "f_from_eta2",
                   "Cohen's f from partial eta squared" = "f_from_partial_eta2"
-                ),
+                )),
                 selected = "partial_eta_from_f"
               )
             ),
             div(
               class = "step-block sample-size-block sample-size-block2",
-              h3("2. Inputs"),
+              h3(sample_size_step_heading(2, "inputs", language)),
               uiOutput("effect_size_anova_inputs"),
-              effect_size_action_button("effect_size_anova_calculate")
+              effect_size_action_button("effect_size_anova_calculate", language)
             ),
             div(
               class = "step-block sample-size-block sample-size-block3",
-              h3("3. Results"),
+              h3(sample_size_step_heading(3, "results", language)),
               uiOutput("effect_size_anova_results")
             )
           )
@@ -315,46 +701,46 @@ effect_size_analysis_panel <- function(method) {
   }
   if (identical(method, "ancova")) {
     return(tabPanel(
-      "ANCOVA / MANOVA",
+      effect_size_method_title("ancova", language),
       value = "effect_size_ancova",
       div(
         class = "page-shell",
         div(
           class = "app-heading",
-          h1("ANCOVA / MANOVA"),
-          div("Calculate ANCOVA and MANOVA effect sizes used by sample size and power analyses.", class = "app-subtitle")
+          h1(effect_size_method_title("ancova", language)),
+          div(sample_size_ui_text(language, "effectsize_subtitle"), class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
-          h3("ANCOVA / MANOVA Effect Size"),
+          h3(effect_size_panel_heading("ancova", language)),
           div(
             class = "sample-size-grid",
             div(
               class = "step-block sample-size-block sample-size-block1",
-              h3("1. Effect size"),
+              h3(sample_size_step_heading(1, "effect_size", language)),
               radioButtons(
                 "effect_size_ancova_design",
                 label = NULL,
-                choices = c(
+                choices = sample_size_choice_labels(language, c(
                   "ANCOVA partial eta squared from F" = "ancova_partial_eta_from_f",
                   "ANCOVA adjusted Cohen's f" = "ancova_adjusted_f",
                   "ANCOVA Cohen's f from partial eta squared" = "ancova_f_from_partial_eta2",
                   "MANOVA Pillai's trace to f2" = "manova_pillai",
                   "MANOVA Wilks' lambda to f2" = "manova_wilks"
-                ),
+                )),
                 selected = "ancova_partial_eta_from_f"
               )
             ),
             div(
               class = "step-block sample-size-block sample-size-block2",
-              h3("2. Inputs"),
+              h3(sample_size_step_heading(2, "inputs", language)),
               uiOutput("effect_size_ancova_inputs"),
-              effect_size_action_button("effect_size_ancova_calculate")
+              effect_size_action_button("effect_size_ancova_calculate", language)
             ),
             div(
               class = "step-block sample-size-block sample-size-block3",
-              h3("3. Results"),
+              h3(sample_size_step_heading(3, "results", language)),
               uiOutput("effect_size_ancova_results")
             )
           )
@@ -364,45 +750,45 @@ effect_size_analysis_panel <- function(method) {
   }
   if (identical(method, "nonparametric")) {
     return(tabPanel(
-      "Nonparametric",
+      effect_size_method_title("nonparametric", language),
       value = "effect_size_nonparametric",
       div(
         class = "page-shell",
         div(
           class = "app-heading",
-          h1("Nonparametric"),
-          div("Calculate nonparametric effect sizes used by sample size and power analyses.", class = "app-subtitle")
+          h1(effect_size_method_title("nonparametric", language)),
+          div(sample_size_ui_text(language, "effectsize_subtitle"), class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
-          h3("Nonparametric Effect Size"),
+          h3(effect_size_panel_heading("nonparametric", language)),
           div(
             class = "sample-size-grid",
             div(
               class = "step-block sample-size-block sample-size-block1",
-              h3("1. Effect size"),
+              h3(sample_size_step_heading(1, "effect_size", language)),
               radioButtons(
                 "effect_size_nonparametric_design",
                 label = NULL,
-                choices = c(
+                choices = sample_size_choice_labels(language, c(
                   "Rank-biserial r from Mann-Whitney U" = "rank_biserial_from_u",
                   "Rank-biserial r for paired Wilcoxon" = "rank_biserial_paired",
                   "Kruskal-Wallis epsilon squared" = "kruskal_epsilon",
                   "Friedman Kendall's W" = "friedman_w"
-                ),
+                )),
                 selected = "rank_biserial_from_u"
               )
             ),
             div(
               class = "step-block sample-size-block sample-size-block2",
-              h3("2. Inputs"),
+              h3(sample_size_step_heading(2, "inputs", language)),
               uiOutput("effect_size_nonparametric_inputs"),
-              effect_size_action_button("effect_size_nonparametric_calculate")
+              effect_size_action_button("effect_size_nonparametric_calculate", language)
             ),
             div(
               class = "step-block sample-size-block sample-size-block3",
-              h3("3. Results"),
+              h3(sample_size_step_heading(3, "results", language)),
               uiOutput("effect_size_nonparametric_results")
             )
           )
@@ -412,44 +798,44 @@ effect_size_analysis_panel <- function(method) {
   }
   if (identical(method, "mcnemar")) {
     return(tabPanel(
-      "McNemar",
+      effect_size_method_title("mcnemar", language),
       value = "effect_size_mcnemar",
       div(
         class = "page-shell",
         div(
           class = "app-heading",
-          h1("McNemar"),
-          div("Calculate matched-pair binary effect sizes used by McNemar analyses.", class = "app-subtitle")
+          h1(effect_size_method_title("mcnemar", language)),
+          div(sample_size_ui_text(language, "effectsize_subtitle"), class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
-          h3("McNemar Effect Size"),
+          h3(effect_size_panel_heading("mcnemar", language)),
           div(
             class = "sample-size-grid",
             div(
               class = "step-block sample-size-block sample-size-block1",
-              h3("1. Effect size"),
+              h3(sample_size_step_heading(1, "effect_size", language)),
               radioButtons(
                 "effect_size_mcnemar_design",
                 label = NULL,
-                choices = c(
+                choices = sample_size_choice_labels(language, c(
                   "Matched-pair odds ratio from probabilities" = "matched_or_probs",
                   "Matched-pair odds ratio from paired 2x2 table" = "matched_or_counts",
                   "Cohen's g from discordant probabilities" = "cohen_g"
-                ),
+                )),
                 selected = "matched_or_probs"
               )
             ),
             div(
               class = "step-block sample-size-block sample-size-block2",
-              h3("2. Inputs"),
+              h3(sample_size_step_heading(2, "inputs", language)),
               uiOutput("effect_size_mcnemar_inputs"),
-              effect_size_action_button("effect_size_mcnemar_calculate")
+              effect_size_action_button("effect_size_mcnemar_calculate", language)
             ),
             div(
               class = "step-block sample-size-block sample-size-block3",
-              h3("3. Results"),
+              h3(sample_size_step_heading(3, "results", language)),
               uiOutput("effect_size_mcnemar_results")
             )
           )
@@ -459,45 +845,45 @@ effect_size_analysis_panel <- function(method) {
   }
   if (identical(method, "regression")) {
     return(tabPanel(
-      "Regression",
+      effect_size_method_title("regression", language),
       value = "effect_size_regression",
       div(
         class = "page-shell",
         div(
           class = "app-heading",
-          h1("Regression"),
-          div("Calculate regression effect sizes used by sample size and power analyses.", class = "app-subtitle")
+          h1(effect_size_method_title("regression", language)),
+          div(sample_size_ui_text(language, "effectsize_subtitle"), class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
-          h3("Regression Effect Size"),
+          h3(effect_size_panel_heading("regression", language)),
           div(
             class = "sample-size-grid",
             div(
               class = "step-block sample-size-block sample-size-block1",
-              h3("1. Effect size"),
+              h3(sample_size_step_heading(1, "effect_size", language)),
               radioButtons(
                 "effect_size_regression_design",
                 label = NULL,
-                choices = c(
+                choices = sample_size_choice_labels(language, c(
                   "Multiple regression f2 from R-squared" = "f2_from_r2",
                   "Hierarchical regression f2 from R-squared increase" = "hierarchical_f2",
                   "Logistic regression OR conversion" = "logistic_or",
                   "Moderation interaction f2" = "moderation_f2"
-                ),
+                )),
                 selected = "f2_from_r2"
               )
             ),
             div(
               class = "step-block sample-size-block sample-size-block2",
-              h3("2. Inputs"),
+              h3(sample_size_step_heading(2, "inputs", language)),
               uiOutput("effect_size_regression_inputs"),
-              effect_size_action_button("effect_size_regression_calculate")
+              effect_size_action_button("effect_size_regression_calculate", language)
             ),
             div(
               class = "step-block sample-size-block sample-size-block3",
-              h3("3. Results"),
+              h3(sample_size_step_heading(3, "results", language)),
               uiOutput("effect_size_regression_results")
             )
           )
@@ -507,46 +893,46 @@ effect_size_analysis_panel <- function(method) {
   }
   if (identical(method, "gee")) {
     return(tabPanel(
-      "GEE",
+      effect_size_method_title("gee", language),
       value = "effect_size_gee",
       div(
         class = "page-shell",
         div(
           class = "app-heading",
-          h1("GEE"),
-          div("Calculate GEE effect sizes and repeated-measures planning effects.", class = "app-subtitle")
+          h1(effect_size_method_title("gee", language)),
+          div(sample_size_ui_text(language, "effectsize_subtitle"), class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
-          h3("GEE Effect Size"),
+          h3(effect_size_panel_heading("gee", language)),
           div(
             class = "sample-size-grid",
             div(
               class = "step-block sample-size-block sample-size-block1",
-              h3("1. Effect size"),
+              h3(sample_size_step_heading(1, "effect_size", language)),
               radioButtons(
                 "effect_size_gee_design",
                 label = NULL,
-                choices = c(
+                choices = sample_size_choice_labels(language, c(
                   "Follow-up estimated means" = "continuous_followup_means",
                   "Pre-post change means" = "continuous_change_means",
                   "Group x time B" = "continuous_parameter_b",
                   "Continuous outcome supplied d" = "continuous_d",
                   "Binary outcome from proportions" = "binary_props"
-                ),
+                )),
                 selected = "continuous_followup_means"
               )
             ),
             div(
               class = "step-block sample-size-block sample-size-block2",
-              h3("2. Inputs"),
+              h3(sample_size_step_heading(2, "inputs", language)),
               uiOutput("effect_size_gee_inputs"),
-              effect_size_action_button("effect_size_gee_calculate")
+              effect_size_action_button("effect_size_gee_calculate", language)
             ),
             div(
               class = "step-block sample-size-block sample-size-block3",
-              h3("3. Results"),
+              h3(sample_size_step_heading(3, "results", language)),
               uiOutput("effect_size_gee_results")
             )
           )
@@ -556,46 +942,46 @@ effect_size_analysis_panel <- function(method) {
   }
   if (identical(method, "glmm")) {
     return(tabPanel(
-      "GLMM",
+      effect_size_method_title("glmm", language),
       value = "effect_size_glmm",
       div(
         class = "page-shell",
         div(
           class = "app-heading",
-          h1("GLMM"),
-          div("Calculate generalized linear mixed model effect sizes by outcome family and link.", class = "app-subtitle")
+          h1(effect_size_method_title("glmm", language)),
+          div(sample_size_ui_text(language, "effectsize_subtitle"), class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
-          h3("GLMM Effect Size"),
+          h3(effect_size_panel_heading("glmm", language)),
           div(
             class = "sample-size-grid",
             div(
               class = "step-block sample-size-block sample-size-block1",
-              h3("1. Effect size"),
+              h3(sample_size_step_heading(1, "effect_size", language)),
               radioButtons(
                 "effect_size_glmm_design",
                 label = NULL,
-                choices = c(
+                choices = sample_size_choice_labels(language, c(
                   "Binary logit fixed effect" = "binary_logit",
                   "Binary outcome probabilities" = "binary_probabilities",
                   "Count log-link fixed effect" = "count_log",
                   "Count outcome rates" = "count_rates",
                   "Gaussian fixed effect" = "continuous_gaussian"
-                ),
+                )),
                 selected = "binary_logit"
               )
             ),
             div(
               class = "step-block sample-size-block sample-size-block2",
-              h3("2. Inputs"),
+              h3(sample_size_step_heading(2, "inputs", language)),
               uiOutput("effect_size_glmm_inputs"),
-              effect_size_action_button("effect_size_glmm_calculate")
+              effect_size_action_button("effect_size_glmm_calculate", language)
             ),
             div(
               class = "step-block sample-size-block sample-size-block3",
-              h3("3. Results"),
+              h3(sample_size_step_heading(3, "results", language)),
               uiOutput("effect_size_glmm_results")
             )
           )
@@ -605,44 +991,44 @@ effect_size_analysis_panel <- function(method) {
   }
   if (identical(method, "lmm")) {
     return(tabPanel(
-      "LMM",
+      effect_size_method_title("lmm", language),
       value = "effect_size_lmm",
       div(
         class = "page-shell",
         div(
           class = "app-heading",
-          h1("LMM"),
-          div("Calculate linear mixed model effect sizes for repeated-measures planning.", class = "app-subtitle")
+          h1(effect_size_method_title("lmm", language)),
+          div(sample_size_ui_text(language, "effectsize_subtitle"), class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
-          h3("LMM Effect Size"),
+          h3(effect_size_panel_heading("lmm", language)),
           div(
             class = "sample-size-grid",
             div(
               class = "step-block sample-size-block sample-size-block1",
-              h3("1. Effect size"),
+              h3(sample_size_step_heading(1, "effect_size", language)),
               radioButtons(
                 "effect_size_lmm_design",
                 label = NULL,
-                choices = c(
+                choices = sample_size_choice_labels(language, c(
                   "Simple standardized fixed effect" = "simple_fixed",
                   "GLIMMPSE-style mean vectors" = "glimmpse_vectors",
                   "SPSS LMM output (F, df, covariance)" = "spss_output"
-                ),
+                )),
                 selected = "simple_fixed"
               )
             ),
             div(
               class = "step-block sample-size-block sample-size-block2",
-              h3("2. Inputs"),
+              h3(sample_size_step_heading(2, "inputs", language)),
               uiOutput("effect_size_lmm_inputs"),
-              effect_size_action_button("effect_size_lmm_calculate")
+              effect_size_action_button("effect_size_lmm_calculate", language)
             ),
             div(
               class = "step-block sample-size-block sample-size-block3",
-              h3("3. Results"),
+              h3(sample_size_step_heading(3, "results", language)),
               uiOutput("effect_size_lmm_results")
             )
           )
@@ -652,42 +1038,42 @@ effect_size_analysis_panel <- function(method) {
   }
   if (identical(method, "survival")) {
     return(tabPanel(
-      "Survival / Cox",
+      effect_size_method_title("survival", language),
       value = "effect_size_survival",
       div(
         class = "page-shell",
         div(
           class = "app-heading",
-          h1("Survival / Cox"),
-          div("Calculate hazard-ratio effect sizes used by survival sample size analyses.", class = "app-subtitle")
+          h1(effect_size_method_title("survival", language)),
+          div(sample_size_ui_text(language, "effectsize_subtitle"), class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
-          h3("Survival / Cox Effect Size"),
+          h3(effect_size_panel_heading("survival", language)),
           div(
             class = "sample-size-grid",
             div(
               class = "step-block sample-size-block sample-size-block1",
-              h3("1. Effect size"),
+              h3(sample_size_step_heading(1, "effect_size", language)),
               radioButtons(
                 "effect_size_survival_design",
                 label = NULL,
-                choices = c(
+                choices = sample_size_choice_labels(language, c(
                   "Hazard ratio to log hazard ratio" = "hazard_ratio"
-                ),
+                )),
                 selected = "hazard_ratio"
               )
             ),
             div(
               class = "step-block sample-size-block sample-size-block2",
-              h3("2. Inputs"),
+              h3(sample_size_step_heading(2, "inputs", language)),
               uiOutput("effect_size_survival_inputs"),
-              effect_size_action_button("effect_size_survival_calculate")
+              effect_size_action_button("effect_size_survival_calculate", language)
             ),
             div(
               class = "step-block sample-size-block sample-size-block3",
-              h3("3. Results"),
+              h3(sample_size_step_heading(3, "results", language)),
               uiOutput("effect_size_survival_results")
             )
           )
@@ -697,43 +1083,43 @@ effect_size_analysis_panel <- function(method) {
   }
   if (identical(method, "equivalence")) {
     return(tabPanel(
-      "Equivalence / NI",
+      effect_size_method_title("equivalence", language),
       value = "effect_size_equivalence",
       div(
         class = "page-shell",
         div(
           class = "app-heading",
-          h1("Equivalence / NI"),
-          div("Calculate effect distances to equivalence and non-inferiority margins.", class = "app-subtitle")
+          h1(effect_size_method_title("equivalence", language)),
+          div(sample_size_ui_text(language, "effectsize_subtitle"), class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
-          h3("Equivalence / NI Effect Size"),
+          h3(effect_size_panel_heading("equivalence", language)),
           div(
             class = "sample-size-grid",
             div(
               class = "step-block sample-size-block sample-size-block1",
-              h3("1. Effect size"),
+              h3(sample_size_step_heading(1, "effect_size", language)),
               radioButtons(
                 "effect_size_equivalence_outcome",
                 label = NULL,
-                choices = c(
+                choices = sample_size_choice_labels(language, c(
                   "Mean difference margin distance" = "mean",
                   "Proportion difference margin distance" = "proportion"
-                ),
+                )),
                 selected = "mean"
               )
             ),
             div(
               class = "step-block sample-size-block sample-size-block2",
-              h3("2. Inputs"),
+              h3(sample_size_step_heading(2, "inputs", language)),
               uiOutput("effect_size_equivalence_inputs"),
-              effect_size_action_button("effect_size_equivalence_calculate")
+              effect_size_action_button("effect_size_equivalence_calculate", language)
             ),
             div(
               class = "step-block sample-size-block sample-size-block3",
-              h3("3. Results"),
+              h3(sample_size_step_heading(3, "results", language)),
               uiOutput("effect_size_equivalence_results")
             )
           )
@@ -743,42 +1129,42 @@ effect_size_analysis_panel <- function(method) {
   }
   if (identical(method, "diagnostic")) {
     return(tabPanel(
-      "ROC AUC",
+      effect_size_method_title("diagnostic", language),
       value = "effect_size_diagnostic",
       div(
         class = "page-shell",
         div(
           class = "app-heading",
-          h1("ROC AUC"),
-          div("Calculate ROC AUC effect sizes for diagnostic accuracy analyses.", class = "app-subtitle")
+          h1(effect_size_method_title("diagnostic", language)),
+          div(sample_size_ui_text(language, "effectsize_subtitle"), class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
-          h3("ROC AUC Effect Size"),
+          h3(effect_size_panel_heading("diagnostic", language)),
           div(
             class = "sample-size-grid",
             div(
               class = "step-block sample-size-block sample-size-block1",
-              h3("1. Effect size"),
+              h3(sample_size_step_heading(1, "effect_size", language)),
               radioButtons(
                 "effect_size_diagnostic_design",
                 label = NULL,
-                choices = c(
+                choices = sample_size_choice_labels(language, c(
                   "ROC AUC vs null" = "auc"
-                ),
+                )),
                 selected = "auc"
               )
             ),
             div(
               class = "step-block sample-size-block sample-size-block2",
-              h3("2. Inputs"),
+              h3(sample_size_step_heading(2, "inputs", language)),
               uiOutput("effect_size_diagnostic_inputs"),
-              effect_size_action_button("effect_size_diagnostic_calculate")
+              effect_size_action_button("effect_size_diagnostic_calculate", language)
             ),
             div(
               class = "step-block sample-size-block sample-size-block3",
-              h3("3. Results"),
+              h3(sample_size_step_heading(3, "results", language)),
               uiOutput("effect_size_diagnostic_results")
             )
           )
@@ -788,44 +1174,44 @@ effect_size_analysis_panel <- function(method) {
   }
   if (identical(method, "rates")) {
     return(tabPanel(
-      "Count / Rate Regression",
+      effect_size_method_title("rates", language),
       value = "effect_size_rates",
       div(
         class = "page-shell",
         div(
           class = "app-heading",
-          h1("Count / Rate Regression"),
-          div("Calculate ratio-scale effect sizes for Poisson, negative binomial, and gamma regression models.", class = "app-subtitle")
+          h1(effect_size_method_title("rates", language)),
+          div(sample_size_ui_text(language, "effectsize_subtitle"), class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
-          h3("Count / Rate Regression Effect Size"),
+          h3(effect_size_panel_heading("rates", language)),
           div(
             class = "sample-size-grid",
             div(
               class = "step-block sample-size-block sample-size-block1",
-              h3("1. Effect size"),
+              h3(sample_size_step_heading(1, "effect_size", language)),
               radioButtons(
                 "effect_size_rates_design",
                 label = NULL,
-                choices = c(
+                choices = sample_size_choice_labels(language, c(
                   "Poisson incidence rate ratio" = "poisson_irr",
                   "Negative binomial incidence rate ratio" = "negative_binomial_irr",
                   "Gamma mean ratio" = "gamma_mean_ratio"
-                ),
+                )),
                 selected = "poisson_irr"
               )
             ),
             div(
               class = "step-block sample-size-block sample-size-block2",
-              h3("2. Inputs"),
+              h3(sample_size_step_heading(2, "inputs", language)),
               uiOutput("effect_size_rates_inputs"),
-              effect_size_action_button("effect_size_rates_calculate")
+              effect_size_action_button("effect_size_rates_calculate", language)
             ),
             div(
               class = "step-block sample-size-block sample-size-block3",
-              h3("3. Results"),
+              h3(sample_size_step_heading(3, "results", language)),
               uiOutput("effect_size_rates_results")
             )
           )
@@ -835,44 +1221,44 @@ effect_size_analysis_panel <- function(method) {
   }
   if (identical(method, "cluster")) {
     return(tabPanel(
-      "Cluster Trial",
+      effect_size_method_title("cluster", language),
       value = "effect_size_cluster",
       div(
         class = "page-shell",
         div(
           class = "app-heading",
-          h1("Cluster Trial"),
-          div("Calculate cluster-adjusted effect sizes and planning effects.", class = "app-subtitle")
+          h1(effect_size_method_title("cluster", language)),
+          div(sample_size_ui_text(language, "effectsize_subtitle"), class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
-          h3("Cluster Trial Effect Size"),
+          h3(effect_size_panel_heading("cluster", language)),
           div(
             class = "sample-size-grid",
             div(
               class = "step-block sample-size-block sample-size-block1",
-              h3("1. Effect size"),
+              h3(sample_size_step_heading(1, "effect_size", language)),
               radioButtons(
                 "effect_size_cluster_design",
                 label = NULL,
-                choices = c(
+                choices = sample_size_choice_labels(language, c(
                   "Parallel continuous outcome" = "parallel_continuous",
                   "Parallel binary outcome" = "parallel_binary",
                   "Stepped-wedge continuous outcome" = "stepped_wedge"
-                ),
+                )),
                 selected = "parallel_continuous"
               )
             ),
             div(
               class = "step-block sample-size-block sample-size-block2",
-              h3("2. Inputs"),
+              h3(sample_size_step_heading(2, "inputs", language)),
               uiOutput("effect_size_cluster_inputs"),
-              effect_size_action_button("effect_size_cluster_calculate")
+              effect_size_action_button("effect_size_cluster_calculate", language)
             ),
             div(
               class = "step-block sample-size-block sample-size-block3",
-              h3("3. Results"),
+              h3(sample_size_step_heading(3, "results", language)),
               uiOutput("effect_size_cluster_results")
             )
           )
@@ -882,44 +1268,44 @@ effect_size_analysis_panel <- function(method) {
   }
   if (identical(method, "precision")) {
     return(tabPanel(
-      "Precision / CI",
+      effect_size_method_title("precision", language),
       value = "effect_size_precision",
       div(
         class = "page-shell",
         div(
           class = "app-heading",
-          h1("Precision / CI"),
-          div("Calculate precision effect sizes for confidence interval planning.", class = "app-subtitle")
+          h1(effect_size_method_title("precision", language)),
+          div(sample_size_ui_text(language, "effectsize_subtitle"), class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
-          h3("Precision / CI Effect Size"),
+          h3(effect_size_panel_heading("precision", language)),
           div(
             class = "sample-size-grid",
             div(
               class = "step-block sample-size-block sample-size-block1",
-              h3("1. Effect size"),
+              h3(sample_size_step_heading(1, "effect_size", language)),
               radioButtons(
                 "effect_size_precision_parameter",
                 label = NULL,
-                choices = c(
+                choices = sample_size_choice_labels(language, c(
                   "Mean CI precision" = "mean",
                   "Proportion CI precision" = "proportion",
                   "Correlation CI precision" = "correlation"
-                ),
+                )),
                 selected = "mean"
               )
             ),
             div(
               class = "step-block sample-size-block sample-size-block2",
-              h3("2. Inputs"),
+              h3(sample_size_step_heading(2, "inputs", language)),
               uiOutput("effect_size_precision_inputs"),
-              effect_size_action_button("effect_size_precision_calculate")
+              effect_size_action_button("effect_size_precision_calculate", language)
             ),
             div(
               class = "step-block sample-size-block sample-size-block3",
-              h3("3. Results"),
+              h3(sample_size_step_heading(3, "results", language)),
               uiOutput("effect_size_precision_results")
             )
           )
@@ -929,42 +1315,42 @@ effect_size_analysis_panel <- function(method) {
   }
   if (identical(method, "reliability")) {
     return(tabPanel(
-      "Reliability / Agreement",
+      effect_size_method_title("reliability", language),
       value = "effect_size_reliability",
       div(
         class = "page-shell",
         div(
           class = "app-heading",
-          h1("Reliability / Agreement"),
-          div("Calculate agreement effect sizes.", class = "app-subtitle")
+          h1(effect_size_method_title("reliability", language)),
+          div(sample_size_ui_text(language, "effectsize_subtitle"), class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
-          h3("Reliability / Agreement Effect Size"),
+          h3(effect_size_panel_heading("reliability", language)),
           div(
             class = "sample-size-grid",
             div(
               class = "step-block sample-size-block sample-size-block1",
-              h3("1. Effect size"),
+              h3(sample_size_step_heading(1, "effect_size", language)),
               radioButtons(
                 "effect_size_reliability_design",
                 label = NULL,
-                choices = c(
+                choices = sample_size_choice_labels(language, c(
                   "Cohen's kappa" = "kappa"
-                ),
+                )),
                 selected = "kappa"
               )
             ),
             div(
               class = "step-block sample-size-block sample-size-block2",
-              h3("2. Inputs"),
+              h3(sample_size_step_heading(2, "inputs", language)),
               uiOutput("effect_size_reliability_inputs"),
-              effect_size_action_button("effect_size_reliability_calculate")
+              effect_size_action_button("effect_size_reliability_calculate", language)
             ),
             div(
               class = "step-block sample-size-block sample-size-block3",
-              h3("3. Results"),
+              h3(sample_size_step_heading(3, "results", language)),
               uiOutput("effect_size_reliability_results")
             )
           )
@@ -974,42 +1360,42 @@ effect_size_analysis_panel <- function(method) {
   }
   if (identical(method, "sem")) {
     return(tabPanel(
-      "SEM / CFA",
+      effect_size_method_title("sem", language),
       value = "effect_size_sem",
       div(
         class = "page-shell",
         div(
           class = "app-heading",
-          h1("SEM / CFA"),
-          div("Calculate standardized SEM/CFA parameter effects.", class = "app-subtitle")
+          h1(effect_size_method_title("sem", language)),
+          div(sample_size_ui_text(language, "effectsize_subtitle"), class = "app-subtitle")
         ),
         div(
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
-          h3("SEM / CFA Effect Size"),
+          h3(effect_size_panel_heading("sem", language)),
           div(
             class = "sample-size-grid",
             div(
               class = "step-block sample-size-block sample-size-block1",
-              h3("1. Effect size"),
+              h3(sample_size_step_heading(1, "effect_size", language)),
               radioButtons(
                 "effect_size_sem_design",
                 label = NULL,
-                choices = c(
+                choices = sample_size_choice_labels(language, c(
                   "Standardized parameter" = "parameter"
-                ),
+                )),
                 selected = "parameter"
               )
             ),
             div(
               class = "step-block sample-size-block sample-size-block2",
-              h3("2. Inputs"),
+              h3(sample_size_step_heading(2, "inputs", language)),
               uiOutput("effect_size_sem_inputs"),
-              effect_size_action_button("effect_size_sem_calculate")
+              effect_size_action_button("effect_size_sem_calculate", language)
             ),
             div(
               class = "step-block sample-size-block sample-size-block3",
-              h3("3. Results"),
+              h3(sample_size_step_heading(3, "results", language)),
               uiOutput("effect_size_sem_results")
             )
           )
@@ -1020,284 +1406,297 @@ effect_size_analysis_panel <- function(method) {
   sample_size_analysis_panel("effectsize")
 }
 
-effect_size_ttest_inputs_ui <- function(input) {
+effect_size_ttest_inputs_ui <- function(input, language = statedu_initial_language()) {
+  lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_ttest_design, "independent_means")
   if (identical(design, "independent_t_n")) {
     return(tagList(
-      textInput("effect_size_ttest_t", "t statistic", value = "2.50"),
-      textInput("effect_size_ttest_n1", "Group 1 n", value = "50"),
-      textInput("effect_size_ttest_n2", "Group 2 n", value = "50")
+      textInput("effect_size_ttest_t", lbl("t statistic"), value = "2.50"),
+      textInput("effect_size_ttest_n1", lbl("Group 1 n"), value = "50"),
+      textInput("effect_size_ttest_n2", lbl("Group 2 n"), value = "50")
     ))
   }
   if (identical(design, "independent_t_df_equal")) {
     return(tagList(
-      textInput("effect_size_ttest_t", "t statistic", value = "2.50"),
-      textInput("effect_size_ttest_df", "Degrees of freedom", value = "98")
+      textInput("effect_size_ttest_t", lbl("t statistic"), value = "2.50"),
+      textInput("effect_size_ttest_df", lbl("Degrees of freedom"), value = "98")
     ))
   }
   if (identical(design, "one_sample_t")) {
     return(tagList(
-      textInput("effect_size_ttest_t", "t statistic", value = "3.50"),
-      textInput("effect_size_ttest_n", "Sample size", value = "49")
+      textInput("effect_size_ttest_t", lbl("t statistic"), value = "3.50"),
+      textInput("effect_size_ttest_n", lbl("Sample size"), value = "49")
     ))
   }
   if (identical(design, "paired_t")) {
     return(tagList(
-      textInput("effect_size_ttest_t", "t statistic", value = "3.50"),
-      textInput("effect_size_ttest_n", "Number of pairs", value = "49")
+      textInput("effect_size_ttest_t", lbl("t statistic"), value = "3.50"),
+      textInput("effect_size_ttest_n", lbl("Number of pairs"), value = "49")
     ))
   }
   if (identical(design, "independent_r")) {
-    return(textInput("effect_size_ttest_r", "Point-biserial r", value = "0.25"))
+    return(textInput("effect_size_ttest_r", lbl("Point-biserial r"), value = "0.25"))
   }
   if (identical(design, "paired_means")) {
     return(tagList(
-      textInput("effect_size_ttest_mean_difference", "Mean paired difference", value = "5"),
-      textInput("effect_size_ttest_sd_difference", "SD of paired differences", value = "10")
+      textInput("effect_size_ttest_mean_difference", lbl("Mean paired difference"), value = "5"),
+      textInput("effect_size_ttest_sd_difference", lbl("SD of paired differences"), value = "10")
     ))
   }
   if (identical(design, "one_sample_mean")) {
     return(tagList(
-      textInput("effect_size_ttest_mean1", "Sample mean", value = "105"),
-      textInput("effect_size_ttest_null_mean", "Null mean", value = "100"),
-      textInput("effect_size_ttest_sd1", "SD", value = "10")
+      textInput("effect_size_ttest_mean1", lbl("Sample mean"), value = "105"),
+      textInput("effect_size_ttest_null_mean", lbl("Null mean"), value = "100"),
+      textInput("effect_size_ttest_sd1", lbl("SD"), value = "10")
     ))
   }
   tagList(
-    textInput("effect_size_ttest_mean1", "Group 1 mean", value = "105"),
-    textInput("effect_size_ttest_mean2", "Group 2 mean", value = "100"),
-    textInput("effect_size_ttest_sd1", "Group 1 SD", value = "10"),
-    textInput("effect_size_ttest_sd2", "Group 2 SD", value = "10"),
-    textInput("effect_size_ttest_n1", "Group 1 n", value = "50"),
-    textInput("effect_size_ttest_n2", "Group 2 n", value = "50")
+    textInput("effect_size_ttest_mean1", lbl("Group 1 mean"), value = "105"),
+    textInput("effect_size_ttest_mean2", lbl("Group 2 mean"), value = "100"),
+    textInput("effect_size_ttest_sd1", lbl("Group 1 SD"), value = "10"),
+    textInput("effect_size_ttest_sd2", lbl("Group 2 SD"), value = "10"),
+    textInput("effect_size_ttest_n1", lbl("Group 1 n"), value = "50"),
+    textInput("effect_size_ttest_n2", lbl("Group 2 n"), value = "50")
   )
 }
 
-effect_size_proportion_inputs_ui <- function(input) {
+effect_size_proportion_inputs_ui <- function(input, language = statedu_initial_language()) {
+  lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_proportion_design, "cohens_h")
   if (identical(design, "odds_ratio_table")) {
     return(tagList(
-      textInput("effect_size_proportion_event1", "Group 1 events", value = "30"),
-      textInput("effect_size_proportion_nonevent1", "Group 1 non-events", value = "70"),
-      textInput("effect_size_proportion_event2", "Group 2 events", value = "15"),
-      textInput("effect_size_proportion_nonevent2", "Group 2 non-events", value = "85")
+      textInput("effect_size_proportion_event1", lbl("Group 1 events"), value = "30"),
+      textInput("effect_size_proportion_nonevent1", lbl("Group 1 non-events"), value = "70"),
+      textInput("effect_size_proportion_event2", lbl("Group 2 events"), value = "15"),
+      textInput("effect_size_proportion_nonevent2", lbl("Group 2 non-events"), value = "85")
     ))
   }
   tagList(
-    textInput("effect_size_proportion_p1", "Proportion 1", value = "0.50"),
-    textInput("effect_size_proportion_p2", "Proportion 2", value = "0.65")
+    textInput("effect_size_proportion_p1", lbl("Proportion 1"), value = "0.50"),
+    textInput("effect_size_proportion_p2", lbl("Proportion 2"), value = "0.65")
   )
 }
 
-effect_size_correlation_inputs_ui <- function(input) {
+effect_size_correlation_inputs_ui <- function(input, language = statedu_initial_language()) {
+  lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_correlation_design, "r_from_t")
   if (identical(design, "point_biserial")) {
-    return(textInput("effect_size_correlation_r", "Point-biserial r", value = "0.25"))
+    return(textInput("effect_size_correlation_r", lbl("Point-biserial r"), value = "0.25"))
   }
   if (identical(design, "r_from_t")) {
     return(tagList(
-      textInput("effect_size_correlation_t", "t statistic", value = "2.5"),
-      textInput("effect_size_correlation_df", "Degrees of freedom", value = "98")
+      textInput("effect_size_correlation_t", lbl("t statistic"), value = "2.5"),
+      textInput("effect_size_correlation_df", lbl("Degrees of freedom"), value = "98")
     ))
   }
   if (identical(design, "r_from_f")) {
     return(tagList(
-      textInput("effect_size_correlation_f", "F statistic", value = "6.25"),
-      textInput("effect_size_correlation_df", "Error degrees of freedom", value = "98")
+      textInput("effect_size_correlation_f", lbl("F statistic"), value = "6.25"),
+      textInput("effect_size_correlation_df", lbl("Error degrees of freedom"), value = "98")
     ))
   }
   if (identical(design, "r_from_r2")) {
-    return(textInput("effect_size_correlation_r2", "R-squared", value = "0.10"))
+    return(textInput("effect_size_correlation_r2", lbl("R-squared"), value = "0.10"))
   }
   if (identical(design, "cohens_q")) {
     return(tagList(
-      textInput("effect_size_correlation_r1", "Correlation 1", value = "0.50"),
-      textInput("effect_size_correlation_r2_compare", "Correlation 2", value = "0.30")
+      textInput("effect_size_correlation_r1", lbl("Correlation 1"), value = "0.50"),
+      textInput("effect_size_correlation_r2_compare", lbl("Correlation 2"), value = "0.30")
     ))
   }
-  textInput("effect_size_correlation_r", "Correlation r", value = "0.30")
+  textInput("effect_size_correlation_r", lbl("Correlation r"), value = "0.30")
 }
 
-effect_size_anova_inputs_ui <- function(input) {
+effect_size_anova_inputs_ui <- function(input, language = statedu_initial_language()) {
+  lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_anova_design, "f_from_eta2")
   if (identical(design, "f_from_eta2")) {
-    return(textInput("effect_size_anova_eta2", "Eta squared", value = "0.06"))
+    return(textInput("effect_size_anova_eta2", lbl("Eta squared"), value = "0.06"))
   }
   if (identical(design, "f_from_partial_eta2")) {
-    return(textInput("effect_size_anova_partial_eta2", "Partial eta squared", value = "0.06"))
+    return(textInput("effect_size_anova_partial_eta2", lbl("Partial eta squared"), value = "0.06"))
   }
   tagList(
-    textInput("effect_size_anova_f", "F statistic", value = "4.5"),
-    textInput("effect_size_anova_groups", "Number of groups", value = "3"),
-    textInput("effect_size_anova_total_n", "Total sample size", value = "90")
+    textInput("effect_size_anova_f", lbl("F statistic"), value = "4.5"),
+    textInput("effect_size_anova_groups", lbl("Number of groups"), value = "3"),
+    textInput("effect_size_anova_total_n", lbl("Total sample size"), value = "90")
   )
 }
 
-effect_size_ancova_inputs_ui <- function(input) {
+effect_size_ancova_inputs_ui <- function(input, language = statedu_initial_language()) {
+  lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_ancova_design, "ancova_partial_eta_from_f")
   if (identical(design, "ancova_adjusted_f")) {
     return(tagList(
-      textInput("effect_size_ancova_f", "Unadjusted Cohen's f", value = "0.25"),
-      textInput("effect_size_ancova_covariate_r2", "Covariate R-squared", value = "0.30")
+      textInput("effect_size_ancova_f", lbl("Unadjusted Cohen's f"), value = "0.25"),
+      textInput("effect_size_ancova_covariate_r2", lbl("Covariate R-squared"), value = "0.30")
     ))
   }
   if (identical(design, "ancova_f_from_partial_eta2")) {
-    return(textInput("effect_size_ancova_partial_eta2", "Partial eta squared", value = "0.06"))
+    return(textInput("effect_size_ancova_partial_eta2", lbl("Partial eta squared"), value = "0.06"))
   }
   if (identical(design, "manova_pillai")) {
-    return(textInput("effect_size_ancova_pillai", "Pillai's trace V", value = "0.10"))
+    return(textInput("effect_size_ancova_pillai", lbl("Pillai's trace V"), value = "0.10"))
   }
   if (identical(design, "manova_wilks")) {
     return(tagList(
-      textInput("effect_size_ancova_wilks", "Wilks' lambda", value = "0.90"),
-      textInput("effect_size_ancova_dependent_variables", "Number of dependent variables", value = "2"),
-      textInput("effect_size_ancova_groups", "Number of groups", value = "3")
+      textInput("effect_size_ancova_wilks", lbl("Wilks' lambda"), value = "0.90"),
+      textInput("effect_size_ancova_dependent_variables", lbl("Number of dependent variables"), value = "2"),
+      textInput("effect_size_ancova_groups", lbl("Number of groups"), value = "3")
     ))
   }
   tagList(
-    textInput("effect_size_ancova_f_statistic", "F statistic", value = "4.5"),
-    textInput("effect_size_ancova_groups", "Number of groups", value = "3"),
-    textInput("effect_size_ancova_total_n", "Total sample size", value = "90")
+    textInput("effect_size_ancova_f_statistic", lbl("F statistic"), value = "4.5"),
+    textInput("effect_size_ancova_groups", lbl("Number of groups"), value = "3"),
+    textInput("effect_size_ancova_total_n", lbl("Total sample size"), value = "90")
   )
 }
 
-effect_size_nonparametric_inputs_ui <- function(input) {
+effect_size_nonparametric_inputs_ui <- function(input, language = statedu_initial_language()) {
+  lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_nonparametric_design, "rank_biserial_from_u")
   if (identical(design, "rank_biserial_from_u")) {
     return(tagList(
-      textInput("effect_size_nonparametric_u", "Mann-Whitney U", value = "700"),
-      textInput("effect_size_nonparametric_n1", "Group 1 n", value = "50"),
-      textInput("effect_size_nonparametric_n2", "Group 2 n", value = "50")
+      textInput("effect_size_nonparametric_u", lbl("Mann-Whitney U"), value = "700"),
+      textInput("effect_size_nonparametric_n1", lbl("Group 1 n"), value = "50"),
+      textInput("effect_size_nonparametric_n2", lbl("Group 2 n"), value = "50")
     ))
   }
   if (identical(design, "rank_biserial_paired")) {
     return(tagList(
-      textInput("effect_size_nonparametric_w_positive", "Positive rank sum W+", value = "350"),
-      textInput("effect_size_nonparametric_w_negative", "Negative rank sum W-", value = "150")
+      textInput("effect_size_nonparametric_w_positive", lbl("Positive rank sum W+"), value = "350"),
+      textInput("effect_size_nonparametric_w_negative", lbl("Negative rank sum W-"), value = "150")
     ))
   }
   if (identical(design, "kruskal_epsilon")) {
     return(tagList(
-      textInput("effect_size_nonparametric_h", "Kruskal-Wallis H", value = "10"),
-      textInput("effect_size_nonparametric_n", "Total sample size", value = "90"),
-      textInput("effect_size_nonparametric_groups", "Groups", value = "3")
+      textInput("effect_size_nonparametric_h", lbl("Kruskal-Wallis H"), value = "10"),
+      textInput("effect_size_nonparametric_n", lbl("Total sample size"), value = "90"),
+      textInput("effect_size_nonparametric_groups", lbl("Groups"), value = "3")
     ))
   }
   tagList(
-    textInput("effect_size_nonparametric_chi_square", "Friedman chi-square", value = "12"),
-    textInput("effect_size_nonparametric_n", "Participants", value = "30"),
-    textInput("effect_size_nonparametric_measurements", "Measurements", value = "3")
+    textInput("effect_size_nonparametric_chi_square", lbl("Friedman chi-square"), value = "12"),
+    textInput("effect_size_nonparametric_n", lbl("Participants"), value = "30"),
+    textInput("effect_size_nonparametric_measurements", lbl("Measurements"), value = "3")
   )
 }
 
-effect_size_mcnemar_inputs_ui <- function(input) {
+effect_size_mcnemar_inputs_ui <- function(input, language = statedu_initial_language()) {
   design <- sample_size_choice(input$effect_size_mcnemar_design, "matched_or_probs")
   if (identical(design, "matched_or_counts")) {
     return(tagList(
-      textInput("effect_size_mcnemar_b", "b: negative to positive pairs", value = "20"),
-      textInput("effect_size_mcnemar_c", "c: positive to negative pairs", value = "10")
+      textInput("effect_size_mcnemar_b", lbl("b: negative to positive pairs"), value = "20"),
+      textInput("effect_size_mcnemar_c", lbl("c: positive to negative pairs"), value = "10")
     ))
   }
   tagList(
-    textInput("effect_size_mcnemar_p01", "p01: negative to positive", value = "0.20"),
-    textInput("effect_size_mcnemar_p10", "p10: positive to negative", value = "0.10")
+    textInput("effect_size_mcnemar_p01", lbl("p01: negative to positive"), value = "0.20"),
+    textInput("effect_size_mcnemar_p10", lbl("p10: positive to negative"), value = "0.10")
   )
 }
 
-effect_size_regression_inputs_ui <- function(input) {
+effect_size_regression_inputs_ui <- function(input, language = statedu_initial_language()) {
+  lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_regression_design, "f2_from_r2")
   if (identical(design, "hierarchical_f2")) {
     return(tagList(
-      textInput("effect_size_regression_full_r2", "Full model R-squared", value = "0.25"),
-      textInput("effect_size_regression_reduced_r2", "Reduced model R-squared", value = "0.10")
+      textInput("effect_size_regression_full_r2", lbl("Full model R-squared"), value = "0.25"),
+      textInput("effect_size_regression_reduced_r2", lbl("Reduced model R-squared"), value = "0.10")
     ))
   }
   if (identical(design, "logistic_or")) {
-    return(textInput("effect_size_regression_or", "Odds ratio", value = "1.80"))
+    return(textInput("effect_size_regression_or", lbl("Odds ratio"), value = "1.80"))
   }
   if (identical(design, "moderation_f2")) {
-    return(textInput("effect_size_regression_delta_r2", "Interaction delta R-squared", value = "0.05"))
+    return(textInput("effect_size_regression_delta_r2", lbl("Interaction delta R-squared"), value = "0.05"))
   }
-  textInput("effect_size_regression_r2", "R-squared", value = "0.13")
+  textInput("effect_size_regression_r2", lbl("R-squared"), value = "0.13")
 }
 
-effect_size_gee_sd_inputs_ui <- function(input) {
+effect_size_gee_sd_inputs_ui <- function(input, language = statedu_initial_language()) {
+  lbl <- function(label) sample_size_label(language, label)
   mode <- sample_size_choice(input$effect_size_gee_sd_mode, "direct")
   tagList(
     selectInput(
       "effect_size_gee_sd_mode",
-      "Common SD input",
-      choices = c("Enter common outcome SD" = "direct", "Calculate pooled SD from group SDs" = "pooled"),
+      lbl("Common SD input"),
+      choices = stats::setNames(c("direct", "pooled"), c(
+        statedu_text(language, "Enter common outcome SD", statedu_utf8("eab3b5ed86b520ed919ceca480ed8eb8ecb0a820eca781eca09120ec9e85eba0a5")),
+        statedu_text(language, "Calculate pooled SD from group SDs", statedu_utf8("eca791eb8ba820ed919ceca480ed8eb8ecb0a8eba19c20ed95a9eb8f9920ed919ceca480ed8eb8ecb0a820eab384ec82b0"))
+      )),
       selected = mode
     ),
     if (identical(mode, "pooled")) {
       tagList(
-        textInput("effect_size_gee_n1", "Group 1 n", value = "50"),
-        textInput("effect_size_gee_sd1", "Group 1 SD", value = "1"),
-        textInput("effect_size_gee_n2", "Group 2 n", value = "50"),
-        textInput("effect_size_gee_sd2", "Group 2 SD", value = "1")
+        textInput("effect_size_gee_n1", lbl("Group 1 n"), value = "50"),
+        textInput("effect_size_gee_sd1", lbl("Group 1 SD"), value = "1"),
+        textInput("effect_size_gee_n2", lbl("Group 2 n"), value = "50"),
+        textInput("effect_size_gee_sd2", lbl("Group 2 SD"), value = "1")
       )
     } else {
-      textInput("effect_size_gee_sd", "Common outcome SD", value = "1")
+      textInput("effect_size_gee_sd", lbl("Common outcome SD"), value = "1")
     }
   )
 }
 
-effect_size_gee_inputs_ui <- function(input) {
+effect_size_gee_inputs_ui <- function(input, language = statedu_initial_language()) {
+  lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_gee_design, "continuous_followup_means")
   tagList(
     if (identical(design, "continuous_means") || identical(design, "continuous_followup_means")) {
       tagList(
-        textInput("effect_size_gee_mean1", "Group 1 estimated mean", value = "0.50"),
-        textInput("effect_size_gee_mean2", "Group 2 estimated mean", value = "0"),
-        effect_size_gee_sd_inputs_ui(input)
+        textInput("effect_size_gee_mean1", lbl("Group 1 estimated mean"), value = "0.50"),
+        textInput("effect_size_gee_mean2", lbl("Group 2 estimated mean"), value = "0"),
+        effect_size_gee_sd_inputs_ui(input, language)
       )
     } else if (identical(design, "continuous_change_means")) {
       tagList(
-        textInput("effect_size_gee_pre_mean1", "Group 1 pre mean", value = "0"),
-        textInput("effect_size_gee_post_mean1", "Group 1 post mean", value = "0.50"),
-        textInput("effect_size_gee_pre_mean2", "Group 2 pre mean", value = "0"),
-        textInput("effect_size_gee_post_mean2", "Group 2 post mean", value = "0"),
-        effect_size_gee_sd_inputs_ui(input)
+        textInput("effect_size_gee_pre_mean1", lbl("Group 1 pre mean"), value = "0"),
+        textInput("effect_size_gee_post_mean1", lbl("Group 1 post mean"), value = "0.50"),
+        textInput("effect_size_gee_pre_mean2", lbl("Group 2 pre mean"), value = "0"),
+        textInput("effect_size_gee_post_mean2", lbl("Group 2 post mean"), value = "0"),
+        effect_size_gee_sd_inputs_ui(input, language)
       )
     } else if (identical(design, "continuous_parameter_b")) {
       tagList(
-        textInput("effect_size_gee_coefficient", "Group x time parameter estimate B", value = "0.50"),
-        effect_size_gee_sd_inputs_ui(input)
+      textInput("effect_size_gee_coefficient", lbl("Group x time parameter estimate B"), value = "0.50"),
+        effect_size_gee_sd_inputs_ui(input, language)
       )
     } else if (identical(design, "continuous_d")) {
-      textInput("effect_size_gee_d", "Effect size d", value = "0.50")
+      textInput("effect_size_gee_d", lbl("Effect size d"), value = "0.50")
     } else {
       tagList(
-        textInput("effect_size_gee_p1", "Proportion 1", value = "0.50"),
-        textInput("effect_size_gee_p2", "Proportion 2", value = "0.65")
+        textInput("effect_size_gee_p1", lbl("Proportion 1"), value = "0.50"),
+        textInput("effect_size_gee_p2", lbl("Proportion 2"), value = "0.65")
       )
     }
   )
 }
 
-effect_size_glmm_inputs_ui <- function(input) {
+effect_size_glmm_inputs_ui <- function(input, language = statedu_initial_language()) {
+  lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_glmm_design, "binary_logit")
   if (identical(design, "binary_logit")) {
     scale <- sample_size_choice(input$effect_size_glmm_binary_scale, "coefficient")
     return(tagList(
       selectInput(
         "effect_size_glmm_binary_scale",
-        "Input scale",
-        choices = c("Logit coefficient B" = "coefficient", "Odds ratio" = "odds_ratio"),
+        lbl("Input scale"),
+        choices = sample_size_choice_labels(language, c("Logit coefficient B" = "coefficient", "Odds ratio" = "odds_ratio")),
         selected = scale
       ),
       if (identical(scale, "odds_ratio")) {
-        textInput("effect_size_glmm_or", "Odds ratio", value = "1.80")
+        textInput("effect_size_glmm_or", lbl("Odds ratio"), value = "1.80")
       } else {
-        textInput("effect_size_glmm_coefficient", "Logit fixed-effect coefficient B", value = "0.588")
+        textInput("effect_size_glmm_coefficient", lbl("Logit fixed-effect coefficient B"), value = "0.588")
       }
     ))
   }
   if (identical(design, "binary_probabilities")) {
     return(tagList(
-      textInput("effect_size_glmm_p1", "Proportion 1", value = "0.65"),
-      textInput("effect_size_glmm_p2", "Proportion 2", value = "0.50")
+      textInput("effect_size_glmm_p1", lbl("Proportion 1"), value = "0.65"),
+      textInput("effect_size_glmm_p2", lbl("Proportion 2"), value = "0.50")
     ))
   }
   if (identical(design, "count_log")) {
@@ -1305,227 +1704,240 @@ effect_size_glmm_inputs_ui <- function(input) {
     return(tagList(
       selectInput(
         "effect_size_glmm_count_scale",
-        "Input scale",
-        choices = c("Log fixed-effect coefficient B" = "coefficient", "Incidence rate ratio" = "incidence_rate_ratio"),
+        lbl("Input scale"),
+        choices = sample_size_choice_labels(language, c("Log fixed-effect coefficient B" = "coefficient", "Incidence rate ratio" = "incidence_rate_ratio")),
         selected = scale
       ),
       if (identical(scale, "incidence_rate_ratio")) {
-        textInput("effect_size_glmm_irr", "Incidence rate ratio", value = "1.50")
+        textInput("effect_size_glmm_irr", lbl("Incidence rate ratio"), value = "1.50")
       } else {
-        textInput("effect_size_glmm_coefficient", "Log fixed-effect coefficient B", value = "0.405")
+        textInput("effect_size_glmm_coefficient", lbl("Log fixed-effect coefficient B"), value = "0.405")
       }
     ))
   }
   if (identical(design, "count_rates")) {
     return(tagList(
-      textInput("effect_size_glmm_rate1", "Rate 1", value = "1.50"),
-      textInput("effect_size_glmm_rate2", "Rate 2", value = "1.00")
+      textInput("effect_size_glmm_rate1", lbl("Rate 1"), value = "1.50"),
+      textInput("effect_size_glmm_rate2", lbl("Rate 2"), value = "1.00")
     ))
   }
   tagList(
-    textInput("effect_size_glmm_coefficient", "Fixed-effect coefficient B", value = "0.50"),
-    textInput("effect_size_glmm_sd", "Residual SD", value = "1")
+    textInput("effect_size_glmm_coefficient", lbl("Fixed-effect coefficient B"), value = "0.50"),
+    textInput("effect_size_glmm_sd", lbl("Residual SD"), value = "1")
   )
 }
 
-effect_size_lmm_inputs_ui <- function(input) {
+effect_size_lmm_inputs_ui <- function(input, language = statedu_initial_language()) {
+  lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_lmm_design, "simple_fixed")
   lmm_design <- sample_size_choice(input$effect_size_lmm_lmm_design, "two_group_repeated")
   if (identical(design, "spss_output")) {
     return(tagList(
       h4("Omnibus fixed effect"),
-      textInput("effect_size_lmm_f_statistic", "F statistic", value = "28.061"),
-      textInput("effect_size_lmm_df_effect", "Numerator df", value = "3"),
-      textInput("effect_size_lmm_df_error", "Denominator df", value = "23.057"),
+      textInput("effect_size_lmm_f_statistic", lbl("F statistic"), value = "28.061"),
+      textInput("effect_size_lmm_df_effect", lbl("Numerator df"), value = "3"),
+      textInput("effect_size_lmm_df_error", lbl("Denominator df"), value = "23.057"),
       h4("Optional pairwise comparison"),
-      textInput("effect_size_lmm_mean_difference", "Mean difference (I - J)", value = "0.824"),
-      textInput("effect_size_lmm_variance_i", "Variance at time I", value = "0.326"),
-      textInput("effect_size_lmm_variance_j", "Variance at time J", value = "0.199"),
-      textInput("effect_size_lmm_covariance_ij", "Covariance I,J", value = "0.117")
+      textInput("effect_size_lmm_mean_difference", lbl("Mean difference (I - J)"), value = "0.824"),
+      textInput("effect_size_lmm_variance_i", lbl("Variance at time I"), value = "0.326"),
+      textInput("effect_size_lmm_variance_j", lbl("Variance at time J"), value = "0.199"),
+      textInput("effect_size_lmm_covariance_ij", lbl("Covariance I,J"), value = "0.117")
     ))
   }
   tagList(
     selectInput(
       "effect_size_lmm_lmm_design",
-      "LMM design",
-      choices = c(
+      lbl("LMM design"),
+      choices = sample_size_choice_labels(language, c(
         "Two-group repeated (Group x Time)" = "two_group_repeated",
         "One-group repeated (Time slope)" = "one_group_repeated"
-      ),
+      )),
       selected = lmm_design
     ),
     if (identical(design, "simple_fixed")) {
       tagList(
-        textInput("effect_size_lmm_effect", "Standardized fixed effect", value = "0.30"),
-        textInput("effect_size_lmm_time_points", "Time points", value = "3"),
-        textInput("effect_size_lmm_icc", "ICC / random intercept proportion", value = "0.30")
+        textInput("effect_size_lmm_effect", lbl("Standardized fixed effect"), value = "0.30"),
+        textInput("effect_size_lmm_time_points", lbl("Time points"), value = "3"),
+        textInput("effect_size_lmm_icc", lbl("ICC / random intercept proportion"), value = "0.30")
       )
     } else {
       tagList(
-        textInput("effect_size_lmm_group1_means", "Group 1 means by time", value = "0, 0.2, 0.4"),
+        textInput("effect_size_lmm_group1_means", lbl("Group 1 means by time"), value = "0, 0.2, 0.4"),
         if (identical(lmm_design, "two_group_repeated")) {
-          textInput("effect_size_lmm_group2_means", "Group 2 means by time", value = "0, 0.1, 0.8")
+          textInput("effect_size_lmm_group2_means", lbl("Group 2 means by time"), value = "0, 0.1, 0.8")
         },
-        textInput("effect_size_lmm_residual_sd", "Residual SD", value = "1"),
+        textInput("effect_size_lmm_residual_sd", lbl("Residual SD"), value = "1"),
         selectInput(
           "effect_size_lmm_correlation_structure",
-          "Correlation structure",
-          choices = c("Exchangeable" = "exchangeable", "AR(1)" = "ar1", "Unstructured" = "unstructured"),
+          lbl("Correlation structure"),
+          choices = sample_size_choice_labels(language, c("Exchangeable" = "exchangeable", "AR(1)" = "ar1", "Unstructured" = "unstructured")),
           selected = sample_size_choice(input$effect_size_lmm_correlation_structure, "exchangeable")
         ),
         if (identical(sample_size_choice(input$effect_size_lmm_correlation_structure, "exchangeable"), "unstructured")) {
-          textInput("effect_size_lmm_correlations", "Pairwise correlations", value = "0.50, 0.30, 0.50")
+          textInput("effect_size_lmm_correlations", lbl("Pairwise correlations"), value = "0.50, 0.30, 0.50")
         } else {
-          textInput("effect_size_lmm_rho", "Correlation rho", value = "0.50")
+          textInput("effect_size_lmm_rho", lbl("Correlation rho"), value = "0.50")
         }
       )
     }
   )
 }
 
-effect_size_survival_inputs_ui <- function(input) {
+effect_size_survival_inputs_ui <- function(input, language = statedu_initial_language()) {
+  lbl <- function(label) sample_size_label(language, label)
   tagList(
-    textInput("effect_size_survival_hr", "Hazard ratio", value = "0.70")
+    textInput("effect_size_survival_hr", lbl("Hazard ratio"), value = "0.70")
   )
 }
 
-effect_size_equivalence_inputs_ui <- function(input) {
+effect_size_equivalence_inputs_ui <- function(input, language = statedu_initial_language()) {
+  lbl <- function(label) sample_size_label(language, label)
   outcome <- sample_size_choice(input$effect_size_equivalence_outcome, "mean")
   tagList(
     selectInput(
       "effect_size_equivalence_objective",
-      "Objective",
-      choices = c("Non-inferiority" = "noninferiority", "Equivalence" = "equivalence"),
+      lbl("Objective"),
+      choices = sample_size_choice_labels(language, c("Non-inferiority" = "noninferiority", "Equivalence" = "equivalence")),
       selected = sample_size_choice(input$effect_size_equivalence_objective, "noninferiority")
     ),
-    textInput("effect_size_equivalence_margin", "Margin", value = if (identical(outcome, "proportion")) "0.10" else "0.50"),
+    textInput("effect_size_equivalence_margin", lbl("Margin"), value = if (identical(outcome, "proportion")) "0.10" else "0.50"),
     if (identical(outcome, "proportion")) {
       tagList(
-        textInput("effect_size_equivalence_p1", "Proportion 1", value = "0.80"),
-        textInput("effect_size_equivalence_p2", "Proportion 2", value = "0.78")
+        textInput("effect_size_equivalence_p1", lbl("Proportion 1"), value = "0.80"),
+        textInput("effect_size_equivalence_p2", lbl("Proportion 2"), value = "0.78")
       )
     } else {
       tagList(
-        textInput("effect_size_equivalence_difference", "Observed / expected difference", value = "0"),
-        textInput("effect_size_equivalence_sd", "SD", value = "1")
+      textInput("effect_size_equivalence_difference", lbl("Observed / expected difference"), value = "0"),
+        textInput("effect_size_equivalence_sd", lbl("SD"), value = "1")
       )
     }
   )
 }
 
-effect_size_diagnostic_inputs_ui <- function(input) {
+effect_size_diagnostic_inputs_ui <- function(input, language = statedu_initial_language()) {
+  lbl <- function(label) sample_size_label(language, label)
   tagList(
-    textInput("effect_size_diagnostic_auc", "AUC", value = "0.75"),
-    textInput("effect_size_diagnostic_null_auc", "Null AUC", value = "0.50")
+    textInput("effect_size_diagnostic_auc", lbl("Expected AUC"), value = "0.75"),
+    textInput("effect_size_diagnostic_null_auc", lbl("Null AUC"), value = "0.50")
   )
 }
 
-effect_size_rates_inputs_ui <- function(input) {
+effect_size_rates_inputs_ui <- function(input, language = statedu_initial_language()) {
+  lbl <- function(label) sample_size_label(language, label)
   input_scale <- sample_size_choice(input$effect_size_rates_input_scale, "ratio")
   tagList(
     selectInput(
       "effect_size_rates_input_scale",
-      "Input scale",
-      choices = c("Ratio" = "ratio", "Regression coefficient B" = "log_ratio"),
+      lbl("Input scale"),
+      choices = sample_size_choice_labels(language, c("Ratio" = "ratio", "Regression coefficient B" = "log_ratio")),
       selected = input_scale
     ),
     if (identical(input_scale, "log_ratio")) {
-      textInput("effect_size_rates_log_ratio", "Regression coefficient B", value = "0.405")
+      textInput("effect_size_rates_log_ratio", lbl("Regression coefficient B"), value = "0.405")
     } else {
-      textInput("effect_size_rates_ratio", "Ratio", value = "1.50")
+      textInput("effect_size_rates_ratio", lbl("Ratio"), value = "1.50")
     }
   )
 }
 
-effect_size_cluster_inputs_ui <- function(input) {
+effect_size_cluster_inputs_ui <- function(input, language = statedu_initial_language()) {
+  lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_cluster_design, "parallel_continuous")
   tagList(
     if (identical(design, "parallel_binary")) {
       tagList(
-        textInput("effect_size_cluster_p1", "Proportion 1", value = "0.50"),
-        textInput("effect_size_cluster_p2", "Proportion 2", value = "0.65")
+        textInput("effect_size_cluster_p1", lbl("Proportion 1"), value = "0.50"),
+        textInput("effect_size_cluster_p2", lbl("Proportion 2"), value = "0.65")
       )
     } else {
-      textInput("effect_size_cluster_effect", "Effect size d", value = if (identical(design, "stepped_wedge")) "0.40" else "0.50")
+      textInput("effect_size_cluster_effect", lbl("Effect size d"), value = if (identical(design, "stepped_wedge")) "0.40" else "0.50")
     },
-    textInput("effect_size_cluster_size", if (identical(design, "stepped_wedge")) "Cluster size per period" else "Cluster size", value = "20"),
-    textInput("effect_size_cluster_icc", "ICC", value = "0.05"),
+    textInput("effect_size_cluster_size", lbl(if (identical(design, "stepped_wedge")) "Cluster size per period" else "Cluster size"), value = "20"),
+      textInput("effect_size_cluster_icc", lbl("ICC"), value = "0.05"),
     if (identical(design, "stepped_wedge")) {
-      textInput("effect_size_cluster_periods", "Periods", value = "5")
+      textInput("effect_size_cluster_periods", lbl("Periods"), value = "5")
     }
   )
 }
 
-effect_size_precision_inputs_ui <- function(input) {
+effect_size_precision_inputs_ui <- function(input, language = statedu_initial_language()) {
+  lbl <- function(label) sample_size_label(language, label)
   parameter <- sample_size_choice(input$effect_size_precision_parameter, "mean")
   tagList(
-    textInput("effect_size_precision_half_width", "Desired CI half-width", value = "0.10"),
+    textInput("effect_size_precision_half_width", lbl("Desired CI half-width"), value = "0.10"),
     if (identical(parameter, "mean")) {
       tagList(
-        textInput("effect_size_precision_estimate", "Expected mean", value = "1"),
-        textInput("effect_size_precision_sd", "SD", value = "1")
+        textInput("effect_size_precision_estimate", lbl("Expected mean"), value = "1"),
+        textInput("effect_size_precision_sd", lbl("SD"), value = "1")
       )
     } else if (identical(parameter, "proportion")) {
-      textInput("effect_size_precision_proportion", "Expected proportion", value = "0.50")
+      textInput("effect_size_precision_proportion", lbl("Expected proportion"), value = "0.50")
     } else {
-      textInput("effect_size_precision_r", "Expected r", value = "0.30")
+      textInput("effect_size_precision_r", lbl("Expected r"), value = "0.30")
     }
   )
 }
 
-effect_size_reliability_inputs_ui <- function(input) {
+effect_size_reliability_inputs_ui <- function(input, language = statedu_initial_language()) {
+  lbl <- function(label) sample_size_label(language, label)
   tagList(
-    textInput("effect_size_reliability_value", "Cohen's kappa", value = "0.80"),
-    textInput("effect_size_reliability_categories", "Categories", value = "2")
+    textInput("effect_size_reliability_value", lbl("Cohen's kappa"), value = "0.80"),
+    textInput("effect_size_reliability_categories", lbl("Categories"), value = "2")
   )
 }
 
-effect_size_sem_inputs_ui <- function(input) {
+effect_size_sem_inputs_ui <- function(input, language = statedu_initial_language()) {
+  lbl <- function(label) sample_size_label(language, label)
   tagList(
     selectInput(
       "effect_size_sem_parameter_type",
-      "Parameter type",
-      choices = c(
+      lbl("Parameter type"),
+      choices = sample_size_choice_labels(language, c(
         "Standardized loading" = "loading",
         "Standardized path" = "path",
         "Latent correlation" = "correlation"
-      ),
+      )),
       selected = sample_size_choice(input$effect_size_sem_parameter_type, "path")
     ),
-    textInput("effect_size_sem_parameter", "Expected standardized parameter", value = "0.30")
+    textInput("effect_size_sem_parameter", lbl("Expected standardized parameter"), value = "0.30")
   )
 }
 
-effect_size_chisquare_inputs_ui <- function(input) {
+effect_size_chisquare_inputs_ui <- function(input, language = statedu_initial_language()) {
+  lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_chisquare_design, "cohens_w")
   if (identical(design, "cohens_w_from_probs")) {
     return(tagList(
-      textInput("effect_size_chisquare_observed", "Observed proportions", value = "0.20, 0.50, 0.30"),
-      textInput("effect_size_chisquare_expected", "Expected proportions", value = "0.33, 0.33, 0.34")
+      textInput("effect_size_chisquare_observed", lbl("Observed proportions"), value = "0.20, 0.50, 0.30"),
+      textInput("effect_size_chisquare_expected", lbl("Expected proportions"), value = "0.33, 0.33, 0.34")
     ))
   }
   tagList(
-    textInput("effect_size_chisquare_statistic", "Chi-square statistic", value = "10"),
-    textInput("effect_size_chisquare_n", "Sample size", value = "100"),
+    textInput("effect_size_chisquare_statistic", lbl("Chi-square statistic"), value = "10"),
+    textInput("effect_size_chisquare_n", lbl("Sample size"), value = "100"),
     if (identical(design, "cramers_v")) {
       tagList(
-        textInput("effect_size_chisquare_rows", "Rows", value = "2"),
-        textInput("effect_size_chisquare_columns", "Columns", value = "3")
+        textInput("effect_size_chisquare_rows", lbl("Rows"), value = "2"),
+        textInput("effect_size_chisquare_columns", lbl("Columns"), value = "3")
       )
     } else if (identical(design, "cohens_w")) {
       tagList(
-        textInput("effect_size_chisquare_rows", "Rows", value = "2"),
-        textInput("effect_size_chisquare_columns", "Columns", value = "2")
+        textInput("effect_size_chisquare_rows", lbl("Rows"), value = "2"),
+        textInput("effect_size_chisquare_columns", lbl("Columns"), value = "2")
       )
     }
   )
 }
 
-sample_size_analysis_panel <- function(method) {
-  labels <- c(sample_size_method_labels(), effectsize = "Effect Size Calculator")
+sample_size_analysis_panel <- function(method, language = statedu_initial_language()) {
+  labels <- c(
+    sample_size_method_labels(language),
+    effectsize = statedu_text(language, "Effect Size Calculator", statedu_utf8("ed9aa8eab3bced81aceab8b020eab384ec82b0eab8b0"))
+  )
   title <- labels[[method]] %||% "Sample Size"
   is_effect_size <- identical(method, "effectsize")
-  target_choices <- sample_size_target_choices(method)
+  target_choices <- sample_size_target_choices(method, language)
   tabPanel(
     title,
     value = paste0("sample_size_", method),
@@ -1535,7 +1947,7 @@ sample_size_analysis_panel <- function(method) {
         class = "app-heading",
         h1(title),
         div(
-          if (is_effect_size) "Calculate effect-size inputs used by sample size and power analyses." else "Calculate required sample size or achieved power from study assumptions.",
+          if (is_effect_size) sample_size_ui_text(language, "effectsize_subtitle") else sample_size_ui_text(language, "sample_size_subtitle"),
           class = "app-subtitle"
         )
       ),
@@ -1556,22 +1968,22 @@ sample_size_analysis_panel <- function(method) {
              if (text) text.textContent = (message.text || 'Calculating...') + ' ' + value + '%';
            });"
         ))),
-        h3(if (is_effect_size) title else paste(title, "Sample Size")),
+        h3(if (is_effect_size) title else paste(title, sample_size_ui_text(language, "sample_size"))),
         div(
           class = "sample-size-grid",
           div(
             class = "step-block sample-size-block sample-size-block1",
-            h3(if (is_effect_size) "1. Effect size" else "1. Calculate"),
+            h3(if (is_effect_size) sample_size_step_heading(1, "effect_size", language) else sample_size_step_heading(1, "calculate", language)),
             if (is_effect_size) {
               radioButtons(
                 "sample_size_effectsize_design",
                 label = NULL,
-                choices = c(
+                choices = sample_size_choice_labels(language, c(
                   "Cohen's d for independent means" = "independent_means",
                   "Hedges' g for independent means" = "hedges_g",
                   "Cohen's d for one-sample mean" = "one_sample_mean",
                   "Cohen's dz for paired means" = "paired_means"
-                ),
+                )),
                 selected = "independent_means"
               )
             } else {
@@ -1596,13 +2008,13 @@ sample_size_analysis_panel <- function(method) {
           ),
           div(
             class = "step-block sample-size-block sample-size-block2",
-            h3("2. Inputs"),
+            h3(sample_size_step_heading(2, "inputs", language)),
             uiOutput(paste0("sample_size_", method, "_inputs")),
-            actionButton(paste0("sample_size_", method, "_calculate"), "Calculate", class = "btn btn-primary sample-size-calculate")
+            actionButton(paste0("sample_size_", method, "_calculate"), sample_size_ui_text(language, "calculate"), class = "btn btn-primary sample-size-calculate")
           ),
           div(
             class = "step-block sample-size-block sample-size-block3",
-            h3("3. Results"),
+            h3(sample_size_step_heading(3, "results", language)),
             uiOutput(paste0("sample_size_", method, "_results"))
           )
         )
@@ -1611,41 +2023,44 @@ sample_size_analysis_panel <- function(method) {
   )
 }
 
-sample_size_common_inputs <- function(method, target, show_ratio = FALSE, show_tail = TRUE, n_label = "Sample size", power_value = "0.95") {
+sample_size_common_inputs <- function(method, target, show_ratio = FALSE, show_tail = TRUE, n_label = "Sample size", power_value = "0.95", language = statedu_initial_language()) {
+  lbl <- function(label) sample_size_label(language, label)
   tagList(
-    textInput(paste0("sample_size_", method, "_alpha"), "Alpha", value = "0.05"),
+    textInput(paste0("sample_size_", method, "_alpha"), lbl("Alpha"), value = "0.05"),
     if (identical(target, "sample_size")) {
-      textInput(paste0("sample_size_", method, "_power"), "Power", value = power_value)
+      textInput(paste0("sample_size_", method, "_power"), lbl("Power"), value = power_value)
     } else {
-      textInput(paste0("sample_size_", method, "_n"), n_label, value = "100")
+      textInput(paste0("sample_size_", method, "_n"), lbl(n_label), value = "100")
     },
     if (isTRUE(show_ratio)) {
-      textInput(paste0("sample_size_", method, "_ratio"), "Allocation ratio (Group 2 / Group 1)", value = "1")
+      textInput(paste0("sample_size_", method, "_ratio"), lbl("Allocation ratio (Group 2 / Group 1)"), value = "1")
     },
     if (isTRUE(show_tail)) {
       selectInput(
         paste0("sample_size_", method, "_alternative"),
-        "Alternative",
-        choices = c("Two-sided" = "two.sided", "One-sided" = "one.sided"),
+        lbl("Alternative"),
+        choices = stats::setNames(c("two.sided", "one.sided"), c(lbl("Two-sided"), lbl("One-sided"))),
         selected = "two.sided"
       )
     },
     if (identical(target, "sample_size")) {
-      textInput(paste0("sample_size_", method, "_dropout"), "Dropout rate (%)", value = "0")
+      textInput(paste0("sample_size_", method, "_dropout"), lbl("Dropout rate (%)"), value = "0")
     }
   )
 }
 
-sample_size_inputs_ui <- function(method, input) {
+sample_size_inputs_ui <- function(method, input, language = statedu_initial_language()) {
+  lbl <- function(label) sample_size_label(language, label)
+  common_inputs <- function(...) sample_size_common_inputs(..., language = language)
   target <- input[[paste0("sample_size_", method, "_target")]] %||% "sample_size"
   effectsize_design <- input$sample_size_effectsize_design %||% "independent_means"
   ttest_design <- input$sample_size_ttest_design %||% "two_sample"
-  ttest_effect_label <- switch(
+  ttest_effect_label <- lbl(switch(
     ttest_design,
     one_sample = "Effect size d (mean difference / SD)",
     paired = "Effect size dz (paired difference / SD)",
     "Effect size d (Cohen's d)"
-  )
+  ))
   ttest_n_label <- switch(
     ttest_design,
     one_sample = "Participants",
@@ -1653,14 +2068,14 @@ sample_size_inputs_ui <- function(method, input) {
     "Sample size per group"
   )
   nonparametric_design <- input$sample_size_nonparametric_design %||% "two_independent"
-  nonparametric_effect_label <- switch(
+  nonparametric_effect_label <- lbl(switch(
     nonparametric_design,
     paired = "Effect size dz (paired difference / SD)",
     one_sample = "Effect size d (median shift / SD)",
     kruskal_wallis = "Effect size f",
     friedman = "Effect size W (Kendall's W)",
     "Effect size d (approx.)"
-  )
+  ))
   nonparametric_n_label <- switch(
     nonparametric_design,
     paired = "Pairs",
@@ -1671,9 +2086,9 @@ sample_size_inputs_ui <- function(method, input) {
   )
   proportion_design <- input$sample_size_proportion_design %||% "two_proportion"
   anova_design <- input$sample_size_anova_design %||% "one_way"
-  anova_effect_label <- "Effect size f"
+  anova_effect_label <- lbl("Effect size f")
   ancova_design <- input$sample_size_ancova_design %||% "ancova"
-  ancova_effect_label <- if (identical(ancova_design, "manova")) "Pillai's trace V" else "Effect size f"
+  ancova_effect_label <- if (identical(ancova_design, "manova")) lbl("Pillai's trace V") else lbl("Effect size f")
   ancova_n_label <- "Total sample size"
   regression_design <- input$sample_size_regression_design %||% "multiple"
   gee_outcome <- input$sample_size_gee_outcome %||% "continuous"
@@ -1695,23 +2110,23 @@ sample_size_inputs_ui <- function(method, input) {
     effectsize = tagList(
       if (identical(effectsize_design, "paired_means")) {
         tagList(
-          textInput("sample_size_effectsize_mean_difference", "Mean paired difference", value = "5"),
-          textInput("sample_size_effectsize_sd_difference", "SD of paired differences", value = "10")
+          textInput("sample_size_effectsize_mean_difference", lbl("Mean paired difference"), value = "5"),
+          textInput("sample_size_effectsize_sd_difference", lbl("SD of paired differences"), value = "10")
         )
       } else if (identical(effectsize_design, "one_sample_mean")) {
         tagList(
-          textInput("sample_size_effectsize_mean1", "Sample mean", value = "105"),
-          textInput("sample_size_effectsize_null_mean", "Null mean", value = "100"),
-          textInput("sample_size_effectsize_sd1", "SD", value = "10")
+          textInput("sample_size_effectsize_mean1", lbl("Sample mean"), value = "105"),
+          textInput("sample_size_effectsize_null_mean", lbl("Null mean"), value = "100"),
+          textInput("sample_size_effectsize_sd1", lbl("SD"), value = "10")
         )
       } else {
         tagList(
-          textInput("sample_size_effectsize_mean1", "Group 1 mean", value = "105"),
-          textInput("sample_size_effectsize_mean2", "Group 2 mean", value = "100"),
-          textInput("sample_size_effectsize_sd1", "Group 1 SD", value = "10"),
-          textInput("sample_size_effectsize_sd2", "Group 2 SD", value = "10"),
-          textInput("sample_size_effectsize_n1", "Group 1 n", value = "50"),
-          textInput("sample_size_effectsize_n2", "Group 2 n", value = "50"),
+          textInput("sample_size_effectsize_mean1", lbl("Group 1 mean"), value = "105"),
+          textInput("sample_size_effectsize_mean2", lbl("Group 2 mean"), value = "100"),
+          textInput("sample_size_effectsize_sd1", lbl("Group 1 SD"), value = "10"),
+          textInput("sample_size_effectsize_sd2", lbl("Group 2 SD"), value = "10"),
+          textInput("sample_size_effectsize_n1", lbl("Group 1 n"), value = "50"),
+          textInput("sample_size_effectsize_n2", lbl("Group 2 n"), value = "50"),
           if (identical(effectsize_design, "hedges_g")) {
             div(class = "sample-size-method-note", "Primary result will be Hedges' g; Cohen's d is also shown for reference.")
           }
@@ -1721,34 +2136,34 @@ sample_size_inputs_ui <- function(method, input) {
     ttest = tagList(
       selectInput(
         "sample_size_ttest_design",
-        "Design",
-        choices = c("Two independent groups" = "two_sample", "One sample" = "one_sample", "Paired" = "paired"),
+        lbl("Design"),
+        choices = sample_size_choice_labels(language, c("Two independent groups" = "two_sample", "One sample" = "one_sample", "Paired" = "paired")),
         selected = ttest_design
       ),
       textInput("sample_size_ttest_effect", ttest_effect_label, value = "0.50"),
-      sample_size_common_inputs("ttest", target, show_ratio = identical(ttest_design, "two_sample"), n_label = ttest_n_label)
+      common_inputs("ttest", target, show_ratio = identical(ttest_design, "two_sample"), n_label = ttest_n_label)
     ),
     nonparametric = tagList(
       selectInput(
         "sample_size_nonparametric_design",
-        "Design",
-        choices = c(
+        lbl("Design"),
+        choices = sample_size_choice_labels(language, c(
           "Mann-Whitney U (two independent groups)" = "two_independent",
           "Wilcoxon signed-rank (paired samples)" = "paired",
           "One-sample Wilcoxon signed-rank (median shift)" = "one_sample",
           "Kruskal-Wallis" = "kruskal_wallis",
           "Friedman test" = "friedman"
-        ),
+        )),
         selected = nonparametric_design
       ),
       textInput("sample_size_nonparametric_effect", nonparametric_effect_label, value = "0.50"),
       if (identical(nonparametric_design, "kruskal_wallis")) {
-        textInput("sample_size_nonparametric_groups", "Number of groups", value = "3")
+        textInput("sample_size_nonparametric_groups", lbl("Number of groups"), value = "3")
       },
       if (identical(nonparametric_design, "friedman")) {
-        textInput("sample_size_nonparametric_measurements", "Measurements", value = "3")
+        textInput("sample_size_nonparametric_measurements", lbl("Measurements"), value = "3")
       },
-      sample_size_common_inputs(
+      common_inputs(
         "nonparametric",
         target,
         show_ratio = identical(nonparametric_design, "two_independent"),
@@ -1759,159 +2174,159 @@ sample_size_inputs_ui <- function(method, input) {
     proportion = tagList(
       selectInput(
         "sample_size_proportion_design",
-        "Design",
-        choices = c("Two independent proportions" = "two_proportion", "One proportion vs 0.50" = "one_proportion"),
+        lbl("Design"),
+        choices = sample_size_choice_labels(language, c("Two independent proportions" = "two_proportion", "One proportion vs 0.50" = "one_proportion")),
         selected = proportion_design
       ),
-      textInput("sample_size_proportion_p1", "Proportion 1", value = "0.50"),
+      textInput("sample_size_proportion_p1", lbl("Proportion 1"), value = "0.50"),
       if (identical(proportion_design, "two_proportion")) {
-        textInput("sample_size_proportion_p2", "Proportion 2", value = "0.65")
+        textInput("sample_size_proportion_p2", lbl("Proportion 2"), value = "0.65")
       },
-      sample_size_common_inputs("proportion", target, show_ratio = identical(proportion_design, "two_proportion"))
+      common_inputs("proportion", target, show_ratio = identical(proportion_design, "two_proportion"))
     ),
     chisquare = tagList(
-      textInput("sample_size_chisquare_effect", "Effect size w", value = "0.30"),
-      textInput("sample_size_chisquare_df", "Degrees of freedom", value = "1"),
-      sample_size_common_inputs("chisquare", target, show_tail = FALSE)
+      textInput("sample_size_chisquare_effect", lbl("Effect size w"), value = "0.30"),
+      textInput("sample_size_chisquare_df", lbl("Degrees of freedom"), value = "1"),
+      common_inputs("chisquare", target, show_tail = FALSE)
     ),
     correlation = tagList(
-      textInput("sample_size_correlation_r", "Expected r", value = "0.30"),
-      sample_size_common_inputs("correlation", target)
+      textInput("sample_size_correlation_r", lbl("Expected r"), value = "0.30"),
+      common_inputs("correlation", target)
     ),
     anova = tagList(
       selectInput(
         "sample_size_anova_design",
-        "Design",
-        choices = c(
+        lbl("Design"),
+        choices = sample_size_choice_labels(language, c(
           "One-way ANOVA" = "one_way",
           "Two-way ANOVA" = "two_way",
           "One-group repeated-measures ANOVA" = "repeated_one_group",
           "Mixed repeated-measures ANOVA" = "mixed_repeated"
-        ),
+        )),
         selected = anova_design
       ),
       textInput("sample_size_anova_effect", anova_effect_label, value = "0.25"),
       if (identical(anova_design, "two_way")) {
         tagList(
-          textInput("sample_size_anova_factor_a", "Factor A levels", value = "2"),
-          textInput("sample_size_anova_factor_b", "Factor B levels", value = "2"),
+          textInput("sample_size_anova_factor_a", lbl("Factor A levels"), value = "2"),
+          textInput("sample_size_anova_factor_b", lbl("Factor B levels"), value = "2"),
           selectInput(
             "sample_size_anova_effect_test",
-            "Effect to test",
-            choices = c("Main effect A" = "main_a", "Main effect B" = "main_b", "Interaction A x B" = "interaction"),
+            lbl("Effect to test"),
+            choices = sample_size_choice_labels(language, c("Main effect A" = "main_a", "Main effect B" = "main_b", "Interaction A x B" = "interaction")),
             selected = input$sample_size_anova_effect_test %||% "interaction"
           )
         )
       } else if (identical(anova_design, "repeated_one_group")) {
         tagList(
-          textInput("sample_size_anova_measurements", "Measurements", value = "3"),
-          textInput("sample_size_anova_correlation", "Average repeated-measures correlation", value = "0.50"),
-          textInput("sample_size_anova_epsilon", "Nonsphericity epsilon", value = "1")
+          textInput("sample_size_anova_measurements", lbl("Measurements"), value = "3"),
+          textInput("sample_size_anova_correlation", lbl("Average repeated-measures correlation"), value = "0.50"),
+          textInput("sample_size_anova_epsilon", lbl("Nonsphericity epsilon"), value = "1")
         )
       } else if (identical(anova_design, "mixed_repeated")) {
         tagList(
-          textInput("sample_size_anova_groups", "Groups", value = "2"),
-          textInput("sample_size_anova_measurements", "Measurements", value = "3"),
+          textInput("sample_size_anova_groups", lbl("Groups"), value = "2"),
+          textInput("sample_size_anova_measurements", lbl("Measurements"), value = "3"),
           selectInput(
             "sample_size_anova_effect_test",
-            "Effect to test",
-            choices = c("Group" = "group", "Time" = "time", "Group x Time" = "interaction"),
+            lbl("Effect to test"),
+            choices = sample_size_choice_labels(language, c("Group" = "group", "Time" = "time", "Group x Time" = "interaction")),
             selected = input$sample_size_anova_effect_test %||% "interaction"
           ),
-          textInput("sample_size_anova_correlation", "Average repeated-measures correlation", value = "0.50"),
-          textInput("sample_size_anova_epsilon", "Nonsphericity epsilon", value = "1")
+          textInput("sample_size_anova_correlation", lbl("Average repeated-measures correlation"), value = "0.50"),
+          textInput("sample_size_anova_epsilon", lbl("Nonsphericity epsilon"), value = "1")
         )
       } else {
-        textInput("sample_size_anova_groups", "Number of groups", value = "3")
+        textInput("sample_size_anova_groups", lbl("Number of groups"), value = "3")
       },
-      sample_size_common_inputs("anova", target, show_tail = FALSE)
+      common_inputs("anova", target, show_tail = FALSE)
     ),
     ancova = tagList(
       selectInput(
         "sample_size_ancova_design",
-        "Design",
-        choices = c(
+        lbl("Design"),
+        choices = sample_size_choice_labels(language, c(
           "ANCOVA" = "ancova",
           "Ranked ANCOVA" = "ranked_ancova",
           "MANOVA" = "manova"
-        ),
+        )),
         selected = ancova_design
       ),
-      textInput("sample_size_ancova_groups", "Groups", value = "2"),
+      textInput("sample_size_ancova_groups", lbl("Groups"), value = "2"),
       textInput("sample_size_ancova_effect", ancova_effect_label, value = if (identical(ancova_design, "manova")) "0.10" else "0.25"),
       if (identical(ancova_design, "manova")) {
-        textInput("sample_size_ancova_outcomes", "Outcome variables", value = "2")
+        textInput("sample_size_ancova_outcomes", lbl("Outcome variables"), value = "2")
       } else {
         tagList(
-          textInput("sample_size_ancova_covariates", "Covariates", value = "1"),
-          textInput("sample_size_ancova_covariate_r2", "Covariate R-squared", value = "0.30")
+          textInput("sample_size_ancova_covariates", lbl("Covariates"), value = "1"),
+          textInput("sample_size_ancova_covariate_r2", lbl("Covariate R-squared"), value = "0.30")
         )
       },
-      sample_size_common_inputs("ancova", target, show_tail = FALSE, n_label = ancova_n_label)
+      common_inputs("ancova", target, show_tail = FALSE, n_label = ancova_n_label)
     ),
     regression = tagList(
       selectInput(
         "sample_size_regression_design",
-        "Design",
-        choices = c(
+        lbl("Design"),
+        choices = sample_size_choice_labels(language, c(
           "Multiple regression" = "multiple",
           "Hierarchical regression" = "hierarchical",
           "Logistic regression" = "logistic",
           "Mediation effect" = "mediation",
           "Moderation regression" = "moderation"
-        ),
+        )),
         selected = regression_design
       ),
       if (identical(regression_design, "multiple")) {
         tagList(
-          textInput("sample_size_regression_effect", "Effect size f2", value = "0.15"),
-          textInput("sample_size_regression_predictors", "Number of predictors", value = "3")
+          textInput("sample_size_regression_effect", lbl("Effect size f2"), value = "0.15"),
+          textInput("sample_size_regression_predictors", lbl("Number of predictors"), value = "3")
         )
       } else if (identical(regression_design, "hierarchical")) {
         tagList(
-          textInput("sample_size_regression_effect", "Effect size f2 for R2 increase", value = "0.15"),
-          textInput("sample_size_regression_tested", "Tested predictors", value = "1"),
-          textInput("sample_size_regression_total_predictors", "Total predictors in final model", value = "3")
+          textInput("sample_size_regression_effect", lbl("Effect size f2 for R2 increase"), value = "0.15"),
+          textInput("sample_size_regression_tested", lbl("Tested predictors"), value = "1"),
+          textInput("sample_size_regression_total_predictors", lbl("Total predictors in final model"), value = "3")
         )
       } else if (identical(regression_design, "logistic")) {
         tagList(
-          textInput("sample_size_regression_or", "Odds ratio", value = "1.80"),
-          textInput("sample_size_regression_p0", "Baseline event probability", value = "0.30"),
-          textInput("sample_size_regression_predictor_prevalence", "Predictor prevalence", value = "0.50"),
-          textInput("sample_size_regression_covariate_r2", "Covariate R-squared", value = "0")
+          textInput("sample_size_regression_or", lbl("Odds ratio"), value = "1.80"),
+          textInput("sample_size_regression_p0", lbl("Baseline event probability"), value = "0.30"),
+          textInput("sample_size_regression_predictor_prevalence", lbl("Predictor prevalence"), value = "0.50"),
+          textInput("sample_size_regression_covariate_r2", lbl("Covariate R-squared"), value = "0")
         )
       } else if (identical(regression_design, "mediation")) {
         mediation_method <- input$sample_size_regression_mediation_method %||% "monte_carlo"
         tagList(
           selectInput(
             "sample_size_regression_mediation_method",
-            "Mediation method",
-            choices = c(
+            lbl("Mediation method"),
+            choices = sample_size_choice_labels(language, c(
               "Fritz & MacKinnon empirical table (.80 power)" = "fritz_mackinnon",
               "Monte Carlo indirect effect CI" = "monte_carlo",
               "Bootstrap indirect effect CI (slow)" = "bootstrap",
               "Sobel approximation" = "sobel"
-            ),
+            )),
             selected = mediation_method
           ),
           if (identical(mediation_method, "fritz_mackinnon")) {
             tagList(
               selectInput(
                 "sample_size_regression_a_effect",
-                "Path a effect size",
-                choices = c("Small (.14)" = "small", "Halfway (.26)" = "halfway", "Medium (.39)" = "medium", "Large (.59)" = "large"),
+                lbl("Path a effect size"),
+                choices = sample_size_choice_labels(language, c("Small (.14)" = "small", "Halfway (.26)" = "halfway", "Medium (.39)" = "medium", "Large (.59)" = "large")),
                 selected = input$sample_size_regression_a_effect %||% "medium"
               ),
               selectInput(
                 "sample_size_regression_b_effect",
-                "Path b effect size",
-                choices = c("Small (.14)" = "small", "Halfway (.26)" = "halfway", "Medium (.39)" = "medium", "Large (.59)" = "large"),
+                lbl("Path b effect size"),
+                choices = sample_size_choice_labels(language, c("Small (.14)" = "small", "Halfway (.26)" = "halfway", "Medium (.39)" = "medium", "Large (.59)" = "large")),
                 selected = input$sample_size_regression_b_effect %||% "medium"
               ),
               selectInput(
                 "sample_size_regression_fritz_test",
                 "Fritz & MacKinnon test",
-                choices = c(
+                choices = sample_size_choice_labels(language, c(
                   "Bias-corrected bootstrap" = "bias_corrected_bootstrap",
                   "Percentile bootstrap" = "percentile_bootstrap",
                   "PRODCLIN / distribution of the product" = "prodclin",
@@ -1921,33 +2336,33 @@ sample_size_inputs_ui <- function(method, input) {
                   "Baron & Kenny, c' = .14" = "baron_kenny_small",
                   "Baron & Kenny, c' = .39" = "baron_kenny_medium",
                   "Baron & Kenny, c' = .59" = "baron_kenny_large"
-                ),
+                )),
                 selected = input$sample_size_regression_fritz_test %||% "bias_corrected_bootstrap"
               ),
               div(class = "sample-size-method-note", "This empirical table is fixed at power = .80; set Power to 0.80.")
             )
           } else {
             tagList(
-              textInput("sample_size_regression_a", "Path a beta: predictor -> mediator", value = "0.30"),
-              textInput("sample_size_regression_b", "Path b beta: mediator -> outcome", value = "0.30"),
-              textInput("sample_size_regression_covariates", "Number of covariates", value = "0")
+              textInput("sample_size_regression_a", lbl("Path a beta: predictor -> mediator"), value = "0.30"),
+              textInput("sample_size_regression_b", lbl("Path b beta: mediator -> outcome"), value = "0.30"),
+              textInput("sample_size_regression_covariates", lbl("Number of covariates"), value = "0")
             )
           },
           if (identical(mediation_method, "bootstrap")) {
             tagList(
-              textInput("sample_size_regression_simulations", "Simulations", value = "30"),
-              textInput("sample_size_regression_bootstraps", "Bootstrap samples", value = "100")
+              textInput("sample_size_regression_simulations", lbl("Simulations"), value = "30"),
+              textInput("sample_size_regression_bootstraps", lbl("Bootstrap samples"), value = "100")
             )
           }
         )
       } else {
         tagList(
-          textInput("sample_size_regression_effect", "Effect size f2 for interaction R2 increase", value = "0.15"),
-          textInput("sample_size_regression_interactions", "Interaction terms tested", value = "1"),
-          textInput("sample_size_regression_total_predictors", "Total predictors in final model", value = "4")
+          textInput("sample_size_regression_effect", lbl("Effect size f2 for interaction R2 increase"), value = "0.15"),
+          textInput("sample_size_regression_interactions", lbl("Interaction terms tested"), value = "1"),
+          textInput("sample_size_regression_total_predictors", lbl("Total predictors in final model"), value = "4")
         )
       },
-      sample_size_common_inputs(
+      common_inputs(
         "regression",
         target,
         show_tail = regression_design %in% c("logistic", "mediation"),
@@ -1958,141 +2373,141 @@ sample_size_inputs_ui <- function(method, input) {
     gee = tagList(
       selectInput(
         "sample_size_gee_outcome",
-        "Outcome",
-        choices = c("Continuous outcome" = "continuous", "Binary outcome" = "binary"),
+        lbl("Outcome"),
+        choices = stats::setNames(c("continuous", "binary"), c(lbl("Continuous outcome"), lbl("Binary outcome"))),
         selected = gee_outcome
       ),
       if (identical(gee_outcome, "binary")) {
         tagList(
-          textInput("sample_size_gee_p1", "Proportion 1", value = "0.50"),
-          textInput("sample_size_gee_p2", "Proportion 2", value = "0.65")
+          textInput("sample_size_gee_p1", lbl("Proportion 1"), value = "0.50"),
+          textInput("sample_size_gee_p2", lbl("Proportion 2"), value = "0.65")
         )
       } else {
-        textInput("sample_size_gee_effect", "Effect size d", value = "0.50")
+        textInput("sample_size_gee_effect", lbl("Effect size d"), value = "0.50")
       },
-      textInput("sample_size_gee_time_points", "Time points", value = "3"),
+      textInput("sample_size_gee_time_points", lbl("Time points"), value = "3"),
       selectInput(
         "sample_size_gee_correlation_structure",
-        "Working correlation",
-        choices = c("Exchangeable" = "exchangeable", "AR(1)" = "ar1", "Unstructured" = "unstructured"),
+        lbl("Working correlation"),
+        choices = sample_size_choice_labels(language, c("Exchangeable" = "exchangeable", "AR(1)" = "ar1", "Unstructured" = "unstructured")),
         selected = input$sample_size_gee_correlation_structure %||% "exchangeable"
       ),
       if (identical(input$sample_size_gee_correlation_structure %||% "exchangeable", "unstructured")) {
-        textInput("sample_size_gee_correlations", "Pairwise correlations", value = "0.30, 0.20, 0.30")
+        textInput("sample_size_gee_correlations", lbl("Pairwise correlations"), value = "0.30, 0.20, 0.30")
       } else {
-        textInput("sample_size_gee_rho", "Working correlation rho", value = "0.30")
+        textInput("sample_size_gee_rho", lbl("Working correlation rho"), value = "0.30")
       },
-      sample_size_common_inputs("gee", target, show_ratio = TRUE, n_label = "Sample size per group")
+      common_inputs("gee", target, show_ratio = TRUE, n_label = "Sample size per group")
     ),
     lmm = tagList(
       selectInput(
         "sample_size_lmm_mode",
-        "Input mode",
-        choices = c("Simple" = "simple", "GLIMMPSE-style" = "glimmpse"),
+        lbl("Input mode"),
+        choices = sample_size_choice_labels(language, c("Simple" = "simple", "GLIMMPSE-style" = "glimmpse")),
         selected = lmm_mode
       ),
       selectInput(
         "sample_size_lmm_design",
-        "Design",
-        choices = c(
+        lbl("Design"),
+        choices = sample_size_choice_labels(language, c(
           "Two-group repeated (Group x Time)" = "two_group_repeated",
           "One-group repeated (Time slope)" = "one_group_repeated"
-        ),
+        )),
         selected = lmm_design
       ),
       if (identical(lmm_mode, "glimmpse")) {
         tagList(
-          textInput("sample_size_lmm_group1_means", "Group 1 means by time", value = "0, 0.2, 0.4"),
+          textInput("sample_size_lmm_group1_means", lbl("Group 1 means by time"), value = "0, 0.2, 0.4"),
           if (identical(lmm_design, "two_group_repeated")) {
-            textInput("sample_size_lmm_group2_means", "Group 2 means by time", value = "0, 0.1, 0.8")
+            textInput("sample_size_lmm_group2_means", lbl("Group 2 means by time"), value = "0, 0.1, 0.8")
           },
-          textInput("sample_size_lmm_residual_sd", "Residual SD", value = "1"),
+          textInput("sample_size_lmm_residual_sd", lbl("Residual SD"), value = "1"),
           selectInput(
             "sample_size_lmm_correlation_structure",
-            "Correlation structure",
-            choices = c("Exchangeable" = "exchangeable", "AR(1)" = "ar1", "Unstructured" = "unstructured"),
+            lbl("Correlation structure"),
+            choices = sample_size_choice_labels(language, c("Exchangeable" = "exchangeable", "AR(1)" = "ar1", "Unstructured" = "unstructured")),
             selected = input$sample_size_lmm_correlation_structure %||% "exchangeable"
           ),
           if (identical(input$sample_size_lmm_correlation_structure %||% "exchangeable", "unstructured")) {
-            textInput("sample_size_lmm_correlations", "Pairwise correlations", value = "0.50, 0.30, 0.50")
+            textInput("sample_size_lmm_correlations", lbl("Pairwise correlations"), value = "0.50, 0.30, 0.50")
           } else {
-            textInput("sample_size_lmm_rho", "Correlation rho", value = "0.50")
+            textInput("sample_size_lmm_rho", lbl("Correlation rho"), value = "0.50")
           }
         )
       } else {
         tagList(
-          textInput("sample_size_lmm_effect", "Standardized fixed effect", value = "0.30"),
-          textInput("sample_size_lmm_time_points", "Time points", value = "3"),
-          textInput("sample_size_lmm_icc", "ICC / random intercept proportion", value = "0.30")
+        textInput("sample_size_lmm_effect", lbl("Standardized fixed effect"), value = "0.30"),
+          textInput("sample_size_lmm_time_points", lbl("Time points"), value = "3"),
+          textInput("sample_size_lmm_icc", lbl("ICC / random intercept proportion"), value = "0.30")
         )
       },
       if (identical(lmm_mode, "glimmpse") || identical(lmm_design, "one_group_repeated")) {
-        textInput("sample_size_lmm_simulations", "Simulations", value = "100")
+        textInput("sample_size_lmm_simulations", lbl("Simulations"), value = "100")
       },
-      sample_size_common_inputs("lmm", target, show_tail = FALSE, n_label = lmm_n_label)
+      common_inputs("lmm", target, show_tail = FALSE, n_label = lmm_n_label)
     ),
     survival = tagList(
-      textInput("sample_size_survival_hr", "Hazard ratio", value = "0.70"),
-      textInput("sample_size_survival_event_probability", "Overall event probability", value = "0.60"),
-      sample_size_common_inputs("survival", target, show_ratio = TRUE, n_label = "Total sample size")
+      textInput("sample_size_survival_hr", lbl("Hazard ratio"), value = "0.70"),
+      textInput("sample_size_survival_event_probability", lbl("Overall event probability"), value = "0.60"),
+      common_inputs("survival", target, show_ratio = TRUE, n_label = "Total sample size")
     ),
     equivalence = tagList(
       selectInput(
         "sample_size_equivalence_objective",
-        "Objective",
-        choices = c("Non-inferiority" = "noninferiority", "Equivalence" = "equivalence"),
+        lbl("Objective"),
+        choices = sample_size_choice_labels(language, c("Non-inferiority" = "noninferiority", "Equivalence" = "equivalence")),
         selected = input$sample_size_equivalence_objective %||% "noninferiority"
       ),
       selectInput(
         "sample_size_equivalence_outcome",
-        "Outcome",
-        choices = c("Mean difference" = "mean", "Proportion difference" = "proportion"),
+        lbl("Outcome"),
+        choices = sample_size_choice_labels(language, c("Mean difference" = "mean", "Proportion difference" = "proportion")),
         selected = equivalence_outcome
       ),
-      textInput("sample_size_equivalence_margin", "Margin", value = "0.20"),
+      textInput("sample_size_equivalence_margin", lbl("Margin"), value = "0.20"),
       if (identical(equivalence_outcome, "proportion")) {
         tagList(
-          textInput("sample_size_equivalence_p1", "Expected proportion 1", value = "0.80"),
-          textInput("sample_size_equivalence_p2", "Expected proportion 2", value = "0.80")
+          textInput("sample_size_equivalence_p1", lbl("Expected proportion 1"), value = "0.80"),
+          textInput("sample_size_equivalence_p2", lbl("Expected proportion 2"), value = "0.80")
         )
       } else {
         tagList(
-          textInput("sample_size_equivalence_difference", "Expected true difference", value = "0"),
-          textInput("sample_size_equivalence_sd", "SD", value = "1")
+          textInput("sample_size_equivalence_difference", lbl("Expected true difference"), value = "0"),
+          textInput("sample_size_equivalence_sd", lbl("SD"), value = "1")
         )
       },
-      sample_size_common_inputs("equivalence", target, show_ratio = TRUE, show_tail = FALSE, n_label = "Sample size per group")
+      common_inputs("equivalence", target, show_ratio = TRUE, show_tail = FALSE, n_label = "Sample size per group")
     ),
     diagnostic = tagList(
       selectInput(
         "sample_size_diagnostic_design",
-        "Design",
-        choices = c(
+        lbl("Design"),
+        choices = sample_size_choice_labels(language, c(
           "Sensitivity precision" = "sensitivity",
           "Specificity precision" = "specificity",
           "ROC AUC vs null" = "auc"
-        ),
+        )),
         selected = diagnostic_design
       ),
       if (identical(diagnostic_design, "sensitivity")) {
         tagList(
-          textInput("sample_size_diagnostic_sensitivity", "Expected sensitivity", value = "0.85"),
-          textInput("sample_size_diagnostic_prevalence", "Prevalence", value = "0.30"),
-          textInput("sample_size_diagnostic_precision", "Desired CI half-width", value = "0.08")
+          textInput("sample_size_diagnostic_sensitivity", lbl("Expected sensitivity"), value = "0.85"),
+          textInput("sample_size_diagnostic_prevalence", lbl("Prevalence"), value = "0.30"),
+          textInput("sample_size_diagnostic_precision", lbl("Desired CI half-width"), value = "0.08")
         )
       } else if (identical(diagnostic_design, "specificity")) {
         tagList(
-          textInput("sample_size_diagnostic_specificity", "Expected specificity", value = "0.85"),
-          textInput("sample_size_diagnostic_prevalence", "Prevalence", value = "0.30"),
-          textInput("sample_size_diagnostic_precision", "Desired CI half-width", value = "0.08")
+          textInput("sample_size_diagnostic_specificity", lbl("Expected specificity"), value = "0.85"),
+          textInput("sample_size_diagnostic_prevalence", lbl("Prevalence"), value = "0.30"),
+          textInput("sample_size_diagnostic_precision", lbl("Desired CI half-width"), value = "0.08")
         )
       } else {
         tagList(
-          textInput("sample_size_diagnostic_auc", "Expected AUC", value = "0.75"),
-          textInput("sample_size_diagnostic_null_auc", "Null AUC", value = "0.50")
+          textInput("sample_size_diagnostic_auc", lbl("Expected AUC"), value = "0.75"),
+          textInput("sample_size_diagnostic_null_auc", lbl("Null AUC"), value = "0.50")
         )
       },
-      sample_size_common_inputs(
+      common_inputs(
         "diagnostic",
         target,
         show_ratio = identical(diagnostic_design, "auc"),
@@ -2103,51 +2518,51 @@ sample_size_inputs_ui <- function(method, input) {
     precision = tagList(
       selectInput(
         "sample_size_precision_parameter",
-        "Parameter",
-        choices = c("Mean" = "mean", "Proportion" = "proportion", "Correlation" = "correlation"),
+        lbl("Parameter"),
+        choices = sample_size_choice_labels(language, c("Mean" = "mean", "Proportion" = "proportion", "Correlation" = "correlation")),
         selected = precision_parameter
       ),
-      textInput("sample_size_precision_confidence", "Confidence level", value = "0.95"),
-      textInput("sample_size_precision_half_width", "Desired CI half-width", value = "0.10"),
+      textInput("sample_size_precision_confidence", lbl("Confidence level"), value = "0.95"),
+      textInput("sample_size_precision_half_width", lbl("Desired CI half-width"), value = "0.10"),
       if (identical(precision_parameter, "mean")) {
-        textInput("sample_size_precision_sd", "SD", value = "1")
+        textInput("sample_size_precision_sd", lbl("SD"), value = "1")
       } else if (identical(precision_parameter, "proportion")) {
-        textInput("sample_size_precision_proportion", "Expected proportion", value = "0.50")
+        textInput("sample_size_precision_proportion", lbl("Expected proportion"), value = "0.50")
       } else {
-        textInput("sample_size_precision_r", "Expected r", value = "0.30")
+        textInput("sample_size_precision_r", lbl("Expected r"), value = "0.30")
       },
       if (identical(target, "sample_size")) {
-        textInput("sample_size_precision_dropout", "Dropout rate (%)", value = "0")
+        textInput("sample_size_precision_dropout", lbl("Dropout rate (%)"), value = "0")
       } else {
-        textInput("sample_size_precision_n", "Sample size", value = "100")
+        textInput("sample_size_precision_n", lbl("Sample size"), value = "100")
       }
     ),
     mcnemar = tagList(
-      textInput("sample_size_mcnemar_p01", "p01: negative to positive", value = "0.20"),
-      textInput("sample_size_mcnemar_p10", "p10: positive to negative", value = "0.10"),
-      sample_size_common_inputs("mcnemar", target, show_tail = TRUE, n_label = "Pairs")
+      textInput("sample_size_mcnemar_p01", lbl("p01: negative to positive"), value = "0.20"),
+      textInput("sample_size_mcnemar_p10", lbl("p10: positive to negative"), value = "0.10"),
+      common_inputs("mcnemar", target, show_tail = TRUE, n_label = "Pairs")
     ),
     rates = tagList(
       selectInput(
         "sample_size_rates_design",
-        "Design",
-        choices = c(
+        lbl("Design"),
+        choices = sample_size_choice_labels(language, c(
           "Two Poisson rates" = "two_rate_ratio",
           "Two negative binomial rates" = "negative_binomial",
           "Single rate precision" = "single_rate_precision"
-        ),
+        )),
         selected = rates_design
       ),
-      textInput("sample_size_rates_rate1", if (identical(rates_design, "single_rate_precision")) "Expected rate" else "Rate 1", value = "0.30"),
+      textInput("sample_size_rates_rate1", lbl(if (identical(rates_design, "single_rate_precision")) "Expected rate" else "Rate 1"), value = "0.30"),
       if (rates_design %in% c("two_rate_ratio", "negative_binomial")) {
-        textInput("sample_size_rates_rate2", "Rate 2", value = "0.20")
+        textInput("sample_size_rates_rate2", lbl("Rate 2"), value = "0.20")
       } else {
-        textInput("sample_size_rates_half_width", "Desired CI half-width", value = "0.05")
+        textInput("sample_size_rates_half_width", lbl("Desired CI half-width"), value = "0.05")
       },
       if (identical(rates_design, "negative_binomial")) {
-        textInput("sample_size_rates_dispersion", "Dispersion", value = "0.50")
+        textInput("sample_size_rates_dispersion", lbl("Dispersion"), value = "0.50")
       },
-      sample_size_common_inputs(
+      common_inputs(
         "rates",
         target,
         show_ratio = rates_design %in% c("two_rate_ratio", "negative_binomial"),
@@ -2158,116 +2573,116 @@ sample_size_inputs_ui <- function(method, input) {
     cluster = tagList(
       selectInput(
         "sample_size_cluster_design",
-        "Design",
-        choices = c("Parallel cluster randomized trial" = "parallel", "Stepped-wedge cluster trial" = "stepped_wedge"),
+        lbl("Design"),
+        choices = sample_size_choice_labels(language, c("Parallel cluster randomized trial" = "parallel", "Stepped-wedge cluster trial" = "stepped_wedge")),
         selected = cluster_design
       ),
       if (identical(cluster_design, "stepped_wedge")) {
         tagList(
-          textInput("sample_size_cluster_effect", "Effect size d", value = "0.40"),
-          textInput("sample_size_cluster_periods", "Periods", value = "5"),
-          textInput("sample_size_cluster_size", "Cluster size per period", value = "20"),
-          textInput("sample_size_cluster_icc", "ICC", value = "0.05"),
-          textInput("sample_size_cluster_simulations", "Simulations", value = "100"),
-          sample_size_common_inputs("cluster", target, show_ratio = FALSE, show_tail = FALSE, n_label = "Clusters")
+          textInput("sample_size_cluster_effect", lbl("Effect size d"), value = "0.40"),
+          textInput("sample_size_cluster_periods", lbl("Periods"), value = "5"),
+          textInput("sample_size_cluster_size", lbl("Cluster size per period"), value = "20"),
+          textInput("sample_size_cluster_icc", lbl("ICC"), value = "0.05"),
+          textInput("sample_size_cluster_simulations", lbl("Simulations"), value = "100"),
+          common_inputs("cluster", target, show_ratio = FALSE, show_tail = FALSE, n_label = "Clusters")
         )
       } else {
         tagList(
           selectInput(
             "sample_size_cluster_outcome",
-            "Outcome",
-            choices = c("Continuous outcome" = "continuous", "Binary outcome" = "binary"),
+            lbl("Outcome"),
+            choices = stats::setNames(c("continuous", "binary"), c(lbl("Continuous outcome"), lbl("Binary outcome"))),
             selected = cluster_outcome
           ),
           if (identical(cluster_outcome, "binary")) {
             tagList(
-              textInput("sample_size_cluster_p1", "Proportion 1", value = "0.50"),
-              textInput("sample_size_cluster_p2", "Proportion 2", value = "0.65")
+              textInput("sample_size_cluster_p1", lbl("Proportion 1"), value = "0.50"),
+              textInput("sample_size_cluster_p2", lbl("Proportion 2"), value = "0.65")
             )
           } else {
-            textInput("sample_size_cluster_effect", "Effect size d", value = "0.50")
+            textInput("sample_size_cluster_effect", lbl("Effect size d"), value = "0.50")
           },
-          textInput("sample_size_cluster_size", "Cluster size", value = "20"),
-          textInput("sample_size_cluster_icc", "ICC", value = "0.05"),
-          sample_size_common_inputs("cluster", target, show_ratio = TRUE, n_label = "Sample size per group")
+          textInput("sample_size_cluster_size", lbl("Cluster size"), value = "20"),
+            textInput("sample_size_cluster_icc", lbl("ICC"), value = "0.05"),
+          common_inputs("cluster", target, show_ratio = TRUE, n_label = "Sample size per group")
         )
       }
     ),
     reliability = tagList(
       selectInput(
         "sample_size_reliability_design",
-        "Design",
-        choices = c(
+        lbl("Design"),
+        choices = sample_size_choice_labels(language, c(
           "Cronbach's alpha" = "alpha",
           "ICC reliability" = "icc",
           "Cohen's kappa" = "kappa",
           "Bland-Altman LoA" = "bland_altman"
-        ),
+        )),
         selected = reliability_design
       ),
       textInput(
         "sample_size_reliability_value",
-        if (identical(reliability_design, "bland_altman")) "SD of paired differences" else "Expected reliability",
+        lbl(if (identical(reliability_design, "bland_altman")) "SD of paired differences" else "Expected reliability"),
         value = if (identical(reliability_design, "bland_altman")) "1" else "0.80"
       ),
-      textInput("sample_size_reliability_confidence", "Confidence level", value = "0.95"),
-      textInput("sample_size_reliability_half_width", "Desired CI half-width", value = "0.10"),
+      textInput("sample_size_reliability_confidence", lbl("Confidence level"), value = "0.95"),
+      textInput("sample_size_reliability_half_width", lbl("Desired CI half-width"), value = "0.10"),
       if (identical(reliability_design, "alpha")) {
-        textInput("sample_size_reliability_items", "Number of items", value = "5")
+        textInput("sample_size_reliability_items", lbl("Number of items"), value = "5")
       } else if (identical(reliability_design, "icc")) {
-        textInput("sample_size_reliability_items", "Raters / measurements", value = "2")
+        textInput("sample_size_reliability_items", lbl("Raters / measurements"), value = "2")
       } else if (identical(reliability_design, "kappa")) {
-        textInput("sample_size_reliability_categories", "Categories", value = "2")
+        textInput("sample_size_reliability_categories", lbl("Categories"), value = "2")
       },
       if (identical(target, "sample_size")) {
-        textInput("sample_size_reliability_dropout", "Dropout rate (%)", value = "0")
+        textInput("sample_size_reliability_dropout", lbl("Dropout rate (%)"), value = "0")
       }
     ),
     sem = tagList(
       selectInput(
         "sample_size_sem_test",
-        "SEM / CFA method",
-        choices = c(
+        lbl("SEM / CFA method"),
+        choices = sample_size_choice_labels(language, c(
           "Close fit test (detect poor fit)" = "close_fit",
           "Not-close-fit test (support close fit)" = "not_close_fit",
           "Parameter-level Monte Carlo" = "parameter",
           "Model complexity heuristic" = "complexity"
-        ),
+        )),
         selected = sem_test
       ),
       if (identical(sem_test, "parameter")) {
         tagList(
           selectInput(
             "sample_size_sem_parameter_type",
-            "Parameter type",
-            choices = c(
+            lbl("Parameter type"),
+            choices = sample_size_choice_labels(language, c(
               "Standardized loading" = "loading",
               "Standardized path" = "path",
               "Latent correlation" = "correlation"
-            ),
+            )),
             selected = input$sample_size_sem_parameter_type %||% "path"
           ),
-          textInput("sample_size_sem_parameter", "Expected standardized parameter", value = "0.30"),
+          textInput("sample_size_sem_parameter", lbl("Expected standardized parameter"), value = "0.30"),
           selectInput(
             "sample_size_sem_complexity",
-            "Model complexity",
-            choices = c("Simple" = "simple", "Moderate" = "moderate", "Complex" = "complex"),
+            lbl("Model complexity"),
+            choices = sample_size_choice_labels(language, c("Simple" = "simple", "Moderate" = "moderate", "Complex" = "complex")),
             selected = input$sample_size_sem_complexity %||% "moderate"
           ),
-          textInput("sample_size_sem_simulations", "Simulations", value = "1000")
+          textInput("sample_size_sem_simulations", lbl("Simulations"), value = "1000")
         )
       } else if (identical(sem_test, "complexity")) {
         tagList(
-          textInput("sample_size_sem_latent_variables", "Latent variables", value = "3"),
-          textInput("sample_size_sem_measured_variables", "Measured variables", value = "12"),
-          textInput("sample_size_sem_structural_paths", "Structural paths", value = "3"),
-          textInput("sample_size_sem_free_parameters", "Free parameters", value = "30"),
-          textInput("sample_size_sem_expected_loading", "Expected standardized loading", value = "0.50"),
-          textInput("sample_size_sem_expected_path", "Expected standardized path", value = "0.30"),
+          textInput("sample_size_sem_latent_variables", lbl("Latent variables"), value = "3"),
+          textInput("sample_size_sem_measured_variables", lbl("Measured variables"), value = "12"),
+          textInput("sample_size_sem_structural_paths", lbl("Structural paths"), value = "3"),
+          textInput("sample_size_sem_free_parameters", lbl("Free parameters"), value = "30"),
+          textInput("sample_size_sem_expected_loading", lbl("Expected standardized loading"), value = "0.50"),
+          textInput("sample_size_sem_expected_path", lbl("Expected standardized path"), value = "0.30"),
           selectInput(
             "sample_size_sem_complexity",
-            "Model complexity",
-            choices = c("Simple" = "simple", "Moderate" = "moderate", "Complex" = "complex"),
+            lbl("Model complexity"),
+            choices = sample_size_choice_labels(language, c("Simple" = "simple", "Moderate" = "moderate", "Complex" = "complex")),
             selected = input$sample_size_sem_complexity %||% "moderate"
           )
         )
@@ -2275,27 +2690,27 @@ sample_size_inputs_ui <- function(method, input) {
         tagList(
           selectInput(
             "sample_size_sem_df_source",
-            "Model df input",
-            choices = c(
+            lbl("Model df input"),
+            choices = sample_size_choice_labels(language, c(
               "Estimate from model counts" = "structure",
               "Enter model df directly" = "direct"
-            ),
+            )),
             selected = input$sample_size_sem_df_source %||% "structure"
           ),
           if (identical(input$sample_size_sem_df_source %||% "structure", "direct")) {
-            textInput("sample_size_sem_df", "Model degrees of freedom", value = "50")
+            textInput("sample_size_sem_df", lbl("Model degrees of freedom"), value = "50")
           } else {
             tagList(
-              textInput("sample_size_sem_latent_variables", "Latent variables", value = "3"),
-              textInput("sample_size_sem_measured_variables", "Measured variables", value = "12"),
-              textInput("sample_size_sem_structural_paths", "Structural paths", value = "3")
+              textInput("sample_size_sem_latent_variables", lbl("Latent variables"), value = "3"),
+              textInput("sample_size_sem_measured_variables", lbl("Measured variables"), value = "12"),
+              textInput("sample_size_sem_structural_paths", lbl("Structural paths"), value = "3")
             )
           },
-          textInput("sample_size_sem_null_rmsea", "Null RMSEA", value = sem_null_rmsea_default),
-          textInput("sample_size_sem_alternative_rmsea", "Alternative RMSEA", value = sem_alternative_rmsea_default)
+          textInput("sample_size_sem_null_rmsea", lbl("Null RMSEA"), value = sem_null_rmsea_default),
+          textInput("sample_size_sem_alternative_rmsea", lbl("Alternative RMSEA"), value = sem_alternative_rmsea_default)
         )
       },
-      sample_size_common_inputs("sem", target, show_tail = FALSE, n_label = "Sample size")
+      common_inputs("sem", target, show_tail = FALSE, n_label = "Sample size")
     )
   )
 }
@@ -2331,7 +2746,7 @@ sample_size_result_table <- function(result) {
     add_section("Converted effect sizes")
     if (!is.null(result$effect_size_d)) add_row(result$effect_size_label %||% "Effect size", sprintf("%.3f", result$effect_size_d))
     if (!is.null(result$hedges_g)) add_row("Hedges' g", sprintf("%.3f", result$hedges_g))
-    if (!is.null(result$point_biserial_r)) add_row("Point-biserial r", sprintf("%.3f", result$point_biserial_r))
+    if (!is.null(result$point_biserial_r)) add_row(lbl("Point-biserial r"), sprintf("%.3f", result$point_biserial_r))
     if (!is.null(result$cohen_f)) add_row("Cohen's f", sprintf("%.3f", result$cohen_f))
     if (!is.null(result$f_squared)) add_row("Cohen's f-squared", sprintf("%.3f", result$f_squared))
     if (!is.null(result$eta_squared)) add_row("Eta squared (eta2)", sprintf("%.3f", result$eta_squared))
@@ -2351,8 +2766,8 @@ sample_size_result_table <- function(result) {
     if (!is.null(result$fisher_z)) add_row("Fisher's z", sprintf("%.3f", result$fisher_z))
     if (!is.null(result$cohens_q)) add_row("Cohen's q", sprintf("%.3f", result$cohens_q))
     if (!is.null(result$r_squared)) add_row("R-squared", sprintf("%.3f", result$r_squared))
-    if (!is.null(result$unadjusted_cohen_f)) add_row("Unadjusted Cohen's f", sprintf("%.3f", result$unadjusted_cohen_f))
-    if (!is.null(result$partial_eta_squared)) add_row("Partial eta squared", sprintf("%.3f", result$partial_eta_squared))
+    if (!is.null(result$unadjusted_cohen_f)) add_row(lbl("Unadjusted Cohen's f"), sprintf("%.3f", result$unadjusted_cohen_f))
+    if (!is.null(result$partial_eta_squared)) add_row(lbl("Partial eta squared"), sprintf("%.3f", result$partial_eta_squared))
     if (!is.null(result$multivariate_eta_squared)) add_row("Multivariate eta squared", sprintf("%.3f", result$multivariate_eta_squared))
     if (!is.null(result$omega_squared)) add_row("Omega squared", sprintf("%.3f", result$omega_squared))
     if (!is.null(result$full_r_squared)) add_row("Full model R-squared", sprintf("%.3f", result$full_r_squared))
@@ -2363,7 +2778,7 @@ sample_size_result_table <- function(result) {
     if (!is.null(result$b_path)) add_row("Path b beta", sprintf("%.3f", result$b_path))
     if (!is.null(result$covariate_r2)) add_row("Covariate R-squared", sprintf("%.3f", result$covariate_r2))
     if (!is.null(result$intraclass_correlation)) add_row("ICC", sprintf("%.3f", result$intraclass_correlation))
-    if (!is.null(result$f_statistic)) add_row("F statistic", sprintf("%.3f", result$f_statistic))
+    if (!is.null(result$f_statistic)) add_row(lbl("F statistic"), sprintf("%.3f", result$f_statistic))
     if (!is.null(result$df_effect)) add_row("Numerator df", sprintf("%.3f", result$df_effect))
     if (!is.null(result$df_error)) add_row("Denominator df", sprintf("%.3f", result$df_error))
     if (!is.null(result$mean_difference)) add_row("Mean difference", sprintf("%.3f", result$mean_difference))
@@ -2371,7 +2786,7 @@ sample_size_result_table <- function(result) {
     if (!is.null(result$cohens_dz)) add_row("Cohen's dz", sprintf("%.3f", result$cohens_dz))
     if (!is.null(result$variance_i)) add_row("Variance time I", sprintf("%.3f", result$variance_i))
     if (!is.null(result$variance_j)) add_row("Variance time J", sprintf("%.3f", result$variance_j))
-    if (!is.null(result$covariance_ij)) add_row("Covariance I,J", sprintf("%.3f", result$covariance_ij))
+    if (!is.null(result$covariance_ij)) add_row(lbl("Covariance I,J"), sprintf("%.3f", result$covariance_ij))
     if (!is.null(result$parameter_estimate)) add_row("Group x time B", sprintf("%.3f", result$parameter_estimate))
     if (!is.null(result$common_outcome_sd)) add_row("Common outcome SD", sprintf("%.3f", result$common_outcome_sd))
     if (!is.null(result$common_sd_method)) add_row("Common SD method", result$common_sd_method)
@@ -2382,7 +2797,7 @@ sample_size_result_table <- function(result) {
     if (!is.null(result$change_difference)) add_row("Change difference", sprintf("%.3f", result$change_difference))
     if (!is.null(result$residual_sd)) add_row("Residual SD", sprintf("%.3f", result$residual_sd))
     if (!is.null(result$pillai_trace)) add_row("Pillai's trace V", sprintf("%.3f", result$pillai_trace))
-    if (!is.null(result$wilks_lambda)) add_row("Wilks' lambda", sprintf("%.3f", result$wilks_lambda))
+    if (!is.null(result$wilks_lambda)) add_row(lbl("Wilks' lambda"), sprintf("%.3f", result$wilks_lambda))
     if (!is.null(result$dependent_variables)) add_row("Dependent variables", result$dependent_variables)
     if (!is.null(result$rank_biserial)) add_row("Rank-biserial r", sprintf("%.3f", result$rank_biserial))
     if (!is.null(result$cliffs_delta)) add_row("Cliff's delta", sprintf("%.3f", result$cliffs_delta))
@@ -2427,7 +2842,7 @@ sample_size_result_table <- function(result) {
     if (!is.null(result$periods)) add_row("Periods", result$periods)
     if (!is.null(result$estimate)) add_row("Estimate", sprintf("%.3f", result$estimate))
     if (!is.null(result$half_width)) add_row("Half-width", sprintf("%.3f", result$half_width))
-    if (!is.null(result$sd)) add_row("SD", sprintf("%.3f", result$sd))
+    if (!is.null(result$sd)) add_row(lbl("SD"), sprintf("%.3f", result$sd))
     if (!is.null(result$bernoulli_sd)) add_row("Bernoulli SD", sprintf("%.3f", result$bernoulli_sd))
     if (!is.null(result$standardized_half_width)) add_row("Standardized half-width", sprintf("%.3f", result$standardized_half_width))
     if (!is.null(result$relative_half_width) && is.finite(result$relative_half_width)) add_row("Relative half-width", sprintf("%.3f", result$relative_half_width))
@@ -2444,8 +2859,8 @@ sample_size_result_table <- function(result) {
     if (!is.null(result$loa_half_width)) add_row("LoA half-width", sprintf("%.3f", result$loa_half_width))
     if (!is.null(result$loa_total_width)) add_row("LoA total width", sprintf("%.3f", result$loa_total_width))
     if (!is.null(result$df)) add_row("Model df", result$df)
-    if (!is.null(result$null_rmsea)) add_row("Null RMSEA", sprintf("%.3f", result$null_rmsea))
-    if (!is.null(result$alternative_rmsea)) add_row("Alternative RMSEA", sprintf("%.3f", result$alternative_rmsea))
+    if (!is.null(result$null_rmsea)) add_row(lbl("Null RMSEA"), sprintf("%.3f", result$null_rmsea))
+    if (!is.null(result$alternative_rmsea)) add_row(lbl("Alternative RMSEA"), sprintf("%.3f", result$alternative_rmsea))
     if (!is.null(result$rmsea_difference)) add_row("RMSEA difference", sprintf("%.3f", result$rmsea_difference))
     if (!is.null(result$ncp_difference_per_n)) add_row("NCP difference per N", sprintf("%.3f", result$ncp_difference_per_n))
     if (!is.null(result$sem_parameter)) add_row(result$sem_parameter_type %||% "SEM parameter", sprintf("%.3f", result$sem_parameter))
@@ -2747,7 +3162,7 @@ sample_size_method_details <- function(method, result) {
         cohen,
         "Muller, K. E., & Stewart, P. W. (2006). Linear Model Theory: Univariate, Multivariate, and Mixed Models. Wiley.",
         "Guo, Y., & Johnson, W. D. (1996). Sample size and power for the generalized linear mixed model. Statistics in Medicine, 15(12), 1295-1307.",
-        "Kreidler, S. M., Muller, K. E., Grunwald, G. K., Ringham, B. M., Coker-Dukowitz, Z. T., Sakhadeo, U. R., Barón, A. E., & Glueck, D. H. (2013). GLIMMPSE: Online power computation for linear models with and without a baseline covariate. Journal of Statistical Software, 54(10), 1-26."
+        "Kreidler, S. M., Muller, K. E., Grunwald, G. K., Ringham, B. M., Coker-Dukowitz, Z. T., Sakhadeo, U. R., Barton, A. E., & Glueck, D. H. (2013). GLIMMPSE: Online power computation for linear models with and without a baseline covariate. Journal of Statistical Software, 54(10), 1-26."
       )
     ),
     effect_survival = list(
@@ -3132,15 +3547,16 @@ sample_size_method_details <- function(method, result) {
   )
 }
 
-sample_size_results_ui <- function(result) {
+sample_size_results_ui <- function(result, language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   if (is.null(result)) {
-    return(div(class = "empty-message", "Enter assumptions and click Calculate."))
+    return(div(class = "empty-message", sample_size_ui_text(language, "assumptions_prompt")))
   }
   if (isTRUE(result$progress)) {
     return(div(
       class = "sample-size-progress",
       id = result$id,
-      div(class = "sample-size-progress-text", result$text %||% "Calculating... 0%"),
+      div(class = "sample-size-progress-text", result$text %||% paste0(sample_size_ui_text(language, "calculating"), " 0%")),
       div(
         class = "sample-size-progress-track",
         div(
@@ -3153,7 +3569,7 @@ sample_size_results_ui <- function(result) {
         )
       ),
       if (!is.null(result$cancel_id)) {
-        actionButton(result$cancel_id, "Stop", class = "btn btn-default btn-sm sample-size-stop")
+        actionButton(result$cancel_id, sample_size_ui_text(language, "stop"), class = "btn btn-default btn-sm sample-size-stop")
       }
     ))
   }
@@ -3164,11 +3580,11 @@ sample_size_results_ui <- function(result) {
     class = "sample-size-result-panel",
     sample_size_result_table(result),
     if (!is.null(result$method_note)) div(class = "sample-size-method-note", result$method_note),
-    if (!is.null(result$formula_note)) div(class = "sample-size-method-note", strong("Formula / approximation: "), result$formula_note),
+    if (!is.null(result$formula_note)) div(class = "sample-size-method-note", strong(sample_size_ui_text(language, "formula_approximation")), result$formula_note),
     if (length(result$references %||% character(0)) > 0) {
       div(
         class = "sample-size-references",
-        strong("References"),
+        strong(sample_size_ui_text(language, "references")),
         tags$ul(lapply(result$references, tags$li))
       )
     }
@@ -3978,7 +4394,13 @@ sample_size_start_background_job <- function(method, input_snapshot, progress_pa
   )
 }
 
-register_sample_size_server <- function(input, output, session) {
+register_sample_size_server <- function(input, output, session, app_language_fn = NULL) {
+  sample_size_language <- reactive({
+    if (is.function(app_language_fn)) {
+      return(normalize_app_language(app_language_fn()))
+    }
+    statedu_initial_language()
+  })
   methods <- names(sample_size_method_labels())
   results <- stats::setNames(lapply(methods, function(x) reactiveVal(NULL)), methods)
   sample_size_jobs <- reactiveVal(list())
@@ -4096,7 +4518,7 @@ register_sample_size_server <- function(input, output, session) {
   })
 
   session$onSessionEnded(function() {
-    jobs <- sample_size_jobs()
+    jobs <- isolate(sample_size_jobs())
     for (job in jobs) {
       if (!is.null(job$process) && job$process$is_alive()) {
         try(job$process$kill(), silent = TRUE)
@@ -4108,113 +4530,115 @@ register_sample_size_server <- function(input, output, session) {
   for (effect_method in names(effect_size_method_labels())) {
     local({
       effect_method_local <- effect_method
-      output[[paste0("lazy_effect_size_", effect_method_local)]] <- renderUI(tab_panel_content(effect_size_analysis_panel(effect_method_local)))
+      output[[paste0("lazy_effect_size_", effect_method_local)]] <- renderUI({
+        tab_panel_content(effect_size_analysis_panel(effect_method_local, sample_size_language()))
+      })
     })
   }
-  output$sample_size_effectsize_inputs <- renderUI(sample_size_inputs_ui("effectsize", sample_size_input_snapshot("effectsize", input)))
-  output$sample_size_effectsize_results <- renderUI(sample_size_results_ui(effect_size_results$effectsize()))
+  output$sample_size_effectsize_inputs <- renderUI(sample_size_inputs_ui("effectsize", sample_size_input_snapshot("effectsize", input), sample_size_language()))
+  output$sample_size_effectsize_results <- renderUI(sample_size_results_ui(effect_size_results$effectsize(), sample_size_language()))
   observeEvent(input$sample_size_effectsize_calculate, {
-    effect_size_results$effectsize(list(progress = TRUE, id = "sample_size_effectsize_progress", text = "Calculating... 0%"))
+    effect_size_results$effectsize(list(progress = TRUE, id = "sample_size_effectsize_progress", text = paste0(sample_size_ui_text(sample_size_language(), "calculating"), " 0%")))
     result <- sample_size_calculate("effectsize", input)
     effect_size_results$effectsize(result)
   })
-  output$effect_size_ttest_inputs <- renderUI(effect_size_ttest_inputs_ui(input))
-  output$effect_size_ttest_results <- renderUI(sample_size_results_ui(effect_size_ttest_result()))
+  output$effect_size_ttest_inputs <- renderUI(effect_size_ttest_inputs_ui(input, sample_size_language()))
+  output$effect_size_ttest_results <- renderUI(sample_size_results_ui(effect_size_ttest_result(), sample_size_language()))
   observeEvent(input$effect_size_ttest_calculate, {
     effect_size_ttest_result(effect_size_ttest_calculate(input))
   })
-  output$effect_size_proportion_inputs <- renderUI(effect_size_proportion_inputs_ui(input))
-  output$effect_size_proportion_results <- renderUI(sample_size_results_ui(effect_size_proportion_result()))
+  output$effect_size_proportion_inputs <- renderUI(effect_size_proportion_inputs_ui(input, sample_size_language()))
+  output$effect_size_proportion_results <- renderUI(sample_size_results_ui(effect_size_proportion_result(), sample_size_language()))
   observeEvent(input$effect_size_proportion_calculate, {
     effect_size_proportion_result(effect_size_proportion_calculate(input))
   })
-  output$effect_size_chisquare_inputs <- renderUI(effect_size_chisquare_inputs_ui(input))
-  output$effect_size_chisquare_results <- renderUI(sample_size_results_ui(effect_size_chisquare_result()))
+  output$effect_size_chisquare_inputs <- renderUI(effect_size_chisquare_inputs_ui(input, sample_size_language()))
+  output$effect_size_chisquare_results <- renderUI(sample_size_results_ui(effect_size_chisquare_result(), sample_size_language()))
   observeEvent(input$effect_size_chisquare_calculate, {
     effect_size_chisquare_result(effect_size_chisquare_calculate(input))
   })
-  output$effect_size_correlation_inputs <- renderUI(effect_size_correlation_inputs_ui(input))
-  output$effect_size_correlation_results <- renderUI(sample_size_results_ui(effect_size_correlation_result()))
+  output$effect_size_correlation_inputs <- renderUI(effect_size_correlation_inputs_ui(input, sample_size_language()))
+  output$effect_size_correlation_results <- renderUI(sample_size_results_ui(effect_size_correlation_result(), sample_size_language()))
   observeEvent(input$effect_size_correlation_calculate, {
     effect_size_correlation_result(effect_size_correlation_calculate(input))
   })
-  output$effect_size_anova_inputs <- renderUI(effect_size_anova_inputs_ui(input))
-  output$effect_size_anova_results <- renderUI(sample_size_results_ui(effect_size_anova_result()))
+  output$effect_size_anova_inputs <- renderUI(effect_size_anova_inputs_ui(input, sample_size_language()))
+  output$effect_size_anova_results <- renderUI(sample_size_results_ui(effect_size_anova_result(), sample_size_language()))
   observeEvent(input$effect_size_anova_calculate, {
     effect_size_anova_result(effect_size_anova_calculate(input))
   })
-  output$effect_size_ancova_inputs <- renderUI(effect_size_ancova_inputs_ui(input))
-  output$effect_size_ancova_results <- renderUI(sample_size_results_ui(effect_size_ancova_result()))
+  output$effect_size_ancova_inputs <- renderUI(effect_size_ancova_inputs_ui(input, sample_size_language()))
+  output$effect_size_ancova_results <- renderUI(sample_size_results_ui(effect_size_ancova_result(), sample_size_language()))
   observeEvent(input$effect_size_ancova_calculate, {
     effect_size_ancova_result(effect_size_ancova_calculate(input))
   })
-  output$effect_size_nonparametric_inputs <- renderUI(effect_size_nonparametric_inputs_ui(input))
-  output$effect_size_nonparametric_results <- renderUI(sample_size_results_ui(effect_size_nonparametric_result()))
+  output$effect_size_nonparametric_inputs <- renderUI(effect_size_nonparametric_inputs_ui(input, sample_size_language()))
+  output$effect_size_nonparametric_results <- renderUI(sample_size_results_ui(effect_size_nonparametric_result(), sample_size_language()))
   observeEvent(input$effect_size_nonparametric_calculate, {
     effect_size_nonparametric_result(effect_size_nonparametric_calculate(input))
   })
-  output$effect_size_mcnemar_inputs <- renderUI(effect_size_mcnemar_inputs_ui(input))
-  output$effect_size_mcnemar_results <- renderUI(sample_size_results_ui(effect_size_mcnemar_result()))
+  output$effect_size_mcnemar_inputs <- renderUI(effect_size_mcnemar_inputs_ui(input, sample_size_language()))
+  output$effect_size_mcnemar_results <- renderUI(sample_size_results_ui(effect_size_mcnemar_result(), sample_size_language()))
   observeEvent(input$effect_size_mcnemar_calculate, {
     effect_size_mcnemar_result(effect_size_mcnemar_calculate(input))
   })
-  output$effect_size_regression_inputs <- renderUI(effect_size_regression_inputs_ui(input))
-  output$effect_size_regression_results <- renderUI(sample_size_results_ui(effect_size_regression_result()))
+  output$effect_size_regression_inputs <- renderUI(effect_size_regression_inputs_ui(input, sample_size_language()))
+  output$effect_size_regression_results <- renderUI(sample_size_results_ui(effect_size_regression_result(), sample_size_language()))
   observeEvent(input$effect_size_regression_calculate, {
     effect_size_regression_result(effect_size_regression_calculate(input))
   })
-  output$effect_size_gee_inputs <- renderUI(effect_size_gee_inputs_ui(input))
-  output$effect_size_gee_results <- renderUI(sample_size_results_ui(effect_size_gee_result()))
+  output$effect_size_gee_inputs <- renderUI(effect_size_gee_inputs_ui(input, sample_size_language()))
+  output$effect_size_gee_results <- renderUI(sample_size_results_ui(effect_size_gee_result(), sample_size_language()))
   observeEvent(input$effect_size_gee_calculate, {
     effect_size_gee_result(effect_size_gee_calculate(input))
   })
-  output$effect_size_glmm_inputs <- renderUI(effect_size_glmm_inputs_ui(input))
-  output$effect_size_glmm_results <- renderUI(sample_size_results_ui(effect_size_glmm_result()))
+  output$effect_size_glmm_inputs <- renderUI(effect_size_glmm_inputs_ui(input, sample_size_language()))
+  output$effect_size_glmm_results <- renderUI(sample_size_results_ui(effect_size_glmm_result(), sample_size_language()))
   observeEvent(input$effect_size_glmm_calculate, {
     effect_size_glmm_result(effect_size_glmm_calculate(input))
   })
-  output$effect_size_lmm_inputs <- renderUI(effect_size_lmm_inputs_ui(input))
-  output$effect_size_lmm_results <- renderUI(sample_size_results_ui(effect_size_lmm_result()))
+  output$effect_size_lmm_inputs <- renderUI(effect_size_lmm_inputs_ui(input, sample_size_language()))
+  output$effect_size_lmm_results <- renderUI(sample_size_results_ui(effect_size_lmm_result(), sample_size_language()))
   observeEvent(input$effect_size_lmm_calculate, {
     effect_size_lmm_result(effect_size_lmm_calculate(input))
   })
-  output$effect_size_survival_inputs <- renderUI(effect_size_survival_inputs_ui(input))
-  output$effect_size_survival_results <- renderUI(sample_size_results_ui(effect_size_survival_result()))
+  output$effect_size_survival_inputs <- renderUI(effect_size_survival_inputs_ui(input, sample_size_language()))
+  output$effect_size_survival_results <- renderUI(sample_size_results_ui(effect_size_survival_result(), sample_size_language()))
   observeEvent(input$effect_size_survival_calculate, {
     effect_size_survival_result(effect_size_survival_calculate(input))
   })
-  output$effect_size_equivalence_inputs <- renderUI(effect_size_equivalence_inputs_ui(input))
-  output$effect_size_equivalence_results <- renderUI(sample_size_results_ui(effect_size_equivalence_result()))
+  output$effect_size_equivalence_inputs <- renderUI(effect_size_equivalence_inputs_ui(input, sample_size_language()))
+  output$effect_size_equivalence_results <- renderUI(sample_size_results_ui(effect_size_equivalence_result(), sample_size_language()))
   observeEvent(input$effect_size_equivalence_calculate, {
     effect_size_equivalence_result(effect_size_equivalence_calculate(input))
   })
-  output$effect_size_diagnostic_inputs <- renderUI(effect_size_diagnostic_inputs_ui(input))
-  output$effect_size_diagnostic_results <- renderUI(sample_size_results_ui(effect_size_diagnostic_result()))
+  output$effect_size_diagnostic_inputs <- renderUI(effect_size_diagnostic_inputs_ui(input, sample_size_language()))
+  output$effect_size_diagnostic_results <- renderUI(sample_size_results_ui(effect_size_diagnostic_result(), sample_size_language()))
   observeEvent(input$effect_size_diagnostic_calculate, {
     effect_size_diagnostic_result(effect_size_diagnostic_calculate(input))
   })
-  output$effect_size_rates_inputs <- renderUI(effect_size_rates_inputs_ui(input))
-  output$effect_size_rates_results <- renderUI(sample_size_results_ui(effect_size_rates_result()))
+  output$effect_size_rates_inputs <- renderUI(effect_size_rates_inputs_ui(input, sample_size_language()))
+  output$effect_size_rates_results <- renderUI(sample_size_results_ui(effect_size_rates_result(), sample_size_language()))
   observeEvent(input$effect_size_rates_calculate, {
     effect_size_rates_result(effect_size_rates_calculate(input))
   })
-  output$effect_size_cluster_inputs <- renderUI(effect_size_cluster_inputs_ui(input))
-  output$effect_size_cluster_results <- renderUI(sample_size_results_ui(effect_size_cluster_result()))
+  output$effect_size_cluster_inputs <- renderUI(effect_size_cluster_inputs_ui(input, sample_size_language()))
+  output$effect_size_cluster_results <- renderUI(sample_size_results_ui(effect_size_cluster_result(), sample_size_language()))
   observeEvent(input$effect_size_cluster_calculate, {
     effect_size_cluster_result(effect_size_cluster_calculate(input))
   })
-  output$effect_size_precision_inputs <- renderUI(effect_size_precision_inputs_ui(input))
-  output$effect_size_precision_results <- renderUI(sample_size_results_ui(effect_size_precision_result()))
+  output$effect_size_precision_inputs <- renderUI(effect_size_precision_inputs_ui(input, sample_size_language()))
+  output$effect_size_precision_results <- renderUI(sample_size_results_ui(effect_size_precision_result(), sample_size_language()))
   observeEvent(input$effect_size_precision_calculate, {
     effect_size_precision_result(effect_size_precision_calculate(input))
   })
-  output$effect_size_reliability_inputs <- renderUI(effect_size_reliability_inputs_ui(input))
-  output$effect_size_reliability_results <- renderUI(sample_size_results_ui(effect_size_reliability_result()))
+  output$effect_size_reliability_inputs <- renderUI(effect_size_reliability_inputs_ui(input, sample_size_language()))
+  output$effect_size_reliability_results <- renderUI(sample_size_results_ui(effect_size_reliability_result(), sample_size_language()))
   observeEvent(input$effect_size_reliability_calculate, {
     effect_size_reliability_result(effect_size_reliability_calculate(input))
   })
-  output$effect_size_sem_inputs <- renderUI(effect_size_sem_inputs_ui(input))
-  output$effect_size_sem_results <- renderUI(sample_size_results_ui(effect_size_sem_result()))
+  output$effect_size_sem_inputs <- renderUI(effect_size_sem_inputs_ui(input, sample_size_language()))
+  output$effect_size_sem_results <- renderUI(sample_size_results_ui(effect_size_sem_result(), sample_size_language()))
   observeEvent(input$effect_size_sem_calculate, {
     effect_size_sem_result(effect_size_sem_calculate(input))
   })
@@ -4230,7 +4654,7 @@ register_sample_size_server <- function(input, output, session) {
     local({
       effect_method_local <- effect_method
       output[[paste0("effect_size_", effect_method_local, "_results")]] <- renderUI({
-        sample_size_results_ui(effect_size_calculators[[effect_method_local]](input))
+        sample_size_results_ui(effect_size_calculators[[effect_method_local]](input), sample_size_language())
       })
     })
   }
@@ -4238,9 +4662,11 @@ register_sample_size_server <- function(input, output, session) {
   for (method in methods) {
     local({
       method_local <- method
-      output[[paste0("lazy_sample_size_", method_local)]] <- renderUI(tab_panel_content(sample_size_analysis_panel(method_local)))
-      output[[paste0("sample_size_", method_local, "_inputs")]] <- renderUI(sample_size_inputs_ui(method_local, sample_size_input_snapshot(method_local, input)))
-      output[[paste0("sample_size_", method_local, "_results")]] <- renderUI(sample_size_results_ui(results[[method_local]]()))
+      output[[paste0("lazy_sample_size_", method_local)]] <- renderUI({
+        tab_panel_content(sample_size_analysis_panel(method_local, sample_size_language()))
+      })
+      output[[paste0("sample_size_", method_local, "_inputs")]] <- renderUI(sample_size_inputs_ui(method_local, sample_size_input_snapshot(method_local, input), sample_size_language()))
+      output[[paste0("sample_size_", method_local, "_results")]] <- renderUI(sample_size_results_ui(results[[method_local]](), sample_size_language()))
       observeEvent(input[[paste0("sample_size_", method_local, "_stop")]], {
         jobs <- sample_size_jobs()
         job <- jobs[[method_local]]

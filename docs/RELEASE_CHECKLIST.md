@@ -29,7 +29,7 @@ Use this checklist before creating a public beta installer, 1.0 release candidat
 - Confirm visible product surfaces use `StatEdu Studio`, including README, app header, About, launcher text, installer metadata, default export filenames, report covers, favicon, and logo assets.
 - Confirm no visible app page or release artifact uses `EasyFlow Statistics` as the current product name.
 - For a public 1.0 release, confirm the Electron build has switched 0.9.x beta packaging names to final release names across the app display name, package metadata, installer artifact, shortcut name, executable resource strings, and smoke-test expectations.
-- Confirm the DOI `10.22934/statedu.studio` is registered and resolves to `https://studio.statedu.com` before publishing a public release.
+- Confirm the DOI `10.22934/statedu.studio` is registered and resolves to `https://studio.statedu.com/citation/` before publishing a public release.
 - Confirm `studio.statedu.com` is live and points to the StatEdu Studio product site before publishing a public release.
 - Keep backward-compatible internal identifiers such as `EASYFLOW_*` environment variables, `easyflow_*` JavaScript/R helper names, `easyflow_settings`, `easyflow_result_history`, `.efs-result`, and legacy result-store read paths unless a migration plan and validation coverage exist.
 - Do not expose legacy `.efs-settings` or `.json` settings filters in Load settings or Save settings dialogs; public settings dialogs use only `.studio`.

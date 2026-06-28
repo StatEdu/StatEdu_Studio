@@ -15,8 +15,10 @@ frequencies_setup_state <- function(
   plot_bar = FALSE,
   plot_histogram = FALSE,
   plot_box = FALSE,
-  plot_violin = FALSE
+  plot_violin = FALSE,
+  language = statedu_initial_language()
 ) {
+  language <- normalize_app_language(language)
   selected <- as.character(selected_names %||% character(0))
   selected_variables <- intersect(as.character(selected_variables %||% character(0)), selected)
   available <- setdiff(selected, selected_variables)
@@ -34,16 +36,18 @@ frequencies_setup_state <- function(
     plot_bar = isTRUE(plot_bar),
     plot_histogram = isTRUE(plot_histogram),
     plot_box = isTRUE(plot_box),
-    plot_violin = isTRUE(plot_violin)
+    plot_violin = isTRUE(plot_violin),
+    language = language
   )
 }
 
 frequencies_setup_panel <- function(state) {
+  language <- normalize_app_language(state$language %||% statedu_initial_language())
   div(
     class = "frequencies-setup-grid",
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
-      analysis_field_label_tag("Variables"),
+      analysis_field_label_tag("Variables", language = language),
       analysis_transfer_listbox_input("frequency_available", state$available_items, selected = state$available_selected, size = 17)
     ),
     div(
@@ -52,12 +56,12 @@ frequencies_setup_panel <- function(state) {
     ),
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
-      analysis_field_label_tag("Selected Variables", analysis_allowed_measurements_all()),
+      analysis_field_label_tag("Selected Variables", analysis_allowed_measurements_all(), language = language),
       analysis_transfer_listbox_input("frequency_selected", state$selected_items, selected = state$selected_selected, size = 17),
       div(
         class = "analysis-order-actions frequency-order-actions",
-        actionButton("frequency_move_up", "Up", class = "btn-default btn-sm"),
-        actionButton("frequency_move_down", "Down", class = "btn-default btn-sm")
+        actionButton("frequency_move_up", analysis_ui_text("Up", language), class = "btn-default btn-sm"),
+        actionButton("frequency_move_down", analysis_ui_text("Down", language), class = "btn-default btn-sm")
       )
     ),
     div(
@@ -66,7 +70,8 @@ frequencies_setup_panel <- function(state) {
         "Table",
         list(
           list(id = "frequency_table_summary", label = "n(%) or M \u00b1 SD", value = state$table_summary)
-        )
+        ),
+        language = language
       ),
       analysis_option_group(
         "Statistics",
@@ -74,7 +79,8 @@ frequencies_setup_panel <- function(state) {
           list(id = "frequency_stat_min_max", label = "Min, Max", value = state$stat_min_max),
           list(id = "frequency_stat_skew_kurtosis", label = "Skewness, Kurtosis", value = state$stat_skew_kurtosis),
           list(id = "frequency_stat_median_iqr", label = "Median, IQR(Q1~Q3)", value = state$stat_median_iqr)
-        )
+        ),
+        language = language
       ),
       analysis_option_group(
         "Plots",
@@ -84,7 +90,8 @@ frequencies_setup_panel <- function(state) {
           list(id = "frequency_plot_histogram", label = "Histogram", value = state$plot_histogram),
           list(id = "frequency_plot_box", label = "Box plot", value = state$plot_box),
           list(id = "frequency_plot_violin", label = "Violin plot", value = state$plot_violin)
-        )
+        ),
+        language = language
       )
     )
   )

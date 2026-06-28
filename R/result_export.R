@@ -1320,15 +1320,16 @@ save_pca_excel_file <- function(result, file) {
 
 crosstab_excel_group_table <- function(results) {
   first <- results[[1]]
-  col_labels <- crosstab_value_labels(first$col_var, colnames(first$table), first$category_table)
+  col_names <- crosstab_column_group_colnames(results)
+  col_labels <- crosstab_value_labels(first$col_var, col_names, first$category_table)
   split <- crosstab_split_count_percent(first)
   show_trend_p <- crosstab_show_trend_p(results)
   method_notes <- crosstab_method_footnotes(results)
   rows <- list()
 
   for (result in results) {
-    tab <- result$table
-    percent <- crosstab_primary_percent_matrix(result)
+    tab <- crosstab_align_table_columns(result$table, col_names)
+    percent <- crosstab_primary_percent_matrix(result, tab)
     row_labels <- crosstab_value_labels(result$row_var, rownames(tab), result$category_table)
     statistic <- crosstab_format_number(result$association$statistic)
     p_marker <- crosstab_method_marker(result, method_notes)
@@ -1343,15 +1344,19 @@ crosstab_excel_group_table <- function(results) {
         Value = row_labels[[row_index]]
       )
       if (isTRUE(split)) {
-        base[["Total n"]] <- rowSums(tab)[[row_index]]
-        base[["Total %"]] <- crosstab_split_percent_text(crosstab_total_percent_value(tab, row_index))
+        if (isTRUE(crosstab_show_total_n(result))) {
+          base[["Total n"]] <- rowSums(tab)[[row_index]]
+          base[["Total %"]] <- crosstab_split_percent_text(crosstab_total_percent_value(tab, row_index))
+        }
         for (col_index in seq_len(ncol(tab))) {
           label <- col_labels[[col_index]]
           base[[paste(label, "n")]] <- tab[row_index, col_index]
           base[[paste(label, "%")]] <- crosstab_split_percent_text(if (is.null(percent)) NULL else percent[row_index, col_index])
         }
       } else {
-        base[["n"]] <- crosstab_cell_text(rowSums(tab)[[row_index]], crosstab_total_percent_value(tab, row_index))
+        if (isTRUE(crosstab_show_total_n(result))) {
+          base[["n"]] <- crosstab_cell_text(rowSums(tab)[[row_index]], crosstab_total_percent_value(tab, row_index))
+        }
         for (col_index in seq_len(ncol(tab))) {
           base[[col_labels[[col_index]]]] <- crosstab_cell_text(tab[row_index, col_index], if (is.null(percent)) NULL else percent[row_index, col_index])
         }

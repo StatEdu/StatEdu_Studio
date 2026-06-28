@@ -61,7 +61,7 @@ open_settings_body <- extract_line_range(
 )
 save_settings_body <- extract_line_range(
   settings_dialog_lines,
-  "save_settings_file <- function() {"
+  "save_settings_file <- function(initial_dir = NULL) {"
 )
 
 assert_contains(open_settings_body, "{{StatEdu Studio Settings} {.studio}}", "open settings .studio filter")
@@ -72,8 +72,9 @@ assert_not_contains(open_settings_body, "*.json", "legacy JSON open filter")
 assert_contains(save_settings_body, 'defaultextension = ".studio"', "save settings default extension")
 assert_contains(save_settings_body, 'filetypes = "{{StatEdu Studio Settings} {.studio}}"', "save settings .studio filter")
 assert_contains(save_settings_body, 'initialfile = ""', "blank save settings filename")
+assert_contains(save_settings_body, 'args$initialdir <- initial_dir', "save settings initial directory")
 assert_contains(save_settings_body, 'utils::choose.files(', "Windows save settings fallback")
-assert_contains(save_settings_body, 'default = ""', "blank fallback save settings filename")
+assert_contains(save_settings_body, 'default = default_path', "fallback save settings initial directory")
 assert_not_contains(save_settings_body, 'initialfile = default_name', "default save settings filename")
 assert_not_contains(save_settings_body, 'default_settings_file_name', "legacy generated save settings filename")
 assert_not_contains(save_settings_body, 'default_name', "legacy generated save settings filename variable")
@@ -87,6 +88,8 @@ stopifnot(identical(normalize_settings_save_path("analysis.efs-settings"), "anal
 stopifnot(identical(normalize_settings_save_path("analysis.efs-settings.efs-settings"), "analysis.studio"))
 stopifnot(identical(normalize_settings_save_path("analysis.json"), "analysis.studio"))
 stopifnot(identical(normalize_settings_save_path("analysis.txt"), "analysis.studio"))
+stopifnot(identical(settings_save_initial_dir(tempdir()), normalizePath(tempdir(), winslash = "/", mustWork = FALSE)))
+stopifnot(identical(settings_save_initial_dir(file.path(tempdir(), "missing-dir")), ""))
 
 message("Checking latent settings file dialog contract...")
 

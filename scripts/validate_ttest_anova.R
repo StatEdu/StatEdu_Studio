@@ -35,6 +35,29 @@ expect_true(
   "Expected DOCX p=.179 without metadata not to split 9 into a note marker"
 )
 
+message("Checking skewness/kurtosis normality cutoff presets...")
+expect_true(identical(ttest_skew_kurtosis_cutoffs("2_5")$label, "2/5"), "Expected 2_5 cutoff preset to resolve")
+expect_true(identical(ttest_skew_kurtosis_cutoffs("2_7")$label, "2/7"), "Expected 2_7 cutoff preset to resolve")
+expect_true(identical(ttest_skew_kurtosis_cutoffs("3_7")$label, "3/7"), "Expected 3_7 cutoff preset to resolve")
+cutoff_test_values <- c(rep(0, 10), -1, 1)
+expect_true(
+  !isTRUE(ttest_normality_skew_kurtosis(cutoff_test_values, "2_5")$normal),
+  "Expected excess kurtosis 5.5 to fail the conservative 2/5 cutoff"
+)
+expect_true(
+  isTRUE(ttest_normality_skew_kurtosis(cutoff_test_values, "2_7")$normal),
+  "Expected excess kurtosis 5.5 to satisfy the standard 2/7 cutoff"
+)
+cutoff_setup_state <- ttest_anova_setup_state(
+  selected_names = c("y", "g"),
+  dependent_variables = "y",
+  factor_variables = "g",
+  normality_skew_kurtosis_cutoff = "3_7"
+)
+cutoff_setup_html <- as.character(tags_to_html(ttest_anova_setup_panel(cutoff_setup_state)))
+expect_true(grepl("ttest_anova_skew_kurtosis_cutoff", cutoff_setup_html, fixed = TRUE), "Expected skewness/kurtosis cutoff input to render")
+expect_true(grepl("value=\"3_7\" checked", cutoff_setup_html, fixed = TRUE), "Expected selected 3/7 cutoff to render as checked")
+
 message("Checking t-test / ANOVA numbered notes...")
 data <- data.frame(
   y = c(1:20, 1:20),
@@ -345,6 +368,99 @@ expect_true(
   "Expected compact post-hoc letters to mark non-significant bridge groups as ab"
 )
 
+expect_true(
+  identical(
+    ttest_ordered_marker_statements(
+      c("c", "b", "a"),
+      data.frame(
+        higher = c("c", "c", "b"),
+        lower = c("a", "b", "a"),
+        stringsAsFactors = FALSE
+      )
+    ),
+    "c>b>a"
+  ),
+  "Expected fully significant ordered post-hoc relations to render as a compact chain"
+)
+expect_true(
+  identical(
+    ttest_ordered_marker_statements(
+      c("c", "b", "a"),
+      data.frame(
+        higher = c("c", "b"),
+        lower = c("a", "a"),
+        stringsAsFactors = FALSE
+      )
+    ),
+    "c,b>a"
+  ),
+  "Expected ordered post-hoc notation to combine higher markers when they share one lower marker and do not differ from each other"
+)
+expect_true(
+  identical(
+    ttest_ordered_marker_statements(
+      c("a", "b", "c", "d", "e"),
+      data.frame(
+        higher = c("a", "b", "c"),
+        lower = c("e", "e", "e"),
+        stringsAsFactors = FALSE
+      )
+    ),
+    "a,b,c>e"
+  ),
+  "Expected ordered post-hoc notation to combine multiple higher markers that share one lower marker"
+)
+label_order_rows <- data.frame(
+  Value = c("1", "2", "3"),
+  M = c("2.00", "3.00", "1.00"),
+  `post-hoc` = "",
+  stringsAsFactors = FALSE,
+  check.names = FALSE
+)
+label_order_p <- matrix(1, nrow = 3, ncol = 3, dimnames = list(c("1", "2", "3"), c("1", "2", "3")))
+label_order_p["2", "1"] <- label_order_p["1", "2"] <- .001
+label_order_p["1", "3"] <- label_order_p["3", "1"] <- .001
+label_order_p["2", "3"] <- label_order_p["3", "2"] <- .001
+label_order_out <- analysis_apply_ordered_posthoc_markers(
+  label_order_rows,
+  estimates = c(2, 3, 1),
+  levels = c("1", "2", "3"),
+  p_matrix = label_order_p,
+  label_column = "Value"
+)
+label_order_markers <- attr(label_order_out, "note_markers", exact = TRUE)
+expect_true(
+  identical(as.character(label_order_out[["post-hoc"]][[1]]), "b>a>c") &&
+    !any(nzchar(as.character(label_order_out[["post-hoc"]][-1]))) &&
+    is.data.frame(label_order_markers) &&
+    identical(label_order_markers$marker[order(label_order_markers$row)], c("a", "b", "c")),
+  "Expected markers to follow label order while ordered post-hoc notation follows mean order"
+)
+
+shared_lower_rows <- data.frame(
+  Value = c("1", "2", "3"),
+  M = c("1.86", "2.12", "2.21"),
+  `post-hoc` = "",
+  stringsAsFactors = FALSE,
+  check.names = FALSE
+)
+shared_lower_p <- matrix(1, nrow = 3, ncol = 3, dimnames = list(c("1", "2", "3"), c("1", "2", "3")))
+shared_lower_p["1", "2"] <- shared_lower_p["2", "1"] <- .048
+shared_lower_p["1", "3"] <- shared_lower_p["3", "1"] <- .001
+shared_lower_p["2", "3"] <- shared_lower_p["3", "2"] <- .747
+shared_lower_out <- analysis_apply_ordered_posthoc_markers(
+  shared_lower_rows,
+  estimates = c(1.86, 2.12, 2.21),
+  levels = c("1", "2", "3"),
+  p_matrix = shared_lower_p,
+  label_column = "Value"
+)
+expect_true(
+  identical(as.character(shared_lower_out[["post-hoc"]][[1]]), "c,b>a") &&
+    !any(nzchar(as.character(shared_lower_out[["post-hoc"]][-1]))),
+  "Expected non-significant higher groups with one shared lower group to render as c,b>a"
+)
+
 ordered_marker_data <- data.frame(
   y = c(1:20, 10:29, 30:49),
   group = rep(c("A", "B", "C"), each = 20),
@@ -372,13 +488,14 @@ expect_true(
   "Expected ordered post-hoc markers to be attached to Value cells in displayed value order"
 )
 expect_true(
-  identical(as.character(ordered_marker_table[["post-hoc"]][1:2]), c("c>a,b", "b>a")),
-  "Expected multi-line ordered post-hoc notation to use subsequent table rows instead of line breaks in one cell"
+  identical(as.character(ordered_marker_table[["post-hoc"]][[1]]), "c>b>a") &&
+    !any(nzchar(as.character(ordered_marker_table[["post-hoc"]][-1]))),
+  "Expected fully significant ordered post-hoc notation to render as a compact chain"
 )
 ordered_marker_html <- as.character(tags_to_html(ttest_anova_results_ui(ordered_marker_result)))
 expect_true(
   grepl("coefficient-footnote-marker", ordered_marker_html, fixed = TRUE) &&
-    (grepl("c&gt;a,b", ordered_marker_html, fixed = TRUE) || grepl("c>a,b", ordered_marker_html, fixed = TRUE)),
+    (grepl("c&gt;b&gt;a", ordered_marker_html, fixed = TRUE) || grepl("c>b>a", ordered_marker_html, fixed = TRUE)),
   "Expected ordered post-hoc markers to render as superscripts with marker comparisons"
 )
 
@@ -418,7 +535,7 @@ expect_true(
 )
 expect_true(
   all(names(nonparametric_result$results[[1]]$table) == c(
-    "Variable", "Value", "M", "SD", "z/x²", "p", "Effect size", "post-hoc"
+    "Variable", "Value", "M", "SD", paste0("z/x", "\u00B2"), "p", "Effect size", "post-hoc"
   )),
   "Expected standalone nonparametric results to use the t-test / ANOVA table shape, with only the statistic label adapted"
 )

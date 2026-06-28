@@ -8,9 +8,11 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `1.0.0`
+Current public version: `1.0.1`
 
-Version 1.0.0 promotes the stabilized public release line, switches Electron packaging metadata to final non-beta names, and keeps the 0.9.42 validation baseline for Data Editor dialog geometry, Wide to Long, missing-value, recode, rename, settings, and longitudinal / panel reporting behavior. Version 0.9.41 groups the Analysis, Sample Size, and Effect Size menus into consistent first-level categories and fixes cross-tabulation variable transfer controls. Version 0.9.40 rebrands the product-facing application to **StatEdu Studio**, updates the logo, favicon, launcher, installer metadata, default export filenames, About/source references, release checklist, and Electron packaging audit state. It also extends GLM, longitudinal / panel, and reference-category validation coverage. Version 0.9.39 adds the Longitudinal / Panel Models workflow with GEE, LMM, GLMM, panel fixed effects, panel random effects, model-specific assumption checks, missing-data sensitivity engines, longitudinal weights, exposure offsets, count-family screening, and SCI-style reporting. It also activates the GLM workflow for Gaussian, binary logistic, Gamma, and count models with tabbed model, missing-data, assumption-check, publication-note, SCI-checklist, and manuscript-text outputs. Version 0.9.38 adds Fritz & MacKinnon (2007) empirical mediation sample-size estimates, method-specific mediation references, and a wider adaptive Sample Size results panel.
+Version 1.0.1 is the stabilized public patch release line for local data import, data editing, assumption-guided statistical analyses, sample-size/effect-size calculators, and publication-ready HTML/PDF result output. Detailed development history is available in **About > Version History**.
+
+Public 1.0 does not expose license activation, paid-edition gating, Excel/Word result export, Mplus/latent add-ons, or longitudinal/panel analysis workflows. These items may appear in development history or planning notes, but they should not be treated as public 1.0 features.
 
 ## Current Scope
 
@@ -37,9 +39,8 @@ Version 1.0.0 promotes the stabilized public release line, switches Electron pac
 - Standalone sample size, power, and effect size calculators with method notes and references
 - Result saving to HTML, PDF, figures, and accumulated Result collections
 - Result collection export to HTML and PDF
-- Public 1.0 hides Longitudinal / Panel Models, Excel result export, and Word result export; those surfaces remain deferred for a later release while internal validation coverage is retained.
 
-For the full current method inventory, see [docs/ANALYSIS_METHODS_KO.md](docs/ANALYSIS_METHODS_KO.md).
+For the full current method inventory, see [docs/ANALYSIS_METHODS_EN.md](docs/ANALYSIS_METHODS_EN.md).
 
 ## Runtime Environment
 
@@ -58,12 +59,12 @@ Some installed package binaries may have been built under a newer patch-level R 
 | Data import | `haven`, `readr`, `readxl`, `openxlsx` | SAV, SAS, Stata, CSV, DAT, XLS, and XLSX import |
 | Settings and data helpers | `jsonlite`, `xml2`, `rvest`, `callr` | Settings serialization, HTML/XML processing, and background R process support |
 | Regression diagnostics | `car`, `lmtest`, `sandwich`, `nortest`, `boot` | Type II/III ANCOVA tables, Levene-style variance checks, Breusch-Pagan test, HC3 robust standard errors, Lilliefors normality test, and bootstrap inference |
-| Linear / generalized models | `MASS`, `nnet`, `lmtest`, `sandwich`, `geepack`, `mice`, `lme4`, `lmerTest`, `plm` | GLM robust inference, ordered logistic, multinomial, and retained internal validation support for deferred longitudinal / panel workflows |
+| Linear / generalized models | `MASS`, `nnet`, `lmtest`, `sandwich`, `geepack`, `mice`, `lme4`, `lmerTest`, `plm` | GLM robust inference, ordered logistic, multinomial, and model-support utilities |
 | Penalized regression | `glmnet` | Ridge, LASSO, and Elastic Net helper analyses |
 | Post-hoc and group comparison | `agricolae` | Multiple-comparison procedures used in ANOVA-style workflows |
 | Reliability, factor analysis, and correlations | `psych`, `polycor` | Reliability coefficients, factor/PCA helpers, polychoric/polyserial/tetrachoric correlation support |
-| Sample size and power | `longpower`, `WebPower`, `TOSTER` | Cluster trial / SEM power, exact TOST equivalence calculations, and retained internal validation support for longitudinal power helpers |
-| Report export | `officer`, `flextable`, `openxlsx` | Report table support and retained internal validation support for deferred Office exports |
+| Sample size and power | `longpower`, `WebPower`, `TOSTER` | Cluster trial / SEM power and exact TOST equivalence calculations |
+| Report export | `officer`, `flextable`, `openxlsx` | Report table support |
 
 ## Local Run
 
@@ -75,9 +76,7 @@ The app will open at `127.0.0.1` in the default browser. The launcher searches f
 
 ## Validation
 
-Version 0.9.10 includes validation scripts for calculators, data import, data editing, cross-tabulation, correlation auto-selection, factor analysis / PCA, logistic analysis and UI, paired guard handling, p-value formatting, regression coefficient output, and t-test / ANOVA guard handling.
-
-Version 1.0.0 carries forward the 0.9.42 validation suite and adds final-release Electron metadata checks. Version 0.9.42 adds validation for wide-to-long reshaping and expanded data-editor recoding behavior. Version 0.9.41 adds UI validation for grouped navigation menus and cross-tabulation transfer controls. Version 0.9.40 extends validation coverage for GLM and longitudinal / panel reporting workflows, missing-data summaries, analysis weights, count-model selection, reference-category reporting, and the external analysis reference comparison table. Version 0.9.39 includes validation coverage for longitudinal / panel model fitting, GLM fitting, setup UI structure, missing-data handling, assumption-check catalogs, HTML export, Excel export, sensitivity comparisons, exposure offsets, count-family screening, robust standard errors, and SCI reporting sections. Version 0.9.38 includes validation coverage for Fritz & MacKinnon mediation sample-size table values and method-specific mediation reporting. Version 0.9.37 includes validation coverage for data-editor recoding and Likert detection paths. Version 0.9.36 includes validation coverage for logistic analysis, data editor recoding, factor/PCA, correlation, paired tests, data I/O, and result history. Effect-size comparisons use `effectsize` as a validation reference where its definitions match the app calculation; `effectsize` is not required at runtime.
+Version 1.0.1 carries forward the stabilization validation suite and adds final-release Electron metadata checks. Public validation coverage includes calculators, data import, data editing, cross-tabulation, correlation auto-selection, factor analysis / PCA, logistic analysis and UI, paired guard handling, p-value formatting, regression coefficient output, GLM output, and t-test / ANOVA guard handling. Effect-size comparisons use `effectsize` as a validation reference where its definitions match the app calculation; `effectsize` is not required at runtime.
 
 Run the stabilization validation suite from the repository root before merging
 or packaging:
@@ -110,12 +109,12 @@ module before running the stabilization suite.
 
 ## Citation
 
-The DOI and public homepage are not live yet. Do not use a DOI citation until
-`10.22934/statedu.studio` resolves to `https://studio.statedu.com`.
-
 If you use **StatEdu Studio** in your research, please cite:
 
-LEE, I. H. (2026). **StatEdu Studio** (Version 1.0.0) [Computer software].
+LEE, I. H. (2026). **StatEdu Studio** (Version 1.0.1) [Computer software].
+https://doi.org/10.22934/statedu.studio
+
+Product site: https://studio.statedu.com/
 
 ## Development Model
 
