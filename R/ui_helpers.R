@@ -147,7 +147,7 @@ app_stylesheet_link <- function(version) {
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-navbar-language-20260628a"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-navbar-language-help-20260628a"))
 }
 
 app_language_bootstrap_script <- function(language) {
@@ -250,6 +250,8 @@ app_ui <- function(version, request = NULL) {
     if (latent_mplus_enabled()) latent_menu_tab(),
 
     result_tab_panel(language),
+
+    help_tab_panel(version, language),
 
     about_tab_panel(version, language)
   )

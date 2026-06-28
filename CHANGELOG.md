@@ -9,6 +9,7 @@
 - Refined t-test / ANOVA normality cutoff options, ordered post-hoc marker summaries, and cross-tabulation layout/export behavior.
 - Added calculator output variable-name controls and improved EQ-5D and ASCVD10 calculator panel layouts.
 - Added update-check support, `.studio` file association packaging metadata, and the `.studio` file icon.
+- Added a Help menu for bug reports, feature requests, analysis requests, Q&A, and update checks.
 - Updated 1.0 user-guide screenshots and bilingual documentation assets.
 
 ## v1.0.0 - 2026-06-25

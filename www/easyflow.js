@@ -876,6 +876,7 @@
                 'Sample Size': 'Sample Size',
                 'Effect Size': 'Effect Size',
                 Result: 'Result',
+                Help: 'Help',
                 About: 'About'
               },
               items: {
@@ -894,6 +895,11 @@
                 calculator_frs: 'Framingham risk score',
                 calculator_ascvd10: 'ASCVD10',
                 calculator_metabolic_severity: 'Metabolic severity',
+                help_bug: 'Bug report',
+                help_feature: 'Feature request',
+                help_analysis_request: 'Analysis request',
+                help_qa: 'Q&A',
+                about_update: 'Check for Updates',
                 about_overview: 'Overview',
                 about_user_guide: 'User Guide',
                 about_analysis_methods: 'Analyses',
@@ -914,6 +920,7 @@
                 'Sample Size': '\uD45C\uBCF8\uC218',
                 'Effect Size': '\uD6A8\uACFC\uD06C\uAE30',
                 Result: '\uACB0\uACFC',
+                Help: '\uB3C4\uC6C0\uB9D0',
                 About: '\uC815\uBCF4'
               },
               items: {
@@ -932,6 +939,11 @@
                 calculator_frs: 'Framingham \uC704\uD5D8\uB3C4',
                 calculator_ascvd10: 'ASCVD10',
                 calculator_metabolic_severity: '\uB300\uC0AC\uC99D\uD6C4\uAD70 \uC911\uC99D\uB3C4',
+                help_bug: '\uBC84\uADF8 \uC2E0\uACE0',
+                help_feature: '\uAE30\uB2A5 \uAC1C\uC120 \uC694\uCCAD',
+                help_analysis_request: '\uBD84\uC11D \uC694\uCCAD',
+                help_qa: 'Q&A',
+                about_update: '\uC5C5\uB370\uC774\uD2B8 \uD655\uC778',
                 about_overview: '\uAC1C\uC694',
                 about_user_guide: '\uC0AC\uC6A9\uC790 \uC548\uB0B4\uC11C',
                 about_analysis_methods: '\uBD84\uC11D',
@@ -964,6 +976,8 @@
             '\uD6A8\uACFC\uD06C\uAE30': 'Effect Size',
             Result: 'Result',
             '\uACB0\uACFC': 'Result',
+            Help: 'Help',
+            '\uB3C4\uC6C0\uB9D0': 'Help',
             About: 'About',
             '\uC815\uBCF4': 'About'
           };

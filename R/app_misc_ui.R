@@ -420,11 +420,105 @@ about_update_tab_panel <- function(language = statedu_initial_language()) {
   )
 }
 
+help_update_label <- function(language = statedu_initial_language()) {
+  statedu_text(
+    normalize_app_language(language),
+    "Check for Updates",
+    statedu_utf8("ec9785eb8db0ec9db4ed8ab820ed9995ec9db8")
+  )
+}
+
+help_request_specs <- function(language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
+  list(
+    bug = list(
+      title = statedu_ui_label("bug_report", language),
+      subtitle = statedu_text(language, "Report a problem found while using StatEdu Studio.", statedu_utf8("537461744564752053747564696f20ec82acec9aa920eca49120ebb09ceab2aced959c20ebacb8eca09ceba5bc20ec958ceba0a4eca3bcec84b8ec9a942e")),
+      detail = statedu_text(language, "Include reproduction steps, expected result, actual result, error messages, and screenshots when possible.", statedu_utf8("ec9eaced988420eb8ba8eab3842c20ec9888ec838120eab2b0eab3bc2c20ec8ba4eca09c20eab2b0eab3bc2c20ec98a4eba59820eba994ec8b9ceca7802c20eab080eb8aa5ed9598eba9b420ed9994eba9b420ecbaa1ecb298eba5bc20ed95a8eabb9820ebb3b4eb82b4eca3bcec84b8ec9a942e")),
+      subject = "StatEdu Studio bug report"
+    ),
+    feature = list(
+      title = statedu_ui_label("feature_request", language),
+      subtitle = statedu_text(language, "Share an idea that would make the workflow easier.", statedu_utf8("ec82acec9aa920ed9d90eba684ec9d8420eb8d9420ed8eb8ed9598eab28c20eba78ceb93a420ec9584ec9db4eb9494ec96b4eba5bc20ec958ceba0a4eca3bcec84b8ec9a942e")),
+      detail = statedu_text(language, "Describe the feature, why it is needed, and the expected behavior.", statedu_utf8("ec9b90ed9598eb8a9420eab8b0eb8aa52c20ed9584ec9a94ed959c20ec9db4ec9ca02c20eab8b0eb8c8020eb8f99ec9e91ec9d8420eca081ec96b4eca3bcec84b8ec9a942e")),
+      subject = "StatEdu Studio feature request"
+    ),
+    analysis = list(
+      title = statedu_ui_label("analysis_request", language),
+      subtitle = statedu_text(language, "Request a new analysis method or an extension of an existing analysis.", statedu_utf8("ec838820ebb684ec849d20eab8b0ebb29520eb9890eb8a9420eab8b0eca1b420ebb684ec849d20ed9995ec9ea5ec9d8420ec9a94ecb2aded95a9eb8b88eb8ba42e")),
+      detail = statedu_text(language, "Include the study design, variable types, desired result table, references, or examples.", statedu_utf8("ec97b0eab5ac20ec84a4eab3842c20ebb380ec889820ec9ca0ed98952c20ec9b90ed9598eb8a9420eab2b0eab3bced919c2c20ecb0b8eab3a020ebacb8ed978cec9db4eb829820ec9888ec8b9ceba5bc20ed95a8eabb9820ebb3b4eb82b4eca3bcec84b8ec9a942e")),
+      subject = "StatEdu Studio analysis request"
+    ),
+    qa = list(
+      title = statedu_ui_label("qna", language),
+      subtitle = statedu_text(language, "Ask a question about usage, interpretation, installation, or release.", statedu_utf8("ec82acec9aa920ebb0a9ebb2952c20eab2b0eab3bc20ed95b4ec849d2c20ec84a4ecb99820eb9890eb8a9420ebb0b0ed8fac20eab480eba0a820eca788ebacb8ec9d8420ebb3b4eb8385eb8b88eb8ba42e")),
+      detail = statedu_text(language, "Include the question and the current screen or workflow step.", statedu_utf8("eca788ebacb820eb82b4ec9aa9eab3bc20ed9884ec9eac20ed9994eba9b420eb9890eb8a9420ec9e91ec978520eb8ba8eab384eba5bc20ed95a8eabb9820eca081ec96b4eca3bcec84b8ec9a942e")),
+      subject = "StatEdu Studio Q&A"
+    )
+  )
+}
+
+help_request_tab_panel <- function(kind, value, version, language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
+  spec <- help_request_specs(language)[[kind]]
+  support_email <- "dr.leeilhyun@gmail.com"
+  mail_body <- paste(
+    "StatEdu Studio",
+    paste0("Version: ", version),
+    "",
+    "Please describe the request here:",
+    sep = "\n"
+  )
+  mailto <- paste0(
+    "mailto:", support_email,
+    "?subject=", utils::URLencode(spec$subject, reserved = TRUE),
+    "&body=", utils::URLencode(mail_body, reserved = TRUE)
+  )
+  tabPanel(
+    spec$title,
+    value = value,
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1(spec$title),
+        div(statedu_text(language, "Choose a support request type and send the details.", statedu_utf8("ebacb8ec9d98eba5bc20ebb3b4eb82bc20ed95adebaaa9ec9d8420ec84a0ed839ded9598ec84b8ec9a942e")), class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel about-workspace-panel",
+        style = "max-width:980px;",
+        h3(spec$title),
+        p(spec$subtitle),
+        p(spec$detail),
+        div(
+          class = "step-summary-detail",
+          statedu_text(language, "Support requests open in your default mail app. Attach data files only when needed and after checking personal information.", statedu_utf8("eca780ec9b9020ec9a94ecb2adec9d8020eab8b0ebb3b820eba994ec9dbc20ec95b1ec9cbceba19c20ec9e91ec84b1eb90a9eb8b88eb8ba42e20eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8020eab09cec9db8eca095ebb3b4eba5bc20ed9995ec9db8ed959c20eb92a420ed9584ec9a94ed959c20eab2bdec9ab0ec9790eba78c20ecb2a8ebb680ed9598ec84b8ec9a942e"))
+        ),
+        tags$a(
+          href = mailto,
+          class = "btn btn-primary",
+          statedu_text(language, "Open mail app", statedu_utf8("eba994ec9dbc20ec95b120ec97b4eab8b0"))
+        )
+      )
+    )
+  )
+}
+
+help_tab_panel <- function(version, language = statedu_initial_language()) {
+  navbarMenu(
+    statedu_ui_label("help", language),
+    lazy_tab_panel(statedu_ui_label("bug_report", language), "help_bug", "lazy_help_bug"),
+    lazy_tab_panel(statedu_ui_label("feature_request", language), "help_feature", "lazy_help_feature"),
+    lazy_tab_panel(statedu_ui_label("analysis_request", language), "help_analysis_request", "lazy_help_analysis_request"),
+    lazy_tab_panel(statedu_ui_label("qna", language), "help_qa", "lazy_help_qa"),
+    lazy_tab_panel(help_update_label(language), "about_update", "lazy_about_update")
+  )
+}
+
 about_tab_panel <- function(version, language = statedu_initial_language()) {
   navbarMenu(
     statedu_ui_label("about", language),
     about_preferences_tab_panel(language),
-    lazy_tab_panel(statedu_text(language, "Check for Updates", statedu_utf8("ec9785eb8db0ec9db4ed8ab820ed9995ec9db8")), "about_update", "lazy_about_update"),
     lazy_tab_panel(statedu_ui_label("overview", language), "about_overview", "lazy_about_overview"),
     lazy_tab_panel(statedu_ui_label("user_guide", language), "about_user_guide", "lazy_about_user_guide"),
     lazy_tab_panel(statedu_ui_label("analyses", language), "about_analysis_methods", "lazy_about_analysis_methods"),

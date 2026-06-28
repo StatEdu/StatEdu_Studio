@@ -152,6 +152,10 @@ create_app_server <- function(app_version) {
   output$lazy_about_oss_licenses <- renderUI(tab_panel_content(about_license_tab_panel(app_language())))
   output$lazy_about_update <- renderUI(tab_panel_content(about_update_tab_panel(app_language())))
   output$lazy_about_info <- renderUI(tab_panel_content(about_info_tab_panel(app_version, app_language())))
+  output$lazy_help_bug <- renderUI(tab_panel_content(help_request_tab_panel("bug", "help_bug", app_version, app_language())))
+  output$lazy_help_feature <- renderUI(tab_panel_content(help_request_tab_panel("feature", "help_feature", app_version, app_language())))
+  output$lazy_help_analysis_request <- renderUI(tab_panel_content(help_request_tab_panel("analysis", "help_analysis_request", app_version, app_language())))
+  output$lazy_help_qa <- renderUI(tab_panel_content(help_request_tab_panel("qa", "help_qa", app_version, app_language())))
 
   observeEvent(input$check_updates, {
     notification_id <- showNotification(
