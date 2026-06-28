@@ -7,9 +7,9 @@ Current version: 1.0.1
 ## Current 1.0.1 Package Snapshot
 
 - Built package: `dist/electron/StatEdu_Studio_Setup_1.0.1.exe`
-- Installer SHA256: `D55256314BECD4C4870B7982983D1BBA1569CD808CFA14093E60FBAD55D3F48E`
-- Blockmap SHA256: `E47E4205FC598DCC7604C15B34F3E797F5E3EDF79C634959B0450F28691A5245`
-- Package rebuilt on 2026-06-28 to include STATEDU environment variable rebranding, navbar static language translation, and external Help links now opening in system default browser.
+- Installer SHA256: `6E408CE402D6DD802B745675485A81C7960E6B8676F44221FDEF81A41CBADC1E`
+- Blockmap SHA256: `711C04A393DBD9061A00568F1F16FB4E2CFD6D358915FF76DF0EE154457ABCF6`
+- Package rebuilt on 2026-06-28 to include STATEDU environment variable rebranding, navbar static language translation, external Help links opening in system default browser, and startup optimizations (JIT compilation + static label cache for faster page refresh).
 - `scripts/smoke_electron_release.ps1 -RepoRoot .`: passed on 2026-06-28 against the rebuilt 1.0.1 output.
 - Website release manifest should be updated to 1.0.1 with the new installer SHA256 and `releases/release-notes/1.0.1.html`.
 
