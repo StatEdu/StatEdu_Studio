@@ -93,9 +93,13 @@ function Invoke-Native {
     [string]$FilePath,
     [string[]]$Arguments
   )
+  $prevPref = $ErrorActionPreference
+  $ErrorActionPreference = "SilentlyContinue"
   & $FilePath @Arguments
-  if ($LASTEXITCODE -ne 0) {
-    throw "$FilePath failed with exit code $LASTEXITCODE"
+  $nativeExitCode = $LASTEXITCODE
+  $ErrorActionPreference = $prevPref
+  if ($nativeExitCode -ne 0) {
+    throw "$FilePath failed with exit code $nativeExitCode"
   }
 }
 

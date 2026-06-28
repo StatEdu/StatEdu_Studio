@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog } = require("electron");
+const { app, BrowserWindow, dialog, shell } = require("electron");
 const { spawn, spawnSync } = require("child_process");
 const crypto = require("crypto");
 const fs = require("fs");
@@ -258,6 +258,21 @@ async function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true
+    }
+  });
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith("http://127.0.0.1") || url.startsWith("http://localhost")) {
+      return { action: "allow" };
+    }
+    shell.openExternal(url);
+    return { action: "deny" };
+  });
+
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    if (!url.startsWith("http://127.0.0.1") && !url.startsWith("http://localhost")) {
+      event.preventDefault();
+      shell.openExternal(url);
     }
   });
 
