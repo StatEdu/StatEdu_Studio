@@ -16,7 +16,9 @@ statedu_query_value <- function(query_string, key) {
   if (is.null(query_string) || !nzchar(query_string)) {
     return("")
   }
+  query_string <- as.character(query_string)[[1]]
   query_string <- sub("^\\?", "", query_string)
+  query_string <- sub("#.*$", "", query_string)
   parts <- strsplit(query_string, "&", fixed = TRUE)[[1]]
   for (part in parts) {
     pair <- strsplit(part, "=", fixed = TRUE)[[1]]
@@ -27,9 +29,47 @@ statedu_query_value <- function(query_string, key) {
   ""
 }
 
+statedu_url_query <- function(value) {
+  if (is.null(value) || !length(value)) {
+    return("")
+  }
+  value <- as.character(value)[[1]]
+  if (!nzchar(value)) {
+    return("")
+  }
+  value <- sub("#.*$", "", value)
+  if (grepl("\\?", value)) {
+    value <- sub("^[^?]*\\?", "", value)
+  }
+  sub("^\\?", "", value)
+}
+
+statedu_query_language <- function(query_string) {
+  language <- statedu_query_value(query_string, "lang")
+  if (!nzchar(language)) {
+    language <- statedu_query_value(query_string, "language")
+  }
+  language
+}
+
 statedu_request_language <- function(request = NULL) {
-  query_string <- request$QUERY_STRING %||% ""
-  statedu_query_value(query_string, "lang")
+  if (is.null(request)) {
+    return("")
+  }
+  request_value <- function(key) request[[key]] %||% ""
+  query_candidates <- c(
+    request_value("QUERY_STRING"),
+    statedu_url_query(request_value("REQUEST_URI")),
+    statedu_url_query(request_value("HTTP_REFERER")),
+    statedu_url_query(request_value("HTTP_ORIGIN"))
+  )
+  for (query_string in query_candidates) {
+    language <- statedu_query_language(query_string)
+    if (nzchar(language)) {
+      return(language)
+    }
+  }
+  ""
 }
 
 statedu_initial_language <- function(request = NULL) {

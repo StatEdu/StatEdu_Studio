@@ -52,6 +52,19 @@
       }
 
       function easyflowCurrentLanguage() {
+        var urlLanguage = '';
+        try {
+          urlLanguage = new URL(window.location.href).searchParams.get('lang') || '';
+        } catch (error) {
+          urlLanguage = '';
+        }
+        if (urlLanguage) {
+          return easyflowSetCurrentLanguage(urlLanguage);
+        }
+        var stored = easyflowStoredLanguage();
+        if (stored) {
+          return easyflowSetCurrentLanguage(stored);
+        }
         if (window.easyflowAppLanguage) {
           return easyflowNormalizeLanguage(window.easyflowAppLanguage);
         }
@@ -112,7 +125,7 @@
         if (nextHref === window.location.href) {
           window.location.reload();
         } else {
-          window.location.replace(nextHref);
+          window.location.href = nextHref;
         }
         return false;
       }
