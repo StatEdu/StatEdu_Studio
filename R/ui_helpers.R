@@ -153,58 +153,64 @@ app_language_bootstrap_script <- function(language) {
   )))
 }
 
-app_static_language_labels_script <- function() {
-  keys <- c(
-    "data", "data_editor", "calculator", "analysis", "sample_size", "effect_size",
-    "result", "help", "about", "preferences", "bug_report", "feature_request",
-    "analysis_request", "qna", "frequencies", "crosstabs", "ttest_anova",
-    "paired", "ancova", "nonparametric", "nonparametric_paired", "correlation",
-    "reliability", "factor_analysis", "pca", "regression", "glm", "logistic",
-    "longitudinal", "overview", "user_guide", "analyses", "method_notes",
-    "validation", "version_history", "source_license", "open_source_licenses"
-  )
-  labels <- lapply(keys, function(key) {
-    list(en = statedu_ui_label(key, "en"), ko = statedu_ui_label(key, "ko"))
-  })
-  extra_labels <- list(
-    list(en = "HINT8", ko = "HINT8"),
-    list(en = "EQ-5D", ko = "EQ-5D"),
-    list(en = "Metabolic syndrome", ko = statedu_ko("calc_metabolic_syndrome")),
-    list(en = "Framingham risk score", ko = statedu_ko("calc_framingham_risk")),
-    list(en = "ASCVD10", ko = "ASCVD10"),
-    list(en = "Metabolic severity", ko = statedu_ko("calc_metabolic_severity"))
-  )
-  group_labels <- list(
-    list(en = "Descriptives & Tables", ko = statedu_ko("group_descriptives")),
-    list(en = "Group Comparisons", ko = statedu_ko("group_comparisons")),
-    list(en = "Nonparametric Tests", ko = statedu_ko("group_nonparametric")),
-    list(en = "Association & Measurement", ko = statedu_ko("group_association")),
-    list(en = "Regression & Models", ko = statedu_ko("group_regression")),
-    list(en = "Longitudinal / Panel", ko = statedu_ko("group_longitudinal")),
-    list(en = "Study Design & Precision", ko = statedu_ko("group_study_design"))
-  )
-  method_labels <- list()
-  if (exists("sample_size_method_labels", mode = "function")) {
-    sample_en <- sample_size_method_labels("en")
-    sample_ko <- sample_size_method_labels("ko")
-    common <- intersect(names(sample_en), names(sample_ko))
-    method_labels <- c(method_labels, lapply(common, function(name) {
-      list(en = unname(sample_en[[name]]), ko = unname(sample_ko[[name]]))
-    }))
+app_static_language_labels_script <- local({
+  cache <- NULL
+  function() {
+    if (!is.null(cache)) return(cache)
+    keys <- c(
+      "data", "data_editor", "calculator", "analysis", "sample_size", "effect_size",
+      "result", "help", "about", "preferences", "bug_report", "feature_request",
+      "analysis_request", "qna", "frequencies", "crosstabs", "ttest_anova",
+      "paired", "ancova", "nonparametric", "nonparametric_paired", "correlation",
+      "reliability", "factor_analysis", "pca", "regression", "glm", "logistic",
+      "longitudinal", "overview", "user_guide", "analyses", "method_notes",
+      "validation", "version_history", "source_license", "open_source_licenses"
+    )
+    labels <- lapply(keys, function(key) {
+      list(en = statedu_ui_label(key, "en"), ko = statedu_ui_label(key, "ko"))
+    })
+    extra_labels <- list(
+      list(en = "HINT8", ko = "HINT8"),
+      list(en = "EQ-5D", ko = "EQ-5D"),
+      list(en = "Metabolic syndrome", ko = statedu_ko("calc_metabolic_syndrome")),
+      list(en = "Framingham risk score", ko = statedu_ko("calc_framingham_risk")),
+      list(en = "ASCVD10", ko = "ASCVD10"),
+      list(en = "Metabolic severity", ko = statedu_ko("calc_metabolic_severity"))
+    )
+    group_labels <- list(
+      list(en = "Descriptives & Tables", ko = statedu_ko("group_descriptives")),
+      list(en = "Group Comparisons", ko = statedu_ko("group_comparisons")),
+      list(en = "Nonparametric Tests", ko = statedu_ko("group_nonparametric")),
+      list(en = "Association & Measurement", ko = statedu_ko("group_association")),
+      list(en = "Regression & Models", ko = statedu_ko("group_regression")),
+      list(en = "Longitudinal / Panel", ko = statedu_ko("group_longitudinal")),
+      list(en = "Study Design & Precision", ko = statedu_ko("group_study_design"))
+    )
+    method_labels <- list()
+    if (exists("sample_size_method_labels", mode = "function")) {
+      sample_en <- sample_size_method_labels("en")
+      sample_ko <- sample_size_method_labels("ko")
+      common <- intersect(names(sample_en), names(sample_ko))
+      method_labels <- c(method_labels, lapply(common, function(name) {
+        list(en = unname(sample_en[[name]]), ko = unname(sample_ko[[name]]))
+      }))
+    }
+    if (exists("effect_size_method_labels", mode = "function")) {
+      effect_en <- effect_size_method_labels("en")
+      effect_ko <- effect_size_method_labels("ko")
+      common <- intersect(names(effect_en), names(effect_ko))
+      method_labels <- c(method_labels, lapply(common, function(name) {
+        list(en = unname(effect_en[[name]]), ko = unname(effect_ko[[name]]))
+      }))
+    }
+    result <- tags$script(HTML(sprintf(
+      "window.easyflowStaticLanguageLabels = %s;",
+      jsonlite::toJSON(c(labels, extra_labels, group_labels, method_labels), auto_unbox = TRUE)
+    )))
+    cache <<- result
+    result
   }
-  if (exists("effect_size_method_labels", mode = "function")) {
-    effect_en <- effect_size_method_labels("en")
-    effect_ko <- effect_size_method_labels("ko")
-    common <- intersect(names(effect_en), names(effect_ko))
-    method_labels <- c(method_labels, lapply(common, function(name) {
-      list(en = unname(effect_en[[name]]), ko = unname(effect_ko[[name]]))
-    }))
-  }
-  tags$script(HTML(sprintf(
-    "window.easyflowStaticLanguageLabels = %s;",
-    jsonlite::toJSON(c(labels, extra_labels, group_labels, method_labels), auto_unbox = TRUE)
-  )))
-}
+})
 
 app_head_tags <- function(version) {
   tags$head(

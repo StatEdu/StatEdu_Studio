@@ -17,6 +17,7 @@ startup_time <- function(label, expr) {
 }
 
 startup_log("app.R begin")
+compiler::enableJIT(3)
 startup_time("source app_bootstrap", source(file.path("R", "app_bootstrap.R"), local = FALSE))
 startup_time("load packages", load_app_packages())
 
