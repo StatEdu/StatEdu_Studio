@@ -340,9 +340,13 @@ if (-not $SkipUnpackedChecks) {
   }
   Write-Host "[ok] runtime prune report contains only keep rows"
 
-  & $rscript -e "source('R/app_bootstrap.R'); load_app_packages(); source_app_modules(); cat('bundled R modules ok\n')" |
-    ForEach-Object { Write-Host $_ }
-  if ($LASTEXITCODE -ne 0) {
+  $prevPref = $ErrorActionPreference
+  $ErrorActionPreference = "SilentlyContinue"
+  $moduleCheckOutput = & $rscript -e "source('R/app_bootstrap.R'); load_app_packages(); source_app_modules(); cat('bundled R modules ok\n')" 2>$null
+  $moduleExitCode = $LASTEXITCODE
+  $ErrorActionPreference = $prevPref
+  $moduleCheckOutput | ForEach-Object { Write-Host $_ }
+  if ($moduleExitCode -ne 0) {
     throw "Bundled R module load check failed."
   }
 }

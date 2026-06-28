@@ -7,19 +7,21 @@ Current version: 1.0.1
 ## Current 1.0.1 Package Snapshot
 
 - Built package: `dist/electron/StatEdu_Studio_Setup_1.0.1.exe`
-- Installer SHA256: `6A9BDAD75868DC77A35ED897A755327AD0CC264E4B38868634C707AE6C11E8B5`
-- Blockmap SHA256: `45CDFFA400133732A57A570025647AD448A15E5A8766E30AD4802ACB979C009C`
+- Installer SHA256: `4223689E531075090FF15B2EE5F290190A35D39BFCFAF3B3ECA220FEF0AC2AC0`
+- Blockmap SHA256: `BFD656455E71B76815FEF07E039DFFF7BEECA3583240F37353300BC5D426D9A7`
+- Package rebuilt on 2026-06-28 to include STATEDU environment variable rebranding and navbar static language translation (merged from `codex/grouped-menus-0.9.41`).
 - `scripts/smoke_electron_release.ps1 -RepoRoot .`: passed on 2026-06-28 against the rebuilt 1.0.1 output.
-- Website release manifest was updated to 1.0.1 with the installer SHA256 and `releases/release-notes/1.0.1.html`.
+- Website release manifest should be updated to 1.0.1 with the new installer SHA256 and `releases/release-notes/1.0.1.html`.
 
 ## Local Validation
 
 The local stabilization checks are passing for the current branch.
 
-- `scripts/validate_stabilization.ps1 -Full`: passed
+- `scripts/validate_stabilization.ps1 -Full`: passed on 2026-06-28 (post-rebrand merge)
+- `scripts/release_preflight.ps1`: passed on 2026-06-28 (post-rebrand rebuild)
+- `scripts/smoke_electron_release.ps1 -RepoRoot .`: passed on 2026-06-28 against rebuilt 1.0.1 with bundled `R-4.5.3`
 - `scripts/smoke_shiny_app.ps1`: passed
 - `scripts/smoke_electron_release.ps1 -SkipUnpackedChecks`: passed
-- `scripts/release_preflight.ps1`: passed
 - `scripts/smoke_electron_release.ps1` without `-SkipUnpackedChecks`: passed against the rebuilt 0.9.42 Electron output with bundled `R-4.5.3`.
 - `scripts/release_preflight.ps1 -FullElectronSmoke`: passed
 - `scripts/smoke_electron_app_lifecycle.ps1`: passed against `dist/electron/win-unpacked/StatEdu Studio Beta.exe`
