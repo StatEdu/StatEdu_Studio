@@ -106,11 +106,10 @@
       function easyflowRefreshStaticLanguageLabels(language) {
         language = easyflowNormalizeLanguage(language);
         easyflowApplyStaticLanguageLabels(language);
-        if (window.jQuery && typeof easyflowTranslateNavbarLabels === 'function') {
-          easyflowTranslateNavbarLabels();
-        }
-        if (window.jQuery && typeof groupAnalysisDropdownItems === 'function') {
-          groupAnalysisDropdownItems();
+        if (window.jQuery && typeof window.groupAnalysisDropdownItems === 'function') {
+          window.groupAnalysisDropdownItems();
+        } else if (window.jQuery && typeof window.easyflowTranslateNavbarLabels === 'function') {
+          window.easyflowTranslateNavbarLabels();
         }
         easyflowApplyStaticLanguageLabels(language);
       }
@@ -1491,6 +1490,9 @@
           easyflowGroupedMenuConfigs().forEach(groupNavbarDropdownItems);
           easyflowTranslateNavbarLabels();
         }
+
+        window.easyflowTranslateNavbarLabels = easyflowTranslateNavbarLabels;
+        window.groupAnalysisDropdownItems = groupAnalysisDropdownItems;
 
         function configureNestedDropdownToggles() {
           groupAnalysisDropdownItems();
