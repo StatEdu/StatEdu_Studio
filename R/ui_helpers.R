@@ -147,7 +147,7 @@ app_stylesheet_link <- function(version) {
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-navbar-language-help-20260628a"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-navbar-language-help-links-20260628b"))
 }
 
 app_language_bootstrap_script <- function(language) {

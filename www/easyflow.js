@@ -1007,6 +1007,44 @@
           });
         }
 
+        function easyflowHelpRequestUrl(value) {
+          var language = easyflowCurrentLanguage();
+          var studioUrls = {
+            help_bug: 'https://studio.statedu.com/help/bug/',
+            help_feature: 'https://studio.statedu.com/help/feature/',
+            help_analysis_request: 'https://studio.statedu.com/help/analysis/'
+          };
+          if (studioUrls[value]) return studioUrls[value];
+          if (value === 'help_qa') {
+            return language === 'ko' ? 'https://statedu.com/qna/' : 'https://statedu.com/en/qna/';
+          }
+          return '';
+        }
+
+        function easyflowOpenHelpRequestLink(event, navLink) {
+          var navValue = navLink ? navLink.getAttribute('data-value') || '' : '';
+          var url = easyflowHelpRequestUrl(navValue);
+          if (!url) return false;
+          if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (typeof event.stopImmediatePropagation === 'function') {
+              event.stopImmediatePropagation();
+            }
+          }
+          if (window.jQuery) {
+            window.jQuery(navLink).closest('.navbar-nav > li.dropdown').removeClass('open');
+          }
+          window.open(url, '_blank', 'noopener,noreferrer');
+          return true;
+        }
+
+        document.addEventListener('click', function(event) {
+          var navLink = event.target && event.target.closest ? event.target.closest('.navbar-nav a[data-value]') : null;
+          if (!navLink || navLink.classList.contains('dropdown-toggle')) return;
+          easyflowOpenHelpRequestLink(event, navLink);
+        }, true);
+
         function easyflowGroupedMenuConfigs() {
           return [
             {
