@@ -897,7 +897,7 @@
                 calculator_metabolic_severity: 'Metabolic severity',
                 help_bug: 'Bug report',
                 help_feature: 'Feature request',
-                help_analysis_request: 'Analysis request',
+                help_analysis_request: 'Analysis Method Request',
                 help_qa: 'Q&A',
                 about_update: 'Check for Updates',
                 about_overview: 'Overview',
@@ -1016,7 +1016,9 @@
           };
           if (studioUrls[value]) return studioUrls[value];
           if (value === 'help_qa') {
-            return language === 'ko' ? 'https://statedu.com/qna/' : 'https://statedu.com/en/qna/';
+            return language === 'ko'
+              ? 'https://statedu.com/qna/?qna_action=write&qna_topic=StatEdu%20Studio'
+              : 'https://statedu.com/en/qna/?qna_action=write&qna_topic=StatEdu%20Studio';
           }
           return '';
         }

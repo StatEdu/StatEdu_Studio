@@ -434,7 +434,11 @@ help_request_urls <- function(language = statedu_initial_language()) {
     bug = "https://studio.statedu.com/help/bug/",
     feature = "https://studio.statedu.com/help/feature/",
     analysis = "https://studio.statedu.com/help/analysis/",
-    qa = statedu_text(language, "https://statedu.com/en/qna/", "https://statedu.com/qna/")
+    qa = statedu_text(
+      language,
+      "https://statedu.com/en/qna/?qna_action=write&qna_topic=StatEdu%20Studio",
+      "https://statedu.com/qna/?qna_action=write&qna_topic=StatEdu%20Studio"
+    )
   )
 }
 
