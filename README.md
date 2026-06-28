@@ -8,9 +8,11 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current development version: `0.9.40`
+Current public version: `1.0.1`
 
-Version 0.9.40 rebrands the product-facing application to **StatEdu Studio**, updates the logo, favicon, launcher, installer metadata, default export filenames, About/source references, release checklist, and Electron packaging audit state. It also extends GLM, longitudinal / panel, and reference-category validation coverage. Version 0.9.39 adds the Longitudinal / Panel Models workflow with GEE, LMM, GLMM, panel fixed effects, panel random effects, model-specific assumption checks, missing-data sensitivity engines, longitudinal weights, exposure offsets, count-family screening, and SCI-style reporting. It also activates the GLM workflow for Gaussian, binary logistic, Gamma, and count models with tabbed model, missing-data, assumption-check, publication-note, SCI-checklist, and manuscript-text outputs. Version 0.9.38 adds Fritz & MacKinnon (2007) empirical mediation sample-size estimates, method-specific mediation references, and a wider adaptive Sample Size results panel.
+Version 1.0.1 is the stabilized public patch release line for local data import, data editing, assumption-guided statistical analyses, sample-size/effect-size calculators, and publication-ready HTML/PDF result output. Detailed development history is available in **About > Version History**.
+
+Public 1.0 does not expose license activation, paid-edition gating, Excel/Word result export, Mplus/latent add-ons, or longitudinal/panel analysis workflows. These items may appear in development history or planning notes, but they should not be treated as public 1.0 features.
 
 ## Current Scope
 
@@ -33,17 +35,16 @@ Version 0.9.40 rebrands the product-facing application to **StatEdu Studio**, up
 - Hierarchical regression with block-wise model comparison
 - Logistic regression for binary, ordered, and categorical dependent variables
 - Generalized linear models for independent-observation Gaussian, binary logistic, Gamma, and count outcomes, including Poisson versus negative-binomial screening, robust standard-error options, missing-data sensitivity engines, offset/exposure handling, SCI-style diagnostics, publication notes, reporting checklists, and suggested manuscript text
-- Longitudinal / panel models with GEE, LMM, GLMM, panel fixed effects, and panel random effects for long-format repeated-measures or clustered data, including model-specific assumption checks, longitudinal analysis weights, missing-data handling options, MI/IPW/WGEE sensitivity engines, recommended alternatives, sensitivity comparisons, and SCI-style reporting tables
 - Penalized regression helpers for severe multicollinearity cases
 - Standalone sample size, power, and effect size calculators with method notes and references
-- Result saving to HTML, PDF, Excel, figures, and accumulated Result collections
-- Result collection export to HTML, PDF, Excel, and Word
+- Result saving to HTML, PDF, figures, and accumulated Result collections
+- Result collection export to HTML and PDF
 
-For the full current method inventory, see [docs/ANALYSIS_METHODS_KO.md](docs/ANALYSIS_METHODS_KO.md).
+For the full current method inventory, see [docs/ANALYSIS_METHODS_EN.md](docs/ANALYSIS_METHODS_EN.md).
 
 ## Runtime Environment
 
-- Tested development environment: R 4.5.2 on Windows
+- Tested development environment: R 4.5.3 on Windows
 - App framework: Shiny local app
 - Package source: declared runtime and analysis dependencies are CRAN packages
 - Execution model: local browser session on `127.0.0.1`; data remain on the user's PC
@@ -56,14 +57,14 @@ Some installed package binaries may have been built under a newer patch-level R 
 |---|---|---|
 | App UI | `shiny`, `DT`, `htmltools`, `markdown` | Shiny app shell, interactive tables, HTML helpers, and About documentation rendering |
 | Data import | `haven`, `readr`, `readxl`, `openxlsx` | SAV, SAS, Stata, CSV, DAT, XLS, and XLSX import |
-| Settings and data helpers | `jsonlite`, `xml2`, `rvest`, `callr` | JSON settings, HTML/XML processing, and background R process support |
+| Settings and data helpers | `jsonlite`, `xml2`, `rvest`, `callr` | Settings serialization, HTML/XML processing, and background R process support |
 | Regression diagnostics | `car`, `lmtest`, `sandwich`, `nortest`, `boot` | Type II/III ANCOVA tables, Levene-style variance checks, Breusch-Pagan test, HC3 robust standard errors, Lilliefors normality test, and bootstrap inference |
-| Linear / generalized models | `MASS`, `nnet`, `lmtest`, `sandwich`, `geepack`, `mice`, `lme4`, `lmerTest`, `plm` | GLM robust inference, ordered logistic, multinomial, GEE, MI/IPW sensitivity, mixed-effects, and panel model support |
+| Linear / generalized models | `MASS`, `nnet`, `lmtest`, `sandwich`, `geepack`, `mice`, `lme4`, `lmerTest`, `plm` | GLM robust inference, ordered logistic, multinomial, and model-support utilities |
 | Penalized regression | `glmnet` | Ridge, LASSO, and Elastic Net helper analyses |
 | Post-hoc and group comparison | `agricolae` | Multiple-comparison procedures used in ANOVA-style workflows |
 | Reliability, factor analysis, and correlations | `psych`, `polycor` | Reliability coefficients, factor/PCA helpers, polychoric/polyserial/tetrachoric correlation support |
-| Sample size and power | `longpower`, `WebPower`, `TOSTER` | Longitudinal LMM power, cluster trial / SEM power, and exact TOST equivalence calculations |
-| Report export | `officer`, `flextable`, `openxlsx` | Word, table, and Excel output |
+| Sample size and power | `longpower`, `WebPower`, `TOSTER` | Cluster trial / SEM power and exact TOST equivalence calculations |
+| Report export | `officer`, `flextable`, `openxlsx` | Report table support |
 
 ## Local Run
 
@@ -75,21 +76,45 @@ The app will open at `127.0.0.1` in the default browser. The launcher searches f
 
 ## Validation
 
-Version 0.9.10 includes validation scripts for calculators, data import, data editing, cross-tabulation, correlation auto-selection, factor analysis / PCA, logistic analysis and UI, paired guard handling, p-value formatting, regression coefficient output, and t-test / ANOVA guard handling.
+Version 1.0.1 carries forward the stabilization validation suite and adds final-release Electron metadata checks. Public validation coverage includes calculators, data import, data editing, cross-tabulation, correlation auto-selection, factor analysis / PCA, logistic analysis and UI, paired guard handling, p-value formatting, regression coefficient output, GLM output, and t-test / ANOVA guard handling. Effect-size comparisons use `effectsize` as a validation reference where its definitions match the app calculation; `effectsize` is not required at runtime.
 
-Version 0.9.40 extends validation coverage for GLM and longitudinal / panel reporting workflows, missing-data summaries, analysis weights, count-model selection, reference-category reporting, and the external analysis reference comparison table. Version 0.9.39 includes validation coverage for longitudinal / panel model fitting, GLM fitting, setup UI structure, missing-data handling, assumption-check catalogs, HTML export, Excel export, sensitivity comparisons, exposure offsets, count-family screening, robust standard errors, and SCI reporting sections. Version 0.9.38 includes validation coverage for Fritz & MacKinnon mediation sample-size table values and method-specific mediation reporting. Version 0.9.37 includes validation coverage for data-editor recoding and Likert detection paths. Version 0.9.36 includes validation coverage for logistic analysis, data editor recoding, factor/PCA, correlation, paired tests, data I/O, and result history. Effect-size comparisons use `effectsize` as a validation reference where its definitions match the app calculation; `effectsize` is not required at runtime.
-
-Run validation scripts from the repository root with Rscript, for example:
+Run the stabilization validation suite from the repository root before merging
+or packaging:
 
 ```powershell
-& "C:\Program Files\R\R-4.5.2\bin\x64\Rscript.exe" scripts/validate_ttest_anova.R
+powershell -ExecutionPolicy Bypass -File scripts\validate_stabilization.ps1
+powershell -ExecutionPolicy Bypass -File scripts\validate_stabilization.ps1 -Full
 ```
+
+Run the Shiny and Electron smoke checks before preparing a release candidate:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\release_preflight.ps1
+powershell -ExecutionPolicy Bypass -File scripts\smoke_shiny_app.ps1
+powershell -ExecutionPolicy Bypass -File scripts\smoke_electron_release.ps1 -SkipUnpackedChecks
+```
+
+After Electron packaging is complete, run the full packaged-output preflight:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\release_preflight.ps1 -FullElectronSmoke
+```
+
+After automated checks pass, complete
+[docs/RELEASE_MANUAL_QA.md](docs/RELEASE_MANUAL_QA.md) and keep the completed
+QA record with the release notes and validation artifacts.
+
+Use individual `scripts/validate_*.R` files only when iterating on a focused
+module before running the stabilization suite.
 
 ## Citation
 
 If you use **StatEdu Studio** in your research, please cite:
 
-LEE, I. H. (2026). **StatEdu Studio** (Version 0.9.40) [Computer software]. https://doi.org/10.22934/statedu.studio
+LEE, I. H. (2026). **StatEdu Studio** (Version 1.0.1) [Computer software].
+https://doi.org/10.22934/statedu.studio
+
+Product site: https://studio.statedu.com/
 
 ## Development Model
 

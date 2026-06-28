@@ -18,7 +18,7 @@ if (-not $ElectronOutDir) {
 
 $appResourceDir = Join-Path $ElectronOutDir "resources\app"
 $bundledAppDir = Join-Path $appResourceDir "app"
-$runtimeDir = Join-Path $appResourceDir "runtime\R-4.5.2"
+$runtimeDir = Join-Path $appResourceDir "runtime\R-4.5.3"
 $rscript = Join-Path $runtimeDir "bin\x64\Rscript.exe"
 
 function Assert-Path {
@@ -107,7 +107,7 @@ function Assert-NoDistArtifacts {
   if ($blocked) {
     throw "Unexpected distribution artifact(s): $($blocked.Name -join ', ')"
   }
-  Write-Host "[ok] distribution output has no legacy EasyFlow or debug artifacts"
+  Write-Host "[ok] distribution output has no legacy product or debug artifacts"
 }
 
 function Assert-ExeVersionInfo {
@@ -127,6 +127,81 @@ function Assert-ExeVersionInfo {
     throw "Unexpected FileDescription for $Path`: $($versionInfo.FileDescription)"
   }
   Write-Host "[ok] executable version metadata for $ExpectedProductName"
+}
+
+function Get-ProjectVersion {
+  $versionPath = Join-Path $RepoRoot "VERSION"
+  if (-not (Test-Path -LiteralPath $versionPath)) {
+    throw "VERSION file was not found: $versionPath"
+  }
+  $version = (Get-Content -LiteralPath $versionPath -TotalCount 1).Trim()
+  if (-not $version) {
+    throw "VERSION file is empty."
+  }
+  return $version
+}
+
+function Get-ElectronReleaseProfile {
+  param(
+    [string]$Version
+  )
+  if ($Version -match "^1\.") {
+    return [pscustomobject]@{
+      ProductName = "StatEdu Studio"
+      SetupPrefix = "StatEdu_Studio_Setup"
+      ExeName = "StatEdu Studio.exe"
+    }
+  }
+  [pscustomobject]@{
+    ProductName = "StatEdu Studio Beta"
+    SetupPrefix = "StatEdu_Studio_Beta_Setup"
+    ExeName = "StatEdu Studio Beta.exe"
+  }
+}
+
+function Assert-TextFileEquals {
+  param(
+    [string]$Path,
+    [string]$Expected,
+    [string]$Label
+  )
+  Assert-Path $Path $Label
+  $actual = (Get-Content -LiteralPath $Path -TotalCount 1).Trim()
+  if ($actual -ne $Expected) {
+    throw "$Label does not match current VERSION. Expected $Expected, found $actual."
+  }
+  Write-Host "[ok] $Label matches VERSION $Expected"
+}
+
+function Assert-PackagedOutputVersion {
+  param(
+    [string]$ExpectedVersion
+  )
+  $distDir = Split-Path -Parent $ElectronOutDir
+  $bundledVersionPath = Join-Path $bundledAppDir "VERSION"
+  Assert-TextFileEquals $bundledVersionPath $ExpectedVersion "bundled app version"
+
+  $resourcePackagePath = Join-Path $appResourceDir "package.json"
+  Assert-Path $resourcePackagePath "packaged Electron resource package metadata"
+  $resourcePackage = Get-Content -LiteralPath $resourcePackagePath -Raw | ConvertFrom-Json
+  if ($resourcePackage.version -ne $ExpectedVersion) {
+    throw "Packaged Electron resource version does not match current VERSION. Expected $ExpectedVersion, found $($resourcePackage.version)."
+  }
+  Write-Host "[ok] packaged Electron resource version matches VERSION $ExpectedVersion"
+
+  if (Test-Path -LiteralPath $distDir) {
+    $profile = Get-ElectronReleaseProfile -Version $ExpectedVersion
+    $setupFiles = @(Get-ChildItem -LiteralPath $distDir -File -Filter "$($profile.SetupPrefix)_*.exe")
+    $expectedSetupName = "$($profile.SetupPrefix)_$ExpectedVersion.exe"
+    $unexpectedSetupFiles = @($setupFiles | Where-Object { $_.Name -ne $expectedSetupName })
+    if ($unexpectedSetupFiles.Count -gt 0) {
+      throw "Installer artifact version does not match current VERSION. Expected only $expectedSetupName, found: $($unexpectedSetupFiles.Name -join ', ')"
+    }
+    if ($setupFiles.Count -gt 0) {
+      Assert-Path (Join-Path $distDir $expectedSetupName) "current-version installer artifact"
+      Assert-Path (Join-Path $distDir "$expectedSetupName.blockmap") "current-version installer blockmap"
+    }
+  }
 }
 
 function Assert-AppBootstrapModulesTracked {
@@ -153,28 +228,93 @@ function Assert-AppBootstrapModulesTracked {
   Write-Host "[ok] app_bootstrap R modules are tracked"
 }
 
+function Assert-NoTrackedGeneratedArtifacts {
+  $git = Get-Command "git.exe" -ErrorAction SilentlyContinue
+  if (-not $git) {
+    $git = Get-Command "git" -ErrorAction SilentlyContinue
+  }
+  if (-not $git) {
+    throw "git was not found; cannot validate generated artifact tracking."
+  }
+
+  $tracked = & $git.Source -C $RepoRoot ls-files
+  if ($LASTEXITCODE -ne 0) {
+    throw "git ls-files failed while validating generated artifacts."
+  }
+
+  $blockedPrefixes = @(
+    "dist",
+    "packaging/electron/app",
+    "packaging/electron/runtime",
+    "packaging/electron/node_modules",
+    "output",
+    "scratch",
+    "modules/latent_mplus/app/output",
+    "modules/latent_mplus/app/outputs",
+    "modules/latent_mplus/app/mplus_tmp",
+    "modules/latent_mplus/app/settings"
+  )
+  $blocked = @($tracked | Where-Object {
+    $path = $_
+    $blockedByPrefix = $false
+    foreach ($prefix in $blockedPrefixes) {
+      if ($path -eq $prefix -or $path.StartsWith("$prefix/")) {
+        $blockedByPrefix = $true
+      }
+    }
+    $blockedByPrefix -or
+      $path -match '(^|/)\.Rhistory$' -or
+      $path -match '(^|/)\.RData$' -or
+      $path -match '(^|/)\.Ruserdata$' -or
+      $path -match '(^|/)[^/]+\.(log|tmp)$' -or
+      $path -match '^settings/[^/]+\.local\.json$'
+  })
+  if ($blocked.Count -gt 0) {
+    throw "Generated or local-only artifact path(s) are tracked by git: $($blocked -join ', ')"
+  }
+  Write-Host "[ok] generated and local-only artifacts are not tracked"
+}
+
 Assert-JsonVersionPin
 
 Assert-Path (Join-Path $RepoRoot "docs\RELEASE_CHECKLIST.md") "release checklist"
+Assert-Path (Join-Path $RepoRoot "docs\RELEASE_MANUAL_QA.md") "manual QA protocol"
+Assert-Path (Join-Path $RepoRoot "scripts\validate_stabilization.ps1") "stabilization validation runner"
+Assert-Path (Join-Path $RepoRoot "scripts\smoke_shiny_app.ps1") "Shiny app smoke test"
+Assert-Path (Join-Path $RepoRoot "scripts\validate_version_metadata.R") "version metadata validation"
+Assert-Path (Join-Path $RepoRoot "scripts\validate_brand_metadata.R") "brand metadata validation"
+Assert-Path (Join-Path $RepoRoot "scripts\validate_settings_dialogs.R") "settings dialog validation"
 Assert-Path (Join-Path $RepoRoot "scripts\generate_oss_notices.R") "OSS notice generator"
 Assert-Path (Join-Path $RepoRoot "scripts\prune_r_runtime.R") "R runtime prune script"
 Assert-Path (Join-Path $RepoRoot "LICENSE") "application license"
 Assert-Path (Join-Path $RepoRoot "SOURCE-OFFER.txt") "source offer"
+Assert-Path (Join-Path $RepoRoot "packaging\electron\build\studio-file.ico") "studio file association icon"
 
-Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "EASYFLOW_TOKEN" "Electron token handoff"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "STATEDU_TOKEN" "Electron token handoff"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\package.json") '"ext"\s*:\s*"studio"' ".studio file association extension"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\package.json") '"icon"\s*:\s*"build/studio-file\.ico"' ".studio file association icon path"
+Assert-FileContains (Join-Path $RepoRoot "docs\RELEASE_CHECKLIST.md") "validate_stabilization\.ps1 -Full" "full stabilization validation in release checklist"
+Assert-FileContains (Join-Path $RepoRoot "docs\RELEASE_CHECKLIST.md") "smoke_shiny_app\.ps1" "Shiny app smoke test in release checklist"
+Assert-FileContains (Join-Path $RepoRoot "docs\RELEASE_CHECKLIST.md") "RELEASE_MANUAL_QA\.md" "manual QA protocol in release checklist"
+Assert-FileContains (Join-Path $RepoRoot "docs\RELEASE_MANUAL_QA.md") "Packaged Electron Workflow" "packaged Electron manual QA workflow"
 Assert-FileNotContains (Join-Path $RepoRoot "R\app_server.R") 'session\$close\(\)' "no Shiny startup session close"
-Assert-FileContains (Join-Path $RepoRoot "R\app_misc_ui.R") "Source & License" "Source and License About menu"
+Assert-FileContains (Join-Path $RepoRoot "R\app_misc_ui.R") 'statedu_ui_label\("source_license", language\)' "Source and License About menu label"
+Assert-FileContains (Join-Path $RepoRoot "R\app_misc_ui.R") '"about_source_license"' "Source and License About menu tab"
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "contextIsolation:\s*true" "contextIsolation enabled"
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "nodeIntegration:\s*false" "nodeIntegration disabled"
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "sandbox:\s*true" "sandbox enabled"
 Assert-AppBootstrapModulesTracked
+Assert-NoTrackedGeneratedArtifacts
 Assert-NoDistArtifacts (Join-Path $RepoRoot "dist\electron")
 
 if (-not $SkipUnpackedChecks) {
+  $projectVersion = Get-ProjectVersion
+  $releaseProfile = Get-ElectronReleaseProfile -Version $projectVersion
   Assert-Path $ElectronOutDir "unpacked Electron output"
-  $electronExe = Join-Path $ElectronOutDir "StatEdu Studio Beta.exe"
+  $electronExe = Join-Path $ElectronOutDir $releaseProfile.ExeName
   Assert-Path $electronExe "Electron executable"
-  Assert-ExeVersionInfo $electronExe "StatEdu Studio Beta" "StatEdu"
+  Assert-ExeVersionInfo $electronExe $releaseProfile.ProductName "StatEdu"
+  Assert-PackagedOutputVersion $projectVersion
   Assert-Path (Join-Path $ElectronOutDir "LICENSE.electron.txt") "Electron license"
   Assert-Path (Join-Path $ElectronOutDir "LICENSES.chromium.html") "Chromium licenses"
   Assert-Path $bundledAppDir "bundled StatEdu Studio app"

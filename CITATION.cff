@@ -1,13 +1,13 @@
-cff-version: 1.2.0
+﻿cff-version: 1.2.0
 message: "If you use StatEdu Studio in your research, please cite it as below."
 type: software
 title: "StatEdu Studio"
-version: "0.9.40"
-date-released: "2026-06-19"
+version: "1.0.1"
+date-released: "2026-06-28"
+doi: "10.22934/statedu.studio"
+url: "https://studio.statedu.com/"
 authors:
   - family-names: "LEE"
     given-names: "IL HYUN"
-repository-code: "https://github.com/StatEdu/StatEdu_Studio_dev"
-url: "https://studio.statedu.com"
-doi: "10.22934/statedu.studio"
+repository-code: "https://github.com/StatEdu/StatEdu_Studio"
 abstract: "StatEdu Studio is a local Shiny application for statistical analysis."

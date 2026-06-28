@@ -25,7 +25,7 @@ read_sav_robust <- function(path, copy_to_ascii = TRUE) {
   # Some Windows/R setups fail when haven reads an uploaded file from a
   # non-ASCII or extensionless temporary path. Copy to an ASCII .sav path first.
   if (isTRUE(copy_to_ascii)) {
-    tmp_path <- tempfile(pattern = "easyflow_sav_", fileext = ".sav")
+    tmp_path <- tempfile(pattern = "statedu_sav_", fileext = ".sav")
     copied <- tryCatch(
       file.copy(source_path, tmp_path, overwrite = TRUE),
       error = function(e) FALSE
@@ -79,7 +79,7 @@ copy_data_file_for_reading <- function(path, original_name = path) {
   source_path <- normalizePath(path, winslash = "/", mustWork = TRUE)
   extension <- tolower(tools::file_ext(as.character(original_name %||% path)))
   fileext <- if (nzchar(extension)) paste0(".", extension) else ""
-  tmp_path <- tempfile(pattern = "easyflow_data_", fileext = fileext)
+  tmp_path <- tempfile(pattern = "statedu_data_", fileext = fileext)
   copied <- tryCatch(
     file.copy(source_path, tmp_path, overwrite = TRUE),
     error = function(e) FALSE
@@ -371,6 +371,13 @@ valid_data_file_value <- function(file) {
     !isTRUE(file$excel_pending)
 }
 
+valid_pending_excel_file_value <- function(file) {
+  is.list(file) &&
+    isTRUE(file$excel_pending) &&
+    valid_data_file_path(file$path) &&
+    excel_data_file_extension(file$name %||% file$path)
+}
+
 current_data_file_value <- function(uploaded, active_file = NULL) {
   if (is.list(active_file) && isTRUE(active_file$cleared)) {
     return(NULL)
@@ -392,10 +399,11 @@ read_current_data_file <- function(file, input) {
   if (!valid_data_file_value(file)) {
     stop("No supported data file is available. Use a SAV, SAS, Stata, Excel, CSV, or DAT file.", call. = FALSE)
   }
+  csv_header <- if (!is.null(file$csv_header)) isTRUE(file$csv_header) else isTRUE(input$header)
   read_input_data(
     file$path,
     file$name,
-    csv_header = input$header,
+    csv_header = csv_header,
     dat_delimiter = input$dat_delimiter %||% "whitespace",
     dat_has_names = isTRUE(input$dat_has_names),
     excel_sheet = file$excel_sheet %||% NULL,
@@ -465,7 +473,7 @@ value_label_pairs <- function(x, prepared_x = x, max_pairs = 6, measurement = NU
 }
 
 variable_summary_table <- function(data, input, raw_data = data) {
-  easyflow_time_expr("variable_summary_table", {
+  statedu_time_expr("variable_summary_table", {
     raw_data <- as.data.frame(raw_data, stringsAsFactors = FALSE, check.names = TRUE)
     rows <- lapply(seq_along(data), function(i) {
       name <- names(data)[[i]]
@@ -730,13 +738,14 @@ merge_variable_info_state <- function(
   list(info = info, measurements = updates$measurements, labels = updates$labels)
 }
 
-measurement_select_html <- function(name, value, source_order) {
+measurement_select_html <- function(name, value, source_order, language = statedu_initial_language()) {
   value <- tolower(as.character(value %||% ""))
   if (identical(value, "ordinal")) value <- "ordered"
   if (identical(value, "nominal")) value <- "category"
   choices <- unique(c("binary", "category", "ordered", "continuous", value))
   choices <- choices[nzchar(choices)]
-  choice_labels <- ifelse(choices == "ordered", "ordinal", choices)
+  choice_labels <- vapply(choices, statedu_measurement_label, character(1), language = language)
+  title <- statedu_measurement_label(value, language)
   sprintf(
     paste0(
       '<span class="measurement-control">',
@@ -748,8 +757,8 @@ measurement_select_html <- function(name, value, source_order) {
       '</span>'
     ),
     htmltools::htmlEscape(value),
-    htmltools::htmlEscape(ifelse(value == "ordered", "ordinal", value)),
-    htmltools::htmlEscape(ifelse(value == "ordered", "ordinal", value)),
+    htmltools::htmlEscape(title),
+    htmltools::htmlEscape(title),
     htmltools::htmlEscape(source_order),
     htmltools::htmlEscape(name),
     paste(
@@ -774,7 +783,8 @@ variable_table_display_data <- function(
   controls = character(0),
   selection_applied = FALSE,
   active_role = "dependent",
-  measurement_overrides = character(0)
+  measurement_overrides = character(0),
+  language = statedu_initial_language()
 ) {
   table_data <- apply_measurement_overrides(info, measurement_overrides)
   if (isTRUE(selection_applied)) {
@@ -800,6 +810,7 @@ variable_table_display_data <- function(
     table_data$name,
     table_data$measurement,
     table_data$source_order,
+    MoreArgs = list(language = language),
     USE.NAMES = FALSE
   )
   cbind(
@@ -824,7 +835,8 @@ variable_table_render_state <- function(
   controls = character(0),
   selection_applied = FALSE,
   active_role = "dependent",
-  measurement_overrides = character(0)
+  measurement_overrides = character(0),
+  language = statedu_initial_language()
 ) {
   list(
     checked_names = checked_names,
@@ -838,7 +850,8 @@ variable_table_render_state <- function(
       controls = controls,
       selection_applied = selection_applied,
       active_role = active_role,
-      measurement_overrides = measurement_overrides
+      measurement_overrides = measurement_overrides,
+      language = language
     )
   )
 }

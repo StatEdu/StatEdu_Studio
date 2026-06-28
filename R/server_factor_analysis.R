@@ -35,7 +35,8 @@ register_factor_analysis_handlers <- function(
   category_table_fn,
   labels_fn,
   add_calculated_variable_fn = NULL,
-  mark_settings_dirty
+  mark_settings_dirty,
+  app_language_fn = NULL
 ) {
   factor_variables <- reactiveVal(character(0))
   active_factor_list <- reactiveVal(NULL)
@@ -50,9 +51,10 @@ register_factor_analysis_handlers <- function(
   })
 
   output$factor_analysis_setup <- renderUI({
+    language <- statedu_current_language(app_language_fn)
     selected <- current_selected()
     if (length(selected) == 0) {
-      return(setup_empty_message("Complete Step 2 in the Data tab before setting up factor analysis."))
+      return(setup_empty_message(analysis_ui_text("Complete Step 2 in the Data tab before setting up factor analysis.", language), language = language))
     }
     assumption <- factor_analysis_input_assumption(input)
     factor_analysis_setup_panel(
@@ -78,7 +80,8 @@ register_factor_analysis_handlers <- function(
         save_factor_sums = input$factor_save_factor_sums %||% FALSE,
         save_factor_scores = input$factor_save_factor_scores %||% FALSE,
         save_factor_base_name = input$factor_save_factor_base_name %||% "FA",
-        options_tab = isolate(input$factor_options_tab) %||% "Model"
+        options_tab = isolate(input$factor_options_tab) %||% "Model",
+        language = language
       )
     )
   })
@@ -93,7 +96,8 @@ register_factor_analysis_handlers <- function(
     variables_fn = factor_variables,
     variable_table_fn = variable_table_fn,
     labels_fn = labels_fn,
-    category_table_fn = category_table_fn
+    category_table_fn = category_table_fn,
+    language_fn = app_language_fn
   )
 
   observe({

@@ -202,7 +202,7 @@ paired_model_overview_table <- function(result) {
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
-    names(row) <- c("Pair", "N", "\ubd84\uc11d \ubc29\ubc95", "\uc774\uc720")
+    names(row) <- c("Pair", "N", "Analysis method", "Reason")
     rows[[length(rows) + 1L]] <- row
   }
   if (length(rows) == 0) NULL else do.call(rbind, rows)
@@ -227,7 +227,7 @@ paired_assumption_review_table <- function(result) {
         if (is.data.frame(check_row) && nrow(check_row) > 0) as.character(check_row$Outliers[[1]] %||% "") else "",
         "stats"
       ),
-      c("\uc815\uaddc\uc131", "\uc774\uc0c1\uac12", "\ud328\ud0a4\uc9c0")
+      c("Normality", "Outliers", "Package")
     )
     metric_index <- 0L
     for (metric in names(values)) {

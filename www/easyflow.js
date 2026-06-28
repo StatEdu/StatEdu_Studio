@@ -4,8 +4,274 @@
       window.easyflowCodingErrorFixValues = window.easyflowCodingErrorFixValues || {};
       window.easyflowTransferSelectionOrderByInput = window.easyflowTransferSelectionOrderByInput || {};
 
+      function easyflowNormalizeLanguage(language) {
+        var value = String(language || '').trim().toLowerCase();
+        if (value === 'en' || value === 'english') return 'en';
+        return 'ko';
+      }
+
+      function easyflowStoredLanguage() {
+        try {
+          var stored = window.localStorage.getItem('statedu_app_language') || '';
+          return stored ? easyflowNormalizeLanguage(stored) : '';
+        } catch (error) {
+          return '';
+        }
+      }
+
+      function easyflowHasUrlLanguage() {
+        try {
+          return !!(new URL(window.location.href).searchParams.get('lang') || '');
+        } catch (error) {
+          return false;
+        }
+      }
+
+      function easyflowUrlLanguage() {
+        var language = '';
+        try {
+          language = new URL(window.location.href).searchParams.get('lang') || '';
+        } catch (error) {
+          language = '';
+        }
+        if (language) return easyflowNormalizeLanguage(language);
+        if (window.easyflowAppLanguage) return easyflowNormalizeLanguage(window.easyflowAppLanguage);
+        var initial = document.getElementById('statedu_initial_language');
+        if (initial && initial.value) return easyflowNormalizeLanguage(initial.value);
+        language = easyflowStoredLanguage();
+        if (language) return language;
+        return 'ko';
+      }
+
+      function easyflowSetCurrentLanguage(language) {
+        language = easyflowNormalizeLanguage(language);
+        window.easyflowAppLanguage = language;
+        if (document.documentElement) {
+          document.documentElement.setAttribute('lang', language);
+        }
+        return language;
+      }
+
+      function easyflowStaticLabelLanguage() {
+        return easyflowNormalizeLanguage(window.easyflowAppLanguage || easyflowUrlLanguage());
+      }
+
+      function easyflowStaticLanguageLookup(language) {
+        language = easyflowNormalizeLanguage(language);
+        var fromKey = language === 'en' ? 'ko' : 'en';
+        var toKey = language === 'en' ? 'en' : 'ko';
+        var lookup = {};
+        var labels = window.easyflowStaticLanguageLabels || [];
+        Array.prototype.forEach.call(labels, function(row) {
+          if (!row) return;
+          var from = String(row[fromKey] || '').trim();
+          var to = String(row[toKey] || '').trim();
+          if (from && to && from !== to) lookup[from] = to;
+        });
+        return lookup;
+      }
+
+      function easyflowApplyStaticLanguageLabels(language) {
+        language = easyflowNormalizeLanguage(language);
+        var lookup = easyflowStaticLanguageLookup(language);
+        if (!document.querySelectorAll || Object.keys(lookup).length === 0) return;
+        var roots = document.querySelectorAll('.navbar, .navbar-nav, .dropdown-menu');
+        var nodes = [];
+        var seen = typeof Set === 'function' ? new Set() : null;
+        Array.prototype.forEach.call(roots, function(root) {
+          var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+            acceptNode: function(node) {
+              var value = (node.nodeValue || '').trim();
+              return value && Object.prototype.hasOwnProperty.call(lookup, value)
+                ? NodeFilter.FILTER_ACCEPT
+                : NodeFilter.FILTER_REJECT;
+            }
+          });
+          var node;
+          while ((node = walker.nextNode())) {
+            if (seen) {
+              if (seen.has(node)) continue;
+              seen.add(node);
+            }
+            nodes.push(node);
+          }
+        });
+        nodes.forEach(function(textNode) {
+          var text = textNode.nodeValue || '';
+          var trimmed = text.trim();
+          textNode.nodeValue = text.replace(trimmed, lookup[trimmed]);
+        });
+      }
+
+      function easyflowRefreshStaticLanguageLabels(language) {
+        language = easyflowNormalizeLanguage(language);
+        easyflowApplyStaticLanguageLabels(language);
+        if (window.jQuery && typeof window.groupAnalysisDropdownItems === 'function') {
+          window.groupAnalysisDropdownItems();
+        } else if (window.jQuery && typeof window.easyflowTranslateNavbarLabels === 'function') {
+          window.easyflowTranslateNavbarLabels();
+        }
+        easyflowApplyStaticLanguageLabels(language);
+      }
+
+      function easyflowScheduleStaticLanguageLabels() {
+        [0, 50, 250, 750, 1500, 3000].forEach(function(delay) {
+          window.setTimeout(function() {
+            easyflowRefreshStaticLanguageLabels(easyflowStaticLabelLanguage());
+          }, delay);
+        });
+      }
+
+      function easyflowObserveStaticLanguageLabels() {
+        if (!window.MutationObserver || window.easyflowStaticLanguageObserverBound || !document.body) return;
+        window.easyflowStaticLanguageObserverBound = true;
+        var debounceTimer = null;
+        var observer = new MutationObserver(function(mutations) {
+          if (!mutations || mutations.length === 0) return;
+          if (debounceTimer) window.clearTimeout(debounceTimer);
+          debounceTimer = window.setTimeout(function() {
+            debounceTimer = null;
+            easyflowApplyStaticLanguageLabels(easyflowStaticLabelLanguage());
+          }, 80);
+        });
+        observer.observe(document.body, {childList: true, subtree: true});
+      }
+
+      function easyflowCurrentLanguage() {
+        var urlLanguage = '';
+        try {
+          urlLanguage = new URL(window.location.href).searchParams.get('lang') || '';
+        } catch (error) {
+          urlLanguage = '';
+        }
+        if (urlLanguage) {
+          return easyflowSetCurrentLanguage(urlLanguage);
+        }
+        if (window.easyflowAppLanguage) {
+          return easyflowSetCurrentLanguage(window.easyflowAppLanguage);
+        }
+        var initial = document.getElementById('statedu_initial_language');
+        if (initial && initial.value) {
+          return easyflowSetCurrentLanguage(initial.value);
+        }
+        var stored = easyflowStoredLanguage();
+        if (stored) {
+          return easyflowSetCurrentLanguage(stored);
+        }
+        return easyflowSetCurrentLanguage(easyflowUrlLanguage());
+      }
+
+      function easyflowEnsureStoredLanguageUrl() {
+        if (easyflowHasUrlLanguage()) return;
+        var activeLanguage = '';
+        if (window.easyflowAppLanguage) {
+          activeLanguage = easyflowNormalizeLanguage(window.easyflowAppLanguage);
+        }
+        var initial = document.getElementById('statedu_initial_language');
+        if (!activeLanguage && initial && initial.value) {
+          activeLanguage = easyflowNormalizeLanguage(initial.value);
+        }
+        if (activeLanguage) {
+          easyflowSetCurrentLanguage(activeLanguage);
+          easyflowRefreshStaticLanguageLabels(activeLanguage);
+          try {
+            window.localStorage.setItem('statedu_app_language', activeLanguage);
+          } catch (error) {}
+          return;
+        }
+        var stored = easyflowStoredLanguage();
+        if (stored) easyflowApplyLanguageValue(stored);
+      }
+
+      window.easyflowSendAppLanguage = function() {
+        if (!easyflowCanSetInputValue()) return;
+        Shiny.setInputValue('statedu_url_language', easyflowCurrentLanguage(), {priority: 'event'});
+      };
+
+      function easyflowScheduleAppLanguageSend() {
+        [0, 100, 500, 1000].forEach(function(delay) {
+          window.setTimeout(window.easyflowSendAppLanguage, delay);
+        });
+      }
+
+      function easyflowApplyLanguageValue(language) {
+        language = easyflowSetCurrentLanguage(language);
+        easyflowRefreshStaticLanguageLabels(language);
+        var input = document.getElementById('app_language');
+        if (input) {
+          input.value = language;
+          if (input.selectize && typeof input.selectize.setValue === 'function') {
+            input.selectize.setValue(language, true);
+          }
+        }
+        try {
+          window.localStorage.setItem('statedu_app_language', language);
+        } catch (error) {
+          // Ignore storage failures; the query parameter is the active setting.
+        }
+        if (window.Shiny && typeof Shiny.setInputValue === 'function') {
+          Shiny.setInputValue('app_language', language, {priority: 'event'});
+          Shiny.setInputValue('statedu_url_language', language, {priority: 'event'});
+        }
+        var href = window.location && window.location.href ? window.location.href : '';
+        var url;
+        try {
+          url = new URL(href);
+        } catch (error) {
+          url = new URL('/', window.location.origin || 'http://127.0.0.1');
+        }
+        url.searchParams.set('lang', language);
+        var nextHref = url.toString();
+        if (nextHref === window.location.href) {
+          window.location.reload();
+        } else {
+          window.location.href = nextHref;
+        }
+        return false;
+      }
+
+      window.easyflowApplyAppLanguage = function() {
+        var input = document.getElementById('app_language');
+        var language = input && input.selectize && typeof input.selectize.getValue === 'function'
+          ? input.selectize.getValue()
+          : (input && input.value ? input.value : 'ko');
+        return easyflowApplyLanguageValue(language);
+      };
+
+      easyflowSetCurrentLanguage(easyflowUrlLanguage());
+      easyflowScheduleStaticLanguageLabels();
+
+      if (window.Shiny && typeof Shiny.addCustomMessageHandler === 'function') {
+        window.easyflowLanguageHandlerBound = true;
+        Shiny.addCustomMessageHandler('statedu-apply-language', easyflowApplyLanguageValue);
+      } else {
+        document.addEventListener('shiny:connected', function() {
+          if (window.Shiny && typeof Shiny.addCustomMessageHandler === 'function' && !window.easyflowLanguageHandlerBound) {
+            window.easyflowLanguageHandlerBound = true;
+            Shiny.addCustomMessageHandler('statedu-apply-language', easyflowApplyLanguageValue);
+          }
+        });
+      }
+
       function easyflowCanSetInputValue() {
         return !!(window.Shiny && typeof Shiny.setInputValue === 'function');
+      }
+
+      document.addEventListener('shiny:connected', function() {
+        easyflowScheduleAppLanguageSend();
+        easyflowScheduleStaticLanguageLabels();
+      });
+      document.addEventListener('DOMContentLoaded', function() {
+        easyflowEnsureStoredLanguageUrl();
+        easyflowScheduleAppLanguageSend();
+        easyflowScheduleStaticLanguageLabels();
+        easyflowObserveStaticLanguageLabels();
+      });
+      if (document.readyState !== 'loading') {
+        easyflowEnsureStoredLanguageUrl();
+        easyflowScheduleAppLanguageSend();
+        easyflowScheduleStaticLanguageLabels();
+        easyflowObserveStaticLanguageLabels();
       }
 
       window.easyflowRestoreCodingErrorFixInputs = function(root) {
@@ -36,6 +302,37 @@
         event.preventDefault();
         event.stopPropagation();
         if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+      }, true);
+
+      function easyflowTransferOptionValues(options) {
+        return Array.prototype.slice.call(options || [])
+          .map(function(option) { return option.getAttribute('data-value') || ''; })
+          .filter(function(value) { return value !== ''; });
+      }
+
+      document.addEventListener('click', function(event) {
+        if (!event.target || !event.target.closest || !window.Shiny) return;
+        var button = event.target.closest('#crosstab_assign_col, #crosstab_assign_row');
+        if (!button) return;
+        var label = (button.textContent || '').trim();
+        var targetInputId = button.id === 'crosstab_assign_col' ? 'crosstab_col' : 'crosstab_row';
+        var targetListbox = document.querySelector('.analysis-transfer-listbox[data-input-id="' + targetInputId + '"]');
+        var selectedTargetOptions = targetListbox
+          ? targetListbox.querySelectorAll('.analysis-transfer-option.is-selected')
+          : [];
+        if (label !== '<' && selectedTargetOptions.length === 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+        var values = easyflowTransferOptionValues(selectedTargetOptions);
+        if (values.length === 0 && label === '<' && targetListbox) {
+          values = easyflowTransferOptionValues(targetListbox.querySelectorAll('.analysis-transfer-option'));
+        }
+        Shiny.setInputValue(
+          button.id === 'crosstab_assign_col' ? 'crosstab_assign_col_request' : 'crosstab_assign_row_request',
+          {direction: 'back', values: values, nonce: Date.now() + Math.random()},
+          {priority: 'event'}
+        );
       }, true);
 
       function easyflowSkipsMathNode(node) {
@@ -441,13 +738,15 @@
 
       document.addEventListener('click', function(event) {
         var button = event.target && event.target.closest
-          ? event.target.closest('#coding_error_move, #recode_different_move, #variable_calculation_move')
+          ? event.target.closest('#coding_error_move, #recode_different_move, #variable_calculation_move, #missing_values_move, #wide_long_move')
           : null;
         if (!button || button.disabled) return;
         var inputMap = {
           coding_error_move: ['coding_error_available', 'coding_error_selected'],
           recode_different_move: ['recode_different_available', 'recode_different_selected'],
-          variable_calculation_move: ['variable_calculation_available', 'variable_calculation_selected']
+          variable_calculation_move: ['variable_calculation_available', 'variable_calculation_selected'],
+          missing_values_move: ['missing_values_available', 'missing_values_selected'],
+          wide_long_move: ['wide_long_available', 'wide_long_selected']
         };
         var ids = inputMap[button.id] || [];
         var availableListbox = ids[0] ? document.querySelector('.analysis-transfer-listbox[data-input-id="' + ids[0] + '"]') : null;
@@ -675,42 +974,466 @@
 
       function registerEasyflowNestedDropdownMenus() {
         if (!window.jQuery) return;
-        function groupAnalysisDropdownItems() {
-          var groups = [
+
+        function easyflowNavbarText(anchor) {
+          return anchor.clone().children().remove().end().text().trim();
+        }
+
+        function easyflowSetNavbarText(anchor, label) {
+          if (!anchor.length || !label) return;
+          var children = anchor.children().detach();
+          anchor.empty().text(label);
+          if (children.length) anchor.append(' ').append(children);
+        }
+
+        function easyflowMenuLabelDictionaries() {
+          return {
+            en: {
+              top: {
+                Data: 'Data',
+                data_editor: 'Data Editor',
+                calculator: 'Calculator',
+                Analysis: 'Analysis',
+                'Sample Size': 'Sample Size',
+                'Effect Size': 'Effect Size',
+                Result: 'Result',
+                Help: 'Help',
+                About: 'About'
+              },
+              items: {
+                data_editor_coding_error_check: 'Auto coding error check',
+                data_editor_likert: 'Auto Likert conversion',
+                data_editor_missing_values: 'Auto missing values',
+                data_editor_wide_long: 'Wide to Long',
+                data_editor_recode_different: 'Auto reverse coding',
+                data_editor_variable_calculation: 'Auto variable calculation',
+                data_editor_variable_transformation: 'Variable transformation',
+                data_editor_recode_same: 'Recode variable',
+                data_editor_variable_rename: 'Rename variable',
+                calculator_hint8: 'HINT8',
+                calculator_eq5d: 'EQ-5D',
+                calculator_metabolic: 'Metabolic syndrome',
+                calculator_frs: 'Framingham risk score',
+                calculator_ascvd10: 'ASCVD10',
+                calculator_metabolic_severity: 'Metabolic severity',
+                help_bug: 'Bug report',
+                help_feature: 'Feature request',
+                help_analysis_request: 'Analysis Method Request',
+                help_qa: 'Q&A',
+                about_update: 'Check for Updates',
+                about_overview: 'Overview',
+                about_user_guide: 'User Guide',
+                about_analysis_methods: 'Analyses',
+                about_method_notes: 'Method Notes',
+                about_validation: 'Validation',
+                about_version_history: 'Version History',
+                about_source_license: 'Source & License',
+                about_oss_licenses: 'Open Source Licenses',
+                about: 'About'
+              }
+            },
+            ko: {
+              top: {
+                Data: '\uB370\uC774\uD130',
+                data_editor: '\uB370\uC774\uD130 \uD3B8\uC9D1',
+                calculator: '\uACC4\uC0B0\uAE30',
+                Analysis: '\uBD84\uC11D',
+                'Sample Size': '\uD45C\uBCF8\uC218',
+                'Effect Size': '\uD6A8\uACFC\uD06C\uAE30',
+                Result: '\uACB0\uACFC',
+                Help: '\uB3C4\uC6C0\uB9D0',
+                About: '\uC815\uBCF4'
+              },
+              items: {
+                data_editor_coding_error_check: '\uC790\uB3D9 \uCF54\uB529 \uC624\uB958 \uD655\uC778',
+                data_editor_likert: 'Likert \uC790\uB3D9 \uBCC0\uD658',
+                data_editor_missing_values: '\uACB0\uCE21\uAC12 \uC790\uB3D9\uCC98\uB9AC',
+                data_editor_wide_long: '\uC640\uC774\uB4DC-\uB871 \uBCC0\uD658',
+                data_editor_recode_different: '\uC5ED\uCF54\uB529 \uC790\uB3D9\uCC98\uB9AC',
+                data_editor_variable_calculation: '\uBCC0\uC218 \uC790\uB3D9 \uACC4\uC0B0',
+                data_editor_variable_transformation: '\uBCC0\uC218 \uBCC0\uD658',
+                data_editor_recode_same: '\uBCC0\uC218 \uB9AC\uCF54\uB529',
+                data_editor_variable_rename: '\uBCC0\uC218\uBA85 \uBCC0\uACBD',
+                calculator_hint8: 'HINT8',
+                calculator_eq5d: 'EQ-5D',
+                calculator_metabolic: '\uB300\uC0AC\uC99D\uD6C4\uAD70',
+                calculator_frs: 'Framingham \uC704\uD5D8\uB3C4',
+                calculator_ascvd10: 'ASCVD10',
+                calculator_metabolic_severity: '\uB300\uC0AC\uC99D\uD6C4\uAD70 \uC911\uC99D\uB3C4',
+                help_bug: '\uBC84\uADF8 \uC2E0\uACE0',
+                help_feature: '\uAE30\uB2A5 \uAC1C\uC120 \uC694\uCCAD',
+                help_analysis_request: '\uBD84\uC11D\uAE30\uBC95 \uC694\uCCAD',
+                help_qa: 'Q&A',
+                about_update: '\uC5C5\uB370\uC774\uD2B8 \uD655\uC778',
+                about_overview: '\uAC1C\uC694',
+                about_user_guide: '\uC0AC\uC6A9\uC790 \uC548\uB0B4\uC11C',
+                about_analysis_methods: '\uBD84\uC11D',
+                about_method_notes: '\uBC29\uBC95\uB860 \uB178\uD2B8',
+                about_validation: '\uAC80\uC99D',
+                about_version_history: '\uBC84\uC804 \uC774\uB825',
+                about_source_license: '\uC18C\uC2A4 \uBC0F \uB77C\uC774\uC120\uC2A4',
+                about_oss_licenses: '\uC624\uD508\uC18C\uC2A4 \uB77C\uC774\uC120\uC2A4',
+                about: '\uC815\uBCF4'
+              }
+            }
+          };
+        }
+
+        function easyflowTopLabelLookup() {
+          return {
+            Data: 'Data',
+            '\uB370\uC774\uD130': 'Data',
+            data_editor: 'data_editor',
+            'Data Editor': 'data_editor',
+            '\uB370\uC774\uD130 \uD3B8\uC9D1': 'data_editor',
+            calculator: 'calculator',
+            Calculator: 'calculator',
+            '\uACC4\uC0B0\uAE30': 'calculator',
+            Analysis: 'Analysis',
+            '\uBD84\uC11D': 'Analysis',
+            'Sample Size': 'Sample Size',
+            '\uD45C\uBCF8\uC218': 'Sample Size',
+            'Effect Size': 'Effect Size',
+            '\uD6A8\uACFC\uD06C\uAE30': 'Effect Size',
+            Result: 'Result',
+            '\uACB0\uACFC': 'Result',
+            Help: 'Help',
+            '\uB3C4\uC6C0\uB9D0': 'Help',
+            About: 'About',
+            '\uC815\uBCF4': 'About'
+          };
+        }
+
+        function easyflowTranslateNavbarLabels() {
+          var language = easyflowCurrentLanguage();
+          var dictionaries = easyflowMenuLabelDictionaries();
+          var dictionary = dictionaries[language] || dictionaries.ko;
+          var topLookup = easyflowTopLabelLookup();
+
+          window.jQuery('.navbar-nav > li > a').each(function() {
+            var anchor = window.jQuery(this);
+            var value = String(anchor.attr('data-value') || '');
+            var key = topLookup[value] || topLookup[easyflowNavbarText(anchor)];
+            if (key && dictionary.top[key]) {
+              easyflowSetNavbarText(anchor, dictionary.top[key]);
+            }
+          });
+
+          window.jQuery('.navbar-nav > li.dropdown > ul.dropdown-menu a[data-value]').each(function() {
+            var anchor = window.jQuery(this);
+            var value = String(anchor.attr('data-value') || '');
+            if (dictionary.items[value]) {
+              easyflowSetNavbarText(anchor, dictionary.items[value]);
+            }
+          });
+        }
+
+        function easyflowHelpRequestUrl(value) {
+          var language = easyflowCurrentLanguage();
+          var studioUrls = {
+            help_bug: 'https://studio.statedu.com/help/bug/',
+            help_feature: 'https://studio.statedu.com/help/feature/',
+            help_analysis_request: 'https://studio.statedu.com/help/analysis/'
+          };
+          if (studioUrls[value]) return studioUrls[value];
+          if (value === 'help_qa') {
+            return language === 'ko'
+              ? 'https://statedu.com/qna/?qna_action=write&qna_topic=StatEdu%20Studio'
+              : 'https://statedu.com/en/qna/?qna_action=write&qna_topic=StatEdu%20Studio';
+          }
+          return '';
+        }
+
+        function easyflowOpenHelpRequestLink(event, navLink) {
+          var navValue = navLink ? navLink.getAttribute('data-value') || '' : '';
+          var url = easyflowHelpRequestUrl(navValue);
+          if (!url) return false;
+          if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (typeof event.stopImmediatePropagation === 'function') {
+              event.stopImmediatePropagation();
+            }
+          }
+          if (window.jQuery) {
+            window.jQuery(navLink).closest('.navbar-nav > li.dropdown').removeClass('open');
+          }
+          window.open(url, '_blank', 'noopener,noreferrer');
+          return true;
+        }
+
+        document.addEventListener('click', function(event) {
+          var navLink = event.target && event.target.closest ? event.target.closest('.navbar-nav a[data-value]') : null;
+          if (!navLink || navLink.classList.contains('dropdown-toggle')) return;
+          easyflowOpenHelpRequestLink(event, navLink);
+        }, true);
+
+        function easyflowGroupedMenuConfigs() {
+          return [
             {
-              title: 'Descriptives & Tables',
-              values: ['Frequencies / Descriptives', 'analysis_crosstabs']
+              menu: 'Analysis',
+              menuLabels: ['Analysis', '\uBD84\uC11D'],
+              marker: 'analysis',
+              itemLabelsEn: {
+                'Frequencies / Descriptives': 'Frequencies / Descriptives',
+                analysis_crosstabs: 'Cross-tabulation Analysis',
+                't-test / ANOVA': 't-test / ANOVA',
+                'Paired test': 'Paired test',
+                ANCOVA: 'ANCOVA',
+                'Nonparametric Tests': 'Nonparametric Tests',
+                'Nonparametric Paired': 'Nonparametric Paired',
+                Correlation: 'Correlation',
+                Reliability: 'Reliability',
+                'Factor Analysis': 'Factor Analysis',
+                'Principal Components': 'Principal Components',
+                Regression: 'Regression',
+                'Generalized Linear Model (GLM)': 'Generalized Linear Model (GLM)',
+                analysis_logistic_regression: 'Logistic Regression',
+                'Longitudinal / Panel Models': 'Longitudinal / Panel Models'
+              },
+              itemLabelsKo: {
+                'Frequencies / Descriptives': '\uBE48\uB3C4\uBD84\uC11D / \uAE30\uC220\uD1B5\uACC4',
+                analysis_crosstabs: '\uAD50\uCC28\uBD84\uC11D',
+                't-test / ANOVA': 't-test / ANOVA',
+                'Paired test': '\uB300\uC751\uD45C\uBCF8 \uAC80\uC815',
+                ANCOVA: 'ANCOVA',
+                'Nonparametric Tests': '\uBE44\uBAA8\uC218 \uAC80\uC815',
+                'Nonparametric Paired': '\uB300\uC751 \uBE44\uBAA8\uC218 \uAC80\uC815',
+                Correlation: '\uC0C1\uAD00\uBD84\uC11D',
+                Reliability: '\uC2E0\uB8B0\uB3C4',
+                'Factor Analysis': '\uC694\uC778\uBD84\uC11D',
+                'Principal Components': '\uC8FC\uC131\uBD84\uBD84\uC11D',
+                Regression: '\uD68C\uADC0\uBD84\uC11D',
+                'Generalized Linear Model (GLM)': '\uC77C\uBC18\uD654 \uC120\uD615\uBAA8\uD615(GLM)',
+                analysis_logistic_regression: '\uB85C\uC9C0\uC2A4\uD2F1 \uD68C\uADC0',
+                'Longitudinal / Panel Models': '\uC885\uB2E8 / \uD328\uB110 \uBAA8\uD615'
+              },
+              groups: [
+                {
+                  title: 'Descriptives & Tables',
+                  titleKo: '\uAE30\uC220\uD1B5\uACC4 / \uD45C',
+                  values: ['Frequencies / Descriptives', 'analysis_crosstabs']
+                },
+                {
+                  title: 'Group Comparisons',
+                  titleKo: '\uC9D1\uB2E8 \uBE44\uAD50',
+                  values: ['t-test / ANOVA', 'Paired test', 'ANCOVA']
+                },
+                {
+                  title: 'Nonparametric Tests',
+                  titleKo: '\uBE44\uBAA8\uC218 \uAC80\uC815',
+                  values: ['Nonparametric Tests', 'Nonparametric Paired']
+                },
+                {
+                  title: 'Association & Measurement',
+                  titleKo: '\uC5F0\uAD00 / \uCE21\uC815',
+                  values: ['Correlation', 'Reliability', 'Factor Analysis', 'Principal Components']
+                },
+                {
+                  title: 'Regression & Models',
+                  titleKo: '\uD68C\uADC0 / \uBAA8\uD615',
+                  values: ['Regression', 'Generalized Linear Model (GLM)', 'analysis_logistic_regression']
+                },
+                {
+                  title: 'Longitudinal / Panel',
+                  titleKo: '\uC885\uB2E8 / \uD328\uB110',
+                  values: ['Longitudinal / Panel Models']
+                }
+              ]
             },
             {
-              title: 'Group Comparisons',
-              values: ['t-test / ANOVA', 'Paired test', 'ANCOVA']
+              menu: 'Sample Size',
+              menuLabels: ['Sample Size', '\uD45C\uBCF8\uC218'],
+              marker: 'sample-size',
+              itemLabelsEn: {
+                sample_size_proportion: 'Proportion',
+                sample_size_chisquare: 'Chi-square',
+                sample_size_mcnemar: 'McNemar',
+                sample_size_ttest: 't-test',
+                sample_size_anova: 'ANOVA',
+                sample_size_ancova: 'ANCOVA / MANOVA',
+                sample_size_nonparametric: 'Nonparametric',
+                sample_size_correlation: 'Correlation',
+                sample_size_reliability: 'Reliability / Agreement',
+                sample_size_sem: 'SEM / CFA',
+                sample_size_regression: 'Regression',
+                sample_size_rates: 'Count / Rate Regression',
+                sample_size_diagnostic: 'ROC AUC',
+                sample_size_gee: 'GEE',
+                sample_size_lmm: 'LMM',
+                sample_size_survival: 'Survival / Cox',
+                sample_size_equivalence: 'Equivalence / NI',
+                sample_size_cluster: 'Cluster Trial',
+                sample_size_precision: 'Precision / CI'
+              },
+              itemLabelsKo: {
+                sample_size_proportion: '\uBE44\uC728',
+                sample_size_chisquare: '\uCE74\uC774\uC81C\uACF1',
+                sample_size_mcnemar: '\uB9E5\uB2C8\uB9C8',
+                sample_size_ttest: 't-test',
+                sample_size_anova: 'ANOVA',
+                sample_size_ancova: 'ANCOVA / MANOVA',
+                sample_size_nonparametric: '\uBE44\uBAA8\uC218',
+                sample_size_correlation: '\uC0C1\uAD00',
+                sample_size_reliability: '\uC2E0\uB8B0\uB3C4 / \uC77C\uCE58\uB3C4',
+                sample_size_sem: '\uAD6C\uC870\uBC29\uC815\uC2DD/\uD655\uC778\uC801\uC694\uC778\uBD84\uC11D',
+                sample_size_regression: '\uD68C\uADC0',
+                sample_size_rates: '\uAC74\uC218 / \uBC1C\uC0DD\uB960 \uD68C\uADC0',
+                sample_size_diagnostic: 'ROC AUC',
+                sample_size_gee: '\uC77C\uBC18\uD654\uCD94\uC815\uBC29\uC815\uC2DD',
+                sample_size_lmm: '\uC120\uD615\uD63C\uD569\uBAA8\uD615',
+                sample_size_survival: '\uC0DD\uC874 / Cox',
+                sample_size_equivalence: '\uB3D9\uB4F1\uC131 / \uBE44\uC5F4\uB4F1\uC131',
+                sample_size_cluster: '\uAD70\uC9D1 \uC5F0\uAD6C',
+                sample_size_precision: '\uC815\uBC00\uB3C4 / \uC2E0\uB8B0\uAD6C\uAC04'
+              },
+              groups: [
+                {
+                  title: 'Descriptives & Tables',
+                  titleKo: '\uAE30\uC220\uD1B5\uACC4 / \uD45C',
+                  values: ['sample_size_proportion', 'sample_size_chisquare', 'sample_size_mcnemar']
+                },
+                {
+                  title: 'Group Comparisons',
+                  titleKo: '\uC9D1\uB2E8 \uBE44\uAD50',
+                  values: ['sample_size_ttest', 'sample_size_anova', 'sample_size_ancova']
+                },
+                {
+                  title: 'Nonparametric Tests',
+                  titleKo: '\uBE44\uBAA8\uC218 \uAC80\uC815',
+                  values: ['sample_size_nonparametric']
+                },
+                {
+                  title: 'Association & Measurement',
+                  titleKo: '\uC5F0\uAD00 / \uCE21\uC815',
+                  values: ['sample_size_correlation', 'sample_size_reliability', 'sample_size_sem', 'sample_size_diagnostic']
+                },
+                {
+                  title: 'Regression & Models',
+                  titleKo: '\uD68C\uADC0 / \uBAA8\uD615',
+                  values: ['sample_size_regression', 'sample_size_rates', 'sample_size_survival']
+                },
+                {
+                  title: 'Longitudinal / Panel',
+                  titleKo: '\uC885\uB2E8 / \uD328\uB110',
+                  values: ['sample_size_gee', 'sample_size_lmm']
+                },
+                {
+                  title: 'Study Design & Precision',
+                  titleKo: '\uC5F0\uAD6C \uC124\uACC4 / \uC815\uBC00\uB3C4',
+                  values: ['sample_size_equivalence', 'sample_size_cluster', 'sample_size_precision']
+                }
+              ]
             },
             {
-              title: 'Nonparametric Tests',
-              values: ['Nonparametric Tests', 'Nonparametric Paired']
-            },
-            {
-              title: 'Association & Measurement',
-              values: ['Correlation', 'Reliability', 'Factor Analysis', 'Principal Components']
-            },
-            {
-              title: 'Regression & Models',
-              values: ['Regression', 'Generalized Linear Model (GLM)', 'analysis_logistic_regression']
-            },
-            {
-              title: 'Longitudinal / Panel',
-              values: ['Longitudinal / Panel Models']
+              menu: 'Effect Size',
+              menuLabels: ['Effect Size', '\uD6A8\uACFC\uD06C\uAE30'],
+              marker: 'effect-size',
+              itemLabelsEn: {
+                effect_size_proportion: 'Proportion',
+                effect_size_chisquare: 'Chi-square',
+                effect_size_mcnemar: 'McNemar',
+                effect_size_ttest: 't-test',
+                effect_size_anova: 'ANOVA',
+                effect_size_ancova: 'ANCOVA / MANOVA',
+                effect_size_nonparametric: 'Nonparametric',
+                effect_size_correlation: 'Correlation',
+                effect_size_regression: 'Regression',
+                effect_size_rates: 'Count / Rate Regression',
+                effect_size_diagnostic: 'ROC AUC',
+                effect_size_gee: 'GEE',
+                effect_size_lmm: 'LMM',
+                effect_size_glmm: 'GLMM',
+                effect_size_survival: 'Survival / Cox'
+              },
+              itemLabelsKo: {
+                effect_size_proportion: '\uBE44\uC728',
+                effect_size_chisquare: '\uCE74\uC774\uC81C\uACF1',
+                effect_size_mcnemar: '\uB9E5\uB2C8\uB9C8',
+                effect_size_ttest: 't-test',
+                effect_size_anova: 'ANOVA',
+                effect_size_ancova: 'ANCOVA / MANOVA',
+                effect_size_nonparametric: '\uBE44\uBAA8\uC218',
+                effect_size_correlation: '\uC0C1\uAD00',
+                effect_size_regression: '\uD68C\uADC0',
+                effect_size_rates: '\uAC74\uC218 / \uBC1C\uC0DD\uB960 \uD68C\uADC0',
+                effect_size_diagnostic: 'ROC AUC',
+                effect_size_gee: '\uC77C\uBC18\uD654\uCD94\uC815\uBC29\uC815\uC2DD',
+                effect_size_lmm: '\uC120\uD615\uD63C\uD569\uBAA8\uD615',
+                effect_size_glmm: '\uC77C\uBC18\uD654\uC120\uD615\uBAA8\uD615',
+                effect_size_survival: '\uC0DD\uC874 / Cox'
+              },
+              groups: [
+                {
+                  title: 'Descriptives & Tables',
+                  titleKo: '\uAE30\uC220\uD1B5\uACC4 / \uD45C',
+                  values: ['effect_size_proportion', 'effect_size_chisquare', 'effect_size_mcnemar']
+                },
+                {
+                  title: 'Group Comparisons',
+                  titleKo: '\uC9D1\uB2E8 \uBE44\uAD50',
+                  values: ['effect_size_ttest', 'effect_size_anova', 'effect_size_ancova']
+                },
+                {
+                  title: 'Nonparametric Tests',
+                  titleKo: '\uBE44\uBAA8\uC218 \uAC80\uC815',
+                  values: ['effect_size_nonparametric']
+                },
+                {
+                  title: 'Association & Measurement',
+                  titleKo: '\uC5F0\uAD00 / \uCE21\uC815',
+                  values: ['effect_size_correlation', 'effect_size_diagnostic']
+                },
+                {
+                  title: 'Regression & Models',
+                  titleKo: '\uD68C\uADC0 / \uBAA8\uD615',
+                  values: ['effect_size_regression', 'effect_size_rates', 'effect_size_survival']
+                },
+                {
+                  title: 'Longitudinal / Panel',
+                  titleKo: '\uC885\uB2E8 / \uD328\uB110',
+                  values: ['effect_size_gee', 'effect_size_lmm', 'effect_size_glmm']
+                }
+              ]
             }
           ];
-          var analysisItem = window.jQuery('.navbar-nav > li.dropdown > a.dropdown-toggle')
+        }
+
+        function groupNavbarDropdownItems(config) {
+          var menuLabels = config.menuLabels || [config.menu];
+          var navItem = window.jQuery('.navbar-nav > li.dropdown > a.dropdown-toggle')
             .filter(function() {
-              return window.jQuery(this).clone().children().remove().end().text().trim() === 'Analysis';
+              var label = window.jQuery(this).clone().children().remove().end().text().trim();
+              return menuLabels.indexOf(label) >= 0;
             })
             .parent()
             .first();
-          if (!analysisItem.length) return;
-          var menu = analysisItem.children('ul.dropdown-menu').first();
-          if (!menu.length || menu.attr('data-analysis-menu-grouped') === 'true') return;
+          if (!navItem.length) return;
+          var menuLanguage = easyflowCurrentLanguage();
+          var useKorean = menuLanguage === 'ko';
+          var itemLabelsEn = config.itemLabelsEn || {};
+          var itemLabelsKo = config.itemLabelsKo || {};
+          var menu = navItem.children('ul.dropdown-menu').first();
+          if (!menu.length) return;
+          if (menu.attr('data-easyflow-menu-grouped') === config.marker) {
+            if (menu.attr('data-easyflow-menu-language') === menuLanguage) return;
+            config.groups.forEach(function(group) {
+              var firstValue = group.values[0];
+              var groupLink = menu.find('a[data-value="' + firstValue + '"]').first();
+              var groupNode = groupLink.closest('.analysis-menu-section');
+              var groupTitleText = useKorean && group.titleKo ? group.titleKo : group.title;
+              if (!groupNode.length) return;
+              groupNode.children('.analysis-menu-section-title').first().text(groupTitleText);
+              group.values.forEach(function(value) {
+                var link = menu.find('a[data-value="' + value + '"]').first();
+                if (!link.length) return;
+                var itemLabel = useKorean ? itemLabelsKo[value] : itemLabelsEn[value];
+                if (itemLabel) link.text(itemLabel);
+              });
+            });
+            menu.attr('data-easyflow-menu-language', menuLanguage);
+            return;
+          }
 
           var existingItems = {};
           menu.children('li').each(function() {
@@ -720,17 +1443,22 @@
             existingItems[String(link.attr('data-value'))] = item.detach();
           });
 
-          groups.forEach(function(group) {
+          config.groups.forEach(function(group) {
             var groupItems = [];
             group.values.forEach(function(value) {
               if (existingItems[value]) {
+                var itemLabel = useKorean ? itemLabelsKo[value] : itemLabelsEn[value];
+                if (itemLabel) {
+                  existingItems[value].children('a[data-value]').first().text(itemLabel);
+                }
                 groupItems.push(existingItems[value]);
                 delete existingItems[value];
               }
             });
             if (groupItems.length === 0) return;
             var groupNode = window.jQuery('<li class="analysis-menu-section" role="presentation"></li>');
-            var groupTitle = window.jQuery('<div class="analysis-menu-section-title"></div>').text(group.title);
+            var groupTitleText = useKorean && group.titleKo ? group.titleKo : group.title;
+            var groupTitle = window.jQuery('<button type="button" class="analysis-menu-section-title" aria-expanded="false"></button>').text(groupTitleText);
             var groupList = window.jQuery('<ul class="analysis-menu-section-items" role="menu"></ul>');
             groupItems.forEach(function(item) {
               groupList.append(item);
@@ -738,6 +1466,8 @@
             groupNode.append(groupTitle, groupList);
             if (groupList.children('li.active').length) {
               groupNode.addClass('active');
+              groupNode.addClass('open');
+              groupTitle.attr('aria-expanded', 'true');
             }
             menu.append(groupNode);
           });
@@ -745,8 +1475,24 @@
           Object.keys(existingItems).forEach(function(value) {
             menu.append(existingItems[value]);
           });
-          menu.addClass('analysis-mega-menu').attr('data-analysis-menu-grouped', 'true');
+          if (!menu.children('.analysis-menu-section.active').length && !menu.children('li.active').not('.analysis-menu-section').length) {
+            menu.children('.analysis-menu-section').first().addClass('open')
+              .children('.analysis-menu-section-title').attr('aria-expanded', 'true');
+          }
+          menu.addClass('analysis-submenu')
+            .attr('data-easyflow-menu-grouped', config.marker)
+            .attr('data-easyflow-menu-language', menuLanguage)
+            .attr('data-analysis-menu-grouped', 'true');
         }
+
+        function groupAnalysisDropdownItems() {
+          easyflowTranslateNavbarLabels();
+          easyflowGroupedMenuConfigs().forEach(groupNavbarDropdownItems);
+          easyflowTranslateNavbarLabels();
+        }
+
+        window.easyflowTranslateNavbarLabels = easyflowTranslateNavbarLabels;
+        window.groupAnalysisDropdownItems = groupAnalysisDropdownItems;
 
         function configureNestedDropdownToggles() {
           groupAnalysisDropdownItems();
@@ -765,6 +1511,13 @@
         if (window.easyflowNestedDropdownRegistered) return;
         window.easyflowNestedDropdownRegistered = true;
 
+        function markNavbarDropdownActive(link) {
+          var dropdown = link.closest('.navbar-nav > li.dropdown');
+          if (!dropdown.length) return;
+          dropdown.closest('.navbar-nav').children('li.active').removeClass('active');
+          dropdown.addClass('active');
+        }
+
         window.jQuery(document)
           .on('click.easyflowNestedDropdown', '.dropdown-menu .dropdown-toggle', function(event) {
             event.preventDefault();
@@ -773,13 +1526,46 @@
             item.toggleClass('open');
             item.siblings('.dropdown.open').removeClass('open');
           })
-          .on('click.easyflowAnalysisMegaMenu', '.analysis-mega-menu .analysis-menu-section-items a[data-value]', function() {
+          .on('mouseenter.easyflowAnalysisSubmenu focusin.easyflowAnalysisSubmenu click.easyflowAnalysisSubmenu', '.analysis-submenu .analysis-menu-section-title', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            var section = window.jQuery(this).closest('.analysis-menu-section');
+            var menu = section.closest('.analysis-submenu');
+            menu.children('.analysis-menu-section').removeClass('open')
+              .children('.analysis-menu-section-title').attr('aria-expanded', 'false');
+            section.addClass('open');
+            window.jQuery(this).attr('aria-expanded', 'true');
+          })
+          .on('mouseenter.easyflowAnalysisDirectItem focusin.easyflowAnalysisDirectItem', '.analysis-submenu > li.analysis-menu-direct-item > a[data-value]', function() {
+            var menu = window.jQuery(this).closest('.analysis-submenu');
+            menu.children('.analysis-menu-section').removeClass('open')
+              .children('.analysis-menu-section-title').attr('aria-expanded', 'false');
+          })
+          .on('click.easyflowAnalysisSubmenu', '.analysis-submenu .analysis-menu-section-items a[data-value]', function() {
             var link = window.jQuery(this);
-            var menu = link.closest('.analysis-mega-menu');
+            var menu = link.closest('.analysis-submenu');
             var markActive = function() {
               menu.find('li.active, .analysis-menu-section.active').removeClass('active');
+              menu.children('.analysis-menu-section').removeClass('open');
               link.parent('li').addClass('active');
-              link.closest('.analysis-menu-section').addClass('active');
+              link.closest('.analysis-menu-section').addClass('active open');
+              menu.find('.analysis-menu-section-title').attr('aria-expanded', 'false');
+              link.closest('.analysis-menu-section').children('.analysis-menu-section-title').attr('aria-expanded', 'true');
+              markNavbarDropdownActive(link);
+            };
+            markActive();
+            window.setTimeout(markActive, 0);
+            link.closest('.navbar-nav > li.dropdown').removeClass('open');
+          })
+          .on('click.easyflowAnalysisDirectItem', '.analysis-submenu > li.analysis-menu-direct-item > a[data-value]', function() {
+            var link = window.jQuery(this);
+            var menu = link.closest('.analysis-submenu');
+            var markActive = function() {
+              menu.find('li.active, .analysis-menu-section.active').removeClass('active');
+              menu.children('.analysis-menu-section').removeClass('open');
+              menu.find('.analysis-menu-section-title').attr('aria-expanded', 'false');
+              link.parent('li').addClass('active');
+              markNavbarDropdownActive(link);
             };
             markActive();
             window.setTimeout(markActive, 0);
@@ -1200,7 +1986,10 @@
           if (selectedSpan) selectedSpan.classList.toggle('is-active', normalized === 'variables');
           return;
         }
-        button.textContent = normalized === 'variables' ? 'Labels' : 'Variables';
+        var language = easyflowCurrentLanguage();
+        button.textContent = language === 'ko'
+          ? (normalized === 'variables' ? '\uB77C\uBCA8' : '\uBCC0\uC218')
+          : (normalized === 'variables' ? 'Labels' : 'Variables');
       }
 
       window.easyflowToggleStep3View = function(button) {
@@ -1523,6 +2312,57 @@
         }
       }, true);
 
+      function syncEasyflowTopNavbarActive(link) {
+        if (!link || !window.jQuery) return;
+        var item = window.jQuery(link).closest('.navbar-nav > li');
+        if (!item.length) return;
+        window.jQuery('.navbar-nav > li.active').not(item).removeClass('active');
+        item.addClass('active');
+      }
+
+      document.addEventListener('click', function(event) {
+        var navLink = event.target && event.target.closest ? event.target.closest('.navbar-nav a[data-value]') : null;
+        if (!navLink || navLink.classList.contains('dropdown-toggle')) return;
+        var navValue = navLink.getAttribute('data-value') || '';
+        if (!navValue || !window.jQuery) return;
+        window.setTimeout(function() {
+          var link = window.jQuery(navLink);
+          if (!link.length) return;
+          var item = link.parent('li');
+          var wasActive = item.hasClass('active');
+          if (wasActive) {
+            item.removeClass('active');
+          }
+          try {
+            link.tab('show');
+          } catch (error) {
+            if (wasActive) {
+              item.addClass('active');
+            }
+          }
+          syncEasyflowTopNavbarActive(navLink);
+          link.closest('.navbar-nav > li.dropdown').removeClass('open');
+        }, 0);
+      }, true);
+
+      document.addEventListener('click', function(event) {
+        var navLink = event.target && event.target.closest ? event.target.closest('.navbar-nav a[data-value="data_editor_wide_long"]') : null;
+        if (!navLink || navLink.classList.contains('dropdown-toggle')) return;
+        window.setTimeout(function() {
+          if (window.jQuery) {
+            var link = window.jQuery('.navbar-nav a[data-value="data_editor_wide_long"]').first();
+            if (link.length && !link.parent().hasClass('active')) {
+              link.tab('show');
+            }
+          }
+          if (window.Shiny) {
+            Shiny.setInputValue('wide_long_nav_request', {
+              nonce: Date.now() + Math.random()
+            }, {priority: 'event'});
+          }
+        }, 0);
+      }, true);
+
       var easyflowTransferLastIndexByInput = {};
       var easyflowTransferSelectionCounter = 0;
       var easyflowActiveTransferListbox = null;
@@ -1633,6 +2473,8 @@
           Shiny.setInputValue(inputId + '_selection_order', values, {priority: 'event'});
         }
       }
+
+      window.easyflowSyncTransferListbox = easyflowTransferSync;
 
       function easyflowTransferMarkActive(listbox) {
         var inputId = listbox ? listbox.getAttribute('data-input-id') : null;
@@ -2266,9 +3108,11 @@
           if (!normality) return;
           var enabled = normality.checked;
           var studyType = selectedRadioValue('ttest_anova_normality_study_type') || 'survey';
+          var surveyMethod = selectedRadioValue('ttest_anova_survey_normality_method') || 'skew_kurtosis';
           setTtestNormalityDisabled('.ttest-normality-study-options', !enabled);
           setTtestNormalityDisabled('.ttest-normality-survey-branch', !enabled || studyType !== 'survey');
           setTtestNormalityDisabled('.ttest-normality-experimental-branch', !enabled || studyType !== 'experimental');
+          setTtestNormalityDisabled('.ttest-skew-kurtosis-cutoff-options', !enabled || studyType !== 'survey' || surveyMethod !== 'skew_kurtosis');
         }
 
         function scheduleTtestNormalityTreeUpdate() {
@@ -2301,7 +3145,8 @@
           if (!target || !target.matches) return;
           if (
             target.matches('#ttest_anova_normality_enabled') ||
-            target.matches('input[name="ttest_anova_normality_study_type"]')
+            target.matches('input[name="ttest_anova_normality_study_type"]') ||
+            target.matches('input[name="ttest_anova_survey_normality_method"]')
           ) {
             if (target.matches('#ttest_anova_normality_enabled') && target.checked) {
               resetTtestNormalityDefaults();

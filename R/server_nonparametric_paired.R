@@ -9,7 +9,8 @@ register_nonparametric_paired_handlers <- function(
   dataset_fn,
   category_table_fn,
   labels_fn,
-  mark_settings_dirty
+  mark_settings_dirty,
+  app_language_fn = NULL
 ) {
   repeated_groups <- reactiveVal(list())
   active_list <- reactiveVal(NULL)
@@ -35,9 +36,10 @@ register_nonparametric_paired_handlers <- function(
   })
 
   output$nonparametric_paired_setup <- renderUI({
+    language <- statedu_current_language(app_language_fn)
     selected <- current_selected()
     if (length(selected) == 0) {
-      return(setup_empty_message("Complete Step 2 in the Data tab before setting up nonparametric paired tests."))
+      return(setup_empty_message("Complete Step 2 in the Data tab before setting up nonparametric paired tests.", language = language))
     }
     nonparametric_paired_setup_panel(nonparametric_paired_setup_state(
       selected_names = selected,
@@ -49,7 +51,8 @@ register_nonparametric_paired_handlers <- function(
       effect_size = isolate(effect_size()),
       median_iqr = isolate(median_iqr()),
       adjustment = isolate(adjustment()),
-      time_labels = isolate(current_time_labels())
+      time_labels = isolate(current_time_labels()),
+      language = language
     ))
   })
 
@@ -63,7 +66,8 @@ register_nonparametric_paired_handlers <- function(
     variables_fn = function() unique(unlist(repeated_groups(), use.names = FALSE)),
     variable_table_fn = variable_table_fn,
     labels_fn = labels_fn,
-    category_table_fn = category_table_fn
+    category_table_fn = category_table_fn,
+    language_fn = app_language_fn
   )
 
   observeEvent(input$nonparametric_paired_effect_size, {

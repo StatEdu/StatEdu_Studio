@@ -5,9 +5,9 @@ StatEdu Studio is distributed with source code available from:
 
   https://github.com/StatEdu/StatEdu_Studio_dev
 
-The StatEdu Studio application source code is intended to be
-distributed under the GNU General Public License, version 2 or later
-(GPL-2.0-or-later). See the LICENSE file included with this distribution.
+The StatEdu Studio application source code is distributed under the GNU
+General Public License, version 2 or later (GPL-2.0-or-later). See the
+LICENSE file included with this distribution.
 
 This installer also bundles third-party components, including Electron,
 Chromium, R, and CRAN packages. Their package names, versions, licenses,

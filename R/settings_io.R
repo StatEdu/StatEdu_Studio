@@ -102,6 +102,11 @@ settings_state_measurements <- function(state) {
 }
 
 settings_external_data_path <- function(settings, settings_path = NULL) {
+  absolute_path <- settings_scalar(settings$data_file_path %||% settings$data_file_absolute_path %||% "")
+  if (nzchar(absolute_path) && supported_data_file_extension(absolute_path) && valid_data_file_path(absolute_path)) {
+    return(normalizePath(absolute_path, winslash = "/", mustWork = TRUE))
+  }
+
   if (is.null(settings_path) || !nzchar(settings_path)) {
     return("")
   }
@@ -133,7 +138,7 @@ settings_embedded_data_file <- function(settings) {
   if (!supported_data_file_extension(file_name)) {
     return(NULL)
   }
-  restored_path <- tempfile("easyflow_data_", fileext = if (nzchar(extension)) paste0(".", extension) else "")
+  restored_path <- tempfile("statedu_data_", fileext = if (nzchar(extension)) paste0(".", extension) else "")
   writeBin(jsonlite::base64_dec(settings_scalar(embedded)), restored_path)
   file <- list(path = restored_path, name = file_name, restored = TRUE)
   if (excel_data_file_extension(file_name) && is.list(settings$data_file_options)) {
@@ -277,6 +282,7 @@ settings_restore_state <- function(settings) {
   if (!is.data.frame(category_labels)) {
     category_labels <- NULL
   }
+  user_missing_rules <- normalize_missing_rules(settings$user_missing_rules %||% NULL)
 
   data_step <- settings$data_step %||% ""
   list(
@@ -288,6 +294,7 @@ settings_restore_state <- function(settings) {
     variable_info = info,
     measurement_overrides = measurements,
     category_labels = category_labels,
+    user_missing_rules = user_missing_rules,
     selection_applied = isTRUE(settings$selection_applied) ||
       data_step %in% c("review_selected_variables", "category_labels"),
     roles_applied = isTRUE(settings$roles_applied) ||
@@ -342,7 +349,8 @@ prepare_settings_payload_data <- function(
   var_label_overrides = character(0),
   direct_var_labels = character(0),
   category_table = NULL,
-  category_labels = NULL
+  category_labels = NULL,
+  user_missing_rules = NULL
 ) {
   overrides <- measurement_overrides %||% character(0)
   if (length(direct_measurements) > 0) {
@@ -387,16 +395,19 @@ prepare_settings_payload_data <- function(
     variable_info = variable_info,
     measurement_overrides = overrides,
     var_label_overrides = labels,
-    category_labels = category_labels
+    category_labels = category_labels,
+    user_missing_rules = normalize_missing_rules(user_missing_rules)
   )
 }
 
 build_settings_object <- function(
   app_version,
+  app_language = "ko",
   data_step,
   active_step,
   data_view,
   data_file,
+  data_file_path = "",
   data_file_options = NULL,
   variable_info,
   measurement_overrides,
@@ -411,18 +422,21 @@ build_settings_object <- function(
   dependent_order,
   predictor_order,
   category_labels,
+  user_missing_rules = NULL,
   selected_variables,
   bootstrap_resamples,
   seed
 ) {
   variable_names <- if (is.null(variable_info)) character(0) else as.character(variable_info$name)
   list(
-    app = "easyflow_statistics",
+    app = "statedu_studio",
     version = app_version,
+    app_language = normalize_app_language(app_language),
     data_step = data_step,
     active_step = active_step,
     data_view = data_view,
     data_file = data_file,
+    data_file_path = data_file_path %||% "",
     data_file_options = data_file_options %||% list(),
     data_variables = I(variable_names),
     data_variable_info = I(if (is.null(variable_info)) list() else variable_info),
@@ -442,6 +456,7 @@ build_settings_object <- function(
     dependent_order = I(as.character(dependent_order)),
     predictor_order = I(as.character(predictor_order)),
     category_value_labels = I(if (is.null(category_labels)) list() else category_labels),
+    user_missing_rules = I(normalize_missing_rules(user_missing_rules)),
     selected_variables = I(as.character(selected_variables %||% character(0))),
     bootstrap_resamples = as.integer(bootstrap_resamples %||% 1000),
     seed = seed %||% default_seed()
@@ -450,10 +465,12 @@ build_settings_object <- function(
 
 prepare_current_settings_object <- function(
   app_version,
+  app_language = "ko",
   data_step,
   active_step,
   data_view,
   data_file,
+  data_file_path = "",
   data_file_options = NULL,
   variable_info = NULL,
   measurement_overrides = character(0),
@@ -463,6 +480,7 @@ prepare_current_settings_object <- function(
   direct_var_labels = character(0),
   category_table = NULL,
   category_labels = NULL,
+  user_missing_rules = NULL,
   selection_applied = FALSE,
   roles_applied = FALSE,
   filter_names = character(0),
@@ -483,16 +501,19 @@ prepare_current_settings_object <- function(
     var_label_overrides = var_label_overrides,
     direct_var_labels = direct_var_labels,
     category_table = category_table,
-    category_labels = category_labels
+    category_labels = category_labels,
+    user_missing_rules = user_missing_rules
   )
 
   list(
     settings = build_settings_object(
       app_version = app_version,
+      app_language = app_language,
       data_step = data_step,
       active_step = active_step,
       data_view = data_view,
       data_file = data_file,
+      data_file_path = data_file_path,
       data_file_options = data_file_options,
       variable_info = payload$variable_info,
       measurement_overrides = payload$measurement_overrides,
@@ -507,6 +528,7 @@ prepare_current_settings_object <- function(
       dependent_order = dependent_order,
       predictor_order = predictor_order,
       category_labels = payload$category_labels,
+      user_missing_rules = payload$user_missing_rules,
       selected_variables = selected_variables,
       bootstrap_resamples = bootstrap_resamples,
       seed = seed
@@ -536,6 +558,7 @@ current_settings_variable_info <- function(
 
 create_current_settings_fn <- function(
   app_version,
+  app_language_fn = NULL,
   input,
   current_data_file_fn,
   current_data_step_fn,
@@ -555,6 +578,7 @@ create_current_settings_fn <- function(
   control_names_fn,
   category_label_values_fn,
   category_label_table_data_fn,
+  user_missing_rules_fn = NULL,
   selection_applied_fn,
   roles_applied_fn,
   filter_names_fn,
@@ -584,10 +608,12 @@ create_current_settings_fn <- function(
 
     prepared <- prepare_current_settings_object(
       app_version = app_version,
+      app_language = if (is.function(app_language_fn)) app_language_fn() else input$app_language %||% "ko",
       data_step = current_data_step_fn(),
       active_step = active_step_fn(),
       data_view = data_view_fn(),
       data_file = if (is.null(file)) restored_data_file_fn() else file$name,
+      data_file_path = if (is.null(file)) "" else normalizePath(file$path, winslash = "/", mustWork = FALSE),
       data_file_options = data_file_options,
       variable_info = variable_info,
       measurement_overrides = measurement_overrides(),
@@ -597,6 +623,7 @@ create_current_settings_fn <- function(
       direct_var_labels = character(0),
       category_table = category_label_values_fn(),
       category_labels = category_label_table_data_fn(),
+      user_missing_rules = if (is.function(user_missing_rules_fn)) user_missing_rules_fn() else NULL,
       selection_applied = selection_applied_fn(),
       roles_applied = roles_applied_fn(),
       filter_names = filter_names_fn(),
@@ -632,7 +659,7 @@ write_settings_json_file <- function(settings, path) {
 }
 
 read_settings_json_file <- function(path) {
-  settings <- easyflow_time_expr(
+  settings <- statedu_time_expr(
     "read_settings_json_file",
     jsonlite::fromJSON(path),
     detail = sprintf("file=%s", basename(as.character(path %||% "")))

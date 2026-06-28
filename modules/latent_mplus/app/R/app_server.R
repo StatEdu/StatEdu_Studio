@@ -48,7 +48,7 @@ create_app_server <- function(app_version) {
     try(shiny::addResourcePath("latent_outputs", normalizePath(app_output_root, winslash = "/", mustWork = FALSE)), silent = TRUE)
 
     session$onSessionEnded(function() {
-      if (identical(Sys.getenv("EASYFLOW_STOP_ON_SESSION_END"), "1")) {
+      if (identical(Sys.getenv("STATEDU_STOP_ON_SESSION_END"), "1")) {
         stopApp()
       }
     })
@@ -1377,10 +1377,10 @@ create_app_server <- function(app_version) {
 
         observeEvent(input[[paste0(id, "_go_data_tab")]], updateNavbarPage(session, "main_menu", selected = "data"))
         observeEvent(input[[paste0(id, "_build_dictionary")]], {
-          showNotification("Dictionary builder placeholder. This will write data_dictionary.csv.", type = "message")
+          showNotification("Dictionary builder is not enabled in this release. Use an existing data_dictionary.csv file.", type = "warning")
         })
         observeEvent(input[[paste0(id, "_build_cfg")]], {
-          showNotification("CFG builder placeholder. This will write CFG.yml.", type = "message")
+          showNotification("CFG builder is not enabled in this release. Use an existing CFG.yml file.", type = "warning")
         })
       })
     }

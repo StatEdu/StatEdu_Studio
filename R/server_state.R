@@ -53,6 +53,7 @@ create_server_state <- function() {
     step3_variable_info = reactiveVal(NULL),
     calculated_variables = reactiveVal(data.frame(check.names = FALSE)),
     renamed_variables = reactiveVal(character(0)),
+    user_missing_rules = reactiveVal(data.frame(check.names = FALSE)),
     active_data_file = reactiveVal(NULL),
     reset_on_dataset_load = reactiveVal(FALSE),
     unsaved_settings = reactiveVal(FALSE),

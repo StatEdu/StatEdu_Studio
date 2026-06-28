@@ -16,7 +16,7 @@ expect_true <- function(value, label) {
 }
 
 message("Checking paired guard conditions...")
-expect_true(grepl('doi: "10.22934/easyflow.statistics"', paste(readLines(file.path(repo_root, "CITATION.cff"), warn = FALSE), collapse = "\n"), fixed = TRUE), "Expected EFS citation DOI to use the registered easyflow.statistics DOI")
+expect_true(grepl('doi: "10.22934/statedu.studio"', paste(readLines(file.path(repo_root, "CITATION.cff"), warn = FALSE), collapse = "\n"), fixed = TRUE), "Expected CITATION.cff to include the active StatEdu Studio DOI")
 data <- data.frame(
   pre = c(1, 2, 3, 4, 5),
   post = c(2, 3, 5, 7, 11),
@@ -78,9 +78,9 @@ paired_three_setup <- paired_setup_state(
 paired_three_setup_html <- as.character(htmltools::renderTags(paired_setup_panel(paired_three_setup))$html)
 expect_true(grepl("paired_mean_sd", paired_three_setup_html, fixed = TRUE), "Expected paired M +/- SD option to remain visible with 3+ repeated variables")
 expect_true(grepl("paired_median_iqr", paired_three_setup_html, fixed = TRUE), "Expected paired Median(Q1~Q3) option to remain visible with 3+ repeated variables")
-expect_true(grepl("Repeated variable labels", paired_three_setup_html, fixed = TRUE), "Expected repeated variable labels to be added for 3+ repeated variables")
+expect_true(grepl("paired_time_label_1", paired_three_setup_html, fixed = TRUE), "Expected repeated variable label inputs to be added for 3+ repeated variables")
 expect_true(grepl("paired_options_tabs", paired_three_setup_html, fixed = TRUE), "Expected paired 3+ options to render in tabs")
-expect_true(grepl(">Options<", paired_three_setup_html, fixed = TRUE) && grepl(">Repeated<", paired_three_setup_html, fixed = TRUE), "Expected paired 3+ options to split default and repeated settings into tabs")
+expect_true(grepl('data-value="Options"', paired_three_setup_html, fixed = TRUE) && grepl('data-value="Repeated"', paired_three_setup_html, fixed = TRUE), "Expected paired 3+ options to split default and repeated settings into tabs")
 expect_true(!grepl("paired-options-disabled-tab", paired_three_setup_html, fixed = TRUE), "Expected paired repeated options tab to be enabled with a 3+ row")
 
 valid <- prepare_paired_results(data, "pre", "post", variable_info, options = list(assumption_check = FALSE, effect_size = TRUE))

@@ -9,7 +9,8 @@ register_logistic_handlers <- function(
   variable_table_fn,
   labels_fn,
   category_table_fn,
-  mark_settings_dirty
+  mark_settings_dirty,
+  app_language_fn = NULL
 ) {
   logistic_dependents <- reactiveVal(character(0))
   logistic_block1 <- reactiveVal(character(0))
@@ -111,9 +112,10 @@ register_logistic_handlers <- function(
   }
 
   output$logistic_setup <- renderUI({
+    language <- statedu_current_language(app_language_fn)
     selected <- as.character(selected_names_fn() %||% character(0))
     if (length(selected) == 0) {
-      return(setup_empty_message("Complete Step 2 in the Data tab before setting up logistic regression."))
+      return(setup_empty_message("Complete Step 2 in the Data tab before setting up logistic regression.", language = language))
     }
 
     logistic_dependents(normalize_selected(logistic_dependents()))
@@ -137,7 +139,8 @@ register_logistic_handlers <- function(
       active_block = logistic_active_block(),
       show_b_se = logistic_show_b_se(),
       show_extra_r2 = logistic_show_extra_r2(),
-      split_ci = logistic_split_ci()
+      split_ci = logistic_split_ci(),
+      language = language
     )
 
     logistic_setup_panel(setup, NULL)
@@ -198,7 +201,8 @@ register_logistic_handlers <- function(
     variables_fn = function() unique(c(logistic_dependents(), logistic_block1(), logistic_block2(), logistic_block3())),
     variable_table_fn = variable_table_fn,
     labels_fn = labels_fn,
-    category_table_fn = category_table_fn
+    category_table_fn = category_table_fn,
+    language_fn = app_language_fn
   )
 
   observeEvent(input$logistic_available_active, {

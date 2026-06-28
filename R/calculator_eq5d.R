@@ -560,24 +560,32 @@ eq5d_score <- function(items, type = "5L", value_set = "KR", profile_11111_as_on
   score
 }
 
-eq5d_calculator_result <- function(data, selected, type = "5L", value_set = "KR", variable_choices = NULL, profile_11111_as_one = TRUE) {
+eq5d_calculator_result <- function(data, selected, type = "5L", value_set = "KR", variable_choices = NULL, profile_11111_as_one = TRUE, output_name = "eq5d_score") {
   selected <- as.character(selected)
   selected <- selected[nzchar(selected)]
+  output_name <- trimws(as.character(output_name %||% "eq5d_score"))
+  if (!length(output_name) || is.na(output_name[[1]]) || !nzchar(output_name[[1]])) output_name <- "eq5d_score"
+  output_name <- output_name[[1]]
   if (length(selected) != 5 || anyDuplicated(selected)) stop("Select 5 different EQ-5D item variables.", call. = FALSE)
   if (is.null(data) || !all(selected %in% names(data))) stop("Selected variables are not available in the loaded data.", call. = FALSE)
   if (!is.null(variable_choices) && !all(selected %in% variable_choices)) stop("Selected EQ-5D item variables are not available in the loaded data.", call. = FALSE)
   result <- as.data.frame(data, stringsAsFactors = FALSE, check.names = FALSE)
-  result[["eq5d_score"]] <- eq5d_score(result[, selected, drop = FALSE], type = type, value_set = value_set, profile_11111_as_one = profile_11111_as_one)
+  result[[output_name]] <- eq5d_score(result[, selected, drop = FALSE], type = type, value_set = value_set, profile_11111_as_one = profile_11111_as_one)
   result
 }
 
-eq5d_calculator_tab_panel <- function() {
+eq5d_calculator_tab_panel <- function(language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   tabPanel(
     "EQ5D",
     value = "calculator_eq5d",
     div(
       class = "page-shell",
-      div(class = "app-heading", h1("EQ-5D Calculator"), div("Select the 5 EQ-5D item variables and add eq5d_score to the current data.", class = "app-subtitle")),
+      div(
+        class = "app-heading",
+        h1(statedu_text(language, "EQ-5D Calculator", statedu_utf8("45512d354420eab384ec82b0eab8b0"))),
+        div(statedu_text(language, "Select the 5 EQ-5D item variables and add eq5d_score to the current data.", statedu_utf8("45512d35442035eab09c20ebacb8ed95ad20ebb380ec8898eba5bc20ec84a0ed839ded9598eab3a020657135645f73636f7265eba5bc20ed9884ec9eac20eb8db0ec9db4ed84b0ec979020ecb694eab080ed95a9eb8b88eb8ba42e")), class = "app-subtitle")
+      ),
       div(
         class = "workspace-panel frequencies-workspace-panel hint8-calculator-workspace",
         style = "min-width:980px;overflow-x:auto;",
@@ -588,8 +596,8 @@ eq5d_calculator_tab_panel <- function() {
           class = "analysis-action-row calculator-action-row",
           div(
             class = "calculator-action-row-controls",
-            actionButton("run_eq5d_calculator", "Calculate", class = "btn btn-primary"),
-            downloadButton("download_eq5d_calculator", "Download CSV", class = "btn btn-default")
+            actionButton("run_eq5d_calculator", statedu_ui_label("calculate", language), class = "btn btn-primary"),
+            downloadButton("download_eq5d_calculator", statedu_ui_label("download_csv", language), class = "btn btn-default")
           )
         ),
         uiOutput("eq5d_calculator_summary"),
@@ -657,15 +665,29 @@ eq5d_reference_table <- function(type = "5L", value_set = "KR") {
   )
 }
 
-eq5d_output_table <- function() {
-  tags$table(
-    class = "hint8-initial-table eq5d-initial-table eq5d-output-table",
-    tags$tbody(tags$tr(tags$td("Score"), tags$td("eq5d_score")))
+eq5d_output_variable_name <- function(input) {
+  value <- input$eq5d_output_var %||% "eq5d_score"
+  value <- trimws(as.character(value))
+  if (!length(value) || is.na(value[[1]]) || !nzchar(value[[1]])) "eq5d_score" else value[[1]]
+}
+
+eq5d_output_table <- function(input, language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
+  output_name <- eq5d_output_variable_name(input)
+  div(
+    class = "calculator-output-field",
+    textInput(
+      "eq5d_output_var",
+      statedu_text(language, "Variable name", statedu_utf8("ebb380ec8898ebaa85")),
+      value = output_name,
+      width = "100%"
+    )
   )
 }
 
-eq5d_setup_ui <- function(file, data, variable_info, input) {
-  if (is.null(file)) return(setup_empty_message("Load a data file in the Data tab before using the EQ-5D calculator."))
+eq5d_setup_ui <- function(file, data, variable_info, input, language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
+  if (is.null(file)) return(setup_empty_message(statedu_text(language, "Load a data file in the Data tab before using the EQ-5D calculator.", statedu_utf8("eb8db0ec9db4ed84b020ed83adec9790ec849c20eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a820ed9b842045512d354420eab384ec82b0eab8b0eba5bc20ec82acec9aa9ed9598ec84b8ec9a942e")), language = language))
   choices <- eq5d_variable_choices(data, variable_info)
   available_items <- analysis_variable_items(choices, variable_info, character(0))
   specs <- eq5d_item_specs()
@@ -677,65 +699,86 @@ eq5d_setup_ui <- function(file, data, variable_info, input) {
   initial_score <- if (isTRUE(profile_as_one)) 1 else 1 - reference$constant
   variable_inputs <- lapply(seq_len(nrow(specs)), function(index) {
     id <- specs$id[[index]]
-    hint8_item_select_control(id, specs$label[[index]], choices, selected = isolate(input[[id]]) %||% "")
+    hint8_item_select_control(id, specs$label[[index]], choices, selected = isolate(input[[id]]) %||% "", language = language)
   })
   div(
     class = "frequencies-setup-grid metabolic-setup-grid",
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
-      analysis_field_label_tag("Variables"),
+      analysis_field_label_tag("Variables", language = language),
       analysis_transfer_listbox_input("eq5d_available", available_items, selected = isolate(input$eq5d_available), size = 17)
     ),
     div(class = "analysis-transfer-controls hint8-transfer-spacer"),
     div(
       class = "analysis-transfer-column analysis-transfer-panel metabolic-target-panel eq5d-target-panel",
-      analysis_field_label_tag("EQ-5D variables"),
+      analysis_field_label_tag("EQ-5D variables", language = language),
       div(
         class = "eq5d-type-control",
-        selectInput("eq5d_type", "Type", choices = c("EQ-5D-5L" = "5L", "EQ-5D-3L" = "3L"), selected = selected_type, width = "100%")
+        selectInput("eq5d_type", statedu_ui_label("type", language), choices = c("EQ-5D-5L" = "5L", "EQ-5D-3L" = "3L"), selected = selected_type, width = "100%")
       ),
       div(class = "metabolic-variable-input-grid", variable_inputs)
     ),
     div(
-      class = "analysis-options-column analysis-options-panel metabolic-reference-panel eq5d-initial-panel",
-      div(class = "analysis-option-title", "Initial values"),
-      div(
-        class = "hint8-initial-content eq5d-initial-content",
-        selectInput(
-          "eq5d_value_set",
-          "Country / value set",
-          choices = value_set_choices,
-          selected = selected_value_set,
-          width = "100%"
+      class = "analysis-options-column analysis-options-panel metabolic-reference-panel eq5d-initial-panel calculator-tabbed-panel",
+      tabsetPanel(
+        type = "tabs",
+        tabPanel(
+          statedu_text(language, "Settings", statedu_utf8("ec84a4eca095")),
+          value = "eq5d_settings_tab",
+          div(
+            class = "hint8-initial-content eq5d-initial-content calculator-settings-tab",
+            selectInput(
+              "eq5d_value_set",
+              statedu_text(language, "Country / value set", statedu_utf8("eab5adeab080202f20eab09220ec84b8ed8ab8")),
+              choices = value_set_choices,
+              selected = selected_value_set,
+              width = "100%"
+            ),
+            div(
+              class = "step-summary hint8-initial-summary eq5d-initial-summary",
+              div(sprintf("%s: %.3f", statedu_ui_label("initial_score", language), initial_score), class = "step-summary-title"),
+              div(statedu_text(language, "When checked, profile 11111 is scored as 1.000. When unchecked, the formula score excludes only the constant.", statedu_utf8("ec84a0ed839ded9598eba9b42070726f66696c65203131313131ec9d8420312e303030ec9cbceba19c20eca090ec8898ed9994ed95a9eb8b88eb8ba42e20ec84a0ed839ded9598eca78020ec958aec9cbceba9b420eab3b5ec8b9d20eca090ec8898ec9790ec849c20ec8381ec8898eba78c20eca09cec99b8ed95a9eb8b88eb8ba42e")), class = "step-summary-detail")
+            ),
+            checkboxInput(
+              "eq5d_profile_11111_as_one",
+              "profile 11111 -> EQ5D = 1.0",
+              value = profile_as_one
+            )
+          )
         ),
-        div(
-          class = "step-summary hint8-initial-summary eq5d-initial-summary",
-          div(sprintf("Initial score: %.3f", initial_score), class = "step-summary-title"),
-          div("When checked, profile 11111 is scored as 1.000. When unchecked, the formula score excludes only the constant.", class = "step-summary-detail")
+        tabPanel(
+          statedu_text(language, "Value table", statedu_utf8("eab09220ed919c")),
+          value = "eq5d_values_tab",
+          div(
+            class = "calculator-reference-tab",
+            div(sprintf("%s: %s", statedu_ui_label("value_set", language), reference$label), class = "eq5d-value-set-label"),
+            eq5d_reference_table(selected_type, selected_value_set)
+          )
         ),
-        checkboxInput(
-          "eq5d_profile_11111_as_one",
-          "profile 11111 -> EQ5D = 1.0",
-          value = profile_as_one
-        ),
-        div(sprintf("Value set: %s", reference$label), class = "eq5d-value-set-label"),
-        eq5d_reference_table(selected_type, selected_value_set),
-        div(class = "analysis-option-title calculator-output-title", "Output"),
-        eq5d_output_table()
+        tabPanel(
+          statedu_ui_label("output", language),
+          value = "eq5d_output_tab",
+          div(
+            class = "calculator-reference-tab calculator-output-tab",
+            eq5d_output_table(input, language)
+          )
+        )
       )
     )
   )
 }
 
-register_eq5d_calculator_handlers <- function(input, output, session, dataset_fn, current_data_file_fn, variable_info_fn, add_calculated_variable_fn) {
+register_eq5d_calculator_handlers <- function(input, output, session, dataset_fn, current_data_file_fn, variable_info_fn, add_calculated_variable_fn, language_fn = NULL) {
   output$eq5d_loaded_message <- renderText({
+    statedu_current_language(language_fn)
     file <- current_data_file_fn()
     hint8_loaded_message_text(file, if (is.null(file)) NULL else dataset_fn())
   })
   output$eq5d_calculator_setup <- renderUI({
+    language <- statedu_current_language(language_fn)
     file <- current_data_file_fn()
     data <- if (is.null(file)) NULL else dataset_fn()
-    eq5d_setup_ui(file, data, if (is.null(file)) NULL else variable_info_fn(), input)
+    eq5d_setup_ui(file, data, if (is.null(file)) NULL else variable_info_fn(), input, language = language)
   })
   observeEvent(input$eq5d_available, {
     picked <- utils::tail(as.character(input$eq5d_available %||% ""), 1)
@@ -747,22 +790,25 @@ register_eq5d_calculator_handlers <- function(input, output, session, dataset_fn
     if (!is.na(empty_index)) updateSelectInput(session, eq5d_item_specs()$id[[empty_index]], selected = picked)
   }, ignoreInit = TRUE)
   result <- eventReactive(input$run_eq5d_calculator, {
+    language <- statedu_current_language(language_fn)
     if (is.null(current_data_file_fn())) {
-      showNotification("Load a data file before calculating EQ-5D.", type = "warning", duration = 5)
+      showNotification(statedu_text(language, "Load a data file before calculating EQ-5D.", statedu_utf8("45512d3544eba5bc20eab384ec82b0ed9598eab8b020eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e")), type = "warning", duration = 5)
       return(NULL)
     }
     tryCatch({
       variable_choices <- eq5d_variable_choices(dataset_fn(), variable_info_fn())
+      output_name <- eq5d_output_variable_name(input)
       result_data <- eq5d_calculator_result(
         dataset_fn(),
         eq5d_selected_variables(input),
         type = input$eq5d_type %||% "5L",
         value_set = input$eq5d_value_set %||% "KR",
         variable_choices = variable_choices,
-        profile_11111_as_one = isTRUE(input$eq5d_profile_11111_as_one)
+        profile_11111_as_one = isTRUE(input$eq5d_profile_11111_as_one),
+        output_name = output_name
       )
-      add_calculated_variable_fn("eq5d_score", result_data[["eq5d_score"]], var_label = "EQ-5D score", measurement = "continuous")
-      showNotification("eq5d_score was added to the current data.", type = "message", duration = 5)
+      add_calculated_variable_fn(output_name, result_data[[output_name]], var_label = "EQ-5D score", measurement = "continuous")
+      showNotification(sprintf("%s was added to the current data.", output_name), type = "message", duration = 5)
       result_data
     }, error = function(error) {
       showNotification(conditionMessage(error), type = "warning", duration = 6)
@@ -770,15 +816,17 @@ register_eq5d_calculator_handlers <- function(input, output, session, dataset_fn
     })
   }, ignoreInit = TRUE)
   output$eq5d_calculator_summary <- renderUI({
+    statedu_current_language(language_fn)
     data <- result()
     if (is.null(data)) return(NULL)
-    div(class = "empty-message", div(sprintf("Calculated eq5d_score for %s rows. The variable is available in analysis menus.", nrow(data))))
+    output_name <- eq5d_output_variable_name(input)
+    div(class = "empty-message", div(sprintf("Calculated %s for %s rows. The variable is available in analysis menus.", output_name, nrow(data))))
   })
   output$eq5d_calculator_preview <- DT::renderDT({
     data <- result()
     if (is.null(data)) return(NULL)
     selected <- eq5d_selected_variables(input)
-    preview_names <- intersect(c(selected, "eq5d_score"), names(data))
+    preview_names <- intersect(c(selected, eq5d_output_variable_name(input)), names(data))
     DT::datatable(utils::head(data[, preview_names, drop = FALSE], 50), rownames = FALSE, filter = "top", options = list(pageLength = 10, scrollX = TRUE))
   })
   output$download_eq5d_calculator <- downloadHandler(
@@ -791,7 +839,8 @@ register_eq5d_calculator_handlers <- function(input, output, session, dataset_fn
           eq5d_selected_variables(input),
           type = input$eq5d_type %||% "5L",
           value_set = input$eq5d_value_set %||% "KR",
-          profile_11111_as_one = isTRUE(input$eq5d_profile_11111_as_one)
+          profile_11111_as_one = isTRUE(input$eq5d_profile_11111_as_one),
+          output_name = eq5d_output_variable_name(input)
         )
       }
       utils::write.csv(data, file, row.names = FALSE, na = "")

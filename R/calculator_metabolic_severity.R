@@ -81,7 +81,8 @@ metabolic_severity_result <- function(data, selected) {
   result
 }
 
-metabolic_severity_calculator_tab_panel <- function() {
+metabolic_severity_calculator_tab_panel <- function(language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   tabPanel(
     "Metabolic Severity",
     value = "calculator_metabolic_severity",
@@ -89,21 +90,21 @@ metabolic_severity_calculator_tab_panel <- function() {
       class = "page-shell",
       div(
         class = "app-heading",
-        h1("Metabolic Severity Score Calculator"),
-        div("Select variables and add MBSS_overall and MBSS to the current data.", class = "app-subtitle")
+        h1(statedu_text(language, "Metabolic Severity Score Calculator", statedu_utf8("eb8c80ec82aceca69ded9b84eab5b020eca491eca69deb8f8420eab384ec82b0eab8b0"))),
+        div(statedu_text(language, "Select variables and add MBSS_overall and MBSS to the current data.", statedu_utf8("ebb380ec8898eba5bc20ec84a0ed839ded9598eab3a0204d4253535f6f766572616c6ceab3bc204d425353eba5bc20ed9884ec9eac20eb8db0ec9db4ed84b0ec979020ecb694eab080ed95a9eb8b88eb8ba42e")), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel metabolic-calculator-workspace",
         style = "min-width:980px;overflow-x:auto;",
-        h3("Metabolic severity score"),
+        h3(statedu_text(language, "Metabolic severity score", statedu_utf8("eb8c80ec82aceca69ded9b84eab5b020eca491eca69deb8f8420eca090ec8898"))),
         div(class = "load-message", textOutput("mbss_loaded_message")),
         uiOutput("mbss_calculator_setup"),
         div(
           class = "analysis-action-row calculator-action-row",
           div(
             class = "calculator-action-row-controls",
-            actionButton("run_mbss_calculator", "Calculate", class = "btn btn-primary"),
-            downloadButton("download_mbss_calculator", "Download CSV", class = "btn btn-default")
+            actionButton("run_mbss_calculator", statedu_ui_label("calculate", language), class = "btn btn-primary"),
+            downloadButton("download_mbss_calculator", statedu_ui_label("download_csv", language), class = "btn btn-default")
           )
         ),
         uiOutput("mbss_calculator_summary"),
@@ -113,9 +114,10 @@ metabolic_severity_calculator_tab_panel <- function() {
   )
 }
 
-metabolic_severity_setup_ui <- function(file, data, variable_info, input) {
+metabolic_severity_setup_ui <- function(file, data, variable_info, input, language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   if (is.null(file)) {
-    return(setup_empty_message("Load a data file in the Data tab before using the metabolic severity calculator."))
+    return(setup_empty_message(statedu_text(language, "Load a data file in the Data tab before using the metabolic severity calculator.", statedu_utf8("eb8db0ec9db4ed84b020ed83adec9790ec849c20eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a820ed9b8420eb8c80ec82aceca69ded9b84eab5b020eca491eca69deb8f8420eab384ec82b0eab8b0eba5bc20ec82acec9aa9ed9598ec84b8ec9a942e")), language = language))
   }
   choices <- names(data %||% data.frame())
   specs <- metabolic_severity_variable_specs()
@@ -125,7 +127,7 @@ metabolic_severity_setup_ui <- function(file, data, variable_info, input) {
     selectInput(
       paste0("mbss_", id),
       specs$label[[index]],
-      choices = c("Select variable" = "", choices),
+      choices = c(stats::setNames("", statedu_ui_label("select_variable", language)), choices),
       selected = isolate(input[[paste0("mbss_", id)]]) %||% "",
       width = "100%"
     )
@@ -135,49 +137,51 @@ metabolic_severity_setup_ui <- function(file, data, variable_info, input) {
     class = "frequencies-setup-grid metabolic-setup-grid",
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
-      analysis_field_label_tag("Variables"),
+      analysis_field_label_tag("Variables", language = language),
       analysis_transfer_listbox_input("mbss_available", available_items, selected = isolate(input$mbss_available), size = 17)
     ),
     div(class = "analysis-transfer-controls hint8-transfer-spacer"),
     div(
       class = "analysis-transfer-column analysis-transfer-panel metabolic-target-panel mbss-target-panel",
-      analysis_field_label_tag("Severity score variables"),
+      analysis_field_label_tag("Severity score variables", language = language),
       div(class = "metabolic-variable-input-grid", variable_inputs)
     ),
     div(
       class = "analysis-options-column analysis-options-panel metabolic-reference-panel mbss-reference-panel",
-      div(class = "analysis-option-title", "Formula"),
-      div(class = "step-summary mbss-formula-summary", div("Korean adults aged 20 to 59", class = "step-summary-title")),
+      div(class = "analysis-option-title", statedu_ui_label("formula", language)),
+      div(class = "step-summary mbss-formula-summary", div(statedu_text(language, "Korean adults aged 20 to 59", statedu_utf8("ed959ceab5ad20ec84b1ec9db82032302d3539ec84b8")), class = "step-summary-title")),
       tags$table(
         class = "hint8-initial-table metabolic-reference-table mbss-formula-table",
         tags$tbody(
-          tags$tr(tags$td("Age range"), tags$td("20 to 59")),
+          tags$tr(tags$td(statedu_text(language, "Age range", statedu_utf8("ec97b0eba0b920ebb294ec9c84"))), tags$td("20 to 59")),
           tags$tr(tags$td("TG transform"), tags$td("ln(TG)"))
         )
       ),
-      div(class = "analysis-option-title calculator-output-title mbss-output-title", "Output"),
+      div(class = "analysis-option-title calculator-output-title mbss-output-title", statedu_ui_label("output", language)),
       tags$table(
         class = "hint8-initial-table metabolic-reference-table mbss-output-table",
         tags$tbody(
-          tags$tr(tags$td("Overall score"), tags$td("MBSS_overall")),
-          tags$tr(tags$td("Age-specific score"), tags$td("MBSS"))
+          tags$tr(tags$td(statedu_text(language, "Overall score", statedu_utf8("eca084ecb2b420eca090ec8898"))), tags$td("MBSS_overall")),
+          tags$tr(tags$td(statedu_text(language, "Age-specific score", statedu_utf8("ec97b0eba0b9ebb38420eca090ec8898"))), tags$td("MBSS"))
         )
       )
     )
   )
 }
 
-register_metabolic_severity_calculator_handlers <- function(input, output, session, dataset_fn, current_data_file_fn, variable_info_fn, add_calculated_variable_fn) {
+register_metabolic_severity_calculator_handlers <- function(input, output, session, dataset_fn, current_data_file_fn, variable_info_fn, add_calculated_variable_fn, language_fn = NULL) {
   output$mbss_loaded_message <- renderText({
+    statedu_current_language(language_fn)
     file <- current_data_file_fn()
     metabolic_loaded_message_text(file, if (is.null(file)) NULL else dataset_fn())
   })
 
   output$mbss_calculator_setup <- renderUI({
+    language <- statedu_current_language(language_fn)
     file <- current_data_file_fn()
     data <- if (is.null(file)) NULL else dataset_fn()
     variable_info <- if (is.null(file)) NULL else variable_info_fn()
-    metabolic_severity_setup_ui(file, data, variable_info, input)
+    metabolic_severity_setup_ui(file, data, variable_info, input, language = language)
   })
 
   observeEvent(input$mbss_available, {
@@ -193,15 +197,16 @@ register_metabolic_severity_calculator_handlers <- function(input, output, sessi
   }, ignoreInit = TRUE)
 
   result <- eventReactive(input$run_mbss_calculator, {
+    language <- statedu_current_language(language_fn)
     if (is.null(current_data_file_fn())) {
-      showNotification("Load a data file before calculating metabolic severity.", type = "warning", duration = 5)
+      showNotification(statedu_text(language, "Load a data file before calculating metabolic severity.", statedu_utf8("eb8c80ec82aceca69ded9b84eab5b020eca491eca69deb8f84eba5bc20eab384ec82b0ed9598eab8b020eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e")), type = "warning", duration = 5)
       return(NULL)
     }
     tryCatch({
       result_data <- metabolic_severity_result(dataset_fn(), metabolic_severity_selected_variables(input))
       add_calculated_variable_fn("MBSS_overall", result_data[["MBSS_overall"]], var_label = "Metabolic Syndrome severity scores overall", measurement = "continuous")
       add_calculated_variable_fn("MBSS", result_data[["MBSS"]], var_label = "Metabolic Syndrome severity scores", measurement = "continuous")
-      showNotification("MBSS_overall and MBSS were added to the current data.", type = "message", duration = 5)
+      showNotification(statedu_text(language, "MBSS_overall and MBSS were added to the current data.", statedu_utf8("4d4253535f6f766572616c6cea6b0204d425353eab08020ed9884ec9eac20eb8db0ec9db4ed84b0ec979020ecb694eab080eb9098ec9788ec8ab5eb8b88eb8ba42e")), type = "message", duration = 5)
       result_data
     }, error = function(error) {
       showNotification(conditionMessage(error), type = "warning", duration = 6)
@@ -210,6 +215,7 @@ register_metabolic_severity_calculator_handlers <- function(input, output, sessi
   }, ignoreInit = TRUE)
 
   output$mbss_calculator_summary <- renderUI({
+    statedu_current_language(language_fn)
     data <- result()
     if (is.null(data)) return(NULL)
     div(class = "empty-message", div(sprintf("Calculated MBSS_overall and MBSS for %s rows. The variables are available in analysis menus.", nrow(data))))

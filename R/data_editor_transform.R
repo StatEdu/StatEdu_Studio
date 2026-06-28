@@ -67,8 +67,8 @@ transform_allowed_functions <- function() {
   )
 }
 
-transform_template_choices <- function() {
-  c(
+transform_template_choices <- function(language = statedu_initial_language()) {
+  analysis_ui_choices(c(
     "Choose a template..." = "",
     "Copy variable" = "copy",
     "Mean of selected variables" = "row_mean",
@@ -78,7 +78,7 @@ transform_template_choices <- function() {
     "Square" = "square",
     "Reverse 1-5 scale" = "reverse_1_5",
     "High/low by mean" = "high_low_mean"
-  )
+  ), language)
 }
 
 transform_quote_variable <- function(name) {
@@ -357,14 +357,31 @@ transform_function_groups <- function() {
   )
 }
 
-transform_function_groups_ui <- function() {
+transform_function_group_labels <- function(language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
+  c(
+    "Math" = statedu_text(language, "Math", statedu_utf8("ec8898ed9599")),
+    "Row statistics" = statedu_text(language, "Row statistics", statedu_utf8("ed968920ed86b5eab384")),
+    "Statistics" = statedu_text(language, "Statistics", statedu_utf8("ed86b5eab384")),
+    "Condition" = statedu_text(language, "Condition", statedu_utf8("eca1b0eab1b4")),
+    "Text" = statedu_text(language, "Text", statedu_utf8("ed858dec8aa4ed8ab8")),
+    "Type conversion" = statedu_text(language, "Type conversion", statedu_utf8("ec9ca0ed989520ebb380ed9998")),
+    "Date" = statedu_text(language, "Date", statedu_utf8("eb82a0eca79c")),
+    "Missing values" = statedu_text(language, "Missing values", statedu_utf8("eab2b0ecb8a1eab092"))
+  )
+}
+
+transform_function_groups_ui <- function(language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   groups <- transform_function_groups()
+  labels <- transform_function_group_labels(language)
+  choices <- stats::setNames(names(groups), unname(labels[names(groups)]))
   div(
     class = "variable-transform-function-picker",
     selectInput(
       "variable_transform_function_group",
-      "Function type",
-      choices = stats::setNames(names(groups), names(groups)),
+      statedu_text(language, "Function type", statedu_utf8("ed95a8ec889820ec9ca0ed9895")),
+      choices = choices,
       selected = names(groups)[[1]],
       selectize = FALSE,
       width = "100%"
@@ -373,8 +390,10 @@ transform_function_groups_ui <- function() {
   )
 }
 
-transform_function_buttons_ui <- function(group_name) {
+transform_function_buttons_ui <- function(group_name, language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   groups <- transform_function_groups()
+  labels <- transform_function_group_labels(language)
   group_name <- as.character(group_name %||% names(groups)[[1]])
   group_name <- if (length(group_name) == 0) names(groups)[[1]] else group_name[[1]]
   if (!group_name %in% names(groups)) {
@@ -383,7 +402,7 @@ transform_function_buttons_ui <- function(group_name) {
 
   div(
     class = "variable-transform-function-group",
-    div(class = "variable-transform-function-title", group_name),
+    div(class = "variable-transform-function-title", labels[[group_name]] %||% group_name),
     div(
       class = "variable-transform-function-list",
       lapply(groups[[group_name]], function(function_name) {
@@ -397,41 +416,59 @@ transform_function_buttons_ui <- function(group_name) {
   )
 }
 
-data_editor_variable_transformation_panel <- function() {
+data_editor_variable_transformation_panel <- function(language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
+  options(statedu.app_language = language)
   div(
     class = "page-shell",
     div(
       class = "app-heading",
-      h1("Variable Transformation"),
-      div("Create a new variable with a quick formula or a custom expression.", class = "app-subtitle")
+      h1(statedu_text(language, "Variable Transformation", statedu_utf8("ebb380ec889820ebb380ed9998"))),
+      div(
+        statedu_text(
+          language,
+          "Create a new variable with a quick formula or a custom expression.",
+          statedu_utf8("ebb9a0eba5b820ec8898ec8b9d20eb9890eb8a9420ec82acec9aa9ec9e9020ec8898ec8b9dec9cbceba19c20ec838820ebb380ec8898eba5bc20eba78ceb93adeb8b88eb8ba42e")
+        ),
+        class = "app-subtitle"
+      )
     ),
     div(
       class = "workspace-panel frequencies-workspace-panel data-editor-workspace",
-      analysis_workspace_heading("Variable transformation", "variable_transform"),
+      analysis_workspace_heading("Variable transformation", "variable_transform", language = language),
       analysis_workspace_body(
         "variable_transform",
         div(
           class = "variable-transform-grid",
           div(
             class = "analysis-transfer-column analysis-transfer-panel",
-            analysis_field_label_tag("Variables"),
+            analysis_field_label_tag("Variables", language = language),
             uiOutput("variable_transform_variable_list"),
             div(
               class = "analysis-action-row variable-transform-inline-actions",
-              actionButton("variable_transform_insert", "Insert variable(s)", class = "btn btn-default btn-sm")
+              actionButton("variable_transform_insert", analysis_ui_text("Insert variable(s)", language), class = "btn btn-default btn-sm")
             )
           ),
           div(
             class = "analysis-options-column analysis-options-panel variable-transform-options",
             div(class = "analysis-option-group",
-              div(class = "analysis-option-title", "1. Name and type"),
+              div(class = "analysis-option-title", statedu_text(language, "1. Name and type", statedu_utf8("312e20ec9db4eba684eab3bc20ec9ca0ed9895"))),
               div(
                 class = "variable-transform-two-column",
-                textInput("variable_transform_name", "New variable name", value = "", width = "100%", placeholder = "new_variable"),
+                textInput("variable_transform_name", analysis_ui_text("New variable name", language), value = "", width = "100%", placeholder = "new_variable"),
                 selectInput(
                   "variable_transform_measurement",
-                  "Variable type",
-                  choices = c("Infer automatically" = "", "Continuous" = "continuous", "Ordered" = "ordered", "Categorical" = "category", "Binary" = "binary"),
+                  analysis_ui_text("Variable type", language),
+                  choices = stats::setNames(
+                    c("", "continuous", "ordered", "category", "binary"),
+                    c(
+                      statedu_text(language, "Infer automatically", statedu_utf8("ec9e90eb8f9920ecb694eba1a0")),
+                      statedu_text(language, "Continuous", statedu_utf8("ec97b0ec868ded9895")),
+                      statedu_text(language, "Ordered", statedu_utf8("ec889cec849ced9895")),
+                      statedu_text(language, "Categorical", statedu_utf8("ebb294eca3bced9895")),
+                      statedu_text(language, "Binary", statedu_utf8("ec9db4ebb684ed9895"))
+                    )
+                  ),
                   selected = "",
                   selectize = FALSE,
                   width = "100%"
@@ -439,27 +476,34 @@ data_editor_variable_transformation_panel <- function() {
               )
             ),
             div(class = "analysis-option-group",
-              div(class = "analysis-option-title", "2. Quick formula"),
+              div(class = "analysis-option-title", statedu_text(language, "2. Quick formula", statedu_utf8("322e20ebb9a0eba5b820ec8898ec8b9d"))),
               div(
                 class = "variable-transform-template-row",
-                selectInput("variable_transform_template", NULL, choices = transform_template_choices(), selected = "", selectize = FALSE, width = "100%"),
-                actionButton("variable_transform_apply_template", "Apply", class = "btn btn-default")
+                selectInput("variable_transform_template", NULL, choices = transform_template_choices(language), selected = "", selectize = FALSE, width = "100%"),
+                actionButton("variable_transform_apply_template", analysis_ui_text("Apply", language), class = "btn btn-default")
               ),
-              tags$div(class = "recode-help-text variable-calculation-help", "Select variables on the left, then apply a template. You can edit the formula afterward.")
+              tags$div(
+                class = "recode-help-text variable-calculation-help",
+                statedu_text(
+                  language,
+                  "Select variables on the left, then apply a template. You can edit the formula afterward.",
+                  statedu_utf8("ec99bcecaabdec9790ec849c20ebb380ec8898eba5bc20ec84a0ed839ded959c20eb92a420ed859ced948ceba6bfec9d8420eca081ec9aa9ed9598ec84b8ec9a942e20eca081ec9aa920ed9b8420ec8898ec8b9dec9d8420eca781eca09120ec8898eca095ed95a020ec889820ec9e88ec8ab5eb8b88eb8ba42e")
+                )
+              )
             ),
             div(class = "analysis-option-group",
-              div(class = "analysis-option-title", "3. Formula"),
+              div(class = "analysis-option-title", statedu_text(language, "3. Formula", statedu_utf8("332e20ec8898ec8b9d"))),
               textAreaInput("variable_transform_expression", NULL, value = "", width = "100%", height = "118px"),
               uiOutput("variable_transform_function_example"),
               div(
                 class = "variable-transform-action-row",
-                actionButton("preview_variable_transform", "Preview", class = "btn btn-default"),
-                actionButton("apply_variable_transform", "Create variable", class = "btn btn-primary")
+                actionButton("preview_variable_transform", analysis_ui_text("Preview", language), class = "btn btn-default"),
+                actionButton("apply_variable_transform", analysis_ui_text("Create variable", language), class = "btn btn-primary")
               )
             ),
             div(class = "analysis-option-group",
-              div(class = "analysis-option-title", "Available functions"),
-              transform_function_groups_ui()
+              div(class = "analysis-option-title", statedu_text(language, "Available functions", statedu_utf8("ec82acec9aa920eab080eb8aa5ed959c20ed95a8ec8898"))),
+              transform_function_groups_ui(language)
             )
           )
         ),
@@ -479,19 +523,25 @@ register_variable_transformation_handlers <- function(
   variable_info_fn,
   labels_fn,
   add_calculated_variable_fn,
-  mark_settings_dirty
+  mark_settings_dirty,
+  language_fn = NULL
 ) {
   last_message <- reactiveVal(NULL)
   preview_values <- reactiveVal(NULL)
   selected_function <- reactiveVal(NULL)
 
   output$variable_transform_variable_list <- renderUI({
+    language <- statedu_current_language(language_fn)
     file <- current_data_file_fn()
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
     if (is.null(file) || is.null(data)) {
       return(div(
         class = "variable-transform-empty-list",
-        "Load a data file in the Data tab before transforming variables."
+        statedu_text(
+          language,
+          "Load a data file in the Data tab before transforming variables.",
+          statedu_utf8("eb8db0ec9db4ed84b020ed83adec9790ec849c20eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420eba8bceca08020ebb688eb9facec98a820ed9b8420ebb380ec8898eba5bc20ebb380ed9998ed9598ec84b8ec9a942e")
+        )
       ))
     }
     variable_info <- tryCatch(variable_info_fn(), error = function(e) NULL)
@@ -513,7 +563,8 @@ register_variable_transformation_handlers <- function(
   })
 
   output$variable_transform_function_buttons <- renderUI({
-    transform_function_buttons_ui(input$variable_transform_function_group)
+    language <- statedu_current_language(language_fn)
+    transform_function_buttons_ui(input$variable_transform_function_group, language = language)
   })
 
   selected_transform_variables <- function() {
@@ -537,23 +588,37 @@ register_variable_transformation_handlers <- function(
   }
 
   observeEvent(input$variable_transform_insert, {
+    language <- statedu_current_language(language_fn)
     selected <- selected_transform_variables()
     if (length(selected) == 0) {
-      showNotification("Select one or more variables to insert.", type = "warning", duration = 5)
+      showNotification(
+        statedu_text(language, "Select one or more variables to insert.", statedu_utf8("ec82bdec9e85ed95a020ebb380ec8898eba5bc20ed9598eb829820ec9db4ec838120ec84a0ed839ded9598ec84b8ec9a942e")),
+        type = "warning",
+        duration = 5
+      )
       return()
     }
     append_to_expression(paste(vapply(selected, transform_quote_variable, character(1)), collapse = ", "))
   }, ignoreInit = TRUE)
 
   observeEvent(input$variable_transform_apply_template, {
+    language <- statedu_current_language(language_fn)
     selected <- selected_transform_variables()
     if (length(selected) == 0) {
-      showNotification("Select one or more variables first.", type = "warning", duration = 5)
+      showNotification(
+        statedu_text(language, "Select one or more variables first.", statedu_utf8("eba8bceca08020ebb380ec8898eba5bc20ed9598eb829820ec9db4ec838120ec84a0ed839ded9598ec84b8ec9a942e")),
+        type = "warning",
+        duration = 5
+      )
       return()
     }
     expression <- transform_template_expression(input$variable_transform_template, selected)
     if (!nzchar(expression)) {
-      showNotification("Choose a quick formula.", type = "warning", duration = 5)
+      showNotification(
+        statedu_text(language, "Choose a quick formula.", statedu_utf8("ebb9a0eba5b820ec8898ec8b9dec9d8420ec84a0ed839ded9598ec84b8ec9a942e")),
+        type = "warning",
+        duration = 5
+      )
       return()
     }
     updateTextAreaInput(session, "variable_transform_expression", value = expression)
@@ -579,13 +644,18 @@ register_variable_transformation_handlers <- function(
   }
 
   output$variable_transform_function_example <- renderUI({
+    language <- statedu_current_language(language_fn)
     function_name <- selected_function()
     function_name <- as.character(function_name %||% "")
     function_name <- if (length(function_name) == 0) "" else function_name[[1]]
     if (!nzchar(function_name)) {
       return(div(
         class = "variable-transform-function-example",
-        "Select a function below to insert it into the formula."
+        statedu_text(
+          language,
+          "Select a function below to insert it into the formula.",
+          statedu_utf8("ec9584eb9e9820ed95a8ec8898eba5bc20ec84a0ed839ded9598ec97ac20ec8898ec8b9dec979020ec82bdec9e85ed9598ec84b8ec9a942e")
+        )
       ))
     }
     example <- transform_function_template(function_name, selected_transform_variables())
@@ -597,9 +667,16 @@ register_variable_transformation_handlers <- function(
   })
 
   evaluate_transform <- function(show_errors = TRUE) {
+    language <- statedu_current_language(language_fn)
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
     if (is.null(data)) {
-      if (isTRUE(show_errors)) showNotification("Load a data file before transforming variables.", type = "warning", duration = 5)
+      if (isTRUE(show_errors)) {
+        showNotification(
+          statedu_text(language, "Load a data file before transforming variables.", statedu_utf8("ebb380ec889820ebb380ed999820eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e")),
+          type = "warning",
+          duration = 5
+        )
+      }
       return(NULL)
     }
     tryCatch(
@@ -612,6 +689,7 @@ register_variable_transformation_handlers <- function(
   }
 
   output$variable_transform_message <- renderUI({
+    statedu_current_language(language_fn)
     message <- last_message()
     if (is.null(message)) {
       return(NULL)
@@ -628,22 +706,31 @@ register_variable_transformation_handlers <- function(
   })
 
   observeEvent(input$preview_variable_transform, {
+    language <- statedu_current_language(language_fn)
     values <- evaluate_transform()
     if (is.null(values)) {
       return()
     }
     preview_values(values)
-    last_message(sprintf("Previewed %s transformed value(s).", length(values)))
+    last_message(sprintf(
+      statedu_text(language, "Previewed %s transformed value(s).", statedu_utf8("2573eab09c20ebb380ed999820eab092ec9d8420ebafb8eba6acebb3b4eab8b0ed9688ec8ab5eb8b88eb8ba42e")),
+      length(values)
+    ))
   }, ignoreInit = TRUE)
 
   observeEvent(input$apply_variable_transform, {
+    language <- statedu_current_language(language_fn)
     values <- evaluate_transform()
     if (is.null(values)) {
       return()
     }
     name <- trimws(as.character(input$variable_transform_name %||% ""))
     if (!nzchar(name)) {
-      showNotification("Enter a new variable name.", type = "warning", duration = 5)
+      showNotification(
+        statedu_text(language, "Enter a new variable name.", statedu_utf8("ec838820ebb380ec8898ebaa85ec9d8420ec9e85eba0a5ed9598ec84b8ec9a942e")),
+        type = "warning",
+        duration = 5
+      )
       return()
     }
     measurement <- as.character(input$variable_transform_measurement %||% "")
@@ -653,7 +740,10 @@ register_variable_transformation_handlers <- function(
     ok <- add_calculated_variable_fn(name, values, var_label = sprintf("%s = %s", name, trimws(input$variable_transform_expression %||% "")), measurement = measurement)
     if (isTRUE(ok)) {
       preview_values(values)
-      last_message(sprintf("Created transformed variable: %s", name))
+      last_message(sprintf(
+        statedu_text(language, "Created transformed variable: %s", statedu_utf8("ebb380ed999820ebb380ec8898eba5bc20ec839dec84b1ed9688ec8ab5eb8b88eb8ba43a202573")),
+        name
+      ))
       if (is.function(mark_settings_dirty)) {
         mark_settings_dirty()
       }

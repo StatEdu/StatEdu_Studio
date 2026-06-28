@@ -1,6 +1,6 @@
 # File dialog helpers for data and settings files.
 
-open_dialog_cancel_marker <- "__EASYFLOW_OPEN_DIALOG_CANCEL__"
+open_dialog_cancel_marker <- "__STATEDU_OPEN_DIALOG_CANCEL__"
 
 open_dialog_ps_quote <- function(value) {
   paste0("'", gsub("'", "''", enc2utf8(as.character(value %||% "")), fixed = TRUE), "'")
@@ -170,12 +170,10 @@ open_file_dialog <- function(title, filetypes) {
 }
 
 open_settings_file <- function() {
-  filetypes <- "{{StatEdu Studio Settings} {.efs-settings}} {{JSON settings} {.json}} {{All files} *}"
+  filetypes <- "{{StatEdu Studio Settings} {.studio}}"
   attr(filetypes, "windows_filters") <- matrix(
     c(
-      "StatEdu Studio Settings", "*.efs-settings",
-      "JSON settings", "*.json",
-      "All files", "*.*"
+      "StatEdu Studio Settings", "*.studio"
     ),
     ncol = 2,
     byrow = TRUE
@@ -209,26 +207,60 @@ open_data_file <- function() {
   path
 }
 
-save_settings_file <- function() {
+normalize_settings_save_path <- function(path) {
+  path <- as.character(path %||% "")
+  if (!nzchar(path)) {
+    return(path)
+  }
+  path <- sub("(\\.studio)+$", ".studio", path, ignore.case = TRUE)
+  if (grepl("\\.studio$", path, ignore.case = TRUE)) {
+    return(path)
+  }
+  path <- sub("(\\.efs-settings)+$", "", path, ignore.case = TRUE)
+  path <- sub("(\\.json)+$", "", path, ignore.case = TRUE)
+  if (nzchar(tools::file_ext(path))) {
+    path <- tools::file_path_sans_ext(path)
+  }
+  paste0(path, ".studio")
+}
+
+settings_save_initial_dir <- function(initial_dir = NULL) {
+  initial_dir <- as.character(initial_dir %||% "")
+  if (!nzchar(initial_dir)) {
+    return("")
+  }
+  initial_dir <- normalizePath(initial_dir, winslash = "/", mustWork = FALSE)
+  if (dir.exists(initial_dir)) initial_dir else ""
+}
+
+save_settings_file <- function(initial_dir = NULL) {
+  initial_dir <- settings_save_initial_dir(initial_dir)
   path <- tryCatch(
     {
       if (requireNamespace("tcltk", quietly = TRUE)) {
         parent <- topmost_tk_parent()
         on.exit(try(tcltk::tkdestroy(parent), silent = TRUE), add = TRUE)
-        as.character(tcltk::tkgetSaveFile(
+        args <- list(
           parent = parent,
           title = "Save StatEdu Studio Settings",
-          initialfile = "StatEdu_Studio_settings.efs-settings",
-          defaultextension = ".efs-settings",
-          filetypes = "{{StatEdu Studio Settings} {.efs-settings}} {{JSON settings} {.json}} {{All files} *}"
-        ))
-      } else {
-        folder <- utils::choose.dir(caption = "Choose a folder for StatEdu Studio Settings")
-        if (is.na(folder) || !nzchar(folder)) {
-          character(0)
-        } else {
-          file.path(folder, "StatEdu_Studio_settings.efs-settings")
+          initialfile = "",
+          defaultextension = ".studio",
+          filetypes = "{{StatEdu Studio Settings} {.studio}}"
+        )
+        if (nzchar(initial_dir)) {
+          args$initialdir <- initial_dir
         }
+        as.character(do.call(tcltk::tkgetSaveFile, args))
+      } else if (.Platform$OS.type == "windows") {
+        default_path <- if (nzchar(initial_dir)) file.path(initial_dir, "") else ""
+        utils::choose.files(
+          default = default_path,
+          caption = "Save StatEdu Studio Settings",
+          multi = FALSE,
+          filters = matrix(c("StatEdu Studio Settings", "*.studio"), ncol = 2, byrow = TRUE)
+        )
+      } else {
+        character(0)
       }
     },
     error = function(e) character(0)
@@ -238,9 +270,5 @@ save_settings_file <- function() {
     return(NULL)
   }
 
-  path <- path[[1]]
-  if (!nzchar(tools::file_ext(path))) {
-    path <- paste0(path, ".efs-settings")
-  }
-  path
+  normalize_settings_save_path(path[[1]])
 }

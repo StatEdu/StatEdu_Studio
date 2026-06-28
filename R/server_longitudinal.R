@@ -9,7 +9,8 @@ register_longitudinal_handlers <- function(
   variable_table_fn,
   labels_fn,
   category_table_fn,
-  mark_settings_dirty
+  mark_settings_dirty,
+  app_language_fn = NULL
 ) {
   longitudinal_outcome <- reactiveVal(character(0))
   longitudinal_id <- reactiveVal(character(0))
@@ -161,10 +162,11 @@ register_longitudinal_handlers <- function(
   }
 
   output$longitudinal_setup <- renderUI({
+    language <- statedu_current_language(app_language_fn)
     longitudinal_setup_revision()
     selected <- as.character(selected_names_fn() %||% character(0))
     if (length(selected) == 0) {
-      return(setup_empty_message("Complete Step 2 in the Data tab before setting up longitudinal / panel models."))
+      return(setup_empty_message("Complete Step 2 in the Data tab before setting up longitudinal / panel models.", language = language))
     }
 
     sync_current_variables()
@@ -203,7 +205,8 @@ register_longitudinal_handlers <- function(
       ipw_auxiliary = isolate(input$longitudinal_ipw_auxiliary %||% character(0)),
       weight_type = isolate(input$longitudinal_weight_type %||% longitudinal_default_weight_type(current_model_type, has_weight)),
       weight_trim = isolate(input$longitudinal_weight_trim %||% "none"),
-      options_tab = isolate(input$longitudinal_options_tab %||% "Model")
+      options_tab = isolate(input$longitudinal_options_tab %||% "Model"),
+      language = language
     )
     longitudinal_setup_panel(state, setup_status_message(TRUE, TRUE))
   })
@@ -217,7 +220,7 @@ register_longitudinal_handlers <- function(
     if (is.null(results)) {
       return(NULL)
     }
-    longitudinal_results_panel(results, variable_table_fn(), labels_fn())
+    longitudinal_results_panel(results, variable_table_fn(), labels_fn(), category_table_fn())
   })
 
   output$longitudinal_save_control <- renderUI({
@@ -251,7 +254,8 @@ register_longitudinal_handlers <- function(
     )),
     variable_table_fn = variable_table_fn,
     labels_fn = labels_fn,
-    category_table_fn = category_table_fn
+    category_table_fn = category_table_fn,
+    language_fn = app_language_fn
   )
 
   observeEvent(input$longitudinal_available_active, {
@@ -681,7 +685,7 @@ register_longitudinal_handlers <- function(
     path <- choose_html_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
     if (!grepl("\\.html?$", path, ignore.case = TRUE)) path <- paste0(path, ".html")
-    write_longitudinal_results_html(results, path, variable_table_fn(), labels_fn())
+    write_longitudinal_results_html(results, path, variable_table_fn(), labels_fn(), category_table_fn())
     showNotification(sprintf("HTML results saved: %s", path), type = "message")
   })
 
@@ -691,7 +695,7 @@ register_longitudinal_handlers <- function(
     path <- choose_pdf_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
     if (!grepl("\\.pdf$", path, ignore.case = TRUE)) path <- paste0(path, ".pdf")
-    write_longitudinal_results_pdf(results, path, variable_table_fn(), labels_fn())
+    write_longitudinal_results_pdf(results, path, variable_table_fn(), labels_fn(), category_table_fn())
     showNotification(sprintf("PDF results saved: %s", path), type = "message")
   })
 
@@ -701,7 +705,7 @@ register_longitudinal_handlers <- function(
     path <- choose_excel_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
     if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) path <- paste0(path, ".xlsx")
-    save_longitudinal_excel_file(results, path, variable_table_fn(), labels_fn())
+    save_longitudinal_excel_file(results, path, variable_table_fn(), labels_fn(), category_table_fn())
     showNotification(sprintf("Analysis results saved: %s", path), type = "message")
   })
 

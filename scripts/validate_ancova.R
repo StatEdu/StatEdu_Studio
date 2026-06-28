@@ -24,7 +24,8 @@ setup_html <- as.character(ancova_setup_panel(ancova_setup_state(
   dependent_variables = "y",
   factor_variable = "group",
   covariates = "x",
-  variable_table = variable_info
+  variable_table = variable_info,
+  language = "en"
 )))
 stopifnot(grepl("Analysis mode", setup_html, fixed = TRUE))
 stopifnot(grepl("ancova_auto_method", setup_html, fixed = TRUE))

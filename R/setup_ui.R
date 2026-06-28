@@ -1,23 +1,24 @@
-reliability_tab_panel <- function(title = "Reliability") {
+reliability_tab_panel <- function(title = "Reliability", language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   tabPanel(
     title,
     div(
       class = "page-shell",
       div(
         class = "app-heading",
-        h1("Reliability"),
-        div("Move same-level items into the analysis list and select item diagnostics.", class = "app-subtitle")
+        h1(analysis_ui_text("Reliability", language)),
+        div(statedu_text(language, "Move same-level items into the analysis list and select item diagnostics.", statedu_utf8("eab099ec9d8020ec8898eca480ec9d9820ebacb8ed95adec9d8420ebb684ec849d20ebaaa9eba19dec9cbceba19c20ec98aeeab8b0eab3a020ebacb8ed95ad20eca784eb8ba8ec9d8420ec84a0ed839ded9598ec84b8ec9a942e")), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel reliability-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        analysis_workspace_heading("Reliability", "reliability"),
+        analysis_workspace_heading("Reliability", "reliability", language),
         analysis_workspace_body(
           "reliability",
           uiOutput("reliability_setup"),
           div(
             class = "analysis-action-row reliability-action-row",
-            actionButton("run_reliability", "Run analysis", class = "btn btn-primary"),
+            actionButton("run_reliability", statedu_ui_label("run_analysis", language), class = "btn btn-primary"),
             uiOutput("reliability_reset_control"),
             uiOutput("reliability_save_control")
           ),
@@ -28,26 +29,27 @@ reliability_tab_panel <- function(title = "Reliability") {
   )
 }
 
-frequencies_tab_panel <- function(title = "Frequencies") {
+frequencies_tab_panel <- function(title = "Frequencies", language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   tabPanel(
     title,
     div(
       class = "page-shell",
       div(
         class = "app-heading",
-        h1("Frequencies / Descriptives"),
-        div("Move variables into the analysis list and select summary options.", class = "app-subtitle")
+        h1(analysis_ui_text("Frequencies / Descriptives", language)),
+        div(statedu_text(language, "Move variables into the analysis list and select summary options.", statedu_utf8("ebb380ec8898eba5bc20ebb684ec849d20ebaaa9eba19dec9cbceba19c20ec98aeeab8b0eab3a020ec9a94ec95bd20ec98b5ec8598ec9d8420ec84a0ed839ded9598ec84b8ec9a942e")), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        analysis_workspace_heading("Frequencies / Descriptives", "frequencies"),
+        analysis_workspace_heading("Frequencies / Descriptives", "frequencies", language),
         analysis_workspace_body(
           "frequencies",
           uiOutput("frequencies_setup"),
           div(
             class = "analysis-action-row frequencies-action-row",
-            actionButton("run_frequencies", "Run analysis", class = "btn btn-primary"),
+            actionButton("run_frequencies", statedu_ui_label("run_analysis", language), class = "btn btn-primary"),
             uiOutput("frequencies_reset_control"),
             uiOutput("frequencies_save_control")
           ),
@@ -58,7 +60,8 @@ frequencies_tab_panel <- function(title = "Frequencies") {
   )
 }
 
-paired_tab_panel <- function(title = "Paired test") {
+paired_tab_panel <- function(title = "Paired test", language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   tabPanel(
     title,
     value = "paired",
@@ -66,19 +69,19 @@ paired_tab_panel <- function(title = "Paired test") {
       class = "page-shell",
       div(
         class = "app-heading",
-        h1("Paired test"),
-        div("Select two or more repeated-measures variables at a time to create paired rows.", class = "app-subtitle")
+        h1(analysis_ui_text("Paired test", language)),
+        div(statedu_text(language, "Select two or more repeated-measures variables at a time to create paired rows.", statedu_utf8("eb919020eab09c20ec9db4ec8381ec9d9820ebb098ebb3b5ecb8a1eca09520ebb380ec8898eba5bc20ed959c20ebb288ec979020ec84a0ed839ded95b420eb8c80ec9d9120ed9689ec9d8420eba78ceb939cec84b8ec9a942e")), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel paired-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        analysis_workspace_heading("Paired test", "paired"),
+        analysis_workspace_heading("Paired test", "paired", language),
         analysis_workspace_body(
           "paired",
           uiOutput("paired_setup"),
           div(
             class = "analysis-action-row paired-action-row",
-            actionButton("run_paired", "Run analysis", class = "btn btn-primary"),
+            actionButton("run_paired", statedu_ui_label("run_analysis", language), class = "btn btn-primary"),
             uiOutput("paired_reset_control"),
             uiOutput("paired_save_control")
           ),
@@ -89,7 +92,8 @@ paired_tab_panel <- function(title = "Paired test") {
   )
 }
 
-nonparametric_paired_tab_panel <- function(title = "Nonparametric Paired") {
+nonparametric_paired_tab_panel <- function(title = "Nonparametric Paired", language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   tabPanel(
     title,
     value = "nonparametric_paired",
@@ -97,19 +101,19 @@ nonparametric_paired_tab_panel <- function(title = "Nonparametric Paired") {
       class = "page-shell",
       div(
         class = "app-heading",
-        h1("Nonparametric Paired Test"),
-        div("Select two or more repeated-measures variables at a time to create nonparametric paired rows.", class = "app-subtitle")
+        h1(analysis_ui_text("Nonparametric Paired Test", language)),
+        div(statedu_text(language, "Select two or more repeated-measures variables at a time to create nonparametric paired rows.", statedu_utf8("eb919020eab09c20ec9db4ec8381ec9d9820ebb098ebb3b5ecb8a1eca09520ebb380ec8898eba5bc20ed959c20ebb288ec979020ec84a0ed839ded95b420ebb984ebaaa8ec889820eb8c80ec9d9120ed9689ec9d8420eba78ceb939cec84b8ec9a942e")), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel paired-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        analysis_workspace_heading("Nonparametric paired test", "nonparametric_paired"),
+        analysis_workspace_heading("Nonparametric paired test", "nonparametric_paired", language),
         analysis_workspace_body(
           "nonparametric_paired",
           uiOutput("nonparametric_paired_setup"),
           div(
             class = "analysis-action-row paired-action-row",
-            actionButton("run_nonparametric_paired", "Run analysis", class = "btn btn-primary"),
+            actionButton("run_nonparametric_paired", statedu_ui_label("run_analysis", language), class = "btn btn-primary"),
             uiOutput("nonparametric_paired_reset_control"),
             uiOutput("nonparametric_paired_save_control")
           ),
@@ -120,7 +124,8 @@ nonparametric_paired_tab_panel <- function(title = "Nonparametric Paired") {
   )
 }
 
-paired_rm_tab_panel <- function(title = "Paired test (3+)") {
+paired_rm_tab_panel <- function(title = "Paired test (3+)", language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   tabPanel(
     title,
     value = "paired_rm",
@@ -128,19 +133,19 @@ paired_rm_tab_panel <- function(title = "Paired test (3+)") {
       class = "page-shell",
       div(
         class = "app-heading",
-        h1("Paired test (3+)"),
-        div("Move three or more repeated-measures variables into the analysis list.", class = "app-subtitle")
+        h1(analysis_ui_text("Paired test (3+)", language)),
+        div(statedu_text(language, "Move three or more repeated-measures variables into the analysis list.", statedu_utf8("ec138820eab09c20ec9db4ec8381ec9d9820ebb098ebb3b5ecb8a1eca09520ebb380ec8898eba5bc20ebb684ec849d20ebaaa9eba19dec9cbceba19c20ec98aeeab8b0ec84b8ec9a942e")), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel paired-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        analysis_workspace_heading("Paired test (3+)", "paired_rm"),
+        analysis_workspace_heading("Paired test (3+)", "paired_rm", language),
         analysis_workspace_body(
           "paired_rm",
           uiOutput("paired_rm_setup"),
           div(
             class = "analysis-action-row paired-action-row",
-            actionButton("run_paired_rm", "Run analysis", class = "btn btn-primary"),
+            actionButton("run_paired_rm", statedu_ui_label("run_analysis", language), class = "btn btn-primary"),
             uiOutput("paired_rm_reset_control"),
             uiOutput("paired_rm_save_control")
           ),
@@ -151,7 +156,8 @@ paired_rm_tab_panel <- function(title = "Paired test (3+)") {
   )
 }
 
-ttest_anova_tab_panel <- function(title = "t-test / ANOVA") {
+ttest_anova_tab_panel <- function(title = "t-test / ANOVA", language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   tabPanel(
     title,
     div(
@@ -159,18 +165,18 @@ ttest_anova_tab_panel <- function(title = "t-test / ANOVA") {
       div(
         class = "app-heading",
         h1("t-test / ANOVA"),
-        div("Move variables into the analysis lists and select test options.", class = "app-subtitle")
+        div(statedu_text(language, "Move variables into the analysis lists and select test options.", statedu_utf8("ebb380ec8898eba5bc20ebb684ec849d20ebaaa9eba19dec9cbceba19c20ec98aeeab8b0eab3a020eab280eca09520ec98b5ec8598ec9d8420ec84a0ed839ded9598ec84b8ec9a942e")), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel ttest-anova-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        analysis_workspace_heading("t-test / ANOVA", "ttest_anova"),
+        analysis_workspace_heading("t-test / ANOVA", "ttest_anova", language),
         analysis_workspace_body(
           "ttest_anova",
           uiOutput("ttest_anova_setup"),
           div(
             class = "analysis-action-row ttest-anova-action-row",
-            actionButton("run_ttest_anova", "Run analysis", class = "btn btn-primary"),
+            actionButton("run_ttest_anova", statedu_ui_label("run_analysis", language), class = "btn btn-primary"),
             uiOutput("ttest_anova_reset_control"),
             uiOutput("ttest_anova_save_control")
           ),
@@ -181,7 +187,8 @@ ttest_anova_tab_panel <- function(title = "t-test / ANOVA") {
   )
 }
 
-ancova_tab_panel <- function(title = "ANCOVA") {
+ancova_tab_panel <- function(title = "ANCOVA", language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   tabPanel(
     title,
     div(
@@ -189,18 +196,18 @@ ancova_tab_panel <- function(title = "ANCOVA") {
       div(
         class = "app-heading",
         h1("ANCOVA"),
-        div("Run covariate-adjusted group comparisons with ANCOVA, robust ANCOVA, ranked ANCOVA, and interaction ANCOVA.", class = "app-subtitle")
+        div(statedu_text(language, "Run covariate-adjusted group comparisons with ANCOVA, robust ANCOVA, ranked ANCOVA, and interaction ANCOVA.", statedu_utf8("eab3b5ebb380eb9f89ec9d8420ebb3b4eca095ed959c20eca791eb8ba820ebb984eab590eba5bc20414e434f56412c20eab095eab1b420414e434f56412c20ec889cec9c8420414e434f56412c20ec8381ed98b8ec9e91ec9aa920414e434f5641eba19c20ec8898ed9689ed95a9eb8b88eb8ba42e")), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel ttest-anova-workspace-panel ancova-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        analysis_workspace_heading("ANCOVA", "ancova"),
+        analysis_workspace_heading("ANCOVA", "ancova", language),
         analysis_workspace_body(
           "ancova",
           uiOutput("ancova_setup"),
           div(
             class = "analysis-action-row ttest-anova-action-row ancova-action-row",
-            actionButton("run_ancova", "Run analysis", class = "btn btn-primary"),
+            actionButton("run_ancova", statedu_ui_label("run_analysis", language), class = "btn btn-primary"),
             uiOutput("ancova_reset_control"),
             uiOutput("ancova_save_control")
           ),
@@ -211,26 +218,27 @@ ancova_tab_panel <- function(title = "ANCOVA") {
   )
 }
 
-nonparametric_tab_panel <- function(title = "Nonparametric Tests") {
+nonparametric_tab_panel <- function(title = "Nonparametric Tests", language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   tabPanel(
     title,
     div(
       class = "page-shell",
       div(
         class = "app-heading",
-        h1("Nonparametric Tests"),
-        div("Run Mann-Whitney U and Kruskal-Wallis tests with rank-based post-hoc options.", class = "app-subtitle")
+        h1(analysis_ui_text("Nonparametric Tests", language)),
+        div(statedu_text(language, "Run Mann-Whitney U and Kruskal-Wallis tests with rank-based post-hoc options.", statedu_utf8("4d616e6e2d576869746e65792055ec9980204b7275736b616c2d57616c6c697320eab280eca095ec9d8420ec889cec9c8420eab8b0ebb09820ec82aced9b84ebb684ec849d20ec98b5ec8598eab3bc20ed95a8eabb9820ec8898ed9689ed95a9eb8b88eb8ba42e")), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel ttest-anova-workspace-panel nonparametric-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        analysis_workspace_heading("Nonparametric tests", "nonparametric"),
+        analysis_workspace_heading("Nonparametric tests", "nonparametric", language),
         analysis_workspace_body(
           "nonparametric",
           uiOutput("nonparametric_setup"),
           div(
             class = "analysis-action-row ttest-anova-action-row nonparametric-action-row",
-            actionButton("run_nonparametric", "Run analysis", class = "btn btn-primary"),
+            actionButton("run_nonparametric", statedu_ui_label("run_analysis", language), class = "btn btn-primary"),
             uiOutput("nonparametric_reset_control"),
             uiOutput("nonparametric_save_control")
           ),
@@ -241,26 +249,27 @@ nonparametric_tab_panel <- function(title = "Nonparametric Tests") {
   )
 }
 
-correlation_tab_panel <- function(title = "Correlation") {
+correlation_tab_panel <- function(title = "Correlation", language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   tabPanel(
     title,
     div(
       class = "page-shell",
       div(
         class = "app-heading",
-        h1("Correlation"),
-        div("Move variables into the analysis list and select correlation options.", class = "app-subtitle")
+        h1(analysis_ui_text("Correlation", language)),
+        div(statedu_text(language, "Move variables into the analysis list and select correlation options.", statedu_utf8("ebb380ec8898eba5bc20ebb684ec849d20ebaaa9eba19dec9cbceba19c20ec98aeeab8b0eab3a020ec8381eab48020ec98b5ec8598ec9d8420ec84a0ed839ded9598ec84b8ec9a942e")), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel correlation-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        analysis_workspace_heading("Correlation", "correlation"),
+        analysis_workspace_heading("Correlation", "correlation", language),
         analysis_workspace_body(
           "correlation",
           uiOutput("correlation_setup"),
           div(
             class = "analysis-action-row correlation-action-row",
-            actionButton("run_correlation", "Run analysis", class = "btn btn-primary"),
+            actionButton("run_correlation", statedu_ui_label("run_analysis", language), class = "btn btn-primary"),
             uiOutput("correlation_reset_control"),
             uiOutput("correlation_save_control")
           ),
@@ -271,26 +280,27 @@ correlation_tab_panel <- function(title = "Correlation") {
   )
 }
 
-factor_analysis_tab_panel <- function(title = "Factor Analysis") {
+factor_analysis_tab_panel <- function(title = "Factor Analysis", language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   tabPanel(
     title,
     div(
       class = "page-shell",
       div(
         class = "app-heading",
-        h1("Factor Analysis"),
-        div("Move ordinal or continuous variables into the analysis list and select extraction and rotation options.", class = "app-subtitle")
+        h1(analysis_ui_text("Factor Analysis", language)),
+        div(statedu_text(language, "Move ordinal or continuous variables into the analysis list and select extraction and rotation options.", statedu_utf8("ec889cec849ced989520eb9890eb8a9420ec97b0ec868ded989520ebb380ec8898eba5bc20ebb684ec849d20ebaaa9eba19dec9cbceba19c20ec98aeeab8b0eab3a020ecb694ecb69c20ebb08f20ed9a8ceca08420ec98b5ec8598ec9d8420ec84a0ed839ded9598ec84b8ec9a942e")), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel correlation-workspace-panel factor-analysis-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        analysis_workspace_heading("Factor Analysis", "factor"),
+        analysis_workspace_heading("Factor Analysis", "factor", language),
         analysis_workspace_body(
           "factor",
           uiOutput("factor_analysis_setup"),
           div(
             class = "analysis-action-row correlation-action-row factor-analysis-action-row",
-            actionButton("run_factor_analysis", "Run analysis", class = "btn btn-primary"),
+            actionButton("run_factor_analysis", statedu_ui_label("run_analysis", language), class = "btn btn-primary"),
             uiOutput("factor_analysis_reset_control"),
             uiOutput("factor_analysis_save_control")
           ),
@@ -301,26 +311,27 @@ factor_analysis_tab_panel <- function(title = "Factor Analysis") {
   )
 }
 
-pca_tab_panel <- function(title = "Principal Components") {
+pca_tab_panel <- function(title = "Principal Components", language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   tabPanel(
     title,
     div(
       class = "page-shell",
       div(
         class = "app-heading",
-        h1("Principal Component Analysis"),
-        div("Move ordinal or continuous variables into the analysis list and select matrix, component, and plot options.", class = "app-subtitle")
+        h1(analysis_ui_text("Principal Component Analysis", language)),
+        div(statedu_text(language, "Move ordinal or continuous variables into the analysis list and select matrix, component, and plot options.", statedu_utf8("ec889cec849ced989520eb9890eb8a9420ec97b0ec868ded989520ebb380ec8898eba5bc20ebb684ec849d20ebaaa9eba19dec9cbceba19c20ec98aeeab8b0eab3a020ed9689eba0ac2c20ec84b1ebb6842c20eab7b8eb9e98ed948420ec98b5ec8598ec9d8420ec84a0ed839ded9598ec84b8ec9a942e")), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel correlation-workspace-panel pca-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        analysis_workspace_heading("Principal Component Analysis", "pca"),
+        analysis_workspace_heading("Principal Component Analysis", "pca", language),
         analysis_workspace_body(
           "pca",
           uiOutput("pca_setup"),
           div(
             class = "analysis-action-row correlation-action-row pca-action-row",
-            actionButton("run_pca", "Run analysis", class = "btn btn-primary"),
+            actionButton("run_pca", statedu_ui_label("run_analysis", language), class = "btn btn-primary"),
             uiOutput("pca_reset_control"),
             uiOutput("pca_save_control")
           ),
@@ -331,19 +342,20 @@ pca_tab_panel <- function(title = "Principal Components") {
   )
 }
 
-regression_tab_panel <- function(title = "Regression") {
+regression_tab_panel <- function(title = "Regression", language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   tabPanel(
     title,
     div(
       class = "page-shell",
       div(
         class = "app-heading",
-        h1("Regression"),
-        div("Review selected variables and run regression analysis.", class = "app-subtitle")
+        h1(analysis_ui_text("Regression", language)),
+        div(statedu_text(language, "Review selected variables and run regression analysis.", statedu_utf8("ec84a0ed839ded959c20ebb380ec8898eba5bc20eab280ed86a0ed9598eab3a020ed9a8ceab780ebb684ec849dec9d8420ec8ba4ed9689ed9598ec84b8ec9a942e")), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel regression-workspace-panel",
-        analysis_workspace_heading("Regression", "regression"),
+        analysis_workspace_heading("Regression", "regression", language),
         analysis_workspace_body(
           "regression",
           uiOutput("regression_setup"),
@@ -359,20 +371,21 @@ regression_tab_panel <- function(title = "Regression") {
   )
 }
 
-hierarchical_tab_panel <- function(title = "Regression") {
+hierarchical_tab_panel <- function(title = "Regression", language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   tabPanel(
     title,
     div(
       class = "page-shell",
       div(
         class = "app-heading",
-        h1("Regression"),
-        div("Review selected variables and run regression analysis.", class = "app-subtitle")
+        h1(analysis_ui_text("Regression", language)),
+        div(statedu_text(language, "Review selected variables and run regression analysis.", statedu_utf8("ec84a0ed839ded959c20ebb380ec8898eba5bc20eab280ed86a0ed9598eab3a020ed9a8ceab780ebb684ec849dec9d8420ec8ba4ed9689ed9598ec84b8ec9a942e")), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel hierarchical-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        analysis_workspace_heading("Regression", "hierarchical"),
+        analysis_workspace_heading("Regression", "hierarchical", language),
         analysis_workspace_body(
           "hierarchical",
           uiOutput("hierarchical_setup"),
@@ -388,7 +401,8 @@ hierarchical_tab_panel <- function(title = "Regression") {
   )
 }
 
-generalized_tab_panel <- function(title = "GLM") {
+generalized_tab_panel <- function(title = "GLM", language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   tabPanel(
     title,
     value = "analysis_generalized",
@@ -396,12 +410,12 @@ generalized_tab_panel <- function(title = "GLM") {
       class = "page-shell",
       div(
         class = "app-heading",
-        h1("Generalized Linear Model (GLM)"),
-        div("Run Gaussian, logistic, gamma, Poisson, and negative-binomial generalized linear models.", class = "app-subtitle")
+        h1(analysis_ui_text("Generalized Linear Model (GLM)", language)),
+        div(statedu_text(language, "Run Gaussian, logistic, gamma, Poisson, and negative-binomial generalized linear models.", statedu_utf8("eab080ec9ab0ec8b9cec95882c20eba19ceca780ec8aa4ed8bb12c20eab090eba7882c20ed8facec9584ec86a12c20ec9d8cec9db4ed95ad20ec9dbcebb098ed999420ec84a0ed9895ebaaa8ed9895ec9d8420ec8ba4ed9689ed95a9eb8b88eb8ba42e")), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel generalized-workspace-panel",
-        analysis_workspace_heading("Generalized Linear Model (GLM)", "generalized"),
+        analysis_workspace_heading("Generalized Linear Model (GLM)", "generalized", language),
         analysis_workspace_body(
           "generalized",
           uiOutput("generalized_setup"),
@@ -412,7 +426,8 @@ generalized_tab_panel <- function(title = "GLM") {
   )
 }
 
-longitudinal_tab_panel <- function(title = "Longitudinal / Panel Models") {
+longitudinal_tab_panel <- function(title = "Longitudinal / Panel Models", language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   tabPanel(
     title,
     value = "analysis_longitudinal",
@@ -420,13 +435,13 @@ longitudinal_tab_panel <- function(title = "Longitudinal / Panel Models") {
       class = "page-shell",
       div(
         class = "app-heading",
-        h1("Longitudinal / Panel Models"),
-        div("Run GEE, mixed-effects, and panel regression models for long-format repeated-measures or clustered data.", class = "app-subtitle")
+        h1(analysis_ui_text("Longitudinal / Panel Models", language)),
+        div(statedu_text(language, "Run GEE, mixed-effects, and panel regression models for long-format repeated-measures or clustered data.", statedu_utf8("eba1b1ed8faceba7b720ebb098ebb3b5ecb8a1eca09520eb9890eb8a9420eab5b0eca79120eb8db0ec9db4ed84b0ec9790204745452c20ed98bceca095ed9aa8eab3bc2c20ed8ca8eb849020ed9a8ceab78020ebaaa8ed9895ec9d8420ec8ba4ed9689ed95a9eb8b88eb8ba42e")), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel longitudinal-workspace-panel",
         style = "min-width:980px;overflow-x:auto;",
-        analysis_workspace_heading("Longitudinal / Panel Models", "longitudinal"),
+        analysis_workspace_heading("Longitudinal / Panel Models", "longitudinal", language),
         analysis_workspace_body(
           "longitudinal",
           uiOutput("longitudinal_setup"),
@@ -437,12 +452,13 @@ longitudinal_tab_panel <- function(title = "Longitudinal / Panel Models") {
   )
 }
 
-setup_empty_message <- function(message) {
+setup_empty_message <- function(message, language = statedu_initial_language()) {
+  message <- analysis_ui_text(message, language)
   div(
     class = "frequencies-setup-grid easyflow-empty-setup-grid",
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
-      analysis_field_label_tag("Variables"),
+      analysis_field_label_tag("Variables", language = language),
       tags$select(class = "analysis-transfer-listbox form-control", multiple = NA, size = 19)
     ),
     div(
@@ -451,17 +467,17 @@ setup_empty_message <- function(message) {
     ),
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
-      analysis_field_label_tag("Selected Variables"),
+      analysis_field_label_tag("Selected Variables", language = language),
       tags$select(class = "analysis-transfer-listbox form-control", multiple = NA, size = 19),
       div(
         class = "dependent-order-actions",
-        tags$button(type = "button", class = "btn btn-default btn-sm", disabled = NA, "Up"),
-        tags$button(type = "button", class = "btn btn-default btn-sm", disabled = NA, "Down")
+        tags$button(type = "button", class = "btn btn-default btn-sm", disabled = NA, analysis_ui_text("Up", language)),
+        tags$button(type = "button", class = "btn btn-default btn-sm", disabled = NA, analysis_ui_text("Down", language))
       )
     ),
     div(
       class = "analysis-options-column analysis-options-panel",
-      div(class = "analysis-option-title", "Options"),
+      div(class = "analysis-option-title", analysis_ui_text("Options", language)),
       div(class = "empty-setup-message", message)
     )
   )
@@ -469,21 +485,29 @@ setup_empty_message <- function(message) {
 
 setup_status_message <- function(selection_applied, roles_applied) {
   if (!isTRUE(selection_applied)) {
-    return("Step 2 variable selection has not been applied yet.")
+    return(statedu_text(
+      statedu_initial_language(),
+      "Step 2 variable selection has not been applied yet.",
+      statedu_utf8("32eb8ba8eab38420ebb380ec889820ec84a0ed839dec9d8420ec9584eca78120eca081ec9aa9ed9598eca78020ec958aec9598ec8ab5eb8b88eb8ba42e")
+    ))
   }
   if (!isTRUE(roles_applied)) {
-    return("Step 3 role assignment has not been applied yet.")
+    return(statedu_text(
+      statedu_initial_language(),
+      "Step 3 role assignment has not been applied yet.",
+      statedu_utf8("33eb8ba8eab38420ec97aded95a020eca780eca095ec9d8420ec9584eca78120eca081ec9aa9ed9598eca78020ec958aec9598ec8ab5eb8b88eb8ba42e")
+    ))
   }
   NULL
 }
 
-bootstrap_resample_choices <- function() {
+bootstrap_resample_choices <- function(language = statedu_initial_language()) {
   c(
-    "1000 (test)" = "1000",
+    stats::setNames("1000", sprintf("1000 (%s)", analysis_ui_text("test", language))),
     "5000" = "5000",
     "10000" = "10000",
     "20000" = "20000",
-    "50000 (recommended)" = "50000"
+    stats::setNames("50000", sprintf("50000 (%s)", analysis_ui_text("recommended", language)))
   )
 }
 
@@ -545,7 +569,7 @@ display_variable_choices_with_measurements <- function(names, table = NULL, labe
   choice_values <- unname(choices)
   labels_by_value <- stats::setNames(names(choices), choice_values)
   icon_labels <- vapply(variable_names, function(name) {
-    paste(measurement_icon_label(measurements[[name]]), named_value(labels_by_value, name, name))
+    paste(measurement_icon_label(named_value(measurements, name, "")), named_value(labels_by_value, name, name))
   }, character(1))
   stats::setNames(choice_values, icon_labels)
 }
@@ -679,4 +703,3 @@ regression_role_variable_list <- function(
     variable_block("Covariates", intersect(controls, selected))
   )
 }
-

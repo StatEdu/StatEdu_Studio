@@ -1,32 +1,32 @@
 # StatEdu Studio 분석 방법 정리
 
-이 문서는 **StatEdu Studio** 0.9.40에 실제 구현된 분석 메뉴와 주요 출력 항목을 정리한다. 목적은 사용자가 "어떤 메뉴에서 어떤 검정, 통계량, 표, 저장 기능이 제공되는가"를 빠르게 확인하는 것이다. 분석 방법을 선택하는 기준과 해석상 주의점은 `METHOD_NOTES_KO.md`를 참고한다.
+이 문서는 **StatEdu Studio** 1.0.0에 실제 구현된 분석 메뉴와 주요 출력 항목을 정리한다. 목적은 사용자가 "어떤 메뉴에서 어떤 검정, 통계량, 표, 저장 기능이 제공되는가"를 빠르게 확인하는 것이다. 분석 방법을 선택하는 기준과 해석상 주의점은 `METHOD_NOTES_KO.md`를 참고한다.
 
 ## 문서 용도
 
-- User Guide: 데이터 열기, 변수 선택, 분석 실행, 결과 저장 같은 실제 조작 절차를 설명한다.
-- Analyses: 구현된 분석 메뉴, 검정, 통계량, 출력 범위를 목록으로 정리한다.
-- Method Notes: 분석 선택 기준, 가정 진단, 기준값, 경고 해석, 참고문헌을 설명한다.
+- 사용자 안내서: 데이터 열기, 변수 선택, 분석 실행, 결과 저장 같은 실제 조작 절차를 설명한다.
+- 분석: 구현된 분석 메뉴, 검정, 통계량, 출력 범위를 목록으로 정리한다.
+- 방법론 노트: 분석 선택 기준, 가정 진단, 기준값, 경고 해석, 참고문헌을 설명한다.
 
 ## 데이터와 변수 준비
 
 - SPSS SAV, Excel, CSV, DAT 파일을 불러올 수 있다.
 - 원자료 값, 값 라벨, 변수명, 변수 라벨을 함께 확인한다.
 - measurement level은 `continuous`, `ordered`, `binary`, `category`로 정리한다.
-- 자동 코딩 오류 확인, Likert 변수 처리, 총점/평균점수 계산, 변수명 변경, 변수 재코딩 기능을 제공한다.
+- 자동 코딩 오류 확인, Likert 변수 처리, 총점/평균점수 계산, 변수명 변경, 변수 리코딩 기능을 제공한다.
 
 ## 공통 결과 출력
 
 - 주요 분석 결과는 화면과 Result 탭에 표시한다.
-- HTML, PDF, Excel, Word 저장을 지원한다.
-- 여러 분석에서 `Model overview`를 제공하며, 0.9.40 기준으로 t-test/ANOVA, paired test, nonparametric paired test, correlation 등에서 N, 분석 방법, 선택 이유를 표 형태로 확인할 수 있다.
+- public 1.0에서는 HTML, PDF 저장을 지원한다. Excel, Word 결과 저장은 public 1.0에서 숨겨져 있으며 이후 Pro 기능으로 분리할 예정이다.
+- 여러 분석에서 `Model overview`를 제공하며, 1.0.0 기준으로 t-test/ANOVA, paired test, nonparametric paired test, correlation 등에서 N, 분석 방법, 선택 이유를 표 형태로 확인할 수 있다.
 - 분석 불가능 항목은 전체 분석을 중단하지 않고 Warnings, Skipped analyses, Skipped models 형태로 분리해 표시한다.
 
 ## 빈도분석과 기술통계
 
 - 범주형 변수: 빈도, 백분율, 유효 백분율, 누적 백분율을 표시한다.
 - 연속형 변수: N, 결측 수, 평균, 표준편차, 중앙값, IQR, 최솟값, 최댓값, 왜도, 첨도를 표시한다.
-- 결과는 화면 출력과 Excel/Word/PDF/HTML 저장으로 연결된다.
+- 결과는 화면 출력과 public 1.0 기준 HTML/PDF 저장으로 연결된다. Excel/Word 결과 저장은 public 1.0에서 숨긴다.
 
 ## 교차표 분석
 
@@ -59,7 +59,7 @@
 - 범주형 paired 비교: McNemar test, exact McNemar test, Stuart-Maxwell test, Bowker symmetry test.
 - 세 시점 이상 반복측정: standard repeated-measures ANOVA, repeated-measures ANOVA with Wilks' lambda / Greenhouse-Geisser correction, Friedman test, Cochran's Q test.
 - paired post-hoc은 paired t-test, Wilcoxon signed-rank test, McNemar test를 사용하며 Bonferroni correction 또는 Holm Bonferroni를 적용할 수 있다.
-- 0.9.40 기준으로 paired test와 nonparametric paired test 모두 `Model overview`에 N, 분석 방법, 이유를 표시한다.
+- 1.0.0 기준으로 paired test와 nonparametric paired test 모두 `Model overview`에 N, 분석 방법, 이유를 표시한다.
 
 ## 상관분석
 
@@ -69,7 +69,7 @@
 - binary x binary: phi coefficient를 사용한다.
 - nominal 조합: eta 또는 Cramer's V를 사용한다.
 - 옵션에 따라 latent-variable correlation 세트를 추가할 수 있으며, polyserial, polychoric, tetrachoric correlation을 사용한다.
-- 0.9.40 기준으로 별도 reason 체크박스 없이 `Model overview`를 항상 표시한다. 이 표는 correlation matrix 형식으로 각 변수쌍의 분석 방법과 짧은 선택 이유를 함께 표시한다.
+- 1.0.0 기준으로 별도 reason 체크박스 없이 `Model overview`를 항상 표시한다. 이 표는 correlation matrix 형식으로 각 변수쌍의 분석 방법과 짧은 선택 이유를 함께 표시한다.
 
 ## 신뢰도 분석
 
@@ -135,7 +135,7 @@
 
 ### 기본 설정과 제공 모형
 
-- long-format 반복측정, 군집자료, 패널자료는 별도 `Longitudinal / Panel Models` 메뉴에서 분석한다.
+- long-format 반복측정, 군집자료, 패널자료용 종단/패널 분석은 내부 검증 대상이지만 public 1.0 메뉴에서는 숨긴다.
 - 필수 설정은 종속변수, Subject ID, 시간 변수, 예측변수 또는 시간 고정효과, 분석 모형이다.
 - LMM/GLMM에서는 상위 군집이 있으면 `Cluster ID (optional)`을 별도로 지정할 수 있다.
 - 제공하는 5가지 분석은 GEE, LMM, GLMM, 패널 고정효과 모형, 패널 확률효과 모형이다.
@@ -192,12 +192,12 @@
 ## 저장과 출력
 
 - 분석 결과는 Result 탭에 모아 볼 수 있다.
-- HTML, PDF, Excel, Word 저장을 지원한다.
+- public 1.0에서는 HTML, PDF 저장을 지원한다. Excel, Word 결과 저장은 public 1.0에서 숨긴다.
 - 표, 경고, skipped analyses, skipped models, 선택된 분석 방법, 효과크기, 신뢰구간을 함께 저장한다.
 
-## Sample Size, Power, Effect Size 메뉴
+## 표본수, 검정력, 효과크기 메뉴
 
-버전 0.9.40 기준으로 연구계획 계산 메뉴를 제공한다. Sample Size 메뉴는 최소 표본 수와 주어진 표본 수에서의 검정력을 계산하고, Effect Size 메뉴는 표본 수 계산에 투입할 효과크기 또는 변환 가능한 효과크기를 계산한다.
+버전 1.0.0 기준으로 연구계획 계산 메뉴를 제공한다. 표본수 메뉴는 최소 표본 수와 주어진 표본 수에서의 검정력을 계산하고, 효과크기 메뉴는 표본 수 계산에 투입할 효과크기 또는 변환 가능한 효과크기를 계산한다.
 
 ### 공통 출력
 
@@ -208,7 +208,7 @@
 - `Formula / approximation`: 계산에 사용한 공식 또는 근사 방식.
 - `References`: 계산 근거 문헌.
 
-### Sample Size 메뉴 목록
+### 표본수 메뉴 목록
 
 | 메뉴 | 제공 계산 | 주요 입력 |
 |---|---|---|
@@ -232,7 +232,7 @@
 | Cluster Trial | parallel/stepped-wedge cluster trial planning | cluster size, ICC, effect size, number of periods |
 | Precision / CI | mean/proportion/correlation/diagnostic precision | target half-width, confidence level, SD/proportion/prevalence |
 
-### Effect Size 메뉴 목록
+### 효과크기 메뉴 목록
 
 | 메뉴 | 제공 효과크기 |
 |---|---|
@@ -252,4 +252,4 @@
 | GLMM | binary logit OR/log OR/latent d, count log-link IRR/log IRR, Gaussian d |
 | Survival / Cox | hazard ratio and log hazard ratio |
 
-Effect Size 메뉴에서는 분석 결과의 효과를 보고하는 데 직접 쓰기 어려운 단순 계획 규칙, 정밀도 half-width, equivalence margin distance, SEM/CFA complexity score를 제외한다. 이러한 항목은 Sample Size 메뉴의 계획 계산으로 남겨 둔다.
+효과크기 메뉴에서는 분석 결과의 효과를 보고하는 데 직접 쓰기 어려운 단순 계획 규칙, 정밀도 half-width, equivalence margin distance, SEM/CFA complexity score를 제외한다. SEM/CFA는 표본수 메뉴의 계획 계산으로만 남겨 두고, 효과크기 메뉴에는 표시하지 않는다.

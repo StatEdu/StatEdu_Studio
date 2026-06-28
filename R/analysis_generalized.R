@@ -64,8 +64,8 @@ generalized_missing_strategy_detail <- function(strategy) {
 
 generalized_mi_outcome_choices <- function() {
   c(
-    "종속변수 관측 행만 사용 (권장)" = "observed",
-    "종속변수 결측까지 대체 - 민감도 분석용" = "impute"
+    "Use rows with observed dependent variable (recommended)" = "observed",
+    "Impute missing dependent variable for sensitivity analysis" = "impute"
   )
 }
 
@@ -78,7 +78,7 @@ generalized_mi_outcome_label <- function(value) {
   value <- generalized_resolve_mi_outcome(value)
   labels <- names(generalized_mi_outcome_choices())
   values <- unname(generalized_mi_outcome_choices())
-  labels[match(value, values)] %||% "종속변수 관측 행만 사용 (권장)"
+  labels[match(value, values)] %||% "Use rows with observed dependent variable (recommended)"
 }
 
 generalized_resolve_mi_count <- function(value, default = 5L, minimum = 1L, maximum = 50L) {
@@ -442,14 +442,14 @@ generalized_fit_model <- function(data, formula, family, link, robust, exponenti
     stop("Analysis weights must match the analyzed GLM rows.", call. = FALSE)
   }
   if (!is.null(weights)) {
-    data$.easyflow_glm_weights <- weights
+    data$.statedu_glm_weights <- weights
   }
 
   if (identical(family, "count")) {
     poisson <- if (is.null(weights)) {
       stats::glm(formula, data = data, family = generalized_family_object("count", link))
     } else {
-      stats::glm(formula, data = data, family = generalized_family_object("count", link), weights = .easyflow_glm_weights)
+      stats::glm(formula, data = data, family = generalized_family_object("count", link), weights = .statedu_glm_weights)
     }
     dispersion <- generalized_overdispersion_ratio(poisson)
     outcome <- all.vars(formula)[[1]]
@@ -459,7 +459,7 @@ generalized_fit_model <- function(data, formula, family, link, robust, exponenti
         if (is.null(weights)) {
           MASS::glm.nb(formula, data = data, link = "log")
         } else {
-          MASS::glm.nb(formula, data = data, weights = .easyflow_glm_weights, link = "log")
+          MASS::glm.nb(formula, data = data, weights = .statedu_glm_weights, link = "log")
         },
         error = function(e) NULL
       )
@@ -556,7 +556,7 @@ generalized_fit_model <- function(data, formula, family, link, robust, exponenti
   model <- if (is.null(weights)) {
     stats::glm(formula, data = data, family = generalized_family_object(family, link))
   } else {
-    stats::glm(formula, data = data, family = generalized_family_object(family, link), weights = .easyflow_glm_weights)
+    stats::glm(formula, data = data, family = generalized_family_object(family, link), weights = .statedu_glm_weights)
   }
   coef_table <- generalized_coef_table(model, robust = robust, exponentiate = exponentiate, se_type = se_type)
   list(
@@ -807,7 +807,7 @@ generalized_ipw_weights <- function(raw_prepared, analyzed_data, variables, pred
     !anyNA(values) && length(unique(values)) > 1
   }, logical(1))]
   weight_data <- raw_prepared
-  weight_data$.easyflow_observed <- as.integer(observed)
+  weight_data$.statedu_observed <- as.integer(observed)
   if (length(candidate_terms) == 0) {
     probability <- mean(observed)
     weights <- rep(1 / probability, nrow(analyzed_data))
@@ -818,7 +818,7 @@ generalized_ipw_weights <- function(raw_prepared, analyzed_data, variables, pred
       note = "No fully observed predictors were available for the observation model; intercept-only IPW was used. Treat this as a weak IPW sensitivity analysis."
     ))
   }
-  formula <- stats::reformulate(candidate_terms, response = ".easyflow_observed")
+  formula <- stats::reformulate(candidate_terms, response = ".statedu_observed")
   fit <- tryCatch(stats::glm(formula, data = weight_data, family = stats::binomial()), error = function(e) e)
   if (inherits(fit, "error")) {
     probability <- mean(observed)

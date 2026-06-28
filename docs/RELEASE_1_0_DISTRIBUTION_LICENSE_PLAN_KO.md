@@ -1,26 +1,35 @@
 ﻿# StatEdu Studio 1.0 배포/라이센스/업데이트 계획
 
 작성일: 2026-06-07  
-기준 버전: 0.9.33 beta  
+초기 작성 기준: 0.9.33 beta
+최근 검토: 2026-06-25, 1.0.0 릴리스 후보 단계
+검증 태그: statedu-release-plan-reviewed-1.0.0; distribution; license; update
 목표 버전: 1.0 정식 배포
 
-이 문서는 0.9.33 beta에서 1.0 정식 버전으로 전환할 때 구현할 배포, 업데이트, 라이센스, 제품 등급 정책을 정리한다.
+이 문서는 1.0 정식 버전으로 전환하기 전에 검토할 배포, 업데이트, 라이센스, 제품 등급 정책 후보를 정리한다.
+1.0.0 릴리스 후보 단계에서는 새 분석 기능을 추가하지 않고, 각 배포/라이센스/업데이트 항목을 구현할지 명시적으로 유예할지 결정하는 기준 문서로 다시 확인했다.
+
+## 현재 상태
+
+이 문서는 1.0.0 릴리스 후보 단계의 planning/reference document only 문서이다. 아래의 Free/Pro/Latent 권한 분리, 라이센스 서버, activation 관리, 업데이트 확인, installer 배포 인프라는 `docs/RELEASE_1_0_DECISION_LOG.md`에서 구현 완료 또는 명시적 유예로 확정되기 전까지 1.0 공개 기능으로 주장하지 않는다.
+
+Do not claim gated editions, license activation, in-app updates, or public installer infrastructure until the decision log marks them implemented or deferred.
 
 ## 전환 리마인더
 
-0.9.34, 0.9.35, 0.9.36 이후 기능 안정화가 진행되면 1.0 정식 배포 전환 여부를 다시 검토한다. 특히 0.9.37 이상으로 올라가거나, 새 기능 추가보다 안정화/배포 준비가 더 중요한 시점이 되면 이 문서를 다시 열어 Free/Pro/Latent 권한 분리, 라이센스 서버, activation 관리, 업데이트 확인 기능, installer 배포 인프라를 구현 대상으로 올린다.
+현재 1.0.0 릴리스 후보 단계에서는 정식 배포 여부를 기능 추가가 아니라 검증, 패키징, 라이센스/업데이트 정책 확정 여부로 판단한다. Free/Pro/Latent 권한 분리, 라이센스 서버, activation 관리, 업데이트 확인 기능, installer 배포 인프라는 `docs/RELEASE_1_0_DECISION_LOG.md`에 구현 또는 유예 결정을 기록하기 전까지 구현 대상으로 확정하지 않는다.
 
 릴리스 준비 중 다음 신호가 보이면 1.0 전환 회의를 진행한다.
 
 - 주요 통계분석 기능이 더 이상 큰 구조 변경 없이 안정화됨
 - 결과표/내보내기 형식이 논문/보고서 작성에 충분히 안정화됨
 - 신규 기능 추가보다 배포, 라이센스, 업데이트, 문서화가 병목이 됨
-- 0.9.37 이상 버전에서 beta 꼬리표를 계속 유지할 실익이 줄어듦
+- 0.9.x beta 꼬리표를 계속 유지할 실익이 줄어듦
 - 사용자에게 무료판과 Pro판의 차이를 명확히 설명할 수 있음
 
 ## 제품 등급 정책
 
-1.0 정식 버전은 분석 기능 자체를 유료화하지 않는다. 무료 배포판에서도 통계분석 기능은 기간 제한 없이 자유롭게 사용할 수 있다. 유료 버전은 더 넓은 데이터 import, 고급 export, 결과 누적/저장 workflow를 제공한다.
+이 절은 1.0 후보 제품 등급 정책이다. 최종 1.0 정책은 `docs/RELEASE_1_0_DECISION_LOG.md`와 공개 릴리스 노트에서 확정한다. 정책이 채택되는 경우, 1.0 정식 버전은 분석 기능 자체를 유료화하지 않고 무료 배포판에서도 통계분석 기능을 기간 제한 없이 사용할 수 있게 한다. 유료 버전은 더 넓은 데이터 import, 고급 export, 결과 누적/저장 workflow를 제공하는 방향으로 검토한다.
 
 ### Free
 
@@ -80,22 +89,22 @@
 
 ## 배포 정책
 
-1.0 배포판 installer는 공개 다운로드로 배포한다. 구매자 전용 파일로 숨기지 않는다. 유료 여부는 앱 내부 라이센스 권한으로 제어한다.
+이 절은 1.0 후보 배포 정책이다. 정책이 채택되는 경우, 1.0 배포판 installer는 공개 다운로드로 배포하고 구매자 전용 파일로 숨기지 않는다. 유료 여부는 앱 내부 라이센스 권한으로 제어하는 방향으로 검토한다.
 
 설치파일 크기는 약 400MB로 예상한다. 일반 웹호스팅에서 직접 전송하면 다운로드 트래픽 비용과 제한이 커질 수 있으므로, 실제 파일 전송은 대용량 파일 배포용 저장소/CDN이 담당한다.
 
 권장 구조:
 
 ```text
-efs-stat.com/download
+studio.statedu.com/download
   -> 다운로드 페이지
 
-download.efs-stat.com
+download.statedu.com
   -> Cloudflare R2 public bucket 또는 동급 object storage/CDN
-  -> EFS_Setup_1.0.0.exe
+  -> StatEdu_Studio_Setup_1.0.0.exe
   -> checksum / manifest / release notes
 
-license.efs-stat.com
+license.statedu.com
   -> 라이센스 인증
   -> Pro/Latent 권한 확인
   -> activation 관리
@@ -104,7 +113,7 @@ license.efs-stat.com
 1차 권장 배포 저장소:
 
 - Cloudflare R2
-- custom domain: `download.efs-stat.com`
+- custom domain: `download.statedu.com`
 - R2 public bucket + Cloudflare cache 사용
 - egress 비용이 없는 구조를 우선 검토한다.
 
@@ -116,8 +125,8 @@ license.efs-stat.com
 배포 파일 예:
 
 ```text
-/windows/EFS_Setup_1.0.0.exe
-/windows/EFS_Setup_1.0.0.exe.sha256
+/windows/StatEdu_Studio_Setup_1.0.0.exe
+/windows/StatEdu_Studio_Setup_1.0.0.exe.sha256
 /windows/latest.json
 /release-notes/1.0.0.html
 ```
@@ -126,18 +135,18 @@ license.efs-stat.com
 
 - 홈페이지 서버가 400MB installer를 직접 전송하지 않는다.
 - 홈페이지는 다운로드 버튼과 release notes만 제공한다.
-- 실제 installer 파일은 `download.efs-stat.com`에서 전송한다.
+- 실제 installer 파일은 `download.statedu.com`에서 전송한다.
 - installer는 공개되어도 된다. Pro/Latent 기능은 라이센스 권한으로만 열린다.
 
 ## 업데이트 정책
 
-1.0 정식 배포판에는 업데이트 확인 기능과 업데이트 실행 기능을 포함한다.
+이 절은 후보 업데이트 정책이다. 업데이트 기능을 1.0에 포함하기로 확정하는 경우, 정식 배포판에는 업데이트 확인 기능과 업데이트 실행 기능을 포함한다.
 
 앱 메뉴 예:
 
 ```text
 Help > Check for Updates
-Help > About EFS
+Help > About StatEdu Studio
 ```
 
 업데이트 확인 흐름:
@@ -156,10 +165,10 @@ Help > About EFS
 {
   "latest_version": "1.0.3",
   "minimum_supported_version": "1.0.0",
-  "download_url": "https://download.efs-stat.com/windows/EFS_Setup_1.0.3.exe",
+  "download_url": "https://download.statedu.com/windows/StatEdu_Studio_Setup_1.0.3.exe",
   "sha256": "...",
   "size_mb": 412,
-  "release_notes_url": "https://efs-stat.com/releases/1.0.3",
+  "release_notes_url": "https://studio.statedu.com/releases/1.0.3",
   "mandatory": false
 }
 ```
@@ -179,8 +188,8 @@ Help > About EFS
 1차 구현은 전체 설치파일 재다운로드 방식으로 충분하다.
 
 ```text
-1차: EFS_Setup_1.0.3.exe 전체 다운로드
-2차: EFS_Update_1.0.2_to_1.0.3.exe 패치 다운로드 검토
+1차: StatEdu_Studio_Setup_1.0.3.exe 전체 다운로드
+2차: StatEdu_Studio_Update_1.0.2_to_1.0.3.exe 패치 다운로드 검토
 ```
 
 ## 라이센스 서버 정책
@@ -190,8 +199,8 @@ Help > About EFS
 권장 서버 구조:
 
 ```text
-EFS app
-  -> license.efs-stat.com
+StatEdu Studio app
+  -> license.statedu.com
     -> License API server
     -> PostgreSQL DB
 ```
@@ -299,7 +308,7 @@ License > Deactivate This Device
 화면 예:
 
 ```text
-EFS Personal Pro
+StatEdu Studio Personal Pro
 License: active
 Expires: 2027-06-07
 Activations: 2 / 2
@@ -456,9 +465,9 @@ latent_addin = true
 
 ### 배포 인프라
 
-- `download.efs-stat.com` 준비
+- `download.statedu.com` 준비
 - R2 bucket 또는 동급 object storage 준비
-- `license.efs-stat.com` 준비
+- `license.statedu.com` 준비
 - HTTPS 적용
 - installer 파일, checksum, latest.json 업로드 절차 정리
 - release notes 페이지 준비

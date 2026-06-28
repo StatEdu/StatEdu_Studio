@@ -7,7 +7,7 @@ analysis_figure_width <- 4.375
 analysis_figure_height <- 4.375
 
 plot_png_file <- function(plot_function, result, dpi = analysis_figure_dpi, width = analysis_figure_width, height = analysis_figure_height) {
-  path <- tempfile("easyflow_plot_", fileext = ".png")
+  path <- tempfile("statedu_plot_", fileext = ".png")
   grDevices::png(path, width = width, height = height, units = "in", res = dpi)
   closed <- FALSE
   on.exit({
@@ -26,7 +26,7 @@ ps_quote <- function(value) {
   paste0("'", gsub("'", "''", enc2utf8(as.character(value %||% "")), fixed = TRUE), "'")
 }
 
-windows_dialog_cancel_marker <- "__EASYFLOW_DIALOG_CANCEL__"
+windows_dialog_cancel_marker <- "__STATEDU_DIALOG_CANCEL__"
 
 is_windows_dialog_cancel <- function(path) {
   length(path) > 0 && identical(path[[1]], windows_dialog_cancel_marker)
@@ -295,7 +295,7 @@ tags_to_html <- function(content) {
 }
 
 plot_data_uri <- function(plot_function, result, width = 420, height = 420, res = 96) {
-  path <- tempfile("easyflow_plot_", fileext = ".png")
+  path <- tempfile("statedu_plot_", fileext = ".png")
   grDevices::png(path, width = width, height = height, res = res)
   closed <- FALSE
   on.exit({
@@ -515,7 +515,7 @@ choose_word_save_path <- function() {
 
 find_pdf_chromium <- function() {
   candidates <- c(
-    Sys.getenv("EASYFLOW_CHROME", ""),
+    Sys.getenv("STATEDU_CHROME", ""),
     Sys.which("chrome"),
     Sys.which("google-chrome"),
     Sys.which("chromium"),
@@ -533,9 +533,9 @@ find_pdf_chromium <- function() {
 write_pdf_from_html <- function(html, file) {
   browser <- find_pdf_chromium()
   if (!nzchar(browser)) {
-    stop("Chrome or Edge was not found. Install Chrome/Edge or set EASYFLOW_CHROME.")
+    stop("Chrome or Edge was not found. Install Chrome/Edge or set STATEDU_CHROME.")
   }
-  html_file <- tempfile("easyflow_pdf_", fileext = ".html")
+  html_file <- tempfile("statedu_pdf_", fileext = ".html")
   writeLines(html, html_file, useBytes = TRUE)
   on.exit(unlink(html_file), add = TRUE)
   args <- c(

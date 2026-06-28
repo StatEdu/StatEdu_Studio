@@ -10,7 +10,8 @@ register_reliability_handlers <- function(
   labels_fn,
   category_table_fn,
   reliability_variables,
-  mark_settings_dirty
+  mark_settings_dirty,
+  app_language_fn = NULL
 ) {
   active_reliability_list <- reactiveVal(NULL)
   reliability_factor_blocks <- reactiveVal(NULL)
@@ -49,6 +50,7 @@ register_reliability_handlers <- function(
   }
 
   reliability_state <- reactive({
+    language <- statedu_current_language(app_language_fn)
     reliability_setup_state(
       selected_names = selected_names_fn(),
       variable_table = variable_table_fn(),
@@ -62,14 +64,16 @@ register_reliability_handlers <- function(
       ordinal = input$reliability_ordinal %||% FALSE,
       subfactor_enabled = input$reliability_subfactor_enabled,
       reliability_if_deleted = input$reliability_if_deleted %||% TRUE,
-      item_total_correlation = input$reliability_item_total_correlation %||% TRUE
+      item_total_correlation = input$reliability_item_total_correlation %||% TRUE,
+      language = language
     )
   })
 
   output$reliability_setup <- renderUI({
+    language <- statedu_current_language(app_language_fn)
     selected <- as.character(selected_names_fn() %||% character(0))
     if (length(selected) == 0) {
-      return(setup_empty_message("Complete Step 2 in the Data tab before setting up reliability analysis."))
+      return(setup_empty_message("Complete Step 2 in the Data tab before setting up reliability analysis.", language = language))
     }
     reliability_setup_panel(reliability_state())
   })
@@ -84,7 +88,8 @@ register_reliability_handlers <- function(
     variables_fn = function() unique(unlist(current_reliability_blocks(), use.names = FALSE)),
     variable_table_fn = variable_table_fn,
     labels_fn = labels_fn,
-    category_table_fn = category_table_fn
+    category_table_fn = category_table_fn,
+    language_fn = app_language_fn
   )
 
   observe({

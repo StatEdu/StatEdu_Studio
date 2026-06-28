@@ -86,16 +86,33 @@ ttest_zero_sd_groups <- function(values, groups, levels = NULL) {
   }, logical(1))]
 }
 
-ttest_normality_skew_kurtosis <- function(values) {
+ttest_skew_kurtosis_cutoffs <- function(preset = "2_7") {
+  preset <- as.character(preset %||% "2_7")
+  switch(
+    preset,
+    "2_5" = list(preset = "2_5", skew = 2, kurtosis = 5, label = "2/5"),
+    "3_7" = list(preset = "3_7", skew = 3, kurtosis = 7, label = "3/7"),
+    list(preset = "2_7", skew = 2, kurtosis = 7, label = "2/7")
+  )
+}
+
+ttest_normality_skew_kurtosis <- function(values, cutoff_preset = "2_7") {
   values <- as.numeric(values)
   values <- values[!is.na(values)]
   skew <- sample_skewness(values)
   kurtosis <- sample_excess_kurtosis(values)
-  normal <- is.finite(skew) && is.finite(kurtosis) && abs(skew) <= 2 && abs(kurtosis) <= 7
+  cutoffs <- ttest_skew_kurtosis_cutoffs(cutoff_preset)
+  normal <- is.finite(skew) && is.finite(kurtosis) &&
+    abs(skew) <= cutoffs$skew && abs(kurtosis) <= cutoffs$kurtosis
   list(
     method = "Skewness/Kurtosis",
     normal = normal,
-    detail = sprintf("skew=%s, kurtosis=%s", format_decimal3(skew), format_decimal3(kurtosis))
+    detail = sprintf(
+      "skew=%s, kurtosis=%s, cutoff=%s",
+      format_decimal3(skew),
+      format_decimal3(kurtosis),
+      cutoffs$label
+    )
   )
 }
 
@@ -756,6 +773,153 @@ ttest_distribute_ordered_posthoc <- function(rows, notation) {
   rows
 }
 
+ttest_ordered_marker_statements <- function(ordered_markers, significant_pairs) {
+  ordered_markers <- unique(as.character(ordered_markers))
+  ordered_markers <- ordered_markers[nzchar(ordered_markers)]
+  if (length(ordered_markers) < 2L || is.null(significant_pairs) || nrow(significant_pairs) == 0L) {
+    return(character(0))
+  }
+
+  significant_pairs$higher <- as.character(significant_pairs$higher)
+  significant_pairs$lower <- as.character(significant_pairs$lower)
+  significant_pairs <- significant_pairs[nzchar(significant_pairs$higher) & nzchar(significant_pairs$lower), , drop = FALSE]
+  if (nrow(significant_pairs) == 0L) {
+    return(character(0))
+  }
+
+  pair_key <- function(higher, lower) paste(higher, lower, sep = "\r")
+  pair_keys <- unique(pair_key(significant_pairs$higher, significant_pairs$lower))
+  has_pair <- function(higher, lower) pair_key(higher, lower) %in% pair_keys
+
+  chain_pairs <- character(0)
+  chain_statements <- data.frame(first = character(0), statement = character(0), stringsAsFactors = FALSE)
+  marker_count <- length(ordered_markers)
+  chain_start <- 1L
+  while (chain_start <= marker_count - 2L) {
+    chain_end <- NA_integer_
+    for (candidate_end in seq.int(marker_count, chain_start + 2L)) {
+      chain_markers <- ordered_markers[seq.int(chain_start, candidate_end)]
+      all_pairs_significant <- TRUE
+      for (higher_index in seq_len(length(chain_markers) - 1L)) {
+        lower_indices <- seq.int(higher_index + 1L, length(chain_markers))
+        if (!all(vapply(chain_markers[lower_indices], function(lower) {
+          has_pair(chain_markers[[higher_index]], lower)
+        }, logical(1)))) {
+          all_pairs_significant <- FALSE
+          break
+        }
+      }
+      if (all_pairs_significant) {
+        chain_end <- candidate_end
+        break
+      }
+    }
+    if (is.na(chain_end)) {
+      chain_start <- chain_start + 1L
+      next
+    }
+    chain_markers <- ordered_markers[seq.int(chain_start, chain_end)]
+    for (higher_index in seq_len(length(chain_markers) - 1L)) {
+      lower_indices <- seq.int(higher_index + 1L, length(chain_markers))
+      chain_pairs <- c(chain_pairs, pair_key(chain_markers[[higher_index]], chain_markers[lower_indices]))
+    }
+    chain_statements <- rbind(
+      chain_statements,
+      data.frame(
+        first = chain_markers[[1]],
+        statement = paste(chain_markers, collapse = ">"),
+        stringsAsFactors = FALSE
+      )
+    )
+    chain_start <- chain_end + 1L
+  }
+
+  grouped_pairs <- character(0)
+  grouped_statements <- data.frame(first = character(0), statement = character(0), stringsAsFactors = FALSE)
+  if (length(ordered_markers) >= 3L) {
+    for (lower_index in seq.int(length(ordered_markers), 2L)) {
+      lower <- ordered_markers[[lower_index]]
+      higher_candidates <- ordered_markers[seq_len(lower_index - 1L)]
+      higher <- higher_candidates[vapply(higher_candidates, function(candidate) {
+        has_pair(candidate, lower) && !pair_key(candidate, lower) %in% chain_pairs
+      }, logical(1))]
+      if (length(higher) < 2L) {
+        next
+      }
+      has_internal_difference <- any(vapply(seq_len(length(higher) - 1L), function(index) {
+        any(vapply(higher[seq.int(index + 1L, length(higher))], function(candidate) {
+          has_pair(higher[[index]], candidate) || has_pair(candidate, higher[[index]])
+        }, logical(1)))
+      }, logical(1)))
+      if (!has_internal_difference) {
+        grouped_pairs <- c(grouped_pairs, pair_key(higher, lower))
+        grouped_statements <- rbind(
+          grouped_statements,
+          data.frame(
+            first = higher[[1]],
+            higher_key = paste(higher, collapse = "\r"),
+            lower = lower,
+            statement = sprintf("%s>%s", paste(higher, collapse = ","), lower),
+            stringsAsFactors = FALSE
+          )
+        )
+      }
+    }
+  }
+  if (nrow(grouped_statements) > 0L && all(c("higher_key", "lower") %in% names(grouped_statements))) {
+    consolidated_grouped_statements <- data.frame(first = character(0), statement = character(0), stringsAsFactors = FALSE)
+    for (higher_key in unique(grouped_statements$higher_key)) {
+      group_rows <- grouped_statements[grouped_statements$higher_key == higher_key, , drop = FALSE]
+      higher <- strsplit(higher_key, "\r", fixed = TRUE)[[1]]
+      lower <- unique(as.character(group_rows$lower))
+      lower <- ordered_markers[ordered_markers %in% lower]
+      has_lower_internal_difference <- length(lower) > 1L && any(vapply(seq_len(length(lower) - 1L), function(index) {
+        any(vapply(lower[seq.int(index + 1L, length(lower))], function(candidate) {
+          has_pair(lower[[index]], candidate) || has_pair(candidate, lower[[index]])
+        }, logical(1)))
+      }, logical(1)))
+      if (!has_lower_internal_difference) {
+        consolidated_grouped_statements <- rbind(
+          consolidated_grouped_statements,
+          data.frame(
+            first = higher[[1]],
+            statement = sprintf("%s>%s", paste(higher, collapse = ","), paste(lower, collapse = ",")),
+            stringsAsFactors = FALSE
+          )
+        )
+      } else {
+        consolidated_grouped_statements <- rbind(
+          consolidated_grouped_statements,
+          group_rows[c("first", "statement")]
+        )
+      }
+    }
+    grouped_statements <- consolidated_grouped_statements
+  }
+
+  statements <- character(0)
+  for (higher_index in seq_len(length(ordered_markers) - 1L)) {
+    higher <- ordered_markers[[higher_index]]
+    if (nrow(chain_statements) > 0L) {
+      statements <- c(statements, chain_statements$statement[chain_statements$first == higher])
+    }
+    if (nrow(grouped_statements) > 0L) {
+      statements <- c(statements, grouped_statements$statement[grouped_statements$first == higher])
+    }
+    lower_candidates <- ordered_markers[seq.int(higher_index + 1L, length(ordered_markers))]
+    lower <- lower_candidates[vapply(lower_candidates, function(candidate) {
+      has_pair(higher, candidate) &&
+        !pair_key(higher, candidate) %in% chain_pairs &&
+        !pair_key(higher, candidate) %in% grouped_pairs
+    }, logical(1))]
+    if (length(lower) > 0L) {
+      statements <- c(statements, sprintf("%s>%s", higher, paste(lower, collapse = ",")))
+    }
+  }
+
+  unique(statements[nzchar(statements)])
+}
+
 analysis_apply_ordered_posthoc_markers <- function(rows, estimates, levels, p_matrix, label_column = NULL, alpha = .05) {
   if (!is.data.frame(rows) || !"post-hoc" %in% names(rows)) {
     return(rows)
@@ -784,24 +948,27 @@ analysis_apply_ordered_posthoc_markers <- function(rows, estimates, levels, p_ma
   estimate_map <- stats::setNames(estimates, levels)
 
   ordered_high_to_low <- rev(ordered_low_to_high)
-  statements <- character(0)
+  significant_pairs <- data.frame(higher = character(0), lower = character(0), stringsAsFactors = FALSE)
   for (higher in ordered_high_to_low) {
-    lower_markers <- character(0)
     for (candidate in ordered_low_to_high) {
       if (identical(higher, candidate)) next
       if (!all(c(higher, candidate) %in% rownames(p_matrix)) || !all(c(higher, candidate) %in% colnames(p_matrix))) next
       if (!is.finite(estimate_map[[higher]]) || !is.finite(estimate_map[[candidate]]) || estimate_map[[higher]] <= estimate_map[[candidate]]) next
       p_value <- suppressWarnings(as.numeric(p_matrix[higher, candidate] %||% NA_real_))
       if (is.finite(p_value) && p_value < alpha) {
-        lower_markers <- c(lower_markers, named_value(marker_map, candidate, ""))
+        significant_pairs <- rbind(
+          significant_pairs,
+          data.frame(
+            higher = named_value(marker_map, higher, ""),
+            lower = named_value(marker_map, candidate, ""),
+            stringsAsFactors = FALSE
+          )
+        )
       }
     }
-    lower_markers <- unique(lower_markers[nzchar(lower_markers)])
-    higher_marker <- named_value(marker_map, higher, "")
-    if (length(lower_markers) > 0L && nzchar(higher_marker)) {
-      statements <- c(statements, sprintf("%s>%s", higher_marker, paste(lower_markers, collapse = ",")))
-    }
   }
+  ordered_markers <- unname(marker_map[ordered_high_to_low])
+  statements <- ttest_ordered_marker_statements(ordered_markers, significant_pairs)
   if (length(statements) == 0L) {
     return(rows)
   }
@@ -1221,7 +1388,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
       ttest_normality_shapiro_overall(values)
     }
   } else {
-    ttest_normality_skew_kurtosis(values)
+    ttest_normality_skew_kurtosis(values, options$normality_skew_kurtosis_cutoff %||% "2_7")
   }
 
   parametric <- isTRUE(normality$normal) && !isTRUE(force_nonparametric)
@@ -1559,28 +1726,37 @@ ttest_model_overview_wide <- function(overview, dependents = NULL, variable_info
     if (length(p_values) > 0 && any(!is.na(p_values))) {
       return(if (all(p_values[!is.na(p_values)] >= .05)) "\uc815\uaddc\uc131 \ub9cc\uc871" else "\uc815\uaddc\uc131 \ubd88\ub9cc\uc871")
     }
-    numeric_values <- suppressWarnings(as.numeric(unlist(regmatches(value, gregexpr("-?[0-9.]+", value)))))
-    if (grepl("skew\\s*=|kurtosis\\s*=", value, ignore.case = TRUE) && length(numeric_values) >= 2) {
-      skew <- numeric_values[[1]]
-      kurtosis <- numeric_values[[2]]
-      return(if (!is.na(skew) && !is.na(kurtosis) && abs(skew) <= 2 && abs(kurtosis) <= 7) "\uc815\uaddc\uc131 \ub9cc\uc871" else "\uc815\uaddc\uc131 \ubd88\ub9cc\uc871")
+    if (grepl("skew\\s*=|kurtosis\\s*=", value, ignore.case = TRUE)) {
+      skew_match <- regmatches(value, regexpr("skew\\s*=\\s*-?[0-9.]+", value, ignore.case = TRUE))
+      kurtosis_match <- regmatches(value, regexpr("kurtosis\\s*=\\s*-?[0-9.]+", value, ignore.case = TRUE))
+      skew <- if (length(skew_match) > 0) suppressWarnings(as.numeric(sub(".*=\\s*", "", skew_match))) else NA_real_
+      kurtosis <- if (length(kurtosis_match) > 0) suppressWarnings(as.numeric(sub(".*=\\s*", "", kurtosis_match))) else NA_real_
+      cutoff_match <- regmatches(value, regexpr("cutoff\\s*=\\s*[0-9]+/[0-9]+", value, ignore.case = TRUE))
+      cutoff_label <- if (length(cutoff_match) > 0 && nzchar(cutoff_match)) {
+        sub(".*=\\s*", "", cutoff_match)
+      } else {
+        "2/7"
+      }
+      cutoff_preset <- switch(cutoff_label, "2/5" = "2_5", "3/7" = "3_7", "2_7")
+      cutoffs <- ttest_skew_kurtosis_cutoffs(cutoff_preset)
+      return(if (!is.na(skew) && !is.na(kurtosis) && abs(skew) <= cutoffs$skew && abs(kurtosis) <= cutoffs$kurtosis) "Normality met" else "Normality not met")
     }
     ""
   }
   homogeneity_satisfied <- function(value) {
     value <- as.character(value %||% "")
     if (!nzchar(value)) return("")
-    if (identical(value, "<.001")) return("\ub4f1\ubd84\uc0b0\uc131 \ubd88\ub9cc\uc871")
+    if (identical(value, "<.001")) return("Homogeneity not met")
     p_value <- suppressWarnings(as.numeric(sub("^<", "", value)))
     if (is.na(p_value)) return("")
-    if (p_value >= .05) "\ub4f1\ubd84\uc0b0\uc131 \ub9cc\uc871" else "\ub4f1\ubd84\uc0b0\uc131 \ubd88\ub9cc\uc871"
+    if (p_value >= .05) "Homogeneity met" else "Homogeneity not met"
   }
   metric_values <- function(row, metric) {
     if (identical(metric, "Reason")) {
       parts <- c(
         if ("Normality" %in% names(row)) normality_satisfied(row$Normality) else "",
         if ("Homogeneity p" %in% names(row)) homogeneity_satisfied(row$`Homogeneity p`) else "",
-        if ("Post-hoc" %in% names(row) && nzchar(row$`Post-hoc` %||% "")) "\uc0ac\ud6c4\ubd84\uc11d \uc788\uc74c" else ""
+        if ("Post-hoc" %in% names(row) && nzchar(row$`Post-hoc` %||% "")) "Post-hoc included" else ""
       )
       return(paste(parts[nzchar(parts)], collapse = "\n"))
     }
@@ -1591,7 +1767,7 @@ ttest_model_overview_wide <- function(overview, dependents = NULL, variable_info
   }
 
   metrics <- c(intersect(c("N", "Analysis"), names(overview)), "Reason")
-  metric_labels <- c(N = "N", Analysis = "\ubd84\uc11d", Reason = "\uc0ac\uc720")
+  metric_labels <- c(N = "N", Analysis = "Analysis", Reason = "Reason")
   rows <- list()
   for (factor in factors) {
     for (metric_index in seq_along(metrics)) {
@@ -1652,10 +1828,10 @@ ttest_assumption_review_wide <- function(overview, dependents = NULL, variable_i
   factors <- unique(as.character(overview$`Independent variable`))
   metrics <- c("Normality", "Homogeneity p", "Post-hoc", "Package")
   metric_labels <- c(
-    Normality = "\uc815\uaddc\uc131",
-    `Homogeneity p` = "\ub4f1\ubd84\uc0b0\uc131",
-    `Post-hoc` = "\uc0ac\ud6c4\ubd84\uc11d",
-    Package = "\ud328\ud0a4\uc9c0"
+    Normality = "Normality",
+    `Homogeneity p` = "Homogeneity",
+    `Post-hoc` = "Post-hoc",
+    Package = "Package"
   )
   rows <- list()
 
@@ -1874,7 +2050,7 @@ ttest_anova_results_ui <- function(result) {
   if (is.data.frame(overview_tables$assumption_review) && nrow(overview_tables$assumption_review) > 0) {
     sections[[length(sections) + 1]] <- tags$div(
       class = paste0("result-section regression-result-panel ttest-anova-assumption-review-panel", assumption_landscape_class),
-      tags$h3("가정 검토"),
+      tags$h3("Assumption review"),
       model_overview_html_table(overview_tables$assumption_review)
     )
   }

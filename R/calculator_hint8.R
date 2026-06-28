@@ -4,14 +4,14 @@ hint8_item_specs <- function() {
   data.frame(
     id = paste0("hint8_item_", 1:8),
     label = c(
-      "LQ1 (계단 오르기)",
-      "LQ2 (통증)",
-      "LQ3 (기운)",
-      "LQ4 (일하기)",
-      "LQ5 (우울)",
-      "LQ6 (기억)",
-      "LQ7 (잠자기)",
-      "LQ8 (행복)"
+      "LQ1 (stair climbing)",
+      "LQ2 (pain)",
+      "LQ3 (energy)",
+      "LQ4 (working)",
+      "LQ5 (depression)",
+      "LQ6 (memory)",
+      "LQ7 (sleeping)",
+      "LQ8 (happiness)"
     ),
     stringsAsFactors = FALSE
   )
@@ -130,7 +130,8 @@ hint8_calculated_variable_info_row <- function(name, values, template_info = NUL
   row
 }
 
-hint8_calculator_tab_panel <- function() {
+hint8_calculator_tab_panel <- function(language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   tabPanel(
     "HINT8",
     value = "calculator_hint8",
@@ -138,8 +139,8 @@ hint8_calculator_tab_panel <- function() {
       class = "page-shell",
       div(
         class = "app-heading",
-        h1("HINT8 Calculator"),
-        div("Select the 8 HINT8 item variables from the current data and calculate hint8_score.", class = "app-subtitle")
+        h1(statedu_text(language, "HINT8 Calculator", statedu_utf8("48494e543820eab384ec82b0eab8b0"))),
+        div(statedu_text(language, "Select the 8 HINT8 item variables from the current data and calculate hint8_score.", statedu_utf8("ed9884ec9eac20eb8db0ec9db4ed84b0ec9790ec849c2048494e54382038eab09c20ebacb8ed95ad20ebb380ec8898eba5bc20ec84a0ed839ded9598eab3a02068696e74385f73636f7265eba5bc20eab384ec82b0ed95a9eb8b88eb8ba42e")), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel hint8-calculator-workspace",
@@ -151,8 +152,8 @@ hint8_calculator_tab_panel <- function() {
           class = "analysis-action-row calculator-action-row",
           div(
             class = "calculator-action-row-controls",
-            actionButton("run_hint8_calculator", "Calculate", class = "btn btn-primary"),
-            downloadButton("download_hint8_calculator", "Download CSV", class = "btn btn-default")
+            actionButton("run_hint8_calculator", statedu_ui_label("calculate", language), class = "btn btn-primary"),
+            downloadButton("download_hint8_calculator", statedu_ui_label("download_csv", language), class = "btn btn-default")
           )
         ),
         uiOutput("hint8_calculator_summary"),
@@ -162,23 +163,22 @@ hint8_calculator_tab_panel <- function() {
   )
 }
 
-calculator_tab_panel <- function() {
+calculator_tab_panel <- function(language = statedu_initial_language()) {
   navbarMenu(
-    "Calculator",
+    statedu_ui_label("calculator", language),
     lazy_tab_panel("HINT8", "calculator_hint8", "lazy_calculator_hint8"),
     lazy_tab_panel("EQ-5D", "calculator_eq5d", "lazy_calculator_eq5d"),
-    lazy_tab_panel("Metabolic syndrome", "calculator_metabolic", "lazy_calculator_metabolic"),
-    lazy_tab_panel("Framingham risk score", "calculator_frs", "lazy_calculator_frs"),
+    lazy_tab_panel(statedu_text(language, "Metabolic syndrome", statedu_utf8("eb8c80ec82aceca69ded9b84eab5b0")), "calculator_metabolic", "lazy_calculator_metabolic"),
+    lazy_tab_panel(statedu_text(language, "Framingham risk score", statedu_utf8("4672616d696e6768616d20ec9c84ed9798eb8f84")), "calculator_frs", "lazy_calculator_frs"),
     lazy_tab_panel("ASCVD10", "calculator_ascvd10", "lazy_calculator_ascvd10"),
-    lazy_tab_panel("Metabolic severity", "calculator_metabolic_severity", "lazy_calculator_metabolic_severity")
+    lazy_tab_panel(statedu_text(language, "Metabolic severity", statedu_utf8("eb8c80ec82aceca69ded9b84eab5b020eca491eca69deb8f84")), "calculator_metabolic_severity", "lazy_calculator_metabolic_severity")
   )
 }
-
-hint8_item_select_control <- function(id, label, choices, selected = "") {
+hint8_item_select_control <- function(id, label, choices, selected = "", language = statedu_initial_language()) {
   selectInput(
     id,
     label,
-    choices = c("Select variable" = "", choices),
+    choices = c(stats::setNames("", statedu_ui_label("select_variable", language)), choices),
     selected = selected,
     width = "100%"
   )
@@ -224,9 +224,10 @@ hint8_output_table <- function() {
   )
 }
 
-hint8_calculator_setup_ui <- function(file, data, variable_info, input) {
+hint8_calculator_setup_ui <- function(file, data, variable_info, input, language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   if (is.null(file)) {
-    return(setup_empty_message("Load a data file in the Data tab before using the HINT8 calculator."))
+    return(setup_empty_message(statedu_text(language, "Load a data file in the Data tab before using the HINT8 calculator.", statedu_utf8("eb8db0ec9db4ed84b020ed83adec9790ec849c20eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a820ed9b842048494e543820eab384ec82b0eab8b0eba5bc20ec82acec9aa9ed9598ec84b8ec9a942e")), language = language))
   }
 
   choices <- hint8_variable_choices(data, variable_info)
@@ -239,7 +240,8 @@ hint8_calculator_setup_ui <- function(file, data, variable_info, input) {
       specs$id[[index]],
       specs$label[[index]],
       choices,
-      selected = isolate(input[[specs$id[[index]]]]) %||% ""
+      selected = isolate(input[[specs$id[[index]]]]) %||% "",
+      language = language
     )
   })
 
@@ -247,24 +249,24 @@ hint8_calculator_setup_ui <- function(file, data, variable_info, input) {
     class = "frequencies-setup-grid hint8-setup-grid",
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
-      analysis_field_label_tag("Variables"),
+      analysis_field_label_tag("Variables", language = language),
       analysis_transfer_listbox_input("hint8_available", available_items, selected = isolate(input$hint8_available), size = 17)
     ),
     div(class = "analysis-transfer-controls hint8-transfer-spacer"),
     div(
       class = "analysis-transfer-column analysis-transfer-panel hint8-target-panel",
-      analysis_field_label_tag("HINT8 variables"),
+      analysis_field_label_tag("HINT8 variables", language = language),
       div(class = "hint8-variable-input-grid hint8-single-column-input-grid", variable_inputs)
     ),
     div(
       class = "analysis-options-column analysis-options-panel hint8-initial-panel",
-      div(class = "analysis-option-title", "Initial values"),
+      div(class = "analysis-option-title", statedu_ui_label("initial_values", language)),
       div(
         class = "hint8-initial-content",
         div(
           class = "step-summary hint8-initial-summary",
-          div(sprintf("Initial score: %.3f", initial_score), class = "step-summary-title"),
-          div("When checked, profile 11111111 is scored as 1.000. When unchecked, the formula score is 0.927.", class = "step-summary-detail")
+          div(sprintf("%s: %.3f", statedu_ui_label("initial_score", language), initial_score), class = "step-summary-title"),
+          div(statedu_text(language, "When checked, profile 11111111 is scored as 1.000. When unchecked, the formula score is 0.927.", statedu_utf8("ec84a0ed839ded9598eba9b42070726f66696c65203131313131313131ec9d8420312e303030ec9cbceba19c20eca090ec8898ed9994ed95a9eb8b88eb8ba42e20ec84a0ed839ded9598eca78020ec958aec9cbceba9b420eab3b5ec8b9d20eca090ec8898eb8a9420302e393237ec9e85eb8b88eb8ba42e")), class = "step-summary-detail")
         ),
         checkboxInput(
           "hint8_profile_11111111_as_one",
@@ -272,7 +274,7 @@ hint8_calculator_setup_ui <- function(file, data, variable_info, input) {
           value = profile_as_one
         ),
         hint8_weight_values_table(),
-        div(class = "analysis-option-title calculator-output-title", "Output"),
+        div(class = "analysis-option-title calculator-output-title", statedu_ui_label("output", language)),
         hint8_output_table()
       )
     )
@@ -286,18 +288,21 @@ register_hint8_calculator_handlers <- function(
   dataset_fn,
   current_data_file_fn,
   variable_info_fn,
-  add_calculated_variable_fn
+  add_calculated_variable_fn,
+  language_fn = NULL
 ) {
   output$hint8_loaded_message <- renderText({
+    statedu_current_language(language_fn)
     file <- current_data_file_fn()
     hint8_loaded_message_text(file, if (is.null(file)) NULL else dataset_fn())
   })
 
   output$hint8_calculator_setup <- renderUI({
+    language <- statedu_current_language(language_fn)
     file <- current_data_file_fn()
     data <- if (is.null(file)) NULL else dataset_fn()
     variable_info <- if (is.null(file)) NULL else variable_info_fn()
-    hint8_calculator_setup_ui(file, data, variable_info, input)
+    hint8_calculator_setup_ui(file, data, variable_info, input, language = language)
   })
 
   observeEvent(input$hint8_available, {
@@ -318,8 +323,9 @@ register_hint8_calculator_handlers <- function(
   }, ignoreInit = TRUE)
 
   result <- eventReactive(input$run_hint8_calculator, {
+    language <- statedu_current_language(language_fn)
     if (is.null(current_data_file_fn())) {
-      showNotification("Load a data file before calculating HINT8.", type = "warning", duration = 5)
+      showNotification(statedu_text(language, "Load a data file before calculating HINT8.", statedu_utf8("48494e5438ec9d8420eab384ec82b0ed9598eab8b020eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e")), type = "warning", duration = 5)
       return(NULL)
     }
     tryCatch(
@@ -336,7 +342,7 @@ register_hint8_calculator_handlers <- function(
           var_label = "HINT8 score",
           measurement = "continuous"
         )
-        showNotification("hint8_score was added to the current data.", type = "message", duration = 5)
+        showNotification(statedu_text(language, "hint8_score was added to the current data.", statedu_utf8("68696e74385f73636f7265eab08020ed9884ec9eac20eb8db0ec9db4ed84b0ec979020ecb694eab080eb9098ec9788ec8ab5eb8b88eb8ba42e")), type = "message", duration = 5)
         result_data
       },
       error = function(error) {
@@ -347,6 +353,7 @@ register_hint8_calculator_handlers <- function(
   }, ignoreInit = TRUE)
 
   output$hint8_calculator_summary <- renderUI({
+    statedu_current_language(language_fn)
     data <- result()
     if (is.null(data)) {
       return(NULL)

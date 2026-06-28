@@ -9,7 +9,8 @@ register_paired_rm_handlers <- function(
   dataset_fn,
   category_table_fn,
   labels_fn,
-  mark_settings_dirty
+  mark_settings_dirty,
+  app_language_fn = NULL
 ) {
   repeated_groups <- reactiveVal(list())
   active_list <- reactiveVal(NULL)
@@ -35,9 +36,10 @@ register_paired_rm_handlers <- function(
   })
 
   output$paired_rm_setup <- renderUI({
+    language <- statedu_current_language(app_language_fn)
     selected <- current_selected()
     if (length(selected) == 0) {
-      return(setup_empty_message("Complete Step 2 in the Data tab before setting up repeated-measures tests."))
+      return(setup_empty_message("Complete Step 2 in the Data tab before setting up repeated-measures tests.", language = language))
     }
     paired_rm_setup_panel(paired_rm_setup_state(
       selected_names = selected,
@@ -48,7 +50,8 @@ register_paired_rm_handlers <- function(
       selected_repeated = isolate(input$paired_rm_repeated),
       assumption_check = isolate(assumption_check()),
       adjustment = isolate(adjustment()),
-      time_labels = isolate(current_time_labels())
+      time_labels = isolate(current_time_labels()),
+      language = language
     ))
   })
 
@@ -62,7 +65,8 @@ register_paired_rm_handlers <- function(
     variables_fn = function() unique(unlist(repeated_groups(), use.names = FALSE)),
     variable_table_fn = variable_table_fn,
     labels_fn = labels_fn,
-    category_table_fn = category_table_fn
+    category_table_fn = category_table_fn,
+    language_fn = app_language_fn
   )
 
   observeEvent(input$paired_rm_assumption_check, {

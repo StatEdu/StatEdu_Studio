@@ -6,9 +6,9 @@ The app bundles the Latent R/Mplus pipeline, dataset configuration folders, Mplu
 
 ## Current Version
 
-Current development version: `0.9.35`
+Current development version: `1.0.1`
 
-This build uses the StatEdu Studio 0.9.35 app shell structure for startup logging, package checks, data import helpers, settings handling, shared UI assets, local browser launching, and B5-oriented result display. The latent/Mplus workflow modules remain specific to StatEdu Studio Latent Mplus.
+This build uses the StatEdu Studio 1.0.1 app shell structure for startup logging, package checks, data import helpers, settings handling, shared UI assets, local browser launching, and B5-oriented result display. The latent/Mplus workflow modules remain specific to StatEdu Studio Latent Mplus.
 
 ## Local Run
 

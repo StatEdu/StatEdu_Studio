@@ -19,8 +19,10 @@ pca_setup_state <- function(
   biplot = TRUE,
   save_component_scores = FALSE,
   save_component_base_name = "PCA",
-  options_tab = "Model"
+  options_tab = "Model",
+  language = statedu_initial_language()
 ) {
+  language <- normalize_app_language(language)
   selected <- as.character(selected_names %||% character(0))
   allowed <- analysis_allowed_variables(selected, variable_table, c("ordered", "continuous"))
   pca_variables <- intersect(as.character(pca_variables %||% character(0)), allowed)
@@ -50,14 +52,15 @@ pca_setup_state <- function(
       as.character(options_tab %||% "Model")
     } else {
       "Model"
-    }
+    },
+    language = language
   )
 }
 
-pca_save_name_row <- function(value) {
+pca_save_name_row <- function(value, language = statedu_initial_language()) {
   div(
     class = "factor-save-name-row pca-save-name-row",
-    tags$label(`for` = "pca_save_component_base_name", "Variable name"),
+    tags$label(`for` = "pca_save_component_base_name", analysis_ui_text("Variable name", language)),
     tags$input(
       id = "pca_save_component_base_name",
       type = "text",
@@ -75,6 +78,7 @@ pca_save_score_row <- function(id, label, value) {
 }
 
 pca_selection_controls <- function(state) {
+  language <- normalize_app_language(state$language %||% statedu_initial_language())
   choices <- pca_criterion_choices()
   selected <- as.character(state$criterion %||% "eigen")
   if (!selected %in% unname(choices)) {
@@ -102,9 +106,9 @@ pca_selection_controls <- function(state) {
     class = "form-group shiny-input-radiogroup shiny-input-container",
     div(
       class = "shiny-options-group",
-      radio_input("Eigenvalue >= 1.0", "eigen"),
+      radio_input(analysis_ui_text("Eigenvalue >= 1.0", language), "eigen"),
       radio_input(
-        "Fixed number",
+        analysis_ui_text("Fixed number", language),
         "fixed",
         div(
           class = "factor-fixed-number-input pca-fixed-number-input",
@@ -120,7 +124,7 @@ pca_selection_controls <- function(state) {
         class = "radio factor-fixed-radio-row pca-selection-input-row pca-fixed-radio-row"
       ),
       radio_input(
-        "Cumulative variance >=",
+        analysis_ui_text("Cumulative variance >=", language),
         "cumulative",
         div(
           class = "factor-fixed-number-input pca-cumulative-input",
@@ -142,11 +146,12 @@ pca_selection_controls <- function(state) {
 }
 
 pca_setup_panel <- function(state) {
+  language <- normalize_app_language(state$language %||% statedu_initial_language())
   div(
     class = "correlation-setup-grid pca-setup-grid",
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
-      analysis_field_label_tag("Variables", c("ordered", "continuous")),
+      analysis_field_label_tag("Variables", c("ordered", "continuous"), language = language),
       analysis_transfer_listbox_input("pca_available", state$available_items, selected = state$available_selected, size = 17)
     ),
     div(
@@ -160,65 +165,64 @@ pca_setup_panel <- function(state) {
     ),
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
-      analysis_field_label_tag("Selected Variables", c("ordered", "continuous")),
+      analysis_field_label_tag("Selected Variables", c("ordered", "continuous"), language = language),
       analysis_transfer_listbox_input("pca_selected", state$selected_items, selected = state$selected_selected, size = 17),
       div(
         class = "analysis-order-actions correlation-order-actions",
-        actionButton("pca_move_up", "Up", class = "btn-default btn-sm"),
-        actionButton("pca_move_down", "Down", class = "btn-default btn-sm")
+        actionButton("pca_move_up", analysis_ui_text("Up", language), class = "btn-default btn-sm"),
+        actionButton("pca_move_down", analysis_ui_text("Down", language), class = "btn-default btn-sm")
       )
     ),
     div(
       class = "correlation-options-column pca-options-column",
-      div(
-        class = "analysis-options-panel correlation-options pca-options analysis-tabbed-options",
-        div(class = "analysis-option-title factor-options-title", "Options"),
-        tabsetPanel(
-          id = "pca_options_tab",
-          type = "tabs",
-          selected = state$options_tab,
+      analysis_options_tabs_panel(
+        id = "pca_options_tab",
+        selected = state$options_tab,
+        class = "correlation-options pca-options",
           tabPanel(
-            "Model",
+            analysis_ui_text("Model", language),
+            value = "Model",
             div(
               class = "factor-options-tab-content pca-options-tab-content",
-              analysis_radio_group("Matrix", "pca_matrix_type", pca_matrix_choices(), selected = state$matrix_type),
-              analysis_radio_group("Rotation", "pca_rotation", pca_rotation_choices(), selected = state$rotation),
+              analysis_radio_group("Matrix", "pca_matrix_type", pca_matrix_choices(), selected = state$matrix_type, language = language),
+              analysis_radio_group("Rotation", "pca_rotation", pca_rotation_choices(), selected = state$rotation, language = language),
               div(
                 class = "analysis-option-group analysis-radio-group pca-selection-group",
-                div(class = "analysis-option-title", "Component selection"),
+                div(class = "analysis-option-title", analysis_ui_text("Component selection", language)),
                 pca_selection_controls(state)
               )
             )
           ),
           tabPanel(
-            "Output",
+            analysis_ui_text("Output", language),
+            value = "Output",
             div(
               class = "factor-options-tab-content pca-options-tab-content",
               analysis_option_group(
-                "Output",
+                analysis_ui_text("Output", language),
                 list(
-                  list(id = "pca_sort_loadings", label = "Sort loadings by size", value = state$sort_loadings),
-                  list(id = "pca_hide_small_loadings", label = "Show loadings >= .30 only", value = state$hide_small_loadings),
-                  list(id = "pca_highlight_problem_values", label = "Highlight problem values", value = state$highlight_problem_values),
-                  list(id = "pca_scree_plot", label = "Scree plot", value = state$scree_plot),
-                  list(id = "pca_biplot", label = "Biplot", value = state$biplot)
+                  list(id = "pca_sort_loadings", label = analysis_ui_text("Sort loadings by size", language), value = state$sort_loadings),
+                  list(id = "pca_hide_small_loadings", label = analysis_ui_text("Show loadings >= .30 only", language), value = state$hide_small_loadings),
+                  list(id = "pca_highlight_problem_values", label = analysis_ui_text("Highlight problem values", language), value = state$highlight_problem_values),
+                  list(id = "pca_scree_plot", label = analysis_ui_text("Scree plot", language), value = state$scree_plot),
+                  list(id = "pca_biplot", label = analysis_ui_text("Biplot", language), value = state$biplot)
                 )
               )
             )
           ),
           tabPanel(
-            "Scores",
+            analysis_ui_text("Save scores", language),
+            value = "Scores",
             div(
               class = "factor-options-tab-content pca-options-tab-content",
               div(
                 class = "analysis-option-group factor-save-score-group pca-save-score-group",
-                div(class = "analysis-option-title", "Save scores"),
-                pca_save_name_row(state$save_component_base_name),
-                pca_save_score_row("pca_save_component_scores", "Component scores", state$save_component_scores)
+                div(class = "analysis-option-title", analysis_ui_text("Save scores", language)),
+                pca_save_name_row(state$save_component_base_name, language),
+                pca_save_score_row("pca_save_component_scores", analysis_ui_text("Component scores", language), state$save_component_scores)
               )
             )
           )
-        )
       )
     )
   )

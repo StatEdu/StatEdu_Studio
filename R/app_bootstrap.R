@@ -55,7 +55,7 @@ ensure_required_packages <- function(packages = required_packages) {
 load_app_packages <- function(
   packages = required_packages,
   attach_packages = startup_packages,
-  check = !identical(tolower(Sys.getenv("EASYFLOW_NO_PACKAGE_INSTALL", "false")), "true")
+  check = !identical(tolower(Sys.getenv("STATEDU_NO_PACKAGE_INSTALL", "false")), "true")
 ) {
   if (isTRUE(check)) {
     ensure_required_packages(packages)
@@ -68,6 +68,8 @@ load_app_packages <- function(
 
 app_module_files <- c(
   "utils.R",
+  "labels.R",
+  "update_check.R",
   "settings_io.R",
   "settings_dialogs.R",
   "data_io.R",
@@ -94,6 +96,7 @@ app_module_files <- c(
   "data_editor_recode.R",
   "data_editor_likert.R",
   "data_editor_missing.R",
+  "data_editor_wide_long.R",
   "data_editor_transform.R",
   "data_editor_rename.R",
   "data_editor_ui.R",
@@ -193,9 +196,25 @@ optional_app_module_files <- c(
   latent_mplus = "latent_mplus_module.R"
 )
 
+utf8_app_module_files <- c(
+  "utils.R",
+  "labels.R",
+  "data_editor_ui.R",
+  "server_data_outputs.R",
+  "ui_helpers.R",
+  "data_ui_steps.R",
+  "data_ui.R",
+  "analysis_menu_ui.R",
+  "app_misc_ui.R"
+)
+
 source_app_modules <- function(files = app_module_files, dir = "R") {
   for (file in files) {
-    source(file.path(dir, file), local = FALSE)
+    if (file %in% utf8_app_module_files) {
+      source(file.path(dir, file), local = FALSE, encoding = "UTF-8")
+    } else {
+      source(file.path(dir, file), local = FALSE)
+    }
   }
   latent_module_file <- file.path(dir, optional_app_module_files[["latent_mplus"]])
   if (file.exists(latent_module_file)) {

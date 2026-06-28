@@ -435,7 +435,6 @@ category_label_handlers <- function(
         info_var_labels <- stats::setNames(as.character(updated_info$var_label), as.character(updated_info$name))
         info_var_label_sample <- paste(utils::head(sprintf("%s=%s", names(info_var_labels), unname(info_var_labels)), 8), collapse = ", ")
       }
-      attr(updated_info, "easyflow_step3_apply_nonce") <- as.character(Sys.time())
       step3_variable_info(updated_info)
     }
 

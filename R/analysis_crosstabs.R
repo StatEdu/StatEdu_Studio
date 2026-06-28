@@ -89,6 +89,7 @@ crosstab_display_table <- function(tab, row_var, col_var, variable_info = NULL, 
   row_percent <- crosstab_percent_matrix(tab, "row")
   col_percent <- crosstab_percent_matrix(tab, "column")
   total_percent <- crosstab_percent_matrix(tab, "total")
+  show_total_n <- !identical(options$total_n, FALSE)
 
   rows <- list()
   for (row_index in seq_len(nrow(tab))) {
@@ -106,10 +107,15 @@ crosstab_display_table <- function(tab, row_var, col_var, variable_info = NULL, 
       }
       out[[col_labels[[col_index]]]] <- paste(pieces, collapse = "\n")
     }
-    out[["Total"]] <- as.character(rowSums(tab)[[row_index]])
+    if (isTRUE(show_total_n)) {
+      out[["Total"]] <- as.character(rowSums(tab)[[row_index]])
+    }
     rows[[length(rows) + 1]] <- out
   }
-  total_row <- c(list(Row = "Total"), stats::setNames(as.list(as.character(colSums(tab))), col_labels), list(Total = as.character(sum(tab))))
+  total_row <- c(list(Row = "Total"), stats::setNames(as.list(as.character(colSums(tab))), col_labels))
+  if (isTRUE(show_total_n)) {
+    total_row <- c(total_row, list(Total = as.character(sum(tab))))
+  }
   rows[[length(rows) + 1]] <- total_row
   do.call(rbind, lapply(rows, as.data.frame, stringsAsFactors = FALSE, check.names = FALSE))
 }

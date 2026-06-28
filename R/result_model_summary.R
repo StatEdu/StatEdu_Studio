@@ -66,25 +66,30 @@ model_overview_data_frame <- function(results, variable_table = NULL, labels = c
       label
     }
   }, dependent_labels, results, USE.NAMES = FALSE)
-  rows <- c("N", "\ubd84\uc11d", "\uc0ac\uc720")
+  analysis_label <- "Analysis"
+  reason_label <- "Reason"
+  normality_ok <- "Normality met"
+  normality_fail <- "Normality not met"
+  homogeneity_ok <- "Homogeneity met"
+  homogeneity_fail <- "Homogeneity not met"
+  rows <- c("N", analysis_label, reason_label)
   regression_overview_reason <- function(result) {
     parts <- c(
-      if (isTRUE(result$normality_p > .05)) "\uc815\uaddc\uc131 \ub9cc\uc871" else "\uc815\uaddc\uc131 \ubd88\ub9cc\uc871",
-      if (isTRUE(result$homogeneity_p > .05)) "\ub4f1\ubd84\uc0b0\uc131 \ub9cc\uc871" else "\ub4f1\ubd84\uc0b0\uc131 \ubd88\ub9cc\uc871"
+      if (isTRUE(result$normality_p > .05)) normality_ok else normality_fail,
+      if (isTRUE(result$homogeneity_p > .05)) homogeneity_ok else homogeneity_fail
     )
     if (isTRUE(result$use_bootstrap)) {
-      parts <- c(parts, "Bootstrap \uc0ac\uc6a9")
+      parts <- c(parts, "Bootstrap used")
     }
     if (isTRUE(result$use_hc3)) {
-      parts <- c(parts, "HC3 \uc0ac\uc6a9")
+      parts <- c(parts, "HC3 used")
     }
     paste(parts[nzchar(parts)], collapse = "\n")
   }
   values <- lapply(results, function(result) {
-    c(
-      "N" = as.character(result$n),
-      "\ubd84\uc11d" = result$method,
-      "\uc0ac\uc720" = regression_overview_reason(result)
+    stats::setNames(
+      c(as.character(result$n), result$method, regression_overview_reason(result)),
+      rows
     )
   })
   table <- data.frame(Item = rows, stringsAsFactors = FALSE, check.names = FALSE)
@@ -114,34 +119,37 @@ regression_assumption_review_data_frame <- function(results, variable_table = NU
       label
     }
   }, dependent_labels, results, USE.NAMES = FALSE)
-  rows <- c(
-    "\uc794\ucc28 \uc815\uaddc\uc131",
-    "\uc794\ucc28 \ub4f1\ubd84\uc0b0\uc131",
-    "\uc790\uae30\uc0c1\uad00",
-    "\ud328\ud0a4\uc9c0"
-  )
+  residual_normality_label <- "Residual normality"
+  residual_homogeneity_label <- "Residual homogeneity"
+  autocorrelation_label <- "Autocorrelation"
+  package_label <- "Package"
+  normality_ok <- "Normality met"
+  normality_fail <- "Normality not met"
+  homogeneity_ok <- "Homogeneity met"
+  homogeneity_fail <- "Homogeneity not met"
+  rows <- c(residual_normality_label, residual_homogeneity_label, autocorrelation_label, package_label)
   values <- lapply(results, function(result) {
-    c(
-      "\uc794\ucc28 \uc815\uaddc\uc131" = sprintf(
+    stats::setNames(c(
+      sprintf(
         "K-S z=%s(%s)\n%s",
         format_decimal3(result$normality_statistic),
         format_p(result$normality_p),
-        if (isTRUE(result$normality_p > .05)) "\uc815\uaddc\uc131 \ub9cc\uc871" else "\uc815\uaddc\uc131 \ubd88\ub9cc\uc871"
+        if (isTRUE(result$normality_p > .05)) normality_ok else normality_fail
       ),
-      "\uc794\ucc28 \ub4f1\ubd84\uc0b0\uc131" = sprintf(
+      sprintf(
         "%s=%s(%s)\n%s",
         stat_chisq_label(FALSE),
         format_decimal3(result$homogeneity_statistic),
         format_p(result$homogeneity_p),
-        if (isTRUE(result$homogeneity_p > .05)) "\ub4f1\ubd84\uc0b0\uc131 \ub9cc\uc871" else "\ub4f1\ubd84\uc0b0\uc131 \ubd88\ub9cc\uc871"
+        if (isTRUE(result$homogeneity_p > .05)) homogeneity_ok else homogeneity_fail
       ),
-      "\uc790\uae30\uc0c1\uad00" = sprintf(
+      sprintf(
         "d=%s\n%s",
         format_decimal3(result$dw_d),
         as.character(result$dw_result$Value[match("Decision", result$dw_result$Item)] %||% "")
       ),
-      "\ud328\ud0a4\uc9c0" = regression_package_label(result)
-    )
+      regression_package_label(result)
+    ), rows)
   })
   table <- data.frame(Item = rows, stringsAsFactors = FALSE, check.names = FALSE)
   for (index in seq_along(values)) {

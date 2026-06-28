@@ -10,8 +10,10 @@ nonparametric_paired_setup_state <- function(
   effect_size = TRUE,
   median_iqr = FALSE,
   adjustment = "bonferroni",
-  time_labels = NULL
+  time_labels = NULL,
+  language = statedu_initial_language()
 ) {
+  language <- normalize_app_language(language)
   selected <- as.character(selected_names %||% character(0))
   repeated_groups <- lapply(repeated_groups %||% list(), paired_keep_selected_order, selected = selected)
   repeated_groups <- repeated_groups[lengths(repeated_groups) >= 2L]
@@ -38,15 +40,17 @@ nonparametric_paired_setup_state <- function(
     adjustment = if (identical(adjustment, "bonferroni")) "bonferroni" else "holm",
     time_labels = time_labels,
     has_three_plus = any(lengths(repeated_groups) >= 3L),
-    move_disabled = length(selected) == 0
+    move_disabled = length(selected) == 0,
+    language = language
   )
 }
 
-nonparametric_paired_time_label_inputs <- function(time_labels) {
+nonparametric_paired_time_label_inputs <- function(time_labels, language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   labels <- as.character(time_labels %||% paired_rm_time_header_labels(3L))
   div(
     class = "paired-rm-time-labels",
-    div(class = "analysis-option-title", "Repeated variable labels"),
+    div(class = "analysis-option-title", analysis_ui_text("Repeated variable labels", language)),
     lapply(seq_along(labels), function(index) {
       textInput(
         inputId = paste0("nonparametric_paired_time_label_", index),
@@ -59,11 +63,12 @@ nonparametric_paired_time_label_inputs <- function(time_labels) {
 }
 
 nonparametric_paired_setup_panel <- function(state) {
+  language <- normalize_app_language(state$language %||% statedu_initial_language())
   div(
     class = "ttest-anova-setup-grid paired-setup-grid paired-rm-setup-grid",
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
-      analysis_field_label_tag("Variables"),
+      analysis_field_label_tag("Variables", language = language),
       analysis_transfer_listbox_input("nonparametric_paired_available", state$available_items, selected = state$available_selected, size = 17)
     ),
     div(
@@ -72,9 +77,9 @@ nonparametric_paired_setup_panel <- function(state) {
     ),
     div(
       class = "analysis-transfer-column analysis-transfer-panel paired-target-panel paired-rm-target-panel",
-      analysis_field_label_tag("Repeated-measures variables", c("binary", "category", "ordered", "continuous")),
+      analysis_field_label_tag("Repeated-measures variables", c("binary", "category", "ordered", "continuous"), language = language),
       analysis_transfer_listbox_input("nonparametric_paired_repeated", state$repeated_items, selected = state$repeated_selected, size = 16, important_height = TRUE),
-      div(class = "analysis-order-actions paired-order-actions", actionButton("nonparametric_paired_up", "Up", class = "btn-default btn-sm"), actionButton("nonparametric_paired_down", "Down", class = "btn-default btn-sm"))
+      div(class = "analysis-order-actions paired-order-actions", actionButton("nonparametric_paired_up", analysis_ui_text("Up", language), class = "btn-default btn-sm"), actionButton("nonparametric_paired_down", analysis_ui_text("Down", language), class = "btn-default btn-sm"))
     ),
     div(
       class = "ttest-anova-options-column",
@@ -84,7 +89,7 @@ nonparametric_paired_setup_panel <- function(state) {
           tagList(
             div(
               class = "analysis-option-group analysis-radio-group paired-posthoc-group",
-              div(class = "analysis-option-title", "Post-hoc correction"),
+              div(class = "analysis-option-title", analysis_ui_text("Post-hoc correction", language)),
               radioButtons(
                 "nonparametric_paired_adjustment",
                 label = NULL,
@@ -92,7 +97,7 @@ nonparametric_paired_setup_panel <- function(state) {
                 selected = state$adjustment
               )
             ),
-            nonparametric_paired_time_label_inputs(state$time_labels)
+            nonparametric_paired_time_label_inputs(state$time_labels, language)
           )
         },
         analysis_option_group(
@@ -100,7 +105,8 @@ nonparametric_paired_setup_panel <- function(state) {
           list(
             list(id = "nonparametric_paired_effect_size", label = "Effect size", value = state$effect_size),
             list(id = "nonparametric_paired_median_iqr", label = "Median(Q1~Q3)", value = state$median_iqr)
-          )
+          ),
+          language = language
         )
       )
     )

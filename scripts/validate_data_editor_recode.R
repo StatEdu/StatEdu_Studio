@@ -7,6 +7,7 @@ repo_root <- normalizePath(file.path(dirname(script_path), ".."), winslash = "/"
 setwd(repo_root)
 
 source(file.path(repo_root, "R", "utils.R"))
+source(file.path(repo_root, "R", "setup_analysis_ui.R"))
 source(file.path(repo_root, "R", "data_io.R"))
 source(file.path(repo_root, "R", "data_category_labels.R"))
 source(file.path(repo_root, "R", "data_editor_recode.R"))
@@ -179,9 +180,15 @@ stopifnot(all.equal(calculated$SD_scale, c(2, sqrt(2), sqrt(2), NA), check.attri
 stopifnot(all.equal(calculated$Var_scale, c(4, 2, 2, NA), check.attributes = FALSE))
 
 message("Checking automatic Likert detection and conversion helpers...")
+h <- statedu_utf8
+very_dissatisfied <- h("eba7a4ec9ab020ebb688eba78ceca1b1")
+dissatisfied <- h("ebb688eba78ceca1b1")
+neutral <- h("ebb3b4ed86b5")
+satisfied <- h("eba78ceca1b1")
+very_satisfied <- h("eba7a4ec9ab020eba78ceca1b1")
 likert_data <- data.frame(
-  sat1 = c("매우 불만족", "불만족", "보통", "만족", "매우 만족"),
-  sat2 = c("불만족", "보통", "만족", "매우 만족", "매우 불만족"),
+  sat1 = c(very_dissatisfied, dissatisfied, neutral, satisfied, very_satisfied),
+  sat2 = c(dissatisfied, neutral, satisfied, very_satisfied, very_dissatisfied),
   note = c("a", "b", "c", "d", "e"),
   check.names = FALSE
 )
@@ -191,7 +198,7 @@ summary <- likert_group_summary(detected)
 stopifnot(nrow(summary) == 1)
 stopifnot(summary$variable_count[[1]] == 2)
 mapping <- detected$mapping[[1]]
-stopifnot(identical(as.character(mapping$label), c("매우 불만족", "불만족", "보통", "만족", "매우 만족")))
+stopifnot(identical(as.character(mapping$label), c(very_dissatisfied, dissatisfied, neutral, satisfied, very_satisfied)))
 stopifnot(identical(as.numeric(mapping$value), c(1, 2, 3, 4, 5)))
 converted <- recode_likert_values(likert_data$sat1, mapping)
 stopifnot(identical(converted, c(1, 2, 3, 4, 5)))
@@ -199,11 +206,11 @@ reversed <- recode_likert_values(likert_data$sat1, mapping, reverse = TRUE)
 stopifnot(identical(reversed, c(5, 4, 3, 2, 1)))
 payload <- likert_category_payload(c("sat1"), mapping)
 stopifnot(identical(payload$sat1$value_1, "1"))
-stopifnot(identical(payload$sat1$label_5, "매우 만족"))
+stopifnot(identical(payload$sat1$label_5, very_satisfied))
 
 partial_likert_data <- data.frame(
-  item1 = c("1 (전혀 그렇지 않다)", "2 (그렇지 않다)", "3 (보통이다)", "4 (그렇다)", "5 (매우 그렇다)"),
-  item2 = c("2 (그렇지 않다)", "3 (보통이다)", "4 (그렇다)", "5 (매우 그렇다)", "5 (매우 그렇다)"),
+  item1 = c("1 (lowest)", "2 (low)", "3 (middle)", "4 (high)", "5 (highest)"),
+  item2 = c("2 (low)", "3 (middle)", "4 (high)", "5 (highest)", "5 (highest)"),
   check.names = FALSE
 )
 partial_detected <- detect_likert_variables(partial_likert_data)
@@ -247,6 +254,26 @@ group_rule <- missing_candidates[missing_candidates$variable == "group" & missin
 group_result <- apply_missing_value_rules(missing_data$group, group_rule)
 stopifnot(is.factor(group_result))
 stopifnot(identical(is.na(group_result), c(FALSE, TRUE, FALSE, FALSE, FALSE)))
+
+manual_missing_codes <- missing_manual_codes_from_text("999\nNA\n(blank)")
+stopifnot(identical(manual_missing_codes, c("999", "NA", "")))
+manual_missing_rules <- missing_manual_rules(missing_data, c("score", "comment"), manual_missing_codes)
+stopifnot(any(manual_missing_rules$variable == "score" & manual_missing_rules$value == "999" & manual_missing_rules$value_type == "numeric"))
+stopifnot(any(manual_missing_rules$variable == "comment" & manual_missing_rules$value == "" & manual_missing_rules$value_type == "text"))
+manual_score_result <- apply_missing_value_rules(missing_data$score, manual_missing_rules[manual_missing_rules$variable == "score", , drop = FALSE])
+manual_comment_result <- apply_missing_value_rules(missing_data$comment, manual_missing_rules[manual_missing_rules$variable == "comment", , drop = FALSE])
+stopifnot(identical(manual_score_result, c(10, 12, NA, 15, 11)))
+stopifnot(identical(is.na(manual_comment_result), c(FALSE, TRUE, TRUE, FALSE, FALSE)))
+
+user_missing_rules <- merge_missing_user_rules(data.frame(check.names = FALSE), rbind(score_rule, group_rule), names(missing_data))
+analysis_missing_data <- apply_user_missing_rules_to_data(missing_data, user_missing_rules)
+stopifnot(identical(missing_data$score, c(10, 12, 999, 15, 11)))
+stopifnot(identical(analysis_missing_data$score, c(10, 12, NA, 15, 11)))
+stopifnot(is.factor(analysis_missing_data$group))
+stopifnot(identical(is.na(analysis_missing_data$group), c(FALSE, TRUE, FALSE, FALSE, FALSE)))
+renamed_missing_rules <- rename_missing_user_rules(user_missing_rules, "score", "score2")
+stopifnot("score2" %in% renamed_missing_rules$variable)
+stopifnot(!"score" %in% renamed_missing_rules$variable)
 
 message("Checking formula-based variable transformation helpers...")
 stopifnot(identical(transform_quote_variable("q1"), "q1"))

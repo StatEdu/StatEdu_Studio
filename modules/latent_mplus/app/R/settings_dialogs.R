@@ -1,6 +1,6 @@
 # File dialog helpers for data and settings files.
 
-open_dialog_cancel_marker <- "__EASYFLOW_OPEN_DIALOG_CANCEL__"
+open_dialog_cancel_marker <- "__STATEDU_OPEN_DIALOG_CANCEL__"
 
 open_dialog_ps_quote <- function(value) {
   paste0("'", gsub("'", "''", enc2utf8(as.character(value %||% "")), fixed = TRUE), "'")
@@ -141,12 +141,10 @@ open_file_dialog <- function(title, filetypes) {
 }
 
 open_settings_file <- function() {
-  filetypes <- "{{StatEdu Studio Settings} {.efs-settings}} {{JSON settings} {.json}} {{All files} *}"
+  filetypes <- "{{StatEdu Studio Settings} {.studio}}"
   attr(filetypes, "windows_filters") <- matrix(
     c(
-      "StatEdu Studio Settings", "*.efs-settings",
-      "JSON settings", "*.json",
-      "All files", "*.*"
+      "StatEdu Studio Settings", "*.studio"
     ),
     ncol = 2,
     byrow = TRUE
@@ -180,6 +178,23 @@ open_data_file <- function() {
   path
 }
 
+normalize_settings_save_path <- function(path) {
+  path <- as.character(path %||% "")
+  if (!nzchar(path)) {
+    return(path)
+  }
+  path <- sub("(\\.studio)+$", ".studio", path, ignore.case = TRUE)
+  if (grepl("\\.studio$", path, ignore.case = TRUE)) {
+    return(path)
+  }
+  path <- sub("(\\.efs-settings)+$", "", path, ignore.case = TRUE)
+  path <- sub("(\\.json)+$", "", path, ignore.case = TRUE)
+  if (nzchar(tools::file_ext(path))) {
+    path <- tools::file_path_sans_ext(path)
+  }
+  paste0(path, ".studio")
+}
+
 save_settings_file <- function() {
   path <- tryCatch(
     {
@@ -189,17 +204,17 @@ save_settings_file <- function() {
         as.character(tcltk::tkgetSaveFile(
           parent = parent,
           title = "Save StatEdu Studio Latent Mplus Settings",
-          initialfile = "StatEdu_Studio_settings.efs-settings",
-          defaultextension = ".efs-settings",
-          filetypes = "{{StatEdu Studio Settings} {.efs-settings}} {{JSON settings} {.json}} {{All files} *}"
+          initialfile = "",
+          defaultextension = ".studio",
+          filetypes = "{{StatEdu Studio Settings} {.studio}}"
         ))
       } else {
-        folder <- utils::choose.dir(caption = "Choose a folder for StatEdu Studio Latent Mplus Settings")
-        if (is.na(folder) || !nzchar(folder)) {
-          character(0)
-        } else {
-          file.path(folder, "StatEdu_Studio_settings.efs-settings")
-        }
+        utils::choose.files(
+          default = "",
+          caption = "Save StatEdu Studio Latent Mplus Settings",
+          multi = FALSE,
+          filters = matrix(c("StatEdu Studio Settings", "*.studio"), ncol = 2, byrow = TRUE)
+        )
       }
     },
     error = function(e) character(0)
@@ -210,8 +225,5 @@ save_settings_file <- function() {
   }
 
   path <- path[[1]]
-  if (!nzchar(tools::file_ext(path))) {
-    path <- paste0(path, ".efs-settings")
-  }
-  path
+  normalize_settings_save_path(path)
 }

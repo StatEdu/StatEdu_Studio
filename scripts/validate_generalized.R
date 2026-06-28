@@ -315,7 +315,8 @@ setup_state <- generalized_setup_state(
   predictors = c("x1", "x2"),
   variable_table = data.frame(name = names(data), measurement = "continuous", stringsAsFactors = FALSE),
   missing_strategy = "mi",
-  se_type = "HC3"
+  se_type = "HC3",
+  language = "en"
 )
 setup_html <- as.character(generalized_setup_panel(setup_state, NULL))
 if (!grepl("id=\"generalized_options_tab\"", setup_html, fixed = TRUE) ||

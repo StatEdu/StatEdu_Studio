@@ -31,7 +31,8 @@ setup <- logistic_setup_state(
   block3 = "group",
   variable_table = variable_info,
   labels = c(change = "Changed", satisfaction = "Satisfaction"),
-  active_block = "block1"
+  active_block = "block1",
+  language = "en"
 )
 stopifnot(identical(setup$dependents, c("change", "satisfaction")))
 

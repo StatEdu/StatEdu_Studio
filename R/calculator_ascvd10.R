@@ -85,9 +85,12 @@ ascvd10_score <- function(race, sex, age, smok, chol, hdlc, hpd, sbp, dm, histor
   out
 }
 
-ascvd10_result <- function(data, selected) {
+ascvd10_result <- function(data, selected, output_name = "ascvd10_score") {
   selected_ids <- names(selected)
   selected <- as.character(selected)
+  output_name <- trimws(as.character(output_name %||% "ascvd10_score"))
+  if (!length(output_name) || is.na(output_name[[1]]) || !nzchar(output_name[[1]])) output_name <- "ascvd10_score"
+  output_name <- output_name[[1]]
   specs <- ascvd10_variable_specs()
   if (is.null(selected_ids) || length(selected_ids) != length(selected) || any(!nzchar(selected_ids))) selected_ids <- specs$id
   required_ids <- specs$id[specs$required]
@@ -102,17 +105,22 @@ ascvd10_result <- function(data, selected) {
     metabolic_numeric(source[[variable_name]])
   })
   names(values) <- selected_ids
-  source[["ascvd10_score"]] <- ascvd10_score(values$race, values$sex, values$age, values$SMOK, values$CHOL, values$HDLc, values$HPd, values$SBP, values$DM, values$c_history, values$c_ldlc)
+  source[[output_name]] <- ascvd10_score(values$race, values$sex, values$age, values$SMOK, values$CHOL, values$HDLc, values$HPd, values$SBP, values$DM, values$c_history, values$c_ldlc)
   source
 }
 
-ascvd10_calculator_tab_panel <- function() {
+ascvd10_calculator_tab_panel <- function(language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   tabPanel(
     "ASCVD10",
     value = "calculator_ascvd10",
     div(
       class = "page-shell",
-      div(class = "app-heading", h1("ASCVD10 Calculator"), div("Select variables and add ascvd10_score to the current data.", class = "app-subtitle")),
+      div(
+        class = "app-heading",
+        h1(statedu_text(language, "ASCVD10 Calculator", statedu_utf8("4153435644313020eab384ec82b0eab8b0"))),
+        div(statedu_text(language, "Select variables and add ascvd10_score to the current data.", statedu_utf8("ebb380ec8898eba5bc20ec84a0ed839ded9598eab3a020617363766431305f73636f7265eba5bc20ed9884ec9eac20eb8db0ec9db4ed84b0ec979020ecb694eab080ed95a9eb8b88eb8ba42e")), class = "app-subtitle")
+      ),
       div(
         class = "workspace-panel frequencies-workspace-panel metabolic-calculator-workspace",
         style = "min-width:980px;overflow-x:auto;",
@@ -123,8 +131,8 @@ ascvd10_calculator_tab_panel <- function() {
           class = "analysis-action-row calculator-action-row",
           div(
             class = "calculator-action-row-controls",
-            actionButton("run_ascvd10_calculator", "Calculate", class = "btn btn-primary"),
-            downloadButton("download_ascvd10_calculator", "Download CSV", class = "btn btn-default")
+            actionButton("run_ascvd10_calculator", statedu_ui_label("calculate", language), class = "btn btn-primary"),
+            downloadButton("download_ascvd10_calculator", statedu_ui_label("download_csv", language), class = "btn btn-default")
           )
         ),
         uiOutput("ascvd10_calculator_summary"),
@@ -149,11 +157,14 @@ ascvd10_reference_table <- function() {
   )
 }
 
-ascvd10_exclusion_table <- function() {
+ascvd10_exclusion_table <- function(output_name = "ascvd10_score") {
+  output_name <- trimws(as.character(output_name %||% "ascvd10_score"))
+  if (!length(output_name) || is.na(output_name[[1]]) || !nzchar(output_name[[1]])) output_name <- "ascvd10_score"
+  output_name <- output_name[[1]]
   rows <- data.frame(
     Variable = c("ASCVD history", "LDL-C"),
     Rule = c("1", ">= 190"),
-    Result = c("ascvd10_score missing", "ascvd10_score missing"),
+    Result = c(paste(output_name, "missing"), paste(output_name, "missing")),
     stringsAsFactors = FALSE
   )
   tags$table(
@@ -165,59 +176,103 @@ ascvd10_exclusion_table <- function() {
   )
 }
 
-ascvd10_output_table <- function() {
-  tags$table(
-    class = "hint8-initial-table ascvd10-reference-table ascvd10-output-table",
-    tags$tbody(tags$tr(tags$td("10-year risk"), tags$td("ascvd10_score")))
+ascvd10_output_variable_name <- function(input) {
+  value <- input$ascvd10_output_var %||% "ascvd10_score"
+  value <- trimws(as.character(value))
+  if (!length(value) || is.na(value[[1]]) || !nzchar(value[[1]])) "ascvd10_score" else value[[1]]
+}
+
+ascvd10_output_table <- function(input, language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
+  output_name <- ascvd10_output_variable_name(input)
+  div(
+    class = "calculator-output-field",
+    textInput(
+      "ascvd10_output_var",
+      statedu_text(language, "Variable name", statedu_utf8("ebb380ec8898ebaa85")),
+      value = output_name,
+      width = "100%"
+    )
   )
 }
 
-ascvd10_setup_ui <- function(file, data, variable_info, input) {
-  if (is.null(file)) return(setup_empty_message("Load a data file in the Data tab before using the ASCVD10 calculator."))
+ascvd10_setup_ui <- function(file, data, variable_info, input, language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
+  if (is.null(file)) return(setup_empty_message(statedu_text(language, "Load a data file in the Data tab before using the ASCVD10 calculator.", statedu_utf8("eb8db0ec9db4ed84b020ed83adec9790ec849c20eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a820ed9b84204153435644313020eab384ec82b0eab8b0eba5bc20ec82acec9aa9ed9598ec84b8ec9a942e")), language = language))
   choices <- names(data %||% data.frame())
   specs <- ascvd10_variable_specs()
   available_items <- analysis_variable_items(choices, variable_info, character(0))
+  output_name <- ascvd10_output_variable_name(input)
   variable_inputs <- lapply(seq_len(nrow(specs)), function(index) {
     id <- specs$id[[index]]
     label <- specs$label[[index]]
     if (!isTRUE(specs$required[[index]])) label <- paste0(label, " (optional)")
-    selectInput(paste0("ascvd10_", id), label, choices = c("Select variable" = "", choices), selected = isolate(input[[paste0("ascvd10_", id)]]) %||% "", width = "100%")
+    selectInput(paste0("ascvd10_", id), label, choices = c(stats::setNames("", statedu_ui_label("select_variable", language)), choices), selected = isolate(input[[paste0("ascvd10_", id)]]) %||% "", width = "100%")
   })
   div(
-    class = "frequencies-setup-grid metabolic-setup-grid",
+    class = "frequencies-setup-grid metabolic-setup-grid ascvd10-setup-grid",
     div(
       class = "analysis-transfer-column analysis-transfer-panel",
-      analysis_field_label_tag("Variables"),
+      analysis_field_label_tag("Variables", language = language),
       analysis_transfer_listbox_input("ascvd10_available", available_items, selected = isolate(input$ascvd10_available), size = 17)
     ),
     div(class = "analysis-transfer-controls hint8-transfer-spacer"),
     div(
       class = "analysis-transfer-column analysis-transfer-panel metabolic-target-panel ascvd10-target-panel",
-      analysis_field_label_tag("ASCVD10 variables"),
-      div(class = "ascvd10-two-column-row", variable_inputs[[1]], variable_inputs[[2]]),
-      div(class = "metabolic-variable-input-grid", variable_inputs[-c(1, 2)])
+      analysis_field_label_tag("ASCVD10 variables", language = language),
+      div(
+        class = "calculator-side-tabs ascvd10-variable-tabs",
+        tabsetPanel(
+          type = "tabs",
+          tabPanel(
+            statedu_text(language, "Core", statedu_utf8("eab8b0ebb3b8")),
+            value = "ascvd10_core_variables",
+            div(class = "ascvd10-two-column-row", variable_inputs[[1]], variable_inputs[[2]]),
+            div(class = "metabolic-variable-input-grid", variable_inputs[3:6])
+          ),
+          tabPanel(
+            statedu_text(language, "Clinical", statedu_utf8("ec9e84ec8381")),
+            value = "ascvd10_clinical_variables",
+            div(class = "metabolic-variable-input-grid", variable_inputs[7:length(variable_inputs)])
+          )
+        )
+      )
     ),
     div(
-      class = "analysis-options-column analysis-options-panel metabolic-reference-panel ascvd10-reference-panel",
-      div(class = "analysis-option-title", "Reference"),
-      ascvd10_reference_table(),
-      div(class = "analysis-option-title ascvd10-rule-title", "Exclusion rules"),
-      ascvd10_exclusion_table(),
-      div(class = "analysis-option-title ascvd10-output-title", "Output"),
-      ascvd10_output_table()
+      class = "analysis-options-column analysis-options-panel metabolic-reference-panel ascvd10-reference-panel calculator-tabbed-panel",
+      tabsetPanel(
+        type = "tabs",
+        tabPanel(
+          statedu_ui_label("reference", language),
+          value = "ascvd10_reference_tab",
+          div(class = "calculator-reference-tab", ascvd10_reference_table())
+        ),
+        tabPanel(
+          statedu_ui_label("exclusion_rules", language),
+          value = "ascvd10_exclusion_tab",
+          div(class = "calculator-reference-tab", ascvd10_exclusion_table(output_name))
+        ),
+        tabPanel(
+          statedu_ui_label("output", language),
+          value = "ascvd10_output_tab",
+          div(class = "calculator-reference-tab calculator-output-tab", ascvd10_output_table(input, language))
+        )
+      )
     )
   )
 }
 
-register_ascvd10_calculator_handlers <- function(input, output, session, dataset_fn, current_data_file_fn, variable_info_fn, add_calculated_variable_fn) {
+register_ascvd10_calculator_handlers <- function(input, output, session, dataset_fn, current_data_file_fn, variable_info_fn, add_calculated_variable_fn, language_fn = NULL) {
   output$ascvd10_loaded_message <- renderText({
+    statedu_current_language(language_fn)
     file <- current_data_file_fn()
     metabolic_loaded_message_text(file, if (is.null(file)) NULL else dataset_fn())
   })
   output$ascvd10_calculator_setup <- renderUI({
+    language <- statedu_current_language(language_fn)
     file <- current_data_file_fn()
     data <- if (is.null(file)) NULL else dataset_fn()
-    ascvd10_setup_ui(file, data, if (is.null(file)) NULL else variable_info_fn(), input)
+    ascvd10_setup_ui(file, data, if (is.null(file)) NULL else variable_info_fn(), input, language = language)
   })
   observeEvent(input$ascvd10_available, {
     picked <- utils::tail(as.character(input$ascvd10_available %||% ""), 1)
@@ -229,14 +284,16 @@ register_ascvd10_calculator_handlers <- function(input, output, session, dataset
     if (!is.na(empty_index)) updateSelectInput(session, paste0("ascvd10_", names(selected)[[empty_index]]), selected = picked)
   }, ignoreInit = TRUE)
   result <- eventReactive(input$run_ascvd10_calculator, {
+    language <- statedu_current_language(language_fn)
     if (is.null(current_data_file_fn())) {
-      showNotification("Load a data file before calculating ASCVD10.", type = "warning", duration = 5)
+      showNotification(statedu_text(language, "Load a data file before calculating ASCVD10.", statedu_utf8("41534356443130ec9d8420eab384ec82b0ed9598eab8b020eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e")), type = "warning", duration = 5)
       return(NULL)
     }
     tryCatch({
-      result_data <- ascvd10_result(dataset_fn(), ascvd10_selected_variables(input))
-      add_calculated_variable_fn("ascvd10_score", result_data[["ascvd10_score"]], var_label = "ASCVD 10-year risk", measurement = "continuous")
-      showNotification("ascvd10_score was added to the current data.", type = "message", duration = 5)
+      output_name <- ascvd10_output_variable_name(input)
+      result_data <- ascvd10_result(dataset_fn(), ascvd10_selected_variables(input), output_name = output_name)
+      add_calculated_variable_fn(output_name, result_data[[output_name]], var_label = "ASCVD 10-year risk", measurement = "continuous")
+      showNotification(sprintf("%s was added to the current data.", output_name), type = "message", duration = 5)
       result_data
     }, error = function(error) {
       showNotification(conditionMessage(error), type = "warning", duration = 6)
@@ -244,22 +301,24 @@ register_ascvd10_calculator_handlers <- function(input, output, session, dataset
     })
   }, ignoreInit = TRUE)
   output$ascvd10_calculator_summary <- renderUI({
+    statedu_current_language(language_fn)
     data <- result()
     if (is.null(data)) return(NULL)
-    div(class = "empty-message", div(sprintf("Calculated ascvd10_score for %s rows. The variable is available in analysis menus.", nrow(data))))
+    output_name <- ascvd10_output_variable_name(input)
+    div(class = "empty-message", div(sprintf("Calculated %s for %s rows. The variable is available in analysis menus.", output_name, nrow(data))))
   })
   output$ascvd10_calculator_preview <- DT::renderDT({
     data <- result()
     if (is.null(data)) return(NULL)
     selected <- ascvd10_selected_variables(input)
-    preview_names <- intersect(c(unname(selected[nzchar(selected)]), "ascvd10_score"), names(data))
+    preview_names <- intersect(c(unname(selected[nzchar(selected)]), ascvd10_output_variable_name(input)), names(data))
     DT::datatable(utils::head(data[, preview_names, drop = FALSE], 50), rownames = FALSE, filter = "top", options = list(pageLength = 10, scrollX = TRUE))
   })
   output$download_ascvd10_calculator <- downloadHandler(
     filename = function() paste0("StatEdu_Studio_ascvd10_", format(Sys.Date(), "%Y%m%d"), ".csv"),
     content = function(file) {
       data <- result()
-      if (is.null(data)) data <- ascvd10_result(dataset_fn(), ascvd10_selected_variables(input))
+      if (is.null(data)) data <- ascvd10_result(dataset_fn(), ascvd10_selected_variables(input), output_name = ascvd10_output_variable_name(input))
       utils::write.csv(data, file, row.names = FALSE, na = "")
     }
   )

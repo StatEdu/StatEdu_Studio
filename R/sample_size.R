@@ -1,7 +1,7 @@
 # Sample size and power analysis helpers.
 
-sample_size_method_labels <- function() {
-  c(
+sample_size_method_labels <- function(language = NULL) {
+  labels <- c(
     proportion = "Proportion",
     chisquare = "Chi-square",
     mcnemar = "McNemar",
@@ -22,12 +22,46 @@ sample_size_method_labels <- function() {
     cluster = "Cluster Trial",
     precision = "Precision / CI"
   )
+  if (is.null(language)) {
+    return(labels)
+  }
+  ko_labels <- c(
+    proportion = statedu_utf8("ebb984ec9ca8"),
+    chisquare = statedu_utf8("ecb9b4ec9db4eca09ceab3b1"),
+    mcnemar = "McNemar",
+    ttest = "t-test",
+    anova = "ANOVA",
+    ancova = "ANCOVA / MANOVA",
+    nonparametric = statedu_utf8("ebb984ebaaa8ec8898"),
+    correlation = statedu_utf8("ec8381eab480"),
+    reliability = statedu_utf8("ec8ba0eba2b0eb8f84202f20ec9dbcecb998eb8f84"),
+    sem = statedu_utf8("eab5aceca1b0ebb0a9eca095ec8b9d2fed9995ec9db8eca081ec9a94ec9db8ebb684ec849d"),
+    regression = statedu_utf8("ed9a8ceab780"),
+    rates = statedu_utf8("eab384ec8898202f20ebb984ec9ca820ed9a8ceab780"),
+    diagnostic = "ROC AUC",
+    gee = statedu_utf8("ec9dbcebb098ed9994ecb694eca095ebb0a9eca095ec8b9d"),
+    lmm = statedu_utf8("ec84a0ed9895ed98bced95a9ebaaa8ed9895"),
+    survival = statedu_utf8("ec839deca1b4202f20436f78"),
+    equivalence = statedu_utf8("eb8f99eb93b1ec84b1202f20ebb984ec97b4eb93b1ec84b1"),
+    cluster = statedu_utf8("eab5b0eca79120ec8b9ced9798"),
+    precision = statedu_utf8("eca095ebb080eb8f84202f20ec8ba0eba2b0eab5aceab084")
+  )
+  stats::setNames(
+    mapply(
+      function(en, ko) statedu_text(language, en, ko),
+      labels,
+      ko_labels[names(labels)],
+      USE.NAMES = FALSE
+    ),
+    names(labels)
+  )
 }
 
-effect_size_method_labels <- function() {
-  labels <- sample_size_method_labels()
+effect_size_method_labels <- function(language = NULL) {
+  labels <- sample_size_method_labels(language)
   labels <- labels[setdiff(names(labels), c("equivalence", "cluster", "precision", "reliability", "sem"))]
-  append(labels, c(glmm = "GLMM"), after = which(names(labels) == "lmm"))
+  glmm_label <- if (is.null(language)) "GLMM" else statedu_text(language, "GLMM", statedu_utf8("ec9dbcebb098ed9994ec84a0ed9895ebaaa8ed9895"))
+  append(labels, c(glmm = glmm_label), after = which(names(labels) == "lmm"))
 }
 
 sample_size_ttest_effect_conversions <- function(d, df = NULL) {

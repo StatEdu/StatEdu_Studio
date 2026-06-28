@@ -10,11 +10,13 @@ register_frequencies_handlers <- function(
   labels_fn,
   category_table_fn,
   frequency_variables,
-  mark_settings_dirty
+  mark_settings_dirty,
+  app_language_fn = NULL
 ) {
   active_frequency_list <- reactiveVal(NULL)
 
   frequency_state <- reactive({
+    language <- statedu_current_language(app_language_fn)
     frequencies_setup_state(
       selected_names = selected_names_fn(),
       variable_table = variable_table_fn(),
@@ -30,7 +32,8 @@ register_frequencies_handlers <- function(
       plot_bar = input$frequency_plot_bar,
       plot_histogram = input$frequency_plot_histogram,
       plot_box = input$frequency_plot_box,
-      plot_violin = input$frequency_plot_violin
+      plot_violin = input$frequency_plot_violin,
+      language = language
     )
   })
 
@@ -48,7 +51,8 @@ register_frequencies_handlers <- function(
     variables_fn = frequency_variables,
     variable_table_fn = variable_table_fn,
     labels_fn = labels_fn,
-    category_table_fn = category_table_fn
+    category_table_fn = category_table_fn,
+    language_fn = app_language_fn
   )
 
   observeEvent(input$frequency_available_active, {

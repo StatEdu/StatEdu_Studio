@@ -10,7 +10,8 @@ register_pca_handlers <- function(
   category_table_fn,
   labels_fn,
   add_calculated_variable_fn = NULL,
-  mark_settings_dirty
+  mark_settings_dirty,
+  app_language_fn = NULL
 ) {
   pca_variables <- reactiveVal(character(0))
   active_pca_list <- reactiveVal(NULL)
@@ -25,9 +26,10 @@ register_pca_handlers <- function(
   })
 
   output$pca_setup <- renderUI({
+    language <- statedu_current_language(app_language_fn)
     selected <- current_selected()
     if (length(selected) == 0) {
-      return(setup_empty_message("Complete Step 2 in the Data tab before setting up principal component analysis."))
+      return(setup_empty_message(analysis_ui_text("Complete Step 2 in the Data tab before setting up principal component analysis.", language), language = language))
     }
     pca_setup_panel(
       pca_setup_state(
@@ -49,7 +51,8 @@ register_pca_handlers <- function(
         biplot = input$pca_biplot %||% TRUE,
         save_component_scores = input$pca_save_component_scores %||% FALSE,
         save_component_base_name = input$pca_save_component_base_name %||% "PCA",
-        options_tab = isolate(input$pca_options_tab) %||% "Model"
+        options_tab = isolate(input$pca_options_tab) %||% "Model",
+        language = language
       )
     )
   })
@@ -64,7 +67,8 @@ register_pca_handlers <- function(
     variables_fn = pca_variables,
     variable_table_fn = variable_table_fn,
     labels_fn = labels_fn,
-    category_table_fn = category_table_fn
+    category_table_fn = category_table_fn,
+    language_fn = app_language_fn
   )
 
   observe({

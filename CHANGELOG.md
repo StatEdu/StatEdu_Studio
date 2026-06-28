@@ -1,6 +1,87 @@
 # Changelog
 
-## v0.9.40 - Unreleased
+## v1.0.1 - 2026-06-28
+
+### Changed
+
+- Stabilized Korean/English UI switching across the main menus, setup screens, calculators, documentation pages, and notifications while keeping result tables in English.
+- Updated Data Editor and analysis menus with grouped categories, corrected Korean labels, and aligned button and tab layouts.
+- Refined t-test / ANOVA normality cutoff options, ordered post-hoc marker summaries, and cross-tabulation layout/export behavior.
+- Added calculator output variable-name controls and improved EQ-5D and ASCVD10 calculator panel layouts.
+- Added update-check support, `.studio` file association packaging metadata, and the `.studio` file icon.
+- Added a Help menu for bug reports, feature requests, analysis requests, Q&A, and update checks.
+- Linked Help request items to the StatEdu Studio website forms and routed Q&A by UI language.
+- Updated 1.0 user-guide screenshots and bilingual documentation assets.
+
+## v1.0.0 - 2026-06-25
+
+### Changed
+
+- Promoted the stabilized release line to the public 1.0.0 version metadata.
+- Switched Electron package metadata from beta names to final StatEdu Studio release names.
+- Kept deferred public 1.0 claims, DOI verification, website verification, and packaged QA gates explicit in the release documents.
+- Updated ordered post-hoc markers to show only directly significant comparisons in mean order, avoiding transitive chains such as `b>a>c` when one pair is not significant.
+- Added width-based cross-tabulation PDF orientation so wide primary tables print landscape while narrower and supporting tables remain portrait.
+- Added selectable skewness/kurtosis normality cutoffs for t-test / ANOVA setup: 2/5, 2/7, and 3/7, with 2/7 remaining the default.
+- Updated the settings save dialog to open in the loaded data file's folder when a data file path is available.
+- Prevented the Excel import review panel from appearing at startup unless a valid pending Excel file path exists.
+
+## v0.9.42 - 2026-06-23
+
+### Added
+
+- Added a Data Editor > Wide to Long workflow for reshaping repeated-measure columns into long-format data before longitudinal / panel analysis.
+- Added validation coverage for wide-to-long reshaping and expanded data-editor recoding checks.
+- Added Shiny startup and Electron release smoke checks for release-candidate validation.
+- Added tracked documentation UTF-8 validation for release-candidate documentation checks.
+
+### Changed
+
+- Standardized Data Editor panel, button, spacing, and data-viewer layouts against the t-test / ANOVA dialog pattern.
+- Updated missing-value handling to support both user-missing marking and conversion to system NA.
+- Improved recode and rename workflows with queued-variable removal, aligned target panels, and clearer rule setup.
+- Simplified settings files to the `.studio` format and updated save/load dialogs.
+- Refined longitudinal / panel model layout and reference-category reporting for categorical predictors.
+- Hardened release hygiene checks for local-only files, generated artifacts, version metadata, and release documentation.
+- Restored the Korean product plan document with current 1.0 stabilization priorities.
+- Updated current Korean user and method documentation references to 0.9.42 and added validation against stale current-version references.
+- Marked the 1.0 distribution, license, and update plan as reviewed for the 0.9.42 stabilization phase.
+- Added release hygiene validation to the core stabilization suite so generated Electron staging files and local artifacts cannot be tracked accidentally.
+- Added release readiness status tracking and validation for packaging, DOI, website, and 1.0 deferral decisions.
+- Added a release preflight script that runs full stabilization validation, Shiny startup smoke, and Electron release smoke checks.
+- Added a 1.0 decision log for packaging, DOI, website, edition gating, license, update, and public-release note decisions.
+- Tightened the UI layout contract and validation for standard three-block Data Editor button placement.
+- Added a manual QA protocol for release-candidate visual, data, analysis, export, and packaged Electron checks.
+- Linked the manual QA protocol into Electron release smoke checks.
+- Updated release readiness status to record the passing release preflight check.
+- Tightened release metadata validation for unresolved public 1.0 blockers.
+- Added a manual QA record template and validation for release-candidate QA evidence.
+- Removed tracked generated comparison artifacts from `outputs/` and blocked root output artifacts in release hygiene validation.
+- Documented the full packaged-output Electron preflight command in the README and version metadata validation.
+- Clarified release-gate documentation so the DOI target landing URL is `https://studio.statedu.com`.
+- Clarified that the 1.0 distribution, license, and update plan is planning material, not a claim that gated editions, license activation, updater, or public installer infrastructure are implemented.
+- Added a README and release-readiness warning that the intended DOI must resolve before any public 1.0 citation announcement.
+- Tightened source/license notice validation for public release source availability, third-party notices, license reports, and bundled license text references.
+- Aligned release checklist, README, and manual QA guidance so completed QA evidence is kept with release notes and validation artifacts.
+- Documented the release gate for replacing 0.9.x beta Electron package names before a public 1.0 installer.
+- Aligned Latent Mplus settings dialogs with the `.studio`-only settings file contract.
+- Updated the 1.0 distribution/license/update plan so historical beta-version notes do not read as the current release baseline.
+- Added a manual QA gate that public release notes and user-visible text must not claim unimplemented gated editions, license activation, in-app updates, or public installer infrastructure.
+- Replaced Latent Mplus builder placeholder notifications with explicit not-enabled release messages and validation.
+- Reworded the effect-size fallback subtitle so unavailable calculators do not read as future feature promises.
+- Removed an unused Analysis placeholder tab helper from the menu assembly code.
+- Clarified the release checklist so legacy settings formats remain out of public settings dialogs while internal compatibility identifiers remain documented.
+
+## v0.9.41 - 2026-06-20
+
+### Changed
+
+- Grouped the Analysis, Sample Size, and Effect Size navigation menus into consistent first-level statistical categories.
+- Fixed cross-tabulation variable transfer controls so selected column or row variables reliably move back to the available variable list.
+- Adjusted cross-tabulation transfer-button placement for the column and row target panels.
+
+
+## v0.9.40 - 2026-06-20
 
 ### Changed
 
@@ -428,7 +509,7 @@
 - Improved factor analysis diagnostics table styling and finalized the KMO / Bartlett summary row placement.
 - Kept all five analysis save controls visible in development builds and added PDF / Add result coverage for the remaining analysis modules.
 - Removed PDF cover decoration and internal filename/date print labels, and added bottom-right page numbering.
-- Added edition-aware PDF cover identity handling, including the StatEdu logo and StatEdu 통계연구소 name for development builds.
+- Added edition-aware PDF cover identity handling, including the StatEdu logo and StatEdu Statistical Research Institute name for development builds.
 - Added the PDF output date below the saved date on the report cover.
 - Added development-only watermarks to exported HTML and PDF reports.
 

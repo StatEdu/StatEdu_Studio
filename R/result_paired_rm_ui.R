@@ -109,7 +109,7 @@ paired_rm_normality_summary <- function(result, group) {
 paired_rm_sphericity_summary <- function(result, group) {
   p_value <- paired_rm_assumption_value(result$assumption, group, "Sphericity p", "Value")
   sphericity <- paired_rm_assumption_value(result$assumption, group, "Sphericity", "Result")
-  sphericity <- switch(sphericity, Satisfied = "\ub9cc\uc871", `Not satisfied` = "\ubd88\ub9cc\uc871", sphericity)
+  sphericity <- switch(sphericity, Satisfied = "Satisfied", `Not satisfied` = "Not satisfied", sphericity)
   if (!nzchar(p_value) && !nzchar(sphericity)) return("")
   parts <- c(if (nzchar(p_value)) paste0("p=", p_value) else "", sphericity)
   paste(parts[nzchar(parts)], collapse = " ")
@@ -120,9 +120,9 @@ paired_rm_reason_summary <- function(result, group, row) {
   sphericity <- paired_rm_assumption_value(result$assumption, group, "Sphericity", "Result")
   posthoc <- as.character(row$`Post-hoc`[[1]] %||% "")
   parts <- c(
-    if (identical(normality, "Satisfied")) "\uc815\uaddc\uc131 \ub9cc\uc871" else if (identical(normality, "Not satisfied")) "\uc815\uaddc\uc131 \ubd88\ub9cc\uc871" else "",
-    if (identical(sphericity, "Satisfied")) "\uad6c\ud615\uc131 \ub9cc\uc871" else if (identical(sphericity, "Not satisfied")) "\uad6c\ud615\uc131 \ubd88\ub9cc\uc871" else "",
-    if (nzchar(posthoc)) "\uc0ac\ud6c4\ubd84\uc11d \uc788\uc74c" else ""
+    if (identical(normality, "Satisfied")) "Normality met" else if (identical(normality, "Not satisfied")) "Normality not met" else "",
+    if (identical(sphericity, "Satisfied")) "Sphericity met" else if (identical(sphericity, "Not satisfied")) "Sphericity not met" else "",
+    if (nzchar(posthoc)) "Post-hoc included" else ""
   )
   paste(parts[nzchar(parts)], collapse = "\n")
 }
@@ -149,7 +149,7 @@ paired_rm_model_overview_table <- function(result) {
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
-    names(row) <- c("Repeated variables", "N", "\ubd84\uc11d \ubc29\ubc95", "\uc774\uc720")
+    names(row) <- c("Repeated variables", "N", "Analysis method", "Reason")
     rows[[length(rows) + 1L]] <- row
   }
   if (length(rows) == 0) NULL else do.call(rbind, rows)
@@ -170,7 +170,7 @@ paired_rm_assumption_review_table <- function(result) {
         as.character(item$`Post-hoc`[[1]] %||% ""),
         "stats"
       ),
-      c("\uc815\uaddc\uc131", "\uad6c\ud615\uc131", "\uc0ac\ud6c4\ubd84\uc11d", "\ud328\ud0a4\uc9c0")
+      c("Normality", "Sphericity", "Post-hoc", "Package")
     )
     metric_index <- 0L
     for (metric in names(values)) {

@@ -1,5 +1,16 @@
 # Server handlers for variable selection, role assignment, and category labels.
 
+selection_ui_language <- function(language_fn = NULL) {
+  if (is.function(language_fn)) {
+    return(normalize_app_language(language_fn()))
+  }
+  statedu_initial_language()
+}
+
+selection_ui_text <- function(language_fn, en, ko_hex) {
+  statedu_text(selection_ui_language(language_fn), en, statedu_utf8(ko_hex))
+}
+
 sync_selected_variable_names <- function(
   names,
   selection_applied,
@@ -89,7 +100,8 @@ register_variable_table_state_observers <- function(
   mark_settings_dirty,
   sync_table_state_fn,
   update_var_label_overrides_fn,
-  update_measurement_overrides_fn
+  update_measurement_overrides_fn,
+  language_fn = NULL
 ) {
   observeEvent(input$variable_selected_names, {
     sync_selected_variable_names(
@@ -139,12 +151,21 @@ register_variable_table_state_observers <- function(
       updates <- stats::setNames(rep(value, length(names)), names)
     }
     if (length(updates) == 0) {
-      showNotification("Select variables before applying a variable type.", type = "warning")
+      showNotification(
+        selection_ui_text(language_fn, "Select variables before applying a variable type.", "ebb380ec889820ec9ca0ed9895ec9d8420eca081ec9aa9ed9598eab8b020eca084ec979020ebb380ec8898eba5bc20ec84a0ed839ded9598ec84b8ec9a942e"),
+        type = "warning"
+      )
       return()
     }
     update_measurement_overrides_fn(updates)
     showNotification(
-      sprintf("Changed %s selected variable type(s) to %s.", length(updates), if (identical(value, "ordered")) "ordinal" else value),
+      if (identical(selection_ui_language(language_fn), "ko")) {
+        msg <- selection_ui_text(language_fn, "Changed {n} selected variable type(s) to {type}.", "ec84a0ed839ded959c20ebb380ec8898207b6e7deab09cec9d9820ec9ca0ed9895ec9d84207b747970657d28ec9cbc29eba19c20ebb380eab2bded9688ec8ab5eb8b88eb8ba42e")
+        msg <- sub("\\{n\\}", length(updates), msg)
+        sub("\\{type\\}", if (identical(value, "ordered")) "ordinal" else value, msg)
+      } else {
+        sprintf("Changed %s selected variable type(s) to %s.", length(updates), if (identical(value, "ordered")) "ordinal" else value)
+      },
       type = "message"
     )
   })
@@ -156,12 +177,12 @@ register_variable_table_state_observers <- function(
 
   observeEvent(input$apply_selected_variable_review, {
     sync_table_state_fn(input$variable_table_state)
-    showNotification("Selected variable information saved.", type = "message")
+    showNotification(selection_ui_text(language_fn, "Selected variable information saved.", "ec84a0ed839d20ebb380ec889820eca095ebb3b4eab08020eca080ec9ea5eb9098ec9788ec8ab5eb8b88eb8ba42e"), type = "message")
   })
 
   observeEvent(input$apply_selected_variable_review_request, {
     sync_table_state_fn(input$apply_selected_variable_review_request)
-    showNotification("Selected variable information saved.", type = "message")
+    showNotification(selection_ui_text(language_fn, "Selected variable information saved.", "ec84a0ed839d20ebb380ec889820eca095ebb3b4eab08020eca080ec9ea5eb9098ec9788ec8ab5eb8b88eb8ba42e"), type = "message")
   })
 
   invisible(TRUE)
@@ -185,7 +206,8 @@ selection_flow_handlers <- function(
   sync_dependent_order_fn,
   go_data_step,
   set_role_choices,
-  mark_settings_dirty
+  mark_settings_dirty,
+  language_fn = NULL
 ) {
   finish_role_selection <- function() {
     roles_applied(TRUE)
@@ -197,7 +219,7 @@ selection_flow_handlers <- function(
     updateSelectizeInput(session, "xs", choices = selected_names(), selected = independent_names(), server = TRUE)
     updateSelectizeInput(session, "covariates", choices = selected_names(), selected = control_names(), server = TRUE)
     mark_settings_dirty()
-    showNotification("Variable information saved. Edit categorical value labels in Step 3.", type = "message")
+    showNotification(selection_ui_text(language_fn, "Variable information saved. Edit categorical value labels in Step 3.", "ec84a0ed839d20ebb380ec889820eca095ebb3b4eab08020eca080ec9ea5eb9098ec9788ec8ab5eb8b88eb8ba42e20ebb294eca3bced989520eab09220eb9dbcebb2a8ec9d8020537465702033ec9790ec849c20ed8eb8eca791ed9598ec84b8ec9a942e"), type = "message")
   }
 
   finish_variable_selection <- function(selected) {
@@ -215,7 +237,13 @@ selection_flow_handlers <- function(
       control_names()
     )
     mark_settings_dirty()
-    showNotification(sprintf("%s variables selected for analysis. Edit variable labels in Step 3.", length(selected)), type = "message")
+    if (identical(selection_ui_language(language_fn), "ko")) {
+      msg <- selection_ui_text(language_fn, "{n} variables selected for analysis. Edit variable labels in Step 3.", "ebb684ec849ded95a020ebb380ec8898eab080207b6e7deab09c20ec84a0ed839deb9098ec9788ec8ab5eb8b88eb8ba42e20ebb380ec889820eb9dbcebb2a8ec9d8020537465702033ec9790ec849c20ed8eb8eca791ed9598ec84b8ec9a942e")
+      msg <- sub("\\{n\\}", length(selected), msg)
+    } else {
+      msg <- sprintf("%s variables selected for analysis. Edit variable labels in Step 3.", length(selected))
+    }
+    showNotification(msg, type = "message")
   }
 
   list(
@@ -236,7 +264,8 @@ register_data_step_observers <- function(
   control_names,
   go_data_step,
   set_role_choices,
-  mark_settings_dirty
+  mark_settings_dirty,
+  language_fn = NULL
 ) {
   observeEvent(input$modify_variable_selection, {
     req(length(available_variable_names()) > 0)
@@ -246,7 +275,7 @@ register_data_step_observers <- function(
     go_data_step("step2")
     set_role_choices(selected_names(), dependent_names(), independent_names(), control_names())
     mark_settings_dirty()
-    showNotification("Modify the checked variables, then apply the selection again.", type = "message")
+    showNotification(selection_ui_text(language_fn, "Modify the checked variables, then apply the selection again.", "ec84a0ed839ded959c20ebb380ec8898eba5bc20ec8898eca095ed959c20eb92a420eb8ba4ec8b9c20eca081ec9aa9ed9598ec84b8ec9a942e"), type = "message")
   })
 
   observeEvent(input$go_step1, {
@@ -346,7 +375,8 @@ category_label_handlers <- function(
   update_var_label_overrides,
   update_measurement_overrides,
   step3_variable_info,
-  mark_settings_dirty
+  mark_settings_dirty,
+  language_fn = NULL
 ) {
   category_label_table_data <- function() {
     category_label_display_data(
@@ -435,7 +465,6 @@ category_label_handlers <- function(
         info_var_labels <- stats::setNames(as.character(updated_info$var_label), as.character(updated_info$name))
         info_var_label_sample <- paste(utils::head(sprintf("%s=%s", names(info_var_labels), unname(info_var_labels)), 8), collapse = ", ")
       }
-      attr(updated_info, "easyflow_step3_apply_nonce") <- as.character(Sys.time())
       step3_variable_info(updated_info)
     }
 
@@ -462,12 +491,19 @@ category_label_handlers <- function(
       saved_category_sample
     ))
     showNotification(
-      sprintf(
-        "Variable review applied (%s value rows, %s types, %s variable labels).",
-        payload_category_count,
-        payload_measurement_count,
-        payload_var_label_count
-      ),
+      if (identical(selection_ui_language(language_fn), "ko")) {
+        msg <- selection_ui_text(language_fn, "Variable review applied ({v} value rows, {t} types, {l} variable labels).", "ebb380ec889820eab280ed86a0eab08020eca081ec9aa9eb9098ec9788ec8ab5eb8b88eb8ba4287b767deab09c20eab09220ed96892c207b747deab09c20ec9ca0ed98952c207b6c7deab09c20ebb380ec889820eb9dbcebb2a8292e")
+        msg <- sub("\\{v\\}", payload_category_count, msg)
+        msg <- sub("\\{t\\}", payload_measurement_count, msg)
+        sub("\\{l\\}", payload_var_label_count, msg)
+      } else {
+        sprintf(
+          "Variable review applied (%s value rows, %s types, %s variable labels).",
+          payload_category_count,
+          payload_measurement_count,
+          payload_var_label_count
+        )
+      },
       type = "message",
       duration = 4
     )
