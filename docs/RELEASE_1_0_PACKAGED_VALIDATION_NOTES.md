@@ -3,6 +3,26 @@
 Use this file to record the final validation evidence for the public 1.0.0
 Windows package. Keep it with the release notes and manual QA record.
 
+## Current 1.0.1 Patch Package
+
+```text
+Version: 1.0.1
+Build date: 2026-06-28
+Git commit: 32b0ef5 Fix help Q&A links and analysis request label
+Installer: dist/electron/StatEdu_Studio_Setup_1.0.1.exe
+Installer SHA256: 6A9BDAD75868DC77A35ED897A755327AD0CC264E4B38868634C707AE6C11E8B5
+Blockmap SHA256: 45CDFFA400133732A57A570025647AD448A15E5A8766E30AD4802ACB979C009C
+Unpacked executable: dist/electron/win-unpacked/StatEdu Studio.exe
+Bundled R runtime: R-4.5.3
+```
+
+Validation:
+
+- `scripts/validate_brand_metadata.R`: Pass
+- `scripts/validate_version_metadata.R`: Pass, version 1.0.1
+- `scripts/smoke_electron_release.ps1 -RepoRoot .`: Pass
+- `scripts/get_release_checksums.ps1`: Pass, hashes recorded above
+
 ## Package
 
 ```text

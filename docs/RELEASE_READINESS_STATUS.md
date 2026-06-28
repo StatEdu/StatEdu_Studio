@@ -1,8 +1,16 @@
 # StatEdu Studio Release Readiness Status
 
-Last reviewed: 2026-06-25
+Last reviewed: 2026-06-28
 
 Current version: 1.0.1
+
+## Current 1.0.1 Package Snapshot
+
+- Built package: `dist/electron/StatEdu_Studio_Setup_1.0.1.exe`
+- Installer SHA256: `6A9BDAD75868DC77A35ED897A755327AD0CC264E4B38868634C707AE6C11E8B5`
+- Blockmap SHA256: `45CDFFA400133732A57A570025647AD448A15E5A8766E30AD4802ACB979C009C`
+- `scripts/smoke_electron_release.ps1 -RepoRoot .`: passed on 2026-06-28 against the rebuilt 1.0.1 output.
+- Website release manifest was updated to 1.0.1 with the installer SHA256 and `releases/release-notes/1.0.1.html`.
 
 ## Local Validation
 

@@ -96,19 +96,21 @@ try {
 } finally {
   if ($process -and -not $process.HasExited) {
     Stop-Process -Id $process.Id -Force
-    Wait-Process -Id $process.Id -Timeout 5 -ErrorAction SilentlyContinue
+    Wait-Process -Id $process.Id -Timeout 10 -ErrorAction SilentlyContinue
   }
   if (Test-Path -LiteralPath $runScript) {
-    for ($i = 0; $i -lt 10; $i++) {
+    $removedRunScript = $false
+    for ($i = 0; $i -lt 20; $i++) {
       try {
         Remove-Item -LiteralPath $runScript -Force
+        $removedRunScript = $true
         break
       } catch {
-        if ($i -eq 9) {
-          throw
-        }
-        Start-Sleep -Milliseconds 250
+        Start-Sleep -Milliseconds 500
       }
+    }
+    if (-not $removedRunScript) {
+      Write-Warning "Could not remove temporary smoke script: $runScript"
     }
   }
 }
