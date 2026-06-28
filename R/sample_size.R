@@ -59,7 +59,7 @@ sample_size_method_labels <- function(language = NULL) {
 
 effect_size_method_labels <- function(language = NULL) {
   labels <- sample_size_method_labels(language)
-  labels <- labels[setdiff(names(labels), c("equivalence", "cluster", "precision", "reliability"))]
+  labels <- labels[setdiff(names(labels), c("equivalence", "cluster", "precision", "reliability", "sem"))]
   glmm_label <- if (is.null(language)) "GLMM" else statedu_text(language, "GLMM", statedu_utf8("ec9dbcebb098ed9994ec84a0ed9895ebaaa8ed9895"))
   append(labels, c(glmm = glmm_label), after = which(names(labels) == "lmm"))
 }

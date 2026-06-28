@@ -479,4 +479,4 @@ StatEdu Studio 1.0.0 also provides study-planning calculators. These are separat
 | GLMM | binary logit OR/log OR/latent d, count IRR/log IRR, Gaussian d |
 | Survival / Cox | hazard ratio and log hazard ratio |
 
-Some study-planning targets, such as equivalence margins, confidence-interval half-widths, and SEM/CFA complexity scores, are handled as planning inputs rather than conventional effect-size outputs.
+Some study-planning targets, such as equivalence margins, confidence-interval half-widths, and SEM/CFA complexity scores, are handled as planning inputs rather than conventional effect-size outputs. SEM/CFA therefore remains in the Sample Size menu only and is not listed in the Effect Size menu.

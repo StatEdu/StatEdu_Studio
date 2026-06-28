@@ -136,7 +136,5 @@ The following table compares representative StatEdu Studio effect-size results w
 | Precision / CI | Standardized half-width | Mean estimate=10, half-width=1.5, SD=6 | 0.250000 | 0.250000 | 0 | match |
 | Reliability / Agreement | Alpha difference | alpha=.80 vs reference=.70, items=5 | 0.100000 | 0.100000 | 0 | match |
 | Reliability / Agreement | Average inter-item r | alpha=.80 vs reference=.70, items=5 | 0.444444 | 0.444444 | 0 | match |
-| SEM / CFA | RMSEA difference | df=20, RMSEA0=.05, RMSEA1=.08 | 0.030000 | 0.030000 | 0 | match |
-| SEM / CFA | NCP difference per N | df=20, RMSEA0=.05, RMSEA1=.08 | 0.078000 | 0.078000 | 0 | match |
 
-Summary: all 25 effect-size comparison items matched the reference definition. For independent t-test conversion, StatEdu Studio uses the equal-n exact formula `2t/sqrt(df + 2)`, which matches the G*Power convention rather than the `effectsize::t_to_d` default approximation `2t/sqrt(df_error)`. Cramer's V is compared against the unadjusted definition (`adjust = FALSE`) used by StatEdu Studio.
+Summary: all 27 reportable effect-size comparison items matched the reference definition. SEM/CFA quantities are retained as sample-size planning diagnostics, not as reportable Effect Size menu outputs. For independent t-test conversion, StatEdu Studio uses the equal-n exact formula `2t/sqrt(df + 2)`, which matches the G*Power convention rather than the `effectsize::t_to_d` default approximation `2t/sqrt(df_error)`. Cramer's V is compared against the unadjusted definition (`adjust = FALSE`) used by StatEdu Studio.

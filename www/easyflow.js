@@ -1215,7 +1215,6 @@
                 effect_size_ancova: 'ANCOVA / MANOVA',
                 effect_size_nonparametric: 'Nonparametric',
                 effect_size_correlation: 'Correlation',
-                effect_size_sem: 'SEM / CFA',
                 effect_size_regression: 'Regression',
                 effect_size_rates: 'Count / Rate Regression',
                 effect_size_diagnostic: 'ROC AUC',
@@ -1233,7 +1232,6 @@
                 effect_size_ancova: 'ANCOVA / MANOVA',
                 effect_size_nonparametric: '\uBE44\uBAA8\uC218',
                 effect_size_correlation: '\uC0C1\uAD00',
-                effect_size_sem: '\uAD6C\uC870\uBC29\uC815\uC2DD/\uD655\uC778\uC801\uC694\uC778\uBD84\uC11D',
                 effect_size_regression: '\uD68C\uADC0',
                 effect_size_rates: '\uAC74\uC218 / \uBC1C\uC0DD\uB960 \uD68C\uADC0',
                 effect_size_diagnostic: 'ROC AUC',
@@ -1261,7 +1259,7 @@
                 {
                   title: 'Association & Measurement',
                   titleKo: '\uC5F0\uAD00 / \uCE21\uC815',
-                  values: ['effect_size_correlation', 'effect_size_sem', 'effect_size_diagnostic']
+                  values: ['effect_size_correlation', 'effect_size_diagnostic']
                 },
                 {
                   title: 'Regression & Models',

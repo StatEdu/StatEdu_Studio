@@ -252,4 +252,4 @@
 | GLMM | binary logit OR/log OR/latent d, count log-link IRR/log IRR, Gaussian d |
 | Survival / Cox | hazard ratio and log hazard ratio |
 
-효과크기 메뉴에서는 분석 결과의 효과를 보고하는 데 직접 쓰기 어려운 단순 계획 규칙, 정밀도 half-width, equivalence margin distance, SEM/CFA complexity score를 제외한다. 이러한 항목은 표본수 메뉴의 계획 계산으로 남겨 둔다.
+효과크기 메뉴에서는 분석 결과의 효과를 보고하는 데 직접 쓰기 어려운 단순 계획 규칙, 정밀도 half-width, equivalence margin distance, SEM/CFA complexity score를 제외한다. SEM/CFA는 표본수 메뉴의 계획 계산으로만 남겨 두고, 효과크기 메뉴에는 표시하지 않는다.
