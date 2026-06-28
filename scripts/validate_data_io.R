@@ -148,7 +148,7 @@ stopifnot(!supported_data_file_extension("source.txt"))
 message("Checking temp copy helper...")
 copy_path <- copy_data_file_for_reading(csv_path, "source.csv")
 stopifnot(file.exists(copy_path))
-stopifnot(grepl("^easyflow_data_", basename(copy_path)))
+stopifnot(grepl("^statedu_data_", basename(copy_path)))
 unlink(copy_path)
 unlink(c(csv_path, cp949_path, xlsx_path, multi_xlsx_path, dta_path, xpt_path, sas_path, dat_path))
 
