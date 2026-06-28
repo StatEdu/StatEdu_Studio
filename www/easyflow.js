@@ -941,7 +941,7 @@
                 calculator_metabolic_severity: '\uB300\uC0AC\uC99D\uD6C4\uAD70 \uC911\uC99D\uB3C4',
                 help_bug: '\uBC84\uADF8 \uC2E0\uACE0',
                 help_feature: '\uAE30\uB2A5 \uAC1C\uC120 \uC694\uCCAD',
-                help_analysis_request: '\uBD84\uC11D \uC694\uCCAD',
+                help_analysis_request: '\uBD84\uC11D\uAE30\uBC95 \uC694\uCCAD',
                 help_qa: 'Q&A',
                 about_update: '\uC5C5\uB370\uC774\uD2B8 \uD655\uC778',
                 about_overview: '\uAC1C\uC694',
