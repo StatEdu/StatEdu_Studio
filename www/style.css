@@ -283,6 +283,10 @@ body {
   margin-bottom: 18px;
 }
 
+.page-shell > .app-heading {
+  display: none;
+}
+
 .app-heading h1 {
   margin: 0 0 6px;
   font-size: 34px;

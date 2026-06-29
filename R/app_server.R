@@ -57,12 +57,13 @@ create_app_server <- function(app_version) {
     ""
   }
 
+  active_app_language <- reactiveVal(statedu_initial_language())
+
   app_language <- reactive({
     selected <- first_nonempty(
       statedu_query_value(session$clientData$url_search %||% "", "lang"),
       input$statedu_url_language,
-      input$app_language,
-      getOption("statedu.app_language", "")
+      active_app_language()
     )
     language <- normalize_app_language(selected)
     options(statedu.app_language = language)
@@ -75,7 +76,9 @@ create_app_server <- function(app_version) {
 
   observeEvent(input$apply_app_language, {
     selected <- normalize_app_language(input$app_language %||% app_language())
+    active_app_language(selected)
     options(statedu.app_language = selected)
+    statedu_write_persisted_language(selected)
     session$sendCustomMessage("statedu-apply-language", selected)
   }, ignoreInit = TRUE)
 
@@ -173,7 +176,7 @@ create_app_server <- function(app_version) {
   }
 
   register_client_error_handler(input)
-  register_result_accumulator_outputs(input, output, session)
+  register_result_accumulator_outputs(input, output, session, app_language_fn = app_language)
 
   data_reactives <- create_data_reactives(input, active_data_file, calculated_variables, renamed_variables, user_missing_rules)
   current_data_file <- data_reactives$current_data_file

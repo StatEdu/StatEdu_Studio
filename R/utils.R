@@ -72,10 +72,47 @@ statedu_request_language <- function(request = NULL) {
   ""
 }
 
+statedu_language_file_path <- function() {
+  path <- Sys.getenv("STATEDU_APP_LANGUAGE_FILE", "")
+  if (!nzchar(path)) {
+    return("")
+  }
+  normalizePath(path, winslash = "/", mustWork = FALSE)
+}
+
+statedu_read_persisted_language <- function() {
+  path <- statedu_language_file_path()
+  if (!nzchar(path) || !file.exists(path)) {
+    return("")
+  }
+  value <- tryCatch(readLines(path, warn = FALSE, encoding = "UTF-8", n = 1), error = function(e) "")
+  if (!length(value) || !nzchar(value[[1]])) {
+    return("")
+  }
+  normalize_app_language(value[[1]])
+}
+
+statedu_write_persisted_language <- function(language) {
+  path <- statedu_language_file_path()
+  if (!nzchar(path)) {
+    return(invisible(FALSE))
+  }
+  language <- normalize_app_language(language)
+  result <- tryCatch({
+    dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+    writeLines(language, path, useBytes = TRUE)
+    TRUE
+  }, error = function(e) FALSE)
+  invisible(result)
+}
+
 statedu_initial_language <- function(request = NULL) {
   language <- if (is.null(request)) "" else statedu_request_language(request)
   if (!nzchar(language)) {
     language <- getOption("statedu.app_language", "")
+  }
+  if (!nzchar(language)) {
+    language <- statedu_read_persisted_language()
   }
   if (!nzchar(language)) {
     language <- Sys.getenv("STATEDU_APP_LANGUAGE", "ko")

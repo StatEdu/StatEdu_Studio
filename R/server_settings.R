@@ -296,7 +296,7 @@ register_settings_reset_handler <- function(
     }, once = TRUE)
     showNotification(
       statedu_text(
-        language_fn(),
+        statedu_current_language(language_fn),
         "Settings were reset.",
         statedu_utf8("ec84a4eca095ec9db420ecb488eab8b0ed9994eb9098ec9788ec8ab5eb8b88eb8ba42e")
       ),
@@ -342,7 +342,7 @@ register_settings_load_handler <- function(
     if (!is.null(current_data_file_fn())) {
       showNotification(
         statedu_text(
-          language_fn(),
+          statedu_current_language(language_fn),
           "Settings and data file loaded.",
           statedu_utf8("ec84a4eca095eab3bc20eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec9994ec8ab5eb8b88eb8ba42e")
         ),
@@ -351,7 +351,7 @@ register_settings_load_handler <- function(
     } else if (!is.null(restored_variable_info_fn())) {
       showNotification(
         statedu_text(
-          language_fn(),
+          statedu_current_language(language_fn),
           "Settings loaded. This older settings file does not include the data file.",
           statedu_utf8("ec84a4eca095ec9d8420ebb688eb9facec9994ec8ab5eb8b88eb8ba42e20ec9db420ec9db4eca08420ec84a4eca09520ed8c8cec9dbcec9790eb8a9420eb8db0ec9db4ed84b020ed8c8cec9dbcec9db420ed8faced95a8eb9098ec96b420ec9e88eca78020ec958aec8ab5eb8b88eb8ba42e")
         ),
@@ -360,7 +360,7 @@ register_settings_load_handler <- function(
     } else {
       showNotification(
         statedu_text(
-          language_fn(),
+          statedu_current_language(language_fn),
           "Settings loaded.",
           statedu_utf8("ec84a4eca095ec9d8420ebb688eb9facec9994ec8ab5eb8b88eb8ba42e")
         ),
@@ -425,7 +425,7 @@ register_settings_save_handler <- function(
     mark_settings_clean()
     showNotification(
       statedu_text(
-        language_fn(),
+        statedu_current_language(language_fn),
         "Settings file was saved.",
         statedu_utf8("ec84a4eca09520ed8c8cec9dbcec9db420eca080ec9ea5eb9098ec9788ec8ab5eb8b88eb8ba42e")
       ),

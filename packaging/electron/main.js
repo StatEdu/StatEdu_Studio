@@ -44,6 +44,10 @@ function startupLogFile() {
   return startupLogPath;
 }
 
+function appLanguageFile() {
+  return path.join(app.getPath("userData"), "settings", "app-language.txt");
+}
+
 function logStartup(message) {
   const line = `${new Date().toISOString()} ${message}\n`;
   try {
@@ -163,6 +167,7 @@ async function startShiny() {
     STATEDU_NO_PACKAGE_INSTALL: "true",
     STATEDU_TOKEN: token,
     STATEDU_STARTUP_LOG: startupLogFile(),
+    STATEDU_APP_LANGUAGE_FILE: appLanguageFile(),
     STATEDU_OPEN_STUDIO_FILE: launchStudioFile,
     STATEDU_PUBLIC_RELEASE: process.env.STATEDU_PUBLIC_RELEASE || publicReleaseFlag(),
     R_HOME: path.join(appBaseDir(), "runtime", "R-4.5.3"),
