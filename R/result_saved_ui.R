@@ -14,7 +14,7 @@ saved_results_cover_text <- function() {
   } else {
     tolower(Sys.getenv("STATEDU_EDITION", "development"))
   }
-  if (!edition %in% c("free", "development", "personal", "institution")) {
+  if (!edition %in% c("free", "pro", "development", "personal", "institution")) {
     edition <- "development"
   }
   organization <- trimws(Sys.getenv("STATEDU_REPORT_ORGANIZATION", ""))
@@ -25,7 +25,7 @@ saved_results_cover_text <- function() {
     organization <- if (nzchar(organization)) organization else "statedu.com"
     user <- if (nzchar(user)) user else "StatEdu, Institute of Statistics"
     organization_logo <- if (nzchar(organization_logo)) organization_logo else file.path("www", "statedu_logo.png")
-  } else if (identical(edition, "personal")) {
+  } else if (identical(edition, "personal") || identical(edition, "pro")) {
     organization <- ""
     organization_logo <- ""
   } else if (identical(edition, "institution")) {
@@ -1991,6 +1991,18 @@ result_entries_for_export <- function(store, language = statedu_initial_language
   entries
 }
 
+result_collection_exception_features <- function(entries) {
+  entries <- normalize_result_snapshot_entries(entries)
+  if (length(entries) == 0) {
+    return(character(0))
+  }
+  titles <- vapply(entries, function(entry) as.character(entry$title %||% ""), character(1))
+  if (all(titles %in% c("Frequencies / Descriptives", "t-test / ANOVA"))) {
+    return(c("pdf", "excel", "word"))
+  }
+  character(0)
+}
+
 register_result_accumulator_outputs <- function(input, output, session, app_language_fn = NULL) {
   store <- result_accumulator_store(session)
   current_language <- function() {
@@ -2012,6 +2024,18 @@ register_result_accumulator_outputs <- function(input, output, session, app_lang
         class = "saved-result-list",
         lapply(seq_along(entries), function(index) saved_result_entry_ui(entries[[index]], index))
       )
+    )
+  })
+
+  output$result_export_controls <- renderUI({
+    language <- current_language()
+    included_features <- result_collection_exception_features(store())
+    div(
+      class = "result-toolbar-group result-toolbar-export",
+      analysis_save_button("save_result_collection_html_dialog", statedu_ui_label("save_html", language), "html", class = "btn-default", included_features = included_features),
+      analysis_save_button("save_result_collection_pdf_dialog", statedu_ui_label("save_pdf", language), "pdf", class = "btn-default", included_features = included_features),
+      analysis_save_button("save_result_collection_excel_dialog", statedu_ui_label("save_excel", language), "excel", class = "btn-default", included_features = included_features),
+      analysis_save_button("save_result_collection_word_dialog", statedu_ui_label("save_word", language), "word", class = "btn-default", included_features = included_features)
     )
   })
 
@@ -2095,6 +2119,11 @@ register_result_accumulator_outputs <- function(input, output, session, app_lang
       {
         language <- current_language()
         entries <- result_entries_for_export(store, language)
+        included_features <- result_collection_exception_features(entries)
+        if (!isTRUE(analysis_save_feature_enabled("pdf", included_features = included_features))) {
+          showNotification("PDF export is not enabled for this Result collection.", type = "warning", duration = 5)
+          return(invisible(NULL))
+        }
         path <- choose_pdf_save_path()
         if (length(path) == 0 || !nzchar(path[[1]])) {
           showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
@@ -2113,14 +2142,15 @@ register_result_accumulator_outputs <- function(input, output, session, app_lang
   }, ignoreInit = TRUE)
 
   observeEvent(input$save_result_collection_excel_dialog, {
-    if (!isTRUE(analysis_save_feature_enabled("excel"))) {
-      showNotification("Excel export is not enabled in this release.", type = "warning", duration = 5)
-      return(invisible(NULL))
-    }
     tryCatch(
       {
         language <- current_language()
         entries <- result_entries_for_export(store, language)
+        included_features <- result_collection_exception_features(entries)
+        if (!isTRUE(analysis_save_feature_enabled("excel", included_features = included_features))) {
+          showNotification("Excel export is not enabled for this Result collection.", type = "warning", duration = 5)
+          return(invisible(NULL))
+        }
         path <- choose_excel_save_path()
         if (length(path) == 0 || !nzchar(path[[1]])) {
           showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
@@ -2139,14 +2169,15 @@ register_result_accumulator_outputs <- function(input, output, session, app_lang
   }, ignoreInit = TRUE)
 
   observeEvent(input$save_result_collection_word_dialog, {
-    if (!isTRUE(analysis_save_feature_enabled("word"))) {
-      showNotification("Word export is not enabled in this release.", type = "warning", duration = 5)
-      return(invisible(NULL))
-    }
     tryCatch(
       {
         language <- current_language()
         entries <- result_entries_for_export(store, language)
+        included_features <- result_collection_exception_features(entries)
+        if (!isTRUE(analysis_save_feature_enabled("word", included_features = included_features))) {
+          showNotification("Word export is not enabled for this Result collection.", type = "warning", duration = 5)
+          return(invisible(NULL))
+        }
         path <- choose_word_save_path()
         if (length(path) == 0 || !nzchar(path[[1]])) {
           showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)

@@ -525,7 +525,8 @@ register_ttest_anova_handlers <- function(
       figure_button_id = NULL,
       excel_button_id = "save_ttest_anova_excel_dialog",
       add_result_button_id = "add_ttest_anova_result",
-      has_figures = FALSE
+      has_figures = FALSE,
+      included_features = c("pdf", "excel", "add_result")
     )
   })
 

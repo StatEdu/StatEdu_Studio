@@ -24,13 +24,7 @@ result_tab_panel <- function(language = statedu_initial_language()) {
             analysis_save_button("save_result_history_dialog", statedu_text(language, "Save result", h("eab2b0eab3bc20eca080ec9ea5")), "result_history", class = "btn-default"),
             actionButton("clear_saved_results", statedu_text(language, "Clear results", h("eab2b0eab3bc20ebb984ec9ab0eab8b0")), class = "btn-default")
           ),
-          div(
-            class = "result-toolbar-group result-toolbar-export",
-            analysis_save_button("save_result_collection_html_dialog", statedu_ui_label("save_html", language), "html", class = "btn-default"),
-            analysis_save_button("save_result_collection_pdf_dialog", statedu_ui_label("save_pdf", language), "pdf", class = "btn-default"),
-            analysis_save_button("save_result_collection_excel_dialog", statedu_ui_label("save_excel", language), "excel", class = "btn-default"),
-            analysis_save_button("save_result_collection_word_dialog", statedu_ui_label("save_word", language), "word", class = "btn-default")
-          )
+          uiOutput("result_export_controls")
         ),
         uiOutput("saved_results_list")
       )

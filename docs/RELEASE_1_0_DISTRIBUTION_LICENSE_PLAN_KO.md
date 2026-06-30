@@ -414,20 +414,20 @@ import_csv = true
 import_stata = true
 export_html = true
 export_figure = true
+export_pdf = true        # 빈도분석, t-test / ANOVA에 한함
+export_excel = true      # 빈도분석, t-test / ANOVA에 한함
+export_word = true       # 빈도분석, t-test / ANOVA 결과 모음에 한함
+add_result = true        # 빈도분석, t-test / ANOVA에 한함
 all_analysis = true
 ```
 
 Pro 권한:
 
 ```text
-import_excel = true
-import_spss = true
-import_sas = true
+add_result = true
 export_pdf = true
 export_word = true
 export_excel = true
-add_result = true
-save_result_project = true
 ```
 
 Latent 권한:
@@ -442,9 +442,8 @@ latent_addin = true
 
 - Free/Pro/Latent edition state 관리 모듈 추가
 - feature flag 조회 함수 추가
-- 데이터 import 기능을 Free/Pro 권한으로 분기
-- PDF/Excel/Word export를 Pro 권한으로 분기
-- Add Result와 Result collection 저장/불러오기를 Pro 권한으로 분기
+- PDF/Excel/Word export를 Pro 권한으로 분기하되, 빈도분석과 t-test / ANOVA는 Free에서도 허용
+- Add Result를 Pro 권한으로 분기하되, 빈도분석과 t-test / ANOVA는 Free에서도 허용
 - Latent/Mplus 메뉴를 Latent Add-in 권한으로 분기
 - License Status UI 추가
 - Manage Activations UI 추가
@@ -487,8 +486,9 @@ latent_addin = true
 - 누구나 installer를 다운로드하여 기간 제한 없이 Free 기능을 사용할 수 있다.
 - Free 사용자는 모든 분석을 실행할 수 있다.
 - Free 사용자는 CSV/Stata import, HTML 저장, figure 저장을 사용할 수 있다.
-- Free 사용자는 Pro import/export/result-management 기능을 실행할 수 없다.
-- Pro 라이센스를 입력하면 Excel/SPSS/SAS import, PDF/Excel/Word export, Add Result, Result 저장/불러오기가 열린다.
+- Free 사용자는 빈도분석과 t-test / ANOVA에서 Add Result, PDF 저장, Excel 저장, Word 결과 모음 저장을 사용할 수 있다.
+- Free 사용자는 그 외 분석의 Pro export/result-management 기능을 실행할 수 없다.
+- Pro 라이센스를 입력하면 Add Result, PDF 저장, Excel 저장, Word 저장이 열린다.
 - 사용자는 활성화된 기기 목록을 확인하고 직접 비활성화할 수 있다.
 - 2대 활성화 제한이 서버에서 동작한다.
 - 마지막 인증 후 14일 동안 offline grace가 동작한다.

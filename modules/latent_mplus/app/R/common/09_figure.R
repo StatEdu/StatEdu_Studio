@@ -97,6 +97,7 @@ make_figure_manifest_row <- function(file_stub,
                                      width,
                                      height,
                                      dpi = 600,
+                                     output_dpi = dpi,
                                      figure_title = NA_character_) {
   data.frame(
     figure_id = file_stub,
@@ -108,8 +109,41 @@ make_figure_manifest_row <- function(file_stub,
     width = width,
     height = height,
     dpi = dpi,
+    output_dpi = paste(sort(unique(as.integer(output_dpi))), collapse = ","),
     stringsAsFactors = FALSE
   )
+}
+
+figure_primary_dpi <- function(default = 600) {
+  dpi <- default
+  if (exists("CFG", inherits = TRUE) && is.list(CFG)) {
+    dpi <- CFG$figure$res %||% CFG$figure$dpi %||% dpi
+  }
+  dpi <- suppressWarnings(as.integer(dpi))
+  if (length(dpi) == 0 || is.na(dpi[[1]]) || dpi[[1]] <= 0L) {
+    dpi <- suppressWarnings(as.integer(default))
+  }
+  dpi[[1]]
+}
+
+figure_output_dpis <- function(default = 600) {
+  primary <- figure_primary_dpi(default)
+  values <- primary
+  if (exists("CFG", inherits = TRUE) && is.list(CFG)) {
+    values <- CFG$figure$output_res %||% CFG$figure$output_dpi %||% CFG$figure$dpi_values %||% values
+  }
+  values <- suppressWarnings(as.integer(unlist(values, use.names = FALSE)))
+  values <- unique(values[!is.na(values) & values > 0L])
+  if (length(values) == 0) {
+    values <- primary
+  }
+  unique(c(primary, values))
+}
+
+figure_dpi_variant_path <- function(path, dpi) {
+  ext <- tools::file_ext(path)
+  stem <- tools::file_path_sans_ext(path)
+  paste0(stem, "_", as.integer(dpi), "dpi", if (nzchar(ext)) paste0(".", ext) else "")
 }
 
 save_plot_all_formats <- function(plot_obj,
@@ -124,6 +158,9 @@ save_plot_all_formats <- function(plot_obj,
   if (!.has_pkg_fig("ggplot2")) {
     .safe_stop_fig("ggplot2 package is required to save figures.")
   }
+
+  primary_dpi <- figure_primary_dpi(dpi)
+  output_dpis <- figure_output_dpis(primary_dpi)
 
   .ensure_dir_fig(dir_png)
   single_output_mode <- isTRUE(getOption("easyflow.single_output", TRUE))
@@ -141,9 +178,20 @@ save_plot_all_formats <- function(plot_obj,
     plot = plot_obj,
     width = width,
     height = height,
-    dpi = dpi,
+    dpi = primary_dpi,
     units = "in"
   )
+
+  for (extra_dpi in setdiff(output_dpis, primary_dpi)) {
+    ggplot2::ggsave(
+      filename = figure_dpi_variant_path(png_file, extra_dpi),
+      plot = plot_obj,
+      width = width,
+      height = height,
+      dpi = extra_dpi,
+      units = "in"
+    )
+  }
 
   if (!single_output_mode) {
     ggplot2::ggsave(
@@ -151,10 +199,22 @@ save_plot_all_formats <- function(plot_obj,
       plot = plot_obj,
       width = width,
       height = height,
-      dpi = dpi,
+      dpi = primary_dpi,
       units = "in",
       compression = "lzw"
     )
+
+    for (extra_dpi in setdiff(output_dpis, primary_dpi)) {
+      ggplot2::ggsave(
+        filename = figure_dpi_variant_path(tiff_file, extra_dpi),
+        plot = plot_obj,
+        width = width,
+        height = height,
+        dpi = extra_dpi,
+        units = "in",
+        compression = "lzw"
+      )
+    }
 
     ggplot2::ggsave(
       filename = pdf_file,
@@ -172,7 +232,8 @@ save_plot_all_formats <- function(plot_obj,
     pdf = pdf_file,
     width = width,
     height = height,
-    dpi = dpi,
+    dpi = primary_dpi,
+    output_dpi = output_dpis,
     figure_title = figure_title
   )
 }
@@ -188,6 +249,7 @@ empty_figure_manifest <- function() {
     width = numeric(0),
     height = numeric(0),
     dpi = numeric(0),
+    output_dpi = character(0),
     stringsAsFactors = FALSE
   )
 }

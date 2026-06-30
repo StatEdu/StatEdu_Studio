@@ -213,14 +213,19 @@ placeholder_table <- function(id) {
   DT::dataTableOutput(id)
 }
 
-app_ui <- function(version) {
+app_ui <- function(version, request = NULL) {
+  language <- if (exists("statedu_initial_language", mode = "function", inherits = TRUE)) {
+    statedu_initial_language(request)
+  } else {
+    "en"
+  }
   navbarPage(
     title = app_brand_title(version),
     id = "main_menu",
     header = app_head_tags(version),
     data_tab_panel(),
-    latent_home_tab(),
-    latent_menu_tab(),
+    latent_home_tab(language),
+    latent_menu_tab(language),
     result_library_tab(),
     about_tab(version)
   )

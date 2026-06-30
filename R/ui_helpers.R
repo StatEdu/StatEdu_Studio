@@ -38,7 +38,7 @@ statedu_feature_enabled <- function(feature, default = TRUE) {
     return(FALSE)
   }
 
-  if (statedu_public_release() && feature %in% c("longitudinal", "excel_export", "word_export")) {
+  if (statedu_public_release() && feature %in% c("excel_export", "word_export")) {
     return(FALSE)
   }
   isTRUE(default)
@@ -46,13 +46,19 @@ statedu_feature_enabled <- function(feature, default = TRUE) {
 
 analysis_save_edition <- function() {
   edition <- tolower(Sys.getenv("STATEDU_EDITION", "development"))
-  if (!edition %in% c("free", "development", "personal", "institution")) {
+  if (!edition %in% c("free", "pro", "development", "personal", "institution")) {
     edition <- "development"
   }
   edition
 }
 
-analysis_save_feature_visible <- function(feature) {
+analysis_save_feature_visible <- function(feature, included_features = character(0)) {
+  if (feature %in% included_features) {
+    return(TRUE)
+  }
+  if (feature %in% c("excel", "word") && analysis_save_edition() %in% c("pro", "personal", "institution")) {
+    return(TRUE)
+  }
   if (identical(feature, "excel")) {
     return(statedu_feature_enabled("excel_export", TRUE))
   }
@@ -62,8 +68,11 @@ analysis_save_feature_visible <- function(feature) {
   TRUE
 }
 
-analysis_save_feature_enabled <- function(feature, edition = analysis_save_edition()) {
-  if (!isTRUE(analysis_save_feature_visible(feature))) {
+analysis_save_feature_enabled <- function(feature, edition = analysis_save_edition(), included_features = character(0)) {
+  if (feature %in% included_features) {
+    return(TRUE)
+  }
+  if (!isTRUE(analysis_save_feature_visible(feature, included_features))) {
     return(FALSE)
   }
   if (identical(edition, "development")) {
@@ -72,11 +81,14 @@ analysis_save_feature_enabled <- function(feature, edition = analysis_save_editi
   if (identical(edition, "personal") || identical(edition, "institution")) {
     return(feature %in% c("html", "pdf", "figure", "excel", "word", "add_result", "result_history"))
   }
-  feature %in% c("html", "pdf", "figure", "word")
+  if (identical(edition, "pro")) {
+    return(feature %in% c("html", "pdf", "figure", "excel", "word", "add_result"))
+  }
+  feature %in% c("html", "figure")
 }
 
-analysis_save_button <- function(id, label, feature, class = "btn-default") {
-  if (!isTRUE(analysis_save_feature_visible(feature))) {
+analysis_save_button <- function(id, label, feature, class = "btn-default", included_features = character(0)) {
+  if (!isTRUE(analysis_save_feature_visible(feature, included_features))) {
     return(NULL)
   }
   if (is.null(id) || !nzchar(id)) {
@@ -90,7 +102,7 @@ analysis_save_button <- function(id, label, feature, class = "btn-default") {
     }
     return(div(class = "analysis-save-slot analysis-save-slot-empty"))
   }
-  enabled <- analysis_save_feature_enabled(feature)
+  enabled <- analysis_save_feature_enabled(feature, included_features = included_features)
   tags$button(
     id = id,
     type = "button",
@@ -107,19 +119,20 @@ analysis_save_buttons <- function(
   excel_button_id = NULL,
   add_result_button_id = NULL,
   has_figures = TRUE,
-  language = statedu_initial_language()
+  language = statedu_initial_language(),
+  included_features = character(0)
 ) {
   div(
     class = "analysis-save-action",
-    analysis_save_button(html_button_id, statedu_ui_label("save_html", language), "html", class = "btn-default"),
+    analysis_save_button(html_button_id, statedu_ui_label("save_html", language), "html", class = "btn-default", included_features = included_features),
     if (isTRUE(has_figures)) {
-      analysis_save_button(figure_button_id, statedu_ui_label("save_fig", language), "figure", class = "btn-default")
+      analysis_save_button(figure_button_id, statedu_ui_label("save_fig", language), "figure", class = "btn-default", included_features = included_features)
     } else {
-      analysis_save_button(NULL, statedu_ui_label("save_fig", language), "figure", class = "btn-default")
+      analysis_save_button(NULL, statedu_ui_label("save_fig", language), "figure", class = "btn-default", included_features = included_features)
     },
-    analysis_save_button(pdf_button_id, statedu_ui_label("save_pdf", language), "pdf", class = "btn-default"),
-    analysis_save_button(excel_button_id, statedu_ui_label("save_excel", language), "excel", class = "btn-default"),
-    analysis_save_button(add_result_button_id, statedu_ui_label("add_result", language), "add_result", class = "btn-primary")
+    analysis_save_button(pdf_button_id, statedu_ui_label("save_pdf", language), "pdf", class = "btn-default", included_features = included_features),
+    analysis_save_button(excel_button_id, statedu_ui_label("save_excel", language), "excel", class = "btn-default", included_features = included_features),
+    analysis_save_button(add_result_button_id, statedu_ui_label("add_result", language), "add_result", class = "btn-primary", included_features = included_features)
   )
 }
 
@@ -137,7 +150,7 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-language-layout-20260627g"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-longitudinal-panel-gap-20260630d"))
 }
 
 app_script_link <- function(version) {
@@ -270,7 +283,7 @@ enabled_analysis_tabs <- function() {
     pca = TRUE,
     regression = FALSE,
     hierarchical = TRUE,
-    longitudinal = statedu_feature_enabled("longitudinal", FALSE),
+    longitudinal = statedu_feature_enabled("longitudinal", TRUE),
     generalized = TRUE
   )
 }
@@ -301,7 +314,7 @@ app_ui <- function(version, request = NULL) {
 
     effect_size_tab_panel(language),
 
-    if (latent_mplus_enabled()) latent_menu_tab(),
+    if (latent_mplus_enabled()) latent_menu_tab(language),
 
     result_tab_panel(language),
 

@@ -1008,6 +1008,7 @@ get_journal_style <- function() {
 
 get_journal_base_spec <- function(journal_style = get_journal_style()) {
   journal_style <- tolower(as.character(journal_style))
+  default_dpi <- if (exists("figure_primary_dpi", mode = "function", inherits = TRUE)) figure_primary_dpi(600) else 600L
 
   switch(
     journal_style,
@@ -1021,7 +1022,7 @@ get_journal_base_spec <- function(journal_style = get_journal_style()) {
       facet_width  = 9.2,
       facet_height = 6.2,
       square       = 7.0,
-      dpi          = 600
+      dpi          = default_dpi
     ),
 
     # Springer 계열: 약간 컴팩트
@@ -1033,7 +1034,7 @@ get_journal_base_spec <- function(journal_style = get_journal_style()) {
       facet_width  = 8.8,
       facet_height = 6.0,
       square       = 6.8,
-      dpi          = 600
+      dpi          = default_dpi
     ),
 
     # APA 계열: 비교적 절제된 폭
@@ -1045,7 +1046,7 @@ get_journal_base_spec <- function(journal_style = get_journal_style()) {
       facet_width  = 8.4,
       facet_height = 5.8,
       square       = 6.8,
-      dpi          = 600
+      dpi          = default_dpi
     ),
 
     # 기본 SCI
@@ -1057,7 +1058,7 @@ get_journal_base_spec <- function(journal_style = get_journal_style()) {
       facet_width  = 9.0,
       facet_height = 6.0,
       square       = 7.0,
-      dpi          = 600
+      dpi          = default_dpi
     )
   )
 }
@@ -1081,8 +1082,8 @@ get_fig_spec <- function(stub, journal_style = get_journal_style()) {
 
     Fig7_1_profile_line_raw       = list(width = js$wide_width, height = js$wide_height, dpi = js$dpi),
     Fig7_2_profile_line_z         = list(width = js$wide_width, height = js$wide_height, dpi = js$dpi),
-    Fig7_1_profile_line_raw_color = list(width = js$wide_width, height = js$wide_height, dpi = 600),
-    Fig7_2_profile_line_z_color   = list(width = js$wide_width, height = js$wide_height, dpi = 600),
+    Fig7_1_profile_line_raw_color = list(width = js$wide_width, height = js$wide_height, dpi = js$dpi),
+    Fig7_2_profile_line_z_color   = list(width = js$wide_width, height = js$wide_height, dpi = js$dpi),
     Fig7_3_profile_line_raw_facet = list(width = js$facet_width, height = js$facet_height, dpi = js$dpi),
     Fig7_4_profile_line_z_facet   = list(width = js$facet_width, height = js$facet_height, dpi = js$dpi),
     Fig7_5_categorical_profile_distribution = list(width = js$wide_width, height = js$facet_height, dpi = js$dpi),
@@ -1130,6 +1131,7 @@ make_wrapped_factor <- function(x, width = 18) {
 # 8. save helpers
 # ------------------------------------------------------------
 save_fig <- function(plot_obj, file_stub, figure_title, width, height, dpi = 600) {
+  dpi <- if (exists("figure_primary_dpi", mode = "function", inherits = TRUE)) figure_primary_dpi(dpi) else dpi
   save_plot_all_formats(
     plot_obj     = plot_obj,
     file_stub    = file_stub,
@@ -2317,10 +2319,22 @@ save_fig8_radar_lpa <- function(
     draw_radar(filled = filled)
     grDevices::dev.off()
 
+    for (extra_dpi in setdiff(figure_output_dpis(sp$dpi), sp$dpi)) {
+      grDevices::png(figure_dpi_variant_path(png_path, extra_dpi), width = sp$width, height = sp$height, units = "in", res = extra_dpi)
+      draw_radar(filled = filled)
+      grDevices::dev.off()
+    }
+
     if (!single_output_mode) {
       grDevices::tiff(tiff_path, width = sp$width, height = sp$height, units = "in", res = sp$dpi, compression = "lzw")
       draw_radar(filled = filled)
       grDevices::dev.off()
+
+      for (extra_dpi in setdiff(figure_output_dpis(sp$dpi), sp$dpi)) {
+        grDevices::tiff(figure_dpi_variant_path(tiff_path, extra_dpi), width = sp$width, height = sp$height, units = "in", res = extra_dpi, compression = "lzw")
+        draw_radar(filled = filled)
+        grDevices::dev.off()
+      }
 
       grDevices::pdf(pdf_path, width = sp$width, height = sp$height)
       draw_radar(filled = filled)
@@ -3455,7 +3469,7 @@ if (nrow(r3step_df) > 0) {
     figure_title = "R3STEP forest overview",
     width = 11,
     height = max(7.0, 1.15 * length(levels(r3step_df$covariate_block)) + 2.5),
-    dpi = 600
+    dpi = figure_primary_dpi(600)
   )
   FIGURE_MANIFEST <- append_figure_manifest(FIGURE_MANIFEST, m6_1_1)
   FIGURE_REGISTRY <- register_figure_paths(FIGURE_REGISTRY, "Fig6_1_r3step_forest_1_overview")
@@ -3491,7 +3505,7 @@ if (nrow(r3step_df) > 0) {
     figure_title = "R3STEP forest by covariate",
     width = 11,
     height = max(6.5, 1.10 * length(levels(r3step_df$covariate_block)) + 2.0),
-    dpi = 600
+    dpi = figure_primary_dpi(600)
   )
   FIGURE_MANIFEST <- append_figure_manifest(FIGURE_MANIFEST, m6_1_2)
   FIGURE_REGISTRY <- register_figure_paths(FIGURE_REGISTRY, "Fig6_1_r3step_forest_2_by_covariate")
@@ -3541,7 +3555,7 @@ if (nrow(r3step_df) > 0) {
     figure_title = "R3STEP forest with RRR and CI labels",
     width = 11,
     height = max(7.5, 1.20 * length(levels(r3step_df$covariate_block)) + 2.8),
-    dpi = 600
+    dpi = figure_primary_dpi(600)
   )
   FIGURE_MANIFEST <- append_figure_manifest(FIGURE_MANIFEST, m6_1_3)
   FIGURE_REGISTRY <- register_figure_paths(FIGURE_REGISTRY, "Fig6_1_r3step_forest_3_rrr_ci")
@@ -3593,7 +3607,7 @@ if (nrow(r3step_df) > 0) {
     figure_title = "R3STEP forest with shape legend",
     width = 10.5,
     height = max(8.0, 1.35 * length(levels(r3step_df$covariate_block)) + 3.0),
-    dpi = 600
+    dpi = figure_primary_dpi(600)
   )
   FIGURE_MANIFEST <- append_figure_manifest(FIGURE_MANIFEST, m6_1_4)
   FIGURE_REGISTRY <- register_figure_paths(FIGURE_REGISTRY, "Fig6_1_r3step_forest_4_shape_legend")
@@ -3608,7 +3622,7 @@ if (nrow(r3step_df) > 0) {
     figure_title = "R3STEP forest by covariate (grayscale)",
     width = 11,
     height = max(6.5, 1.10 * length(levels(r3step_df$covariate_block)) + 2.0),
-    dpi = 600
+    dpi = figure_primary_dpi(600)
   )
   FIGURE_MANIFEST <- append_figure_manifest(FIGURE_MANIFEST, m6_1_5)
   FIGURE_REGISTRY <- register_figure_paths(FIGURE_REGISTRY, "Fig6_1_r3step_forest_5_by_covariate_bw")
@@ -3622,7 +3636,7 @@ if (nrow(r3step_df) > 0) {
     figure_title = "R3STEP forest with RRR and CI labels (grayscale)",
     width = 11,
     height = max(7.5, 1.20 * length(levels(r3step_df$covariate_block)) + 2.8),
-    dpi = 600
+    dpi = figure_primary_dpi(600)
   )
   FIGURE_MANIFEST <- append_figure_manifest(FIGURE_MANIFEST, m6_1_6)
   FIGURE_REGISTRY <- register_figure_paths(FIGURE_REGISTRY, "Fig6_1_r3step_forest_6_rrr_ci_bw")
@@ -3678,7 +3692,7 @@ if (nrow(r3step_df) > 0) {
     figure_title = "R3STEP forest with shape legend (grayscale)",
     width = 10.5,
     height = max(8.0, 1.35 * length(levels(r3step_df$covariate_block)) + 3.0),
-    dpi = 600
+    dpi = figure_primary_dpi(600)
   )
   FIGURE_MANIFEST <- append_figure_manifest(FIGURE_MANIFEST, m6_1_7)
   FIGURE_REGISTRY <- register_figure_paths(FIGURE_REGISTRY, "Fig6_1_r3step_forest_7_shape_legend_bw")
@@ -4003,7 +4017,7 @@ if (!is.null(p7_1_color)) {
     figure_title = paste0(profile_title_raw, " - color"),
     width        = sp$width,
     height       = sp$height,
-    dpi          = 600
+    dpi          = figure_primary_dpi(600)
   )
   FIGURE_MANIFEST <- append_figure_manifest(FIGURE_MANIFEST, m7_1_color)
   FIGURE_REGISTRY <- register_figure_paths(FIGURE_REGISTRY, "Fig7_1_profile_line_raw_color")
@@ -4037,7 +4051,7 @@ if (!is.null(p7_2_color)) {
     figure_title = paste0(profile_title_z, " - color"),
     width        = sp$width,
     height       = sp$height,
-    dpi          = 600
+    dpi          = figure_primary_dpi(600)
   )
   FIGURE_MANIFEST <- append_figure_manifest(FIGURE_MANIFEST, m7_2_color)
   FIGURE_REGISTRY <- register_figure_paths(FIGURE_REGISTRY, "Fig7_2_profile_line_z_color")
@@ -4114,7 +4128,7 @@ if (!is.null(p7_6)) {
 }
 
 if (!is.null(p7_7)) {
-  sp <- list(width = 12, height = 10, dpi = 600)
+  sp <- list(width = 12, height = 10, dpi = figure_primary_dpi(600))
   m7_7 <- save_fig(
     plot_obj     = p7_7,
     file_stub    = "Fig7_7_item_response_probability",
@@ -4130,7 +4144,7 @@ if (!is.null(p7_7)) {
 }
 
 if (!is.null(p7_8)) {
-  sp <- list(width = 12, height = 10, dpi = 600)
+  sp <- list(width = 12, height = 10, dpi = figure_primary_dpi(600))
   m7_8 <- save_fig(
     plot_obj     = p7_8,
     file_stub    = "Fig7_8_item_response_probability_value_label",
@@ -4533,12 +4547,16 @@ if (!is.data.frame(FIG8_DATA) || nrow(FIG8_DATA) == 0) {
           legend.position = "bottom"
         )
 
-      ggsave(
-        filename = file.path(DIR_FIGURES_PNG, "Fig8_radar.png"),
-        plot = p_fig8,
+      save_plot_all_formats(
+        plot_obj = p_fig8,
+        file_stub = "Fig8_radar",
+        dir_png = DIR_FIGURES_PNG,
+        dir_tiff = DIR_FIGURES_TIFF,
+        dir_pdf = DIR_FIGURES_PDF,
         width = 10,
         height = 8,
-        dpi = 600
+        dpi = figure_primary_dpi(600),
+        figure_title = "Radar plot"
       )
 
       assign("Fig8_radar", p_fig8, envir = .GlobalEnv)

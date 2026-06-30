@@ -7405,6 +7405,10 @@ pre {
   gap: 8px;
 }
 
+.longitudinal-core-block .longitudinal-target-fields {
+  gap: 18px;
+}
+
 .longitudinal-transfer-controls {
   position: relative;
   height: 570px;
@@ -7435,15 +7439,15 @@ pre {
 }
 
 .longitudinal-transfer-controls .analysis-move-button:nth-child(2) {
-  top: 149px;
+  top: 159px;
 }
 
 .longitudinal-transfer-controls .analysis-move-button:nth-child(3) {
-  top: 217px;
+  top: 237px;
 }
 
 .longitudinal-transfer-controls .analysis-move-button:nth-child(4) {
-  top: 285px;
+  top: 315px;
 }
 
 .longitudinal-model-transfer-controls .analysis-move-button:nth-child(1) {
@@ -7814,6 +7818,15 @@ pre {
   padding-top: 14px;
 }
 
+.longitudinal-options .regression-field + .regression-field {
+  margin-top: 18px;
+}
+
+.longitudinal-options .longitudinal-option-help + .regression-field,
+.longitudinal-options .longitudinal-missing-detail + .regression-field {
+  margin-top: 18px;
+}
+
 .longitudinal-model-options-tab-content > .analysis-option-group + .analysis-option-group {
   margin-top: 18px;
 }
@@ -7830,16 +7843,16 @@ pre {
   width: 306px;
   margin-top: 8px;
   color: #334155;
-  font-size: 12px;
-  line-height: 1.4;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .longitudinal-option-help {
   width: 306px;
-  margin: 6px 0 12px 0;
+  margin: 8px 0 14px 0;
   color: #334155;
-  font-size: 12px;
-  line-height: 1.38;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .longitudinal-weight-options-tab-content .regression-field {

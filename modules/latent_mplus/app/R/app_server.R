@@ -7,6 +7,9 @@ latent_estimation_presets <- function() {
       lrtstarts = "0 0 50 10",
       processors = 2L,
       bootstrap = NA_integer_,
+      tech1 = TRUE,
+      tech4 = TRUE,
+      tech8 = TRUE,
       tech11 = TRUE,
       tech14 = TRUE
     ),
@@ -17,6 +20,9 @@ latent_estimation_presets <- function() {
       lrtstarts = "0 0 1000 250",
       processors = 16L,
       bootstrap = 500L,
+      tech1 = TRUE,
+      tech4 = TRUE,
+      tech8 = TRUE,
       tech11 = TRUE,
       tech14 = TRUE
     )
@@ -34,6 +40,9 @@ apply_latent_estimation_preset <- function(session, module_id, preset) {
   updateTextInput(session, paste0(module_id, "_lrtstarts"), value = preset_values$lrtstarts)
   updateNumericInput(session, paste0(module_id, "_processors"), value = preset_values$processors)
   updateNumericInput(session, paste0(module_id, "_bootstrap"), value = preset_values$bootstrap)
+  updateCheckboxInput(session, paste0(module_id, "_tech1"), value = isTRUE(preset_values$tech1))
+  updateCheckboxInput(session, paste0(module_id, "_tech4"), value = isTRUE(preset_values$tech4))
+  updateCheckboxInput(session, paste0(module_id, "_tech8"), value = isTRUE(preset_values$tech8))
   updateCheckboxInput(session, paste0(module_id, "_tech11"), value = isTRUE(preset_values$tech11))
   updateCheckboxInput(session, paste0(module_id, "_tech14"), value = isTRUE(preset_values$tech14))
   invisible(TRUE)
@@ -1263,6 +1272,11 @@ create_app_server <- function(app_version) {
         }, ignoreInit = TRUE)
 
         observeEvent(input[[paste0(id, "_open_excel")]], {
+          if (exists("analysis_save_feature_enabled", mode = "function", inherits = TRUE) &&
+              !isTRUE(analysis_save_feature_enabled("excel"))) {
+            showNotification("Excel export is available in StatEdu Studio Pro.", type = "warning", duration = 5)
+            return()
+          }
           selected_analysis <- input[[paste0(id, "_analysis_id")]] %||% latent_modules[[id]]$analysis_key
           selected_spec <- latent_analysis_specs()[[selected_analysis]] %||% list(engine = latent_modules[[id]]$engine)
           dataset_id <- trimws(as.character(input[[paste0(id, "_dataset_id")]] %||% dataset_id_from_data_file(current_data_file())))
@@ -1282,6 +1296,11 @@ create_app_server <- function(app_version) {
         }, ignoreInit = TRUE)
 
         observeEvent(input[[paste0(id, "_save_table_excel")]], {
+          if (exists("analysis_save_feature_enabled", mode = "function", inherits = TRUE) &&
+              !isTRUE(analysis_save_feature_enabled("excel"))) {
+            showNotification("Excel export is available in StatEdu Studio Pro.", type = "warning", duration = 5)
+            return()
+          }
           selected_analysis <- input[[paste0(id, "_analysis_id")]] %||% latent_modules[[id]]$analysis_key
           selected_spec <- latent_analysis_specs()[[selected_analysis]] %||% list(engine = latent_modules[[id]]$engine)
           dataset_id <- trimws(as.character(input[[paste0(id, "_dataset_id")]] %||% dataset_id_from_data_file(current_data_file())))
@@ -1330,6 +1349,11 @@ create_app_server <- function(app_version) {
         }, ignoreInit = TRUE)
 
         observeEvent(input[[paste0(id, "_save_table_pdf")]], {
+          if (exists("analysis_save_feature_enabled", mode = "function", inherits = TRUE) &&
+              !isTRUE(analysis_save_feature_enabled("pdf"))) {
+            showNotification("PDF export is available in StatEdu Studio Pro.", type = "warning", duration = 5)
+            return()
+          }
           selected_analysis <- input[[paste0(id, "_analysis_id")]] %||% latent_modules[[id]]$analysis_key
           selected_spec <- latent_analysis_specs()[[selected_analysis]] %||% list(engine = latent_modules[[id]]$engine)
           dataset_id <- trimws(as.character(input[[paste0(id, "_dataset_id")]] %||% dataset_id_from_data_file(current_data_file())))
@@ -1679,7 +1703,12 @@ write_latent_dataset_files <- function(project_root, dataset_id, setup, current_
       )
     ),
     table = analysis$table %||% list(p_digits = 3, num_digits = 3, percent_digits = 1, sig_style = "sig"),
-    figure = analysis$figure %||% list(res = 600),
+    figure = {
+      figure_cfg <- analysis$figure %||% list()
+      figure_cfg$res <- latent_figure_res_value(figure_cfg$res %||% NULL)
+      figure_cfg$output_res <- latent_figure_output_res()
+      figure_cfg
+    },
     paper = analysis$paper %||% list(journal_style = "generic_sci")
   )
   yaml::write_yaml(cfg, file.path(config_dir, "CFG.yml"), fileEncoding = "UTF-8")
@@ -2038,6 +2067,7 @@ latent_result_figure_index <- function(project_root, dataset_id, analysis_id, ap
     list.files(dir, pattern = pattern, full.names = TRUE, recursive = TRUE, ignore.case = TRUE)
   }), use.names = FALSE)
   files <- unique(normalizePath(files, winslash = "/", mustWork = FALSE))
+  files <- files[!grepl("_[0-9]+dpi\\.[A-Za-z0-9]+$", basename(files), ignore.case = TRUE)]
   if (length(files) == 0) {
     return(data.frame(
       figure = character(0),
@@ -3802,7 +3832,10 @@ build_latent_setup_yaml <- function(app_version, module_id, input, current_data_
         percent_digits = as.integer(input[[paste0(module_id, "_percent_digits")]] %||% 1),
         sig_style = input[[paste0(module_id, "_sig_style")]] %||% "sig"
       ),
-      figure = list(res = as.integer(input[[paste0(module_id, "_figure_res")]] %||% 600)),
+      figure = list(
+        res = latent_figure_res_value(input[[paste0(module_id, "_figure_res")]] %||% NULL),
+        output_res = latent_figure_output_res()
+      ),
       paper = list(journal_style = input[[paste0(module_id, "_journal_style")]] %||% "generic_sci")
     ),
     run = list(
@@ -3882,7 +3915,7 @@ apply_latent_setup_yaml <- function(session, module_id, setup, active_data_file,
   updateNumericInput(session, paste0(module_id, "_percent_digits"), value = as.integer(table_block$percent_digits %||% 1))
   updateSelectInput(session, paste0(module_id, "_sig_style"), selected = table_block$sig_style %||% "sig")
   figure_block <- analysis_block$figure %||% list()
-  updateNumericInput(session, paste0(module_id, "_figure_res"), value = as.integer(figure_block$res %||% 600))
+  updateNumericInput(session, paste0(module_id, "_figure_res"), value = latent_figure_res_value(figure_block$res %||% NULL))
   paper_block <- analysis_block$paper %||% list()
   updateSelectInput(session, paste0(module_id, "_journal_style"), selected = paper_block$journal_style %||% "generic_sci")
   updateSelectInput(session, paste0(module_id, "_from_step"), selected = run_block$from_step %||% "settings")

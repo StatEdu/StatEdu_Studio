@@ -135,6 +135,17 @@ save_figure_all <- function(
   dir_png  <- file.path(dir_output, "figures", "png")
   ensure_dir(dir_png)
 
+  primary_dpi <- if (exists("figure_primary_dpi", mode = "function", inherits = TRUE)) {
+    figure_primary_dpi(dpi_png)
+  } else {
+    dpi_png
+  }
+  output_dpis <- if (exists("figure_output_dpis", mode = "function", inherits = TRUE)) {
+    figure_output_dpis(primary_dpi)
+  } else {
+    primary_dpi
+  }
+
   path_png  <- file.path(dir_png,  paste0(filename, ".png"))
 
   ragg::agg_png(
@@ -142,10 +153,27 @@ save_figure_all <- function(
     width = width,
     height = height,
     units = units,
-    res = dpi_png
+    res = primary_dpi
   )
   print(plot)
   safe_dev_off()
+
+  for (extra_dpi in setdiff(output_dpis, primary_dpi)) {
+    extra_path <- if (exists("figure_dpi_variant_path", mode = "function", inherits = TRUE)) {
+      figure_dpi_variant_path(path_png, extra_dpi)
+    } else {
+      file.path(dir_png, paste0(filename, "_", as.integer(extra_dpi), "dpi.png"))
+    }
+    ragg::agg_png(
+      filename = extra_path,
+      width = width,
+      height = height,
+      units = units,
+      res = extra_dpi
+    )
+    print(plot)
+    safe_dev_off()
+  }
 
   invisible(list(
     png = path_png

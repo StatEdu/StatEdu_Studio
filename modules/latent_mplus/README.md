@@ -24,4 +24,4 @@ EFS_ENABLE_LATENT_MPLUS=true
 
 Mplus is not bundled, distributed, or licensed by StatEdu Studio. Latent estimation requires a separately licensed local Mplus installation on the user's PC.
 
-The release packaging script excludes `R/latent_mplus_module.R` and `modules/latent_mplus/` from the standard Electron beta package. Future public latent-enabled releases should intentionally remove that exclusion and document the separate Mplus requirement.
+The release packaging script includes `R/latent_mplus_module.R` and `modules/latent_mplus/` in the standard Electron package. Public builds should document the separate Mplus requirement, and user-facing Excel/PDF export actions follow the StatEdu Studio Free/Pro save policy.

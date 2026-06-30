@@ -240,7 +240,8 @@ register_frequencies_handlers <- function(
       pdf_button_id = "save_frequencies_pdf_dialog",
       figure_button_id = "save_frequencies_figures_dialog",
       excel_button_id = "save_frequencies_excel_dialog",
-      add_result_button_id = "add_frequencies_result"
+      add_result_button_id = "add_frequencies_result",
+      included_features = c("pdf", "excel", "add_result")
     )
   })
 

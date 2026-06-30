@@ -123,7 +123,7 @@ create_app_server <- function(app_version) {
   output$lazy_analysis_reliability <- renderUI(tab_panel_content(reliability_tab_panel(statedu_ui_label("reliability", app_language()), app_language())))
   output$lazy_analysis_hierarchical <- renderUI(tab_panel_content(hierarchical_tab_panel(statedu_ui_label("regression", app_language()), app_language())))
   output$lazy_analysis_longitudinal <- renderUI({
-    if (!isTRUE(statedu_feature_enabled("longitudinal", FALSE))) {
+    if (!isTRUE(statedu_feature_enabled("longitudinal", TRUE))) {
       return(div(
         class = "page-shell",
         div(
@@ -167,7 +167,19 @@ create_app_server <- function(app_version) {
       closeButton = FALSE
     )
     on.exit(removeNotification(notification_id), add = TRUE)
-    result <- statedu_check_update(app_version)
+    result <- tryCatch(
+      statedu_check_update(app_version, timeout = 8),
+      error = function(error) {
+        list(
+          status = "error",
+          current_version = app_version,
+          latest_version = "",
+          manifest_url = statedu_update_manifest_url(),
+          message = conditionMessage(error)
+        )
+      }
+    )
+    removeModal()
     showModal(statedu_update_modal(result, app_language()))
   }, ignoreInit = TRUE)
 

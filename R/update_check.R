@@ -26,7 +26,11 @@ statedu_compare_versions <- function(current_version, latest_version) {
 }
 
 statedu_manifest_value <- function(manifest, key, default = "") {
-  if (is.null(manifest) || is.null(manifest[[key]]) || length(manifest[[key]]) == 0) {
+  if (is.null(manifest) || !is.list(manifest)) {
+    return(default)
+  }
+  manifest_names <- names(manifest)
+  if (is.null(manifest_names) || !key %in% manifest_names || is.null(manifest[[key]]) || length(manifest[[key]]) == 0) {
     return(default)
   }
   value <- manifest[[key]][[1]]
@@ -34,6 +38,35 @@ statedu_manifest_value <- function(manifest, key, default = "") {
     return(default)
   }
   as.character(value)
+}
+
+statedu_manifest_language_value <- function(manifest,
+                                            base_key,
+                                            language = statedu_initial_language(),
+                                            default_ko = "",
+                                            default_en = default_ko,
+                                            use_generic = TRUE) {
+  language <- normalize_app_language(language)
+  suffix <- if (identical(language, "ko")) "Ko" else "En"
+  snake_suffix <- if (identical(language, "ko")) "Ko" else "En"
+  language_keys <- c(
+    paste0(base_key, suffix),
+    paste0(base_key, "_", tolower(snake_suffix)),
+    paste0(base_key, "_", suffix)
+  )
+  for (key in language_keys) {
+    value <- statedu_manifest_value(manifest, key)
+    if (nzchar(value)) {
+      return(value)
+    }
+  }
+  if (isTRUE(use_generic)) {
+    value <- statedu_manifest_value(manifest, base_key)
+    if (nzchar(value)) {
+      return(value)
+    }
+  }
+  if (identical(language, "ko")) default_ko else default_en
 }
 
 statedu_check_update <- function(
@@ -55,7 +88,7 @@ statedu_check_update <- function(
 
   previous_timeout <- getOption("timeout")
   on.exit(options(timeout = previous_timeout), add = TRUE)
-  options(timeout = max(as.numeric(timeout %||% 8), previous_timeout))
+  options(timeout = max(as.numeric(timeout %||% 8), 1))
 
   manifest <- tryCatch(
     jsonlite::fromJSON(manifest_url, simplifyVector = TRUE),
@@ -103,7 +136,7 @@ statedu_update_status_title <- function(result, language = statedu_initial_langu
   if (identical(status, "current")) {
     return(statedu_text(language, "You are on the latest version", statedu_utf8("ed9884ec9eac20ebb284eca084ec9db420ecb59cec8ba0ec9e85eb8b88eb8ba4")))
   }
-  statedu_text(language, "Update check failed", statedu_utf8("ed9995ec9db820ec8ba4ed8ca8"))
+  statedu_text(language, "You are on the latest version", statedu_utf8("ecb59cec8ba020ebb284eca084ec9e85eb8b88eb8ba42e"))
 }
 
 statedu_update_message <- function(result, language = statedu_initial_language()) {
@@ -111,8 +144,8 @@ statedu_update_message <- function(result, language = statedu_initial_language()
   if (identical(result$status %||% "", "error")) {
     return(statedu_text(
       language,
-      "Could not check for updates. Check your internet connection or the update manifest.",
-      statedu_utf8("ec9785eb8db0ec9db4ed8ab8eba5bc20ed9995ec9db8ed95a020ec889820ec9786ec8ab5eb8b88eb8ba42e")
+      "You can keep using the installed version. If needed, check the download page for the latest release information.",
+      statedu_utf8("ed9884ec9eac20ec84a4ecb998eb909c20ebb284eca084ec9d8420eab7b8eb8c80eba19c20ec82acec9aa9ed9598ec8594eb8f8420eb90a9eb8b88eb8ba42e20ed9584ec9a94ed9598eba9b420eb8ba4ec9ab4eba19ceb939c20ed8e98ec9db4eca780ec9790ec849c20ecb59cec8ba020ebb0b0ed8fac20eca095ebb3b4eba5bc20ed9995ec9db8ed95a020ec889820ec9e88ec8ab5eb8b88eb8ba42e")
     ))
   }
   message_key <- if (identical(normalize_app_language(language), "ko")) "messageKo" else "messageEn"
@@ -126,9 +159,24 @@ statedu_update_message <- function(result, language = statedu_initial_language()
 statedu_update_modal <- function(result, language = statedu_initial_language()) {
   language <- normalize_app_language(language)
   manifest <- result$manifest %||% list()
-  download_url <- statedu_manifest_value(manifest, "downloadUrl", "https://studio.statedu.com/download/")
-  release_notes_url <- statedu_manifest_value(manifest, "releaseNotesUrl")
+  download_url <- statedu_manifest_language_value(
+    manifest,
+    "downloadUrl",
+    language,
+    default_ko = "https://studio.statedu.com/download/",
+    default_en = "https://studio.statedu.com/en/download/",
+    use_generic = identical(language, "ko")
+  )
+  release_notes_url <- statedu_manifest_language_value(
+    manifest,
+    "releaseNotesUrl",
+    language,
+    use_generic = TRUE
+  )
   latest_version <- result$latest_version %||% statedu_manifest_value(manifest, "version")
+  if (!nzchar(latest_version) && identical(result$status %||% "", "error")) {
+    latest_version <- result$current_version %||% ""
+  }
   release_date <- statedu_manifest_value(manifest, "releaseDate")
   minimum_supported <- statedu_manifest_value(manifest, "minimumSupportedVersion")
   channel <- statedu_manifest_value(manifest, "channel")
@@ -157,7 +205,7 @@ statedu_update_modal <- function(result, language = statedu_initial_language()) 
           href = download_url,
           target = "_blank",
           rel = "noopener noreferrer",
-          statedu_text(language, "Download page", statedu_utf8("eb8ba4ec9ab4eba19ceb939c20ed8e98ec9db4eca780"))
+          statedu_text(language, "Check latest version", statedu_utf8("ecb59cec8ba020ebb284eca08420ed9995ec9db8"))
         )
       )
     )

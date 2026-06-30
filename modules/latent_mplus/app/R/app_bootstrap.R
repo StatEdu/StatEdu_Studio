@@ -87,7 +87,7 @@ app_module_files <- c(
 
 source_app_modules <- function(files = app_module_files, dir = "R") {
   for (file in files) {
-    source(file.path(dir, file), local = FALSE)
+    source(file.path(dir, file), local = FALSE, encoding = "UTF-8")
   }
   invisible(TRUE)
 }

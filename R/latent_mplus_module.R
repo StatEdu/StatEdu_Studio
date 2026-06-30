@@ -5,7 +5,7 @@ latent_mplus_module_root <- function() {
 }
 
 latent_mplus_enabled <- function() {
-  isTRUE(statedu_feature_enabled("latent_mplus", FALSE)) &&
+  isTRUE(statedu_feature_enabled("latent_mplus", TRUE)) &&
     file.exists(file.path(latent_mplus_module_root(), "R", "latent_ui.R")) &&
     file.exists(file.path(latent_mplus_module_root(), "R", "app_server.R"))
 }
@@ -19,7 +19,7 @@ latent_mplus_env <- local({
     root <- latent_mplus_module_root()
     env <- new.env(parent = globalenv())
     env$LATENT_MPLUS_APP_ROOT <- root
-    sys.source(file.path(root, "R", "ui_helpers.R"), envir = env)
+    source(file.path(root, "R", "ui_helpers.R"), local = env, encoding = "UTF-8")
     env$latent_default_project_root <- function() {
       normalizePath(env$LATENT_MPLUS_APP_ROOT, winslash = "/", mustWork = FALSE)
     }
@@ -31,8 +31,8 @@ latent_mplus_env <- local({
       }
       normalized
     }
-    sys.source(file.path(root, "R", "latent_ui.R"), envir = env)
-    sys.source(file.path(root, "R", "app_server.R"), envir = env)
+    source(file.path(root, "R", "latent_ui.R"), local = env, encoding = "UTF-8")
+    source(file.path(root, "R", "app_server.R"), local = env, encoding = "UTF-8")
     cache <<- env
     env
   }
@@ -424,6 +424,15 @@ latent_mplus_head_tags <- function(version) {
         flex-wrap: wrap !important;
         gap: 8px !important;
       }
+      .latent-data-action-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        width: 100% !important;
+      }
+      .latent-data-action-grid .btn {
+        min-width: 0 !important;
+        width: 100% !important;
+      }
       .latent-button-column {
         display: grid !important;
         gap: 8px !important;
@@ -777,11 +786,11 @@ latent_mplus_head_tags <- function(version) {
   )
 }
 
-latent_menu_tab <- function() {
+latent_menu_tab <- function(language = statedu_initial_language()) {
   if (!latent_mplus_enabled()) {
     return(NULL)
   }
-  latent_mplus_env()$latent_menu_tab()
+  latent_mplus_env()$latent_menu_tab(language)
 }
 
 register_latent_mplus_server <- function(input,
