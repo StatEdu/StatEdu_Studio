@@ -306,9 +306,9 @@ latent_option_item <- function(control, scopes = "Common", note = NULL, language
 
 latent_estimation_preset_choices <- function(language = latent_current_language()) {
   latent_choices(
-    c("test", "desktop_9950x3d", "custom"),
-    c("Quick check", "High-performance PC", "Custom"),
-    c(latent_utf8("ebb9a0eba5b820ed9995ec9db8"), latent_utf8("eab3a0ec84b1eb8aa5205043"), latent_utf8("ec82acec9aa9ec9e9020ec84a4eca095")),
+    c("test", "standard_pc", "desktop_9950x3d", "custom"),
+    c("Quick check", "Standard PC", "High-performance PC", "Custom"),
+    c(latent_utf8("ebb9a0eba5b820ed9995ec9db8"), latent_utf8("ec9dbcebb098205043"), latent_utf8("eab3a0ec84b1eb8aa5205043"), latent_utf8("ec82acec9aa9ec9e9020ec84a4eca095")),
     language
   )
 }
@@ -497,9 +497,9 @@ latent_setup_block <- function(module_id, spec, language = latent_current_langua
 
 latent_analysis_choices <- function(language = latent_current_language()) {
   latent_choices(
-    c("lca", "lpa", "mixed_model", "process_macro"),
-    c("LCA", "LPA", "Mixed model", "PROCESS macro"),
-    c("LCA", "LPA", latent_utf8("ed98bced95a920eca780ed919c20ebaaa8ed9895"), "PROCESS macro"),
+    c("lca", "lpa", "mixed_model"),
+    c("LCA", "LPA", "Mixed model"),
+    c("LCA", "LPA", latent_utf8("ed98bced95a920eca780ed919c20ebaaa8ed9895")),
     language
   )
 }

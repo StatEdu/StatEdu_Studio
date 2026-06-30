@@ -10,6 +10,8 @@ All statistical analyses use CRAN packages only.
 
 Current public version: `1.0.1`
 
+Current development version: `1.0.2-dev`
+
 Version 1.0.1 is the stabilized public patch release line for local data import, data editing, assumption-guided statistical analyses, sample-size/effect-size calculators, and publication-ready HTML/PDF result output. Detailed development history is available in **About > Version History**.
 
 Public 1.0 does not expose license activation, paid-edition gating, Excel/Word result export, Mplus/latent add-ons, or longitudinal/panel analysis workflows. These items may appear in development history or planning notes, but they should not be treated as public 1.0 features.

@@ -13,6 +13,19 @@ latent_estimation_presets <- function() {
       tech11 = TRUE,
       tech14 = TRUE
     ),
+    standard_pc = list(
+      estimator = "MLR",
+      starts = "500 100",
+      stiterations = 20L,
+      lrtstarts = "0 0 200 40",
+      processors = 4L,
+      bootstrap = 200L,
+      tech1 = TRUE,
+      tech4 = TRUE,
+      tech8 = TRUE,
+      tech11 = TRUE,
+      tech14 = TRUE
+    ),
     desktop_9950x3d = list(
       estimator = "MLR",
       starts = "2000 500",

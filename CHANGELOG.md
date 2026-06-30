@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.0.2-dev - 2026-06-30
+
+### Changed
+
+- Enabled the developer latent and longitudinal workflow line for the 1.1 development cycle.
+- Updated latent mixture setup labels, Korean/English language routing, and PROCESS model visibility.
+- Added the Standard PC Mplus estimation preset between Quick check and High-performance PC.
+- Aligned latent figure-resolution defaults with the free/pro policy.
+
 ## v1.0.1 - 2026-06-28
 
 ### Changed
