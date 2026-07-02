@@ -1,6 +1,6 @@
 {
     "name":  "statedu-studio",
-    "version":  "1.0.10-dev",
+    "version":  "1.0.11-dev",
     "description":  "StatEdu Studio desktop installer",
     "author":  "StatEdu",
     "main":  "main.js",

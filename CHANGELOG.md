@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.11-dev - 2026-07-02
+
+### Changed
+
+- Adjusted mediation/moderation result diagrams so Model 7/8 moderators sit midway between independent variables and mediators, while Model 14/15 moderators sit midway between mediators and dependent variables.
+
 ## v1.0.10-dev - 2026-07-02
 
 ### Changed

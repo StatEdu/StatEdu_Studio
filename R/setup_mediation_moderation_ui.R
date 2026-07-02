@@ -2640,11 +2640,12 @@ mediation_moderation_result_x_y_positions <- function(x_count, mediator_y, cente
   mediation_moderation_result_column_y_positions(x_count, center)
 }
 
-mediation_moderation_result_layout_positions <- function(positions, x_slots, mediator_slots, has_w = FALSE) {
+mediation_moderation_result_layout_positions <- function(positions, x_slots, mediator_slots, has_w = FALSE, moderated_paths = character(0)) {
   center_y <- 58
   positions <- positions %||% list()
   x_slots <- as.character(x_slots %||% character(0))
   mediator_slots <- as.character(mediator_slots %||% character(0))
+  moderated_paths <- intersect(as.character(moderated_paths %||% character(0)), c("xm", "my", "xy"))
   wide_multi <- length(x_slots) > 1L && length(mediator_slots) > 1L
   x_column <- if (isTRUE(wide_multi)) 8 else if (length(x_slots) > 1L) 16 else 20
   mediator_column <- 50
@@ -2668,7 +2669,16 @@ mediation_moderation_result_layout_positions <- function(positions, x_slots, med
   }
   if (isTRUE(has_w) && "w" %in% names(positions)) {
     base_w_x <- positions$w[[1]]
-    w_x <- if (length(x_slots) > 1L) 50 else base_w_x
+    rendered_x_column <- if (identical(x_slots, "x")) max(10, x_column - 4) else x_column
+    rendered_y_column <- if ("y" %in% names(positions)) min(90, y_column + 4) else y_column
+    w_x <- base_w_x
+    if (length(mediator_slots) > 0L && "xm" %in% moderated_paths && !"my" %in% moderated_paths) {
+      w_x <- mean(c(rendered_x_column, mediator_column))
+    } else if (length(mediator_slots) > 0L && "my" %in% moderated_paths && !"xm" %in% moderated_paths) {
+      w_x <- mean(c(mediator_column, rendered_y_column))
+    } else if (length(x_slots) > 1L) {
+      w_x <- 50
+    }
     w_y_gap <- if (length(x_slots) >= 3L) 32L else 24L
     positions$w <- c(w_x, max(10L, min(x_y) - w_y_gap))
   }
@@ -2702,7 +2712,8 @@ mediation_moderation_result_diagram_data <- function(result) {
       positions,
       x_slots = "x",
       mediator_slots = mediator_slots,
-      has_w = "w" %in% slots && "w" %in% names(positions)
+      has_w = "w" %in% slots && "w" %in% names(positions),
+      moderated_paths = moderated_paths
     )
     spec$positions <- positions
     return(list(spec = spec, roles = roles))
@@ -2712,7 +2723,8 @@ mediation_moderation_result_diagram_data <- function(result) {
     positions,
     x_slots = x_slots,
     mediator_slots = mediator_slots,
-    has_w = "w" %in% slots && "w" %in% names(positions)
+    has_w = "w" %in% slots && "w" %in% names(positions),
+    moderated_paths = moderated_paths
   )
   positions$x <- NULL
   paths <- list()
