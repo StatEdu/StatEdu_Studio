@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.0.10-dev - 2026-07-02
+
+### Changed
+
+- Aligned mediation/moderation result diagram variable positions with the `scripts/mm_diagrams_preview.html` reference layout.
+- Kept multi-X moderator placement centered above the independent variables and pulled wide multi-mediator result diagrams back into the B5 portrait frame.
+
 ## v1.0.9-dev - 2026-07-02
 
 ### Changed

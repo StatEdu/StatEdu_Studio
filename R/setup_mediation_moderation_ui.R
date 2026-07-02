@@ -378,11 +378,14 @@ mediation_moderation_moderator_position <- function(positions, moderated_paths =
   } else if (all(c("xm", "my") %in% moderated_paths) && has_mediator) {
     point <- c(mean(c(positions$x[[1]], positions$y[[1]])), mediation_moderation_moderator_top_y())
   } else if ("xm" %in% moderated_paths && has_mediator) {
-    point <- c(positions$x[[1]], top_mediator_y)
+    first_m_x <- if (first_m %in% names(positions)) positions[[first_m]][[1]] else 50
+    point <- c(mean(c(positions$x[[1]], first_m_x)), mediation_moderation_moderator_top_y())
   } else if ("my" %in% moderated_paths && has_mediator) {
-    point <- c(positions$y[[1]], top_mediator_y)
+    first_m_x <- if (first_m %in% names(positions)) positions[[first_m]][[1]] else 50
+    point <- c(mean(c(first_m_x, positions$y[[1]])), mediation_moderation_moderator_top_y())
   } else if ("xy" %in% moderated_paths && has_mediator) {
-    point <- c(positions$x[[1]], top_mediator_y)
+    first_m_x <- if (first_m %in% names(positions)) positions[[first_m]][[1]] else 50
+    point <- c(mean(c(positions$x[[1]], first_m_x)), mediation_moderation_moderator_top_y())
   } else if ("xy" %in% moderated_paths) {
     point <- c(mean(c(positions$x[[1]], positions$y[[1]])), direct_y - 32)
   }
@@ -2645,7 +2648,7 @@ mediation_moderation_result_layout_positions <- function(positions, x_slots, med
   wide_multi <- length(x_slots) > 1L && length(mediator_slots) > 1L
   x_column <- if (isTRUE(wide_multi)) 8 else if (length(x_slots) > 1L) 16 else 20
   mediator_column <- 50
-  y_column <- if (isTRUE(wide_multi)) 92 else 80
+  y_column <- if (isTRUE(wide_multi)) 86 else 80
   mediator_y <- numeric(0)
   if (length(mediator_slots) > 0L) {
     mediator_y <- mediation_moderation_result_column_y_positions(length(mediator_slots), center_y)
@@ -2664,8 +2667,10 @@ mediation_moderation_result_layout_positions <- function(positions, x_slots, med
     positions$y <- c(y_column, center_y)
   }
   if (isTRUE(has_w) && "w" %in% names(positions)) {
-    w_x <- if (length(x_slots) > 1L) 38 else 20
-    positions$w <- c(w_x, max(16, min(x_y) - 24))
+    base_w_x <- positions$w[[1]]
+    w_x <- if (length(x_slots) > 1L) 50 else base_w_x
+    w_y_gap <- if (length(x_slots) >= 3L) 32L else 24L
+    positions$w <- c(w_x, max(10L, min(x_y) - w_y_gap))
   }
   positions
 }
