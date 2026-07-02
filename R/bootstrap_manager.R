@@ -87,7 +87,11 @@ create_bootstrap_manager <- function(
       boot_result <- tryCatch(readRDS(job$result_file), error = function(e) NULL)
       results <- analysis_result()
       if (is.list(results) && length(results) >= job$result_index) {
-        results[[job$result_index]]$boot_table <- bootstrap_summary_table(boot_result$samples, job$original_fit)
+        results[[job$result_index]]$boot_table <- bootstrap_summary_table(
+          boot_result$samples,
+          job$original_fit,
+          ci_method = job$ci_method %||% "bias_corrected"
+        )
         results[[job$result_index]]$bootstrap_r_squared <- as.numeric(boot_result$r_squared %||% numeric(0))
         analysis_result(results)
       }

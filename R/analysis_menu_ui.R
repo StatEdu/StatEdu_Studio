@@ -82,6 +82,7 @@ analysis_tab_panel <- function(analysis_tabs = enabled_analysis_tabs(), language
     if (isTRUE(analysis_tabs[["factor_analysis"]])) lazy_tab_panel(statedu_ui_label("factor_analysis", language), "Factor Analysis", "lazy_analysis_factor_analysis"),
     if (isTRUE(analysis_tabs[["pca"]])) lazy_tab_panel(statedu_ui_label("pca", language), "Principal Components", "lazy_analysis_pca"),
     if (isTRUE(analysis_tabs[["hierarchical"]])) lazy_tab_panel(statedu_ui_label("regression", language), "Regression", "lazy_analysis_hierarchical"),
+    if (isTRUE(analysis_tabs[["mediation_moderation"]])) lazy_tab_panel(mediation_moderation_title(language), "analysis_mediation_moderation", "lazy_analysis_mediation_moderation"),
     if (isTRUE(analysis_tabs[["generalized"]])) lazy_tab_panel(statedu_ui_label("glm", language), "Generalized Linear Model (GLM)", "lazy_analysis_generalized"),
     lazy_tab_panel(statedu_ui_label("logistic", language), "analysis_logistic_regression", "lazy_analysis_logistic"),
     if (isTRUE(analysis_tabs[["longitudinal"]])) lazy_tab_panel(statedu_ui_label("longitudinal", language), "Longitudinal / Panel Models", "lazy_analysis_longitudinal")

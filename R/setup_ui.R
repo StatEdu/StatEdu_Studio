@@ -512,7 +512,13 @@ bootstrap_resample_choices <- function(language = statedu_initial_language()) {
 }
 
 normalized_bootstrap_resamples <- function(value, choices = bootstrap_resample_choices()) {
-  current <- as.character(value %||% "1000")
+  current <- as.character(value %||% character(0))
+  current <- current[!is.na(current) & nzchar(current)]
+  if (length(current) == 0) {
+    current <- "1000"
+  } else {
+    current <- current[[1]]
+  }
   if (!current %in% unname(choices)) {
     return("1000")
   }

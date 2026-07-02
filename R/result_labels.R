@@ -81,6 +81,27 @@ display_term_name_with_variables_static <- function(
   variable_names <- variable_names[order(nchar(variable_names), decreasing = TRUE)]
   labels[names(fallback_labels)] <- fallback_labels
 
+  if (grepl(":", term_clean, fixed = TRUE)) {
+    parts <- strsplit(term_clean, ":", fixed = TRUE)[[1]]
+    parts <- parts[nzchar(parts)]
+    if (length(parts) > 1L) {
+      display_parts <- vapply(
+        parts,
+        function(part) {
+          display_term_name_with_variables_static(
+            part,
+            variable_names = variable_names,
+            labels = labels,
+            value_labels = value_labels,
+            fallback_labels = fallback_labels
+          )
+        },
+        character(1)
+      )
+      return(paste(display_parts, collapse = " x "))
+    }
+  }
+
   for (name in variable_names) {
     variable_label <- named_value(labels, name, name)
     if (identical(term_clean, name)) {

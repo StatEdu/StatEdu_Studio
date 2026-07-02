@@ -228,8 +228,9 @@ hierarchical_bootstrap_delta_r2_ci <- function(previous, current, conf = .95) {
   if (length(delta) == 0) {
     return(c(lower = NA_real_, upper = NA_real_))
   }
-  alpha <- (1 - conf) / 2
-  stats::quantile(delta, probs = c(alpha, 1 - alpha), na.rm = TRUE, names = FALSE)
+  point <- current$r_squared - previous$r_squared
+  ci_method <- current$bootstrap_ci_method %||% previous$bootstrap_ci_method %||% "bias_corrected"
+  bootstrap_ci(point, delta, conf = conf, method = ci_method)
 }
 
 hierarchical_robust_wald_f_p <- function(previous, current) {
@@ -347,11 +348,12 @@ hierarchical_summary_values <- function(group) {
 }
 
 hierarchical_coefficient_note_line <- function(result, show_vif = FALSE, show_sr2 = FALSE, show_f2 = FALSE) {
+  ci_label <- bootstrap_ci_method_label(result$bootstrap_ci_method %||% "bias_corrected")
   paste(
     if (isTRUE(show_vif)) "Tolerance = 1 - R\u00B2 for each predictor;" else NULL,
     if (isTRUE(show_vif)) "VIF = Variance Inflation Factor;" else NULL,
     if (isTRUE(result$use_hc3)) "HC3 SE = heteroskedasticity-consistent standard error type 3;" else NULL,
-    if (isTRUE(result$use_bootstrap)) "Boot SE, LLCI, ULCI, and Boot p are bootstrap estimates based on the selected bootstrap resamples and seed number;" else NULL,
+    if (isTRUE(result$use_bootstrap)) sprintf("Boot SE is the bootstrap standard error; LLCI and ULCI are %s bootstrap confidence limits based on the selected bootstrap resamples and seed number;", ci_label) else NULL,
     if (isTRUE(show_sr2)) "sr\u00B2 = squared semi-partial correlation, unique R\u00B2 contribution for each coefficient;" else NULL,
     if (isTRUE(show_f2)) "f\u00B2 = sr\u00B2 / (1 - model R\u00B2);" else NULL,
     "\u0394R\u00B2(F change p) is shown when OLS assumptions are met; \u0394R\u00B2(Robust Wald F p) is shown for HC3 models; \u0394R\u00B2[95% CI] is shown for bootstrap models;",
@@ -554,7 +556,8 @@ hierarchical_coefficient_html_table <- function(
   model_labels,
   summary_values,
   note_line = NULL,
-  model_note_lines = character(0)
+  model_note_lines = character(0),
+  include_delta = TRUE
 ) {
   if (length(model_tables) == 0) {
     return(NULL)
@@ -591,7 +594,7 @@ hierarchical_coefficient_html_table <- function(
     columns <- model_columns[[index]]
     sub_headers <- c(sub_headers, lapply(columns, function(column) {
       tags$th(
-        style = paste0(hierarchical_stat_cell_style(column, header = TRUE), "font-weight:700;"),
+        style = paste0(hierarchical_stat_cell_style(column, header = TRUE), "font-weight:400;"),
         result_header_content(hierarchical_stat_header_label(column))
       )
     }))
@@ -629,7 +632,7 @@ hierarchical_coefficient_html_table <- function(
     hierarchical_footer_row("F(p)", lapply(summary_values, `[[`, "f"), model_columns, first = TRUE),
     hierarchical_footer_row("R\u00B2(adj. R\u00B2)", lapply(summary_values, `[[`, "r2"), model_columns)
   )
-  if (length(model_tables) > 1) {
+  if (length(model_tables) > 1 && isTRUE(include_delta)) {
     footer_rows <- c(footer_rows, list(
       hierarchical_footer_row(attr(summary_values, "delta_label", exact = TRUE) %||% "\u0394R\u00B2(F change p)", lapply(summary_values, `[[`, "delta"), model_columns)
     ))

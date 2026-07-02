@@ -66,7 +66,7 @@ if (!identical(PROCESS_SETTINGS$variance_method %||% "bootstrap", "bootstrap")) 
       "process_macro detected survey design settings and selected variance_method = '",
       PROCESS_SETTINGS$variance_method %||% "survey_design",
       "'. Ordinary bootstrap has been disabled for weighted/complex survey data. ",
-      "Design-based fitting is currently implemented only for observed-variable custom models, Model 1 moderation, Model 4 mediation, Model 5 moderated mediation, Model 6 serial mediation, Model 7 first-stage moderated mediation, Model 8 moderated mediation, Model 14 second-stage moderated mediation, Model 15 moderated mediation, Model 58 moderated mediation, and Model 59 moderated mediation via Mplus.",
+      "Design-based R fitting is currently implemented for observed-variable Model 1 moderation, Model 4 mediation, Model 5 moderated mediation, Model 6 serial mediation, Model 7 first-stage moderated mediation, Model 8 moderated mediation, Model 14 second-stage moderated mediation, Model 15 moderated mediation, Model 58 moderated mediation, and Model 59 moderated mediation.",
       call. = FALSE
     )
   }
@@ -10452,12 +10452,14 @@ clean_term_label_model4 <- function(term, mediator_var, ref_class, cov_term_map 
 
 extract_coef_df <- function(fit) {
   coef_mat <- summary(fit)$coefficients
+  p_col <- intersect(c("Pr(>|t|)", "Pr(>|z|)", "p"), colnames(coef_mat))[1]
+  t_col <- intersect(c("t value", "z value", "t", "z"), colnames(coef_mat))[1]
   coef_df <- data.frame(
     term = rownames(coef_mat),
     estimate = coef_mat[, "Estimate"],
     se = coef_mat[, "Std. Error"],
-    t_value = coef_mat[, "t value"],
-    p = coef_mat[, "Pr(>|t|)"],
+    t_value = if (!is.na(t_col)) coef_mat[, t_col] else coef_mat[, "Estimate"] / coef_mat[, "Std. Error"],
+    p = if (!is.na(p_col)) coef_mat[, p_col] else NA_real_,
     stringsAsFactors = FALSE,
     row.names = NULL
   )
@@ -10471,6 +10473,209 @@ extract_coef_df <- function(fit) {
     coef_df$ulci <- NA_real_
   }
   coef_df
+}
+
+fit_estimator_r_pm <- function(fit) {
+  est <- attr(fit, "statedu_estimator", exact = TRUE)
+  if (!is.null(est) && nzchar(as.character(est)[1])) return(as.character(est)[1])
+  if (inherits(fit, "svyglm")) "R survey svyglm" else "OLS"
+}
+
+fit_variance_method_r_pm <- function(fit) {
+  method <- attr(fit, "statedu_variance_method", exact = TRUE)
+  if (!is.null(method) && nzchar(as.character(method)[1])) return(as.character(method)[1])
+  if (inherits(fit, "svyglm")) PROCESS_SETTINGS$variance_method %||% "survey_design" else "bootstrap"
+}
+
+fit_design_df_r_pm <- function(fit) {
+  df <- attr(fit, "statedu_design_df", exact = TRUE)
+  df <- suppressWarnings(as.numeric(df)[1])
+  if (!is.na(df) && is.finite(df) && df > 0) return(df)
+  df <- tryCatch(stats::df.residual(fit), error = function(e) NA_real_)
+  if (!is.na(df) && is.finite(df) && df > 0) df else NA_real_
+}
+
+build_survey_design_r_pm <- function(dat, survey_bundle = list()) {
+  if (!requireNamespace("survey", quietly = TRUE)) {
+    stop("The 'survey' package is required for R-based complex survey PROCESS analysis.", call. = FALSE)
+  }
+  weight_var <- as.character(survey_bundle$weight_var %||% "")[1]
+  strata_var <- as.character(survey_bundle$strata_var %||% "")[1]
+  cluster_var <- as.character(survey_bundle$cluster_var %||% "")[1]
+
+  ids_formula <- if (nzchar(cluster_var) && cluster_var %in% names(dat)) stats::as.formula(paste0("~", cluster_var)) else ~1
+  strata_formula <- if (nzchar(strata_var) && strata_var %in% names(dat)) stats::as.formula(paste0("~", strata_var)) else NULL
+  weights_formula <- if (nzchar(weight_var) && weight_var %in% names(dat)) stats::as.formula(paste0("~", weight_var)) else NULL
+
+  design_args <- list(ids = ids_formula, data = dat, nest = TRUE)
+  if (!is.null(strata_formula)) design_args$strata <- strata_formula
+  if (!is.null(weights_formula)) design_args$weights <- weights_formula
+  do.call(survey::svydesign, design_args)
+}
+
+fit_linear_r_pm <- function(formula_obj, data, survey_bundle = NULL) {
+  if (is.null(survey_bundle)) return(stats::lm(formula_obj, data = data))
+  des <- build_survey_design_r_pm(data, survey_bundle)
+  fit <- survey::svyglm(formula_obj, design = des)
+  attr(fit, "statedu_estimator") <- "R survey svyglm"
+  attr(fit, "statedu_variance_method") <- PROCESS_SETTINGS$variance_method %||% "survey_design"
+  attr(fit, "statedu_design_df") <- tryCatch(survey::degf(des), error = function(e) NA_real_)
+  fit
+}
+
+apply_survey_subset_r_pm <- function(dat, survey_bundle = list()) {
+  idx <- make_subset_index_pm(dat, survey_bundle)
+  if (length(idx) == nrow(dat)) dat[idx, , drop = FALSE] else dat
+}
+
+process_dw_stat_pm <- function(resid_vec) {
+  e <- safe_num_pm(resid_vec)
+  e <- e[is.finite(e)]
+  if (length(e) < 2L) return(NA_real_)
+  denom <- sum(e^2, na.rm = TRUE)
+  if (!is.finite(denom) || denom <= 0) return(NA_real_)
+  sum(diff(e)^2, na.rm = TRUE) / denom
+}
+
+process_max_vif_pm <- function(fit) {
+  mm <- tryCatch(stats::model.matrix(fit), error = function(e) NULL)
+  if (is.null(mm) || ncol(mm) <= 2L) return(NA_real_)
+  pred <- setdiff(colnames(mm), "(Intercept)")
+  if (length(pred) <= 1L) return(1)
+  xdat <- as.data.frame(mm[, pred, drop = FALSE], check.names = FALSE)
+  vifs <- vapply(pred, function(term) {
+    y <- xdat[[term]]
+    if (!is.finite(stats::sd(y, na.rm = TRUE)) || stats::sd(y, na.rm = TRUE) == 0) return(NA_real_)
+    others <- xdat[, setdiff(pred, term), drop = FALSE]
+    fit_i <- tryCatch(stats::lm(y ~ ., data = others), error = function(e) NULL)
+    if (is.null(fit_i)) return(NA_real_)
+    r2 <- tryCatch(summary(fit_i)$r.squared, error = function(e) NA_real_)
+    if (!is.finite(r2)) return(NA_real_)
+    if (r2 >= 1) Inf else 1 / (1 - r2)
+  }, numeric(1))
+  vifs <- vifs[!is.na(vifs)]
+  if (length(vifs) == 0) NA_real_ else max(vifs, na.rm = TRUE)
+}
+
+process_register_regression_diagnostics <- function(fit, model_component, outcome, outcome_label,
+                                                    target_outcome, target_outcome_label,
+                                                    path_label, x_var = "", x_label = "",
+                                                    mediator = "", mediator_label = "",
+                                                    moderator = "", moderator_label = "",
+                                                    block_order = NA_real_, table_block_key = "",
+                                                    analysis_key = "") {
+  if (!exists("PROCESS_REGRESSION_DIAGNOSTICS_LIST", inherits = TRUE)) {
+    PROCESS_REGRESSION_DIAGNOSTICS_LIST <<- list()
+  }
+  if (!exists("PROCESS_REGRESSION_RESIDUALS_LIST", inherits = TRUE)) {
+    PROCESS_REGRESSION_RESIDUALS_LIST <<- list()
+  }
+  idx <- length(PROCESS_REGRESSION_DIAGNOSTICS_LIST) + 1L
+  model_id <- paste0("path_model_", idx)
+  resid_vec <- tryCatch(stats::residuals(fit), error = function(e) numeric(0))
+  fitted_vec <- tryCatch(stats::fitted(fit), error = function(e) numeric(0))
+  n_i <- length(resid_vec)
+  df_i <- fit_design_df_r_pm(fit)
+
+  normality_method <- NA_character_
+  normality_stat <- NA_real_
+  normality_p <- NA_real_
+  if (length(resid_vec) >= 5L && requireNamespace("nortest", quietly = TRUE)) {
+    nt <- tryCatch(nortest::lillie.test(resid_vec), error = function(e) NULL)
+    if (!is.null(nt)) {
+      normality_method <- "Lilliefors corrected K-S"
+      normality_stat <- unname(nt$statistic)
+      normality_p <- unname(nt$p.value)
+    }
+  } else if (length(resid_vec) >= 3L && length(resid_vec) <= 5000L) {
+    st <- tryCatch(stats::shapiro.test(resid_vec), error = function(e) NULL)
+    if (!is.null(st)) {
+      normality_method <- "Shapiro-Wilk"
+      normality_stat <- unname(st$statistic)
+      normality_p <- unname(st$p.value)
+    }
+  }
+
+  bp_stat <- NA_real_
+  bp_p <- NA_real_
+  diagnostic_notes <- character(0)
+  if (inherits(fit, "svyglm")) {
+    diagnostic_notes <- c(
+      diagnostic_notes,
+      "Survey-weighted residual diagnostics are exploratory; normality and Durbin-Watson values are not design-based assumption tests."
+    )
+  }
+
+  bp_note <- if (inherits(fit, "svyglm")) "Breusch-Pagan and Cook's distance are not computed for survey-weighted fits." else ""
+  if (nzchar(bp_note)) diagnostic_notes <- c(diagnostic_notes, bp_note)
+  if (!inherits(fit, "svyglm") && requireNamespace("lmtest", quietly = TRUE)) {
+    bp <- tryCatch(lmtest::bptest(fit), error = function(e) NULL)
+    if (!is.null(bp)) {
+      bp_stat <- unname(bp$statistic)
+      bp_p <- unname(bp$p.value)
+    }
+  }
+
+  cook_max <- NA_real_
+  std_resid <- rep(NA_real_, n_i)
+  if (!inherits(fit, "svyglm")) {
+    cook_vals <- tryCatch(stats::cooks.distance(fit), error = function(e) NULL)
+    if (!is.null(cook_vals) && length(cook_vals) > 0) cook_max <- max(cook_vals, na.rm = TRUE)
+    std_tmp <- tryCatch(stats::rstandard(fit), error = function(e) NULL)
+    if (!is.null(std_tmp) && length(std_tmp) == n_i) std_resid <- as.numeric(std_tmp)
+  }
+
+  PROCESS_REGRESSION_DIAGNOSTICS_LIST[[idx]] <<- data.frame(
+    model_id = model_id,
+    model_component = model_component,
+    path_label = path_label,
+    outcome = outcome,
+    outcome_label = outcome_label,
+    target_outcome = target_outcome,
+    target_outcome_label = target_outcome_label,
+    x_var = x_var,
+    x_label = x_label,
+    mediator = mediator,
+    mediator_label = mediator_label,
+    moderator = moderator,
+    moderator_label = moderator_label,
+    n = n_i,
+    df = df_i,
+    estimator = fit_estimator_r_pm(fit),
+    variance_method = fit_variance_method_r_pm(fit),
+    max_vif = process_max_vif_pm(fit),
+    dw_statistic = process_dw_stat_pm(resid_vec),
+    residual_normality_method = normality_method,
+    residual_normality_statistic = normality_stat,
+    residual_normality_p = normality_p,
+    breusch_pagan_statistic = bp_stat,
+    breusch_pagan_p = bp_p,
+    cook_distance_max = cook_max,
+    diagnostic_note = paste(unique(diagnostic_notes), collapse = " "),
+    block_order = block_order,
+    table_block_key = table_block_key,
+    analysis_key = analysis_key,
+    stringsAsFactors = FALSE
+  )
+
+  if (length(resid_vec) > 0 && length(fitted_vec) == length(resid_vec)) {
+    PROCESS_REGRESSION_RESIDUALS_LIST[[idx]] <<- data.frame(
+      model_id = model_id,
+      row_index = seq_along(resid_vec),
+      fitted = safe_num_pm(fitted_vec),
+      residual = safe_num_pm(resid_vec),
+      std_residual = std_resid,
+      model_component = model_component,
+      path_label = path_label,
+      outcome = outcome,
+      outcome_label = outcome_label,
+      target_outcome = target_outcome,
+      target_outcome_label = target_outcome_label,
+      analysis_key = analysis_key,
+      stringsAsFactors = FALSE
+    )
+  }
+  invisible(model_id)
 }
 
 bootstrap_coef_ci <- function(dat, formula_obj, term_names, t0 = NULL, n_boot = 5000L, ci_type = "bca") {
@@ -10965,6 +11170,1029 @@ fit_mediation_model4 <- function(df, outcome_var, mediator_var, covariates, ref_
   )
 }
 
+make_formula_r_pm <- function(lhs, rhs) {
+  rhs <- rhs[!is.na(rhs) & nzchar(rhs)]
+  if (length(rhs) == 0L) rhs <- "1"
+  stats::as.formula(paste(lhs, "~", paste(rhs, collapse = " + ")))
+}
+
+model_summary_r_pm <- function(fit, model_component, outcome, outcome_label, target_outcome,
+                               target_outcome_label, x_var, x_label, mediator = "",
+                               mediator_label = "", moderator = "", moderator_label = "",
+                               block_order = NA_real_, table_block_key = "",
+                               analysis_key = "") {
+  fit_sum <- summary(fit)
+  fstat <- if (inherits(fit, "svyglm")) {
+    c(NA_real_, NA_real_, fit_design_df_r_pm(fit))
+  } else {
+    tryCatch(unname(fit_sum$fstatistic), error = function(e) c(NA_real_, NA_real_, NA_real_))
+  }
+  if (length(fstat) < 3L) fstat <- c(NA_real_, NA_real_, NA_real_)
+  p_val <- tryCatch(stats::pf(fstat[1], fstat[2], fstat[3], lower.tail = FALSE), error = function(e) NA_real_)
+  r2_val <- if (inherits(fit, "svyglm")) NA_real_ else fit_sum$r.squared
+  adj_r2_val <- if (inherits(fit, "svyglm")) NA_real_ else fit_sum$adj.r.squared
+  out <- data.frame(
+    model_component = model_component,
+    outcome = outcome,
+    outcome_label = outcome_label,
+    target_outcome = target_outcome,
+    target_outcome_label = target_outcome_label,
+    x_var = x_var,
+    x_label = x_label,
+    mediator = mediator,
+    mediator_label = mediator_label,
+    moderator = moderator,
+    moderator_label = moderator_label,
+    n = stats::nobs(fit),
+    r2 = r2_val,
+    adj_r2 = adj_r2_val,
+    f_value = fstat[1],
+    df1 = fstat[2],
+    df2 = fstat[3],
+    p = p_val,
+    block_order = block_order,
+    table_block_key = table_block_key,
+    analysis_key = analysis_key,
+    bootstrap_enabled = if (inherits(fit, "svyglm")) FALSE else isTRUE(PROCESS_SETTINGS$bootstrap_enabled),
+    bootstrap_n = if (inherits(fit, "svyglm")) NA_integer_ else PROCESS_SETTINGS$bootstrap_n,
+    bootstrap_ci = PROCESS_SETTINGS$bootstrap_ci,
+    variance_method = fit_variance_method_r_pm(fit),
+    estimator = fit_estimator_r_pm(fit),
+    stringsAsFactors = FALSE
+  )
+  out$p_fmt <- fmt_p_pm(out$p)
+  out$sig <- sig_mark_pm(out$p)
+  out
+}
+
+lincomb_r_pm <- function(fit, weights) {
+  cf <- stats::coef(fit)
+  weights <- weights[names(weights) %in% names(cf)]
+  if (length(weights) == 0L) {
+    return(c(estimate = NA_real_, se = NA_real_, t_value = NA_real_, p = NA_real_, llci = NA_real_, ulci = NA_real_))
+  }
+  est <- sum(cf[names(weights)] * weights)
+  vc <- tryCatch(stats::vcov(fit), error = function(e) NULL)
+  df_res <- tryCatch(stats::df.residual(fit), error = function(e) NA_real_)
+  se <- NA_real_
+  if (!is.null(vc)) {
+    ww <- rep(0, length(cf))
+    names(ww) <- names(cf)
+    ww[names(weights)] <- weights
+    se <- sqrt(as.numeric(t(ww) %*% vc %*% ww))
+  }
+  t_val <- ifelse(is.na(se) || se == 0, NA_real_, est / se)
+  df_use <- fit_design_df_r_pm(fit)
+  p_val <- ifelse(is.na(t_val) || is.na(df_use), NA_real_, 2 * stats::pt(abs(t_val), df = df_use, lower.tail = FALSE))
+  crit <- ifelse(is.na(df_use), NA_real_, stats::qt(0.975, df = df_use))
+  c(
+    estimate = est,
+    se = se,
+    t_value = t_val,
+    p = p_val,
+    llci = ifelse(is.na(se) || is.na(crit), NA_real_, est - crit * se),
+    ulci = ifelse(is.na(se) || is.na(crit), NA_real_, est + crit * se)
+  )
+}
+
+coef_value_r_pm <- function(fit, term) {
+  cf <- stats::coef(fit)
+  if (term %in% names(cf)) unname(cf[term]) else NA_real_
+}
+
+coef_se_r_pm <- function(fit, term) {
+  sm <- tryCatch(summary(fit)$coefficients, error = function(e) NULL)
+  if (is.null(sm) || !term %in% rownames(sm)) NA_real_ else unname(sm[term, "Std. Error"])
+}
+
+coef_row_r_pm <- function(fit, internal_term, output_term, effect_type, effect, term_label,
+                          variable_label = term_label, sort_key = 100, model_component,
+                          outcome, outcome_label, target_outcome, target_outcome_label,
+                          x_var, x_label, mediator = "", mediator_label = "",
+                          moderator = "", moderator_label = "", category_label = "",
+                          reference_label = "", block_order = NA_real_,
+                          table_block_key = "", analysis_key = "") {
+  coef_df <- extract_coef_df(fit)
+  hit <- coef_df[as.character(coef_df$term) == internal_term, , drop = FALSE]
+  if (nrow(hit) == 0) return(data.frame())
+  data.frame(
+    term = output_term,
+    estimate = hit$estimate[1],
+    se = hit$se[1],
+    t_value = hit$t_value[1],
+    p = hit$p[1],
+    llci = hit$llci[1],
+    ulci = hit$ulci[1],
+    effect_type = effect_type,
+    effect = effect,
+    term_label = term_label,
+    variable_label = variable_label,
+    category_label = category_label,
+    reference_label = reference_label,
+    sort_key = sort_key,
+    model_component = model_component,
+    outcome = outcome,
+    outcome_label = outcome_label,
+    target_outcome = target_outcome,
+    target_outcome_label = target_outcome_label,
+    x_var = x_var,
+    x_label = x_label,
+    mediator = mediator,
+    mediator_label = mediator_label,
+    moderator = moderator,
+    moderator_label = moderator_label,
+    n = stats::nobs(fit),
+    block_order = block_order,
+    table_block_key = table_block_key,
+    analysis_key = analysis_key,
+    bootstrap_enabled = if (inherits(fit, "svyglm")) FALSE else isTRUE(PROCESS_SETTINGS$bootstrap_enabled),
+    bootstrap_n = if (inherits(fit, "svyglm")) NA_integer_ else PROCESS_SETTINGS$bootstrap_n,
+    bootstrap_ci = PROCESS_SETTINGS$bootstrap_ci,
+    estimator = fit_estimator_r_pm(fit),
+    variance_method = fit_variance_method_r_pm(fit),
+    stringsAsFactors = FALSE
+  )
+}
+
+cov_coef_rows_r_pm <- function(fit, cov_term_map, model_component, outcome, outcome_label,
+                               target_outcome, target_outcome_label, x_var, x_label,
+                               mediator = "", mediator_label = "", moderator = "",
+                               moderator_label = "", block_order = NA_real_,
+                               table_block_key = "", analysis_key = "") {
+  if (!is.data.frame(cov_term_map) || nrow(cov_term_map) == 0) return(data.frame())
+  rows <- lapply(seq_len(nrow(cov_term_map)), function(i) {
+    m <- cov_term_map[i, , drop = FALSE]
+    coef_row_r_pm(
+      fit = fit,
+      internal_term = as.character(m$term[1]),
+      output_term = as.character(m$term[1]),
+      effect_type = as.character(m$effect_type[1]),
+      effect = as.character(m$effect[1]),
+      term_label = as.character(m$term_label[1]),
+      variable_label = as.character(m$variable_label[1]),
+      category_label = as.character(m$category_label[1]),
+      reference_label = as.character(m$reference_label[1]),
+      sort_key = as.numeric(m$sort_key[1]),
+      model_component = model_component,
+      outcome = outcome,
+      outcome_label = outcome_label,
+      target_outcome = target_outcome,
+      target_outcome_label = target_outcome_label,
+      x_var = x_var,
+      x_label = x_label,
+      mediator = mediator,
+      mediator_label = mediator_label,
+      moderator = moderator,
+      moderator_label = moderator_label,
+      block_order = block_order,
+      table_block_key = table_block_key,
+      analysis_key = analysis_key
+    )
+  })
+  rows <- rows[vapply(rows, nrow, integer(1)) > 0]
+  if (length(rows) == 0) data.frame() else do.call(rbind, rows)
+}
+
+probe_specs_r_pm <- function(dat, w_var, w_center) {
+  w_raw <- safe_num_pm(dat[[w_var]])
+  w_mean <- mean(w_raw, na.rm = TRUE)
+  w_sd <- stats::sd(w_raw, na.rm = TRUE)
+  if (is.na(w_sd) || w_sd == 0) w_sd <- 0
+  raw_vals <- c(w_mean - w_sd, w_mean, w_mean + w_sd)
+  centered_vals <- raw_vals - w_center
+  data.frame(
+    level = c("M - 1 SD", "M", "M + 1 SD"),
+    raw = raw_vals,
+    centered = centered_vals,
+    class_num = 1:3,
+    class_contrast = paste0(
+      lookup_label(w_var),
+      " = ",
+      c("M - 1 SD", "M", "M + 1 SD"),
+      " (",
+      formatC(raw_vals, format = "f", digits = 2),
+      ")"
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+fit_observed_r_process_model <- function(df, process_model, outcome_var, x_var, mediator_vars = character(0),
+                                         w_var = "", covariates = character(0),
+                                         bootstrap_enabled = TRUE, bootstrap_n = 5000L,
+                                         bootstrap_ci = "bca", survey_bundle = NULL) {
+  if (is.null(survey_bundle) && exists("PROCESS_SURVEY_BACKEND_BUNDLE", inherits = TRUE)) {
+    survey_bundle <- PROCESS_SURVEY_BACKEND_BUNDLE
+  }
+  use_survey <- !is.null(survey_bundle)
+  survey_terms <- if (use_survey) {
+    c(survey_bundle$weight_var, survey_bundle$strata_var, survey_bundle$cluster_var, survey_bundle$subset_var)
+  } else {
+    character(0)
+  }
+  needed <- unique(c(outcome_var, x_var, mediator_vars, w_var, covariates, survey_terms))
+  needed <- needed[!is.na(needed) & nzchar(needed) & needed %in% names(df)]
+  dat <- df[, needed, drop = FALSE]
+  if (use_survey) dat <- apply_survey_subset_r_pm(dat, survey_bundle)
+  core_vars <- unique(c(outcome_var, x_var, mediator_vars, w_var))
+  core_vars <- core_vars[!is.na(core_vars) & nzchar(core_vars) & core_vars %in% names(dat)]
+  if (!all(c(outcome_var, x_var) %in% names(dat))) return(NULL)
+  dat[[outcome_var]] <- safe_num_pm(dat[[outcome_var]])
+  dat[[x_var]] <- safe_num_pm(dat[[x_var]])
+  for (mm in mediator_vars[mediator_vars %in% names(dat)]) dat[[mm]] <- safe_num_pm(dat[[mm]])
+  if (nzchar(w_var %||% "") && w_var %in% names(dat)) dat[[w_var]] <- safe_num_pm(dat[[w_var]])
+
+  cov_keep <- covariates[covariates %in% names(dat)]
+  cov_prep <- prepare_covariates(dat, cov_keep)
+  dat <- cov_prep$data
+  cov_rhs <- cov_prep$rhs_terms
+  cov_term_map <- cov_prep$term_map
+  complete_terms <- unique(c(core_vars, cov_rhs))
+  complete_terms <- complete_terms[complete_terms %in% names(dat)]
+  dat <- dat[stats::complete.cases(dat[, complete_terms, drop = FALSE]), , drop = FALSE]
+  if (nrow(dat) == 0) return(NULL)
+
+  dat$x_pm <- dat[[x_var]]
+  dat$y_pm <- dat[[outcome_var]]
+  has_w <- nzchar(w_var %||% "") && w_var %in% names(dat)
+  w_center <- 0
+  probe <- data.frame()
+  if (has_w) {
+    w_center <- if (identical(PROCESS_SETTINGS$centering_method %||% "weighted_mean", "none")) 0 else mean(dat[[w_var]], na.rm = TRUE)
+    dat$w_pm <- dat[[w_var]] - w_center
+    dat$xw_pm <- dat$x_pm * dat$w_pm
+    probe <- probe_specs_r_pm(dat, w_var = w_var, w_center = w_center)
+  }
+  mediator_vars <- mediator_vars[mediator_vars %in% names(dat)]
+  mediator_internal <- sprintf("m%02d_pm", seq_along(mediator_vars))
+  for (i in seq_along(mediator_vars)) {
+    dat[[mediator_internal[i]]] <- dat[[mediator_vars[i]]]
+    if (has_w) dat[[paste0(mediator_internal[i], "w_pm")]] <- dat[[mediator_internal[i]]] * dat$w_pm
+  }
+
+  analysis_key <- paste(lookup_label(outcome_var), lookup_label(x_var), paste(vapply(mediator_vars, lookup_label, character(1)), collapse = " + "), sep = " | ")
+  mod <- as.integer(process_model)
+  coef_rows <- list()
+  summary_rows <- list()
+  indirect_rows <- list()
+  indirect_jn_grid_rows <- list()
+  conditional_rows <- list()
+  mediator_fits <- list()
+
+  if (mod == 1L) {
+    rhs <- c("x_pm", "w_pm", "xw_pm", cov_rhs)
+    fit_y <- fit_linear_r_pm(make_formula_r_pm("y_pm", rhs), data = dat, survey_bundle = survey_bundle)
+    process_register_regression_diagnostics(
+      fit_y, "Outcome model", outcome_var, lookup_label(outcome_var),
+      outcome_var, lookup_label(outcome_var), "Moderation outcome model",
+      x_var, lookup_label(x_var), moderator = w_var,
+      moderator_label = lookup_label(w_var), analysis_key = analysis_key
+    )
+    coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_y, "(Intercept)", "(Intercept)", "Intercept", "Intercept", "Intercept", sort_key = 10, model_component = "Outcome model", outcome = outcome_var, outcome_label = lookup_label(outcome_var), target_outcome = outcome_var, target_outcome_label = lookup_label(outcome_var), x_var = x_var, x_label = lookup_label(x_var), moderator = w_var, moderator_label = lookup_label(w_var), analysis_key = analysis_key)
+    coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_y, "x_pm", x_var, "Independent variable", "Independent variable main effect", lookup_label(x_var), sort_key = 20, model_component = "Outcome model", outcome = outcome_var, outcome_label = lookup_label(outcome_var), target_outcome = outcome_var, target_outcome_label = lookup_label(outcome_var), x_var = x_var, x_label = lookup_label(x_var), moderator = w_var, moderator_label = lookup_label(w_var), analysis_key = analysis_key)
+    coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_y, "w_pm", w_var, "Moderator", "Moderator main effect", lookup_label(w_var), sort_key = 120, model_component = "Outcome model", outcome = outcome_var, outcome_label = lookup_label(outcome_var), target_outcome = outcome_var, target_outcome_label = lookup_label(outcome_var), x_var = x_var, x_label = lookup_label(x_var), moderator = w_var, moderator_label = lookup_label(w_var), analysis_key = analysis_key)
+    coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_y, "xw_pm", paste0(x_var, ":", w_var), "Interaction", "Interaction", paste0(lookup_label(x_var), " x ", lookup_label(w_var)), sort_key = 220, model_component = "Outcome model", outcome = outcome_var, outcome_label = lookup_label(outcome_var), target_outcome = outcome_var, target_outcome_label = lookup_label(outcome_var), x_var = x_var, x_label = lookup_label(x_var), moderator = w_var, moderator_label = lookup_label(w_var), analysis_key = analysis_key)
+    coef_rows[[length(coef_rows) + 1L]] <- cov_coef_rows_r_pm(fit_y, cov_term_map, "Outcome model", outcome_var, lookup_label(outcome_var), outcome_var, lookup_label(outcome_var), x_var, lookup_label(x_var), moderator = w_var, moderator_label = lookup_label(w_var), analysis_key = analysis_key)
+    summary_rows[[1L]] <- model_summary_r_pm(fit_y, "Outcome model", outcome_var, lookup_label(outcome_var), outcome_var, lookup_label(outcome_var), x_var, lookup_label(x_var), moderator = w_var, moderator_label = lookup_label(w_var), analysis_key = analysis_key)
+    for (i in seq_len(nrow(probe))) {
+      lc <- lincomb_r_pm(fit_y, c(x_pm = 1, xw_pm = probe$centered[i]))
+      conditional_rows[[length(conditional_rows) + 1L]] <- data.frame(outcome = outcome_var, outcome_label = lookup_label(outcome_var), target_outcome = outcome_var, target_outcome_label = lookup_label(outcome_var), x_var = x_var, x_label = lookup_label(x_var), moderator = w_var, moderator_label = lookup_label(w_var), class_num = probe$class_num[i], class_contrast = probe$class_contrast[i], conditional_effect = lc["estimate"], se = lc["se"], t_value = lc["t_value"], p = lc["p"], llci = lc["llci"], ulci = lc["ulci"], n = stats::nobs(fit_y), analysis_key = analysis_key, stringsAsFactors = FALSE)
+    }
+  } else {
+    if (length(mediator_vars) == 0L) return(NULL)
+    first_stage_mod <- mod %in% c(7L, 8L, 58L, 59L)
+    second_stage_mod <- mod %in% c(14L, 15L, 58L, 59L)
+    direct_mod <- mod %in% c(5L, 8L, 15L, 59L)
+
+    for (i in seq_along(mediator_vars)) {
+      mm <- mediator_vars[i]
+      mi <- mediator_internal[i]
+      table_key <- paste(analysis_key, mm, sep = " | ")
+      rhs_m <- c("x_pm", if (first_stage_mod) c("w_pm", "xw_pm") else character(0), cov_rhs)
+      fit_m <- fit_linear_r_pm(make_formula_r_pm(mi, rhs_m), data = dat, survey_bundle = survey_bundle)
+      mediator_fits[[mi]] <- fit_m
+      block_order <- i
+      process_register_regression_diagnostics(
+        fit_m, "Mediator model", mm, lookup_label(mm),
+        outcome_var, lookup_label(outcome_var), paste0("Path a model: ", lookup_label(mm)),
+        x_var, lookup_label(x_var), mediator = mm, mediator_label = lookup_label(mm),
+        moderator = w_var, moderator_label = lookup_label(w_var),
+        block_order = block_order, table_block_key = table_key, analysis_key = analysis_key
+      )
+      coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_m, "(Intercept)", "(Intercept)", "Intercept", "Intercept", "Intercept", sort_key = 10, model_component = "Mediator model", outcome = mm, outcome_label = lookup_label(mm), target_outcome = outcome_var, target_outcome_label = lookup_label(outcome_var), x_var = x_var, x_label = lookup_label(x_var), mediator = mm, mediator_label = lookup_label(mm), moderator = w_var, moderator_label = lookup_label(w_var), block_order = block_order, table_block_key = table_key, analysis_key = analysis_key)
+      coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_m, "x_pm", x_var, "Independent variable", "Path a", lookup_label(x_var), sort_key = 20, model_component = "Mediator model", outcome = mm, outcome_label = lookup_label(mm), target_outcome = outcome_var, target_outcome_label = lookup_label(outcome_var), x_var = x_var, x_label = lookup_label(x_var), mediator = mm, mediator_label = lookup_label(mm), moderator = w_var, moderator_label = lookup_label(w_var), block_order = block_order, table_block_key = table_key, analysis_key = analysis_key)
+      if (first_stage_mod) {
+        coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_m, "w_pm", w_var, "Moderator", "Moderator main effect", lookup_label(w_var), sort_key = 120, model_component = "Mediator model", outcome = mm, outcome_label = lookup_label(mm), target_outcome = outcome_var, target_outcome_label = lookup_label(outcome_var), x_var = x_var, x_label = lookup_label(x_var), mediator = mm, mediator_label = lookup_label(mm), moderator = w_var, moderator_label = lookup_label(w_var), block_order = block_order, table_block_key = table_key, analysis_key = analysis_key)
+        coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_m, "xw_pm", paste0(x_var, ":", w_var), "Interaction", "First-stage interaction", paste0(lookup_label(x_var), " x ", lookup_label(w_var)), sort_key = 220, model_component = "Mediator model", outcome = mm, outcome_label = lookup_label(mm), target_outcome = outcome_var, target_outcome_label = lookup_label(outcome_var), x_var = x_var, x_label = lookup_label(x_var), mediator = mm, mediator_label = lookup_label(mm), moderator = w_var, moderator_label = lookup_label(w_var), block_order = block_order, table_block_key = table_key, analysis_key = analysis_key)
+      }
+      coef_rows[[length(coef_rows) + 1L]] <- cov_coef_rows_r_pm(fit_m, cov_term_map, "Mediator model", mm, lookup_label(mm), outcome_var, lookup_label(outcome_var), x_var, lookup_label(x_var), mediator = mm, mediator_label = lookup_label(mm), moderator = w_var, moderator_label = lookup_label(w_var), block_order = block_order, table_block_key = table_key, analysis_key = analysis_key)
+      summary_rows[[length(summary_rows) + 1L]] <- model_summary_r_pm(fit_m, "Mediator model", mm, lookup_label(mm), outcome_var, lookup_label(outcome_var), x_var, lookup_label(x_var), mediator = mm, mediator_label = lookup_label(mm), moderator = w_var, moderator_label = lookup_label(w_var), block_order = block_order, table_block_key = table_key, analysis_key = analysis_key)
+    }
+
+    rhs_y <- c("x_pm", mediator_internal, if (has_w && (direct_mod || second_stage_mod || mod == 5L)) "w_pm" else character(0), if (direct_mod) "xw_pm" else character(0), if (second_stage_mod) paste0(mediator_internal, "w_pm") else character(0), cov_rhs)
+    fit_y <- fit_linear_r_pm(make_formula_r_pm("y_pm", rhs_y), data = dat, survey_bundle = survey_bundle)
+    table_key_y <- paste(analysis_key, paste(mediator_vars, collapse = " + "), sep = " | ")
+    process_register_regression_diagnostics(
+      fit_y, "Outcome model", outcome_var, lookup_label(outcome_var),
+      outcome_var, lookup_label(outcome_var), "Outcome model: direct and path b effects",
+      x_var, lookup_label(x_var), mediator = paste(mediator_vars, collapse = " + "),
+      mediator_label = paste(vapply(mediator_vars, lookup_label, character(1)), collapse = " + "),
+      moderator = w_var, moderator_label = lookup_label(w_var),
+      block_order = length(mediator_vars) + 1L, table_block_key = table_key_y,
+      analysis_key = analysis_key
+    )
+    coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_y, "(Intercept)", "(Intercept)", "Intercept", "Intercept", "Intercept", sort_key = 10, model_component = "Outcome model", outcome = outcome_var, outcome_label = lookup_label(outcome_var), target_outcome = outcome_var, target_outcome_label = lookup_label(outcome_var), x_var = x_var, x_label = lookup_label(x_var), mediator = paste(mediator_vars, collapse = " + "), mediator_label = paste(vapply(mediator_vars, lookup_label, character(1)), collapse = " + "), moderator = w_var, moderator_label = lookup_label(w_var), block_order = length(mediator_vars) + 1L, table_block_key = table_key_y, analysis_key = analysis_key)
+    coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_y, "x_pm", x_var, "Independent variable", "Direct effect", lookup_label(x_var), sort_key = 20, model_component = "Outcome model", outcome = outcome_var, outcome_label = lookup_label(outcome_var), target_outcome = outcome_var, target_outcome_label = lookup_label(outcome_var), x_var = x_var, x_label = lookup_label(x_var), mediator = paste(mediator_vars, collapse = " + "), mediator_label = paste(vapply(mediator_vars, lookup_label, character(1)), collapse = " + "), moderator = w_var, moderator_label = lookup_label(w_var), block_order = length(mediator_vars) + 1L, table_block_key = table_key_y, analysis_key = analysis_key)
+    for (i in seq_along(mediator_vars)) {
+      coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_y, mediator_internal[i], mediator_vars[i], "Mediator", "Path b", lookup_label(mediator_vars[i]), sort_key = 40 + i, model_component = "Outcome model", outcome = outcome_var, outcome_label = lookup_label(outcome_var), target_outcome = outcome_var, target_outcome_label = lookup_label(outcome_var), x_var = x_var, x_label = lookup_label(x_var), mediator = mediator_vars[i], mediator_label = lookup_label(mediator_vars[i]), moderator = w_var, moderator_label = lookup_label(w_var), block_order = length(mediator_vars) + 1L, table_block_key = table_key_y, analysis_key = analysis_key)
+    }
+    if (has_w && (direct_mod || second_stage_mod || mod == 5L)) {
+      coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_y, "w_pm", w_var, "Moderator", "Moderator main effect", lookup_label(w_var), sort_key = 120, model_component = "Outcome model", outcome = outcome_var, outcome_label = lookup_label(outcome_var), target_outcome = outcome_var, target_outcome_label = lookup_label(outcome_var), x_var = x_var, x_label = lookup_label(x_var), mediator = paste(mediator_vars, collapse = " + "), mediator_label = paste(vapply(mediator_vars, lookup_label, character(1)), collapse = " + "), moderator = w_var, moderator_label = lookup_label(w_var), block_order = length(mediator_vars) + 1L, table_block_key = table_key_y, analysis_key = analysis_key)
+    }
+    if (direct_mod) {
+      coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_y, "xw_pm", paste0(x_var, ":", w_var), "Interaction", "Direct-effect interaction", paste0(lookup_label(x_var), " x ", lookup_label(w_var)), sort_key = 220, model_component = "Outcome model", outcome = outcome_var, outcome_label = lookup_label(outcome_var), target_outcome = outcome_var, target_outcome_label = lookup_label(outcome_var), x_var = x_var, x_label = lookup_label(x_var), mediator = paste(mediator_vars, collapse = " + "), mediator_label = paste(vapply(mediator_vars, lookup_label, character(1)), collapse = " + "), moderator = w_var, moderator_label = lookup_label(w_var), block_order = length(mediator_vars) + 1L, table_block_key = table_key_y, analysis_key = analysis_key)
+    }
+    if (second_stage_mod) {
+      for (i in seq_along(mediator_vars)) {
+        coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_y, paste0(mediator_internal[i], "w_pm"), paste0(mediator_vars[i], ":", w_var), "Interaction", "Second-stage interaction", paste0(lookup_label(mediator_vars[i]), " x ", lookup_label(w_var)), sort_key = 240 + i, model_component = "Outcome model", outcome = outcome_var, outcome_label = lookup_label(outcome_var), target_outcome = outcome_var, target_outcome_label = lookup_label(outcome_var), x_var = x_var, x_label = lookup_label(x_var), mediator = mediator_vars[i], mediator_label = lookup_label(mediator_vars[i]), moderator = w_var, moderator_label = lookup_label(w_var), block_order = length(mediator_vars) + 1L, table_block_key = table_key_y, analysis_key = analysis_key)
+      }
+    }
+    coef_rows[[length(coef_rows) + 1L]] <- cov_coef_rows_r_pm(fit_y, cov_term_map, "Outcome model", outcome_var, lookup_label(outcome_var), outcome_var, lookup_label(outcome_var), x_var, lookup_label(x_var), mediator = paste(mediator_vars, collapse = " + "), mediator_label = paste(vapply(mediator_vars, lookup_label, character(1)), collapse = " + "), moderator = w_var, moderator_label = lookup_label(w_var), block_order = length(mediator_vars) + 1L, table_block_key = table_key_y, analysis_key = analysis_key)
+    summary_rows[[length(summary_rows) + 1L]] <- model_summary_r_pm(fit_y, "Outcome model", outcome_var, lookup_label(outcome_var), outcome_var, lookup_label(outcome_var), x_var, lookup_label(x_var), mediator = paste(mediator_vars, collapse = " + "), mediator_label = paste(vapply(mediator_vars, lookup_label, character(1)), collapse = " + "), moderator = w_var, moderator_label = lookup_label(w_var), block_order = length(mediator_vars) + 1L, table_block_key = table_key_y, analysis_key = analysis_key)
+
+    effect_values <- function(d) {
+      out <- numeric(0)
+      for (i in seq_along(mediator_vars)) {
+        fit_m_i <- fit_linear_r_pm(make_formula_r_pm(mediator_internal[i], c("x_pm", if (first_stage_mod) c("w_pm", "xw_pm") else character(0), cov_rhs)), data = d, survey_bundle = survey_bundle)
+        fit_y_i <- fit_linear_r_pm(make_formula_r_pm("y_pm", rhs_y), data = d, survey_bundle = survey_bundle)
+        for (j in seq_len(if (has_w && mod %in% c(7L, 8L, 14L, 15L, 58L, 59L)) nrow(probe) else 1L)) {
+          wv <- if (has_w && mod %in% c(7L, 8L, 14L, 15L, 58L, 59L)) probe$centered[j] else 0
+          a_val <- coef_value_r_pm(fit_m_i, "x_pm") + if (first_stage_mod) coef_value_r_pm(fit_m_i, "xw_pm") * wv else 0
+          b_val <- coef_value_r_pm(fit_y_i, mediator_internal[i]) + if (second_stage_mod) coef_value_r_pm(fit_y_i, paste0(mediator_internal[i], "w_pm")) * wv else 0
+          nm <- paste0("ind_", i, "_", j)
+          out[nm] <- a_val * b_val
+        }
+        if (mod %in% c(7L, 8L)) out[paste0("imm_", i)] <- coef_value_r_pm(fit_m_i, "xw_pm") * coef_value_r_pm(fit_y_i, mediator_internal[i])
+        if (mod %in% c(14L, 15L)) out[paste0("imm_", i)] <- coef_value_r_pm(fit_m_i, "x_pm") * coef_value_r_pm(fit_y_i, paste0(mediator_internal[i], "w_pm"))
+      }
+      out
+    }
+
+    boot_mat <- NULL
+    if (isTRUE(bootstrap_enabled) && !isTRUE(use_survey)) {
+      n_boot <- suppressWarnings(as.integer(bootstrap_n))
+      if (!is.na(n_boot) && n_boot > 0L) {
+        t0 <- effect_values(dat)
+        boot_mat <- replicate(n_boot, {
+          ii <- sample.int(nrow(dat), nrow(dat), replace = TRUE)
+          val <- tryCatch(effect_values(dat[ii, , drop = FALSE]), error = function(e) rep(NA_real_, length(t0)))
+          val[names(t0)]
+        })
+        if (is.vector(boot_mat)) boot_mat <- matrix(boot_mat, nrow = length(t0))
+        boot_mat <- t(boot_mat)
+        colnames(boot_mat) <- names(t0)
+      }
+    }
+
+    add_indirect <- function(name, mediator_idx, contrast, a_val, b_val, direct_val = NA_real_, a_se = NA_real_, b_se = NA_real_) {
+      est <- a_val * b_val
+      se <- NA_real_
+      ll <- NA_real_
+      ul <- NA_real_
+      df_use <- NA_real_
+      se_method <- "Not computed"
+      ci_method <- "Not computed"
+      inference_note <- ""
+      if (!is.null(boot_mat) && name %in% colnames(boot_mat)) {
+        xx <- stats::na.omit(boot_mat[, name])
+        if (length(xx) >= 50L) {
+          se <- stats::sd(xx)
+          ll <- as.numeric(stats::quantile(xx, 0.025, na.rm = TRUE, type = 6))
+          ul <- as.numeric(stats::quantile(xx, 0.975, na.rm = TRUE, type = 6))
+          se_method <- "Bootstrap"
+          ci_method <- "Bootstrap percentile"
+        }
+      }
+      if (isTRUE(use_survey) && is.na(se)) {
+        se <- sqrt((b_val^2) * (a_se^2) + (a_val^2) * (b_se^2))
+        df_use <- min(fit_design_df_r_pm(mediator_fits[[mediator_internal[mediator_idx]]]), fit_design_df_r_pm(fit_y), na.rm = TRUE)
+        if (!is.finite(df_use) || df_use <= 0) df_use <- NA_real_
+        crit <- if (is.na(df_use)) stats::qnorm(0.975) else stats::qt(0.975, df = df_use)
+        ll <- est - crit * se
+        ul <- est + crit * se
+        se_method <- "Delta method"
+        ci_method <- if (is.na(df_use)) "Delta method normal approximation" else "Delta method t approximation"
+        inference_note <- "Survey indirect-effect SE/CI use a first-order delta-method approximation and do not include the covariance between component paths."
+      }
+      if (mod %in% c(58L, 59L)) {
+        model_note <- "Models 58 and 59 moderate both component paths; no single constant index of moderated mediation is reported. Interpret the conditional indirect effects and Johnson-Neyman plot."
+        inference_note <- paste(c(inference_note, model_note)[nzchar(c(inference_note, model_note))], collapse = " ")
+      }
+      z <- ifelse(is.na(se) || se == 0, NA_real_, est / se)
+      p <- if (is.na(z)) {
+        NA_real_
+      } else if (isTRUE(use_survey) && is.finite(df_use) && df_use > 0) {
+        2 * stats::pt(abs(z), df = df_use, lower.tail = FALSE)
+      } else {
+        2 * stats::pnorm(abs(z), lower.tail = FALSE)
+      }
+      data.frame(outcome = outcome_var, outcome_label = lookup_label(outcome_var), mediator = mediator_vars[mediator_idx], mediator_label = lookup_label(mediator_vars[mediator_idx]), moderator = w_var, moderator_label = lookup_label(w_var), x_var = x_var, x_label = lookup_label(x_var), class_contrast = contrast, a = a_val, a_se = NA_real_, a_p = NA_real_, b = b_val, b_se = NA_real_, b_p = NA_real_, c = direct_val, direct = direct_val, total = NA_real_, indirect = est, se = se, z_value = z, llci = ll, ulci = ul, p = p, p_fmt = fmt_p_pm(p), sig = sig_mark_pm(p), se_method = se_method, ci_method = ci_method, inference_note = inference_note, analysis_key = analysis_key, stringsAsFactors = FALSE)
+    }
+
+    build_indirect_jn_grid <- function(mediator_idx, n_points = 200L) {
+      if (!has_w || !mod %in% c(7L, 8L, 14L, 15L, 58L, 59L)) return(data.frame())
+      w_obs <- safe_num_pm(dat[[w_var]])
+      w_obs <- w_obs[is.finite(w_obs)]
+      if (length(w_obs) < 2L) return(data.frame())
+      w_range <- range(w_obs, na.rm = TRUE)
+      if (!all(is.finite(w_range)) || diff(w_range) <= 0) return(data.frame())
+
+      fit_m <- mediator_fits[[mediator_internal[mediator_idx]]]
+      df_use <- min(fit_design_df_r_pm(fit_m), fit_design_df_r_pm(fit_y), na.rm = TRUE)
+      if (!is.finite(df_use) || df_use <= 0) df_use <- NA_real_
+      crit <- if (is.na(df_use)) stats::qnorm(0.975) else stats::qt(0.975, df = df_use)
+      w_grid_raw <- seq(w_range[1], w_range[2], length.out = n_points)
+      w_grid_centered <- w_grid_raw - w_center
+      requested_ci_method <- tolower(as.character(PROCESS_SETTINGS$indirect_jn_ci_method %||% "delta")[1])
+      use_grid_bootstrap <- identical(requested_ci_method, "bootstrap") &&
+        !isTRUE(use_survey)
+      grid_boot_mat <- NULL
+      grid_boot_n <- 0L
+      if (isTRUE(use_grid_bootstrap)) {
+        n_grid_boot <- suppressWarnings(as.integer(PROCESS_SETTINGS$indirect_jn_bootstrap_n %||% bootstrap_n %||% 500L))
+        if (is.na(n_grid_boot)) n_grid_boot <- 500L
+        if (!is.na(n_grid_boot) && n_grid_boot >= 50L) {
+          set.seed(as.integer(PROCESS_SETTINGS$indirect_jn_bootstrap_seed %||% 271828L))
+          grid_boot_n <- n_grid_boot
+          grid_boot_mat <- matrix(NA_real_, nrow = grid_boot_n, ncol = length(w_grid_centered))
+          for (bb in seq_len(grid_boot_n)) {
+            d_bb <- dat[sample.int(nrow(dat), nrow(dat), replace = TRUE), , drop = FALSE]
+            fit_m_bb <- tryCatch(fit_linear_r_pm(make_formula_r_pm(mediator_internal[mediator_idx], c("x_pm", if (first_stage_mod) c("w_pm", "xw_pm") else character(0), cov_rhs)), data = d_bb, survey_bundle = NULL), error = function(e) NULL)
+            fit_y_bb <- tryCatch(fit_linear_r_pm(make_formula_r_pm("y_pm", rhs_y), data = d_bb, survey_bundle = NULL), error = function(e) NULL)
+            if (is.null(fit_m_bb) || is.null(fit_y_bb)) next
+            a0 <- coef_value_r_pm(fit_m_bb, "x_pm")
+            a1 <- if (first_stage_mod) coef_value_r_pm(fit_m_bb, "xw_pm") else 0
+            b0 <- coef_value_r_pm(fit_y_bb, mediator_internal[mediator_idx])
+            b1 <- if (second_stage_mod) coef_value_r_pm(fit_y_bb, paste0(mediator_internal[mediator_idx], "w_pm")) else 0
+            grid_boot_mat[bb, ] <- (a0 + a1 * w_grid_centered) * (b0 + b1 * w_grid_centered)
+          }
+        }
+      }
+
+      out <- lapply(seq_along(w_grid_raw), function(j) {
+        wv <- w_grid_centered[j]
+        a_lc <- lincomb_r_pm(fit_m, c(x_pm = 1, xw_pm = if (first_stage_mod) wv else 0))
+        b_weights <- c()
+        b_weights[mediator_internal[mediator_idx]] <- 1
+        if (second_stage_mod) b_weights[paste0(mediator_internal[mediator_idx], "w_pm")] <- wv
+        b_lc <- lincomb_r_pm(fit_y, b_weights)
+
+        a_val <- a_lc["estimate"]
+        b_val <- b_lc["estimate"]
+        est <- a_val * b_val
+        se <- sqrt((b_val^2) * (a_lc["se"]^2) + (a_val^2) * (b_lc["se"]^2))
+        if (!is.finite(se)) se <- NA_real_
+        ll <- if (is.na(se) || is.na(crit)) NA_real_ else est - crit * se
+        ul <- if (is.na(se) || is.na(crit)) NA_real_ else est + crit * se
+        se_method <- "Delta method"
+        ci_method <- if (is.na(df_use)) "Delta method normal approximation" else "Delta method t approximation"
+        note <- "Johnson-Neyman grid CI uses a first-order delta-method approximation and does not include the covariance between component paths."
+        if (!is.null(grid_boot_mat)) {
+          boot_vals <- stats::na.omit(grid_boot_mat[, j])
+          if (length(boot_vals) >= 50L) {
+            se <- stats::sd(boot_vals)
+            ll <- as.numeric(stats::quantile(boot_vals, 0.025, na.rm = TRUE, type = 6))
+            ul <- as.numeric(stats::quantile(boot_vals, 0.975, na.rm = TRUE, type = 6))
+            se_method <- "Bootstrap"
+            ci_method <- paste0("Bootstrap percentile grid CI (B=", length(boot_vals), ")")
+            note <- "Johnson-Neyman grid CI uses bootstrap percentile intervals; this option is computationally intensive because path models are refit repeatedly."
+          }
+        }
+        z <- if (is.na(se) || se == 0) NA_real_ else est / se
+        p <- if (is.na(z)) {
+          NA_real_
+        } else if (is.finite(df_use) && df_use > 0) {
+          2 * stats::pt(abs(z), df = df_use, lower.tail = FALSE)
+        } else {
+          2 * stats::pnorm(abs(z), lower.tail = FALSE)
+        }
+        if (identical(requested_ci_method, "bootstrap") && isTRUE(use_survey)) {
+          note <- paste(
+            "For survey-weighted fits, bootstrap grid CI is not used; delta-method grid CI is reported.",
+            note
+          )
+        } else if (identical(requested_ci_method, "bootstrap") && is.null(grid_boot_mat)) {
+          note <- paste(
+            "Bootstrap grid CI was requested but fewer than 50 bootstrap refits were available; delta-method grid CI is reported.",
+            note
+          )
+        }
+        if (isTRUE(use_survey) && !identical(requested_ci_method, "bootstrap")) {
+          note <- paste("Survey-weighted", note)
+        }
+        if (mod %in% c(58L, 59L)) {
+          note <- paste(
+            note,
+            "Models 58 and 59 moderate both component paths; the indirect-effect curve is computed directly across the moderator grid."
+          )
+        }
+        data.frame(
+          outcome = outcome_var,
+          outcome_label = lookup_label(outcome_var),
+          mediator = mediator_vars[mediator_idx],
+          mediator_label = lookup_label(mediator_vars[mediator_idx]),
+          moderator = w_var,
+          moderator_label = lookup_label(w_var),
+          x_var = x_var,
+          x_label = lookup_label(x_var),
+          moderator_value = w_grid_raw[j],
+          moderator_centered = wv,
+          a = a_val,
+          b = b_val,
+          indirect_effect = est,
+          se = se,
+          z_value = z,
+          p = p,
+          llci = ll,
+          ulci = ul,
+          se_method = se_method,
+          ci_method = ci_method,
+          indirect_jn_ci_method_requested = requested_ci_method,
+          indirect_jn_bootstrap_n = grid_boot_n,
+          inference_note = note,
+          analysis_key = analysis_key,
+          stringsAsFactors = FALSE
+        )
+      })
+      out <- do.call(rbind, out)
+      rownames(out) <- NULL
+      out
+    }
+
+    for (i in seq_along(mediator_vars)) {
+      fit_m <- mediator_fits[[mediator_internal[i]]]
+      probe_n <- if (has_w && mod %in% c(7L, 8L, 14L, 15L, 58L, 59L)) nrow(probe) else 1L
+      for (j in seq_len(probe_n)) {
+        wv <- if (probe_n > 1L) probe$centered[j] else 0
+        a_lc <- lincomb_r_pm(fit_m, c(x_pm = 1, xw_pm = if (first_stage_mod) wv else 0))
+        b_weights <- c()
+        b_weights[mediator_internal[i]] <- 1
+        if (second_stage_mod) b_weights[paste0(mediator_internal[i], "w_pm")] <- wv
+        b_lc <- lincomb_r_pm(fit_y, b_weights)
+        direct_lc <- lincomb_r_pm(fit_y, c(x_pm = 1, xw_pm = if (direct_mod) wv else 0))
+        if (first_stage_mod) {
+          conditional_rows[[length(conditional_rows) + 1L]] <- data.frame(outcome = mediator_vars[i], outcome_label = lookup_label(mediator_vars[i]), target_outcome = outcome_var, target_outcome_label = lookup_label(outcome_var), x_var = x_var, x_label = lookup_label(x_var), mediator = mediator_vars[i], mediator_label = lookup_label(mediator_vars[i]), moderator = w_var, moderator_label = lookup_label(w_var), class_num = probe$class_num[j], class_contrast = probe$class_contrast[j], conditional_effect = a_lc["estimate"], se = a_lc["se"], t_value = a_lc["t_value"], p = a_lc["p"], llci = a_lc["llci"], ulci = a_lc["ulci"], n = stats::nobs(fit_m), analysis_key = analysis_key, stringsAsFactors = FALSE)
+        }
+        if (second_stage_mod) {
+          conditional_rows[[length(conditional_rows) + 1L]] <- data.frame(outcome = outcome_var, outcome_label = lookup_label(outcome_var), target_outcome = outcome_var, target_outcome_label = lookup_label(outcome_var), x_var = mediator_vars[i], x_label = lookup_label(mediator_vars[i]), mediator = mediator_vars[i], mediator_label = lookup_label(mediator_vars[i]), moderator = w_var, moderator_label = lookup_label(w_var), class_num = probe$class_num[j], class_contrast = probe$class_contrast[j], conditional_effect = b_lc["estimate"], se = b_lc["se"], t_value = b_lc["t_value"], p = b_lc["p"], llci = b_lc["llci"], ulci = b_lc["ulci"], n = stats::nobs(fit_y), analysis_key = analysis_key, stringsAsFactors = FALSE)
+        }
+        if (direct_mod) {
+          conditional_rows[[length(conditional_rows) + 1L]] <- data.frame(outcome = outcome_var, outcome_label = lookup_label(outcome_var), target_outcome = outcome_var, target_outcome_label = lookup_label(outcome_var), x_var = x_var, x_label = lookup_label(x_var), mediator = mediator_vars[i], mediator_label = lookup_label(mediator_vars[i]), moderator = w_var, moderator_label = lookup_label(w_var), class_num = if (probe_n > 1L) probe$class_num[j] else j, class_contrast = if (probe_n > 1L) probe$class_contrast[j] else "Direct effect", conditional_effect = direct_lc["estimate"], se = direct_lc["se"], t_value = direct_lc["t_value"], p = direct_lc["p"], llci = direct_lc["llci"], ulci = direct_lc["ulci"], n = stats::nobs(fit_y), analysis_key = analysis_key, stringsAsFactors = FALSE)
+        }
+        contrast <- if (probe_n > 1L) paste0("Conditional indirect effect at ", probe$class_contrast[j]) else "Indirect effect"
+        indirect_rows[[length(indirect_rows) + 1L]] <- add_indirect(
+          paste0("ind_", i, "_", j),
+          i,
+          contrast,
+          a_lc["estimate"],
+          b_lc["estimate"],
+          direct_lc["estimate"],
+          a_se = a_lc["se"],
+          b_se = b_lc["se"]
+        )
+      }
+      if (mod %in% c(7L, 8L, 14L, 15L)) {
+        imm_name <- paste0("imm_", i)
+        imm_est <- effect_values(dat)[imm_name]
+        se <- ll <- ul <- NA_real_
+        if (!is.null(boot_mat) && imm_name %in% colnames(boot_mat)) {
+          xx <- stats::na.omit(boot_mat[, imm_name])
+          if (length(xx) >= 50L) {
+            se <- stats::sd(xx)
+            ll <- as.numeric(stats::quantile(xx, 0.025, na.rm = TRUE, type = 6))
+            ul <- as.numeric(stats::quantile(xx, 0.975, na.rm = TRUE, type = 6))
+          }
+        }
+        z <- ifelse(is.na(se) || se == 0, NA_real_, imm_est / se)
+        p <- ifelse(is.na(z), NA_real_, 2 * stats::pnorm(abs(z), lower.tail = FALSE))
+        indirect_rows[[length(indirect_rows) + 1L]] <- data.frame(outcome = outcome_var, outcome_label = lookup_label(outcome_var), mediator = mediator_vars[i], mediator_label = lookup_label(mediator_vars[i]), moderator = w_var, moderator_label = lookup_label(w_var), x_var = x_var, x_label = lookup_label(x_var), class_contrast = "Index of moderated mediation", a = NA_real_, a_se = NA_real_, a_p = NA_real_, b = NA_real_, b_se = NA_real_, b_p = NA_real_, c = NA_real_, direct = NA_real_, total = NA_real_, indirect = imm_est, se = se, z_value = z, llci = ll, ulci = ul, p = p, p_fmt = fmt_p_pm(p), sig = sig_mark_pm(p), se_method = if (!is.null(boot_mat) && imm_name %in% colnames(boot_mat)) "Bootstrap" else "Not computed", ci_method = if (!is.na(ll) && !is.na(ul)) "Bootstrap percentile" else "Not computed", inference_note = if (isTRUE(use_survey)) "Survey backend reports the index estimate; SE/CI for the index are not computed without resampling." else "", analysis_key = analysis_key, stringsAsFactors = FALSE)
+      }
+      grid_points_i <- suppressWarnings(as.integer(PROCESS_SETTINGS$indirect_jn_grid_points %||% 200L))
+      if (is.na(grid_points_i) || grid_points_i < 20L) grid_points_i <- 200L
+      grid_i <- build_indirect_jn_grid(i, n_points = grid_points_i)
+      if (is.data.frame(grid_i) && nrow(grid_i) > 0) {
+        indirect_jn_grid_rows[[length(indirect_jn_grid_rows) + 1L]] <- grid_i
+      }
+    }
+  }
+
+  coef_rows <- coef_rows[vapply(coef_rows, nrow, integer(1)) > 0]
+  coefficients <- if (length(coef_rows) > 0) do.call(rbind, coef_rows) else data.frame()
+  if (is.data.frame(coefficients) && nrow(coefficients) > 0) {
+    coefficients$p_fmt <- fmt_p_pm(coefficients$p)
+    coefficients$sig <- sig_mark_pm(coefficients$p)
+    coefficients <- coefficients[order(coefficients$model_component, coefficients$block_order, coefficients$sort_key, coefficients$term_label), , drop = FALSE]
+    rownames(coefficients) <- NULL
+  }
+  summary_df <- if (length(summary_rows) > 0) do.call(rbind, summary_rows) else data.frame()
+  indirect_df <- if (length(indirect_rows) > 0) do.call(rbind, indirect_rows) else data.frame()
+  indirect_jn_grid_df <- if (length(indirect_jn_grid_rows) > 0) do.call(rbind, indirect_jn_grid_rows) else data.frame()
+  if (is.data.frame(indirect_jn_grid_df) && nrow(indirect_jn_grid_df) > 0) {
+    if (!exists("PROCESS_INDIRECT_JN_GRID_LIST", inherits = TRUE)) {
+      PROCESS_INDIRECT_JN_GRID_LIST <<- list()
+    }
+    PROCESS_INDIRECT_JN_GRID_LIST[[length(PROCESS_INDIRECT_JN_GRID_LIST) + 1L]] <<- indirect_jn_grid_df
+  }
+  conditional_df <- if (length(conditional_rows) > 0) do.call(rbind, conditional_rows) else data.frame()
+  if (is.data.frame(conditional_df) && nrow(conditional_df) > 0) {
+    conditional_df$p_fmt <- fmt_p_pm(conditional_df$p)
+    conditional_df$sig <- sig_mark_pm(conditional_df$p)
+  }
+  list(
+    coefficients = coefficients,
+    summary = summary_df,
+    indirect = indirect_df,
+    indirect_jn_grid = indirect_jn_grid_df,
+    conditional_effects = conditional_df,
+    run_info = data.frame()
+  )
+}
+
+fit_observed_r_model6 <- function(df, outcome_var, x_var, mediator_vars, covariates = character(0),
+                                  bootstrap_enabled = TRUE, bootstrap_n = 5000L,
+                                  bootstrap_ci = "bca", survey_bundle = NULL) {
+  if (is.null(survey_bundle) && exists("PROCESS_SURVEY_BACKEND_BUNDLE", inherits = TRUE)) {
+    survey_bundle <- PROCESS_SURVEY_BACKEND_BUNDLE
+  }
+  mediator_vars <- unique(as.character(mediator_vars))
+  mediator_vars <- mediator_vars[!is.na(mediator_vars) & nzchar(mediator_vars)]
+  if (!length(mediator_vars) %in% c(2L, 3L)) {
+    stop("PROCESS model 6 currently requires 2 or 3 mediators in serial order.", call. = FALSE)
+  }
+
+  use_survey <- !is.null(survey_bundle)
+  survey_terms <- if (use_survey) {
+    c(survey_bundle$weight_var, survey_bundle$strata_var, survey_bundle$cluster_var, survey_bundle$subset_var)
+  } else {
+    character(0)
+  }
+  needed <- unique(c(outcome_var, x_var, mediator_vars, covariates, survey_terms))
+  needed <- needed[!is.na(needed) & nzchar(needed) & needed %in% names(df)]
+  dat <- df[, needed, drop = FALSE]
+  if (use_survey) dat <- apply_survey_subset_r_pm(dat, survey_bundle)
+  if (!all(c(outcome_var, x_var, mediator_vars) %in% names(dat))) return(NULL)
+  dat[[outcome_var]] <- safe_num_pm(dat[[outcome_var]])
+  dat[[x_var]] <- safe_num_pm(dat[[x_var]])
+  for (mm in mediator_vars) dat[[mm]] <- safe_num_pm(dat[[mm]])
+
+  cov_keep <- covariates[covariates %in% names(dat)]
+  cov_prep <- prepare_covariates(dat, cov_keep)
+  dat <- cov_prep$data
+  cov_rhs <- cov_prep$rhs_terms
+  cov_term_map <- cov_prep$term_map
+
+  core_terms <- unique(c(outcome_var, x_var, mediator_vars, cov_rhs))
+  core_terms <- core_terms[core_terms %in% names(dat)]
+  dat <- dat[stats::complete.cases(dat[, core_terms, drop = FALSE]), , drop = FALSE]
+  if (nrow(dat) == 0) return(NULL)
+
+  dat$x_pm <- dat[[x_var]]
+  dat$y_pm <- dat[[outcome_var]]
+  mediator_internal <- sprintf("m%02d_pm", seq_along(mediator_vars))
+  for (i in seq_along(mediator_vars)) dat[[mediator_internal[i]]] <- dat[[mediator_vars[i]]]
+
+  med_map <- data.frame(
+    mediator_var = mediator_vars,
+    mediator_label = vapply(mediator_vars, lookup_label, character(1)),
+    export_name = mediator_internal,
+    stringsAsFactors = FALSE
+  )
+  n_med <- nrow(med_map)
+  analysis_key <- paste(outcome_var, x_var, paste(med_map$mediator_var, collapse = "|"), sep = " | ")
+
+  mediator_fits <- vector("list", n_med)
+  for (i in seq_len(n_med)) {
+    rhs_i <- c("x_pm", if (i > 1L) mediator_internal[seq_len(i - 1L)] else character(0), cov_rhs)
+    mediator_fits[[i]] <- fit_linear_r_pm(make_formula_r_pm(mediator_internal[i], rhs_i), data = dat, survey_bundle = survey_bundle)
+    process_register_regression_diagnostics(
+      mediator_fits[[i]], "Mediator model", mediator_vars[i], lookup_label(mediator_vars[i]),
+      outcome_var, lookup_label(outcome_var), paste0("Serial mediator model: ", lookup_label(mediator_vars[i])),
+      x_var, lookup_label(x_var), mediator = mediator_vars[i],
+      mediator_label = lookup_label(mediator_vars[i]), block_order = i,
+      table_block_key = paste0(analysis_key, " | med | ", mediator_vars[i]),
+      analysis_key = analysis_key
+    )
+  }
+  fit_y <- fit_linear_r_pm(make_formula_r_pm("y_pm", c("x_pm", mediator_internal, cov_rhs)), data = dat, survey_bundle = survey_bundle)
+  process_register_regression_diagnostics(
+    fit_y, "Outcome model", outcome_var, lookup_label(outcome_var),
+    outcome_var, lookup_label(outcome_var), "Serial mediation outcome model",
+    x_var, lookup_label(x_var), mediator = paste(mediator_vars, collapse = "|"),
+    mediator_label = paste(vapply(mediator_vars, lookup_label, character(1)), collapse = " -> "),
+    block_order = n_med + 1L, table_block_key = paste0(analysis_key, " | outcome"),
+    analysis_key = analysis_key
+  )
+
+  coef_rows <- list()
+  for (i in seq_len(n_med)) {
+    med_i <- med_map[i, , drop = FALSE]
+    block_key_i <- paste0(analysis_key, " | med | ", med_i$mediator_var[1])
+    fit_i <- mediator_fits[[i]]
+    coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_i, "(Intercept)", "(Intercept)", "Intercept", "Mediator model", "Intercept", "Intercept", 10, "Mediator model", med_i$mediator_var[1], med_i$mediator_label[1], outcome_var, lookup_label(outcome_var), x_var, lookup_label(x_var), mediator = med_i$mediator_var[1], mediator_label = med_i$mediator_label[1], block_order = i, table_block_key = block_key_i, analysis_key = analysis_key)
+    coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_i, "x_pm", x_var, "Independent variable", "Mediator model", lookup_label(x_var), lookup_label(x_var), 20, "Mediator model", med_i$mediator_var[1], med_i$mediator_label[1], outcome_var, lookup_label(outcome_var), x_var, lookup_label(x_var), mediator = med_i$mediator_var[1], mediator_label = med_i$mediator_label[1], block_order = i, table_block_key = block_key_i, analysis_key = analysis_key)
+    if (i > 1L) {
+      for (j in seq_len(i - 1L)) {
+        coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_i, mediator_internal[j], mediator_vars[j], "Mediator", "Mediator model", lookup_label(mediator_vars[j]), lookup_label(mediator_vars[j]), 20 + j, "Mediator model", med_i$mediator_var[1], med_i$mediator_label[1], outcome_var, lookup_label(outcome_var), x_var, lookup_label(x_var), mediator = med_i$mediator_var[1], mediator_label = med_i$mediator_label[1], block_order = i, table_block_key = block_key_i, analysis_key = analysis_key)
+      }
+    }
+    coef_rows[[length(coef_rows) + 1L]] <- cov_coef_rows_r_pm(fit_i, cov_term_map, "Mediator model", med_i$mediator_var[1], med_i$mediator_label[1], outcome_var, lookup_label(outcome_var), x_var, lookup_label(x_var), mediator = med_i$mediator_var[1], mediator_label = med_i$mediator_label[1], block_order = i, table_block_key = block_key_i, analysis_key = analysis_key)
+  }
+
+  outcome_block_key <- paste0(analysis_key, " | outcome")
+  mediator_set_var <- paste(med_map$mediator_var, collapse = "|")
+  mediator_set_label <- paste(med_map$mediator_label, collapse = " -> ")
+  coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_y, "(Intercept)", "(Intercept)", "Intercept", "Outcome model", "Intercept", "Intercept", 1000010, "Outcome model", outcome_var, lookup_label(outcome_var), outcome_var, lookup_label(outcome_var), x_var, lookup_label(x_var), mediator = mediator_set_var, mediator_label = mediator_set_label, block_order = n_med + 1L, table_block_key = outcome_block_key, analysis_key = analysis_key)
+  coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_y, "x_pm", x_var, "Independent variable", "Outcome model", lookup_label(x_var), lookup_label(x_var), 1000020, "Outcome model", outcome_var, lookup_label(outcome_var), outcome_var, lookup_label(outcome_var), x_var, lookup_label(x_var), mediator = mediator_set_var, mediator_label = mediator_set_label, block_order = n_med + 1L, table_block_key = outcome_block_key, analysis_key = analysis_key)
+  for (i in seq_len(n_med)) {
+    coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_y, mediator_internal[i], mediator_vars[i], "Mediator", "Outcome model", med_map$mediator_label[i], med_map$mediator_label[i], 1000030 + i, "Outcome model", outcome_var, lookup_label(outcome_var), outcome_var, lookup_label(outcome_var), x_var, lookup_label(x_var), mediator = mediator_set_var, mediator_label = mediator_set_label, block_order = n_med + 1L, table_block_key = outcome_block_key, analysis_key = analysis_key)
+  }
+  coef_rows[[length(coef_rows) + 1L]] <- cov_coef_rows_r_pm(fit_y, cov_term_map, "Outcome model", outcome_var, lookup_label(outcome_var), outcome_var, lookup_label(outcome_var), x_var, lookup_label(x_var), mediator = mediator_set_var, mediator_label = mediator_set_label, block_order = n_med + 1L, table_block_key = outcome_block_key, analysis_key = analysis_key)
+
+  coef_rows <- coef_rows[vapply(coef_rows, nrow, integer(1)) > 0]
+  coef_df <- if (length(coef_rows) > 0) do.call(rbind, coef_rows) else data.frame()
+  if (is.data.frame(coef_df) && nrow(coef_df) > 0) {
+    coef_df <- coef_df[order(coef_df$block_order, coef_df$sort_key, coef_df$term_label), , drop = FALSE]
+    rownames(coef_df) <- NULL
+  }
+
+  summary_rows <- list()
+  for (i in seq_len(n_med)) {
+    med_i <- med_map[i, , drop = FALSE]
+    block_key_i <- paste0(analysis_key, " | med | ", med_i$mediator_var[1])
+    summary_rows[[length(summary_rows) + 1L]] <- model_summary_r_pm(
+      mediator_fits[[i]], "Mediator model", med_i$mediator_var[1], med_i$mediator_label[1],
+      outcome_var, lookup_label(outcome_var), x_var, lookup_label(x_var),
+      mediator = med_i$mediator_var[1], mediator_label = med_i$mediator_label[1],
+      block_order = i, table_block_key = block_key_i, analysis_key = analysis_key
+    )
+  }
+  summary_rows[[length(summary_rows) + 1L]] <- model_summary_r_pm(
+    fit_y, "Outcome model", outcome_var, lookup_label(outcome_var),
+    outcome_var, lookup_label(outcome_var), x_var, lookup_label(x_var),
+    mediator = mediator_set_var, mediator_label = mediator_set_label,
+    block_order = n_med + 1L, table_block_key = outcome_block_key, analysis_key = analysis_key
+  )
+  summary_df <- do.call(rbind, summary_rows)
+
+  effect_values <- function(d) {
+    fits_m <- vector("list", n_med)
+    for (i in seq_len(n_med)) {
+      rhs_i <- c("x_pm", if (i > 1L) mediator_internal[seq_len(i - 1L)] else character(0), cov_rhs)
+      fits_m[[i]] <- fit_linear_r_pm(make_formula_r_pm(mediator_internal[i], rhs_i), data = d, survey_bundle = survey_bundle)
+    }
+    fit_y_i <- fit_linear_r_pm(make_formula_r_pm("y_pm", c("x_pm", mediator_internal, cov_rhs)), data = d, survey_bundle = survey_bundle)
+    vals <- numeric(0)
+    for (i in seq_len(n_med)) vals[paste0("a", i)] <- coef_value_r_pm(fits_m[[i]], "x_pm")
+    for (i in seq_len(n_med)) vals[paste0("b", i)] <- coef_value_r_pm(fit_y_i, mediator_internal[i])
+    if (n_med >= 2L) {
+      vals["d21"] <- coef_value_r_pm(fits_m[[2]], mediator_internal[1])
+    }
+    if (n_med == 3L) {
+      vals["d31"] <- coef_value_r_pm(fits_m[[3]], mediator_internal[1])
+      vals["d32"] <- coef_value_r_pm(fits_m[[3]], mediator_internal[2])
+    }
+    defs <- build_model6_effect_defs_pm(med_map)
+    env <- list2env(as.list(vals), parent = baseenv())
+    out <- vapply(defs, function(def) {
+      tryCatch(eval(parse(text = def$expr), envir = env), error = function(e) NA_real_)
+    }, numeric(1))
+    names(out) <- vapply(defs, `[[`, character(1), "param")
+    out
+  }
+
+  point_effects <- effect_values(dat)
+  boot_mat <- NULL
+  if (isTRUE(bootstrap_enabled) && !isTRUE(use_survey)) {
+    n_boot <- suppressWarnings(as.integer(bootstrap_n))
+    if (!is.na(n_boot) && n_boot > 0L && length(point_effects) > 0L) {
+      boot_mat <- replicate(n_boot, {
+        ii <- sample.int(nrow(dat), nrow(dat), replace = TRUE)
+        val <- tryCatch(effect_values(dat[ii, , drop = FALSE]), error = function(e) rep(NA_real_, length(point_effects)))
+        val[names(point_effects)]
+      })
+      if (is.vector(boot_mat)) boot_mat <- matrix(boot_mat, nrow = length(point_effects))
+      boot_mat <- t(boot_mat)
+      colnames(boot_mat) <- names(point_effects)
+    }
+  }
+
+  indirect_row_from_value <- function(label, contrast, value, boot_name = NA_character_) {
+    se <- ll <- ul <- NA_real_
+    if (!is.null(boot_mat) && !is.na(boot_name) && boot_name %in% colnames(boot_mat)) {
+      xx <- stats::na.omit(boot_mat[, boot_name])
+      if (length(xx) >= 50L) {
+        se <- stats::sd(xx)
+        ll <- as.numeric(stats::quantile(xx, 0.025, na.rm = TRUE, type = 6))
+        ul <- as.numeric(stats::quantile(xx, 0.975, na.rm = TRUE, type = 6))
+      }
+    }
+    z <- ifelse(is.na(se) || se == 0, NA_real_, value / se)
+    p <- ifelse(is.na(z), NA_real_, 2 * stats::pnorm(abs(z), lower.tail = FALSE))
+    data.frame(
+      outcome = outcome_var,
+      outcome_label = lookup_label(outcome_var),
+      mediator = label,
+      mediator_label = label,
+      x_var = x_var,
+      x_label = lookup_label(x_var),
+      class_contrast = contrast,
+      a = NA_real_,
+      a_se = NA_real_,
+      a_p = NA_real_,
+      b = NA_real_,
+      b_se = NA_real_,
+      b_p = NA_real_,
+      direct = coef_value_r_pm(fit_y, "x_pm"),
+      total = coef_value_r_pm(fit_y, "x_pm") + sum(point_effects, na.rm = TRUE),
+      indirect = value,
+      se = se,
+      z_value = z,
+      llci = ll,
+      ulci = ul,
+      p = p,
+      p_fmt = fmt_p_pm(p),
+      sig = sig_mark_pm(p),
+      analysis_key = analysis_key,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  defs <- build_model6_effect_defs_pm(med_map)
+  indirect_rows <- list()
+  for (i in seq_along(defs)) {
+    def <- defs[[i]]
+    indirect_rows[[length(indirect_rows) + 1L]] <- indirect_row_from_value(
+      label = def$label,
+      contrast = "Indirect effect",
+      value = point_effects[def$param],
+      boot_name = def$param
+    )
+  }
+  if (length(defs) >= 2L) {
+    pair_idx <- utils::combn(seq_along(defs), 2, simplify = FALSE)
+    for (k in seq_along(pair_idx)) {
+      ij <- pair_idx[[k]]
+      left <- defs[[ij[1]]]
+      right <- defs[[ij[2]]]
+      diff_name <- sprintf("de%02d%02d", ij[1], ij[2])
+      value <- point_effects[left$param] - point_effects[right$param]
+      if (!is.null(boot_mat) && all(c(left$param, right$param) %in% colnames(boot_mat))) {
+        boot_mat <- cbind(boot_mat, stats::setNames(boot_mat[, left$param] - boot_mat[, right$param], diff_name))
+      }
+      indirect_rows[[length(indirect_rows) + 1L]] <- indirect_row_from_value(
+        label = paste0(left$label, " - ", right$label),
+        contrast = "Indirect effect difference",
+        value = value,
+        boot_name = diff_name
+      )
+    }
+  }
+  indirect_df <- if (length(indirect_rows) > 0) do.call(rbind, indirect_rows) else data.frame()
+
+  list(
+    coefficients = coef_df,
+    summary = summary_df,
+    indirect = indirect_df,
+    conditional_effects = data.frame(),
+    run_info = data.frame()
+  )
+}
+
+fit_observed_r_model1_multi <- function(df, outcome_var, x_vars, w_var, covariates = character(0), survey_bundle = NULL) {
+  if (is.null(survey_bundle) && exists("PROCESS_SURVEY_BACKEND_BUNDLE", inherits = TRUE)) {
+    survey_bundle <- PROCESS_SURVEY_BACKEND_BUNDLE
+  }
+  x_vars <- unique(as.character(x_vars))
+  x_vars <- x_vars[!is.na(x_vars) & nzchar(x_vars)]
+  if (length(x_vars) < 1L || !nzchar(w_var %||% "")) return(NULL)
+
+  use_survey <- !is.null(survey_bundle)
+  survey_terms <- if (use_survey) {
+    c(survey_bundle$weight_var, survey_bundle$strata_var, survey_bundle$cluster_var, survey_bundle$subset_var)
+  } else {
+    character(0)
+  }
+  needed <- unique(c(outcome_var, x_vars, w_var, covariates, survey_terms))
+  needed <- needed[!is.na(needed) & nzchar(needed) & needed %in% names(df)]
+  dat <- df[, needed, drop = FALSE]
+  if (use_survey) dat <- apply_survey_subset_r_pm(dat, survey_bundle)
+  if (!all(c(outcome_var, x_vars, w_var) %in% names(dat))) return(NULL)
+  dat[[outcome_var]] <- safe_num_pm(dat[[outcome_var]])
+  for (xx in x_vars) dat[[xx]] <- safe_num_pm(dat[[xx]])
+  dat[[w_var]] <- safe_num_pm(dat[[w_var]])
+
+  cov_keep <- covariates[covariates %in% names(dat)]
+  cov_prep <- prepare_covariates(dat, cov_keep)
+  dat <- cov_prep$data
+  cov_rhs <- cov_prep$rhs_terms
+  cov_term_map <- cov_prep$term_map
+
+  complete_terms <- unique(c(outcome_var, x_vars, w_var, cov_rhs))
+  complete_terms <- complete_terms[complete_terms %in% names(dat)]
+  dat <- dat[stats::complete.cases(dat[, complete_terms, drop = FALSE]), , drop = FALSE]
+  if (nrow(dat) == 0) return(NULL)
+
+  dat$y_pm <- dat[[outcome_var]]
+  w_center <- if (identical(PROCESS_SETTINGS$centering_method %||% "weighted_mean", "none")) 0 else mean(dat[[w_var]], na.rm = TRUE)
+  dat$w_pm <- dat[[w_var]] - w_center
+  probe <- probe_specs_r_pm(dat, w_var = w_var, w_center = w_center)
+
+  x_internal <- sprintf("x%02d_pm", seq_along(x_vars))
+  xw_internal <- sprintf("x%02dw_pm", seq_along(x_vars))
+  for (i in seq_along(x_vars)) {
+    dat[[x_internal[i]]] <- dat[[x_vars[i]]]
+    dat[[xw_internal[i]]] <- dat[[x_internal[i]]] * dat$w_pm
+  }
+
+  rhs <- c(x_internal, "w_pm", xw_internal, cov_rhs)
+  fit_y <- fit_linear_r_pm(make_formula_r_pm("y_pm", rhs), data = dat, survey_bundle = survey_bundle)
+  analysis_key <- paste(lookup_label(outcome_var), paste(vapply(x_vars, lookup_label, character(1)), collapse = " + "), lookup_label(w_var), sep = " | ")
+  process_register_regression_diagnostics(
+    fit_y, "Outcome model", outcome_var, lookup_label(outcome_var),
+    outcome_var, lookup_label(outcome_var), "Moderation outcome model",
+    paste(x_vars, collapse = "|"), paste(vapply(x_vars, lookup_label, character(1)), collapse = " + "),
+    moderator = w_var, moderator_label = lookup_label(w_var), analysis_key = analysis_key
+  )
+
+  coef_rows <- list()
+  coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_y, "(Intercept)", "(Intercept)", "Intercept", "Intercept", "Intercept", "Intercept", 10, "Outcome model", outcome_var, lookup_label(outcome_var), outcome_var, lookup_label(outcome_var), paste(x_vars, collapse = "|"), paste(vapply(x_vars, lookup_label, character(1)), collapse = " + "), moderator = w_var, moderator_label = lookup_label(w_var), analysis_key = analysis_key)
+  for (i in seq_along(x_vars)) {
+    coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_y, x_internal[i], x_vars[i], "Independent variable", "Independent variable main effect", lookup_label(x_vars[i]), lookup_label(x_vars[i]), 20 + i, "Outcome model", outcome_var, lookup_label(outcome_var), outcome_var, lookup_label(outcome_var), x_vars[i], lookup_label(x_vars[i]), moderator = w_var, moderator_label = lookup_label(w_var), analysis_key = analysis_key)
+  }
+  coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_y, "w_pm", w_var, "Moderator", "Moderator main effect", lookup_label(w_var), lookup_label(w_var), 120, "Outcome model", outcome_var, lookup_label(outcome_var), outcome_var, lookup_label(outcome_var), paste(x_vars, collapse = "|"), paste(vapply(x_vars, lookup_label, character(1)), collapse = " + "), moderator = w_var, moderator_label = lookup_label(w_var), analysis_key = analysis_key)
+  for (i in seq_along(x_vars)) {
+    coef_rows[[length(coef_rows) + 1L]] <- coef_row_r_pm(fit_y, xw_internal[i], paste0(x_vars[i], ":", w_var), "Interaction", "Interaction", paste0(lookup_label(x_vars[i]), " x ", lookup_label(w_var)), paste0(lookup_label(x_vars[i]), " x ", lookup_label(w_var)), 220 + i, "Outcome model", outcome_var, lookup_label(outcome_var), outcome_var, lookup_label(outcome_var), x_vars[i], lookup_label(x_vars[i]), moderator = w_var, moderator_label = lookup_label(w_var), analysis_key = analysis_key)
+  }
+  coef_rows[[length(coef_rows) + 1L]] <- cov_coef_rows_r_pm(fit_y, cov_term_map, "Outcome model", outcome_var, lookup_label(outcome_var), outcome_var, lookup_label(outcome_var), paste(x_vars, collapse = "|"), paste(vapply(x_vars, lookup_label, character(1)), collapse = " + "), moderator = w_var, moderator_label = lookup_label(w_var), analysis_key = analysis_key)
+  coef_rows <- coef_rows[vapply(coef_rows, nrow, integer(1)) > 0]
+  coef_df <- if (length(coef_rows) > 0) do.call(rbind, coef_rows) else data.frame()
+  if (is.data.frame(coef_df) && nrow(coef_df) > 0) {
+    coef_df <- coef_df[order(coef_df$sort_key, coef_df$term_label), , drop = FALSE]
+    rownames(coef_df) <- NULL
+  }
+
+  summary_df <- model_summary_r_pm(
+    fit_y, "Outcome model", outcome_var, lookup_label(outcome_var),
+    outcome_var, lookup_label(outcome_var),
+    paste(x_vars, collapse = "|"), paste(vapply(x_vars, lookup_label, character(1)), collapse = " + "),
+    moderator = w_var, moderator_label = lookup_label(w_var), analysis_key = analysis_key
+  )
+
+  conditional_rows <- list()
+  for (i in seq_along(x_vars)) {
+    for (j in seq_len(nrow(probe))) {
+      weights <- numeric(0)
+      weights[x_internal[i]] <- 1
+      weights[xw_internal[i]] <- probe$centered[j]
+      lc <- lincomb_r_pm(fit_y, weights)
+      conditional_rows[[length(conditional_rows) + 1L]] <- data.frame(
+        outcome = outcome_var,
+        outcome_label = lookup_label(outcome_var),
+        target_outcome = outcome_var,
+        target_outcome_label = lookup_label(outcome_var),
+        x_var = x_vars[i],
+        x_label = lookup_label(x_vars[i]),
+        moderator = w_var,
+        moderator_label = lookup_label(w_var),
+        class_num = probe$class_num[j],
+        class_contrast = probe$class_contrast[j],
+        conditional_effect = lc["estimate"],
+        se = lc["se"],
+        t_value = lc["t_value"],
+        p = lc["p"],
+        llci = lc["llci"],
+        ulci = lc["ulci"],
+        n = stats::nobs(fit_y),
+        analysis_key = analysis_key,
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  conditional_df <- if (length(conditional_rows) > 0) do.call(rbind, conditional_rows) else data.frame()
+  if (is.data.frame(conditional_df) && nrow(conditional_df) > 0) {
+    conditional_df$p_fmt <- fmt_p_pm(conditional_df$p)
+    conditional_df$sig <- sig_mark_pm(conditional_df$p)
+  }
+
+  list(
+    coefficients = coef_df,
+    summary = summary_df,
+    indirect = data.frame(),
+    conditional_effects = conditional_df,
+    run_info = data.frame()
+  )
+}
+
 custom_helper_file_pm <- file.path(PROJECT_ROOT, "R", ANALYSIS_ID, "custom_model_helpers.R")
 if (file.exists(custom_helper_file_pm)) {
   sys.source(custom_helper_file_pm, envir = environment())
@@ -10975,7 +12203,13 @@ summary_list <- list()
 indirect_list <- list()
 conditional_list <- list()
 run_info_list <- list()
+PROCESS_REGRESSION_DIAGNOSTICS_LIST <- list()
+PROCESS_REGRESSION_RESIDUALS_LIST <- list()
+PROCESS_INDIRECT_JN_GRID_LIST <- list()
 idx <- 0L
+PROCESS_SURVEY_BACKEND_BUNDLE <- if (identical(PROCESS_SETTINGS$variance_method %||% "bootstrap", "bootstrap")) NULL else SURVEY_BUNDLE
+use_observed_r_backend <- TRUE
+PROCESS_R_BACKEND_LABEL <- if (is.null(PROCESS_SURVEY_BACKEND_BUNDLE)) "R OLS bootstrap" else "R survey design"
 
 if (isTRUE(PROCESS_SETTINGS$custom_model_enabled)) {
   observed_custom <- length(PROCESS_SETTINGS$x_vars %||% character(0)) == 1L &&
@@ -11016,41 +12250,72 @@ if (isTRUE(PROCESS_SETTINGS$custom_model_enabled)) {
   for (yy in PROCESS_SETTINGS$y_vars) {
     if (length(PROCESS_SETTINGS$x_vars) > 1L) {
       idx <- idx + 1L
-      log_info(
-        "Fitting Model 1 via Mplus COMPLEX: outcome = ", yy,
-        ", x = ", paste(PROCESS_SETTINGS$x_vars, collapse = ", "),
-        ", moderator = ", PROCESS_SETTINGS$w_var
-      )
-      fit_i <- fit_observed_mplus_model1_multi(
-        df = PROCESS_DATA,
-        outcome_var = yy,
-        x_vars = PROCESS_SETTINGS$x_vars,
-        w_var = PROCESS_SETTINGS$w_var,
-        covariates = PROCESS_SETTINGS$covariates,
-        survey_bundle = SURVEY_BUNDLE
-      )
-      if (is.null(fit_i)) next
-      results_list[[idx]] <- fit_i$coefficients
-      summary_list[[idx]] <- fit_i$summary
-      conditional_list[[idx]] <- fit_i$conditional_effects
-      run_info_list[[idx]] <- fit_i$run_info
-    } else {
-      for (xx in PROCESS_SETTINGS$x_vars) {
-        idx <- idx + 1L
-        log_info("Fitting Model 1 via Mplus COMPLEX: outcome = ", yy, ", x = ", xx, ", moderator = ", PROCESS_SETTINGS$w_var)
-        fit_i <- fit_observed_mplus_model1(
+      if (isTRUE(use_observed_r_backend)) {
+        log_info(
+          "Fitting Model 1 via ", PROCESS_R_BACKEND_LABEL, ": outcome = ", yy,
+          ", x = ", paste(PROCESS_SETTINGS$x_vars, collapse = ", "),
+          ", moderator = ", PROCESS_SETTINGS$w_var
+        )
+        fit_i <- fit_observed_r_model1_multi(
           df = PROCESS_DATA,
           outcome_var = yy,
-          x_var = xx,
+          x_vars = PROCESS_SETTINGS$x_vars,
+          w_var = PROCESS_SETTINGS$w_var,
+          covariates = PROCESS_SETTINGS$covariates
+        )
+      } else {
+        log_info(
+          "Fitting Model 1 via Mplus COMPLEX: outcome = ", yy,
+          ", x = ", paste(PROCESS_SETTINGS$x_vars, collapse = ", "),
+          ", moderator = ", PROCESS_SETTINGS$w_var
+        )
+        fit_i <- fit_observed_mplus_model1_multi(
+          df = PROCESS_DATA,
+          outcome_var = yy,
+          x_vars = PROCESS_SETTINGS$x_vars,
           w_var = PROCESS_SETTINGS$w_var,
           covariates = PROCESS_SETTINGS$covariates,
           survey_bundle = SURVEY_BUNDLE
         )
+      }
+      if (is.null(fit_i)) next
+      results_list[[idx]] <- fit_i$coefficients
+      summary_list[[idx]] <- fit_i$summary
+      conditional_list[[idx]] <- fit_i$conditional_effects
+      if (is.data.frame(fit_i$run_info) && nrow(fit_i$run_info) > 0) run_info_list[[idx]] <- fit_i$run_info
+    } else {
+      for (xx in PROCESS_SETTINGS$x_vars) {
+        idx <- idx + 1L
+        if (isTRUE(use_observed_r_backend)) {
+          log_info("Fitting Model 1 via ", PROCESS_R_BACKEND_LABEL, ": outcome = ", yy, ", x = ", xx, ", moderator = ", PROCESS_SETTINGS$w_var)
+          fit_i <- fit_observed_r_process_model(
+            df = PROCESS_DATA,
+            process_model = 1L,
+            outcome_var = yy,
+            x_var = xx,
+            mediator_vars = character(0),
+            w_var = PROCESS_SETTINGS$w_var,
+            covariates = PROCESS_SETTINGS$covariates,
+            bootstrap_enabled = PROCESS_SETTINGS$bootstrap_enabled,
+            bootstrap_n = PROCESS_SETTINGS$bootstrap_n,
+            bootstrap_ci = PROCESS_SETTINGS$bootstrap_ci
+          )
+        } else {
+          log_info("Fitting Model 1 via Mplus COMPLEX: outcome = ", yy, ", x = ", xx, ", moderator = ", PROCESS_SETTINGS$w_var)
+          fit_i <- fit_observed_mplus_model1(
+            df = PROCESS_DATA,
+            outcome_var = yy,
+            x_var = xx,
+            w_var = PROCESS_SETTINGS$w_var,
+            covariates = PROCESS_SETTINGS$covariates,
+            survey_bundle = SURVEY_BUNDLE
+          )
+        }
         if (is.null(fit_i)) next
         results_list[[idx]] <- fit_i$coefficients
         summary_list[[idx]] <- fit_i$summary
         conditional_list[[idx]] <- fit_i$conditional_effects
-        run_info_list[[idx]] <- fit_i$run_info
+        if (is.data.frame(fit_i$run_info) && nrow(fit_i$run_info) > 0) run_info_list[[idx]] <- fit_i$run_info
       }
     }
   }
@@ -11080,7 +12345,26 @@ if (isTRUE(PROCESS_SETTINGS$custom_model_enabled)) {
   if (observed_model4) {
     for (yy in PROCESS_SETTINGS$y_vars) {
       for (xx in PROCESS_SETTINGS$x_vars) {
-        if (length(PROCESS_SETTINGS$m_vars) > 1L) {
+        if (isTRUE(use_observed_r_backend)) {
+          idx <- idx + 1L
+          log_info("Fitting Model 4 via ", PROCESS_R_BACKEND_LABEL, ": outcome = ", yy, ", x = ", xx, ", mediators = ", paste(PROCESS_SETTINGS$m_vars, collapse = ", "))
+          fit_i <- fit_observed_r_process_model(
+            df = PROCESS_DATA,
+            process_model = 4L,
+            outcome_var = yy,
+            x_var = xx,
+            mediator_vars = PROCESS_SETTINGS$m_vars,
+            w_var = "",
+            covariates = PROCESS_SETTINGS$covariates,
+            bootstrap_enabled = PROCESS_SETTINGS$bootstrap_enabled,
+            bootstrap_n = PROCESS_SETTINGS$bootstrap_n,
+            bootstrap_ci = PROCESS_SETTINGS$bootstrap_ci
+          )
+          if (is.null(fit_i)) next
+          results_list[[idx]] <- fit_i$coefficients
+          summary_list[[idx]] <- fit_i$summary
+          indirect_list[[idx]] <- fit_i$indirect
+        } else if (length(PROCESS_SETTINGS$m_vars) > 1L) {
           idx <- idx + 1L
           log_info("Fitting Model 4 via Mplus", if (!identical(PROCESS_SETTINGS$variance_method %||% "bootstrap", "bootstrap")) " COMPLEX" else "", ": outcome = ", yy, ", x = ", xx, ", mediators = ", paste(PROCESS_SETTINGS$m_vars, collapse = ", "))
           fit_i <- fit_observed_mplus_model4_parallel(
@@ -11146,6 +12430,20 @@ if (isTRUE(PROCESS_SETTINGS$custom_model_enabled)) {
   if (!observed_model5) {
     stop("Current PROCESS model 5 implementation supports observed-variable moderated mediation only.", call. = FALSE)
   }
+  if (isTRUE(use_observed_r_backend)) {
+    for (yy in PROCESS_SETTINGS$y_vars) {
+      for (xx in PROCESS_SETTINGS$x_vars) {
+        idx <- idx + 1L
+        log_info("Fitting Model 5 via ", PROCESS_R_BACKEND_LABEL, ": outcome = ", yy, ", x = ", xx, ", mediators = ", paste(PROCESS_SETTINGS$m_vars, collapse = ", "), ", moderator = ", PROCESS_SETTINGS$w_var)
+        fit_i <- fit_observed_r_process_model(PROCESS_DATA, 5L, yy, xx, PROCESS_SETTINGS$m_vars, PROCESS_SETTINGS$w_var, PROCESS_SETTINGS$covariates, PROCESS_SETTINGS$bootstrap_enabled, PROCESS_SETTINGS$bootstrap_n, PROCESS_SETTINGS$bootstrap_ci)
+        if (is.null(fit_i)) next
+        results_list[[idx]] <- fit_i$coefficients
+        summary_list[[idx]] <- fit_i$summary
+        indirect_list[[idx]] <- fit_i$indirect
+        conditional_list[[idx]] <- fit_i$conditional_effects
+      }
+    }
+  } else {
   for (yy in PROCESS_SETTINGS$y_vars) {
     for (xx in PROCESS_SETTINGS$x_vars) {
       if (length(PROCESS_SETTINGS$m_vars %||% character(0)) > 1L) {
@@ -11198,6 +12496,7 @@ if (isTRUE(PROCESS_SETTINGS$custom_model_enabled)) {
       }
     }
   }
+  }
 } else if (PROCESS_SETTINGS$process_model == 7L) {
   observed_model7 <- length(PROCESS_SETTINGS$x_vars %||% character(0)) > 0L &&
     length(PROCESS_SETTINGS$m_vars %||% character(0)) > 0L &&
@@ -11205,6 +12504,20 @@ if (isTRUE(PROCESS_SETTINGS$custom_model_enabled)) {
   if (!observed_model7) {
     stop("Current PROCESS model 7 implementation supports observed-variable first-stage moderated mediation only.", call. = FALSE)
   }
+  if (isTRUE(use_observed_r_backend)) {
+    for (yy in PROCESS_SETTINGS$y_vars) {
+      for (xx in PROCESS_SETTINGS$x_vars) {
+        idx <- idx + 1L
+        log_info("Fitting Model 7 via ", PROCESS_R_BACKEND_LABEL, ": outcome = ", yy, ", x = ", xx, ", mediators = ", paste(PROCESS_SETTINGS$m_vars, collapse = ", "), ", moderator = ", PROCESS_SETTINGS$w_var)
+        fit_i <- fit_observed_r_process_model(PROCESS_DATA, 7L, yy, xx, PROCESS_SETTINGS$m_vars, PROCESS_SETTINGS$w_var, PROCESS_SETTINGS$covariates, PROCESS_SETTINGS$bootstrap_enabled, PROCESS_SETTINGS$bootstrap_n, PROCESS_SETTINGS$bootstrap_ci)
+        if (is.null(fit_i)) next
+        results_list[[idx]] <- fit_i$coefficients
+        summary_list[[idx]] <- fit_i$summary
+        indirect_list[[idx]] <- fit_i$indirect
+        conditional_list[[idx]] <- fit_i$conditional_effects
+      }
+    }
+  } else {
   for (yy in PROCESS_SETTINGS$y_vars) {
     for (xx in PROCESS_SETTINGS$x_vars) {
       if (length(PROCESS_SETTINGS$m_vars %||% character(0)) > 1L) {
@@ -11257,6 +12570,7 @@ if (isTRUE(PROCESS_SETTINGS$custom_model_enabled)) {
       }
     }
   }
+  }
 } else if (PROCESS_SETTINGS$process_model == 8L) {
   observed_model8 <- length(PROCESS_SETTINGS$x_vars %||% character(0)) > 0L &&
     length(PROCESS_SETTINGS$m_vars %||% character(0)) > 0L &&
@@ -11264,6 +12578,20 @@ if (isTRUE(PROCESS_SETTINGS$custom_model_enabled)) {
   if (!observed_model8) {
     stop("Current PROCESS model 8 implementation supports observed-variable first-stage and direct-effect moderated mediation only.", call. = FALSE)
   }
+  if (isTRUE(use_observed_r_backend)) {
+    for (yy in PROCESS_SETTINGS$y_vars) {
+      for (xx in PROCESS_SETTINGS$x_vars) {
+        idx <- idx + 1L
+        log_info("Fitting Model 8 via ", PROCESS_R_BACKEND_LABEL, ": outcome = ", yy, ", x = ", xx, ", mediators = ", paste(PROCESS_SETTINGS$m_vars, collapse = ", "), ", moderator = ", PROCESS_SETTINGS$w_var)
+        fit_i <- fit_observed_r_process_model(PROCESS_DATA, 8L, yy, xx, PROCESS_SETTINGS$m_vars, PROCESS_SETTINGS$w_var, PROCESS_SETTINGS$covariates, PROCESS_SETTINGS$bootstrap_enabled, PROCESS_SETTINGS$bootstrap_n, PROCESS_SETTINGS$bootstrap_ci)
+        if (is.null(fit_i)) next
+        results_list[[idx]] <- fit_i$coefficients
+        summary_list[[idx]] <- fit_i$summary
+        indirect_list[[idx]] <- fit_i$indirect
+        conditional_list[[idx]] <- fit_i$conditional_effects
+      }
+    }
+  } else {
   for (yy in PROCESS_SETTINGS$y_vars) {
     for (xx in PROCESS_SETTINGS$x_vars) {
       if (length(PROCESS_SETTINGS$m_vars %||% character(0)) > 1L) {
@@ -11316,6 +12644,7 @@ if (isTRUE(PROCESS_SETTINGS$custom_model_enabled)) {
       }
     }
   }
+  }
 } else if (PROCESS_SETTINGS$process_model == 14L) {
   observed_model14 <- length(PROCESS_SETTINGS$x_vars %||% character(0)) > 0L &&
     length(PROCESS_SETTINGS$m_vars %||% character(0)) > 0L &&
@@ -11323,6 +12652,20 @@ if (isTRUE(PROCESS_SETTINGS$custom_model_enabled)) {
   if (!observed_model14) {
     stop("Current PROCESS model 14 implementation supports observed-variable second-stage moderated mediation only.", call. = FALSE)
   }
+  if (isTRUE(use_observed_r_backend)) {
+    for (yy in PROCESS_SETTINGS$y_vars) {
+      for (xx in PROCESS_SETTINGS$x_vars) {
+        idx <- idx + 1L
+        log_info("Fitting Model 14 via ", PROCESS_R_BACKEND_LABEL, ": outcome = ", yy, ", x = ", xx, ", mediators = ", paste(PROCESS_SETTINGS$m_vars, collapse = ", "), ", moderator = ", PROCESS_SETTINGS$w_var)
+        fit_i <- fit_observed_r_process_model(PROCESS_DATA, 14L, yy, xx, PROCESS_SETTINGS$m_vars, PROCESS_SETTINGS$w_var, PROCESS_SETTINGS$covariates, PROCESS_SETTINGS$bootstrap_enabled, PROCESS_SETTINGS$bootstrap_n, PROCESS_SETTINGS$bootstrap_ci)
+        if (is.null(fit_i)) next
+        results_list[[idx]] <- fit_i$coefficients
+        summary_list[[idx]] <- fit_i$summary
+        indirect_list[[idx]] <- fit_i$indirect
+        conditional_list[[idx]] <- fit_i$conditional_effects
+      }
+    }
+  } else {
   for (yy in PROCESS_SETTINGS$y_vars) {
     for (xx in PROCESS_SETTINGS$x_vars) {
       if (length(PROCESS_SETTINGS$m_vars %||% character(0)) > 1L) {
@@ -11375,6 +12718,7 @@ if (isTRUE(PROCESS_SETTINGS$custom_model_enabled)) {
       }
     }
   }
+  }
 } else if (PROCESS_SETTINGS$process_model == 15L) {
   observed_model15 <- length(PROCESS_SETTINGS$x_vars %||% character(0)) > 0L &&
     length(PROCESS_SETTINGS$m_vars %||% character(0)) > 0L &&
@@ -11382,6 +12726,20 @@ if (isTRUE(PROCESS_SETTINGS$custom_model_enabled)) {
   if (!observed_model15) {
     stop("Current PROCESS model 15 implementation supports observed-variable moderated direct and second-stage moderated mediation only.", call. = FALSE)
   }
+  if (isTRUE(use_observed_r_backend)) {
+    for (yy in PROCESS_SETTINGS$y_vars) {
+      for (xx in PROCESS_SETTINGS$x_vars) {
+        idx <- idx + 1L
+        log_info("Fitting Model 15 via ", PROCESS_R_BACKEND_LABEL, ": outcome = ", yy, ", x = ", xx, ", mediators = ", paste(PROCESS_SETTINGS$m_vars, collapse = ", "), ", moderator = ", PROCESS_SETTINGS$w_var)
+        fit_i <- fit_observed_r_process_model(PROCESS_DATA, 15L, yy, xx, PROCESS_SETTINGS$m_vars, PROCESS_SETTINGS$w_var, PROCESS_SETTINGS$covariates, PROCESS_SETTINGS$bootstrap_enabled, PROCESS_SETTINGS$bootstrap_n, PROCESS_SETTINGS$bootstrap_ci)
+        if (is.null(fit_i)) next
+        results_list[[idx]] <- fit_i$coefficients
+        summary_list[[idx]] <- fit_i$summary
+        indirect_list[[idx]] <- fit_i$indirect
+        conditional_list[[idx]] <- fit_i$conditional_effects
+      }
+    }
+  } else {
   for (yy in PROCESS_SETTINGS$y_vars) {
     for (xx in PROCESS_SETTINGS$x_vars) {
       if (length(PROCESS_SETTINGS$m_vars %||% character(0)) > 1L) {
@@ -11434,6 +12792,7 @@ if (isTRUE(PROCESS_SETTINGS$custom_model_enabled)) {
       }
     }
   }
+  }
 } else if (PROCESS_SETTINGS$process_model == 58L) {
   observed_model58 <- length(PROCESS_SETTINGS$x_vars %||% character(0)) > 0L &&
     length(PROCESS_SETTINGS$m_vars %||% character(0)) > 0L &&
@@ -11441,6 +12800,20 @@ if (isTRUE(PROCESS_SETTINGS$custom_model_enabled)) {
   if (!observed_model58) {
     stop("Current PROCESS model 58 implementation supports observed-variable first- and second-stage moderated mediation only.", call. = FALSE)
   }
+  if (isTRUE(use_observed_r_backend)) {
+    for (yy in PROCESS_SETTINGS$y_vars) {
+      for (xx in PROCESS_SETTINGS$x_vars) {
+        idx <- idx + 1L
+        log_info("Fitting Model 58 via ", PROCESS_R_BACKEND_LABEL, ": outcome = ", yy, ", x = ", xx, ", mediators = ", paste(PROCESS_SETTINGS$m_vars, collapse = ", "), ", moderator = ", PROCESS_SETTINGS$w_var)
+        fit_i <- fit_observed_r_process_model(PROCESS_DATA, 58L, yy, xx, PROCESS_SETTINGS$m_vars, PROCESS_SETTINGS$w_var, PROCESS_SETTINGS$covariates, PROCESS_SETTINGS$bootstrap_enabled, PROCESS_SETTINGS$bootstrap_n, PROCESS_SETTINGS$bootstrap_ci)
+        if (is.null(fit_i)) next
+        results_list[[idx]] <- fit_i$coefficients
+        summary_list[[idx]] <- fit_i$summary
+        indirect_list[[idx]] <- fit_i$indirect
+        conditional_list[[idx]] <- fit_i$conditional_effects
+      }
+    }
+  } else {
   for (yy in PROCESS_SETTINGS$y_vars) {
     for (xx in PROCESS_SETTINGS$x_vars) {
       if (length(PROCESS_SETTINGS$m_vars %||% character(0)) > 1L) {
@@ -11493,6 +12866,7 @@ if (isTRUE(PROCESS_SETTINGS$custom_model_enabled)) {
       }
     }
   }
+  }
 } else if (PROCESS_SETTINGS$process_model == 59L) {
   observed_model59 <- length(PROCESS_SETTINGS$x_vars %||% character(0)) > 0L &&
     length(PROCESS_SETTINGS$m_vars %||% character(0)) > 0L &&
@@ -11500,6 +12874,20 @@ if (isTRUE(PROCESS_SETTINGS$custom_model_enabled)) {
   if (!observed_model59) {
     stop("Current PROCESS model 59 implementation supports observed-variable first-, second-stage, and direct-effect moderated mediation only.", call. = FALSE)
   }
+  if (isTRUE(use_observed_r_backend)) {
+    for (yy in PROCESS_SETTINGS$y_vars) {
+      for (xx in PROCESS_SETTINGS$x_vars) {
+        idx <- idx + 1L
+        log_info("Fitting Model 59 via ", PROCESS_R_BACKEND_LABEL, ": outcome = ", yy, ", x = ", xx, ", mediators = ", paste(PROCESS_SETTINGS$m_vars, collapse = ", "), ", moderator = ", PROCESS_SETTINGS$w_var)
+        fit_i <- fit_observed_r_process_model(PROCESS_DATA, 59L, yy, xx, PROCESS_SETTINGS$m_vars, PROCESS_SETTINGS$w_var, PROCESS_SETTINGS$covariates, PROCESS_SETTINGS$bootstrap_enabled, PROCESS_SETTINGS$bootstrap_n, PROCESS_SETTINGS$bootstrap_ci)
+        if (is.null(fit_i)) next
+        results_list[[idx]] <- fit_i$coefficients
+        summary_list[[idx]] <- fit_i$summary
+        indirect_list[[idx]] <- fit_i$indirect
+        conditional_list[[idx]] <- fit_i$conditional_effects
+      }
+    }
+  } else {
   for (yy in PROCESS_SETTINGS$y_vars) {
     for (xx in PROCESS_SETTINGS$x_vars) {
       if (length(PROCESS_SETTINGS$m_vars %||% character(0)) > 1L) {
@@ -11552,6 +12940,7 @@ if (isTRUE(PROCESS_SETTINGS$custom_model_enabled)) {
       }
     }
   }
+  }
 } else if (PROCESS_SETTINGS$process_model == 6L) {
   observed_model6 <- length(PROCESS_SETTINGS$x_vars %||% character(0)) > 0L
   if (!observed_model6) {
@@ -11565,6 +12954,32 @@ if (isTRUE(PROCESS_SETTINGS$custom_model_enabled)) {
       call. = FALSE
     )
   }
+  if (isTRUE(use_observed_r_backend)) {
+    for (yy in PROCESS_SETTINGS$y_vars) {
+      for (xx in PROCESS_SETTINGS$x_vars) {
+        idx <- idx + 1L
+        log_info(
+          "Fitting Model 6 via ", PROCESS_R_BACKEND_LABEL, ": outcome = ", yy,
+          ", x = ", xx,
+          ", mediators = ", paste(PROCESS_SETTINGS$m_vars, collapse = " -> ")
+        )
+        fit_i <- fit_observed_r_model6(
+          df = PROCESS_DATA,
+          outcome_var = yy,
+          x_var = xx,
+          mediator_vars = PROCESS_SETTINGS$m_vars,
+          covariates = PROCESS_SETTINGS$covariates,
+          bootstrap_enabled = PROCESS_SETTINGS$bootstrap_enabled,
+          bootstrap_n = PROCESS_SETTINGS$bootstrap_n,
+          bootstrap_ci = PROCESS_SETTINGS$bootstrap_ci
+        )
+        if (is.null(fit_i)) next
+        results_list[[idx]] <- fit_i$coefficients
+        summary_list[[idx]] <- fit_i$summary
+        indirect_list[[idx]] <- fit_i$indirect
+      }
+    }
+  } else {
   for (yy in PROCESS_SETTINGS$y_vars) {
     for (xx in PROCESS_SETTINGS$x_vars) {
       idx <- idx + 1L
@@ -11590,6 +13005,7 @@ if (isTRUE(PROCESS_SETTINGS$custom_model_enabled)) {
       run_info_list[[idx]] <- fit_i$run_info
     }
   }
+  }
 } else {
   stop("Current process_macro implementation supports Model 1, Model 4, Model 5, Model 6, Model 7, Model 8, Model 14, Model 15, Model 58, and Model 59.", call. = FALSE)
 }
@@ -11597,8 +13013,49 @@ if (isTRUE(PROCESS_SETTINGS$custom_model_enabled)) {
 PROCESS_MODEL_RESULTS <- if (length(results_list) > 0) do.call(rbind, results_list) else data.frame()
 PROCESS_MODEL_SUMMARY <- if (length(summary_list) > 0) do.call(rbind, summary_list) else data.frame()
 PROCESS_INDIRECT_RESULTS <- if (length(indirect_list) > 0) do.call(rbind, indirect_list) else data.frame()
+PROCESS_INDIRECT_JN_GRID <- if (length(PROCESS_INDIRECT_JN_GRID_LIST) > 0) do.call(rbind, PROCESS_INDIRECT_JN_GRID_LIST) else data.frame()
 PROCESS_CONDITIONAL_EFFECTS <- if (length(conditional_list) > 0) do.call(rbind, conditional_list) else data.frame()
 PROCESS_MPLUS_RUN_INFO <- if (length(run_info_list) > 0) do.call(rbind, run_info_list) else data.frame()
+PROCESS_REGRESSION_DIAGNOSTICS <- if (length(PROCESS_REGRESSION_DIAGNOSTICS_LIST) > 0) do.call(rbind, PROCESS_REGRESSION_DIAGNOSTICS_LIST) else data.frame()
+PROCESS_REGRESSION_RESIDUALS <- if (length(PROCESS_REGRESSION_RESIDUALS_LIST) > 0) do.call(rbind, PROCESS_REGRESSION_RESIDUALS_LIST) else data.frame()
+
+PROCESS_ANALYSIS_NOTES <- character(0)
+if (!is.null(PROCESS_SURVEY_BACKEND_BUNDLE)) {
+  PROCESS_ANALYSIS_NOTES <- c(
+    PROCESS_ANALYSIS_NOTES,
+    "Complex-sample PROCESS uses survey::svyglm. Residual diagnostics are exploratory; Breusch-Pagan and Cook's distance are not reported for survey-weighted fits.",
+    "Complex-sample indirect-effect SE/CI use a first-order delta-method approximation when bootstrap resampling is disabled."
+  )
+}
+if (PROCESS_SETTINGS$process_model %in% c(58L, 59L)) {
+  PROCESS_ANALYSIS_NOTES <- c(
+    PROCESS_ANALYSIS_NOTES,
+    "Models 58 and 59 moderate both component paths, so no single constant index of moderated mediation is reported."
+  )
+}
+INDIRECT_JN_CI_METHOD <- tolower(as.character(PROCESS_SETTINGS$indirect_jn_ci_method %||% "delta")[1])
+INDIRECT_JN_GRID_POINTS <- suppressWarnings(as.integer(PROCESS_SETTINGS$indirect_jn_grid_points %||% 200L))
+if (is.na(INDIRECT_JN_GRID_POINTS) || INDIRECT_JN_GRID_POINTS < 20L) INDIRECT_JN_GRID_POINTS <- 200L
+INDIRECT_JN_BOOTSTRAP_N <- suppressWarnings(as.integer(PROCESS_SETTINGS$indirect_jn_bootstrap_n %||% PROCESS_SETTINGS$bootstrap_n %||% 500L))
+if (is.na(INDIRECT_JN_BOOTSTRAP_N) && identical(INDIRECT_JN_CI_METHOD, "bootstrap")) INDIRECT_JN_BOOTSTRAP_N <- 500L
+if (nrow(PROCESS_INDIRECT_JN_GRID) > 0) {
+  PROCESS_ANALYSIS_NOTES <- c(
+    PROCESS_ANALYSIS_NOTES,
+    paste0("Moderated-mediation Johnson-Neyman grid CI method: ", INDIRECT_JN_CI_METHOD, "; grid points: ", INDIRECT_JN_GRID_POINTS, ".")
+  )
+  if (identical(INDIRECT_JN_CI_METHOD, "bootstrap")) {
+    PROCESS_ANALYSIS_NOTES <- c(
+      PROCESS_ANALYSIS_NOTES,
+      "Bootstrap Johnson-Neyman grid CI is computationally intensive because path models are refit repeatedly across bootstrap samples."
+    )
+    if (!is.null(PROCESS_SURVEY_BACKEND_BUNDLE)) {
+      PROCESS_ANALYSIS_NOTES <- c(
+        PROCESS_ANALYSIS_NOTES,
+        "Bootstrap Johnson-Neyman grid CI was requested but is not used for survey-weighted fits; delta-method grid CI is reported."
+      )
+    }
+  }
+}
 
 MODEL_RUN_SUMMARY <- list(
   process_model = PROCESS_SETTINGS$process_model,
@@ -11607,13 +13064,20 @@ MODEL_RUN_SUMMARY <- list(
   bootstrap_enabled = PROCESS_SETTINGS$bootstrap_enabled,
   bootstrap_n = PROCESS_SETTINGS$bootstrap_n,
   bootstrap_ci = PROCESS_SETTINGS$bootstrap_ci,
+  indirect_jn_ci_method = INDIRECT_JN_CI_METHOD,
+  indirect_jn_grid_points = INDIRECT_JN_GRID_POINTS,
+  indirect_jn_bootstrap_n = INDIRECT_JN_BOOTSTRAP_N,
+  analysis_backend = PROCESS_R_BACKEND_LABEL,
   reference_class = SOURCE_REFERENCE_CLASS,
   reference_class_label = SOURCE_REFERENCE_CLASS_LABEL,
   n_models = nrow(PROCESS_MODEL_SUMMARY),
   n_rows = nrow(PROCESS_MODEL_RESULTS),
   n_indirect_rows = nrow(PROCESS_INDIRECT_RESULTS),
+  n_indirect_jn_grid_rows = nrow(PROCESS_INDIRECT_JN_GRID),
   n_conditional_rows = nrow(PROCESS_CONDITIONAL_EFFECTS),
+  n_regression_diagnostics = nrow(PROCESS_REGRESSION_DIAGNOSTICS),
   n_mplus_runs = nrow(PROCESS_MPLUS_RUN_INFO),
+  analysis_notes = unique(PROCESS_ANALYSIS_NOTES),
   created_at = Sys.time()
 )
 
@@ -11622,8 +13086,11 @@ save_named_rds_list(
     PROCESS_MODEL_RESULTS = PROCESS_MODEL_RESULTS,
     PROCESS_MODEL_SUMMARY = PROCESS_MODEL_SUMMARY,
     PROCESS_INDIRECT_RESULTS = PROCESS_INDIRECT_RESULTS,
+    PROCESS_INDIRECT_JN_GRID = PROCESS_INDIRECT_JN_GRID,
     PROCESS_CONDITIONAL_EFFECTS = PROCESS_CONDITIONAL_EFFECTS,
     PROCESS_MPLUS_RUN_INFO = PROCESS_MPLUS_RUN_INFO,
+    PROCESS_REGRESSION_DIAGNOSTICS = PROCESS_REGRESSION_DIAGNOSTICS,
+    PROCESS_REGRESSION_RESIDUALS = PROCESS_REGRESSION_RESIDUALS,
     MODEL_RUN_SUMMARY = MODEL_RUN_SUMMARY
   ),
   dir_rds = DIR_RDS
@@ -11634,9 +13101,14 @@ log_info("03_model_run.R completed.")
 log_info("n(models)          = ", nrow(PROCESS_MODEL_SUMMARY))
 log_info("n(coef rows)       = ", nrow(PROCESS_MODEL_RESULTS))
 log_info("n(indirect rows)   = ", nrow(PROCESS_INDIRECT_RESULTS))
+log_info("n(indirect JN grid)= ", nrow(PROCESS_INDIRECT_JN_GRID))
 log_info("n(conditional rows)= ", nrow(PROCESS_CONDITIONAL_EFFECTS))
+log_info("n(reg diagnostics) = ", nrow(PROCESS_REGRESSION_DIAGNOSTICS))
 log_info("bootstrap_enabled  = ", PROCESS_SETTINGS$bootstrap_enabled)
 log_info("bootstrap_n        = ", PROCESS_SETTINGS$bootstrap_n)
 log_info("bootstrap_ci       = ", PROCESS_SETTINGS$bootstrap_ci)
+log_info("indirect_jn_ci     = ", MODEL_RUN_SUMMARY$indirect_jn_ci_method)
+log_info("indirect_jn_grid   = ", MODEL_RUN_SUMMARY$indirect_jn_grid_points)
+log_info("indirect_jn_boot_n = ", MODEL_RUN_SUMMARY$indirect_jn_bootstrap_n)
 log_info("elapsed            = ", elapsed_sec, " sec")
 log_step_end("model_run", elapsed_sec, ok = TRUE)

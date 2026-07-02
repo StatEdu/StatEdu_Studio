@@ -927,6 +927,7 @@ variable_calculation_setup_panel <- function(file, data, variable_info, labels =
   selected_available <- selected_order_items(isolate(input$variable_calculation_available) %||% character(0), available)
   selected_selected <- selected_order_items(isolate(input$variable_calculation_selected) %||% character(0), selected_variables)
   current_base <- isolate(input$variable_calculation_base_name) %||% "score"
+  current_label <- isolate(input$variable_calculation_label) %||% ""
   current_operations <- intersect(
     as.character(isolate(input$variable_calculation_operations) %||% character(0)),
     unname(variable_calculation_choices(language))
@@ -980,6 +981,7 @@ variable_calculation_setup_panel <- function(file, data, variable_info, labels =
           selected = current_operations
         ),
         textInput("variable_calculation_base_name", analysis_ui_text("Variable name", language), value = current_base, width = "100%"),
+        textInput("variable_calculation_label", analysis_ui_text("Variable label", language), value = current_label, width = "100%"),
         div(
           class = "recode-help-text variable-calculation-help",
           statedu_text(language, "Created variables use M_, S_, SD_, and Var_ prefixes, for example M_score.", statedu_utf8("ec839dec84b120ebb380ec8898eb8a94204d5f2c20535f2c2053445f2c205661725f20eca091eb9190ec96b4eba5bc20ec82acec9aa9ed95a9eb8b88eb8ba42e20ec98883a204d5f73636f72652e"))
@@ -2580,6 +2582,7 @@ register_variable_calculation_handlers <- function(
       showNotification(recode_ui_text("Enter a variable name.", "ebb380ec8898ebaa85ec9d8420ec9e85eba0a5ed9598ec84b8ec9a942e"), type = "warning", duration = 5)
       return()
     }
+    custom_label <- trimws(as.character(input$variable_calculation_label %||% ""))
 
     reliability_output <- NULL
     if (isTRUE(run_reliability)) {
@@ -2623,7 +2626,12 @@ register_variable_calculation_handlers <- function(
 
       for (name in names(calculated)) {
         operation <- operations[[match(name, paste0(vapply(operations, variable_calculation_prefix, character(1)), base_name))]]
-        label <- sprintf("%s of %s", variable_calculation_label(operation), paste(variables, collapse = ", "))
+        operation_label <- variable_calculation_label(operation)
+        label <- if (nzchar(custom_label)) {
+          if (length(operations) == 1L) custom_label else sprintf("%s: %s", operation_label, custom_label)
+        } else {
+          ""
+        }
         ok <- add_calculated_variable_fn(name, calculated[[name]], var_label = label, measurement = "continuous")
         if (isTRUE(ok)) {
           created <- c(created, name)

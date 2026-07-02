@@ -58,7 +58,7 @@ generalized_missing_strategy_detail <- function(strategy) {
     generalized_resolve_missing_strategy(strategy),
     mi = "Uses standard mice-based multiple imputation for incomplete selected GLM variables, including the dependent variable when it is missing. The selected GLM is fitted in each imputed dataset and pooled using Rubin-style total variance. Treat this as a prespecified primary or sensitivity option when missingness is plausibly MAR.",
     ipw = "Estimates the probability of being a complete case from fully observed predictors and fits the selected GLM with inverse-probability weights. Use this as a sensitivity option when complete-case inclusion may depend on observed covariates, and review positivity/weight stability and the observation model.",
-    "Drops rows with missing selected model variables before fitting the GLM. This is transparent, but it is strongest when missingness is minimal or plausibly MCAR."
+    "Drops rows with missing selected analysis variables before fitting the GLM. This is transparent, but it is strongest when missingness is minimal or plausibly MCAR."
   )
 }
 

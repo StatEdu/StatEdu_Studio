@@ -14,6 +14,7 @@ PROCESS_MODEL_RESULTS <- load_step_rds("PROCESS_MODEL_RESULTS", dir_rds = DIR_RD
 PROCESS_MODEL_SUMMARY <- load_step_rds("PROCESS_MODEL_SUMMARY", dir_rds = DIR_RDS, default = data.frame())
 PROCESS_INDIRECT_RESULTS <- load_step_rds("PROCESS_INDIRECT_RESULTS", dir_rds = DIR_RDS, default = data.frame())
 PROCESS_CONDITIONAL_EFFECTS <- load_step_rds("PROCESS_CONDITIONAL_EFFECTS", dir_rds = DIR_RDS, default = data.frame())
+PROCESS_REGRESSION_DIAGNOSTICS <- load_step_rds("PROCESS_REGRESSION_DIAGNOSTICS", dir_rds = DIR_RDS, default = data.frame())
 MODEL_RUN_SUMMARY <- load_step_rds("MODEL_RUN_SUMMARY", dir_rds = DIR_RDS, default = list())
 
 fmt2_pm <- function(x) {
@@ -710,6 +711,11 @@ build_T3 <- function(df) {
 
   if (is_conditional_indirect_model) {
     cond_cells <- lapply(seq_len(nrow(df)), function(i) parse_moderated_indirect_label_pm(df$class_contrast[i] %||% ""))
+    test_label <- rep("z", nrow(df))
+    if ("ci_method" %in% names(df)) {
+      test_label[grepl("t approximation", as.character(df$ci_method))] <- "t"
+    }
+    test_label[is.na(df$se)] <- ""
     out <- data.frame(
       Path = vapply(path_cells, `[[`, character(1), "path"),
       Variables = vapply(path_cells, `[[`, character(1), "variables"),
@@ -723,12 +729,18 @@ build_T3 <- function(df) {
       z = fmt2_pm(df$z_value),
       LLCI = ind_fmt(df$llci),
       ULCI = ind_fmt(df$ulci),
+      Test = test_label,
       p = fmt_p_pm(df$p),
       sig = df$sig %||% sig_mark_pm(df$p),
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
   } else {
+    test_label <- rep("z", nrow(df))
+    if ("ci_method" %in% names(df)) {
+      test_label[grepl("t approximation", as.character(df$ci_method))] <- "t"
+    }
+    test_label[is.na(df$se)] <- ""
     out <- data.frame(
       Path = vapply(path_cells, `[[`, character(1), "path"),
       Variables = vapply(path_cells, `[[`, character(1), "variables"),
@@ -741,11 +753,19 @@ build_T3 <- function(df) {
       z = fmt2_pm(df$z_value),
       LLCI = ind_fmt(df$llci),
       ULCI = ind_fmt(df$ulci),
+      Test = test_label,
       p = fmt_p_pm(df$p),
       sig = df$sig %||% sig_mark_pm(df$p),
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
+  }
+
+  if ("ci_method" %in% names(df)) {
+    out$CI_method <- df$ci_method
+  }
+  if ("inference_note" %in% names(df)) {
+    out$Note <- df$inference_note
   }
 
   orig_path <- out$Path
@@ -762,28 +782,33 @@ build_T3 <- function(df) {
 }
 
 build_S1 <- function() {
-  data.frame(
+  out <- data.frame(
     Item = c(
       "Source analysis",
       "PROCESS model",
       "Moderator source",
+      "Analysis backend",
       "Independent variable count",
       "Model count",
       "Coefficient rows",
-      "Indirect rows"
+      "Indirect rows",
+      "Analysis notes"
     ),
     Value = c(
       PROCESS_SETTINGS$source_analysis_id %||% "",
       PROCESS_SETTINGS$process_model %||% "",
       PROCESS_SETTINGS$moderator_source %||% "",
+      MODEL_RUN_SUMMARY$analysis_backend %||% "",
       length(PROCESS_SETTINGS$x_vars %||% character(0)),
       MODEL_RUN_SUMMARY$n_models %||% 0,
       MODEL_RUN_SUMMARY$n_rows %||% 0,
-      MODEL_RUN_SUMMARY$n_indirect_rows %||% 0
+      MODEL_RUN_SUMMARY$n_indirect_rows %||% 0,
+      paste(MODEL_RUN_SUMMARY$analysis_notes %||% character(0), collapse = " ")
     ),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
+  out
 }
 
 build_S2 <- function(df) {
@@ -873,6 +898,79 @@ build_S2 <- function(df) {
   out
 }
 
+build_S3 <- function(df) {
+  if (!is.data.frame(df) || nrow(df) == 0) {
+    return(data.frame(
+      Model_ID = character(),
+      Component = character(),
+      Path = character(),
+      Outcome = character(),
+      Predictor = character(),
+      Mediator = character(),
+      Moderator = character(),
+      Estimator = character(),
+      Variance = character(),
+      n = character(),
+      df = character(),
+      Max_VIF = character(),
+      DW = character(),
+      Normality_Test = character(),
+      Normality_Stat = character(),
+      Normality_p = character(),
+      BP_Stat = character(),
+      BP_p = character(),
+      Cook_Max = character(),
+      Note = character(),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    ))
+  }
+
+  df <- as.data.frame(df, stringsAsFactors = FALSE)
+  for (nm in c(
+    "model_id", "model_component", "path_label", "outcome_label", "x_label",
+    "mediator_label", "moderator_label", "estimator", "variance_method",
+    "diagnostic_note"
+  )) {
+    if (!nm %in% names(df)) df[[nm]] <- ""
+  }
+  for (nm in c(
+    "n", "df", "max_vif", "dw_statistic", "residual_normality_statistic",
+    "residual_normality_p", "breusch_pagan_statistic", "breusch_pagan_p",
+    "cook_distance_max"
+  )) {
+    if (!nm %in% names(df)) df[[nm]] <- NA_real_
+  }
+  if (!"residual_normality_method" %in% names(df)) df$residual_normality_method <- ""
+
+  out <- data.frame(
+    Model_ID = df$model_id,
+    Component = df$model_component,
+    Path = df$path_label,
+    Outcome = df$outcome_label,
+    Predictor = df$x_label,
+    Mediator = df$mediator_label,
+    Moderator = df$moderator_label,
+    Estimator = df$estimator,
+    Variance = df$variance_method,
+    n = fmt2_pm(df$n),
+    df = fmt2_pm(df$df),
+    Max_VIF = fmt3_pm(df$max_vif),
+    DW = fmt3_pm(df$dw_statistic),
+    Normality_Test = df$residual_normality_method,
+    Normality_Stat = fmt3_pm(df$residual_normality_statistic),
+    Normality_p = fmt_p_pm(df$residual_normality_p),
+    BP_Stat = fmt3_pm(df$breusch_pagan_statistic),
+    BP_p = fmt_p_pm(df$breusch_pagan_p),
+    Cook_Max = fmt3_pm(df$cook_distance_max),
+    Note = df$diagnostic_note,
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+  out$Path <- ave(out$Path, out$Model_ID, FUN = blank_repeat)
+  out
+}
+
 top_bottom_styles <- function() {
   list(
     title = openxlsx::createStyle(textDecoration = "bold", fontSize = 12, halign = "left"),
@@ -921,6 +1019,24 @@ write_simple_sheet <- function(wb, sheet_name, dat, title_text) {
       cols = seq_len(min(length(s2_widths), ncol(dat))),
       widths = s2_widths[seq_len(min(length(s2_widths), ncol(dat)))]
     )
+  } else if (identical(sheet_name, "S3")) {
+    s3_widths <- c(16, 18, 28, 20, 20, 20, 20, 18, 18, 8, 8, 10, 10, 22, 12, 10, 10, 10, 10, 62)
+    openxlsx::setColWidths(
+      wb,
+      sheet_name,
+      cols = seq_len(min(length(s3_widths), ncol(dat))),
+      widths = s3_widths[seq_len(min(length(s3_widths), ncol(dat)))]
+    )
+    note_col <- which(names(dat) == "Note")
+    if (nrow(dat) > 0 && length(note_col) == 1L) {
+      openxlsx::addStyle(
+        wb, sheet_name, sty$note,
+        rows = 4:(nrow(dat) + 3),
+        cols = note_col,
+        gridExpand = TRUE,
+        stack = TRUE
+      )
+    }
   } else if (identical(sheet_name, "T3")) {
     t3_widths <- if (isTRUE(suppressWarnings(as.numeric(PROCESS_SETTINGS$process_model)) %in% c(7, 14, 15, 58))) {
       c(18, 42, 20, 10, 8, 8, 8, 10, 10, 8, 10, 10, 8, 6)
@@ -1008,6 +1124,7 @@ T2 <- build_T2(PROCESS_MODEL_SUMMARY)
 T3 <- build_T3(PROCESS_INDIRECT_RESULTS)
 S1 <- build_S1()
 S2 <- build_S2(PROCESS_CONDITIONAL_EFFECTS)
+S3 <- build_S3(PROCESS_REGRESSION_DIAGNOSTICS)
 
 is_custom_model_pm <- isTRUE(PROCESS_SETTINGS$custom_model_enabled)
 is_custom_moderated_pm <- is_custom_model_pm && nzchar(as.character(PROCESS_SETTINGS$w_var %||% "")[1])
@@ -1020,6 +1137,9 @@ TABLE_REGISTRY <- if (is_custom_model_pm) {
   list(T1 = T1, T2 = T2, T3 = T3, S1 = S1, S2 = S2)
 } else {
   list(T1 = T1, T2 = T2, S1 = S1, S2 = S2)
+}
+if (nrow(S3) > 0) {
+  TABLE_REGISTRY$S3 <- S3
 }
 
 model_title_num <- if (is_custom_model_pm) {
@@ -1061,67 +1181,33 @@ table3_title <- if (is_custom_model_pm && is_custom_moderated_pm) {
 } else {
   "Table 3. PROCESS Model 4 indirect effects"
 }
+s2_title <- if (identical(PROCESS_SETTINGS$process_model, 7L)) {
+  "Supplementary Table 2. Conditional effects of the focal predictor on the mediator by moderator level"
+} else if (identical(PROCESS_SETTINGS$process_model, 8L)) {
+  "Supplementary Table 2. Conditional effects of the focal predictor on the mediator and outcome by moderator level"
+} else if (identical(PROCESS_SETTINGS$process_model, 14L)) {
+  "Supplementary Table 2. Conditional effects of the mediator on the outcome by moderator level"
+} else if (identical(PROCESS_SETTINGS$process_model, 15L)) {
+  "Supplementary Table 2. Conditional direct and second-stage effects by moderator level"
+} else if (identical(PROCESS_SETTINGS$process_model, 58L)) {
+  "Supplementary Table 2. Conditional effects by moderator level"
+} else if (identical(PROCESS_SETTINGS$process_model, 59L)) {
+  "Supplementary Table 2. Conditional first-stage, second-stage, and direct effects by moderator level"
+} else {
+  "Supplementary Table 2. Conditional effects of the focal predictor by moderator level"
+}
 
+table_titles <- c(
+  T1 = if (is_mediation_model) table1_title else "Table 1. PROCESS Model 1-style regression coefficients",
+  T2 = if (is_mediation_model) table2_title else "Table 2. PROCESS Model 1 model summary",
+  T3 = table3_title,
+  S1 = if (is_custom_model_pm) "Supplementary Table 1. Custom PROCESS analysis overview" else "Supplementary Table 1. PROCESS macro analysis overview",
+  S2 = s2_title,
+  S3 = "Supplementary Table 3. Regression diagnostics for PROCESS path models"
+)
 TABLE_META <- data.frame(
   table_name = names(TABLE_REGISTRY),
-  title = if (is_custom_model_pm) c(
-    table1_title,
-    table2_title,
-    table3_title,
-    "Supplementary Table 1. Custom PROCESS analysis overview"
-  ) else if (identical(PROCESS_SETTINGS$process_model, 7L)) c(
-    table1_title,
-    table2_title,
-    table3_title,
-    "Supplementary Table 1. PROCESS macro analysis overview",
-    "Supplementary Table 2. Conditional effects of the focal predictor on the mediator by moderator level"
-  ) else if (identical(PROCESS_SETTINGS$process_model, 8L)) c(
-    table1_title,
-    table2_title,
-    table3_title,
-    "Supplementary Table 1. PROCESS macro analysis overview",
-    "Supplementary Table 2. Conditional effects of the focal predictor on the mediator and outcome by moderator level"
-  ) else if (identical(PROCESS_SETTINGS$process_model, 14L)) c(
-    table1_title,
-    table2_title,
-    table3_title,
-    "Supplementary Table 1. PROCESS macro analysis overview",
-    "Supplementary Table 2. Conditional effects of the mediator on the outcome by moderator level"
-  ) else if (identical(PROCESS_SETTINGS$process_model, 15L)) c(
-    table1_title,
-    table2_title,
-    table3_title,
-    "Supplementary Table 1. PROCESS macro analysis overview",
-    "Supplementary Table 2. Conditional direct and second-stage effects by moderator level"
-  ) else if (identical(PROCESS_SETTINGS$process_model, 58L)) c(
-    table1_title,
-    table2_title,
-    table3_title,
-    "Supplementary Table 1. PROCESS macro analysis overview",
-    "Supplementary Table 2. Conditional effects by moderator level"
-  ) else if (identical(PROCESS_SETTINGS$process_model, 59L)) c(
-    table1_title,
-    table2_title,
-    table3_title,
-    "Supplementary Table 1. PROCESS macro analysis overview",
-    "Supplementary Table 2. Conditional first-stage, second-stage, and direct effects by moderator level"
-  ) else if (identical(PROCESS_SETTINGS$process_model, 5L)) c(
-    table1_title,
-    table2_title,
-    table3_title,
-    "Supplementary Table 1. PROCESS macro analysis overview",
-    "Supplementary Table 2. Conditional direct effects of the focal predictor by moderator level"
-  ) else if (is_mediation_model) c(
-      table1_title,
-      table2_title,
-      table3_title,
-      "Supplementary Table 1. PROCESS macro analysis overview"
-  ) else c(
-    "Table 1. PROCESS Model 1-style regression coefficients",
-    "Table 2. PROCESS Model 1 model summary",
-    "Supplementary Table 1. PROCESS macro analysis overview",
-    "Supplementary Table 2. Conditional effects of the focal predictor by moderator level"
-  ),
+  title = unname(table_titles[names(TABLE_REGISTRY)]),
   stringsAsFactors = FALSE
 )
 
@@ -1182,22 +1268,11 @@ write_simple_sheet(wb, "S1", S1, if (is_custom_model_pm) "Supplementary Table 1.
 if (!is_custom_model_pm && PROCESS_SETTINGS$process_model %in% c(1L, 5L, 7L, 8L, 14L, 15L, 58L, 59L)) {
   write_simple_sheet(
     wb, "S2", S2,
-    if (identical(PROCESS_SETTINGS$process_model, 7L)) {
-      "Supplementary Table 2. Conditional effects of the focal predictor on the mediator by moderator level"
-    } else if (identical(PROCESS_SETTINGS$process_model, 8L)) {
-      "Supplementary Table 2. Conditional effects of the focal predictor on the mediator and outcome by moderator level"
-    } else if (identical(PROCESS_SETTINGS$process_model, 14L)) {
-      "Supplementary Table 2. Conditional effects of the mediator on the outcome by moderator level"
-    } else if (identical(PROCESS_SETTINGS$process_model, 15L)) {
-      "Supplementary Table 2. Conditional direct and second-stage effects by moderator level"
-    } else if (identical(PROCESS_SETTINGS$process_model, 58L)) {
-      "Supplementary Table 2. Conditional effects by moderator level"
-    } else if (identical(PROCESS_SETTINGS$process_model, 59L)) {
-      "Supplementary Table 2. Conditional first-stage, second-stage, and direct effects by moderator level"
-    } else {
-      "Supplementary Table 2. Conditional effects of the focal predictor by moderator level"
-    }
+    s2_title
   )
+}
+if (nrow(S3) > 0) {
+  write_simple_sheet(wb, "S3", S3, "Supplementary Table 3. Regression diagnostics for PROCESS path models")
 }
 openxlsx::saveWorkbook(wb, PATH_FINAL_EXCEL, overwrite = TRUE)
 

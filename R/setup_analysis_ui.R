@@ -194,7 +194,7 @@ analysis_ui_text <- function(text, language = statedu_initial_language()) {
     "covariance matrix" = paste0("Covariance matrix|", h("eab3b5ebb684ec82b0ed9689eba0ac")),
     "principal axis factoring" = paste0("Principal axis factoring|", h("eca3bcecb695ec9a94ec9db8ebb295")),
     "maximum likelihood" = paste0("Maximum likelihood|", h("ecb59ceb8c80ec9ab0eb8f84ebb295")),
-    "varimax" = paste0("Varimax|", h("ebca0ceb9faeb9e99ec8aa4")),
+    "varimax" = paste0("Varimax|", h("ebb2a0eba6aceba7a5ec8aa4")),
     "oblimin" = paste0("Oblimin|", h("ec98a4ebb894eba6acebafbc")),
     "factor item means" = paste0("Factor item means|", h("ec9a94ec9db820ebacb8ed95ad20ed8f89eab7a0")),
     "factor item sums" = paste0("Factor item sums|", h("ec9a94ec9db820ebacb8ed95ad20ed95a9eab384")),
@@ -234,6 +234,7 @@ analysis_ui_text <- function(text, language = statedu_initial_language()) {
     "convert to na" = paste0("Convert to NA|", h("4e41eba19c20ebb380ed9998")),
     "insert variable(s)" = paste0("Insert variable(s)|", h("ebb380ec889820ec82bdec9e85")),
     "new variable name" = paste0("New variable name|", h("ec838820ebb380ec8898ebaa85")),
+    "variable label" = paste0("Variable label|", h("ebb380ec889820eb9dbcebb2a8")),
     "variable type" = paste0("Variable type|", h("ebb380ec889820ec9ca0ed9895")),
     "choose a template..." = paste0("Choose a template...|", h("ed859ced948ceba6bf20ec84a0ed839d2e2e2e")),
     "copy variable" = paste0("Copy variable|", h("ebb380ec889820ebb3b5ec82ac")),
@@ -392,13 +393,14 @@ analysis_transfer_listbox_input <- function(
   selected = character(0),
   size = 14,
   important_height = FALSE,
-  height_offset = 0
+  height_offset = 0,
+  min_size = 4
 ) {
   values <- vapply(items, `[[`, character(1), "value")
   labels <- vapply(items, `[[`, character(1), "label")
   selected <- intersect(as.character(selected %||% character(0)), values)
   # Keep transient listbox selections isolated in renderUI callers; the shared JS restores scroll after Shiny rebinds.
-  height_px <- max(4, as.integer(size %||% 14)) * 24 + as.integer(height_offset %||% 0)
+  height_px <- max(as.integer(min_size %||% 4), as.integer(size %||% 14)) * 24 + as.integer(height_offset %||% 0)
   listbox_style <- paste0(
     "height:", height_px, "px", if (isTRUE(important_height)) " !important" else "", ";",
     "width:300px;min-width:300px;max-width:300px;",

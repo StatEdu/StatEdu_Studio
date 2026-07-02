@@ -150,11 +150,11 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-longitudinal-panel-gap-20260630d"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-mm-path-disable-20260701a"))
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-language-switch-navbar-20260628f"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-penalized-alias-removed-20260701a"))
 }
 
 app_language_bootstrap_script <- function(language) {
@@ -188,7 +188,8 @@ app_static_language_labels_script <- local({
       list(en = "Metabolic syndrome", ko = statedu_ko("calc_metabolic_syndrome")),
       list(en = "Framingham risk score", ko = statedu_ko("calc_framingham_risk")),
       list(en = "ASCVD10", ko = "ASCVD10"),
-      list(en = "Metabolic severity", ko = statedu_ko("calc_metabolic_severity"))
+      list(en = "Metabolic severity", ko = statedu_ko("calc_metabolic_severity")),
+      list(en = "Mediation / Moderation", ko = "\ub9e4\uac1c\u00b7\uc870\uc808")
     )
     group_labels <- list(
       list(en = "Descriptives & Tables", ko = statedu_ko("group_descriptives")),
@@ -283,6 +284,7 @@ enabled_analysis_tabs <- function() {
     pca = TRUE,
     regression = FALSE,
     hierarchical = TRUE,
+    mediation_moderation = TRUE,
     longitudinal = statedu_feature_enabled("longitudinal", TRUE),
     generalized = TRUE
   )

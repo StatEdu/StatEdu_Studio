@@ -126,7 +126,7 @@ result_header_cell_style <- function(first = FALSE, compact = FALSE, compact_fon
     "border-top:0;border-bottom:2px solid #1f2937;vertical-align:middle;",
     "font-weight:700;font-size:", header_font_size, "px;background:transparent;white-space:nowrap;",
     "min-width:", width, ";",
-    "text-align:", if (isTRUE(first)) "left" else "right", ";"
+    "text-align:", if (isTRUE(first)) "left" else "right", " !important;"
   )
 }
 
@@ -146,7 +146,7 @@ result_body_cell_style <- function(first = FALSE, last = FALSE, compact = FALSE,
     "font-variant-numeric:tabular-nums lining-nums;font-feature-settings:'tnum' 1,'lnum' 1;",
     "min-width:", width, ";",
     "white-space:pre-line;",
-    "text-align:", if (isTRUE(first)) "left" else "right", ";"
+    "text-align:", if (isTRUE(first)) "left" else "right", " !important;"
   )
 }
 
@@ -434,8 +434,14 @@ coefficient_display_cell_style <- function(table, row_index, column, display_ind
   if (isTRUE(attr(table, "trend_analysis", exact = TRUE)) && column_key == "pfortrend") {
     style <- paste0(style, "white-space:nowrap;overflow-wrap:normal;word-break:normal;")
   }
+  if (column_key == "level") {
+    style <- paste0(style, "text-align:center !important;white-space:pre-line;")
+  }
+  if (column_key %in% c("effect", "path")) {
+    style <- paste0(style, "text-align:left !important;white-space:pre-line;overflow-wrap:anywhere;word-break:normal;")
+  }
   if (column_key %in% c("statistic", "t", "f", "tf", "fstatistic")) {
-    style <- paste0(style, "text-align:right;white-space:nowrap;overflow-wrap:normal;word-break:normal;")
+    style <- paste0(style, "text-align:right !important;white-space:nowrap;overflow-wrap:normal;word-break:normal;")
   }
   style
 }
@@ -447,6 +453,9 @@ coefficient_column_class <- function(name) {
     term = "coefficient-col-term",
     variable = "coefficient-col-term",
     value = "coefficient-col-value",
+    effect = "coefficient-col-effect",
+    path = "coefficient-col-path",
+    level = "coefficient-col-level",
     label = "coefficient-col-reference",
     statistic = "coefficient-col-statistic",
     tf = "coefficient-col-statistic",
@@ -509,7 +518,7 @@ hierarchical_stat_cell_style <- function(column, last = FALSE, header = FALSE) {
     if (isTRUE(header)) "2px solid #1f2937" else if (isTRUE(last)) "0" else "1px solid #d7dde5",
     ";vertical-align:middle;background:transparent;",
     "width:auto;min-width:0;max-width:none;",
-    "text-align:", if (isTRUE(header)) "center" else "right", ";",
+    "text-align:", if (isTRUE(header)) "center" else "right", " !important;",
     "white-space:", if (isTRUE(header)) "normal" else "nowrap", ";",
     "overflow-wrap:normal;"
   )

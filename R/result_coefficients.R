@@ -253,11 +253,12 @@ has_severe_vif <- function(results) {
 }
 
 coefficient_note_line <- function(result, show_vif = FALSE, show_sr2 = FALSE, show_f2 = FALSE) {
+  ci_label <- bootstrap_ci_method_label(result$bootstrap_ci_method %||% "bias_corrected")
   paste(
     if (isTRUE(show_vif)) "Tolerance = 1 - R\u00B2 for each predictor;" else NULL,
     if (isTRUE(show_vif)) "VIF = Variance Inflation Factor;" else NULL,
     if (isTRUE(result$use_hc3)) "HC3 SE = heteroskedasticity-consistent standard error type 3;" else NULL,
-    if (isTRUE(result$use_bootstrap)) "Boot SE, LLCI, ULCI, and Boot p are bootstrap estimates based on the selected bootstrap resamples and seed number;" else NULL,
+    if (isTRUE(result$use_bootstrap)) sprintf("Boot SE is the bootstrap standard error; LLCI and ULCI are %s bootstrap confidence limits based on the selected bootstrap resamples and seed number;", ci_label) else NULL,
     if (isTRUE(show_sr2)) "sr\u00B2 = squared semi-partial correlation, unique R\u00B2 contribution for each coefficient;" else NULL,
     if (isTRUE(show_f2)) "f\u00B2 = sr\u00B2 / (1 - model R\u00B2);" else NULL,
     if (isTRUE(result$use_hc3) || isTRUE(result$use_bootstrap)) "OLS R\u00B2 and adjusted R\u00B2 are ordinary least squares model fit indices;" else NULL,

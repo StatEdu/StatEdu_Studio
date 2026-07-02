@@ -420,7 +420,20 @@ register_settings_save_handler <- function(
     }
 
     settings <- current_settings_fn()
-    saved <- write_settings_json_file(settings, settings_path)
+    saved <- tryCatch(
+      write_settings_json_file(settings, settings_path),
+      error = function(error) {
+        showNotification(
+          paste("Settings file could not be saved:", conditionMessage(error)),
+          type = "error",
+          duration = 8
+        )
+        NULL
+      }
+    )
+    if (is.null(saved)) {
+      return()
+    }
     message(sprintf("Saved settings: %s var_label override(s) -> %s", saved$var_label_count, saved$path))
     mark_settings_clean()
     showNotification(

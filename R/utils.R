@@ -478,6 +478,44 @@ default_seed <- function() {
   as.integer(format(Sys.Date(), "%Y%m%d"))
 }
 
+bootstrap_percentile_ci <- function(values, probs = c(.025, .975)) {
+  values <- as.numeric(values)
+  values <- values[is.finite(values)]
+  if (length(values) == 0L) {
+    return(rep(NA_real_, length(probs)))
+  }
+  stats::quantile(values, probs = probs, na.rm = TRUE, names = FALSE, type = 6)
+}
+
+bootstrap_bias_corrected_ci <- function(point, values, conf = .95) {
+  point <- suppressWarnings(as.numeric(point)[[1]])
+  values <- as.numeric(values)
+  values <- values[is.finite(values)]
+  if (length(values) == 0L || !is.finite(point)) {
+    return(rep(NA_real_, 2L))
+  }
+  alpha <- (1 - conf) / 2
+  prop_less <- mean(values < point)
+  prop_less <- min(max(prop_less, 0.5 / length(values)), 1 - 0.5 / length(values))
+  z0 <- stats::qnorm(prop_less)
+  probs <- stats::pnorm(2 * z0 + stats::qnorm(c(alpha, 1 - alpha)))
+  bootstrap_percentile_ci(values, probs)
+}
+
+bootstrap_ci <- function(point, values, conf = .95, method = "bias_corrected") {
+  method <- as.character(method %||% "bias_corrected")[[1]]
+  if (identical(method, "percentile")) {
+    alpha <- (1 - conf) / 2
+    return(bootstrap_percentile_ci(values, c(alpha, 1 - alpha)))
+  }
+  bootstrap_bias_corrected_ci(point, values, conf = conf)
+}
+
+bootstrap_ci_method_label <- function(method = "bias_corrected") {
+  method <- as.character(method %||% "bias_corrected")[[1]]
+  if (identical(method, "percentile")) "Percentile" else "Bias-corrected"
+}
+
 has_request_nonce <- function(request) {
   !is.null(request) && !is.null(request$nonce)
 }

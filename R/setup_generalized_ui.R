@@ -15,8 +15,8 @@ generalized_missing_strategy_ui_detail <- function(strategy, language = statedu_
     ),
     statedu_text(
       language,
-      "Drops rows with missing selected model variables before fitting the GLM. This is transparent, but it is strongest when missingness is minimal or plausibly MCAR.",
-      statedu_utf8("ec84a0ed839ded959c20474c4d20ebaaa8ed989520ebb380ec8898ec979020eab2b0ecb8a1ec9db420ec9e88eb8a9420ed9689ec9d8420ebb684ec849d20eca084ec979020eca09cec99b8ed95a9eb8b88eb8ba42e20eab2b0ecb8a1ec9db420eca081eab1b0eb8298204d434152eba19c20ebb3bc20ec889820ec9e88ec9d8420eb958c20eab080ec9ea520ed88acebaa85ed959c20ebb0a9ebb295ec9e85eb8b88eb8ba42e")
+      "Drops rows with missing selected analysis variables before fitting the GLM. This is transparent, but it is strongest when missingness is minimal or plausibly MCAR.",
+      statedu_utf8("ec84a0ed839ded959c20474c4d20ebb684ec849d20ebb380ec8898ec979020eab2b0ecb8a1ec9db420ec9e88eb8a9420ed9689ec9d8420ebb684ec849d20eca084ec979020eca09cec99b8ed95a9eb8b88eb8ba42e20eab2b0ecb8a1ec9db420eca081eab1b0eb8298204d434152eba19c20ebb3bc20ec889820ec9e88ec9d8420eb958c20eab080ec9ea520ed88acebaa85ed959c20ebb0a9ebb295ec9e85eb8b88eb8ba42e")
     )
   )
 }
@@ -131,7 +131,6 @@ generalized_setup_panel <- function(state, status_message = NULL) {
         class = "regression-target-column",
         div(
           class = "analysis-transfer-column analysis-transfer-panel generalized-model-block",
-          div(class = "analysis-option-title longitudinal-block-title", analysis_ui_text("Model variables", language)),
           div(
             class = "generalized-model-fields",
             div(

@@ -8,7 +8,10 @@ MODEL_RUN_SUMMARY <- load_step_rds("MODEL_RUN_SUMMARY", dir_rds = DIR_RDS, defau
 PROCESS_MODEL_RESULTS <- load_step_rds("PROCESS_MODEL_RESULTS", dir_rds = DIR_RDS, default = data.frame())
 PROCESS_MODEL_SUMMARY <- load_step_rds("PROCESS_MODEL_SUMMARY", dir_rds = DIR_RDS, default = data.frame())
 PROCESS_INDIRECT_RESULTS <- load_step_rds("PROCESS_INDIRECT_RESULTS", dir_rds = DIR_RDS, default = data.frame())
+PROCESS_INDIRECT_JN_GRID <- load_step_rds("PROCESS_INDIRECT_JN_GRID", dir_rds = DIR_RDS, default = data.frame())
 PROCESS_CONDITIONAL_EFFECTS <- load_step_rds("PROCESS_CONDITIONAL_EFFECTS", dir_rds = DIR_RDS, default = data.frame())
+PROCESS_REGRESSION_DIAGNOSTICS <- load_step_rds("PROCESS_REGRESSION_DIAGNOSTICS", dir_rds = DIR_RDS, default = data.frame())
+PROCESS_REGRESSION_RESIDUALS <- load_step_rds("PROCESS_REGRESSION_RESIDUALS", dir_rds = DIR_RDS, default = data.frame())
 PROCESS_DATA <- load_step_rds("PROCESS_DATA", dir_rds = DIR_RDS, default = data.frame())
 SURVEY_BUNDLE <- load_step_rds("SURVEY_BUNDLE", dir_rds = DIR_RDS, default = list())
 DICT <- load_step_rds("DICT", dir_rds = DIR_RDS, default = list())
@@ -42,6 +45,27 @@ sanitize_token_fig <- function(x) {
   x <- gsub("[^a-z0-9]+", "", x)
   if (!nzchar(x)) "v" else x
 }
+
+process_current_edition_fig <- function() {
+  edition <- if (exists("latent_current_edition", mode = "function", inherits = TRUE)) {
+    tryCatch(latent_current_edition(), error = function(e) Sys.getenv("STATEDU_EDITION", "development"))
+  } else if (exists("analysis_save_edition", mode = "function", inherits = TRUE)) {
+    tryCatch(analysis_save_edition(), error = function(e) Sys.getenv("STATEDU_EDITION", "development"))
+  } else {
+    Sys.getenv("STATEDU_EDITION", "development")
+  }
+  edition <- tolower(as.character(edition %||% "development")[1])
+  if (!edition %in% c("free", "pro", "development", "personal", "institution")) {
+    edition <- "development"
+  }
+  edition
+}
+
+process_figure_dpi_fig <- function() {
+  if (identical(process_current_edition_fig(), "free")) 300L else 600L
+}
+
+PROCESS_FIGURE_DPI <- process_figure_dpi_fig()
 
 weighted_mean_fig <- function(x, w = NULL) {
   x <- safe_num_fig(x)
@@ -1071,6 +1095,20 @@ build_model7_indirect_plot_df <- function(indirect_df, dat, w_var, n_points = 20
   ll_vals <- safe_num_fig(cond_df$llci[ord])
   ul_vals <- safe_num_fig(cond_df$ulci[ord])
   se_vals <- safe_num_fig(cond_df$se[ord])
+  ci_method <- if ("ci_method" %in% names(cond_df)) {
+    vals <- unique(trimws(as.character(cond_df$ci_method)))
+    vals <- vals[nzchar(vals) & !is.na(vals)]
+    if (length(vals) > 0) vals[1] else "95% CI"
+  } else {
+    "95% CI"
+  }
+  inference_note <- if ("inference_note" %in% names(cond_df)) {
+    vals <- unique(trimws(as.character(cond_df$inference_note)))
+    vals <- vals[nzchar(vals) & !is.na(vals)]
+    if (length(vals) > 0) vals[1] else ""
+  } else {
+    ""
+  }
 
   mean_idx <- which(parsed_cond$probe_level[ord] == "Mean")
   if (length(mean_idx) > 0) {
@@ -1115,8 +1153,185 @@ build_model7_indirect_plot_df <- function(indirect_df, dat, w_var, n_points = 20
     llci = llci,
     ulci = ulci,
     se = se_hat,
+    ci_method = ci_method,
+    inference_note = inference_note,
     stringsAsFactors = FALSE
   )
+}
+
+process_ci_subtitle_fig <- function(plot_df, prefix = "Shaded band and dashed bounds indicate") {
+  ci_method <- "95% CI"
+  if (is.data.frame(plot_df) && "ci_method" %in% names(plot_df)) {
+    vals <- unique(trimws(as.character(plot_df$ci_method)))
+    vals <- vals[nzchar(vals) & !is.na(vals) & !vals %in% c("Not computed", "95% CI")]
+    if (length(vals) > 0) {
+      ci_method <- if (grepl("^95%\\s+CI", vals[1], ignore.case = TRUE)) vals[1] else paste0("95% CI (", vals[1], ")")
+    }
+  }
+  note <- ""
+  if (is.data.frame(plot_df) && "inference_note" %in% names(plot_df)) {
+    vals <- unique(trimws(as.character(plot_df$inference_note)))
+    vals <- vals[nzchar(vals) & !is.na(vals)]
+    if (length(vals) > 0) note <- vals[1]
+  }
+  main <- paste0(prefix, " ", ci_method, ".")
+  paste(c(main, note)[nzchar(c(main, note))], collapse = " ")
+}
+
+compute_ci_transition_points_fig <- function(plot_df, x_col = "moderator_value", ll_col = "llci", ul_col = "ulci") {
+  if (!is.data.frame(plot_df) || nrow(plot_df) < 2L) return(numeric(0))
+  x <- safe_num_fig(plot_df[[x_col]])
+  roots <- numeric(0)
+
+  add_roots <- function(y) {
+    y <- safe_num_fig(y)
+    out <- numeric(0)
+    ok <- is.finite(x) & is.finite(y)
+    if (sum(ok) < 2L) return(out)
+    xx <- x[ok]
+    yy <- y[ok]
+    ord <- order(xx)
+    xx <- xx[ord]
+    yy <- yy[ord]
+    exact <- xx[abs(yy) < 1e-10]
+    if (length(exact) > 0) out <- c(out, exact)
+    for (i in seq_len(length(xx) - 1L)) {
+      y1 <- yy[i]
+      y2 <- yy[i + 1L]
+      if (!is.finite(y1) || !is.finite(y2)) next
+      if (y1 == 0 || y2 == 0 || sign(y1) == sign(y2)) next
+      out <- c(out, xx[i] - y1 * (xx[i + 1L] - xx[i]) / (y2 - y1))
+    }
+    out
+  }
+
+  roots <- c(roots, add_roots(plot_df[[ll_col]]), add_roots(plot_df[[ul_col]]))
+  roots <- sort(unique(round(roots[is.finite(roots)], 10)))
+  x_rng <- range(x, na.rm = TRUE)
+  roots[roots >= x_rng[1] & roots <= x_rng[2]]
+}
+
+build_indirect_jn_plot <- function(plot_df, moderator_label, x_label, mediator_label, outcome_label, title, jn_points = numeric(0), bw = FALSE) {
+  if (!requireNamespace("ggplot2", quietly = TRUE)) return(NULL)
+  if (!is.data.frame(plot_df) || nrow(plot_df) == 0) return(NULL)
+
+  plot_df <- as.data.frame(plot_df, stringsAsFactors = FALSE)
+  plot_df$sig_dir <- ifelse(
+    plot_df$ulci < 0, "negative",
+    ifelse(plot_df$llci > 0, "positive", "nonsignificant")
+  )
+
+  rect_df <- data.frame()
+  r <- rle(as.character(plot_df$sig_dir))
+  ends <- cumsum(r$lengths)
+  starts <- c(1, head(ends + 1, -1))
+  for (i in seq_along(r$values)) {
+    if (identical(r$values[i], "nonsignificant")) next
+    seg <- plot_df[starts[i]:ends[i], , drop = FALSE]
+    if (nrow(seg) == 0) next
+    rect_df <- rbind(
+      rect_df,
+      data.frame(
+        xmin = min(seg$moderator_value, na.rm = TRUE),
+        xmax = max(seg$moderator_value, na.rm = TRUE),
+        ymin = -Inf,
+        ymax = Inf,
+        sig_dir = r$values[i],
+        stringsAsFactors = FALSE
+      )
+    )
+  }
+
+  subtitle <- if (length(jn_points) == 0) {
+    "No Johnson-Neyman transition point within the observed moderator range."
+  } else {
+    paste0(
+      "Johnson-Neyman point",
+      if (length(jn_points) > 1) "s" else "",
+      ": ",
+      paste(formatC(jn_points, format = "f", digits = 2), collapse = ", ")
+    )
+  }
+  subtitle <- paste(subtitle, process_ci_subtitle_fig(plot_df, prefix = "Band and dashed bounds indicate"))
+
+  ribbon_fill <- if (isTRUE(bw)) "grey82" else "#B0BEC5"
+  bound_col <- if (isTRUE(bw)) "grey35" else "#607D8B"
+  line_col <- if (isTRUE(bw)) "black" else "#1565C0"
+  fill_vals <- if (isTRUE(bw)) {
+    c("negative" = "grey88", "positive" = "grey94", "nonsignificant" = "transparent")
+  } else {
+    c("negative" = "#BBDEFB", "positive" = "#FFE0B2", "nonsignificant" = "transparent")
+  }
+
+  p <- ggplot2::ggplot(plot_df, ggplot2::aes(x = moderator_value, y = indirect_effect)) +
+    {
+      if (nrow(rect_df) > 0) {
+        ggplot2::geom_rect(
+          data = rect_df,
+          ggplot2::aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = sig_dir),
+          inherit.aes = FALSE,
+          alpha = if (isTRUE(bw)) 0.18 else 0.16,
+          color = NA,
+          show.legend = FALSE
+        )
+      }
+    } +
+    ggplot2::geom_hline(yintercept = 0, linewidth = 0.35, color = "#666666") +
+    ggplot2::geom_ribbon(ggplot2::aes(ymin = llci, ymax = ulci), fill = ribbon_fill, alpha = if (isTRUE(bw)) 0.32 else 0.28, linewidth = 0, color = NA) +
+    ggplot2::geom_line(ggplot2::aes(y = llci), linewidth = 0.45, alpha = 0.8, linetype = "22", color = bound_col) +
+    ggplot2::geom_line(ggplot2::aes(y = ulci), linewidth = 0.45, alpha = 0.8, linetype = "22", color = bound_col) +
+    ggplot2::geom_line(linewidth = 0.9, color = line_col) +
+    ggplot2::labs(
+      title = title,
+      subtitle = subtitle,
+      x = moderator_label,
+      y = paste0("Conditional indirect effect of ", x_label, " on ", outcome_label, "\nthrough ", mediator_label)
+    ) +
+    ggplot2::coord_cartesian(clip = "off") +
+    theme_publication_fig(base_size = 11) +
+    ggplot2::theme(
+      legend.position = "none",
+      plot.title = ggplot2::element_text(hjust = 0, size = 9, lineheight = 1.05),
+      plot.subtitle = ggplot2::element_text(hjust = 0, size = 8.5),
+      axis.title.x = ggplot2::element_text(size = 8),
+      axis.title.y = ggplot2::element_text(size = 8),
+      axis.text = ggplot2::element_text(size = 8.5),
+      plot.margin = ggplot2::margin(5.5, 5.5, 16, 5.5),
+      panel.grid.major = ggplot2::element_blank(),
+      panel.grid.minor = ggplot2::element_blank()
+    )
+  if (nrow(rect_df) > 0) {
+    p <- p + ggplot2::scale_fill_manual(values = fill_vals, drop = FALSE)
+  }
+
+  if (length(jn_points) > 0) {
+    y_rng <- range(c(plot_df$llci, plot_df$ulci), na.rm = TRUE)
+    y_span <- diff(y_rng)
+    if (!is.finite(y_span) || y_span <= 0) y_span <- max(abs(y_rng), na.rm = TRUE)
+    if (!is.finite(y_span) || y_span <= 0) y_span <- 1
+    x_rng <- range(plot_df$moderator_value, na.rm = TRUE)
+    x_span <- diff(x_rng)
+    if (!is.finite(x_span) || x_span <= 0) x_span <- 1
+    ann_df <- data.frame(
+      x = pmin(pmax(jn_points + 0.03 * x_span, x_rng[1]), x_rng[2]),
+      y = y_rng[1] + 0.03 * y_span,
+      lab = paste0("JN=", formatC(jn_points, format = "f", digits = 2)),
+      hjust = ifelse(jn_points + 0.03 * x_span > x_rng[2], 1, 0),
+      stringsAsFactors = FALSE
+    )
+    p <- p +
+      ggplot2::geom_vline(xintercept = jn_points, linewidth = 0.45, linetype = "42", color = "#424242") +
+      ggplot2::geom_text(
+        data = ann_df,
+        ggplot2::aes(x = x, y = y, label = lab, hjust = hjust),
+        inherit.aes = FALSE,
+        vjust = 1,
+        size = 2.8,
+        color = "#424242"
+      )
+  }
+
+  p
 }
 
 build_model7_indirect_plot <- function(plot_df, moderator_label, x_label, mediator_label, outcome_label, title) {
@@ -1131,7 +1346,7 @@ build_model7_indirect_plot <- function(plot_df, moderator_label, x_label, mediat
     ggplot2::geom_line(linewidth = 0.9, color = "#1565C0") +
     ggplot2::labs(
       title = title,
-      subtitle = "Shaded band and dashed bounds indicate 95% CI.",
+      subtitle = process_ci_subtitle_fig(plot_df),
       x = moderator_label,
       y = paste0("Conditional indirect effect of ", x_label, " on ", outcome_label, "\nthrough ", mediator_label)
     ) +
@@ -1160,7 +1375,7 @@ build_model7_indirect_plot_bw <- function(plot_df, moderator_label, x_label, med
     ggplot2::geom_line(linewidth = 0.9, color = "black") +
     ggplot2::labs(
       title = title,
-      subtitle = "Shaded band and dashed bounds indicate 95% CI.",
+      subtitle = process_ci_subtitle_fig(plot_df),
       x = moderator_label,
       y = paste0("Conditional indirect effect of ", x_label, " on ", outcome_label, "\nthrough ", mediator_label)
     ) +
@@ -1737,6 +1952,83 @@ build_jn_plot_bw <- function(plot_df, moderator_label, x_label, y_label, title, 
   p
 }
 
+build_process_residual_fitted_plot <- function(df, title) {
+  if (!requireNamespace("ggplot2", quietly = TRUE)) return(NULL)
+  if (!is.data.frame(df) || nrow(df) == 0) return(NULL)
+  df <- df[is.finite(safe_num_fig(df$fitted)) & is.finite(safe_num_fig(df$residual)), , drop = FALSE]
+  if (nrow(df) < 3L) return(NULL)
+  df$fitted <- safe_num_fig(df$fitted)
+  df$residual <- safe_num_fig(df$residual)
+  can_smooth <- length(unique(df$fitted[is.finite(df$fitted)])) >= 4L &&
+    length(unique(df$residual[is.finite(df$residual)])) >= 3L
+
+  p <- ggplot2::ggplot(df, ggplot2::aes(x = fitted, y = residual)) +
+    ggplot2::geom_hline(yintercept = 0, linewidth = 0.35, color = "#666666") +
+    ggplot2::geom_point(size = 1.7, alpha = 0.72, color = "#1565C0") +
+    ggplot2::labs(
+      title = title,
+      subtitle = "Residuals versus fitted values",
+      x = "Fitted value",
+      y = "Residual"
+    ) +
+    theme_publication_fig(base_size = 11) +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(hjust = 0, size = 9, lineheight = 1.05),
+      plot.subtitle = ggplot2::element_text(hjust = 0, size = 8.5),
+      axis.title.x = ggplot2::element_text(size = 8),
+      axis.title.y = ggplot2::element_text(size = 8),
+      axis.text = ggplot2::element_text(size = 8.5),
+      panel.grid.major = ggplot2::element_blank(),
+      panel.grid.minor = ggplot2::element_blank()
+    )
+  if (isTRUE(can_smooth)) {
+    p <- p + ggplot2::geom_smooth(method = "loess", formula = y ~ x, se = FALSE, linewidth = 0.55, color = "#D84315")
+  }
+  p
+}
+
+build_process_residual_qq_plot <- function(df, title) {
+  if (!requireNamespace("ggplot2", quietly = TRUE)) return(NULL)
+  if (!is.data.frame(df) || nrow(df) == 0) return(NULL)
+  resid <- safe_num_fig(df$std_residual)
+  if (all(is.na(resid))) resid <- safe_num_fig(df$residual)
+  resid <- resid[is.finite(resid)]
+  if (length(resid) < 3L) return(NULL)
+  resid <- sort(resid)
+  qq_df <- data.frame(
+    theoretical = stats::qnorm(stats::ppoints(length(resid))),
+    sample = resid,
+    stringsAsFactors = FALSE
+  )
+  qx <- stats::quantile(qq_df$theoretical, probs = c(.25, .75), na.rm = TRUE)
+  qy <- stats::quantile(qq_df$sample, probs = c(.25, .75), na.rm = TRUE)
+  slope <- diff(qy) / diff(qx)
+  intercept <- qy[1] - slope * qx[1]
+
+  p <- ggplot2::ggplot(qq_df, ggplot2::aes(x = theoretical, y = sample)) +
+    ggplot2::geom_point(size = 1.7, alpha = 0.72, color = "#1565C0") +
+    ggplot2::labs(
+      title = title,
+      subtitle = "Normal Q-Q plot of residuals",
+      x = "Theoretical quantile",
+      y = "Sample quantile"
+    ) +
+    theme_publication_fig(base_size = 11) +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(hjust = 0, size = 9, lineheight = 1.05),
+      plot.subtitle = ggplot2::element_text(hjust = 0, size = 8.5),
+      axis.title.x = ggplot2::element_text(size = 8),
+      axis.title.y = ggplot2::element_text(size = 8),
+      axis.text = ggplot2::element_text(size = 8.5),
+      panel.grid.major = ggplot2::element_blank(),
+      panel.grid.minor = ggplot2::element_blank()
+    )
+  if (is.finite(intercept) && is.finite(slope)) {
+    p <- p + ggplot2::geom_abline(intercept = intercept, slope = slope, linewidth = 0.45, color = "#666666")
+  }
+  p
+}
+
 figure_rows <- list()
 
 if (isTRUE(PROCESS_SETTINGS$custom_model_enabled) &&
@@ -1752,7 +2044,7 @@ if (isTRUE(PROCESS_SETTINGS$custom_model_enabled) &&
       dir_pdf = DIR_FIGURES_PDF,
       width = 8.0,
       height = 4.8,
-      dpi = 600,
+      dpi = PROCESS_FIGURE_DPI,
       figure_title = "Estimated Path Model for the Custom Moderated Mediation Analysis"
     )
     figure_rows[[length(figure_rows) + 1L]] <- row_i
@@ -1768,7 +2060,7 @@ if (isTRUE(PROCESS_SETTINGS$custom_model_enabled) &&
       dir_pdf = DIR_FIGURES_PDF,
       width = 8.0,
       height = 4.8,
-      dpi = 600,
+      dpi = PROCESS_FIGURE_DPI,
       figure_title = "Estimated Path Model for the Custom Moderated Mediation Analysis (B/W)"
     )
     figure_rows[[length(figure_rows) + 1L]] <- row_bw
@@ -1839,7 +2131,7 @@ if (isTRUE(PROCESS_SETTINGS$process_model == 1L) &&
       dir_pdf = DIR_FIGURES_PDF,
       width = 7.2,
       height = 5.4,
-      dpi = 600,
+      dpi = PROCESS_FIGURE_DPI,
       figure_title = title_i
     )
     figure_rows[[length(figure_rows) + 1L]] <- row_i
@@ -2027,7 +2319,7 @@ if (isTRUE(PROCESS_SETTINGS$process_model %in% c(1L, 5L, 7L, 8L, 14L, 15L, 58L, 
       dir_pdf = DIR_FIGURES_PDF,
       width = 6.8,
       height = 4.8,
-      dpi = 600,
+      dpi = PROCESS_FIGURE_DPI,
       figure_title = title_i
     )
     figure_rows[[length(figure_rows) + 1L]] <- row_i
@@ -2054,7 +2346,7 @@ if (isTRUE(PROCESS_SETTINGS$process_model %in% c(1L, 5L, 7L, 8L, 14L, 15L, 58L, 
         dir_pdf = DIR_FIGURES_PDF,
         width = 6.8,
         height = 4.8,
-        dpi = 600,
+        dpi = PROCESS_FIGURE_DPI,
         figure_title = paste0(title_i, " (B/W)")
       )
       figure_rows[[length(figure_rows) + 1L]] <- row_bw
@@ -2107,7 +2399,7 @@ if (isTRUE(PROCESS_SETTINGS$process_model %in% c(1L, 5L, 7L, 8L, 14L, 15L, 58L, 
           dir_pdf = DIR_FIGURES_PDF,
           width = 6.8,
           height = 4.8,
-          dpi = 600,
+          dpi = PROCESS_FIGURE_DPI,
           figure_title = paste0(title_i, " (95% CI)")
         )
         figure_rows[[length(figure_rows) + 1L]] <- row_ci
@@ -2134,7 +2426,7 @@ if (isTRUE(PROCESS_SETTINGS$process_model %in% c(1L, 5L, 7L, 8L, 14L, 15L, 58L, 
             dir_pdf = DIR_FIGURES_PDF,
             width = 6.8,
             height = 4.8,
-            dpi = 600,
+            dpi = PROCESS_FIGURE_DPI,
             figure_title = paste0(title_i, " (95% CI, B/W)")
           )
           figure_rows[[length(figure_rows) + 1L]] <- row_ci_bw
@@ -2183,7 +2475,7 @@ if (isTRUE(PROCESS_SETTINGS$process_model %in% c(1L, 5L, 7L, 8L, 14L, 15L, 58L, 
           dir_pdf = DIR_FIGURES_PDF,
           width = 6.8,
           height = 4.8,
-          dpi = 600,
+          dpi = PROCESS_FIGURE_DPI,
           figure_title = title_jn_i
         )
         figure_rows[[length(figure_rows) + 1L]] <- row_jn
@@ -2211,7 +2503,7 @@ if (isTRUE(PROCESS_SETTINGS$process_model %in% c(1L, 5L, 7L, 8L, 14L, 15L, 58L, 
             dir_pdf = DIR_FIGURES_PDF,
             width = 6.8,
             height = 4.8,
-            dpi = 600,
+            dpi = PROCESS_FIGURE_DPI,
             figure_title = paste0(title_jn_i, " (B/W)")
           )
           figure_rows[[length(figure_rows) + 1L]] <- row_jn_bw
@@ -2311,7 +2603,7 @@ if (isTRUE(PROCESS_SETTINGS$custom_model_enabled) &&
           dir_pdf = DIR_FIGURES_PDF,
           width = 6.8,
           height = 4.8,
-          dpi = 600,
+          dpi = PROCESS_FIGURE_DPI,
           figure_title = title_i
         )
         figure_rows[[length(figure_rows) + 1L]] <- row_plot_i
@@ -2336,7 +2628,7 @@ if (isTRUE(PROCESS_SETTINGS$custom_model_enabled) &&
           dir_pdf = DIR_FIGURES_PDF,
           width = 6.8,
           height = 4.8,
-          dpi = 600,
+          dpi = PROCESS_FIGURE_DPI,
           figure_title = paste0(title_i, " (B/W)")
         )
         figure_rows[[length(figure_rows) + 1L]] <- row_plot_bw_i
@@ -2377,12 +2669,37 @@ if ((isTRUE(PROCESS_SETTINGS$process_model %in% c(7L, 8L, 14L, 15L, 58L, 59L)) |
     ]
     if (nrow(ind_i) == 0) next
 
-    plot_df_i <- build_model7_indirect_plot_df(
-      indirect_df = ind_i,
-      dat = PROCESS_DATA,
-      w_var = w_var_i,
-      n_points = 200L
-    )
+    grid_i <- data.frame()
+    if (is.data.frame(PROCESS_INDIRECT_JN_GRID) && nrow(PROCESS_INDIRECT_JN_GRID) > 0) {
+      grid_i <- PROCESS_INDIRECT_JN_GRID[
+        as.character(PROCESS_INDIRECT_JN_GRID$outcome) == outcome_i &
+          as.character(PROCESS_INDIRECT_JN_GRID$x_var) == x_var_i &
+          as.character(PROCESS_INDIRECT_JN_GRID$mediator) == mediator_i &
+          as.character(PROCESS_INDIRECT_JN_GRID$moderator) == w_var_i,
+        ,
+        drop = FALSE
+      ]
+    }
+    plot_df_i <- if (is.data.frame(grid_i) && nrow(grid_i) > 0) {
+      grid_i <- grid_i[order(safe_num_fig(grid_i$moderator_value)), , drop = FALSE]
+      data.frame(
+        moderator_value = safe_num_fig(grid_i$moderator_value),
+        indirect_effect = safe_num_fig(grid_i$indirect_effect),
+        llci = safe_num_fig(grid_i$llci),
+        ulci = safe_num_fig(grid_i$ulci),
+        se = safe_num_fig(grid_i$se),
+        ci_method = if ("ci_method" %in% names(grid_i)) grid_i$ci_method else "Delta method",
+        inference_note = if ("inference_note" %in% names(grid_i)) grid_i$inference_note else "",
+        stringsAsFactors = FALSE
+      )
+    } else {
+      build_model7_indirect_plot_df(
+        indirect_df = ind_i,
+        dat = PROCESS_DATA,
+        w_var = w_var_i,
+        n_points = 200L
+      )
+    }
     if (nrow(plot_df_i) == 0) next
 
     title_i <- paste0(
@@ -2414,7 +2731,7 @@ if ((isTRUE(PROCESS_SETTINGS$process_model %in% c(7L, 8L, 14L, 15L, 58L, 59L)) |
         dir_pdf = DIR_FIGURES_PDF,
         width = 6.8,
         height = 4.8,
-        dpi = 600,
+        dpi = PROCESS_FIGURE_DPI,
         figure_title = title_i
       )
       figure_rows[[length(figure_rows) + 1L]] <- row_i
@@ -2439,10 +2756,75 @@ if ((isTRUE(PROCESS_SETTINGS$process_model %in% c(7L, 8L, 14L, 15L, 58L, 59L)) |
         dir_pdf = DIR_FIGURES_PDF,
         width = 6.8,
         height = 4.8,
-        dpi = 600,
+        dpi = PROCESS_FIGURE_DPI,
         figure_title = paste0(title_i, " (B/W)")
       )
       figure_rows[[length(figure_rows) + 1L]] <- row_bw
+      start_idx <- start_idx + 1L
+    }
+
+    jn_points_ind_i <- compute_ci_transition_points_fig(plot_df_i)
+    title_jn_i <- paste0(
+      "Johnson-Neyman plot for the conditional indirect effect of ",
+      x_label_i,
+      " on ",
+      outcome_label_i,
+      "\nthrough ",
+      mediator_label_i,
+      " as a function of ",
+      w_label_i
+    )
+    plot_jn_ind_i <- build_indirect_jn_plot(
+      plot_df = plot_df_i,
+      moderator_label = w_label_i,
+      x_label = x_label_i,
+      mediator_label = mediator_label_i,
+      outcome_label = outcome_label_i,
+      title = title_jn_i,
+      jn_points = jn_points_ind_i,
+      bw = FALSE
+    )
+    if (!is.null(plot_jn_ind_i)) {
+      file_stub_jn_i <- paste0("fig", start_idx, "_indirect_johnson_neyman_", outcome_i, "_", x_var_i, "_", mediator_stub_i)
+      row_jn_i <- save_plot_all_formats(
+        plot_obj = plot_jn_ind_i,
+        file_stub = file_stub_jn_i,
+        dir_png = DIR_FIGURES_PNG,
+        dir_tiff = DIR_FIGURES_TIFF,
+        dir_pdf = DIR_FIGURES_PDF,
+        width = 6.8,
+        height = 4.8,
+        dpi = PROCESS_FIGURE_DPI,
+        figure_title = title_jn_i
+      )
+      figure_rows[[length(figure_rows) + 1L]] <- row_jn_i
+      start_idx <- start_idx + 1L
+    }
+
+    plot_jn_ind_bw_i <- build_indirect_jn_plot(
+      plot_df = plot_df_i,
+      moderator_label = w_label_i,
+      x_label = x_label_i,
+      mediator_label = mediator_label_i,
+      outcome_label = outcome_label_i,
+      title = title_jn_i,
+      jn_points = jn_points_ind_i,
+      bw = TRUE
+    )
+    if (!is.null(plot_jn_ind_bw_i)) {
+      file_stub_jn_bw_i <- paste0("fig", start_idx, "_indirect_johnson_neyman_bw_", outcome_i, "_", x_var_i, "_", mediator_stub_i)
+      row_jn_bw_i <- save_plot_all_formats(
+        plot_obj = plot_jn_ind_bw_i,
+        file_stub = file_stub_jn_bw_i,
+        dir_png = DIR_FIGURES_PNG,
+        dir_tiff = DIR_FIGURES_TIFF,
+        dir_pdf = DIR_FIGURES_PDF,
+        width = 6.8,
+        height = 4.8,
+        dpi = PROCESS_FIGURE_DPI,
+        figure_title = paste0(title_jn_i, " (B/W)")
+      )
+      figure_rows[[length(figure_rows) + 1L]] <- row_jn_bw_i
       start_idx <- start_idx + 1L
     }
   }
@@ -2496,11 +2878,62 @@ if (isTRUE(PROCESS_SETTINGS$process_model == 1L) &&
       dir_pdf = DIR_FIGURES_PDF,
       width = 6.6,
       height = 4.8,
-      dpi = 600,
+      dpi = PROCESS_FIGURE_DPI,
       figure_title = title_i
     )
     figure_rows[[length(figure_rows) + 1L]] <- row_i
     start_idx <- start_idx + 1L
+  }
+}
+
+if (is.data.frame(PROCESS_REGRESSION_RESIDUALS) &&
+    nrow(PROCESS_REGRESSION_RESIDUALS) > 0 &&
+    "model_id" %in% names(PROCESS_REGRESSION_RESIDUALS)) {
+  model_ids_resid <- unique(as.character(PROCESS_REGRESSION_RESIDUALS$model_id))
+  model_ids_resid <- model_ids_resid[!is.na(model_ids_resid) & nzchar(model_ids_resid)]
+  start_idx <- length(figure_rows) + 1L
+
+  for (model_id_i in model_ids_resid) {
+    df_i <- PROCESS_REGRESSION_RESIDUALS[as.character(PROCESS_REGRESSION_RESIDUALS$model_id) == model_id_i, , drop = FALSE]
+    if (nrow(df_i) < 3L) next
+    path_label_i <- first_nonempty_fig(df_i$path_label[1], df_i$model_component[1], model_id_i)
+    outcome_label_i <- first_nonempty_fig(df_i$outcome_label[1], df_i$outcome[1], "")
+    title_i <- paste0(path_label_i, if (nzchar(outcome_label_i)) paste0("\nOutcome: ", outcome_label_i) else "")
+    stub_i <- paste0(sanitize_token_fig(model_id_i), "_", sanitize_token_fig(path_label_i))
+
+    plot_rf_i <- build_process_residual_fitted_plot(df_i, title_i)
+    if (!is.null(plot_rf_i)) {
+      row_rf_i <- save_plot_all_formats(
+        plot_obj = plot_rf_i,
+        file_stub = paste0("fig", start_idx, "_residual_fitted_", stub_i),
+        dir_png = DIR_FIGURES_PNG,
+        dir_tiff = DIR_FIGURES_TIFF,
+        dir_pdf = DIR_FIGURES_PDF,
+        width = 6.4,
+        height = 4.6,
+        dpi = PROCESS_FIGURE_DPI,
+        figure_title = paste0(title_i, " - Residuals versus fitted")
+      )
+      figure_rows[[length(figure_rows) + 1L]] <- row_rf_i
+      start_idx <- start_idx + 1L
+    }
+
+    plot_qq_i <- build_process_residual_qq_plot(df_i, title_i)
+    if (!is.null(plot_qq_i)) {
+      row_qq_i <- save_plot_all_formats(
+        plot_obj = plot_qq_i,
+        file_stub = paste0("fig", start_idx, "_residual_qq_", stub_i),
+        dir_png = DIR_FIGURES_PNG,
+        dir_tiff = DIR_FIGURES_TIFF,
+        dir_pdf = DIR_FIGURES_PDF,
+        width = 6.4,
+        height = 4.6,
+        dpi = PROCESS_FIGURE_DPI,
+        figure_title = paste0(title_i, " - Normal Q-Q")
+      )
+      figure_rows[[length(figure_rows) + 1L]] <- row_qq_i
+      start_idx <- start_idx + 1L
+    }
   }
 }
 
@@ -2512,10 +2945,17 @@ if (length(figure_rows) > 0) {
 FIGURE_SUMMARY <- list(
   process_model = PROCESS_SETTINGS$process_model,
   source_analysis_id = PROCESS_SETTINGS$source_analysis_id,
+  edition = process_current_edition_fig(),
+  figure_dpi = PROCESS_FIGURE_DPI,
   variance_method = PROCESS_SETTINGS$variance_method %||% "bootstrap",
+  indirect_jn_ci_method = tolower(as.character(PROCESS_SETTINGS$indirect_jn_ci_method %||% "delta")[1]),
+  indirect_jn_grid_points = suppressWarnings(as.integer(PROCESS_SETTINGS$indirect_jn_grid_points %||% 200L)),
+  indirect_jn_bootstrap_n = suppressWarnings(as.integer(PROCESS_SETTINGS$indirect_jn_bootstrap_n %||% PROCESS_SETTINGS$bootstrap_n %||% NA_integer_)),
   n_models = MODEL_RUN_SUMMARY$n_models %||% 0L,
   n_coef_rows = nrow(PROCESS_MODEL_RESULTS %||% data.frame()),
   n_summary_rows = nrow(PROCESS_MODEL_SUMMARY %||% data.frame()),
+  n_regression_diagnostics = nrow(PROCESS_REGRESSION_DIAGNOSTICS %||% data.frame()),
+  n_indirect_jn_grid_rows = nrow(PROCESS_INDIRECT_JN_GRID %||% data.frame()),
   n_figures = nrow(FIGURE_MANIFEST),
   note = if (nrow(FIGURE_MANIFEST) > 0) {
     "PROCESS-style moderation plots were generated with continuous covariates fixed at their sample means and categorical covariates fixed at their reference categories."
@@ -2541,5 +2981,8 @@ save_named_rds_list(
 elapsed_sec <- round(as.numeric(difftime(Sys.time(), T0_FIGURES, units = "secs")), 2)
 log_info("05_figures.R completed.")
 log_info("n_figures         = ", FIGURE_SUMMARY$n_figures)
+log_info("figure_dpi        = ", FIGURE_SUMMARY$figure_dpi)
+log_info("n(indirect JN grid)= ", FIGURE_SUMMARY$n_indirect_jn_grid_rows)
+log_info("indirect_jn_ci    = ", FIGURE_SUMMARY$indirect_jn_ci_method)
 log_info("elapsed           = ", elapsed_sec, " sec")
 log_step_end("figures", elapsed_sec, ok = TRUE)

@@ -124,6 +124,56 @@ windows_choose_file_dialog <- function(title, filters) {
   list(attempted = TRUE, path = path[[1]])
 }
 
+windows_save_file_dialog <- function(title, filters, initial_dir = "", default_ext = "studio", initial_file = "") {
+  if (!identical(.Platform$OS.type, "windows")) {
+    return(list(attempted = FALSE, path = NULL))
+  }
+  filter <- windows_filter_string(filters)
+  if (!nzchar(filter)) {
+    return(list(attempted = FALSE, path = NULL))
+  }
+  initial_dir <- as.character(initial_dir %||% "")
+  initial_file <- as.character(initial_file %||% "")
+  script <- paste(
+    "Add-Type -AssemblyName System.Windows.Forms;",
+    "Add-Type -AssemblyName System.Drawing;",
+    "$owner = New-Object System.Windows.Forms.Form;",
+    "$owner.TopMost = $true;",
+    "$owner.ShowInTaskbar = $false;",
+    "$owner.StartPosition = 'CenterScreen';",
+    "$owner.Size = New-Object System.Drawing.Size(1,1);",
+    "$owner.Opacity = 0;",
+    "$dialog = New-Object System.Windows.Forms.SaveFileDialog;",
+    "$dialog.Title =", open_dialog_ps_quote(title), ";",
+    "$dialog.Filter =", open_dialog_ps_quote(filter), ";",
+    "$dialog.FilterIndex = 1;",
+    "$dialog.DefaultExt =", open_dialog_ps_quote(sub("^\\.", "", default_ext)), ";",
+    "$dialog.AddExtension = $true;",
+    "$dialog.OverwritePrompt = $true;",
+    "$dialog.CheckPathExists = $true;",
+    if (nzchar(initial_dir)) paste("$dialog.InitialDirectory =", open_dialog_ps_quote(initial_dir), ";") else "",
+    if (nzchar(initial_file)) paste("$dialog.FileName =", open_dialog_ps_quote(initial_file), ";") else "",
+    "$owner.Show();",
+    "$owner.Activate();",
+    "if ($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) {",
+    "[Console]::Out.WriteLine($dialog.FileName)",
+    "} else {",
+    "[Console]::Out.WriteLine(", open_dialog_ps_quote(open_dialog_cancel_marker), ")",
+    "}",
+    "$dialog.Dispose();",
+    "$owner.Close();",
+    "$owner.Dispose();"
+  )
+  output <- run_windows_open_dialog_script(script)
+  if (!is_open_dialog_path(output)) {
+    return(list(attempted = FALSE, path = NULL))
+  }
+  if (identical(output[[1]], open_dialog_cancel_marker)) {
+    return(list(attempted = TRUE, path = NULL))
+  }
+  list(attempted = TRUE, path = output[[1]])
+}
+
 open_file_dialog <- function(title, filetypes) {
   windows_filters <- attr(filetypes, "windows_filters", exact = TRUE)
   if (!is.null(windows_filters)) {
@@ -235,6 +285,20 @@ settings_save_initial_dir <- function(initial_dir = NULL) {
 
 save_settings_file <- function(initial_dir = NULL) {
   initial_dir <- settings_save_initial_dir(initial_dir)
+  windows_filters <- matrix(c("StatEdu Studio Settings", "*.studio"), ncol = 2, byrow = TRUE)
+  windows_result <- windows_save_file_dialog(
+    "Save StatEdu Studio Settings",
+    windows_filters,
+    initial_dir = initial_dir,
+    default_ext = "studio"
+  )
+  if (isTRUE(windows_result$attempted)) {
+    if (is.null(windows_result$path) || !nzchar(windows_result$path)) {
+      return(NULL)
+    }
+    return(normalize_settings_save_path(windows_result$path))
+  }
+
   path <- tryCatch(
     {
       if (requireNamespace("tcltk", quietly = TRUE)) {

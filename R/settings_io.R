@@ -646,6 +646,14 @@ write_settings_json_file <- function(settings, path) {
   if (is.null(path) || !nzchar(path)) {
     stop("A settings file path is required.", call. = FALSE)
   }
+  path <- normalize_settings_save_path(path)
+  directory <- dirname(normalizePath(path, winslash = "/", mustWork = FALSE))
+  if (!dir.exists(directory)) {
+    dir.create(directory, recursive = TRUE, showWarnings = FALSE)
+  }
+  if (!dir.exists(directory)) {
+    stop(sprintf("Settings folder does not exist or cannot be created: %s", directory), call. = FALSE)
+  }
   settings$type <- "easyflow_settings"
   writeLines(
     as.character(jsonlite::toJSON(settings, pretty = TRUE, auto_unbox = TRUE)),
@@ -653,7 +661,7 @@ write_settings_json_file <- function(settings, path) {
     useBytes = TRUE
   )
   invisible(list(
-    path = path,
+    path = normalizePath(path, winslash = "/", mustWork = FALSE),
     var_label_count = length(settings$var_label_overrides %||% list())
   ))
 }

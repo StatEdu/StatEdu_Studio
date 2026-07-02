@@ -33,15 +33,40 @@ register_penalized_regression_handlers <- function(
   dataset_fn,
   variable_table_fn,
   labels_fn,
+  category_table_fn = function() NULL,
   penalized_result,
   seed_fn
 ) {
+  penalized_profile_settings <- function(profile) {
+    switch(
+      as.character(profile %||% "publication"),
+      quick = list(label = "Quick check", bootstrap = 100L, alpha_grid = seq(0.1, 0.9, by = 0.2)),
+      high = list(label = "High stability", bootstrap = 1000L, alpha_grid = seq(0.1, 0.9, by = 0.1)),
+      list(label = "Publication", bootstrap = 500L, alpha_grid = seq(0.1, 0.9, by = 0.1))
+    )
+  }
+
   output$penalized_regression_control <- renderUI({
     results <- analysis_result_fn()
     if (!has_severe_vif(results)) {
       return(NULL)
     }
-    actionButton("run_penalized_regression", "Run Ridge/LASSO/Elastic Net", class = "btn-warning")
+    div(
+      class = "penalized-regression-control",
+      selectInput(
+        "penalized_profile",
+        "Penalized regression mode",
+        choices = c(
+          "Quick check (100 bootstrap)" = "quick",
+          "Publication (500 bootstrap)" = "publication",
+          "High stability (1000 bootstrap)" = "high"
+        ),
+        selected = "publication",
+        selectize = FALSE,
+        width = "220px"
+      ),
+      actionButton("run_penalized_regression", "Run Ridge/LASSO/Elastic Net", class = "btn-warning")
+    )
   })
 
   observeEvent(input$run_penalized_regression, {
@@ -49,14 +74,18 @@ register_penalized_regression_handlers <- function(
     shiny::req(has_severe_vif(results))
     tryCatch(
       {
+        profile <- penalized_profile_settings(input$penalized_profile)
         penalized_result(fit_penalized_models(
           results,
           dataset_fn(),
           variable_table_fn(),
           labels_fn(),
-          seed_fn()
+          seed = seed_fn(),
+          category_table = category_table_fn(),
+          alpha_grid = profile$alpha_grid,
+          selection_bootstrap_resamples = profile$bootstrap
         ))
-        showNotification("Ridge, LASSO, and Elastic Net finished.", type = "message")
+        showNotification(sprintf("Ridge, LASSO, and Elastic Net finished (%s mode).", profile$label), type = "message")
       },
       error = function(e) {
         showNotification(paste("Penalized regression failed:", conditionMessage(e)), type = "error", duration = 8)
@@ -111,6 +140,15 @@ register_regression_results_output <- function(
     if (is.null(results)) {
       return(NULL)
     }
+    penalized <- penalized_result_fn()
+    if (penalized_has_plot_data(penalized)) {
+      output[[penalized_cv_plot_output_id()]] <- renderPlot({
+        plot_penalized_cv_curve(penalized_result_fn())
+      }, res = 120)
+      output[[penalized_path_plot_output_id()]] <- renderPlot({
+        plot_penalized_coefficient_path(penalized_result_fn())
+      }, res = 120)
+    }
     tagList(
       regression_results_panel(
         results = results,
@@ -122,7 +160,7 @@ register_regression_results_output <- function(
         show_sr2 = input$show_sr2,
         show_f2 = input$show_f2,
         show_vif = input$show_vif,
-        penalized = penalized_result_fn(),
+        penalized = penalized,
         plot_blocks = lapply(seq_along(results), function(index) {
           regression_plot_result_block(
             output,

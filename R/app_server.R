@@ -122,6 +122,7 @@ create_app_server <- function(app_version) {
   output$lazy_analysis_pca <- renderUI(tab_panel_content(pca_tab_panel(statedu_ui_label("pca", app_language()), app_language())))
   output$lazy_analysis_reliability <- renderUI(tab_panel_content(reliability_tab_panel(statedu_ui_label("reliability", app_language()), app_language())))
   output$lazy_analysis_hierarchical <- renderUI(tab_panel_content(hierarchical_tab_panel(statedu_ui_label("regression", app_language()), app_language())))
+  output$lazy_analysis_mediation_moderation <- renderUI(tab_panel_content(mediation_moderation_tab_panel(mediation_moderation_title(app_language()), app_language())))
   output$lazy_analysis_longitudinal <- renderUI({
     if (!isTRUE(statedu_feature_enabled("longitudinal", TRUE))) {
       return(div(
@@ -1268,6 +1269,19 @@ create_app_server <- function(app_version) {
   predictor_candidates <- regression_accessors$predictor_candidates
   dependent_candidates <- regression_accessors$dependent_candidates
 
+  register_mediation_moderation_setup_output(
+    input = input,
+    output = output,
+    session = session,
+    dataset_fn = dataset,
+    selected_names_fn = selected_names,
+    variable_table_fn = regression_variable_table,
+    labels_fn = var_label_overrides,
+    category_table_fn = category_label_values,
+    mark_settings_dirty = mark_settings_dirty,
+    app_language_fn = app_language
+  )
+
   register_reliability_handlers(
     input = input,
     output = output,
@@ -1682,6 +1696,7 @@ create_app_server <- function(app_version) {
     dataset_fn = dataset,
     variable_table_fn = regression_variable_table,
     labels_fn = var_label_overrides,
+    category_table_fn = category_label_values,
     penalized_result = penalized_result,
     seed_fn = function() input$seed
   )

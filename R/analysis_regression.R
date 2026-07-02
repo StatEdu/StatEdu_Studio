@@ -336,19 +336,28 @@ coeftest_table <- function(model, vcov_matrix = NULL) {
   )
 }
 
-bootstrap_coef_table <- function(data, formula, r = 2000, conf = .95, seed = 1234) {
+bootstrap_coef_table <- function(data, formula, r = 2000, conf = .95, seed = 1234, ci_method = "bias_corrected") {
   complete_data <- model.frame(formula, data = data, na.action = na.omit)
+  model_terms <- stats::terms(formula)
+  model_matrix <- stats::model.matrix(model_terms, complete_data)
+  outcome <- stats::model.response(complete_data)
+  terms <- colnames(model_matrix)
 
-  boot_stat <- function(d, indices) {
-    fit <- lm(formula, data = d[indices, , drop = FALSE])
-    coef(fit)
-  }
-
+  samples <- matrix(NA_real_, nrow = r, ncol = length(terms), dimnames = list(NULL, terms))
   set.seed(seed)
-  boot_fit <- boot::boot(complete_data, statistic = boot_stat, R = r)
-  original_fit <- lm(formula, data = complete_data)
-  alpha <- (1 - conf) / 2
-  limits <- t(apply(boot_fit$t, 2, stats::quantile, probs = c(alpha, 1 - alpha), na.rm = TRUE))
+  for (index in seq_len(r)) {
+    rows <- sample.int(nrow(model_matrix), nrow(model_matrix), replace = TRUE)
+    fit <- tryCatch(stats::lm.fit(model_matrix[rows, , drop = FALSE], outcome[rows]), error = function(e) NULL)
+    if (!is.null(fit)) {
+      samples[index, ] <- as.numeric(fit$coefficients)
+    }
+  }
+  original_fit <- stats::lm.fit(model_matrix, outcome)
+  point_estimates <- as.numeric(original_fit$coefficients)
+  names(point_estimates) <- terms
+  limits <- t(vapply(terms, function(term) {
+    bootstrap_ci(point_estimates[[term]], samples[, term], conf = conf, method = ci_method)
+  }, numeric(2)))
 
   boot_p <- function(x) {
     n <- sum(!is.na(x))
@@ -358,23 +367,24 @@ bootstrap_coef_table <- function(data, formula, r = 2000, conf = .95, seed = 123
   }
 
   data.frame(
-    Term = names(coef(original_fit)),
-    Boot_SE = apply(boot_fit$t, 2, stats::sd, na.rm = TRUE),
+    Term = terms,
+    Boot_SE = apply(samples, 2, stats::sd, na.rm = TRUE),
     Boot_LLCI = limits[, 1],
     Boot_ULCI = limits[, 2],
-    Boot_p = apply(boot_fit$t, 2, boot_p),
+    Boot_p = apply(samples, 2, boot_p),
     row.names = NULL,
     check.names = FALSE
   )
 }
 
-bootstrap_summary_table <- function(boot_samples, original_fit, conf = .95) {
+bootstrap_summary_table <- function(boot_samples, original_fit, conf = .95, ci_method = "bias_corrected") {
   if (!is.matrix(boot_samples) || nrow(boot_samples) == 0) {
     return(NULL)
   }
-
-  alpha <- (1 - conf) / 2
-  limits <- t(apply(boot_samples, 2, stats::quantile, probs = c(alpha, 1 - alpha), na.rm = TRUE))
+  point_estimates <- stats::coef(original_fit)
+  limits <- t(vapply(colnames(boot_samples), function(term) {
+    bootstrap_ci(point_estimates[[term]], boot_samples[, term], conf = conf, method = ci_method)
+  }, numeric(2)))
 
   boot_p <- function(x) {
     n <- sum(!is.na(x))
@@ -404,18 +414,29 @@ start_bootstrap_process <- function(job) {
       samples <- matrix(NA_real_, nrow = job$r, ncol = length(job$terms), dimnames = list(NULL, job$terms))
       saveRDS(list(done = 0L, r = job$r), job$progress_file)
 
-      n <- nrow(job$complete_data)
+      if (is.matrix(job$model_matrix) && length(job$outcome) == nrow(job$model_matrix)) {
+        model_matrix <- job$model_matrix
+        outcome <- job$outcome
+      } else {
+        complete_data <- stats::model.frame(job$formula, data = job$complete_data, na.action = stats::na.omit)
+        model_matrix <- stats::model.matrix(stats::terms(job$formula), complete_data)
+        outcome <- stats::model.response(complete_data)
+      }
+      n <- nrow(model_matrix)
       done <- 0L
       r_squared <- rep(NA_real_, job$r)
       while (done < job$r) {
         next_done <- min(job$r, done + job$chunk)
         for (row_index in seq.int(done + 1L, next_done)) {
           indices <- sample.int(n, n, replace = TRUE)
-          fit <- tryCatch(stats::lm(job$formula, data = job$complete_data[indices, , drop = FALSE]), error = function(e) NULL)
+          fit <- tryCatch(stats::lm.fit(model_matrix[indices, , drop = FALSE], outcome[indices]), error = function(e) NULL)
           if (!is.null(fit)) {
-            values <- stats::coef(fit)
+            values <- as.numeric(fit$coefficients)
+            names(values) <- colnames(model_matrix)
             samples[row_index, names(values)] <- values
-            r_squared[[row_index]] <- tryCatch(unname(summary(fit)$r.squared), error = function(e) NA_real_)
+            total_ss <- sum((outcome[indices] - mean(outcome[indices], na.rm = TRUE))^2, na.rm = TRUE)
+            rss <- sum(fit$residuals^2, na.rm = TRUE)
+            r_squared[[row_index]] <- if (is.finite(total_ss) && total_ss > 0) 1 - rss / total_ss else NA_real_
           }
         }
         done <- next_done
@@ -476,8 +497,11 @@ prepare_single_regression_result <- function(
   reference_values = character(0),
   boot_r = 1000,
   seed = default_seed(),
-  variable_table = NULL
+  variable_table = NULL,
+  ci_method = "bias_corrected"
 ) {
+  ci_method <- as.character(ci_method %||% "bias_corrected")[[1]]
+  if (!ci_method %in% c("bias_corrected", "percentile")) ci_method <- "bias_corrected"
   variable_info <- normalize_regression_variable_info_static(variable_info, variable_table)
   shiny::validate(shiny::need(!(dependent %in% predictors), "The dependent variable cannot also be an independent variable or covariate."))
   model_variables <- unique(c(dependent, predictors))
@@ -587,6 +611,7 @@ prepare_single_regression_result <- function(
     use_bootstrap = use_bootstrap,
     bootstrap_r = bootstrap_r,
     bootstrap_seed = bootstrap_seed,
+    bootstrap_ci_method = ci_method,
     coef_table = coef_table,
     boot_table = NULL,
     predictors = predictors,
@@ -600,12 +625,16 @@ prepare_single_regression_result <- function(
   complete_data <- stats::model.frame(formula, data = data, na.action = stats::na.omit)
   original_fit <- stats::lm(formula, data = complete_data)
   terms <- names(stats::coef(original_fit))
+  model_matrix <- stats::model.matrix(stats::terms(formula), complete_data)
+  outcome <- stats::model.response(complete_data)
 
   list(
     result = result,
     job = list(
       dependent = dependent,
       complete_data = complete_data,
+      model_matrix = model_matrix,
+      outcome = outcome,
       formula = formula,
       original_fit = original_fit,
       terms = terms,
@@ -614,6 +643,7 @@ prepare_single_regression_result <- function(
       done = 0L,
       r = bootstrap_r,
       seed = bootstrap_seed,
+      ci_method = ci_method,
       chunk = min(100L, max(10L, ceiling(bootstrap_r / 100))),
       cancel = FALSE
     )
@@ -628,7 +658,8 @@ prepare_regression_analysis_results <- function(
   reference_values = character(0),
   boot_r = 1000,
   seed = default_seed(),
-  variable_table = NULL
+  variable_table = NULL,
+  ci_method = "bias_corrected"
 ) {
   variable_info <- normalize_regression_variable_info_static(variable_info, variable_table)
   dependents <- intersect(as.character(dependents), names(data))
@@ -646,7 +677,8 @@ prepare_regression_analysis_results <- function(
         variable_info = variable_info,
         reference_values = reference_values,
         boot_r = boot_r,
-        seed = seed
+        seed = seed,
+        ci_method = ci_method
       ),
       error = function(e) list(result = NULL, job = NULL, skipped = regression_guard_row(dependent, predictors, conditionMessage(e), NA_integer_, variable_info))
     )
@@ -684,7 +716,8 @@ prepare_hierarchical_analysis_results <- function(
   reference_values = character(0),
   boot_r = 1000,
   seed = default_seed(),
-  variable_table = NULL
+  variable_table = NULL,
+  ci_method = "bias_corrected"
 ) {
   variable_info <- normalize_regression_variable_info_static(variable_info, variable_table)
   data_names <- names(data)
@@ -710,7 +743,8 @@ prepare_hierarchical_analysis_results <- function(
       variable_info = variable_info,
       reference_values = reference_values,
       boot_r = boot_r,
-      seed = seed
+      seed = seed,
+      ci_method = ci_method
     ))
   }
 
@@ -744,7 +778,8 @@ prepare_hierarchical_analysis_results <- function(
           variable_info = variable_info,
           reference_values = reference_values,
           boot_r = boot_r,
-          seed = seed
+          seed = seed,
+          ci_method = ci_method
         ),
         error = function(e) list(result = NULL, job = NULL, skipped = regression_guard_row(dependent, predictors, conditionMessage(e), NA_integer_, variable_info))
       )

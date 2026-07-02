@@ -455,7 +455,11 @@ data_editor_variable_transformation_panel <- function(language = statedu_initial
               div(class = "analysis-option-title", statedu_text(language, "1. Name and type", statedu_utf8("312e20ec9db4eba684eab3bc20ec9ca0ed9895"))),
               div(
                 class = "variable-transform-two-column",
-                textInput("variable_transform_name", analysis_ui_text("New variable name", language), value = "", width = "100%", placeholder = "new_variable"),
+                div(
+                  class = "variable-transform-name-stack",
+                  textInput("variable_transform_name", analysis_ui_text("New variable name", language), value = "", width = "100%", placeholder = "new_variable"),
+                  textInput("variable_transform_label", analysis_ui_text("Variable label", language), value = "", width = "100%", placeholder = statedu_text(language, "Optional editable label", statedu_utf8("ec84a0ed839d20ec82acec9aa9ec9e9020ec8898eca09520eb9dbcebb2a8")))
+                ),
                 selectInput(
                   "variable_transform_measurement",
                   analysis_ui_text("Variable type", language),
@@ -625,7 +629,8 @@ register_variable_transformation_handlers <- function(
     current_name <- trimws(as.character(input$variable_transform_name %||% ""))
     if (!nzchar(current_name) || identical(current_name, "new_variable")) {
       suffix <- as.character(input$variable_transform_template %||% "calc")
-      updateTextInput(session, "variable_transform_name", value = make.names(sprintf("%s_%s", selected[[1]], suffix)))
+      generated_name <- make.names(sprintf("%s_%s", selected[[1]], suffix))
+      updateTextInput(session, "variable_transform_name", value = generated_name)
     }
   }, ignoreInit = TRUE)
 
@@ -737,7 +742,8 @@ register_variable_transformation_handlers <- function(
     if (!nzchar(measurement)) {
       measurement <- NULL
     }
-    ok <- add_calculated_variable_fn(name, values, var_label = sprintf("%s = %s", name, trimws(input$variable_transform_expression %||% "")), measurement = measurement)
+    var_label <- trimws(as.character(input$variable_transform_label %||% ""))
+    ok <- add_calculated_variable_fn(name, values, var_label = var_label, measurement = measurement)
     if (isTRUE(ok)) {
       preview_values(values)
       last_message(sprintf(

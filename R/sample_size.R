@@ -2561,18 +2561,20 @@ sample_size_mediation_bootstrap_power <- function(
     m_i <- mediator[index]
     y_i <- outcome[index]
     cov_i <- if (!is.null(covariate_matrix)) covariate_matrix[index, , drop = FALSE] else NULL
-    m_data <- data.frame(m = m_i, x = x_i)
-    y_data <- data.frame(y = y_i, m = m_i, x = x_i)
+    m_x <- cbind(`(Intercept)` = 1, x = x_i)
+    y_x <- cbind(`(Intercept)` = 1, m = m_i, x = x_i)
     if (!is.null(cov_i)) {
       colnames(cov_i) <- paste0("c", seq_len(ncol(cov_i)))
-      m_data <- cbind(m_data, as.data.frame(cov_i))
-      y_data <- cbind(y_data, as.data.frame(cov_i))
+      m_x <- cbind(m_x, cov_i)
+      y_x <- cbind(y_x, cov_i)
     }
-    cov_terms <- if (!is.null(cov_i)) paste(colnames(cov_i), collapse = " + ") else ""
-    m_formula <- stats::as.formula(paste("m ~ x", if (nzchar(cov_terms)) paste("+", cov_terms) else ""))
-    y_formula <- stats::as.formula(paste("y ~ m + x", if (nzchar(cov_terms)) paste("+", cov_terms) else ""))
-    a_hat <- stats::coef(stats::lm(m_formula, data = m_data))[["x"]]
-    b_hat <- stats::coef(stats::lm(y_formula, data = y_data))[["m"]]
+    fit_m <- tryCatch(stats::lm.fit(m_x, m_i), error = function(e) NULL)
+    fit_y <- tryCatch(stats::lm.fit(y_x, y_i), error = function(e) NULL)
+    if (is.null(fit_m) || is.null(fit_y)) {
+      return(NA_real_)
+    }
+    a_hat <- stats::setNames(as.numeric(fit_m$coefficients), colnames(m_x))[["x"]]
+    b_hat <- stats::setNames(as.numeric(fit_y$coefficients), colnames(y_x))[["m"]]
     a_hat * b_hat
   }
 

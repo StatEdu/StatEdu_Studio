@@ -22,6 +22,7 @@ required_packages <- c(
   "xml2",
   "rvest",
   "callr",
+  "ggplot2",
   "glmnet",
   "agricolae",
   "psych",
@@ -158,6 +159,7 @@ app_module_files <- c(
   "setup_factor_analysis_ui.R",
   "setup_pca_ui.R",
   "setup_regression_ui.R",
+  "setup_mediation_moderation_ui.R",
   "setup_hierarchical_ui.R",
   "setup_logistic_ui.R",
   "setup_longitudinal_ui.R",
@@ -205,6 +207,7 @@ utf8_app_module_files <- c(
   "data_ui_steps.R",
   "data_ui.R",
   "analysis_menu_ui.R",
+  "setup_mediation_moderation_ui.R",
   "app_misc_ui.R"
 )
 

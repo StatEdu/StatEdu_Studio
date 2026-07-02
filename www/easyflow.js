@@ -1121,6 +1121,7 @@
 
           window.jQuery('.navbar-nav > li.dropdown > ul.dropdown-menu a[data-value]').each(function() {
             var anchor = window.jQuery(this);
+            if (anchor.attr('data-easyflow-alias-key')) return;
             var value = String(anchor.attr('data-value') || '');
             if (dictionary.items[value]) {
               easyflowSetNavbarText(anchor, dictionary.items[value]);
@@ -1187,6 +1188,7 @@
                 'Factor Analysis': 'Factor Analysis',
                 'Principal Components': 'Principal Components',
                 Regression: 'Regression',
+                analysis_mediation_moderation: 'Mediation / Moderation',
                 'Generalized Linear Model (GLM)': 'Generalized Linear Model (GLM)',
                 analysis_logistic_regression: 'Logistic Regression',
                 'Longitudinal / Panel Models': 'Longitudinal / Panel Models'
@@ -1204,6 +1206,7 @@
                 'Factor Analysis': '\uC694\uC778\uBD84\uC11D',
                 'Principal Components': '\uC8FC\uC131\uBD84\uBD84\uC11D',
                 Regression: '\uD68C\uADC0\uBD84\uC11D',
+                analysis_mediation_moderation: '\uB9E4\uAC1C\u00B7\uC870\uC808',
                 'Generalized Linear Model (GLM)': '\uC77C\uBC18\uD654 \uC120\uD615\uBAA8\uD615(GLM)',
                 analysis_logistic_regression: '\uB85C\uC9C0\uC2A4\uD2F1 \uD68C\uADC0',
                 'Longitudinal / Panel Models': '\uC885\uB2E8 / \uD328\uB110 \uBAA8\uD615'
@@ -1232,14 +1235,15 @@
                 {
                   title: 'Regression & Models',
                   titleKo: '\uD68C\uADC0 / \uBAA8\uD615',
-                  values: ['Regression', 'Generalized Linear Model (GLM)', 'analysis_logistic_regression']
+                  values: ['Regression', 'analysis_mediation_moderation', 'Generalized Linear Model (GLM)', 'analysis_logistic_regression']
                 },
                 {
                   title: 'Longitudinal / Panel',
                   titleKo: '\uC885\uB2E8 / \uD328\uB110',
                   values: ['Longitudinal / Panel Models']
                 }
-              ]
+              ],
+              aliasItems: []
             },
             {
               menu: 'Sample Size',
@@ -1399,6 +1403,48 @@
           ];
         }
 
+        function easyflowApplyMenuAliasItems(menu, config, useKorean) {
+          var aliasItems = config.aliasItems || [];
+          aliasItems.forEach(function(alias) {
+            var key = alias.key || alias.labelEn || alias.labelKo || alias.sourceValue;
+            var label = useKorean && alias.labelKo ? alias.labelKo : alias.labelEn;
+            if (!key || !label || !alias.sourceValue) return;
+
+            var aliasLink = menu.find('a[data-easyflow-alias-key="' + key + '"]').first();
+            if (aliasLink.length) {
+              aliasLink.text(label);
+              return;
+            }
+
+            var sourceLink = menu
+              .find('a[data-value="' + alias.sourceValue + '"]')
+              .not('[data-easyflow-alias-key]')
+              .first();
+            if (!sourceLink.length) return;
+
+            var sourceItem = sourceLink.closest('li').first();
+            var aliasItem = sourceItem.clone(false, false)
+              .removeClass('active open')
+              .addClass('analysis-menu-alias-item');
+            aliasLink = aliasItem.children('a[data-value]').first();
+            aliasLink
+              .text(label)
+              .attr('data-easyflow-alias-key', key)
+              .attr('title', label);
+
+            var afterLink = menu
+              .find('a[data-value="' + (alias.afterValue || alias.sourceValue) + '"]')
+              .not('[data-easyflow-alias-key]')
+              .first();
+            var afterItem = afterLink.closest('li').first();
+            if (afterItem.length) {
+              afterItem.after(aliasItem);
+            } else {
+              sourceItem.after(aliasItem);
+            }
+          });
+        }
+
         function groupNavbarDropdownItems(config) {
           var menuLabels = config.menuLabels || [config.menu];
           var navItem = window.jQuery('.navbar-nav > li.dropdown > a.dropdown-toggle')
@@ -1431,6 +1477,7 @@
                 if (itemLabel) link.text(itemLabel);
               });
             });
+            easyflowApplyMenuAliasItems(menu, config, useKorean);
             menu.attr('data-easyflow-menu-language', menuLanguage);
             return;
           }
@@ -1479,6 +1526,7 @@
             menu.children('.analysis-menu-section').first().addClass('open')
               .children('.analysis-menu-section-title').attr('aria-expanded', 'true');
           }
+          easyflowApplyMenuAliasItems(menu, config, useKorean);
           menu.addClass('analysis-submenu')
             .attr('data-easyflow-menu-grouped', config.marker)
             .attr('data-easyflow-menu-language', menuLanguage)
