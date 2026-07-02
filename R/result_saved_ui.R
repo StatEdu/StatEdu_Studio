@@ -491,7 +491,7 @@ saved_results_document <- function(title, content, max_width = 1280, css_path = 
   } else {
     saved_results_viewer_css(max_width)
   }
-  watermark <- if (identical(cover_text$edition, "development")) {
+  watermark <- if (isTRUE(report_mode) && identical(cover_text$edition, "development")) {
     saved_results_development_watermark(logo_uri, organization_logo_uri, cover_text$organization)
   } else {
     NULL

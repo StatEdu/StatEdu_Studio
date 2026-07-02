@@ -11048,7 +11048,7 @@ select[id$="_active_role"]:focus {
 }
 
 .mm-model-panel .analysis-option-group {
-  margin-bottom: 3px;
+  margin-bottom: 0;
 }
 
 .mm-model-panel > .analysis-option-group:first-child {
@@ -11056,20 +11056,25 @@ select[id$="_active_role"]:focus {
 }
 
 .mm-model-panel .analysis-option-title {
-  margin-bottom: 2px;
+  margin-bottom: 1px;
   line-height: 1.2;
 }
 
 .mm-model-panel .mm-mediator-structure-group .analysis-option-title {
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .mm-model-panel .mm-mediator-structure-group {
-  margin-bottom: 4px;
+  margin-bottom: 0;
 }
 
 .mm-model-panel .form-group {
-  margin-bottom: 2px;
+  margin-bottom: 0;
+}
+
+.mm-model-panel .shiny-input-container,
+.mm-model-panel .shiny-options-group {
+  margin-bottom: 0;
 }
 
 .mm-model-panel .form-control {

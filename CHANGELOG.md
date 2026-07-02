@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.0.13-dev - 2026-07-02
+
+### Changed
+
+- Removed the development watermark from saved HTML result files while keeping the existing PDF report watermark behavior.
+- Further reduced vertical spacing between mediation/moderation setup option groups.
+
 ## v1.0.12-dev - 2026-07-02
 
 ### Changed
