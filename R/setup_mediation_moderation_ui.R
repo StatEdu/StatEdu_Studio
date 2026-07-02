@@ -3295,14 +3295,17 @@ save_mediation_moderation_figures_to_dir <- function(result, directory, language
   dir.create(directory, recursive = TRUE, showWarnings = FALSE)
   saved <- character(0)
   diagram_file <- file.path(directory, "mediation_moderation_model_diagram.html")
-  diagram_html <- saved_results_document(
-    "Mediation / moderation model diagram",
-    mediation_moderation_result_diagram_ui(result, language),
-    max_width = 720,
-    css_path = file.path("www", "style.css")
-  )
-  writeLines(diagram_html, diagram_file, useBytes = TRUE)
-  saved <- c(saved, diagram_file)
+  diagram_ui <- mediation_moderation_result_diagram_ui(result, language)
+  if (!is.null(diagram_ui)) {
+    diagram_html <- saved_results_document(
+      "Mediation / moderation model diagram",
+      diagram_ui,
+      max_width = 720,
+      css_path = file.path("www", "style.css")
+    )
+    writeLines(diagram_html, diagram_file, useBytes = TRUE)
+    saved <- c(saved, diagram_file)
+  }
   plot_specs <- result$conditional_plot_specs %||% list()
   dpi <- mediation_moderation_figure_dpi()
   for (index in seq_along(plot_specs)) {
@@ -3315,6 +3318,9 @@ save_mediation_moderation_figures_to_dir <- function(result, directory, language
         grDevices::dev.off()
         closed <- TRUE
         saved <- c(saved, file)
+      },
+      error = function(e) {
+        NULL
       },
       finally = {
         if (!closed) {

@@ -7,6 +7,14 @@
 - Refined mediation/moderation model diagrams for B5 portrait result output, smaller coefficient labels, and centered Model 7/14 moderator arrows.
 - Added mediation/moderation result save controls for HTML, figure export, PDF, Excel, and result collection.
 
+## v1.0.3-dev - 2026-07-02
+
+### Changed
+
+- Added mediation/moderation analysis setup UI with PROCESS-style variable assignment, auto-inferred model number, SVG path diagram, and moderated path controls.
+- Added penalized regression (Lasso/Ridge/Elastic Net) analysis and result display.
+- Improved settings dialogs and analysis menu layout.
+
 ## v1.0.2-dev - 2026-06-30
 
 ### Changed
