@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.0.8-dev - 2026-07-02
+
+### Changed
+
+- Reworked mediation/moderation result diagram placement to use reference-style measured-variable columns for X, mediator, moderator, and outcome nodes.
+- Aligned multi-X and multi-mediator result diagrams with consistent y-position rules for one, two, three, and four mediator layouts.
+
 ## v1.0.7-dev - 2026-07-02
 
 ### Changed
