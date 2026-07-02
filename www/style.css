@@ -10875,8 +10875,8 @@ select[id$="_active_role"]:focus {
   height: var(--mm-panel-height);
   min-height: var(--mm-panel-height);
   max-height: var(--mm-panel-height);
-  overflow-y: hidden;
-  padding-top: 10px;
+  overflow-y: auto;
+  padding-top: 12px;
   padding-bottom: 10px;
 }
 
@@ -10906,7 +10906,7 @@ select[id$="_active_role"]:focus {
 .mm-role-targets {
   display: flex !important;
   flex-direction: column;
-  gap: 10px;
+  gap: 5px;
   align-items: start;
   justify-content: flex-start !important;
 }
@@ -11048,7 +11048,7 @@ select[id$="_active_role"]:focus {
 }
 
 .mm-model-panel .analysis-option-group {
-  margin-bottom: 5px;
+  margin-bottom: 3px;
 }
 
 .mm-model-panel > .analysis-option-group:first-child {
@@ -11056,20 +11056,20 @@ select[id$="_active_role"]:focus {
 }
 
 .mm-model-panel .analysis-option-title {
-  margin-bottom: 3px;
+  margin-bottom: 2px;
   line-height: 1.2;
 }
 
 .mm-model-panel .mm-mediator-structure-group .analysis-option-title {
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .mm-model-panel .mm-mediator-structure-group {
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .mm-model-panel .form-group {
-  margin-bottom: 3px;
+  margin-bottom: 2px;
 }
 
 .mm-model-panel .form-control {
@@ -11079,7 +11079,7 @@ select[id$="_active_role"]:focus {
 }
 
 .mm-save-control {
-  margin-top: 5px;
+  margin-top: 8px;
   width: 300px;
 }
 

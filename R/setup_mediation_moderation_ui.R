@@ -161,9 +161,13 @@ mediation_moderation_checkbox_input <- function(input_id, label, value = FALSE, 
   control
 }
 
-mediation_moderation_moderation_option_group <- function(disabled = FALSE, language = statedu_initial_language()) {
+mediation_moderation_moderation_option_group <- function(
+  disabled = FALSE,
+  dash_nonsignificant = TRUE,
+  language = statedu_initial_language()
+) {
   div(
-    class = paste("analysis-option-group", if (isTRUE(disabled)) "mm-disabled-option-group" else ""),
+    class = "analysis-option-group",
     div(class = "analysis-option-title", analysis_ui_text("Options", language)),
     mediation_moderation_checkbox_input(
       "mm_mean_center",
@@ -182,6 +186,12 @@ mediation_moderation_moderation_option_group <- function(disabled = FALSE, langu
       analysis_ui_label("Simple slopes", language),
       value = TRUE,
       disabled = disabled
+    ),
+    mediation_moderation_checkbox_input(
+      "mm_dash_nonsignificant",
+      statedu_text(language, "Dash non-significant paths", "\uc720\uc758\ud558\uc9c0 \uc54a\uc740 \uacbd\ub85c \uc810\uc120"),
+      value = dash_nonsignificant,
+      disabled = FALSE
     )
   )
 }
@@ -1050,7 +1060,11 @@ mediation_moderation_setup_panel <- function(
               disabled_values = disabled_moderated_paths
             )
           ),
-          mediation_moderation_moderation_option_group(disabled = moderation_controls_disabled, language = language),
+          mediation_moderation_moderation_option_group(
+            disabled = moderation_controls_disabled,
+            dash_nonsignificant = isTRUE((if (!is.null(input)) isolate(input$mm_dash_nonsignificant) else NULL) %||% TRUE),
+            language = language
+          ),
           div(
             class = "analysis-option-group",
             div(class = "analysis-option-title", statedu_text(language, "Analysis method", "\ubd84\uc11d \ubc29\ubc95")),
@@ -1094,9 +1108,9 @@ mediation_moderation_setup_panel <- function(
               ),
               selectize = FALSE
             )
-          ),
-          uiOutput("mediation_moderation_save_control")
-        )
+          )
+        ),
+        uiOutput("mediation_moderation_save_control")
       ),
       mediation_moderation_diagram(spec, roles, variable_table, labels, language)
     )
@@ -2921,7 +2935,7 @@ mediation_moderation_result_edge_coefficient_significance <- function(result, sp
   significance
 }
 
-mediation_moderation_result_diagram_ui <- function(result, language = statedu_initial_language()) {
+mediation_moderation_result_diagram_ui <- function(result, language = statedu_initial_language(), dash_nonsignificant = TRUE) {
   diagram <- mediation_moderation_result_diagram_data(result)
   spec <- diagram$spec
   roles <- diagram$roles
@@ -2938,7 +2952,7 @@ mediation_moderation_result_diagram_ui <- function(result, language = statedu_in
       result$labels,
       language,
       edge_labels = mediation_moderation_result_edge_coefficient_labels(result, spec),
-      edge_significance = mediation_moderation_result_edge_coefficient_significance(result, spec),
+      edge_significance = if (isTRUE(dash_nonsignificant)) mediation_moderation_result_edge_coefficient_significance(result, spec) else list(),
       variant = "result"
     )
   )
@@ -3674,7 +3688,7 @@ mediation_moderation_boot_effects <- function(
   base
 }
 
-mediation_moderation_result_ui <- function(result, language = statedu_initial_language()) {
+mediation_moderation_result_ui <- function(result, language = statedu_initial_language(), dash_nonsignificant = TRUE) {
   if (is.null(result)) return(NULL)
   overview <- result$overview
   path_results <- result$path_results
@@ -3697,31 +3711,31 @@ mediation_moderation_result_ui <- function(result, language = statedu_initial_la
     mediation_moderation_conditional_plots_ui(result$conditional_plot_specs),
     analysis_result_table_section("Bootstrap effects", effect_table, class = "result-section regression-result-panel"),
     result_note_tag(result$note),
-    mediation_moderation_result_diagram_ui(result, language)
+    mediation_moderation_result_diagram_ui(result, language, dash_nonsignificant = dash_nonsignificant)
   )
 }
 
-mediation_moderation_saved_results_html <- function(result, language = statedu_initial_language(), report_mode = FALSE) {
+mediation_moderation_saved_results_html <- function(result, language = statedu_initial_language(), report_mode = FALSE, dash_nonsignificant = TRUE) {
   if (is.null(result)) {
     stop("No mediation / moderation result is available.", call. = FALSE)
   }
   saved_results_document(
     "Mediation / moderation",
-    mediation_moderation_result_ui(result, language),
+    mediation_moderation_result_ui(result, language, dash_nonsignificant = dash_nonsignificant),
     max_width = 1000,
     css_path = file.path("www", "style.css"),
     report_mode = report_mode
   )
 }
 
-write_mediation_moderation_results_html <- function(result, file, language = statedu_initial_language()) {
-  html <- mediation_moderation_saved_results_html(result, language = language, report_mode = FALSE)
+write_mediation_moderation_results_html <- function(result, file, language = statedu_initial_language(), dash_nonsignificant = TRUE) {
+  html <- mediation_moderation_saved_results_html(result, language = language, report_mode = FALSE, dash_nonsignificant = dash_nonsignificant)
   writeLines(html, file, useBytes = TRUE)
   invisible(file)
 }
 
-write_mediation_moderation_results_pdf <- function(result, file, language = statedu_initial_language()) {
-  html <- mediation_moderation_saved_results_html(result, language = language, report_mode = TRUE)
+write_mediation_moderation_results_pdf <- function(result, file, language = statedu_initial_language(), dash_nonsignificant = TRUE) {
+  html <- mediation_moderation_saved_results_html(result, language = language, report_mode = TRUE, dash_nonsignificant = dash_nonsignificant)
   write_pdf_from_html(html, file)
   invisible(file)
 }
@@ -3794,14 +3808,14 @@ save_mediation_moderation_excel_file <- function(result, file) {
   invisible(file)
 }
 
-save_mediation_moderation_figures_to_dir <- function(result, directory, language = statedu_initial_language()) {
+save_mediation_moderation_figures_to_dir <- function(result, directory, language = statedu_initial_language(), dash_nonsignificant = TRUE) {
   if (is.null(result)) {
     stop("No mediation / moderation result is available.", call. = FALSE)
   }
   dir.create(directory, recursive = TRUE, showWarnings = FALSE)
   saved <- character(0)
   diagram_file <- file.path(directory, "mediation_moderation_model_diagram.html")
-  diagram_ui <- mediation_moderation_result_diagram_ui(result, language)
+  diagram_ui <- mediation_moderation_result_diagram_ui(result, language, dash_nonsignificant = dash_nonsignificant)
   if (!is.null(diagram_ui)) {
     diagram_html <- saved_results_document(
       "Mediation / moderation model diagram",
@@ -4206,7 +4220,11 @@ register_mediation_moderation_setup_output <- function(
 
   mm_result <- reactiveVal(NULL)
   output$mediation_moderation_results <- renderUI({
-    mediation_moderation_result_ui(mm_result(), statedu_current_language(app_language_fn))
+    mediation_moderation_result_ui(
+      mm_result(),
+      statedu_current_language(app_language_fn),
+      dash_nonsignificant = isTRUE(input$mm_dash_nonsignificant %||% TRUE)
+    )
   })
   output$mediation_moderation_save_control <- renderUI({
     if (is.null(mm_result())) {
@@ -4412,7 +4430,7 @@ register_mediation_moderation_setup_output <- function(
     }
   }, ignoreInit = TRUE)
 
-  lapply(c("mm_mean_center", "mm_johnson_neyman", "mm_simple_slopes", "mm_analysis_method", "mm_boot_r", "mm_seed", "mm_ci_method"), function(input_id) {
+  lapply(c("mm_mean_center", "mm_johnson_neyman", "mm_simple_slopes", "mm_dash_nonsignificant", "mm_analysis_method", "mm_boot_r", "mm_seed", "mm_ci_method"), function(input_id) {
     observeEvent(input[[input_id]], {
       mark_settings_dirty()
     }, ignoreInit = TRUE)
@@ -4497,7 +4515,12 @@ register_mediation_moderation_setup_output <- function(
     }
     tryCatch(
       {
-        write_mediation_moderation_results_html(mm_result(), path, statedu_current_language(app_language_fn))
+        write_mediation_moderation_results_html(
+          mm_result(),
+          path,
+          statedu_current_language(app_language_fn),
+          dash_nonsignificant = isTRUE(input$mm_dash_nonsignificant %||% TRUE)
+        )
         showNotification(sprintf("HTML results saved: %s", path), type = "message")
       },
       error = function(e) {
@@ -4518,7 +4541,12 @@ register_mediation_moderation_setup_output <- function(
     }
     tryCatch(
       {
-        write_mediation_moderation_results_pdf(mm_result(), path, statedu_current_language(app_language_fn))
+        write_mediation_moderation_results_pdf(
+          mm_result(),
+          path,
+          statedu_current_language(app_language_fn),
+          dash_nonsignificant = isTRUE(input$mm_dash_nonsignificant %||% TRUE)
+        )
         showNotification(sprintf("PDF results saved: %s", path), type = "message")
       },
       error = function(e) {
@@ -4557,7 +4585,12 @@ register_mediation_moderation_setup_output <- function(
     }
     tryCatch(
       {
-        saved <- save_mediation_moderation_figures_to_dir(mm_result(), directory, statedu_current_language(app_language_fn))
+        saved <- save_mediation_moderation_figures_to_dir(
+          mm_result(),
+          directory,
+          statedu_current_language(app_language_fn),
+          dash_nonsignificant = isTRUE(input$mm_dash_nonsignificant %||% TRUE)
+        )
         showNotification(sprintf("Saved %s figure file(s): %s", length(saved), directory), type = "message")
       },
       error = function(e) {
@@ -4572,7 +4605,11 @@ register_mediation_moderation_setup_output <- function(
     "add_mediation_moderation_result",
     "Mediation / moderation",
     html_fn = function() {
-      mediation_moderation_saved_results_html(mm_result(), statedu_current_language(app_language_fn))
+      mediation_moderation_saved_results_html(
+        mm_result(),
+        statedu_current_language(app_language_fn),
+        dash_nonsignificant = isTRUE(input$mm_dash_nonsignificant %||% TRUE)
+      )
     }
   )
 

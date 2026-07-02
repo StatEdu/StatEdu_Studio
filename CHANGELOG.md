@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.12-dev - 2026-07-02
+
+### Changed
+
+- Aligned the mediation/moderation mediator-structure panel header with the dependent-variable target header and reduced setup-panel vertical spacing.
+- Added a default-on option to show non-significant result-diagram paths as dashed lines, with saved HTML/PDF/figure outputs honoring the selected display mode.
+- Moved the five mediation/moderation save buttons below the options panel so they remain visible after results are available.
+
 ## v1.0.11-dev - 2026-07-02
 
 ### Changed
