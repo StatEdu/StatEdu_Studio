@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.15-dev - 2026-07-02
+
+### Fixed
+
+- Removed the W node from mediation/moderation result diagrams when no moderator is selected.
+
 ## v1.0.14-dev - 2026-07-02
 
 ### Changed

@@ -2717,6 +2717,15 @@ mediation_moderation_result_diagram_data <- function(result) {
   moderated_paths <- mediation_moderation_model_moderated_paths(model)
   positions <- spec$positions
   slots <- as.character(spec$slots %||% character(0))
+  w_vars <- as.character(roles$w %||% character(0))
+  w_vars <- w_vars[nzchar(w_vars)]
+  has_result_w <- length(w_vars) == 1L && "w" %in% slots && length(moderated_paths) > 0L
+  if (!isTRUE(has_result_w)) {
+    positions$w <- NULL
+    slots <- setdiff(slots, "w")
+    spec$positions <- positions
+    spec$slots <- slots
+  }
   mediator_slots <- mediation_moderation_result_mediator_slots(spec)
   if (length(x_vars) <= 1L) {
     if (length(mediator_slots) <= 1L) {
@@ -2726,7 +2735,7 @@ mediation_moderation_result_diagram_data <- function(result) {
       positions,
       x_slots = "x",
       mediator_slots = mediator_slots,
-      has_w = "w" %in% slots && "w" %in% names(positions),
+      has_w = has_result_w && "w" %in% names(positions),
       moderated_paths = moderated_paths
     )
     spec$positions <- positions
@@ -2737,7 +2746,7 @@ mediation_moderation_result_diagram_data <- function(result) {
     positions,
     x_slots = x_slots,
     mediator_slots = mediator_slots,
-    has_w = "w" %in% slots && "w" %in% names(positions),
+    has_w = has_result_w && "w" %in% names(positions),
     moderated_paths = moderated_paths
   )
   positions$x <- NULL
@@ -2763,7 +2772,7 @@ mediation_moderation_result_diagram_data <- function(result) {
       paths[[length(paths) + 1L]] <- c(x_slot, "y")
     }
   }
-  if ("w" %in% slots && "w" %in% names(positions)) {
+  if (isTRUE(has_result_w) && "w" %in% names(positions)) {
     if ("xm" %in% moderated_paths) {
       for (x_slot in x_slots) {
         for (mediator_slot in mediator_slots) {
@@ -2789,13 +2798,13 @@ mediation_moderation_result_diagram_data <- function(result) {
   if ("y" %in% names(positions)) {
     slot_variables <- c(slot_variables, y = as.character(roles$y %||% character(0))[[1]])
   }
-  if ("w" %in% names(positions) && length(roles$w) > 0L) {
+  if (isTRUE(has_result_w) && "w" %in% names(positions) && length(roles$w) > 0L) {
     slot_variables <- c(slot_variables, w = as.character(roles$w %||% character(0))[[1]])
   }
   diagram_roles <- roles
   diagram_roles$slot_variables <- slot_variables
   spec$positions <- positions
-  spec$slots <- c(x_slots, mediator_slots, intersect(c("w", "y"), names(positions)))
+  spec$slots <- c(x_slots, mediator_slots, if (isTRUE(has_result_w) && "w" %in% names(positions)) "w", intersect("y", names(positions)))
   spec$paths <- mediation_moderation_unique_paths(paths)
   list(spec = spec, roles = diagram_roles)
 }
