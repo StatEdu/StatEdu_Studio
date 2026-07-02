@@ -10859,19 +10859,19 @@ select[id$="_active_role"]:focus {
 
 .mm-role-grid {
   display: grid;
-  grid-template-columns: 326px 50px 326px 300px minmax(620px, 1fr);
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-panel-width) minmax(620px, 1fr);
   gap: 14px;
   align-items: start;
 }
 
 .mm-model-column {
-  width: 300px;
-  min-width: 300px;
+  width: var(--se-standard-panel-width);
+  min-width: var(--se-standard-panel-width);
 }
 
 .mm-model-panel {
-  min-width: 300px;
-  width: 300px;
+  min-width: var(--se-standard-panel-width);
+  width: var(--se-standard-panel-width);
   height: var(--mm-panel-height);
   min-height: var(--mm-panel-height);
   max-height: var(--mm-panel-height);
@@ -10881,8 +10881,8 @@ select[id$="_active_role"]:focus {
 }
 
 .mm-role-targets-panel {
-  min-width: 326px;
-  width: 326px;
+  min-width: var(--se-standard-panel-width);
+  width: var(--se-standard-panel-width);
   height: var(--mm-panel-height);
   min-height: var(--mm-panel-height);
   max-height: var(--mm-panel-height);
@@ -11066,7 +11066,7 @@ select[id$="_active_role"]:focus {
 }
 
 .mm-model-panel .mm-mediator-structure-group .analysis-option-title {
-  margin-bottom: 2px;
+  margin-bottom: 14px;
 }
 
 .mm-model-panel .mm-mediator-structure-group {
@@ -11089,15 +11089,21 @@ select[id$="_active_role"]:focus {
 }
 
 .mm-save-control {
-  margin-top: 8px;
-  width: 300px;
+  margin-top: 0;
+  width: var(--se-standard-panel-width);
+  max-width: var(--se-standard-panel-width);
+  padding-left: 13px;
+  padding-right: 13px;
+  box-sizing: border-box;
 }
 
 .mm-save-control .analysis-save-action {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 5px;
-  width: 300px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .mm-save-control .analysis-save-button {
@@ -11167,7 +11173,8 @@ select[id$="_active_role"]:focus {
   stroke-dasharray: 1.6 1.2;
 }
 
-.mm-diagram-arrowhead {
+.mm-diagram-arrowhead,
+.mm-diagram-arrowhead-shape {
   fill: #111827;
 }
 
@@ -11179,6 +11186,12 @@ select[id$="_active_role"]:focus {
   font-size: 2px;
   font-weight: 650;
   pointer-events: none;
+}
+
+.mm-diagram-edge-label-my text,
+.mm-diagram-edge-label-my .mm-diagram-edge-label-text,
+.mm-diagram-edge-label-my .mm-diagram-edge-label-halo {
+  text-anchor: start;
 }
 
 .mm-diagram-edge-label-halo {
@@ -11280,9 +11293,10 @@ select[id$="_active_role"]:focus {
 }
 
 .mm-result-diagram-section .mm-diagram-node {
-  width: 88px;
-  height: 44px;
-  min-height: 44px;
+  width: 14%;
+  min-width: 40px;
+  height: 10%;
+  min-height: 30px;
   border-radius: 5px;
   padding: 0;
 }
@@ -11298,21 +11312,99 @@ select[id$="_active_role"]:focus {
 }
 
 .mm-action-row {
-  display: block !important;
+  display: grid !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-panel-width) minmax(620px, 1fr) !important;
+  gap: 14px !important;
+  align-items: start;
   margin-top: 10px !important;
   margin-bottom: 0;
-  width: var(--se-standard-panel-width, 326px) !important;
-  min-width: var(--se-standard-panel-width, 326px) !important;
-  max-width: var(--se-standard-panel-width, 326px) !important;
+  width: 100% !important;
+  min-width: 1704px !important;
+  max-width: none !important;
 }
 
 .mm-action-row > .btn {
   display: block !important;
+  grid-column: 1;
   width: var(--se-standard-inner-button-width, 300px) !important;
   min-width: var(--se-standard-inner-button-width, 300px) !important;
   max-width: var(--se-standard-inner-button-width, 300px) !important;
   margin-left: 14px !important;
   box-sizing: border-box;
+}
+
+.mm-action-row > #mediation_moderation_save_control {
+  grid-column: 4;
+  width: var(--se-standard-panel-width);
+  min-width: var(--se-standard-panel-width);
+  max-width: var(--se-standard-panel-width);
+  margin-left: 0;
+  box-sizing: border-box;
+}
+
+.mm-combined-landscape-section .hierarchical-table-scroll {
+  overflow-x: auto;
+  width: 100%;
+}
+
+.mm-combined-landscape-section {
+  width: min(100%, 890px) !important;
+  max-width: 100% !important;
+  overflow-x: auto;
+}
+
+.mm-combined-landscape-section .hierarchical-coefficient-table {
+  table-layout: auto !important;
+  width: auto !important;
+  min-width: max-content !important;
+  max-width: none !important;
+}
+
+.mm-combined-landscape-section .hierarchical-coefficient-table col {
+  width: auto !important;
+}
+
+.mm-combined-landscape-section .hierarchical-coefficient-table td,
+.mm-combined-landscape-section .hierarchical-coefficient-table th {
+  white-space: nowrap !important;
+}
+
+.mm-combined-sublabel {
+  font-weight: 400;
+  font-size: 0.85em;
+  display: block;
+  margin-top: 2px;
+  color: #374151;
+}
+
+.mm-effects-separator {
+  border: none;
+  border-top: 1px solid #9ca3af;
+  margin: 10px 0 8px;
+}
+
+.mm-effects-section-title {
+  font-weight: 700;
+  font-size: 13px;
+  text-align: center;
+  padding: 8px 0 6px;
+  color: #1f2937;
+}
+
+.mm-effects-mini-section {
+  margin: 6px 0;
+  overflow-x: auto;
+}
+
+.mm-combined-landscape-section .mm-effects-table {
+  min-width: 620px !important;
+  max-width: none !important;
+}
+
+.mm-combined-landscape-section .mm-effects-table th:first-child,
+.mm-combined-landscape-section .mm-effects-table td:first-child {
+  min-width: 260px;
+  white-space: nowrap;
 }
 
 .mm-conditional-plot-grid {
@@ -11338,6 +11430,7 @@ select[id$="_active_role"]:focus {
 .mm-results .mm-process-summary-section,
 .mm-results .mm-interaction-tests-section,
 .mm-results .mm-conditional-effects-section,
+.mm-results .mm-conditional-indirect-section,
 .mm-results .mm-johnson-neyman-section,
 .mm-results .mm-johnson-neyman-detail-section,
 .mm-results .mm-conditional-plots-section,
@@ -11351,6 +11444,7 @@ select[id$="_active_role"]:focus {
 .mm-results .mm-model4-path-section .result-table-with-note,
 .mm-results .mm-process-summary-section .result-table-with-note,
 .mm-results .mm-conditional-effects-section .result-table-with-note,
+.mm-results .mm-conditional-indirect-section .result-table-with-note,
 .mm-results .mm-johnson-neyman-section .result-table-with-note,
 .mm-results .mm-johnson-neyman-detail-section .result-table-with-note {
   width: 100% !important;

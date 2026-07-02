@@ -557,7 +557,8 @@ hierarchical_coefficient_html_table <- function(
   summary_values,
   note_line = NULL,
   model_note_lines = character(0),
-  include_delta = TRUE
+  include_delta = TRUE,
+  extra_footer_rows = list()
 ) {
   if (length(model_tables) == 0) {
     return(NULL)
@@ -642,6 +643,9 @@ hierarchical_coefficient_html_table <- function(
     hierarchical_footer_row("z(p)", lapply(summary_values, `[[`, "normality"), model_columns),
     hierarchical_footer_row(stat_chisq_label(with_p = TRUE), lapply(summary_values, `[[`, "homogeneity"), model_columns)
   ))
+  if (length(extra_footer_rows) > 0L) {
+    footer_rows <- c(footer_rows, extra_footer_rows)
+  }
 
   table <- tags$table(
     class = "coefficient-table hierarchical-coefficient-table",

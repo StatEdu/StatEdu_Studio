@@ -124,7 +124,7 @@ create_app_server <- function(app_version) {
   output$lazy_analysis_hierarchical <- renderUI(tab_panel_content(hierarchical_tab_panel(statedu_ui_label("regression", app_language()), app_language())))
   output$lazy_analysis_mediation_moderation <- renderUI(tab_panel_content(mediation_moderation_tab_panel(mediation_moderation_title(app_language()), app_language())))
   output$lazy_analysis_longitudinal <- renderUI({
-    if (!isTRUE(statedu_feature_enabled("longitudinal", TRUE))) {
+    if (!isTRUE(statedu_feature_enabled("longitudinal", FALSE))) {
       return(div(
         class = "page-shell",
         div(
