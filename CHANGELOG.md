@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.0.4-dev - 2026-07-02
+
+### Changed
+
+- Refined mediation/moderation model diagrams for B5 portrait result output, smaller coefficient labels, and centered Model 7/14 moderator arrows.
+- Added mediation/moderation result save controls for HTML, figure export, PDF, Excel, and result collection.
+
 ## v1.0.2-dev - 2026-06-30
 
 ### Changed

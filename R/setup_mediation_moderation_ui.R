@@ -329,6 +329,9 @@ mediation_moderation_anchor_model <- function(spec) {
 mediation_moderation_xm_anchor_amount <- function(mediator_slot, positions, anchor_model = NA_character_) {
   first_mediator <- mediation_moderation_first_mediator_slot(positions)
   if (length(first_mediator) == 1L && identical(mediator_slot, first_mediator)) {
+    if (anchor_model %in% c("7")) {
+      return(0.5)
+    }
     if (anchor_model %in% c("58", "59")) {
       return(0.3)
     }
@@ -340,6 +343,9 @@ mediation_moderation_xm_anchor_amount <- function(mediator_slot, positions, anch
 mediation_moderation_my_anchor_amount <- function(mediator_slot, positions, anchor_model = NA_character_) {
   first_mediator <- mediation_moderation_first_mediator_slot(positions)
   if (length(first_mediator) == 1L && identical(mediator_slot, first_mediator)) {
+    if (anchor_model %in% c("14")) {
+      return(0.5)
+    }
     if (anchor_model %in% c("58", "59")) {
       return(0.7)
     }
@@ -963,75 +969,79 @@ mediation_moderation_setup_panel <- function(
         )
       ),
       div(
-        class = "analysis-options-column analysis-options-panel mm-model-panel",
-        if (length(roles$mediators) >= 2L) {
+        class = "mm-model-column",
+        div(
+          class = "analysis-options-column analysis-options-panel mm-model-panel",
+          if (length(roles$mediators) >= 2L) {
+            div(
+              class = "analysis-option-group",
+              div(class = "analysis-option-title", statedu_text(language, "Mediator structure", "\ub9e4\uac1c \uad6c\uc870")),
+              radioButtons(
+                "mm_mediator_arrangement",
+                label = NULL,
+                choices = mediation_moderation_mediator_arrangement_choices(language),
+                selected = mediator_arrangement
+              )
+            )
+          },
+          div(
+            class = paste("analysis-option-group", if (isTRUE(moderation_controls_disabled)) "mm-disabled-option-group" else ""),
+            div(class = "analysis-option-title", statedu_text(language, "Moderated paths", "\uc870\uc808 \uacbd\ub85c")),
+            mediation_moderation_checkbox_group_input(
+              "mm_moderated_paths",
+              choices = mediation_moderation_builder_path_choices(language),
+              selected = moderated_paths,
+              disabled = moderation_controls_disabled,
+              disabled_values = disabled_moderated_paths
+            )
+          ),
+          mediation_moderation_moderation_option_group(disabled = moderation_controls_disabled, language = language),
           div(
             class = "analysis-option-group",
-            div(class = "analysis-option-title", statedu_text(language, "Mediator structure", "\ub9e4\uac1c \uad6c\uc870")),
-            radioButtons(
-              "mm_mediator_arrangement",
-              label = NULL,
-              choices = mediation_moderation_mediator_arrangement_choices(language),
-              selected = mediator_arrangement
+            div(class = "analysis-option-title", statedu_text(language, "Analysis method", "\ubd84\uc11d \ubc29\ubc95")),
+            selectInput(
+              "mm_analysis_method",
+              NULL,
+              choices = mediation_moderation_analysis_method_choices(language),
+              selected = mediation_moderation_scalar_choice(
+                if (!is.null(input)) isolate(input$mm_analysis_method) else NULL,
+                "statedu",
+                c("statedu", "process_ols")
+              ),
+              selectize = FALSE
+            )
+          ),
+          div(
+            class = "analysis-option-group",
+            div(class = "analysis-option-title", analysis_ui_text("Bootstrap", language)),
+            selectInput(
+              "mm_boot_r",
+              analysis_ui_text("Number of bootstrap samples", language),
+              choices = bootstrap_resample_choices(language),
+              selected = normalized_bootstrap_resamples(if (!is.null(input)) isolate(input$mm_boot_r) else NULL),
+              selectize = FALSE
+            ),
+            numericInput(
+              "mm_seed",
+              analysis_ui_text("Seed number", language),
+              value = mediation_moderation_numeric_choice(if (!is.null(input)) isolate(input$mm_seed) else NULL, default_seed()),
+              min = 1,
+              step = 1
+            ),
+            selectInput(
+              "mm_ci_method",
+              statedu_text(language, "Bootstrap CI method", "Bootstrap CI \ubc29\uc2dd"),
+              choices = mediation_moderation_ci_method_choices(language),
+              selected = mediation_moderation_scalar_choice(
+                if (!is.null(input)) isolate(input$mm_ci_method) else NULL,
+                "bias_corrected",
+                c("bias_corrected", "percentile")
+              ),
+              selectize = FALSE
             )
           )
-        },
-        div(
-          class = paste("analysis-option-group", if (isTRUE(moderation_controls_disabled)) "mm-disabled-option-group" else ""),
-          div(class = "analysis-option-title", statedu_text(language, "Moderated paths", "\uc870\uc808 \uacbd\ub85c")),
-          mediation_moderation_checkbox_group_input(
-            "mm_moderated_paths",
-            choices = mediation_moderation_builder_path_choices(language),
-            selected = moderated_paths,
-            disabled = moderation_controls_disabled,
-            disabled_values = disabled_moderated_paths
-          )
         ),
-        mediation_moderation_moderation_option_group(disabled = moderation_controls_disabled, language = language),
-        div(
-          class = "analysis-option-group",
-          div(class = "analysis-option-title", statedu_text(language, "Analysis method", "\ubd84\uc11d \ubc29\ubc95")),
-          selectInput(
-            "mm_analysis_method",
-            NULL,
-            choices = mediation_moderation_analysis_method_choices(language),
-            selected = mediation_moderation_scalar_choice(
-              if (!is.null(input)) isolate(input$mm_analysis_method) else NULL,
-              "statedu",
-              c("statedu", "process_ols")
-            ),
-            selectize = FALSE
-          )
-        ),
-        div(
-          class = "analysis-option-group",
-          div(class = "analysis-option-title", analysis_ui_text("Bootstrap", language)),
-          selectInput(
-            "mm_boot_r",
-            analysis_ui_text("Number of bootstrap samples", language),
-            choices = bootstrap_resample_choices(language),
-            selected = normalized_bootstrap_resamples(if (!is.null(input)) isolate(input$mm_boot_r) else NULL),
-            selectize = FALSE
-          ),
-          numericInput(
-            "mm_seed",
-            analysis_ui_text("Seed number", language),
-            value = mediation_moderation_numeric_choice(if (!is.null(input)) isolate(input$mm_seed) else NULL, default_seed()),
-            min = 1,
-            step = 1
-          ),
-          selectInput(
-            "mm_ci_method",
-            statedu_text(language, "Bootstrap CI method", "Bootstrap CI \ubc29\uc2dd"),
-            choices = mediation_moderation_ci_method_choices(language),
-            selected = mediation_moderation_scalar_choice(
-              if (!is.null(input)) isolate(input$mm_ci_method) else NULL,
-              "bias_corrected",
-              c("bias_corrected", "percentile")
-            ),
-            selectize = FALSE
-          )
-        )
+        uiOutput("mediation_moderation_save_control")
       ),
       mediation_moderation_diagram(spec, roles, variable_table, labels, language)
     )
@@ -2574,7 +2584,7 @@ mediation_moderation_path_coefficient_label <- function(result, term) {
   if (!is.finite(b_value)) {
     return("")
   }
-  sprintf("B(p)=%s(%s)", format_decimal3(b_value), format_p(p_value))
+  sprintf("%s(%s)", format_decimal3(b_value), format_p(p_value))
 }
 
 mediation_moderation_edge_coefficient_labels <- function(path_results) {
@@ -3185,6 +3195,137 @@ mediation_moderation_result_ui <- function(result, language = statedu_initial_la
   )
 }
 
+mediation_moderation_saved_results_html <- function(result, language = statedu_initial_language(), report_mode = FALSE) {
+  if (is.null(result)) {
+    stop("No mediation / moderation result is available.", call. = FALSE)
+  }
+  saved_results_document(
+    "Mediation / moderation",
+    mediation_moderation_result_ui(result, language),
+    max_width = 1000,
+    css_path = file.path("www", "style.css"),
+    report_mode = report_mode
+  )
+}
+
+write_mediation_moderation_results_html <- function(result, file, language = statedu_initial_language()) {
+  html <- mediation_moderation_saved_results_html(result, language = language, report_mode = FALSE)
+  writeLines(html, file, useBytes = TRUE)
+  invisible(file)
+}
+
+write_mediation_moderation_results_pdf <- function(result, file, language = statedu_initial_language()) {
+  html <- mediation_moderation_saved_results_html(result, language = language, report_mode = TRUE)
+  write_pdf_from_html(html, file)
+  invisible(file)
+}
+
+mediation_moderation_export_tables <- function(result) {
+  tables <- list(
+    `Model overview` = result$overview,
+    `PROCESS summary` = result$model_summary_table,
+    `Interaction tests` = result$interaction_table,
+    `Conditional effects` = result$simple_slopes_table,
+    `Johnson-Neyman` = result$johnson_neyman_table,
+    `JN conditional effects` = result$johnson_neyman_detail_table,
+    `Bootstrap effects` = result$effect_table
+  )
+  path_tables <- lapply(seq_along(result$path_results %||% list()), function(index) {
+    path_result <- result$path_results[[index]]
+    table <- path_result$display_table %||% path_result$coef_table
+    if (!is.data.frame(table)) return(NULL)
+    table
+  })
+  names(path_tables) <- paste0("Path ", seq_along(path_tables))
+  tables <- c(tables, path_tables)
+  Filter(function(table) is.data.frame(table) && nrow(table) > 0L, tables)
+}
+
+save_mediation_moderation_excel_file <- function(result, file) {
+  if (is.null(result)) {
+    stop("No mediation / moderation result is available.", call. = FALSE)
+  }
+  if (!requireNamespace("openxlsx", quietly = TRUE)) {
+    stop("Excel export requires the openxlsx package.")
+  }
+  workbook <- openxlsx::createWorkbook()
+  styles <- excel_styles()
+  used_names <- character(0)
+  tables <- mediation_moderation_export_tables(result)
+  if (length(tables) == 0L) {
+    openxlsx::addWorksheet(workbook, "Results")
+    openxlsx::writeData(workbook, "Results", "No data")
+    openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
+    return(invisible(file))
+  }
+  for (name in names(tables)) {
+    table <- tables[[name]]
+    sheet <- substr(gsub("[\\[\\]\\*\\?/\\\\:]", " ", name), 1L, 31L)
+    sheet <- trimws(sheet)
+    if (!nzchar(sheet)) sheet <- "Table"
+    base <- sheet
+    suffix <- 1L
+    while (tolower(sheet) %in% tolower(used_names)) {
+      suffix <- suffix + 1L
+      sheet <- substr(sprintf("%s %s", base, suffix), 1L, 31L)
+    }
+    used_names <- c(used_names, sheet)
+    openxlsx::addWorksheet(workbook, sheet)
+    openxlsx::writeData(workbook, sheet, name, startRow = 1, startCol = 1, colNames = FALSE)
+    openxlsx::mergeCells(workbook, sheet, cols = seq_len(max(1L, ncol(table))), rows = 1)
+    openxlsx::addStyle(workbook, sheet, styles$title, rows = 1, cols = 1, gridExpand = TRUE, stack = TRUE)
+    openxlsx::writeData(workbook, sheet, table, startRow = 3, startCol = 1, withFilter = FALSE)
+    openxlsx::addStyle(workbook, sheet, styles$header, rows = 3, cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
+    if (nrow(table) > 0L) {
+      body_rows <- 4:(3 + nrow(table))
+      openxlsx::addStyle(workbook, sheet, styles$body, rows = body_rows, cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
+      openxlsx::addStyle(workbook, sheet, styles$left, rows = body_rows, cols = 1, gridExpand = TRUE, stack = TRUE)
+    }
+    openxlsx::setColWidths(workbook, sheet, cols = seq_len(ncol(table)), widths = excel_table_column_widths(table))
+    openxlsx::freezePane(workbook, sheet, firstActiveRow = 4)
+  }
+  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
+  invisible(file)
+}
+
+save_mediation_moderation_figures_to_dir <- function(result, directory, language = statedu_initial_language()) {
+  if (is.null(result)) {
+    stop("No mediation / moderation result is available.", call. = FALSE)
+  }
+  dir.create(directory, recursive = TRUE, showWarnings = FALSE)
+  saved <- character(0)
+  diagram_file <- file.path(directory, "mediation_moderation_model_diagram.html")
+  diagram_html <- saved_results_document(
+    "Mediation / moderation model diagram",
+    mediation_moderation_result_diagram_ui(result, language),
+    max_width = 720,
+    css_path = file.path("www", "style.css")
+  )
+  writeLines(diagram_html, diagram_file, useBytes = TRUE)
+  saved <- c(saved, diagram_file)
+  plot_specs <- result$conditional_plot_specs %||% list()
+  dpi <- mediation_moderation_figure_dpi()
+  for (index in seq_along(plot_specs)) {
+    file <- file.path(directory, sprintf("mediation_moderation_plot_%02d.png", index))
+    grDevices::png(file, width = 6.8, height = 4.8, units = "in", res = dpi)
+    closed <- FALSE
+    tryCatch(
+      {
+        mediation_moderation_print_plot(plot_specs[[index]])
+        grDevices::dev.off()
+        closed <- TRUE
+        saved <- c(saved, file)
+      },
+      finally = {
+        if (!closed) {
+          try(grDevices::dev.off(), silent = TRUE)
+        }
+      }
+    )
+  }
+  saved
+}
+
 run_mediation_moderation_analysis <- function(
   data,
   roles,
@@ -3555,6 +3696,22 @@ register_mediation_moderation_setup_output <- function(
   output$mediation_moderation_results <- renderUI({
     mediation_moderation_result_ui(mm_result(), statedu_current_language(app_language_fn))
   })
+  output$mediation_moderation_save_control <- renderUI({
+    if (is.null(mm_result())) {
+      return(NULL)
+    }
+    div(
+      class = "mm-save-control",
+      analysis_save_buttons(
+        html_button_id = "save_mediation_moderation_html_dialog",
+        pdf_button_id = "save_mediation_moderation_pdf_dialog",
+        figure_button_id = "save_mediation_moderation_figures_dialog",
+        excel_button_id = "save_mediation_moderation_excel_dialog",
+        add_result_button_id = "add_mediation_moderation_result",
+        language = statedu_current_language(app_language_fn)
+      )
+    )
+  })
 
   lapply(mm_ids, function(id) {
     force(id)
@@ -3815,6 +3972,97 @@ register_mediation_moderation_setup_output <- function(
       showNotification(statedu_text(language, "Mediation / moderation analysis finished.", "\ub9e4\uac1c\u00b7\uc870\uc808 \ubd84\uc11d\uc774 \uc644\ub8cc\ub418\uc5c8\uc2b5\ub2c8\ub2e4."), type = "message", duration = 4)
     }
   }, ignoreInit = TRUE)
+
+  observeEvent(input$save_mediation_moderation_html_dialog, {
+    shiny::req(!is.null(mm_result()))
+    path <- choose_html_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) {
+      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      return(invisible(NULL))
+    }
+    if (!grepl("\\.html?$", path, ignore.case = TRUE)) {
+      path <- paste0(path, ".html")
+    }
+    tryCatch(
+      {
+        write_mediation_moderation_results_html(mm_result(), path, statedu_current_language(app_language_fn))
+        showNotification(sprintf("HTML results saved: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save HTML results:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$save_mediation_moderation_pdf_dialog, {
+    shiny::req(!is.null(mm_result()))
+    path <- choose_pdf_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) {
+      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      return(invisible(NULL))
+    }
+    if (!grepl("\\.pdf$", path, ignore.case = TRUE)) {
+      path <- paste0(path, ".pdf")
+    }
+    tryCatch(
+      {
+        write_mediation_moderation_results_pdf(mm_result(), path, statedu_current_language(app_language_fn))
+        showNotification(sprintf("PDF results saved: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save PDF results:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$save_mediation_moderation_excel_dialog, {
+    shiny::req(!is.null(mm_result()))
+    path <- choose_excel_save_path()
+    if (length(path) == 0 || !nzchar(path[[1]])) {
+      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      return(invisible(NULL))
+    }
+    if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) {
+      path <- paste0(path, ".xlsx")
+    }
+    tryCatch(
+      {
+        save_mediation_moderation_excel_file(mm_result(), path)
+        showNotification(sprintf("Excel results saved: %s", path), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save Excel results:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$save_mediation_moderation_figures_dialog, {
+    shiny::req(!is.null(mm_result()))
+    directory <- choose_figure_save_dir()
+    if (length(directory) == 0 || !nzchar(directory[[1]])) {
+      showNotification("Folder selection dialog was not available or was canceled.", type = "warning", duration = 5)
+      return(invisible(NULL))
+    }
+    tryCatch(
+      {
+        saved <- save_mediation_moderation_figures_to_dir(mm_result(), directory, statedu_current_language(app_language_fn))
+        showNotification(sprintf("Saved %s figure file(s): %s", length(saved), directory), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste("Failed to save figures:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  }, ignoreInit = TRUE)
+
+  register_add_result_snapshot(
+    input,
+    session,
+    "add_mediation_moderation_result",
+    "Mediation / moderation",
+    html_fn = function() {
+      mediation_moderation_saved_results_html(mm_result(), statedu_current_language(app_language_fn))
+    }
+  )
 
   invisible(TRUE)
 }

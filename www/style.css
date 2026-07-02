@@ -10864,6 +10864,11 @@ select[id$="_active_role"]:focus {
   align-items: start;
 }
 
+.mm-model-column {
+  width: 300px;
+  min-width: 300px;
+}
+
 .mm-model-panel {
   min-width: 300px;
   width: 300px;
@@ -11058,6 +11063,29 @@ select[id$="_active_role"]:focus {
   margin-bottom: 5px;
 }
 
+.mm-save-control {
+  margin-top: 8px;
+  width: 300px;
+}
+
+.mm-save-control .analysis-save-action {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  width: 300px;
+}
+
+.mm-save-control .analysis-save-button {
+  width: 100%;
+  min-width: 0;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.mm-save-control .analysis-save-button-add_result {
+  grid-column: 1 / -1;
+}
+
 .mm-disabled-checkbox-group .checkbox label,
 .mm-disabled-option-group .checkbox label {
   color: #667789;
@@ -11117,7 +11145,7 @@ select[id$="_active_role"]:focus {
 .mm-diagram-edge-label-halo {
   text-anchor: middle;
   dominant-baseline: middle;
-  font-size: 3px;
+  font-size: 2px;
   font-weight: 650;
   pointer-events: none;
 }
@@ -11186,6 +11214,55 @@ select[id$="_active_role"]:focus {
   overflow-wrap: anywhere;
   word-break: keep-all;
   margin: 0;
+}
+
+.mm-result-diagram-section .mm-diagram-panel {
+  width: min(100%, 500px);
+  min-width: 0;
+  max-width: 500px;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  aspect-ratio: 176 / 250;
+  margin: 0 auto;
+}
+
+.mm-result-diagram-section .mm-diagram-title {
+  top: 12px;
+  font-size: 15px;
+}
+
+.mm-result-diagram-section .mm-diagram-arrow {
+  stroke-width: 0.38;
+}
+
+.mm-result-diagram-section .mm-diagram-edge-label text,
+.mm-result-diagram-section .mm-diagram-edge-label-text,
+.mm-result-diagram-section .mm-diagram-edge-label-halo {
+  font-size: 1.65px;
+  font-weight: 600;
+}
+
+.mm-result-diagram-section .mm-diagram-edge-label-halo {
+  stroke-width: 0.72px;
+}
+
+.mm-result-diagram-section .mm-diagram-node {
+  width: 88px;
+  height: 44px;
+  min-height: 44px;
+  border-radius: 5px;
+  padding: 0;
+}
+
+.mm-result-diagram-section .mm-node-variable-text {
+  font-size: 12px;
+  line-height: 1.12;
+  padding: 0 6px;
+}
+
+.mm-result-diagram-section .mm-node-role {
+  font-size: 13px;
 }
 
 .mm-action-row {
