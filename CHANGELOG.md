@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.9-dev - 2026-07-02
+
+### Changed
+
+- Restored original setup-diagram placement for single-X single-mediator and single-X moderation result diagrams.
+- Updated result diagrams to use black thin lines, white nodes, B(p) labels, and dashed non-significant paths.
+- Adjusted Model 8 multi-X moderation anchors and widened multi-X/multi-mediator X-to-M and M-to-Y spacing.
+
 ## v1.0.8-dev - 2026-07-02
 
 ### Changed
