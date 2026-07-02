@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.14-dev - 2026-07-02
+
+### Changed
+
+- Tightened the vertical margins between mediation/moderation setup option groups so adjacent section titles sit closer to the previous control.
+
 ## v1.0.13-dev - 2026-07-02
 
 ### Changed

@@ -11040,15 +11040,20 @@ select[id$="_active_role"]:focus {
 .mm-model-panel .radio {
   margin-top: 0;
   margin-bottom: 0;
+  min-height: 16px;
 }
 
 .mm-model-panel .checkbox label,
 .mm-model-panel .radio label {
-  line-height: 1.18;
+  line-height: 1.05;
 }
 
 .mm-model-panel .analysis-option-group {
   margin-bottom: 0;
+}
+
+.mm-model-panel .analysis-option-group + .analysis-option-group {
+  margin-top: -10px;
 }
 
 .mm-model-panel > .analysis-option-group:first-child {
