@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.6-dev - 2026-07-02
+
+### Changed
+
+- Tightened multi-X/multi-mediator result diagram spacing and centered a single mediator between two independent variables.
+
 ## v1.0.5-dev - 2026-07-02
 
 ### Changed

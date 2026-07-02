@@ -2595,6 +2595,17 @@ mediation_moderation_result_mediator_slots <- function(spec) {
   mediator_slots[nzchar(mediator_slots)]
 }
 
+mediation_moderation_compact_y_range <- function(values, factor = 0.75) {
+  values <- as.numeric(values)
+  finite <- is.finite(values)
+  if (sum(finite) < 2L) {
+    return(values)
+  }
+  center <- mean(range(values[finite]))
+  values[finite] <- center + (values[finite] - center) * factor
+  values
+}
+
 mediation_moderation_result_x_y_positions <- function(x_count, mediator_y) {
   x_count <- max(1L, as.integer(x_count %||% 1L))
   mediator_y <- as.numeric(mediator_y)
@@ -2603,10 +2614,16 @@ mediation_moderation_result_x_y_positions <- function(x_count, mediator_y) {
     return(if (length(mediator_y) > 0L) mediator_y[[1L]] else 70)
   }
   if (length(mediator_y) >= 2L) {
-    return(seq(min(mediator_y), max(mediator_y), length.out = x_count))
+    mediator_range <- range(mediator_y)
+    if (diff(mediator_range) >= 8) {
+      compact_range <- mediation_moderation_compact_y_range(mediator_range)
+      return(seq(min(compact_range), max(compact_range), length.out = x_count))
+    }
+    center <- mean(mediator_range)
+    return(seq(max(28, center - 12), min(76, center + 12), length.out = x_count))
   }
   center <- if (length(mediator_y) == 1L) mediator_y[[1L]] else 58
-  seq(max(28, center - 16), min(76, center + 16), length.out = x_count)
+  seq(max(28, center - 12), min(76, center + 12), length.out = x_count)
 }
 
 mediation_moderation_unique_paths <- function(paths) {
@@ -2629,8 +2646,18 @@ mediation_moderation_result_diagram_data <- function(result) {
   slots <- as.character(spec$slots %||% character(0))
   mediator_slots <- mediation_moderation_result_mediator_slots(spec)
   mediator_y <- vapply(mediator_slots, function(slot) positions[[slot]][[2]], numeric(1))
+  if (length(mediator_y) >= 2L && diff(range(mediator_y)) >= 8) {
+    mediator_y <- mediation_moderation_compact_y_range(mediator_y)
+    for (index in seq_along(mediator_slots)) {
+      positions[[mediator_slots[[index]]]][[2]] <- mediator_y[[index]]
+    }
+  }
   x_slots <- paste0("x", seq_along(x_vars))
   x_y <- mediation_moderation_result_x_y_positions(length(x_vars), mediator_y)
+  if (length(mediator_slots) == 1L && length(x_y) >= 2L) {
+    positions[[mediator_slots[[1L]]]][[2]] <- mean(range(x_y))
+    mediator_y <- positions[[mediator_slots[[1L]]]][[2]]
+  }
   positions$x <- NULL
   for (index in seq_along(x_slots)) {
     positions[[x_slots[[index]]]] <- c(16, x_y[[index]])
