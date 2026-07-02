@@ -620,6 +620,28 @@ mediation_moderation_edge_point <- function(source, target, positions, anchor_mo
   if (target %in% names(positions)) {
     return(positions[[target]])
   }
+  if (grepl("^xy_", target) && "y" %in% names(positions)) {
+    parts <- strsplit(target, "_", fixed = TRUE)[[1]]
+    if (length(parts) == 2L && parts[[2L]] %in% names(positions)) {
+      return(mediation_moderation_lerp_point(positions[[parts[[2L]]]], positions$y, 0.5))
+    }
+  }
+  if (grepl("^xm_[^_]+_[^_]+$", target)) {
+    parts <- strsplit(target, "_", fixed = TRUE)[[1]]
+    if (length(parts) == 3L && all(parts[2:3] %in% names(positions))) {
+      amount <- mediation_moderation_xm_anchor_amount(parts[[3L]], positions, anchor_model)
+      if (!"x" %in% names(positions)) {
+        if (anchor_model %in% c("7")) {
+          amount <- 0.5
+        } else if (anchor_model %in% c("58", "59")) {
+          amount <- 0.3
+        } else {
+          amount <- 0.7
+        }
+      }
+      return(mediation_moderation_lerp_point(positions[[parts[[2L]]]], positions[[parts[[3L]]]], amount))
+    }
+  }
   if (identical(target, "xy") && all(c("x", "y") %in% names(positions))) {
     return(mediation_moderation_lerp_point(positions$x, positions$y, 0.5))
   }
@@ -654,31 +676,40 @@ mediation_moderation_edge_point <- function(source, target, positions, anchor_mo
   positions[[source]]
 }
 
-mediation_moderation_node_arrow_endpoint <- function(from, to) {
+mediation_moderation_diagram_metrics <- function(variant = "setup") {
+  variant <- as.character(variant %||% "setup")[[1]]
+  if (identical(variant, "result")) {
+    return(list(half_width = 8.8, half_height = 3.1, gap = 0.55))
+  }
+  list(half_width = 8.0, half_height = 4.7, gap = 0.8)
+}
+
+mediation_moderation_node_arrow_endpoint <- function(from, to, metrics = mediation_moderation_diagram_metrics()) {
   from <- as.numeric(from)
   to <- as.numeric(to)
   delta <- to - from
   if (length(delta) != 2L || !all(is.finite(delta)) || sum(abs(delta)) == 0) {
     return(to)
   }
-  half_width <- 8.0
-  half_height <- 4.7
+  half_width <- as.numeric(metrics$half_width %||% 8.0)
+  half_height <- as.numeric(metrics$half_height %||% 4.7)
+  gap <- as.numeric(metrics$gap %||% 0.8)
   scale <- max(abs(delta[[1]]) / half_width, abs(delta[[2]]) / half_height)
   if (!is.finite(scale) || scale <= 0) {
     return(to)
   }
   edge <- to - (delta / scale)
   unit <- delta / sqrt(sum(delta^2))
-  edge - unit * 0.8
+  edge - unit * gap
 }
 
-mediation_moderation_arrow <- function(path, positions, anchor_model = NA_character_) {
+mediation_moderation_arrow <- function(path, positions, anchor_model = NA_character_, metrics = mediation_moderation_diagram_metrics()) {
   source <- path[[1]]
   target <- path[[2]]
   from <- positions[[source]]
   to <- mediation_moderation_edge_point(source, target, positions, anchor_model)
   if (target %in% names(positions)) {
-    to <- mediation_moderation_node_arrow_endpoint(from, to)
+    to <- mediation_moderation_node_arrow_endpoint(from, to, metrics)
   }
   tags$line(
     x1 = from[[1]], y1 = from[[2]],
@@ -692,7 +723,19 @@ mediation_moderation_path_key <- function(path) {
   paste(as.character(path %||% character(0)), collapse = "->")
 }
 
-mediation_moderation_arrow_label <- function(path, edge_labels, positions, anchor_model = NA_character_) {
+mediation_moderation_arrow_label_amount <- function(path) {
+  target <- as.character(path[[2]] %||% "")
+  source <- as.character(path[[1]] %||% "")
+  if (target %in% c("xm", "my", "xy") || grepl("^(xm|my|xy)_", target)) {
+    return(0.34)
+  }
+  if (source %in% c("x", "m", "m1", "m2") && target %in% c("m", "m1", "m2", "y")) {
+    return(0.42)
+  }
+  0.5
+}
+
+mediation_moderation_arrow_label <- function(path, edge_labels, positions, anchor_model = NA_character_, metrics = mediation_moderation_diagram_metrics()) {
   key <- mediation_moderation_path_key(path)
   label <- as.character(edge_labels[[key]] %||% "")
   if (!nzchar(label)) {
@@ -703,10 +746,12 @@ mediation_moderation_arrow_label <- function(path, edge_labels, positions, ancho
   from <- positions[[source]]
   to <- mediation_moderation_edge_point(source, target, positions, anchor_model)
   if (target %in% names(positions)) {
-    to <- mediation_moderation_node_arrow_endpoint(from, to)
+    to <- mediation_moderation_node_arrow_endpoint(from, to, metrics)
   }
-  x <- mean(c(from[[1]], to[[1]]))
-  y <- mean(c(from[[2]], to[[2]]))
+  amount <- mediation_moderation_arrow_label_amount(path)
+  label_point <- mediation_moderation_lerp_point(from, to, amount)
+  x <- label_point[[1]]
+  y <- label_point[[2]]
   if (identical(target, "xy") || grepl("^xy", target)) {
     y <- y - 3.2
   } else if (target %in% names(positions)) {
@@ -750,6 +795,10 @@ mediation_moderation_display_name <- function(name, variable_table = NULL, label
 
 mediation_moderation_slot_variable <- function(slot, roles) {
   slot <- as.character(slot %||% "")
+  slot_variables <- roles$slot_variables %||% NULL
+  if (!is.null(slot_variables) && slot %in% names(slot_variables)) {
+    return(as.character(slot_variables[[slot]] %||% character(0)))
+  }
   if (grepl("^m[0-9]+$", slot)) {
     index <- suppressWarnings(as.integer(sub("^m", "", slot)))
     return(as.character(roles$mediators %||% character(0))[index])
@@ -780,14 +829,16 @@ mediation_moderation_node <- function(slot, position, roles, variable_table = NU
   )
 }
 
-mediation_moderation_diagram <- function(spec, roles, variable_table = NULL, labels = character(0), language = statedu_initial_language(), edge_labels = NULL) {
+mediation_moderation_diagram <- function(spec, roles, variable_table = NULL, labels = character(0), language = statedu_initial_language(), edge_labels = NULL, variant = "setup") {
   slots <- spec$slots
   positions <- mediation_moderation_spread_xy_positions(spec$positions)
   paths <- spec$paths
   anchor_model <- mediation_moderation_anchor_model(spec)
   edge_labels <- edge_labels %||% list()
+  variant <- mediation_moderation_scalar_choice(variant, "setup", c("setup", "result"))
+  metrics <- mediation_moderation_diagram_metrics(variant)
   div(
-    class = "mm-diagram-panel",
+    class = paste("mm-diagram-panel", paste0("mm-diagram-panel-", variant)),
     div(
       class = "mm-diagram-title",
       span(spec$title),
@@ -808,8 +859,8 @@ mediation_moderation_diagram <- function(spec, roles, variable_table = NULL, lab
           tags$path(d = "M0,0 L0,6 L7,3 z", class = "mm-diagram-arrowhead")
         )
       ),
-      lapply(paths, mediation_moderation_arrow, positions = positions, anchor_model = anchor_model),
-      lapply(paths, mediation_moderation_arrow_label, edge_labels = edge_labels, positions = positions, anchor_model = anchor_model)
+      lapply(paths, mediation_moderation_arrow, positions = positions, anchor_model = anchor_model, metrics = metrics),
+      lapply(paths, mediation_moderation_arrow_label, edge_labels = edge_labels, positions = positions, anchor_model = anchor_model, metrics = metrics)
     ),
     lapply(slots, function(slot) mediation_moderation_node(slot, positions[[slot]], roles, variable_table, labels))
   )
@@ -1446,6 +1497,7 @@ mediation_moderation_hierarchical_model_table <- function(result, include_vif = 
   table <- table[, setdiff(names(table), c(".raw_variable", ".raw_level")), drop = FALSE]
   names(table)[names(table) == "f2"] <- "f\u00B2"
   table <- mediation_moderation_format_interaction_terms(table)
+  table <- mediation_moderation_path_coefficient_widths(table)
   if (isTRUE(result$use_bootstrap)) {
     attr(table, "bootstrap_regression") <- TRUE
   }
@@ -1478,7 +1530,7 @@ mediation_moderation_hierarchical_path_result_ui <- function(result) {
     mediation_moderation_hierarchical_model_table(group[[2]], include_vif = FALSE)
   )
   div(
-    class = "result-section regression-result-panel",
+    class = "result-section regression-result-panel mm-path-result-section",
     h3(sprintf("Moderation Analysis: %s (X: %s)", result$equation, result$focal)),
     hierarchical_coefficient_html_table(
       model_tables,
@@ -1528,7 +1580,7 @@ mediation_moderation_model4_path_group_ui <- function(group, show_focal = FALSE)
     title <- sprintf("%s (X: %s)", title, focal)
   }
   div(
-    class = "result-section regression-result-panel",
+    class = "result-section regression-result-panel mm-model4-path-section",
     h3(title),
     hierarchical_coefficient_html_table(
       model_tables,
@@ -1569,11 +1621,12 @@ mediation_moderation_path_result_ui <- function(result) {
   table <- table[, setdiff(names(table), c(".raw_variable", ".raw_level")), drop = FALSE]
   names(table)[names(table) == "f2"] <- "f\u00B2"
   table <- mediation_moderation_format_interaction_terms(table)
+  table <- mediation_moderation_path_coefficient_widths(table)
   if (isTRUE(result$use_bootstrap)) {
     attr(table, "bootstrap_regression") <- TRUE
   }
   div(
-    class = "result-section regression-result-panel",
+    class = "result-section regression-result-panel mm-path-result-section",
     h3(mediation_moderation_path_title(result)),
     coefficient_html_table(
       table,
@@ -1671,16 +1724,87 @@ mediation_moderation_add_group_bottom_border <- function(table, row_indices) {
   table
 }
 
-mediation_moderation_add_path_group_bottom_border <- function(table) {
-  if (!is.data.frame(table) || nrow(table) == 0L || !"Path" %in% names(table)) {
+mediation_moderation_add_column_group_bottom_border <- function(table, column) {
+  if (!is.data.frame(table) || nrow(table) == 0L || !column %in% names(table)) {
     return(table)
   }
-  path <- as.character(table$Path %||% character(0))
-  if (length(path) != nrow(table)) {
+  values <- as.character(table[[column]] %||% character(0))
+  if (length(values) != nrow(table)) {
     return(table)
   }
-  group_end_rows <- which(c(path[-1L] != path[-length(path)], TRUE))
+  group_end_rows <- which(c(values[-1L] != values[-length(values)], TRUE))
   mediation_moderation_add_group_bottom_border(table, group_end_rows)
+}
+
+mediation_moderation_add_path_group_bottom_border <- function(table) {
+  mediation_moderation_add_column_group_bottom_border(table, "Path")
+}
+
+mediation_moderation_nowrap_column <- function(table, column) {
+  if (!is.data.frame(table) || nrow(table) == 0L || !column %in% names(table)) {
+    return(table)
+  }
+  styles <- data.frame(
+    row = seq_len(nrow(table)),
+    column = column,
+    style = "white-space:nowrap !important;overflow-wrap:normal !important;word-break:normal !important;",
+    stringsAsFactors = FALSE
+  )
+  attr(table, "cell_styles") <- rbind(attr(table, "cell_styles", exact = TRUE), styles)
+  table
+}
+
+mediation_moderation_set_widths <- function(table, widths) {
+  if (!is.data.frame(table) || nrow(table) == 0L || length(widths) == 0L) {
+    return(table)
+  }
+  mapped <- unname(widths[names(table)])
+  mapped[!is.finite(mapped) | mapped <= 0] <- 8
+  mapped <- mapped / sum(mapped, na.rm = TRUE) * 100
+  attr(table, "compact_column_widths") <- mapped
+  table
+}
+
+mediation_moderation_path_coefficient_widths <- function(table) {
+  widths <- c(
+    Term = 24,
+    B = 8,
+    SE = 9,
+    `HC3 SE` = 10,
+    `Boot SE` = 10,
+    LLCI = 9,
+    ULCI = 9,
+    t = 8,
+    p = 7,
+    `Boot p` = 8,
+    f2 = 6,
+    VIF = 8
+  )
+  mediation_moderation_set_widths(table, widths)
+}
+
+mediation_moderation_conditional_table_layout <- function(table) {
+  table <- mediation_moderation_nowrap_column(table, "Path")
+  mediation_moderation_set_widths(
+    table,
+    c(Path = 25, Moderator = 10, Level = 11, W = 8, Effect = 9, SE = 8, t = 9, p = 7, LLCI = 7, ULCI = 7, Significant = 8)
+  )
+}
+
+mediation_moderation_jn_table_layout <- function(table) {
+  table <- mediation_moderation_nowrap_column(table, "Path")
+  mediation_moderation_set_widths(
+    table,
+    c(Path = 25, Moderator = 11, `W range` = 20, `Midpoint effect` = 18, p = 9, Significant = 17)
+  )
+}
+
+mediation_moderation_process_summary_layout <- function(table) {
+  table <- mediation_moderation_add_column_group_bottom_border(table, "X")
+  mediation_moderation_set_widths(
+    table,
+    c(X = 12, Equation = 20, R = 9, `R-sq` = 10, MSE = 10, F = 11, df1 = 9, df2 = 10, p = 9)
+  )
 }
 
 mediation_moderation_model_summary_process_table <- function(path_results) {
@@ -1701,7 +1825,7 @@ mediation_moderation_model_summary_process_table <- function(path_results) {
       check.names = FALSE
     )
   })
-  analysis_bind_rows(rows)
+  mediation_moderation_process_summary_layout(analysis_bind_rows(rows))
 }
 
 mediation_moderation_interaction_change_table <- function(path_results) {
@@ -1859,7 +1983,8 @@ mediation_moderation_simple_slopes_table <- function(path_results) {
     }
   }
   table <- analysis_bind_rows(rows)
-  mediation_moderation_add_path_group_bottom_border(table)
+  table <- mediation_moderation_add_path_group_bottom_border(table)
+  mediation_moderation_conditional_table_layout(table)
 }
 
 mediation_moderation_jn_intervals <- function(result, spec, alpha = .05) {
@@ -1932,7 +2057,7 @@ mediation_moderation_jn_intervals <- function(result, spec, alpha = .05) {
     )
   }
   attr(rows, "roots") <- roots
-  analysis_bind_rows(rows)
+  mediation_moderation_jn_table_layout(mediation_moderation_add_path_group_bottom_border(analysis_bind_rows(rows)))
 }
 
 mediation_moderation_jn_detail_values <- function(result, spec, n_points = 25L) {
@@ -1978,7 +2103,8 @@ mediation_moderation_jn_detail_table <- function(path_results, n_points = 25L, a
   table <- analysis_bind_rows(rows)
   table <- table[, setdiff(names(table), c("X", "Equation")), drop = FALSE]
   table <- unique(table)
-  mediation_moderation_add_path_group_bottom_border(table)
+  table <- mediation_moderation_add_path_group_bottom_border(table)
+  mediation_moderation_conditional_table_layout(table)
 }
 
 mediation_moderation_johnson_neyman_table <- function(path_results) {
@@ -1994,7 +2120,8 @@ mediation_moderation_johnson_neyman_table <- function(path_results) {
     }
   }
   table <- analysis_bind_rows(rows)
-  mediation_moderation_add_path_group_bottom_border(table)
+  table <- mediation_moderation_add_path_group_bottom_border(table)
+  mediation_moderation_jn_table_layout(table)
 }
 
 mediation_moderation_prediction_base_row <- function(model) {
@@ -2011,6 +2138,27 @@ mediation_moderation_prediction_base_row <- function(model) {
     if (length(values) == 0L) return(NA)
     values[[1L]]
   }), stringsAsFactors = FALSE)
+}
+
+mediation_moderation_plot_variable_label <- function(result, name) {
+  label <- mediation_moderation_display_name(name, result$variable_info, result$labels)
+  if (length(label) == 0L || is.na(label) || !nzchar(label) || identical(label, "-")) {
+    return(as.character(name %||% ""))
+  }
+  label
+}
+
+mediation_moderation_plot_equation_label <- function(result) {
+  equation <- as.character(result$equation %||% "")[[1]]
+  outcome <- tryCatch(all.vars(stats::formula(result$model))[[1]], error = function(e) "")
+  outcome_label <- mediation_moderation_plot_variable_label(result, outcome)
+  if (grepl("^M model:", equation)) {
+    return(sprintf("M model: %s", outcome_label))
+  }
+  if (identical(equation, "Y model")) {
+    return(sprintf("Y model: %s", outcome_label))
+  }
+  if (nzchar(equation)) equation else outcome_label
 }
 
 mediation_moderation_conditional_plot_spec <- function(result, spec) {
@@ -2045,11 +2193,16 @@ mediation_moderation_conditional_plot_spec <- function(result, spec) {
       stringsAsFactors = FALSE
     )
   }))
+  predictor_label <- mediation_moderation_plot_variable_label(result, spec$predictor)
+  moderator_label <- mediation_moderation_plot_variable_label(result, spec$moderator)
+  outcome <- all.vars(stats::formula(result$model))[[1]]
+  outcome_label <- mediation_moderation_plot_variable_label(result, outcome)
   list(
-    title = sprintf("%s: %s by %s", result$equation, spec$predictor, spec$moderator),
-    x_label = spec$predictor,
-    y_label = all.vars(stats::formula(result$model))[[1]],
+    title = sprintf("%s: %s by %s", mediation_moderation_plot_equation_label(result), predictor_label, moderator_label),
+    x_label = predictor_label,
+    y_label = outcome_label,
     moderator = spec$moderator,
+    moderator_label = moderator_label,
     kind = "moderation",
     plot_df = plot_df
   )
@@ -2112,11 +2265,16 @@ mediation_moderation_jn_plot_spec <- function(result, spec, n_points = 200L) {
     jn_points <- sort(unique(round(c(add_roots(plot_df$llci), add_roots(plot_df$ulci)), 10)))
     jn_points <- jn_points[is.finite(jn_points) & jn_points >= min(w_obs) & jn_points <= max(w_obs)]
   }
+  predictor_label <- mediation_moderation_plot_variable_label(result, spec$predictor)
+  moderator_label <- mediation_moderation_plot_variable_label(result, spec$moderator)
+  outcome <- all.vars(stats::formula(result$model))[[1]]
+  outcome_label <- mediation_moderation_plot_variable_label(result, outcome)
   list(
-    title = sprintf("Johnson-Neyman: %s", spec$path),
-    x_label = spec$predictor,
-    y_label = all.vars(stats::formula(result$model))[[1]],
+    title = sprintf("Johnson-Neyman: %s", mediation_moderation_path_display_label(result, spec)),
+    x_label = predictor_label,
+    y_label = outcome_label,
     moderator = spec$moderator,
+    moderator_label = moderator_label,
     kind = "johnson_neyman",
     plot_df = plot_df,
     jn_points = jn_points
@@ -2205,13 +2363,18 @@ mediation_moderation_indirect_jn_plot_specs <- function(path_results, n_points =
       }
       jn_points <- sort(unique(round(c(add_roots(plot_df$llci), add_roots(plot_df$ulci)), 10)))
       jn_points <- jn_points[is.finite(jn_points) & jn_points >= min(w_obs) & jn_points <= max(w_obs)]
+      focal_label <- mediation_moderation_plot_variable_label(y_result, focal)
+      y_label <- mediation_moderation_plot_variable_label(y_result, all.vars(stats::formula(y_result$model))[[1]])
+      mediator_label <- mediation_moderation_plot_variable_label(y_result, mediator)
+      moderator_label <- mediation_moderation_plot_variable_label(y_result, w)
       plots[[length(plots) + 1L]] <- list(
-        title = sprintf("Johnson-Neyman: indirect effect through %s", mediator),
-        x_label = focal,
-        y_label = all.vars(stats::formula(y_result$model))[[1]],
+        title = sprintf("Johnson-Neyman: indirect effect through %s", mediator_label),
+        x_label = focal_label,
+        y_label = y_label,
         moderator = w,
+        moderator_label = moderator_label,
         kind = "indirect_johnson_neyman",
-        effect_label = sprintf("Conditional indirect effect of %s on %s through %s", focal, all.vars(stats::formula(y_result$model))[[1]], mediator),
+        effect_label = sprintf("Conditional indirect effect of %s on %s through %s", focal_label, y_label, mediator_label),
         plot_df = plot_df,
         jn_points = jn_points
       )
@@ -2284,7 +2447,7 @@ mediation_moderation_build_moderation_plot <- function(plot_spec) {
       title = plot_spec$title,
       x = plot_spec$x_label,
       y = plot_spec$y_label,
-      color = plot_spec$moderator
+      color = plot_spec$moderator_label %||% plot_spec$moderator
     ) +
     mediation_moderation_plot_theme() +
     ggplot2::theme(legend.position = "right")
@@ -2341,7 +2504,7 @@ mediation_moderation_build_jn_plot <- function(plot_spec) {
     ggplot2::labs(
       title = plot_spec$title,
       subtitle = subtitle,
-      x = plot_spec$moderator,
+      x = plot_spec$moderator_label %||% plot_spec$moderator,
       y = plot_spec$effect_label %||% paste0("Conditional effect of ", plot_spec$x_label, " on ", plot_spec$y_label)
     ) +
     ggplot2::coord_cartesian(clip = "off") +
@@ -2426,9 +2589,168 @@ mediation_moderation_conditional_plots_ui <- function(plot_specs) {
   )
 }
 
-mediation_moderation_result_diagram_ui <- function(result, language = statedu_initial_language()) {
+mediation_moderation_result_mediator_slots <- function(spec) {
+  slots <- as.character(spec$slots %||% character(0))
+  mediator_slots <- slots[grepl("^m[0-9]*$", slots)]
+  mediator_slots[nzchar(mediator_slots)]
+}
+
+mediation_moderation_result_x_y_positions <- function(x_count, mediator_y) {
+  x_count <- max(1L, as.integer(x_count %||% 1L))
+  mediator_y <- as.numeric(mediator_y)
+  mediator_y <- mediator_y[is.finite(mediator_y)]
+  if (x_count == 1L) {
+    return(if (length(mediator_y) > 0L) mediator_y[[1L]] else 70)
+  }
+  if (length(mediator_y) >= 2L) {
+    return(seq(min(mediator_y), max(mediator_y), length.out = x_count))
+  }
+  center <- if (length(mediator_y) == 1L) mediator_y[[1L]] else 58
+  seq(max(28, center - 16), min(76, center + 16), length.out = x_count)
+}
+
+mediation_moderation_unique_paths <- function(paths) {
+  if (length(paths) == 0L) return(paths)
+  keys <- vapply(paths, mediation_moderation_path_key, character(1))
+  paths[!duplicated(keys)]
+}
+
+mediation_moderation_result_diagram_data <- function(result) {
   spec <- result$diagram_spec
   roles <- result$roles
+  x_vars <- as.character(roles$x %||% character(0))
+  x_vars <- x_vars[nzchar(x_vars)]
+  if (!is.list(spec) || !is.list(roles) || length(x_vars) <= 1L) {
+    return(list(spec = spec, roles = roles))
+  }
+  model <- as.character(result$model_number %||% spec$model %||% "")[[1]]
+  moderated_paths <- mediation_moderation_model_moderated_paths(model)
+  positions <- spec$positions
+  slots <- as.character(spec$slots %||% character(0))
+  mediator_slots <- mediation_moderation_result_mediator_slots(spec)
+  mediator_y <- vapply(mediator_slots, function(slot) positions[[slot]][[2]], numeric(1))
+  x_slots <- paste0("x", seq_along(x_vars))
+  x_y <- mediation_moderation_result_x_y_positions(length(x_vars), mediator_y)
+  positions$x <- NULL
+  for (index in seq_along(x_slots)) {
+    positions[[x_slots[[index]]]] <- c(16, x_y[[index]])
+  }
+  paths <- list()
+  if (length(mediator_slots) > 0L) {
+    for (x_slot in x_slots) {
+      for (mediator_slot in mediator_slots) {
+        paths[[length(paths) + 1L]] <- c(x_slot, mediator_slot)
+      }
+      paths[[length(paths) + 1L]] <- c(x_slot, "y")
+    }
+    if (identical(model, "6") && length(mediator_slots) >= 2L) {
+      paths[[length(paths) + 1L]] <- c(mediator_slots[[1L]], mediator_slots[[2L]])
+      paths[[length(paths) + 1L]] <- c(mediator_slots[[1L]], "y")
+      paths[[length(paths) + 1L]] <- c(mediator_slots[[2L]], "y")
+    } else {
+      for (mediator_slot in mediator_slots) {
+        paths[[length(paths) + 1L]] <- c(mediator_slot, "y")
+      }
+    }
+  } else {
+    for (x_slot in x_slots) {
+      paths[[length(paths) + 1L]] <- c(x_slot, "y")
+    }
+  }
+  if ("w" %in% slots && "w" %in% names(positions)) {
+    if ("xm" %in% moderated_paths) {
+      for (x_slot in x_slots) {
+        for (mediator_slot in mediator_slots) {
+          paths[[length(paths) + 1L]] <- c("w", paste("xm", x_slot, mediator_slot, sep = "_"))
+        }
+      }
+    }
+    if ("my" %in% moderated_paths) {
+      for (mediator_slot in mediator_slots) {
+        paths[[length(paths) + 1L]] <- c("w", paste0("my_", mediator_slot))
+      }
+    }
+    if ("xy" %in% moderated_paths) {
+      for (x_slot in x_slots) {
+        paths[[length(paths) + 1L]] <- c("w", paste0("xy_", x_slot))
+      }
+    }
+  }
+  slot_variables <- stats::setNames(x_vars, x_slots)
+  if (length(mediator_slots) > 0L) {
+    slot_variables <- c(slot_variables, stats::setNames(as.character(roles$mediators %||% character(0))[seq_along(mediator_slots)], mediator_slots))
+  }
+  if ("y" %in% names(positions)) {
+    slot_variables <- c(slot_variables, y = as.character(roles$y %||% character(0))[[1]])
+  }
+  if ("w" %in% names(positions) && length(roles$w) > 0L) {
+    slot_variables <- c(slot_variables, w = as.character(roles$w %||% character(0))[[1]])
+  }
+  diagram_roles <- roles
+  diagram_roles$slot_variables <- slot_variables
+  spec$positions <- positions
+  spec$slots <- c(x_slots, mediator_slots, intersect(c("w", "y"), names(positions)))
+  spec$paths <- mediation_moderation_unique_paths(paths)
+  list(spec = spec, roles = diagram_roles)
+}
+
+mediation_moderation_result_edge_coefficient_labels <- function(result, spec) {
+  roles <- result$roles
+  x_vars <- as.character(roles$x %||% character(0))
+  x_vars <- x_vars[nzchar(x_vars)]
+  if (length(x_vars) <= 1L) {
+    return(mediation_moderation_edge_coefficient_labels(result$path_results))
+  }
+  x_slots <- paste0("x", seq_along(x_vars))
+  x_map <- stats::setNames(x_slots, x_vars)
+  mediator_slots <- mediation_moderation_result_mediator_slots(spec)
+  mediators <- as.character(roles$mediators %||% character(0))
+  m_map <- stats::setNames(mediator_slots, mediators[seq_along(mediator_slots)])
+  labels <- list()
+  for (path_result in result$path_results %||% list()) {
+    focal <- as.character(path_result$focal %||% "")[[1]]
+    x_slot <- unname(x_map[[focal]] %||% "")
+    if (!nzchar(x_slot)) next
+    w <- utils::head(as.character(path_result$w %||% character(0)), 1)
+    equation <- as.character(path_result$equation %||% "")[[1]]
+    if (grepl("^M model:", equation)) {
+      mediator <- trimws(sub("^M model:\\s*", "", equation))
+      m_slot <- unname(m_map[[mediator]] %||% "")
+      if (!nzchar(m_slot)) next
+      labels[[paste0(x_slot, "->", m_slot)]] <- mediation_moderation_path_coefficient_label(path_result, focal)
+      if (length(w) == 1L && nzchar(w)) {
+        labels[[paste0("w->xm_", x_slot, "_", m_slot)]] <- mediation_moderation_path_coefficient_label(path_result, paste0(focal, ":", w))
+      }
+    } else if (identical(equation, "Y model")) {
+      labels[[paste0(x_slot, "->y")]] <- mediation_moderation_path_coefficient_label(path_result, focal)
+      for (mediator in mediators) {
+        m_slot <- unname(m_map[[mediator]] %||% "")
+        if (!nzchar(m_slot)) next
+        key <- paste0(m_slot, "->y")
+        if (is.null(labels[[key]]) || !nzchar(labels[[key]])) {
+          labels[[key]] <- mediation_moderation_path_coefficient_label(path_result, mediator)
+        }
+      }
+      if (length(w) == 1L && nzchar(w)) {
+        labels[[paste0("w->xy_", x_slot)]] <- mediation_moderation_path_coefficient_label(path_result, paste0(focal, ":", w))
+        for (mediator in mediators) {
+          m_slot <- unname(m_map[[mediator]] %||% "")
+          if (!nzchar(m_slot)) next
+          key <- paste0("w->my_", m_slot)
+          if (is.null(labels[[key]]) || !nzchar(labels[[key]])) {
+            labels[[key]] <- mediation_moderation_path_coefficient_label(path_result, paste0(mediator, ":", w))
+          }
+        }
+      }
+    }
+  }
+  labels[nzchar(unlist(labels, use.names = FALSE))]
+}
+
+mediation_moderation_result_diagram_ui <- function(result, language = statedu_initial_language()) {
+  diagram <- mediation_moderation_result_diagram_data(result)
+  spec <- diagram$spec
+  roles <- diagram$roles
   if (!is.list(spec) || !is.list(roles)) {
     return(NULL)
   }
@@ -2441,7 +2763,8 @@ mediation_moderation_result_diagram_ui <- function(result, language = statedu_in
       result$variable_info,
       result$labels,
       language,
-      edge_labels = mediation_moderation_edge_coefficient_labels(result$path_results)
+      edge_labels = mediation_moderation_result_edge_coefficient_labels(result, spec),
+      variant = "result"
     )
   )
 }
@@ -3183,11 +3506,11 @@ mediation_moderation_result_ui <- function(result, language = statedu_initial_la
     } else {
       lapply(path_results, mediation_moderation_path_result_ui)
     },
-    analysis_result_table_section("PROCESS model summary", result$model_summary_table, class = "result-section regression-result-panel"),
-    analysis_result_table_section("Interaction tests", result$interaction_table, class = "result-section regression-result-panel"),
-    analysis_result_table_section("Conditional effects", result$simple_slopes_table, class = "result-section regression-result-panel"),
-    analysis_result_table_section("Johnson-Neyman", result$johnson_neyman_table, class = "result-section regression-result-panel"),
-    analysis_result_table_section("Johnson-Neyman conditional effects", result$johnson_neyman_detail_table, class = "result-section regression-result-panel"),
+    analysis_result_table_section("PROCESS model summary", result$model_summary_table, class = "result-section regression-result-panel mm-process-summary-section"),
+    analysis_result_table_section("Interaction tests", result$interaction_table, class = "result-section regression-result-panel mm-interaction-tests-section"),
+    analysis_result_table_section("Conditional effects", result$simple_slopes_table, class = "result-section regression-result-panel mm-conditional-effects-section"),
+    analysis_result_table_section("Johnson-Neyman", result$johnson_neyman_table, class = "result-section regression-result-panel mm-johnson-neyman-section"),
+    analysis_result_table_section("Johnson-Neyman conditional effects", result$johnson_neyman_detail_table, class = "result-section regression-result-panel mm-johnson-neyman-detail-section"),
     mediation_moderation_conditional_plots_ui(result$conditional_plot_specs),
     analysis_result_table_section("Bootstrap effects", effect_table, class = "result-section regression-result-panel"),
     result_note_tag(result$note),

@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.5-dev - 2026-07-02
+
+### Changed
+
+- Corrected result model diagram arrow endpoints and coefficient label placement after B5 portrait resizing.
+- Updated mediation/moderation plots to use variable labels in axis titles, legends, and J-N labels.
+- Added multi-X summary diagrams and tightened mediation/moderation B5 portrait result-table layout with one-line path labels.
+
 ## v1.0.4-dev - 2026-07-02
 
 ### Changed

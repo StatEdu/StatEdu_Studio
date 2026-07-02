@@ -11301,6 +11301,65 @@ select[id$="_active_role"]:focus {
   display: block;
 }
 
+.mm-results .mm-path-result-section,
+.mm-results .mm-model4-path-section,
+.mm-results .mm-process-summary-section,
+.mm-results .mm-interaction-tests-section,
+.mm-results .mm-conditional-effects-section,
+.mm-results .mm-johnson-neyman-section,
+.mm-results .mm-johnson-neyman-detail-section,
+.mm-results .mm-conditional-plots-section,
+.mm-results .mm-result-diagram-section {
+  max-width: 720px;
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.mm-results .mm-path-result-section .result-table-with-note,
+.mm-results .mm-model4-path-section .result-table-with-note,
+.mm-results .mm-process-summary-section .result-table-with-note,
+.mm-results .mm-conditional-effects-section .result-table-with-note,
+.mm-results .mm-johnson-neyman-section .result-table-with-note,
+.mm-results .mm-johnson-neyman-detail-section .result-table-with-note {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: visible;
+}
+
+.mm-results .mm-path-result-section .coefficient-table,
+.mm-results .mm-model4-path-section .coefficient-table,
+.mm-results .mm-process-summary-section .coefficient-table,
+.mm-results .mm-conditional-effects-section .coefficient-table,
+.mm-results .mm-johnson-neyman-section .coefficient-table,
+.mm-results .mm-johnson-neyman-detail-section .coefficient-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.mm-results .mm-path-result-section .coefficient-table th,
+.mm-results .mm-path-result-section .coefficient-table td,
+.mm-results .mm-process-summary-section .coefficient-table th,
+.mm-results .mm-process-summary-section .coefficient-table td,
+.mm-results .mm-conditional-effects-section .coefficient-table th,
+.mm-results .mm-conditional-effects-section .coefficient-table td,
+.mm-results .mm-johnson-neyman-section .coefficient-table th,
+.mm-results .mm-johnson-neyman-section .coefficient-table td,
+.mm-results .mm-johnson-neyman-detail-section .coefficient-table th,
+.mm-results .mm-johnson-neyman-detail-section .coefficient-table td {
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+}
+
+.mm-results .mm-conditional-effects-section .coefficient-col-path,
+.mm-results .mm-johnson-neyman-section .coefficient-col-path,
+.mm-results .mm-johnson-neyman-detail-section .coefficient-col-path {
+  white-space: nowrap !important;
+  overflow-wrap: normal !important;
+  word-break: keep-all !important;
+}
+
 @media (max-width: 1100px) {
   .mm-role-grid {
     grid-template-columns: 1fr;
