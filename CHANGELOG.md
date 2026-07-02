@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.7-dev - 2026-07-02
+
+### Changed
+
+- Kept mediation/moderation save controls inside the option panel without moving the Run analysis button.
+- Refined option-panel spacing for mediator structure, moderated paths, options, analysis method, and bootstrap controls.
+- Aligned odd-mediator result diagrams so the middle mediator shares the outcome y-position and moderators remain above independent variables.
+
 ## v1.0.6-dev - 2026-07-02
 
 ### Changed

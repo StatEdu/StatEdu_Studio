@@ -150,7 +150,7 @@ app_brand_title <- function(version) {
 }
 
 app_stylesheet_link <- function(version) {
-  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-mm-b5-tables-20260702a"))
+  tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-mm-setup-layout-20260702a"))
 }
 
 app_script_link <- function(version) {

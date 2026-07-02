@@ -1025,7 +1025,7 @@ mediation_moderation_setup_panel <- function(
           class = "analysis-options-column analysis-options-panel mm-model-panel",
           if (length(roles$mediators) >= 2L) {
             div(
-              class = "analysis-option-group",
+              class = "analysis-option-group mm-mediator-structure-group",
               div(class = "analysis-option-title", statedu_text(language, "Mediator structure", "\ub9e4\uac1c \uad6c\uc870")),
               radioButtons(
                 "mm_mediator_arrangement",
@@ -1090,9 +1090,9 @@ mediation_moderation_setup_panel <- function(
               ),
               selectize = FALSE
             )
-          )
-        ),
-        uiOutput("mediation_moderation_save_control")
+          ),
+          uiOutput("mediation_moderation_save_control")
+        )
       ),
       mediation_moderation_diagram(spec, roles, variable_table, labels, language)
     )
@@ -2652,11 +2652,19 @@ mediation_moderation_result_diagram_data <- function(result) {
       positions[[mediator_slots[[index]]]][[2]] <- mediator_y[[index]]
     }
   }
+  if (length(mediator_slots) >= 3L && length(mediator_slots) %% 2L == 1L && "y" %in% names(positions)) {
+    middle_index <- ceiling(length(mediator_slots) / 2)
+    positions[[mediator_slots[[middle_index]]]][[2]] <- positions$y[[2]]
+    mediator_y[[middle_index]] <- positions$y[[2]]
+  }
   x_slots <- paste0("x", seq_along(x_vars))
   x_y <- mediation_moderation_result_x_y_positions(length(x_vars), mediator_y)
   if (length(mediator_slots) == 1L && length(x_y) >= 2L) {
     positions[[mediator_slots[[1L]]]][[2]] <- mean(range(x_y))
     mediator_y <- positions[[mediator_slots[[1L]]]][[2]]
+  }
+  if ("w" %in% names(positions) && length(x_y) > 0L) {
+    positions$w[[2]] <- max(16, min(positions$w[[2]], min(x_y) - 14))
   }
   positions$x <- NULL
   for (index in seq_along(x_slots)) {

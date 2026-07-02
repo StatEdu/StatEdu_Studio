@@ -10875,8 +10875,9 @@ select[id$="_active_role"]:focus {
   height: var(--mm-panel-height);
   min-height: var(--mm-panel-height);
   max-height: var(--mm-panel-height);
-  overflow-y: auto;
-  padding-top: 12px;
+  overflow-y: hidden;
+  padding-top: 10px;
+  padding-bottom: 10px;
 }
 
 .mm-role-targets-panel {
@@ -11037,17 +11038,17 @@ select[id$="_active_role"]:focus {
 
 .mm-model-panel .checkbox,
 .mm-model-panel .radio {
-  margin-top: 1px;
-  margin-bottom: 1px;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 .mm-model-panel .checkbox label,
 .mm-model-panel .radio label {
-  line-height: 1.25;
+  line-height: 1.18;
 }
 
 .mm-model-panel .analysis-option-group {
-  margin-bottom: 8px;
+  margin-bottom: 5px;
 }
 
 .mm-model-panel > .analysis-option-group:first-child {
@@ -11055,23 +11056,37 @@ select[id$="_active_role"]:focus {
 }
 
 .mm-model-panel .analysis-option-title {
-  margin-bottom: 4px;
+  margin-bottom: 3px;
   line-height: 1.2;
 }
 
+.mm-model-panel .mm-mediator-structure-group .analysis-option-title {
+  margin-bottom: 8px;
+}
+
+.mm-model-panel .mm-mediator-structure-group {
+  margin-bottom: 8px;
+}
+
 .mm-model-panel .form-group {
-  margin-bottom: 5px;
+  margin-bottom: 3px;
+}
+
+.mm-model-panel .form-control {
+  height: 34px;
+  padding-top: 5px;
+  padding-bottom: 5px;
 }
 
 .mm-save-control {
-  margin-top: 8px;
+  margin-top: 5px;
   width: 300px;
 }
 
 .mm-save-control .analysis-save-action {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  gap: 5px;
   width: 300px;
 }
 
@@ -11080,6 +11095,8 @@ select[id$="_active_role"]:focus {
   min-width: 0;
   padding-left: 8px;
   padding-right: 8px;
+  padding-top: 6px;
+  padding-bottom: 6px;
 }
 
 .mm-save-control .analysis-save-button-add_result {
