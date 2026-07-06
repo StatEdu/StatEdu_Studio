@@ -1,0 +1,38 @@
+# ----------------------------------------------------------
+# PROCESS macro 후속 분석 템플릿
+# - data/<dataset_id>/config/CFG.yml 안에 이 블록을 넣어 사용한다.
+# - 이 분석은 analysis_id = process_macro 로 별도 실행한다.
+# - 먼저 cross_sectional_mixture를 돌린 뒤, 이어서 process_macro를 실행한다.
+# ----------------------------------------------------------
+
+process:
+  enabled: true
+  source_analysis_id: "cross_sectional_mixture"
+  moderator_source: "latent_class"
+  id_var: "id"
+
+  # --------------------------------------------------------
+  # Model 1: moderation
+  # x = observed independent variable
+  # w = class/profile moderator
+  # y = continuous outcome
+  # --------------------------------------------------------
+  model: 1
+  x:
+    - "independent_var_name"
+  w: "class"
+  y:
+    - "y"
+  covariates: []
+
+  # --------------------------------------------------------
+  # Model 4: mediation
+  # y = continuous outcome
+  # m = continuous mediator
+  # --------------------------------------------------------
+  # model: 4
+  # y:
+  #   - "y"
+  # m:
+  #   - "mediator_var_name"
+  # covariates: []
