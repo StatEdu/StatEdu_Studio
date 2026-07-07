@@ -20,7 +20,15 @@ function Get-ProjectVersion {
 function Get-ElectronReleaseProfile {
   param([string]$Version)
 
-  if ($Version -match "^1\.") {
+  if ($Version -match "^\d+\.\d+\.\d+-dev$") {
+    return [pscustomobject]@{
+      ProductName = "StatEdu Studio Dev"
+      ExeName = "StatEdu Studio Dev.exe"
+      AppDataDirName = "statedu-studio-dev"
+    }
+  }
+
+  if ($Version -match "^\d+\.\d+\.\d+$") {
     return [pscustomobject]@{
       ProductName = "StatEdu Studio"
       ExeName = "StatEdu Studio.exe"

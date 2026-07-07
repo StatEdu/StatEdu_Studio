@@ -126,8 +126,15 @@ function isPublicRelease() {
   return publicReleaseFlag() === "1";
 }
 
+function isDeveloperRelease() {
+  return /^\d+\.\d+\.\d+-dev$/.test(appVersion());
+}
+
 function appDisplayName() {
-  return isPublicRelease() ? "StatEdu Studio" : "StatEdu Studio Beta";
+  if (isPublicRelease()) {
+    return "StatEdu Studio";
+  }
+  return isDeveloperRelease() ? "StatEdu Studio Dev" : "StatEdu Studio Beta";
 }
 
 function windowTitle() {

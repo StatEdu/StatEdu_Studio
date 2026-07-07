@@ -145,7 +145,14 @@ function Get-ElectronReleaseProfile {
   param(
     [string]$Version
   )
-  if ($Version -match "^1\.") {
+  if ($Version -match "^\d+\.\d+\.\d+-dev$") {
+    return [pscustomobject]@{
+      ProductName = "StatEdu Studio Dev"
+      SetupPrefix = "StatEdu_Studio_Dev_Setup"
+      ExeName = "StatEdu Studio Dev.exe"
+    }
+  }
+  if ($Version -match "^\d+\.\d+\.\d+$") {
     return [pscustomobject]@{
       ProductName = "StatEdu Studio"
       SetupPrefix = "StatEdu_Studio_Setup"
