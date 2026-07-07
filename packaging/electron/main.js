@@ -158,7 +158,7 @@ function getFreePort() {
   });
 }
 
-function waitForShiny(port, timeoutMs = 45000) {
+function waitForShiny(port, timeoutMs = 120000) {
   const startedAt = Date.now();
   return new Promise((resolve, reject) => {
     const probe = () => {
@@ -232,14 +232,33 @@ async function startShiny() {
     stdio: ["ignore", "pipe", "pipe"]
   });
 
-  shinyProcess.stdout.on("data", (data) => process.stdout.write(data));
-  shinyProcess.stderr.on("data", (data) => process.stderr.write(data));
-  shinyProcess.on("exit", () => {
-    logStartup("R process exited");
+  shinyProcess.stdout.on("data", (data) => {
+    const text = data.toString();
+    process.stdout.write(data);
+    text.split(/\r?\n/).filter(Boolean).forEach((line) => logStartup(`R stdout: ${line}`));
+  });
+  shinyProcess.stderr.on("data", (data) => {
+    const text = data.toString();
+    process.stderr.write(data);
+    text.split(/\r?\n/).filter(Boolean).forEach((line) => logStartup(`R stderr: ${line}`));
+  });
+
+  let shinyReady = false;
+  const exitBeforeReady = new Promise((_, reject) => {
+    shinyProcess.once("exit", (code, signal) => {
+      if (!shinyReady && !isQuitting) {
+        reject(new Error(`StatEdu Studio R process exited before startup (code ${code ?? "null"}, signal ${signal ?? "null"}).`));
+      }
+    });
+  });
+
+  shinyProcess.on("exit", (code, signal) => {
+    logStartup(`R process exited code=${code ?? "null"} signal=${signal ?? "null"}`);
     shinyProcess = null;
   });
 
-  await waitForShiny(port);
+  await Promise.race([waitForShiny(port), exitBeforeReady]);
+  shinyReady = true;
   logStartup(`Shiny ready in ${Date.now() - startedAt}ms`);
   return `http://127.0.0.1:${port}/?token=${token}&lang=${encodeURIComponent(initialLanguage)}&t=${Date.now()}`;
 }
