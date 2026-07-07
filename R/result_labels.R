@@ -6,8 +6,13 @@ display_variable_name_static <- function(name, table = NULL, labels = character(
     return("")
   }
   name <- name[[1]]
-  label <- named_value(labels, name, "")
-  if (!nzchar(label) && !is.null(table) && all(c("name", "var_label") %in% names(table))) {
+  has_label_override <- !is.null(labels) && !is.null(names(labels)) && name %in% names(labels)
+  label <- if (isTRUE(has_label_override)) {
+    as.character(labels[[match(name, names(labels))]] %||% "")
+  } else {
+    ""
+  }
+  if (!isTRUE(has_label_override) && !nzchar(label) && !is.null(table) && all(c("name", "var_label") %in% names(table))) {
     row_index <- match(name, table$name)
     if (!is.na(row_index)) {
       label <- as.character(table$var_label[[row_index]] %||% "")

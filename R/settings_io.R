@@ -293,7 +293,7 @@ settings_restore_state <- function(settings) {
       labels <- stats::setNames(as.character(info$var_label), as.character(info$name))
     }
   }
-  labels <- labels[nzchar(names(labels)) & nzchar(trimws(as.character(labels)))]
+  labels <- labels[!is.na(names(labels)) & nzchar(names(labels))]
 
   info <- settings_variable_info(settings)
   measurements <- settings_measurement_overrides(settings)
@@ -409,7 +409,7 @@ prepare_settings_payload_data <- function(
     labels[names(category_labels_named)] <- category_labels_named
   }
 
-  labels <- labels[!is.na(names(labels)) & nzchar(names(labels)) & nzchar(trimws(as.character(labels)))]
+  labels <- labels[!is.na(names(labels)) & nzchar(names(labels))]
   if (!is.null(variable_info) && length(labels) > 0 && "name" %in% names(variable_info)) {
     matched <- variable_info$name %in% names(labels)
     variable_info$var_label[matched] <- unname(labels[variable_info$name[matched]])
@@ -718,4 +718,43 @@ read_settings_json_file <- function(path) {
     stop("This file is not a StatEdu Studio Settings file.", call. = FALSE)
   }
   settings
+}
+
+write_complex_sample_design_json_file <- function(design, path, app_version = "") {
+  if (is.null(path) || !nzchar(path)) {
+    stop("A complex-sample design file path is required.", call. = FALSE)
+  }
+  path <- normalize_complex_sample_design_save_path(path)
+  directory <- dirname(normalizePath(path, winslash = "/", mustWork = FALSE))
+  if (!dir.exists(directory)) {
+    dir.create(directory, recursive = TRUE, showWarnings = FALSE)
+  }
+  if (!dir.exists(directory)) {
+    stop(sprintf("Design folder does not exist or cannot be created: %s", directory), call. = FALSE)
+  }
+  payload <- list(
+    type = "statedu_complex_sample_design",
+    version = 1L,
+    app_version = as.character(app_version %||% ""),
+    complex_sample_design = complex_sample_normalize_design_state(design)
+  )
+  writeLines(
+    as.character(jsonlite::toJSON(payload, pretty = TRUE, auto_unbox = TRUE)),
+    con = path,
+    useBytes = TRUE
+  )
+  invisible(list(path = normalizePath(path, winslash = "/", mustWork = FALSE)))
+}
+
+read_complex_sample_design_json_file <- function(path) {
+  payload <- statedu_time_expr(
+    "read_complex_sample_design_json_file",
+    jsonlite::fromJSON(path),
+    detail = sprintf("file=%s", basename(as.character(path %||% "")))
+  )
+  type <- as.character(payload$type %||% "")
+  if (!identical(type, "statedu_complex_sample_design")) {
+    stop("This file is not a StatEdu Complex Sample Design file.", call. = FALSE)
+  }
+  complex_sample_normalize_design_state(payload$complex_sample_design %||% list())
 }

@@ -1457,17 +1457,61 @@ create_app_server <- function(app_version) {
     app_language_fn = app_language
   )
 
+  current_data_file_directory <- function() {
+    file <- current_data_file()
+    path <- if (is.list(file)) as.character(file$path %||% "") else ""
+    if (!nzchar(path)) {
+      return("")
+    }
+    directory <- dirname(normalizePath(path, winslash = "/", mustWork = FALSE))
+    if (dir.exists(directory)) directory else ""
+  }
+
   observeEvent(input$complex_design_load_settings, {
-    settings_path <- open_settings_file()
-    if (is.null(settings_path)) {
+    design_path <- open_complex_sample_design_file()
+    if (is.null(design_path)) {
       return()
     }
-    settings <- read_settings_json_file(settings_path)
-    apply_settings_object(settings, settings_path)
+    design <- tryCatch(
+      read_complex_sample_design_json_file(design_path),
+      error = function(error) {
+        showNotification(conditionMessage(error), type = "error", duration = 8)
+        NULL
+      }
+    )
+    if (is.null(design)) {
+      return()
+    }
+    complex_sample_design_state(design)
+    complex_sample_update_design_inputs(session, "complex_design", design)
+    mark_settings_dirty()
+    showNotification(
+      complex_sample_text_pair(app_language(), "Complex-sample design loaded.", "복합표본 설계를 불러왔습니다."),
+      type = "message"
+    )
   }, ignoreInit = TRUE)
 
   observeEvent(input$complex_design_save_settings, {
-    save_settings_to_file()
+    design_path <- save_complex_sample_design_file(initial_dir = current_data_file_directory())
+    if (is.null(design_path)) {
+      return()
+    }
+    design <- complex_sample_read_design_inputs(input, "complex_design")
+    complex_sample_design_state(design)
+    saved <- tryCatch(
+      write_complex_sample_design_json_file(design, design_path, app_version = app_version),
+      error = function(error) {
+        showNotification(conditionMessage(error), type = "error", duration = 8)
+        NULL
+      }
+    )
+    if (is.null(saved)) {
+      return()
+    }
+    showNotification(
+      complex_sample_text_pair(app_language(), "Complex-sample design saved.", "복합표본 설계를 저장했습니다."),
+      type = "message"
+    )
   }, ignoreInit = TRUE)
 
   register_complex_sample_handlers(

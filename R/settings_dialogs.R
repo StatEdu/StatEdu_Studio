@@ -376,6 +376,89 @@ save_settings_file <- function(initial_dir = NULL) {
   normalize_settings_save_path(path[[1]])
 }
 
+normalize_complex_sample_design_save_path <- function(path) {
+  path <- as.character(path %||% "")
+  if (!nzchar(path)) {
+    return(path)
+  }
+  path <- sub("(\\.stdesign)+$", ".stdesign", path, ignore.case = TRUE)
+  if (grepl("\\.stdesign$", path, ignore.case = TRUE)) {
+    return(path)
+  }
+  path <- sub("(\\.studio)+$", "", path, ignore.case = TRUE)
+  path <- sub("(\\.json)+$", "", path, ignore.case = TRUE)
+  if (nzchar(tools::file_ext(path))) {
+    path <- tools::file_path_sans_ext(path)
+  }
+  paste0(path, ".stdesign")
+}
+
+open_complex_sample_design_file <- function() {
+  filetypes <- "{{StatEdu Complex Sample Design} {.stdesign}}"
+  attr(filetypes, "windows_filters") <- matrix(
+    c(
+      "StatEdu Complex Sample Design", "*.stdesign"
+    ),
+    ncol = 2,
+    byrow = TRUE
+  )
+  open_file_dialog("Open StatEdu Complex Sample Design", filetypes)
+}
+
+save_complex_sample_design_file <- function(initial_dir = NULL) {
+  initial_dir <- settings_save_initial_dir(initial_dir)
+  windows_filters <- matrix(c("StatEdu Complex Sample Design", "*.stdesign"), ncol = 2, byrow = TRUE)
+  windows_result <- windows_save_file_dialog(
+    "Save StatEdu Complex Sample Design",
+    windows_filters,
+    initial_dir = initial_dir,
+    default_ext = "stdesign"
+  )
+  if (isTRUE(windows_result$attempted)) {
+    if (is.null(windows_result$path) || !nzchar(windows_result$path)) {
+      return(NULL)
+    }
+    return(normalize_complex_sample_design_save_path(windows_result$path))
+  }
+
+  path <- tryCatch(
+    {
+      if (requireNamespace("tcltk", quietly = TRUE)) {
+        parent <- topmost_tk_parent()
+        on.exit(try(tcltk::tkdestroy(parent), silent = TRUE), add = TRUE)
+        args <- list(
+          parent = parent,
+          title = "Save StatEdu Complex Sample Design",
+          initialfile = "",
+          defaultextension = ".stdesign",
+          filetypes = "{{StatEdu Complex Sample Design} {.stdesign}}"
+        )
+        if (nzchar(initial_dir)) {
+          args$initialdir <- initial_dir
+        }
+        as.character(do.call(tcltk::tkgetSaveFile, args))
+      } else if (.Platform$OS.type == "windows") {
+        default_path <- if (nzchar(initial_dir)) file.path(initial_dir, "") else ""
+        utils::choose.files(
+          default = default_path,
+          caption = "Save StatEdu Complex Sample Design",
+          multi = FALSE,
+          filters = matrix(c("StatEdu Complex Sample Design", "*.stdesign"), ncol = 2, byrow = TRUE)
+        )
+      } else {
+        character(0)
+      }
+    },
+    error = function(e) character(0)
+  )
+
+  if (length(path) == 0 || !nzchar(path[[1]])) {
+    return(NULL)
+  }
+
+  normalize_complex_sample_design_save_path(path[[1]])
+}
+
 choose_default_save_dir <- function(initial_dir = NULL) {
   title <- "Choose default file save location"
   initial_dir <- settings_save_initial_dir(initial_dir)

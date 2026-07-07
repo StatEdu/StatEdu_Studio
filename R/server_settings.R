@@ -437,7 +437,7 @@ register_settings_save_handler <- function(
       merge_var_label_overrides_fn(input_var_labels)
     }
     if (!is.null(input$save_settings_request$var_labels)) {
-      update_var_label_overrides_fn(input$save_settings_request$var_labels, allow_blank = FALSE)
+      update_var_label_overrides_fn(input$save_settings_request$var_labels, allow_blank = TRUE)
     }
     if (!is.null(input$save_settings_request$category_labels)) {
       category_label_values(merge_category_label_save_request(

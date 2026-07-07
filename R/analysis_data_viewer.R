@@ -166,8 +166,13 @@ register_analysis_data_viewer_handlers <- function(
 
 analysis_data_viewer_variable_label <- function(name, variable_table = NULL, labels = character(0)) {
   name <- as.character(name %||% "")
-  label <- named_value(labels, name, "")
-  if (!nzchar(label) && is.data.frame(variable_table) && all(c("name", "var_label") %in% names(variable_table))) {
+  has_label_override <- !is.null(labels) && !is.null(names(labels)) && name %in% names(labels)
+  label <- if (isTRUE(has_label_override)) {
+    as.character(labels[[match(name, names(labels))]] %||% "")
+  } else {
+    ""
+  }
+  if (!isTRUE(has_label_override) && !nzchar(label) && is.data.frame(variable_table) && all(c("name", "var_label") %in% names(variable_table))) {
     row_index <- match(name, as.character(variable_table$name))
     if (!is.na(row_index)) {
       label <- as.character(variable_table$var_label[[row_index]] %||% "")
