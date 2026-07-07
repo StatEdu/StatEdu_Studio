@@ -294,6 +294,26 @@ data_steps_panel <- function(
     paste("step-block", if (identical(step, name)) "is-open" else "is-closed", if (!enabled) "is-disabled" else "")
   }
 
+  step2_selection_controls <- function() {
+    tagList(
+      div(statedu_t("data.check_variables_note", language), class = "step-note"),
+      div(
+        class = "bulk-measurement-control",
+        selectInput(
+          "bulk_measurement_type",
+          statedu_t("data.set_selected_type_to", language),
+          choices = statedu_measurement_choices(language),
+          selected = "continuous"
+        ),
+        actionButton("apply_bulk_measurement_type", statedu_t("data.apply_type", language), class = "btn btn-default", onclick = "if(window.easyflowApplyBulkMeasurement){window.easyflowApplyBulkMeasurement(); return false;}")
+      ),
+      div(
+        class = "bulk-measurement-action",
+        actionButton("apply_variable_selection", statedu_t("data.apply_variable_selection", language), class = "btn btn-primary", onmousedown = "if(window.easyflowFlushVariableTableState){window.easyflowFlushVariableTableState();}", onclick = "if(window.easyflowApplyVariableSelection){return window.easyflowApplyVariableSelection();}")
+      )
+    )
+  }
+
   tagList(
     div(
       class = step_class("step1"),
@@ -358,24 +378,8 @@ data_steps_panel <- function(
             div(sprintf(statedu_t("data.variables_selected", language), selected_count), class = "step-summary-title"),
             actionButton("modify_variable_selection", statedu_t("data.modify_selection", language))
           )
-        } else if (identical(step, "step2")) {
-          tagList(
-            div(statedu_t("data.check_variables_note", language), class = "step-note"),
-            div(
-              class = "bulk-measurement-control",
-              selectInput(
-                "bulk_measurement_type",
-                statedu_t("data.set_selected_type_to", language),
-                choices = statedu_measurement_choices(language),
-                selected = "continuous"
-              ),
-              actionButton("apply_bulk_measurement_type", statedu_t("data.apply_type", language), class = "btn btn-default", onclick = "if(window.easyflowApplyBulkMeasurement){window.easyflowApplyBulkMeasurement(); return false;}")
-            ),
-            div(
-              class = "bulk-measurement-action",
-              actionButton("apply_variable_selection", statedu_t("data.apply_variable_selection", language), class = "btn btn-primary", onmousedown = "if(window.easyflowFlushVariableTableState){window.easyflowFlushVariableTableState();}", onclick = "if(window.easyflowApplyVariableSelection){return window.easyflowApplyVariableSelection();}")
-            )
-          )
+        } else if (identical(step, "step2") || !isTRUE(applied)) {
+          step2_selection_controls()
         } else {
           div(statedu_t("data.select_variables_first", language), class = "step-note")
         }

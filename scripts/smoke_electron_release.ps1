@@ -323,6 +323,15 @@ Assert-FileContains (Join-Path $RepoRoot "R\app_misc_ui.R") '"about_source_licen
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "contextIsolation:\s*true" "contextIsolation enabled"
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "nodeIntegration:\s*false" "nodeIntegration disabled"
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "sandbox:\s*true" "sandbox enabled"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "disableHardwareAcceleration" "Electron hardware acceleration disabled by default"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "Startup log:" "startup failure dialog includes log path"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "runRscriptProbe" "bundled Rscript startup probe"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "DEFAULT_SHINY_STARTUP_TIMEOUT_MS = 180000" "bounded Shiny startup timeout"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "STATEDU_STARTUP_TIMEOUT_MS" "configurable Shiny startup timeout"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "net\.connect" "TCP readiness check for local Shiny port"
+Assert-FileNotContains (Join-Path $RepoRoot "packaging\electron\main.js") 'require\("http"\)' "no HTTP readiness probe before Electron load"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "installRendererDiagnostics" "Electron renderer diagnostics"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "renderer snapshot" "renderer state snapshots in startup log"
 Assert-AppBootstrapModulesTracked
 Assert-NoTrackedGeneratedArtifacts
 Assert-NoDistArtifacts (Join-Path $RepoRoot "dist\electron")

@@ -78,6 +78,15 @@ function Get-PackagedAppProcesses {
   })
 }
 
+function Get-SameProductAppProcesses {
+  $productExeName = [regex]::Escape($releaseProfile.ExeName)
+  @(Get-CimInstance Win32_Process | Where-Object {
+    $_.Name -eq $releaseProfile.ExeName -or
+    ($_.ExecutablePath -and $_.ExecutablePath -match "\\$productExeName$") -or
+    ($_.CommandLine -and $_.CommandLine -match "\\$productExeName(`"|\\s|$)")
+  })
+}
+
 function Get-PackagedMainProcesses {
   @(Get-PackagedAppProcesses | Where-Object {
     -not ($_.CommandLine -and $_.CommandLine -match "\s--type=")
@@ -91,7 +100,7 @@ function Stop-BundledRProcesses {
 }
 
 function Stop-PackagedAppProcesses {
-  foreach ($process in Get-PackagedAppProcesses) {
+  foreach ($process in @(Get-PackagedAppProcesses) + @(Get-SameProductAppProcesses)) {
     Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue
   }
 }

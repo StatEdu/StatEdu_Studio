@@ -85,6 +85,8 @@ Use this checklist before creating a public beta installer, 1.0 release candidat
 - Run `scripts/smoke_electron_app_lifecycle.ps1` against the generated unpacked executable.
 - Launch the generated unpacked executable from `dist/electron/win-unpacked`.
 - Confirm first launch opens the app and the About > Open Source Licenses page displays notices.
+- Confirm startup diagnostics are written under `%APPDATA%\statedu-studio\logs\startup.log`.
+- Confirm the app starts with Electron hardware acceleration disabled by default; only re-enable it for a targeted support test with `STATEDU_ENABLE_HARDWARE_ACCELERATION=true`.
 - Confirm data import works with paths containing spaces and Korean characters.
 - Confirm at least one analysis and one export path work.
 - Confirm closing the Electron window stops the bundled R/Shiny process.
