@@ -104,6 +104,35 @@ data_view_toggle_control <- function(view, step = "step1", language = statedu_in
   actionButton("show_data_preview", statedu_t("ui.data_preview", language), class = "view-toggle-button")
 }
 
+data_file_input_control <- function(language = statedu_initial_language(), button_label = statedu_ui_label("open_data_file", language)) {
+  div(
+    class = "data-file-input-control",
+    fileInput(
+      "file",
+      label = NULL,
+      buttonLabel = button_label,
+      placeholder = statedu_text(
+        language,
+        "No file selected",
+        statedu_utf8("ec84a0ed839deb909c20ed8c8cec9dbcec9db420ec9786ec8ab5eb8b88eb8ba42e")
+      ),
+      accept = c(".sav", ".sas7bdat", ".xpt", ".dta", ".xlsx", ".xls", ".csv", ".dat"),
+      width = "100%"
+    )
+  )
+}
+
+dat_delimiter_choices <- function(language = statedu_initial_language()) {
+  stats::setNames(
+    c("whitespace", "comma", "tab"),
+    c(
+      statedu_text(language, "Whitespace", statedu_utf8("eab3b5ebb0b1")),
+      statedu_text(language, "Comma", statedu_utf8("ecbdb0eba788")),
+      statedu_text(language, "Tab", statedu_utf8("ed839c"))
+    )
+  )
+}
+
 apply_category_labels_inline_js <- function() {
   paste(
     "if (window.easyflowApplyCategoryLabels) return window.easyflowApplyCategoryLabels();",
@@ -282,7 +311,7 @@ data_steps_panel <- function(
             class = "step-summary-detail"
           ),
           if (!has_open_data) {
-            actionButton("browse_data_file", statedu_t("data.reconnect_file", language))
+            data_file_input_control(language, statedu_t("data.reconnect_file", language))
           }
         )
       } else {
@@ -306,12 +335,12 @@ data_steps_panel <- function(
           )
         } else {
           tagList(
-            actionButton("browse_data_file", statedu_ui_label("open_data_file", language)),
+            data_file_input_control(language),
             checkboxInput("header", statedu_t("data.csv_first_row_names", language), TRUE),
             selectInput(
               "dat_delimiter",
               statedu_t("data.dat_delimiter", language),
-              choices = c("Whitespace" = "whitespace", "Comma" = "comma", "Tab" = "tab"),
+              choices = dat_delimiter_choices(language),
               selected = "whitespace"
             ),
             checkboxInput("dat_has_names", statedu_t("data.dat_first_row_names", language), FALSE)

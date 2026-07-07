@@ -201,6 +201,7 @@ async function startShiny() {
 
   const port = await getFreePort();
   const token = crypto.randomBytes(32).toString("hex");
+  const initialLanguage = process.env.STATEDU_APP_LANGUAGE || "ko";
   const env = {
     ...process.env,
     STATEDU_PORT: String(port),
@@ -208,6 +209,7 @@ async function startShiny() {
     STATEDU_LAUNCH_BROWSER: "false",
     STATEDU_NO_PACKAGE_INSTALL: "true",
     STATEDU_TOKEN: token,
+    STATEDU_APP_LANGUAGE: initialLanguage,
     STATEDU_STARTUP_LOG: startupLogFile(),
     STATEDU_APP_LANGUAGE_FILE: appLanguageFile(),
     STATEDU_RESULT_ZOOM_FILE: resultZoomFile(),
@@ -239,7 +241,7 @@ async function startShiny() {
 
   await waitForShiny(port);
   logStartup(`Shiny ready in ${Date.now() - startedAt}ms`);
-  return `http://127.0.0.1:${port}/?token=${token}&t=${Date.now()}`;
+  return `http://127.0.0.1:${port}/?token=${token}&lang=${encodeURIComponent(initialLanguage)}&t=${Date.now()}`;
 }
 
 function stopShiny() {

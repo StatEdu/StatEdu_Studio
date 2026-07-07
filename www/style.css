@@ -481,6 +481,33 @@ body {
   color: #334e68;
 }
 
+.data-file-input-control .form-group {
+  margin-bottom: 14px;
+}
+
+.data-file-input-control .input-group {
+  width: 100%;
+}
+
+.data-file-input-control .btn-file {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #111827;
+  font-weight: 500;
+}
+
+.data-file-input-control .btn-file:hover,
+.data-file-input-control .btn-file:focus {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #111827;
+}
+
+.data-file-input-control input.form-control {
+  background: #ffffff;
+  color: #334155;
+}
+
 .bulk-measurement-control {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
