@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.1.1 - 2026-07-07
+
+### Fixed
+
+- Released a patch installer so Windows upgrades replace the packaged desktop files instead of reusing a stale same-version install.
+- Hardened Electron startup diagnostics by allowing a longer Shiny startup window and recording R process output when startup fails.
+- Fixed desktop data-file loading, Korean startup language selection, complex-sample design file handling, and blank label preservation.
+
 ## v1.1.0 - 2026-07-06
 
 ### Added
