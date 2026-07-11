@@ -343,7 +343,8 @@ create_restore_settings_variable_info_only_fn <- function(
     }
 
     info <- settings_variable_info(settings)
-    restored_data_file(settings_scalar(settings$data_file))
+    restored_name <- settings_scalar(settings$data_file)
+    restored_data_file(if (nzchar(restored_name)) basename(restored_name) else "")
     restored_variable_info(info)
     if (!is.null(info)) {
       cols <- as.character(info$name)

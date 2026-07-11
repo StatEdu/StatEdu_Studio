@@ -495,11 +495,11 @@ setup_status_message <- function(selection_applied, roles_applied) {
 
 bootstrap_resample_choices <- function(language = statedu_initial_language()) {
   c(
-    stats::setNames("1000", sprintf("1000 (%s)", analysis_ui_text("test", language))),
-    "5000" = "5000",
-    "10000" = "10000",
-    "20000" = "20000",
-    stats::setNames("50000", sprintf("50000 (%s)", analysis_ui_text("recommended", language)))
+    stats::setNames("1000", sprintf("1,000 (%s)", analysis_ui_text("test", language))),
+    stats::setNames("5000", "5,000"),
+    stats::setNames("10000", "10,000"),
+    stats::setNames("20000", "20,000"),
+    stats::setNames("50000", sprintf("50,000 (%s)", analysis_ui_text("recommended", language)))
   )
 }
 
@@ -507,12 +507,12 @@ normalized_bootstrap_resamples <- function(value, choices = bootstrap_resample_c
   current <- as.character(value %||% character(0))
   current <- current[!is.na(current) & nzchar(current)]
   if (length(current) == 0) {
-    current <- "1000"
+    current <- "5000"
   } else {
     current <- current[[1]]
   }
   if (!current %in% unname(choices)) {
-    return("1000")
+    return("5000")
   }
   current
 }
@@ -527,8 +527,10 @@ reset_setup_inputs <- function(session) {
   updateSelectInput(session, "y", selected = character(0))
   updateSelectizeInput(session, "xs", selected = character(0))
   updateSelectizeInput(session, "covariates", selected = character(0))
-  updateSelectInput(session, "boot_r", selected = "1000")
+  updateSelectInput(session, "boot_r", selected = "5000")
   updateNumericInput(session, "seed", value = default_seed())
+  updateCheckboxInput(session, "residual_diagnostics", value = TRUE)
+  updateCheckboxInput(session, "auto_method", value = TRUE)
 }
 
 restore_setup_inputs <- function(session, settings) {
@@ -537,6 +539,12 @@ restore_setup_inputs <- function(session, settings) {
   }
   if (!is.null(settings$seed)) {
     updateNumericInput(session, "seed", value = settings$seed)
+  }
+  if (!is.null(settings$residual_diagnostics)) {
+    updateCheckboxInput(session, "residual_diagnostics", value = isTRUE(settings$residual_diagnostics))
+  }
+  if (!is.null(settings$auto_method)) {
+    updateCheckboxInput(session, "auto_method", value = isTRUE(settings$auto_method))
   }
 }
 

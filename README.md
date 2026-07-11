@@ -10,9 +10,9 @@ All statistical analyses use CRAN packages only.
 
 Current public version: `1.1.1`
 
-Current development version: `1.1.1-dev`
+Current development version: `1.1.2-dev`
 
-Version 1.1.1 is the public release line for local data import, data editing, assumption-guided statistical analyses, sample-size/effect-size calculators, and publication-ready HTML result output. Detailed development history is available in **About > Version History**.
+Version 1.1.1 is the public release line for local data import, data editing, assumption-guided statistical analyses, sample-size/effect-size calculators, and publication-ready HTML result output. Version 1.1.2-dev is the current developer source line for the pending fixes and UI refinements. Detailed development history is available in **About > Version History**.
 
 Public 1.1.1 includes all analysis menus except the Mediation / Moderation Custom Model canvas. In the public build, direct analysis save controls remain visible but only HTML save is enabled by default; t-test / ANOVA is the exception and keeps HTML, figure, PDF, Excel, and Add result enabled. t-test / ANOVA results added to the Result collection can be exported from Result as Excel or Word.
 

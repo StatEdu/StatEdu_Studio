@@ -761,6 +761,10 @@
   user-select: none;
 }
 
+.custom-model-canvas-root:not(:has(.custom-model-toolbar-button[data-action="resultEdit"].is-active)) .custom-model-edge-label {
+  cursor: pointer;
+}
+
 .custom-model-edge-label-halo {
   fill: none;
   stroke: #ffffff;
@@ -832,12 +836,17 @@
   cursor: pointer;
 }
 
-.custom-model-edge-hit {
+.custom-model-edge-hit,
+.custom-model-moderation-hit {
   stroke: transparent;
   stroke-width: 18;
   fill: none;
   cursor: pointer;
   pointer-events: stroke;
+}
+
+.custom-model-moderation-hit {
+  cursor: move;
 }
 
 .custom-model-edge-control {
@@ -858,6 +867,11 @@
 }
 
 .custom-model-edge.is-selected {
+  stroke: #2563eb;
+  stroke-width: 2.2;
+}
+
+.custom-model-moderation.is-selected {
   stroke: #2563eb;
   stroke-width: 2.2;
 }
@@ -915,6 +929,12 @@
   height: 28px;
   padding: 3px 7px;
   font-size: 12px;
+}
+
+.custom-model-property-popover .form-control[readonly] {
+  background: #f8fafc;
+  color: #475467;
+  cursor: default;
 }
 
 .custom-model-property-actions {

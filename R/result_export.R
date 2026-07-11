@@ -843,8 +843,13 @@ hierarchical_export_table <- function(
     summary_labels <- c(summary_labels, attr(summary_values, "delta_label", exact = TRUE) %||% "\u0394R\u00B2(F change p)")
     summary_keys <- c(summary_keys, "delta")
   }
-  summary_labels <- c(summary_labels, "d(d\u1D64~4-d\u1D64)", "z(p)", stat_chisq_label(with_p = TRUE))
-  summary_keys <- c(summary_keys, "dw", "normality", "homogeneity")
+  if (isTRUE(attr(summary_values, "any_residual_diagnostics", exact = TRUE))) {
+    summary_labels <- c(summary_labels, "d(d\u1D64~4-d\u1D64)", "z(p)", stat_chisq_label(with_p = TRUE))
+    summary_keys <- c(summary_keys, "dw", "normality", "homogeneity")
+  } else {
+    summary_labels <- c(summary_labels, "d")
+    summary_keys <- c(summary_keys, "dw")
+  }
 
   for (summary_index in seq_along(summary_labels)) {
     row <- as.list(rep("", ncol(out)))

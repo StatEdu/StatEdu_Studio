@@ -279,7 +279,7 @@
     svg.setAttribute("width", instance.state.canvas.widthPx);
     svg.setAttribute("height", instance.state.canvas.heightPx);
     svg.setAttribute("viewBox", "0 0 " + instance.state.canvas.widthPx + " " + instance.state.canvas.heightPx);
-    svg.querySelectorAll(".custom-model-edge-hit, .custom-model-edge-control").forEach(function(element) {
+    svg.querySelectorAll(".custom-model-edge-hit, .custom-model-moderation-hit, .custom-model-edge-control").forEach(function(element) {
       element.remove();
     });
     instance.state.nodes.forEach(function(node) {

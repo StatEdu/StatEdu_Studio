@@ -118,24 +118,48 @@ create_app_server <- function(app_version) {
   }, ignoreInit = TRUE)
 
   observeEvent(input$apply_general_preferences, {
-    preferences <- list(
-      result_zoom_percent = normalize_result_zoom_percent(input$result_zoom_percent),
-      output_decimal_digits = normalize_output_decimal_digits(input$output_decimal_digits),
-      p_value_format = normalize_p_value_format(input$p_value_format),
-      multiple_correction_default = normalize_multiple_correction_default(input$multiple_correction_default),
-      selected_variables_only_default = normalize_selected_variables_only_default(input$selected_variables_only_default),
-      default_save_dir = normalize_default_save_dir(input$default_save_dir)
-    )
-    statedu_save_preferences(preferences)
-    active_result_zoom(preferences$result_zoom_percent)
-    statedu_write_persisted_result_zoom(preferences$result_zoom_percent)
-    data_editor_selected_only(preferences$selected_variables_only_default)
-    calculator_selected_only(preferences$selected_variables_only_default)
-    showNotification(
-      statedu_t("preferences.saved", app_language()),
-      type = "message",
-      duration = 3
-    )
+    tryCatch({
+      selected_language <- normalize_app_language(input$app_language %||% app_language())
+      preferences <- list(
+        result_zoom_percent = normalize_result_zoom_percent(input$result_zoom_percent),
+        output_decimal_digits = normalize_output_decimal_digits(input$output_decimal_digits),
+        p_value_format = normalize_p_value_format(input$p_value_format),
+        multiple_correction_default = normalize_multiple_correction_default(input$multiple_correction_default),
+        selected_variables_only_default = normalize_selected_variables_only_default(input$selected_variables_only_default),
+        default_save_dir = normalize_default_save_dir(input$default_save_dir)
+      )
+      active_app_language(selected_language)
+      options(statedu.app_language = selected_language)
+      statedu_write_persisted_language(selected_language)
+      statedu_save_preferences(preferences)
+      active_result_zoom(preferences$result_zoom_percent)
+      statedu_write_persisted_result_zoom(preferences$result_zoom_percent)
+      data_editor_selected_only(preferences$selected_variables_only_default)
+      calculator_selected_only(preferences$selected_variables_only_default)
+      preferences_saved_payload <- list(
+        language = selected_language,
+        result_zoom_percent = preferences$result_zoom_percent
+      )
+      session$sendCustomMessage("statedu-preferences-saved", preferences_saved_payload)
+      session$onFlushed(function() {
+        session$sendCustomMessage("statedu-preferences-saved", preferences_saved_payload)
+      }, once = TRUE)
+      showNotification(
+        statedu_t("preferences.saved", selected_language),
+        type = "message",
+        duration = 3
+      )
+    }, error = function(error) {
+      showNotification(
+        paste(statedu_t("settings.file_save_failed", app_language()), conditionMessage(error)),
+        type = "error",
+        duration = 8
+      )
+      session$sendCustomMessage("statedu-preferences-saved", list())
+      session$onFlushed(function() {
+        session$sendCustomMessage("statedu-preferences-saved", list())
+      }, once = TRUE)
+    })
   }, ignoreInit = TRUE)
 
   render_about_document <- function(key, value) {
@@ -205,6 +229,7 @@ create_app_server <- function(app_version) {
 
   register_sample_size_server(input, output, session, app_language_fn = app_language)
 
+  output$lazy_about_preferences <- renderUI(tab_panel_content(about_preferences_tab_panel(app_language())))
   output$lazy_about_overview <- render_about_document("overview", "about_overview")
   output$lazy_about_user_guide <- render_about_document("user_guide", "about_user_guide")
   output$lazy_about_analysis_methods <- render_about_document("analysis_methods", "about_analysis_methods")
@@ -415,15 +440,7 @@ create_app_server <- function(app_version) {
   render_calculator_scope_toggle("frs_variable_scope_toggle", "toggle_frs_selected_only")
   render_calculator_scope_toggle("ascvd10_variable_scope_toggle", "toggle_ascvd10_selected_only")
   render_calculator_scope_toggle("mbss_variable_scope_toggle", "toggle_mbss_selected_only")
-  latent_mplus_registered <- reactiveVal(FALSE)
-  observeEvent(input$main_menu, {
-    if (!isTRUE(latent_mplus_enabled()) || isTRUE(latent_mplus_registered())) {
-      return()
-    }
-    current_tab <- as.character(input$main_menu %||% "")
-    if (!startsWith(current_tab, "latent_")) {
-      return()
-    }
+  if (isTRUE(latent_mplus_enabled())) {
     statedu_time_expr(
       "register_latent_mplus_server",
       register_latent_mplus_server(
@@ -433,14 +450,15 @@ create_app_server <- function(app_version) {
         app_version = app_version,
         current_data_file = current_data_file,
         variable_info_table = variable_info_table,
+        restored_data_file = restored_data_file,
+        restored_variable_info = restored_variable_info,
         active_data_file = active_data_file,
         reset_on_dataset_load = reset_on_dataset_load,
         available_variable_names = available_variable_names
       ),
-      detail = sprintf("tab=%s", current_tab)
+      detail = "startup"
     )
-    latent_mplus_registered(TRUE)
-  }, ignoreInit = FALSE)
+  }
   table_input_collectors <- create_table_input_collectors(input, variable_info_table)
   merge_state_into_info <- create_merge_state_into_info_fn(
     measurement_overrides = measurement_overrides,
@@ -850,7 +868,9 @@ create_app_server <- function(app_version) {
     variable_info_table_fn = variable_info_table,
     category_label_values_fn = category_label_values,
     boot_r_fn = function() input$boot_r,
-    seed_fn = function() input$seed
+    seed_fn = function() input$seed,
+    residual_diagnostics_fn = function() input$residual_diagnostics %||% TRUE,
+    auto_method_fn = function() isTRUE(input$residual_diagnostics %||% TRUE) && isTRUE(input$auto_method %||% TRUE)
   )
 
   register_analysis_run_handlers(
@@ -1946,6 +1966,18 @@ create_app_server <- function(app_version) {
     app_language_fn = app_language
   )
 
+  observeEvent(input$residual_diagnostics, {
+    if (!isTRUE(input$residual_diagnostics)) {
+      updateCheckboxInput(session, "auto_method", value = FALSE)
+    }
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$hierarchical_residual_diagnostics, {
+    if (!isTRUE(input$hierarchical_residual_diagnostics)) {
+      updateCheckboxInput(session, "hierarchical_auto_method", value = FALSE)
+    }
+  }, ignoreInit = TRUE)
+
   output$regression_reset_control <- renderUI({
     analysis_reset_button(
       "reset_regression_selection",
@@ -2042,6 +2074,8 @@ create_app_server <- function(app_version) {
     category_label_values_fn = category_label_values,
     boot_r_fn = function() input$hierarchical_boot_r,
     seed_fn = function() input$hierarchical_seed,
+    residual_diagnostics_fn = function() input$hierarchical_residual_diagnostics %||% TRUE,
+    auto_method_fn = function() isTRUE(input$hierarchical_residual_diagnostics %||% TRUE) && isTRUE(input$hierarchical_auto_method %||% TRUE),
     sync_dependent_order_fn = sync_dependent_order,
     control_names_fn = control_names,
     independent_names_fn = independent_names,

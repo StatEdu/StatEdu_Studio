@@ -74,10 +74,16 @@ model_overview_data_frame <- function(results, variable_table = NULL, labels = c
   homogeneity_fail <- "Homogeneity not met"
   rows <- c("N", analysis_label, reason_label)
   regression_overview_reason <- function(result) {
+    if (!isTRUE(result$residual_diagnostics)) {
+      return("Residual diagnostics not run\nOLS selected")
+    }
     parts <- c(
       if (isTRUE(result$normality_p > .05)) normality_ok else normality_fail,
       if (isTRUE(result$homogeneity_p > .05)) homogeneity_ok else homogeneity_fail
     )
+    if (!isTRUE(result$auto_method)) {
+      parts <- c(parts, "OLS selected manually")
+    }
     if (isTRUE(result$use_bootstrap)) {
       parts <- c(parts, "Bootstrap used")
     }
@@ -129,6 +135,14 @@ regression_assumption_review_data_frame <- function(results, variable_table = NU
   homogeneity_fail <- "Homogeneity not met"
   rows <- c(residual_normality_label, residual_homogeneity_label, autocorrelation_label, package_label)
   values <- lapply(results, function(result) {
+    if (!isTRUE(result$residual_diagnostics)) {
+      return(stats::setNames(c(
+        "Not run",
+        "Not run",
+        sprintf("d=%s", format_decimal3(result$dw_d)),
+        regression_package_label(result)
+      ), rows))
+    }
     stats::setNames(c(
       sprintf(
         "K-S z=%s(%s)\n%s",
@@ -171,7 +185,7 @@ combined_dw_data_frame <- function(results, variable_table = NULL, labels = char
     labels = labels,
     label_only = TRUE
   )
-  rows <- as.character(results[[1]]$dw_result$Item)
+  rows <- unique(unlist(lapply(results, function(result) as.character(result$dw_result$Item)), use.names = FALSE))
   table <- data.frame(Item = rows, stringsAsFactors = FALSE, check.names = FALSE)
   for (index in seq_along(results)) {
     result <- results[[index]]

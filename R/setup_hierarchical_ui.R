@@ -16,6 +16,8 @@ hierarchical_setup_state <- function(
   selected_block2 = NULL,
   selected_block3 = NULL,
   active_block = "block1",
+  residual_diagnostics = TRUE,
+  auto_method = TRUE,
   show_sr2 = FALSE,
   show_f2 = TRUE,
   show_vif = TRUE,
@@ -60,6 +62,8 @@ hierarchical_setup_state <- function(
     bootstrap_choices = bootstrap_choices,
     current_bootstrap = normalized_bootstrap_resamples(bootstrap_value, bootstrap_choices),
     current_seed = seed_value %||% default_seed(),
+    residual_diagnostics = setup_option_checked(residual_diagnostics, default = TRUE),
+    auto_method = setup_option_checked(auto_method, default = TRUE),
     show_sr2 = setup_option_checked(show_sr2, default = FALSE),
     show_f2 = setup_option_checked(show_f2, default = TRUE),
     show_vif = setup_option_checked(show_vif, default = TRUE),
@@ -242,6 +246,22 @@ hierarchical_setup_panel <- function(setup, status_message) {
       ),
       div(
         class = "analysis-options-column analysis-options-panel hierarchical-options",
+        tags$style(HTML("
+          .regression-options.analysis-options-panel,
+          .hierarchical-options.analysis-options-panel { gap: 14px !important; row-gap: 14px !important; }
+          .regression-options.analysis-options-panel .analysis-option-group,
+          .hierarchical-options.analysis-options-panel .analysis-option-group { margin-bottom: 0 !important; padding-bottom: 0 !important; }
+          .regression-options.analysis-options-panel .analysis-option-title,
+          .hierarchical-options.analysis-options-panel .analysis-option-title { margin-bottom: 6px !important; }
+          .regression-options.analysis-options-panel .analysis-option-group > .form-group,
+          .regression-options.analysis-options-panel .analysis-option-group > .shiny-input-container,
+          .hierarchical-options.analysis-options-panel .analysis-option-group > .form-group,
+          .hierarchical-options.analysis-options-panel .analysis-option-group > .shiny-input-container { margin-top: 0 !important; margin-bottom: 5px !important; padding-top: 0 !important; padding-bottom: 0 !important; }
+          .regression-options.analysis-options-panel .analysis-option-group .checkbox,
+          .hierarchical-options.analysis-options-panel .analysis-option-group .checkbox { margin-top: 4px !important; margin-bottom: 4px !important; }
+          .regression-options.analysis-options-panel .analysis-option-group .checkbox label,
+          .hierarchical-options.analysis-options-panel .analysis-option-group .checkbox label { line-height: 1.35 !important; padding-top: 0 !important; padding-bottom: 0 !important; }
+        ")),
         div(
           class = "analysis-option-group",
           div(class = "analysis-option-title", analysis_ui_text("Bootstrap", language)),
@@ -259,6 +279,14 @@ hierarchical_setup_panel <- function(setup, status_message) {
             class = "regression-field",
             numericInput("hierarchical_seed", analysis_ui_text("Seed number", language), value = setup$current_seed, min = 1, step = 1)
           )
+        ),
+        analysis_option_group(
+          "Residual diagnostics",
+          list(
+            list(id = "hierarchical_residual_diagnostics", label = "Residual diagnostics", value = isTRUE(setup$residual_diagnostics)),
+            list(id = "hierarchical_auto_method", label = "Automatic method selection", value = isTRUE(setup$auto_method) && isTRUE(setup$residual_diagnostics), disabled = !isTRUE(setup$residual_diagnostics))
+          ),
+          language = language
         ),
         analysis_option_group(
           "Effect size",

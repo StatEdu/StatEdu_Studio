@@ -41,6 +41,9 @@ create_apply_variable_selection_state_fn <- function(
   function(state = NULL) {
     has_submitted_state <- !is.null(state)
     submitted_state <- if (has_submitted_state) state else NULL
+    if (isTRUE(submitted_state[["select_all_loaded"]])) {
+      submitted_state[["selected"]] <- available_variable_names_fn()
+    }
     if (!is.null(state)) {
       sync_table_state_fn(submitted_state)
       sync_missing_measurement_inputs_fn(submitted_state)
@@ -87,7 +90,9 @@ create_prepare_analysis_result_fn <- function(
   variable_info_table_fn,
   category_label_values_fn,
   boot_r_fn,
-  seed_fn
+  seed_fn,
+  residual_diagnostics_fn = function() TRUE,
+  auto_method_fn = function() TRUE
 ) {
   function() {
     shiny::req(current_data_file_fn())
@@ -104,7 +109,9 @@ create_prepare_analysis_result_fn <- function(
       variable_info = info,
       reference_values = regression_reference_values_static(category_label_values_fn()),
       boot_r = boot_r_fn(),
-      seed = seed_fn() %||% default_seed()
+      seed = seed_fn() %||% default_seed(),
+      residual_diagnostics = isTRUE(residual_diagnostics_fn()),
+      auto_method = isTRUE(auto_method_fn())
     )
   }
 }
@@ -120,6 +127,8 @@ create_prepare_hierarchical_analysis_result_fn <- function(
   category_label_values_fn,
   boot_r_fn,
   seed_fn,
+  residual_diagnostics_fn = function() TRUE,
+  auto_method_fn = function() TRUE,
   sync_dependent_order_fn = NULL,
   control_names_fn = NULL,
   independent_names_fn = NULL,
@@ -162,7 +171,9 @@ create_prepare_hierarchical_analysis_result_fn <- function(
       variable_info = info,
       reference_values = regression_reference_values_static(category_label_values_fn()),
       boot_r = boot_r_fn(),
-      seed = seed_fn() %||% default_seed()
+      seed = seed_fn() %||% default_seed(),
+      residual_diagnostics = isTRUE(residual_diagnostics_fn()),
+      auto_method = isTRUE(auto_method_fn())
     )
   }
 }

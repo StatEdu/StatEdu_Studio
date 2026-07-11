@@ -16,8 +16,10 @@
     instance.state.connectFrom = null;
     instance.state.dragPreview = null;
     instance.state.selectedEdgeId = null;
+    instance.state.selectedModerationId = null;
     if (mode !== "properties") {
       instance.state.selectedNodeId = null;
+      instance.state.selectedNodeIds = [];
       if (window.StatEduModelCanvas.nodes) {
         window.StatEduModelCanvas.nodes.hideProperties(instance);
       }

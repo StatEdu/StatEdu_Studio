@@ -438,7 +438,9 @@
       return defs;
     }
     appendArrowMarker(defs, "custom-model-arrow", arrowHead, color);
+    appendArrowMarker(defs, "custom-model-arrow-selected", arrowHead, "#2563eb");
     appendArrowMarker(defs, "custom-model-moderation-arrow", arrowHead, "#7c3aed");
+    appendArrowMarker(defs, "custom-model-moderation-arrow-selected", arrowHead, "#2563eb");
     svg.appendChild(defs);
     return defs;
   }
@@ -475,6 +477,12 @@
     svg.appendChild(hit);
   }
 
+  function addModerationHitElement(svg, moderation, from, to) {
+    var hit = lineElement("custom-model-moderation-hit", from.x, from.y, to.x, to.y);
+    hit.setAttribute("data-moderation-id", moderation.id);
+    svg.appendChild(hit);
+  }
+
   function addEdgeControlElement(instance, svg, edge, endpoints) {
     if (instance.state.mode !== "properties") return;
     if (edge.id !== instance.state.selectedEdgeId) return;
@@ -487,6 +495,31 @@
     circle.setAttribute("cy", control.y);
     circle.setAttribute("r", "5");
     svg.appendChild(circle);
+  }
+
+  function selectLabelOwner(instance, type, id) {
+    if (type === "moderation") {
+      var moderation = labelOwner(instance, type, id);
+      if (!moderation) return false;
+      instance.state.selectedNodeId = null;
+      instance.state.selectedEdgeId = null;
+      instance.state.selectedModerationId = moderation.id;
+      window.StatEduModelCanvas.nodes.hideProperties(instance);
+      renderEdges(instance);
+      window.StatEduModelCanvas.nodes.render(instance);
+      window.StatEduModelCanvas.toolbar.updateButtons(instance);
+      return true;
+    }
+    var edge = labelOwner(instance, type, id);
+    if (!edge) return false;
+    instance.state.selectedNodeId = null;
+    instance.state.selectedEdgeId = edge.id;
+    instance.state.selectedModerationId = null;
+    window.StatEduModelCanvas.nodes.hideProperties(instance);
+    renderEdges(instance);
+    window.StatEduModelCanvas.nodes.render(instance);
+    window.StatEduModelCanvas.toolbar.updateButtons(instance);
+    return true;
   }
 
   function renderEdges(instance) {
@@ -506,7 +539,7 @@
         element.removeAttribute("stroke-dasharray");
       }
       if (arrowHead !== "none") {
-        element.setAttribute("marker-end", "url(#custom-model-arrow)");
+        element.setAttribute("marker-end", selected ? "url(#custom-model-arrow-selected)" : "url(#custom-model-arrow)");
       }
     }
 
@@ -540,15 +573,25 @@
       var side = moderationSourceSide(instance, moderation, fromNode);
       var from = nodeAnchor(instance, fromNode, side, moderationAnchorSlot(instance, moderation, side), MODERATION_ANCHOR_GAP);
       var to = pointOnRenderedEdge(edge, endpoints, moderation.edgePosition || 50);
-      var line = lineElement("custom-model-moderation", from.x, from.y, to.x, to.y);
+      var isSelected = moderation.id === instance.state.selectedModerationId;
+      var line = lineElement("custom-model-moderation" + (isSelected ? " is-selected" : ""), from.x, from.y, to.x, to.y);
       line.setAttribute("data-moderation-id", moderation.id);
-      if (instance.state.dashNonsignificant === false && moderation.significant !== false) {
-        line.setAttribute("stroke-dasharray", "none");
+      if (isSelected) {
+        line.style.stroke = "#2563eb";
+        line.style.strokeWidth = "2.2";
+      }
+      if (Object.prototype.hasOwnProperty.call(moderation, "significant")) {
+        if (instance.state.dashNonsignificant !== false && moderation.significant === false) {
+          line.style.strokeDasharray = "5 4";
+        } else {
+          line.style.strokeDasharray = "none";
+        }
       }
       if (arrowHead !== "none") {
-        line.setAttribute("marker-end", "url(#custom-model-moderation-arrow)");
+        line.setAttribute("marker-end", isSelected ? "url(#custom-model-moderation-arrow-selected)" : "url(#custom-model-moderation-arrow)");
       }
       svg.appendChild(line);
+      addModerationHitElement(svg, moderation, from, to);
       addEdgeLabelElement(instance, svg, moderation, "moderation", moderation.id, pointOnEdge(from, to, 50));
     });
 
@@ -611,6 +654,12 @@
     });
   }
 
+  function moderationById(instance, moderationId) {
+    return instance.state.moderations.find(function(moderation) {
+      return moderation.id === moderationId;
+    });
+  }
+
   function setEdgeShape(instance, edgeId, shape) {
     var edge = edgeById(instance, edgeId);
     if (!edge) return false;
@@ -656,12 +705,64 @@
     return true;
   }
 
+  function startModerationDrag(instance, event, moderationId) {
+    var moderation = moderationById(instance, moderationId);
+    var edge = moderation ? edgeById(instance, moderation.toEdge) : null;
+    if (!moderation || !edge) return false;
+    event.preventDefault();
+    event.stopPropagation();
+    instance.state.selectedNodeId = null;
+    instance.state.selectedNodeIds = [];
+    instance.state.selectedEdgeId = null;
+    instance.state.selectedModerationId = moderation.id;
+    window.StatEduModelCanvas.nodes.hideProperties(instance);
+    window.StatEduModelCanvas.state.pushHistory(instance);
+
+    function move(moveEvent) {
+      var point = window.StatEduModelCanvas.canvas.canvasPoint(instance, moveEvent);
+      var endpoints = edgeEndpoints(instance, edge);
+      if (!endpoints) return;
+      var nearest = distanceToRenderedEdge(edge, endpoints, point);
+      moderation.edgePosition = snapPercent(nearest.percent);
+      renderEdges(instance);
+      window.StatEduModelCanvas.nodes.render(instance);
+    }
+
+    function up() {
+      document.removeEventListener("pointermove", move, true);
+      document.removeEventListener("pointerup", up, true);
+      document.removeEventListener("pointercancel", up, true);
+      window.StatEduModelCanvas.canvas.render(instance);
+      window.StatEduModelCanvas.bridge.sendState(instance);
+    }
+
+    document.addEventListener("pointermove", move, true);
+    document.addEventListener("pointerup", up, true);
+    document.addEventListener("pointercancel", up, true);
+    move(event);
+    return true;
+  }
+
+  function selectModeration(instance, moderationId) {
+    var moderation = moderationById(instance, moderationId);
+    if (!moderation) return false;
+    instance.state.selectedNodeId = null;
+    instance.state.selectedNodeIds = [];
+    instance.state.selectedEdgeId = null;
+    instance.state.selectedModerationId = moderation.id;
+    window.StatEduModelCanvas.nodes.hideProperties(instance);
+    renderEdges(instance);
+    window.StatEduModelCanvas.nodes.render(instance);
+    window.StatEduModelCanvas.toolbar.updateButtons(instance);
+    return true;
+  }
+
   function startLabelDrag(instance, event, type, id) {
     var owner = labelOwner(instance, type, id);
     if (!owner) return false;
     event.preventDefault();
     event.stopPropagation();
-    window.StatEduModelCanvas.nodes.hideProperties(instance);
+    selectLabelOwner(instance, type, id);
     window.StatEduModelCanvas.state.pushHistory(instance);
     var start = window.StatEduModelCanvas.canvas.canvasPoint(instance, event);
     var startX = Number(owner.labelOffsetX || 0);
@@ -700,7 +801,7 @@
     panel.innerHTML = [
       '<div class="custom-model-property-title">B(p)</div>',
       '<label class="custom-model-property-label">' + t("label", "\ub77c\ubca8") + '</label>',
-      '<input class="form-control custom-model-property-label-input" type="text">',
+      '<input class="form-control custom-model-property-label-input" type="text" readonly>',
       '<label class="custom-model-property-label">' + t("font_size", "\ud3f0\ud2b8 \ud06c\uae30") + '</label>',
       '<input class="form-control custom-model-property-font-size" type="number" min="8" max="32" step="1">',
       '<div class="custom-model-property-actions">',
@@ -717,7 +818,6 @@
     });
     panel.querySelector(".custom-model-property-apply").addEventListener("click", function() {
       window.StatEduModelCanvas.state.pushHistory(instance);
-      owner.label = String(panel.querySelector(".custom-model-property-label-input").value || "").trim();
       var fontSize = Number(panel.querySelector(".custom-model-property-font-size").value || 12);
       owner.labelFontSize = Math.max(8, Math.min(32, Number.isFinite(fontSize) ? fontSize : 12));
       panel.remove();
@@ -739,8 +839,11 @@
     setEdgeShape: setEdgeShape,
     setEdgeAnchorSide: setEdgeAnchorSide,
     startControlDrag: startControlDrag,
+    startModerationDrag: startModerationDrag,
+    selectModeration: selectModeration,
     startLabelDrag: startLabelDrag,
     showLabelProperties: showLabelProperties,
+    selectLabelOwner: selectLabelOwner,
     edgeById: edgeById,
     edgeShape: edgeShape,
     edgeEndpoints: edgeEndpoints,

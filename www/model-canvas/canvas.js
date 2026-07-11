@@ -187,7 +187,7 @@
         existing.x = dependentPosition.x;
         existing.y = dependentPosition.y;
       }
-      window.StatEduModelCanvas.layout.alignDependentToMediators(instance.state.nodes);
+      window.StatEduModelCanvas.layout.reflowRoleLayout(instance.state.nodes, instance.state.style);
       return true;
     }
 
@@ -196,7 +196,7 @@
       return item !== name;
     });
     instance.state.nodes.push(window.StatEduModelCanvas.nodes.createNodeFromVariable(instance, variable, position.x, position.y, role));
-    window.StatEduModelCanvas.layout.alignDependentToMediators(instance.state.nodes);
+    window.StatEduModelCanvas.layout.reflowRoleLayout(instance.state.nodes, instance.state.style);
     return true;
   }
 
@@ -215,6 +215,7 @@
       instance.state.history.pop();
       return;
     }
+    window.StatEduModelCanvas.layout.reflowRoleLayout(instance.state.nodes, instance.state.style);
     instance.state.selectedVariables = names;
     instance.state.selectedVariable = names[names.length - 1] || null;
     render(instance);
@@ -265,6 +266,7 @@
       var point = canvasPoint(instance, event);
       window.StatEduModelCanvas.state.pushHistory(instance);
       instance.state.nodes.push(window.StatEduModelCanvas.nodes.createNodeFromVariable(instance, variable, point.x, point.y, role));
+      window.StatEduModelCanvas.layout.reflowRoleLayout(instance.state.nodes, instance.state.style);
       instance.state.selectedVariable = name;
       instance.state.selectedVariables = [name];
       render(instance);
@@ -274,6 +276,7 @@
 
   function bindCanvasPointer(instance) {
     instance.paper.addEventListener("pointerdown", function(event) {
+      window.StatEduModelCanvas.activeInstance = instance;
       var propertyPanel = event.target.closest ? event.target.closest(".custom-model-property-popover") : null;
       if (propertyPanel) return;
 
@@ -281,30 +284,36 @@
       var nodeElement = event.target.closest ? event.target.closest(".custom-model-node") : null;
       var edgeControlElement = event.target.closest ? event.target.closest(".custom-model-edge-control") : null;
       var edgeElement = event.target.closest ? event.target.closest(".custom-model-edge, .custom-model-edge-hit") : null;
-      var moderationElement = event.target.closest ? event.target.closest(".custom-model-moderation") : null;
+      var moderationElement = event.target.closest ? event.target.closest(".custom-model-moderation, .custom-model-moderation-hit") : null;
       var edgeId = edgeIdFromEvent(instance, event, 18);
 
       if (labelElement) {
-        if (instance.state.mode === "properties") {
-          event.preventDefault();
-          window.StatEduModelCanvas.edges.showLabelProperties(
+        event.preventDefault();
+        if (window.StatEduModelCanvas.edges.selectLabelOwner) {
+          window.StatEduModelCanvas.edges.selectLabelOwner(
             instance,
             labelElement.getAttribute("data-label-type"),
             labelElement.getAttribute("data-label-id")
           );
-          return;
         }
-        window.StatEduModelCanvas.edges.startLabelDrag(
-          instance,
-          event,
-          labelElement.getAttribute("data-label-type"),
-          labelElement.getAttribute("data-label-id")
-        );
+        if (instance.state.mode === "properties") {
+          window.StatEduModelCanvas.edges.startLabelDrag(
+            instance,
+            event,
+            labelElement.getAttribute("data-label-type"),
+            labelElement.getAttribute("data-label-id")
+          );
+        }
         return;
       }
 
       if (instance.state.mode === "properties" && edgeControlElement) {
         window.StatEduModelCanvas.edges.startControlDrag(instance, event, edgeControlElement.getAttribute("data-edge-id"));
+        return;
+      }
+
+      if ((instance.state.mode === "select" || instance.state.mode === "properties") && moderationElement) {
+        window.StatEduModelCanvas.edges.startModerationDrag(instance, event, moderationElement.getAttribute("data-moderation-id"));
         return;
       }
 
@@ -350,6 +359,7 @@
         }
         if (!moderationElement) {
           instance.state.selectedNodeId = null;
+          instance.state.selectedNodeIds = [];
           instance.state.selectedEdgeId = null;
           window.StatEduModelCanvas.nodes.hideProperties(instance);
           render(instance);
@@ -358,9 +368,32 @@
       }
 
       if (nodeElement) {
-        instance.state.selectedNodeId = nodeElement.getAttribute("data-node-id");
+        var nodeId = nodeElement.getAttribute("data-node-id");
+        var selectedIds = instance.state.selectedNodeIds || [];
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          selectedIds = selectedIds.slice();
+          var selectedIndex = selectedIds.indexOf(nodeId);
+          if (selectedIndex >= 0) {
+            selectedIds.splice(selectedIndex, 1);
+          } else {
+            selectedIds.push(nodeId);
+          }
+          instance.state.selectedNodeIds = selectedIds;
+          instance.state.selectedNodeId = selectedIds.length ? selectedIds[selectedIds.length - 1] : null;
+        } else if (selectedIds.indexOf(nodeId) < 0) {
+          instance.state.selectedNodeIds = [nodeId];
+          instance.state.selectedNodeId = nodeId;
+        } else {
+          instance.state.selectedNodeId = nodeId;
+        }
         instance.state.selectedEdgeId = null;
         window.StatEduModelCanvas.nodes.startDrag(instance, event, nodeElement);
+      } else if (!edgeId && !moderationElement) {
+        instance.state.selectedNodeId = null;
+        instance.state.selectedNodeIds = [];
+        instance.state.selectedEdgeId = null;
+        render(instance);
       }
     }, true);
 
@@ -370,6 +403,7 @@
 
       var labelElement = event.target.closest ? event.target.closest(".custom-model-edge-label") : null;
       var nodeElement = event.target.closest ? event.target.closest(".custom-model-node") : null;
+      var moderationElement = event.target.closest ? event.target.closest(".custom-model-moderation, .custom-model-moderation-hit") : null;
       var edgeId = edgeIdFromEvent(instance, event, 18);
       if (labelElement) {
         if (instance.state.mode !== "properties") window.StatEduModelCanvas.toolbar.setMode(instance, "properties");
@@ -381,11 +415,37 @@
       } else if (nodeElement) {
         if (instance.state.mode !== "properties") window.StatEduModelCanvas.toolbar.setMode(instance, "properties");
         window.StatEduModelCanvas.nodes.editLabel(instance, nodeElement.getAttribute("data-node-id"));
+      } else if (moderationElement) {
+        if (instance.state.mode !== "properties") window.StatEduModelCanvas.toolbar.setMode(instance, "properties");
+        window.StatEduModelCanvas.edges.selectModeration(instance, moderationElement.getAttribute("data-moderation-id"));
       } else if (edgeId) {
         if (instance.state.mode !== "properties") window.StatEduModelCanvas.toolbar.setMode(instance, "properties");
         window.StatEduModelCanvas.nodes.showEdgeProperties(instance, edgeId);
       }
     });
+  }
+
+  function bindCanvasKeyboard(instance) {
+    document.addEventListener("keydown", function(event) {
+      if (!(event.ctrlKey || event.metaKey) || String(event.key || "").toLowerCase() !== "a") return;
+      var active = document.activeElement;
+      var tagName = active && active.tagName ? active.tagName.toLowerCase() : "";
+      if (tagName === "input" || tagName === "textarea" || tagName === "select" || (active && active.isContentEditable)) return;
+      if (window.StatEduModelCanvas.activeInstance && window.StatEduModelCanvas.activeInstance !== instance) return;
+      if (!instance.root.contains(active) && window.StatEduModelCanvas.activeInstance !== instance) return;
+      event.preventDefault();
+      var allIds = instance.state.nodes.map(function(node) { return node.id; });
+      var selectedIds = instance.state.selectedNodeIds || [];
+      if (allIds.length > 0 && selectedIds.length === allIds.length) {
+        instance.state.selectedNodeIds = [];
+        instance.state.selectedNodeId = null;
+      } else {
+        instance.state.selectedNodeIds = allIds;
+        instance.state.selectedNodeId = allIds.length ? allIds[allIds.length - 1] : null;
+      }
+      instance.state.selectedEdgeId = null;
+      render(instance);
+    }, true);
   }
 
   function handleConnectPointer(instance, event, nodeElement) {
@@ -495,6 +555,7 @@
     bindVariableSelection(instance);
     bindVariableDrag(instance);
     bindCanvasPointer(instance);
+    bindCanvasKeyboard(instance);
     render(instance);
     window.StatEduModelCanvas.bridge.sendState(instance);
     return instance;

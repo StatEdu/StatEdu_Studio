@@ -36,7 +36,7 @@
   var ROLE_LIMITS = {
     independent: Infinity,
     mediator: Infinity,
-    moderator: 1,
+    moderator: Infinity,
     dependent: 1,
     covariate: Infinity
   };
@@ -63,7 +63,9 @@
     state.selectedVariables = [];
     state.lastSelectedVariableIndex = null;
     state.selectedNodeId = null;
+    state.selectedNodeIds = [];
     state.selectedEdgeId = null;
+    state.selectedModerationId = null;
     return state;
   }
 
@@ -96,7 +98,9 @@
     state.connectFrom = null;
     state.dragPreview = null;
     state.selectedNodeId = null;
+    state.selectedNodeIds = [];
     state.selectedEdgeId = null;
+    state.selectedModerationId = null;
   }
 
   function pushHistory(instance) {

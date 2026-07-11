@@ -45,9 +45,9 @@ table_state_handlers <- function(
   collect_measurement_inputs
 ) {
   sync_table_selected_names <- function(state) {
-    if (!is.null(state$selected)) {
+    if (!is.null(state[["selected"]])) {
       sync_selected_variable_names(
-        settings_vector(state$selected),
+        settings_vector(state[["selected"]]),
         selection_applied,
         selected_names,
         active_role_names,
@@ -340,6 +340,10 @@ register_selection_apply_observers <- function(
 
   observeEvent(input$apply_variable_request, {
     apply_variable_selection_state(input$apply_variable_request)
+  })
+
+  observeEvent(input$apply_all_variable_request, {
+    apply_variable_selection_state(input$apply_all_variable_request)
   })
 
   observeEvent(input$apply_role_selection, {

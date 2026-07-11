@@ -2466,6 +2466,12 @@ input.variable-select:disabled {
   z-index: 8000;
 }
 
+.sample-size-effect-size-help::after {
+  max-width: 140px;
+  min-width: 110px;
+  white-space: pre-line;
+}
+
 .easyflow-option-help::before {
   border: 6px solid transparent;
   border-top-color: #102a43;
@@ -2551,18 +2557,22 @@ input.variable-select:disabled {
   grid-template-rows: auto;
   row-gap: 10px;
   align-items: start;
+  min-height: 144px;
 }
 
 .analysis-three-block-action-row .analysis-action-cell {
   min-width: 0;
+  align-self: start;
 }
 
 .analysis-three-block-action-row .analysis-run-cell {
   grid-row: 1;
+  align-self: start;
 }
 
 .analysis-three-block-action-row .analysis-reset-cell {
   grid-row: 1;
+  align-self: start;
 }
 
 .analysis-three-block-action-row .analysis-extra-cell {
@@ -2571,6 +2581,7 @@ input.variable-select:disabled {
 
 .analysis-three-block-action-row .analysis-save-cell {
   grid-row: 1;
+  align-self: start;
 }
 
 .analysis-three-block-action-row .analysis-run-cell > .btn,
@@ -10485,7 +10496,7 @@ select[id$="_active_role"]:focus {
 
 .preferences-output-grid {
   display: grid;
-  grid-template-columns: minmax(320px, 360px) 180px;
+  grid-template-columns: minmax(320px, 360px);
   gap: 14px;
   align-items: end;
 }
@@ -10534,6 +10545,10 @@ select[id$="_active_role"]:focus {
 .preferences-save-dir-row .btn {
   min-width: 96px;
   margin-bottom: 0;
+}
+
+.preferences-save-action {
+  min-width: 140px;
 }
 
 .sample-size-results,
@@ -12324,7 +12339,7 @@ select[id$="_active_role"]:focus {
 .mm-effects-section-title {
   font-weight: 700;
   font-size: 13px;
-  text-align: center;
+  text-align: left;
   padding: 8px 0 6px;
   color: #1f2937;
 }
@@ -12483,4 +12498,52 @@ select[id$="_active_role"]:focus {
   .mm-diagram-panel {
     min-height: 500px;
   }
+}
+
+.hierarchical-options.analysis-options-panel,
+.regression-options.analysis-options-panel {
+  gap: 14px !important;
+  row-gap: 14px !important;
+  padding-top: 10px !important;
+}
+
+.hierarchical-options.analysis-options-panel .analysis-option-group,
+.regression-options.analysis-options-panel .analysis-option-group {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.hierarchical-options.analysis-options-panel .analysis-option-title,
+.regression-options.analysis-options-panel .analysis-option-title {
+  margin-bottom: 6px !important;
+}
+
+.hierarchical-options.analysis-options-panel .analysis-option-group .checkbox,
+.regression-options.analysis-options-panel .analysis-option-group .checkbox {
+  margin-top: 4px !important;
+  margin-bottom: 4px !important;
+}
+
+.hierarchical-options.analysis-options-panel .analysis-option-group > .form-group,
+.hierarchical-options.analysis-options-panel .analysis-option-group > .shiny-input-container,
+.regression-options.analysis-options-panel .analysis-option-group > .form-group,
+.regression-options.analysis-options-panel .analysis-option-group > .shiny-input-container {
+  margin-top: 0 !important;
+  margin-bottom: 5px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.hierarchical-options.analysis-options-panel .analysis-option-group .checkbox label,
+.regression-options.analysis-options-panel .analysis-option-group .checkbox label {
+  line-height: 1.35 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.hierarchical-options.analysis-options-panel .analysis-option-group .checkbox.disabled label,
+.hierarchical-options.analysis-options-panel .analysis-option-group .checkbox.is-disabled label,
+.regression-options.analysis-options-panel .analysis-option-group .checkbox.disabled label,
+.regression-options.analysis-options-panel .analysis-option-group .checkbox.is-disabled label {
+  color: #778899;
 }

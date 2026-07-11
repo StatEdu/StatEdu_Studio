@@ -188,22 +188,22 @@ app_brand_title <- function(version) {
 
 app_stylesheet_link <- function(version) {
   tagList(
-    tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-three-block-layout-20260706a")),
-    tags$link(rel = "stylesheet", type = "text/css", href = paste0("model-canvas/canvas.css?v=", version, "-custom-model-canvas-20260706ab"))
+    tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-indirect-effect-header-20260711a")),
+    tags$link(rel = "stylesheet", type = "text/css", href = paste0("model-canvas/canvas.css?v=", version, "-moderation-drag-20260711a"))
   )
 }
 
 app_script_link <- function(version) {
   tagList(
-    tags$script(src = paste0("easyflow.js?v=", version, "-preferences-language-20260705e")),
-    tags$script(src = paste0("model-canvas/state.js?v=", version, "-custom-model-canvas-20260705an")),
-    tags$script(src = paste0("model-canvas/layout.js?v=", version, "-custom-model-canvas-20260706ag")),
+    tags$script(src = paste0("easyflow.js?v=", version, "-preferences-save-overlay-fix-20260711c")),
+    tags$script(src = paste0("model-canvas/state.js?v=", version, "-custom-model-canvas-20260711ac")),
+    tags$script(src = paste0("model-canvas/layout.js?v=", version, "-single-mediator-layout-20260711a")),
     tags$script(src = paste0("model-canvas/shiny-bridge.js?v=", version, "-custom-model-canvas-20260705an")),
-    tags$script(src = paste0("model-canvas/edges.js?v=", version, "-custom-model-canvas-20260706ac")),
-    tags$script(src = paste0("model-canvas/nodes.js?v=", version, "-custom-model-canvas-20260706aa")),
-    tags$script(src = paste0("model-canvas/dialogs.js?v=", version, "-custom-model-canvas-20260705an")),
-    tags$script(src = paste0("model-canvas/toolbar.js?v=", version, "-custom-model-canvas-20260706aa")),
-    tags$script(src = paste0("model-canvas/canvas.js?v=", version, "-custom-model-canvas-20260706ab"))
+    tags$script(src = paste0("model-canvas/edges.js?v=", version, "-moderation-significance-20260711a")),
+    tags$script(src = paste0("model-canvas/nodes.js?v=", version, "-custom-model-canvas-20260711ac")),
+    tags$script(src = paste0("model-canvas/dialogs.js?v=", version, "-moderation-drag-20260711a")),
+    tags$script(src = paste0("model-canvas/toolbar.js?v=", version, "-custom-model-canvas-20260711ac")),
+    tags$script(src = paste0("model-canvas/canvas.js?v=", version, "-moderation-drag-20260711a"))
   )
 }
 

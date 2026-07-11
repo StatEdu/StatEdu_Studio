@@ -61,10 +61,11 @@
   function renderNodes(instance) {
     var layer = instance.nodeLayer;
     layer.innerHTML = "";
+    var selectedNodeIds = instance.state.selectedNodeIds || [];
     instance.state.nodes.forEach(function(node) {
       var element = document.createElement("div");
       element.className = "custom-model-node custom-model-node-" + node.role;
-      if (node.id === instance.state.selectedNodeId) {
+      if (node.id === instance.state.selectedNodeId || selectedNodeIds.indexOf(node.id) >= 0) {
         element.className += " is-selected";
       }
       element.setAttribute("data-node-id", node.id);
@@ -118,12 +119,23 @@
     window.StatEduModelCanvas.state.pushHistory(instance);
     var startX = event.clientX;
     var startY = event.clientY;
-    var initialX = node.x;
-    var initialY = node.y;
+    var selectedIds = (instance.state.selectedNodeIds || []).indexOf(node.id) >= 0 ?
+      (instance.state.selectedNodeIds || []).slice() :
+      [node.id];
+    var draggedNodes = instance.state.nodes.filter(function(item) {
+      return selectedIds.indexOf(item.id) >= 0;
+    });
+    var initialPositions = draggedNodes.map(function(item) {
+      return {node: item, x: Number(item.x || 0), y: Number(item.y || 0)};
+    });
 
     function move(moveEvent) {
-      node.x = initialX + (moveEvent.clientX - startX) / instance.state.canvas.zoom;
-      node.y = initialY + (moveEvent.clientY - startY) / instance.state.canvas.zoom;
+      var dx = (moveEvent.clientX - startX) / instance.state.canvas.zoom;
+      var dy = (moveEvent.clientY - startY) / instance.state.canvas.zoom;
+      initialPositions.forEach(function(item) {
+        item.node.x = item.x + dx;
+        item.node.y = item.y + dy;
+      });
       renderNodes(instance);
       window.StatEduModelCanvas.edges.render(instance);
     }
@@ -131,7 +143,7 @@
     function up() {
       document.removeEventListener("pointermove", move, true);
       document.removeEventListener("pointerup", up, true);
-      if (instance.state.autoAlign !== false) {
+      if (instance.state.autoAlign !== false && initialPositions.length === 1) {
         window.StatEduModelCanvas.layout.roleAutoAlignPosition(node, instance.state.nodes, window.StatEduModelCanvas.layout.AUTO_ALIGN_THRESHOLD, node.id);
         renderNodes(instance);
         window.StatEduModelCanvas.edges.render(instance);
@@ -171,6 +183,7 @@
     hideProperties(instance);
     instance.state.selectedNodeId = node.id;
     instance.state.selectedEdgeId = null;
+    instance.state.selectedModerationId = null;
     window.StatEduModelCanvas.edges.render(instance);
     renderNodes(instance);
 
@@ -244,7 +257,7 @@
         node.x = dependentPosition.x;
         node.y = dependentPosition.y;
       }
-      window.StatEduModelCanvas.layout.alignDependentToMediators(instance.state.nodes);
+      window.StatEduModelCanvas.layout.reflowRoleLayout(instance.state.nodes, instance.state.style);
       var fontSize = Number(panel.querySelector(".custom-model-property-font-size").value || instance.state.style.fontSize);
       node.fontSize = Math.max(8, Math.min(32, fontSize));
       node.customFontSize = node.fontSize !== Number(instance.state.style.fontSize || 13);
@@ -262,6 +275,7 @@
     hideProperties(instance);
     instance.state.selectedNodeId = null;
     instance.state.selectedEdgeId = edge.id;
+    instance.state.selectedModerationId = null;
     renderNodes(instance);
     window.StatEduModelCanvas.edges.render(instance);
     window.StatEduModelCanvas.toolbar.updateButtons(instance);

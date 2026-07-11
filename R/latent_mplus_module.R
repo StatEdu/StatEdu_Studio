@@ -803,6 +803,8 @@ register_latent_mplus_server <- function(input,
                                          app_version,
                                          current_data_file,
                                          variable_info_table,
+                                         restored_data_file = NULL,
+                                         restored_variable_info = NULL,
                                          active_data_file,
                                          reset_on_dataset_load,
                                          available_variable_names) {
@@ -823,6 +825,8 @@ register_latent_mplus_server <- function(input,
   env$app_version <- app_version
   env$current_data_file <- current_data_file
   env$variable_info_table <- variable_info_table
+  env$restored_data_file <- restored_data_file
+  env$restored_variable_info <- restored_variable_info
   env$active_data_file <- active_data_file
   env$reset_on_dataset_load <- reset_on_dataset_load
   env$available_variable_names <- available_variable_names

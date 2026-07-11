@@ -102,26 +102,22 @@ settings_state_measurements <- function(state) {
 }
 
 settings_external_data_path <- function(settings, settings_path = NULL) {
+  file_name <- basename(settings_scalar(settings$data_file %||% settings$embedded_data_file$name))
+  if (!is.null(settings_path) && nzchar(settings_path) &&
+      nzchar(file_name) && !identical(file_name, ".") &&
+      supported_data_file_extension(file_name)) {
+    candidate <- file.path(dirname(settings_path), file_name)
+    if (valid_data_file_path(candidate)) {
+      return(normalizePath(candidate, winslash = "/", mustWork = TRUE))
+    }
+  }
+
   absolute_path <- settings_scalar(settings$data_file_path %||% settings$data_file_absolute_path %||% "")
   if (nzchar(absolute_path) && supported_data_file_extension(absolute_path) && valid_data_file_path(absolute_path)) {
     return(normalizePath(absolute_path, winslash = "/", mustWork = TRUE))
   }
 
-  if (is.null(settings_path) || !nzchar(settings_path)) {
-    return("")
-  }
-
-  file_name <- basename(settings_scalar(settings$data_file %||% settings$embedded_data_file$name))
-  if (!nzchar(file_name) || identical(file_name, ".") || !supported_data_file_extension(file_name)) {
-    return("")
-  }
-
-  candidate <- file.path(dirname(settings_path), file_name)
-  if (!valid_data_file_path(candidate)) {
-    return("")
-  }
-
-  normalizePath(candidate, winslash = "/", mustWork = TRUE)
+  ""
 }
 
 settings_embedded_data_file <- function(settings) {
@@ -455,7 +451,9 @@ build_settings_object <- function(
   complex_sample_design = NULL,
   selected_variables,
   bootstrap_resamples,
-  seed
+  seed,
+  residual_diagnostics = TRUE,
+  auto_method = TRUE
 ) {
   variable_names <- if (is.null(variable_info)) character(0) else as.character(variable_info$name)
   calculated_variables <- as.data.frame(calculated_variables %||% data.frame(check.names = FALSE), stringsAsFactors = FALSE, check.names = FALSE)
@@ -491,8 +489,10 @@ build_settings_object <- function(
     calculated_variables = I(if (ncol(calculated_variables) == 0) list() else calculated_variables),
     complex_sample_design = complex_sample_design %||% list(),
     selected_variables = I(as.character(selected_variables %||% character(0))),
-    bootstrap_resamples = as.integer(bootstrap_resamples %||% 1000),
-    seed = seed %||% default_seed()
+    bootstrap_resamples = as.integer(bootstrap_resamples %||% 5000),
+    seed = seed %||% default_seed(),
+    residual_diagnostics = isTRUE(residual_diagnostics),
+    auto_method = isTRUE(auto_method)
   )
 }
 
@@ -525,8 +525,10 @@ prepare_current_settings_object <- function(
   dependent_order = character(0),
   predictor_order = character(0),
   selected_variables = character(0),
-  bootstrap_resamples = 1000,
-  seed = NULL
+  bootstrap_resamples = 5000,
+  seed = NULL,
+  residual_diagnostics = TRUE,
+  auto_method = TRUE
 ) {
   payload <- prepare_settings_payload_data(
     variable_info = variable_info,
@@ -568,7 +570,9 @@ prepare_current_settings_object <- function(
       complex_sample_design = complex_sample_design,
       selected_variables = selected_variables,
       bootstrap_resamples = bootstrap_resamples,
-      seed = seed
+      seed = seed,
+      residual_diagnostics = residual_diagnostics,
+      auto_method = auto_method
     ),
     payload = payload
   )
@@ -674,8 +678,10 @@ create_current_settings_fn <- function(
       dependent_order = sync_dependent_order_fn(update_input = FALSE),
       predictor_order = sync_predictor_order_fn(update_input = FALSE),
       selected_variables = selected_names_fn(),
-      bootstrap_resamples = input$boot_r %||% 1000,
-      seed = input$seed %||% default_seed()
+      bootstrap_resamples = input$boot_r %||% 5000,
+      seed = input$seed %||% default_seed(),
+      residual_diagnostics = input$residual_diagnostics %||% TRUE,
+      auto_method = isTRUE(input$residual_diagnostics %||% TRUE) && isTRUE(input$auto_method %||% TRUE)
     )
     measurement_overrides(prepared$payload$measurement_overrides)
     var_label_overrides(prepared$payload$var_label_overrides)

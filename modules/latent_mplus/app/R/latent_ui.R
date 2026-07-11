@@ -247,7 +247,19 @@ latent_data_block <- function(module_id, spec, language = latent_current_languag
       class = "workspace-panel latent-control-panel",
       h3(latent_text("Data", latent_utf8("eb8db0ec9db4ed84b0"), language)),
       textInput(paste0(module_id, "_dataset_id"), latent_text("Dataset ID", latent_utf8("eb8db0ec9db4ed84b0ec858b204944"), language), value = ""),
-      textInput(paste0(module_id, "_project_root"), latent_text("Latent project root", latent_utf8("ec9ea0ec9eacebb684ec849d20ed9484eba19ceca09ded8ab820ed8fb4eb8d94"), language), value = latent_default_project_root()),
+      tags$div(
+        style = "display:none;",
+        textInput(paste0(module_id, "_project_root"), latent_text("Pipeline folder", latent_utf8("ed8c8cec9db4ed9484eb9dbcec9db820ed8fb4eb8d94"), language), value = latent_default_project_root())
+      ),
+      div(
+        class = "form-group",
+        tags$label(latent_text("Project/output folder", latent_utf8("ed9484eba19ceca09ded8ab82fecb69ceba0a520ed8fb4eb8d94"), language)),
+        tags$pre(
+          class = "latent-output-folder-display",
+          style = "white-space: pre-wrap; word-break: break-all; margin: 0;",
+          textOutput(paste0(module_id, "_output_root_display"), inline = TRUE)
+        )
+      ),
       div(class = "latent-panel-note", textOutput(paste0(module_id, "_dataset_id_message"), inline = TRUE)),
       div(
         class = "latent-button-row latent-data-action-grid",

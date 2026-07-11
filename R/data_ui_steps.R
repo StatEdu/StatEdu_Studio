@@ -309,7 +309,8 @@ data_steps_panel <- function(
       ),
       div(
         class = "bulk-measurement-action",
-        actionButton("apply_variable_selection", statedu_t("data.apply_variable_selection", language), class = "btn btn-primary", onmousedown = "if(window.easyflowFlushVariableTableState){window.easyflowFlushVariableTableState();}", onclick = "if(window.easyflowApplyVariableSelection){return window.easyflowApplyVariableSelection();}")
+        actionButton("apply_variable_selection", statedu_t("data.apply_variable_selection", language), class = "btn btn-primary", onmousedown = "if(window.easyflowFlushVariableTableState){window.easyflowFlushVariableTableState();}", onclick = "if(window.easyflowApplyVariableSelection){return window.easyflowApplyVariableSelection();}"),
+        actionButton("apply_all_variable_selection", statedu_t("data.apply_all_variable_selection", language), class = "btn btn-default", onmousedown = "if(window.easyflowFlushVariableTableState){window.easyflowFlushVariableTableState();}", onclick = "if(window.easyflowApplyAllVariableSelection){return window.easyflowApplyAllVariableSelection();}")
       )
     )
   }

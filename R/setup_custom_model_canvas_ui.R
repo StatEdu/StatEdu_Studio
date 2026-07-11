@@ -659,6 +659,56 @@ custom_model_canvas_analysis_options <- function(input = NULL, language = stated
         selectize = FALSE
       )
     ),
+    analysis_option_group(
+      "Residual diagnostics",
+      list(
+        list(
+          id = "custom_mm_residual_diagnostics",
+          label = "Residual diagnostics",
+          value = isTRUE(if (!is.null(input)) isolate(input$custom_mm_residual_diagnostics %||% TRUE) else TRUE)
+        ),
+        list(
+          id = "custom_mm_auto_method",
+          label = "Automatic method selection",
+          value = isTRUE(if (!is.null(input)) isolate(input$custom_mm_auto_method %||% TRUE) else TRUE) &&
+            isTRUE(if (!is.null(input)) isolate(input$custom_mm_residual_diagnostics %||% TRUE) else TRUE),
+          disabled = !isTRUE(if (!is.null(input)) isolate(input$custom_mm_residual_diagnostics %||% TRUE) else TRUE)
+        )
+      ),
+      language = language
+    ),
+    analysis_option_group(
+      "Effect size",
+      list(
+        list(
+          id = "custom_mm_effect_size_y",
+          label = "Y model",
+          value = isTRUE(if (!is.null(input)) isolate(input$custom_mm_effect_size_y %||% TRUE) else TRUE)
+        ),
+        list(
+          id = "custom_mm_effect_size_m",
+          label = "M model",
+          value = isTRUE(if (!is.null(input)) isolate(input$custom_mm_effect_size_m %||% FALSE) else FALSE)
+        )
+      ),
+      language = language
+    ),
+    analysis_option_group(
+      "Covariate control",
+      list(
+        list(
+          id = "custom_mm_covariate_control_y",
+          label = mediation_moderation_text(language, "Dependent variable", "\uc885\uc18d\ubcc0\uc218"),
+          value = isTRUE(if (!is.null(input)) isolate(input$custom_mm_covariate_control_y %||% TRUE) else TRUE)
+        ),
+        list(
+          id = "custom_mm_covariate_control_m",
+          label = mediation_moderation_text(language, "Mediator variable", "\ub9e4\uac1c\ubcc0\uc218"),
+          value = isTRUE(if (!is.null(input)) isolate(input$custom_mm_covariate_control_m %||% TRUE) else TRUE)
+        )
+      ),
+      language = language
+    ),
     div(
       class = "analysis-option-group",
       div(class = "analysis-option-title", analysis_ui_text("Bootstrap", language)),
@@ -808,6 +858,18 @@ custom_model_canvas_order_nodes <- function(nodes, primary = "y") {
   nodes[order_index]
 }
 
+custom_model_canvas_order_variables <- function(values, selected_names = character(0)) {
+  values <- as.character(values %||% character(0))
+  values <- values[nzchar(values)]
+  if (length(values) == 0L) {
+    return(values)
+  }
+  selected_names <- as.character(selected_names %||% character(0))
+  rank <- match(values, selected_names)
+  rank[is.na(rank)] <- length(selected_names) + seq_len(sum(is.na(rank)))
+  values[order(rank, seq_along(values))]
+}
+
 custom_model_canvas_snapshot_spec <- function(snapshot, selected_names, language = statedu_initial_language()) {
   selected_names <- as.character(selected_names %||% character(0))
   nodes <- custom_model_canvas_records(snapshot$nodes)
@@ -815,6 +877,7 @@ custom_model_canvas_snapshot_spec <- function(snapshot, selected_names, language
   moderations <- custom_model_canvas_records(snapshot$moderations)
   covariates <- unique(as.character(snapshot$covariates %||% character(0)))
   covariates <- covariates[nzchar(covariates)]
+  covariates <- custom_model_canvas_order_variables(covariates, selected_names)
 
   node_id <- vapply(nodes, custom_model_canvas_record_value, character(1), key = "id")
   names(nodes) <- node_id
@@ -845,6 +908,33 @@ custom_model_canvas_snapshot_spec <- function(snapshot, selected_names, language
     }
     NA_character_
   }
+  directed_x_to_y <- unique(vapply(edges, function(edge) {
+    from <- edge_node(edge, "from")
+    to <- edge_node(edge, "to")
+    if (is.null(from) || is.null(to)) {
+      return(NA_character_)
+    }
+    if (identical(node_role(from), "independent") && identical(node_role(to), "dependent")) {
+      return(custom_model_canvas_node_variable(from))
+    }
+    NA_character_
+  }, character(1)))
+  directed_x_to_y <- directed_x_to_y[!is.na(directed_x_to_y) & nzchar(directed_x_to_y)]
+  directed_x_to_m_pairs <- lapply(edges, function(edge) {
+    from <- edge_node(edge, "from")
+    to <- edge_node(edge, "to")
+    if (is.null(from) || is.null(to)) {
+      return(NULL)
+    }
+    if (identical(node_role(from), "independent") && identical(node_role(to), "mediator")) {
+      return(c(
+        x = custom_model_canvas_node_variable(from),
+        mediator = custom_model_canvas_node_variable(to)
+      ))
+    }
+    NULL
+  })
+  directed_x_to_m_pairs <- Filter(Negate(is.null), directed_x_to_m_pairs)
 
   mediator_nodes <- nodes_by_role("mediator")
   has_mediator_chain <- any(vapply(edges, function(edge) {
@@ -867,6 +957,8 @@ custom_model_canvas_snapshot_spec <- function(snapshot, selected_names, language
     w = vapply(custom_model_canvas_order_nodes(nodes_by_role("moderator"), "y"), custom_model_canvas_node_variable, character(1)),
     covariates = covariates
   )
+  roles$x <- custom_model_canvas_order_variables(roles$x, selected_names)
+  roles$covariates <- custom_model_canvas_order_variables(roles$covariates, selected_names)
   roles <- mediation_moderation_role_values(
     y = roles$y,
     x = roles$x,
@@ -875,6 +967,14 @@ custom_model_canvas_snapshot_spec <- function(snapshot, selected_names, language
     covariates = roles$covariates,
     selected_names = selected_names
   )
+  x_to_m <- stats::setNames(lapply(roles$mediators, function(mediator) character(0)), roles$mediators)
+  for (pair in directed_x_to_m_pairs) {
+    mediator <- as.character(pair[["mediator"]] %||% "")
+    x_value <- as.character(pair[["x"]] %||% "")
+    if (nzchar(mediator) && nzchar(x_value) && mediator %in% names(x_to_m) && x_value %in% roles$x) {
+      x_to_m[[mediator]] <- unique(c(x_to_m[[mediator]], x_value))
+    }
+  }
 
   edge_by_id <- stats::setNames(edges, vapply(edges, custom_model_canvas_record_value, character(1), key = "id"))
   moderated_paths <- unique(vapply(moderations, function(moderation) {
@@ -889,10 +989,36 @@ custom_model_canvas_snapshot_spec <- function(snapshot, selected_names, language
     edge_moderated_path(target_edge)
   }, character(1)))
   moderated_paths <- intersect(moderated_paths[!is.na(moderated_paths)], c("xm", "my", "xy"))
+  moderated_x_to_m <- stats::setNames(lapply(roles$mediators, function(mediator) character(0)), roles$mediators)
+  moderated_m_to_y <- character(0)
+  for (moderation in moderations) {
+    source <- nodes[[custom_model_canvas_record_value(moderation, "from")]] %||% NULL
+    if (is.null(source) || !identical(node_role(source), "moderator")) next
+    target_edge <- edge_by_id[[custom_model_canvas_record_value(moderation, "toEdge")]] %||% NULL
+    if (is.null(target_edge)) next
+    moderated_path <- edge_moderated_path(target_edge)
+    from <- edge_node(target_edge, "from")
+    to <- edge_node(target_edge, "to")
+    if (is.null(from) || is.null(to)) next
+    if (identical(moderated_path, "xm")) {
+      x_value <- custom_model_canvas_node_variable(from)
+      mediator <- custom_model_canvas_node_variable(to)
+      if (nzchar(x_value) && nzchar(mediator) && mediator %in% names(moderated_x_to_m) && x_value %in% roles$x) {
+        moderated_x_to_m[[mediator]] <- unique(c(moderated_x_to_m[[mediator]], x_value))
+      }
+    } else if (identical(moderated_path, "my")) {
+      mediator <- custom_model_canvas_node_variable(from)
+      if (nzchar(mediator) && mediator %in% roles$mediators) {
+        moderated_m_to_y <- unique(c(moderated_m_to_y, mediator))
+      }
+    }
+  }
 
   structure <- mediation_moderation_structure_from_mediators(roles$mediators, mediator_arrangement)
   if (identical(structure, "serial")) {
     moderated_paths <- character(0)
+    moderated_x_to_m <- stats::setNames(lapply(roles$mediators, function(mediator) character(0)), roles$mediators)
+    moderated_m_to_y <- character(0)
   }
   model <- mediation_moderation_infer_model(structure, moderated_paths)
   shiny::validate(shiny::need(!is.na(model) && model %in% mediation_moderation_models(), custom_model_canvas_text(
@@ -904,6 +1030,10 @@ custom_model_canvas_snapshot_spec <- function(snapshot, selected_names, language
     roles = roles,
     mediator_arrangement = mediator_arrangement,
     moderated_paths = mediation_moderation_model_moderated_paths(model),
+    direct_x = intersect(directed_x_to_y, roles$x),
+    x_to_m = x_to_m,
+    moderated_x_to_m = moderated_x_to_m,
+    moderated_m_to_y = moderated_m_to_y,
     model = model
   )
 }
@@ -972,11 +1102,16 @@ register_custom_model_canvas_handlers <- function(
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
-  lapply(c("custom_mm_analysis_method", "custom_mm_boot_r", "custom_mm_seed", "custom_mm_ci_method"), function(input_id) {
+  lapply(c("custom_mm_analysis_method", "custom_mm_residual_diagnostics", "custom_mm_auto_method", "custom_mm_effect_size_y", "custom_mm_effect_size_m", "custom_mm_covariate_control_y", "custom_mm_covariate_control_m", "custom_mm_boot_r", "custom_mm_seed", "custom_mm_ci_method"), function(input_id) {
     observeEvent(input[[input_id]], {
       mark_settings_dirty()
     }, ignoreInit = TRUE)
   })
+  observeEvent(input$custom_mm_residual_diagnostics, {
+    if (!isTRUE(input$custom_mm_residual_diagnostics)) {
+      updateCheckboxInput(session, "custom_mm_auto_method", value = FALSE)
+    }
+  }, ignoreInit = TRUE)
 
   register_analysis_data_viewer_handlers(
     input = input,
@@ -1042,6 +1177,20 @@ register_custom_model_canvas_handlers <- function(
             johnson_neyman = TRUE,
             analysis_method = input$custom_mm_analysis_method %||% "statedu",
             ci_method = input$custom_mm_ci_method %||% "bias_corrected",
+            residual_diagnostics = input$custom_mm_residual_diagnostics %||% TRUE,
+            auto_method = isTRUE(input$custom_mm_residual_diagnostics %||% TRUE) && isTRUE(input$custom_mm_auto_method %||% TRUE),
+            direct_x = spec$direct_x,
+            x_to_m = spec$x_to_m,
+            moderated_x_to_m = spec$moderated_x_to_m,
+            moderated_m_to_y = spec$moderated_m_to_y,
+            effect_size_models = c(
+              if (isTRUE(input$custom_mm_effect_size_y %||% TRUE)) "y" else character(0),
+              if (isTRUE(input$custom_mm_effect_size_m %||% FALSE)) "m" else character(0)
+            ),
+            covariate_control = c(
+              if (isTRUE(input$custom_mm_covariate_control_y %||% TRUE)) "y" else character(0),
+              if (isTRUE(input$custom_mm_covariate_control_m %||% TRUE)) "m" else character(0)
+            ),
             language = language,
             variable_info = variable_table_fn(),
             labels = labels_fn(),

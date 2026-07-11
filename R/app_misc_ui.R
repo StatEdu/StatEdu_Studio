@@ -311,12 +311,6 @@ about_preferences_tab_panel <- function(language = statedu_initial_language()) {
             width = "320px",
             selectize = FALSE
           ),
-          actionButton(
-            "apply_app_language",
-            statedu_t("preferences.language_apply", language),
-            onclick = "return easyflowApplyAppLanguage();",
-            class = "btn btn-primary"
-          ),
           div(statedu_t("preferences.language_detail", language), class = "step-summary-detail")
         ),
         div(
@@ -333,11 +327,6 @@ about_preferences_tab_panel <- function(language = statedu_initial_language()) {
               step = 5,
               post = "%",
               width = "360px"
-            ),
-            actionButton(
-              "apply_result_zoom",
-              statedu_t("preferences.apply_result_zoom", language),
-              class = "btn btn-primary"
             )
           ),
           div(
@@ -408,7 +397,7 @@ about_preferences_tab_panel <- function(language = statedu_initial_language()) {
           actionButton(
             "apply_general_preferences",
             statedu_t("preferences.save_defaults", language),
-            class = "btn btn-primary"
+            class = "btn btn-primary preferences-save-action"
           ),
           div(
             statedu_t("preferences.defaults_detail", language),
@@ -613,7 +602,7 @@ help_tab_panel <- function(version, language = statedu_initial_language()) {
 about_tab_panel <- function(version, language = statedu_initial_language()) {
   navbarMenu(
     statedu_ui_label("about", language),
-    about_preferences_tab_panel(language),
+    lazy_tab_panel(statedu_ui_label("preferences", language), "about_preferences", "lazy_about_preferences"),
     lazy_tab_panel(statedu_ui_label("overview", language), "about_overview", "lazy_about_overview"),
     lazy_tab_panel(statedu_ui_label("user_guide", language), "about_user_guide", "lazy_about_user_guide"),
     lazy_tab_panel(statedu_ui_label("analyses", language), "about_analysis_methods", "lazy_about_analysis_methods"),

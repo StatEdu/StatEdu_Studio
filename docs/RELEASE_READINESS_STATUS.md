@@ -4,7 +4,7 @@ Last reviewed: 2026-07-06
 
 Current version: 1.1.1
 
-Current development source version: 1.1.1-dev
+Current development source version: 1.1.2-dev
 
 ## Current Development Prerelease Snapshot
 

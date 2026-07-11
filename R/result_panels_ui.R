@@ -321,29 +321,31 @@ hierarchical_summary_values <- function(group) {
   values <- lapply(seq_along(group), function(index) {
     result <- group[[index]]
     previous <- if (index > 1) group[[index - 1]] else NULL
+    residual_diagnostics <- isTRUE(result$residual_diagnostics)
     list(
       f = sprintf("%s(%s)", format_decimal3(result$f_statistic), format_p(result$f_p)),
       r2 = sprintf("%s (%s)", format_decimal3(result$r_squared), format_decimal3(result$adjusted_r_squared)),
       delta = hierarchical_delta_line(previous, result),
-      dw = sprintf(
+      dw = if (residual_diagnostics) sprintf(
         "%s (%s~%s)",
         format_decimal3(result$dw_d),
         format_decimal3(result$dw_crit$dU),
         format_decimal3(4 - result$dw_crit$dU)
-      ),
-      normality = sprintf(
+      ) else format_decimal3(result$dw_d),
+      normality = if (residual_diagnostics) sprintf(
         "%s (%s)",
         format_decimal3(result$normality_statistic),
         format_p(result$normality_p)
-      ),
-      homogeneity = sprintf(
+      ) else "",
+      homogeneity = if (residual_diagnostics) sprintf(
         "%s (%s)",
         format_decimal3(result$homogeneity_statistic),
         format_p(result$homogeneity_p)
-      )
+      ) else ""
     )
   })
   attr(values, "delta_label") <- hierarchical_delta_footer_label(group)
+  attr(values, "any_residual_diagnostics") <- any(vapply(group, function(result) isTRUE(result$residual_diagnostics), logical(1)))
   values
 }
 
@@ -357,9 +359,9 @@ hierarchical_coefficient_note_line <- function(result, show_vif = FALSE, show_sr
     if (isTRUE(show_sr2)) "sr\u00B2 = squared semi-partial correlation, unique R\u00B2 contribution for each coefficient;" else NULL,
     if (isTRUE(show_f2)) "f\u00B2 = sr\u00B2 / (1 - model R\u00B2);" else NULL,
     "\u0394R\u00B2(F change p) is shown when OLS assumptions are met; \u0394R\u00B2(Robust Wald F p) is shown for HC3 models; \u0394R\u00B2[95% CI] is shown for bootstrap models;",
-    "d(d\u1D64~4-d\u1D64) = Durbin-Watson statistic (upper critical value~4-upper critical value);",
-    "z(p) = Lilliefors corrected Kolmogorov-Smirnov residual normality test statistic (p-value);",
-    sprintf("%s = Breusch-Pagan residual homoscedasticity test statistic (p-value)", stat_chisq_label(with_p = TRUE))
+    if (isTRUE(result$residual_diagnostics)) "d(d\u1D64~4-d\u1D64) = Durbin-Watson statistic (upper critical value~4-upper critical value);" else "d = Durbin-Watson statistic;",
+    if (isTRUE(result$residual_diagnostics)) "z(p) = Lilliefors corrected Kolmogorov-Smirnov residual normality test statistic (p-value);" else NULL,
+    if (isTRUE(result$residual_diagnostics)) sprintf("%s = Breusch-Pagan residual homoscedasticity test statistic (p-value)", stat_chisq_label(with_p = TRUE)) else NULL
   )
 }
 
@@ -564,7 +566,7 @@ hierarchical_coefficient_html_table <- function(
     return(NULL)
   }
   model_columns <- lapply(model_tables, function(table) setdiff(names(table), "Term"))
-  terms <- unique(unlist(lapply(rev(model_tables), function(table) as.character(table$Term)), use.names = FALSE))
+  terms <- unique(unlist(lapply(model_tables, function(table) as.character(table$Term)), use.names = FALSE))
 
   header_groups <- list(tags$th(
     rowspan = 2,
@@ -638,11 +640,17 @@ hierarchical_coefficient_html_table <- function(
       hierarchical_footer_row(attr(summary_values, "delta_label", exact = TRUE) %||% "\u0394R\u00B2(F change p)", lapply(summary_values, `[[`, "delta"), model_columns)
     ))
   }
-  footer_rows <- c(footer_rows, list(
-    hierarchical_footer_row("d(d\u1D64~4-d\u1D64)", lapply(summary_values, `[[`, "dw"), model_columns),
-    hierarchical_footer_row("z(p)", lapply(summary_values, `[[`, "normality"), model_columns),
-    hierarchical_footer_row(stat_chisq_label(with_p = TRUE), lapply(summary_values, `[[`, "homogeneity"), model_columns)
-  ))
+  if (isTRUE(attr(summary_values, "any_residual_diagnostics", exact = TRUE))) {
+    footer_rows <- c(footer_rows, list(
+      hierarchical_footer_row("d(d\u1D64~4-d\u1D64)", lapply(summary_values, `[[`, "dw"), model_columns),
+      hierarchical_footer_row("z(p)", lapply(summary_values, `[[`, "normality"), model_columns),
+      hierarchical_footer_row(stat_chisq_label(with_p = TRUE), lapply(summary_values, `[[`, "homogeneity"), model_columns)
+    ))
+  } else {
+    footer_rows <- c(footer_rows, list(
+      hierarchical_footer_row("d", lapply(summary_values, `[[`, "dw"), model_columns)
+    ))
+  }
   if (length(extra_footer_rows) > 0L) {
     footer_rows <- c(footer_rows, extra_footer_rows)
   }

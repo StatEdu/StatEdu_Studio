@@ -236,7 +236,7 @@ sample_size_label <- function(language = statedu_initial_language(), label) {
     "One-way ANOVA" = sample_size_text(language, "One-way ANOVA", h("ec9dbcec9b9020ebb684ec82b0ebb684ec849d")),
     "Two-way ANOVA" = sample_size_text(language, "Two-way ANOVA", h("ec9db4ec9b90ebb684ec82b0ebb684ec849d")),
     "One-group repeated-measures ANOVA" = sample_size_text(language, "One-group repeated-measures ANOVA", h("eb8ba8ec9dbc20eca791eb8ba820ebb098ebb3b5ecb8a1eca09520ebb684ec82b0ebb684ec849d")),
-    "Mixed repeated-measures ANOVA" = sample_size_text(language, "Mixed repeated-measures ANOVA", h("ed98bced95a920ebb098ebb3b5ecb8a1eca09520ebb684ec82b0ebb684ec849d")),
+    "Mixed-design repeated-measures ANOVA" = sample_size_text(language, "Mixed-design repeated-measures ANOVA", h("ed98bced95a9ec84a4eab38420ebb098ebb3b5ecb8a1eca09520ebb684ec82b0ebb684ec849d")),
     "Main effect A" = sample_size_text(language, "Main effect A", h("eca3bced9aa8eab3bc2041")),
     "Main effect B" = sample_size_text(language, "Main effect B", h("eca3bced9aa8eab3bc2042")),
     "Interaction A x B" = sample_size_text(language, "Interaction A x B", h("ec8381ed98b8ec9e91ec9aa9204120782042")),
@@ -390,8 +390,42 @@ sample_size_label <- function(language = statedu_initial_language(), label) {
   statedu_t(paste0("sample_size.label.", sample_size_label_key(label)), language, fallback)
 }
 
+sample_size_effect_size_tooltip <- function(language = statedu_initial_language(), effect_type = "d") {
+  language <- normalize_app_language(language)
+  refs <- list(
+    d = c(small = "0.2", middle = "0.5", large = "0.8"),
+    dz = c(small = "0.2", middle = "0.5", large = "0.8"),
+    f = c(small = "0.1", middle = "0.25", large = "0.4"),
+    w = c(small = "0.1", middle = "0.3", large = "0.5"),
+    r = c(small = "0.1", middle = "0.3", large = "0.5"),
+    f2 = c(small = "0.02", middle = "0.15", large = "0.35"),
+    beta = c(small = "0.1", middle = "0.3", large = "0.5"),
+    loading = c(small = "0.3", middle = "0.5", large = "0.7")
+  )
+  values <- refs[[effect_type]] %||% refs$d
+  sprintf(
+    "small : %s\nmiddle : %s\nlarge : %s",
+    values[["small"]],
+    values[["middle"]],
+    values[["large"]]
+  )
+}
+
+sample_size_effect_size_label <- function(language = statedu_initial_language(), label, effect_type = "d") {
+  help <- sample_size_effect_size_tooltip(language, effect_type)
+  tags$span(
+    class = "easyflow-option-help sample-size-effect-size-help",
+    tabindex = "0",
+    title = help,
+    `data-tooltip` = help,
+    sample_size_label(language, label)
+  )
+}
+
 sample_size_choice_labels <- function(language, labels) {
-  stats::setNames(labels, vapply(labels, function(label) sample_size_label(language, label), character(1), USE.NAMES = FALSE))
+  label_names <- names(labels)
+  if (is.null(label_names)) label_names <- as.character(labels)
+  stats::setNames(unname(labels), vapply(label_names, function(label) sample_size_label(language, label), character(1), USE.NAMES = FALSE))
 }
 
 sample_size_step_heading <- function(number, key, language = statedu_initial_language()) {
@@ -1678,7 +1712,7 @@ effect_size_gee_inputs_ui <- function(input, language = statedu_initial_language
         effect_size_gee_sd_inputs_ui(input, language)
       )
     } else if (identical(design, "continuous_d")) {
-      textInput("effect_size_gee_d", lbl("Effect size d"), value = "0.50")
+      textInput("effect_size_gee_d", sample_size_effect_size_label(language, "Effect size d", "d"), value = "0.50")
     } else {
       tagList(
         textInput("effect_size_gee_p1", lbl("Proportion 1"), value = "0.50"),
@@ -1770,7 +1804,7 @@ effect_size_lmm_inputs_ui <- function(input, language = statedu_initial_language
     ),
     if (identical(design, "simple_fixed")) {
       tagList(
-        textInput("effect_size_lmm_effect", lbl("Standardized fixed effect"), value = "0.30"),
+        textInput("effect_size_lmm_effect", sample_size_effect_size_label(language, "Standardized fixed effect", "beta"), value = "0.30"),
         textInput("effect_size_lmm_time_points", lbl("Time points"), value = "3"),
         textInput("effect_size_lmm_icc", lbl("ICC / random intercept proportion"), value = "0.30")
       )
@@ -1865,7 +1899,7 @@ effect_size_cluster_inputs_ui <- function(input, language = statedu_initial_lang
         textInput("effect_size_cluster_p2", lbl("Proportion 2"), value = "0.65")
       )
     } else {
-      textInput("effect_size_cluster_effect", lbl("Effect size d"), value = if (identical(design, "stepped_wedge")) "0.40" else "0.50")
+      textInput("effect_size_cluster_effect", sample_size_effect_size_label(language, "Effect size d", "d"), value = if (identical(design, "stepped_wedge")) "0.40" else "0.50")
     },
     textInput("effect_size_cluster_size", lbl(if (identical(design, "stepped_wedge")) "Cluster size per period" else "Cluster size"), value = "20"),
       textInput("effect_size_cluster_icc", lbl("ICC"), value = "0.05"),
@@ -1888,7 +1922,7 @@ effect_size_precision_inputs_ui <- function(input, language = statedu_initial_la
     } else if (identical(parameter, "proportion")) {
       textInput("effect_size_precision_proportion", lbl("Expected proportion"), value = "0.50")
     } else {
-      textInput("effect_size_precision_r", lbl("Expected r"), value = "0.30")
+      textInput("effect_size_precision_r", sample_size_effect_size_label(language, "Expected r", "r"), value = "0.30")
     }
   )
 }
@@ -1914,7 +1948,7 @@ effect_size_sem_inputs_ui <- function(input, language = statedu_initial_language
       )),
       selected = sample_size_choice(input$effect_size_sem_parameter_type, "path")
     ),
-    textInput("effect_size_sem_parameter", lbl("Expected standardized parameter"), value = "0.30")
+    textInput("effect_size_sem_parameter", sample_size_effect_size_label(language, "Expected standardized parameter", "beta"), value = "0.30")
   )
 }
 
@@ -2069,12 +2103,13 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
   target <- input[[paste0("sample_size_", method, "_target")]] %||% "sample_size"
   effectsize_design <- input$sample_size_effectsize_design %||% "independent_means"
   ttest_design <- input$sample_size_ttest_design %||% "two_sample"
-  ttest_effect_label <- lbl(switch(
+  ttest_effect_label_key <- switch(
     ttest_design,
     one_sample = "Effect size d (mean difference / SD)",
     paired = "Effect size dz (paired difference / SD)",
     "Effect size d (Cohen's d)"
-  ))
+  )
+  ttest_effect_label <- sample_size_effect_size_label(language, ttest_effect_label_key, if (identical(ttest_design, "paired")) "dz" else "d")
   ttest_n_label <- switch(
     ttest_design,
     one_sample = "Participants",
@@ -2082,14 +2117,19 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
     "Sample size per group"
   )
   nonparametric_design <- input$sample_size_nonparametric_design %||% "two_independent"
-  nonparametric_effect_label <- lbl(switch(
+  nonparametric_effect_label_key <- switch(
     nonparametric_design,
     paired = "Effect size dz (paired difference / SD)",
     one_sample = "Effect size d (median shift / SD)",
     kruskal_wallis = "Effect size f",
     friedman = "Effect size W (Kendall's W)",
     "Effect size d (approx.)"
-  ))
+  )
+  nonparametric_effect_label <- sample_size_effect_size_label(
+    language,
+    nonparametric_effect_label_key,
+    switch(nonparametric_design, paired = "dz", kruskal_wallis = "f", friedman = "w", "d")
+  )
   nonparametric_n_label <- switch(
     nonparametric_design,
     paired = "Pairs",
@@ -2100,9 +2140,9 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
   )
   proportion_design <- input$sample_size_proportion_design %||% "two_proportion"
   anova_design <- input$sample_size_anova_design %||% "one_way"
-  anova_effect_label <- lbl("Effect size f")
+  anova_effect_label <- sample_size_effect_size_label(language, "Effect size f", "f")
   ancova_design <- input$sample_size_ancova_design %||% "ancova"
-  ancova_effect_label <- if (identical(ancova_design, "manova")) lbl("Pillai's trace V") else lbl("Effect size f")
+  ancova_effect_label <- if (identical(ancova_design, "manova")) lbl("Pillai's trace V") else sample_size_effect_size_label(language, "Effect size f", "f")
   ancova_n_label <- "Total sample size"
   regression_design <- input$sample_size_regression_design %||% "multiple"
   gee_outcome <- input$sample_size_gee_outcome %||% "continuous"
@@ -2199,12 +2239,12 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
       common_inputs("proportion", target, show_ratio = identical(proportion_design, "two_proportion"))
     ),
     chisquare = tagList(
-      textInput("sample_size_chisquare_effect", lbl("Effect size w"), value = "0.30"),
+      textInput("sample_size_chisquare_effect", sample_size_effect_size_label(language, "Effect size w", "w"), value = "0.30"),
       textInput("sample_size_chisquare_df", lbl("Degrees of freedom"), value = "1"),
       common_inputs("chisquare", target, show_tail = FALSE)
     ),
     correlation = tagList(
-      textInput("sample_size_correlation_r", lbl("Expected r"), value = "0.30"),
+      textInput("sample_size_correlation_r", sample_size_effect_size_label(language, "Expected r", "r"), value = "0.30"),
       common_inputs("correlation", target)
     ),
     anova = tagList(
@@ -2215,7 +2255,7 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
           "One-way ANOVA" = "one_way",
           "Two-way ANOVA" = "two_way",
           "One-group repeated-measures ANOVA" = "repeated_one_group",
-          "Mixed repeated-measures ANOVA" = "mixed_repeated"
+          "Mixed-design repeated-measures ANOVA" = "mixed_repeated"
         )),
         selected = anova_design
       ),
@@ -2293,12 +2333,12 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
       ),
       if (identical(regression_design, "multiple")) {
         tagList(
-          textInput("sample_size_regression_effect", lbl("Effect size f2"), value = "0.15"),
+          textInput("sample_size_regression_effect", sample_size_effect_size_label(language, "Effect size f2", "f2"), value = "0.15"),
           textInput("sample_size_regression_predictors", lbl("Number of predictors"), value = "3")
         )
       } else if (identical(regression_design, "hierarchical")) {
         tagList(
-          textInput("sample_size_regression_effect", lbl("Effect size f2 for R2 increase"), value = "0.15"),
+          textInput("sample_size_regression_effect", sample_size_effect_size_label(language, "Effect size f2 for R2 increase", "f2"), value = "0.15"),
           textInput("sample_size_regression_tested", lbl("Tested predictors"), value = "1"),
           textInput("sample_size_regression_total_predictors", lbl("Total predictors in final model"), value = "3")
         )
@@ -2334,13 +2374,13 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
             tagList(
               selectInput(
                 "sample_size_regression_a_effect",
-                lbl("Path a effect size"),
+                sample_size_effect_size_label(language, "Path a effect size", "beta"),
                 choices = sample_size_choice_labels(language, c("Small (.14)" = "small", "Halfway (.26)" = "halfway", "Medium (.39)" = "medium", "Large (.59)" = "large")),
                 selected = input$sample_size_regression_a_effect %||% "medium"
               ),
               selectInput(
                 "sample_size_regression_b_effect",
-                lbl("Path b effect size"),
+                sample_size_effect_size_label(language, "Path b effect size", "beta"),
                 choices = sample_size_choice_labels(language, c("Small (.14)" = "small", "Halfway (.26)" = "halfway", "Medium (.39)" = "medium", "Large (.59)" = "large")),
                 selected = input$sample_size_regression_b_effect %||% "medium"
               ),
@@ -2364,8 +2404,8 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
             )
           } else {
             tagList(
-              textInput("sample_size_regression_a", lbl("Path a beta: predictor -> mediator"), value = "0.30"),
-              textInput("sample_size_regression_b", lbl("Path b beta: mediator -> outcome"), value = "0.30"),
+              textInput("sample_size_regression_a", sample_size_effect_size_label(language, "Path a beta: predictor -> mediator", "beta"), value = "0.30"),
+              textInput("sample_size_regression_b", sample_size_effect_size_label(language, "Path b beta: mediator -> outcome", "beta"), value = "0.30"),
               textInput("sample_size_regression_covariates", lbl("Number of covariates"), value = "0")
             )
           },
@@ -2378,7 +2418,7 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
         )
       } else {
         tagList(
-          textInput("sample_size_regression_effect", lbl("Effect size f2 for interaction R2 increase"), value = "0.15"),
+          textInput("sample_size_regression_effect", sample_size_effect_size_label(language, "Effect size f2 for interaction R2 increase", "f2"), value = "0.15"),
           textInput("sample_size_regression_interactions", lbl("Interaction terms tested"), value = "1"),
           textInput("sample_size_regression_total_predictors", lbl("Total predictors in final model"), value = "4")
         )
@@ -2404,7 +2444,7 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
           textInput("sample_size_gee_p2", lbl("Proportion 2"), value = "0.65")
         )
       } else {
-        textInput("sample_size_gee_effect", lbl("Effect size d"), value = "0.50")
+        textInput("sample_size_gee_effect", sample_size_effect_size_label(language, "Effect size d", "d"), value = "0.50")
       },
       textInput("sample_size_gee_time_points", lbl("Time points"), value = "3"),
       selectInput(
@@ -2457,7 +2497,7 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
         )
       } else {
         tagList(
-        textInput("sample_size_lmm_effect", lbl("Standardized fixed effect"), value = "0.30"),
+        textInput("sample_size_lmm_effect", sample_size_effect_size_label(language, "Standardized fixed effect", "beta"), value = "0.30"),
           textInput("sample_size_lmm_time_points", lbl("Time points"), value = "3"),
           textInput("sample_size_lmm_icc", lbl("ICC / random intercept proportion"), value = "0.30")
         )
@@ -2550,7 +2590,7 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
       } else if (identical(precision_parameter, "proportion")) {
         textInput("sample_size_precision_proportion", lbl("Expected proportion"), value = "0.50")
       } else {
-        textInput("sample_size_precision_r", lbl("Expected r"), value = "0.30")
+        textInput("sample_size_precision_r", sample_size_effect_size_label(language, "Expected r", "r"), value = "0.30")
       },
       if (identical(target, "sample_size")) {
         textInput("sample_size_precision_dropout", lbl("Dropout rate (%)"), value = "0")
@@ -2600,7 +2640,7 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
       ),
       if (identical(cluster_design, "stepped_wedge")) {
         tagList(
-          textInput("sample_size_cluster_effect", lbl("Effect size d"), value = "0.40"),
+          textInput("sample_size_cluster_effect", sample_size_effect_size_label(language, "Effect size d", "d"), value = "0.40"),
           textInput("sample_size_cluster_periods", lbl("Periods"), value = "5"),
           textInput("sample_size_cluster_size", lbl("Cluster size per period"), value = "20"),
           textInput("sample_size_cluster_icc", lbl("ICC"), value = "0.05"),
@@ -2621,7 +2661,7 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
               textInput("sample_size_cluster_p2", lbl("Proportion 2"), value = "0.65")
             )
           } else {
-            textInput("sample_size_cluster_effect", lbl("Effect size d"), value = "0.50")
+            textInput("sample_size_cluster_effect", sample_size_effect_size_label(language, "Effect size d", "d"), value = "0.50")
           },
           textInput("sample_size_cluster_size", lbl("Cluster size"), value = "20"),
             textInput("sample_size_cluster_icc", lbl("ICC"), value = "0.05"),
@@ -2683,7 +2723,7 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
             )),
             selected = input$sample_size_sem_parameter_type %||% "path"
           ),
-          textInput("sample_size_sem_parameter", lbl("Expected standardized parameter"), value = "0.30"),
+          textInput("sample_size_sem_parameter", sample_size_effect_size_label(language, "Expected standardized parameter", "beta"), value = "0.30"),
           selectInput(
             "sample_size_sem_complexity",
             lbl("Model complexity"),
@@ -2698,8 +2738,8 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
           textInput("sample_size_sem_measured_variables", lbl("Measured variables"), value = "12"),
           textInput("sample_size_sem_structural_paths", lbl("Structural paths"), value = "3"),
           textInput("sample_size_sem_free_parameters", lbl("Free parameters"), value = "30"),
-          textInput("sample_size_sem_expected_loading", lbl("Expected standardized loading"), value = "0.50"),
-          textInput("sample_size_sem_expected_path", lbl("Expected standardized path"), value = "0.30"),
+          textInput("sample_size_sem_expected_loading", sample_size_effect_size_label(language, "Expected standardized loading", "loading"), value = "0.50"),
+          textInput("sample_size_sem_expected_path", sample_size_effect_size_label(language, "Expected standardized path", "beta"), value = "0.30"),
           selectInput(
             "sample_size_sem_complexity",
             lbl("Model complexity"),

@@ -137,6 +137,10 @@ analysis_ui_text <- function(text, language = statedu_initial_language()) {
     "number of bootstrap samples" = paste0("Number of bootstrap samples|", h("ebb680ed8ab8ec8aa4ed8ab8eb9ea920ed919cebb3b820ec8898")),
     "seed number" = paste0("Seed number|", h("ec8b9ceb939c20ebb288ed98b8")),
     "collinearity diagnostics" = paste0("Collinearity diagnostics|", h("eab3b5ec84a0ec84b120eca784eb8ba8")),
+    "residual diagnostics" = paste0("Residual diagnostics|", h("ec9e94ecb0a8eca784eb8ba8")),
+    "run residual diagnostics" = paste0("Run residual diagnostics|", h("ec9e94ecb0a820eca784eb8ba820ec8ba4ed9689")),
+    "select method automatically after residual diagnostics" = paste0("Select method automatically after residual diagnostics|", h("ec9e94ecb0a820eca784eb8ba820ed9b8420ebb684ec849deab8b0ebb29520ec9e90eb8f9920ec84a0ed839d")),
+    "automatic method selection" = paste0("Automatic method selection|", h("ebb684ec849deab8b0ebb29520ec9e90eb8f99ec84a0ed839d")),
     "residual normality" = paste0("Residual normality|", h("ec9e94ecb0a820eca095eab79cec84b1")),
     "residual normality test" = paste0("Residual normality test|", h("ec9e94ecb0a820eca095eab79cec84b120eab280eca095")),
     "variance homogeneity" = paste0("Variance homogeneity|", h("ebb684ec82b020eb8f99eca788ec84b1")),
@@ -509,6 +513,13 @@ analysis_option_group <- function(title, options, language = statedu_initial_lan
     div(class = "analysis-option-title", analysis_ui_text(title, language)),
     lapply(options, function(option) {
       control <- checkboxInput(option$id, analysis_ui_label(option$label, language), value = isTRUE(option$value))
+      if (isTRUE(option$disabled)) {
+        control <- htmltools::tagQuery(control)$
+          find("input")$
+          addAttrs(disabled = "disabled")$
+          allTags()
+        control <- tagAppendAttributes(control, class = "is-disabled")
+      }
       tooltip <- option$tooltip %||% ""
       if (nzchar(tooltip)) {
         div(title = tooltip, control)

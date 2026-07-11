@@ -2167,8 +2167,8 @@ sample_size_anova <- function(
       time = (measurements - 1) * epsilon,
       (groups - 1) * (measurements - 1) * epsilon
     )
-    design_label <- "Mixed repeated-measures ANOVA"
-    method_note <- "Approximate mixed repeated-measures ANOVA using Cohen's f, average repeated-measures correlation, epsilon, and noncentral F distribution."
+    design_label <- "Mixed-design repeated-measures ANOVA"
+    method_note <- "Approximate mixed-design repeated-measures ANOVA using Cohen's f, average repeated-measures correlation, epsilon, and noncentral F distribution."
     power_for_total <- function(total_n) {
       if (identical(effect, "group")) {
         df2 <- total_n - groups

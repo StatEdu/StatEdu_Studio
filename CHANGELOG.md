@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.1.2-dev - 2026-07-11
+
+### Changed
+
+- Updated the active development line to `1.1.2-dev`.
+- Refined shared three-block analysis layouts and footer action placement for consistent spacing across analysis pages.
+- Updated longitudinal / panel result presentation toward B5 portrait-oriented, hierarchical-regression-style coefficient output.
+
+### Fixed
+
+- Fixed Latent Mplus project/output folder resolution so generated output is created under the folder that contains the originally loaded data file, even when Shiny receives a temporary upload path.
+- Preserved native file-dialog data paths over stale temporary upload paths in the Latent Mplus data loader.
+- Added original-file lookup by filename while excluding generated result/example folders such as `Mplus_output`, `mplus_tmp`, `output`, `outputs`, and `Mplus_examples`.
+
 ## v1.1.1 - 2026-07-07
 
 ### Fixed
