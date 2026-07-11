@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.1.3-dev - 2026-07-11
+
+### Changed
+
+- Updated the active development line to `1.1.3-dev`.
+- Added multilingual coverage for new latent-analysis project folder labels, data-file placeholders, DAT delimiter choices, and custom mediation/moderation canvas controls.
+
+### Fixed
+
+- Routed remaining direct UI labels through the shared i18n table so language overlays can translate newly added data, regression, mediation, moderation, and latent-analysis options.
+- Added missing custom model canvas Start/End anchor translation keys and restored Japanese overlay coverage for the canvas UI.
+
 ## v1.1.2-dev - 2026-07-11
 
 ### Changed

@@ -111,11 +111,7 @@ data_file_input_control <- function(language = statedu_initial_language(), butto
       "file",
       label = NULL,
       buttonLabel = button_label,
-      placeholder = statedu_text(
-        language,
-        "No file selected",
-        statedu_utf8("ec84a0ed839deb909c20ed8c8cec9dbcec9db420ec9786ec8ab5eb8b88eb8ba42e")
-      ),
+      placeholder = statedu_t("data.no_file_selected", language),
       accept = c(".sav", ".sas7bdat", ".xpt", ".dta", ".xlsx", ".xls", ".csv", ".dat"),
       width = "100%"
     )
@@ -126,9 +122,9 @@ dat_delimiter_choices <- function(language = statedu_initial_language()) {
   stats::setNames(
     c("whitespace", "comma", "tab"),
     c(
-      statedu_text(language, "Whitespace", statedu_utf8("eab3b5ebb0b1")),
-      statedu_text(language, "Comma", statedu_utf8("ecbdb0eba788")),
-      statedu_text(language, "Tab", statedu_utf8("ed839c"))
+      statedu_t("data.delimiter_whitespace", language),
+      statedu_t("data.delimiter_comma", language),
+      statedu_t("data.delimiter_tab", language)
     )
   )
 }
