@@ -202,7 +202,7 @@ assert_contains(wide_long_source, "save_wide_long_result_file(result)", "wide-to
 assert_contains(wide_long_source, 'target_name <- if (isTRUE(save_result$saved)) basename(save_result$path) else "wide_to_long.csv"', "wide-to-long fallback dataset name")
 assert_contains(wide_long_source, "target_path <- if (isTRUE(save_result$saved)) save_result$path else NULL", "wide-to-long saved path handoff")
 assert_contains(wide_long_source, "replace_dataset_fn(result, name = target_name, path = target_path, csv_header = TRUE)", "wide-to-long dataset replacement")
-assert_contains(wide_long_source, "Wide-to-long data saved and connected", "wide-to-long saved notification")
-assert_contains(wide_long_source, "Save canceled; a temporary data file is connected for this session.", "wide-to-long canceled save message")
+assert_contains(wide_long_source, 'statedu_t("data_editor.wide_long_notify_saved", language)', "wide-to-long saved notification")
+assert_contains(wide_long_source, 'statedu_t("data_editor.wide_long_temp_connected", language)', "wide-to-long canceled save message")
 
 cat("Data Editor wide-to-long validation passed.\n")

@@ -30,7 +30,7 @@ ancova_setup_state <- function(
   force_ranked = FALSE,
   sum_of_squares = "type2",
   ordered_significance = FALSE,
-  posthoc_method = "bonferroni",
+  posthoc_method = statedu_multiple_correction_default(),
   show_df = FALSE,
   mean_se = FALSE,
   plot_adjusted_means = TRUE,
@@ -61,7 +61,7 @@ ancova_setup_state <- function(
     force_ranked = isTRUE(force_ranked),
     sum_of_squares = as.character(sum_of_squares %||% "type2"),
     ordered_significance = isTRUE(ordered_significance),
-    posthoc_method = as.character(posthoc_method %||% "bonferroni"),
+    posthoc_method = as.character(posthoc_method %||% statedu_multiple_correction_default()),
     show_df = isTRUE(show_df),
     mean_se = isTRUE(mean_se),
     plot_adjusted_means = isTRUE(plot_adjusted_means),
@@ -272,10 +272,10 @@ ancova_setup_panel <- function(state) {
                   "ancova_posthoc_method",
                   label = NULL,
                   choiceNames = list(
-                    ancova_option_help("Bonferroni correction (BC)", "Conservative familywise p-value adjustment for pairwise adjusted-mean contrasts.", language),
-                    ancova_option_help("Holm-Bonferroni method", "Stepwise familywise p-value adjustment; usually less conservative than Bonferroni.", language)
+                    ancova_option_help("Holm-Bonferroni method", "Stepwise familywise p-value adjustment; usually less conservative than Bonferroni.", language),
+                    ancova_option_help("Bonferroni correction (BC)", "Conservative familywise p-value adjustment for pairwise adjusted-mean contrasts.", language)
                   ),
-                  choiceValues = c("bonferroni", "holm"),
+                  choiceValues = c("holm", "bonferroni"),
                   selected = state$posthoc_method
                 )
               ),

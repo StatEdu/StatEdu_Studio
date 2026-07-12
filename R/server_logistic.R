@@ -140,6 +140,8 @@ register_logistic_handlers <- function(
       show_b_se = logistic_show_b_se(),
       show_extra_r2 = logistic_show_extra_r2(),
       split_ci = logistic_split_ci(),
+      options_tab = isolate(input$logistic_options_tab),
+      output_table_style = isolate(input$logistic_output_table_style),
       language = language
     )
 
@@ -160,7 +162,8 @@ register_logistic_handlers <- function(
       show_se = logistic_show_b_se(),
       show_mcfadden = logistic_show_extra_r2(),
       show_cox_snell = logistic_show_extra_r2(),
-      split_ci = logistic_output_split_ci()
+      split_ci = logistic_output_split_ci(),
+      output_table_style = analysis_output_table_style(input$logistic_output_table_style)
     )
   })
 
@@ -174,7 +177,8 @@ register_logistic_handlers <- function(
       show_se = logistic_show_b_se(),
       show_mcfadden = logistic_show_extra_r2(),
       show_cox_snell = logistic_show_extra_r2(),
-      split_ci = logistic_output_split_ci()
+      split_ci = logistic_output_split_ci(),
+      output_table_style = analysis_output_table_style(input$logistic_output_table_style)
     )
   }
 
@@ -281,7 +285,7 @@ register_logistic_handlers <- function(
     raw_selected <- as.character(input$logistic_available %||% character(0))
     selected <- intersect(raw_selected, dependent_candidates())
     if (length(raw_selected) > 0 && length(selected) == 0) {
-      showNotification("Dependent variable selection is limited to binary, ordered, or categorical variables.", type = "warning")
+      showNotification(statedu_t("analysis.validation.logistic_dependent", statedu_current_language(app_language_fn)), type = "warning")
       return()
     }
     if (length(selected) == 0) {
@@ -325,11 +329,11 @@ register_logistic_handlers <- function(
           reference_values = logistic_reference_values_static(category_table_fn())
         )
         logistic_results(results)
-        showNotification("Logistic regression finished.", type = "message")
+        showNotification(statedu_t("analysis.status.logistic_finished", statedu_current_language(app_language_fn)), type = "message")
       },
       error = function(e) {
         logistic_results(NULL)
-        showNotification(paste("Logistic regression failed:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("analysis.status.logistic_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   }, ignoreInit = TRUE)
@@ -350,9 +354,10 @@ register_logistic_handlers <- function(
       show_se = options$show_se,
       show_mcfadden = options$show_mcfadden,
       show_cox_snell = options$show_cox_snell,
-      split_ci = options$split_ci
+      split_ci = options$split_ci,
+      output_table_style = options$output_table_style
     )
-    showNotification(sprintf("HTML results saved: %s", path), type = "message")
+    showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
 
   observeEvent(input$save_logistic_pdf_dialog, {
@@ -371,9 +376,10 @@ register_logistic_handlers <- function(
       show_se = options$show_se,
       show_mcfadden = options$show_mcfadden,
       show_cox_snell = options$show_cox_snell,
-      split_ci = options$split_ci
+      split_ci = options$split_ci,
+      output_table_style = options$output_table_style
     )
-    showNotification(sprintf("PDF results saved: %s", path), type = "message")
+    showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
 
   observeEvent(input$save_logistic_excel_dialog, {
@@ -394,7 +400,7 @@ register_logistic_handlers <- function(
       show_cox_snell = options$show_cox_snell,
       split_ci = options$split_ci
     )
-    showNotification(sprintf("Analysis results saved: %s", path), type = "message")
+    showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
 
   register_add_result_snapshot(input, session, "add_logistic_result", "Logistic regression", "logistic_results")
@@ -480,7 +486,7 @@ register_logistic_handlers <- function(
     } else if (identical(target, "logistic_y")) {
       allowed <- intersect(selected, dependent_candidates())
       if (length(allowed) == 0) {
-        showNotification("Dependent variable selection is limited to binary, ordered, or categorical variables.", type = "warning")
+        showNotification(statedu_t("analysis.validation.logistic_dependent", statedu_current_language(app_language_fn)), type = "warning")
         return()
       }
       remove_all_targets(allowed)

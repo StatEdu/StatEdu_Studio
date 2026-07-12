@@ -41,12 +41,46 @@ if (-not $RscriptPath) {
   $RscriptPath = Find-Rscript
 }
 
-$stdoutLog = Join-Path $env:TEMP "statedu_shiny_smoke.out.log"
-$stderrLog = Join-Path $env:TEMP "statedu_shiny_smoke.err.log"
-$runScript = Join-Path $env:TEMP ("statedu_shiny_smoke_" + [guid]::NewGuid().ToString() + ".R")
-foreach ($path in @($stdoutLog, $stderrLog)) {
-  if (Test-Path -LiteralPath $path) {
-    Remove-Item -LiteralPath $path -Force
+$runId = [guid]::NewGuid().ToString()
+$stdoutLog = Join-Path $env:TEMP "statedu_shiny_smoke_$runId.out.log"
+$stderrLog = Join-Path $env:TEMP "statedu_shiny_smoke_$runId.err.log"
+$runScript = Join-Path $env:TEMP "statedu_shiny_smoke_$runId.R"
+
+function Remove-SmokeTempFile {
+  param(
+    [string]$Path,
+    [string]$Label
+  )
+
+  if (-not (Test-Path -LiteralPath $Path)) {
+    return
+  }
+  $removed = $false
+  for ($i = 0; $i -lt 20; $i++) {
+    try {
+      Remove-Item -LiteralPath $Path -Force
+      $removed = $true
+      break
+    } catch {
+      Start-Sleep -Milliseconds 500
+    }
+  }
+  if (-not $removed) {
+    Write-Warning "Could not remove temporary smoke $Label`: $Path"
+  }
+}
+
+function Stop-SmokeProcessesForScript {
+  param(
+    [string]$ScriptPath
+  )
+
+  $escapedScriptPath = [regex]::Escape($ScriptPath)
+  $smokeProcesses = @(Get-CimInstance Win32_Process | Where-Object {
+    $_.CommandLine -and $_.CommandLine -match $escapedScriptPath
+  })
+  foreach ($smokeProcess in $smokeProcesses) {
+    cmd.exe /c "taskkill /PID $($smokeProcess.ProcessId) /T /F >nul 2>nul" | Out-Null
   }
 }
 
@@ -97,20 +131,13 @@ try {
   if ($process -and -not $process.HasExited) {
     Stop-Process -Id $process.Id -Force
     Wait-Process -Id $process.Id -Timeout 10 -ErrorAction SilentlyContinue
-  }
-  if (Test-Path -LiteralPath $runScript) {
-    $removedRunScript = $false
-    for ($i = 0; $i -lt 20; $i++) {
-      try {
-        Remove-Item -LiteralPath $runScript -Force
-        $removedRunScript = $true
-        break
-      } catch {
-        Start-Sleep -Milliseconds 500
-      }
-    }
-    if (-not $removedRunScript) {
-      Write-Warning "Could not remove temporary smoke script: $runScript"
+    if (Get-Process -Id $process.Id -ErrorAction SilentlyContinue) {
+      cmd.exe /c "taskkill /PID $($process.Id) /T /F >nul 2>nul" | Out-Null
+      Wait-Process -Id $process.Id -Timeout 10 -ErrorAction SilentlyContinue
     }
   }
+  Stop-SmokeProcessesForScript -ScriptPath $runScript
+  Remove-SmokeTempFile -Path $runScript -Label "script"
+  Remove-SmokeTempFile -Path $stdoutLog -Label "stdout log"
+  Remove-SmokeTempFile -Path $stderrLog -Label "stderr log"
 }

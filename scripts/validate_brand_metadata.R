@@ -66,7 +66,7 @@ assert_contains("SOURCE-OFFER.txt", "THIRD-PARTY-NOTICES.txt", "source offer thi
 assert_contains("SOURCE-OFFER.txt", "license_report.csv", "source offer license report reference")
 assert_contains("SOURCE-OFFER.txt", "LICENSES directory", "source offer license texts reference")
 assert_contains("R/app_misc_ui.R", 'h2("StatEdu Studio")', "About dialog product title")
-assert_contains("R/app_misc_ui.R", "StatEdu Studio source availability and application license.", "About source/license product text")
+assert_contains("R/labels.R", "StatEdu Studio source availability and application license.", "About source/license product text")
 assert_contains("packaging/electron/main.js", "function appDisplayName()", "Electron dynamic app display name helper")
 assert_contains("packaging/electron/main.js", "app.setName(appDisplayName())", "Electron app display name")
 assert_contains("packaging/electron/scripts/afterPack.js", "context.packager.appInfo.productName", "Windows executable dynamic product name")

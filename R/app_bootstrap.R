@@ -36,7 +36,8 @@ required_packages <- c(
   "lme4",
   "lmerTest",
   "plm",
-  "mice"
+  "mice",
+  "survey"
 )
 
 startup_packages <- c("shiny", "DT")
@@ -98,6 +99,8 @@ app_module_files <- c(
   "data_editor_likert.R",
   "data_editor_missing.R",
   "data_editor_wide_long.R",
+  "data_editor_merge.R",
+  "data_editor_id_aggregate.R",
   "data_editor_transform.R",
   "data_editor_rename.R",
   "data_editor_ui.R",
@@ -144,7 +147,9 @@ app_module_files <- c(
   "result_model_summary.R",
   "result_coefficients.R",
   "setup_analysis_ui.R",
+  "setup_complex_sample_ui.R",
   "setup_ui.R",
+  "setup_custom_model_canvas_ui.R",
   "analysis_menu_ui.R",
   "setup_reliability_ui.R",
   "setup_frequencies_ui.R",
@@ -201,12 +206,15 @@ optional_app_module_files <- c(
 utf8_app_module_files <- c(
   "utils.R",
   "labels.R",
+  "data_editor_merge.R",
+  "data_editor_id_aggregate.R",
   "data_editor_ui.R",
   "server_data_outputs.R",
   "ui_helpers.R",
   "data_ui_steps.R",
   "data_ui.R",
   "analysis_menu_ui.R",
+  "setup_custom_model_canvas_ui.R",
   "setup_mediation_moderation_ui.R",
   "app_misc_ui.R"
 )

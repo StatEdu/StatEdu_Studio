@@ -411,13 +411,9 @@ missing_values_setup_panel <- function(file, data, variable_info = NULL, labels 
   language <- normalize_app_language(language)
   options(statedu.app_language = language)
   if (is.null(file) || is.null(data)) {
-    return(setup_empty_message(statedu_text(
-      language,
-      "Load a data file in the Data tab before converting missing values.",
-      statedu_utf8("eb8db0ec9db4ed84b020ed83adec9790ec849c20eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420eba8bceca08020ebb688eb9facec98a820ed9b8420eab2b0ecb8a1eab092ec9d8420ebb380ed9998ed9598ec84b8ec9a942e")
-    ), language = language))
+    return(setup_empty_message(statedu_t("data_editor.missing_load_before_setup", language), language = language))
   }
-  variables <- names(data)
+  variables <- data_editor_variable_names(data, variable_info)
   selected_variables <- intersect(as.character(selected_variables %||% character(0)), variables)
   available <- setdiff(variables, selected_variables)
   selected_available <- selected_order_items(isolate(input$missing_values_available) %||% character(0), available)
@@ -486,11 +482,7 @@ missing_values_setup_panel <- function(file, data, variable_info = NULL, labels 
         ),
         div(
           class = "recode-help-text",
-          statedu_text(
-            language,
-            "Use one code per line. Use (blank) for empty text values.",
-            statedu_utf8("ed959c20eca484ec979020ed9598eb8298ec9d9820ecbd94eb939ceba5bc20ec9e85eba0a5ed9598ec84b8ec9a942e20ebb98820ebacb8ec9e9020eab092ec9d802028626c616e6b29eba5bc20ec82acec9aa9ed9598ec84b8ec9a942e")
-          )
+          statedu_t("data_editor.missing_manual_help", language)
         )
       )
     )
@@ -504,13 +496,9 @@ data_editor_missing_panel <- function(language = statedu_initial_language()) {
     class = "page-shell",
     div(
       class = "app-heading",
-      h1(statedu_text(language, "Auto Missing Values", statedu_utf8("ec9e90eb8f9920eab2b0ecb8a1eab09220ecb298eba6ac"))),
+      h1(statedu_t("data_editor.missing_title", language)),
       div(
-        statedu_text(
-          language,
-          "Detect likely missing-value codes, review them, and mark selected codes as user missing before analysis.",
-          statedu_utf8("eab2b0ecb8a1eab092ec9cbceba19c20ebb3b4ec9db4eb8a9420ecbd94eb939ceba5bc20eab090eca780ed9598eab3a020eab280ed86a0ed959c20eb92a42c20ebb684ec849d20eca08420ec84a0ed839ded959c20ecbd94eb939ceba5bc20ec82acec9aa9ec9e9020eab2b0ecb8a1eab092ec9cbceba19c20eca780eca095ed95a9eb8b88eb8ba42e")
-        ),
+        statedu_t("data_editor.missing_subtitle", language),
         class = "app-subtitle"
       )
     ),
@@ -731,20 +719,12 @@ register_missing_value_handlers <- function(
     language <- statedu_current_language(language_fn)
     file <- current_data_file_fn()
     if (is.null(file)) {
-      return(div(class = "empty-message", div(statedu_text(
-        language,
-        "Load a data file before detecting missing values.",
-        statedu_utf8("eab2b0ecb8a1eab09220ed8390eca78020eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e")
-      ))))
+      return(div(class = "empty-message", div(statedu_t("data_editor.missing_load_before_detect", language))))
     }
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
     variables <- intersect(selected_variables(), names(data %||% data.frame()))
     if (length(variables) == 0) {
-      return(div(class = "empty-message", div(statedu_text(
-        language,
-        "Select variables to detect or manually convert missing-value codes.",
-        statedu_utf8("eab2b0ecb8a1eab09220ecbd94eb939ceba5bc20ed8390eca780ed9598eab1b0eb829820eca781eca09120eab2b0ecb8a1ec9cbceba19c20ebb380ed9998ed95a020ebb380ec8898eba5bc20ec84a0ed839ded9598ec84b8ec9a942e")
-      ))))
+      return(div(class = "empty-message", div(statedu_t("data_editor.missing_select_variables", language))))
     }
     data <- data[, variables, drop = FALSE]
     na_summary <- missing_existing_na_summary(data)
@@ -759,39 +739,23 @@ register_missing_value_handlers <- function(
         return(div(
           class = "empty-message",
           div(sprintf(
-            statedu_text(
-              language,
-              "No coded missing values were detected. Existing NA values are already treated as missing: %s value(s) across %s variable(s).",
-              paste0(statedu_utf8("ecbd94eb94a9eb909c20eab2b0ecb8a1eab092ec9db420ebb09ceab2aceb9098eca78020ec958aec9598ec8ab5eb8b88eb8ba42e20eab8b0eca1b4204e4120eab092ec9d8020ec9db4ebafb820eab2b0ecb8a1ec9cbceba19c20ecb298eba6aceb90a9eb8b88eb8ba43a"), " %s ", statedu_utf8("eab0922c"), " %s ", statedu_utf8("ebb380ec8898"))
-            ),
+            statedu_t("data_editor.missing_no_coded_existing_na", language),
             na_summary$total,
             length(na_summary$variables)
           )),
           div(class = "small-muted", variable_text)
         ))
       }
-      return(div(class = "empty-message", div(statedu_text(
-        language,
-        "No coded missing values or existing NA values were detected in the current data.",
-        statedu_utf8("ed9884ec9eac20eb8db0ec9db4ed84b0ec9790ec849c20ecbd94eb94a9eb909c20eab2b0ecb8a1eab09220eb9890eb8a9420eab8b0eca1b4204e4120eab092ec9db420ebb09ceab2aceb9098eca78020ec958aec9598ec8ab5eb8b88eb8ba42e")
-      ))))
+      return(div(class = "empty-message", div(statedu_t("data_editor.missing_none_detected", language))))
     }
     status <- sprintf(
-      statedu_text(
-        language,
-        "%s candidate code(s) detected across %s variable(s). Select rows to convert them to NA.",
-        paste0("%s ", statedu_utf8("ed9b84ebb3b420ecbd94eb939ceab080"), " %s ", statedu_utf8("eab09c20ebb380ec8898ec9790ec849c20ebb09ceab2aceb9098ec9788ec8ab5eb8b88eb8ba42e20ed9689ec9d8420ec84a0ed839ded95b4204e41eba19c20ebb380ed9998ed9598ec84b8ec9a942e"))
-      ),
+      statedu_t("data_editor.missing_candidates_detected", language),
       nrow(table),
       length(unique(table$variable))
     )
     if (na_summary$total > 0) {
       status <- sprintf(
-        statedu_text(
-          language,
-          "%s Existing NA values are already missing: %s value(s).",
-          paste0("%s ", statedu_utf8("eab8b0eca1b4204e4120eab092ec9d8020ec9db4ebafb820eab2b0ecb8a1ec9e85eb8b88eb8ba43a"), " %s ", statedu_utf8("eab092"))
-        ),
+        statedu_t("data_editor.missing_existing_na_suffix", language),
         status,
         na_summary$total
       )
@@ -849,19 +813,19 @@ register_missing_value_handlers <- function(
     selected <- suppressWarnings(as.integer(selected))
     selected <- selected[is.finite(selected) & selected >= 1 & selected <= nrow(table)]
     if (is.null(data)) {
-      stop(statedu_text(language, "Load a data file before applying missing-value rules.", statedu_utf8("eab2b0ecb8a1eab09220eab79cecb999ec9d8420eca081ec9aa9ed9598eab8b020eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e")), call. = FALSE)
+      stop(statedu_t("data_editor.missing_load_before_apply", language), call. = FALSE)
     }
     if (length(variables) == 0) {
-      stop(statedu_text(language, "Select at least one variable to convert.", statedu_utf8("ebb380ed9998ed95a020ebb380ec8898eba5bc20ed9598eb829820ec9db4ec838120ec84a0ed839ded9598ec84b8ec9a942e")), call. = FALSE)
+      stop(statedu_t("data_editor.missing_select_one_variable", language), call. = FALSE)
     }
     if (!use_auto && !use_manual) {
-      stop(statedu_text(language, "Choose detected rows, manual codes, or both.", statedu_utf8("eab090eca78020ed96892c20ec8898eb8f9920ecbd94eb939c20eb9890eb8a9420eb919820eb8ba420ec84a0ed839ded9598ec84b8ec9a942e")), call. = FALSE)
+      stop(statedu_t("data_editor.missing_choose_source", language), call. = FALSE)
     }
     if (use_auto && (is.null(table) || nrow(table) == 0)) {
-      stop(statedu_text(language, "No missing-value candidates are available.", statedu_utf8("ec82acec9aa920eab080eb8aa5ed959c20eab2b0ecb8a1eab09220ed9b84ebb3b4eab08020ec9786ec8ab5eb8b88eb8ba42e")), call. = FALSE)
+      stop(statedu_t("data_editor.missing_no_candidates", language), call. = FALSE)
     }
     if (use_auto && length(selected) == 0) {
-      stop(statedu_text(language, "Select at least one candidate row to apply.", statedu_utf8("eca081ec9aa9ed95a020ed9b84ebb3b420ed9689ec9d8420ed9598eb829820ec9db4ec838120ec84a0ed839ded9598ec84b8ec9a942e")), call. = FALSE)
+      stop(statedu_t("data_editor.missing_select_candidate", language), call. = FALSE)
     }
 
     auto_rules <- if (use_auto && !is.null(table) && nrow(table) > 0 && length(selected) > 0) {
@@ -880,7 +844,7 @@ register_missing_value_handlers <- function(
     }
     rule_sets <- Filter(function(item) is.data.frame(item) && nrow(item) > 0, list(auto_rules, manual_rules))
     if (length(rule_sets) == 0) {
-      stop(statedu_text(language, "Select detected rows or enter manual missing-value codes.", statedu_utf8("eab090eca78020ed9689ec9d8420ec84a0ed839ded9598eab1b0eb829820ec8898eb8f9920eab2b0ecb8a1eab09220ecbd94eb939ceba5bc20ec9e85eba0a5ed9598ec84b8ec9a942e")), call. = FALSE)
+      stop(statedu_t("data_editor.missing_select_detected_or_manual", language), call. = FALSE)
     }
     rules <- do.call(rbind, rule_sets)
     rownames(rules) <- NULL
@@ -902,11 +866,7 @@ register_missing_value_handlers <- function(
     }
     if (!is.function(set_user_missing_rules_fn)) {
       showNotification(
-        statedu_text(
-          language,
-          "User-missing rules are not available in this session.",
-          statedu_utf8("ec9db420ec84b8ec8598ec9790ec849ceb8a9420ec82acec9aa9ec9e9020eab2b0ecb8a120eab79cecb999ec9d8420ec82acec9aa9ed95a020ec889820ec9786ec8ab5eb8b88eb8ba42e")
-        ),
+        statedu_t("data_editor.missing_user_rules_unavailable", language),
         type = "warning",
         duration = 5
       )
@@ -920,11 +880,7 @@ register_missing_value_handlers <- function(
     }
     variables <- unique(as.character(rules$variable))
     last_message(sprintf(
-      statedu_text(
-        language,
-        "Marked %s missing-value rule(s) as user missing for analysis. Original data values are preserved: %s",
-        statedu_utf8("ebb684ec849dec9aa920ec82acec9aa9ec9e9020eab2b0ecb8a1eab092ec9cbceba19c202573eab09c20eab79cecb999ec9d8420ed919cec8b9ced9688ec8ab5eb8b88eb8ba42e20ec9b90ebb3b820eb8db0ec9db4ed84b020eab092ec9d8020ec9ca0eca780eb90a9eb8b88eb8ba43a202573")
-      ),
+      statedu_t("data_editor.missing_marked_user", language),
       nrow(rules),
       paste(variables, collapse = ", ")
     ))
@@ -946,11 +902,7 @@ register_missing_value_handlers <- function(
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
     if (is.null(data)) {
       showNotification(
-        statedu_text(
-          language,
-          "Load a data file before applying missing-value rules.",
-          statedu_utf8("eab2b0ecb8a1eab09220eab79cecb999ec9d8420eca081ec9aa9ed9598eab8b020eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e")
-        ),
+        statedu_t("data_editor.missing_load_before_apply", language),
         type = "warning",
         duration = 5
       )
@@ -978,18 +930,14 @@ register_missing_value_handlers <- function(
     }
 
     if (length(changed_variables) == 0) {
-      last_message(statedu_text(language, "No values were changed.", statedu_utf8("ebb380eab2bdeb909c20eab092ec9db420ec9786ec8ab5eb8b88eb8ba42e")))
+      last_message(statedu_t("data_editor.missing_no_values_changed", language))
       return()
     }
     if (is.function(mark_settings_dirty)) {
       mark_settings_dirty()
     }
     last_message(sprintf(
-      statedu_text(
-        language,
-        "Converted %s value(s) to NA across %s variable(s): %s",
-        statedu_utf8("2573eab09c20eab092ec9d84202573eab09c20ebb380ec8898ec9790ec849c204e41eba19c20ebb380ed9998ed9688ec8ab5eb8b88eb8ba43a202573")
-      ),
+      statedu_t("data_editor.missing_converted", language),
       changed_values,
       length(changed_variables),
       paste(changed_variables, collapse = ", ")

@@ -408,7 +408,8 @@ write_analysis_results_html <- function(
   category_table = NULL,
   show_sr2 = FALSE,
   show_f2 = FALSE,
-  show_vif = FALSE
+  show_vif = FALSE,
+  output_table_style = "standard"
 ) {
   writeLines(
     saved_analysis_results_html(
@@ -420,7 +421,8 @@ write_analysis_results_html <- function(
       value_labels = category_value_label_lookup_static(category_table),
       show_sr2 = show_sr2,
       show_f2 = show_f2,
-      show_vif = show_vif
+      show_vif = show_vif,
+      output_table_style = output_table_style
     ),
     file,
     useBytes = TRUE
@@ -435,7 +437,8 @@ write_analysis_results_pdf <- function(
   category_table = NULL,
   show_sr2 = FALSE,
   show_f2 = FALSE,
-  show_vif = FALSE
+  show_vif = FALSE,
+  output_table_style = "standard"
 ) {
   html <- saved_analysis_results_html(
     results,
@@ -447,6 +450,7 @@ write_analysis_results_pdf <- function(
     show_sr2 = show_sr2,
     show_f2 = show_f2,
     show_vif = show_vif,
+    output_table_style = output_table_style,
     report_mode = TRUE
   )
   write_pdf_from_html(html, file)
@@ -460,7 +464,8 @@ write_hierarchical_results_html <- function(
   category_table = NULL,
   show_sr2 = FALSE,
   show_f2 = FALSE,
-  show_vif = FALSE
+  show_vif = FALSE,
+  output_table_style = "standard"
 ) {
   writeLines(
     saved_hierarchical_results_html(
@@ -472,7 +477,8 @@ write_hierarchical_results_html <- function(
       value_labels = category_value_label_lookup_static(category_table),
       show_sr2 = show_sr2,
       show_f2 = show_f2,
-      show_vif = show_vif
+      show_vif = show_vif,
+      output_table_style = output_table_style
     ),
     file,
     useBytes = TRUE
@@ -487,7 +493,8 @@ write_hierarchical_results_pdf <- function(
   category_table = NULL,
   show_sr2 = FALSE,
   show_f2 = FALSE,
-  show_vif = FALSE
+  show_vif = FALSE,
+  output_table_style = "standard"
 ) {
   html <- saved_hierarchical_results_html(
     results,
@@ -499,6 +506,7 @@ write_hierarchical_results_pdf <- function(
     show_sr2 = show_sr2,
     show_f2 = show_f2,
     show_vif = show_vif,
+    output_table_style = output_table_style,
     report_mode = TRUE
   )
   write_pdf_from_html(html, file)
@@ -586,7 +594,8 @@ write_logistic_results_html <- function(
   show_se = FALSE,
   show_mcfadden = FALSE,
   show_cox_snell = FALSE,
-  split_ci = TRUE
+  split_ci = TRUE,
+  output_table_style = "standard"
 ) {
   writeLines(
     saved_logistic_results_html(
@@ -598,7 +607,8 @@ write_logistic_results_html <- function(
       show_se = show_se,
       show_mcfadden = show_mcfadden,
       show_cox_snell = show_cox_snell,
-      split_ci = split_ci
+      split_ci = split_ci,
+      output_table_style = output_table_style
     ),
     file,
     useBytes = TRUE
@@ -651,7 +661,8 @@ write_logistic_results_pdf <- function(
   show_se = FALSE,
   show_mcfadden = FALSE,
   show_cox_snell = FALSE,
-  split_ci = TRUE
+  split_ci = TRUE,
+  output_table_style = "standard"
 ) {
   write_pdf_from_html(
     saved_logistic_results_html(
@@ -664,6 +675,7 @@ write_logistic_results_pdf <- function(
       show_mcfadden = show_mcfadden,
       show_cox_snell = show_cox_snell,
       split_ci = split_ci,
+      output_table_style = output_table_style,
       report_mode = TRUE
     ),
     file
@@ -843,8 +855,13 @@ hierarchical_export_table <- function(
     summary_labels <- c(summary_labels, attr(summary_values, "delta_label", exact = TRUE) %||% "\u0394R\u00B2(F change p)")
     summary_keys <- c(summary_keys, "delta")
   }
-  summary_labels <- c(summary_labels, "d(d\u1D64~4-d\u1D64)", "z(p)", stat_chisq_label(with_p = TRUE))
-  summary_keys <- c(summary_keys, "dw", "normality", "homogeneity")
+  if (isTRUE(attr(summary_values, "any_residual_diagnostics", exact = TRUE))) {
+    summary_labels <- c(summary_labels, "d(d\u1D64~4-d\u1D64)", "z(p)", stat_chisq_label(with_p = TRUE))
+    summary_keys <- c(summary_keys, "dw", "normality", "homogeneity")
+  } else {
+    summary_labels <- c(summary_labels, "d")
+    summary_keys <- c(summary_keys, "dw")
+  }
 
   for (summary_index in seq_along(summary_labels)) {
     row <- as.list(rep("", ncol(out)))

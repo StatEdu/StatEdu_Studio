@@ -60,6 +60,7 @@ $coreValidations = @(
   "scripts\validate_version_metadata.R",
   "scripts\validate_document_encoding.R",
   "scripts\validate_brand_metadata.R",
+  "scripts\validate_i18n_contract.R",
   "scripts\validate_settings_dialogs.R",
   "scripts\validate_ui_layout_contract.R",
   "scripts\validate_data_editor_wide_long.R",
@@ -67,6 +68,7 @@ $coreValidations = @(
   "scripts\validate_ttest_anova.R",
   "scripts\validate_regression_coefficients.R",
   "scripts\validate_logistic_analysis.R",
+  "scripts\validate_complex_sample_analysis.R",
   "scripts\validate_longitudinal.R",
   "scripts\validate_release_hygiene.R",
   "scripts\validate_data_io.R"

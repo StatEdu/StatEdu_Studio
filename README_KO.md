@@ -8,13 +8,13 @@
 
 ## 현재 버전
 
-현재 공개 버전: `1.0.1`
+현재 공개 버전: `1.1.3`
 
-현재 개발자 버전: `1.0.16-dev`
+현재 개발자 버전: `1.1.3`
 
-버전 1.0.1은 로컬 데이터 불러오기, 데이터 편집, 가정 검토 기반 통계분석, 표본수/효과크기 계산기, HTML/PDF 결과 출력 기능을 안정화한 공개 패치 릴리스 라인입니다. 자세한 개발 이력은 **About > Version History**에서 확인할 수 있습니다.
+버전 1.1.3은 로컬 데이터 불러오기, 데이터 편집, 가정 검토 기반 통계분석, 표본수/효과크기 계산기, 잠재분석, HTML 결과 출력 기능을 제공하는 공개 릴리스 라인입니다. 자세한 개발 이력은 **About > Version History**에서 확인할 수 있습니다.
 
-Public 1.0에서는 라이센스 활성화, 유료 edition gating, Excel/Word 결과 저장, Mplus/latent add-on, 종단/패널 분석 workflow를 노출하지 않습니다. 이 항목들은 개발 이력이나 계획 문서에 나타날 수 있지만 public 1.0 제공 기능으로 해석하지 않습니다.
+공개 1.1.3에는 매개/조절효과 사용자 정의 모델 캔버스를 제외한 모든 분석 메뉴가 포함됩니다. 공개판의 직접 저장 버튼은 화면에 표시되지만 기본적으로 HTML 저장만 활성화되며, t-test / ANOVA는 예외로 HTML, 그림, PDF, Excel, 결과 추가가 활성화됩니다. t-test / ANOVA에서 결과에 추가한 항목은 Result 화면에서 Excel 또는 Word로 저장할 수 있습니다.
 
 ## 현재 범위
 
@@ -78,7 +78,7 @@ Public 1.0에서는 라이센스 활성화, 유료 edition gating, Excel/Word �
 
 ## 검증
 
-버전 1.0.1은 안정화 검증 suite를 이어받고, 최종 릴리스용 Electron metadata 검사를 추가합니다. 공개 검증 범위에는 계산기, 데이터 불러오기, 데이터 편집, 교차표, 상관분석 자동 선택, 요인분석/PCA, 로지스틱 분석과 UI, paired guard 처리, p 값 형식, 회귀계수 출력, GLM 출력, t-test / ANOVA guard 처리가 포함됩니다. 효과크기 비교는 정의가 앱 계산과 일치하는 경우 `effectsize`를 검증 기준으로 사용합니다. `effectsize`는 런타임 필수 패키지가 아닙니다.
+버전 1.1.3은 안정화 검증 suite를 이어받고, 공개판 저장 버튼 및 사용자 정의 모델 캔버스 공개 범위 제한을 포함합니다. 공개 검증 범위에는 계산기, 데이터 불러오기, 데이터 편집, 교차표, 상관분석 자동 선택, 요인분석/PCA, 로지스틱 분석과 UI, paired guard 처리, p 값 형식, 회귀계수 출력, GLM 출력, 복합표본, 종단/패널, 잠재분석, t-test / ANOVA guard 처리가 포함됩니다. 효과크기 비교는 정의가 앱 계산과 일치하는 경우 `effectsize`를 검증 기준으로 사용합니다. `effectsize`는 런타임 필수 패키지가 아닙니다.
 
 병합 또는 패키징 전에는 repository root에서 안정화 검증 suite를 실행합니다.
 
@@ -109,7 +109,7 @@ powershell -ExecutionPolicy Bypass -File scripts\release_preflight.ps1 -FullElec
 
 연구에서 **StatEdu Studio**를 사용한 경우 다음과 같이 인용해 주십시오.
 
-LEE, I. H. (2026). **StatEdu Studio** (Version 1.0.1) [Computer software].
+LEE, I. H. (2026). **StatEdu Studio** (Version 1.1.3) [Computer software].
 https://doi.org/10.22934/statedu.studio
 
 ## 개발 모델

@@ -41,7 +41,8 @@ coefficient_output_table_with_context <- function(
   refs = character(0),
   value_labels = list(),
   labels = character(0),
-  category_table = NULL
+  category_table = NULL,
+  keep_raw_columns = FALSE
 ) {
   display_labels <- coefficient_display_labels(variable_info, labels, category_table)
   reference_rows <- if (isTRUE(include_references)) {
@@ -63,7 +64,8 @@ coefficient_output_table_with_context <- function(
     include_references,
     display_labels,
     value_labels,
-    reference_rows
+    reference_rows,
+    keep_raw_columns = keep_raw_columns
   )
 }
 
@@ -92,7 +94,8 @@ coefficient_output_table_static <- function(
   include_references = TRUE,
   labels = character(0),
   value_labels = list(),
-  reference_rows = NULL
+  reference_rows = NULL,
+  keep_raw_columns = FALSE
 ) {
   if (!is.data.frame(table) || nrow(table) == 0) {
     return(table)
@@ -127,6 +130,7 @@ coefficient_output_table_static <- function(
   }
 
   if (is.null(reference_rows) || nrow(reference_rows) == 0) {
+    if (isTRUE(keep_raw_columns)) return(table)
     return(table[, setdiff(names(table), c(".raw_variable", ".raw_level")), drop = FALSE])
   }
 
@@ -164,6 +168,7 @@ coefficient_output_table_static <- function(
   if (any(!used_reference)) {
     output <- rbind(output, reference_rows[!used_reference, , drop = FALSE])
   }
+  if (isTRUE(keep_raw_columns)) return(output)
   output[, setdiff(names(output), c(".raw_variable", ".raw_level")), drop = FALSE]
 }
 
@@ -191,6 +196,9 @@ coefficient_fit_line <- function(result) {
 }
 
 coefficient_stat_lines <- function(result) {
+  if (!isTRUE(result$residual_diagnostics)) {
+    return(sprintf("d = %s", format_decimal3(result$dw_d)))
+  }
   c(
     sprintf(
       "d(d\u1D64~4-d\u1D64) = %s (%s~%s)",
@@ -262,8 +270,8 @@ coefficient_note_line <- function(result, show_vif = FALSE, show_sr2 = FALSE, sh
     if (isTRUE(show_sr2)) "sr\u00B2 = squared semi-partial correlation, unique R\u00B2 contribution for each coefficient;" else NULL,
     if (isTRUE(show_f2)) "f\u00B2 = sr\u00B2 / (1 - model R\u00B2);" else NULL,
     if (isTRUE(result$use_hc3) || isTRUE(result$use_bootstrap)) "OLS R\u00B2 and adjusted R\u00B2 are ordinary least squares model fit indices;" else NULL,
-    "d(d\u1D64~4-d\u1D64) = Durbin-Watson statistic (upper critical value~4-upper critical value);",
-    "z(p) = Lilliefors corrected Kolmogorov-Smirnov residual normality test statistic (p-value);",
-    sprintf("%s = Breusch-Pagan residual homoscedasticity test statistic (p-value)", stat_chisq_label(with_p = TRUE))
+    if (isTRUE(result$residual_diagnostics)) "d(d\u1D64~4-d\u1D64) = Durbin-Watson statistic (upper critical value~4-upper critical value);" else "d = Durbin-Watson statistic;",
+    if (isTRUE(result$residual_diagnostics)) "z(p) = Lilliefors corrected Kolmogorov-Smirnov residual normality test statistic (p-value);" else NULL,
+    if (isTRUE(result$residual_diagnostics)) sprintf("%s = Breusch-Pagan residual homoscedasticity test statistic (p-value)", stat_chisq_label(with_p = TRUE)) else NULL
   )
 }

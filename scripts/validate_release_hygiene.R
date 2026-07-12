@@ -14,6 +14,26 @@ if (!is.null(status) && status != 0) {
   stop("git ls-files failed while checking release hygiene.", call. = FALSE)
 }
 
+required_tracked_files <- c(
+  "i18n/languages.json",
+  "i18n/ja.json",
+  "i18n/zh.json",
+  "i18n/es.json",
+  "i18n/fr.json",
+  "i18n/de.json",
+  "i18n/vi.json"
+)
+missing_required_files <- setdiff(required_tracked_files, tracked)
+if (length(missing_required_files) > 0) {
+  stop(
+    sprintf(
+      "Required app resource(s) are not tracked by git and would be omitted from packaging: %s",
+      paste(missing_required_files, collapse = ", ")
+    ),
+    call. = FALSE
+  )
+}
+
 blocked_prefixes <- c(
   "dist",
   "packaging/electron/app",

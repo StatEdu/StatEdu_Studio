@@ -1,7 +1,7 @@
 # Automatic Likert label detection and batch conversion.
 
-likert_ui_text <- function(en, ko_hex, language = getOption("statedu.app_language", statedu_initial_language())) {
-  statedu_text(language, en, statedu_utf8(ko_hex))
+likert_current_t <- function(key) {
+  statedu_t(key, getOption("statedu.app_language", statedu_initial_language()))
 }
 
 likert_dictionary <- function(custom = NULL) {
@@ -404,14 +404,14 @@ likert_category_payload <- function(variables, mapping, reverse = FALSE) {
 
 likert_detection_table_display <- function(summary) {
   if (is.null(summary) || nrow(summary) == 0) {
-    return(data.frame(Message = likert_ui_text("No Likert-style text variables were detected.", "ed9884ec9eac20eb8db0ec9db4ed84b0ec9790ec849c204c696b65727420ed9895ec8b9dec9d9820ed858dec8aa4ed8ab820ebb380ec8898eab08020eab090eca780eb9098eca78020ec958aec9598ec8ab5eb8b88eb8ba42e"), check.names = FALSE))
+    return(data.frame(Message = likert_current_t("data_editor.likert_no_text_variables_detected"), check.names = FALSE))
   }
   variables <- vapply(strsplit(as.character(summary$variables), "\n", fixed = TRUE), function(items) {
     items <- items[nzchar(items)]
     display_items <- if (length(items) <= 2) {
       items
     } else {
-      c(items[[1]], sprintf("... %s item(s) hidden ...", length(items) - 2L), items[[length(items)]])
+      c(items[[1]], sprintf(likert_current_t("data_editor.likert_hidden_items"), length(items) - 2L), items[[length(items)]])
     }
     classes <- if (length(items) <= 2) {
       rep("likert-variable-line", length(display_items))
@@ -440,13 +440,13 @@ likert_review_panel_ui <- function(choices, mapping) {
   choices <- choices %||% character(0)
   values <- unname(as.character(choices))
   if (length(values) == 0 || is.null(mapping) || !is.data.frame(mapping) || nrow(mapping) == 0) {
-    return(div(class = "empty-message", div(likert_ui_text("Select a detected Likert group.", "eab090eca780eb909c204c696b65727420eab7b8eba3b9ec9d8420ec84a0ed839ded9598ec84b8ec9a942e"))))
+    return(div(class = "empty-message", div(likert_current_t("data_editor.likert_select_detected_group"))))
   }
   div(
     class = "likert-review-grid",
     div(
       class = "likert-review-block likert-items-block",
-      div(class = "likert-review-title", likert_ui_text("Item text", "ebacb8ed95ad20ed858dec8aa4ed8ab8")),
+      div(class = "likert-review-title", likert_current_t("data_editor.likert_item_text")),
       likert_variables_checkbox_group(
         "likert_variables",
         choices = choices,
@@ -455,7 +455,7 @@ likert_review_panel_ui <- function(choices, mapping) {
     ),
     div(
       class = "likert-review-block likert-labels-block",
-      div(class = "likert-review-title", likert_ui_text("Original label", "ec9b90eb9e9820eb9dbcebb2a8")),
+      div(class = "likert-review-title", likert_current_t("data_editor.likert_original_label")),
       div(
         class = "likert-label-list",
         lapply(seq_len(nrow(mapping)), function(index) {
@@ -465,7 +465,7 @@ likert_review_panel_ui <- function(choices, mapping) {
     ),
     div(
       class = "likert-review-block likert-values-block",
-      div(class = "likert-review-title", likert_ui_text("Numeric value", "ec88abec9e9020eab092")),
+      div(class = "likert-review-title", likert_current_t("data_editor.likert_numeric_value")),
       div(
         class = "likert-value-list",
         lapply(seq_len(nrow(mapping)), function(index) {
@@ -518,7 +518,7 @@ likert_custom_dictionary_ui <- function() {
       `data-efs-toggle-target` = "likert-custom-dictionary-panel",
       `aria-expanded` = "false",
       span(class = "likert-toggle-icon", "+"),
-      span(likert_ui_text("Add detection dictionary", "eab090eca78020ec82aceca08420ecb694eab080"))
+      span(likert_current_t("data_editor.likert_add_detection_dictionary"))
     ),
     div(
       id = "likert-custom-dictionary-panel",
@@ -528,14 +528,14 @@ likert_custom_dictionary_ui <- function() {
         class = "likert-custom-grid",
         textInput(
           "likert_custom_dictionary_name",
-          likert_ui_text("Detection name", "eab090eca78020ec9db4eba684"),
+          likert_current_t("data_editor.likert_detection_name_label"),
           value = "",
           placeholder = "e.g., need_ko_5",
           width = "220px"
         ),
         textAreaInput(
           "likert_custom_dictionary_levels",
-          likert_ui_text("Labels from low to high", "eb82aeec9d8020eab092ebb680ed84b020eb8692ec9d8020eab09220ec889cec849cec9d9820eb9dbcebb2a8"),
+          likert_current_t("data_editor.likert_labels_low_to_high"),
           value = "",
           placeholder = "strongly disagree\ndisagree\nneutral\nagree\nstrongly agree",
           rows = 5,
@@ -543,8 +543,8 @@ likert_custom_dictionary_ui <- function() {
         ),
         div(
           class = "likert-custom-actions",
-          actionButton("add_likert_custom_dictionary", likert_ui_text("Add dictionary", "ec82aceca08420ecb694eab080"), class = "btn btn-default"),
-          actionButton("clear_likert_custom_dictionaries", likert_ui_text("Clear custom", "ec82acec9aa9ec9e9020ec82aceca08420ecb488eab8b0ed9994"), class = "btn btn-default")
+          actionButton("add_likert_custom_dictionary", likert_current_t("data_editor.likert_add_dictionary"), class = "btn btn-default"),
+          actionButton("clear_likert_custom_dictionaries", likert_current_t("data_editor.likert_clear_custom"), class = "btn btn-default")
         )
       ),
       uiOutput("likert_custom_dictionary_status")
@@ -587,7 +587,7 @@ likert_dictionary_manager_ui <- function(built_in, custom, selected = NULL) {
     custom_entries
   )
   if (length(entries) == 0) {
-    return(div(class = "likert-dictionary-empty", likert_ui_text("No detection dictionaries are registered.", "eb93b1eba19deb909c20eab090eca78020ec82aceca084ec9db420ec9786ec8ab5eb8b88eb8ba42e")))
+    return(div(class = "likert-dictionary-empty", likert_current_t("data_editor.likert_no_dictionaries_registered")))
   }
 
   if (is.null(selected) || !selected %in% unname(entries)) {
@@ -597,7 +597,7 @@ likert_dictionary_manager_ui <- function(built_in, custom, selected = NULL) {
     class = "likert-dictionary-manager",
     div(
       class = "likert-dictionary-list-panel",
-      div(class = "likert-dictionary-panel-title", likert_ui_text("Detection dictionaries", "eab090eca78020ec82aceca084")),
+      div(class = "likert-dictionary-panel-title", likert_current_t("data_editor.likert_detection_dictionaries")),
       tags$select(
         id = "likert_dictionary_selected",
         class = "likert-dictionary-listbox",
@@ -605,9 +605,9 @@ likert_dictionary_manager_ui <- function(built_in, custom, selected = NULL) {
         lapply(names(entries), function(label) {
           value <- unname(entries[[label]])
           prefix <- if (startsWith(value, "custom::")) {
-            likert_ui_text("Custom", "ec82acec9aa9ec9e90")
+            likert_current_t("data_editor.likert_custom")
           } else {
-            likert_ui_text("Built-in", "eab8b0ebb3b8")
+            likert_current_t("data_editor.likert_built_in")
           }
           tags$option(
             value = value,
@@ -639,7 +639,7 @@ likert_dictionary_detail_ui <- function(built_in, custom, selected = NULL) {
     custom_entries
   )
   if (length(entries) == 0) {
-    return(div(class = "likert-dictionary-empty", likert_ui_text("No detection dictionaries are registered.", "eb93b1eba19deb909c20eab090eca78020ec82aceca084ec9db420ec9786ec8ab5eb8b88eb8ba42e")))
+    return(div(class = "likert-dictionary-empty", likert_current_t("data_editor.likert_no_dictionaries_registered")))
   }
 
   if (is.null(selected) || !selected %in% unname(entries)) {
@@ -657,26 +657,26 @@ likert_dictionary_detail_ui <- function(built_in, custom, selected = NULL) {
     div(
       class = "likert-dictionary-panel-title",
       if (is_custom) {
-        likert_ui_text("Edit selected dictionary", "ec84a0ed839ded959c20ec82aceca08420ed8eb8eca791")
+        likert_current_t("data_editor.likert_edit_selected_dictionary")
       } else {
-        likert_ui_text("View selected dictionary", "ec84a0ed839ded959c20ec82aceca08420ebb3b4eab8b0")
+        likert_current_t("data_editor.likert_view_selected_dictionary")
       }
     ),
     div(
       if (is_custom) {
         tagList(
-          textInput("likert_dictionary_edit_name", likert_ui_text("Detection name", "eab090eca78020ec9db4eba684"), value = selected_name, width = "260px"),
+          textInput("likert_dictionary_edit_name", likert_current_t("data_editor.likert_detection_name_label"), value = selected_name, width = "260px"),
           textAreaInput(
             "likert_dictionary_edit_levels",
-            likert_ui_text("Labels from low to high", "eb82aeec9d8020eab092ebb680ed84b020eb8692ec9d8020eab09220ec889cec849cec9d9820eb9dbcebb2a8"),
+            likert_current_t("data_editor.likert_labels_low_to_high"),
             value = paste(selected_labels, collapse = "\n"),
             rows = max(5, min(length(selected_labels), 10)),
             width = "420px"
           ),
           div(
             class = "likert-dictionary-edit-actions",
-            actionButton("update_likert_custom_dictionary", likert_ui_text("Update selected", "ec84a0ed839d20ed95adebaaa920ec9785eb8db0ec9db4ed8ab8"), class = "btn btn-primary"),
-            actionButton("delete_likert_custom_dictionary", likert_ui_text("Delete selected", "ec84a0ed839d20ed95adebaaa920ec82adeca09c"), class = "btn btn-default")
+            actionButton("update_likert_custom_dictionary", likert_current_t("data_editor.likert_update_selected"), class = "btn btn-primary"),
+            actionButton("delete_likert_custom_dictionary", likert_current_t("data_editor.likert_delete_selected"), class = "btn btn-default")
           )
         )
       } else {
@@ -688,7 +688,7 @@ likert_dictionary_detail_ui <- function(built_in, custom, selected = NULL) {
               tags$li(sprintf("%s = %s", index, selected_labels[[index]]))
             })
           ),
-          div(class = "likert-dictionary-readonly-note", likert_ui_text("Built-in dictionaries are read-only. Add a custom dictionary to edit or delete it.", "eab8b0ebb3b820ec82aceca084ec9d8020ec9dbdeab8b020eca084ec9aa9ec9e85eb8b88eb8ba42e20ed8eb8eca791ed9598eab1b0eb829820ec82adeca09ced9598eba0a4eba9b420ec82acec9aa9ec9e9020ec82aceca084ec9d8420ecb694eab080ed9598ec84b8ec9a942e"))
+          div(class = "likert-dictionary-readonly-note", likert_current_t("data_editor.likert_builtin_readonly_note"))
         )
       }
     )
@@ -702,15 +702,15 @@ data_editor_likert_panel <- function(language = statedu_initial_language()) {
     class = "page-shell",
     div(
       class = "app-heading",
-      h1(likert_ui_text("Auto Likert Conversion", "ec9e90eb8f99204c696b65727420ebb380ed9998", language)),
+      h1(statedu_t("data_editor.likert_title", language)),
       div(
-        likert_ui_text("Detect text Likert items, map labels to numbers, and apply the same rule to grouped variables.", "ed858dec8aa4ed8ab8204c696b65727420ebacb8ed95adec9d8420eab090eca780ed9598eab3a020eb9dbcebb2a8ec9d8420ec88abec9e90eba19c20eba7a4ed9591ed959c20eb92a42c20eab099ec9d8020eab7b8eba3b920ebb380ec8898ec979020eb8f99ec9dbc20eab79cecb999ec9d8420eca081ec9aa9ed95a9eb8b88eb8ba42e", language),
+        statedu_t("data_editor.likert_subtitle", language),
         class = "app-subtitle"
       )
     ),
     div(
       class = "workspace-panel frequencies-workspace-panel data-editor-workspace",
-      analysis_workspace_heading(likert_ui_text("Likert label conversion", "4c696b65727420eb9dbcebb2a820ebb380ed9998", language), "likert", language = language),
+      analysis_workspace_heading(statedu_t("data_editor.likert_label_conversion", language), "likert", language = language),
       analysis_workspace_body(
         "likert",
         uiOutput("likert_status"),
@@ -719,20 +719,20 @@ data_editor_likert_panel <- function(language = statedu_initial_language()) {
         uiOutput("likert_review_panel"),
         div(
           class = "likert-action-row",
-          checkboxInput("likert_apply_same_pattern", likert_ui_text("Apply this rule to every variable in the same detected group", "eab099ec9d8020eab090eca78020eab7b8eba3b9ec9d9820ebaaa8eb93a020ebb380ec8898ec979020ec9db420eab79cecb99920eca081ec9aa9"), value = TRUE),
-          checkboxInput("likert_reverse", likert_ui_text("Reverse items after conversion", "ebb380ed999820ed9b8420ebacb8ed95ad20ec97adecbd94eb94a9"), value = FALSE),
+          checkboxInput("likert_apply_same_pattern", statedu_t("data_editor.likert_apply_same_pattern", language), value = TRUE),
+          checkboxInput("likert_reverse", statedu_t("data_editor.likert_reverse_after_conversion", language), value = FALSE),
           div(
             class = "likert-measurement-control",
             selectInput(
               "likert_measurement",
-              likert_ui_text("Variable type after conversion", "ebb380ed999820ed9b8420ebb380ec889820ec9ca0ed9895"),
+              statedu_t("data_editor.likert_variable_type_after_conversion", language),
               choices = stats::setNames(
                 c("continuous", "ordered", "category", "binary"),
                 c(
-                  likert_ui_text("Continuous", "ec97b0ec868ded9895"),
-                  likert_ui_text("Ordinal", "ec889cec849ced9895"),
-                  likert_ui_text("Categorical", "ebb294eca3bced9895"),
-                  likert_ui_text("Binary", "ec9db4ebb684ed9895")
+                  statedu_t("data_editor.likert_continuous", language),
+                  statedu_t("data_editor.likert_ordinal", language),
+                  statedu_t("data_editor.likert_categorical", language),
+                  statedu_t("data_editor.likert_binary", language)
                 )
               ),
               selected = "continuous",
@@ -740,7 +740,7 @@ data_editor_likert_panel <- function(language = statedu_initial_language()) {
               selectize = FALSE
             )
           ),
-          actionButton("apply_likert_conversion", likert_ui_text("Convert selected group", "ec84a0ed839d20eab7b8eba3b920ebb380ed9998"), class = "btn btn-primary")
+          actionButton("apply_likert_conversion", statedu_t("data_editor.likert_convert_selected_group", language), class = "btn btn-primary")
         ),
         uiOutput("likert_message")
       )
@@ -765,6 +765,8 @@ register_likert_conversion_handlers <- function(
   last_message <- reactiveVal(NULL)
   custom_dictionaries <- reactiveVal(read_likert_custom_dictionaries())
   selected_dictionary <- reactiveVal(NULL)
+  likert_language <- function() statedu_current_language(language_fn)
+  likert_t <- function(key) statedu_t(key, likert_language())
 
   detected <- reactive({
     file <- current_data_file_fn()
@@ -772,6 +774,10 @@ register_likert_conversion_handlers <- function(
       return(data.frame(check.names = FALSE))
     }
     data <- tryCatch(raw_dataset_fn(), error = function(e) tryCatch(dataset_fn(), error = function(e) NULL))
+    scope <- intersect(as.character(selected_names_fn() %||% character(0)), names(data %||% data.frame()))
+    if (length(scope) > 0L) {
+      data <- data[, scope, drop = FALSE]
+    }
     detect_likert_variables(data, dictionaries = likert_dictionary(custom_dictionaries()))
   })
 
@@ -783,11 +789,11 @@ register_likert_conversion_handlers <- function(
     statedu_current_language(language_fn)
     groups <- summary()
     if (is.null(groups) || nrow(groups) == 0) {
-      return(div(class = "empty-message", div(likert_ui_text("No Likert-style text variables were detected in the current data.", "ed9884ec9eac20eb8db0ec9db4ed84b0ec9790ec849c204c696b65727420ed9895ec8b9dec9d9820ed858dec8aa4ed8ab820ebb380ec8898eab08020eab090eca780eb9098eca78020ec958aec9598ec8ab5eb8b88eb8ba42e"))))
+      return(div(class = "empty-message", div(likert_t("data_editor.likert_no_text_variables_current_data"))))
     }
     div(
       class = "recode-same-status",
-      sprintf(likert_ui_text("%s Likert group(s), %s variable(s) detected.", "2573eab09c204c696b65727420eab7b8eba3b92c202573eab09c20ebb380ec8898eab08020eab090eca780eb9098ec9788ec8ab5eb8b88eb8ba42e"), nrow(groups), sum(groups$variable_count))
+      sprintf(likert_t("data_editor.likert_detected_summary"), nrow(groups), sum(groups$variable_count))
     )
   })
 
@@ -801,7 +807,7 @@ register_likert_conversion_handlers <- function(
       class = "likert-dictionary-registry",
       div(
         class = "likert-custom-status-title",
-        sprintf(likert_ui_text("Registered detection dictionaries: %s built-in, %s custom", "eb93b1eba19deb909c20eab090eca78020ec82aceca0843a20eab8b0ebb3b8202573eab09c2c20ec82acec9aa9ec9e90202573eab09c"), length(built_in), length(custom))
+        sprintf(likert_t("data_editor.likert_registered_dictionaries_summary"), length(built_in), length(custom))
       ),
       likert_dictionary_manager_ui(built_in, custom, selected_current)
     )
@@ -814,7 +820,7 @@ register_likert_conversion_handlers <- function(
         `data-efs-toggle-input` = "likert_dictionary_registry_open",
         `aria-expanded` = if (registry_open) "true" else "false",
         span(class = "likert-toggle-icon", if (registry_open) "-" else "+"),
-        span(likert_ui_text("Show registered detection dictionaries", "eb93b1eba19deb909c20eab090eca78020ec82aceca08420ebb3b4eab8b0"))
+        span(likert_t("data_editor.likert_show_registered_dictionaries"))
       ),
       div(
         id = "likert-dictionary-registry-panel",
@@ -838,11 +844,11 @@ register_likert_conversion_handlers <- function(
     labels <- trimws(unlist(strsplit(as.character(input$likert_custom_dictionary_levels %||% ""), "\\r?\\n")))
     labels <- labels[nzchar(labels)]
     if (length(labels) < 3 || length(labels) > 11) {
-      showNotification(likert_ui_text("Enter 3 to 11 labels, one per line, from low to high.", "eb9dbcebb2a8ec9d8420eb82aeec9d8020eab092ebb680ed84b020eb8692ec9d8020eab09220ec889cec849ceba19c20ed959c20eca484ec979020ed9598eb8298ec94a92033eab09cec9790ec849c203131eab09ceab98ceca78020ec9e85eba0a5ed9598ec84b8ec9a942e"), type = "warning", duration = 6)
+      showNotification(likert_t("data_editor.likert_labels_range"), type = "warning", duration = 6)
       return()
     }
     if (anyDuplicated(likert_normalize_label(labels))) {
-      showNotification(likert_ui_text("Custom dictionary labels must be unique.", "ec82acec9aa9ec9e9020ec82aceca08420eb9dbcebb2a8ec9d8020eca491ebb3b5eb90a020ec889820ec9786ec8ab5eb8b88eb8ba42e"), type = "warning", duration = 6)
+      showNotification(likert_t("data_editor.likert_labels_unique"), type = "warning", duration = 6)
       return()
     }
     custom <- custom_dictionaries()
@@ -871,43 +877,43 @@ register_likert_conversion_handlers <- function(
     updateTextInput(session, "likert_custom_dictionary_name", value = "")
     updateTextAreaInput(session, "likert_custom_dictionary_levels", value = "")
     session$sendCustomMessage("easyflow-clear-likert-selection", list())
-    showNotification(sprintf(likert_ui_text("Added custom Likert detection dictionary: %s", "ec82acec9aa9ec9e90204c696b65727420eab090eca78020ec82aceca084ec9d8420ecb694eab080ed9688ec8ab5eb8b88eb8ba43a202573"), name), type = "message", duration = 5)
+    showNotification(sprintf(likert_t("data_editor.likert_dictionary_added"), name), type = "message", duration = 5)
   }, ignoreInit = TRUE)
 
   observeEvent(input$update_likert_custom_dictionary, {
     selected <- selected_dictionary()
     if (is.null(selected) || !startsWith(selected, "custom::")) {
-      showNotification(likert_ui_text("Only custom detection dictionaries can be edited.", "ec82acec9aa9ec9e9020eab090eca78020ec82aceca084eba78c20ed8eb8eca791ed95a020ec889820ec9e88ec8ab5eb8b88eb8ba42e"), type = "warning", duration = 5)
+      showNotification(likert_t("data_editor.likert_custom_edit_only"), type = "warning", duration = 5)
       return()
     }
     old_name <- sub("^custom::", "", selected)
     custom <- custom_dictionaries()
     if (!old_name %in% names(custom)) {
-      showNotification(likert_ui_text("Selected custom dictionary was not found.", "ec84a0ed839ded959c20ec82acec9aa9ec9e9020ec82aceca084ec9d8420ecb0beec9d8420ec889820ec9786ec8ab5eb8b88eb8ba42e"), type = "warning", duration = 5)
+      showNotification(likert_t("data_editor.likert_custom_not_found"), type = "warning", duration = 5)
       return()
     }
     labels <- trimws(unlist(strsplit(as.character(input$likert_dictionary_edit_levels %||% ""), "\\r?\\n")))
     labels <- labels[nzchar(labels)]
     if (length(labels) < 3 || length(labels) > 11) {
-      showNotification(likert_ui_text("Enter 3 to 11 labels, one per line, from low to high.", "eb9dbcebb2a8ec9d8420eb82aeec9d8020eab092ebb680ed84b020eb8692ec9d8020eab09220ec889cec849ceba19c20ed959c20eca484ec979020ed9598eb8298ec94a92033eab09cec9790ec849c203131eab09ceab98ceca78020ec9e85eba0a5ed9598ec84b8ec9a942e"), type = "warning", duration = 6)
+      showNotification(likert_t("data_editor.likert_labels_range"), type = "warning", duration = 6)
       return()
     }
     if (anyDuplicated(likert_normalize_label(labels))) {
-      showNotification(likert_ui_text("Custom dictionary labels must be unique.", "ec82acec9aa9ec9e9020ec82aceca08420eb9dbcebb2a8ec9d8020eca491ebb3b5eb90a020ec889820ec9786ec8ab5eb8b88eb8ba42e"), type = "warning", duration = 6)
+      showNotification(likert_t("data_editor.likert_labels_unique"), type = "warning", duration = 6)
       return()
     }
     new_name <- trimws(as.character(input$likert_dictionary_edit_name %||% ""))
     new_name <- gsub("[^A-Za-z0-9_]+", "_", new_name)
     new_name <- gsub("^_+|_+$", "", new_name)
     if (!nzchar(new_name)) {
-      showNotification(likert_ui_text("Enter a detection name.", "eab090eca78020ec9db4eba684ec9d8420ec9e85eba0a5ed9598ec84b8ec9a942e"), type = "warning", duration = 5)
+      showNotification(likert_t("data_editor.likert_detection_name_required"), type = "warning", duration = 5)
       return()
     }
     if (!startsWith(new_name, "custom_")) {
       new_name <- paste0("custom_", new_name)
     }
     if (!identical(new_name, old_name) && new_name %in% names(likert_dictionary(custom))) {
-      showNotification(likert_ui_text("A detection dictionary with that name already exists.", "eab099ec9d8020ec9db4eba684ec9d9820eab090eca78020ec82aceca084ec9db420ec9db4ebafb820ec9e88ec8ab5eb8b88eb8ba42e"), type = "warning", duration = 6)
+      showNotification(likert_t("data_editor.likert_dictionary_exists"), type = "warning", duration = 6)
       return()
     }
     custom[[old_name]] <- NULL
@@ -916,19 +922,19 @@ register_likert_conversion_handlers <- function(
     selected_dictionary(paste0("custom::", new_name))
     write_likert_custom_dictionaries(custom)
     session$sendCustomMessage("easyflow-clear-likert-selection", list())
-    showNotification(sprintf(likert_ui_text("Updated custom Likert detection dictionary: %s", "ec82acec9aa9ec9e90204c696b65727420eab090eca78020ec82aceca084ec9d8420ec9785eb8db0ec9db4ed8ab8ed9688ec8ab5eb8b88eb8ba43a202573"), new_name), type = "message", duration = 5)
+    showNotification(sprintf(likert_t("data_editor.likert_dictionary_updated"), new_name), type = "message", duration = 5)
   }, ignoreInit = TRUE)
 
   observeEvent(input$delete_likert_custom_dictionary, {
     selected <- selected_dictionary()
     if (is.null(selected) || !startsWith(selected, "custom::")) {
-      showNotification(likert_ui_text("Only custom detection dictionaries can be deleted.", "ec82acec9aa9ec9e9020eab090eca78020ec82aceca084eba78c20ec82adeca09ced95a020ec889820ec9e88ec8ab5eb8b88eb8ba42e"), type = "warning", duration = 5)
+      showNotification(likert_t("data_editor.likert_custom_delete_only"), type = "warning", duration = 5)
       return()
     }
     name <- sub("^custom::", "", selected)
     custom <- custom_dictionaries()
     if (!name %in% names(custom)) {
-      showNotification(likert_ui_text("Selected custom dictionary was not found.", "ec84a0ed839ded959c20ec82acec9aa9ec9e9020ec82aceca084ec9d8420ecb0beec9d8420ec889820ec9786ec8ab5eb8b88eb8ba42e"), type = "warning", duration = 5)
+      showNotification(likert_t("data_editor.likert_custom_not_found"), type = "warning", duration = 5)
       return()
     }
     custom[[name]] <- NULL
@@ -936,7 +942,7 @@ register_likert_conversion_handlers <- function(
     selected_dictionary(NULL)
     write_likert_custom_dictionaries(custom)
     session$sendCustomMessage("easyflow-clear-likert-selection", list())
-    showNotification(sprintf(likert_ui_text("Deleted custom Likert detection dictionary: %s", "ec82acec9aa9ec9e90204c696b65727420eab090eca78020ec82aceca084ec9d8420ec82adeca09ced9688ec8ab5eb8b88eb8ba43a202573"), name), type = "message", duration = 5)
+    showNotification(sprintf(likert_t("data_editor.likert_dictionary_deleted"), name), type = "message", duration = 5)
   }, ignoreInit = TRUE)
 
   observeEvent(input$clear_likert_custom_dictionaries, {
@@ -944,7 +950,7 @@ register_likert_conversion_handlers <- function(
     selected_dictionary(NULL)
     write_likert_custom_dictionaries(list())
     session$sendCustomMessage("easyflow-clear-likert-selection", list())
-    showNotification(likert_ui_text("Custom Likert detection dictionaries were cleared.", "ec82acec9aa9ec9e90204c696b65727420eab090eca78020ec82aceca084ec9d8420ecb488eab8b0ed9994ed9688ec8ab5eb8b88eb8ba42e"), type = "message", duration = 4)
+    showNotification(likert_t("data_editor.likert_dictionaries_cleared"), type = "message", duration = 4)
   }, ignoreInit = TRUE)
 
   output$likert_groups <- DT::renderDT({
@@ -1062,11 +1068,11 @@ register_likert_conversion_handlers <- function(
       return()
     }
     showModal(modalDialog(
-      title = likert_ui_text("Likert text variables detected", "4c696b65727420ed858dec8aa4ed8ab820ebb380ec8898eab08020eab090eca780eb9098ec9788ec8ab5eb8b88eb8ba4"),
-      sprintf(likert_ui_text("%s Likert group(s), %s variable(s) were detected. Review and convert them before analysis?", "2573eab09c204c696b65727420eab7b8eba3b92c202573eab09c20ebb380ec8898eab08020eab090eca780eb9098ec9788ec8ab5eb8b88eb8ba42e20ebb684ec849d20eca084ec979020eab280ed86a0ed9598eab3a020ebb380ed9998ed9598ec8b9ceab2a0ec8ab5eb8b88eab98c3f"), nrow(groups), sum(groups$variable_count)),
+      title = likert_t("data_editor.likert_text_variables_detected"),
+      sprintf(likert_t("data_editor.likert_detected_review_question"), nrow(groups), sum(groups$variable_count)),
       footer = tagList(
-        modalButton(likert_ui_text("Later", "eb8298eca491ec9790")),
-        actionButton("open_likert_conversion", likert_ui_text("Review and convert", "eab280ed86a020ebb08f20ebb380ed9998"), class = "btn-primary")
+        modalButton(likert_t("data_editor.likert_later")),
+        actionButton("open_likert_conversion", likert_t("data_editor.likert_review_and_convert"), class = "btn-primary")
       ),
       easyClose = TRUE
     ))
@@ -1082,7 +1088,7 @@ register_likert_conversion_handlers <- function(
     group <- selected_group()
     data <- tryCatch(raw_dataset_fn(), error = function(e) tryCatch(dataset_fn(), error = function(e) NULL))
     if (is.null(group) || nrow(group) == 0 || is.null(data)) {
-      showNotification(likert_ui_text("No detected Likert group is available.", "ec82acec9aa920eab080eb8aa5ed959c204c696b65727420eab7b8eba3b9ec9db420ec9786ec8ab5eb8b88eb8ba42e"), type = "warning", duration = 5)
+      showNotification(likert_t("data_editor.likert_no_group"), type = "warning", duration = 5)
       return()
     }
     variables <- if (isTRUE(input$likert_apply_same_pattern)) {
@@ -1092,12 +1098,12 @@ register_likert_conversion_handlers <- function(
     }
     variables <- intersect(variables, names(data))
     if (length(variables) == 0) {
-      showNotification(likert_ui_text("Select at least one variable to convert.", "ebb380ed9998ed95a020ebb380ec8898eba5bc20ed9598eb829820ec9db4ec838120ec84a0ed839ded9598ec84b8ec9a942e"), type = "warning", duration = 5)
+      showNotification(likert_t("data_editor.likert_select_variable_convert"), type = "warning", duration = 5)
       return()
     }
     mapping <- likert_mapping_from_input(input, likert_group_representative_mapping(group))
     if (any(is.na(mapping$value)) || length(unique(mapping$value)) != nrow(mapping)) {
-      showNotification(likert_ui_text("Numeric mapping values must be complete and unique.", "ec88abec9e9020eba7a4ed959120eab092ec9d8020ebb9a0eca790ec9786ec9db420ec9e85eba0a5eb9098ec96b4ec95bc20ed9598eba9b020eca491ebb3b5eb90a020ec889820ec9786ec8ab5eb8b88eb8ba42e"), type = "warning", duration = 6)
+      showNotification(likert_t("data_editor.likert_numeric_mapping_invalid"), type = "warning", duration = 6)
       return()
     }
     measurement <- as.character(input$likert_measurement %||% "continuous")
@@ -1114,7 +1120,7 @@ register_likert_conversion_handlers <- function(
       }
     }
     if (length(converted) == 0) {
-      last_message(likert_ui_text("No variables were converted.", "ebb380ed9998eb909c20ebb380ec8898eab08020ec9786ec8ab5eb8b88eb8ba42e"))
+      last_message(likert_t("data_editor.likert_no_variables_converted"))
       return()
     }
     session$sendCustomMessage(
@@ -1134,7 +1140,7 @@ register_likert_conversion_handlers <- function(
     }
     group_label <- as.character(group$dictionary[[1]] %||% group$group_id[[1]] %||% "Likert")
     last_message(sprintf(
-      likert_ui_text("Converted %s Likert variable(s) from %s: %s", "2573eab09c204c696b65727420ebb380ec8898eba5bc202573ec9790ec849c20ebb380ed9998ed9688ec8ab5eb8b88eb8ba43a202573"),
+      likert_t("data_editor.likert_converted_variables"),
       length(converted),
       group_label,
       paste(converted, collapse = ", ")

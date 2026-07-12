@@ -141,6 +141,12 @@ longitudinal_setup_state <- function(
 
 longitudinal_ui_text <- function(text, language = statedu_initial_language()) {
   language <- normalize_app_language(language)
+  key <- tolower(gsub("[^A-Za-z0-9]+", "_", as.character(text %||% "")))
+  key <- gsub("^_+|_+$", "", key)
+  translated <- statedu_t(paste0("longitudinal.ui.", key), language, fallback = "")
+  if (nzchar(translated)) {
+    return(translated)
+  }
   if (!identical(language, "ko")) {
     return(text)
   }
@@ -195,9 +201,7 @@ longitudinal_independent_variables_label <- function(n, language = statedu_initi
 }
 
 longitudinal_ui_choices <- function(choices, language = statedu_initial_language()) {
-  if (!identical(normalize_app_language(language), "ko")) {
-    return(choices)
-  }
+  language <- normalize_app_language(language)
   h <- statedu_utf8
   labels <- c(
     "GEE: population-averaged model" = h("4745453a20ebaaa8eca791eb8ba820ed8f89eab7a020ebaaa8ed9895"),
@@ -235,13 +239,29 @@ longitudinal_ui_choices <- function(choices, language = statedu_initial_language
   )
   translated <- choices
   names(translated) <- vapply(names(choices), function(name) {
-    if (name %in% names(labels)) labels[[name]] else name
+    key <- tolower(gsub("[^A-Za-z0-9]+", "_", as.character(name %||% "")))
+    key <- gsub("^_+|_+$", "", key)
+    value <- statedu_t(paste0("longitudinal.choice.", key), language, fallback = "")
+    if (nzchar(value)) {
+      value
+    } else if (identical(language, "ko") && name %in% names(labels)) {
+      labels[[name]]
+    } else {
+      name
+    }
   }, character(1))
   translated
 }
 
 longitudinal_check_label <- function(label, language = statedu_initial_language()) {
-  if (!identical(normalize_app_language(language), "ko")) {
+  language <- normalize_app_language(language)
+  key <- tolower(gsub("[^A-Za-z0-9]+", "_", as.character(label %||% "")))
+  key <- gsub("^_+|_+$", "", key)
+  translated <- statedu_t(paste0("longitudinal.check.", key), language, fallback = "")
+  if (nzchar(translated)) {
+    return(translated)
+  }
+  if (!identical(language, "ko")) {
     return(label)
   }
   h <- statedu_utf8
@@ -269,14 +289,23 @@ longitudinal_check_label <- function(label, language = statedu_initial_language(
 }
 
 longitudinal_weight_type_detail_ui <- function(weight_type, model_type = NULL, language = statedu_initial_language()) {
-  if (!identical(normalize_app_language(language), "ko")) {
-    return(longitudinal_weight_type_detail(weight_type, model_type))
-  }
+  language <- normalize_app_language(language)
   h <- statedu_utf8
   weight_type <- longitudinal_resolve_weight_type(weight_type)
   model_type <- as.character(model_type %||% "")[[1]]
   if (model_type %in% c("lmm", "glmm")) {
+    translated <- statedu_t("longitudinal.detail.weight_type.lmm_glmm", language, fallback = "")
+    if (nzchar(translated)) {
+      return(translated)
+    }
     return(h("ebb684ec849d20eab080eca491ecb998eba5bc20eca081ec9aa9ed9598eca78020ec958aec8ab5eb8b88eb8ba42e204c4d4d2f474c4d4dec9d9820eab080eca49120ec9ab0eb8f84eb8a9420ed919cebb3b8ec84a4eab3842c20ebaaa9ed919c20ecb694eca095eb9f892c20ec868ced9484ed8ab8ec9ba8ec96b4ebb38420ec9ab0eb8f8420eca095ec9d98ec979020eb94b0eb9dbc20ed95b4ec849dec9db420ed81aceab28c20eb8baceb9dbceca780ebaf80eba19c20ec9db420ebaaa8eb9388ec9d9820eab8b0ebb3b820ebb684ec849dec9cbceba19c20eab68cec9ea5ed9598eca78020ec958aec8ab5eb8b88eb8ba42e20eab080eca49120eca3bcebb38020eca285eb8ba820ecb694eba1a0ec9db420ed9584ec9a94ed9598eba9b420474545eba5bc20ec82acec9aa9ed9598eab1b0eb82982c204c4d4d2f474c4d4d20eab080eca49120eab2b0eab3bceb8a9420ebb384eb8f8420ec84a4eab38420eab7bceab1b0eab08020ec9e88eb8a9420ebafbceab090eb8f8420ebb684ec849dec9cbceba19c20ebb3b4eab3a0ed9598ec84b8ec9a942e"))
+  }
+  translated <- statedu_t(paste0("longitudinal.detail.weight_type.", weight_type), language, fallback = "")
+  if (nzchar(translated)) {
+    return(translated)
+  }
+  if (!identical(language, "ko")) {
+    return(longitudinal_weight_type_detail(weight_type, model_type))
   }
   switch(
     weight_type,
@@ -289,12 +318,18 @@ longitudinal_weight_type_detail_ui <- function(weight_type, model_type = NULL, l
 }
 
 longitudinal_weight_trim_detail_ui <- function(trim, language = statedu_initial_language()) {
-  if (!identical(normalize_app_language(language), "ko")) {
+  language <- normalize_app_language(language)
+  h <- statedu_utf8
+  trim <- longitudinal_resolve_weight_trim(trim)
+  translated <- statedu_t(paste0("longitudinal.detail.weight_trim.", trim), language, fallback = "")
+  if (nzchar(translated)) {
+    return(translated)
+  }
+  if (!identical(language, "ko")) {
     return(longitudinal_weight_trim_detail(trim))
   }
-  h <- statedu_utf8
   switch(
-    longitudinal_resolve_weight_trim(trim),
+    trim,
     p01_99 = h("ecb59ceca28520eab080eca491ecb998ec9d982031ebb0b1ebb684ec9c84ec889820ebafb8eba78ceab3bc203939ebb0b1ebb684ec9c84ec889820ecb488eab3bc20eab092ec9d8420ec9c88eca080ed9994ed95a9eb8b88eb8ba42e20eab084ed9790eca081ec9db820eab7b9eb8ba820eab080eca491ecb998ec979020eb8c80ed959c20ec9984eba78ced959c20ec9588eca095ed999420ec98b5ec8598ec9e85eb8b88eb8ba42e"),
     p05_95 = h("ecb59ceca28520eab080eca491ecb998ec9d982035ebb0b1ebb684ec9c84ec889820ebafb8eba78ceab3bc203935ebb0b1ebb684ec9c84ec889820ecb488eab3bc20eab092ec9d8420ec9c88eca080ed9994ed95a9eb8b88eb8ba42e20eb8d9420eab095ed959c20ecb298eba6acec9db4ebaf80eba19c20ebaaa9ed919c20eab080eca49120ecb694eca095eb9f89ec9d8420ebb094eabf8020ec889820ec9e88eb8a9420ebafbceab090eb8f8420ec84a0ed839dec9cbceba19c20ebb3b4eab3a0ed95b4ec95bc20ed95a9eb8b88eb8ba42e"),
     h("eca088eb8ba8ec9d8420eca081ec9aa9ed9598eca78020ec958aec8ab5eb8b88eb8ba42e20eab080eca491ecb998eab08020ec9588eca095eca081ec9db4eab1b0eb829820ec9b90eb9e9820ec84a4eab38420eab080eca491ecb998eba5bc20ebb3b4eca1b4ed9598eb8a9420eab283ec9db420ebb684ec82b020ec9588eca095ed9994ebb3b4eb8ba420eca491ec9a94ed95a020eb958c20ec82acec9aa9ed95a9eb8b88eb8ba42e")
@@ -302,20 +337,37 @@ longitudinal_weight_trim_detail_ui <- function(trim, language = statedu_initial_
 }
 
 longitudinal_missing_strategy_detail_ui <- function(strategy, model_type = NULL, language = statedu_initial_language()) {
-  if (!identical(normalize_app_language(language), "ko")) {
-    return(longitudinal_missing_strategy_detail(strategy, model_type))
-  }
+  language <- normalize_app_language(language)
   h <- statedu_utf8
   strategy <- longitudinal_resolve_missing_strategy(strategy, model_type)
   model_type <- as.character(model_type %||% "")[[1]]
   if (identical(strategy, "available")) {
     if (model_type %in% c("lmm", "glmm")) {
+      translated <- statedu_t("longitudinal.detail.missing_strategy.available_lmm_glmm", language, fallback = "")
+      if (nzchar(translated)) {
+        return(translated)
+      }
       return(h("ebb688eab7a0ed9895204c4d4d2f474c4d4d20ec9ab0eb8f84eb8a9420ec84a0ed839ded959c20ebaaa8ed989520ebb380ec8898eb93a4ec9db420ec9984eca084ed959c20eab480ecb8a120eab8b0eba19dec9d8420ec82acec9aa9ed95b420eca081ed95a9ed95a9eb8b88eb8ba42e20eb8ba4eba5b820ebb0a9ebacb8ec9790ec849c20eab2b0eab3bcebb380ec8898eab08020eab2b0ecb8a1ec9db4eb9dbceb8a9420ec9db4ec9ca0eba78cec9cbceba19c20eb8c80ec8381ec9e9020eca084ecb2b4eba5bc20eca09ceab1b0ed9598eca780eb8a9420ec958aeca780eba78c2c20eca081ed95a920ebaaa8ed9895ec9d9820eab2b0eab3bcebb380ec88982c20eab3b5ebb380eb9f892c2049442c20ec8b9ceab08420ebb380ec8898ec979020eab2b0ecb8a1ec9db420ec9e88eb8a9420ed9689ec9d8020eb8c80ecb2b4ed9598eca78020ec958aec8ab5eb8b88eb8ba42e204d415220eab080eca095ec9db420ebb0a9ec96b420eab080eb8aa5ed95a020eb958c20eab8b0ebb3b820ed98bced95a9ebaaa8ed989520ebb684ec849dec9cbceba19c20eca081eca088ed9598eba9b02c20eab3b5ebb380eb9f8920eab2b0ecb8a1ec9db4eb829820ed8388eb9dbd20eab8b0eca09ceab08020eca491ec9a94ed9598eba9b4204d4920eb9890eb8a942049505720ebafbceab090eb8f8420ebb684ec849dec9d8420ecb694eab080ed9598ec84b8ec9a942e"))
     }
     if (identical(model_type, "gee")) {
+      translated <- statedu_t("longitudinal.detail.missing_strategy.available_gee", language, fallback = "")
+      if (nzchar(translated)) {
+        return(translated)
+      }
       return(h("ec9dbcebb09820474545eb8a9420ec9ab0eb8f8420eab8b0ebb09820ebaaa8ed9895ec9db420ec9584eb8b99eb8b88eb8ba42e20ec82acec9aa920eab080eb8aa5ed959c20ebaaa8ed989520ed9689ec9d8020eca081ed95a9ed95a020ec889820ec9e88eca780eba78c2c204d415220ed8388eb9dbdec9d80204d492c2049505720eb9890eb8a94205747454520ebafbceab090eb8f8420ebb684ec849dec9cbceba19c20ebb3b4ec9984ed95b4ec95bc20ed95a9eb8b88eb8ba42e"))
     }
+    translated <- statedu_t("longitudinal.detail.missing_strategy.available_other", language, fallback = "")
+    if (nzchar(translated)) {
+      return(translated)
+    }
     return(h("eab480ecb8a1eb909c20ec84a0ed839d20ebaaa8ed989520ebb380ec889820ed9689ec9d8420ec82acec9aa9ed95a9eb8b88eb8ba42e20ed8ca8eb849020eab7a0ed989520ec97acebb680eba5bc20ebb3b4eab3a0ed9598eab3a02c20eab2b0ecb8a1ec9db420eab480ecb8a120ec9db4eba0a5ec979020ec9d98eca1b4ed95a020eab080eb8aa5ec84b1ec9db420ec9e88ec9cbceba9b4204d4920eb9890eb8a9420eab080eca49120ebafbceab090eb8f8420ebb684ec849dec9d8420ecb694eab080ed9598ec84b8ec9a942e"))
+  }
+  translated <- statedu_t(paste0("longitudinal.detail.missing_strategy.", strategy), language, fallback = "")
+  if (nzchar(translated)) {
+    return(translated)
+  }
+  if (!identical(language, "ko")) {
+    return(longitudinal_missing_strategy_detail(strategy, model_type))
   }
   switch(
     strategy,
@@ -856,17 +908,17 @@ longitudinal_setup_panel <- function(state, status_message = NULL) {
           )
       )
     ),
-    div(
-      class = "analysis-action-row longitudinal-action-row",
-      actionButton("run_longitudinal", longitudinal_ui_text("Run model", language), class = "btn btn-primary", disabled = if (!isTRUE(state$can_run)) "disabled" else NULL),
-      tags$button(
+    analysis_three_block_action_row(
+      class = "longitudinal-action-row",
+      run_button = actionButton("run_longitudinal", longitudinal_ui_text("Run model", language), class = "btn btn-primary", disabled = if (!isTRUE(state$can_run)) "disabled" else NULL),
+      reset_control = tags$button(
         id = "reset_longitudinal",
         type = "button",
         class = "btn action-button btn-default analysis-reset-button",
         disabled = if (!isTRUE(state$has_assignment)) "disabled" else NULL,
         longitudinal_ui_text("Reset setting", language)
       ),
-      uiOutput("longitudinal_save_control")
+      save_control = uiOutput("longitudinal_save_control")
     )
   )
 }

@@ -65,7 +65,7 @@ create_app_server <- function(app_version) {
   force(app_version)
 
   function(input, output, session) {
-    app_output_root <- file.path(getwd(), "outputs")
+    app_output_root <- latent_default_output_root(getwd())
     dir.create(app_output_root, recursive = TRUE, showWarnings = FALSE)
     try(shiny::addResourcePath("latent_outputs", normalizePath(app_output_root, winslash = "/", mustWork = FALSE)), silent = TRUE)
 
@@ -584,8 +584,31 @@ create_app_server <- function(app_version) {
     latent_run_timer <- reactiveTimer(1500, session)
     latent_last_data_path <- reactiveVal("")
 
+    latent_current_data_file <- function() {
+      file <- tryCatch(current_data_file(), error = function(e) NULL)
+      if (!is.null(file)) {
+        return(file)
+      }
+      if (exists("restored_data_file", mode = "function")) {
+        restored_name <- tryCatch(restored_data_file(), error = function(e) "")
+        restored_name <- trimws(as.character(restored_name %||% ""))
+        if (nzchar(restored_name)) {
+          return(list(name = restored_name, restored = TRUE))
+        }
+      }
+      NULL
+    }
+
+    latent_restored_variable_info <- function() {
+      if (!exists("restored_variable_info", mode = "function")) {
+        return(data.frame(check.names = FALSE))
+      }
+      info <- tryCatch(restored_variable_info(), error = function(e) NULL)
+      latent_normalize_variable_info(info)
+    }
+
     observeEvent(current_data_file(), {
-      file <- current_data_file()
+      file <- latent_current_data_file()
       dataset_id <- dataset_id_from_data_file(file)
       if (!nzchar(dataset_id)) {
         return()
@@ -618,6 +641,23 @@ create_app_server <- function(app_version) {
       }
     }, ignoreInit = FALSE)
 
+    if (exists("restored_variable_info", mode = "function")) {
+      observeEvent(restored_variable_info(), {
+        info <- latent_restored_variable_info()
+        if (!is.data.frame(info) || nrow(info) == 0) {
+          return()
+        }
+        file <- latent_current_data_file()
+        dataset_id <- dataset_id_from_data_file(file)
+        for (module_id in names(latent_modules)) {
+          if (nzchar(dataset_id)) {
+            updateTextInput(session, paste0(module_id, "_dataset_id"), value = dataset_id)
+          }
+          latent_table_refresh[[module_id]](as.integer(latent_table_refresh[[module_id]]()) + 1L)
+        }
+      }, ignoreInit = FALSE)
+    }
+
     for (module_id in names(latent_modules)) {
       local({
         id <- module_id
@@ -639,6 +679,19 @@ create_app_server <- function(app_version) {
           updated <- assign_latent_role_cell(roles(), variable, role, latent_role_choices(id))
           roles(updated)
         }, ignoreInit = TRUE)
+
+        observeEvent(input$main_menu, {
+          if (!identical(input$main_menu %||% "", paste0("latent_", id))) {
+            return()
+          }
+          file <- latent_current_data_file()
+          dataset_id <- dataset_id_from_data_file(file)
+          current_dataset_id <- trimws(as.character(input[[paste0(id, "_dataset_id")]] %||% ""))
+          if (nzchar(dataset_id) && !nzchar(current_dataset_id)) {
+            updateTextInput(session, paste0(id, "_dataset_id"), value = dataset_id)
+          }
+          refresh_token(as.integer(refresh_token()) + 1L)
+        }, ignoreInit = FALSE)
 
         observeEvent(input[[paste0(id, "_role_checkbox_update")]], {
           update <- input[[paste0(id, "_role_checkbox_update")]]
@@ -737,7 +790,21 @@ create_app_server <- function(app_version) {
         })
 
         observeEvent(input[[paste0(id, "_save_yaml")]], {
-          path <- save_latent_yaml_file(default_dataset_id = input[[paste0(id, "_dataset_id")]] %||% dataset_id_from_data_file(current_data_file()))
+          file <- latent_current_data_file()
+          data_dir <- ""
+          if (is.list(file)) {
+            data_path <- latent_resolved_data_file_path(file, app_root = getwd())
+            if (nzchar(data_path)) {
+              data_dir <- dirname(normalizePath(data_path, winslash = "/", mustWork = FALSE))
+              if (!dir.exists(data_dir)) {
+                data_dir <- ""
+              }
+            }
+          }
+          path <- save_latent_yaml_file(
+            default_dataset_id = input[[paste0(id, "_dataset_id")]] %||% dataset_id_from_data_file(file),
+            initial_dir = data_dir
+          )
           if (is.null(path)) {
             return()
           }
@@ -745,7 +812,7 @@ create_app_server <- function(app_version) {
             app_version = app_version,
             module_id = id,
             input = input,
-            current_data_file = current_data_file(),
+            current_data_file = latent_current_data_file(),
             variable_info = tryCatch(variable_info_table(), error = function(e) NULL),
             roles = roles()
           )
@@ -788,11 +855,19 @@ create_app_server <- function(app_version) {
         }, ignoreInit = TRUE)
 
         output[[paste0(id, "_dataset_id_message")]] <- renderText({
-          file <- current_data_file()
+          file <- latent_current_data_file()
           if (is.null(file)) {
             return("Load a data file in the Data tab. Dataset ID will be filled from the file name.")
           }
           sprintf("Dataset ID is initialized from the loaded file: %s", dataset_id_from_data_file(file))
+        })
+
+        output[[paste0(id, "_output_root_display")]] <- renderText({
+          normalizePath(
+            latent_output_root_from_data_file(latent_current_data_file(), app_root = getwd()),
+            winslash = "/",
+            mustWork = FALSE
+          )
         })
 
         output[[paste0(id, "_setup_yaml_status")]] <- renderText({
@@ -820,7 +895,17 @@ create_app_server <- function(app_version) {
           refresh_token()
           active <- input[[paste0(id, "_active_role")]] %||% latent_role_choices(id)[1]
           current_roles <- roles()
-          info <- tryCatch(variable_info_table(), error = function(e) NULL)
+          info <- latent_normalize_variable_info(tryCatch(variable_info_table(), error = function(e) NULL))
+          if (!is.data.frame(info) || nrow(info) == 0) {
+            info <- latent_restored_variable_info()
+          }
+          if (!is.data.frame(info) || nrow(info) == 0) {
+            available <- tryCatch(available_variable_names(), error = function(e) character(0))
+            info <- latent_variable_info_from_names(available)
+          }
+          if (!is.data.frame(info) || nrow(info) == 0) {
+            info <- latent_variable_info_from_current_data_file(latent_current_data_file())
+          }
           if (!is.data.frame(info) || nrow(info) == 0) {
             demo <- preview_variable_rows(id)
             demo <- latent_filter_role_rows(demo, "Variable", current_roles, active)
@@ -979,11 +1064,20 @@ create_app_server <- function(app_version) {
             return(div(class = "latent-empty-result", "No result tables yet. Run the analysis first."))
           }
           table_blocks <- lapply(seq_len(nrow(tables)), function(i) {
+            profile_count <- latent_result_table_profile_count_for_path(
+              tables$file[[i]],
+              project_root = project_root,
+              app_root = getwd(),
+              output_root = output_root,
+              dataset_id = dataset_id,
+              analysis_id = selected_spec$engine
+            )
             div(
               class = paste(
                 "result-section regression-result-panel latent-result-table-section",
-                latent_result_table_section_class(tables$table[[i]])
+                latent_result_table_section_class(tables$table[[i]], profile_count = profile_count)
               ),
+              style = latent_result_table_section_style(tables$table[[i]], profile_count = profile_count),
               h4(tables$label[[i]]),
               latent_excel_like_table_ui(
                 tables$file[[i]],
@@ -1456,15 +1550,244 @@ preview_variable_rows <- function(module_id) {
   )
 }
 
+latent_sample_data_dir <- function(app_root = getwd()) {
+  candidates <- unique(c(
+    file.path(app_root, "sample"),
+    file.path(dirname(app_root), "Studio", "sample")
+  ))
+  candidates <- candidates[dir.exists(candidates)]
+  if (length(candidates) == 0) {
+    return("")
+  }
+  normalizePath(candidates[[1]], winslash = "/", mustWork = TRUE)
+}
+
+latent_temporary_data_path <- function(path) {
+  path <- as.character(path %||% "")
+  if (!nzchar(path)) {
+    return(FALSE)
+  }
+  normalized <- normalizePath(path, winslash = "/", mustWork = FALSE)
+  normalized_lower <- tolower(normalized)
+  temp_roots <- unique(c(tempdir(), Sys.getenv("TEMP"), Sys.getenv("TMP"), "C:/Users/Public/Documents/ESTsoft/CreatorTemp"))
+  temp_roots <- normalizePath(temp_roots[nzchar(temp_roots)], winslash = "/", mustWork = FALSE)
+  temp_roots <- tolower(gsub("/+$", "", temp_roots))
+  is_temp_root <- any(startsWith(normalized_lower, paste0(temp_roots, "/")) | identical(normalized_lower, temp_roots))
+  isTRUE(is_temp_root) || grepl("/rtmp[^/]+/", normalized_lower)
+}
+
+latent_data_file_name <- function(file) {
+  if (is.null(file)) {
+    return("")
+  }
+  path <- as.character(file$path %||% file$datapath %||% "")
+  name <- basename(as.character(file$name %||% path %||% ""))
+  name <- trimws(name)
+  if (nzchar(name)) name else ""
+}
+
+latent_data_search_roots <- function(app_root = getwd()) {
+  app_root <- normalizePath(app_root, winslash = "/", mustWork = FALSE)
+  parent_root <- dirname(app_root)
+  configured_roots <- strsplit(Sys.getenv("STATEDU_LATENT_DATA_SEARCH_ROOTS", ""), .Platform$path.sep, fixed = TRUE)[[1]]
+  configured_roots <- configured_roots[nzchar(configured_roots)]
+  program_root <- normalizePath(file.path("D:", "Program"), winslash = "/", mustWork = FALSE)
+  program_roots <- file.path(program_root, c("Studio", "Studio/sample", "data", "PPT", "Latent", "Latent_Mplus"))
+  sibling_roots <- file.path(parent_root, c("PPT", "data", "Latent", "Latent_Mplus"))
+  parent_children <- if (dir.exists(parent_root)) {
+    list.files(parent_root, full.names = TRUE, no.. = TRUE)
+  } else {
+    character(0)
+  }
+  parent_children <- parent_children[dir.exists(parent_children)]
+  parent_children <- parent_children[!grepl("/(R|Studio|StatEdu_Studio|output|outputs|dist|packaging)$", normalizePath(parent_children, winslash = "/", mustWork = FALSE), ignore.case = TRUE)]
+  roots <- unique(c(
+    configured_roots,
+    file.path(app_root, "sample"),
+    program_roots,
+    sibling_roots,
+    parent_children,
+    app_root
+  ))
+  roots[dir.exists(roots)]
+}
+
+latent_result_or_example_path <- function(path) {
+  normalized <- normalizePath(path, winslash = "/", mustWork = FALSE)
+  grepl("/(Mplus_output|mplus_tmp|output|outputs|Mplus_examples)/", normalized, ignore.case = TRUE)
+}
+
+latent_original_data_path_from_name <- function(name, app_root = getwd()) {
+  name <- basename(trimws(as.character(name %||% "")))
+  if (!nzchar(name) || !supported_data_file_extension(name)) {
+    return("")
+  }
+  roots <- latent_data_search_roots(app_root)
+  if (length(roots) == 0) {
+    return("")
+  }
+  pattern <- gsub(".", "\\.", name, fixed = TRUE)
+  files <- unique(unlist(lapply(roots, function(root) {
+    list.files(root, pattern = pattern, full.names = TRUE, recursive = TRUE, ignore.case = TRUE, no.. = TRUE)
+  }), use.names = FALSE))
+  files <- files[file.exists(files) & !dir.exists(files)]
+  files <- files[tolower(basename(files)) == tolower(name)]
+  files <- files[!vapply(files, latent_temporary_data_path, logical(1))]
+  primary <- files[!vapply(files, latent_result_or_example_path, logical(1))]
+  files <- if (length(primary) > 0) primary else files
+  if (length(files) == 0) {
+    return("")
+  }
+  normalized <- normalizePath(files, winslash = "/", mustWork = FALSE)
+  normalized[order(nchar(normalized), normalized)][[1]]
+}
+
+latent_resolved_data_file_path <- function(file, app_root = getwd()) {
+  if (is.null(file)) {
+    return("")
+  }
+  original_path <- as.character(file$original_path %||% file$source_path %||% "")
+  if (nzchar(original_path) && file.exists(original_path) && !latent_temporary_data_path(original_path)) {
+    return(normalizePath(original_path, winslash = "/", mustWork = TRUE))
+  }
+  path <- as.character(file$path %||% file$datapath %||% "")
+  if (nzchar(path) && file.exists(path) && !latent_temporary_data_path(path)) {
+    return(normalizePath(path, winslash = "/", mustWork = TRUE))
+  }
+  candidate <- latent_original_data_path_from_name(latent_data_file_name(file), app_root = app_root)
+  if (nzchar(candidate) && file.exists(candidate)) {
+    return(candidate)
+  }
+  path
+}
+
+latent_default_dataset_id_from_sample <- function(app_root = getwd()) {
+  configured <- trimws(as.character(Sys.getenv("STATEDU_LATENT_DEFAULT_DATASET_ID", "")))
+  if (nzchar(configured)) {
+    return(configured)
+  }
+  sample_dir <- latent_sample_data_dir(app_root)
+  if (!nzchar(sample_dir)) {
+    return("")
+  }
+  preferred <- file.path(sample_dir, "KSWL.sav")
+  if (file.exists(preferred)) {
+    return("KSWL")
+  }
+  files <- list.files(sample_dir, pattern = "\\.(sav|sas7bdat|xpt|dta|csv|dat|xlsx|xls)$", full.names = FALSE, ignore.case = TRUE)
+  files <- files[!grepl("^StatEdu_Studio_", files, ignore.case = TRUE)]
+  if (length(files) == 1) {
+    return(tools::file_path_sans_ext(files[[1]]))
+  }
+  ""
+}
+
 dataset_id_from_data_file <- function(file) {
   if (is.null(file)) {
     return("")
   }
-  name <- basename(as.character(file$name %||% file$path %||% ""))
-  if (!nzchar(name)) {
-    return("")
+  path <- latent_resolved_data_file_path(file)
+  name <- basename(as.character(path %||% latent_data_file_name(file)))
+  dataset_id <- if (nzchar(name)) tools::file_path_sans_ext(name) else ""
+  if ((!nzchar(dataset_id) || grepl("^[0-9]+$", dataset_id)) && latent_temporary_data_path(path)) {
+    fallback <- latent_default_dataset_id_from_sample()
+    if (nzchar(fallback)) {
+      return(fallback)
+    }
   }
-  tools::file_path_sans_ext(name)
+  dataset_id
+}
+
+latent_normalize_variable_info <- function(info) {
+  if (!is.data.frame(info) || nrow(info) == 0) {
+    return(data.frame(check.names = FALSE))
+  }
+  out <- as.data.frame(info, stringsAsFactors = FALSE, check.names = FALSE)
+  lower_names <- tolower(names(out))
+  name_col <- match(TRUE, lower_names %in% c("name", "variable", "variable_name", "var", "var_name"))
+  if (is.na(name_col)) {
+    row_names <- rownames(out)
+    if (!is.null(row_names) && length(row_names) == nrow(out) && any(nzchar(row_names))) {
+      out$name <- row_names
+    } else {
+      return(data.frame(check.names = FALSE))
+    }
+  } else if (!identical(names(out)[[name_col]], "name")) {
+    names(out)[[name_col]] <- "name"
+  }
+  rename_if_present <- function(target, candidates) {
+    lower_names <- tolower(names(out))
+    col <- match(TRUE, lower_names %in% candidates)
+    if (!is.na(col) && !target %in% names(out)) {
+      names(out)[[col]] <<- target
+    }
+  }
+  rename_if_present("var_label", c("var_label", "label", "variable_label"))
+  rename_if_present("measurement", c("measurement", "type", "measure", "scale"))
+  rename_if_present("storage_type", c("storage_type", "storage", "class"))
+  rename_if_present("n_unique", c("n_unique", "unique"))
+  rename_if_present("n_missing", c("n_missing", "missing"))
+  out$name <- trimws(as.character(out$name %||% ""))
+  out <- out[!is.na(out$name) & nzchar(out$name), , drop = FALSE]
+  if (nrow(out) == 0) {
+    return(data.frame(check.names = FALSE))
+  }
+  for (col in c("var_label", "measurement", "storage_type", "n_unique", "n_missing", "min_value", "max_value")) {
+    if (!col %in% names(out)) {
+      out[[col]] <- ""
+    }
+  }
+  out
+}
+
+latent_variable_info_from_names <- function(variables) {
+  variables <- unique(as.character(variables %||% character(0)))
+  variables <- variables[!is.na(variables) & nzchar(variables)]
+  if (length(variables) == 0) {
+    return(data.frame(check.names = FALSE))
+  }
+  data.frame(
+    source_order = seq_along(variables),
+    name = variables,
+    var_label = "",
+    measurement = "auto",
+    storage_type = "",
+    n_unique = "",
+    n_missing = "",
+    min_value = "",
+    max_value = "",
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
+latent_variable_info_from_current_data_file <- function(current_data_file = NULL) {
+  path <- latent_data_file_path(current_data_file)
+  if (!nzchar(path) || !file.exists(path)) {
+    return(data.frame(check.names = FALSE))
+  }
+  ext <- tolower(tools::file_ext(path))
+  data <- tryCatch(
+    {
+      if (identical(ext, "csv")) {
+        utils::read.csv(path, check.names = FALSE, stringsAsFactors = FALSE, nrows = 1000)
+      } else if (identical(ext, "sav") && requireNamespace("haven", quietly = TRUE)) {
+        as.data.frame(haven::read_sav(path, n_max = 1000), stringsAsFactors = FALSE)
+      } else if (identical(ext, "dta") && requireNamespace("haven", quietly = TRUE)) {
+        as.data.frame(haven::read_dta(path, n_max = 1000), stringsAsFactors = FALSE)
+      } else if (identical(ext, "rds")) {
+        obj <- readRDS(path)
+        if (is.data.frame(obj)) obj else NULL
+      } else {
+        NULL
+      }
+    },
+    error = function(e) NULL
+  )
+  if (!is.data.frame(data)) {
+    return(data.frame(check.names = FALSE))
+  }
+  latent_variable_info_from_names(names(data))
 }
 
 clean_latent_dataset_id <- function(dataset_id) {
@@ -1731,32 +2054,82 @@ write_latent_dataset_files <- function(project_root, dataset_id, setup, current_
   invisible(dataset_root)
 }
 
-open_latent_yaml_file <- function() {
+open_latent_yaml_file <- function(initial_dir = NULL) {
+  filetypes <- "{{YAML settings} {.yml .yaml}} {{All files} *}"
+  attr(filetypes, "windows_filters") <- matrix(
+    c(
+      "YAML settings", "*.yml;*.yaml",
+      "All files", "*.*"
+    ),
+    ncol = 2,
+    byrow = TRUE
+  )
   open_file_dialog(
     "Open StatEdu Studio Latent YAML",
-    "{{YAML settings} {.yml .yaml}} {{All files} *}"
+    filetypes
   )
 }
 
-save_latent_yaml_file <- function(default_dataset_id = "") {
+save_latent_yaml_file <- function(default_dataset_id = "", initial_dir = NULL, default_folder = NULL) {
   default_dataset_id <- trimws(as.character(default_dataset_id %||% "latent"))
   if (!nzchar(default_dataset_id)) {
     default_dataset_id <- "latent"
   }
   default_file <- paste0(default_dataset_id, "_latent_setup.yml")
+  default_folder <- trimws(as.character(default_folder %||% ""))
+  if (nzchar(default_folder)) {
+    dir.create(default_folder, recursive = TRUE, showWarnings = FALSE)
+    return(file.path(default_folder, default_file))
+  }
+  initial_dir <- trimws(as.character(initial_dir %||% ""))
+  if (nzchar(initial_dir)) {
+    initial_dir <- normalizePath(initial_dir, winslash = "/", mustWork = FALSE)
+    if (!dir.exists(initial_dir)) {
+      initial_dir <- ""
+    }
+  }
+
+  if (exists("windows_save_file_dialog", mode = "function")) {
+    windows_result <- windows_save_file_dialog(
+      "Save StatEdu Studio Latent YAML",
+      matrix(c("YAML settings", "*.yml;*.yaml"), ncol = 2, byrow = TRUE),
+      initial_dir = initial_dir,
+      default_ext = "yml",
+      initial_file = default_file
+    )
+    if (isTRUE(windows_result$attempted)) {
+      path <- windows_result$path
+      if (is.null(path) || !nzchar(path)) {
+        return(NULL)
+      }
+      path <- path[[1]]
+      if (!tolower(tools::file_ext(path)) %in% c("yml", "yaml")) {
+        path <- paste0(path, ".yml")
+      }
+      return(path)
+    }
+  }
+
   path <- tryCatch(
     {
       if (requireNamespace("tcltk", quietly = TRUE)) {
         parent <- topmost_tk_parent()
         on.exit(try(tcltk::tkdestroy(parent), silent = TRUE), add = TRUE)
-        as.character(tcltk::tkgetSaveFile(
+        args <- list(
           parent = parent,
           title = "Save StatEdu Studio Latent YAML",
           initialfile = default_file,
           filetypes = "{{YAML settings} {.yml .yaml}} {{All files} *}"
-        ))
+        )
+        if (nzchar(initial_dir)) {
+          args$initialdir <- initial_dir
+        }
+        as.character(do.call(tcltk::tkgetSaveFile, args))
       } else {
-        folder <- utils::choose.dir(caption = "Choose a folder for StatEdu Studio Latent YAML")
+        folder <- utils::choose.dir(
+          default = if (nzchar(initial_dir)) initial_dir else getwd(),
+          caption = "Choose a folder for StatEdu Studio Latent YAML"
+        )
         if (is.na(folder) || !nzchar(folder)) character(0) else file.path(folder, default_file)
       }
     },
@@ -1842,28 +2215,40 @@ latent_data_file_path <- function(current_data_file = NULL) {
   path[[1]]
 }
 
-latent_output_root_from_data_file <- function(current_data_file = NULL, app_root = getwd()) {
-  path <- latent_data_file_path(current_data_file)
-  if (nzchar(path) && file.exists(path)) {
-    return(file.path(dirname(normalizePath(path, winslash = "/", mustWork = TRUE)), "output"))
+latent_user_data_dir <- function() {
+  configured <- trimws(Sys.getenv("STATEDU_USER_DATA_DIR", ""))
+  if (nzchar(configured)) {
+    return(normalizePath(configured, winslash = "/", mustWork = FALSE))
   }
-  file.path(app_root, "output")
+  local_app_data <- trimws(Sys.getenv("LOCALAPPDATA", ""))
+  if (nzchar(local_app_data)) {
+    return(normalizePath(file.path(local_app_data, "StatEdu Studio"), winslash = "/", mustWork = FALSE))
+  }
+  normalizePath(file.path(path.expand("~"), ".statedu-studio"), winslash = "/", mustWork = FALSE)
+}
+
+latent_default_output_root <- function(app_root = getwd()) {
+  file.path(latent_user_data_dir(), "latent_mplus", "Mplus_output")
+}
+
+latent_output_root_from_data_file <- function(current_data_file = NULL, app_root = getwd()) {
+  path <- latent_resolved_data_file_path(current_data_file, app_root = app_root)
+  if (nzchar(path) && file.exists(path) && !latent_temporary_data_path(path)) {
+    return(file.path(dirname(normalizePath(path, winslash = "/", mustWork = TRUE)), "Mplus_output"))
+  }
+  latent_default_output_root(app_root)
 }
 
 latent_mplus_work_root_from_data_file <- function(current_data_file = NULL, app_root = getwd()) {
-  path <- latent_data_file_path(current_data_file)
-  if (nzchar(path) && file.exists(path)) {
-    return(file.path(dirname(normalizePath(path, winslash = "/", mustWork = TRUE)), "mplus_tmp"))
-  }
-  file.path(app_root, "mplus_tmp")
+  file.path(latent_output_root_from_data_file(current_data_file, app_root = app_root), "mplus_tmp")
 }
 
 latent_app_output_dir <- function(app_root, dataset_id, analysis_id, output_root = NULL) {
   root <- as.character(output_root %||% "")
   if (!nzchar(root)) {
-    root <- file.path(app_root, "output")
+    root <- latent_default_output_root(app_root)
   }
-  file.path(root, dataset_id, analysis_id)
+  root
 }
 
 latent_sync_output_dir <- function(src, dst) {
@@ -1895,8 +2280,8 @@ launch_latent_pipeline <- function(project_root, app_root, output_root = NULL, m
   if (!file.exists(rscript)) {
     rscript <- "Rscript"
   }
-  output_root <- normalizePath(output_root %||% file.path(app_root, "output"), winslash = "/", mustWork = FALSE)
-  mplus_work_root <- normalizePath(mplus_work_root %||% file.path(app_root, "mplus_tmp"), winslash = "/", mustWork = FALSE)
+  output_root <- normalizePath(output_root %||% latent_default_output_root(app_root), winslash = "/", mustWork = FALSE)
+  mplus_work_root <- normalizePath(mplus_work_root %||% file.path(output_root, "mplus_tmp"), winslash = "/", mustWork = FALSE)
   dir.create(output_root, recursive = TRUE, showWarnings = FALSE)
   dir.create(mplus_work_root, recursive = TRUE, showWarnings = FALSE)
   run_dir <- file.path(latent_app_output_dir(app_root, dataset_id, analysis_id, output_root = output_root), "logs")
@@ -1928,7 +2313,7 @@ launch_latent_pipeline <- function(project_root, app_root, output_root = NULL, m
     "cat('[StatEdu Studio Latent] from/to      =', from_step, '->', to_step, '\\n')",
     "cat('[StatEdu Studio Latent] run_mplus    =', run_mplus, '\\n')",
     "engine_output_dir <- file.path(project_root, 'outputs', dataset_id, analysis_id)",
-    "app_output_dir <- file.path(output_root, dataset_id, analysis_id)",
+    "app_output_dir <- output_root",
     "sync_output_dir <- function(src, dst) {",
     "  if (!dir.exists(src)) stop('Source output not found: ', src)",
     "  src_norm <- normalizePath(src, winslash = '/', mustWork = TRUE)",
@@ -1951,7 +2336,9 @@ launch_latent_pipeline <- function(project_root, app_root, output_root = NULL, m
     "source(pipeline_script, local = FALSE)",
     "run_args <- list(from_step = from_step, to_step = to_step, run_mplus = run_mplus, auto_run_bat = FALSE, project_root = project_root, dataset_id = dataset_id, analysis_id = analysis_id)",
     "if ('mplus_work_root' %in% names(formals(run_pipeline))) run_args$mplus_work_root <- mplus_work_root",
+    "if ('output_root' %in% names(formals(run_pipeline))) run_args$output_root <- output_root",
     "result <- do.call(run_pipeline, run_args)",
+    "if (is.list(result) && !is.null(result$dir_output)) engine_output_dir <- result$dir_output",
     "sync_output_dir(engine_output_dir, app_output_dir)",
     "cat('[StatEdu Studio Latent] Output directory:', app_output_dir, '\\n')",
     "cat('[StatEdu Studio Latent] Run completed:', format(Sys.time(), '%Y-%m-%d %H:%M:%S'), '\\n')",
@@ -2213,6 +2600,11 @@ latent_best_model_tags <- function(output_dir) {
 latent_mplus_native_figure_index <- function(project_root, dataset_id, analysis_id, app_root = getwd(), output_root = NULL) {
   output_dir <- latent_result_output_dir(project_root, app_root, dataset_id, analysis_id, output_root = output_root)
   mplus_root_from_output <- if (!is.null(output_root) && nzchar(as.character(output_root))) {
+    file.path(normalizePath(output_root, winslash = "/", mustWork = FALSE), "mplus_tmp")
+  } else {
+    character(0)
+  }
+  legacy_mplus_root_from_output <- if (!is.null(output_root) && nzchar(as.character(output_root))) {
     file.path(dirname(normalizePath(output_root, winslash = "/", mustWork = FALSE)), "mplus_tmp")
   } else {
     character(0)
@@ -2220,6 +2612,8 @@ latent_mplus_native_figure_index <- function(project_root, dataset_id, analysis_
   search_dirs <- unique(c(
     mplus_root_from_output,
     file.path(mplus_root_from_output, "inp"),
+    legacy_mplus_root_from_output,
+    file.path(legacy_mplus_root_from_output, "inp"),
     file.path(output_dir, "mplus"),
     file.path(output_dir, "mplus_tmp"),
     file.path(project_root, "mplus_tmp"),
@@ -2310,9 +2704,15 @@ latent_register_output_resource_path <- function(output_root) {
   output_root <- as.character(output_root %||% "")
   if (nzchar(output_root) && dir.exists(output_root)) {
     try(shiny::addResourcePath("latent_file_outputs", normalizePath(output_root, winslash = "/", mustWork = FALSE)), silent = TRUE)
-    mplus_root <- file.path(dirname(normalizePath(output_root, winslash = "/", mustWork = FALSE)), "mplus_tmp")
-    if (dir.exists(mplus_root)) {
-      try(shiny::addResourcePath("latent_mplus_tmp", normalizePath(mplus_root, winslash = "/", mustWork = FALSE)), silent = TRUE)
+    mplus_roots <- c(
+      file.path(normalizePath(output_root, winslash = "/", mustWork = FALSE), "mplus_tmp"),
+      file.path(dirname(normalizePath(output_root, winslash = "/", mustWork = FALSE)), "mplus_tmp")
+    )
+    for (mplus_root in unique(mplus_roots)) {
+      if (dir.exists(mplus_root)) {
+        try(shiny::addResourcePath("latent_mplus_tmp", normalizePath(mplus_root, winslash = "/", mustWork = FALSE)), silent = TRUE)
+        break
+      }
     }
   }
   invisible(TRUE)
@@ -2328,11 +2728,17 @@ latent_output_resource_url <- function(app_root, path, output_root = NULL) {
       parts <- strsplit(rel, "/", fixed = TRUE)[[1]]
       return(paste(c("latent_file_outputs", utils::URLencode(parts, reserved = TRUE)), collapse = "/"))
     }
-    mplus_root_norm <- normalizePath(file.path(dirname(output_root_norm), "mplus_tmp"), winslash = "/", mustWork = FALSE)
-    if (startsWith(path_norm, paste0(mplus_root_norm, "/")) || identical(path_norm, mplus_root_norm)) {
-      rel <- substring(path_norm, nchar(mplus_root_norm) + 2)
-      parts <- strsplit(rel, "/", fixed = TRUE)[[1]]
-      return(paste(c("latent_mplus_tmp", utils::URLencode(parts, reserved = TRUE)), collapse = "/"))
+    mplus_roots <- c(
+      file.path(output_root_norm, "mplus_tmp"),
+      file.path(dirname(output_root_norm), "mplus_tmp")
+    )
+    for (mplus_root in unique(mplus_roots)) {
+      mplus_root_norm <- normalizePath(mplus_root, winslash = "/", mustWork = FALSE)
+      if (startsWith(path_norm, paste0(mplus_root_norm, "/")) || identical(path_norm, mplus_root_norm)) {
+        rel <- substring(path_norm, nchar(mplus_root_norm) + 2)
+        parts <- strsplit(rel, "/", fixed = TRUE)[[1]]
+        return(paste(c("latent_mplus_tmp", utils::URLencode(parts, reserved = TRUE)), collapse = "/"))
+      }
     }
   }
   app_output_root <- normalizePath(file.path(app_root, "outputs"), winslash = "/", mustWork = FALSE)
@@ -2410,11 +2816,69 @@ latent_result_table_empty_for_display <- function(path) {
   !any(nonempty)
 }
 
-latent_result_table_section_class <- function(name) {
+latent_result_table_profile_count <- function(data, name = NULL) {
+  counts <- integer(0)
+  if (is.data.frame(data) && nrow(data) > 0 && ncol(data) > 0) {
+    values <- trimws(as.character(c(names(data), unlist(data, use.names = FALSE))))
+    values <- values[nzchar(values)]
+    if (length(values) > 0) {
+      profile_hits <- gregexpr("(?:Profile|Class)\\s*([0-9]+)\\b", values, perl = TRUE, ignore.case = TRUE)
+      profile_text <- regmatches(values, profile_hits)
+      profile_text <- unlist(profile_text, use.names = FALSE)
+      if (length(profile_text) > 0) {
+        counts <- c(counts, suppressWarnings(as.integer(gsub("[^0-9]+", "", profile_text))))
+      }
+      p_labels <- values[grepl("^P\\s*[0-9]+$", values, ignore.case = TRUE)]
+      if (length(p_labels) > 0) {
+        counts <- c(counts, suppressWarnings(as.integer(gsub("[^0-9]+", "", p_labels))))
+      }
+    }
+  }
+  counts <- counts[!is.na(counts) & counts > 0]
+  if (length(counts) == 0) return(NA_integer_)
+  max(counts)
+}
+
+latent_result_table_profile_count_for_path <- function(path, project_root, app_root, dataset_id, analysis_id, output_root = NULL) {
+  tryCatch({
+    data <- read_latent_excel_sheet_display(
+      path,
+      project_root = project_root,
+      app_root = app_root,
+      dataset_id = dataset_id,
+      analysis_id = analysis_id,
+      output_root = output_root
+    )
+    latent_result_table_profile_count(data, path)
+  }, error = function(e) NA_integer_)
+}
+
+latent_result_table_orientation <- function(name, profile_count = NA_integer_) {
   key <- toupper(tools::file_path_sans_ext(basename(as.character(name %||% ""))))
-  classes <- paste0("latent-result-table-", tolower(gsub("[^A-Z0-9]+", "-", key)))
-  if (key %in% c("T2", "T5B", "T5C", "T5D", "T6B", "T6C", "S5", "S6")) {
-    classes <- c(classes, "latent-result-table-landscape")
+  if (key %in% c("T3", "T4", "T6D", "T6E", "A3", "A4", "A5", "A6", "A7", "A8")) {
+    return("portrait")
+  }
+  profile_count <- suppressWarnings(as.integer(profile_count %||% NA_integer_))
+  if (!is.na(profile_count)) {
+    return(if (profile_count >= 5L) "landscape" else "portrait")
+  }
+  if (grepl("^ESTIMATION", key)) {
+    return("landscape")
+  }
+  "portrait"
+}
+
+latent_result_table_section_class <- function(name, profile_count = NA_integer_) {
+  key <- toupper(tools::file_path_sans_ext(basename(as.character(name %||% ""))))
+  classes <- c(
+    "latent-result-table-b5-page",
+    paste0("latent-result-table-", tolower(gsub("[^A-Z0-9]+", "-", key)))
+  )
+  orientation <- latent_result_table_orientation(key, profile_count = profile_count)
+  if (identical(orientation, "landscape")) {
+    classes <- c(classes, "latent-result-table-landscape", "latent-result-table-b5-landscape")
+  } else {
+    classes <- c(classes, "latent-result-table-portrait", "latent-result-table-b5-portrait")
   }
   if (key %in% c("T1", "T7", "S1")) {
     classes <- c(classes, "latent-result-table-two-column")
@@ -2429,6 +2893,46 @@ latent_result_table_section_class <- function(name) {
     classes <- c(classes, "latent-result-table-internal")
   }
   paste(classes, collapse = " ")
+}
+
+latent_result_table_section_style <- function(name, profile_count = NA_integer_) {
+  orientation <- latent_result_table_orientation(name, profile_count = profile_count)
+  if (identical(orientation, "landscape")) {
+    return(paste(
+      "max-width: var(--latent-b5-landscape-width) !important;",
+      "width: min(100%, var(--latent-b5-landscape-width)) !important;",
+      "margin-left: 0 !important;",
+      "margin-right: auto !important;"
+    ))
+  }
+  paste(
+    "max-width: var(--latent-b5-portrait-width) !important;",
+    "width: min(100%, var(--latent-b5-portrait-width)) !important;",
+    "margin-left: 0 !important;",
+    "margin-right: auto !important;"
+  )
+}
+
+latent_result_table_wrap_style <- function(name, profile_count = NA_integer_) {
+  paste(
+    "max-width: 100% !important;",
+    "overflow-x: auto !important;"
+  )
+}
+
+latent_result_table_element_style <- function(name, profile_count = NA_integer_) {
+  orientation <- latent_result_table_orientation(name, profile_count = profile_count)
+  if (identical(orientation, "landscape")) {
+    return(paste(
+      "table-layout: auto !important;",
+      "width: max-content !important;",
+      "min-width: 100% !important;"
+    ))
+  }
+  paste(
+    "table-layout: fixed !important;",
+    "width: 100% !important;"
+  )
 }
 
 table_description <- function(name, manifest = NULL) {
@@ -2707,6 +3211,7 @@ latent_excel_like_table_ui <- function(path, project_root, app_root, dataset_id,
   if (!is.data.frame(data) || nrow(data) == 0 || ncol(data) == 0) {
     return(div(class = "latent-empty-result", "No table data."))
   }
+  profile_count <- latent_result_table_profile_count(data, sheet_key)
   split_t6_posthoc_rows <- function(data) {
     title <- trimws(as.character(data[[1]][[1]] %||% ""))
     if (!grepl("^table\\s+6\\.", title, ignore.case = TRUE) || nrow(data) < 4L) {
@@ -3573,7 +4078,7 @@ latent_excel_like_table_ui <- function(path, project_root, app_root, dataset_id,
   div(
     class = paste(
       "latent-excel-table-wrap",
-      latent_result_table_section_class(tools::file_path_sans_ext(basename(path))),
+      latent_result_table_section_class(tools::file_path_sans_ext(basename(path)), profile_count = profile_count),
       if (isTRUE(single_header_no_note)) "latent-excel-single-header-no-note" else "",
       if (isTRUE(profile_size_table)) "latent-excel-profile-size" else "",
       if (isTRUE(profile_mean_table)) "latent-excel-profile-mean" else "",
@@ -3582,7 +4087,13 @@ latent_excel_like_table_ui <- function(path, project_root, app_root, dataset_id,
       if (isTRUE(t6_lca_percent_table)) "latent-excel-t6-lca-percent" else "",
       if (isTRUE(appendix_center_table)) "latent-excel-appendix-center" else ""
     ),
-    tags$table(class = "latent-excel-table", table_colgroup, tags$tbody(cells))
+    style = latent_result_table_wrap_style(sheet_key, profile_count = profile_count),
+    tags$table(
+      class = "latent-excel-table",
+      style = latent_result_table_element_style(sheet_key, profile_count = profile_count),
+      table_colgroup,
+      tags$tbody(cells)
+    )
   )
 }
 
@@ -3755,8 +4266,15 @@ build_latent_setup_yaml <- function(app_version, module_id, input, current_data_
   selected_analysis <- input[[paste0(module_id, "_analysis_id")]] %||% latent_modules[[module_id]]$analysis_key
   analysis_spec <- latent_analysis_specs()[[selected_analysis]] %||% list(engine = latent_modules[[module_id]]$engine)
   dataset_id <- trimws(as.character(input[[paste0(module_id, "_dataset_id")]] %||% dataset_id_from_data_file(current_data_file)))
+  source_path <- latent_resolved_data_file_path(current_data_file, app_root = getwd())
   if (!is.data.frame(variable_info)) {
     variable_info <- data.frame(check.names = FALSE)
+  }
+  if (nrow(variable_info) == 0) {
+    variable_info <- latent_variable_info_from_current_data_file(current_data_file)
+  }
+  if (nrow(variable_info) == 0) {
+    variable_info <- latent_variable_info_from_names(unlist(roles %||% list(), use.names = FALSE))
   }
   variable_records <- lapply(seq_len(nrow(variable_info)), function(index) {
     row <- variable_info[index, , drop = FALSE]
@@ -3775,8 +4293,9 @@ build_latent_setup_yaml <- function(app_version, module_id, input, current_data_
     data = list(
       dataset_id = dataset_id,
       project_root = latent_project_root_value(input[[paste0(module_id, "_project_root")]]),
+      output_root = latent_output_root_from_data_file(current_data_file, app_root = getwd()),
       source_file = list(
-        path = current_data_file$path %||% "",
+        path = source_path %||% current_data_file$path %||% "",
         name = current_data_file$name %||% ""
       ),
       variables = variable_records
@@ -4093,6 +4612,12 @@ latent_role_table_callback <- function(module_id) {
       window.easyflowLatentRememberViewport = window.easyflowLatentRememberViewport || function(id) {
         try {
           var tableNode = $('#' + id + '_variable_preview table');
+          if (window.easyflowRememberViewport) {
+            var root = tableNode.closest('.dataTables_wrapper').get(0) || tableNode.get(0) || document;
+            window.easyflowRememberViewport('latent-' + id, root);
+            window.easyflowLatentViewportPending[id] = true;
+            return;
+          }
           var scrollBody = tableNode.closest('.dataTables_scrollBody');
           window.easyflowLatentViewports[id] = {
             y: window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0,
@@ -4114,6 +4639,12 @@ latent_role_table_callback <- function(module_id) {
         var viewport = window.easyflowLatentViewports[moduleId] || {};
         try {
           var tableNode = $('#' + moduleId + '_variable_preview table');
+          if (window.easyflowRestoreViewport) {
+            var root = tableNode.closest('.dataTables_wrapper').get(0) || tableNode.get(0) || document;
+            window.easyflowRestoreViewport('latent-' + moduleId, {root: root});
+            window.easyflowLatentViewportPending[moduleId] = false;
+            return;
+          }
           var scrollBody = tableNode.closest('.dataTables_scrollBody');
           if (scrollBody.length && typeof viewport.x !== 'undefined') {
             scrollBody.scrollLeft(viewport.x);
@@ -4148,8 +4679,19 @@ latent_role_table_callback <- function(module_id) {
       function scheduleLatentPageRestore() {
         [0, 50, 150, 300].forEach(function(delay) {
           window.setTimeout(restoreLatentPage, delay);
-          window.setTimeout(restoreLatentViewport, delay + 1);
         });
+        if (window.easyflowScheduleViewportRestore) {
+          var tableNode = $('#' + moduleId + '_variable_preview table');
+          var root = tableNode.closest('.dataTables_wrapper').get(0) || tableNode.get(0) || document;
+          window.easyflowScheduleViewportRestore('latent-' + moduleId, root, [1, 51, 151, 301]);
+          window.setTimeout(function() {
+            window.easyflowLatentViewportPending[moduleId] = false;
+          }, 302);
+        } else {
+          [1, 51, 151, 301].forEach(function(delay) {
+            window.setTimeout(restoreLatentViewport, delay);
+          });
+        }
       }
 
       function currentPageVariables() {

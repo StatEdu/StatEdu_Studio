@@ -385,8 +385,14 @@ current_data_file_value <- function(uploaded, active_file = NULL) {
   if (valid_data_file_value(active_file)) {
     return(active_file)
   }
+  if (valid_pending_excel_file_value(active_file)) {
+    return(NULL)
+  }
   if (!is.null(uploaded)) {
-    file <- list(path = uploaded$datapath, name = uploaded$name, restored = FALSE)
+    file <- list(path = uploaded$datapath, name = uploaded$name, original_path = uploaded$original_path %||% "", restored = FALSE)
+    if (excel_data_file_extension(file$name %||% file$path)) {
+      return(NULL)
+    }
     if (valid_data_file_value(file)) {
       return(file)
     }

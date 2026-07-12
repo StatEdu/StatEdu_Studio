@@ -1,8 +1,22 @@
 # StatEdu Studio Release Readiness Status
 
-Last reviewed: 2026-06-28
+Last reviewed: 2026-07-12
 
-Current version: 1.0.1
+Current version: 1.1.3
+
+Current development source version: 1.1.3
+
+## Current Development Prerelease Snapshot
+
+- Built package: `dist/electron/StatEdu_Studio_Setup_1.0.22-dev.exe`
+- Installer SHA256: `52966B5A00F866DBFE8C328242F1DA2E8E4AB4CB7CD55C67320471C4FF2278F5`
+- Blockmap SHA256: `A28280A1F11B5C3988D41B8AD6763B4F6783A08AEACEBCD547079CC491C96793`
+- GitHub prerelease: `https://github.com/StatEdu/StatEdu_Studio_dev/releases/tag/v1.0.22-dev`
+- Target commit: `f7453d6213ddaa6cfffcbb80ddddb166f14ec3b7`
+- `scripts/validate_stabilization.ps1`: passed on 2026-07-04.
+- `scripts/smoke_electron_release.ps1 -SkipLaunchSmoke`: passed on 2026-07-04.
+- `scripts/smoke_electron_app_lifecycle.ps1`: passed on 2026-07-04.
+- The public stable update manifest remains on `1.0.1`; `1.0.23-dev` is a source development version and should not be published to the stable manifest.
 
 ## Current 1.0.1 Package Snapshot
 
@@ -75,7 +89,7 @@ These items summarize completed 1.0 release-candidate evidence, publication chec
 - README, `CITATION.cff`, and About may publish the DOI citation line after the current verification.
 - Complete `docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md` against the rebuilt 1.0.0 package.
 - Free/Pro/Latent gates, license activation, and in-app updates are explicitly deferred for 1.0 in `docs/RELEASE_1_0_DECISION_LOG.md`; do not claim them in public release materials.
-- Public 1.0 also hides Longitudinal / Panel Models, Excel result export, and Word result export through `STATEDU_PUBLIC_RELEASE=1`; do not claim those surfaces in public release materials.
+- Public 1.0 hides Excel result export and Word result export through `STATEDU_PUBLIC_RELEASE=1`; Longitudinal / Panel Models are exposed in the Analysis menu.
 - Decide whether remaining installer/download infrastructure items in `docs/RELEASE_1_0_DISTRIBUTION_LICENSE_PLAN_KO.md` are implemented for 1.0 or explicitly deferred.
 - Record any additional implementation or deferral decisions in `docs/RELEASE_1_0_DECISION_LOG.md`.
 - Prepare final public release notes from `docs/RELEASE_1_0_PUBLIC_NOTES_DRAFT.md`.

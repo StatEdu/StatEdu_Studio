@@ -51,18 +51,22 @@ if (!exists("ANALYSIS_ID") || is.null(ANALYSIS_ID) || !nzchar(ANALYSIS_ID)) {
 PROJECT_ROOT <- .norm_path(PROJECT_ROOT)
 DATASET_ID   <- as.character(DATASET_ID)[1]
 ANALYSIS_ID  <- as.character(ANALYSIS_ID)[1]
+if (!exists("OUTPUT_ROOT") || is.null(OUTPUT_ROOT) || !nzchar(as.character(OUTPUT_ROOT))) {
+  OUTPUT_ROOT <- .path_join(PROJECT_ROOT, "outputs")
+}
+OUTPUT_ROOT <- .norm_path(OUTPUT_ROOT)
 
 # ------------------------------------------------------------
 # 2. project-level roots
 # ------------------------------------------------------------
 DIR_PROJECT_DATA   <- .path_join(PROJECT_ROOT, "data")
-DIR_PROJECT_OUTPUT <- .path_join(PROJECT_ROOT, "outputs")
+DIR_PROJECT_OUTPUT <- OUTPUT_ROOT
 DIR_PROJECT_R      <- .path_join(PROJECT_ROOT, "R")
 DIR_PROJECT_RUN    <- .path_join(PROJECT_ROOT, "run")
 
 DIR_DATASET_ROOT   <- .path_join(DIR_PROJECT_DATA, DATASET_ID)
-DIR_OUTPUT_BASE    <- .path_join(DIR_PROJECT_OUTPUT, DATASET_ID)
-DIR_OUTPUT         <- .path_join(DIR_OUTPUT_BASE, ANALYSIS_ID)
+DIR_OUTPUT_BASE    <- DIR_PROJECT_OUTPUT
+DIR_OUTPUT         <- DIR_PROJECT_OUTPUT
 
 # ------------------------------------------------------------
 # 3. input data/config structure
@@ -115,22 +119,22 @@ DIR_FIGURES_TIFF <- .path_join(DIR_FIGURES, "tiff")
 DIR_FIGURES_PDF  <- .path_join(DIR_FIGURES, "pdf")
 
 DIR_TABLES       <- .path_join(DIR_OUTPUT, "tables")
-DIR_DOCX         <- .path_join(DIR_OUTPUT, "docx")
-DIR_PAPER_BUNDLE <- .path_join(DIR_OUTPUT, "paper_bundle")
+DIR_FINAL        <- .path_join(DIR_OUTPUT, "final")
+DIR_LOGS         <- .path_join(DIR_OUTPUT, "logs")
 
+DIR_DOCX         <- .path_join(DIR_FINAL, "docx")
+DIR_PAPER_BUNDLE <- .path_join(DIR_FINAL, "paper_bundle")
 DIR_PAPER_BUNDLE_FIGURES      <- .path_join(DIR_PAPER_BUNDLE, "figures")
 DIR_PAPER_BUNDLE_FIGURES_PNG  <- .path_join(DIR_PAPER_BUNDLE_FIGURES, "png")
 DIR_PAPER_BUNDLE_FIGURES_TIFF <- .path_join(DIR_PAPER_BUNDLE_FIGURES, "tiff")
 DIR_PAPER_BUNDLE_FIGURES_PDF  <- .path_join(DIR_PAPER_BUNDLE_FIGURES, "pdf")
 DIR_PAPER_BUNDLE_TABLES       <- .path_join(DIR_PAPER_BUNDLE, "tables")
 
-DIR_FINAL            <- .path_join(DIR_OUTPUT, "final")
 DIR_FINAL_SUBMISSION <- .path_join(DIR_FINAL, "submission")
 DIR_FINAL_ARCHIVE    <- .path_join(DIR_FINAL, "archive")
 DIR_FINAL_REVIEW     <- .path_join(DIR_FINAL, "review")
 
-DIR_LOGS <- .path_join(DIR_OUTPUT, "logs")
-DIR_RDS  <- .path_join(DIR_OUTPUT, "rds")
+DIR_RDS  <- .path_join(DIR_LOGS, "rds")
 
 # ------------------------------------------------------------
 # 5. short Mplus path (very important)
@@ -139,7 +143,7 @@ DIR_RDS  <- .path_join(DIR_OUTPUT, "rds")
 # data/inp/out/savedata 경로는 짧게 유지
 DIR_MPLUS_SHORT <- get0("MPLUS_WORK_ROOT", ifnotfound = NULL)
 if (is.null(DIR_MPLUS_SHORT) || !nzchar(as.character(DIR_MPLUS_SHORT))) {
-  DIR_MPLUS_SHORT <- .path_join(PROJECT_ROOT, "mplus_tmp")
+  DIR_MPLUS_SHORT <- .path_join(DIR_OUTPUT, "mplus_tmp")
 }
 DIR_MPLUS_SHORT <- .norm_path(DIR_MPLUS_SHORT)
 
@@ -155,8 +159,8 @@ DIR_MPLUS_BAT      <- .path_join(DIR_MPLUS_SHORT, "bat")
 # ------------------------------------------------------------
 PATH_RUN_LOG <- .path_join(DIR_LOGS, "run_log.txt")
 
-PATH_FIGURE_MANIFEST_CSV <- .path_join(DIR_OUTPUT, "figure_manifest.csv")
-PATH_FIGURE_MANIFEST_RDS <- .path_join(DIR_OUTPUT, "figure_manifest.rds")
+PATH_FIGURE_MANIFEST_CSV <- .path_join(DIR_FIGURES, "figure_manifest.csv")
+PATH_FIGURE_MANIFEST_RDS <- .path_join(DIR_RDS, "figure_manifest.rds")
 
 PATH_PAPER_BUNDLE_MANIFEST <- .path_join(DIR_PAPER_BUNDLE, "manifest.csv")
 PATH_PAPER_BUNDLE_SUMMARY  <- .path_join(DIR_PAPER_BUNDLE, "bundle_summary.csv")
@@ -167,7 +171,7 @@ PATH_REPRO_INFO           <- .path_join(DIR_FINAL, "repro_info.csv")
 PATH_FINAL_README         <- .path_join(DIR_FINAL, "README.txt")
 
 PATH_FINAL_EXCEL <- .path_join(
-  DIR_OUTPUT,
+  DIR_FINAL,
   paste0(DATASET_ID, "_", ANALYSIS_ID, "_final_results.xlsx")
 )
 

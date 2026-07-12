@@ -7,374 +7,425 @@ sample_size_choice <- function(value, default) {
   as.character(value[[1]])
 }
 
+sample_size_text <- function(language, en, ko = en) {
+  language <- normalize_app_language(language)
+  if (identical(language, "ko")) ko else en
+}
+
 sample_size_ui_text <- function(language = statedu_initial_language(), key) {
   language <- normalize_app_language(language)
-  switch(
+  fallback <- switch(
     key,
-    effect_size = statedu_text(language, "Effect size", statedu_utf8("ed9aa8eab3bced81aceab8b0")),
-    calculate = statedu_text(language, "Calculate", statedu_utf8("eab384ec82b0")),
-    inputs = statedu_text(language, "Inputs", statedu_utf8("ec9e85eba0a5")),
-    results = statedu_text(language, "Results", statedu_utf8("eab2b0eab3bc")),
-    method = statedu_text(language, "Method", statedu_utf8("ebb0a9ebb295")),
-    sample_size = statedu_text(language, "Sample Size", statedu_utf8("ed919cebb3b8ec8898")),
-    assumptions_prompt = statedu_text(language, "Enter assumptions and click Calculate.", statedu_utf8("eab080eca095ec9d8420ec9e85eba0a5ed9598eab3a020eab384ec82b0ec9d8420ed81b4eba6aded9598ec84b8ec9a942e")),
-    calculating = statedu_text(language, "Calculating...", statedu_utf8("eab384ec82b020eca4912e2e2e")),
-    stop = statedu_text(language, "Stop", statedu_utf8("eca491eca780")),
-    formula_approximation = statedu_text(language, "Formula / approximation: ", statedu_utf8("eab3b5ec8b9d202f20eab7bcec82ac3a20")),
-    references = statedu_text(language, "References", statedu_utf8("ecb0b8eab3a0ebacb8ed978c")),
-    effectsize_subtitle = statedu_text(language, "Calculate effect-size inputs used by sample size and power analyses.", statedu_utf8("ed9aa8eab3bced81aceab8b020eab384ec82b0ec979020ec82acec9aa9ed95a020ec9e85eba0a5eab092ec9d8420eab384ec82b0ed95a9eb8b88eb8ba42e")),
-    sample_size_subtitle = statedu_text(language, "Calculate required sample size or achieved power from study assumptions.", statedu_utf8("ec97b0eab5ac20eab080eca095ec9cbceba19c20ecb59cec868c20ed919cebb3b820ec889820eb9890eb8a9420eab280eca095eba0a5ec9d8420eab384ec82b0ed95a9eb8b88eb8ba42e")),
+    effect_size = sample_size_text(language, "Effect size", statedu_utf8("ed9aa8eab3bced81aceab8b0")),
+    calculate = sample_size_text(language, "Calculate", statedu_utf8("eab384ec82b0")),
+    inputs = sample_size_text(language, "Inputs", statedu_utf8("ec9e85eba0a5")),
+    results = sample_size_text(language, "Results", statedu_utf8("eab2b0eab3bc")),
+    method = sample_size_text(language, "Method", statedu_utf8("ebb0a9ebb295")),
+    sample_size = sample_size_text(language, "Sample Size", statedu_utf8("ed919cebb3b8ec8898")),
+    assumptions_prompt = sample_size_text(language, "Enter assumptions and click Calculate.", statedu_utf8("eab080eca095ec9d8420ec9e85eba0a5ed9598eab3a020eab384ec82b0ec9d8420ed81b4eba6aded9598ec84b8ec9a942e")),
+    calculating = sample_size_text(language, "Calculating...", statedu_utf8("eab384ec82b020eca4912e2e2e")),
+    stop = sample_size_text(language, "Stop", statedu_utf8("eca491eca780")),
+    formula_approximation = sample_size_text(language, "Formula / approximation: ", statedu_utf8("eab3b5ec8b9d202f20eab7bcec82ac3a20")),
+    references = sample_size_text(language, "References", statedu_utf8("ecb0b8eab3a0ebacb8ed978c")),
+    effectsize_subtitle = sample_size_text(language, "Calculate effect-size inputs used by sample size and power analyses.", statedu_utf8("ed9aa8eab3bced81aceab8b020eab384ec82b0ec979020ec82acec9aa9ed95a020ec9e85eba0a5eab092ec9d8420eab384ec82b0ed95a9eb8b88eb8ba42e")),
+    sample_size_subtitle = sample_size_text(language, "Calculate required sample size or achieved power from study assumptions.", statedu_utf8("ec97b0eab5ac20eab080eca095ec9cbceba19c20ecb59cec868c20ed919cebb3b820ec889820eb9890eb8a9420eab280eca095eba0a5ec9d8420eab384ec82b0ed95a9eb8b88eb8ba42e")),
+    minimum_sample_size = sample_size_text(language, "Minimum sample size", statedu_utf8("ecb59cec868c20ed919cebb3b820ec8898")),
+    power = sample_size_text(language, "Power", statedu_utf8("eab280eca095eba0a5")),
+    achieved_precision = sample_size_text(language, "Achieved precision", statedu_utf8("eb8bacec84b120eca095ebb080eb8f84")),
+    unavailable_effect_size = sample_size_text(language, "This effect-size calculator is not available for the selected method."),
     key
   )
+  statedu_t(paste0("sample_size.ui.", key), language, fallback)
+}
+
+sample_size_label_key <- function(label) {
+  key <- tolower(gsub("[^A-Za-z0-9]+", "_", as.character(label %||% "")))
+  key <- gsub("^_+|_+$", "", key)
+  if (nzchar(key)) key else "label"
 }
 
 sample_size_label <- function(language = statedu_initial_language(), label) {
   language <- normalize_app_language(language)
   h <- statedu_utf8
-  switch(
+  fallback <- switch(
     label,
-    "Design" = statedu_text(language, "Design", h("ec84a4eab384")),
-    "Alpha" = statedu_text(language, "Alpha", h("ec9ca0ec9d98ec8898eca480")),
-    "Power" = statedu_text(language, "Power", h("eab280eca095eba0a5")),
-    "Minimum sample size" = statedu_text(language, "Minimum sample size", h("ecb59cec868c20ed919cebb3b820ec8898")),
-    "Sample size" = statedu_text(language, "Sample size", h("ed919cebb3b820ec8898")),
-    "Total sample size" = statedu_text(language, "Total sample size", h("eca084ecb2b420ed919cebb3b820ec8898")),
-    "Sample size per group" = statedu_text(language, "Sample size per group", h("eca791eb8ba8ebb38420ed919cebb3b820ec8898")),
-    "Participants" = statedu_text(language, "Participants", h("ecb0b8ec97acec9e9020ec8898")),
-    "Participants per group" = statedu_text(language, "Participants per group", h("eca791eb8ba8ebb38420ecb0b8ec97acec9e9020ec8898")),
-    "Pairs" = statedu_text(language, "Pairs", h("ec8c8d20ec8898")),
-    "Number of pairs" = statedu_text(language, "Number of pairs", h("ec8c8d20ec8898")),
-    "Group 1 n" = statedu_text(language, "Group 1 n", h("eca791eb8ba82031206e")),
-    "Group 2 n" = statedu_text(language, "Group 2 n", h("eca791eb8ba82032206e")),
-    "Group 1 mean" = statedu_text(language, "Group 1 mean", h("eca791eb8ba8203120ed8f89eab7a0")),
-    "Group 2 mean" = statedu_text(language, "Group 2 mean", h("eca791eb8ba8203220ed8f89eab7a0")),
-    "Group 1 SD" = statedu_text(language, "Group 1 SD", h("eca791eb8ba8203120ed919ceca480ed8eb8ecb0a8")),
-    "Group 2 SD" = statedu_text(language, "Group 2 SD", h("eca791eb8ba8203220ed919ceca480ed8eb8ecb0a8")),
-    "Group 1 events" = statedu_text(language, "Group 1 events", h("eca791eb8ba8203120ec82aceab1b420ec8898")),
-    "Group 1 non-events" = statedu_text(language, "Group 1 non-events", h("eca791eb8ba8203120ebb984ec82aceab1b420ec8898")),
-    "Group 2 events" = statedu_text(language, "Group 2 events", h("eca791eb8ba8203220ec82aceab1b420ec8898")),
-    "Group 2 non-events" = statedu_text(language, "Group 2 non-events", h("eca791eb8ba8203220ebb984ec82aceab1b420ec8898")),
-    "Sample mean" = statedu_text(language, "Sample mean", h("ed919cebb3b820ed8f89eab7a0")),
-    "Null mean" = statedu_text(language, "Null mean", h("ec9881eab080ec84a420ed8f89eab7a0")),
-    "Mean paired difference" = statedu_text(language, "Mean paired difference", h("eb8c80ec9d9120ecb0a8ec9db420ed8f89eab7a0")),
-    "SD of paired differences" = statedu_text(language, "SD of paired differences", h("eb8c80ec9d9120ecb0a8ec9db420ed919ceca480ed8eb8ecb0a8")),
-    "SD" = statedu_text(language, "SD", h("ed919ceca480ed8eb8ecb0a8")),
-    "Proportion 1" = statedu_text(language, "Proportion 1", h("ebb984ec9ca82031")),
-    "Proportion 2" = statedu_text(language, "Proportion 2", h("ebb984ec9ca82032")),
-    "Expected proportion" = statedu_text(language, "Expected proportion", h("ec9888ec838120ebb984ec9ca8")),
-    "Degrees of freedom" = statedu_text(language, "Degrees of freedom", h("ec9e90ec9ca0eb8f84")),
-    "Error degrees of freedom" = statedu_text(language, "Error degrees of freedom", h("ec98a4ecb0a820ec9e90ec9ca0eb8f84")),
-    "Number of groups" = statedu_text(language, "Number of groups", h("eca791eb8ba820ec8898")),
-    "Groups" = statedu_text(language, "Groups", h("eca791eb8ba820ec8898")),
-    "Measurements" = statedu_text(language, "Measurements", h("ecb8a1eca09520ec8898")),
-    "Outcome" = statedu_text(language, "Outcome", h("eab2b0eab3bcebb380ec8898")),
-    "Continuous outcome" = statedu_text(language, "Continuous outcome", h("ec97b0ec868ded989520eab2b0eab3bc")),
-    "Binary outcome" = statedu_text(language, "Binary outcome", h("ec9db4ebb684ed989520eab2b0eab3bc")),
-    "Effect to test" = statedu_text(language, "Effect to test", h("eab280eca095ed95a020ed9aa8eab3bc")),
-    "Alternative" = statedu_text(language, "Alternative", h("eb8c80eba6bdeab080ec84a4")),
-    "Two-sided" = statedu_text(language, "Two-sided", h("ec9691ecb8a1")),
-    "One-sided" = statedu_text(language, "One-sided", h("eb8ba8ecb8a1")),
-    "Dropout rate (%)" = statedu_text(language, "Dropout rate (%)", h("ed8388eb9dbdeba5a020282529")),
-    "Allocation ratio (Group 2 / Group 1)" = statedu_text(language, "Allocation ratio (Group 2 / Group 1)", h("ebb0b0eca095ebb9842028eca791eb8ba82032202f20eca791eb8ba8203129")),
-    "Time points" = statedu_text(language, "Time points", h("ec8b9ceca09020ec8898")),
-    "Working correlation" = statedu_text(language, "Working correlation", h("ec9e91ec9785ec8381eab480")),
-    "Pairwise correlations" = statedu_text(language, "Pairwise correlations", h("ec8c8debb38420ec8381eab480")),
-    "Input mode" = statedu_text(language, "Input mode", h("ec9e85eba0a520ebb0a9ec8b9d")),
-    "Correlation structure" = statedu_text(language, "Correlation structure", h("ec8381eab48020eab5aceca1b0")),
-    "Objective" = statedu_text(language, "Objective", h("ebaaa9ed919c")),
-    "Parameter" = statedu_text(language, "Parameter", h("ebaaa8ec8898")),
-    "Confidence level" = statedu_text(language, "Confidence level", h("ec8ba0eba2b0ec8898eca480")),
-    "Desired CI half-width" = statedu_text(language, "Desired CI half-width", h("ebaaa9ed919c20ec8ba0eba2b0eab5aceab08420ebb098ed8fad")),
-    "Expected sensitivity" = statedu_text(language, "Expected sensitivity", h("ec9888ec838120ebafbceab090eb8f84")),
-    "Expected specificity" = statedu_text(language, "Expected specificity", h("ec9888ec838120ed8ab9ec9db4eb8f84")),
-    "Prevalence" = statedu_text(language, "Prevalence", h("ec9ca0ebb391eba5a0")),
-    "Number of cases" = statedu_text(language, "Number of cases", h("ec82aceba18020ec8898")),
-    "Outcome variables" = statedu_text(language, "Outcome variables", h("eab2b0eab3bcebb380ec889820ec8898")),
-    "Covariates" = statedu_text(language, "Covariates", h("eab3b5ebb380eb9f8920ec8898")),
-    "Number of predictors" = statedu_text(language, "Number of predictors", h("ec9888ecb8a1ebb380ec889820ec8898")),
-    "Tested predictors" = statedu_text(language, "Tested predictors", h("eab280eca09520ec9888ecb8a1ebb380ec889820ec8898")),
-    "Total predictors in final model" = statedu_text(language, "Total predictors in final model", h("ecb59ceca28520ebaaa8ed989520eca084ecb2b420ec9888ecb8a1ebb380ec889820ec8898")),
-    "Number of covariates" = statedu_text(language, "Number of covariates", h("eab3b5ebb380eb9f8920ec8898")),
-    "Simulations" = statedu_text(language, "Simulations", h("ec8b9cebaeaceba088ec9db4ec859820ec8898")),
-    "Bootstrap samples" = statedu_text(language, "Bootstrap samples", h("ebb680ed8ab8ec8aa4ed8ab8eb9ea920ed919cebb3b820ec8898")),
-    "Expected reliability" = statedu_text(language, "Expected reliability", h("ec9888ec838120ec8ba0eba2b0eb8f84")),
-    "Number of items" = statedu_text(language, "Number of items", h("ebacb8ed95ad20ec8898")),
-    "Categories" = statedu_text(language, "Categories", h("ebb294eca3bc20ec8898")),
-    "Raters / measurements" = statedu_text(language, "Raters / measurements", h("ed8f89eab080ec9e90202f20ecb8a1eca09520ec8898")),
-    "Model complexity" = statedu_text(language, "Model complexity", h("ebaaa8ed989520ebb3b5ec9ea1eb8f84")),
-    "Parameter type" = statedu_text(language, "Parameter type", h("ebaaa8ec889820ec9ca0ed9895")),
-    "Latent variables" = statedu_text(language, "Latent variables", h("ec9ea0ec9eacebb380ec889820ec8898")),
-    "Measured variables" = statedu_text(language, "Measured variables", h("ecb8a1eca095ebb380ec889820ec8898")),
-    "Structural paths" = statedu_text(language, "Structural paths", h("eab5aceca1b0eab2bdeba19c20ec8898")),
-    "Free parameters" = statedu_text(language, "Free parameters", h("ec9e90ec9ca0ebaaa8ec889820ec8898")),
-    "Model degrees of freedom" = statedu_text(language, "Model degrees of freedom", h("ebaaa8ed989520ec9e90ec9ca0eb8f84")),
-    "Clusters" = statedu_text(language, "Clusters", h("ed81b4eb9facec8aa4ed84b020ec8898")),
-    "Periods" = statedu_text(language, "Periods", h("eab8b0eab08420ec8898")),
-    "Cluster size" = statedu_text(language, "Cluster size", h("ed81b4eb9facec8aa4ed84b020ed81aceab8b0")),
-    "Cluster size per period" = statedu_text(language, "Cluster size per period", h("eab8b0eab084ebb38420ed81b4eb9facec8aa4ed84b020ed81aceab8b0")),
-    "Expected proportion 1" = statedu_text(language, "Expected proportion 1", h("ec9888ec838120ebb984ec9ca82031")),
-    "Expected proportion 2" = statedu_text(language, "Expected proportion 2", h("ec9888ec838120ebb984ec9ca82032")),
-    "Expected rate" = statedu_text(language, "Expected rate", h("ec9888ec838120ebb09cec839deba5a0")),
-    "Rate 1" = statedu_text(language, "Rate 1", h("ebb09cec839deba5a02031")),
-    "Rate 2" = statedu_text(language, "Rate 2", h("ebb09cec839deba5a02032")),
-    "Person-time" = statedu_text(language, "Person-time", h("ec9db8eb8584")),
-    "Person-time in Group 1" = statedu_text(language, "Person-time in Group 1", h("eca791eb8ba8203120ec9db8eb8584")),
-    "Margin" = statedu_text(language, "Margin", h("eba788eca784")),
-    "Expected true difference" = statedu_text(language, "Expected true difference", h("ec9888ec838120ec8ba4eca09c20ecb0a8ec9db4")),
-    "SEM / CFA method" = statedu_text(language, "SEM / CFA method", h("53454d202f2043464120ebb0a9ebb295")),
-    "Model df input" = statedu_text(language, "Model df input", h("ebaaa8ed989520ec9e90ec9ca0eb8f8420ec9e85eba0a5")),
-    "Expected standardized parameter" = statedu_text(language, "Expected standardized parameter", h("ec9888ec838120ed919ceca480ed999420ebaaa8ec8898")),
-    "Expected standardized loading" = statedu_text(language, "Expected standardized loading", h("ec9888ec838120ed919ceca480ed999420eca081ec9eaceab092")),
-    "Expected standardized path" = statedu_text(language, "Expected standardized path", h("ec9888ec838120ed919ceca480ed999420eab2bdeba19c")),
-    "Number of dependent variables" = statedu_text(language, "Number of dependent variables", h("eca285ec868debb380ec889820ec8898")),
-    "Numerator df" = statedu_text(language, "Numerator df", h("ebb684ec9e9020ec9e90ec9ca0eb8f84")),
-    "Denominator df" = statedu_text(language, "Denominator df", h("ebb684ebaaa820ec9e90ec9ca0eb8f84")),
-    "Common SD input" = statedu_text(language, "Common SD input", h("eab3b5ed86b520ed919ceca480ed8eb8ecb0a820ec9e85eba0a5")),
-    "Common outcome SD" = statedu_text(language, "Common outcome SD", h("eab3b5ed86b520eab2b0eab3bc20ed919ceca480ed8eb8ecb0a8")),
-    "Input scale" = statedu_text(language, "Input scale", h("ec9e85eba0a520ecb299eb8f84")),
-    "Rows" = statedu_text(language, "Rows", h("ed968920ec8898")),
-    "Columns" = statedu_text(language, "Columns", h("ec97b420ec8898")),
-    "Observed proportions" = statedu_text(language, "Observed proportions", h("eab480ecb8a120ebb984ec9ca8")),
-    "Expected proportions" = statedu_text(language, "Expected proportions", h("eab8b0eb8c8020ebb984ec9ca8")),
-    "Expected mean" = statedu_text(language, "Expected mean", h("eab8b0eb8c8020ed8f89eab7a0")),
-    "Group 1 estimated mean" = statedu_text(language, "Group 1 estimated mean", h("31eca791eb8ba820ecb694eca09520ed8f89eab7a0")),
-    "Group 2 estimated mean" = statedu_text(language, "Group 2 estimated mean", h("32eca791eb8ba820ecb694eca09520ed8f89eab7a0")),
-    "Group 1 pre mean" = statedu_text(language, "Group 1 pre mean", h("31eca791eb8ba820ec82aceca08420ed8f89eab7a0")),
-    "Group 1 post mean" = statedu_text(language, "Group 1 post mean", h("31eca791eb8ba820ec82aced9b8420ed8f89eab7a0")),
-    "Group 2 pre mean" = statedu_text(language, "Group 2 pre mean", h("32eca791eb8ba820ec82aceca08420ed8f89eab7a0")),
-    "Group 2 post mean" = statedu_text(language, "Group 2 post mean", h("32eca791eb8ba820ec82aced9b8420ed8f89eab7a0")),
-    "Group 1 means by time" = statedu_text(language, "Group 1 means by time", h("31eca791eb8ba820ec8b9ceca090ebb38420ed8f89eab7a0")),
-    "Group 2 means by time" = statedu_text(language, "Group 2 means by time", h("32eca791eb8ba820ec8b9ceca090ebb38420ed8f89eab7a0")),
-    "Standardized fixed effect" = statedu_text(language, "Standardized fixed effect", h("ed919ceca480ed999420eab3a0eca095ed9aa8eab3bc")),
-    "Residual SD" = statedu_text(language, "Residual SD", h("ec9e94ecb0a820ed919ceca480ed8eb8ecb0a8")),
-    "Correlation rho" = statedu_text(language, "Correlation rho", h("ec8381eab4802072686f")),
-    "Ratio" = statedu_text(language, "Ratio", h("ebb984ec9ca8")),
-    "Regression coefficient B" = statedu_text(language, "Regression coefficient B", h("ed9a8ceab780eab384ec88982042")),
-    "Fixed-effect coefficient B" = statedu_text(language, "Fixed-effect coefficient B", h("eab3a0eca095ed9aa8eab3bc20eab384ec88982042")),
-    "Log fixed-effect coefficient B" = statedu_text(language, "Log fixed-effect coefficient B", h("eba19ceab7b820eab3a0eca095ed9aa8eab3bc20eab384ec88982042")),
-    "Logit fixed-effect coefficient B" = statedu_text(language, "Logit fixed-effect coefficient B", h("eba19ceca79320eab3a0eca095ed9aa8eab3bc20eab384ec88982042")),
-    "Incidence rate ratio" = statedu_text(language, "Incidence rate ratio", h("ebb09cec839deba5a0ebb984")),
-    "Odds ratio" = statedu_text(language, "Odds ratio", h("ec98a4eca688ebb984")),
-    "Hazard ratio" = statedu_text(language, "Hazard ratio", h("ec9c84ed9798ebb984")),
-    "Correlation 1" = statedu_text(language, "Correlation 1", h("ec8381eab4802031")),
-    "Correlation 2" = statedu_text(language, "Correlation 2", h("ec8381eab4802032")),
-    "Correlation r" = statedu_text(language, "Correlation r", h("ec8381eab4802072")),
-    "R-squared" = statedu_text(language, "R-squared", h("5220eca09ceab3b1")),
-    "Full model R-squared" = statedu_text(language, "Full model R-squared", h("eca084ecb2b420ebaaa8ed9895205220eca09ceab3b1")),
-    "Reduced model R-squared" = statedu_text(language, "Reduced model R-squared", h("ecb695ec868c20ebaaa8ed9895205220eca09ceab3b1")),
-    "Interaction delta R-squared" = statedu_text(language, "Interaction delta R-squared", h("ec8381ed98b8ec9e91ec9aa920eb8db8ed8380205220eca09ceab3b1")),
-    "Expected r" = statedu_text(language, "Expected r", h("eab8b0eb8c802072")),
-    "Expected AUC" = statedu_text(language, "Expected AUC", h("eab8b0eb8c8020415543")),
-    "Null AUC" = statedu_text(language, "Null AUC", h("ec988120415543")),
-    "Overall event probability" = statedu_text(language, "Overall event probability", h("ec839deca1b420ec82aceab1b420ed9995eba5a0")),
-    "Independent means (M, SD, n)" = statedu_text(language, "Independent means (M, SD, n)", h("eb8f85eba6bded919cebb3b820ed8f89eab7a0")),
-    "Independent t-test (t, n1, n2)" = statedu_text(language, "Independent t-test (t, n1, n2)", h("eb8f85eba6bd20742d74657374")),
-    "Independent t-test (t, df; equal n)" = statedu_text(language, "Independent t-test (t, df; equal n)", h("eb8f85eba6bd20742d74657374")),
-    "Paired means (mean difference, SD difference)" = statedu_text(language, "Paired means (mean difference, SD difference)", h("eb8c80ec9d91ed919cebb3b820ed8f89eab7a0")),
-    "Paired t-test (t, pairs)" = statedu_text(language, "Paired t-test (t, pairs)", h("eb8c80ec9d9120742d74657374")),
-    "One-sample mean (M, SD)" = statedu_text(language, "One-sample mean (M, SD)", h("ec9dbced919cebb3b820ed8f89eab7a0")),
-    "One-sample t-test (t, n)" = statedu_text(language, "One-sample t-test (t, n)", h("ec9dbced919cebb3b820742d74657374")),
-    "Two independent groups" = statedu_text(language, "Two independent groups", h("eb8f85eba6bd20eca791eb8ba8")),
-    "One sample" = statedu_text(language, "One sample", h("ec9dbced919cebb3b8")),
-    "Paired" = statedu_text(language, "Paired", h("eb8c80ec9d91")),
-    "Risk difference" = statedu_text(language, "Risk difference", h("ec9c84ed9798eb8f8420ecb0a8ec9db4")),
-    "Risk ratio" = statedu_text(language, "Risk ratio", h("ec9c84ed9798eb8f8420ebb984")),
-    "Odds ratio from proportions" = statedu_text(language, "Odds ratio from proportions", h("ebb984ec9ca8eba19c20eab384ec82b0ed959c20ec98a4eca688ebb984")),
-    "Odds ratio from 2x2 table" = statedu_text(language, "Odds ratio from 2x2 table", h("32783220ed919ceba19c20eab384ec82b0ed959c20ec98a4eca688ebb984")),
-    "Two independent proportions" = statedu_text(language, "Two independent proportions", h("eb8f85eba6bd20ebb984ec9ca82032eca791eb8ba8")),
-    "One proportion vs 0.50" = statedu_text(language, "One proportion vs 0.50", h("ec9dbcebbb98ebb984ec9ca820767320302e3530")),
-    "Cohen's w from chi-square" = statedu_text(language, "Cohen's w from chi-square", h("ecb9b4ec9db4eca09ceab3b1ec9790ec849c20436f68656e2077")),
-    "Cohen's w from category proportions" = statedu_text(language, "Cohen's w from category proportions", h("ebb294eca3bc20ebb984ec9ca8ec9790ec849c20436f68656e2077")),
-    "Cramer's V" = statedu_text(language, "Cramer's V", h("ed81aceb9e98eba8b82056")),
-    "Phi coefficient" = statedu_text(language, "Phi coefficient", h("ed8c8cec9db420eab384ec8898")),
-    "Effect size d" = statedu_text(language, "Effect size d", h("ed9aa8eab3bced81aceab8b02064")),
-    "Effect size w" = statedu_text(language, "Effect size w", h("ed9aa8eab3bced81aceab8b02077")),
-    "Effect size f" = statedu_text(language, "Effect size f", h("ed9aa8eab3bced81aceab8b02066")),
-    "Effect size f2" = statedu_text(language, "Effect size f2", h("ed9aa8eab3bced81aceab8b0206632")),
-    "Effect size f2 for R2 increase" = statedu_text(language, "Effect size f2 for R2 increase", h("523220eca69deab08020ed9aa8eab3bced81aceab8b0206632")),
-    "Effect size f2 for interaction R2 increase" = statedu_text(language, "Effect size f2 for interaction R2 increase", h("ec8381ed98b8ec9e91ec9aa920523220eca69deab08020ed9aa8eab3bced81aceab8b0206632")),
-    "Effect size d (Cohen's d)" = statedu_text(language, "Effect size d (Cohen's d)", h("ed9aa8eab3bced81aceab8b020642028436f68656e2773206429")),
-    "Effect size dz (paired difference / SD)" = statedu_text(language, "Effect size dz (paired difference / SD)", h("ed9aa8eab3bced81aceab8b020647a")),
-    "Effect size d (mean difference / SD)" = statedu_text(language, "Effect size d (mean difference / SD)", h("ed9aa8eab3bced81aceab8b02064")),
-    "Effect size d (median shift / SD)" = statedu_text(language, "Effect size d (median shift / SD)", h("ed9aa8eab3bced81aceab8b02064")),
-    "Effect size d (approx.)" = statedu_text(language, "Effect size d (approx.)", h("ed9aa8eab3bced81aceab8b020642028eab7bcebbcac2929")),
-    "Effect size W (Kendall's W)" = statedu_text(language, "Effect size W (Kendall's W)", h("ed9aa8eab3bced81aceab8b0205720284b656e64616c6c2773205729")),
-    "Pillai's trace V" = statedu_text(language, "Pillai's trace V", h("50696c6c6169ec9d982074726163652056")),
-    "t statistic" = statedu_text(language, "t statistic", h("7420ed86b5eab384eb9f89")),
-    "F statistic" = statedu_text(language, "F statistic", h("4620ed86b5eab384eb9f89")),
-    "Chi-square statistic" = statedu_text(language, "Chi-square statistic", h("ecb9b4ec9db4eca09ceab3b120ed86b5eab384eb9f89")),
-    "Point-biserial r" = statedu_text(language, "Point-biserial r", h("eca090ec9db4ec97b020ec8381eab4802072")),
-    "Eta squared" = statedu_text(language, "Eta squared", h("ec9790ed8380eca09ceab3b1")),
-    "Partial eta squared" = statedu_text(language, "Partial eta squared", h("ebb680ebb68420ec9790ed8380eca09ceab3b1")),
-    "Unadjusted Cohen's f" = statedu_text(language, "Unadjusted Cohen's f", h("ebb3b4eca09520eca08420436f68656e27732066")),
-    "Wilks' lambda" = statedu_text(language, "Wilks' lambda", h("57696c6b7320eb9e8ceb8ba4")),
-    "Mann-Whitney U" = statedu_text(language, "Mann-Whitney U", h("4d616e6e2d576869746e65792055")),
-    "Positive rank sum W+" = statedu_text(language, "Positive rank sum W+", h("ec9691ec9d9820ec889cec9c84ed95a920572b")),
-    "Negative rank sum W-" = statedu_text(language, "Negative rank sum W-", h("ec9d8cec9d9820ec889cec9c84ed95a920572d")),
-    "Kruskal-Wallis H" = statedu_text(language, "Kruskal-Wallis H", h("4b7275736b616c2d57616c6c69732048")),
-    "Friedman chi-square" = statedu_text(language, "Friedman chi-square", h("46726965646d616e20ecb9b4ec9db4eca09ceab3b1")),
-    "b: negative to positive pairs" = statedu_text(language, "b: negative to positive pairs", h("623a20ec9d8cec84b1ec9790ec849c20ec9691ec84b1ec9cbceba19c20ebb094eb809020ec8c8d")),
-    "c: positive to negative pairs" = statedu_text(language, "c: positive to negative pairs", h("633a20ec9691ec84b1ec9790ec849c20ec9d8cec84b1ec9cbceba19c20ebb094eb809020ec8c8d")),
-    "p01: negative to positive" = statedu_text(language, "p01: negative to positive", h("7030313a20ec9d8cec84b1ec9790ec849c20ec9691ec84b1")),
-    "p10: positive to negative" = statedu_text(language, "p10: positive to negative", h("7031303a20ec9691ec84b1ec9790ec849c20ec9d8cec84b1")),
-    "One-way ANOVA" = statedu_text(language, "One-way ANOVA", h("ec9dbcec9b9020ebb684ec82b0ebb684ec849d")),
-    "Two-way ANOVA" = statedu_text(language, "Two-way ANOVA", h("ec9db4ec9b90ebb684ec82b0ebb684ec849d")),
-    "One-group repeated-measures ANOVA" = statedu_text(language, "One-group repeated-measures ANOVA", h("eb8ba8ec9dbc20eca791eb8ba820ebb098ebb3b5ecb8a1eca09520ebb684ec82b0ebb684ec849d")),
-    "Mixed repeated-measures ANOVA" = statedu_text(language, "Mixed repeated-measures ANOVA", h("ed98bced95a920ebb098ebb3b5ecb8a1eca09520ebb684ec82b0ebb684ec849d")),
-    "Main effect A" = statedu_text(language, "Main effect A", h("eca3bced9aa8eab3bc2041")),
-    "Main effect B" = statedu_text(language, "Main effect B", h("eca3bced9aa8eab3bc2042")),
-    "Interaction A x B" = statedu_text(language, "Interaction A x B", h("ec8381ed98b8ec9e91ec9aa9204120782042")),
-    "Group" = statedu_text(language, "Group", h("eca791eb8ba8")),
-    "Time" = statedu_text(language, "Time", h("ec8b9ceca090")),
-    "Group x Time" = statedu_text(language, "Group x Time", h("eca791eb8ba8207820ec8b9ceca090")),
-    "Covariate R-squared" = statedu_text(language, "Covariate R-squared", h("eab3b5ebb380eb9f892052eca09ceab3b1")),
-    "Factor A levels" = statedu_text(language, "Factor A levels", h("ec9a94ec9db8204120ec8898eca480")),
-    "Factor B levels" = statedu_text(language, "Factor B levels", h("ec9a94ec9db8204220ec8898eca480")),
-    "Average repeated-measures correlation" = statedu_text(language, "Average repeated-measures correlation", h("ed8f89eab7a020ebb098ebb3b5ecb8a1eca09520ec8381eab480")),
-    "Nonsphericity epsilon" = statedu_text(language, "Nonsphericity epsilon", h("eab5aced9895ec84b120ec9c84ebb09820ebb3b4eca095eab092")),
-    "Multiple regression" = statedu_text(language, "Multiple regression", h("eb8ba4eca49120ed9a8ceab780")),
-    "Hierarchical regression" = statedu_text(language, "Hierarchical regression", h("ec9c84eab384eca08120ed9a8ceab780")),
-    "Logistic regression" = statedu_text(language, "Logistic regression", h("eba19ceca780ec8aa4ed8bb120ed9a8ceab780")),
-    "Mediation effect" = statedu_text(language, "Mediation effect", h("eba7a4eab09ced9aa8eab3bc")),
-    "Moderation regression" = statedu_text(language, "Moderation regression", h("eca1b0eca08820ed9a8ceab780")),
-    "Baseline event probability" = statedu_text(language, "Baseline event probability", h("eab8b0ecb48820ec82aceab1b420ed9995eba5a0")),
-    "Predictor prevalence" = statedu_text(language, "Predictor prevalence", h("ec9888ecb8a1ebb380ec889820ec9ca0ebb391eba5a0")),
-    "Interaction terms tested" = statedu_text(language, "Interaction terms tested", h("eab280eca09520ec8381ed98b8ec9e91ec9aa9ed95ad20ec8898")),
-    "Mediation method" = statedu_text(language, "Mediation method", h("eba7a4eab09ced9aa8eab3bc20ebb0a9ebb295")),
-    "Path a effect size" = statedu_text(language, "Path a effect size", h("eab2bdeba19c206120ed9aa8eab3bced81aceab8b0")),
-    "Path b effect size" = statedu_text(language, "Path b effect size", h("eab2bdeba19c206220ed9aa8eab3bced81aceab8b0")),
-    "Path a beta: predictor -> mediator" = statedu_text(language, "Path a beta: predictor -> mediator", h("eab2bdeba19c206120626574613a20ec9888ecb8a1ebb380ec8898202d3e20eba7a4eab09cebb380ec8898")),
-    "Path b beta: mediator -> outcome" = statedu_text(language, "Path b beta: mediator -> outcome", h("eab2bdeba19c206220626574613a20eba7a4eab09cebb380ec8898202d3e20eab2b0eab3bcebb380ec8898")),
-    "Group x time parameter estimate B" = statedu_text(language, "Group x time parameter estimate B", h("eca791eb8ba8207820ec8b9ceab08420ebaaa8ec889820ecb694eca095ecb9982042")),
-    "Mean difference (I - J)" = statedu_text(language, "Mean difference (I - J)", h("ed8f89eab7a020ecb0a8ec9db4202849202d204a29")),
-    "Variance at time I" = statedu_text(language, "Variance at time I", h("ec8b9ceca090204920ebb684ec82b0")),
-    "Variance at time J" = statedu_text(language, "Variance at time J", h("ec8b9ceca090204a20ebb684ec82b0")),
-    "Covariance I,J" = statedu_text(language, "Covariance I,J", h("eab3b5ebb684ec82b020492c4a")),
-    "ICC / random intercept proportion" = statedu_text(language, "ICC / random intercept proportion", h("494343202f20eb9e9ceb8da420eca088ed8eb820ebb984ec9ca8")),
-    "Working correlation rho" = statedu_text(language, "Working correlation rho", h("ec9e91ec9785ec8381eab4802072686f")),
-    "Cohen's kappa" = statedu_text(language, "Cohen's kappa", h("436f68656e2773206b61707061")),
-    "ICC" = statedu_text(language, "ICC", "ICC"),
-    "Null RMSEA" = statedu_text(language, "Null RMSEA", h("ec9881eab080ec84a420524d534541")),
-    "Alternative RMSEA" = statedu_text(language, "Alternative RMSEA", h("eb8c80eba6bdeab080ec84a420524d534541")),
-    "Simple" = statedu_text(language, "Simple", h("eb8ba8ec889c")),
-    "GLIMMPSE-style" = statedu_text(language, "GLIMMPSE-style", h("474c494d4d50534520ebb0a9ec8b9d")),
-    "Exchangeable" = statedu_text(language, "Exchangeable", h("eab590ed9998eab080eb8aa5")),
-    "Unstructured" = statedu_text(language, "Unstructured", h("ebb984eab5aceca1b0ed9994")),
-    "Two-group repeated (Group x Time)" = statedu_text(language, "Two-group repeated (Group x Time)", h("eb919020eca791eb8ba820ebb098ebb3b5ecb8a1eca0952028eca791eb8ba8207820ec8b9ceca09029")),
-    "One-group repeated (Time slope)" = statedu_text(language, "One-group repeated (Time slope)", h("ed959c20eca791eb8ba820ebb098ebb3b5ecb8a1eca0952028ec8b9ceca09020eab8b0ec9ab8eab8b029")),
-    "Non-inferiority" = statedu_text(language, "Non-inferiority", h("ebb984ec97b4eb93b1ec84b1")),
-    "Equivalence" = statedu_text(language, "Equivalence", h("eb8f99eb93b1ec84b1")),
-    "Mean difference" = statedu_text(language, "Mean difference", h("ed8f89eab7a020ecb0a8ec9db4")),
-    "Proportion difference" = statedu_text(language, "Proportion difference", h("ebb984ec9ca820ecb0a8ec9db4")),
-    "Sensitivity precision" = statedu_text(language, "Sensitivity precision", h("ebafbceab090eb8f8420eca095ebb080eb8f84")),
-    "Specificity precision" = statedu_text(language, "Specificity precision", h("ed8ab9ec9db4eb8f8420eca095ebb080eb8f84")),
-    "ROC AUC vs null" = statedu_text(language, "ROC AUC vs null", h("524f432041554320eb8c8020ec9881eab080ec84a4")),
-    "Mean" = statedu_text(language, "Mean", h("ed8f89eab7a0")),
-    "Proportion" = statedu_text(language, "Proportion", h("ebb984ec9ca8")),
-    "Correlation" = statedu_text(language, "Correlation", h("ec8381eab480")),
-    "Two Poisson rates" = statedu_text(language, "Two Poisson rates", h("eb919020ed8facec9584ec86a120ebb984ec9ca8")),
-    "Two negative binomial rates" = statedu_text(language, "Two negative binomial rates", h("eb919020ec9d8cec9db4ed95ad20ebb984ec9ca8")),
-    "Single rate precision" = statedu_text(language, "Single rate precision", h("eb8ba8ec9dbc20ebb984ec9ca820eca095ebb080eb8f84")),
-    "Dispersion" = statedu_text(language, "Dispersion", h("ebb684ec82b0")),
-    "Parallel cluster randomized trial" = statedu_text(language, "Parallel cluster randomized trial", h("ed8f89ed968920eab5b0eca79120ebacb4ec9e91ec9c8420ec8b9ced9798")),
-    "Stepped-wedge cluster trial" = statedu_text(language, "Stepped-wedge cluster trial", h("eab384eb8ba8ed989520eab5b0eca79120ec8b9ced9798")),
-    "Close fit test (detect poor fit)" = statedu_text(language, "Close fit test (detect poor fit)", h("ebb080eca09120eca081ed95a920eab280eca095")),
-    "Not-close-fit test (support close fit)" = statedu_text(language, "Not-close-fit test (support close fit)", h("ebb984ebb080eca09120eca081ed95a920eab280eca095")),
-    "Parameter-level Monte Carlo" = statedu_text(language, "Parameter-level Monte Carlo", h("ebaaa8ec889820ec8898eca480204d6f6e7465204361726c6f")),
-    "Model complexity heuristic" = statedu_text(language, "Model complexity heuristic", h("ebaaa8ed989520ebb3b5ec9ea1eb8f8420ed9cb4eba6acec8aa4ed8bb1")),
-    "Standardized loading" = statedu_text(language, "Standardized loading", h("ed919ceca480ed999420ec9a94ec9db8ebb680ed9598")),
-    "Standardized path" = statedu_text(language, "Standardized path", h("ed919ceca480ed999420eab2bdeba19c")),
-    "Latent correlation" = statedu_text(language, "Latent correlation", h("ec9ea0ec9eacebb380ec889820ec8381eab480")),
-    "Moderate" = statedu_text(language, "Moderate", h("ebb3b4ed86b5")),
-    "Complex" = statedu_text(language, "Complex", h("ebb3b5ec9ea1")),
-    "Estimate from model counts" = statedu_text(language, "Estimate from model counts", h("ebaaa8ed989520ec8898ec9790ec849c20ecb694eca095")),
-    "Enter model df directly" = statedu_text(language, "Enter model df directly", h("ebaaa8ed989520ec9e90ec9ca0eb8f8420eca781eca09120ec9e85eba0a5")),
-    "Point-biserial r" = statedu_text(language, "Point-biserial r", h("eca090ec9691ebb68420ec8381eab4802072")),
-    "Pearson r from t statistic" = statedu_text(language, "Pearson r from t statistic", h("7420ed86b5eab384eb9f89ec9790ec849c2050656172736f6e2072")),
-    "Pearson r from F statistic" = statedu_text(language, "Pearson r from F statistic", h("4620ed86b5eab384eb9f89ec9790ec849c2050656172736f6e2072")),
-    "Pearson r from R-squared" = statedu_text(language, "Pearson r from R-squared", h("52eca09ceab3b1ec9790ec849c2050656172736f6e2072")),
-    "Fisher's z from r" = statedu_text(language, "Fisher's z from r", h("72ec9790ec849c20466973686572207a")),
-    "Cohen's q for two correlations" = statedu_text(language, "Cohen's q for two correlations", h("eb919020ec8381eab480ec9d9820436f68656e2071")),
-    "Partial eta squared from F" = statedu_text(language, "Partial eta squared from F", h("46ec9790ec849c20ebb680ebb68420ec9790ed8380eca09ceab3b1")),
-    "Cohen's f from eta squared" = statedu_text(language, "Cohen's f from eta squared", h("ec9790ed8380eca09ceab3b1ec9790ec849c20436f68656e2066")),
-    "Cohen's f from partial eta squared" = statedu_text(language, "Cohen's f from partial eta squared", h("ebb680ebb68420ec9790ed8380eca09ceab3b1ec9790ec849c20436f68656e2066")),
-    "ANCOVA partial eta squared from F" = statedu_text(language, "ANCOVA partial eta squared from F", h("414e434f56412046ec9790ec849c20ebb680ebb68420ec9790ed8380eca09ceab3b1")),
-    "ANCOVA adjusted Cohen's f" = statedu_text(language, "ANCOVA adjusted Cohen's f", h("414e434f564120ebb3b4eca09520436f68656e2066")),
-    "ANCOVA Cohen's f from partial eta squared" = statedu_text(language, "ANCOVA Cohen's f from partial eta squared", h("414e434f564120ebb680ebb68420ec9790ed8380eca09ceab3b1ec9790ec849c20436f68656e2066")),
-    "MANOVA Pillai's trace to f2" = statedu_text(language, "MANOVA Pillai's trace to f2", h("4d414e4f56412050696c6c6169207472616365ec9790ec849c206632")),
-    "MANOVA Wilks' lambda to f2" = statedu_text(language, "MANOVA Wilks' lambda to f2", h("4d414e4f56412057696c6b73206c616d626461ec9790ec849c206632")),
-    "Rank-biserial r from Mann-Whitney U" = statedu_text(language, "Rank-biserial r from Mann-Whitney U", h("4d616e6e2d576869746e65792055ec9790ec849c20ec889cec9c84ec9691ebb6842072")),
-    "Rank-biserial r for paired Wilcoxon" = statedu_text(language, "Rank-biserial r for paired Wilcoxon", h("eb8c80ec9d912057696c636f786f6e20ec889cec9c84ec9691ebb6842072")),
-    "Kruskal-Wallis epsilon squared" = statedu_text(language, "Kruskal-Wallis epsilon squared", h("4b7275736b616c2d57616c6c697320ec97a1ec8ba4eba1a0eca09ceab3b1")),
-    "Friedman Kendall's W" = statedu_text(language, "Friedman Kendall's W", h("46726965646d616e204b656e64616c6c2057")),
-    "Matched-pair odds ratio from probabilities" = statedu_text(language, "Matched-pair odds ratio from probabilities", h("ed9995eba5a0ec9790ec849c20eb8c80ec9d91ec8c8d20ec98a4eca688ebb984")),
-    "Matched-pair odds ratio from paired 2x2 table" = statedu_text(language, "Matched-pair odds ratio from paired 2x2 table", h("eb8c80ec9d912032783220ed919cec9790ec849c20ec98a4eca688ebb984")),
-    "Cohen's g from discordant probabilities" = statedu_text(language, "Cohen's g from discordant probabilities", h("ebb688ec9dbcecb99820ed9995eba5a0ec9790ec849c20436f68656e2067")),
-    "Multiple regression f2 from R-squared" = statedu_text(language, "Multiple regression f2 from R-squared", h("52eca09ceab3b1ec9790ec849c20eb8ba4eca491ed9a8ceab780206632")),
-    "Hierarchical regression f2 from R-squared increase" = statedu_text(language, "Hierarchical regression f2 from R-squared increase", h("52eca09ceab3b120eca69deab080ec9790ec849c20ec9c84eab384ed9a8ceab780206632")),
-    "Logistic regression OR conversion" = statedu_text(language, "Logistic regression OR conversion", h("eba19ceca780ec8aa4ed8bb120ed9a8ceab780204f5220ebb380ed9998")),
-    "Moderation interaction f2" = statedu_text(language, "Moderation interaction f2", h("eca1b0eca08820ec8381ed98b8ec9e91ec9aa9206632")),
-    "Follow-up estimated means" = statedu_text(language, "Follow-up estimated means", h("ecb694eca081ec8b9ceca09020ecb694eca095ed8f89eab7a0")),
-    "Pre-post change means" = statedu_text(language, "Pre-post change means", h("ec82aceca0842dec82aced9b8420ebb380ed999420ed8f89eab7a0")),
-    "Group x time B" = statedu_text(language, "Group x time B", h("eca791eb8ba8207820ec8b9ceab0842042")),
-    "Continuous outcome supplied d" = statedu_text(language, "Continuous outcome supplied d", h("ec97b0ec868ded989520eab2b0eab3bc206420eca781eca09120ec9e85eba0a5")),
-    "Binary outcome from proportions" = statedu_text(language, "Binary outcome from proportions", h("ebb984ec9ca8ec9790ec849c20ec9db4ebb684ed989520eab2b0eab3bc")),
-    "Binary logit fixed effect" = statedu_text(language, "Binary logit fixed effect", h("ec9db4ebb684ed989520eba19ceca79320eab3a0eca095ed9aa8eab3bc")),
-    "Binary outcome probabilities" = statedu_text(language, "Binary outcome probabilities", h("ec9db4ebb684ed989520eab2b0eab3bc20ed9995eba5a0")),
-    "Count log-link fixed effect" = statedu_text(language, "Count log-link fixed effect", h("ecb9b4ec9ab4ed8ab820eba19ceab7b8eba781ed81ac20eab3a0eca095ed9aa8eab3bc")),
-    "Count outcome rates" = statedu_text(language, "Count outcome rates", h("ecb9b4ec9ab4ed8ab820eab2b0eab3bc20ebb984ec9ca8")),
-    "Gaussian fixed effect" = statedu_text(language, "Gaussian fixed effect", h("eab080ec9ab0ec8b9cec958820eab3a0eca095ed9aa8eab3bc")),
-    "Simple standardized fixed effect" = statedu_text(language, "Simple standardized fixed effect", h("eb8ba8ec889c20ed919ceca480ed999420eab3a0eca095ed9aa8eab3bc")),
-    "GLIMMPSE-style mean vectors" = statedu_text(language, "GLIMMPSE-style mean vectors", h("474c494d4d50534520ebb0a9ec8b9d20ed8f89eab7a020ebb2a1ed84b0")),
-    "SPSS LMM output (F, df, covariance)" = statedu_text(language, "SPSS LMM output (F, df, covariance)", h("53505353204c4d4d20ecb69ceba0a528462c2064662c20eab3b5ebb684ec82b029")),
-    "Hazard ratio to log hazard ratio" = statedu_text(language, "Hazard ratio to log hazard ratio", h("ec9c84ed9798ebb984ec9790ec849c20eba19ceab7b8ec9c84ed9798ebb984")),
-    "Mean difference margin distance" = statedu_text(language, "Mean difference margin distance", h("ed8f89eab7a0ecb0a820eba788eca78420eab1b0eba6ac")),
-    "Proportion difference margin distance" = statedu_text(language, "Proportion difference margin distance", h("ebb984ec9ca8ecb0a820eba788eca78420eab1b0eba6ac")),
-    "Poisson incidence rate ratio" = statedu_text(language, "Poisson incidence rate ratio", h("ed8facec9584ec86a120ebb09cec839deba5a0ebb984")),
-    "Negative binomial incidence rate ratio" = statedu_text(language, "Negative binomial incidence rate ratio", h("ec9d8cec9db4ed95ad20ebb09cec839deba5a0ebb984")),
-    "Gamma mean ratio" = statedu_text(language, "Gamma mean ratio", h("eab090eba78820ed8f89eab7a0ebb984")),
-    "Parallel continuous outcome" = statedu_text(language, "Parallel continuous outcome", h("ed8f89ed968920ec84a4eab38420ec97b0ec868ded989520eab2b0eab3bc")),
-    "Parallel binary outcome" = statedu_text(language, "Parallel binary outcome", h("ed8f89ed968920ec84a4eab38420ec9db4ebb684ed989520eab2b0eab3bc")),
-    "Stepped-wedge continuous outcome" = statedu_text(language, "Stepped-wedge continuous outcome", h("eab384eb8ba8ed989520ec84a4eab38420ec97b0ec868ded989520eab2b0eab3bc")),
-    "Mean CI precision" = statedu_text(language, "Mean CI precision", h("ed8f89eab7a020ec8ba0eba2b0eab5aceab08420eca095ebb080eb8f84")),
-    "Proportion CI precision" = statedu_text(language, "Proportion CI precision", h("ebb984ec9ca820ec8ba0eba2b0eab5aceab08420eca095ebb080eb8f84")),
-    "Correlation CI precision" = statedu_text(language, "Correlation CI precision", h("ec8381eab48020ec8ba0eba2b0eab5aceab08420eca095ebb080eb8f84")),
-    "Cohen's kappa" = statedu_text(language, "Cohen's kappa", h("436f68656e20ecb9b4ed8c8c")),
-    "Standardized parameter" = statedu_text(language, "Standardized parameter", h("ed919ceca480ed999420ebaaa8ec8898")),
-    "Cohen's d for independent means" = statedu_text(language, "Cohen's d for independent means", h("eb8f85eba6bded8f89eab7a020436f68656e2064")),
-    "Hedges' g for independent means" = statedu_text(language, "Hedges' g for independent means", h("eb8f85eba6bded8f89eab7a0204865646765732067")),
-    "Cohen's d for one-sample mean" = statedu_text(language, "Cohen's d for one-sample mean", h("ec9dbced919cebb3b820ed8f89eab7a020436f68656e2064")),
-    "Cohen's dz for paired means" = statedu_text(language, "Cohen's dz for paired means", h("eb8c80ec9d91ed8f89eab7a020436f68656e20647a")),
-    "Mann-Whitney U (two independent groups)" = statedu_text(language, "Mann-Whitney U (two independent groups)", h("4d616e6e2d576869746e6579205528eb919020eb8f85eba6bdeca791eb8ba829")),
-    "Wilcoxon signed-rank (paired samples)" = statedu_text(language, "Wilcoxon signed-rank (paired samples)", h("57696c636f786f6e207369676e65642d72616e6b28eb8c80ec9d91ed919cebb3b829")),
-    "One-sample Wilcoxon signed-rank (median shift)" = statedu_text(language, "One-sample Wilcoxon signed-rank (median shift)", h("ec9dbced919cebb3b82057696c636f786f6e207369676e65642d72616e6b28eca491ec9599eab09220ec9db4eb8f9929")),
-    "Friedman test" = statedu_text(language, "Friedman test", h("46726965646d616e20eab280eca095")),
-    "Fritz & MacKinnon empirical table (.80 power)" = statedu_text(language, "Fritz & MacKinnon empirical table (.80 power)", h("467269747a2026204d61634b696e6e6f6e20eab2bded9798ed919c282e383020eab280eca095eba0a529")),
-    "Monte Carlo indirect effect CI" = statedu_text(language, "Monte Carlo indirect effect CI", h("4d6f6e7465204361726c6f20eab084eca091ed9aa8eab3bc204349")),
-    "Bootstrap indirect effect CI (slow)" = statedu_text(language, "Bootstrap indirect effect CI (slow)", h("426f6f74737472617020eab084eca091ed9aa8eab3bc20434928eb8a90eba6bc29")),
-    "Sobel approximation" = statedu_text(language, "Sobel approximation", h("536f62656c20eab7bcec82ac")),
-    "Small (.14)" = statedu_text(language, "Small (.14)", h("ec9e91ec9d8c282e313429")),
-    "Halfway (.26)" = statedu_text(language, "Halfway (.26)", h("eca491eab08420eca084282e323629")),
-    "Medium (.39)" = statedu_text(language, "Medium (.39)", h("eca491eab084282e333929")),
-    "Large (.59)" = statedu_text(language, "Large (.59)", h("ed81bc282e353929")),
-    "Bias-corrected bootstrap" = statedu_text(language, "Bias-corrected bootstrap", h("ed8eb8ed96a5ebb3b4eca09520626f6f747374726170")),
-    "Percentile bootstrap" = statedu_text(language, "Percentile bootstrap", h("ebb0b1ebb684ec9c8420626f6f747374726170")),
-    "PRODCLIN / distribution of the product" = statedu_text(language, "PRODCLIN / distribution of the product", h("50524f44434c494e202f20eab3b1ec9d9820ebb684ed8fac")),
-    "Joint significance" = statedu_text(language, "Joint significance", h("eab3b5eb8f9920ec9ca0ec9d98ec84b1")),
-    "Sobel / first-order delta" = statedu_text(language, "Sobel / first-order delta", h("536f62656c202f2031ecb0a820eb8db8ed8380")),
-    "Cronbach's alpha" = statedu_text(language, "Cronbach's alpha", h("43726f6e6261636820ec958ced8c8c")),
-    "ICC reliability" = statedu_text(language, "ICC reliability", h("49434320ec8ba0eba2b0eb8f84")),
-    "Bland-Altman LoA" = statedu_text(language, "Bland-Altman LoA", h("426c616e642d416c746d616e20ec9dbcecb998ed959ceab384")),
-    "LMM design" = statedu_text(language, "LMM design", h("4c4d4d20ec84a4eab384")),
-    "Logit coefficient B" = statedu_text(language, "Logit coefficient B", h("eba19ceca79320eab384ec88982042")),
-    "Log fixed-effect coefficient B" = statedu_text(language, "Log fixed-effect coefficient B", h("eba19ceab7b820eab3a0eca095ed9aa8eab3bc20eab384ec88982042")),
-    "Observed / expected difference" = statedu_text(language, "Observed / expected difference", h("ecb694eca0952feab480ecb0b020ecb0a8ec9db4")),
+    "Design" = sample_size_text(language, "Design", h("ec84a4eab384")),
+    "Alpha" = sample_size_text(language, "Alpha", h("ec9ca0ec9d98ec8898eca480")),
+    "Power" = sample_size_text(language, "Power", h("eab280eca095eba0a5")),
+    "Minimum sample size" = sample_size_text(language, "Minimum sample size", h("ecb59cec868c20ed919cebb3b820ec8898")),
+    "Sample size" = sample_size_text(language, "Sample size", h("ed919cebb3b820ec8898")),
+    "Total sample size" = sample_size_text(language, "Total sample size", h("eca084ecb2b420ed919cebb3b820ec8898")),
+    "Sample size per group" = sample_size_text(language, "Sample size per group", h("eca791eb8ba8ebb38420ed919cebb3b820ec8898")),
+    "Participants" = sample_size_text(language, "Participants", h("ecb0b8ec97acec9e9020ec8898")),
+    "Participants per group" = sample_size_text(language, "Participants per group", h("eca791eb8ba8ebb38420ecb0b8ec97acec9e9020ec8898")),
+    "Pairs" = sample_size_text(language, "Pairs", h("ec8c8d20ec8898")),
+    "Number of pairs" = sample_size_text(language, "Number of pairs", h("ec8c8d20ec8898")),
+    "Group 1 n" = sample_size_text(language, "Group 1 n", h("eca791eb8ba82031206e")),
+    "Group 2 n" = sample_size_text(language, "Group 2 n", h("eca791eb8ba82032206e")),
+    "Group 1 mean" = sample_size_text(language, "Group 1 mean", h("eca791eb8ba8203120ed8f89eab7a0")),
+    "Group 2 mean" = sample_size_text(language, "Group 2 mean", h("eca791eb8ba8203220ed8f89eab7a0")),
+    "Group 1 SD" = sample_size_text(language, "Group 1 SD", h("eca791eb8ba8203120ed919ceca480ed8eb8ecb0a8")),
+    "Group 2 SD" = sample_size_text(language, "Group 2 SD", h("eca791eb8ba8203220ed919ceca480ed8eb8ecb0a8")),
+    "Group 1 events" = sample_size_text(language, "Group 1 events", h("eca791eb8ba8203120ec82aceab1b420ec8898")),
+    "Group 1 non-events" = sample_size_text(language, "Group 1 non-events", h("eca791eb8ba8203120ebb984ec82aceab1b420ec8898")),
+    "Group 2 events" = sample_size_text(language, "Group 2 events", h("eca791eb8ba8203220ec82aceab1b420ec8898")),
+    "Group 2 non-events" = sample_size_text(language, "Group 2 non-events", h("eca791eb8ba8203220ebb984ec82aceab1b420ec8898")),
+    "Sample mean" = sample_size_text(language, "Sample mean", h("ed919cebb3b820ed8f89eab7a0")),
+    "Null mean" = sample_size_text(language, "Null mean", h("ec9881eab080ec84a420ed8f89eab7a0")),
+    "Mean paired difference" = sample_size_text(language, "Mean paired difference", h("eb8c80ec9d9120ecb0a8ec9db420ed8f89eab7a0")),
+    "SD of paired differences" = sample_size_text(language, "SD of paired differences", h("eb8c80ec9d9120ecb0a8ec9db420ed919ceca480ed8eb8ecb0a8")),
+    "SD" = sample_size_text(language, "SD", h("ed919ceca480ed8eb8ecb0a8")),
+    "Proportion 1" = sample_size_text(language, "Proportion 1", h("ebb984ec9ca82031")),
+    "Proportion 2" = sample_size_text(language, "Proportion 2", h("ebb984ec9ca82032")),
+    "Expected proportion" = sample_size_text(language, "Expected proportion", h("ec9888ec838120ebb984ec9ca8")),
+    "Degrees of freedom" = sample_size_text(language, "Degrees of freedom", h("ec9e90ec9ca0eb8f84")),
+    "Error degrees of freedom" = sample_size_text(language, "Error degrees of freedom", h("ec98a4ecb0a820ec9e90ec9ca0eb8f84")),
+    "Number of groups" = sample_size_text(language, "Number of groups", h("eca791eb8ba820ec8898")),
+    "Groups" = sample_size_text(language, "Groups", h("eca791eb8ba820ec8898")),
+    "Measurements" = sample_size_text(language, "Measurements", h("ecb8a1eca09520ec8898")),
+    "Outcome" = sample_size_text(language, "Outcome", h("eab2b0eab3bcebb380ec8898")),
+    "Continuous outcome" = sample_size_text(language, "Continuous outcome", h("ec97b0ec868ded989520eab2b0eab3bc")),
+    "Binary outcome" = sample_size_text(language, "Binary outcome", h("ec9db4ebb684ed989520eab2b0eab3bc")),
+    "Effect to test" = sample_size_text(language, "Effect to test", h("eab280eca095ed95a020ed9aa8eab3bc")),
+    "Alternative" = sample_size_text(language, "Alternative", h("eb8c80eba6bdeab080ec84a4")),
+    "Two-sided" = sample_size_text(language, "Two-sided", h("ec9691ecb8a1")),
+    "One-sided" = sample_size_text(language, "One-sided", h("eb8ba8ecb8a1")),
+    "Dropout rate (%)" = sample_size_text(language, "Dropout rate (%)", h("ed8388eb9dbdeba5a020282529")),
+    "Allocation ratio (Group 2 / Group 1)" = sample_size_text(language, "Allocation ratio (Group 2 / Group 1)", h("ebb0b0eca095ebb9842028eca791eb8ba82032202f20eca791eb8ba8203129")),
+    "Time points" = sample_size_text(language, "Time points", h("ec8b9ceca09020ec8898")),
+    "Working correlation" = sample_size_text(language, "Working correlation", h("ec9e91ec9785ec8381eab480")),
+    "Pairwise correlations" = sample_size_text(language, "Pairwise correlations", h("ec8c8debb38420ec8381eab480")),
+    "Input mode" = sample_size_text(language, "Input mode", h("ec9e85eba0a520ebb0a9ec8b9d")),
+    "Correlation structure" = sample_size_text(language, "Correlation structure", h("ec8381eab48020eab5aceca1b0")),
+    "Objective" = sample_size_text(language, "Objective", h("ebaaa9ed919c")),
+    "Parameter" = sample_size_text(language, "Parameter", h("ebaaa8ec8898")),
+    "Confidence level" = sample_size_text(language, "Confidence level", h("ec8ba0eba2b0ec8898eca480")),
+    "Desired CI half-width" = sample_size_text(language, "Desired CI half-width", h("ebaaa9ed919c20ec8ba0eba2b0eab5aceab08420ebb098ed8fad")),
+    "Expected sensitivity" = sample_size_text(language, "Expected sensitivity", h("ec9888ec838120ebafbceab090eb8f84")),
+    "Expected specificity" = sample_size_text(language, "Expected specificity", h("ec9888ec838120ed8ab9ec9db4eb8f84")),
+    "Prevalence" = sample_size_text(language, "Prevalence", h("ec9ca0ebb391eba5a0")),
+    "Number of cases" = sample_size_text(language, "Number of cases", h("ec82aceba18020ec8898")),
+    "Outcome variables" = sample_size_text(language, "Outcome variables", h("eab2b0eab3bcebb380ec889820ec8898")),
+    "Covariates" = sample_size_text(language, "Covariates", h("eab3b5ebb380eb9f8920ec8898")),
+    "Number of predictors" = sample_size_text(language, "Number of predictors", h("ec9888ecb8a1ebb380ec889820ec8898")),
+    "Tested predictors" = sample_size_text(language, "Tested predictors", h("eab280eca09520ec9888ecb8a1ebb380ec889820ec8898")),
+    "Total predictors in final model" = sample_size_text(language, "Total predictors in final model", h("ecb59ceca28520ebaaa8ed989520eca084ecb2b420ec9888ecb8a1ebb380ec889820ec8898")),
+    "Number of covariates" = sample_size_text(language, "Number of covariates", h("eab3b5ebb380eb9f8920ec8898")),
+    "Simulations" = sample_size_text(language, "Simulations", h("ec8b9cebaeaceba088ec9db4ec859820ec8898")),
+    "Bootstrap samples" = sample_size_text(language, "Bootstrap samples", h("ebb680ed8ab8ec8aa4ed8ab8eb9ea920ed919cebb3b820ec8898")),
+    "Expected reliability" = sample_size_text(language, "Expected reliability", h("ec9888ec838120ec8ba0eba2b0eb8f84")),
+    "Number of items" = sample_size_text(language, "Number of items", h("ebacb8ed95ad20ec8898")),
+    "Categories" = sample_size_text(language, "Categories", h("ebb294eca3bc20ec8898")),
+    "Raters / measurements" = sample_size_text(language, "Raters / measurements", h("ed8f89eab080ec9e90202f20ecb8a1eca09520ec8898")),
+    "Model complexity" = sample_size_text(language, "Model complexity", h("ebaaa8ed989520ebb3b5ec9ea1eb8f84")),
+    "Parameter type" = sample_size_text(language, "Parameter type", h("ebaaa8ec889820ec9ca0ed9895")),
+    "Latent variables" = sample_size_text(language, "Latent variables", h("ec9ea0ec9eacebb380ec889820ec8898")),
+    "Measured variables" = sample_size_text(language, "Measured variables", h("ecb8a1eca095ebb380ec889820ec8898")),
+    "Structural paths" = sample_size_text(language, "Structural paths", h("eab5aceca1b0eab2bdeba19c20ec8898")),
+    "Free parameters" = sample_size_text(language, "Free parameters", h("ec9e90ec9ca0ebaaa8ec889820ec8898")),
+    "Model degrees of freedom" = sample_size_text(language, "Model degrees of freedom", h("ebaaa8ed989520ec9e90ec9ca0eb8f84")),
+    "Clusters" = sample_size_text(language, "Clusters", h("ed81b4eb9facec8aa4ed84b020ec8898")),
+    "Periods" = sample_size_text(language, "Periods", h("eab8b0eab08420ec8898")),
+    "Cluster size" = sample_size_text(language, "Cluster size", h("ed81b4eb9facec8aa4ed84b020ed81aceab8b0")),
+    "Cluster size per period" = sample_size_text(language, "Cluster size per period", h("eab8b0eab084ebb38420ed81b4eb9facec8aa4ed84b020ed81aceab8b0")),
+    "Expected proportion 1" = sample_size_text(language, "Expected proportion 1", h("ec9888ec838120ebb984ec9ca82031")),
+    "Expected proportion 2" = sample_size_text(language, "Expected proportion 2", h("ec9888ec838120ebb984ec9ca82032")),
+    "Expected rate" = sample_size_text(language, "Expected rate", h("ec9888ec838120ebb09cec839deba5a0")),
+    "Rate 1" = sample_size_text(language, "Rate 1", h("ebb09cec839deba5a02031")),
+    "Rate 2" = sample_size_text(language, "Rate 2", h("ebb09cec839deba5a02032")),
+    "Person-time" = sample_size_text(language, "Person-time", h("ec9db8eb8584")),
+    "Person-time in Group 1" = sample_size_text(language, "Person-time in Group 1", h("eca791eb8ba8203120ec9db8eb8584")),
+    "Margin" = sample_size_text(language, "Margin", h("eba788eca784")),
+    "Expected true difference" = sample_size_text(language, "Expected true difference", h("ec9888ec838120ec8ba4eca09c20ecb0a8ec9db4")),
+    "SEM / CFA method" = sample_size_text(language, "SEM / CFA method", h("53454d202f2043464120ebb0a9ebb295")),
+    "Model df input" = sample_size_text(language, "Model df input", h("ebaaa8ed989520ec9e90ec9ca0eb8f8420ec9e85eba0a5")),
+    "Expected standardized parameter" = sample_size_text(language, "Expected standardized parameter", h("ec9888ec838120ed919ceca480ed999420ebaaa8ec8898")),
+    "Expected standardized loading" = sample_size_text(language, "Expected standardized loading", h("ec9888ec838120ed919ceca480ed999420eca081ec9eaceab092")),
+    "Expected standardized path" = sample_size_text(language, "Expected standardized path", h("ec9888ec838120ed919ceca480ed999420eab2bdeba19c")),
+    "Number of dependent variables" = sample_size_text(language, "Number of dependent variables", h("eca285ec868debb380ec889820ec8898")),
+    "Numerator df" = sample_size_text(language, "Numerator df", h("ebb684ec9e9020ec9e90ec9ca0eb8f84")),
+    "Denominator df" = sample_size_text(language, "Denominator df", h("ebb684ebaaa820ec9e90ec9ca0eb8f84")),
+    "Common SD input" = sample_size_text(language, "Common SD input", h("eab3b5ed86b520ed919ceca480ed8eb8ecb0a820ec9e85eba0a5")),
+    "Common outcome SD" = sample_size_text(language, "Common outcome SD", h("eab3b5ed86b520eab2b0eab3bc20ed919ceca480ed8eb8ecb0a8")),
+    "Input scale" = sample_size_text(language, "Input scale", h("ec9e85eba0a520ecb299eb8f84")),
+    "Rows" = sample_size_text(language, "Rows", h("ed968920ec8898")),
+    "Columns" = sample_size_text(language, "Columns", h("ec97b420ec8898")),
+    "Observed proportions" = sample_size_text(language, "Observed proportions", h("eab480ecb8a120ebb984ec9ca8")),
+    "Expected proportions" = sample_size_text(language, "Expected proportions", h("eab8b0eb8c8020ebb984ec9ca8")),
+    "Expected mean" = sample_size_text(language, "Expected mean", h("eab8b0eb8c8020ed8f89eab7a0")),
+    "Group 1 estimated mean" = sample_size_text(language, "Group 1 estimated mean", h("31eca791eb8ba820ecb694eca09520ed8f89eab7a0")),
+    "Group 2 estimated mean" = sample_size_text(language, "Group 2 estimated mean", h("32eca791eb8ba820ecb694eca09520ed8f89eab7a0")),
+    "Group 1 pre mean" = sample_size_text(language, "Group 1 pre mean", h("31eca791eb8ba820ec82aceca08420ed8f89eab7a0")),
+    "Group 1 post mean" = sample_size_text(language, "Group 1 post mean", h("31eca791eb8ba820ec82aced9b8420ed8f89eab7a0")),
+    "Group 2 pre mean" = sample_size_text(language, "Group 2 pre mean", h("32eca791eb8ba820ec82aceca08420ed8f89eab7a0")),
+    "Group 2 post mean" = sample_size_text(language, "Group 2 post mean", h("32eca791eb8ba820ec82aced9b8420ed8f89eab7a0")),
+    "Group 1 means by time" = sample_size_text(language, "Group 1 means by time", h("31eca791eb8ba820ec8b9ceca090ebb38420ed8f89eab7a0")),
+    "Group 2 means by time" = sample_size_text(language, "Group 2 means by time", h("32eca791eb8ba820ec8b9ceca090ebb38420ed8f89eab7a0")),
+    "Standardized fixed effect" = sample_size_text(language, "Standardized fixed effect", h("ed919ceca480ed999420eab3a0eca095ed9aa8eab3bc")),
+    "Residual SD" = sample_size_text(language, "Residual SD", h("ec9e94ecb0a820ed919ceca480ed8eb8ecb0a8")),
+    "Correlation rho" = sample_size_text(language, "Correlation rho", h("ec8381eab4802072686f")),
+    "Ratio" = sample_size_text(language, "Ratio", h("ebb984ec9ca8")),
+    "Regression coefficient B" = sample_size_text(language, "Regression coefficient B", h("ed9a8ceab780eab384ec88982042")),
+    "Fixed-effect coefficient B" = sample_size_text(language, "Fixed-effect coefficient B", h("eab3a0eca095ed9aa8eab3bc20eab384ec88982042")),
+    "Log fixed-effect coefficient B" = sample_size_text(language, "Log fixed-effect coefficient B", h("eba19ceab7b820eab3a0eca095ed9aa8eab3bc20eab384ec88982042")),
+    "Logit fixed-effect coefficient B" = sample_size_text(language, "Logit fixed-effect coefficient B", h("eba19ceca79320eab3a0eca095ed9aa8eab3bc20eab384ec88982042")),
+    "Incidence rate ratio" = sample_size_text(language, "Incidence rate ratio", h("ebb09cec839deba5a0ebb984")),
+    "Odds ratio" = sample_size_text(language, "Odds ratio", h("ec98a4eca688ebb984")),
+    "Hazard ratio" = sample_size_text(language, "Hazard ratio", h("ec9c84ed9798ebb984")),
+    "Correlation 1" = sample_size_text(language, "Correlation 1", h("ec8381eab4802031")),
+    "Correlation 2" = sample_size_text(language, "Correlation 2", h("ec8381eab4802032")),
+    "Correlation r" = sample_size_text(language, "Correlation r", h("ec8381eab4802072")),
+    "R-squared" = sample_size_text(language, "R-squared", h("5220eca09ceab3b1")),
+    "Full model R-squared" = sample_size_text(language, "Full model R-squared", h("eca084ecb2b420ebaaa8ed9895205220eca09ceab3b1")),
+    "Reduced model R-squared" = sample_size_text(language, "Reduced model R-squared", h("ecb695ec868c20ebaaa8ed9895205220eca09ceab3b1")),
+    "Interaction delta R-squared" = sample_size_text(language, "Interaction delta R-squared", h("ec8381ed98b8ec9e91ec9aa920eb8db8ed8380205220eca09ceab3b1")),
+    "Expected r" = sample_size_text(language, "Expected r", h("eab8b0eb8c802072")),
+    "Expected AUC" = sample_size_text(language, "Expected AUC", h("eab8b0eb8c8020415543")),
+    "Null AUC" = sample_size_text(language, "Null AUC", h("ec988120415543")),
+    "Overall event probability" = sample_size_text(language, "Overall event probability", h("ec839deca1b420ec82aceab1b420ed9995eba5a0")),
+    "Independent means (M, SD, n)" = sample_size_text(language, "Independent means (M, SD, n)", h("eb8f85eba6bded919cebb3b820ed8f89eab7a0")),
+    "Independent t-test (t, n1, n2)" = sample_size_text(language, "Independent t-test (t, n1, n2)", h("eb8f85eba6bd20742d74657374")),
+    "Independent t-test (t, df; equal n)" = sample_size_text(language, "Independent t-test (t, df; equal n)", h("eb8f85eba6bd20742d74657374")),
+    "Paired means (mean difference, SD difference)" = sample_size_text(language, "Paired means (mean difference, SD difference)", h("eb8c80ec9d91ed919cebb3b820ed8f89eab7a0")),
+    "Paired t-test (t, pairs)" = sample_size_text(language, "Paired t-test (t, pairs)", h("eb8c80ec9d9120742d74657374")),
+    "One-sample mean (M, SD)" = sample_size_text(language, "One-sample mean (M, SD)", h("ec9dbced919cebb3b820ed8f89eab7a0")),
+    "One-sample t-test (t, n)" = sample_size_text(language, "One-sample t-test (t, n)", h("ec9dbced919cebb3b820742d74657374")),
+    "Two independent groups" = sample_size_text(language, "Two independent groups", h("eb8f85eba6bd20eca791eb8ba8")),
+    "One sample" = sample_size_text(language, "One sample", h("ec9dbced919cebb3b8")),
+    "Paired" = sample_size_text(language, "Paired", h("eb8c80ec9d91")),
+    "Risk difference" = sample_size_text(language, "Risk difference", h("ec9c84ed9798eb8f8420ecb0a8ec9db4")),
+    "Risk ratio" = sample_size_text(language, "Risk ratio", h("ec9c84ed9798eb8f8420ebb984")),
+    "Odds ratio from proportions" = sample_size_text(language, "Odds ratio from proportions", h("ebb984ec9ca8eba19c20eab384ec82b0ed959c20ec98a4eca688ebb984")),
+    "Odds ratio from 2x2 table" = sample_size_text(language, "Odds ratio from 2x2 table", h("32783220ed919ceba19c20eab384ec82b0ed959c20ec98a4eca688ebb984")),
+    "Two independent proportions" = sample_size_text(language, "Two independent proportions", h("eb8f85eba6bd20ebb984ec9ca82032eca791eb8ba8")),
+    "One proportion vs 0.50" = sample_size_text(language, "One proportion vs 0.50", h("ec9dbcebbb98ebb984ec9ca820767320302e3530")),
+    "Cohen's w from chi-square" = sample_size_text(language, "Cohen's w from chi-square", h("ecb9b4ec9db4eca09ceab3b1ec9790ec849c20436f68656e2077")),
+    "Cohen's w from category proportions" = sample_size_text(language, "Cohen's w from category proportions", h("ebb294eca3bc20ebb984ec9ca8ec9790ec849c20436f68656e2077")),
+    "Cramer's V" = sample_size_text(language, "Cramer's V", h("ed81aceb9e98eba8b82056")),
+    "Phi coefficient" = sample_size_text(language, "Phi coefficient", h("ed8c8cec9db420eab384ec8898")),
+    "Effect size d" = sample_size_text(language, "Effect size d", h("ed9aa8eab3bced81aceab8b02064")),
+    "Effect size w" = sample_size_text(language, "Effect size w", h("ed9aa8eab3bced81aceab8b02077")),
+    "Effect size f" = sample_size_text(language, "Effect size f", h("ed9aa8eab3bced81aceab8b02066")),
+    "Effect size f2" = sample_size_text(language, "Effect size f2", h("ed9aa8eab3bced81aceab8b0206632")),
+    "Effect size f2 for R2 increase" = sample_size_text(language, "Effect size f2 for R2 increase", h("523220eca69deab08020ed9aa8eab3bced81aceab8b0206632")),
+    "Effect size f2 for interaction R2 increase" = sample_size_text(language, "Effect size f2 for interaction R2 increase", h("ec8381ed98b8ec9e91ec9aa920523220eca69deab08020ed9aa8eab3bced81aceab8b0206632")),
+    "Effect size d (Cohen's d)" = sample_size_text(language, "Effect size d (Cohen's d)", h("ed9aa8eab3bced81aceab8b020642028436f68656e2773206429")),
+    "Effect size dz (paired difference / SD)" = sample_size_text(language, "Effect size dz (paired difference / SD)", h("ed9aa8eab3bced81aceab8b020647a")),
+    "Effect size d (mean difference / SD)" = sample_size_text(language, "Effect size d (mean difference / SD)", h("ed9aa8eab3bced81aceab8b02064")),
+    "Effect size d (median shift / SD)" = sample_size_text(language, "Effect size d (median shift / SD)", h("ed9aa8eab3bced81aceab8b02064")),
+    "Effect size d (approx.)" = sample_size_text(language, "Effect size d (approx.)", h("ed9aa8eab3bced81aceab8b020642028eab7bcebbcac2929")),
+    "Effect size W (Kendall's W)" = sample_size_text(language, "Effect size W (Kendall's W)", h("ed9aa8eab3bced81aceab8b0205720284b656e64616c6c2773205729")),
+    "Pillai's trace V" = sample_size_text(language, "Pillai's trace V", h("50696c6c6169ec9d982074726163652056")),
+    "t statistic" = sample_size_text(language, "t statistic", h("7420ed86b5eab384eb9f89")),
+    "F statistic" = sample_size_text(language, "F statistic", h("4620ed86b5eab384eb9f89")),
+    "Chi-square statistic" = sample_size_text(language, "Chi-square statistic", h("ecb9b4ec9db4eca09ceab3b120ed86b5eab384eb9f89")),
+    "Point-biserial r" = sample_size_text(language, "Point-biserial r", h("eca090ec9db4ec97b020ec8381eab4802072")),
+    "Eta squared" = sample_size_text(language, "Eta squared", h("ec9790ed8380eca09ceab3b1")),
+    "Partial eta squared" = sample_size_text(language, "Partial eta squared", h("ebb680ebb68420ec9790ed8380eca09ceab3b1")),
+    "Unadjusted Cohen's f" = sample_size_text(language, "Unadjusted Cohen's f", h("ebb3b4eca09520eca08420436f68656e27732066")),
+    "Wilks' lambda" = sample_size_text(language, "Wilks' lambda", h("57696c6b7320eb9e8ceb8ba4")),
+    "Mann-Whitney U" = sample_size_text(language, "Mann-Whitney U", h("4d616e6e2d576869746e65792055")),
+    "Positive rank sum W+" = sample_size_text(language, "Positive rank sum W+", h("ec9691ec9d9820ec889cec9c84ed95a920572b")),
+    "Negative rank sum W-" = sample_size_text(language, "Negative rank sum W-", h("ec9d8cec9d9820ec889cec9c84ed95a920572d")),
+    "Kruskal-Wallis H" = sample_size_text(language, "Kruskal-Wallis H", h("4b7275736b616c2d57616c6c69732048")),
+    "Friedman chi-square" = sample_size_text(language, "Friedman chi-square", h("46726965646d616e20ecb9b4ec9db4eca09ceab3b1")),
+    "b: negative to positive pairs" = sample_size_text(language, "b: negative to positive pairs", h("623a20ec9d8cec84b1ec9790ec849c20ec9691ec84b1ec9cbceba19c20ebb094eb809020ec8c8d")),
+    "c: positive to negative pairs" = sample_size_text(language, "c: positive to negative pairs", h("633a20ec9691ec84b1ec9790ec849c20ec9d8cec84b1ec9cbceba19c20ebb094eb809020ec8c8d")),
+    "p01: negative to positive" = sample_size_text(language, "p01: negative to positive", h("7030313a20ec9d8cec84b1ec9790ec849c20ec9691ec84b1")),
+    "p10: positive to negative" = sample_size_text(language, "p10: positive to negative", h("7031303a20ec9691ec84b1ec9790ec849c20ec9d8cec84b1")),
+    "One-way ANOVA" = sample_size_text(language, "One-way ANOVA", h("ec9dbcec9b9020ebb684ec82b0ebb684ec849d")),
+    "Two-way ANOVA" = sample_size_text(language, "Two-way ANOVA", h("ec9db4ec9b90ebb684ec82b0ebb684ec849d")),
+    "One-group repeated-measures ANOVA" = sample_size_text(language, "One-group repeated-measures ANOVA", h("eb8ba8ec9dbc20eca791eb8ba820ebb098ebb3b5ecb8a1eca09520ebb684ec82b0ebb684ec849d")),
+    "Mixed-design repeated-measures ANOVA" = sample_size_text(language, "Mixed-design repeated-measures ANOVA", h("ed98bced95a9ec84a4eab38420ebb098ebb3b5ecb8a1eca09520ebb684ec82b0ebb684ec849d")),
+    "Main effect A" = sample_size_text(language, "Main effect A", h("eca3bced9aa8eab3bc2041")),
+    "Main effect B" = sample_size_text(language, "Main effect B", h("eca3bced9aa8eab3bc2042")),
+    "Interaction A x B" = sample_size_text(language, "Interaction A x B", h("ec8381ed98b8ec9e91ec9aa9204120782042")),
+    "Group" = sample_size_text(language, "Group", h("eca791eb8ba8")),
+    "Time" = sample_size_text(language, "Time", h("ec8b9ceca090")),
+    "Group x Time" = sample_size_text(language, "Group x Time", h("eca791eb8ba8207820ec8b9ceca090")),
+    "Covariate R-squared" = sample_size_text(language, "Covariate R-squared", h("eab3b5ebb380eb9f892052eca09ceab3b1")),
+    "Factor A levels" = sample_size_text(language, "Factor A levels", h("ec9a94ec9db8204120ec8898eca480")),
+    "Factor B levels" = sample_size_text(language, "Factor B levels", h("ec9a94ec9db8204220ec8898eca480")),
+    "Average repeated-measures correlation" = sample_size_text(language, "Average repeated-measures correlation", h("ed8f89eab7a020ebb098ebb3b5ecb8a1eca09520ec8381eab480")),
+    "Nonsphericity epsilon" = sample_size_text(language, "Nonsphericity epsilon", h("eab5aced9895ec84b120ec9c84ebb09820ebb3b4eca095eab092")),
+    "Multiple regression" = sample_size_text(language, "Multiple regression", h("eb8ba4eca49120ed9a8ceab780")),
+    "Hierarchical regression" = sample_size_text(language, "Hierarchical regression", h("ec9c84eab384eca08120ed9a8ceab780")),
+    "Logistic regression" = sample_size_text(language, "Logistic regression", h("eba19ceca780ec8aa4ed8bb120ed9a8ceab780")),
+    "Mediation effect" = sample_size_text(language, "Mediation effect", h("eba7a4eab09ced9aa8eab3bc")),
+    "Moderation regression" = sample_size_text(language, "Moderation regression", h("eca1b0eca08820ed9a8ceab780")),
+    "Baseline event probability" = sample_size_text(language, "Baseline event probability", h("eab8b0ecb48820ec82aceab1b420ed9995eba5a0")),
+    "Predictor prevalence" = sample_size_text(language, "Predictor prevalence", h("ec9888ecb8a1ebb380ec889820ec9ca0ebb391eba5a0")),
+    "Interaction terms tested" = sample_size_text(language, "Interaction terms tested", h("eab280eca09520ec8381ed98b8ec9e91ec9aa9ed95ad20ec8898")),
+    "Mediation method" = sample_size_text(language, "Mediation method", h("eba7a4eab09ced9aa8eab3bc20ebb0a9ebb295")),
+    "Path a effect size" = sample_size_text(language, "Path a effect size", h("eab2bdeba19c206120ed9aa8eab3bced81aceab8b0")),
+    "Path b effect size" = sample_size_text(language, "Path b effect size", h("eab2bdeba19c206220ed9aa8eab3bced81aceab8b0")),
+    "Path a beta: predictor -> mediator" = sample_size_text(language, "Path a beta: predictor -> mediator", h("eab2bdeba19c206120626574613a20ec9888ecb8a1ebb380ec8898202d3e20eba7a4eab09cebb380ec8898")),
+    "Path b beta: mediator -> outcome" = sample_size_text(language, "Path b beta: mediator -> outcome", h("eab2bdeba19c206220626574613a20eba7a4eab09cebb380ec8898202d3e20eab2b0eab3bcebb380ec8898")),
+    "Group x time parameter estimate B" = sample_size_text(language, "Group x time parameter estimate B", h("eca791eb8ba8207820ec8b9ceab08420ebaaa8ec889820ecb694eca095ecb9982042")),
+    "Mean difference (I - J)" = sample_size_text(language, "Mean difference (I - J)", h("ed8f89eab7a020ecb0a8ec9db4202849202d204a29")),
+    "Variance at time I" = sample_size_text(language, "Variance at time I", h("ec8b9ceca090204920ebb684ec82b0")),
+    "Variance at time J" = sample_size_text(language, "Variance at time J", h("ec8b9ceca090204a20ebb684ec82b0")),
+    "Covariance I,J" = sample_size_text(language, "Covariance I,J", h("eab3b5ebb684ec82b020492c4a")),
+    "ICC / random intercept proportion" = sample_size_text(language, "ICC / random intercept proportion", h("494343202f20eb9e9ceb8da420eca088ed8eb820ebb984ec9ca8")),
+    "Working correlation rho" = sample_size_text(language, "Working correlation rho", h("ec9e91ec9785ec8381eab4802072686f")),
+    "Cohen's kappa" = sample_size_text(language, "Cohen's kappa", h("436f68656e2773206b61707061")),
+    "ICC" = sample_size_text(language, "ICC", "ICC"),
+    "Null RMSEA" = sample_size_text(language, "Null RMSEA", h("ec9881eab080ec84a420524d534541")),
+    "Alternative RMSEA" = sample_size_text(language, "Alternative RMSEA", h("eb8c80eba6bdeab080ec84a420524d534541")),
+    "Simple" = sample_size_text(language, "Simple", h("eb8ba8ec889c")),
+    "GLIMMPSE-style" = sample_size_text(language, "GLIMMPSE-style", h("474c494d4d50534520ebb0a9ec8b9d")),
+    "Exchangeable" = sample_size_text(language, "Exchangeable", h("eab590ed9998eab080eb8aa5")),
+    "Unstructured" = sample_size_text(language, "Unstructured", h("ebb984eab5aceca1b0ed9994")),
+    "Two-group repeated (Group x Time)" = sample_size_text(language, "Two-group repeated (Group x Time)", h("eb919020eca791eb8ba820ebb098ebb3b5ecb8a1eca0952028eca791eb8ba8207820ec8b9ceca09029")),
+    "One-group repeated (Time slope)" = sample_size_text(language, "One-group repeated (Time slope)", h("ed959c20eca791eb8ba820ebb098ebb3b5ecb8a1eca0952028ec8b9ceca09020eab8b0ec9ab8eab8b029")),
+    "Non-inferiority" = sample_size_text(language, "Non-inferiority", h("ebb984ec97b4eb93b1ec84b1")),
+    "Equivalence" = sample_size_text(language, "Equivalence", h("eb8f99eb93b1ec84b1")),
+    "Mean difference" = sample_size_text(language, "Mean difference", h("ed8f89eab7a020ecb0a8ec9db4")),
+    "Proportion difference" = sample_size_text(language, "Proportion difference", h("ebb984ec9ca820ecb0a8ec9db4")),
+    "Sensitivity precision" = sample_size_text(language, "Sensitivity precision", h("ebafbceab090eb8f8420eca095ebb080eb8f84")),
+    "Specificity precision" = sample_size_text(language, "Specificity precision", h("ed8ab9ec9db4eb8f8420eca095ebb080eb8f84")),
+    "ROC AUC vs null" = sample_size_text(language, "ROC AUC vs null", h("524f432041554320eb8c8020ec9881eab080ec84a4")),
+    "Mean" = sample_size_text(language, "Mean", h("ed8f89eab7a0")),
+    "Proportion" = sample_size_text(language, "Proportion", h("ebb984ec9ca8")),
+    "Correlation" = sample_size_text(language, "Correlation", h("ec8381eab480")),
+    "Two Poisson rates" = sample_size_text(language, "Two Poisson rates", h("eb919020ed8facec9584ec86a120ebb984ec9ca8")),
+    "Two negative binomial rates" = sample_size_text(language, "Two negative binomial rates", h("eb919020ec9d8cec9db4ed95ad20ebb984ec9ca8")),
+    "Single rate precision" = sample_size_text(language, "Single rate precision", h("eb8ba8ec9dbc20ebb984ec9ca820eca095ebb080eb8f84")),
+    "Dispersion" = sample_size_text(language, "Dispersion", h("ebb684ec82b0")),
+    "Parallel cluster randomized trial" = sample_size_text(language, "Parallel cluster randomized trial", h("ed8f89ed968920eab5b0eca79120ebacb4ec9e91ec9c8420ec8b9ced9798")),
+    "Stepped-wedge cluster trial" = sample_size_text(language, "Stepped-wedge cluster trial", h("eab384eb8ba8ed989520eab5b0eca79120ec8b9ced9798")),
+    "Close fit test (detect poor fit)" = sample_size_text(language, "Close fit test (detect poor fit)", h("ebb080eca09120eca081ed95a920eab280eca095")),
+    "Not-close-fit test (support close fit)" = sample_size_text(language, "Not-close-fit test (support close fit)", h("ebb984ebb080eca09120eca081ed95a920eab280eca095")),
+    "Parameter-level Monte Carlo" = sample_size_text(language, "Parameter-level Monte Carlo", h("ebaaa8ec889820ec8898eca480204d6f6e7465204361726c6f")),
+    "Model complexity heuristic" = sample_size_text(language, "Model complexity heuristic", h("ebaaa8ed989520ebb3b5ec9ea1eb8f8420ed9cb4eba6acec8aa4ed8bb1")),
+    "Standardized loading" = sample_size_text(language, "Standardized loading", h("ed919ceca480ed999420ec9a94ec9db8ebb680ed9598")),
+    "Standardized path" = sample_size_text(language, "Standardized path", h("ed919ceca480ed999420eab2bdeba19c")),
+    "Latent correlation" = sample_size_text(language, "Latent correlation", h("ec9ea0ec9eacebb380ec889820ec8381eab480")),
+    "Moderate" = sample_size_text(language, "Moderate", h("ebb3b4ed86b5")),
+    "Complex" = sample_size_text(language, "Complex", h("ebb3b5ec9ea1")),
+    "Estimate from model counts" = sample_size_text(language, "Estimate from model counts", h("ebaaa8ed989520ec8898ec9790ec849c20ecb694eca095")),
+    "Enter model df directly" = sample_size_text(language, "Enter model df directly", h("ebaaa8ed989520ec9e90ec9ca0eb8f8420eca781eca09120ec9e85eba0a5")),
+    "Point-biserial r" = sample_size_text(language, "Point-biserial r", h("eca090ec9691ebb68420ec8381eab4802072")),
+    "Pearson r from t statistic" = sample_size_text(language, "Pearson r from t statistic", h("7420ed86b5eab384eb9f89ec9790ec849c2050656172736f6e2072")),
+    "Pearson r from F statistic" = sample_size_text(language, "Pearson r from F statistic", h("4620ed86b5eab384eb9f89ec9790ec849c2050656172736f6e2072")),
+    "Pearson r from R-squared" = sample_size_text(language, "Pearson r from R-squared", h("52eca09ceab3b1ec9790ec849c2050656172736f6e2072")),
+    "Fisher's z from r" = sample_size_text(language, "Fisher's z from r", h("72ec9790ec849c20466973686572207a")),
+    "Cohen's q for two correlations" = sample_size_text(language, "Cohen's q for two correlations", h("eb919020ec8381eab480ec9d9820436f68656e2071")),
+    "Partial eta squared from F" = sample_size_text(language, "Partial eta squared from F", h("46ec9790ec849c20ebb680ebb68420ec9790ed8380eca09ceab3b1")),
+    "Cohen's f from eta squared" = sample_size_text(language, "Cohen's f from eta squared", h("ec9790ed8380eca09ceab3b1ec9790ec849c20436f68656e2066")),
+    "Cohen's f from partial eta squared" = sample_size_text(language, "Cohen's f from partial eta squared", h("ebb680ebb68420ec9790ed8380eca09ceab3b1ec9790ec849c20436f68656e2066")),
+    "ANCOVA partial eta squared from F" = sample_size_text(language, "ANCOVA partial eta squared from F", h("414e434f56412046ec9790ec849c20ebb680ebb68420ec9790ed8380eca09ceab3b1")),
+    "ANCOVA adjusted Cohen's f" = sample_size_text(language, "ANCOVA adjusted Cohen's f", h("414e434f564120ebb3b4eca09520436f68656e2066")),
+    "ANCOVA Cohen's f from partial eta squared" = sample_size_text(language, "ANCOVA Cohen's f from partial eta squared", h("414e434f564120ebb680ebb68420ec9790ed8380eca09ceab3b1ec9790ec849c20436f68656e2066")),
+    "MANOVA Pillai's trace to f2" = sample_size_text(language, "MANOVA Pillai's trace to f2", h("4d414e4f56412050696c6c6169207472616365ec9790ec849c206632")),
+    "MANOVA Wilks' lambda to f2" = sample_size_text(language, "MANOVA Wilks' lambda to f2", h("4d414e4f56412057696c6b73206c616d626461ec9790ec849c206632")),
+    "Rank-biserial r from Mann-Whitney U" = sample_size_text(language, "Rank-biserial r from Mann-Whitney U", h("4d616e6e2d576869746e65792055ec9790ec849c20ec889cec9c84ec9691ebb6842072")),
+    "Rank-biserial r for paired Wilcoxon" = sample_size_text(language, "Rank-biserial r for paired Wilcoxon", h("eb8c80ec9d912057696c636f786f6e20ec889cec9c84ec9691ebb6842072")),
+    "Kruskal-Wallis epsilon squared" = sample_size_text(language, "Kruskal-Wallis epsilon squared", h("4b7275736b616c2d57616c6c697320ec97a1ec8ba4eba1a0eca09ceab3b1")),
+    "Friedman Kendall's W" = sample_size_text(language, "Friedman Kendall's W", h("46726965646d616e204b656e64616c6c2057")),
+    "Matched-pair odds ratio from probabilities" = sample_size_text(language, "Matched-pair odds ratio from probabilities", h("ed9995eba5a0ec9790ec849c20eb8c80ec9d91ec8c8d20ec98a4eca688ebb984")),
+    "Matched-pair odds ratio from paired 2x2 table" = sample_size_text(language, "Matched-pair odds ratio from paired 2x2 table", h("eb8c80ec9d912032783220ed919cec9790ec849c20ec98a4eca688ebb984")),
+    "Cohen's g from discordant probabilities" = sample_size_text(language, "Cohen's g from discordant probabilities", h("ebb688ec9dbcecb99820ed9995eba5a0ec9790ec849c20436f68656e2067")),
+    "Multiple regression f2 from R-squared" = sample_size_text(language, "Multiple regression f2 from R-squared", h("52eca09ceab3b1ec9790ec849c20eb8ba4eca491ed9a8ceab780206632")),
+    "Hierarchical regression f2 from R-squared increase" = sample_size_text(language, "Hierarchical regression f2 from R-squared increase", h("52eca09ceab3b120eca69deab080ec9790ec849c20ec9c84eab384ed9a8ceab780206632")),
+    "Logistic regression OR conversion" = sample_size_text(language, "Logistic regression OR conversion", h("eba19ceca780ec8aa4ed8bb120ed9a8ceab780204f5220ebb380ed9998")),
+    "Moderation interaction f2" = sample_size_text(language, "Moderation interaction f2", h("eca1b0eca08820ec8381ed98b8ec9e91ec9aa9206632")),
+    "Follow-up estimated means" = sample_size_text(language, "Follow-up estimated means", h("ecb694eca081ec8b9ceca09020ecb694eca095ed8f89eab7a0")),
+    "Pre-post change means" = sample_size_text(language, "Pre-post change means", h("ec82aceca0842dec82aced9b8420ebb380ed999420ed8f89eab7a0")),
+    "Group x time B" = sample_size_text(language, "Group x time B", h("eca791eb8ba8207820ec8b9ceab0842042")),
+    "Continuous outcome supplied d" = sample_size_text(language, "Continuous outcome supplied d", h("ec97b0ec868ded989520eab2b0eab3bc206420eca781eca09120ec9e85eba0a5")),
+    "Binary outcome from proportions" = sample_size_text(language, "Binary outcome from proportions", h("ebb984ec9ca8ec9790ec849c20ec9db4ebb684ed989520eab2b0eab3bc")),
+    "Binary logit fixed effect" = sample_size_text(language, "Binary logit fixed effect", h("ec9db4ebb684ed989520eba19ceca79320eab3a0eca095ed9aa8eab3bc")),
+    "Binary outcome probabilities" = sample_size_text(language, "Binary outcome probabilities", h("ec9db4ebb684ed989520eab2b0eab3bc20ed9995eba5a0")),
+    "Count log-link fixed effect" = sample_size_text(language, "Count log-link fixed effect", h("ecb9b4ec9ab4ed8ab820eba19ceab7b8eba781ed81ac20eab3a0eca095ed9aa8eab3bc")),
+    "Count outcome rates" = sample_size_text(language, "Count outcome rates", h("ecb9b4ec9ab4ed8ab820eab2b0eab3bc20ebb984ec9ca8")),
+    "Gaussian fixed effect" = sample_size_text(language, "Gaussian fixed effect", h("eab080ec9ab0ec8b9cec958820eab3a0eca095ed9aa8eab3bc")),
+    "Simple standardized fixed effect" = sample_size_text(language, "Simple standardized fixed effect", h("eb8ba8ec889c20ed919ceca480ed999420eab3a0eca095ed9aa8eab3bc")),
+    "GLIMMPSE-style mean vectors" = sample_size_text(language, "GLIMMPSE-style mean vectors", h("474c494d4d50534520ebb0a9ec8b9d20ed8f89eab7a020ebb2a1ed84b0")),
+    "SPSS LMM output (F, df, covariance)" = sample_size_text(language, "SPSS LMM output (F, df, covariance)", h("53505353204c4d4d20ecb69ceba0a528462c2064662c20eab3b5ebb684ec82b029")),
+    "Hazard ratio to log hazard ratio" = sample_size_text(language, "Hazard ratio to log hazard ratio", h("ec9c84ed9798ebb984ec9790ec849c20eba19ceab7b8ec9c84ed9798ebb984")),
+    "Mean difference margin distance" = sample_size_text(language, "Mean difference margin distance", h("ed8f89eab7a0ecb0a820eba788eca78420eab1b0eba6ac")),
+    "Proportion difference margin distance" = sample_size_text(language, "Proportion difference margin distance", h("ebb984ec9ca8ecb0a820eba788eca78420eab1b0eba6ac")),
+    "Poisson incidence rate ratio" = sample_size_text(language, "Poisson incidence rate ratio", h("ed8facec9584ec86a120ebb09cec839deba5a0ebb984")),
+    "Negative binomial incidence rate ratio" = sample_size_text(language, "Negative binomial incidence rate ratio", h("ec9d8cec9db4ed95ad20ebb09cec839deba5a0ebb984")),
+    "Gamma mean ratio" = sample_size_text(language, "Gamma mean ratio", h("eab090eba78820ed8f89eab7a0ebb984")),
+    "Parallel continuous outcome" = sample_size_text(language, "Parallel continuous outcome", h("ed8f89ed968920ec84a4eab38420ec97b0ec868ded989520eab2b0eab3bc")),
+    "Parallel binary outcome" = sample_size_text(language, "Parallel binary outcome", h("ed8f89ed968920ec84a4eab38420ec9db4ebb684ed989520eab2b0eab3bc")),
+    "Stepped-wedge continuous outcome" = sample_size_text(language, "Stepped-wedge continuous outcome", h("eab384eb8ba8ed989520ec84a4eab38420ec97b0ec868ded989520eab2b0eab3bc")),
+    "Mean CI precision" = sample_size_text(language, "Mean CI precision", h("ed8f89eab7a020ec8ba0eba2b0eab5aceab08420eca095ebb080eb8f84")),
+    "Proportion CI precision" = sample_size_text(language, "Proportion CI precision", h("ebb984ec9ca820ec8ba0eba2b0eab5aceab08420eca095ebb080eb8f84")),
+    "Correlation CI precision" = sample_size_text(language, "Correlation CI precision", h("ec8381eab48020ec8ba0eba2b0eab5aceab08420eca095ebb080eb8f84")),
+    "Cohen's kappa" = sample_size_text(language, "Cohen's kappa", h("436f68656e20ecb9b4ed8c8c")),
+    "Standardized parameter" = sample_size_text(language, "Standardized parameter", h("ed919ceca480ed999420ebaaa8ec8898")),
+    "Cohen's d for independent means" = sample_size_text(language, "Cohen's d for independent means", h("eb8f85eba6bded8f89eab7a020436f68656e2064")),
+    "Hedges' g for independent means" = sample_size_text(language, "Hedges' g for independent means", h("eb8f85eba6bded8f89eab7a0204865646765732067")),
+    "Cohen's d for one-sample mean" = sample_size_text(language, "Cohen's d for one-sample mean", h("ec9dbced919cebb3b820ed8f89eab7a020436f68656e2064")),
+    "Cohen's dz for paired means" = sample_size_text(language, "Cohen's dz for paired means", h("eb8c80ec9d91ed8f89eab7a020436f68656e20647a")),
+    "Mann-Whitney U (two independent groups)" = sample_size_text(language, "Mann-Whitney U (two independent groups)", h("4d616e6e2d576869746e6579205528eb919020eb8f85eba6bdeca791eb8ba829")),
+    "Wilcoxon signed-rank (paired samples)" = sample_size_text(language, "Wilcoxon signed-rank (paired samples)", h("57696c636f786f6e207369676e65642d72616e6b28eb8c80ec9d91ed919cebb3b829")),
+    "One-sample Wilcoxon signed-rank (median shift)" = sample_size_text(language, "One-sample Wilcoxon signed-rank (median shift)", h("ec9dbced919cebb3b82057696c636f786f6e207369676e65642d72616e6b28eca491ec9599eab09220ec9db4eb8f9929")),
+    "Friedman test" = sample_size_text(language, "Friedman test", h("46726965646d616e20eab280eca095")),
+    "Fritz & MacKinnon empirical table (.80 power)" = sample_size_text(language, "Fritz & MacKinnon empirical table (.80 power)", h("467269747a2026204d61634b696e6e6f6e20eab2bded9798ed919c282e383020eab280eca095eba0a529")),
+    "Monte Carlo indirect effect CI" = sample_size_text(language, "Monte Carlo indirect effect CI", h("4d6f6e7465204361726c6f20eab084eca091ed9aa8eab3bc204349")),
+    "Bootstrap indirect effect CI (slow)" = sample_size_text(language, "Bootstrap indirect effect CI (slow)", h("426f6f74737472617020eab084eca091ed9aa8eab3bc20434928eb8a90eba6bc29")),
+    "Sobel approximation" = sample_size_text(language, "Sobel approximation", h("536f62656c20eab7bcec82ac")),
+    "Small (.14)" = sample_size_text(language, "Small (.14)", h("ec9e91ec9d8c282e313429")),
+    "Halfway (.26)" = sample_size_text(language, "Halfway (.26)", h("eca491eab08420eca084282e323629")),
+    "Medium (.39)" = sample_size_text(language, "Medium (.39)", h("eca491eab084282e333929")),
+    "Large (.59)" = sample_size_text(language, "Large (.59)", h("ed81bc282e353929")),
+    "Bias-corrected bootstrap" = sample_size_text(language, "Bias-corrected bootstrap", h("ed8eb8ed96a5ebb3b4eca09520626f6f747374726170")),
+    "Percentile bootstrap" = sample_size_text(language, "Percentile bootstrap", h("ebb0b1ebb684ec9c8420626f6f747374726170")),
+    "PRODCLIN / distribution of the product" = sample_size_text(language, "PRODCLIN / distribution of the product", h("50524f44434c494e202f20eab3b1ec9d9820ebb684ed8fac")),
+    "Joint significance" = sample_size_text(language, "Joint significance", h("eab3b5eb8f9920ec9ca0ec9d98ec84b1")),
+    "Sobel / first-order delta" = sample_size_text(language, "Sobel / first-order delta", h("536f62656c202f2031ecb0a820eb8db8ed8380")),
+    "Cronbach's alpha" = sample_size_text(language, "Cronbach's alpha", h("43726f6e6261636820ec958ced8c8c")),
+    "ICC reliability" = sample_size_text(language, "ICC reliability", h("49434320ec8ba0eba2b0eb8f84")),
+    "Bland-Altman LoA" = sample_size_text(language, "Bland-Altman LoA", h("426c616e642d416c746d616e20ec9dbcecb998ed959ceab384")),
+    "LMM design" = sample_size_text(language, "LMM design", h("4c4d4d20ec84a4eab384")),
+    "Logit coefficient B" = sample_size_text(language, "Logit coefficient B", h("eba19ceca79320eab384ec88982042")),
+    "Log fixed-effect coefficient B" = sample_size_text(language, "Log fixed-effect coefficient B", h("eba19ceab7b820eab3a0eca095ed9aa8eab3bc20eab384ec88982042")),
+    "Observed / expected difference" = sample_size_text(language, "Observed / expected difference", h("ecb694eca0952feab480ecb0b020ecb0a8ec9db4")),
     label
+  )
+  statedu_t(paste0("sample_size.label.", sample_size_label_key(label)), language, fallback)
+}
+
+sample_size_effect_size_tooltip <- function(language = statedu_initial_language(), effect_type = "d") {
+  language <- normalize_app_language(language)
+  refs <- list(
+    d = c(small = "0.2", middle = "0.5", large = "0.8"),
+    dz = c(small = "0.2", middle = "0.5", large = "0.8"),
+    f = c(small = "0.1", middle = "0.25", large = "0.4"),
+    w = c(small = "0.1", middle = "0.3", large = "0.5"),
+    r = c(small = "0.1", middle = "0.3", large = "0.5"),
+    f2 = c(small = "0.02", middle = "0.15", large = "0.35"),
+    beta = c(small = "0.1", middle = "0.3", large = "0.5"),
+    loading = c(small = "0.3", middle = "0.5", large = "0.7")
+  )
+  values <- refs[[effect_type]] %||% refs$d
+  sprintf(
+    "small : %s\nmiddle : %s\nlarge : %s",
+    values[["small"]],
+    values[["middle"]],
+    values[["large"]]
+  )
+}
+
+sample_size_effect_size_label <- function(language = statedu_initial_language(), label, effect_type = "d") {
+  help <- sample_size_effect_size_tooltip(language, effect_type)
+  tags$span(
+    class = "easyflow-option-help sample-size-effect-size-help",
+    tabindex = "0",
+    title = help,
+    `data-tooltip` = help,
+    sample_size_label(language, label)
   )
 }
 
 sample_size_choice_labels <- function(language, labels) {
-  stats::setNames(labels, vapply(labels, function(label) sample_size_label(language, label), character(1), USE.NAMES = FALSE))
+  label_names <- names(labels)
+  if (is.null(label_names)) label_names <- as.character(labels)
+  stats::setNames(unname(labels), vapply(label_names, function(label) sample_size_label(language, label), character(1), USE.NAMES = FALSE))
 }
 
 sample_size_step_heading <- function(number, key, language = statedu_initial_language()) {
@@ -394,11 +445,7 @@ effect_size_action_button <- function(input_id, language = statedu_initial_langu
   actionButton(
     input_id,
     statedu_ui_label("calculate", language),
-    class = "btn btn-primary sample-size-calculate",
-    onclick = sprintf(
-      "if (typeof Shiny !== 'undefined') Shiny.setInputValue('%s', Date.now() + Math.random(), {priority: 'event'});",
-      input_id
-    )
+    class = "btn btn-primary sample-size-calculate"
   )
 }
 
@@ -411,9 +458,9 @@ sample_size_tab_panel <- function(language = statedu_initial_language()) {
 }
 
 sample_size_target_choices <- function(method, language = statedu_initial_language()) {
-  required_label <- statedu_text(language, "Minimum sample size", statedu_utf8("ecb59cec868c20ed919cebb3b820ec8898"))
-  power_label <- statedu_text(language, "Power", statedu_utf8("eab280eca095eba0a5"))
-  precision_label <- statedu_text(language, "Achieved precision", statedu_utf8("eb8bacec84b120eca095ebb080eb8f84"))
+  required_label <- sample_size_ui_text(language, "minimum_sample_size")
+  power_label <- sample_size_ui_text(language, "power")
+  precision_label <- sample_size_ui_text(language, "achieved_precision")
   if (identical(method, "reliability")) {
     return(stats::setNames("sample_size", required_label))
   }
@@ -449,7 +496,7 @@ effect_size_analysis_panel <- function(method, language = statedu_initial_langua
           class = "workspace-panel frequencies-workspace-panel sample-size-workspace-panel",
           style = "min-width:980px;overflow-x:auto;",
           h3(paste(title, sample_size_ui_text(language, "effect_size"))),
-          div(class = "empty-message", statedu_text(language, "This effect-size calculator is not available for the selected method."))
+          div(class = "empty-message", sample_size_ui_text(language, "unavailable_effect_size"))
         )
       )
     ))
@@ -1509,7 +1556,7 @@ effect_size_correlation_inputs_ui <- function(input, language = statedu_initial_
 
 effect_size_anova_inputs_ui <- function(input, language = statedu_initial_language()) {
   lbl <- function(label) sample_size_label(language, label)
-  design <- sample_size_choice(input$effect_size_anova_design, "f_from_eta2")
+  design <- sample_size_choice(input$effect_size_anova_design, "partial_eta_from_f")
   if (identical(design, "f_from_eta2")) {
     return(textInput("effect_size_anova_eta2", lbl("Eta squared"), value = "0.06"))
   }
@@ -1583,6 +1630,7 @@ effect_size_nonparametric_inputs_ui <- function(input, language = statedu_initia
 }
 
 effect_size_mcnemar_inputs_ui <- function(input, language = statedu_initial_language()) {
+  lbl <- function(label) sample_size_label(language, label)
   design <- sample_size_choice(input$effect_size_mcnemar_design, "matched_or_probs")
   if (identical(design, "matched_or_counts")) {
     return(tagList(
@@ -1622,8 +1670,8 @@ effect_size_gee_sd_inputs_ui <- function(input, language = statedu_initial_langu
       "effect_size_gee_sd_mode",
       lbl("Common SD input"),
       choices = stats::setNames(c("direct", "pooled"), c(
-        statedu_text(language, "Enter common outcome SD", statedu_utf8("eab3b5ed86b520ed919ceca480ed8eb8ecb0a820eca781eca09120ec9e85eba0a5")),
-        statedu_text(language, "Calculate pooled SD from group SDs", statedu_utf8("eca791eb8ba820ed919ceca480ed8eb8ecb0a8eba19c20ed95a9eb8f9920ed919ceca480ed8eb8ecb0a820eab384ec82b0"))
+        sample_size_text(language, "Enter common outcome SD", statedu_utf8("eab3b5ed86b520ed919ceca480ed8eb8ecb0a820eca781eca09120ec9e85eba0a5")),
+        sample_size_text(language, "Calculate pooled SD from group SDs", statedu_utf8("eca791eb8ba820ed919ceca480ed8eb8ecb0a8eba19c20ed95a9eb8f9920ed919ceca480ed8eb8ecb0a820eab384ec82b0"))
       )),
       selected = mode
     ),
@@ -1664,7 +1712,7 @@ effect_size_gee_inputs_ui <- function(input, language = statedu_initial_language
         effect_size_gee_sd_inputs_ui(input, language)
       )
     } else if (identical(design, "continuous_d")) {
-      textInput("effect_size_gee_d", lbl("Effect size d"), value = "0.50")
+      textInput("effect_size_gee_d", sample_size_effect_size_label(language, "Effect size d", "d"), value = "0.50")
     } else {
       tagList(
         textInput("effect_size_gee_p1", lbl("Proportion 1"), value = "0.50"),
@@ -1756,7 +1804,7 @@ effect_size_lmm_inputs_ui <- function(input, language = statedu_initial_language
     ),
     if (identical(design, "simple_fixed")) {
       tagList(
-        textInput("effect_size_lmm_effect", lbl("Standardized fixed effect"), value = "0.30"),
+        textInput("effect_size_lmm_effect", sample_size_effect_size_label(language, "Standardized fixed effect", "beta"), value = "0.30"),
         textInput("effect_size_lmm_time_points", lbl("Time points"), value = "3"),
         textInput("effect_size_lmm_icc", lbl("ICC / random intercept proportion"), value = "0.30")
       )
@@ -1851,7 +1899,7 @@ effect_size_cluster_inputs_ui <- function(input, language = statedu_initial_lang
         textInput("effect_size_cluster_p2", lbl("Proportion 2"), value = "0.65")
       )
     } else {
-      textInput("effect_size_cluster_effect", lbl("Effect size d"), value = if (identical(design, "stepped_wedge")) "0.40" else "0.50")
+      textInput("effect_size_cluster_effect", sample_size_effect_size_label(language, "Effect size d", "d"), value = if (identical(design, "stepped_wedge")) "0.40" else "0.50")
     },
     textInput("effect_size_cluster_size", lbl(if (identical(design, "stepped_wedge")) "Cluster size per period" else "Cluster size"), value = "20"),
       textInput("effect_size_cluster_icc", lbl("ICC"), value = "0.05"),
@@ -1874,7 +1922,7 @@ effect_size_precision_inputs_ui <- function(input, language = statedu_initial_la
     } else if (identical(parameter, "proportion")) {
       textInput("effect_size_precision_proportion", lbl("Expected proportion"), value = "0.50")
     } else {
-      textInput("effect_size_precision_r", lbl("Expected r"), value = "0.30")
+      textInput("effect_size_precision_r", sample_size_effect_size_label(language, "Expected r", "r"), value = "0.30")
     }
   )
 }
@@ -1900,7 +1948,7 @@ effect_size_sem_inputs_ui <- function(input, language = statedu_initial_language
       )),
       selected = sample_size_choice(input$effect_size_sem_parameter_type, "path")
     ),
-    textInput("effect_size_sem_parameter", lbl("Expected standardized parameter"), value = "0.30")
+    textInput("effect_size_sem_parameter", sample_size_effect_size_label(language, "Expected standardized parameter", "beta"), value = "0.30")
   )
 }
 
@@ -1933,7 +1981,7 @@ effect_size_chisquare_inputs_ui <- function(input, language = statedu_initial_la
 sample_size_analysis_panel <- function(method, language = statedu_initial_language()) {
   labels <- c(
     sample_size_method_labels(language),
-    effectsize = statedu_text(language, "Effect Size Calculator", statedu_utf8("ed9aa8eab3bced81aceab8b020eab384ec82b0eab8b0"))
+    effectsize = sample_size_text(language, "Effect Size Calculator", statedu_utf8("ed9aa8eab3bced81aceab8b020eab384ec82b0eab8b0"))
   )
   title <- labels[[method]] %||% "Sample Size"
   is_effect_size <- identical(method, "effectsize")
@@ -2055,12 +2103,13 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
   target <- input[[paste0("sample_size_", method, "_target")]] %||% "sample_size"
   effectsize_design <- input$sample_size_effectsize_design %||% "independent_means"
   ttest_design <- input$sample_size_ttest_design %||% "two_sample"
-  ttest_effect_label <- lbl(switch(
+  ttest_effect_label_key <- switch(
     ttest_design,
     one_sample = "Effect size d (mean difference / SD)",
     paired = "Effect size dz (paired difference / SD)",
     "Effect size d (Cohen's d)"
-  ))
+  )
+  ttest_effect_label <- sample_size_effect_size_label(language, ttest_effect_label_key, if (identical(ttest_design, "paired")) "dz" else "d")
   ttest_n_label <- switch(
     ttest_design,
     one_sample = "Participants",
@@ -2068,14 +2117,19 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
     "Sample size per group"
   )
   nonparametric_design <- input$sample_size_nonparametric_design %||% "two_independent"
-  nonparametric_effect_label <- lbl(switch(
+  nonparametric_effect_label_key <- switch(
     nonparametric_design,
     paired = "Effect size dz (paired difference / SD)",
     one_sample = "Effect size d (median shift / SD)",
     kruskal_wallis = "Effect size f",
     friedman = "Effect size W (Kendall's W)",
     "Effect size d (approx.)"
-  ))
+  )
+  nonparametric_effect_label <- sample_size_effect_size_label(
+    language,
+    nonparametric_effect_label_key,
+    switch(nonparametric_design, paired = "dz", kruskal_wallis = "f", friedman = "w", "d")
+  )
   nonparametric_n_label <- switch(
     nonparametric_design,
     paired = "Pairs",
@@ -2086,9 +2140,9 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
   )
   proportion_design <- input$sample_size_proportion_design %||% "two_proportion"
   anova_design <- input$sample_size_anova_design %||% "one_way"
-  anova_effect_label <- lbl("Effect size f")
+  anova_effect_label <- sample_size_effect_size_label(language, "Effect size f", "f")
   ancova_design <- input$sample_size_ancova_design %||% "ancova"
-  ancova_effect_label <- if (identical(ancova_design, "manova")) lbl("Pillai's trace V") else lbl("Effect size f")
+  ancova_effect_label <- if (identical(ancova_design, "manova")) lbl("Pillai's trace V") else sample_size_effect_size_label(language, "Effect size f", "f")
   ancova_n_label <- "Total sample size"
   regression_design <- input$sample_size_regression_design %||% "multiple"
   gee_outcome <- input$sample_size_gee_outcome %||% "continuous"
@@ -2178,19 +2232,19 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
         choices = sample_size_choice_labels(language, c("Two independent proportions" = "two_proportion", "One proportion vs 0.50" = "one_proportion")),
         selected = proportion_design
       ),
-      textInput("sample_size_proportion_p1", lbl("Proportion 1"), value = "0.50"),
+      textInput("sample_size_proportion_p1", lbl("Proportion 1"), value = if (identical(proportion_design, "one_proportion")) "0.65" else "0.50"),
       if (identical(proportion_design, "two_proportion")) {
         textInput("sample_size_proportion_p2", lbl("Proportion 2"), value = "0.65")
       },
       common_inputs("proportion", target, show_ratio = identical(proportion_design, "two_proportion"))
     ),
     chisquare = tagList(
-      textInput("sample_size_chisquare_effect", lbl("Effect size w"), value = "0.30"),
+      textInput("sample_size_chisquare_effect", sample_size_effect_size_label(language, "Effect size w", "w"), value = "0.30"),
       textInput("sample_size_chisquare_df", lbl("Degrees of freedom"), value = "1"),
       common_inputs("chisquare", target, show_tail = FALSE)
     ),
     correlation = tagList(
-      textInput("sample_size_correlation_r", lbl("Expected r"), value = "0.30"),
+      textInput("sample_size_correlation_r", sample_size_effect_size_label(language, "Expected r", "r"), value = "0.30"),
       common_inputs("correlation", target)
     ),
     anova = tagList(
@@ -2201,7 +2255,7 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
           "One-way ANOVA" = "one_way",
           "Two-way ANOVA" = "two_way",
           "One-group repeated-measures ANOVA" = "repeated_one_group",
-          "Mixed repeated-measures ANOVA" = "mixed_repeated"
+          "Mixed-design repeated-measures ANOVA" = "mixed_repeated"
         )),
         selected = anova_design
       ),
@@ -2279,12 +2333,12 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
       ),
       if (identical(regression_design, "multiple")) {
         tagList(
-          textInput("sample_size_regression_effect", lbl("Effect size f2"), value = "0.15"),
+          textInput("sample_size_regression_effect", sample_size_effect_size_label(language, "Effect size f2", "f2"), value = "0.15"),
           textInput("sample_size_regression_predictors", lbl("Number of predictors"), value = "3")
         )
       } else if (identical(regression_design, "hierarchical")) {
         tagList(
-          textInput("sample_size_regression_effect", lbl("Effect size f2 for R2 increase"), value = "0.15"),
+          textInput("sample_size_regression_effect", sample_size_effect_size_label(language, "Effect size f2 for R2 increase", "f2"), value = "0.15"),
           textInput("sample_size_regression_tested", lbl("Tested predictors"), value = "1"),
           textInput("sample_size_regression_total_predictors", lbl("Total predictors in final model"), value = "3")
         )
@@ -2297,29 +2351,36 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
         )
       } else if (identical(regression_design, "mediation")) {
         mediation_method <- input$sample_size_regression_mediation_method %||% "monte_carlo"
+        mediation_method_choices <- c(
+          "Fritz & MacKinnon empirical table (.80 power)" = "fritz_mackinnon",
+          "Monte Carlo indirect effect CI" = "monte_carlo",
+          "Bootstrap indirect effect CI (slow)" = "bootstrap",
+          "Sobel approximation" = "sobel"
+        )
+        if (identical(target, "power")) {
+          mediation_method_choices <- mediation_method_choices[mediation_method_choices != "fritz_mackinnon"]
+        }
+        if (!mediation_method %in% mediation_method_choices) {
+          mediation_method <- "monte_carlo"
+        }
         tagList(
           selectInput(
             "sample_size_regression_mediation_method",
             lbl("Mediation method"),
-            choices = sample_size_choice_labels(language, c(
-              "Fritz & MacKinnon empirical table (.80 power)" = "fritz_mackinnon",
-              "Monte Carlo indirect effect CI" = "monte_carlo",
-              "Bootstrap indirect effect CI (slow)" = "bootstrap",
-              "Sobel approximation" = "sobel"
-            )),
+            choices = sample_size_choice_labels(language, mediation_method_choices),
             selected = mediation_method
           ),
           if (identical(mediation_method, "fritz_mackinnon")) {
             tagList(
               selectInput(
                 "sample_size_regression_a_effect",
-                lbl("Path a effect size"),
+                sample_size_effect_size_label(language, "Path a effect size", "beta"),
                 choices = sample_size_choice_labels(language, c("Small (.14)" = "small", "Halfway (.26)" = "halfway", "Medium (.39)" = "medium", "Large (.59)" = "large")),
                 selected = input$sample_size_regression_a_effect %||% "medium"
               ),
               selectInput(
                 "sample_size_regression_b_effect",
-                lbl("Path b effect size"),
+                sample_size_effect_size_label(language, "Path b effect size", "beta"),
                 choices = sample_size_choice_labels(language, c("Small (.14)" = "small", "Halfway (.26)" = "halfway", "Medium (.39)" = "medium", "Large (.59)" = "large")),
                 selected = input$sample_size_regression_b_effect %||% "medium"
               ),
@@ -2343,8 +2404,8 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
             )
           } else {
             tagList(
-              textInput("sample_size_regression_a", lbl("Path a beta: predictor -> mediator"), value = "0.30"),
-              textInput("sample_size_regression_b", lbl("Path b beta: mediator -> outcome"), value = "0.30"),
+              textInput("sample_size_regression_a", sample_size_effect_size_label(language, "Path a beta: predictor -> mediator", "beta"), value = "0.30"),
+              textInput("sample_size_regression_b", sample_size_effect_size_label(language, "Path b beta: mediator -> outcome", "beta"), value = "0.30"),
               textInput("sample_size_regression_covariates", lbl("Number of covariates"), value = "0")
             )
           },
@@ -2357,7 +2418,7 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
         )
       } else {
         tagList(
-          textInput("sample_size_regression_effect", lbl("Effect size f2 for interaction R2 increase"), value = "0.15"),
+          textInput("sample_size_regression_effect", sample_size_effect_size_label(language, "Effect size f2 for interaction R2 increase", "f2"), value = "0.15"),
           textInput("sample_size_regression_interactions", lbl("Interaction terms tested"), value = "1"),
           textInput("sample_size_regression_total_predictors", lbl("Total predictors in final model"), value = "4")
         )
@@ -2383,7 +2444,7 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
           textInput("sample_size_gee_p2", lbl("Proportion 2"), value = "0.65")
         )
       } else {
-        textInput("sample_size_gee_effect", lbl("Effect size d"), value = "0.50")
+        textInput("sample_size_gee_effect", sample_size_effect_size_label(language, "Effect size d", "d"), value = "0.50")
       },
       textInput("sample_size_gee_time_points", lbl("Time points"), value = "3"),
       selectInput(
@@ -2436,7 +2497,7 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
         )
       } else {
         tagList(
-        textInput("sample_size_lmm_effect", lbl("Standardized fixed effect"), value = "0.30"),
+        textInput("sample_size_lmm_effect", sample_size_effect_size_label(language, "Standardized fixed effect", "beta"), value = "0.30"),
           textInput("sample_size_lmm_time_points", lbl("Time points"), value = "3"),
           textInput("sample_size_lmm_icc", lbl("ICC / random intercept proportion"), value = "0.30")
         )
@@ -2529,7 +2590,7 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
       } else if (identical(precision_parameter, "proportion")) {
         textInput("sample_size_precision_proportion", lbl("Expected proportion"), value = "0.50")
       } else {
-        textInput("sample_size_precision_r", lbl("Expected r"), value = "0.30")
+        textInput("sample_size_precision_r", sample_size_effect_size_label(language, "Expected r", "r"), value = "0.30")
       },
       if (identical(target, "sample_size")) {
         textInput("sample_size_precision_dropout", lbl("Dropout rate (%)"), value = "0")
@@ -2579,7 +2640,7 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
       ),
       if (identical(cluster_design, "stepped_wedge")) {
         tagList(
-          textInput("sample_size_cluster_effect", lbl("Effect size d"), value = "0.40"),
+          textInput("sample_size_cluster_effect", sample_size_effect_size_label(language, "Effect size d", "d"), value = "0.40"),
           textInput("sample_size_cluster_periods", lbl("Periods"), value = "5"),
           textInput("sample_size_cluster_size", lbl("Cluster size per period"), value = "20"),
           textInput("sample_size_cluster_icc", lbl("ICC"), value = "0.05"),
@@ -2600,7 +2661,7 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
               textInput("sample_size_cluster_p2", lbl("Proportion 2"), value = "0.65")
             )
           } else {
-            textInput("sample_size_cluster_effect", lbl("Effect size d"), value = "0.50")
+            textInput("sample_size_cluster_effect", sample_size_effect_size_label(language, "Effect size d", "d"), value = "0.50")
           },
           textInput("sample_size_cluster_size", lbl("Cluster size"), value = "20"),
             textInput("sample_size_cluster_icc", lbl("ICC"), value = "0.05"),
@@ -2662,7 +2723,7 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
             )),
             selected = input$sample_size_sem_parameter_type %||% "path"
           ),
-          textInput("sample_size_sem_parameter", lbl("Expected standardized parameter"), value = "0.30"),
+          textInput("sample_size_sem_parameter", sample_size_effect_size_label(language, "Expected standardized parameter", "beta"), value = "0.30"),
           selectInput(
             "sample_size_sem_complexity",
             lbl("Model complexity"),
@@ -2677,8 +2738,8 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
           textInput("sample_size_sem_measured_variables", lbl("Measured variables"), value = "12"),
           textInput("sample_size_sem_structural_paths", lbl("Structural paths"), value = "3"),
           textInput("sample_size_sem_free_parameters", lbl("Free parameters"), value = "30"),
-          textInput("sample_size_sem_expected_loading", lbl("Expected standardized loading"), value = "0.50"),
-          textInput("sample_size_sem_expected_path", lbl("Expected standardized path"), value = "0.30"),
+          textInput("sample_size_sem_expected_loading", sample_size_effect_size_label(language, "Expected standardized loading", "loading"), value = "0.50"),
+          textInput("sample_size_sem_expected_path", sample_size_effect_size_label(language, "Expected standardized path", "beta"), value = "0.30"),
           selectInput(
             "sample_size_sem_complexity",
             lbl("Model complexity"),
@@ -2715,7 +2776,9 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
   )
 }
 
-sample_size_result_table <- function(result) {
+sample_size_result_table <- function(result, language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
+  lbl <- function(label) sample_size_label(language, label)
   rows <- list()
   add_row <- function(label, value, primary = FALSE) {
     rows[[length(rows) + 1L]] <<- tags$tr(
@@ -3578,7 +3641,7 @@ sample_size_results_ui <- function(result, language = statedu_initial_language()
   }
   div(
     class = "sample-size-result-panel",
-    sample_size_result_table(result),
+    sample_size_result_table(result, language),
     if (!is.null(result$method_note)) div(class = "sample-size-method-note", result$method_note),
     if (!is.null(result$formula_note)) div(class = "sample-size-method-note", strong(sample_size_ui_text(language, "formula_approximation")), result$formula_note),
     if (length(result$references %||% character(0)) > 0) {
@@ -3599,10 +3662,19 @@ sample_size_calculate <- function(method, input, progress = NULL) {
   ratio <- as.numeric(input[[paste0("sample_size_", method, "_ratio")]] %||% 1)
   alternative <- input[[paste0("sample_size_", method, "_alternative")]] %||% "two.sided"
   dropout <- as.numeric(input[[paste0("sample_size_", method, "_dropout")]] %||% 0) / 100
+  regression_mediation_method <- input$sample_size_regression_mediation_method %||% "monte_carlo"
+  if (
+    identical(method, "regression") &&
+      identical(target, "power") &&
+      identical(input$sample_size_regression_design %||% "multiple", "mediation") &&
+      identical(regression_mediation_method, "fritz_mackinnon")
+  ) {
+    regression_mediation_method <- "monte_carlo"
+  }
   if (
     identical(method, "regression") &&
       identical(input$sample_size_regression_design %||% "multiple", "mediation") &&
-      identical(input$sample_size_regression_mediation_method %||% "monte_carlo", "fritz_mackinnon")
+      identical(regression_mediation_method, "fritz_mackinnon")
   ) {
     power <- 0.8
   }
@@ -3691,7 +3763,7 @@ sample_size_calculate <- function(method, input, progress = NULL) {
         predictor_prevalence = as.numeric(input$sample_size_regression_predictor_prevalence %||% 0.5),
       covariate_r2 = as.numeric(input$sample_size_regression_covariate_r2 %||% 0),
       alternative = alternative,
-      mediation_method = input$sample_size_regression_mediation_method %||% "monte_carlo",
+      mediation_method = regression_mediation_method,
         mediation_simulations = as.numeric(input$sample_size_regression_simulations %||% 30),
         mediation_bootstraps = as.numeric(input$sample_size_regression_bootstraps %||% 100),
         progress = progress
@@ -4642,23 +4714,6 @@ register_sample_size_server <- function(input, output, session, app_language_fn 
   observeEvent(input$effect_size_sem_calculate, {
     effect_size_sem_result(effect_size_sem_calculate(input))
   })
-  for (effect_method in intersect(names(effect_size_result_handlers), names(effect_size_calculators))) {
-    local({
-      effect_method_local <- effect_method
-      observeEvent(input[[paste0("effect_size_", effect_method_local, "_calculate")]], {
-        effect_size_result_handlers[[effect_method_local]](effect_size_calculators[[effect_method_local]](input))
-      }, ignoreInit = TRUE)
-    })
-  }
-  for (effect_method in names(effect_size_calculators)) {
-    local({
-      effect_method_local <- effect_method
-      output[[paste0("effect_size_", effect_method_local, "_results")]] <- renderUI({
-        sample_size_results_ui(effect_size_calculators[[effect_method_local]](input), sample_size_language())
-      })
-    })
-  }
-
   for (method in methods) {
     local({
       method_local <- method

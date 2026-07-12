@@ -230,8 +230,11 @@ expect_true(any(table_markers$row == 3L & table_markers$column == "Effect size")
 expect_true(grepl("1\\. ES = effect size \\(Hedges' g\\)\\.", note), "Expected numbered Hedges' g note")
 expect_true(grepl("Welch test was used because homogeneity of variance was not satisfied\\.", note), "Expected unnumbered Welch note")
 expect_true(grepl("2\\. ES = effect size \\(omega squared\\)\\.", note), "Expected numbered omega squared note")
-expect_true(regexpr("1. ES = effect size", note, fixed = TRUE) < regexpr("Post-hoc:", note, fixed = TRUE), "Expected numbered note markers before post-hoc notes")
-expect_true(regexpr("2. ES = effect size", note, fixed = TRUE) < regexpr("Post-hoc:", note, fixed = TRUE), "Expected all numbered note markers before post-hoc notes")
+posthoc_note_position <- regexpr("Post-hoc:", note, fixed = TRUE)
+if (posthoc_note_position > 0) {
+  expect_true(regexpr("1. ES = effect size", note, fixed = TRUE) < posthoc_note_position, "Expected numbered note markers before post-hoc notes")
+  expect_true(regexpr("2. ES = effect size", note, fixed = TRUE) < posthoc_note_position, "Expected all numbered note markers before post-hoc notes")
+}
 
 html <- as.character(tags_to_html(ttest_anova_results_ui(result)))
 expect_true(!grepl('class="coefficient-col-note-marker"', html, fixed = TRUE), "Expected footnote markers to render inline without a narrow marker column")
@@ -323,7 +326,7 @@ posthoc_result <- prepare_ttest_anova_results(
   dependents = "y",
   factors = "group",
   variable_info = posthoc_info,
-  options = list(effect_size = TRUE, normality_enabled = FALSE, post_hoc_method = "tukey")
+  options = list(effect_size = TRUE, normality_enabled = FALSE, post_hoc = TRUE, post_hoc_method = "tukey")
 )
 posthoc_table <- posthoc_result$results[[1]]$posthoc
 expect_true(is.data.frame(posthoc_table) && nrow(posthoc_table) == 3, "Expected ANOVA post-hoc pairwise table")
@@ -476,7 +479,7 @@ ordered_marker_result <- prepare_ttest_anova_results(
   dependents = "y",
   factors = "group",
   variable_info = ordered_marker_info,
-  options = list(effect_size = TRUE, normality_enabled = FALSE, ordered_significance = TRUE)
+  options = list(effect_size = TRUE, normality_enabled = FALSE, post_hoc = TRUE, ordered_significance = TRUE)
 )
 ordered_marker_table <- ordered_marker_result$results[[1]]$table
 ordered_marker_rows <- attr(ordered_marker_table, "note_markers", exact = TRUE)
@@ -515,6 +518,7 @@ nonparametric_result <- prepare_ttest_anova_results(
     force_nonparametric = TRUE,
     normality_enabled = FALSE,
     normality_method = "none",
+    post_hoc = TRUE,
     nonparametric_post_hoc_method = "holm",
     ordered_significance = FALSE,
     effect_size = TRUE

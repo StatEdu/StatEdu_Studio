@@ -25,34 +25,11 @@ sample_size_method_labels <- function(language = NULL) {
   if (is.null(language)) {
     return(labels)
   }
-  ko_labels <- c(
-    proportion = statedu_utf8("ebb984ec9ca8"),
-    chisquare = statedu_utf8("ecb9b4ec9db4eca09ceab3b1"),
-    mcnemar = "McNemar",
-    ttest = "t-test",
-    anova = "ANOVA",
-    ancova = "ANCOVA / MANOVA",
-    nonparametric = statedu_utf8("ebb984ebaaa8ec8898"),
-    correlation = statedu_utf8("ec8381eab480"),
-    reliability = statedu_utf8("ec8ba0eba2b0eb8f84202f20ec9dbcecb998eb8f84"),
-    sem = statedu_utf8("eab5aceca1b0ebb0a9eca095ec8b9d2fed9995ec9db8eca081ec9a94ec9db8ebb684ec849d"),
-    regression = statedu_utf8("ed9a8ceab780"),
-    rates = statedu_utf8("eab384ec8898202f20ebb984ec9ca820ed9a8ceab780"),
-    diagnostic = "ROC AUC",
-    gee = statedu_utf8("ec9dbcebb098ed9994ecb694eca095ebb0a9eca095ec8b9d"),
-    lmm = statedu_utf8("ec84a0ed9895ed98bced95a9ebaaa8ed9895"),
-    survival = statedu_utf8("ec839deca1b4202f20436f78"),
-    equivalence = statedu_utf8("eb8f99eb93b1ec84b1202f20ebb984ec97b4eb93b1ec84b1"),
-    cluster = statedu_utf8("eab5b0eca79120ec8b9ced9798"),
-    precision = statedu_utf8("eca095ebb080eb8f84202f20ec8ba0eba2b0eab5aceab084")
-  )
+  language <- normalize_app_language(language)
   stats::setNames(
-    mapply(
-      function(en, ko) statedu_text(language, en, ko),
-      labels,
-      ko_labels[names(labels)],
-      USE.NAMES = FALSE
-    ),
+    vapply(names(labels), function(name) {
+      statedu_t(paste0("sample_size.method.", name), language, labels[[name]])
+    }, character(1), USE.NAMES = FALSE),
     names(labels)
   )
 }
@@ -60,7 +37,11 @@ sample_size_method_labels <- function(language = NULL) {
 effect_size_method_labels <- function(language = NULL) {
   labels <- sample_size_method_labels(language)
   labels <- labels[setdiff(names(labels), c("equivalence", "cluster", "precision", "reliability", "sem"))]
-  glmm_label <- if (is.null(language)) "GLMM" else statedu_text(language, "GLMM", statedu_utf8("ec9dbcebb098ed9994ec84a0ed9895ebaaa8ed9895"))
+  glmm_label <- if (is.null(language)) {
+    "GLMM"
+  } else {
+    statedu_t("effect_size.method.glmm", normalize_app_language(language), "GLMM")
+  }
   append(labels, c(glmm = glmm_label), after = which(names(labels) == "lmm"))
 }
 
@@ -213,8 +194,8 @@ sample_size_effect_size <- function(
   }
 
   primary_hedges <- identical(design, "hedges_g")
-  sample_size_validate_positive(abs(mean1 - mean2), "Mean difference")
   if (identical(design, "one_sample_mean")) {
+    sample_size_validate_positive(abs(mean1 - null_mean), "Mean difference")
     sample_size_validate_positive(sd1, "SD")
     d <- (mean1 - null_mean) / sd1
     conversions <- sample_size_ttest_effect_conversions(d)
@@ -230,6 +211,7 @@ sample_size_effect_size <- function(
     ), conversions))
   }
 
+  sample_size_validate_positive(abs(mean1 - mean2), "Mean difference")
   sample_size_validate_positive(sd1, "Group 1 SD")
   sample_size_validate_positive(sd2, "Group 2 SD")
   n1 <- as.integer(n1)
@@ -444,6 +426,20 @@ sample_size_effect_size_correlation <- function(
       fisher_z = z,
       r_squared = r^2,
       method_note = "Fisher's z = atanh(r)."
+    ))
+  }
+
+  if (identical(design, "pearson_r")) {
+    if (!is.finite(r) || abs(r) >= 1) stop("Correlation r must be finite and less than 1 in absolute value.", call. = FALSE)
+    return(list(
+      result_type = "effect_size",
+      design_label = "Pearson correlation",
+      primary_effect_size = r,
+      primary_effect_size_label = "Pearson r",
+      correlation_r = r,
+      fisher_z = atanh(r),
+      r_squared = r^2,
+      method_note = "Pearson r is reported directly; Fisher's z = atanh(r)."
     ))
   }
 
@@ -2171,8 +2167,8 @@ sample_size_anova <- function(
       time = (measurements - 1) * epsilon,
       (groups - 1) * (measurements - 1) * epsilon
     )
-    design_label <- "Mixed repeated-measures ANOVA"
-    method_note <- "Approximate mixed repeated-measures ANOVA using Cohen's f, average repeated-measures correlation, epsilon, and noncentral F distribution."
+    design_label <- "Mixed-design repeated-measures ANOVA"
+    method_note <- "Approximate mixed-design repeated-measures ANOVA using Cohen's f, average repeated-measures correlation, epsilon, and noncentral F distribution."
     power_for_total <- function(total_n) {
       if (identical(effect, "group")) {
         df2 <- total_n - groups

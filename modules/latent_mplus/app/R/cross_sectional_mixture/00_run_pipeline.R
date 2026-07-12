@@ -258,7 +258,8 @@ run_pipeline <- function(from_step = "settings",
                          project_root = getwd(),
                          dataset_id = "KSWL",
                          analysis_id = "cross_sectional_mixture",
-                         mplus_work_root = NULL) {
+                         mplus_work_root = NULL,
+                         output_root = NULL) {
   t0_all <- Sys.time()
 
   project_root <- .norm_path(project_root)
@@ -272,6 +273,7 @@ run_pipeline <- function(from_step = "settings",
   run_env$PROJECT_ROOT <- project_root
   run_env$DATASET_ID <- dataset_id
   run_env$ANALYSIS_ID <- analysis_id
+  run_env$OUTPUT_ROOT <- if (!is.null(output_root) && nzchar(as.character(output_root))) .norm_path(output_root) else NULL
   run_env$MPLUS_WORK_ROOT <- if (!is.null(mplus_work_root) && nzchar(as.character(mplus_work_root))) .norm_path(mplus_work_root) else NULL
   run_env$RUN_MPLUS <- isTRUE(run_mplus)
   run_env$AUTO_RUN_BAT <- isTRUE(auto_run_bat)
@@ -283,8 +285,9 @@ run_pipeline <- function(from_step = "settings",
 
   # agreed directory structure
   run_env$DIR_DATASET_ROOT <- file.path(project_root, "data", dataset_id)
-  run_env$DIR_OUTPUT_BASE  <- file.path(project_root, "outputs", dataset_id)
-  run_env$DIR_OUTPUT       <- file.path(project_root, "outputs", dataset_id, analysis_id)
+  run_env$DIR_OUTPUT_ROOT  <- run_env$OUTPUT_ROOT %||% file.path(project_root, "outputs")
+  run_env$DIR_OUTPUT_BASE  <- run_env$DIR_OUTPUT_ROOT
+  run_env$DIR_OUTPUT       <- run_env$DIR_OUTPUT_ROOT
 
   .ensure_dir(run_env$DIR_OUTPUT_BASE)
   .ensure_dir(run_env$DIR_OUTPUT)
@@ -293,6 +296,7 @@ run_pipeline <- function(from_step = "settings",
   .info("RUN_PIPELINE START")
   .info("============================================================")
   .info("PROJECT_ROOT     = ", project_root)
+  .info("OUTPUT_ROOT      = ", run_env$DIR_OUTPUT_ROOT)
   .info("DATASET_ID       = ", dataset_id)
   .info("ANALYSIS_ID      = ", analysis_id)
   .info("MPLUS_WORK_ROOT  = ", run_env$MPLUS_WORK_ROOT %||% file.path(project_root, "mplus_tmp"))

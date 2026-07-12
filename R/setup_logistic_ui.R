@@ -66,6 +66,8 @@ logistic_setup_state <- function(
   show_b_se = NULL,
   show_extra_r2 = TRUE,
   split_ci = FALSE,
+  options_tab = "Model",
+  output_table_style = "standard",
   language = statedu_initial_language()
 ) {
   language <- normalize_app_language(language)
@@ -102,6 +104,8 @@ logistic_setup_state <- function(
     show_b_se = if (is.null(show_b_se)) isTRUE(show_b) || isTRUE(show_se) else isTRUE(show_b_se),
     show_extra_r2 = if (is.null(show_extra_r2)) isTRUE(show_mcfadden) || isTRUE(show_cox_snell) else isTRUE(show_extra_r2),
     split_ci = isTRUE(split_ci),
+    options_tab = if (as.character(options_tab %||% "Model") %in% c("Model", "Output")) as.character(options_tab %||% "Model") else "Model",
+    output_table_style = analysis_output_table_style(output_table_style),
     can_run = length(dependents) > 0 && length(unique(c(block1, block2, block3))) > 0,
     move_disabled = length(selected) == 0,
     language = language
@@ -263,6 +267,12 @@ logistic_setup_panel <- function(setup, status_message = NULL) {
         class = "analysis-options-column analysis-options-panel hierarchical-options logistic-options",
         div(
           class = "analysis-option-group",
+          div(class = "analysis-option-title", analysis_ui_text("Model", language)),
+          div(class = "analysis-option-subtitle", setup$model_family)
+        ),
+        analysis_output_table_style_tabs("logistic_output_table_style", setup$output_table_style, language, include_compact_xm = FALSE),
+        div(
+          class = "analysis-option-group",
           div(class = "analysis-option-title", analysis_ui_text("Output", language)),
           checkboxInput("logistic_show_b_se", "B, SE", value = isTRUE(setup$show_b_se)),
           checkboxInput("logistic_show_extra_r2", "McFadden R\u00b2, Cox & Snell R\u00b2", value = isTRUE(setup$show_extra_r2)),
@@ -270,17 +280,17 @@ logistic_setup_panel <- function(setup, status_message = NULL) {
         )
       )
     ),
-    div(
-      class = "analysis-action-row hierarchical-action-row logistic-action-row",
-      actionButton("run_logistic", analysis_ui_text("Run logistic", language), class = "btn btn-primary", disabled = if (!isTRUE(setup$can_run)) "disabled" else NULL),
-      tags$button(
+    analysis_three_block_action_row(
+      class = "hierarchical-action-row logistic-action-row",
+      run_button = actionButton("run_logistic", analysis_ui_text("Run logistic", language), class = "btn btn-primary", disabled = if (!isTRUE(setup$can_run)) "disabled" else NULL),
+      reset_control = tags$button(
         id = "reset_logistic_block2",
         type = "button",
         class = "btn action-button btn-default analysis-reset-button logistic-reset-button",
         disabled = if (length(unique(c(setup$dependents, setup$block1, setup$block2, setup$block3))) == 0) "disabled" else NULL,
         analysis_ui_text("Reset setting", language)
       ),
-      uiOutput("logistic_save_control")
+      save_control = uiOutput("logistic_save_control")
     )
   )
 }

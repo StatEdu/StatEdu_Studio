@@ -635,14 +635,14 @@ register_longitudinal_handlers <- function(
         )
         longitudinal_results(results)
         if (length(results) > 0) {
-          showNotification("Longitudinal / panel model finished.", type = "message")
+          showNotification(statedu_t("analysis.status.longitudinal_finished", statedu_current_language(app_language_fn)), type = "message")
         } else {
-          showNotification("No model was fitted. See skipped model diagnostics.", type = "warning")
+          showNotification(statedu_t("analysis.status.longitudinal_no_model", statedu_current_language(app_language_fn)), type = "warning")
         }
       },
       error = function(e) {
         longitudinal_results(NULL)
-        showNotification(paste("Longitudinal / panel model failed:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("analysis.status.longitudinal_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   }, ignoreInit = TRUE)
@@ -686,7 +686,7 @@ register_longitudinal_handlers <- function(
     if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
     if (!grepl("\\.html?$", path, ignore.case = TRUE)) path <- paste0(path, ".html")
     write_longitudinal_results_html(results, path, variable_table_fn(), labels_fn(), category_table_fn())
-    showNotification(sprintf("HTML results saved: %s", path), type = "message")
+    showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
 
   observeEvent(input$save_longitudinal_pdf_dialog, {
@@ -696,7 +696,7 @@ register_longitudinal_handlers <- function(
     if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
     if (!grepl("\\.pdf$", path, ignore.case = TRUE)) path <- paste0(path, ".pdf")
     write_longitudinal_results_pdf(results, path, variable_table_fn(), labels_fn(), category_table_fn())
-    showNotification(sprintf("PDF results saved: %s", path), type = "message")
+    showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
 
   observeEvent(input$save_longitudinal_excel_dialog, {
@@ -706,7 +706,7 @@ register_longitudinal_handlers <- function(
     if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
     if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) path <- paste0(path, ".xlsx")
     save_longitudinal_excel_file(results, path, variable_table_fn(), labels_fn(), category_table_fn())
-    showNotification(sprintf("Analysis results saved: %s", path), type = "message")
+    showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
 
   register_add_result_snapshot(input, session, "add_longitudinal_result", "Longitudinal / Panel Models", "longitudinal_results")

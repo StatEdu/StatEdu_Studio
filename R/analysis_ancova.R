@@ -802,8 +802,8 @@ ancova_result_table <- function(model, fit_data, dependent, factor, covariates, 
 
   if (nrow(rows) >= 3L) {
     grid <- ancova_prediction_grid(fit_data, factor, covariates)
-    posthoc_method <- as.character(options$posthoc_method %||% "bonferroni")
-    if (!posthoc_method %in% c("bonferroni", "holm")) posthoc_method <- "bonferroni"
+    posthoc_method <- as.character(options$posthoc_method %||% statedu_multiple_correction_default())
+    if (!posthoc_method %in% c("bonferroni", "holm")) posthoc_method <- statedu_multiple_correction_default()
     p_matrix <- ancova_pairwise_p_matrix(
       model,
       grid,
@@ -1164,8 +1164,8 @@ ancova_single_result <- function(data, dependent, factor, covariates, variable_i
   posthoc_note <- if (nlevels(fit_data[[factor]]) >= 3L && nzchar(adjusted_mean_warning %||% "")) {
     "Post-hoc comparisons were omitted because at least one adjusted mean was not estimable."
   } else if (nlevels(fit_data[[factor]]) >= 3L) {
-    posthoc_method <- as.character(options$posthoc_method %||% "bonferroni")
-    if (!posthoc_method %in% c("bonferroni", "holm")) posthoc_method <- "bonferroni"
+    posthoc_method <- as.character(options$posthoc_method %||% statedu_multiple_correction_default())
+    if (!posthoc_method %in% c("bonferroni", "holm")) posthoc_method <- statedu_multiple_correction_default()
     adjustment_note <- if (identical(posthoc_method, "holm")) {
       "Holm-Bonferroni-adjusted"
     } else {

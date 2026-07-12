@@ -583,13 +583,20 @@ eq5d_calculator_tab_panel <- function(language = statedu_initial_language()) {
       class = "page-shell",
       div(
         class = "app-heading",
-        h1(statedu_text(language, "EQ-5D Calculator", statedu_utf8("45512d354420eab384ec82b0eab8b0"))),
-        div(statedu_text(language, "Select the 5 EQ-5D item variables and add eq5d_score to the current data.", statedu_utf8("45512d35442035eab09c20ebacb8ed95ad20ebb380ec8898eba5bc20ec84a0ed839ded9598eab3a020657135645f73636f7265eba5bc20ed9884ec9eac20eb8db0ec9db4ed84b0ec979020ecb694eab080ed95a9eb8b88eb8ba42e")), class = "app-subtitle")
+        h1(statedu_t("calculator.eq5d_title", language)),
+        div(statedu_t("calculator.eq5d_subtitle", language), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel hint8-calculator-workspace",
         style = "min-width:980px;overflow-x:auto;",
-        h3("EQ-5D"),
+        div(
+          class = "analysis-workspace-heading calculator-workspace-heading",
+          div(
+            class = "analysis-workspace-heading-main",
+            h3("EQ-5D"),
+            div(class = "data-editor-variable-scope-row", uiOutput("eq5d_variable_scope_toggle"))
+          )
+        ),
         div(class = "load-message", textOutput("eq5d_loaded_message")),
         uiOutput("eq5d_calculator_setup"),
         div(
@@ -678,17 +685,17 @@ eq5d_output_table <- function(input, language = statedu_initial_language()) {
     class = "calculator-output-field",
     textInput(
       "eq5d_output_var",
-      statedu_text(language, "Variable name", statedu_utf8("ebb380ec8898ebaa85")),
+      statedu_t("ui.variable_name", language),
       value = output_name,
       width = "100%"
     )
   )
 }
 
-eq5d_setup_ui <- function(file, data, variable_info, input, language = statedu_initial_language()) {
+eq5d_setup_ui <- function(file, data, variable_info, input, selected_names = NULL, language = statedu_initial_language()) {
   language <- normalize_app_language(language)
-  if (is.null(file)) return(setup_empty_message(statedu_text(language, "Load a data file in the Data tab before using the EQ-5D calculator.", statedu_utf8("eb8db0ec9db4ed84b020ed83adec9790ec849c20eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a820ed9b842045512d354420eab384ec82b0eab8b0eba5bc20ec82acec9aa9ed9598ec84b8ec9a942e")), language = language))
-  choices <- eq5d_variable_choices(data, variable_info)
+  if (is.null(file)) return(setup_empty_message(statedu_t("calculator.eq5d_load_before_setup", language), language = language))
+  choices <- intersect(eq5d_variable_choices(data, variable_info), as.character(selected_names %||% names(data %||% data.frame())))
   available_items <- analysis_variable_items(choices, variable_info, character(0))
   specs <- eq5d_item_specs()
   selected_type <- if (identical(input$eq5d_type, "3L")) "3L" else "5L"
@@ -723,13 +730,13 @@ eq5d_setup_ui <- function(file, data, variable_info, input, language = statedu_i
       tabsetPanel(
         type = "tabs",
         tabPanel(
-          statedu_text(language, "Settings", statedu_utf8("ec84a4eca095")),
+          statedu_t("ui.settings", language),
           value = "eq5d_settings_tab",
           div(
             class = "hint8-initial-content eq5d-initial-content calculator-settings-tab",
             selectInput(
               "eq5d_value_set",
-              statedu_text(language, "Country / value set", statedu_utf8("eab5adeab080202f20eab09220ec84b8ed8ab8")),
+              statedu_t("ui.country_value_set", language),
               choices = value_set_choices,
               selected = selected_value_set,
               width = "100%"
@@ -737,7 +744,7 @@ eq5d_setup_ui <- function(file, data, variable_info, input, language = statedu_i
             div(
               class = "step-summary hint8-initial-summary eq5d-initial-summary",
               div(sprintf("%s: %.3f", statedu_ui_label("initial_score", language), initial_score), class = "step-summary-title"),
-              div(statedu_text(language, "When checked, profile 11111 is scored as 1.000. When unchecked, the formula score excludes only the constant.", statedu_utf8("ec84a0ed839ded9598eba9b42070726f66696c65203131313131ec9d8420312e303030ec9cbceba19c20eca090ec8898ed9994ed95a9eb8b88eb8ba42e20ec84a0ed839ded9598eca78020ec958aec9cbceba9b420eab3b5ec8b9d20eca090ec8898ec9790ec849c20ec8381ec8898eba78c20eca09cec99b8ed95a9eb8b88eb8ba42e")), class = "step-summary-detail")
+              div(statedu_t("calculator.eq5d_profile_detail", language), class = "step-summary-detail")
             ),
             checkboxInput(
               "eq5d_profile_11111_as_one",
@@ -747,7 +754,7 @@ eq5d_setup_ui <- function(file, data, variable_info, input, language = statedu_i
           )
         ),
         tabPanel(
-          statedu_text(language, "Value table", statedu_utf8("eab09220ed919c")),
+          statedu_t("ui.value_table", language),
           value = "eq5d_values_tab",
           div(
             class = "calculator-reference-tab",
@@ -768,7 +775,7 @@ eq5d_setup_ui <- function(file, data, variable_info, input, language = statedu_i
   )
 }
 
-register_eq5d_calculator_handlers <- function(input, output, session, dataset_fn, current_data_file_fn, variable_info_fn, add_calculated_variable_fn, language_fn = NULL) {
+register_eq5d_calculator_handlers <- function(input, output, session, dataset_fn, current_data_file_fn, variable_info_fn, add_calculated_variable_fn, selected_names_fn = NULL, language_fn = NULL) {
   output$eq5d_loaded_message <- renderText({
     statedu_current_language(language_fn)
     file <- current_data_file_fn()
@@ -778,7 +785,8 @@ register_eq5d_calculator_handlers <- function(input, output, session, dataset_fn
     language <- statedu_current_language(language_fn)
     file <- current_data_file_fn()
     data <- if (is.null(file)) NULL else dataset_fn()
-    eq5d_setup_ui(file, data, if (is.null(file)) NULL else variable_info_fn(), input, language = language)
+    selected_names <- if (is.null(selected_names_fn)) names(data %||% data.frame()) else selected_names_fn()
+    eq5d_setup_ui(file, data, if (is.null(file)) NULL else variable_info_fn(), input, selected_names = selected_names, language = language)
   })
   observeEvent(input$eq5d_available, {
     picked <- utils::tail(as.character(input$eq5d_available %||% ""), 1)
@@ -792,7 +800,7 @@ register_eq5d_calculator_handlers <- function(input, output, session, dataset_fn
   result <- eventReactive(input$run_eq5d_calculator, {
     language <- statedu_current_language(language_fn)
     if (is.null(current_data_file_fn())) {
-      showNotification(statedu_text(language, "Load a data file before calculating EQ-5D.", statedu_utf8("45512d3544eba5bc20eab384ec82b0ed9598eab8b020eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e")), type = "warning", duration = 5)
+      showNotification(statedu_t("calculator.eq5d_load_before_calculating", language), type = "warning", duration = 5)
       return(NULL)
     }
     tryCatch({
@@ -808,7 +816,7 @@ register_eq5d_calculator_handlers <- function(input, output, session, dataset_fn
         output_name = output_name
       )
       add_calculated_variable_fn(output_name, result_data[[output_name]], var_label = "EQ-5D score", measurement = "continuous")
-      showNotification(sprintf("%s was added to the current data.", output_name), type = "message", duration = 5)
+      showNotification(sprintf(statedu_t("calculator.variable_added", language), output_name), type = "message", duration = 5)
       result_data
     }, error = function(error) {
       showNotification(conditionMessage(error), type = "warning", duration = 6)

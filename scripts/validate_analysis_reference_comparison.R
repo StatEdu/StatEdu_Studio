@@ -10,6 +10,7 @@ setwd(repo_root)
 source(file.path(repo_root, "R", "app_bootstrap.R"))
 load_app_packages(check = FALSE)
 source_app_modules(dir = file.path(repo_root, "R"))
+options(statedu.output_decimal_digits = 3L)
 
 set.seed(20260619)
 

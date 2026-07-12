@@ -757,6 +757,15 @@ ttest_ordered_significance_notation <- function(values, groups, p_matrix, labels
   paste(notation, collapse = "; ")
 }
 
+ttest_should_run_posthoc <- function(options, p_value, group_count, alpha = .05) {
+  isTRUE(options$post_hoc) &&
+    group_count > 2L &&
+    length(p_value) > 0 &&
+    !is.na(p_value[[1]]) &&
+    is.finite(as.numeric(p_value[[1]])) &&
+    as.numeric(p_value[[1]]) < alpha
+}
+
 ttest_distribute_ordered_posthoc <- function(rows, notation) {
   if (!is.data.frame(rows) || !"post-hoc" %in% names(rows)) {
     return(rows)
@@ -1477,7 +1486,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
       p_value <- as.numeric(fit_summary[["Pr(>F)"]][[1]])
       analysis <- "One-way ANOVA"
       test_type <- "anova"
-      if (!is.na(p_value) && p_value < .05) {
+      if (ttest_should_run_posthoc(options, p_value, group_count)) {
         method <- tolower(options$post_hoc_method %||% "scheffe")
         posthoc_label <- switch(method, tukey = "Tukey HSD", duncan = "Duncan multiple range test", bonferroni = "Bonferroni post-hoc test", "Scheffe post-hoc test")
         p_matrix <- ttest_safe_call(ttest_parametric_anova_pairwise(values, groups, method))
@@ -1523,7 +1532,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
       p_value <- fit$p.value
       analysis <- "Welch ANOVA"
       test_type <- "anova"
-      if (!is.na(p_value) && p_value < .05) {
+      if (ttest_should_run_posthoc(options, p_value, group_count)) {
         posthoc_label <- "Games-Howell"
         p_matrix <- ttest_safe_call(ttest_games_howell_pairwise(values, groups))
         if (!is.null(p_matrix)) {
@@ -1555,7 +1564,7 @@ ttest_single_result <- function(data, dependent, factor, variable_info, labels, 
     p_value <- fit$p.value
     analysis <- "Kruskal-Wallis test"
     test_type <- "kw"
-    if (!is.na(p_value) && p_value < .05) {
+    if (ttest_should_run_posthoc(options, p_value, group_count)) {
       method <- tolower(options$nonparametric_post_hoc_method %||% "bonferroni")
       if (!method %in% c("bonferroni", "holm")) {
         method <- "bonferroni"

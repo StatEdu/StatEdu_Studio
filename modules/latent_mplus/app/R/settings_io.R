@@ -135,7 +135,7 @@ settings_embedded_data_file <- function(settings) {
   }
   restored_path <- tempfile("statedu_data_", fileext = if (nzchar(extension)) paste0(".", extension) else "")
   writeBin(jsonlite::base64_dec(settings_scalar(embedded)), restored_path)
-  file <- list(path = restored_path, name = file_name, restored = TRUE)
+  file <- list(path = restored_path, name = file_name, original_path = "", restored = TRUE)
   if (excel_data_file_extension(file_name) && is.list(settings$data_file_options)) {
     file$excel_sheet <- settings_scalar(settings$data_file_options$excel_sheet %||% "")
     file$excel_start_cell <- settings_scalar(settings$data_file_options$excel_start_cell %||% "A1")
@@ -149,7 +149,7 @@ settings_external_data_file <- function(settings, settings_path = NULL) {
   if (!nzchar(path)) {
     return(NULL)
   }
-  file <- list(path = path, name = basename(path), restored = TRUE)
+  file <- list(path = path, name = basename(path), original_path = path, restored = TRUE)
   if (excel_data_file_extension(file$name) && is.list(settings$data_file_options)) {
     file$excel_sheet <- settings_scalar(settings$data_file_options$excel_sheet %||% "")
     file$excel_start_cell <- settings_scalar(settings$data_file_options$excel_start_cell %||% "A1")
@@ -170,7 +170,7 @@ settings_external_data_switch <- function(settings, settings_path = NULL, curren
     return(NULL)
   }
 
-  file <- list(path = settings_data_path, name = basename(settings_data_path), restored = TRUE)
+  file <- list(path = settings_data_path, name = basename(settings_data_path), original_path = settings_data_path, restored = TRUE)
   if (excel_data_file_extension(file$name) && is.list(settings$data_file_options)) {
     file$excel_sheet <- settings_scalar(settings$data_file_options$excel_sheet %||% "")
     file$excel_start_cell <- settings_scalar(settings$data_file_options$excel_start_cell %||% "A1")

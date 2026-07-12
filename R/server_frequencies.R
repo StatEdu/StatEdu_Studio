@@ -250,7 +250,7 @@ register_frequencies_handlers <- function(
     shiny::req(!is.null(result))
     path <- choose_excel_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
-      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) {
@@ -259,10 +259,10 @@ register_frequencies_handlers <- function(
     tryCatch(
       {
         save_frequencies_excel_file(result, path)
-        showNotification(sprintf("Analysis results saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save analysis results:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
@@ -272,20 +272,20 @@ register_frequencies_handlers <- function(
     shiny::req(!is.null(result))
     directory <- choose_figure_save_dir()
     if (length(directory) == 0 || !nzchar(directory[[1]])) {
-      showNotification("Folder selection dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.folder_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     tryCatch(
       {
         saved <- save_frequency_figures_to_dir(result, directory)
         if (length(saved) == 0) {
-          showNotification("No figures were selected to save.", type = "warning", duration = 5)
+          showNotification(statedu_t("result.no_figures_selected", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
           return(invisible(NULL))
         }
-        showNotification(sprintf("Saved %s figure file(s): %s", length(saved), directory), type = "message")
+        showNotification(sprintf(statedu_t("result.figures_saved", statedu_current_language(app_language_fn)), length(saved), directory), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save figures:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.figures_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
@@ -295,7 +295,7 @@ register_frequencies_handlers <- function(
     shiny::req(!is.null(result))
     path <- choose_html_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
-      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     if (!grepl("\\.html?$", path, ignore.case = TRUE)) {
@@ -304,10 +304,10 @@ register_frequencies_handlers <- function(
     tryCatch(
       {
         write_frequencies_results_html(result, path)
-        showNotification(sprintf("HTML results saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save HTML results:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
@@ -317,7 +317,7 @@ register_frequencies_handlers <- function(
     shiny::req(!is.null(result))
     path <- choose_pdf_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
-      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     if (!grepl("\\.pdf$", path, ignore.case = TRUE)) {
@@ -326,10 +326,10 @@ register_frequencies_handlers <- function(
     tryCatch(
       {
         write_frequencies_results_pdf(result, path)
-        showNotification(sprintf("PDF results saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save PDF results:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })

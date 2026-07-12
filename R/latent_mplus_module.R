@@ -790,7 +790,11 @@ latent_menu_tab <- function(language = statedu_initial_language()) {
   if (!latent_mplus_enabled()) {
     return(NULL)
   }
-  latent_mplus_env()$latent_menu_tab(language)
+  env <- latent_mplus_env()
+  navbarMenu(
+    statedu_t("ui.latent", language, "Latent"),
+    env$latent_analysis_tab("mixture", language)
+  )
 }
 
 register_latent_mplus_server <- function(input,
@@ -799,6 +803,8 @@ register_latent_mplus_server <- function(input,
                                          app_version,
                                          current_data_file,
                                          variable_info_table,
+                                         restored_data_file = NULL,
+                                         restored_variable_info = NULL,
                                          active_data_file,
                                          reset_on_dataset_load,
                                          available_variable_names) {
@@ -808,17 +814,20 @@ register_latent_mplus_server <- function(input,
 
   root <- latent_mplus_module_root()
   try(shiny::addResourcePath("latent_mplus_assets", file.path(root, "www")), silent = TRUE)
-  app_output_root <- file.path(getwd(), "outputs")
+  latent_env <- latent_mplus_env()
+  app_output_root <- latent_env$latent_default_output_root(getwd())
   dir.create(app_output_root, recursive = TRUE, showWarnings = FALSE)
   try(shiny::addResourcePath("latent_outputs", normalizePath(app_output_root, winslash = "/", mustWork = FALSE)), silent = TRUE)
 
-  env <- new.env(parent = latent_mplus_env())
+  env <- new.env(parent = latent_env)
   env$input <- input
   env$output <- output
   env$session <- session
   env$app_version <- app_version
   env$current_data_file <- current_data_file
   env$variable_info_table <- variable_info_table
+  env$restored_data_file <- restored_data_file
+  env$restored_variable_info <- restored_variable_info
   env$active_data_file <- active_data_file
   env$reset_on_dataset_load <- reset_on_dataset_load
   env$available_variable_names <- available_variable_names

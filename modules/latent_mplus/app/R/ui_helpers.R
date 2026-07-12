@@ -16,7 +16,7 @@ app_stylesheet_link <- function(version) {
 }
 
 app_script_link <- function(version) {
-  tags$script(src = paste0("easyflow.js?v=", version, "-shiny-input-ready-guard"))
+  tags$script(src = paste0("easyflow.js?v=", version, "-shiny-input-ready-guard-scrollfix"))
 }
 
 latent_default_project_root <- function() {
@@ -179,6 +179,7 @@ app_head_tags <- function(version) {
         var moduleId = $(this).data('module');
         var role = $('#' + moduleId + '_active_role').val() || '';
         if (window.easyflowLatentRememberViewport) window.easyflowLatentRememberViewport(moduleId);
+        if (window.easyflowLatentRememberPage) window.easyflowLatentRememberPage(moduleId);
         var table = $('#' + moduleId + '_variable_preview table').DataTable();
         var variables = [];
         $(table.rows({page: 'current'}).nodes()).find('.latent-role-checkbox').each(function() {

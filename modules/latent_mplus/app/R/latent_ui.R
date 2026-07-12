@@ -52,12 +52,33 @@ latent_current_language <- function(language = NULL) {
   if (tolower(language) %in% c("ko", "kr", "korean")) "ko" else "en"
 }
 
+latent_translation_key <- function(en) {
+  value <- tolower(trimws(as.character(en %||% "")))
+  value <- gsub("[^a-z0-9]+", "_", value)
+  value <- gsub("^_+|_+$", "", value)
+  if (!nzchar(value)) {
+    return("latent.text")
+  }
+  paste0("latent.", value)
+}
+
 latent_text <- function(en, ko = en, language = NULL) {
-  if (identical(latent_current_language(language), "ko")) ko else en
+  language <- latent_current_language(language)
+  fallback <- if (identical(language, "ko")) ko else en
+  if (exists("statedu_translate", mode = "function", inherits = TRUE)) {
+    return(statedu_translate(latent_translation_key(en), language, fallback))
+  }
+  fallback
 }
 
 latent_choices <- function(values, en, ko = en, language = NULL) {
-  labels <- if (identical(latent_current_language(language), "ko")) ko else en
+  language <- latent_current_language(language)
+  labels <- mapply(
+    function(en_label, ko_label) latent_text(en_label, ko_label, language),
+    en,
+    ko,
+    USE.NAMES = FALSE
+  )
   stats::setNames(values, labels)
 }
 
@@ -226,7 +247,18 @@ latent_data_block <- function(module_id, spec, language = latent_current_languag
       class = "workspace-panel latent-control-panel",
       h3(latent_text("Data", latent_utf8("eb8db0ec9db4ed84b0"), language)),
       textInput(paste0(module_id, "_dataset_id"), latent_text("Dataset ID", latent_utf8("eb8db0ec9db4ed84b0ec858b204944"), language), value = ""),
-      textInput(paste0(module_id, "_project_root"), latent_text("Latent project root", latent_utf8("ec9ea0ec9eacebb684ec849d20ed9484eba19ceca09ded8ab820ed8fb4eb8d94"), language), value = latent_default_project_root()),
+      tags$div(
+        style = "display:none;",
+        textInput(paste0(module_id, "_project_root"), latent_text("Pipeline folder", latent_utf8("ed8c8cec9db4ed9484eb9dbcec9db820ed8fb4eb8d94"), language), value = latent_default_project_root())
+      ),
+      div(
+        class = "form-group",
+        tags$label(latent_text("Project/output folder", latent_utf8("ed9484eba19ceca09ded8ab82fecb69ceba0a520ed8fb4eb8d94"), language)),
+        tags$div(
+          class = "latent-output-folder-display",
+          textOutput(paste0(module_id, "_output_root_display"), inline = TRUE)
+        )
+      ),
       div(class = "latent-panel-note", textOutput(paste0(module_id, "_dataset_id_message"), inline = TRUE)),
       div(
         class = "latent-button-row latent-data-action-grid",
@@ -542,11 +574,36 @@ latent_role_choices <- function(module_id, language = latent_current_language())
     time = latent_utf8("ec8b9ceab084"),
     group = latent_utf8("eca791eb8ba8")
   )
-  labels <- if (identical(latent_current_language(language), "ko")) {
-    unname(role_labels_ko[roles] %||% roles)
-  } else {
-    roles
-  }
+  role_labels_en <- c(
+    id = "ID",
+    indicator = "Indicator variable",
+    outcome = "Outcome variable",
+    covariate = "Covariate",
+    moderator = "Moderator variable",
+    weight = "Weight",
+    replicate_weight = "Replicate weight",
+    strata = "Strata variable",
+    cluster = "Cluster variable",
+    subset = "Analysis subset",
+    time1_indicator = "Time 1 indicator",
+    time2_indicator = "Time 2 indicator",
+    time3_indicator = "Time 3 indicator",
+    from_state = "From state",
+    to_state = "To state",
+    time = "Time",
+    group = "Group"
+  )
+  labels <- mapply(
+    function(en_label, ko_label, role) {
+      if (is.na(en_label) || !nzchar(en_label)) en_label <- role
+      if (is.na(ko_label) || !nzchar(ko_label)) ko_label <- en_label
+      latent_text(en_label, ko_label, language)
+    },
+    unname(role_labels_en[roles]),
+    unname(role_labels_ko[roles]),
+    roles,
+    USE.NAMES = FALSE
+  )
   stats::setNames(roles, labels)
 }
 

@@ -92,7 +92,7 @@ Build machine: StatEdu
 |---|---|---|
 | `studio.statedu.com` is live | Pass | Initial StatEdu Studio citation/product landing page is live at `https://studio.statedu.com/`. |
 | DOI `10.22934/statedu.studio` resolves to the StatEdu Studio citation landing page | Pass | `https://doi.org/10.22934/statedu.studio` resolves to `https://studio.statedu.com/citation/`. |
-| Public release notes contain no deferred feature claims | Pass | Draft release notes list deferred surfaces under Not Included and do not claim gated editions, license activation, in-app updates, Longitudinal / Panel Models, Excel result export, or Word result export as public 1.0 features. |
+| Public release notes contain no deferred feature claims | Pass | Draft release notes list deferred surfaces under Not Included and do not claim gated editions, license activation, in-app updates, Excel result export, or Word result export as public 1.0 features. |
 | Manual QA record is complete | Pass | Packaged import, analysis, and native HTML/PDF save-dialog workflow passed; `docs\RELEASE_1_0_MANUAL_QA_RECORD.md` is complete. |
 
 ## Final Result

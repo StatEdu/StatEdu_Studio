@@ -196,13 +196,20 @@ metabolic_calculator_tab_panel <- function(language = statedu_initial_language()
       class = "page-shell",
       div(
         class = "app-heading",
-        h1(statedu_text(language, "Metabolic Syndrome Calculator", statedu_utf8("eb8c80ec82aceca69ded9b84eab5b020eab384ec82b0eab8b0"))),
-        div(statedu_text(language, "Select metabolic syndrome variables, adjust reference cutoffs, and add metabolic_count and metabolic_syndrome to the current data.", statedu_utf8("eb8c80ec82aceca69ded9b84eab5b020ebb380ec8898eba5bc20ec84a0ed839ded9598eab3a020eab8b0eca480eab092ec9d8420eca1b0eca095ed959c20eb92a4206d657461626f6c69635f636f756e74ec9980206d657461626f6c69635f73796e64726f6d65ec9d8420ed9884ec9eac20eb8db0ec9db4ed84b0ec979020ecb694eab080ed95a9eb8b88eb8ba42e")), class = "app-subtitle")
+        h1(statedu_t("calculator.metabolic_title", language)),
+        div(statedu_t("calculator.metabolic_subtitle", language), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel metabolic-calculator-workspace",
         style = "min-width:980px;overflow-x:auto;",
-        h3("Metabolic Syndrome"),
+        div(
+          class = "analysis-workspace-heading calculator-workspace-heading",
+          div(
+            class = "analysis-workspace-heading-main",
+            h3("Metabolic Syndrome"),
+            div(class = "data-editor-variable-scope-row", uiOutput("metabolic_variable_scope_toggle"))
+          )
+        ),
         div(class = "load-message", textOutput("metabolic_loaded_message")),
         uiOutput("metabolic_calculator_setup"),
         div(
@@ -299,7 +306,7 @@ metabolic_reference_set_control <- function(input, language = statedu_initial_la
     class = "metabolic-reference-set-control",
     selectInput(
       "metabolic_reference_set",
-      statedu_text(language, "Criteria / population", statedu_utf8("eab8b0eca480202f20eca791eb8ba8")),
+      statedu_ui_label("criteria_population", language),
       choices = metabolic_reference_set_choices(),
       selected = metabolic_reference_set_id(input),
       width = "100%"
@@ -328,14 +335,14 @@ metabolic_output_table <- function() {
   )
 }
 
-metabolic_calculator_setup_ui <- function(file, data, variable_info, input, language = statedu_initial_language()) {
+metabolic_calculator_setup_ui <- function(file, data, variable_info, input, selected_names = NULL, language = statedu_initial_language()) {
   language <- normalize_app_language(language)
   if (is.null(file)) {
-    return(setup_empty_message(statedu_text(language, "Load a data file in the Data tab before using the metabolic calculator.", statedu_utf8("eb8db0ec9db4ed84b020ed83adec9790ec849c20eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a820ed9b8420eb8c80ec82aceca69ded9b84eab5b020eab384ec82b0eab8b0eba5bc20ec82acec9aa9ed9598ec84b8ec9a942e")), language = language))
+    return(setup_empty_message(statedu_t("calculator.metabolic_load_before_setup", language), language = language))
   }
-  choices <- names(data %||% data.frame())
+  choices <- intersect(names(data %||% data.frame()), as.character(selected_names %||% names(data %||% data.frame())))
   if (length(choices) == 0) {
-    return(setup_empty_message(statedu_text(language, "The current data file has no variables.", statedu_utf8("ed9884ec9eac20eb8db0ec9db4ed84b020ed8c8cec9dbcec979020ebb380ec8898eab08020ec9786ec8ab5eb8b88eb8ba42e")), language = language))
+    return(setup_empty_message(statedu_t("calculator.no_variables", language), language = language))
   }
 
   specs <- metabolic_variable_specs()
@@ -385,6 +392,7 @@ register_metabolic_calculator_handlers <- function(
   current_data_file_fn,
   variable_info_fn,
   add_calculated_variable_fn,
+  selected_names_fn = NULL,
   language_fn = NULL
 ) {
   output$metabolic_loaded_message <- renderText({
@@ -398,7 +406,8 @@ register_metabolic_calculator_handlers <- function(
     file <- current_data_file_fn()
     data <- if (is.null(file)) NULL else dataset_fn()
     variable_info <- if (is.null(file)) NULL else variable_info_fn()
-    metabolic_calculator_setup_ui(file, data, variable_info, input, language = language)
+    selected_names <- if (is.null(selected_names_fn)) names(data %||% data.frame()) else selected_names_fn()
+    metabolic_calculator_setup_ui(file, data, variable_info, input, selected_names = selected_names, language = language)
   })
 
   observeEvent(input$metabolic_available, {
@@ -421,7 +430,7 @@ register_metabolic_calculator_handlers <- function(
   result <- eventReactive(input$run_metabolic_calculator, {
     language <- statedu_current_language(language_fn)
     if (is.null(current_data_file_fn())) {
-      showNotification(statedu_text(language, "Load a data file before calculating metabolic syndrome.", statedu_utf8("eb8c80ec82aceca69ded9b84eab5b0ec9d8420eab384ec82b0ed9598eab8b020eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e")), type = "warning", duration = 5)
+      showNotification(statedu_t("calculator.metabolic_load_before_calculating", language), type = "warning", duration = 5)
       return(NULL)
     }
     tryCatch(
@@ -429,7 +438,7 @@ register_metabolic_calculator_handlers <- function(
         result_data <- metabolic_result(dataset_fn(), metabolic_selected_variables(input), metabolic_reference_inputs(input), metabolic_unit_inputs(input), metabolic_diagnosis_method(input))
         add_calculated_variable_fn("metabolic_count", result_data[["metabolic_count"]], var_label = "Metabolic syndrome criteria count", measurement = "continuous")
         add_calculated_variable_fn("metabolic_syndrome", result_data[["metabolic_syndrome"]], var_label = "Metabolic Syndrome", measurement = "binary")
-        showNotification(statedu_text(language, "metabolic_count and metabolic_syndrome were added to the current data.", statedu_utf8("6d657461626f6c69635f636f756e74ec9980206d657461626f6c69635f73796e64726f6d65eab08020ed9884ec9eac20eb8db0ec9db4ed84b0ec979020ecb694eab080eb9098ec9788ec8ab5eb8b88eb8ba42e")), type = "message", duration = 5)
+        showNotification(statedu_t("calculator.metabolic_added", language), type = "message", duration = 5)
         result_data
       },
       error = function(error) {

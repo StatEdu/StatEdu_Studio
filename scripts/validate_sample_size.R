@@ -126,6 +126,10 @@ correlation_q <- sample_size_effect_size_correlation("cohens_q", r1 = 0.5, r2 = 
 expect_true(near(correlation_q$cohens_q, atanh(0.5) - atanh(0.3)), "Expected Cohen's q to equal Fisher-z difference")
 correlation_point_biserial <- sample_size_effect_size_correlation("point_biserial", r = 0.25)
 expect_true(near(correlation_point_biserial$effect_size_d, 2 * 0.25 / sqrt(1 - 0.25^2)), "Expected point-biserial r to convert to Cohen's d")
+correlation_pearson <- sample_size_effect_size_correlation("pearson_r", r = 0.25)
+expect_true(near(correlation_pearson$correlation_r, 0.25), "Expected Pearson r effect-size entry to preserve r")
+expect_true(near(correlation_pearson$fisher_z, atanh(0.25)), "Expected Pearson r effect-size entry to report Fisher's z")
+expect_true(near(correlation_pearson$r_squared, 0.25^2), "Expected Pearson r effect-size entry to report R-squared")
 
 anova_f <- sample_size_effect_size_anova("f_from_eta2", eta_squared = 0.06)
 expect_true(near(anova_f$cohen_f, sqrt(0.06 / 0.94)), "Expected Cohen's f to convert from eta squared")
@@ -497,6 +501,21 @@ for (method in names(cases)) {
     sprintf("Expected %s sample-size result to include an interpretable sample-size field", method)
   )
 }
+
+regression_mediation_power <- sample_size_calculate(
+  "regression",
+  merge_input(base_input("regression", target = "power"), list(
+    sample_size_regression_design = "mediation",
+    sample_size_regression_mediation_method = "fritz_mackinnon",
+    sample_size_regression_a = "0.30",
+    sample_size_regression_b = "0.30",
+    sample_size_regression_covariates = "2",
+    sample_size_regression_simulations = "20",
+    sample_size_regression_bootstraps = "20"
+  ))
+)
+expect_true(is.null(regression_mediation_power$error), sprintf("Expected mediation achieved-power calculation to fall back from Fritz-MacKinnon table: %s", regression_mediation_power$error %||% ""))
+expect_true(!identical(regression_mediation_power$mediation_method, "fritz_mackinnon"), "Expected Fritz-MacKinnon table not to be used for achieved-power calculation")
 
 message("Checking achieved power mode for applicable sample-size menus...")
 power_checks <- list(

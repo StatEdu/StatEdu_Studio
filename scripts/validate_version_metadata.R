@@ -47,9 +47,10 @@ assert_not_contains <- function(text, pattern, label) {
 message("Checking version metadata...")
 
 version <- read_first_line("VERSION")
-if (!grepl("^\\d+\\.\\d+\\.\\d+$", version)) {
-  stop(sprintf("VERSION must use semantic version format, found: %s", version), call. = FALSE)
+if (!grepl("^\\d+\\.\\d+\\.\\d+(-dev)?$", version)) {
+  stop(sprintf("VERSION must use semantic version format with optional -dev suffix, found: %s", version), call. = FALSE)
 }
+is_development_version <- grepl("-dev$", version)
 
 latent_version <- read_first_line("modules/latent_mplus/app/VERSION")
 assert_equal(latent_version, version, "modules/latent_mplus/app/VERSION")
@@ -70,11 +71,19 @@ root_package <- electron_lock$packages[[which(names(electron_lock$packages) == "
 assert_equal(root_package$version, version, "packaging/electron/package-lock.json package version")
 
 readme <- read_text("README.md")
-readme_current <- extract_match(readme, "Current public version: `([^`]+)`", "README current public version")
-assert_equal(readme_current, version, "README current public version")
+readme_public <- extract_match(readme, "Current public version: `([^`]+)`", "README current public version")
+if (!grepl("^\\d+\\.\\d+\\.\\d+$", readme_public)) {
+  stop(sprintf("README current public version must use release semantic version format, found: %s", readme_public), call. = FALSE)
+}
+if (is_development_version) {
+  readme_development <- extract_match(readme, "Current development version: `([^`]+)`", "README current development version")
+  assert_equal(readme_development, version, "README current development version")
+} else {
+  assert_equal(readme_public, version, "README current public version")
+}
 
 readme_citation <- extract_match(readme, "\\(Version ([0-9]+\\.[0-9]+\\.[0-9]+)\\) \\[Computer software\\]", "README citation version")
-assert_equal(readme_citation, version, "README citation version")
+assert_equal(readme_citation, if (is_development_version) readme_public else version, "README citation version")
 assert_contains(readme, "scripts\\validate_stabilization.ps1", "README core stabilization validation command")
 assert_contains(readme, "scripts\\validate_stabilization.ps1 -Full", "README full stabilization validation command")
 assert_contains(readme, "scripts\\release_preflight.ps1", "README release preflight command")
@@ -92,14 +101,14 @@ assert_equal(latent_readme_current, version, "latent README current development 
 assert_contains(latent_readme, paste0("StatEdu Studio ", version, " app shell structure"), "latent README app shell version")
 
 changelog <- read_text("CHANGELOG.md")
-changelog_current <- extract_match(changelog, "(?m)^## v([0-9]+\\.[0-9]+\\.[0-9]+) - ", "CHANGELOG current version")
+changelog_current <- extract_match(changelog, "(?m)^## v([0-9]+\\.[0-9]+\\.[0-9]+(?:-dev)?) - ", "CHANGELOG current version")
 assert_equal(changelog_current, version, "CHANGELOG current version")
 assert_contains(changelog, "Added Shiny startup and Electron release smoke checks", "CHANGELOG smoke validation entry")
 assert_contains(changelog, "Hardened release hygiene checks", "CHANGELOG release hygiene entry")
 
 citation <- read_text("CITATION.cff")
 citation_version <- extract_match(citation, '(?m)^version: "([^"]+)"', "CITATION.cff version")
-assert_equal(citation_version, version, "CITATION.cff version")
+assert_equal(citation_version, if (is_development_version) readme_public else version, "CITATION.cff version")
 
 release_checklist <- read_text("docs/RELEASE_CHECKLIST.md")
 assert_contains(release_checklist, "1.0.0 release-candidate phase", "release checklist release-candidate phase")
@@ -127,7 +136,11 @@ assert_contains(release_checklist, "docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md",
 assert_contains(release_checklist, "scripts\\get_release_checksums.ps1", "release checklist checksum helper")
 
 release_readiness <- read_text("docs/RELEASE_READINESS_STATUS.md")
-assert_contains(release_readiness, paste0("Current version: ", version), "release readiness current version")
+if (is_development_version) {
+  assert_contains(release_readiness, paste0("Current version: ", readme_public), "release readiness current public version")
+} else {
+  assert_contains(release_readiness, paste0("Current version: ", version), "release readiness current version")
+}
 assert_contains(release_readiness, "scripts/validate_stabilization.ps1 -Full", "release readiness full validation")
 assert_contains(release_readiness, "scripts/release_preflight.ps1", "release readiness release preflight")
 assert_contains(release_readiness, "`scripts/release_preflight.ps1`: passed", "release readiness release preflight passed status")
@@ -161,7 +174,7 @@ assert_contains(manual_qa, "docs/RELEASE_1_0_PACKAGED_VALIDATION_NOTES.md", "man
 assert_contains(manual_qa, "docs/UI_LAYOUT_CONTRACT.md", "manual QA UI layout contract")
 assert_contains(manual_qa, "settings save/load uses only the `.studio` file type", "manual QA settings file type")
 assert_contains(manual_qa, "Wide to Long can save the reshaped CSV output", "manual QA wide-to-long CSV save")
-assert_contains(manual_qa, "confirm Longitudinal / Panel Models is hidden", "manual QA public longitudinal hidden")
+assert_contains(manual_qa, "confirm Longitudinal / Panel Models is visible", "manual QA public longitudinal visible")
 assert_contains(manual_qa, "confirm Excel result export is hidden", "manual QA public excel export hidden")
 assert_contains(manual_qa, "confirm Word result export is hidden", "manual QA public word export hidden")
 assert_contains(manual_qa, "About > Open Source Licenses", "manual QA open source licenses")
@@ -182,7 +195,7 @@ assert_contains(manual_qa_record, "Electron package:", "manual QA record Electro
 assert_contains(manual_qa_record, "R runtime:", "manual QA record R runtime field")
 assert_contains(manual_qa_record, "docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md", "manual QA record version bump checklist")
 assert_contains(manual_qa_record, "Wide to Long saves reshaped CSV output", "manual QA record wide-to-long CSV")
-assert_contains(manual_qa_record, "Public 1.0 hides Longitudinal / Panel Models", "manual QA record public longitudinal hidden")
+assert_contains(manual_qa_record, "Public 1.0 shows Longitudinal / Panel Models", "manual QA record public longitudinal shown")
 assert_contains(manual_qa_record, "Public 1.0 hides Excel result export", "manual QA record public excel export hidden")
 assert_contains(manual_qa_record, "Public 1.0 hides Word result export", "manual QA record public word export hidden")
 assert_contains(manual_qa_record, "dist/electron/win-unpacked/StatEdu Studio.exe", "manual QA record public executable")
@@ -200,7 +213,7 @@ assert_contains(public_notes, "https://studio.statedu.com", "public notes draft 
 assert_contains(public_notes, "Free/Pro/Latent edition gates", "public notes draft deferred editions")
 assert_contains(public_notes, "License activation", "public notes draft deferred license")
 assert_contains(public_notes, "In-app update checks", "public notes draft deferred updates")
-assert_contains(public_notes, "Longitudinal / Panel Models public menu exposure", "public notes draft deferred longitudinal")
+assert_not_contains(public_notes, "Longitudinal / Panel Models public menu exposure", "public notes draft deferred longitudinal")
 assert_contains(public_notes, "Excel result export", "public notes draft deferred excel export")
 assert_contains(public_notes, "Word result export", "public notes draft deferred word export")
 
@@ -228,7 +241,11 @@ release_build_script <- read_text("scripts/build_electron_release.ps1")
 assert_contains(release_build_script, "build_electron_beta.ps1", "release build wrapper compatibility delegate")
 
 release_decision_log <- read_text("docs/RELEASE_1_0_DECISION_LOG.md")
-assert_contains(release_decision_log, paste0("Current version: ", version), "release decision log current version")
+if (is_development_version) {
+  assert_contains(release_decision_log, "Current version:", "release decision log current version")
+} else {
+  assert_contains(release_decision_log, paste0("Current version: ", version), "release decision log current version")
+}
 assert_contains(release_decision_log, "No new analysis features before 1.0", "release decision log feature freeze")
 assert_contains(release_decision_log, "Must Decide Before Public 1.0", "release decision log pending decisions")
 assert_contains(release_decision_log, "DOI registration is active", "release decision log DOI status")
@@ -295,7 +312,7 @@ assert_contains(ui_helpers, "about_tab_panel(version", "About version propagatio
 assert_contains(ui_helpers, "app_head_tags(version)", "head asset version propagation")
 assert_contains(ui_helpers, "statedu_public_release <- function()", "public release flag helper")
 assert_contains(ui_helpers, "STATEDU_PUBLIC_RELEASE", "public release flag environment")
-assert_contains(ui_helpers, 'statedu_feature_enabled("longitudinal", FALSE)', "public longitudinal feature flag")
+assert_contains(ui_helpers, 'feature %in% c("excel_export", "word_export")', "public export feature flags")
 assert_contains(ui_helpers, 'statedu_feature_enabled("excel_export", TRUE)', "public excel export feature flag")
 assert_contains(ui_helpers, 'statedu_feature_enabled("word_export", TRUE)', "public word export feature flag")
 
@@ -304,22 +321,23 @@ assert_contains(electron_main, "function publicReleaseFlag()", "Electron public 
 assert_contains(electron_main, 'STATEDU_PUBLIC_RELEASE: process.env.STATEDU_PUBLIC_RELEASE || publicReleaseFlag()', "Electron public release flag propagation")
 
 app_server <- read_text("R/app_server.R")
-assert_contains(app_server, 'statedu_feature_enabled("longitudinal", FALSE)', "server longitudinal direct access guard")
-assert_contains(app_server, "Longitudinal / Panel Models is hidden in the public 1.0 release.", "server longitudinal hidden message")
+assert_contains(app_server, 'statedu_feature_enabled("longitudinal", TRUE)', "server longitudinal direct access guard")
+assert_contains(app_server, 'statedu_feature_enabled("longitudinal", TRUE)', "server longitudinal feature flag")
 
 sample_size_ui <- read_text("R/sample_size_ui.R")
 assert_not_contains(sample_size_ui, "will be added in the same order", "effect-size future placeholder subtitle")
 assert_contains(sample_size_ui, "This effect-size calculator is not available for the selected method.", "effect-size neutral fallback subtitle")
 
 result_saved_ui <- read_text("R/result_saved_ui.R")
+labels_text <- read_text("R/labels.R")
 assert_contains(result_saved_ui, 'saved_results_app_version <- function(version_file = "VERSION")', "saved results VERSION default")
 assert_contains(result_saved_ui, 'Sys.getenv("STATEDU_VERSION", "")', "saved results environment version override")
 assert_contains(result_saved_ui, 'readLines(version_file, warn = FALSE)[1]', "saved results VERSION fallback")
 assert_contains(result_saved_ui, 'sprintf("StatEdu Studio v%s", app_version)', "saved results version label")
-assert_contains(result_saved_ui, 'analysis_save_feature_enabled("excel")', "saved results Excel export feature guard")
-assert_contains(result_saved_ui, "Excel export is not enabled in this release.", "saved results Excel export hidden message")
-assert_contains(result_saved_ui, 'analysis_save_feature_enabled("word")', "saved results Word export feature guard")
-assert_contains(result_saved_ui, "Word export is not enabled in this release.", "saved results Word export hidden message")
+assert_contains(result_saved_ui, 'analysis_save_feature_enabled("excel",', "saved results Excel export feature guard")
+assert_contains(labels_text, "result.collection_excel_disabled", "saved results Excel export hidden message label")
+assert_contains(result_saved_ui, 'analysis_save_feature_enabled("word",', "saved results Word export feature guard")
+assert_contains(labels_text, "result.collection_word_disabled", "saved results Word export hidden message label")
 
 latent_app <- read_text("modules/latent_mplus/app/app.R")
 assert_contains(latent_app, "app_config <- read_app_config()", "latent app config read")

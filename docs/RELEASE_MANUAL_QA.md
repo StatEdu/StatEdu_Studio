@@ -60,7 +60,7 @@ re-run after the fix.
 
 1. Run t-test / ANOVA as the standard three-block baseline.
 2. Run Regression and Logistic Regression with categorical predictors and confirm reference rows/labels display.
-3. For public 1.0 QA, confirm Longitudinal / Panel Models is hidden; for internal validation builds, run at least one GEE or LMM setup and confirm the four-block layout has right-side breathing room.
+3. For public 1.0 QA, confirm Longitudinal / Panel Models is visible in the Analysis menu and run at least one GEE or LMM setup.
 4. Confirm nested Analysis menu submenus open adjacent to the selected first-level item.
 5. Confirm result save buttons are available after a successful analysis.
 

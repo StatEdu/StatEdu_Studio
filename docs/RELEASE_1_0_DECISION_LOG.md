@@ -1,8 +1,8 @@
 # StatEdu Studio 1.0 Decision Log
 
-Last reviewed: 2026-06-28
+Last reviewed: 2026-07-12
 
-Current version: 1.0.1
+Current version: 1.1.3
 
 This file records release decisions that must be made before changing the project from the 0.9.x stabilization line to a public 1.0 release. It is intentionally separate from feature planning so stabilization work does not drift into new product scope.
 
@@ -55,10 +55,10 @@ Follow-up version: 1.0.0
 Decision: Hide deferred public features for 1.0
 Date: 2026-06-25
 Owner: StatEdu Studio
-Deferred item: Longitudinal / Panel Models public menu exposure, Excel result export, and Word result export
-Reason: These surfaces expand public validation and support scope; keep the code path available for internal validation, but do not expose it in the public 1.0 package.
-User-visible claim removed or adjusted: Do not claim Longitudinal / Panel Models, Excel result export, or Word result export as public 1.0 features.
-Validation/checklist update: Public 1.0 packaging sets `STATEDU_PUBLIC_RELEASE=1`, which hides Longitudinal / Panel Models, Excel export, and Word export while preserving internal override flags for validation builds.
+Deferred item: Excel result export and Word result export
+Reason: These export surfaces expand public validation and support scope; keep the code path available for internal validation, but do not expose it in the public 1.0 package.
+User-visible claim removed or adjusted: Do not claim Excel result export or Word result export as public 1.0 features. Longitudinal / Panel Models are exposed in the public Analysis menu.
+Validation/checklist update: Public 1.0 packaging sets `STATEDU_PUBLIC_RELEASE=1`, which hides Excel export and Word export while preserving internal override flags for validation builds.
 Follow-up version: 1.1 or later
 ```
 

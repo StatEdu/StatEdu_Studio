@@ -145,7 +145,14 @@ function Get-ElectronReleaseProfile {
   param(
     [string]$Version
   )
-  if ($Version -match "^1\.") {
+  if ($Version -match "^\d+\.\d+\.\d+-dev$") {
+    return [pscustomobject]@{
+      ProductName = "StatEdu Studio Dev"
+      SetupPrefix = "StatEdu_Studio_Dev_Setup"
+      ExeName = "StatEdu Studio Dev.exe"
+    }
+  }
+  if ($Version -match "^\d+\.\d+\.\d+$") {
     return [pscustomobject]@{
       ProductName = "StatEdu Studio"
       SetupPrefix = "StatEdu_Studio_Setup"
@@ -225,7 +232,20 @@ function Assert-AppBootstrapModulesTracked {
   if ($missing.Count -gt 0) {
     throw "R module(s) referenced by app_bootstrap.R are not tracked by git and would be omitted from git ls-files based packaging: $($missing -join ', ')"
   }
-  Write-Host "[ok] app_bootstrap R modules are tracked"
+  $requiredResources = @(
+    "i18n/languages.json",
+    "i18n/ja.json",
+    "i18n/zh.json",
+    "i18n/es.json",
+    "i18n/fr.json",
+    "i18n/de.json",
+    "i18n/vi.json"
+  )
+  $missingResources = @($requiredResources | Where-Object { $_ -notin $tracked })
+  if ($missingResources.Count -gt 0) {
+    throw "Required app resource(s) are not tracked by git and would be omitted from git ls-files based packaging: $($missingResources -join ', ')"
+  }
+  Write-Host "[ok] app_bootstrap R modules and i18n resources are tracked"
 }
 
 function Assert-NoTrackedGeneratedArtifacts {
@@ -303,6 +323,15 @@ Assert-FileContains (Join-Path $RepoRoot "R\app_misc_ui.R") '"about_source_licen
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "contextIsolation:\s*true" "contextIsolation enabled"
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "nodeIntegration:\s*false" "nodeIntegration disabled"
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "sandbox:\s*true" "sandbox enabled"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "disableHardwareAcceleration" "Electron hardware acceleration disabled by default"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "Startup log:" "startup failure dialog includes log path"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "runRscriptProbe" "bundled Rscript startup probe"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "DEFAULT_SHINY_STARTUP_TIMEOUT_MS = 180000" "bounded Shiny startup timeout"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "STATEDU_STARTUP_TIMEOUT_MS" "configurable Shiny startup timeout"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "net\.connect" "TCP readiness check for local Shiny port"
+Assert-FileNotContains (Join-Path $RepoRoot "packaging\electron\main.js") 'require\("http"\)' "no HTTP readiness probe before Electron load"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "installRendererDiagnostics" "Electron renderer diagnostics"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "renderer snapshot" "renderer state snapshots in startup log"
 Assert-AppBootstrapModulesTracked
 Assert-NoTrackedGeneratedArtifacts
 Assert-NoDistArtifacts (Join-Path $RepoRoot "dist\electron")
@@ -325,6 +354,7 @@ if (-not $SkipUnpackedChecks) {
   Assert-Path (Join-Path $bundledAppDir "LICENSE") "bundled application license"
   Assert-Path (Join-Path $bundledAppDir "license_report.csv") "license report"
   Assert-Path (Join-Path $bundledAppDir "runtime_prune_report.csv") "runtime prune report"
+  Assert-Path (Join-Path $bundledAppDir "runtime_content_prune_report.csv") "runtime content prune report"
   Assert-Path (Join-Path $bundledAppDir "LICENSES") "license text folder"
 
   $licenseCount = (Get-ChildItem -LiteralPath (Join-Path $bundledAppDir "LICENSES") -File | Measure-Object).Count
@@ -339,6 +369,56 @@ if (-not $SkipUnpackedChecks) {
     throw "Unexpected prune actions found: $($unexpected.Name -join ', ')"
   }
   Write-Host "[ok] runtime prune report contains only keep rows"
+
+  $contentPruneRows = @(Import-Csv -LiteralPath (Join-Path $bundledAppDir "runtime_content_prune_report.csv"))
+  $contentPruneBytes = 0
+  if ($contentPruneRows.Count -gt 0) {
+    $contentPruneBytes = ($contentPruneRows | Measure-Object Bytes -Sum).Sum
+  }
+  if ($contentPruneRows.Count -gt 0 -and $contentPruneBytes -lt 1) {
+    throw "Runtime content prune report removed 0 bytes; releases must keep the 1.1.1 packaging pruning rule."
+  }
+
+  $runtimeLibrary = Join-Path $runtimeDir "library"
+  $forbiddenRuntimeContentDirs = @(
+    "doc",
+    "docs",
+    "html",
+    "help",
+    "demo",
+    "demos",
+    "examples",
+    "tests",
+    "testdata",
+    "testthat",
+    "unitTests",
+    "vignettes",
+    "include",
+    "src",
+    "data"
+  )
+  $remainingRuntimeContent = @(
+    Get-ChildItem -LiteralPath $runtimeLibrary -Directory -ErrorAction SilentlyContinue |
+      ForEach-Object {
+        $packageDir = $_.FullName
+        foreach ($dirName in $forbiddenRuntimeContentDirs) {
+          $candidate = Join-Path $packageDir $dirName
+          if (Test-Path -LiteralPath $candidate -PathType Container) {
+            $candidate
+          }
+        }
+      } |
+      Select-Object -First 10
+  )
+  if ($remainingRuntimeContent.Count -gt 0) {
+    throw "Bundled R runtime still contains documentation/test/example/source payloads: $($remainingRuntimeContent -join '; ')"
+  }
+  if ($contentPruneRows.Count -lt 1) {
+    Write-Host "[ok] runtime content prune report is empty because runtime content was already pruned"
+  } else {
+    Write-Host "[ok] runtime content prune report removed $contentPruneBytes byte(s)"
+  }
+  Write-Host "[ok] bundled R runtime has no documentation/test/example/source payload directories"
 
   $prevPref = $ErrorActionPreference
   $ErrorActionPreference = "SilentlyContinue"

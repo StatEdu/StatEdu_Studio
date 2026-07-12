@@ -1,5 +1,173 @@
 # Changelog
 
+## v1.1.3 - 2026-07-12
+
+### Changed
+
+- Promoted the current stabilized developer build to the official `1.1.3` installer.
+- Kept the public-release scope aligned with the 1.1.1 packaging rule by excluding bundled R runtime documentation, tests, examples, source payloads, and other non-runtime content.
+- Added multilingual coverage for new latent-analysis project folder labels, data-file placeholders, DAT delimiter choices, and shared analysis controls.
+
+### Fixed
+
+- Fixed Excel import review so selected Excel files remain interactive and load through the sheet/start-cell review workflow.
+- Limited shared "View selected data" previews to the selected variables and 15 rows.
+- Fixed Latent Mplus project/output folder resolution so output is created beside the originally loaded data file when the original path is available.
+- Changed Latent Mplus settings save to open a save dialog so the file name can be chosen.
+- Left-aligned the Latent Mplus project/output folder display.
+- Routed remaining direct UI labels through the shared i18n table so language overlays can translate newly added data, regression, mediation, moderation, and latent-analysis options.
+- Preserved official-release exclusion of the mediation/moderation custom model canvas.
+
+## v1.1.2-dev - 2026-07-11
+
+### Changed
+
+- Updated the active development line to `1.1.2-dev`.
+- Refined shared three-block analysis layouts and footer action placement for consistent spacing across analysis pages.
+- Updated longitudinal / panel result presentation toward B5 portrait-oriented, hierarchical-regression-style coefficient output.
+
+### Fixed
+
+- Fixed Latent Mplus project/output folder resolution so generated output is created under the folder that contains the originally loaded data file, even when Shiny receives a temporary upload path.
+- Preserved native file-dialog data paths over stale temporary upload paths in the Latent Mplus data loader.
+- Added original-file lookup by filename while excluding generated result/example folders such as `Mplus_output`, `mplus_tmp`, `output`, `outputs`, and `Mplus_examples`.
+
+## v1.1.1 - 2026-07-07
+
+### Fixed
+
+- Released a patch installer so Windows upgrades replace the packaged desktop files instead of reusing a stale same-version install.
+- Hardened Electron startup diagnostics by allowing a longer Shiny startup window and recording R process output when startup fails.
+- Fixed desktop data-file loading, Korean startup language selection, complex-sample design file handling, and blank label preservation.
+
+## v1.1.0 - 2026-07-06
+
+### Added
+
+- Promoted the 1.1.0 public release with all analysis workflows except the Mediation / Moderation Custom Model canvas.
+- Added public-release save gating: HTML save remains enabled by default while figure, PDF, Excel, and Add result controls stay visible but disabled.
+- Kept t-test / ANOVA as the public export exception with HTML, figure, PDF, Excel, and Add result enabled; t-test / ANOVA Result collections can export Excel and Word.
+- Added a developer installer profile for `1.1.0-dev` that keeps the full current feature set enabled.
+
+### Changed
+
+- Updated Electron release profiling so semantic release versions build as public StatEdu Studio installers and `-dev` versions build as developer installers.
+
+## v1.0.26-dev - 2026-07-06
+
+### Added
+
+- Added Data Editor workflows for merging multiple data files and creating one-row-per-ID aggregate datasets.
+- Added a reusable complex-sample design setup page so design variables can be saved and reused across complex-sample analyses.
+
+### Changed
+
+- Refined shared analysis action-row layout, custom model canvas alignment/edge controls, StatEdu branding assets, and Latent/Mplus B5-oriented table and Word export output.
+- Updated user and method documentation for the expanded data-editing, complex-sample, custom model canvas, and latent-analysis workflows.
+
+### Fixed
+
+- Restored i18n and UI layout contract compliance for the new Data Editor tools and figure-save notifications.
+
+## v1.0.25-dev - 2026-07-05
+
+### Added
+
+- Expanded the custom mediation/moderation canvas to support result-only diagrams, editable result diagrams, sequential mediation paths, analysis option controls, and non-significant dashed path styling.
+- Added broader multilingual coverage for the custom mediation/moderation canvas menus, dialogs, toolbar labels, and static analysis menu entry.
+
+### Changed
+
+- Improved custom canvas auto-alignment, default variable placement, arrowhead rendering, run-option popover layout, reset confirmation, and stale-arrow cleanup.
+- Kept the drawn model layout and saved `.studio` model JSON consistent between the editing canvas and result diagram.
+
+## v1.0.24-dev - 2026-07-05
+
+### Added
+
+- Added a SmartPLS-style custom mediation/moderation canvas with variable dragging, role assignment, arrows, moderation lines, styling controls, model save/load, and execution through the existing mediation/moderation engine.
+- Added a browse button for selecting the default file-save folder in Preferences.
+
+### Changed
+
+- Saved custom model canvas files now use the `.studio` extension while still allowing older JSON model files to be loaded.
+- Improved curved-arrow control handles and moderation-line arrowheads in the custom model canvas.
+
+## v1.0.23-dev - 2026-07-05
+
+### Changed
+
+- Polished multilingual interface coverage and translation terminology across supported languages.
+- Kept complex-sample, longitudinal, settings, and latent-analysis UI text aligned with the shared localization catalog.
+
+## v1.0.22-dev - 2026-07-04
+
+### Added
+
+- Added file-based Japanese and Chinese UI translations with a language registry for future language expansion.
+
+### Changed
+
+- Routed Data Editor, Complex Samples, preferences, and latent-analysis menu labels through the shared i18n layer.
+- Expanded release validation to check multilingual translation coverage and packaged language resources.
+
+## v1.0.21-dev - 2026-07-03
+
+### Added
+
+- Added a Complex Samples correlation overview section for method, pair count, p-value adjustment, design N, and design df reporting.
+
+### Changed
+
+- Improved Complex Samples correlation handling for ordered variables by converting them to ordinal scores before design-based covariance estimation.
+- Documented Complex Samples correlation reporting details in English and Korean method notes.
+
+## v1.0.20-dev - 2026-07-03
+
+### Added
+
+- Added Complex Samples correlation analysis with Pearson and Spearman rank options.
+- Exposed Longitudinal / Panel Models in the public Analysis menu.
+
+### Changed
+
+- Use a `Filter` variable as the first subpopulation candidate and default its condition to value match `1`.
+- Updated public-release validation notes so only Excel and Word result exports remain hidden by the public release flag.
+
+## v1.0.19-dev - 2026-07-03
+
+### Added
+
+- Added Complex Samples validation coverage for frequency/descriptive, cross-tabulation, t-test/ANOVA, regression, and logistic regression workflows.
+
+### Changed
+
+- Hardened Complex Samples analyses so invalid or all-missing variables and combinations are reported without stopping other requested outputs.
+- Added complex-sample validation to the core stabilization check sequence.
+
+## v1.0.18-dev - 2026-07-02
+
+### Added
+
+- Added analysis-specific Complex Samples reporting options and additional output statistics: median, effect size, model Wald tests, linear-model R-squared, and logistic pseudo R-squared.
+
+### Changed
+
+- Standardized analysis workspace placement so menus use the same left-anchored layout across window sizes.
+
+## v1.0.17-dev - 2026-07-02
+
+### Added
+
+- Added the Complex Samples analysis menu with frequency/descriptive, cross-tabulation, t-test/ANOVA, regression, and logistic regression workflows.
+- Added shared complex-sample design-variable settings, replicate-weight settings, subpopulation filtering, and selected-data preview support.
+- Exposed the Longitudinal / Panel Models workflow in the development UI.
+
+### Changed
+
+- Replaced the initial complex-sample options with reporting options for 95% CI, weighted N, design df, and design effect / CV.
+- Aligned calculator variable-scope controls and data-editor selected-variable filtering behavior.
+
 ## v1.0.15-dev - 2026-07-02
 
 ### Fixed

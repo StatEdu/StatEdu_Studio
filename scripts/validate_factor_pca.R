@@ -437,8 +437,9 @@ expect_true(
   "Expected low primary and high cross-loadings to be marked with red background"
 )
 factor_loading_problem_html <- as.character(htmltools::renderTags(coefficient_html_table(factor_loading_problem$loadings_table))$html)
+expected_low_loading <- format_decimal3(0.25)
 expect_true(
-  grepl(".250", factor_loading_problem_html, fixed = TRUE) &&
+  grepl(expected_low_loading, factor_loading_problem_html, fixed = TRUE) &&
     grepl("background:#fee2e2", factor_loading_problem_html, fixed = TRUE),
   "Expected low primary loading to be shown and highlighted when problem highlighting is enabled"
 )

@@ -427,6 +427,9 @@ variable_table_callback_script <- function() {
         }
 
         function requestVariableTablePageRestore() {
+          if (window.easyflowRememberViewport) {
+            window.easyflowRememberViewport('variable_table', table.table().container());
+          }
           try {
             window.easyflowVariableTablePage = table.page.info().page || 0;
             window.easyflowVariableTableRestorePending = window.easyflowVariableTablePage > 0;
@@ -456,9 +459,13 @@ variable_table_callback_script <- function() {
           [0, 50, 150, 300].forEach(function(delay) {
             window.setTimeout(restoreVariableTablePage, delay);
           });
+          if (window.easyflowScheduleViewportRestore) {
+            window.easyflowScheduleViewportRestore('variable_table', table.table().container(), [1, 51, 151, 301]);
+          }
         }
 
         function syncVariableSelection() {
+          requestVariableTablePageRestore();
           var state = currentTableState();
           Shiny.setInputValue('variable_table_state', {
             selected: state.selected,
@@ -469,6 +476,7 @@ variable_table_callback_script <- function() {
         }
 
         function syncVariableTableState() {
+          requestVariableTablePageRestore();
           var state = currentTableState();
           var measurementPairs = Object.keys(state.measurements || {}).map(function(name) {
             return {name: name, value: state.measurements[name]};
@@ -722,6 +730,7 @@ variable_table_callback_script <- function() {
         }
 
         function setCurrentPageSelection(checked) {
+          requestVariableTablePageRestore();
           if (singleSelectRole && checked) {
             var names = selectablePageNames();
             window.easyflowSelectedNames = {};
@@ -775,6 +784,7 @@ variable_table_callback_script <- function() {
           }
         });
         table.on('change', 'input.variable-select', function() {
+          requestVariableTablePageRestore();
           if (window.getSelection) window.getSelection().removeAllRanges();
           $(this).closest('tr').removeClass('selected');
           if ($(this).prop('disabled')) return;
@@ -796,6 +806,7 @@ variable_table_callback_script <- function() {
         });
         table.on('change', 'select.measurement-select', function(e) {
           e.stopPropagation();
+          requestVariableTablePageRestore();
           rememberMeasurementSelect(this, true);
           updateMeasurementAvailability(this);
           syncVariableTableState();

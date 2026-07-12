@@ -307,6 +307,16 @@ coefficient_display_columns <- function(table) {
   labels[result_column_key(labels) == "hc3se"] <- "HC3\nSE"
   labels[result_column_key(labels) == "bootp"] <- "Boot\np"
   labels[result_column_key(labels) == "tolerance"] <- "Tol"
+  custom_labels <- attr(table, "column_display_labels", exact = TRUE)
+  if (!is.null(custom_labels) && length(custom_labels) > 0) {
+    custom_labels <- unlist(custom_labels, use.names = TRUE)
+    if (length(custom_labels) == length(columns) && is.null(names(custom_labels))) {
+      labels <- as.character(custom_labels)
+    } else if (!is.null(names(custom_labels))) {
+      matched <- match(columns, names(custom_labels))
+      labels[is.finite(matched)] <- as.character(custom_labels[matched[is.finite(matched)]])
+    }
+  }
   data.frame(
     source = columns,
     label = labels,
@@ -534,10 +544,20 @@ coefficient_html_table <- function(
   compact_font_size = 12,
   compact_width = 62,
   compact_first_width = 118,
-  compact_min_width = 330
+  compact_min_width = 330,
+  output_table_style = "standard"
 ) {
   if (!is.data.frame(table) || nrow(table) == 0) {
     return(NULL)
+  }
+  output_table_style <- analysis_output_table_style(output_table_style)
+  style_params <- analysis_output_table_style_params(output_table_style)
+  if (!isTRUE(compact) && isTRUE(style_params$compact)) {
+    compact <- TRUE
+    compact_font_size <- style_params$font_size
+    compact_width <- style_params$compact_width
+    compact_first_width <- style_params$compact_first_width
+    compact_min_width <- style_params$min_width
   }
   columns <- names(table)
   display_meta <- coefficient_display_columns(table)
@@ -554,6 +574,7 @@ coefficient_html_table <- function(
   }
   table_class <- paste(
     "coefficient-table",
+    paste0("output-table-style-", output_table_style),
     if (isTRUE(attr(table, "show_df", exact = TRUE))) "coefficient-table-show-df" else "",
     if (isTRUE(attr(table, "mean_sd", exact = TRUE))) "coefficient-table-mean-sd" else "",
     if (isTRUE(attr(table, "trend_analysis", exact = TRUE))) "coefficient-table-trend-analysis" else "",
@@ -561,7 +582,7 @@ coefficient_html_table <- function(
   )
   table_style <- result_table_style(
     font_size = if (isTRUE(compact)) compact_font_size else 12,
-    min_width = if (isTRUE(compact)) compact_min_width else 480
+    min_width = if (isTRUE(compact)) compact_min_width else if (identical(output_table_style, "wide")) style_params$min_width else 480
   )
   if (is.numeric(compact_column_widths) && length(compact_column_widths) == nrow(display_meta)) {
     table_style <- paste0(table_style, "width:100% !important;min-width:0 !important;max-width:100% !important;table-layout:fixed;")

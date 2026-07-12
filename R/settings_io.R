@@ -102,26 +102,22 @@ settings_state_measurements <- function(state) {
 }
 
 settings_external_data_path <- function(settings, settings_path = NULL) {
+  file_name <- basename(settings_scalar(settings$data_file %||% settings$embedded_data_file$name))
+  if (!is.null(settings_path) && nzchar(settings_path) &&
+      nzchar(file_name) && !identical(file_name, ".") &&
+      supported_data_file_extension(file_name)) {
+    candidate <- file.path(dirname(settings_path), file_name)
+    if (valid_data_file_path(candidate)) {
+      return(normalizePath(candidate, winslash = "/", mustWork = TRUE))
+    }
+  }
+
   absolute_path <- settings_scalar(settings$data_file_path %||% settings$data_file_absolute_path %||% "")
   if (nzchar(absolute_path) && supported_data_file_extension(absolute_path) && valid_data_file_path(absolute_path)) {
     return(normalizePath(absolute_path, winslash = "/", mustWork = TRUE))
   }
 
-  if (is.null(settings_path) || !nzchar(settings_path)) {
-    return("")
-  }
-
-  file_name <- basename(settings_scalar(settings$data_file %||% settings$embedded_data_file$name))
-  if (!nzchar(file_name) || identical(file_name, ".") || !supported_data_file_extension(file_name)) {
-    return("")
-  }
-
-  candidate <- file.path(dirname(settings_path), file_name)
-  if (!valid_data_file_path(candidate)) {
-    return("")
-  }
-
-  normalizePath(candidate, winslash = "/", mustWork = TRUE)
+  ""
 }
 
 settings_embedded_data_file <- function(settings) {
@@ -254,6 +250,32 @@ settings_category_measurements <- function(table) {
   measurements
 }
 
+settings_calculated_variables <- function(settings) {
+  calculated <- settings$calculated_variables %||% NULL
+  if (is.null(calculated)) {
+    return(data.frame(check.names = FALSE))
+  }
+  if (is.data.frame(calculated)) {
+    return(as.data.frame(calculated, stringsAsFactors = FALSE, check.names = FALSE))
+  }
+  if (is.list(calculated) && length(calculated) > 0) {
+    out <- tryCatch(
+      as.data.frame(calculated, stringsAsFactors = FALSE, check.names = FALSE),
+      error = function(e) data.frame(check.names = FALSE)
+    )
+    return(out)
+  }
+  data.frame(check.names = FALSE)
+}
+
+settings_complex_sample_design <- function(settings) {
+  design <- settings$complex_sample_design %||% NULL
+  if (exists("complex_sample_normalize_design_state", mode = "function")) {
+    return(complex_sample_normalize_design_state(design))
+  }
+  design %||% list()
+}
+
 settings_restore_state <- function(settings) {
   selected <- settings_vector(settings$selected_variables)
   dependent <- settings_vector(settings$dependent_variables %||% settings$dependent)
@@ -267,7 +289,7 @@ settings_restore_state <- function(settings) {
       labels <- stats::setNames(as.character(info$var_label), as.character(info$name))
     }
   }
-  labels <- labels[nzchar(names(labels)) & nzchar(trimws(as.character(labels)))]
+  labels <- labels[!is.na(names(labels)) & nzchar(names(labels))]
 
   info <- settings_variable_info(settings)
   measurements <- settings_measurement_overrides(settings)
@@ -294,6 +316,8 @@ settings_restore_state <- function(settings) {
     variable_info = info,
     measurement_overrides = measurements,
     category_labels = category_labels,
+    calculated_variables = settings_calculated_variables(settings),
+    complex_sample_design = settings_complex_sample_design(settings),
     user_missing_rules = user_missing_rules,
     selection_applied = isTRUE(settings$selection_applied) ||
       data_step %in% c("review_selected_variables", "category_labels"),
@@ -381,7 +405,7 @@ prepare_settings_payload_data <- function(
     labels[names(category_labels_named)] <- category_labels_named
   }
 
-  labels <- labels[!is.na(names(labels)) & nzchar(names(labels)) & nzchar(trimws(as.character(labels)))]
+  labels <- labels[!is.na(names(labels)) & nzchar(names(labels))]
   if (!is.null(variable_info) && length(labels) > 0 && "name" %in% names(variable_info)) {
     matched <- variable_info$name %in% names(labels)
     variable_info$var_label[matched] <- unname(labels[variable_info$name[matched]])
@@ -423,11 +447,16 @@ build_settings_object <- function(
   predictor_order,
   category_labels,
   user_missing_rules = NULL,
+  calculated_variables = NULL,
+  complex_sample_design = NULL,
   selected_variables,
   bootstrap_resamples,
-  seed
+  seed,
+  residual_diagnostics = TRUE,
+  auto_method = TRUE
 ) {
   variable_names <- if (is.null(variable_info)) character(0) else as.character(variable_info$name)
+  calculated_variables <- as.data.frame(calculated_variables %||% data.frame(check.names = FALSE), stringsAsFactors = FALSE, check.names = FALSE)
   list(
     app = "statedu_studio",
     version = app_version,
@@ -457,9 +486,13 @@ build_settings_object <- function(
     predictor_order = I(as.character(predictor_order)),
     category_value_labels = I(if (is.null(category_labels)) list() else category_labels),
     user_missing_rules = I(normalize_missing_rules(user_missing_rules)),
+    calculated_variables = I(if (ncol(calculated_variables) == 0) list() else calculated_variables),
+    complex_sample_design = complex_sample_design %||% list(),
     selected_variables = I(as.character(selected_variables %||% character(0))),
-    bootstrap_resamples = as.integer(bootstrap_resamples %||% 1000),
-    seed = seed %||% default_seed()
+    bootstrap_resamples = as.integer(bootstrap_resamples %||% 5000),
+    seed = seed %||% default_seed(),
+    residual_diagnostics = isTRUE(residual_diagnostics),
+    auto_method = isTRUE(auto_method)
   )
 }
 
@@ -481,6 +514,8 @@ prepare_current_settings_object <- function(
   category_table = NULL,
   category_labels = NULL,
   user_missing_rules = NULL,
+  calculated_variables = NULL,
+  complex_sample_design = NULL,
   selection_applied = FALSE,
   roles_applied = FALSE,
   filter_names = character(0),
@@ -490,8 +525,10 @@ prepare_current_settings_object <- function(
   dependent_order = character(0),
   predictor_order = character(0),
   selected_variables = character(0),
-  bootstrap_resamples = 1000,
-  seed = NULL
+  bootstrap_resamples = 5000,
+  seed = NULL,
+  residual_diagnostics = TRUE,
+  auto_method = TRUE
 ) {
   payload <- prepare_settings_payload_data(
     variable_info = variable_info,
@@ -529,9 +566,13 @@ prepare_current_settings_object <- function(
       predictor_order = predictor_order,
       category_labels = payload$category_labels,
       user_missing_rules = payload$user_missing_rules,
+      calculated_variables = calculated_variables,
+      complex_sample_design = complex_sample_design,
       selected_variables = selected_variables,
       bootstrap_resamples = bootstrap_resamples,
-      seed = seed
+      seed = seed,
+      residual_diagnostics = residual_diagnostics,
+      auto_method = auto_method
     ),
     payload = payload
   )
@@ -579,6 +620,8 @@ create_current_settings_fn <- function(
   category_label_values_fn,
   category_label_table_data_fn,
   user_missing_rules_fn = NULL,
+  calculated_variables_fn = NULL,
+  complex_sample_design_state_fn = NULL,
   selection_applied_fn,
   roles_applied_fn,
   filter_names_fn,
@@ -624,6 +667,8 @@ create_current_settings_fn <- function(
       category_table = category_label_values_fn(),
       category_labels = category_label_table_data_fn(),
       user_missing_rules = if (is.function(user_missing_rules_fn)) user_missing_rules_fn() else NULL,
+      calculated_variables = if (is.function(calculated_variables_fn)) calculated_variables_fn() else NULL,
+      complex_sample_design = if (is.function(complex_sample_design_state_fn)) complex_sample_normalize_design_state(complex_sample_design_state_fn()) else NULL,
       selection_applied = selection_applied_fn(),
       roles_applied = roles_applied_fn(),
       filter_names = filter_names_fn(),
@@ -633,8 +678,10 @@ create_current_settings_fn <- function(
       dependent_order = sync_dependent_order_fn(update_input = FALSE),
       predictor_order = sync_predictor_order_fn(update_input = FALSE),
       selected_variables = selected_names_fn(),
-      bootstrap_resamples = input$boot_r %||% 1000,
-      seed = input$seed %||% default_seed()
+      bootstrap_resamples = input$boot_r %||% 5000,
+      seed = input$seed %||% default_seed(),
+      residual_diagnostics = input$residual_diagnostics %||% TRUE,
+      auto_method = isTRUE(input$residual_diagnostics %||% TRUE) && isTRUE(input$auto_method %||% TRUE)
     )
     measurement_overrides(prepared$payload$measurement_overrides)
     var_label_overrides(prepared$payload$var_label_overrides)
@@ -677,4 +724,43 @@ read_settings_json_file <- function(path) {
     stop("This file is not a StatEdu Studio Settings file.", call. = FALSE)
   }
   settings
+}
+
+write_complex_sample_design_json_file <- function(design, path, app_version = "") {
+  if (is.null(path) || !nzchar(path)) {
+    stop("A complex-sample design file path is required.", call. = FALSE)
+  }
+  path <- normalize_complex_sample_design_save_path(path)
+  directory <- dirname(normalizePath(path, winslash = "/", mustWork = FALSE))
+  if (!dir.exists(directory)) {
+    dir.create(directory, recursive = TRUE, showWarnings = FALSE)
+  }
+  if (!dir.exists(directory)) {
+    stop(sprintf("Design folder does not exist or cannot be created: %s", directory), call. = FALSE)
+  }
+  payload <- list(
+    type = "statedu_complex_sample_design",
+    version = 1L,
+    app_version = as.character(app_version %||% ""),
+    complex_sample_design = complex_sample_normalize_design_state(design)
+  )
+  writeLines(
+    as.character(jsonlite::toJSON(payload, pretty = TRUE, auto_unbox = TRUE)),
+    con = path,
+    useBytes = TRUE
+  )
+  invisible(list(path = normalizePath(path, winslash = "/", mustWork = FALSE)))
+}
+
+read_complex_sample_design_json_file <- function(path) {
+  payload <- statedu_time_expr(
+    "read_complex_sample_design_json_file",
+    jsonlite::fromJSON(path),
+    detail = sprintf("file=%s", basename(as.character(path %||% "")))
+  )
+  type <- as.character(payload$type %||% "")
+  if (!identical(type, "statedu_complex_sample_design")) {
+    stop("This file is not a StatEdu Complex Sample Design file.", call. = FALSE)
+  }
+  complex_sample_normalize_design_state(payload$complex_sample_design %||% list())
 }

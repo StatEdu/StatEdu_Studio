@@ -59,7 +59,6 @@ available in public release text:
 - Free/Pro/Latent edition gates.
 - License activation, device management, or offline grace-period enforcement.
 - In-app update checks or automatic update handoff.
-- Longitudinal / Panel Models public menu exposure.
 - Excel result export.
 - Word result export.
 - Public installer infrastructure beyond the verified download path.

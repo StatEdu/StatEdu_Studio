@@ -1,7 +1,7 @@
 {
-    "name":  "statedu-studio",
-    "version":  "1.0.16-dev",
-    "description":  "StatEdu Studio desktop installer",
+    "name":  "statedu-studio-dev",
+    "version":  "1.1.4-dev",
+    "description":  "StatEdu Studio developer desktop installer",
     "author":  "StatEdu",
     "main":  "main.js",
     "private":  true,
@@ -14,8 +14,8 @@
                             "electron-builder":  "26.8.1"
                         },
     "build":  {
-                  "appId":  "com.statedu.studio",
-                  "productName":  "StatEdu Studio",
+                  "appId":  "com.statedu.studio.dev",
+                  "productName":  "StatEdu Studio Dev",
                   "asar":  false,
                   "directories":  {
                                       "output":  "../../dist/electron"
@@ -38,7 +38,7 @@
                                                           ]
                                              }
                                          ],
-                              "artifactName":  "StatEdu_Studio_Setup_${version}.${ext}"
+                              "artifactName":  "StatEdu_Studio_Dev_Setup_${version}.${ext}"
                           },
                   "nsis":  {
                                "installerIcon":  "build/icon.ico",
@@ -47,7 +47,7 @@
                                "allowToChangeInstallationDirectory":  true,
                                "createDesktopShortcut":  true,
                                "createStartMenuShortcut":  true,
-                               "shortcutName":  "StatEdu Studio",
+                               "shortcutName":  "StatEdu Studio Dev",
                                "deleteAppDataOnUninstall":  false
                            },
                   "fileAssociations":  [

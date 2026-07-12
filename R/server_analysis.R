@@ -35,7 +35,8 @@ register_penalized_regression_handlers <- function(
   labels_fn,
   category_table_fn = function() NULL,
   penalized_result,
-  seed_fn
+  seed_fn,
+  app_language_fn = NULL
 ) {
   penalized_profile_settings <- function(profile) {
     switch(
@@ -85,10 +86,17 @@ register_penalized_regression_handlers <- function(
           alpha_grid = profile$alpha_grid,
           selection_bootstrap_resamples = profile$bootstrap
         ))
-        showNotification(sprintf("Ridge, LASSO, and Elastic Net finished (%s mode).", profile$label), type = "message")
+        showNotification(
+          sprintf(statedu_t("analysis.status.penalized_finished", statedu_current_language(app_language_fn)), profile$label),
+          type = "message"
+        )
       },
       error = function(e) {
-        showNotification(paste("Penalized regression failed:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(
+          paste(statedu_t("analysis.status.penalized_failed", statedu_current_language(app_language_fn)), conditionMessage(e)),
+          type = "error",
+          duration = 8
+        )
       }
     )
   })
@@ -160,6 +168,7 @@ register_regression_results_output <- function(
         show_sr2 = input$show_sr2,
         show_f2 = input$show_f2,
         show_vif = input$show_vif,
+        output_table_style = analysis_output_table_style(input$regression_output_table_style),
         penalized = penalized,
         plot_blocks = lapply(seq_along(results), function(index) {
           regression_plot_result_block(
@@ -203,10 +212,11 @@ register_hierarchical_results_output <- function(
           category_table = category_table_fn(),
           refs = regression_reference_values_static(category_table_fn()),
           value_labels = category_value_label_lookup_static(category_table_fn()),
-          show_sr2 = input$hierarchical_show_sr2,
-          show_f2 = input$hierarchical_show_f2,
-          show_vif = input$hierarchical_show_vif,
-          plot_blocks = lapply(seq_along(results), function(index) {
+            show_sr2 = input$hierarchical_show_sr2,
+            show_f2 = input$hierarchical_show_f2,
+            show_vif = input$hierarchical_show_vif,
+            output_table_style = analysis_output_table_style(input$hierarchical_output_table_style),
+            plot_blocks = lapply(seq_along(results), function(index) {
             regression_plot_result_block(
               output,
               results[[index]],
@@ -230,6 +240,7 @@ register_hierarchical_results_output <- function(
         show_sr2 = input$hierarchical_show_sr2,
         show_f2 = input$hierarchical_show_f2,
         show_vif = input$hierarchical_show_vif,
+        output_table_style = analysis_output_table_style(input$hierarchical_output_table_style),
         plot_blocks = lapply(seq_along(results), function(index) {
           regression_plot_result_block(
             output,
@@ -254,7 +265,8 @@ register_hierarchical_save_handlers <- function(
   analyses_fn,
   variable_table_fn,
   labels_fn,
-  category_table_fn
+  category_table_fn,
+  app_language_fn = NULL
 ) {
   output$hierarchical_save_control <- renderUI({
     if (is.null(input$run_hierarchical) || input$run_hierarchical == 0) {
@@ -276,7 +288,7 @@ register_hierarchical_save_handlers <- function(
     shiny::req(!is.null(input$run_hierarchical), input$run_hierarchical > 0)
     path <- choose_excel_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
-      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) {
@@ -294,12 +306,13 @@ register_hierarchical_save_handlers <- function(
           category_table_fn(),
           show_sr2 = input$hierarchical_show_sr2,
           show_f2 = input$hierarchical_show_f2,
-          show_vif = input$hierarchical_show_vif
+          show_vif = input$hierarchical_show_vif,
+          output_table_style = analysis_output_table_style(input$hierarchical_output_table_style)
         )
-        showNotification(sprintf("Analysis results saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save analysis results:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
@@ -308,7 +321,7 @@ register_hierarchical_save_handlers <- function(
     shiny::req(!is.null(input$run_hierarchical), input$run_hierarchical > 0)
     directory <- choose_figure_save_dir()
     if (length(directory) == 0 || !nzchar(directory[[1]])) {
-      showNotification("Folder selection dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.folder_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     tryCatch(
@@ -321,10 +334,10 @@ register_hierarchical_save_handlers <- function(
           variable_table_fn(),
           labels_fn()
         )
-        showNotification(sprintf("Saved %s figure file(s): %s", length(saved), directory), type = "message")
+        showNotification(sprintf(statedu_t("result.figures_saved", statedu_current_language(app_language_fn)), length(saved), directory), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save figures:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.figures_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
@@ -333,7 +346,7 @@ register_hierarchical_save_handlers <- function(
     shiny::req(!is.null(input$run_hierarchical), input$run_hierarchical > 0)
     path <- choose_html_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
-      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     if (!grepl("\\.html?$", path, ignore.case = TRUE)) {
@@ -351,12 +364,13 @@ register_hierarchical_save_handlers <- function(
           category_table = category_table_fn(),
           show_sr2 = input$hierarchical_show_sr2,
           show_f2 = input$hierarchical_show_f2,
-          show_vif = input$hierarchical_show_vif
+          show_vif = input$hierarchical_show_vif,
+          output_table_style = analysis_output_table_style(input$hierarchical_output_table_style)
         )
-        showNotification(sprintf("HTML results saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save HTML results:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
@@ -365,7 +379,7 @@ register_hierarchical_save_handlers <- function(
     shiny::req(!is.null(input$run_hierarchical), input$run_hierarchical > 0)
     path <- choose_pdf_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
-      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     if (!grepl("\\.pdf$", path, ignore.case = TRUE)) {
@@ -385,10 +399,10 @@ register_hierarchical_save_handlers <- function(
           show_f2 = input$hierarchical_show_f2,
           show_vif = input$hierarchical_show_vif
         )
-        showNotification(sprintf("PDF results saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save PDF results:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
@@ -396,7 +410,7 @@ register_hierarchical_save_handlers <- function(
   register_add_result_snapshot(input, session, "add_hierarchical_result", function() {
     results <- tryCatch(analyses_fn(), error = function(e) NULL)
     if (regression_results_are_hierarchical(results)) "Hierarchical regression" else "Regression"
-  }, "hierarchical_results")
+  }, "hierarchical_results", app_language_fn = app_language_fn)
 
   invisible(TRUE)
 }
@@ -408,7 +422,8 @@ register_analysis_save_handlers <- function(
   analyses_fn,
   variable_table_fn,
   labels_fn,
-  category_table_fn
+  category_table_fn,
+  app_language_fn = NULL
 ) {
   output$regression_save_control <- renderUI({
     if (is.null(input$run) || input$run == 0) {
@@ -433,7 +448,7 @@ register_analysis_save_handlers <- function(
     shiny::req(!is.null(input$run), input$run > 0)
     path <- choose_excel_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
-      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) {
@@ -449,12 +464,13 @@ register_analysis_save_handlers <- function(
           category_table_fn(),
           show_sr2 = input$show_sr2,
           show_f2 = input$show_f2,
-          show_vif = input$show_vif
+          show_vif = input$show_vif,
+          output_table_style = analysis_output_table_style(input$regression_output_table_style)
         )
-        showNotification(sprintf("Analysis results saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save analysis results:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
@@ -463,7 +479,7 @@ register_analysis_save_handlers <- function(
     shiny::req(!is.null(input$run), input$run > 0)
     directory <- choose_figure_save_dir()
     if (length(directory) == 0 || !nzchar(directory[[1]])) {
-      showNotification("Folder selection dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.folder_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     tryCatch(
@@ -474,10 +490,10 @@ register_analysis_save_handlers <- function(
           variable_table_fn(),
           labels_fn()
         )
-        showNotification(sprintf("Saved %s figure file(s): %s", length(saved), directory), type = "message")
+        showNotification(sprintf(statedu_t("result.figures_saved", statedu_current_language(app_language_fn)), length(saved), directory), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save figures:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.figures_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
@@ -486,7 +502,7 @@ register_analysis_save_handlers <- function(
     shiny::req(!is.null(input$run), input$run > 0)
     path <- choose_html_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
-      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     if (!grepl("\\.html?$", path, ignore.case = TRUE)) {
@@ -502,12 +518,13 @@ register_analysis_save_handlers <- function(
           category_table = category_table_fn(),
           show_sr2 = input$show_sr2,
           show_f2 = input$show_f2,
-          show_vif = input$show_vif
+          show_vif = input$show_vif,
+          output_table_style = analysis_output_table_style(input$regression_output_table_style)
         )
-        showNotification(sprintf("HTML results saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save HTML results:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
@@ -516,7 +533,7 @@ register_analysis_save_handlers <- function(
     shiny::req(!is.null(input$run), input$run > 0)
     path <- choose_pdf_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
-      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     if (!grepl("\\.pdf$", path, ignore.case = TRUE)) {
@@ -534,15 +551,15 @@ register_analysis_save_handlers <- function(
           show_f2 = input$show_f2,
           show_vif = input$show_vif
         )
-        showNotification(sprintf("PDF results saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save PDF results:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
 
-  register_add_result_snapshot(input, session, "add_regression_result", "Regression", "regression_results")
+  register_add_result_snapshot(input, session, "add_regression_result", "Regression", "regression_results", app_language_fn = app_language_fn)
 
   invisible(TRUE)
 }

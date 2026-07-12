@@ -15,7 +15,7 @@ register_paired_rm_handlers <- function(
   repeated_groups <- reactiveVal(list())
   active_list <- reactiveVal(NULL)
   assumption_check <- reactiveVal(FALSE)
-  adjustment <- reactiveVal("holm")
+  adjustment <- reactiveVal(statedu_multiple_correction_default())
   paired_rm_result <- reactiveVal(NULL)
 
   current_selected <- reactive(as.character(selected_names_fn() %||% character(0)))
@@ -74,7 +74,7 @@ register_paired_rm_handlers <- function(
   }, ignoreInit = TRUE)
 
   observeEvent(input$paired_rm_adjustment, {
-    adjustment(as.character(input$paired_rm_adjustment %||% "holm"))
+    adjustment(as.character(input$paired_rm_adjustment %||% statedu_multiple_correction_default()))
   }, ignoreInit = TRUE)
 
   observe({
@@ -94,13 +94,13 @@ register_paired_rm_handlers <- function(
     selected <- current_selected()
     source_values <- paired_transfer_selection_order(source_values, source_values, selected)
     if (length(source_values) < 3L) {
-      showNotification("Select three or more variables to create one repeated-measures row.", type = "warning")
+      showNotification(statedu_t("analysis.validation.repeated_select_three", statedu_current_language(app_language_fn)), type = "warning")
       return(FALSE)
     }
     measurements <- paired_measurement_lookup(current_variable_table())
     levels <- vapply(source_values, function(name) named_value(measurements, name, "continuous"), character(1))
     if (length(unique(levels)) > 1) {
-      showNotification("Repeated-measures variables must have the same measurement level.", type = "warning")
+      showNotification(statedu_t("analysis.validation.repeated_same_measurement", statedu_current_language(app_language_fn)), type = "warning")
       return(FALSE)
     }
     groups <- repeated_groups()
@@ -162,13 +162,13 @@ register_paired_rm_handlers <- function(
     selected <- current_selected()
     source_values <- intersect(values, selected)
     if (length(source_values) < 3L) {
-      showNotification("Select three or more variables to create one repeated-measures row.", type = "warning")
+      showNotification(statedu_t("analysis.validation.repeated_select_three", statedu_current_language(app_language_fn)), type = "warning")
       return()
     }
     measurements <- paired_measurement_lookup(current_variable_table())
     levels <- vapply(source_values, function(name) named_value(measurements, name, "continuous"), character(1))
     if (length(unique(levels)) > 1) {
-      showNotification("Repeated-measures variables must have the same measurement level.", type = "warning")
+      showNotification(statedu_t("analysis.validation.repeated_same_measurement", statedu_current_language(app_language_fn)), type = "warning")
       return()
     }
     groups <- repeated_groups()
@@ -259,7 +259,7 @@ register_paired_rm_handlers <- function(
     if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
     if (!grepl("\\.html?$", path, ignore.case = TRUE)) path <- paste0(path, ".html")
     write_paired_rm_results_html(result, path)
-    showNotification(sprintf("HTML results saved: %s", path), type = "message")
+    showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
 
   observeEvent(input$save_paired_rm_pdf_dialog, {
@@ -269,7 +269,7 @@ register_paired_rm_handlers <- function(
     if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
     if (!grepl("\\.pdf$", path, ignore.case = TRUE)) path <- paste0(path, ".pdf")
     write_paired_rm_results_pdf(result, path)
-    showNotification(sprintf("PDF results saved: %s", path), type = "message")
+    showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
 
   observeEvent(input$paired_rm_repeated_doubleclick, {
@@ -292,7 +292,7 @@ register_paired_rm_handlers <- function(
     if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
     if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) path <- paste0(path, ".xlsx")
     save_paired_rm_excel_file(result, path)
-    showNotification(sprintf("Analysis results saved: %s", path), type = "message")
+    showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
 
   register_add_result_snapshot(input, session, "add_paired_rm_result", "Paired test 3+", "paired_rm_results")

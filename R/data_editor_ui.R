@@ -18,7 +18,7 @@ data_editor_command_panel <- function(title, subtitle, body_title, body_text) {
 
 data_editor_same_variable_tab_panel <- function(language = statedu_initial_language()) {
   tabPanel(
-    statedu_text(language, "Recode variable", statedu_utf8("ebb380ec889820eba6acecbd94eb94a9")),
+    statedu_t("data_editor.recode_title", language),
     value = "data_editor_recode_same",
     data_editor_same_variable_panel(language)
   )
@@ -26,7 +26,7 @@ data_editor_same_variable_tab_panel <- function(language = statedu_initial_langu
 
 data_editor_likert_tab_panel <- function(language = statedu_initial_language()) {
   tabPanel(
-    statedu_text(language, "Auto Likert conversion", statedu_utf8("4c696b65727420ec9e90eb8f9920ebb380ed9998")),
+    statedu_t("data_editor.likert_title", language),
     value = "data_editor_likert",
     data_editor_likert_panel(language)
   )
@@ -34,7 +34,7 @@ data_editor_likert_tab_panel <- function(language = statedu_initial_language()) 
 
 data_editor_different_variable_tab_panel <- function(language = statedu_initial_language()) {
   tabPanel(
-    statedu_text(language, "Auto reverse coding", statedu_utf8("ec97adecbd94eb94a920ec9e90eb8f9920ecb298eba6ac")),
+    statedu_t("data_editor.reverse_title", language),
     value = "data_editor_recode_different",
     data_editor_different_variable_panel(language)
   )
@@ -42,7 +42,7 @@ data_editor_different_variable_tab_panel <- function(language = statedu_initial_
 
 data_editor_coding_error_check_tab_panel <- function(language = statedu_initial_language()) {
   tabPanel(
-    statedu_text(language, "Auto coding error check", statedu_utf8("ec9e90eb8f9920ecbd94eb94a920ec98a4eba59820ed9995ec9db8")),
+    statedu_t("data_editor.coding_error_title", language),
     value = "data_editor_coding_error_check",
     data_editor_coding_error_check_panel(language)
   )
@@ -50,7 +50,7 @@ data_editor_coding_error_check_tab_panel <- function(language = statedu_initial_
 
 data_editor_variable_calculation_tab_panel <- function(language = statedu_initial_language()) {
   tabPanel(
-    statedu_text(language, "Auto variable calculation", statedu_utf8("ebb380ec889820ec9e90eb8f9920eab384ec82b0")),
+    statedu_t("data_editor.calculation_title", language),
     value = "data_editor_variable_calculation",
     data_editor_variable_calculation_panel(language)
   )
@@ -58,7 +58,7 @@ data_editor_variable_calculation_tab_panel <- function(language = statedu_initia
 
 data_editor_variable_transformation_tab_panel <- function(language = statedu_initial_language()) {
   tabPanel(
-    statedu_text(language, "Variable transformation", statedu_utf8("ebb380ec889820ebb380ed9998")),
+    statedu_t("data_editor.transform_title", language),
     value = "data_editor_variable_transformation",
     data_editor_variable_transformation_panel(language)
   )
@@ -66,7 +66,7 @@ data_editor_variable_transformation_tab_panel <- function(language = statedu_ini
 
 data_editor_missing_values_tab_panel <- function(language = statedu_initial_language()) {
   tabPanel(
-    statedu_text(language, "Auto missing values", statedu_utf8("eab2b0ecb8a1eab09220ec9e90eb8f9920ecb298eba6ac")),
+    statedu_t("data_editor.missing_title", language),
     value = "data_editor_missing_values",
     data_editor_missing_panel(language)
   )
@@ -74,32 +74,49 @@ data_editor_missing_values_tab_panel <- function(language = statedu_initial_lang
 
 data_editor_wide_long_tab_panel <- function(language = statedu_initial_language()) {
   tabPanel(
-    statedu_text(language, "Wide to Long", statedu_utf8("ec9980ec9db4eb939c2deba1b120ebb380ed9998")),
+    statedu_t("data_editor.wide_long_title", language),
     value = "data_editor_wide_long",
     data_editor_wide_long_panel(language)
   )
 }
 
+data_editor_merge_tab_panel <- function(language = statedu_initial_language()) {
+  tabPanel(
+    merge_text(language, "Merge", statedu_utf8("eb8db0ec9db4ed84b020ebb391ed95a9")),
+    value = "data_editor_merge",
+    data_editor_merge_panel(language)
+  )
+}
+
+data_editor_id_aggregate_tab_panel <- function(language = statedu_initial_language()) {
+  tabPanel(
+    id_aggregate_text(language, "ID aggregation", statedu_utf8("494420eca791eab384")),
+    value = "data_editor_id_aggregate",
+    data_editor_id_aggregate_panel(language)
+  )
+}
+
 data_editor_variable_rename_tab_panel <- function(language = statedu_initial_language()) {
   tabPanel(
-    statedu_text(language, "Rename variable", statedu_utf8("ebb380ec8898ebaa8520ebb380eab2bd")),
+    statedu_t("data_editor.rename_title", language),
     value = "data_editor_variable_rename",
     data_editor_variable_rename_panel(language)
   )
 }
 
 data_editor_tab_panel <- function(language = statedu_initial_language()) {
-  h <- statedu_utf8
   navbarMenu(
     statedu_ui_label("data_editor", language),
-    lazy_tab_panel(statedu_text(language, "Auto coding error check", h("ec9e90eb8f9920ecbd94eb94a920ec98a4eba59820ed9995ec9db8")), "data_editor_coding_error_check", "lazy_data_editor_coding_error_check"),
-    lazy_tab_panel(statedu_text(language, "Auto Likert conversion", h("4c696b65727420ec9e90eb8f9920ebb380ed9998")), "data_editor_likert", "lazy_data_editor_likert"),
-    lazy_tab_panel(statedu_text(language, "Auto missing values", h("eab2b0ecb8a1eab09220ec9e90eb8f9920ecb298eba6ac")), "data_editor_missing_values", "lazy_data_editor_missing_values"),
-    lazy_tab_panel(statedu_text(language, "Wide to Long", h("ec9980ec9db4eb939c2deba1b120ebb380ed9998")), "data_editor_wide_long", "lazy_data_editor_wide_long"),
-    lazy_tab_panel(statedu_text(language, "Auto reverse coding", h("ec97adecbd94eb94a920ec9e90eb8f9920ecb298eba6ac")), "data_editor_recode_different", "lazy_data_editor_recode_different"),
-    lazy_tab_panel(statedu_text(language, "Auto variable calculation", h("ebb380ec889820ec9e90eb8f9920eab384ec82b0")), "data_editor_variable_calculation", "lazy_data_editor_variable_calculation"),
-    lazy_tab_panel(statedu_text(language, "Variable transformation", h("ebb380ec889820ebb380ed9998")), "data_editor_variable_transformation", "lazy_data_editor_variable_transformation"),
-    lazy_tab_panel(statedu_text(language, "Recode variable", h("ebb380ec889820eba6acecbd94eb94a9")), "data_editor_recode_same", "lazy_data_editor_recode_same"),
-    lazy_tab_panel(statedu_text(language, "Rename variable", h("ebb380ec8898ebaa8520ebb380eab2bd")), "data_editor_variable_rename", "lazy_data_editor_variable_rename")
+    lazy_tab_panel(statedu_t("data_editor.coding_error_title", language), "data_editor_coding_error_check", "lazy_data_editor_coding_error_check"),
+    lazy_tab_panel(statedu_t("data_editor.likert_title", language), "data_editor_likert", "lazy_data_editor_likert"),
+    lazy_tab_panel(statedu_t("data_editor.missing_title", language), "data_editor_missing_values", "lazy_data_editor_missing_values"),
+    lazy_tab_panel(statedu_t("data_editor.wide_long_title", language), "data_editor_wide_long", "lazy_data_editor_wide_long"),
+    lazy_tab_panel(merge_text(language, "Merge", statedu_utf8("eb8db0ec9db4ed84b020ebb391ed95a9")), "data_editor_merge", "lazy_data_editor_merge"),
+    lazy_tab_panel(id_aggregate_text(language, "ID aggregation", statedu_utf8("494420eca791eab384")), "data_editor_id_aggregate", "lazy_data_editor_id_aggregate"),
+    lazy_tab_panel(statedu_t("data_editor.reverse_title", language), "data_editor_recode_different", "lazy_data_editor_recode_different"),
+    lazy_tab_panel(statedu_t("data_editor.calculation_title", language), "data_editor_variable_calculation", "lazy_data_editor_variable_calculation"),
+    lazy_tab_panel(statedu_t("data_editor.transform_title", language), "data_editor_variable_transformation", "lazy_data_editor_variable_transformation"),
+    lazy_tab_panel(statedu_t("data_editor.recode_title", language), "data_editor_recode_same", "lazy_data_editor_recode_same"),
+    lazy_tab_panel(statedu_t("data_editor.rename_title", language), "data_editor_variable_rename", "lazy_data_editor_variable_rename")
   )
 }

@@ -74,8 +74,8 @@ from beta to final release names when `VERSION` starts with `1.`.
 - Confirm `studio.statedu.com` is live before making a public website claim.
 - Do not claim Free/Pro/Latent gates, license activation, or in-app updates for
   1.0.0; those items are deferred in `docs/RELEASE_1_0_DECISION_LOG.md`.
-- Confirm the packaged public 1.0 app sets `STATEDU_PUBLIC_RELEASE=1` and hides
-  Longitudinal / Panel Models, Excel result export, and Word result export, unless an internal
+- Confirm the packaged public 1.0 app sets `STATEDU_PUBLIC_RELEASE=1`, exposes
+  Longitudinal / Panel Models, and hides Excel result export and Word result export, unless an internal
   validation override explicitly enables them.
 
 ## Required Validation Sequence

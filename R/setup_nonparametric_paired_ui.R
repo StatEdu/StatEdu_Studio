@@ -9,7 +9,7 @@ nonparametric_paired_setup_state <- function(
   selected_repeated = NULL,
   effect_size = TRUE,
   median_iqr = FALSE,
-  adjustment = "bonferroni",
+  adjustment = statedu_multiple_correction_default(),
   time_labels = NULL,
   language = statedu_initial_language()
 ) {
@@ -93,7 +93,7 @@ nonparametric_paired_setup_panel <- function(state) {
               radioButtons(
                 "nonparametric_paired_adjustment",
                 label = NULL,
-                choices = c("Bonferroni correction" = "bonferroni", "Holm Bonferroni" = "holm"),
+                choices = analysis_ui_choices(c("Holm Bonferroni" = "holm", "Bonferroni correction" = "bonferroni"), language),
                 selected = state$adjustment
               )
             ),

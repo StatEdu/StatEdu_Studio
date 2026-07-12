@@ -162,13 +162,20 @@ frs_calculator_tab_panel <- function(language = statedu_initial_language()) {
       class = "page-shell",
       div(
         class = "app-heading",
-        h1(statedu_text(language, "Framingham Risk Score Calculator", statedu_utf8("4672616d696e6768616d20ec9c84ed9798eb8f8420eab384ec82b0eab8b0"))),
-        div(statedu_text(language, "Select variables and add frs_score, frs_cvd10, frs_cvd10_group, and frs_heart_age to the current data.", statedu_utf8("ebb380ec8898eba5bc20ec84a0ed839ded9598eab3a0206672735f73636f72652c206672735f63766431302c206672735f63766431305f67726f75702c206672735f68656172745f616765eba5bc20ed9884ec9eac20eb8db0ec9db4ed84b0ec979020ecb694eab080ed95a9eb8b88eb8ba42e")), class = "app-subtitle")
+        h1(statedu_t("calculator.frs_title", language)),
+        div(statedu_t("calculator.frs_subtitle", language), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel metabolic-calculator-workspace",
         style = "min-width:980px;overflow-x:auto;",
-        h3("Framingham risk score"),
+        div(
+          class = "analysis-workspace-heading calculator-workspace-heading",
+          div(
+            class = "analysis-workspace-heading-main",
+            h3("Framingham risk score"),
+            div(class = "data-editor-variable-scope-row", uiOutput("frs_variable_scope_toggle"))
+          )
+        ),
         div(class = "load-message", textOutput("frs_loaded_message")),
         uiOutput("frs_calculator_setup"),
         div(
@@ -186,10 +193,10 @@ frs_calculator_tab_panel <- function(language = statedu_initial_language()) {
   )
 }
 
-frs_setup_ui <- function(file, data, variable_info, input, language = statedu_initial_language()) {
+frs_setup_ui <- function(file, data, variable_info, input, selected_names = NULL, language = statedu_initial_language()) {
   language <- normalize_app_language(language)
-  if (is.null(file)) return(setup_empty_message(statedu_text(language, "Load a data file in the Data tab before using the FRS calculator.", statedu_utf8("eb8db0ec9db4ed84b020ed83adec9790ec849c20eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a820ed9b842046525320eab384ec82b0eab8b0eba5bc20ec82acec9aa9ed9598ec84b8ec9a942e")), language = language))
-  choices <- names(data %||% data.frame())
+  if (is.null(file)) return(setup_empty_message(statedu_t("calculator.frs_load_before_setup", language), language = language))
+  choices <- intersect(names(data %||% data.frame()), as.character(selected_names %||% names(data %||% data.frame())))
   specs <- frs_variable_specs()
   available_items <- analysis_variable_items(choices, variable_info, character(0))
   variable_inputs <- lapply(seq_len(nrow(specs)), function(index) {
@@ -244,7 +251,7 @@ frs_setup_ui <- function(file, data, variable_info, input, language = statedu_in
   )
 }
 
-register_frs_calculator_handlers <- function(input, output, session, dataset_fn, current_data_file_fn, variable_info_fn, add_calculated_variable_fn, language_fn = NULL) {
+register_frs_calculator_handlers <- function(input, output, session, dataset_fn, current_data_file_fn, variable_info_fn, add_calculated_variable_fn, selected_names_fn = NULL, language_fn = NULL) {
   output$frs_loaded_message <- renderText({
     statedu_current_language(language_fn)
     file <- current_data_file_fn()
@@ -254,7 +261,8 @@ register_frs_calculator_handlers <- function(input, output, session, dataset_fn,
     language <- statedu_current_language(language_fn)
     file <- current_data_file_fn()
     data <- if (is.null(file)) NULL else dataset_fn()
-    frs_setup_ui(file, data, if (is.null(file)) NULL else variable_info_fn(), input, language = language)
+    selected_names <- if (is.null(selected_names_fn)) names(data %||% data.frame()) else selected_names_fn()
+    frs_setup_ui(file, data, if (is.null(file)) NULL else variable_info_fn(), input, selected_names = selected_names, language = language)
   })
   observeEvent(input$frs_available, {
     picked <- utils::tail(as.character(input$frs_available %||% ""), 1)
@@ -268,7 +276,7 @@ register_frs_calculator_handlers <- function(input, output, session, dataset_fn,
   result <- eventReactive(input$run_frs_calculator, {
     language <- statedu_current_language(language_fn)
     if (is.null(current_data_file_fn())) {
-      showNotification(statedu_text(language, "Load a data file before calculating FRS.", statedu_utf8("465253eba5bc20eab384ec82b0ed9598eab8b020eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e")), type = "warning", duration = 5)
+      showNotification(statedu_t("calculator.frs_load_before_calculating", language), type = "warning", duration = 5)
       return(NULL)
     }
     tryCatch({
@@ -277,7 +285,7 @@ register_frs_calculator_handlers <- function(input, output, session, dataset_fn,
       add_calculated_variable_fn("frs_cvd10", result_data[["frs_cvd10"]], var_label = "Cardiovascular disease 10 year risk", measurement = "continuous")
       add_calculated_variable_fn("frs_cvd10_group", result_data[["frs_cvd10_group"]], var_label = "CVD 10 year risk group", measurement = "category")
       add_calculated_variable_fn("frs_heart_age", result_data[["frs_heart_age"]], var_label = "Heart age", measurement = "continuous")
-      showNotification(statedu_text(language, "frs_score, frs_cvd10, frs_cvd10_group, and frs_heart_age were added to the current data.", statedu_utf8("6672735f73636f72652c206672735f63766431302c206672735f63766431305f67726f75702c206672735f68656172745f616765eab08020ed9884ec9eac20eb8db0ec9db4ed84b0ec979020ecb694eab080eb9098ec9788ec8ab5eb8b88eb8ba42e")), type = "message", duration = 5)
+      showNotification(statedu_t("calculator.frs_added", language), type = "message", duration = 5)
       result_data
     }, error = function(error) {
       showNotification(conditionMessage(error), type = "warning", duration = 6)

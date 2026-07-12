@@ -6,10 +6,129 @@
 
 normalize_app_language <- function(language) {
   value <- tolower(as.character(language %||% "ko")[[1]])
-  if (value %in% c("en", "english")) {
-    return("en")
+  aliases <- unlist(unname(lapply(statedu_language_registry(), function(spec) {
+    stats::setNames(rep(spec$code, length(spec$aliases %||% character(0))), spec$aliases %||% character(0))
+  })), use.names = TRUE)
+  if (value %in% names(aliases)) {
+    value <- unname(aliases[[value]])
+  }
+  if (value %in% statedu_supported_languages()) {
+    return(value)
   }
   "ko"
+}
+
+statedu_builtin_language_registry <- function() {
+  list(
+    ko = list(
+      code = "ko",
+      names = list(en = "Korean", ko = statedu_utf8("ed959ceab5adec96b4")),
+      aliases = c("korean", "korea", "kr", statedu_utf8("ed959ceab5adec96b4"))
+    ),
+    en = list(
+      code = "en",
+      names = list(en = "English", ko = statedu_utf8("ec9881ec96b4")),
+      aliases = c("english", "eng")
+    )
+  )
+}
+
+statedu_i18n_dir <- function() {
+  custom_dir <- Sys.getenv("STATEDU_I18N_DIR", "")
+  if (nzchar(custom_dir)) {
+    return(normalizePath(custom_dir, winslash = "/", mustWork = FALSE))
+  }
+  app_dir <- Sys.getenv("STATEDU_APP_DIR", "")
+  if (nzchar(app_dir)) {
+    candidate <- file.path(app_dir, "i18n")
+    if (dir.exists(candidate)) {
+      return(normalizePath(candidate, winslash = "/", mustWork = FALSE))
+    }
+  }
+  repo_dir <- file.path(getwd(), "i18n")
+  if (dir.exists(repo_dir)) {
+    return(normalizePath(repo_dir, winslash = "/", mustWork = FALSE))
+  }
+  file.path(getwd(), "i18n")
+}
+
+statedu_read_json_file <- function(path, fallback = list()) {
+  if (!nzchar(path) || !file.exists(path) || !requireNamespace("jsonlite", quietly = TRUE)) {
+    return(fallback)
+  }
+  value <- tryCatch({
+    bytes <- readBin(path, what = "raw", n = file.info(path)$size)
+    text <- rawToChar(bytes)
+    Encoding(text) <- "UTF-8"
+    jsonlite::fromJSON(text, simplifyVector = FALSE)
+  }, error = function(e) fallback)
+  if (is.list(value)) value else fallback
+}
+
+statedu_language_registry <- local({
+  cache <- NULL
+  function(refresh = FALSE) {
+    if (!isTRUE(refresh) && !is.null(cache)) {
+      return(cache)
+    }
+    registry <- statedu_builtin_language_registry()
+    path <- file.path(statedu_i18n_dir(), "languages.json")
+    external <- statedu_read_json_file(path, list())
+    languages <- external$languages %||% list()
+    for (spec in languages) {
+      if (!is.list(spec)) next
+      code <- tolower(as.character(spec$code %||% "")[[1]])
+      if (!nzchar(code) || !grepl("^[a-z][a-z0-9_-]*$", code)) next
+      names <- spec$names %||% list(en = code)
+      aliases <- unique(tolower(as.character(spec$aliases %||% character(0))))
+      aliases <- aliases[nzchar(aliases)]
+      registry[[code]] <- list(code = code, names = names, aliases = aliases)
+    }
+    cache <<- registry
+    registry
+  }
+})
+
+statedu_supported_languages <- function() {
+  names(statedu_language_registry())
+}
+
+statedu_default_language <- function() {
+  "ko"
+}
+
+statedu_language_display_name <- function(code, language = statedu_initial_language()) {
+  code <- normalize_app_language(code)
+  language <- normalize_app_language(language)
+  spec <- statedu_language_registry()[[code]]
+  if (is.null(spec)) {
+    return(code)
+  }
+  names <- spec$names %||% list(en = code)
+  value <- if (language %in% names(names)) {
+    names[[language]]
+  } else if ("en" %in% names(names)) {
+    names[["en"]]
+  } else {
+    code
+  }
+  as.character(value)
+}
+
+statedu_locale_overlay <- function(code) {
+  code <- normalize_app_language(code)
+  path <- file.path(statedu_i18n_dir(), paste0(code, ".json"))
+  values <- statedu_read_json_file(path, list())
+  translations <- values$translations %||% values
+  if (!is.list(translations)) {
+    return(list())
+  }
+  translations
+}
+
+statedu_locale_overlays <- function() {
+  languages <- statedu_supported_languages()
+  stats::setNames(lapply(languages, statedu_locale_overlay), languages)
 }
 
 statedu_query_value <- function(query_string, key) {
@@ -72,12 +191,29 @@ statedu_request_language <- function(request = NULL) {
   ""
 }
 
-statedu_language_file_path <- function() {
-  path <- Sys.getenv("STATEDU_APP_LANGUAGE_FILE", "")
+statedu_user_settings_dir <- function() {
+  path <- Sys.getenv("STATEDU_USER_SETTINGS_DIR", "")
   if (!nzchar(path)) {
-    return("")
+    local_app_data <- Sys.getenv("LOCALAPPDATA", "")
+    path <- if (nzchar(local_app_data)) {
+      file.path(local_app_data, "StatEdu Studio", "settings")
+    } else {
+      file.path(path.expand("~"), ".statedu-studio", "settings")
+    }
   }
   normalizePath(path, winslash = "/", mustWork = FALSE)
+}
+
+statedu_setting_file_path <- function(env_var, filename) {
+  path <- Sys.getenv(env_var, "")
+  if (!nzchar(path)) {
+    path <- file.path(statedu_user_settings_dir(), filename)
+  }
+  normalizePath(path, winslash = "/", mustWork = FALSE)
+}
+
+statedu_language_file_path <- function() {
+  statedu_setting_file_path("STATEDU_APP_LANGUAGE_FILE", "app-language.txt")
 }
 
 statedu_read_persisted_language <- function() {
@@ -104,6 +240,236 @@ statedu_write_persisted_language <- function(language) {
     TRUE
   }, error = function(e) FALSE)
   invisible(result)
+}
+
+statedu_result_zoom_default <- function() {
+  150L
+}
+
+normalize_result_zoom_percent <- function(value) {
+  if (is.null(value) || length(value) == 0) {
+    return(statedu_result_zoom_default())
+  }
+  number <- suppressWarnings(as.numeric(value[[1]]))
+  if (!is.finite(number)) {
+    return(statedu_result_zoom_default())
+  }
+  as.integer(max(80, min(200, round(number))))
+}
+
+statedu_result_zoom_file_path <- function() {
+  statedu_setting_file_path("STATEDU_RESULT_ZOOM_FILE", "result-zoom-percent.txt")
+}
+
+statedu_read_persisted_result_zoom <- function() {
+  path <- statedu_result_zoom_file_path()
+  if (!nzchar(path) || !file.exists(path)) {
+    return(NA_integer_)
+  }
+  value <- tryCatch(readLines(path, warn = FALSE, encoding = "UTF-8", n = 1), error = function(e) "")
+  if (!length(value) || !nzchar(value[[1]])) {
+    return(NA_integer_)
+  }
+  normalize_result_zoom_percent(value[[1]])
+}
+
+statedu_write_persisted_result_zoom <- function(value) {
+  path <- statedu_result_zoom_file_path()
+  if (!nzchar(path)) {
+    return(invisible(FALSE))
+  }
+  zoom <- normalize_result_zoom_percent(value)
+  result <- tryCatch({
+    dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+    writeLines(as.character(zoom), path, useBytes = TRUE)
+    TRUE
+  }, error = function(e) FALSE)
+  invisible(result)
+}
+
+statedu_initial_result_zoom <- function() {
+  zoom <- getOption("statedu.result_zoom_percent", NA_integer_)
+  zoom_value <- if (!is.null(zoom) && length(zoom) > 0) {
+    suppressWarnings(as.numeric(zoom[[1]]))
+  } else {
+    NA_real_
+  }
+  if (!is.na(zoom_value)) {
+    return(normalize_result_zoom_percent(zoom))
+  }
+  persisted_preferences <- statedu_read_persisted_preferences()
+  if (!is.null(persisted_preferences$result_zoom_percent)) {
+    return(normalize_result_zoom_percent(persisted_preferences$result_zoom_percent))
+  }
+  zoom <- statedu_read_persisted_result_zoom()
+  if (!is.na(zoom)) {
+    return(normalize_result_zoom_percent(zoom))
+  }
+  env_zoom <- Sys.getenv("STATEDU_RESULT_ZOOM_PERCENT", "")
+  if (nzchar(env_zoom)) {
+    return(normalize_result_zoom_percent(env_zoom))
+  }
+  statedu_result_zoom_default()
+}
+
+statedu_preferences_file_path <- function() {
+  statedu_setting_file_path("STATEDU_APP_PREFERENCES_FILE", "app-preferences.json")
+}
+
+statedu_default_preferences <- function() {
+  list(
+    result_zoom_percent = statedu_result_zoom_default(),
+    output_decimal_digits = 3L,
+    p_value_format = "apa",
+    multiple_correction_default = "holm",
+    selected_variables_only_default = TRUE,
+    default_save_dir = ""
+  )
+}
+
+statedu_read_persisted_preferences <- function() {
+  path <- statedu_preferences_file_path()
+  if (!nzchar(path) || !file.exists(path)) {
+    return(list())
+  }
+  preferences <- tryCatch(jsonlite::fromJSON(path, simplifyVector = FALSE), error = function(e) list())
+  if (!is.list(preferences)) {
+    return(list())
+  }
+  preferences
+}
+
+statedu_write_persisted_preferences <- function(preferences) {
+  path <- statedu_preferences_file_path()
+  if (!nzchar(path)) {
+    return(invisible(FALSE))
+  }
+  preferences <- preferences %||% list()
+  result <- tryCatch({
+    dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+    writeLines(jsonlite::toJSON(preferences, auto_unbox = TRUE, pretty = TRUE), path, useBytes = TRUE)
+    TRUE
+  }, error = function(e) FALSE)
+  invisible(result)
+}
+
+normalize_output_decimal_digits <- function(value) {
+  if (is.null(value) || length(value) == 0) {
+    return(statedu_default_preferences()$output_decimal_digits)
+  }
+  number <- suppressWarnings(as.numeric(value[[1]]))
+  if (!is.finite(number)) {
+    return(statedu_default_preferences()$output_decimal_digits)
+  }
+  as.integer(max(0, min(5, round(number))))
+}
+
+normalize_p_value_format <- function(value) {
+  value <- tolower(as.character(value %||% "apa")[[1]])
+  if (value %in% c("leading_zero", "leading-zero", "zero", "0")) {
+    return("leading_zero")
+  }
+  "apa"
+}
+
+normalize_multiple_correction_default <- function(value) {
+  value <- tolower(as.character(value %||% "holm")[[1]])
+  if (value %in% c("bonferroni", "holm")) {
+    return(value)
+  }
+  "holm"
+}
+
+normalize_selected_variables_only_default <- function(value) {
+  if (is.null(value) || length(value) == 0) {
+    return(TRUE)
+  }
+  value <- value[[1]]
+  if (is.logical(value)) {
+    return(isTRUE(value))
+  }
+  !tolower(as.character(value)) %in% c("0", "false", "no", "off")
+}
+
+normalize_default_save_dir <- function(value) {
+  if (is.null(value) || length(value) == 0) {
+    return("")
+  }
+  value <- trimws(as.character(value[[1]] %||% ""))
+  if (!nzchar(value)) {
+    return("")
+  }
+  normalizePath(path.expand(value), winslash = "/", mustWork = FALSE)
+}
+
+statedu_initial_preferences <- function() {
+  defaults <- statedu_default_preferences()
+  persisted <- statedu_read_persisted_preferences()
+  preferences <- utils::modifyList(defaults, persisted)
+  preferences$result_zoom_percent <- normalize_result_zoom_percent(
+    getOption("statedu.result_zoom_percent", preferences$result_zoom_percent)
+  )
+  preferences$output_decimal_digits <- normalize_output_decimal_digits(
+    getOption("statedu.output_decimal_digits", preferences$output_decimal_digits)
+  )
+  preferences$p_value_format <- normalize_p_value_format(
+    getOption("statedu.p_value_format", preferences$p_value_format)
+  )
+  preferences$multiple_correction_default <- normalize_multiple_correction_default(
+    getOption("statedu.multiple_correction_default", preferences$multiple_correction_default)
+  )
+  preferences$selected_variables_only_default <- normalize_selected_variables_only_default(
+    getOption("statedu.selected_variables_only_default", preferences$selected_variables_only_default)
+  )
+  preferences$default_save_dir <- normalize_default_save_dir(
+    getOption("statedu.default_save_dir", preferences$default_save_dir)
+  )
+  preferences
+}
+
+statedu_apply_preferences <- function(preferences = statedu_initial_preferences()) {
+  preferences <- preferences %||% statedu_default_preferences()
+  options(
+    statedu.result_zoom_percent = normalize_result_zoom_percent(preferences$result_zoom_percent),
+    statedu.output_decimal_digits = normalize_output_decimal_digits(preferences$output_decimal_digits),
+    statedu.p_value_format = normalize_p_value_format(preferences$p_value_format),
+    statedu.multiple_correction_default = normalize_multiple_correction_default(preferences$multiple_correction_default),
+    statedu.selected_variables_only_default = normalize_selected_variables_only_default(preferences$selected_variables_only_default),
+    statedu.default_save_dir = normalize_default_save_dir(preferences$default_save_dir)
+  )
+  invisible(preferences)
+}
+
+statedu_save_preferences <- function(preferences) {
+  preferences <- statedu_apply_preferences(preferences)
+  statedu_write_persisted_preferences(list(
+    result_zoom_percent = getOption("statedu.result_zoom_percent", statedu_result_zoom_default()),
+    output_decimal_digits = getOption("statedu.output_decimal_digits", 3L),
+    p_value_format = getOption("statedu.p_value_format", "apa"),
+    multiple_correction_default = getOption("statedu.multiple_correction_default", "holm"),
+    selected_variables_only_default = getOption("statedu.selected_variables_only_default", TRUE),
+    default_save_dir = getOption("statedu.default_save_dir", "")
+  ))
+}
+
+statedu_output_decimal_digits <- function() {
+  normalize_output_decimal_digits(getOption("statedu.output_decimal_digits", statedu_initial_preferences()$output_decimal_digits))
+}
+
+statedu_p_value_format <- function() {
+  normalize_p_value_format(getOption("statedu.p_value_format", statedu_initial_preferences()$p_value_format))
+}
+
+statedu_multiple_correction_default <- function() {
+  normalize_multiple_correction_default(getOption("statedu.multiple_correction_default", statedu_initial_preferences()$multiple_correction_default))
+}
+
+statedu_selected_variables_only_default <- function() {
+  normalize_selected_variables_only_default(getOption("statedu.selected_variables_only_default", statedu_initial_preferences()$selected_variables_only_default))
+}
+
+statedu_default_save_dir <- function() {
+  normalize_default_save_dir(getOption("statedu.default_save_dir", statedu_initial_preferences()$default_save_dir))
 }
 
 statedu_initial_language <- function(request = NULL) {
@@ -136,6 +502,13 @@ statedu_current_language <- function(language_fn = NULL, request = NULL) {
 
 statedu_text <- function(language, en, ko = en) {
   if (identical(normalize_app_language(language), "ko")) ko else en
+}
+
+statedu_t <- function(key, language = statedu_initial_language(), fallback = NULL) {
+  if (exists("statedu_translate", mode = "function")) {
+    return(statedu_translate(key, language, fallback))
+  }
+  fallback %||% as.character(key)
 }
 
 statedu_measurement_choices <- function(language = statedu_initial_language()) {
@@ -173,83 +546,7 @@ statedu_utf8 <- function(hex) {
 }
 
 statedu_ui_label <- function(key, language = statedu_initial_language()) {
-  h <- statedu_utf8
-  labels <- c(
-    data = paste0("Data|", h("eb8db0ec9db4ed84b0")),
-    data_editor = paste0("Data Editor|", h("eb8db0ec9db4ed84b020ed8eb8eca791")),
-    calculator = paste0("Calculator|", h("eab384ec82b0eab8b0")),
-    analysis = paste0("Analysis|", h("ebb684ec849d")),
-    sample_size = paste0("Sample Size|", h("ed919cebb3b8ec8898")),
-    effect_size = paste0("Effect Size|", h("ed9aa8eab3bced81aceab8b0")),
-    result = paste0("Result|", h("eab2b0eab3bc")),
-    help = paste0("Help|", h("eb8f84ec9b80eba790")),
-    about = paste0("About|", h("eca095ebb3b4")),
-    preferences = paste0("Language|", h("ec96b8ec96b4")),
-    bug_report = paste0("Bug report|", h("ebb284eab7b820ec8ba0eab3a0")),
-    feature_request = paste0("Feature request|", h("eab8b0eb8aa520eab09cec84a020ec9a94ecb2ad")),
-    analysis_request = paste0("Analysis Method Request|", h("ebb684ec849deab8b0ebb29520ec9a94ecb2ad")),
-    qna = "Q&A|Q&A",
-    frequencies = paste0("Frequencies / Descriptives|", h("ebb988eb8f84ebb684ec849d202f20eab8b0ec88a0ed86b5eab384")),
-    crosstabs = paste0("Cross-tabulation Analysis|", h("eab590ecb0a8ebb684ec849d")),
-    ttest_anova = "t-test / ANOVA|t-test / ANOVA",
-    paired = paste0("Paired test|", h("eb8c80ec9d91ed919cebb3b820eab280eca095")),
-    ancova = "ANCOVA|ANCOVA",
-    nonparametric = paste0("Nonparametric Tests|", h("ebb984ebaaa8ec889820eab280eca095")),
-    nonparametric_paired = paste0("Nonparametric Paired|", h("eb8c80ec9d9120ebb984ebaaa8ec889820eab280eca095")),
-    correlation = paste0("Correlation|", h("ec8381eab480ebb684ec849d")),
-    reliability = paste0("Reliability|", h("ec8ba0eba2b0eb8f84")),
-    factor_analysis = paste0("Factor Analysis|", h("ec9a94ec9db8ebb684ec849d")),
-    pca = paste0("Principal Components|", h("eca3bcec84b1ebb684ebb684ec849d")),
-    regression = paste0("Regression|", h("ed9a8ceab780ebb684ec849d")),
-    glm = paste0("Generalized Linear Model (GLM)|", h("ec9dbcebb098ed9994ec84a0ed9895ebaaa8ed989528474c4d29")),
-    logistic = paste0("Logistic Regression|", h("eba19ceca780ec8aa4ed8bb120ed9a8ceab780")),
-    longitudinal = paste0("Longitudinal / Panel Models|", h("eca285eb8ba8202f20ed8ca8eb849020ebaaa8ed9895")),
-    open_data_file = paste0("Open data file|", h("eb8db0ec9db4ed84b020ed8c8cec9dbc20ec97b4eab8b0")),
-    load_settings = paste0("Load settings|", h("ec84a4eca09520ebb688eb9facec98a4eab8b0")),
-    save_settings = paste0("Save settings|", h("ec84a4eca09520eca080ec9ea5")),
-    reset_settings = paste0("Reset settings|", h("ec84a4eca09520ecb488eab8b0ed9994")),
-    save_html = paste0("Save HTML|", h("48544d4c20eca080ec9ea5")),
-    save_pdf = paste0("Save PDF|", h("50444620eca080ec9ea5")),
-    save_fig = paste0("Save fig|", h("eab7b8eba6bc20eca080ec9ea5")),
-    save_excel = paste0("Save Excel|", h("457863656c20eca080ec9ea5")),
-    save_word = paste0("Save Word|", h("576f726420eca080ec9ea5")),
-    add_result = paste0("Add result|", h("eab2b0eab3bc20ecb694eab080")),
-    run_analysis = paste0("Run analysis|", h("ebb684ec849d20ec8ba4ed9689")),
-    run_logistic = paste0("Run logistic|", h("eba19ceca780ec8aa4ed8bb120ec8ba4ed9689")),
-    calculate = paste0("Calculate|", h("eab384ec82b0")),
-    download_csv = paste0("Download CSV|", h("43535620eb8ba4ec9ab4eba19ceb939c")),
-    select_variable = paste0("Select variable|", h("ebb380ec889820ec84a0ed839d")),
-    data_preview = paste0("Data Preview|", h("eb8db0ec9db4ed84b020ebafb8eba6acebb3b4eab8b0")),
-    view_selected_data = paste0("View selected data|", h("ec84a0ed839d20eb8db0ec9db4ed84b020ebb3b4eab8b0")),
-    reference = paste0("Reference|", h("eab8b0eca480")),
-    exclusion_rules = paste0("Exclusion rules|", h("eca09cec99b820eab79cecb999")),
-    output = paste0("Output|", h("ecb69ceba0a5")),
-    outputs = paste0("Outputs|", h("ecb69ceba0a520ebb380ec8898")),
-    initial_values = paste0("Initial values|", h("ecb488eab8b0eab092")),
-    initial_score = paste0("Initial score|", h("ecb488eab8b020eca090ec8898")),
-    value_set = paste0("Value set|", h("eab09220ec84b8ed8ab8")),
-    type = paste0("Type|", h("ebb684eba598")),
-    units = paste0("Units|", h("eb8ba8ec9c84")),
-    coding = paste0("Coding|", h("ecbd94eb94a9")),
-    formula = paste0("Formula|", h("eab3b5ec8b9d")),
-    criteria_unit = paste0("Criteria / Unit|", h("eab8b0eca480202f20eb8ba8ec9c84")),
-    criteria_population = paste0("Criteria / population|", h("eab8b0eca480202f20eca791eb8ba8")),
-    reference_cutoffs = paste0("Reference cutoffs|", h("eab8b0eca480eab092")),
-    waist_unit = paste0("Waist unit|", h("ed9788eba6aceb9198eba08820eb8ba8ec9c84")),
-    glucose_unit = paste0("Glucose unit|", h("ed9888eb8bb920eb8ba8ec9c84")),
-    lipid_unit = paste0("Lipid unit|", h("eca780eca78820eb8ba8ec9c84")),
-    overview = paste0("Overview|", h("eab09cec9a94")),
-    user_guide = paste0("User Guide|", h("ec82acec9aa9ec9e9020ec9588eb82b4ec849c")),
-    analyses = paste0("Analyses|", h("ebb684ec849d")),
-    method_notes = paste0("Method Notes|", h("ebb0a9ebb295eba1a020eb85b8ed8ab8")),
-    validation = paste0("Validation|", h("eab280eca69d")),
-    version_history = paste0("Version History|", h("ebb284eca08420ec9db4eba0a5")),
-    source_license = paste0("Source & License|", h("ec868cec8aa420ebb08f20eb9dbcec9db4ec84a0ec8aa4")),
-    open_source_licenses = paste0("Open Source Licenses|", h("ec98a4ed9488ec868cec8aa420eb9dbcec9db4ec84a0ec8aa4"))
-  )
-  value <- labels[[key]] %||% as.character(key)
-  parts <- strsplit(value, "\\|", fixed = FALSE)[[1]]
-  statedu_text(language, parts[[1]], parts[[length(parts)]])
+  statedu_t(paste0("ui.", key), language, as.character(key))
 }
 statedu_timing_enabled <- function() {
   !identical(tolower(Sys.getenv("STATEDU_TIMING", "1")), "0")
@@ -297,6 +594,7 @@ format_p <- function(p) {
   if (length(p) == 0 || is.null(p[[1]]) || is.na(p[[1]])) {
     return(NA_character_)
   }
+  leading_zero <- identical(statedu_p_value_format(), "leading_zero")
   if (is.character(p[[1]])) {
     text <- trimws(p[[1]])
     if (!nzchar(text)) return("")
@@ -305,19 +603,21 @@ format_p <- function(p) {
     value <- suppressWarnings(as.numeric(sub("^\\.", "0.", value_text)))
     if (is.na(value)) return(text)
     if (isTRUE(less_than) && value <= .001) {
-      return("<.001")
+      return(if (isTRUE(leading_zero)) "<0.001" else "<.001")
     }
   } else {
     value <- suppressWarnings(as.numeric(p[[1]]))
   }
   if (is.na(value)) return(NA_character_)
-  if (value < .001) return("<.001")
-  sub("^0\\.", ".", sprintf("%.3f", value))
+  if (value < .001) return(if (isTRUE(leading_zero)) "<0.001" else "<.001")
+  text <- sprintf("%.3f", value)
+  if (isTRUE(leading_zero)) text else sub("^0\\.", ".", text)
 }
 
 format_decimal3 <- function(x) {
   if (is.na(x)) return("")
-  text <- sprintf("%.3f", x)
+  digits <- statedu_output_decimal_digits()
+  text <- sprintf(paste0("%.", digits, "f"), x)
   text <- sub("^-0\\.", "-.", text)
   sub("^0\\.", ".", text)
 }
@@ -525,4 +825,16 @@ setup_option_checked <- function(value, default = FALSE) {
     return(isTRUE(default))
   }
   isTRUE(value)
+}
+
+data_editor_variable_names <- function(data, variable_info = NULL) {
+  variables <- names(data %||% data.frame())
+  if (!is.data.frame(variable_info) || !"name" %in% names(variable_info)) {
+    return(variables)
+  }
+  scoped <- intersect(variables, as.character(variable_info$name %||% character(0)))
+  if (length(scoped) == 0L && length(variables) > 0L && nrow(variable_info) == 0L) {
+    return(character(0))
+  }
+  scoped
 }
