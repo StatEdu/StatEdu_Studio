@@ -1,8 +1,8 @@
 # StatEdu Studio 1.0 Decision Log
 
-Last reviewed: 2026-07-06
+Last reviewed: 2026-07-12
 
-Current version: 1.1.1
+Current version: 1.1.3
 
 This file records release decisions that must be made before changing the project from the 0.9.x stabilization line to a public 1.0 release. It is intentionally separate from feature planning so stabilization work does not drift into new product scope.
 

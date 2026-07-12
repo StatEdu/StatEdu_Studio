@@ -247,10 +247,14 @@ analysis_data_viewer_panel <- function(
   )
 }
 
-analysis_data_viewer_labeled_data <- function(data, variables, category_table = NULL, use_labels = FALSE) {
+analysis_data_viewer_labeled_data <- function(data, variables, category_table = NULL, use_labels = FALSE, n_max = 15L) {
   data <- as.data.frame(data, stringsAsFactors = FALSE, check.names = FALSE)
   variables <- intersect(as.character(variables %||% character(0)), names(data))
-  preview <- utils::head(data[, variables, drop = FALSE], 20)
+  n_max <- suppressWarnings(as.integer(n_max %||% 15L))
+  if (is.na(n_max) || n_max <= 0L) {
+    n_max <- 15L
+  }
+  preview <- utils::head(data[, variables, drop = FALSE], n_max)
   if (!isTRUE(use_labels)) {
     return(preview)
   }
@@ -311,8 +315,14 @@ analysis_data_viewer_table <- function(data, variables, category_table = NULL, u
     empty_data <- stats::setNames(data.frame(empty_message, stringsAsFactors = FALSE), message_label)
     return(DT::datatable(empty_data, rownames = FALSE, options = list(dom = "t")))
   }
-  variables <- names(data)
-  preview <- analysis_data_viewer_labeled_data(data, variables, category_table, use_labels)
+  variables <- intersect(as.character(variables %||% character(0)), names(data))
+  if (length(variables) == 0L) {
+    message_label <- analysis_ui_text("Message", language)
+    empty_message <- analysis_ui_text("No analysis variables are selected.", language)
+    empty_data <- stats::setNames(data.frame(empty_message, stringsAsFactors = FALSE), message_label)
+    return(DT::datatable(empty_data, rownames = FALSE, options = list(dom = "t")))
+  }
+  preview <- analysis_data_viewer_labeled_data(data, variables, category_table, use_labels, n_max = 15L)
   headers <- unname(analysis_data_viewer_column_headers(names(preview), variable_table, labels, use_labels))
   header_json <- jsonlite::toJSON(headers, auto_unbox = TRUE)
   DT::datatable(

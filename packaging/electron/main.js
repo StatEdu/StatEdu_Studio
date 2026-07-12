@@ -325,6 +325,8 @@ async function startShiny() {
     STATEDU_APP_PREFERENCES_FILE: appPreferencesFile(),
     STATEDU_OPEN_STUDIO_FILE: launchStudioFile,
     STATEDU_PUBLIC_RELEASE: process.env.STATEDU_PUBLIC_RELEASE || publicReleaseFlag(),
+    STATEDU_USER_DATA_DIR: app.getPath("userData"),
+    STATEDU_ENABLE_CUSTOM_MODEL_CANVAS: process.env.STATEDU_ENABLE_CUSTOM_MODEL_CANVAS || "0",
     R_HOME: path.join(appBaseDir(), "runtime", "R-4.5.3"),
     R_LIBS_USER: bundledRLibraryPath(),
     PATH: `${bundledRBinPath()};${process.env.PATH || ""}`

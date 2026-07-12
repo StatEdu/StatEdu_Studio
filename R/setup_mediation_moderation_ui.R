@@ -5264,6 +5264,24 @@ register_mediation_moderation_setup_output <- function(
     )
   })
 
+  register_analysis_data_viewer_handlers(
+    input = input,
+    output = output,
+    prefix = "mediation_moderation",
+    title = mediation_moderation_text(
+      statedu_current_language(app_language_fn),
+      "Mediation / Moderation Data Viewer",
+      "\ub9e4\uac1c\u00b7\uc870\uc808 \ub370\uc774\ud130 \ubcf4\uae30"
+    ),
+    dataset_fn = dataset_fn,
+    selected_names_fn = selected_names_fn,
+    variables_fn = function() unique(c(mm_y(), mm_x(), mm_mediators(), mm_w(), mm_covariates())),
+    variable_table_fn = variable_table_fn,
+    labels_fn = labels_fn,
+    category_table_fn = category_table_fn,
+    language_fn = app_language_fn
+  )
+
   lapply(mm_ids, function(id) {
     force(id)
     observeEvent(input[[paste0(id, "_active")]], {

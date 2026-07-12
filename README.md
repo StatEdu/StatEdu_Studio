@@ -8,13 +8,13 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current public version: `1.1.1`
+Current public version: `1.1.3`
 
-Current development version: `1.1.3-dev`
+Current development version: `1.1.3`
 
-Version 1.1.1 is the public release line for local data import, data editing, assumption-guided statistical analyses, sample-size/effect-size calculators, and publication-ready HTML result output. Version 1.1.3-dev is the current developer source line for the pending multilingual translation fixes and UI refinements. Detailed development history is available in **About > Version History**.
+Version 1.1.3 is the public release line for local data import, data editing, assumption-guided statistical analyses, sample-size/effect-size calculators, latent-analysis workflows, and publication-ready HTML result output. It includes the 1.1.3 fixes for Excel import review, selected-data preview, Latent Mplus output folder handling, and packaged desktop startup behavior. Detailed development history is available in **About > Version History**.
 
-Public 1.1.1 includes all analysis menus except the Mediation / Moderation Custom Model canvas. In the public build, direct analysis save controls remain visible but only HTML save is enabled by default; t-test / ANOVA is the exception and keeps HTML, figure, PDF, Excel, and Add result enabled. t-test / ANOVA results added to the Result collection can be exported from Result as Excel or Word.
+Public 1.1.3 includes all analysis menus except the Mediation / Moderation Custom Model canvas. In the public build, direct analysis save controls remain visible but only HTML save is enabled by default; t-test / ANOVA is the exception and keeps HTML, figure, PDF, Excel, and Add result enabled. t-test / ANOVA results added to the Result collection can be exported from Result as Excel or Word.
 
 ## Current Scope
 
@@ -78,7 +78,7 @@ The app will open at `127.0.0.1` in the default browser. The launcher searches f
 
 ## Validation
 
-Version 1.1.1 carries forward the stabilization validation suite and adds release gating for public save controls and the custom model canvas. Public validation coverage includes calculators, data import, data editing, cross-tabulation, correlation auto-selection, factor analysis / PCA, logistic analysis and UI, paired guard handling, p-value formatting, regression coefficient output, GLM output, complex-sample workflows, longitudinal / panel workflows, and t-test / ANOVA guard handling. Effect-size comparisons use `effectsize` as a validation reference where its definitions match the app calculation; `effectsize` is not required at runtime.
+Version 1.1.3 carries forward the stabilization validation suite and adds release gating for public save controls and the custom model canvas. Public validation coverage includes calculators, data import, data editing, cross-tabulation, correlation auto-selection, factor analysis / PCA, logistic analysis and UI, paired guard handling, p-value formatting, regression coefficient output, GLM output, complex-sample workflows, longitudinal / panel workflows, latent-analysis workflow checks, and t-test / ANOVA guard handling. Effect-size comparisons use `effectsize` as a validation reference where its definitions match the app calculation; `effectsize` is not required at runtime.
 
 Run the stabilization validation suite from the repository root before merging
 or packaging:
@@ -113,7 +113,7 @@ module before running the stabilization suite.
 
 If you use **StatEdu Studio** in your research, please cite:
 
-LEE, I. H. (2026). **StatEdu Studio** (Version 1.1.1) [Computer software].
+LEE, I. H. (2026). **StatEdu Studio** (Version 1.1.3) [Computer software].
 https://doi.org/10.22934/statedu.studio
 
 Product site: https://studio.statedu.com/

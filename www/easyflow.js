@@ -214,6 +214,40 @@
         easyflowRecoverPreferencesDisconnect();
       }
 
+      function easyflowExcelImportReviewVisible() {
+        var panel = document.querySelector('.excel-import-main-panel');
+        if (!panel) return false;
+        var style = window.getComputedStyle ? window.getComputedStyle(panel) : null;
+        return !style || (style.display !== 'none' && style.visibility !== 'hidden');
+      }
+
+      function easyflowClearExcelImportBusyState() {
+        var visible = easyflowExcelImportReviewVisible();
+        if (document.body && document.body.classList) {
+          document.body.classList.toggle('statedu-excel-import-review-visible', visible);
+        }
+        if (!visible) return;
+        [
+          '#data_steps',
+          '#data_loaded_message',
+          '#excel_import_note',
+          '#excel_import_preview',
+          '.excel-import-main-panel',
+          '.excel-import-main-panel *'
+        ].forEach(function(selector) {
+          document.querySelectorAll(selector).forEach(function(node) {
+            if (node && node.classList) node.classList.remove('recalculating');
+            if (node) node.removeAttribute('aria-busy');
+          });
+        });
+      }
+
+      function easyflowScheduleClearExcelImportBusyState() {
+        [0, 50, 150, 350, 750, 1500, 3000].forEach(function(delay) {
+          window.setTimeout(easyflowClearExcelImportBusyState, delay);
+        });
+      }
+
       function easyflowScheduleClearTransientOverlays() {
         [0, 50, 250, 750, 1500, 3000].forEach(function(delay) {
           window.setTimeout(easyflowClearTransientOverlays, delay);
@@ -528,13 +562,18 @@
         easyflowScheduleAppLanguageSend();
         easyflowScheduleStaticLanguageLabels();
         easyflowBindPreferencesSaveRecovery();
+        easyflowScheduleClearExcelImportBusyState();
       });
+      document.addEventListener('shiny:bound', easyflowScheduleClearExcelImportBusyState);
+      document.addEventListener('shiny:value', easyflowScheduleClearExcelImportBusyState);
+      document.addEventListener('shiny:idle', easyflowScheduleClearExcelImportBusyState);
       document.addEventListener('DOMContentLoaded', function() {
         easyflowEnsureStoredLanguageUrl();
         easyflowScheduleAppLanguageSend();
         easyflowScheduleStaticLanguageLabels();
         easyflowObserveStaticLanguageLabels();
         easyflowBindPreferencesSaveRecovery();
+        easyflowScheduleClearExcelImportBusyState();
       });
       if (document.readyState !== 'loading') {
         easyflowEnsureStoredLanguageUrl();
@@ -542,6 +581,7 @@
         easyflowScheduleStaticLanguageLabels();
         easyflowObserveStaticLanguageLabels();
         easyflowBindPreferencesSaveRecovery();
+        easyflowScheduleClearExcelImportBusyState();
       }
 
       window.easyflowRestoreCodingErrorFixInputs = function(root) {

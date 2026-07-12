@@ -1,16 +1,22 @@
 # Changelog
 
-## v1.1.3-dev - 2026-07-11
+## v1.1.3 - 2026-07-12
 
 ### Changed
 
-- Updated the active development line to `1.1.3-dev`.
-- Added multilingual coverage for new latent-analysis project folder labels, data-file placeholders, DAT delimiter choices, and custom mediation/moderation canvas controls.
+- Promoted the current stabilized developer build to the official `1.1.3` installer.
+- Kept the public-release scope aligned with the 1.1.1 packaging rule by excluding bundled R runtime documentation, tests, examples, source payloads, and other non-runtime content.
+- Added multilingual coverage for new latent-analysis project folder labels, data-file placeholders, DAT delimiter choices, and shared analysis controls.
 
 ### Fixed
 
+- Fixed Excel import review so selected Excel files remain interactive and load through the sheet/start-cell review workflow.
+- Limited shared "View selected data" previews to the selected variables and 15 rows.
+- Fixed Latent Mplus project/output folder resolution so output is created beside the originally loaded data file when the original path is available.
+- Changed Latent Mplus settings save to open a save dialog so the file name can be chosen.
+- Left-aligned the Latent Mplus project/output folder display.
 - Routed remaining direct UI labels through the shared i18n table so language overlays can translate newly added data, regression, mediation, moderation, and latent-analysis options.
-- Added missing custom model canvas Start/End anchor translation keys and restored Japanese overlay coverage for the canvas UI.
+- Preserved official-release exclusion of the mediation/moderation custom model canvas.
 
 ## v1.1.2-dev - 2026-07-11
 

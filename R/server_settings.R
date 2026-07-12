@@ -134,13 +134,18 @@ register_loaded_dataset_observer <- function(
   invisible(TRUE)
 }
 
-register_data_input_observers <- function(input, active_data_file, reset_on_dataset_load, mark_settings_dirty) {
-  excel_pending_file_value <- function(path) {
-    sheets <- excel_sheet_names(path, basename(path))
+register_data_input_observers <- function(input, active_data_file, reset_on_dataset_load, mark_settings_dirty, language_fn = NULL) {
+  current_language <- function() {
+    statedu_current_language(language_fn)
+  }
+
+  excel_pending_file_value <- function(path, original_name = basename(path), original_path = path) {
+    sheets <- excel_sheet_names(path, original_name)
     first_sheet <- if (length(sheets) > 0) sheets[[1]] else ""
     list(
       path = path,
-      name = basename(path),
+      name = original_name,
+      original_path = original_path,
       restored = FALSE,
       loaded_at = format(Sys.time(), "%Y%m%d%H%M%OS6"),
       excel_pending = TRUE,
@@ -169,7 +174,35 @@ register_data_input_observers <- function(input, active_data_file, reset_on_data
 
   observeEvent(input$file, {
     reset_on_dataset_load(TRUE)
-    active_data_file(NULL)
+    uploaded <- input$file
+    if (is.null(uploaded)) {
+      active_data_file(NULL)
+    } else {
+      uploaded_path <- uploaded$datapath
+      uploaded_name <- uploaded$name %||% basename(uploaded_path)
+      tryCatch(
+        {
+          if (excel_data_file_extension(uploaded_name)) {
+            active_data_file(excel_pending_file_value(uploaded_path, uploaded_name, ""))
+            reset_on_dataset_load(FALSE)
+          } else {
+            active_data_file(list(
+              path = uploaded_path,
+              name = uploaded_name,
+              original_path = "",
+              restored = FALSE,
+              loaded_at = format(Sys.time(), "%Y%m%d%H%M%OS6")
+            ))
+          }
+        },
+        error = function(error) {
+          reset_on_dataset_load(FALSE)
+          active_data_file(NULL)
+          showNotification(paste("Data file could not be loaded:", conditionMessage(error)), type = "error", duration = 8)
+          message("fileInput data file failed: ", conditionMessage(error))
+        }
+      )
+    }
     mark_settings_dirty()
   })
 
@@ -188,22 +221,32 @@ register_data_input_observers <- function(input, active_data_file, reset_on_data
   observeEvent(input$browse_data_file, {
     start <- Sys.time()
     message("[StatEdu timing] browse_data_file: open dialog")
-    data_path <- open_data_file()
-    if (is.null(data_path)) {
-      statedu_log_timing("browse_data_file canceled", start)
-      return()
-    }
-    statedu_log_timing("browse_data_file selected", start, sprintf("file=%s", basename(data_path)))
+    tryCatch(
+      {
+        data_path <- open_data_file()
+        if (is.null(data_path)) {
+          statedu_log_timing("browse_data_file canceled", start)
+          return()
+        }
+        statedu_log_timing("browse_data_file selected", start, sprintf("file=%s", basename(data_path)))
 
-    if (excel_data_file_extension(data_path)) {
-      active_data_file(excel_pending_file_value(data_path))
-      reset_on_dataset_load(FALSE)
-    } else {
-      reset_on_dataset_load(TRUE)
-      active_data_file(list(path = data_path, name = basename(data_path), restored = FALSE, loaded_at = format(Sys.time(), "%Y%m%d%H%M%OS6")))
-    }
-    mark_settings_dirty()
-    statedu_log_timing("browse_data_file queued load", start, sprintf("file=%s", basename(data_path)))
+        if (excel_data_file_extension(data_path)) {
+          active_data_file(excel_pending_file_value(data_path, basename(data_path), data_path))
+          reset_on_dataset_load(FALSE)
+        } else {
+          reset_on_dataset_load(TRUE)
+          active_data_file(list(path = data_path, name = basename(data_path), original_path = data_path, restored = FALSE, loaded_at = format(Sys.time(), "%Y%m%d%H%M%OS6")))
+        }
+        mark_settings_dirty()
+        statedu_log_timing("browse_data_file queued load", start, sprintf("file=%s", basename(data_path)))
+      },
+      error = function(error) {
+        reset_on_dataset_load(FALSE)
+        active_data_file(NULL)
+        showNotification(paste("Data file could not be loaded:", conditionMessage(error)), type = "error", duration = 8)
+        message("browse_data_file failed: ", conditionMessage(error))
+      }
+    )
   })
 
   observeEvent(input$apply_excel_import, {
@@ -212,11 +255,11 @@ register_data_input_observers <- function(input, active_data_file, reset_on_data
         if (isTRUE(update_pending_excel_options(import = TRUE))) {
           reset_on_dataset_load(TRUE)
           mark_settings_dirty()
-          showNotification(statedu_t("settings.excel_import_applied", statedu_current_language(language_fn)), type = "message")
+          showNotification(statedu_t("settings.excel_import_applied", current_language()), type = "message")
         }
       },
       error = function(e) {
-        showNotification(paste(statedu_t("settings.excel_import_failed", statedu_current_language(language_fn)), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("settings.excel_import_failed", current_language()), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
@@ -225,7 +268,7 @@ register_data_input_observers <- function(input, active_data_file, reset_on_data
     file <- active_data_file()
     if (is.list(file) && isTRUE(file$excel_pending)) {
       active_data_file(NULL)
-      showNotification(statedu_t("settings.excel_import_canceled", statedu_current_language(language_fn)), type = "message")
+      showNotification(statedu_t("settings.excel_import_canceled", current_language()), type = "message")
     }
   })
 

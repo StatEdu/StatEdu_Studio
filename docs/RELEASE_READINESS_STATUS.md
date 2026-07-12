@@ -1,10 +1,10 @@
 # StatEdu Studio Release Readiness Status
 
-Last reviewed: 2026-07-06
+Last reviewed: 2026-07-12
 
-Current version: 1.1.1
+Current version: 1.1.3
 
-Current development source version: 1.1.2-dev
+Current development source version: 1.1.3
 
 ## Current Development Prerelease Snapshot
 

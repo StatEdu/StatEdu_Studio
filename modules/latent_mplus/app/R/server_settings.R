@@ -129,12 +129,13 @@ register_loaded_dataset_observer <- function(
 }
 
 register_data_input_observers <- function(input, active_data_file, reset_on_dataset_load, mark_settings_dirty) {
-  excel_pending_file_value <- function(path) {
-    sheets <- excel_sheet_names(path, basename(path))
+  excel_pending_file_value <- function(path, original_name = basename(path), original_path = path) {
+    sheets <- excel_sheet_names(path, original_name)
     first_sheet <- if (length(sheets) > 0) sheets[[1]] else ""
     list(
       path = path,
-      name = basename(path),
+      name = original_name,
+      original_path = original_path,
       restored = FALSE,
       loaded_at = format(Sys.time(), "%Y%m%d%H%M%OS6"),
       excel_pending = TRUE,
@@ -163,7 +164,35 @@ register_data_input_observers <- function(input, active_data_file, reset_on_data
 
   observeEvent(input$file, {
     reset_on_dataset_load(TRUE)
-    active_data_file(NULL)
+    uploaded <- input$file
+    if (is.null(uploaded)) {
+      active_data_file(NULL)
+    } else {
+      uploaded_path <- uploaded$datapath
+      uploaded_name <- uploaded$name %||% basename(uploaded_path)
+      tryCatch(
+        {
+          if (excel_data_file_extension(uploaded_name)) {
+            active_data_file(excel_pending_file_value(uploaded_path, uploaded_name, ""))
+            reset_on_dataset_load(FALSE)
+          } else {
+            active_data_file(list(
+              path = uploaded_path,
+              name = uploaded_name,
+              original_path = "",
+              restored = FALSE,
+              loaded_at = format(Sys.time(), "%Y%m%d%H%M%OS6")
+            ))
+          }
+        },
+        error = function(error) {
+          reset_on_dataset_load(FALSE)
+          active_data_file(NULL)
+          showNotification(paste("Data file could not be loaded:", conditionMessage(error)), type = "error", duration = 8)
+          message("fileInput data file failed: ", conditionMessage(error))
+        }
+      )
+    }
     mark_settings_dirty()
   })
 
@@ -186,11 +215,11 @@ register_data_input_observers <- function(input, active_data_file, reset_on_data
     }
 
     if (excel_data_file_extension(data_path)) {
-      active_data_file(excel_pending_file_value(data_path))
+      active_data_file(excel_pending_file_value(data_path, basename(data_path), data_path))
       reset_on_dataset_load(FALSE)
     } else {
       reset_on_dataset_load(TRUE)
-      active_data_file(list(path = data_path, name = basename(data_path), restored = FALSE, loaded_at = format(Sys.time(), "%Y%m%d%H%M%OS6")))
+      active_data_file(list(path = data_path, name = basename(data_path), original_path = data_path, restored = FALSE, loaded_at = format(Sys.time(), "%Y%m%d%H%M%OS6")))
     }
     mark_settings_dirty()
   })

@@ -195,7 +195,7 @@ app_stylesheet_link <- function(version) {
 
 app_script_link <- function(version) {
   tagList(
-    tags$script(src = paste0("easyflow.js?v=", version, "-preferences-save-overlay-fix-20260711c")),
+    tags$script(src = paste0("easyflow.js?v=", version, "-excel-import-busy-fix-20260712a")),
     tags$script(src = paste0("model-canvas/state.js?v=", version, "-custom-model-canvas-20260711ac")),
     tags$script(src = paste0("model-canvas/layout.js?v=", version, "-single-mediator-layout-20260711a")),
     tags$script(src = paste0("model-canvas/shiny-bridge.js?v=", version, "-custom-model-canvas-20260705an")),

@@ -354,6 +354,7 @@ if (-not $SkipUnpackedChecks) {
   Assert-Path (Join-Path $bundledAppDir "LICENSE") "bundled application license"
   Assert-Path (Join-Path $bundledAppDir "license_report.csv") "license report"
   Assert-Path (Join-Path $bundledAppDir "runtime_prune_report.csv") "runtime prune report"
+  Assert-Path (Join-Path $bundledAppDir "runtime_content_prune_report.csv") "runtime content prune report"
   Assert-Path (Join-Path $bundledAppDir "LICENSES") "license text folder"
 
   $licenseCount = (Get-ChildItem -LiteralPath (Join-Path $bundledAppDir "LICENSES") -File | Measure-Object).Count
@@ -368,6 +369,56 @@ if (-not $SkipUnpackedChecks) {
     throw "Unexpected prune actions found: $($unexpected.Name -join ', ')"
   }
   Write-Host "[ok] runtime prune report contains only keep rows"
+
+  $contentPruneRows = @(Import-Csv -LiteralPath (Join-Path $bundledAppDir "runtime_content_prune_report.csv"))
+  $contentPruneBytes = 0
+  if ($contentPruneRows.Count -gt 0) {
+    $contentPruneBytes = ($contentPruneRows | Measure-Object Bytes -Sum).Sum
+  }
+  if ($contentPruneRows.Count -gt 0 -and $contentPruneBytes -lt 1) {
+    throw "Runtime content prune report removed 0 bytes; releases must keep the 1.1.1 packaging pruning rule."
+  }
+
+  $runtimeLibrary = Join-Path $runtimeDir "library"
+  $forbiddenRuntimeContentDirs = @(
+    "doc",
+    "docs",
+    "html",
+    "help",
+    "demo",
+    "demos",
+    "examples",
+    "tests",
+    "testdata",
+    "testthat",
+    "unitTests",
+    "vignettes",
+    "include",
+    "src",
+    "data"
+  )
+  $remainingRuntimeContent = @(
+    Get-ChildItem -LiteralPath $runtimeLibrary -Directory -ErrorAction SilentlyContinue |
+      ForEach-Object {
+        $packageDir = $_.FullName
+        foreach ($dirName in $forbiddenRuntimeContentDirs) {
+          $candidate = Join-Path $packageDir $dirName
+          if (Test-Path -LiteralPath $candidate -PathType Container) {
+            $candidate
+          }
+        }
+      } |
+      Select-Object -First 10
+  )
+  if ($remainingRuntimeContent.Count -gt 0) {
+    throw "Bundled R runtime still contains documentation/test/example/source payloads: $($remainingRuntimeContent -join '; ')"
+  }
+  if ($contentPruneRows.Count -lt 1) {
+    Write-Host "[ok] runtime content prune report is empty because runtime content was already pruned"
+  } else {
+    Write-Host "[ok] runtime content prune report removed $contentPruneBytes byte(s)"
+  }
+  Write-Host "[ok] bundled R runtime has no documentation/test/example/source payload directories"
 
   $prevPref = $ErrorActionPreference
   $ErrorActionPreference = "SilentlyContinue"

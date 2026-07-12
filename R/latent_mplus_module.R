@@ -814,11 +814,12 @@ register_latent_mplus_server <- function(input,
 
   root <- latent_mplus_module_root()
   try(shiny::addResourcePath("latent_mplus_assets", file.path(root, "www")), silent = TRUE)
-  app_output_root <- file.path(getwd(), "outputs")
+  latent_env <- latent_mplus_env()
+  app_output_root <- latent_env$latent_default_output_root(getwd())
   dir.create(app_output_root, recursive = TRUE, showWarnings = FALSE)
   try(shiny::addResourcePath("latent_outputs", normalizePath(app_output_root, winslash = "/", mustWork = FALSE)), silent = TRUE)
 
-  env <- new.env(parent = latent_mplus_env())
+  env <- new.env(parent = latent_env)
   env$input <- input
   env$output <- output
   env$session <- session

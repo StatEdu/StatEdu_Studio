@@ -17,6 +17,11 @@ startup_time <- function(label, expr) {
 }
 
 startup_log("app.R begin")
+upload_limit_mb <- suppressWarnings(as.numeric(Sys.getenv("STATEDU_MAX_UPLOAD_MB", "2048")))
+if (!is.finite(upload_limit_mb) || upload_limit_mb <= 0) {
+  upload_limit_mb <- 2048
+}
+options(shiny.maxRequestSize = upload_limit_mb * 1024^2)
 compiler::enableJIT(3)
 startup_time("source app_bootstrap", source(file.path("R", "app_bootstrap.R"), local = FALSE))
 startup_time("load packages", load_app_packages())

@@ -254,9 +254,8 @@ latent_data_block <- function(module_id, spec, language = latent_current_languag
       div(
         class = "form-group",
         tags$label(latent_text("Project/output folder", latent_utf8("ed9484eba19ceca09ded8ab82fecb69ceba0a520ed8fb4eb8d94"), language)),
-        tags$pre(
+        tags$div(
           class = "latent-output-folder-display",
-          style = "white-space: pre-wrap; word-break: break-all; margin: 0;",
           textOutput(paste0(module_id, "_output_root_display"), inline = TRUE)
         )
       ),

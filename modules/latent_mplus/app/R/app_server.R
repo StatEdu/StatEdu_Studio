@@ -65,7 +65,7 @@ create_app_server <- function(app_version) {
   force(app_version)
 
   function(input, output, session) {
-    app_output_root <- file.path(getwd(), "outputs")
+    app_output_root <- latent_default_output_root(getwd())
     dir.create(app_output_root, recursive = TRUE, showWarnings = FALSE)
     try(shiny::addResourcePath("latent_outputs", normalizePath(app_output_root, winslash = "/", mustWork = FALSE)), silent = TRUE)
 
@@ -793,7 +793,7 @@ create_app_server <- function(app_version) {
           file <- latent_current_data_file()
           data_dir <- ""
           if (is.list(file)) {
-            data_path <- as.character(file$path %||% "")
+            data_path <- latent_resolved_data_file_path(file, app_root = getwd())
             if (nzchar(data_path)) {
               data_dir <- dirname(normalizePath(data_path, winslash = "/", mustWork = FALSE))
               if (!dir.exists(data_dir)) {
@@ -803,7 +803,6 @@ create_app_server <- function(app_version) {
           }
           path <- save_latent_yaml_file(
             default_dataset_id = input[[paste0(id, "_dataset_id")]] %||% dataset_id_from_data_file(file),
-            default_folder = file.path(latent_output_root_from_data_file(file, app_root = getwd()), "final"),
             initial_dir = data_dir
           )
           if (is.null(path)) {
@@ -1592,6 +1591,8 @@ latent_data_search_roots <- function(app_root = getwd()) {
   parent_root <- dirname(app_root)
   configured_roots <- strsplit(Sys.getenv("STATEDU_LATENT_DATA_SEARCH_ROOTS", ""), .Platform$path.sep, fixed = TRUE)[[1]]
   configured_roots <- configured_roots[nzchar(configured_roots)]
+  program_root <- normalizePath(file.path("D:", "Program"), winslash = "/", mustWork = FALSE)
+  program_roots <- file.path(program_root, c("Studio", "Studio/sample", "data", "PPT", "Latent", "Latent_Mplus"))
   sibling_roots <- file.path(parent_root, c("PPT", "data", "Latent", "Latent_Mplus"))
   parent_children <- if (dir.exists(parent_root)) {
     list.files(parent_root, full.names = TRUE, no.. = TRUE)
@@ -1603,6 +1604,7 @@ latent_data_search_roots <- function(app_root = getwd()) {
   roots <- unique(c(
     configured_roots,
     file.path(app_root, "sample"),
+    program_roots,
     sibling_roots,
     parent_children,
     app_root
@@ -1643,6 +1645,10 @@ latent_original_data_path_from_name <- function(name, app_root = getwd()) {
 latent_resolved_data_file_path <- function(file, app_root = getwd()) {
   if (is.null(file)) {
     return("")
+  }
+  original_path <- as.character(file$original_path %||% file$source_path %||% "")
+  if (nzchar(original_path) && file.exists(original_path) && !latent_temporary_data_path(original_path)) {
+    return(normalizePath(original_path, winslash = "/", mustWork = TRUE))
   }
   path <- as.character(file$path %||% file$datapath %||% "")
   if (nzchar(path) && file.exists(path) && !latent_temporary_data_path(path)) {
@@ -2209,10 +2215,20 @@ latent_data_file_path <- function(current_data_file = NULL) {
   path[[1]]
 }
 
+latent_user_data_dir <- function() {
+  configured <- trimws(Sys.getenv("STATEDU_USER_DATA_DIR", ""))
+  if (nzchar(configured)) {
+    return(normalizePath(configured, winslash = "/", mustWork = FALSE))
+  }
+  local_app_data <- trimws(Sys.getenv("LOCALAPPDATA", ""))
+  if (nzchar(local_app_data)) {
+    return(normalizePath(file.path(local_app_data, "StatEdu Studio"), winslash = "/", mustWork = FALSE))
+  }
+  normalizePath(file.path(path.expand("~"), ".statedu-studio"), winslash = "/", mustWork = FALSE)
+}
+
 latent_default_output_root <- function(app_root = getwd()) {
-  sample_dir <- latent_sample_data_dir(app_root)
-  root <- if (nzchar(sample_dir)) sample_dir else app_root
-  file.path(root, "Mplus_output")
+  file.path(latent_user_data_dir(), "latent_mplus", "Mplus_output")
 }
 
 latent_output_root_from_data_file <- function(current_data_file = NULL, app_root = getwd()) {
@@ -2230,7 +2246,7 @@ latent_mplus_work_root_from_data_file <- function(current_data_file = NULL, app_
 latent_app_output_dir <- function(app_root, dataset_id, analysis_id, output_root = NULL) {
   root <- as.character(output_root %||% "")
   if (!nzchar(root)) {
-    root <- file.path(app_root, "Mplus_output")
+    root <- latent_default_output_root(app_root)
   }
   root
 }
@@ -2264,7 +2280,7 @@ launch_latent_pipeline <- function(project_root, app_root, output_root = NULL, m
   if (!file.exists(rscript)) {
     rscript <- "Rscript"
   }
-  output_root <- normalizePath(output_root %||% file.path(app_root, "Mplus_output"), winslash = "/", mustWork = FALSE)
+  output_root <- normalizePath(output_root %||% latent_default_output_root(app_root), winslash = "/", mustWork = FALSE)
   mplus_work_root <- normalizePath(mplus_work_root %||% file.path(output_root, "mplus_tmp"), winslash = "/", mustWork = FALSE)
   dir.create(output_root, recursive = TRUE, showWarnings = FALSE)
   dir.create(mplus_work_root, recursive = TRUE, showWarnings = FALSE)
@@ -4250,6 +4266,7 @@ build_latent_setup_yaml <- function(app_version, module_id, input, current_data_
   selected_analysis <- input[[paste0(module_id, "_analysis_id")]] %||% latent_modules[[module_id]]$analysis_key
   analysis_spec <- latent_analysis_specs()[[selected_analysis]] %||% list(engine = latent_modules[[module_id]]$engine)
   dataset_id <- trimws(as.character(input[[paste0(module_id, "_dataset_id")]] %||% dataset_id_from_data_file(current_data_file)))
+  source_path <- latent_resolved_data_file_path(current_data_file, app_root = getwd())
   if (!is.data.frame(variable_info)) {
     variable_info <- data.frame(check.names = FALSE)
   }
@@ -4278,7 +4295,7 @@ build_latent_setup_yaml <- function(app_version, module_id, input, current_data_
       project_root = latent_project_root_value(input[[paste0(module_id, "_project_root")]]),
       output_root = latent_output_root_from_data_file(current_data_file, app_root = getwd()),
       source_file = list(
-        path = current_data_file$path %||% "",
+        path = source_path %||% current_data_file$path %||% "",
         name = current_data_file$name %||% ""
       ),
       variables = variable_records

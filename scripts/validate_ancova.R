@@ -328,7 +328,7 @@ stopifnot(identical(warn_only_review[["Decision mode"]][[1]], "Warn only"))
 
 custom_alpha <- prepare_ancova_results(data_basic, "y", "group", "x", variable_info, options = list(decision_alpha = 0.01))
 custom_alpha_review <- ancova_assumption_review_table(custom_alpha, variable_info)
-stopifnot(identical(custom_alpha_review[["Decision alpha"]][[1]], ".010"))
+stopifnot(identical(custom_alpha_review[["Decision alpha"]][[1]], ".01"))
 
 html <- as.character(ancova_results_ui(result, variable_info))
 stopifnot(grepl("Model overview", html, fixed = TRUE))

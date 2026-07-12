@@ -578,7 +578,7 @@ create_app_server <- function(app_version) {
     restore_settings_state_fn = restore_settings_state
   )
 
-  register_data_input_observers(input, active_data_file, reset_on_dataset_load, mark_settings_dirty)
+  register_data_input_observers(input, active_data_file, reset_on_dataset_load, mark_settings_dirty, language_fn = app_language)
 
   capture_settings_file <- Sys.getenv("STATEDU_CAPTURE_SETTINGS_FILE", "")
   if (nzchar(capture_settings_file) && file.exists(capture_settings_file)) {

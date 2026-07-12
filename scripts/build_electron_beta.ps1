@@ -315,6 +315,16 @@ if (Test-Path -LiteralPath (Join-Path $runtimeStage "bin\x64\Rscript.exe")) {
     "--runtime-root=$runtimeStage",
     "--output-dir=$appStage"
   )
+
+  # Keep the 1.1.1 public packaging rule: exclude R runtime documentation,
+  # tests, examples, source payloads, and other non-runtime content.
+  Write-Host "Pruning bundled R runtime documentation and test payloads"
+  Invoke-Native (Join-Path $runtimeStage "bin\x64\Rscript.exe") @(
+    (Join-Path $repoRoot "scripts\prune_r_runtime_content.R"),
+    "--runtime-root=$runtimeStage",
+    "--output-dir=$appStage",
+    "--execute"
+  )
 } else {
   Write-Warning "R runtime was not found; third-party license notices were not generated."
 }

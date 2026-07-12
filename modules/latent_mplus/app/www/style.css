@@ -74,6 +74,30 @@ body {
   width: 100%;
 }
 
+.latent-output-folder-display {
+  display: block;
+  width: 100%;
+  min-height: 68px;
+  margin: 0;
+  padding: 12px 10px;
+  border: 1px solid #d9e2ec;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #102a43;
+  font-family: Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.latent-output-folder-display .shiny-text-output {
+  display: inline;
+  text-align: left;
+}
+
 .latent-export-actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
