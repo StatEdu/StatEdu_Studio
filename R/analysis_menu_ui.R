@@ -79,6 +79,7 @@ analysis_tab_panel <- function(analysis_tabs = enabled_analysis_tabs(), language
     if (isTRUE(analysis_tabs[["nonparametric_paired"]])) lazy_tab_panel(statedu_ui_label("nonparametric_paired", language), "Nonparametric Paired", "lazy_analysis_nonparametric_paired"),
     if (isTRUE(analysis_tabs[["correlation"]])) lazy_tab_panel(statedu_ui_label("correlation", language), "Correlation", "lazy_analysis_correlation"),
     if (isTRUE(analysis_tabs[["reliability"]])) lazy_tab_panel(statedu_ui_label("reliability", language), "Reliability", "lazy_analysis_reliability"),
+    if (isTRUE(analysis_tabs[["interrater_agreement"]])) lazy_tab_panel(statedu_ui_label("interrater_agreement", language), "Inter-rater Agreement", "lazy_analysis_interrater_agreement"),
     if (isTRUE(analysis_tabs[["factor_analysis"]])) lazy_tab_panel(statedu_ui_label("factor_analysis", language), "Factor Analysis", "lazy_analysis_factor_analysis"),
     if (isTRUE(analysis_tabs[["pca"]])) lazy_tab_panel(statedu_ui_label("pca", language), "Principal Components", "lazy_analysis_pca"),
     if (isTRUE(analysis_tabs[["hierarchical"]])) lazy_tab_panel(statedu_ui_label("regression", language), "Regression", "lazy_analysis_hierarchical"),

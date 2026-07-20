@@ -13,6 +13,9 @@ body {
   --se-standard-setup-width: 1176px;
   --se-standard-workspace-padding: 18px;
   --se-standard-workspace-width: calc(var(--se-standard-setup-width) + (var(--se-standard-workspace-padding) * 2));
+  --se-standard-four-column-grid-width: calc((var(--se-standard-panel-width) * 2) + var(--se-standard-transfer-width) + var(--se-standard-options-width) + (var(--se-standard-gap) * 3));
+  --se-standard-four-column-setup-width: calc(var(--se-standard-four-column-grid-width) + (var(--se-standard-panel-padding) * 2));
+  --se-standard-four-column-workspace-width: calc(var(--se-standard-four-column-setup-width) + (var(--se-standard-workspace-padding) * 2));
   --se-analysis-workspace-width: 1140px;
   --se-three-panel-grid-width: calc((var(--se-standard-panel-width) * 3) + (var(--se-standard-gap) * 2));
   --se-three-panel-setup-width: calc(var(--se-three-panel-grid-width) + (var(--se-standard-panel-padding) * 2));
@@ -2574,7 +2577,7 @@ input.variable-select:disabled {
   grid-template-rows: auto;
   row-gap: 10px;
   align-items: start;
-  min-height: 144px;
+  min-height: 60px;
 }
 
 .analysis-three-block-action-row .analysis-action-cell {
@@ -6935,6 +6938,64 @@ pre {
   max-height: 353px !important;
 }
 
+.interrater-agreement-setup-grid > .interrater-options-panel {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+  scrollbar-gutter: stable;
+}
+
+.interrater-options-panel .analysis-option-group {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.interrater-options-panel .analysis-option-title {
+  margin-bottom: 4px !important;
+  line-height: 1.2 !important;
+}
+
+.interrater-options-panel .checkbox {
+  margin-top: 2px !important;
+  margin-bottom: 2px !important;
+}
+
+.interrater-options-panel .analysis-option-group .form-group,
+.interrater-options-panel .analysis-option-group .shiny-input-container {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.interrater-options-panel .checkbox label {
+  line-height: 1.25 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.interrater-options-panel > .form-group,
+.interrater-options-panel > .shiny-input-container {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.interrater-options-panel > .form-group > label,
+.interrater-options-panel > .shiny-input-container > label {
+  margin-bottom: 3px !important;
+  line-height: 1.2 !important;
+}
+
+.interrater-options-panel .form-control {
+  height: 30px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
 .reliability-target-panel.reliability-subfactor-off .analysis-transfer-listbox {
   margin-top: -10px;
 }
@@ -7720,6 +7781,26 @@ pre {
   box-sizing: border-box;
 }
 
+.analysis-three-block-workspace:has(.frequencies-action-row:not(.crosstab-action-row)),
+.analysis-three-block-workspace:has(.reliability-action-row),
+.analysis-three-block-workspace:has(.paired-action-row),
+.analysis-three-block-workspace:has(.ttest-anova-action-row),
+.analysis-three-block-workspace:has(.correlation-action-row),
+.analysis-three-block-workspace:has(.crosstab-action-row),
+.analysis-three-block-workspace:has(.regression-action-row),
+.analysis-three-block-workspace:has(.hierarchical-action-row),
+.analysis-three-block-workspace:has(.logistic-action-row),
+.analysis-three-block-workspace:has(.generalized-action-row),
+.analysis-three-block-workspace.crosstab-workspace-panel,
+.analysis-three-block-workspace.regression-workspace-panel,
+.analysis-three-block-workspace.hierarchical-workspace-panel,
+.analysis-three-block-workspace.logistic-workspace-panel,
+.analysis-three-block-workspace.generalized-workspace-panel {
+  width: var(--se-standard-four-column-workspace-width) !important;
+  min-width: var(--se-standard-four-column-workspace-width) !important;
+  max-width: var(--se-standard-four-column-workspace-width) !important;
+}
+
 .analysis-three-block-workspace .analysis-workspace-heading,
 .analysis-three-block-workspace .analysis-data-viewer-panel {
   width: 100% !important;
@@ -7783,6 +7864,41 @@ pre {
 }
 
 .analysis-three-block-workspace .frequencies-setup-grid,
+.analysis-three-block-workspace:has(.frequencies-action-row:not(.crosstab-action-row)) .frequencies-setup-grid,
+.analysis-three-block-workspace:has(.reliability-action-row) .reliability-setup-grid,
+.analysis-three-block-workspace:has(.reliability-action-row) .frequencies-setup-grid,
+.analysis-three-block-workspace:has(.paired-action-row) .paired-setup-grid,
+.analysis-three-block-workspace:has(.paired-action-row) .frequencies-setup-grid,
+.analysis-three-block-workspace:has(.ttest-anova-action-row) .ttest-anova-setup-grid,
+.analysis-three-block-workspace:has(.ttest-anova-action-row) .frequencies-setup-grid,
+.analysis-three-block-workspace:has(.correlation-action-row) .correlation-setup-grid,
+.analysis-three-block-workspace:has(.correlation-action-row) .frequencies-setup-grid,
+.analysis-three-block-workspace:has(.crosstab-action-row) .crosstab-setup-grid,
+.analysis-three-block-workspace:has(.crosstab-action-row) .frequencies-setup-grid,
+.analysis-three-block-workspace:has(.regression-action-row) .regression-setup-grid,
+.analysis-three-block-workspace:has(.regression-action-row) .frequencies-setup-grid,
+.analysis-three-block-workspace:has(.hierarchical-action-row) .hierarchical-setup-grid,
+.analysis-three-block-workspace:has(.hierarchical-action-row) .frequencies-setup-grid,
+.analysis-three-block-workspace:has(.logistic-action-row) .logistic-setup-grid,
+.analysis-three-block-workspace:has(.logistic-action-row) .frequencies-setup-grid,
+.analysis-three-block-workspace:has(.generalized-action-row) .generalized-setup-grid,
+.analysis-three-block-workspace:has(.generalized-action-row) .frequencies-setup-grid,
+.analysis-three-block-workspace .frequencies-action-row:not(.crosstab-action-row),
+.analysis-three-block-workspace .reliability-action-row,
+.analysis-three-block-workspace .paired-action-row,
+.analysis-three-block-workspace .ttest-anova-action-row,
+.analysis-three-block-workspace .correlation-action-row,
+.analysis-three-block-workspace .crosstab-action-row,
+.analysis-three-block-workspace .regression-action-row,
+.analysis-three-block-workspace .hierarchical-action-row,
+.analysis-three-block-workspace .logistic-action-row,
+.analysis-three-block-workspace .generalized-action-row {
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
+}
+
+.analysis-three-block-workspace .frequencies-setup-grid,
 .analysis-three-block-workspace .reliability-setup-grid,
 .analysis-three-block-workspace .paired-setup-grid,
 .analysis-three-block-workspace .ttest-anova-setup-grid,
@@ -7814,6 +7930,8 @@ pre {
 .analysis-three-block-workspace .ttest-anova-setup-grid > .ttest-anova-options-column,
 .analysis-three-block-workspace .correlation-setup-grid > .correlation-options-column {
   grid-column: 4 !important;
+  grid-row: 1 !important;
+  align-self: stretch !important;
 }
 
 .analysis-three-block-workspace .crosstab-setup-grid,
@@ -7826,7 +7944,7 @@ pre {
 .analysis-three-block-workspace .hierarchical-action-row,
 .analysis-three-block-workspace .logistic-action-row,
 .analysis-three-block-workspace .generalized-action-row {
-  grid-template-columns: var(--se-analysis-grid-columns) !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
 }
 
@@ -7874,7 +7992,7 @@ pre {
 .analysis-three-block-workspace.hierarchical-workspace-panel .analysis-three-block-action-row .analysis-save-cell,
 .analysis-three-block-workspace.logistic-workspace-panel .analysis-three-block-action-row .analysis-save-cell,
 .analysis-three-block-workspace.generalized-workspace-panel .analysis-three-block-action-row .analysis-save-cell {
-  grid-column: 5 !important;
+  grid-column: 4 !important;
 }
 
 .analysis-three-block-action-row .analysis-save-cell .analysis-save-action,
@@ -7883,16 +8001,28 @@ pre {
   transform: none !important;
 }
 
+.analysis-three-block-workspace [id$="_results"]:empty {
+  display: block !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+
 .analysis-three-block-workspace .crosstab-setup-grid > .crosstab-options-panel,
 .analysis-three-block-workspace .regression-setup-grid > .regression-options.analysis-options-panel,
 .analysis-three-block-workspace .hierarchical-setup-grid > .hierarchical-options.analysis-options-panel,
 .analysis-three-block-workspace .logistic-setup-grid > .hierarchical-options.analysis-options-panel,
 .analysis-three-block-workspace .generalized-setup-grid > .generalized-options.analysis-options-panel {
-  grid-column: 5 !important;
+  grid-column: 4 !important;
+  grid-row: 1 !important;
+  align-self: stretch !important;
 }
 
 .logistic-action-row {
-  margin-bottom: 28px;
+  margin-bottom: 0;
 }
 
 .longitudinal-action-row {
@@ -8123,17 +8253,17 @@ pre {
 }
 
 .generalized-workspace-panel {
-  width: var(--se-standard-setup-width);
-  min-width: var(--se-standard-setup-width);
-  max-width: var(--se-standard-setup-width);
+  width: var(--se-standard-four-column-workspace-width);
+  min-width: var(--se-standard-four-column-workspace-width);
+  max-width: var(--se-standard-four-column-workspace-width);
   overflow-x: auto;
 }
 
 .generalized-workspace-heading,
 .generalized-data-viewer-panel {
-  width: var(--se-analysis-workspace-width) !important;
-  min-width: var(--se-analysis-workspace-width) !important;
-  max-width: var(--se-analysis-workspace-width) !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
 }
 
 .longitudinal-workspace-panel,
@@ -8157,12 +8287,12 @@ pre {
 
 .generalized-setup-grid {
   display: grid;
-  grid-template-columns: var(--se-analysis-grid-columns) !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
   align-items: start;
-  width: var(--se-analysis-workspace-width) !important;
-  min-width: var(--se-analysis-workspace-width) !important;
-  max-width: var(--se-analysis-workspace-width) !important;
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
 }
 
 .generalized-setup-grid > .regression-available-panel,
@@ -8181,7 +8311,7 @@ pre {
 }
 
 .generalized-setup-grid > .generalized-options.analysis-options-panel {
-  grid-column: 5 !important;
+  grid-column: 4 !important;
   grid-row: 1 !important;
   margin-left: 0 !important;
   padding-top: 14px !important;
@@ -8358,11 +8488,11 @@ pre {
 
 .generalized-action-row {
   display: grid !important;
-  grid-template-columns: var(--se-analysis-grid-columns) !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
-  width: var(--se-analysis-workspace-width) !important;
-  min-width: var(--se-analysis-workspace-width) !important;
-  max-width: var(--se-analysis-workspace-width) !important;
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
   margin-top: 18px !important;
   align-items: start;
 }
@@ -8389,7 +8519,7 @@ pre {
 }
 
 .generalized-action-row > #generalized_save_control {
-  grid-column: 5;
+  grid-column: 4;
   margin-left: 0;
   align-self: start;
   justify-self: center;
@@ -11209,10 +11339,11 @@ select[id$="_active_role"]:focus {
 
 .ancova-action-row {
   display: grid !important;
-  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
-  width: var(--se-standard-setup-width) !important;
-  min-width: var(--se-standard-setup-width) !important;
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
   align-items: start !important;
 }
 
@@ -11233,11 +11364,11 @@ select[id$="_active_role"]:focus {
 }
 
 .ancova-action-row > #ancova_save_control {
-  grid-column: 5 !important;
+  grid-column: 4 !important;
   justify-self: center !important;
   align-self: start !important;
   margin-left: 0 !important;
-  transform: translateX(18px) !important;
+  transform: none !important;
 }
 
 .ancova-action-row > #ancova_save_control .analysis-save-action {
@@ -11265,11 +11396,12 @@ select[id$="_active_role"]:focus {
 }
 
 /* Data Editor shared geometry contract: standard three-block tools follow t-test / ANOVA. */
+.data-editor-workspace,
 .data-editor-workspace:has(.recode-same-setup-grid),
 .data-editor-workspace:has(.variable-transform-grid) {
-  width: var(--se-standard-workspace-width) !important;
-  min-width: var(--se-standard-workspace-width) !important;
-  max-width: var(--se-standard-workspace-width) !important;
+  width: var(--se-standard-four-column-workspace-width) !important;
+  min-width: var(--se-standard-four-column-workspace-width) !important;
+  max-width: var(--se-standard-four-column-workspace-width) !important;
   margin-left: 0 !important;
   margin-right: auto !important;
   overflow-x: visible !important;
@@ -11278,16 +11410,25 @@ select[id$="_active_role"]:focus {
 
 .data-editor-workspace .analysis-workspace-heading,
 .data-editor-workspace .analysis-data-viewer-panel,
+.data-editor-workspace .frequencies-setup-grid,
+.data-editor-workspace .variable-transform-grid,
 .data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid),
 .data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) {
-  width: var(--se-standard-setup-width) !important;
-  min-width: var(--se-standard-setup-width) !important;
-  max-width: var(--se-standard-setup-width) !important;
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
+  box-sizing: border-box;
+}
+
+.data-editor-workspace .variable-transform-grid {
+  grid-template-columns: var(--se-standard-panel-width) minmax(0, calc(var(--se-standard-four-column-grid-width) - var(--se-standard-panel-width) - var(--se-standard-gap))) !important;
+  gap: var(--se-standard-gap) !important;
+  padding: var(--se-standard-panel-padding) !important;
   box-sizing: border-box;
 }
 
 .data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid) {
-  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
   align-items: stretch !important;
   grid-auto-rows: var(--se-standard-panel-height) !important;
@@ -11308,6 +11449,9 @@ select[id$="_active_role"]:focus {
 }
 
 .data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid) > .analysis-options-panel {
+  grid-column: 4 !important;
+  grid-row: 1 !important;
+  align-self: stretch !important;
   width: var(--se-standard-options-width) !important;
   min-width: var(--se-standard-options-width) !important;
   max-width: var(--se-standard-options-width) !important;
@@ -11340,7 +11484,7 @@ select[id$="_active_role"]:focus {
 
 .data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) {
   display: grid !important;
-  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
   align-items: start !important;
   margin-top: 26px !important;
@@ -11387,7 +11531,7 @@ select[id$="_active_role"]:focus {
 }
 
 .data-editor-workspace .wide-long-action-row > #preview_wide_long {
-  grid-column: 5 !important;
+  grid-column: 4 !important;
 }
 
 .data-editor-workspace .variable-rename-target-panel .analysis-transfer-listbox {
@@ -11420,11 +11564,11 @@ select[id$="_active_role"]:focus {
 }
 
 .data-editor-workspace .wide-long-grid {
-  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
-  width: var(--se-standard-setup-width) !important;
-  min-width: var(--se-standard-setup-width) !important;
-  max-width: var(--se-standard-setup-width) !important;
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
 }
 
 .data-editor-workspace .wide-long-source-panel,
@@ -11436,6 +11580,9 @@ select[id$="_active_role"]:focus {
 }
 
 .data-editor-workspace .wide-long-options {
+  grid-column: 4 !important;
+  grid-row: 1 !important;
+  align-self: stretch !important;
   width: var(--se-standard-options-width) !important;
   min-width: var(--se-standard-options-width) !important;
   max-width: var(--se-standard-options-width) !important;
@@ -11465,15 +11612,15 @@ select[id$="_active_role"]:focus {
 }
 
 .data-editor-workspace .wide-long-action-row {
-  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
-  width: var(--se-standard-setup-width) !important;
-  min-width: var(--se-standard-setup-width) !important;
-  max-width: var(--se-standard-setup-width) !important;
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
 }
 
 .data-editor-workspace .recode-builder-grid {
-  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
   height: auto !important;
   min-height: 0 !important;
@@ -11494,7 +11641,9 @@ select[id$="_active_role"]:focus {
 }
 
 .data-editor-workspace .recode-builder-rule-panel {
-  grid-column: 5 !important;
+  grid-column: 4 !important;
+  grid-row: 1 !important;
+  align-self: stretch !important;
   width: var(--se-standard-options-width) !important;
   min-width: var(--se-standard-options-width) !important;
   max-width: var(--se-standard-options-width) !important;
@@ -11502,11 +11651,11 @@ select[id$="_active_role"]:focus {
 
 .data-editor-workspace .recode-builder-action-row {
   display: grid !important;
-  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
-  width: var(--se-standard-setup-width) !important;
-  min-width: var(--se-standard-setup-width) !important;
-  max-width: var(--se-standard-setup-width) !important;
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
   margin-top: 26px !important;
   margin-bottom: 14px !important;
 }
@@ -11537,9 +11686,9 @@ select[id$="_active_role"]:focus {
 
 .data-editor-workspace:has(.merge-setup-grid),
 .data-editor-workspace:has(.id-aggregate-options) {
-  width: var(--se-standard-workspace-width) !important;
-  min-width: var(--se-standard-workspace-width) !important;
-  max-width: var(--se-standard-workspace-width) !important;
+  width: var(--se-standard-four-column-workspace-width) !important;
+  min-width: var(--se-standard-four-column-workspace-width) !important;
+  max-width: var(--se-standard-four-column-workspace-width) !important;
   margin-left: 0 !important;
   margin-right: auto !important;
   overflow-x: visible !important;
@@ -11549,9 +11698,9 @@ select[id$="_active_role"]:focus {
 .data-editor-workspace .merge-setup-grid,
 .data-editor-workspace .id-aggregate-options,
 .data-editor-workspace .data-editor-simple-action-row {
-  width: var(--se-standard-setup-width) !important;
-  min-width: var(--se-standard-setup-width) !important;
-  max-width: var(--se-standard-setup-width) !important;
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
   box-sizing: border-box;
 }
 
@@ -11666,10 +11815,11 @@ select[id$="_active_role"]:focus {
 }
 
 .data-editor-workspace:has(.merge-setup-grid) .data-editor-result-output,
-.data-editor-workspace:has(.id-aggregate-options) .data-editor-result-output {
-  width: var(--se-standard-setup-width) !important;
-  min-width: var(--se-standard-setup-width) !important;
-  max-width: var(--se-standard-setup-width) !important;
+.data-editor-workspace:has(.id-aggregate-options) .data-editor-result-output,
+.data-editor-workspace .data-editor-result-output {
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
 }
 
 @media (max-width: 900px) {
@@ -11700,9 +11850,9 @@ select[id$="_active_role"]:focus {
 }
 
 .complex-sample-workspace-panel {
-  width: var(--se-standard-workspace-width) !important;
-  min-width: var(--se-standard-workspace-width) !important;
-  max-width: var(--se-standard-workspace-width) !important;
+  width: var(--se-standard-four-column-workspace-width) !important;
+  min-width: var(--se-standard-four-column-workspace-width) !important;
+  max-width: var(--se-standard-four-column-workspace-width) !important;
   margin-left: 0 !important;
   margin-right: auto !important;
   padding: var(--se-standard-workspace-padding) !important;
@@ -11725,10 +11875,11 @@ select[id$="_active_role"]:focus {
 }
 
 .complex-sample-workspace-panel .complex-sample-setup-grid,
+.complex-sample-workspace-panel .frequencies-setup-grid,
 .complex-sample-workspace-panel .complex-sample-action-row {
-  width: var(--se-standard-setup-width) !important;
-  min-width: var(--se-standard-setup-width) !important;
-  max-width: var(--se-standard-setup-width) !important;
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
   margin-left: 0 !important;
   margin-right: 0 !important;
   box-sizing: border-box;
@@ -11739,12 +11890,14 @@ select[id$="_active_role"]:focus {
 }
 
 .complex-sample-workspace-panel .complex-sample-setup-grid {
-  grid-template-columns: var(--se-analysis-grid-columns) !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
 }
 
 .complex-sample-workspace-panel .complex-sample-setup-grid > .complex-sample-analysis-options-column {
-  grid-column: 5 !important;
+  grid-column: 4 !important;
+  grid-row: 1 !important;
+  align-self: stretch !important;
 }
 
 .complex-sample-hidden-design-inputs {
@@ -11757,9 +11910,9 @@ select[id$="_active_role"]:focus {
   gap: var(--se-standard-gap);
   justify-content: start !important;
   align-items: start !important;
-  width: var(--se-three-panel-setup-width) !important;
-  min-width: var(--se-three-panel-setup-width) !important;
-  max-width: var(--se-three-panel-setup-width) !important;
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
   margin-top: 0 !important;
   padding: var(--se-standard-panel-padding) !important;
   box-sizing: border-box;
@@ -11786,18 +11939,18 @@ select[id$="_active_role"]:focus {
 }
 
 .complex-sample-design-workspace-panel {
-  width: var(--se-three-panel-workspace-width) !important;
-  min-width: var(--se-three-panel-workspace-width) !important;
-  max-width: var(--se-three-panel-workspace-width) !important;
+  width: var(--se-standard-four-column-workspace-width) !important;
+  min-width: var(--se-standard-four-column-workspace-width) !important;
+  max-width: var(--se-standard-four-column-workspace-width) !important;
 }
 
 .complex-sample-design-workspace-panel .complex-sample-design-action-row {
   display: grid;
   grid-template-columns: var(--se-standard-panel-width) var(--se-standard-panel-width) var(--se-standard-panel-width);
   gap: var(--se-standard-gap);
-  width: var(--se-three-panel-setup-width) !important;
-  min-width: var(--se-three-panel-setup-width) !important;
-  max-width: var(--se-three-panel-setup-width) !important;
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
   margin-top: 26px;
   padding-left: var(--se-standard-panel-padding) !important;
   padding-right: var(--se-standard-panel-padding) !important;
@@ -11869,12 +12022,12 @@ select[id$="_active_role"]:focus {
 
 .complex-sample-workspace-panel .complex-sample-action-row {
   display: grid !important;
-  grid-template-columns: var(--se-analysis-grid-columns) !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
-  width: var(--se-standard-setup-width) !important;
-  min-width: var(--se-standard-setup-width) !important;
-  max-width: var(--se-standard-setup-width) !important;
-  margin-top: 12px !important;
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
+  margin-top: 26px !important;
   margin-left: 0 !important;
   margin-right: 0 !important;
   padding-left: var(--se-standard-panel-padding) !important;
@@ -11910,7 +12063,7 @@ select[id$="_active_role"]:focus {
 }
 
 .complex-sample-workspace-panel .complex-sample-action-row .analysis-save-cell {
-  grid-column: 5 !important;
+  grid-column: 4 !important;
   grid-row: 1 !important;
   justify-self: center !important;
   margin-left: 0 !important;

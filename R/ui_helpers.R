@@ -188,7 +188,7 @@ app_brand_title <- function(version) {
 
 app_stylesheet_link <- function(version) {
   tagList(
-    tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-indirect-effect-header-20260711a")),
+    tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-interrater-options-gap-20260720a")),
     tags$link(rel = "stylesheet", type = "text/css", href = paste0("model-canvas/canvas.css?v=", version, "-analysis-modal-compact-20260712b"))
   )
 }
@@ -248,7 +248,7 @@ app_static_language_labels_script <- local({
       "latent", "result", "help", "about", "preferences", "bug_report", "feature_request",
       "analysis_request", "qna", "frequencies", "crosstabs", "ttest_anova",
       "paired", "ancova", "nonparametric", "nonparametric_paired", "correlation",
-      "reliability", "factor_analysis", "pca", "regression", "glm", "logistic",
+      "reliability", "interrater_agreement", "factor_analysis", "pca", "regression", "glm", "logistic",
       "longitudinal", "overview", "user_guide", "analyses", "method_notes",
       "validation", "version_history", "source_license", "open_source_licenses"
     )
@@ -374,6 +374,7 @@ tab_panel_content <- function(panel) {
 enabled_analysis_tabs <- function() {
   c(
     reliability = TRUE,
+    interrater_agreement = TRUE,
     frequencies = TRUE,
     paired = TRUE,
     paired_rm = TRUE,

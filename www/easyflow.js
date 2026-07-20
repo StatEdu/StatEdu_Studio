@@ -1560,6 +1560,7 @@
                 'Nonparametric Paired': 'Nonparametric Paired',
                 Correlation: 'Correlation',
                 Reliability: 'Reliability',
+                'Inter-rater Agreement': 'Inter-rater Agreement',
                 'Factor Analysis': 'Factor Analysis',
                 'Principal Components': 'Principal Components',
                 Regression: 'Regression',
@@ -1586,6 +1587,7 @@
                 'Nonparametric Paired': '\uB300\uC751 \uBE44\uBAA8\uC218 \uAC80\uC815',
                 Correlation: '\uC0C1\uAD00\uBD84\uC11D',
                 Reliability: '\uC2E0\uB8B0\uB3C4',
+                'Inter-rater Agreement': '\uD3C9\uAC00\uC790\uAC04 \uC77C\uCE58\uB3C4',
                 'Factor Analysis': '\uC694\uC778\uBD84\uC11D',
                 'Principal Components': '\uC8FC\uC131\uBD84\uBD84\uC11D',
                 Regression: '\uD68C\uADC0\uBD84\uC11D',
@@ -1621,7 +1623,7 @@
                 {
                   title: 'Association & Measurement',
                   titleKo: '\uC5F0\uAD00 / \uCE21\uC815',
-                  values: ['Correlation', 'Reliability', 'Factor Analysis', 'Principal Components']
+                  values: ['Correlation', 'Reliability', 'Inter-rater Agreement', 'Factor Analysis', 'Principal Components']
                 },
                 {
                   title: 'Regression & Models',

@@ -113,7 +113,8 @@ binary_hierarchical_html <- as.character(htmltools::renderTags(logistic_results_
   category_table = category_table,
   split_ci = TRUE
 ))$html)
-stopifnot(grepl("logistic-hierarchical-table", binary_hierarchical_html, fixed = TRUE))
+stopifnot(grepl("logistic-standard-table-wrap", binary_hierarchical_html, fixed = TRUE))
+stopifnot(grepl("logistic-result-table output-table-style-standard", binary_hierarchical_html, fixed = TRUE))
 stopifnot(grepl("Model 1", binary_hierarchical_html, fixed = TRUE))
 stopifnot(grepl("Model 2", binary_hierarchical_html, fixed = TRUE))
 stopifnot(grepl("LLCI", binary_hierarchical_html, fixed = TRUE))
@@ -139,8 +140,8 @@ binary_three_step_html <- as.character(htmltools::renderTags(logistic_results_pa
   show_se = TRUE,
   split_ci = TRUE
 ))$html)
-stopifnot(grepl("landscape-table-panel", binary_three_step_html, fixed = TRUE))
-stopifnot(grepl("fit-width-hierarchical-table", binary_three_step_html, fixed = TRUE))
+stopifnot(grepl("logistic-standard-table-wrap", binary_three_step_html, fixed = TRUE))
+stopifnot(grepl("logistic-result-table output-table-style-standard", binary_three_step_html, fixed = TRUE))
 stopifnot(grepl("Model 3", binary_three_step_html, fixed = TRUE))
 stopifnot(grepl("reference", binary_three_step_html, fixed = TRUE))
 stopifnot(grepl("1.", binary_three_step_html, fixed = TRUE))
@@ -152,6 +153,7 @@ binary_three_step_table_html <- as.character(htmltools::renderTags(logistic_hier
   show_se = TRUE,
   split_ci = TRUE
 ))$html)
+stopifnot(grepl("fit-width-hierarchical-table", binary_three_step_table_html, fixed = TRUE))
 stopifnot(count_fixed(">VIF<", binary_three_step_table_html) == 1L)
 
 saved_html <- saved_logistic_results_html(
@@ -214,9 +216,10 @@ ordered_hier_html <- as.character(htmltools::renderTags(logistic_results_panel(
   show_cox_snell = TRUE,
   split_ci = FALSE
 ))$html)
-stopifnot(grepl("logistic-hierarchical-table", ordered_hier_html, fixed = TRUE))
-stopifnot(grepl("<div style=\"white-space:nowrap;\">Nagelkerke R", ordered_hier_html, fixed = TRUE))
-stopifnot(grepl("<div style=\"white-space:nowrap;\">McFadden R", ordered_hier_html, fixed = TRUE))
+stopifnot(grepl("logistic-standard-table-wrap", ordered_hier_html, fixed = TRUE))
+stopifnot(grepl("logistic-result-table output-table-style-standard", ordered_hier_html, fixed = TRUE))
+stopifnot(grepl("Nagelkerke R2", ordered_hier_html, fixed = TRUE))
+stopifnot(grepl("McFadden R2", ordered_hier_html, fixed = TRUE))
 
 multinom_data <- data.frame(
   y = factor(rep(1:3, each = 50)),

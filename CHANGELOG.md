@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.1.5 - 2026-07-20
+
+### Added
+
+- Added the Reliability > Inter-rater agreement workflow with percent agreement, Cohen's kappa, weighted Cohen's kappa, Fleiss' kappa, Krippendorff's alpha, Gwet's AC1/AC2, Light's kappa, and ICC-oriented options.
+
+### Changed
+
+- Refined shared three-block analysis layouts so option blocks align with the standard frequency/descriptive-analysis structure across analysis and data-editing screens.
+- Tightened inter-rater agreement option spacing and widened result output so long method notes remain visible.
+- Updated result tables to center Estimate, N, and Raters values while keeping method and note text readable.
+
 ## v1.1.3 - 2026-07-12
 
 ### Changed
