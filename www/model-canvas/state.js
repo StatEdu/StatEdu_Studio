@@ -37,7 +37,7 @@
     independent: Infinity,
     mediator: Infinity,
     moderator: Infinity,
-    dependent: 1,
+    dependent: Infinity,
     covariate: Infinity
   };
   var ROLE_LABELS_KO = {

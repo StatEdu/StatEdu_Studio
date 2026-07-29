@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.1.6-dev - 2026-07-29
+
+### Changed
+
+- Expanded the Mediation / Moderation Custom Model canvas so drawn paths drive multi-X, multi-M, multi-Y, and two-moderator analyses, including conditional effects, indirect effects, and Johnson-Neyman output.
+- Hardened custom-model bootstrap matching, outcome-specific moderation, and canvas layout preservation when roles or covariates change.
+
 ## v1.1.5 - 2026-07-20
 
 ### Added

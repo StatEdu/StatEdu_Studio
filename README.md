@@ -10,7 +10,7 @@ All statistical analyses use CRAN packages only.
 
 Current public version: `1.1.5`
 
-Current development version: `1.1.5`
+Current development version: `1.1.6-dev`
 
 Version 1.1.5 is the public release line for local data import, data editing, assumption-guided statistical analyses, reliability workflows, sample-size/effect-size calculators, latent-analysis workflows, and publication-ready HTML result output. It adds inter-rater agreement analysis, shared three-block layout refinements, and result table readability fixes while carrying forward the 1.1.x stabilization fixes. Detailed development history is available in **About > Version History**.
 

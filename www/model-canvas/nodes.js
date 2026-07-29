@@ -257,7 +257,9 @@
         node.x = dependentPosition.x;
         node.y = dependentPosition.y;
       }
-      window.StatEduModelCanvas.layout.reflowRoleLayout(instance.state.nodes, instance.state.style);
+      if (nextRole !== "moderator") {
+        window.StatEduModelCanvas.layout.reflowRoleLayout(instance.state.nodes, instance.state.style);
+      }
       var fontSize = Number(panel.querySelector(".custom-model-property-font-size").value || instance.state.style.fontSize);
       node.fontSize = Math.max(8, Math.min(32, fontSize));
       node.customFontSize = node.fontSize !== Number(instance.state.style.fontSize || 13);

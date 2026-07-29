@@ -309,12 +309,12 @@ hierarchical_delta_line <- function(previous, current) {
 
 hierarchical_delta_footer_label <- function(group) {
   if (any(vapply(group, function(result) isTRUE(result$use_bootstrap), logical(1)))) {
-    return("\u0394R\u00B2(bootstrap 95% CI)")
+    return("\u0394R\u00B2(95% CI)")
   }
   if (any(vapply(group, function(result) isTRUE(result$use_hc3), logical(1)))) {
-    return("\u0394R\u00B2(Robust Wald F p)")
+    return("\u0394R\u00B2(p)")
   }
-  "\u0394R\u00B2(F change p)"
+  "\u0394R\u00B2(p)"
 }
 
 hierarchical_summary_values <- function(group) {
