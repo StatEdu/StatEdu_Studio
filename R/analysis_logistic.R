@@ -265,6 +265,7 @@ logistic_separation_warning <- function(fit) {
 
 logistic_binary_coef_table <- function(model) {
   coef <- summary(model)$coefficients
+  critical <- stats::qnorm(0.975)
   data.frame(
     Outcome = "",
     Term = rownames(coef),
@@ -272,8 +273,8 @@ logistic_binary_coef_table <- function(model) {
     SE = coef[, 2],
     p = coef[, 4],
     OR = exp(coef[, 1]),
-    LLCI = exp(coef[, 1] - 1.96 * coef[, 2]),
-    ULCI = exp(coef[, 1] + 1.96 * coef[, 2]),
+    LLCI = exp(coef[, 1] - critical * coef[, 2]),
+    ULCI = exp(coef[, 1] + critical * coef[, 2]),
     row.names = NULL,
     check.names = FALSE
   )
@@ -281,6 +282,7 @@ logistic_binary_coef_table <- function(model) {
 
 logistic_polr_coef_table <- function(model) {
   coef <- coef(summary(model))
+  critical <- stats::qnorm(0.975)
   term_names <- names(stats::coef(model))
   coef <- coef[term_names, , drop = FALSE]
   p <- 2 * stats::pnorm(abs(coef[, "t value"]), lower.tail = FALSE)
@@ -291,8 +293,8 @@ logistic_polr_coef_table <- function(model) {
     SE = coef[, "Std. Error"],
     p = p,
     OR = exp(coef[, "Value"]),
-    LLCI = exp(coef[, "Value"] - 1.96 * coef[, "Std. Error"]),
-    ULCI = exp(coef[, "Value"] + 1.96 * coef[, "Std. Error"]),
+    LLCI = exp(coef[, "Value"] - critical * coef[, "Std. Error"]),
+    ULCI = exp(coef[, "Value"] + critical * coef[, "Std. Error"]),
     row.names = NULL,
     check.names = FALSE
   )
@@ -302,6 +304,7 @@ logistic_multinom_coef_table <- function(model) {
   sm <- summary(model)
   coef <- sm$coefficients
   se <- sm$standard.errors
+  critical <- stats::qnorm(0.975)
   if (is.null(dim(coef))) {
     coef <- matrix(coef, nrow = 1, dimnames = list(names(coef)[[1]] %||% "", names(coef)))
     se <- matrix(se, nrow = 1, dimnames = dimnames(coef))
@@ -315,8 +318,8 @@ logistic_multinom_coef_table <- function(model) {
       SE = se[index, ],
       p = 2 * stats::pnorm(abs(z), lower.tail = FALSE),
       OR = exp(coef[index, ]),
-      LLCI = exp(coef[index, ] - 1.96 * se[index, ]),
-      ULCI = exp(coef[index, ] + 1.96 * se[index, ]),
+      LLCI = exp(coef[index, ] - critical * se[index, ]),
+      ULCI = exp(coef[index, ] + critical * se[index, ]),
       row.names = NULL,
       check.names = FALSE
     )
@@ -398,17 +401,20 @@ prepare_logistic_analysis_results <- function(
   results <- list()
   warning_rows <- list()
   skipped_rows <- list()
+  hierarchical_note <- "Hierarchical models were fitted on the complete cases of the final model (listwise across all blocks); all steps share the same N."
   for (dependent in dependents) {
     measurement <- logistic_measurement_for(dependent, variable_info)
     if (!measurement %in% logistic_dependent_measurements()) {
       skipped_rows[[length(skipped_rows) + 1L]] <- logistic_guard_row(dependent, character(0), "Unsupported logistic dependent measurement level.", NA_integer_, variable_info)
       next
     }
+    all_vars <- unique(c(dependent, block1, block2, block3))
+    model_data <- data[stats::complete.cases(data[, all_vars, drop = FALSE]), , drop = FALSE]
     previous <- NULL
     for (step_index in seq_along(steps)) {
       predictors <- setdiff(steps[[step_index]]$predictors, dependent)
       if (length(predictors) == 0) next
-      prep <- logistic_prepare_data(data, unique(c(dependent, predictors)), variable_info, reference_values)
+      prep <- logistic_prepare_data(model_data, unique(c(dependent, predictors)), variable_info, reference_values)
       event_note <- NA_character_
       if (identical(measurement, "binary") && is.factor(prep$data[[dependent]]) && length(levels(prep$data[[dependent]])) >= 2) {
         event_note <- sprintf("Binary event for %s is %s; reference is %s.", dependent, levels(prep$data[[dependent]])[[2]], levels(prep$data[[dependent]])[[1]])
@@ -451,10 +457,11 @@ prepare_logistic_analysis_results <- function(
         predictor_vif = predictor_vif,
         parallel = fit$parallel,
         ordinal_fallback = isTRUE(fit$ordinal_fallback),
-        notes = unique(stats::na.omit(c(refs$notes, event_note, sparse$warnings, epv_note, vif_note, separation_note))),
+        notes = unique(stats::na.omit(c(refs$notes, if (length(steps) > 1L) hierarchical_note else NULL, event_note, sparse$warnings, epv_note, vif_note, separation_note))),
         hierarchical_step = steps[[step_index]]$name,
         hierarchical_step_index = step_index,
-        hierarchical_blocks = steps[[step_index]]$blocks
+        hierarchical_blocks = steps[[step_index]]$blocks,
+        hierarchical_note = if (length(steps) > 1L) hierarchical_note else NULL
       )
       if (!is.null(previous)) {
         result$delta_r2 <- stats$r2[["nagelkerke"]] - previous$fit$r2[["nagelkerke"]]

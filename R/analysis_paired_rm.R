@@ -30,24 +30,21 @@ paired_rm_method_label <- function(method) {
 }
 
 paired_rm_sphericity <- function(y) {
+  y <- as.matrix(y)
   n <- nrow(y)
   k <- ncol(y)
   if (n < 3 || k < 3) {
     return(list(w = NA_real_, p = NA_real_, satisfied = NA, epsilon = NA_real_))
   }
-  diffs <- sweep(y[, -1, drop = FALSE], 1, y[, 1], "-")
-  cov_matrix <- stats::cov(diffs)
-  p <- ncol(diffs)
-  det_value <- det(cov_matrix)
-  trace_value <- sum(diag(cov_matrix))
-  w <- if (is.finite(det_value) && det_value > 0 && is.finite(trace_value) && trace_value > 0) {
-    det_value / ((trace_value / p) ^ p)
+  fit <- tryCatch(stats::lm(y ~ 1), error = function(e) NULL)
+  idata <- data.frame(time = factor(seq_len(k)))
+  mt <- if (is.null(fit)) {
+    NULL
   } else {
-    NA_real_
+    tryCatch(stats::mauchly.test(fit, M = ~time, X = ~1, idata = idata), error = function(e) NULL)
   }
-  df <- p * (p + 1) / 2 - 1
-  chi <- if (is.finite(w) && w > 0) -(n - 1 - (2 * p + 1) / 6) * log(w) else NA_real_
-  p_value <- if (is.finite(chi) && df > 0) stats::pchisq(chi, df = df, lower.tail = FALSE) else NA_real_
+  w <- if (is.null(mt)) NA_real_ else unname(as.numeric(mt$statistic))
+  p_value <- if (is.null(mt)) NA_real_ else as.numeric(mt$p.value)
   center <- diag(k) - matrix(1 / k, nrow = k, ncol = k)
   centered_cov <- center %*% stats::cov(y) %*% center
   epsilon <- (sum(diag(centered_cov)) ^ 2) / ((k - 1) * sum(centered_cov ^ 2))
@@ -121,17 +118,37 @@ paired_rm_wilks <- function(y) {
   list(lambda = lambda, f = f_value, df1 = p, df2 = n - p, p = p_value)
 }
 
-paired_rm_cochran_q <- function(y) {
+paired_rm_binary_matrix <- function(y) {
   y <- as.matrix(y)
-  y <- matrix(ifelse(y %in% c("1", 1, TRUE), 1, 0), nrow = nrow(y), ncol = ncol(y), dimnames = dimnames(y))
+  raw <- as.character(y)
+  raw[is.na(y)] <- NA_character_
+  levels <- frequency_value_order(unique(raw[!is.na(raw)]))
+  if (length(levels) != 2) {
+    return(list(matrix = NULL, levels = levels))
+  }
+  binary <- matrix(
+    ifelse(raw == levels[[2]], 1, ifelse(raw == levels[[1]], 0, NA_real_)),
+    nrow = nrow(y),
+    ncol = ncol(y),
+    dimnames = dimnames(y)
+  )
+  list(matrix = binary, levels = levels)
+}
+
+paired_rm_cochran_q <- function(y) {
+  coded <- paired_rm_binary_matrix(y)
+  if (is.null(coded$matrix)) {
+    return(list(q = NA_real_, df = NA_real_, p = NA_real_, levels = coded$levels))
+  }
+  y <- coded$matrix
   k <- ncol(y)
-  col_totals <- colSums(y)
-  row_totals <- rowSums(y)
+  col_totals <- colSums(y, na.rm = TRUE)
+  row_totals <- rowSums(y, na.rm = TRUE)
   total <- sum(col_totals)
   denominator <- k * total - sum(row_totals ^ 2)
   q <- if (denominator > 0) (k - 1) * (k * sum(col_totals ^ 2) - total ^ 2) / denominator else NA_real_
   p <- if (is.finite(q)) stats::pchisq(q, df = k - 1, lower.tail = FALSE) else NA_real_
-  list(q = q, df = k - 1, p = p)
+  list(q = q, df = k - 1, p = p, levels = coded$levels)
 }
 
 paired_rm_partial_eta_squared <- function(anova) {
@@ -476,6 +493,9 @@ paired_rm_display_table <- function(result) {
 paired_rm_binary_display_table <- function(result, values, variable_info, labels, category_table) {
   variables <- as.character(result$variables %||% character(0))
   if (length(variables) == 0) return(result$table)
+  coded <- paired_rm_binary_matrix(values)
+  binary_levels <- coded$levels
+  binary_matrix <- coded$matrix
   time_labels <- paired_rm_option_time_labels(result$options %||% list(), length(variables))
   time_markers <- paired_rm_time_markers(length(time_labels))
   contrast_labels <- stats::setNames(
@@ -490,11 +510,11 @@ paired_rm_binary_display_table <- function(result, values, variable_info, labels
     check.names = FALSE
   )
   for (index in seq_along(variables)) {
-    value <- as.character(values[[variables[[index]]]])
+    value <- if (is.null(binary_matrix)) rep(NA_real_, nrow(values)) else binary_matrix[, variables[[index]]]
     row[[paste0("Time", index, "_label")]] <- time_labels[[index]]
     row[[paste0("Time", index, "_marker")]] <- time_markers[[index]]
-    row[[paste0("Time", index, "_0")]] <- sum(value == "0", na.rm = TRUE)
-    row[[paste0("Time", index, "_1")]] <- sum(value == "1", na.rm = TRUE)
+    row[[paste0("Time", index, "_0")]] <- sum(value == 0, na.rm = TRUE)
+    row[[paste0("Time", index, "_1")]] <- sum(value == 1, na.rm = TRUE)
   }
   row[["StatisticLabel"]] <- result$table$Statistic[[1]]
   row[["Statistic"]] <- result$table$Value[[1]]
@@ -505,6 +525,9 @@ paired_rm_binary_display_table <- function(result, values, variable_info, labels
   row[["PosthocMethodLabel"]] <- paste(posthoc_methods, collapse = ", ")
   row[["PosthocAdjustmentLabel"]] <- if (identical(result$options$posthoc_adjustment %||% "bonferroni", "holm")) "Holm Bonferroni" else "Bonferroni correction"
   row[["Method"]] <- result$table$Method[[1]]
+  if (length(binary_levels) == 2) {
+    attr(row, "binary_levels") <- binary_levels
+  }
   row
 }
 
@@ -605,13 +628,18 @@ paired_rm_tag_table <- function(table, group_label) {
 paired_rm_bind_rows <- function(tables) {
   tables <- Filter(function(table) is.data.frame(table) && nrow(table) > 0, tables)
   if (length(tables) == 0) return(NULL)
+  binary_levels <- unique(unlist(lapply(tables, function(table) attr(table, "binary_levels", exact = TRUE)), use.names = FALSE))
   columns <- unique(unlist(lapply(tables, names), use.names = FALSE))
   tables <- lapply(tables, function(table) {
     missing <- setdiff(columns, names(table))
     for (column in missing) table[[column]] <- ""
     table[, columns, drop = FALSE]
   })
-  do.call(rbind, tables)
+  out <- do.call(rbind, tables)
+  if (length(binary_levels) == 2) {
+    attr(out, "binary_levels") <- binary_levels
+  }
+  out
 }
 
 prepare_paired_rm_results <- function(data, variables = NULL, variable_groups = NULL, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {

@@ -25,10 +25,17 @@ pca_criterion_choices <- function() {
 }
 
 pca_choice_label <- function(value, choices) {
-  names(choices)[match(value, choices)] %||% value
+  index <- match(value, choices)
+  if (length(index) == 0 || is.na(index)) {
+    return(as.character(value %||% ""))
+  }
+  names(choices)[[index]]
 }
 
 pca_matrix_label <- function(matrix_type) {
+  if (identical(matrix_type, "pearson")) {
+    return("Pearson correlation")
+  }
   pca_choice_label(matrix_type, pca_matrix_choices())
 }
 
@@ -68,7 +75,8 @@ pca_select_component_count <- function(eigenvalues, criterion, requested_n = 1L,
       return(1L)
     }
     target <- min(max(as.numeric(cumulative %||% 70) / 100, 0.01), 1)
-    selected <- which(cumsum(eigenvalues) / total >= target)[[1]] %||% 1L
+    selected_values <- which(cumsum(eigenvalues) / total >= target)
+    selected <- if (length(selected_values) > 0) selected_values[[1]] else length(eigenvalues)
     return(min(max(1L, selected), max_components))
   }
   selected <- sum(is.finite(eigenvalues) & eigenvalues >= 1)
@@ -289,6 +297,7 @@ prepare_pca_results <- function(data, variables, variable_info = NULL, labels = 
   warnings <- pca_warning_table(c(
     if (is.list(matrix_result)) matrix_result$warnings else character(0),
     pca_sample_warnings(nrow(complete), length(variables), "PCA"),
+    if (identical(matrix_type, "covariance") && identical(criterion, "eigen")) "The eigenvalue >= 1 rule assumes a correlation matrix. With a covariance matrix this criterion is scale-dependent; consider a fixed number of components or the cumulative variance criterion.",
     if (identical(matrix_type, "polychoric") && isTRUE(options$save_component_scores)) "Component scores are not available when PCA is fitted from a polychoric correlation matrix."
   ))
 

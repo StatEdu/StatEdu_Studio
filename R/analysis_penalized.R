@@ -138,6 +138,8 @@ fit_penalized_models <- function(
     for (rule in lambda_rules) {
       denom <- successful[[rule]]
       frequency <- if (denom > 0) selected_counts[, rule] / denom else rep(NA_real_, length(predictor_names))
+      frequency_display <- ifelse(is.na(frequency), NA_character_, vapply(frequency, format_decimal3, character(1)))
+      frequency_percent_display <- ifelse(is.na(frequency), NA_character_, vapply(frequency * 100, format_decimal3, character(1)))
       stability_rows[[length(stability_rows) + 1]] <- data.frame(
         Outcome = outcome,
         Method = method,
@@ -145,8 +147,8 @@ fit_penalized_models <- function(
         `lambda rule` = rule,
         Predictor = unname(predictor_labels[predictor_names]),
         `Selected in full model` = ifelse(predictor_names %in% full_selected[[rule]], "Yes", "No"),
-        `Selection frequency` = ifelse(is.na(frequency), NA_character_, format_decimal3(frequency)),
-        `Selection frequency (%)` = ifelse(is.na(frequency), NA_character_, format_decimal3(frequency * 100)),
+        `Selection frequency` = frequency_display,
+        `Selection frequency (%)` = frequency_percent_display,
         `Bootstrap resamples` = selection_bootstrap_resamples,
         `Successful resamples` = denom,
         check.names = FALSE

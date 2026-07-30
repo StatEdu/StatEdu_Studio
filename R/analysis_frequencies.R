@@ -32,10 +32,36 @@ frequency_value_display_labels <- function(name, values, category_table = NULL) 
   }, character(1))
 }
 
-frequency_value_order <- function(values) {
+frequency_category_value_order <- function(name, category_table = NULL) {
+  name <- as.character(name %||% "")[[1]]
+  if (!nzchar(name) || !is.data.frame(category_table) || !"name" %in% names(category_table)) {
+    return(character(0))
+  }
+  row_index <- match(name, as.character(category_table$name))
+  if (is.na(row_index)) {
+    return(character(0))
+  }
+  value_columns <- paste0("value_", seq_len(6))
+  value_columns <- intersect(value_columns, names(category_table))
+  if (length(value_columns) == 0) {
+    return(character(0))
+  }
+  values <- vapply(value_columns, function(column) {
+    trimws(as.character(category_table[[column]][[row_index]] %||% ""))
+  }, character(1), USE.NAMES = FALSE)
+  values[nzchar(values)]
+}
+
+frequency_value_order <- function(values, name = NULL, category_table = NULL) {
   values <- as.character(values)
   non_missing <- values[!is.na(values)]
   unique_values <- unique(non_missing)
+  category_order <- frequency_category_value_order(name, category_table)
+  category_order <- category_order[category_order %in% unique_values]
+  if (length(category_order) > 0) {
+    remaining <- unique_values[!unique_values %in% category_order]
+    return(c(category_order, frequency_value_order(remaining)))
+  }
   numeric_values <- suppressWarnings(as.numeric(unique_values))
   if (length(unique_values) > 0 && all(!is.na(numeric_values))) {
     return(unique_values[order(numeric_values)])
@@ -43,12 +69,23 @@ frequency_value_order <- function(values) {
   sort(unique_values)
 }
 
+frequency_ordered_score <- function(values, name = NULL, category_table = NULL) {
+  raw <- as.character(values)
+  raw[is.na(values)] <- NA_character_
+  raw[!is.na(raw) & !nzchar(trimws(raw))] <- NA_character_
+  levels <- frequency_value_order(raw, name = name, category_table = category_table)
+  if (length(levels) == 0) {
+    return(rep(NA_real_, length(values)))
+  }
+  as.numeric(match(raw, levels))
+}
+
 frequency_table_for_variable <- function(data, name, variable_info = NULL, labels = character(0), category_table = NULL) {
   values <- data[[name]]
   values_chr <- as.character(values)
   values_chr[is.na(values)] <- "(Missing)"
   tab <- table(values_chr, useNA = "no")
-  ordered_values <- frequency_value_order(names(tab))
+  ordered_values <- frequency_value_order(names(tab), name = name, category_table = category_table)
   tab <- tab[ordered_values]
   total <- sum(tab)
   counts <- as.integer(tab)

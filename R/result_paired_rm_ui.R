@@ -375,6 +375,12 @@ paired_rm_scale_summary_labels <- function(table) {
   c("M", "SD")
 }
 
+paired_rm_count_summary_labels <- function(table) {
+  levels <- as.character(attr(table, "binary_levels", exact = TRUE) %||% character(0))
+  levels <- levels[nzchar(levels)]
+  if (length(levels) == 2) levels else c("0", "1")
+}
+
 paired_rm_table_with_options <- function(table, options = list()) {
   if (is.data.frame(table)) {
     attr(table, "mean_sd") <- isTRUE(options$mean_sd)
@@ -495,7 +501,7 @@ paired_rm_grouped_table <- function(table, type = c("scale", "count")) {
       ),
       tags$tr(
         lapply(time_indices, function(index) {
-          labels <- if (identical(type, "count")) c("0", "1") else summary_labels
+          labels <- if (identical(type, "count")) paired_rm_count_summary_labels(table) else summary_labels
           tagList(lapply(labels, function(label) tags$th(style = header_style(FALSE), paired_rm_header_label_content(label))))
         }),
         if (include_es) tags$th(style = header_style(FALSE), as.character(table$ES_overall_label[[1]] %||% "overall")),

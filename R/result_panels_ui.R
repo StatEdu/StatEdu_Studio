@@ -528,7 +528,11 @@ hierarchical_model_note_lines <- function(group, variable_table = NULL, labels =
   if (!is.list(group) || length(group) == 0) {
     return(character(0))
   }
-  vapply(seq_along(group), function(index) {
+  hierarchical_notes <- unique(vapply(group, function(result) {
+    as.character(result$hierarchical_note %||% "")
+  }, character(1)))
+  hierarchical_notes <- hierarchical_notes[nzchar(hierarchical_notes)]
+  model_lines <- vapply(seq_along(group), function(index) {
     result <- group[[index]]
     predictors <- result$predictors %||% character(0)
   predictor_labels <- vapply(
@@ -551,6 +555,7 @@ hierarchical_model_note_lines <- function(group, variable_table = NULL, labels =
     }
     sprintf("%s%s: %s", hierarchical_step_label(result, index), method_text, predictor_text)
   }, character(1))
+  c(hierarchical_notes, model_lines)
 }
 
 hierarchical_standard_summary_table <- function(table, summary, model_index, summary_values, include_delta = TRUE) {
@@ -1186,6 +1191,21 @@ regression_results_panel <- function(
   output_table_style = "standard",
   plot_blocks = NULL
 ) {
+  if (regression_results_are_hierarchical(results)) {
+    return(hierarchical_results_panel(
+      results,
+      variable_table = variable_table,
+      labels = labels,
+      category_table = category_table,
+      refs = refs,
+      value_labels = value_labels,
+      show_sr2 = show_sr2,
+      show_f2 = show_f2,
+      show_vif = show_vif,
+      output_table_style = output_table_style,
+      plot_blocks = plot_blocks
+    ))
+  }
   show_penalized <- is.list(penalized)
   warnings <- attr(results, "warnings")
   skipped <- attr(results, "skipped")

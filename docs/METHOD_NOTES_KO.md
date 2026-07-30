@@ -109,6 +109,8 @@ Paired test는 같은 대상에서 두 시점 또는 두 조건을 반복 측정
 
 **StatEdu Studio** 1.0.0 판정 기준: 정규성 옵션을 사용할 때 각 문항의 `|skewness| < 2`, `|excess kurtosis| < 7` 기준을 모두 만족하면 Pearson 기반 신뢰도 해석을 우선하고, 만족하지 않거나 ordinal 문항이면 polychoric 기반 지표를 보조적으로 확인한다(Curran, West, & Finch, 1996). Cronbach's alpha와 omega에는 앱 차원의 고정 합격/불합격 기준을 두지 않는다.
 
+서열형 신뢰도 워크플로에서 ordinal alpha와 ordinal omega는 polychoric 상관행렬을 기반으로 계산한다. 서열형 문항의 item-total correlation과 corrected item-total correlation은 Spearman 상관으로 계산하므로, Pearson 상관을 쓰는 SPSS 출력과 다를 수 있다.
+
 ## 9. 요인분석
 
 탐색적 요인분석은 여러 관측 문항 뒤에 있는 잠재요인 구조를 탐색할 때 사용한다(Kaiser, 1974; Bartlett, 1954).
@@ -722,7 +724,7 @@ HTML, PDF 저장 결과는 앱 화면의 결과표를 연구 보고서나 논문
   $$
 - Kruskal-Wallis epsilon squared:
   $$
-  \varepsilon^2 = \frac{H-k+1}{N-k}
+  \varepsilon^2 = \frac{H(N+1)}{N^2-1}
   $$
   0보다 작으면 0으로 둔다.
 - Friedman Kendall's W:

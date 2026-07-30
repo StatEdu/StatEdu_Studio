@@ -5,7 +5,7 @@ empty_message <- function(text) {
 app_brand_title <- function(version) {
   div(
     class = "brand-title",
-    tags$img(src = paste0("logo-horizontal.png?v=", version, "-statedu-studio-latent"), class = "brand-logo-horizontal", alt = "StatEdu Studio logo"),
+    tags$img(src = paste0("logo-horizontal.png?v=", version, "-statedu-studio-final-logo-20260722"), class = "brand-logo-horizontal", alt = "StatEdu Studio logo"),
     span(class = "latent-brand-text", "Latent Mplus"),
     span(class = "version", paste0("v", version))
   )

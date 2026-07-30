@@ -122,6 +122,43 @@ stopifnot(grepl("ULCI", binary_hierarchical_html, fixed = TRUE))
 stopifnot(!grepl("landscape-table-panel", binary_hierarchical_html, fixed = TRUE))
 stopifnot(grepl("width:100% !important;min-width:0 !important;max-width:100% !important;table-layout:fixed;", binary_hierarchical_html, fixed = TRUE))
 
+binary_missing_hierarchical_data <- binary_hierarchical_data
+binary_missing_hierarchical_data$block2[c(2, 5, 8, 11, 14)] <- NA_real_
+binary_missing_hierarchical_result <- prepare_logistic_analysis_results(
+  binary_missing_hierarchical_data,
+  "y",
+  c("group", "x"),
+  "block2",
+  variable_info = binary_hierarchical_info,
+  reference_values = refs
+)
+expected_logistic_n <- sum(stats::complete.cases(binary_missing_hierarchical_data[, c("y", "group", "x", "block2"), drop = FALSE]))
+stopifnot(length(binary_missing_hierarchical_result) == 2L)
+stopifnot(all(vapply(binary_missing_hierarchical_result, `[[`, numeric(1), "n") == expected_logistic_n))
+binary_missing_model1 <- fit_logistic_model(
+  logistic_prepare_data(binary_missing_hierarchical_data[stats::complete.cases(binary_missing_hierarchical_data[, c("y", "group", "x", "block2"), drop = FALSE]), , drop = FALSE], c("y", "group", "x"), binary_hierarchical_info, refs)$data,
+  "y",
+  c("group", "x"),
+  "binary"
+)
+binary_missing_model2 <- fit_logistic_model(
+  logistic_prepare_data(binary_missing_hierarchical_data[stats::complete.cases(binary_missing_hierarchical_data[, c("y", "group", "x", "block2"), drop = FALSE]), , drop = FALSE], c("y", "group", "x", "block2"), binary_hierarchical_info, refs)$data,
+  "y",
+  c("group", "x", "block2"),
+  "binary"
+)
+binary_missing_stats1 <- logistic_fit_stats(binary_missing_model1$model, binary_missing_model1$null_model, expected_logistic_n)
+binary_missing_stats2 <- logistic_fit_stats(binary_missing_model2$model, binary_missing_model2$null_model, expected_logistic_n)
+stopifnot(abs(binary_missing_hierarchical_result[[2]]$delta_chisq - (binary_missing_stats2$chisq - binary_missing_stats1$chisq)) < 1e-8)
+stopifnot(identical(binary_missing_hierarchical_result[[1]]$hierarchical_note, binary_missing_hierarchical_result[[2]]$hierarchical_note))
+binary_missing_hierarchical_html <- as.character(htmltools::renderTags(logistic_results_panel(
+  binary_missing_hierarchical_result,
+  variable_table = binary_hierarchical_info,
+  category_table = category_table,
+  split_ci = TRUE
+))$html)
+stopifnot(grepl("complete cases of the final model", binary_missing_hierarchical_html, fixed = TRUE))
+
 binary_three_step_result <- prepare_logistic_analysis_results(
   binary_hierarchical_data,
   "y",

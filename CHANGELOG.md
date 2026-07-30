@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.1.7-dev - 2026-07-30
+
+### Changed
+
+- Expanded statistical validation coverage across correlation, reliability, inter-rater agreement, factor analysis / PCA, t-test / ANOVA, paired repeated-measures, regression, logistic, longitudinal / panel, penalized regression, sample-size, effect-size, data-editor, and custom-model workflows.
+- Aligned additional estimates, confidence intervals, missing-data handling, ordinal category ordering, and defensive validation paths with reference package or textbook calculations.
+
 ## v1.1.6-dev - 2026-07-29
 
 ### Changed

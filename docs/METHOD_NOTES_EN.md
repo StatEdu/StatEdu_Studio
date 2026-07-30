@@ -155,6 +155,8 @@ Interpretation cautions:
 - Low item-total correlation may indicate a poorly fitting item, reverse-coding problem, or multidimensional structure.
 - Reliability should be interpreted together with item content and factor structure.
 
+For ordinal reliability workflows, ordinal alpha and ordinal omega are computed from a polychoric correlation matrix. Ordinal item-total correlations, including corrected item-total correlations, are computed with Spearman correlations and may differ from SPSS output that uses Pearson correlations.
+
 ## 9. Factor Analysis
 
 Exploratory factor analysis is used for latent structure exploration.
@@ -662,7 +664,7 @@ $$
 Kruskal-Wallis epsilon squared:
 
 $$
-\varepsilon^2=\frac{H-k+1}{N-k}
+\varepsilon^2=\frac{H(N+1)}{N^2-1}
 $$
 
 Friedman Kendall's W:

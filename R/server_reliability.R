@@ -62,6 +62,7 @@ register_reliability_handlers <- function(
       selected_selected = isolate(input$reliability_selected),
       normality = input$reliability_normality %||% TRUE,
       ordinal = input$reliability_ordinal %||% FALSE,
+      omega = input$reliability_omega %||% TRUE,
       subfactor_enabled = input$reliability_subfactor_enabled,
       reliability_if_deleted = input$reliability_if_deleted %||% TRUE,
       item_total_correlation = input$reliability_item_total_correlation %||% TRUE,
@@ -301,6 +302,7 @@ register_reliability_handlers <- function(
         options <- list(
           normality = isTRUE(input$reliability_normality),
           ordinal = isTRUE(input$reliability_ordinal),
+          omega = isTRUE(input$reliability_omega %||% TRUE),
           reliability_if_deleted = isTRUE(input$reliability_if_deleted),
           item_total_correlation = isTRUE(input$reliability_item_total_correlation)
         )

@@ -268,9 +268,9 @@ body {
 }
 
 .brand-logo-horizontal {
-  width: 112px;
+  width: 148px;
   height: 62px;
-  flex: 0 0 112px;
+  flex: 0 0 148px;
   object-fit: contain;
   object-position: left center;
   display: block;
@@ -9691,9 +9691,9 @@ pre {
   }
 
   .brand-logo-horizontal {
-    width: 96px;
+    width: 124px;
     height: 54px;
-    flex-basis: 96px;
+    flex-basis: 124px;
   }
 
   .version {

@@ -1876,7 +1876,7 @@ sample_size_ttest <- function(target, design, effect_size, alpha, power = NULL, 
     zb <- stats::qnorm(power)
     base_n <- ((1 + 1 / ratio) * (za + zb)^2) / effect_size^2
     group1 <- sample_size_round_up(base_n)
-    group2 <- sample_size_round_up(group1 * ratio)
+    group2 <- sample_size_round_up(base_n * ratio)
     adjusted_group1 <- sample_size_drop_adjust(group1, dropout)
     adjusted_group2 <- sample_size_drop_adjust(group2, dropout)
     return(list(
@@ -3490,9 +3490,10 @@ sample_size_survival <- function(
   if (identical(target, "sample_size")) {
     sample_size_validate_probability(power, "Power")
     required_events <- sample_size_round_up((za + stats::qnorm(power))^2 / (information_fraction * log_hr^2))
-    total <- sample_size_round_up(required_events / event_probability)
-    group1 <- sample_size_round_up(total * allocation_group1)
-    group2 <- sample_size_round_up(total * allocation_group2)
+    exact_total <- required_events / event_probability
+    group1 <- sample_size_round_up(exact_total * allocation_group1)
+    group2 <- sample_size_round_up(exact_total * allocation_group2)
+    total <- group1 + group2
     adjusted_group1 <- sample_size_drop_adjust(group1, dropout)
     adjusted_group2 <- sample_size_drop_adjust(group2, dropout)
     return(list(
@@ -3500,7 +3501,7 @@ sample_size_survival <- function(
       required_events = required_events,
       group1 = group1,
       group2 = group2,
-      total = group1 + group2,
+      total = total,
       adjusted_group1 = adjusted_group1,
       adjusted_group2 = adjusted_group2,
       adjusted_total = adjusted_group1 + adjusted_group2,
@@ -4398,9 +4399,8 @@ sample_size_reliability <- function(
     sample_size_validate_probability(reliability, "Expected reliability")
     items <- as.integer(items)
     if (!is.finite(items) || items < 2) stop("Number of items must be at least 2.", call. = FALSE)
-    transformed <- log(1 - reliability)
-    se_target <- half_width / max(1e-8, 1 - reliability)
-    precision_total <- sample_size_round_up((z / se_target)^2 + 2)
+    se_log <- half_width / (1 - reliability)
+    precision_total <- sample_size_round_up((2 * items / (items - 1)) * (z / se_log)^2 + 2)
     minimum_subjects <- items + 1L
     total <- max(precision_total, minimum_subjects)
     design_label <- "Cronbach's alpha precision"

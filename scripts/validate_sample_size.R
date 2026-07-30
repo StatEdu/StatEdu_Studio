@@ -67,6 +67,14 @@ expect_true(chisquare_power >= 0.8 && chisquare_power_previous < 0.8, "Expected 
 survival <- sample_size_survival("sample_size", hazard_ratio = 0.7, event_probability = 0.5, alpha = 0.05, power = 0.8, ratio = 1)
 survival_power <- sample_size_survival("power", hazard_ratio = 0.7, event_probability = 0.5, alpha = 0.05, n = survival$total, ratio = 1)$power
 expect_true(survival$total >= survival$required_events && survival_power >= 0.8, "Expected survival total N to cover required events and target power")
+survival_unequal <- sample_size_survival("sample_size", hazard_ratio = 0.7, event_probability = 0.21, alpha = 0.05, power = 0.8, ratio = 4)
+survival_exact_total <- survival_unequal$required_events / survival_unequal$event_probability
+expect_true(
+  survival_unequal$group1 == sample_size_round_up(survival_exact_total / 5) &&
+    survival_unequal$group2 == sample_size_round_up(survival_exact_total * 4 / 5),
+  "Expected survival allocation to round groups from the unrounded total implied by required events"
+)
+expect_true(survival_unequal$total == survival_unequal$group1 + survival_unequal$group2, "Expected survival total to equal rounded group sum")
 expect_true(near(survival$schoenfeld_signal, abs(log(0.7)) * sqrt(0.5 * 0.25)), "Expected survival sample size result to report Schoenfeld planning signal")
 
 dropout <- sample_size_ttest("sample_size", "two_sample", 0.5, 0.05, power = 0.8, dropout = 0.1)
@@ -266,6 +274,16 @@ expect_true(near(reliability_kappa$primary_effect_size, 0.8), "Expected Cohen's 
 reliability_alpha_sample <- sample_size_reliability("sample_size", design = "alpha", reliability = 0.8, confidence_level = 0.95, half_width = 0.10, items = 20)
 expect_true(reliability_alpha_sample$total >= 21, "Expected Cronbach alpha sample size to be at least items + 1")
 expect_true(reliability_alpha_sample$minimum_subjects == 21, "Expected Cronbach alpha minimum-subjects rule to equal items + 1")
+reliability_alpha_precision <- sample_size_reliability("sample_size", design = "alpha", reliability = 0.8, confidence_level = 0.95, half_width = 0.05, items = 20)
+alpha_z <- stats::qnorm(0.975)
+alpha_se_log <- 0.05 / (1 - 0.8)
+alpha_expected_precision <- sample_size_round_up((2 * 20 / (20 - 1)) * (alpha_z / alpha_se_log)^2 + 2)
+expect_true(reliability_alpha_precision$precision_total == alpha_expected_precision, "Expected Cronbach alpha precision n to include Bonett item-count coefficient")
+reliability_alpha_precision_5 <- sample_size_reliability("sample_size", design = "alpha", reliability = 0.8, confidence_level = 0.95, half_width = 0.05, items = 5)
+expect_true(
+  reliability_alpha_precision_5$precision_total != reliability_alpha_precision$precision_total,
+  "Expected Cronbach alpha precision n to vary by item count"
+)
 
 sem_rmsea <- sample_size_effect_size_sem("rmsea", df = 50, null_rmsea = 0.05, alternative_rmsea = 0.08)
 expect_true(near(sem_rmsea$ncp_difference_per_n, 50 * (0.08^2 - 0.05^2)), "Expected SEM RMSEA NCP difference")

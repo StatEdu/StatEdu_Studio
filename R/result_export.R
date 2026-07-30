@@ -1651,7 +1651,7 @@ add_paired_rm_grouped_excel_sheet <- function(workbook, sheet_name, table, used_
   }, character(1))
   time_header_labels <- sprintf("%s (%s)", time_labels, time_markers)
   summary_labels <- if (identical(type, "count")) {
-    c("0", "1")
+    paired_rm_count_summary_labels(table)
   } else if (isTRUE(attr(table, "mean_sd", exact = TRUE)) || isTRUE(attr(table, "median_iqr", exact = TRUE))) {
     if (isTRUE(attr(table, "mean_sd", exact = TRUE)) && isTRUE(attr(table, "median_iqr", exact = TRUE))) {
       "M \u00B1 SD/\nMedian(Q1~Q3)"

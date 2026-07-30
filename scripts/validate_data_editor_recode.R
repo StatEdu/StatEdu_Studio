@@ -292,6 +292,8 @@ stopifnot(identical(transform_function_template("today"), "today()"))
 transform_data <- data.frame(
   x = c(1, 2, 3),
   y = c(10, 20, 30),
+  factor_num = factor(c("2.5", "3.5", "4.5")),
+  factor_group = factor(c("A", "A", "B")),
   `q 1` = c(2, 4, 6),
   `q-2` = c(1, 3, 5),
   txt = c("a", "b", "c"),
@@ -315,6 +317,14 @@ date_result <- transform_eval_expression(transform_data, "date_diff(end, start)"
 stopifnot(identical(date_result, c(2, 3, 4)))
 stats_result <- transform_eval_expression(transform_data, "row_mean(x, y)")
 stopifnot(identical(stats_result, c(5.5, 11, 16.5)))
+factor_numeric_result <- transform_eval_expression(transform_data, "as_numeric(factor_num)")
+stopifnot(identical(factor_numeric_result, c(2.5, 3.5, 4.5)))
+factor_row_result <- transform_eval_expression(transform_data, "row_mean(factor_num, y)")
+stopifnot(identical(factor_row_result, c(6.25, 11.75, 17.25)))
+factor_stat_result <- transform_eval_expression(transform_data, "id_stat(factor_group, x > 0, factor_num, 'mean')")
+stopifnot(identical(factor_stat_result, c(3, 3, 4.5)))
+factor_z_result <- transform_eval_expression(transform_data, "z_score(factor_num)")
+stopifnot(all.equal(factor_z_result, as.numeric(scale(c(2.5, 3.5, 4.5))), check.attributes = FALSE))
 quoted_result <- transform_eval_expression(transform_data, "row_sum(`q 1`, `q-2`)")
 stopifnot(identical(quoted_result, c(3, 7, 11)))
 blocked <- tryCatch({

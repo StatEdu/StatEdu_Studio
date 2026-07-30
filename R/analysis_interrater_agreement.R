@@ -17,11 +17,22 @@ interrater_frame <- function(data, variables) {
   frame
 }
 
-interrater_category_levels <- function(frame, ordered = FALSE) {
+interrater_category_levels <- function(frame, ordered = FALSE, variables = NULL, category_table = NULL) {
   values <- unlist(frame, use.names = FALSE)
   values <- values[!is.na(values)]
   if (length(values) == 0) {
     return(character(0))
+  }
+  variables <- as.character(variables %||% names(frame) %||% character(0))
+  category_levels <- unique(unlist(lapply(variables, function(name) {
+    observed <- if (name %in% names(frame)) as.character(frame[[name]]) else character(0)
+    frequency_value_order(observed, name = name, category_table = category_table)
+  }), use.names = FALSE))
+  category_levels <- category_levels[category_levels %in% as.character(values)]
+  if (length(category_levels) > 0) {
+    remaining <- unique(as.character(values))
+    remaining <- remaining[!remaining %in% category_levels]
+    return(c(category_levels, frequency_value_order(remaining)))
   }
   if (isTRUE(ordered)) {
     numeric_values <- suppressWarnings(as.numeric(as.character(values)))
@@ -135,25 +146,30 @@ interrater_gwet_ac <- function(frame, levels, ordinal = FALSE, weight = "quadrat
     return(NA_real_)
   }
   agreement_weights <- if (isTRUE(ordinal)) interrater_weight_matrix(levels, weight = weight, agreement = TRUE) else diag(length(levels))
-  total_agreement <- 0
-  total_pairs <- 0
-  pooled <- integer(length(levels))
+  total_unit_agreement <- 0
+  total_unit_proportions <- numeric(length(levels))
+  eligible_units <- 0
+  rated_units <- 0
   for (row_index in seq_len(nrow(frame))) {
     values <- match(as.character(unlist(frame[row_index, , drop = TRUE], use.names = FALSE)), levels)
     values <- values[!is.na(values)]
     if (length(values) > 0) {
-      pooled <- pooled + tabulate(values, nbins = length(levels))
+      counts <- tabulate(values, nbins = length(levels))
+      total_unit_proportions <- total_unit_proportions + counts / length(values)
+      rated_units <- rated_units + 1L
     }
-    if (length(values) < 2) next
+    if (length(values) < 2) {
+      next
+    }
     pairs <- utils::combn(values, 2L)
-    total_pairs <- total_pairs + ncol(pairs)
-    total_agreement <- total_agreement + sum(agreement_weights[cbind(pairs[1, ], pairs[2, ])])
+    total_unit_agreement <- total_unit_agreement + sum(agreement_weights[cbind(pairs[1, ], pairs[2, ])]) / ncol(pairs)
+    eligible_units <- eligible_units + 1L
   }
-  if (total_pairs <= 0 || sum(pooled) <= 0) return(NA_real_)
-  pa <- total_agreement / total_pairs
-  p <- pooled / sum(pooled)
+  if (eligible_units <= 0 || rated_units <= 0) return(NA_real_)
+  pa <- total_unit_agreement / eligible_units
+  p <- total_unit_proportions / rated_units
   if (isTRUE(ordinal)) {
-    pe <- sum(agreement_weights * outer(p, 1 - p)) / (length(levels) - 1)
+    pe <- sum(agreement_weights) * sum(p * (1 - p)) / (length(levels) * (length(levels) - 1))
   } else {
     pe <- sum(p * (1 - p)) / (length(levels) - 1)
   }
@@ -185,10 +201,13 @@ interrater_krippendorff_alpha <- function(frame, levels = NULL, level = "nominal
     row <- row[!is.na(row)]
     if (length(row) < 2) next
     pairs <- utils::combn(row, 2L)
-    observed_num <- observed_num + sum(distance(pairs[1, ], pairs[2, ]))
-    observed_den <- observed_den + ncol(pairs)
+    unit_weight <- 1 / (length(row) - 1)
+    observed_num <- observed_num + sum(distance(pairs[1, ], pairs[2, ])) * unit_weight
+    observed_den <- observed_den + ncol(pairs) * unit_weight
   }
-  pooled <- values[!is.na(values)]
+  eligible_rows <- apply(!is.na(values), 1L, sum) >= 2
+  pooled <- values[eligible_rows, , drop = FALSE]
+  pooled <- pooled[!is.na(pooled)]
   if (observed_den <= 0 || length(pooled) < 2) return(NA_real_)
   expected <- if (identical(level, "continuous")) {
     pooled_pairs <- utils::combn(pooled, 2L)
@@ -313,7 +332,7 @@ prepare_interrater_agreement_results <- function(data, variables, variable_info 
   raters <- ncol(frame)
 
   if (identical(measurement, "continuous")) {
-    matrix <- as.data.frame(lapply(frame, function(values) suppressWarnings(as.numeric(values))), check.names = FALSE)
+    matrix <- as.data.frame(lapply(frame, function(values) suppressWarnings(as.numeric(as.character(values)))), check.names = FALSE)
     complete <- matrix[stats::complete.cases(matrix), , drop = FALSE]
     shiny::validate(shiny::need(nrow(complete) >= 2, "Not enough complete cases for ICC."))
     model <- as.character(options$icc_model %||% "icc2")
@@ -356,7 +375,7 @@ prepare_interrater_agreement_results <- function(data, variables, variable_info 
   }
 
   ordinal <- identical(measurement, "ordered")
-  levels <- interrater_category_levels(frame, ordered = ordinal)
+  levels <- interrater_category_levels(frame, ordered = ordinal, variables = names(frame), category_table = category_table)
   shiny::validate(shiny::need(length(levels) >= 2, "At least two observed rating categories are required."))
   complete <- frame[stats::complete.cases(frame), , drop = FALSE]
   pairwise <- interrater_percent_agreement(frame)

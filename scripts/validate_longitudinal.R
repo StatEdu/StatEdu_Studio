@@ -141,6 +141,32 @@ validate_model <- function(model_type, outcome = "continuous_y", family = "auto"
   invisible(results)
 }
 
+mi_pool_tables <- lapply(c(0.40, 0.55, 0.70, 0.62, 0.78), function(estimate) {
+  data.frame(Term = "x", B = estimate, SE = 0.20, stringsAsFactors = FALSE)
+})
+mi_pool_result <- longitudinal_pool_coef_tables(mi_pool_tables, "Multiple imputation (MI)", "test", dfcom = 30)
+mi_estimates <- vapply(mi_pool_tables, function(table) table$B[[1]], numeric(1))
+mi_variances <- vapply(mi_pool_tables, function(table) table$SE[[1]]^2, numeric(1))
+mi_m <- length(mi_estimates)
+mi_qbar <- mean(mi_estimates)
+mi_ubar <- mean(mi_variances)
+mi_bvar <- stats::var(mi_estimates)
+mi_total <- mi_ubar + (1 + 1 / mi_m) * mi_bvar
+mi_se <- sqrt(mi_total)
+mi_lambda <- (1 + 1 / mi_m) * mi_bvar / mi_total
+mi_df_rubin <- (mi_m - 1) / (mi_lambda^2)
+mi_df_obs <- (30 + 1) / (30 + 3) * 30 * (1 - mi_lambda)
+mi_df <- mi_df_rubin * mi_df_obs / (mi_df_rubin + mi_df_obs)
+mi_statistic <- mi_qbar / mi_se
+mi_expected_p <- 2 * stats::pt(abs(mi_statistic), df = mi_df, lower.tail = FALSE)
+mi_expected_critical <- stats::qt(0.975, df = mi_df)
+if (abs(mi_pool_result$p[[1]] - mi_expected_p) > 1e-12 ||
+    abs(as.numeric(mi_pool_result$df[[1]]) - round(mi_df, 1)) > 1e-12 ||
+    abs(mi_pool_result$LLCI[[1]] - (mi_qbar - mi_expected_critical * mi_se)) > 1e-12 ||
+    !("df" %in% names(mi_pool_result))) {
+  stop("MI pooling should use Rubin/Barnard-Rubin degrees of freedom with t-based p-values and confidence intervals.")
+}
+
 validate_model("gee")
 
 ohio_binary_path <- file.path("sample", "longitudinal_examples", "longitudinal_gee_ohio_binary.csv")
