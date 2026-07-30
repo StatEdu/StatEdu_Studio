@@ -188,7 +188,7 @@ app_brand_title <- function(version) {
 
 app_stylesheet_link <- function(version) {
   tagList(
-    tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-statedu-logo-size-20260722")),
+    tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-custom-model-compact-multiline-20260730")),
     tags$link(rel = "stylesheet", type = "text/css", href = paste0("model-canvas/canvas.css?v=", version, "-analysis-modal-compact-20260712b"))
   )
 }
@@ -199,9 +199,9 @@ app_script_link <- function(version) {
     tags$script(src = paste0("model-canvas/state.js?v=", version, "-custom-model-canvas-multi-y-20260729a")),
     tags$script(src = paste0("model-canvas/layout.js?v=", version, "-custom-model-canvas-balanced-multi-role-layout-20260729a")),
     tags$script(src = paste0("model-canvas/shiny-bridge.js?v=", version, "-custom-model-canvas-20260705an")),
-    tags$script(src = paste0("model-canvas/edges.js?v=", version, "-moderation-significance-20260711a")),
+    tags$script(src = paste0("model-canvas/edges.js?v=", version, "-label-overlap-fit-20260730")),
     tags$script(src = paste0("model-canvas/nodes.js?v=", version, "-custom-model-canvas-preserve-moderator-layout-20260729b")),
-    tags$script(src = paste0("model-canvas/dialogs.js?v=", version, "-moderation-drag-20260711a")),
+    tags$script(src = paste0("model-canvas/dialogs.js?v=", version, "-stmodel-extension-20260730")),
     tags$script(src = paste0("model-canvas/toolbar.js?v=", version, "-custom-model-canvas-20260711ac")),
     tags$script(src = paste0("model-canvas/canvas.js?v=", version, "-custom-model-canvas-preserve-moderator-layout-20260729b"))
   )

@@ -601,6 +601,8 @@ hierarchical_standard_summary_table <- function(table, summary, model_index, sum
     row
   })
   output <- do.call(rbind, c(list(output), summary_rows))
+  attr(output, "compact_column_widths") <- attr(table, "compact_column_widths", exact = TRUE)
+  attr(output, "column_display_labels") <- attr(table, "column_display_labels", exact = TRUE)
   attr(output, "bootstrap_regression") <- attr(table, "bootstrap_regression", exact = TRUE)
   attr(output, "show_df") <- attr(table, "show_df", exact = TRUE)
   attr(output, "spanning_cells") <- data.frame(
@@ -666,12 +668,11 @@ hierarchical_compact_method_columns <- function(model_tables) {
   has_t <- "t" %in% table_names || "p" %in% table_names
   c(
     "B",
-    if (isTRUE(has_se)) "SE",
-    if (isTRUE(has_hc3)) "HC3 SE",
-    if (isTRUE(has_bootstrap)) "Boot SE",
+    if (isTRUE(has_se) || isTRUE(has_hc3) || isTRUE(has_bootstrap)) "SE",
     if (isTRUE(has_beta)) "beta",
-    if (isTRUE(has_t)) "t(p)",
-    if (isTRUE(has_bootstrap)) c("LLCI", "ULCI", "Boot p")
+    if (isTRUE(has_t)) "t",
+    if (isTRUE(has_t) || isTRUE(has_bootstrap)) "p",
+    if (isTRUE(has_bootstrap)) c("LLCI", "ULCI")
   )
 }
 
@@ -697,6 +698,17 @@ hierarchical_compact_tp_cell <- function(table, row_index) {
   sprintf("%s(%s)", t_value, p_value)
 }
 
+hierarchical_compact_first_cell <- function(table, row_index, columns) {
+  columns <- intersect(columns, names(table))
+  for (column in columns) {
+    value <- hierarchical_compact_cell(table, row_index, column)
+    if (nzchar(trimws(value))) {
+      return(list(value = value, source = column))
+    }
+  }
+  list(value = "", source = "")
+}
+
 hierarchical_compact_summary_cell <- function(value) {
   value <- trimws(as.character(value %||% ""))
   if (!nzchar(value) || grepl("\n", value, fixed = TRUE)) {
@@ -708,6 +720,36 @@ hierarchical_compact_summary_cell <- function(value) {
     return(sprintf("%s\n(%s)", trimws(parts[[2]]), parts[[3]]))
   }
   value
+}
+
+hierarchical_compact_summary_parts <- function(value) {
+  value <- hierarchical_compact_summary_cell(value)
+  parts <- strsplit(value, "\n", fixed = TRUE)[[1]]
+  if (length(parts) <= 1L) {
+    return(list(primary = value, secondary = ""))
+  }
+  list(
+    primary = parts[[1L]],
+    secondary = paste(parts[-1L], collapse = "\n")
+  )
+}
+
+hierarchical_compact_summary_row_values <- function(summary, split_rows = FALSE) {
+  values <- list(
+    `F(p)` = summary$f,
+    `R^2(adj R^2)` = summary$r2,
+    d = summary$dw,
+    `z(p)` = summary$normality,
+    `chi^2(p)` = summary$homogeneity
+  )
+  if (!isTRUE(split_rows)) {
+    return(lapply(values, hierarchical_compact_summary_cell))
+  }
+  parts <- lapply(values, hierarchical_compact_summary_parts)
+  list(
+    primary = lapply(parts, `[[`, "primary"),
+    secondary = lapply(parts, `[[`, "secondary")
+  )
 }
 
 hierarchical_compact_row <- function(model_label, variable, method_values, summary_values, columns) {
@@ -744,7 +786,9 @@ hierarchical_compact_model_label <- function(label, fallback = "") {
   if (nzchar(value)) value else fallback
 }
 
-hierarchical_compact_coefficient_table <- function(model_tables, model_labels, summary_values) {
+hierarchical_compact_coefficient_table <- function(model_tables, model_labels, summary_values, output_table_style = "compact") {
+  output_table_style <- analysis_output_table_style(output_table_style)
+  split_summary_rows <- identical(output_table_style, "compact")
   method_columns <- hierarchical_compact_method_columns(model_tables)
   residual_columns <- if (isTRUE(attr(summary_values, "any_residual_diagnostics", exact = TRUE))) {
     c("d", "z(p)", "chi^2(p)")
@@ -754,6 +798,29 @@ hierarchical_compact_coefficient_table <- function(model_tables, model_labels, s
   summary_columns <- c("F(p)", "R^2(adj R^2)", residual_columns)
   columns <- c("Model", "Variable", method_columns, summary_columns)
   rows <- list()
+  marker_rows <- list()
+  marker_notes <- character(0)
+  marker_for <- function(note) {
+    matched <- match(note, marker_notes)
+    if (is.na(matched)) {
+      marker_notes <<- c(marker_notes, note)
+      matched <- length(marker_notes)
+    }
+    as.character(matched)
+  }
+  add_marker <- function(row, column, note) {
+    note <- as.character(note %||% "")[[1L]]
+    if (!nzchar(note) || !column %in% columns) {
+      return(NULL)
+    }
+    marker_rows[[length(marker_rows) + 1L]] <<- data.frame(
+      row = row,
+      column = column,
+      marker = marker_for(note),
+      stringsAsFactors = FALSE
+    )
+    NULL
+  }
   for (model_index in seq_along(model_tables)) {
     table <- model_tables[[model_index]]
     if (!is.data.frame(table) || nrow(table) == 0) {
@@ -764,26 +831,25 @@ hierarchical_compact_coefficient_table <- function(model_tables, model_labels, s
       sprintf("Model %s", model_index)
     )
     summary <- summary_values[[model_index]]
+    compact_summary <- hierarchical_compact_summary_row_values(summary, split_rows = split_summary_rows)
     for (row_index in seq_len(nrow(table))) {
+      se_cell <- hierarchical_compact_first_cell(table, row_index, c("Boot SE", "HC3 SE", "SE"))
+      p_cell <- hierarchical_compact_first_cell(table, row_index, c("Boot p", "p"))
       method_values <- list(
         B = hierarchical_compact_cell(table, row_index, "B"),
-        SE = hierarchical_compact_cell(table, row_index, "SE"),
-        `HC3 SE` = hierarchical_compact_cell(table, row_index, "HC3 SE"),
-        `Boot SE` = hierarchical_compact_cell(table, row_index, "Boot SE"),
+        SE = se_cell$value,
         beta = hierarchical_compact_cell(table, row_index, "beta"),
-        `t(p)` = hierarchical_compact_tp_cell(table, row_index),
+        t = hierarchical_compact_cell(table, row_index, "t"),
+        p = p_cell$value,
         LLCI = hierarchical_compact_cell(table, row_index, "LLCI"),
-        ULCI = hierarchical_compact_cell(table, row_index, "ULCI"),
-        `Boot p` = hierarchical_compact_cell(table, row_index, "Boot p")
+        ULCI = hierarchical_compact_cell(table, row_index, "ULCI")
       )
-      row_summary <- if (row_index == 1L) {
-        list(
-          `F(p)` = hierarchical_compact_summary_cell(summary$f),
-          `R^2(adj R^2)` = hierarchical_compact_summary_cell(summary$r2),
-          d = hierarchical_compact_summary_cell(summary$dw),
-          `z(p)` = hierarchical_compact_summary_cell(summary$normality),
-          `chi^2(p)` = hierarchical_compact_summary_cell(summary$homogeneity)
-        )
+      row_summary <- if (isTRUE(split_summary_rows) && row_index == 1L) {
+        compact_summary$primary
+      } else if (isTRUE(split_summary_rows) && row_index == 2L) {
+        compact_summary$secondary
+      } else if (!isTRUE(split_summary_rows) && row_index == 1L) {
+        compact_summary
       } else {
         list()
       }
@@ -794,6 +860,34 @@ hierarchical_compact_coefficient_table <- function(model_tables, model_labels, s
         row_summary,
         columns
       )
+      output_row <- length(rows)
+      se_note <- switch(
+        se_cell$source,
+        "Boot SE" = "SE = bootstrap standard error.",
+        "HC3 SE" = "SE = HC3 robust standard error.",
+        "SE" = "SE = ordinary least squares standard error.",
+        ""
+      )
+      p_note <- switch(
+        p_cell$source,
+        "Boot p" = "p = bootstrap p-value.",
+        "p" = "p = t-test p-value using the displayed standard error.",
+        ""
+      )
+      add_marker(output_row, "SE", se_note)
+      add_marker(output_row, "p", p_note)
+    }
+    if (isTRUE(split_summary_rows) && nrow(table) < 2L) {
+      secondary_values <- unlist(compact_summary$secondary, use.names = FALSE)
+      if (any(nzchar(trimws(secondary_values %||% "")))) {
+        rows[[length(rows) + 1L]] <- hierarchical_compact_row(
+          "",
+          "",
+          list(),
+          compact_summary$secondary,
+          columns
+        )
+      }
     }
   }
   if (length(rows) == 0L) {
@@ -814,6 +908,15 @@ hierarchical_compact_coefficient_table <- function(model_tables, model_labels, s
   matched_widths <- intersect(names(width_overrides), names(widths))
   widths[matched_widths] <- width_overrides[matched_widths]
   attr(output, "compact_column_widths") <- widths / sum(widths, na.rm = TRUE) * 100
+  if (length(marker_rows) > 0L) {
+    attr(output, "note_markers") <- do.call(rbind, marker_rows)
+  }
+  if (length(marker_notes) > 0L) {
+    attr(output, "compact_method_notes") <- paste(
+      sprintf("%s = %s", seq_along(marker_notes), marker_notes),
+      collapse = "\n"
+    )
+  }
   attr(output, "column_display_labels") <- c(
     `F(p)` = "F\n(p)",
     `R^2(adj R^2)` = "R^2\n(adj R^2)",
@@ -831,7 +934,12 @@ hierarchical_compact_coefficient_html_table <- function(
   model_note_lines = character(0),
   output_table_style = "compact"
 ) {
-  table <- hierarchical_compact_coefficient_table(model_tables, model_labels, summary_values)
+  table <- hierarchical_compact_coefficient_table(
+    model_tables,
+    model_labels,
+    summary_values,
+    output_table_style = output_table_style
+  )
   notes <- list()
   clean_model_notes <- model_note_lines[nzchar(model_note_lines %||% "")]
   if (length(clean_model_notes) > 0) {
@@ -842,6 +950,10 @@ hierarchical_compact_coefficient_html_table <- function(
   }
   if (!is.null(note_line) && nzchar(note_line)) {
     notes <- c(notes, list(tags$div(class = "coefficient-note hierarchical-coefficient-note", note_line)))
+  }
+  method_notes <- attr(table, "compact_method_notes", exact = TRUE)
+  if (!is.null(method_notes) && nzchar(method_notes)) {
+    notes <- c(notes, list(tags$div(class = "coefficient-note hierarchical-coefficient-note", method_notes)))
   }
   do.call(
     tags$div,

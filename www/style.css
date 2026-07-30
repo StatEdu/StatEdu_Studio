@@ -2408,6 +2408,33 @@ input.variable-select:disabled {
   vertical-align: baseline;
 }
 
+.coefficient-cell-break {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  line-height: 1.12;
+  white-space: normal !important;
+  vertical-align: middle;
+}
+
+.coefficient-cell-break > span {
+  display: block;
+  white-space: nowrap;
+}
+
+.coefficient-cell-break .coefficient-footnote-marker {
+  position: static;
+  display: inline;
+  margin-left: 1px;
+  vertical-align: super;
+}
+
+.coefficient-table td:first-child .coefficient-cell-break,
+.coefficient-table .coefficient-col-term .coefficient-cell-break {
+  align-items: flex-start;
+}
+
 .coefficient-col-note-marker {
   width: 16px;
   min-width: 16px;
@@ -12613,6 +12640,42 @@ select[id$="_active_role"]:focus {
 .mm-combined-landscape-section .hierarchical-coefficient-table td,
 .mm-combined-landscape-section .hierarchical-coefficient-table th {
   white-space: nowrap !important;
+}
+
+.mm-results .mm-combined-portrait-section {
+  width: min(100%, 590px) !important;
+  max-width: 590px !important;
+  overflow-x: auto;
+}
+
+.mm-results .mm-combined-portrait-section .hierarchical-standard-table-wrap,
+.mm-results .mm-combined-portrait-section .hierarchical-standard-model-block {
+  width: 100%;
+  min-width: 0;
+}
+
+.mm-results .mm-combined-portrait-section .coefficient-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.mm-results .mm-combined-portrait-section .coefficient-table th,
+.mm-results .mm-combined-portrait-section .coefficient-table td {
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+.mm-results .mm-combined-portrait-section .coefficient-table th:not(:first-child),
+.mm-results .mm-combined-portrait-section .coefficient-table td:not(:first-child) {
+  white-space: nowrap !important;
+}
+
+.mm-results .mm-combined-portrait-section .coefficient-table .coefficient-cell-break {
+  white-space: normal !important;
 }
 
 .mm-combined-sublabel {

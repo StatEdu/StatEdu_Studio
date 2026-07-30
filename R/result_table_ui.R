@@ -274,10 +274,33 @@ result_cell_covered_by_span <- function(table, row_index, column, columns) {
   }, logical(1)))
 }
 
+result_cell_multiline_content <- function(value, marker = "", column = "") {
+  parts <- strsplit(as.character(value %||% ""), "\n", fixed = TRUE)[[1]]
+  if (length(parts) == 0L) {
+    parts <- ""
+  }
+  line_tags <- lapply(seq_along(parts), function(index) {
+    if (index == length(parts) && nzchar(marker)) {
+      return(tags$span(
+        parts[[index]],
+        tags$sup(class = "coefficient-footnote-marker", marker)
+      ))
+    }
+    tags$span(parts[[index]])
+  })
+  tags$span(
+    class = "coefficient-cell-break",
+    line_tags
+  )
+}
+
 result_cell_content <- function(value, marker = "", column = "") {
   split <- result_split_inline_marker(value, marker, column)
   value <- split[["value"]]
   marker <- split[["marker"]]
+  if (nzchar(value) && grepl("\n", value, fixed = TRUE)) {
+    return(result_cell_multiline_content(value, marker, column))
+  }
   if (!nzchar(value) || !nzchar(marker)) {
     return(value)
   }
