@@ -69,6 +69,7 @@ $coreValidations = @(
   "scripts\validate_regression_coefficients.R",
   "scripts\validate_logistic_analysis.R",
   "scripts\validate_complex_sample_analysis.R",
+  "scripts\validate_custom_model_canvas.R",
   "scripts\validate_longitudinal.R",
   "scripts\validate_release_hygiene.R",
   "scripts\validate_data_io.R"
@@ -81,9 +82,13 @@ $fullOnlyValidations = @(
   "scripts\validate_crosstabs.R",
   "scripts\validate_factor_pca.R",
   "scripts\validate_generalized.R",
+  "scripts\validate_interrater.R",
   "scripts\validate_logistic_ui.R",
+  "scripts\validate_ordinal_category_order.R",
   "scripts\validate_paired_guards.R",
+  "scripts\validate_penalized.R",
   "scripts\validate_p_formatting.R",
+  "scripts\validate_reliability.R",
   "scripts\validate_result_history.R",
   "scripts\validate_sample_size.R",
   "scripts\validate_analysis_reference_comparison.R"

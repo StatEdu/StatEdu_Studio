@@ -468,10 +468,14 @@ coefficient_display_cell_style <- function(table, row_index, column, display_ind
     style <- paste0(style, "white-space:nowrap;overflow-wrap:normal;word-break:normal;")
   }
   if (column_key == "level") {
-    style <- paste0(style, "text-align:center !important;white-space:pre-line;")
+    style <- paste0(style, "text-align:center !important;white-space:nowrap;overflow-wrap:normal;word-break:normal;")
   }
   if (column_key %in% c("effect", "path")) {
     style <- paste0(style, "text-align:left !important;white-space:pre-line;overflow-wrap:anywhere;word-break:normal;")
+  }
+  right_align_columns <- as.character(attr(table, "right_align_columns", exact = TRUE) %||% character(0))
+  if (column %in% right_align_columns) {
+    style <- paste0(style, "text-align:right !important;white-space:nowrap;overflow-wrap:normal;word-break:normal;")
   }
   if (column_key %in% c("statistic", "t", "f", "tf", "fstatistic")) {
     style <- paste0(style, "text-align:right !important;white-space:nowrap;overflow-wrap:normal;word-break:normal;")
@@ -548,7 +552,7 @@ hierarchical_stat_cell_style <- function(column, last = FALSE, header = FALSE) {
   paste0(
     "padding:", padding, ";line-height:1.45;border-left:0;border-right:0;",
     "border-top:0;border-bottom:",
-    if (isTRUE(header)) "2px solid #1f2937" else if (isTRUE(last)) "0" else "1px solid #d7dde5",
+    if (isTRUE(header)) "2px solid #1f2937" else if (isTRUE(last)) "2px solid #1f2937 !important" else "1px solid #d7dde5",
     ";vertical-align:middle;background:transparent;",
     "width:auto;min-width:0;max-width:none;",
     "text-align:", if (isTRUE(header)) "center" else "right", " !important;",

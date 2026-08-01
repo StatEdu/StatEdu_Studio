@@ -255,8 +255,8 @@ ordered_hier_html <- as.character(htmltools::renderTags(logistic_results_panel(
 ))$html)
 stopifnot(grepl("logistic-standard-table-wrap", ordered_hier_html, fixed = TRUE))
 stopifnot(grepl("logistic-result-table output-table-style-standard", ordered_hier_html, fixed = TRUE))
-stopifnot(grepl("Nagelkerke R2", ordered_hier_html, fixed = TRUE))
-stopifnot(grepl("McFadden R2", ordered_hier_html, fixed = TRUE))
+stopifnot(grepl("Nagelkerke R\u00B2", ordered_hier_html, fixed = TRUE))
+stopifnot(grepl("McFadden R\u00B2", ordered_hier_html, fixed = TRUE))
 
 multinom_data <- data.frame(
   y = factor(rep(1:3, each = 50)),

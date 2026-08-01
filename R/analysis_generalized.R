@@ -1050,7 +1050,7 @@ generalized_fit_stats <- function(model, null_model = NULL, se_type = "model") {
       pseudo_r2 <- 1 - ll / ll0
     }
   }
-  r2_items <- if (identical(family, "gaussian")) c("R2", "Adjusted R2") else "McFadden pseudo R2"
+  r2_items <- if (identical(family, "gaussian")) c("R\u00B2", "Adjusted R\u00B2") else "McFadden pseudo R\u00B2"
   r2_values <- if (identical(family, "gaussian")) {
     c(
       if (is.finite(gaussian_r2)) format_decimal3(gaussian_r2) else "",

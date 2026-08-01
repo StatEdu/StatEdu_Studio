@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.1.8-dev - 2026-08-01
+
+### Changed
+
+- Refined Mediation / Moderation Custom Model result tables by removing duplicated model, interaction, conditional-effect, and Johnson-Neyman rows when the same fitted model is reused across focal paths.
+- Improved mediation/moderation table presentation for R²/x² notation, interaction labels, conditional-effect alignment, conditional-indirect-effect grouping borders, and regression fit-row separators.
+
 ## v1.1.7-dev - 2026-07-30
 
 ### Changed

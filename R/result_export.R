@@ -852,7 +852,7 @@ hierarchical_export_table <- function(
   summary_labels <- c("F(p)", "R\u00B2(adj. R\u00B2)")
   summary_keys <- c("f", "r2")
   if (length(group) > 1) {
-    summary_labels <- c(summary_labels, attr(summary_values, "delta_label", exact = TRUE) %||% "\u0394R\u00B2(F change p)")
+    summary_labels <- c(summary_labels, attr(summary_values, "delta_label", exact = TRUE) %||% "Delta R\u00B2(F change p)")
     summary_keys <- c(summary_keys, "delta")
   }
   if (isTRUE(attr(summary_values, "any_residual_diagnostics", exact = TRUE))) {
@@ -1068,12 +1068,12 @@ logistic_export_table <- function(
   })
   summaries <- logistic_fit_summary_values(result, show_mcfadden = show_mcfadden, show_cox_snell = show_cox_snell)
   summary_labels <- c(
-    x2 = "x2(p)",
-    r2 = "R2",
-    delta_r2 = "Delta R2",
-    delta_x2 = "Delta x2(p)",
+    x2 = "x\u00B2(p)",
+    r2 = "R\u00B2",
+    delta_r2 = "Delta R\u00B2",
+    delta_x2 = "Delta x\u00B2(p)",
     aic = "AIC, BIC",
-    parallel = "Parallel lines x2(p)",
+    parallel = "Parallel lines x\u00B2(p)",
     status = "Status"
   )
   for (key in names(summaries)) {

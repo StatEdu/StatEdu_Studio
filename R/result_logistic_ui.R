@@ -313,12 +313,12 @@ logistic_fit_rows <- function(result, show_mcfadden = FALSE, show_cox_snell = FA
   rows <- list(
     list(type = "fit", values = list(logistic_stat_line(logistic_x2_label(), sprintf("%s (%s)", format_decimal3(result$fit$chisq), format_p(result$fit$p)))))
   )
-  r2_values <- c(sprintf("Nagelkerke R2 = %s", format_decimal3(result$fit$r2[["nagelkerke"]])))
+  r2_values <- c(sprintf("Nagelkerke R\u00B2 = %s", format_decimal3(result$fit$r2[["nagelkerke"]])))
   if (isTRUE(show_mcfadden) || isTRUE(show_cox_snell)) {
     r2_values <- c(
       r2_values,
-      sprintf("McFadden R2 = %s", format_decimal3(result$fit$r2[["mcfadden"]])),
-      sprintf("Cox & Snell R2 = %s", format_decimal3(result$fit$r2[["cox_snell"]]))
+      sprintf("McFadden R\u00B2 = %s", format_decimal3(result$fit$r2[["mcfadden"]])),
+      sprintf("Cox & Snell R\u00B2 = %s", format_decimal3(result$fit$r2[["cox_snell"]]))
     )
   }
   rows[[length(rows) + 1L]] <- list(type = "fit", values = list(tags$span(style = "display:inline-block;white-space:normal;", paste(r2_values, collapse = "; "))))
@@ -500,12 +500,12 @@ logistic_fit_summary_values <- function(result, show_mcfadden = FALSE, show_cox_
   if (isTRUE(result$excluded) || is.null(result$fit)) {
     return(list(status = result$method %||% "Excluded"))
   }
-  r2_values <- c(sprintf("Nagelkerke R2 = %s", format_decimal3(result$fit$r2[["nagelkerke"]])))
+  r2_values <- c(sprintf("Nagelkerke R\u00B2 = %s", format_decimal3(result$fit$r2[["nagelkerke"]])))
   if (isTRUE(show_mcfadden) || isTRUE(show_cox_snell)) {
     r2_values <- c(
       r2_values,
-      sprintf("McFadden R2 = %s", format_decimal3(result$fit$r2[["mcfadden"]])),
-      sprintf("Cox & Snell R2 = %s", format_decimal3(result$fit$r2[["cox_snell"]]))
+      sprintf("McFadden R\u00B2 = %s", format_decimal3(result$fit$r2[["mcfadden"]])),
+      sprintf("Cox & Snell R\u00B2 = %s", format_decimal3(result$fit$r2[["cox_snell"]]))
     )
   }
   r2_value <- if (length(r2_values) > 1L) {
@@ -514,12 +514,12 @@ logistic_fit_summary_values <- function(result, show_mcfadden = FALSE, show_cox_
     r2_values[[1]]
   }
   values <- list(
-    x2 = sprintf("x2(p) = %s (%s)", format_decimal3(result$fit$chisq), format_p(result$fit$p)),
+    x2 = sprintf("x\u00B2(p) = %s (%s)", format_decimal3(result$fit$chisq), format_p(result$fit$p)),
     r2 = r2_value,
-    delta_r2 = if (!is.null(result$delta_r2)) sprintf("Delta R2 = %s", format_decimal3(result$delta_r2)) else "",
-    delta_x2 = if (!is.null(result$delta_chisq)) sprintf("Delta x2(p) = %s (%s)", format_decimal3(result$delta_chisq), format_p(result$delta_p)) else "",
+    delta_r2 = if (!is.null(result$delta_r2)) sprintf("Delta R\u00B2 = %s", format_decimal3(result$delta_r2)) else "",
+    delta_x2 = if (!is.null(result$delta_chisq)) sprintf("Delta x\u00B2(p) = %s (%s)", format_decimal3(result$delta_chisq), format_p(result$delta_p)) else "",
     aic = sprintf("AIC=%s, BIC=%s", format_decimal3(result$fit$aic), format_decimal3(result$fit$bic)),
-    parallel = if (!is.null(result$parallel)) sprintf("Parallel lines x2(p) = %s (%s)", format_decimal3(result$parallel$chisq), format_p(result$parallel$p)) else ""
+    parallel = if (!is.null(result$parallel)) sprintf("Parallel lines x\u00B2(p) = %s (%s)", format_decimal3(result$parallel$chisq), format_p(result$parallel$p)) else ""
   )
   keep <- vapply(values, function(value) {
     if (inherits(value, "shiny.tag") || inherits(value, "shiny.tag.list")) {
@@ -622,7 +622,7 @@ logistic_parallel_summary <- function(result) {
   }
   p <- result$parallel$p
   decision <- if (!is.na(p) && p > .05) "Proportional odds assumption met" else "Proportional odds assumption not met"
-  sprintf("x2=%s(%s)\n%s", format_decimal3(result$parallel$chisq), format_p(p), decision)
+  sprintf("x\u00B2=%s(%s)\n%s", format_decimal3(result$parallel$chisq), format_p(p), decision)
 }
 
 logistic_vif_summary_text <- function(result) {
@@ -858,12 +858,12 @@ logistic_hierarchical_result_table <- function(group, variable_table = NULL, lab
   summaries <- lapply(group, logistic_fit_summary_values, show_mcfadden = show_mcfadden, show_cox_snell = show_cox_snell)
   footer_labels <- unique(unlist(lapply(summaries, names), use.names = FALSE))
   footer_label_text <- c(
-    x2 = "x2(p)",
-    r2 = "R2",
-    delta_r2 = "Delta R2",
-    delta_x2 = "Delta x2(p)",
+    x2 = "x\u00B2(p)",
+    r2 = "R\u00B2",
+    delta_r2 = "Delta R\u00B2",
+    delta_x2 = "Delta x\u00B2(p)",
     aic = "AIC, BIC",
-    parallel = "Parallel lines x2(p)",
+    parallel = "Parallel lines x\u00B2(p)",
     status = "Status"
   )
   footer_rows <- lapply(seq_along(footer_labels), function(index) {

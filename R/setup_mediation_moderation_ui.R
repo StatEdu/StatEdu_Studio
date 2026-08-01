@@ -515,7 +515,7 @@ mediation_moderation_conditional_w_values <- function(data, w) {
   if (!is.finite(spread)) spread <- 0
   stats::setNames(
     c(center - spread, center, center + spread),
-    c("Low\n(M-SD)", "Mean", "High\n(M+SD)")
+    c("Low (M-SD)", "Mean", "High (M+SD)")
   )
 }
 
@@ -2130,7 +2130,7 @@ mediation_moderation_model_summary_row <- function(model, focal, equation) {
     Equation = equation,
     N = stats::nobs(model),
     `F(p)` = sprintf("%s(%s)", format_decimal3(f_stat), format_p(f_p)),
-    `R2(adj R2)` = sprintf("%s (%s)", format_decimal3(unname(model_summary$r.squared)), format_decimal3(unname(model_summary$adj.r.squared))),
+    `R²(adj R²)` = sprintf("%s (%s)", format_decimal3(unname(model_summary$r.squared)), format_decimal3(unname(model_summary$adj.r.squared))),
     `d(dU~4-dU)` = sprintf(
       "%s (%s~%s)",
       format_decimal3(dw_d),
@@ -2349,7 +2349,7 @@ mediation_moderation_format_interaction_terms <- function(table) {
 
 mediation_moderation_path_note_line <- function(result) {
   method_note <- if (identical(result$analysis_method, "process_ols") || !isTRUE(result$auto_method)) {
-    "Path coefficients, standard errors, t tests, p values, model F tests, and interaction R2 change tests use ordinary least squares for PROCESS-compatible comparison;"
+    "Path coefficients, standard errors, t tests, p values, model F tests, and interaction R\u00B2 change tests use ordinary least squares for PROCESS-compatible comparison;"
   } else {
     "Path coefficients use the StatEdu diagnostic-based method: HC3 robust standard errors are used when homoscedasticity is rejected and bootstrap coefficient intervals are used when residual normality is rejected;"
   }
@@ -2436,9 +2436,9 @@ mediation_moderation_hierarchical_note_line <- function(group) {
   analysis_method <- as.character(group[[length(group)]]$analysis_method %||% "statedu")[[1]]
   auto_method <- isTRUE(group[[length(group)]]$auto_method)
   method_note <- if (identical(analysis_method, "process_ols") || !isTRUE(auto_method)) {
-    "Coefficients, standard errors, t tests, p values, model F tests, and R2 change tests use ordinary least squares for PROCESS-compatible comparison;"
+    "Coefficients, standard errors, t tests, p values, model F tests, and R\u00B2 change tests use ordinary least squares for PROCESS-compatible comparison;"
   } else {
-    "Coefficients use the StatEdu diagnostic-based method; R2 change is reported with bootstrap CI when bootstrap is active and robust Wald F p when HC3 is active;"
+    "Coefficients use the StatEdu diagnostic-based method; R\u00B2 change is reported with bootstrap CI when bootstrap is active and robust Wald F p when HC3 is active;"
   }
   paste(
     "Model 1 estimates main effects before interaction terms are added;",
@@ -2731,6 +2731,59 @@ mediation_moderation_interaction_specs <- function(result) {
   specs
 }
 
+mediation_moderation_interaction_result_key <- function(result) {
+  if (is.null(result$model)) {
+    return("")
+  }
+  response <- tryCatch(all.vars(stats::formula(result$model))[[1L]], error = function(e) "")
+  terms <- tryCatch(attr(stats::terms(result$model), "term.labels") %||% character(0), error = function(e) character(0))
+  terms <- sort(unique(mediation_moderation_clean_term(terms)))
+  group <- mediation_moderation_hierarchical_steps(result)
+  base_terms <- if (is.list(group) && length(group) >= 1L && !is.null(group[[1L]]$model)) {
+    tryCatch(attr(stats::terms(group[[1L]]$model), "term.labels") %||% character(0), error = function(e) character(0))
+  } else {
+    character(0)
+  }
+  base_terms <- sort(unique(mediation_moderation_clean_term(base_terms)))
+  paste(
+    as.character(result$equation %||% ""),
+    response,
+    paste(base_terms, collapse = "+"),
+    paste(terms, collapse = "+"),
+    sep = "\r"
+  )
+}
+
+mediation_moderation_model_result_key <- function(result) {
+  if (is.null(result$model)) {
+    return("")
+  }
+  response <- tryCatch(all.vars(stats::formula(result$model))[[1L]], error = function(e) "")
+  terms <- tryCatch(attr(stats::terms(result$model), "term.labels") %||% character(0), error = function(e) character(0))
+  terms <- sort(unique(mediation_moderation_clean_term(terms)))
+  paste(
+    as.character(result$equation %||% ""),
+    response,
+    paste(terms, collapse = "+"),
+    sep = "\r"
+  )
+}
+
+mediation_moderation_interaction_spec_key <- function(result, spec) {
+  response <- tryCatch(all.vars(stats::formula(result$model))[[1L]], error = function(e) "")
+  paste(
+    as.character(spec$equation %||% result$equation %||% ""),
+    response,
+    as.character(spec$predictor %||% ""),
+    as.character(spec$moderator %||% ""),
+    as.character(spec$interaction_term %||% spec$interaction %||% ""),
+    as.character(spec$conditioning_moderator %||% ""),
+    as.character(spec$conditioning_term %||% ""),
+    as.character(spec$three_way_term %||% ""),
+    sep = "\r"
+  )
+}
+
 mediation_moderation_path_display_label <- function(result, spec) {
   outcome <- tryCatch(all.vars(stats::formula(result$model))[[1]], error = function(e) "")
   predictor_label <- mediation_moderation_display_name(spec$predictor, result$variable_info, result$labels)
@@ -2820,40 +2873,92 @@ mediation_moderation_path_coefficient_widths <- function(table) {
 }
 
 mediation_moderation_conditional_table_layout <- function(table) {
+  if ("Condition" %in% names(table)) {
+    condition_values <- trimws(as.character(table[["Condition"]] %||% ""))
+    condition_values[is.na(condition_values)] <- ""
+    if (length(condition_values) == 0L || all(!nzchar(condition_values))) {
+      table[["Condition"]] <- NULL
+    }
+  }
   table <- mediation_moderation_nowrap_column(table, "Path")
   table <- mediation_moderation_set_widths(
     table,
-    c(Path = 22, Moderator = 12, Condition = 13, Level = 10, W = 7, Effect = 8, SE = 7, t = 8, p = 6, LLCI = 7, ULCI = 7, Significant = 8)
+    c(Path = 21, Moderator = 12, Condition = 13, Level = 14, W = 10, Effect = 9, SE = 7, t = 8, p = 6, LLCI = 7, ULCI = 7, Significant = 8)
   )
   attr(table, "column_display_labels") <- c(Moderator = "Moderator\nvariable", Condition = "Condition\nvalue")
+  attr(table, "right_align_columns") <- unique(c(as.character(attr(table, "right_align_columns", exact = TRUE) %||% character(0)), "Effect"))
+  table
+}
+
+mediation_moderation_interaction_effect_label <- function(result) {
+  specs <- mediation_moderation_interaction_specs(result)
+  labels <- vapply(specs, function(spec) {
+    path <- mediation_moderation_path_display_label(result, spec)
+    label <- sprintf("%s: %s x %s", path, spec$predictor, spec$moderator)
+    if (!is.na(spec$conditioning_moderator %||% NA_character_) && nzchar(spec$conditioning_moderator %||% "")) {
+      label <- sprintf("%s | %s", label, spec$conditioning_moderator)
+    }
+    label
+  }, character(1))
+  labels <- unique(labels[nzchar(labels)])
+  if (length(labels) == 0L) {
+    return(as.character(result$equation %||% ""))
+  }
+  paste(labels, collapse = "\n")
+}
+
+mediation_moderation_interaction_table_layout <- function(table) {
+  table <- mediation_moderation_set_widths(
+    table,
+    c(Effect = 27, Test = 19, `R²-chng` = 10, LLCI = 9, ULCI = 9, F = 8, df1 = 8, df2 = 9, p = 8)
+  )
   table
 }
 
 mediation_moderation_jn_table_layout <- function(table) {
   table <- mediation_moderation_nowrap_column(table, "Path")
-  mediation_moderation_set_widths(
+  table <- mediation_moderation_set_widths(
     table,
-    c(Path = 25, Moderator = 10, Condition = 14, `Moderator range` = 20, `Midpoint effect` = 17, p = 8, Significant = 14)
+    c(Path = 20, Moderator = 13, Condition = 14, `Moderator range` = 22, `Midpoint effect` = 16, p = 7, Significant = 8)
   )
+  attr(table, "column_display_labels") <- c(
+    Moderator = "Moderator\nvariable",
+    Condition = "Condition\nvalue",
+    `Moderator range` = "Moderator\nrange",
+    `Midpoint effect` = "Midpoint\neffect"
+  )
+  table
 }
 
 mediation_moderation_process_summary_layout <- function(table) {
   table <- mediation_moderation_add_column_group_bottom_border(table, "X")
   mediation_moderation_set_widths(
     table,
-    c(X = 12, Equation = 20, R = 9, `R-sq` = 10, MSE = 10, F = 11, df1 = 9, df2 = 10, p = 9)
+    c(X = 12, Equation = 20, R = 9, `R²` = 10, MSE = 10, F = 11, df1 = 9, df2 = 10, p = 9)
   )
 }
 
 mediation_moderation_model_summary_process_table <- function(path_results) {
-  rows <- lapply(path_results %||% list(), function(result) {
-    if (is.null(result$model)) return(NULL)
+  groups <- list()
+  for (result in path_results %||% list()) {
+    if (is.null(result$model)) next
+    key <- mediation_moderation_model_result_key(result)
+    if (!nzchar(key)) {
+      key <- paste0("row-", length(groups) + 1L)
+    }
+    if (!key %in% names(groups)) {
+      groups[[key]] <- list(result = result, focal = character(0))
+    }
+    groups[[key]]$focal <- unique(c(groups[[key]]$focal, as.character(result$focal %||% "")))
+  }
+  rows <- lapply(groups, function(group) {
+    result <- group$result
     mse <- stats::deviance(result$model) / stats::df.residual(result$model)
     data.frame(
-      X = result$focal,
+      X = paste(group$focal[nzchar(group$focal)], collapse = ", "),
       Equation = result$equation,
       R = format_decimal3(sqrt(max(0, result$r_squared))),
-      `R-sq` = format_decimal3(result$r_squared),
+      `R²` = format_decimal3(result$r_squared),
       MSE = format_decimal3(mse),
       F = format_decimal3(result$f_statistic),
       df1 = format_decimal3(result$f_df1),
@@ -2868,9 +2973,13 @@ mediation_moderation_model_summary_process_table <- function(path_results) {
 
 mediation_moderation_interaction_change_table <- function(path_results) {
   rows <- list()
+  seen <- character(0)
   for (result in path_results %||% list()) {
     group <- mediation_moderation_hierarchical_steps(result)
     if (is.null(group) || length(group) < 2L) next
+    result_key <- mediation_moderation_interaction_result_key(result)
+    if (nzchar(result_key) && result_key %in% seen) next
+    if (nzchar(result_key)) seen <- c(seen, result_key)
     previous <- group[[1L]]
     current <- group[[2L]]
     df1 <- current$f_df1 - previous$f_df1
@@ -2906,8 +3015,9 @@ mediation_moderation_interaction_change_table <- function(path_results) {
       test_label <- "Robust Wald F"
     }
     rows[[length(rows) + 1L]] <- data.frame(
+      Effect = mediation_moderation_interaction_effect_label(result),
       Test = test_label,
-      `R2-chng` = format_decimal3(delta_r2),
+      `R²-chng` = format_decimal3(delta_r2),
       LLCI = format_decimal3(llci),
       ULCI = format_decimal3(ulci),
       F = format_decimal3(f_change),
@@ -2918,7 +3028,7 @@ mediation_moderation_interaction_change_table <- function(path_results) {
       check.names = FALSE
     )
   }
-  analysis_bind_rows(rows)
+  mediation_moderation_interaction_table_layout(analysis_bind_rows(rows))
 }
 
 mediation_moderation_coef_vcov <- function(result) {
@@ -2964,7 +3074,7 @@ mediation_moderation_conditional_values <- function(model, moderator) {
   spread <- stats::sd(values)
   if (!is.finite(spread)) spread <- 0
   data.frame(
-    Level = c("Low\n(M-SD)", "Mean", "High\n(M+SD)"),
+    Level = c("Low (M-SD)", "Mean", "High (M+SD)"),
     W = c(center - spread, center, center + spread),
     stringsAsFactors = FALSE
   )
@@ -3060,8 +3170,12 @@ mediation_moderation_simple_slope_row <- function(result, spec, w_value, level =
 
 mediation_moderation_simple_slopes_table <- function(path_results) {
   rows <- list()
+  seen <- character(0)
   for (result in path_results %||% list()) {
     for (spec in mediation_moderation_interaction_specs(result)) {
+      spec_key <- mediation_moderation_interaction_spec_key(result, spec)
+      if (nzchar(spec_key) && spec_key %in% seen) next
+      if (nzchar(spec_key)) seen <- c(seen, spec_key)
       values <- mediation_moderation_conditional_values(result$model, spec$moderator)
       if (!is.data.frame(values) || nrow(values) == 0L) next
       condition_values <- if (!is.na(spec$conditioning_term %||% NA_character_) && nzchar(spec$conditioning_term) && !is.na(spec$conditioning_moderator %||% NA_character_)) {
@@ -3264,8 +3378,12 @@ mediation_moderation_conditional_moderation_jn_table <- function(result, spec, a
 
 mediation_moderation_jn_detail_table <- function(path_results, n_points = 25L, alpha = .05) {
   rows <- list()
+  seen <- character(0)
   for (result in path_results %||% list()) {
     for (spec in mediation_moderation_interaction_specs(result)) {
+      spec_key <- mediation_moderation_interaction_spec_key(result, spec)
+      if (nzchar(spec_key) && spec_key %in% seen) next
+      if (nzchar(spec_key)) seen <- c(seen, spec_key)
       if (!is.na(spec$conditioning_term %||% NA_character_) && nzchar(spec$conditioning_term)) next
       interaction_p <- mediation_moderation_interaction_p(result, spec$interaction)
       if (!is.finite(interaction_p) || interaction_p >= alpha) next
@@ -3294,8 +3412,12 @@ mediation_moderation_jn_detail_table <- function(path_results, n_points = 25L, a
 
 mediation_moderation_johnson_neyman_table <- function(path_results) {
   rows <- list()
+  seen <- character(0)
   for (result in path_results %||% list()) {
     for (spec in mediation_moderation_interaction_specs(result)) {
+      spec_key <- mediation_moderation_interaction_spec_key(result, spec)
+      if (nzchar(spec_key) && spec_key %in% seen) next
+      if (nzchar(spec_key)) seen <- c(seen, spec_key)
       interaction_p <- mediation_moderation_interaction_p(result, spec$interaction)
       three_way_p <- if (!is.na(spec$three_way_term %||% NA_character_) && nzchar(spec$three_way_term)) {
         mediation_moderation_interaction_p(result, spec$three_way_term)
@@ -5532,6 +5654,17 @@ mediation_moderation_combined_landscape_note_line <- function(last_result) {
     sprintf("%s = Breusch-Pagan residual homoscedasticity test (p-value)", stat_chisq_label(with_p = TRUE))
   )
 }
+
+mediation_moderation_conditional_effect_group_label <- function(label) {
+  label <- trimws(as.character(label %||% ""))
+  if (!nzchar(label)) {
+    return("")
+  }
+  level_pattern <- "(Low \\(M-SD\\)|Mean|High \\(M\\+SD\\))"
+  first_condition <- strsplit(label, "\\s*;\\s*", perl = TRUE)[[1L]][[1L]]
+  trimws(sub(paste0("\\s+[^;[:space:]]+\\s+", level_pattern, "$"), "", first_condition, perl = TRUE))
+}
+
 mediation_mini_effects_table <- function(section_title, rows) {
   if (!is.data.frame(rows) || nrow(rows) == 0L) return(NULL)
   if ("Path" %in% names(rows) && any(nzchar(trimws(as.character(rows[["Path"]] %||% ""))))) {
@@ -5549,6 +5682,14 @@ mediation_mini_effects_table <- function(section_title, rows) {
   h1_st <- "padding:5px 18px;font-weight:700;font-size:12px;border-top:2px solid #1f2937;text-align:center;"
   h2_st <- "padding:5px 18px;font-weight:400;font-size:12px;border-bottom:2px solid #1f2937;text-align:right;"
   c_st <- "padding:5px 18px;font-size:12px;text-align:right;"
+  effect_col_st <- "text-align:left;width:300px;min-width:300px;white-space:nowrap;overflow-wrap:normal;word-break:normal;"
+  group_end <- rep(FALSE, length(path_labels))
+  if (identical(tolower(as.character(section_title %||% "")), "conditional indirect effect")) {
+    group_labels <- vapply(path_labels, mediation_moderation_conditional_effect_group_label, character(1))
+    group_end <- c(group_labels[-1L] != group_labels[-length(group_labels)], TRUE)
+  } else if (length(group_end) > 0L) {
+    group_end[[length(group_end)]] <- TRUE
+  }
   tags$div(
     class = "mm-effects-mini-section",
     tags$div(class = "mm-effects-section-title", section_title),
@@ -5557,11 +5698,11 @@ mediation_mini_effects_table <- function(section_title, rows) {
       style = "width:auto;min-width:400px;border-collapse:collapse;margin:0;",
       tags$thead(
         tags$tr(
-          tags$th(style = paste0(h1_st, "text-align:left;width:220px;"), ""),
+          tags$th(style = paste0(h1_st, effect_col_st), ""),
           tags$th(colspan = 4, style = h1_st, section_title)
         ),
         tags$tr(
-          tags$th(style = paste0(h2_st, "text-align:left;width:220px;"), "Effect"),
+          tags$th(style = paste0(h2_st, effect_col_st), "Effect"),
           tags$th(style = h2_st, "B"),
           tags$th(style = h2_st, "Boot SE"),
           tags$th(style = h2_st, "LLCI"),
@@ -5570,10 +5711,9 @@ mediation_mini_effects_table <- function(section_title, rows) {
       ),
       tags$tbody(lapply(seq_len(nrow(rows)), function(i) {
         row <- rows[i, , drop = FALSE]
-        is_last <- i == nrow(rows)
-        row_st <- if (is_last) "border-bottom:2px solid #1f2937;" else "border-bottom:1px solid #d7dde5;"
+        row_st <- if (isTRUE(group_end[[i]])) "border-bottom:2px solid #1f2937;" else "border-bottom:1px solid #d7dde5;"
         tags$tr(
-          tags$td(style = paste0(c_st, "text-align:left;", row_st), path_labels[[i]]),
+          tags$td(style = paste0(c_st, effect_col_st, row_st), path_labels[[i]]),
           tags$td(style = paste0(c_st, row_st), as.character(row$Estimate[[1L]] %||% "")),
           tags$td(style = paste0(c_st, row_st), as.character(row[["Boot SE"]][[1L]] %||% "")),
           tags$td(style = paste0(c_st, row_st), as.character(row$LLCI[[1L]] %||% "")),
@@ -5909,7 +6049,7 @@ mediation_moderation_combined_path_table_ui <- function(path_results, result, ou
 
   if (length(model_tables) == 0L) return(NULL)
 
-  attr(all_summary_values, "delta_label") <- m_delta_label %||% "Delta R2(bootstrap 95% CI)"
+  attr(all_summary_values, "delta_label") <- m_delta_label %||% "Delta R\u00B2(bootstrap 95% CI)"
   attr(all_summary_values, "any_residual_diagnostics") <- isTRUE(residual_diagnostics_used)
   has_delta <- any(vapply(all_summary_values, function(sv) !is.null(sv$delta), logical(1)))
   note_line <- if (!is.null(last_result)) mediation_moderation_combined_landscape_note_line(last_result) else NULL
@@ -5962,7 +6102,7 @@ mediation_moderation_result_ui <- function(result, language = statedu_initial_la
       lapply(path_results, mediation_moderation_path_result_ui, landscape = coefficient_landscape, output_table_style = output_table_style)
     },
     if (!use_combined_path_table) mediation_moderation_indirect_effect_section_ui(result),
-    analysis_result_table_section("PROCESS model summary", result$model_summary_table, class = "result-section regression-result-panel mm-process-summary-section"),
+    analysis_result_table_section("Model summary", result$model_summary_table, class = "result-section regression-result-panel mm-process-summary-section"),
     analysis_result_table_section("Interaction tests", result$interaction_table, class = "result-section regression-result-panel mm-interaction-tests-section"),
     analysis_result_table_section("Conditional effects", result$simple_slopes_table, class = "result-section regression-result-panel mm-conditional-effects-section"),
     mediation_moderation_conditional_indirect_section_ui(result),
@@ -6009,7 +6149,7 @@ write_mediation_moderation_results_pdf <- function(result, file, language = stat
 mediation_moderation_export_tables <- function(result) {
   tables <- list(
     `Model overview` = result$overview,
-    `PROCESS summary` = result$model_summary_table,
+    `Model summary` = result$model_summary_table,
     `Interaction tests` = result$interaction_table,
     `Conditional effects` = result$simple_slopes_table,
     `Johnson-Neyman` = result$johnson_neyman_table,
