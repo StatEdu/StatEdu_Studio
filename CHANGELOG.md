@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.1.9-dev - 2026-08-04
+
+### Added
+
+- Added a mixed repeated-measures ANOVA workflow for pre-post and multi-time group comparisons with PP/ITT analysis paths, covariate-adjusted summaries, assumption review, post-hoc comparisons, and HTML/PDF/Excel exports.
+
+### Changed
+
+- Integrated repeated-measures ANOVA into the Group Comparison menu and aligned its setup layout, assumption-review option, sphericity/Levene checks, normality guidance, and recommendation wording with StatEdu Studio's guided-analysis flow.
+- Refined inter-rater agreement output so the recommended agreement index is shown first, with auxiliary indices kept as supporting checks.
+
 ## v1.1.8-dev - 2026-08-01
 
 ### Changed

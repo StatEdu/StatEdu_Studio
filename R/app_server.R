@@ -196,6 +196,7 @@ create_app_server <- function(app_version) {
   output$lazy_analysis_crosstabs <- renderUI(tab_panel_content(crosstab_tab_panel(app_language())))
   output$lazy_analysis_ttest_anova <- renderUI(tab_panel_content(ttest_anova_tab_panel(statedu_ui_label("ttest_anova", app_language()), app_language())))
   output$lazy_analysis_ancova <- renderUI(tab_panel_content(ancova_tab_panel(statedu_ui_label("ancova", app_language()), app_language())))
+  output$lazy_analysis_mixed_rm_anova <- renderUI(tab_panel_content(mixed_rm_anova_tab_panel(statedu_ui_label("mixed_rm_anova", app_language()), app_language())))
   output$lazy_analysis_nonparametric <- renderUI(tab_panel_content(nonparametric_tab_panel(statedu_ui_label("nonparametric", app_language()), app_language())))
   output$lazy_analysis_paired <- renderUI(tab_panel_content(paired_tab_panel(statedu_ui_label("paired", app_language()), app_language())))
   output$lazy_analysis_nonparametric_paired <- renderUI(tab_panel_content(nonparametric_paired_tab_panel(statedu_ui_label("nonparametric_paired", app_language()), app_language())))
@@ -1788,6 +1789,19 @@ create_app_server <- function(app_version) {
   )
 
   register_ancova_handlers(
+    input = input,
+    output = output,
+    session = session,
+    selected_names_fn = selected_names,
+    variable_table_fn = regression_variable_table,
+    dataset_fn = dataset,
+    category_table_fn = category_label_values,
+    labels_fn = var_label_overrides,
+    mark_settings_dirty = mark_settings_dirty,
+    app_language_fn = app_language
+  )
+
+  register_mixed_rm_anova_handlers(
     input = input,
     output = output,
     session = session,

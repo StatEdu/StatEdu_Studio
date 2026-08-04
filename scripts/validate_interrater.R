@@ -1,4 +1,6 @@
+source("R/utils.R")
 source("R/analysis_interrater_agreement.R")
+source("R/result_interrater_agreement_ui.R")
 
 assert_close <- function(actual, expected, tolerance = 1e-10, label = "value") {
   if (!isTRUE(all.equal(actual, expected, tolerance = tolerance))) {
@@ -76,6 +78,34 @@ assert_close(
   label = "Gwet AC2"
 )
 
+ordinal_overview <- do.call(rbind, list(
+  interrater_method_row("Percent agreement", 0.80, nrow(ordinal_frame), 3, "Pairwise agreement."),
+  interrater_method_row("Gwet's AC2", 0.92, nrow(ordinal_frame), 3, "Weight: quadratic"),
+  interrater_method_row("Krippendorff's alpha", 0.88, nrow(ordinal_frame), 3, "Ordinal alpha.")
+))
+ordinal_recommendation <- interrater_recommended_tables(
+  ordinal_overview,
+  measurement = "ordered",
+  raters = 3L,
+  frame = ordinal_frame,
+  levels = ordinal_levels,
+  weight = "quadratic"
+)
+if (!identical(ordinal_recommendation$primary$Method[[1]], "Gwet's AC2")) {
+  stop("Expected complete ordinal multi-rater data to recommend Gwet's AC2.", call. = FALSE)
+}
+ordinal_result <- list(
+  overview = ordinal_overview,
+  primary = ordinal_recommendation$primary,
+  auxiliary = ordinal_recommendation$auxiliary
+)
+if (!"Reason" %in% names(interrater_primary_agreement_table(ordinal_result))) {
+  stop("Expected recommended inter-rater table to include the selection reason.", call. = FALSE)
+}
+if ("Gwet's AC2" %in% interrater_auxiliary_agreement_table(ordinal_result)$Method) {
+  stop("Recommended inter-rater method should not be repeated in the auxiliary table.", call. = FALSE)
+}
+
 missing_nominal_frame <- data.frame(
   r1 = c(1, 1, 2, 2, 3, 3, 1, NA),
   r2 = c(1, 2, 2, 3, 3, NA, 2, 1),
@@ -93,6 +123,23 @@ assert_close(
   tolerance = 1e-10,
   label = "Gwet AC1 missing fixed reference"
 )
+missing_nominal_overview <- do.call(rbind, list(
+  interrater_method_row("Percent agreement", 0.70, nrow(missing_nominal_frame), 3, "Pairwise agreement."),
+  interrater_method_row("Fleiss' kappa", NA_real_, nrow(missing_nominal_frame), 3, "Requires complete ratings."),
+  interrater_method_row("Light's kappa", 0.40, nrow(missing_nominal_frame), 3, "Mean pairwise kappa."),
+  interrater_method_row("Gwet's AC1", 0.50, nrow(missing_nominal_frame), 3, "Nominal agreement coefficient."),
+  interrater_method_row("Krippendorff's alpha", 0.45, nrow(missing_nominal_frame), 3, "Missing ratings are allowed.")
+))
+missing_nominal_recommendation <- interrater_recommended_tables(
+  missing_nominal_overview,
+  measurement = "category",
+  raters = 3L,
+  frame = missing_nominal_frame,
+  levels = missing_nominal_levels
+)
+if (!identical(missing_nominal_recommendation$primary$Method[[1]], "Krippendorff's alpha")) {
+  stop("Expected missing nominal multi-rater data to recommend Krippendorff's alpha.", call. = FALSE)
+}
 
 missing_ordinal_frame <- data.frame(
   r1 = c(1, 2, 3, 4, 5, 4, NA, 2),

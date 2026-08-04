@@ -6900,6 +6900,111 @@ pre {
   max-height: 391px !important;
 }
 
+.mixed-rm-anova-setup-grid {
+  --mixed-rm-repeated-section-height: 240px;
+  --mixed-rm-independent-section-height: 78px;
+  --mixed-rm-covariate-section-height: 126px;
+  --mixed-rm-independent-section-block-height: 100px;
+  --mixed-rm-covariate-section-block-height: 148px;
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-target-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-target-panel .mixed-rm-target-section {
+  flex: 0 0 auto;
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-target-panel .mixed-rm-repeated-section {
+  height: var(--mixed-rm-repeated-section-height);
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-target-panel .mixed-rm-independent-section {
+  height: var(--mixed-rm-independent-section-height);
+  margin-top: 12px;
+  margin-bottom: 10px;
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-target-panel .mixed-rm-covariate-section {
+  height: var(--mixed-rm-covariate-section-height);
+  margin-top: 10px;
+  margin-bottom: 12px;
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-target-panel .analysis-field-label {
+  margin-bottom: 6px;
+  flex: 0 0 auto;
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-target-panel .analysis-order-actions {
+  flex: 0 0 auto;
+  justify-content: flex-start;
+  margin-top: 8px;
+  margin-bottom: 6px;
+  padding-bottom: 0;
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-target-panel .analysis-transfer-listbox[data-input-id="mixed_rm_anova_repeated"] {
+  height: 160px !important;
+  min-height: 160px !important;
+  max-height: 160px !important;
+  flex: 0 0 160px;
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-target-panel .analysis-transfer-listbox[data-input-id="mixed_rm_anova_group"] {
+  height: 48px !important;
+  min-height: 48px !important;
+  max-height: 48px !important;
+  flex: 0 0 48px;
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-target-panel .analysis-transfer-listbox[data-input-id="mixed_rm_anova_covariates"] {
+  height: 96px !important;
+  min-height: 96px !important;
+  max-height: 96px !important;
+  flex: 0 0 96px;
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-transfer-controls {
+  display: grid;
+  grid-template-rows:
+    var(--mixed-rm-repeated-section-height)
+    var(--mixed-rm-independent-section-block-height)
+    var(--mixed-rm-covariate-section-block-height)
+    1fr;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0;
+  height: var(--se-standard-panel-height, 520px);
+  padding: 12px 0;
+  box-sizing: border-box;
+  transform: translateX(0);
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-transfer-controls .mixed-rm-transfer-button-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mixed-rm-options .nav-tabs > li > a {
+  padding-left: 9px;
+  padding-right: 9px;
+}
+
+.mixed-rm-options .mixed-rm-options-tab-content {
+  min-height: 420px;
+}
+
+.mixed-rm-options .mixed-rm-time-labels {
+  max-height: 398px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
 .paired-target-panel {
   display: flex;
   flex-direction: column;

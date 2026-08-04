@@ -13,6 +13,37 @@ interrater_agreement_table <- function(result) {
   table[, intersect(preferred, names(table)), drop = FALSE]
 }
 
+interrater_primary_agreement_table <- function(result) {
+  table <- result$primary %||% NULL
+  if (!is.data.frame(table) || nrow(table) == 0) {
+    table <- interrater_agreement_table(result)
+    if (is.data.frame(table) && nrow(table) > 1L) {
+      table <- table[1L, , drop = FALSE]
+    }
+  }
+  if (!is.data.frame(table) || nrow(table) == 0) {
+    return(NULL)
+  }
+  preferred <- c("Method", "Estimate", "95% CI", "N", "Raters", "Reason", "Note")
+  table[, intersect(preferred, names(table)), drop = FALSE]
+}
+
+interrater_auxiliary_agreement_table <- function(result) {
+  table <- result$auxiliary %||% NULL
+  if (!is.data.frame(table)) {
+    table <- interrater_agreement_table(result)
+    primary_method <- result$primary$Method[[1]] %||% ""
+    if (is.data.frame(table) && nzchar(primary_method)) {
+      table <- table[as.character(table$Method) != primary_method, , drop = FALSE]
+    }
+  }
+  if (!is.data.frame(table) || nrow(table) == 0) {
+    return(NULL)
+  }
+  preferred <- c("Method", "Estimate", "95% CI", "N", "Raters", "Note")
+  table[, intersect(preferred, names(table)), drop = FALSE]
+}
+
 interrater_agreement_column_widths <- function(columns) {
   weights <- vapply(columns, function(column) {
     switch(
@@ -22,7 +53,8 @@ interrater_agreement_column_widths <- function(columns) {
       `95% CI` = 16,
       N = 8,
       Raters = 8,
-      Note = 36,
+      Reason = 38,
+      Note = 28,
       10
     )
   }, numeric(1))
@@ -31,8 +63,8 @@ interrater_agreement_column_widths <- function(columns) {
 
 interrater_agreement_cell_style <- function(column, header = FALSE, last = FALSE, width = NULL) {
   center_columns <- c("Estimate", "95% CI", "N", "Raters")
-  left_aligned <- !isTRUE(header) && column %in% c("Method", "Note")
-  normal_space <- column %in% c("Method", "Note") || isTRUE(header)
+  left_aligned <- !isTRUE(header) && column %in% c("Method", "Reason", "Note")
+  normal_space <- column %in% c("Method", "Reason", "Note") || isTRUE(header)
   paste0(
     "padding:", if (isTRUE(header)) "4px 5px" else "5px 5px", ";",
     "line-height:", if (isTRUE(header)) "1.12" else "1.25", ";",
@@ -42,7 +74,7 @@ interrater_agreement_cell_style <- function(column, header = FALSE, last = FALSE
     "font-weight:", if (isTRUE(header)) "700" else "400", ";",
     "font-size:", if (isTRUE(header)) "11px" else "12px", ";",
     "white-space:", if (isTRUE(normal_space)) "normal" else "nowrap", ";",
-    "overflow-wrap:", if (identical(column, "Note")) "anywhere" else if (isTRUE(normal_space)) "break-word" else "normal", ";",
+    "overflow-wrap:", if (column %in% c("Reason", "Note")) "anywhere" else if (isTRUE(normal_space)) "break-word" else "normal", ";",
     "word-break:normal;",
     "width:", if (!is.null(width)) sprintf("%.4f%%", width) else "auto", ";",
     "min-width:0;max-width:none;",
@@ -92,7 +124,8 @@ interrater_agreement_results_ui <- function(result) {
   if (is.null(result)) {
     return(NULL)
   }
-  overview <- interrater_agreement_table(result)
+  primary <- interrater_primary_agreement_table(result)
+  auxiliary <- interrater_auxiliary_agreement_table(result)
   normality <- result$normality_table
   tagList(
     div(
@@ -100,12 +133,20 @@ interrater_agreement_results_ui <- function(result) {
       div(
         class = "result-section reliability-result-section regression-result-panel",
         style = "width:min(100%,920px);max-width:920px;overflow-x:visible;box-sizing:border-box;",
-        h3("Inter-rater agreement"),
+        h3("Recommended analysis"),
         result_table_with_notes(
-          interrater_agreement_html_table(overview),
+          interrater_agreement_html_table(primary),
           reliability_note_tag(interrater_agreement_note(result), width = 920)
         )
       ),
+      if (is.data.frame(auxiliary) && nrow(auxiliary) > 0) {
+        div(
+          class = "result-section reliability-result-section regression-result-panel",
+          style = "width:min(100%,920px);max-width:920px;overflow-x:visible;box-sizing:border-box;",
+          h3("Auxiliary agreement indices"),
+          interrater_agreement_html_table(auxiliary)
+        )
+      },
       if (is.data.frame(normality) && nrow(normality) > 0) {
         div(
           class = "result-section reliability-result-section regression-result-panel",
@@ -143,7 +184,12 @@ write_interrater_agreement_results_pdf <- function(result, file) {
 save_interrater_agreement_excel_file <- function(result, file) {
   workbook <- openxlsx::createWorkbook()
   used_sheets <- character(0)
-  used_sheets <- add_excel_table_sheet(workbook, "Agreement", interrater_agreement_table(result), used_sheets, title = "Inter-rater agreement")
+  used_sheets <- add_excel_table_sheet(workbook, "Recommended", interrater_primary_agreement_table(result), used_sheets, title = "Recommended analysis")
+  auxiliary <- interrater_auxiliary_agreement_table(result)
+  if (is.data.frame(auxiliary) && nrow(auxiliary) > 0) {
+    used_sheets <- add_excel_table_sheet(workbook, "Auxiliary", auxiliary, used_sheets, title = "Auxiliary agreement indices")
+  }
+  used_sheets <- add_excel_table_sheet(workbook, "Agreement", interrater_agreement_table(result), used_sheets, title = "All agreement indices")
   if (is.data.frame(result$normality_table) && nrow(result$normality_table) > 0) {
     used_sheets <- add_excel_table_sheet(workbook, "Normality", result$normality_table, used_sheets, title = "Normality diagnostics")
   }

@@ -380,6 +380,7 @@ enabled_analysis_tabs <- function() {
     paired_rm = TRUE,
     ttest_anova = TRUE,
     ancova = TRUE,
+    mixed_rm_anova = TRUE,
     nonparametric = TRUE,
     nonparametric_paired = TRUE,
     correlation = TRUE,

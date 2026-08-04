@@ -75,6 +75,7 @@ analysis_tab_panel <- function(analysis_tabs = enabled_analysis_tabs(), language
     if (isTRUE(analysis_tabs[["ttest_anova"]])) lazy_tab_panel(statedu_ui_label("ttest_anova", language), "t-test / ANOVA", "lazy_analysis_ttest_anova"),
     if (isTRUE(analysis_tabs[["paired"]]) || isTRUE(analysis_tabs[["paired_rm"]])) lazy_tab_panel(statedu_ui_label("paired", language), "Paired test", "lazy_analysis_paired"),
     if (isTRUE(analysis_tabs[["ancova"]])) lazy_tab_panel(statedu_ui_label("ancova", language), "ANCOVA", "lazy_analysis_ancova"),
+    if (isTRUE(analysis_tabs[["mixed_rm_anova"]])) lazy_tab_panel(statedu_ui_label("mixed_rm_anova", language), "Repeated-measures ANOVA", "lazy_analysis_mixed_rm_anova"),
     if (isTRUE(analysis_tabs[["nonparametric"]])) lazy_tab_panel(statedu_ui_label("nonparametric", language), "Nonparametric Tests", "lazy_analysis_nonparametric"),
     if (isTRUE(analysis_tabs[["nonparametric_paired"]])) lazy_tab_panel(statedu_ui_label("nonparametric_paired", language), "Nonparametric Paired", "lazy_analysis_nonparametric_paired"),
     if (isTRUE(analysis_tabs[["correlation"]])) lazy_tab_panel(statedu_ui_label("correlation", language), "Correlation", "lazy_analysis_correlation"),

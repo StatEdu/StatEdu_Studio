@@ -1556,6 +1556,7 @@
                 't-test / ANOVA': 't-test / ANOVA',
                 'Paired test': 'Paired test',
                 ANCOVA: 'ANCOVA',
+                'Repeated-measures ANOVA': 'Repeated-measures ANOVA',
                 'Nonparametric Tests': 'Nonparametric Tests',
                 'Nonparametric Paired': 'Nonparametric Paired',
                 Correlation: 'Correlation',
@@ -1583,6 +1584,7 @@
                 't-test / ANOVA': 't-test / ANOVA',
                 'Paired test': '\uB300\uC751\uD45C\uBCF8 \uAC80\uC815',
                 ANCOVA: 'ANCOVA',
+                'Repeated-measures ANOVA': '\uBC18\uBCF5\uCE21\uC815 \uBD84\uC0B0\uBD84\uC11D',
                 'Nonparametric Tests': '\uBE44\uBAA8\uC218 \uAC80\uC815',
                 'Nonparametric Paired': '\uB300\uC751 \uBE44\uBAA8\uC218 \uAC80\uC815',
                 Correlation: '\uC0C1\uAD00\uBD84\uC11D',
@@ -1613,7 +1615,7 @@
                 {
                   title: 'Group Comparisons',
                   titleKo: '\uC9D1\uB2E8 \uBE44\uAD50',
-                  values: ['t-test / ANOVA', 'Paired test', 'ANCOVA']
+                  values: ['t-test / ANOVA', 'Paired test', 'ANCOVA', 'Repeated-measures ANOVA']
                 },
                 {
                   title: 'Nonparametric Tests',

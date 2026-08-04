@@ -317,6 +317,116 @@ interrater_method_row <- function(method, estimate, n, raters, note = "", ci = N
   row
 }
 
+interrater_available_method_index <- function(table, methods) {
+  if (!is.data.frame(table) || nrow(table) == 0 || !("Method" %in% names(table))) {
+    return(NA_integer_)
+  }
+  for (method in methods) {
+    index <- match(method, table$Method)
+    if (is.finite(index) && !is.na(index) && !identical(table$Estimate[[index]], "-")) {
+      return(index)
+    }
+  }
+  candidates <- which(!(as.character(table$Method) %in% "Percent agreement") & !(as.character(table$Estimate) %in% "-"))
+  if (length(candidates) > 0) candidates[[1]] else 1L
+}
+
+interrater_rating_profile <- function(frame, levels = NULL) {
+  present <- !is.na(frame)
+  ratings_per_unit <- rowSums(present)
+  rated_units <- sum(ratings_per_unit > 0)
+  incomplete_units <- sum(ratings_per_unit > 0 & ratings_per_unit < ncol(frame))
+  variable_rater_counts <- length(unique(ratings_per_unit[ratings_per_unit > 0])) > 1L
+  values <- as.character(unlist(frame, use.names = FALSE))
+  values <- values[!is.na(values)]
+  category_imbalance <- FALSE
+  max_category_share <- NA_real_
+  if (!is.null(levels) && length(levels) > 1 && length(values) > 0) {
+    counts <- tabulate(match(values, levels), nbins = length(levels))
+    max_category_share <- max(counts / sum(counts))
+    category_imbalance <- is.finite(max_category_share) && max_category_share >= 0.80
+  }
+  list(
+    rated_units = rated_units,
+    incomplete_units = incomplete_units,
+    variable_rater_counts = variable_rater_counts,
+    category_imbalance = category_imbalance,
+    max_category_share = max_category_share
+  )
+}
+
+interrater_recommendation_reason <- function(measurement, method, raters, profile, weight = NULL) {
+  missing_note <- if (isTRUE(profile$incomplete_units > 0)) {
+    sprintf(" %d unit(s) include missing rater values.", profile$incomplete_units)
+  } else {
+    ""
+  }
+  imbalance_note <- if (isTRUE(profile$category_imbalance)) {
+    sprintf(" The largest category accounts for %.1f%% of observed ratings.", 100 * profile$max_category_share)
+  } else {
+    ""
+  }
+  switch(
+    measurement,
+    continuous = sprintf(
+      "Selected because all rater variables are continuous. ICC is the primary agreement index for repeated continuous ratings across %d raters.",
+      raters
+    ),
+    ordered = if (identical(method, "Weighted Cohen's kappa")) {
+      sprintf("Selected because two raters used an ordinal scale; %s weights preserve the ordered category distances.", weight %||% "quadratic")
+    } else if (identical(method, "Gwet's AC2")) {
+      paste0("Selected because ordinal ratings require a weighted chance-corrected agreement index that can use available ratings.", missing_note)
+    } else {
+      paste0("Selected because the ordinal rater data include missing or unevenly rated units; Krippendorff's alpha can use incomplete rating matrices.", missing_note)
+    },
+    category = if (identical(method, "Cohen's kappa")) {
+      "Selected because two raters used a nominal scale with complete paired ratings and no severe category imbalance."
+    } else if (identical(method, "Fleiss' kappa")) {
+      "Selected because three or more raters used a nominal scale with the same number of complete ratings per subject."
+    } else if (identical(method, "Gwet's AC1")) {
+      paste0("Selected because nominal ratings show missing values or substantial category imbalance; AC1 is less sensitive to the kappa prevalence effect.", missing_note, imbalance_note)
+    } else {
+      paste0("Selected because the nominal rater data include missing or unevenly rated units; Krippendorff's alpha can use incomplete rating matrices.", missing_note)
+    },
+    ""
+  )
+}
+
+interrater_recommended_tables <- function(overview, measurement, raters, frame, levels = NULL, weight = NULL) {
+  profile <- interrater_rating_profile(frame, levels)
+  method_order <- switch(
+    measurement,
+    continuous = as.character(overview$Method[[1]]),
+    ordered = if (raters == 2L && !isTRUE(profile$incomplete_units > 0)) {
+      c("Weighted Cohen's kappa", "Gwet's AC2", "Krippendorff's alpha")
+    } else if (isTRUE(profile$incomplete_units > 0) || isTRUE(profile$variable_rater_counts)) {
+      c("Krippendorff's alpha", "Gwet's AC2", "Weighted Cohen's kappa")
+    } else {
+      c("Gwet's AC2", "Krippendorff's alpha")
+    },
+    category = if (raters == 2L && !isTRUE(profile$incomplete_units > 0) && !isTRUE(profile$category_imbalance)) {
+      c("Cohen's kappa", "Gwet's AC1", "Krippendorff's alpha")
+    } else if (raters == 2L) {
+      c("Gwet's AC1", "Krippendorff's alpha", "Cohen's kappa")
+    } else if (isTRUE(profile$incomplete_units > 0) || isTRUE(profile$variable_rater_counts)) {
+      c("Krippendorff's alpha", "Gwet's AC1", "Fleiss' kappa", "Light's kappa")
+    } else {
+      c("Fleiss' kappa", "Light's kappa", "Gwet's AC1", "Krippendorff's alpha")
+    },
+    as.character(overview$Method)
+  )
+  index <- interrater_available_method_index(overview, method_order)
+  if (!is.finite(index) || is.na(index)) {
+    return(list(primary = overview[0, , drop = FALSE], auxiliary = overview, profile = profile))
+  }
+  primary <- overview[index, , drop = FALSE]
+  primary$Reason <- interrater_recommendation_reason(measurement, primary$Method[[1]], raters, profile, weight = weight)
+  auxiliary <- overview[-index, , drop = FALSE]
+  rownames(primary) <- NULL
+  rownames(auxiliary) <- NULL
+  list(primary = primary, auxiliary = auxiliary, profile = profile)
+}
+
 prepare_interrater_agreement_results <- function(data, variables, variable_info = NULL, labels = character(0), category_table = NULL, options = list()) {
   variables <- intersect(as.character(variables %||% character(0)), names(data))
   shiny::validate(shiny::need(length(variables) >= 2, "Select at least two rater variables."))
@@ -363,14 +473,18 @@ prepare_interrater_agreement_results <- function(data, variables, variable_info 
       if (isTRUE(options$bootstrap_ci)) "Bootstrap percentile 95% CI is reported." else "ICC was estimated from complete cases.",
       ci = ci
     )
+    recommended <- interrater_recommended_tables(overview, measurement, raters, complete)
     return(list(
       type = "interrater_agreement",
       measurement = measurement,
       variables = names(frame),
       options = options,
       overview = overview,
+      primary = recommended$primary,
+      auxiliary = recommended$auxiliary,
+      recommendation_profile = recommended$profile,
       normality_table = normality,
-      method_note = "Continuous rater scores are analyzed with ICC. When normality or outlier influence is a concern, keep ICC as the estimate and report a bootstrap 95% confidence interval."
+      method_note = "The recommended analysis is shown first. Continuous rater scores are analyzed with ICC; when normality or outlier influence is a concern, report the bootstrap 95% confidence interval."
     ))
   }
 
@@ -410,6 +524,7 @@ prepare_interrater_agreement_results <- function(data, variables, variable_info 
     ))
   }
   overview <- do.call(rbind, rows)
+  recommended <- interrater_recommended_tables(overview, measurement, raters, frame, levels = levels, weight = weight)
   list(
     type = "interrater_agreement",
     measurement = measurement,
@@ -417,7 +532,10 @@ prepare_interrater_agreement_results <- function(data, variables, variable_info 
     categories = levels,
     options = options,
     overview = overview,
+    primary = recommended$primary,
+    auxiliary = recommended$auxiliary,
+    recommendation_profile = recommended$profile,
     normality_table = NULL,
-    method_note = "Categorical and ordinal rater variables use chance-corrected agreement coefficients. AC1 is used for nominal ratings; AC2 is used for ordinal ratings with weights."
+    method_note = "The recommended analysis is shown first. Additional agreement indices are reported as auxiliary checks, especially when missing ratings or category imbalance affect kappa-style coefficients."
   )
 }

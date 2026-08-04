@@ -320,6 +320,15 @@ result_cell_value_without_marker <- function(value, marker = "") {
   sub(paste0(marker, "$"), "", value)
 }
 
+result_column_header_marker <- function(table, column) {
+  markers <- attr(table, "column_header_markers", exact = TRUE)
+  if (!is.data.frame(markers) || nrow(markers) == 0 || !"column" %in% names(markers) || !"marker" %in% names(markers)) {
+    return("")
+  }
+  matched <- markers[as.character(markers$column) == column, , drop = FALSE]
+  if (nrow(matched) == 0) "" else as.character(matched$marker[[1]])
+}
+
 coefficient_display_columns <- function(table) {
   columns <- names(table)
   labels <- columns
@@ -343,22 +352,33 @@ coefficient_display_columns <- function(table) {
   data.frame(
     source = columns,
     label = labels,
+    header_marker = vapply(columns, function(column) result_column_header_marker(table, column), character(1)),
     marker = FALSE,
     stringsAsFactors = FALSE
   )
 }
 
-result_header_content <- function(label) {
+result_header_content <- function(label, marker = "") {
   label <- as.character(label %||% "")
-  if (!grepl("\n", label, fixed = TRUE)) {
-    return(label)
+  marker <- as.character(marker %||% "")
+  content <- if (!grepl("\n", label, fixed = TRUE)) {
+    label
+  } else {
+    parts <- strsplit(label, "\n", fixed = TRUE)[[1]]
+    tags$span(
+      class = "coefficient-header-break",
+      lapply(parts, function(part) {
+        tags$span(part)
+      })
+    )
   }
-  parts <- strsplit(label, "\n", fixed = TRUE)[[1]]
+  if (!nzchar(marker)) {
+    return(content)
+  }
   tags$span(
-    class = "coefficient-header-break",
-    lapply(parts, function(part) {
-      tags$span(part)
-    })
+    style = "white-space:nowrap;",
+    content,
+    tags$sup(style = "margin-left:2px;font-size:75%;vertical-align:super;", marker)
   )
 }
 
@@ -650,7 +670,7 @@ coefficient_html_table <- function(
               if (isTRUE(display_meta$marker[[index]])) "padding-left:2px;padding-right:8px;min-width:16px;width:16px;text-align:left;" else "",
               if (!isTRUE(display_meta$marker[[index]]) && index < nrow(display_meta) && isTRUE(display_meta$marker[[index + 1L]])) "padding-right:2px;" else ""
             ),
-            result_header_content(display_meta$label[[index]])
+            result_header_content(display_meta$label[[index]], display_meta$header_marker[[index]] %||% "")
           )
         }))
       ),
