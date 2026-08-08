@@ -74,6 +74,30 @@ body {
   width: 100%;
 }
 
+.latent-output-folder-display {
+  display: block;
+  width: 100%;
+  min-height: 68px;
+  margin: 0;
+  padding: 12px 10px;
+  border: 1px solid #d9e2ec;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #102a43;
+  font-family: Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.latent-output-folder-display .shiny-text-output {
+  display: inline;
+  text-align: left;
+}
+
 .latent-export-actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1787,6 +1811,140 @@ select[id$="_active_role"]:focus {
 
 .hint8-weight-matrix-table {
   margin-top: 2px;
+}
+
+/* Latent result final orientation override: keep this block at file end. */
+.latent-results-panel {
+  overflow-x: auto !important;
+}
+
+.latent-result-table-section.latent-result-table-b5-page {
+  box-sizing: border-box !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.latent-result-table-section.latent-result-table-b5-portrait {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-b5-landscape,
+.latent-result-table-section.latent-result-table-t2,
+.latent-result-table-section.latent-result-table-s5,
+.latent-result-table-section.latent-result-table-s6,
+.latent-result-table-section[class*="latent-result-table-estimation"] {
+  max-width: var(--latent-b5-landscape-width) !important;
+  width: min(100%, var(--latent-b5-landscape-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-b5-landscape .latent-excel-table-wrap,
+.latent-result-table-section.latent-result-table-t2 .latent-excel-table-wrap,
+.latent-result-table-section.latent-result-table-s5 .latent-excel-table-wrap,
+.latent-result-table-section.latent-result-table-s6 .latent-excel-table-wrap,
+.latent-result-table-section[class*="latent-result-table-estimation"] .latent-excel-table-wrap {
+  overflow-x: auto !important;
+}
+
+.latent-result-table-section.latent-result-table-t2 .latent-excel-table,
+.latent-result-table-section.latent-result-table-s5 .latent-excel-table,
+.latent-result-table-section.latent-result-table-s6 .latent-excel-table,
+.latent-result-table-section[class*="latent-result-table-estimation"] .latent-excel-table {
+  table-layout: auto !important;
+  width: max-content !important;
+  min-width: 100% !important;
+}
+
+/* Final latent B5 page overrides; keep after older portrait-only rules. */
+.latent-results-panel {
+  overflow-x: auto !important;
+}
+
+.latent-result-table-section.latent-result-table-b5-page {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.latent-result-table-section.latent-result-table-b5-portrait {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-b5-landscape {
+  max-width: var(--latent-b5-landscape-width) !important;
+  width: min(100%, var(--latent-b5-landscape-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-b5-landscape .latent-excel-table-wrap {
+  overflow-x: auto !important;
+}
+
+/* Latent result tables: one independent B5 page per table */
+.latent-results-panel {
+  overflow-x: auto;
+}
+
+.latent-result-table-section.latent-result-table-b5-page {
+  background: #ffffff;
+  border: 1px solid #d9e2ec;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-sizing: border-box;
+  margin: 18px auto 28px;
+  overflow: hidden;
+  padding: 18px 26px 24px;
+}
+
+.latent-result-table-section.latent-result-table-b5-page:first-of-type {
+  border-top: 1px solid #d9e2ec;
+  margin-top: 8px;
+  padding-top: 18px;
+}
+
+.latent-result-table-section.latent-result-table-b5-portrait {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-b5-landscape,
+.latent-excel-table-wrap.latent-result-table-b5-landscape {
+  max-width: var(--latent-b5-landscape-width) !important;
+  width: min(100%, var(--latent-b5-landscape-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-b5-page h4 {
+  border-bottom: 3px solid #1f2937;
+  color: #06233f;
+  font-size: 22px;
+  line-height: 1.2;
+  margin: 0 0 10px;
+  padding-bottom: 10px;
+}
+
+.latent-result-table-section.latent-result-table-b5-page .latent-excel-table-wrap,
+.latent-excel-table-wrap.latent-result-table-b5-page {
+  max-width: 100% !important;
+  overflow-x: auto;
+}
+
+.latent-result-table-section.latent-result-table-b5-page .latent-excel-table {
+  margin: 0;
+  width: 100%;
+}
+
+.latent-result-table-section.latent-result-table-b5-landscape .latent-excel-table {
+  font-size: 9.6px;
+  line-height: 1.18;
+}
+
+.latent-result-table-section.latent-result-table-b5-portrait .latent-excel-table {
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.latent-result-table-section.latent-result-table-b5-landscape .latent-excel-title-row td,
+.latent-result-table-section.latent-result-table-b5-portrait .latent-excel-title-row td {
+  white-space: normal !important;
 }
 
 /* Latent Results: B5 portrait output frame */
@@ -7693,4 +7851,200 @@ select[id$="_active_role"]:focus {
 
 .hint8-weight-matrix-table {
   margin-top: 2px;
+}
+
+/* Latent result table-specific page CSS. Keep at EOF so each table wins cascade. */
+.latent-results-panel {
+  overflow-x: auto !important;
+}
+
+.latent-result-table-section.latent-result-table-t0 {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-t1 {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-t2 {
+  max-width: var(--latent-b5-landscape-width) !important;
+  width: min(100%, var(--latent-b5-landscape-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-t2 .latent-excel-table-wrap {
+  overflow-x: auto !important;
+}
+
+.latent-result-table-section.latent-result-table-t2 .latent-excel-table {
+  font-size: 8.2px !important;
+  line-height: 1.15 !important;
+  table-layout: auto !important;
+  width: max-content !important;
+  min-width: 100% !important;
+}
+
+.latent-result-table-section.latent-result-table-t2 .latent-excel-table th,
+.latent-result-table-section.latent-result-table-t2 .latent-excel-table td {
+  padding-left: 3px !important;
+  padding-right: 3px !important;
+  white-space: nowrap !important;
+}
+
+.latent-result-table-section.latent-result-table-t3 {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-t4 {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-t5 {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-t5b {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-t5c {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-t5d {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-t6 {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-t7 {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-a3 {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-a4 {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-a5 {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-a6 {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-a7 {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-a8 {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-s1 {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-s2 {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-s3 {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-s4 {
+  max-width: var(--latent-b5-portrait-width) !important;
+  width: min(100%, var(--latent-b5-portrait-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-s5 {
+  max-width: var(--latent-b5-landscape-width) !important;
+  width: min(100%, var(--latent-b5-landscape-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-s5 .latent-excel-table {
+  table-layout: auto !important;
+  width: max-content !important;
+  min-width: 100% !important;
+}
+
+.latent-result-table-section.latent-result-table-s6 {
+  max-width: var(--latent-b5-landscape-width) !important;
+  width: min(100%, var(--latent-b5-landscape-width)) !important;
+}
+
+.latent-result-table-section.latent-result-table-s6 .latent-excel-table {
+  table-layout: auto !important;
+  width: max-content !important;
+  min-width: 100% !important;
+}
+
+.latent-result-table-section[class*="latent-result-table-estimation"] {
+  max-width: var(--latent-b5-landscape-width) !important;
+  width: min(100%, var(--latent-b5-landscape-width)) !important;
+}
+
+.latent-result-table-section[class*="latent-result-table-estimation"] .latent-excel-table {
+  table-layout: auto !important;
+  width: max-content !important;
+  min-width: 100% !important;
+}
+
+/* Latent result cards: t-test-like separated table panels. */
+.latent-results-panel {
+  display: grid !important;
+  gap: 16px !important;
+  overflow-x: auto !important;
+}
+
+.latent-result-table-section.result-section.regression-result-panel {
+  background: #ffffff !important;
+  border: 1px solid #d9e2ec !important;
+  border-radius: 6px !important;
+  box-sizing: border-box !important;
+  display: block !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+  overflow-x: auto !important;
+  padding: 14px 16px !important;
+}
+
+.latent-result-table-section.result-section.regression-result-panel h4 {
+  color: #102033 !important;
+  font-size: 17px !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+  margin: 0 0 10px !important;
+  padding-bottom: 0 !important;
+}
+
+.latent-result-table-section.result-section.regression-result-panel .latent-excel-table {
+  border-top: 2px solid #1f2937 !important;
+  border-bottom: 2px solid #1f2937 !important;
+  margin-bottom: 0 !important;
 }

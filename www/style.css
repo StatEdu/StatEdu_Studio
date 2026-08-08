@@ -5,11 +5,21 @@ body {
   --se-standard-options-width: 310px;
   --se-standard-inner-button-width: 300px;
   --se-standard-options-button-width: 286px;
-  --se-standard-setup-width: 1176px;
-  --se-analysis-workspace-width: 1140px;
+  --se-standard-spacer-width: 20px;
   --se-analysis-grid-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width);
   --se-standard-panel-height: 520px;
   --se-standard-panel-padding: 18px;
+  --se-standard-grid-width: calc((var(--se-standard-panel-width) * 3) + var(--se-standard-transfer-width) + var(--se-standard-spacer-width) + (var(--se-standard-gap) * 4));
+  --se-standard-setup-width: 1176px;
+  --se-standard-workspace-padding: 18px;
+  --se-standard-workspace-width: calc(var(--se-standard-setup-width) + (var(--se-standard-workspace-padding) * 2));
+  --se-standard-four-column-grid-width: calc((var(--se-standard-panel-width) * 2) + var(--se-standard-transfer-width) + var(--se-standard-options-width) + (var(--se-standard-gap) * 3));
+  --se-standard-four-column-setup-width: calc(var(--se-standard-four-column-grid-width) + (var(--se-standard-panel-padding) * 2));
+  --se-standard-four-column-workspace-width: calc(var(--se-standard-four-column-setup-width) + (var(--se-standard-workspace-padding) * 2));
+  --se-analysis-workspace-width: 1140px;
+  --se-three-panel-grid-width: calc((var(--se-standard-panel-width) * 3) + (var(--se-standard-gap) * 2));
+  --se-three-panel-setup-width: calc(var(--se-three-panel-grid-width) + (var(--se-standard-panel-padding) * 2));
+  --se-three-panel-workspace-width: calc(var(--se-three-panel-setup-width) + (var(--se-standard-workspace-padding) * 2));
   --se-control-height: 36px;
   background: #f6f8fb;
   color: #1f2933;
@@ -258,9 +268,9 @@ body {
 }
 
 .brand-logo-horizontal {
-  width: 112px;
+  width: 148px;
   height: 62px;
-  flex: 0 0 112px;
+  flex: 0 0 148px;
   object-fit: contain;
   object-position: left center;
   display: block;
@@ -274,8 +284,8 @@ body {
 }
 
 .page-shell {
-  max-width: 1600px;
-  margin: 22px auto;
+  max-width: none;
+  margin: 8px 0 24px;
   padding: 0 18px 28px;
 }
 
@@ -415,6 +425,23 @@ body {
   white-space: nowrap;
 }
 
+#data_steps.recalculating:has(.excel-import-actions),
+#data_loaded_message.recalculating,
+#excel_import_note.recalculating,
+#excel_import_preview.recalculating,
+.excel-import-main-panel.recalculating,
+.excel-import-main-panel .recalculating,
+body.statedu-excel-import-review-visible .recalculating {
+  opacity: 1 !important;
+}
+
+#data_steps.recalculating:has(.excel-import-actions),
+.excel-import-main-panel.recalculating,
+.excel-import-main-panel .recalculating,
+body.statedu-excel-import-review-visible .recalculating {
+  pointer-events: auto !important;
+}
+
 .step-block {
   padding-bottom: 16px;
   margin-bottom: 16px;
@@ -472,6 +499,33 @@ body {
 .step-note {
   margin-bottom: 12px;
   color: #334e68;
+}
+
+.data-file-input-control .form-group {
+  margin-bottom: 14px;
+}
+
+.data-file-input-control .input-group {
+  width: 100%;
+}
+
+.data-file-input-control .btn-file {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #111827;
+  font-weight: 500;
+}
+
+.data-file-input-control .btn-file:hover,
+.data-file-input-control .btn-file:focus {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #111827;
+}
+
+.data-file-input-control input.form-control {
+  background: #ffffff;
+  color: #334155;
 }
 
 .bulk-measurement-control {
@@ -958,19 +1012,22 @@ body {
 .recode-builder-category-rules {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .recode-builder-category-header,
 .recode-builder-category-row,
 .recode-builder-category-middle-row {
-  grid-template-columns: 56px 42px 28px 42px 56px minmax(0, 1fr);
+  grid-template-columns: 46px 38px 16px 38px 46px minmax(58px, 1fr);
 }
 
 .recode-builder-category-row {
   display: grid;
-  gap: 8px;
+  column-gap: 5px;
+  row-gap: 8px;
   align-items: center;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .recode-builder-range-anchor {
@@ -1003,19 +1060,22 @@ body {
 .recode-builder-category-row .form-group,
 .recode-builder-category-middle-row .form-group {
   margin-bottom: 0;
+  min-width: 0;
 }
 
 .recode-builder-category-row .form-control,
 .recode-builder-category-middle-row .form-control,
 .recode-builder-single-row .form-control {
   height: 30px;
-  padding: 4px 8px;
+  max-width: 100%;
+  padding: 4px 6px;
+  box-sizing: border-box;
 }
 
 .recode-builder-category-row select.form-control,
 .recode-builder-category-middle-row select.form-control {
-  padding-left: 6px;
-  padding-right: 6px;
+  padding-left: 4px;
+  padding-right: 4px;
   text-align: center;
 }
 
@@ -2230,6 +2290,9 @@ input.variable-select:disabled {
   color: #2f3a46;
   font-weight: 700;
   border-bottom: 2px solid #1f2937;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .crosstab-main-table thead tr:first-child th {
@@ -2348,6 +2411,33 @@ input.variable-select:disabled {
   vertical-align: baseline;
 }
 
+.coefficient-cell-break {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  line-height: 1.12;
+  white-space: normal !important;
+  vertical-align: middle;
+}
+
+.coefficient-cell-break > span {
+  display: block;
+  white-space: nowrap;
+}
+
+.coefficient-cell-break .coefficient-footnote-marker {
+  position: static;
+  display: inline;
+  margin-left: 1px;
+  vertical-align: super;
+}
+
+.coefficient-table td:first-child .coefficient-cell-break,
+.coefficient-table .coefficient-col-term .coefficient-cell-break {
+  align-items: flex-start;
+}
+
 .coefficient-col-note-marker {
   width: 16px;
   min-width: 16px;
@@ -2424,6 +2514,12 @@ input.variable-select:disabled {
   transform: translateX(-50%);
   white-space: normal;
   z-index: 8000;
+}
+
+.sample-size-effect-size-help::after {
+  max-width: 140px;
+  min-width: 110px;
+  white-space: pre-line;
 }
 
 .easyflow-option-help::before {
@@ -2507,6 +2603,43 @@ input.variable-select:disabled {
   border-top: 0;
 }
 
+.analysis-three-block-action-row {
+  grid-template-rows: auto;
+  row-gap: 10px;
+  align-items: start;
+  min-height: 60px;
+}
+
+.analysis-three-block-action-row .analysis-action-cell {
+  min-width: 0;
+  align-self: start;
+}
+
+.analysis-three-block-action-row .analysis-run-cell {
+  grid-row: 1;
+  align-self: start;
+}
+
+.analysis-three-block-action-row .analysis-reset-cell {
+  grid-row: 1;
+  align-self: start;
+}
+
+.analysis-three-block-action-row .analysis-extra-cell {
+  grid-row: 1;
+}
+
+.analysis-three-block-action-row .analysis-save-cell {
+  grid-row: 1;
+  align-self: start;
+}
+
+.analysis-three-block-action-row .analysis-run-cell > .btn,
+.analysis-three-block-action-row .analysis-reset-cell .analysis-reset-button {
+  width: var(--se-standard-inner-button-width, 300px);
+  min-width: var(--se-standard-inner-button-width, 300px);
+}
+
 .calculator-action-row {
   display: grid;
   grid-template-columns: 326px 50px 326px 20px 310px;
@@ -2556,6 +2689,18 @@ input.variable-select:disabled {
   margin: 0;
 }
 
+.analysis-workspace-heading-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.data-editor-variable-scope-row {
+  min-height: 34px;
+}
+
 .analysis-workspace-heading,
 .frequencies-setup-grid,
 .correlation-setup-grid,
@@ -2575,6 +2720,16 @@ input.variable-select:disabled {
   padding-left: 14px;
   padding-right: 14px;
   font-weight: 500;
+}
+
+.data-editor-variable-scope-button.is-active {
+  color: #ffffff;
+  background-color: #337ab7;
+  border-color: #2e6da4;
+}
+
+.data-editor-variable-scope-button {
+  min-width: 160px;
 }
 
 .analysis-data-viewer-panel {
@@ -2647,6 +2802,206 @@ input.variable-select:disabled {
   color: #ffffff;
   background-color: #337ab7;
   border-color: #2e6da4;
+}
+
+.complex-sample-design-panel.analysis-options-panel {
+  width: var(--se-standard-options-width, 310px) !important;
+  min-width: var(--se-standard-options-width, 310px) !important;
+  max-width: var(--se-standard-options-width, 310px) !important;
+  height: var(--se-standard-panel-height, 520px) !important;
+  min-height: var(--se-standard-panel-height, 520px) !important;
+  max-height: var(--se-standard-panel-height, 520px) !important;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 13px 10px !important;
+  overflow: hidden;
+}
+
+.complex-sample-design-column {
+  width: var(--se-standard-options-width, 310px) !important;
+  min-width: var(--se-standard-options-width, 310px) !important;
+  max-width: var(--se-standard-options-width, 310px) !important;
+  height: var(--se-standard-panel-height, 520px) !important;
+  min-height: var(--se-standard-panel-height, 520px) !important;
+  max-height: var(--se-standard-panel-height, 520px) !important;
+  align-self: stretch;
+  box-sizing: border-box;
+}
+
+.complex-sample-design-panel .nav-tabs {
+  margin-top: 0;
+  flex: 0 0 auto;
+}
+
+.complex-sample-design-panel .nav-tabs > li > a {
+  padding: 6px 9px;
+  font-size: 12.5px;
+  line-height: 1.15;
+}
+
+.complex-sample-design-panel .tab-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-top: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: visible !important;
+}
+
+.complex-sample-design-panel .tab-pane,
+.complex-sample-design-panel .factor-options-tab-content {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.complex-sample-design-panel .tab-pane.active {
+  flex: 1 1 auto;
+}
+
+.complex-sample-design-panel .tab-pane.active > .factor-options-tab-content {
+  min-height: 100%;
+}
+
+.complex-sample-design-panel .form-group,
+.complex-sample-design-panel .shiny-input-container,
+.complex-sample-design-panel .form-control,
+.complex-sample-design-panel select,
+.complex-sample-design-panel input[type="text"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+.complex-sample-design-panel label {
+  margin-bottom: 2px;
+  font-size: 12.5px;
+  line-height: 1.18;
+}
+
+.complex-sample-design-panel .form-control,
+.complex-sample-design-panel select,
+.complex-sample-design-panel input[type="text"] {
+  height: 30px;
+  padding: 3px 8px;
+  font-size: 12.5px;
+  line-height: 1.18;
+}
+
+.complex-sample-design-panel .checkbox {
+  margin-top: 0;
+  margin-bottom: 4px;
+}
+
+.complex-sample-design-group,
+.complex-sample-replicate-group {
+  display: block;
+}
+
+.complex-sample-design-group .form-group,
+.complex-sample-replicate-group .form-group {
+  margin-bottom: 4px;
+}
+
+.complex-sample-design-tab-content,
+.complex-sample-replicate-tab-content,
+.complex-sample-options-tab-content {
+  padding-top: 22px;
+  padding-bottom: 14px;
+}
+
+.complex-sample-design-panel .form-group,
+.complex-sample-design-panel .shiny-input-container {
+  margin-bottom: 15px;
+}
+
+.complex-sample-design-panel .complex-sample-subpopulation-condition .form-group {
+  margin-bottom: 8px;
+}
+
+.complex-sample-design-panel .complex-sample-subpopulation-condition {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 10px;
+}
+
+.complex-sample-design-panel .complex-sample-subpopulation-condition .form-group,
+.complex-sample-design-panel .complex-sample-subpopulation-condition .shiny-input-container {
+  margin-bottom: 0;
+}
+
+.complex-sample-design-panel .tab-pane,
+.complex-sample-design-panel .tab-pane.active,
+.complex-sample-design-panel .factor-options-tab-content {
+  overflow: visible !important;
+}
+
+.complex-sample-design-candidate-note,
+.complex-sample-replicate-note {
+  color: #52606d;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.complex-sample-design-candidate-note {
+  margin-bottom: 6px;
+}
+
+.complex-sample-frequency-selected-panel {
+  height: var(--se-standard-panel-height) !important;
+  min-height: 0 !important;
+  max-height: var(--se-standard-panel-height) !important;
+}
+
+.complex-sample-frequency-selected-panel .analysis-transfer-listbox {
+  height: 417px !important;
+  min-height: 417px !important;
+  max-height: 417px !important;
+}
+
+.complex-sample-action-row {
+  display: grid;
+  grid-template-columns: var(--se-standard-panel-width, 326px) var(--se-standard-transfer-width, 50px) var(--se-standard-panel-width, 326px) 20px var(--se-standard-options-width, 310px) !important;
+  gap: var(--se-standard-gap, 18px);
+  align-items: start;
+  width: var(--se-standard-setup-width, 1176px) !important;
+  min-width: var(--se-standard-setup-width, 1176px) !important;
+}
+
+.complex-sample-action-row > .btn {
+  grid-column: 1;
+  justify-self: start;
+  margin-left: 30px;
+  width: var(--se-standard-inner-button-width, 300px);
+  min-width: var(--se-standard-inner-button-width, 300px);
+}
+
+.complex-sample-action-row > [id$="_reset_control"] {
+  grid-column: 3;
+  justify-self: start;
+  margin-left: 30px;
+  width: var(--se-standard-inner-button-width, 300px);
+  min-width: var(--se-standard-inner-button-width, 300px);
+}
+
+.complex-sample-action-row > [id$="_reset_control"] .analysis-reset-button {
+  width: var(--se-standard-inner-button-width, 300px);
+  min-width: var(--se-standard-inner-button-width, 300px);
+}
+
+.complex-sample-replicate-note,
+.complex-sample-design-group .shiny-html-output {
+  grid-column: 1 / -1;
+}
+
+.complex-sample-replicate-group .shiny-input-container:has(input[type="checkbox"]) {
+  grid-column: 1 / -1;
+}
+
+.complex-sample-replicate-group .shiny-bound-output {
+  grid-column: 1 / -1;
 }
 
 .analysis-data-viewer-table-wrap {
@@ -3321,6 +3676,80 @@ input.variable-select:disabled {
   border-color: #9fbad3 #9fbad3 #ffffff;
   color: #082747;
   font-weight: 700;
+}
+
+.regression-options-tab-content,
+.mm-options-tab-content {
+  min-height: 0;
+}
+
+.mm-options-tab-content .analysis-option-group {
+  margin-bottom: 14px !important;
+}
+
+.mm-options-tab-content .analysis-option-group > .form-group,
+.mm-options-tab-content .analysis-option-group > .shiny-input-container {
+  margin-bottom: 8px !important;
+}
+
+.mm-options-tab-content .analysis-option-title + .form-group,
+.mm-options-tab-content .analysis-option-title + .shiny-input-container {
+  margin-top: 6px !important;
+}
+
+.analysis-table-style-tabs {
+  margin-bottom: 12px !important;
+}
+
+.analysis-table-style-radio-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0 !important;
+  min-height: 0;
+  width: 100%;
+}
+
+.analysis-table-style-radio-option {
+  display: block;
+  margin: 0;
+  min-width: 0;
+}
+
+.analysis-table-style-radio-option input[type="radio"] {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.analysis-table-style-radio-label {
+  border: 1px solid #b8cce0;
+  border-radius: 6px;
+  color: #0b2a4a;
+  cursor: pointer;
+  display: flex;
+  font-size: 13px;
+  font-weight: 400;
+  justify-content: center;
+  line-height: 1.2;
+  margin: 0;
+  min-height: 36px;
+  padding: 8px 6px;
+  align-items: center;
+  text-align: center;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.analysis-table-style-radio-option input[type="radio"]:checked + .analysis-table-style-radio-label {
+  background: #147d72;
+  border-color: #147d72;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.analysis-table-style-radio-option input[type="radio"]:focus + .analysis-table-style-radio-label {
+  box-shadow: 0 0 0 2px rgba(20, 125, 114, 0.2);
 }
 
 .analysis-calculator-tabs .tabbable {
@@ -4070,6 +4499,11 @@ input.variable-select:disabled {
   box-sizing: border-box;
 }
 
+.analysis-save-button-add_result {
+  grid-column: 1 / -1;
+  justify-self: center;
+}
+
 .analysis-save-slot-empty {
   visibility: hidden;
 }
@@ -4286,7 +4720,7 @@ input.variable-select:disabled {
 }
 
 .regression-results {
-  --result-display-scale: 1.5;
+  --result-display-scale: var(--statedu-result-zoom, 1.5);
   --result-table-font-size: 12px;
   display: grid;
   gap: calc(16px * var(--result-display-scale));
@@ -4304,7 +4738,7 @@ input.variable-select:disabled {
   background: #ffffff;
   border: 1px solid #d9e2ec;
   border-radius: 6px;
-  zoom: 1.5 !important;
+  zoom: var(--statedu-result-zoom, 1.5) !important;
 }
 
 .result-section.regression-result-panel {
@@ -5436,6 +5870,24 @@ table {
   overflow-x: hidden;
 }
 
+.hierarchical-standard-table-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+}
+
+.hierarchical-standard-model-block {
+  width: 100%;
+}
+
+.hierarchical-standard-model-title {
+  color: #082747;
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+}
+
 .logistic-hierarchical-result-panel.landscape-table-panel .hierarchical-table-scroll {
   overflow-x: auto;
 }
@@ -6451,6 +6903,111 @@ pre {
   max-height: 391px !important;
 }
 
+.mixed-rm-anova-setup-grid {
+  --mixed-rm-repeated-section-height: 240px;
+  --mixed-rm-independent-section-height: 78px;
+  --mixed-rm-covariate-section-height: 126px;
+  --mixed-rm-independent-section-block-height: 100px;
+  --mixed-rm-covariate-section-block-height: 148px;
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-target-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-target-panel .mixed-rm-target-section {
+  flex: 0 0 auto;
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-target-panel .mixed-rm-repeated-section {
+  height: var(--mixed-rm-repeated-section-height);
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-target-panel .mixed-rm-independent-section {
+  height: var(--mixed-rm-independent-section-height);
+  margin-top: 12px;
+  margin-bottom: 10px;
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-target-panel .mixed-rm-covariate-section {
+  height: var(--mixed-rm-covariate-section-height);
+  margin-top: 10px;
+  margin-bottom: 12px;
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-target-panel .analysis-field-label {
+  margin-bottom: 6px;
+  flex: 0 0 auto;
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-target-panel .analysis-order-actions {
+  flex: 0 0 auto;
+  justify-content: flex-start;
+  margin-top: 8px;
+  margin-bottom: 6px;
+  padding-bottom: 0;
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-target-panel .analysis-transfer-listbox[data-input-id="mixed_rm_anova_repeated"] {
+  height: 160px !important;
+  min-height: 160px !important;
+  max-height: 160px !important;
+  flex: 0 0 160px;
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-target-panel .analysis-transfer-listbox[data-input-id="mixed_rm_anova_group"] {
+  height: 48px !important;
+  min-height: 48px !important;
+  max-height: 48px !important;
+  flex: 0 0 48px;
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-target-panel .analysis-transfer-listbox[data-input-id="mixed_rm_anova_covariates"] {
+  height: 96px !important;
+  min-height: 96px !important;
+  max-height: 96px !important;
+  flex: 0 0 96px;
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-transfer-controls {
+  display: grid;
+  grid-template-rows:
+    var(--mixed-rm-repeated-section-height)
+    var(--mixed-rm-independent-section-block-height)
+    var(--mixed-rm-covariate-section-block-height)
+    1fr;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0;
+  height: var(--se-standard-panel-height, 520px);
+  padding: 12px 0;
+  box-sizing: border-box;
+  transform: translateX(0);
+}
+
+.mixed-rm-anova-setup-grid > .mixed-rm-transfer-controls .mixed-rm-transfer-button-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mixed-rm-options .nav-tabs > li > a {
+  padding-left: 9px;
+  padding-right: 9px;
+}
+
+.mixed-rm-options .mixed-rm-options-tab-content {
+  min-height: 420px;
+}
+
+.mixed-rm-options .mixed-rm-time-labels {
+  max-height: 398px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
 .paired-target-panel {
   display: flex;
   flex-direction: column;
@@ -6514,6 +7071,64 @@ pre {
   height: 353px !important;
   min-height: 353px !important;
   max-height: 353px !important;
+}
+
+.interrater-agreement-setup-grid > .interrater-options-panel {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+  scrollbar-gutter: stable;
+}
+
+.interrater-options-panel .analysis-option-group {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.interrater-options-panel .analysis-option-title {
+  margin-bottom: 4px !important;
+  line-height: 1.2 !important;
+}
+
+.interrater-options-panel .checkbox {
+  margin-top: 2px !important;
+  margin-bottom: 2px !important;
+}
+
+.interrater-options-panel .analysis-option-group .form-group,
+.interrater-options-panel .analysis-option-group .shiny-input-container {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.interrater-options-panel .checkbox label {
+  line-height: 1.25 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.interrater-options-panel > .form-group,
+.interrater-options-panel > .shiny-input-container {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.interrater-options-panel > .form-group > label,
+.interrater-options-panel > .shiny-input-container > label {
+  margin-bottom: 3px !important;
+  line-height: 1.2 !important;
+}
+
+.interrater-options-panel .form-control {
+  height: 30px;
+  padding-top: 4px;
+  padding-bottom: 4px;
 }
 
 .reliability-target-panel.reliability-subfactor-off .analysis-transfer-listbox {
@@ -6792,13 +7407,13 @@ pre {
 .regression-results > .crosstab-result-section.regression-result-panel {
   width: min(100%, 760px) !important;
   max-width: 100% !important;
-  zoom: 1.2 !important;
+  zoom: var(--statedu-crosstab-result-zoom, 1.2) !important;
   overflow-x: hidden !important;
 }
 
 .regression-results > .crosstab-result-section.regression-result-panel.landscape-table-panel {
   width: min(100%, 1020px) !important;
-  zoom: 1 !important;
+  zoom: var(--statedu-landscape-result-zoom, 1) !important;
   overflow-x: hidden !important;
 }
 
@@ -6847,6 +7462,12 @@ pre {
   overflow: hidden !important;
   text-overflow: clip !important;
   white-space: nowrap !important;
+}
+
+.regression-results > .crosstab-result-section.regression-result-panel.landscape-table-panel .crosstab-main-table thead th {
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
 }
 
 .regression-results > .crosstab-result-section.regression-result-panel.landscape-table-panel .crosstab-row-variable,
@@ -7289,48 +7910,260 @@ pre {
   gap: 6px;
 }
 
-/* Final shared analysis geometry: match the cross-tabulation layout. */
-.frequencies-setup-grid,
-.reliability-setup-grid,
-.paired-setup-grid,
-.ttest-anova-setup-grid,
-.correlation-setup-grid,
-.hierarchical-setup-grid,
-.regression-setup-grid,
-.logistic-setup-grid,
-.longitudinal-setup-grid {
-  grid-template-columns: var(--se-analysis-grid-columns) !important;
-  gap: var(--se-standard-gap) !important;
-  width: var(--se-analysis-workspace-width) !important;
-  min-width: var(--se-analysis-workspace-width) !important;
-  max-width: var(--se-analysis-workspace-width) !important;
+/* Final shared analysis geometry: keep three-block menus the same size. */
+.analysis-three-block-workspace {
+  width: var(--se-standard-workspace-width) !important;
+  min-width: var(--se-standard-workspace-width) !important;
+  max-width: var(--se-standard-workspace-width) !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+  padding: var(--se-standard-workspace-padding) !important;
+  overflow-x: visible !important;
+  box-sizing: border-box;
 }
 
-.analysis-workspace-heading,
-.analysis-data-viewer-panel {
-  width: var(--se-analysis-workspace-width) !important;
-  min-width: var(--se-analysis-workspace-width) !important;
-  max-width: var(--se-analysis-workspace-width) !important;
+.analysis-three-block-workspace:has(.frequencies-action-row:not(.crosstab-action-row)),
+.analysis-three-block-workspace:has(.reliability-action-row),
+.analysis-three-block-workspace:has(.paired-action-row),
+.analysis-three-block-workspace:has(.ttest-anova-action-row),
+.analysis-three-block-workspace:has(.correlation-action-row),
+.analysis-three-block-workspace:has(.crosstab-action-row),
+.analysis-three-block-workspace:has(.regression-action-row),
+.analysis-three-block-workspace:has(.hierarchical-action-row),
+.analysis-three-block-workspace:has(.logistic-action-row),
+.analysis-three-block-workspace:has(.generalized-action-row),
+.analysis-three-block-workspace.crosstab-workspace-panel,
+.analysis-three-block-workspace.regression-workspace-panel,
+.analysis-three-block-workspace.hierarchical-workspace-panel,
+.analysis-three-block-workspace.logistic-workspace-panel,
+.analysis-three-block-workspace.generalized-workspace-panel {
+  width: var(--se-standard-four-column-workspace-width) !important;
+  min-width: var(--se-standard-four-column-workspace-width) !important;
+  max-width: var(--se-standard-four-column-workspace-width) !important;
 }
 
-.reliability-action-row,
-.frequencies-action-row,
-.paired-action-row,
-.ttest-anova-action-row,
-.correlation-action-row,
-.hierarchical-action-row,
-.regression-action-row,
-.logistic-action-row,
-.longitudinal-action-row {
-  grid-template-columns: var(--se-analysis-grid-columns) !important;
+.analysis-three-block-workspace .analysis-workspace-heading,
+.analysis-three-block-workspace .analysis-data-viewer-panel {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box;
+}
+
+.analysis-three-block-workspace .analysis-workspace-heading {
+  margin-bottom: 10px !important;
+}
+
+.analysis-three-block-workspace .analysis-workspace-heading {
+  display: grid !important;
+  grid-template-columns: 1fr auto !important;
   gap: var(--se-standard-gap) !important;
-  width: var(--se-analysis-workspace-width) !important;
-  min-width: var(--se-analysis-workspace-width) !important;
-  max-width: var(--se-analysis-workspace-width) !important;
+  align-items: center !important;
+}
+
+.analysis-three-block-workspace .analysis-workspace-heading-main,
+.analysis-three-block-workspace .analysis-workspace-heading > h3 {
+  grid-column: 1 !important;
+}
+
+.analysis-three-block-workspace .analysis-workspace-heading > .shiny-panel-conditional {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  justify-self: end !important;
+  align-self: center !important;
+  margin-left: 0 !important;
+}
+
+.analysis-three-block-workspace .frequencies-setup-grid,
+.analysis-three-block-workspace .reliability-setup-grid,
+.analysis-three-block-workspace .paired-setup-grid,
+.analysis-three-block-workspace .ttest-anova-setup-grid,
+.analysis-three-block-workspace .correlation-setup-grid,
+.analysis-three-block-workspace .regression-setup-grid,
+.analysis-three-block-workspace .hierarchical-setup-grid,
+.analysis-three-block-workspace .logistic-setup-grid,
+.analysis-three-block-workspace .generalized-setup-grid,
+.analysis-three-block-workspace .frequencies-action-row,
+.analysis-three-block-workspace .reliability-action-row,
+.analysis-three-block-workspace .paired-action-row,
+.analysis-three-block-workspace .ttest-anova-action-row,
+.analysis-three-block-workspace .correlation-action-row,
+.analysis-three-block-workspace .regression-action-row,
+.analysis-three-block-workspace .hierarchical-action-row,
+.analysis-three-block-workspace .logistic-action-row,
+.analysis-three-block-workspace .generalized-action-row {
+  width: var(--se-standard-setup-width) !important;
+  min-width: var(--se-standard-setup-width) !important;
+  max-width: var(--se-standard-setup-width) !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: var(--se-standard-panel-padding) !important;
+  padding-right: var(--se-standard-panel-padding) !important;
+  box-sizing: border-box;
+}
+
+.analysis-three-block-workspace .frequencies-setup-grid,
+.analysis-three-block-workspace:has(.frequencies-action-row:not(.crosstab-action-row)) .frequencies-setup-grid,
+.analysis-three-block-workspace:has(.reliability-action-row) .reliability-setup-grid,
+.analysis-three-block-workspace:has(.reliability-action-row) .frequencies-setup-grid,
+.analysis-three-block-workspace:has(.paired-action-row) .paired-setup-grid,
+.analysis-three-block-workspace:has(.paired-action-row) .frequencies-setup-grid,
+.analysis-three-block-workspace:has(.ttest-anova-action-row) .ttest-anova-setup-grid,
+.analysis-three-block-workspace:has(.ttest-anova-action-row) .frequencies-setup-grid,
+.analysis-three-block-workspace:has(.correlation-action-row) .correlation-setup-grid,
+.analysis-three-block-workspace:has(.correlation-action-row) .frequencies-setup-grid,
+.analysis-three-block-workspace:has(.crosstab-action-row) .crosstab-setup-grid,
+.analysis-three-block-workspace:has(.crosstab-action-row) .frequencies-setup-grid,
+.analysis-three-block-workspace:has(.regression-action-row) .regression-setup-grid,
+.analysis-three-block-workspace:has(.regression-action-row) .frequencies-setup-grid,
+.analysis-three-block-workspace:has(.hierarchical-action-row) .hierarchical-setup-grid,
+.analysis-three-block-workspace:has(.hierarchical-action-row) .frequencies-setup-grid,
+.analysis-three-block-workspace:has(.logistic-action-row) .logistic-setup-grid,
+.analysis-three-block-workspace:has(.logistic-action-row) .frequencies-setup-grid,
+.analysis-three-block-workspace:has(.generalized-action-row) .generalized-setup-grid,
+.analysis-three-block-workspace:has(.generalized-action-row) .frequencies-setup-grid,
+.analysis-three-block-workspace .frequencies-action-row:not(.crosstab-action-row),
+.analysis-three-block-workspace .reliability-action-row,
+.analysis-three-block-workspace .paired-action-row,
+.analysis-three-block-workspace .ttest-anova-action-row,
+.analysis-three-block-workspace .correlation-action-row,
+.analysis-three-block-workspace .crosstab-action-row,
+.analysis-three-block-workspace .regression-action-row,
+.analysis-three-block-workspace .hierarchical-action-row,
+.analysis-three-block-workspace .logistic-action-row,
+.analysis-three-block-workspace .generalized-action-row {
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
+}
+
+.analysis-three-block-workspace .frequencies-setup-grid,
+.analysis-three-block-workspace .reliability-setup-grid,
+.analysis-three-block-workspace .paired-setup-grid,
+.analysis-three-block-workspace .ttest-anova-setup-grid,
+.analysis-three-block-workspace .correlation-setup-grid,
+.analysis-three-block-workspace .regression-setup-grid,
+.analysis-three-block-workspace .hierarchical-setup-grid,
+.analysis-three-block-workspace .logistic-setup-grid,
+.analysis-three-block-workspace .generalized-setup-grid {
+  margin-top: 0 !important;
+}
+
+.analysis-three-block-workspace .frequencies-setup-grid,
+.analysis-three-block-workspace .reliability-setup-grid,
+.analysis-three-block-workspace .paired-setup-grid,
+.analysis-three-block-workspace .ttest-anova-setup-grid,
+.analysis-three-block-workspace .correlation-setup-grid,
+.analysis-three-block-workspace .frequencies-action-row,
+.analysis-three-block-workspace .reliability-action-row,
+.analysis-three-block-workspace .paired-action-row,
+.analysis-three-block-workspace .ttest-anova-action-row,
+.analysis-three-block-workspace .correlation-action-row {
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
+  gap: var(--se-standard-gap) !important;
+}
+
+.analysis-three-block-workspace .frequencies-setup-grid > .analysis-options-panel,
+.analysis-three-block-workspace .reliability-setup-grid > .analysis-options-panel,
+.analysis-three-block-workspace .paired-setup-grid > .ttest-anova-options-column,
+.analysis-three-block-workspace .ttest-anova-setup-grid > .ttest-anova-options-column,
+.analysis-three-block-workspace .correlation-setup-grid > .correlation-options-column {
+  grid-column: 4 !important;
+  grid-row: 1 !important;
+  align-self: stretch !important;
+}
+
+.analysis-three-block-workspace .crosstab-setup-grid,
+.analysis-three-block-workspace .regression-setup-grid,
+.analysis-three-block-workspace .hierarchical-setup-grid,
+.analysis-three-block-workspace .logistic-setup-grid,
+.analysis-three-block-workspace .generalized-setup-grid,
+.analysis-three-block-workspace .crosstab-action-row,
+.analysis-three-block-workspace .regression-action-row,
+.analysis-three-block-workspace .hierarchical-action-row,
+.analysis-three-block-workspace .logistic-action-row,
+.analysis-three-block-workspace .generalized-action-row {
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
+  gap: var(--se-standard-gap) !important;
+}
+
+.analysis-three-block-workspace .analysis-three-block-action-row .analysis-run-cell {
+  grid-column: 1 !important;
+  justify-self: center !important;
+  margin-left: 0 !important;
+  transform: none !important;
+}
+
+.analysis-three-block-workspace .analysis-three-block-action-row .analysis-save-cell {
+  grid-column: 4 !important;
+  justify-self: center !important;
+  margin-left: 0 !important;
+  transform: none !important;
+}
+
+.analysis-three-block-workspace .analysis-three-block-action-row .analysis-reset-cell {
+  grid-column: 3 !important;
+  justify-self: center !important;
+  margin-left: 0 !important;
+}
+
+.analysis-three-block-workspace .analysis-three-block-action-row .analysis-extra-cell {
+  grid-column: 1 / span 2 !important;
+  justify-self: start !important;
+  margin-left: 0 !important;
+}
+
+.analysis-three-block-workspace .analysis-three-block-action-row .analysis-reset-cell > [id$="_reset_control"],
+.analysis-three-block-workspace .analysis-three-block-action-row .analysis-reset-cell > .analysis-reset-button {
+  width: var(--se-standard-inner-button-width, 300px) !important;
+  min-width: var(--se-standard-inner-button-width, 300px) !important;
+  margin-left: 0 !important;
+}
+
+.analysis-three-block-workspace .analysis-three-block-action-row .analysis-run-cell > .btn {
+  width: var(--se-standard-inner-button-width, 300px) !important;
+  min-width: var(--se-standard-inner-button-width, 300px) !important;
+  margin-left: 0 !important;
+}
+
+.analysis-three-block-workspace.crosstab-workspace-panel .analysis-three-block-action-row .analysis-save-cell,
+.analysis-three-block-workspace.regression-workspace-panel .analysis-three-block-action-row .analysis-save-cell,
+.analysis-three-block-workspace.hierarchical-workspace-panel .analysis-three-block-action-row .analysis-save-cell,
+.analysis-three-block-workspace.logistic-workspace-panel .analysis-three-block-action-row .analysis-save-cell,
+.analysis-three-block-workspace.generalized-workspace-panel .analysis-three-block-action-row .analysis-save-cell {
+  grid-column: 4 !important;
+}
+
+.analysis-three-block-action-row .analysis-save-cell .analysis-save-action,
+.analysis-three-block-action-row .analysis-save-cell .regression-save-action {
+  margin-left: 0 !important;
+  transform: none !important;
+}
+
+.analysis-three-block-workspace [id$="_results"]:empty {
+  display: block !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+
+.analysis-three-block-workspace .crosstab-setup-grid > .crosstab-options-panel,
+.analysis-three-block-workspace .regression-setup-grid > .regression-options.analysis-options-panel,
+.analysis-three-block-workspace .hierarchical-setup-grid > .hierarchical-options.analysis-options-panel,
+.analysis-three-block-workspace .logistic-setup-grid > .hierarchical-options.analysis-options-panel,
+.analysis-three-block-workspace .generalized-setup-grid > .generalized-options.analysis-options-panel {
+  grid-column: 4 !important;
+  grid-row: 1 !important;
+  align-self: stretch !important;
 }
 
 .logistic-action-row {
-  margin-bottom: 28px;
+  margin-bottom: 0;
 }
 
 .longitudinal-action-row {
@@ -7339,6 +8172,24 @@ pre {
   width: 1520px !important;
   min-width: 1520px !important;
   max-width: 1520px !important;
+}
+
+.longitudinal-action-row .analysis-run-cell,
+.longitudinal-action-row .analysis-save-cell {
+  grid-column: 6 !important;
+  justify-self: start !important;
+}
+
+.longitudinal-action-row .analysis-reset-cell {
+  grid-column: 5 !important;
+  justify-self: start !important;
+}
+
+.longitudinal-action-row .analysis-run-cell > .btn,
+.longitudinal-action-row .analysis-reset-cell .analysis-reset-button {
+  width: 300px !important;
+  min-width: 300px !important;
+  margin-left: 0 !important;
 }
 
 .longitudinal-setup-grid {
@@ -7543,17 +8394,17 @@ pre {
 }
 
 .generalized-workspace-panel {
-  width: var(--se-standard-setup-width);
-  min-width: var(--se-standard-setup-width);
-  max-width: var(--se-standard-setup-width);
+  width: var(--se-standard-four-column-workspace-width);
+  min-width: var(--se-standard-four-column-workspace-width);
+  max-width: var(--se-standard-four-column-workspace-width);
   overflow-x: auto;
 }
 
 .generalized-workspace-heading,
 .generalized-data-viewer-panel {
-  width: var(--se-analysis-workspace-width) !important;
-  min-width: var(--se-analysis-workspace-width) !important;
-  max-width: var(--se-analysis-workspace-width) !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
 }
 
 .longitudinal-workspace-panel,
@@ -7577,12 +8428,12 @@ pre {
 
 .generalized-setup-grid {
   display: grid;
-  grid-template-columns: var(--se-analysis-grid-columns) !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
   align-items: start;
-  width: var(--se-analysis-workspace-width) !important;
-  min-width: var(--se-analysis-workspace-width) !important;
-  max-width: var(--se-analysis-workspace-width) !important;
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
 }
 
 .generalized-setup-grid > .regression-available-panel,
@@ -7601,7 +8452,7 @@ pre {
 }
 
 .generalized-setup-grid > .generalized-options.analysis-options-panel {
-  grid-column: 5 !important;
+  grid-column: 4 !important;
   grid-row: 1 !important;
   margin-left: 0 !important;
   padding-top: 14px !important;
@@ -7778,11 +8629,11 @@ pre {
 
 .generalized-action-row {
   display: grid !important;
-  grid-template-columns: var(--se-analysis-grid-columns) !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
-  width: var(--se-analysis-workspace-width) !important;
-  min-width: var(--se-analysis-workspace-width) !important;
-  max-width: var(--se-analysis-workspace-width) !important;
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
   margin-top: 18px !important;
   align-items: start;
 }
@@ -7809,7 +8660,7 @@ pre {
 }
 
 .generalized-action-row > #generalized_save_control {
-  grid-column: 5;
+  grid-column: 4;
   margin-left: 0;
   align-self: start;
   justify-self: center;
@@ -8981,9 +9832,9 @@ pre {
   }
 
   .brand-logo-horizontal {
-    width: 96px;
+    width: 124px;
     height: 54px;
-    flex-basis: 96px;
+    flex-basis: 124px;
   }
 
   .version {
@@ -8991,8 +9842,8 @@ pre {
   }
 
   .page-shell {
-    max-width: 1280px;
-    margin-top: 14px;
+    max-width: none;
+    margin: 8px 0 24px;
     padding-left: 22px;
     padding-right: 22px;
   }
@@ -9117,7 +9968,7 @@ pre {
 
 @media (max-width: 1440px) and (min-width: 901px) and (max-height: 850px) {
   .page-shell {
-    margin-top: 10px;
+    margin-top: 8px;
   }
 
   .workspace-panel h3,
@@ -9502,6 +10353,30 @@ pre {
 .latent-panel-note {
   margin-bottom: 14px;
   color: #52606d;
+}
+
+.latent-output-folder-display {
+  display: block;
+  width: 100%;
+  min-height: 68px;
+  margin: 0;
+  padding: 12px 10px;
+  border: 1px solid #d9e2ec;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #102a43;
+  font-family: Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.latent-output-folder-display .shiny-text-output {
+  display: inline;
+  text-align: left;
 }
 
 .latent-button-row,
@@ -10010,13 +10885,88 @@ select[id$="_active_role"]:focus {
   margin-top: 12px;
 }
 
+.preferences-workspace-panel {
+  display: grid;
+  gap: 22px;
+}
+
+.preferences-section {
+  width: min(100%, 620px);
+  padding: 18px 20px;
+  border: 1px solid #d9e2ec;
+  border-radius: 6px;
+  background: #f8fbfe;
+}
+
+.preferences-section h3 {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.preferences-output-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 360px);
+  gap: 14px;
+  align-items: end;
+}
+
+.preferences-output-grid .form-group {
+  margin-bottom: 0;
+}
+
+.preferences-output-grid .btn {
+  width: 180px;
+  margin-bottom: 0;
+}
+
+.preferences-defaults-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 14px 18px;
+  align-items: end;
+  margin-bottom: 14px;
+}
+
+.preferences-defaults-grid .form-group,
+.preferences-defaults-grid .checkbox {
+  margin-bottom: 0;
+}
+
+.preferences-save-dir-control {
+  grid-column: 1 / -1;
+}
+
+.preferences-save-dir-control .form-group {
+  width: 100%;
+}
+
+.preferences-save-dir-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.preferences-save-dir-row .form-group {
+  margin-bottom: 0;
+}
+
+.preferences-save-dir-row .btn {
+  min-width: 96px;
+  margin-bottom: 0;
+}
+
+.preferences-save-action {
+  min-width: 140px;
+}
+
 .sample-size-results,
 .sample-size-result,
 .sample-size-result-card,
 .sample-size-result-panel {
   width: 100%;
   max-width: none;
-  zoom: 1.5 !important;
+  zoom: var(--statedu-result-zoom, 1.5) !important;
 }
 
 .coefficient-table .coefficient-col-value {
@@ -10530,10 +11480,11 @@ select[id$="_active_role"]:focus {
 
 .ancova-action-row {
   display: grid !important;
-  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
-  width: var(--se-standard-setup-width) !important;
-  min-width: var(--se-standard-setup-width) !important;
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
   align-items: start !important;
 }
 
@@ -10554,11 +11505,11 @@ select[id$="_active_role"]:focus {
 }
 
 .ancova-action-row > #ancova_save_control {
-  grid-column: 5 !important;
+  grid-column: 4 !important;
   justify-self: center !important;
   align-self: start !important;
   margin-left: 0 !important;
-  transform: translateX(18px) !important;
+  transform: none !important;
 }
 
 .ancova-action-row > #ancova_save_control .analysis-save-action {
@@ -10586,18 +11537,39 @@ select[id$="_active_role"]:focus {
 }
 
 /* Data Editor shared geometry contract: standard three-block tools follow t-test / ANOVA. */
+.data-editor-workspace,
+.data-editor-workspace:has(.recode-same-setup-grid),
+.data-editor-workspace:has(.variable-transform-grid) {
+  width: var(--se-standard-four-column-workspace-width) !important;
+  min-width: var(--se-standard-four-column-workspace-width) !important;
+  max-width: var(--se-standard-four-column-workspace-width) !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+  overflow-x: visible !important;
+  box-sizing: border-box;
+}
+
 .data-editor-workspace .analysis-workspace-heading,
 .data-editor-workspace .analysis-data-viewer-panel,
+.data-editor-workspace .frequencies-setup-grid,
+.data-editor-workspace .variable-transform-grid,
 .data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid),
 .data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) {
-  width: var(--se-standard-setup-width) !important;
-  min-width: var(--se-standard-setup-width) !important;
-  max-width: var(--se-standard-setup-width) !important;
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
+  box-sizing: border-box;
+}
+
+.data-editor-workspace .variable-transform-grid {
+  grid-template-columns: var(--se-standard-panel-width) minmax(0, calc(var(--se-standard-four-column-grid-width) - var(--se-standard-panel-width) - var(--se-standard-gap))) !important;
+  gap: var(--se-standard-gap) !important;
+  padding: var(--se-standard-panel-padding) !important;
   box-sizing: border-box;
 }
 
 .data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid) {
-  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
   align-items: stretch !important;
   grid-auto-rows: var(--se-standard-panel-height) !important;
@@ -10618,6 +11590,9 @@ select[id$="_active_role"]:focus {
 }
 
 .data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid) > .analysis-options-panel {
+  grid-column: 4 !important;
+  grid-row: 1 !important;
+  align-self: stretch !important;
   width: var(--se-standard-options-width) !important;
   min-width: var(--se-standard-options-width) !important;
   max-width: var(--se-standard-options-width) !important;
@@ -10650,11 +11625,17 @@ select[id$="_active_role"]:focus {
 
 .data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) {
   display: grid !important;
-  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
   align-items: start !important;
   margin-top: 26px !important;
   margin-bottom: 14px !important;
+}
+
+.data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) {
+  padding-left: var(--se-standard-panel-padding) !important;
+  padding-right: var(--se-standard-panel-padding) !important;
+  box-sizing: border-box;
 }
 
 .data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) > .btn,
@@ -10691,7 +11672,7 @@ select[id$="_active_role"]:focus {
 }
 
 .data-editor-workspace .wide-long-action-row > #preview_wide_long {
-  grid-column: 5 !important;
+  grid-column: 4 !important;
 }
 
 .data-editor-workspace .variable-rename-target-panel .analysis-transfer-listbox {
@@ -10724,11 +11705,11 @@ select[id$="_active_role"]:focus {
 }
 
 .data-editor-workspace .wide-long-grid {
-  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
-  width: var(--se-standard-setup-width) !important;
-  min-width: var(--se-standard-setup-width) !important;
-  max-width: var(--se-standard-setup-width) !important;
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
 }
 
 .data-editor-workspace .wide-long-source-panel,
@@ -10740,6 +11721,9 @@ select[id$="_active_role"]:focus {
 }
 
 .data-editor-workspace .wide-long-options {
+  grid-column: 4 !important;
+  grid-row: 1 !important;
+  align-self: stretch !important;
   width: var(--se-standard-options-width) !important;
   min-width: var(--se-standard-options-width) !important;
   max-width: var(--se-standard-options-width) !important;
@@ -10769,15 +11753,15 @@ select[id$="_active_role"]:focus {
 }
 
 .data-editor-workspace .wide-long-action-row {
-  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
-  width: var(--se-standard-setup-width) !important;
-  min-width: var(--se-standard-setup-width) !important;
-  max-width: var(--se-standard-setup-width) !important;
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
 }
 
 .data-editor-workspace .recode-builder-grid {
-  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
   height: auto !important;
   min-height: 0 !important;
@@ -10798,7 +11782,9 @@ select[id$="_active_role"]:focus {
 }
 
 .data-editor-workspace .recode-builder-rule-panel {
-  grid-column: 5 !important;
+  grid-column: 4 !important;
+  grid-row: 1 !important;
+  align-self: stretch !important;
   width: var(--se-standard-options-width) !important;
   min-width: var(--se-standard-options-width) !important;
   max-width: var(--se-standard-options-width) !important;
@@ -10806,11 +11792,11 @@ select[id$="_active_role"]:focus {
 
 .data-editor-workspace .recode-builder-action-row {
   display: grid !important;
-  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
-  width: var(--se-standard-setup-width) !important;
-  min-width: var(--se-standard-setup-width) !important;
-  max-width: var(--se-standard-setup-width) !important;
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
   margin-top: 26px !important;
   margin-bottom: 14px !important;
 }
@@ -10837,6 +11823,405 @@ select[id$="_active_role"]:focus {
   width: var(--se-standard-inner-button-width) !important;
   min-width: var(--se-standard-inner-button-width) !important;
   max-width: var(--se-standard-inner-button-width) !important;
+}
+
+.data-editor-workspace:has(.merge-setup-grid),
+.data-editor-workspace:has(.id-aggregate-options) {
+  width: var(--se-standard-four-column-workspace-width) !important;
+  min-width: var(--se-standard-four-column-workspace-width) !important;
+  max-width: var(--se-standard-four-column-workspace-width) !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+  overflow-x: visible !important;
+  box-sizing: border-box;
+}
+
+.data-editor-workspace .merge-setup-grid,
+.data-editor-workspace .id-aggregate-options,
+.data-editor-workspace .data-editor-simple-action-row {
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
+  box-sizing: border-box;
+}
+
+.data-editor-workspace .merge-setup-grid {
+  display: grid;
+  grid-template-columns: 390px minmax(0, 520px);
+  gap: var(--se-standard-gap);
+  align-items: stretch;
+  padding: var(--se-standard-panel-padding);
+  background: #f4f8fb;
+  border: 1px solid #e1eaf2;
+  border-radius: 8px;
+}
+
+.data-editor-workspace .merge-file-panel,
+.data-editor-workspace .merge-mode-panel,
+.data-editor-workspace .id-aggregate-options {
+  min-height: 0 !important;
+  height: auto !important;
+}
+
+.data-editor-workspace .merge-file-panel {
+  width: 390px !important;
+  min-width: 390px !important;
+  max-width: 390px !important;
+}
+
+.data-editor-workspace .merge-mode-panel {
+  width: 520px !important;
+  min-width: 520px !important;
+  max-width: 520px !important;
+}
+
+.data-editor-workspace .merge-file-panel .form-group,
+.data-editor-workspace .merge-mode-panel .form-group,
+.data-editor-workspace .id-aggregate-options .form-group {
+  margin-bottom: 12px;
+}
+
+.data-editor-workspace .merge-file-panel .form-group:last-child,
+.data-editor-workspace .merge-mode-panel .form-group:last-child,
+.data-editor-workspace .id-aggregate-options .form-group:last-child {
+  margin-bottom: 0;
+}
+
+.data-editor-workspace .merge-checkbox-stack {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.data-editor-workspace .merge-checkbox-stack .checkbox {
+  margin: 0;
+}
+
+.data-editor-workspace .merge-checkbox-stack label,
+.data-editor-workspace .merge-mode-panel .radio label,
+.data-editor-workspace .id-aggregate-options label {
+  color: #102a43;
+  line-height: 1.35;
+  white-space: normal;
+  word-break: keep-all;
+}
+
+.data-editor-workspace .merge-options-tab-content {
+  min-height: 230px;
+  padding-top: 14px;
+  padding-bottom: 0;
+}
+
+.data-editor-workspace .merge-two-column,
+.data-editor-workspace .id-aggregate-two-column {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.data-editor-workspace .id-aggregate-options {
+  width: 720px !important;
+  min-width: 720px !important;
+  max-width: 720px !important;
+  padding: 14px;
+}
+
+.data-editor-workspace .id-aggregate-options .form-control,
+.data-editor-workspace .id-aggregate-options select,
+.data-editor-workspace .merge-file-panel .form-control,
+.data-editor-workspace .merge-mode-panel .form-control,
+.data-editor-workspace .merge-mode-panel select {
+  width: 100%;
+  min-width: 0;
+}
+
+.data-editor-workspace .data-editor-simple-action-row {
+  display: flex !important;
+  gap: 12px;
+  align-items: center;
+  margin-top: 26px !important;
+  margin-bottom: 14px !important;
+}
+
+.data-editor-workspace .data-editor-simple-action-row > .btn {
+  width: 180px;
+  min-width: 180px;
+  margin: 0 !important;
+}
+
+.data-editor-workspace .id-aggregate-action-row > .btn {
+  width: 220px;
+  min-width: 220px;
+}
+
+.data-editor-workspace:has(.merge-setup-grid) .data-editor-result-output,
+.data-editor-workspace:has(.id-aggregate-options) .data-editor-result-output,
+.data-editor-workspace .data-editor-result-output {
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
+}
+
+@media (max-width: 900px) {
+  .data-editor-workspace .merge-setup-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .data-editor-workspace .merge-file-panel,
+  .data-editor-workspace .merge-mode-panel,
+  .data-editor-workspace .id-aggregate-options {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  .data-editor-workspace .merge-two-column,
+  .data-editor-workspace .id-aggregate-two-column {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Complex-sample workspace alignment: keep the three-block tool anchored left. */
+.complex-sample-page-shell {
+  max-width: none !important;
+  margin: 8px 0 24px !important;
+  padding-left: 18px !important;
+  padding-right: 18px !important;
+}
+
+.complex-sample-workspace-panel {
+  width: var(--se-standard-four-column-workspace-width) !important;
+  min-width: var(--se-standard-four-column-workspace-width) !important;
+  max-width: var(--se-standard-four-column-workspace-width) !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+  padding: var(--se-standard-workspace-padding) !important;
+  overflow-x: visible !important;
+  box-sizing: border-box;
+}
+
+.complex-sample-workspace-panel .analysis-workspace-heading,
+.complex-sample-workspace-panel .analysis-data-viewer-panel {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box;
+}
+
+.complex-sample-workspace-panel .analysis-workspace-heading {
+  margin-bottom: 10px !important;
+}
+
+.complex-sample-workspace-panel .complex-sample-setup-grid,
+.complex-sample-workspace-panel .frequencies-setup-grid,
+.complex-sample-workspace-panel .complex-sample-action-row {
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box;
+}
+
+.complex-sample-workspace-panel .complex-sample-setup-grid {
+  margin-top: 0 !important;
+}
+
+.complex-sample-workspace-panel .complex-sample-setup-grid {
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
+  gap: var(--se-standard-gap) !important;
+}
+
+.complex-sample-workspace-panel .complex-sample-setup-grid > .complex-sample-analysis-options-column {
+  grid-column: 4 !important;
+  grid-row: 1 !important;
+  align-self: stretch !important;
+}
+
+.complex-sample-hidden-design-inputs {
+  display: none !important;
+}
+
+.complex-sample-design-workspace-panel .complex-sample-design-setup-grid {
+  display: grid;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-panel-width) var(--se-standard-panel-width);
+  gap: var(--se-standard-gap);
+  justify-content: start !important;
+  align-items: start !important;
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
+  margin-top: 0 !important;
+  padding: var(--se-standard-panel-padding) !important;
+  box-sizing: border-box;
+}
+
+.complex-sample-design-workspace-panel .complex-sample-design-variable-panel {
+  grid-column: 1 !important;
+}
+
+.complex-sample-design-workspace-panel .complex-sample-design-core-column {
+  grid-column: 2 !important;
+}
+
+.complex-sample-design-workspace-panel .complex-sample-design-options-column {
+  grid-column: 3 !important;
+}
+
+.complex-sample-design-workspace-panel .complex-sample-design-column,
+.complex-sample-design-workspace-panel .complex-sample-design-panel {
+  width: var(--se-standard-panel-width) !important;
+  min-width: var(--se-standard-panel-width) !important;
+  max-width: var(--se-standard-panel-width) !important;
+  box-sizing: border-box;
+}
+
+.complex-sample-design-workspace-panel {
+  width: var(--se-standard-four-column-workspace-width) !important;
+  min-width: var(--se-standard-four-column-workspace-width) !important;
+  max-width: var(--se-standard-four-column-workspace-width) !important;
+}
+
+.complex-sample-design-workspace-panel .complex-sample-design-action-row {
+  display: grid;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-panel-width) var(--se-standard-panel-width);
+  gap: var(--se-standard-gap);
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
+  margin-top: 26px;
+  padding-left: var(--se-standard-panel-padding) !important;
+  padding-right: var(--se-standard-panel-padding) !important;
+  box-sizing: border-box;
+}
+
+.complex-sample-design-workspace-panel .complex-sample-design-panel select,
+.complex-sample-design-workspace-panel .complex-sample-design-panel .form-control,
+.complex-sample-design-workspace-panel .complex-sample-design-panel .selectize-control {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+.complex-sample-design-settings-actions {
+  display: flex;
+  gap: 8px;
+  grid-column: 1;
+  justify-self: center;
+  width: var(--se-standard-inner-button-width);
+  min-width: var(--se-standard-inner-button-width);
+  max-width: var(--se-standard-inner-button-width);
+  margin-top: 0;
+}
+
+.complex-sample-design-settings-actions .btn {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.complex-sample-analysis-options-panel {
+  padding: 13px 12px !important;
+}
+
+.complex-sample-options-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.complex-sample-option-group {
+  border-top: 1px solid #d5e2ec;
+  padding-top: 10px;
+}
+
+.complex-sample-option-group:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.complex-sample-option-group-title {
+  margin: 0 0 8px !important;
+  color: #002b4f;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.complex-sample-option-group .form-group,
+.complex-sample-option-group .checkbox {
+  margin-bottom: 8px;
+}
+
+.complex-sample-option-group .form-group:last-child,
+.complex-sample-option-group .checkbox:last-child {
+  margin-bottom: 0;
+}
+
+.complex-sample-workspace-panel .complex-sample-action-row {
+  display: grid !important;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
+  gap: var(--se-standard-gap) !important;
+  width: var(--se-standard-four-column-setup-width) !important;
+  min-width: var(--se-standard-four-column-setup-width) !important;
+  max-width: var(--se-standard-four-column-setup-width) !important;
+  margin-top: 26px !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: var(--se-standard-panel-padding) !important;
+  padding-right: var(--se-standard-panel-padding) !important;
+  align-items: start !important;
+  box-sizing: border-box;
+}
+
+.complex-sample-workspace-panel .analysis-workspace-heading {
+  display: grid !important;
+  grid-template-columns: 1fr auto !important;
+  gap: var(--se-standard-gap) !important;
+  align-items: center !important;
+}
+
+.complex-sample-workspace-panel .analysis-workspace-heading > h3 {
+  grid-column: 1 !important;
+}
+
+.complex-sample-workspace-panel .analysis-workspace-heading > .shiny-panel-conditional {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  justify-self: end !important;
+  align-self: center !important;
+  margin-left: 0 !important;
+}
+
+.complex-sample-workspace-panel .complex-sample-action-row .analysis-run-cell {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  justify-self: center !important;
+  margin-left: 0 !important;
+}
+
+.complex-sample-workspace-panel .complex-sample-action-row .analysis-save-cell {
+  grid-column: 4 !important;
+  grid-row: 1 !important;
+  justify-self: center !important;
+  margin-left: 0 !important;
+}
+
+.complex-sample-workspace-panel .complex-sample-action-row .analysis-reset-cell {
+  grid-column: 3 !important;
+  grid-row: 1 !important;
+  justify-self: center !important;
+  margin-left: 0 !important;
+}
+
+.complex-sample-workspace-panel .complex-sample-action-row .analysis-run-cell > .btn,
+.complex-sample-workspace-panel .complex-sample-action-row .analysis-reset-cell .analysis-reset-button {
+  width: var(--se-standard-inner-button-width, 300px) !important;
+  min-width: var(--se-standard-inner-button-width, 300px) !important;
+  margin-left: 0 !important;
 }
 .mm-workspace-panel {
   min-width: 1800px;
@@ -11117,6 +12502,8 @@ select[id$="_active_role"]:focus {
 
 .mm-save-control .analysis-save-button-add_result {
   grid-column: 1 / -1;
+  justify-self: center;
+  width: calc((100% - 5px) / 2);
 }
 
 .mm-disabled-checkbox-group .checkbox label,
@@ -11369,6 +12756,42 @@ select[id$="_active_role"]:focus {
   white-space: nowrap !important;
 }
 
+.mm-results .mm-combined-portrait-section {
+  width: min(100%, 590px) !important;
+  max-width: 590px !important;
+  overflow-x: auto;
+}
+
+.mm-results .mm-combined-portrait-section .hierarchical-standard-table-wrap,
+.mm-results .mm-combined-portrait-section .hierarchical-standard-model-block {
+  width: 100%;
+  min-width: 0;
+}
+
+.mm-results .mm-combined-portrait-section .coefficient-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.mm-results .mm-combined-portrait-section .coefficient-table th,
+.mm-results .mm-combined-portrait-section .coefficient-table td {
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+.mm-results .mm-combined-portrait-section .coefficient-table th:not(:first-child),
+.mm-results .mm-combined-portrait-section .coefficient-table td:not(:first-child) {
+  white-space: nowrap !important;
+}
+
+.mm-results .mm-combined-portrait-section .coefficient-table .coefficient-cell-break {
+  white-space: normal !important;
+}
+
 .mm-combined-sublabel {
   font-weight: 400;
   font-size: 0.85em;
@@ -11386,7 +12809,7 @@ select[id$="_active_role"]:focus {
 .mm-effects-section-title {
   font-weight: 700;
   font-size: 13px;
-  text-align: center;
+  text-align: left;
   padding: 8px 0 6px;
   color: #1f2937;
 }
@@ -11464,6 +12887,50 @@ select[id$="_active_role"]:focus {
   table-layout: fixed !important;
 }
 
+.mm-results .landscape-table-panel.mm-path-result-section,
+.mm-results .landscape-table-panel.mm-model4-path-section {
+  width: min(100%, 1000px) !important;
+  max-width: 1000px !important;
+  overflow-x: auto;
+}
+
+.mm-results .landscape-table-panel.mm-path-result-section .result-table-with-note,
+.mm-results .landscape-table-panel.mm-model4-path-section .result-table-with-note,
+.mm-results .landscape-table-panel.mm-path-result-section .hierarchical-table-wrap,
+.mm-results .landscape-table-panel.mm-model4-path-section .hierarchical-table-wrap,
+.mm-results .landscape-table-panel.mm-path-result-section .hierarchical-table-scroll,
+.mm-results .landscape-table-panel.mm-model4-path-section .hierarchical-table-scroll {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto;
+}
+
+.mm-results .landscape-table-panel.mm-path-result-section .coefficient-table,
+.mm-results .landscape-table-panel.mm-model4-path-section .coefficient-table,
+.mm-results .landscape-table-panel.mm-path-result-section .hierarchical-coefficient-table,
+.mm-results .landscape-table-panel.mm-model4-path-section .hierarchical-coefficient-table {
+  table-layout: auto !important;
+  width: auto !important;
+  min-width: max-content !important;
+  max-width: none !important;
+}
+
+.mm-results .landscape-table-panel.mm-path-result-section .hierarchical-coefficient-table col,
+.mm-results .landscape-table-panel.mm-model4-path-section .hierarchical-coefficient-table col {
+  width: auto !important;
+}
+
+.mm-results .landscape-table-panel.mm-path-result-section .coefficient-table th,
+.mm-results .landscape-table-panel.mm-path-result-section .coefficient-table td,
+.mm-results .landscape-table-panel.mm-model4-path-section .coefficient-table th,
+.mm-results .landscape-table-panel.mm-model4-path-section .coefficient-table td,
+.mm-results .landscape-table-panel.mm-path-result-section .hierarchical-coefficient-table th,
+.mm-results .landscape-table-panel.mm-path-result-section .hierarchical-coefficient-table td,
+.mm-results .landscape-table-panel.mm-model4-path-section .hierarchical-coefficient-table th,
+.mm-results .landscape-table-panel.mm-model4-path-section .hierarchical-coefficient-table td {
+  white-space: nowrap !important;
+}
+
 .mm-results .mm-path-result-section .coefficient-table th,
 .mm-results .mm-path-result-section .coefficient-table td,
 .mm-results .mm-process-summary-section .coefficient-table th,
@@ -11501,4 +12968,52 @@ select[id$="_active_role"]:focus {
   .mm-diagram-panel {
     min-height: 500px;
   }
+}
+
+.hierarchical-options.analysis-options-panel,
+.regression-options.analysis-options-panel {
+  gap: 14px !important;
+  row-gap: 14px !important;
+  padding-top: 10px !important;
+}
+
+.hierarchical-options.analysis-options-panel .analysis-option-group,
+.regression-options.analysis-options-panel .analysis-option-group {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.hierarchical-options.analysis-options-panel .analysis-option-title,
+.regression-options.analysis-options-panel .analysis-option-title {
+  margin-bottom: 6px !important;
+}
+
+.hierarchical-options.analysis-options-panel .analysis-option-group .checkbox,
+.regression-options.analysis-options-panel .analysis-option-group .checkbox {
+  margin-top: 4px !important;
+  margin-bottom: 4px !important;
+}
+
+.hierarchical-options.analysis-options-panel .analysis-option-group > .form-group,
+.hierarchical-options.analysis-options-panel .analysis-option-group > .shiny-input-container,
+.regression-options.analysis-options-panel .analysis-option-group > .form-group,
+.regression-options.analysis-options-panel .analysis-option-group > .shiny-input-container {
+  margin-top: 0 !important;
+  margin-bottom: 5px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.hierarchical-options.analysis-options-panel .analysis-option-group .checkbox label,
+.regression-options.analysis-options-panel .analysis-option-group .checkbox label {
+  line-height: 1.35 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.hierarchical-options.analysis-options-panel .analysis-option-group .checkbox.disabled label,
+.hierarchical-options.analysis-options-panel .analysis-option-group .checkbox.is-disabled label,
+.regression-options.analysis-options-panel .analysis-option-group .checkbox.disabled label,
+.regression-options.analysis-options-panel .analysis-option-group .checkbox.is-disabled label {
+  color: #778899;
 }

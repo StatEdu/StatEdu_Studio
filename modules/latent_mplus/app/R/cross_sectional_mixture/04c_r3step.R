@@ -814,6 +814,8 @@ parse_r3step_model_results <- function(
 
   if (length(target_lines) == 0) return(out_empty)
 
+  critical <- stats::qnorm(0.975)
+
   for (ln in target_lines) {
 
     parts <- unlist(strsplit(trimws(ln), "\\s+"))
@@ -835,8 +837,8 @@ parse_r3step_model_results <- function(
     p_val <- if (length(nums) >= 4) nums[4] else 2 * (1 - pnorm(abs(stat_val)))
 
     rrr  <- exp(est)
-    llci <- exp(est - 1.96 * se)
-    ulci <- exp(est + 1.96 * se)
+    llci <- exp(est - critical * se)
+    ulci <- exp(est + critical * se)
 
     results[[length(results)+1]] <- data.frame(
       analysis         = "univariable",
@@ -1377,6 +1379,8 @@ for (i in seq_len(nrow(R3STEP_SPEC))) {
 
   log_info("coef rows = ", paste(rownames(coef_i), collapse = ", "))
 
+  critical <- stats::qnorm(0.975)
+
   for (r in seq_len(nrow(coef_i))) {
 
     est <- suppressWarnings(as.numeric(coef_i[r, pred_col]))
@@ -1400,8 +1404,8 @@ for (i in seq_len(nrow(R3STEP_SPEC))) {
       llci <- NA_real_
       ulci <- NA_real_
     } else {
-      llci <- exp(est - 1.96 * se)
-      ulci <- exp(est + 1.96 * se)
+      llci <- exp(est - critical * se)
+      ulci <- exp(est + critical * se)
     }
 
     row_class_chr <- rownames(coef_i)[r]

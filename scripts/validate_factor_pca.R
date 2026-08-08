@@ -78,6 +78,16 @@ variable_info <- data.frame(
   measurement = "continuous",
   stringsAsFactors = FALSE
 )
+factor_label_data <- data.frame(
+  x1 = factor(c("2.5", "3.5", "4.5")),
+  x2 = factor(c("1.25", "2.25", "3.25"))
+)
+factor_label_matrix <- factor_analysis_numeric_matrix(factor_label_data, names(factor_label_data))
+expect_true(
+  identical(factor_label_matrix$x1, c(2.5, 3.5, 4.5)) &&
+    identical(factor_label_matrix$x2, c(1.25, 2.25, 3.25)),
+  "Expected factor analysis numeric conversion to use factor labels rather than integer level codes"
+)
 
 message("Checking factor analysis defaults and normality-driven method selection...")
 factor_result <- prepare_factor_analysis_results(
@@ -419,6 +429,17 @@ expect_true(identical(factor_poly$matrix_type, "polychoric"), "Expected factor a
 expect_true(identical(factor_poly$overview$Matrix[[1]], "Polychoric correlation"), "Expected factor analysis overview to show polychoric matrix")
 factor_poly_html <- as.character(htmltools::renderTags(factor_analysis_results_ui(factor_poly))$html)
 expect_true(grepl("polychoric correlation matrix", factor_poly_html, fixed = TRUE), "Expected factor analysis HTML to describe polychoric matrix")
+factor_poly_scores <- prepare_factor_analysis_results(
+  ordinal_data,
+  variables = names(ordinal_data),
+  variable_info = ordinal_info,
+  options = list(matrix_type = "polychoric", normality = FALSE, method = "pa", criterion = "fixed", n_factors = 1, save_factor_scores = TRUE)
+)
+expect_true(
+  is.data.frame(factor_poly_scores$warnings) &&
+    any(grepl("approximate Thurstone scores", factor_poly_scores$warnings$Warning, fixed = TRUE)),
+  "Expected factor analysis to warn when factor scores are requested after polychoric fitting"
+)
 
 factor_loading_problem <- factor_all_loadings
 factor_loading_problem$options$hide_small_loadings <- TRUE
@@ -437,8 +458,9 @@ expect_true(
   "Expected low primary and high cross-loadings to be marked with red background"
 )
 factor_loading_problem_html <- as.character(htmltools::renderTags(coefficient_html_table(factor_loading_problem$loadings_table))$html)
+expected_low_loading <- format_decimal3(0.25)
 expect_true(
-  grepl(".250", factor_loading_problem_html, fixed = TRUE) &&
+  grepl(expected_low_loading, factor_loading_problem_html, fixed = TRUE) &&
     grepl("background:#fee2e2", factor_loading_problem_html, fixed = TRUE),
   "Expected low primary loading to be shown and highlighted when problem highlighting is enabled"
 )
@@ -530,6 +552,33 @@ expect_true(identical(pca_poly$overview$Matrix[[1]], "Polychoric correlation"), 
 expect_true(is.data.frame(pca_poly$warnings) && any(grepl("Component scores are not available", pca_poly$warnings$Warning, fixed = TRUE)), "Expected PCA polychoric score warning")
 pca_poly_html <- as.character(htmltools::renderTags(pca_results_ui(pca_poly))$html)
 expect_true(grepl("<h3>Warnings</h3>", pca_poly_html, fixed = TRUE), "Expected PCA warnings section for polychoric score warning")
+
+mixed_pca_info <- ordinal_info
+mixed_pca_info$measurement[[1]] <- "continuous"
+pca_poly_fallback <- prepare_pca_results(
+  ordinal_data,
+  variables = names(ordinal_data),
+  variable_info = mixed_pca_info,
+  options = list(matrix_type = "polychoric", criterion = "fixed", n_components = 1, rotation = "none")
+)
+expect_true(identical(pca_poly_fallback$matrix_type, "pearson"), "Expected PCA polychoric request with continuous variables to fall back to Pearson")
+expect_true(identical(pca_poly_fallback$overview$Matrix[[1]], "Pearson correlation"), "Expected PCA Pearson fallback to show a readable matrix label")
+
+pca_covariance <- prepare_pca_results(
+  data,
+  variables = names(data),
+  variable_info = variable_info,
+  options = list(matrix_type = "covariance", criterion = "eigen", rotation = "none")
+)
+expect_true(
+  is.data.frame(pca_covariance$warnings) &&
+    any(grepl("eigenvalue >= 1 rule assumes a correlation matrix", pca_covariance$warnings$Warning, fixed = TRUE)),
+  "Expected PCA covariance matrix with Kaiser criterion to report a scale-dependence warning"
+)
+expect_true(
+  pca_select_component_count(c(0.3, NA_real_, 0.2), "cumulative", cumulative = 100) == 3L,
+  "Expected cumulative PCA component selection to fall back to all components when no eigenvalue prefix reaches the target"
+)
 
 pca_cumulative <- prepare_pca_results(
   data,

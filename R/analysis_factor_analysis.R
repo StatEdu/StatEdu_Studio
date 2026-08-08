@@ -83,7 +83,7 @@ factor_analysis_measurements_for <- function(variables, variable_info = NULL) {
 
 factor_analysis_numeric_matrix <- function(data, variables) {
   frame <- data[, variables, drop = FALSE]
-  matrix <- as.data.frame(lapply(frame, function(values) suppressWarnings(as.numeric(values))), check.names = FALSE)
+  matrix <- as.data.frame(lapply(frame, function(values) suppressWarnings(as.numeric(as.character(values)))), check.names = FALSE)
   names(matrix) <- variables
   matrix
 }
@@ -1089,7 +1089,8 @@ prepare_factor_analysis_results <- function(data, variables, variable_info = NUL
   eigenvalues <- eigen(corr, symmetric = TRUE, only.values = TRUE)$values
   warnings <- factor_analysis_warning_table(c(
     matrix_result$warnings,
-    factor_analysis_sample_warnings(nrow(complete), length(variables), "factor analysis")
+    factor_analysis_sample_warnings(nrow(complete), length(variables), "factor analysis"),
+    if (identical(matrix_result$matrix_type, "polychoric") && isTRUE(options$save_factor_scores)) "Factor scores requested after fitting from a polychoric correlation matrix are approximate Thurstone scores computed from the original item data using Pearson standardization."
   ))
 
   display_names <- factor_analysis_display_names(variables, variable_info, labels, category_table)

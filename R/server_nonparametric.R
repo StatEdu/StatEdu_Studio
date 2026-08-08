@@ -15,7 +15,7 @@ register_nonparametric_handlers <- function(
   dependent_variables <- reactiveVal(character(0))
   factor_variables <- reactiveVal(character(0))
   active_list <- reactiveVal(NULL)
-  post_hoc_method_value <- reactiveVal("bonferroni")
+  post_hoc_method_value <- reactiveVal(statedu_multiple_correction_default())
   trend_analysis_value <- reactiveVal(FALSE)
   ordered_significance_value <- reactiveVal(FALSE)
   effect_size_value <- reactiveVal(TRUE)
@@ -71,9 +71,9 @@ register_nonparametric_handlers <- function(
   )
 
   observeEvent(input$nonparametric_post_hoc_method, {
-    value <- input$nonparametric_post_hoc_method %||% "bonferroni"
+    value <- input$nonparametric_post_hoc_method %||% statedu_multiple_correction_default()
     if (!value %in% c("bonferroni", "holm")) {
-      value <- "bonferroni"
+      value <- statedu_multiple_correction_default()
     }
     post_hoc_method_value(value)
   }, ignoreInit = TRUE)
@@ -166,7 +166,7 @@ register_nonparametric_handlers <- function(
     }
     allowed <- ttest_anova_continuous_candidates(chosen_available, current_variable_table())
     if (length(chosen_available) > 0 && length(allowed) == 0) {
-      showNotification("Dependent variables should be ordinal or continuous.", type = "warning", duration = 4)
+      showNotification(statedu_t("analysis.validation.dependent_ordinal_continuous", statedu_current_language(app_language_fn)), type = "warning", duration = 4)
       return()
     }
     dependent_variables(c(current, setdiff(allowed, current)))
@@ -202,7 +202,7 @@ register_nonparametric_handlers <- function(
     }
     allowed <- ttest_anova_factor_candidates(chosen_available, current_variable_table())
     if (length(chosen_available) > 0 && length(allowed) == 0) {
-      showNotification("Grouping variables should be binary, nominal, or ordinal.", type = "warning", duration = 4)
+      showNotification(statedu_t("analysis.validation.group_binary_nominal_ordinal", statedu_current_language(app_language_fn)), type = "warning", duration = 4)
       return()
     }
     factor_variables(c(current, setdiff(allowed, current)))
@@ -287,7 +287,7 @@ register_nonparametric_handlers <- function(
       chosen <- intersect(values, selected)
       allowed <- ttest_anova_continuous_candidates(chosen, current_variable_table())
       if (length(chosen) > 0 && length(allowed) == 0) {
-        showNotification("Dependent variables should be ordinal or continuous.", type = "warning", duration = 4)
+        showNotification(statedu_t("analysis.validation.dependent_ordinal_continuous", statedu_current_language(app_language_fn)), type = "warning", duration = 4)
         return()
       }
       next_factors <- setdiff(intersect(factor_variables(), selected), allowed)
@@ -305,7 +305,7 @@ register_nonparametric_handlers <- function(
       chosen <- intersect(values, selected)
       allowed <- ttest_anova_factor_candidates(chosen, current_variable_table())
       if (length(chosen) > 0 && length(allowed) == 0) {
-        showNotification("Grouping variables should be binary, nominal, or ordinal.", type = "warning", duration = 4)
+        showNotification(statedu_t("analysis.validation.group_binary_nominal_ordinal", statedu_current_language(app_language_fn)), type = "warning", duration = 4)
         return()
       }
       next_dependents <- setdiff(intersect(dependent_variables(), selected), allowed)
@@ -325,12 +325,12 @@ register_nonparametric_handlers <- function(
 
   observeEvent(input$run_nonparametric, {
     if (length(dependent_variables()) == 0 || length(factor_variables()) == 0) {
-      showNotification("Select at least one dependent variable and one grouping variable.", type = "warning", duration = 5)
+      showNotification(statedu_t("analysis.validation.select_dependent_and_group", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return()
     }
-    post_hoc_method <- post_hoc_method_value() %||% "bonferroni"
+    post_hoc_method <- post_hoc_method_value() %||% statedu_multiple_correction_default()
     if (!post_hoc_method %in% c("bonferroni", "holm")) {
-      post_hoc_method <- "bonferroni"
+      post_hoc_method <- statedu_multiple_correction_default()
     }
     options <- list(
       force_nonparametric = TRUE,
@@ -410,7 +410,7 @@ register_nonparametric_handlers <- function(
     shiny::req(!is.null(result), is.null(result$error))
     path <- choose_excel_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
-      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) {
@@ -419,10 +419,10 @@ register_nonparametric_handlers <- function(
     tryCatch(
       {
         save_ttest_anova_excel_file(result, path)
-        showNotification(sprintf("Analysis results saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save analysis results:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
@@ -432,7 +432,7 @@ register_nonparametric_handlers <- function(
     shiny::req(!is.null(result), is.null(result$error))
     path <- choose_html_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
-      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     if (!grepl("\\.html?$", path, ignore.case = TRUE)) {
@@ -441,10 +441,10 @@ register_nonparametric_handlers <- function(
     tryCatch(
       {
         write_nonparametric_results_html(result, path)
-        showNotification(sprintf("HTML results saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save HTML results:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
@@ -454,7 +454,7 @@ register_nonparametric_handlers <- function(
     shiny::req(!is.null(result), is.null(result$error))
     path <- choose_pdf_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
-      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     if (!grepl("\\.pdf$", path, ignore.case = TRUE)) {
@@ -463,10 +463,10 @@ register_nonparametric_handlers <- function(
     tryCatch(
       {
         write_nonparametric_results_pdf(result, path)
-        showNotification(sprintf("PDF results saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save PDF results:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })

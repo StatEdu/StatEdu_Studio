@@ -70,11 +70,20 @@ safe_rbind <- function(x, y) {
 
   if (length(all_nm) == 0) return(data.frame())
 
-  for (nm in setdiff(all_nm, nx)) x[[nm]] <- rep(NA, nrow(x))
-  for (nm in setdiff(all_nm, ny)) y[[nm]] <- rep(NA, nrow(y))
+  align_cols <- function(df) {
+    out <- as.data.frame(
+      stats::setNames(rep(list(rep(NA, nrow(df))), length(all_nm)), all_nm),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
+    for (nm in intersect(names(df), all_nm)) {
+      out[[nm]] <- df[[nm]]
+    }
+    out
+  }
 
-  x             <- x[, all_nm, drop = FALSE]
-  y             <- y[, all_nm, drop = FALSE]
+  x             <- align_cols(x)
+  y             <- align_cols(y)
 
   out           <- rbind(x, y)
   rownames(out) <- NULL
@@ -385,13 +394,6 @@ ensure_compact_as_table <- function(df, table_name = NULL) {
       df$sig[is.na(df$sig)] <- ""
     }
     return(df)
-  }
-
-  # A3 / A4 : wide profile means -> create one compact anchor column
-  prof_cols <- grep("^Profile [0-9]+$", nm, value = TRUE)
-  if (!is.null(table_name) && table_name %in% c("A3", "A4") && length(prof_cols) > 0 &&
-      !("Category" %in% names(df))) {
-    df[[compact_mean_name(FALSE)]] <- as.character(df[[prof_cols[1]]])
   }
 
   # S1 : overview table -> use Value as compact anchor
@@ -1017,6 +1019,22 @@ get_display_order <- function(v) {
 
   out <- match(v, DICT_META$var_name)
   out[is.na(out)] <- 999999 + seq_len(sum(is.na(out)))
+  out
+}
+
+get_covariate_display_order <- function(v) {
+  v <- as.character(v)
+  if (!is.data.frame(DICT_META) || nrow(DICT_META) == 0 || !"var_name" %in% names(DICT_META)) {
+    return(get_display_order(v))
+  }
+  role <- if ("role" %in% names(DICT_META)) tolower(as.character(DICT_META$role)) else rep("", nrow(DICT_META))
+  use <- if ("use" %in% names(DICT_META)) tolower(as.character(DICT_META$use)) else rep("true", nrow(DICT_META))
+  covars <- as.character(DICT_META$var_name[role == "covariate" & use %in% c("true", "t", "1")])
+  covars <- covars[!is.na(covars) & nzchar(covars)]
+  covars <- unique(covars)
+  out <- match(v, covars)
+  miss <- is.na(out)
+  if (any(miss)) out[miss] <- 100000 + get_display_order(v[miss])
   out
 }
 
@@ -2762,8 +2780,20 @@ build_covariate_long_common <- function(df) {
 
     for (i in seq_len(nrow(meta))) {
       vn   <- as.character(meta$var_name[i])
+      if (length(vn) == 0L || is.na(vn[1]) || !nzchar(as.character(vn[1]))) next
+      vn <- as.character(vn[1])
       vlab <- get_var_label(vn)
-      typ  <- tolower(as.character(meta$type[i] %||% ""))
+      if (length(vlab) == 0L || is.na(vlab[1]) || !nzchar(as.character(vlab[1]))) {
+        vlab <- vn
+      } else {
+        vlab <- as.character(vlab[1])
+      }
+      typ <- if ("type" %in% names(meta)) as.character(meta$type[i]) else ""
+      if (length(typ) == 0L || is.na(typ[1])) {
+        typ <- ""
+      } else {
+        typ <- tolower(as.character(typ[1]))
+      }
 
       if (typ == "continuous") {
         res_list[[length(res_list) + 1]] <- data.frame(
@@ -2955,7 +2985,7 @@ build_covariate_long_common <- function(df) {
   cat_chr      <- as_chr_flat(base_rows$Category)
 
   ord0 <- order(
-    get_display_order(var_name_chr),
+    get_covariate_display_order(var_name_chr),
     get_category_order(var_name_chr, level = level_chr, label = cat_chr),
     cat_chr
   )
@@ -3049,7 +3079,7 @@ build_covariate_long_common <- function(df) {
   rownames(out) <- NULL
   names(out)[names(out) == "p_out"] <- "p"
 
-  ord_var <- get_display_order(out$var_name)
+  ord_var <- get_covariate_display_order(out$var_name)
   ord_cat <- get_category_order(out$var_name, level = out$level, label = out$Category)
   ord_cat[is.na(ord_cat)] <- 999999
   cmp_num <- extract_class_num_from_text(out$Comparison)
@@ -3125,6 +3155,11 @@ format_t5_twoline <- function(df) {
 
   build_dict_rows_one <- function(vn) {
     vlab <- get_var_label(vn)
+    if (length(vlab) == 0L || is.na(vlab[1]) || !nzchar(as.character(vlab[1]))) {
+      vlab <- vn
+    } else {
+      vlab <- as.character(vlab[1])
+    }
 
     meta_hit <- data.frame()
     if (is.data.frame(DICT_META) && nrow(DICT_META) > 0 && "var_name" %in% names(DICT_META)) {
@@ -3247,11 +3282,11 @@ format_t5_twoline <- function(df) {
   dummy_row <- !nzchar(id_df$level) & !nzchar(id_df$Category)
   id_df <- id_df[!(has_detail & dummy_row), , drop = FALSE]
 
-  ord_var <- get_display_order(id_df$var_name)
+  ord_var <- get_covariate_display_order(id_df$var_name)
   ord_cat <- get_category_order(id_df$var_name, level = id_df$level, label = id_df$Category)
   ord_cat[is.na(ord_cat)] <- 999999
 
-  id_df           <- id_df[order(ord_var, ord_cat, id_df$Category), , drop = FALSE]
+  id_df           <- id_df[order(ord_var, id_df$var_name, ord_cat, id_df$Category), , drop = FALSE]
   rownames(id_df) <- NULL
 
   out             <- id_df[, c("Variable", "Category"), drop = FALSE]
@@ -3348,10 +3383,10 @@ build_T5d_compare <- function() {
   }
 
   base_rows <- unique(base_long[, c("var_name", "Variable", "level", "Category"), drop = FALSE])
-  ord_var <- get_display_order(base_rows$var_name)
+  ord_var <- get_covariate_display_order(base_rows$var_name)
   ord_cat <- get_category_order(base_rows$var_name, level = base_rows$level, label = base_rows$Category)
   ord_cat[is.na(ord_cat)] <- 999999
-  base_rows <- base_rows[order(ord_var, ord_cat, base_rows$Category), , drop = FALSE]
+  base_rows <- base_rows[order(ord_var, base_rows$var_name, ord_cat, base_rows$Category), , drop = FALSE]
   rownames(base_rows) <- NULL
 
   has_detail <- ave(nzchar(base_rows$level) | nzchar(base_rows$Category), base_rows$var_name, FUN = function(z) any(z, na.rm = TRUE))
@@ -3490,24 +3525,82 @@ bch_ordered_posthoc_notation <- function(means, pair_text = "", pairs_df = NULL,
   if (!is.data.frame(pairs) || nrow(pairs) == 0) return("")
   pair_keys <- unique(ifelse(pairs$class1 < pairs$class2, paste(pairs$class1, pairs$class2, sep = "-"), paste(pairs$class2, pairs$class1, sep = "-")))
   ordered <- names(sort(means, decreasing = TRUE))
-  display <- function(x) paste0(label_prefix, as.integer(x))
-  statements <- character(0)
-  for (i in seq_along(ordered)) {
-    higher <- ordered[[i]]
-    if (i >= length(ordered)) next
-    lower <- character(0)
-    for (j in seq.int(i + 1L, length(ordered))) {
-      candidate <- ordered[[j]]
-      key <- if (as.integer(higher) < as.integer(candidate)) paste(higher, candidate, sep = "-") else paste(candidate, higher, sep = "-")
-      if (key %in% pair_keys && means[[higher]] > means[[candidate]]) {
-        lower <- c(lower, display(candidate))
-      }
-    }
-    if (length(lower) > 0) {
-      statements <- c(statements, sprintf("%s>%s", display(higher), paste(lower, collapse = ", ")))
+  ids <- as.integer(ordered)
+  n <- length(ids)
+  if (n == 0L) return("")
+
+  sig <- matrix(FALSE, nrow = n, ncol = n, dimnames = list(as.character(ids), as.character(ids)))
+  for (key in pair_keys) {
+    kk <- strsplit(key, "-", fixed = TRUE)[[1]]
+    if (length(kk) != 2L) next
+    if (all(kk %in% rownames(sig))) {
+      sig[kk[1], kk[2]] <- TRUE
+      sig[kk[2], kk[1]] <- TRUE
     }
   }
-  paste(statements, collapse = "\n")
+
+  all_subsets <- unlist(
+    lapply(seq_len(n), function(k) combn(seq_len(n), k, simplify = FALSE)),
+    recursive = FALSE
+  )
+  valid_subsets <- Filter(function(idx) {
+    if (length(idx) <= 1L) return(TRUE)
+    ss <- sig[idx, idx, drop = FALSE]
+    !any(ss[upper.tri(ss)])
+  }, all_subsets)
+
+  nonsig_pairs <- list()
+  if (n >= 2L) {
+    for (i in seq_len(n - 1L)) {
+      for (j in seq.int(i + 1L, n)) {
+        if (!sig[i, j]) nonsig_pairs[[length(nonsig_pairs) + 1L]] <- c(i, j)
+      }
+    }
+  }
+  pair_key_local <- function(pair) paste(pair, collapse = "-")
+  uncovered_pairs <- unique(vapply(nonsig_pairs, pair_key_local, character(1)))
+  uncovered_singles <- seq_len(n)
+  chosen <- list()
+
+  while (length(uncovered_pairs) > 0L || length(uncovered_singles) > 0L) {
+    scores <- vapply(valid_subsets, function(idx) {
+      pair_score <- 0
+      if (length(idx) >= 2L && length(uncovered_pairs) > 0L) {
+        cmb <- combn(idx, 2L, simplify = FALSE)
+        cmb_key <- vapply(cmb, function(z) paste(sort(z), collapse = "-"), character(1))
+        pair_score <- sum(cmb_key %in% uncovered_pairs)
+      }
+      single_score <- sum(idx %in% uncovered_singles) / 10
+      pair_score + single_score + length(idx) / 1000
+    }, numeric(1))
+    best <- which.max(scores)
+    if (!length(best) || is.na(scores[best]) || scores[best] <= 0) {
+      break
+    }
+    idx <- valid_subsets[[best]]
+    chosen[[length(chosen) + 1L]] <- idx
+    if (length(idx) >= 2L && length(uncovered_pairs) > 0L) {
+      cmb <- combn(idx, 2L, simplify = FALSE)
+      cmb_key <- vapply(cmb, function(z) paste(sort(z), collapse = "-"), character(1))
+      uncovered_pairs <- setdiff(uncovered_pairs, cmb_key)
+    }
+    uncovered_singles <- setdiff(uncovered_singles, idx)
+  }
+
+  if (length(uncovered_singles) > 0L) {
+    for (idx in uncovered_singles) chosen[[length(chosen) + 1L]] <- idx
+  }
+  if (length(chosen) == 0L) chosen <- as.list(seq_len(n))
+
+  letter_pool <- c(letters, paste0("a", letters), paste0("b", letters))
+  marker <- rep("", n)
+  for (k in seq_along(chosen)) {
+    lab <- letter_pool[[min(k, length(letter_pool))]]
+    marker[chosen[[k]]] <- paste0(marker[chosen[[k]]], lab)
+  }
+
+  display <- function(x) paste0(label_prefix, as.integer(x))
+  paste0(display(ids), " (", marker, ")", collapse = ", ")
 }
 
 extract_bch_means_for_variable <- function(full_df, var_name = NULL) {
@@ -3689,10 +3782,331 @@ replace_t6_spread_with_sd <- function(out_df, outcome_vars, moderator_var = NULL
   reorder_t6_columns(out_df)
 }
 
+resolve_bch_moderator_var_for_t6 <- function() {
+  candidates <- character(0)
+  if (exists("CFG") && is.list(CFG)) {
+    candidates <- c(
+      candidates,
+      CFG$bch$moderation$moderator_var %||% character(0),
+      CFG$bch$moderators %||% character(0)
+    )
+  }
+  if (exists("BCH_INTERACTION")) {
+    bi <- safe_df(BCH_INTERACTION)
+    if (nrow(bi) > 0 && "moderator" %in% names(bi)) {
+      candidates <- c(candidates, unique(as.character(bi$moderator)))
+    }
+  }
+  candidates <- unique(trimws(as.character(candidates)))
+  candidates <- candidates[nzchar(candidates)]
+
+  lookup_sources <- list(
+    safe_df(get0("CLASSIFIED_ANALYSIS", ifnotfound = data.frame())),
+    safe_df(get0("ANALYSIS_DATA_CLASSIFIED", ifnotfound = data.frame())),
+    safe_df(get0("DISPLAY_DATA_CLASSIFIED", ifnotfound = data.frame())),
+    safe_df(get0("RAW_DATA", ifnotfound = data.frame())),
+    safe_df(get0("DISPLAY_DATA", ifnotfound = data.frame())),
+    safe_df(get0("ANALYSIS_DATA", ifnotfound = data.frame()))
+  )
+  for (cand in candidates) {
+    if (any(vapply(lookup_sources, function(x) cand %in% names(x), logical(1)))) {
+      return(cand)
+    }
+  }
+  ""
+}
+
+attach_t6_moderator_from_source <- function(src, moderator_var) {
+  src <- safe_df(src)
+  moderator_var <- as.character(moderator_var %||% "")
+  if (nrow(src) == 0 || !nzchar(moderator_var) || moderator_var %in% names(src)) return(src)
+
+  source_list <- list(
+    safe_df(get0("RAW_DATA", ifnotfound = data.frame())),
+    safe_df(get0("DISPLAY_DATA", ifnotfound = data.frame())),
+    safe_df(get0("ANALYSIS_DATA", ifnotfound = data.frame())),
+    safe_df(get0("DISPLAY_DATA_CLASSIFIED", ifnotfound = data.frame())),
+    safe_df(get0("ANALYSIS_DATA_CLASSIFIED", ifnotfound = data.frame()))
+  )
+  source_list <- source_list[vapply(source_list, function(x) {
+    is.data.frame(x) && nrow(x) > 0 && moderator_var %in% names(x)
+  }, logical(1))]
+  if (length(source_list) == 0) return(src)
+
+  id_candidates <- unique(trimws(as.character(c(
+    get0("ID_VAR", ifnotfound = character(0)),
+    SETTINGS_SUMMARY$id_var %||% character(0),
+    "id", "ID"
+  ))))
+  id_candidates <- id_candidates[nzchar(id_candidates)]
+
+  for (source_df in source_list) {
+    id_var <- id_candidates[id_candidates %in% names(src) & id_candidates %in% names(source_df)]
+    if (length(id_var) > 0) {
+      id_var <- id_var[[1]]
+      idx <- match(as.character(src[[id_var]]), as.character(source_df[[id_var]]))
+      vals <- source_df[[moderator_var]][idx]
+      if (length(vals) == nrow(src) && any(!is.na(vals))) {
+        src[[moderator_var]] <- vals
+        return(src)
+      }
+    }
+
+    if (nrow(source_df) == nrow(src)) {
+      vals <- source_df[[moderator_var]]
+      if (length(vals) == nrow(src) && any(!is.na(vals))) {
+        src[[moderator_var]] <- vals
+        return(src)
+      }
+    }
+  }
+
+  src
+}
+
+resolve_bch_outcome_vars_for_t6 <- function(src) {
+  candidates <- character(0)
+  spec <- safe_df(BCH_OUTCOME_SPEC)
+  if (nrow(spec) > 0) {
+    spec_col <- first_existing_col(spec, c("var_name", "outcome", "variable", "Variable"))
+    if (!is.na(spec_col)) candidates <- c(candidates, as.character(spec[[spec_col]]))
+  }
+  if (exists("CFG") && is.list(CFG)) {
+    candidates <- c(candidates, CFG$bch$distal_vars %||% CFG$bch$outcomes %||% character(0))
+  }
+  if (exists("BCH_INTERACTION")) {
+    bi <- safe_df(BCH_INTERACTION)
+    if (nrow(bi) > 0 && "outcome" %in% names(bi)) {
+      candidates <- c(candidates, unique(as.character(bi$outcome)))
+    }
+  }
+  candidates <- unique(trimws(as.character(candidates)))
+  candidates <- candidates[nzchar(candidates)]
+  intersect(candidates, names(src))
+}
+
+format_t6_anova_stat <- function(x) {
+  x <- safe_num(x)
+  ifelse(is.na(x), "", sprintf("%.2f", x))
+}
+
+ordered_t6_posthoc <- function(values, groups, label_fun = as.character, alpha = .05) {
+  values <- safe_num(values)
+  groups <- as.factor(groups)
+  keep <- !is.na(values) & !is.na(groups)
+  values <- values[keep]
+  groups <- droplevels(groups[keep])
+  if (length(values) == 0 || nlevels(groups) < 2L) return("")
+  fit <- tryCatch(stats::aov(values ~ groups), error = function(e) NULL)
+  if (is.null(fit)) return("")
+  tk <- tryCatch(stats::TukeyHSD(fit, "groups")$groups, error = function(e) NULL)
+  if (!is.matrix(tk) && !is.data.frame(tk)) return("")
+  tk <- as.data.frame(tk)
+  if (!"p adj" %in% names(tk)) return("")
+  sig_pairs <- rownames(tk)[!is.na(tk$`p adj`) & tk$`p adj` < alpha]
+  if (length(sig_pairs) == 0) return("")
+  means <- tapply(values, groups, mean, na.rm = TRUE)
+  ordered <- names(sort(means, decreasing = TRUE))
+  sig_key <- unique(vapply(strsplit(sig_pairs, "-"), function(z) {
+    if (length(z) < 2) return("")
+    paste(sort(z[1:2]), collapse = "||")
+  }, character(1)))
+  sig_key <- sig_key[nzchar(sig_key)]
+  out <- character(0)
+  for (i in seq_along(ordered)) {
+    high <- ordered[[i]]
+    lower <- character(0)
+    if (i < length(ordered)) {
+      for (j in seq.int(i + 1L, length(ordered))) {
+        low <- ordered[[j]]
+        key <- paste(sort(c(high, low)), collapse = "||")
+        if (key %in% sig_key && means[[high]] > means[[low]]) {
+          lower <- c(lower, label_fun(low))
+        }
+      }
+    }
+    if (length(lower) > 0) {
+      out <- c(out, paste0(label_fun(high), ">", paste(lower, collapse = ",")))
+    }
+  }
+  paste(out, collapse = "\n")
+}
+
+build_T6_bch_moderated_summary <- function() {
+  src <- safe_df(CLASSIFIED_ANALYSIS)
+  if (nrow(src) == 0) src <- safe_df(ANALYSIS_DATA_CLASSIFIED)
+  if (nrow(src) == 0 || !"class_num" %in% names(src)) return(data.frame())
+
+  moderator_var <- resolve_bch_moderator_var_for_t6()
+  src <- attach_t6_moderator_from_source(src, moderator_var)
+  if (!nzchar(moderator_var) || !moderator_var %in% names(src)) return(data.frame())
+
+  outcome_vars <- resolve_bch_outcome_vars_for_t6(src)
+  if (length(outcome_vars) == 0) return(data.frame())
+
+  src$class_num <- safe_int(src$class_num)
+  src <- src[!is.na(src$class_num) & !is.na(src[[moderator_var]]), , drop = FALSE]
+  if (nrow(src) == 0) return(data.frame())
+
+  src$..moderator_level.. <- as.character(src[[moderator_var]])
+  src <- src[nzchar(src$..moderator_level..), , drop = FALSE]
+  if (nrow(src) == 0 || length(unique(src$..moderator_level..)) < 2L) return(data.frame())
+
+  class_levels <- sort(unique(src$class_num))
+  moderator_levels <- unique(src$..moderator_level..)
+  moderator_levels <- moderator_levels[order(suppressWarnings(as.numeric(moderator_levels)), moderator_levels)]
+  spread_key <- if (isTRUE(HAS_WEIGHT)) "SE" else "SD"
+  include_variable <- length(outcome_vars) > 1L
+  out_parts <- list()
+
+  stat_value <- function(anova_df, row_name, col_name) {
+    if (!is.data.frame(anova_df) || !row_name %in% rownames(anova_df) || !col_name %in% names(anova_df)) return(NA_real_)
+    suppressWarnings(as.numeric(anova_df[row_name, col_name]))
+  }
+
+  one_way_profile_test <- function(dat) {
+    dat <- safe_df(dat)
+    if (nrow(dat) == 0 || !"outcome_value" %in% names(dat) || !"profile" %in% names(dat)) {
+      return(list(f = NA_real_, p = NA_real_, posthoc = ""))
+    }
+    keep <- !is.na(dat$outcome_value) & !is.na(dat$profile)
+    dat <- dat[keep, , drop = FALSE]
+    dat$profile <- droplevels(as.factor(dat$profile))
+    if (nrow(dat) == 0 || nlevels(dat$profile) < 2L) {
+      return(list(f = NA_real_, p = NA_real_, posthoc = ""))
+    }
+    fit <- tryCatch(stats::lm(outcome_value ~ profile, data = dat), error = function(e) NULL)
+    aov_tab <- if (!is.null(fit)) tryCatch(stats::anova(fit), error = function(e) NULL) else NULL
+    f_val <- stat_value(aov_tab, "profile", "F value")
+    p_val <- stat_value(aov_tab, "profile", "Pr(>F)")
+    ph <- ordered_t6_posthoc(dat$outcome_value, dat$profile, label_fun = function(z) as.character(z))
+    list(f = f_val, p = p_val, posthoc = ph)
+  }
+
+  for (outcome_var in outcome_vars) {
+    tmp <- src[, c("class_num", "..moderator_level..", outcome_var), drop = FALSE]
+    names(tmp)[names(tmp) == outcome_var] <- "outcome_value"
+    tmp$outcome_value <- safe_num(tmp$outcome_value)
+    tmp <- tmp[!is.na(tmp$outcome_value), , drop = FALSE]
+    if (nrow(tmp) == 0 || length(unique(tmp$class_num)) < 2L || length(unique(tmp$..moderator_level..)) < 2L) next
+
+    tmp$profile <- factor(tmp$class_num, levels = class_levels)
+    tmp$moderator <- factor(tmp$..moderator_level.., levels = moderator_levels)
+    fit <- tryCatch(stats::lm(outcome_value ~ profile * moderator, data = tmp), error = function(e) NULL)
+    aov_tab <- if (!is.null(fit)) tryCatch(stats::anova(fit), error = function(e) NULL) else NULL
+
+    profile_label <- "profile(P)"
+    moderator_label <- paste0(moderator_var, "(G)")
+    interaction_label <- "PxG"
+
+    base <- data.frame(
+      Profile = paste0("Profile ", class_levels),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
+    if (include_variable) {
+      base$Variable <- get_var_label(outcome_var)
+      base <- base[, c("Variable", "Profile"), drop = FALSE]
+    }
+
+    for (cl in class_levels) {
+      idx <- tmp$class_num == cl
+      row_idx <- match(paste0("Profile ", cl), base$Profile)
+      base[[twoline_key("M", "Total")]][row_idx] <- fmt_m2(mean(tmp$outcome_value[idx], na.rm = TRUE))
+      base[[twoline_key(spread_key, "Total")]][row_idx] <- fmt_sd2(stats::sd(tmp$outcome_value[idx], na.rm = TRUE))
+    }
+
+    for (lv in moderator_levels) {
+      group_label <- paste0(moderator_var, " ", lv)
+      for (cl in class_levels) {
+        idx <- tmp$class_num == cl & tmp$..moderator_level.. == lv
+        row_idx <- match(paste0("Profile ", cl), base$Profile)
+        vals <- tmp$outcome_value[idx]
+        vals <- vals[!is.na(vals)]
+        base[[twoline_key("M", group_label)]][row_idx] <- if (length(vals) > 0) fmt_m2(mean(vals, na.rm = TRUE)) else ""
+        base[[twoline_key(spread_key, group_label)]][row_idx] <- if (length(vals) > 1) fmt_sd2(stats::sd(vals, na.rm = TRUE)) else ""
+      }
+    }
+
+    within_profile_groups <- c("Total", paste0(moderator_var, " ", moderator_levels))
+    stat_groups <- c(within_profile_groups, profile_label, moderator_label, interaction_label)
+    for (gg in stat_groups) {
+      base[[twoline_key("F", gg)]] <- ""
+      base[[twoline_key("p", gg)]] <- ""
+      base[[twoline_key("post-hoc", gg)]] <- ""
+    }
+
+    stat_rows <- data.frame(Profile = c("F", "P", "Post-hoc"), stringsAsFactors = FALSE, check.names = FALSE)
+    if (include_variable) {
+      stat_rows$Variable <- ""
+      stat_rows <- stat_rows[, c("Variable", "Profile"), drop = FALSE]
+    }
+    for (nm in setdiff(names(base), names(stat_rows))) stat_rows[[nm]] <- ""
+
+    total_profile_test <- one_way_profile_test(tmp)
+    stat_rows[[twoline_key("F", "Total")]][1] <- format_t6_anova_stat(total_profile_test$f)
+    stat_rows[[twoline_key("p", "Total")]][2] <- fmt_p3_strict(total_profile_test$p)
+    stat_rows[[twoline_key("post-hoc", "Total")]][3] <- total_profile_test$posthoc
+
+    for (lv in moderator_levels) {
+      group_label <- paste0(moderator_var, " ", lv)
+      group_profile_test <- one_way_profile_test(tmp[tmp$..moderator_level.. == lv, , drop = FALSE])
+      stat_rows[[twoline_key("F", group_label)]][1] <- format_t6_anova_stat(group_profile_test$f)
+      stat_rows[[twoline_key("p", group_label)]][2] <- fmt_p3_strict(group_profile_test$p)
+      stat_rows[[twoline_key("post-hoc", group_label)]][3] <- group_profile_test$posthoc
+    }
+
+    effects <- list(
+      list(row = "profile", group = profile_label),
+      list(row = "moderator", group = moderator_label),
+      list(row = "profile:moderator", group = interaction_label)
+    )
+    for (eff in effects) {
+      f_val <- stat_value(aov_tab, eff$row, "F value")
+      p_val <- stat_value(aov_tab, eff$row, "Pr(>F)")
+      stat_rows[[twoline_key("F", eff$group)]][1] <- format_t6_anova_stat(f_val)
+      stat_rows[[twoline_key("p", eff$group)]][2] <- fmt_p3_strict(p_val)
+    }
+
+    class_ph <- ordered_t6_posthoc(
+      tmp$outcome_value,
+      tmp$profile,
+      label_fun = function(z) as.character(z)
+    )
+    group_ph <- ordered_t6_posthoc(
+      tmp$outcome_value,
+      tmp$moderator,
+      label_fun = function(z) as.character(z)
+    )
+    stat_rows[[twoline_key("post-hoc", profile_label)]][3] <- class_ph
+    stat_rows[[twoline_key("post-hoc", moderator_label)]][3] <- group_ph
+
+    out_i <- rbind(base, stat_rows)
+    out_parts[[length(out_parts) + 1L]] <- out_i
+  }
+
+  if (length(out_parts) == 0) return(data.frame())
+  out <- do.call(rbind, out_parts)
+  if (include_variable) {
+    out$Variable[duplicated(out$Variable) | out$Profile %in% c("F", "P", "Post-hoc")] <- ifelse(
+      out$Profile[duplicated(out$Variable) | out$Profile %in% c("F", "P", "Post-hoc")] %in% c("F", "P", "Post-hoc"),
+      "",
+      out$Variable[duplicated(out$Variable) | out$Profile %in% c("F", "P", "Post-hoc")]
+    )
+  }
+  rownames(out) <- NULL
+  out
+}
+
 # ------------------------------------------------------------
 # 9.        T6
 # ------------------------------------------------------------
 build_T6_bch <- function() {
+  moderated_t6 <- build_T6_bch_moderated_summary()
+  if (is.data.frame(moderated_t6) && nrow(moderated_t6) > 0) {
+    return(moderated_t6)
+  }
+
   df_full  <- safe_df(BCH_RESULTS_FULL)
   df_one   <- safe_df(BCH_RESULTS)
   df_ph    <- safe_df(BCH_POSTHOC)
@@ -4577,6 +4991,8 @@ build_T6b_bch_categorical_multinom <- function() {
     class_cols <- coef_cols[grepl("^class_factorC[0-9]+$", coef_cols)]
     if (length(class_cols) == 0) next
 
+    critical <- stats::qnorm(0.975)
+
     for (outcome_level in rownames(coef_mat)) {
       for (cc in class_cols) {
         cls <- suppressWarnings(as.integer(gsub("^class_factorC", "", cc)))
@@ -4595,8 +5011,8 @@ build_T6b_bch_categorical_multinom <- function() {
           Reference_outcome = get_value_label(vv, y_levels[1]),
           Comparison = paste0(latent_group_label(cls), " vs ", latent_group_label(ref_class_num)),
           RRR = fmt_rrr3(exp(est)),
-          LLCI = fmt_rrr3(exp(est - 1.96 * se)),
-          ULCI = fmt_rrr3(exp(est + 1.96 * se)),
+          LLCI = fmt_rrr3(exp(est - critical * se)),
+          ULCI = fmt_rrr3(exp(est + critical * se)),
           p = fmt_p3_strict(p),
           sig = fmt_sig_cell(sig_mark(p)),
           stringsAsFactors = FALSE,
@@ -4612,10 +5028,10 @@ build_T6b_bch_categorical_multinom <- function() {
   long <- safe_df(long)
 
   base_rows <- unique(long[, c("var_name", "Variable", "level", "Category"), drop = FALSE])
-  ord_var <- get_display_order(base_rows$var_name)
+  ord_var <- get_covariate_display_order(base_rows$var_name)
   ord_cat <- get_category_order(base_rows$var_name, level = base_rows$level, label = base_rows$Category)
   ord_cat[is.na(ord_cat)] <- 999999
-  base_rows <- base_rows[order(ord_var, ord_cat, base_rows$Category), , drop = FALSE]
+  base_rows <- base_rows[order(ord_var, base_rows$var_name, ord_cat, base_rows$Category), , drop = FALSE]
   rownames(base_rows) <- NULL
 
   out <- base_rows[, c("Variable", "Category"), drop = FALSE]
@@ -4946,6 +5362,83 @@ build_T6B_bch_stratified <- function() {
     }
   }
 
+  compact_t6e_rows <- function(out, levels_ord, level_labels, spread_key, stat_map) {
+    if (!is.data.frame(out) || nrow(out) == 0) return(out)
+
+    fixed_cols <- intersect(c("Moderator", "Variable", "Profile"), names(out))
+    value_cols <- unlist(lapply(levels_ord, function(lv) {
+      lv_label <- level_labels[[lv]]
+      c(twoline_key("M", lv_label), twoline_key(spread_key, lv_label))
+    }), use.names = FALSE)
+    value_cols <- value_cols[value_cols %in% names(out)]
+    if (!"Profile" %in% fixed_cols || length(value_cols) == 0) return(out)
+
+    block_cols <- intersect(c("Moderator", "Variable"), names(out))
+    if (length(block_cols) == 0) {
+      block_key <- rep("..all..", nrow(out))
+    } else {
+      block_key <- do.call(paste, c(out[block_cols], sep = "||"))
+    }
+
+    format_f_p <- function(stat, p) {
+      stat <- as.character(stat %||% "")
+      p <- as.character(p %||% "")
+      stat[is.na(stat)] <- ""
+      p[is.na(p)] <- ""
+      if (!nzchar(stat) && !nzchar(p)) return("")
+      if (nzchar(stat) && nzchar(p)) return(paste0(stat, " (", p, ")"))
+      paste0(stat, p)
+    }
+
+    out_rows <- list()
+    for (bk in unique(block_key)) {
+      idx <- which(block_key == bk)
+      block <- out[idx, c(fixed_cols, value_cols), drop = FALSE]
+      out_rows[[length(out_rows) + 1L]] <- block
+
+      f_row <- block[1, , drop = FALSE]
+      posthoc_row <- block[1, , drop = FALSE]
+      f_row[,] <- ""
+      posthoc_row[,] <- ""
+      for (cc in intersect(c("Moderator", "Variable"), names(block))) {
+        f_row[[cc]] <- block[[cc]][1]
+        posthoc_row[[cc]] <- block[[cc]][1]
+      }
+      f_row$Profile <- "F(p)"
+      posthoc_row$Profile <- intToUtf8(c(0xD3C9, 0xADE0, 0xC21C, 0x20, 0xC720, 0xC758, 0xC131, 0x20, 0xD45C, 0xAE30))
+
+      for (lv in levels_ord) {
+        lv_label <- level_labels[[lv]]
+        m_col <- twoline_key("M", lv_label)
+        sd_col <- twoline_key(spread_key, lv_label)
+        stat_col <- twoline_key("Statistic", lv_label)
+        p_col <- twoline_key("p", lv_label)
+        ph_col <- twoline_key("post-hoc", lv_label)
+        if (!m_col %in% names(f_row)) next
+
+        first_i <- idx[[1]]
+        f_row[[m_col]] <- format_f_p(out[[stat_col]][first_i], out[[p_col]][first_i])
+        if (sd_col %in% names(f_row)) f_row[[sd_col]] <- ""
+
+        pair_text <- as.character(out[[ph_col]][first_i] %||% "")
+        means <- suppressWarnings(as.numeric(block[[m_col]]))
+        names(means) <- as.character(block$Profile)
+        ordered_pair_text <- bch_ordered_posthoc_notation(means, pair_text = pair_text)
+        posthoc_row[[m_col]] <- if (nzchar(ordered_pair_text)) ordered_pair_text else pair_text
+        if (sd_col %in% names(posthoc_row)) posthoc_row[[sd_col]] <- ""
+      }
+
+      out_rows[[length(out_rows) + 1L]] <- f_row
+      out_rows[[length(out_rows) + 1L]] <- posthoc_row
+    }
+
+    out2 <- do.call(rbind, out_rows)
+    rownames(out2) <- NULL
+    out2
+  }
+
+  out <- compact_t6e_rows(out, levels_ord, level_labels, spread_key, stat_map)
+
   if (length(unique(out$Moderator)) == 1L) out$Moderator <- NULL
   if (length(unique(out$Variable)) == 1L) out$Variable <- NULL
   rownames(out) <- NULL
@@ -4990,14 +5483,7 @@ build_T6D_moderator_descriptives <- function() {
 
   df$Moderator <- get_var_label(df$moderator)
   df$Profile <- paste0("Profile ", df$class_num)
-  df$Level <- vapply(
-    seq_len(nrow(df)),
-    function(i) {
-      lab <- get_value_label(df$moderator[i], df$moderator_level[i])
-      if (is.na(lab) || !nzchar(trimws(lab))) as.character(df$moderator_level[i]) else lab
-    },
-    character(1)
-  )
+  df$Level <- as.character(df$moderator_level)
 
   keep_class <- c("Moderator", "Variable", "Profile", "Level", "var_name", "moderator", "moderator_level", "class_num", "estimate", "se")
   df <- unique(df[, keep_class, drop = FALSE])
@@ -5628,7 +6114,7 @@ TABLE_META <- list(
   T6b = list(caption = paste0("Table 6b. Multinomial logistic regression for categorical distal outcomes by ", tolower(latent_group_term())), type = "twoline_rrr", note_type = "rrr"),
   T6C = list(caption = paste0("Table 6C. PROCESS Model 1-style regression coefficients for ", latent_group_term_lower(), " x moderator effects on distal outcomes"),type = "normal", note_type = "generic"),
   T6D = list(caption = paste0("Table 6D. Distal outcome means by ", tolower(latent_group_term()), " across moderator levels"), type = t6d_table_type, note_type = spread_note_type),
-  T6E = list(caption = paste0("Table 6E. Distal outcomes by ", tolower(latent_group_term()), " within moderator levels"), type = "twoline_t6b", note_type = spread_note_type),
+  T6E = list(caption = paste0("Table 6E. Distal outcomes by ", tolower(latent_group_term()), " within moderator levels"), type = "twoline_mean", note_type = spread_note_type),
   T7  = list(caption = "Table 7. Analysis summary", type = "normal", note_type = "generic"),
 
   A3  = list(
@@ -6230,6 +6716,16 @@ validate_table_structure <- function(table_name, df, meta_i = NULL) {
     }
   }
 
+  if (type_i == "twoline_t6_mod") {
+    need <- c("M__", if (isTRUE(HAS_WEIGHT)) "SE__" else "SD__", "F__", "p__", "post-hoc__")
+    miss <- need[!vapply(need, function(pf) has_any_prefix(nm, pf), logical(1))]
+    if (length(miss) > 0) {
+      out$valid <- FALSE
+      out$issue <- paste0("twoline_t6_mod missing prefixes: ", paste(miss, collapse = ", "))
+      return(out)
+    }
+  }
+
   if (type_i == "twoline_npct") {
     if (!has_any_prefix(nm, "n__") || !has_any_prefix(nm, "%__")) {
       out$valid <- FALSE
@@ -6340,12 +6836,6 @@ ensure_compact_as_table <- function(df, table_name = NULL) {
 
   compact_mean_label <- compact_mean_name(isTRUE(HAS_WEIGHT))
 
-  prof_cols <- grep("^Profile [0-9]+$", nm, value = TRUE)
-  if (!is.null(table_name) && table_name %in% c("A3", "A4") && length(prof_cols) > 0 &&
-      !("Category" %in% names(df))) {
-    df[[compact_mean_label]] <- as.character(df[[prof_cols[1]]])
-  }
-
   if (!is.null(table_name) && table_name %in% c("S1") && "Value" %in% names(df) &&
       !any(names(df) %in% mean_cols)) {
     df[[compact_mean_label]] <- as.character(df$Value)
@@ -6387,6 +6877,187 @@ ensure_compact_as_table <- function(df, table_name = NULL) {
   df
 }
 
+reorder_covariate_display_table <- function(df, blank_repeated_variables = TRUE) {
+  df <- safe_df(df)
+  if (nrow(df) == 0 || !"Variable" %in% names(df) || !"Category" %in% names(df)) return(df)
+
+  dict_meta_local <- if (exists("DICT_META") && is.data.frame(DICT_META)) DICT_META else data.frame()
+  role <- if ("role" %in% names(dict_meta_local)) tolower(as.character(dict_meta_local$role)) else rep("", nrow(dict_meta_local))
+  use <- if ("use" %in% names(dict_meta_local)) tolower(as.character(dict_meta_local$use)) else rep("true", nrow(dict_meta_local))
+  meta <- dict_meta_local[role == "covariate" & use %in% c("true", "t", "1"), , drop = FALSE]
+  if (nrow(meta) == 0 && any(role == "covariate", na.rm = TRUE)) {
+    meta <- dict_meta_local[role == "covariate", , drop = FALSE]
+  }
+  if (nrow(meta) == 0) {
+    meta <- dict_meta_local
+  }
+  if (nrow(meta) == 0 && exists("PATH_DICT") && file.exists(PATH_DICT)) {
+    meta <- tryCatch(
+      utils::read.csv(PATH_DICT, stringsAsFactors = FALSE, check.names = FALSE, fileEncoding = "UTF-8"),
+      error = function(e) tryCatch(
+        utils::read.csv(PATH_DICT, stringsAsFactors = FALSE, check.names = FALSE),
+        error = function(e2) data.frame()
+      )
+    )
+  }
+  if (nrow(meta) == 0 && exists("DIR_CONFIG")) {
+    dict_path <- file.path(DIR_CONFIG, "data_dictionary.csv")
+    if (file.exists(dict_path)) {
+      meta <- tryCatch(
+        utils::read.csv(dict_path, stringsAsFactors = FALSE, check.names = FALSE),
+        error = function(e) data.frame()
+      )
+    }
+  }
+  if (nrow(meta) > 0) {
+    names(meta) <- gsub("[^A-Za-z0-9_]", "", names(meta), useBytes = TRUE)
+    if (!"var_name" %in% names(meta) && ncol(meta) > 0) names(meta)[1] <- "var_name"
+  }
+  if (nrow(meta) > 0 && !any(grepl("^value_[0-9]+$", names(meta)))) {
+    dict_path <- if (exists("PATH_DICT") && file.exists(PATH_DICT)) PATH_DICT else if (exists("DIR_CONFIG")) file.path(DIR_CONFIG, "data_dictionary.csv") else ""
+    if ((!nzchar(dict_path) || !file.exists(dict_path)) && exists("PROJECT_ROOT") && exists("DATASET_ID")) {
+      dict_path <- file.path(PROJECT_ROOT, "data", DATASET_ID, "config", "data_dictionary.csv")
+    }
+    if ((!nzchar(dict_path) || !file.exists(dict_path))) {
+      dict_path <- "D:/Program/Latent_Mplus/data/12_MYJ/config/data_dictionary.csv"
+    }
+    if (nzchar(dict_path) && file.exists(dict_path)) {
+      meta_full <- tryCatch(
+        utils::read.csv(dict_path, stringsAsFactors = FALSE, check.names = FALSE),
+        error = function(e) data.frame()
+      )
+      if (nrow(meta_full) > 0 && any(grepl("^value_[0-9]+$", names(meta_full)))) meta <- meta_full
+    }
+  }
+  if (nrow(meta) == 0) return(df)
+
+  trim_chr <- function(x) {
+    x <- trimws(as.character(x))
+    x[is.na(x) | x %in% c("NA", "NaN", "NULL")] <- ""
+    x
+  }
+  label_rows <- list()
+  for (i in seq_len(nrow(meta))) {
+    vn <- trim_chr(meta$var_name[i])
+    if (!nzchar(vn)) next
+    var_labels <- unique(trim_chr(c(
+      vn,
+      if ("var_label" %in% names(meta)) meta$var_label[i] else "",
+      if ("label_en" %in% names(meta)) meta$label_en[i] else "",
+      if ("label_ko" %in% names(meta)) meta$label_ko[i] else "",
+      get_var_label(vn)
+    )))
+    var_labels <- var_labels[nzchar(var_labels)]
+    var_order_i <- if ("display_order" %in% names(meta)) suppressWarnings(as.numeric(meta$display_order[i])) else NA_real_
+    if (is.na(var_order_i)) var_order_i <- i
+
+    add_level <- function(level, label, order_index) {
+      level <- trim_chr(level)
+      label <- trim_chr(label)
+      if (!nzchar(level) && !nzchar(label)) return(NULL)
+      if (!nzchar(label) && nzchar(level)) label <- get_value_label(vn, level)
+      if (!nzchar(label)) label <- level
+      data.frame(
+        var_name = vn,
+        var_label_key = paste(var_labels, collapse = "||"),
+        level = level,
+        Category = label,
+        var_order = var_order_i,
+        cat_order = order_index,
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      )
+    }
+
+    value_cols <- grep("^value_[0-9]+$", names(meta), value = TRUE)
+    idxs <- sort(suppressWarnings(as.integer(gsub("^value_([0-9]+)$", "\\1", value_cols))))
+    idxs <- idxs[!is.na(idxs)]
+    for (k in idxs) {
+      label_rows[[length(label_rows) + 1L]] <- add_level(
+        if (paste0("value_", k) %in% names(meta)) meta[[paste0("value_", k)]][i] else "",
+        if (paste0("label_", k) %in% names(meta)) meta[[paste0("label_", k)]][i] else "",
+        k
+      )
+    }
+    if ("reference" %in% names(meta)) {
+      ref_level <- meta$reference[i]
+      ref_label <- if ("reference_label" %in% names(meta)) meta$reference_label[i] else ""
+      label_rows[[length(label_rows) + 1L]] <- add_level(ref_level, ref_label, 0)
+    }
+  }
+  label_map <- do.call(rbind, Filter(Negate(is.null), label_rows))
+  if (!is.data.frame(label_map) || nrow(label_map) == 0) return(df)
+  label_map$Category_key <- tolower(trim_chr(label_map$Category))
+  label_map <- label_map[!duplicated(paste(label_map$var_name, label_map$Category_key, sep = "||")), , drop = FALSE]
+
+  resolve_var <- function(variable, category) {
+    variable <- trim_chr(variable)
+    category <- tolower(trim_chr(category))
+    if (nzchar(variable)) {
+      hit <- label_map[vapply(strsplit(label_map$var_label_key, "||", fixed = TRUE), function(keys) variable %in% keys, logical(1)), , drop = FALSE]
+      if (nrow(hit) > 0 && (!nzchar(category) || category %in% hit$Category_key)) return(hit$var_name[1])
+      if (variable %in% label_map$var_name) return(variable)
+    }
+    if (nzchar(category)) {
+      hit <- label_map[label_map$Category_key == category, , drop = FALSE]
+      if (nrow(hit) > 0) return(hit$var_name[1])
+    }
+    variable
+  }
+
+  base_map <- label_map[order(label_map$var_order, label_map$var_name, label_map$cat_order, label_map$Category_key), , drop = FALSE]
+  base_map <- base_map[!duplicated(paste(base_map$var_name, base_map$Category_key, sep = "||")), , drop = FALSE]
+
+  rebuild_one_block <- function(block, comparison_value = "") {
+    block <- safe_df(block)
+    if (nrow(block) == 0) return(block)
+    block_cat <- tolower(trim_chr(block$Category))
+    block_resolved <- mapply(resolve_var, block$Variable, block$Category, USE.NAMES = FALSE)
+    block_resolved <- trim_chr(block_resolved)
+    out_rows <- vector("list", nrow(base_map))
+    for (i in seq_len(nrow(base_map))) {
+      hit <- which(block_cat == base_map$Category_key[i] & block_resolved == base_map$var_name[i])
+      if (length(hit) == 0L) hit <- which(block_cat == base_map$Category_key[i])
+      if (length(hit) > 0L) {
+        row <- block[hit[1], , drop = FALSE]
+      } else {
+        row <- block[1, , drop = FALSE]
+        row[,] <- ""
+      }
+      row$Variable <- base_map$var_name[i]
+      row$Category <- base_map$Category[i]
+      if ("Comparison" %in% names(row)) row$Comparison <- comparison_value
+      out_rows[[i]] <- row
+    }
+    out <- do.call(rbind, out_rows)
+    if (isTRUE(blank_repeated_variables)) {
+      out$Variable[duplicated(out$Variable)] <- ""
+    }
+    out
+  }
+
+  if ("Comparison" %in% names(df)) {
+    comp_fill <- trim_chr(df$Comparison)
+    for (i in seq_along(comp_fill)) {
+      if (!nzchar(comp_fill[i]) && i > 1L) comp_fill[i] <- comp_fill[i - 1L]
+    }
+    df$..comparison_fill.. <- comp_fill
+    comp_names <- unique(comp_fill[nzchar(comp_fill)])
+    comp_num <- extract_class_num_from_text(comp_names)
+    comp_names <- comp_names[order(comp_num)]
+    rebuilt <- lapply(comp_names, function(cmp) {
+      block <- df[df$..comparison_fill.. == cmp, setdiff(names(df), "..comparison_fill.."), drop = FALSE]
+      rebuild_one_block(block, comparison_value = cmp)
+    })
+    out <- do.call(rbind, rebuilt)
+    if ("Comparison" %in% names(out)) out$Comparison[duplicated(out$Comparison)] <- ""
+  } else {
+    out <- rebuild_one_block(df)
+  }
+  rownames(out) <- NULL
+  out
+}
+
 # ------------------------------------------------------------
 # 14. build all tables
 # ------------------------------------------------------------
@@ -6401,6 +7072,10 @@ log_info("Building T5  ...");  T5  <- postprocess_table_output(TABLE_BUILDERS$T5
 log_info("Building T5b ..."); T5b  <- postprocess_table_output(TABLE_BUILDERS$T5b(), "T5b")
 log_info("Building T5c ..."); T5c  <- postprocess_table_output(TABLE_BUILDERS$T5c(), "T5c")
 log_info("Building T5d ..."); T5d  <- postprocess_table_output(TABLE_BUILDERS$T5d(), "T5d")
+T5  <- reorder_covariate_display_table(T5)
+T5b <- reorder_covariate_display_table(T5b)
+T5c <- reorder_covariate_display_table(T5c)
+T5d <- reorder_covariate_display_table(T5d)
 log_info("Building T6  ...");  T6  <- postprocess_table_output(TABLE_BUILDERS$T6(),  "T6")
 log_info("Building T6b ..."); T6b  <- postprocess_table_output(TABLE_BUILDERS$T6b(), "T6b")
 log_info("Building T6C ..."); T6C  <- postprocess_table_output(TABLE_BUILDERS$T6C(), "T6C")
@@ -6426,6 +7101,8 @@ S3 <- postprocess_table_output(TABLE_BUILDERS$S3(), "S3")
 S4 <- postprocess_table_output(TABLE_BUILDERS$S4(), "S4")
 S5 <- postprocess_table_output(TABLE_BUILDERS$S5(), "S5")
 S6 <- postprocess_table_output(TABLE_BUILDERS$S6(), "S6")
+S5 <- reorder_covariate_display_table(S5)
+S6 <- reorder_covariate_display_table(S6)
 if (is.data.frame(S6) && "RRR (LLCI~ULCI)" %in% names(S6)) {
   S6 <- S6[, names(S6) != "RRR (LLCI~ULCI)", drop = FALSE]
 }
@@ -6440,6 +7117,11 @@ TABLE_REGISTRY <- list(
   A3 = A3, A4 = A4, A5 = A5, A6 = A6, A8 = A8,
   S1 = S1, S2 = S2, S3 = S3, S4 = S4, S5 = S5, S6 = S6
 )
+
+if (is.data.frame(T6) && any(grepl("^F__", names(T6)))) {
+  TABLE_META$T6$type <- "twoline_t6_mod"
+  TABLE_META$T6$caption <- paste0("Table 6. Distal outcomes by ", tolower(latent_group_term()), " and moderator")
+}
 
 # ------------------------------------------------------------
 # validate table structures
@@ -6545,7 +7227,7 @@ for (nm in names(TABLE_REGISTRY_FOR_EXPORT)) {
       title_text = title_i
     )
 
-    } else if (type_i %in% c("twoline_mean", "twoline_mse", "twoline_mse_psig", "twoline_npct", "twoline_rrr", "twoline_t6b", "twoline_s5", "twoline_mixed")) {
+    } else if (type_i %in% c("twoline_mean", "twoline_mse", "twoline_mse_psig", "twoline_npct", "twoline_rrr", "twoline_t6b", "twoline_t6_mod", "twoline_s5", "twoline_mixed")) {
 
     stat_order_i <- switch(
       type_i,
@@ -6555,6 +7237,7 @@ for (nm in names(TABLE_REGISTRY_FOR_EXPORT)) {
         twoline_npct     = c("n", "%"),
         twoline_rrr      = c("RRR", "LLCI", "ULCI", "p", "sig"),
         twoline_t6b      = c("M", if (isTRUE(HAS_WEIGHT)) "SE" else "SD", "Statistic", "p", "sig", "post-hoc"),
+        twoline_t6_mod   = c("M", if (isTRUE(HAS_WEIGHT)) "SE" else "SD", "F", "p", "post-hoc"),
         twoline_s5       = c("RRR", "(LLCI~ULCI)", "p"),
         twoline_mixed    = c("M/n", if (isTRUE(HAS_WEIGHT)) "SE/%" else "SD/%")
       )
@@ -6565,16 +7248,23 @@ for (nm in names(TABLE_REGISTRY_FOR_EXPORT)) {
       t6_key_cols <- names(dat_i)[grepl("__", names(dat_i), fixed = TRUE)]
       t6_parts <- lapply(t6_key_cols, extract_twoline_parts)
       t6_groups <- unique(vapply(t6_parts, `[[`, "", "group"))
-      t6_profile_groups <- t6_groups[grepl("^(Profile|Class)\\s+[0-9]+$", t6_groups)]
       group_stat_map_i <- setNames(vector("list", length(t6_groups)), t6_groups)
-      for (gg in t6_profile_groups) group_stat_map_i[[gg]] <- c("M", if (isTRUE(HAS_WEIGHT)) "SE" else "SD")
-      if ("Overall" %in% t6_groups) group_stat_map_i[["Overall"]] <- c("Statistic", "p", "sig", "post-hoc")
+      if (identical(type_i, "twoline_t6_mod")) {
+        for (gg in t6_groups) {
+          stats_present <- unique(vapply(t6_parts[vapply(t6_parts, `[[`, "", "group") == gg], `[[`, "", "stat"))
+          group_stat_map_i[[gg]] <- stat_order_i[stat_order_i %in% stats_present]
+        }
+      } else {
+        t6_profile_groups <- t6_groups[grepl("^(Profile|Class)\\s+[0-9]+$", t6_groups)]
+        for (gg in t6_profile_groups) group_stat_map_i[[gg]] <- c("M", if (isTRUE(HAS_WEIGHT)) "SE" else "SD")
+        if ("Overall" %in% t6_groups) group_stat_map_i[["Overall"]] <- c("Statistic", "p", "sig", "post-hoc")
+      }
     } else if (identical(nm, "T6E")) {
       t6b_key_cols <- names(dat_i)[grepl("__", names(dat_i), fixed = TRUE)]
       t6b_parts <- lapply(t6b_key_cols, extract_twoline_parts)
       t6b_groups <- unique(vapply(t6b_parts, `[[`, "", "group"))
       group_stat_map_i <- setNames(vector("list", length(t6b_groups)), t6b_groups)
-      for (gg in t6b_groups) group_stat_map_i[[gg]] <- c("M", if (isTRUE(HAS_WEIGHT)) "SE" else "SD", "Statistic", "p", "sig", "post-hoc")
+      for (gg in t6b_groups) group_stat_map_i[[gg]] <- c("M", if (isTRUE(HAS_WEIGHT)) "SE" else "SD")
       fixed_cols_i <- latent_group_term()
     } else if (identical(nm, "T6D")) {
       t6d_key_cols <- names(dat_i)[grepl("__", names(dat_i), fixed = TRUE)]

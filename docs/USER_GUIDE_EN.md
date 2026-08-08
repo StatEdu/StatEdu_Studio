@@ -1,10 +1,10 @@
 # StatEdu Studio User Guide
 
-This guide describes how to use **StatEdu Studio 1.0.0** in practice: starting the app, loading data, checking variable settings, running analyses, reviewing results, saving output, and using planning calculators. The app runs locally on Windows. Loaded data are analyzed on the user's PC and are not sent to an external server.
+This guide describes how to use **StatEdu Studio 1.2.0** in practice: starting the app, loading data, checking variable settings, running analyses, reviewing results, saving output, and using planning calculators. The app runs locally on Windows. Loaded data are analyzed on the user's PC and are not sent to an external server.
 
 For a menu-by-menu inventory of implemented analyses, see **Analyses**. For method-selection rules, assumptions, warnings, and interpretation notes, see **Method Notes**.
 
-Public 1.0 focuses on local Windows use, data preparation, assumption-guided analysis workflows, sample-size/power/effect-size calculators, and HTML/PDF result output. Excel and Word result export, license activation, paid edition gating, and longitudinal/panel analysis workflows are not exposed in the public 1.0 interface.
+Public 1.2 focuses on local Windows use, data preparation, assumption-guided analysis workflows including Inter-rater Agreement, Longitudinal / Panel Models, Mixed Repeated-Measures ANOVA, Mediation / Moderation Custom Model, sample-size/power/effect-size calculators, and HTML/PDF result output. Excel and Word result export, license activation, and paid edition gating are not exposed in the public 1.2 interface.
 
 ## 1. Start the App
 
@@ -177,7 +177,7 @@ Incorrect measurement levels can lead to inappropriate method choices. For examp
 
 Open **Analysis** and select the workflow that matches the research question.
 
-Public 1.0 analysis menus:
+Public 1.2 analysis menus:
 
 - Frequencies / Descriptives
 - Cross-tabulation Analysis
@@ -188,11 +188,17 @@ Public 1.0 analysis menus:
 - Nonparametric Paired
 - Correlation
 - Reliability
+- Inter-rater Agreement
 - Factor Analysis
 - Principal Components
 - Regression
+- Mediation / Moderation
+- Mediation / Moderation Custom Model
 - GLM
 - Logistic Regression
+- Repeated-measures ANOVA
+- Longitudinal / Panel Models
+- Complex Samples Analysis
 
 General operation:
 
@@ -202,7 +208,56 @@ General operation:
 4. Click the run button.
 5. Review the Model overview and warnings before using the tables.
 
-## 7. GLM Workflow
+
+### 6.1 Mediation / Moderation Analysis
+
+Use **Analysis > Regression / Model > Mediation / Moderation** to run PROCESS-style path models with independent, dependent, mediator, moderator, and covariate roles.
+
+Workflow:
+
+1. Select the analysis variables in the Data tab.
+2. Open **Mediation / Moderation**.
+3. Assign one dependent variable and at least one independent variable.
+4. Add mediators when the research question includes indirect effects, then choose parallel or serial mediation.
+5. Add one moderator when the model includes a moderated path, then choose whether moderation is on the X -> M, M -> Y, or X -> Y path.
+6. Adjust covariates, mean-centering, bootstrap resamples, CI method, simple slopes, and Johnson-Neyman options as needed.
+7. Click **Run Analysis** and review the model summary, path coefficients, direct effects, indirect effects, conditional effects, conditional indirect effects, and diagrams.
+
+The menu supports moderation, simple mediation, serial mediation, direct-path moderation, first-stage moderated mediation, second-stage moderated mediation, and all-path moderated mediation. For indirect and conditional indirect effects, interpret the bootstrap confidence interval before relying on a normal-theory p-value.
+
+The **Mediation / Moderation Custom Model** menu lets you draw the model on a canvas and send the recognized structure to the same analysis engine. The drawn model must match one of the currently supported mediation/moderation model numbers. After running the model, the result canvas shows the fitted diagram and coefficient labels.
+
+### 6.2 Inter-rater Agreement
+
+Use **Analysis > Reliability > Inter-rater Agreement** when two or more raters, judges, coders, or instruments evaluate the same cases.
+
+Typical steps:
+
+1. Select the rater variables in the Data tab.
+2. Open **Inter-rater Agreement**.
+3. Move same-level rater variables into the analysis list. Do not mix continuous ratings with categorical ratings in the same run.
+4. For ordinal ratings, confirm the category order in Step 3 before running the analysis.
+5. Choose weighted-kappa/Gwet weighting, ICC model/type/unit, bootstrap CI, and normality checks when relevant.
+6. Run the analysis and review the recommended index first, then supporting indices, missing-data notes, and warnings.
+
+Continuous ratings prioritize ICC output. Binary, ordinal, and nominal ratings use kappa-family and chance-corrected agreement indices such as Cohen/weighted kappa, Fleiss or Light kappa, Gwet AC1/AC2, and Krippendorff alpha where the data structure supports them.
+
+### 6.3 Mixed Repeated-Measures ANOVA
+
+Use **Analysis > Group Comparison > Repeated-measures ANOVA** for wide-format pre-post or multi-time outcome columns compared across a grouping variable.
+
+Typical steps:
+
+1. Select the group variable, repeated outcome variables, and optional covariates in the Data tab.
+2. Open **Repeated-measures ANOVA**.
+3. Move two or more repeated-measures outcome columns into **Repeated-measures variables** in time order.
+4. Move one grouping variable into **Group variable** and optional baseline or design covariates into **Covariates**.
+5. Choose PP or available-case ITT handling, assumption review, post-hoc comparisons, adjustment method, and time labels.
+6. Run the analysis and review the model overview, within-time and between-time summaries, time/group/interaction tests, sphericity and variance checks, post-hoc results, and any mixed-model alternative notes.
+
+This workflow is for wide-format repeated outcomes. Use **Longitudinal / Panel Models** instead when the data are already in long format or require GEE, LMM, GLMM, or panel FE/RE modeling.
+
+### 6.4 GLM Workflow
 
 Use **Analysis > GLM** for independent-observation generalized linear models with continuous, binary, Gamma-style positive continuous, and count outcomes.
 
@@ -219,7 +274,35 @@ Typical steps:
 
 GLM assumes independent observations. If the same person, cluster, school, hospital, class, or organization contributes repeated or correlated observations, an ordinary GLM may not answer the intended question.
 
-## 8. Review Results
+
+### 6.5 Longitudinal / Panel Analysis
+
+Long-format repeated-measures, clustered, and panel data use model families that match the data structure. GEE targets population-average effects, LMM / GLMM target subject-specific effects, Panel FE targets within-unit change with time-invariant confounding controlled, and Panel RE assumes unit effects are independent of predictors.
+
+### 6.6 Complex Samples Analysis
+
+Complex-sample analysis is under **Analysis > Complex Samples Analysis**. Start with **Complex Samples Design Variables** to define strata, cluster/PSU, weight, finite population correction (FPC), replicate weights, subpopulation/domain, and single-PSU handling. The saved design is then reused automatically by the other complex-sample analysis menus.
+
+Design-variable workflow:
+
+1. Prepare the data and selected variables in the Data tab.
+2. Open **Complex Samples Analysis > Complex Samples Design Variables**.
+3. Assign strata, cluster/PSU, weight, and subpopulation variables in the design-variable block.
+4. Set the variance method, FPC, single-PSU handling, and replicate-weight options in the design-options block.
+5. Use **Save settings** for reusable designs and **Load settings** when the same data structure is used again.
+
+Complex-sample menus:
+
+- **Complex Samples Frequencies / Descriptives**: weighted frequencies, percentages, means, standard errors, confidence intervals, and missing summaries.
+- **Complex Samples Cross-tabulation**: row/column/total percentages, design-based tests, trend tests, and percentage confidence intervals.
+- **Complex Samples t-test / ANOVA**: design-based mean comparisons, post-hoc output, weighted N, design df, and effect sizes.
+- **Complex Samples Correlation**: Pearson or Spearman correlations, design-based standard errors, p-value adjustment, and a correlation matrix.
+- **Complex Samples Regression**: survey-weighted linear regression, design-based Wald/F tests, and model-fit summaries.
+- **Complex Samples Logistic Regression**: survey-weighted logistic regression, odds ratios, Wald tests, and pseudo R-squared summaries.
+
+Complex-sample data should not be treated as a simple random sample when the design is informative. Report the design variables, variance method, design degrees of freedom, standard errors, confidence intervals, single-PSU handling, and whether replicate weights were used.
+
+## 7. Review Results
 
 The result area displays the analysis output for the current workflow. The **Result** tab can collect multiple outputs into a combined result set.
 
@@ -235,9 +318,9 @@ When interpreting results, check:
 
 Warnings and skipped results do not always mean the entire analysis failed. Often they mean that one requested model, comparison, figure, or option could not be computed safely.
 
-## 9. Save Results
+## 8. Save Results
 
-Public 1.0 supports:
+Public 1.2 supports:
 
 - Saving individual or collected results as HTML.
 - Saving individual or collected results as PDF.
@@ -246,7 +329,7 @@ Public 1.0 supports:
 
 For reports or manuscripts, do not paste tables blindly. Confirm the selected method, assumptions, warnings, and skipped-result messages, then describe the analysis method together with the statistical result.
 
-## 10. About and Documentation
+## 9. About and Documentation
 
 The **About** menu separates version information from documentation:
 
@@ -262,7 +345,7 @@ The **About** menu separates version information from documentation:
 - **Open Source Licenses**: third-party package and dependency notices.
 - **About**: version, developer, repository, DOI, and citation information.
 
-## 11. Sample Size, Power, and Effect Size Menus
+## 10. Sample Size, Power, and Effect Size Menus
 
 The **Sample Size** and **Effect Size** menus are separate planning and conversion tools. They are not the same as the full Analysis workflows.
 
@@ -303,7 +386,7 @@ Examples:
 
 Effect Size tools focus on effect sizes that can be used for interpretation or study planning. Some planning targets, such as equivalence margins, confidence-interval half-widths, or SEM/CFA complexity settings, are handled in the Sample Size menu rather than as conventional effect-size outputs.
 
-## 12. Practical Input Tips
+### Practical Input Tips
 
 - The default target power is often `.95`; change it if the study protocol requires `.80` or another value.
 - For log-link count or Gamma models, a regression coefficient `B` corresponds to a ratio effect of `exp(B)`.

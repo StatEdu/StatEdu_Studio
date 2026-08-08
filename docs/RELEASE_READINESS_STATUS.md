@@ -1,10 +1,38 @@
 # StatEdu Studio Release Readiness Status
 
-Last reviewed: 2026-06-28
+Last reviewed: 2026-08-08
 
-Current version: 1.0.1
+Current version: 1.2.0
 
-## Current 1.0.1 Package Snapshot
+Current release candidate source version: 1.2.0
+
+## Current 1.2.0 Public Release Snapshot
+
+- Source metadata has been promoted from the stabilized post-1.1.3 work to `1.2.0`.
+- Electron packaging has been performed locally and is ready for public deployment.
+- Built package: `dist/electron/StatEdu_Studio_Setup_1.2.0.exe`
+- Installer SHA256: `AB68645EAB246C6AE88230214F24750462399D523A42A6100C1D30A833CCF0DA`
+- Blockmap SHA256: `9BC490604CF57323264357B516046863C815647D3F2C4F082E5B04095CCDB8E2`
+- `scripts/release_preflight.ps1 -FullElectronSmoke`: passed on 2026-08-08.
+- `scripts/smoke_electron_release.ps1`: passed on 2026-08-07.
+- `scripts/smoke_electron_app_lifecycle.ps1`: passed on 2026-08-07.
+- `CHANGELOG.md` and `CHANGELOG_KO.md` now show `v1.2.0` as the first version
+  history entry, followed by `v1.1.3`, with developer-version entries removed.
+- The public Regression / Models menu includes `Mediation / Moderation Custom
+  Model` / `매개·조절 사용자 정의 모델`; Electron now sets
+  `STATEDU_ENABLE_CUSTOM_MODEL_CANVAS=1` by default.
+- `README.md`, `README_KO.md`, `CITATION.cff`, `VERSION`,
+  `modules/latent_mplus/app/VERSION`, and Electron package metadata are aligned
+  to `1.2.0`.
+- 1.2 release candidate documents:
+  - `docs/RELEASE_1_2_VERSION_BUMP_CHECKLIST.md`
+  - `docs/RELEASE_1_2_DECISION_LOG.md`
+  - `docs/RELEASE_1_2_PUBLIC_NOTES_DRAFT.md`
+  - `docs/RELEASE_1_2_PACKAGED_VALIDATION_NOTES.md`
+  - `docs/RELEASE_1_2_MANUAL_QA_RECORD.md`
+- Remaining before public deployment: upload/publish steps.
+
+## Historical 1.0.1 Package Snapshot
 
 - Built package: `dist/electron/StatEdu_Studio_Setup_1.0.1.exe`
 - Installer SHA256: `6E408CE402D6DD802B745675485A81C7960E6B8676F44221FDEF81A41CBADC1E`
@@ -59,7 +87,7 @@ The local stabilization checks are passing for the current branch.
 - The 1.0 feature-freeze rule is documented: no new analysis features before 1.0 unless required for correctness, data safety, packaging, or validation coverage.
 - The 1.0 version-bump checklist is tracked in `docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md` and enforced by `scripts/validate_version_metadata.R`.
 
-## Items Still Required Before Public 1.0
+## Historical 1.0 Completion Notes
 
 These items summarize completed 1.0 release-candidate evidence, publication checks, and the verification items that remain relevant for the 1.0.1 stabilization patch.
 
@@ -75,7 +103,7 @@ These items summarize completed 1.0 release-candidate evidence, publication chec
 - README, `CITATION.cff`, and About may publish the DOI citation line after the current verification.
 - Complete `docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md` against the rebuilt 1.0.0 package.
 - Free/Pro/Latent gates, license activation, and in-app updates are explicitly deferred for 1.0 in `docs/RELEASE_1_0_DECISION_LOG.md`; do not claim them in public release materials.
-- Public 1.0 also hides Longitudinal / Panel Models, Excel result export, and Word result export through `STATEDU_PUBLIC_RELEASE=1`; do not claim those surfaces in public release materials.
+- Public 1.0 hides Excel result export and Word result export through `STATEDU_PUBLIC_RELEASE=1`; Longitudinal / Panel Models are exposed in the Analysis menu.
 - Decide whether remaining installer/download infrastructure items in `docs/RELEASE_1_0_DISTRIBUTION_LICENSE_PLAN_KO.md` are implemented for 1.0 or explicitly deferred.
 - Record any additional implementation or deferral decisions in `docs/RELEASE_1_0_DECISION_LOG.md`.
 - Prepare final public release notes from `docs/RELEASE_1_0_PUBLIC_NOTES_DRAFT.md`.

@@ -1,4 +1,4 @@
-      window.easyflowSettingsDirty = false;
+﻿      window.easyflowSettingsDirty = false;
       window.easyflowVarLabels = window.easyflowVarLabels || {};
       window.easyflowMeasurements = window.easyflowMeasurements || {};
       window.easyflowCodingErrorFixValues = window.easyflowCodingErrorFixValues || {};
@@ -6,9 +6,65 @@
 
       function easyflowNormalizeLanguage(language) {
         var value = String(language || '').trim().toLowerCase();
-        if (value === 'en' || value === 'english') return 'en';
+        if (value === 'english' || value === 'eng') value = 'en';
+        if (value === 'korean' || value === 'korea' || value === 'kr') value = 'ko';
+        if (value === 'japanese' || value === 'jp' || value === 'jpn' || value === 'nihongo') value = 'ja';
+        if (value === 'chinese' || value === 'cn' || value === 'zh-cn' || value === 'zh-hans') value = 'zh';
+        var supported = window.easyflowSupportedLanguages || ['ko', 'en'];
+        if (supported.indexOf && supported.indexOf(value) >= 0) return value;
         return 'ko';
       }
+
+      function easyflowNormalizeResultZoom(value) {
+        var number = Number(value);
+        if (!isFinite(number)) number = 150;
+        number = Math.round(number);
+        if (number < 80) number = 80;
+        if (number > 200) number = 200;
+        return number;
+      }
+
+      function easyflowApplyResultZoomValue(value) {
+        var zoomPercent = easyflowNormalizeResultZoom(value);
+        var scale = zoomPercent / 100;
+        var root = document.documentElement;
+        window.easyflowResultZoomPercent = zoomPercent;
+        if (root && root.style) {
+          root.style.setProperty('--statedu-result-zoom', scale.toFixed(3));
+          root.style.setProperty('--statedu-crosstab-result-zoom', (scale * 0.8).toFixed(3));
+          root.style.setProperty('--statedu-landscape-result-zoom', (scale * (2 / 3)).toFixed(3));
+        }
+        try {
+          window.localStorage.setItem('statedu_result_zoom_percent', String(zoomPercent));
+        } catch (error) {}
+        var input = document.getElementById('result_zoom_percent');
+        if (input && input.value !== String(zoomPercent)) {
+          input.value = String(zoomPercent);
+          if (input.dispatchEvent) input.dispatchEvent(new Event('change', {bubbles: true}));
+        }
+        return zoomPercent;
+      }
+
+      function easyflowInitialResultZoom() {
+        var initial = document.getElementById('statedu_initial_result_zoom');
+        if (initial && initial.value) return easyflowNormalizeResultZoom(initial.value);
+        if (window.easyflowResultZoomPercent) return easyflowNormalizeResultZoom(window.easyflowResultZoomPercent);
+        try {
+          var stored = window.localStorage.getItem('statedu_result_zoom_percent') || '';
+          if (stored) return easyflowNormalizeResultZoom(stored);
+        } catch (error) {}
+        return 150;
+      }
+
+      window.easyflowApplyResultZoom = function() {
+        var input = document.getElementById('result_zoom_percent');
+        var value = input && input.value ? input.value : easyflowInitialResultZoom();
+        var zoomPercent = easyflowApplyResultZoomValue(value);
+        if (window.Shiny && typeof Shiny.setInputValue === 'function') {
+          Shiny.setInputValue('result_zoom_percent', zoomPercent, {priority: 'event'});
+        }
+        return false;
+      };
 
       function easyflowStoredLanguage() {
         try {
@@ -43,6 +99,84 @@
         return 'ko';
       }
 
+      function easyflowSelectedLanguageInput() {
+        var input = document.getElementById('app_language');
+        var language = '';
+        if (input && input.selectize && typeof input.selectize.getValue === 'function') {
+          language = input.selectize.getValue();
+        } else if (input && input.value) {
+          language = input.value;
+        }
+        return language ? easyflowNormalizeLanguage(language) : '';
+      }
+
+      function easyflowMarkPreferencesSaveStarted() {
+        window.easyflowPreferencesSaveStartedAt = Date.now();
+        try {
+          window.sessionStorage.setItem('statedu_preferences_save_started_at', String(window.easyflowPreferencesSaveStartedAt));
+        } catch (error) {}
+      }
+
+      function easyflowRecentPreferencesSave() {
+        var startedAt = Number(window.easyflowPreferencesSaveStartedAt || 0);
+        if (!startedAt) {
+          try {
+            startedAt = Number(window.sessionStorage.getItem('statedu_preferences_save_started_at') || 0);
+          } catch (error) {
+            startedAt = 0;
+          }
+        }
+        return isFinite(startedAt) && startedAt > 0 && Date.now() - startedAt < 15000;
+      }
+
+      function easyflowRecoverPreferencesDisconnect() {
+        var overlay = document.getElementById('shiny-disconnected-overlay');
+        if (!overlay || !easyflowRecentPreferencesSave()) return false;
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        var now = Date.now();
+        var lastReload = 0;
+        try {
+          lastReload = Number(window.sessionStorage.getItem('statedu_preferences_disconnect_reload_at') || 0);
+        } catch (error) {
+          lastReload = 0;
+        }
+        if (isFinite(lastReload) && now - lastReload < 8000) return true;
+        try {
+          window.sessionStorage.setItem('statedu_preferences_disconnect_reload_at', String(now));
+        } catch (error) {}
+        window.setTimeout(function() {
+          var connected = !!(window.Shiny && Shiny.shinyapp && typeof Shiny.shinyapp.isConnected === 'function' && Shiny.shinyapp.isConnected());
+          if (document.getElementById('shiny-disconnected-overlay') || !connected) {
+            window.location.reload();
+          }
+        }, 150);
+        return true;
+      }
+
+      function easyflowBindPreferencesSaveRecovery() {
+        if (window.easyflowPreferencesSaveRecoveryBound) return;
+        window.easyflowPreferencesSaveRecoveryBound = true;
+        document.addEventListener('click', function(event) {
+          var target = event.target;
+          if (target && target.closest && target.closest('#apply_general_preferences')) {
+            easyflowMarkPreferencesSaveStarted();
+            easyflowSchedulePreferencesDisconnectRecovery();
+          }
+        }, true);
+        if (window.MutationObserver) {
+          var observer = new MutationObserver(function() {
+            easyflowRecoverPreferencesDisconnect();
+          });
+          observer.observe(document.documentElement || document.body, { childList: true, subtree: true });
+        }
+      }
+
+      function easyflowSchedulePreferencesDisconnectRecovery() {
+        [0, 100, 300, 750, 1500, 3000, 6000, 10000].forEach(function(delay) {
+          window.setTimeout(easyflowRecoverPreferencesDisconnect, delay);
+        });
+      }
+
       function easyflowSetCurrentLanguage(language) {
         language = easyflowNormalizeLanguage(language);
         window.easyflowAppLanguage = language;
@@ -52,28 +186,124 @@
         return language;
       }
 
+      function easyflowClearTransientOverlays() {
+        if (window.jQuery) {
+          try {
+            window.jQuery('.modal.in, .modal.show').modal('hide');
+          } catch (error) {}
+        }
+        document.querySelectorAll('.modal-backdrop, .custom-model-modal-backdrop').forEach(function(node) {
+          if (node && node.parentNode) node.parentNode.removeChild(node);
+        });
+        document.querySelectorAll('.recalculating').forEach(function(node) {
+          if (node && node.classList) node.classList.remove('recalculating');
+        });
+        document.querySelectorAll('[aria-busy="true"]').forEach(function(node) {
+          if (node) node.removeAttribute('aria-busy');
+        });
+        if (document.documentElement && document.documentElement.classList) {
+          document.documentElement.classList.remove('shiny-busy');
+        }
+        if (document.body && document.body.classList) {
+          document.body.classList.remove('modal-open', 'shiny-busy');
+        }
+        if (document.body && document.body.style) {
+          document.body.style.removeProperty('padding-right');
+          document.body.style.removeProperty('overflow');
+        }
+        easyflowRecoverPreferencesDisconnect();
+      }
+
+      function easyflowExcelImportReviewVisible() {
+        var panel = document.querySelector('.excel-import-main-panel');
+        if (!panel) return false;
+        var style = window.getComputedStyle ? window.getComputedStyle(panel) : null;
+        return !style || (style.display !== 'none' && style.visibility !== 'hidden');
+      }
+
+      function easyflowClearExcelImportBusyState() {
+        var visible = easyflowExcelImportReviewVisible();
+        if (document.body && document.body.classList) {
+          document.body.classList.toggle('statedu-excel-import-review-visible', visible);
+        }
+        if (!visible) return;
+        [
+          '#data_steps',
+          '#data_loaded_message',
+          '#excel_import_note',
+          '#excel_import_preview',
+          '.excel-import-main-panel',
+          '.excel-import-main-panel *'
+        ].forEach(function(selector) {
+          document.querySelectorAll(selector).forEach(function(node) {
+            if (node && node.classList) node.classList.remove('recalculating');
+            if (node) node.removeAttribute('aria-busy');
+          });
+        });
+      }
+
+      function easyflowScheduleClearExcelImportBusyState() {
+        [0, 50, 150, 350, 750, 1500, 3000].forEach(function(delay) {
+          window.setTimeout(easyflowClearExcelImportBusyState, delay);
+        });
+      }
+
+      function easyflowScheduleClearTransientOverlays() {
+        [0, 50, 250, 750, 1500, 3000].forEach(function(delay) {
+          window.setTimeout(easyflowClearTransientOverlays, delay);
+        });
+      }
+
       function easyflowStaticLabelLanguage() {
         return easyflowNormalizeLanguage(window.easyflowAppLanguage || easyflowUrlLanguage());
       }
 
       function easyflowStaticLanguageLookup(language) {
         language = easyflowNormalizeLanguage(language);
-        var fromKey = language === 'en' ? 'ko' : 'en';
-        var toKey = language === 'en' ? 'en' : 'ko';
+        var supported = window.easyflowSupportedLanguages || ['ko', 'en'];
+        var toKey = language;
         var lookup = {};
         var labels = window.easyflowStaticLanguageLabels || [];
         Array.prototype.forEach.call(labels, function(row) {
           if (!row) return;
-          var from = String(row[fromKey] || '').trim();
           var to = String(row[toKey] || '').trim();
-          if (from && to && from !== to) lookup[from] = to;
+          if (!to) return;
+          Array.prototype.forEach.call(supported, function(fromKey) {
+            if (fromKey === toKey) return;
+            var from = String(row[fromKey] || '').trim();
+            if (from && from !== to) lookup[from] = to;
+          });
         });
         return lookup;
+      }
+
+      function easyflowCustomModelCanvasMenuLabel(language) {
+        language = easyflowNormalizeLanguage(language);
+        var labels = {
+          ko: '\uB9E4\uAC1C\u00B7\uC870\uC808 \uC0AC\uC6A9\uC790 \uC815\uC758 \uBAA8\uB378',
+          en: 'Mediation / Moderation Custom Model',
+          ja: '\u5A92\u4ECB\u30FB\u8ABF\u6574\u30AB\u30B9\u30BF\u30E0\u30E2\u30C7\u30EB',
+          zh: '\u4E2D\u4ECB / \u8C03\u8282\u81EA\u5B9A\u4E49\u6A21\u578B',
+          es: 'Modelo personalizado de mediacion / moderacion',
+          fr: 'Modele personnalise de mediation / moderation',
+          de: 'Benutzerdefiniertes Mediations-/Moderationsmodell',
+          vi: 'Mo hinh tuy chinh trung gian / dieu tiet'
+        };
+        var lookup = easyflowStaticLanguageLookup(language);
+        if (lookup[labels.en]) return lookup[labels.en];
+        if (lookup[labels.ko]) return lookup[labels.ko];
+        return labels[language] || labels.en;
       }
 
       function easyflowApplyStaticLanguageLabels(language) {
         language = easyflowNormalizeLanguage(language);
         var lookup = easyflowStaticLanguageLookup(language);
+        if (document.querySelectorAll) {
+          Array.prototype.forEach.call(document.querySelectorAll('a[data-value="analysis_custom_model_canvas"]'), function(link) {
+            var label = easyflowCustomModelCanvasMenuLabel(language);
+            if (label) link.textContent = label;
+          });
+        }
         if (!document.querySelectorAll || Object.keys(lookup).length === 0) return;
         var roots = document.querySelectorAll('.navbar, .navbar-nav, .dropdown-menu');
         var nodes = [];
@@ -138,6 +368,10 @@
       }
 
       function easyflowCurrentLanguage() {
+        var selectedLanguage = easyflowSelectedLanguageInput();
+        if (selectedLanguage) {
+          return easyflowSetCurrentLanguage(selectedLanguage);
+        }
         var urlLanguage = '';
         try {
           urlLanguage = new URL(window.location.href).searchParams.get('lang') || '';
@@ -204,6 +438,8 @@
             input.selectize.setValue(language, true);
           }
         }
+        var initial = document.getElementById('statedu_initial_language');
+        if (initial) initial.value = language;
         try {
           window.localStorage.setItem('statedu_app_language', language);
         } catch (error) {
@@ -213,6 +449,30 @@
           Shiny.setInputValue('app_language', language, {priority: 'event'});
           Shiny.setInputValue('statedu_url_language', language, {priority: 'event'});
         }
+        return easyflowNavigateToLanguage(language, true);
+      }
+
+      function easyflowApplyLanguageInPlace(language) {
+        language = easyflowSetCurrentLanguage(language);
+        easyflowRefreshStaticLanguageLabels(language);
+        var input = document.getElementById('app_language');
+        if (input) {
+          input.value = language;
+          if (input.selectize && typeof input.selectize.setValue === 'function') {
+            input.selectize.setValue(language, true);
+          }
+        }
+        var initial = document.getElementById('statedu_initial_language');
+        if (initial) initial.value = language;
+        try {
+          window.localStorage.setItem('statedu_app_language', language);
+        } catch (error) {}
+        easyflowNavigateToLanguage(language, true);
+        return language;
+      }
+
+      function easyflowNavigateToLanguage(language, reloadPage) {
+        language = easyflowNormalizeLanguage(language);
         var href = window.location && window.location.href ? window.location.href : '';
         var url;
         try {
@@ -222,33 +482,85 @@
         }
         url.searchParams.set('lang', language);
         var nextHref = url.toString();
-        if (nextHref === window.location.href) {
-          window.location.reload();
-        } else {
-          window.location.href = nextHref;
+        if (reloadPage) {
+          if (nextHref === window.location.href) {
+            window.location.reload();
+          } else {
+            window.location.replace(nextHref);
+          }
+          return false;
+        }
+        if (nextHref !== window.location.href) {
+          if (window.history && typeof window.history.replaceState === 'function') {
+            window.history.replaceState(window.history.state, document.title, nextHref);
+          } else {
+            window.location.href = nextHref;
+          }
         }
         return false;
       }
 
       window.easyflowApplyAppLanguage = function() {
-        var input = document.getElementById('app_language');
-        var language = input && input.selectize && typeof input.selectize.getValue === 'function'
-          ? input.selectize.getValue()
-          : (input && input.value ? input.value : 'ko');
+        var language = easyflowSelectedLanguageInput() || 'ko';
+        language = easyflowSetCurrentLanguage(language);
+        easyflowRefreshStaticLanguageLabels(language);
+        var initial = document.getElementById('statedu_initial_language');
+        if (initial) initial.value = language;
+        try {
+          window.localStorage.setItem('statedu_app_language', language);
+        } catch (error) {}
+        if (window.Shiny && typeof Shiny.setInputValue === 'function') {
+          window.easyflowLanguageApplyPending = language;
+          Shiny.setInputValue('app_language', language, {priority: 'event'});
+          Shiny.setInputValue('statedu_url_language', language, {priority: 'event'});
+          Shiny.setInputValue('apply_app_language', language + ':' + Date.now(), {priority: 'event'});
+          window.setTimeout(function() {
+            if (window.easyflowLanguageApplyPending === language) {
+              window.easyflowLanguageApplyPending = '';
+              easyflowApplyLanguageValue(language);
+            }
+          }, 2500);
+          return false;
+        }
         return easyflowApplyLanguageValue(language);
       };
 
       easyflowSetCurrentLanguage(easyflowUrlLanguage());
+      easyflowApplyResultZoomValue(easyflowInitialResultZoom());
       easyflowScheduleStaticLanguageLabels();
 
       if (window.Shiny && typeof Shiny.addCustomMessageHandler === 'function') {
         window.easyflowLanguageHandlerBound = true;
-        Shiny.addCustomMessageHandler('statedu-apply-language', easyflowApplyLanguageValue);
+        Shiny.addCustomMessageHandler('statedu-apply-language', function(language) {
+          window.easyflowLanguageApplyPending = '';
+          return easyflowApplyLanguageValue(language);
+        });
+        Shiny.addCustomMessageHandler('statedu-apply-result-zoom', easyflowApplyResultZoomValue);
+        Shiny.addCustomMessageHandler('statedu-preferences-saved', function(payload) {
+          payload = payload || {};
+          if (payload.language) easyflowApplyLanguageInPlace(payload.language);
+          if (payload.result_zoom_percent) easyflowApplyResultZoomValue(payload.result_zoom_percent);
+          easyflowMarkPreferencesSaveStarted();
+          easyflowSchedulePreferencesDisconnectRecovery();
+          easyflowScheduleClearTransientOverlays();
+        });
       } else {
         document.addEventListener('shiny:connected', function() {
           if (window.Shiny && typeof Shiny.addCustomMessageHandler === 'function' && !window.easyflowLanguageHandlerBound) {
             window.easyflowLanguageHandlerBound = true;
-            Shiny.addCustomMessageHandler('statedu-apply-language', easyflowApplyLanguageValue);
+            Shiny.addCustomMessageHandler('statedu-apply-language', function(language) {
+              window.easyflowLanguageApplyPending = '';
+              return easyflowApplyLanguageValue(language);
+            });
+            Shiny.addCustomMessageHandler('statedu-apply-result-zoom', easyflowApplyResultZoomValue);
+            Shiny.addCustomMessageHandler('statedu-preferences-saved', function(payload) {
+              payload = payload || {};
+              if (payload.language) easyflowApplyLanguageInPlace(payload.language);
+              if (payload.result_zoom_percent) easyflowApplyResultZoomValue(payload.result_zoom_percent);
+              easyflowMarkPreferencesSaveStarted();
+              easyflowSchedulePreferencesDisconnectRecovery();
+              easyflowScheduleClearTransientOverlays();
+            });
           }
         });
       }
@@ -260,18 +572,27 @@
       document.addEventListener('shiny:connected', function() {
         easyflowScheduleAppLanguageSend();
         easyflowScheduleStaticLanguageLabels();
+        easyflowBindPreferencesSaveRecovery();
+        easyflowScheduleClearExcelImportBusyState();
       });
+      document.addEventListener('shiny:bound', easyflowScheduleClearExcelImportBusyState);
+      document.addEventListener('shiny:value', easyflowScheduleClearExcelImportBusyState);
+      document.addEventListener('shiny:idle', easyflowScheduleClearExcelImportBusyState);
       document.addEventListener('DOMContentLoaded', function() {
         easyflowEnsureStoredLanguageUrl();
         easyflowScheduleAppLanguageSend();
         easyflowScheduleStaticLanguageLabels();
         easyflowObserveStaticLanguageLabels();
+        easyflowBindPreferencesSaveRecovery();
+        easyflowScheduleClearExcelImportBusyState();
       });
       if (document.readyState !== 'loading') {
         easyflowEnsureStoredLanguageUrl();
         easyflowScheduleAppLanguageSend();
         easyflowScheduleStaticLanguageLabels();
         easyflowObserveStaticLanguageLabels();
+        easyflowBindPreferencesSaveRecovery();
+        easyflowScheduleClearExcelImportBusyState();
       }
 
       window.easyflowRestoreCodingErrorFixInputs = function(root) {
@@ -292,6 +613,67 @@
         return element.getClientRects().length > 0;
       }
       window.isEasyflowVisibleElement = isEasyflowVisibleElement;
+
+      window.easyflowViewportState = window.easyflowViewportState || {};
+
+      function easyflowViewportKey(scope) {
+        return scope || 'default';
+      }
+
+      function easyflowFindScrollBody(root) {
+        if (!root) return null;
+        if (root.jquery) root = root.get(0);
+        if (!root) return null;
+        if (root.classList && root.classList.contains('dataTables_scrollBody')) return root;
+        return root.querySelector ? root.querySelector('.dataTables_scrollBody') : null;
+      }
+
+      window.easyflowRememberViewport = function(scope, root) {
+        var key = easyflowViewportKey(scope);
+        var scrollBody = easyflowFindScrollBody(root || document);
+        window.easyflowViewportState[key] = {
+          y: window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0,
+          x: window.pageXOffset || document.documentElement.scrollLeft || document.body.scrollLeft || 0,
+          tableX: scrollBody ? scrollBody.scrollLeft : null,
+          createdAt: Date.now(),
+          pending: true
+        };
+      };
+
+      window.easyflowRestoreViewport = function(scope, options) {
+        var key = easyflowViewportKey(scope);
+        var state = window.easyflowViewportState[key];
+        if (!state || !state.pending) return;
+        if (state.createdAt && Date.now() - state.createdAt > 5000) {
+          state.pending = false;
+          return;
+        }
+        options = options || {};
+        var root = options.root || document;
+        var scrollBody = easyflowFindScrollBody(root);
+        if (scrollBody && state.tableX !== null && typeof state.tableX !== 'undefined') {
+          scrollBody.scrollLeft = state.tableX;
+        }
+        window.scrollTo(
+          typeof state.x === 'number' ? state.x : (window.pageXOffset || 0),
+          typeof state.y === 'number' ? state.y : (window.pageYOffset || 0)
+        );
+        if (!options.keepPending) {
+          state.pending = false;
+        }
+      };
+
+      window.easyflowScheduleViewportRestore = function(scope, root, delays) {
+        delays = delays || [0, 50, 150, 300];
+        delays.forEach(function(delay, index) {
+          window.setTimeout(function() {
+            window.easyflowRestoreViewport(scope, {
+              root: root || document,
+              keepPending: index < delays.length - 1
+            });
+          }, delay);
+        });
+      };
 
       document.addEventListener('click', function(event) {
         if (!event.target || !event.target.closest) return;
@@ -1002,14 +1384,16 @@
               },
               items: {
                 data_editor_coding_error_check: 'Auto coding error check',
-                data_editor_likert: 'Auto Likert conversion',
-                data_editor_missing_values: 'Auto missing values',
+                data_editor_likert: 'Auto Likert Conversion',
+                data_editor_missing_values: 'Auto Missing Values',
                 data_editor_wide_long: 'Wide to Long',
-                data_editor_recode_different: 'Auto reverse coding',
-                data_editor_variable_calculation: 'Auto variable calculation',
-                data_editor_variable_transformation: 'Variable transformation',
-                data_editor_recode_same: 'Recode variable',
-                data_editor_variable_rename: 'Rename variable',
+                data_editor_merge: 'Merge',
+                data_editor_id_aggregate: 'ID aggregation',
+                data_editor_recode_different: 'Auto Reverse Coding',
+                data_editor_variable_calculation: 'Auto Variable Calculation',
+                data_editor_variable_transformation: 'Variable Transformation',
+                data_editor_recode_same: 'Recode Variable',
+                data_editor_variable_rename: 'Rename Variable',
                 calculator_hint8: 'HINT8',
                 calculator_eq5d: 'EQ-5D',
                 calculator_metabolic: 'Metabolic syndrome',
@@ -1049,6 +1433,8 @@
                 data_editor_likert: 'Likert \uC790\uB3D9 \uBCC0\uD658',
                 data_editor_missing_values: '\uACB0\uCE21\uAC12 \uC790\uB3D9\uCC98\uB9AC',
                 data_editor_wide_long: '\uC640\uC774\uB4DC-\uB871 \uBCC0\uD658',
+                data_editor_merge: '\uB370\uC774\uD130 \uBCD1\uD569',
+                data_editor_id_aggregate: 'ID \uC9D1\uACC4',
                 data_editor_recode_different: '\uC5ED\uCF54\uB529 \uC790\uB3D9\uCC98\uB9AC',
                 data_editor_variable_calculation: '\uBCC0\uC218 \uC790\uB3D9 \uACC4\uC0B0',
                 data_editor_variable_transformation: '\uBCC0\uC218 \uBCC0\uD658',
@@ -1107,7 +1493,7 @@
         function easyflowTranslateNavbarLabels() {
           var language = easyflowCurrentLanguage();
           var dictionaries = easyflowMenuLabelDictionaries();
-          var dictionary = dictionaries[language] || dictionaries.ko;
+          var dictionary = dictionaries[language] || dictionaries.en;
           var topLookup = easyflowTopLabelLookup();
 
           window.jQuery('.navbar-nav > li > a').each(function() {
@@ -1181,16 +1567,26 @@
                 't-test / ANOVA': 't-test / ANOVA',
                 'Paired test': 'Paired test',
                 ANCOVA: 'ANCOVA',
+                'Repeated-measures ANOVA': 'Repeated-measures ANOVA',
                 'Nonparametric Tests': 'Nonparametric Tests',
                 'Nonparametric Paired': 'Nonparametric Paired',
                 Correlation: 'Correlation',
                 Reliability: 'Reliability',
+                'Inter-rater Agreement': 'Inter-rater Agreement',
                 'Factor Analysis': 'Factor Analysis',
                 'Principal Components': 'Principal Components',
                 Regression: 'Regression',
                 analysis_mediation_moderation: 'Mediation / Moderation',
                 'Generalized Linear Model (GLM)': 'Generalized Linear Model (GLM)',
                 analysis_logistic_regression: 'Logistic Regression',
+                analysis_complex_design: 'Complex Samples Design Variables',
+                analysis_complex_frequencies: 'Complex Samples Frequencies / Descriptives',
+                analysis_complex_crosstabs: 'Complex Samples Cross-tabulation',
+                analysis_complex_ttest_anova: 'Complex Samples t-test / ANOVA',
+                analysis_complex_correlation: 'Complex Samples Correlation',
+                analysis_complex_regression: 'Complex Samples Regression',
+                analysis_complex_logistic: 'Complex Samples Logistic Regression',
+                analysis_custom_model_canvas: 'Mediation / Moderation Custom Model',
                 'Longitudinal / Panel Models': 'Longitudinal / Panel Models'
               },
               itemLabelsKo: {
@@ -1199,16 +1595,26 @@
                 't-test / ANOVA': 't-test / ANOVA',
                 'Paired test': '\uB300\uC751\uD45C\uBCF8 \uAC80\uC815',
                 ANCOVA: 'ANCOVA',
+                'Repeated-measures ANOVA': '\uBC18\uBCF5\uCE21\uC815 \uBD84\uC0B0\uBD84\uC11D',
                 'Nonparametric Tests': '\uBE44\uBAA8\uC218 \uAC80\uC815',
                 'Nonparametric Paired': '\uB300\uC751 \uBE44\uBAA8\uC218 \uAC80\uC815',
                 Correlation: '\uC0C1\uAD00\uBD84\uC11D',
                 Reliability: '\uC2E0\uB8B0\uB3C4',
+                'Inter-rater Agreement': '\uD3C9\uAC00\uC790\uAC04 \uC77C\uCE58\uB3C4',
                 'Factor Analysis': '\uC694\uC778\uBD84\uC11D',
                 'Principal Components': '\uC8FC\uC131\uBD84\uBD84\uC11D',
                 Regression: '\uD68C\uADC0\uBD84\uC11D',
                 analysis_mediation_moderation: '\uB9E4\uAC1C\u00B7\uC870\uC808',
                 'Generalized Linear Model (GLM)': '\uC77C\uBC18\uD654 \uC120\uD615\uBAA8\uD615(GLM)',
                 analysis_logistic_regression: '\uB85C\uC9C0\uC2A4\uD2F1 \uD68C\uADC0',
+                analysis_complex_design: '\uBCF5\uD569\uD45C\uBCF8 \uC124\uACC4\uBCC0\uC218',
+                analysis_complex_frequencies: '\uBCF5\uD569\uD45C\uBCF8 \uBE48\uB3C4\uBD84\uC11D / \uAE30\uC220\uD1B5\uACC4\uBD84\uC11D',
+                analysis_complex_crosstabs: '\uBCF5\uD569\uD45C\uBCF8 \uAD50\uCC28\uBD84\uC11D',
+                analysis_complex_ttest_anova: '\uBCF5\uD569\uD45C\uBCF8 t-test / ANOVA',
+                analysis_complex_correlation: '\uBCF5\uD569\uD45C\uBCF8 \uC0C1\uAD00\uBD84\uC11D',
+                analysis_complex_regression: '\uBCF5\uD569\uD45C\uBCF8 \uD68C\uADC0\uBD84\uC11D',
+                analysis_complex_logistic: '\uBCF5\uD569\uD45C\uBCF8 \uB85C\uC9C0\uC2A4\uD2F1 \uD68C\uADC0\uBD84\uC11D',
+                analysis_custom_model_canvas: '\uB9E4\uAC1C\u00B7\uC870\uC808 \uC0AC\uC6A9\uC790 \uC815\uC758 \uBAA8\uB378',
                 'Longitudinal / Panel Models': '\uC885\uB2E8 / \uD328\uB110 \uBAA8\uD615'
               },
               groups: [
@@ -1220,7 +1626,7 @@
                 {
                   title: 'Group Comparisons',
                   titleKo: '\uC9D1\uB2E8 \uBE44\uAD50',
-                  values: ['t-test / ANOVA', 'Paired test', 'ANCOVA']
+                  values: ['t-test / ANOVA', 'Paired test', 'ANCOVA', 'Repeated-measures ANOVA']
                 },
                 {
                   title: 'Nonparametric Tests',
@@ -1230,17 +1636,22 @@
                 {
                   title: 'Association & Measurement',
                   titleKo: '\uC5F0\uAD00 / \uCE21\uC815',
-                  values: ['Correlation', 'Reliability', 'Factor Analysis', 'Principal Components']
+                  values: ['Correlation', 'Reliability', 'Inter-rater Agreement', 'Factor Analysis', 'Principal Components']
                 },
                 {
                   title: 'Regression & Models',
                   titleKo: '\uD68C\uADC0 / \uBAA8\uD615',
-                  values: ['Regression', 'analysis_mediation_moderation', 'Generalized Linear Model (GLM)', 'analysis_logistic_regression']
+                  values: ['Regression', 'analysis_mediation_moderation', 'analysis_custom_model_canvas', 'Generalized Linear Model (GLM)', 'analysis_logistic_regression']
                 },
                 {
                   title: 'Longitudinal / Panel',
                   titleKo: '\uC885\uB2E8 / \uD328\uB110',
                   values: ['Longitudinal / Panel Models']
+                },
+                {
+                  title: 'Complex Samples',
+                  titleKo: '\uBCF5\uD569\uD45C\uBCF8\uBD84\uC11D',
+                  values: ['analysis_complex_design', 'analysis_complex_frequencies', 'analysis_complex_crosstabs', 'analysis_complex_ttest_anova', 'analysis_complex_correlation', 'analysis_complex_regression', 'analysis_complex_logistic']
                 }
               ],
               aliasItems: []
@@ -1445,8 +1856,42 @@
           });
         }
 
+        function easyflowMenuLabelCandidates(config, language) {
+          var lookup = easyflowStaticLanguageLookup(language);
+          var labels = (config.menuLabels || [config.menu]).slice();
+          labels.forEach(function(label) {
+            if (lookup[label] && labels.indexOf(lookup[label]) < 0) labels.push(lookup[label]);
+          });
+          return labels;
+        }
+
+        function easyflowGroupedMenuText(config, value, language) {
+          if (value === 'analysis_custom_model_canvas') {
+            return easyflowCustomModelCanvasMenuLabel(language);
+          }
+          var itemLabelsEn = config.itemLabelsEn || {};
+          var itemLabelsKo = config.itemLabelsKo || {};
+          if (language === 'ko' && itemLabelsKo[value]) return itemLabelsKo[value];
+          if (language === 'en' && itemLabelsEn[value]) return itemLabelsEn[value];
+          var lookup = easyflowStaticLanguageLookup(language);
+          var candidates = [itemLabelsEn[value], itemLabelsKo[value], value];
+          for (var index = 0; index < candidates.length; index += 1) {
+            var candidate = candidates[index];
+            if (candidate && lookup[candidate]) return lookup[candidate];
+          }
+          return itemLabelsEn[value] || itemLabelsKo[value] || '';
+        }
+
+        function easyflowGroupedTitleText(group, language) {
+          if (language === 'ko' && group.titleKo) return group.titleKo;
+          if (language === 'en' && group.title) return group.title;
+          var lookup = easyflowStaticLanguageLookup(language);
+          return lookup[group.title] || lookup[group.titleKo] || group.title || group.titleKo || '';
+        }
+
         function groupNavbarDropdownItems(config) {
-          var menuLabels = config.menuLabels || [config.menu];
+          var menuLanguage = easyflowCurrentLanguage();
+          var menuLabels = easyflowMenuLabelCandidates(config, menuLanguage);
           var navItem = window.jQuery('.navbar-nav > li.dropdown > a.dropdown-toggle')
             .filter(function() {
               var label = window.jQuery(this).clone().children().remove().end().text().trim();
@@ -1455,25 +1900,21 @@
             .parent()
             .first();
           if (!navItem.length) return;
-          var menuLanguage = easyflowCurrentLanguage();
           var useKorean = menuLanguage === 'ko';
-          var itemLabelsEn = config.itemLabelsEn || {};
-          var itemLabelsKo = config.itemLabelsKo || {};
           var menu = navItem.children('ul.dropdown-menu').first();
           if (!menu.length) return;
           if (menu.attr('data-easyflow-menu-grouped') === config.marker) {
-            if (menu.attr('data-easyflow-menu-language') === menuLanguage) return;
             config.groups.forEach(function(group) {
               var firstValue = group.values[0];
               var groupLink = menu.find('a[data-value="' + firstValue + '"]').first();
               var groupNode = groupLink.closest('.analysis-menu-section');
-              var groupTitleText = useKorean && group.titleKo ? group.titleKo : group.title;
+              var groupTitleText = easyflowGroupedTitleText(group, menuLanguage);
               if (!groupNode.length) return;
               groupNode.children('.analysis-menu-section-title').first().text(groupTitleText);
               group.values.forEach(function(value) {
                 var link = menu.find('a[data-value="' + value + '"]').first();
                 if (!link.length) return;
-                var itemLabel = useKorean ? itemLabelsKo[value] : itemLabelsEn[value];
+                var itemLabel = easyflowGroupedMenuText(config, value, menuLanguage);
                 if (itemLabel) link.text(itemLabel);
               });
             });
@@ -1494,7 +1935,7 @@
             var groupItems = [];
             group.values.forEach(function(value) {
               if (existingItems[value]) {
-                var itemLabel = useKorean ? itemLabelsKo[value] : itemLabelsEn[value];
+                var itemLabel = easyflowGroupedMenuText(config, value, menuLanguage);
                 if (itemLabel) {
                   existingItems[value].children('a[data-value]').first().text(itemLabel);
                 }
@@ -1504,7 +1945,7 @@
             });
             if (groupItems.length === 0) return;
             var groupNode = window.jQuery('<li class="analysis-menu-section" role="presentation"></li>');
-            var groupTitleText = useKorean && group.titleKo ? group.titleKo : group.title;
+            var groupTitleText = easyflowGroupedTitleText(group, menuLanguage);
             var groupTitle = window.jQuery('<button type="button" class="analysis-menu-section-title" aria-expanded="false"></button>').text(groupTitleText);
             var groupList = window.jQuery('<ul class="analysis-menu-section-items" role="menu"></ul>');
             groupItems.forEach(function(item) {
@@ -1910,6 +2351,16 @@
         return false;
       };
 
+      window.easyflowApplyAllVariableSelection = function() {
+        if (!window.Shiny) return false;
+        flushEasyflowInputs();
+        var state = submitEasyflowTableState();
+        state.select_all_loaded = true;
+        state.nonce = Date.now() + Math.random();
+        Shiny.setInputValue('apply_all_variable_request', state, {priority: 'event'});
+        return false;
+      };
+
       window.easyflowApplySelectedVariableReview = function() {
         if (!window.Shiny) return false;
         flushEasyflowInputs();
@@ -2078,25 +2529,30 @@
 
       window.easyflowApplyRoleSelection = function() {
         if (!window.Shiny) return false;
+        if (window.easyflowRememberViewport) window.easyflowRememberViewport('variable_table', document.getElementById('variable_table') || document);
         flushEasyflowInputs();
         var state = submitEasyflowTableState();
         state.nonce = Date.now() + Math.random();
         Shiny.setInputValue('apply_role_request', state, {priority: 'event'});
+        if (window.easyflowScheduleViewportRestore) window.easyflowScheduleViewportRestore('variable_table', document.getElementById('variable_table') || document);
         return false;
       };
 
       window.easyflowSelectRole = function(role) {
         if (!window.Shiny) return true;
+        if (window.easyflowRememberViewport) window.easyflowRememberViewport('variable_table', document.getElementById('variable_table') || document);
         flushEasyflowInputs();
         var state = submitEasyflowTableState();
         state.role = role || '';
         state.nonce = Date.now() + Math.random();
         Shiny.setInputValue('role_switch_request', state, {priority: 'event'});
+        if (window.easyflowScheduleViewportRestore) window.easyflowScheduleViewportRestore('variable_table', document.getElementById('variable_table') || document);
         return false;
       };
 
       window.easyflowFlushVariableTableState = function() {
         if (!window.Shiny) return true;
+        if (window.easyflowRememberViewport) window.easyflowRememberViewport('variable_table', document.getElementById('variable_table') || document);
         flushEasyflowInputs();
         var state = submitEasyflowTableState();
         Shiny.setInputValue('variable_table_state', {
@@ -2107,6 +2563,7 @@
           debug_measurement_count: state.debug_measurement_count || 0,
           nonce: Date.now() + Math.random()
         }, {priority: 'event'});
+        if (window.easyflowScheduleViewportRestore) window.easyflowScheduleViewportRestore('variable_table', document.getElementById('variable_table') || document);
         return true;
       };
 
@@ -2331,12 +2788,6 @@
           nonce: Date.now() + Math.random()
         }, {priority: 'event'});
       });
-
-      document.addEventListener('click', function(event) {
-        var button = event.target && event.target.closest ? event.target.closest('button[id^="effect_size_"][id$="_calculate"]') : null;
-        if (!button || !window.Shiny) return;
-        Shiny.setInputValue(button.id, Date.now() + Math.random(), {priority: 'event'});
-      }, true);
 
       document.addEventListener('click', function(event) {
         var navLink = event.target && event.target.closest ? event.target.closest('.navbar-nav a') : null;
@@ -3350,3 +3801,39 @@
           nonce: Date.now() + Math.random()
         }, {priority: 'event'});
       }, true);
+
+      (function() {
+        function syncAutoMethod(residualId, autoId) {
+          var residual = document.getElementById(residualId);
+          var auto = document.getElementById(autoId);
+          if (!residual || !auto) return;
+
+          var disabled = !residual.checked;
+          auto.disabled = disabled;
+          var wrapper = auto.closest ? auto.closest('.checkbox') : null;
+          if (wrapper) {
+            wrapper.classList.toggle('disabled', disabled);
+            wrapper.classList.toggle('is-disabled', disabled);
+          }
+        }
+
+        function syncResidualMethodOptions() {
+          syncAutoMethod('residual_diagnostics', 'auto_method');
+          syncAutoMethod('hierarchical_residual_diagnostics', 'hierarchical_auto_method');
+        }
+
+        document.addEventListener('change', function(event) {
+          var target = event.target;
+          if (!target || (target.id !== 'residual_diagnostics' && target.id !== 'hierarchical_residual_diagnostics')) return;
+          syncResidualMethodOptions();
+        });
+
+        document.addEventListener('shiny:bound', syncResidualMethodOptions);
+        document.addEventListener('shiny:value', syncResidualMethodOptions);
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', syncResidualMethodOptions);
+        } else {
+          syncResidualMethodOptions();
+        }
+        setTimeout(syncResidualMethodOptions, 0);
+      })();

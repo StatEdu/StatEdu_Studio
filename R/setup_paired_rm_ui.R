@@ -38,7 +38,7 @@ paired_rm_setup_state <- function(
   selected_available = NULL,
   selected_repeated = NULL,
   assumption_check = FALSE,
-  adjustment = "holm",
+  adjustment = statedu_multiple_correction_default(),
   time_labels = NULL,
   language = statedu_initial_language()
 ) {
@@ -121,7 +121,7 @@ paired_rm_setup_panel <- function(state) {
         analysis_radio_group(
           analysis_ui_text("Post-hoc correction", language),
           "paired_rm_adjustment",
-          choices = c("Holm Bonferroni" = "holm", "Bonferroni correction" = "bonferroni"),
+          choices = analysis_ui_choices(c("Holm Bonferroni" = "holm", "Bonferroni correction" = "bonferroni"), language),
           selected = state$adjustment
         ),
         paired_rm_time_label_inputs(state$time_labels, language)

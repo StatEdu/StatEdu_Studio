@@ -67,6 +67,14 @@ expect_true(chisquare_power >= 0.8 && chisquare_power_previous < 0.8, "Expected 
 survival <- sample_size_survival("sample_size", hazard_ratio = 0.7, event_probability = 0.5, alpha = 0.05, power = 0.8, ratio = 1)
 survival_power <- sample_size_survival("power", hazard_ratio = 0.7, event_probability = 0.5, alpha = 0.05, n = survival$total, ratio = 1)$power
 expect_true(survival$total >= survival$required_events && survival_power >= 0.8, "Expected survival total N to cover required events and target power")
+survival_unequal <- sample_size_survival("sample_size", hazard_ratio = 0.7, event_probability = 0.21, alpha = 0.05, power = 0.8, ratio = 4)
+survival_exact_total <- survival_unequal$required_events / survival_unequal$event_probability
+expect_true(
+  survival_unequal$group1 == sample_size_round_up(survival_exact_total / 5) &&
+    survival_unequal$group2 == sample_size_round_up(survival_exact_total * 4 / 5),
+  "Expected survival allocation to round groups from the unrounded total implied by required events"
+)
+expect_true(survival_unequal$total == survival_unequal$group1 + survival_unequal$group2, "Expected survival total to equal rounded group sum")
 expect_true(near(survival$schoenfeld_signal, abs(log(0.7)) * sqrt(0.5 * 0.25)), "Expected survival sample size result to report Schoenfeld planning signal")
 
 dropout <- sample_size_ttest("sample_size", "two_sample", 0.5, 0.05, power = 0.8, dropout = 0.1)
@@ -126,6 +134,10 @@ correlation_q <- sample_size_effect_size_correlation("cohens_q", r1 = 0.5, r2 = 
 expect_true(near(correlation_q$cohens_q, atanh(0.5) - atanh(0.3)), "Expected Cohen's q to equal Fisher-z difference")
 correlation_point_biserial <- sample_size_effect_size_correlation("point_biserial", r = 0.25)
 expect_true(near(correlation_point_biserial$effect_size_d, 2 * 0.25 / sqrt(1 - 0.25^2)), "Expected point-biserial r to convert to Cohen's d")
+correlation_pearson <- sample_size_effect_size_correlation("pearson_r", r = 0.25)
+expect_true(near(correlation_pearson$correlation_r, 0.25), "Expected Pearson r effect-size entry to preserve r")
+expect_true(near(correlation_pearson$fisher_z, atanh(0.25)), "Expected Pearson r effect-size entry to report Fisher's z")
+expect_true(near(correlation_pearson$r_squared, 0.25^2), "Expected Pearson r effect-size entry to report R-squared")
 
 anova_f <- sample_size_effect_size_anova("f_from_eta2", eta_squared = 0.06)
 expect_true(near(anova_f$cohen_f, sqrt(0.06 / 0.94)), "Expected Cohen's f to convert from eta squared")
@@ -262,6 +274,16 @@ expect_true(near(reliability_kappa$primary_effect_size, 0.8), "Expected Cohen's 
 reliability_alpha_sample <- sample_size_reliability("sample_size", design = "alpha", reliability = 0.8, confidence_level = 0.95, half_width = 0.10, items = 20)
 expect_true(reliability_alpha_sample$total >= 21, "Expected Cronbach alpha sample size to be at least items + 1")
 expect_true(reliability_alpha_sample$minimum_subjects == 21, "Expected Cronbach alpha minimum-subjects rule to equal items + 1")
+reliability_alpha_precision <- sample_size_reliability("sample_size", design = "alpha", reliability = 0.8, confidence_level = 0.95, half_width = 0.05, items = 20)
+alpha_z <- stats::qnorm(0.975)
+alpha_se_log <- 0.05 / (1 - 0.8)
+alpha_expected_precision <- sample_size_round_up((2 * 20 / (20 - 1)) * (alpha_z / alpha_se_log)^2 + 2)
+expect_true(reliability_alpha_precision$precision_total == alpha_expected_precision, "Expected Cronbach alpha precision n to include Bonett item-count coefficient")
+reliability_alpha_precision_5 <- sample_size_reliability("sample_size", design = "alpha", reliability = 0.8, confidence_level = 0.95, half_width = 0.05, items = 5)
+expect_true(
+  reliability_alpha_precision_5$precision_total != reliability_alpha_precision$precision_total,
+  "Expected Cronbach alpha precision n to vary by item count"
+)
 
 sem_rmsea <- sample_size_effect_size_sem("rmsea", df = 50, null_rmsea = 0.05, alternative_rmsea = 0.08)
 expect_true(near(sem_rmsea$ncp_difference_per_n, 50 * (0.08^2 - 0.05^2)), "Expected SEM RMSEA NCP difference")
@@ -497,6 +519,21 @@ for (method in names(cases)) {
     sprintf("Expected %s sample-size result to include an interpretable sample-size field", method)
   )
 }
+
+regression_mediation_power <- sample_size_calculate(
+  "regression",
+  merge_input(base_input("regression", target = "power"), list(
+    sample_size_regression_design = "mediation",
+    sample_size_regression_mediation_method = "fritz_mackinnon",
+    sample_size_regression_a = "0.30",
+    sample_size_regression_b = "0.30",
+    sample_size_regression_covariates = "2",
+    sample_size_regression_simulations = "20",
+    sample_size_regression_bootstraps = "20"
+  ))
+)
+expect_true(is.null(regression_mediation_power$error), sprintf("Expected mediation achieved-power calculation to fall back from Fritz-MacKinnon table: %s", regression_mediation_power$error %||% ""))
+expect_true(!identical(regression_mediation_power$mediation_method, "fritz_mackinnon"), "Expected Fritz-MacKinnon table not to be used for achieved-power calculation")
 
 message("Checking achieved power mode for applicable sample-size menus...")
 power_checks <- list(

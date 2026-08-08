@@ -1,6 +1,6 @@
 # Result panel UI builders.
 
-coefficient_result_ui <- function(table, result, show_sr2 = FALSE, show_f2 = FALSE, show_vif = FALSE) {
+coefficient_result_ui <- function(table, result, show_sr2 = FALSE, show_f2 = FALSE, show_vif = FALSE, output_table_style = "standard") {
   table <- filter_coefficient_export_table(table, show_sr2, show_f2, show_vif)
   if (isTRUE(result$use_bootstrap)) {
     attr(table, "bootstrap_regression") <- TRUE
@@ -20,7 +20,7 @@ coefficient_result_ui <- function(table, result, show_sr2 = FALSE, show_f2 = FAL
   stat_lines <- coefficient_stat_lines(result)
   warning_line <- coefficient_vif_warning_line(result)
   note_line <- coefficient_note_line(result, show_vif, show_sr2, show_f2)
-  coefficient_html_table(table, fit_line, stat_lines, warning_line, note_line)
+  coefficient_html_table(table, fit_line, stat_lines, warning_line, note_line, output_table_style = output_table_style)
 }
 
 coefficient_result_block <- function(title, content, landscape = FALSE) {
@@ -277,18 +277,18 @@ hierarchical_delta_line <- function(previous, current) {
     ci <- hierarchical_bootstrap_delta_r2_ci(previous, current)
     if (all(is.finite(ci))) {
       return(sprintf(
-        "\u0394R\u00B2[95%% CI]=%s[%s, %s]",
+        "Delta R\u00B2[95%% CI]=%s[%s, %s]",
         format_decimal3(delta_r2),
         format_decimal3(ci[[1]]),
         format_decimal3(ci[[2]])
       ))
     }
-    return(sprintf("\u0394R\u00B2[95%% CI]=%s[pending]", format_decimal3(delta_r2)))
+    return(sprintf("Delta R\u00B2[95%% CI]=%s[pending]", format_decimal3(delta_r2)))
   }
   if (isTRUE(previous$use_hc3) || isTRUE(current$use_hc3)) {
     robust_p <- hierarchical_robust_wald_f_p(previous, current)
     return(sprintf(
-      "\u0394R\u00B2(Robust Wald F p)=%s(%s)",
+      "Delta R\u00B2(Robust Wald F p)=%s(%s)",
       format_decimal3(delta_r2),
       format_p(robust_p)
     ))
@@ -296,12 +296,12 @@ hierarchical_delta_line <- function(previous, current) {
   df1 <- current$f_df1 - previous$f_df1
   df2 <- current$f_df2
   if (!is.finite(delta_r2) || !is.finite(df1) || !is.finite(df2) || df1 <= 0 || df2 <= 0) {
-    return(sprintf("\u0394R\u00B2(p)=%s", format_decimal3(delta_r2)))
+    return(sprintf("Delta R\u00B2(p)=%s", format_decimal3(delta_r2)))
   }
   f_change <- (delta_r2 / df1) / ((1 - current$r_squared) / df2)
   p_change <- stats::pf(f_change, df1, df2, lower.tail = FALSE)
   sprintf(
-    "\u0394R\u00B2(p)=%s(%s)",
+    "Delta R\u00B2(p)=%s(%s)",
     format_decimal3(delta_r2),
     format_p(p_change)
   )
@@ -309,41 +309,43 @@ hierarchical_delta_line <- function(previous, current) {
 
 hierarchical_delta_footer_label <- function(group) {
   if (any(vapply(group, function(result) isTRUE(result$use_bootstrap), logical(1)))) {
-    return("\u0394R\u00B2(bootstrap 95% CI)")
+    return("Delta R\u00B2(95% CI)")
   }
   if (any(vapply(group, function(result) isTRUE(result$use_hc3), logical(1)))) {
-    return("\u0394R\u00B2(Robust Wald F p)")
+    return("Delta R\u00B2(p)")
   }
-  "\u0394R\u00B2(F change p)"
+  "Delta R\u00B2(p)"
 }
 
 hierarchical_summary_values <- function(group) {
   values <- lapply(seq_along(group), function(index) {
     result <- group[[index]]
     previous <- if (index > 1) group[[index - 1]] else NULL
+    residual_diagnostics <- isTRUE(result$residual_diagnostics)
     list(
       f = sprintf("%s(%s)", format_decimal3(result$f_statistic), format_p(result$f_p)),
       r2 = sprintf("%s (%s)", format_decimal3(result$r_squared), format_decimal3(result$adjusted_r_squared)),
       delta = hierarchical_delta_line(previous, result),
-      dw = sprintf(
+      dw = if (residual_diagnostics) sprintf(
         "%s (%s~%s)",
         format_decimal3(result$dw_d),
         format_decimal3(result$dw_crit$dU),
         format_decimal3(4 - result$dw_crit$dU)
-      ),
-      normality = sprintf(
+      ) else format_decimal3(result$dw_d),
+      normality = if (residual_diagnostics) sprintf(
         "%s (%s)",
         format_decimal3(result$normality_statistic),
         format_p(result$normality_p)
-      ),
-      homogeneity = sprintf(
+      ) else "",
+      homogeneity = if (residual_diagnostics) sprintf(
         "%s (%s)",
         format_decimal3(result$homogeneity_statistic),
         format_p(result$homogeneity_p)
-      )
+      ) else ""
     )
   })
   attr(values, "delta_label") <- hierarchical_delta_footer_label(group)
+  attr(values, "any_residual_diagnostics") <- any(vapply(group, function(result) isTRUE(result$residual_diagnostics), logical(1)))
   values
 }
 
@@ -356,10 +358,10 @@ hierarchical_coefficient_note_line <- function(result, show_vif = FALSE, show_sr
     if (isTRUE(result$use_bootstrap)) sprintf("Boot SE is the bootstrap standard error; LLCI and ULCI are %s bootstrap confidence limits based on the selected bootstrap resamples and seed number;", ci_label) else NULL,
     if (isTRUE(show_sr2)) "sr\u00B2 = squared semi-partial correlation, unique R\u00B2 contribution for each coefficient;" else NULL,
     if (isTRUE(show_f2)) "f\u00B2 = sr\u00B2 / (1 - model R\u00B2);" else NULL,
-    "\u0394R\u00B2(F change p) is shown when OLS assumptions are met; \u0394R\u00B2(Robust Wald F p) is shown for HC3 models; \u0394R\u00B2[95% CI] is shown for bootstrap models;",
-    "d(d\u1D64~4-d\u1D64) = Durbin-Watson statistic (upper critical value~4-upper critical value);",
-    "z(p) = Lilliefors corrected Kolmogorov-Smirnov residual normality test statistic (p-value);",
-    sprintf("%s = Breusch-Pagan residual homoscedasticity test statistic (p-value)", stat_chisq_label(with_p = TRUE))
+    "Delta R\u00B2(F change p) is shown when OLS assumptions are met; Delta R\u00B2(Robust Wald F p) is shown for HC3 models; Delta R\u00B2[95% CI] is shown for bootstrap models;",
+    if (isTRUE(result$residual_diagnostics)) "d(d\u1D64~4-d\u1D64) = Durbin-Watson statistic (upper critical value~4-upper critical value);" else "d = Durbin-Watson statistic;",
+    if (isTRUE(result$residual_diagnostics)) "z(p) = Lilliefors corrected Kolmogorov-Smirnov residual normality test statistic (p-value);" else NULL,
+    if (isTRUE(result$residual_diagnostics)) sprintf("%s = Breusch-Pagan residual homoscedasticity test statistic (p-value)", stat_chisq_label(with_p = TRUE)) else NULL
   )
 }
 
@@ -401,7 +403,7 @@ hierarchical_separator_cell <- function(border_top = "0", border_bottom = "1px s
 hierarchical_term_cell_style <- function(last = FALSE) {
   paste0(
     "padding:9px 18px;line-height:1.45;border-left:0;border-right:0;",
-    "border-top:0;border-bottom:", if (isTRUE(last)) "0" else "1px solid #d7dde5", ";",
+    "border-top:0;border-bottom:", if (isTRUE(last)) "2px solid #1f2937 !important" else "1px solid #d7dde5", ";",
     "vertical-align:middle;background:transparent;",
     "width:auto;min-width:0;max-width:none;",
     "text-align:left;white-space:normal;overflow-wrap:break-word;word-break:keep-all;"
@@ -423,7 +425,7 @@ hierarchical_header_separator_cell <- function(class = "hierarchical-model-heade
 }
 
 hierarchical_footer_row <- function(label, values, model_columns, first = FALSE) {
-  top_border <- if (isTRUE(first)) "2px solid #1f2937" else "1px solid #d7dde5"
+  top_border <- if (isTRUE(first)) "0" else "1px solid #d7dde5"
   cells <- list(tags$td(
     class = "coefficient-summary-label",
     style = paste0(
@@ -438,7 +440,7 @@ hierarchical_footer_row <- function(label, values, model_columns, first = FALSE)
       colspan = length(model_columns[[index]]),
       style = paste0(
         "padding:9px 18px;line-height:1.45;border-left:0;border-right:0;",
-        "border-top:", top_border, ";border-bottom:0;text-align:center;font-weight:500;"
+        "border-top:", top_border, ";border-bottom:0;text-align:right;font-weight:500;"
       ),
       values[[index]]
     )))
@@ -447,6 +449,18 @@ hierarchical_footer_row <- function(label, values, model_columns, first = FALSE)
     }
   }
   do.call(tags$tr, c(list(class = "coefficient-fit-row"), cells))
+}
+
+hierarchical_footer_separator_row <- function(model_columns) {
+  total_columns <- 1L + sum(vapply(model_columns, length, integer(1))) + max(0L, length(model_columns) - 1L)
+  tags$tr(
+    class = "coefficient-fit-separator-row",
+    tags$td(
+      colspan = total_columns,
+      style = "padding:0 !important;height:2px !important;line-height:0;border:0 !important;background:#1f2937 !important;",
+      ""
+    )
+  )
 }
 
 hierarchical_stat_column_weight <- function(column) {
@@ -526,7 +540,11 @@ hierarchical_model_note_lines <- function(group, variable_table = NULL, labels =
   if (!is.list(group) || length(group) == 0) {
     return(character(0))
   }
-  vapply(seq_along(group), function(index) {
+  hierarchical_notes <- unique(vapply(group, function(result) {
+    as.character(result$hierarchical_note %||% "")
+  }, character(1)))
+  hierarchical_notes <- hierarchical_notes[nzchar(hierarchical_notes)]
+  model_lines <- vapply(seq_along(group), function(index) {
     result <- group[[index]]
     predictors <- result$predictors %||% character(0)
   predictor_labels <- vapply(
@@ -549,6 +567,436 @@ hierarchical_model_note_lines <- function(group, variable_table = NULL, labels =
     }
     sprintf("%s%s: %s", hierarchical_step_label(result, index), method_text, predictor_text)
   }, character(1))
+  c(hierarchical_notes, model_lines)
+}
+
+hierarchical_standard_summary_table <- function(table, summary, model_index, summary_values, include_delta = TRUE) {
+  columns <- names(table)
+  if (length(columns) == 0) {
+    return(table)
+  }
+  stat_columns <- setdiff(columns, "Term")
+  if (length(stat_columns) == 0) {
+    stat_columns <- columns[-1]
+  }
+  if (length(stat_columns) == 0) {
+    return(table)
+  }
+  output <- as.data.frame(lapply(table, as.character), stringsAsFactors = FALSE, check.names = FALSE)
+  names(output) <- columns
+  summary_items <- list(
+    list(label = "F(p)", value = summary$f %||% ""),
+    list(label = "R\u00B2(adj. R\u00B2)", value = summary$r2 %||% "")
+  )
+  if (length(summary_values) > 1L && isTRUE(include_delta) && model_index > 1L) {
+    summary_items <- c(summary_items, list(list(
+      label = attr(summary_values, "delta_label", exact = TRUE) %||% "Delta R\u00B2(F change p)",
+      value = summary$delta %||% ""
+    )))
+  }
+  if (isTRUE(attr(summary_values, "any_residual_diagnostics", exact = TRUE))) {
+    summary_items <- c(summary_items, list(
+      list(label = "d(d\u1D64~4-d\u1D64)", value = summary$dw %||% ""),
+      list(label = "z(p)", value = summary$normality %||% ""),
+      list(label = stat_chisq_label(with_p = TRUE), value = summary$homogeneity %||% "")
+    ))
+  } else {
+    summary_items <- c(summary_items, list(list(label = "d", value = summary$dw %||% "")))
+  }
+
+  start_row <- nrow(output) + 1L
+  summary_rows <- lapply(summary_items, function(item) {
+    row <- output[1L, , drop = FALSE]
+    row[1L, ] <- ""
+    row[[columns[[1]]]][[1L]] <- item$label
+    row[[stat_columns[[1]]]][[1L]] <- item$value
+    row
+  })
+  output <- do.call(rbind, c(list(output), summary_rows))
+  attr(output, "compact_column_widths") <- attr(table, "compact_column_widths", exact = TRUE)
+  attr(output, "column_display_labels") <- attr(table, "column_display_labels", exact = TRUE)
+  attr(output, "bootstrap_regression") <- attr(table, "bootstrap_regression", exact = TRUE)
+  attr(output, "show_df") <- attr(table, "show_df", exact = TRUE)
+  existing_cell_styles <- attr(table, "cell_styles", exact = TRUE)
+  separator_styles <- data.frame(
+    row = rep(start_row, length(columns)),
+    column = columns,
+    style = "border-top:1px solid #1f2937 !important;",
+    stringsAsFactors = FALSE
+  )
+  attr(output, "cell_styles") <- if (is.data.frame(existing_cell_styles) && nrow(existing_cell_styles) > 0L) {
+    rbind(existing_cell_styles, separator_styles)
+  } else {
+    separator_styles
+  }
+  attr(output, "spanning_cells") <- data.frame(
+    row = seq.int(start_row, length.out = length(summary_items)),
+    start_column = stat_columns[[1]],
+    end_column = stat_columns[[length(stat_columns)]],
+    value = vapply(summary_items, function(item) as.character(item$value %||% ""), character(1)),
+    style = "text-align:center !important;font-weight:500;",
+    stringsAsFactors = FALSE
+  )
+  output
+}
+
+hierarchical_standard_coefficient_html_table <- function(
+  model_tables,
+  model_labels,
+  summary_values,
+  note_line = NULL,
+  model_note_lines = character(0),
+  include_delta = TRUE
+) {
+  model_blocks <- lapply(seq_along(model_tables), function(index) {
+    model_table <- hierarchical_standard_summary_table(
+      model_tables[[index]],
+      summary_values[[index]],
+      index,
+      summary_values,
+      include_delta = include_delta
+    )
+    tags$div(
+      class = "hierarchical-standard-model-block",
+      tags$h4(class = "hierarchical-standard-model-title", model_labels[[index]]),
+      coefficient_html_table(model_table, output_table_style = "standard")
+    )
+  })
+  notes <- list()
+  clean_model_notes <- model_note_lines[nzchar(model_note_lines %||% "")]
+  if (length(clean_model_notes) > 0) {
+    notes <- c(notes, list(tags$div(
+      class = "coefficient-note hierarchical-model-notes",
+      lapply(clean_model_notes, function(line) tags$div(class = "hierarchical-model-note-line", line))
+    )))
+  }
+  if (!is.null(note_line) && nzchar(note_line)) {
+    notes <- c(notes, list(tags$div(class = "coefficient-note hierarchical-coefficient-note", note_line)))
+  }
+  do.call(
+    tags$div,
+    c(
+      list(class = "hierarchical-standard-table-wrap"),
+      model_blocks,
+      notes
+    )
+  )
+}
+
+hierarchical_compact_method_columns <- function(model_tables) {
+  table_names <- unique(unlist(lapply(model_tables, names), use.names = FALSE))
+  has_bootstrap <- any(c("Boot SE", "LLCI", "ULCI", "Boot p") %in% table_names)
+  has_hc3 <- "HC3 SE" %in% table_names
+  has_se <- "SE" %in% table_names
+  has_beta <- "beta" %in% table_names
+  has_t <- "t" %in% table_names || "p" %in% table_names
+  c(
+    "B",
+    if (isTRUE(has_se) || isTRUE(has_hc3) || isTRUE(has_bootstrap)) "SE",
+    if (isTRUE(has_beta)) "beta",
+    if (isTRUE(has_t)) "t",
+    if (isTRUE(has_t) || isTRUE(has_bootstrap)) "p",
+    if (isTRUE(has_bootstrap)) c("LLCI", "ULCI")
+  )
+}
+
+hierarchical_compact_cell <- function(table, row_index, column) {
+  if (!column %in% names(table)) {
+    return("")
+  }
+  as.character(table[[column]][[row_index]] %||% "")
+}
+
+hierarchical_compact_tp_cell <- function(table, row_index) {
+  t_value <- hierarchical_compact_cell(table, row_index, "t")
+  p_value <- hierarchical_compact_cell(table, row_index, "p")
+  if (!nzchar(t_value) && !nzchar(p_value)) {
+    return("")
+  }
+  if (!nzchar(t_value)) {
+    return(sprintf("(%s)", p_value))
+  }
+  if (!nzchar(p_value)) {
+    return(t_value)
+  }
+  sprintf("%s(%s)", t_value, p_value)
+}
+
+hierarchical_compact_first_cell <- function(table, row_index, columns) {
+  columns <- intersect(columns, names(table))
+  for (column in columns) {
+    value <- hierarchical_compact_cell(table, row_index, column)
+    if (nzchar(trimws(value))) {
+      return(list(value = value, source = column))
+    }
+  }
+  list(value = "", source = "")
+}
+
+hierarchical_compact_summary_cell <- function(value) {
+  value <- trimws(as.character(value %||% ""))
+  if (!nzchar(value) || grepl("\n", value, fixed = TRUE)) {
+    return(value)
+  }
+  matched <- regexec("^([^()]+?)\\s*\\((.*)\\)$", value, perl = TRUE)
+  parts <- regmatches(value, matched)[[1]]
+  if (length(parts) == 3L) {
+    return(sprintf("%s\n(%s)", trimws(parts[[2]]), parts[[3]]))
+  }
+  value
+}
+
+hierarchical_compact_summary_parts <- function(value) {
+  value <- hierarchical_compact_summary_cell(value)
+  parts <- strsplit(value, "\n", fixed = TRUE)[[1]]
+  if (length(parts) <= 1L) {
+    return(list(primary = value, secondary = ""))
+  }
+  list(
+    primary = parts[[1L]],
+    secondary = paste(parts[-1L], collapse = "\n")
+  )
+}
+
+hierarchical_compact_summary_row_values <- function(summary, split_rows = FALSE) {
+  values <- list(
+    `F(p)` = summary$f,
+    `R²(adj R²)` = summary$r2,
+    d = summary$dw,
+    `z(p)` = summary$normality,
+    `x²(p)` = summary$homogeneity
+  )
+  if (!isTRUE(split_rows)) {
+    return(lapply(values, hierarchical_compact_summary_cell))
+  }
+  parts <- lapply(values, hierarchical_compact_summary_parts)
+  list(
+    primary = lapply(parts, `[[`, "primary"),
+    secondary = lapply(parts, `[[`, "secondary")
+  )
+}
+
+hierarchical_compact_row <- function(model_label, variable, method_values, summary_values, columns) {
+  row <- stats::setNames(as.list(rep("", length(columns))), columns)
+  row[["Model"]] <- model_label
+  row[["Variable"]] <- variable
+  for (column in intersect(names(method_values), columns)) {
+    row[[column]] <- method_values[[column]]
+  }
+  for (column in intersect(names(summary_values), columns)) {
+    row[[column]] <- summary_values[[column]]
+  }
+  as.data.frame(row, stringsAsFactors = FALSE, check.names = FALSE)
+}
+
+hierarchical_compact_model_label <- function(label, fallback = "") {
+  if (inherits(label, "shiny.tag") || inherits(label, "shiny.tag.list")) {
+    html <- tryCatch(htmltools::renderTags(label)[["html"]], error = function(e) "")
+    html <- gsub("<br\\s*/?>", "\n", html, ignore.case = TRUE, perl = TRUE)
+    html <- gsub("<[^>]+>", "", html, perl = TRUE)
+    html <- gsub("&nbsp;", " ", html, fixed = TRUE)
+    html <- gsub("&amp;", "&", html, fixed = TRUE)
+    html <- gsub("&lt;", "<", html, fixed = TRUE)
+    html <- gsub("&gt;", ">", html, fixed = TRUE)
+    html <- gsub("[ \t]*\n[ \t]*", "\n", html, perl = TRUE)
+    html <- gsub("\n{2,}", "\n", html, perl = TRUE)
+    html <- trimws(html)
+    if (nzchar(html)) {
+      return(html)
+    }
+  }
+  value <- as.character(label %||% fallback)
+  value <- value[[1]] %||% fallback
+  if (nzchar(value)) value else fallback
+}
+
+hierarchical_compact_coefficient_table <- function(model_tables, model_labels, summary_values, output_table_style = "compact") {
+  output_table_style <- analysis_output_table_style(output_table_style)
+  split_summary_rows <- identical(output_table_style, "compact")
+  method_columns <- hierarchical_compact_method_columns(model_tables)
+  residual_columns <- if (isTRUE(attr(summary_values, "any_residual_diagnostics", exact = TRUE))) {
+    c("d", "z(p)", "x²(p)")
+  } else {
+    "d"
+  }
+  summary_columns <- c("F(p)", "R²(adj R²)", residual_columns)
+  columns <- c("Model", "Variable", method_columns, summary_columns)
+  rows <- list()
+  marker_rows <- list()
+  marker_notes <- character(0)
+  marker_for <- function(note) {
+    matched <- match(note, marker_notes)
+    if (is.na(matched)) {
+      marker_notes <<- c(marker_notes, note)
+      matched <- length(marker_notes)
+    }
+    as.character(matched)
+  }
+  add_marker <- function(row, column, note) {
+    note <- as.character(note %||% "")[[1L]]
+    if (!nzchar(note) || !column %in% columns) {
+      return(NULL)
+    }
+    marker_rows[[length(marker_rows) + 1L]] <<- data.frame(
+      row = row,
+      column = column,
+      marker = marker_for(note),
+      stringsAsFactors = FALSE
+    )
+    NULL
+  }
+  for (model_index in seq_along(model_tables)) {
+    table <- model_tables[[model_index]]
+    if (!is.data.frame(table) || nrow(table) == 0) {
+      next
+    }
+    model_label <- hierarchical_compact_model_label(
+      model_labels[[model_index]] %||% sprintf("Model %s", model_index),
+      sprintf("Model %s", model_index)
+    )
+    summary <- summary_values[[model_index]]
+    compact_summary <- hierarchical_compact_summary_row_values(summary, split_rows = split_summary_rows)
+    for (row_index in seq_len(nrow(table))) {
+      se_cell <- hierarchical_compact_first_cell(table, row_index, c("Boot SE", "HC3 SE", "SE"))
+      p_cell <- hierarchical_compact_first_cell(table, row_index, c("Boot p", "p"))
+      method_values <- list(
+        B = hierarchical_compact_cell(table, row_index, "B"),
+        SE = se_cell$value,
+        beta = hierarchical_compact_cell(table, row_index, "beta"),
+        t = hierarchical_compact_cell(table, row_index, "t"),
+        p = p_cell$value,
+        LLCI = hierarchical_compact_cell(table, row_index, "LLCI"),
+        ULCI = hierarchical_compact_cell(table, row_index, "ULCI")
+      )
+      row_summary <- if (isTRUE(split_summary_rows) && row_index == 1L) {
+        compact_summary$primary
+      } else if (isTRUE(split_summary_rows) && row_index == 2L) {
+        compact_summary$secondary
+      } else if (!isTRUE(split_summary_rows) && row_index == 1L) {
+        compact_summary
+      } else {
+        list()
+      }
+      rows[[length(rows) + 1L]] <- hierarchical_compact_row(
+        if (row_index == 1L) model_label else "",
+        hierarchical_compact_cell(table, row_index, "Term"),
+        method_values,
+        row_summary,
+        columns
+      )
+      output_row <- length(rows)
+      se_note <- switch(
+        se_cell$source,
+        "Boot SE" = "SE = bootstrap standard error.",
+        "HC3 SE" = "SE = HC3 robust standard error.",
+        "SE" = "SE = ordinary least squares standard error.",
+        ""
+      )
+      p_note <- switch(
+        p_cell$source,
+        "Boot p" = "p = bootstrap p-value.",
+        "p" = "p = t-test p-value using the displayed standard error.",
+        ""
+      )
+      add_marker(output_row, "SE", se_note)
+      add_marker(output_row, "p", p_note)
+    }
+    if (isTRUE(split_summary_rows) && nrow(table) < 2L) {
+      secondary_values <- unlist(compact_summary$secondary, use.names = FALSE)
+      if (any(nzchar(trimws(secondary_values %||% "")))) {
+        rows[[length(rows) + 1L]] <- hierarchical_compact_row(
+          "",
+          "",
+          list(),
+          compact_summary$secondary,
+          columns
+        )
+      }
+    }
+  }
+  if (length(rows) == 0L) {
+    return(data.frame())
+  }
+  output <- do.call(rbind, rows)
+  widths <- rep(7, length(columns))
+  names(widths) <- columns
+  widths["Model"] <- 7
+  widths["Variable"] <- 16
+  width_overrides <- c(
+    `F(p)` = 8,
+    `R²(adj R²)` = 10,
+    d = 10,
+    `z(p)` = 8,
+    `x²(p)` = 8
+  )
+  matched_widths <- intersect(names(width_overrides), names(widths))
+  widths[matched_widths] <- width_overrides[matched_widths]
+  attr(output, "compact_column_widths") <- widths / sum(widths, na.rm = TRUE) * 100
+  if (length(marker_rows) > 0L) {
+    attr(output, "note_markers") <- do.call(rbind, marker_rows)
+  }
+  if (length(marker_notes) > 0L) {
+    attr(output, "compact_method_notes") <- paste(
+      sprintf("%s = %s", seq_along(marker_notes), marker_notes),
+      collapse = "\n"
+    )
+  }
+  attr(output, "column_display_labels") <- c(
+    `F(p)` = "F\n(p)",
+    `R²(adj R²)` = "R\u00B2\n(adj R\u00B2)",
+    `z(p)` = "z\n(p)",
+    `x²(p)` = "x\u00B2\n(p)"
+  )
+  model_rows <- which(nzchar(trimws(as.character(output[["Model"]] %||% ""))))
+  model_rows <- model_rows[model_rows > 1L]
+  if (length(model_rows) > 0L) {
+    attr(output, "cell_styles") <- data.frame(
+      row = rep(model_rows, each = length(columns)),
+      column = rep(columns, times = length(model_rows)),
+      style = "border-top:2px solid #1f2937 !important;",
+      stringsAsFactors = FALSE
+    )
+  }
+  output
+}
+
+hierarchical_compact_coefficient_html_table <- function(
+  model_tables,
+  model_labels,
+  summary_values,
+  note_line = NULL,
+  model_note_lines = character(0),
+  output_table_style = "compact"
+) {
+  table <- hierarchical_compact_coefficient_table(
+    model_tables,
+    model_labels,
+    summary_values,
+    output_table_style = output_table_style
+  )
+  notes <- list()
+  clean_model_notes <- model_note_lines[nzchar(model_note_lines %||% "")]
+  if (length(clean_model_notes) > 0) {
+    notes <- c(notes, list(tags$div(
+      class = "coefficient-note hierarchical-model-notes",
+      lapply(clean_model_notes, function(line) tags$div(class = "hierarchical-model-note-line", line))
+    )))
+  }
+  if (!is.null(note_line) && nzchar(note_line)) {
+    notes <- c(notes, list(tags$div(class = "coefficient-note hierarchical-coefficient-note", note_line)))
+  }
+  method_notes <- attr(table, "compact_method_notes", exact = TRUE)
+  if (!is.null(method_notes) && nzchar(method_notes)) {
+    notes <- c(notes, list(tags$div(class = "coefficient-note hierarchical-coefficient-note", method_notes)))
+  }
+  do.call(
+    tags$div,
+    c(
+      list(class = "hierarchical-standard-table-wrap hierarchical-compact-table-wrap"),
+      list(coefficient_html_table(table, output_table_style = output_table_style)),
+      notes
+    )
+  )
 }
 
 hierarchical_coefficient_html_table <- function(
@@ -558,13 +1006,36 @@ hierarchical_coefficient_html_table <- function(
   note_line = NULL,
   model_note_lines = character(0),
   include_delta = TRUE,
-  extra_footer_rows = list()
+  extra_footer_rows = list(),
+  output_table_style = "standard"
 ) {
   if (length(model_tables) == 0) {
     return(NULL)
   }
+  output_table_style <- analysis_output_table_style(output_table_style)
+  if (identical(output_table_style, "standard")) {
+    return(hierarchical_standard_coefficient_html_table(
+      model_tables,
+      model_labels,
+      summary_values,
+      note_line = note_line,
+      model_note_lines = model_note_lines,
+      include_delta = include_delta
+    ))
+  }
+  if (output_table_style %in% c("compact", "compact_xm")) {
+    return(hierarchical_compact_coefficient_html_table(
+      model_tables,
+      model_labels,
+      summary_values,
+      note_line = note_line,
+      model_note_lines = model_note_lines,
+      output_table_style = output_table_style
+    ))
+  }
+  style_params <- analysis_output_table_style_params(output_table_style)
   model_columns <- lapply(model_tables, function(table) setdiff(names(table), "Term"))
-  terms <- unique(unlist(lapply(rev(model_tables), function(table) as.character(table$Term)), use.names = FALSE))
+  terms <- unique(unlist(lapply(model_tables, function(table) as.character(table$Term)), use.names = FALSE))
 
   header_groups <- list(tags$th(
     rowspan = 2,
@@ -623,7 +1094,7 @@ hierarchical_coefficient_html_table <- function(
         }))
       }
       if (model_index < length(model_tables)) {
-        cells <- c(cells, list(hierarchical_separator_cell()))
+        cells <- c(cells, list(hierarchical_separator_cell(border_bottom = if (isTRUE(is_last)) "2px solid #1f2937 !important" else "1px solid #d7dde5")))
       }
     }
     do.call(tags$tr, cells)
@@ -635,27 +1106,39 @@ hierarchical_coefficient_html_table <- function(
   )
   if (length(model_tables) > 1 && isTRUE(include_delta)) {
     footer_rows <- c(footer_rows, list(
-      hierarchical_footer_row(attr(summary_values, "delta_label", exact = TRUE) %||% "\u0394R\u00B2(F change p)", lapply(summary_values, `[[`, "delta"), model_columns)
+      hierarchical_footer_row(attr(summary_values, "delta_label", exact = TRUE) %||% "Delta R\u00B2(F change p)", lapply(summary_values, `[[`, "delta"), model_columns)
     ))
   }
-  footer_rows <- c(footer_rows, list(
-    hierarchical_footer_row("d(d\u1D64~4-d\u1D64)", lapply(summary_values, `[[`, "dw"), model_columns),
-    hierarchical_footer_row("z(p)", lapply(summary_values, `[[`, "normality"), model_columns),
-    hierarchical_footer_row(stat_chisq_label(with_p = TRUE), lapply(summary_values, `[[`, "homogeneity"), model_columns)
-  ))
+  if (isTRUE(attr(summary_values, "any_residual_diagnostics", exact = TRUE))) {
+    footer_rows <- c(footer_rows, list(
+      hierarchical_footer_row("d(d\u1D64~4-d\u1D64)", lapply(summary_values, `[[`, "dw"), model_columns),
+      hierarchical_footer_row("z(p)", lapply(summary_values, `[[`, "normality"), model_columns),
+      hierarchical_footer_row(stat_chisq_label(with_p = TRUE), lapply(summary_values, `[[`, "homogeneity"), model_columns)
+    ))
+  } else {
+    footer_rows <- c(footer_rows, list(
+      hierarchical_footer_row("d", lapply(summary_values, `[[`, "dw"), model_columns)
+    ))
+  }
   if (length(extra_footer_rows) > 0L) {
     footer_rows <- c(footer_rows, extra_footer_rows)
   }
 
   table <- tags$table(
-    class = "coefficient-table hierarchical-coefficient-table",
-    style = paste0(result_table_style(font_size = 12, min_width = 0), "width:100% !important;min-width:0 !important;max-width:100% !important;table-layout:fixed;"),
+    class = paste("coefficient-table hierarchical-coefficient-table", paste0("output-table-style-", output_table_style)),
+    style = paste0(
+      result_table_style(
+        font_size = if (isTRUE(style_params$compact)) style_params$font_size else 12,
+        min_width = 0
+      ),
+      "width:100% !important;min-width:0 !important;max-width:100% !important;table-layout:fixed;"
+    ),
     hierarchical_table_colgroup(model_columns),
     tags$thead(
       do.call(tags$tr, header_groups),
       do.call(tags$tr, sub_headers)
     ),
-    tags$tbody(body_rows),
+    tags$tbody(c(body_rows, list(hierarchical_footer_separator_row(model_columns)))),
     tags$tfoot(footer_rows)
   )
 
@@ -690,7 +1173,8 @@ hierarchical_coefficient_result_block <- function(
   value_labels = list(),
   show_sr2 = FALSE,
   show_f2 = FALSE,
-  show_vif = FALSE
+  show_vif = FALSE,
+  output_table_style = "standard"
 ) {
   if (!is.list(group) || length(group) == 0) {
     return(NULL)
@@ -719,9 +1203,10 @@ hierarchical_coefficient_result_block <- function(
       model_labels,
       hierarchical_summary_values(group),
       hierarchical_coefficient_note_line(group[[final_index]], show_vif, show_sr2, show_f2),
-      hierarchical_model_note_lines(group, variable_table, labels)
+      hierarchical_model_note_lines(group, variable_table, labels),
+      output_table_style = output_table_style
     ),
-    landscape = length(group) >= 3L
+    landscape = identical(analysis_output_table_style(output_table_style), "wide") && length(group) >= 3L
   )
 }
 
@@ -735,6 +1220,7 @@ hierarchical_results_panel <- function(
   show_sr2 = FALSE,
   show_f2 = FALSE,
   show_vif = FALSE,
+  output_table_style = "standard",
   plot_blocks = NULL
 ) {
   groups <- hierarchical_result_groups(results)
@@ -757,7 +1243,8 @@ hierarchical_results_panel <- function(
         value_labels,
         show_sr2,
         show_f2,
-        show_vif
+        show_vif,
+        output_table_style
       )
     }),
     regression_reference_summary_block(results, variable_table, labels, show_sr2, show_f2),
@@ -776,7 +1263,8 @@ regression_coefficient_result_block <- function(
   value_labels = list(),
   show_sr2 = FALSE,
   show_f2 = FALSE,
-  show_vif = FALSE
+  show_vif = FALSE,
+  output_table_style = "standard"
 ) {
   coefficient_result_block(
     coefficient_panel_title_static(result, variable_table, labels),
@@ -794,7 +1282,8 @@ regression_coefficient_result_block <- function(
       result,
       show_sr2,
       show_f2,
-      show_vif
+      show_vif,
+      output_table_style
     )
   )
 }
@@ -845,8 +1334,24 @@ regression_results_panel <- function(
   show_f2 = FALSE,
   show_vif = FALSE,
   penalized = NULL,
+  output_table_style = "standard",
   plot_blocks = NULL
 ) {
+  if (regression_results_are_hierarchical(results)) {
+    return(hierarchical_results_panel(
+      results,
+      variable_table = variable_table,
+      labels = labels,
+      category_table = category_table,
+      refs = refs,
+      value_labels = value_labels,
+      show_sr2 = show_sr2,
+      show_f2 = show_f2,
+      show_vif = show_vif,
+      output_table_style = output_table_style,
+      plot_blocks = plot_blocks
+    ))
+  }
   show_penalized <- is.list(penalized)
   warnings <- attr(results, "warnings")
   skipped <- attr(results, "skipped")
@@ -868,7 +1373,8 @@ regression_results_panel <- function(
         value_labels,
         show_sr2,
         show_f2,
-        show_vif
+        show_vif,
+        output_table_style
       )
     }),
     regression_reference_summary_block(results, variable_table, labels, show_sr2, show_f2),

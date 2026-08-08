@@ -175,9 +175,9 @@ generalized_fit_summary_lines <- function(result) {
   loglik_value <- get_value("Log likelihood")
   dispersion_value <- get_value("Dispersion")
   residual_df_value <- get_value("Residual df")
-  r2_value <- get_value("R2")
-  adjusted_r2_value <- get_value("Adjusted R2")
-  mcfadden_value <- get_value("McFadden pseudo R2")
+  r2_value <- get_value("R\u00B2")
+  adjusted_r2_value <- get_value("Adjusted R\u00B2")
+  mcfadden_value <- get_value("McFadden pseudo R\u00B2")
   r2_parts <- if (has_value(r2_value)) {
     c(
       sprintf("R%s=%s", "\u00b2", r2_value),

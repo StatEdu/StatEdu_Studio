@@ -102,12 +102,12 @@ ttest_anova_setup_state <- function(
     current_post_hoc <- "scheffe"
   }
   nonparametric_post_hoc_choices <- c(
-    "Bonferroni correction" = "bonferroni",
-    "Holm Bonferroni" = "holm"
+    "Holm Bonferroni" = "holm",
+    "Bonferroni correction" = "bonferroni"
   )
-  current_nonparametric_post_hoc <- as.character(nonparametric_post_hoc_method %||% "bonferroni")
+  current_nonparametric_post_hoc <- as.character(nonparametric_post_hoc_method %||% statedu_multiple_correction_default())
   if (!current_nonparametric_post_hoc %in% unname(nonparametric_post_hoc_choices)) {
-    current_nonparametric_post_hoc <- "bonferroni"
+    current_nonparametric_post_hoc <- statedu_multiple_correction_default()
   }
 
   list(
@@ -138,9 +138,9 @@ ttest_anova_setup_state <- function(
     normality_skew_kurtosis = isTRUE(normality_skew_kurtosis),
     normality_ks = isTRUE(normality_ks),
     trend_analysis = isTRUE(trend_analysis),
-    post_hoc_choices = post_hoc_choices,
+    post_hoc_choices = analysis_ui_choices(post_hoc_choices, language),
     post_hoc_method = current_post_hoc,
-    nonparametric_post_hoc_choices = nonparametric_post_hoc_choices,
+    nonparametric_post_hoc_choices = analysis_ui_choices(nonparametric_post_hoc_choices, language),
     nonparametric_post_hoc_method = current_nonparametric_post_hoc,
     post_hoc = isTRUE(post_hoc),
     ordered_significance = isTRUE(ordered_significance),

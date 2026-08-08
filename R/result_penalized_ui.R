@@ -166,7 +166,7 @@ penalized_result_block <- function(result) {
     render_simple_table(
       result$publication_summary,
       "penalized-publication-summary-table",
-      "The publication summary reports the more parsimonious lambda.1se solution. CV RMSE, CV MAE, and CV R2 are based on out-of-fold predictions."
+      "The publication summary reports the more parsimonious lambda.1se solution. CV RMSE, CV MAE, and CV R\u00B2 are based on out-of-fold predictions."
     ),
     h4("Table 2. Predictors retained in the publication model"),
     render_simple_table(
@@ -184,7 +184,7 @@ penalized_result_block <- function(result) {
     render_simple_table(
       result$summary,
       "penalized-summary-table",
-      "lambda.min minimizes cross-validated mean squared error. lambda.1se is the largest lambda within one standard error of the minimum and is typically more parsimonious. CV RMSE, CV MAE, and CV R2 are based on out-of-fold predictions; apparent indices are descriptive in-sample summaries. Conventional p-values are not reported for penalized regression models."
+      "lambda.min minimizes cross-validated mean squared error. lambda.1se is the largest lambda within one standard error of the minimum and is typically more parsimonious. CV RMSE, CV MAE, and CV R\u00B2 are based on out-of-fold predictions; apparent indices are descriptive in-sample summaries. Conventional p-values are not reported for penalized regression models."
     ),
     h4("Appendix Table A2. OLS and penalized regression coefficients"),
     render_simple_table(

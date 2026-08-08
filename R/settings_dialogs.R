@@ -174,6 +174,45 @@ windows_save_file_dialog <- function(title, filters, initial_dir = "", default_e
   list(attempted = TRUE, path = output[[1]])
 }
 
+windows_select_directory_dialog <- function(title, initial_dir = "") {
+  if (!identical(.Platform$OS.type, "windows")) {
+    return(list(attempted = FALSE, path = NULL))
+  }
+  initial_dir <- as.character(initial_dir %||% "")
+  script <- paste(
+    "Add-Type -AssemblyName System.Windows.Forms;",
+    "Add-Type -AssemblyName System.Drawing;",
+    "$owner = New-Object System.Windows.Forms.Form;",
+    "$owner.TopMost = $true;",
+    "$owner.ShowInTaskbar = $false;",
+    "$owner.StartPosition = 'CenterScreen';",
+    "$owner.Size = New-Object System.Drawing.Size(1,1);",
+    "$owner.Opacity = 0;",
+    "$dialog = New-Object System.Windows.Forms.FolderBrowserDialog;",
+    "$dialog.Description =", open_dialog_ps_quote(title), ";",
+    "$dialog.ShowNewFolderButton = $true;",
+    if (nzchar(initial_dir)) paste("$dialog.SelectedPath =", open_dialog_ps_quote(initial_dir), ";") else "",
+    "$owner.Show();",
+    "$owner.Activate();",
+    "if ($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) {",
+    "[Console]::Out.WriteLine($dialog.SelectedPath)",
+    "} else {",
+    "[Console]::Out.WriteLine(", open_dialog_ps_quote(open_dialog_cancel_marker), ")",
+    "}",
+    "$dialog.Dispose();",
+    "$owner.Close();",
+    "$owner.Dispose();"
+  )
+  output <- run_windows_open_dialog_script(script)
+  if (!is_open_dialog_path(output)) {
+    return(list(attempted = FALSE, path = NULL))
+  }
+  if (identical(output[[1]], open_dialog_cancel_marker)) {
+    return(list(attempted = TRUE, path = NULL))
+  }
+  list(attempted = TRUE, path = output[[1]])
+}
+
 open_file_dialog <- function(title, filetypes) {
   windows_filters <- attr(filetypes, "windows_filters", exact = TRUE)
   if (!is.null(windows_filters)) {
@@ -335,4 +374,120 @@ save_settings_file <- function(initial_dir = NULL) {
   }
 
   normalize_settings_save_path(path[[1]])
+}
+
+normalize_complex_sample_design_save_path <- function(path) {
+  path <- as.character(path %||% "")
+  if (!nzchar(path)) {
+    return(path)
+  }
+  path <- sub("(\\.stdesign)+$", ".stdesign", path, ignore.case = TRUE)
+  if (grepl("\\.stdesign$", path, ignore.case = TRUE)) {
+    return(path)
+  }
+  path <- sub("(\\.studio)+$", "", path, ignore.case = TRUE)
+  path <- sub("(\\.json)+$", "", path, ignore.case = TRUE)
+  if (nzchar(tools::file_ext(path))) {
+    path <- tools::file_path_sans_ext(path)
+  }
+  paste0(path, ".stdesign")
+}
+
+open_complex_sample_design_file <- function() {
+  filetypes <- "{{StatEdu Complex Sample Design} {.stdesign}}"
+  attr(filetypes, "windows_filters") <- matrix(
+    c(
+      "StatEdu Complex Sample Design", "*.stdesign"
+    ),
+    ncol = 2,
+    byrow = TRUE
+  )
+  open_file_dialog("Open StatEdu Complex Sample Design", filetypes)
+}
+
+save_complex_sample_design_file <- function(initial_dir = NULL) {
+  initial_dir <- settings_save_initial_dir(initial_dir)
+  windows_filters <- matrix(c("StatEdu Complex Sample Design", "*.stdesign"), ncol = 2, byrow = TRUE)
+  windows_result <- windows_save_file_dialog(
+    "Save StatEdu Complex Sample Design",
+    windows_filters,
+    initial_dir = initial_dir,
+    default_ext = "stdesign"
+  )
+  if (isTRUE(windows_result$attempted)) {
+    if (is.null(windows_result$path) || !nzchar(windows_result$path)) {
+      return(NULL)
+    }
+    return(normalize_complex_sample_design_save_path(windows_result$path))
+  }
+
+  path <- tryCatch(
+    {
+      if (requireNamespace("tcltk", quietly = TRUE)) {
+        parent <- topmost_tk_parent()
+        on.exit(try(tcltk::tkdestroy(parent), silent = TRUE), add = TRUE)
+        args <- list(
+          parent = parent,
+          title = "Save StatEdu Complex Sample Design",
+          initialfile = "",
+          defaultextension = ".stdesign",
+          filetypes = "{{StatEdu Complex Sample Design} {.stdesign}}"
+        )
+        if (nzchar(initial_dir)) {
+          args$initialdir <- initial_dir
+        }
+        as.character(do.call(tcltk::tkgetSaveFile, args))
+      } else if (.Platform$OS.type == "windows") {
+        default_path <- if (nzchar(initial_dir)) file.path(initial_dir, "") else ""
+        utils::choose.files(
+          default = default_path,
+          caption = "Save StatEdu Complex Sample Design",
+          multi = FALSE,
+          filters = matrix(c("StatEdu Complex Sample Design", "*.stdesign"), ncol = 2, byrow = TRUE)
+        )
+      } else {
+        character(0)
+      }
+    },
+    error = function(e) character(0)
+  )
+
+  if (length(path) == 0 || !nzchar(path[[1]])) {
+    return(NULL)
+  }
+
+  normalize_complex_sample_design_save_path(path[[1]])
+}
+
+choose_default_save_dir <- function(initial_dir = NULL) {
+  title <- "Choose default file save location"
+  initial_dir <- settings_save_initial_dir(initial_dir)
+  windows_result <- windows_select_directory_dialog(title, initial_dir)
+  if (isTRUE(windows_result$attempted)) {
+    path <- windows_result$path
+    if (!is.null(path) && nzchar(path) && dir.exists(path)) {
+      return(normalizePath(path, winslash = "/", mustWork = TRUE))
+    }
+    return(NULL)
+  }
+
+  path <- tryCatch(
+    {
+      if (requireNamespace("tcltk", quietly = TRUE)) {
+        tcltk::tk_choose.dir(
+          default = if (nzchar(initial_dir)) initial_dir else getwd(),
+          caption = title
+        )
+      } else if (.Platform$OS.type == "windows") {
+        utils::choose.dir(default = if (nzchar(initial_dir)) initial_dir else getwd(), caption = title)
+      } else {
+        character(0)
+      }
+    },
+    error = function(e) character(0)
+  )
+  if (length(path) == 0 || !nzchar(path[[1]]) || !dir.exists(path[[1]])) {
+    return(NULL)
+  }
+  normalizePath(path[[1]], winslash = "/", mustWork = TRUE)
 }

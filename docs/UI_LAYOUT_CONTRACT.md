@@ -1,6 +1,6 @@
 # StatEdu Studio UI Layout Contract
 
-This document defines the layout baseline for the StatEdu Studio 1.0
+This document defines the layout baseline for the StatEdu Studio 1.2
 stabilization phase. The goal is to prevent repeated per-menu spacing fixes
 by keeping common menu structures on shared geometry.
 
@@ -8,7 +8,7 @@ by keeping common menu structures on shared geometry.
 
 - Freeze new analysis features unless they are required to fix correctness.
 - Prefer one shared layout rule over per-menu width, height, or margin tweaks.
-- Use `t-test / ANOVA` as the baseline for standard three-block analysis tools.
+- Use `Frequencies / Descriptives` as the baseline for standard three-block analysis tools.
 - Keep Data Editor tools that follow the same three-block structure aligned to
   the same baseline.
 - Treat structurally different screens as explicit exceptions instead of
@@ -24,7 +24,7 @@ Standard three-block tools use this structure:
 - Header: `View selected data` aligns with the right edge of the last block.
 - Footer buttons: each command sits under the block it affects.
 - Button row: Block 1 commands use column 1, Block 2 commands use column 3,
-  and Block 3 commands use column 5 of the same grid. Do not center footer
+  and Block 3 commands use column 4 of the same grid. Do not center footer
   buttons across the whole workspace.
 - Footer button widths: Block 1 and Block 2 commands use
   `--se-standard-inner-button-width`; Block 3 commands use
@@ -33,12 +33,17 @@ Standard three-block tools use this structure:
 Standard analysis and Data Editor menus use shared geometry variables declared
 on `body` in `www/style.css`:
 
-- `--se-analysis-workspace-width`: standard analysis workspace, heading, data
-  viewer, setup-grid, and action-row width; analysis tools use `1140px`
-- `--se-analysis-grid-columns`: standard analysis three-block column structure
-- `--se-standard-setup-width`: setup grid and action row width; standard
-  Data Editor three-block tools use `1176px`, including setup-grid padding
-  where relevant
+- `--se-standard-four-column-workspace-width`: standard analysis and Data
+  Editor workspace width; frequency-style tools use `1138px`
+- `--se-standard-four-column-setup-width`: setup grid and action row width;
+  frequency-style tools use `1102px`, including setup-grid padding where
+  relevant
+- `--se-standard-four-column-grid-width`: standard three-block content grid
+  width, excluding setup-grid padding
+- `--se-analysis-grid-columns`: legacy five-column structure retained only for
+  explicit exceptions such as calculators and sample-size tools
+- `--se-standard-setup-width`: legacy setup grid width retained for explicit
+  exceptions
 - `--se-standard-panel-width`: Block 1 and Block 2 panel width
 - `--se-standard-options-width`: Block 3 options panel width
 - `--se-standard-panel-height`: panel height
@@ -114,7 +119,7 @@ Before changing menu spacing:
 2. For standard three-block tools, use the shared `.data-editor-workspace`
    variables first.
 3. Add per-menu overrides only when the menu has a documented structural reason.
-4. Compare against `t-test / ANOVA` and the affected Data Editor menu.
+4. Compare against `Frequencies / Descriptives` and the affected Data Editor menu.
 5. Run `scripts/validate_stabilization.ps1` for the core stabilization checks,
    or `scripts/validate_stabilization.ps1 -Full` before release packaging.
 6. Check that `View selected data`, setup panels, and footer buttons align with

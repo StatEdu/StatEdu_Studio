@@ -16,7 +16,7 @@ register_nonparametric_paired_handlers <- function(
   active_list <- reactiveVal(NULL)
   effect_size <- reactiveVal(TRUE)
   median_iqr <- reactiveVal(FALSE)
-  adjustment <- reactiveVal("bonferroni")
+  adjustment <- reactiveVal(statedu_multiple_correction_default())
   result_value <- reactiveVal(NULL)
 
   current_selected <- reactive(as.character(selected_names_fn() %||% character(0)))
@@ -79,7 +79,7 @@ register_nonparametric_paired_handlers <- function(
   }, ignoreInit = TRUE)
 
   observeEvent(input$nonparametric_paired_adjustment, {
-    adjustment(as.character(input$nonparametric_paired_adjustment %||% "bonferroni"))
+    adjustment(as.character(input$nonparametric_paired_adjustment %||% statedu_multiple_correction_default()))
   }, ignoreInit = TRUE)
 
   observe({
@@ -103,17 +103,17 @@ register_nonparametric_paired_handlers <- function(
       selected
     )
     if (length(source_values) < 2L) {
-      showNotification("Select two or more repeated-measures variables to create one paired row.", type = "warning")
+      showNotification(statedu_t("analysis.validation.paired_select_two", statedu_current_language(app_language_fn)), type = "warning")
       return(FALSE)
     }
     measurements <- paired_measurement_lookup(current_variable_table())
     levels <- vapply(source_values, function(name) named_value(measurements, name, "continuous"), character(1))
     if (length(unique(levels)) > 1) {
-      showNotification("Repeated-measures variables must have the same measurement level.", type = "warning")
+      showNotification(statedu_t("analysis.validation.repeated_same_measurement", statedu_current_language(app_language_fn)), type = "warning")
       return(FALSE)
     }
     if (length(source_values) >= 3L && identical(levels[[1]], "category")) {
-      showNotification("Categorical nonparametric paired tests with three or more repeated measurements will be supported after 1.0. Use binary or two repeated measurements for now.", type = "warning")
+      showNotification(statedu_t("analysis.validation.nonparametric_paired_category_three_unsupported", statedu_current_language(app_language_fn)), type = "warning")
       return(FALSE)
     }
     groups <- repeated_groups()
@@ -237,7 +237,7 @@ register_nonparametric_paired_handlers <- function(
     if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
     if (!grepl("\\.html?$", path, ignore.case = TRUE)) path <- paste0(path, ".html")
     write_nonparametric_paired_results_html(result, path)
-    showNotification(sprintf("HTML results saved: %s", path), type = "message")
+    showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
 
   observeEvent(input$save_nonparametric_paired_pdf_dialog, {
@@ -247,7 +247,7 @@ register_nonparametric_paired_handlers <- function(
     if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
     if (!grepl("\\.pdf$", path, ignore.case = TRUE)) path <- paste0(path, ".pdf")
     write_nonparametric_paired_results_pdf(result, path)
-    showNotification(sprintf("PDF results saved: %s", path), type = "message")
+    showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
 
   observeEvent(input$save_nonparametric_paired_excel_dialog, {
@@ -257,7 +257,7 @@ register_nonparametric_paired_handlers <- function(
     if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
     if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) path <- paste0(path, ".xlsx")
     save_nonparametric_paired_excel_file(result, path)
-    showNotification(sprintf("Analysis results saved: %s", path), type = "message")
+    showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
 
   register_add_result_snapshot(input, session, "add_nonparametric_paired_result", "Nonparametric Paired Test", "nonparametric_paired_results")

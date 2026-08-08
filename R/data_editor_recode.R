@@ -1,7 +1,7 @@
 # Recoding tools for the Data Editor menu.
 
-recode_ui_text <- function(en, ko_hex, language = getOption("statedu.app_language", statedu_initial_language())) {
-  statedu_text(normalize_app_language(language), en, statedu_utf8(ko_hex))
+recode_current_t <- function(key) {
+  statedu_t(key, getOption("statedu.app_language", statedu_initial_language()))
 }
 
 recode_same_rule_count <- function() 6L
@@ -100,7 +100,7 @@ reverse_score_values <- function(values, minimum = NULL, maximum = NULL) {
   minimum <- suppressWarnings(as.numeric(minimum %||% min(observed, na.rm = TRUE)))
   maximum <- suppressWarnings(as.numeric(maximum %||% max(observed, na.rm = TRUE)))
   if (!is.finite(minimum) || !is.finite(maximum) || minimum >= maximum) {
-    stop(recode_ui_text("Minimum and maximum must be valid numeric values, and minimum must be smaller than maximum.", "ecb59cec868ceab092eab3bc20ecb59ceb8c80eab092ec9d8020ec9ca0ed9aa8ed959c20ec88abec9e90ec97acec95bc20ed9598eba9b02c20ecb59cec868ceab092ec9d8020ecb59ceb8c80eab092ebb3b4eb8ba420ec9e91ec9584ec95bc20ed95a9eb8b88eb8ba42e"), call. = FALSE)
+    stop(recode_current_t("data_editor.min_max_invalid"), call. = FALSE)
   }
   ifelse(is.na(numeric_values), NA_real_, minimum + maximum - numeric_values)
 }
@@ -145,7 +145,7 @@ recode_range_issues <- function(data, variables, minimum, maximum) {
   minimum <- suppressWarnings(as.numeric(minimum))
   maximum <- suppressWarnings(as.numeric(maximum))
   if (!is.finite(minimum) || !is.finite(maximum) || minimum >= maximum) {
-    stop(recode_ui_text("Minimum and maximum must be valid numeric values, and minimum must be smaller than maximum.", "ecb59cec868ceab092eab3bc20ecb59ceb8c80eab092ec9d8020ec9ca0ed9aa8ed959c20ec88abec9e90ec97acec95bc20ed9598eba9b02c20ecb59cec868ceab092ec9d8020ecb59ceb8c80eab092ebb3b4eb8ba420ec9e91ec9584ec95bc20ed95a9eb8b88eb8ba42e"), call. = FALSE)
+    stop(recode_current_t("data_editor.min_max_invalid"), call. = FALSE)
   }
 
   rows <- lapply(variables, function(name) {
@@ -162,11 +162,11 @@ recode_range_issues <- function(data, variables, minimum, maximum) {
     }
     reasons <- ifelse(
       non_numeric[issue] | non_integer[issue],
-      recode_ui_text("Non-integer", "eca095ec8898eab08020ec9584eb8b98"),
-      recode_ui_text("Out of range", "ebb294ec9c8420ebb096")
+      recode_current_t("data_editor.coding_error_non_integer"),
+      recode_current_t("data_editor.coding_error_out_of_range")
     )
     both <- (non_numeric | non_integer) & out_of_range
-    reasons[both[issue]] <- recode_ui_text("Non-integer; Out of range", "eca095ec8898eab08020ec9584eb8b983b20ebb294ec9c8420ebb096")
+    reasons[both[issue]] <- recode_current_t("data_editor.coding_error_non_integer_out_of_range")
     data.frame(
       Id = which(issue),
       Variable = name,
@@ -202,7 +202,7 @@ coding_error_issues_display <- function(issues, prefix = "coding_error_fix", cor
         'oninput="window.easyflowCodingErrorFixValues=window.easyflowCodingErrorFixValues||{};window.easyflowCodingErrorFixValues[this.getAttribute(&quot;data-coding-error-index&quot;)]=this.value;">',
         '<button type="button" class="btn btn-default btn-sm coding-error-row-apply" tabindex="-1" ',
         'onclick="if(window.Shiny){var el=document.getElementById(&quot;%s&quot;);window.easyflowCodingErrorFixValues=window.easyflowCodingErrorFixValues||{};window.easyflowCodingErrorFixValues[%s]=el?el.value:&quot;&quot;;Shiny.setInputValue(&quot;coding_error_apply_one&quot;,{index:%s,value:el?el.value:&quot;&quot;,nonce:Date.now()+Math.random()},{priority:&quot;event&quot;});}">',
-        recode_ui_text("Apply", "eca081ec9aa9"), '</button>',
+        recode_current_t("data.apply"), '</button>',
         '</div>'
       ),
       input_id,
@@ -400,9 +400,9 @@ recode_same_rules_from_input <- function(input, prefix = "recode_same") {
 recode_rule_label <- function(input) {
   type <- as.character(input$recode_same_rule_type %||% "single")
   if (identical(type, "category")) {
-        return(recode_ui_text("Categorize values", "eab09220ebb294eca3bced9994"))
+        return(recode_current_t("data_editor.recode_rule_category"))
   }
-    recode_ui_text("Single value recode", "eb8ba8ec9dbc20eab09220ec9eacecbd94eb94a9")
+    recode_current_t("data_editor.recode_rule_single")
 }
 
 recode_single_rules_from_input <- function(input, count) {
@@ -551,9 +551,9 @@ recode_entry_values <- function(values, entry) {
 }
 
 recode_current_entry_from_input <- function(input, single_count, middle_count) {
-  target <- as.character(input$recode_same_target %||% "same")
+  target <- as.character(input$recode_same_target %||% "new")
   if (!target %in% c("same", "new")) {
-    target <- "same"
+    target <- "new"
   }
   old_variable <- trimws(as.character(input$recode_same_old_variable %||% ""))
   new_variable <- if (identical(target, "same")) old_variable else trimws(as.character(input$recode_same_new_name %||% ""))
@@ -585,7 +585,7 @@ recode_current_entry_from_input <- function(input, single_count, middle_count) {
     new = new_variable,
     target = target,
     rule_type = rule_type,
-    rule = if (identical(rule_type, "category")) recode_ui_text("Categorize values", "eab09220ebb294eca3bced9994") else recode_ui_text("Single value recode", "eb8ba8ec9dbc20eab09220ec9eacecbd94eb94a9"),
+    rule = if (identical(rule_type, "category")) recode_current_t("data_editor.recode_rule_category") else recode_current_t("data_editor.recode_rule_single"),
     measurement = if (nzchar(measurement)) measurement else NULL,
     keep_unmatched = isTRUE(input$recode_same_keep_unmatched),
     single_rules = recode_single_rules_from_input(input, single_count),
@@ -600,7 +600,7 @@ recode_applied_table_ui <- function(entries = list(), selected_index = NULL, lan
     rows <- list(tags$tr(tags$td(
       colspan = 4,
       class = "recode-builder-empty-cell",
-      statedu_text(language, "No variables queued yet.", statedu_utf8("ec9584eca78120eb8c80eab8b020eca491ec9db820ebb380ec8898eab08020ec9786ec8ab5eb8b88eb8ba42e"))
+      statedu_t("data_editor.recode_no_queued", language)
     )))
   } else {
     rows <- lapply(seq_along(entries), function(index) {
@@ -623,7 +623,7 @@ recode_applied_table_ui <- function(entries = list(), selected_index = NULL, lan
           type = "button",
           class = "btn btn-default btn-xs recode-builder-delete-button",
           onclick = delete_call,
-          statedu_text(language, "Delete", statedu_utf8("ec82adeca09c"))
+          statedu_t("data_editor.delete", language)
         ))
       )
     })
@@ -632,9 +632,9 @@ recode_applied_table_ui <- function(entries = list(), selected_index = NULL, lan
   tags$table(
     class = "recode-builder-applied-table",
     tags$thead(tags$tr(
-      tags$th(statedu_text(language, "Old variable", statedu_utf8("ec9db4eca08420ebb380ec8898"))),
-      tags$th(statedu_text(language, "New variable", statedu_utf8("ec838820ebb380ec8898"))),
-      tags$th(statedu_text(language, "Rule", statedu_utf8("eab79cecb999"))),
+      tags$th(statedu_t("data_editor.old_variable", language)),
+      tags$th(statedu_t("data_editor.new_variable", language)),
+      tags$th(statedu_t("data_editor.rule", language)),
       tags$th("")
     )),
     tags$tbody(rows)
@@ -647,8 +647,8 @@ recode_single_rules_ui <- function(count, input = NULL, language = statedu_initi
   tagList(
     div(
       class = "recode-builder-rule-header recode-builder-single-header",
-      span(statedu_text(language, "Existing value", statedu_utf8("eab8b0eca1b420eab092"))),
-      span(statedu_text(language, "New value", statedu_utf8("ec838820eab092")))
+      span(statedu_t("data_editor.existing_value", language)),
+      span(statedu_t("data_editor.new_value", language))
     ),
     div(
       class = "recode-builder-single-rules",
@@ -691,10 +691,10 @@ coding_error_check_setup_panel <- function(file, data, variable_info, labels = c
   language <- normalize_app_language(language)
   options(statedu.app_language = language)
   if (is.null(file) || is.null(data)) {
-    return(setup_empty_message(statedu_text(language, "Load a data file in the Data tab before checking coding errors.", statedu_utf8("eb8db0ec9db4ed84b020ed83adec9790ec849c20eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420eba8bceca08020ebb688eb9facec98a820ed9b8420ecbd94eb94a920ec98a4eba598eba5bc20ed9995ec9db8ed9598ec84b8ec9a942e")), language = language))
+    return(setup_empty_message(statedu_t("data_editor.coding_error_load_before_setup", language), language = language))
   }
 
-  variables <- names(data)
+  variables <- data_editor_variable_names(data, variable_info)
   selected_variables <- intersect(as.character(selected_variables %||% character(0)), variables)
   available <- setdiff(variables, selected_variables)
   selected_available <- selected_order_items(isolate(input$coding_error_available) %||% character(0), available)
@@ -742,8 +742,8 @@ coding_error_check_setup_panel <- function(file, data, variable_info, labels = c
     div(
       class = "analysis-options-column analysis-options-panel recode-different-options",
       div(class = "analysis-option-group recode-range-check-options",
-        div(class = "analysis-option-title", statedu_text(language, "Auto coding error check", statedu_utf8("ec9e90eb8f9920ecbd94eb94a920ec98a4eba59820ed9995ec9db8"))),
-        div(class = "recode-help-text", statedu_text(language, "Run checks values outside the range and non-integer values.", statedu_utf8("ebb294ec9c8420ebb09620eab092eab3bc20eca095ec8898eab08020ec9584eb8b8c20eab092ec9d8420eab280ec82aced95a9eb8b88eb8ba42e"))),
+        div(class = "analysis-option-title", statedu_t("data_editor.coding_error_title", language)),
+        div(class = "recode-help-text", statedu_t("data_editor.coding_error_help", language)),
         div(class = "recode-observed-range",
           span(analysis_ui_text("Observed range", language)),
           tags$strong(if (is.finite(observed[["minimum"]]) && is.finite(observed[["maximum"]])) {
@@ -769,8 +769,8 @@ data_editor_coding_error_check_panel <- function(language = statedu_initial_lang
     class = "page-shell",
     div(
       class = "app-heading",
-      h1(statedu_text(language, "Auto Coding Error Check", statedu_utf8("ec9e90eb8f9920ecbd94eb94a920ec98a4eba59820ed9995ec9db8"))),
-      div(statedu_text(language, "Check selected variables for out-of-range values and non-integer values.", statedu_utf8("ec84a0ed839ded959c20ebb380ec8898ec9d9820ebb294ec9c8420ebb09620eab092eab3bc20eca095ec8898eab08020ec9584eb8b8c20eab092ec9d8420ed9995ec9db8ed95a9eb8b88eb8ba42e")), class = "app-subtitle")
+      h1(statedu_t("data_editor.coding_error_title", language)),
+      div(statedu_t("data_editor.coding_error_subtitle", language), class = "app-subtitle")
     ),
     div(
       class = "workspace-panel frequencies-workspace-panel data-editor-workspace",
@@ -798,10 +798,10 @@ recode_different_setup_panel <- function(file, data, variable_info, labels = cha
   language <- normalize_app_language(language)
   options(statedu.app_language = language)
   if (is.null(file) || is.null(data)) {
-    return(setup_empty_message(statedu_text(language, "Load a data file in the Data tab before using auto reverse coding.", statedu_utf8("eb8db0ec9db4ed84b020ed83adec9790ec849c20eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420eba8bceca08020ebb688eb9facec98a820ed9b8420ec9e90eb8f9920ec97adecbd94eb94a9ec9d8420ec82acec9aa9ed9598ec84b8ec9a942e")), language = language))
+    return(setup_empty_message(statedu_t("data_editor.reverse_load_before_setup", language), language = language))
   }
 
-  variables <- names(data)
+  variables <- data_editor_variable_names(data, variable_info)
   selected_variables <- intersect(as.character(selected_variables %||% character(0)), variables)
   available <- setdiff(variables, selected_variables)
   selected_available <- selected_order_items(isolate(input$recode_different_available) %||% character(0), available)
@@ -879,7 +879,7 @@ recode_different_setup_panel <- function(file, data, variable_info, labels = cha
         condition = "input.recode_different_target == 'new'",
         div(class = "analysis-option-group recode-new-name-options",
           textInput("recode_different_new_name", analysis_ui_text("New variable name", language), value = current_pattern, width = "100%"),
-          div(class = "recode-help-text", statedu_text(language, "Use {variable} for the original variable name, for example {variable}_R.", statedu_utf8("ec9b9020ebb380ec8898ebaa85ec9790eb8a94207b7661726961626c657dec9d8420ec82acec9aa9ed9598ec84b8ec9a942e20ec98883a207b7661726961626c657d5f52")))
+          div(class = "recode-help-text", statedu_t("data_editor.reverse_name_help", language))
         )
       )
     )
@@ -893,8 +893,8 @@ data_editor_different_variable_panel <- function(language = statedu_initial_lang
     class = "page-shell",
     div(
       class = "app-heading",
-      h1(statedu_text(language, "Auto Reverse Coding", statedu_utf8("ec9e90eb8f9920ec97adecbd94eb94a9"))),
-      div(statedu_text(language, "Create new reverse-coded variables while preserving the original variables.", statedu_utf8("ec9b9020ebb380ec8898eba5bc20ebb3b4eca1b4ed9598eba9b4ec849c20ec838820ec97adecbd94eb94a920ebb380ec8898eba5bc20eba78ceb93adeb8b88eb8ba42e")), class = "app-subtitle")
+      h1(statedu_t("data_editor.reverse_title", language)),
+      div(statedu_t("data_editor.reverse_subtitle", language), class = "app-subtitle")
     ),
     div(
       class = "workspace-panel frequencies-workspace-panel data-editor-workspace",
@@ -918,10 +918,10 @@ variable_calculation_setup_panel <- function(file, data, variable_info, labels =
   language <- normalize_app_language(language)
   options(statedu.app_language = language)
   if (is.null(file) || is.null(data)) {
-    return(setup_empty_message(statedu_text(language, "Load a data file in the Data tab before calculating variables.", statedu_utf8("eb8db0ec9db4ed84b020ed83adec9790ec849c20eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420eba8bceca08020ebb688eb9facec98a820ed9b8420ebb380ec8898eba5bc20eab384ec82b0ed9598ec84b8ec9a942e")), language = language))
+    return(setup_empty_message(statedu_t("data_editor.calculation_load_before_setup", language), language = language))
   }
 
-  variables <- names(data)
+  variables <- data_editor_variable_names(data, variable_info)
   selected_variables <- intersect(as.character(selected_variables %||% character(0)), variables)
   available <- setdiff(variables, selected_variables)
   selected_available <- selected_order_items(isolate(input$variable_calculation_available) %||% character(0), available)
@@ -984,7 +984,7 @@ variable_calculation_setup_panel <- function(file, data, variable_info, labels =
         textInput("variable_calculation_label", analysis_ui_text("Variable label", language), value = current_label, width = "100%"),
         div(
           class = "recode-help-text variable-calculation-help",
-          statedu_text(language, "Created variables use M_, S_, SD_, and Var_ prefixes, for example M_score.", statedu_utf8("ec839dec84b120ebb380ec8898eb8a94204d5f2c20535f2c2053445f2c205661725f20eca091eb9190ec96b4eba5bc20ec82acec9aa9ed95a9eb8b88eb8ba42e20ec98883a204d5f73636f72652e"))
+          statedu_t("data_editor.calculation_prefix_help", language)
         )
       ),
       div(class = "analysis-option-group variable-calculation-reliability-options",
@@ -1002,8 +1002,8 @@ data_editor_variable_calculation_panel <- function(language = statedu_initial_la
     class = "page-shell",
     div(
       class = "app-heading",
-      h1(statedu_text(language, "Auto Variable Calculation", statedu_utf8("ec9e90eb8f9920ebb380ec889820eab384ec82b0"))),
-      div(statedu_text(language, "Create row-wise summary variables from selected variables.", statedu_utf8("ed968920eb8ba8ec9c8420ec9a94ec95bd20ebb380ec8898eba5bc20ec839dec84b1ed95a9eb8b88eb8ba42e")), class = "app-subtitle")
+      h1(statedu_t("data_editor.calculation_title", language)),
+      div(statedu_t("data_editor.calculation_subtitle", language), class = "app-subtitle")
     ),
     div(
       class = "workspace-panel frequencies-workspace-panel data-editor-workspace",
@@ -1028,10 +1028,10 @@ recode_same_setup_panel <- function(file, data, variable_info, labels = characte
   language <- normalize_app_language(language)
   options(statedu.app_language = language)
   if (is.null(file) || is.null(data)) {
-    return(setup_empty_message(statedu_text(language, "Load a data file in the Data tab before using same-variable recoding.", statedu_utf8("eb8db0ec9db4ed84b020ed83adec9790ec849c20eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420eba8bceca08020ebb688eb9facec98a820ed9b8420eab099ec9d8020ebb380ec889820ec9eacecbd94eb94a9ec9d8420ec82acec9aa9ed9598ec84b8ec9a942e")), language = language))
+    return(setup_empty_message(statedu_t("data_editor.recode_load_before_setup", language), language = language))
   }
 
-  variables <- names(data)
+  variables <- data_editor_variable_names(data, variable_info)
   selected_available <- selected_order_items(isolate(input$recode_same_available) %||% character(0), variables)
   measurement_choices <- analysis_ui_choices(c(
     "Keep current type" = "",
@@ -1040,9 +1040,9 @@ recode_same_setup_panel <- function(file, data, variable_info, labels = characte
     "Ordered" = "ordered",
     "Continuous" = "continuous"
   ), language = language)
-  current_target <- isolate(input$recode_same_target) %||% "same"
+  current_target <- isolate(input$recode_same_target) %||% "new"
   if (!current_target %in% c("same", "new")) {
-    current_target <- "same"
+    current_target <- "new"
   }
   current_old <- isolate(input$recode_same_old_variable) %||% selected_available %||% ""
   current_new <- isolate(input$recode_same_new_name) %||% ""
@@ -1152,8 +1152,8 @@ data_editor_same_variable_panel <- function(language = statedu_initial_language(
     class = "page-shell",
     div(
       class = "app-heading",
-      h1(statedu_text(language, "Recode Variable", statedu_utf8("ebb380ec889820eba6acecbd94eb94a9"))),
-      div(statedu_text(language, "Change coding values in selected variables and save the result to the same variables or new variables.", statedu_utf8("ec84a0ed839ded959c20ebb380ec8898ec9d9820ecbd94eb94a920eab092ec9d8420ebb094eabeb8eab3a020eab099ec9d8020ebb380ec889820eb9890eb8a9420ec838820ebb380ec8898eba19c20eca080ec9ea5ed95a9eb8b88eb8ba42e")), class = "app-subtitle")
+      h1(statedu_t("data_editor.recode_title", language)),
+      div(statedu_t("data_editor.recode_subtitle", language), class = "app-subtitle")
     ),
     div(
       class = "workspace-panel frequencies-workspace-panel data-editor-workspace",
@@ -1196,9 +1196,11 @@ register_recode_same_handlers <- function(
   single_rule_count <- reactiveVal(2L)
   single_rule_max <- reactiveVal(NULL)
   category_middle_count <- reactiveVal(1L)
+  recode_language <- function() statedu_current_language(language_fn)
+  recode_t <- function(key) statedu_t(key, recode_language())
 
   output$recode_same_setup <- renderUI({
-    language <- statedu_current_language(language_fn)
+    language <- recode_language()
     recode_same_setup_panel(
       file = current_data_file_fn(),
       data = tryCatch(dataset_fn(), error = function(e) NULL),
@@ -1324,7 +1326,7 @@ register_recode_same_handlers <- function(
       } else {
         single_rule_max(NULL)
       }
-      if (identical(as.character(input$recode_same_target %||% "same"), "new") &&
+      if (identical(as.character(input$recode_same_target %||% "new"), "new") &&
           !nzchar(trimws(as.character(input$recode_same_new_name %||% "")))) {
         updateTextInput(session, "recode_same_new_name", value = paste0(selected_name, "_recode"))
       }
@@ -1410,6 +1412,29 @@ register_recode_same_handlers <- function(
     single_rule_count(2L)
     single_rule_max(NULL)
     category_middle_count(1L)
+    updateTextInput(session, "recode_same_old_variable", value = "")
+    updateTextInput(session, "recode_same_new_name", value = "")
+    updateRadioButtons(session, "recode_same_target", selected = "new")
+    updateRadioButtons(session, "recode_same_rule_type", selected = "single")
+    updateCheckboxInput(session, "recode_same_keep_unmatched", value = TRUE)
+    updateSelectInput(session, "recode_same_measurement", selected = "")
+    updateTextInput(session, "recode_same_cat_lower_to", value = "")
+    updateTextInput(session, "recode_same_cat_lower_new", value = "")
+    updateSelectInput(session, "recode_same_cat_lower_upper_op", selected = "lt")
+    updateTextInput(session, "recode_same_cat_middle_from_1", value = "")
+    updateTextInput(session, "recode_same_cat_middle_to_1", value = "")
+    updateTextInput(session, "recode_same_cat_middle_new_1", value = "")
+    updateSelectInput(session, "recode_same_cat_middle_lower_op_1", selected = "ge")
+    updateSelectInput(session, "recode_same_cat_middle_upper_op_1", selected = "lt")
+    updateTextInput(session, "recode_same_cat_upper_from", value = "")
+    updateTextInput(session, "recode_same_cat_upper_new", value = "")
+    updateSelectInput(session, "recode_same_cat_upper_lower_op", selected = "ge")
+    session$onFlushed(function() {
+      for (row_index in seq_len(max(2L, single_rule_count()))) {
+        updateTextInput(session, paste0("recode_same_single_old_", row_index), value = "")
+        updateTextInput(session, paste0("recode_same_single_new_", row_index), value = "")
+      }
+    }, once = TRUE)
     session$sendCustomMessage(
       "easyflow-clear-transfer-selection",
       list(inputIds = c("recode_same_available", "recode_same_selected"))
@@ -1443,7 +1468,7 @@ register_recode_same_handlers <- function(
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
-    if (identical(as.character(input$recode_same_target %||% "same"), "new")) {
+    if (identical(as.character(input$recode_same_target %||% "new"), "new")) {
       preview_name <- trimws(as.character(input$recode_same_new_name %||% ""))
       names(preview)[[3]] <- if (nzchar(preview_name)) preview_name else "New value"
     }
@@ -1467,7 +1492,7 @@ register_recode_same_handlers <- function(
     selected_queue_index(index)
     updateTextInput(session, "recode_same_old_variable", value = entry$old %||% "")
     updateTextInput(session, "recode_same_new_name", value = if (identical(entry$target, "new")) entry$new %||% "" else "")
-    updateRadioButtons(session, "recode_same_target", selected = entry$target %||% "same")
+    updateRadioButtons(session, "recode_same_target", selected = entry$target %||% "new")
     updateRadioButtons(session, "recode_same_rule_type", selected = entry$rule_type %||% "single")
     updateCheckboxInput(session, "recode_same_keep_unmatched", value = isTRUE(entry$keep_unmatched))
     updateSelectInput(session, "recode_same_measurement", selected = entry$measurement %||% "")
@@ -1519,14 +1544,14 @@ register_recode_same_handlers <- function(
     entries <- entries[-index]
     applied_entries(entries)
     selected_queue_index(NULL)
-    last_message(recode_ui_text("Removed queued recode rule.", "eb8c80eab8b020eca491ec9db820ec9eacecbd94eb94a920eab79cecb999ec9d8420eca09ceab1b0ed9688ec8ab5eb8b88eb8ba42e"))
+    last_message(recode_t("data_editor.recode_removed_rule"))
   }, ignoreInit = TRUE)
 
   output$recode_same_reverse_summary <- DT::renderDT({
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
     summary <- recode_same_reverse_summary(data, selected_variables())
     if (is.null(summary) || nrow(summary) == 0) {
-      return(DT::datatable(data.frame(Message = recode_ui_text("Select scale items to inspect min/max.", "ecb59cec868c2fecb59ceb8c80eab092ec9d8420ed9995ec9db8ed95a020ecb299eb8f8420ebacb8ed95adec9d8420ec84a0ed839ded9598ec84b8ec9a942e")), rownames = FALSE, options = list(dom = "t")))
+      return(DT::datatable(data.frame(Message = recode_t("data_editor.recode_select_scale_items")), rownames = FALSE, options = list(dom = "t")))
     }
     DT::datatable(summary, rownames = FALSE, options = list(dom = "t", ordering = FALSE, pageLength = 8))
   })
@@ -1542,21 +1567,21 @@ register_recode_same_handlers <- function(
   observeEvent(input$add_recode_same, {
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
     if (is.null(data)) {
-      showNotification(recode_ui_text("Load a data file before adding a recode rule.", "ec9eacecbd94eb94a920eab79cecb999ec9d8420ecb694eab080ed9598eab8b020eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e"), type = "warning", duration = 5)
+      showNotification(recode_t("data_editor.recode_load_before_add_rule"), type = "warning", duration = 5)
       return()
     }
     variable_info <- tryCatch(variable_info_fn(), error = function(e) NULL)
     entry <- recode_current_entry_from_input(input, single_rule_count(), category_middle_count())
     if (!nzchar(entry$old) || !entry$old %in% names(data)) {
-      showNotification(recode_ui_text("Select an old variable to add.", "ecb694eab080ed95a020eab8b0eca1b420ebb380ec8898eba5bc20ec84a0ed839ded9598ec84b8ec9a942e"), type = "warning", duration = 5)
+      showNotification(recode_t("data_editor.recode_select_old_variable"), type = "warning", duration = 5)
       return()
     }
     if (identical(entry$target, "new") && !nzchar(entry$new)) {
-      showNotification(recode_ui_text("Enter a new variable name.", "ec838820ebb380ec8898ebaa85ec9d8420ec9e85eba0a5ed9598ec84b8ec9a942e"), type = "warning", duration = 5)
+      showNotification(statedu_t("data_editor.rename_enter_new_name", recode_language()), type = "warning", duration = 5)
       return()
     }
     if (identical(entry$rule_type, "single") && nrow(entry$single_rules) == 0) {
-        showNotification(recode_ui_text("Enter at least one existing value to recode.", "ec9eacecbd94eb94a9ed95a020eab8b0eca1b420eab092ec9d8420ed9598eb829820ec9db4ec838120ec9e85eba0a5ed9598ec84b8ec9a942e"), type = "warning", duration = 5)
+        showNotification(recode_t("data_editor.recode_enter_existing_value"), type = "warning", duration = 5)
         return()
     }
     inferred_measurement <- recode_infer_output_measurement(entry, recode_source_measurement(variable_info, entry$old, data))
@@ -1570,10 +1595,10 @@ register_recode_same_handlers <- function(
     index <- suppressWarnings(as.integer(selected_queue_index() %||% NA_integer_))
     if (is.finite(index) && index >= 1L && index <= length(entries)) {
       entries[[index]] <- entry
-      status <- sprintf(recode_ui_text("Updated queued recode rule: %s -> %s", "eb8c80eab8b020eca491ec9db820ec9eacecbd94eb94a920eab79cecb999ec9d8420ec9785eb8db0ec9db4ed8ab8ed9688ec8ab5eb8b88eb8ba43a202573202d3e202573"), entry$old, entry$new)
+      status <- sprintf(recode_t("data_editor.recode_updated_rule"), entry$old, entry$new)
     } else {
       entries <- c(entries, list(entry))
-      status <- sprintf(recode_ui_text("Added queued recode rule: %s -> %s", "ec9eacecbd94eb94a920eab79cecb999ec9d8420eb8c80eab8b020ebaaa9eba19dec979020ecb694eab080ed9688ec8ab5eb8b88eb8ba43a202573202d3e202573"), entry$old, entry$new)
+      status <- sprintf(recode_t("data_editor.recode_added_rule"), entry$old, entry$new)
     }
     if (!is.null(unmatched_message)) {
       status <- paste(status, unmatched_message)
@@ -1587,16 +1612,16 @@ register_recode_same_handlers <- function(
   observeEvent(input$apply_recode_same, {
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
     if (is.null(data)) {
-      showNotification(recode_ui_text("Load a data file before recoding.", "ec9eacecbd94eb94a9ed9598eab8b020eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e"), type = "warning", duration = 5)
+      showNotification(recode_t("data_editor.recode_load_before_run"), type = "warning", duration = 5)
       return()
     }
     entries <- applied_entries()
     if (length(entries) == 0) {
-      showNotification(recode_ui_text("Add at least one recode rule before applying.", "eca081ec9aa9ed9598eab8b020eca084ec979020ec9eacecbd94eb94a920eab79cecb999ec9d8420ed9598eb829820ec9db4ec838120ecb694eab080ed9598ec84b8ec9a942e"), type = "warning", duration = 5)
+      showNotification(recode_t("data_editor.recode_add_rule_before_apply"), type = "warning", duration = 5)
       return()
     }
     if (any(vapply(entries, function(entry) identical(entry$target, "new"), logical(1))) && !is.function(add_calculated_variable_fn)) {
-      showNotification(recode_ui_text("New-variable recoding is not available in this session.", "ec9db420ec84b8ec8598ec9790ec849ceb8a9420ec838820ebb380ec889820ec9eacecbd94eb94a9ec9d8420ec82acec9aa9ed95a020ec889820ec9786ec8ab5eb8b88eb8ba42e"), type = "warning", duration = 5)
+      showNotification(recode_t("data_editor.recode_new_variable_unavailable"), type = "warning", duration = 5)
       return()
     }
 
@@ -1604,11 +1629,11 @@ register_recode_same_handlers <- function(
     changed <- character(0)
     for (entry in entries) {
       if (!nzchar(entry$old) || !entry$old %in% names(working_data)) {
-        showNotification(sprintf(recode_ui_text("Queued variable is not available: %s", "eb8c80eab8b020eca491ec9db820ebb380ec8898eba5bc20ec82acec9aa9ed95a020ec889820ec9786ec8ab5eb8b88eb8ba43a202573"), entry$old), type = "warning", duration = 5)
+        showNotification(sprintf(recode_t("data_editor.recode_queued_variable_missing"), entry$old), type = "warning", duration = 5)
         return()
       }
       if (identical(entry$target, "new") && !nzchar(entry$new)) {
-        showNotification(sprintf(recode_ui_text("Queued rule for %s has no new variable name.", "2573ec979020eb8c80ed959c20eb8c80eab8b020eab79cecb999ec979020ec838820ebb380ec8898ebaa85ec9db420ec9786ec8ab5eb8b88eb8ba42e"), entry$old), type = "warning", duration = 5)
+        showNotification(sprintf(recode_t("data_editor.recode_queued_rule_missing_name"), entry$old), type = "warning", duration = 5)
         return()
       }
       values <- recode_entry_values(working_data[[entry$old]], entry)
@@ -1624,24 +1649,24 @@ register_recode_same_handlers <- function(
       }
     }
     if (length(changed) == 0) {
-      last_message(recode_ui_text("No queued recode rules were applied.", "eca081ec9aa9eb909c20eb8c80eab8b020ec9eacecbd94eb94a920eab79cecb999ec9db420ec9786ec8ab5eb8b88eb8ba42e"))
+      last_message(recode_t("data_editor.recode_no_rules_applied"))
       return()
     }
     applied_entries(list())
     selected_queue_index(NULL)
-    last_message(sprintf(recode_ui_text("Applied %s queued recode rule(s): %s", "2573eab09c20eb8c80eab8b020ec9eacecbd94eb94a920eab79cecb999ec9d8420eca081ec9aa9ed9688ec8ab5eb8b88eb8ba43a202573"), length(changed), paste(changed, collapse = ", ")))
+    last_message(sprintf(recode_t("data_editor.recode_applied_rules"), length(changed), paste(changed, collapse = ", ")))
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
   observeEvent(input$apply_recode_same_reverse, {
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
     if (is.null(data)) {
-      showNotification(recode_ui_text("Load a data file before reverse scoring.", "ec97adecbd94eb94a9ed9598eab8b020eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e"), type = "warning", duration = 5)
+      showNotification(recode_t("data_editor.recode_load_before_reverse"), type = "warning", duration = 5)
       return()
     }
     variables <- intersect(selected_variables(), names(data))
     if (length(variables) == 0) {
-      showNotification(recode_ui_text("Select at least one variable to reverse score.", "ec97adecbd94eb94a9ed95a020ebb380ec8898eba5bc20ed9598eb829820ec9db4ec838120ec84a0ed839ded9598ec84b8ec9a942e"), type = "warning", duration = 5)
+      showNotification(recode_t("data_editor.recode_select_reverse_variable"), type = "warning", duration = 5)
       return()
     }
 
@@ -1656,7 +1681,7 @@ register_recode_same_handlers <- function(
       }
       update_existing_variable_fn(name, values, measurement = "ordered")
     }
-    last_message(sprintf(recode_ui_text("Reverse scored %s variable(s): %s", "2573eab09c20ebb380ec8898eba5bc20ec97adecbd94eb94a9ed9688ec8ab5eb8b88eb8ba43a202573"), length(variables), paste(variables, collapse = ", ")))
+    last_message(sprintf(recode_t("data_editor.recode_reverse_scored"), length(variables), paste(variables, collapse = ", ")))
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
@@ -1682,9 +1707,11 @@ register_coding_error_check_handlers <- function(
   last_message <- reactiveVal(NULL)
   last_issues <- reactiveVal(data.frame())
   correction_values <- reactiveVal(character(0))
+  coding_error_language <- function() statedu_current_language(language_fn)
+  coding_error_t <- function(key) statedu_t(key, coding_error_language())
 
   output$coding_error_setup <- renderUI({
-    language <- statedu_current_language(language_fn)
+    language <- coding_error_language()
     coding_error_check_setup_panel(
       file = current_data_file_fn(),
       data = tryCatch(dataset_fn(), error = function(e) NULL),
@@ -1944,19 +1971,19 @@ register_coding_error_check_handlers <- function(
   apply_coding_error_corrections <- function(indices = NULL) {
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
     if (is.null(data)) {
-      showNotification(recode_ui_text("Load a data file before applying corrections.", "ec8898eca095eab092ec9d8420eca081ec9aa9ed9598eab8b020eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e"), type = "warning", duration = 5)
+      showNotification(coding_error_t("data_editor.coding_error_load_before_apply"), type = "warning", duration = 5)
       return(invisible(FALSE))
     }
     issues <- last_issues()
     if (is.null(issues) || nrow(issues) == 0) {
-      showNotification(recode_ui_text("Run coding error check before applying corrections.", "ec8898eca095eab092ec9d8420eca081ec9aa9ed9598eab8b020eca084ec979020ecbd94eb94a920ec98a4eba59820ed9995ec9db8ec9d8420ec8ba4ed9689ed9598ec84b8ec9a942e"), type = "warning", duration = 5)
+      showNotification(coding_error_t("data_editor.coding_error_run_before_apply"), type = "warning", duration = 5)
       return(invisible(FALSE))
     }
 
     minimum <- suppressWarnings(as.numeric(input$coding_error_min))
     maximum <- suppressWarnings(as.numeric(input$coding_error_max))
     if (!is.finite(minimum) || !is.finite(maximum) || minimum >= maximum) {
-      showNotification(recode_ui_text("Minimum and maximum must be valid numeric values, and minimum must be smaller than maximum.", "ecb59cec868ceab092eab3bc20ecb59ceb8c80eab092ec9d8020ec9ca0ed9aa8ed959c20ec88abec9e90ec97acec95bc20ed9598eba9b02c20ecb59cec868ceab092ec9d8020ecb59ceb8c80eab092ebb3b4eb8ba420ec9e91ec9584ec95bc20ed95a9eb8b88eb8ba42e"), type = "warning", duration = 6)
+      showNotification(coding_error_t("data_editor.min_max_invalid"), type = "warning", duration = 6)
       return(invisible(FALSE))
     }
 
@@ -1976,7 +2003,7 @@ register_coding_error_check_handlers <- function(
       indices <- indices[is.finite(indices) & indices >= 1 & indices <= nrow(issues)]
     }
     if (length(indices) == 0) {
-      showNotification(recode_ui_text("Enter at least one corrected value that differs from the original value.", "ec9b90eb9e9820eab092eab3bc20eb8ba4eba5b820ec8898eca095eab092ec9d8420ed9598eb829820ec9db4ec838120ec9e85eba0a5ed9598ec84b8ec9a942e"), type = "warning", duration = 5)
+      showNotification(coding_error_t("data_editor.coding_error_enter_changed_correction"), type = "warning", duration = 5)
       return(invisible(FALSE))
     }
 
@@ -1987,7 +2014,7 @@ register_coding_error_check_handlers <- function(
       }
       numeric_value <- suppressWarnings(as.numeric(corrected))
       if (!is.finite(numeric_value) || abs(numeric_value - round(numeric_value)) > sqrt(.Machine$double.eps) || numeric_value < minimum || numeric_value > maximum) {
-        showNotification(sprintf(recode_ui_text("Correction for row %s / %s must be an integer within the selected range.", "2573ed9689202f202573ec9d9820ec8898eca095eab092ec9d8020ec84a0ed839ded959c20ebb294ec9c8420ec9588ec9d9820eca095ec8898ec97acec95bc20ed95a9eb8b88eb8ba42e"), issues$Id[[index]], issues$Variable[[index]]), type = "warning", duration = 6)
+        showNotification(sprintf(coding_error_t("data_editor.coding_error_correction_out_of_range"), issues$Id[[index]], issues$Variable[[index]]), type = "warning", duration = 6)
         return(invisible(FALSE))
       }
       variable <- as.character(issues$Variable[[index]])
@@ -2003,7 +2030,7 @@ register_coding_error_check_handlers <- function(
     }
 
     if (changed == 0L) {
-      showNotification(recode_ui_text("Enter at least one corrected value.", "ec8898eca095eab092ec9d8420ed9598eb829820ec9db4ec838120ec9e85eba0a5ed9598ec84b8ec9a942e"), type = "warning", duration = 5)
+      showNotification(coding_error_t("data_editor.coding_error_enter_correction"), type = "warning", duration = 5)
       return(invisible(FALSE))
     }
 
@@ -2021,9 +2048,9 @@ register_coding_error_check_handlers <- function(
     correction_values(as.character(updated_issues$Value %||% character(0)))
     session$sendCustomMessage("easyflow-clear-coding-error-fixes", list())
     if (nrow(updated_issues) > 0) {
-      last_message(sprintf(recode_ui_text("Applied %s correction(s). Found %s coding issue(s) remaining.", "2573eab09c20ec8898eca095eab092ec9d8420eca081ec9aa9ed9688ec8ab5eb8b88eb8ba42e20eb82a8ec9d8020ecbd94eb94a920ebacb8eca09ceb8a94202573eab09cec9e85eb8b88eb8ba42e"), changed, nrow(updated_issues)))
+      last_message(sprintf(coding_error_t("data_editor.coding_error_applied_remaining"), changed, nrow(updated_issues)))
     } else {
-      last_message(sprintf(recode_ui_text("Applied %s correction(s). No coding errors found.", "2573eab09c20ec8898eca095eab092ec9d8420eca081ec9aa9ed9688ec8ab5eb8b88eb8ba42e20ecbd94eb94a920ec98a4eba598eab08020ec9786ec8ab5eb8b88eb8ba42e"), changed))
+      last_message(sprintf(coding_error_t("data_editor.coding_error_applied_clear"), changed))
     }
     mark_settings_dirty()
     invisible(TRUE)
@@ -2032,12 +2059,12 @@ register_coding_error_check_handlers <- function(
   observeEvent(input$apply_coding_error, {
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
     if (is.null(data)) {
-      showNotification(recode_ui_text("Load a data file before checking coding errors.", "ecbd94eb94a920ec98a4eba598eba5bc20ed9995ec9db8ed9598eab8b020eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e"), type = "warning", duration = 5)
+      showNotification(coding_error_t("data_editor.coding_error_load_before_check"), type = "warning", duration = 5)
       return()
     }
     variables <- intersect(selected_variables(), names(data))
     if (length(variables) == 0) {
-      showNotification(recode_ui_text("Select at least one variable to check.", "ed9995ec9db8ed95a020ebb380ec8898eba5bc20ed9598eb829820ec9db4ec838120ec84a0ed839ded9598ec84b8ec9a942e"), type = "warning", duration = 5)
+      showNotification(coding_error_t("data_editor.coding_error_select_variable"), type = "warning", duration = 5)
       return()
     }
 
@@ -2055,9 +2082,9 @@ register_coding_error_check_handlers <- function(
     correction_values(as.character(issues$Value %||% character(0)))
     session$sendCustomMessage("easyflow-clear-coding-error-fixes", list())
     if (nrow(issues) > 0) {
-      last_message(sprintf(recode_ui_text("Found %s coding issue(s).", "2573eab09c20ecbd94eb94a920ebacb8eca09ceab08020ebb09ceab2aceb9098ec9788ec8ab5eb8b88eb8ba42e"), nrow(issues)))
+      last_message(sprintf(coding_error_t("data_editor.coding_error_found"), nrow(issues)))
     } else {
-      last_message(recode_ui_text("No coding errors found.", "ecbd94eb94a920ec98a4eba598eab08020ec9786ec8ab5eb8b88eb8ba42e"))
+      last_message(coding_error_t("data_editor.coding_error_none"))
     }
   }, ignoreInit = TRUE)
 
@@ -2104,9 +2131,11 @@ register_recode_different_handlers <- function(
   last_message <- reactiveVal(NULL)
   last_issues <- reactiveVal(data.frame())
   output_variables <- reactiveVal(character(0))
+  recode_different_language <- function() statedu_current_language(language_fn)
+  recode_different_t <- function(key) statedu_t(key, recode_different_language())
 
   output$recode_different_setup <- renderUI({
-    language <- statedu_current_language(language_fn)
+    language <- recode_different_language()
     recode_different_setup_panel(
       file = current_data_file_fn(),
       data = tryCatch(dataset_fn(), error = function(e) NULL),
@@ -2285,19 +2314,19 @@ register_recode_different_handlers <- function(
   observeEvent(input$apply_recode_different, {
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
     if (is.null(data)) {
-      showNotification(recode_ui_text("Load a data file before recoding.", "ec9eacecbd94eb94a9ed9598eab8b020eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e"), type = "warning", duration = 5)
+      showNotification(recode_different_t("data_editor.recode_load_before_run"), type = "warning", duration = 5)
       return()
     }
     variables <- intersect(selected_variables(), names(data))
     if (length(variables) == 0) {
-      showNotification(recode_ui_text("Select at least one variable to inspect or recode.", "eab280ed86a0ed9598eab1b0eb829820ec9eacecbd94eb94a9ed95a020ebb380ec8898eba5bc20ed9598eb829820ec9db4ec838120ec84a0ed839ded9598ec84b8ec9a942e"), type = "warning", duration = 5)
+      showNotification(recode_different_t("data_editor.reverse_select_variable"), type = "warning", duration = 5)
       return()
     }
 
     minimum <- suppressWarnings(as.numeric(input$recode_different_min))
     maximum <- suppressWarnings(as.numeric(input$recode_different_max))
     if (!is.finite(minimum) || !is.finite(maximum) || minimum >= maximum) {
-      showNotification(recode_ui_text("Minimum and maximum must be valid numeric values, and minimum must be smaller than maximum.", "ecb59cec868ceab092eab3bc20ecb59ceb8c80eab092ec9d8020ec9ca0ed9aa8ed959c20ec88abec9e90ec97acec95bc20ed9598eba9b02c20ecb59cec868ceab092ec9d8020ecb59ceb8c80eab092ebb3b4eb8ba420ec9e91ec9584ec95bc20ed95a9eb8b88eb8ba42e"), type = "warning", duration = 6)
+      showNotification(recode_different_t("data_editor.min_max_invalid"), type = "warning", duration = 6)
       return()
     }
     last_issues(data.frame())
@@ -2327,11 +2356,11 @@ register_recode_different_handlers <- function(
       }
     }
     if (length(created) == 0) {
-      last_message(recode_ui_text("No coding errors found, but no variables were updated.", "ecbd94eb94a920ec98a4eba598eb8a9420ec9786eca780eba78c20ec9785eb8db0ec9db4ed8ab8eb909c20ebb380ec8898eab08020ec9786ec8ab5eb8b88eb8ba42e"))
+      last_message(recode_different_t("data_editor.reverse_no_variables_updated"))
     } else if (identical(target, "same")) {
-      last_message(sprintf(recode_ui_text("No coding errors found. Updated %s existing variable(s): %s", "ecbd94eb94a920ec98a4eba598eab08020ec9786ec8ab5eb8b88eb8ba42e20eab8b0eca1b420ebb380ec8898202573eab09ceba5bc20ec9785eb8db0ec9db4ed8ab8ed9688ec8ab5eb8b88eb8ba43a202573"), length(created), paste(created, collapse = ", ")))
+      last_message(sprintf(recode_different_t("data_editor.reverse_updated_existing"), length(created), paste(created, collapse = ", ")))
     } else {
-      last_message(sprintf(recode_ui_text("No coding errors found. Created %s variable(s): %s", "ecbd94eb94a920ec98a4eba598eab08020ec9786ec8ab5eb8b88eb8ba42e20ebb380ec8898202573eab09ceba5bc20ec839dec84b1ed9688ec8ab5eb8b88eb8ba43a202573"), length(created), paste(created, collapse = ", ")))
+      last_message(sprintf(recode_different_t("data_editor.reverse_created_variables"), length(created), paste(created, collapse = ", ")))
     }
     output_variables(created)
     mark_settings_dirty()
@@ -2360,9 +2389,11 @@ register_variable_calculation_handlers <- function(
   preview_data <- reactiveVal(data.frame(check.names = FALSE))
   output_variables <- reactiveVal(character(0))
   reliability_result <- reactiveVal(NULL)
+  calculation_language <- function() statedu_current_language(language_fn)
+  calculation_t <- function(key) statedu_t(key, calculation_language())
 
   output$variable_calculation_setup <- renderUI({
-    language <- statedu_current_language(language_fn)
+    language <- calculation_language()
     variable_calculation_setup_panel(
       file = current_data_file_fn(),
       data = tryCatch(dataset_fn(), error = function(e) NULL),
@@ -2560,26 +2591,26 @@ register_variable_calculation_handlers <- function(
   })
 
   observeEvent(input$apply_variable_calculation, {
-    language <- statedu_current_language(language_fn)
+    language <- calculation_language()
     data <- tryCatch(dataset_fn(), error = function(e) NULL)
     if (is.null(data)) {
-      showNotification(recode_ui_text("Load a data file before calculating variables.", "ebb380ec8898eba5bc20eab384ec82b0ed9598eab8b020eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e"), type = "warning", duration = 5)
+      showNotification(calculation_t("data_editor.calculation_load_before_run"), type = "warning", duration = 5)
       return()
     }
     variables <- intersect(selected_variables(), names(data))
     if (length(variables) == 0) {
-      showNotification(recode_ui_text("Select at least one variable to calculate.", "eab384ec82b0ed95a020ebb380ec8898eba5bc20ed9598eb829820ec9db4ec838120ec84a0ed839ded9598ec84b8ec9a942e"), type = "warning", duration = 5)
+      showNotification(calculation_t("data_editor.calculation_select_variable"), type = "warning", duration = 5)
       return()
     }
     operations <- intersect(as.character(input$variable_calculation_operations %||% character(0)), unname(variable_calculation_choices(language)))
     run_reliability <- isTRUE(input$variable_calculation_reliability)
     if (length(operations) == 0 && !isTRUE(run_reliability)) {
-      showNotification(recode_ui_text("Select at least one calculation command or Reliability.", "eab384ec82b020ebaa85eba0b920eb9890eb8a9420ec8ba0eba2b0eb8f8420ebb684ec849dec9d8420ed9598eb829820ec9db4ec838120ec84a0ed839ded9598ec84b8ec9a942e"), type = "warning", duration = 5)
+      showNotification(calculation_t("data_editor.calculation_select_command"), type = "warning", duration = 5)
       return()
     }
     base_name <- trimws(as.character(input$variable_calculation_base_name %||% ""))
     if (length(operations) > 0 && !nzchar(base_name)) {
-      showNotification(recode_ui_text("Enter a variable name.", "ebb380ec8898ebaa85ec9d8420ec9e85eba0a5ed9598ec84b8ec9a942e"), type = "warning", duration = 5)
+      showNotification(calculation_t("data_editor.calculation_enter_variable_name"), type = "warning", duration = 5)
       return()
     }
     custom_label <- trimws(as.character(input$variable_calculation_label %||% ""))
@@ -2618,7 +2649,7 @@ register_variable_calculation_handlers <- function(
     if (length(operations) > 0) {
       calculated <- calculate_variable_outputs(data, variables, operations, base_name)
       if (ncol(calculated) == 0) {
-        showNotification(recode_ui_text("No variables were calculated.", "eab384ec82b0eb909c20ebb380ec8898eab08020ec9786ec8ab5eb8b88eb8ba42e"), type = "warning", duration = 5)
+        showNotification(calculation_t("data_editor.calculation_none_calculated"), type = "warning", duration = 5)
         if (is.null(reliability_output)) {
           return()
         }
@@ -2640,7 +2671,7 @@ register_variable_calculation_handlers <- function(
     }
 
     if (length(operations) > 0 && length(created) == 0 && is.null(reliability_output)) {
-      last_message(recode_ui_text("No variables were created.", "ec839dec84b1eb909c20ebb380ec8898eab08020ec9786ec8ab5eb8b88eb8ba42e"))
+      last_message(calculation_t("data_editor.calculation_none_created"))
       preview_data(data.frame(check.names = FALSE))
       output_variables(character(0))
       return()
@@ -2649,10 +2680,10 @@ register_variable_calculation_handlers <- function(
     output_variables(created)
     messages <- character(0)
     if (length(created) > 0) {
-      messages <- c(messages, sprintf(recode_ui_text("Created %s variable(s): %s", "2573eab09c20ebb380ec8898eba5bc20ec839dec84b1ed9688ec8ab5eb8b88eb8ba43a202573"), length(created), paste(created, collapse = ", ")))
+      messages <- c(messages, sprintf(calculation_t("data_editor.calculation_created_variables"), length(created), paste(created, collapse = ", ")))
     }
     if (!is.null(reliability_output)) {
-      messages <- c(messages, recode_ui_text("Reliability analysis completed.", "ec8ba0eba2b0eb8f8420ebb684ec849dec9db420ec9984eba38ceb9098ec9788ec8ab5eb8b88eb8ba42e"))
+      messages <- c(messages, calculation_t("data_editor.calculation_reliability_completed"))
     }
     last_message(paste(messages, collapse = " "))
     mark_settings_dirty()

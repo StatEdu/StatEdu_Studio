@@ -7,6 +7,27 @@ candidate. Do not mark this record complete until every required item in
 
 ## Release Candidate
 
+## Development Prerelease v1.0.22-dev
+
+```text
+Release candidate: v1.0.22-dev
+Date: 2026-07-04
+Tester: Codex automation
+Environment: Windows, build machine StatEdu
+Git commit: f7453d6213ddaa6cfffcbb80ddddb166f14ec3b7
+Validation command: scripts\validate_stabilization.ps1; scripts\smoke_electron_release.ps1 -SkipLaunchSmoke; scripts\smoke_electron_app_lifecycle.ps1
+Validation result: Pass
+Electron package: dist/electron/StatEdu_Studio_Setup_1.0.22-dev.exe
+Installer SHA256: 52966B5A00F866DBFE8C328242F1DA2E8E4AB4CB7CD55C67320471C4FF2278F5
+GitHub prerelease: https://github.com/StatEdu/StatEdu_Studio_dev/releases/tag/v1.0.22-dev
+R runtime: packaging/electron/runtime/R-4.5.3
+```
+
+Notes:
+- This is a development prerelease, not the public stable 1.0 release line.
+- The public update manifest remains on stable `1.0.1`.
+- Added Japanese and Chinese UI language resources and verified i18n contract coverage.
+
 ```text
 Release candidate:
 Date: 2026-06-25
@@ -73,7 +94,7 @@ R runtime: D:\Program\R\R-4.5.3
 | t-test / ANOVA baseline layout and run path work | Pass | `scripts\validate_ttest_anova.R` passed. |
 | Regression categorical reference rows and labels display | Pass | `scripts\validate_regression_coefficients.R` passed. |
 | Logistic Regression categorical reference rows and labels display | Pass | `scripts\validate_logistic_analysis.R` and `scripts\validate_logistic_ui.R` passed. |
-| Public 1.0 hides Longitudinal / Panel Models from the Analysis menu | Pass | Browser QA with `STATEDU_PUBLIC_RELEASE=1` showed Regression, GLM, and Logistic Regression, with no Longitudinal / Panel Models item. |
+| Public 1.0 shows Longitudinal / Panel Models in the Analysis menu | Pass | Browser QA with `STATEDU_PUBLIC_RELEASE=1` shows Longitudinal / Panel Models in the Analysis menu. |
 | Internal validation build can still exercise Longitudinal / Panel Models if enabled | Pass | `scripts\validate_longitudinal.R` passed. |
 | Nested Analysis submenus open adjacent to selected first-level item | Pass / Pending visual QA | Grouped menu navigation contract passed; visual sweep remains. |
 | Result save buttons are available after successful analysis | Pass | Packaged-app browser QA loaded data, completed variable selection, ran t-test / ANOVA, and showed Save HTML, Save PDF, and Add result after the result rendered. |
@@ -111,7 +132,7 @@ R runtime: D:\Program\R\R-4.5.3
 | Final public release notes are ready | Pending final review | Draft exists; final public text still requires gate review. |
 | Packaged validation notes are ready | Pass / Incomplete for publication | [RELEASE_1_0_PACKAGED_VALIDATION_NOTES.md](docs/RELEASE_1_0_PACKAGED_VALIDATION_NOTES.md) records package evidence and remaining gates. |
 | Deferred distribution/license/update/edition items are recorded | Pass | [RELEASE_1_0_DECISION_LOG.md](docs/RELEASE_1_0_DECISION_LOG.md) records deferrals. |
-| Public text does not claim deferred gated editions, license activation, in-app updates, Longitudinal / Panel Models, Excel export, or Word export | Pass | README, About/browser QA, and public release-note draft avoid public claims for deferred gated editions, license activation, in-app updates, Longitudinal / Panel Models, Excel export, and Word export. |
+| Public text does not claim deferred gated editions, license activation, in-app updates, Excel export, or Word export | Pass | README, About/browser QA, and public release-note draft avoid public claims for deferred gated editions, license activation, in-app updates, Excel export, and Word export. |
 
 ## Failures And Fixes
 

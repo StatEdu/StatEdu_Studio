@@ -97,13 +97,9 @@ data_editor_variable_rename_panel <- function(language = statedu_initial_languag
     class = "page-shell",
     div(
       class = "app-heading",
-      h1(statedu_text(language, "Rename Variable", statedu_utf8("ebb380ec889820ec9db4eba68420ebb380eab2bd"))),
+      h1(statedu_t("data_editor.rename_title", language)),
       div(
-        statedu_text(
-          language,
-          "Rename variables and labels in the current data.",
-          statedu_utf8("ed9884ec9eac20eb8db0ec9db4ed84b0ec9d9820ebb380ec8898ebaa85eab3bc20eb9dbcebb2a8ec9d8420ebb380eab2bded95a9eb8b88eb8ba42e")
-        ),
+        statedu_t("data_editor.rename_subtitle", language),
         class = "app-subtitle"
       )
     ),
@@ -138,19 +134,11 @@ variable_rename_setup_panel <- function(
   language <- normalize_app_language(language)
   options(statedu.app_language = language)
   if (is.null(file) || is.null(data)) {
-    return(setup_empty_message(statedu_text(
-      language,
-      "Load a data file in the Data tab before renaming variables.",
-      statedu_utf8("eb8db0ec9db4ed84b020ed83adec9790ec849c20eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420eba8bceca08020ebb688eb9facec98a820ed9b8420ebb380ec8898ebaa85ec9d8420ebb380eab2bded9598ec84b8ec9a942e")
-    ), language = language))
+    return(setup_empty_message(statedu_t("data_editor.rename_load_before_setup", language), language = language))
   }
-  variable_names <- names(data)
+  variable_names <- data_editor_variable_names(data, variable_info)
   if (length(variable_names) == 0) {
-    return(setup_empty_message(statedu_text(
-      language,
-      "The current data file has no variables.",
-      statedu_utf8("ed9884ec9eac20eb8db0ec9db4ed84b020ed8c8cec9dbcec979020ebb380ec8898eab08020ec9786ec8ab5eb8b88eb8ba42e")
-    ), language = language))
+    return(setup_empty_message(statedu_t("calculator.no_variables", language), language = language))
   }
 
   queue <- normalize_variable_rename_queue(queue)
@@ -205,7 +193,7 @@ variable_rename_setup_panel <- function(
       ),
       div(
         class = "analysis-option-title variable-rename-queue-title",
-        statedu_text(language, "Rename variables", statedu_utf8("ec9db4eba68420ebb380eab2bded95a020ebb380ec8898"))
+        statedu_t("data_editor.rename_queue_title", language)
       ),
       variable_rename_queue_listbox(queue, variable_info, labels, selected = selected_queue)
     ),
@@ -386,11 +374,7 @@ register_variable_rename_handlers <- function(
     new_label <- variable_rename_scalar(input$variable_rename_label)
     if (!nzchar(old_name)) {
       showNotification(
-        statedu_text(
-          language,
-          "Move a variable to the second block first.",
-          statedu_utf8("eba8bceca08020ebb380ec8898eba5bc20eb919020ebb288eca7b820ec9881ec97adec9cbceba19c20ec9db4eb8f99ed9598ec84b8ec9a942e")
-        ),
+        statedu_t("data_editor.rename_move_first", language),
         type = "warning",
         duration = 5
       )
@@ -398,11 +382,7 @@ register_variable_rename_handlers <- function(
     }
     if (!nzchar(new_name)) {
       showNotification(
-        statedu_text(
-          language,
-          "Enter the new variable name.",
-          statedu_utf8("ec838820ebb380ec8898ebaa85ec9d8420ec9e85eba0a5ed9598ec84b8ec9a942e")
-        ),
+        statedu_t("data_editor.rename_enter_new_name", language),
         type = "warning",
         duration = 5
       )
@@ -414,11 +394,7 @@ register_variable_rename_handlers <- function(
     if (new_name %in% setdiff(data_names, old_name) || new_name %in% reserved_names) {
       showNotification(
         sprintf(
-          statedu_text(
-            language,
-            "Variable already exists or is already queued: %s",
-            statedu_utf8("ec9db4ebafb820eca1b4ec9eaced9598eab1b0eb829820eb8c80eab8b0ec97b4ec979020ec9e88eb8a9420ebb380ec8898ec9e85eb8b88eb8ba43a202573")
-          ),
+          statedu_t("data_editor.rename_already_exists", language),
           new_name
         ),
         type = "warning",
@@ -434,11 +410,7 @@ register_variable_rename_handlers <- function(
     )
     rename_queue(queue)
     last_message(sprintf(
-      statedu_text(
-        language,
-        "Queued rename: %s -> %s",
-        statedu_utf8("ec9db4eba68420ebb380eab2bd20eb8c80eab8b03a202573202d3e202573")
-      ),
+      statedu_t("data_editor.rename_queued", language),
       old_name,
       new_name
     ))
@@ -454,11 +426,7 @@ register_variable_rename_handlers <- function(
     )
     if (length(targets) == 0) {
       showNotification(
-        statedu_text(
-          language,
-          "Select a queued rename to remove.",
-          statedu_utf8("eca09ceab1b0ed95a020ec9db4eba68420ebb380eab2bd20ed95adebaaa9ec9d8420ec84a0ed839ded9598ec84b8ec9a942e")
-        ),
+        statedu_t("data_editor.rename_select_remove", language),
         type = "warning",
         duration = 5
       )
@@ -467,11 +435,7 @@ register_variable_rename_handlers <- function(
     rename_queue(queue[!queue$old %in% targets, , drop = FALSE])
     target_selection(setdiff(target_selection(), targets))
     last_message(sprintf(
-      statedu_text(
-        language,
-        "Removed queued rename: %s",
-        statedu_utf8("ec9db4eba68420ebb380eab2bd20eb8c80eab8b020eca09ceab1b03a202573")
-      ),
+      statedu_t("data_editor.rename_removed", language),
       paste(targets, collapse = ", ")
     ))
   }, ignoreInit = TRUE)
@@ -481,11 +445,7 @@ register_variable_rename_handlers <- function(
     queue <- normalize_variable_rename_queue(rename_queue())
     if (nrow(queue) == 0) {
       showNotification(
-        statedu_text(
-          language,
-          "Add at least one rename to the queue before running.",
-          statedu_utf8("ec8ba4ed9689ed9598eab8b020eca084ec979020ed9598eb829820ec9db4ec8381ec9d9820ec9db4eba68420ebb380eab2bd20ed95adebaaa9ec9d8420eb8c80eab8b0ec97b4ec979020ecb694eab080ed9598ec84b8ec9a942e")
-        ),
+        statedu_t("data_editor.rename_add_before_run", language),
         type = "warning",
         duration = 5
       )
@@ -493,11 +453,7 @@ register_variable_rename_handlers <- function(
     }
     if (!is.function(rename_variable_fn)) {
       showNotification(
-        statedu_text(
-          language,
-          "Variable rename is not available in this session.",
-          statedu_utf8("ec9db420ec84b8ec8598ec9790ec849ceb8a9420ebb380ec889820ec9db4eba68420ebb380eab2bdec9d8420ec82acec9aa9ed95a020ec889820ec9786ec8ab5eb8b88eb8ba42e")
-        ),
+        statedu_t("data_editor.rename_unavailable", language),
         type = "warning",
         duration = 5
       )
@@ -516,11 +472,7 @@ register_variable_rename_handlers <- function(
       target_selection(character(0))
       rename_queue(empty_variable_rename_queue())
       last_message(sprintf(
-        statedu_text(
-          language,
-          "Renamed %s variable(s): %s",
-          statedu_utf8("2573eab09c20ebb380ec8898ec9d9820ec9db4eba684ec9d8420ebb380eab2bded9688ec8ab5eb8b88eb8ba43a202573")
-        ),
+        statedu_t("data_editor.rename_completed", language),
         length(completed),
         paste(completed, collapse = ", ")
       ))

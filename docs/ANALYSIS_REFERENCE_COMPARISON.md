@@ -10,6 +10,35 @@ This document collects StatEdu Studio validation checks that compare app outputs
 - Effect-size calculations are compared with `effectsize` or equivalent standard formulas.
 - Analysis calculations are compared with base R, contributed R packages, and StatEdu Studio automatic decision rules.
 
+## Analysis Method Validation Summary
+
+This section summarizes the analysis-method validation scope. It excludes the sample-size and effect-size calculators, which are documented in their own sections below.
+
+| Analysis method | Reference / comparator | Checked calculations and decision paths | Result | Notes / limitations |
+|---|---|---|---|---|
+| Frequencies / descriptives | Base R counts and summary statistics | Categorical N, continuous mean rounding, variable/value label display path, category-table value order helper | PASS | Display labels and category-defined value order use `category_table` where available. |
+| Crosstabs | `stats::chisq.test`, `stats::fisher.test`, direct score/trend formulas | Pearson chi-square statistic and p value, sparse-cell automatic Fisher switch, ordered-by-ordered score association path, character-label ordinal row/column order | PASS | Score-based trend tests use `category_table` order for ordinal row and column levels when available. |
+| Correlation | `stats::cor.test`, direct phi/point-biserial checks, Kendall Fieller CI formula | Pearson r and p, automatic Spearman switch for non-normal continuous pairs, binary-binary Phi method label, Kendall tau confidence interval SE, character-label ordinal scoring | PASS | Ordinal scoring and latent polychoric/polyserial level order use `category_table` order when available. |
+| t-test / ANOVA / nonparametric group tests | `stats::t.test`, `stats::aov`, Welch formulas, `nortest::lillie.test`, `stats::kruskal.test` | Independent t, one-way ANOVA, Mann-Whitney switch, Welch t/ANOVA switch, Kruskal-Wallis switch, Lilliefors normality path, epsilon-squared formula | PASS | Lilliefors falls back to ordinary K-S only if `nortest` is unavailable and reports that fallback. |
+| Paired / repeated-measures tests | `stats::t.test`, `stats::aov`, `stats::mauchly.test`, `stats::wilcox.test`, `stats::friedman.test`, direct Cochran Q coding check | Paired t, RM ANOVA, Mauchly W/p, Wilcoxon signed-rank p, Friedman chi-square, Cochran Q binary recoding for non-0/1 labels | PASS | RM sphericity epsilon calculation retained after replacing W/p with `mauchly.test`. |
+| ANCOVA | Base R linear model / Type II effect comparison | Type II group effect F statistic and adjusted-mean display path | PASS | Separate ANCOVA UI/guard checks live in `scripts/validate_ancova.R`. |
+| Linear regression | Direct `stats::lm` and coefficient-table comparison | OLS B and SE, hierarchical regression final-model complete-case fitting across all blocks, Delta R2/F-change same-sample assumption | PASS | Simple regression keeps its existing per-model complete-case path. |
+| Penalized regression | Direct `glmnet::cv.glmnet` calls with matching seed, alpha, folds, and standardization | Ridge, LASSO, and Elastic Net lambda paths, CV MSE/SE, lambda.min/lambda.1se coefficients, Elastic Net alpha selection, bootstrap selection-stability formatting | PASS | Validation uses Gaussian penalized regression; conventional p-values are intentionally not reported for penalized models. |
+| Logistic regression | Direct `stats::glm`, LR model comparison, multinomial/ordinal coefficient CI checks | Binary logistic B and SE, hierarchical logistic final-model complete-case fitting, LR delta chi-square same-sample basis, OR CI critical value via `stats::qnorm(0.975)` | PASS | Multinomial and proportional-odds coefficient tables use the same CI critical-value convention. |
+| Generalized linear models | Direct `stats::glm`, `MASS::glm.nb`, automatic-family rules | Gaussian identity B/SE, binomial logit B/SE, binary-outcome auto family, positive-skew Gamma auto family, count overdispersion switch to negative binomial | PASS | Count fallback depends on `MASS::glm.nb` convergence; warnings are surfaced when fallback choices matter. |
+| Reliability analysis | `psych::alpha`, `psych::omega`, polychoric direct calculation | Raw Cronbach alpha, KR-20 as binary raw alpha, Pearson omega, ordinal alpha/omega from polychoric matrix, item-total/corrected item-total correlations, omega option separation, binary and zero-variance guards | PASS | Ordinal item-total correlations intentionally use Spearman and are documented as potentially different from SPSS Pearson output. |
+| Inter-rater agreement | `psych`, `irr`, `irrCAC`, Krippendorff coincidence-matrix implementation, literature examples | ICC variants, Cohen/weighted kappa, Fleiss kappa, Light kappa, Gwet AC1/AC2 including missing-data unit averaging, Krippendorff alpha including missing and single-rater unit handling, character-label ordinal category order | PASS | Weighted kappa, AC2, and ordinal alpha use `category_table` order for ordinal category levels when available. |
+| PCA | Direct eigen decomposition, `psych`/polychoric checks | Pearson/covariance/polychoric matrix paths, eigenvalues, component-count rules, cumulative-variance empty-selection guard, polychoric-to-Pearson fallback matrix label, covariance Kaiser warning | PASS | Kaiser eigenvalue >= 1 is warned as scale-dependent for covariance matrices. |
+| Factor analysis | `psych::fa`, shared numeric-matrix conversion checks | PAF one-factor absolute loadings, factor numeric conversion via labels rather than factor codes, polychoric score warning path | PASS | When FA is fitted on a polychoric matrix, saved scores are documented as raw-data/Pearson-standardized approximations. |
+| Longitudinal / panel models | `lmerTest::lmer`, `geepack::geeglm`, `plm`, `lmtest::coeftest`, `mice::pool`, direct Kish/IPW checks | LMM ML coefficients/AIC, GEE coefficients/SE with id-time sorting and waves, panel FE coefficients and group-cluster HC1 SE, Rubin MI pooling B/SE/df, Kish effective N, IPW clipping/normalization, NB-GEE fallback warning | PASS | Native negative-binomial GEE is not claimed; marginal `glm.nb` plus cluster-robust SE is explicitly labelled as a fallback. |
+| Data editor recode / missing-code handling | Direct helper checks and formula-transform guard tests | Same-variable recode, category/range recode, reverse scoring, Likert detection/conversion, missing-code detection and conversion to `NA`, formula transformations, factor numeric-label conversion in numeric helpers | PASS | Data-editor missing-code handling converts user/sentinel codes to `NA`; general MI/IPW engines are validated in GLM and longitudinal modules. |
+| Custom model canvas wiring | Synthetic canvas snapshots compared with expected analysis maps | Node roles, directed X->Y, X->M, M->Y, M->M maps, serial mediator detection, moderated path flags, moderation map rows, invalid edge/moderation record filtering | PASS | The canvas wiring test covers snapshot-to-engine map construction; fitted mediation/moderation calculations are validated in the mediation engine paths. |
+| LCA / R3STEP reporting | Code inspection and R parse checks | RRR confidence interval critical values in R3STEP extraction, publication tables, and figures use `stats::qnorm(0.975)` instead of hard-coded 1.96 | PASS | This is a consistency/reporting fix rather than a numerical model-engine validation. |
+
+Category-order validation: character-label ordinal variables such as `Low/Mid/High` or `low/medium/high` are scored from `category_table` order where ordinal scoring or ordered levels are needed in correlation, crosstabs trend tests, inter-rater weighted statistics, and ordinal reliability.
+
+Not covered by this analysis-method summary yet: none of the previously listed modules remain outside the current validation summary. New or substantially changed analysis modules should still receive the same reference-comparison pass before release.
+
 ## Analysis Reference Comparison
 
 Rows compared: 54
@@ -60,9 +89,9 @@ This table validates both direct analysis calculations and StatEdu Studio automa
 | GLM | Auto count workflow: overdispersion | fitted family | negative_binomial | negative_binomial | 0 | 0 | PASS | Dispersion ratio > 1.5 should switch final fit from Poisson to negative binomial when MASS::glm.nb converges. |
 | GLM | Auto count workflow: overdispersion | max \|B diff\| | 0 | 0 | 0 | 0.0000000001 | PASS |  |
 | GLM | Auto count workflow: overdispersion | max \|SE diff\| | 0 | 0 | 0 | 0.0000000001 | PASS |  |
-| Reliability | Cronbach alpha | alpha | -0.04634586064 | -0.04634586064 | 0 | 0.0000000001 | PASS |  |
-| PCA | Correlation eigenvalues | max \|eigenvalue diff\| | 0 | 0 | 0.0000000000000002220446049 | 0.0000000001 | PASS |  |
-| Factor Analysis | PAF one-factor loadings | max \|abs loading diff\| | 0 | 0 | 0.0000000000000003885780586 | 0.0000000001 | PASS |  |
+| Reliability | Cronbach alpha | alpha | -0.04970028415 | -0.04970028415 | 0.0000000000000008326672685 | 0.0000000001 | PASS |  |
+| PCA | Correlation eigenvalues | max \|eigenvalue diff\| | 0 | 0 | 0.0000000000000005551115123 | 0.0000000001 | PASS |  |
+| Factor Analysis | PAF one-factor loadings | max \|abs loading diff\| | 0 | 0 | 0.000000000000002442490654 | 0.0000000001 | PASS |  |
 | Longitudinal / Panel | GEE binomial | max \|B diff\| | 0 | 0 | 0 | 0.0000000001 | PASS |  |
 | Longitudinal / Panel | GEE binomial | max \|SE diff\| | 0 | 0 | 0 | 0.0000000001 | PASS |  |
 | Longitudinal / Panel | GEE auto count workflow: overdispersion | fitted family | negative_binomial | negative_binomial | 0 | 0 | PASS | Count screening should switch the marginal count fit to negative binomial when dispersion ratio exceeds 1.5. |
@@ -98,10 +127,10 @@ The following table compares representative StatEdu Studio sample-size results w
 | Beyond G*Power | Count / rates | Wald two-rate formula | person-time per group | 79 | 79 | 0 | match |
 | Beyond G*Power | Cluster trial | `WebPower::wp.crt2arm` | clusters total | 16 | 16 | 0 | match |
 | Beyond G*Power | Precision / CI | normal CI precision formula | participants | 97 | 97 | 0 | match |
-| Beyond G*Power | Reliability / agreement | direct package comparator not available | subjects | 36 | NA | NA | not directly comparable |
+| Beyond G*Power | Cronbach alpha precision | Bonett log(1-alpha) formula | subjects | 156 | 156 | 0 | match |
 | Beyond G*Power | SEM / CFA | `WebPower::wp.sem.rmsea` | participants | 214 | 214 | 0 | match |
 
-Summary: all 10 G*Power-comparable calculations matched the final rounded value. Among calculations beyond G*Power, GEE, LMM, Survival/Cox, mean equivalence/TOST, diagnostic accuracy, count/rate, cluster trial, precision/CI, and SEM/CFA also matched the public package or reference formula after applying StatEdu Studio's final rounding rule. ROC AUC and reliability/agreement remain literature-formula based because a directly matching installed reference function was not available.
+Summary: all 10 G*Power-comparable calculations matched the final rounded value. Among calculations beyond G*Power, GEE, LMM, Survival/Cox, mean equivalence/TOST, diagnostic accuracy, count/rate, cluster trial, precision/CI, Cronbach alpha precision, and SEM/CFA also matched the public package or reference formula after applying StatEdu Studio's final rounding rule. ROC AUC remains literature-formula based because a directly matching installed reference function was not available.
 
 ## Effect Size Reference Comparison
 

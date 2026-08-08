@@ -28,6 +28,31 @@ analysis_ui_text <- function(text, language = statedu_initial_language()) {
   h <- statedu_utf8
   key <- tolower(trimws(as.character(text %||% "")))
   key <- gsub(h("c2b1"), "+/-", key, fixed = TRUE)
+  translation_keys <- c(
+    "auto coding error check" = "data_editor.coding_error_title",
+    "auto missing value detection" = "data_editor.missing_title",
+    "auto reverse coding" = "data_editor.reverse_title",
+    "auto variable calculation" = "data_editor.calculation_title",
+    "variable transformation" = "data_editor.transform_title",
+    "recode variable" = "data_editor.recode_title",
+    "variable rename" = "data_editor.rename_title",
+    "wide to long" = "data_editor.wide_long_title"
+  )
+  translation_key <- if (key %in% names(translation_keys)) translation_keys[[key]] else NULL
+  if (!is.null(translation_key)) {
+    translated <- statedu_t(translation_key, language, fallback = "")
+    if (nzchar(translated)) {
+      return(translated)
+    }
+  }
+  overlay_key <- gsub("[^a-z0-9]+", "_", key)
+  overlay_key <- gsub("^_+|_+$", "", overlay_key)
+  if (nzchar(overlay_key)) {
+    translated <- statedu_t(paste0("analysis.ui.", overlay_key), language, fallback = "")
+    if (nzchar(translated)) {
+      return(translated)
+    }
+  }
   labels <- c(
     "variables" = paste0("Variables|", h("ebb380ec8898")),
     "auto coding error check" = paste0("Auto coding error check|", h("ec9e90eb8f9920ecbd94eb94a920ec98a4eba59820ed9995ec9db8")),
@@ -46,6 +71,10 @@ analysis_ui_text <- function(text, language = statedu_initial_language()) {
     "nonparametric paired test" = paste0("Nonparametric Paired Test|", h("ebb984ebaaa8ec889820eb8c80ec9d9120eab280eca095")),
     "correlation" = paste0("Correlation|", h("ec8381eab480ebb684ec849d")),
     "reliability" = paste0("Reliability|", h("ec8ba0eba2b0eb8f84")),
+    "inter-rater agreement" = paste0("Inter-rater Agreement|", "\uD3C9\uAC00\uC790\uAC04 \uC77C\uCE58\uB3C4"),
+    "mixed repeated-measures anova" = paste0("Repeated-measures ANOVA|", h("ebb098ebb3b5ecb8a1eca09520ebb684ec82b0ebb684ec849d")),
+    "mixed rm anova" = paste0("Repeated-measures ANOVA|", h("ebb098ebb3b5ecb8a1eca09520ebb684ec82b0ebb684ec849d")),
+    "repeated-measures anova" = paste0("Repeated-measures ANOVA|", h("ebb098ebb3b5ecb8a1eca09520ebb684ec82b0ebb684ec849d")),
     "factor analysis" = paste0("Factor Analysis|", h("ec9a94ec9db8ebb684ec849d")),
     "principal components" = paste0("Principal Components|", h("eca3bcec84b1ebb684")),
     "principal component analysis" = paste0("Principal Component Analysis|", h("eca3bcec84b1ebb684ebb684ec849d")),
@@ -60,6 +89,7 @@ analysis_ui_text <- function(text, language = statedu_initial_language()) {
     "covariates" = paste0("Covariates|", h("eab3b5ebb380eb9f89")),
     "covariate" = paste0("Covariate|", h("eab3b5ebb380eb9f89")),
     "grouping variables" = paste0("Grouping Variables|", h("eca791eb8ba820ebb380ec8898")),
+    "grouping variable" = paste0("Grouping variable|", h("eca791eb8ba820ebb380ec8898")),
     "options" = paste0("Options|", h("ec98b5ec8598")),
     "post-hoc" = paste0("Post-hoc|", h("ec82aced9b84ebb684ec849d")),
     "post-hoc correction" = paste0("Post-hoc correction|", h("ec82aced9b84ebb684ec849d20ebb3b4eca095")),
@@ -112,6 +142,10 @@ analysis_ui_text <- function(text, language = statedu_initial_language()) {
     "number of bootstrap samples" = paste0("Number of bootstrap samples|", h("ebb680ed8ab8ec8aa4ed8ab8eb9ea920ed919cebb3b820ec8898")),
     "seed number" = paste0("Seed number|", h("ec8b9ceb939c20ebb288ed98b8")),
     "collinearity diagnostics" = paste0("Collinearity diagnostics|", h("eab3b5ec84a0ec84b120eca784eb8ba8")),
+    "residual diagnostics" = paste0("Residual diagnostics|", h("ec9e94ecb0a8eca784eb8ba8")),
+    "run residual diagnostics" = paste0("Run residual diagnostics|", h("ec9e94ecb0a820eca784eb8ba820ec8ba4ed9689")),
+    "select method automatically after residual diagnostics" = paste0("Select method automatically after residual diagnostics|", h("ec9e94ecb0a820eca784eb8ba820ed9b8420ebb684ec849deab8b0ebb29520ec9e90eb8f9920ec84a0ed839d")),
+    "automatic method selection" = paste0("Automatic method selection|", h("ebb684ec849deab8b0ebb29520ec9e90eb8f99ec84a0ed839d")),
     "residual normality" = paste0("Residual normality|", h("ec9e94ecb0a820eca095eab79cec84b1")),
     "residual normality test" = paste0("Residual normality test|", h("ec9e94ecb0a820eca095eab79cec84b120eab280eca095")),
     "variance homogeneity" = paste0("Variance homogeneity|", h("ebb684ec82b020eb8f99eca788ec84b1")),
@@ -207,6 +241,15 @@ analysis_ui_text <- function(text, language = statedu_initial_language()) {
     "cumulative variance >=" = paste0("Cumulative variance >=|", h("eb8884eca08120ec84a4ebaa85ebb684ec82b0203e3d")),
     "cumulative variance" = paste0("Cumulative variance|", h("eb8884eca08120ec84a4ebaa85ebb684ec82b0")),
     "items" = paste0("Items|", h("ebacb8ed95ad")),
+    "rater variables" = paste0("Rater variables|", "\uD3C9\uAC00\uC790 \uBCC0\uC218"),
+    "categorical / ordinal" = paste0("Categorical / ordinal|", "\uBC94\uC8FC\uD615 / \uC21C\uC11C\uD615"),
+    "quadratic weights" = paste0("Quadratic weights|", "\uC81C\uACF1 \uAC00\uC911\uCE58"),
+    "icc" = "ICC|ICC",
+    "icc model" = paste0("ICC model|", "ICC \uBAA8\uD615"),
+    "icc type" = paste0("ICC type|", "ICC \uC720\uD615"),
+    "icc unit" = paste0("ICC unit|", "ICC \uB2E8\uC704"),
+    "bootstrap 95% ci" = paste0("Bootstrap 95% CI|", "\uBD80\uD2B8\uC2A4\uD2B8\uB7A9 95% \uC2E0\uB8B0\uAD6C\uAC04"),
+    "bootstrap samples" = paste0("Bootstrap samples|", "\uBD80\uD2B8\uC2A4\uD2B8\uB7A9 \uD45C\uBCF8 \uC218"),
     "subfactor" = paste0("Subfactor|", h("ed9598ec9c84ec9a94ec9db8")),
     "previous subfactor" = paste0("Previous subfactor|", h("ec9db4eca08420ed9598ec9c84ec9a94ec9db8")),
     "next subfactor" = paste0("Next subfactor|", h("eb8ba4ec9d8c20ed9598ec9c84ec9a94ec9db8")),
@@ -326,7 +369,9 @@ analysis_ui_text <- function(text, language = statedu_initial_language()) {
     "complete step 2 in the data tab before setting up longitudinal / panel models." = paste0("Complete Step 2 in the Data tab before setting up longitudinal / panel models.|", h("eca285eb8ba82fed8ca8eb849020ebaaa8ed989520ec84a4eca09520eca084ec979020eb8db0ec9db4ed84b020ed83adec9d9820537465702032eba5bc20ec9984eba38ced9598ec84b8ec9a942e")),
     "complete step 2 in the data tab before setting up principal component analysis." = paste0("Complete Step 2 in the Data tab before setting up principal component analysis.|", h("eca3bcec84b1ebb684ebb684ec849d20ec84a4eca09520eca084ec979020eb8db0ec9db4ed84b020ed83adec9d9820537465702032eba5bc20ec9984eba38ced9598ec84b8ec9a942e")),
     "complete step 2 in the data tab before setting up repeated-measures tests." = paste0("Complete Step 2 in the Data tab before setting up repeated-measures tests.|", h("ebb098ebb3b5ecb8a1eca09520eab280eca09520ec84a4eca09520eca084ec979020eb8db0ec9db4ed84b020ed83adec9d9820537465702032eba5bc20ec9984eba38ced9598ec84b8ec9a942e")),
+    "complete step 2 in the data tab before setting up mixed repeated-measures anova." = paste0("Complete Step 2 in the Data tab before setting up mixed repeated-measures ANOVA.|", h("ebb098ebb3b5ecb8a1eca09520ebb684ec82b0ebb684ec849d20ec84a4eca09520eca084ec979020eb8db0ec9db4ed84b020ed83adec9d9820537465702032eba5bc20ec9984eba38ced9598ec84b8ec9a942e")),
     "complete step 2 in the data tab before setting up reliability analysis." = paste0("Complete Step 2 in the Data tab before setting up reliability analysis.|", h("ec8ba0eba2b0eb8f8420ebb684ec849d20ec84a4eca09520eca084ec979020eb8db0ec9db4ed84b020ed83adec9d9820537465702032eba5bc20ec9984eba38ced9598ec84b8ec9a942e")),
+    "complete step 2 in the data tab before setting up inter-rater agreement." = paste0("Complete Step 2 in the Data tab before setting up inter-rater agreement.|", "\uD3C9\uAC00\uC790\uAC04 \uC77C\uCE58\uB3C4 \uC124\uC815 \uC804\uC5D0 \uB370\uC774\uD130 \uD0ED\uC758 Step 2\uB97C \uC644\uB8CC\uD558\uC138\uC694."),
     "complete step 2 in the data tab before setting up paired tests." = paste0("Complete Step 2 in the Data tab before setting up paired tests.|", h("eb8c80ec9d9120eab280eca09520ec84a4eca09520eca084ec979020eb8db0ec9db4ed84b020ed83adec9d9820537465702032eba5bc20ec9984eba38ced9598ec84b8ec9a942e")),
     "complete step 2 in the data tab before setting up regression." = paste0("Complete Step 2 in the Data tab before setting up regression.|", h("ed9a8ceab780ebb684ec849d20ec84a4eca09520eca084ec979020eb8db0ec9db4ed84b020ed83adec9d9820537465702032eba5bc20ec9984eba38ced9598ec84b8ec9a942e")),
     "complete step 2 in the data tab before setting up t-test / anova." = paste0("Complete Step 2 in the Data tab before setting up t-test / ANOVA.|", h("742d74657374202f20414e4f564120ec84a4eca09520eca084ec979020eb8db0ec9db4ed84b020ed83adec9d9820537465702032eba5bc20ec9984eba38ced9598ec84b8ec9a942e")),
@@ -339,7 +384,8 @@ analysis_ui_text <- function(text, language = statedu_initial_language()) {
   )
   value <- if (key %in% names(labels)) labels[[key]] else as.character(text)
   parts <- strsplit(value, "\\|", fixed = FALSE)[[1]]
-  statedu_text(language, parts[[1]], parts[[length(parts)]])
+  language <- normalize_app_language(language)
+  if (identical(language, "ko")) parts[[length(parts)]] else parts[[1]]
 }
 
 analysis_ui_label <- function(label, language = statedu_initial_language()) {
@@ -483,6 +529,13 @@ analysis_option_group <- function(title, options, language = statedu_initial_lan
     div(class = "analysis-option-title", analysis_ui_text(title, language)),
     lapply(options, function(option) {
       control <- checkboxInput(option$id, analysis_ui_label(option$label, language), value = isTRUE(option$value))
+      if (isTRUE(option$disabled)) {
+        control <- htmltools::tagQuery(control)$
+          find("input")$
+          addAttrs(disabled = "disabled")$
+          allTags()
+        control <- tagAppendAttributes(control, class = "is-disabled")
+      }
       tooltip <- option$tooltip %||% ""
       if (nzchar(tooltip)) {
         div(title = tooltip, control)
@@ -519,5 +572,83 @@ analysis_options_tabs_panel <- function(id, ..., selected = NULL, type = "tabs",
       collapse = " "
     ),
     do.call(tabsetPanel, panel_args)
+  )
+}
+
+analysis_output_table_style_choices <- function(language = statedu_initial_language(), include_compact_xm = TRUE) {
+  language <- normalize_app_language(language)
+  values <- c("standard", "wide", "compact", if (isTRUE(include_compact_xm)) "compact_xm")
+  labels <- if (identical(language, "ko")) {
+    c(
+      standard = intToUtf8(c(0xD45C, 0xC900)),
+      wide = intToUtf8(c(0xC640, 0xC774, 0xB4DC)),
+      compact = intToUtf8(c(0xB2E8, 0xCD95)),
+      compact_xm = paste0(intToUtf8(c(0xB2E8, 0xCD95)), "(X,M)")
+    )
+  } else {
+    c(
+      standard = "Standard",
+      wide = "Wide",
+      compact = "Short",
+      compact_xm = "Short(X,M)"
+    )
+  }
+  stats::setNames(values, labels[values])
+}
+
+analysis_output_table_style <- function(value, default = "standard") {
+  value <- as.character(value %||% default)[[1]]
+  if (!value %in% c("standard", "wide", "compact", "compact_xm")) {
+    value <- default
+  }
+  value
+}
+
+analysis_output_table_style_params <- function(value) {
+  style <- analysis_output_table_style(value)
+  switch(
+    style,
+    wide = list(compact = FALSE, font_size = 12, compact_width = 62, compact_first_width = 118, min_width = 900, hierarchical_min_width = 1160),
+    compact = list(compact = TRUE, font_size = 11, compact_width = 52, compact_first_width = 104, min_width = 300, hierarchical_min_width = 0),
+    compact_xm = list(compact = TRUE, font_size = 10, compact_width = 44, compact_first_width = 86, min_width = 260, hierarchical_min_width = 0),
+    list(compact = FALSE, font_size = 12, compact_width = 62, compact_first_width = 118, min_width = 480, hierarchical_min_width = 0)
+  )
+}
+
+analysis_output_table_style_tabs <- function(input_id, selected = "standard", language = statedu_initial_language(), include_compact_xm = TRUE) {
+  language <- normalize_app_language(language)
+  choices <- analysis_output_table_style_choices(language, include_compact_xm = include_compact_xm)
+  selected <- analysis_output_table_style(selected)
+  if (!selected %in% unname(choices)) {
+    selected <- "compact"
+  }
+  title <- if (identical(language, "ko")) paste(intToUtf8(0xD45C), intToUtf8(c(0xC2A4, 0xD0C0, 0xC77C))) else "Table style"
+  options <- lapply(names(choices), function(label) {
+    value <- unname(choices[[label]])
+    tags$label(
+      class = "analysis-table-style-radio-option",
+      tags$input(
+        type = "radio",
+        name = input_id,
+        value = value,
+        checked = if (identical(value, selected)) "checked" else NULL
+      ),
+      tags$span(class = "analysis-table-style-radio-label", label)
+    )
+  })
+  div(
+    class = "analysis-option-group analysis-table-style-tabs",
+    div(class = "analysis-option-title", title),
+    do.call(
+      tags$div,
+      c(
+        list(
+          id = input_id,
+          class = "form-group shiny-input-radiogroup shiny-input-container analysis-table-style-radio-grid",
+          role = "radiogroup"
+        ),
+        options
+      )
+    )
   )
 }

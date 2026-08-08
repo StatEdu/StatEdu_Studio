@@ -1,13 +1,61 @@
 # 변경 이력
 
-## v1.0.2-dev - 2026-06-30
+## v1.2.0 - 2026-08-06
+
+### 추가
+
+- 평가자간 일치도 분석 workflow를 공개 분석 범위에 추가하고, 권장 일치도 지표를 먼저 보여 주면서 보조 지표는 지원 검토로 유지하도록 출력 구성을 포함했습니다.
+- pre-post 및 다시점 집단 비교를 위한 혼합 반복측정 ANOVA workflow를 추가했습니다. PP/ITT 분석 경로, 공변량 보정 요약, 가정 검토, 사후비교, HTML/PDF/Excel 저장을 포함합니다.
+- 공개판 회귀/모형 workflow 그룹에 매개·조절 사용자 정의 모델 캔버스를 추가했습니다.
 
 ### 변경
 
-- 1.1 개발 주기를 위해 개발자용 종단분석 및 잠재분석 작업 흐름을 활성화했습니다.
-- 잠재집단 분석 설정 라벨, 한/영 언어 라우팅, PROCESS 모형 노출 범위를 정리했습니다.
-- Mplus 추정 프리셋에 빠른 확인과 고성능 PC 사이의 일반 PC 옵션을 추가했습니다.
-- free/pro 정책에 맞춰 잠재분석 그림 해상도 기본값을 정리했습니다.
+- 1.1.3 이후 안정화 작업을 공식 `1.2.0` 릴리스 메타데이터로 승격했습니다.
+- 반복측정 ANOVA를 Group Comparison 메뉴에 통합하고, 설정 레이아웃, 가정 검토 옵션, sphericity/Levene 검정, 정규성 안내, 추천 문구를 StatEdu Studio의 guided-analysis 흐름에 맞췄습니다.
+- 상관, 신뢰도, 평정자 일치도, 요인분석/PCA, t-test/ANOVA, paired 반복측정, 회귀, 로지스틱, 종단/패널, penalized regression, 표본수, 효과크기, 데이터 편집, 사용자 정의 모델, 혼합 반복측정 workflow의 통계 검증 범위를 확대했습니다.
+- 한국어 사용자 정의 모델 메뉴명을 `매개·조절 사용자 정의 모델`로 정리했습니다.
+
+### 수정
+
+- 1.2.0 설치본의 Electron 공개판 실행기에서 매개·조절 사용자 정의 모델 캔버스가 기본 활성화되도록 수정했습니다.
+- 재사용된 fitted custom model 결과에서 결과표의 중복 행을 정리했습니다.
+
+## v1.1.3 - 2026-07-12
+
+### 변경
+
+- 안정화된 개발 빌드를 공식 `1.1.3` 설치본으로 승격했습니다.
+- 1.1.1 packaging rule과 맞춰 bundled R runtime documentation, tests, examples, source payloads, 기타 non-runtime content를 공개 릴리스에서 제외했습니다.
+- latent-analysis project folder label, data-file placeholder, DAT delimiter choice, shared analysis control에 대한 다국어 coverage를 추가했습니다.
+
+### 수정
+
+- 선택한 Excel 파일이 sheet/start-cell review workflow를 통해 계속 interactive하게 load되도록 Excel import review를 수정했습니다.
+- 공유 `View selected data` preview를 선택 변수와 15행으로 제한했습니다.
+- 원본 경로를 알 수 있을 때 Latent Mplus project/output folder가 원래 data file 옆에 생성되도록 수정했습니다.
+- Latent Mplus settings save가 save dialog를 열어 파일명을 선택할 수 있게 했습니다.
+- Latent Mplus project/output folder 표시를 왼쪽 정렬했습니다.
+- 새 data, regression, mediation, moderation, latent-analysis option의 직접 UI label을 shared i18n table로 라우팅했습니다.
+
+## v1.1.1 - 2026-07-07
+
+### 수정
+
+- Windows upgrade가 같은 버전의 stale install을 재사용하지 않고 packaged desktop files를 교체하도록 patch installer를 배포했습니다.
+- Shiny startup window를 늘리고 startup failure 때 R process output을 기록하도록 Electron startup diagnostics를 강화했습니다.
+- desktop data-file loading, Korean startup language selection, complex-sample design file handling, blank label preservation을 수정했습니다.
+
+## v1.1.0 - 2026-07-06
+
+### 추가
+
+- 매개/조절효과 사용자 정의 모델 캔버스를 제외한 모든 분석 워크플로를 포함하는 1.1.0 정식 공개 버전으로 승격했습니다.
+- 정식판 저장 버튼 정책을 추가하여 HTML 저장만 기본 활성화하고, 그림/PDF/Excel/결과 추가 버튼은 보이지만 비활성화되도록 했습니다.
+- t-test / ANOVA는 공개판 예외로 HTML, 그림, PDF, Excel, 결과 추가 버튼을 활성화하고, Result에 추가된 t-test / ANOVA 결과는 Excel 및 Word로 저장할 수 있도록 유지했습니다.
+
+### 변경
+
+- Electron 릴리스 프로필을 조정하여 최종 semantic release 버전은 정식 StatEdu Studio 설치본으로 빌드되도록 했습니다.
 
 ## v1.0.1 - 2026-06-28
 

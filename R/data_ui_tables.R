@@ -1,97 +1,65 @@
 # Data tab DT table renderers and callbacks.
 
-empty_variable_table <- function(language = statedu_initial_language()) {
-  message_label <- statedu_text(language, "Message", statedu_utf8("eba994ec8b9ceca780"))
+message_table_datatable <- function(
+  message,
+  language = statedu_initial_language(),
+  options = list(dom = "t", paging = FALSE, ordering = FALSE),
+  escape = FALSE
+) {
   DT::datatable(
-    stats::setNames(
-      data.frame(statedu_text(
-        language,
-        "Read a SAV, SAS, Stata, Excel, CSV, or DAT file to show variable information.",
-        statedu_utf8("ebb380ec889820eca095ebb3b4eba5bc20ebb3b4eba0a4eba9b4205341562c205341532c2053746174612c20457863656c2c2043535620eb9890eb8a942044415420ed8c8cec9dbcec9d8420ec97acec84b8ec9a942e")
-      ), check.names = FALSE),
-      message_label
-    ),
+    data.frame(Message = as.character(message %||% ""), check.names = FALSE),
     rownames = FALSE,
-    options = list(dom = "t")
+    colnames = data_table_colnames("Message", language),
+    escape = escape,
+    selection = "none",
+    options = options
   )
+}
+
+empty_variable_table <- function(language = statedu_initial_language()) {
+  message_table_datatable(statedu_t("data.table_empty_variable_info", language), language, options = list(dom = "t"))
 }
 
 empty_category_label_table <- function(language = statedu_initial_language()) {
-  message_label <- statedu_text(language, "Message", statedu_utf8("eba994ec8b9ceca780"))
-  DT::datatable(
-    stats::setNames(
-      data.frame(statedu_text(
-        language,
-        "Read a SAV, SAS, Stata, Excel, CSV, or DAT file first.",
-        statedu_utf8("eba8bceca080205341562c205341532c2053746174612c20457863656c2c2043535620eb9890eb8a942044415420ed8c8cec9dbcec9d8420ec97acec84b8ec9a942e")
-      ), check.names = FALSE),
-      message_label
-    ),
-    rownames = FALSE,
-    options = list(dom = "t")
-  )
+  message_table_datatable(statedu_t("data.table_empty_category_labels", language), language, options = list(dom = "t"))
 }
 
 empty_selected_variable_summary_table <- function(language = statedu_initial_language()) {
-  message_label <- statedu_text(language, "Message", statedu_utf8("eba994ec8b9ceca780"))
-  DT::datatable(
-    stats::setNames(
-      data.frame(statedu_text(
-        language,
-        "Apply Step 2 variable selection to review selected variables.",
-        statedu_utf8("ec84a0ed839ded959c20ebb380ec8898eba5bc20eab280ed86a0ed9598eba0a4eba9b42053746570203220ebb380ec889820ec84a0ed839dec9d8420eca081ec9aa9ed9598ec84b8ec9a942e")
-      ), check.names = FALSE),
-      message_label
-    ),
-    rownames = FALSE,
-    options = list(dom = "t")
-  )
+  message_table_datatable(statedu_t("data.table_empty_selected_summary", language), language, options = list(dom = "t"))
 }
 
 empty_data_preview_table <- function(language = statedu_initial_language()) {
-  message_label <- statedu_text(language, "Message", statedu_utf8("eba994ec8b9ceca780"))
-  DT::datatable(
-    stats::setNames(
-      data.frame(statedu_text(
-        language,
-        "Reopen the data file to preview data rows.",
-        statedu_utf8("eb8db0ec9db4ed84b020ed9689ec9d8420ebafb8eba6ac20ebb3b4eba0a4eba9b420eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420eb8ba4ec8b9c20ec97acec84b8ec9a942e")
-      ), check.names = FALSE),
-      message_label
-    ),
-    rownames = FALSE,
-    options = list(dom = "t")
-  )
+  message_table_datatable(statedu_t("data.table_empty_preview", language), language, options = list(dom = "t"))
 }
 
 data_table_header_labels <- function(language = statedu_initial_language()) {
   language <- normalize_app_language(language)
-  h <- statedu_utf8
   labels <- c(
-    "selected" = statedu_text(language, "selected", h("ec84a0ed839d")),
-    "source_order" = statedu_text(language, "source_order", h("ec9b90eb9e9820ec889cec849c")),
-    "name" = statedu_text(language, "name", h("ebb380ec8898ebaa85")),
-    "var_label" = statedu_text(language, "var_label", h("ebb380ec889820eb9dbcebb2a8")),
-    "role" = statedu_text(language, "role", h("ec97aded95a0")),
-    "measurement" = statedu_text(language, "measurement", h("ecb8a1eca095ec8898eca480")),
-    "storage_type" = statedu_text(language, "storage_type", h("eca080ec9ea520ed9895ec8b9d")),
-    "n_unique" = statedu_text(language, "n_unique", h("eab3a0ec9ca0eab09220ec8898")),
-    "n_missing" = statedu_text(language, "n_missing", h("eab2b0ecb8a1eab09220ec8898")),
-    "min_value" = statedu_text(language, "min_value", h("ecb59cec869feab092")),
-    "max_value" = statedu_text(language, "max_value", h("ecb59ceb8c93eab092")),
-    "Variable" = statedu_text(language, "Variable", h("ebb380ec8898")),
-    "Label" = statedu_text(language, "Label", h("eb9dbcebb2a8")),
-    "Measurement" = statedu_text(language, "Measurement", h("ecb8a1eca095ec8898eca480")),
-    "Reference" = statedu_text(language, "Reference", h("ecb0b8eca1b0eab092")),
-    "Min" = statedu_text(language, "Min", h("ecb59cec869feab092")),
-    "Max" = statedu_text(language, "Max", h("ecb59ceb8c93eab092")),
-    "Missing" = statedu_text(language, "Missing", h("eab2b0ecb8a1eab09220ec8898")),
-    "reference" = statedu_text(language, "reference", h("ecb0b8eca1b0eab092")),
-    "reference_label" = statedu_text(language, "reference_label", h("ecb0b8eca1b020eb9dbcebb2a8"))
+    "selected" = statedu_t("data.table_selected", language),
+    "source_order" = statedu_t("data.table_source_order", language),
+    "name" = statedu_t("data.table_name", language),
+    "var_label" = statedu_t("data.table_var_label", language),
+    "role" = statedu_t("data.table_role", language),
+    "measurement" = statedu_t("data.table_measurement", language),
+    "storage_type" = statedu_t("data.table_storage_type", language),
+    "n_unique" = statedu_t("data.table_n_unique", language),
+    "n_missing" = statedu_t("data.table_n_missing", language),
+    "min_value" = statedu_t("data.table_min_value", language),
+    "max_value" = statedu_t("data.table_max_value", language),
+    "Variable" = statedu_t("data.table_variable", language),
+    "Label" = statedu_t("data.table_label", language),
+    "Measurement" = statedu_t("data.table_measurement_title", language),
+    "Reference" = statedu_t("data.table_reference_title", language),
+    "Min" = statedu_t("data.table_min", language),
+    "Max" = statedu_t("data.table_max", language),
+    "Missing" = statedu_t("data.table_missing", language),
+    "Message" = statedu_t("data.table_message", language),
+    "reference" = statedu_t("data.table_reference", language),
+    "reference_label" = statedu_t("data.table_reference_label", language)
   )
   for (index in seq_len(11)) {
-    labels[[paste0("value_", index)]] <- paste(statedu_text(language, "value", h("eab092")), index)
-    labels[[paste0("label_", index)]] <- paste(statedu_text(language, "label", h("eab09220eb9dbcebb2a8")), index)
+    labels[[paste0("value_", index)]] <- paste(statedu_t("data.table_value", language), index)
+    labels[[paste0("label_", index)]] <- paste(statedu_t("data.table_value_label", language), index)
   }
   labels
 }
@@ -524,9 +492,9 @@ variable_table_callback_script <- function(language = statedu_initial_language()
   header_labels <- jsonlite::toJSON(as.list(data_table_header_labels(language)), auto_unbox = TRUE)
   selected_label <- data_table_header_labels(language)[["selected"]]
   name_label <- data_table_header_labels(language)[["name"]]
-  original_label <- statedu_text(language, "original", statedu_utf8("ec9b90ebb3b8"))
-  asc_label <- statedu_text(language, "asc", statedu_utf8("ec98a4eba684ecb0a8ec889c"))
-  desc_label <- statedu_text(language, "desc", statedu_utf8("eb82b4eba6bcecb0a8ec889c"))
+  original_label <- statedu_t("data.table_original", language)
+  asc_label <- statedu_t("data.table_asc", language)
+  desc_label <- statedu_t("data.table_desc", language)
   script <- "
         var selected = __SELECTED_NAMES__;
         var dependentOnly = __DEPENDENT_ONLY__;
@@ -565,6 +533,9 @@ variable_table_callback_script <- function(language = statedu_initial_language()
         }
 
         function requestVariableTablePageRestore() {
+          if (window.easyflowRememberViewport) {
+            window.easyflowRememberViewport('variable_table', table.table().container());
+          }
           try {
             window.easyflowVariableTablePage = table.page.info().page || 0;
             window.easyflowVariableTableRestorePending = window.easyflowVariableTablePage > 0;
@@ -594,9 +565,13 @@ variable_table_callback_script <- function(language = statedu_initial_language()
           [0, 50, 150, 300].forEach(function(delay) {
             window.setTimeout(restoreVariableTablePage, delay);
           });
+          if (window.easyflowScheduleViewportRestore) {
+            window.easyflowScheduleViewportRestore('variable_table', table.table().container(), [1, 51, 151, 301]);
+          }
         }
 
         function syncVariableSelection() {
+          requestVariableTablePageRestore();
           var state = currentTableState();
           Shiny.setInputValue('variable_table_state', {
             selected: state.selected,
@@ -607,6 +582,7 @@ variable_table_callback_script <- function(language = statedu_initial_language()
         }
 
         function syncVariableTableState() {
+          requestVariableTablePageRestore();
           var state = currentTableState();
           var measurementPairs = Object.keys(state.measurements || {}).map(function(name) {
             return {name: name, value: state.measurements[name]};
@@ -860,6 +836,7 @@ variable_table_callback_script <- function(language = statedu_initial_language()
         }
 
         function setCurrentPageSelection(checked) {
+          requestVariableTablePageRestore();
           if (singleSelectRole && checked) {
             var names = selectablePageNames();
             window.easyflowSelectedNames = {};
@@ -913,6 +890,7 @@ variable_table_callback_script <- function(language = statedu_initial_language()
           }
         });
         table.on('change', 'input.variable-select', function() {
+          requestVariableTablePageRestore();
           if (window.getSelection) window.getSelection().removeAllRanges();
           $(this).closest('tr').removeClass('selected');
           if ($(this).prop('disabled')) return;
@@ -934,6 +912,7 @@ variable_table_callback_script <- function(language = statedu_initial_language()
         });
         table.on('change', 'select.measurement-select', function(e) {
           e.stopPropagation();
+          requestVariableTablePageRestore();
           rememberMeasurementSelect(this, true);
           updateMeasurementAvailability(this);
           syncVariableTableState();

@@ -11,16 +11,28 @@ reliability_measurements_for <- function(variables, variable_info = NULL) {
   out
 }
 
-reliability_numeric_matrix <- function(data, variables, measurement) {
+reliability_numeric_matrix <- function(data, variables, measurement, category_table = NULL) {
   frame <- data[, variables, drop = FALSE]
-  converted <- lapply(frame, function(values) {
+  converted <- lapply(names(frame), function(name) {
+    values <- frame[[name]]
     if (identical(measurement, "binary")) {
       non_missing <- unique(values[!is.na(values)])
-      ordered <- frequency_value_order(non_missing)
+      ordered <- frequency_value_order(non_missing, name = name, category_table = category_table)
       numeric <- match(as.character(values), ordered) - 1L
       return(as.numeric(numeric))
     }
-    suppressWarnings(as.numeric(values))
+    if (identical(measurement, "ordered")) {
+      category_order <- frequency_category_value_order(name, category_table)
+      if (length(category_order) > 0) {
+        return(frequency_ordered_score(values, name = name, category_table = category_table))
+      }
+      numeric <- suppressWarnings(as.numeric(as.character(values)))
+      if (sum(!is.na(numeric)) >= 3) {
+        return(numeric)
+      }
+      return(frequency_ordered_score(values, name = name, category_table = category_table))
+    }
+    suppressWarnings(as.numeric(as.character(values)))
   })
   matrix <- as.data.frame(converted, check.names = FALSE)
   names(matrix) <- variables
@@ -50,18 +62,7 @@ reliability_alpha_value <- function(matrix) {
 }
 
 reliability_kr20_value <- function(matrix) {
-  matrix <- reliability_complete_matrix(matrix)
-  k <- ncol(matrix)
-  if (k < 2 || nrow(matrix) < 2) {
-    return(NA_real_)
-  }
-  p <- vapply(matrix, mean, numeric(1), na.rm = TRUE)
-  total_var <- stats::var(rowSums(matrix), na.rm = TRUE)
-  if (!is.finite(total_var) || total_var <= 0) {
-    return(NA_real_)
-  }
-  value <- k / (k - 1) * (1 - sum(p * (1 - p), na.rm = TRUE) / total_var)
-  if (is.finite(value)) value else NA_real_
+  reliability_alpha_value(matrix)
 }
 
 reliability_pearson_correlation <- function(matrix) {
@@ -161,7 +162,7 @@ reliability_pearson_values <- function(matrix) {
   matrix <- reliability_complete_matrix(matrix)
   corr <- reliability_pearson_correlation(matrix)
   c(
-    pearson_alpha = reliability_psych_alpha_from_correlation(corr, nrow(matrix)),
+    pearson_alpha = reliability_alpha_value(matrix),
     pearson_omega = reliability_psych_omega_from_correlation(corr, nrow(matrix))
   )
 }
@@ -235,7 +236,7 @@ reliability_compute_value <- function(matrix, method, measurement) {
 }
 
 reliability_include_omega <- function(options = list()) {
-  isTRUE(options$ordinal)
+  isTRUE(options$omega %||% TRUE)
 }
 
 reliability_method_label <- function(method, include_omega = TRUE) {
@@ -312,9 +313,25 @@ prepare_reliability_results <- function(data, variables, variable_info = NULL, l
   shiny::validate(shiny::need(length(unique_measurements) == 1, "Select items with the same measurement level. Mixed item types cannot be analyzed together."))
 
   measurement <- unique_measurements[[1]]
-  matrix <- reliability_numeric_matrix(data, variables, measurement)
+  if (identical(measurement, "binary")) {
+    binary_counts <- vapply(data[, variables, drop = FALSE], function(values) {
+      length(unique(values[!is.na(values)]))
+    }, integer(1))
+    invalid_binary <- variables[binary_counts > 2L]
+    shiny::validate(shiny::need(
+      length(invalid_binary) == 0,
+      sprintf("Binary reliability (KR-20) requires items with exactly two observed values. Check: %s", paste(invalid_binary, collapse = ", "))
+    ))
+  }
+  matrix <- reliability_numeric_matrix(data, variables, measurement, category_table)
   complete <- reliability_complete_matrix(matrix)
   shiny::validate(shiny::need(nrow(complete) >= 2, "Not enough complete cases for reliability analysis."))
+  item_variances <- vapply(complete, stats::var, numeric(1), na.rm = TRUE)
+  constant_items <- variables[!is.finite(item_variances) | item_variances <= 0]
+  shiny::validate(shiny::need(
+    length(constant_items) == 0,
+    sprintf("Item(s) with zero variance were found: %s. Remove constant items before reliability analysis.", paste(constant_items, collapse = ", "))
+  ))
 
   normality <- NULL
   response_categories <- reliability_max_response_categories(matrix)

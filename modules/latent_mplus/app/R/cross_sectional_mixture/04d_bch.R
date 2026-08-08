@@ -1733,13 +1733,18 @@ if (!HAS_OUTCOME || !is.data.frame(BCH_OUTCOME_SPEC) || nrow(BCH_OUTCOME_SPEC) =
           )
           if (is.null(aov_tab)) next
 
-          effect_rows <- c("class", mv, paste0("class:", mv))
-          effect_labels <- c("class", mv, paste0("class*", mv))
+          effect_rows <- list(
+            class = c("class"),
+            moderator = c(mv, paste0("`", mv, "`")),
+            interaction = c(paste0("class:", mv), paste0("class:`", mv, "`"), paste0("class:", "`", mv, "`"))
+          )
+          effect_labels <- c(class = "class", moderator = mv, interaction = paste0("class*", mv))
 
-          for (ii in seq_along(effect_rows)) {
-            rn <- effect_rows[ii]
-            lab <- effect_labels[ii]
-            if (!rn %in% rownames(aov_tab)) next
+          for (effect_name in names(effect_rows)) {
+            rn <- intersect(effect_rows[[effect_name]], rownames(aov_tab))
+            if (length(rn) == 0) next
+            rn <- rn[[1]]
+            lab <- effect_labels[[effect_name]]
             row <- aov_tab[rn, , drop = FALSE]
             p_val <- suppressWarnings(as.numeric(row$`Pr(>F)`))
             stat  <- suppressWarnings(as.numeric(row$`F value`))

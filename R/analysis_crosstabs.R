@@ -28,10 +28,16 @@ crosstab_value_labels <- function(name, values, category_table = NULL) {
   frequency_value_display_labels(name, values, category_table)
 }
 
-crosstab_order_values <- function(values, measurement = "") {
+crosstab_order_values <- function(values, measurement = "", name = NULL, category_table = NULL) {
   values <- as.character(values)
   values <- values[!is.na(values)]
   unique_values <- unique(values)
+  category_order <- frequency_category_value_order(name, category_table)
+  category_order <- category_order[category_order %in% unique_values]
+  if (length(category_order) > 0) {
+    remaining <- unique_values[!unique_values %in% category_order]
+    return(c(category_order, frequency_value_order(remaining)))
+  }
   numeric_values <- suppressWarnings(as.numeric(unique_values))
   if (length(unique_values) > 0 && all(!is.na(numeric_values))) {
     return(unique_values[order(numeric_values)])
@@ -42,14 +48,14 @@ crosstab_order_values <- function(values, measurement = "") {
   sort(unique_values)
 }
 
-crosstab_complete_table <- function(data, row_var, col_var, row_measure = "", col_measure = "") {
+crosstab_complete_table <- function(data, row_var, col_var, row_measure = "", col_measure = "", category_table = NULL) {
   row_values <- as.character(data[[row_var]])
   col_values <- as.character(data[[col_var]])
   complete <- !is.na(row_values) & !is.na(col_values)
   row_values <- row_values[complete]
   col_values <- col_values[complete]
-  row_levels <- crosstab_order_values(row_values, row_measure)
-  col_levels <- crosstab_order_values(col_values, col_measure)
+  row_levels <- crosstab_order_values(row_values, row_measure, name = row_var, category_table = category_table)
+  col_levels <- crosstab_order_values(col_values, col_measure, name = col_var, category_table = category_table)
   table(
     factor(row_values, levels = row_levels),
     factor(col_values, levels = col_levels),
@@ -293,7 +299,7 @@ prepare_crosstab_results <- function(data, row_var, col_var, variable_info = NUL
   shiny::validate(shiny::need(row_measure %in% crosstab_allowed_measurements(), "Row variable must be binary, ordered, or categorical."))
   shiny::validate(shiny::need(col_measure %in% crosstab_allowed_measurements(), "Column variable must be binary, ordered, or categorical."))
 
-  tab <- crosstab_complete_table(data, row_var, col_var, row_measure, col_measure)
+  tab <- crosstab_complete_table(data, row_var, col_var, row_measure, col_measure, category_table)
   shiny::validate(shiny::need(nrow(tab) >= 2 && ncol(tab) >= 2, "The crosstab must have at least 2 row levels and 2 column levels after excluding missing values."))
 
   association <- crosstab_association_test(tab)

@@ -88,10 +88,31 @@ stopifnot(nrow(preview_xlsx_data) == 1)
 pending_excel_file <- list(path = multi_xlsx_path, name = "source.xlsx", excel_pending = TRUE)
 stopifnot(isTRUE(valid_pending_excel_file_value(pending_excel_file)))
 stopifnot(is.null(current_data_file_value(NULL, pending_excel_file)))
+uploaded_excel_file <- data.frame(
+  name = "source.xlsx",
+  datapath = multi_xlsx_path,
+  stringsAsFactors = FALSE
+)
+stopifnot(is.null(current_data_file_value(uploaded_excel_file, pending_excel_file)))
+stopifnot(is.null(current_data_file_value(uploaded_excel_file, NULL)))
 invalid_pending_excel_file <- list(path = "", name = "", excel_pending = TRUE)
 stopifnot(!isTRUE(valid_pending_excel_file_value(invalid_pending_excel_file)))
 missing_pending_excel_file <- list(path = file.path(tempdir(), "missing.xlsx"), name = "missing.xlsx", excel_pending = TRUE)
 stopifnot(!isTRUE(valid_pending_excel_file_value(missing_pending_excel_file)))
+
+message("Checking extensionless Shiny upload XLSX reads...")
+uploaded_xlsx_path <- tempfile(pattern = "statedu upload xlsx ")
+file.copy(multi_xlsx_path, uploaded_xlsx_path, overwrite = TRUE)
+stopifnot(identical(excel_sheet_names(uploaded_xlsx_path, "source.xlsx"), c("Notes", "Data")))
+uploaded_xlsx_data <- read_input_data(
+  uploaded_xlsx_path,
+  "source.xlsx",
+  excel_sheet = "Data",
+  excel_start_cell = "B4",
+  excel_col_names = TRUE
+)
+stopifnot(nrow(uploaded_xlsx_data) == 2)
+stopifnot(identical(names(uploaded_xlsx_data), names(korean_data)))
 
 message("Checking legacy XLS reads...")
 xls_example <- readxl::readxl_example("datasets.xls")

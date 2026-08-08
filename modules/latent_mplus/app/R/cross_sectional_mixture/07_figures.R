@@ -607,6 +607,12 @@ ANALYSIS_DATA_CLASSIFIED <- load_step_rds(
   default = data.frame()
 )
 
+RAW_DATA <- load_step_rds(
+  "RAW_DATA",
+  dir_rds = DIR_RDS,
+  default = data.frame()
+)
+
 CLASSIFICATION_QUALITY <- load_step_rds(
   "CLASSIFICATION_QUALITY",
   dir_rds = DIR_RDS,
@@ -817,6 +823,17 @@ latent_group_color_scale <- function(levels_in = NULL) {
     "#E69F00", "#56B4E9", "#F0E442", "#000000"
   )
   ggplot2::scale_colour_manual(values = stats::setNames(rep(palette, length.out = length(levs)), levs))
+}
+
+latent_group_fill_scale <- function(levels_in = NULL) {
+  levs <- as.character(levels_in %||% character(0))
+  levs <- levs[nzchar(levs)]
+  if (length(levs) == 0) return(list())
+  palette <- c(
+    "#0072B2", "#D55E00", "#009E73", "#CC79A7",
+    "#E69F00", "#56B4E9", "#F0E442", "#000000"
+  )
+  ggplot2::scale_fill_manual(values = stats::setNames(rep(palette, length.out = length(levs)), levs))
 }
 
 # ------------------------------------------------------------
@@ -1069,6 +1086,10 @@ get_fig_spec <- function(stub, journal_style = get_journal_style()) {
   specs <- list(
     Fig1_model_fit                = list(width = js$base_width, height = js$base_height, dpi = js$dpi),
     Fig2_class_proportion         = list(width = 6.5, height = 4.8, dpi = js$dpi),
+    Fig2_class_proportion_by_nurse_type = list(width = js$wide_width, height = js$base_height, dpi = js$dpi),
+    Fig2_class_proportion_by_nurse_type_bw = list(width = js$wide_width, height = js$base_height, dpi = js$dpi),
+    Fig2_nurse_type_proportion_by_class = list(width = js$wide_width, height = js$base_height, dpi = js$dpi),
+    Fig2_nurse_type_proportion_by_class_bw = list(width = js$wide_width, height = js$base_height, dpi = js$dpi),
     Fig3_entropy                  = list(width = 6.5, height = 4.8, dpi = js$dpi),
     Fig3_classification_quality   = list(width = js$base_width, height = js$base_height, dpi = js$dpi),
 
@@ -1124,6 +1145,383 @@ make_wrapped_factor <- function(x, width = 18) {
   lev0  <- unique(x_chr)
   lab0  <- wrap_label_text(lev0, width = width)
   factor(x_chr, levels = lev0, labels = lab0)
+}
+
+get_classified_source_with_raw_vars <- function(vars = c("group", "type")) {
+  src <- safe_df(CLASSIFIED_ANALYSIS)
+  if (nrow(src) == 0) src <- safe_df(ANALYSIS_DATA_CLASSIFIED)
+
+  raw <- safe_df(RAW_DATA)
+  vars <- intersect(as.character(vars), names(raw))
+  if (nrow(src) == 0 || nrow(raw) == 0 || length(vars) == 0) return(src)
+
+  for (v in vars) {
+    if (v %in% names(src)) next
+
+    value <- NULL
+    if ("id" %in% names(src) && "id" %in% names(raw)) {
+      idx <- match(as.character(src$id), as.character(raw$id))
+      if (any(!is.na(idx))) value <- raw[[v]][idx]
+    }
+
+    if (is.null(value) && nrow(src) == nrow(raw)) {
+      value <- raw[[v]]
+    }
+
+    if (!is.null(value)) src[[v]] <- value
+  }
+
+  src
+}
+
+choose_nurse_type_var <- function(df) {
+  df <- safe_df(df)
+  if (nrow(df) == 0) return(NA_character_)
+
+  for (v in c("group", "type")) {
+    if (!v %in% names(df)) next
+    key <- normalize_code_key(df[[v]])
+    key <- key[!is.na(key) & nzchar(key)]
+    if (length(unique(key)) == 2) return(v)
+  }
+
+  NA_character_
+}
+
+label_nurse_type_values <- function(values, var_name) {
+  values_chr <- as.character(values)
+  key <- normalize_code_key(values_chr)
+  out <- map_value_labels_for_var(values_chr, var_name)
+
+  out_key <- normalize_code_key(out)
+  has_only_codes <- all(is.na(out_key) | out_key == key | grepl("^[0-9.]+$", out))
+
+  if (identical(var_name, "group") && has_only_codes) {
+    out[key == "1"] <- "\uc804\ub2f4\uac04\ud638\uc0ac"
+    out[key == "0"] <- "\uc77c\ubc18\uac04\ud638\uc0ac"
+  }
+
+  out
+}
+
+ordered_nurse_type_keys <- function(keys, var_name) {
+  keys <- unique(keys[!is.na(keys) & nzchar(keys)])
+  if (identical(var_name, "group") && all(c("0", "1") %in% keys)) {
+    return(c("1", "0"))
+  }
+
+  suppressWarnings(num <- as.numeric(keys))
+  if (all(!is.na(num))) return(keys[order(num)])
+  keys
+}
+
+make_fig2_nurse_type_df <- function(class_source, class_summary, class_prefix = latent_group_term()) {
+  src <- safe_df(class_source)
+  if (nrow(src) == 0) return(data.frame())
+
+  nurse_var <- choose_nurse_type_var(src)
+  if (is.na(nurse_var) || !nzchar(nurse_var)) return(data.frame())
+
+  if ("class_num" %in% names(src)) {
+    src$class_num_fig2 <- safe_int(src$class_num)
+  } else if ("Class_num" %in% names(src)) {
+    src$class_num_fig2 <- safe_int(src$Class_num)
+  } else if ("class" %in% names(src)) {
+    src$class_num_fig2 <- safe_int(gsub("[^0-9]", "", as.character(src$class)))
+  } else if ("Class" %in% names(src)) {
+    src$class_num_fig2 <- safe_int(gsub("[^0-9]", "", as.character(src$Class)))
+  } else {
+    return(data.frame())
+  }
+
+  src$nurse_type_key <- normalize_code_key(src[[nurse_var]])
+  keep <- !is.na(src$class_num_fig2) &
+    !is.na(src$nurse_type_key) &
+    nzchar(src$nurse_type_key)
+  src <- src[keep, , drop = FALSE]
+  if (nrow(src) == 0) return(data.frame())
+
+  class_summary <- safe_df(class_summary)
+  if ("class_num" %in% names(class_summary)) {
+    class_order <- safe_int(class_summary$class_num)
+    class_order <- class_order[!is.na(class_order)]
+  } else {
+    class_order <- integer(0)
+  }
+  if (length(class_order) == 0) class_order <- sort(unique(src$class_num_fig2))
+
+  type_order <- ordered_nurse_type_keys(src$nurse_type_key, nurse_var)
+  if (length(type_order) == 0) return(data.frame())
+
+  agg <- stats::aggregate(
+    list(n = rep(1L, nrow(src))),
+    by = list(nurse_type_key = src$nurse_type_key, class_num = src$class_num_fig2),
+    FUN = sum
+  )
+
+  combo <- expand.grid(
+    nurse_type_key = type_order,
+    class_num = class_order,
+    stringsAsFactors = FALSE
+  )
+  combo$n <- agg$n[match(
+    paste(combo$nurse_type_key, combo$class_num, sep = "\r"),
+    paste(agg$nurse_type_key, agg$class_num, sep = "\r")
+  )]
+  combo$n[is.na(combo$n)] <- 0L
+
+  totals <- stats::aggregate(
+    list(total_n = combo$n),
+    by = list(nurse_type_key = combo$nurse_type_key),
+    FUN = sum
+  )
+  combo$total_n <- totals$total_n[match(combo$nurse_type_key, totals$nurse_type_key)]
+  combo$prop <- ifelse(combo$total_n > 0, combo$n / combo$total_n, NA_real_)
+
+  type_labels <- label_nurse_type_values(type_order, nurse_var)
+  combo$nurse_type <- label_nurse_type_values(combo$nurse_type_key, nurse_var)
+  facet_levels <- paste0(type_labels, " (n=", totals$total_n[match(type_order, totals$nurse_type_key)], ")")
+  combo$nurse_type_facet <- paste0(combo$nurse_type, " (n=", combo$total_n, ")")
+  combo$nurse_type_facet <- factor(combo$nurse_type_facet, levels = facet_levels)
+
+  combo$class <- factor(
+    paste0(class_prefix, " ", combo$class_num),
+    levels = paste0(class_prefix, " ", class_order)
+  )
+  combo$nurse_type_var <- nurse_var
+
+  combo[order(match(combo$nurse_type_key, type_order), match(combo$class_num, class_order)), , drop = FALSE]
+}
+
+resolve_fig2_nurse_target_k <- function() {
+  cand <- c(
+    Sys.getenv("STATEDU_FIG2_CLASS_K", ""),
+    CFG$figure$fig2_class_k %||% NULL,
+    CFG$figure$class_proportion_k %||% NULL,
+    CFG$estimation$best_k %||% NULL,
+    BEST_K_SUMMARY$best_k_fixed %||% NULL,
+    BEST_K_SUMMARY$BEST_K_FIXED %||% NULL
+  )
+  cand <- suppressWarnings(as.integer(unlist(cand, use.names = FALSE)))
+  cand <- cand[!is.na(cand) & cand > 0L]
+  if (length(cand) == 0) return(NA_integer_)
+  cand[1]
+}
+
+find_fig2_cprob_path_for_k <- function(k) {
+  k <- suppressWarnings(as.integer(k))[1]
+  if (is.na(k) || k <= 0L) return(NA_character_)
+
+  fit_df <- safe_df(FIT_SUMMARY)
+  paths <- character(0)
+
+  model_structures <- unique(safe_chr(c(
+    model_structure,
+    CFG$estimation$model_structure %||% NULL,
+    if ("model_structure" %in% names(fit_df)) fit_df$model_structure else character(0)
+  )))
+  model_structures <- model_structures[nzchar(model_structures)]
+
+  for (ms in model_structures) {
+    paths <- c(paths, file.path(DIR_MPLUS_SAVEDATA, paste0(ms, "_cprob_k", k, ".dat")))
+  }
+
+  if (nrow(fit_df) > 0 && "k" %in% names(fit_df) && "out_file" %in% names(fit_df)) {
+    hit <- fit_df[safe_int(fit_df$k) == k, , drop = FALSE]
+    if (nrow(hit) > 0) {
+      for (i in seq_len(nrow(hit))) {
+        out_i <- as.character(hit$out_file[i])
+        if (is.na(out_i) || !nzchar(out_i)) next
+        ms_i <- if ("model_structure" %in% names(hit)) as.character(hit$model_structure[i]) else model_structure
+        if (is.na(ms_i) || !nzchar(ms_i)) ms_i <- model_structure
+        paths <- c(paths, file.path(dirname(dirname(out_i)), "savedata", paste0(ms_i, "_cprob_k", k, ".dat")))
+      }
+    }
+  }
+
+  paths <- unique(gsub("\\\\", "/", paths))
+  hit <- paths[file.exists(paths)]
+  if (length(hit) == 0) return(NA_character_)
+  hit[1]
+}
+
+read_fig2_class_source_from_cprob <- function(k, raw_vars = c("group", "type")) {
+  k <- suppressWarnings(as.integer(k))[1]
+  if (is.na(k) || k <= 0L) return(data.frame())
+
+  cprob_path <- find_fig2_cprob_path_for_k(k)
+  if (is.na(cprob_path) || !nzchar(cprob_path) || !file.exists(cprob_path)) {
+    log_warn("Fig2 nurse-type 5-class CPROB path not found for k=", k)
+    return(data.frame())
+  }
+
+  savedata <- tryCatch({
+    if (exists("read_mplus_savedata_free", mode = "function", inherits = TRUE)) {
+      read_mplus_savedata_free(cprob_path, header = FALSE)
+    } else {
+      utils::read.table(cprob_path, header = FALSE, stringsAsFactors = FALSE)
+    }
+  }, error = function(e) {
+    log_warn("Fig2 nurse-type CPROB read failed: ", conditionMessage(e))
+    data.frame()
+  })
+  savedata <- safe_df(savedata)
+  if (nrow(savedata) == 0 || ncol(savedata) < k + 2L) return(data.frame())
+
+  class_col <- ncol(savedata) - 1L
+  id_col <- ncol(savedata)
+  class_num <- safe_int(savedata[[class_col]])
+  src <- data.frame(
+    id = savedata[[id_col]],
+    class_num = class_num,
+    class = paste0("class", class_num),
+    class_label = paste0("Class ", class_num),
+    best_k = k,
+    stringsAsFactors = FALSE
+  )
+
+  raw <- safe_df(RAW_DATA)
+  raw_vars <- intersect(as.character(raw_vars), names(raw))
+  if (nrow(raw) > 0 && length(raw_vars) > 0) {
+    for (v in raw_vars) {
+      value <- NULL
+      if ("id" %in% names(raw)) {
+        idx <- match(as.character(src$id), as.character(raw$id))
+        if (any(!is.na(idx))) value <- raw[[v]][idx]
+      }
+      if (is.null(value) && nrow(raw) == nrow(src)) {
+        value <- raw[[v]]
+      }
+      if (!is.null(value)) src[[v]] <- value
+    }
+  }
+
+  src
+}
+
+make_fig2_class_summary_from_source <- function(class_source, k) {
+  k <- suppressWarnings(as.integer(k))[1]
+  if (is.na(k) || k <= 0L) return(data.frame())
+  src <- safe_df(class_source)
+  tb <- as.data.frame(table(factor(src$class_num, levels = seq_len(k))), stringsAsFactors = FALSE)
+  names(tb) <- c("class_num", "n")
+  tb$class_num <- safe_int(as.character(tb$class_num))
+  tb$n <- safe_num(tb$n)
+  total_n <- sum(tb$n, na.rm = TRUE)
+  tb$class <- paste0("class", tb$class_num)
+  tb$class_label <- paste0("Class ", tb$class_num)
+  tb$percent <- if (total_n > 0) tb$n / total_n * 100 else NA_real_
+  tb
+}
+
+resolve_fig2_class_prop_override <- function(class_nums) {
+  class_nums <- safe_int(class_nums)
+  class_nums <- sort(unique(class_nums[!is.na(class_nums) & class_nums > 0L]))
+  if (length(class_nums) == 0) return(data.frame())
+
+  vals <- CFG$figure$fig2_class_proportions %||%
+    CFG$figure$class_proportions %||%
+    Sys.getenv("STATEDU_FIG2_CLASS_PROPORTIONS", "")
+  vals <- unlist(vals, use.names = TRUE)
+  vals <- vals[!is.na(vals) & nzchar(trimws(as.character(vals)))]
+
+  if (length(vals) == 1L && grepl(",", as.character(vals[[1]]), fixed = TRUE)) {
+    vals <- trimws(strsplit(as.character(vals[[1]]), ",", fixed = TRUE)[[1]])
+  }
+
+  if (length(vals) == 0) return(data.frame())
+
+  val_names <- names(vals)
+  prop <- safe_num(vals)
+  keep <- !is.na(prop)
+  prop <- prop[keep]
+  val_names <- val_names[keep]
+  if (length(prop) == 0) return(data.frame())
+  if (max(prop, na.rm = TRUE) > 1) prop <- prop / 100
+
+  if (!is.null(val_names) && any(nzchar(val_names))) {
+    nums <- safe_int(gsub("[^0-9]", "", val_names))
+  } else {
+    nums <- seq_along(prop)
+  }
+
+  out <- data.frame(
+    class_num = nums,
+    class_prop_override = prop,
+    stringsAsFactors = FALSE
+  )
+  out <- out[!is.na(out$class_num) & out$class_num %in% class_nums, , drop = FALSE]
+  out <- out[!duplicated(out$class_num), , drop = FALSE]
+  rownames(out) <- NULL
+  out
+}
+
+apply_fig2_class_prop_override <- function(nurse_class_df) {
+  df <- safe_df(nurse_class_df)
+  if (nrow(df) == 0 || !all(c("class_num", "n", "nurse_type_key") %in% names(df))) {
+    return(df)
+  }
+
+  override <- resolve_fig2_class_prop_override(df$class_num)
+  if (!is.data.frame(override) || nrow(override) == 0) return(df)
+
+  totals <- stats::aggregate(
+    list(class_total_n = safe_num(df$n)),
+    by = list(class_num = safe_int(df$class_num)),
+    FUN = sum
+  )
+  df$class_total_n <- totals$class_total_n[match(safe_int(df$class_num), totals$class_num)]
+  df$within_class_prop <- ifelse(df$class_total_n > 0, safe_num(df$n) / df$class_total_n, NA_real_)
+  df$class_prop <- override$class_prop_override[match(safe_int(df$class_num), override$class_num)]
+  has_override <- !is.na(df$class_prop)
+  df$cell_overall_prop <- ifelse(has_override, df$within_class_prop * df$class_prop, NA_real_)
+
+  nurse_totals <- stats::aggregate(
+    list(nurse_total_prop = df$cell_overall_prop),
+    by = list(nurse_type_key = df$nurse_type_key),
+    FUN = function(x) sum(x, na.rm = TRUE)
+  )
+  df$nurse_total_prop <- nurse_totals$nurse_total_prop[match(df$nurse_type_key, nurse_totals$nurse_type_key)]
+  df$prop <- ifelse(df$nurse_total_prop > 0, df$cell_overall_prop / df$nurse_total_prop, df$prop)
+  df
+}
+
+make_fig2_nurse_share_by_class_df <- function(nurse_class_df) {
+  df <- safe_df(nurse_class_df)
+  if (nrow(df) == 0 || !all(c("class", "class_num", "n", "nurse_type") %in% names(df))) {
+    return(data.frame())
+  }
+
+  grand_total_n <- sum(safe_num(df$n), na.rm = TRUE)
+  if (!is.finite(grand_total_n) || grand_total_n <= 0) return(data.frame())
+
+  totals <- stats::aggregate(
+    list(class_total_n = safe_num(df$n)),
+    by = list(class_num = safe_int(df$class_num)),
+    FUN = sum
+  )
+  df$class_total_n <- totals$class_total_n[match(safe_int(df$class_num), totals$class_num)]
+  df$class_prop <- ifelse(df$class_total_n > 0, df$class_total_n / grand_total_n, NA_real_)
+  df$within_class_prop <- ifelse(df$class_total_n > 0, safe_num(df$n) / df$class_total_n, NA_real_)
+
+  override <- resolve_fig2_class_prop_override(df$class_num)
+  if (is.data.frame(override) && nrow(override) > 0) {
+    override_prop <- override$class_prop_override[match(safe_int(df$class_num), override$class_num)]
+    has_override <- !is.na(override_prop)
+    df$class_prop[has_override] <- override_prop[has_override]
+  }
+  df$prop <- df$within_class_prop * df$class_prop
+
+  class_levels <- levels(df$class)
+  if (is.null(class_levels) || length(class_levels) == 0) {
+    class_levels <- unique(as.character(df$class))
+  }
+  nurse_levels <- levels(factor(df$nurse_type_facet))
+  if (length(nurse_levels) == 0) nurse_levels <- unique(as.character(df$nurse_type))
+
+  df$class <- factor(as.character(df$class), levels = class_levels)
+  df$nurse_type <- factor(as.character(df$nurse_type), levels = unique(as.character(df$nurse_type)))
+  df[order(match(as.character(df$class), class_levels), df$nurse_type_key), , drop = FALSE]
 }
 
 
@@ -1933,8 +2331,9 @@ build_profile_line_ci_plot <- function(df, title) {
   df <- df[!is.na(df$mean) & !is.na(df$se), , drop = FALSE]
   if (nrow(df) == 0) return(NULL)
 
-  df$ymin <- df$mean - 1.96 * df$se
-  df$ymax <- df$mean + 1.96 * df$se
+  critical <- stats::qnorm(0.975)
+  df$ymin <- df$mean - critical * df$se
+  df$ymax <- df$mean + critical * df$se
   df$label_wrapped <- make_wrapped_factor(df$label, width = 18)
 
   ggplot2::ggplot(
@@ -2000,8 +2399,9 @@ build_F6_bch_interaction_plot <- function(
   df$Group   <- as.character(df$moderator_level)
 
   if (use_ci) {
-    df$ymin <- df$estimate - 1.96 * df$se
-    df$ymax <- df$estimate + 1.96 * df$se
+    critical <- stats::qnorm(0.975)
+    df$ymin <- df$estimate - critical * df$se
+    df$ymax <- df$estimate + critical * df$se
   } else {
     df$ymin <- df$estimate - df$se
     df$ymax <- df$estimate + df$se
@@ -3012,6 +3412,286 @@ if (!is.null(p2)) {
   FIGURE_REGISTRY <- register_figure_paths(FIGURE_REGISTRY, "Fig2_class_proportion")
 } else {
   log_warn("Fig2_class_proportion skipped.")
+}
+
+log_info("Building Fig2_class_proportion_by_nurse_type ...")
+
+p2_nurse <- NULL
+p2_nurse_bw <- NULL
+p2_class_nurse <- NULL
+p2_class_nurse_bw <- NULL
+class_df_fig2_nurse <- data.frame()
+class_df_fig2_class_nurse <- data.frame()
+fig2_nurse_target_k <- resolve_fig2_nurse_target_k()
+fig2_nurse_uses_target_k <- !is.na(fig2_nurse_target_k) &&
+  !is.na(best_k) &&
+  fig2_nurse_target_k != best_k
+fig2_nurse_class_term <- latent_group_term()
+fig2_nurse_title <- paste0(class_title, " by nurse type")
+class_summary_fig2_nurse <- class_df_fig2
+class_source_fig2_nurse <- data.frame()
+
+if (isTRUE(fig2_nurse_uses_target_k)) {
+  class_source_fig2_nurse <- read_fig2_class_source_from_cprob(
+    k = fig2_nurse_target_k,
+    raw_vars = c("group", "type")
+  )
+  if (nrow(class_source_fig2_nurse) > 0) {
+    fig2_nurse_class_term <- "Class"
+    fig2_nurse_title <- paste0(fig2_nurse_target_k, "CLASS proportions by nurse type")
+    class_summary_fig2_nurse <- make_fig2_class_summary_from_source(
+      class_source = class_source_fig2_nurse,
+      k = fig2_nurse_target_k
+    )
+  } else {
+    log_warn("Fig2_class_proportion_by_nurse_type falling back to retained solution.")
+    class_source_fig2_nurse <- get_classified_source_with_raw_vars(c("group", "type"))
+  }
+} else {
+  class_source_fig2_nurse <- get_classified_source_with_raw_vars(c("group", "type"))
+}
+
+if (nrow(class_source_fig2_nurse) > 0 && nrow(class_summary_fig2_nurse) > 0) {
+  class_df_fig2_nurse <- make_fig2_nurse_type_df(
+    class_source  = class_source_fig2_nurse,
+    class_summary = class_summary_fig2_nurse,
+    class_prefix  = fig2_nurse_class_term
+  )
+  class_df_fig2_nurse <- apply_fig2_class_prop_override(class_df_fig2_nurse)
+
+  if (nrow(class_df_fig2_nurse) > 0) {
+    p2_nurse <- tryCatch({
+      ggplot2::ggplot(class_df_fig2_nurse, ggplot2::aes(x = nurse_type_facet, y = prop, fill = class)) +
+        ggplot2::geom_col(width = 0.55, colour = "black", linewidth = 0.25) +
+        ggplot2::geom_text(
+          ggplot2::aes(
+            label = ifelse(prop >= 0.045, paste0(sprintf("%.1f", prop * 100), "%"), "")
+          ),
+          position = ggplot2::position_stack(vjust = 0.5),
+          size = 3.1,
+          colour = "black"
+        ) +
+        latent_group_fill_scale(levels(class_df_fig2_nurse$class)) +
+        scale_y_percent_sci_local(expand = ggplot2::expansion(mult = c(0, 0.01))) +
+        ggplot2::labs(
+          title = fig2_nurse_title,
+          x = NULL,
+          y = "Within-type proportion",
+          fill = fig2_nurse_class_term
+        ) +
+        theme_sci_ref() +
+        ggplot2::theme(
+          axis.text.x = ggplot2::element_text(face = "bold"),
+          legend.position = "right"
+        )
+    }, error = function(e) {
+      log_warn("Fig2_class_proportion_by_nurse_type build failed: ", conditionMessage(e))
+      NULL
+    })
+  }
+}
+
+if (nrow(class_df_fig2_nurse) > 0) {
+  class_df_fig2_nurse$label_colour_bw <- "black"
+
+  p2_nurse_bw <- tryCatch({
+    ggplot2::ggplot(class_df_fig2_nurse, ggplot2::aes(x = nurse_type_facet, y = prop, fill = class)) +
+      ggplot2::geom_col(width = 0.55, colour = "black", linewidth = 0.25) +
+      ggplot2::geom_text(
+        ggplot2::aes(
+          label = ifelse(prop >= 0.045, paste0(sprintf("%.1f", prop * 100), "%"), ""),
+          colour = label_colour_bw
+        ),
+        position = ggplot2::position_stack(vjust = 0.5),
+        size = 3.1
+      ) +
+      ggplot2::scale_fill_grey(start = 0.25, end = 0.85) +
+      ggplot2::scale_colour_identity() +
+      scale_y_percent_sci_local(expand = ggplot2::expansion(mult = c(0, 0.01))) +
+      ggplot2::labs(
+        title = paste0(fig2_nurse_title, " (black and white)"),
+        x = NULL,
+        y = "Within-type proportion",
+        fill = fig2_nurse_class_term
+      ) +
+      theme_sci_ref() +
+      ggplot2::theme(
+        axis.text.x = ggplot2::element_text(face = "bold"),
+        legend.position = "right"
+      )
+  }, error = function(e) {
+    log_warn("Fig2_class_proportion_by_nurse_type_bw build failed: ", conditionMessage(e))
+    NULL
+  })
+}
+
+if (nrow(class_df_fig2_nurse) > 0) {
+  class_df_fig2_class_nurse <- make_fig2_nurse_share_by_class_df(class_df_fig2_nurse)
+
+  if (nrow(class_df_fig2_class_nurse) > 0) {
+    nurse_levels_for_fig2 <- unique(as.character(class_df_fig2_class_nurse$nurse_type))
+    nurse_palette_for_fig2 <- stats::setNames(
+      c("#0072B2", "#D55E00")[seq_along(nurse_levels_for_fig2)],
+      nurse_levels_for_fig2
+    )
+    class_nurse_title <- paste0(fig2_nurse_target_k, "CLASS proportions split by nurse type")
+    class_total_labels_fig2 <- unique(class_df_fig2_class_nurse[, c("class", "class_prop"), drop = FALSE])
+
+    p2_class_nurse <- tryCatch({
+      ggplot2::ggplot(class_df_fig2_class_nurse, ggplot2::aes(x = class, y = prop, fill = nurse_type)) +
+        ggplot2::geom_col(width = 0.65, colour = "black", linewidth = 0.25) +
+        ggplot2::geom_text(
+          ggplot2::aes(label = ifelse(prop >= 0.012, paste0(sprintf("%.1f", within_class_prop * 100), "%"), "")),
+          position = ggplot2::position_stack(vjust = 0.5),
+          size = 3.1,
+          colour = "black"
+        ) +
+        ggplot2::geom_text(
+          data = class_total_labels_fig2,
+          ggplot2::aes(x = class, y = class_prop, label = paste0(sprintf("%.1f", class_prop * 100), "%")),
+          inherit.aes = FALSE,
+          vjust = -0.30,
+          size = 3.0
+        ) +
+        ggplot2::scale_fill_manual(values = nurse_palette_for_fig2) +
+        scale_y_percent_sci_local(expand = ggplot2::expansion(mult = c(0, 0.12))) +
+        ggplot2::labs(
+          title = class_nurse_title,
+          x = NULL,
+          y = "Overall sample proportion",
+          fill = NULL
+        ) +
+        theme_sci_ref() +
+        ggplot2::theme(
+          axis.text.x = ggplot2::element_text(face = "bold"),
+          legend.position = "right"
+        )
+    }, error = function(e) {
+      log_warn("Fig2_nurse_type_proportion_by_class build failed: ", conditionMessage(e))
+      NULL
+    })
+
+    class_df_fig2_class_nurse$label_colour_bw <- "black"
+
+    p2_class_nurse_bw <- tryCatch({
+      ggplot2::ggplot(class_df_fig2_class_nurse, ggplot2::aes(x = class, y = prop, fill = nurse_type)) +
+        ggplot2::geom_col(width = 0.65, colour = "black", linewidth = 0.25) +
+        ggplot2::geom_text(
+          ggplot2::aes(
+            label = ifelse(prop >= 0.012, paste0(sprintf("%.1f", within_class_prop * 100), "%"), ""),
+            colour = label_colour_bw
+          ),
+          position = ggplot2::position_stack(vjust = 0.5),
+          size = 3.1
+        ) +
+        ggplot2::geom_text(
+          data = class_total_labels_fig2,
+          ggplot2::aes(x = class, y = class_prop, label = paste0(sprintf("%.1f", class_prop * 100), "%")),
+          inherit.aes = FALSE,
+          vjust = -0.30,
+          size = 3.0,
+          colour = "black"
+        ) +
+        ggplot2::scale_fill_grey(start = 0.25, end = 0.85) +
+        ggplot2::scale_colour_identity() +
+        scale_y_percent_sci_local(expand = ggplot2::expansion(mult = c(0, 0.12))) +
+        ggplot2::labs(
+          title = paste0(class_nurse_title, " (black and white)"),
+          x = NULL,
+          y = "Overall sample proportion",
+          fill = NULL
+        ) +
+        theme_sci_ref() +
+        ggplot2::theme(
+          axis.text.x = ggplot2::element_text(face = "bold"),
+          legend.position = "right"
+        )
+    }, error = function(e) {
+      log_warn("Fig2_nurse_type_proportion_by_class_bw build failed: ", conditionMessage(e))
+      NULL
+    })
+  }
+}
+
+FIG2_NURSE_DATA_VALIDATION <- validate_required_data_fig2(class_df_fig2_nurse)
+FIG2_NURSE_DATA_VALIDATION$figure_name <- "Fig2_class_proportion_by_nurse_type"
+FIG2_NURSE_OBJ_VALIDATION  <- validate_figure_object("Fig2_class_proportion_by_nurse_type", p2_nurse)
+FIG2_NURSE_BW_DATA_VALIDATION <- validate_required_data_fig2(class_df_fig2_nurse)
+FIG2_NURSE_BW_DATA_VALIDATION$figure_name <- "Fig2_class_proportion_by_nurse_type_bw"
+FIG2_NURSE_BW_OBJ_VALIDATION  <- validate_figure_object("Fig2_class_proportion_by_nurse_type_bw", p2_nurse_bw)
+FIG2_CLASS_NURSE_DATA_VALIDATION <- validate_required_data_fig2(class_df_fig2_class_nurse)
+FIG2_CLASS_NURSE_DATA_VALIDATION$figure_name <- "Fig2_nurse_type_proportion_by_class"
+FIG2_CLASS_NURSE_OBJ_VALIDATION  <- validate_figure_object("Fig2_nurse_type_proportion_by_class", p2_class_nurse)
+FIG2_CLASS_NURSE_BW_DATA_VALIDATION <- validate_required_data_fig2(class_df_fig2_class_nurse)
+FIG2_CLASS_NURSE_BW_DATA_VALIDATION$figure_name <- "Fig2_nurse_type_proportion_by_class_bw"
+FIG2_CLASS_NURSE_BW_OBJ_VALIDATION  <- validate_figure_object("Fig2_nurse_type_proportion_by_class_bw", p2_class_nurse_bw)
+
+sp <- get_fig_spec("Fig2_class_proportion_by_nurse_type")
+
+if (!is.null(p2_nurse)) {
+  m2_nurse <- save_fig(
+    plot_obj     = p2_nurse,
+    file_stub    = "Fig2_class_proportion_by_nurse_type",
+    figure_title = fig2_nurse_title,
+    width        = sp$width,
+    height       = sp$height,
+    dpi          = sp$dpi
+  )
+  FIGURE_MANIFEST <- append_figure_manifest(FIGURE_MANIFEST, m2_nurse)
+  FIGURE_REGISTRY <- register_figure_paths(FIGURE_REGISTRY, "Fig2_class_proportion_by_nurse_type")
+} else {
+  log_warn("Fig2_class_proportion_by_nurse_type skipped.")
+}
+
+sp <- get_fig_spec("Fig2_class_proportion_by_nurse_type_bw")
+
+if (!is.null(p2_nurse_bw)) {
+  m2_nurse_bw <- save_fig(
+    plot_obj     = p2_nurse_bw,
+    file_stub    = "Fig2_class_proportion_by_nurse_type_bw",
+    figure_title = paste0(fig2_nurse_title, " (black and white)"),
+    width        = sp$width,
+    height       = sp$height,
+    dpi          = sp$dpi
+  )
+  FIGURE_MANIFEST <- append_figure_manifest(FIGURE_MANIFEST, m2_nurse_bw)
+  FIGURE_REGISTRY <- register_figure_paths(FIGURE_REGISTRY, "Fig2_class_proportion_by_nurse_type_bw")
+} else {
+  log_warn("Fig2_class_proportion_by_nurse_type_bw skipped.")
+}
+
+sp <- get_fig_spec("Fig2_nurse_type_proportion_by_class")
+
+if (!is.null(p2_class_nurse)) {
+  m2_class_nurse <- save_fig(
+    plot_obj     = p2_class_nurse,
+    file_stub    = "Fig2_nurse_type_proportion_by_class",
+    figure_title = class_nurse_title,
+    width        = sp$width,
+    height       = sp$height,
+    dpi          = sp$dpi
+  )
+  FIGURE_MANIFEST <- append_figure_manifest(FIGURE_MANIFEST, m2_class_nurse)
+  FIGURE_REGISTRY <- register_figure_paths(FIGURE_REGISTRY, "Fig2_nurse_type_proportion_by_class")
+} else {
+  log_warn("Fig2_nurse_type_proportion_by_class skipped.")
+}
+
+sp <- get_fig_spec("Fig2_nurse_type_proportion_by_class_bw")
+
+if (!is.null(p2_class_nurse_bw)) {
+  m2_class_nurse_bw <- save_fig(
+    plot_obj     = p2_class_nurse_bw,
+    file_stub    = "Fig2_nurse_type_proportion_by_class_bw",
+    figure_title = paste0(class_nurse_title, " (black and white)"),
+    width        = sp$width,
+    height       = sp$height,
+    dpi          = sp$dpi
+  )
+  FIGURE_MANIFEST <- append_figure_manifest(FIGURE_MANIFEST, m2_class_nurse_bw)
+  FIGURE_REGISTRY <- register_figure_paths(FIGURE_REGISTRY, "Fig2_nurse_type_proportion_by_class_bw")
+} else {
+  log_warn("Fig2_nurse_type_proportion_by_class_bw skipped.")
 }
 
 # ------------------------------------------------------------
@@ -4626,6 +5306,10 @@ if (!is.null(p9)) {
 FIGURE_VALIDATION <- bind_figure_validation(
   FIG1_DATA_VALIDATION, FIG1_OBJ_VALIDATION,
   FIG2_DATA_VALIDATION, FIG2_OBJ_VALIDATION,
+  FIG2_NURSE_DATA_VALIDATION, FIG2_NURSE_OBJ_VALIDATION,
+  FIG2_NURSE_BW_DATA_VALIDATION, FIG2_NURSE_BW_OBJ_VALIDATION,
+  FIG2_CLASS_NURSE_DATA_VALIDATION, FIG2_CLASS_NURSE_OBJ_VALIDATION,
+  FIG2_CLASS_NURSE_BW_DATA_VALIDATION, FIG2_CLASS_NURSE_BW_OBJ_VALIDATION,
   FIG3_ENTROPY_DATA_VALIDATION, FIG3_ENTROPY_OBJ_VALIDATION,
   FIG3_QUALITY_DATA_VALIDATION, FIG3_QUALITY_OBJ_VALIDATION,
   FIG4_1_DATA_VALIDATION, FIG4_1_OBJ_VALIDATION,
@@ -4667,6 +5351,10 @@ if (is.data.frame(FIGURE_VALIDATION) && nrow(FIGURE_VALIDATION) > 0) {
 expected_figures <- c(
   "Fig1_model_fit",
   "Fig2_class_proportion",
+  "Fig2_class_proportion_by_nurse_type",
+  "Fig2_class_proportion_by_nurse_type_bw",
+  "Fig2_nurse_type_proportion_by_class",
+  "Fig2_nurse_type_proportion_by_class_bw",
   "Fig3_entropy",
   "Fig3_classification_quality",
   "Fig4_1_indicator_heatmap_raw",

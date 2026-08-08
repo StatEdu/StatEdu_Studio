@@ -98,7 +98,7 @@ paired_setup_state <- function(
   cohen_d = TRUE,
   mean_sd = FALSE,
   median_iqr = FALSE,
-  adjustment = "bonferroni",
+  adjustment = statedu_multiple_correction_default(),
   time_labels = NULL,
   language = statedu_initial_language()
 ) {
@@ -194,7 +194,7 @@ paired_setup_panel <- function(state) {
       radioButtons(
         "paired_adjustment",
         label = NULL,
-        choices = c("Bonferroni correction" = "bonferroni", "Holm Bonferroni" = "holm"),
+        choices = analysis_ui_choices(c("Holm Bonferroni" = "holm", "Bonferroni correction" = "bonferroni"), language),
         selected = state$adjustment
       )
     ),

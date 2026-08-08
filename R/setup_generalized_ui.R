@@ -3,21 +3,9 @@
 generalized_missing_strategy_ui_detail <- function(strategy, language = statedu_initial_language()) {
   switch(
     generalized_resolve_missing_strategy(strategy),
-    mi = statedu_text(
-      language,
-      "Uses standard mice-based multiple imputation for incomplete selected GLM variables, including the dependent variable when it is missing. The selected GLM is fitted in each imputed dataset and pooled using Rubin-style total variance. Treat this as a prespecified primary or sensitivity option when missingness is plausibly MAR.",
-      statedu_utf8("ebb688ec9984eca084ed959c20474c4d20ebb380ec8898ec979020eb8c80ed95b4206d69636520eab8b0ebb09820eb8ba4eca491eb8c80ecb2b4eba5bc20ec8898ed9689ed9598eab3a020527562696e20ebb0a9ec8b9dec9cbceba19c20ecb694eca095ecb998eba5bc20ed86b5ed95a9ed95a9eb8b88eb8ba42e20eab2b0ecb8a1ec9db4204d4152eba19c20ebb3bc20ec889820ec9e88ec9d8420eb958c20ec82aceca08420eca780eca095ed959c20eca3bcebb684ec849d20eb9890eb8a9420ebafbceab090eb8f8420ebb684ec849dec9cbceba19c20ec82acec9aa9ed95a9eb8b88eb8ba42e")
-    ),
-    ipw = statedu_text(
-      language,
-      "Estimates the probability of being a complete case from fully observed predictors and fits the selected GLM with inverse-probability weights. Use this as a sensitivity option when complete-case inclusion may depend on observed covariates, and review positivity/weight stability and the observation model.",
-      statedu_utf8("ec9984eca084ec82aceba180eab08020eb90a020ed9995eba5a0ec9d8420eab480ecb8a1eb909c20eab3b5ebb380eb9f89ec9cbceba19c20ecb694eca095ed959c20eb92a420ec97aded9995eba5a0eab080eca49120474c4dec9d8420eca081ed95a9ed95a9eb8b88eb8ba42e20ec9984eca084ec82aceba18020ed8faced95a820ec97acebb680eab08020eab480ecb8a120eab3b5ebb380eb9f89ec979020ec9d98eca1b4ed95a020ec889820ec9e88ec9d8420eb958c20ebafbceab090eb8f8420ebb684ec849dec9cbceba19c20ec82acec9aa9ed95a9eb8b88eb8ba42e")
-    ),
-    statedu_text(
-      language,
-      "Drops rows with missing selected analysis variables before fitting the GLM. This is transparent, but it is strongest when missingness is minimal or plausibly MCAR.",
-      statedu_utf8("ec84a0ed839ded959c20474c4d20ebb684ec849d20ebb380ec8898ec979020eab2b0ecb8a1ec9db420ec9e88eb8a9420ed9689ec9d8420ebb684ec849d20eca084ec979020eca09cec99b8ed95a9eb8b88eb8ba42e20eab2b0ecb8a1ec9db420eca081eab1b0eb8298204d434152eba19c20ebb3bc20ec889820ec9e88ec9d8420eb958c20eab080ec9ea520ed88acebaa85ed959c20ebb0a9ebb295ec9e85eb8b88eb8ba42e")
-    )
+    mi = statedu_t("analysis.glm_missing_mi_detail", language),
+    ipw = statedu_t("analysis.glm_missing_ipw_detail", language),
+    statedu_t("analysis.glm_missing_complete_detail", language)
   )
 }
 
@@ -246,11 +234,7 @@ generalized_setup_panel <- function(state, status_message = NULL) {
                     options = list(plugins = list("remove_button"))
                   ),
                   div(
-                    statedu_text(
-                      language,
-                      "Auxiliary variables are used only in the complete-case observation model when fully observed; they do not become GLM predictors.",
-                      statedu_utf8("ebb3b4eca1b0ebb380ec8898eb8a9420ec9984eca084ed9e8820eab480ecb8a1eb909c20eab2bdec9ab020ec9984eca084ec82aceba18020eab480ecb8a1ebaaa8ed9895ec9790eba78c20ec82acec9aa9eb9098eba9b020474c4d20ec9888ecb8a1ebb380ec8898eba19c20ed8faced95a8eb9098eca78020ec958aec8ab5eb8b88eb8ba42e")
-                    ),
+                    statedu_t("analysis.glm_ipw_auxiliary_help", language),
                     class = "generalized-help-text"
                   )
                 )
@@ -273,16 +257,16 @@ generalized_setup_panel <- function(state, status_message = NULL) {
           )
       )
     ),
-    div(
+    analysis_three_block_action_row(
       class = "regression-actions generalized-action-row",
-      actionButton(
+      run_button = actionButton(
         "run_generalized",
         analysis_ui_text("Run GLM", language),
         class = "btn btn-primary",
         disabled = if (isTRUE(state$run_disabled)) "disabled" else NULL
       ),
-      uiOutput("generalized_reset_control"),
-      uiOutput("generalized_save_control")
+      reset_control = uiOutput("generalized_reset_control"),
+      save_control = uiOutput("generalized_save_control")
     )
   )
 }

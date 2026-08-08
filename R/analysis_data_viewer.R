@@ -3,7 +3,7 @@
 analysis_data_viewer_button <- function(id, language = statedu_initial_language()) {
   actionButton(
     id,
-    statedu_text(language, "View selected data", statedu_utf8("ec84a0ed839d20eb8db0ec9db4ed84b020ebb3b4eab8b0")),
+    statedu_t("ui.view_selected_data", language),
     class = "btn btn-default analysis-data-viewer-button"
   )
 }
@@ -17,10 +17,34 @@ analysis_data_viewer_title <- function(title, language = statedu_initial_languag
   paste(analysis_ui_text(base_title, language), analysis_ui_text("Data Viewer", language))
 }
 
+data_editor_workspace_prefixes <- function() {
+  c(
+    "coding_error",
+    "likert",
+    "missing_values",
+    "wide_long",
+    "recode_different",
+    "variable_calculation",
+    "variable_transform",
+    "recode_same",
+    "variable_rename"
+  )
+}
+
 analysis_workspace_heading <- function(title, prefix, language = statedu_initial_language()) {
+  is_data_editor <- prefix %in% data_editor_workspace_prefixes()
   div(
     class = paste("analysis-workspace-heading", paste0(prefix, "-workspace-heading")),
-    h3(analysis_ui_text(title, language)),
+    div(
+      class = "analysis-workspace-heading-main",
+      h3(analysis_ui_text(title, language)),
+      if (isTRUE(is_data_editor)) {
+        conditionalPanel(
+          condition = sprintf("output.%s_view_mode !== 'viewer'", prefix),
+          div(class = "data-editor-variable-scope-row", uiOutput("data_editor_variable_scope_toggle"))
+        )
+      }
+    ),
     conditionalPanel(
       condition = sprintf("output.%s_view_mode !== 'viewer'", prefix),
       analysis_data_viewer_button(paste0(prefix, "_view_data"), language)
@@ -142,8 +166,13 @@ register_analysis_data_viewer_handlers <- function(
 
 analysis_data_viewer_variable_label <- function(name, variable_table = NULL, labels = character(0)) {
   name <- as.character(name %||% "")
-  label <- named_value(labels, name, "")
-  if (!nzchar(label) && is.data.frame(variable_table) && all(c("name", "var_label") %in% names(variable_table))) {
+  has_label_override <- !is.null(labels) && !is.null(names(labels)) && name %in% names(labels)
+  label <- if (isTRUE(has_label_override)) {
+    as.character(labels[[match(name, names(labels))]] %||% "")
+  } else {
+    ""
+  }
+  if (!isTRUE(has_label_override) && !nzchar(label) && is.data.frame(variable_table) && all(c("name", "var_label") %in% names(variable_table))) {
     row_index <- match(name, as.character(variable_table$name))
     if (!is.na(row_index)) {
       label <- as.character(variable_table$var_label[[row_index]] %||% "")
@@ -218,10 +247,14 @@ analysis_data_viewer_panel <- function(
   )
 }
 
-analysis_data_viewer_labeled_data <- function(data, variables, category_table = NULL, use_labels = FALSE) {
+analysis_data_viewer_labeled_data <- function(data, variables, category_table = NULL, use_labels = FALSE, n_max = 15L) {
   data <- as.data.frame(data, stringsAsFactors = FALSE, check.names = FALSE)
   variables <- intersect(as.character(variables %||% character(0)), names(data))
-  preview <- utils::head(data[, variables, drop = FALSE], 20)
+  n_max <- suppressWarnings(as.integer(n_max %||% 15L))
+  if (is.na(n_max) || n_max <= 0L) {
+    n_max <- 15L
+  }
+  preview <- utils::head(data[, variables, drop = FALSE], n_max)
   if (!isTRUE(use_labels)) {
     return(preview)
   }
@@ -282,8 +315,14 @@ analysis_data_viewer_table <- function(data, variables, category_table = NULL, u
     empty_data <- stats::setNames(data.frame(empty_message, stringsAsFactors = FALSE), message_label)
     return(DT::datatable(empty_data, rownames = FALSE, options = list(dom = "t")))
   }
-  variables <- names(data)
-  preview <- analysis_data_viewer_labeled_data(data, variables, category_table, use_labels)
+  variables <- intersect(as.character(variables %||% character(0)), names(data))
+  if (length(variables) == 0L) {
+    message_label <- analysis_ui_text("Message", language)
+    empty_message <- analysis_ui_text("No analysis variables are selected.", language)
+    empty_data <- stats::setNames(data.frame(empty_message, stringsAsFactors = FALSE), message_label)
+    return(DT::datatable(empty_data, rownames = FALSE, options = list(dom = "t")))
+  }
+  preview <- analysis_data_viewer_labeled_data(data, variables, category_table, use_labels, n_max = 15L)
   headers <- unname(analysis_data_viewer_column_headers(names(preview), variable_table, labels, use_labels))
   header_json <- jsonlite::toJSON(headers, auto_unbox = TRUE)
   DT::datatable(

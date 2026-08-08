@@ -1,8 +1,16 @@
 # StatEdu Studio Method Notes
 
-These notes explain the method-selection rules, assumption checks, warnings, and interpretation cautions used in **StatEdu Studio 1.0.0**.
+These notes explain the method-selection rules, assumption checks, warnings, and interpretation cautions used in **StatEdu Studio 1.2.0**.
 
-Public 1.0 scope note: these notes describe workflows exposed in the public 1.0 interface. Longitudinal/panel analysis workflows, Mplus/latent add-ons, Excel/Word result export, license activation, and paid-edition gating are not public 1.0 features. Sample-size calculator entries for GEE, LMM, GLMM, survival, cluster, or SEM/CFA are planning calculators only.
+Public 1.2 scope note: these notes describe workflows exposed in the public 1.2 interface. Mplus/latent add-ons, Excel/Word result export, license activation, and paid-edition gating are not public 1.2 features. Sample-size calculator entries for GEE, LMM, GLMM, survival, cluster, or SEM/CFA are planning calculators only.
+
+## Public 1.2 Added Analysis Notes
+
+Public 1.2 adds method notes for the following released Analysis workflows:
+
+- Mixed Repeated-Measures ANOVA: see section 6.1.
+- Inter-rater Agreement: see section 8.1.
+- Mediation / Moderation Custom Model: see section 13.5.
 
 ## 1. Measurement Level
 
@@ -123,6 +131,21 @@ Repeated measurements:
 
 Post-hoc paired comparisons should use paired methods and multiplicity correction.
 
+### 6.1 Mixed Repeated-Measures ANOVA
+
+Mixed repeated-measures ANOVA is used when the same continuous outcome is measured at two or more time points and a between-subject group comparison is part of the research question. It is most appropriate for wide-format pre-post or multi-time columns where each row is one subject.
+
+Key interpretation points:
+
+- The time effect tests average change across time.
+- The group effect compares between-subject groups.
+- The time-by-group interaction is usually the main result for differential change.
+- Sphericity matters when there are three or more repeated measurements; Greenhouse-Geisser-style corrections reduce inflated Type I error when sphericity is questionable.
+- Levene-type checks by time help identify unequal between-group variance at specific time points.
+- Covariate-adjusted summaries are descriptive/model-based aids and should match a prespecified analysis plan.
+
+The PP path uses rows complete for the selected repeated outcomes and model variables. The available-case ITT-oriented mixed-model alternative uses available repeated rows when selected and estimable, but it does not remove the need to report the missing-data pattern and sensitivity-analysis assumptions.
+
 ## 7. Correlation
 
 Automatic correlation selection follows variable type:
@@ -142,6 +165,8 @@ Advanced latent-response correlation options can estimate:
 
 Correlation is not causation. High correlation can reflect confounding, shared measurement method, range restriction, or coding structure.
 
+Complex-sample correlation uses the survey design to estimate weighted covariance. Pearson correlation is computed from the design-based covariance matrix; ordered variables are converted to ordinal scores before covariance estimation. Spearman correlation rank-transforms each numeric or ordinal score first and then applies the same design-based covariance approach. Standard errors and confidence intervals use a delta-method approximation, and multiple displayed variable-pair p values can be adjusted with Holm-Bonferroni, Bonferroni, or Benjamini-Hochberg FDR correction.
+
 ## 8. Reliability Analysis
 
 Reliability outputs include Cronbach's alpha, McDonald's omega total, item-total correlations, and item-deleted summaries.
@@ -152,6 +177,22 @@ Interpretation cautions:
 - Omega can be more appropriate when tau-equivalence is not plausible.
 - Low item-total correlation may indicate a poorly fitting item, reverse-coding problem, or multidimensional structure.
 - Reliability should be interpreted together with item content and factor structure.
+
+For ordinal reliability workflows, ordinal alpha and ordinal omega are computed from a polychoric correlation matrix. Ordinal item-total correlations, including corrected item-total correlations, are computed with Spearman correlations and may differ from SPSS output that uses Pearson correlations.
+
+### 8.1 Inter-rater Agreement
+
+Inter-rater agreement assesses whether raters, judges, coders, or instruments assign comparable values to the same cases. It is not the same as internal consistency: reliability analysis asks whether items form a scale, while agreement asks whether raters give the same or acceptably similar ratings.
+
+Method choice depends on the measurement level and number of raters:
+
+- Continuous ratings usually use ICC. Report the selected ICC model, type, and unit because ICC(1), ICC(2), ICC(3), agreement, consistency, single-measure, and average-measure choices answer different questions.
+- Two categorical raters can use Cohen's kappa; ordinal ratings can use weighted kappa when category order is meaningful.
+- Multi-rater categorical settings can use Fleiss or Light kappa where eligible.
+- Gwet AC1/AC2 can be useful when category prevalence or marginal imbalance makes kappa difficult to interpret.
+- Krippendorff alpha is useful as a general agreement index and can handle missing ratings under its coincidence-matrix formulation.
+
+Report the recommended index first, then mention supporting indices when they change the substantive interpretation. For ordinal character labels, verify the Step 3 category order because weighted statistics depend on that order. Missing ratings should be described, especially when raters did not evaluate all cases.
 
 ## 9. Factor Analysis
 
@@ -217,7 +258,40 @@ Outputs include:
 
 Delta R2 should be interpreted in relation to the research question and the variables already entered in previous blocks.
 
-## 13. Logistic Regression
+## 13. Mediation / Moderation Method Notes
+
+Mediation/moderation analysis is a regression-based path-model workflow. X, M, W, and Y roles are used to estimate direct effects, indirect effects, interaction effects, and conditional effects. The calculations can be run on cross-sectional data, but causal interpretation of mediation requires separate justification for temporal ordering, no omitted confounding, measurement reliability, and correct model specification.
+
+### 13.1 Mediation Effects
+
+An indirect effect is usually computed as `a * b`, where `a` is the X -> M path and `b` is the M -> Y path. The sampling distribution of an indirect effect is often asymmetric, so bootstrap confidence intervals should be interpreted before normal-theory p-values. If the bootstrap CI excludes 0, the indirect effect can be reported as statistically supported.
+
+A total effect does not have to be significant for an indirect effect to be present. When this happens, inspect the effect directions, the signs of the direct and indirect effects, possible suppression, and the substantive theory.
+
+### 13.2 Moderation Effects
+
+Moderation is estimated through interaction terms. Mean-centering continuous moderators can make main effects easier to interpret and can stabilize collinearity diagnostics, but centering does not make an interaction significant by itself.
+
+When an interaction is supported, inspect simple slopes and Johnson-Neyman output. Simple slopes show the focal X effect at selected W values. Johnson-Neyman output gives the W region where the X effect is statistically distinguishable from 0. Conditional effects outside the observed W range should not be interpreted as observed evidence.
+
+### 13.3 Moderated Mediation
+
+Moderated mediation evaluates whether the indirect effect changes across W. First-stage moderation changes the X -> M path, second-stage moderation changes the M -> Y path, and direct-path moderation changes the X -> Y conditional effect. Conditional indirect effects should be interpreted with bootstrap CIs at the selected W values.
+
+### 13.4 Reporting
+
+- Report the model number and variable roles.
+- Report bootstrap resamples, CI method, and whether mean-centering was used.
+- If covariates were included, state which equations included them.
+- For indirect and conditional indirect effects, report the estimate, CI, and W reference values.
+- For moderation, do not report only the interaction coefficient; add simple-slope or Johnson-Neyman output when requested.
+- When multiple independent variables are selected, state that each focal X was analyzed with the other independent variables included as covariates.
+
+### 13.5 Mediation / Moderation Custom Model
+
+The Mediation / Moderation Custom Model canvas is an input and model-recognition workflow for the same mediation/moderation engine. It does not define a separate estimator. Report the recognized model number, variable roles, bootstrap settings, and any unsupported or skipped paths just as you would for the standard Mediation / Moderation menu.
+
+## 14. Logistic Regression
 
 Logistic regression supports binary, ordinal, and multinomial outcomes.
 
@@ -231,7 +305,7 @@ Diagnostics and warnings:
 
 Odds ratios are not risk ratios. When the outcome is common, odds ratios can appear much larger than risk ratios. Interpret odds ratios carefully and report the modeling scale when needed.
 
-## 14. Generalized Linear Model (GLM)
+## 15. Generalized Linear Model (GLM)
 
 GLM supports independent-observation models for Gaussian, binary logistic, Gamma, and count outcomes.
 
@@ -260,15 +334,51 @@ Robust standard errors:
 - Model-based standard errors are the default when assumptions are acceptable.
 - HC-type robust standard errors can be used when the variance structure is questionable.
 
-GLM assumes independent observations. Correlated repeated or clustered data require a design-appropriate model. Dedicated longitudinal/panel analysis workflows are deferred in public 1.0; use ordinary GLM or regression output only when the independent-observation assumption is defensible.
+GLM assumes independent observations. Correlated repeated or clustered data require a design-appropriate model. Use the dedicated longitudinal/panel analysis workflows when repeated-measure or panel dependence is part of the research design; use ordinary GLM or regression output only when the independent-observation assumption is defensible.
 
-## 15. Deferred Longitudinal / Panel Analysis
+## 16. Longitudinal / Panel and Correlated Data
 
-Longitudinal / panel analysis workflows are not exposed in public 1.0. Repeated-measures, clustered, and panel data can violate the independent-observation assumption, so ordinary GLM or regression output should be interpreted only when that assumption is defensible.
+Longitudinal / panel and mixed repeated-measures workflows are exposed in public 1.2. Repeated-measures, clustered, and panel data can violate the independent-observation assumption, so ordinary GLM or regression output should be interpreted only when that assumption is defensible.
 
-GEE, LMM, GLMM, panel fixed-effects, and panel random-effects analysis workflows will be documented again when their public release scope and license policy are finalized. GEE/LMM/GLMM entries in the Sample Size and Effect Size menus are planning or conversion calculators, not public 1.0 Analysis workflows.
+GEE, LMM, GLMM, panel fixed-effects, and panel random-effects analysis workflows should be interpreted within the documented public 1.2 analysis scope. GEE/LMM/GLMM entries in the Sample Size and Effect Size menus remain planning or conversion calculators unless selected from a released Analysis workflow.
 
-## 16. Penalized Regression Helper
+## 17. Complex Samples Method Notes
+
+Complex-sample analysis accounts for the sampling design when estimating point estimates, standard errors, test statistics, and degrees of freedom. If stratification, clusters/PSUs, unequal selection probabilities, or post-stratification weights are ignored, standard errors and p-values can be biased upward or downward.
+
+### 17.1 Design Variables
+
+- Strata identify the sampling strata.
+- Cluster/PSU variables identify primary sampling units.
+- Weights represent population weighting, unequal selection probabilities, or calibration adjustments.
+- FPC adjusts variance when the sampling fraction is large in a finite population.
+- Replicate weights support BRR, Fay, jackknife, bootstrap, or other replicate-based variance estimators.
+
+Check missingness in design variables as well as analysis variables. Rows with missing design variables can be excluded when the survey design object is built.
+
+### 17.2 Variance Estimation
+
+Taylor linearization is the usual default for complex-sample means, proportions, and regression coefficients. Public-use datasets that provide replicate weights should be analyzed with the replicate method and scaling rules recommended by the data provider. The app's Auto option selects from the available design information, but the final report should confirm that the choice matches the data documentation.
+
+Single-PSU strata can make variance estimation unstable. Choices such as `adjust`, `average`, `certainty`, or `remove` can change standard errors and should be reported.
+
+### 17.3 Subpopulation Analysis
+
+For complex samples, subgroups are usually handled as domain/subpopulation analyses rather than by deleting all rows outside the subgroup first. Cases outside the subgroup can still contribute to design information. When using subpopulation conditions, distinguish the analysis N from the full design N.
+
+### 17.4 Interpreting Results
+
+Weighted N can represent a population total or weighted sum; it is not the number of observed cases. Standard errors, confidence intervals, and p-values depend on design degrees of freedom and the variance estimator. For regression, inspect coefficient direction and magnitude together with design-based Wald/F tests, wide intervals, extreme weights, and sparse categories.
+
+### 17.5 Reporting
+
+- Report strata, PSU, weights, FPC, and whether replicate weights were used.
+- Report the variance method and single-PSU strata handling.
+- Distinguish unweighted N from weighted N.
+- Present design df, standard errors, and confidence intervals with p-values.
+- For public-use data, confirm that the app settings match the data provider's analysis guide.
+
+## 18. Penalized Regression Helper
 
 Ridge, LASSO, and Elastic Net are available as helper outputs for prediction-oriented or multicollinearity-sensitive regression review.
 
@@ -280,7 +390,7 @@ Interpretation cautions:
 - Cross-validated lambda is selected for predictive performance, not for conventional p-value inference.
 - Conventional p values are not reported for penalized coefficients.
 
-## 17. Threshold Summary
+## 19. Threshold Summary
 
 Common screening thresholds used in the app include:
 
@@ -311,7 +421,7 @@ Common screening thresholds used in the app include:
 
 Thresholds are screening aids. They should not replace statistical judgment, design knowledge, or substantive interpretation.
 
-## 18. Warnings and Skipped Results
+## 20. Warnings and Skipped Results
 
 Warnings tell the user that a result requires caution. Skipped results mean a requested statistic, comparison, model, or output could not be computed safely.
 
@@ -328,7 +438,7 @@ Common reasons:
 
 Skipped results should be reported when they affect the analysis plan.
 
-## 19. Interpreting Saved Results
+## 21. Interpreting Saved Results
 
 Saved HTML and PDF outputs preserve the main result tables, method notes, warnings, skipped-result messages, and footnotes. Before using saved output in a report:
 
@@ -339,19 +449,19 @@ Saved HTML and PDF outputs preserve the main result tables, method notes, warnin
 5. Interpret effect sizes and confidence intervals, not only p values.
 6. Describe the analysis method in the manuscript or report.
 
-## 20. Citation Placement
+## 22. Citation Placement
 
 When reporting analyses generated by StatEdu Studio, cite the software in the methods or statistical analysis section. If the DOI citation is used, use the DOI URL shown in the About page.
 
-## 21. References
+## 23. References
 
 The references used for method selection, diagnostics, and interpretation are listed in the relevant method notes and calculator sections. Use them as methodological background, not as automatic justification for applying a method when the study design is unsuitable.
 
-## 22. Sample Size, Power, and Effect Size Method Notes
+## 24. Sample Size, Power, and Effect Size Method Notes
 
 The Sample Size and Effect Size menus provide planning and conversion tools. These calculations rely on formulas, approximations, package implementations, or simulation depending on the method.
 
-### 22.0 Validation Comparison Summary
+### 24.0 Validation Comparison Summary
 
 Sample Size, Power, and Effect Size calculations are checked against one or more of the following sources depending on the method:
 
@@ -363,7 +473,7 @@ Sample Size, Power, and Effect Size calculations are checked against one or more
 
 When an exact reference implementation is not available, the app reports the formula or approximation used and labels the result as a planning estimate. Simulation-based outputs should be reported with the number of simulations and seed setting when those details affect reproducibility.
 
-### 22.1 Common Symbols
+### 24.1 Common Symbols
 
 - `alpha`: type I error rate.
 - `power`: target or achieved power.
@@ -383,7 +493,7 @@ $$
 
 For two-sided tests, alpha is divided across both tails. For one-sided, equivalence, or non-inferiority tests, the one-sided alpha definition should be stated explicitly.
 
-### 22.2 t-test
+### 24.2 t-test
 
 t-test planning can use one-sample, paired, or independent-group designs. Cohen's d, Hedges' g, or paired dz may be used depending on the design and available inputs.
 
@@ -413,7 +523,7 @@ $$
 
 where \(D\) is the paired difference score. Unequal allocation uses \(n_2=r n_1\) and bases the standard error on both group sizes.
 
-### 22.3 Proportion
+### 24.3 Proportion
 
 Proportion planning supports one- and two-proportion settings. Inputs usually include expected proportions, alpha, power, and allocation ratio.
 
@@ -443,7 +553,7 @@ $$
 h=2\arcsin(\sqrt{p_1})-2\arcsin(\sqrt{p_2})
 $$
 
-### 22.4 Chi-square
+### 24.4 Chi-square
 
 Chi-square planning uses Cohen's w for goodness-of-fit or contingency-table designs. Degrees of freedom must match the planned table.
 
@@ -475,7 +585,7 @@ $$
 
 For a contingency table, \(df=(r-1)(c-1)\). For a goodness-of-fit test, \(df\) is usually the number of categories minus one.
 
-### 22.5 Correlation
+### 24.5 Correlation
 
 Correlation planning uses expected Pearson r, alpha, and power. Fisher's z transformation is commonly used for correlation inference and planning.
 
@@ -511,7 +621,7 @@ $$
 q=z_{r1}-z_{r2}
 $$
 
-### 22.6 ANOVA
+### 24.6 ANOVA
 
 ANOVA planning uses Cohen's f or related variance-explained measures. Repeated-measures planning may require number of measurements, correlation among repeated measures, and epsilon/sphericity assumptions.
 
@@ -543,7 +653,7 @@ $$
 
 Repeated-measures planning adjusts information using the repeated-measures correlation and Greenhouse-Geisser epsilon when sphericity is not assumed.
 
-### 22.7 ANCOVA / MANOVA
+### 24.7 ANCOVA / MANOVA
 
 ANCOVA planning adjusts for covariate explanatory power. The covariate R-squared affects the required sample size because it changes residual variation.
 
@@ -576,7 +686,7 @@ $$
 
 where \(s\) is the relevant multivariate dimension used in the approximation.
 
-### 22.8 Nonparametric
+### 24.8 Nonparametric
 
 Nonparametric planning often relies on approximations that translate rank-based effects into planning inputs. These calculations are useful for planning but should be interpreted as approximations.
 
@@ -595,7 +705,7 @@ $$
 Kruskal-Wallis epsilon squared:
 
 $$
-\varepsilon^2=\frac{H-k+1}{N-k}
+\varepsilon^2=\frac{H(N+1)}{N^2-1}
 $$
 
 Friedman Kendall's W:
@@ -606,7 +716,7 @@ $$
 
 These are omnibus or rank-based effect sizes. Post-hoc comparisons are needed to identify which groups or time points differ.
 
-### 22.9 McNemar
+### 24.9 McNemar
 
 McNemar planning depends on discordant paired probabilities, usually `p01` and `p10`. The total paired sample size depends primarily on the number and imbalance of discordant pairs.
 
@@ -630,7 +740,7 @@ $$
 
 Zero discordant cells may require a continuity correction, so the resulting OR and log OR are approximations.
 
-### 22.10 Regression
+### 24.10 Regression
 
 Multiple regression planning uses Cohen's f2. Hierarchical regression planning uses incremental f2 for the block added at a later step.
 
@@ -668,7 +778,7 @@ $$
 
 The mediation \(ab\) value is a standardized indirect effect, not Cohen's d.
 
-### 22.11 GEE
+### 24.11 GEE
 
 GEE planning tools target population-average effects. Inputs can include time points, working correlation, marginal effect size, and within-subject correlation.
 
@@ -692,7 +802,7 @@ $$
 
 The working correlation affects planning information. Robust sandwich SEs make fitted GEE estimates less sensitive to working-correlation misspecification, but the planning-stage sample size still depends on the assumed correlation structure.
 
-### 22.12 LMM
+### 24.12 LMM
 
 LMM planning tools can use simplified repeated-measures assumptions, mean-vector inputs, residual SD, covariance structure, and simulation. Simulation results depend on the assumptions entered by the user.
 
@@ -737,7 +847,7 @@ $$
 
 where \(S\) is the number of simulation replicates.
 
-### 22.13 GLMM
+### 24.13 GLMM
 
 GLMM effect-size conversion can use logit, log, or Gaussian-scale fixed effects. Binary logit effects may be reported as odds ratios, log odds, or latent-scale d approximations.
 
@@ -768,7 +878,7 @@ $$
 
 GEE odds/rate ratios are population-average effects, while GLMM odds/rate ratios are subject-specific effects conditional on random effects.
 
-### 22.14 Survival / Cox
+### 24.14 Survival / Cox
 
 Survival planning often depends on hazard ratio and expected event probability. The number of events is usually more important than the total sample size alone.
 
@@ -788,7 +898,7 @@ $$
 
 where \(p_1\) and \(p_2\) are allocation fractions. Total sample size is obtained by dividing the required events by the expected event probability.
 
-### 22.15 Equivalence / Non-inferiority
+### 24.15 Equivalence / Non-inferiority
 
 Equivalence and non-inferiority planning requires a prespecified margin. The margin must be clinically or substantively justified before looking at the data.
 
@@ -806,7 +916,7 @@ $$
 
 TOST uses two one-sided tests. The margin \(\Delta\) must represent the largest acceptable difference on the chosen scale.
 
-### 22.16 ROC AUC and Diagnostic Accuracy
+### 24.16 ROC AUC and Diagnostic Accuracy
 
 ROC planning uses expected AUC, null AUC, case/control ratio, and target power. Diagnostic precision planning can also depend on prevalence, sensitivity, specificity, and desired confidence-interval width.
 
@@ -824,7 +934,7 @@ $$
 
 AUC can be interpreted as the probability that a randomly selected positive case has a higher test score than a randomly selected negative case.
 
-### 22.17 Count / Rate Regression
+### 24.17 Count / Rate Regression
 
 Count and rate planning may use incidence rate ratio, mean ratio, exposure/person-time, and dispersion assumptions. Overdispersion generally increases the required sample size.
 
@@ -852,7 +962,7 @@ $$
 RR_{\mathrm{rate}}=\frac{\lambda_1}{\lambda_2}
 $$
 
-### 22.18 Cluster Trial
+### 24.18 Cluster Trial
 
 Cluster-trial planning depends heavily on cluster size, number of clusters, ICC, design type, and period structure. ICC uncertainty can have a large impact on required sample size.
 
@@ -870,7 +980,7 @@ $$
 
 If cluster sizes are unequal, the true design effect can be larger than this simple approximation.
 
-### 22.19 Precision / CI
+### 24.19 Precision / CI
 
 Precision planning targets a confidence-interval half-width rather than hypothesis-test power. It is useful when the goal is estimation accuracy.
 
@@ -894,7 +1004,7 @@ $$
 
 Here \(h\) is the desired confidence-interval half-width.
 
-### 22.20 Reliability / Agreement
+### 24.20 Reliability / Agreement
 
 Reliability and agreement planning can target alpha, ICC, kappa, or Bland-Altman precision. Inputs may include expected reliability, number of raters, number of items, categories, and target confidence-interval width.
 
@@ -912,7 +1022,7 @@ $$
 
 ICC precision uses Fisher-z-style approximations. Cohen's kappa precision uses a large-sample normal approximation and is sensitive to category prevalence and marginal imbalance.
 
-### 22.21 SEM / CFA
+### 24.21 SEM / CFA
 
 SEM/CFA planning can use RMSEA close-fit or not-close-fit logic, parameter Monte Carlo, or complexity heuristics. These calculations are sensitive to degrees of freedom, standardized parameter size, and model complexity.
 
@@ -954,11 +1064,11 @@ $$
 
 where \(k\) is the number of latent variables and \(s\) is the number of structural paths. This is only a planning heuristic; actual SEM degrees of freedom depend on the specified model constraints, residual covariances, cross-loadings, and identification conditions.
 
-### 22.22 Stop Button
+### 24.22 Stop Button
 
 Simulation-based planning can take time. When a calculation supports cancellation, the app displays a Stop button. Stopping cancels the current calculation and reports the stopped state rather than a completed estimate.
 
-### 22.23 Selected References
+### 24.23 Selected References
 
 The implementation and method notes are aligned with standard references and package documentation commonly used for applied statistical reporting:
 

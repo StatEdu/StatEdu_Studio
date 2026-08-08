@@ -41,7 +41,7 @@ register_ttest_anova_handlers <- function(
   normality_skew_kurtosis_cutoff_value <- reactiveVal("2_7")
   normality_method_value <- reactiveVal("skew_kurtosis")
   post_hoc_method_value <- reactiveVal("scheffe")
-  nonparametric_post_hoc_method_value <- reactiveVal("bonferroni")
+  nonparametric_post_hoc_method_value <- reactiveVal(statedu_multiple_correction_default())
   trend_analysis_value <- reactiveVal(FALSE)
   ordered_significance_value <- reactiveVal(FALSE)
   effect_size_value <- reactiveVal(TRUE)
@@ -167,9 +167,9 @@ register_ttest_anova_handlers <- function(
   }, ignoreInit = TRUE)
 
   observeEvent(input$ttest_anova_nonparametric_post_hoc_method, {
-    value <- input$ttest_anova_nonparametric_post_hoc_method %||% "bonferroni"
+    value <- input$ttest_anova_nonparametric_post_hoc_method %||% statedu_multiple_correction_default()
     if (!value %in% c("bonferroni", "holm")) {
-      value <- "bonferroni"
+      value <- statedu_multiple_correction_default()
     }
     nonparametric_post_hoc_method_value(value)
   }, ignoreInit = TRUE)
@@ -268,7 +268,7 @@ register_ttest_anova_handlers <- function(
     chosen <- chosen_available
     allowed <- ttest_anova_continuous_candidates(chosen, current_variable_table())
     if (length(chosen) > 0 && length(allowed) == 0) {
-      showNotification("Dependent variables should be ordinal or continuous.", type = "warning", duration = 4)
+      showNotification(statedu_t("analysis.validation.dependent_ordinal_continuous", statedu_current_language(app_language_fn)), type = "warning", duration = 4)
       return()
     }
     dependent_variables(c(current, setdiff(allowed, current)))
@@ -306,7 +306,7 @@ register_ttest_anova_handlers <- function(
     chosen <- chosen_available
     allowed <- ttest_anova_factor_candidates(chosen, current_variable_table())
     if (length(chosen) > 0 && length(allowed) == 0) {
-      showNotification("Grouping variables should be binary, nominal, or ordinal.", type = "warning", duration = 4)
+      showNotification(statedu_t("analysis.validation.group_binary_nominal_ordinal", statedu_current_language(app_language_fn)), type = "warning", duration = 4)
       return()
     }
     factor_variables(c(current, setdiff(allowed, current)))
@@ -391,7 +391,7 @@ register_ttest_anova_handlers <- function(
       chosen <- intersect(values, selected)
       allowed <- ttest_anova_continuous_candidates(chosen, current_variable_table())
       if (length(chosen) > 0 && length(allowed) == 0) {
-        showNotification("Dependent variables should be ordinal or continuous.", type = "warning", duration = 4)
+        showNotification(statedu_t("analysis.validation.dependent_ordinal_continuous", statedu_current_language(app_language_fn)), type = "warning", duration = 4)
         return()
       }
       next_factors <- setdiff(intersect(factor_variables(), selected), allowed)
@@ -409,7 +409,7 @@ register_ttest_anova_handlers <- function(
       chosen <- intersect(values, selected)
       allowed <- ttest_anova_factor_candidates(chosen, current_variable_table())
       if (length(chosen) > 0 && length(allowed) == 0) {
-        showNotification("Grouping variables should be binary, nominal, or ordinal.", type = "warning", duration = 4)
+        showNotification(statedu_t("analysis.validation.group_binary_nominal_ordinal", statedu_current_language(app_language_fn)), type = "warning", duration = 4)
         return()
       }
       next_dependents <- setdiff(intersect(dependent_variables(), selected), allowed)
@@ -431,7 +431,7 @@ register_ttest_anova_handlers <- function(
 
   observeEvent(input$run_ttest_anova, {
     if (length(dependent_variables()) == 0 || length(factor_variables()) == 0) {
-      showNotification("Select at least one dependent variable and one grouping variable.", type = "warning", duration = 5)
+      showNotification(statedu_t("analysis.validation.select_dependent_and_group", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return()
     }
     normality_enabled <- isTRUE(normality_enabled_value())
@@ -450,9 +450,9 @@ register_ttest_anova_handlers <- function(
       normality_method <- "sw"
     }
     post_hoc_method <- post_hoc_method_value() %||% "scheffe"
-    nonparametric_post_hoc_method <- nonparametric_post_hoc_method_value() %||% "bonferroni"
+    nonparametric_post_hoc_method <- nonparametric_post_hoc_method_value() %||% statedu_multiple_correction_default()
     if (!nonparametric_post_hoc_method %in% c("bonferroni", "holm")) {
-      nonparametric_post_hoc_method <- "bonferroni"
+      nonparametric_post_hoc_method <- statedu_multiple_correction_default()
     }
     options <- list(
         normality_enabled = normality_enabled,
@@ -522,20 +522,28 @@ register_ttest_anova_handlers <- function(
     analysis_save_buttons(
       html_button_id = "save_ttest_anova_html_dialog",
       pdf_button_id = "save_ttest_anova_pdf_dialog",
-      figure_button_id = NULL,
+      figure_button_id = "save_ttest_anova_figures_dialog",
       excel_button_id = "save_ttest_anova_excel_dialog",
       add_result_button_id = "add_ttest_anova_result",
-      has_figures = FALSE,
-      included_features = c("pdf", "excel", "add_result")
+      has_figures = TRUE,
+      included_features = c("pdf", "figure", "excel", "add_result", "__free_all__")
     )
   })
+
+  observeEvent(input$save_ttest_anova_figures_dialog, {
+    showNotification(
+      statedu_t("result.no_figures_to_save", statedu_current_language(app_language_fn), fallback = "There are no figures to save for this analysis."),
+      type = "warning",
+      duration = 5
+    )
+  }, ignoreInit = TRUE)
 
   observeEvent(input$save_ttest_anova_excel_dialog, {
     result <- ttest_anova_result()
     shiny::req(!is.null(result), is.null(result$error))
     path <- choose_excel_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
-      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) {
@@ -544,10 +552,10 @@ register_ttest_anova_handlers <- function(
     tryCatch(
       {
         save_ttest_anova_excel_file(result, path)
-        showNotification(sprintf("Analysis results saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save analysis results:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
@@ -557,7 +565,7 @@ register_ttest_anova_handlers <- function(
     shiny::req(!is.null(result), is.null(result$error))
     path <- choose_html_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
-      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     if (!grepl("\\.html?$", path, ignore.case = TRUE)) {
@@ -566,10 +574,10 @@ register_ttest_anova_handlers <- function(
     tryCatch(
       {
         write_ttest_anova_results_html(result, path)
-        showNotification(sprintf("HTML results saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save HTML results:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
@@ -579,7 +587,7 @@ register_ttest_anova_handlers <- function(
     shiny::req(!is.null(result), is.null(result$error))
     path <- choose_pdf_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
-      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     if (!grepl("\\.pdf$", path, ignore.case = TRUE)) {
@@ -588,10 +596,10 @@ register_ttest_anova_handlers <- function(
     tryCatch(
       {
         write_ttest_anova_results_pdf(result, path)
-        showNotification(sprintf("PDF results saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save PDF results:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })

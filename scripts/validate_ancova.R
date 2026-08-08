@@ -67,7 +67,7 @@ stopifnot(is.data.frame(result$results[[1]]$collinearity$table))
 stopifnot(is.data.frame(result$results[[1]]$influence$table))
 stopifnot(is.finite(result$results[[1]]$assumptions$outcome_normality_p))
 stopifnot(!grepl("\\([0-9.]+,[0-9.]+\\)", result$results[[1]]$table$F[[1]], perl = TRUE))
-stopifnot(grepl("Bonferroni-corrected", result$results[[1]]$note, fixed = TRUE))
+stopifnot(grepl("Holm-Bonferroni-adjusted", result$results[[1]]$note, fixed = TRUE))
 
 data_collinear <- data_basic
 data_collinear$x2 <- data_collinear$x + rnorm(nrow(data_collinear), sd = 0.001)
@@ -141,6 +141,9 @@ stopifnot(grepl("coefficient-footnote-marker", ordered_html, fixed = TRUE))
 
 holm <- prepare_ancova_results(data_basic, "y", "group", "x", variable_info, options = list(posthoc_method = "holm"))
 stopifnot(grepl("Holm-Bonferroni-adjusted", holm$results[[1]]$note, fixed = TRUE))
+
+bonferroni <- prepare_ancova_results(data_basic, "y", "group", "x", variable_info, options = list(posthoc_method = "bonferroni"))
+stopifnot(grepl("Bonferroni-corrected", bonferroni$results[[1]]$note, fixed = TRUE))
 
 data_categorical_covariate <- data_basic
 data_categorical_covariate$site <- rep(c("S1", "S2"), length.out = nrow(data_categorical_covariate))
@@ -325,7 +328,7 @@ stopifnot(identical(warn_only_review[["Decision mode"]][[1]], "Warn only"))
 
 custom_alpha <- prepare_ancova_results(data_basic, "y", "group", "x", variable_info, options = list(decision_alpha = 0.01))
 custom_alpha_review <- ancova_assumption_review_table(custom_alpha, variable_info)
-stopifnot(identical(custom_alpha_review[["Decision alpha"]][[1]], ".010"))
+stopifnot(identical(custom_alpha_review[["Decision alpha"]][[1]], ".01"))
 
 html <- as.character(ancova_results_ui(result, variable_info))
 stopifnot(grepl("Model overview", html, fixed = TRUE))

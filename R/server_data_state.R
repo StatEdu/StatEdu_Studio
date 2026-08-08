@@ -294,11 +294,16 @@ create_apply_restored_settings_basics_fn <- function(
   data_view,
   selected_names,
   measurement_overrides,
-  user_missing_rules = NULL
+  calculated_variables = NULL,
+  user_missing_rules = NULL,
+  complex_sample_design_state = NULL
 ) {
   function(settings, restored, selected) {
     var_label_overrides(restored$var_labels)
     restore_category_labels_fn(restored$category_labels)
+    if (is.function(calculated_variables)) {
+      calculated_variables(restored$calculated_variables %||% data.frame(check.names = FALSE))
+    }
 
     navigation <- settings_navigation_state(settings)
     if (!is.null(navigation$active_step)) active_step(navigation$active_step)
@@ -310,6 +315,9 @@ create_apply_restored_settings_basics_fn <- function(
     measurement_overrides(restored$measurement_overrides)
     if (is.function(user_missing_rules)) {
       user_missing_rules(restored$user_missing_rules)
+    }
+    if (is.function(complex_sample_design_state)) {
+      complex_sample_design_state(restored$complex_sample_design %||% complex_sample_shared_design_defaults())
     }
   }
 }
@@ -335,7 +343,8 @@ create_restore_settings_variable_info_only_fn <- function(
     }
 
     info <- settings_variable_info(settings)
-    restored_data_file(settings_scalar(settings$data_file))
+    restored_name <- settings_scalar(settings$data_file)
+    restored_data_file(if (nzchar(restored_name)) basename(restored_name) else "")
     restored_variable_info(info)
     if (!is.null(info)) {
       cols <- as.character(info$name)

@@ -24,6 +24,7 @@ skew_y <- skew_x + stats::rlnorm(n, meanlog = 0, sdlog = 1.2)
 ordinal_x <- sample(1:5, n, replace = TRUE)
 ordinal_text <- sample(c("low", "middle", "high"), n, replace = TRUE)
 binary_x <- sample(c("no", "yes"), n, replace = TRUE)
+binary_y <- sample(c("0", "1"), n, replace = TRUE)
 nominal_x <- sample(c("A", "B", "C"), n, replace = TRUE)
 blank_ordinal <- rep("", n)
 blank_ordinal[seq(1, n, by = 20)] <- "low"
@@ -36,13 +37,14 @@ data <- data.frame(
   ordinal_x = ordinal_x,
   ordinal_text = ordinal_text,
   binary_x = binary_x,
+  binary_y = binary_y,
   nominal_x = nominal_x,
   blank_ordinal = blank_ordinal,
   stringsAsFactors = FALSE
 )
 variable_info <- data.frame(
   name = names(data),
-  measurement = c("continuous", "continuous", "continuous", "continuous", "ordinal", "ordinal", "binary", "category", "ordinal"),
+  measurement = c("continuous", "continuous", "continuous", "continuous", "ordinal", "ordinal", "binary", "binary", "category", "ordinal"),
   stringsAsFactors = FALSE
 )
 
@@ -89,6 +91,31 @@ ordinal_text_result <- prepare_correlation_results(
 )
 expect_true(identical(ordinal_text_result$pairwise_table$Method[[1]], "Spearman"), "Expected text ordinal variables to be scored and analyzed")
 expect_true(isTRUE(ordinal_text_result$pairwise_table$N[[1]] >= 3), "Expected text ordinal variable to retain valid cases")
+
+binary_result <- prepare_correlation_results(
+  data,
+  variables = c("binary_x", "binary_y"),
+  variable_info = variable_info,
+  options = list(continuous_method = "auto", normality = TRUE, reason = TRUE)
+)
+expect_true(identical(binary_result$pairwise_table$Method[[1]], "Phi"), "Expected two binary variables to be labelled as Phi")
+expect_true(grepl("two binary variables", binary_result$pairwise_table$Reason[[1]], fixed = TRUE), "Expected binary-binary reason to mention Phi selection")
+
+kendall_result <- correlation_test_result(normal_x, normal_y, "kendall", "Kendall")
+kendall_expected_ci <- {
+  z <- atanh(kendall_result$coefficient)
+  se <- sqrt(0.437 / (kendall_result$n - 4))
+  critical <- stats::qnorm(0.975)
+  tanh(c(z - critical * se, z + critical * se))
+}
+expect_true(
+  isTRUE(all.equal(kendall_result$ci, kendall_expected_ci, tolerance = 1e-12)),
+  "Expected Kendall tau CI to use Fieller z-transform standard error"
+)
+expect_true(
+  all(is.na(correlation_ci(0.2, 4, method = "kendall"))),
+  "Expected Kendall tau CI to be unavailable for n < 5"
+)
 
 mixed_result <- prepare_correlation_results(
   data,

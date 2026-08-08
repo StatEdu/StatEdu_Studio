@@ -20,7 +20,7 @@ register_paired_handlers <- function(
   cohen_d <- reactiveVal(TRUE)
   mean_sd <- reactiveVal(FALSE)
   median_iqr <- reactiveVal(FALSE)
-  adjustment <- reactiveVal("bonferroni")
+  adjustment <- reactiveVal(statedu_multiple_correction_default())
   paired_result <- reactiveVal(NULL)
 
   current_selected <- reactive(as.character(selected_names_fn() %||% character(0)))
@@ -103,7 +103,7 @@ register_paired_handlers <- function(
   }, ignoreInit = TRUE)
 
   observeEvent(input$paired_adjustment, {
-    adjustment(as.character(input$paired_adjustment %||% "bonferroni"))
+    adjustment(as.character(input$paired_adjustment %||% statedu_multiple_correction_default()))
   }, ignoreInit = TRUE)
 
   observe({
@@ -122,17 +122,17 @@ register_paired_handlers <- function(
   add_paired_group <- function(source_values) {
     source_values <- as.character(source_values %||% character(0))
     if (length(source_values) < 2L) {
-      showNotification("Select two or more repeated-measures variables to create one paired row.", type = "warning")
+      showNotification(statedu_t("analysis.validation.paired_select_two", statedu_current_language(app_language_fn)), type = "warning")
       return(FALSE)
     }
     measurements <- paired_measurement_lookup(current_variable_table())
     levels <- vapply(source_values, function(name) named_value(measurements, name, "continuous"), character(1))
     if (length(unique(levels)) > 1) {
-      showNotification("Repeated-measures variables must have the same measurement level.", type = "warning")
+      showNotification(statedu_t("analysis.validation.repeated_same_measurement", statedu_current_language(app_language_fn)), type = "warning")
       return(FALSE)
     }
     if (length(source_values) >= 3L && identical(levels[[1]], "category")) {
-      showNotification("Categorical paired tests with three or more repeated measurements will be supported after 1.0. Use two repeated measurements for now.", type = "warning")
+      showNotification(statedu_t("analysis.validation.paired_category_three_unsupported", statedu_current_language(app_language_fn)), type = "warning")
       return(FALSE)
     }
     groups <- repeated_groups()
@@ -209,17 +209,17 @@ register_paired_handlers <- function(
     selected <- current_selected()
     source_values <- intersect(values, selected)
     if (length(source_values) < 2L) {
-      showNotification("Select two or more repeated-measures variables to create one paired row.", type = "warning")
+      showNotification(statedu_t("analysis.validation.paired_select_two", statedu_current_language(app_language_fn)), type = "warning")
       return()
     }
     measurements <- paired_measurement_lookup(current_variable_table())
     levels <- vapply(source_values, function(name) named_value(measurements, name, "continuous"), character(1))
     if (length(unique(levels)) > 1) {
-      showNotification("Repeated-measures variables must have the same measurement level.", type = "warning")
+      showNotification(statedu_t("analysis.validation.repeated_same_measurement", statedu_current_language(app_language_fn)), type = "warning")
       return()
     }
     if (length(source_values) >= 3L && identical(levels[[1]], "category")) {
-      showNotification("Categorical paired tests with three or more repeated measurements will be supported after 1.0. Use two repeated measurements for now.", type = "warning")
+      showNotification(statedu_t("analysis.validation.paired_category_three_unsupported", statedu_current_language(app_language_fn)), type = "warning")
       return()
     }
     groups <- repeated_groups()
@@ -314,7 +314,7 @@ register_paired_handlers <- function(
     if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
     if (!grepl("\\.html?$", path, ignore.case = TRUE)) path <- paste0(path, ".html")
     write_paired_results_html(result, path)
-    showNotification(sprintf("HTML results saved: %s", path), type = "message")
+    showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
 
   observeEvent(input$save_paired_pdf_dialog, {
@@ -324,7 +324,7 @@ register_paired_handlers <- function(
     if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
     if (!grepl("\\.pdf$", path, ignore.case = TRUE)) path <- paste0(path, ".pdf")
     write_paired_results_pdf(result, path)
-    showNotification(sprintf("PDF results saved: %s", path), type = "message")
+    showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
 
   observeEvent(input$save_paired_excel_dialog, {
@@ -334,7 +334,7 @@ register_paired_handlers <- function(
     if (length(path) == 0 || !nzchar(path[[1]])) return(invisible(NULL))
     if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) path <- paste0(path, ".xlsx")
     save_paired_excel_file(result, path)
-    showNotification(sprintf("Analysis results saved: %s", path), type = "message")
+    showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
 
   register_add_result_snapshot(input, session, "add_paired_result", "Paired test", "paired_results")

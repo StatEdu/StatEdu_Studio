@@ -1,6 +1,6 @@
 # StatEdu Studio Analyses
 
-This document summarizes the analysis menus and main outputs implemented in **StatEdu Studio 1.0.0**. It answers the question: "Which menu provides which statistical method, table, diagnostic, effect size, and export output?" For operating steps, see **User Guide**. For method-selection criteria and interpretation cautions, see **Method Notes**.
+This document summarizes the analysis menus and main outputs implemented in **StatEdu Studio 1.2.0**. It answers the question: "Which menu provides which statistical method, table, diagnostic, effect size, and export output?" For operating steps, see **User Guide**. For method-selection criteria and interpretation cautions, see **Method Notes**.
 
 ## Document Roles
 
@@ -8,9 +8,9 @@ This document summarizes the analysis menus and main outputs implemented in **St
 - **Analyses**: implemented menus, statistics, outputs, tables, and export coverage.
 - **Method Notes**: method-selection rules, assumption diagnostics, warnings, and interpretation cautions.
 
-## Public 1.0 Release Scope
+## Public 1.2 Release Scope
 
-Public 1.0 exposes the analysis and calculator workflows listed below. HTML and PDF result output are public. Excel/Word result export, license activation, paid-edition gating, Mplus/latent add-ons, and longitudinal/panel analysis workflows are not exposed in the public 1.0 interface. Planning calculators may include GEE, LMM, GLMM, survival, cluster, and SEM/CFA entries; those are calculator workflows, not public 1.0 Analysis menus.
+Public 1.2 exposes the analysis and calculator workflows listed below, including Inter-rater Agreement, Longitudinal / Panel Models, Mixed Repeated-Measures ANOVA, and Mediation / Moderation Custom Model. HTML and PDF result output are public. Excel/Word result export, license activation, paid-edition gating, and Mplus/latent add-ons are not exposed in the public 1.2 interface. Planning calculators may include GEE, LMM, GLMM, survival, cluster, and SEM/CFA entries; those are calculator workflows, not public 1.2 Analysis menus.
 
 ## Data and Variable Preparation
 
@@ -185,6 +185,30 @@ Post-hoc options:
 
 The model overview summarizes the sample size, selected method, and reason for method choice.
 
+## Mixed Repeated-Measures ANOVA
+
+The Repeated-measures ANOVA workflow handles wide-format pre-post or multi-time outcome columns with a between-subject group variable.
+
+Inputs:
+
+- Two or more repeated-measures outcome variables in time order.
+- One grouping variable.
+- Optional covariates.
+- Optional time labels.
+
+Analysis paths and checks:
+
+- PP / complete-case repeated-measures ANOVA path.
+- Available-case ITT-oriented mixed-model alternative when selected and estimable.
+- Within-time and between-time descriptive summaries.
+- Time, group, and time-by-group interaction tests.
+- Mauchly sphericity review and Greenhouse-Geisser-style correction notes where applicable.
+- Levene-type variance checks by time.
+- Optional post-hoc comparisons with multiplicity adjustment.
+- Covariate-adjusted summaries when covariates are selected.
+
+Outputs include the model overview, assumption-review table, repeated-measures test table, group/time summaries, post-hoc tables, warnings or skipped-model notes, and HTML/PDF/Excel/Add-result controls where enabled.
+
 ## Nonparametric Paired
 
 This workflow focuses on nonparametric paired or repeated-measures comparisons.
@@ -245,6 +269,16 @@ Outputs:
 - Sample size per pair where available.
 - Model overview explaining method choice.
 
+Complex Samples Correlation:
+
+- Uses the assigned complex-sample design variables through the survey engine.
+- Supports Pearson and Spearman rank correlations.
+- Ordered variables are converted to ordinal scores before design-based covariance estimation.
+- Reports design-based correlation estimates with standard errors, confidence intervals, design df, and optional weighted N.
+- Displays a lower-triangle correlation matrix for manuscript-style reporting while retaining a pairwise detail table.
+- Reports pairwise Missing N so the complete-case denominator for each variable pair is transparent.
+- Provides multiplicity-adjusted p values for the displayed variable pairs using Holm-Bonferroni by default, with Bonferroni, FDR, or no adjustment available.
+
 ## Reliability
 
 Reliability analysis supports scale and item diagnostics.
@@ -259,6 +293,30 @@ Outputs:
 - Optional ordinal reliability aids when item structure supports polychoric estimation.
 
 Reliability outputs should be interpreted with scale content and item structure, not only with a single cutoff.
+
+## Inter-rater Agreement
+
+Inter-rater Agreement evaluates whether multiple raters, coders, judges, or measurement instruments assign consistent scores to the same cases.
+
+Eligible rating structures:
+
+- Continuous rater variables for ICC-style agreement.
+- Ordinal rater variables for weighted agreement statistics.
+- Binary or nominal rater variables for kappa-family and chance-corrected agreement statistics.
+
+Main outputs:
+
+- Recommended agreement index shown first for the detected data structure.
+- Supporting agreement indices in auxiliary tables.
+- ICC variants with model, type, and unit options.
+- Cohen or weighted kappa for two-rater categorical/ordinal data where eligible.
+- Fleiss or Light kappa for multi-rater categorical settings where eligible.
+- Gwet AC1/AC2 and Krippendorff alpha where the data structure supports them.
+- Complete-case and missing-rating notes.
+- Category-order handling for ordinal character labels based on the Step 3 category table when available.
+- Bootstrap CI option for ICC when selected.
+
+The recommended index is intended as the primary reporting target, while auxiliary indices help users understand sensitivity to method choice and category structure.
 
 ## Factor Analysis
 
@@ -332,6 +390,52 @@ Options:
 - Predictors can be entered in blocks.
 - Each step reports R2, adjusted R2, delta R2, and nested model comparison p values.
 - The same diagnostic and robust/bootstrap logic is applied to eligible models.
+
+## Mediation / Moderation
+
+The **Mediation / Moderation** menu runs regression-based path models for mediation, moderation, and moderated mediation.
+
+### Supported Models
+
+- Model 1: moderation.
+- Model 4: simple mediation.
+- Model 5: mediation plus direct-path moderation.
+- Model 6: serial mediation.
+- Model 7: first-stage moderated mediation.
+- Model 8: first-stage plus direct-path moderation.
+- Model 14: second-stage moderated mediation.
+- Model 15: second-stage plus direct-path moderation.
+- Model 58: first- and second-stage moderated mediation.
+- Model 59: all-path moderated mediation.
+
+### Inputs
+
+- Dependent variable: one variable.
+- Independent variables: one or more variables. When multiple independent variables are selected, each variable is analyzed once as the focal X and the other independent variables are included as covariates.
+- Mediators: parallel or serial structure.
+- Moderator: one variable for supported moderated models.
+- Covariates: included in the relevant regression equations.
+- Options: mean-centering, bootstrap resamples, bias-corrected or percentile CI, StatEdu diagnostic-based output or PROCESS-compatible OLS, simple slopes, Johnson-Neyman, and dashed nonsignificant paths.
+
+### Outputs
+
+- Analysis overview and selected model.
+- Model diagram with path coefficient labels.
+- Path coefficients, standard errors, t/F/Wald-style tests, p-values, and confidence intervals.
+- Direct, total, indirect, conditional, and conditional indirect effects.
+- PROCESS model summary, interaction R-squared change, simple slopes, and Johnson-Neyman tables.
+- Conditional-effect plots and saved result diagrams.
+- HTML, PDF, figure, Excel, and Result-tab export.
+
+## Mediation / Moderation Custom Model
+
+The **Mediation / Moderation Custom Model** menu provides a canvas for drawing a mediation/moderation model and sending the recognized structure to the same analysis engine.
+
+- Variable roles: independent, mediator, moderator, dependent, and covariate.
+- Canvas tools: select, connect, delete, properties, undo/redo, zoom, fit view, paper orientation, line/arrow/label styling, model load/save/export.
+- Analysis requirement: the drawn model must match one of the currently supported mediation/moderation model numbers.
+- Outputs: fitted result canvas, coefficient labels, path results, effect tables, and save controls.
+
 
 ## Penalized Regression
 
@@ -410,11 +514,77 @@ Outputs:
 
 Large odds ratios, wide confidence intervals, large standard errors, or high VIF values should be interpreted cautiously because they often indicate sparse cells, separation, or multicollinearity.
 
-## Deferred Longitudinal / Panel Analysis
+## Longitudinal / Panel Analysis
 
-Longitudinal / panel analysis workflows have internal development and validation history, but they are not exposed in the public 1.0 interface. Public 1.0 does not list GEE, LMM, GLMM, panel fixed-effects, or panel random-effects models as public Analysis workflows.
+Longitudinal / panel analysis workflows are exposed in the Analysis menu.
 
-Repeated-measures, clustered, and panel data require methods that match the study design and correlation structure. These workflows will be documented again when their public release scope and license policy are finalized. GEE/LMM/GLMM entries in the Sample Size menus are planning calculators, not public 1.0 Analysis workflows.
+Repeated-measures, clustered, and panel data require methods that match the study design and correlation structure. GEE/LMM/GLMM entries in the Sample Size menus remain planning calculators; the Analysis menu provides the corresponding modeling workflow.
+
+## Complex Samples Analysis
+
+Complex-sample analysis uses `survey`-based design objects to account for stratification, cluster/PSU variables, weights, FPC, replicate weights, and subpopulation/domain analysis. A design saved in **Complex Samples Design Variables** is reused automatically by each complex-sample analysis menu.
+
+### Common Design Inputs
+
+- Strata variable.
+- Cluster / PSU variable.
+- Weight variable.
+- Subpopulation or domain variable and condition.
+- Variance method: Auto, Taylor linearization, or replicate-weight methods.
+- FPC variable.
+- Single-PSU strata handling.
+- Replicate-weight variables, replicate-weight type, and whether replicate weights already include sampling weights.
+
+### Complex Samples Design Variables
+
+- This is the shared design setup menu used before running complex-sample analyses.
+- It assigns strata, cluster/PSU, weight, subpopulation/domain, FPC, replicate weights, and single-PSU handling.
+- It supports saving and loading reusable design settings.
+- The saved design state is reused automatically by the complex-sample frequencies, crosstabs, t-test/ANOVA, correlation, regression, and logistic regression menus.
+- Output includes the design-variable summary and selected variance-estimation settings.
+
+### Complex Samples Frequencies / Descriptives
+
+- Weighted frequencies and percentages for categorical variables.
+- Means, standard errors, confidence intervals, and optional medians for continuous variables.
+- Unweighted N, weighted N, missing N, and design precision output.
+- Design summary and excluded-row counts.
+
+### Complex Samples Cross-tabulation
+
+- Row, column, or total percentage basis.
+- Rao-Scott-style design-based tests.
+- Weighted N, design df, and percentage confidence intervals.
+- Trend-test option for ordered variables.
+
+### Complex Samples t-test / ANOVA
+
+- Design-based mean comparisons.
+- Post-hoc output and correction method.
+- Mean +/- SD, confidence intervals, weighted N, design df, design effect/CV, and effect sizes.
+- Trend-test option for ordered groups.
+
+### Complex Samples Correlation
+
+- Pearson and Spearman rank correlation.
+- Design-based covariance and delta-method standard errors.
+- Pairwise detail table and correlation matrix.
+- P-value adjustment, confidence intervals, weighted N, missing N, and design df.
+
+### Complex Samples Regression
+
+- Survey-weighted linear regression.
+- Continuous, categorical, and ordered predictor handling.
+- Coefficients, standard errors, confidence intervals, and design-based Wald/F tests.
+- Weighted N, design df, and model-fit summaries.
+
+### Complex Samples Logistic Regression
+
+- Survey-weighted logistic regression for binary dependent variables.
+- Coefficients, odds ratios, confidence intervals, and Wald tests.
+- Descriptive pseudo R-squared fit indices.
+- Weighted N, design df, and model-fit summaries.
+
 
 ## Result Saving and Export
 
@@ -424,7 +594,7 @@ Figures can be saved from analyses that produce figure output.
 
 ## Sample Size, Power, and Effect Size Menus
 
-StatEdu Studio 1.0.0 also provides study-planning calculators. These are separate from the Analysis menu.
+StatEdu Studio 1.2.0 also provides study-planning calculators. These are separate from the Analysis menu.
 
 ### Common Outputs
 

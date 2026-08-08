@@ -1,4 +1,4 @@
-      window.easyflowSettingsDirty = false;
+﻿      window.easyflowSettingsDirty = false;
       window.easyflowVarLabels = window.easyflowVarLabels || {};
       window.easyflowMeasurements = window.easyflowMeasurements || {};
       window.easyflowCodingErrorFixValues = window.easyflowCodingErrorFixValues || {};
@@ -21,6 +21,67 @@
         return element.getClientRects().length > 0;
       }
       window.isEasyflowVisibleElement = isEasyflowVisibleElement;
+
+      window.easyflowViewportState = window.easyflowViewportState || {};
+
+      function easyflowViewportKey(scope) {
+        return scope || 'default';
+      }
+
+      function easyflowFindScrollBody(root) {
+        if (!root) return null;
+        if (root.jquery) root = root.get(0);
+        if (!root) return null;
+        if (root.classList && root.classList.contains('dataTables_scrollBody')) return root;
+        return root.querySelector ? root.querySelector('.dataTables_scrollBody') : null;
+      }
+
+      window.easyflowRememberViewport = function(scope, root) {
+        var key = easyflowViewportKey(scope);
+        var scrollBody = easyflowFindScrollBody(root || document);
+        window.easyflowViewportState[key] = {
+          y: window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0,
+          x: window.pageXOffset || document.documentElement.scrollLeft || document.body.scrollLeft || 0,
+          tableX: scrollBody ? scrollBody.scrollLeft : null,
+          createdAt: Date.now(),
+          pending: true
+        };
+      };
+
+      window.easyflowRestoreViewport = function(scope, options) {
+        var key = easyflowViewportKey(scope);
+        var state = window.easyflowViewportState[key];
+        if (!state || !state.pending) return;
+        if (state.createdAt && Date.now() - state.createdAt > 5000) {
+          state.pending = false;
+          return;
+        }
+        options = options || {};
+        var root = options.root || document;
+        var scrollBody = easyflowFindScrollBody(root);
+        if (scrollBody && state.tableX !== null && typeof state.tableX !== 'undefined') {
+          scrollBody.scrollLeft = state.tableX;
+        }
+        window.scrollTo(
+          typeof state.x === 'number' ? state.x : (window.pageXOffset || 0),
+          typeof state.y === 'number' ? state.y : (window.pageYOffset || 0)
+        );
+        if (!options.keepPending) {
+          state.pending = false;
+        }
+      };
+
+      window.easyflowScheduleViewportRestore = function(scope, root, delays) {
+        delays = delays || [0, 50, 150, 300];
+        delays.forEach(function(delay, index) {
+          window.setTimeout(function() {
+            window.easyflowRestoreViewport(scope, {
+              root: root || document,
+              keepPending: index < delays.length - 1
+            });
+          }, delay);
+        });
+      };
 
       window.easyflowTransferFallbackSync = function(listbox) {
         if (!listbox || !listbox.getAttribute) return;
@@ -564,25 +625,30 @@
 
       window.easyflowApplyRoleSelection = function() {
         if (!window.Shiny) return false;
+        if (window.easyflowRememberViewport) window.easyflowRememberViewport('variable_table', document.getElementById('variable_table') || document);
         flushEasyflowInputs();
         var state = submitEasyflowTableState();
         state.nonce = Date.now() + Math.random();
         Shiny.setInputValue('apply_role_request', state, {priority: 'event'});
+        if (window.easyflowScheduleViewportRestore) window.easyflowScheduleViewportRestore('variable_table', document.getElementById('variable_table') || document);
         return false;
       };
 
       window.easyflowSelectRole = function(role) {
         if (!window.Shiny) return true;
+        if (window.easyflowRememberViewport) window.easyflowRememberViewport('variable_table', document.getElementById('variable_table') || document);
         flushEasyflowInputs();
         var state = submitEasyflowTableState();
         state.role = role || '';
         state.nonce = Date.now() + Math.random();
         Shiny.setInputValue('role_switch_request', state, {priority: 'event'});
+        if (window.easyflowScheduleViewportRestore) window.easyflowScheduleViewportRestore('variable_table', document.getElementById('variable_table') || document);
         return false;
       };
 
       window.easyflowFlushVariableTableState = function() {
         if (!window.Shiny) return true;
+        if (window.easyflowRememberViewport) window.easyflowRememberViewport('variable_table', document.getElementById('variable_table') || document);
         flushEasyflowInputs();
         var state = submitEasyflowTableState();
         Shiny.setInputValue('variable_table_state', {
@@ -593,6 +659,7 @@
           debug_measurement_count: state.debug_measurement_count || 0,
           nonce: Date.now() + Math.random()
         }, {priority: 'event'});
+        if (window.easyflowScheduleViewportRestore) window.easyflowScheduleViewportRestore('variable_table', document.getElementById('variable_table') || document);
         return true;
       };
 

@@ -130,11 +130,7 @@ logistic_coef_cells <- function(row, show_b = FALSE, show_se = FALSE, split_ci =
   }
   cells <- c(
     cells,
-    if (isTRUE(reference)) {
-      if (isTRUE(show_b)) "" else "reference"
-    } else {
-      logistic_format_number(row$OR)
-    }
+    if (isTRUE(reference)) "1.00" else logistic_format_number(row$OR)
   )
   if (isTRUE(split_ci)) {
     cells <- c(
@@ -317,12 +313,12 @@ logistic_fit_rows <- function(result, show_mcfadden = FALSE, show_cox_snell = FA
   rows <- list(
     list(type = "fit", values = list(logistic_stat_line(logistic_x2_label(), sprintf("%s (%s)", format_decimal3(result$fit$chisq), format_p(result$fit$p)))))
   )
-  r2_values <- c(sprintf("Nagelkerke R2 = %s", format_decimal3(result$fit$r2[["nagelkerke"]])))
+  r2_values <- c(sprintf("Nagelkerke R\u00B2 = %s", format_decimal3(result$fit$r2[["nagelkerke"]])))
   if (isTRUE(show_mcfadden) || isTRUE(show_cox_snell)) {
     r2_values <- c(
       r2_values,
-      sprintf("McFadden R2 = %s", format_decimal3(result$fit$r2[["mcfadden"]])),
-      sprintf("Cox & Snell R2 = %s", format_decimal3(result$fit$r2[["cox_snell"]]))
+      sprintf("McFadden R\u00B2 = %s", format_decimal3(result$fit$r2[["mcfadden"]])),
+      sprintf("Cox & Snell R\u00B2 = %s", format_decimal3(result$fit$r2[["cox_snell"]]))
     )
   }
   rows[[length(rows) + 1L]] <- list(type = "fit", values = list(tags$span(style = "display:inline-block;white-space:normal;", paste(r2_values, collapse = "; "))))
@@ -412,7 +408,9 @@ logistic_hierarchical_colgroup <- function(model_columns, fit_width = FALSE) {
   }))
 }
 
-logistic_result_html_table <- function(result, variable_table = NULL, labels = character(0), category_table = NULL, show_b = FALSE, show_se = FALSE, show_mcfadden = FALSE, show_cox_snell = FALSE, split_ci = TRUE) {
+logistic_result_html_table <- function(result, variable_table = NULL, labels = character(0), category_table = NULL, show_b = FALSE, show_se = FALSE, show_mcfadden = FALSE, show_cox_snell = FALSE, split_ci = TRUE, output_table_style = "standard") {
+  output_table_style <- analysis_output_table_style(output_table_style)
+  style_params <- analysis_output_table_style_params(output_table_style)
   coef_headers <- logistic_coef_headers(show_b, show_se, split_ci)
   headers <- c("", "", coef_headers)
   rows <- c(
@@ -420,8 +418,18 @@ logistic_result_html_table <- function(result, variable_table = NULL, labels = c
     logistic_fit_rows(result, show_mcfadden, show_cox_snell)
   )
   tags$table(
-    class = "coefficient-table logistic-result-table",
-    style = paste0(result_table_style(font_size = 12, min_width = 0), "width:100% !important;min-width:0 !important;max-width:100% !important;table-layout:fixed;"),
+    class = paste("coefficient-table logistic-result-table", paste0("output-table-style-", output_table_style)),
+    style = paste0(
+      result_table_style(
+        font_size = if (isTRUE(style_params$compact)) style_params$font_size else 12,
+        min_width = if (identical(output_table_style, "wide")) style_params$min_width else 0
+      ),
+      if (identical(output_table_style, "wide")) {
+        paste0("width:auto !important;min-width:", style_params$min_width, "px !important;max-width:none !important;table-layout:fixed;")
+      } else {
+        "width:100% !important;min-width:0 !important;max-width:100% !important;table-layout:fixed;"
+      }
+    ),
     logistic_single_colgroup(headers),
     tags$thead(
       if (isTRUE(split_ci)) {
@@ -492,12 +500,12 @@ logistic_fit_summary_values <- function(result, show_mcfadden = FALSE, show_cox_
   if (isTRUE(result$excluded) || is.null(result$fit)) {
     return(list(status = result$method %||% "Excluded"))
   }
-  r2_values <- c(sprintf("Nagelkerke R2 = %s", format_decimal3(result$fit$r2[["nagelkerke"]])))
+  r2_values <- c(sprintf("Nagelkerke R\u00B2 = %s", format_decimal3(result$fit$r2[["nagelkerke"]])))
   if (isTRUE(show_mcfadden) || isTRUE(show_cox_snell)) {
     r2_values <- c(
       r2_values,
-      sprintf("McFadden R2 = %s", format_decimal3(result$fit$r2[["mcfadden"]])),
-      sprintf("Cox & Snell R2 = %s", format_decimal3(result$fit$r2[["cox_snell"]]))
+      sprintf("McFadden R\u00B2 = %s", format_decimal3(result$fit$r2[["mcfadden"]])),
+      sprintf("Cox & Snell R\u00B2 = %s", format_decimal3(result$fit$r2[["cox_snell"]]))
     )
   }
   r2_value <- if (length(r2_values) > 1L) {
@@ -506,12 +514,12 @@ logistic_fit_summary_values <- function(result, show_mcfadden = FALSE, show_cox_
     r2_values[[1]]
   }
   values <- list(
-    x2 = sprintf("x2(p) = %s (%s)", format_decimal3(result$fit$chisq), format_p(result$fit$p)),
+    x2 = sprintf("x\u00B2(p) = %s (%s)", format_decimal3(result$fit$chisq), format_p(result$fit$p)),
     r2 = r2_value,
-    delta_r2 = if (!is.null(result$delta_r2)) sprintf("Delta R2 = %s", format_decimal3(result$delta_r2)) else "",
-    delta_x2 = if (!is.null(result$delta_chisq)) sprintf("Delta x2(p) = %s (%s)", format_decimal3(result$delta_chisq), format_p(result$delta_p)) else "",
+    delta_r2 = if (!is.null(result$delta_r2)) sprintf("Delta R\u00B2 = %s", format_decimal3(result$delta_r2)) else "",
+    delta_x2 = if (!is.null(result$delta_chisq)) sprintf("Delta x\u00B2(p) = %s (%s)", format_decimal3(result$delta_chisq), format_p(result$delta_p)) else "",
     aic = sprintf("AIC=%s, BIC=%s", format_decimal3(result$fit$aic), format_decimal3(result$fit$bic)),
-    parallel = if (!is.null(result$parallel)) sprintf("Parallel lines x2(p) = %s (%s)", format_decimal3(result$parallel$chisq), format_p(result$parallel$p)) else ""
+    parallel = if (!is.null(result$parallel)) sprintf("Parallel lines x\u00B2(p) = %s (%s)", format_decimal3(result$parallel$chisq), format_p(result$parallel$p)) else ""
   )
   keep <- vapply(values, function(value) {
     if (inherits(value, "shiny.tag") || inherits(value, "shiny.tag.list")) {
@@ -614,7 +622,7 @@ logistic_parallel_summary <- function(result) {
   }
   p <- result$parallel$p
   decision <- if (!is.na(p) && p > .05) "Proportional odds assumption met" else "Proportional odds assumption not met"
-  sprintf("x2=%s(%s)\n%s", format_decimal3(result$parallel$chisq), format_p(p), decision)
+  sprintf("x\u00B2=%s(%s)\n%s", format_decimal3(result$parallel$chisq), format_p(p), decision)
 }
 
 logistic_vif_summary_text <- function(result) {
@@ -718,7 +726,9 @@ logistic_hierarchical_footer_row <- function(label, values, model_columns, first
   do.call(tags$tr, cells)
 }
 
-logistic_hierarchical_result_table <- function(group, variable_table = NULL, labels = character(0), category_table = NULL, show_b = FALSE, show_se = FALSE, show_mcfadden = FALSE, show_cox_snell = FALSE, split_ci = TRUE) {
+logistic_hierarchical_result_table <- function(group, variable_table = NULL, labels = character(0), category_table = NULL, show_b = FALSE, show_se = FALSE, show_mcfadden = FALSE, show_cox_snell = FALSE, split_ci = TRUE, output_table_style = "standard") {
+  output_table_style <- analysis_output_table_style(output_table_style)
+  style_params <- analysis_output_table_style_params(output_table_style)
   coef_headers <- logistic_coef_headers(show_b, show_se, split_ci)
   model_columns <- lapply(seq_along(group), function(index) {
     if (index < length(group)) {
@@ -733,7 +743,7 @@ logistic_hierarchical_result_table <- function(group, variable_table = NULL, lab
   }, numeric(1))) + max(0, length(group) - 1L) * 10
   table_style <- if (isTRUE(fit_width)) {
     paste0(
-      result_table_style(font_size = if (length(group) >= 3L) 9 else 10, min_width = 0),
+      result_table_style(font_size = if (isTRUE(style_params$compact)) style_params$font_size else if (length(group) >= 3L) 9 else 10, min_width = 0),
       "width:100% !important;min-width:0 !important;max-width:100% !important;table-layout:fixed;"
     )
   } else {
@@ -848,12 +858,12 @@ logistic_hierarchical_result_table <- function(group, variable_table = NULL, lab
   summaries <- lapply(group, logistic_fit_summary_values, show_mcfadden = show_mcfadden, show_cox_snell = show_cox_snell)
   footer_labels <- unique(unlist(lapply(summaries, names), use.names = FALSE))
   footer_label_text <- c(
-    x2 = "x2(p)",
-    r2 = "R2",
-    delta_r2 = "Delta R2",
-    delta_x2 = "Delta x2(p)",
+    x2 = "x\u00B2(p)",
+    r2 = "R\u00B2",
+    delta_r2 = "Delta R\u00B2",
+    delta_x2 = "Delta x\u00B2(p)",
     aic = "AIC, BIC",
-    parallel = "Parallel lines x2(p)",
+    parallel = "Parallel lines x\u00B2(p)",
     status = "Status"
   )
   footer_rows <- lapply(seq_along(footer_labels), function(index) {
@@ -869,6 +879,7 @@ logistic_hierarchical_result_table <- function(group, variable_table = NULL, lab
   table <- tags$table(
     class = paste(
       "coefficient-table hierarchical-coefficient-table logistic-hierarchical-table",
+      paste0("output-table-style-", output_table_style),
       if (isTRUE(fit_width)) "fit-width-hierarchical-table" else ""
     ),
     style = table_style,
@@ -883,7 +894,7 @@ logistic_hierarchical_result_table <- function(group, variable_table = NULL, lab
   div(class = "result-table-with-note hierarchical-table-wrap", div(class = "hierarchical-table-scroll", table))
 }
 
-logistic_result_block <- function(result, variable_table = NULL, labels = character(0), category_table = NULL, show_b = FALSE, show_se = FALSE, show_mcfadden = FALSE, show_cox_snell = FALSE, split_ci = TRUE) {
+logistic_result_block <- function(result, variable_table = NULL, labels = character(0), category_table = NULL, show_b = FALSE, show_se = FALSE, show_mcfadden = FALSE, show_cox_snell = FALSE, split_ci = TRUE, output_table_style = "standard") {
   title <- logistic_result_title(result, variable_table, labels, category_table)
   if (!is.null(result$hierarchical_step_index) && result$hierarchical_step_index > 1L && !is.null(result$hierarchical_step) && nzchar(result$hierarchical_step)) {
     title <- sprintf("%s - %s", title, result$hierarchical_step)
@@ -891,7 +902,7 @@ logistic_result_block <- function(result, variable_table = NULL, labels = charac
   div(
     class = "result-section regression-result-panel logistic-result-panel",
     h3(title),
-    logistic_result_html_table(result, variable_table, labels, category_table, show_b, show_se, show_mcfadden, show_cox_snell, split_ci),
+    logistic_result_html_table(result, variable_table, labels, category_table, show_b, show_se, show_mcfadden, show_cox_snell, split_ci, output_table_style),
     div(logistic_method_label(result), class = "result-note logistic-result-method"),
     lapply(logistic_result_notes(result), function(note) {
       div(note, class = "result-note coefficient-warning")
@@ -899,17 +910,32 @@ logistic_result_block <- function(result, variable_table = NULL, labels = charac
   )
 }
 
-logistic_hierarchical_result_block <- function(group, variable_table = NULL, labels = character(0), category_table = NULL, show_b = FALSE, show_se = FALSE, show_mcfadden = FALSE, show_cox_snell = FALSE, split_ci = TRUE) {
+logistic_hierarchical_result_block <- function(group, variable_table = NULL, labels = character(0), category_table = NULL, show_b = FALSE, show_se = FALSE, show_mcfadden = FALSE, show_cox_snell = FALSE, split_ci = TRUE, output_table_style = "standard") {
   first_result <- group[[1]]
+  output_table_style <- analysis_output_table_style(output_table_style)
   notes <- unique(unlist(lapply(group, logistic_result_notes), use.names = FALSE))
   methods <- unique(vapply(group, logistic_method_label, character(1)))
+  table_content <- if (identical(output_table_style, "standard")) {
+    tags$div(
+      class = "hierarchical-standard-table-wrap logistic-standard-table-wrap",
+      lapply(seq_along(group), function(index) {
+        tags$div(
+          class = "hierarchical-standard-model-block logistic-standard-model-block",
+          tags$h4(class = "hierarchical-standard-model-title", logistic_model_label(group[[index]], index)),
+          logistic_result_html_table(group[[index]], variable_table, labels, category_table, show_b, show_se, show_mcfadden, show_cox_snell, split_ci, output_table_style)
+        )
+      })
+    )
+  } else {
+    logistic_hierarchical_result_table(group, variable_table, labels, category_table, show_b, show_se, show_mcfadden, show_cox_snell, split_ci, output_table_style)
+  }
   div(
     class = paste(
       "result-section regression-result-panel logistic-result-panel logistic-hierarchical-result-panel",
-      if (length(group) >= 3L) "landscape-table-panel" else ""
+      if (identical(output_table_style, "wide") && length(group) >= 3L) "landscape-table-panel" else ""
     ),
     h3(logistic_result_title(first_result, variable_table, labels, category_table)),
-    logistic_hierarchical_result_table(group, variable_table, labels, category_table, show_b, show_se, show_mcfadden, show_cox_snell, split_ci),
+    table_content,
     lapply(methods, function(method) div(method, class = "result-note logistic-result-method")),
     lapply(notes, function(note) div(note, class = "result-note coefficient-warning"))
   )
@@ -927,7 +953,7 @@ logistic_result_groups <- function(results) {
   })
 }
 
-logistic_results_panel <- function(results, variable_table = NULL, labels = character(0), category_table = NULL, show_b = FALSE, show_se = FALSE, show_mcfadden = FALSE, show_cox_snell = FALSE, split_ci = TRUE) {
+logistic_results_panel <- function(results, variable_table = NULL, labels = character(0), category_table = NULL, show_b = FALSE, show_se = FALSE, show_mcfadden = FALSE, show_cox_snell = FALSE, split_ci = TRUE, output_table_style = "standard") {
   groups <- logistic_result_groups(results)
   warnings <- attr(results, "warnings")
   skipped <- attr(results, "skipped")
@@ -936,9 +962,9 @@ logistic_results_panel <- function(results, variable_table = NULL, labels = char
     logistic_model_overview_block(results, variable_table, labels, category_table),
     lapply(groups, function(group) {
       if (length(group) > 1L) {
-        logistic_hierarchical_result_block(group, variable_table, labels, category_table, show_b, show_se, show_mcfadden, show_cox_snell, split_ci)
+        logistic_hierarchical_result_block(group, variable_table, labels, category_table, show_b, show_se, show_mcfadden, show_cox_snell, split_ci, output_table_style)
       } else {
-        logistic_result_block(group[[1]], variable_table, labels, category_table, show_b, show_se, show_mcfadden, show_cox_snell, split_ci)
+        logistic_result_block(group[[1]], variable_table, labels, category_table, show_b, show_se, show_mcfadden, show_cox_snell, split_ci, output_table_style)
       }
     }),
     logistic_assumption_review_block(results, variable_table, labels, category_table),

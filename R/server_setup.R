@@ -45,9 +45,16 @@ register_setup_order_observers <- function(
   predictor_candidates_fn,
   sync_dependent_order_fn,
   sync_predictor_order_fn,
-  mark_settings_dirty
+  mark_settings_dirty,
+  app_language_fn = NULL
 ) {
   active_regression_list <- reactiveVal(NULL)
+  show_dependent_continuous_only <- function() {
+    showNotification(
+      statedu_t("analysis.validation.dependent_continuous_only", statedu_current_language(app_language_fn)),
+      type = "warning"
+    )
+  }
 
   observeEvent(input$available_predictors_active, {
     active_regression_list("available_predictors")
@@ -153,7 +160,7 @@ register_setup_order_observers <- function(
 
     raw_available <- as.character(input$available_predictors %||% character(0))
     if (length(raw_available) > 0) {
-      showNotification("Dependent variable selection is limited to continuous variables.", type = "warning")
+      show_dependent_continuous_only()
       return()
     }
 
@@ -333,7 +340,7 @@ register_setup_order_observers <- function(
       selected <- intersect(values, unique(c(dependent_candidates_fn(), current_dependent, current_predictor)))
       selected <- intersect(selected, dependent_candidates_fn())
       if (length(selected) == 0) {
-        showNotification("Dependent variable selection is limited to continuous variables.", type = "warning")
+        show_dependent_continuous_only()
         return()
       }
       remove_from_predictor(selected)
@@ -584,7 +591,7 @@ register_hierarchical_block_observers <- function(
     raw_selected <- as.character(input$hierarchical_available %||% character(0))
     selected <- intersect(raw_selected, dependent_candidates_fn())
     if (length(raw_selected) > 0 && length(selected) == 0) {
-      showNotification("Dependent variable selection is limited to continuous variables.", type = "warning")
+      show_dependent_continuous_only()
       return()
     }
     updated <- append_order_items(sync_dependent_order_fn(update_input = FALSE), selected)
@@ -687,7 +694,7 @@ register_hierarchical_block_observers <- function(
   observeEvent(input$hierarchical_add_dependent, {
     selected <- intersect(as.character(input$hierarchical_available %||% character(0)), dependent_candidates_fn())
     if (length(selected) == 0) {
-      showNotification("Dependent variable selection is limited to continuous variables.", type = "warning")
+      show_dependent_continuous_only()
       return()
     }
     updated <- append_order_items(sync_dependent_order_fn(update_input = FALSE), selected)
@@ -994,7 +1001,7 @@ register_hierarchical_block_observers <- function(
     } else if (identical(target, "hierarchical_y")) {
       allowed <- intersect(selected, unique(c(dependent_candidates_fn(), current_dependent)))
       if (length(allowed) == 0) {
-        showNotification("Dependent variable selection is limited to continuous variables.", type = "warning")
+        show_dependent_continuous_only()
         return()
       }
       remove_block1(allowed)
@@ -1087,9 +1094,13 @@ register_setup_outputs <- function(
       selected_predictor = isolate(input$predictor_order),
       bootstrap_value = isolate(input$boot_r),
       seed_value = isolate(input$seed),
+      residual_diagnostics = input$residual_diagnostics,
+      auto_method = isolate(input$auto_method),
       show_sr2 = isolate(input$show_sr2),
       show_f2 = isolate(input$show_f2),
       show_vif = isolate(input$show_vif),
+      options_tab = isolate(input$regression_options_tab),
+      output_table_style = isolate(input$regression_output_table_style),
       language = language
     )
 
@@ -1126,9 +1137,13 @@ register_setup_outputs <- function(
       selected_block2 = isolate(input$hierarchical_block2),
       selected_block3 = isolate(input$hierarchical_block3),
       active_block = hierarchical_active_block_fn(),
+      residual_diagnostics = input$hierarchical_residual_diagnostics,
+      auto_method = isolate(input$hierarchical_auto_method),
       show_sr2 = isolate(input$hierarchical_show_sr2),
       show_f2 = isolate(input$hierarchical_show_f2),
       show_vif = isolate(input$hierarchical_show_vif),
+      options_tab = isolate(input$hierarchical_options_tab),
+      output_table_style = isolate(input$hierarchical_output_table_style),
       language = language
     )
 

@@ -578,6 +578,7 @@ saved_analysis_results_html <- function(
   show_sr2 = FALSE,
   show_f2 = FALSE,
   show_vif = FALSE,
+  output_table_style = "standard",
   css_path = file.path("www", "style.css"),
   report_mode = FALSE
 ) {
@@ -600,7 +601,8 @@ saved_analysis_results_html <- function(
           value_labels,
           show_sr2,
           show_f2,
-          show_vif
+          show_vif,
+          output_table_style
         )
       }),
       regression_reference_summary_block(results, variable_table, labels, show_sr2, show_f2),
@@ -628,10 +630,13 @@ saved_hierarchical_results_html <- function(
   show_sr2 = FALSE,
   show_f2 = FALSE,
   show_vif = FALSE,
+  output_table_style = "standard",
   css_path = file.path("www", "style.css"),
   report_mode = FALSE
 ) {
-  print_landscape <- any(vapply(hierarchical_result_groups(results), function(group) length(group) >= 3L, logical(1)))
+  output_table_style <- analysis_output_table_style(output_table_style)
+  print_landscape <- identical(output_table_style, "wide") &&
+    any(vapply(hierarchical_result_groups(results), function(group) length(group) >= 3L, logical(1)))
   saved_results_document(
     "StatEdu Studio Hierarchical Results",
     hierarchical_results_panel(
@@ -644,6 +649,7 @@ saved_hierarchical_results_html <- function(
       show_sr2 = show_sr2,
       show_f2 = show_f2,
       show_vif = show_vif,
+      output_table_style = output_table_style,
       plot_blocks = lapply(seq_along(results), function(index) {
         result <- results[[index]]
         dependent <- all.vars(result$formula)[[1]]
@@ -651,7 +657,7 @@ saved_hierarchical_results_html <- function(
         saved_plot_result_block(result, dependent_label)
       })
     ),
-    max_width = 1500,
+    max_width = if (isTRUE(print_landscape)) 1500 else 1280,
     css_path = css_path,
     print_landscape = print_landscape,
     report_mode = report_mode
@@ -860,10 +866,13 @@ saved_logistic_results_html <- function(
   show_mcfadden = FALSE,
   show_cox_snell = FALSE,
   split_ci = TRUE,
+  output_table_style = "standard",
   css_path = file.path("www", "style.css"),
   report_mode = FALSE
 ) {
-  print_landscape <- any(vapply(logistic_result_groups(results), function(group) length(group) >= 3L, logical(1)))
+  output_table_style <- analysis_output_table_style(output_table_style)
+  print_landscape <- identical(output_table_style, "wide") &&
+    any(vapply(logistic_result_groups(results), function(group) length(group) >= 3L, logical(1)))
   saved_results_document(
     "StatEdu Studio Logistic Regression Results",
     tags$div(
@@ -877,10 +886,11 @@ saved_logistic_results_html <- function(
         show_se = show_se,
         show_mcfadden = show_mcfadden,
         show_cox_snell = show_cox_snell,
-        split_ci = split_ci
+        split_ci = split_ci,
+        output_table_style = output_table_style
       )
     ),
-    max_width = 1500,
+    max_width = if (isTRUE(print_landscape)) 1500 else 1280,
     css_path = css_path,
     print_landscape = print_landscape,
     report_mode = report_mode
@@ -1972,21 +1982,13 @@ write_result_collection_docx <- function(entries, file) {
 }
 
 saved_results_empty_ui <- function(language = statedu_initial_language()) {
-  div(class = "empty-message", div(statedu_text(
-    language,
-    "Click Add result after an analysis to collect results here.",
-    statedu_utf8("ebb684ec849d20ed9b8420eab2b0eab3bc20ecb694eab080eba5bc20ed81b4eba6aded9598eba9b420ec97aceab8b0ec979020eab2b0eab3bceba5bc20ebaaa8ec9d8420ec889820ec9e88ec8ab5eb8b88eb8ba42e")
-  )))
+  div(class = "empty-message", div(statedu_t("result.empty_message", language)))
 }
 
 result_entries_for_export <- function(store, language = statedu_initial_language()) {
   entries <- isolate(store())
   if (length(entries) == 0) {
-    stop(statedu_text(
-      language,
-      "No saved results are available. Click Add result after an analysis first.",
-      statedu_utf8("eca080ec9ea5eb909c20eab2b0eab3bceab08020ec9786ec8ab5eb8b88eb8ba42e20ebb684ec849d20ed9b8420eba8bceca08020eab2b0eab3bc20ecb694eab080eba5bc20ed81b4eba6aded95b4ec84b8ec9a942e")
-    ), call. = FALSE)
+    stop(statedu_t("result.no_saved_results", language), call. = FALSE)
   }
   entries
 }
@@ -1997,8 +1999,8 @@ result_collection_exception_features <- function(entries) {
     return(character(0))
   }
   titles <- vapply(entries, function(entry) as.character(entry$title %||% ""), character(1))
-  if (all(titles %in% c("Frequencies / Descriptives", "t-test / ANOVA"))) {
-    return(c("pdf", "excel", "word"))
+  if (all(titles %in% c("t-test / ANOVA"))) {
+    return(c("excel", "word", "__public_exception__"))
   }
   character(0)
 }
@@ -2017,7 +2019,7 @@ register_result_accumulator_outputs <- function(input, output, session, app_lang
     }
     tagList(
       div(class = "saved-result-count", sprintf(
-        statedu_text(language, "%s result(s) saved in Result history.", statedu_utf8("eab2b0eab3bc20ec9db4eba0a5ec979020257320eab09cec9d9820eab2b0eab3bceab08020eca080ec9ea5eb9098ec9788ec8ab5eb8b88eb8ba42e")),
+        statedu_t("result.saved_count", language),
         length(entries)
       )),
       div(
@@ -2042,7 +2044,7 @@ register_result_accumulator_outputs <- function(input, output, session, app_lang
   observeEvent(input$clear_saved_results, {
     store(list())
     write_result_snapshot_store(list())
-    showNotification(statedu_text(current_language(), "Saved results cleared.", statedu_utf8("eca080ec9ea5eb909c20eab2b0eab3bceba5bc20ebb984ec9b8ec8ab5eb8b88eb8ba42e")), type = "message", duration = 3)
+    showNotification(statedu_t("result.cleared", current_language()), type = "message", duration = 3)
   }, ignoreInit = TRUE)
 
   observeEvent(input$save_result_history_dialog, {
@@ -2052,19 +2054,19 @@ register_result_accumulator_outputs <- function(input, output, session, app_lang
         entries <- result_entries_for_export(store, language)
         path <- choose_result_history_save_path()
         if (length(path) == 0 || !nzchar(path[[1]])) {
-          showNotification(statedu_text(language, "Save dialog was not available or was canceled.", statedu_utf8("eca080ec9ea520eb8c80ed9994ec8381ec9e90eba5bc20ec82acec9aa9ed95a020ec889820ec9786eab1b0eb829820ecb7a8ec868ceb9098ec9788ec8ab5eb8b88eb8ba42e")), type = "warning", duration = 5)
+          showNotification(statedu_t("result.save_dialog_canceled", language), type = "warning", duration = 5)
           return(invisible(NULL))
         }
         if (!grepl("\\.(efs-result|json)$", path, ignore.case = TRUE)) {
           path <- paste0(path, ".efs-result")
         }
         if (!isTRUE(write_result_snapshot_store(entries, path))) {
-          stop(statedu_text(language, "Could not write the Result file.", statedu_utf8("eab2b0eab3bc20ed8c8cec9dbcec9d8420eca791ec84b1ed95a020ec889820ec9786ec8ab5eb8b88eb8ba42e")), call. = FALSE)
+          stop(statedu_t("result.write_failed", language), call. = FALSE)
         }
-        showNotification(sprintf(statedu_text(language, "Result saved: %s", statedu_utf8("eab2b0eab3bc20eca080ec9ea5eb90a8eab3b3202573")), path), type = "message")
+        showNotification(sprintf(statedu_t("result.saved_path", language), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_text(current_language(), "Failed to save Result:", statedu_utf8("eab2b0eab3bc20eca080ec9ea5ec979020ec8ba4ed8ca8ed9688ec8ab5eb8b88eb8ba43a")), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.save_failed", current_language()), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   }, ignoreInit = TRUE)
@@ -2075,19 +2077,19 @@ register_result_accumulator_outputs <- function(input, output, session, app_lang
         language <- current_language()
         path <- choose_result_history_open_path()
         if (length(path) == 0 || !nzchar(path[[1]])) {
-          showNotification(statedu_text(language, "Open dialog was not available or was canceled.", statedu_utf8("ec97b4eab8b020eb8c80ed9994ec8381ec9e90eba5bc20ec82acec9aa9ed95a020ec889820ec9786eab1b0eb829820ecb7a8ec868ceb9098ec9788ec8ab5eb8b88eb8ba42e")), type = "warning", duration = 5)
+          showNotification(statedu_t("result.open_dialog_canceled", language), type = "warning", duration = 5)
           return(invisible(NULL))
         }
         entries <- read_result_snapshot_store(path)
         if (length(entries) == 0) {
-          stop(statedu_text(language, "The selected file does not contain saved Result entries.", statedu_utf8("ec84a0ed839ded959c20ed8c8cec9dbcec979020eca080ec9ea5eb909c20eab2b0eab3bc20ed95adebaaA9ec9db420ec9786ec8ab5eb8b88eb8ba42e")), call. = FALSE)
+          stop(statedu_t("result.file_empty", language), call. = FALSE)
         }
         store(entries)
         write_result_snapshot_store(entries)
-        showNotification(sprintf(statedu_text(language, "Result opened: %s", statedu_utf8("eab2b0eab3bc20ec97b4eab8b03a202573")), path), type = "message")
+        showNotification(sprintf(statedu_t("result.opened_path", language), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste(statedu_text(current_language(), "Failed to open Result:", statedu_utf8("eab2b0eab3bc20ec97b4eab8b0ec979020ec8ba4ed8ca8ed9688ec8ab5eb8b88eb8ba43a")), conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.open_failed", current_language()), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   }, ignoreInit = TRUE)
@@ -2099,17 +2101,17 @@ register_result_accumulator_outputs <- function(input, output, session, app_lang
         entries <- result_entries_for_export(store, language)
         path <- choose_html_save_path()
         if (length(path) == 0 || !nzchar(path[[1]])) {
-          showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+          showNotification(statedu_t("result.save_dialog_canceled", language), type = "warning", duration = 5)
           return(invisible(NULL))
         }
         if (!grepl("\\.html?$", path, ignore.case = TRUE)) {
           path <- paste0(path, ".html")
         }
         write_result_collection_html(entries, path)
-        showNotification(sprintf("Result collection saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.collection_saved", language), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save Result collection:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.collection_save_failed", current_language()), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   }, ignoreInit = TRUE)
@@ -2121,22 +2123,22 @@ register_result_accumulator_outputs <- function(input, output, session, app_lang
         entries <- result_entries_for_export(store, language)
         included_features <- result_collection_exception_features(entries)
         if (!isTRUE(analysis_save_feature_enabled("pdf", included_features = included_features))) {
-          showNotification("PDF export is not enabled for this Result collection.", type = "warning", duration = 5)
+          showNotification(statedu_t("result.collection_pdf_disabled", language), type = "warning", duration = 5)
           return(invisible(NULL))
         }
         path <- choose_pdf_save_path()
         if (length(path) == 0 || !nzchar(path[[1]])) {
-          showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+          showNotification(statedu_t("result.save_dialog_canceled", language), type = "warning", duration = 5)
           return(invisible(NULL))
         }
         if (!grepl("\\.pdf$", path, ignore.case = TRUE)) {
           path <- paste0(path, ".pdf")
         }
         write_result_collection_pdf(entries, path)
-        showNotification(sprintf("Result collection saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.collection_saved", language), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save Result collection:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.collection_save_failed", current_language()), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   }, ignoreInit = TRUE)
@@ -2148,22 +2150,22 @@ register_result_accumulator_outputs <- function(input, output, session, app_lang
         entries <- result_entries_for_export(store, language)
         included_features <- result_collection_exception_features(entries)
         if (!isTRUE(analysis_save_feature_enabled("excel", included_features = included_features))) {
-          showNotification("Excel export is not enabled for this Result collection.", type = "warning", duration = 5)
+          showNotification(statedu_t("result.collection_excel_disabled", language), type = "warning", duration = 5)
           return(invisible(NULL))
         }
         path <- choose_excel_save_path()
         if (length(path) == 0 || !nzchar(path[[1]])) {
-          showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+          showNotification(statedu_t("result.save_dialog_canceled", language), type = "warning", duration = 5)
           return(invisible(NULL))
         }
         if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) {
           path <- paste0(path, ".xlsx")
         }
         save_result_collection_excel_file(entries, path)
-        showNotification(sprintf("Result collection saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.collection_saved", language), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save Result collection:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.collection_save_failed", current_language()), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   }, ignoreInit = TRUE)
@@ -2175,22 +2177,22 @@ register_result_accumulator_outputs <- function(input, output, session, app_lang
         entries <- result_entries_for_export(store, language)
         included_features <- result_collection_exception_features(entries)
         if (!isTRUE(analysis_save_feature_enabled("word", included_features = included_features))) {
-          showNotification("Word export is not enabled for this Result collection.", type = "warning", duration = 5)
+          showNotification(statedu_t("result.collection_word_disabled", language), type = "warning", duration = 5)
           return(invisible(NULL))
         }
         path <- choose_word_save_path()
         if (length(path) == 0 || !nzchar(path[[1]])) {
-          showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+          showNotification(statedu_t("result.save_dialog_canceled", language), type = "warning", duration = 5)
           return(invisible(NULL))
         }
         if (!grepl("\\.docx$", path, ignore.case = TRUE)) {
           path <- paste0(path, ".docx")
         }
         write_result_collection_docx(entries, path)
-        showNotification(sprintf("Result collection saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.collection_saved", language), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save Result collection:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.collection_save_failed", current_language()), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   }, ignoreInit = TRUE)
@@ -2207,7 +2209,7 @@ result_snapshot_document_html <- function(title, html) {
   )
 }
 
-register_add_result_snapshot <- function(input, session, button_id, title, output_id = NULL, html_fn = NULL) {
+register_add_result_snapshot <- function(input, session, button_id, title, output_id = NULL, html_fn = NULL, app_language_fn = NULL) {
   if (is.null(button_id) || !nzchar(button_id)) {
     return(invisible(FALSE))
   }
@@ -2218,19 +2220,22 @@ register_add_result_snapshot <- function(input, session, button_id, title, outpu
   }
 
   snapshot_input_id <- paste0(button_id, "_snapshot")
+  current_language <- function() {
+    statedu_current_language(app_language_fn)
+  }
 
   add_snapshot <- function(html) {
     if (length(html) == 0 || is.null(html) || !nzchar(as.character(html)[[1]])) {
-      stop("No analysis result is available to add.")
+      stop(statedu_t("result.add_unavailable", current_language()), call. = FALSE)
     }
     resolved_title <- if (is.function(title)) title() else title
     resolved_title <- as.character(resolved_title %||% "")
     if (!nzchar(resolved_title)) {
-      resolved_title <- "Analysis result"
+      resolved_title <- statedu_t("result.add_default_title", current_language())
     }
     append_result_snapshot(session, resolved_title, as.character(html)[[1]])
     updateNavbarPage(session, "main_menu", selected = "result")
-    showNotification(sprintf("Added to Result: %s", resolved_title), type = "message", duration = 3)
+    showNotification(sprintf(statedu_t("result.added", current_language()), resolved_title), type = "message", duration = 3)
   }
 
   observeEvent(input[[button_id]], {
@@ -2248,12 +2253,12 @@ register_add_result_snapshot <- function(input, session, button_id, title, outpu
           return(invisible(NULL))
         }
         if (!is.function(html_fn)) {
-          stop("No result output is registered for Add result.")
+          stop(statedu_t("result.add_output_missing", current_language()), call. = FALSE)
         }
         add_snapshot(html_fn())
       },
       error = function(e) {
-        showNotification(paste("Failed to add result:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.add_failed", current_language()), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   }, ignoreInit = TRUE)
@@ -2270,12 +2275,12 @@ register_add_result_snapshot <- function(input, session, button_id, title, outpu
         resolved_title <- if (is.function(title)) title() else title
         resolved_title <- as.character(resolved_title %||% "")
         if (!nzchar(resolved_title)) {
-          resolved_title <- "Analysis result"
+          resolved_title <- statedu_t("result.add_default_title", current_language())
         }
         add_snapshot(result_snapshot_document_html(resolved_title, fragment))
       },
       error = function(e) {
-        showNotification(paste("Failed to add result:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.add_failed", current_language()), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   }, ignoreInit = TRUE)

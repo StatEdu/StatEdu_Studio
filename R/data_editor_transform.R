@@ -1,6 +1,79 @@
 # Formula-based variable transformation.
 
 transform_allowed_functions <- function() {
+  numeric_vector <- function(x) {
+    if (is.numeric(x) && !is.factor(x)) {
+      return(as.numeric(x))
+    }
+    suppressWarnings(as.numeric(as.character(x)))
+  }
+
+  numeric_matrix <- function(...) {
+    values <- list(...)
+    if (length(values) == 0) {
+      return(matrix(numeric(0), nrow = 0, ncol = 0))
+    }
+    n <- max(vapply(values, length, integer(1)), 1L)
+    do.call(cbind, lapply(values, function(value) rep(numeric_vector(value), length.out = n)))
+  }
+
+  n_miss <- function(...) {
+    values <- list(...)
+    if (length(values) == 0) {
+      stop("N_miss requires at least one variable.", call. = FALSE)
+    }
+    n <- max(vapply(values, length, integer(1)), 1L)
+    missing_matrix <- do.call(cbind, lapply(values, function(value) {
+      is.na(rep(value, length.out = n))
+    }))
+    as.integer(rowSums(missing_matrix))
+  }
+
+  id_stat <- function(id, condition, value, stat = "sum", empty = NA, na.rm = TRUE) {
+    n <- max(length(id), length(condition), length(value), 1L)
+    id <- rep(id, length.out = n)
+    condition <- rep(as.logical(condition), length.out = n)
+    value <- rep(value, length.out = n)
+    stat <- as.character(stat)
+    stat <- if (length(stat) == 0 || is.na(stat[[1]]) || !nzchar(stat[[1]])) "sum" else stat[[1]]
+    stat <- tolower(stat)
+    output <- rep(empty, n)
+    keep <- !is.na(id) & !is.na(condition) & condition
+    keys <- as.character(id)
+    groups <- unique(keys[keep])
+
+    calculate <- function(x) {
+      if (identical(stat, "n") || identical(stat, "count")) {
+        if (length(x) == 0L) return(empty)
+        return(length(x))
+      }
+      x <- numeric_vector(x)
+      if (isTRUE(na.rm)) {
+        x <- x[!is.na(x)]
+      }
+      if (length(x) == 0L) {
+        return(empty)
+      }
+      switch(
+        stat,
+        sum = sum(x, na.rm = isTRUE(na.rm)),
+        mean = mean(x, na.rm = isTRUE(na.rm)),
+        median = stats::median(x, na.rm = isTRUE(na.rm)),
+        sd = stats::sd(x, na.rm = isTRUE(na.rm)),
+        var = stats::var(x, na.rm = isTRUE(na.rm)),
+        min = min(x, na.rm = isTRUE(na.rm)),
+        max = max(x, na.rm = isTRUE(na.rm)),
+        stop("id_stat stat must be one of sum, mean, median, sd, var, min, max, n, count.", call. = FALSE)
+      )
+    }
+
+    for (group in groups) {
+      rows <- keep & keys == group
+      output[!is.na(keys) & keys == group] <- calculate(value[rows])
+    }
+    output
+  }
+
   list(
     ln = log,
     log = log,
@@ -13,15 +86,16 @@ transform_allowed_functions <- function() {
     ceiling = ceiling,
     pmin = pmin,
     pmax = pmax,
-    sum = sum,
-    mean = mean,
-    median = stats::median,
-    sd = stats::sd,
-    var = stats::var,
-    min = min,
-    max = max,
+    sum = function(x, ..., na.rm = FALSE) sum(numeric_vector(x), ..., na.rm = na.rm),
+    mean = function(x, ..., na.rm = FALSE) mean(numeric_vector(x), ..., na.rm = na.rm),
+    median = function(x, ..., na.rm = FALSE) stats::median(numeric_vector(x), ..., na.rm = na.rm),
+    sd = function(x, ..., na.rm = FALSE) stats::sd(numeric_vector(x), ..., na.rm = na.rm),
+    var = function(x, ..., na.rm = FALSE) stats::var(numeric_vector(x), ..., na.rm = na.rm),
+    min = function(x, ..., na.rm = FALSE) min(numeric_vector(x), ..., na.rm = na.rm),
+    max = function(x, ..., na.rm = FALSE) max(numeric_vector(x), ..., na.rm = na.rm),
     if_else = ifelse,
     ifelse = ifelse,
+    in_values = function(x, ...) x %in% unlist(list(...), use.names = FALSE),
     case_when = function(..., default = NA) {
       args <- list(...)
       if (length(args) < 2 || length(args) %% 2 != 0) {
@@ -52,18 +126,21 @@ transform_allowed_functions <- function() {
     grepl = grepl,
     gsub = gsub,
     is_na = is.na,
-    as_numeric = function(x) suppressWarnings(as.numeric(x)),
+    as_numeric = numeric_vector,
     as_character = as.character,
     as_date = as.Date,
     date_diff = function(end, start, units = "days") as.numeric(difftime(end, start, units = units)),
     difftime = difftime,
     today = function() Sys.Date(),
-    row_sum = function(..., na.rm = TRUE) rowSums(cbind(...), na.rm = na.rm),
-    row_mean = function(..., na.rm = TRUE) rowMeans(cbind(...), na.rm = na.rm),
-    row_min = function(..., na.rm = TRUE) do.call(pmin, c(list(...), na.rm = na.rm)),
-    row_max = function(..., na.rm = TRUE) do.call(pmax, c(list(...), na.rm = na.rm)),
-    row_sd = function(..., na.rm = TRUE) apply(cbind(...), 1, stats::sd, na.rm = na.rm),
-    z_score = function(x) as.numeric(scale(as.numeric(x)))
+    N_miss = n_miss,
+    F_miss = function(...) as.integer(n_miss(...) == 0L),
+    id_stat = id_stat,
+    row_sum = function(..., na.rm = TRUE) rowSums(numeric_matrix(...), na.rm = na.rm),
+    row_mean = function(..., na.rm = TRUE) rowMeans(numeric_matrix(...), na.rm = na.rm),
+    row_min = function(..., na.rm = TRUE) do.call(pmin, c(as.data.frame(numeric_matrix(...)), na.rm = na.rm)),
+    row_max = function(..., na.rm = TRUE) do.call(pmax, c(as.data.frame(numeric_matrix(...)), na.rm = na.rm)),
+    row_sd = function(..., na.rm = TRUE) apply(numeric_matrix(...), 1, stats::sd, na.rm = na.rm),
+    z_score = function(x) as.numeric(scale(numeric_vector(x)))
   )
 }
 
@@ -73,6 +150,9 @@ transform_template_choices <- function(language = statedu_initial_language()) {
     "Copy variable" = "copy",
     "Mean of selected variables" = "row_mean",
     "Sum of selected variables" = "row_sum",
+    "ID conditional statistic" = "id_stat",
+    "Number of missing values" = "N_miss",
+    "Complete case flag" = "F_miss",
     "Z-score" = "z_score",
     "Natural log" = "ln",
     "Square" = "square",
@@ -100,6 +180,8 @@ transform_template_expression <- function(template, variables) {
   variables <- variables[nzchar(variables)]
   quoted <- vapply(variables, transform_quote_variable, character(1))
   first <- quoted[[1]] %||% ""
+  second <- if (length(quoted) > 1) quoted[[2]] else "condition"
+  third <- if (length(quoted) > 2) quoted[[3]] else "value"
   if (!nzchar(template) || length(quoted) == 0) {
     return("")
   }
@@ -108,6 +190,9 @@ transform_template_expression <- function(template, variables) {
     copy = first,
     row_mean = sprintf("row_mean(%s)", paste(quoted, collapse = ", ")),
     row_sum = sprintf("row_sum(%s)", paste(quoted, collapse = ", ")),
+    id_stat = sprintf("id_stat(%s, %s == 'target', %s, 'sum', empty = NA)", first, second, third),
+    N_miss = sprintf("N_miss(%s)", paste(quoted, collapse = ", ")),
+    F_miss = sprintf("F_miss(%s)", paste(quoted, collapse = ", ")),
     z_score = sprintf("z_score(%s)", first),
     ln = sprintf("ln(%s)", first),
     square = sprintf("%s^2", first),
@@ -125,6 +210,7 @@ transform_function_template <- function(function_name, variables = character(0))
   quoted <- vapply(variables, transform_quote_variable, character(1))
   first <- if (length(quoted) > 0) quoted[[1]] else "x"
   second <- if (length(quoted) > 1) quoted[[2]] else "y"
+  third <- if (length(quoted) > 2) quoted[[3]] else "value"
   selected_list <- if (length(quoted) > 0) paste(quoted, collapse = ", ") else "x, y"
 
   switch(
@@ -143,6 +229,9 @@ transform_function_template <- function(function_name, variables = character(0))
     row_min = sprintf("row_min(%s)", selected_list),
     row_max = sprintf("row_max(%s)", selected_list),
     row_sd = sprintf("row_sd(%s)", selected_list),
+    id_stat = sprintf("id_stat(%s, %s == 'target', %s, 'sum', empty = NA)", first, second, third),
+    N_miss = sprintf("N_miss(%s)", selected_list),
+    F_miss = sprintf("F_miss(%s)", selected_list),
     z_score = sprintf("z_score(%s)", first),
     mean = sprintf("mean(%s, na.rm = TRUE)", first),
     median = sprintf("median(%s, na.rm = TRUE)", first),
@@ -348,26 +437,28 @@ transform_function_groups <- function() {
   list(
     "Math" = c("ln", "log", "log10", "exp", "sqrt", "abs", "round", "floor", "ceiling"),
     "Row statistics" = c("row_sum", "row_mean", "row_min", "row_max", "row_sd", "z_score"),
+    "Grouped statistics" = c("id_stat"),
     "Statistics" = c("mean", "median", "sd", "var", "min", "max", "sum", "pmin", "pmax"),
     "Condition" = c("if_else", "case_when"),
     "Text" = c("paste", "paste0", "toupper", "tolower", "nchar", "substr", "substring", "trimws", "grepl", "gsub"),
     "Type conversion" = c("as_numeric", "as_character", "as_date"),
     "Date" = c("date_diff", "difftime", "today"),
-    "Missing values" = c("is_na")
+    "Missing values" = c("is_na", "N_miss", "F_miss")
   )
 }
 
 transform_function_group_labels <- function(language = statedu_initial_language()) {
   language <- normalize_app_language(language)
   c(
-    "Math" = statedu_text(language, "Math", statedu_utf8("ec8898ed9599")),
-    "Row statistics" = statedu_text(language, "Row statistics", statedu_utf8("ed968920ed86b5eab384")),
-    "Statistics" = statedu_text(language, "Statistics", statedu_utf8("ed86b5eab384")),
-    "Condition" = statedu_text(language, "Condition", statedu_utf8("eca1b0eab1b4")),
-    "Text" = statedu_text(language, "Text", statedu_utf8("ed858dec8aa4ed8ab8")),
-    "Type conversion" = statedu_text(language, "Type conversion", statedu_utf8("ec9ca0ed989520ebb380ed9998")),
-    "Date" = statedu_text(language, "Date", statedu_utf8("eb82a0eca79c")),
-    "Missing values" = statedu_text(language, "Missing values", statedu_utf8("eab2b0ecb8a1eab092"))
+    "Math" = statedu_t("data_editor.transform_group_math", language),
+    "Row statistics" = statedu_t("data_editor.transform_group_row_statistics", language),
+    "Grouped statistics" = statedu_t("data_editor.transform_group_grouped_statistics", language),
+    "Statistics" = statedu_t("data_editor.transform_group_statistics", language),
+    "Condition" = statedu_t("data_editor.transform_group_condition", language),
+    "Text" = statedu_t("data_editor.transform_group_text", language),
+    "Type conversion" = statedu_t("data_editor.transform_group_type_conversion", language),
+    "Date" = statedu_t("data_editor.transform_group_date", language),
+    "Missing values" = statedu_t("data_editor.transform_group_missing_values", language)
   )
 }
 
@@ -380,7 +471,7 @@ transform_function_groups_ui <- function(language = statedu_initial_language()) 
     class = "variable-transform-function-picker",
     selectInput(
       "variable_transform_function_group",
-      statedu_text(language, "Function type", statedu_utf8("ed95a8ec889820ec9ca0ed9895")),
+      statedu_t("data_editor.transform_function_type", language),
       choices = choices,
       selected = names(groups)[[1]],
       selectize = FALSE,
@@ -423,13 +514,9 @@ data_editor_variable_transformation_panel <- function(language = statedu_initial
     class = "page-shell",
     div(
       class = "app-heading",
-      h1(statedu_text(language, "Variable Transformation", statedu_utf8("ebb380ec889820ebb380ed9998"))),
+      h1(statedu_t("data_editor.transform_title", language)),
       div(
-        statedu_text(
-          language,
-          "Create a new variable with a quick formula or a custom expression.",
-          statedu_utf8("ebb9a0eba5b820ec8898ec8b9d20eb9890eb8a9420ec82acec9aa9ec9e9020ec8898ec8b9dec9cbceba19c20ec838820ebb380ec8898eba5bc20eba78ceb93adeb8b88eb8ba42e")
-        ),
+        statedu_t("data_editor.transform_subtitle", language),
         class = "app-subtitle"
       )
     ),
@@ -452,13 +539,13 @@ data_editor_variable_transformation_panel <- function(language = statedu_initial
           div(
             class = "analysis-options-column analysis-options-panel variable-transform-options",
             div(class = "analysis-option-group",
-              div(class = "analysis-option-title", statedu_text(language, "1. Name and type", statedu_utf8("312e20ec9db4eba684eab3bc20ec9ca0ed9895"))),
+              div(class = "analysis-option-title", statedu_t("data_editor.transform_section_name_type", language)),
               div(
                 class = "variable-transform-two-column",
                 div(
                   class = "variable-transform-name-stack",
                   textInput("variable_transform_name", analysis_ui_text("New variable name", language), value = "", width = "100%", placeholder = "new_variable"),
-                  textInput("variable_transform_label", analysis_ui_text("Variable label", language), value = "", width = "100%", placeholder = statedu_text(language, "Optional editable label", statedu_utf8("ec84a0ed839d20ec82acec9aa9ec9e9020ec8898eca09520eb9dbcebb2a8")))
+                  textInput("variable_transform_label", analysis_ui_text("Variable label", language), value = "", width = "100%", placeholder = statedu_t("data_editor.transform_optional_label", language))
                 ),
                 selectInput(
                   "variable_transform_measurement",
@@ -466,11 +553,11 @@ data_editor_variable_transformation_panel <- function(language = statedu_initial
                   choices = stats::setNames(
                     c("", "continuous", "ordered", "category", "binary"),
                     c(
-                      statedu_text(language, "Infer automatically", statedu_utf8("ec9e90eb8f9920ecb694eba1a0")),
-                      statedu_text(language, "Continuous", statedu_utf8("ec97b0ec868ded9895")),
-                      statedu_text(language, "Ordered", statedu_utf8("ec889cec849ced9895")),
-                      statedu_text(language, "Categorical", statedu_utf8("ebb294eca3bced9895")),
-                      statedu_text(language, "Binary", statedu_utf8("ec9db4ebb684ed9895"))
+                      statedu_t("data_editor.transform_infer_auto", language),
+                      statedu_t("data_editor.transform_continuous", language),
+                      statedu_t("data_editor.transform_ordered", language),
+                      statedu_t("data_editor.transform_categorical", language),
+                      statedu_t("data_editor.transform_binary", language)
                     )
                   ),
                   selected = "",
@@ -480,7 +567,7 @@ data_editor_variable_transformation_panel <- function(language = statedu_initial
               )
             ),
             div(class = "analysis-option-group",
-              div(class = "analysis-option-title", statedu_text(language, "2. Quick formula", statedu_utf8("322e20ebb9a0eba5b820ec8898ec8b9d"))),
+              div(class = "analysis-option-title", statedu_t("data_editor.transform_section_quick_formula", language)),
               div(
                 class = "variable-transform-template-row",
                 selectInput("variable_transform_template", NULL, choices = transform_template_choices(language), selected = "", selectize = FALSE, width = "100%"),
@@ -488,15 +575,11 @@ data_editor_variable_transformation_panel <- function(language = statedu_initial
               ),
               tags$div(
                 class = "recode-help-text variable-calculation-help",
-                statedu_text(
-                  language,
-                  "Select variables on the left, then apply a template. You can edit the formula afterward.",
-                  statedu_utf8("ec99bcecaabdec9790ec849c20ebb380ec8898eba5bc20ec84a0ed839ded959c20eb92a420ed859ced948ceba6bfec9d8420eca081ec9aa9ed9598ec84b8ec9a942e20eca081ec9aa920ed9b8420ec8898ec8b9dec9d8420eca781eca09120ec8898eca095ed95a020ec889820ec9e88ec8ab5eb8b88eb8ba42e")
-                )
+                statedu_t("data_editor.transform_template_help", language)
               )
             ),
             div(class = "analysis-option-group",
-              div(class = "analysis-option-title", statedu_text(language, "3. Formula", statedu_utf8("332e20ec8898ec8b9d"))),
+              div(class = "analysis-option-title", statedu_t("data_editor.transform_section_formula", language)),
               textAreaInput("variable_transform_expression", NULL, value = "", width = "100%", height = "118px"),
               uiOutput("variable_transform_function_example"),
               div(
@@ -506,7 +589,7 @@ data_editor_variable_transformation_panel <- function(language = statedu_initial
               )
             ),
             div(class = "analysis-option-group",
-              div(class = "analysis-option-title", statedu_text(language, "Available functions", statedu_utf8("ec82acec9aa920eab080eb8aa5ed959c20ed95a8ec8898"))),
+              div(class = "analysis-option-title", statedu_t("data_editor.transform_available_functions", language)),
               transform_function_groups_ui(language)
             )
           )
@@ -541,15 +624,11 @@ register_variable_transformation_handlers <- function(
     if (is.null(file) || is.null(data)) {
       return(div(
         class = "variable-transform-empty-list",
-        statedu_text(
-          language,
-          "Load a data file in the Data tab before transforming variables.",
-          statedu_utf8("eb8db0ec9db4ed84b020ed83adec9790ec849c20eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420eba8bceca08020ebb688eb9facec98a820ed9b8420ebb380ec8898eba5bc20ebb380ed9998ed9598ec84b8ec9a942e")
-        )
+        statedu_t("data_editor.transform_load_before_setup", language)
       ))
     }
     variable_info <- tryCatch(variable_info_fn(), error = function(e) NULL)
-    items <- analysis_variable_items(names(data), variable_info, labels_fn())
+    items <- analysis_variable_items(data_editor_variable_names(data, variable_info), variable_info, labels_fn())
     choices <- stats::setNames(
       vapply(items, function(item) item$value, character(1)),
       vapply(items, function(item) item$label, character(1))
@@ -596,7 +675,7 @@ register_variable_transformation_handlers <- function(
     selected <- selected_transform_variables()
     if (length(selected) == 0) {
       showNotification(
-        statedu_text(language, "Select one or more variables to insert.", statedu_utf8("ec82bdec9e85ed95a020ebb380ec8898eba5bc20ed9598eb829820ec9db4ec838120ec84a0ed839ded9598ec84b8ec9a942e")),
+        statedu_t("data_editor.transform_select_insert", language),
         type = "warning",
         duration = 5
       )
@@ -610,7 +689,7 @@ register_variable_transformation_handlers <- function(
     selected <- selected_transform_variables()
     if (length(selected) == 0) {
       showNotification(
-        statedu_text(language, "Select one or more variables first.", statedu_utf8("eba8bceca08020ebb380ec8898eba5bc20ed9598eb829820ec9db4ec838120ec84a0ed839ded9598ec84b8ec9a942e")),
+        statedu_t("data_editor.transform_select_first", language),
         type = "warning",
         duration = 5
       )
@@ -619,7 +698,7 @@ register_variable_transformation_handlers <- function(
     expression <- transform_template_expression(input$variable_transform_template, selected)
     if (!nzchar(expression)) {
       showNotification(
-        statedu_text(language, "Choose a quick formula.", statedu_utf8("ebb9a0eba5b820ec8898ec8b9dec9d8420ec84a0ed839ded9598ec84b8ec9a942e")),
+        statedu_t("data_editor.transform_choose_quick_formula", language),
         type = "warning",
         duration = 5
       )
@@ -656,11 +735,7 @@ register_variable_transformation_handlers <- function(
     if (!nzchar(function_name)) {
       return(div(
         class = "variable-transform-function-example",
-        statedu_text(
-          language,
-          "Select a function below to insert it into the formula.",
-          statedu_utf8("ec9584eb9e9820ed95a8ec8898eba5bc20ec84a0ed839ded9598ec97ac20ec8898ec8b9dec979020ec82bdec9e85ed9598ec84b8ec9a942e")
-        )
+        statedu_t("data_editor.transform_select_function_hint", language)
       ))
     }
     example <- transform_function_template(function_name, selected_transform_variables())
@@ -677,7 +752,7 @@ register_variable_transformation_handlers <- function(
     if (is.null(data)) {
       if (isTRUE(show_errors)) {
         showNotification(
-          statedu_text(language, "Load a data file before transforming variables.", statedu_utf8("ebb380ec889820ebb380ed999820eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e")),
+          statedu_t("data_editor.transform_load_before_run", language),
           type = "warning",
           duration = 5
         )
@@ -718,7 +793,7 @@ register_variable_transformation_handlers <- function(
     }
     preview_values(values)
     last_message(sprintf(
-      statedu_text(language, "Previewed %s transformed value(s).", statedu_utf8("2573eab09c20ebb380ed999820eab092ec9d8420ebafb8eba6acebb3b4eab8b0ed9688ec8ab5eb8b88eb8ba42e")),
+      statedu_t("data_editor.transform_previewed", language),
       length(values)
     ))
   }, ignoreInit = TRUE)
@@ -732,7 +807,7 @@ register_variable_transformation_handlers <- function(
     name <- trimws(as.character(input$variable_transform_name %||% ""))
     if (!nzchar(name)) {
       showNotification(
-        statedu_text(language, "Enter a new variable name.", statedu_utf8("ec838820ebb380ec8898ebaa85ec9d8420ec9e85eba0a5ed9598ec84b8ec9a942e")),
+        statedu_t("data_editor.transform_enter_new_name", language),
         type = "warning",
         duration = 5
       )
@@ -747,7 +822,7 @@ register_variable_transformation_handlers <- function(
     if (isTRUE(ok)) {
       preview_values(values)
       last_message(sprintf(
-        statedu_text(language, "Created transformed variable: %s", statedu_utf8("ebb380ed999820ebb380ec8898eba5bc20ec839dec84b1ed9688ec8ab5eb8b88eb8ba43a202573")),
+        statedu_t("data_editor.transform_created", language),
         name
       ))
       if (is.function(mark_settings_dirty)) {

@@ -2204,6 +2204,7 @@ longitudinal_missing_sensitivity_failure <- function(strategy, message, status =
     B = NA_real_,
     SE = NA_real_,
     Statistic = NA_real_,
+    df = "",
     p = NA_real_,
     LLCI = NA_real_,
     ULCI = NA_real_,
@@ -2214,7 +2215,7 @@ longitudinal_missing_sensitivity_failure <- function(strategy, message, status =
   )
 }
 
-longitudinal_pool_coef_tables <- function(tables, strategy, note = "", exponentiate = FALSE) {
+longitudinal_pool_coef_tables <- function(tables, strategy, note = "", exponentiate = FALSE, dfcom = NA_real_) {
   tables <- tables[vapply(tables, function(table) is.data.frame(table) && nrow(table) > 0 && all(c("Term", "B", "SE") %in% names(table)), logical(1))]
   if (length(tables) == 0) {
     return(longitudinal_missing_sensitivity_failure(strategy, "No coefficient table was available for pooling."))
@@ -2242,18 +2243,29 @@ longitudinal_pool_coef_tables <- function(tables, strategy, note = "", exponenti
     ubar <- mean(variances)
     bvar <- if (m > 1) stats::var(estimates) else 0
     total <- ubar + (1 + 1 / max(m, 1)) * bvar
+    lambda <- if (is.finite(total) && total > 0) (1 + 1 / m) * bvar / total else 0
+    df_rubin <- if (m > 1 && is.finite(lambda) && lambda > 0) (m - 1) / (lambda^2) else Inf
+    df <- df_rubin
+    if (is.finite(df_rubin) && is.finite(dfcom) && dfcom > 0 && is.finite(lambda)) {
+      df_obs <- (dfcom + 1) / (dfcom + 3) * dfcom * (1 - lambda)
+      if (is.finite(df_obs) && df_obs > 0) {
+        df <- df_rubin * df_obs / (df_rubin + df_obs)
+      }
+    }
     se <- sqrt(max(total, 0))
     statistic <- if (is.finite(se) && se > 0) qbar / se else NA_real_
-    p <- if (is.finite(statistic)) 2 * stats::pnorm(abs(statistic), lower.tail = FALSE) else NA_real_
+    p <- if (is.finite(statistic)) 2 * stats::pt(abs(statistic), df = df, lower.tail = FALSE) else NA_real_
+    critical <- stats::qt(0.975, df = df)
     output <- data.frame(
       Strategy = strategy,
       Term = term,
       B = qbar,
       SE = se,
       Statistic = statistic,
+      df = if (is.finite(df)) round(df, 1) else "",
       p = p,
-      LLCI = qbar - 1.96 * se,
-      ULCI = qbar + 1.96 * se,
+      LLCI = qbar - critical * se,
+      ULCI = qbar + critical * se,
       Status = "Fitted",
       Note = note,
       stringsAsFactors = FALSE,
@@ -2343,6 +2355,7 @@ longitudinal_mi_sensitivity_results <- function(
     return(longitudinal_missing_sensitivity_failure(strategy, conditionMessage(imputed)))
   }
   tables <- list()
+  dfcom_values <- numeric(0)
   failures <- character(0)
   for (index in seq_len(m)) {
     completed <- tryCatch(mice::complete(imputed, action = index), error = function(e) e)
@@ -2371,6 +2384,10 @@ longitudinal_mi_sensitivity_results <- function(
       failures <- c(failures, sprintf("imputation %s: %s", index, conditionMessage(fit)))
     } else {
       tables[[length(tables) + 1L]] <- fit$coef_table
+      df_value <- suppressWarnings(as.numeric(tryCatch(stats::df.residual(fit$model), error = function(e) NA_real_)))
+      if (length(df_value) > 0 && is.finite(df_value[[1]]) && df_value[[1]] > 0) {
+        dfcom_values <- c(dfcom_values, df_value[[1]])
+      }
     }
   }
   if (length(tables) == 0) {
@@ -2396,7 +2413,8 @@ longitudinal_mi_sensitivity_results <- function(
   if (length(failures) > 0) {
     note <- paste(note, sprintf("Failed fits: %s.", paste(failures, collapse = "; ")))
   }
-  longitudinal_pool_coef_tables(tables, strategy, note, exponentiate)
+  dfcom <- if (length(dfcom_values) > 0) stats::median(dfcom_values, na.rm = TRUE) else NA_real_
+  longitudinal_pool_coef_tables(tables, strategy, note, exponentiate, dfcom = dfcom)
 }
 
 longitudinal_ipw_weights <- function(raw_prepared, analyzed_data, outcome, id, time, terms, auxiliary = character(0)) {

@@ -47,12 +47,19 @@ statedu_manifest_language_value <- function(manifest,
                                             default_en = default_ko,
                                             use_generic = TRUE) {
   language <- normalize_app_language(language)
-  suffix <- if (identical(language, "ko")) "Ko" else "En"
-  snake_suffix <- if (identical(language, "ko")) "Ko" else "En"
+  language_suffix <- function(code) {
+    if (!nzchar(code)) return("En")
+    paste0(toupper(substr(code, 1L, 1L)), substr(code, 2L, nchar(code)))
+  }
+  suffix <- language_suffix(language)
+  fallback_suffix <- if (identical(language, "ko")) "Ko" else "En"
   language_keys <- c(
     paste0(base_key, suffix),
-    paste0(base_key, "_", tolower(snake_suffix)),
-    paste0(base_key, "_", suffix)
+    paste0(base_key, "_", tolower(language)),
+    paste0(base_key, "_", suffix),
+    paste0(base_key, fallback_suffix),
+    paste0(base_key, "_", tolower(fallback_suffix)),
+    paste0(base_key, "_", fallback_suffix)
   )
   for (key in language_keys) {
     value <- statedu_manifest_value(manifest, key)
@@ -131,25 +138,20 @@ statedu_check_update <- function(
 statedu_update_status_title <- function(result, language = statedu_initial_language()) {
   status <- result$status %||% "error"
   if (identical(status, "update_available")) {
-    return(statedu_text(language, "A new version is available", statedu_utf8("ec838820ebb284eca084ec9db420ec9e88ec8ab5eb8b88eb8ba4")))
+    return(statedu_t("update.new_version_available", language))
   }
   if (identical(status, "current")) {
-    return(statedu_text(language, "You are on the latest version", statedu_utf8("ed9884ec9eac20ebb284eca084ec9db420ecb59cec8ba0ec9e85eb8b88eb8ba4")))
+    return(statedu_t("update.current_version_latest", language))
   }
-  statedu_text(language, "You are on the latest version", statedu_utf8("ecb59cec8ba020ebb284eca084ec9e85eb8b88eb8ba42e"))
+  statedu_t("update.current_version_latest", language)
 }
 
 statedu_update_message <- function(result, language = statedu_initial_language()) {
   manifest <- result$manifest %||% list()
   if (identical(result$status %||% "", "error")) {
-    return(statedu_text(
-      language,
-      "You can keep using the installed version. If needed, check the download page for the latest release information.",
-      statedu_utf8("ed9884ec9eac20ec84a4ecb998eb909c20ebb284eca084ec9d8420eab7b8eb8c80eba19c20ec82acec9aa9ed9598ec8594eb8f8420eb90a9eb8b88eb8ba42e20ed9584ec9a94ed9598eba9b420eb8ba4ec9ab4eba19ceb939c20ed8e98ec9db4eca780ec9790ec849c20ecb59cec8ba020ebb0b0ed8fac20eca095ebb3b4eba5bc20ed9995ec9db8ed95a020ec889820ec9e88ec8ab5eb8b88eb8ba42e")
-    ))
+    return(statedu_t("update.keep_using_installed", language))
   }
-  message_key <- if (identical(normalize_app_language(language), "ko")) "messageKo" else "messageEn"
-  message <- statedu_manifest_value(manifest, message_key)
+  message <- statedu_manifest_language_value(manifest, "message", language)
   if (nzchar(message)) {
     return(message)
   }
@@ -182,17 +184,17 @@ statedu_update_modal <- function(result, language = statedu_initial_language()) 
   channel <- statedu_manifest_value(manifest, "channel")
 
   rows <- list(
-    about_info_row(statedu_text(language, "Current version", statedu_utf8("ed9884ec9eac20ebb284eca084")), paste0("v", result$current_version %||% "")),
-    about_info_row(statedu_text(language, "Latest version", statedu_utf8("ecb59cec8ba020ebb284eca084")), if (nzchar(latest_version)) paste0("v", latest_version) else "-")
+    about_info_row(statedu_t("update.current_version", language), paste0("v", result$current_version %||% "")),
+    about_info_row(statedu_t("update.latest_version", language), if (nzchar(latest_version)) paste0("v", latest_version) else "-")
   )
   if (nzchar(release_date)) {
-    rows <- c(rows, list(about_info_row(statedu_text(language, "Release date", statedu_utf8("ebb0b0ed8facec9dbc")), release_date)))
+    rows <- c(rows, list(about_info_row(statedu_t("about.release_date", language), release_date)))
   }
   if (nzchar(channel)) {
-    rows <- c(rows, list(about_info_row(statedu_text(language, "Channel", statedu_utf8("ecb184eb8490")), channel)))
+    rows <- c(rows, list(about_info_row(statedu_t("update.channel", language), channel)))
   }
   if (nzchar(minimum_supported)) {
-    rows <- c(rows, list(about_info_row(statedu_text(language, "Minimum supported version", statedu_utf8("ecb59cec868c20eca780ec9b9020ebb284eca084")), paste0("v", minimum_supported))))
+    rows <- c(rows, list(about_info_row(statedu_t("update.minimum_supported_version", language), paste0("v", minimum_supported))))
   }
 
   link_tags <- list()
@@ -205,7 +207,7 @@ statedu_update_modal <- function(result, language = statedu_initial_language()) 
           href = download_url,
           target = "_blank",
           rel = "noopener noreferrer",
-          statedu_text(language, "Check latest version", statedu_utf8("ecb59cec8ba020ebb284eca08420ed9995ec9db8"))
+          statedu_t("update.check_latest_version", language)
         )
       )
     )
@@ -219,14 +221,14 @@ statedu_update_modal <- function(result, language = statedu_initial_language()) 
           href = release_notes_url,
           target = "_blank",
           rel = "noopener noreferrer",
-          statedu_text(language, "Release notes", statedu_utf8("eba6b4eba6acec8aa420eb85b8ed8ab8"))
+          statedu_t("update.release_notes", language)
         )
       )
     )
   }
 
   modalDialog(
-    title = statedu_text(language, "Update check result", statedu_utf8("ec9785eb8db0ec9db4ed8ab820ed9995ec9db820eab2b0eab3bc")),
+    title = statedu_t("update.result_title", language),
     div(
       class = "about-application-document statedu-update-result",
       h3(statedu_update_status_title(result, language)),
@@ -235,6 +237,6 @@ statedu_update_modal <- function(result, language = statedu_initial_language()) 
       div(class = "about-update-actions", do.call(tagList, link_tags))
     ),
     easyClose = TRUE,
-    footer = modalButton(statedu_text(language, "Close", statedu_utf8("eb8babeab8b0")))
+    footer = modalButton(statedu_t("ui.close", language))
   )
 }

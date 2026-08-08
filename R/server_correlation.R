@@ -165,7 +165,7 @@ register_correlation_handlers <- function(
   observeEvent(input$run_correlation, {
     selected_variables <- as.character(correlation_variables() %||% character(0))
     if (length(selected_variables) < 2) {
-      showNotification("Select at least two variables for correlation analysis.", type = "warning", duration = 5)
+      showNotification(statedu_t("analysis.validation.correlation_min_two", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return()
     }
 
@@ -179,7 +179,7 @@ register_correlation_handlers <- function(
         )
       }
       message("Correlation analysis failed before data preparation: ", detail)
-      showNotification(paste("Correlation analysis failed:", detail), type = "error", duration = 8)
+      showNotification(paste(statedu_t("analysis.status.correlation_failed", statedu_current_language(app_language_fn)), detail), type = "error", duration = 8)
       return()
     }
     current_variable_table <- tryCatch(variable_table_fn(), error = function(e) NULL)
@@ -231,7 +231,7 @@ register_correlation_handlers <- function(
           detail <- paste0("At least two selected variables must have three or more valid values and at least two unique values. Current counts: ", count_text, ".", missing_text)
         }
         message("Correlation analysis failed: ", detail)
-        showNotification(paste("Correlation analysis failed:", detail), type = "error", duration = 8)
+        showNotification(paste(statedu_t("analysis.status.correlation_failed", statedu_current_language(app_language_fn)), detail), type = "error", duration = 8)
         NULL
       }
     )
@@ -306,7 +306,7 @@ register_correlation_handlers <- function(
     shiny::req(!is.null(result))
     path <- choose_html_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
-      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     if (!grepl("\\.html?$", path, ignore.case = TRUE)) {
@@ -315,10 +315,10 @@ register_correlation_handlers <- function(
     tryCatch(
       {
         write_correlation_results_html(result, path)
-        showNotification(sprintf("HTML results saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save HTML results:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
@@ -328,7 +328,7 @@ register_correlation_handlers <- function(
     shiny::req(!is.null(result))
     path <- choose_pdf_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
-      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     if (!grepl("\\.pdf$", path, ignore.case = TRUE)) {
@@ -337,10 +337,10 @@ register_correlation_handlers <- function(
     tryCatch(
       {
         write_correlation_results_pdf(result, path)
-        showNotification(sprintf("PDF results saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save PDF results:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
@@ -350,7 +350,7 @@ register_correlation_handlers <- function(
     shiny::req(!is.null(result))
     path <- choose_excel_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
-      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) {
@@ -359,10 +359,10 @@ register_correlation_handlers <- function(
     tryCatch(
       {
         save_correlation_excel_file(result, path)
-        showNotification(sprintf("Analysis results saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save analysis results:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
@@ -372,7 +372,7 @@ register_correlation_handlers <- function(
     shiny::req(!is.null(result))
     directory <- choose_figure_save_dir()
     if (length(directory) == 0 || !nzchar(directory[[1]])) {
-      showNotification("Folder selection dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.folder_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     tryCatch(
@@ -389,13 +389,13 @@ register_correlation_handlers <- function(
           saved <- c(saved, file)
         }
         if (length(saved) == 0) {
-          showNotification("No figures were selected to save.", type = "warning", duration = 5)
+          showNotification(statedu_t("result.no_figures_selected", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
           return(invisible(NULL))
         }
-        showNotification(sprintf("Saved %s figure file(s): %s", length(saved), directory), type = "message")
+        showNotification(sprintf(statedu_t("result.figures_saved", statedu_current_language(app_language_fn)), length(saved), directory), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save figures:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.figures_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })

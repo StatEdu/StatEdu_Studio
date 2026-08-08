@@ -118,13 +118,20 @@ ascvd10_calculator_tab_panel <- function(language = statedu_initial_language()) 
       class = "page-shell",
       div(
         class = "app-heading",
-        h1(statedu_text(language, "ASCVD10 Calculator", statedu_utf8("4153435644313020eab384ec82b0eab8b0"))),
-        div(statedu_text(language, "Select variables and add ascvd10_score to the current data.", statedu_utf8("ebb380ec8898eba5bc20ec84a0ed839ded9598eab3a020617363766431305f73636f7265eba5bc20ed9884ec9eac20eb8db0ec9db4ed84b0ec979020ecb694eab080ed95a9eb8b88eb8ba42e")), class = "app-subtitle")
+        h1(statedu_t("calculator.ascvd10_title", language)),
+        div(statedu_t("calculator.ascvd10_subtitle", language), class = "app-subtitle")
       ),
       div(
         class = "workspace-panel frequencies-workspace-panel metabolic-calculator-workspace",
         style = "min-width:980px;overflow-x:auto;",
-        h3("ASCVD 10-year risk"),
+        div(
+          class = "analysis-workspace-heading calculator-workspace-heading",
+          div(
+            class = "analysis-workspace-heading-main",
+            h3("ASCVD 10-year risk"),
+            div(class = "data-editor-variable-scope-row", uiOutput("ascvd10_variable_scope_toggle"))
+          )
+        ),
         div(class = "load-message", textOutput("ascvd10_loaded_message")),
         uiOutput("ascvd10_calculator_setup"),
         div(
@@ -189,17 +196,17 @@ ascvd10_output_table <- function(input, language = statedu_initial_language()) {
     class = "calculator-output-field",
     textInput(
       "ascvd10_output_var",
-      statedu_text(language, "Variable name", statedu_utf8("ebb380ec8898ebaa85")),
+      statedu_t("ui.variable_name", language),
       value = output_name,
       width = "100%"
     )
   )
 }
 
-ascvd10_setup_ui <- function(file, data, variable_info, input, language = statedu_initial_language()) {
+ascvd10_setup_ui <- function(file, data, variable_info, input, selected_names = NULL, language = statedu_initial_language()) {
   language <- normalize_app_language(language)
-  if (is.null(file)) return(setup_empty_message(statedu_text(language, "Load a data file in the Data tab before using the ASCVD10 calculator.", statedu_utf8("eb8db0ec9db4ed84b020ed83adec9790ec849c20eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a820ed9b84204153435644313020eab384ec82b0eab8b0eba5bc20ec82acec9aa9ed9598ec84b8ec9a942e")), language = language))
-  choices <- names(data %||% data.frame())
+  if (is.null(file)) return(setup_empty_message(statedu_t("calculator.ascvd10_load_before_setup", language), language = language))
+  choices <- intersect(names(data %||% data.frame()), as.character(selected_names %||% names(data %||% data.frame())))
   specs <- ascvd10_variable_specs()
   available_items <- analysis_variable_items(choices, variable_info, character(0))
   output_name <- ascvd10_output_variable_name(input)
@@ -225,13 +232,13 @@ ascvd10_setup_ui <- function(file, data, variable_info, input, language = stated
         tabsetPanel(
           type = "tabs",
           tabPanel(
-            statedu_text(language, "Core", statedu_utf8("eab8b0ebb3b8")),
+            statedu_t("ui.core", language),
             value = "ascvd10_core_variables",
             div(class = "ascvd10-two-column-row", variable_inputs[[1]], variable_inputs[[2]]),
             div(class = "metabolic-variable-input-grid", variable_inputs[3:6])
           ),
           tabPanel(
-            statedu_text(language, "Clinical", statedu_utf8("ec9e84ec8381")),
+            statedu_t("ui.clinical", language),
             value = "ascvd10_clinical_variables",
             div(class = "metabolic-variable-input-grid", variable_inputs[7:length(variable_inputs)])
           )
@@ -262,7 +269,7 @@ ascvd10_setup_ui <- function(file, data, variable_info, input, language = stated
   )
 }
 
-register_ascvd10_calculator_handlers <- function(input, output, session, dataset_fn, current_data_file_fn, variable_info_fn, add_calculated_variable_fn, language_fn = NULL) {
+register_ascvd10_calculator_handlers <- function(input, output, session, dataset_fn, current_data_file_fn, variable_info_fn, add_calculated_variable_fn, selected_names_fn = NULL, language_fn = NULL) {
   output$ascvd10_loaded_message <- renderText({
     statedu_current_language(language_fn)
     file <- current_data_file_fn()
@@ -272,7 +279,8 @@ register_ascvd10_calculator_handlers <- function(input, output, session, dataset
     language <- statedu_current_language(language_fn)
     file <- current_data_file_fn()
     data <- if (is.null(file)) NULL else dataset_fn()
-    ascvd10_setup_ui(file, data, if (is.null(file)) NULL else variable_info_fn(), input, language = language)
+    selected_names <- if (is.null(selected_names_fn)) names(data %||% data.frame()) else selected_names_fn()
+    ascvd10_setup_ui(file, data, if (is.null(file)) NULL else variable_info_fn(), input, selected_names = selected_names, language = language)
   })
   observeEvent(input$ascvd10_available, {
     picked <- utils::tail(as.character(input$ascvd10_available %||% ""), 1)
@@ -286,14 +294,14 @@ register_ascvd10_calculator_handlers <- function(input, output, session, dataset
   result <- eventReactive(input$run_ascvd10_calculator, {
     language <- statedu_current_language(language_fn)
     if (is.null(current_data_file_fn())) {
-      showNotification(statedu_text(language, "Load a data file before calculating ASCVD10.", statedu_utf8("41534356443130ec9d8420eab384ec82b0ed9598eab8b020eca084ec979020eb8db0ec9db4ed84b020ed8c8cec9dbcec9d8420ebb688eb9facec98a4ec84b8ec9a942e")), type = "warning", duration = 5)
+      showNotification(statedu_t("calculator.ascvd10_load_before_calculating", language), type = "warning", duration = 5)
       return(NULL)
     }
     tryCatch({
       output_name <- ascvd10_output_variable_name(input)
       result_data <- ascvd10_result(dataset_fn(), ascvd10_selected_variables(input), output_name = output_name)
       add_calculated_variable_fn(output_name, result_data[[output_name]], var_label = "ASCVD 10-year risk", measurement = "continuous")
-      showNotification(sprintf("%s was added to the current data.", output_name), type = "message", duration = 5)
+      showNotification(sprintf(statedu_t("calculator.variable_added", language), output_name), type = "message", duration = 5)
       result_data
     }, error = function(error) {
       showNotification(conditionMessage(error), type = "warning", duration = 6)

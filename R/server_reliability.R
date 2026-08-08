@@ -62,6 +62,7 @@ register_reliability_handlers <- function(
       selected_selected = isolate(input$reliability_selected),
       normality = input$reliability_normality %||% TRUE,
       ordinal = input$reliability_ordinal %||% FALSE,
+      omega = input$reliability_omega %||% TRUE,
       subfactor_enabled = input$reliability_subfactor_enabled,
       reliability_if_deleted = input$reliability_if_deleted %||% TRUE,
       item_total_correlation = input$reliability_item_total_correlation %||% TRUE,
@@ -293,7 +294,7 @@ register_reliability_handlers <- function(
       list(active_reliability_variables())
     }
     if (length(valid_blocks) == 0) {
-      showNotification("Select at least two items for reliability analysis.", type = "warning", duration = 5)
+      showNotification(statedu_t("analysis.validation.reliability_min_two", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return()
     }
     result <- tryCatch(
@@ -301,6 +302,7 @@ register_reliability_handlers <- function(
         options <- list(
           normality = isTRUE(input$reliability_normality),
           ordinal = isTRUE(input$reliability_ordinal),
+          omega = isTRUE(input$reliability_omega %||% TRUE),
           reliability_if_deleted = isTRUE(input$reliability_if_deleted),
           item_total_correlation = isTRUE(input$reliability_item_total_correlation)
         )
@@ -387,7 +389,7 @@ register_reliability_handlers <- function(
     shiny::req(!is.null(result))
     path <- choose_excel_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
-      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) {
@@ -396,10 +398,10 @@ register_reliability_handlers <- function(
     tryCatch(
       {
         save_reliability_excel_file(result, path)
-        showNotification(sprintf("Analysis results saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save analysis results:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.analysis_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
@@ -409,7 +411,7 @@ register_reliability_handlers <- function(
     shiny::req(!is.null(result))
     path <- choose_html_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
-      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     if (!grepl("\\.html?$", path, ignore.case = TRUE)) {
@@ -418,10 +420,10 @@ register_reliability_handlers <- function(
     tryCatch(
       {
         write_reliability_results_html(result, path)
-        showNotification(sprintf("HTML results saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save HTML results:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })
@@ -431,7 +433,7 @@ register_reliability_handlers <- function(
     shiny::req(!is.null(result))
     path <- choose_pdf_save_path()
     if (length(path) == 0 || !nzchar(path[[1]])) {
-      showNotification("Save dialog was not available or was canceled.", type = "warning", duration = 5)
+      showNotification(statedu_t("result.save_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return(invisible(NULL))
     }
     if (!grepl("\\.pdf$", path, ignore.case = TRUE)) {
@@ -440,10 +442,10 @@ register_reliability_handlers <- function(
     tryCatch(
       {
         write_reliability_results_pdf(result, path)
-        showNotification(sprintf("PDF results saved: %s", path), type = "message")
+        showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) {
-        showNotification(paste("Failed to save PDF results:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   })

@@ -1,0 +1,153 @@
+{
+  "languages": [
+    {
+      "code": "ko",
+      "names": {
+        "en": "Korean",
+        "ko": "한국어",
+        "ja": "韓国語",
+        "zh": "韩语",
+        "es": "Coreano",
+        "fr": "Coréen",
+        "de": "Koreanisch",
+        "vi": "Tiếng Hàn"
+      },
+      "aliases": [
+        "korean",
+        "korea",
+        "kr",
+        "한국어"
+      ]
+    },
+    {
+      "code": "en",
+      "names": {
+        "en": "English",
+        "ko": "영어",
+        "ja": "英語",
+        "zh": "英语",
+        "es": "Inglés",
+        "fr": "Anglais",
+        "de": "Englisch",
+        "vi": "Tiếng Anh"
+      },
+      "aliases": [
+        "english",
+        "eng"
+      ]
+    },
+    {
+      "code": "ja",
+      "names": {
+        "en": "Japanese",
+        "ko": "일본어",
+        "ja": "日本語",
+        "zh": "日语",
+        "es": "Japonés",
+        "fr": "Japonais",
+        "de": "Japanisch",
+        "vi": "Tiếng Nhật"
+      },
+      "aliases": [
+        "japanese",
+        "jp",
+        "jpn",
+        "nihongo"
+      ]
+    },
+    {
+      "code": "zh",
+      "names": {
+        "en": "Chinese",
+        "ko": "중국어",
+        "ja": "中国語",
+        "zh": "中文",
+        "es": "Chino",
+        "fr": "Chinois",
+        "de": "Chinesisch",
+        "vi": "Tiếng Trung"
+      },
+      "aliases": [
+        "chinese",
+        "cn",
+        "zh-cn",
+        "zh-hans"
+      ]
+    },
+    {
+      "code": "es",
+      "names": {
+        "en": "Spanish",
+        "ko": "스페인어",
+        "ja": "スペイン語",
+        "zh": "西班牙语",
+        "es": "Español",
+        "fr": "Espagnol",
+        "de": "Spanisch",
+        "vi": "Tiếng Tây Ban Nha"
+      },
+      "aliases": [
+        "spanish",
+        "espanol",
+        "español",
+        "es"
+      ]
+    },
+    {
+      "code": "fr",
+      "names": {
+        "en": "French",
+        "ko": "프랑스어",
+        "ja": "フランス語",
+        "zh": "法语",
+        "es": "Francés",
+        "fr": "Français",
+        "de": "Französisch",
+        "vi": "Tiếng Pháp"
+      },
+      "aliases": [
+        "french",
+        "francais",
+        "français",
+        "fr"
+      ]
+    },
+    {
+      "code": "de",
+      "names": {
+        "en": "German",
+        "ko": "독일어",
+        "ja": "ドイツ語",
+        "zh": "德语",
+        "es": "Alemán",
+        "fr": "Allemand",
+        "de": "Deutsch",
+        "vi": "Tiếng Đức"
+      },
+      "aliases": [
+        "german",
+        "deutsch",
+        "de"
+      ]
+    },
+    {
+      "code": "vi",
+      "names": {
+        "en": "Vietnamese",
+        "ko": "베트남어",
+        "ja": "ベトナム語",
+        "zh": "越南语",
+        "es": "Vietnamita",
+        "fr": "Vietnamien",
+        "de": "Vietnamesisch",
+        "vi": "Tiếng Việt"
+      },
+      "aliases": [
+        "vietnamese",
+        "tieng viet",
+        "tiếng việt",
+        "vi"
+      ]
+    }
+  ]
+}

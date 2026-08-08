@@ -15,7 +15,7 @@ $runtimeRoot = Join-Path $electronDir "runtime"
 $distDir = Join-Path $repoRoot "dist\electron"
 
 function Get-ElectronReleaseProfile {
-  if ($version -match "^1\.") {
+  if ($version -match "^\d+\.\d+\.\d+$") {
     return [pscustomobject]@{
       PackageName = "statedu-studio"
       Description = "StatEdu Studio desktop installer"
@@ -23,6 +23,16 @@ function Get-ElectronReleaseProfile {
       ProductName = "StatEdu Studio"
       ArtifactPrefix = "StatEdu_Studio_Setup"
       ShortcutName = "StatEdu Studio"
+    }
+  }
+  if ($version -match "^\d+\.\d+\.\d+-dev$") {
+    return [pscustomobject]@{
+      PackageName = "statedu-studio-dev"
+      Description = "StatEdu Studio developer desktop installer"
+      AppId = "com.statedu.studio.dev"
+      ProductName = "StatEdu Studio Dev"
+      ArtifactPrefix = "StatEdu_Studio_Dev_Setup"
+      ShortcutName = "StatEdu Studio Dev"
     }
   }
   [pscustomobject]@{
@@ -166,10 +176,18 @@ function Remove-StaleElectronDistArtifacts {
   $profile = Get-ElectronReleaseProfile
   $currentSetupName = "$($profile.ArtifactPrefix)_$version.exe"
   $currentBlockmapName = "$currentSetupName.blockmap"
+  $allowedArtifacts = @($currentSetupName, $currentBlockmapName)
+  if ($version -match "^(\d+\.\d+\.\d+)-dev$") {
+    $publicSetupName = "StatEdu_Studio_Setup_$($Matches[1]).exe"
+    $allowedArtifacts += @($publicSetupName, "$publicSetupName.blockmap")
+  } elseif ($version -match "^\d+\.\d+\.\d+$") {
+    $devSetupName = "StatEdu_Studio_Dev_Setup_$version-dev.exe"
+    $allowedArtifacts += @($devSetupName, "$devSetupName.blockmap")
+  }
   $artifacts = @(Get-ChildItem -LiteralPath $distDir -File -Force | Where-Object {
     (
-      $_.Name -match "^StatEdu_Studio(_Beta)?_Setup_.*\.exe(\.blockmap)?$" -and
-      $_.Name -notin @($currentSetupName, $currentBlockmapName)
+      $_.Name -match "^StatEdu_Studio(_Beta|_Dev)?_Setup_.*\.exe(\.blockmap)?$" -and
+      $_.Name -notin $allowedArtifacts
     ) -or
     $_.Name -match "^EasyFlow_Statistics_Beta_.*" -or
     $_.Name -in @("builder-debug.yml", ".Rhistory")
@@ -296,6 +314,16 @@ if (Test-Path -LiteralPath (Join-Path $runtimeStage "bin\x64\Rscript.exe")) {
     "--repo-root=$repoRoot",
     "--runtime-root=$runtimeStage",
     "--output-dir=$appStage"
+  )
+
+  # Keep the 1.1.1 public packaging rule: exclude R runtime documentation,
+  # tests, examples, source payloads, and other non-runtime content.
+  Write-Host "Pruning bundled R runtime documentation and test payloads"
+  Invoke-Native (Join-Path $runtimeStage "bin\x64\Rscript.exe") @(
+    (Join-Path $repoRoot "scripts\prune_r_runtime_content.R"),
+    "--runtime-root=$runtimeStage",
+    "--output-dir=$appStage",
+    "--execute"
   )
 } else {
   Write-Warning "R runtime was not found; third-party license notices were not generated."

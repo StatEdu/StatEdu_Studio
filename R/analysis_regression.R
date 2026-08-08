@@ -489,14 +489,41 @@ interpret_dw <- function(d, dL, dU) {
   "Inconclusive"
 }
 
+regression_dw_result_table <- function(dw_d, dw_n, dw_p, dw_crit, dw_judgment, residual_diagnostics = TRUE) {
+  if (!isTRUE(residual_diagnostics)) {
+    return(data.frame(
+      Item = "Durbin-Watson's d",
+      Value = round(dw_d, 4),
+      check.names = FALSE
+    ))
+  }
+  data.frame(
+    Item = c("Durbin-Watson's d", "n", "p", "d\u2097", "d\u1D64", "4 - d\u1D64", "4 - d\u2097", "Decision", "Note"),
+    Value = c(
+      round(dw_d, 4),
+      dw_n,
+      dw_p,
+      ifelse(is.na(dw_crit$dL), NA, round(dw_crit$dL, 4)),
+      ifelse(is.na(dw_crit$dU), NA, round(dw_crit$dU, 4)),
+      ifelse(is.na(dw_crit$dU), NA, round(4 - dw_crit$dU, 4)),
+      ifelse(is.na(dw_crit$dL), NA, round(4 - dw_crit$dL, 4)),
+      dw_judgment,
+      dw_crit$note
+    ),
+    check.names = FALSE
+  )
+}
+
 prepare_single_regression_result <- function(
   dependent,
   data,
   predictors,
   variable_info = NULL,
   reference_values = character(0),
-  boot_r = 1000,
+  boot_r = 5000,
   seed = default_seed(),
+  residual_diagnostics = TRUE,
+  auto_method = TRUE,
   variable_table = NULL,
   ci_method = "bias_corrected"
 ) {
@@ -517,20 +544,34 @@ prepare_single_regression_result <- function(
     return(list(result = NULL, job = NULL, skipped = preflight$skipped, warnings = preflight$warnings))
   }
   model <- stats::lm(formula, data = data)
-  resid_model <- stats::residuals(model)
-
-  normality <- nortest::lillie.test(resid_model)
-  homogeneity <- lmtest::bptest(model)
-  dw_d <- durbin_watson_stat(model)
+  residual_diagnostics <- isTRUE(residual_diagnostics)
+  auto_method <- isTRUE(auto_method) && isTRUE(residual_diagnostics)
+  normality <- NULL
+  homogeneity <- NULL
+  dw_d <- tryCatch(durbin_watson_stat(model), error = function(e) NA_real_)
   dw_n <- stats::nobs(model)
-  dw_p <- ncol(stats::model.matrix(model)) - 1
-  dw_crit <- lookup_dw_critical(dw_n, dw_p)
-  dw_judgment <- interpret_dw(dw_d, dw_crit$dL, dw_crit$dU)
+  dw_p <- tryCatch(ncol(stats::model.matrix(model)) - 1, error = function(e) NA_integer_)
+  dw_crit <- list(dL = NA_real_, dU = NA_real_, note = NA_character_)
+  dw_judgment <- NA_character_
 
-  normal_ok <- normality$p.value > .05
-  homo_ok <- homogeneity$p.value > .05
+  if (isTRUE(residual_diagnostics)) {
+    resid_model <- stats::residuals(model)
+    normality <- nortest::lillie.test(resid_model)
+    homogeneity <- lmtest::bptest(model)
+    dw_crit <- lookup_dw_critical(dw_n, dw_p)
+    dw_judgment <- interpret_dw(dw_d, dw_crit$dL, dw_crit$dU)
+  }
 
-  method <- if (normal_ok && homo_ok) {
+  normality_p <- if (is.null(normality)) NA_real_ else unname(normality$p.value)
+  homogeneity_p <- if (is.null(homogeneity)) NA_real_ else unname(homogeneity$p.value)
+  normality_statistic <- if (is.null(normality)) NA_real_ else unname(normality$statistic)
+  homogeneity_statistic <- if (is.null(homogeneity)) NA_real_ else unname(homogeneity$statistic)
+  normal_ok <- is.na(normality_p) || normality_p > .05
+  homo_ok <- is.na(homogeneity_p) || homogeneity_p > .05
+
+  method <- if (!isTRUE(auto_method)) {
+    "OLS regression"
+  } else if (normal_ok && homo_ok) {
     "OLS regression"
   } else if (normal_ok && !homo_ok) {
     "OLS regression with HC3 robust standard errors"
@@ -540,11 +581,11 @@ prepare_single_regression_result <- function(
     "Bootstrap regression with HC3 robust standard errors"
   }
 
-  use_hc3 <- !homo_ok
-  use_bootstrap <- !normal_ok
-  bootstrap_r <- as.integer(boot_r %||% 1000)
+  use_hc3 <- isTRUE(auto_method) && !homo_ok
+  use_bootstrap <- isTRUE(auto_method) && !normal_ok
+  bootstrap_r <- as.integer(boot_r %||% 5000)
   if (is.na(bootstrap_r) || bootstrap_r < 1) {
-    bootstrap_r <- 1000L
+    bootstrap_r <- 5000L
   }
   bootstrap_seed <- as.integer(seed %||% default_seed())
   if (is.na(bootstrap_seed)) {
@@ -574,39 +615,27 @@ prepare_single_regression_result <- function(
     f_p = stats::pf(f_stat, f_df1, f_df2, lower.tail = FALSE),
     dw_d = dw_d,
     dw_crit = dw_crit,
-    normality_statistic = unname(normality$statistic),
-    normality_p = unname(normality$p.value),
-    homogeneity_statistic = unname(homogeneity$statistic),
-    homogeneity_p = unname(homogeneity$p.value),
+    normality_statistic = normality_statistic,
+    normality_p = normality_p,
+    homogeneity_statistic = homogeneity_statistic,
+    homogeneity_p = homogeneity_p,
     diagnostics = data.frame(
       Assumption = c(
         "Residual normality: Lilliefors corrected K-S test",
         "Residual homoscedasticity: Breusch-Pagan test"
       ),
-      Statistic = c(unname(normality$statistic), unname(homogeneity$statistic)),
-      p = c(format_p(normality$p.value), format_p(homogeneity$p.value)),
+      Statistic = c(normality_statistic, homogeneity_statistic),
+      p = c(format_p(normality_p), format_p(homogeneity_p)),
       Decision = c(
-        if (normal_ok) "Not rejected" else "Violated",
-        if (homo_ok) "Not rejected" else "Violated"
+        if (!isTRUE(residual_diagnostics)) "Not run" else if (normal_ok) "Not rejected" else "Violated",
+        if (!isTRUE(residual_diagnostics)) "Not run" else if (homo_ok) "Not rejected" else "Violated"
       ),
       check.names = FALSE
     ),
-    dw_result = data.frame(
-      Item = c("Durbin-Watson's d", "n", "p", "d\u2097", "d\u1D64", "4 - d\u1D64", "4 - d\u2097", "Decision", "Note"),
-      Value = c(
-        round(dw_d, 4),
-        dw_n,
-        dw_p,
-        ifelse(is.na(dw_crit$dL), NA, round(dw_crit$dL, 4)),
-        ifelse(is.na(dw_crit$dU), NA, round(dw_crit$dU, 4)),
-        ifelse(is.na(dw_crit$dU), NA, round(4 - dw_crit$dU, 4)),
-        ifelse(is.na(dw_crit$dL), NA, round(4 - dw_crit$dL, 4)),
-        dw_judgment,
-        dw_crit$note
-      ),
-      check.names = FALSE
-    ),
+    dw_result = regression_dw_result_table(dw_d, dw_n, dw_p, dw_crit, dw_judgment, residual_diagnostics),
     method = method,
+    residual_diagnostics = residual_diagnostics,
+    auto_method = auto_method,
     use_hc3 = use_hc3,
     use_bootstrap = use_bootstrap,
     bootstrap_r = bootstrap_r,
@@ -656,8 +685,10 @@ prepare_regression_analysis_results <- function(
   predictors,
   variable_info = NULL,
   reference_values = character(0),
-  boot_r = 1000,
+  boot_r = 5000,
   seed = default_seed(),
+  residual_diagnostics = TRUE,
+  auto_method = TRUE,
   variable_table = NULL,
   ci_method = "bias_corrected"
 ) {
@@ -678,6 +709,8 @@ prepare_regression_analysis_results <- function(
         reference_values = reference_values,
         boot_r = boot_r,
         seed = seed,
+        residual_diagnostics = residual_diagnostics,
+        auto_method = auto_method,
         ci_method = ci_method
       ),
       error = function(e) list(result = NULL, job = NULL, skipped = regression_guard_row(dependent, predictors, conditionMessage(e), NA_integer_, variable_info))
@@ -714,8 +747,10 @@ prepare_hierarchical_analysis_results <- function(
   block3 = character(0),
   variable_info = NULL,
   reference_values = character(0),
-  boot_r = 1000,
+  boot_r = 5000,
   seed = default_seed(),
+  residual_diagnostics = TRUE,
+  auto_method = TRUE,
   variable_table = NULL,
   ci_method = "bias_corrected"
 ) {
@@ -744,6 +779,8 @@ prepare_hierarchical_analysis_results <- function(
       reference_values = reference_values,
       boot_r = boot_r,
       seed = seed,
+      residual_diagnostics = residual_diagnostics,
+      auto_method = auto_method,
       ci_method = ci_method
     ))
   }
@@ -764,7 +801,10 @@ prepare_hierarchical_analysis_results <- function(
 
   results <- list()
   jobs <- list()
+  hierarchical_note <- "Hierarchical models were fitted on the complete cases of the final model (listwise across all blocks); all steps share the same N."
   for (dependent in dependents) {
+    all_vars <- unique(c(dependent, block1, block2, block3))
+    step_data <- data[stats::complete.cases(data[, all_vars, drop = FALSE]), , drop = FALSE]
     for (step_index in seq_along(steps)) {
       predictors <- setdiff(steps[[step_index]]$predictors, dependent)
       if (length(predictors) == 0) {
@@ -773,12 +813,14 @@ prepare_hierarchical_analysis_results <- function(
       prepared <- tryCatch(
         prepare_single_regression_result(
           dependent = dependent,
-          data = data,
+          data = step_data,
           predictors = predictors,
           variable_info = variable_info,
           reference_values = reference_values,
           boot_r = boot_r,
           seed = seed,
+          residual_diagnostics = residual_diagnostics,
+          auto_method = auto_method,
           ci_method = ci_method
         ),
         error = function(e) list(result = NULL, job = NULL, skipped = regression_guard_row(dependent, predictors, conditionMessage(e), NA_integer_, variable_info))
@@ -795,6 +837,7 @@ prepare_hierarchical_analysis_results <- function(
       result$hierarchical_step <- steps[[step_index]]$name
       result$hierarchical_step_index <- step_index
       result$hierarchical_blocks <- steps[[step_index]]$blocks
+      result$hierarchical_note <- hierarchical_note
       result$block1 <- block1
       result$block2 <- block2
       result$block3 <- block3

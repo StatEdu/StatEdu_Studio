@@ -58,7 +58,7 @@ register_generalized_handlers <- function(
     if (length(selected) == 0) return(FALSE)
     selected <- selected[[1]]
     if (!isTRUE(generalized_outcome_allowed(selected, variable_table_fn()))) {
-      showNotification("GLM dependent variable must be continuous or binary. Use logistic regression for categorical or ordinal outcomes.", type = "warning", duration = 6)
+      showNotification(statedu_t("analysis.validation.glm_dependent", statedu_current_language(app_language_fn)), type = "warning", duration = 6)
       return(FALSE)
     }
     changed <- remove_from_all_targets(selected)
@@ -75,7 +75,7 @@ register_generalized_handlers <- function(
     if (length(selected) == 0) return(FALSE)
     selected <- selected[[1]]
     if (!isTRUE(generalized_offset_allowed(selected, variable_table_fn()))) {
-      showNotification("Exposure / offset must be a continuous positive variable.", type = "warning", duration = 6)
+      showNotification(statedu_t("analysis.validation.glm_exposure", statedu_current_language(app_language_fn)), type = "warning", duration = 6)
       return(FALSE)
     }
     changed <- remove_from_all_targets(selected)
@@ -430,11 +430,11 @@ register_generalized_handlers <- function(
           reference_values = regression_reference_values_static(category_table_fn())
         )
         generalized_results(result)
-        showNotification("GLM analysis finished.", type = "message")
+        showNotification(statedu_t("analysis.status.glm_finished", statedu_current_language(app_language_fn)), type = "message")
       },
       error = function(e) {
         generalized_results(NULL)
-        showNotification(paste("GLM analysis failed:", conditionMessage(e)), type = "error", duration = 8)
+        showNotification(paste(statedu_t("analysis.status.glm_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
       }
     )
   }, ignoreInit = TRUE)
@@ -452,7 +452,7 @@ register_generalized_handlers <- function(
       labels = labels_fn(),
       category_table = category_table_fn()
     )
-    showNotification(sprintf("HTML results saved: %s", path), type = "message")
+    showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
   }, ignoreInit = TRUE)
 
   observeEvent(input$save_generalized_pdf_dialog, {
@@ -468,7 +468,7 @@ register_generalized_handlers <- function(
       labels = labels_fn(),
       category_table = category_table_fn()
     )
-    showNotification(sprintf("PDF results saved: %s", path), type = "message")
+    showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
   }, ignoreInit = TRUE)
 
   observeEvent(input$save_generalized_excel_dialog, {
@@ -484,7 +484,7 @@ register_generalized_handlers <- function(
       labels = labels_fn(),
       category_table = category_table_fn()
     )
-    showNotification(sprintf("Analysis results saved: %s", path), type = "message")
+    showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
   }, ignoreInit = TRUE)
 
   register_add_result_snapshot(input, session, "add_generalized_result", "Generalized Linear Model (GLM)", "generalized_results")

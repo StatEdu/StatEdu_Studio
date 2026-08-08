@@ -93,7 +93,7 @@ expect_true(grepl("342\\(85.5\\)", display_html), "Expected n column to include 
 expect_true(grepl("205\\(59.9\\)", display_html), "Expected cross-tabulation cells to use compact n(percent) format")
 expect_true(grepl("1\\(\u00A05.0\\)", crosstab_cell_text(1, 5), fixed = FALSE), "Expected compact n(percent) to pad percentages under 10")
 expect_true(!grepl("OR=", display_html), "Expected ES cell to omit effect size type")
-expect_true(grepl("2.120", display_html), "Expected ES cell to include numeric estimate")
+expect_true(grepl("2.12", display_html), "Expected ES cell to include numeric estimate")
 expect_true(grepl("ES = effect size (odds ratio)", display_notes, fixed = TRUE), "Expected ES type note")
 
 no_total_n_result <- display_result
@@ -307,7 +307,7 @@ expect_true(grepl("easyflowTransferOptionDoubleClick", renderTags(crosstab_setup
 viewer_table_html <- renderTags(analysis_data_viewer_table(data, c("group", "dose"), variable_table = variable_info, language = "en"))$html
 expect_true(grepl("group", viewer_table_html, fixed = TRUE), "Expected selected data viewer table to include group")
 expect_true(grepl("dose", viewer_table_html, fixed = TRUE), "Expected selected data viewer table to include dose")
-expect_true(grepl("outcome", viewer_table_html, fixed = TRUE), "Expected worksheet viewer table to include unselected columns")
+expect_true(!grepl("outcome", viewer_table_html, fixed = TRUE), "Expected selected data viewer table to omit unselected columns")
 expect_true(grepl("analysis-data-viewer-column-heading", viewer_table_html, fixed = TRUE), "Expected selected data viewer table headers to include measurement icons")
 viewer_label_header_html <- renderTags(analysis_data_viewer_table(
   data,
@@ -333,7 +333,7 @@ label_preview <- analysis_data_viewer_labeled_data(
 )
 expect_true(identical(as.character(label_preview$group), c("Control", "Treatment", "3")), "Expected viewer to apply available value labels")
 top_preview <- analysis_data_viewer_labeled_data(data.frame(group = seq_len(25), check.names = FALSE), "group")
-expect_true(nrow(top_preview) == 20, "Expected selected data viewer preview to stop at 20 rows")
+expect_true(nrow(top_preview) == 15, "Expected selected data viewer preview to stop at 15 rows")
 
 message("Checking result saving helpers...")
 saved_html <- tempfile("crosstab_", fileext = ".html")

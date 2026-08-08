@@ -25,7 +25,7 @@ register_ancova_handlers <- function(
   force_ranked_value <- reactiveVal(FALSE)
   sum_of_squares_value <- reactiveVal("type2")
   ordered_significance_value <- reactiveVal(FALSE)
-  posthoc_method_value <- reactiveVal("bonferroni")
+  posthoc_method_value <- reactiveVal(statedu_multiple_correction_default())
   show_df_value <- reactiveVal(FALSE)
   mean_se_value <- reactiveVal(FALSE)
   plot_adjusted_means_value <- reactiveVal(TRUE)
@@ -144,8 +144,8 @@ register_ancova_handlers <- function(
   }, ignoreInit = TRUE)
 
   observeEvent(input$ancova_posthoc_method, {
-    value <- as.character(input$ancova_posthoc_method %||% "bonferroni")
-    if (!value %in% c("bonferroni", "holm")) value <- "bonferroni"
+    value <- as.character(input$ancova_posthoc_method %||% statedu_multiple_correction_default())
+    if (!value %in% c("bonferroni", "holm")) value <- statedu_multiple_correction_default()
     posthoc_method_value(value)
     mark_settings_dirty()
   }, ignoreInit = TRUE)
@@ -251,7 +251,7 @@ register_ancova_handlers <- function(
     chosen <- intersect(as.character(input$ancova_available %||% character(0)), current_selected())
     allowed <- ancova_continuous_candidates(chosen, current_variable_table())
     if (length(chosen) > 0 && length(allowed) == 0) {
-      showNotification("Dependent variables should be continuous or ordinal.", type = "warning")
+      showNotification(statedu_t("analysis.validation.ancova_dependent", statedu_current_language(app_language_fn)), type = "warning")
       return()
     }
     dependent_variables(unique(c(current, allowed)))
@@ -281,7 +281,7 @@ register_ancova_handlers <- function(
     chosen <- intersect(as.character(input$ancova_available %||% character(0)), current_selected())
     allowed <- ancova_factor_candidates(chosen, current_variable_table())
     if (length(chosen) > 0 && length(allowed) == 0) {
-      showNotification("Independent variable should be binary, nominal, or ordinal.", type = "warning")
+      showNotification(statedu_t("analysis.validation.ancova_factor", statedu_current_language(app_language_fn)), type = "warning")
       return()
     }
     if (length(allowed) > 1L) allowed <- allowed[[1]]
@@ -312,7 +312,7 @@ register_ancova_handlers <- function(
     chosen <- intersect(as.character(input$ancova_available %||% character(0)), current_selected())
     allowed <- ancova_covariate_candidates(chosen, current_variable_table())
     if (length(chosen) > 0 && length(allowed) == 0) {
-      showNotification("Covariates should be continuous, binary, nominal, or ordinal.", type = "warning")
+      showNotification(statedu_t("analysis.validation.ancova_covariate", statedu_current_language(app_language_fn)), type = "warning")
       return()
     }
     covariates(unique(c(current, allowed)))
@@ -350,7 +350,7 @@ register_ancova_handlers <- function(
 
   observeEvent(input$run_ancova, {
     if (length(dependent_variables()) == 0 || length(factor_variable()) == 0 || length(covariates()) == 0) {
-      showNotification("Select dependent variable(s), one independent variable, and at least one covariate.", type = "warning", duration = 5)
+      showNotification(statedu_t("analysis.validation.ancova_required", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       return()
     }
     result <- tryCatch(
@@ -422,7 +422,7 @@ register_ancova_handlers <- function(
     if (length(path) == 0 || !nzchar(path[[1]])) return()
     if (!grepl("\\.html?$", path, ignore.case = TRUE)) path <- paste0(path, ".html")
     write_ancova_results_html(result, path, current_variable_table(), labels_fn())
-    showNotification(sprintf("HTML results saved: %s", path), type = "message")
+    showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
 
   observeEvent(input$save_ancova_pdf_dialog, {
@@ -432,7 +432,7 @@ register_ancova_handlers <- function(
     if (length(path) == 0 || !nzchar(path[[1]])) return()
     if (!grepl("\\.pdf$", path, ignore.case = TRUE)) path <- paste0(path, ".pdf")
     write_ancova_results_pdf(result, path, current_variable_table(), labels_fn())
-    showNotification(sprintf("PDF results saved: %s", path), type = "message")
+    showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
 
   observeEvent(input$save_ancova_excel_dialog, {
@@ -442,23 +442,26 @@ register_ancova_handlers <- function(
     if (length(path) == 0 || !nzchar(path[[1]])) return()
     if (!grepl("\\.xlsx$", path, ignore.case = TRUE)) path <- paste0(path, ".xlsx")
     save_ancova_excel_file(result, path, current_variable_table(), labels_fn())
-    showNotification(sprintf("Analysis results saved: %s", path), type = "message")
+    showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
 
   observeEvent(input$save_ancova_figures_dialog, {
     result <- result_value()
     shiny::req(!is.null(result), is.null(result$error))
     directory <- choose_figure_save_dir()
-    if (length(directory) == 0 || !nzchar(directory[[1]])) return()
+    if (length(directory) == 0 || !nzchar(directory[[1]])) {
+      showNotification(statedu_t("result.folder_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
+      return()
+    }
     tryCatch({
       saved <- save_ancova_figures_to_dir(result, directory, current_variable_table(), labels_fn())
       if (length(saved) == 0) {
-        showNotification("No ANCOVA figures were selected to save.", type = "warning", duration = 5)
+        showNotification(statedu_t("result.no_figures_selected", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
       } else {
-        showNotification(sprintf("Saved %s figure file(s): %s", length(saved), directory), type = "message")
+        showNotification(sprintf(statedu_t("result.figures_saved", statedu_current_language(app_language_fn)), length(saved), directory), type = "message")
       }
     }, error = function(e) {
-      showNotification(paste("Failed to save ANCOVA figures:", conditionMessage(e)), type = "error", duration = 8)
+      showNotification(paste(statedu_t("result.figures_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
     })
   })
 

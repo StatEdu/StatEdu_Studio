@@ -25,12 +25,12 @@ nonparametric_setup_state <- function(
   dependent_allowed <- analysis_allowed_variables(selected, variable_table, c("ordered", "continuous"))
   factor_allowed <- analysis_allowed_variables(selected, variable_table, c("binary", "category", "ordered"))
   post_hoc_choices <- c(
-    "Bonferroni correction" = "bonferroni",
-    "Holm Bonferroni" = "holm"
+    "Holm Bonferroni" = "holm",
+    "Bonferroni correction" = "bonferroni"
   )
-  current_post_hoc <- as.character(nonparametric_post_hoc_method %||% "bonferroni")
+  current_post_hoc <- as.character(nonparametric_post_hoc_method %||% statedu_multiple_correction_default())
   if (!current_post_hoc %in% unname(post_hoc_choices)) {
-    current_post_hoc <- "bonferroni"
+    current_post_hoc <- statedu_multiple_correction_default()
   }
 
   list(

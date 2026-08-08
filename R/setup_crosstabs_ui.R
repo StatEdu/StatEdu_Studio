@@ -136,19 +136,11 @@ crosstab_setup_panel <- function(state, language = statedu_initial_language()) {
       div(
         class = "step-summary crosstab-rule-summary",
         div(
-          statedu_text(
-            language,
-            "Default: Pearson chi-square test",
-            statedu_utf8("eab8b0ebb3b83a2050656172736f6e20ecb9b4ec9db4eca09ceab3b120eab280eca095")
-          ),
+          statedu_t("analysis.crosstab_default_test", language),
           class = "step-summary-title"
         ),
         div(
-          statedu_text(
-            language,
-            "If >= 20% of cells have expected counts < 5, Fisher exact or Monte Carlo is used.",
-            statedu_utf8("eab8b0eb8c80eb8f84ec8898203c203520ec8580ec9db42032302520ec9db4ec8381ec9db4eba9b42046697368657220657861637420eb9890eb8a94204d6f6e7465204361726c6feba5bc20ec82acec9aa9ed95a9eb8b88eb8ba42e")
-          ),
+          statedu_t("analysis.crosstab_fisher_rule", language),
           class = "step-summary-detail"
         )
       )

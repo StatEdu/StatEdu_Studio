@@ -57,7 +57,7 @@ register_data_workspace_outputs <- function(
     language <- if (is.function(app_language_fn)) app_language_fn() else statedu_initial_language()
     pending_file <- if (is.function(active_data_file_fn)) active_data_file_fn() else NULL
     if (!valid_pending_excel_file_value(pending_file)) {
-      return(DT::datatable(data.frame(Message = statedu_text(language, "No Excel file is pending import.", statedu_utf8("eab080eca0b8ec98ac20457863656c20ed8c8cec9dbcec9db420ec9786ec8ab5eb8b88eb8ba42e"))), rownames = FALSE, options = list(dom = "t")))
+      return(message_table_datatable(statedu_t("data.no_excel_pending", language), language, options = list(dom = "t")))
     }
     tryCatch({
       preview <- read_excel_preview(
@@ -70,7 +70,7 @@ register_data_workspace_outputs <- function(
       )
       DT::datatable(preview, rownames = FALSE, options = list(dom = "tip", pageLength = 10, scrollX = TRUE))
     }, error = function(error) {
-      DT::datatable(data.frame(Message = conditionMessage(error), check.names = FALSE), rownames = FALSE, options = list(dom = "t"))
+      message_table_datatable(conditionMessage(error), language, options = list(dom = "t"))
     })
   })
 
@@ -87,7 +87,7 @@ register_data_workspace_outputs <- function(
       return(NULL)
     }
     tags$span(sprintf(
-      statedu_text(language, "Reviewing %s. Choose sheet and start-cell options on the left, then import.", statedu_utf8("257320eab280ed86a020eca491ec9e85eb8b88eb8ba42e20ec99bcecaabdec9790ec849c20ec8b9ced8ab8ec998020ec8b9cec9e9120ec858020ec98b5ec8598ec9d8420ec84a0ed839ded959c20eb92a420eab080eca0b8ec98a4ec84b8ec9a942e")),
+      statedu_t("data.excel_review_note", language),
       pending_file$name %||% "Excel file"
     ))
   })
@@ -96,7 +96,7 @@ register_data_workspace_outputs <- function(
     language <- if (is.function(app_language_fn)) app_language_fn() else statedu_initial_language()
     pending_file <- if (is.function(active_data_file_fn)) active_data_file_fn() else NULL
     if (valid_pending_excel_file_value(pending_file)) {
-      return(tags$span(sprintf(statedu_text(language, "Excel file selected: %s. Review the sheet on the right, then import.", statedu_utf8("457863656c20ed8c8cec9dbc20ec84a0ed839deb90a83a2025732e20ec98a4eba5b8ecaabdec9790ec849c20ec8b9ced8ab8eba5bc20eab280ed86a0ed959c20eb92a420eab080eca0b8ec98a4ec84b8ec9a942e")), pending_file$name %||% "Excel file")))
+      return(tags$span(sprintf(statedu_t("data.excel_selected", language), pending_file$name %||% "Excel file")))
     }
     file <- current_data_file_fn()
     state <- data_loaded_message_state(
@@ -202,13 +202,7 @@ register_data_table_outputs <- function(
         return(empty_selected_variable_summary_table(language))
       }
       if ("Message" %in% names(table_data)) {
-        return(DT::datatable(
-          table_data,
-          rownames = FALSE,
-          escape = FALSE,
-          selection = "none",
-          options = list(dom = "t", paging = FALSE, ordering = FALSE)
-        ))
+        return(message_table_datatable(table_data$Message[[1]] %||% "", language))
       }
       out <- DT::datatable(
         table_data,
@@ -236,13 +230,7 @@ register_data_table_outputs <- function(
         return(empty_category_label_table(language))
       }
       if ("Message" %in% names(table_data)) {
-        return(DT::datatable(
-          table_data,
-          rownames = FALSE,
-          escape = FALSE,
-          selection = "none",
-          options = list(dom = "t", paging = FALSE, ordering = FALSE)
-        ))
+        return(message_table_datatable(table_data$Message[[1]] %||% "", language))
       }
 
       column_defs <- category_label_column_defs(

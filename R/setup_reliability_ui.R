@@ -11,6 +11,7 @@ reliability_setup_state <- function(
   selected_selected = character(0),
   normality = TRUE,
   ordinal = FALSE,
+  omega = TRUE,
   subfactor_enabled = FALSE,
   reliability_if_deleted = TRUE,
   item_total_correlation = TRUE,
@@ -39,6 +40,7 @@ reliability_setup_state <- function(
     subfactor_enabled = isTRUE(subfactor_enabled),
     normality = isTRUE(normality),
     ordinal = isTRUE(ordinal),
+    omega = isTRUE(omega %||% TRUE),
     reliability_if_deleted = isTRUE(reliability_if_deleted),
     item_total_correlation = isTRUE(item_total_correlation),
     language = language
@@ -117,9 +119,15 @@ reliability_setup_panel <- function(state) {
           ),
           list(
             id = "reliability_ordinal",
-            label = "Ordinal alpha / Ordinal omega",
+            label = "Polychoric ordinal coefficients",
             value = state$ordinal,
             tooltip = "Force ordinal reliability coefficients from a polychoric correlation matrix. Use this for ordinal response scales."
+          ),
+          list(
+            id = "reliability_omega",
+            label = "McDonald's omega",
+            value = state$omega,
+            tooltip = "Report McDonald's omega total when the selected reliability method supports it."
           )
         ),
         language = language
