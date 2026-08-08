@@ -464,7 +464,7 @@ complex_sample_options_are_default <- function(input, prefix, analysis_type = NU
   }, logical(1)))
 }
 
-complex_sample_design_panel <- function(prefix, selected_names, all_names = selected_names, variable_table = NULL, labels = character(0), language = statedu_initial_language(), selected = list(), analysis_type = NULL) {
+complex_sample_design_panel <- function(prefix, selected_names, all_names = selected_names, variable_table = NULL, labels = character(0), language = statedu_initial_language(), selected = list(), analysis_type = NULL, include_analysis_options = TRUE) {
   selected_names <- as.character(selected_names %||% character(0))
   all_names <- as.character(all_names %||% selected_names)
   defaults <- complex_sample_design_defaults(prefix, selected_names, variable_table, labels)
@@ -489,6 +489,11 @@ complex_sample_design_panel <- function(prefix, selected_names, all_names = sele
   design_tab_label <- complex_sample_ui_text("design_tab", language)
   weight_tab_label <- complex_sample_ui_text("weight_tab", language)
   options_tab_label <- complex_sample_ui_text("options_tab", language)
+  design_tab_choices <- c(
+    design_tab_label,
+    weight_tab_label,
+    if (isTRUE(include_analysis_options)) options_tab_label else character(0)
+  )
   div(
     class = "analysis-options-column ttest-anova-options-column complex-sample-design-column",
     analysis_options_tabs_panel(
@@ -497,7 +502,7 @@ complex_sample_design_panel <- function(prefix, selected_names, all_names = sele
         selected,
         paste0(prefix, "_design_options_tab"),
         design_tab_label,
-        c(design_tab_label, weight_tab_label, options_tab_label)
+        design_tab_choices
       ),
       class = "ttest-anova-options regression-options complex-sample-design-panel",
       tabPanel(
@@ -656,11 +661,13 @@ complex_sample_design_panel <- function(prefix, selected_names, all_names = sele
           )
         )
       ),
-      tabPanel(
-        options_tab_label,
-        value = options_tab_label,
-        complex_sample_options_tab_content(prefix, analysis_type, selected, language)
-      )
+      if (isTRUE(include_analysis_options)) {
+        tabPanel(
+          options_tab_label,
+          value = options_tab_label,
+          complex_sample_options_tab_content(prefix, analysis_type, selected, language)
+        )
+      }
     )
   )
 }
@@ -1016,7 +1023,7 @@ complex_sample_setup_panel <- function(prefix, selected_names, all_names = selec
         div(
           class = "complex-sample-hidden-design-inputs",
           style = "display:none;",
-          complex_sample_design_panel(prefix, selected_names, all_names, variable_table, labels, language, selected, analysis_type)
+          complex_sample_design_panel(prefix, selected_names, all_names, variable_table, labels, language, selected, analysis_type, include_analysis_options = FALSE)
         ),
         complex_sample_analysis_options_panel(prefix, analysis_type, selected, language)
       )

@@ -127,6 +127,13 @@ assert_contains(app_misc_ui, "statedu_t(\"help.bug_subtitle\"", "Help request pa
 assert_contains(app_misc_ui, "choices = statedu_language_choices(language)", "Preferences language choices from translation table")
 assert_contains(ui_helpers, "window.easyflowSupportedLanguages", "client supported language bootstrap")
 assert_contains(easyflow_js, "window.easyflowSupportedLanguages || ['ko', 'en']", "client dynamic supported language fallback")
+assert_contains(easyflow_js, "return easyflowNavigateToLanguage(language, true);", "language apply reloads the complete UI")
+assert_contains(easyflow_js, "window.location.replace(nextHref);", "language change navigates to the translated session")
+assert_contains(
+  app_server,
+  "input$statedu_url_language,\n      statedu_query_value(session$clientData$url_search %||% \"\", \"lang\"),\n      active_app_language(),\n      input$app_language",
+  "confirmed URL and active language take priority over the transient selector value"
+)
 assert_contains(easyflow_js, "function easyflowApplyResultZoomValue(value)", "client result zoom application")
 assert_contains(easyflow_js, "statedu-apply-result-zoom", "client result zoom custom message")
 assert_contains(css, "zoom: var(--statedu-result-zoom, 1.5) !important;", "result panel zoom variable")

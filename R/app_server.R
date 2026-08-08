@@ -67,10 +67,10 @@ create_app_server <- function(app_version) {
 
   app_language <- reactive({
     selected <- first_nonempty(
-      input$app_language,
       input$statedu_url_language,
       statedu_query_value(session$clientData$url_search %||% "", "lang"),
-      active_app_language()
+      active_app_language(),
+      input$app_language
     )
     language <- normalize_app_language(selected)
     options(statedu.app_language = language)

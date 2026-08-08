@@ -55,6 +55,21 @@ function appLanguageFile() {
   return path.join(app.getPath("userData"), "settings", "app-language.txt");
 }
 
+function normalizeAppLanguage(value) {
+  const language = String(value || "").trim().toLowerCase();
+  if (language === "english" || language === "eng") return "en";
+  if (language === "korean" || language === "korea" || language === "kr") return "ko";
+  return /^[a-z][a-z0-9_-]*$/.test(language) ? language : "";
+}
+
+function readAppLanguage() {
+  try {
+    return normalizeAppLanguage(fs.readFileSync(appLanguageFile(), "utf8").split(/\r?\n/, 1)[0]);
+  } catch (error) {
+    return "";
+  }
+}
+
 function resultZoomFile() {
   return path.join(app.getPath("userData"), "settings", "result-zoom-percent.txt");
 }
@@ -310,7 +325,7 @@ async function startShiny() {
 
   const port = await getFreePort();
   const token = crypto.randomBytes(32).toString("hex");
-  const initialLanguage = process.env.STATEDU_APP_LANGUAGE || "ko";
+  const initialLanguage = normalizeAppLanguage(process.env.STATEDU_APP_LANGUAGE) || readAppLanguage() || "ko";
   const env = {
     ...process.env,
     STATEDU_PORT: String(port),

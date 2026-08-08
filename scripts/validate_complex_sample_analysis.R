@@ -55,6 +55,22 @@ complex_input <- function() {
   )
 }
 
+message("Checking complex-sample setup input IDs...")
+setup_html <- render_text(complex_sample_setup_panel(
+  prefix = "complex_frequency",
+  selected_names = c("x", "g", "psu", "wt"),
+  target_specs = complex_sample_target_specs("frequencies"),
+  target_values = list(selected = c("x", "g")),
+  analysis_type = "frequencies",
+  show_design_tabs = FALSE,
+  language = "en"
+))
+setup_option_ids <- gregexpr('id="complex_frequency_show_ci"', setup_html, fixed = TRUE)[[1]]
+expect_true(
+  setup_option_ids[[1]] != -1L && identical(length(setup_option_ids), 1L),
+  "Complex-sample hidden design controls must not duplicate visible analysis option IDs."
+)
+
 message("Checking complex-sample frequency skipped-variable reporting...")
 freq_data <- data.frame(
   psu = 1:8,

@@ -449,7 +449,7 @@
           Shiny.setInputValue('app_language', language, {priority: 'event'});
           Shiny.setInputValue('statedu_url_language', language, {priority: 'event'});
         }
-        return easyflowNavigateToLanguage(language);
+        return easyflowNavigateToLanguage(language, true);
       }
 
       function easyflowApplyLanguageInPlace(language) {
@@ -467,11 +467,11 @@
         try {
           window.localStorage.setItem('statedu_app_language', language);
         } catch (error) {}
-        easyflowNavigateToLanguage(language);
+        easyflowNavigateToLanguage(language, true);
         return language;
       }
 
-      function easyflowNavigateToLanguage(language) {
+      function easyflowNavigateToLanguage(language, reloadPage) {
         language = easyflowNormalizeLanguage(language);
         var href = window.location && window.location.href ? window.location.href : '';
         var url;
@@ -482,6 +482,14 @@
         }
         url.searchParams.set('lang', language);
         var nextHref = url.toString();
+        if (reloadPage) {
+          if (nextHref === window.location.href) {
+            window.location.reload();
+          } else {
+            window.location.replace(nextHref);
+          }
+          return false;
+        }
         if (nextHref !== window.location.href) {
           if (window.history && typeof window.history.replaceState === 'function') {
             window.history.replaceState(window.history.state, document.title, nextHref);
