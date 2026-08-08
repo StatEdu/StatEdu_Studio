@@ -87,4 +87,6 @@ Use this checklist before creating a public beta installer, release candidate, o
 - Confirm the app starts with Electron hardware acceleration disabled by default; only re-enable it for a targeted support test with `STATEDU_ENABLE_HARDWARE_ACCELERATION=true`.
 - Confirm data import works with paths containing spaces and Korean characters.
 - Confirm at least one analysis and one export path work.
+- Before publishing the 1.2.1 installer, switch the packaged app between Korean and English in both directions, restart after each selection, and confirm the saved language is restored.
+- Treat any blank Analysis page or missing Analysis submenu after a packaged-app language change as a release blocker; open every first-level Analysis group and verify its child menu renders in the selected language.
 - Confirm closing the Electron window stops the bundled R/Shiny process.

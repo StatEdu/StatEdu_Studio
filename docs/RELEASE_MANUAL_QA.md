@@ -105,6 +105,9 @@ writer smoke tests pass.
 4. Confirm closing the Electron window stops the bundled R/Shiny process.
 5. Confirm the packaged app can import data, run one analysis, and export one result.
 6. Confirm About > Open Source Licenses displays bundled notices.
+7. For the 1.2.1 installer, select English, restart the packaged app, and confirm the header, Latent, Result, and every Analysis submenu render in English without a blank page.
+8. Switch the packaged app back to Korean, restart it, and confirm the same menus render in Korean without a blank page.
+9. Repeat the check for every additional supported language; a blank Analysis page, mixed-language navigation, or a language selection that is not restored after restart is a release-blocking failure.
 
 ## Public Release Gates
 
