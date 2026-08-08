@@ -102,7 +102,7 @@ assert_contains(latent_readme, paste0("StatEdu Studio ", version, " app shell st
 
 changelog <- read_text("CHANGELOG.md")
 changelog_current <- extract_match(changelog, "(?m)^## v([0-9]+\\.[0-9]+\\.[0-9]+(?:-dev)?) - ", "CHANGELOG current version")
-assert_equal(changelog_current, version, "CHANGELOG current version")
+assert_equal(changelog_current, if (is_development_version) readme_public else version, "CHANGELOG current version")
 changelog_headings <- regmatches(changelog, gregexpr("(?m)^## v[^\\n]+", changelog, perl = TRUE))[[1]]
 if (length(changelog_headings) < 2) {
   stop("CHANGELOG must contain at least two public release headings.", call. = FALSE)
@@ -117,7 +117,7 @@ changelog_ko_headings <- regmatches(changelog_ko, gregexpr("(?m)^## v[^\\n]+", c
 if (length(changelog_ko_headings) < 2) {
   stop("CHANGELOG_KO must contain at least two public release headings.", call. = FALSE)
 }
-assert_equal(sub("^## v([^ ]+).*$", "\\1", changelog_ko_headings[[1]]), version, "CHANGELOG_KO current version")
+assert_equal(sub("^## v([^ ]+).*$", "\\1", changelog_ko_headings[[1]]), if (is_development_version) readme_public else version, "CHANGELOG_KO current version")
 assert_equal(sub("^## v([^ ]+).*$", "\\1", changelog_ko_headings[[2]]), "1.1.3", "CHANGELOG_KO previous public version")
 assert_not_contains(changelog_ko, "-dev", "CHANGELOG_KO developer-version markers")
 

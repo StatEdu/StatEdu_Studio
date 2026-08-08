@@ -10,7 +10,7 @@ All statistical analyses use CRAN packages only.
 
 Current public version: `1.2.0`
 
-Current release candidate version: `1.2.0`
+Current development version: `1.2.0-dev`
 
 Version 1.2.0 is the public release line for local data import, data editing, assumption-guided statistical analyses, reliability and inter-rater agreement workflows, sample-size/effect-size calculators, latent-analysis workflows, mixed repeated-measures ANOVA, Mediation / Moderation Custom Model, and publication-ready HTML/PDF result output. It promotes the stabilized post-1.1.3 work, adding inter-rater agreement analysis, pre-post and multi-time repeated-measures group comparisons, the public Mediation / Moderation Custom Model canvas, custom-model table cleanup, and expanded statistical validation coverage. Detailed release history is available in **About > Version History**.
 
