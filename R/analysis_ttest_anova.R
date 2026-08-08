@@ -116,6 +116,31 @@ ttest_normality_skew_kurtosis <- function(values, cutoff_preset = "2_7") {
   )
 }
 
+ttest_lilliefors_or_ks <- function(values) {
+  values <- as.numeric(values)
+  values <- values[!is.na(values)]
+  if (requireNamespace("nortest", quietly = TRUE)) {
+    test <- tryCatch(suppressWarnings(nortest::lillie.test(values)), error = function(e) NULL)
+    if (!is.null(test)) {
+      return(list(
+        statistic = unname(test$statistic),
+        p.value = test$p.value,
+        corrected = TRUE
+      ))
+    }
+  }
+  standardized <- as.numeric(scale(values))
+  test <- tryCatch(suppressWarnings(stats::ks.test(standardized, "pnorm")), error = function(e) NULL)
+  if (is.null(test)) {
+    return(list(statistic = NA_real_, p.value = NA_real_, corrected = FALSE))
+  }
+  list(
+    statistic = unname(test$statistic),
+    p.value = test$p.value,
+    corrected = FALSE
+  )
+}
+
 ttest_normality_ks <- function(values, groups) {
   values <- as.numeric(values)
   groups <- as.character(groups)
@@ -126,28 +151,36 @@ ttest_normality_ks <- function(values, groups) {
   levels <- ttest_level_order(unique(groups))
   p_values <- stats::setNames(rep(NA_real_, length(levels)), levels)
   statistics <- stats::setNames(rep(NA_real_, length(levels)), levels)
+  corrected <- stats::setNames(rep(TRUE, length(levels)), levels)
   for (level in levels) {
     group_values <- values[groups == level]
     group_values <- group_values[!is.na(group_values)]
     if (length(group_values) < 5 || isTRUE(stats::sd(group_values) == 0)) {
       next
     }
-    standardized <- as.numeric(scale(group_values))
-    test <- suppressWarnings(stats::ks.test(standardized, "pnorm"))
-    statistics[[level]] <- unname(test$statistic)
+    test <- ttest_lilliefors_or_ks(group_values)
+    statistics[[level]] <- test$statistic
     p_values[[level]] <- test$p.value
+    corrected[[level]] <- isTRUE(test$corrected)
   }
   available <- p_values[!is.na(p_values)]
   normal <- length(available) > 0 && all(available >= .05)
   available_statistics <- statistics[names(available)]
+  available_corrected <- corrected[names(available)]
+  method <- if (length(available_corrected) > 0 && any(available_corrected)) {
+    "Kolmogorov-Smirnov by group (Lilliefors corrected)"
+  } else {
+    "Kolmogorov-Smirnov by group"
+  }
   list(
-    method = "Kolmogorov-Smirnov by group",
+    method = method,
     normal = normal,
     detail = paste(sprintf(
-      "%s: K-S D=%s(%s)",
+      "%s: K-S D=%s(%s)%s",
       names(available),
       vapply(available_statistics, format_decimal3, character(1)),
-      vapply(available, format_p, character(1))
+      vapply(available, format_p, character(1)),
+      ifelse(available_corrected, "", " (no Lilliefors correction)")
     ), collapse = "\n")
   )
 }
@@ -164,13 +197,17 @@ ttest_normality_ks_overall <- function(values) {
       detail = "No valid sample for Kolmogorov-Smirnov test"
     ))
   }
-  standardized <- as.numeric(scale(values))
-  test <- suppressWarnings(stats::ks.test(standardized, "pnorm"))
+  test <- ttest_lilliefors_or_ks(values)
   p_value <- test$p.value
   list(
-    method = "Kolmogorov-Smirnov",
+    method = if (isTRUE(test$corrected)) "Kolmogorov-Smirnov (Lilliefors corrected)" else "Kolmogorov-Smirnov",
     normal = !is.na(p_value) && p_value >= .05,
-    detail = sprintf("K-S D=%s(%s)", format_decimal3(unname(test$statistic)), format_p(p_value))
+    detail = sprintf(
+      "K-S D=%s(%s)%s",
+      format_decimal3(unname(test$statistic)),
+      format_p(p_value),
+      if (isTRUE(test$corrected)) "" else " (no Lilliefors correction)"
+    )
   )
 }
 
@@ -565,10 +602,9 @@ ttest_kruskal_epsilon_squared <- function(values, groups) {
   data <- ttest_analysis_data(values, groups)
   if (nrow(data) == 0 || length(unique(data$g)) < 2) return(NA_real_)
   kw <- stats::kruskal.test(y ~ g, data = data)
-  k <- length(unique(data$g))
-  denominator <- nrow(data) - k
-  if (!is.finite(denominator) || denominator <= 0) return(NA_real_)
-  epsilon <- (as.numeric(kw$statistic) - k + 1) / denominator
+  n <- nrow(data)
+  if (!is.finite(n) || n < 2) return(NA_real_)
+  epsilon <- as.numeric(kw$statistic) * (n + 1) / (n^2 - 1)
   if (!is.finite(epsilon)) NA_real_ else max(0, epsilon)
 }
 

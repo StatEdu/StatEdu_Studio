@@ -1396,9 +1396,24 @@ create_app_server <- function(app_version) {
             output_root = latent_output_root_from_data_file(current_data_file(), app_root = getwd())
           )
           if (is.null(excel_path)) {
-            showNotification("Final Excel file was not found.", type = "warning", duration = 5)
+            excel_path <- tryCatch(
+              create_latent_final_excel_from_results(
+                project_root,
+                dataset_id,
+                selected_spec$engine,
+                app_root = getwd(),
+                output_root = latent_output_root_from_data_file(current_data_file(), app_root = getwd())
+              ),
+              error = function(e) {
+                showNotification(conditionMessage(e), type = "error", duration = 8)
+                NULL
+              }
+            )
+          }
+          if (is.null(excel_path)) {
             return()
           }
+          showNotification(sprintf("Excel file ready: %s", normalizePath(excel_path, winslash = "/", mustWork = FALSE)), type = "message", duration = 5)
           shell.exec(normalizePath(excel_path, winslash = "\\", mustWork = TRUE))
         }, ignoreInit = TRUE)
 
@@ -4138,12 +4153,12 @@ write_latent_table_excel <- function(table, file, title) {
     header_style <- openxlsx::createStyle(textDecoration = "bold", halign = "center", border = "bottom", borderStyle = "thin")
     body_style <- openxlsx::createStyle(valign = "center")
     openxlsx::addStyle(wb, sheet, title_style, rows = 1, cols = 1, gridExpand = TRUE, stack = TRUE)
-    header_rows <- intersect(c(3L, 4L), seq_len(nrow(table)))
+    header_rows <- intersect(2L, seq_len(nrow(table)))
     if (length(header_rows) > 0) {
       openxlsx::addStyle(wb, sheet, header_style, rows = header_rows, cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
     }
     if (nrow(table) > 0) {
-      body_rows <- setdiff(seq_len(nrow(table)), c(1L, 3L, 4L))
+      body_rows <- setdiff(seq_len(nrow(table)), c(1L, 2L))
       if (length(body_rows) > 0) {
         openxlsx::addStyle(wb, sheet, body_style, rows = body_rows, cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
       }
@@ -4158,7 +4173,7 @@ write_latent_table_excel <- function(table, file, title) {
       36
     )
     openxlsx::setColWidths(wb, sheet, cols = seq_len(ncol(table)), widths = widths)
-    openxlsx::freezePane(wb, sheet, firstActiveRow = 4, firstActiveCol = 2)
+    openxlsx::freezePane(wb, sheet, firstActiveRow = 3, firstActiveCol = 2)
   } else {
     openxlsx::writeData(wb, sheet, "No data", startRow = 1, startCol = 1, colNames = FALSE)
   }
@@ -4260,6 +4275,90 @@ find_latent_final_excel <- function(project_root, dataset_id, analysis_id, app_r
   preferred <- files[grepl("final_results\\.xlsx$", basename(files), ignore.case = TRUE)]
   files <- if (length(preferred) > 0) preferred else files
   files[order(file.info(files)$mtime, decreasing = TRUE)][[1]]
+}
+
+latent_excel_sheet_name <- function(value, used = character(0)) {
+  sheet <- gsub("[\\[\\]\\*\\?/\\\\:]", "_", as.character(value %||% "Sheet"))
+  sheet <- trimws(sheet)
+  if (!nzchar(sheet)) {
+    sheet <- "Sheet"
+  }
+  sheet <- substr(sheet, 1, 31)
+  base <- sheet
+  index <- 1L
+  while (tolower(sheet) %in% tolower(used)) {
+    suffix <- paste0("_", index)
+    sheet <- paste0(substr(base, 1, max(1L, 31L - nchar(suffix))), suffix)
+    index <- index + 1L
+  }
+  sheet
+}
+
+create_latent_final_excel_from_results <- function(project_root, dataset_id, analysis_id, app_root = getwd(), output_root = NULL) {
+  if (!requireNamespace("openxlsx", quietly = TRUE)) {
+    stop("Excel export requires the openxlsx package.", call. = FALSE)
+  }
+  output_dir <- latent_result_output_dir(project_root, app_root, dataset_id, analysis_id, output_root = output_root)
+  table_index <- latent_result_table_index(project_root, dataset_id, analysis_id, app_root = app_root, output_root = output_root)
+  if (!is.data.frame(table_index) || nrow(table_index) == 0) {
+    stop("No result tables are available to save as Excel.", call. = FALSE)
+  }
+
+  final_dir <- file.path(output_dir, "final")
+  dir.create(final_dir, recursive = TRUE, showWarnings = FALSE)
+  final_path <- file.path(final_dir, sprintf("%s_%s_final_results.xlsx", dataset_id, analysis_id))
+
+  workbook <- openxlsx::createWorkbook()
+  title_style <- openxlsx::createStyle(textDecoration = "bold", fontSize = 12, halign = "left")
+  header_style <- openxlsx::createStyle(textDecoration = "bold", halign = "center", border = "bottom", borderStyle = "thin")
+  body_style <- openxlsx::createStyle(valign = "center")
+  used_sheets <- character(0)
+
+  for (row_index in seq_len(nrow(table_index))) {
+    table_path <- table_index$file[[row_index]]
+    table_name <- table_index$table[[row_index]]
+    sheet <- latent_excel_sheet_name(table_name, used_sheets)
+    used_sheets <- c(used_sheets, sheet)
+    table <- read_latent_excel_sheet_display(
+      table_path,
+      project_root = project_root,
+      app_root = app_root,
+      dataset_id = dataset_id,
+      analysis_id = analysis_id,
+      output_root = output_root
+    )
+    table <- as.data.frame(table, stringsAsFactors = FALSE, check.names = FALSE)
+
+    openxlsx::addWorksheet(workbook, sheet)
+    if (nrow(table) > 0 && ncol(table) > 0) {
+      openxlsx::writeData(workbook, sheet, table, startRow = 1, startCol = 1, colNames = FALSE, withFilter = FALSE)
+      openxlsx::addStyle(workbook, sheet, title_style, rows = 1, cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
+      header_rows <- intersect(2L, seq_len(nrow(table)))
+      if (length(header_rows) > 0) {
+        openxlsx::addStyle(workbook, sheet, header_style, rows = header_rows, cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
+      }
+      body_rows <- setdiff(seq_len(nrow(table)), c(1L, 2L))
+      if (length(body_rows) > 0) {
+        openxlsx::addStyle(workbook, sheet, body_style, rows = body_rows, cols = seq_len(ncol(table)), gridExpand = TRUE, stack = TRUE)
+      }
+      widths <- pmin(
+        pmax(
+          vapply(table, function(column) {
+            max(nchar(as.character(utils::head(column, 100))), na.rm = TRUE) + 2
+          }, numeric(1)),
+          10
+        ),
+        36
+      )
+      openxlsx::setColWidths(workbook, sheet, cols = seq_len(ncol(table)), widths = widths)
+      openxlsx::freezePane(workbook, sheet, firstActiveRow = 3, firstActiveCol = 2)
+    } else {
+      openxlsx::writeData(workbook, sheet, "No data", startRow = 1, startCol = 1, colNames = FALSE)
+    }
+  }
+
+  openxlsx::saveWorkbook(workbook, final_path, overwrite = TRUE)
+  normalizePath(final_path, winslash = "/", mustWork = TRUE)
 }
 
 build_latent_setup_yaml <- function(app_version, module_id, input, current_data_file, variable_info, roles) {

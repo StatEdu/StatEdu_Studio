@@ -578,6 +578,7 @@ saved_analysis_results_html <- function(
   show_sr2 = FALSE,
   show_f2 = FALSE,
   show_vif = FALSE,
+  output_table_style = "standard",
   css_path = file.path("www", "style.css"),
   report_mode = FALSE
 ) {
@@ -600,7 +601,8 @@ saved_analysis_results_html <- function(
           value_labels,
           show_sr2,
           show_f2,
-          show_vif
+          show_vif,
+          output_table_style
         )
       }),
       regression_reference_summary_block(results, variable_table, labels, show_sr2, show_f2),
@@ -628,10 +630,13 @@ saved_hierarchical_results_html <- function(
   show_sr2 = FALSE,
   show_f2 = FALSE,
   show_vif = FALSE,
+  output_table_style = "standard",
   css_path = file.path("www", "style.css"),
   report_mode = FALSE
 ) {
-  print_landscape <- any(vapply(hierarchical_result_groups(results), function(group) length(group) >= 3L, logical(1)))
+  output_table_style <- analysis_output_table_style(output_table_style)
+  print_landscape <- identical(output_table_style, "wide") &&
+    any(vapply(hierarchical_result_groups(results), function(group) length(group) >= 3L, logical(1)))
   saved_results_document(
     "StatEdu Studio Hierarchical Results",
     hierarchical_results_panel(
@@ -644,6 +649,7 @@ saved_hierarchical_results_html <- function(
       show_sr2 = show_sr2,
       show_f2 = show_f2,
       show_vif = show_vif,
+      output_table_style = output_table_style,
       plot_blocks = lapply(seq_along(results), function(index) {
         result <- results[[index]]
         dependent <- all.vars(result$formula)[[1]]
@@ -651,7 +657,7 @@ saved_hierarchical_results_html <- function(
         saved_plot_result_block(result, dependent_label)
       })
     ),
-    max_width = 1500,
+    max_width = if (isTRUE(print_landscape)) 1500 else 1280,
     css_path = css_path,
     print_landscape = print_landscape,
     report_mode = report_mode
@@ -860,10 +866,13 @@ saved_logistic_results_html <- function(
   show_mcfadden = FALSE,
   show_cox_snell = FALSE,
   split_ci = TRUE,
+  output_table_style = "standard",
   css_path = file.path("www", "style.css"),
   report_mode = FALSE
 ) {
-  print_landscape <- any(vapply(logistic_result_groups(results), function(group) length(group) >= 3L, logical(1)))
+  output_table_style <- analysis_output_table_style(output_table_style)
+  print_landscape <- identical(output_table_style, "wide") &&
+    any(vapply(logistic_result_groups(results), function(group) length(group) >= 3L, logical(1)))
   saved_results_document(
     "StatEdu Studio Logistic Regression Results",
     tags$div(
@@ -877,10 +886,11 @@ saved_logistic_results_html <- function(
         show_se = show_se,
         show_mcfadden = show_mcfadden,
         show_cox_snell = show_cox_snell,
-        split_ci = split_ci
+        split_ci = split_ci,
+        output_table_style = output_table_style
       )
     ),
-    max_width = 1500,
+    max_width = if (isTRUE(print_landscape)) 1500 else 1280,
     css_path = css_path,
     print_landscape = print_landscape,
     report_mode = report_mode

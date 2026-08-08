@@ -1,6 +1,6 @@
 # StatEdu Studio Release Checklist
 
-Use this checklist before creating a public beta installer, 1.0 release candidate, or public 1.0 installer.
+Use this checklist before creating a public beta installer, release candidate, or public installer.
 
 ## Source and Version
 
@@ -8,9 +8,9 @@ Use this checklist before creating a public beta installer, 1.0 release candidat
 - Confirm public release materials include source code, documentation, example data, and validation notes.
 - Review `docs/RELEASE_READINESS_STATUS.md` and update it with the current local validation, packaging, DOI, website, and repository status.
 - Complete `docs/RELEASE_MANUAL_QA.md` for visual, file-dialog, packaged-runtime, and export workflows that automated checks cannot fully prove.
-- Record the completed manual QA pass in `docs/RELEASE_1_0_MANUAL_QA_RECORD.md`.
-- Complete `docs/RELEASE_1_0_PACKAGED_VALIDATION_NOTES.md` for the final 1.0 package.
-- Finalize public release text from `docs/RELEASE_1_0_PUBLIC_NOTES_DRAFT.md`.
+- Record the completed manual QA pass in the current release QA record, such as `docs/RELEASE_1_2_MANUAL_QA_RECORD.md`.
+- Complete the current packaged validation notes, such as `docs/RELEASE_1_2_PACKAGED_VALIDATION_NOTES.md`, for the final package.
+- Finalize public release text from the current public notes draft, such as `docs/RELEASE_1_2_PUBLIC_NOTES_DRAFT.md`.
 - Keep the completed manual QA record with the release notes and validation artifacts.
 - Confirm new source files referenced by `R/app_bootstrap.R` are tracked by git before running the Electron build, because packaging stages files from `git ls-files`.
 - Confirm no private test data, local settings, or generated logs are included in the staged Electron app.
@@ -18,17 +18,15 @@ Use this checklist before creating a public beta installer, 1.0 release candidat
 - Confirm standard three-block Data Editor and analysis menus still follow
   `docs/UI_LAYOUT_CONTRACT.md`, especially `View selected data` alignment,
   panel geometry, and footer button placement.
-- For the 1.0 release, confirm `docs/RELEASE_1_0_DISTRIBUTION_LICENSE_PLAN_KO.md` has been reviewed. Free/Pro/Latent gates, license activation, and in-app updates are deferred for 1.0 unless a later decision log entry changes that status.
-- For the 1.0 release, update `docs/RELEASE_1_0_DECISION_LOG.md` with any distribution, license, update, DOI, website, or packaging decisions.
-- As of the 1.0.0 release-candidate phase, do not add new analysis features unless they are required to fix correctness, data safety, packaging, or validation coverage.
-- Before moving from 0.9.x to 1.0, explicitly decide whether all remaining distribution/license/update plan items are implemented or intentionally deferred.
-- Before changing version metadata to 1.0.0, complete `docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md` so package names, installer names, smoke-test expectations, DOI checks, and public claims move together.
+- For the current release, update the matching decision log, such as `docs/RELEASE_1_2_DECISION_LOG.md`, with any distribution, license, update, DOI, website, or packaging decisions.
+- During a release-candidate preparation pass, do not add new analysis features unless they are required to fix correctness, data safety, packaging, or validation coverage.
+- Before changing release metadata, complete the matching version bump checklist, such as `docs/RELEASE_1_2_VERSION_BUMP_CHECKLIST.md`, so package names, installer names, smoke-test expectations, DOI checks, and public claims move together.
 
 ## Brand and Compatibility
 
 - Confirm visible product surfaces use `StatEdu Studio`, including README, app header, About, launcher text, installer metadata, default export filenames, report covers, favicon, and logo assets.
 - Confirm no visible app page or release artifact uses `EasyFlow Statistics` as the current product name.
-- For a public 1.0 release, confirm the Electron build has switched 0.9.x beta packaging names to final release names across the app display name, package metadata, installer artifact, shortcut name, executable resource strings, and smoke-test expectations.
+- For a public release, confirm the Electron build uses final release names across the app display name, package metadata, installer artifact, shortcut name, executable resource strings, and smoke-test expectations.
 - Confirm the DOI `10.22934/statedu.studio` is registered and resolves to `https://studio.statedu.com/citation/` before publishing a public release.
 - Confirm `studio.statedu.com` is live and points to the StatEdu Studio product site before publishing a public release.
 - Keep backward-compatible internal identifiers such as `easyflow_*` JavaScript/R helper names, `easyflow_settings`, `easyflow_result_history`, `.efs-result`, and legacy result-store read paths unless a migration plan and validation coverage exist.
@@ -42,8 +40,8 @@ Use this checklist before creating a public beta installer, 1.0 release candidat
 - Run `scripts/validate_stabilization.ps1 -Full` before packaging a public beta or release candidate.
 - Run `scripts/release_preflight.ps1` before preparing a release candidate; after packaging, run it with `-FullElectronSmoke`.
 - Build from a clean R runtime where possible.
-- For the 1.0 line, confirm the bundled Windows runtime is `R-4.5.3`.
-- For public 1.0 packaging, use `scripts\build_electron_release.ps1`; it
+- Confirm the bundled Windows runtime is `R-4.5.3`.
+- For public packaging, use `scripts\build_electron_release.ps1`; it
   delegates to the compatibility build implementation that selects package
   names from `VERSION`.
 - Confirm the build runs `scripts/prune_r_runtime.R` before license notice generation.
@@ -51,8 +49,8 @@ Use this checklist before creating a public beta installer, 1.0 release candidat
 - Confirm `electron` and `electron-builder` are exact version pins in `packaging/electron/package.json`.
 - Run `npm ci` from `packaging/electron` before packaging.
 - Confirm `dist/electron` contains only the current StatEdu Studio setup `.exe`, its `.blockmap`, and `win-unpacked`; remove legacy EasyFlow installers and debug artifacts before publishing.
-- For 0.9.x beta builds, `StatEdu Studio Beta` and `StatEdu_Studio_Beta_Setup_*` are expected. For public 1.0 builds, `StatEdu Studio` and `StatEdu_Studio_Setup_*` are expected.
-- Run `scripts\get_release_checksums.ps1` and copy the installer SHA256 into `docs/RELEASE_1_0_PACKAGED_VALIDATION_NOTES.md`.
+- For 0.9.x beta builds, `StatEdu Studio Beta` and `StatEdu_Studio_Beta_Setup_*` are expected. For public builds, `StatEdu Studio` and `StatEdu_Studio_Setup_*` are expected.
+- Run `scripts\get_release_checksums.ps1` and copy the installer SHA256 into the current packaged validation notes.
 
 ## Open Source Notices
 

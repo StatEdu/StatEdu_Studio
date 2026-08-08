@@ -16,6 +16,8 @@ regression_setup_state <- function(
   show_sr2 = FALSE,
   show_f2 = TRUE,
   show_vif = TRUE,
+  options_tab = "Model",
+  output_table_style = "standard",
   language = statedu_initial_language()
 ) {
   language <- normalize_app_language(language)
@@ -55,7 +57,9 @@ regression_setup_state <- function(
     auto_method = setup_option_checked(auto_method, default = TRUE),
     show_sr2 = setup_option_checked(show_sr2, default = FALSE),
     show_f2 = setup_option_checked(show_f2, default = TRUE),
-    show_vif = setup_option_checked(show_vif, default = TRUE)
+    show_vif = setup_option_checked(show_vif, default = TRUE),
+    options_tab = if (as.character(options_tab %||% "Model") %in% c("Model", "Bootstrap", "Output")) as.character(options_tab %||% "Model") else "Model",
+    output_table_style = analysis_output_table_style(output_table_style)
   )
 }
 
@@ -88,7 +92,9 @@ regression_setup_panel_from_state <- function(setup, status_message) {
     auto_method = setup$auto_method,
     show_sr2 = setup$show_sr2,
     show_f2 = setup$show_f2,
-    show_vif = setup$show_vif
+    show_vif = setup$show_vif,
+    options_tab = setup$options_tab,
+    output_table_style = setup$output_table_style
   )
 }
 
@@ -122,7 +128,9 @@ regression_setup_panel <- function(
   auto_method = TRUE,
   show_sr2 = FALSE,
   show_f2 = TRUE,
-  show_vif = TRUE
+  show_vif = TRUE,
+  options_tab = "Model",
+  output_table_style = "standard"
 ) {
   language <- normalize_app_language(language)
   tagList(
@@ -190,7 +198,7 @@ regression_setup_panel <- function(
         )
       ),
       div(
-        class = "analysis-options-column analysis-options-panel regression-options",
+        class = "analysis-options-column regression-options-column",
         tags$style(HTML("
           .regression-options.analysis-options-panel,
           .hierarchical-options.analysis-options-panel { gap: 14px !important; row-gap: 14px !important; }
@@ -207,46 +215,72 @@ regression_setup_panel <- function(
           .regression-options.analysis-options-panel .analysis-option-group .checkbox label,
           .hierarchical-options.analysis-options-panel .analysis-option-group .checkbox label { line-height: 1.35 !important; padding-top: 0 !important; padding-bottom: 0 !important; }
         ")),
-        div(
-          class = "analysis-option-group",
-          div(class = "analysis-option-title", analysis_ui_text("Bootstrap", language)),
-          div(
-            class = "regression-field",
-            selectInput(
-              "boot_r",
-              analysis_ui_text("Number of bootstrap samples", language),
-              choices = bootstrap_choices,
-              selected = current_bootstrap,
-              selectize = FALSE
+        analysis_options_tabs_panel(
+          id = "regression_options_tab",
+          selected = if (options_tab %in% c("Model", "Bootstrap", "Output")) options_tab else "Model",
+          class = "regression-options",
+          tabPanel(
+            analysis_ui_text("Model", language),
+            value = "Model",
+            div(
+              class = "factor-options-tab-content regression-options-tab-content",
+              analysis_option_group(
+                "Residual diagnostics",
+                list(
+                  list(id = "residual_diagnostics", label = "Residual diagnostics", value = isTRUE(residual_diagnostics)),
+                  list(id = "auto_method", label = "Automatic method selection", value = isTRUE(auto_method) && isTRUE(residual_diagnostics), disabled = !isTRUE(residual_diagnostics))
+                ),
+                language = language
+              ),
+              analysis_option_group(
+                "Effect size",
+                list(
+                  list(id = "show_sr2", label = "sr\u00B2", value = isTRUE(show_sr2)),
+                  list(id = "show_f2", label = "f\u00B2", value = isTRUE(show_f2))
+                ),
+                language = language
+              ),
+              analysis_option_group(
+                "Collinearity diagnostics",
+                list(
+                  list(id = "show_vif", label = "VIF", value = isTRUE(show_vif))
+                ),
+                language = language
+              )
             )
           ),
-          div(
-            class = "regression-field",
-            numericInput("seed", analysis_ui_text("Seed number", language), value = current_seed, min = 1, step = 1)
+          tabPanel(
+            analysis_ui_text("Bootstrap", language),
+            value = "Bootstrap",
+            div(
+              class = "factor-options-tab-content regression-options-tab-content",
+              div(
+                class = "analysis-option-group",
+                div(
+                  class = "regression-field",
+                  selectInput(
+                    "boot_r",
+                    analysis_ui_text("Number of bootstrap samples", language),
+                    choices = bootstrap_choices,
+                    selected = current_bootstrap,
+                    selectize = FALSE
+                  )
+                ),
+                div(
+                  class = "regression-field",
+                  numericInput("seed", analysis_ui_text("Seed number", language), value = current_seed, min = 1, step = 1)
+                )
+              )
+            )
+          ),
+          tabPanel(
+            analysis_ui_text("Output", language),
+            value = "Output",
+            div(
+              class = "factor-options-tab-content regression-options-tab-content",
+              analysis_output_table_style_tabs("regression_output_table_style", output_table_style, language)
+            )
           )
-        ),
-        analysis_option_group(
-          "Residual diagnostics",
-          list(
-            list(id = "residual_diagnostics", label = "Residual diagnostics", value = isTRUE(residual_diagnostics)),
-            list(id = "auto_method", label = "Automatic method selection", value = isTRUE(auto_method) && isTRUE(residual_diagnostics), disabled = !isTRUE(residual_diagnostics))
-          ),
-          language = language
-        ),
-        analysis_option_group(
-          "Effect size",
-          list(
-            list(id = "show_sr2", label = "sr\u00B2", value = isTRUE(show_sr2)),
-            list(id = "show_f2", label = "f\u00B2", value = isTRUE(show_f2))
-          ),
-          language = language
-        ),
-        analysis_option_group(
-          "Collinearity diagnostics",
-          list(
-            list(id = "show_vif", label = "VIF", value = isTRUE(show_vif))
-          ),
-          language = language
         )
       )
     ),

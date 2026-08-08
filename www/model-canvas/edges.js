@@ -283,12 +283,63 @@
     return edgeById(instance, id);
   }
 
-  function addEdgeLabelElement(instance, svg, owner, type, id, point) {
+  function labelBox(label, x, y, fontSize) {
+    var width = Math.max(28, String(label || "").length * Number(fontSize || 12) * 0.58 + 10);
+    var height = Math.max(16, Number(fontSize || 12) + 8);
+    return {
+      left: x - width / 2,
+      right: x + width / 2,
+      top: y - height / 2,
+      bottom: y + height / 2
+    };
+  }
+
+  function boxesOverlap(a, b) {
+    return a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  }
+
+  function autoLabelPosition(label, x, y, fontSize, placedLabels) {
+    var candidates = [
+      {x: 0, y: 0},
+      {x: 0, y: -18},
+      {x: 0, y: 18},
+      {x: 26, y: -10},
+      {x: -26, y: -10},
+      {x: 26, y: 10},
+      {x: -26, y: 10},
+      {x: 0, y: -36},
+      {x: 0, y: 36},
+      {x: 52, y: 0},
+      {x: -52, y: 0}
+    ];
+    for (var i = 0; i < candidates.length; i += 1) {
+      var candidate = candidates[i];
+      var box = labelBox(label, x + candidate.x, y + candidate.y, fontSize);
+      var collides = (placedLabels || []).some(function(existing) {
+        return boxesOverlap(box, existing);
+      });
+      if (!collides) {
+        return {x: x + candidate.x, y: y + candidate.y, box: box};
+      }
+    }
+    var fallback = labelBox(label, x, y, fontSize);
+    return {x: x, y: y, box: fallback};
+  }
+
+  function addEdgeLabelElement(instance, svg, owner, type, id, point, placedLabels) {
     var label = String(owner && owner.label ? owner.label : "").trim();
     if (!label) return;
     var x = Number(point.x || 0) + Number(owner.labelOffsetX || 0);
     var y = Number(point.y || 0) + Number(owner.labelOffsetY || -10);
     var fontSize = Number(owner.labelFontSize || instance.state.style.labelFontSize || instance.state.style.fontSize || 12);
+    if (Number(owner.labelOffsetX || 0) === 0 && Number(owner.labelOffsetY || -10) === -10) {
+      var positioned = autoLabelPosition(label, x, y, fontSize, placedLabels);
+      x = positioned.x;
+      y = positioned.y;
+      if (placedLabels) placedLabels.push(positioned.box);
+    } else if (placedLabels) {
+      placedLabels.push(labelBox(label, x, y, fontSize));
+    }
     var group = document.createElementNS(SVG_NS, "g");
     group.setAttribute("class", "custom-model-edge-label");
     group.setAttribute("data-label-type", type);
@@ -529,6 +580,7 @@
     var edgeColor = instance.state.style.edgeStrokeColor || "#000000";
     var edgeWidth = Number(instance.state.style.edgeStrokeWidth || 1.8);
     var arrowHead = instance.state.style.arrowHead || "triangle";
+    var placedLabels = [];
 
     function applyEdgeStyle(element, selected, widthOffset, item) {
       element.style.stroke = selected ? "#2563eb" : edgeColor;
@@ -562,7 +614,7 @@
       }
       addEdgeHitElement(svg, edge, endpoints);
       addEdgeControlElement(instance, svg, edge, endpoints);
-      addEdgeLabelElement(instance, svg, edge, "edge", edge.id, pointOnRenderedEdge(edge, endpoints, edge.labelPosition || 50));
+      addEdgeLabelElement(instance, svg, edge, "edge", edge.id, pointOnRenderedEdge(edge, endpoints, edge.labelPosition || 50), placedLabels);
     });
 
     instance.state.moderations.forEach(function(moderation) {
@@ -592,7 +644,7 @@
       }
       svg.appendChild(line);
       addModerationHitElement(svg, moderation, from, to);
-      addEdgeLabelElement(instance, svg, moderation, "moderation", moderation.id, pointOnEdge(from, to, 50));
+      addEdgeLabelElement(instance, svg, moderation, "moderation", moderation.id, pointOnEdge(from, to, 50), placedLabels);
     });
 
     if (instance.state.dragPreview) {

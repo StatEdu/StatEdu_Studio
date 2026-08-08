@@ -165,9 +165,12 @@ assert_count_at_least(missing_ui, "data-editor-workspace", 1L, "Missing Values w
 assert_contains(css, ".data-editor-workspace .analysis-workspace-heading", "workspace heading width rule")
 assert_contains(css, ".data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid)", "standard setup grid rule")
 assert_contains(css, ".data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row)", "standard action row rule")
-assert_contains(css, "grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;", "standard three-block grid columns")
-assert_contains(css, ".data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) {\n  display: grid !important;\n  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;\n  gap: var(--se-standard-gap) !important;\n  align-items: start !important;\n  margin-top: 26px !important;\n  margin-bottom: 14px !important;\n}", "standard three-block action row spacing")
+assert_contains(css, "grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;", "standard frequency-style three-block grid columns")
+assert_contains(css, ".data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) {\n  display: grid !important;\n  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;\n  gap: var(--se-standard-gap) !important;\n  align-items: start !important;\n  margin-top: 26px !important;\n  margin-bottom: 14px !important;\n}", "standard three-block action row spacing")
 assert_contains(css, ".data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) > .btn,\n.data-editor-workspace .recode-same-action-row:not(.recode-builder-action-row) > .missing-values-action-cell {\n  grid-column: 1 !important;\n  justify-self: start !important;\n  margin-left: 30px !important;\n  width: var(--se-standard-inner-button-width) !important;", "standard Block 1 action placement")
+assert_contains(css, ".data-editor-workspace .recode-same-setup-grid:not(.recode-builder-grid) > .analysis-options-panel {\n  grid-column: 4 !important;\n  grid-row: 1 !important;", "standard Data Editor options stay in top row")
+assert_contains(css, ".data-editor-workspace .wide-long-options {\n  grid-column: 4 !important;\n  grid-row: 1 !important;", "Wide to Long options stay in top row")
+assert_contains(css, ".data-editor-workspace .recode-builder-rule-panel {\n  grid-column: 4 !important;\n  grid-row: 1 !important;", "Recode builder options stay in top row")
 
 message("Checking Data Editor lazy menu wiring...")
 data_editor_lazy_contract <- data.frame(
@@ -364,6 +367,59 @@ for (i in seq_len(nrow(analysis_lazy_contract))) {
   }
 }
 
+message("Checking Complex-sample navigation stability contract...")
+complex_lazy_outputs <- c(
+  "lazy_analysis_complex_design",
+  "lazy_analysis_complex_frequencies",
+  "lazy_analysis_complex_crosstabs",
+  "lazy_analysis_complex_ttest_anova",
+  "lazy_analysis_complex_correlation",
+  "lazy_analysis_complex_regression",
+  "lazy_analysis_complex_logistic"
+)
+for (output_id in complex_lazy_outputs) {
+  assert_contains(
+    app_server,
+    sprintf("output$%s <- renderUI(", output_id),
+    sprintf("Complex-sample lazy output is registered: %s", output_id)
+  )
+}
+assert_not_contains(
+  app_server,
+  "outputOptions(output, complex_lazy_output, suspendWhenHidden = FALSE)",
+  "Complex-sample lazy outputs must not all render while hidden"
+)
+assert_not_contains(
+  r_text,
+  'outputOptions(output, paste0(prefix, "_setup"), suspendWhenHidden = FALSE)',
+  "Complex-sample setup output must not force hidden rendering"
+)
+assert_not_contains(
+  r_text,
+  'outputOptions(output, paste0(prefix, "_results"), suspendWhenHidden = FALSE)',
+  "Complex-sample results output must not force hidden rendering"
+)
+assert_contains(
+  r_text,
+  'identical(analysis_type, "crosstabs") && !identical(input$main_menu %||% "", "analysis_complex_crosstabs")',
+  "Complex-sample crosstab result cache clears through the Shiny server cycle"
+)
+assert_not_contains(
+  easyflow_js,
+  "function easyflowClearComplexCrosstabResultsForNavigation(navValue)",
+  "Client must not directly clear complex crosstab output DOM"
+)
+assert_not_contains(
+  easyflow_js,
+  "Shiny.setInputValue('complex_crosstab_clear_results_request'",
+  "Client must not use a custom crosstab clear-results request"
+)
+assert_not_contains(
+  easyflow_js,
+  "complex_crosstab_results",
+  "Client must not manipulate the complex crosstab Shiny output element"
+)
+
 message("Checking Sample Size / Effect Size lazy menu wiring...")
 assert_contains(
   sample_size_ui,
@@ -402,6 +458,8 @@ assert_contains(setup_ui, 'class = "analysis-action-row ttest-anova-action-row"'
 assert_contains(css, "body {\n  --se-standard-panel-width: 326px;", "global standard layout variables")
 assert_contains(css, "--se-analysis-workspace-width: 1140px;", "standard analysis workspace width variable")
 assert_contains(css, "--se-analysis-grid-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width);", "standard analysis grid column variable")
+assert_contains(css, "--se-standard-four-column-grid-width: calc((var(--se-standard-panel-width) * 2) + var(--se-standard-transfer-width) + var(--se-standard-options-width) + (var(--se-standard-gap) * 3));", "frequency-style four-column grid width variable")
+assert_contains(css, "--se-standard-four-column-workspace-width: calc(var(--se-standard-four-column-setup-width) + (var(--se-standard-workspace-padding) * 2));", "frequency-style workspace width variable")
 assert_contains(css, ".ttest-anova-setup-grid,", "t-test / ANOVA setup grid shares standard analysis geometry")
 assert_contains(css, ".ttest-anova-action-row,", "t-test / ANOVA action row shares standard analysis geometry")
 assert_contains(css, ".hierarchical-setup-grid,\n.regression-setup-grid {\n  grid-template-columns: var(--se-standard-panel-width, 326px)", "shared analysis setup grid uses standard variables")
@@ -412,11 +470,14 @@ assert_contains(css, "width: var(--se-analysis-workspace-width) !important;", "s
 assert_contains(css, ".analysis-three-block-workspace .analysis-workspace-heading,\n.analysis-three-block-workspace .analysis-data-viewer-panel", "standard analysis heading width selector")
 assert_contains(css, ".analysis-three-block-workspace .analysis-workspace-heading,\n.analysis-three-block-workspace .analysis-data-viewer-panel {\n  width: 100% !important;", "final shared analysis heading uses scoped workspace width")
 assert_contains(css, ".analysis-three-block-workspace .frequencies-setup-grid,\n.analysis-three-block-workspace .reliability-setup-grid,\n.analysis-three-block-workspace .paired-setup-grid,\n.analysis-three-block-workspace .ttest-anova-setup-grid,\n.analysis-three-block-workspace .correlation-setup-grid,\n.analysis-three-block-workspace .frequencies-action-row,\n.analysis-three-block-workspace .reliability-action-row,\n.analysis-three-block-workspace .paired-action-row,\n.analysis-three-block-workspace .ttest-anova-action-row,\n.analysis-three-block-workspace .correlation-action-row {\n  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;", "final shared four-column analysis grids use standard variables")
-assert_contains(css, ".analysis-three-block-workspace .crosstab-setup-grid,\n.analysis-three-block-workspace .regression-setup-grid,\n.analysis-three-block-workspace .hierarchical-setup-grid,\n.analysis-three-block-workspace .logistic-setup-grid,\n.analysis-three-block-workspace .generalized-setup-grid,\n.analysis-three-block-workspace .crosstab-action-row,\n.analysis-three-block-workspace .regression-action-row,\n.analysis-three-block-workspace .hierarchical-action-row,\n.analysis-three-block-workspace .logistic-action-row,\n.analysis-three-block-workspace .generalized-action-row {\n  grid-template-columns: var(--se-analysis-grid-columns) !important;", "final shared five-column analysis grids use analysis variables")
+assert_contains(css, ".analysis-three-block-workspace .crosstab-setup-grid,\n.analysis-three-block-workspace .regression-setup-grid,\n.analysis-three-block-workspace .hierarchical-setup-grid,\n.analysis-three-block-workspace .logistic-setup-grid,\n.analysis-three-block-workspace .generalized-setup-grid,\n.analysis-three-block-workspace .crosstab-action-row,\n.analysis-three-block-workspace .regression-action-row,\n.analysis-three-block-workspace .hierarchical-action-row,\n.analysis-three-block-workspace .logistic-action-row,\n.analysis-three-block-workspace .generalized-action-row {\n  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;", "final shared crosstab/regression analysis grids use frequency-style variables")
+assert_contains(css, ".analysis-three-block-workspace .frequencies-setup-grid > .analysis-options-panel,\n.analysis-three-block-workspace .reliability-setup-grid > .analysis-options-panel,\n.analysis-three-block-workspace .paired-setup-grid > .ttest-anova-options-column,\n.analysis-three-block-workspace .ttest-anova-setup-grid > .ttest-anova-options-column,\n.analysis-three-block-workspace .correlation-setup-grid > .correlation-options-column {\n  grid-column: 4 !important;\n  grid-row: 1 !important;", "final shared analysis options stay in top row")
+assert_contains(css, ".interrater-agreement-setup-grid > .interrater-options-panel {\n  display: flex !important;\n  flex-direction: column !important;\n  gap: 6px !important;", "Inter-rater options override shared options column gap")
+assert_contains(css, ".complex-sample-workspace-panel .complex-sample-setup-grid > .complex-sample-analysis-options-column {\n  grid-column: 4 !important;\n  grid-row: 1 !important;", "complex sample analysis options stay in top row")
 assert_contains(css, ".longitudinal-action-row {\n  grid-template-columns: 330px 40px 320px 40px 320px 330px !important;", "Longitudinal four-block action row exception")
 assert_contains(css, ".longitudinal-setup-grid {\n  display: grid;\n  grid-template-areas: \"available panel-move panel model-move model options\";", "Longitudinal four-block setup exception")
-assert_contains(css, ".ancova-action-row {\n  display: grid !important;\n  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;\n  gap: var(--se-standard-gap) !important;", "ANCOVA action row uses shared standard variables")
-assert_contains(css, "width: var(--se-standard-setup-width) !important;\n  min-width: var(--se-standard-setup-width) !important;\n  align-items: start !important;\n}\n\n.ancova-action-row > #run_ancova", "ANCOVA action row uses shared standard width")
+assert_contains(css, ".ancova-action-row {\n  display: grid !important;\n  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;\n  gap: var(--se-standard-gap) !important;", "ANCOVA action row uses frequency-style standard variables")
+assert_contains(css, "width: var(--se-standard-four-column-setup-width) !important;\n  min-width: var(--se-standard-four-column-setup-width) !important;\n  max-width: var(--se-standard-four-column-setup-width) !important;\n  align-items: start !important;\n}\n\n.ancova-action-row > #run_ancova", "ANCOVA action row uses frequency-style standard width")
 assert_count_exact(css, "1138px", 0L, "no legacy hardcoded analysis workspace width")
 assert_count_exact(css, "grid-template-columns: 326px 50px 326px 20px 310px;", 1L, "calculator-only hardcoded standard columns")
 assert_count_exact(css, "\n  width: 1176px;", 1L, "calculator-only hardcoded standard setup width")
@@ -464,11 +525,11 @@ assert_contains(css, ".data-editor-workspace .wide-long-action-row > #preview_wi
 assert_contains(css, ".data-editor-workspace .wide-long-set-button", "Wide to Long set button placement")
 assert_contains(css, ".data-editor-workspace .wide-long-action-row > #run_wide_long {\n  grid-column: 1 !important;\n}", "Wide to Long run button column")
 assert_contains(css, ".data-editor-workspace .wide-long-action-row > #wide_long_remove_spec {\n  grid-column: 3 !important;\n}", "Wide to Long remove button column")
-assert_contains(css, ".data-editor-workspace .wide-long-action-row > #preview_wide_long {\n  grid-column: 5 !important;\n}", "Wide to Long preview button column")
+assert_contains(css, ".data-editor-workspace .wide-long-action-row > #preview_wide_long {\n  grid-column: 4 !important;\n}", "Wide to Long preview button column")
 assert_contains(css, ".data-editor-workspace .wide-long-set-button {\n  margin-top: auto !important;\n  margin-bottom: 28px !important;", "Wide to Long set button vertical anchor")
 assert_contains(css, "width: var(--se-standard-options-button-width) !important;\n  min-width: var(--se-standard-options-button-width) !important;\n  max-width: var(--se-standard-options-button-width) !important;", "Wide to Long set/preview standard button width")
 assert_contains(css, ".data-editor-workspace .wide-long-action-row > #preview_wide_long {\n  width: var(--se-standard-options-button-width) !important;\n  min-width: var(--se-standard-options-button-width) !important;\n  max-width: var(--se-standard-options-button-width) !important;\n}", "Wide to Long preview matches Block 3 button width")
-assert_contains(css, ".data-editor-workspace .wide-long-action-row {\n  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) 20px var(--se-standard-options-width) !important;", "Wide to Long action row standard columns")
+assert_contains(css, ".data-editor-workspace .wide-long-action-row {\n  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;", "Wide to Long action row standard columns")
 
 message("Checking Rename Variable menu contract...")
 assert_contains(rename_ui, 'class = "analysis-action-row recode-same-action-row variable-rename-action-row"', "Rename action row")
@@ -537,6 +598,9 @@ assert_contains(easyflow_js, "dropdown.addClass('active');", "grouped menu activ
 assert_contains(easyflow_js, "menu: 'Analysis'", "Analysis grouped menu config label")
 assert_contains(easyflow_js, "menuLabels: ['Analysis'", "Analysis grouped menu translated labels")
 assert_contains(easyflow_js, "marker: 'analysis'", "Analysis grouped menu config marker")
+assert_contains(easyflow_js, "analysis_custom_model_canvas: 'Mediation / Moderation Custom Model'", "Analysis grouped menu custom model English label")
+assert_contains(easyflow_js, "analysis_custom_model_canvas: '\\uB9E4\\uAC1C\\u00B7\\uC870\\uC808 \\uC0AC\\uC6A9\\uC790 \\uC815\\uC758 \\uBAA8\\uB378'", "Analysis grouped menu custom model Korean label")
+assert_contains(easyflow_js, "values: ['Regression', 'analysis_mediation_moderation', 'analysis_custom_model_canvas', 'Generalized Linear Model (GLM)', 'analysis_logistic_regression']", "Analysis grouped menu includes custom model in Regression / Models")
 assert_contains(easyflow_js, "menu: 'Sample Size'", "Sample Size grouped menu config label")
 assert_contains(easyflow_js, "menuLabels: ['Sample Size'", "Sample Size grouped menu translated labels")
 assert_contains(easyflow_js, "marker: 'sample-size'", "Sample Size grouped menu config marker")
@@ -572,11 +636,11 @@ assert_contains(direct_click_handler, "link.closest('.navbar-nav > li.dropdown')
 
 message("Checking layout documentation...")
 assert_contains(layout_doc, "Standard analysis and Data Editor menus use shared geometry variables declared\non `body` in `www/style.css`", "documented global standard geometry variables")
-assert_contains(layout_doc, "analysis tools use `1140px`", "documented standard analysis width")
-assert_contains(layout_doc, "Data Editor three-block tools use `1176px`, including setup-grid padding\n  where relevant", "documented standard Data Editor setup width")
+assert_contains(layout_doc, "frequency-style tools use `1138px`", "documented frequency-style workspace width")
+assert_contains(layout_doc, "frequency-style tools use `1102px`, including setup-grid padding where\n  relevant", "documented frequency-style setup width")
 assert_contains(layout_doc, "Every standard Data Editor tool must render inside the\n  `.data-editor-workspace` wrapper", "documented Data Editor workspace wrapper requirement")
 assert_contains(layout_doc, "must reference the standard variables instead of hard-coded copies", "documented standard variable requirement")
-assert_contains(layout_doc, "Button row: Block 1 commands use column 1, Block 2 commands use column 3,\n  and Block 3 commands use column 5", "documented button-row column contract")
+assert_contains(layout_doc, "Button row: Block 1 commands use column 1, Block 2 commands use column 3,\n  and Block 3 commands use column 4", "documented button-row column contract")
 assert_contains(layout_doc, "Footer button widths: Block 1 and Block 2 commands use\n  `--se-standard-inner-button-width`; Block 3 commands use\n  `--se-standard-options-button-width`.", "documented footer button width contract")
 assert_contains(layout_doc, "`Wide to Long` is a standard Data Editor three-block tool, not a layout\nexception.", "documented Wide to Long standard layout classification")
 assert_contains(layout_doc, "`Run` sits under Block 1.", "documented Wide to Long run placement")

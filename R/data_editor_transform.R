@@ -1,6 +1,22 @@
 # Formula-based variable transformation.
 
 transform_allowed_functions <- function() {
+  numeric_vector <- function(x) {
+    if (is.numeric(x) && !is.factor(x)) {
+      return(as.numeric(x))
+    }
+    suppressWarnings(as.numeric(as.character(x)))
+  }
+
+  numeric_matrix <- function(...) {
+    values <- list(...)
+    if (length(values) == 0) {
+      return(matrix(numeric(0), nrow = 0, ncol = 0))
+    }
+    n <- max(vapply(values, length, integer(1)), 1L)
+    do.call(cbind, lapply(values, function(value) rep(numeric_vector(value), length.out = n)))
+  }
+
   n_miss <- function(...) {
     values <- list(...)
     if (length(values) == 0) {
@@ -31,7 +47,7 @@ transform_allowed_functions <- function() {
         if (length(x) == 0L) return(empty)
         return(length(x))
       }
-      x <- suppressWarnings(as.numeric(x))
+      x <- numeric_vector(x)
       if (isTRUE(na.rm)) {
         x <- x[!is.na(x)]
       }
@@ -70,13 +86,13 @@ transform_allowed_functions <- function() {
     ceiling = ceiling,
     pmin = pmin,
     pmax = pmax,
-    sum = sum,
-    mean = mean,
-    median = stats::median,
-    sd = stats::sd,
-    var = stats::var,
-    min = min,
-    max = max,
+    sum = function(x, ..., na.rm = FALSE) sum(numeric_vector(x), ..., na.rm = na.rm),
+    mean = function(x, ..., na.rm = FALSE) mean(numeric_vector(x), ..., na.rm = na.rm),
+    median = function(x, ..., na.rm = FALSE) stats::median(numeric_vector(x), ..., na.rm = na.rm),
+    sd = function(x, ..., na.rm = FALSE) stats::sd(numeric_vector(x), ..., na.rm = na.rm),
+    var = function(x, ..., na.rm = FALSE) stats::var(numeric_vector(x), ..., na.rm = na.rm),
+    min = function(x, ..., na.rm = FALSE) min(numeric_vector(x), ..., na.rm = na.rm),
+    max = function(x, ..., na.rm = FALSE) max(numeric_vector(x), ..., na.rm = na.rm),
     if_else = ifelse,
     ifelse = ifelse,
     in_values = function(x, ...) x %in% unlist(list(...), use.names = FALSE),
@@ -110,7 +126,7 @@ transform_allowed_functions <- function() {
     grepl = grepl,
     gsub = gsub,
     is_na = is.na,
-    as_numeric = function(x) suppressWarnings(as.numeric(x)),
+    as_numeric = numeric_vector,
     as_character = as.character,
     as_date = as.Date,
     date_diff = function(end, start, units = "days") as.numeric(difftime(end, start, units = units)),
@@ -119,12 +135,12 @@ transform_allowed_functions <- function() {
     N_miss = n_miss,
     F_miss = function(...) as.integer(n_miss(...) == 0L),
     id_stat = id_stat,
-    row_sum = function(..., na.rm = TRUE) rowSums(cbind(...), na.rm = na.rm),
-    row_mean = function(..., na.rm = TRUE) rowMeans(cbind(...), na.rm = na.rm),
-    row_min = function(..., na.rm = TRUE) do.call(pmin, c(list(...), na.rm = na.rm)),
-    row_max = function(..., na.rm = TRUE) do.call(pmax, c(list(...), na.rm = na.rm)),
-    row_sd = function(..., na.rm = TRUE) apply(cbind(...), 1, stats::sd, na.rm = na.rm),
-    z_score = function(x) as.numeric(scale(as.numeric(x)))
+    row_sum = function(..., na.rm = TRUE) rowSums(numeric_matrix(...), na.rm = na.rm),
+    row_mean = function(..., na.rm = TRUE) rowMeans(numeric_matrix(...), na.rm = na.rm),
+    row_min = function(..., na.rm = TRUE) do.call(pmin, c(as.data.frame(numeric_matrix(...)), na.rm = na.rm)),
+    row_max = function(..., na.rm = TRUE) do.call(pmax, c(as.data.frame(numeric_matrix(...)), na.rm = na.rm)),
+    row_sd = function(..., na.rm = TRUE) apply(numeric_matrix(...), 1, stats::sd, na.rm = na.rm),
+    z_score = function(x) as.numeric(scale(numeric_vector(x)))
   )
 }
 

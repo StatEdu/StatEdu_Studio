@@ -189,8 +189,8 @@
 
   function filePickerTypes() {
     return [{
-      description: "StatEdu Studio Model",
-      accept: {"application/json": [".studio", ".json"]}
+      description: "StatEdu Model Canvas",
+      accept: {"application/json": [".stmodel", ".studio", ".json"]}
     }];
   }
 
@@ -211,7 +211,7 @@
   function openModelFileFallback(instance) {
     var input = document.createElement("input");
     input.type = "file";
-    input.accept = ".studio,.json,application/json";
+    input.accept = ".stmodel,.studio,.json,application/json";
     input.style.display = "none";
     input.addEventListener("change", function() {
       var file = input.files && input.files[0];
@@ -376,7 +376,7 @@
     if (window.showSaveFilePicker) {
       try {
         var handle = await window.showSaveFilePicker({
-          suggestedName: timestampName("model-canvas", "studio"),
+          suggestedName: timestampName("model-canvas", "stmodel"),
           types: filePickerTypes()
         });
         var writable = await handle.createWritable();
@@ -387,7 +387,7 @@
         if (error && error.name === "AbortError") return;
       }
     }
-    downloadText(timestampName("model-canvas", "studio"), payload, "application/json");
+    downloadText(timestampName("model-canvas", "stmodel"), payload, "application/json");
   }
 
   async function load(instance) {

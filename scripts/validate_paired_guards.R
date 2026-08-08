@@ -195,6 +195,54 @@ expect_true(grepl("RM ANOVA + Wilks' lambda", wilks_note, fixed = TRUE), "Expect
 expect_true(grepl("Wilks' lambda = .393", wilks_note, fixed = TRUE), "Expected paired RM note to include only the Wilks detail used for the test")
 expect_true(!grepl("GG epsilon", wilks_note, fixed = TRUE) && !grepl("GG p", wilks_note, fixed = TRUE), "Expected paired RM Wilks note not to mix in GG details")
 
+message("Checking paired RM sphericity and binary coding...")
+sphericity_matrix <- matrix(
+  c(
+    1.1, 1.6, 2.0,
+    0.9, 1.2, 1.8,
+    1.4, 1.7, 2.4,
+    1.0, 1.5, 1.9,
+    1.3, 1.8, 2.1,
+    0.8, 1.4, 1.7,
+    1.2, 1.6, 2.2,
+    1.5, 1.9, 2.5
+  ),
+  ncol = 3,
+  byrow = TRUE
+)
+sphericity_fit <- stats::lm(sphericity_matrix ~ 1)
+sphericity_idata <- data.frame(time = factor(seq_len(ncol(sphericity_matrix))))
+sphericity_ref <- stats::mauchly.test(sphericity_fit, M = ~time, X = ~1, idata = sphericity_idata)
+sphericity_app <- paired_rm_sphericity(sphericity_matrix)
+expect_true(abs(sphericity_app$w - unname(as.numeric(sphericity_ref$statistic))) < 1e-12, "Expected paired RM Mauchly W to match stats::mauchly.test")
+expect_true(abs(sphericity_app$p - as.numeric(sphericity_ref$p.value)) < 1e-12, "Expected paired RM Mauchly p-value to match stats::mauchly.test")
+
+binary_rm_data <- data.frame(
+  t1 = c("yes", "yes", "no", "no", "yes", "no"),
+  t2 = c("yes", "no", "no", "yes", "yes", "no"),
+  t3 = c("no", "yes", "no", "yes", "yes", "no"),
+  stringsAsFactors = FALSE
+)
+binary_rm_info <- data.frame(name = names(binary_rm_data), measurement = rep("binary", 3), stringsAsFactors = FALSE)
+binary_rm_result <- prepare_paired_rm_results(
+  binary_rm_data,
+  variable_groups = list(names(binary_rm_data)),
+  variable_info = binary_rm_info,
+  options = list(effect_size = TRUE)
+)
+binary_coded <- paired_rm_binary_matrix(binary_rm_data)
+binary_col_totals <- colSums(binary_coded$matrix)
+binary_row_totals <- rowSums(binary_coded$matrix)
+binary_total <- sum(binary_col_totals)
+binary_expected_q <- (ncol(binary_coded$matrix) - 1) *
+  (ncol(binary_coded$matrix) * sum(binary_col_totals ^ 2) - binary_total ^ 2) /
+  (ncol(binary_coded$matrix) * binary_total - sum(binary_row_totals ^ 2))
+expect_true(identical(binary_coded$levels, c("no", "yes")), "Expected paired RM binary coding to map the second observed level to 1")
+expect_true(abs(as.numeric(binary_rm_result$count_table$Statistic[[1]]) - binary_expected_q) < 1e-12, "Expected Cochran's Q to use yes/no binary coding")
+expect_true(identical(attr(binary_rm_result$count_table, "binary_levels", exact = TRUE), c("no", "yes")), "Expected paired RM count table to retain binary level labels")
+binary_rm_html <- as.character(htmltools::renderTags(paired_rm_results_ui(binary_rm_result))$html)
+expect_true(grepl(">no</th>", binary_rm_html, fixed = TRUE) && grepl(">yes</th>", binary_rm_html, fixed = TRUE), "Expected paired RM binary count headers to show actual levels")
+
 nonparam_rm_result <- prepare_nonparametric_paired_rm_results(
   data,
   variable_groups = list(c("ord_pre", "ord_post", "ord_third"), c("t1", "t2", "t3")),

@@ -801,7 +801,10 @@ prepare_hierarchical_analysis_results <- function(
 
   results <- list()
   jobs <- list()
+  hierarchical_note <- "Hierarchical models were fitted on the complete cases of the final model (listwise across all blocks); all steps share the same N."
   for (dependent in dependents) {
+    all_vars <- unique(c(dependent, block1, block2, block3))
+    step_data <- data[stats::complete.cases(data[, all_vars, drop = FALSE]), , drop = FALSE]
     for (step_index in seq_along(steps)) {
       predictors <- setdiff(steps[[step_index]]$predictors, dependent)
       if (length(predictors) == 0) {
@@ -810,7 +813,7 @@ prepare_hierarchical_analysis_results <- function(
       prepared <- tryCatch(
         prepare_single_regression_result(
           dependent = dependent,
-          data = data,
+          data = step_data,
           predictors = predictors,
           variable_info = variable_info,
           reference_values = reference_values,
@@ -834,6 +837,7 @@ prepare_hierarchical_analysis_results <- function(
       result$hierarchical_step <- steps[[step_index]]$name
       result$hierarchical_step_index <- step_index
       result$hierarchical_blocks <- steps[[step_index]]$blocks
+      result$hierarchical_note <- hierarchical_note
       result$block1 <- block1
       result$block2 <- block2
       result$block3 <- block3

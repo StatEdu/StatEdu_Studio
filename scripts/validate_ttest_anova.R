@@ -631,4 +631,32 @@ guard_sheets <- openxlsx::getSheetNames(guard_xlsx)
 expect_true("Warnings" %in% guard_sheets, "Expected t-test / ANOVA warnings Excel sheet")
 expect_true("Skipped analyses" %in% guard_sheets, "Expected t-test / ANOVA skipped Excel sheet")
 
+message("Checking Kruskal-Wallis epsilon squared and Lilliefors K-S normality...")
+kw_values <- c(1, 2, 3, 4, 10, 11, 12, 13, 20, 21, 22, 23)
+kw_groups <- rep(c("A", "B", "C"), each = 4)
+kw_data <- ttest_analysis_data(kw_values, kw_groups)
+kw_test <- stats::kruskal.test(y ~ g, data = kw_data)
+expected_epsilon <- as.numeric(kw_test$statistic) * (nrow(kw_data) + 1) / (nrow(kw_data)^2 - 1)
+actual_epsilon <- ttest_kruskal_epsilon_squared(kw_values, kw_groups)
+expect_true(
+  abs(actual_epsilon - expected_epsilon) < 1e-12,
+  "Expected Kruskal-Wallis epsilon squared to use H * (N + 1) / (N^2 - 1)"
+)
+
+ks_values <- c(-1.2, -0.7, -0.3, 0.1, 0.4, 0.8, 1.1, 1.4)
+ks_expected <- nortest::lillie.test(ks_values)
+ks_result <- ttest_normality_ks_overall(ks_values)
+expect_true(
+  grepl("Lilliefors corrected", ks_result$method, fixed = TRUE),
+  "Expected K-S normality method to report Lilliefors correction when nortest is available"
+)
+expect_true(
+  grepl(sprintf("K-S D=%s", format_decimal3(unname(ks_expected$statistic))), ks_result$detail, fixed = TRUE),
+  "Expected K-S normality detail to report the Lilliefors D statistic"
+)
+expect_true(
+  grepl(format_p(ks_expected$p.value), ks_result$detail, fixed = TRUE),
+  "Expected K-S normality detail to report the Lilliefors p-value"
+)
+
 message("All t-test / ANOVA validations passed.")

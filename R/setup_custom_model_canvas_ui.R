@@ -233,7 +233,7 @@ custom_model_canvas_title <- function(language = statedu_initial_language()) {
   custom_model_canvas_text(
     language,
     "Mediation / Moderation Custom Model",
-    "\ub9e4\uac1c\u00b7\uc870\uc808 \uc0ac\uc6a9\uc790 \ubaa8\ub378"
+    "\ub9e4\uac1c\u00b7\uc870\uc808 \uc0ac\uc6a9\uc790 \uc815\uc758 \ubaa8\ub378"
   )
 }
 
@@ -511,19 +511,24 @@ custom_model_canvas_toolbar <- function(input = NULL, language = statedu_initial
   )
 }
 
-custom_model_canvas_edge_label_from_result <- function(result, equation, term) {
-  custom_model_canvas_edge_info_from_result(result, equation, term)$label
+custom_model_canvas_edge_label_from_result <- function(result, equation, term, response = NULL) {
+  custom_model_canvas_edge_info_from_result(result, equation, term, response = response)$label
 }
 
-custom_model_canvas_edge_info_from_result <- function(result, equation, term) {
+custom_model_canvas_edge_info_from_result <- function(result, equation, term, response = NULL) {
   term <- as.character(term %||% "")[[1]]
   equation <- as.character(equation %||% "")[[1]]
+  response <- as.character(response %||% "")[[1]]
   if (!nzchar(term) || !nzchar(equation)) {
     return(list(label = "", p = NA_real_, significant = FALSE, matched = FALSE))
   }
   for (path_result in result$path_results %||% list()) {
     if (!is.list(path_result)) next
     if (!identical(as.character(path_result$equation %||% "")[[1]], equation)) next
+    if (nzchar(response)) {
+      path_response <- tryCatch(all.vars(stats::formula(path_result$model))[[1]], error = function(e) "")
+      if (!identical(path_response, response)) next
+    }
     info <- mediation_moderation_path_coefficient_info(path_result, term)
     label <- as.character(info$label %||% "")[[1]]
     if (nzchar(label)) {
@@ -544,16 +549,16 @@ custom_model_canvas_result_edge_info <- function(result, from_node, to_node) {
   from_var <- custom_model_canvas_node_variable(from_node)
   to_var <- custom_model_canvas_node_variable(to_node)
   if (identical(from_role, "independent") && identical(to_role, "mediator")) {
-    return(custom_model_canvas_edge_info_from_result(result, paste("M model:", to_var), from_var))
+    return(custom_model_canvas_edge_info_from_result(result, paste("M model:", to_var), from_var, response = to_var))
   }
   if (identical(from_role, "mediator") && identical(to_role, "mediator")) {
-    return(custom_model_canvas_edge_info_from_result(result, paste("M model:", to_var), from_var))
+    return(custom_model_canvas_edge_info_from_result(result, paste("M model:", to_var), from_var, response = to_var))
   }
   if (identical(from_role, "mediator") && identical(to_role, "dependent")) {
-    return(custom_model_canvas_edge_info_from_result(result, "Y model", from_var))
+    return(custom_model_canvas_edge_info_from_result(result, "Y model", from_var, response = to_var))
   }
   if (identical(from_role, "independent") && identical(to_role, "dependent")) {
-    return(custom_model_canvas_edge_info_from_result(result, "Y model", from_var))
+    return(custom_model_canvas_edge_info_from_result(result, "Y model", from_var, response = to_var))
   }
   list(label = "", p = NA_real_, significant = FALSE, matched = FALSE)
 }
@@ -581,14 +586,15 @@ custom_model_canvas_result_moderation_info <- function(result, moderation, nodes
     return(custom_model_canvas_edge_info_from_result(
       result,
       paste("M model:", custom_model_canvas_node_variable(to_node)),
-      paste0(moderated_var, ":", moderator)
+      paste0(moderated_var, ":", moderator),
+      response = custom_model_canvas_node_variable(to_node)
     ))
   }
   if (identical(from_role, "mediator") && identical(to_role, "dependent")) {
-    return(custom_model_canvas_edge_info_from_result(result, "Y model", paste0(moderated_var, ":", moderator)))
+    return(custom_model_canvas_edge_info_from_result(result, "Y model", paste0(moderated_var, ":", moderator), response = custom_model_canvas_node_variable(to_node)))
   }
   if (identical(from_role, "independent") && identical(to_role, "dependent")) {
-    return(custom_model_canvas_edge_info_from_result(result, "Y model", paste0(moderated_var, ":", moderator)))
+    return(custom_model_canvas_edge_info_from_result(result, "Y model", paste0(moderated_var, ":", moderator), response = custom_model_canvas_node_variable(to_node)))
   }
   list(label = "", p = NA_real_, significant = FALSE, matched = FALSE)
 }
@@ -597,7 +603,7 @@ custom_model_canvas_result_snapshot <- function(snapshot, result) {
   snapshot <- snapshot %||% list()
   snapshot$nonce <- NULL
   style <- snapshot$style %||% list()
-  label_size <- suppressWarnings(as.numeric(style$labelFontSize %||% style$fontSize %||% 12))
+  label_size <- custom_model_canvas_numeric_value(style$labelFontSize %||% style$fontSize, 12)
   if (is.na(label_size)) label_size <- 12
   nodes <- custom_model_canvas_records(snapshot$nodes)
   node_ids <- vapply(nodes, custom_model_canvas_record_value, character(1), key = "id")
@@ -616,16 +622,16 @@ custom_model_canvas_result_snapshot <- function(snapshot, result) {
       custom_model_canvas_result_edge_info(result, from_node, to_node)
     }
     edge$label <- as.character(info$label %||% "")[[1]]
-    edge$p <- suppressWarnings(as.numeric(info$p %||% NA_real_))
+    edge$p <- custom_model_canvas_numeric_value(info$p, NA_real_)
     edge$significant <- isTRUE(info$significant) && nzchar(edge$label)
     edge$resultMatched <- isTRUE(info$matched)
-    edge$labelPosition <- suppressWarnings(as.numeric(edge$labelPosition %||% 50))
+    edge$labelPosition <- custom_model_canvas_numeric_value(edge$labelPosition, 50)
     if (is.na(edge$labelPosition)) edge$labelPosition <- 50
-    edge$labelOffsetX <- suppressWarnings(as.numeric(edge$labelOffsetX %||% 0))
+    edge$labelOffsetX <- custom_model_canvas_numeric_value(edge$labelOffsetX, 0)
     if (is.na(edge$labelOffsetX)) edge$labelOffsetX <- 0
-    edge$labelOffsetY <- suppressWarnings(as.numeric(edge$labelOffsetY %||% -10))
+    edge$labelOffsetY <- custom_model_canvas_numeric_value(edge$labelOffsetY, -10)
     if (is.na(edge$labelOffsetY)) edge$labelOffsetY <- -10
-    edge$labelFontSize <- suppressWarnings(as.numeric(edge$labelFontSize %||% label_size))
+    edge$labelFontSize <- custom_model_canvas_numeric_value(edge$labelFontSize, label_size)
     if (is.na(edge$labelFontSize)) edge$labelFontSize <- label_size
     edge
   })
@@ -634,14 +640,14 @@ custom_model_canvas_result_snapshot <- function(snapshot, result) {
   moderations <- lapply(moderations, function(moderation) {
     info <- custom_model_canvas_result_moderation_info(result, moderation, nodes, edge_by_id)
     moderation$label <- as.character(info$label %||% "")[[1]]
-    moderation$p <- suppressWarnings(as.numeric(info$p %||% NA_real_))
+    moderation$p <- custom_model_canvas_numeric_value(info$p, NA_real_)
     moderation$significant <- isTRUE(info$significant) && nzchar(moderation$label)
     moderation$resultMatched <- isTRUE(info$matched)
-    moderation$labelOffsetX <- suppressWarnings(as.numeric(moderation$labelOffsetX %||% 0))
+    moderation$labelOffsetX <- custom_model_canvas_numeric_value(moderation$labelOffsetX, 0)
     if (is.na(moderation$labelOffsetX)) moderation$labelOffsetX <- 0
-    moderation$labelOffsetY <- suppressWarnings(as.numeric(moderation$labelOffsetY %||% -10))
+    moderation$labelOffsetY <- custom_model_canvas_numeric_value(moderation$labelOffsetY, -10)
     if (is.na(moderation$labelOffsetY)) moderation$labelOffsetY <- -10
-    moderation$labelFontSize <- suppressWarnings(as.numeric(moderation$labelFontSize %||% label_size))
+    moderation$labelFontSize <- custom_model_canvas_numeric_value(moderation$labelFontSize, label_size)
     if (is.na(moderation$labelFontSize)) moderation$labelFontSize <- label_size
     moderation
   })
@@ -654,104 +660,133 @@ custom_model_canvas_result_snapshot <- function(snapshot, result) {
 
 custom_model_canvas_analysis_options <- function(input = NULL, language = statedu_initial_language()) {
   bootstrap_choices <- bootstrap_resample_choices(language)
+  options_tab <- if (!is.null(input)) isolate(input$custom_mm_options_tab) else NULL
+  options_tab <- if (as.character(options_tab %||% "Model") %in% c("Model", "Bootstrap", "Output")) as.character(options_tab %||% "Model") else "Model"
+  output_table_style <- analysis_output_table_style(if (!is.null(input)) isolate(input$custom_mm_output_table_style) else NULL)
   div(
-    class = "custom-model-analysis-options analysis-options-column analysis-options-panel mm-model-panel",
-    div(
-      class = "analysis-option-group",
-      div(class = "analysis-option-title", mediation_moderation_text(language, "Analysis method", "\ubd84\uc11d \ubc29\ubc95")),
-      selectInput(
-        "custom_mm_analysis_method",
-        NULL,
-        choices = mediation_moderation_analysis_method_choices(language),
-        selected = mediation_moderation_scalar_choice(
-          if (!is.null(input)) isolate(input$custom_mm_analysis_method) else NULL,
-          "statedu",
-          c("statedu", "process_ols")
-        ),
-        selectize = FALSE
-      )
-    ),
-    analysis_option_group(
-      "Residual diagnostics",
-      list(
-        list(
-          id = "custom_mm_residual_diagnostics",
-          label = "Residual diagnostics",
-          value = isTRUE(if (!is.null(input)) isolate(input$custom_mm_residual_diagnostics %||% TRUE) else TRUE)
-        ),
-        list(
-          id = "custom_mm_auto_method",
-          label = "Automatic method selection",
-          value = isTRUE(if (!is.null(input)) isolate(input$custom_mm_auto_method %||% TRUE) else TRUE) &&
-            isTRUE(if (!is.null(input)) isolate(input$custom_mm_residual_diagnostics %||% TRUE) else TRUE),
-          disabled = !isTRUE(if (!is.null(input)) isolate(input$custom_mm_residual_diagnostics %||% TRUE) else TRUE)
+    class = "custom-model-analysis-options analysis-options-column",
+    analysis_options_tabs_panel(
+      id = "custom_mm_options_tab",
+      selected = options_tab,
+      class = "mm-model-panel custom-mm-options",
+      tabPanel(
+        analysis_ui_text("Model", language),
+        value = "Model",
+        div(
+          class = "factor-options-tab-content regression-options-tab-content mm-options-tab-content",
+          div(
+            class = "analysis-option-group",
+            div(class = "analysis-option-title", mediation_moderation_text(language, "Analysis method", "\ubd84\uc11d \ubc29\ubc95")),
+            selectInput(
+              "custom_mm_analysis_method",
+              NULL,
+              choices = mediation_moderation_analysis_method_choices(language),
+              selected = mediation_moderation_scalar_choice(
+                if (!is.null(input)) isolate(input$custom_mm_analysis_method) else NULL,
+                "statedu",
+                c("statedu", "process_ols")
+              ),
+              selectize = FALSE
+            )
+          ),
+          analysis_option_group(
+            "Residual diagnostics",
+            list(
+              list(
+                id = "custom_mm_residual_diagnostics",
+                label = "Residual diagnostics",
+                value = isTRUE(if (!is.null(input)) isolate(input$custom_mm_residual_diagnostics %||% TRUE) else TRUE)
+              ),
+              list(
+                id = "custom_mm_auto_method",
+                label = "Automatic method selection",
+                value = isTRUE(if (!is.null(input)) isolate(input$custom_mm_auto_method %||% TRUE) else TRUE) &&
+                  isTRUE(if (!is.null(input)) isolate(input$custom_mm_residual_diagnostics %||% TRUE) else TRUE),
+                disabled = !isTRUE(if (!is.null(input)) isolate(input$custom_mm_residual_diagnostics %||% TRUE) else TRUE)
+              )
+            ),
+            language = language
+          ),
+          analysis_option_group(
+            "Effect size",
+            list(
+              list(
+                id = "custom_mm_effect_size_y",
+                label = "Y model",
+                value = isTRUE(if (!is.null(input)) isolate(input$custom_mm_effect_size_y %||% TRUE) else TRUE)
+              ),
+              list(
+                id = "custom_mm_effect_size_m",
+                label = "M model",
+                value = isTRUE(if (!is.null(input)) isolate(input$custom_mm_effect_size_m %||% FALSE) else FALSE)
+              )
+            ),
+            language = language
+          ),
+          analysis_option_group(
+            "Covariate control",
+            list(
+              list(
+                id = "custom_mm_covariate_control_y",
+                label = mediation_moderation_text(language, "Dependent variable", "\uc885\uc18d\ubcc0\uc218"),
+                value = isTRUE(if (!is.null(input)) isolate(input$custom_mm_covariate_control_y %||% TRUE) else TRUE)
+              ),
+              list(
+                id = "custom_mm_covariate_control_m",
+                label = mediation_moderation_text(language, "Mediator variable", "\ub9e4\uac1c\ubcc0\uc218"),
+                value = isTRUE(if (!is.null(input)) isolate(input$custom_mm_covariate_control_m %||% TRUE) else TRUE)
+              )
+            ),
+            language = language
+          )
         )
       ),
-      language = language
-    ),
-    analysis_option_group(
-      "Effect size",
-      list(
-        list(
-          id = "custom_mm_effect_size_y",
-          label = "Y model",
-          value = isTRUE(if (!is.null(input)) isolate(input$custom_mm_effect_size_y %||% TRUE) else TRUE)
-        ),
-        list(
-          id = "custom_mm_effect_size_m",
-          label = "M model",
-          value = isTRUE(if (!is.null(input)) isolate(input$custom_mm_effect_size_m %||% FALSE) else FALSE)
+      tabPanel(
+        analysis_ui_text("Bootstrap", language),
+        value = "Bootstrap",
+        div(
+          class = "factor-options-tab-content regression-options-tab-content mm-options-tab-content",
+          div(
+            class = "analysis-option-group",
+            selectInput(
+              "custom_mm_boot_r",
+              analysis_ui_text("Number of bootstrap samples", language),
+              choices = bootstrap_choices,
+              selected = mediation_moderation_scalar_choice(
+                if (!is.null(input)) isolate(input$custom_mm_boot_r) else NULL,
+                "5000",
+                unname(bootstrap_choices)
+              ),
+              selectize = FALSE
+            ),
+            numericInput(
+              "custom_mm_seed",
+              analysis_ui_text("Seed number", language),
+              value = mediation_moderation_numeric_choice(if (!is.null(input)) isolate(input$custom_mm_seed) else NULL, default_seed()),
+              min = 1,
+              step = 1
+            ),
+            selectInput(
+              "custom_mm_ci_method",
+              mediation_moderation_text(language, "Bootstrap CI method", "Bootstrap CI \ubc29\uc2dd"),
+              choices = mediation_moderation_ci_method_choices(language),
+              selected = mediation_moderation_scalar_choice(
+                if (!is.null(input)) isolate(input$custom_mm_ci_method) else NULL,
+                "bias_corrected",
+                c("bias_corrected", "percentile")
+              ),
+              selectize = FALSE
+            )
+          )
         )
       ),
-      language = language
-    ),
-    analysis_option_group(
-      "Covariate control",
-      list(
-        list(
-          id = "custom_mm_covariate_control_y",
-          label = mediation_moderation_text(language, "Dependent variable", "\uc885\uc18d\ubcc0\uc218"),
-          value = isTRUE(if (!is.null(input)) isolate(input$custom_mm_covariate_control_y %||% TRUE) else TRUE)
-        ),
-        list(
-          id = "custom_mm_covariate_control_m",
-          label = mediation_moderation_text(language, "Mediator variable", "\ub9e4\uac1c\ubcc0\uc218"),
-          value = isTRUE(if (!is.null(input)) isolate(input$custom_mm_covariate_control_m %||% TRUE) else TRUE)
+      tabPanel(
+        analysis_ui_text("Output", language),
+        value = "Output",
+        div(
+          class = "factor-options-tab-content regression-options-tab-content mm-options-tab-content",
+          analysis_output_table_style_tabs("custom_mm_output_table_style", output_table_style, language)
         )
-      ),
-      language = language
-    ),
-    div(
-      class = "analysis-option-group",
-      div(class = "analysis-option-title", analysis_ui_text("Bootstrap", language)),
-      selectInput(
-        "custom_mm_boot_r",
-        analysis_ui_text("Number of bootstrap samples", language),
-        choices = bootstrap_choices,
-        selected = mediation_moderation_scalar_choice(
-          if (!is.null(input)) isolate(input$custom_mm_boot_r) else NULL,
-          "5000",
-          unname(bootstrap_choices)
-        ),
-        selectize = FALSE
-      ),
-      numericInput(
-        "custom_mm_seed",
-        analysis_ui_text("Seed number", language),
-        value = mediation_moderation_numeric_choice(if (!is.null(input)) isolate(input$custom_mm_seed) else NULL, default_seed()),
-        min = 1,
-        step = 1
-      ),
-      selectInput(
-        "custom_mm_ci_method",
-        mediation_moderation_text(language, "Bootstrap CI method", "Bootstrap CI \ubc29\uc2dd"),
-        choices = mediation_moderation_ci_method_choices(language),
-        selected = mediation_moderation_scalar_choice(
-          if (!is.null(input)) isolate(input$custom_mm_ci_method) else NULL,
-          "bias_corrected",
-          c("bias_corrected", "percentile")
-        ),
-        selectize = FALSE
       )
     )
   )
@@ -841,12 +876,20 @@ custom_model_canvas_record_value <- function(record, key, default = "") {
   as.character(value[[1]])
 }
 
-custom_model_canvas_record_number <- function(record, key, default = 0) {
-  value <- suppressWarnings(as.numeric(record[[key]] %||% default))
+custom_model_canvas_numeric_value <- function(value, default = 0) {
+  value <- value %||% default
+  if (is.list(value)) {
+    value <- unlist(value, recursive = TRUE, use.names = FALSE)
+  }
+  value <- suppressWarnings(as.numeric(value))
   if (length(value) == 0L || is.na(value[[1]])) {
     return(default)
   }
   value[[1]]
+}
+
+custom_model_canvas_record_number <- function(record, key, default = 0) {
+  custom_model_canvas_numeric_value(record[[key]], default)
 }
 
 custom_model_canvas_node_variable <- function(node) {
@@ -882,7 +925,7 @@ custom_model_canvas_order_variables <- function(values, selected_names = charact
   values[order(rank, seq_along(values))]
 }
 
-custom_model_canvas_snapshot_spec <- function(snapshot, selected_names, language = statedu_initial_language()) {
+custom_model_canvas_snapshot_spec <- function(snapshot, selected_names, language = statedu_initial_language(), two_moderator_model = "3") {
   selected_names <- as.character(selected_names %||% character(0))
   nodes <- custom_model_canvas_records(snapshot$nodes)
   edges <- custom_model_canvas_records(snapshot$edges)
@@ -920,18 +963,21 @@ custom_model_canvas_snapshot_spec <- function(snapshot, selected_names, language
     }
     NA_character_
   }
-  directed_x_to_y <- unique(vapply(edges, function(edge) {
+  directed_x_to_y_pairs <- lapply(edges, function(edge) {
     from <- edge_node(edge, "from")
     to <- edge_node(edge, "to")
     if (is.null(from) || is.null(to)) {
-      return(NA_character_)
+      return(NULL)
     }
     if (identical(node_role(from), "independent") && identical(node_role(to), "dependent")) {
-      return(custom_model_canvas_node_variable(from))
+      return(c(
+        y = custom_model_canvas_node_variable(to),
+        x = custom_model_canvas_node_variable(from)
+      ))
     }
-    NA_character_
-  }, character(1)))
-  directed_x_to_y <- directed_x_to_y[!is.na(directed_x_to_y) & nzchar(directed_x_to_y)]
+    NULL
+  })
+  directed_x_to_y_pairs <- Filter(Negate(is.null), directed_x_to_y_pairs)
   directed_x_to_m_pairs <- lapply(edges, function(edge) {
     from <- edge_node(edge, "from")
     to <- edge_node(edge, "to")
@@ -947,6 +993,36 @@ custom_model_canvas_snapshot_spec <- function(snapshot, selected_names, language
     NULL
   })
   directed_x_to_m_pairs <- Filter(Negate(is.null), directed_x_to_m_pairs)
+  directed_m_to_y_pairs <- lapply(edges, function(edge) {
+    from <- edge_node(edge, "from")
+    to <- edge_node(edge, "to")
+    if (is.null(from) || is.null(to)) {
+      return(NULL)
+    }
+    if (identical(node_role(from), "mediator") && identical(node_role(to), "dependent")) {
+      return(c(
+        y = custom_model_canvas_node_variable(to),
+        mediator = custom_model_canvas_node_variable(from)
+      ))
+    }
+    NULL
+  })
+  directed_m_to_y_pairs <- Filter(Negate(is.null), directed_m_to_y_pairs)
+  directed_m_to_m_pairs <- lapply(edges, function(edge) {
+    from <- edge_node(edge, "from")
+    to <- edge_node(edge, "to")
+    if (is.null(from) || is.null(to)) {
+      return(NULL)
+    }
+    if (identical(node_role(from), "mediator") && identical(node_role(to), "mediator")) {
+      return(c(
+        from = custom_model_canvas_node_variable(from),
+        to = custom_model_canvas_node_variable(to)
+      ))
+    }
+    NULL
+  })
+  directed_m_to_m_pairs <- Filter(Negate(is.null), directed_m_to_m_pairs)
 
   mediator_nodes <- nodes_by_role("mediator")
   has_mediator_chain <- any(vapply(edges, function(edge) {
@@ -1001,6 +1077,20 @@ custom_model_canvas_snapshot_spec <- function(snapshot, selected_names, language
     edge_moderated_path(target_edge)
   }, character(1)))
   moderated_paths <- intersect(moderated_paths[!is.na(moderated_paths)], c("xm", "my", "xy"))
+  linked_moderators <- unique(vapply(moderations, function(moderation) {
+    source <- nodes[[custom_model_canvas_record_value(moderation, "from")]] %||% NULL
+    if (is.null(source) || !identical(node_role(source), "moderator")) {
+      return(NA_character_)
+    }
+    target_edge <- edge_by_id[[custom_model_canvas_record_value(moderation, "toEdge")]] %||% NULL
+    if (is.null(target_edge) || is.na(edge_moderated_path(target_edge))) {
+      return(NA_character_)
+    }
+    custom_model_canvas_node_variable(source)
+  }, character(1)))
+  linked_moderators <- linked_moderators[!is.na(linked_moderators) & nzchar(linked_moderators)]
+  roles$w <- intersect(roles$w, linked_moderators)
+  moderation_map_rows <- list()
   moderated_x_to_m <- stats::setNames(lapply(roles$mediators, function(mediator) character(0)), roles$mediators)
   moderated_m_to_y <- character(0)
   for (moderation in moderations) {
@@ -1012,40 +1102,112 @@ custom_model_canvas_snapshot_spec <- function(snapshot, selected_names, language
     from <- edge_node(target_edge, "from")
     to <- edge_node(target_edge, "to")
     if (is.null(from) || is.null(to)) next
+    moderator <- custom_model_canvas_node_variable(source)
     if (identical(moderated_path, "xm")) {
       x_value <- custom_model_canvas_node_variable(from)
       mediator <- custom_model_canvas_node_variable(to)
       if (nzchar(x_value) && nzchar(mediator) && mediator %in% names(moderated_x_to_m) && x_value %in% roles$x) {
         moderated_x_to_m[[mediator]] <- unique(c(moderated_x_to_m[[mediator]], x_value))
+        moderation_map_rows[[length(moderation_map_rows) + 1L]] <- data.frame(
+          path_type = "xm",
+          moderator = moderator,
+          x = x_value,
+          mediator = mediator,
+          y = "",
+          stringsAsFactors = FALSE
+        )
       }
     } else if (identical(moderated_path, "my")) {
       mediator <- custom_model_canvas_node_variable(from)
+      outcome <- custom_model_canvas_node_variable(to)
       if (nzchar(mediator) && mediator %in% roles$mediators) {
         moderated_m_to_y <- unique(c(moderated_m_to_y, mediator))
+        moderation_map_rows[[length(moderation_map_rows) + 1L]] <- data.frame(
+          path_type = "my",
+          moderator = moderator,
+          x = "",
+          mediator = mediator,
+          y = outcome,
+          stringsAsFactors = FALSE
+        )
+      }
+    } else if (identical(moderated_path, "xy")) {
+      x_value <- custom_model_canvas_node_variable(from)
+      outcome <- custom_model_canvas_node_variable(to)
+      if (nzchar(x_value) && x_value %in% roles$x) {
+        moderation_map_rows[[length(moderation_map_rows) + 1L]] <- data.frame(
+          path_type = "xy",
+          moderator = moderator,
+          x = x_value,
+          mediator = "",
+          y = outcome,
+          stringsAsFactors = FALSE
+        )
       }
     }
   }
+  direct_x_to_y <- mediation_moderation_normalize_outcome_map(
+    analysis_bind_rows(lapply(directed_x_to_y_pairs, function(pair) {
+      data.frame(
+        y = as.character(pair[["y"]] %||% ""),
+        x = as.character(pair[["x"]] %||% ""),
+        stringsAsFactors = FALSE
+      )
+    })),
+    outcomes = roles$y,
+    allowed = roles$x,
+    default = character(0)
+  )
+  m_to_y <- mediation_moderation_normalize_outcome_map(
+    analysis_bind_rows(lapply(directed_m_to_y_pairs, function(pair) {
+      data.frame(
+        y = as.character(pair[["y"]] %||% ""),
+        mediator = as.character(pair[["mediator"]] %||% ""),
+        stringsAsFactors = FALSE
+      )
+    })),
+    outcomes = roles$y,
+    allowed = roles$mediators,
+    default = character(0)
+  )
+  m_to_m <- mediation_moderation_normalize_mediator_map(
+    analysis_bind_rows(lapply(directed_m_to_m_pairs, function(pair) {
+      data.frame(
+        from = as.character(pair[["from"]] %||% ""),
+        to = as.character(pair[["to"]] %||% ""),
+        stringsAsFactors = FALSE
+      )
+    })),
+    mediators = roles$mediators,
+    default = character(0)
+  )
+  moderation_map <- mediation_moderation_normalize_moderation_map(
+    analysis_bind_rows(moderation_map_rows),
+    roles
+  )
 
   structure <- mediation_moderation_structure_from_mediators(roles$mediators, mediator_arrangement)
-  if (identical(structure, "serial")) {
-    moderated_paths <- character(0)
-    moderated_x_to_m <- stats::setNames(lapply(roles$mediators, function(mediator) character(0)), roles$mediators)
-    moderated_m_to_y <- character(0)
+  model <- mediation_moderation_infer_model(
+    structure,
+    moderated_paths,
+    moderator_count = length(roles$w),
+    two_moderator_model = two_moderator_model
+  )
+  if (is.na(model) || !model %in% mediation_moderation_models()) {
+    model <- "custom"
   }
-  model <- mediation_moderation_infer_model(structure, moderated_paths)
-  shiny::validate(shiny::need(!is.na(model) && model %in% mediation_moderation_models(), custom_model_canvas_text(
-    language,
-    "The drawn model does not match one of the currently supported mediation/moderation model numbers.",
-    "\uadf8\ub9b0 \ubaa8\ud615\uc774 \ud604\uc7ac \uc9c0\uc6d0\ud558\ub294 \ub9e4\uac1c\u00b7\uc870\uc808 \ubaa8\ub378 \ubc88\ud638\uc640 \ub9de\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4."
-  )))
   list(
     roles = roles,
     mediator_arrangement = mediator_arrangement,
-    moderated_paths = mediation_moderation_model_moderated_paths(model),
-    direct_x = intersect(directed_x_to_y, roles$x),
+    moderated_paths = moderated_paths,
+    direct_x = direct_x_to_y,
+    direct_x_to_y = direct_x_to_y,
     x_to_m = x_to_m,
+    m_to_y = m_to_y,
+    m_to_m = m_to_m,
     moderated_x_to_m = moderated_x_to_m,
     moderated_m_to_y = moderated_m_to_y,
+    moderation_map = moderation_map,
     model = model
   )
 }
@@ -1114,7 +1276,7 @@ register_custom_model_canvas_handlers <- function(
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
-  lapply(c("custom_mm_analysis_method", "custom_mm_residual_diagnostics", "custom_mm_auto_method", "custom_mm_effect_size_y", "custom_mm_effect_size_m", "custom_mm_covariate_control_y", "custom_mm_covariate_control_m", "custom_mm_boot_r", "custom_mm_seed", "custom_mm_ci_method"), function(input_id) {
+  lapply(c("custom_mm_analysis_method", "custom_mm_residual_diagnostics", "custom_mm_auto_method", "custom_mm_effect_size_y", "custom_mm_effect_size_m", "custom_mm_covariate_control_y", "custom_mm_covariate_control_m", "custom_mm_boot_r", "custom_mm_seed", "custom_mm_ci_method", "custom_mm_options_tab", "custom_mm_output_table_style"), function(input_id) {
     observeEvent(input[[input_id]], {
       mark_settings_dirty()
     }, ignoreInit = TRUE)
@@ -1144,7 +1306,8 @@ register_custom_model_canvas_handlers <- function(
     mediation_moderation_result_ui(
       custom_model_canvas_result(),
       statedu_current_language(app_language_fn),
-      dash_nonsignificant = TRUE
+      dash_nonsignificant = TRUE,
+      output_table_style = analysis_output_table_style(input$custom_mm_output_table_style)
     )
   })
   output$custom_model_canvas_save_control <- renderUI({
@@ -1166,7 +1329,12 @@ register_custom_model_canvas_handlers <- function(
 
   run_custom_model_canvas_analysis <- function(snapshot) {
     language <- statedu_current_language(app_language_fn)
-    spec <- custom_model_canvas_snapshot_spec(snapshot, selected_names_fn(), language)
+    spec <- custom_model_canvas_snapshot_spec(
+      snapshot,
+      selected_names_fn(),
+      language,
+      two_moderator_model = "3"
+    )
     progress_message <- custom_model_canvas_text(
       language,
       "Running custom mediation / moderation model",
@@ -1193,8 +1361,13 @@ register_custom_model_canvas_handlers <- function(
             auto_method = isTRUE(input$custom_mm_residual_diagnostics %||% TRUE) && isTRUE(input$custom_mm_auto_method %||% TRUE),
             direct_x = spec$direct_x,
             x_to_m = spec$x_to_m,
+            m_to_y = spec$m_to_y,
+            m_to_m = spec$m_to_m,
             moderated_x_to_m = spec$moderated_x_to_m,
             moderated_m_to_y = spec$moderated_m_to_y,
+            moderation_map = spec$moderation_map,
+            two_moderator_model = "3",
+            custom_path_model = TRUE,
             effect_size_models = c(
               if (isTRUE(input$custom_mm_effect_size_y %||% TRUE)) "y" else character(0),
               if (isTRUE(input$custom_mm_effect_size_m %||% FALSE)) "m" else character(0)
@@ -1208,12 +1381,17 @@ register_custom_model_canvas_handlers <- function(
             labels = labels_fn(),
             category_table = category_table_fn(),
             progress = function(done, total, focal) {
-              total <- max(1L, as.integer(total %||% 1L))
-              done <- min(total, max(0L, as.integer(done %||% 0L)))
+              counts <- mediation_moderation_bootstrap_progress_counts(done, total, input$custom_mm_boot_r %||% 5000L)
               shiny::setProgress(
-                value = done / total,
+                value = counts$done / counts$total,
                 message = progress_message,
-                detail = sprintf("Bootstrap %s / %s (X: %s)", done, total, focal)
+                detail = mediation_moderation_bootstrap_progress_detail(
+                  counts$done,
+                  counts$total,
+                  focal,
+                  input$custom_mm_boot_r %||% 5000L,
+                  language
+                )
               )
             }
           )
@@ -1225,6 +1403,13 @@ register_custom_model_canvas_handlers <- function(
       }
     )
     if (!is.null(result)) {
+      if (is.data.frame(result$overview) && all(c("Item", "Value") %in% names(result$overview))) {
+        result$overview$Value[result$overview$Item == "Model"] <- custom_model_canvas_text(
+          language,
+          "User-defined mediation / moderation model",
+          "\uc0ac\uc6a9\uc790\uc815\uc758 \ub9e4\uac1c\u00b7\uc870\uc808 \ubaa8\ud615"
+        )
+      }
       source_snapshot <- snapshot
       source_snapshot$nonce <- NULL
       result_snapshot <- custom_model_canvas_result_snapshot(source_snapshot, result)
@@ -1268,7 +1453,7 @@ register_custom_model_canvas_handlers <- function(
     if (!grepl("\\.html?$", path, ignore.case = TRUE)) path <- paste0(path, ".html")
     tryCatch(
       {
-        write_mediation_moderation_results_html(custom_model_canvas_result(), path, statedu_current_language(app_language_fn), dash_nonsignificant = TRUE)
+        write_mediation_moderation_results_html(custom_model_canvas_result(), path, statedu_current_language(app_language_fn), dash_nonsignificant = TRUE, output_table_style = analysis_output_table_style(input$custom_mm_output_table_style))
         showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) showNotification(paste(statedu_t("result.html_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
@@ -1285,7 +1470,7 @@ register_custom_model_canvas_handlers <- function(
     if (!grepl("\\.pdf$", path, ignore.case = TRUE)) path <- paste0(path, ".pdf")
     tryCatch(
       {
-        write_mediation_moderation_results_pdf(custom_model_canvas_result(), path, statedu_current_language(app_language_fn), dash_nonsignificant = TRUE)
+        write_mediation_moderation_results_pdf(custom_model_canvas_result(), path, statedu_current_language(app_language_fn), dash_nonsignificant = TRUE, output_table_style = analysis_output_table_style(input$custom_mm_output_table_style))
         showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
       error = function(e) showNotification(paste(statedu_t("result.pdf_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
@@ -1334,7 +1519,8 @@ register_custom_model_canvas_handlers <- function(
       mediation_moderation_saved_results_html(
         custom_model_canvas_result(),
         statedu_current_language(app_language_fn),
-        dash_nonsignificant = TRUE
+        dash_nonsignificant = TRUE,
+        output_table_style = analysis_output_table_style(input$custom_mm_output_table_style)
       )
     }
   )

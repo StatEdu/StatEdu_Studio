@@ -1,12 +1,20 @@
 # 방법론 노트
 
-이 문서는 **StatEdu Studio** 1.0.0에서 사용하는 주요 분석 기법의 선택 기준, 통계적 가정, 해석상 주의점을 정리한다. "왜 이 방법을 쓰는가", "결과를 어떻게 읽어야 하는가", "경고가 뜨면 무엇을 확인해야 하는가"를 설명하는 해석 중심 문서다.
+이 문서는 **StatEdu Studio** 1.2.0에서 사용하는 주요 분석 기법의 선택 기준, 통계적 가정, 해석상 주의점을 정리한다. "왜 이 방법을 쓰는가", "결과를 어떻게 읽어야 하는가", "경고가 뜨면 무엇을 확인해야 하는가"를 설명하는 해석 중심 문서다.
 
 앱 사용 절차는 `USER_GUIDE_KO.md`를 참고한다. 실제 구현된 분석 메뉴와 출력 항목 목록은 `ANALYSIS_METHODS_KO.md`를 참고한다.
 
 **StatEdu Studio**의 기본 방향은 사용자가 먼저 변수의 measurement level을 검토하고, 앱이 그 정보를 바탕으로 가능한 분석 방법을 자동 또는 반자동으로 선택하는 것이다. 분석이 불가능한 변수나 모델은 전체 분석을 중단시키지 않고 Warnings, Skipped analyses, Skipped models 형태로 분리해 표시한다.
 
-이 문서의 기준값은 두 종류로 구분한다. 첫째, **StatEdu Studio** 1.0.0 판정 기준은 앱이 실제로 방법 선택, 경고, 표시 여부를 결정할 때 사용하는 값이다. 둘째, 일반 해석 기준은 통계 교재와 방법론 문헌에서 자주 쓰이는 경험적 기준이며, 연구 분야와 자료 구조에 따라 달라질 수 있다. 기준값이 있는 결과는 숫자만 기계적으로 적용하지 말고 표본 수, 결측, 변수 수, 연구 설계, 효과크기, 신뢰구간을 함께 확인한다.
+이 문서의 기준값은 두 종류로 구분한다. 첫째, **StatEdu Studio** 1.2.0 판정 기준은 앱이 실제로 방법 선택, 경고, 표시 여부를 결정할 때 사용하는 값이다. 둘째, 일반 해석 기준은 통계 교재와 방법론 문헌에서 자주 쓰이는 경험적 기준이며, 연구 분야와 자료 구조에 따라 달라질 수 있다. 기준값이 있는 결과는 숫자만 기계적으로 적용하지 말고 표본 수, 결측, 변수 수, 연구 설계, 효과크기, 신뢰구간을 함께 확인한다.
+
+## Public 1.2 추가 분석 방법론 노트
+
+Public 1.2에는 다음 정식 Analysis workflow의 방법론 노트가 포함된다.
+
+- 혼합 반복측정 ANOVA: 6.1절 참고.
+- 평가자간 일치도: 8.1절 참고.
+- 매개·조절 사용자 정의 모델: 13.5절 참고.
 
 ## 1. Measurement Level
 
@@ -36,7 +44,7 @@ SAV 파일에서 가져온 값 라벨과 사용자가 Step 3에서 수정한 변
 - ordered x ordered 조합에서는 score-based ordered-by-ordered trend association을 사용한다.
 - 효과크기는 2 x 2 표에서 odds ratio, 일반 교차표에서 Cramer's V, trend 분석에서 trend odds ratio 또는 Goodman-Kruskal gamma를 표시한다.
 
-**StatEdu Studio** 1.0.0 판정 기준: 기대빈도 5 미만인 셀이 전체 셀의 20% 이상이면 Pearson chi-square test의 근사 p 값이 불안정할 수 있다고 보고 Fisher's exact test를 사용한다. 이때 전체 셀 수가 20개를 초과하면 Fisher's exact test with Monte Carlo simulation을 사용하며, Monte Carlo simulation 반복 수는 10,000회다. 이 기준은 교차표 분석에서 널리 쓰이는 기대빈도 경험칙을 반영한 것이며, 셀 수가 크거나 표본이 매우 불균형한 경우에는 빈도표 자체를 함께 해석해야 한다(Agresti, 2013).
+**StatEdu Studio** 1.2.0 판정 기준: 기대빈도 5 미만인 셀이 전체 셀의 20% 이상이면 Pearson chi-square test의 근사 p 값이 불안정할 수 있다고 보고 Fisher's exact test를 사용한다. 이때 전체 셀 수가 20개를 초과하면 Fisher's exact test with Monte Carlo simulation을 사용하며, Monte Carlo simulation 반복 수는 10,000회다. 이 기준은 교차표 분석에서 널리 쓰이는 기대빈도 경험칙을 반영한 것이며, 셀 수가 크거나 표본이 매우 불균형한 경우에는 빈도표 자체를 함께 해석해야 한다(Agresti, 2013).
 
 ## 4. t-test / ANOVA
 
@@ -46,7 +54,7 @@ t-test / ANOVA는 연속형 종속변수를 집단 변수에 따라 비교할 �
 
 정규성은 옵션에 따라 왜도/첨도 기준, Kolmogorov-Smirnov test, Shapiro-Wilk test를 사용한다(Curran, West, & Finch, 1996; Shapiro & Wilk, 1965). 등분산성은 Levene 방식의 검정을 사용하며, 각 집단 중앙값 기준 절대편차에 대해 ANOVA를 적용해 p 값을 계산한다(Levene, 1960; Fisher, 1935).
 
-**StatEdu Studio** 1.0.0 판정 기준: 왜도/첨도 방식은 `|skewness| <= 2`이고 `|excess kurtosis| <= 7`이면 정규성 만족으로 본다(Curran, West, & Finch, 1996). Kolmogorov-Smirnov와 Shapiro-Wilk 방식은 p 값이 `.05` 이상이면 정규성을 기각하지 않은 것으로 본다(Shapiro & Wilk, 1965). Shapiro-Wilk 검정은 유효 표본 수가 3 이상 5,000 이하인 경우에만 계산한다. Kolmogorov-Smirnov 그룹별 검정은 그룹별 유효 표본 수가 5 미만이거나 표준편차가 0이면 해당 그룹 p 값을 계산하지 않는다. 등분산성은 Levene 방식 p 값이 `.05` 이상이면 만족으로 본다(Levene, 1960).
+**StatEdu Studio** 1.2.0 판정 기준: 왜도/첨도 방식은 `|skewness| <= 2`이고 `|excess kurtosis| <= 7`이면 정규성 만족으로 본다(Curran, West, & Finch, 1996). Kolmogorov-Smirnov와 Shapiro-Wilk 방식은 p 값이 `.05` 이상이면 정규성을 기각하지 않은 것으로 본다(Shapiro & Wilk, 1965). Shapiro-Wilk 검정은 유효 표본 수가 3 이상 5,000 이하인 경우에만 계산한다. Kolmogorov-Smirnov 그룹별 검정은 그룹별 유효 표본 수가 5 미만이거나 표준편차가 0이면 해당 그룹 p 값을 계산하지 않는다. 등분산성은 Levene 방식 p 값이 `.05` 이상이면 만족으로 본다(Levene, 1960).
 
 ### 두 집단 비교
 
@@ -81,6 +89,21 @@ Paired test는 같은 대상에서 두 시점 또는 두 조건을 반복 측정
 - 세 시점 이상 반복측정에서는 measurement level과 가정 진단에 따라 standard repeated-measures ANOVA, repeated-measures ANOVA with Wilks' lambda / Greenhouse-Geisser correction, Friedman test, Cochran's Q test 중 하나를 사용한다.
 - 세 시점 이상 paired post-hoc에는 연속형 자료에서 paired t-test, 순서형 또는 비정규 연속형 자료에서 Wilcoxon signed-rank test, 이분형 자료에서 McNemar test를 사용한다.
 
+### 6.1 혼합 반복측정 ANOVA
+
+혼합 반복측정 ANOVA는 같은 연속형 outcome을 두 시점 이상 반복 측정했고, 집단 간 변화 차이가 연구 질문에 포함될 때 사용한다. 각 행이 한 대상자이고 사전-사후 또는 다시점 outcome이 여러 열로 놓인 wide-format 자료에 적합하다.
+
+핵심 해석:
+
+- time 효과는 전체 평균 변화 여부를 검정한다.
+- group 효과는 대상자 간 집단 차이를 검정한다.
+- time-by-group interaction은 집단별 변화 양상이 다른지를 보여 주므로 대개 주요 결과다.
+- 세 시점 이상에서는 구형성 가정이 중요하며, 구형성이 의심되면 Greenhouse-Geisser 방식 보정 안내를 함께 해석한다.
+- 시점별 Levene 방식 검토는 특정 시점에서 집단 간 분산 차이가 큰지 확인하는 보조 진단이다.
+- 공변량 보정 요약은 사전 지정한 분석 계획과 맞을 때 사용한다.
+
+PP 경로는 선택한 반복 outcome과 모형 변수에 완전한 행을 사용한다. available-case ITT 성격의 혼합모형 대안은 선택 및 적합 가능한 경우 관측된 반복측정 행을 활용하지만, 결측 패턴과 민감도 분석 가정을 보고해야 한다는 점은 그대로 남는다.
+
 ## 7. 상관분석
 
 상관분석은 변수 조합과 measurement level에 따라 방법을 자동 선택한다.
@@ -97,7 +120,7 @@ Paired test는 같은 대상에서 두 시점 또는 두 조건을 반복 측정
 
 복합표본 상관분석은 survey design을 사용해 가중 공분산을 추정한다. Pearson correlation은 설계기반 공분산행렬에서 계산하며, 순서형 변수는 공분산 추정 전에 ordinal score로 변환한다. Spearman correlation은 각 numeric 또는 ordinal score를 순위 변환한 뒤 같은 설계기반 공분산 접근을 적용한다. 표준오차와 신뢰구간은 delta-method 근사를 사용하며, 여러 변수쌍의 p 값은 Holm-Bonferroni, Bonferroni, Benjamini-Hochberg FDR 보정 중 선택해 조정할 수 있다.
 
-**StatEdu Studio** 1.0.0 판정 기준: continuous x continuous 조합에서 자동 선택을 사용할 때 각 변수의 `|skewness| <= 2`, `|excess kurtosis| <= 7` 기준을 모두 만족하면 Pearson correlation을 사용하고, 하나라도 만족하지 않으면 Spearman correlation을 사용한다(Curran, West, & Finch, 1996).
+**StatEdu Studio** 1.2.0 판정 기준: continuous x continuous 조합에서 자동 선택을 사용할 때 각 변수의 `|skewness| <= 2`, `|excess kurtosis| <= 7` 기준을 모두 만족하면 Pearson correlation을 사용하고, 하나라도 만족하지 않으면 Spearman correlation을 사용한다(Curran, West, & Finch, 1996).
 
 ## 8. 신뢰도 분석
 
@@ -107,7 +130,23 @@ Paired test는 같은 대상에서 두 시점 또는 두 조건을 반복 측정
 - ordinal 문항에서는 polychoric 기반 신뢰도 지표가 보조적으로 중요하다.
 - item-total correlation과 item deleted 지표는 특정 문항이 전체 척도와 맞지 않는지 판단하는 데 사용한다.
 
-**StatEdu Studio** 1.0.0 판정 기준: 정규성 옵션을 사용할 때 각 문항의 `|skewness| < 2`, `|excess kurtosis| < 7` 기준을 모두 만족하면 Pearson 기반 신뢰도 해석을 우선하고, 만족하지 않거나 ordinal 문항이면 polychoric 기반 지표를 보조적으로 확인한다(Curran, West, & Finch, 1996). Cronbach's alpha와 omega에는 앱 차원의 고정 합격/불합격 기준을 두지 않는다.
+**StatEdu Studio** 1.2.0 판정 기준: 정규성 옵션을 사용할 때 각 문항의 `|skewness| < 2`, `|excess kurtosis| < 7` 기준을 모두 만족하면 Pearson 기반 신뢰도 해석을 우선하고, 만족하지 않거나 ordinal 문항이면 polychoric 기반 지표를 보조적으로 확인한다(Curran, West, & Finch, 1996). Cronbach's alpha와 omega에는 앱 차원의 고정 합격/불합격 기준을 두지 않는다.
+
+서열형 신뢰도 워크플로에서 ordinal alpha와 ordinal omega는 polychoric 상관행렬을 기반으로 계산한다. 서열형 문항의 item-total correlation과 corrected item-total correlation은 Spearman 상관으로 계산하므로, Pearson 상관을 쓰는 SPSS 출력과 다를 수 있다.
+
+### 8.1 평가자간 일치도
+
+평가자간 일치도는 평가자, 판정자, 코더 또는 측정도구가 같은 사례에 대해 서로 비슷한 값을 부여하는지를 평가한다. 신뢰도 분석이 여러 문항이 하나의 척도를 이루는지 보는 것이라면, 평가자간 일치도는 여러 평가자가 같은 사례를 얼마나 일관되게 평가했는지 보는 분석이다.
+
+방법 선택은 measurement level과 평가자 수에 따라 달라진다.
+
+- 연속형 평정은 주로 ICC를 사용한다. ICC(1), ICC(2), ICC(3), agreement/consistency, single/average measure 선택이 서로 다른 질문에 답하므로 선택한 모형, 유형, 단위를 함께 보고한다.
+- 두 명의 범주형 평가자는 Cohen's kappa를 사용할 수 있고, 순서형 평정은 범주 순서가 의미 있을 때 weighted kappa를 사용할 수 있다.
+- 다평가자 범주형 자료는 가능한 경우 Fleiss 또는 Light kappa를 사용할 수 있다.
+- 범주 유병률이나 marginal imbalance 때문에 kappa 해석이 어려우면 Gwet AC1/AC2를 보조적으로 확인한다.
+- Krippendorff alpha는 일반적인 일치도 지표로 사용할 수 있고 coincidence-matrix 구현에서는 결측 평정이 있는 자료도 다룰 수 있다.
+
+보고할 때는 권장 지표를 먼저 제시하고, 보조 지표가 결론을 바꿀 정도로 다르면 그 이유를 설명한다. 순서형 문자 라벨은 weighted statistic에 영향을 주므로 Step 3 category table 순서를 확인해야 한다. 평가자가 모든 사례를 평가하지 않은 경우 결측 평정 패턴을 함께 보고한다.
 
 ## 9. 요인분석
 
@@ -118,7 +157,7 @@ Paired test는 같은 대상에서 두 시점 또는 두 조건을 반복 측정
 - 요인 수는 eigenvalue >= 1.0 기준 또는 사용자가 지정한 fixed number of factors를 사용한다. Parallel analysis는 현재 자동 선택 기준으로 구현되어 있지 않다.
 - KMO와 Bartlett 검정은 요인분석 적합성을 판단하는 보조 지표다.
 
-**StatEdu Studio** 1.0.0 판정 기준: 표본 수가 100 미만이면 경고를 표시한다. 사례 수 대 변수 수 비율이 5:1 미만이면 강한 주의가 필요하다고 표시하고, 5:1 이상 10:1 미만이면 조심스럽게 해석하라는 경고를 표시한다. 정규성 옵션에서 왜도/첨도 방식을 쓰면 각 문항의 `|skewness| < 2`, `|excess kurtosis| < 7` 기준을 사용한다(Curran, West, & Finch, 1996). Mardia 방식을 쓰면 skewness p 값과 kurtosis p 값이 모두 `.05` 이상일 때 다변량 정규성을 기각하지 않은 것으로 본다(Mardia, 1970).
+**StatEdu Studio** 1.2.0 판정 기준: 표본 수가 100 미만이면 경고를 표시한다. 사례 수 대 변수 수 비율이 5:1 미만이면 강한 주의가 필요하다고 표시하고, 5:1 이상 10:1 미만이면 조심스럽게 해석하라는 경고를 표시한다. 정규성 옵션에서 왜도/첨도 방식을 쓰면 각 문항의 `|skewness| < 2`, `|excess kurtosis| < 7` 기준을 사용한다(Curran, West, & Finch, 1996). Mardia 방식을 쓰면 skewness p 값과 kurtosis p 값이 모두 `.05` 이상일 때 다변량 정규성을 기각하지 않은 것으로 본다(Mardia, 1970).
 
 요인적재량과 문항 판단 기준: 앱은 절대값 `.30` 미만의 적재량을 기본적으로 숨기며, 주적재량이 `.30` 미만이면 낮은 주적재량으로 표시한다. 주된 요인이 아닌 다른 요인에도 절대값 `.30` 이상으로 적재되면 교차적재로 볼 수 있다. 공통성 `h²`가 `.30` 미만이면 문항이 공통요인으로 충분히 설명되지 않을 수 있고, `.90` 초과이면 중복성이나 추정 불안정성을 의심할 수 있다. complexity가 `2` 이상이면 여러 요인에 걸친 문항일 가능성이 있다.
 
@@ -130,7 +169,7 @@ PCA는 문항이나 변수의 정보를 더 적은 수의 성분으로 축약하
 - 성분 수는 eigenvalue >= 1.0, fixed number of components, cumulative variance >= 지정값 중 하나의 기준으로 선택한다.
 - scree plot과 component plot은 성분 수와 구조를 판단하는 보조 자료다.
 
-**StatEdu Studio** 1.0.0 판정 기준: 누적 설명분산 기준을 사용할 때 기본값은 70%다. 성분적재량 표시는 요인분석과 같이 절대값 `.30`을 기본 표시 기준으로 사용한다. KMO와 Bartlett 검정은 PCA에서도 변수들이 충분한 공유 정보를 갖는지 확인하는 보조 진단으로 표시한다(Kaiser, 1974; Bartlett, 1954).
+**StatEdu Studio** 1.2.0 판정 기준: 누적 설명분산 기준을 사용할 때 기본값은 70%다. 성분적재량 표시는 요인분석과 같이 절대값 `.30`을 기본 표시 기준으로 사용한다. KMO와 Bartlett 검정은 PCA에서도 변수들이 충분한 공유 정보를 갖는지 확인하는 보조 진단으로 표시한다(Kaiser, 1974; Bartlett, 1954).
 
 ## 11. 선형회귀
 
@@ -143,7 +182,7 @@ PCA는 문항이나 변수의 정보를 더 적은 수의 성분으로 축약하
 - 자기상관: Durbin-Watson statistic과 dL/dU 기준(Durbin & Watson, 1950, 1951).
 - 다중공선성: VIF(O'Brien, 2007).
 
-**StatEdu Studio** 1.0.0 판정 기준: 잔차 정규성과 잔차의 등분산성 검정은 p 값이 `.05`보다 크면 가정을 기각하지 않은 것으로 본다(Breusch & Pagan, 1979). Durbin-Watson 판단은 임계값 표의 `dL`, `dU`를 사용한다. `dU < d < 4 - dU`이면 독립성 만족으로 표시하고, `d < dL` 또는 `d > 4 - dL`이면 자기상관 가능성이 높다고 표시한다. 그 사이 구간은 inconclusive로 표시한다(Durbin & Watson, 1950, 1951). VIF는 최대값이 `5`를 초과하면 주의, `10`을 초과하면 심각한 다중공선성으로 표시한다(O'Brien, 2007).
+**StatEdu Studio** 1.2.0 판정 기준: 잔차 정규성과 잔차의 등분산성 검정은 p 값이 `.05`보다 크면 가정을 기각하지 않은 것으로 본다(Breusch & Pagan, 1979). Durbin-Watson 판단은 임계값 표의 `dL`, `dU`를 사용한다. `dU < d < 4 - dU`이면 독립성 만족으로 표시하고, `d < dL` 또는 `d > 4 - dL`이면 자기상관 가능성이 높다고 표시한다. 그 사이 구간은 inconclusive로 표시한다(Durbin & Watson, 1950, 1951). VIF는 최대값이 `5`를 초과하면 주의, `10`을 초과하면 심각한 다중공선성으로 표시한다(O'Brien, 2007).
 
 | 잔차 정규성 | 잔차의 등분산성 | 출력 방식 |
 |---|---|---|
@@ -195,6 +234,10 @@ Bootstrap 반복 수는 1,000, 5,000, 10,000, 20,000, 50,000 중 선택할 수 �
 - 조절효과는 상호작용 계수만 보고하지 말고 단순기울기 또는 Johnson-Neyman 결과를 함께 보고한다.
 - 다중 독립변수를 넣은 경우 각 초점 X 분석에서 나머지 독립변수가 공변량으로 들어갔음을 밝힌다.
 
+### 13.5 매개·조절 사용자 정의 모델
+
+매개·조절 사용자 정의 모델 캔버스는 같은 매개·조절 분석 엔진에 모형 구조를 전달하는 입력 및 모형 인식 workflow다. 별도의 추정법을 새로 정의하는 기능은 아니다. 표준 `매개·조절` 메뉴와 마찬가지로 인식된 모형 번호, 변수 역할, bootstrap 설정, 지원되지 않거나 제외된 경로를 함께 보고한다.
+
 ## 14. 로지스틱 회귀
 
 로지스틱 회귀는 범주형 종속변수를 예측할 때 사용한다(Agresti, 2013).
@@ -205,7 +248,7 @@ Bootstrap 반복 수는 1,000, 5,000, 10,000, 20,000, 50,000 중 선택할 수 �
 
 로지스틱 회귀의 계수는 선형회귀의 평균 차이처럼 직접 해석하지 않고, odds ratio 또는 log-odds 변화 관점에서 해석한다(Agresti, 2013).
 
-**StatEdu Studio** 1.0.0 판정 기준: 로지스틱 회귀에서도 VIF 최대값이 `5`를 초과하면 개별 계수 해석 주의, `10`을 초과하면 심각한 다중공선성 경고를 표시한다(O'Brien, 2007). sparse cell과 separation risk가 있는 경우에는 odds ratio가 매우 커지거나 신뢰구간이 넓어질 수 있으므로, p 값보다 빈도 구조와 사건 수를 먼저 확인한다(Agresti, 2013).
+**StatEdu Studio** 1.2.0 판정 기준: 로지스틱 회귀에서도 VIF 최대값이 `5`를 초과하면 개별 계수 해석 주의, `10`을 초과하면 심각한 다중공선성 경고를 표시한다(O'Brien, 2007). sparse cell과 separation risk가 있는 경우에는 odds ratio가 매우 커지거나 신뢰구간이 넓어질 수 있으므로, p 값보다 빈도 구조와 사건 수를 먼저 확인한다(Agresti, 2013).
 
 ## 15. 일반화선형모형(GLM)
 
@@ -342,7 +385,7 @@ Taylor linearization은 일반적인 복합표본 평균, 비율, 회귀계수�
 
 ## 19. 기준값 요약
 
-다음 표는 **StatEdu Studio** 1.0.0에서 실제 판정이나 경고에 사용하는 주요 기준값을 요약한 것이다.
+다음 표는 **StatEdu Studio** 1.2.0에서 실제 판정이나 경고에 사용하는 주요 기준값을 요약한 것이다.
 
 | 영역 | 기준값 | **StatEdu Studio**에서의 의미 |
 |---|---:|---|
@@ -374,7 +417,7 @@ Taylor linearization은 일반적인 복합표본 평균, 비율, 회귀계수�
 
 ## 20. Warnings와 Skipped Results
 
-**StatEdu Studio** 버전 1.0.0에서는 분석 중 문제가 발견되면 가능한 결과는 유지하고, 문제가 있는 조합만 분리해 표시한다.
+**StatEdu Studio** 버전 1.2.0에서는 분석 중 문제가 발견되면 가능한 결과는 유지하고, 문제가 있는 조합만 분리해 표시한다.
 
 대표적인 경고와 제외 사유는 다음과 같다.
 
@@ -393,7 +436,7 @@ Warnings는 결과 해석의 주의 조건이고, Skipped analyses / Skipped mod
 
 ## 21. 저장 결과 해석
 
-HTML, PDF 저장 결과는 앱 화면의 결과표를 연구 보고서나 논문 작성에 옮기기 쉽게 정리한 것이다. Excel, Word 결과 저장은 public 1.0에서는 숨겨져 있으며 이후 Pro 기능으로 분리할 예정이다. 저장된 표는 분석 판단을 자동으로 대체하지 않는다.
+HTML, PDF 저장 결과는 앱 화면의 결과표를 연구 보고서나 논문 작성에 옮기기 쉽게 정리한 것이다. Excel, Word 결과 저장은 public 1.2에서는 숨겨져 있으며 이후 Pro 기능으로 분리할 예정이다. 저장된 표는 분석 판단을 자동으로 대체하지 않는다.
 
 결과를 보고서에 사용할 때는 다음을 함께 확인한다.
 
@@ -722,7 +765,7 @@ HTML, PDF 저장 결과는 앱 화면의 결과표를 연구 보고서나 논문
   $$
 - Kruskal-Wallis epsilon squared:
   $$
-  \varepsilon^2 = \frac{H-k+1}{N-k}
+  \varepsilon^2 = \frac{H(N+1)}{N^2-1}
   $$
   0보다 작으면 0으로 둔다.
 - Friedman Kendall's W:

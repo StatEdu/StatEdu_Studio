@@ -1099,6 +1099,8 @@ register_setup_outputs <- function(
       show_sr2 = isolate(input$show_sr2),
       show_f2 = isolate(input$show_f2),
       show_vif = isolate(input$show_vif),
+      options_tab = isolate(input$regression_options_tab),
+      output_table_style = isolate(input$regression_output_table_style),
       language = language
     )
 
@@ -1140,6 +1142,8 @@ register_setup_outputs <- function(
       show_sr2 = isolate(input$hierarchical_show_sr2),
       show_f2 = isolate(input$hierarchical_show_f2),
       show_vif = isolate(input$hierarchical_show_vif),
+      options_tab = isolate(input$hierarchical_options_tab),
+      output_table_style = isolate(input$hierarchical_output_table_style),
       language = language
     )
 

@@ -181,29 +181,29 @@ set_data_step_view <- function(active_step_setter, data_view_setter, step, view 
 app_brand_title <- function(version) {
   div(
     class = "brand-title",
-    tags$img(src = paste0("logo-horizontal.png?v=", version, "-statedu-studio-bold-studio"), class = "brand-logo-horizontal", alt = "StatEdu Studio logo"),
+    tags$img(src = paste0("logo-horizontal.png?v=", version, "-statedu-studio-final-logo-20260722"), class = "brand-logo-horizontal", alt = "StatEdu Studio logo"),
     span(class = "version", paste0("v", version))
   )
 }
 
 app_stylesheet_link <- function(version) {
   tagList(
-    tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-indirect-effect-header-20260711a")),
-    tags$link(rel = "stylesheet", type = "text/css", href = paste0("model-canvas/canvas.css?v=", version, "-moderation-drag-20260711a"))
+    tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-custom-model-compact-multiline-20260730")),
+    tags$link(rel = "stylesheet", type = "text/css", href = paste0("model-canvas/canvas.css?v=", version, "-analysis-modal-compact-20260712b"))
   )
 }
 
 app_script_link <- function(version) {
   tagList(
     tags$script(src = paste0("easyflow.js?v=", version, "-excel-import-busy-fix-20260712a")),
-    tags$script(src = paste0("model-canvas/state.js?v=", version, "-custom-model-canvas-20260711ac")),
-    tags$script(src = paste0("model-canvas/layout.js?v=", version, "-single-mediator-layout-20260711a")),
+    tags$script(src = paste0("model-canvas/state.js?v=", version, "-custom-model-canvas-multi-y-20260729a")),
+    tags$script(src = paste0("model-canvas/layout.js?v=", version, "-custom-model-canvas-balanced-multi-role-layout-20260729a")),
     tags$script(src = paste0("model-canvas/shiny-bridge.js?v=", version, "-custom-model-canvas-20260705an")),
-    tags$script(src = paste0("model-canvas/edges.js?v=", version, "-moderation-significance-20260711a")),
-    tags$script(src = paste0("model-canvas/nodes.js?v=", version, "-custom-model-canvas-20260711ac")),
-    tags$script(src = paste0("model-canvas/dialogs.js?v=", version, "-moderation-drag-20260711a")),
+    tags$script(src = paste0("model-canvas/edges.js?v=", version, "-label-overlap-fit-20260730")),
+    tags$script(src = paste0("model-canvas/nodes.js?v=", version, "-custom-model-canvas-preserve-moderator-layout-20260729b")),
+    tags$script(src = paste0("model-canvas/dialogs.js?v=", version, "-stmodel-extension-20260730")),
     tags$script(src = paste0("model-canvas/toolbar.js?v=", version, "-custom-model-canvas-20260711ac")),
-    tags$script(src = paste0("model-canvas/canvas.js?v=", version, "-moderation-drag-20260711a"))
+    tags$script(src = paste0("model-canvas/canvas.js?v=", version, "-custom-model-canvas-preserve-moderator-layout-20260729b"))
   )
 }
 
@@ -248,7 +248,7 @@ app_static_language_labels_script <- local({
       "latent", "result", "help", "about", "preferences", "bug_report", "feature_request",
       "analysis_request", "qna", "frequencies", "crosstabs", "ttest_anova",
       "paired", "ancova", "nonparametric", "nonparametric_paired", "correlation",
-      "reliability", "factor_analysis", "pca", "regression", "glm", "logistic",
+      "reliability", "interrater_agreement", "factor_analysis", "pca", "regression", "glm", "logistic",
       "longitudinal", "overview", "user_guide", "analyses", "method_notes",
       "validation", "version_history", "source_license", "open_source_licenses"
     )
@@ -299,6 +299,8 @@ app_static_language_labels_script <- local({
       statedu_translation_row("complex_sample.correlation"),
       statedu_translation_row("complex_sample.regression"),
       statedu_translation_row("complex_sample.logistic"),
+      statedu_translation_row("analysis.ui.repeated_measures_anova"),
+      statedu_translation_row("analysis.ui.inter_rater_agreement"),
       statedu_translation_row("analysis.mediation_moderation"),
       statedu_translation_row("analysis.custom_model_canvas"),
       statedu_translation_row("custom_model_canvas.title")
@@ -374,11 +376,13 @@ tab_panel_content <- function(panel) {
 enabled_analysis_tabs <- function() {
   c(
     reliability = TRUE,
+    interrater_agreement = TRUE,
     frequencies = TRUE,
     paired = TRUE,
     paired_rm = TRUE,
     ttest_anova = TRUE,
     ancova = TRUE,
+    mixed_rm_anova = TRUE,
     nonparametric = TRUE,
     nonparametric_paired = TRUE,
     correlation = TRUE,
@@ -387,7 +391,7 @@ enabled_analysis_tabs <- function() {
     regression = FALSE,
     hierarchical = TRUE,
     mediation_moderation = TRUE,
-    custom_model_canvas = statedu_feature_enabled("custom_model_canvas", !statedu_public_release()),
+    custom_model_canvas = statedu_feature_enabled("custom_model_canvas", TRUE),
     longitudinal = statedu_feature_enabled("longitudinal", TRUE),
     generalized = TRUE
   )

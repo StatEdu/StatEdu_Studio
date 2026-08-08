@@ -832,7 +832,7 @@
     "data_editor.wide_long_title": "Ancho a largo",
     "data_editor.wide_long_unavailable": "La reestructuración ancho-a-largo no está disponible en esta sesión.",
     "data_editor.wide_long_updated_group": "Grupo de variable larga actualizado: %s",
-    "doc_analyses_subtitle": "Resume los menús de análisis, estadísticos, tablas y alcance de exportación de StatEdu Studio 1.0.",
+    "doc_analyses_subtitle": "Resume los menús de análisis, estadísticos, tablas y alcance de exportación de StatEdu Studio 1.2.",
     "doc_analyses_title": "Análisis",
     "doc_method_notes_subtitle": "Proporciona notas sobre selección de métodos, supuestos, advertencias e interpretación.",
     "doc_method_notes_title": "Notas metodológicas",

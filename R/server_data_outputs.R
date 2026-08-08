@@ -57,7 +57,7 @@ register_data_workspace_outputs <- function(
     language <- if (is.function(app_language_fn)) app_language_fn() else statedu_initial_language()
     pending_file <- if (is.function(active_data_file_fn)) active_data_file_fn() else NULL
     if (!valid_pending_excel_file_value(pending_file)) {
-      return(DT::datatable(data.frame(Message = statedu_t("data.no_excel_pending", language)), rownames = FALSE, options = list(dom = "t")))
+      return(message_table_datatable(statedu_t("data.no_excel_pending", language), language, options = list(dom = "t")))
     }
     tryCatch({
       preview <- read_excel_preview(
@@ -70,7 +70,7 @@ register_data_workspace_outputs <- function(
       )
       DT::datatable(preview, rownames = FALSE, options = list(dom = "tip", pageLength = 10, scrollX = TRUE))
     }, error = function(error) {
-      DT::datatable(data.frame(Message = conditionMessage(error), check.names = FALSE), rownames = FALSE, options = list(dom = "t"))
+      message_table_datatable(conditionMessage(error), language, options = list(dom = "t"))
     })
   })
 
@@ -202,13 +202,7 @@ register_data_table_outputs <- function(
         return(empty_selected_variable_summary_table(language))
       }
       if ("Message" %in% names(table_data)) {
-        return(DT::datatable(
-          table_data,
-          rownames = FALSE,
-          escape = FALSE,
-          selection = "none",
-          options = list(dom = "t", paging = FALSE, ordering = FALSE)
-        ))
+        return(message_table_datatable(table_data$Message[[1]] %||% "", language))
       }
       out <- DT::datatable(
         table_data,
@@ -236,13 +230,7 @@ register_data_table_outputs <- function(
         return(empty_category_label_table(language))
       }
       if ("Message" %in% names(table_data)) {
-        return(DT::datatable(
-          table_data,
-          rownames = FALSE,
-          escape = FALSE,
-          selection = "none",
-          options = list(dom = "t", paging = FALSE, ordering = FALSE)
-        ))
+        return(message_table_datatable(table_data$Message[[1]] %||% "", language))
       }
 
       column_defs <- category_label_column_defs(

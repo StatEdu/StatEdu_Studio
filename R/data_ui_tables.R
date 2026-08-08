@@ -1,51 +1,35 @@
 # Data tab DT table renderers and callbacks.
 
-empty_variable_table <- function(language = statedu_initial_language()) {
-  message_label <- statedu_t("data.table_message", language)
+message_table_datatable <- function(
+  message,
+  language = statedu_initial_language(),
+  options = list(dom = "t", paging = FALSE, ordering = FALSE),
+  escape = FALSE
+) {
   DT::datatable(
-    stats::setNames(
-      data.frame(statedu_t("data.table_empty_variable_info", language), check.names = FALSE),
-      message_label
-    ),
+    data.frame(Message = as.character(message %||% ""), check.names = FALSE),
     rownames = FALSE,
-    options = list(dom = "t")
+    colnames = data_table_colnames("Message", language),
+    escape = escape,
+    selection = "none",
+    options = options
   )
+}
+
+empty_variable_table <- function(language = statedu_initial_language()) {
+  message_table_datatable(statedu_t("data.table_empty_variable_info", language), language, options = list(dom = "t"))
 }
 
 empty_category_label_table <- function(language = statedu_initial_language()) {
-  message_label <- statedu_t("data.table_message", language)
-  DT::datatable(
-    stats::setNames(
-      data.frame(statedu_t("data.table_empty_category_labels", language), check.names = FALSE),
-      message_label
-    ),
-    rownames = FALSE,
-    options = list(dom = "t")
-  )
+  message_table_datatable(statedu_t("data.table_empty_category_labels", language), language, options = list(dom = "t"))
 }
 
 empty_selected_variable_summary_table <- function(language = statedu_initial_language()) {
-  message_label <- statedu_t("data.table_message", language)
-  DT::datatable(
-    stats::setNames(
-      data.frame(statedu_t("data.table_empty_selected_summary", language), check.names = FALSE),
-      message_label
-    ),
-    rownames = FALSE,
-    options = list(dom = "t")
-  )
+  message_table_datatable(statedu_t("data.table_empty_selected_summary", language), language, options = list(dom = "t"))
 }
 
 empty_data_preview_table <- function(language = statedu_initial_language()) {
-  message_label <- statedu_t("data.table_message", language)
-  DT::datatable(
-    stats::setNames(
-      data.frame(statedu_t("data.table_empty_preview", language), check.names = FALSE),
-      message_label
-    ),
-    rownames = FALSE,
-    options = list(dom = "t")
-  )
+  message_table_datatable(statedu_t("data.table_empty_preview", language), language, options = list(dom = "t"))
 }
 
 data_table_header_labels <- function(language = statedu_initial_language()) {
@@ -69,6 +53,7 @@ data_table_header_labels <- function(language = statedu_initial_language()) {
     "Min" = statedu_t("data.table_min", language),
     "Max" = statedu_t("data.table_max", language),
     "Missing" = statedu_t("data.table_missing", language),
+    "Message" = statedu_t("data.table_message", language),
     "reference" = statedu_t("data.table_reference", language),
     "reference_label" = statedu_t("data.table_reference_label", language)
   )

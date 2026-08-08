@@ -408,7 +408,8 @@ write_analysis_results_html <- function(
   category_table = NULL,
   show_sr2 = FALSE,
   show_f2 = FALSE,
-  show_vif = FALSE
+  show_vif = FALSE,
+  output_table_style = "standard"
 ) {
   writeLines(
     saved_analysis_results_html(
@@ -420,7 +421,8 @@ write_analysis_results_html <- function(
       value_labels = category_value_label_lookup_static(category_table),
       show_sr2 = show_sr2,
       show_f2 = show_f2,
-      show_vif = show_vif
+      show_vif = show_vif,
+      output_table_style = output_table_style
     ),
     file,
     useBytes = TRUE
@@ -435,7 +437,8 @@ write_analysis_results_pdf <- function(
   category_table = NULL,
   show_sr2 = FALSE,
   show_f2 = FALSE,
-  show_vif = FALSE
+  show_vif = FALSE,
+  output_table_style = "standard"
 ) {
   html <- saved_analysis_results_html(
     results,
@@ -447,6 +450,7 @@ write_analysis_results_pdf <- function(
     show_sr2 = show_sr2,
     show_f2 = show_f2,
     show_vif = show_vif,
+    output_table_style = output_table_style,
     report_mode = TRUE
   )
   write_pdf_from_html(html, file)
@@ -460,7 +464,8 @@ write_hierarchical_results_html <- function(
   category_table = NULL,
   show_sr2 = FALSE,
   show_f2 = FALSE,
-  show_vif = FALSE
+  show_vif = FALSE,
+  output_table_style = "standard"
 ) {
   writeLines(
     saved_hierarchical_results_html(
@@ -472,7 +477,8 @@ write_hierarchical_results_html <- function(
       value_labels = category_value_label_lookup_static(category_table),
       show_sr2 = show_sr2,
       show_f2 = show_f2,
-      show_vif = show_vif
+      show_vif = show_vif,
+      output_table_style = output_table_style
     ),
     file,
     useBytes = TRUE
@@ -487,7 +493,8 @@ write_hierarchical_results_pdf <- function(
   category_table = NULL,
   show_sr2 = FALSE,
   show_f2 = FALSE,
-  show_vif = FALSE
+  show_vif = FALSE,
+  output_table_style = "standard"
 ) {
   html <- saved_hierarchical_results_html(
     results,
@@ -499,6 +506,7 @@ write_hierarchical_results_pdf <- function(
     show_sr2 = show_sr2,
     show_f2 = show_f2,
     show_vif = show_vif,
+    output_table_style = output_table_style,
     report_mode = TRUE
   )
   write_pdf_from_html(html, file)
@@ -586,7 +594,8 @@ write_logistic_results_html <- function(
   show_se = FALSE,
   show_mcfadden = FALSE,
   show_cox_snell = FALSE,
-  split_ci = TRUE
+  split_ci = TRUE,
+  output_table_style = "standard"
 ) {
   writeLines(
     saved_logistic_results_html(
@@ -598,7 +607,8 @@ write_logistic_results_html <- function(
       show_se = show_se,
       show_mcfadden = show_mcfadden,
       show_cox_snell = show_cox_snell,
-      split_ci = split_ci
+      split_ci = split_ci,
+      output_table_style = output_table_style
     ),
     file,
     useBytes = TRUE
@@ -651,7 +661,8 @@ write_logistic_results_pdf <- function(
   show_se = FALSE,
   show_mcfadden = FALSE,
   show_cox_snell = FALSE,
-  split_ci = TRUE
+  split_ci = TRUE,
+  output_table_style = "standard"
 ) {
   write_pdf_from_html(
     saved_logistic_results_html(
@@ -664,6 +675,7 @@ write_logistic_results_pdf <- function(
       show_mcfadden = show_mcfadden,
       show_cox_snell = show_cox_snell,
       split_ci = split_ci,
+      output_table_style = output_table_style,
       report_mode = TRUE
     ),
     file
@@ -840,7 +852,7 @@ hierarchical_export_table <- function(
   summary_labels <- c("F(p)", "R\u00B2(adj. R\u00B2)")
   summary_keys <- c("f", "r2")
   if (length(group) > 1) {
-    summary_labels <- c(summary_labels, attr(summary_values, "delta_label", exact = TRUE) %||% "\u0394R\u00B2(F change p)")
+    summary_labels <- c(summary_labels, attr(summary_values, "delta_label", exact = TRUE) %||% "Delta R\u00B2(F change p)")
     summary_keys <- c(summary_keys, "delta")
   }
   if (isTRUE(attr(summary_values, "any_residual_diagnostics", exact = TRUE))) {
@@ -1056,12 +1068,12 @@ logistic_export_table <- function(
   })
   summaries <- logistic_fit_summary_values(result, show_mcfadden = show_mcfadden, show_cox_snell = show_cox_snell)
   summary_labels <- c(
-    x2 = "x2(p)",
-    r2 = "R2",
-    delta_r2 = "Delta R2",
-    delta_x2 = "Delta x2(p)",
+    x2 = "x\u00B2(p)",
+    r2 = "R\u00B2",
+    delta_r2 = "Delta R\u00B2",
+    delta_x2 = "Delta x\u00B2(p)",
     aic = "AIC, BIC",
-    parallel = "Parallel lines x2(p)",
+    parallel = "Parallel lines x\u00B2(p)",
     status = "Status"
   )
   for (key in names(summaries)) {
@@ -1639,7 +1651,7 @@ add_paired_rm_grouped_excel_sheet <- function(workbook, sheet_name, table, used_
   }, character(1))
   time_header_labels <- sprintf("%s (%s)", time_labels, time_markers)
   summary_labels <- if (identical(type, "count")) {
-    c("0", "1")
+    paired_rm_count_summary_labels(table)
   } else if (isTRUE(attr(table, "mean_sd", exact = TRUE)) || isTRUE(attr(table, "median_iqr", exact = TRUE))) {
     if (isTRUE(attr(table, "mean_sd", exact = TRUE)) && isTRUE(attr(table, "median_iqr", exact = TRUE))) {
       "M \u00B1 SD/\nMedian(Q1~Q3)"

@@ -182,4 +182,35 @@ expect_true(grepl("width:78px !important;min-width:78px !important;max-width:78p
 expect_true(grepl("width:92px !important;min-width:92px !important;max-width:92px !important;", bootstrap_table_html, fixed = TRUE), "Expected Tolerance cells to keep enough width")
 expect_true(grepl("width:60px !important;min-width:60px !important;max-width:60px !important;", bootstrap_table_html, fixed = TRUE), "Expected VIF cells to keep enough width")
 
+message("Checking hierarchical regression listwise sample...")
+hierarchical_data <- data.frame(
+  y = c(1, 2, 3, 4, 5, 6, 7, 8),
+  x1 = c(2, 3, 4, 5, 6, 7, 8, 9),
+  x2 = c(1, NA, 2, 3, NA, 4, 5, 6),
+  stringsAsFactors = FALSE
+)
+hierarchical_info <- data.frame(
+  name = names(hierarchical_data),
+  var_label = names(hierarchical_data),
+  role = "",
+  measurement = "continuous",
+  stringsAsFactors = FALSE
+)
+hierarchical_prepared <- prepare_hierarchical_analysis_results(
+  hierarchical_data,
+  dependents = "y",
+  block1 = "x1",
+  block2 = "x2",
+  variable_info = hierarchical_info,
+  residual_diagnostics = FALSE,
+  auto_method = FALSE
+)
+hierarchical_results <- hierarchical_prepared$results
+expected_common_n <- sum(stats::complete.cases(hierarchical_data[, c("y", "x1", "x2"), drop = FALSE]))
+expect_true(length(hierarchical_results) == 2L, "Expected two hierarchical regression steps")
+expect_true(all(vapply(hierarchical_results, `[[`, numeric(1), "n") == expected_common_n), "Expected all hierarchical regression steps to use the final-model complete-case N")
+expect_true(identical(hierarchical_results[[1]]$hierarchical_note, hierarchical_results[[2]]$hierarchical_note), "Expected hierarchical regression steps to share the listwise deletion note")
+hierarchical_html <- as.character(htmltools::renderTags(regression_results_panel(hierarchical_results, variable_table = hierarchical_info))$html)
+expect_true(grepl("complete cases of the final model", hierarchical_html, fixed = TRUE), "Expected hierarchical regression results to display the common complete-case note")
+
 message("All regression coefficient validations passed.")

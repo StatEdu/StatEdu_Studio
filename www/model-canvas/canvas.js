@@ -215,7 +215,9 @@
       instance.state.history.pop();
       return;
     }
-    window.StatEduModelCanvas.layout.reflowRoleLayout(instance.state.nodes, instance.state.style);
+    if (role !== "covariate" && role !== "moderator") {
+      window.StatEduModelCanvas.layout.reflowRoleLayout(instance.state.nodes, instance.state.style);
+    }
     instance.state.selectedVariables = names;
     instance.state.selectedVariable = names[names.length - 1] || null;
     render(instance);
@@ -266,7 +268,9 @@
       var point = canvasPoint(instance, event);
       window.StatEduModelCanvas.state.pushHistory(instance);
       instance.state.nodes.push(window.StatEduModelCanvas.nodes.createNodeFromVariable(instance, variable, point.x, point.y, role));
+    if (role !== "moderator") {
       window.StatEduModelCanvas.layout.reflowRoleLayout(instance.state.nodes, instance.state.style);
+    }
       instance.state.selectedVariable = name;
       instance.state.selectedVariables = [name];
       render(instance);

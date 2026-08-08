@@ -39,7 +39,7 @@ if (length(doc_files) == 0) {
 
 invisible(vapply(doc_files, assert_valid_utf8, logical(1)))
 
-current_version <- "1.0.0"
+current_version <- "1.2.0"
 current_version_docs <- c(
   "docs/ANALYSIS_METHODS_KO.md",
   "docs/METHOD_NOTES_KO.md",

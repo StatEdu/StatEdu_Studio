@@ -5,7 +5,7 @@
     independent: 100,
     mediator: 360,
     moderator: 230,
-    dependent: 580
+    dependent: 620
   };
   var AUTO_ALIGN_THRESHOLD = 48;
   var ROLE_GAP_Y = 70;
@@ -13,7 +13,7 @@
   var ROLE_STACK_TOP_Y = 168;
   var ROLE_STACK_BOTTOM_Y = 348;
   var ROLE_STACK_STEP_Y = Math.round((ROLE_STACK_BOTTOM_Y - ROLE_STACK_TOP_Y) / 2);
-  var STACKED_ROLES = ["independent", "mediator"];
+  var STACKED_ROLES = ["independent", "mediator", "dependent"];
 
   var ROLE_LABELS = {
     independent: "Independent",
@@ -141,13 +141,7 @@
         rolesY: ["mediator"]
       });
     }
-    if (role === "dependent") {
-      return autoAlignPosition(box, nodes, threshold, excludeId, {
-        roles: ["independent"],
-        snapX: false,
-        snapY: true
-      });
-    }
+    if (role === "dependent") return box;
     if (role === "moderator") {
       return box;
     }
@@ -181,6 +175,30 @@
     return ROLE_STACK_TOP_Y + index * ROLE_STACK_STEP_Y;
   }
 
+  function mediatorRangeForCount(count) {
+    count = Math.max(1, Number(count || 1));
+    return {
+      first: roleStackY(0, count),
+      last: roleStackY(count - 1, count)
+    };
+  }
+
+  function roleStackYForCounts(role, index, count, mediatorCount) {
+    index = Math.max(0, Number(index || 0));
+    count = Math.max(1, Number(count || 1));
+    mediatorCount = Math.max(0, Number(mediatorCount || 0));
+    if ((role === "independent" || role === "dependent") && count >= 2 && mediatorCount > count) {
+      var mediatorRange = mediatorRangeForCount(mediatorCount);
+      return Math.round(mediatorRange.first + (mediatorRange.last - mediatorRange.first) * index / (count - 1));
+    }
+    return roleStackY(index, count);
+  }
+
+  function roleStackYForNodes(nodes, role, index, count) {
+    var mediatorCount = orderedRoleNodes(nodes, "mediator").length;
+    return roleStackYForCounts(role, index, count, mediatorCount);
+  }
+
   function orderedRoleNodes(nodes, role) {
     return nodes.map(function(node, index) {
       return {node: node, index: index};
@@ -201,7 +219,7 @@
     var changed = false;
     var x = roleColumnX(nodes, role);
     roleNodes.forEach(function(node, index) {
-      var y = roleStackY(index, roleNodes.length);
+      var y = roleStackYForNodes(nodes, role, index, roleNodes.length);
       if (Number(node.x || 0) !== x) {
         node.x = x;
         changed = true;
@@ -226,14 +244,19 @@
 
   function moderatorY(index, style) {
     var boxHeight = Number((style && style.boxHeight) || 38);
-    return Math.max(16, ROLE_STACK_TOP_Y - boxHeight * 3 - index * (boxHeight + 12));
+    return Math.max(16, ROLE_STACK_TOP_Y - boxHeight * 3);
+  }
+
+  function moderatorX(index, style) {
+    var boxWidth = Number((style && style.boxWidth) || 110);
+    return ROLE_X.moderator + Math.max(0, Number(index || 0)) * (boxWidth + 20);
   }
 
   function alignModerators(nodes, style) {
     var roleNodes = orderedRoleNodes(nodes, "moderator");
     var changed = false;
     roleNodes.forEach(function(node, index) {
-      var x = ROLE_X.moderator;
+      var x = moderatorX(index, style);
       var y = moderatorY(index, style);
       if (Number(node.x || 0) !== x) {
         node.x = x;
@@ -250,7 +273,7 @@
   function alignNodeToRoleColumn(node, nodes) {
     if (!node) return false;
     var role = node.role || "independent";
-    if (STACKED_ROLES.indexOf(role) < 0 && role !== "moderator") return false;
+    if (STACKED_ROLES.indexOf(role) < 0) return false;
     var x = roleColumnX(nodes, role, node.id);
     if (Number(node.x || 0) === x) return false;
     node.x = x;
@@ -261,48 +284,21 @@
     var count = nodes.filter(function(node) {
       return node.role === role;
     }).length;
-    var y = STACKED_ROLES.indexOf(role) >= 0 ? roleStackY(count, count + 1) : 120 + count * roleGapY(role, count + 1);
+    var nextCount = count + 1;
+    var y = STACKED_ROLES.indexOf(role) >= 0 ? roleStackYForNodes(nodes, role, count, nextCount) : 120 + count * roleGapY(role, nextCount);
     if (role === "moderator") {
       y = moderatorY(count, style);
     }
-    if (role === "dependent") {
-      y = dependentYFromIndependent(nodes, y);
-    }
     return {
-      x: (role === "independent" || role === "mediator") ? roleColumnX(nodes, role) : (ROLE_X[role] || ROLE_X.independent),
+      x: role === "moderator" ? moderatorX(count, style) : (STACKED_ROLES.indexOf(role) >= 0 ? roleColumnX(nodes, role) : (ROLE_X[role] || ROLE_X.independent)),
       y: y,
       width: style.boxWidth,
       height: style.boxHeight
     };
   }
 
-  function dependentYFromIndependent(nodes, fallbackY) {
-    var independents = orderedRoleNodes(nodes, "independent");
-    if (!independents.length) return fallbackY;
-    var ys = independents.map(function(node) {
-      return Number(node.y || 0);
-    });
-    var middle = Math.floor(ys.length / 2);
-    if (ys.length % 2 === 1) return ys[middle];
-    return Math.round((ys[0] + ys[ys.length - 1]) / 2);
-  }
-
-  function alignDependentToMediators(nodes) {
-    var dependent = nodes.find(function(node) {
-      return node.role === "dependent";
-    });
-    if (!dependent) return false;
-    var y = dependentYFromIndependent(nodes, dependent.y);
-    var changed = false;
-    if (Number(dependent.x || 0) !== ROLE_X.dependent) {
-      dependent.x = ROLE_X.dependent;
-      changed = true;
-    }
-    if (Number(dependent.y || 0) !== y) {
-      dependent.y = y;
-      changed = true;
-    }
-    return changed;
+  function alignDependents(nodes) {
+    return alignRoleStack(nodes, "dependent");
   }
 
   function reflowRoleLayout(nodes, style) {
@@ -311,8 +307,6 @@
       changed = alignRoleStack(nodes, role) || changed;
     });
     changed = alignSingleIndependentMediator(nodes) || changed;
-    changed = alignModerators(nodes, style) || changed;
-    changed = alignDependentToMediators(nodes) || changed;
     return changed;
   }
 
@@ -329,7 +323,8 @@
         var variable = variables.find(function(item) { return item.name === name; });
         if (!variable) return;
         var index = counts[role]++;
-        var y = STACKED_ROLES.indexOf(role) >= 0 ? roleStackY(index, names.length) : startY + index * gapY;
+        var mediatorCount = (roles.mediator || []).length;
+        var y = STACKED_ROLES.indexOf(role) >= 0 ? roleStackYForCounts(role, index, names.length, mediatorCount) : startY + index * gapY;
         if (role === "moderator") {
           y = moderatorY(index, style);
         }
@@ -340,7 +335,7 @@
           dataLabel: variable.dataLabel || name,
           canvasLabel: "",
           role: role,
-          x: ROLE_X[role] || 90,
+          x: role === "moderator" ? moderatorX(index, style) : (ROLE_X[role] || 90),
           y: y,
           width: style.boxWidth,
           height: style.boxHeight,
@@ -351,7 +346,7 @@
     });
 
     alignSingleIndependentMediator(nodes);
-    alignDependentToMediators(nodes);
+    alignDependents(nodes);
     return nodes;
   }
 
@@ -369,7 +364,7 @@
     roleColumnX: roleColumnX,
     alignNodeToRoleColumn: alignNodeToRoleColumn,
     nextRolePosition: nextRolePosition,
-    alignDependentToMediators: alignDependentToMediators,
+    alignDependents: alignDependents,
     roleAutoAlignPosition: roleAutoAlignPosition,
     autoLayoutVariables: autoLayoutVariables
   };

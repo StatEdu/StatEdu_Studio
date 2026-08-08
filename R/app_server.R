@@ -196,6 +196,7 @@ create_app_server <- function(app_version) {
   output$lazy_analysis_crosstabs <- renderUI(tab_panel_content(crosstab_tab_panel(app_language())))
   output$lazy_analysis_ttest_anova <- renderUI(tab_panel_content(ttest_anova_tab_panel(statedu_ui_label("ttest_anova", app_language()), app_language())))
   output$lazy_analysis_ancova <- renderUI(tab_panel_content(ancova_tab_panel(statedu_ui_label("ancova", app_language()), app_language())))
+  output$lazy_analysis_mixed_rm_anova <- renderUI(tab_panel_content(mixed_rm_anova_tab_panel(statedu_ui_label("mixed_rm_anova", app_language()), app_language())))
   output$lazy_analysis_nonparametric <- renderUI(tab_panel_content(nonparametric_tab_panel(statedu_ui_label("nonparametric", app_language()), app_language())))
   output$lazy_analysis_paired <- renderUI(tab_panel_content(paired_tab_panel(statedu_ui_label("paired", app_language()), app_language())))
   output$lazy_analysis_nonparametric_paired <- renderUI(tab_panel_content(nonparametric_paired_tab_panel(statedu_ui_label("nonparametric_paired", app_language()), app_language())))
@@ -203,10 +204,11 @@ create_app_server <- function(app_version) {
   output$lazy_analysis_factor_analysis <- renderUI(tab_panel_content(factor_analysis_tab_panel(statedu_ui_label("factor_analysis", app_language()), app_language())))
   output$lazy_analysis_pca <- renderUI(tab_panel_content(pca_tab_panel(statedu_ui_label("pca", app_language()), app_language())))
   output$lazy_analysis_reliability <- renderUI(tab_panel_content(reliability_tab_panel(statedu_ui_label("reliability", app_language()), app_language())))
+  output$lazy_analysis_interrater_agreement <- renderUI(tab_panel_content(interrater_agreement_tab_panel(statedu_ui_label("interrater_agreement", app_language()), app_language())))
   output$lazy_analysis_hierarchical <- renderUI(tab_panel_content(hierarchical_tab_panel(statedu_ui_label("regression", app_language()), app_language())))
   output$lazy_analysis_mediation_moderation <- renderUI(tab_panel_content(mediation_moderation_tab_panel(mediation_moderation_title(app_language()), app_language())))
   output$lazy_analysis_custom_model_canvas <- renderUI({
-    if (!isTRUE(statedu_feature_enabled("custom_model_canvas", !statedu_public_release()))) {
+    if (!isTRUE(statedu_feature_enabled("custom_model_canvas", TRUE))) {
       return(tab_panel_content(div(class = "analysis-placeholder-panel", "Mediation / Moderation Custom Model is not enabled in this build.")))
     }
     tab_panel_content(custom_model_canvas_tab_panel(custom_model_canvas_title(app_language()), app_language()))
@@ -1694,6 +1696,19 @@ create_app_server <- function(app_version) {
     app_language_fn = app_language
   )
 
+  register_interrater_agreement_handlers(
+    input = input,
+    output = output,
+    session = session,
+    dataset_fn = dataset,
+    selected_names_fn = selected_names,
+    variable_table_fn = regression_variable_table,
+    labels_fn = var_label_overrides,
+    category_table_fn = category_label_values,
+    mark_settings_dirty = mark_settings_dirty,
+    app_language_fn = app_language
+  )
+
   register_frequencies_handlers(
     input = input,
     output = output,
@@ -1774,6 +1789,19 @@ create_app_server <- function(app_version) {
   )
 
   register_ancova_handlers(
+    input = input,
+    output = output,
+    session = session,
+    selected_names_fn = selected_names,
+    variable_table_fn = regression_variable_table,
+    dataset_fn = dataset,
+    category_table_fn = category_label_values,
+    labels_fn = var_label_overrides,
+    mark_settings_dirty = mark_settings_dirty,
+    app_language_fn = app_language
+  )
+
+  register_mixed_rm_anova_handlers(
     input = input,
     output = output,
     session = session,

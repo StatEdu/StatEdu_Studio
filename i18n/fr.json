@@ -832,7 +832,7 @@
     "data_editor.wide_long_title": "Large vers long",
     "data_editor.wide_long_unavailable": "Le remodelage large-vers-long n'est pas disponible dans cette session.",
     "data_editor.wide_long_updated_group": "Groupe de variable longue mis à jour : %s",
-    "doc_analyses_subtitle": "Résume les menus d'analyse, statistiques, tableaux et options d'export de StatEdu Studio 1.0.",
+    "doc_analyses_subtitle": "Résume les menus d'analyse, statistiques, tableaux et options d'export de StatEdu Studio 1.2.",
     "doc_analyses_title": "Analyses",
     "doc_method_notes_subtitle": "Fournit des notes sur le choix des méthodes, les hypothèses, les avertissements et l'interprétation.",
     "doc_method_notes_title": "Notes méthodologiques",

@@ -218,6 +218,38 @@ ancova_tab_panel <- function(title = "ANCOVA", language = statedu_initial_langua
   )
 }
 
+mixed_rm_anova_tab_panel <- function(title = "Repeated-measures ANOVA", language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
+  tabPanel(
+    title,
+    value = "mixed_rm_anova",
+    div(
+      class = "page-shell",
+      div(
+        class = "app-heading",
+        h1(analysis_ui_text("Repeated-measures ANOVA", language)),
+        div(statedu_t("analysis.subtitle_mixed_rm_anova", language), class = "app-subtitle")
+      ),
+      div(
+        class = "workspace-panel frequencies-workspace-panel ttest-anova-workspace-panel ancova-workspace-panel analysis-three-block-workspace",
+        style = "min-width:980px;overflow-x:auto;",
+        analysis_workspace_heading("Repeated-measures ANOVA", "mixed_rm_anova", language),
+        analysis_workspace_body(
+          "mixed_rm_anova",
+          uiOutput("mixed_rm_anova_setup"),
+          analysis_three_block_action_row(
+            class = "ttest-anova-action-row ancova-action-row",
+            run_button = actionButton("run_mixed_rm_anova", statedu_ui_label("run_analysis", language), class = "btn btn-primary"),
+            reset_control = uiOutput("mixed_rm_anova_reset_control"),
+            save_control = uiOutput("mixed_rm_anova_save_control")
+          ),
+          uiOutput("mixed_rm_anova_results")
+        )
+      )
+    )
+  )
+}
+
 nonparametric_tab_panel <- function(title = "Nonparametric Tests", language = statedu_initial_language()) {
   language <- normalize_app_language(language)
   tabPanel(

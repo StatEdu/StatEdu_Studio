@@ -113,13 +113,51 @@ binary_hierarchical_html <- as.character(htmltools::renderTags(logistic_results_
   category_table = category_table,
   split_ci = TRUE
 ))$html)
-stopifnot(grepl("logistic-hierarchical-table", binary_hierarchical_html, fixed = TRUE))
+stopifnot(grepl("logistic-standard-table-wrap", binary_hierarchical_html, fixed = TRUE))
+stopifnot(grepl("logistic-result-table output-table-style-standard", binary_hierarchical_html, fixed = TRUE))
 stopifnot(grepl("Model 1", binary_hierarchical_html, fixed = TRUE))
 stopifnot(grepl("Model 2", binary_hierarchical_html, fixed = TRUE))
 stopifnot(grepl("LLCI", binary_hierarchical_html, fixed = TRUE))
 stopifnot(grepl("ULCI", binary_hierarchical_html, fixed = TRUE))
 stopifnot(!grepl("landscape-table-panel", binary_hierarchical_html, fixed = TRUE))
 stopifnot(grepl("width:100% !important;min-width:0 !important;max-width:100% !important;table-layout:fixed;", binary_hierarchical_html, fixed = TRUE))
+
+binary_missing_hierarchical_data <- binary_hierarchical_data
+binary_missing_hierarchical_data$block2[c(2, 5, 8, 11, 14)] <- NA_real_
+binary_missing_hierarchical_result <- prepare_logistic_analysis_results(
+  binary_missing_hierarchical_data,
+  "y",
+  c("group", "x"),
+  "block2",
+  variable_info = binary_hierarchical_info,
+  reference_values = refs
+)
+expected_logistic_n <- sum(stats::complete.cases(binary_missing_hierarchical_data[, c("y", "group", "x", "block2"), drop = FALSE]))
+stopifnot(length(binary_missing_hierarchical_result) == 2L)
+stopifnot(all(vapply(binary_missing_hierarchical_result, `[[`, numeric(1), "n") == expected_logistic_n))
+binary_missing_model1 <- fit_logistic_model(
+  logistic_prepare_data(binary_missing_hierarchical_data[stats::complete.cases(binary_missing_hierarchical_data[, c("y", "group", "x", "block2"), drop = FALSE]), , drop = FALSE], c("y", "group", "x"), binary_hierarchical_info, refs)$data,
+  "y",
+  c("group", "x"),
+  "binary"
+)
+binary_missing_model2 <- fit_logistic_model(
+  logistic_prepare_data(binary_missing_hierarchical_data[stats::complete.cases(binary_missing_hierarchical_data[, c("y", "group", "x", "block2"), drop = FALSE]), , drop = FALSE], c("y", "group", "x", "block2"), binary_hierarchical_info, refs)$data,
+  "y",
+  c("group", "x", "block2"),
+  "binary"
+)
+binary_missing_stats1 <- logistic_fit_stats(binary_missing_model1$model, binary_missing_model1$null_model, expected_logistic_n)
+binary_missing_stats2 <- logistic_fit_stats(binary_missing_model2$model, binary_missing_model2$null_model, expected_logistic_n)
+stopifnot(abs(binary_missing_hierarchical_result[[2]]$delta_chisq - (binary_missing_stats2$chisq - binary_missing_stats1$chisq)) < 1e-8)
+stopifnot(identical(binary_missing_hierarchical_result[[1]]$hierarchical_note, binary_missing_hierarchical_result[[2]]$hierarchical_note))
+binary_missing_hierarchical_html <- as.character(htmltools::renderTags(logistic_results_panel(
+  binary_missing_hierarchical_result,
+  variable_table = binary_hierarchical_info,
+  category_table = category_table,
+  split_ci = TRUE
+))$html)
+stopifnot(grepl("complete cases of the final model", binary_missing_hierarchical_html, fixed = TRUE))
 
 binary_three_step_result <- prepare_logistic_analysis_results(
   binary_hierarchical_data,
@@ -139,8 +177,8 @@ binary_three_step_html <- as.character(htmltools::renderTags(logistic_results_pa
   show_se = TRUE,
   split_ci = TRUE
 ))$html)
-stopifnot(grepl("landscape-table-panel", binary_three_step_html, fixed = TRUE))
-stopifnot(grepl("fit-width-hierarchical-table", binary_three_step_html, fixed = TRUE))
+stopifnot(grepl("logistic-standard-table-wrap", binary_three_step_html, fixed = TRUE))
+stopifnot(grepl("logistic-result-table output-table-style-standard", binary_three_step_html, fixed = TRUE))
 stopifnot(grepl("Model 3", binary_three_step_html, fixed = TRUE))
 stopifnot(grepl("reference", binary_three_step_html, fixed = TRUE))
 stopifnot(grepl("1.", binary_three_step_html, fixed = TRUE))
@@ -152,6 +190,7 @@ binary_three_step_table_html <- as.character(htmltools::renderTags(logistic_hier
   show_se = TRUE,
   split_ci = TRUE
 ))$html)
+stopifnot(grepl("fit-width-hierarchical-table", binary_three_step_table_html, fixed = TRUE))
 stopifnot(count_fixed(">VIF<", binary_three_step_table_html) == 1L)
 
 saved_html <- saved_logistic_results_html(
@@ -214,9 +253,10 @@ ordered_hier_html <- as.character(htmltools::renderTags(logistic_results_panel(
   show_cox_snell = TRUE,
   split_ci = FALSE
 ))$html)
-stopifnot(grepl("logistic-hierarchical-table", ordered_hier_html, fixed = TRUE))
-stopifnot(grepl("<div style=\"white-space:nowrap;\">Nagelkerke R", ordered_hier_html, fixed = TRUE))
-stopifnot(grepl("<div style=\"white-space:nowrap;\">McFadden R", ordered_hier_html, fixed = TRUE))
+stopifnot(grepl("logistic-standard-table-wrap", ordered_hier_html, fixed = TRUE))
+stopifnot(grepl("logistic-result-table output-table-style-standard", ordered_hier_html, fixed = TRUE))
+stopifnot(grepl("Nagelkerke R\u00B2", ordered_hier_html, fixed = TRUE))
+stopifnot(grepl("McFadden R\u00B2", ordered_hier_html, fixed = TRUE))
 
 multinom_data <- data.frame(
   y = factor(rep(1:3, each = 50)),

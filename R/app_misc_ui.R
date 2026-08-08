@@ -105,7 +105,7 @@ about_document_specs <- function(language = "ko") {
       user_guide = list(title = "User Guide", path = file.path("docs", "USER_GUIDE_EN.md"), subtitle = "Step-by-step operating guide for loading data, selecting variables, running analyses, and saving results."),
       analysis_methods = list(title = "Analyses", path = file.path("docs", "ANALYSIS_METHODS_EN.md"), subtitle = "Implementation inventory of analysis menus, statistical outputs, tables, and export coverage."),
       method_notes = list(title = "Method Notes", path = file.path("docs", "METHOD_NOTES_EN.md"), subtitle = "Interpretive notes on method choice, assumptions, warnings, and result interpretation."),
-      validation = list(title = "Validation", path = file.path("docs", "ANALYSIS_REFERENCE_COMPARISON_PUBLIC.md"), subtitle = "Reference comparisons for public 1.0 calculations and automatic decision paths."),
+      validation = list(title = "Validation", path = file.path("docs", "ANALYSIS_REFERENCE_COMPARISON_PUBLIC.md"), subtitle = "Reference comparisons for public 1.2 calculations and automatic decision paths."),
       version_history = list(title = "Version History", path = "CHANGELOG.md", subtitle = "Release notes and version history.")
     ))
   }

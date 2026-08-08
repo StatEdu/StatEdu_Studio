@@ -4991,6 +4991,8 @@ build_T6b_bch_categorical_multinom <- function() {
     class_cols <- coef_cols[grepl("^class_factorC[0-9]+$", coef_cols)]
     if (length(class_cols) == 0) next
 
+    critical <- stats::qnorm(0.975)
+
     for (outcome_level in rownames(coef_mat)) {
       for (cc in class_cols) {
         cls <- suppressWarnings(as.integer(gsub("^class_factorC", "", cc)))
@@ -5009,8 +5011,8 @@ build_T6b_bch_categorical_multinom <- function() {
           Reference_outcome = get_value_label(vv, y_levels[1]),
           Comparison = paste0(latent_group_label(cls), " vs ", latent_group_label(ref_class_num)),
           RRR = fmt_rrr3(exp(est)),
-          LLCI = fmt_rrr3(exp(est - 1.96 * se)),
-          ULCI = fmt_rrr3(exp(est + 1.96 * se)),
+          LLCI = fmt_rrr3(exp(est - critical * se)),
+          ULCI = fmt_rrr3(exp(est + critical * se)),
           p = fmt_p3_strict(p),
           sig = fmt_sig_cell(sig_mark(p)),
           stringsAsFactors = FALSE,

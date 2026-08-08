@@ -1,6 +1,6 @@
 # StatEdu Studio 분석 방법 정리
 
-이 문서는 **StatEdu Studio** 1.0.0에 실제 구현된 분석 메뉴와 주요 출력 항목을 정리한다. 목적은 사용자가 "어떤 메뉴에서 어떤 검정, 통계량, 표, 저장 기능이 제공되는가"를 빠르게 확인하는 것이다. 분석 방법을 선택하는 기준과 해석상 주의점은 `METHOD_NOTES_KO.md`를 참고한다.
+이 문서는 **StatEdu Studio** 1.2.0에 실제 구현된 분석 메뉴와 주요 출력 항목을 정리한다. 목적은 사용자가 "어떤 메뉴에서 어떤 검정, 통계량, 표, 저장 기능이 제공되는가"를 빠르게 확인하는 것이다. 분석 방법을 선택하는 기준과 해석상 주의점은 `METHOD_NOTES_KO.md`를 참고한다.
 
 ## 문서 용도
 
@@ -18,15 +18,19 @@
 ## 공통 결과 출력
 
 - 주요 분석 결과는 화면과 Result 탭에 표시한다.
-- public 1.0에서는 HTML, PDF 저장을 지원한다. Excel, Word 결과 저장은 public 1.0에서 숨겨져 있으며 이후 Pro 기능으로 분리할 예정이다.
-- 여러 분석에서 `Model overview`를 제공하며, 1.0.0 기준으로 t-test/ANOVA, paired test, nonparametric paired test, correlation 등에서 N, 분석 방법, 선택 이유를 표 형태로 확인할 수 있다.
+- public 1.2에서는 HTML, PDF 저장을 지원한다. Excel, Word 결과 저장은 public 1.2에서 숨겨져 있으며 이후 Pro 기능으로 분리할 예정이다.
+- 여러 분석에서 `Model overview`를 제공하며, 1.2.0 기준으로 t-test/ANOVA, paired test, nonparametric paired test, correlation, 혼합 반복측정 ANOVA 등에서 N, 분석 방법, 선택 이유 또는 모형 구조를 표 형태로 확인할 수 있다.
 - 분석 불가능 항목은 전체 분석을 중단하지 않고 Warnings, Skipped analyses, Skipped models 형태로 분리해 표시한다.
+
+## 공개 1.2 분석 범위
+
+public 1.2는 아래 분석 목록에 평가자간 일치도, 혼합 반복측정 ANOVA, 매개·조절 사용자 정의 모델을 포함한다. HTML/PDF 결과 출력은 공개 범위이며, Excel/Word 결과 저장, license activation, paid-edition gating, Mplus/latent add-on은 public 1.2 화면에 노출하지 않는다.
 
 ## 빈도분석과 기술통계
 
 - 범주형 변수: 빈도, 백분율, 유효 백분율, 누적 백분율을 표시한다.
 - 연속형 변수: N, 결측 수, 평균, 표준편차, 중앙값, IQR, 최솟값, 최댓값, 왜도, 첨도를 표시한다.
-- 결과는 화면 출력과 public 1.0 기준 HTML/PDF 저장으로 연결된다. Excel/Word 결과 저장은 public 1.0에서 숨긴다.
+- 결과는 화면 출력과 public 1.2 기준 HTML/PDF 저장으로 연결된다. Excel/Word 결과 저장은 public 1.2에서 숨긴다.
 
 ## 교차표 분석
 
@@ -54,7 +58,31 @@
 - 범주형 paired 비교: McNemar test, exact McNemar test, Stuart-Maxwell test, Bowker symmetry test.
 - 세 시점 이상 반복측정: standard repeated-measures ANOVA, repeated-measures ANOVA with Wilks' lambda / Greenhouse-Geisser correction, Friedman test, Cochran's Q test.
 - paired post-hoc은 paired t-test, Wilcoxon signed-rank test, McNemar test를 사용하며 Bonferroni correction 또는 Holm Bonferroni를 적용할 수 있다.
-- 1.0.0 기준으로 paired test와 nonparametric paired test 모두 `Model overview`에 N, 분석 방법, 이유를 표시한다.
+- 1.2.0 기준으로 paired test와 nonparametric paired test 모두 `Model overview`에 N, 분석 방법, 이유를 표시한다.
+
+## 혼합 반복측정 ANOVA
+
+`반복측정 ANOVA` workflow는 wide-format 사전-사후 또는 다시점 outcome 열을 집단 변수에 따라 비교한다.
+
+### 입력
+
+- 시간 순서대로 배치한 두 개 이상의 반복측정 outcome 변수.
+- 하나의 집단 변수.
+- 선택적 공변량.
+- 선택적 시점 라벨.
+
+### 분석 경로와 검토
+
+- PP / complete-case 반복측정 ANOVA 경로.
+- 선택 및 적합 가능한 경우 available-case ITT 성격의 혼합모형 대안.
+- 시점 내, 시점 간 집단별 기술요약.
+- time, group, time-by-group interaction 검정.
+- Mauchly 구형성 검토와 필요한 경우 Greenhouse-Geisser 보정 안내.
+- 시점별 Levene 방식 분산 검토.
+- 선택적 사후비교와 다중비교 보정.
+- 공변량을 선택한 경우 공변량 보정 요약.
+
+출력에는 모형 개요, 가정 검토표, 반복측정 검정표, 집단/시점 요약, 사후비교표, 경고 또는 skipped-model 안내, 활성화된 HTML/PDF/Excel/Result 추가 controls가 포함된다.
 
 ## 공분산분석(ANCOVA)
 
@@ -83,7 +111,7 @@
 - binary x binary: phi coefficient를 사용한다.
 - nominal 조합: eta 또는 Cramer's V를 사용한다.
 - 옵션에 따라 latent-variable correlation 세트를 추가할 수 있으며, polyserial, polychoric, tetrachoric correlation을 사용한다.
-- 1.0.0 기준으로 별도 reason 체크박스 없이 `Model overview`를 항상 표시한다. 이 표는 correlation matrix 형식으로 각 변수쌍의 분석 방법과 짧은 선택 이유를 함께 표시한다.
+- 1.2.0 기준으로 별도 reason 체크박스 없이 `Model overview`를 항상 표시한다. 이 표는 correlation matrix 형식으로 각 변수쌍의 분석 방법과 짧은 선택 이유를 함께 표시한다.
 
 복합표본 상관분석:
 
@@ -100,6 +128,30 @@
 - Cronbach's alpha와 McDonald's omega total을 제공한다.
 - item-total correlation, alpha if item deleted, omega 관련 지표를 표시한다.
 - ordinal 문항에서는 polychoric 기반 지표를 보조적으로 확인할 수 있다.
+
+## 평가자간 일치도
+
+평가자간 일치도는 여러 평가자, 코더, 판정자 또는 측정도구가 같은 사례에 부여한 점수가 얼마나 일치하는지 평가한다.
+
+### 입력 구조
+
+- 연속형 평가자 변수: ICC 계열 일치도.
+- 순서형 평가자 변수: weighted agreement statistic.
+- 이분형 또는 명목형 평가자 변수: kappa 계열 및 chance-corrected agreement statistic.
+
+### 주요 출력
+
+- 자료 구조에 맞는 권장 일치도 지표를 먼저 표시한다.
+- 보조 일치도 지표는 auxiliary table로 분리한다.
+- ICC는 model, type, unit 옵션을 제공한다.
+- 두 평가자 범주형/순서형 자료에서는 가능한 경우 Cohen 또는 weighted kappa를 제공한다.
+- 다평가자 범주형 자료에서는 가능한 경우 Fleiss 또는 Light kappa를 제공한다.
+- 자료 구조가 허용하면 Gwet AC1/AC2와 Krippendorff alpha를 제공한다.
+- complete-case 및 missing rating 처리 안내를 표시한다.
+- 순서형 문자 라벨은 가능한 경우 Step 3 category table 순서를 사용한다.
+- 선택 시 ICC bootstrap 신뢰구간을 제공한다.
+
+권장 지표는 주 보고 대상으로 사용하고, 보조 지표는 방법 선택과 범주 구조에 따른 민감도 확인용으로 해석한다.
 
 ## 요인분석
 
@@ -167,9 +219,9 @@
 - 조건부 효과 그림과 결과 그림 저장.
 - HTML/PDF/그림/Excel 저장 및 Result 탭 추가.
 
-## 매개·조절 사용자 정의모델
+## 매개·조절 사용자 정의 모델
 
-`매개·조절 사용자 정의모델`은 캔버스에서 변수를 배치하고 경로를 그린 뒤, 인식된 구조를 매개·조절 분석 엔진으로 실행한다.
+`매개·조절 사용자 정의 모델`은 캔버스에서 변수를 배치하고 경로를 그린 뒤, 인식된 구조를 매개·조절 분석 엔진으로 실행한다.
 
 - 변수 역할: 독립, 매개, 조절, 종속, 공변량.
 - 캔버스 기능: 선택, 연결, 삭제, 속성 편집, 실행취소/다시실행, 확대/축소, 맞춤 보기, 용지 방향, 선/화살표/라벨 스타일, 모형 저장/불러오기/내보내기.
@@ -328,12 +380,12 @@
 ## 저장과 출력
 
 - 분석 결과는 Result 탭에 모아 볼 수 있다.
-- public 1.0에서는 HTML, PDF 저장을 지원한다. Excel, Word 결과 저장은 public 1.0에서 숨긴다.
+- public 1.2에서는 HTML, PDF 저장을 지원한다. Excel, Word 결과 저장은 public 1.2에서 숨긴다.
 - 표, 경고, skipped analyses, skipped models, 선택된 분석 방법, 효과크기, 신뢰구간을 함께 저장한다.
 
 ## 표본수, 검정력, 효과크기 메뉴
 
-버전 1.0.0 기준으로 연구계획 계산 메뉴를 제공한다. 표본수 메뉴는 최소 표본 수와 주어진 표본 수에서의 검정력을 계산하고, 효과크기 메뉴는 표본 수 계산에 투입할 효과크기 또는 변환 가능한 효과크기를 계산한다.
+버전 1.2.0 기준으로 연구계획 계산 메뉴를 제공한다. 표본수 메뉴는 최소 표본 수와 주어진 표본 수에서의 검정력을 계산하고, 효과크기 메뉴는 표본 수 계산에 투입할 효과크기 또는 변환 가능한 효과크기를 계산한다.
 
 ### 공통 출력
 

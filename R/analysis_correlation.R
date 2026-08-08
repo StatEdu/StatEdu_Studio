@@ -37,10 +37,14 @@ correlation_numeric_vector <- function(values) {
   suppressWarnings(as.numeric(values))
 }
 
-correlation_ordered_score <- function(values) {
+correlation_ordered_score <- function(values, name = NULL, category_table = NULL) {
   if (is.character(values) || is.factor(values)) {
     values <- as.character(values)
     values[!nzchar(trimws(values))] <- NA_character_
+  }
+  category_order <- frequency_category_value_order(name, category_table)
+  if (length(category_order) > 0) {
+    return(frequency_ordered_score(values, name = name, category_table = category_table))
   }
   numeric <- suppressWarnings(as.numeric(values))
   non_missing <- values[!is.na(values)]
@@ -50,7 +54,7 @@ correlation_ordered_score <- function(values) {
   if (sum(!is.na(numeric)) >= 3) {
     return(numeric)
   }
-  ordered_values <- frequency_value_order(non_missing)
+  ordered_values <- frequency_value_order(non_missing, name = name, category_table = category_table)
   as.numeric(match(as.character(values), ordered_values))
 }
 
@@ -76,25 +80,25 @@ correlation_factor_vector <- function(values) {
   factor(raw)
 }
 
-correlation_analysis_vector <- function(values, measurement) {
+correlation_analysis_vector <- function(values, measurement, name = NULL, category_table = NULL) {
   switch(
     measurement,
     continuous = correlation_numeric_vector(values),
-    ordered = correlation_ordered_score(values),
+    ordered = correlation_ordered_score(values, name = name, category_table = category_table),
     binary = correlation_binary_score(values),
     category = correlation_factor_vector(values),
     correlation_numeric_vector(values)
   )
 }
 
-correlation_numeric_data <- function(data, variables, variable_info = NULL) {
+correlation_numeric_data <- function(data, variables, variable_info = NULL, category_table = NULL) {
   variables <- intersect(as.character(variables %||% character(0)), names(data))
   out <- data.frame(lapply(variables, function(name) {
     measurement <- correlation_measurement(name, variable_info)
     if (identical(measurement, "category")) {
       return(rep(NA_real_, nrow(data)))
     }
-    correlation_analysis_vector(data[[name]], measurement)
+    correlation_analysis_vector(data[[name]], measurement, name = name, category_table = category_table)
   }), check.names = FALSE)
   names(out) <- variables
   out
@@ -106,7 +110,7 @@ correlation_complete_pair <- function(x, y) {
 }
 
 correlation_normality_summary <- function(data, variables, variable_info = NULL, labels = character(0), category_table = NULL) {
-  numeric_data <- correlation_numeric_data(data, variables, variable_info)
+  numeric_data <- correlation_numeric_data(data, variables, variable_info, category_table)
   rows <- lapply(names(numeric_data), function(name) {
     measurement <- correlation_measurement(name, variable_info)
     values <- numeric_data[[name]]
@@ -143,12 +147,14 @@ correlation_normality_summary <- function(data, variables, variable_info = NULL,
   do.call(rbind, rows)
 }
 
-correlation_ci <- function(r, n, level = 0.95) {
-  if (!is.finite(r) || n < 4 || abs(r) >= 1) {
+correlation_ci <- function(r, n, level = 0.95, method = "pearson") {
+  method <- as.character(method %||% "pearson")
+  minimum_n <- if (identical(method, "kendall")) 5L else 4L
+  if (!is.finite(r) || n < minimum_n || abs(r) >= 1) {
     return(c(NA_real_, NA_real_))
   }
   z <- atanh(r)
-  se <- 1 / sqrt(n - 3)
+  se <- if (identical(method, "kendall")) sqrt(0.437 / (n - 4)) else 1 / sqrt(n - 3)
   critical <- stats::qnorm(1 - (1 - level) / 2)
   tanh(c(z - critical * se, z + critical * se))
 }
@@ -195,6 +201,9 @@ correlation_method_for_pair <- function(
     }
     return(list(method = method, label = tools::toTitleCase(method), reason = sprintf("%s was selected for two continuous variables.", tools::toTitleCase(method))))
   }
+  if (identical(pair, c("binary", "binary"))) {
+    return(list(method = "phi", label = "Phi", reason = "Phi was selected for two binary variables."))
+  }
   if (all(pair %in% c("continuous", "binary"))) {
     return(list(method = "point_biserial", label = "Point-biserial", reason = "Point-biserial was selected for a continuous variable and a binary variable."))
   }
@@ -203,9 +212,6 @@ correlation_method_for_pair <- function(
   }
   if (identical(pair, c("ordered", "ordered"))) {
     return(list(method = "spearman", label = "Spearman", reason = "Spearman was selected for two ordinal variables; polychoric can be added as an advanced option."))
-  }
-  if (identical(pair, c("binary", "binary"))) {
-    return(list(method = "phi", label = "Phi", reason = "Phi was selected for two binary variables."))
   }
   if (all(pair %in% c("binary", "ordered"))) {
     return(list(method = "spearman", label = "Spearman", reason = "Spearman was selected for binary-ordinal variables; polychoric can be added as an advanced option."))
@@ -259,7 +265,7 @@ correlation_test_result <- function(x, y, method, label) {
   ci <- if (!is.null(test$conf.int)) {
     as.numeric(test$conf.int[1:2])
   } else if (cor_method %in% c("pearson", "spearman", "kendall")) {
-    correlation_ci(coefficient, n)
+    correlation_ci(coefficient, n, method = cor_method)
   } else {
     c(NA_real_, NA_real_)
   }
@@ -312,10 +318,10 @@ correlation_eta_result <- function(continuous, group) {
   list(n = n, coefficient = eta, p = p, ci = c(NA_real_, NA_real_), method = "eta", label = "Eta")
 }
 
-correlation_polyserial_result <- function(continuous, ordinal, label = "Polyserial") {
+correlation_polyserial_result <- function(continuous, ordinal, label = "Polyserial", levels = NULL) {
   pair <- correlation_complete_pair(continuous, ordinal)
   x <- as.numeric(pair$x)
-  y <- ordered(pair$y)
+  y <- ordered(pair$y, levels = levels %||% frequency_value_order(pair$y))
   n <- pair$n
   if (n < 4 || stats::sd(x) == 0 || length(unique(y)) < 2 || !requireNamespace("polycor", quietly = TRUE)) {
     return(list(n = n, coefficient = NA_real_, p = NA_real_, ci = c(NA_real_, NA_real_), method = "polyserial", label = label))
@@ -328,10 +334,10 @@ correlation_polyserial_result <- function(continuous, ordinal, label = "Polyseri
   list(n = n, coefficient = coefficient, p = NA_real_, ci = correlation_ci(coefficient, n), method = "polyserial", label = label)
 }
 
-correlation_polychoric_result <- function(x, y, method = "polychoric", label = "Polychoric") {
+correlation_polychoric_result <- function(x, y, method = "polychoric", label = "Polychoric", x_levels = NULL, y_levels = NULL) {
   pair <- correlation_complete_pair(x, y)
-  x <- ordered(pair$x)
-  y <- ordered(pair$y)
+  x <- ordered(pair$x, levels = x_levels %||% frequency_value_order(pair$x))
+  y <- ordered(pair$y, levels = y_levels %||% frequency_value_order(pair$y))
   n <- pair$n
   if (n < 4 || length(unique(x)) < 2 || length(unique(y)) < 2 || !requireNamespace("polycor", quietly = TRUE)) {
     return(list(n = n, coefficient = NA_real_, p = NA_real_, ci = c(NA_real_, NA_real_), method = method, label = label))
@@ -352,7 +358,8 @@ correlation_pair_result <- function(
   y_measure,
   continuous_method = "auto",
   normality_table = NULL,
-  normality_checked = FALSE
+  normality_checked = FALSE,
+  category_table = NULL
 ) {
   selection <- correlation_method_for_pair(
     x_measure,
@@ -363,8 +370,8 @@ correlation_pair_result <- function(
     normality_table = normality_table,
     normality_checked = normality_checked
   )
-  x <- correlation_analysis_vector(data[[x_name]], x_measure)
-  y <- correlation_analysis_vector(data[[y_name]], y_measure)
+  x <- correlation_analysis_vector(data[[x_name]], x_measure, name = x_name, category_table = category_table)
+  y <- correlation_analysis_vector(data[[y_name]], y_measure, name = y_name, category_table = category_table)
 
   result <- switch(
     selection$method,
@@ -385,22 +392,24 @@ correlation_pair_result <- function(
   result
 }
 
-correlation_latent_pair_result <- function(data, x_name, y_name, x_measure, y_measure) {
+correlation_latent_pair_result <- function(data, x_name, y_name, x_measure, y_measure, category_table = NULL) {
   selection <- correlation_latent_method_for_pair(x_measure, y_measure)
-  x <- correlation_analysis_vector(data[[x_name]], x_measure)
-  y <- correlation_analysis_vector(data[[y_name]], y_measure)
+  x <- correlation_analysis_vector(data[[x_name]], x_measure, name = x_name, category_table = category_table)
+  y <- correlation_analysis_vector(data[[y_name]], y_measure, name = y_name, category_table = category_table)
+  x_levels <- frequency_value_order(x, name = x_name, category_table = category_table)
+  y_levels <- frequency_value_order(y, name = y_name, category_table = category_table)
   result <- switch(
     selection$method,
     pearson = correlation_test_result(x, y, "pearson", selection$label),
     polyserial = {
       if (identical(x_measure, "continuous")) {
-        correlation_polyserial_result(x, y, selection$label)
+        correlation_polyserial_result(x, y, selection$label, levels = y_levels)
       } else {
-        correlation_polyserial_result(y, x, selection$label)
+        correlation_polyserial_result(y, x, selection$label, levels = x_levels)
       }
     },
-    polychoric = correlation_polychoric_result(x, y, "polychoric", selection$label),
-    tetrachoric = correlation_polychoric_result(x, y, "tetrachoric", selection$label),
+    polychoric = correlation_polychoric_result(x, y, "polychoric", selection$label, x_levels = x_levels, y_levels = y_levels),
+    tetrachoric = correlation_polychoric_result(x, y, "tetrachoric", selection$label, x_levels = x_levels, y_levels = y_levels),
     cramers_v = correlation_cramers_v_result(x, y),
     eta = {
       if (identical(x_measure, "continuous")) correlation_eta_result(x, y) else correlation_eta_result(y, x)
@@ -525,11 +534,11 @@ prepare_correlation_results <- function(
     variables
   )
   valid_counts <- vapply(variables, function(name) {
-    values <- correlation_analysis_vector(data[[name]], measurements[[name]])
+    values <- correlation_analysis_vector(data[[name]], measurements[[name]], name = name, category_table = category_table)
     sum(!is.na(values))
   }, integer(1))
   unique_counts <- vapply(variables, function(name) {
-    values <- correlation_analysis_vector(data[[name]], measurements[[name]])
+    values <- correlation_analysis_vector(data[[name]], measurements[[name]], name = name, category_table = category_table)
     length(unique(values[!is.na(values)]))
   }, integer(1))
   keep_variables <- valid_counts >= 3 & unique_counts >= 2
@@ -567,7 +576,7 @@ prepare_correlation_results <- function(
       x_name <- variables[[i]]
       y_name <- variables[[j]]
       pair <- if (isTRUE(use_latent_correlations)) {
-        correlation_latent_pair_result(data, x_name, y_name, measurements[[x_name]], measurements[[y_name]])
+        correlation_latent_pair_result(data, x_name, y_name, measurements[[x_name]], measurements[[y_name]], category_table = category_table)
       } else {
         correlation_pair_result(
           data,
@@ -577,7 +586,8 @@ prepare_correlation_results <- function(
           measurements[[y_name]],
           continuous_method,
           normality_table = normality_table,
-          normality_checked = normality_checked
+          normality_checked = normality_checked,
+          category_table = category_table
         )
       }
       pair_results[[length(pair_results) + 1]] <- list(x_name = x_name, y_name = y_name, result = pair)

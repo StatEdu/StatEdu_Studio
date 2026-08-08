@@ -21,6 +21,8 @@ hierarchical_setup_state <- function(
   show_sr2 = FALSE,
   show_f2 = TRUE,
   show_vif = TRUE,
+  options_tab = "Model",
+  output_table_style = "standard",
   language = statedu_initial_language()
 ) {
   language <- normalize_app_language(language)
@@ -67,6 +69,8 @@ hierarchical_setup_state <- function(
     show_sr2 = setup_option_checked(show_sr2, default = FALSE),
     show_f2 = setup_option_checked(show_f2, default = TRUE),
     show_vif = setup_option_checked(show_vif, default = TRUE),
+    options_tab = if (as.character(options_tab %||% "Model") %in% c("Model", "Bootstrap", "Output")) as.character(options_tab %||% "Model") else "Model",
+    output_table_style = analysis_output_table_style(output_table_style),
     move_disabled = length(selected) == 0,
     language = language
   )
@@ -245,7 +249,7 @@ hierarchical_setup_panel <- function(setup, status_message) {
         )
       ),
       div(
-        class = "analysis-options-column analysis-options-panel hierarchical-options",
+        class = "analysis-options-column hierarchical-options-column",
         tags$style(HTML("
           .regression-options.analysis-options-panel,
           .hierarchical-options.analysis-options-panel { gap: 14px !important; row-gap: 14px !important; }
@@ -262,46 +266,72 @@ hierarchical_setup_panel <- function(setup, status_message) {
           .regression-options.analysis-options-panel .analysis-option-group .checkbox label,
           .hierarchical-options.analysis-options-panel .analysis-option-group .checkbox label { line-height: 1.35 !important; padding-top: 0 !important; padding-bottom: 0 !important; }
         ")),
-        div(
-          class = "analysis-option-group",
-          div(class = "analysis-option-title", analysis_ui_text("Bootstrap", language)),
-          div(
-            class = "regression-field",
-            selectInput(
-              "hierarchical_boot_r",
-              analysis_ui_text("Number of bootstrap samples", language),
-              choices = setup$bootstrap_choices,
-              selected = setup$current_bootstrap,
-              selectize = FALSE
+        analysis_options_tabs_panel(
+          id = "hierarchical_options_tab",
+          selected = setup$options_tab,
+          class = "hierarchical-options",
+          tabPanel(
+            analysis_ui_text("Model", language),
+            value = "Model",
+            div(
+              class = "factor-options-tab-content regression-options-tab-content",
+              analysis_option_group(
+                "Residual diagnostics",
+                list(
+                  list(id = "hierarchical_residual_diagnostics", label = "Residual diagnostics", value = isTRUE(setup$residual_diagnostics)),
+                  list(id = "hierarchical_auto_method", label = "Automatic method selection", value = isTRUE(setup$auto_method) && isTRUE(setup$residual_diagnostics), disabled = !isTRUE(setup$residual_diagnostics))
+                ),
+                language = language
+              ),
+              analysis_option_group(
+                "Effect size",
+                list(
+                  list(id = "hierarchical_show_sr2", label = "sr\u00B2", value = isTRUE(setup$show_sr2)),
+                  list(id = "hierarchical_show_f2", label = "f\u00B2", value = isTRUE(setup$show_f2))
+                ),
+                language = language
+              ),
+              analysis_option_group(
+                "Collinearity diagnostics",
+                list(
+                  list(id = "hierarchical_show_vif", label = "VIF", value = isTRUE(setup$show_vif))
+                ),
+                language = language
+              )
             )
           ),
-          div(
-            class = "regression-field",
-            numericInput("hierarchical_seed", analysis_ui_text("Seed number", language), value = setup$current_seed, min = 1, step = 1)
+          tabPanel(
+            analysis_ui_text("Bootstrap", language),
+            value = "Bootstrap",
+            div(
+              class = "factor-options-tab-content regression-options-tab-content",
+              div(
+                class = "analysis-option-group",
+                div(
+                  class = "regression-field",
+                  selectInput(
+                    "hierarchical_boot_r",
+                    analysis_ui_text("Number of bootstrap samples", language),
+                    choices = setup$bootstrap_choices,
+                    selected = setup$current_bootstrap,
+                    selectize = FALSE
+                  )
+                ),
+                div(
+                  class = "regression-field",
+                  numericInput("hierarchical_seed", analysis_ui_text("Seed number", language), value = setup$current_seed, min = 1, step = 1)
+                )
+              )
+            )
+          ),
+          tabPanel(
+            analysis_ui_text("Output", language),
+            value = "Output",
+            div(
+              class = "factor-options-tab-content regression-options-tab-content",
+              analysis_output_table_style_tabs("hierarchical_output_table_style", setup$output_table_style, language, include_compact_xm = FALSE)
+            )
           )
-        ),
-        analysis_option_group(
-          "Residual diagnostics",
-          list(
-            list(id = "hierarchical_residual_diagnostics", label = "Residual diagnostics", value = isTRUE(setup$residual_diagnostics)),
-            list(id = "hierarchical_auto_method", label = "Automatic method selection", value = isTRUE(setup$auto_method) && isTRUE(setup$residual_diagnostics), disabled = !isTRUE(setup$residual_diagnostics))
-          ),
-          language = language
-        ),
-        analysis_option_group(
-          "Effect size",
-          list(
-            list(id = "hierarchical_show_sr2", label = "sr\u00B2", value = isTRUE(setup$show_sr2)),
-            list(id = "hierarchical_show_f2", label = "f\u00B2", value = isTRUE(setup$show_f2))
-          ),
-          language = language
-        ),
-        analysis_option_group(
-          "Collinearity diagnostics",
-          list(
-            list(id = "hierarchical_show_vif", label = "VIF", value = isTRUE(setup$show_vif))
-          ),
-          language = language
         )
       )
     ),

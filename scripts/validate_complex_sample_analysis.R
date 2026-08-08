@@ -27,6 +27,12 @@ expect_true <- function(value, label) {
   }
 }
 
+expect_not_matches <- function(text, pattern, label = pattern) {
+  if (grepl(pattern, text, perl = TRUE)) {
+    stop(sprintf("Output must not match %s.", label), call. = FALSE)
+  }
+}
+
 complex_input <- function() {
   list(
     p_strata = "",
@@ -103,6 +109,48 @@ group_info <- data.frame(
 group_text <- render_text(complex_sample_group_result(group_data, "y", c("g1", "g2"), complex_input(), "p", variable_info = group_info))
 expect_contains(group_text, "fewer than two usable groups")
 expect_contains(group_text, "Complex-sample univariable analysis")
+expect_contains(group_text, "M \u00B1 SE", "complex-sample t-test / ANOVA compact M +/- SE header")
+expect_contains(group_text, "t(df)", "complex-sample t-test statistic header with df")
+expect_true(!grepl("Statistic</th>", group_text, fixed = TRUE), "Complex-sample t-test / ANOVA should not show a generic Statistic header.")
+expect_true(!grepl(">df</th>", group_text, fixed = TRUE), "Complex-sample t-test / ANOVA should not show a separate df header.")
+
+group_mixed_data <- data.frame(
+  psu = 1:12,
+  wt = rep(1, 12),
+  y = 1:12,
+  g2 = rep(c("A", "B"), 6),
+  g3 = rep(c("A", "B", "C"), 4),
+  stringsAsFactors = FALSE
+)
+group_mixed_info <- data.frame(
+  name = c("y", "g2", "g3"),
+  measurement = c("continuous", "nominal", "nominal"),
+  stringsAsFactors = FALSE
+)
+group_mixed_text <- render_text(complex_sample_group_result(group_mixed_data, "y", c("g2", "g3"), complex_input(), "p", variable_info = group_mixed_info))
+expect_contains(group_mixed_text, "t/F(df)", "mixed complex-sample t-test / ANOVA statistic header")
+expect_true(grepl("\\([0-9,]+\\)", group_mixed_text), "Complex-sample t-test / ANOVA should render df values under the statistic in parentheses.")
+expect_true(grepl(">\\([0-9,]+\\)</td>", group_mixed_text), "Complex-sample t-test / ANOVA df should render in the next table-row cell.")
+expect_true(!grepl("d=", group_mixed_text, fixed = TRUE), "Complex-sample t-test / ANOVA effect-size values should omit the d= prefix.")
+expect_contains(group_mixed_text, "table-layout:fixed", "complex-sample t-test / ANOVA fixed table layout")
+expect_contains(group_mixed_text, "width:18.0000%", "complex-sample t-test / ANOVA M +/- SE B5 portrait width")
+expect_contains(group_mixed_text, "width:19.0000%", "complex-sample t-test / ANOVA 95% CI B5 portrait width")
+expect_contains(group_mixed_text, "width:13.0000%", "complex-sample t-test / ANOVA ES B5 portrait width")
+expect_contains(group_mixed_text, "width:14.0000%", "complex-sample t-test / ANOVA compact statistic B5 portrait width")
+expect_contains(group_mixed_text, "padding-left:6px !important;padding-right:6px !important", "complex-sample t-test / ANOVA compact stat columns spacing")
+expect_not_matches(group_mixed_text, 'coefficient-col-effect-size" style="[^"]*(^|;)width:[0-9]+px', "legacy fixed-pixel ES width")
+expect_not_matches(group_mixed_text, 'coefficient-col-statistic" style="[^"]*(^|;)width:[0-9]+px', "legacy fixed-pixel t/F(df) width")
+expect_not_matches(group_mixed_text, 'coefficient-col-p" style="[^"]*(^|;)width:[0-9]+px', "legacy fixed-pixel p width")
+
+cross_wide_test <- list(statistic = c(F = 3.14159), parameter = c(ndf = 1, ddf = 24), p.value = 0.0123)
+cross_wide_options <- list(crosstab_test_method = "F", show_df = TRUE, show_percent = TRUE, row_percent = FALSE, show_p = TRUE, show_trend = FALSE)
+cross_wide_tab <- matrix(
+  c(10, 10, 5, 15, 7, 9),
+  nrow = 2,
+  dimnames = list(c("A", "B"), c("One", "Two", "Three"))
+)
+cross_wide_text <- render_text(complex_sample_crosstab_display(cross_wide_tab, cross_wide_tab, "row_ok", "col", cross_wide_test, variable_info = cross_info, options = cross_wide_options))
+expect_contains(cross_wide_text, "landscape-table-panel", "wide complex-sample crosstab landscape panel")
 
 message("Checking complex-sample correlation and Filter subpopulation defaults...")
 cor_data <- data.frame(

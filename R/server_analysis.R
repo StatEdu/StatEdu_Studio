@@ -168,6 +168,7 @@ register_regression_results_output <- function(
         show_sr2 = input$show_sr2,
         show_f2 = input$show_f2,
         show_vif = input$show_vif,
+        output_table_style = analysis_output_table_style(input$regression_output_table_style),
         penalized = penalized,
         plot_blocks = lapply(seq_along(results), function(index) {
           regression_plot_result_block(
@@ -211,10 +212,11 @@ register_hierarchical_results_output <- function(
           category_table = category_table_fn(),
           refs = regression_reference_values_static(category_table_fn()),
           value_labels = category_value_label_lookup_static(category_table_fn()),
-          show_sr2 = input$hierarchical_show_sr2,
-          show_f2 = input$hierarchical_show_f2,
-          show_vif = input$hierarchical_show_vif,
-          plot_blocks = lapply(seq_along(results), function(index) {
+            show_sr2 = input$hierarchical_show_sr2,
+            show_f2 = input$hierarchical_show_f2,
+            show_vif = input$hierarchical_show_vif,
+            output_table_style = analysis_output_table_style(input$hierarchical_output_table_style),
+            plot_blocks = lapply(seq_along(results), function(index) {
             regression_plot_result_block(
               output,
               results[[index]],
@@ -238,6 +240,7 @@ register_hierarchical_results_output <- function(
         show_sr2 = input$hierarchical_show_sr2,
         show_f2 = input$hierarchical_show_f2,
         show_vif = input$hierarchical_show_vif,
+        output_table_style = analysis_output_table_style(input$hierarchical_output_table_style),
         plot_blocks = lapply(seq_along(results), function(index) {
           regression_plot_result_block(
             output,
@@ -303,7 +306,8 @@ register_hierarchical_save_handlers <- function(
           category_table_fn(),
           show_sr2 = input$hierarchical_show_sr2,
           show_f2 = input$hierarchical_show_f2,
-          show_vif = input$hierarchical_show_vif
+          show_vif = input$hierarchical_show_vif,
+          output_table_style = analysis_output_table_style(input$hierarchical_output_table_style)
         )
         showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
@@ -360,7 +364,8 @@ register_hierarchical_save_handlers <- function(
           category_table = category_table_fn(),
           show_sr2 = input$hierarchical_show_sr2,
           show_f2 = input$hierarchical_show_f2,
-          show_vif = input$hierarchical_show_vif
+          show_vif = input$hierarchical_show_vif,
+          output_table_style = analysis_output_table_style(input$hierarchical_output_table_style)
         )
         showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
@@ -459,7 +464,8 @@ register_analysis_save_handlers <- function(
           category_table_fn(),
           show_sr2 = input$show_sr2,
           show_f2 = input$show_f2,
-          show_vif = input$show_vif
+          show_vif = input$show_vif,
+          output_table_style = analysis_output_table_style(input$regression_output_table_style)
         )
         showNotification(sprintf(statedu_t("result.analysis_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },
@@ -512,7 +518,8 @@ register_analysis_save_handlers <- function(
           category_table = category_table_fn(),
           show_sr2 = input$show_sr2,
           show_f2 = input$show_f2,
-          show_vif = input$show_vif
+          show_vif = input$show_vif,
+          output_table_style = analysis_output_table_style(input$regression_output_table_style)
         )
         showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
       },

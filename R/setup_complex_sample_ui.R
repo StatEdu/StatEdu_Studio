@@ -1215,6 +1215,24 @@ complex_sample_test_df_text <- function(test) {
   paste(complex_sample_num_vec(df_values, 1), collapse = ", ")
 }
 
+complex_sample_test_df_compact_text <- function(test) {
+  if (is.null(test)) {
+    return("")
+  }
+  values <- suppressWarnings(as.numeric(test$parameter %||% numeric(0)))
+  values <- values[is.finite(values)]
+  if (length(values) == 0) {
+    values <- suppressWarnings(as.numeric(c(test$df, test$ddf, test$df.residual)))
+    values <- values[is.finite(values)]
+  }
+  if (length(values) == 0) {
+    return("")
+  }
+  formatted <- complex_sample_num_vec(values, 1)
+  formatted <- sub("\\.0$", "", formatted)
+  paste(formatted, collapse = ",")
+}
+
 complex_sample_weighted_n_text <- function(design) {
   value <- tryCatch(sum(stats::weights(design), na.rm = TRUE), error = function(e) NA_real_)
   if (!is.finite(value)) {
@@ -1246,7 +1264,7 @@ complex_sample_frequency_summary_column <- function() {
 }
 
 complex_sample_estimated_summary_column <- function(mean_sd = FALSE) {
-  if (isTRUE(mean_sd)) "estimated M \u00B1 SD" else "estimated M \u00B1 SE"
+  if (isTRUE(mean_sd)) "M \u00B1 SD" else "M \u00B1 SE"
 }
 
 complex_sample_svyquantile_text <- function(formula, design, quantile = 0.5, digits = 2) {
@@ -1297,7 +1315,7 @@ complex_sample_effect_size_text <- function(level_stats, test = NULL) {
     pooled <- sqrt(mean(sds^2, na.rm = TRUE))
     value <- if (is.finite(pooled) && pooled > 0) abs(diff(means)) / pooled else NA_real_
     if (is.finite(value)) {
-      return(paste0("d=", complex_sample_num(value, 3)))
+      return(complex_sample_num(value, 3))
     }
   }
   statistic <- suppressWarnings(as.numeric(test$statistic %||% test$Ftest %||% NA_real_)[[1]])
@@ -2409,6 +2427,55 @@ complex_sample_crosstab_note <- function(options = list()) {
   )
 }
 
+complex_sample_crosstab_stat_cells <- function(row_index, row_count, statistic, df_text = "", extra_class = "") {
+  row_index <- as.integer(row_index %||% 1L)
+  row_count <- as.integer(row_count %||% 1L)
+  statistic <- as.character(statistic %||% "")
+  df_text <- as.character(df_text %||% "")
+  extra_class <- as.character(extra_class %||% "")
+  cell_class <- trimws(paste("crosstab-stat-cell", extra_class))
+  if (!nzchar(df_text)) {
+    if (row_index == 1L) {
+      return(shiny::tags$td(class = cell_class, rowspan = row_count, statistic))
+    }
+    return(NULL)
+  }
+  if (row_index == 1L) {
+    return(shiny::tags$td(class = cell_class, statistic))
+  }
+  if (row_index == 2L) {
+    return(shiny::tags$td(class = cell_class, paste0("(", df_text, ")")))
+  }
+  shiny::tags$td(class = cell_class, "")
+}
+
+complex_sample_crosstab_stat_header <- function(options = list()) {
+  method <- as.character(options$crosstab_test_method %||% "F")
+  label <- switch(
+    method,
+    F = "F",
+    Chisq = "\u03C7\u00B2",
+    Wald = "Wald",
+    adjWald = "Adjusted Wald",
+    saddlepoint = "Saddlepoint",
+    "Statistic"
+  )
+  if (isTRUE(options$show_df) && method %in% c("F", "Chisq", "Wald", "adjWald")) {
+    return(paste0(label, "(df)"))
+  }
+  label
+}
+
+complex_sample_crosstab_panel_class <- function(min_width, col_levels = character(0), show_trend = FALSE) {
+  # Wider crosstabs need the landscape result style before they overflow a portrait page.
+  wide <- is.finite(min_width) && min_width > 700
+  many_columns <- length(col_levels %||% character(0)) >= 3L
+  paste(
+    "result-section regression-result-panel crosstab-result-section",
+    if (isTRUE(wide) || isTRUE(many_columns) || isTRUE(show_trend)) "landscape-table-panel" else ""
+  )
+}
+
 complex_sample_crosstab_group_display <- function(items, col_var, variable_info = NULL, labels = character(0), category_table = NULL, options = list(), skipped_notes = character(0)) {
   items <- Filter(Negate(is.null), items)
   skipped_notes <- unique(as.character(skipped_notes %||% character(0)))
@@ -2447,10 +2514,7 @@ complex_sample_crosstab_group_display <- function(items, col_var, variable_info 
     row_label <- frequency_variable_display_name(item$row_var, variable_info, labels, category_table)
     percent <- complex_sample_crosstab_percent_matrix(weighted_tab, options$crosstab_percent_basis %||% "row")
     statistic <- if (is.null(item$test)) "" else complex_sample_num(unname(item$test$statistic), 3)
-    if (isTRUE(options$show_df)) {
-      df_text <- complex_sample_test_df_text(item$test)
-      if (nzchar(df_text)) statistic <- paste0(statistic, " (df=", df_text, ")")
-    }
+    df_text <- if (isTRUE(options$show_df)) complex_sample_test_df_compact_text(item$test) else ""
     p_value <- if (is.null(item$test)) "" else complex_sample_p_value(item$test$p.value)
     trend_p <- if (!is.null(item$trend)) complex_sample_p_value(item$trend$p) else ""
 
@@ -2472,9 +2536,9 @@ complex_sample_crosstab_group_display <- function(items, col_var, variable_info 
                 )
               )
             }),
+        complex_sample_crosstab_stat_cells(row_index, nrow(weighted_tab), statistic, df_text),
         if (row_index == 1L) {
           list(
-            shiny::tags$td(class = "crosstab-stat-cell", rowspan = nrow(weighted_tab), statistic),
             shiny::tags$td(class = "crosstab-stat-cell", rowspan = nrow(weighted_tab), p_value),
             if (isTRUE(show_trend)) shiny::tags$td(class = "crosstab-stat-cell crosstab-trend-p-cell", rowspan = nrow(weighted_tab), trend_p) else NULL
           )
@@ -2484,7 +2548,7 @@ complex_sample_crosstab_group_display <- function(items, col_var, variable_info 
   }), recursive = FALSE)
 
   shiny::div(
-    class = "result-section regression-result-panel crosstab-result-section",
+    class = complex_sample_crosstab_panel_class(min_width, col_levels, show_trend),
     shiny::h3("Complex-sample cross-tabulation"),
     shiny::div(
       class = "frequency-table-wrap crosstab-table-wrap",
@@ -2504,7 +2568,7 @@ complex_sample_crosstab_group_display <- function(items, col_var, variable_info 
             shiny::tags$th(class = "crosstab-row-head", rowspan = 2, ""),
             shiny::tags$th(class = "crosstab-level-label-head", rowspan = 2, ""),
             shiny::tags$th(class = "crosstab-col-head", colspan = length(col_labels), col_label),
-            shiny::tags$th(class = "crosstab-stat-head", rowspan = 2, "\ud1b5\uacc4\ub7c9"),
+            shiny::tags$th(class = "crosstab-stat-head", rowspan = 2, complex_sample_crosstab_stat_header(options)),
             shiny::tags$th(class = "crosstab-stat-head", rowspan = 2, "p"),
             if (isTRUE(show_trend)) shiny::tags$th(class = "crosstab-stat-head crosstab-trend-p-head", rowspan = 2, "p for trend")
           ),
@@ -2542,15 +2606,12 @@ complex_sample_crosstab_display <- function(weighted_tab, unweighted_tab, row_va
   percent <- sweep(weighted_tab, 1, row_totals, "/") * 100
   percent[!is.finite(percent)] <- NA_real_
   statistic <- if (is.null(test)) "" else complex_sample_num(unname(test$statistic), 3)
-  if (isTRUE(options$show_df)) {
-    df_text <- complex_sample_test_df_text(test)
-    if (nzchar(df_text)) statistic <- paste0(statistic, " (df=", df_text, ")")
-  }
+  df_text <- if (isTRUE(options$show_df)) complex_sample_test_df_compact_text(test) else ""
   p_value <- if (is.null(test)) "" else complex_sample_p_value(test$p.value)
   min_width <- max(640, 180 + length(col_levels) * 100 + 150)
 
   shiny::div(
-    class = "result-section regression-result-panel crosstab-result-section",
+    class = complex_sample_crosstab_panel_class(min_width, col_levels, FALSE),
     shiny::h3("Complex-sample cross-tabulation"),
     shiny::div(
       class = "frequency-table-wrap crosstab-table-wrap",
@@ -2569,7 +2630,7 @@ complex_sample_crosstab_display <- function(weighted_tab, unweighted_tab, row_va
             shiny::tags$th(class = "crosstab-row-head", rowspan = 2, ""),
             shiny::tags$th(class = "crosstab-level-label-head", rowspan = 2, ""),
             shiny::tags$th(class = "crosstab-col-head", colspan = length(col_labels), col_label),
-            shiny::tags$th(class = "crosstab-stat-head", rowspan = 2, "\ud1b5\uacc4\ub7c9"),
+            shiny::tags$th(class = "crosstab-stat-head", rowspan = 2, complex_sample_crosstab_stat_header(options)),
             shiny::tags$th(class = "crosstab-stat-head", rowspan = 2, "p")
           ),
           shiny::tags$tr(
@@ -2591,9 +2652,9 @@ complex_sample_crosstab_display <- function(weighted_tab, unweighted_tab, row_va
                   )
                 )
               }),
+              complex_sample_crosstab_stat_cells(row_index, nrow(weighted_tab), statistic, df_text),
               if (row_index == 1L) {
                 list(
-                  shiny::tags$td(class = "crosstab-stat-cell", rowspan = nrow(weighted_tab), statistic),
                   shiny::tags$td(class = "crosstab-stat-cell", rowspan = nrow(weighted_tab), p_value)
                 )
               }
@@ -2706,6 +2767,84 @@ complex_sample_crosstab_results <- function(data, row_vars, col_vars, input, pre
   do.call(shiny::tagList, sections)
 }
 
+complex_sample_group_stat_label <- function(level_count, test = NULL) {
+  # svyttest reports t, while survey ANOVA/regTermTest reports F.
+  if (!is.null(test)) {
+    statistic_names <- names(test$statistic %||% numeric(0))
+    if (length(statistic_names) > 0) {
+      first_name <- tolower(as.character(statistic_names[[1]]))
+      if (identical(first_name, "t")) return("t")
+      if (identical(first_name, "f")) return("F")
+    }
+    if (!is.null(test$Ftest)) {
+      return("F")
+    }
+  }
+  if (as.integer(level_count %||% 0L) == 2L) "t" else "F"
+}
+
+complex_sample_group_stat_column <- function(stat_labels, show_df = TRUE) {
+  # A dependent-variable table can mix 2-level t-tests and 3+-level ANOVAs.
+  stat_labels <- unique(as.character(stat_labels %||% character(0)))
+  stat_labels <- stat_labels[nzchar(stat_labels)]
+  label <- if (length(stat_labels) == 1L) {
+    stat_labels[[1]]
+  } else if (all(c("t", "F") %in% stat_labels)) {
+    "t/F"
+  } else {
+    "Statistic"
+  }
+  if (isTRUE(show_df) && label %in% c("t", "F", "t/F")) {
+    paste0(label, "(df)")
+  } else {
+    label
+  }
+}
+
+complex_sample_group_stat_df_text <- function(statistic, df_text = "") {
+  # Keep the header as t(df)/F(df); group rows put df in the next table row.
+  statistic <- as.character(statistic %||% "")
+  df_text <- as.character(df_text %||% "")
+  if (!nzchar(statistic)) {
+    return("")
+  }
+  if (!nzchar(df_text)) {
+    return(statistic)
+  }
+  paste0(statistic, "\n(", df_text, ")")
+}
+
+complex_sample_group_column_widths <- function(columns) {
+  columns <- as.character(columns %||% character(0))
+  if (length(columns) == 0L) {
+    return(numeric(0))
+  }
+  keys <- result_column_key(columns)
+  weights <- vapply(keys, function(key) {
+    switch(
+      key,
+      variable = 11,
+      value = 15,
+      mse = 18,
+      msd = 18,
+      `95ci` = 19,
+      es = 13,
+      effectsize = 13,
+      tdf = 14,
+      fdf = 14,
+      tfdf = 14,
+      p = 10,
+      pfortrend = 10,
+      posthoc = 8,
+      weightedn = 8,
+      cv = 7,
+      deff = 7,
+      10
+    )
+  }, numeric(1))
+  weights / sum(weights) * 100
+}
+
 complex_sample_group_result <- function(data, dependents, factor_vars, input, prefix, variable_info = NULL, labels = character(0), category_table = NULL) {
   factor_vars <- as.character(factor_vars %||% character(0))
   built <- complex_sample_build_design(data, input, prefix, c(dependents, factor_vars))
@@ -2717,6 +2856,7 @@ complex_sample_group_result <- function(data, dependents, factor_vars, input, pr
     ordered_marker_rows <- list()
     trend_used <- FALSE
     posthoc_used <- FALSE
+    stat_labels <- character(0)
     missing_notes <- character(0)
     skipped_notes <- character(0)
     for (factor_var in factor_vars) {
@@ -2771,8 +2911,10 @@ complex_sample_group_result <- function(data, dependents, factor_vars, input, pr
         if (length(raw_p) == 0) NA_real_ else suppressWarnings(as.numeric(raw_p[[1]]))
       }
       statistic <- if (is.null(test)) "" else complex_sample_num(unname(test$statistic %||% test$Ftest), 3)
+      stat_label <- complex_sample_group_stat_label(length(levels), test)
+      stat_labels <- c(stat_labels, stat_label)
       p_value <- if (is.null(test)) "" else complex_sample_p_value(raw_p_value)
-      df_value <- if (isTRUE(options$show_df)) complex_sample_test_df_text(test) else ""
+      df_value <- if (isTRUE(options$show_df)) complex_sample_test_df_compact_text(test) else ""
       trend <- if (isTRUE(options$trend_analysis) && identical(factor_measure, "ordered")) {
         complex_sample_trend_test(analysis_design, "..y..", factor_var, levels)
       } else {
@@ -2782,7 +2924,15 @@ complex_sample_group_result <- function(data, dependents, factor_vars, input, pr
       if (nzchar(trend_p)) trend_used <- TRUE
       level_stats <- list()
       row_start <- length(rows) + 1L
+      stat_row_values <- rep("", length(levels))
+      if (nzchar(statistic)) {
+        stat_row_values[[1L]] <- statistic
+        if (nzchar(df_value) && length(levels) >= 2L) {
+          stat_row_values[[2L]] <- paste0("(", df_value, ")")
+        }
+      }
       for (level in levels) {
+        level_index <- match(level, levels)
         temp_design <- analysis_design
         temp_design$variables$`..group_keep..` <- !is.na(temp_design$variables[[factor_var]]) & as.character(temp_design$variables[[factor_var]]) == level
         subset_design <- subset(temp_design, `..group_keep..`)
@@ -2805,8 +2955,7 @@ complex_sample_group_result <- function(data, dependents, factor_vars, input, pr
           CV = if (isTRUE(options$show_precision)) complex_sample_cv_text(fit) else "",
           Deff = if (isTRUE(options$show_precision)) complex_sample_deff_text(fit) else "",
           `Effect size` = "",
-          Statistic = if (identical(level, levels[[1]])) statistic else "",
-          df = if (identical(level, levels[[1]])) df_value else "",
+          `Stat(df)` = stat_row_values[[level_index]],
           `p for trend` = if (identical(level, levels[[1]])) trend_p else "",
           p = if (identical(level, levels[[1]])) p_value else "",
           `post-hoc` = "",
@@ -2876,25 +3025,31 @@ complex_sample_group_result <- function(data, dependents, factor_vars, input, pr
     }
     table <- do.call(rbind, rows)
     summary_column <- complex_sample_estimated_summary_column(options$mean_sd)
+    stat_column <- complex_sample_group_stat_column(stat_labels, isTRUE(options$show_df))
     names(table)[names(table) == "Estimated"] <- summary_column
-    names(table)[names(table) == "Statistic"] <- "\ud1b5\uacc4\ub7c9"
+    names(table)[names(table) == "Effect size"] <- "ES"
+    names(table)[names(table) == "Stat(df)"] <- stat_column
     columns <- c("Variable", "Value", summary_column)
     if (isTRUE(options$show_weighted_n)) columns <- c(columns, "Weighted N")
     if (isTRUE(options$show_ci)) columns <- c(columns, "95% CI")
     if (isTRUE(options$show_precision)) columns <- c(columns, "CV", "Deff")
-    if (isTRUE(options$show_effect_size)) columns <- c(columns, "Effect size")
-    columns <- c(columns, "\ud1b5\uacc4\ub7c9")
-    if (isTRUE(options$show_df)) columns <- c(columns, "df")
+    if (isTRUE(options$show_effect_size)) columns <- c(columns, "ES")
+    columns <- c(columns, stat_column)
     if (isTRUE(trend_used)) columns <- c(columns, "p for trend")
     columns <- c(columns, "p")
     if (isTRUE(posthoc_used)) columns <- c(columns, "post-hoc")
     table <- table[, intersect(columns, names(table)), drop = FALSE]
+    attr(table, "show_df") <- isTRUE(options$show_df)
+    attr(table, "mean_sd") <- isTRUE(options$mean_sd)
+    attr(table, "trend_analysis") <- isTRUE(trend_used)
+    attr(table, "complex_sample_group_table") <- TRUE
+    attr(table, "compact_column_widths") <- complex_sample_group_column_widths(names(table))
     if (length(ordered_marker_rows) > 0) {
       attr(table, "note_markers") <- do.call(rbind, ordered_marker_rows)
     }
     posthoc_table <- ttest_bind_result_rows(posthoc_tables)
     design_note <- complex_sample_design_note(built)
-    mean_note <- if (isTRUE(options$mean_sd)) "Estimated M \u00B1 SD uses the design-weighted mean and design-based within-group SD." else "Estimated M \u00B1 SE uses the design-weighted mean and its survey standard error."
+    mean_note <- if (isTRUE(options$mean_sd)) "M \u00B1 SD uses the design-weighted mean and design-based within-group SD." else "M \u00B1 SE uses the design-weighted mean and its survey standard error."
     posthoc_note <- if (isTRUE(posthoc_used)) {
       paste0("Post-hoc comparisons are design-based pairwise t-tests with ", complex_sample_post_hoc_adjustment_note(options$post_hoc_correction %||% "holm"), " p-values and are computed only for significant omnibus ANOVA results.")
     } else {
@@ -3709,15 +3864,16 @@ complex_sample_result_panel <- function(prefix, target_specs, target_values, inp
   if (is.null(run_value) || run_value == 0) {
     return(NULL)
   }
+  result_language <- "en"
   variable_rows <- do.call(rbind, lapply(target_specs, function(spec) {
     data.frame(
-      Section = complex_sample_ui_text(spec$key, language),
+      Section = complex_sample_ui_text(spec$key, result_language),
       Variables = complex_sample_display_names(target_values[[spec$key]], variable_table, labels),
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
   }))
-  names(variable_rows) <- c(complex_sample_ui_text("section", language), complex_sample_ui_text("variables", language))
+  names(variable_rows) <- c(complex_sample_ui_text("section", result_language), complex_sample_ui_text("variables", result_language))
 
   design_values <- c(
     strata = input[[paste0(prefix, "_strata")]] %||% "",
@@ -3744,18 +3900,18 @@ complex_sample_result_panel <- function(prefix, target_specs, target_values, inp
   }
   design_rows <- data.frame(
     Variable = c(
-      complex_sample_ui_text("strata", language),
-      complex_sample_ui_text("cluster", language),
-      complex_sample_ui_text("weight", language),
-      complex_sample_ui_text("fpc", language),
-      complex_sample_ui_text("variance_method", language),
-      complex_sample_ui_text("lonely_psu", language),
-      complex_sample_ui_text("use_replicate_weights", language),
-      complex_sample_ui_text("replicate_weights", language),
-      complex_sample_ui_text("replicate_type", language),
-      complex_sample_ui_text("replicate_combined_weights", language),
-      complex_sample_ui_text("subpopulation", language),
-      complex_sample_ui_text("subpopulation_condition", language)
+      complex_sample_ui_text("strata", result_language),
+      complex_sample_ui_text("cluster", result_language),
+      complex_sample_ui_text("weight", result_language),
+      complex_sample_ui_text("fpc", result_language),
+      complex_sample_ui_text("variance_method", result_language),
+      complex_sample_ui_text("lonely_psu", result_language),
+      complex_sample_ui_text("use_replicate_weights", result_language),
+      complex_sample_ui_text("replicate_weights", result_language),
+      complex_sample_ui_text("replicate_type", result_language),
+      complex_sample_ui_text("replicate_combined_weights", result_language),
+      complex_sample_ui_text("subpopulation", result_language),
+      complex_sample_ui_text("subpopulation_condition", result_language)
     ),
     Selection = c(
       complex_sample_display_names(design_values[["strata"]], variable_table, labels),
@@ -3764,17 +3920,17 @@ complex_sample_result_panel <- function(prefix, target_specs, target_values, inp
       complex_sample_display_names(design_values[["fpc"]], variable_table, labels),
       as.character(design_values[["variance_method"]] %||% "auto"),
       as.character(design_values[["lonely_psu"]] %||% "adjust"),
-      complex_sample_yes_no(use_replicate_weights, language),
+      complex_sample_yes_no(use_replicate_weights, result_language),
       complex_sample_display_names(replicate_weights, variable_table, labels),
       if (isTRUE(use_replicate_weights)) as.character(design_values[["replicate_type"]] %||% "auto") else "",
-      if (isTRUE(use_replicate_weights)) complex_sample_yes_no(design_values[["replicate_combined_weights"]], language) else "",
+      if (isTRUE(use_replicate_weights)) complex_sample_yes_no(design_values[["replicate_combined_weights"]], result_language) else "",
       complex_sample_display_names(design_values[["subpopulation"]], variable_table, labels),
       subpopulation_condition
     ),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
-  names(design_rows) <- c(complex_sample_ui_text("variables", language), complex_sample_ui_text("design_summary", language))
+  names(design_rows) <- c(complex_sample_ui_text("variables", result_language), complex_sample_ui_text("design_summary", result_language))
 
   analysis_output <- NULL
   if (!is.null(data) && nzchar(as.character(analysis_type %||% ""))) {
@@ -3791,15 +3947,15 @@ complex_sample_result_panel <- function(prefix, target_specs, target_values, inp
   }
 
   shiny::tagList(
-    div(class = "step-summary complex-sample-run-note", complex_sample_ui_text("setup_note", language)),
+    div(class = "step-summary complex-sample-run-note", complex_sample_ui_text("setup_note", result_language)),
     analysis_result_table_section(
-      complex_sample_ui_text("variables", language),
+      complex_sample_ui_text("variables", result_language),
       variable_rows,
       class = "result-section regression-result-panel complex-sample-summary-section",
       table_fn = model_overview_html_table
     ),
     analysis_result_table_section(
-      complex_sample_ui_text("design_summary", language),
+      complex_sample_ui_text("design_summary", result_language),
       design_rows,
       class = "result-section regression-result-panel complex-sample-design-summary-section",
       table_fn = model_overview_html_table
@@ -3833,6 +3989,7 @@ register_complex_sample_handlers <- function(
   if (is.null(design_state)) {
     design_state <- reactiveVal(NULL)
   }
+  result_cache <- reactiveVal(NULL)
 
   all_target_values <- function() {
     stats::setNames(lapply(names(target_ids), function(key) {
@@ -3997,20 +4154,30 @@ register_complex_sample_handlers <- function(
     analysis_reset_button(paste0(prefix, "_reset"), enabled = enabled, language = statedu_current_language(app_language_fn))
   })
 
-  output[[paste0(prefix, "_results")]] <- renderUI({
-    complex_sample_result_panel(
+  observeEvent(input[[paste0(prefix, "_run")]], {
+    result_cache(complex_sample_result_panel(
       prefix,
       target_specs,
-      all_target_values(),
+      isolate(all_target_values()),
       input,
-      data = if (is.null(dataset_fn)) NULL else dataset_fn(),
+      data = if (is.null(dataset_fn)) NULL else isolate(dataset_fn()),
       analysis_type = analysis_type,
-      variable_table = design_variable_table_fn(),
-      labels = labels_fn(),
-      category_table = if (is.null(category_table_fn)) NULL else category_table_fn(),
-      language = statedu_current_language(app_language_fn)
-    )
+      variable_table = isolate(design_variable_table_fn()),
+      labels = isolate(labels_fn()),
+      category_table = if (is.null(category_table_fn)) NULL else isolate(category_table_fn()),
+      language = "en"
+    ))
+  }, ignoreInit = TRUE)
+
+  output[[paste0(prefix, "_results")]] <- renderUI({
+    result_cache()
   })
+
+  observeEvent(input$main_menu, {
+    if (identical(analysis_type, "crosstabs") && !identical(input$main_menu %||% "", "analysis_complex_crosstabs")) {
+      result_cache(NULL)
+    }
+  }, ignoreInit = TRUE)
 
   observe({
     shared_raw <- design_state()
@@ -4114,6 +4281,7 @@ register_complex_sample_handlers <- function(
   }, ignoreInit = TRUE)
 
   observeEvent(input[[paste0(prefix, "_reset")]], {
+    result_cache(NULL)
     for (key in names(target_ids)) {
       target_values[[key]](character(0))
     }

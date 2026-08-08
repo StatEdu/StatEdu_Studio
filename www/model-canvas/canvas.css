@@ -319,14 +319,55 @@
 }
 
 .custom-model-analysis-options-modal .custom-model-analysis-options {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(220px, 1fr));
-  gap: 14px 16px;
-  padding: 4px 0;
+  display: block;
+  padding: 0;
+  width: 340px;
+  max-width: 100%;
+}
+
+.modal-dialog:has(.custom-model-analysis-options-modal) {
+  width: 420px;
+  max-width: calc(100vw - 32px);
+}
+
+.custom-model-analysis-options-modal .custom-mm-options.analysis-options-panel {
+  height: auto !important;
+  min-height: 0;
+  max-height: none;
+  width: 100%;
+}
+
+.custom-model-analysis-options-modal .analysis-calculator-tabs .tabbable {
+  display: block;
+  height: auto;
+  min-height: 0;
+}
+
+.custom-model-analysis-options-modal .analysis-calculator-tabs .nav-tabs {
+  margin-bottom: 10px;
+}
+
+.custom-model-analysis-options-modal .factor-options-tab-content {
+  height: auto;
+  min-height: 0;
+  padding-top: 8px;
+  padding-bottom: 0;
+}
+
+.custom-model-analysis-options-modal .tab-content {
+  flex: none;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+}
+
+.custom-model-analysis-options-modal .tab-pane {
+  height: auto;
+  min-height: 0;
 }
 
 .custom-model-analysis-options-modal .analysis-option-group {
-  margin: 0;
+  margin: 0 0 12px;
 }
 
 .custom-model-analysis-options-modal .analysis-option-title {
@@ -338,7 +379,7 @@
 
 .custom-model-analysis-options-modal .shiny-input-container {
   width: 100%;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .custom-model-analysis-options-modal .form-group:last-child,

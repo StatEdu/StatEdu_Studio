@@ -140,6 +140,8 @@ register_logistic_handlers <- function(
       show_b_se = logistic_show_b_se(),
       show_extra_r2 = logistic_show_extra_r2(),
       split_ci = logistic_split_ci(),
+      options_tab = isolate(input$logistic_options_tab),
+      output_table_style = isolate(input$logistic_output_table_style),
       language = language
     )
 
@@ -160,7 +162,8 @@ register_logistic_handlers <- function(
       show_se = logistic_show_b_se(),
       show_mcfadden = logistic_show_extra_r2(),
       show_cox_snell = logistic_show_extra_r2(),
-      split_ci = logistic_output_split_ci()
+      split_ci = logistic_output_split_ci(),
+      output_table_style = analysis_output_table_style(input$logistic_output_table_style)
     )
   })
 
@@ -174,7 +177,8 @@ register_logistic_handlers <- function(
       show_se = logistic_show_b_se(),
       show_mcfadden = logistic_show_extra_r2(),
       show_cox_snell = logistic_show_extra_r2(),
-      split_ci = logistic_output_split_ci()
+      split_ci = logistic_output_split_ci(),
+      output_table_style = analysis_output_table_style(input$logistic_output_table_style)
     )
   }
 
@@ -350,7 +354,8 @@ register_logistic_handlers <- function(
       show_se = options$show_se,
       show_mcfadden = options$show_mcfadden,
       show_cox_snell = options$show_cox_snell,
-      split_ci = options$split_ci
+      split_ci = options$split_ci,
+      output_table_style = options$output_table_style
     )
     showNotification(sprintf(statedu_t("result.html_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
@@ -371,7 +376,8 @@ register_logistic_handlers <- function(
       show_se = options$show_se,
       show_mcfadden = options$show_mcfadden,
       show_cox_snell = options$show_cox_snell,
-      split_ci = options$split_ci
+      split_ci = options$split_ci,
+      output_table_style = options$output_table_style
     )
     showNotification(sprintf(statedu_t("result.pdf_saved", statedu_current_language(app_language_fn)), path), type = "message")
   })
