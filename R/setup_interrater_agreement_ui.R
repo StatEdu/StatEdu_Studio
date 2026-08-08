@@ -39,6 +39,12 @@ interrater_agreement_setup_state <- function(
   )
 }
 
+interrater_agreement_ui_text <- function(key, language = statedu_initial_language(), fallback = key) {
+  language <- normalize_app_language(language)
+  key <- as.character(key %||% "")[[1]]
+  statedu_t(paste0("interrater.ui.", key), language, fallback = fallback)
+}
+
 interrater_agreement_setup_panel <- function(state) {
   language <- normalize_app_language(state$language %||% statedu_initial_language())
   div(
@@ -71,31 +77,31 @@ interrater_agreement_setup_panel <- function(state) {
     div(
       class = "analysis-options-column analysis-options-panel interrater-options-panel",
       analysis_option_group(
-        "Categorical / ordinal",
+        analysis_ui_text("Categorical / ordinal", language),
         list(
           list(
             id = "interrater_weight_quadratic",
-            label = "Quadratic weights",
+            label = analysis_ui_text("Quadratic weights", language),
             value = identical(state$weight, "quadratic"),
-            tooltip = "Use quadratic weights for weighted kappa and Gwet's AC2. Turn off to use linear weights."
+            tooltip = interrater_agreement_ui_text("quadratic_weights_tooltip", language, "Use quadratic weights for weighted kappa and Gwet's AC2. Turn off to use linear weights.")
           )
         ),
         language = language
       ),
       analysis_option_group(
-        "ICC",
+        analysis_ui_text("ICC", language),
         list(
           list(
             id = "interrater_normality",
-            label = "Normality",
+            label = analysis_ui_text("Normality", language),
             value = state$normality,
-            tooltip = "Report skewness and kurtosis diagnostics for continuous rater scores."
+            tooltip = interrater_agreement_ui_text("normality_tooltip", language, "Report skewness and kurtosis diagnostics for continuous rater scores.")
           ),
           list(
             id = "interrater_bootstrap_ci",
-            label = "Bootstrap 95% CI",
+            label = analysis_ui_text("Bootstrap 95% CI", language),
             value = state$bootstrap_ci,
-            tooltip = "Use a percentile bootstrap CI for ICC when normality or outlier influence is a concern."
+            tooltip = interrater_agreement_ui_text("bootstrap_95_ci_tooltip", language, "Use a percentile bootstrap CI for ICC when normality or outlier influence is a concern.")
           )
         ),
         language = language
@@ -103,21 +109,40 @@ interrater_agreement_setup_panel <- function(state) {
       selectInput(
         "interrater_icc_model",
         analysis_ui_text("ICC model", language),
-        choices = stats::setNames(c("icc1", "icc2", "icc3"), c("ICC(1): one-way random", "ICC(2): two-way random", "ICC(3): two-way mixed")),
+        choices = stats::setNames(
+          c("icc1", "icc2", "icc3"),
+          c(
+            interrater_agreement_ui_text("icc1_one_way_random", language, "ICC(1): one-way random"),
+            interrater_agreement_ui_text("icc2_two_way_random", language, "ICC(2): two-way random"),
+            interrater_agreement_ui_text("icc3_two_way_mixed", language, "ICC(3): two-way mixed")
+          )
+        ),
         selected = state$icc_model,
         selectize = FALSE
       ),
       selectInput(
         "interrater_icc_type",
         analysis_ui_text("ICC type", language),
-        choices = stats::setNames(c("agreement", "consistency"), c("Absolute agreement", "Consistency")),
+        choices = stats::setNames(
+          c("agreement", "consistency"),
+          c(
+            interrater_agreement_ui_text("absolute_agreement", language, "Absolute agreement"),
+            interrater_agreement_ui_text("consistency", language, "Consistency")
+          )
+        ),
         selected = state$icc_type,
         selectize = FALSE
       ),
       selectInput(
         "interrater_icc_unit",
         analysis_ui_text("ICC unit", language),
-        choices = stats::setNames(c("single", "average"), c("Single measure", "Average measure")),
+        choices = stats::setNames(
+          c("single", "average"),
+          c(
+            interrater_agreement_ui_text("single_measure", language, "Single measure"),
+            interrater_agreement_ui_text("average_measure", language, "Average measure")
+          )
+        ),
         selected = state$icc_unit,
         selectize = FALSE
       ),

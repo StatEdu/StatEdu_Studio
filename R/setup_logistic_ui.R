@@ -267,7 +267,7 @@ logistic_setup_panel <- function(setup, status_message = NULL) {
         class = "analysis-options-column analysis-options-panel hierarchical-options logistic-options",
         div(
           class = "analysis-option-group",
-          div(class = "analysis-option-title", analysis_ui_text("Model", language)),
+          div(class = "analysis-option-title", "Model options"),
           div(class = "analysis-option-subtitle", setup$model_family)
         ),
         analysis_output_table_style_tabs("logistic_output_table_style", setup$output_table_style, language, include_compact_xm = FALSE),

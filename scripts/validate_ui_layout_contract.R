@@ -367,6 +367,59 @@ for (i in seq_len(nrow(analysis_lazy_contract))) {
   }
 }
 
+message("Checking Complex-sample navigation stability contract...")
+complex_lazy_outputs <- c(
+  "lazy_analysis_complex_design",
+  "lazy_analysis_complex_frequencies",
+  "lazy_analysis_complex_crosstabs",
+  "lazy_analysis_complex_ttest_anova",
+  "lazy_analysis_complex_correlation",
+  "lazy_analysis_complex_regression",
+  "lazy_analysis_complex_logistic"
+)
+for (output_id in complex_lazy_outputs) {
+  assert_contains(
+    app_server,
+    sprintf("output$%s <- renderUI(", output_id),
+    sprintf("Complex-sample lazy output is registered: %s", output_id)
+  )
+}
+assert_not_contains(
+  app_server,
+  "outputOptions(output, complex_lazy_output, suspendWhenHidden = FALSE)",
+  "Complex-sample lazy outputs must not all render while hidden"
+)
+assert_not_contains(
+  r_text,
+  'outputOptions(output, paste0(prefix, "_setup"), suspendWhenHidden = FALSE)',
+  "Complex-sample setup output must not force hidden rendering"
+)
+assert_not_contains(
+  r_text,
+  'outputOptions(output, paste0(prefix, "_results"), suspendWhenHidden = FALSE)',
+  "Complex-sample results output must not force hidden rendering"
+)
+assert_contains(
+  r_text,
+  'identical(analysis_type, "crosstabs") && !identical(input$main_menu %||% "", "analysis_complex_crosstabs")',
+  "Complex-sample crosstab result cache clears through the Shiny server cycle"
+)
+assert_not_contains(
+  easyflow_js,
+  "function easyflowClearComplexCrosstabResultsForNavigation(navValue)",
+  "Client must not directly clear complex crosstab output DOM"
+)
+assert_not_contains(
+  easyflow_js,
+  "Shiny.setInputValue('complex_crosstab_clear_results_request'",
+  "Client must not use a custom crosstab clear-results request"
+)
+assert_not_contains(
+  easyflow_js,
+  "complex_crosstab_results",
+  "Client must not manipulate the complex crosstab Shiny output element"
+)
+
 message("Checking Sample Size / Effect Size lazy menu wiring...")
 assert_contains(
   sample_size_ui,
@@ -545,6 +598,9 @@ assert_contains(easyflow_js, "dropdown.addClass('active');", "grouped menu activ
 assert_contains(easyflow_js, "menu: 'Analysis'", "Analysis grouped menu config label")
 assert_contains(easyflow_js, "menuLabels: ['Analysis'", "Analysis grouped menu translated labels")
 assert_contains(easyflow_js, "marker: 'analysis'", "Analysis grouped menu config marker")
+assert_contains(easyflow_js, "analysis_custom_model_canvas: 'Mediation / Moderation Custom Model'", "Analysis grouped menu custom model English label")
+assert_contains(easyflow_js, "analysis_custom_model_canvas: '\\uB9E4\\uAC1C\\u00B7\\uC870\\uC808 \\uC0AC\\uC6A9\\uC790 \\uC815\\uC758 \\uBAA8\\uB378'", "Analysis grouped menu custom model Korean label")
+assert_contains(easyflow_js, "values: ['Regression', 'analysis_mediation_moderation', 'analysis_custom_model_canvas', 'Generalized Linear Model (GLM)', 'analysis_logistic_regression']", "Analysis grouped menu includes custom model in Regression / Models")
 assert_contains(easyflow_js, "menu: 'Sample Size'", "Sample Size grouped menu config label")
 assert_contains(easyflow_js, "menuLabels: ['Sample Size'", "Sample Size grouped menu translated labels")
 assert_contains(easyflow_js, "marker: 'sample-size'", "Sample Size grouped menu config marker")

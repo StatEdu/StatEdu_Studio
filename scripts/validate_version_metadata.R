@@ -96,22 +96,37 @@ assert_contains(readme, "https://doi.org/10.22934/statedu.studio", "README DOI p
 assert_contains(readme, "https://studio.statedu.com/", "README public homepage")
 
 latent_readme <- read_text("modules/latent_mplus/app/README.md")
-latent_readme_current <- extract_match(latent_readme, "Current development version: `([^`]+)`", "latent README current development version")
-assert_equal(latent_readme_current, version, "latent README current development version")
+latent_readme_current <- extract_match(latent_readme, "Current (?:development|release candidate) version: `([^`]+)`", "latent README current version")
+assert_equal(latent_readme_current, version, "latent README current version")
 assert_contains(latent_readme, paste0("StatEdu Studio ", version, " app shell structure"), "latent README app shell version")
 
 changelog <- read_text("CHANGELOG.md")
 changelog_current <- extract_match(changelog, "(?m)^## v([0-9]+\\.[0-9]+\\.[0-9]+(?:-dev)?) - ", "CHANGELOG current version")
 assert_equal(changelog_current, version, "CHANGELOG current version")
+changelog_headings <- regmatches(changelog, gregexpr("(?m)^## v[^\\n]+", changelog, perl = TRUE))[[1]]
+if (length(changelog_headings) < 2) {
+  stop("CHANGELOG must contain at least two public release headings.", call. = FALSE)
+}
+assert_equal(sub("^## v([^ ]+).*$", "\\1", changelog_headings[[2]]), "1.1.3", "CHANGELOG previous public version")
+assert_not_contains(changelog, "-dev", "CHANGELOG developer-version markers")
 assert_contains(changelog, "Added Shiny startup and Electron release smoke checks", "CHANGELOG smoke validation entry")
 assert_contains(changelog, "Hardened release hygiene checks", "CHANGELOG release hygiene entry")
+
+changelog_ko <- read_text("CHANGELOG_KO.md")
+changelog_ko_headings <- regmatches(changelog_ko, gregexpr("(?m)^## v[^\\n]+", changelog_ko, perl = TRUE))[[1]]
+if (length(changelog_ko_headings) < 2) {
+  stop("CHANGELOG_KO must contain at least two public release headings.", call. = FALSE)
+}
+assert_equal(sub("^## v([^ ]+).*$", "\\1", changelog_ko_headings[[1]]), version, "CHANGELOG_KO current version")
+assert_equal(sub("^## v([^ ]+).*$", "\\1", changelog_ko_headings[[2]]), "1.1.3", "CHANGELOG_KO previous public version")
+assert_not_contains(changelog_ko, "-dev", "CHANGELOG_KO developer-version markers")
 
 citation <- read_text("CITATION.cff")
 citation_version <- extract_match(citation, '(?m)^version: "([^"]+)"', "CITATION.cff version")
 assert_equal(citation_version, if (is_development_version) readme_public else version, "CITATION.cff version")
 
 release_checklist <- read_text("docs/RELEASE_CHECKLIST.md")
-assert_contains(release_checklist, "1.0.0 release-candidate phase", "release checklist release-candidate phase")
+assert_contains(release_checklist, "release-candidate preparation pass", "release checklist release-candidate phase")
 assert_contains(release_checklist, "do not add new analysis features unless", "release checklist feature freeze")
 assert_contains(release_checklist, "validate_stabilization.ps1 -Full", "release checklist full validation command")
 assert_contains(release_checklist, "release_preflight.ps1", "release checklist release preflight command")
@@ -120,19 +135,19 @@ assert_contains(release_checklist, "smoke_shiny_app.ps1", "release checklist Shi
 assert_contains(release_checklist, ".Rhistory", "release checklist local artifact hygiene")
 assert_contains(release_checklist, "Electron staging directories are not tracked by git", "release checklist Electron staging hygiene")
 assert_contains(release_checklist, "docs/RELEASE_READINESS_STATUS.md", "release checklist readiness status")
-assert_contains(release_checklist, "docs/RELEASE_1_0_DECISION_LOG.md", "release checklist decision log")
+assert_contains(release_checklist, "docs/RELEASE_1_2_DECISION_LOG.md", "release checklist decision log")
 assert_contains(release_checklist, "docs/RELEASE_MANUAL_QA.md", "release checklist manual QA")
-assert_contains(release_checklist, "docs/RELEASE_1_0_MANUAL_QA_RECORD.md", "release checklist manual QA record")
-assert_contains(release_checklist, "docs/RELEASE_1_0_PACKAGED_VALIDATION_NOTES.md", "release checklist packaged validation notes")
-assert_contains(release_checklist, "docs/RELEASE_1_0_PUBLIC_NOTES_DRAFT.md", "release checklist public notes draft")
+assert_contains(release_checklist, "docs/RELEASE_1_2_MANUAL_QA_RECORD.md", "release checklist manual QA record")
+assert_contains(release_checklist, "docs/RELEASE_1_2_PACKAGED_VALIDATION_NOTES.md", "release checklist packaged validation notes")
+assert_contains(release_checklist, "docs/RELEASE_1_2_PUBLIC_NOTES_DRAFT.md", "release checklist public notes draft")
 assert_contains(release_checklist, "completed manual QA record", "release checklist completed manual QA record")
 assert_contains(release_checklist, "docs/UI_LAYOUT_CONTRACT.md", "release checklist UI layout contract")
 assert_contains(release_checklist, "footer button placement", "release checklist UI footer placement")
 assert_contains(release_checklist, "resolves to `https://studio.statedu.com/citation/`", "release checklist DOI landing URL")
-assert_contains(release_checklist, "confirm the Electron build has switched 0.9.x beta packaging names to final release names", "release checklist beta package naming gate")
-assert_contains(release_checklist, "For public 1.0 builds, `StatEdu Studio` and `StatEdu_Studio_Setup_*` are expected", "release checklist public package naming expectation")
+assert_contains(release_checklist, "confirm the Electron build uses final release names", "release checklist package naming gate")
+assert_contains(release_checklist, "For public builds, `StatEdu Studio` and `StatEdu_Studio_Setup_*` are expected", "release checklist public package naming expectation")
 assert_contains(release_checklist, "scripts\\build_electron_release.ps1", "release checklist final build command")
-assert_contains(release_checklist, "docs/RELEASE_1_0_VERSION_BUMP_CHECKLIST.md", "release checklist 1.0 version bump checklist")
+assert_contains(release_checklist, "docs/RELEASE_1_2_VERSION_BUMP_CHECKLIST.md", "release checklist 1.2 version bump checklist")
 assert_contains(release_checklist, "scripts\\get_release_checksums.ps1", "release checklist checksum helper")
 
 release_readiness <- read_text("docs/RELEASE_READINESS_STATUS.md")
@@ -153,7 +168,7 @@ assert_contains(release_readiness, "completed manual QA record", "release readin
 assert_contains(release_readiness, "DOI resolution has been verified", "release readiness DOI status")
 assert_contains(release_readiness, "implemented for 1.0 or explicitly deferred", "release readiness implementation deferral decision")
 assert_contains(release_readiness, "docs/RELEASE_1_0_DECISION_LOG.md", "release readiness decision log")
-assert_contains(release_readiness, "Items Still Required Before Public 1.0", "release readiness public blockers")
+assert_contains(release_readiness, "Historical 1.0 Completion Notes", "release readiness historical 1.0 notes")
 assert_contains(release_readiness, "Complete manual packaged-app QA", "release readiness manual QA blocker")
 assert_contains(release_readiness, "Build and publish `studio.statedu.com`", "release readiness website blocker")
 assert_contains(release_readiness, "Register and verify DOI", "release readiness DOI check")
@@ -315,10 +330,28 @@ assert_contains(ui_helpers, "STATEDU_PUBLIC_RELEASE", "public release flag envir
 assert_contains(ui_helpers, 'feature %in% c("excel_export", "word_export")', "public export feature flags")
 assert_contains(ui_helpers, 'statedu_feature_enabled("excel_export", TRUE)', "public excel export feature flag")
 assert_contains(ui_helpers, 'statedu_feature_enabled("word_export", TRUE)', "public word export feature flag")
+assert_contains(ui_helpers, 'custom_model_canvas = statedu_feature_enabled("custom_model_canvas", TRUE)', "public custom model canvas feature flag")
+
+app_server_text <- read_text("R/app_server.R")
+assert_contains(app_server_text, 'statedu_feature_enabled("custom_model_canvas", TRUE)', "server public custom model canvas guard")
+
+analysis_menu_ui <- read_text("R/analysis_menu_ui.R")
+assert_contains(analysis_menu_ui, 'lazy_tab_panel(mediation_moderation_title(language), "analysis_mediation_moderation"', "mediation/moderation analysis menu item")
+assert_contains(analysis_menu_ui, 'lazy_tab_panel(custom_model_canvas_title(language), "analysis_custom_model_canvas"', "mediation/moderation custom model menu item")
+
+easyflow_js <- read_text("www/easyflow.js")
+assert_contains(easyflow_js, "analysis_custom_model_canvas: 'Mediation / Moderation Custom Model'", "custom model English grouped menu label")
+assert_contains(easyflow_js, "analysis_custom_model_canvas: '\\uB9E4\\uAC1C\\u00B7\\uC870\\uC808 \\uC0AC\\uC6A9\\uC790 \\uC815\\uC758 \\uBAA8\\uB378'", "custom model Korean grouped menu label")
+assert_contains(easyflow_js, "values: ['Regression', 'analysis_mediation_moderation', 'analysis_custom_model_canvas', 'Generalized Linear Model (GLM)', 'analysis_logistic_regression']", "custom model included in Regression / Models grouped menu")
+
+custom_model_canvas_ui <- read_text("R/setup_custom_model_canvas_ui.R")
+assert_contains(custom_model_canvas_ui, '"Mediation / Moderation Custom Model"', "custom model canvas title")
+assert_contains(custom_model_canvas_ui, "\\uc0ac\\uc6a9\\uc790 \\uc815\\uc758 \\ubaa8\\ub378", "custom model canvas Korean title includes custom-defined model wording")
 
 electron_main <- read_text("packaging/electron/main.js")
 assert_contains(electron_main, "function publicReleaseFlag()", "Electron public release flag helper")
 assert_contains(electron_main, 'STATEDU_PUBLIC_RELEASE: process.env.STATEDU_PUBLIC_RELEASE || publicReleaseFlag()', "Electron public release flag propagation")
+assert_contains(electron_main, 'STATEDU_ENABLE_CUSTOM_MODEL_CANVAS: process.env.STATEDU_ENABLE_CUSTOM_MODEL_CANVAS || "1"', "Electron custom model canvas public flag propagation")
 
 app_server <- read_text("R/app_server.R")
 assert_contains(app_server, 'statedu_feature_enabled("longitudinal", TRUE)', "server longitudinal direct access guard")

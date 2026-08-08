@@ -299,6 +299,8 @@ app_static_language_labels_script <- local({
       statedu_translation_row("complex_sample.correlation"),
       statedu_translation_row("complex_sample.regression"),
       statedu_translation_row("complex_sample.logistic"),
+      statedu_translation_row("analysis.ui.repeated_measures_anova"),
+      statedu_translation_row("analysis.ui.inter_rater_agreement"),
       statedu_translation_row("analysis.mediation_moderation"),
       statedu_translation_row("analysis.custom_model_canvas"),
       statedu_translation_row("custom_model_canvas.title")
@@ -389,7 +391,7 @@ enabled_analysis_tabs <- function() {
     regression = FALSE,
     hierarchical = TRUE,
     mediation_moderation = TRUE,
-    custom_model_canvas = statedu_feature_enabled("custom_model_canvas", !statedu_public_release()),
+    custom_model_canvas = statedu_feature_enabled("custom_model_canvas", TRUE),
     longitudinal = statedu_feature_enabled("longitudinal", TRUE),
     generalized = TRUE
   )

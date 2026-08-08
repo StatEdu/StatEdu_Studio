@@ -1,6 +1,6 @@
 # StatEdu Studio UI Layout Contract
 
-This document defines the layout baseline for the StatEdu Studio 1.0
+This document defines the layout baseline for the StatEdu Studio 1.2
 stabilization phase. The goal is to prevent repeated per-menu spacing fixes
 by keeping common menu structures on shared geometry.
 

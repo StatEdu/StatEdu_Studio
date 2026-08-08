@@ -1,6 +1,6 @@
 # Validation Reference Comparison
 
-This public-facing validation summary lists reference checks for features exposed in the public 1.0 application.
+This public-facing validation summary lists reference checks for features exposed in the public 1.2 application.
 
 ## Summary
 
@@ -8,9 +8,9 @@ This public-facing validation summary lists reference checks for features expose
 - Sample-size calculations are compared with G*Power-equivalent formulas, public R packages, or literature-based formulas.
 - Effect-size calculations are compared with `effectsize` or equivalent standard formulas.
 
-## Public 1.0 Analysis Reference Checks
+## Public 1.2 Analysis Reference Checks
 
-The public 1.0 validation set covers direct analysis calculations and automatic decision paths for the visible Analysis menu. Automatic paths include sparse-cell Fisher switching, non-normal correlation switching to Spearman, t-test/ANOVA switching to Mann-Whitney, Welch, or Kruskal-Wallis, GLM family detection, and count-model overdispersion selection.
+The public 1.2 validation set covers direct analysis calculations and automatic decision paths for the visible Analysis menu. Automatic paths include sparse-cell Fisher switching, non-normal correlation switching to Spearman, t-test/ANOVA switching to Mann-Whitney, Welch, or Kruskal-Wallis, inter-rater agreement recommended-index selection, mixed repeated-measures ANOVA assumption checks, GLM family detection, count-model overdispersion selection, and Mediation / Moderation Custom Model canvas mapping.
 
 | Menu | Case | Metric | Status |
 |---|---|---|---|
@@ -30,6 +30,7 @@ The public 1.0 validation set covers direct analysis calculations and automatic 
 | Repeated Measures | RM ANOVA | F statistic | PASS |
 | Nonparametric Paired | Wilcoxon signed-rank | p-value | PASS |
 | Nonparametric RM | Friedman test | chi-square statistic | PASS |
+| Mixed Repeated-Measures ANOVA | Time / group / interaction workflow | model overview and assumption path | PASS |
 | ANCOVA | Type II group effect | F statistic | PASS |
 | Regression | OLS coefficients | B and SE | PASS |
 | Logistic Regression | Binary logistic | B and SE | PASS |
@@ -39,8 +40,10 @@ The public 1.0 validation set covers direct analysis calculations and automatic 
 | GLM | Auto family: positive skewed outcome | Gamma detection and estimates | PASS |
 | GLM | Auto count workflow | count detection and negative-binomial fallback | PASS |
 | Reliability | Cronbach alpha | alpha | PASS |
+| Inter-rater Agreement | ICC, kappa-family, AC1/AC2, alpha paths | recommended and auxiliary agreement indices | PASS |
 | PCA | Correlation eigenvalues | eigenvalues | PASS |
 | Factor Analysis | PAF one-factor loadings | absolute loadings | PASS |
+| Mediation / Moderation Custom Model | Canvas snapshot mapping | node roles, paths, moderators, and invalid-edge filtering | PASS |
 
 ## Sample Size Reference Checks
 
@@ -68,7 +71,7 @@ The following public calculators have representative validation checks:
 | Beyond G*Power | Precision / CI | normal CI precision formula | match |
 | Beyond G*Power | SEM / CFA | `WebPower::wp.sem.rmsea` | match |
 
-GEE, LMM, survival/Cox, cluster, and SEM/CFA entries above refer to Sample Size calculators, not to public 1.0 Analysis workflows.
+GEE, LMM, survival/Cox, cluster, and SEM/CFA entries above refer to Sample Size calculators, not to public 1.2 Analysis workflows.
 
 ## Effect Size Reference Checks
 

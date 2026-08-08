@@ -2,8 +2,8 @@
 message: "If you use StatEdu Studio in your research, please cite it as below."
 type: software
 title: "StatEdu Studio"
-version: "1.1.5"
-date-released: "2026-07-20"
+version: "1.2.0"
+date-released: "2026-08-06"
 doi: "10.22934/statedu.studio"
 url: "https://studio.statedu.com/"
 authors:

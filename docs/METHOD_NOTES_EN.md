@@ -1,8 +1,16 @@
 # StatEdu Studio Method Notes
 
-These notes explain the method-selection rules, assumption checks, warnings, and interpretation cautions used in **StatEdu Studio 1.0.0**.
+These notes explain the method-selection rules, assumption checks, warnings, and interpretation cautions used in **StatEdu Studio 1.2.0**.
 
-Public 1.0 scope note: these notes describe workflows exposed in the public 1.0 interface. Longitudinal/panel analysis workflows, Mplus/latent add-ons, Excel/Word result export, license activation, and paid-edition gating are not public 1.0 features. Sample-size calculator entries for GEE, LMM, GLMM, survival, cluster, or SEM/CFA are planning calculators only.
+Public 1.2 scope note: these notes describe workflows exposed in the public 1.2 interface. Mplus/latent add-ons, Excel/Word result export, license activation, and paid-edition gating are not public 1.2 features. Sample-size calculator entries for GEE, LMM, GLMM, survival, cluster, or SEM/CFA are planning calculators only.
+
+## Public 1.2 Added Analysis Notes
+
+Public 1.2 adds method notes for the following released Analysis workflows:
+
+- Mixed Repeated-Measures ANOVA: see section 6.1.
+- Inter-rater Agreement: see section 8.1.
+- Mediation / Moderation Custom Model: see section 13.5.
 
 ## 1. Measurement Level
 
@@ -123,6 +131,21 @@ Repeated measurements:
 
 Post-hoc paired comparisons should use paired methods and multiplicity correction.
 
+### 6.1 Mixed Repeated-Measures ANOVA
+
+Mixed repeated-measures ANOVA is used when the same continuous outcome is measured at two or more time points and a between-subject group comparison is part of the research question. It is most appropriate for wide-format pre-post or multi-time columns where each row is one subject.
+
+Key interpretation points:
+
+- The time effect tests average change across time.
+- The group effect compares between-subject groups.
+- The time-by-group interaction is usually the main result for differential change.
+- Sphericity matters when there are three or more repeated measurements; Greenhouse-Geisser-style corrections reduce inflated Type I error when sphericity is questionable.
+- Levene-type checks by time help identify unequal between-group variance at specific time points.
+- Covariate-adjusted summaries are descriptive/model-based aids and should match a prespecified analysis plan.
+
+The PP path uses rows complete for the selected repeated outcomes and model variables. The available-case ITT-oriented mixed-model alternative uses available repeated rows when selected and estimable, but it does not remove the need to report the missing-data pattern and sensitivity-analysis assumptions.
+
 ## 7. Correlation
 
 Automatic correlation selection follows variable type:
@@ -156,6 +179,20 @@ Interpretation cautions:
 - Reliability should be interpreted together with item content and factor structure.
 
 For ordinal reliability workflows, ordinal alpha and ordinal omega are computed from a polychoric correlation matrix. Ordinal item-total correlations, including corrected item-total correlations, are computed with Spearman correlations and may differ from SPSS output that uses Pearson correlations.
+
+### 8.1 Inter-rater Agreement
+
+Inter-rater agreement assesses whether raters, judges, coders, or instruments assign comparable values to the same cases. It is not the same as internal consistency: reliability analysis asks whether items form a scale, while agreement asks whether raters give the same or acceptably similar ratings.
+
+Method choice depends on the measurement level and number of raters:
+
+- Continuous ratings usually use ICC. Report the selected ICC model, type, and unit because ICC(1), ICC(2), ICC(3), agreement, consistency, single-measure, and average-measure choices answer different questions.
+- Two categorical raters can use Cohen's kappa; ordinal ratings can use weighted kappa when category order is meaningful.
+- Multi-rater categorical settings can use Fleiss or Light kappa where eligible.
+- Gwet AC1/AC2 can be useful when category prevalence or marginal imbalance makes kappa difficult to interpret.
+- Krippendorff alpha is useful as a general agreement index and can handle missing ratings under its coincidence-matrix formulation.
+
+Report the recommended index first, then mention supporting indices when they change the substantive interpretation. For ordinal character labels, verify the Step 3 category order because weighted statistics depend on that order. Missing ratings should be described, especially when raters did not evaluate all cases.
 
 ## 9. Factor Analysis
 
@@ -250,6 +287,10 @@ Moderated mediation evaluates whether the indirect effect changes across W. Firs
 - For moderation, do not report only the interaction coefficient; add simple-slope or Johnson-Neyman output when requested.
 - When multiple independent variables are selected, state that each focal X was analyzed with the other independent variables included as covariates.
 
+### 13.5 Mediation / Moderation Custom Model
+
+The Mediation / Moderation Custom Model canvas is an input and model-recognition workflow for the same mediation/moderation engine. It does not define a separate estimator. Report the recognized model number, variable roles, bootstrap settings, and any unsupported or skipped paths just as you would for the standard Mediation / Moderation menu.
+
 ## 14. Logistic Regression
 
 Logistic regression supports binary, ordinal, and multinomial outcomes.
@@ -295,11 +336,11 @@ Robust standard errors:
 
 GLM assumes independent observations. Correlated repeated or clustered data require a design-appropriate model. Use the dedicated longitudinal/panel analysis workflows when repeated-measure or panel dependence is part of the research design; use ordinary GLM or regression output only when the independent-observation assumption is defensible.
 
-## 16. Deferred Longitudinal / Panel Analysis
+## 16. Longitudinal / Panel and Correlated Data
 
-Longitudinal / panel analysis workflows are not exposed in public 1.0. Repeated-measures, clustered, and panel data can violate the independent-observation assumption, so ordinary GLM or regression output should be interpreted only when that assumption is defensible.
+Longitudinal / panel and mixed repeated-measures workflows are exposed in public 1.2. Repeated-measures, clustered, and panel data can violate the independent-observation assumption, so ordinary GLM or regression output should be interpreted only when that assumption is defensible.
 
-GEE, LMM, GLMM, panel fixed-effects, and panel random-effects analysis workflows will be documented again when their public release scope and license policy are finalized. GEE/LMM/GLMM entries in the Sample Size and Effect Size menus are planning or conversion calculators, not public 1.0 Analysis workflows.
+GEE, LMM, GLMM, panel fixed-effects, and panel random-effects analysis workflows should be interpreted within the documented public 1.2 analysis scope. GEE/LMM/GLMM entries in the Sample Size and Effect Size menus remain planning or conversion calculators unless selected from a released Analysis workflow.
 
 ## 17. Complex Samples Method Notes
 

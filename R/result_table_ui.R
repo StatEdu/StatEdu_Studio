@@ -399,6 +399,15 @@ coefficient_show_df_column_width <- function(table, column) {
   }
   mean_sd <- isTRUE(attr(table, "mean_sd", exact = TRUE))
   trend_analysis <- isTRUE(attr(table, "trend_analysis", exact = TRUE))
+  if (isTRUE(attr(table, "complex_sample_group_table", exact = TRUE))) {
+    if (column_key == "variable") return(88L)
+    if (column_key == "value") return(116L)
+    if (column_key %in% c("msd", "mse")) return(134L)
+    if (column_key == "95ci") return(124L)
+    if (column_key == "effectsize") return(52L)
+    if (column_key %in% c("tdf", "fdf", "tfdf", "statistic", "t", "f", "tf")) return(78L)
+    if (column_key == "p") return(46L)
+  }
   if (isTRUE(trend_analysis)) {
     if (column_key == "variable") {
       return(82L)
@@ -412,6 +421,9 @@ coefficient_show_df_column_width <- function(table, column) {
     if (column_key %in% c("p", "effectsize")) {
       return(50L)
     }
+    if (column_key == "95ci") {
+      return(92L)
+    }
     if (column_key == "pfortrend") {
       return(if (isTRUE(mean_sd)) 82L else 86L)
     }
@@ -422,7 +434,10 @@ coefficient_show_df_column_width <- function(table, column) {
   if (column_key %in% c("m", "sd") && !isTRUE(mean_sd)) {
     return(if (isTRUE(trend_analysis)) 46L else 44L)
   }
-  if (column_key %in% c("statistic", "t", "f", "tf", "fstatistic")) {
+  if (column_key == "95ci") {
+    return(92L)
+  }
+  if (column_key %in% c("statistic", "t", "f", "tf", "tdf", "fdf", "tfdf", "fstatistic")) {
     if (isTRUE(trend_analysis)) {
       return(if (isTRUE(mean_sd)) 144L else 158L)
     }
@@ -432,8 +447,10 @@ coefficient_show_df_column_width <- function(table, column) {
 }
 
 coefficient_show_df_width_style <- function(table, column) {
-  if (isTRUE(attr(table, "bootstrap_regression", exact = TRUE)) &&
-      is.numeric(attr(table, "compact_column_widths", exact = TRUE))) {
+  has_explicit_column_widths <- is.numeric(attr(table, "compact_column_widths", exact = TRUE))
+  if ((isTRUE(attr(table, "bootstrap_regression", exact = TRUE)) ||
+       isTRUE(attr(table, "complex_sample_group_table", exact = TRUE))) &&
+      isTRUE(has_explicit_column_widths)) {
     return("")
   }
   width <- coefficient_show_df_column_width(table, column)
@@ -474,11 +491,17 @@ coefficient_display_cell_style <- function(table, row_index, column, display_ind
   if (result_note_marker_column(column) || column_key %in% c("msd", "mse", "rankmse")) {
     style <- paste0(style, "white-space:nowrap;overflow-wrap:normal;word-break:normal;")
   }
+  if (column_key == "95ci") {
+    style <- paste0(style, "white-space:nowrap;overflow-wrap:normal;word-break:normal;")
+  }
+  if (isTRUE(attr(table, "complex_sample_group_table", exact = TRUE)) && column_key %in% c("es", "effectsize", "tdf", "fdf", "tfdf", "p")) {
+    style <- paste0(style, "padding-left:6px !important;padding-right:6px !important;")
+  }
   if (nzchar(result_cell_note_marker(table, row_index, column))) {
     style <- paste0(style, "white-space:nowrap;overflow-wrap:normal;word-break:normal;")
   }
   style <- paste0(style, coefficient_show_df_width_style(table, column))
-  if (isTRUE(attr(table, "show_df", exact = TRUE)) && column_key %in% c("statistic", "t", "f", "tf", "fstatistic")) {
+  if (isTRUE(attr(table, "show_df", exact = TRUE)) && column_key %in% c("statistic", "t", "f", "tf", "tdf", "fdf", "tfdf", "fstatistic")) {
     style <- paste0(style, "padding-right:12px !important;")
   }
   if (isTRUE(attr(table, "show_df", exact = TRUE)) && column_key == "p") {
@@ -497,7 +520,7 @@ coefficient_display_cell_style <- function(table, row_index, column, display_ind
   if (column %in% right_align_columns) {
     style <- paste0(style, "text-align:right !important;white-space:nowrap;overflow-wrap:normal;word-break:normal;")
   }
-  if (column_key %in% c("statistic", "t", "f", "tf", "fstatistic")) {
+  if (column_key %in% c("statistic", "t", "f", "tf", "tdf", "fdf", "tfdf", "fstatistic")) {
     style <- paste0(style, "text-align:right !important;white-space:nowrap;overflow-wrap:normal;word-break:normal;")
   }
   style
@@ -516,6 +539,10 @@ coefficient_column_class <- function(name) {
     label = "coefficient-col-reference",
     statistic = "coefficient-col-statistic",
     tf = "coefficient-col-statistic",
+    tdf = "coefficient-col-statistic",
+    fdf = "coefficient-col-statistic",
+    tfdf = "coefficient-col-statistic",
+    `95ci` = "coefficient-col-ci",
     f = "coefficient-col-f",
     msd = "coefficient-col-mse",
     mse = "coefficient-col-mse",
@@ -909,7 +936,6 @@ model_overview_html_table <- function(table) {
   )
   result_table_with_notes(table_tag)
 }
-
 combined_dw_html_table <- function(table) {
   if (!is.data.frame(table) || nrow(table) == 0) {
     return(NULL)
@@ -929,4 +955,3 @@ combined_dw_html_table <- function(table) {
   )
   result_table_with_notes(table_tag)
 }
-

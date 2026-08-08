@@ -233,7 +233,7 @@ custom_model_canvas_title <- function(language = statedu_initial_language()) {
   custom_model_canvas_text(
     language,
     "Mediation / Moderation Custom Model",
-    "\ub9e4\uac1c\u00b7\uc870\uc808 \uc0ac\uc6a9\uc790 \ubaa8\ub378"
+    "\ub9e4\uac1c\u00b7\uc870\uc808 \uc0ac\uc6a9\uc790 \uc815\uc758 \ubaa8\ub378"
   )
 }
 

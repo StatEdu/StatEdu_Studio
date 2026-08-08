@@ -1,48 +1,24 @@
 # Changelog
 
-## v1.1.9-dev - 2026-08-04
+## v1.2.0 - 2026-08-06
 
 ### Added
 
+- Added the Inter-rater Agreement workflow to the public analysis scope, with output that prioritizes the recommended agreement index while retaining supporting indices.
 - Added a mixed repeated-measures ANOVA workflow for pre-post and multi-time group comparisons with PP/ITT analysis paths, covariate-adjusted summaries, assumption review, post-hoc comparisons, and HTML/PDF/Excel exports.
+- Added the Mediation / Moderation Custom Model canvas to the public Regression / Models workflow group.
 
 ### Changed
 
+- Promoted the stabilized post-1.1.3 work to the official `1.2.0` release metadata.
 - Integrated repeated-measures ANOVA into the Group Comparison menu and aligned its setup layout, assumption-review option, sphericity/Levene checks, normality guidance, and recommendation wording with StatEdu Studio's guided-analysis flow.
-- Refined inter-rater agreement output so the recommended agreement index is shown first, with auxiliary indices kept as supporting checks.
+- Expanded statistical validation coverage across correlation, reliability, inter-rater agreement, factor analysis / PCA, t-test / ANOVA, paired repeated-measures, regression, logistic, longitudinal / panel, penalized regression, sample-size, effect-size, data-editor, custom-model, and mixed repeated-measures workflows.
+- Renamed the Korean custom-model menu label for clearer public navigation.
 
-## v1.1.8-dev - 2026-08-01
+### Fixed
 
-### Changed
-
-- Refined Mediation / Moderation Custom Model result tables by removing duplicated model, interaction, conditional-effect, and Johnson-Neyman rows when the same fitted model is reused across focal paths.
-- Improved mediation/moderation table presentation for R²/x² notation, interaction labels, conditional-effect alignment, conditional-indirect-effect grouping borders, and regression fit-row separators.
-
-## v1.1.7-dev - 2026-07-30
-
-### Changed
-
-- Expanded statistical validation coverage across correlation, reliability, inter-rater agreement, factor analysis / PCA, t-test / ANOVA, paired repeated-measures, regression, logistic, longitudinal / panel, penalized regression, sample-size, effect-size, data-editor, and custom-model workflows.
-- Aligned additional estimates, confidence intervals, missing-data handling, ordinal category ordering, and defensive validation paths with reference package or textbook calculations.
-
-## v1.1.6-dev - 2026-07-29
-
-### Changed
-
-- Expanded the Mediation / Moderation Custom Model canvas so drawn paths drive multi-X, multi-M, multi-Y, and two-moderator analyses, including conditional effects, indirect effects, and Johnson-Neyman output.
-- Hardened custom-model bootstrap matching, outcome-specific moderation, and canvas layout preservation when roles or covariates change.
-
-## v1.1.5 - 2026-07-20
-
-### Added
-
-- Added the Reliability > Inter-rater agreement workflow with percent agreement, Cohen's kappa, weighted Cohen's kappa, Fleiss' kappa, Krippendorff's alpha, Gwet's AC1/AC2, Light's kappa, and ICC-oriented options.
-
-### Changed
-
-- Refined shared three-block analysis layouts so option blocks align with the standard frequency/descriptive-analysis structure across analysis and data-editing screens.
-- Tightened inter-rater agreement option spacing and widened result output so long method notes remain visible.
-- Updated result tables to center Estimate, N, and Raters values while keeping method and note text readable.
+- Fixed the packaged Electron public-release launcher so the Mediation / Moderation Custom Model canvas is enabled by default in the 1.2.0 installer.
+- Cleaned duplicated result rows for reused fitted custom-model results.
 
 ## v1.1.3 - 2026-07-12
 
@@ -62,20 +38,6 @@
 - Routed remaining direct UI labels through the shared i18n table so language overlays can translate newly added data, regression, mediation, moderation, and latent-analysis options.
 - Preserved official-release exclusion of the mediation/moderation custom model canvas.
 
-## v1.1.2-dev - 2026-07-11
-
-### Changed
-
-- Updated the active development line to `1.1.2-dev`.
-- Refined shared three-block analysis layouts and footer action placement for consistent spacing across analysis pages.
-- Updated longitudinal / panel result presentation toward B5 portrait-oriented, hierarchical-regression-style coefficient output.
-
-### Fixed
-
-- Fixed Latent Mplus project/output folder resolution so generated output is created under the folder that contains the originally loaded data file, even when Shiny receives a temporary upload path.
-- Preserved native file-dialog data paths over stale temporary upload paths in the Latent Mplus data loader.
-- Added original-file lookup by filename while excluding generated result/example folders such as `Mplus_output`, `mplus_tmp`, `output`, `outputs`, and `Mplus_examples`.
-
 ## v1.1.1 - 2026-07-07
 
 ### Fixed
@@ -91,227 +53,10 @@
 - Promoted the 1.1.0 public release with all analysis workflows except the Mediation / Moderation Custom Model canvas.
 - Added public-release save gating: HTML save remains enabled by default while figure, PDF, Excel, and Add result controls stay visible but disabled.
 - Kept t-test / ANOVA as the public export exception with HTML, figure, PDF, Excel, and Add result enabled; t-test / ANOVA Result collections can export Excel and Word.
-- Added a developer installer profile for `1.1.0-dev` that keeps the full current feature set enabled.
 
 ### Changed
 
-- Updated Electron release profiling so semantic release versions build as public StatEdu Studio installers and `-dev` versions build as developer installers.
-
-## v1.0.26-dev - 2026-07-06
-
-### Added
-
-- Added Data Editor workflows for merging multiple data files and creating one-row-per-ID aggregate datasets.
-- Added a reusable complex-sample design setup page so design variables can be saved and reused across complex-sample analyses.
-
-### Changed
-
-- Refined shared analysis action-row layout, custom model canvas alignment/edge controls, StatEdu branding assets, and Latent/Mplus B5-oriented table and Word export output.
-- Updated user and method documentation for the expanded data-editing, complex-sample, custom model canvas, and latent-analysis workflows.
-
-### Fixed
-
-- Restored i18n and UI layout contract compliance for the new Data Editor tools and figure-save notifications.
-
-## v1.0.25-dev - 2026-07-05
-
-### Added
-
-- Expanded the custom mediation/moderation canvas to support result-only diagrams, editable result diagrams, sequential mediation paths, analysis option controls, and non-significant dashed path styling.
-- Added broader multilingual coverage for the custom mediation/moderation canvas menus, dialogs, toolbar labels, and static analysis menu entry.
-
-### Changed
-
-- Improved custom canvas auto-alignment, default variable placement, arrowhead rendering, run-option popover layout, reset confirmation, and stale-arrow cleanup.
-- Kept the drawn model layout and saved `.studio` model JSON consistent between the editing canvas and result diagram.
-
-## v1.0.24-dev - 2026-07-05
-
-### Added
-
-- Added a SmartPLS-style custom mediation/moderation canvas with variable dragging, role assignment, arrows, moderation lines, styling controls, model save/load, and execution through the existing mediation/moderation engine.
-- Added a browse button for selecting the default file-save folder in Preferences.
-
-### Changed
-
-- Saved custom model canvas files now use the `.studio` extension while still allowing older JSON model files to be loaded.
-- Improved curved-arrow control handles and moderation-line arrowheads in the custom model canvas.
-
-## v1.0.23-dev - 2026-07-05
-
-### Changed
-
-- Polished multilingual interface coverage and translation terminology across supported languages.
-- Kept complex-sample, longitudinal, settings, and latent-analysis UI text aligned with the shared localization catalog.
-
-## v1.0.22-dev - 2026-07-04
-
-### Added
-
-- Added file-based Japanese and Chinese UI translations with a language registry for future language expansion.
-
-### Changed
-
-- Routed Data Editor, Complex Samples, preferences, and latent-analysis menu labels through the shared i18n layer.
-- Expanded release validation to check multilingual translation coverage and packaged language resources.
-
-## v1.0.21-dev - 2026-07-03
-
-### Added
-
-- Added a Complex Samples correlation overview section for method, pair count, p-value adjustment, design N, and design df reporting.
-
-### Changed
-
-- Improved Complex Samples correlation handling for ordered variables by converting them to ordinal scores before design-based covariance estimation.
-- Documented Complex Samples correlation reporting details in English and Korean method notes.
-
-## v1.0.20-dev - 2026-07-03
-
-### Added
-
-- Added Complex Samples correlation analysis with Pearson and Spearman rank options.
-- Exposed Longitudinal / Panel Models in the public Analysis menu.
-
-### Changed
-
-- Use a `Filter` variable as the first subpopulation candidate and default its condition to value match `1`.
-- Updated public-release validation notes so only Excel and Word result exports remain hidden by the public release flag.
-
-## v1.0.19-dev - 2026-07-03
-
-### Added
-
-- Added Complex Samples validation coverage for frequency/descriptive, cross-tabulation, t-test/ANOVA, regression, and logistic regression workflows.
-
-### Changed
-
-- Hardened Complex Samples analyses so invalid or all-missing variables and combinations are reported without stopping other requested outputs.
-- Added complex-sample validation to the core stabilization check sequence.
-
-## v1.0.18-dev - 2026-07-02
-
-### Added
-
-- Added analysis-specific Complex Samples reporting options and additional output statistics: median, effect size, model Wald tests, linear-model R-squared, and logistic pseudo R-squared.
-
-### Changed
-
-- Standardized analysis workspace placement so menus use the same left-anchored layout across window sizes.
-
-## v1.0.17-dev - 2026-07-02
-
-### Added
-
-- Added the Complex Samples analysis menu with frequency/descriptive, cross-tabulation, t-test/ANOVA, regression, and logistic regression workflows.
-- Added shared complex-sample design-variable settings, replicate-weight settings, subpopulation filtering, and selected-data preview support.
-- Exposed the Longitudinal / Panel Models workflow in the development UI.
-
-### Changed
-
-- Replaced the initial complex-sample options with reporting options for 95% CI, weighted N, design df, and design effect / CV.
-- Aligned calculator variable-scope controls and data-editor selected-variable filtering behavior.
-
-## v1.0.15-dev - 2026-07-02
-
-### Fixed
-
-- Removed the W node from mediation/moderation result diagrams when no moderator is selected.
-
-## v1.0.14-dev - 2026-07-02
-
-### Changed
-
-- Tightened the vertical margins between mediation/moderation setup option groups so adjacent section titles sit closer to the previous control.
-
-## v1.0.13-dev - 2026-07-02
-
-### Changed
-
-- Removed the development watermark from saved HTML result files while keeping the existing PDF report watermark behavior.
-- Further reduced vertical spacing between mediation/moderation setup option groups.
-
-## v1.0.12-dev - 2026-07-02
-
-### Changed
-
-- Aligned the mediation/moderation mediator-structure panel header with the dependent-variable target header and reduced setup-panel vertical spacing.
-- Added a default-on option to show non-significant result-diagram paths as dashed lines, with saved HTML/PDF/figure outputs honoring the selected display mode.
-- Moved the five mediation/moderation save buttons below the options panel so they remain visible after results are available.
-
-## v1.0.11-dev - 2026-07-02
-
-### Changed
-
-- Adjusted mediation/moderation result diagrams so Model 7/8 moderators sit midway between independent variables and mediators, while Model 14/15 moderators sit midway between mediators and dependent variables.
-
-## v1.0.10-dev - 2026-07-02
-
-### Changed
-
-- Aligned mediation/moderation result diagram variable positions with the `scripts/mm_diagrams_preview.html` reference layout.
-- Kept multi-X moderator placement centered above the independent variables and pulled wide multi-mediator result diagrams back into the B5 portrait frame.
-
-## v1.0.9-dev - 2026-07-02
-
-### Changed
-
-- Restored original setup-diagram placement for single-X single-mediator and single-X moderation result diagrams.
-- Updated result diagrams to use black thin lines, white nodes, B(p) labels, and dashed non-significant paths.
-- Adjusted Model 8 multi-X moderation anchors and widened multi-X/multi-mediator X-to-M and M-to-Y spacing.
-
-## v1.0.8-dev - 2026-07-02
-
-### Changed
-
-- Reworked mediation/moderation result diagram placement to use reference-style measured-variable columns for X, mediator, moderator, and outcome nodes.
-- Aligned multi-X and multi-mediator result diagrams with consistent y-position rules for one, two, three, and four mediator layouts.
-
-## v1.0.7-dev - 2026-07-02
-
-### Changed
-
-- Kept mediation/moderation save controls inside the option panel without moving the Run analysis button.
-- Refined option-panel spacing for mediator structure, moderated paths, options, analysis method, and bootstrap controls.
-- Aligned odd-mediator result diagrams so the middle mediator shares the outcome y-position and moderators remain above independent variables.
-
-## v1.0.6-dev - 2026-07-02
-
-### Changed
-
-- Tightened multi-X/multi-mediator result diagram spacing and centered a single mediator between two independent variables.
-
-## v1.0.5-dev - 2026-07-02
-
-### Changed
-
-- Corrected result model diagram arrow endpoints and coefficient label placement after B5 portrait resizing.
-- Updated mediation/moderation plots to use variable labels in axis titles, legends, and J-N labels.
-- Added multi-X summary diagrams and tightened mediation/moderation B5 portrait result-table layout with one-line path labels.
-
-## v1.0.4-dev - 2026-07-02
-
-### Changed
-
-- Refined mediation/moderation model diagrams for B5 portrait result output, smaller coefficient labels, and centered Model 7/14 moderator arrows.
-- Added mediation/moderation result save controls for HTML, figure export, PDF, Excel, and result collection.
-
-## v1.0.3-dev - 2026-07-02
-
-### Changed
-
-- Added mediation/moderation analysis setup UI with PROCESS-style variable assignment, auto-inferred model number, SVG path diagram, and moderated path controls.
-- Added penalized regression (Lasso/Ridge/Elastic Net) analysis and result display.
-- Improved settings dialogs and analysis menu layout.
-
-## v1.0.2-dev - 2026-06-30
-
-### Changed
-
-- Enabled the developer latent and longitudinal workflow line for the 1.1 development cycle.
-- Updated latent mixture setup labels, Korean/English language routing, and PROCESS model visibility.
-- Added the Standard PC Mplus estimation preset between Quick check and High-performance PC.
-- Aligned latent figure-resolution defaults with the free/pro policy.
+- Updated Electron release profiling so final semantic versions build as public StatEdu Studio installers.
 
 ## v1.0.1 - 2026-06-28
 

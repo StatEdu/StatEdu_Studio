@@ -2290,6 +2290,9 @@ input.variable-select:disabled {
   color: #2f3a46;
   font-weight: 700;
   border-bottom: 2px solid #1f2937;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .crosstab-main-table thead tr:first-child th {
@@ -7459,6 +7462,12 @@ pre {
   overflow: hidden !important;
   text-overflow: clip !important;
   white-space: nowrap !important;
+}
+
+.regression-results > .crosstab-result-section.regression-result-panel.landscape-table-panel .crosstab-main-table thead th {
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
 }
 
 .regression-results > .crosstab-result-section.regression-result-panel.landscape-table-panel .crosstab-row-variable,

@@ -71,6 +71,7 @@ $coreValidations = @(
   "scripts\validate_complex_sample_analysis.R",
   "scripts\validate_custom_model_canvas.R",
   "scripts\validate_longitudinal.R",
+  "scripts\validate_mixed_rm_anova.R",
   "scripts\validate_release_hygiene.R",
   "scripts\validate_data_io.R"
 )

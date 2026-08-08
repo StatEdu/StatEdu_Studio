@@ -8,13 +8,13 @@ All statistical analyses use CRAN packages only.
 
 ## Current Version
 
-Current public version: `1.1.5`
+Current public version: `1.2.0`
 
-Current development version: `1.1.9-dev`
+Current release candidate version: `1.2.0`
 
-Version 1.1.5 is the public release line for local data import, data editing, assumption-guided statistical analyses, reliability workflows, sample-size/effect-size calculators, latent-analysis workflows, and publication-ready HTML result output. It adds inter-rater agreement analysis, shared three-block layout refinements, and result table readability fixes while carrying forward the 1.1.x stabilization fixes. Detailed development history is available in **About > Version History**.
+Version 1.2.0 is the public release line for local data import, data editing, assumption-guided statistical analyses, reliability and inter-rater agreement workflows, sample-size/effect-size calculators, latent-analysis workflows, mixed repeated-measures ANOVA, Mediation / Moderation Custom Model, and publication-ready HTML/PDF result output. It promotes the stabilized post-1.1.3 work, adding inter-rater agreement analysis, pre-post and multi-time repeated-measures group comparisons, the public Mediation / Moderation Custom Model canvas, custom-model table cleanup, and expanded statistical validation coverage. Detailed release history is available in **About > Version History**.
 
-Public 1.1.5 includes all analysis menus except the Mediation / Moderation Custom Model canvas. In the public build, direct analysis save controls remain visible but only HTML save is enabled by default; t-test / ANOVA is the exception and keeps HTML, figure, PDF, Excel, and Add result enabled. t-test / ANOVA results added to the Result collection can be exported from Result as Excel or Word.
+Public 1.2.0 includes the Mediation / Moderation Custom Model canvas in the Regression / Model workflow group. In the public build, direct analysis save controls remain visible but only HTML save is enabled by default; t-test / ANOVA is the exception and keeps HTML, figure, PDF, Excel, and Add result enabled. t-test / ANOVA results added to the Result collection can be exported from Result as Excel or Word.
 
 ## Current Scope
 
@@ -29,12 +29,15 @@ Public 1.1.5 includes all analysis menus except the Mediation / Moderation Custo
 - ANCOVA with automatic or warning-only selection among standard ANCOVA, Robust ANCOVA (HC3), Ranked ANCOVA, and Interaction ANCOVA, plus Levene / Brown-Forsythe / Breusch-Pagan / fitted-value White-style variance checks, slope-homogeneity diagnostics, complete-case reporting, linearity plots, and influence sensitivity analysis
 - Standalone nonparametric tests using Mann-Whitney U and Kruskal-Wallis workflows
 - Paired tests and repeated-measures paired workflows for two or more repeated measurements
+- Mixed repeated-measures ANOVA for pre-post and multi-time group comparisons, with PP/ITT paths, covariate-adjusted summaries, sphericity and variance checks, post-hoc comparisons, and report exports
 - Standalone nonparametric paired tests using Wilcoxon signed-rank and Friedman workflows
 - Correlation analysis with automatic method selection, p-value / confidence interval output, method notes, reason notes, scatter plot matrices, and heatmaps
 - Factor analysis and principal component analysis with Pearson and polychoric matrix options, diagnostics, plots, and score-saving helpers
 - Reliability analysis for scale and item-level summaries
+- Inter-rater Agreement analysis for continuous, ordinal, binary, and nominal rater variables, with ICC, kappa-family, Gwet AC1/AC2, Krippendorff alpha, missing-data handling notes, and recommended-index prioritization
 - Linear regression with assumption-guided OLS, HC3 robust standard errors, bootstrap confidence intervals, and combined HC3 plus bootstrap output
 - Hierarchical regression with block-wise model comparison
+- Mediation / Moderation Custom Model canvas for drawing supported mediation/moderation structures and sending them to the analysis engine
 - Logistic regression for binary, ordered, and categorical dependent variables
 - Generalized linear models for independent-observation Gaussian, binary logistic, Gamma, and count outcomes, including Poisson versus negative-binomial screening, robust standard-error options, missing-data sensitivity engines, offset/exposure handling, SCI-style diagnostics, publication notes, reporting checklists, and suggested manuscript text
 - Penalized regression helpers for severe multicollinearity cases
@@ -78,7 +81,7 @@ The app will open at `127.0.0.1` in the default browser. The launcher searches f
 
 ## Validation
 
-Version 1.1.5 carries forward the stabilization validation suite and adds focused checks for inter-rater agreement output and shared layout contracts. Public validation coverage includes calculators, data import, data editing, cross-tabulation, correlation auto-selection, factor analysis / PCA, reliability and inter-rater agreement workflows, logistic analysis and UI, paired guard handling, p-value formatting, regression coefficient output, GLM output, complex-sample workflows, longitudinal / panel workflows, latent-analysis workflow checks, and t-test / ANOVA guard handling. Effect-size comparisons use `effectsize` as a validation reference where its definitions match the app calculation; `effectsize` is not required at runtime.
+Version 1.2.0 carries forward the stabilization validation suite and adds focused checks for mixed repeated-measures ANOVA, inter-rater agreement output, custom-model table de-duplication, and shared layout contracts. Public validation coverage includes calculators, data import, data editing, cross-tabulation, correlation auto-selection, factor analysis / PCA, reliability and inter-rater agreement workflows, logistic analysis and UI, paired guard handling, p-value formatting, regression coefficient output, GLM output, complex-sample workflows, longitudinal / panel workflows, mixed repeated-measures workflows, latent-analysis workflow checks, and t-test / ANOVA guard handling. Effect-size comparisons use `effectsize` as a validation reference where its definitions match the app calculation; `effectsize` is not required at runtime.
 
 Run the stabilization validation suite from the repository root before merging
 or packaging:
@@ -113,7 +116,7 @@ module before running the stabilization suite.
 
 If you use **StatEdu Studio** in your research, please cite:
 
-LEE, I. H. (2026). **StatEdu Studio** (Version 1.1.5) [Computer software].
+LEE, I. H. (2026). **StatEdu Studio** (Version 1.2.0) [Computer software].
 https://doi.org/10.22934/statedu.studio
 
 Product site: https://studio.statedu.com/

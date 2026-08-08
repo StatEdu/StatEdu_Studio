@@ -208,7 +208,7 @@ create_app_server <- function(app_version) {
   output$lazy_analysis_hierarchical <- renderUI(tab_panel_content(hierarchical_tab_panel(statedu_ui_label("regression", app_language()), app_language())))
   output$lazy_analysis_mediation_moderation <- renderUI(tab_panel_content(mediation_moderation_tab_panel(mediation_moderation_title(app_language()), app_language())))
   output$lazy_analysis_custom_model_canvas <- renderUI({
-    if (!isTRUE(statedu_feature_enabled("custom_model_canvas", !statedu_public_release()))) {
+    if (!isTRUE(statedu_feature_enabled("custom_model_canvas", TRUE))) {
       return(tab_panel_content(div(class = "analysis-placeholder-panel", "Mediation / Moderation Custom Model is not enabled in this build.")))
     }
     tab_panel_content(custom_model_canvas_tab_panel(custom_model_canvas_title(app_language()), app_language()))

@@ -280,7 +280,7 @@
       function easyflowCustomModelCanvasMenuLabel(language) {
         language = easyflowNormalizeLanguage(language);
         var labels = {
-          ko: '\uB9E4\uAC1C\u00B7\uC870\uC808 \uC0AC\uC6A9\uC790 \uBAA8\uB378',
+          ko: '\uB9E4\uAC1C\u00B7\uC870\uC808 \uC0AC\uC6A9\uC790 \uC815\uC758 \uBAA8\uB378',
           en: 'Mediation / Moderation Custom Model',
           ja: '\u5A92\u4ECB\u30FB\u8ABF\u6574\u30AB\u30B9\u30BF\u30E0\u30E2\u30C7\u30EB',
           zh: '\u4E2D\u4ECB / \u8C03\u8282\u81EA\u5B9A\u4E49\u6A21\u578B',
@@ -289,6 +289,9 @@
           de: 'Benutzerdefiniertes Mediations-/Moderationsmodell',
           vi: 'Mo hinh tuy chinh trung gian / dieu tiet'
         };
+        var lookup = easyflowStaticLanguageLookup(language);
+        if (lookup[labels.en]) return lookup[labels.en];
+        if (lookup[labels.ko]) return lookup[labels.ko];
         return labels[language] || labels.en;
       }
 
@@ -1603,7 +1606,7 @@
                 analysis_complex_correlation: '\uBCF5\uD569\uD45C\uBCF8 \uC0C1\uAD00\uBD84\uC11D',
                 analysis_complex_regression: '\uBCF5\uD569\uD45C\uBCF8 \uD68C\uADC0\uBD84\uC11D',
                 analysis_complex_logistic: '\uBCF5\uD569\uD45C\uBCF8 \uB85C\uC9C0\uC2A4\uD2F1 \uD68C\uADC0\uBD84\uC11D',
-                analysis_custom_model_canvas: '\uB9E4\uAC1C\u00B7\uC870\uC808 \uC0AC\uC6A9\uC790 \uBAA8\uB378',
+                analysis_custom_model_canvas: '\uB9E4\uAC1C\u00B7\uC870\uC808 \uC0AC\uC6A9\uC790 \uC815\uC758 \uBAA8\uB378',
                 'Longitudinal / Panel Models': '\uC885\uB2E8 / \uD328\uB110 \uBAA8\uD615'
               },
               groups: [

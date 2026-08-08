@@ -92,22 +92,7 @@ mixed_rm_anova_time_label_inputs <- function(time_labels, language = statedu_ini
 mixed_rm_anova_ui_text <- function(key, language = statedu_initial_language()) {
   language <- normalize_app_language(language)
   key <- as.character(key %||% "")[[1]]
-  if (identical(language, "ko")) {
-    return(switch(
-      key,
-      labels = "\ub77c\ubca8",
-      summary_options = "\uc694\uc57d \uc635\uc158",
-      within_group_comparison = "\uad70\ub0b4 \uc2dc\uc810 \ube44\uad50",
-      between_group_comparison = "\uc2dc\uc810\ubcc4 \uad70\uac04 \ube44\uad50",
-      assumption_review = "\uac00\uc815\uac80\ud1a0",
-      assumption_review_check = "\uac00\uc815\uac80\ud1a0",
-      analysis_population = "\ubd84\uc11d \ub300\uc0c1",
-      per_protocol = "PP / \uc644\uc804 \uc0ac\ub840",
-      itt_available = "ITT / \uad00\uce21 \uc790\ub8cc \ud63c\ud569\ubaa8\ud615",
-      key
-    ))
-  }
-  switch(
+  fallback <- switch(
     key,
     labels = "Labels",
     summary_options = "Summary options",
@@ -120,6 +105,7 @@ mixed_rm_anova_ui_text <- function(key, language = statedu_initial_language()) {
     itt_available = "ITT / available mixed model",
     key
   )
+  statedu_t(paste0("mixed_rm_anova.ui.", key), language, fallback = fallback)
 }
 
 mixed_rm_anova_setup_panel <- function(state) {

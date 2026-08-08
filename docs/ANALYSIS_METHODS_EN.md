@@ -1,6 +1,6 @@
 # StatEdu Studio Analyses
 
-This document summarizes the analysis menus and main outputs implemented in **StatEdu Studio 1.0.0**. It answers the question: "Which menu provides which statistical method, table, diagnostic, effect size, and export output?" For operating steps, see **User Guide**. For method-selection criteria and interpretation cautions, see **Method Notes**.
+This document summarizes the analysis menus and main outputs implemented in **StatEdu Studio 1.2.0**. It answers the question: "Which menu provides which statistical method, table, diagnostic, effect size, and export output?" For operating steps, see **User Guide**. For method-selection criteria and interpretation cautions, see **Method Notes**.
 
 ## Document Roles
 
@@ -8,9 +8,9 @@ This document summarizes the analysis menus and main outputs implemented in **St
 - **Analyses**: implemented menus, statistics, outputs, tables, and export coverage.
 - **Method Notes**: method-selection rules, assumption diagnostics, warnings, and interpretation cautions.
 
-## Public 1.0 Release Scope
+## Public 1.2 Release Scope
 
-Public 1.0 exposes the analysis and calculator workflows listed below, including Longitudinal / Panel Models. HTML and PDF result output are public. Excel/Word result export, license activation, paid-edition gating, and Mplus/latent add-ons are not exposed in the public 1.0 interface. Planning calculators may include GEE, LMM, GLMM, survival, cluster, and SEM/CFA entries; those are calculator workflows, not public 1.0 Analysis menus.
+Public 1.2 exposes the analysis and calculator workflows listed below, including Inter-rater Agreement, Longitudinal / Panel Models, Mixed Repeated-Measures ANOVA, and Mediation / Moderation Custom Model. HTML and PDF result output are public. Excel/Word result export, license activation, paid-edition gating, and Mplus/latent add-ons are not exposed in the public 1.2 interface. Planning calculators may include GEE, LMM, GLMM, survival, cluster, and SEM/CFA entries; those are calculator workflows, not public 1.2 Analysis menus.
 
 ## Data and Variable Preparation
 
@@ -185,6 +185,30 @@ Post-hoc options:
 
 The model overview summarizes the sample size, selected method, and reason for method choice.
 
+## Mixed Repeated-Measures ANOVA
+
+The Repeated-measures ANOVA workflow handles wide-format pre-post or multi-time outcome columns with a between-subject group variable.
+
+Inputs:
+
+- Two or more repeated-measures outcome variables in time order.
+- One grouping variable.
+- Optional covariates.
+- Optional time labels.
+
+Analysis paths and checks:
+
+- PP / complete-case repeated-measures ANOVA path.
+- Available-case ITT-oriented mixed-model alternative when selected and estimable.
+- Within-time and between-time descriptive summaries.
+- Time, group, and time-by-group interaction tests.
+- Mauchly sphericity review and Greenhouse-Geisser-style correction notes where applicable.
+- Levene-type variance checks by time.
+- Optional post-hoc comparisons with multiplicity adjustment.
+- Covariate-adjusted summaries when covariates are selected.
+
+Outputs include the model overview, assumption-review table, repeated-measures test table, group/time summaries, post-hoc tables, warnings or skipped-model notes, and HTML/PDF/Excel/Add-result controls where enabled.
+
 ## Nonparametric Paired
 
 This workflow focuses on nonparametric paired or repeated-measures comparisons.
@@ -269,6 +293,30 @@ Outputs:
 - Optional ordinal reliability aids when item structure supports polychoric estimation.
 
 Reliability outputs should be interpreted with scale content and item structure, not only with a single cutoff.
+
+## Inter-rater Agreement
+
+Inter-rater Agreement evaluates whether multiple raters, coders, judges, or measurement instruments assign consistent scores to the same cases.
+
+Eligible rating structures:
+
+- Continuous rater variables for ICC-style agreement.
+- Ordinal rater variables for weighted agreement statistics.
+- Binary or nominal rater variables for kappa-family and chance-corrected agreement statistics.
+
+Main outputs:
+
+- Recommended agreement index shown first for the detected data structure.
+- Supporting agreement indices in auxiliary tables.
+- ICC variants with model, type, and unit options.
+- Cohen or weighted kappa for two-rater categorical/ordinal data where eligible.
+- Fleiss or Light kappa for multi-rater categorical settings where eligible.
+- Gwet AC1/AC2 and Krippendorff alpha where the data structure supports them.
+- Complete-case and missing-rating notes.
+- Category-order handling for ordinal character labels based on the Step 3 category table when available.
+- Bootstrap CI option for ICC when selected.
+
+The recommended index is intended as the primary reporting target, while auxiliary indices help users understand sensitivity to method choice and category structure.
 
 ## Factor Analysis
 
@@ -546,7 +594,7 @@ Figures can be saved from analyses that produce figure output.
 
 ## Sample Size, Power, and Effect Size Menus
 
-StatEdu Studio 1.0.0 also provides study-planning calculators. These are separate from the Analysis menu.
+StatEdu Studio 1.2.0 also provides study-planning calculators. These are separate from the Analysis menu.
 
 ### Common Outputs
 
