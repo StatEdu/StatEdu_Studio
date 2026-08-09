@@ -161,6 +161,65 @@ complex_sample_candidate_variable <- function(selected_names, variable_table = N
   ""
 }
 
+complex_sample_design_role_spec <- function(role) {
+  switch(
+    as.character(role %||% ""),
+    strata = list(
+      patterns = c("strata|stratum|stratification|kstrata|층화|層化|分层|estrato|strate|schicht|tầng"),
+      allowed_measurements = analysis_allowed_measurements_all(),
+      exclude_patterns = character(0)
+    ),
+    cluster = list(
+      patterns = c("cluster|psu|primary sampling unit|집락|クラスター|聚类|群集|conglomerado|grappe|cụm"),
+      allowed_measurements = analysis_allowed_measurements_all(),
+      exclude_patterns = character(0)
+    ),
+    weight = list(
+      patterns = c("weight|\\bwt\\b|^wt[_\\. -]?|[_\\. -]wt[_\\. -]?|wgt|가중|重み|权重|權重|peso|poids|gewicht|trọng số"),
+      allowed_measurements = "continuous",
+      exclude_patterns = c("replicate|rep[_ -]?weight|repwt|brr|fay|jackknife|jk|bootstrap")
+    ),
+    NULL
+  )
+}
+
+complex_sample_design_candidate_variables <- function(role, names, variable_table = NULL, labels = character(0)) {
+  spec <- complex_sample_design_role_spec(role)
+  if (is.null(spec)) {
+    return(character(0))
+  }
+  candidates <- analysis_allowed_variables(names, variable_table, spec$allowed_measurements)
+  matched <- vapply(candidates, function(name) {
+    text <- complex_sample_candidate_text(name, variable_table, labels)
+    excluded <- length(spec$exclude_patterns) > 0 && any(vapply(
+      spec$exclude_patterns,
+      grepl,
+      logical(1),
+      x = text,
+      ignore.case = TRUE,
+      perl = TRUE
+    ))
+    !excluded && any(vapply(spec$patterns, grepl, logical(1), x = text, ignore.case = TRUE, perl = TRUE))
+  }, logical(1))
+  candidates[matched]
+}
+
+complex_sample_design_role_choices <- function(role, selected_names, all_names = selected_names, variable_table = NULL, labels = character(0), language = statedu_initial_language()) {
+  spec <- complex_sample_design_role_spec(role)
+  if (is.null(spec)) {
+    return(complex_sample_design_choices(selected_names, all_names, variable_table, labels, language = language))
+  }
+  selected_names <- as.character(selected_names %||% character(0))
+  all_names <- as.character(all_names %||% selected_names)
+  selected <- analysis_allowed_variables(intersect(selected_names, all_names), variable_table, spec$allowed_measurements)
+  other <- analysis_allowed_variables(setdiff(all_names, selected), variable_table, spec$allowed_measurements)
+  variables <- unique(c(selected, other))
+  candidates <- complex_sample_design_candidate_variables(role, variables, variable_table, labels)
+  ordered <- unique(c(candidates, variables))
+  choices <- stats::setNames(ordered, vapply(ordered, display_variable_name_static, character(1), table = variable_table, labels = labels))
+  c(stats::setNames("", complex_sample_ui_text("no_variable", language)), choices)
+}
+
 complex_sample_candidate_replicates <- function(selected_names, variable_table = NULL, labels = character(0)) {
   candidates <- analysis_allowed_variables(selected_names, variable_table, "continuous")
   if (length(candidates) == 0) {
@@ -195,9 +254,9 @@ complex_sample_filter_candidate <- function(selected_names, all_names = selected
 complex_sample_design_defaults <- function(prefix, selected_names, variable_table = NULL, labels = character(0)) {
   stats::setNames(
     list(
-      complex_sample_candidate_variable(selected_names, variable_table, labels, c("strata|stratum|kstrata|\uCE35\uD654")),
-      complex_sample_candidate_variable(selected_names, variable_table, labels, c("cluster|psu|primary sampling unit|\uC9D1\uB77D")),
-      complex_sample_candidate_variable(selected_names, variable_table, labels, c("weight|\\bwt\\b|^wt[_\\. -]?|[_\\. -]wt[_\\. -]?|wgt|\uAC00\uC911"), "continuous", exclude_patterns = c("replicate|rep[_ -]?weight|repwt|brr|fay|jackknife|jk|bootstrap")),
+      c(complex_sample_design_candidate_variables("strata", selected_names, variable_table, labels), "")[[1]],
+      c(complex_sample_design_candidate_variables("cluster", selected_names, variable_table, labels), "")[[1]],
+      c(complex_sample_design_candidate_variables("weight", selected_names, variable_table, labels), "")[[1]],
       complex_sample_candidate_replicates(selected_names, variable_table, labels),
       complex_sample_filter_candidate(selected_names, selected_names, variable_table, labels),
       "equals",
@@ -513,21 +572,21 @@ complex_sample_design_panel <- function(prefix, selected_names, all_names = sele
           selectInput(
             strata_id,
             complex_sample_ui_text("strata", language),
-            choices = complex_sample_design_choices(selected_names, all_names, variable_table, labels, analysis_allowed_measurements_all(), language),
+            choices = complex_sample_design_role_choices("strata", selected_names, all_names, variable_table, labels, language),
             selected = complex_sample_selected_value(selected, strata_id, defaults[[strata_id]] %||% ""),
             selectize = FALSE
           ),
           selectInput(
             cluster_id,
             complex_sample_ui_text("cluster", language),
-            choices = complex_sample_design_choices(selected_names, all_names, variable_table, labels, analysis_allowed_measurements_all(), language),
+            choices = complex_sample_design_role_choices("cluster", selected_names, all_names, variable_table, labels, language),
             selected = complex_sample_selected_value(selected, cluster_id, defaults[[cluster_id]] %||% ""),
             selectize = FALSE
           ),
           selectInput(
             weight_id,
             complex_sample_ui_text("weight", language),
-            choices = complex_sample_design_choices(selected_names, all_names, variable_table, labels, "continuous", language),
+            choices = complex_sample_design_role_choices("weight", selected_names, all_names, variable_table, labels, language),
             selected = complex_sample_selected_value(selected, weight_id, defaults[[weight_id]] %||% ""),
             selectize = FALSE
           ),
@@ -694,21 +753,21 @@ complex_sample_design_core_panel <- function(prefix, selected_names, all_names =
         selectInput(
           paste0(prefix, "_strata"),
           complex_sample_ui_text("strata", language),
-          choices = complex_sample_design_choices(selected_names, all_names, variable_table, labels, analysis_allowed_measurements_all(), language),
+          choices = complex_sample_design_role_choices("strata", selected_names, all_names, variable_table, labels, language),
           selected = complex_sample_selected_value(selected, paste0(prefix, "_strata"), defaults[[paste0(prefix, "_strata")]] %||% ""),
           selectize = FALSE
         ),
         selectInput(
           paste0(prefix, "_cluster"),
           complex_sample_ui_text("cluster", language),
-          choices = complex_sample_design_choices(selected_names, all_names, variable_table, labels, analysis_allowed_measurements_all(), language),
+          choices = complex_sample_design_role_choices("cluster", selected_names, all_names, variable_table, labels, language),
           selected = complex_sample_selected_value(selected, paste0(prefix, "_cluster"), defaults[[paste0(prefix, "_cluster")]] %||% ""),
           selectize = FALSE
         ),
         selectInput(
           paste0(prefix, "_weight"),
           complex_sample_ui_text("weight", language),
-          choices = complex_sample_design_choices(selected_names, all_names, variable_table, labels, "continuous", language),
+          choices = complex_sample_design_role_choices("weight", selected_names, all_names, variable_table, labels, language),
           selected = complex_sample_selected_value(selected, paste0(prefix, "_weight"), defaults[[paste0(prefix, "_weight")]] %||% ""),
           selectize = FALSE
         ),

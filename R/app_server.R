@@ -62,16 +62,24 @@ create_app_server <- function(app_version) {
     ""
   }
 
-  active_app_language <- reactiveVal(statedu_initial_language())
+  # Keep the mutable session language separate from bootstrap hints. URL and
+  # client inputs choose the initial language only; after the user changes it,
+  # this reactive value is the single authoritative source for the session.
+  active_app_language <- reactiveVal("")
   active_result_zoom <- reactiveVal(statedu_initial_result_zoom())
 
   app_language <- reactive({
-    selected <- first_nonempty(
-      input$statedu_url_language,
-      statedu_query_value(session$clientData$url_search %||% "", "lang"),
-      active_app_language(),
-      input$app_language
-    )
+    active_language <- active_app_language()
+    selected <- if (nzchar(active_language)) {
+      active_language
+    } else {
+      first_nonempty(
+        input$statedu_url_language,
+        statedu_query_value(session$clientData$url_search %||% "", "lang"),
+        input$app_language,
+        statedu_initial_language()
+      )
+    }
     language <- normalize_app_language(selected)
     options(statedu.app_language = language)
     language
@@ -90,7 +98,9 @@ create_app_server <- function(app_version) {
   })
 
   observeEvent(input$apply_app_language, {
-    selected <- normalize_app_language(input$app_language %||% app_language())
+    apply_request <- as.character(input$apply_app_language %||% "")
+    requested_language <- strsplit(apply_request, ":", fixed = TRUE)[[1]][[1]] %||% ""
+    selected <- normalize_app_language(first_nonempty(requested_language, input$app_language, app_language()))
     active_app_language(selected)
     options(statedu.app_language = selected)
     statedu_write_persisted_language(selected)

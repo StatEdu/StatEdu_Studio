@@ -129,10 +129,17 @@ assert_contains(ui_helpers, "window.easyflowSupportedLanguages", "client support
 assert_contains(easyflow_js, "window.easyflowSupportedLanguages || ['ko', 'en']", "client dynamic supported language fallback")
 assert_contains(easyflow_js, "return easyflowNavigateToLanguage(language, true);", "language apply reloads the complete UI")
 assert_contains(easyflow_js, "window.location.replace(nextHref);", "language change navigates to the translated session")
+assert_contains(easyflow_js, "target && target.id === 'app_language'", "preferences language selector triggers language application")
+assert_contains(app_server, 'requested_language <- strsplit(apply_request, ":", fixed = TRUE)[[1]][[1]]', "language apply event carries the authoritative selected language")
 assert_contains(
   app_server,
-  "input$statedu_url_language,\n      statedu_query_value(session$clientData$url_search %||% \"\", \"lang\"),\n      active_app_language(),\n      input$app_language",
-  "confirmed URL and active language take priority over the transient selector value"
+  'active_app_language <- reactiveVal("")',
+  "session language starts unset so bootstrap hints can initialize it"
+)
+assert_contains(
+  app_server,
+  "selected <- if (nzchar(active_language)) {\n      active_language",
+  "confirmed session language takes priority over bootstrap URL and selector hints"
 )
 assert_contains(easyflow_js, "function easyflowApplyResultZoomValue(value)", "client result zoom application")
 assert_contains(easyflow_js, "statedu-apply-result-zoom", "client result zoom custom message")
@@ -148,6 +155,10 @@ message("Checking Data tab step controls contract...")
 assert_contains(data_ui_steps, "step2_selection_controls <- function()", "Step 2 selection controls helper")
 assert_contains(data_ui_steps, "actionButton(\"apply_variable_selection\"", "Step 2 apply button")
 assert_contains(data_ui_steps, "actionButton(\"apply_bulk_measurement_type\"", "Step 2 bulk measurement apply button")
+assert_contains(css, "grid-template-columns: minmax(0, 1fr);", "Step 2 selection actions use a language-safe full-width stack")
+assert_contains(css, ".step-block .bulk-measurement-action .btn {\n  align-items: center;", "Step 2 selection action buttons share alignment")
+assert_contains(css, "overflow-wrap: anywhere;", "Step 2 translated action labels stay inside their buttons")
+assert_contains(data_ui_steps, 'selected = "whitespace",\n              width = "100%"', "DAT delimiter control matches the Step 1 control width")
 assert_contains(data_ui_steps, "else if (identical(step, \"step2\") || !isTRUE(applied))", "Step 2 controls stay visible before selection is applied")
 
 message("Checking shared Data Editor geometry contract...")

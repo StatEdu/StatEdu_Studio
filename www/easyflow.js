@@ -525,6 +525,16 @@
         return easyflowApplyLanguageValue(language);
       };
 
+      if (!window.easyflowAppLanguageChangeBound) {
+        window.easyflowAppLanguageChangeBound = true;
+        document.addEventListener('change', function(event) {
+          var target = event.target;
+          if (target && target.id === 'app_language') {
+            window.easyflowApplyAppLanguage();
+          }
+        });
+      }
+
       easyflowSetCurrentLanguage(easyflowUrlLanguage());
       easyflowApplyResultZoomValue(easyflowInitialResultZoom());
       easyflowScheduleStaticLanguageLabels();

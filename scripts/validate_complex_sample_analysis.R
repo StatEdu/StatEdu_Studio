@@ -56,6 +56,26 @@ complex_input <- function() {
 }
 
 message("Checking complex-sample setup input IDs...")
+candidate_info <- data.frame(
+  name = c("outcome", "plain_id", "design_stratum", "survey_psu", "sample_weight", "rep_weight_1"),
+  var_label = c("Outcome", "Identifier", "Stratification variable", "Primary sampling unit", "Sampling weight", "Replicate weight"),
+  measurement = c("continuous", "category", "category", "category", "continuous", "continuous"),
+  stringsAsFactors = FALSE
+)
+strata_choices <- unname(complex_sample_design_role_choices(
+  "strata", "outcome", candidate_info$name, candidate_info, language = "en"
+))
+cluster_choices <- unname(complex_sample_design_role_choices(
+  "cluster", "outcome", candidate_info$name, candidate_info, language = "en"
+))
+weight_choices <- unname(complex_sample_design_role_choices(
+  "weight", "outcome", candidate_info$name, candidate_info, language = "en"
+))
+expect_true(identical(strata_choices[1:2], c("", "design_stratum")), "Strata candidates must appear first in the design-variable list.")
+expect_true(identical(cluster_choices[1:2], c("", "survey_psu")), "Cluster / PSU candidates must appear first in the design-variable list.")
+expect_true(identical(weight_choices[1:2], c("", "sample_weight")), "Sampling-weight candidates must appear first in the design-variable list.")
+expect_true(!identical(weight_choices[[2]], "rep_weight_1"), "Replicate weights must not be promoted as sampling-weight candidates.")
+
 setup_html <- render_text(complex_sample_setup_panel(
   prefix = "complex_frequency",
   selected_names = c("x", "g", "psu", "wt"),

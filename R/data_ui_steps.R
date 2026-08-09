@@ -358,7 +358,8 @@ data_steps_panel <- function(
               "dat_delimiter",
               statedu_t("data.dat_delimiter", language),
               choices = dat_delimiter_choices(language),
-              selected = "whitespace"
+              selected = "whitespace",
+              width = "100%"
             ),
             checkboxInput("dat_has_names", statedu_t("data.dat_first_row_names", language), FALSE)
           )

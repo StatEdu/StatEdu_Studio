@@ -612,11 +612,31 @@ body.statedu-excel-import-review-visible .recalculating {
 
 .bulk-measurement-action {
   clear: both;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: minmax(0, 1fr);
   margin-top: 8px;
+  width: 100%;
 }
 
-.bulk-measurement-action .btn {
-  margin-top: 0;
+.step-block .bulk-measurement-action .btn {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  line-height: 1.3;
+  margin: 0;
+  min-height: var(--se-control-height);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding: 8px 12px;
+  text-align: center;
+  white-space: normal;
+  width: 100%;
+}
+
+#dat_delimiter,
+#dat_delimiter + .selectize-control {
+  width: 100% !important;
 }
 
 .step-block .btn {
