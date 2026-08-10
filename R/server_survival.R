@@ -261,6 +261,12 @@ register_survival_handlers <- function(
     }
   })
 
+  output$survival_cox_forest_plot <- renderPlot({
+    result <- cox_result()
+    shiny::req(!is.null(result))
+    print(survival_cox_ggplot(result, "color"))
+  }, res = 160)
+
   output$survival_km_reset_control <- renderUI({
     analysis_reset_button("reset_survival_km", enabled = !is.null(km_result()))
   })
@@ -492,7 +498,17 @@ register_survival_handlers <- function(
       included_features = c("figure")
     )
   })
-  output$survival_cox_save_control <- renderUI(NULL)
+  output$survival_cox_save_control <- renderUI({
+    result <- cox_result()
+    if (is.null(result)) {
+      return(NULL)
+    }
+    analysis_save_buttons(
+      figure_button_id = "save_survival_cox_figures_dialog",
+      has_figures = TRUE,
+      included_features = c("figure")
+    )
+  })
 
   observeEvent(input$save_survival_km_figures_dialog, {
     result <- km_result()
@@ -505,6 +521,29 @@ register_survival_handlers <- function(
     tryCatch(
       {
         saved <- save_survival_km_figures_to_dir(result, directory)
+        if (length(saved) == 0) {
+          showNotification(statedu_t("result.no_figures_selected", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
+          return(invisible(NULL))
+        }
+        showNotification(sprintf(statedu_t("result.figures_saved", statedu_current_language(app_language_fn)), length(saved), directory), type = "message")
+      },
+      error = function(e) {
+        showNotification(paste(statedu_t("result.figures_save_failed", statedu_current_language(app_language_fn)), conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$save_survival_cox_figures_dialog, {
+    result <- cox_result()
+    shiny::req(!is.null(result))
+    directory <- choose_figure_save_dir()
+    if (length(directory) == 0 || !nzchar(directory[[1]])) {
+      showNotification(statedu_t("result.folder_dialog_canceled", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
+      return(invisible(NULL))
+    }
+    tryCatch(
+      {
+        saved <- save_survival_cox_figures_to_dir(result, directory)
         if (length(saved) == 0) {
           showNotification(statedu_t("result.no_figures_selected", statedu_current_language(app_language_fn)), type = "warning", duration = 5)
           return(invisible(NULL))

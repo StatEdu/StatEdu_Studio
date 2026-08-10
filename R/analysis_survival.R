@@ -652,6 +652,29 @@ survival_cox_formula <- function(time, event, covariates) {
   stats::as.formula(sprintf("survival::Surv(`%s`, `%s`) ~ %s", time, event, rhs))
 }
 
+survival_cox_model_tests <- function(fit_summary) {
+  tests <- list(
+    `Likelihood ratio` = fit_summary$logtest,
+    Wald = fit_summary$waldtest,
+    Score = fit_summary$sctest
+  )
+  rows <- lapply(names(tests), function(name) {
+    test <- tests[[name]]
+    if (is.null(test) || length(test) < 3L) return(NULL)
+    data.frame(
+      Test = name,
+      Chisq = unname(test[["test"]] %||% test[[1]]),
+      df = unname(test[["df"]] %||% test[[2]]),
+      p = unname(test[["pvalue"]] %||% test[[3]]),
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+  })
+  rows <- Filter(Negate(is.null), rows)
+  if (length(rows) == 0) return(data.frame())
+  do.call(rbind, rows)
+}
+
 prepare_cox_analysis_result <- function(data, time, event, covariates, event_value = "1", variable_info = NULL) {
   time <- as.character(time %||% character(0))
   event <- as.character(event %||% character(0))
@@ -666,8 +689,9 @@ prepare_cox_analysis_result <- function(data, time, event, covariates, event_val
   model_data <- survival_analysis_data(data, time, event, event_value, covariates = covariates, variable_info = variable_info)
   formula <- survival_cox_formula(time, event, covariates)
   fit <- survival::coxph(formula, data = model_data, x = TRUE)
-  coef_summary <- summary(fit)$coefficients
-  ci <- summary(fit)$conf.int
+  fit_summary <- summary(fit)
+  coef_summary <- fit_summary$coefficients
+  ci <- fit_summary$conf.int
   coef_table <- data.frame(
     Term = rownames(coef_summary),
     B = coef_summary[, "coef"],
@@ -689,7 +713,7 @@ prepare_cox_analysis_result <- function(data, time, event, covariates, event_val
   } else {
     data.frame()
   }
-  concordance <- summary(fit)$concordance
+  concordance <- fit_summary$concordance
   list(
     type = "cox",
     fit = fit,
@@ -705,6 +729,33 @@ prepare_cox_analysis_result <- function(data, time, event, covariates, event_val
     ph = ph,
     ph_table = ph_table,
     concordance = concordance,
+    model_tests = survival_cox_model_tests(fit_summary),
     packages = package_version_label("survival")
   )
+}
+
+survival_cox_ggplot <- function(result, figure_version = "color") {
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("Package 'ggplot2' is required for Cox forest plot.")
+  }
+  table <- result$coef_table
+  if (!is.data.frame(table) || nrow(table) == 0) return(NULL)
+  table$Term <- factor(table$Term, levels = rev(table$Term))
+  figure_version <- as.character(figure_version %||% "color")[[1]]
+  point_color <- if (identical(figure_version, "bw")) "#111111" else "#1F77B4"
+  p <- ggplot2::ggplot(table, ggplot2::aes(x = HR, y = Term)) +
+    ggplot2::geom_vline(xintercept = 1, linetype = "dashed", color = "#777777", linewidth = 0.55) +
+    ggplot2::geom_errorbar(ggplot2::aes(xmin = LLCI, xmax = ULCI), orientation = "y", width = 0.2, color = point_color, linewidth = 0.75) +
+    ggplot2::geom_point(size = 3, color = point_color) +
+    ggplot2::scale_x_log10() +
+    ggplot2::labs(x = "Hazard Ratio (95% CI)", y = NULL) +
+    ggplot2::theme_classic(base_size = 12) +
+    ggplot2::theme(
+      axis.line = ggplot2::element_line(linewidth = 0.45, colour = "#111111"),
+      axis.ticks = ggplot2::element_line(linewidth = 0.45, colour = "#111111"),
+      axis.title = ggplot2::element_text(size = 12, colour = "#111111"),
+      axis.text = ggplot2::element_text(size = 10.5, colour = "#111111"),
+      plot.margin = ggplot2::margin(8, 12, 8, 8)
+    )
+  p
 }

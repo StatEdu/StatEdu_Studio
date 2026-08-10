@@ -151,6 +151,22 @@ stopifnot(identical(cox$type, "cox"))
 stopifnot(nrow(cox$coef_table) > 0)
 stopifnot(is.data.frame(survival_cox_coef_table(cox)))
 stopifnot(is.data.frame(survival_ph_table(cox)))
+stopifnot(is.data.frame(cox$model_tests))
+stopifnot(nrow(cox$model_tests) == 3)
+stopifnot(inherits(survival_cox_ggplot(cox, "color"), "ggplot"))
+cox_overview <- survival_cox_overview_table(cox)
+stopifnot("LR chi-square (df)" %in% cox_overview$Item)
+stopifnot("Concordance (95% CI)" %in% cox_overview$Item)
+cox_tests <- survival_cox_model_test_table(cox)
+stopifnot(nrow(cox_tests) == 3)
+cox_panel <- htmltools::renderTags(survival_cox_results_panel(cox))$html
+stopifnot(grepl("Hazard ratio forest plot", cox_panel, fixed = TRUE))
+cox_figure_dir <- tempfile("statedu_cox_figures_")
+dir.create(cox_figure_dir)
+cox_figures <- save_survival_cox_figures_to_dir(cox, cox_figure_dir)
+stopifnot(length(cox_figures) == 2)
+stopifnot(all(file.exists(cox_figures)))
+unlink(cox_figure_dir, recursive = TRUE)
 
 expected_cox <- survival::coxph(survival::Surv(time, status == 2) ~ age + sex, data = lung, x = TRUE)
 expected_cox_summary <- summary(expected_cox)
@@ -171,6 +187,21 @@ for (term in rownames(expected_ph_table)) {
     expect_close(actual_row[[column]], expected_ph_table[term, column], label = paste(term, column))
   }
 }
+
+for (test_name in c("Likelihood ratio", "Wald", "Score")) {
+  expected_test <- switch(test_name,
+    `Likelihood ratio` = expected_cox_summary$logtest,
+    Wald = expected_cox_summary$waldtest,
+    Score = expected_cox_summary$sctest
+  )
+  actual_row <- cox$model_tests[cox$model_tests$Test == test_name, , drop = FALSE]
+  stopifnot(nrow(actual_row) == 1)
+  expect_close(actual_row$Chisq, expected_test[["test"]], label = paste(test_name, "chi-square"))
+  expect_close(actual_row$df, expected_test[["df"]], label = paste(test_name, "df"))
+  expect_close(actual_row$p, expected_test[["pvalue"]], label = paste(test_name, "p"))
+}
+expect_close(cox$concordance[[1]], expected_cox_summary$concordance[[1]], label = "C-index")
+expect_close(cox$concordance[[2]], expected_cox_summary$concordance[[2]], label = "C-index SE")
 
 message("Checking figure DPI policy...")
 stopifnot(analysis_figure_dpi(edition = "pro", public_release = FALSE) == 600L)

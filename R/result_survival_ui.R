@@ -503,10 +503,40 @@ survival_km_results_panel <- function(result, plot_output_ids = "survival_km_plo
 
 survival_cox_overview_table <- function(result) {
   concordance <- result$concordance
-  c_index <- if (length(concordance) >= 1L) survival_format_number(concordance[[1]]) else ""
+  c_value <- if (length(concordance) >= 1L) suppressWarnings(as.numeric(concordance[[1]])) else NA_real_
+  c_se <- if (length(concordance) >= 2L) suppressWarnings(as.numeric(concordance[[2]])) else NA_real_
+  c_index <- if (is.finite(c_value) && is.finite(c_se)) {
+    lower <- max(0, c_value - 1.96 * c_se)
+    upper <- min(1, c_value + 1.96 * c_se)
+    sprintf("%s %s", survival_format_number(c_value), survival_format_ci(lower, upper))
+  } else if (is.finite(c_value)) {
+    survival_format_number(c_value)
+  } else {
+    ""
+  }
+  model_tests <- result$model_tests
+  likelihood <- if (is.data.frame(model_tests) && nrow(model_tests) > 0) {
+    model_tests[model_tests$Test == "Likelihood ratio", , drop = FALSE]
+  } else {
+    data.frame()
+  }
+  lr_chisq <- if (nrow(likelihood) > 0) sprintf("%s (%s)", survival_format_number(likelihood$Chisq[[1]]), as.character(likelihood$df[[1]])) else ""
+  lr_p <- if (nrow(likelihood) > 0) survival_p(likelihood$p[[1]]) else ""
   data.frame(
-    Item = c("N", "Events", "Concordance", "Package"),
-    Value = c(result$n, result$events, c_index, result$packages),
+    Item = c("N", "Events", "LR chi-square (df)", "LR p", "Concordance (95% CI)", "Package"),
+    Value = c(result$n, result$events, lr_chisq, lr_p, c_index, result$packages),
+    stringsAsFactors = FALSE
+  )
+}
+
+survival_cox_model_test_table <- function(result) {
+  table <- result$model_tests
+  if (!is.data.frame(table) || nrow(table) == 0) return(data.frame())
+  data.frame(
+    Test = table$Test,
+    `Chi-square (df)` = sprintf("%s (%s)", vapply(table$Chisq, survival_format_number, character(1)), as.character(table$df)),
+    p = vapply(table$p, survival_p, character(1)),
+    check.names = FALSE,
     stringsAsFactors = FALSE
   )
 }
@@ -553,6 +583,14 @@ survival_cox_results_panel <- function(result) {
     div(class = "result-section regression-result-panel survival-result-panel",
       h3(survival_ui_text("Cox Regression")),
       survival_simple_table(survival_cox_coef_table(result))
+    ),
+    div(class = "result-section regression-result-panel survival-result-panel",
+      h3("Model tests"),
+      survival_simple_table(survival_cox_model_test_table(result))
+    ),
+    div(class = "result-section regression-result-panel survival-result-panel survival-plot-result-panel",
+      h3("Hazard ratio forest plot"),
+      plotOutput("survival_cox_forest_plot", height = "420px")
     ),
     div(class = "result-section regression-result-panel survival-result-panel",
       h3(survival_ui_text("PH assumption")),
