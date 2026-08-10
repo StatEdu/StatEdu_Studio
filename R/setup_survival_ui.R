@@ -178,7 +178,7 @@ survival_km_setup_panel <- function(
         allowed_measurements = c("binary", "category", "ordered", "continuous"),
         extra_content = div(
           class = "survival-target-setting",
-          textInput("survival_km_event_value", survival_ui_text("Event value", language), value = event_value)
+          textInput("survival_km_event_value", survival_ui_text("Event value", language), value = event_value, placeholder = survival_ui_text("Event value placeholder", language))
         )
       ),
       survival_target_panel(
@@ -309,7 +309,7 @@ survival_cox_setup_panel <- function(
         allowed_measurements = c("binary", "category", "ordered", "continuous"),
         extra_content = div(
           class = "survival-target-setting",
-          textInput("survival_cox_event_value", survival_ui_text("Event value", language), value = event_value)
+          textInput("survival_cox_event_value", survival_ui_text("Event value", language), value = event_value, placeholder = survival_ui_text("Event value placeholder", language))
         )
       ),
       survival_target_panel(

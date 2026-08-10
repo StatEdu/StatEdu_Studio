@@ -12,6 +12,10 @@ source_app_modules()
 
 message("Checking Kaplan-Meier analysis...")
 lung <- read.csv(file.path(repo_root, "sample", "survival_examples", "survival_lung.csv"), check.names = FALSE)
+stopifnot(identical(survival_example_event_value(list(name = "survival_lung.csv"), "status"), "2"))
+stopifnot(identical(survival_example_event_value(list(name = "survival_pbc.csv"), "status"), "2"))
+stopifnot(identical(survival_example_event_value(list(name = "study_data.csv"), "status"), ""))
+
 km <- prepare_km_analysis_result(
   data = lung,
   time = "time",

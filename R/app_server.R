@@ -1797,6 +1797,7 @@ create_app_server <- function(app_version) {
     labels_fn = var_label_overrides,
     category_table_fn = category_label_values,
     mark_settings_dirty = mark_settings_dirty,
+    current_data_file_fn = current_data_file,
     app_language_fn = app_language
   )
 

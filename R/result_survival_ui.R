@@ -99,10 +99,14 @@ survival_km_level_label <- function(value, group = "") {
 }
 
 survival_median_ci_text <- function(median, lower, upper) {
-  median_text <- survival_format_number(median)
+  median_num <- suppressWarnings(as.numeric(median))
+  median_text <- if (length(median_num) > 0 && is.finite(median_num)) survival_format_number(median_num) else "NR"
   ci_text <- survival_format_ci(lower, upper)
   if (!nzchar(ci_text)) {
     return(median_text)
+  }
+  if (identical(median_text, "NR") && identical(ci_text, "(NE-NE)")) {
+    return("NR")
   }
   paste0(median_text, "\u00A0", ci_text)
 }
@@ -181,11 +185,16 @@ survival_km_posthoc_p_matrix <- function(item) {
     if (!nzchar(level)) return(level)
     survival_km_level_label(level, group)
   }
+  has_direct_groups <- all(c("Group1", "Group2") %in% names(posthoc))
   for (row_index in seq_len(nrow(posthoc))) {
-    parts <- trimws(strsplit(as.character(posthoc$Comparison[[row_index]] %||% ""), "\\s+vs\\s+", perl = TRUE)[[1]])
-    if (length(parts) != 2L) next
-    first <- display_level(parts[[1]])
-    second <- display_level(parts[[2]])
+    first <- if (has_direct_groups) display_level(posthoc$Group1[[row_index]]) else character(0)
+    second <- if (has_direct_groups) display_level(posthoc$Group2[[row_index]]) else character(0)
+    if (!nzchar(first) || !nzchar(second)) {
+      parts <- trimws(strsplit(as.character(posthoc$Comparison[[row_index]] %||% ""), "\\s+vs\\s+", perl = TRUE)[[1]])
+      if (length(parts) != 2L) next
+      first <- display_level(parts[[1]])
+      second <- display_level(parts[[2]])
+    }
     if (!all(c(first, second) %in% strata)) next
     p_value <- suppressWarnings(as.numeric(posthoc$p_adjusted[[row_index]] %||% posthoc$p[[row_index]]))
     if (!is.finite(p_value)) next
@@ -447,7 +456,7 @@ survival_km_results_panel <- function(result, plot_output_ids = "survival_km_plo
     div(class = "result-section regression-result-panel survival-result-panel survival-wide-result-panel",
       h3(survival_ui_text("Kaplan-Meier survival time summary", language)),
       survival_simple_table(km_summary),
-      survival_table_note("M = mean; SE = standard error; CI = confidence interval; NE = not estimable.")
+      survival_table_note("M = mean; SE = standard error; CI = confidence interval; NE = not estimable; NR = not reached.")
     ),
     if ("survival_table" %in% output_tables && nrow(rate_summary) > 0) {
       div(class = "result-section regression-result-panel survival-result-panel survival-wide-result-panel",

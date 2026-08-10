@@ -10,6 +10,7 @@ survival_ui_text <- function(text, language = statedu_initial_language()) {
     "time variable" = c(en = "Time variable", ko = "생존시간 변수"),
     "event variable" = c(en = "Event variable", ko = "사건 변수"),
     "event value" = c(en = "Event value", ko = "사건값"),
+    "event value placeholder" = c(en = "Check event coding, e.g., 1 or 2", ko = "사건 코딩 확인: 예 1 또는 2"),
     "group variable" = c(en = "Group variable", ko = "집단 변수"),
     "no group" = c(en = "No group", ko = "집단 없음"),
     "covariates" = c(en = "Covariates", ko = "공변량"),
@@ -75,6 +76,27 @@ survival_parse_event <- function(values, event_value = "1") {
     return(!is.na(numeric_values) & numeric_values > 0)
   }
   values_chr == event_chr
+}
+
+survival_example_event_value <- function(file = NULL, event = "", guide_path = file.path("sample", "survival_examples", "survival_examples_guide.csv")) {
+  event <- trimws(as.character(event %||% ""))
+  if (!nzchar(event) || !is.list(file)) {
+    return("")
+  }
+  file_name <- basename(as.character(file$name %||% file$path %||% ""))
+  if (!nzchar(file_name) || !file.exists(guide_path)) {
+    return("")
+  }
+  guide <- tryCatch(utils::read.csv(guide_path, stringsAsFactors = FALSE, check.names = FALSE), error = function(e) NULL)
+  if (!is.data.frame(guide) || !all(c("file", "event_variable", "event_value") %in% names(guide))) {
+    return("")
+  }
+  matched <- guide[tolower(as.character(guide$file)) == tolower(file_name) & as.character(guide$event_variable) == event, , drop = FALSE]
+  if (nrow(matched) == 0) {
+    return("")
+  }
+  value <- trimws(as.character(matched$event_value[[1]] %||% ""))
+  if (nzchar(value)) value else ""
 }
 
 survival_analysis_data <- function(data, time, event, event_value = "1", group = "", covariates = character(0), variable_info = NULL) {
@@ -240,7 +262,7 @@ survival_life_table <- function(data, time, event, group = "", breaks = numeric(
       start <- breaks[[index]]
       end <- breaks[[index + 1L]]
       in_interval <- group_data[[time]] > start & group_data[[time]] <= end
-      at_risk <- sum(group_data[[time]] > start)
+      at_risk <- if (start == 0) sum(group_data[[time]] >= 0) else sum(group_data[[time]] > start)
       events <- sum(in_interval & group_data[[event]], na.rm = TRUE)
       censored <- sum(in_interval & !group_data[[event]], na.rm = TRUE)
       effective <- at_risk - censored / 2
@@ -444,6 +466,8 @@ survival_km_posthoc_table <- function(data, time, event, group, formula, test_me
         if (is.null(test)) return(NULL)
         data.frame(
           Comparison = paste(pair, collapse = " vs "),
+          Group1 = pair[[1]],
+          Group2 = pair[[2]],
           Chisq = unname(test$chisq),
           df = test$df,
           p = test$p,

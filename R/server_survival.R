@@ -10,6 +10,7 @@ register_survival_handlers <- function(
   labels_fn,
   category_table_fn,
   mark_settings_dirty,
+  current_data_file_fn = NULL,
   app_language_fn = NULL
 ) {
   km_result <- reactiveVal(NULL)
@@ -21,10 +22,14 @@ register_survival_handlers <- function(
   km_output_tables <- reactiveVal(c("survival_table", "survival_time"))
   km_plot_types <- reactiveVal(c("survival", "event", "cumhaz", "log_survival"))
   km_plot_versions <- reactiveVal("color")
+  km_event_value <- reactiveVal("1")
+  km_event_default_key <- reactiveVal("")
   cox_time <- reactiveVal(character(0))
   cox_event <- reactiveVal(character(0))
   cox_covariates <- reactiveVal(character(0))
   cox_active_list <- reactiveVal("survival_cox_available")
+  cox_event_value <- reactiveVal("1")
+  cox_event_default_key <- reactiveVal("")
 
   normalize_selected <- function(values) {
     intersect(as.character(values %||% character(0)), survival_selected_names(selected_names_fn()))
@@ -81,9 +86,49 @@ register_survival_handlers <- function(
     changed
   }
 
+  current_survival_data_file <- function() {
+    if (is.function(current_data_file_fn)) current_data_file_fn() else NULL
+  }
+
+  apply_example_event_default <- function(event_target, value_target, key_target, input_id) {
+    event <- as.character(event_target() %||% character(0))
+    event <- event[!is.na(event) & nzchar(event)]
+    event <- if (length(event) > 0) event[[1]] else ""
+    file <- current_survival_data_file()
+    file_name <- basename(as.character((file %||% list())$name %||% (file %||% list())$path %||% ""))
+    key <- paste(file_name, event, sep = "\r")
+    if (identical(key_target(), key)) {
+      return(invisible(FALSE))
+    }
+    key_target(key)
+    suggested <- survival_example_event_value(file, event)
+    if (!nzchar(suggested)) {
+      return(invisible(FALSE))
+    }
+    value_target(suggested)
+    updateTextInput(session, input_id, value = suggested)
+    invisible(TRUE)
+  }
+
   observeEvent(input$survival_km_output_tables, {
     km_output_tables(as.character(input$survival_km_output_tables %||% character(0)))
   }, ignoreInit = TRUE, ignoreNULL = FALSE)
+
+  observeEvent(input$survival_km_event_value, {
+    km_event_value(as.character(input$survival_km_event_value %||% ""))
+  }, ignoreInit = TRUE, ignoreNULL = FALSE)
+
+  observeEvent(input$survival_cox_event_value, {
+    cox_event_value(as.character(input$survival_cox_event_value %||% ""))
+  }, ignoreInit = TRUE, ignoreNULL = FALSE)
+
+  observe({
+    apply_example_event_default(km_event, km_event_value, km_event_default_key, "survival_km_event_value")
+  })
+
+  observe({
+    apply_example_event_default(cox_event, cox_event_value, cox_event_default_key, "survival_cox_event_value")
+  })
 
   observeEvent(input$survival_km_plot_types, {
     km_plot_types(as.character(input$survival_km_plot_types %||% character(0)))
@@ -112,7 +157,7 @@ register_survival_handlers <- function(
       time = km_time(),
       event = km_event(),
       group = km_group(),
-      event_value = as.character(input$survival_km_event_value %||% "1"),
+      event_value = as.character(km_event_value() %||% "1"),
       rate_times = as.character(input$survival_km_rate_times %||% ""),
       analysis_method = as.character(input$survival_km_analysis_method %||% "km"),
       test_method = as.character(input$survival_km_test_method %||% "logrank"),
@@ -146,7 +191,7 @@ register_survival_handlers <- function(
       time = cox_time(),
       event = cox_event(),
       covariates = cox_covariates(),
-      event_value = as.character(input$survival_cox_event_value %||% "1"),
+      event_value = as.character(cox_event_value() %||% "1"),
       variable_table = variable_table_fn(),
       labels = labels_fn(),
       selected_available = isolate(input$survival_cox_available),
@@ -395,7 +440,7 @@ register_survival_handlers <- function(
           time = km_time(),
           event = km_event(),
           group = km_group(),
-          event_value = input$survival_km_event_value,
+          event_value = km_event_value(),
           rate_times = input$survival_km_rate_times,
           analysis_method = input$survival_km_analysis_method,
           test_method = input$survival_km_test_method,
@@ -423,7 +468,7 @@ register_survival_handlers <- function(
           time = cox_time(),
           event = cox_event(),
           covariates = cox_covariates(),
-          event_value = input$survival_cox_event_value,
+          event_value = cox_event_value(),
           variable_info = variable_table_fn()
         )
         cox_result(result)
