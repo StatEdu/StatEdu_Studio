@@ -81,7 +81,7 @@ calculated_variable_info_row <- function(
 
 create_data_reactives <- function(input, active_data_file, calculated_variables = NULL, renamed_variables = NULL, user_missing_rules = NULL) {
   current_data_file <- reactive({
-    current_data_file_value(input$file, active_data_file())
+    current_data_file_value(isolate(input$file), active_data_file())
   })
 
   source_dataset <- reactive({

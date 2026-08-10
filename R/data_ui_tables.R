@@ -509,6 +509,7 @@ variable_table_callback_script <- function(language = statedu_initial_language()
   asc_label <- statedu_t("data.table_asc", language)
   desc_label <- statedu_t("data.table_desc", language)
   script <- "
+        var easyflowCallbackStart = window.performance ? window.performance.now() : Date.now();
         var selected = __SELECTED_NAMES__;
         var dependentOnly = __DEPENDENT_ONLY__;
         var singleSelectRole = __SINGLE_SELECT_ROLE__;
@@ -954,6 +955,27 @@ variable_table_callback_script <- function(language = statedu_initial_language()
         refreshVariableChecks();
         scheduleVariableTablePageRestore();
         syncVariableSelection();
+        if (window.Shiny) {
+          var reportVariableTableTiming = function() {
+            var now = window.performance ? window.performance.now() : Date.now();
+            var rowCount = 0;
+            var visibleCount = 0;
+            try { rowCount = table.rows().count(); } catch (e) {}
+            try { visibleCount = table.rows({page: 'current'}).count(); } catch (e) {}
+            Shiny.setInputValue('variable_table_client_timing', {
+              elapsed_ms: Math.max(0, now - easyflowCallbackStart),
+              rows: rowCount,
+              visible_rows: visibleCount,
+              compact: !table.page.info || !table.page.info().pages || table.page.info().pages <= 1,
+              nonce: Date.now() + Math.random()
+            }, {priority: 'event'});
+          };
+          if (window.requestAnimationFrame) {
+            window.requestAnimationFrame(function() { window.setTimeout(reportVariableTableTiming, 0); });
+          } else {
+            window.setTimeout(reportVariableTableTiming, 0);
+          }
+        }
         "
   script <- gsub("__HEADER_LABELS__", header_labels, script, fixed = TRUE)
   script <- gsub("__SELECTED_LABEL__", jsonlite::toJSON(selected_label, auto_unbox = TRUE), script, fixed = TRUE)

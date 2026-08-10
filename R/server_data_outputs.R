@@ -282,6 +282,7 @@ register_data_table_outputs <- function(
 }
 
 register_variable_table_output <- function(
+  input,
   output,
   current_data_file_fn,
   restored_variable_info_fn,
@@ -297,6 +298,21 @@ register_variable_table_output <- function(
   measurement_overrides_fn,
   app_language_fn = NULL
 ) {
+  observeEvent(input$variable_table_client_timing, {
+    timing <- input$variable_table_client_timing
+    elapsed_ms <- suppressWarnings(as.numeric(timing$elapsed_ms %||% NA_real_))
+    rows <- suppressWarnings(as.integer(timing$rows %||% NA_integer_))
+    visible_rows <- suppressWarnings(as.integer(timing$visible_rows %||% NA_integer_))
+    compact <- isTRUE(timing$compact)
+    message(sprintf(
+      "[StatEdu timing] client variable_table callback+paint: %.3fs rows=%s visible=%s compact=%s",
+      elapsed_ms / 1000,
+      ifelse(is.na(rows), "", rows),
+      ifelse(is.na(visible_rows), "", visible_rows),
+      compact
+    ))
+  }, ignoreInit = TRUE)
+
   output$variable_table <- DT::renderDT({
     start <- Sys.time()
     if (is.null(current_data_file_fn()) && is.null(restored_variable_info_fn())) {
