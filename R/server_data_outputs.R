@@ -178,8 +178,8 @@ register_data_table_outputs <- function(
         rownames = FALSE,
         colnames = data_table_colnames(names(table_state$table_data), language),
         escape = FALSE,
-        filter = "top",
-        options = variable_table_options(language),
+        filter = if (nrow(table_state$table_data) <= 20L) "none" else "top",
+        options = variable_table_options(language, compact = nrow(table_state$table_data) <= 20L),
         callback = variable_table_callback(
           selected_names = table_state$checked_names,
           dependent_only = FALSE,
@@ -325,13 +325,14 @@ register_variable_table_output <- function(
     language <- if (is.function(app_language_fn)) app_language_fn() else statedu_initial_language()
     checked_names <- table_state$checked_names
     table_data <- table_state$table_data
+    compact_table <- nrow(table_data) <= 20L
     out <- DT::datatable(
       table_data,
       rownames = FALSE,
       colnames = data_table_colnames(names(table_data), language),
       escape = FALSE,
-      filter = "top",
-      options = variable_table_options(language),
+      filter = if (isTRUE(compact_table)) "none" else "top",
+      options = variable_table_options(language, compact = compact_table),
       callback = variable_table_callback(
         selected_names = checked_names,
         dependent_only = isTRUE(selection_applied_fn()) && identical(active_role_fn(), "dependent"),
@@ -341,7 +342,7 @@ register_variable_table_output <- function(
     )
     statedu_log_timing("render variable_table", start, sprintf("rows=%s selection_applied=%s", nrow(table_data), isTRUE(selection_applied_fn())))
     out
-  })
+  }, server = FALSE)
 
   invisible(TRUE)
 }

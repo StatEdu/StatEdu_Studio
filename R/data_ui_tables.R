@@ -446,11 +446,23 @@ variable_label_input_renderer <- function() {
   )
 }
 
-variable_table_options <- function(language = statedu_initial_language()) {
-  with_datatable_language(list(
-    dom = '<"variable-table-top"lfp>rt<"variable-table-bottom"ip>',
-    pageLength = 20,
-    lengthMenu = c(10, 20, 50, 100),
+variable_table_options <- function(language = statedu_initial_language(), compact = FALSE) {
+  controls <- if (isTRUE(compact)) {
+    list(
+      dom = "t",
+      paging = FALSE,
+      lengthChange = FALSE,
+      searching = FALSE,
+      info = FALSE
+    )
+  } else {
+    list(
+      dom = '<"variable-table-top"lfp>rt<"variable-table-bottom"ip>',
+      pageLength = 20,
+      lengthMenu = c(10, 20, 50, 100)
+    )
+  }
+  base_options <- list(
     deferRender = TRUE,
     searchDelay = 250,
     scrollX = TRUE,
@@ -461,7 +473,8 @@ variable_table_options <- function(language = statedu_initial_language()) {
       list(visible = FALSE, targets = 1),
       list(targets = 3, render = variable_label_input_renderer(), orderable = FALSE)
     )
-  ), language)
+  )
+  with_datatable_language(utils::modifyList(base_options, controls), language)
 }
 
 variable_table_callback <- function(
