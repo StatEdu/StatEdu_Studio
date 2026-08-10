@@ -151,8 +151,81 @@ normalize_text_encoding <- function(data) {
   data
 }
 
+csv_trim_sample_chunk <- function(bytes, trim_start = FALSE, trim_end = FALSE) {
+  if (length(bytes) == 0) {
+    return(bytes)
+  }
+  newline <- as.raw(0x0A)
+  if (isTRUE(trim_start)) {
+    first_newline <- which(bytes == newline)
+    if (length(first_newline) > 0 && first_newline[[1]] < length(bytes)) {
+      bytes <- bytes[(first_newline[[1]] + 1L):length(bytes)]
+    }
+  }
+  if (isTRUE(trim_end)) {
+    last_newline <- utils::tail(which(bytes == newline), 1)
+    if (length(last_newline) > 0 && last_newline[[1]] > 1L) {
+      bytes <- bytes[seq_len(last_newline[[1]])]
+    }
+  }
+  bytes
+}
+
+csv_encoding_candidates <- function(path) {
+  default_encodings <- c("UTF-8", "CP949", "EUC-KR", "latin1")
+  file_size <- suppressWarnings(file.info(path)$size)
+  if (!is.finite(file_size) || file_size <= 0) {
+    return(default_encodings)
+  }
+  chunk_size <- min(file_size, 256L * 1024L)
+  positions <- unique(pmax(0, c(
+    0,
+    floor(file_size / 2) - floor(chunk_size / 2),
+    file_size - chunk_size
+  )))
+  bytes <- tryCatch({
+    connection <- file(path, "rb")
+    on.exit(close(connection), add = TRUE)
+    chunks <- lapply(positions, function(position) {
+      seek(connection, where = position, origin = "start")
+      csv_trim_sample_chunk(
+        readBin(connection, what = "raw", n = chunk_size),
+        trim_start = position > 0,
+        trim_end = position + chunk_size < file_size
+      )
+    })
+    do.call(c, c(chunks, list(as.raw(0x0A))))
+  }, error = function(e) raw(0))
+  if (length(bytes) == 0) {
+    return(default_encodings)
+  }
+  if (length(bytes) >= 3L && identical(bytes[1:3], as.raw(c(0xEF, 0xBB, 0xBF)))) {
+    return(default_encodings)
+  }
+  sample_text <- tryCatch(rawToChar(bytes), error = function(e) "")
+  if (!nzchar(sample_text)) {
+    return(default_encodings)
+  }
+  scores <- vapply(default_encodings, function(encoding) {
+    converted <- suppressWarnings(iconv(sample_text, from = encoding, to = "UTF-8"))
+    if (length(converted) == 0 || is.na(converted[[1]])) {
+      return(-Inf)
+    }
+    invalid_count <- sum(is.na(suppressWarnings(iconv(converted, from = "", to = "UTF-8"))))
+    replacement_count <- sum(suppressWarnings(grepl("\uFFFD", converted, fixed = TRUE)))
+    latin1_positions <- suppressWarnings(gregexpr("[\u00A0-\u00FF]", converted)[[1]])
+    cjk_positions <- suppressWarnings(gregexpr("[\u3130-\u318F\uAC00-\uD7AF]", converted)[[1]])
+    latin1_supplement_count <- sum(latin1_positions > 0)
+    cjk_count <- sum(cjk_positions > 0)
+    (cjk_count * 10) - (invalid_count * 1000) - (replacement_count * 100) - (latin1_supplement_count * 4)
+  }, numeric(1))
+  ranked <- names(scores)[order(-scores, seq_along(scores))]
+  ranked <- ranked[is.finite(scores[ranked])]
+  unique(c(ranked, default_encodings))
+}
+
 read_csv_robust <- function(path, csv_header = TRUE) {
-  encodings <- c("UTF-8", "UTF-8-BOM", "CP949", "EUC-KR", "latin1")
+  encodings <- csv_encoding_candidates(path)
   best_result <- NULL
   best_score <- -Inf
   errors <- character(0)
@@ -161,11 +234,10 @@ read_csv_robust <- function(path, csv_header = TRUE) {
     result <- tryCatch(
       suppressWarnings(
         {
-          read_encoding <- if (identical(encoding, "UTF-8-BOM")) "UTF-8" else encoding
           readr::read_csv(
             path,
             col_names = csv_header,
-            locale = readr::locale(encoding = read_encoding),
+            locale = readr::locale(encoding = encoding),
             show_col_types = FALSE,
             progress = FALSE
           )
