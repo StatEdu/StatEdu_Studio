@@ -17,7 +17,7 @@ km <- prepare_km_analysis_result(
   time = "time",
   event = "status",
   group = c("sex", "ph.ecog"),
-  event_value = "1",
+  event_value = "2",
   rate_times = "100, 200, 400",
   test_method = "logrank",
   output_tables = c("survival_table", "survival_time"),
@@ -30,7 +30,7 @@ stopifnot(all(vapply(km$analyses, function(item) !is.null(item$fit), logical(1))
 
 km_table <- survival_km_summary_table(km)
 stopifnot(nrow(km_table) > 0)
-stopifnot("M ± SE" %in% names(km_table))
+stopifnot(paste("M", intToUtf8(177), "SE") %in% names(km_table))
 stopifnot("Median (95% CI)" %in% names(km_table))
 stopifnot("Chi-square (df)" %in% names(km_table))
 stopifnot(!("df" %in% names(km_table)))
@@ -46,13 +46,40 @@ km_panel <- htmltools::renderTags(survival_km_results_panel(km, plot_output_ids 
 stopifnot(grepl("Model overview", km_panel, fixed = TRUE))
 stopifnot(grepl("M = mean; SE = standard error", km_panel, fixed = TRUE))
 
+message("Checking ungrouped Kaplan-Meier and life-table analyses...")
+km_ungrouped <- prepare_km_analysis_result(
+  data = lung,
+  time = "time",
+  event = "status",
+  group = "",
+  event_value = "2",
+  rate_times = "100, 200, 400"
+)
+ungrouped_table <- survival_km_summary_table(km_ungrouped)
+stopifnot(identical(km_ungrouped$type, "km"))
+stopifnot(nrow(ungrouped_table) == 1)
+stopifnot(identical(ungrouped_table$Variables[[1]], "All"))
+stopifnot(identical(ungrouped_table$Level[[1]], "All"))
+
+life_ungrouped <- prepare_km_analysis_result(
+  data = lung,
+  time = "time",
+  event = "status",
+  group = "",
+  event_value = "2",
+  rate_times = "100, 200, 400",
+  analysis_method = "life_table"
+)
+stopifnot(identical(life_ungrouped$analysis_method, "life_table"))
+stopifnot(nrow(survival_life_table_display(life_ungrouped)) > 0)
+
 message("Checking Kaplan-Meier empty table/plot options...")
 km_empty_options <- prepare_km_analysis_result(
   data = lung,
   time = "time",
   event = "status",
   group = "sex",
-  event_value = "1",
+  event_value = "2",
   output_tables = character(0),
   plot_types = character(0),
   plot_versions = character(0)
@@ -73,7 +100,7 @@ cox <- prepare_cox_analysis_result(
   time = "time",
   event = "status",
   covariates = c("age", "sex"),
-  event_value = "1"
+  event_value = "2"
 )
 stopifnot(identical(cox$type, "cox"))
 stopifnot(nrow(cox$coef_table) > 0)

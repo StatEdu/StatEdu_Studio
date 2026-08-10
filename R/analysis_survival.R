@@ -178,7 +178,7 @@ survival_weighted_rank_test <- function(data, time, event, group, method = "logr
   group_values <- droplevels(as.factor(data[[group]]))
   levels <- levels(group_values)
   if (length(levels) < 2L) return(NULL)
-  times <- sort(unique(data[[time]][isTRUE(data[[event]]) | data[[event]]]))
+  times <- sort(unique(data[[time]][data[[event]]]))
   if (length(times) == 0) return(NULL)
   k <- length(levels)
   observed_minus_expected <- numeric(k)
@@ -584,16 +584,22 @@ prepare_km_analysis_result <- function(
 survival_km_median_table <- function(fit) {
   summary_table <- summary(fit)$table
   table <- as.data.frame(summary_table, stringsAsFactors = FALSE)
-  if (is.null(dim(summary_table))) {
+  single_stratum <- is.null(dim(summary_table))
+  if (isTRUE(single_stratum)) {
     table <- as.data.frame(t(summary_table), stringsAsFactors = FALSE)
   }
-  table$Strata <- rownames(table)
+  table$Strata <- if (isTRUE(single_stratum)) rep("All", nrow(table)) else rownames(table)
   rownames(table) <- NULL
   quantiles <- tryCatch(quantile(fit, probs = c(0.25, 0.5, 0.75)), error = function(e) NULL)
   add_quantile <- function(prob_label, column_name) {
     if (is.null(quantiles) || is.null(quantiles$quantile)) return(rep(NA_real_, nrow(table)))
-    values <- quantiles$quantile[, prob_label]
-    names(values) <- rownames(quantiles$quantile)
+    quantile_values <- quantiles$quantile
+    if (is.null(dim(quantile_values))) {
+      value <- unname(quantile_values[[prob_label]] %||% NA_real_)
+      return(rep(value, nrow(table)))
+    }
+    values <- quantile_values[, prob_label]
+    names(values) <- rownames(quantile_values)
     unname(values[table$Strata])
   }
   result <- data.frame(
