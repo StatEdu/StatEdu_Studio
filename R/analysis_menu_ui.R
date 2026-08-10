@@ -88,6 +88,8 @@ analysis_tab_panel <- function(analysis_tabs = enabled_analysis_tabs(), language
     if (isTRUE(analysis_tabs[["custom_model_canvas"]])) lazy_tab_panel(custom_model_canvas_title(language), "analysis_custom_model_canvas", "lazy_analysis_custom_model_canvas"),
     if (isTRUE(analysis_tabs[["generalized"]])) lazy_tab_panel(statedu_ui_label("glm", language), "Generalized Linear Model (GLM)", "lazy_analysis_generalized"),
     lazy_tab_panel(statedu_ui_label("logistic", language), "analysis_logistic_regression", "lazy_analysis_logistic"),
+    lazy_tab_panel(survival_ui_text("Kaplan-Meier", language), "analysis_survival_km", "lazy_analysis_survival_km"),
+    lazy_tab_panel(survival_ui_text("Cox Regression", language), "analysis_survival_cox", "lazy_analysis_survival_cox"),
     if (isTRUE(analysis_tabs[["longitudinal"]])) lazy_tab_panel(statedu_ui_label("longitudinal", language), "Longitudinal / Panel Models", "lazy_analysis_longitudinal"),
     lazy_tab_panel(complex_sample_ui_text("design_menu", language), "analysis_complex_design", "lazy_analysis_complex_design"),
     lazy_tab_panel(complex_sample_ui_text("frequencies", language), "analysis_complex_frequencies", "lazy_analysis_complex_frequencies"),

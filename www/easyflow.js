@@ -1617,6 +1617,8 @@
                 analysis_mediation_moderation: '\uB9E4\uAC1C\u00B7\uC870\uC808',
                 'Generalized Linear Model (GLM)': '\uC77C\uBC18\uD654 \uC120\uD615\uBAA8\uD615(GLM)',
                 analysis_logistic_regression: '\uB85C\uC9C0\uC2A4\uD2F1 \uD68C\uADC0',
+                analysis_survival_km: 'Kaplan-Meier',
+                analysis_survival_cox: 'Cox \uD68C\uADC0\uBD84\uC11D',
                 analysis_complex_design: '\uBCF5\uD569\uD45C\uBCF8 \uC124\uACC4\uBCC0\uC218',
                 analysis_complex_frequencies: '\uBCF5\uD569\uD45C\uBCF8 \uBE48\uB3C4\uBD84\uC11D / \uAE30\uC220\uD1B5\uACC4\uBD84\uC11D',
                 analysis_complex_crosstabs: '\uBCF5\uD569\uD45C\uBCF8 \uAD50\uCC28\uBD84\uC11D',
@@ -1652,6 +1654,11 @@
                   title: 'Regression & Models',
                   titleKo: '\uD68C\uADC0 / \uBAA8\uD615',
                   values: ['Regression', 'analysis_mediation_moderation', 'analysis_custom_model_canvas', 'Generalized Linear Model (GLM)', 'analysis_logistic_regression']
+                },
+                {
+                  title: 'Survival Analysis',
+                  titleKo: '\uC0DD\uC874\uBD84\uC11D',
+                  values: ['analysis_survival_km', 'analysis_survival_cox']
                 },
                 {
                   title: 'Longitudinal / Panel',
@@ -1927,6 +1934,21 @@
                 var itemLabel = easyflowGroupedMenuText(config, value, menuLanguage);
                 if (itemLabel) link.text(itemLabel);
               });
+              (group.subgroups || []).forEach(function(subgroup) {
+                var subgroupTitleText = easyflowGroupedTitleText(subgroup, menuLanguage);
+                subgroup.values.forEach(function(value, index) {
+                  var link = menu.find('a[data-value="' + value + '"]').first();
+                  if (!link.length) return;
+                  var itemLabel = easyflowGroupedMenuText(config, value, menuLanguage);
+                  if (itemLabel) link.text(itemLabel);
+                  if (index === 0) {
+                    link.closest('.analysis-menu-nested-section')
+                      .children('.analysis-menu-nested-title')
+                      .first()
+                      .text(subgroupTitleText);
+                  }
+                });
+              });
             });
             easyflowApplyMenuAliasItems(menu, config, useKorean);
             menu.attr('data-easyflow-menu-language', menuLanguage);
@@ -1952,6 +1974,33 @@
                 groupItems.push(existingItems[value]);
                 delete existingItems[value];
               }
+            });
+            (group.subgroups || []).forEach(function(subgroup) {
+              var subgroupItems = [];
+              (subgroup.values || []).forEach(function(value) {
+                if (existingItems[value]) {
+                  var itemLabel = easyflowGroupedMenuText(config, value, menuLanguage);
+                  if (itemLabel) {
+                    existingItems[value].children('a[data-value]').first().text(itemLabel);
+                  }
+                  subgroupItems.push(existingItems[value]);
+                  delete existingItems[value];
+                }
+              });
+              if (subgroupItems.length === 0) return;
+              var subgroupNode = window.jQuery('<li class="analysis-menu-nested-section" role="presentation"></li>');
+              var subgroupTitleText = easyflowGroupedTitleText(subgroup, menuLanguage);
+              var subgroupTitle = window.jQuery('<button type="button" class="analysis-menu-nested-title" aria-expanded="false"></button>').text(subgroupTitleText);
+              var subgroupList = window.jQuery('<ul class="analysis-menu-nested-items" role="menu"></ul>');
+              subgroupItems.forEach(function(item) {
+                subgroupList.append(item);
+              });
+              subgroupNode.append(subgroupTitle, subgroupList);
+              if (subgroupList.children('li.active').length) {
+                subgroupNode.addClass('active open');
+                subgroupTitle.attr('aria-expanded', 'true');
+              }
+              groupItems.push(subgroupNode);
             });
             if (groupItems.length === 0) return;
             var groupNode = window.jQuery('<li class="analysis-menu-section" role="presentation"></li>');
@@ -2040,6 +2089,15 @@
             menu.children('.analysis-menu-section').removeClass('open')
               .children('.analysis-menu-section-title').attr('aria-expanded', 'false');
           })
+          .on('mouseenter.easyflowAnalysisNestedSubmenu focusin.easyflowAnalysisNestedSubmenu click.easyflowAnalysisNestedSubmenu', '.analysis-menu-nested-title', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            var nested = window.jQuery(this).closest('.analysis-menu-nested-section');
+            nested.siblings('.analysis-menu-nested-section').removeClass('open')
+              .children('.analysis-menu-nested-title').attr('aria-expanded', 'false');
+            nested.addClass('open');
+            window.jQuery(this).attr('aria-expanded', 'true');
+          })
           .on('click.easyflowAnalysisSubmenu', '.analysis-submenu .analysis-menu-section-items a[data-value]', function() {
             var link = window.jQuery(this);
             var menu = link.closest('.analysis-submenu');
@@ -2048,8 +2106,11 @@
               menu.children('.analysis-menu-section').removeClass('open');
               link.parent('li').addClass('active');
               link.closest('.analysis-menu-section').addClass('active open');
+              link.closest('.analysis-menu-nested-section').addClass('active open');
               menu.find('.analysis-menu-section-title').attr('aria-expanded', 'false');
               link.closest('.analysis-menu-section').children('.analysis-menu-section-title').attr('aria-expanded', 'true');
+              menu.find('.analysis-menu-nested-title').attr('aria-expanded', 'false');
+              link.closest('.analysis-menu-nested-section').children('.analysis-menu-nested-title').attr('aria-expanded', 'true');
               markNavbarDropdownActive(link);
             };
             markActive();

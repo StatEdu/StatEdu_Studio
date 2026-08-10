@@ -10,7 +10,7 @@ All statistical analyses use CRAN packages only.
 
 Current public version: `1.2.0`
 
-Current development version: `1.2.0-dev`
+Current development version: `1.2.1-dev`
 
 Version 1.2.0 is the public release line for local data import, data editing, assumption-guided statistical analyses, reliability and inter-rater agreement workflows, sample-size/effect-size calculators, latent-analysis workflows, mixed repeated-measures ANOVA, Mediation / Moderation Custom Model, and publication-ready HTML/PDF result output. It promotes the stabilized post-1.1.3 work, adding inter-rater agreement analysis, pre-post and multi-time repeated-measures group comparisons, the public Mediation / Moderation Custom Model canvas, custom-model table cleanup, and expanded statistical validation coverage. Detailed release history is available in **About > Version History**.
 
@@ -40,6 +40,7 @@ Public 1.2.0 includes the Mediation / Moderation Custom Model canvas in the Regr
 - Mediation / Moderation Custom Model canvas for drawing supported mediation/moderation structures and sending them to the analysis engine
 - Logistic regression for binary, ordered, and categorical dependent variables
 - Generalized linear models for independent-observation Gaussian, binary logistic, Gamma, and count outcomes, including Poisson versus negative-binomial screening, robust standard-error options, missing-data sensitivity engines, offset/exposure handling, SCI-style diagnostics, publication notes, reporting checklists, and suggested manuscript text
+- Survival analysis with Kaplan-Meier, life-table, log-rank/Breslow/Tarone-Ware group comparison, publication-ready ggplot2 figures, and Cox regression with proportional-hazards checks
 - Penalized regression helpers for severe multicollinearity cases
 - Standalone sample size, power, and effect size calculators with method notes and references
 - Result saving to HTML, PDF, figures, and accumulated Result collections

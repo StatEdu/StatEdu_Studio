@@ -206,6 +206,87 @@ body {
   color: #ffffff;
 }
 
+.analysis-menu-nested-section {
+  display: block;
+  position: relative;
+  width: 100%;
+}
+
+.analysis-menu-nested-title {
+  background: transparent;
+  border: 0;
+  color: #333333;
+  display: block;
+  font-size: 14px;
+  line-height: 1.35;
+  padding: 8px 30px 8px 14px;
+  position: relative;
+  text-align: left;
+  width: 100%;
+}
+
+.analysis-menu-nested-title::after {
+  border-bottom: 4px solid transparent;
+  border-left: 4px solid #94a3b8;
+  border-top: 4px solid transparent;
+  content: "";
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.analysis-menu-nested-section:hover > .analysis-menu-nested-title,
+.analysis-menu-nested-section.open > .analysis-menu-nested-title {
+  background: #f1f5f9;
+  color: #0f2f5f;
+}
+
+.analysis-menu-nested-items {
+  background: #ffffff;
+  border: 1px solid #d5dde7;
+  box-shadow: 4px 4px 10px rgba(15, 23, 42, 0.12);
+  display: none;
+  left: 100%;
+  list-style: none;
+  margin: 0;
+  min-width: 210px;
+  padding: 6px 0;
+  position: absolute;
+  top: 0;
+  z-index: 1065;
+}
+
+.analysis-menu-nested-section:hover > .analysis-menu-nested-items,
+.analysis-menu-nested-section.open > .analysis-menu-nested-items {
+  display: block;
+}
+
+.analysis-menu-nested-items > li > a {
+  border-left: 3px solid transparent;
+  color: #333333;
+  display: block;
+  line-height: 1.35;
+  padding: 8px 16px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.analysis-menu-nested-items > li > a:hover,
+.analysis-menu-nested-items > li > a:focus {
+  background: #f1f5f9;
+  color: #111827;
+}
+
+.analysis-menu-nested-items > li.active > a,
+.analysis-menu-nested-items > li.active > a:hover,
+.analysis-menu-nested-items > li.active > a:focus {
+  background: #337ab7;
+  border-left-color: #0f2f5f;
+  color: #ffffff;
+  font-weight: 500;
+}
+
 .navbar .dropdown-menu > li.dropdown.active > a.dropdown-toggle,
 .navbar .dropdown-menu > li.dropdown.open > a.dropdown-toggle,
 .navbar .dropdown-menu > li.dropdown.active > a.dropdown-toggle:focus,
@@ -7952,11 +8033,13 @@ pre {
 .analysis-three-block-workspace:has(.hierarchical-action-row),
 .analysis-three-block-workspace:has(.logistic-action-row),
 .analysis-three-block-workspace:has(.generalized-action-row),
+.analysis-three-block-workspace:has(.survival-action-row),
 .analysis-three-block-workspace.crosstab-workspace-panel,
 .analysis-three-block-workspace.regression-workspace-panel,
 .analysis-three-block-workspace.hierarchical-workspace-panel,
 .analysis-three-block-workspace.logistic-workspace-panel,
-.analysis-three-block-workspace.generalized-workspace-panel {
+.analysis-three-block-workspace.generalized-workspace-panel,
+.analysis-three-block-workspace.survival-workspace-panel {
   width: var(--se-standard-four-column-workspace-width) !important;
   min-width: var(--se-standard-four-column-workspace-width) !important;
   max-width: var(--se-standard-four-column-workspace-width) !important;
@@ -8005,6 +8088,7 @@ pre {
 .analysis-three-block-workspace .hierarchical-setup-grid,
 .analysis-three-block-workspace .logistic-setup-grid,
 .analysis-three-block-workspace .generalized-setup-grid,
+.analysis-three-block-workspace .survival-setup-grid,
 .analysis-three-block-workspace .frequencies-action-row,
 .analysis-three-block-workspace .reliability-action-row,
 .analysis-three-block-workspace .paired-action-row,
@@ -8013,7 +8097,8 @@ pre {
 .analysis-three-block-workspace .regression-action-row,
 .analysis-three-block-workspace .hierarchical-action-row,
 .analysis-three-block-workspace .logistic-action-row,
-.analysis-three-block-workspace .generalized-action-row {
+.analysis-three-block-workspace .generalized-action-row,
+.analysis-three-block-workspace .survival-action-row {
   width: var(--se-standard-setup-width) !important;
   min-width: var(--se-standard-setup-width) !important;
   max-width: var(--se-standard-setup-width) !important;
@@ -8044,6 +8129,8 @@ pre {
 .analysis-three-block-workspace:has(.logistic-action-row) .frequencies-setup-grid,
 .analysis-three-block-workspace:has(.generalized-action-row) .generalized-setup-grid,
 .analysis-three-block-workspace:has(.generalized-action-row) .frequencies-setup-grid,
+.analysis-three-block-workspace:has(.survival-action-row) .survival-setup-grid,
+.analysis-three-block-workspace:has(.survival-action-row) .frequencies-setup-grid,
 .analysis-three-block-workspace .frequencies-action-row:not(.crosstab-action-row),
 .analysis-three-block-workspace .reliability-action-row,
 .analysis-three-block-workspace .paired-action-row,
@@ -8053,7 +8140,8 @@ pre {
 .analysis-three-block-workspace .regression-action-row,
 .analysis-three-block-workspace .hierarchical-action-row,
 .analysis-three-block-workspace .logistic-action-row,
-.analysis-three-block-workspace .generalized-action-row {
+.analysis-three-block-workspace .generalized-action-row,
+.analysis-three-block-workspace .survival-action-row {
   width: var(--se-standard-four-column-setup-width) !important;
   min-width: var(--se-standard-four-column-setup-width) !important;
   max-width: var(--se-standard-four-column-setup-width) !important;
@@ -8067,7 +8155,8 @@ pre {
 .analysis-three-block-workspace .regression-setup-grid,
 .analysis-three-block-workspace .hierarchical-setup-grid,
 .analysis-three-block-workspace .logistic-setup-grid,
-.analysis-three-block-workspace .generalized-setup-grid {
+.analysis-three-block-workspace .generalized-setup-grid,
+.analysis-three-block-workspace .survival-setup-grid {
   margin-top: 0 !important;
 }
 
@@ -8076,11 +8165,13 @@ pre {
 .analysis-three-block-workspace .paired-setup-grid,
 .analysis-three-block-workspace .ttest-anova-setup-grid,
 .analysis-three-block-workspace .correlation-setup-grid,
+.analysis-three-block-workspace .survival-setup-grid,
 .analysis-three-block-workspace .frequencies-action-row,
 .analysis-three-block-workspace .reliability-action-row,
 .analysis-three-block-workspace .paired-action-row,
 .analysis-three-block-workspace .ttest-anova-action-row,
-.analysis-three-block-workspace .correlation-action-row {
+.analysis-three-block-workspace .correlation-action-row,
+.analysis-three-block-workspace .survival-action-row {
   grid-template-columns: var(--se-standard-panel-width) var(--se-standard-transfer-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
   gap: var(--se-standard-gap) !important;
 }
@@ -8089,6 +8180,7 @@ pre {
 .analysis-three-block-workspace .reliability-setup-grid > .analysis-options-panel,
 .analysis-three-block-workspace .paired-setup-grid > .ttest-anova-options-column,
 .analysis-three-block-workspace .ttest-anova-setup-grid > .ttest-anova-options-column,
+.analysis-three-block-workspace .survival-setup-grid > .ttest-anova-options-column,
 .analysis-three-block-workspace .correlation-setup-grid > .correlation-options-column {
   grid-column: 4 !important;
   grid-row: 1 !important;
@@ -8152,7 +8244,8 @@ pre {
 .analysis-three-block-workspace.regression-workspace-panel .analysis-three-block-action-row .analysis-save-cell,
 .analysis-three-block-workspace.hierarchical-workspace-panel .analysis-three-block-action-row .analysis-save-cell,
 .analysis-three-block-workspace.logistic-workspace-panel .analysis-three-block-action-row .analysis-save-cell,
-.analysis-three-block-workspace.generalized-workspace-panel .analysis-three-block-action-row .analysis-save-cell {
+.analysis-three-block-workspace.generalized-workspace-panel .analysis-three-block-action-row .analysis-save-cell,
+.analysis-three-block-workspace.survival-workspace-panel .analysis-three-block-action-row .analysis-save-cell {
   grid-column: 4 !important;
 }
 
@@ -8180,6 +8273,160 @@ pre {
   grid-column: 4 !important;
   grid-row: 1 !important;
   align-self: stretch !important;
+}
+
+.analysis-three-block-workspace .analysis-three-block-action-row {
+  display: grid !important;
+}
+
+.survival-target-column {
+  grid-template-rows: 164px 164px 156px !important;
+  height: var(--se-standard-panel-height, 520px) !important;
+  min-height: var(--se-standard-panel-height, 520px) !important;
+}
+
+.survival-target-column .survival-target-panel {
+  height: 100% !important;
+  min-height: 0 !important;
+  box-sizing: border-box;
+}
+
+.survival-transfer-controls {
+  display: grid !important;
+  grid-template-rows: 164px 164px 156px !important;
+  gap: var(--se-standard-gap, 18px) !important;
+  align-items: center !important;
+  justify-items: center !important;
+}
+
+.survival-time-panel .analysis-transfer-listbox,
+.survival-event-panel .analysis-transfer-listbox {
+  height: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+}
+
+.survival-group-panel .analysis-transfer-listbox,
+.survival-covariates-panel .analysis-transfer-listbox {
+  height: 80px !important;
+  min-height: 80px !important;
+  max-height: 80px !important;
+}
+
+.survival-target-setting {
+  margin-top: 8px;
+}
+
+.survival-target-setting .form-group {
+  margin-bottom: 0;
+}
+
+.survival-target-setting label {
+  color: #002b50;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.survival-target-setting .form-control {
+  height: 34px;
+  padding-bottom: 6px;
+  padding-top: 6px;
+}
+
+.survival-options-column.analysis-options-panel {
+  height: var(--se-standard-panel-height, 520px) !important;
+  min-height: var(--se-standard-panel-height, 520px) !important;
+}
+
+.survival-options-column .nav-tabs {
+  border-bottom: 1px solid #c8d7e6;
+  margin-bottom: 16px;
+}
+
+.survival-options-column .nav-tabs > li > a {
+  color: #24415f;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 7px 10px;
+}
+
+.survival-options-column .nav-tabs > li.active > a,
+.survival-options-column .nav-tabs > li.active > a:hover,
+.survival-options-column .nav-tabs > li.active > a:focus {
+  background-color: #ffffff;
+  border-color: #c8d7e6 #c8d7e6 transparent;
+  color: #002b50;
+}
+
+.survival-options-tab-content {
+  padding-top: 4px;
+}
+
+.survival-options-column .analysis-option-group {
+  margin-bottom: 22px;
+}
+
+.survival-options-column .analysis-option-title {
+  margin-bottom: 12px;
+  line-height: 1.35;
+}
+
+.survival-options-column .form-group {
+  margin-bottom: 12px;
+}
+
+.survival-options-column .checkbox,
+.survival-options-column .radio {
+  margin-bottom: 9px;
+  margin-top: 6px;
+}
+
+.survival-options-column .checkbox label,
+.survival-options-column .radio label {
+  line-height: 1.45;
+}
+
+.survival-results > .survival-wide-result-panel {
+  width: min(100%, 940px) !important;
+  max-width: 100% !important;
+}
+
+.survival-results > .survival-wide-result-panel table {
+  width: 100% !important;
+}
+
+.survival-result-table th,
+.survival-result-table td {
+  white-space: nowrap !important;
+  vertical-align: middle !important;
+}
+
+.survival-result-table th {
+  vertical-align: bottom !important;
+}
+
+.survival-table-note {
+  color: #4b5563;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.survival-results .survival-plot-results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.survival-results .survival-plot-result-panel {
+  width: min(100%, 760px) !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+.survival-results .survival-plot-result-panel .shiny-plot-output {
+  width: 100% !important;
 }
 
 .logistic-action-row {
@@ -9902,6 +10149,7 @@ pre {
   .hierarchical-setup-grid,
   .regression-setup-grid,
   .logistic-setup-grid,
+  .survival-setup-grid,
   .reliability-action-row,
   .frequencies-action-row,
   .paired-action-row,
@@ -9910,7 +10158,9 @@ pre {
   .hierarchical-action-row,
   .regression-action-row,
   .logistic-action-row,
+  .survival-action-row,
   .generalized-workspace-panel,
+  .survival-workspace-panel,
   .generalized-setup-grid,
   .generalized-action-row,
   #likert_groups,
@@ -9931,6 +10181,7 @@ pre {
   .hierarchical-setup-grid,
   .regression-setup-grid,
   .logistic-setup-grid,
+  .survival-setup-grid,
   .reliability-action-row,
   .frequencies-action-row,
   .paired-action-row,
@@ -9939,6 +10190,7 @@ pre {
   .hierarchical-action-row,
   .regression-action-row,
   .logistic-action-row,
+  .survival-action-row,
   .generalized-action-row {
     grid-template-columns: 304px 44px 304px 16px 286px !important;
     gap: 16px !important;
@@ -9955,7 +10207,8 @@ pre {
   .correlation-setup-grid,
   .hierarchical-setup-grid,
   .regression-setup-grid,
-  .logistic-setup-grid {
+  .logistic-setup-grid,
+  .survival-setup-grid {
     padding: 16px;
   }
 
@@ -10001,11 +10254,15 @@ pre {
   .ttest-anova-setup-grid,
   .correlation-setup-grid,
   .regression-setup-grid,
+  .survival-setup-grid,
   .frequencies-setup-grid > .analysis-transfer-panel,
   .frequencies-setup-grid > .analysis-options-panel,
   .ttest-anova-setup-grid > .analysis-transfer-panel,
   .ttest-anova-setup-grid > .ttest-anova-target-column,
   .ttest-anova-setup-grid > .ttest-anova-options-column,
+  .survival-setup-grid > .analysis-transfer-panel,
+  .survival-setup-grid > .ttest-anova-target-column,
+  .survival-setup-grid > .ttest-anova-options-column,
   .correlation-setup-grid > .analysis-transfer-panel,
   .correlation-setup-grid > .correlation-options-column,
   .regression-setup-grid > .analysis-transfer-panel,
@@ -10018,6 +10275,7 @@ pre {
   .frequencies-setup-grid,
   .reliability-setup-grid,
   .ttest-anova-setup-grid,
+  .survival-setup-grid,
   .correlation-setup-grid {
     grid-auto-rows: var(--se-standard-panel-height, 520px);
   }

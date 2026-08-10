@@ -238,6 +238,8 @@ create_app_server <- function(app_version) {
   output$lazy_analysis_complex_correlation <- renderUI(tab_panel_content(complex_sample_correlation_tab_panel(app_language())))
   output$lazy_analysis_complex_regression <- renderUI(tab_panel_content(complex_sample_regression_tab_panel(app_language())))
   output$lazy_analysis_complex_logistic <- renderUI(tab_panel_content(complex_sample_logistic_tab_panel(app_language())))
+  output$lazy_analysis_survival_km <- renderUI(tab_panel_content(survival_km_tab_panel(app_language())))
+  output$lazy_analysis_survival_cox <- renderUI(tab_panel_content(survival_cox_tab_panel(app_language())))
 
   register_sample_size_server(input, output, session, app_language_fn = app_language)
 
@@ -1773,6 +1775,19 @@ create_app_server <- function(app_version) {
   )
 
   register_generalized_handlers(
+    input = input,
+    output = output,
+    session = session,
+    selected_names_fn = selected_names,
+    dataset_fn = dataset,
+    variable_table_fn = regression_variable_table,
+    labels_fn = var_label_overrides,
+    category_table_fn = category_label_values,
+    mark_settings_dirty = mark_settings_dirty,
+    app_language_fn = app_language
+  )
+
+  register_survival_handlers(
     input = input,
     output = output,
     session = session,

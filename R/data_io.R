@@ -184,6 +184,9 @@ read_csv_robust <- function(path, csv_header = TRUE) {
       best_score <- score
       best_result <- result
     }
+    if (score >= 0) {
+      return(normalize_text_encoding(result))
+    }
   }
 
   if (!is.null(best_result)) {

@@ -37,7 +37,8 @@ required_packages <- c(
   "lmerTest",
   "plm",
   "mice",
-  "survey"
+  "survey",
+  "survival"
 )
 
 startup_packages <- c("shiny", "DT")
@@ -95,6 +96,7 @@ app_module_files <- c(
   "analysis_logistic.R",
   "analysis_generalized.R",
   "analysis_longitudinal.R",
+  "analysis_survival.R",
   "sample_size.R",
   "sample_size_ui.R",
   "data_editor_recode.R",
@@ -129,6 +131,7 @@ app_module_files <- c(
   "server_logistic.R",
   "server_generalized.R",
   "server_longitudinal.R",
+  "server_survival.R",
   "server_paired.R",
   "server_paired_rm.R",
   "server_mixed_rm_anova.R",
@@ -175,6 +178,7 @@ app_module_files <- c(
   "setup_logistic_ui.R",
   "setup_longitudinal_ui.R",
   "setup_generalized_ui.R",
+  "setup_survival_ui.R",
   "result_table_ui.R",
   "result_penalized_ui.R",
   "result_panels_ui.R",
@@ -185,6 +189,7 @@ app_module_files <- c(
   "result_logistic_ui.R",
   "result_longitudinal_ui.R",
   "result_generalized_ui.R",
+  "result_survival_ui.R",
   "result_paired_ui.R",
   "result_paired_rm_ui.R",
   "result_mixed_rm_anova_ui.R",
@@ -221,9 +226,13 @@ utf8_app_module_files <- c(
   "ui_helpers.R",
   "data_ui_steps.R",
   "data_ui.R",
+  "analysis_survival.R",
   "analysis_menu_ui.R",
   "setup_custom_model_canvas_ui.R",
   "setup_mediation_moderation_ui.R",
+  "setup_survival_ui.R",
+  "result_survival_ui.R",
+  "server_survival.R",
   "app_misc_ui.R"
 )
 

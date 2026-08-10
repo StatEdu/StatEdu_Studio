@@ -2,11 +2,24 @@
 # All analysis figure exports should use these helpers so folder selection,
 # file naming, and PNG resolution stay consistent across modules.
 
-analysis_figure_dpi <- 600
+analysis_figure_dpi <- function(edition = analysis_save_edition(), public_release = statedu_public_release()) {
+  edition <- tolower(as.character(edition %||% "development")[[1]])
+  if (identical(edition, "pro")) {
+    return(600L)
+  }
+  if (isTRUE(public_release) || identical(edition, "free")) {
+    return(300L)
+  }
+  if (edition %in% c("development", "personal", "institution")) {
+    return(600L)
+  }
+  300L
+}
+
 analysis_figure_width <- 4.375
 analysis_figure_height <- 4.375
 
-plot_png_file <- function(plot_function, result, dpi = analysis_figure_dpi, width = analysis_figure_width, height = analysis_figure_height) {
+plot_png_file <- function(plot_function, result, dpi = analysis_figure_dpi(), width = analysis_figure_width, height = analysis_figure_height) {
   path <- tempfile("statedu_plot_", fileext = ".png")
   grDevices::png(path, width = width, height = height, units = "in", res = dpi)
   closed <- FALSE
@@ -257,7 +270,7 @@ safe_file_stem <- function(name) {
   if (!nzchar(name)) "variable" else name
 }
 
-save_plot_png_file <- function(plot_function, result, file, dpi = analysis_figure_dpi, width = analysis_figure_width, height = analysis_figure_height) {
+save_plot_png_file <- function(plot_function, result, file, dpi = analysis_figure_dpi(), width = analysis_figure_width, height = analysis_figure_height) {
   grDevices::png(file, width = width, height = height, units = "in", res = dpi)
   closed <- FALSE
   on.exit({
@@ -804,3 +817,38 @@ save_frequency_figures_to_dir <- function(result, directory) {
   save_frequency_figure_files(result, directory)
 }
 
+save_survival_km_figure_files <- function(result, directory, dpi = analysis_figure_dpi()) {
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("Package 'ggplot2' is required for survival figure export.")
+  }
+  items <- survival_km_result_items(result)
+  saved <- character(0)
+  for (item_index in seq_along(items)) {
+    item <- items[[item_index]]
+    group_label <- if (nzchar(as.character(item$group %||% ""))) safe_file_stem(item$group) else "All"
+    plot_types <- as.character(item$plot_types %||% "survival")
+    plot_versions <- as.character(item$plot_versions %||% "color")
+    for (plot_type in plot_types) {
+      plot_label <- safe_file_stem(survival_plot_type_label(plot_type, "en"))
+      for (plot_version in plot_versions) {
+        version_label <- safe_file_stem(survival_plot_version_label(plot_version, "en"))
+        file <- file.path(directory, sprintf("Kaplan-Meier_%s_%s_%s_%sdpi.png", group_label, plot_label, version_label, dpi))
+        ggplot2::ggsave(
+          filename = file,
+          plot = survival_km_ggplot(item, plot_type, plot_version),
+          width = 6.4,
+          height = 4.8,
+          units = "in",
+          dpi = dpi,
+          bg = "white"
+        )
+        saved <- c(saved, file)
+      }
+    }
+  }
+  saved
+}
+
+save_survival_km_figures_to_dir <- function(result, directory) {
+  save_survival_km_figure_files(result, directory)
+}

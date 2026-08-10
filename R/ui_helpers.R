@@ -188,14 +188,14 @@ app_brand_title <- function(version) {
 
 app_stylesheet_link <- function(version) {
   tagList(
-    tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-release-1.2.0-result-style-sync-20260808")),
+    tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-survival-km-result-table-20260810")),
     tags$link(rel = "stylesheet", type = "text/css", href = paste0("model-canvas/canvas.css?v=", version, "-analysis-modal-compact-20260712b"))
   )
 }
 
 app_script_link <- function(version) {
   tagList(
-    tags$script(src = paste0("easyflow.js?v=", version, "-language-reload-sync-20260808")),
+    tags$script(src = paste0("easyflow.js?v=", version, "-survival-km-options-20260809")),
     tags$script(src = paste0("model-canvas/state.js?v=", version, "-custom-model-canvas-multi-y-20260729a")),
     tags$script(src = paste0("model-canvas/layout.js?v=", version, "-custom-model-canvas-balanced-multi-role-layout-20260729a")),
     tags$script(src = paste0("model-canvas/shiny-bridge.js?v=", version, "-custom-model-canvas-20260705an")),
@@ -303,7 +303,10 @@ app_static_language_labels_script <- local({
       statedu_translation_row("analysis.ui.inter_rater_agreement"),
       statedu_translation_row("analysis.mediation_moderation"),
       statedu_translation_row("analysis.custom_model_canvas"),
-      statedu_translation_row("custom_model_canvas.title")
+      statedu_translation_row("custom_model_canvas.title"),
+      static_label_row("Survival Analysis", "생존분석"),
+      static_label_row("Kaplan-Meier", "Kaplan-Meier"),
+      static_label_row("Cox Regression", "Cox 회귀분석")
     )
     group_labels <- list(
       statedu_translation_row("group_descriptives"),
