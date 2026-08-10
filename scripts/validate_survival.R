@@ -10,6 +10,12 @@ source(file.path(repo_root, "R", "app_bootstrap.R"))
 load_app_packages(check = FALSE)
 source_app_modules()
 
+expect_close <- function(actual, expected, tolerance = 1e-8, label = "value") {
+  if (!isTRUE(all.equal(as.numeric(actual), as.numeric(expected), tolerance = tolerance, check.attributes = FALSE))) {
+    stop(sprintf("%s mismatch: actual=%s expected=%s", label, actual, expected), call. = FALSE)
+  }
+}
+
 message("Checking Kaplan-Meier analysis...")
 lung <- read.csv(file.path(repo_root, "sample", "survival_examples", "survival_lung.csv"), check.names = FALSE)
 stopifnot(identical(survival_example_event_value(list(name = "survival_lung.csv"), "status"), "2"))
@@ -46,6 +52,15 @@ stopifnot(grepl("<br", km_html, fixed = TRUE))
 stopifnot(grepl("&chi;", km_html, fixed = TRUE))
 stopifnot(grepl("<sup>2</sup>", km_html, fixed = TRUE))
 
+sex_logrank <- km$analyses[[which(vapply(km$analyses, function(item) identical(item$group, "sex"), logical(1)))]]
+expected_logrank <- survival::survdiff(survival::Surv(time, status == 2) ~ sex, data = lung)
+expect_close(sex_logrank$logrank$chisq, expected_logrank$chisq, label = "Log-rank chi-square")
+expect_close(
+  sex_logrank$logrank$p,
+  stats::pchisq(expected_logrank$chisq, df = length(expected_logrank$n) - 1L, lower.tail = FALSE),
+  label = "Log-rank p"
+)
+
 km_panel <- htmltools::renderTags(survival_km_results_panel(km, plot_output_ids = list(character(0), character(0)), language = "en"))$html
 stopifnot(grepl("Model overview", km_panel, fixed = TRUE))
 stopifnot(grepl("M = mean; SE = standard error", km_panel, fixed = TRUE))
@@ -76,6 +91,32 @@ life_ungrouped <- prepare_km_analysis_result(
 )
 stopifnot(identical(life_ungrouped$analysis_method, "life_table"))
 stopifnot(nrow(survival_life_table_display(life_ungrouped)) > 0)
+
+zero_time <- data.frame(
+  time = c(0, 0, 1, 2, 3),
+  status = c(TRUE, FALSE, TRUE, FALSE, TRUE),
+  stringsAsFactors = FALSE
+)
+life_zero <- survival_life_table(zero_time, "time", "status", breaks = c(1, 2, 3))
+stopifnot(nrow(life_zero) > 0)
+stopifnot(life_zero$`At risk`[[1]] == 5)
+stopifnot(life_zero$Events[[1]] == 2)
+stopifnot(life_zero$Censored[[1]] == 1)
+
+nr_data <- data.frame(
+  time = c(5, 6, 7, 8),
+  status = c(1, 0, 0, 0),
+  stringsAsFactors = FALSE
+)
+nr_result <- prepare_km_analysis_result(
+  data = nr_data,
+  time = "time",
+  event = "status",
+  group = "",
+  event_value = "1"
+)
+nr_table <- survival_km_summary_table(nr_result)
+stopifnot(grepl("NR", nr_table[["Median (95% CI)"]][[1]], fixed = TRUE))
 
 message("Checking Kaplan-Meier empty table/plot options...")
 km_empty_options <- prepare_km_analysis_result(
@@ -110,6 +151,26 @@ stopifnot(identical(cox$type, "cox"))
 stopifnot(nrow(cox$coef_table) > 0)
 stopifnot(is.data.frame(survival_cox_coef_table(cox)))
 stopifnot(is.data.frame(survival_ph_table(cox)))
+
+expected_cox <- survival::coxph(survival::Surv(time, status == 2) ~ age + sex, data = lung, x = TRUE)
+expected_cox_summary <- summary(expected_cox)
+for (term in rownames(expected_cox_summary$coefficients)) {
+  actual_row <- cox$coef_table[cox$coef_table$Term == term, , drop = FALSE]
+  stopifnot(nrow(actual_row) == 1)
+  expect_close(actual_row$HR, expected_cox_summary$conf.int[term, "exp(coef)"], label = paste(term, "HR"))
+  expect_close(actual_row$LLCI, expected_cox_summary$conf.int[term, "lower .95"], label = paste(term, "lower CI"))
+  expect_close(actual_row$ULCI, expected_cox_summary$conf.int[term, "upper .95"], label = paste(term, "upper CI"))
+}
+
+expected_ph <- survival::cox.zph(expected_cox)
+expected_ph_table <- as.data.frame(expected_ph$table)
+for (term in rownames(expected_ph_table)) {
+  actual_row <- cox$ph_table[cox$ph_table$Term == term, , drop = FALSE]
+  stopifnot(nrow(actual_row) == 1)
+  for (column in c("chisq", "df", "p")) {
+    expect_close(actual_row[[column]], expected_ph_table[term, column], label = paste(term, column))
+  }
+}
 
 message("Checking figure DPI policy...")
 stopifnot(analysis_figure_dpi(edition = "pro", public_release = FALSE) == 600L)

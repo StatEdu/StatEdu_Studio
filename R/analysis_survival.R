@@ -261,7 +261,11 @@ survival_life_table <- function(data, time, event, group = "", breaks = numeric(
     for (index in seq_len(length(breaks) - 1L)) {
       start <- breaks[[index]]
       end <- breaks[[index + 1L]]
-      in_interval <- group_data[[time]] > start & group_data[[time]] <= end
+      in_interval <- if (start == 0) {
+        group_data[[time]] >= 0 & group_data[[time]] <= end
+      } else {
+        group_data[[time]] > start & group_data[[time]] <= end
+      }
       at_risk <- if (start == 0) sum(group_data[[time]] >= 0) else sum(group_data[[time]] > start)
       events <- sum(in_interval & group_data[[event]], na.rm = TRUE)
       censored <- sum(in_interval & !group_data[[event]], na.rm = TRUE)
