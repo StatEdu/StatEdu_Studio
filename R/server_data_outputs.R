@@ -24,6 +24,7 @@ register_data_workspace_outputs <- function(
   app_language_fn = NULL
 ) {
   output$data_steps <- renderUI({
+    start <- Sys.time()
     language <- if (is.function(app_language_fn)) app_language_fn() else statedu_initial_language()
     file <- current_data_file_fn()
     pending_file <- if (is.function(active_data_file_fn)) active_data_file_fn() else NULL
@@ -50,7 +51,9 @@ register_data_workspace_outputs <- function(
       controls = control_names_fn(),
       has_calculated_variables = (is.data.frame(calculated) && ncol(calculated) > 0) || length(renamed) > 0
     )
-    do.call(data_steps_panel, c(state, list(language = language)))
+    out <- do.call(data_steps_panel, c(state, list(language = language)))
+    statedu_log_timing("render data_steps", start, sprintf("file=%s has_data=%s", as.character((file %||% list())$name %||% ""), isTRUE(state$has_data)))
+    out
   })
 
   output$excel_import_preview <- DT::renderDT({
@@ -93,6 +96,7 @@ register_data_workspace_outputs <- function(
   })
 
   output$data_loaded_message <- renderUI({
+    start <- Sys.time()
     language <- if (is.function(app_language_fn)) app_language_fn() else statedu_initial_language()
     pending_file <- if (is.function(active_data_file_fn)) active_data_file_fn() else NULL
     if (valid_pending_excel_file_value(pending_file)) {
@@ -105,7 +109,9 @@ register_data_workspace_outputs <- function(
       restored_info = restored_variable_info_fn(),
       restored_file_name = restored_data_file_fn()
     )
-    tags$span(do.call(data_loaded_message_text, c(state, list(language = language))))
+    out <- tags$span(do.call(data_loaded_message_text, c(state, list(language = language))))
+    statedu_log_timing("render data_loaded_message", start, sprintf("file=%s", as.character((file %||% list())$name %||% "")))
+    out
   })
 
   output$data_view_title <- renderUI({

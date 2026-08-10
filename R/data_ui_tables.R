@@ -104,7 +104,7 @@ data_preview_table_options <- function() {
     deferRender = TRUE,
     searchDelay = 250,
     scrollX = TRUE,
-    autoWidth = TRUE
+    autoWidth = FALSE
   )
 }
 
@@ -454,7 +454,7 @@ variable_table_options <- function(language = statedu_initial_language()) {
     deferRender = TRUE,
     searchDelay = 250,
     scrollX = TRUE,
-    autoWidth = TRUE,
+    autoWidth = FALSE,
     order = list(list(1, "asc")),
     columnDefs = list(
       list(orderable = FALSE, targets = 0),
