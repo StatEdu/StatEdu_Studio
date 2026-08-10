@@ -31,19 +31,25 @@ survival_header_content <- function(name) {
   name
 }
 
+survival_column_class <- function(name) {
+  key <- tolower(gsub("[^A-Za-z0-9]+", "-", as.character(name %||% "")))
+  key <- gsub("(^-+|-+$)", "", key)
+  paste("survival-col", paste0("survival-col-", key))
+}
+
 survival_simple_table <- function(table, class = "survival-result-table") {
   if (!is.data.frame(table) || nrow(table) == 0) return(NULL)
   tags$table(
     class = paste("coefficient-table", class),
     style = result_table_style(font_size = 12, min_width = 0),
-    tags$thead(tags$tr(lapply(names(table), function(name) tags$th(style = result_header_cell_style(), survival_header_content(name))))),
+    tags$thead(tags$tr(lapply(names(table), function(name) tags$th(class = survival_column_class(name), style = result_header_cell_style(), survival_header_content(name))))),
     tags$tbody(lapply(seq_len(nrow(table)), function(row_index) {
       tags$tr(lapply(seq_along(table), function(col_index) {
         column <- names(table)[[col_index]]
         value <- table[[col_index]][[row_index]]
         if (is.numeric(value)) value <- survival_format_number(value)
         marker <- survival_cell_note_marker(table, row_index, column)
-        tags$td(style = result_body_cell_style(col_index == 1L, row_index == nrow(table)), survival_cell_content(value, marker))
+        tags$td(class = survival_column_class(column), style = result_body_cell_style(col_index == 1L, row_index == nrow(table)), survival_cell_content(value, marker))
       }))
     }))
   )
@@ -108,7 +114,7 @@ survival_median_ci_text <- function(median, lower, upper) {
   if (identical(median_text, "NR") && identical(ci_text, "(NE-NE)")) {
     return("NR")
   }
-  paste0(median_text, "\u00A0", ci_text)
+  paste0(median_text, "\n", ci_text)
 }
 
 survival_km_summary_table <- function(result) {

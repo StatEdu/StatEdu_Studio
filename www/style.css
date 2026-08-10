@@ -8397,14 +8397,30 @@ pre {
   width: 100% !important;
 }
 
-.survival-result-table th,
-.survival-result-table td {
+.survival-result-table th {
   white-space: nowrap !important;
+  vertical-align: middle !important;
+}
+
+.survival-result-table td {
+  white-space: pre-line !important;
+  overflow-wrap: normal !important;
   vertical-align: middle !important;
 }
 
 .survival-result-table th {
   vertical-align: bottom !important;
+}
+
+.survival-result-table .survival-col-median-95-ci {
+  min-width: 112px !important;
+  max-width: 132px !important;
+  line-height: 1.25 !important;
+}
+
+.survival-result-table .survival-col-m-se {
+  min-width: 92px !important;
+  line-height: 1.25 !important;
 }
 
 .survival-table-note {

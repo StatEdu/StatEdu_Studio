@@ -45,12 +45,13 @@ stopifnot("Median (95% CI)" %in% names(km_table))
 stopifnot("Chi-square (df)" %in% names(km_table))
 stopifnot(!("df" %in% names(km_table)))
 stopifnot(!any(grepl("=", km_table$Level, fixed = TRUE)))
-stopifnot(any(grepl(paste0(intToUtf8(160), "("), km_table[["Median (95% CI)"]], fixed = TRUE)))
+stopifnot(any(grepl("\n(", km_table[["Median (95% CI)"]], fixed = TRUE)))
 
 km_html <- htmltools::renderTags(survival_simple_table(km_table))$html
 stopifnot(grepl("<br", km_html, fixed = TRUE))
 stopifnot(grepl("&chi;", km_html, fixed = TRUE))
 stopifnot(grepl("<sup>2</sup>", km_html, fixed = TRUE))
+stopifnot(grepl("survival-col-median-95-ci", km_html, fixed = TRUE))
 
 sex_logrank <- km$analyses[[which(vapply(km$analyses, function(item) identical(item$group, "sex"), logical(1)))]]
 expected_logrank <- survival::survdiff(survival::Surv(time, status == 2) ~ sex, data = lung)
