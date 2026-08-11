@@ -1712,14 +1712,17 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
       settings <- settings %||% list()
       estimator <- settings$estimator %||% input[[paste0(prefix, "_estimator")]] %||% "ML"
       missing <- settings$missing %||% input[[paste0(prefix, "_missing")]] %||% "fiml"
-      if (identical(toupper(estimator), "WLSMV") && identical(missing, "fiml")) missing <- "pairwise"
       std_lv <- settings$std_lv %||% identical(input[[paste0(prefix, "_scale")]], "variance")
       mi_mode <- settings$mi_mode %||% input[[paste0(prefix, "_mi_mode")]] %||% "theory"
       rmsea_ci <- settings$rmsea_ci %||% as.numeric(input[[paste0(prefix, "_rmsea_ci")]] %||% .90)
       validity_formula <- settings$validity_formula %||% input[[paste0(prefix, "_validity_formula")]] %||% "standardized"
       result_coefficient <- settings$result_coefficient %||% input[[paste0(prefix, "_result_coefficient")]] %||% "beta"
       data <- dataset_fn()
-      ordered <- if (identical(toupper(estimator), "WLSMV")) structural_canvas_ordered_indicators(snapshot, variable_table_fn()) else character(0)
+      ordered <- structural_canvas_ordered_indicators(snapshot, variable_table_fn())
+      if (length(ordered) > 0 || identical(toupper(estimator), "WLSMV")) {
+        if (identical(toupper(estimator), "ML")) estimator <- "WLSMV"
+        if (identical(missing, "fiml")) missing <- "pairwise"
+      }
       result <- run_structural_canvas_analysis(snapshot, data, analysis_type, estimator = estimator, missing = missing, std_lv = std_lv, ordered = ordered)
       mi <- if (analysis_type %in% c("cfa", "cbsem")) structural_canvas_mi_refits(snapshot, result, data, analysis_type, estimator, missing, std_lv, mode = mi_mode, ordered = ordered) else NULL
       fit_result(list(
