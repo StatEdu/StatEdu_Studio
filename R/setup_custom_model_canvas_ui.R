@@ -365,13 +365,13 @@ custom_model_canvas_variable_panel <- function(items, language = statedu_initial
   )
 }
 
-custom_model_canvas_button <- function(action, label, title = label, mode = FALSE, extra_class = "") {
+custom_model_canvas_button <- function(action, label, title = label, mode = FALSE, extra_class = "", icon = NULL) {
   tags$button(
     type = "button",
     class = paste("custom-model-toolbar-button", extra_class, if (isTRUE(mode)) "is-mode-button" else ""),
     `data-action` = action,
     title = title,
-    span(class = "custom-model-toolbar-icon", ""),
+    span(class = "custom-model-toolbar-icon", icon),
     span(class = "custom-model-toolbar-label", label)
   )
 }
@@ -853,6 +853,185 @@ custom_model_canvas_workspace <- function(selected_names, variable_table = NULL,
     ),
     tags$script(HTML("window.StatEduModelCanvas && window.StatEduModelCanvas.canvas && window.StatEduModelCanvas.canvas.initAll();"))
   )
+}
+
+structural_measurement_icon <- function(kind) {
+  marker_id <- paste0("sem-arrow-", kind)
+  svg <- function(...) tags$svg(class = "structural-measurement-svg", viewBox = "0 0 68 42", `aria-hidden` = "true", ...)
+  marker <- tags$defs(tags$marker(id = marker_id, viewBox = "0 0 6 6", refX = "5", refY = "3", markerWidth = "5", markerHeight = "5", orient = "auto", tags$path(d = "M0,0 L6,3 L0,6 Z", fill = "currentColor")))
+  line <- function(x1, y1, x2, y2, arrow = FALSE) tags$line(x1 = x1, y1 = y1, x2 = x2, y2 = y2, `marker-end` = if (arrow) paste0("url(#", marker_id, ")") else NULL)
+  box <- function(x, y) tags$rect(x = x, y = y, width = "17", height = "7", rx = "1")
+  latent <- function(cx, cy) tags$ellipse(cx = cx, cy = cy, rx = "10", ry = "7")
+  if (kind == "left") return(svg(marker, latent(55, 21), box(3, 5), box(3, 18), box(3, 31), line(20, 8.5, 45, 18), line(20, 21.5, 45, 21), line(20, 34.5, 45, 24)))
+  if (kind == "right") return(svg(marker, latent(13, 21), box(48, 5), box(48, 18), box(48, 31), line(23, 18, 48, 8.5), line(23, 21, 48, 21.5), line(23, 24, 48, 34.5)))
+  if (kind == "top") return(svg(marker, latent(34, 34), box(3, 3), box(25.5, 3), box(48, 3), line(29, 28, 11.5, 10), line(34, 27, 34, 10), line(39, 28, 56.5, 10)))
+  if (kind == "bottom") return(svg(marker, latent(34, 8), box(3, 32), box(25.5, 32), box(48, 32), line(29, 14, 11.5, 32), line(34, 15, 34, 32), line(39, 14, 56.5, 32)))
+  reflective <- identical(kind, "reflective")
+  svg(marker, latent(13, 21), box(48, 5), box(48, 18), box(48, 31),
+      line(if (reflective) 23 else 48, if (reflective) 18 else 8.5, if (reflective) 48 else 23, if (reflective) 8.5 else 18, TRUE),
+      line(if (reflective) 23 else 48, 21, if (reflective) 48 else 23, 21, TRUE),
+      line(if (reflective) 23 else 48, if (reflective) 24 else 34.5, if (reflective) 48 else 23, if (reflective) 34.5 else 24, TRUE))
+}
+
+structural_file_icon <- function(kind) {
+  svg <- function(...) tags$svg(
+    class = "structural-common-toolbar-svg",
+    viewBox = "0 0 24 24",
+    fill = "none",
+    stroke = "currentColor",
+    `stroke-width` = "1.8",
+    `stroke-linecap` = "round",
+    `stroke-linejoin` = "round",
+    `aria-hidden` = "true",
+    ...
+  )
+  if (identical(kind, "load")) {
+    return(svg(
+      tags$path(d = "M3 7.5h6l2-2h4.5a2 2 0 0 1 2 2v1"),
+      tags$path(d = "M3.5 9.5h17l-2.2 9H5.7z"),
+      tags$path(d = "M12 17v-5"),
+      tags$path(d = "m9.8 14.2 2.2-2.2 2.2 2.2")
+    ))
+  }
+  if (identical(kind, "save")) {
+    return(svg(
+      tags$path(d = "M4 3.5h13l3 3V20H4z"),
+      tags$path(d = "M8 3.5v6h8v-6"),
+      tags$rect(x = "7", y = "13", width = "10", height = "7", rx = "1")
+    ))
+  }
+  svg(
+    tags$path(d = "M4 7h10"), tags$circle(cx = "17", cy = "7", r = "2"), tags$path(d = "M19 7h1"),
+    tags$path(d = "M4 12h3"), tags$circle(cx = "10", cy = "12", r = "2"), tags$path(d = "M12 12h8"),
+    tags$path(d = "M4 17h8"), tags$circle(cx = "15", cy = "17", r = "2"), tags$path(d = "M17 17h3")
+  )
+}
+
+structural_equation_variable_panel <- function(items, language = statedu_initial_language()) {
+  list_ui <- custom_model_canvas_variable_panel(items, language)
+  if (length(items) > 0) {
+    list_ui$children[[2]] <- div(
+      class = "custom-model-role-actions structural-covariate-actions",
+      tags$button(
+        type = "button",
+        class = "custom-model-role-button custom-model-role-button-covariate",
+        `data-role` = "covariate",
+        if (identical(normalize_app_language(language), "ko")) "공변량" else "Covariate"
+      )
+    )
+  }
+  tagList(
+    list_ui,
+    div(
+      class = "structural-selection-settings",
+      div(class = "structural-selection-settings-title", if (identical(normalize_app_language(language), "ko")) "선택 항목 설정" else "Selection settings"),
+      div(class = "structural-selection-settings-body", if (identical(normalize_app_language(language), "ko")) "캔버스의 변수를 선택하세요." else "Select a variable on the canvas.")
+    )
+  )
+}
+
+structural_equation_title <- function(language = statedu_initial_language()) {
+  if (identical(normalize_app_language(language), "ko")) "구조방정식" else "Structural Equation Modeling"
+}
+
+structural_equation_toolbar <- function(language = statedu_initial_language()) {
+  ko <- identical(normalize_app_language(language), "ko")
+  div(
+    class = "custom-model-toolbar",
+    div(
+      class = "custom-model-toolbar-panel is-active",
+      `data-toolbar-panel` = "tools",
+      custom_model_canvas_button("load", if (ko) "모형 불러오기" else "Load model", title = if (ko) "저장한 모형 불러오기" else "Load a saved model", icon = structural_file_icon("load")),
+      custom_model_canvas_button("save", if (ko) "모형 저장" else "Save model", title = if (ko) "현재 모형 저장하기" else "Save the current model", icon = structural_file_icon("save")),
+      custom_model_canvas_button("structuralCovariateTargets", if (ko) "공변량 설정" else "Covariate targets", title = if (ko) "공변량별 통제 대상 설정" else "Set control targets for each covariate", icon = structural_file_icon("settings")),
+      custom_model_canvas_button("addLatent", if (ko) "잠재변수" else "Latent variable", extra_class = "structural-add-latent"),
+      custom_model_canvas_button("select", custom_model_canvas_text(language, "Select", "선택"), mode = TRUE),
+      custom_model_canvas_button("connect", custom_model_canvas_text(language, "Connect", "연결"), mode = TRUE),
+      custom_model_canvas_button("swapPlaceholder", if (ko) "방향 전환" else "Swap direction", title = if (ko) "방향 전환(준비 중)" else "Swap direction (coming soon)"),
+      custom_model_canvas_button("properties", custom_model_canvas_text(language, "Properties", "속성"), mode = TRUE),
+      custom_model_canvas_button("delete", custom_model_canvas_text(language, "Delete", "삭제"), mode = TRUE),
+      custom_model_canvas_button("undo", custom_model_canvas_text(language, "Undo", "실행 취소")),
+      custom_model_canvas_button("redo", custom_model_canvas_text(language, "Redo", "다시 실행")),
+      custom_model_canvas_button("grid", custom_model_canvas_text(language, "Grid", "격자")),
+      custom_model_canvas_button("fit", custom_model_canvas_text(language, "Fit", "화면 맞춤")),
+      div(
+        class = "structural-latent-tools",
+        span(class = "structural-latent-tools-label", if (ko) "측정모형" else "Measurement"),
+        custom_model_canvas_button("placementLeft", if (ko) "왼쪽" else "Left", title = if (ko) "측정변수를 왼쪽으로" else "Indicators left", icon = structural_measurement_icon("left")),
+        custom_model_canvas_button("placementRight", if (ko) "오른쪽" else "Right", title = if (ko) "측정변수를 오른쪽으로" else "Indicators right", icon = structural_measurement_icon("right")),
+        custom_model_canvas_button("placementTop", if (ko) "위" else "Top", title = if (ko) "측정변수를 위로" else "Indicators above", icon = structural_measurement_icon("top")),
+        custom_model_canvas_button("placementBottom", if (ko) "아래" else "Bottom", title = if (ko) "측정변수를 아래로" else "Indicators below", icon = structural_measurement_icon("bottom")),
+        span(class = "structural-toolbar-separator"),
+        custom_model_canvas_button("reflective", if (ko) "반영지표" else "Reflective", title = if (ko) "반영지표: 잠재변수 → 측정변수" else "Reflective measurement", icon = structural_measurement_icon("reflective")),
+        custom_model_canvas_button("formative", if (ko) "형성지표" else "Formative", title = if (ko) "형성지표: 측정변수 → 잠재변수" else "Formative measurement", icon = structural_measurement_icon("formative"))
+      ),
+      custom_model_canvas_edge_shape_tools(language),
+      custom_model_canvas_edge_anchor_tools(language)
+    )
+  )
+}
+
+structural_equation_workspace <- function(selected_names, variable_table = NULL, labels = character(0), language = statedu_initial_language()) {
+  items <- custom_model_canvas_variable_items(selected_names, variable_table, labels)
+  variables_json <- htmltools::htmlEscape(jsonlite::toJSON(items, auto_unbox = TRUE, null = "null"), attribute = TRUE)
+  labels_i18n <- custom_model_canvas_i18n(language)
+  labels_i18n$role_latent <- if (identical(normalize_app_language(language), "ko")) "잠재변수" else "Latent variable"
+  i18n_json <- htmltools::htmlEscape(jsonlite::toJSON(labels_i18n, auto_unbox = TRUE, null = "null"), attribute = TRUE)
+  tagList(
+    div(
+      id = "structural-equation-canvas-root",
+      class = "custom-model-canvas-root structural-equation-canvas-root",
+      `data-input-prefix` = "structural_equation_canvas",
+      `data-canvas-width` = "1600",
+      `data-canvas-height` = "1000",
+      `data-canvas-paper` = "Large",
+      `data-variables` = variables_json,
+      `data-language` = normalize_app_language(language),
+      `data-i18n` = i18n_json,
+      div(
+        class = "custom-model-variable-panel analysis-transfer-column analysis-transfer-panel",
+        analysis_field_label_tag(if (identical(normalize_app_language(language), "ko")) "관측변수" else "Observed variables", language = language),
+        structural_equation_variable_panel(items, language)
+      ),
+      div(
+        class = "custom-model-diagram-panel",
+        structural_equation_toolbar(language),
+        div(class = "custom-model-statusbar",
+            span(class = "custom-model-mode-status", custom_model_canvas_text(language, "Mode: Select", "모드: 선택")),
+            span(class = "custom-model-paper-status", "Large 1600×1000"),
+            span(class = "custom-model-covariate-status", "")),
+        div(class = "custom-model-canvas-scroll",
+            div(class = "custom-model-paper is-grid-visible", `data-width` = "1600", `data-height` = "1000",
+                tags$svg(class = "custom-model-edge-layer", width = "1600", height = "1000"),
+                div(class = "custom-model-node-layer")))
+      )
+    ),
+    tags$script(HTML("window.StatEduModelCanvas && window.StatEduModelCanvas.canvas && window.StatEduModelCanvas.canvas.initAll();"))
+  )
+}
+
+structural_equation_tab_panel <- function(language = statedu_initial_language()) {
+  title <- structural_equation_title(language)
+  tabPanel(
+    title,
+    value = "analysis_structural_equation",
+    div(class = "page-shell",
+        div(class = "app-heading", h1(title), div(if (identical(normalize_app_language(language), "ko")) "관측변수와 잠재변수를 배치하여 CFA와 SEM 모형을 작성합니다." else "Build CFA and SEM models with observed and latent variables.", class = "app-subtitle")),
+        div(class = "workspace-panel frequencies-workspace-panel custom-model-workspace-panel structural-equation-workspace-panel", style = "min-width:1450px;overflow-x:auto;",
+            analysis_workspace_heading(title, "structural_equation", language),
+            analysis_workspace_body("structural_equation", uiOutput("structural_equation_canvas_setup"), NULL, NULL)))
+  )
+}
+
+register_structural_equation_canvas_handlers <- function(input, output, selected_names_fn, variable_table_fn, labels_fn, mark_settings_dirty, app_language_fn = NULL) {
+  output$structural_equation_canvas_setup <- renderUI({
+    structural_equation_workspace(selected_names_fn(), variable_table_fn(), labels_fn(), statedu_current_language(app_language_fn))
+  })
+  observeEvent(input$structural_equation_canvas_state, mark_settings_dirty(), ignoreInit = TRUE)
+  observeEvent(input$structural_equation_canvas_run_request, {
+    showNotification(if (identical(statedu_current_language(app_language_fn), "ko")) "SEM 분석 엔진은 다음 단계에서 연결됩니다." else "The SEM analysis engine will be connected in the next step.", type = "message")
+  }, ignoreInit = TRUE)
+  invisible(TRUE)
 }
 
 custom_model_canvas_records <- function(value) {

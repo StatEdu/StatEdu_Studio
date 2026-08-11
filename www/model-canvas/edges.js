@@ -16,6 +16,10 @@
   function validDirectedEdge(fromNode, toNode) {
     var fromRole = fromNode && fromNode.role;
     var toRole = toNode && toNode.role;
+    if ((fromRole === "latent" && (toRole === "indicator" || toRole === "latent")) ||
+        (fromRole === "indicator" && toRole === "latent") ||
+        (fromRole === "disturbance" && toRole === "latent") ||
+        (fromRole === "error" && toRole === "indicator")) return true;
     return (
       (fromRole === "independent" && toRole === "mediator") ||
       (fromRole === "mediator" && toRole === "mediator") ||
@@ -110,6 +114,7 @@
   }
 
   function anchorSlot(instance, edge, endpoint, side) {
+    if (edge && edge.fixedCenter) return {count: 1, index: 0};
     var nodeId = endpoint === "from" ? edge.from : edge.to;
     var peers = instance.state.edges.filter(function(item) {
       var itemSide = edgeSide(instance, item);
@@ -698,6 +703,9 @@
       return moderation.toEdge !== edgeId;
     });
     if (instance.state.selectedEdgeId === edgeId) instance.state.selectedEdgeId = null;
+    if (window.StatEduModelCanvas.canvas && window.StatEduModelCanvas.canvas.reflowMeasurements) {
+      window.StatEduModelCanvas.canvas.reflowMeasurements(instance);
+    }
   }
 
   function deleteModeration(instance, moderationId) {

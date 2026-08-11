@@ -108,13 +108,13 @@ dw_diagnostics <- mediation_moderation_dw_summary_value(list(
   dw_d = 1.79,
   dw_crit = list(dU = 1.89)
 ))
-stopifnot(identical(dw_diagnostics, "1.79 (1.89~2.11)"))
+stopifnot(identical(dw_diagnostics, "1.790 (1.890~2.110)"))
 dw_plain <- mediation_moderation_dw_summary_value(list(
   residual_diagnostics = FALSE,
   dw_d = 1.79,
   dw_crit = list(dU = 1.89)
 ))
-stopifnot(identical(dw_plain, "1.79"))
+stopifnot(identical(dw_plain, "1.790"))
 
 message("Checking numeric-label factor responses are converted before lm...")
 numeric_factor_data <- data.frame(

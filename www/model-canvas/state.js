@@ -27,6 +27,8 @@
     edges: [],
     moderations: [],
     covariates: [],
+    covariateTypes: {},
+    covariateTargets: {},
     covariateApplyTo: "all",
     dashNonsignificant: true,
     autoAlign: true,
@@ -77,6 +79,8 @@
       edges: clone(state.edges),
       moderations: clone(state.moderations),
       covariates: clone(state.covariates),
+      covariateTypes: clone(state.covariateTypes || {}),
+      covariateTargets: clone(state.covariateTargets || {}),
       covariateApplyTo: state.covariateApplyTo,
       dashNonsignificant: state.dashNonsignificant !== false,
       autoAlign: state.autoAlign !== false,
@@ -91,6 +95,8 @@
     state.edges = clone(snap.edges || []);
     state.moderations = clone(snap.moderations || []);
     state.covariates = clone(snap.covariates || []);
+    state.covariateTypes = clone(snap.covariateTypes || {});
+    state.covariateTargets = clone(snap.covariateTargets || {});
     state.covariateApplyTo = snap.covariateApplyTo || "all";
     state.dashNonsignificant = snap.dashNonsignificant !== false;
     state.autoAlign = snap.autoAlign !== false;

@@ -55,7 +55,28 @@
                                                "ext":  "studio",
                                                "name":  "StatEdu Studio Settings",
                                                "description":  "StatEdu Studio Settings",
-                                               "icon":  "build/studio-file.ico",
+                                               "icon":  "build/studio-data.ico",
+                                               "role":  "Editor"
+                                           },
+                                           {
+                                               "ext":  "stmodel",
+                                               "name":  "StatEdu Model",
+                                               "description":  "StatEdu Model Canvas",
+                                               "icon":  "build/studio-mm.ico",
+                                               "role":  "Editor"
+                                           },
+                                           {
+                                               "ext":  "stsem",
+                                               "name":  "StatEdu SEM Project",
+                                               "description":  "StatEdu Structural Equation Model Project",
+                                               "icon":  "build/studio-sem.ico",
+                                               "role":  "Editor"
+                                           },
+                                           {
+                                               "ext":  "stmm",
+                                               "name":  "StatEdu Mediation Moderation Project",
+                                               "description":  "StatEdu Mediation and Moderation Model Project",
+                                               "icon":  "build/studio-mm.ico",
                                                "role":  "Editor"
                                            }
                                        ]

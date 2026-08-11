@@ -110,6 +110,84 @@
     });
   }
 
+  function structuralCovariateTargets(instance) {
+    window.StatEduModelCanvas.activeInstance = instance;
+    var ko = instance.language === "ko";
+    if (!instance.state.covariates.length) {
+      window.alert(ko ? "먼저 왼쪽 변수 목록에서 공변량을 설정하세요." : "Select covariates from the variable list first.");
+      return;
+    }
+    var latents = instance.state.nodes.filter(function(node) { return node.role === "latent"; });
+    if (!latents.length) {
+      window.alert(ko ? "통제할 잠재변수를 먼저 만드세요." : "Create latent variables to control first.");
+      return;
+    }
+    var paths = instance.state.edges.filter(function(edge) {
+      var from = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
+      var to = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
+      return from && to && from.role === "latent" && to.role === "latent";
+    });
+    var finalIds = latents.filter(function(latent) {
+      return paths.some(function(edge) { return edge.to === latent.id; }) &&
+        !paths.some(function(edge) { return edge.from === latent.id; });
+    }).map(function(latent) { return latent.id; });
+    var shell = modalShell(ko ? "공변량 통제 대상" : "Covariate control targets");
+    shell.modal.classList.add("structural-covariate-target-modal");
+    var note = document.createElement("div");
+    note.className = "structural-covariate-target-note";
+    note.textContent = ko ? "최종 종속변수는 기본으로 통제됩니다. 공변량별로 추가 통제할 잠재변수를 선택하세요." : "Final dependent variables are controlled by default. Select additional targets for each covariate.";
+    shell.body.appendChild(note);
+    var table = document.createElement("div");
+    table.className = "structural-covariate-target-table";
+    table.style.setProperty("--target-columns", String(latents.length));
+    var header = document.createElement("div");
+    header.className = "structural-covariate-target-row is-header";
+    var first = document.createElement("div");
+    first.textContent = ko ? "공변량" : "Covariate";
+    header.appendChild(first);
+    latents.forEach(function(latent) {
+      var cell = document.createElement("div");
+      cell.textContent = window.StatEduModelCanvas.layout.displayText(latent);
+      header.appendChild(cell);
+    });
+    table.appendChild(header);
+    instance.state.covariates.forEach(function(covariate) {
+      var row = document.createElement("div");
+      row.className = "structural-covariate-target-row";
+      var nameCell = document.createElement("div");
+      nameCell.className = "structural-covariate-target-name";
+      nameCell.textContent = covariate;
+      row.appendChild(nameCell);
+      var selected = (instance.state.covariateTargets || {})[covariate] || [];
+      latents.forEach(function(latent) {
+        var cell = document.createElement("label");
+        cell.className = "structural-covariate-target-cell";
+        var input = document.createElement("input");
+        input.type = "checkbox";
+        input.setAttribute("data-covariate", covariate);
+        input.value = latent.id;
+        input.checked = finalIds.indexOf(latent.id) >= 0 || selected.indexOf(latent.id) >= 0;
+        input.disabled = finalIds.indexOf(latent.id) >= 0;
+        cell.appendChild(input);
+        row.appendChild(cell);
+      });
+      table.appendChild(row);
+    });
+    shell.body.appendChild(table);
+    shell.apply.addEventListener("click", function() {
+      window.StatEduModelCanvas.state.pushHistory(instance);
+      instance.state.covariateTargets = {};
+      instance.state.covariates.forEach(function(covariate) {
+        instance.state.covariateTargets[covariate] = Array.from(shell.body.querySelectorAll("input[data-covariate]:checked:not(:disabled)")).filter(function(input) {
+          return input.getAttribute("data-covariate") === covariate;
+        }).map(function(input) { return input.value; });
+      });
+      window.StatEduModelCanvas.canvas.render(instance);
+      window.StatEduModelCanvas.bridge.sendState(instance);
+      removeModal();
+    });
+  }
+
   function paper(instance) {
     window.StatEduModelCanvas.activeInstance = instance;
     var t = function(key, fallback) { return window.StatEduModelCanvas.state.label(instance, key, fallback); };
@@ -365,7 +443,11 @@
     instance.state.nodes = [];
     instance.state.edges = [];
     instance.state.moderations = [];
-    if (includeCovariates !== false) instance.state.covariates = [];
+    if (includeCovariates !== false) {
+      instance.state.covariates = [];
+      instance.state.covariateTypes = {};
+      instance.state.covariateTargets = {};
+    }
     window.StatEduModelCanvas.canvas.render(instance);
     window.StatEduModelCanvas.bridge.sendState(instance);
   }
@@ -449,6 +531,7 @@
   window.StatEduModelCanvas.dialogs = {
     chooseRole: chooseRole,
     covariates: covariates,
+    structuralCovariateTargets: structuralCovariateTargets,
     paper: paper,
     style: style,
     reset: reset,

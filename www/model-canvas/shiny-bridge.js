@@ -5,21 +5,21 @@
     if (!window.Shiny || typeof Shiny.setInputValue !== "function") return;
     var payload = window.StatEduModelCanvas.state.snapshot(instance.state);
     payload.nonce = Date.now() + Math.random();
-    Shiny.setInputValue("custom_model_canvas_state", payload, {priority: "event"});
+    Shiny.setInputValue((instance.root.getAttribute("data-input-prefix") || "custom_model_canvas") + "_state", payload, {priority: "event"});
   }
 
   function run(instance) {
     if (!window.Shiny || typeof Shiny.setInputValue !== "function") return;
     var payload = window.StatEduModelCanvas.state.snapshot(instance.state);
     payload.nonce = Date.now() + Math.random();
-    Shiny.setInputValue("custom_model_canvas_run_request", payload, {priority: "event"});
+    Shiny.setInputValue((instance.root.getAttribute("data-input-prefix") || "custom_model_canvas") + "_run_request", payload, {priority: "event"});
   }
 
   function runConfirm(instance) {
     if (!window.Shiny || typeof Shiny.setInputValue !== "function") return;
     var payload = window.StatEduModelCanvas.state.snapshot(instance.state);
     payload.nonce = Date.now() + Math.random();
-    Shiny.setInputValue("custom_model_canvas_run_confirm", payload, {priority: "event"});
+    Shiny.setInputValue((instance.root.getAttribute("data-input-prefix") || "custom_model_canvas") + "_run_confirm", payload, {priority: "event"});
   }
 
   function applyResult(message) {

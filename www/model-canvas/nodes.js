@@ -29,7 +29,12 @@
       item.setAttribute("aria-selected", isSelected ? "true" : "false");
       if (role) {
         item.setAttribute("data-role", role);
-        item.setAttribute("data-role-label", window.StatEduModelCanvas.state.roleLabel(instance, role));
+        var roleLabel = window.StatEduModelCanvas.state.roleLabel(instance, role);
+        if (role === "covariate") {
+          var covariateType = (instance.state.covariateTypes || {})[name];
+          if (covariateType && covariateType.encoding) roleLabel += " · " + covariateType.encoding;
+        }
+        item.setAttribute("data-role-label", roleLabel);
       } else {
         item.removeAttribute("data-role");
         item.removeAttribute("data-role-label");
@@ -58,6 +63,76 @@
     return window.StatEduModelCanvas.layout.roleAutoAlignPosition(box, instance.state.nodes, window.StatEduModelCanvas.layout.AUTO_ALIGN_THRESHOLD);
   }
 
+  function createLatentNode(instance, x, y) {
+    var style = instance.state.style;
+    var sequence = instance.state.nodes.filter(function(node) { return node.role === "latent"; }).length + 1;
+    return {
+      id: "latent_" + Date.now() + "_" + sequence,
+      variableId: "",
+      name: "eta" + sequence,
+      dataLabel: "잠재변수 " + sequence,
+      canvasLabel: "",
+      role: "latent",
+      nodeType: "latent",
+      x: x,
+      y: y,
+      width: 90,
+      height: 44,
+      fontSize: 11,
+      customFontSize: true,
+      fontFamily: style.fontFamily
+    };
+  }
+
+  function createIndicatorNode(instance, variable, x, y) {
+    var node = createNodeFromVariable(instance, variable, x, y, "indicator");
+    node.nodeType = "indicator";
+    node.width = 82;
+    node.height = 30;
+    node.fontSize = 11;
+    node.customFontSize = true;
+    return node;
+  }
+
+  function createErrorNode(instance, indicator, x, y, sequence) {
+    return {
+      id: "error_" + indicator.id + "_" + sequence,
+      variableId: "",
+      name: "e" + sequence,
+      dataLabel: "e" + sequence,
+      canvasLabel: "",
+      autoErrorNotation: true,
+      role: "error",
+      nodeType: "error",
+      x: x,
+      y: y,
+      width: 26,
+      height: 26,
+      fontSize: 9,
+      customFontSize: true,
+      fontFamily: instance.state.style.fontFamily
+    };
+  }
+
+  function createDisturbanceNode(instance, latent, sequence) {
+    return {
+      id: "disturbance_" + latent.id,
+      variableId: "",
+      name: "zeta" + sequence,
+      dataLabel: "ζ" + sequence,
+      canvasLabel: "",
+      role: "disturbance",
+      nodeType: "disturbance",
+      x: Number(latent.x || 0),
+      y: Number(latent.y || 0),
+      width: 26,
+      height: 26,
+      fontSize: 10,
+      customFontSize: true,
+      fontFamily: instance.state.style.fontFamily
+    };
+  }
+
   function renderNodes(instance) {
     var layer = instance.nodeLayer;
     layer.innerHTML = "";
@@ -76,7 +151,8 @@
       element.style.height = (node.height || instance.state.style.boxHeight) + "px";
       element.style.fontSize = (node.customFontSize ? node.fontSize : instance.state.style.fontSize) + "px";
       element.style.fontFamily = node.fontFamily || instance.state.style.fontFamily;
-      element.style.borderColor = instance.state.style.boxStrokeColor || "#000000";
+      element.style.backgroundColor = node.fillColor && node.fillColor !== "transparent" ? node.fillColor : "transparent";
+      element.style.borderColor = node.strokeColor || instance.state.style.boxStrokeColor || "#000000";
       element.style.borderWidth = Number(instance.state.style.boxStrokeWidth || 1.5) + "px";
 
       var label = document.createElement("div");
@@ -95,20 +171,54 @@
   }
 
   function deleteNode(instance, nodeId) {
+    var target = nodeById(instance, nodeId);
+    if (!target) return;
+    var removeIds = [nodeId];
+    if (target.role === "indicator") {
+      instance.state.edges.forEach(function(edge) {
+        var source = nodeById(instance, edge.from);
+        if (edge.to === target.id && source && source.role === "error") removeIds.push(source.id);
+      });
+    }
+    if (target.role === "latent") {
+      var indicators = instance.state.edges.map(function(edge) {
+        var from = nodeById(instance, edge.from);
+        var to = nodeById(instance, edge.to);
+        if (from && from.id === target.id && to && to.role === "indicator") return to;
+        if (to && to.id === target.id && from && from.role === "indicator") return from;
+        return null;
+      }).filter(Boolean);
+      indicators.forEach(function(indicator) {
+        removeIds.push(indicator.id);
+        instance.state.edges.forEach(function(edge) {
+          var source = nodeById(instance, edge.from);
+          if (edge.to === indicator.id && source && source.role === "error") removeIds.push(source.id);
+        });
+      });
+      instance.state.edges.forEach(function(edge) {
+        var source = nodeById(instance, edge.from);
+        if (edge.to === target.id && source && source.role === "disturbance") removeIds.push(source.id);
+      });
+    }
+    removeIds = removeIds.filter(function(id, index) { return removeIds.indexOf(id) === index; });
     var removedEdgeIds = instance.state.edges
-      .filter(function(edge) { return edge.from === nodeId || edge.to === nodeId; })
+      .filter(function(edge) { return removeIds.indexOf(edge.from) >= 0 || removeIds.indexOf(edge.to) >= 0; })
       .map(function(edge) { return edge.id; });
     instance.state.nodes = instance.state.nodes.filter(function(node) {
-      return node.id !== nodeId;
+      return removeIds.indexOf(node.id) < 0;
     });
     instance.state.edges = instance.state.edges.filter(function(edge) {
-      return edge.from !== nodeId && edge.to !== nodeId;
+      return removeIds.indexOf(edge.from) < 0 && removeIds.indexOf(edge.to) < 0;
     });
     instance.state.moderations = instance.state.moderations.filter(function(moderation) {
       return moderation.from !== nodeId && removedEdgeIds.indexOf(moderation.toEdge) < 0;
     });
-    if (instance.state.selectedNodeId === nodeId) instance.state.selectedNodeId = null;
+    instance.state.selectedNodeIds = (instance.state.selectedNodeIds || []).filter(function(id) { return removeIds.indexOf(id) < 0; });
+    if (removeIds.indexOf(instance.state.selectedNodeId) >= 0) instance.state.selectedNodeId = null;
     hideProperties(instance);
+    if (window.StatEduModelCanvas.canvas && window.StatEduModelCanvas.canvas.reflowMeasurements) {
+      window.StatEduModelCanvas.canvas.reflowMeasurements(instance);
+    }
   }
 
   function startNodeDrag(instance, event, element) {
@@ -119,6 +229,8 @@
     window.StatEduModelCanvas.state.pushHistory(instance);
     var startX = event.clientX;
     var startY = event.clientY;
+    var moved = false;
+    var dragThreshold = 4;
     var selectedIds = (instance.state.selectedNodeIds || []).indexOf(node.id) >= 0 ?
       (instance.state.selectedNodeIds || []).slice() :
       [node.id];
@@ -132,6 +244,8 @@
     function move(moveEvent) {
       var dx = (moveEvent.clientX - startX) / instance.state.canvas.zoom;
       var dy = (moveEvent.clientY - startY) / instance.state.canvas.zoom;
+      if (!moved && Math.sqrt(dx * dx + dy * dy) < dragThreshold) return;
+      moved = true;
       initialPositions.forEach(function(item) {
         item.node.x = item.x + dx;
         item.node.y = item.y + dy;
@@ -143,8 +257,17 @@
     function up() {
       document.removeEventListener("pointermove", move, true);
       document.removeEventListener("pointerup", up, true);
+      if (!moved) {
+        instance.state.history.pop();
+        return;
+      }
       if (instance.state.autoAlign !== false && initialPositions.length === 1) {
         window.StatEduModelCanvas.layout.roleAutoAlignPosition(node, instance.state.nodes, window.StatEduModelCanvas.layout.AUTO_ALIGN_THRESHOLD, node.id);
+        renderNodes(instance);
+        window.StatEduModelCanvas.edges.render(instance);
+      }
+      if (node.role === "latent" && window.StatEduModelCanvas.canvas && window.StatEduModelCanvas.canvas.reflowMeasurements) {
+        window.StatEduModelCanvas.canvas.reflowMeasurements(instance);
         renderNodes(instance);
         window.StatEduModelCanvas.edges.render(instance);
       }
@@ -209,6 +332,10 @@
     ].join("");
 
     var roleSelect = panel.querySelector(".custom-model-property-role");
+    if (["latent", "indicator", "error"].indexOf(node.role) >= 0) {
+      roleSelect.appendChild(option(node.role, window.StatEduModelCanvas.state.roleLabel(instance, node.role)));
+      roleSelect.disabled = true;
+    }
     roleSelect.appendChild(option("independent", window.StatEduModelCanvas.state.roleLabel(instance, "independent")));
     roleSelect.appendChild(option("mediator", window.StatEduModelCanvas.state.roleLabel(instance, "mediator")));
     roleSelect.appendChild(option("moderator", window.StatEduModelCanvas.state.roleLabel(instance, "moderator")));
@@ -237,7 +364,8 @@
     panel.querySelector(".custom-model-property-apply").addEventListener("click", function() {
       window.StatEduModelCanvas.state.pushHistory(instance);
       node.canvasLabel = String(panel.querySelector(".custom-model-property-label-input").value || "").trim();
-      var nextRole = roleSelect.value || "independent";
+      var fixedRole = ["latent", "indicator", "error"].indexOf(node.role) >= 0;
+      var nextRole = fixedRole ? node.role : (roleSelect.value || "independent");
       var roleLimit = window.StatEduModelCanvas.state.ROLE_LIMITS[nextRole];
       var assignedCount = instance.state.nodes.filter(function(item) {
         return item.id !== node.id && item.role === nextRole;
@@ -288,6 +416,10 @@
     variableUsed: variableUsed,
     setVariableUsage: setVariableUsage,
     createNodeFromVariable: createNodeFromVariable,
+    createLatentNode: createLatentNode,
+    createIndicatorNode: createIndicatorNode,
+    createErrorNode: createErrorNode,
+    createDisturbanceNode: createDisturbanceNode,
     render: renderNodes,
     nodeById: nodeById,
     deleteNode: deleteNode,

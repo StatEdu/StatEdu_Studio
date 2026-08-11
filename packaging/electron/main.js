@@ -26,7 +26,7 @@ function normalizeStudioFileArg(value) {
     return "";
   }
   const resolved = path.resolve(raw);
-  if (path.extname(resolved).toLowerCase() !== ".studio") {
+  if (![".studio", ".stmodel", ".stsem", ".stmm"].includes(path.extname(resolved).toLowerCase())) {
     return "";
   }
   return fs.existsSync(resolved) ? resolved : "";
