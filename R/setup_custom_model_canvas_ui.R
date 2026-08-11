@@ -953,15 +953,17 @@ structural_equation_toolbar <- function(analysis_type = "cbsem", language = stat
       custom_model_canvas_button("load", if (ko) "모형 불러오기" else "Load model", title = if (ko) "저장한 모형 불러오기" else "Load a saved model", icon = structural_file_icon("load")),
       custom_model_canvas_button("save", if (ko) "모형 저장" else "Save model", title = if (ko) "현재 모형 저장하기" else "Save the current model", icon = structural_file_icon("save")),
       custom_model_canvas_button("export", if (ko) "모형 내보내기" else "Export model"),
-      tags$button(
-        type = "button",
-        class = "custom-model-toolbar-button structural-covariate-toolbar-button",
-        `data-role` = "covariate",
-        title = if (ko) "선택한 관측변수를 공변량으로 지정" else "Assign selected variables as covariates",
-        span(class = "custom-model-toolbar-icon", "C"),
-        span(class = "custom-model-toolbar-label", if (ko) "공변량 지정" else "Assign covariate")
+      if (!identical(analysis_type, "cfa")) tagList(
+        tags$button(
+          type = "button",
+          class = "custom-model-toolbar-button structural-covariate-toolbar-button",
+          `data-role` = "covariate",
+          title = if (ko) "선택한 관측변수를 공변량으로 지정" else "Assign selected variables as covariates",
+          span(class = "custom-model-toolbar-icon", "C"),
+          span(class = "custom-model-toolbar-label", if (ko) "공변량 지정" else "Assign covariate")
+        ),
+        custom_model_canvas_button("structuralCovariateTargets", if (ko) "공변량 설정" else "Covariate targets", title = if (ko) "공변량별 통제 대상 설정" else "Set control targets for each covariate", icon = structural_file_icon("settings"))
       ),
-      custom_model_canvas_button("structuralCovariateTargets", if (ko) "공변량 설정" else "Covariate targets", title = if (ko) "공변량별 통제 대상 설정" else "Set control targets for each covariate", icon = structural_file_icon("settings")),
       custom_model_canvas_button("addLatent", if (ko) "잠재변수" else "Latent variable", extra_class = "structural-add-latent"),
       custom_model_canvas_button("select", custom_model_canvas_text(language, "Select", "선택"), mode = TRUE),
       custom_model_canvas_button("connect", custom_model_canvas_text(language, "Connect", "연결"), mode = TRUE),
@@ -1288,7 +1290,17 @@ structural_canvas_apply_mi <- function(snapshot, mi_row) {
   snapshot
 }
 
-run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estimator = "ML", missing = "fiml", std_lv = FALSE) {
+structural_canvas_ordered_indicators <- function(snapshot, variable_table = NULL) {
+  if (is.null(variable_table) || !all(c("name", "measurement") %in% names(variable_table))) return(character(0))
+  indicators <- unique(vapply(Filter(function(node) identical(node$role, "indicator"), snapshot$nodes %||% list()), structural_canvas_name, character(1)))
+  measurements <- tolower(as.character(variable_table$measurement))
+  names(measurements) <- as.character(variable_table$name)
+  ordered_levels <- c("binary", "category", "categorical", "factor", "nominal", "ordinal", "ordered")
+  is_ordered <- indicators %in% names(measurements) & measurements[indicators] %in% ordered_levels
+  indicators[!is.na(is_ordered) & is_ordered]
+}
+
+run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estimator = "ML", missing = "fiml", std_lv = FALSE, ordered = character(0)) {
   nodes <- snapshot$nodes %||% list()
   edges <- snapshot$edges %||% list()
   latents <- Filter(function(node) identical(node$role, "latent"), nodes)
@@ -1336,10 +1348,14 @@ run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estima
     estimator <- toupper(as.character(estimator %||% "ML"))
     missing <- as.character(missing %||% "fiml")
     if (identical(estimator, "WLSMV") && identical(missing, "fiml")) missing <- "pairwise"
+    ordered <- intersect(unique(as.character(ordered %||% character(0))), names(data))
+    if (identical(estimator, "WLSMV") && !length(ordered)) {
+      stop("WLSMV requires at least one binary, categorical, or ordinal indicator.")
+    }
     fit <- if (identical(analysis_type, "cfa")) {
-      lavaan::cfa(syntax, data = data, estimator = estimator, missing = missing, std.lv = isTRUE(std_lv), auto.cov.lv.x = FALSE)
+      lavaan::cfa(syntax, data = data, estimator = estimator, missing = missing, std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE)
     } else {
-      lavaan::sem(syntax, data = data, estimator = estimator, missing = missing, std.lv = isTRUE(std_lv), auto.cov.lv.x = FALSE)
+      lavaan::sem(syntax, data = data, estimator = estimator, missing = missing, std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE)
     }
     return(list(fit = fit, syntax = syntax, converged = isTRUE(lavaan::lavInspect(fit, "converged"))))
   }
@@ -1451,7 +1467,7 @@ structural_canvas_allowed_mi <- function(snapshot, fit, mode = "theory") {
   mi[order(-mi$mi), , drop = FALSE]
 }
 
-structural_canvas_mi_refits <- function(snapshot, result, data, analysis_type, estimator, missing, std_lv, mode = "theory") {
+structural_canvas_mi_refits <- function(snapshot, result, data, analysis_type, estimator, missing, std_lv, mode = "theory", ordered = character(0)) {
   mi <- structural_canvas_allowed_mi(snapshot, result$fit, mode = mode)
   if (!nrow(mi)) return(mi)
   for (column in c("cfi_after", "tli_after", "rmsea_after", "srmr_after")) mi[[column]] <- NA_real_
@@ -1472,9 +1488,9 @@ structural_canvas_mi_refits <- function(snapshot, result, data, analysis_type, e
     )
     candidate <- tryCatch({
       if (identical(analysis_type, "cfa")) {
-        lavaan::cfa(candidate_syntax, data = data, estimator = estimator, missing = missing, std.lv = std_lv, auto.cov.lv.x = FALSE)
+        lavaan::cfa(candidate_syntax, data = data, estimator = estimator, missing = missing, std.lv = std_lv, ordered = ordered, auto.cov.lv.x = FALSE)
       } else {
-        lavaan::sem(candidate_syntax, data = data, estimator = estimator, missing = missing, std.lv = std_lv, auto.cov.lv.x = FALSE)
+        lavaan::sem(candidate_syntax, data = data, estimator = estimator, missing = missing, std.lv = std_lv, ordered = ordered, auto.cov.lv.x = FALSE)
       }
     }, error = function(error) NULL)
     if (is.null(candidate) || !isTRUE(lavaan::lavInspect(candidate, "converged"))) break
@@ -1509,7 +1525,7 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
       fit <- bundle$fit
       snapshot <- bundle$snapshot %||% list()
       labels <- labels_fn() %||% character(0)
-      ko <- FALSE
+      ko <- identical(statedu_current_language(app_language_fn), "ko")
       display_name <- function(name) {
         name <- as.character(name %||% "")
         node <- Filter(function(item) identical(structural_canvas_name(item), name), snapshot$nodes %||% list())
@@ -1537,18 +1553,24 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
       fmt <- function(value) vapply(as.numeric(value), format_decimal3, character(1))
       if (analysis_type %in% c("cfa", "cbsem")) {
         if (identical(kind, "overview")) {
-          return(data.frame(
-            Item = c("Analysis", "Estimator", "N", "Observed variables", "Latent variables", "Free parameters", "Converged"),
-            Value = c(structural_analysis_title(analysis_type, "en"), lavaan::lavInspect(fit, "options")$estimator, lavaan::lavInspect(fit, "ntotal"), length(lavaan::lavNames(fit, "ov")), length(lavaan::lavNames(fit, "lv")), lavaan::lavInspect(fit, "npar"), if (isTRUE(lavaan::lavInspect(fit, "converged"))) "Yes" else "No"),
+          overview_df <- data.frame(
+            Item = if (ko) c("분석 방법", "추정 방법", "표본 크기(N)", "관측변수 수", "잠재변수 수", "자유 파라미터 수", "수렴 여부") else c("Analysis", "Estimator", "N", "Observed variables", "Latent variables", "Free parameters", "Converged"),
+            Value = c(structural_analysis_title(analysis_type, statedu_current_language(app_language_fn)), lavaan::lavInspect(fit, "options")$estimator, lavaan::lavInspect(fit, "ntotal"), length(lavaan::lavNames(fit, "ov")), length(lavaan::lavNames(fit, "lv")), lavaan::lavInspect(fit, "npar"), if (isTRUE(lavaan::lavInspect(fit, "converged"))) (if (ko) "수렴함(Yes)" else "Yes") else (if (ko) "수렴 안 됨(No)" else "No")),
             check.names = FALSE
-          ))
+          )
+          names(overview_df)[[1]] <- if (ko) "항목" else "Item"
+          names(overview_df)[[2]] <- if (ko) "값" else "Value"
+          return(overview_df)
         }
         if (identical(kind, "fit")) {
           ci_level <- as.numeric(bundle$rmsea_ci %||% .90)
           measures <- lavaan::fitMeasures(fit, fm_args = list(rmsea.ci.level = ci_level))
           value <- function(key) if (key %in% names(measures)) unname(measures[[key]]) else NA_real_
           values <- c(value("chisq"), value("df"), value("pvalue"), value("chisq") / value("df"), value("cfi"), value("tli"), value("srmr"), value("rmsea"), value("rmsea.ci.lower"), value("rmsea.ci.upper"))
-          return(data.frame(`χ²` = fmt(values[[1]]), df = fmt(values[[2]]), p = format_p(values[[3]]), Q = fmt(values[[4]]), CFI = fmt(values[[5]]), TLI = fmt(values[[6]]), SRMR = fmt(values[[7]]), RMSEA = fmt(values[[8]]), `95% CI lower` = fmt(values[[9]]), `95% CI upper` = fmt(values[[10]]), check.names = FALSE))
+          ci_percent <- round(100 * ci_level)
+          table <- data.frame(`χ²` = fmt(values[[1]]), df = fmt(values[[2]]), p = format_p(values[[3]]), Q = fmt(values[[4]]), CFI = fmt(values[[5]]), TLI = fmt(values[[6]]), SRMR = fmt(values[[7]]), RMSEA = fmt(values[[8]]), fmt(values[[9]]), fmt(values[[10]]), check.names = FALSE)
+          names(table)[9:10] <- paste0(ci_percent, "% CI ", c("LLCI", "ULCI"))
+          return(table)
         }
         if (identical(kind, "validity")) {
           standardized <- lavaan::standardizedSolution(fit)
@@ -1580,7 +1602,10 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
               sum(lambda)^2 / (sum(lambda)^2 + sum(1 - lambda^2))
             }, numeric(1)), latent_names)
           }
-          correlations <- lavaan::lavInspect(fit, "cor.lv")
+          correlations <- as.matrix(lavaan::lavInspect(fit, "cor.lv"))
+          if (!length(dim(correlations))) correlations <- matrix(correlations, nrow = 1L, ncol = 1L)
+          if (is.null(rownames(correlations))) rownames(correlations) <- latent_names
+          if (is.null(colnames(correlations))) colnames(correlations) <- latent_names
           table <- matrix("", nrow = length(latent_names), ncol = length(latent_names) + 2L)
           colnames(table) <- c(if (ko) "잠재변수" else "Latent", vapply(latent_names, display_name, character(1)), "CR")
           for (row in seq_along(latent_names)) {
@@ -1611,7 +1636,7 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
           if (identical(mi$op[[index]], "~~")) paste(lhs, "<-->", rhs) else if (identical(mi$op[[index]], "=~")) paste(lhs, "=~", rhs) else paste(rhs, "-->", lhs)
         }, character(1))
         table <- data.frame(relation, MI = fmt(mi$mi), CFI = fmt(mi$cfi_after), TLI = fmt(mi$tli_after), RMSEA = fmt(mi$rmsea_after), SRMR = fmt(mi$srmr_after), check.names = FALSE)
-        names(table)[[1]] <- if (identical(bundle$mi_mode %||% "theory", "theory")) "Covariance" else "Relation"
+        names(table)[[1]] <- if (identical(bundle$mi_mode %||% "theory", "theory")) (if (ko) "추천 공분산" else "Covariance") else (if (ko) "관계 경로" else "Relation")
         return(table)
       }
       summary_fit <- summary(fit)
@@ -1630,7 +1655,7 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
     })
     output[[paste0(prefix, "_results")]] <- renderUI({
       shiny::req(!is.null(fit_result()))
-      ko <- FALSE
+      ko <- identical(statedu_current_language(app_language_fn), "ko")
       div(
         class = "structural-analysis-results",
         h3(if (ko) "분석 결과" else "Analysis Results"),
@@ -1694,12 +1719,13 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
       validity_formula <- settings$validity_formula %||% input[[paste0(prefix, "_validity_formula")]] %||% "standardized"
       result_coefficient <- settings$result_coefficient %||% input[[paste0(prefix, "_result_coefficient")]] %||% "beta"
       data <- dataset_fn()
-      result <- run_structural_canvas_analysis(snapshot, data, analysis_type, estimator = estimator, missing = missing, std_lv = std_lv)
-      mi <- if (analysis_type %in% c("cfa", "cbsem")) structural_canvas_mi_refits(snapshot, result, data, analysis_type, estimator, missing, std_lv, mode = mi_mode) else NULL
+      ordered <- if (identical(toupper(estimator), "WLSMV")) structural_canvas_ordered_indicators(snapshot, variable_table_fn()) else character(0)
+      result <- run_structural_canvas_analysis(snapshot, data, analysis_type, estimator = estimator, missing = missing, std_lv = std_lv, ordered = ordered)
+      mi <- if (analysis_type %in% c("cfa", "cbsem")) structural_canvas_mi_refits(snapshot, result, data, analysis_type, estimator, missing, std_lv, mode = mi_mode, ordered = ordered) else NULL
       fit_result(list(
         fit = result$fit, snapshot = snapshot, mi = mi, mi_mode = mi_mode,
         rmsea_ci = rmsea_ci, validity_formula = validity_formula,
-        estimator = estimator, missing = missing, std_lv = std_lv,
+        estimator = estimator, missing = missing, std_lv = std_lv, ordered = ordered,
         result_coefficient = result_coefficient
       ))
       session$sendCustomMessage(
