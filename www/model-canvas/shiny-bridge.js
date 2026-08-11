@@ -4,6 +4,9 @@
   function sendState(instance) {
     if (!window.Shiny || typeof Shiny.setInputValue !== "function") return;
     var payload = window.StatEduModelCanvas.state.snapshot(instance.state);
+    if (instance.viewingResult) {
+      instance.resultSnapshot = window.StatEduModelCanvas.state.clone(payload);
+    }
     payload.nonce = Date.now() + Math.random();
     Shiny.setInputValue((instance.root.getAttribute("data-input-prefix") || "custom_model_canvas") + "_state", payload, {priority: "event"});
   }
@@ -23,7 +26,9 @@
   }
 
   function applyResult(message) {
-    var root = document.querySelector(".custom-model-canvas-root");
+    var root = message && message.rootId
+      ? document.getElementById(message.rootId)
+      : document.querySelector(".custom-model-canvas-root");
     if (!root || !window.StatEduModelCanvas || !window.StatEduModelCanvas.canvas) return;
     var instance = window.StatEduModelCanvas.canvas.init(root);
     if (!instance) return;
@@ -31,7 +36,9 @@
     instance.resultSnapshot = message && message.result ? window.StatEduModelCanvas.state.clone(message.result) : null;
     root.classList.toggle("has-result", !!instance.resultSnapshot);
     if (message && message.show && instance.resultSnapshot) {
-      if (window.StatEduModelCanvas.toolbar && window.StatEduModelCanvas.toolbar.setActiveGroup) {
+      if (root.classList.contains("structural-equation-canvas-root")) {
+        window.StatEduModelCanvas.canvas.showResult(instance);
+      } else if (window.StatEduModelCanvas.toolbar && window.StatEduModelCanvas.toolbar.setActiveGroup) {
         window.StatEduModelCanvas.toolbar.setActiveGroup(instance, "result");
       } else {
         window.StatEduModelCanvas.canvas.showResult(instance);

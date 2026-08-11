@@ -15,7 +15,7 @@
     style: {
       boxWidth: 110,
       boxHeight: 38,
-      fontSize: 13,
+      fontSize: 11,
       fontFamily: "Arial",
       boxStrokeColor: "#000000",
       boxStrokeWidth: 1.5,

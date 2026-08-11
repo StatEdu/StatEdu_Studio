@@ -2823,6 +2823,12 @@ input.variable-select:disabled {
   font-weight: 500;
 }
 
+.structural-equation-workspace-panel .structural_equation-workspace-heading {
+  width: 100% !important;
+  min-width: 100% !important;
+}
+
+
 .data-editor-variable-scope-button.is-active {
   color: #ffffff;
   background-color: #337ab7;

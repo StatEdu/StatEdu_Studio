@@ -1596,6 +1596,9 @@
                 analysis_complex_correlation: 'Complex Samples Correlation',
                 analysis_complex_regression: 'Complex Samples Regression',
                 analysis_complex_logistic: 'Complex Samples Logistic Regression',
+                analysis_structural_cfa: 'Confirmatory Factor Analysis',
+                analysis_structural_cbsem: 'Structural Equation Modeling',
+                analysis_structural_plssem: 'PLS Structural Equation Modeling',
                 analysis_custom_model_canvas: 'Mediation / Moderation Custom Model',
                 'Longitudinal / Panel Models': 'Longitudinal / Panel Models'
               },
@@ -1626,6 +1629,9 @@
                 analysis_complex_correlation: '\uBCF5\uD569\uD45C\uBCF8 \uC0C1\uAD00\uBD84\uC11D',
                 analysis_complex_regression: '\uBCF5\uD569\uD45C\uBCF8 \uD68C\uADC0\uBD84\uC11D',
                 analysis_complex_logistic: '\uBCF5\uD569\uD45C\uBCF8 \uB85C\uC9C0\uC2A4\uD2F1 \uD68C\uADC0\uBD84\uC11D',
+                analysis_structural_cfa: '\uD655\uC778\uC801 \uC694\uC778\uBD84\uC11D',
+                analysis_structural_cbsem: '\uAD6C\uC870\uBC29\uC815\uC2DD',
+                analysis_structural_plssem: 'PLS \uAD6C\uC870\uBC29\uC815\uC2DD',
                 analysis_custom_model_canvas: '\uB9E4\uAC1C\u00B7\uC870\uC808 \uC0AC\uC6A9\uC790 \uC815\uC758 \uBAA8\uB378',
                 'Longitudinal / Panel Models': '\uC885\uB2E8 / \uD328\uB110 \uBAA8\uD615'
               },
@@ -1669,6 +1675,11 @@
                   title: 'Complex Samples',
                   titleKo: '\uBCF5\uD569\uD45C\uBCF8\uBD84\uC11D',
                   values: ['analysis_complex_design', 'analysis_complex_frequencies', 'analysis_complex_crosstabs', 'analysis_complex_ttest_anova', 'analysis_complex_correlation', 'analysis_complex_regression', 'analysis_complex_logistic']
+                },
+                {
+                  title: 'Structural Equation Modeling',
+                  titleKo: '\uAD6C\uC870\uBC29\uC815\uC2DD',
+                  values: ['analysis_structural_cfa', 'analysis_structural_cbsem', 'analysis_structural_plssem']
                 }
               ],
               aliasItems: []

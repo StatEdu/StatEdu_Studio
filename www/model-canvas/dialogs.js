@@ -421,7 +421,7 @@
     setupColorField(form, "custom-model-style-edge-color", current.edgeStrokeColor || "#000000");
     form.querySelector(".custom-model-style-edge-width").value = current.edgeStrokeWidth || 1.8;
     form.querySelector(".custom-model-style-arrow-head").value = current.arrowHead || "triangle";
-    form.querySelector(".custom-model-style-font-size").value = current.fontSize || 13;
+    form.querySelector(".custom-model-style-font-size").value = current.fontSize || 11;
     form.querySelector(".custom-model-style-label-font-size").value = current.labelFontSize || 12;
 
     shell.apply.addEventListener("click", function() {
@@ -431,7 +431,7 @@
       current.edgeStrokeColor = colorFieldValue(form, "custom-model-style-edge-color", "#000000");
       current.edgeStrokeWidth = boundedNumber(form.querySelector(".custom-model-style-edge-width").value, 1.8, 0.5, 8);
       current.arrowHead = form.querySelector(".custom-model-style-arrow-head").value || "triangle";
-      current.fontSize = boundedNumber(form.querySelector(".custom-model-style-font-size").value, 13, 8, 32);
+      current.fontSize = boundedNumber(form.querySelector(".custom-model-style-font-size").value, 11, 8, 32);
       current.labelFontSize = boundedNumber(form.querySelector(".custom-model-style-label-font-size").value, 12, 8, 32);
       window.StatEduModelCanvas.canvas.render(instance);
       window.StatEduModelCanvas.bridge.sendState(instance);

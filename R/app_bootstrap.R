@@ -38,7 +38,9 @@ required_packages <- c(
   "plm",
   "mice",
   "survey",
-  "survival"
+  "survival",
+  "lavaan",
+  "seminr"
 )
 
 startup_packages <- c("shiny", "DT")

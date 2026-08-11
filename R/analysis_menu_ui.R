@@ -97,7 +97,9 @@ analysis_tab_panel <- function(analysis_tabs = enabled_analysis_tabs(), language
     lazy_tab_panel(complex_sample_ui_text("ttest_anova", language), "analysis_complex_ttest_anova", "lazy_analysis_complex_ttest_anova"),
     lazy_tab_panel(complex_sample_ui_text("correlation", language), "analysis_complex_correlation", "lazy_analysis_complex_correlation"),
     lazy_tab_panel(complex_sample_ui_text("regression", language), "analysis_complex_regression", "lazy_analysis_complex_regression"),
-    lazy_tab_panel(complex_sample_ui_text("logistic", language), "analysis_complex_logistic", "lazy_analysis_complex_logistic")
-    ,lazy_tab_panel(structural_equation_title(language), "analysis_structural_equation", "lazy_analysis_structural_equation")
+    lazy_tab_panel(complex_sample_ui_text("logistic", language), "analysis_complex_logistic", "lazy_analysis_complex_logistic"),
+    lazy_tab_panel(structural_analysis_title("cfa", language), "analysis_structural_cfa", "lazy_analysis_structural_cfa"),
+    lazy_tab_panel(structural_analysis_title("cbsem", language), "analysis_structural_cbsem", "lazy_analysis_structural_cbsem"),
+    lazy_tab_panel(structural_analysis_title("plssem", language), "analysis_structural_plssem", "lazy_analysis_structural_plssem")
   )
 }

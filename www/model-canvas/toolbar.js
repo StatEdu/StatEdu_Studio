@@ -32,6 +32,11 @@
   }
 
   function updateButtons(instance) {
+    var nodeIds = instance.state.selectedNodeIds || [];
+    var selectedNodes = instance.state.nodes.filter(function(node) { return nodeIds.indexOf(node.id) >= 0; });
+    var selectedIndicators = selectedNodes.filter(function(node) { return node.role === "indicator"; });
+    var hasCanvasContent = instance.state.nodes.length > 0 || instance.state.edges.length > 0 ||
+      instance.state.moderations.length > 0 || instance.state.covariates.length > 0;
     instance.root.querySelectorAll(".custom-model-toolbar-button").forEach(function(button) {
       var action = button.getAttribute("data-action") || "";
       var active = action === instance.state.mode ||
@@ -40,14 +45,39 @@
         (action === "resultEdit" && instance.state.mode === "properties") ||
         (action === "dashNonsignificant" && instance.state.dashNonsignificant !== false);
       button.classList.toggle("is-active", active);
+      var applicable = true;
+      if (action === "save") applicable = hasCanvasContent;
+      if (action === "run") applicable = instance.state.nodes.length > 0 && !(instance.validation && instance.validation.errors.length > 0);
+      if (action === "connect" || action === "covariance") applicable = instance.state.nodes.length >= 2;
+      if (action === "properties" || action === "delete") applicable = hasCanvasContent;
+      if (action === "detachIndicator" || action === "indicatorUp" || action === "indicatorDown") applicable = selectedIndicators.length > 0;
+      if (["alignLeft", "alignTop", "alignCenter", "alignMiddle"].indexOf(action) >= 0) applicable = selectedNodes.length >= 2;
+      if (action === "distributeH" || action === "distributeV") applicable = selectedNodes.length >= 3;
+      if (action === "undo") applicable = instance.state.history.length > 0;
+      if (action === "redo") applicable = instance.state.redoStack.length > 0;
+      if (["save", "run", "connect", "covariance", "properties", "delete", "detachIndicator", "indicatorUp", "indicatorDown", "alignLeft", "alignTop", "alignCenter", "alignMiddle", "distributeH", "distributeV", "undo", "redo"].indexOf(action) >= 0) {
+        button.disabled = !applicable;
+        button.setAttribute("aria-disabled", applicable ? "false" : "true");
+      }
+      if (action === "structuralCovariateTargets") {
+        var hasCovariates = Array.isArray(instance.state.covariates) && instance.state.covariates.length > 0;
+        button.disabled = !hasCovariates;
+        button.setAttribute("aria-disabled", hasCovariates ? "false" : "true");
+      }
     });
+    var assignCovariate = instance.root.querySelector(".structural-covariate-toolbar-button");
+    if (assignCovariate) {
+      var canAssignCovariate = (instance.state.selectedVariables || []).length > 0;
+      assignCovariate.disabled = !canAssignCovariate;
+      assignCovariate.setAttribute("aria-disabled", canAssignCovariate ? "false" : "true");
+    }
     instance.paper.classList.toggle("is-delete-mode", instance.state.mode === "delete");
     instance.paper.classList.toggle("is-connect-mode", instance.state.mode === "connect" || instance.state.mode === "covariance");
     instance.paper.classList.toggle("is-grid-visible", instance.state.gridVisible);
     var latentTools = instance.root.querySelector(".structural-latent-tools");
     var selectedLatents = window.StatEduModelCanvas.canvas && window.StatEduModelCanvas.canvas.selectedLatents ? window.StatEduModelCanvas.canvas.selectedLatents(instance) : [];
     if (latentTools) {
-      latentTools.classList.toggle("is-visible", selectedLatents.length > 0);
+      latentTools.classList.add("is-visible");
       var selectedLatent = selectedLatents[0] || null;
       var placement = selectedLatent ? (selectedLatent.measurementPlacement || selectedLatent.effectiveMeasurementPlacement || "") : "";
       var measurementMode = selectedLatent ? (selectedLatent.measurementMode || "reflective") : "";
@@ -55,11 +85,14 @@
         var action = button.getAttribute("data-action") || "";
         var active = action === "placement" + (placement ? placement.charAt(0).toUpperCase() + placement.slice(1) : "") || action === measurementMode;
         button.classList.toggle("is-active", active);
+        button.disabled = selectedLatents.length === 0;
+        button.setAttribute("aria-disabled", selectedLatents.length === 0 ? "true" : "false");
       });
     }
     var selectedEdge = instance.state.selectedEdgeId ? window.StatEduModelCanvas.edges.edgeById(instance, instance.state.selectedEdgeId) : null;
     instance.root.querySelectorAll(".custom-model-edge-shape-tools").forEach(function(shapeTools) {
-      var visible = instance.state.mode === "properties" && !!selectedEdge;
+      var visible = !!selectedEdge && (instance.state.mode === "properties" ||
+        (instance.state.mode === "select" && window.StatEduModelCanvas.edges.curveEditable(instance, selectedEdge)));
       shapeTools.classList.toggle("is-visible", visible);
       shapeTools.querySelectorAll(".custom-model-edge-shape-button").forEach(function(button) {
         var shape = button.getAttribute("data-edge-shape") || "straight";
@@ -134,12 +167,61 @@
     if (action === "addLatent") {
       window.StatEduModelCanvas.state.pushHistory(instance);
       var count = instance.state.nodes.filter(function(node) { return node.role === "latent"; }).length;
-      var latent = window.StatEduModelCanvas.nodes.createLatentNode(instance, 330 + (count % 3) * 220, 260 + Math.floor(count / 3) * 150);
+      var isCfa = instance.analysisType === "cfa";
+      var latent = window.StatEduModelCanvas.nodes.createLatentNode(
+        instance,
+        isCfa ? 520 : 330 + (count % 3) * 220,
+        isCfa ? 180 + count * 170 : 360 + Math.floor(count / 3) * 150
+      );
+      if (isCfa) latent.measurementPlacement = "right";
+      var existingLatents = instance.state.nodes.filter(function(node) { return node.role === "latent"; });
       instance.state.nodes.push(latent);
+      if (isCfa) {
+        existingLatents.forEach(function(otherLatent) {
+          if (!window.StatEduModelCanvas.edges.createCovariance(instance, otherLatent.id, latent.id)) return;
+          var covariance = instance.state.edges[instance.state.edges.length - 1];
+          covariance.curveDirection = "left";
+          covariance.curveOffset = Math.max(75, Math.min(190, Math.abs(Number(latent.y || 0) - Number(otherLatent.y || 0)) * 0.45));
+          covariance.fromSide = "left";
+          covariance.toSide = "left";
+          covariance.fixedCenter = true;
+        });
+      }
       instance.state.selectedNodeId = latent.id;
       instance.state.selectedNodeIds = [latent.id];
       window.StatEduModelCanvas.canvas.render(instance);
       window.StatEduModelCanvas.bridge.sendState(instance);
+    }
+    if (action === "flipCfa" && instance.analysisType === "cfa") {
+      var cfaLatents = instance.state.nodes.filter(function(node) { return node.role === "latent"; });
+      if (cfaLatents.length) {
+        window.StatEduModelCanvas.state.pushHistory(instance);
+        var nextPlacement = cfaLatents.some(function(node) {
+          return (node.measurementPlacement || node.effectiveMeasurementPlacement || "right") === "right";
+        }) ? "left" : "right";
+        cfaLatents.forEach(function(node) { node.measurementPlacement = nextPlacement; });
+        var covarianceSide = nextPlacement === "left" ? "right" : "left";
+        instance.state.edges.forEach(function(edge) {
+          if (edge.kind !== "covariance" && edge.type !== "covariance") return;
+          var fromNode = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
+          var toNode = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
+          if (!fromNode || !toNode || fromNode.role !== "latent" || toNode.role !== "latent") return;
+          edge.curveDirection = covarianceSide;
+          edge.fromSide = covarianceSide;
+          edge.toSide = covarianceSide;
+          delete edge.controlPoint;
+        });
+        window.StatEduModelCanvas.canvas.reflowMeasurements(instance);
+        window.StatEduModelCanvas.canvas.render(instance);
+        window.StatEduModelCanvas.bridge.sendState(instance);
+      }
+    }
+    if ((action === "multiGroup" || action === "moderator") && window.Shiny) {
+      window.Shiny.setInputValue(
+        (instance.root.getAttribute("data-input-prefix") || "structural_canvas") + "_advanced_request",
+        {action: action, nonce: Date.now()},
+        {priority: "event"}
+      );
     }
     var validation = instance.root.querySelector(".structural-validation-status");
     if (validation && instance.validation) {

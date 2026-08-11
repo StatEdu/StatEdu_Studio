@@ -223,7 +223,9 @@ create_app_server <- function(app_version) {
     }
     tab_panel_content(custom_model_canvas_tab_panel(custom_model_canvas_title(app_language()), app_language()))
   })
-  output$lazy_analysis_structural_equation <- renderUI(tab_panel_content(structural_equation_tab_panel(app_language())))
+  output$lazy_analysis_structural_cfa <- renderUI(tab_panel_content(structural_equation_tab_panel("cfa", app_language())))
+  output$lazy_analysis_structural_cbsem <- renderUI(tab_panel_content(structural_equation_tab_panel("cbsem", app_language())))
+  output$lazy_analysis_structural_plssem <- renderUI(tab_panel_content(structural_equation_tab_panel("plssem", app_language())))
   output$lazy_analysis_longitudinal <- renderUI({
     if (!isTRUE(statedu_feature_enabled("longitudinal", TRUE))) {
       return(tab_panel_content(div(class = "analysis-placeholder-panel", "Longitudinal / Panel Models is not enabled in this build.")))
@@ -1698,9 +1700,12 @@ create_app_server <- function(app_version) {
   register_structural_equation_canvas_handlers(
     input = input,
     output = output,
+    session = session,
+    dataset_fn = dataset,
     selected_names_fn = selected_names,
     variable_table_fn = regression_variable_table,
     labels_fn = var_label_overrides,
+    category_table_fn = category_label_values,
     mark_settings_dirty = mark_settings_dirty,
     app_language_fn = app_language
   )

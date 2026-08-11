@@ -80,7 +80,7 @@
       y: y,
       width: 90,
       height: 44,
-      fontSize: 11,
+      fontSize: 13,
       customFontSize: true,
       fontFamily: style.fontFamily
     };
@@ -91,7 +91,7 @@
     node.nodeType = "indicator";
     node.width = 82;
     node.height = 30;
-    node.fontSize = 11;
+    node.fontSize = 12;
     node.customFontSize = true;
     return node;
   }
@@ -110,7 +110,7 @@
       y: y,
       width: 26,
       height: 26,
-      fontSize: 9,
+      fontSize: 12,
       customFontSize: true,
       fontFamily: instance.state.style.fontFamily
     };
@@ -129,7 +129,7 @@
       y: Number(latent.y || 0),
       width: 26,
       height: 26,
-      fontSize: 10,
+      fontSize: 12,
       customFontSize: true,
       fontFamily: instance.state.style.fontFamily
     };
@@ -236,6 +236,102 @@
     }
   }
 
+  function errorPlacement(instance, errorNode) {
+    if (!errorNode || errorNode.role !== "error") return null;
+    var errorEdge = instance.state.edges.find(function(edge) { return edge.from === errorNode.id; });
+    var indicator = errorEdge ? nodeById(instance, errorEdge.to) : null;
+    if (!indicator) return null;
+    var measurementEdge = instance.state.edges.find(function(edge) {
+      if (edge.from !== indicator.id && edge.to !== indicator.id) return false;
+      var other = nodeById(instance, edge.from === indicator.id ? edge.to : edge.from);
+      return other && other.role === "latent";
+    });
+    var latent = measurementEdge ? nodeById(instance, measurementEdge.from === indicator.id ? measurementEdge.to : measurementEdge.from) : null;
+    if (!latent) return null;
+    return {
+      indicator: indicator,
+      placement: latent.effectiveMeasurementPlacement || latent.measurementPlacement || "left"
+    };
+  }
+
+  function errorMovementAxis(instance, errorNode) {
+    var placementInfo = errorPlacement(instance, errorNode);
+    if (!placementInfo) return null;
+    return placementInfo.placement === "left" || placementInfo.placement === "right" ? "x" : "y";
+  }
+
+  function captureErrorOffset(instance, errorNode) {
+    var placementInfo = errorPlacement(instance, errorNode);
+    if (!placementInfo) return false;
+    var indicator = placementInfo.indicator;
+    var placement = placementInfo.placement;
+    var iw = Number(indicator.width || instance.state.style.boxWidth || 110);
+    var ih = Number(indicator.height || instance.state.style.boxHeight || 38);
+    var ew = Number(errorNode.width || 26);
+    var eh = Number(errorNode.height || 26);
+    var defaultPosition;
+    if (placement === "left") {
+      defaultPosition = Number(indicator.x || 0) - ew - 28;
+      errorNode.manualOffset = defaultPosition - Number(errorNode.x || 0);
+    } else if (placement === "right") {
+      defaultPosition = Number(indicator.x || 0) + iw + 28;
+      errorNode.manualOffset = Number(errorNode.x || 0) - defaultPosition;
+    } else if (placement === "top") {
+      defaultPosition = Number(indicator.y || 0) - eh - 28;
+      errorNode.manualOffset = defaultPosition - Number(errorNode.y || 0);
+    } else {
+      defaultPosition = Number(indicator.y || 0) + ih + 28;
+      errorNode.manualOffset = Number(errorNode.y || 0) - defaultPosition;
+    }
+    errorNode.manualPosition = true;
+    return true;
+  }
+
+  function disturbanceMovement(instance, disturbanceNode) {
+    if (!disturbanceNode || disturbanceNode.role !== "disturbance") return null;
+    var edge = instance.state.edges.find(function(item) { return item.from === disturbanceNode.id; });
+    var latent = edge ? nodeById(instance, edge.to) : null;
+    if (!latent) return null;
+    var placement = disturbanceNode.disturbancePosition || "auto";
+    if (placement === "auto") {
+      var measurementPlacement = latent.effectiveMeasurementPlacement || latent.measurementPlacement || "left";
+      placement = measurementPlacement === "top" ? "s" : "n";
+    }
+    var diagonal = Math.sqrt(0.5);
+    var vectors = {
+      nw: {x: -diagonal, y: -diagonal}, n: {x: 0, y: -1}, ne: {x: diagonal, y: -diagonal},
+      w: {x: -1, y: 0}, e: {x: 1, y: 0},
+      sw: {x: -diagonal, y: diagonal}, s: {x: 0, y: 1}, se: {x: diagonal, y: diagonal}
+    };
+    var vector = vectors[placement] || vectors.n;
+    var latentX = Number(latent.x || 0);
+    var latentY = Number(latent.y || 0);
+    var latentWidth = Number(latent.width || 90);
+    var latentHeight = Number(latent.height || 44);
+    var width = Number(disturbanceNode.width || 26);
+    var height = Number(disturbanceNode.height || 26);
+    var bases = {
+      nw: {x: latentX - width - 38, y: latentY - height - 38},
+      n: {x: latentX + latentWidth / 2 - width / 2, y: latentY - height - 38},
+      ne: {x: latentX + latentWidth + 38, y: latentY - height - 38},
+      e: {x: latentX + latentWidth + 38, y: latentY + latentHeight / 2 - height / 2},
+      se: {x: latentX + latentWidth + 38, y: latentY + latentHeight + 38},
+      s: {x: latentX + latentWidth / 2 - width / 2, y: latentY + latentHeight + 38},
+      sw: {x: latentX - width - 38, y: latentY + latentHeight + 38},
+      w: {x: latentX - width - 38, y: latentY + latentHeight / 2 - height / 2}
+    };
+    return {placement: placement, vector: vector, base: bases[placement] || bases.n};
+  }
+
+  function captureDisturbanceOffset(instance, disturbanceNode) {
+    var movement = disturbanceMovement(instance, disturbanceNode);
+    if (!movement) return false;
+    disturbanceNode.manualOffset =
+      (Number(disturbanceNode.x || 0) - movement.base.x) * movement.vector.x +
+      (Number(disturbanceNode.y || 0) - movement.base.y) * movement.vector.y;
+    return true;
+  }
+
   function startNodeDrag(instance, event, element) {
     if (instance.state.mode !== "select") return;
     var node = nodeById(instance, element.getAttribute("data-node-id"));
@@ -249,21 +345,34 @@
     var selectedIds = (instance.state.selectedNodeIds || []).indexOf(node.id) >= 0 ?
       (instance.state.selectedNodeIds || []).slice() :
       [node.id];
+    var entireResultSelection = instance.viewingResult &&
+      selectedIds.length > 0 && selectedIds.length === instance.state.nodes.length;
     var draggedNodes = instance.state.nodes.filter(function(item) {
       return selectedIds.indexOf(item.id) >= 0;
     });
+    var movingEntireResultModel = entireResultSelection &&
+      draggedNodes.length === instance.state.nodes.length;
     var initialPositions = draggedNodes.map(function(item) {
       return {node: item, x: Number(item.x || 0), y: Number(item.y || 0)};
     });
 
     function move(moveEvent) {
-      var dx = (moveEvent.clientX - startX) / instance.state.canvas.zoom;
-      var dy = (moveEvent.clientY - startY) / instance.state.canvas.zoom;
+      var dragScale = instance.analysisType ? Number(instance.state.canvas.modelZoom || 1) : Number(instance.state.canvas.zoom || 1);
+      var dx = (moveEvent.clientX - startX) / dragScale;
+      var dy = (moveEvent.clientY - startY) / dragScale;
       if (!moved && Math.sqrt(dx * dx + dy * dy) < dragThreshold) return;
       moved = true;
       initialPositions.forEach(function(item) {
-        item.node.x = item.x + dx;
-        item.node.y = item.y + dy;
+        var axis = instance.viewingResult ? (movingEntireResultModel ? null : "x") : errorMovementAxis(instance, item.node);
+        var disturbanceMove = instance.viewingResult ? null : disturbanceMovement(instance, item.node);
+        if (disturbanceMove) {
+          var projected = dx * disturbanceMove.vector.x + dy * disturbanceMove.vector.y;
+          item.node.x = item.x + projected * disturbanceMove.vector.x;
+          item.node.y = item.y + projected * disturbanceMove.vector.y;
+        } else {
+          item.node.x = item.x + (axis === "y" ? 0 : dx);
+          item.node.y = item.y + (axis === "x" ? 0 : dy);
+        }
       });
       renderNodes(instance);
       window.StatEduModelCanvas.edges.render(instance);
@@ -276,6 +385,16 @@
         instance.state.history.pop();
         return;
       }
+      if (instance.viewingResult) {
+        window.StatEduModelCanvas.bridge.sendState(instance);
+        return;
+      }
+      var movedError = false;
+      var movedDisturbance = false;
+      initialPositions.forEach(function(item) {
+        if (captureErrorOffset(instance, item.node)) movedError = true;
+        if (captureDisturbanceOffset(instance, item.node)) movedDisturbance = true;
+      });
       if (node.role === "indicator" && initialPositions.length === 1 && upEvent && upEvent.target && upEvent.target.closest) {
         var targetElement = upEvent.target.closest(".custom-model-node-latent");
         var targetLatent = targetElement ? nodeById(instance, targetElement.getAttribute("data-node-id")) : null;
@@ -294,12 +413,17 @@
           return;
         }
       }
-      if (instance.state.autoAlign !== false && initialPositions.length === 1) {
+      if (instance.state.autoAlign !== false && initialPositions.length === 1 && node.role !== "error" && node.role !== "disturbance") {
         window.StatEduModelCanvas.layout.roleAutoAlignPosition(node, instance.state.nodes, window.StatEduModelCanvas.layout.AUTO_ALIGN_THRESHOLD, node.id);
         renderNodes(instance);
         window.StatEduModelCanvas.edges.render(instance);
       }
       if (node.role === "latent" && window.StatEduModelCanvas.canvas && window.StatEduModelCanvas.canvas.reflowMeasurements) {
+        window.StatEduModelCanvas.canvas.reflowMeasurements(instance);
+        renderNodes(instance);
+        window.StatEduModelCanvas.edges.render(instance);
+      }
+      if ((movedError || movedDisturbance) && window.StatEduModelCanvas.canvas && window.StatEduModelCanvas.canvas.reflowMeasurements) {
         window.StatEduModelCanvas.canvas.reflowMeasurements(instance);
         renderNodes(instance);
         window.StatEduModelCanvas.edges.render(instance);
@@ -423,7 +547,7 @@
       }
       var fontSize = Number(panel.querySelector(".custom-model-property-font-size").value || instance.state.style.fontSize);
       node.fontSize = Math.max(8, Math.min(32, fontSize));
-      node.customFontSize = node.fontSize !== Number(instance.state.style.fontSize || 13);
+      node.customFontSize = node.fontSize !== Number(instance.state.style.fontSize || 11);
       hideProperties(instance);
       window.StatEduModelCanvas.canvas.render(instance);
       window.StatEduModelCanvas.bridge.sendState(instance);
@@ -502,6 +626,10 @@
     createIndicatorNode: createIndicatorNode,
     createErrorNode: createErrorNode,
     createDisturbanceNode: createDisturbanceNode,
+    errorMovementAxis: errorMovementAxis,
+    captureErrorOffset: captureErrorOffset,
+    disturbanceMovement: disturbanceMovement,
+    captureDisturbanceOffset: captureDisturbanceOffset,
     render: renderNodes,
     nodeById: nodeById,
     deleteNode: deleteNode,
