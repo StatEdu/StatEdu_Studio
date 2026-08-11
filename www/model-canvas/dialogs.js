@@ -123,6 +123,7 @@
       return;
     }
     var paths = instance.state.edges.filter(function(edge) {
+      if (edge.kind === "covariance") return false;
       var from = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
       var to = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
       return from && to && from.role === "latent" && to.role === "latent";

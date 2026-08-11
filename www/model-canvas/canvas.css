@@ -895,8 +895,17 @@
 }
 .structural-equation-canvas-root [data-action="select"] .custom-model-toolbar-icon::before { content: "↖"; }
 .structural-equation-canvas-root [data-action="connect"] .custom-model-toolbar-icon::before { content: "→"; }
-.structural-equation-canvas-root [data-action="swapPlaceholder"] .custom-model-toolbar-icon::before { content: "↔"; }
+.structural-equation-canvas-root [data-action="covariance"] .custom-model-toolbar-icon::before { content: "↔"; }
 .structural-equation-canvas-root [data-action="properties"] .custom-model-toolbar-icon::before { content: "⚙"; }
+.structural-equation-canvas-root [data-action="detachIndicator"] .custom-model-toolbar-icon::before { content: "⊘"; }
+.structural-equation-canvas-root [data-action="indicatorUp"] .custom-model-toolbar-icon::before { content: "↑"; }
+.structural-equation-canvas-root [data-action="indicatorDown"] .custom-model-toolbar-icon::before { content: "↓"; }
+.structural-equation-canvas-root [data-action="alignLeft"] .custom-model-toolbar-icon::before { content: "≡"; }
+.structural-equation-canvas-root [data-action="alignTop"] .custom-model-toolbar-icon::before { content: "⊤"; }
+.structural-equation-canvas-root [data-action="alignCenter"] .custom-model-toolbar-icon::before { content: "↕"; }
+.structural-equation-canvas-root [data-action="alignMiddle"] .custom-model-toolbar-icon::before { content: "↔"; transform: rotate(90deg); }
+.structural-equation-canvas-root [data-action="distributeH"] .custom-model-toolbar-icon::before { content: "↔"; }
+.structural-equation-canvas-root [data-action="distributeV"] .custom-model-toolbar-icon::before { content: "↕"; }
 .structural-equation-canvas-root [data-action="delete"] .custom-model-toolbar-icon::before {
   content: "x";
   color: #dc2626;
@@ -1132,6 +1141,17 @@
     0 0 0 3px rgba(59, 130, 246, 0.34),
     0 3px 10px rgba(37, 99, 235, 0.24);
 }
+
+.custom-model-node.has-validation-error { border-color: #dc2626 !important; }
+.custom-model-node.has-validation-warning { border-color: #d97706 !important; }
+.structural-validation-badge {
+  position: absolute; right: -9px; top: -10px; width: 18px; height: 18px;
+  border-radius: 50%; background: #d97706; color: #fff; font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(15,23,42,.25);
+}
+.has-validation-error .structural-validation-badge { background: #dc2626; }
+.structural-validation-status { margin-left: 14px; color: #92400e; font-size: 12px; }
+.structural-validation-status.has-errors { color: #b91c1c; font-weight: 700; }
 
 .custom-model-node-label {
   display: -webkit-box;

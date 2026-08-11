@@ -28,6 +28,32 @@
     );
   }
 
+  function measurementParentId(instance, errorNode) {
+    var errorEdge = instance.state.edges.find(function(edge) { return edge.from === errorNode.id; });
+    var indicatorId = errorEdge ? errorEdge.to : "";
+    var measurementEdge = instance.state.edges.find(function(edge) {
+      if (edge.kind === "covariance") return false;
+      var from = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
+      var to = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
+      return (from && from.role === "latent" && to && to.id === indicatorId) || (to && to.role === "latent" && from && from.id === indicatorId);
+    });
+    if (!measurementEdge) return "";
+    var from = window.StatEduModelCanvas.nodes.nodeById(instance, measurementEdge.from);
+    return from && from.role === "latent" ? from.id : measurementEdge.to;
+  }
+
+  function validCovarianceEdge(instance, fromNode, toNode) {
+    if (!fromNode || !toNode || fromNode.id === toNode.id) return false;
+    if (fromNode.role === "latent" && toNode.role === "latent") return true;
+    if (fromNode.role === "error" && toNode.role === "error") {
+      var fromParent = measurementParentId(instance, fromNode);
+      return !!fromParent && fromParent === measurementParentId(instance, toNode);
+    }
+    if (fromNode.role === "disturbance" && toNode.role === "disturbance") return true;
+    var observed = ["independent", "mediator", "dependent", "indicator"];
+    return observed.indexOf(fromNode.role) >= 0 && observed.indexOf(toNode.role) >= 0;
+  }
+
   function validModerationSource(node) {
     return node && node.role === "moderator";
   }
@@ -332,7 +358,9 @@
   }
 
   function addEdgeLabelElement(instance, svg, owner, type, id, point, placedLabels) {
-    var label = String(owner && owner.label ? owner.label : "").trim();
+    var automaticLabel = owner && (owner.equalityLabel || owner.parameterName) ? (owner.equalityLabel || owner.parameterName) :
+      owner && owner.free === false && owner.fixedValue !== null && owner.fixedValue !== undefined ? String(owner.fixedValue) : "";
+    var label = String(owner && owner.label ? owner.label : automaticLabel).trim();
     if (!label) return;
     var x = Number(point.x || 0) + Number(owner.labelOffsetX || 0);
     var y = Number(point.y || 0) + Number(owner.labelOffsetY || -10);
@@ -442,7 +470,7 @@
     marker.setAttribute("refX", arrowHead === "circle" ? "6" : (arrowHead === "line" ? "8" : "8"));
     marker.setAttribute("refY", arrowHead === "circle" ? "4" : (arrowHead === "line" ? "4" : "3"));
     marker.setAttribute("viewBox", arrowHead === "line" ? "0 0 10 8" : "0 0 10 10");
-    marker.setAttribute("orient", "auto");
+    marker.setAttribute("orient", "auto-start-reverse");
     marker.setAttribute("markerUnits", arrowHead === "line" ? "userSpaceOnUse" : "strokeWidth");
     marker.setAttribute("overflow", "visible");
     if (arrowHead === "line") {
@@ -595,7 +623,10 @@
       } else {
         element.removeAttribute("stroke-dasharray");
       }
-      if (arrowHead !== "none") {
+      if (item && item.kind === "covariance") {
+        element.setAttribute("marker-start", selected ? "url(#custom-model-arrow-selected)" : "url(#custom-model-arrow)");
+        element.setAttribute("marker-end", selected ? "url(#custom-model-arrow-selected)" : "url(#custom-model-arrow)");
+      } else if (arrowHead !== "none") {
         element.setAttribute("marker-end", selected ? "url(#custom-model-arrow-selected)" : "url(#custom-model-arrow)");
       }
     }
@@ -673,6 +704,29 @@
       to: toId,
       label: "",
       shape: "straight"
+    });
+    return true;
+  }
+
+  function createCovariance(instance, fromId, toId) {
+    if (!fromId || !toId || fromId === toId) return false;
+    var fromNode = window.StatEduModelCanvas.nodes.nodeById(instance, fromId);
+    var toNode = window.StatEduModelCanvas.nodes.nodeById(instance, toId);
+    if (!validCovarianceEdge(instance, fromNode, toNode)) return false;
+    var exists = instance.state.edges.some(function(edge) {
+      return edge.kind === "covariance" && ((edge.from === fromId && edge.to === toId) || (edge.from === toId && edge.to === fromId));
+    });
+    if (exists) return false;
+    instance.state.edges.push({
+      id: "covariance_" + fromId + "_" + toId + "_" + Date.now(),
+      from: fromId,
+      to: toId,
+      kind: "covariance",
+      label: "",
+      shape: "curveUp",
+      free: true,
+      parameterName: "",
+      equalityLabel: ""
     });
     return true;
   }
@@ -891,6 +945,7 @@
   window.StatEduModelCanvas.edges = {
     render: renderEdges,
     createEdge: createEdge,
+    createCovariance: createCovariance,
     createModeration: createModeration,
     deleteEdge: deleteEdge,
     deleteModeration: deleteModeration,

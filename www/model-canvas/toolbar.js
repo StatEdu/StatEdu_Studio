@@ -3,6 +3,7 @@
 
   function modeLabel(instance, mode) {
     if (mode === "connect") return window.StatEduModelCanvas.state.label(instance, "mode_connect", "Mode: Connect");
+    if (mode === "covariance") return instance.language === "ko" ? "모드: 공분산" : "Mode: Covariance";
     if (mode === "delete") return window.StatEduModelCanvas.state.label(instance, "mode_delete", "Mode: Delete");
     if (mode === "properties") return window.StatEduModelCanvas.state.label(instance, "mode_properties", "Mode: Properties");
     return window.StatEduModelCanvas.state.label(instance, "mode_select", "Mode: Select");
@@ -41,7 +42,7 @@
       button.classList.toggle("is-active", active);
     });
     instance.paper.classList.toggle("is-delete-mode", instance.state.mode === "delete");
-    instance.paper.classList.toggle("is-connect-mode", instance.state.mode === "connect");
+    instance.paper.classList.toggle("is-connect-mode", instance.state.mode === "connect" || instance.state.mode === "covariance");
     instance.paper.classList.toggle("is-grid-visible", instance.state.gridVisible);
     var latentTools = instance.root.querySelector(".structural-latent-tools");
     var selectedLatents = window.StatEduModelCanvas.canvas && window.StatEduModelCanvas.canvas.selectedLatents ? window.StatEduModelCanvas.canvas.selectedLatents(instance) : [];
@@ -140,6 +141,13 @@
       window.StatEduModelCanvas.canvas.render(instance);
       window.StatEduModelCanvas.bridge.sendState(instance);
     }
+    var validation = instance.root.querySelector(".structural-validation-status");
+    if (validation && instance.validation) {
+      var errorCount = instance.validation.errors.length;
+      var warningCount = instance.validation.warnings.length;
+      validation.textContent = instance.language === "ko" ? "오류 " + errorCount + " · 경고 " + warningCount : "Errors " + errorCount + " · Warnings " + warningCount;
+      validation.classList.toggle("has-errors", errorCount > 0);
+    }
     if (action === "placementLeft") window.StatEduModelCanvas.canvas.setMeasurementPlacement(instance, "left");
     if (action === "placementRight") window.StatEduModelCanvas.canvas.setMeasurementPlacement(instance, "right");
     if (action === "placementTop") window.StatEduModelCanvas.canvas.setMeasurementPlacement(instance, "top");
@@ -148,8 +156,13 @@
     if (action === "formative") window.StatEduModelCanvas.canvas.setMeasurementMode(instance, "formative");
     if (action === "select") setMode(instance, "select");
     if (action === "connect") setMode(instance, "connect");
+    if (action === "covariance") setMode(instance, "covariance");
     if (action === "delete") setMode(instance, "delete");
     if (action === "properties") setMode(instance, "properties");
+    if (action === "detachIndicator") window.StatEduModelCanvas.canvas.detachIndicators(instance);
+    if (action === "indicatorUp") window.StatEduModelCanvas.canvas.moveIndicator(instance, -1);
+    if (action === "indicatorDown") window.StatEduModelCanvas.canvas.moveIndicator(instance, 1);
+    if (["alignLeft", "alignTop", "alignCenter", "alignMiddle", "distributeH", "distributeV"].indexOf(action) >= 0) window.StatEduModelCanvas.canvas.alignSelected(instance, action);
     if (action === "grid") {
       instance.state.gridVisible = !instance.state.gridVisible;
       updateButtons(instance);

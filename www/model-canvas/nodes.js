@@ -74,6 +74,8 @@
       canvasLabel: "",
       role: "latent",
       nodeType: "latent",
+      constructType: "commonFactor",
+      weightingMode: "auto",
       x: x,
       y: y,
       width: 90,
@@ -143,6 +145,12 @@
       if (node.id === instance.state.selectedNodeId || selectedNodeIds.indexOf(node.id) >= 0) {
         element.className += " is-selected";
       }
+      var validationItems = instance.validation && instance.validation.byNode ? (instance.validation.byNode[node.id] || []) : [];
+      if (validationItems.length) {
+        var hasError = validationItems.some(function(item) { return item.level === "error"; });
+        element.className += hasError ? " has-validation-error" : " has-validation-warning";
+        element.setAttribute("data-validation-message", validationItems.map(function(item) { return item.message; }).join("\n"));
+      }
       element.setAttribute("data-node-id", node.id);
       element.setAttribute("title", window.StatEduModelCanvas.layout.displayText(node));
       element.style.left = node.x + "px";
@@ -159,6 +167,13 @@
       label.className = "custom-model-node-label";
       label.textContent = window.StatEduModelCanvas.layout.displayText(node);
       element.appendChild(label);
+      if (validationItems.length) {
+        var badge = document.createElement("span");
+        badge.className = "structural-validation-badge";
+        badge.textContent = validationItems.some(function(item) { return item.level === "error"; }) ? "!" : "△";
+        badge.title = validationItems.map(function(item) { return item.message; }).join("\n");
+        element.appendChild(badge);
+      }
       layer.appendChild(element);
     });
     setVariableUsage(instance);
@@ -254,12 +269,30 @@
       window.StatEduModelCanvas.edges.render(instance);
     }
 
-    function up() {
+    function up(upEvent) {
       document.removeEventListener("pointermove", move, true);
       document.removeEventListener("pointerup", up, true);
       if (!moved) {
         instance.state.history.pop();
         return;
+      }
+      if (node.role === "indicator" && initialPositions.length === 1 && upEvent && upEvent.target && upEvent.target.closest) {
+        var targetElement = upEvent.target.closest(".custom-model-node-latent");
+        var targetLatent = targetElement ? nodeById(instance, targetElement.getAttribute("data-node-id")) : null;
+        if (targetLatent) {
+          instance.state.edges = instance.state.edges.filter(function(edge) {
+            var from = nodeById(instance, edge.from);
+            var to = nodeById(instance, edge.to);
+            return !((from && from.role === "latent" && to && to.id === node.id) || (to && to.role === "latent" && from && from.id === node.id));
+          });
+          var formative = (targetLatent.measurementMode || "reflective") === "formative";
+          window.StatEduModelCanvas.edges.createEdge(instance, formative ? node.id : targetLatent.id, formative ? targetLatent.id : node.id);
+          if (window.StatEduModelCanvas.canvas && window.StatEduModelCanvas.canvas.reflowMeasurements) window.StatEduModelCanvas.canvas.reflowMeasurements(instance);
+          renderNodes(instance);
+          window.StatEduModelCanvas.edges.render(instance);
+          window.StatEduModelCanvas.bridge.sendState(instance);
+          return;
+        }
       }
       if (instance.state.autoAlign !== false && initialPositions.length === 1) {
         window.StatEduModelCanvas.layout.roleAutoAlignPosition(node, instance.state.nodes, window.StatEduModelCanvas.layout.AUTO_ALIGN_THRESHOLD, node.id);
@@ -409,6 +442,55 @@
     renderNodes(instance);
     window.StatEduModelCanvas.edges.render(instance);
     window.StatEduModelCanvas.toolbar.updateButtons(instance);
+    var ko = instance.language === "ko";
+    var panel = document.createElement("div");
+    panel.className = "custom-model-property-popover structural-edge-property-popover";
+    panel.innerHTML = [
+      '<div class="custom-model-property-title">' + (ko ? (edge.kind === "covariance" ? "공분산 속성" : "경로 속성") : "Path properties") + '</div>',
+      '<label class="custom-model-property-label">' + (ko ? "표시 라벨" : "Display label") + '</label>',
+      '<input class="form-control edge-property-label" type="text">',
+      '<label class="custom-model-property-label">' + (ko ? "모수 이름" : "Parameter name") + '</label>',
+      '<input class="form-control edge-property-name" type="text">',
+      '<label class="custom-model-property-check"><input class="edge-property-free" type="checkbox"> ' + (ko ? "자유모수" : "Free parameter") + '</label>',
+      '<label class="custom-model-property-label">' + (ko ? "고정값" : "Fixed value") + '</label>',
+      '<input class="form-control edge-property-fixed" type="number" step="any">',
+      '<label class="custom-model-property-label">' + (ko ? "시작값" : "Starting value") + '</label>',
+      '<input class="form-control edge-property-start" type="number" step="any">',
+      '<label class="custom-model-property-label">' + (ko ? "등가제약 라벨" : "Equality label") + '</label>',
+      '<input class="form-control edge-property-equality" type="text">',
+      '<div class="custom-model-property-actions">',
+      '<button type="button" class="btn btn-primary btn-sm edge-property-apply">' + (ko ? "적용" : "Apply") + '</button>',
+      '<button type="button" class="btn btn-default btn-sm edge-property-close">' + (ko ? "닫기" : "Close") + '</button>',
+      '</div>'
+    ].join("");
+    panel.querySelector(".edge-property-label").value = edge.label || "";
+    panel.querySelector(".edge-property-name").value = edge.parameterName || "";
+    panel.querySelector(".edge-property-free").checked = edge.free !== false;
+    panel.querySelector(".edge-property-fixed").value = edge.fixedValue === undefined ? "" : edge.fixedValue;
+    panel.querySelector(".edge-property-start").value = edge.startValue === undefined ? "" : edge.startValue;
+    panel.querySelector(".edge-property-equality").value = edge.equalityLabel || "";
+    panel.querySelector(".edge-property-fixed").disabled = edge.free !== false;
+    panel.querySelector(".edge-property-free").addEventListener("change", function(event) {
+      panel.querySelector(".edge-property-fixed").disabled = event.target.checked;
+    });
+    panel.querySelector(".edge-property-close").addEventListener("click", function() { hideProperties(instance); });
+    panel.querySelector(".edge-property-apply").addEventListener("click", function() {
+      window.StatEduModelCanvas.state.pushHistory(instance);
+      edge.label = String(panel.querySelector(".edge-property-label").value || "").trim();
+      edge.parameterName = String(panel.querySelector(".edge-property-name").value || "").trim();
+      edge.free = panel.querySelector(".edge-property-free").checked;
+      var fixed = panel.querySelector(".edge-property-fixed").value;
+      var start = panel.querySelector(".edge-property-start").value;
+      edge.fixedValue = fixed === "" ? null : Number(fixed);
+      edge.startValue = start === "" ? null : Number(start);
+      edge.equalityLabel = String(panel.querySelector(".edge-property-equality").value || "").trim();
+      hideProperties(instance);
+      window.StatEduModelCanvas.canvas.render(instance);
+      window.StatEduModelCanvas.bridge.sendState(instance);
+    });
+    panel.style.left = "24px";
+    panel.style.top = "24px";
+    instance.paper.appendChild(panel);
   }
 
   window.StatEduModelCanvas = window.StatEduModelCanvas || {};

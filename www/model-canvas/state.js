@@ -2,6 +2,7 @@
   "use strict";
 
   var DEFAULT_STATE = {
+    modelSchemaVersion: 2,
     canvas: {
       paper: "B5",
       orientation: "landscape",
@@ -73,6 +74,7 @@
 
   function snapshot(state) {
     return {
+      modelSchemaVersion: Number(state.modelSchemaVersion || 2),
       canvas: clone(state.canvas),
       style: clone(state.style),
       nodes: clone(state.nodes),
@@ -89,6 +91,7 @@
   }
 
   function restore(state, snap) {
+    state.modelSchemaVersion = Number(snap.modelSchemaVersion || 1);
     state.canvas = clone(snap.canvas || DEFAULT_STATE.canvas);
     state.style = Object.assign(clone(DEFAULT_STATE.style), clone(snap.style || {}));
     state.nodes = clone(snap.nodes || []);

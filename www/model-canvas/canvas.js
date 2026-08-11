@@ -65,11 +65,71 @@
     instance.paper.style.transformOrigin = "0 0";
     instance.edgeLayer.setAttribute("width", instance.state.canvas.widthPx);
     instance.edgeLayer.setAttribute("height", instance.state.canvas.heightPx);
+    instance.validation = validateStructuralModel(instance);
     window.StatEduModelCanvas.nodes.render(instance);
     window.StatEduModelCanvas.edges.render(instance);
     window.StatEduModelCanvas.toolbar.updateStatus(instance);
     window.StatEduModelCanvas.toolbar.updateButtons(instance);
     updateSelectionSettings(instance);
+  }
+
+  function validateStructuralModel(instance) {
+    var result = {errors: [], warnings: [], byNode: {}};
+    if ((instance.root.getAttribute("data-input-prefix") || "") !== "structural_equation_canvas") return result;
+    function add(level, nodeId, code, message) {
+      var item = {level: level, nodeId: nodeId, code: code, message: message};
+      result[level === "error" ? "errors" : "warnings"].push(item);
+      if (nodeId) {
+        result.byNode[nodeId] = result.byNode[nodeId] || [];
+        result.byNode[nodeId].push(item);
+      }
+    }
+    var latents = instance.state.nodes.filter(function(node) { return node.role === "latent"; });
+    var structural = instance.state.edges.filter(function(edge) {
+      if (edge.kind === "covariance") return false;
+      var from = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
+      var to = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
+      return from && to && from.role === "latent" && to.role === "latent";
+    });
+    latents.forEach(function(latent) {
+      var indicators = instance.state.edges.map(function(edge) {
+        var from = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
+        var to = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
+        if (from && from.id === latent.id && to && to.role === "indicator") return to;
+        if (to && to.id === latent.id && from && from.role === "indicator") return from;
+        return null;
+      }).filter(Boolean);
+      if (!indicators.length) add("error", latent.id, "latent_without_indicators", "측정변수가 없는 잠재변수");
+      else if (indicators.length < 3) add("warning", latent.id, "few_indicators", "측정변수가 3개 미만");
+      var connected = structural.some(function(edge) { return edge.from === latent.id || edge.to === latent.id; });
+      if (structural.length > 0 && latents.length > 1 && !connected) add("warning", latent.id, "disconnected_latent", "구조모형에 연결되지 않은 잠재변수");
+    });
+    var variableNames = instance.state.variables.map(function(variable) { return variable.name; });
+    instance.state.nodes.filter(function(node) { return node.role === "indicator"; }).forEach(function(node) {
+      if (node.variableId && variableNames.indexOf(node.variableId) < 0) add("error", node.id, "missing_variable", "현재 데이터에 없는 변수");
+    });
+    var indicatorUsage = {};
+    instance.state.nodes.filter(function(node) { return node.role === "indicator" && node.variableId; }).forEach(function(node) {
+      indicatorUsage[node.variableId] = indicatorUsage[node.variableId] || [];
+      indicatorUsage[node.variableId].push(node);
+    });
+    Object.keys(indicatorUsage).forEach(function(name) {
+      if (indicatorUsage[name].length > 1) indicatorUsage[name].forEach(function(node) { add("error", node.id, "duplicate_indicator", "중복 배정된 측정변수"); });
+    });
+    var visiting = {}, visited = {};
+    function visit(id) {
+      if (visiting[id]) return true;
+      if (visited[id]) return false;
+      visiting[id] = true;
+      var cycle = structural.filter(function(edge) { return edge.from === id; }).some(function(edge) { return visit(edge.to); });
+      delete visiting[id];
+      visited[id] = true;
+      return cycle;
+    }
+    latents.forEach(function(latent) {
+      if (visit(latent.id)) add("error", latent.id, "structural_cycle", "순환 구조경로");
+    });
+    return result;
   }
 
   function updateSelectionSettings(instance) {
@@ -163,6 +223,24 @@
         commit(function() { single.canvasLabel = String(labelInput.value || "").trim(); });
       });
       field(ko ? "라벨" : "Label", labelInput);
+      if (single.role === "latent") {
+        var constructSelect = document.createElement("select");
+        constructSelect.className = "form-control input-sm";
+        [["commonFactor", ko ? "공통요인" : "Common factor"], ["composite", ko ? "합성변수" : "Composite"]].forEach(function(item) {
+          var option = document.createElement("option"); option.value = item[0]; option.textContent = item[1]; constructSelect.appendChild(option);
+        });
+        constructSelect.value = single.constructType || "commonFactor";
+        constructSelect.addEventListener("change", function() { commit(function() { single.constructType = constructSelect.value; }); });
+        field(ko ? "구성개념 유형" : "Construct type", constructSelect);
+        var weightSelect = document.createElement("select");
+        weightSelect.className = "form-control input-sm";
+        [["auto", ko ? "자동" : "Automatic"], ["modeA", "Mode A"], ["modeB", "Mode B"], ["sum", ko ? "동일가중" : "Equal weights"], ["predefined", ko ? "사용자 지정" : "Predefined"]].forEach(function(item) {
+          var option = document.createElement("option"); option.value = item[0]; option.textContent = item[1]; weightSelect.appendChild(option);
+        });
+        weightSelect.value = single.weightingMode || "auto";
+        weightSelect.addEventListener("change", function() { commit(function() { single.weightingMode = weightSelect.value; }); });
+        field(ko ? "PLS 가중 방식" : "PLS weighting", weightSelect);
+      }
       if (selectionChanged) {
         var preferredInput = instance.settingsPreferredField === "name" && nameEditable ? nameInput :
           instance.settingsPreferredField === "label" ? labelInput :
@@ -281,6 +359,7 @@
   function reflowMeasurementModel(instance) {
     if (!instance || (instance.root.getAttribute("data-input-prefix") || "") !== "structural_equation_canvas") return;
     var structuralEdges = instance.state.edges.filter(function(edge) {
+      if (edge.kind === "covariance") return false;
       var from = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
       var to = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
       return from && to && from.role === "latent" && to.role === "latent";
@@ -400,6 +479,55 @@
   function selectedLatentNodes(instance) {
     var ids = instance.state.selectedNodeIds || [];
     return instance.state.nodes.filter(function(node) { return node.role === "latent" && ids.indexOf(node.id) >= 0; });
+  }
+
+  function selectedIndicatorNodes(instance) {
+    var ids = instance.state.selectedNodeIds || [];
+    return instance.state.nodes.filter(function(node) { return node.role === "indicator" && ids.indexOf(node.id) >= 0; });
+  }
+
+  function detachSelectedIndicators(instance) {
+    var indicators = selectedIndicatorNodes(instance);
+    if (!indicators.length) return false;
+    var ids = indicators.map(function(node) { return node.id; });
+    window.StatEduModelCanvas.state.pushHistory(instance);
+    instance.state.edges = instance.state.edges.filter(function(edge) {
+      var from = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
+      var to = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
+      return !((from && from.role === "latent" && to && ids.indexOf(to.id) >= 0) || (to && to.role === "latent" && from && ids.indexOf(from.id) >= 0));
+    });
+    render(instance);
+    window.StatEduModelCanvas.bridge.sendState(instance);
+    return true;
+  }
+
+  function moveSelectedIndicator(instance, direction) {
+    var indicator = selectedIndicatorNodes(instance)[0];
+    if (!indicator) return false;
+    var edge = instance.state.edges.find(function(item) {
+      var from = window.StatEduModelCanvas.nodes.nodeById(instance, item.from);
+      var to = window.StatEduModelCanvas.nodes.nodeById(instance, item.to);
+      return (from && from.role === "latent" && to && to.id === indicator.id) || (to && to.role === "latent" && from && from.id === indicator.id);
+    });
+    if (!edge) return false;
+    var latentId = edge.from === indicator.id ? edge.to : edge.from;
+    var peers = instance.state.edges.filter(function(item) {
+      if (item.kind === "covariance") return false;
+      var from = window.StatEduModelCanvas.nodes.nodeById(instance, item.from);
+      var to = window.StatEduModelCanvas.nodes.nodeById(instance, item.to);
+      return (from && from.id === latentId && to && to.role === "indicator") || (to && to.id === latentId && from && from.role === "indicator");
+    });
+    var index = peers.indexOf(edge);
+    var swap = direction < 0 ? index - 1 : index + 1;
+    if (index < 0 || swap < 0 || swap >= peers.length) return false;
+    window.StatEduModelCanvas.state.pushHistory(instance);
+    var firstIndex = instance.state.edges.indexOf(peers[index]);
+    var secondIndex = instance.state.edges.indexOf(peers[swap]);
+    var temp = instance.state.edges[firstIndex]; instance.state.edges[firstIndex] = instance.state.edges[secondIndex]; instance.state.edges[secondIndex] = temp;
+    reflowMeasurementModel(instance);
+    render(instance);
+    window.StatEduModelCanvas.bridge.sendState(instance);
+    return true;
   }
 
   function nextErrorSequence(instance) {
@@ -838,8 +966,8 @@
         return;
       }
 
-      if (instance.state.mode === "connect" && nodeElement) {
-        handleConnectPointer(instance, event, nodeElement);
+      if ((instance.state.mode === "connect" || instance.state.mode === "covariance") && nodeElement) {
+        handleConnectPointer(instance, event, nodeElement, instance.state.mode);
         return;
       }
 
@@ -928,14 +1056,64 @@
     });
   }
 
+  function selectedNodes(instance) {
+    var ids = instance.state.selectedNodeIds || [];
+    return instance.state.nodes.filter(function(node) { return ids.indexOf(node.id) >= 0; });
+  }
+
+  function alignSelected(instance, action) {
+    var nodes = selectedNodes(instance);
+    if (nodes.length < 2) return false;
+    window.StatEduModelCanvas.state.pushHistory(instance);
+    if (action === "alignLeft") { var left = Math.min.apply(Math, nodes.map(function(n) { return Number(n.x || 0); })); nodes.forEach(function(n) { n.x = left; }); }
+    if (action === "alignTop") { var top = Math.min.apply(Math, nodes.map(function(n) { return Number(n.y || 0); })); nodes.forEach(function(n) { n.y = top; }); }
+    if (action === "alignCenter") { var center = nodes.reduce(function(sum,n) { return sum + Number(n.x || 0) + Number(n.width || 0)/2; },0)/nodes.length; nodes.forEach(function(n) { n.x = center - Number(n.width || 0)/2; }); }
+    if (action === "alignMiddle") { var middle = nodes.reduce(function(sum,n) { return sum + Number(n.y || 0) + Number(n.height || 0)/2; },0)/nodes.length; nodes.forEach(function(n) { n.y = middle - Number(n.height || 0)/2; }); }
+    if (action === "distributeH" && nodes.length >= 3) {
+      nodes.sort(function(a,b){ return a.x-b.x; }); var minX=nodes[0].x, maxX=nodes[nodes.length-1].x; nodes.forEach(function(n,i){ n.x=minX+(maxX-minX)*i/(nodes.length-1); });
+    }
+    if (action === "distributeV" && nodes.length >= 3) {
+      nodes.sort(function(a,b){ return a.y-b.y; }); var minY=nodes[0].y, maxY=nodes[nodes.length-1].y; nodes.forEach(function(n,i){ n.y=minY+(maxY-minY)*i/(nodes.length-1); });
+    }
+    reflowMeasurementModel(instance); render(instance); window.StatEduModelCanvas.bridge.sendState(instance); return true;
+  }
+
+  function copySelection(instance) {
+    var nodes = selectedNodes(instance);
+    if (!nodes.length) return false;
+    var ids = nodes.map(function(node){ return node.id; });
+    instance.nodeClipboard = {nodes: JSON.parse(JSON.stringify(nodes)), edges: JSON.parse(JSON.stringify(instance.state.edges.filter(function(edge){ return ids.indexOf(edge.from)>=0 && ids.indexOf(edge.to)>=0; })))};
+    return true;
+  }
+
+  function pasteSelection(instance) {
+    if (!instance.nodeClipboard || !instance.nodeClipboard.nodes.length) return false;
+    window.StatEduModelCanvas.state.pushHistory(instance);
+    var map = {}, stamp = Date.now();
+    var copies = instance.nodeClipboard.nodes.map(function(node,index){ var copy=JSON.parse(JSON.stringify(node)); map[node.id]="copy_"+stamp+"_"+index; copy.id=map[node.id]; copy.x=Number(copy.x||0)+28; copy.y=Number(copy.y||0)+28; return copy; });
+    var edges = instance.nodeClipboard.edges.map(function(edge,index){ var copy=JSON.parse(JSON.stringify(edge)); copy.id="copy_edge_"+stamp+"_"+index; copy.from=map[edge.from]; copy.to=map[edge.to]; return copy; });
+    instance.state.nodes.push.apply(instance.state.nodes,copies); instance.state.edges.push.apply(instance.state.edges,edges);
+    instance.state.selectedNodeIds=copies.map(function(node){return node.id;}); instance.state.selectedNodeId=instance.state.selectedNodeIds[instance.state.selectedNodeIds.length-1];
+    render(instance); window.StatEduModelCanvas.bridge.sendState(instance); return true;
+  }
+
   function bindCanvasKeyboard(instance) {
     document.addEventListener("keydown", function(event) {
-      if (!(event.ctrlKey || event.metaKey) || String(event.key || "").toLowerCase() !== "a") return;
       var active = document.activeElement;
       var tagName = active && active.tagName ? active.tagName.toLowerCase() : "";
       if (tagName === "input" || tagName === "textarea" || tagName === "select" || (active && active.isContentEditable)) return;
       if (window.StatEduModelCanvas.activeInstance && window.StatEduModelCanvas.activeInstance !== instance) return;
       if (!instance.root.contains(active) && window.StatEduModelCanvas.activeInstance !== instance) return;
+      var key = String(event.key || "").toLowerCase();
+      var ctrl = event.ctrlKey || event.metaKey;
+      if (ctrl && key === "c") { event.preventDefault(); copySelection(instance); return; }
+      if (ctrl && key === "v") { event.preventDefault(); pasteSelection(instance); return; }
+      if (ctrl && key === "d") { event.preventDefault(); if (copySelection(instance)) pasteSelection(instance); return; }
+      if (["arrowleft","arrowright","arrowup","arrowdown"].indexOf(key) >= 0) {
+        var moving=selectedNodes(instance); if(!moving.length)return; event.preventDefault(); window.StatEduModelCanvas.state.pushHistory(instance); var step=event.shiftKey?10:1;
+        moving.forEach(function(node){ if(key==="arrowleft")node.x-=step; if(key==="arrowright")node.x+=step; if(key==="arrowup")node.y-=step; if(key==="arrowdown")node.y+=step; }); reflowMeasurementModel(instance); render(instance); window.StatEduModelCanvas.bridge.sendState(instance); return;
+      }
+      if (!ctrl || key !== "a") return;
       event.preventDefault();
       var allIds = instance.state.nodes.map(function(node) { return node.id; });
       var selectedIds = instance.state.selectedNodeIds || [];
@@ -951,7 +1129,7 @@
     }, true);
   }
 
-  function handleConnectPointer(instance, event, nodeElement) {
+  function handleConnectPointer(instance, event, nodeElement, connectMode) {
     var fromId = nodeElement.getAttribute("data-node-id");
     var fromNode = window.StatEduModelCanvas.nodes.nodeById(instance, fromId);
     if (!fromNode) return;
@@ -978,7 +1156,9 @@
       var changed = false;
       window.StatEduModelCanvas.state.pushHistory(instance);
       if (targetNodeElement) {
-        changed = window.StatEduModelCanvas.edges.createEdge(instance, fromId, targetNodeElement.getAttribute("data-node-id"));
+        changed = connectMode === "covariance" ?
+          window.StatEduModelCanvas.edges.createCovariance(instance, fromId, targetNodeElement.getAttribute("data-node-id")) :
+          window.StatEduModelCanvas.edges.createEdge(instance, fromId, targetNodeElement.getAttribute("data-node-id"));
       } else {
         var targetPoint = canvasPoint(instance, upEvent);
         var nearest = window.StatEduModelCanvas.edges.nearestEdgeAt(instance, targetPoint, 24);
@@ -1098,7 +1278,10 @@
     reflowMeasurements: reflowMeasurementModel,
     setMeasurementPlacement: setMeasurementPlacement,
     setMeasurementMode: setMeasurementMode,
-    selectedLatents: selectedLatentNodes
+    selectedLatents: selectedLatentNodes,
+    detachIndicators: detachSelectedIndicators,
+    moveIndicator: moveSelectedIndicator,
+    alignSelected: alignSelected
   };
 
   if (document.readyState === "loading") {
