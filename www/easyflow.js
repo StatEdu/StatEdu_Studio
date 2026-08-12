@@ -2067,6 +2067,26 @@
         document.addEventListener('shiny:connected', configureNestedDropdownToggles);
         window.setTimeout(configureNestedDropdownToggles, 0);
 
+        var dropdownPlugin = window.jQuery.fn.dropdown;
+        if (dropdownPlugin && !dropdownPlugin.easyflowHideCompatibility) {
+          var compatibleDropdown = function(option) {
+            if (option === 'hide') {
+              return this.each(function() {
+                var toggle = window.jQuery(this);
+                var item = toggle.parent('.dropdown');
+                item.removeClass('open');
+                toggle.attr('aria-expanded', 'false');
+                item.find('.dropdown.open').removeClass('open')
+                  .children('a.dropdown-toggle').attr('aria-expanded', 'false');
+              });
+            }
+            return dropdownPlugin.apply(this, arguments);
+          };
+          window.jQuery.extend(compatibleDropdown, dropdownPlugin);
+          compatibleDropdown.easyflowHideCompatibility = true;
+          window.jQuery.fn.dropdown = compatibleDropdown;
+        }
+
         if (window.easyflowNestedDropdownRegistered) return;
         window.easyflowNestedDropdownRegistered = true;
 

@@ -2,7 +2,7 @@
   "use strict";
 
   var DEFAULT_STATE = {
-    modelSchemaVersion: 2,
+    modelSchemaVersion: 3,
     canvas: {
       paper: "B5",
       orientation: "landscape",
@@ -90,12 +90,31 @@
     };
   }
 
+  function normalizeEdge(edge) {
+    edge = clone(edge || {});
+    if (edge.kind !== "covariance" && edge.pathType !== "higherOrder" && edge.pathType !== "regression") edge.pathType = null;
+    if (edge.pathType === "higherOrder" || edge.pathType === "regression") edge.pathType = edge.pathType;
+    edge.free = edge.free !== false;
+    edge.fixedValue = edge.fixedValue === null || edge.fixedValue === undefined || edge.fixedValue === "" ? null : Number(edge.fixedValue);
+    edge.startValue = edge.startValue === null || edge.startValue === undefined || edge.startValue === "" ? null : Number(edge.startValue);
+    if (!Number.isFinite(edge.fixedValue)) edge.fixedValue = null;
+    if (!Number.isFinite(edge.startValue)) edge.startValue = null;
+    edge.parameterName = String(edge.parameterName || "").trim();
+    edge.equalityLabel = String(edge.equalityLabel || "").trim();
+    return edge;
+  }
+
   function restore(state, snap) {
-    state.modelSchemaVersion = Number(snap.modelSchemaVersion || 1);
+    state.modelSchemaVersion = 3;
     state.canvas = clone(snap.canvas || DEFAULT_STATE.canvas);
     state.style = Object.assign(clone(DEFAULT_STATE.style), clone(snap.style || {}));
     state.nodes = clone(snap.nodes || []);
-    state.edges = clone(snap.edges || []);
+    state.edges = clone(snap.edges || []).map(normalizeEdge);
+    var nodeRoles = {};
+    state.nodes.forEach(function(node) { nodeRoles[node.id] = node.role; });
+    state.edges.forEach(function(edge) {
+      if (edge.kind !== "covariance" && nodeRoles[edge.from] === "latent" && nodeRoles[edge.to] === "latent" && !edge.pathType) edge.pathType = "regression";
+    });
     state.moderations = clone(snap.moderations || []);
     state.covariates = clone(snap.covariates || []);
     state.covariateTypes = clone(snap.covariateTypes || {});

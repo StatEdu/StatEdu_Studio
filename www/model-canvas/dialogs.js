@@ -277,6 +277,7 @@
     if (!raw) return;
     try {
       var snap = JSON.parse(raw);
+      if (!snap || typeof snap !== "object" || !Array.isArray(snap.nodes) || !Array.isArray(snap.edges)) throw new Error("Invalid model structure");
       window.StatEduModelCanvas.state.pushHistory(instance);
       window.StatEduModelCanvas.state.restore(instance.state, snap);
       window.StatEduModelCanvas.canvas.render(instance);

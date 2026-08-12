@@ -783,6 +783,9 @@
     window.StatEduModelCanvas.toolbar.updateButtons(instance);
     var ko = instance.language === "ko";
     var isStructuralModel = ["cfa", "cbsem", "plssem"].indexOf(instance.analysisType) >= 0;
+    var edgeFromNode = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
+    var edgeToNode = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
+    var isLatentPath = edge.kind !== "covariance" && edgeFromNode && edgeToNode && edgeFromNode.role === "latent" && edgeToNode.role === "latent" && ["cfa", "cbsem"].indexOf(instance.analysisType) >= 0;
     var panel = document.createElement("div");
     panel.className = "custom-model-property-popover structural-edge-property-popover";
     var propertyFields = [
@@ -801,6 +804,10 @@
       '<label class="custom-model-property-label">' + (ko ? "등가제약 라벨" : "Equality label") + '</label>',
       '<input class="form-control edge-property-equality" type="text">'
     );
+    if (isLatentPath) propertyFields.push(
+      '<label class="custom-model-property-label">Path type</label>',
+      '<select class="form-control edge-property-path-type"><option value="regression">Structural regression (~)</option><option value="higherOrder">Higher-order loading (=~)</option></select>'
+    );
     propertyFields.push(
       '<div class="custom-model-property-actions">',
       '<button type="button" class="btn btn-primary btn-sm edge-property-apply">' + (ko ? "적용" : "Apply") + '</button>',
@@ -815,6 +822,7 @@
       panel.querySelector(".edge-property-fixed").value = edge.fixedValue === undefined ? "" : edge.fixedValue;
       panel.querySelector(".edge-property-start").value = edge.startValue === undefined ? "" : edge.startValue;
       panel.querySelector(".edge-property-equality").value = edge.equalityLabel || "";
+      if (isLatentPath) panel.querySelector(".edge-property-path-type").value = edge.pathType || "regression";
       panel.querySelector(".edge-property-fixed").disabled = edge.free !== false;
       panel.querySelector(".edge-property-free").addEventListener("change", function(event) {
         panel.querySelector(".edge-property-fixed").disabled = event.target.checked;
@@ -832,6 +840,7 @@
         edge.fixedValue = fixed === "" ? null : Number(fixed);
         edge.startValue = start === "" ? null : Number(start);
         edge.equalityLabel = String(panel.querySelector(".edge-property-equality").value || "").trim();
+        if (isLatentPath) edge.pathType = panel.querySelector(".edge-property-path-type").value || "regression";
       }
       hideProperties(instance);
       window.StatEduModelCanvas.canvas.render(instance);

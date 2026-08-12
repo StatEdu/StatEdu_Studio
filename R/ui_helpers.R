@@ -195,7 +195,7 @@ app_stylesheet_link <- function(version) {
 
 app_script_link <- function(version) {
   tagList(
-    tags$script(src = paste0("easyflow.js?v=", version, "-structural-menu-20260812")),
+    tags$script(src = paste0("easyflow.js?v=", version, "-structural-menu-20260812b")),
     tags$script(src = paste0("model-canvas/state.js?v=", version, "-structural-equation-fonts-disturbance-position-20260811u")),
     tags$script(src = paste0("model-canvas/layout.js?v=", version, "-custom-model-canvas-balanced-multi-role-layout-20260729a")),
     tags$script(src = paste0("model-canvas/shiny-bridge.js?v=", version, "-structural-result-toolbar-20260812c")),

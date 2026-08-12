@@ -812,7 +812,8 @@
       from: fromId,
       to: toId,
       label: "",
-      shape: "straight"
+      shape: "straight",
+      pathType: fromNode.role === "latent" && toNode.role === "latent" ? "regression" : null
     });
     return true;
   }

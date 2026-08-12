@@ -114,6 +114,7 @@
     var latents = instance.state.nodes.filter(function(node) { return node.role === "latent"; });
     var structural = instance.state.edges.filter(function(edge) {
       if (edge.kind === "covariance") return false;
+      if (edge.pathType === "higherOrder") return false;
       var from = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
       var to = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
       return from && to && from.role === "latent" && to.role === "latent";
@@ -126,6 +127,12 @@
         if (to && to.id === latent.id && from && from.role === "indicator") return from;
         return null;
       }).filter(Boolean);
+      var lowerOrderFactors = instance.state.edges.map(function(edge) {
+        if (edge.kind === "covariance" || edge.pathType !== "higherOrder" || edge.from !== latent.id) return null;
+        var target = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
+        return target && target.role === "latent" ? target : null;
+      }).filter(Boolean);
+      indicators = indicators.concat(lowerOrderFactors);
       if (!indicators.length) add("error", latent.id, "latent_without_indicators", "측정변수가 없는 잠재변수");
       else if (indicators.length < 3) add("warning", latent.id, "few_indicators", "측정변수가 3개 미만");
       var connected = structural.some(function(edge) { return edge.from === latent.id || edge.to === latent.id; });
