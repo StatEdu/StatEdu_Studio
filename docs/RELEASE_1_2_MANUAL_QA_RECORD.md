@@ -54,7 +54,7 @@ Validation command: scripts\validate_cfa_all.R; scripts\smoke_electron_release.p
 | CFA menu opens in packaged app | Pass | Manual packaged-app check opened Analysis > Structural Equation Modeling > Confirmatory Factor Analysis and verified the CFA canvas rendered under `v1.2.2-dev`. |
 | CFA QA data auto-loads in packaged app | Pass | With `STATEDU_CAPTURE_DATA_FILE=D:\Program\Studio\outputs\cfa_qa_ord_multigroup.csv`, packaged Shiny loaded 7 variables and 80 analyzed rows; captured `outputs\statedu-dev-data-loaded-crop.png` and `outputs\browser_cfa_state2.png`. |
 | CFA two-factor QA model fits from the same snapshot/data | Pass | `outputs\cfa_qa_two_factor.stmodel` produced `F1 =~ x1 + x2 + x3; F2 =~ y1 + y2 + y3; F1 ~~ F2` and converged/admissible with WLSMV ordered indicators in local R validation. |
-| CFA theta ordinal bootstrap workflow | Pending | Manual visual/workflow QA still needed in the packaged app. |
+| CFA theta ordinal bootstrap support | Pass / Pending packaged visual QA | `scripts\validate_cfa_all.R` covers WLSMV ordered-indicator AVE/reliability bootstrap with a theta-parameterized original fit and passed on 2026-08-12; packaged visual workflow QA still needed. |
 | CFA BCa/percentile CI workflow | Pending | Manual visual/workflow QA still needed in the packaged app. |
 | CFA bootstrap progress and cancel controls | Pending | Manual visual/workflow QA still needed in the packaged app. |
 | CFA multigroup reliability/HTMT and Excel export | Pending | Manual visual/workflow QA still needed in the packaged app. |

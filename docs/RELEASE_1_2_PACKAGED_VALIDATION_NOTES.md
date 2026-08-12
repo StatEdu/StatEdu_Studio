@@ -55,5 +55,6 @@ Validation date: 2026-08-12
 | Packaged executable metadata is `StatEdu Studio Dev` | Pass | Verified by full Electron smoke checks against `win-unpacked`. |
 | Required SEM/CFA package dependencies are bundled | Pass | Local `seminr 2.5.0` dependency was installed before packaging; bundled runtime smoke passed. |
 | CFA capture model hook smoke passes | Pass | `scripts\smoke_shiny_app.ps1` passed with `STATEDU_CAPTURE_CFA_MODEL_FILE=D:\Program\Studio\outputs\cfa_qa_two_factor.stmodel` and `STATEDU_CAPTURE_CFA_RUN=yes`; `scripts\validate_cfa_all.R` also covers the hook. |
+| CFA theta ordinal bootstrap validation passes | Pass | `scripts\validate_cfa_all.R` covers theta-parameterized WLSMV ordered-indicator AVE/reliability bootstrap. |
 
 Development package status: Automated package checks passed after the CFA capture-hook rebuild; visual CFA workflow and native picker QA remain manual checks before promoting a public release build.
