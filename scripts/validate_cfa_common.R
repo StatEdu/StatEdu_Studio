@@ -6,6 +6,7 @@ source(file.path("R", "setup_custom_model_canvas_structural_diagnostics.R"), enc
 source(file.path("R", "setup_custom_model_canvas_structural_validity.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_reliability.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_evaluation.R"), encoding = "UTF-8")
+source(file.path("R", "setup_custom_model_canvas_structural_engine.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_bootstrap.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_exports.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_ui.R"), encoding = "UTF-8")
