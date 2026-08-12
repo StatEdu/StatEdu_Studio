@@ -347,7 +347,11 @@ assert_contains(easyflow_js, "analysis_custom_model_canvas: 'Mediation / Moderat
 assert_contains(easyflow_js, "analysis_custom_model_canvas: '\\uB9E4\\uAC1C\\u00B7\\uC870\\uC808 \\uC0AC\\uC6A9\\uC790 \\uC815\\uC758 \\uBAA8\\uB378'", "custom model Korean grouped menu label")
 assert_contains(easyflow_js, "values: ['Regression', 'analysis_mediation_moderation', 'analysis_custom_model_canvas', 'Generalized Linear Model (GLM)', 'analysis_logistic_regression']", "custom model included in Regression / Models grouped menu")
 
-custom_model_canvas_ui <- read_text("R/setup_custom_model_canvas_ui.R")
+custom_model_canvas_ui <- paste(
+  read_text("R/setup_custom_model_canvas_components.R"),
+  read_text("R/setup_custom_model_canvas_ui.R"),
+  sep = "\n"
+)
 assert_contains(custom_model_canvas_ui, '"Mediation / Moderation Custom Model"', "custom model canvas title")
 assert_contains(custom_model_canvas_ui, "\\uc0ac\\uc6a9\\uc790 \\uc815\\uc758 \\ubaa8\\ub378", "custom model canvas Korean title includes custom-defined model wording")
 
