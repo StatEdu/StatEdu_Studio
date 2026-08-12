@@ -638,9 +638,9 @@ stopifnot(
   all(nzchar(sequential_mi_candidates$skipped_details) == (sequential_mi_candidates$skipped_inadmissible > 0L))
 )
 stopifnot(
-  grepl("candidate_row$step <- step", ui_source, fixed = TRUE),
-  grepl("candidate_row$skipped_inadmissible <- skipped_candidates", ui_source, fixed = TRUE),
-  grepl("candidate_row$skipped_details <- paste(skipped_details, collapse = \" | \")", ui_source, fixed = TRUE),
+  grepl("candidate_row$step <- step", evaluation_source, fixed = TRUE),
+  grepl("candidate_row$skipped_inadmissible <- skipped_candidates", evaluation_source, fixed = TRUE),
+  grepl("candidate_row$skipped_details <- paste(skipped_details, collapse = \" | \")", evaluation_source, fixed = TRUE),
   grepl("table <- data.frame(Step = step, `Skipped unsafe` = skipped, `Skipped details` = skipped_details, relation", ui_source, fixed = TRUE),
   grepl("Each Step is sequential", ui_source, fixed = TRUE)
 )
