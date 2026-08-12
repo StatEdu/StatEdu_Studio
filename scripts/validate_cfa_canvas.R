@@ -164,7 +164,7 @@ stopifnot(
   tail(reliability_progress_events, 1L)[[1L]][["valid"]] > 0L,
   grepl("canceled", reliability_cancel_error, fixed = TRUE),
   identical(structural_canvas_bootstrap_ci_method("BCa (slower)"), "bca"),
-  grepl('progress(index, total_iterations, length(Filter(function(value) !is.null(value) && nrow(value), estimates[seq_len(index)])))', ui_source, fixed = TRUE),
+  grepl('progress(index, total_iterations, length(Filter(function(value) !is.null(value) && nrow(value), estimates[seq_len(index)])))', bootstrap_source, fixed = TRUE),
   grepl("_reliability_ci_method", ui_source, fixed = TRUE)
 )
 small_continuous <- continuous[seq_len(80L), , drop = FALSE]
@@ -549,8 +549,8 @@ stopifnot(
   identical(bollen_stine_test$`Requested replicates`[[1L]], 20L)
 )
 stopifnot(
-  grepl("structural_canvas_fit_admissibility(candidate)$admissible", ui_source, fixed = TRUE),
-  grepl("admissibility <- structural_canvas_fit_admissibility(fit)", ui_source, fixed = TRUE)
+  grepl("structural_canvas_fit_admissibility(candidate)$admissible", bootstrap_source, fixed = TRUE),
+  grepl("admissibility <- structural_canvas_fit_admissibility(fit)", bootstrap_source, fixed = TRUE)
 )
 saturated_bollen_eligibility <- structural_canvas_bollen_stine_eligibility(ml$fit)
 stopifnot(
