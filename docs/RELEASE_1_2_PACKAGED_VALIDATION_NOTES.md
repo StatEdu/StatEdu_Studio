@@ -57,5 +57,6 @@ Validation date: 2026-08-12
 | CFA capture model hook smoke passes | Pass | `scripts\smoke_shiny_app.ps1` passed with `STATEDU_CAPTURE_CFA_MODEL_FILE=D:\Program\Studio\outputs\cfa_qa_two_factor.stmodel` and `STATEDU_CAPTURE_CFA_RUN=yes`; `scripts\validate_cfa_all.R` also covers the hook. |
 | CFA theta ordinal bootstrap validation passes | Pass | `scripts\validate_cfa_all.R` covers theta-parameterized WLSMV ordered-indicator AVE/reliability bootstrap. |
 | CFA BCa/percentile CI validation passes | Pass | `scripts\validate_cfa_all.R` covers percentile and BCa CI paths for AVE/reliability bootstrap and HTMT bootstrap. |
+| CFA bootstrap progress/cancel callback validation passes | Pass | `scripts\validate_cfa_all.R` covers progress callbacks and cooperative cancel paths for AVE/reliability bootstrap and HTMT bootstrap; user-facing packaged UI cancel control remains pending. |
 
 Development package status: Automated package checks passed after the CFA capture-hook rebuild; visual CFA workflow and native picker QA remain manual checks before promoting a public release build.

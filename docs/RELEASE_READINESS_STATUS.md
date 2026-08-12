@@ -44,7 +44,8 @@ Current release candidate source version: 1.2.0
 - `scripts/validate_cfa_all.R` covers CFA canvas, reporting/export, and external-reference comparisons.
 - `scripts/validate_cfa_all.R` also covers theta-parameterized WLSMV ordered-indicator AVE/reliability bootstrap.
 - `scripts/validate_cfa_all.R` covers percentile and BCa CI paths for AVE/reliability bootstrap and HTMT bootstrap.
-- Remaining before public promotion: focused manual packaged-app QA for native CFA model-file picker, theta ordinal bootstrap visual workflow, BCa/percentile CI visual selection, bootstrap progress/cancel behavior, multigroup reliability/HTMT, and Excel export.
+- `scripts/validate_cfa_all.R` covers CFA bootstrap progress callbacks and cooperative cancel paths; a packaged user-facing cancel button remains pending.
+- Remaining before public promotion: focused manual packaged-app QA for native CFA model-file picker, theta ordinal bootstrap visual workflow, BCa/percentile CI visual selection, packaged bootstrap progress display, user-facing bootstrap cancel control, multigroup reliability/HTMT, and Excel export.
 
 ## Historical 1.0.1 Package Snapshot
 
