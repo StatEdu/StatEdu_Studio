@@ -60,6 +60,29 @@ stopifnot(
 )
 unlink(integrated_workbook_file)
 
+invariance_export_bundle <- reporting_bundle
+invariance_export_bundle$invariance_enabled <- TRUE
+invariance_export_bundle$invariance_group <- "school"
+invariance_export_bundle$invariance_result <- structural_canvas_measurement_invariance(
+  "eta1 =~ x1 + x2 + x3\neta2 =~ x4 + x5 + x6\neta1 ~~ eta2",
+  lavaan::HolzingerSwineford1939,
+  "school",
+  estimator = "MLR"
+)
+invariance_export_sheets <- structural_canvas_result_workbook_sheets(invariance_export_bundle, table_fn)
+invariance_workbook_file <- tempfile(fileext = ".xlsx")
+structural_canvas_write_result_workbook(invariance_export_sheets, invariance_workbook_file)
+invariance_workbook_names <- openxlsx::getSheetNames(invariance_workbook_file)
+stopifnot(
+  all(c("Invariance", "Invariance_Groups", "Invariance_Reliability", "Invariance_HTMT") %in% names(invariance_export_sheets)),
+  all(c("Invariance", "Invariance_Groups", "Invariance_Reliability", "Invariance_HTMT") %in% invariance_workbook_names),
+  nrow(invariance_export_sheets$Invariance_Reliability) == 4L,
+  nrow(invariance_export_sheets$Invariance_HTMT) == 2L,
+  all(c("Group", "Factor", "AVE", "CR", "Cronbach's alpha", "Omega total") %in% names(invariance_export_sheets$Invariance_Reliability)),
+  all(c("Group", "Factor1", "Factor2", "HTMT", "Criterion") %in% names(invariance_export_sheets$Invariance_HTMT))
+)
+unlink(invariance_workbook_file)
+
 export_note_snapshot <- list(
   nodes = list(
     list(id = "f1", role = "latent", name = "F1"),
