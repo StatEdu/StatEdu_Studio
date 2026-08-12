@@ -4,6 +4,7 @@ script_path <- tryCatch(
 )
 repo_root <- normalizePath(file.path(dirname(script_path), ".."), winslash = "/", mustWork = TRUE)
 setwd(repo_root)
+options(statedu.output_decimal_digits = 3L)
 
 tags <- htmltools::tags
 source(file.path(repo_root, "R", "utils.R"))
