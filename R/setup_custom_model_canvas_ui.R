@@ -4045,14 +4045,15 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
     output[[paste0(prefix, "_result_fit_difference")]] <- renderUI({
       bundle <- fit_result()
       if (!identical(bundle$comparison_type %||% "", "mi") || is.null(bundle$baseline_fit)) return(NULL)
+      ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
       report <- structural_canvas_model_difference_report(bundle)
       if (!nrow(report) || !isTRUE(report$Available[[1L]])) {
         reason <- if (nrow(report)) as.character(report$Reason[[1L]]) else "eligibility was not established"
-        return(tags$p(class = "structural-result-note", paste0("A formal model-difference test was suppressed: ", reason)))
+        return(tags$p(class = "structural-result-note", if (ko) paste0("공식 모형 차이 검정을 표시하지 않았습니다: ", reason) else paste0("A formal model-difference test was suppressed: ", reason)))
       }
       tags$div(
         class = "structural-fit-difference",
-        tags$h5("Original vs modified model"),
+        tags$h5(if (ko) "기존 모형 vs 탐색적 수정 모형" else "Original vs exploratory modified model"),
         tags$table(class = "table table-striped table-bordered",
           tags$thead(tags$tr(tags$th("Δχ²"), tags$th("Δdf"), tags$th("p"))),
           tags$tbody(tags$tr(
@@ -4062,7 +4063,7 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
           ))
         ),
         tags$p(class = "structural-result-note", report$Method[[1L]]),
-        tags$p(class = "structural-result-note", "Because the modification was selected using MI from the same data, this difference test is exploratory and should not be treated as confirmatory evidence.")
+        tags$p(class = "structural-result-note", if (ko) "이 수정은 동일 자료의 MI를 보고 선택했으므로, 이 차이 검정은 탐색적 결과이며 확인적 근거로 해석하면 안 됩니다." else "Because the modification was selected using MI from the same data, this difference test is exploratory and should not be treated as confirmatory evidence.")
       )
     })
     output[[paste0(prefix, "_result_invariance")]] <- renderUI({
@@ -4187,9 +4188,10 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
     })
     output[[paste0(prefix, "_result_fit_guidance")]] <- renderUI({
       bundle <- fit_result()
+      ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
       comparison_fits <- if (isTRUE(bundle$modified_from_baseline) && !is.null(bundle$baseline_fit)) list(bundle$baseline_fit, bundle$fit) else list(bundle$fit)
       selections <- structural_canvas_common_fit_measures(comparison_fits, bundle$estimator %||% "ML", bundle$rmsea_ci %||% .90)
-      labels <- if (length(selections) > 1L) c("Original model", bundle$comparison_label %||% "Modified model") else "Original model"
+      labels <- if (length(selections) > 1L) c(if (ko) "기존 모형" else "Original model", if (ko) "탐색적 수정 모형" else bundle$comparison_label %||% "Modified model") else if (ko) "기존 모형" else "Original model"
       tables <- lapply(seq_along(selections), function(index) {
         guidance <- structural_canvas_fit_guidance(selections[[index]]$values)
         guidance$Model <- labels[[index]]
@@ -4204,15 +4206,15 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
         names(severity)[match(score, severity)]
       }, character(1))
       div(class = "structural-fit-guidance-result",
-        tags$h5("Reference-based fit guidance"),
+        tags$h5(if (ko) "기준 기반 적합도 안내" else "Reference-based fit guidance"),
         tags$table(class = "table table-striped table-bordered",
           tags$thead(tags$tr(lapply(names(table), tags$th))),
           tags$tbody(lapply(seq_len(nrow(table)), function(index) tags$tr(lapply(as.character(table[index, ]), tags$td))))
         ),
         tags$p(paste(vapply(names(summaries), function(name) paste0(name, ": ", summaries[[name]]), character(1)), collapse = " | ")),
-        tags$p(class = "structural-result-note", "Good/Marginal/Review labels are descriptive reference guidance based on commonly used approximate cutoffs. They are not universal acceptance rules and do not replace model identification, residual diagnostics, parameter plausibility, theory, sample characteristics, or comparison with plausible alternatives."),
-        tags$p(class = "structural-result-note", "Incremental-fit guidance: CFI/TLI >= .95 Good, >= .90 Marginal. Absolute-fit guidance: RMSEA <= .06 Good, <= .08 Marginal; SRMR <= .08 Good, <= .10 Marginal. Values outside these ranges are marked Review."),
-        if (any(table$Guidance == "Not assessed")) tags$p(class = "structural-result-note", "Fit guidance is not assessed for saturated models (df = 0) or unavailable fit indices.")
+        tags$p(class = "structural-result-note", if (ko) "Good/Marginal/Review 표시는 흔히 쓰는 근사 기준에 따른 설명용 안내입니다. 보편적 수용 규칙이 아니며 모형 식별, 잔차 진단, 모수 타당성, 이론, 표본 특성, 대안 모형 비교를 대체하지 않습니다." else "Good/Marginal/Review labels are descriptive reference guidance based on commonly used approximate cutoffs. They are not universal acceptance rules and do not replace model identification, residual diagnostics, parameter plausibility, theory, sample characteristics, or comparison with plausible alternatives."),
+        tags$p(class = "structural-result-note", if (ko) "증분 적합도 안내: CFI/TLI >= .95 Good, >= .90 Marginal. 절대 적합도 안내: RMSEA <= .06 Good, <= .08 Marginal; SRMR <= .08 Good, <= .10 Marginal. 이 범위 밖 값은 Review로 표시합니다." else "Incremental-fit guidance: CFI/TLI >= .95 Good, >= .90 Marginal. Absolute-fit guidance: RMSEA <= .06 Good, <= .08 Marginal; SRMR <= .08 Good, <= .10 Marginal. Values outside these ranges are marked Review."),
+        if (any(table$Guidance == "Not assessed")) tags$p(class = "structural-result-note", if (ko) "포화모형(df = 0)이거나 적합도 지수가 없으면 적합도 안내를 평가하지 않습니다." else "Fit guidance is not assessed for saturated models (df = 0) or unavailable fit indices.")
       )
     })
     output[[paste0(prefix, "_result_rmsea_tests")]] <- renderUI({
@@ -4253,6 +4255,7 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
       bundle <- fit_result()
       result <- bundle$bollen_stine_result %||% NULL
       if (is.null(result) || !nrow(result)) return(NULL)
+      ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
       display <- result
       display[["Observed chi-square"]] <- vapply(display[["Observed chi-square"]], format_decimal3, character(1))
       display[["Bootstrap p"]] <- vapply(display[["Bootstrap p"]], format_p, character(1))
@@ -4269,7 +4272,7 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
         tags$p(class = "structural-result-note", "The bootstrap p value uses the plus-one correction: (1 + bootstrap chi-square values at least as large as observed) / (1 + valid replicates). Valid replicates pass the same convergence, variance, covariance-matrix, df, and latent-correlation admissibility checks as the main CFA. A small p value indicates global model misfit under the exact-fit null."),
         tags$p(class = "structural-result-note", "Monte Carlo SE and the 95% Wilson interval quantify simulation error from the finite number of valid bootstrap replicates; they are not a confidence interval for a population model parameter."),
         if (any(result$Status != "Adequate")) tags$p(class = "structural-result-note", "Fewer than 80% of requested resamples produced a converged admissible statistic. Treat the bootstrap p value and Monte Carlo interval as unstable; resolve convergence or admissibility problems before reporting."),
-        if (isTRUE(bundle$modified_from_baseline)) tags$p(class = "structural-result-note", "This model was modified using the analyzed data. Its Bollen-Stine result is exploratory and does not provide confirmatory evidence for the data-driven modification."),
+        if (isTRUE(bundle$modified_from_baseline)) tags$p(class = "structural-result-note", if (ko) "이 모형은 분석 자료를 보고 수정한 탐색적 수정 모형입니다. Bollen-Stine 결과는 탐색적 참고값이며 자료 기반 수정에 대한 확인적 근거를 제공하지 않습니다." else "This model was modified using the analyzed data. Its Bollen-Stine result is exploratory and does not provide confirmatory evidence for the data-driven modification."),
         tags$p(class = "structural-result-note", "This transformed-data test is available only for complete continuous single-group ML CFA and does not replace approximate fit indices, residual diagnostics, or substantive model evaluation.")
       )
     })
@@ -4685,29 +4688,31 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
       bundle <- fit_result()
       history <- bundle$mi_history %||% data.frame()
       if (!nrow(history)) return(NULL)
+      ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
       display <- history[, setdiff(names(history), "Signature"), drop = FALSE]
       for (name in intersect(c("MI", "EPC", "CFI", "TLI", "RMSEA", "SRMR"), names(display))) {
         display[[name]] <- vapply(display[[name]], format_decimal3, character(1))
       }
-      display$Justification[!nzchar(display$Justification)] <- "Not provided"
+      display$Justification[!nzchar(display$Justification)] <- if (ko) "제공되지 않음" else "Not provided"
       div(class = "result-section regression-result-panel structural-mi-history-result",
-        h4("MI modification history"),
+        h4(if (ko) "MI 수정 이력" else "MI modification history"),
         tags$table(class = "table table-striped table-bordered",
           tags$thead(tags$tr(lapply(names(display), tags$th))),
           tags$tbody(lapply(seq_len(nrow(display)), function(index) tags$tr(lapply(as.character(display[index, ]), tags$td))))
         ),
-        tags$p(class = "structural-result-note", "MI, EPC, and cumulative fit values are those available when the path was selected. The justification should document the substantive reason for freeing each parameter."),
-        tags$p(class = "structural-result-note", "MI-driven modifications are exploratory and should be cross-validated in an independent sample.")
+        tags$p(class = "structural-result-note", if (ko) "MI, EPC, 누적 적합도 값은 해당 경로를 선택한 시점의 값입니다. 근거란에는 각 모수를 자유화한 실질적 이유를 기록해야 합니다." else "MI, EPC, and cumulative fit values are those available when the path was selected. The justification should document the substantive reason for freeing each parameter."),
+        tags$p(class = "structural-result-note", if (ko) "MI 기반 수정은 탐색적 수정 모형이며 독립 표본에서 교차검증해야 합니다." else "MI-driven modifications are exploratory and should be cross-validated in an independent sample.")
       )
     })
     output[[paste0(prefix, "_result_mi_holdout")]] <- renderUI({
       bundle <- fit_result()
       if (!isTRUE(bundle$mi_holdout_enabled)) return(NULL)
+      ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
       comparison <- bundle$holdout_comparison %||% NULL
       if (is.null(comparison)) return(tags$div(class = "result-section regression-result-panel",
-        tags$h4("MI holdout validation"),
-        tags$p(paste0("Exploration N = ", nrow(bundle$analysis_data), "; reserved validation N = ", nrow(bundle$validation_data), ".")),
-        tags$p(class = "structural-result-note", "MI candidates and all currently displayed CFA estimates are based only on the exploration sample. Validation results will appear after an MI path is applied.")
+        tags$h4(if (ko) "MI 홀드아웃 검증" else "MI holdout validation"),
+        tags$p(paste0(if (ko) "탐색 표본 N = " else "Exploration N = ", nrow(bundle$analysis_data), if (ko) "; 예약 검증 표본 N = " else "; reserved validation N = ", nrow(bundle$validation_data), ".")),
+        tags$p(class = "structural-result-note", if (ko) "MI 후보와 현재 표시된 CFA 추정값은 탐색 표본만 사용한 결과입니다. MI 경로를 적용한 뒤 검증 결과가 표시됩니다." else "MI candidates and all currently displayed CFA estimates are based only on the exploration sample. Validation results will appear after an MI path is applied.")
       ))
       table <- comparison$table
       for (name in c("Chisq", "df", "CFI", "TLI", "SRMR", "RMSEA")) table[[name]] <- vapply(table[[name]], format_decimal3, character(1))
@@ -4716,20 +4721,20 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
       for (name in names(changes)[vapply(changes, is.numeric, logical(1)) & names(changes) != "DeltaP"]) changes[[name]] <- vapply(changes[[name]], format_decimal3, character(1))
       changes$DeltaP <- vapply(changes$DeltaP, format_p, character(1))
       div(class = "result-section regression-result-panel structural-mi-holdout-result",
-        h4("MI holdout validation"),
-        tags$p(paste0("Exploration rows = ", nrow(bundle$analysis_data), "; reserved validation rows = ", comparison$validation_n_raw, "; validation N used = ", paste(unique(comparison$validation_n_used), collapse = ", "), "; split seed = ", bundle$mi_holdout_seed, ".")),
+        h4(if (ko) "MI 홀드아웃 검증" else "MI holdout validation"),
+        tags$p(paste0(if (ko) "탐색 행 수 = " else "Exploration rows = ", nrow(bundle$analysis_data), if (ko) "; 예약 검증 행 수 = " else "; reserved validation rows = ", comparison$validation_n_raw, if (ko) "; 사용된 검증 N = " else "; validation N used = ", paste(unique(comparison$validation_n_used), collapse = ", "), if (ko) "; 분할 seed = " else "; split seed = ", bundle$mi_holdout_seed, ".")),
         tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered",
           tags$thead(tags$tr(lapply(names(table), tags$th))),
           tags$tbody(lapply(seq_len(nrow(table)), function(index) tags$tr(lapply(as.character(table[index, ]), tags$td))))
         )),
-        tags$h5("Validation-sample change: modified minus original"),
+        tags$h5(if (ko) "검증표본 변화: 수정 모형 - 기존 모형" else "Validation-sample change: modified minus original"),
         tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered",
           tags$thead(tags$tr(lapply(names(changes), tags$th))),
           tags$tbody(tags$tr(lapply(as.character(changes[1L, ]), tags$td)))
         )),
-        if (any(!comparison$table$Admissible)) tags$p(class = "structural-result-note", "One or both validation-sample models failed the same full admissibility checks as the main CFA. Validation-sample change statistics and the formal difference test are suppressed; the modification must not be treated as replicated."),
-        tags$p(class = "structural-result-note", "The MI path was selected only in the exploration sample. The table above refits both models independently in the reserved validation sample. Replication of improved fit supports stability but does not replace substantive justification; failure to replicate indicates likely sample-specific modification."),
-        tags$p(class = "structural-result-note", "The validation sample is now unblinded and locked. Further MI changes are disabled for this split; start a new analysis with a newly chosen split seed to evaluate a different modified model.")
+        if (any(!comparison$table$Admissible)) tags$p(class = "structural-result-note", if (ko) "검증표본의 한 모형 또는 두 모형이 주 CFA와 동일한 전체 admissibility 점검을 통과하지 못했습니다. 검증표본 변화 통계와 공식 차이 검정은 표시하지 않으며, 이 수정은 반복검증된 것으로 해석하면 안 됩니다." else "One or both validation-sample models failed the same full admissibility checks as the main CFA. Validation-sample change statistics and the formal difference test are suppressed; the modification must not be treated as replicated."),
+        tags$p(class = "structural-result-note", if (ko) "MI 경로는 탐색 표본에서만 선택되었습니다. 위 표는 예약된 검증 표본에서 두 모형을 독립적으로 다시 적합한 결과입니다. 적합도 개선의 반복은 안정성을 뒷받침하지만 실질적 근거를 대체하지 않으며, 반복되지 않으면 표본 특이적 수정일 가능성이 큽니다." else "The MI path was selected only in the exploration sample. The table above refits both models independently in the reserved validation sample. Replication of improved fit supports stability but does not replace substantive justification; failure to replicate indicates likely sample-specific modification."),
+        tags$p(class = "structural-result-note", if (ko) "검증 표본은 이제 공개되어 잠겼습니다. 이 분할에서는 추가 MI 변경을 비활성화합니다. 다른 수정 모형을 평가하려면 새 분할 seed로 새 분석을 시작하십시오." else "The validation sample is now unblinded and locked. Further MI changes are disabled for this split; start a new analysis with a newly chosen split seed to evaluate a different modified model.")
       )
     })
     execute_analysis <- function(snapshot, settings = NULL) {
