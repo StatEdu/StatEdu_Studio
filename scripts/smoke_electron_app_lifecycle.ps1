@@ -105,6 +105,27 @@ function Stop-PackagedAppProcesses {
   }
 }
 
+function Close-PackagedMainWindows {
+  $closedAny = $false
+  foreach ($processInfo in Get-PackagedMainProcesses) {
+    try {
+      $process = Get-Process -Id $processInfo.ProcessId -ErrorAction Stop
+      if ($process.CloseMainWindow()) {
+        $closedAny = $true
+      }
+    } catch {
+    }
+  }
+  if (-not $closedAny -and $appProcess -and -not $appProcess.HasExited) {
+    try {
+      $closedAny = $appProcess.CloseMainWindow()
+    } catch {
+      $closedAny = $false
+    }
+  }
+  return $closedAny
+}
+
 function Read-NewLogText {
   param(
     [string]$Path,
@@ -159,12 +180,7 @@ try {
   }
   Write-Host "[ok] packaged Electron app loaded bundled Shiny URL"
 
-  $closed = $false
-  try {
-    $closed = $appProcess.CloseMainWindow()
-  } catch {
-    $closed = $false
-  }
+  $closed = Close-PackagedMainWindows
   if (-not $closed) {
     & taskkill.exe /pid $appProcess.Id /t /f | Out-Null
   }
@@ -172,7 +188,9 @@ try {
   for ($i = 0; $i -lt $ShutdownTimeoutSeconds; $i++) {
     Start-Sleep -Seconds 1
     $newLogText = Read-NewLogText -Path $startupLog -InitialLength $initialLogLength
-    if ($newLogText -match "R process exited" -and (Get-PackagedMainProcesses).Count -eq 0) {
+    $appProcessCount = (Get-PackagedMainProcesses).Count
+    $bundledRProcessCount = (Get-BundledRProcesses).Count
+    if ($appProcessCount -eq 0 -and ($bundledRProcessCount -eq 0 -or $newLogText -match "R process exited")) {
       Write-Host "[ok] closing packaged Electron app stopped bundled Shiny process"
       Write-Host "Packaged Electron lifecycle smoke passed."
       exit 0
