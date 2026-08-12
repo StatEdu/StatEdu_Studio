@@ -1248,60 +1248,6 @@ structural_equation_tab_panel <- function(analysis_type = "cbsem", language = st
 
 
 
-structural_canvas_mardia <- function(data, variables, max_n = 2000L) {
-  variables <- intersect(unique(as.character(variables)), names(data))
-  if (length(variables) < 2L) return(list(available = FALSE, reason = "At least two continuous indicators are required."))
-  values <- data[variables]
-  if (!all(vapply(values, is.numeric, logical(1)))) return(list(available = FALSE, reason = "All indicators must be numeric and continuous."))
-  values <- values[stats::complete.cases(values), , drop = FALSE]
-  original_n <- nrow(values)
-  p <- ncol(values)
-  if (original_n <= p + 1L) return(list(available = FALSE, reason = "Too few complete cases for the number of indicators."))
-  sampled <- original_n > max_n
-  if (sampled) values <- values[unique(round(seq(1, original_n, length.out = max_n))), , drop = FALSE]
-  n <- nrow(values)
-  centered <- sweep(as.matrix(values), 2L, colMeans(values), "-")
-  covariance <- crossprod(centered) / n
-  inverse <- tryCatch(solve(covariance), error = function(error) NULL)
-  if (is.null(inverse)) return(list(available = FALSE, reason = "The indicator covariance matrix is singular."))
-  distances <- centered %*% inverse %*% t(centered)
-  skewness <- mean(distances^3)
-  skew_statistic <- n * skewness / 6
-  skew_df <- p * (p + 1L) * (p + 2L) / 6
-  skew_p <- stats::pchisq(skew_statistic, df = skew_df, lower.tail = FALSE)
-  kurtosis <- mean(diag(distances)^2)
-  expected_kurtosis <- p * (p + 2L)
-  kurtosis_z <- (kurtosis - expected_kurtosis) / sqrt(8 * p * (p + 2L) / n)
-  kurtosis_p <- 2 * stats::pnorm(abs(kurtosis_z), lower.tail = FALSE)
-  nonnormal <- is.finite(skew_p) && is.finite(kurtosis_p) && (skew_p < .05 || kurtosis_p < .05)
-  list(
-    available = TRUE, n = n, original_n = original_n, p = p, sampled = sampled,
-    skewness = skewness, skew_statistic = skew_statistic, skew_df = skew_df, skew_p = skew_p,
-    kurtosis = kurtosis, expected_kurtosis = expected_kurtosis, kurtosis_z = kurtosis_z, kurtosis_p = kurtosis_p,
-    recommendation = if (nonnormal) "MLR recommended" else "ML is acceptable",
-    nonnormal = nonnormal
-  )
-}
-
-structural_canvas_estimator_recommendation <- function(snapshot, data, variable_table, analysis_type = "cfa", estimator = "ML") {
-  estimator <- toupper(as.character(estimator %||% "ML"))
-  if (!analysis_type %in% c("cfa", "cbsem") || !identical(estimator, "ML")) {
-    return(list(recommend = FALSE, reason = "Estimator recommendation is only evaluated for ML CFA/SEM."))
-  }
-  ordered <- structural_canvas_ordered_indicators(snapshot, variable_table)
-  if (length(ordered)) return(list(recommend = FALSE, reason = "Ordered indicators are handled by WLSMV selection."))
-  nodes <- snapshot$nodes %||% list()
-  indicators <- unique(vapply(Filter(function(node) identical(node$role, "indicator"), nodes), structural_canvas_name, character(1)))
-  indicators <- intersect(indicators, names(data %||% data.frame()))
-  diagnosis <- structural_canvas_mardia(data, indicators)
-  if (!isTRUE(diagnosis$available)) return(list(recommend = FALSE, reason = diagnosis$reason %||% "Mardia diagnostic unavailable.", diagnosis = diagnosis))
-  list(
-    recommend = isTRUE(diagnosis$nonnormal),
-    recommended_estimator = if (isTRUE(diagnosis$nonnormal)) "MLR" else "ML",
-    reason = if (isTRUE(diagnosis$nonnormal)) "Mardia skewness or kurtosis test indicates nonnormal continuous indicators." else "Mardia diagnostics do not flag nonnormality.",
-    diagnosis = diagnosis
-  )
-}
 
 
 
