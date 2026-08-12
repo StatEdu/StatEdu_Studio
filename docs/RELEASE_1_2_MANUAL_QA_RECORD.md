@@ -52,9 +52,12 @@ Validation command: scripts\release_preflight.ps1 -FullElectronSmoke; scripts\sm
 | Packaged app lifecycle smoke passes | Pass | `scripts\smoke_electron_app_lifecycle.ps1` loaded the bundled Shiny URL and confirmed closing Electron stopped the bundled Shiny process. |
 | Packaged executable metadata displays `StatEdu Studio Dev` | Pass | Verified by full Electron smoke checks. |
 | CFA menu opens in packaged app | Pass | Manual packaged-app check opened Analysis > Structural Equation Modeling > Confirmatory Factor Analysis and verified the CFA canvas rendered under `v1.2.2-dev`. |
+| CFA QA data auto-loads in packaged app | Pass | With `STATEDU_CAPTURE_DATA_FILE=D:\Program\Studio\outputs\cfa_qa_ord_multigroup.csv`, packaged Shiny loaded 7 variables and 80 analyzed rows; captured `outputs\statedu-dev-data-loaded-crop.png` and `outputs\browser_cfa_state2.png`. |
+| CFA two-factor QA model fits from the same snapshot/data | Pass | `outputs\cfa_qa_two_factor.stmodel` produced `F1 =~ x1 + x2 + x3; F2 =~ y1 + y2 + y3; F1 ~~ F2` and converged/admissible with WLSMV ordered indicators in local R validation. |
 | CFA theta ordinal bootstrap workflow | Pending | Manual visual/workflow QA still needed in the packaged app. |
 | CFA BCa/percentile CI workflow | Pending | Manual visual/workflow QA still needed in the packaged app. |
 | CFA bootstrap progress and cancel controls | Pending | Manual visual/workflow QA still needed in the packaged app. |
 | CFA multigroup reliability/HTMT and Excel export | Pending | Manual visual/workflow QA still needed in the packaged app. |
+| CFA model-file load and run from packaged UI | Pending | Browser automation reached the packaged CFA canvas, but the model-load path uses the native `showOpenFilePicker` flow and was not captured by the automated file chooser. Complete this as hands-on UI QA or add a dedicated test hook. |
 
-Development QA status: Automated packaged validation passed; focused CFA manual workflow QA remains pending.
+Development QA status: Automated packaged validation passed. Packaged data-load/CFA-canvas visual QA and matching R-level QA model fit passed; focused CFA model execution/export workflow QA remains pending.
