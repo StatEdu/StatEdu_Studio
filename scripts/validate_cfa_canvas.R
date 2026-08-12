@@ -912,6 +912,8 @@ stopifnot(
   grepl("Estimator recommendation", ui_source, fixed = TRUE),
   grepl("추정량 권고", ui_source, fixed = TRUE),
   grepl("다변량 정규성 및 추정량 안내", ui_source, fixed = TRUE),
+  grepl("MI 수정 기록", ui_source, fixed = TRUE),
+  grepl("Heywood 제약 재분석", ui_source, fixed = TRUE),
   grepl("_run_with_mlr", ui_source, fixed = TRUE),
   grepl("_run_with_ml", ui_source, fixed = TRUE)
 )

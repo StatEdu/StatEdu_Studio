@@ -5081,11 +5081,12 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
         }
         pending_mi_rows(selected_rows)
         parameters <- vapply(selected_rows, function(index) paste(bundle$mi$lhs[[index]], bundle$mi$op[[index]], bundle$mi$rhs[[index]]), character(1))
+        ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
         showModal(modalDialog(
-          title = "Document MI modification",
-          tags$p(paste0("Paths to add: ", paste(parameters, collapse = ", "))),
-          textAreaInput(paste0(prefix, "_mi_justification"), "Substantive justification", rows = 4, placeholder = "Explain why freeing these parameters is theoretically defensible."),
-          footer = tagList(modalButton("Cancel"), actionButton(paste0(prefix, "_mi_confirm_apply"), "Apply and reanalyze", class = "btn-primary")),
+          title = if (ko) "MI 수정 기록" else "Document MI modification",
+          tags$p(paste0(if (ko) "추가할 경로: " else "Paths to add: ", paste(parameters, collapse = ", "))),
+          textAreaInput(paste0(prefix, "_mi_justification"), if (ko) "실질적 근거" else "Substantive justification", rows = 4, placeholder = if (ko) "이 모수를 자유화하는 것이 이론적으로 방어 가능한 이유를 기록하십시오." else "Explain why freeing these parameters is theoretically defensible."),
+          footer = tagList(modalButton(if (ko) "취소" else "Cancel"), actionButton(paste0(prefix, "_mi_confirm_apply"), if (ko) "적용 후 재분석" else "Apply and reanalyze", class = "btn-primary")),
           easyClose = TRUE
         ))
       }, ignoreInit = TRUE)
@@ -5105,16 +5106,18 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
         removeModal()
         pending_mi_rows(integer(0))
         result <- execute_analysis(snapshot, settings)
-        showNotification("The selected MI paths were added, documented, and reanalyzed.", type = if (isTRUE(result$converged)) "message" else "warning")
+        ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
+        showNotification(if (ko) "선택한 MI 경로를 추가하고 기록한 뒤 재분석했습니다." else "The selected MI paths were added, documented, and reanalyzed.", type = if (isTRUE(result$converged)) "message" else "warning")
       }, error = function(error) showNotification(conditionMessage(error), type = "error", duration = 8))
     }, ignoreInit = TRUE)
     observeEvent(input[[paste0(prefix, "_heywood_refit")]], {
+      ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
       showModal(modalDialog(
-        title = "Heywood-constrained reanalysis",
-        tags$p("Fix each negative residual variance to a small positive percentage of that variable's observed variance."),
-        numericInput(paste0(prefix, "_heywood_percent"), "Observed-variance percentage", value = 0.1, min = 0.01, max = 5, step = 0.01),
-        tags$p(class = "structural-result-note", "Recommended starting value: 0.1%. This is a sensitivity analysis, not an automatic correction of model misspecification."),
-        footer = tagList(modalButton("Cancel"), actionButton(paste0(prefix, "_heywood_confirm"), "Run constrained model", class = "btn-warning")),
+        title = if (ko) "Heywood 제약 재분석" else "Heywood-constrained reanalysis",
+        tags$p(if (ko) "각 음수 잔차분산을 해당 변수 관측분산의 작은 양수 비율로 고정합니다." else "Fix each negative residual variance to a small positive percentage of that variable's observed variance."),
+        numericInput(paste0(prefix, "_heywood_percent"), if (ko) "관측분산 비율" else "Observed-variance percentage", value = 0.1, min = 0.01, max = 5, step = 0.01),
+        tags$p(class = "structural-result-note", if (ko) "권장 시작값: 0.1%. 이는 민감도 분석이며 모형 부적합을 자동으로 수정하는 절차가 아닙니다." else "Recommended starting value: 0.1%. This is a sensitivity analysis, not an automatic correction of model misspecification."),
+        footer = tagList(modalButton(if (ko) "취소" else "Cancel"), actionButton(paste0(prefix, "_heywood_confirm"), if (ko) "제약 모형 실행" else "Run constrained model", class = "btn-warning")),
         easyClose = TRUE
       ))
     }, ignoreInit = TRUE)
