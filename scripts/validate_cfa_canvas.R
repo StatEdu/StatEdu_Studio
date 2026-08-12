@@ -1100,9 +1100,12 @@ missing_ordered_error <- tryCatch({
 stopifnot(grepl("requires at least one", missing_ordered_error, fixed = TRUE))
 
 cfa_toolbar <- htmltools::renderTags(structural_equation_toolbar("cfa", "en"))$html
-cfa_id_parts <- strsplit(cfa_toolbar, 'id="', fixed = TRUE)[[1L]][-1L]
-cfa_ids <- sub('".*$', "", cfa_id_parts)
+cfa_ids <- regmatches(cfa_toolbar, gregexpr('(^|[[:space:]])id="[^"]+"', cfa_toolbar, perl = TRUE))[[1L]]
+cfa_ids <- sub('^.*id="([^"]+)".*$', "\\1", cfa_ids)
 stopifnot(!anyDuplicated(cfa_ids))
+stopifnot(grepl("structural-run-options-tabs", cfa_toolbar, fixed = TRUE))
+stopifnot(grepl("Estimation", cfa_toolbar, fixed = TRUE))
+stopifnot(grepl("Diagnostics", cfa_toolbar, fixed = TRUE))
 stopifnot(grepl("AVE/reliability bootstrap CI", cfa_toolbar, fixed = TRUE))
 stopifnot(grepl("Download analysis record", ui_source, fixed = TRUE))
 stopifnot(grepl("Download result tables", ui_source, fixed = TRUE))

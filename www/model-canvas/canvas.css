@@ -441,6 +441,51 @@
   overflow: visible !important;
 }
 
+.custom-model-run-options-popover.structural-run-options-popover {
+  width: min(520px, calc(100vw - 48px));
+  min-width: min(420px, calc(100vw - 48px));
+}
+
+.custom-model-toolbar-panel .custom-model-run-options-popover .structural-run-options-tabs {
+  display: block;
+}
+
+.custom-model-toolbar-panel .custom-model-run-options-popover .structural-run-options-tabs .nav-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 10px;
+  border-bottom: 1px solid #d7dee8;
+}
+
+.custom-model-toolbar-panel .custom-model-run-options-popover .structural-run-options-tabs .nav-tabs > li {
+  float: none;
+  margin: 0;
+}
+
+.custom-model-toolbar-panel .custom-model-run-options-popover .structural-run-options-tabs .nav-tabs > li > a {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 5px 5px 0 0;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.custom-model-toolbar-panel .custom-model-run-options-popover .structural-run-options-tabs .nav-tabs > li.active > a,
+.custom-model-toolbar-panel .custom-model-run-options-popover .structural-run-options-tabs .nav-tabs > li.active > a:focus,
+.custom-model-toolbar-panel .custom-model-run-options-popover .structural-run-options-tabs .nav-tabs > li.active > a:hover {
+  border-color: #d7dee8 #d7dee8 #ffffff;
+  color: #0f172a;
+  background: #ffffff;
+}
+
+.custom-model-toolbar-panel .custom-model-run-options-popover .structural-run-options-tabs .tab-content {
+  max-height: min(58vh, 520px);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
 .custom-model-toolbar-panel .custom-model-run-options-popover .analysis-option-group {
   display: block;
   margin: 0;

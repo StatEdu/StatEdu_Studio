@@ -1036,13 +1036,20 @@ structural_equation_toolbar <- function(analysis_type = "cbsem", language = stat
         class = "custom-model-run-options-popover structural-run-options-popover",
         div(class = "custom-model-run-options-title", if (ko) "분석 옵션" else "Analysis options"),
         div(
-          class = "custom-model-analysis-options",
+          class = "custom-model-analysis-options structural-run-options-tabs analysis-tabbed-options",
+          tabsetPanel(
+            type = "tabs",
+            tabPanel(
+              if (ko) "추정" else "Estimation",
           selectInput(paste0(structural_analysis_prefix(analysis_type), "_estimator"), if (ko) "추정 방법" else "Estimator", choices = if (analysis_type == "plssem") c("PLS" = "PLS") else c("ML" = "ML", "MLR" = "MLR", "WLSMV" = "WLSMV")),
           if (analysis_type != "plssem") selectInput(paste0(structural_analysis_prefix(analysis_type), "_missing"), if (ko) "결측치 처리" else "Missing data", choices = stats::setNames(c("fiml", "listwise"), c("FIML", if (ko) "목록 삭제" else "Listwise deletion"))),
           if (analysis_type != "plssem") selectInput(paste0(structural_analysis_prefix(analysis_type), "_scale"), if (ko) "잠재변수 스케일" else "Latent scale", choices = stats::setNames(c("marker", "variance"), c(if (ko) "첫 지표 부하량 = 1" else "Marker loading = 1", if (ko) "잠재변수 분산 = 1" else "Latent variance = 1"))),
           if (analysis_type != "plssem") selectInput(paste0(structural_analysis_prefix(analysis_type), "_rmsea_ci"), if (ko) "RMSEA 신뢰수준" else "RMSEA confidence level", choices = c("90% CI" = "0.90", "95% CI" = "0.95", "99% CI" = "0.99"), selected = "0.90"),
           if (identical(analysis_type, "cfa")) checkboxInput(paste0(structural_analysis_prefix(analysis_type), "_invariance_enabled"), if (ko) "측정불변성 분석" else "Measurement invariance analysis", value = FALSE),
           if (identical(analysis_type, "cfa")) selectInput(paste0(structural_analysis_prefix(analysis_type), "_invariance_group"), if (ko) "집단변수" else "Grouping variable", choices = character(0)),
+            ),
+            tabPanel(
+              if (ko) "타당도" else "Validity",
           if (analysis_type != "plssem") selectInput(
             paste0(structural_analysis_prefix(analysis_type), "_validity_formula"),
             if (ko) "AVE·CR 계산 방식" else "AVE/CR formula",
@@ -1080,6 +1087,9 @@ structural_equation_toolbar <- function(analysis_type = "cbsem", language = stat
           if (identical(analysis_type, "cfa")) selectInput(paste0(structural_analysis_prefix(analysis_type), "_mi_holdout_fraction"), if (ko) "검증표본 비율" else "Validation-sample fraction", choices = c("20%" = "0.20", "30%" = "0.30", "40%" = "0.40"), selected = "0.30"),
           if (identical(analysis_type, "cfa")) numericInput(paste0(structural_analysis_prefix(analysis_type), "_mi_holdout_seed"), if (ko) "표본분할 seed" else "Sample-split seed", value = 13579L, min = 1L, step = 1L),
           if (identical(analysis_type, "cfa")) tags$p(class = "structural-option-note", if (ko) "MI 표본분할은 연속형 ML/MLR CFA 전용이며 측정불변성 또는 Heywood 제약 재분석과 동시에 사용할 수 없습니다." else "MI splitting is for continuous ML/MLR CFA and cannot be combined with measurement invariance or Heywood-constrained reanalysis."),
+            ),
+            tabPanel(
+              if (ko) "진단" else "Diagnostics",
           if (analysis_type != "plssem") selectInput(
             paste0(structural_analysis_prefix(analysis_type), "_htmt_threshold"),
             if (ko) "HTMT 기준" else "HTMT threshold",
@@ -1117,6 +1127,8 @@ structural_equation_toolbar <- function(analysis_type = "cbsem", language = stat
             if (ko) "결과 모형 계수" else "Result diagram coefficient",
             choices = c("beta(p)" = "beta", "B(p)" = "b"),
             selected = "beta"
+          )
+            )
           )
         ),
         div(
