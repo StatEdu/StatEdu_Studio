@@ -966,6 +966,7 @@ structural_equation_toolbar <- function(analysis_type = "cbsem", language = stat
       ),
       custom_model_canvas_button("addLatent", if (ko) "잠재변수" else "Latent variable", extra_class = "structural-add-latent"),
       custom_model_canvas_button("select", custom_model_canvas_text(language, "Select", "선택"), mode = TRUE),
+      if (identical(analysis_type, "cfa")) custom_model_canvas_button("flipCfa", if (ko) "좌우 반전" else "Flip sides", title = if (ko) "잠재변수와 측정변수 좌우 반전" else "Flip latent variables and indicators", mode = TRUE),
       custom_model_canvas_button("connect", custom_model_canvas_text(language, "Connect", "연결"), mode = TRUE),
       custom_model_canvas_button("covariance", if (ko) "공분산" else "Covariance", title = if (ko) "공분산 연결" else "Draw covariance", mode = TRUE),
       custom_model_canvas_button("properties", custom_model_canvas_text(language, "Properties", "속성"), mode = TRUE),
@@ -1035,10 +1036,7 @@ structural_equation_toolbar <- function(analysis_type = "cbsem", language = stat
         )
       )
       ),
-      if (identical(analysis_type, "cfa")) div(
-        class = "structural-advanced-analysis-tools structural-cfa-tools",
-        custom_model_canvas_button("flipCfa", if (ko) "좌우 반전" else "Flip sides", title = if (ko) "잠재변수와 측정변수 좌우 반전" else "Flip latent variables and indicators")
-      ) else div(
+      if (!identical(analysis_type, "cfa")) div(
         class = "structural-advanced-analysis-tools",
         custom_model_canvas_button("multiGroup", if (ko) "다집단 분석" else "Multigroup", title = if (ko) "다집단 분석 설정" else "Multigroup analysis settings"),
         custom_model_canvas_button("moderator", if (ko) "조절변수" else "Moderator", title = if (ko) "조절효과 설정" else "Moderation settings")
@@ -1097,10 +1095,6 @@ structural_equation_workspace <- function(selected_names, variable_table = NULL,
       ),
       div(
         class = "custom-model-diagram-panel",
-        div(
-          class = "structural-canvas-topbar",
-          analysis_data_viewer_button(paste0(prefix, "_view_data"), language)
-        ),
         structural_equation_toolbar(analysis_type, language),
         div(class = "custom-model-statusbar",
             span(class = "custom-model-mode-status", custom_model_canvas_text(language, "Mode: Select", "모드: 선택")),
@@ -1207,9 +1201,10 @@ structural_canvas_result_snapshot <- function(snapshot, fit, coefficient = "beta
     edge$significant <- isTRUE(info$matched) && (!is.finite(info$p) || info$p < .05)
     edge$dashEligible <- is_measurement_path || is_structural_path
     edge$resultMatched <- isTRUE(info$matched)
-    edge$labelPosition <- edge$labelPosition %||% 50
-    edge$labelOffsetX <- edge$labelOffsetX %||% 0
-    edge$labelOffsetY <- edge$labelOffsetY %||% -10
+    edge$labelPosition <- 50
+    edge$labelOffsetX <- 0
+    edge$labelOffsetY <- -10
+    edge$labelTextAnchor <- "middle"
     if (is_measurement_path && !is.null(from) && !is.null(to)) {
       dx <- abs(as.numeric(to$x %||% 0) - as.numeric(from$x %||% 0))
       dy <- abs(as.numeric(to$y %||% 0) - as.numeric(from$y %||% 0))
@@ -1525,13 +1520,16 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
       fit <- bundle$fit
       snapshot <- bundle$snapshot %||% list()
       labels <- labels_fn() %||% character(0)
-      ko <- identical(statedu_current_language(app_language_fn), "ko")
+      ko <- FALSE
       display_name <- function(name) {
         name <- as.character(name %||% "")
         node <- Filter(function(item) identical(structural_canvas_name(item), name), snapshot$nodes %||% list())
         label <- if (length(node)) as.character(node[[1]]$canvasLabel %||% "") else ""
         if (!nzchar(label) && !is.null(names(labels)) && name %in% names(labels)) label <- as.character(labels[[name]] %||% "")
         if (!nzchar(label) && length(node)) label <- as.character(node[[1]]$dataLabel %||% "")
+        if (!ko && grepl("^잠재변수\\s*[0-9]+$", label)) {
+          label <- sub("^잠재변수\\s*", "Latent variable ", label)
+        }
         if (nzchar(label)) label else name
       }
       residual_name <- function(name) {
@@ -1555,7 +1553,7 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
         if (identical(kind, "overview")) {
           overview_df <- data.frame(
             Item = if (ko) c("분석 방법", "추정 방법", "표본 크기(N)", "관측변수 수", "잠재변수 수", "자유 파라미터 수", "수렴 여부") else c("Analysis", "Estimator", "N", "Observed variables", "Latent variables", "Free parameters", "Converged"),
-            Value = c(structural_analysis_title(analysis_type, statedu_current_language(app_language_fn)), lavaan::lavInspect(fit, "options")$estimator, lavaan::lavInspect(fit, "ntotal"), length(lavaan::lavNames(fit, "ov")), length(lavaan::lavNames(fit, "lv")), lavaan::lavInspect(fit, "npar"), if (isTRUE(lavaan::lavInspect(fit, "converged"))) (if (ko) "수렴함(Yes)" else "Yes") else (if (ko) "수렴 안 됨(No)" else "No")),
+            Value = c(structural_analysis_title(analysis_type, "en"), lavaan::lavInspect(fit, "options")$estimator, lavaan::lavInspect(fit, "ntotal"), length(lavaan::lavNames(fit, "ov")), length(lavaan::lavNames(fit, "lv")), lavaan::lavInspect(fit, "npar"), if (isTRUE(lavaan::lavInspect(fit, "converged"))) "Yes" else "No"),
             check.names = FALSE
           )
           names(overview_df)[[1]] <- if (ko) "항목" else "Item"
@@ -1630,13 +1628,22 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
         }
         mi <- bundle$mi %||% structural_canvas_allowed_mi(snapshot, fit)
         if (!nrow(mi)) return(data.frame())
+        theory_mi <- identical(bundle$mi_mode %||% "theory", "theory")
+        if (!theory_mi) {
+          mi <- mi[mi$op == "~~" & mi$lhs != mi$rhs, , drop = FALSE]
+          if (!nrow(mi)) return(data.frame())
+        }
         relation <- vapply(seq_len(nrow(mi)), function(index) {
           lhs <- if (identical(mi$op[[index]], "~~")) residual_name(mi$lhs[[index]]) else display_name(mi$lhs[[index]])
           rhs <- if (identical(mi$op[[index]], "~~")) residual_name(mi$rhs[[index]]) else display_name(mi$rhs[[index]])
           if (identical(mi$op[[index]], "~~")) paste(lhs, "<-->", rhs) else if (identical(mi$op[[index]], "=~")) paste(lhs, "=~", rhs) else paste(rhs, "-->", lhs)
         }, character(1))
+        if (!theory_mi) {
+          epc <- if ("epc" %in% names(mi)) mi$epc else rep(NA_real_, nrow(mi))
+          return(data.frame(Covariance = relation, MI = fmt(mi$mi), EPC = fmt(epc), check.names = FALSE))
+        }
         table <- data.frame(relation, MI = fmt(mi$mi), CFI = fmt(mi$cfi_after), TLI = fmt(mi$tli_after), RMSEA = fmt(mi$rmsea_after), SRMR = fmt(mi$srmr_after), check.names = FALSE)
-        names(table)[[1]] <- if (identical(bundle$mi_mode %||% "theory", "theory")) (if (ko) "추천 공분산" else "Covariance") else (if (ko) "관계 경로" else "Relation")
+        names(table)[[1]] <- if (ko) "추천 공분산" else "Covariance"
         return(table)
       }
       summary_fit <- summary(fit)
@@ -1655,9 +1662,9 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
     })
     output[[paste0(prefix, "_results")]] <- renderUI({
       shiny::req(!is.null(fit_result()))
-      ko <- identical(statedu_current_language(app_language_fn), "ko")
+      ko <- FALSE
       div(
-        class = "structural-analysis-results",
+        class = "structural-analysis-results regression-results",
         h3(if (ko) "분석 결과" else "Analysis Results"),
         div(class = "result-section regression-result-panel", h4(if (ko) "1. 모형 개요" else "1. Model overview"), tableOutput(paste0(prefix, "_result_overview"))),
         div(class = "result-section regression-result-panel", h4(if (ko) "2. 모형 적합도" else "2. Model fit"), uiOutput(paste0(prefix, "_result_fit"))),
@@ -1690,16 +1697,17 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
     output[[paste0(prefix, "_result_mi")]] <- renderUI({
       table <- result_table("mi")
       if (!nrow(table)) return(NULL)
+      theory_mi <- identical(fit_result()$mi_mode %||% "theory", "theory")
       tags$table(
         class = "table table-striped table-bordered structural-mi-table",
         tags$thead(tags$tr(
           lapply(names(table), tags$th),
-          tags$th("Select")
+          if (theory_mi) tags$th("Select")
         )),
         tags$tbody(lapply(seq_len(nrow(table)), function(index) {
           tags$tr(
             lapply(as.character(table[index, , drop = TRUE]), tags$td),
-            tags$td(actionButton(
+            if (theory_mi) tags$td(actionButton(
               paste0(prefix, "_mi_select_", index),
               "Select",
               class = "btn-sm structural-mi-select-button"

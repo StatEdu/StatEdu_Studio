@@ -651,6 +651,17 @@
   overflow: auto;
   background: #eef2f7;
   padding: 24px;
+  position: relative;
+}
+
+.structural-result-tools {
+  display: flex;
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  gap: 4px;
+  align-items: center;
+  flex: 0 0 auto;
 }
 
 .custom-model-modal-backdrop {
@@ -927,11 +938,14 @@
 .structural-equation-canvas-root [data-action="distributeH"] .custom-model-toolbar-icon::before { content: "▯↔▯"; font-size: 13px; }
 .structural-equation-canvas-root [data-action="distributeV"] .custom-model-toolbar-icon::before { content: "▭\A↕\A▭"; white-space: pre; line-height: 7px; font-size: 10px; }
 .structural-equation-canvas-root [data-action="delete"] .custom-model-toolbar-icon::before {
-  content: "x";
-  color: #dc2626;
-  font-family: Arial, sans-serif;
-  font-size: 22px;
-  font-weight: 400;
+  content: "";
+  display: block;
+  width: 22px;
+  height: 22px;
+  background: center / contain no-repeat url("assets/delete-brush-x.png");
+}
+.structural-equation-canvas-root [data-action="delete"].is-active .custom-model-toolbar-icon::before {
+  filter: grayscale(1) brightness(0) invert(1);
 }
 .structural-equation-canvas-root [data-action="undo"] .custom-model-toolbar-icon::before { content: "↶"; }
 .structural-equation-canvas-root [data-action="redo"] .custom-model-toolbar-icon::before { content: "↷"; }
@@ -988,24 +1002,30 @@
 
 .structural-primary-toolbar-tools {
   display: grid;
-  grid-template-columns: repeat(13, 48px);
-  grid-auto-rows: 34px;
+  grid-template-columns: repeat(14, 44px);
+  grid-template-rows: repeat(2, 32px);
+  grid-auto-rows: 32px;
   gap: 4px;
   flex: 0 0 auto;
   align-items: stretch;
 }
 
 .structural-primary-toolbar-tools > .custom-model-toolbar-button {
-  width: 48px;
-  min-width: 48px;
-  height: 34px;
+  width: 44px;
+  min-width: 44px;
+  height: 32px;
   padding: 2px 4px;
 }
 
+.structural-primary-toolbar-tools > .custom-model-toolbar-button[data-action="run"] {
+  grid-column: 1;
+  grid-row: 2;
+}
+
 .structural-primary-toolbar-tools .custom-model-toolbar-icon {
-  width: 24px;
-  height: 24px;
-  font-size: 16px;
+  width: 22px;
+  height: 22px;
+  font-size: 15px;
 }
 
 .structural-advanced-analysis-tools {
@@ -1209,7 +1229,7 @@
   display: none;
   position: absolute;
   top: 4px;
-  right: 8px;
+  right: 164px;
   align-items: center;
   gap: 7px;
 }
@@ -1463,8 +1483,9 @@
 
 .structural-analysis-results table {
   width: auto;
-  min-width: 520px;
+  min-width: 440px;
   max-width: 100%;
+  font-size: var(--result-table-font-size);
 }
 
 .structural-analysis-results .structural-fit-table th,

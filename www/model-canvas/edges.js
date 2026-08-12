@@ -425,10 +425,14 @@
     return {x: x, y: y, box: fallback};
   }
 
-  function addEdgeLabelElement(instance, svg, owner, type, id, point, placedLabels) {
+  function displayLabel(owner) {
     var automaticLabel = owner && (owner.equalityLabel || owner.parameterName) ? (owner.equalityLabel || owner.parameterName) :
       owner && owner.free === false && owner.fixedValue !== null && owner.fixedValue !== undefined ? String(owner.fixedValue) : "";
-    var label = String(owner && owner.label ? owner.label : automaticLabel).trim();
+    return String(owner && owner.label ? owner.label : automaticLabel).trim();
+  }
+
+  function addEdgeLabelElement(instance, svg, owner, type, id, point, placedLabels) {
+    var label = displayLabel(owner);
     if (!label) return;
     var x = Number(point.x || 0) + Number(owner.labelOffsetX || 0);
     var y = Number(point.y || 0) + Number(owner.labelOffsetY || -10);
@@ -683,6 +687,36 @@
     var edgeWidth = Number(instance.state.style.edgeStrokeWidth || 1.8);
     var arrowHead = instance.state.style.arrowHead || "triangle";
     var placedLabels = [];
+    var measurementLabelStarts = {};
+    var measurementGroups = {};
+
+    instance.state.edges.forEach(function(edge) {
+      if (edge.kind === "covariance") return;
+      var fromNode = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
+      var toNode = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
+      var latent = fromNode && fromNode.role === "latent" && toNode && toNode.role === "indicator" ? fromNode :
+        toNode && toNode.role === "latent" && fromNode && fromNode.role === "indicator" ? toNode : null;
+      var indicator = latent === fromNode ? toNode : latent === toNode ? fromNode : null;
+      if (!latent || !indicator || !displayLabel(edge)) return;
+      if (!measurementGroups[latent.id]) measurementGroups[latent.id] = [];
+      measurementGroups[latent.id].push({edge: edge, indicator: indicator});
+    });
+
+    Object.keys(measurementGroups).forEach(function(latentId) {
+      var group = measurementGroups[latentId].sort(function(a, b) {
+        return Number(a.indicator.y || 0) - Number(b.indicator.y || 0);
+      });
+      if (group.length < 2) return;
+      var reference = group[1];
+      var referenceEndpoints = edgeEndpoints(instance, reference.edge);
+      if (!referenceEndpoints) return;
+      var referencePoint = pointOnRenderedEdge(reference.edge, referenceEndpoints, reference.edge.labelPosition || 50);
+      var referenceLabel = displayLabel(reference.edge);
+      var referenceFontSize = Number(reference.edge.labelFontSize || instance.state.style.labelFontSize || instance.state.style.fontSize || 12);
+      var referenceWidth = labelBox(referenceLabel, 0, 0, referenceFontSize).right * 2;
+      var sharedStart = referencePoint.x + Number(reference.edge.labelOffsetX || 0) - referenceWidth / 2;
+      group.forEach(function(item) { measurementLabelStarts[item.edge.id] = sharedStart; });
+    });
 
     function applyEdgeStyle(element, selected, widthOffset, item) {
       element.style.stroke = selected ? "#2563eb" : edgeColor;
@@ -719,7 +753,13 @@
       }
       addEdgeHitElement(svg, edge, endpoints);
       addEdgeControlElement(instance, svg, edge, endpoints);
-      addEdgeLabelElement(instance, svg, edge, "edge", edge.id, pointOnRenderedEdge(edge, endpoints, edge.labelPosition || 50), placedLabels);
+      var labelPoint = pointOnRenderedEdge(edge, endpoints, edge.labelPosition || 50);
+      if (Object.prototype.hasOwnProperty.call(measurementLabelStarts, edge.id)) {
+        labelPoint.x = measurementLabelStarts[edge.id] - Number(edge.labelOffsetX || 0);
+      }
+      var labelOwner = Object.prototype.hasOwnProperty.call(measurementLabelStarts, edge.id) ?
+        Object.assign({}, edge, {labelTextAnchor: "start"}) : edge;
+      addEdgeLabelElement(instance, svg, labelOwner, "edge", edge.id, labelPoint, placedLabels);
     });
 
     instance.state.moderations.forEach(function(moderation) {

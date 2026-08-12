@@ -37,13 +37,14 @@
     var selectedIndicators = selectedNodes.filter(function(node) { return node.role === "indicator"; });
     var hasCanvasContent = instance.state.nodes.length > 0 || instance.state.edges.length > 0 ||
       instance.state.moderations.length > 0 || instance.state.covariates.length > 0;
+    var hasResult = !!instance.resultSnapshot && instance.root.classList.contains("has-result");
     instance.root.querySelectorAll(".custom-model-toolbar-button").forEach(function(button) {
       var action = button.getAttribute("data-action") || "";
       var active = action === instance.state.mode ||
         (action === "grid" && instance.state.gridVisible) ||
         (action === "autoAlign" && instance.state.autoAlign !== false) ||
-        (action === "resultEdit" && instance.state.mode === "properties") ||
-        (action === "dashNonsignificant" && instance.state.dashNonsignificant !== false);
+        (action === "resultEdit" && hasResult && instance.state.mode === "properties") ||
+        (action === "dashNonsignificant" && hasResult && instance.state.dashNonsignificant !== false);
       button.classList.toggle("is-active", active);
       var applicable = true;
       if (action === "save") applicable = hasCanvasContent;
@@ -55,7 +56,8 @@
       if (action === "distributeH" || action === "distributeV") applicable = selectedNodes.length >= 3;
       if (action === "undo") applicable = instance.state.history.length > 0;
       if (action === "redo") applicable = instance.state.redoStack.length > 0;
-      if (["save", "run", "connect", "covariance", "properties", "delete", "detachIndicator", "indicatorUp", "indicatorDown", "alignLeft", "alignTop", "alignCenter", "alignMiddle", "distributeH", "distributeV", "undo", "redo"].indexOf(action) >= 0) {
+      if (["resultView", "resultEdit", "dashNonsignificant", "style"].indexOf(action) >= 0) applicable = hasResult;
+      if (["save", "run", "connect", "covariance", "properties", "delete", "detachIndicator", "indicatorUp", "indicatorDown", "alignLeft", "alignTop", "alignCenter", "alignMiddle", "distributeH", "distributeV", "undo", "redo", "resultView", "resultEdit", "dashNonsignificant", "style"].indexOf(action) >= 0) {
         button.disabled = !applicable;
         button.setAttribute("aria-disabled", applicable ? "false" : "true");
       }
@@ -295,7 +297,12 @@
       window.StatEduModelCanvas.bridge.runConfirm(instance);
     }
     if (action === "resultView") window.StatEduModelCanvas.canvas.showResult(instance);
-    if (action === "resultEdit") setMode(instance, "properties");
+    if (action === "resultEdit") {
+      if (!window.StatEduModelCanvas.nodes.isViewingResult(instance)) {
+        window.StatEduModelCanvas.canvas.showResult(instance);
+      }
+      setMode(instance, "properties");
+    }
     if (action === "dashNonsignificant") {
       instance.state.dashNonsignificant = instance.state.dashNonsignificant === false;
       window.StatEduModelCanvas.canvas.render(instance);

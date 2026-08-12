@@ -185,9 +185,100 @@
     });
   }
 
+  function measurementDeletionLayout(instance, indicator) {
+    if (!indicator || indicator.role !== "indicator") return null;
+    var measurementEdge = instance.state.edges.find(function(edge) {
+      if (edge.kind === "covariance") return false;
+      var from = nodeById(instance, edge.from);
+      var to = nodeById(instance, edge.to);
+      return (from && from.role === "latent" && to && to.id === indicator.id) ||
+        (to && to.role === "latent" && from && from.id === indicator.id);
+    });
+    if (!measurementEdge) return null;
+    var from = nodeById(instance, measurementEdge.from);
+    var latent = from && from.role === "latent" ? from : nodeById(instance, measurementEdge.to);
+    if (!latent) return null;
+
+    var placement = latent.effectiveMeasurementPlacement || latent.measurementPlacement || "right";
+    var horizontal = placement === "top" || placement === "bottom";
+    var siblings = instance.state.edges.map(function(edge) {
+      if (edge.kind === "covariance") return null;
+      var edgeFrom = nodeById(instance, edge.from);
+      var edgeTo = nodeById(instance, edge.to);
+      if (edgeFrom && edgeFrom.id === latent.id && edgeTo && edgeTo.role === "indicator") return edgeTo;
+      if (edgeTo && edgeTo.id === latent.id && edgeFrom && edgeFrom.role === "indicator") return edgeFrom;
+      return null;
+    }).filter(function(node, index, nodes) {
+      return node && nodes.indexOf(node) === index;
+    });
+    if (siblings.length < 2) return null;
+
+    function center(node) {
+      return horizontal
+        ? Number(node.x || 0) + Number(node.width || 0) / 2
+        : Number(node.y || 0) + Number(node.height || 0) / 2;
+    }
+    siblings.sort(function(a, b) { return center(a) - center(b); });
+    var centers = siblings.map(center);
+    var gaps = [];
+    for (var index = 1; index < centers.length; index += 1) {
+      var gap = centers[index] - centers[index - 1];
+      if (gap > 1) gaps.push(gap);
+    }
+    gaps.sort(function(a, b) { return a - b; });
+    var spacing = gaps.length ? gaps[Math.floor(gaps.length / 2)] : (horizontal ? Number(indicator.width || 110) + 24 : 48);
+    return {
+      latentId: latent.id,
+      horizontal: horizontal,
+      center: centers.reduce(function(sum, value) { return sum + value; }, 0) / centers.length,
+      spacing: spacing,
+      siblingIds: siblings.map(function(node) { return node.id; })
+    };
+  }
+
+  function compactMeasurementAfterDeletion(instance, layout, removedId) {
+    if (!layout) return;
+    var siblings = layout.siblingIds.filter(function(id) { return id !== removedId; }).map(function(id) {
+      return nodeById(instance, id);
+    }).filter(Boolean);
+    if (!siblings.length) return;
+
+    function axisCenter(node) {
+      return layout.horizontal
+        ? Number(node.x || 0) + Number(node.width || 0) / 2
+        : Number(node.y || 0) + Number(node.height || 0) / 2;
+    }
+    siblings.sort(function(a, b) { return axisCenter(a) - axisCenter(b); });
+    siblings.forEach(function(indicator, index) {
+      var targetCenter = layout.center + (index - (siblings.length - 1) / 2) * layout.spacing;
+      var oldX = Number(indicator.x || 0);
+      var oldY = Number(indicator.y || 0);
+      if (layout.horizontal) indicator.x = targetCenter - Number(indicator.width || 0) / 2;
+      else indicator.y = targetCenter - Number(indicator.height || 0) / 2;
+      var dx = Number(indicator.x || 0) - oldX;
+      var dy = Number(indicator.y || 0) - oldY;
+      var errorEdge = instance.state.edges.find(function(edge) {
+        var source = nodeById(instance, edge.from);
+        return edge.to === indicator.id && source && source.role === "error";
+      });
+      var error = errorEdge ? nodeById(instance, errorEdge.from) : null;
+      if (error) {
+        error.x = Number(error.x || 0) + dx;
+        error.y = Number(error.y || 0) + dy;
+      }
+    });
+  }
+
   function deleteNode(instance, nodeId) {
     var target = nodeById(instance, nodeId);
     if (!target) return;
+    var deletionLayout = measurementDeletionLayout(instance, target);
+    var preservedPositions = {};
+    if (deletionLayout) {
+      instance.state.nodes.forEach(function(node) {
+        preservedPositions[node.id] = {x: node.x, y: node.y};
+      });
+    }
     var removeIds = [nodeId];
     if (target.role === "indicator") {
       instance.state.edges.forEach(function(edge) {
@@ -233,6 +324,15 @@
     hideProperties(instance);
     if (window.StatEduModelCanvas.canvas && window.StatEduModelCanvas.canvas.reflowMeasurements) {
       window.StatEduModelCanvas.canvas.reflowMeasurements(instance);
+    }
+    if (deletionLayout) {
+      instance.state.nodes.forEach(function(node) {
+        var preserved = preservedPositions[node.id];
+        if (!preserved) return;
+        node.x = preserved.x;
+        node.y = preserved.y;
+      });
+      compactMeasurementAfterDeletion(instance, deletionLayout, nodeId);
     }
   }
 
@@ -332,8 +432,124 @@
     return true;
   }
 
+  function isViewingResult(instance) {
+    return !!(instance && (
+      instance.viewingResult ||
+      (instance.root && instance.root.classList.contains("is-viewing-result"))
+    ));
+  }
+
+  function usesStructuralMovePolicy(instance) {
+    return !!(instance && instance.root && instance.root.classList.contains("structural-equation-canvas-root"));
+  }
+
+  function measurementLatentForNode(instance, node) {
+    if (!node) return null;
+    if (node.role === "latent") return node;
+    var indicator = node;
+    if (node.role === "error") {
+      var errorEdge = instance.state.edges.find(function(edge) {
+        var target = nodeById(instance, edge.to);
+        return edge.from === node.id && target && target.role === "indicator";
+      });
+      indicator = errorEdge ? nodeById(instance, errorEdge.to) : null;
+    } else if (node.role === "disturbance") {
+      var disturbanceEdge = instance.state.edges.find(function(edge) {
+        var target = nodeById(instance, edge.to);
+        return edge.from === node.id && target && target.role === "latent";
+      });
+      return disturbanceEdge ? nodeById(instance, disturbanceEdge.to) : null;
+    }
+    if (!indicator || indicator.role !== "indicator") return null;
+    var measurementEdge = instance.state.edges.find(function(edge) {
+      if (edge.kind === "covariance") return false;
+      var from = nodeById(instance, edge.from);
+      var to = nodeById(instance, edge.to);
+      return (from && from.role === "latent" && to && to.id === indicator.id) ||
+        (to && to.role === "latent" && from && from.id === indicator.id);
+    });
+    if (!measurementEdge) return null;
+    var from = nodeById(instance, measurementEdge.from);
+    return from && from.role === "latent" ? from : nodeById(instance, measurementEdge.to);
+  }
+
+  function measurementAxisForLatent(latent) {
+    var placement = latent && (latent.effectiveMeasurementPlacement || latent.measurementPlacement) || "right";
+    return placement === "top" || placement === "bottom" ? "y" : "x";
+  }
+
+  function completeMeasurementBundleSelection(instance, selectedIds) {
+    if (["cbsem", "plssem"].indexOf(instance.analysisType) < 0) return false;
+    var selected = selectedIds || [];
+    if (!selected.length) return false;
+    var selectedMap = {};
+    selected.forEach(function(id) { selectedMap[id] = true; });
+    var selectedNodes = instance.state.nodes.filter(function(node) { return selectedMap[node.id]; });
+    var latents = selectedNodes.filter(function(node) { return node.role === "latent"; });
+    if (!latents.length) return false;
+
+    var bundleMap = {};
+    latents.forEach(function(latent) {
+      bundleMap[latent.id] = true;
+      instance.state.edges.forEach(function(edge) {
+        var from = nodeById(instance, edge.from);
+        var to = nodeById(instance, edge.to);
+        var indicator = null;
+        if (from && from.id === latent.id && to && to.role === "indicator") indicator = to;
+        if (to && to.id === latent.id && from && from.role === "indicator") indicator = from;
+        if (indicator) {
+          bundleMap[indicator.id] = true;
+          instance.state.edges.forEach(function(errorEdge) {
+            var error = nodeById(instance, errorEdge.from);
+            if (errorEdge.to === indicator.id && error && error.role === "error") bundleMap[error.id] = true;
+          });
+        }
+        if (edge.to === latent.id && from && from.role === "disturbance") bundleMap[from.id] = true;
+      });
+    });
+    var everyRequiredSelected = Object.keys(bundleMap).every(function(id) { return selectedMap[id]; });
+    var noPartialExtraBundle = selectedNodes.every(function(node) {
+      var owner = measurementLatentForNode(instance, node);
+      return owner && bundleMap[owner.id];
+    });
+    return everyRequiredSelected && noPartialExtraBundle;
+  }
+
+  function wholeModelSelection(instance, selectedIds) {
+    var selected = selectedIds || [];
+    if (!instance.state.nodes.length || !selected.length) return false;
+    var selectedMap = {};
+    selected.forEach(function(id) { selectedMap[id] = true; });
+    return instance.state.nodes.every(function(node) { return selectedMap[node.id]; });
+  }
+
+  function structuralSelectionMovementAxis(instance, selectedIds) {
+    if (!usesStructuralMovePolicy(instance) || !instance.state) return null;
+    var selected = selectedIds || instance.state.selectedNodeIds || [];
+    // Invariant: selecting the whole model always moves it as one rigid body
+    // on both axes. Keep this ahead of every analysis- or placement-specific
+    // rule so future selection features cannot accidentally disable Y movement.
+    if (wholeModelSelection(instance, selected)) return null;
+    if (completeMeasurementBundleSelection(instance, selected)) return null;
+    var axes = {};
+    instance.state.nodes.forEach(function(node) {
+      if (selected.indexOf(node.id) < 0) return;
+      var latent = measurementLatentForNode(instance, node);
+      if (latent) axes[measurementAxisForLatent(latent)] = true;
+    });
+    var values = Object.keys(axes);
+    if (values.length === 1) return values[0];
+    if (values.length > 1) return "none";
+    return "x";
+  }
+
+  function structuralSelectionAllowsY(instance, selectedIds) {
+    return usesStructuralMovePolicy(instance) && structuralSelectionMovementAxis(instance, selectedIds) === null;
+  }
+
   function startNodeDrag(instance, event, element) {
-    if (instance.state.mode !== "select") return;
+    var resultEditMode = isViewingResult(instance) && instance.state.mode === "properties";
+    if (instance.state.mode !== "select" && !resultEditMode) return;
     var node = nodeById(instance, element.getAttribute("data-node-id"));
     if (!node) return;
     event.preventDefault();
@@ -345,13 +561,10 @@
     var selectedIds = (instance.state.selectedNodeIds || []).indexOf(node.id) >= 0 ?
       (instance.state.selectedNodeIds || []).slice() :
       [node.id];
-    var entireResultSelection = instance.viewingResult &&
-      selectedIds.length > 0 && selectedIds.length === instance.state.nodes.length;
     var draggedNodes = instance.state.nodes.filter(function(item) {
       return selectedIds.indexOf(item.id) >= 0;
     });
-    var movingEntireResultModel = entireResultSelection &&
-      draggedNodes.length === instance.state.nodes.length;
+    var structuralAxis = structuralSelectionMovementAxis(instance, selectedIds);
     var initialPositions = draggedNodes.map(function(item) {
       return {node: item, x: Number(item.x || 0), y: Number(item.y || 0)};
     });
@@ -363,15 +576,16 @@
       if (!moved && Math.sqrt(dx * dx + dy * dy) < dragThreshold) return;
       moved = true;
       initialPositions.forEach(function(item) {
-        var axis = instance.viewingResult ? (movingEntireResultModel ? null : "x") : errorMovementAxis(instance, item.node);
-        var disturbanceMove = instance.viewingResult ? null : disturbanceMovement(instance, item.node);
+        var structuralMovePolicy = usesStructuralMovePolicy(instance);
+        var axis = structuralMovePolicy ? structuralAxis : errorMovementAxis(instance, item.node);
+        var disturbanceMove = structuralMovePolicy ? null : disturbanceMovement(instance, item.node);
         if (disturbanceMove) {
           var projected = dx * disturbanceMove.vector.x + dy * disturbanceMove.vector.y;
           item.node.x = item.x + projected * disturbanceMove.vector.x;
           item.node.y = item.y + projected * disturbanceMove.vector.y;
         } else {
-          item.node.x = item.x + (axis === "y" ? 0 : dx);
-          item.node.y = item.y + (axis === "x" ? 0 : dy);
+          item.node.x = item.x + (axis === "y" || axis === "none" ? 0 : dx);
+          item.node.y = item.y + (axis === "x" || axis === "none" ? 0 : dy);
         }
       });
       renderNodes(instance);
@@ -385,7 +599,7 @@
         instance.state.history.pop();
         return;
       }
-      if (instance.viewingResult) {
+      if (usesStructuralMovePolicy(instance)) {
         window.StatEduModelCanvas.bridge.sendState(instance);
         return;
       }
@@ -557,6 +771,7 @@
   }
 
   function showEdgeProperties(instance, edgeId) {
+    if (isViewingResult(instance)) return;
     var edge = window.StatEduModelCanvas.edges.edgeById(instance, edgeId);
     if (!edge) return;
     hideProperties(instance);
@@ -567,12 +782,15 @@
     window.StatEduModelCanvas.edges.render(instance);
     window.StatEduModelCanvas.toolbar.updateButtons(instance);
     var ko = instance.language === "ko";
+    var isStructuralModel = ["cfa", "cbsem", "plssem"].indexOf(instance.analysisType) >= 0;
     var panel = document.createElement("div");
     panel.className = "custom-model-property-popover structural-edge-property-popover";
-    panel.innerHTML = [
+    var propertyFields = [
       '<div class="custom-model-property-title">' + (ko ? (edge.kind === "covariance" ? "공분산 속성" : "경로 속성") : "Path properties") + '</div>',
       '<label class="custom-model-property-label">' + (ko ? "표시 라벨" : "Display label") + '</label>',
-      '<input class="form-control edge-property-label" type="text">',
+      '<input class="form-control edge-property-label" type="text">'
+    ];
+    if (isStructuralModel) propertyFields.push(
       '<label class="custom-model-property-label">' + (ko ? "모수 이름" : "Parameter name") + '</label>',
       '<input class="form-control edge-property-name" type="text">',
       '<label class="custom-model-property-check"><input class="edge-property-free" type="checkbox"> ' + (ko ? "자유모수" : "Free parameter") + '</label>',
@@ -581,33 +799,40 @@
       '<label class="custom-model-property-label">' + (ko ? "시작값" : "Starting value") + '</label>',
       '<input class="form-control edge-property-start" type="number" step="any">',
       '<label class="custom-model-property-label">' + (ko ? "등가제약 라벨" : "Equality label") + '</label>',
-      '<input class="form-control edge-property-equality" type="text">',
+      '<input class="form-control edge-property-equality" type="text">'
+    );
+    propertyFields.push(
       '<div class="custom-model-property-actions">',
       '<button type="button" class="btn btn-primary btn-sm edge-property-apply">' + (ko ? "적용" : "Apply") + '</button>',
       '<button type="button" class="btn btn-default btn-sm edge-property-close">' + (ko ? "닫기" : "Close") + '</button>',
       '</div>'
-    ].join("");
+    );
+    panel.innerHTML = propertyFields.join("");
     panel.querySelector(".edge-property-label").value = edge.label || "";
-    panel.querySelector(".edge-property-name").value = edge.parameterName || "";
-    panel.querySelector(".edge-property-free").checked = edge.free !== false;
-    panel.querySelector(".edge-property-fixed").value = edge.fixedValue === undefined ? "" : edge.fixedValue;
-    panel.querySelector(".edge-property-start").value = edge.startValue === undefined ? "" : edge.startValue;
-    panel.querySelector(".edge-property-equality").value = edge.equalityLabel || "";
-    panel.querySelector(".edge-property-fixed").disabled = edge.free !== false;
-    panel.querySelector(".edge-property-free").addEventListener("change", function(event) {
-      panel.querySelector(".edge-property-fixed").disabled = event.target.checked;
-    });
+    if (isStructuralModel) {
+      panel.querySelector(".edge-property-name").value = edge.parameterName || "";
+      panel.querySelector(".edge-property-free").checked = edge.free !== false;
+      panel.querySelector(".edge-property-fixed").value = edge.fixedValue === undefined ? "" : edge.fixedValue;
+      panel.querySelector(".edge-property-start").value = edge.startValue === undefined ? "" : edge.startValue;
+      panel.querySelector(".edge-property-equality").value = edge.equalityLabel || "";
+      panel.querySelector(".edge-property-fixed").disabled = edge.free !== false;
+      panel.querySelector(".edge-property-free").addEventListener("change", function(event) {
+        panel.querySelector(".edge-property-fixed").disabled = event.target.checked;
+      });
+    }
     panel.querySelector(".edge-property-close").addEventListener("click", function() { hideProperties(instance); });
     panel.querySelector(".edge-property-apply").addEventListener("click", function() {
       window.StatEduModelCanvas.state.pushHistory(instance);
       edge.label = String(panel.querySelector(".edge-property-label").value || "").trim();
-      edge.parameterName = String(panel.querySelector(".edge-property-name").value || "").trim();
-      edge.free = panel.querySelector(".edge-property-free").checked;
-      var fixed = panel.querySelector(".edge-property-fixed").value;
-      var start = panel.querySelector(".edge-property-start").value;
-      edge.fixedValue = fixed === "" ? null : Number(fixed);
-      edge.startValue = start === "" ? null : Number(start);
-      edge.equalityLabel = String(panel.querySelector(".edge-property-equality").value || "").trim();
+      if (isStructuralModel) {
+        edge.parameterName = String(panel.querySelector(".edge-property-name").value || "").trim();
+        edge.free = panel.querySelector(".edge-property-free").checked;
+        var fixed = panel.querySelector(".edge-property-fixed").value;
+        var start = panel.querySelector(".edge-property-start").value;
+        edge.fixedValue = fixed === "" ? null : Number(fixed);
+        edge.startValue = start === "" ? null : Number(start);
+        edge.equalityLabel = String(panel.querySelector(".edge-property-equality").value || "").trim();
+      }
       hideProperties(instance);
       window.StatEduModelCanvas.canvas.render(instance);
       window.StatEduModelCanvas.bridge.sendState(instance);
@@ -630,6 +855,10 @@
     captureErrorOffset: captureErrorOffset,
     disturbanceMovement: disturbanceMovement,
     captureDisturbanceOffset: captureDisturbanceOffset,
+    isViewingResult: isViewingResult,
+    usesStructuralMovePolicy: usesStructuralMovePolicy,
+    structuralSelectionMovementAxis: structuralSelectionMovementAxis,
+    structuralSelectionAllowsY: structuralSelectionAllowsY,
     render: renderNodes,
     nodeById: nodeById,
     deleteNode: deleteNode,
