@@ -937,6 +937,40 @@ structural_analysis_prefix <- function(analysis_type = "cbsem") {
   paste0("structural_", analysis_type)
 }
 
+structural_capture_truthy <- function(value) {
+  tolower(trimws(as.character(value %||% ""))) %in% c("1", "true", "yes", "y", "run", "auto")
+}
+
+structural_capture_initial_snapshot <- function(analysis_type = "cbsem") {
+  if (!identical(analysis_type, "cfa")) return(list(snapshot = NULL, auto_run = FALSE))
+  candidates <- c(
+    Sys.getenv("STATEDU_CAPTURE_CFA_MODEL_FILE", ""),
+    Sys.getenv("STATEDU_CAPTURE_STRUCTURAL_MODEL_FILE", "")
+  )
+  candidates <- candidates[nzchar(candidates)]
+  path <- if (length(candidates)) candidates[[1L]] else ""
+  if (!nzchar(path)) return(list(snapshot = NULL, auto_run = FALSE))
+  if (!file.exists(path)) {
+    warning(sprintf("CFA capture model file does not exist: %s", path), call. = FALSE)
+    return(list(snapshot = NULL, auto_run = FALSE))
+  }
+  snapshot <- tryCatch(
+    jsonlite::fromJSON(path, simplifyVector = FALSE),
+    error = function(error) {
+      warning(sprintf("Failed to read CFA capture model file: %s", conditionMessage(error)), call. = FALSE)
+      NULL
+    }
+  )
+  if (!is.list(snapshot) || !is.list(snapshot$nodes) || !is.list(snapshot$edges)) {
+    warning("CFA capture model file must contain model nodes and edges.", call. = FALSE)
+    return(list(snapshot = NULL, auto_run = FALSE))
+  }
+  list(
+    snapshot = snapshot,
+    auto_run = structural_capture_truthy(Sys.getenv("STATEDU_CAPTURE_CFA_RUN", ""))
+  )
+}
+
 structural_analysis_package <- function(analysis_type = "cbsem") {
   if (identical(analysis_type, "plssem")) "seminr" else "lavaan"
 }
@@ -1131,8 +1165,16 @@ structural_equation_workspace <- function(selected_names, variable_table = NULL,
   labels_i18n <- custom_model_canvas_i18n(language)
   labels_i18n$role_latent <- if (identical(normalize_app_language(language), "ko")) "잠재변수" else "Latent variable"
   i18n_json <- htmltools::htmlEscape(jsonlite::toJSON(labels_i18n, auto_unbox = TRUE, null = "null"), attribute = TRUE)
-  tagList(
-    div(
+  capture <- structural_capture_initial_snapshot(analysis_type)
+  capture_attrs <- list()
+  if (!is.null(capture$snapshot)) {
+    capture_attrs[["data-initial-snapshot"]] <- htmltools::htmlEscape(
+      jsonlite::toJSON(capture$snapshot, auto_unbox = TRUE, null = "null"),
+      attribute = TRUE
+    )
+    if (isTRUE(capture$auto_run)) capture_attrs[["data-initial-run"]] <- "true"
+  }
+  root <- div(
       id = paste0(prefix, "-canvas-root"),
       class = "custom-model-canvas-root structural-equation-canvas-root",
       `data-input-prefix` = paste0(prefix, "_canvas"),
@@ -1162,7 +1204,12 @@ structural_equation_workspace <- function(selected_names, variable_table = NULL,
                 tags$svg(class = "custom-model-edge-layer", width = "1600", height = "1000"),
                 div(class = "custom-model-node-layer")))
       )
-    ),
+    )
+  if (length(capture_attrs)) {
+    root <- do.call(htmltools::tagAppendAttributes, c(list(root), capture_attrs))
+  }
+  tagList(
+    root,
     uiOutput(paste0(prefix, "_results")),
     tags$script(HTML("window.StatEduModelCanvas && window.StatEduModelCanvas.canvas && window.StatEduModelCanvas.canvas.initAll();"))
   )

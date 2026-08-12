@@ -35,6 +35,22 @@
     }
   }
 
+  function parseInitialSnapshot(root) {
+    var raw = root.getAttribute("data-initial-snapshot") || "";
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch (error) {
+      var textarea = document.createElement("textarea");
+      textarea.innerHTML = raw;
+      try {
+        return JSON.parse(textarea.value || "null");
+      } catch (innerError) {
+        return null;
+      }
+    }
+  }
+
   function canvasPoint(instance, event) {
     var rect = instance.paper.getBoundingClientRect();
     var structural = isStructuralCanvas(instance);
@@ -1514,6 +1530,15 @@
       instance.state.canvas.paper = root.getAttribute("data-canvas-paper") || "Custom";
       instance.state.canvas.orientation = "landscape";
     }
+    var initialSnapshot = parseInitialSnapshot(root);
+    if (
+      initialSnapshot &&
+      typeof initialSnapshot === "object" &&
+      Array.isArray(initialSnapshot.nodes) &&
+      Array.isArray(initialSnapshot.edges)
+    ) {
+      window.StatEduModelCanvas.state.restore(instance.state, initialSnapshot);
+    }
     instance.language = root.getAttribute("data-language") || "ko";
     instance.i18n = parseI18n(root);
     root.__stateduModelCanvas = instance;
@@ -1524,6 +1549,18 @@
     bindCanvasKeyboard(instance);
     render(instance);
     window.StatEduModelCanvas.bridge.sendState(instance);
+    if (root.getAttribute("data-initial-run") === "true") {
+      var attempts = 0;
+      var runInitial = function() {
+        attempts += 1;
+        if (window.Shiny && typeof window.Shiny.setInputValue === "function") {
+          window.StatEduModelCanvas.bridge.runConfirm(instance);
+        } else if (attempts < 20) {
+          window.setTimeout(runInitial, 250);
+        }
+      };
+      window.setTimeout(runInitial, 500);
+    }
     return instance;
   }
 
