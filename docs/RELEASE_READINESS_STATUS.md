@@ -32,6 +32,17 @@ Current release candidate source version: 1.2.0
   - `docs/RELEASE_1_2_MANUAL_QA_RECORD.md`
 - Remaining before public deployment: upload/publish steps.
 
+## Current 1.2.2-dev Development Snapshot
+
+- Source version: `1.2.2-dev`.
+- Built development package: `dist/electron/StatEdu_Studio_Dev_Setup_1.2.2-dev.exe`.
+- Installer SHA256: `9BE185563F7FE706A787841BC88A29BA31ACBEBDB428B35F3722243D48E76E55`.
+- Blockmap SHA256: `0DC13D2DCA9F8CB439A0018F8B7A3D995CE35E7E352FEFAAA82030CC13A5E3E8`.
+- `scripts/release_preflight.ps1 -FullElectronSmoke`: passed on 2026-08-12.
+- SEM/CFA hardening work has been merged into `codex/sem-model-canvas`.
+- `scripts/validate_cfa_all.R` covers CFA canvas, reporting/export, and external-reference comparisons.
+- Remaining before public promotion: focused manual packaged-app QA for theta ordinal bootstrap, BCa/percentile CI selection, bootstrap progress/cancel behavior, multigroup reliability/HTMT, and Excel export.
+
 ## Historical 1.0.1 Package Snapshot
 
 - Built package: `dist/electron/StatEdu_Studio_Setup_1.0.1.exe`
