@@ -14,6 +14,7 @@ source(file.path(repo_root, "R", "result_table_ui.R"))
 source(file.path(repo_root, "R", "result_panels_ui.R"))
 source(file.path(repo_root, "R", "analysis_regression.R"))
 source(file.path(repo_root, "R", "setup_mediation_moderation_ui.R"))
+source(file.path(repo_root, "R", "setup_custom_model_canvas_snapshot.R"))
 source(file.path(repo_root, "R", "setup_custom_model_canvas_ui.R"))
 
 message("Checking custom model canvas snapshot-to-analysis maps...")
