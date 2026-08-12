@@ -1026,6 +1026,12 @@ structural_equation_toolbar <- function(analysis_type = "cbsem", language = stat
             value = 24680L, min = 1L, step = 1L
           ),
           if (identical(analysis_type, "cfa")) selectInput(
+            paste0(structural_analysis_prefix(analysis_type), "_reliability_ci_method"),
+            if (ko) "AVE/reliability CI method" else "AVE/reliability CI method",
+            choices = c("Percentile" = "percentile", "BCa (slower)" = "bca"),
+            selected = "percentile"
+          ),
+          if (identical(analysis_type, "cfa")) selectInput(
             paste0(structural_analysis_prefix(analysis_type), "_bollen_stine_bootstrap"),
             if (ko) "Bollen-Stine 전체 적합도 bootstrap" else "Bollen-Stine global-fit bootstrap",
             choices = c("Do not compute" = "0", "500 resamples" = "500", "1,000 resamples" = "1000", "2,000 resamples" = "2000"), selected = "0"
@@ -1056,6 +1062,12 @@ structural_equation_toolbar <- function(analysis_type = "cbsem", language = stat
             paste0(structural_analysis_prefix(analysis_type), "_htmt_seed"),
             if (ko) "HTMT 부트스트랩 seed" else "HTMT bootstrap seed",
             value = 12345L, min = 1L, step = 1L
+          ),
+          if (analysis_type != "plssem") selectInput(
+            paste0(structural_analysis_prefix(analysis_type), "_htmt_ci_method"),
+            if (ko) "HTMT CI method" else "HTMT CI method",
+            choices = c("Percentile" = "percentile", "BCa (slower)" = "bca"),
+            selected = "percentile"
           ),
           if (analysis_type != "plssem") selectInput(
             paste0(structural_analysis_prefix(analysis_type), "_mi_mode"),
@@ -1563,10 +1575,11 @@ structural_canvas_htmt <- function(correlations, indicators_by_factor, threshold
   list(matrix = matrix_result, pairs = do.call(rbind, pairs), threshold = threshold)
 }
 
-structural_canvas_htmt_bootstrap <- function(data, indicators_by_factor, reps = 0L, confidence = .95, seed = 20260812L, ordered = character(0), threshold = .85) {
+structural_canvas_htmt_bootstrap <- function(data, indicators_by_factor, reps = 0L, confidence = .95, seed = 20260812L, ordered = character(0), threshold = .85, ci_method = "percentile", progress = NULL, cancel = NULL) {
   reps <- suppressWarnings(as.integer(reps))
   confidence <- suppressWarnings(as.numeric(confidence))
   threshold <- suppressWarnings(as.numeric(threshold))
+  ci_method <- structural_canvas_bootstrap_ci_method(ci_method)
   variables <- unique(unlist(indicators_by_factor, use.names = FALSE))
   if (!is.data.frame(data) || reps < 2L || length(indicators_by_factor) < 2L ||
       !all(variables %in% names(data)) ||
@@ -1582,6 +1595,26 @@ structural_canvas_htmt_bootstrap <- function(data, indicators_by_factor, reps = 
   factor_names <- names(indicators_by_factor)
   pairs <- utils::combn(factor_names, 2L, simplify = FALSE)
   estimates <- matrix(NA_real_, nrow = reps, ncol = length(pairs))
+  compute_correlations <- function(frame) {
+    if (length(ordered)) {
+      suppressWarnings(tryCatch(
+        as.matrix(lavaan::lavCor(frame, ordered = ordered, missing = "pairwise", estimator = "two.step", se = "none", test = "none", output = "cor", cor.smooth = TRUE)),
+        error = function(error) NULL
+      ))
+    } else {
+      suppressWarnings(stats::cor(frame, use = "pairwise.complete.obs"))
+    }
+  }
+  compute_pair_values <- function(frame) {
+    correlations <- compute_correlations(frame)
+    if (is.null(correlations) || !all(variables %in% rownames(correlations))) return(rep(NA_real_, length(pairs)))
+    htmt <- structural_canvas_htmt(correlations, indicators_by_factor, threshold = 1)
+    vapply(seq_along(pairs), function(pair_index) {
+      pair <- pairs[[pair_index]]
+      as.numeric(htmt$matrix[pair[[1L]], pair[[2L]]])
+    }, numeric(1))
+  }
+  original_values <- if (identical(ci_method, "bca")) compute_pair_values(values) else rep(NA_real_, length(pairs))
   old_seed_exists <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
   if (old_seed_exists) old_seed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
   on.exit({
@@ -1589,28 +1622,38 @@ structural_canvas_htmt_bootstrap <- function(data, indicators_by_factor, reps = 
     else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) rm(".Random.seed", envir = .GlobalEnv)
   }, add = TRUE)
   set.seed(as.integer(seed))
+  total_iterations <- reps + if (identical(ci_method, "bca")) n else 0L
+  progress_step <- max(1L, floor(total_iterations / 100L))
+  if (is.function(progress)) progress(0L, total_iterations, 0L)
   for (index in seq_len(reps)) {
+    if (is.function(cancel) && isTRUE(cancel())) stop("HTMT bootstrap canceled.")
     sampled <- values[sample.int(n, n, replace = TRUE), , drop = FALSE]
-    correlations <- if (length(ordered)) {
-      suppressWarnings(tryCatch(
-        as.matrix(lavaan::lavCor(sampled, ordered = ordered, missing = "pairwise", estimator = "two.step", se = "none", test = "none", output = "cor", cor_smooth = TRUE)),
-        error = function(error) NULL
-      ))
-    } else {
-      suppressWarnings(stats::cor(sampled, use = "pairwise.complete.obs"))
+    estimates[index, ] <- compute_pair_values(sampled)
+    if (is.function(progress) && (index == 1L || index == total_iterations || index %% progress_step == 0L)) {
+      valid_counts <- colSums(is.finite(estimates[seq_len(index), , drop = FALSE]))
+      progress(index, total_iterations, if (length(valid_counts)) min(valid_counts) else 0L)
     }
-    if (is.null(correlations) || !all(variables %in% rownames(correlations))) next
-    boot <- structural_canvas_htmt(correlations, indicators_by_factor, threshold = 1)
-    for (pair_index in seq_along(pairs)) {
-      pair <- pairs[[pair_index]]
-      estimates[index, pair_index] <- boot$matrix[pair[[1L]], pair[[2L]]]
+  }
+  jackknife <- NULL
+  if (identical(ci_method, "bca")) {
+    jackknife <- matrix(NA_real_, nrow = n, ncol = length(pairs))
+    for (index in seq_len(n)) {
+      if (is.function(cancel) && isTRUE(cancel())) stop("HTMT bootstrap canceled.")
+      jackknife[index, ] <- compute_pair_values(values[-index, , drop = FALSE])
+      completed <- reps + index
+      if (is.function(progress) && (completed == total_iterations || completed %% progress_step == 0L)) {
+        valid_counts <- colSums(is.finite(estimates))
+        progress(completed, total_iterations, if (length(valid_counts)) min(valid_counts) else 0L)
+      }
     }
   }
   alpha <- (1 - confidence) / 2
   rows <- lapply(seq_along(pairs), function(pair_index) {
     pair_values <- estimates[, pair_index]
     pair_values <- pair_values[is.finite(pair_values)]
-    interval <- if (length(pair_values) >= max(20L, ceiling(.5 * reps))) {
+    interval <- if (identical(ci_method, "bca")) {
+      structural_canvas_bca_interval(pair_values, original_values[[pair_index]], jackknife[, pair_index], confidence)
+    } else if (length(pair_values) >= max(20L, ceiling(.5 * reps))) {
       as.numeric(stats::quantile(pair_values, probs = c(alpha, 1 - alpha), names = FALSE, type = 6, na.rm = TRUE))
     } else c(NA_real_, NA_real_)
     upper_one_sided <- if (length(pair_values) >= max(20L, ceiling(.5 * reps))) {
@@ -1622,6 +1665,9 @@ structural_canvas_htmt_bootstrap <- function(data, indicators_by_factor, reps = 
       `One-sided upper` = upper_one_sided,
       `Upper < threshold` = if (is.finite(upper_one_sided)) if (upper_one_sided < threshold) "Yes" else "No" else "Not assessed",
       `Upper < 1` = if (is.finite(interval[[2L]])) if (interval[[2L]] < 1) "Yes" else "No" else "Not assessed",
+      `CI method` = if (identical(ci_method, "bca")) {
+        if (all(is.finite(interval))) "BCa" else "BCa unavailable"
+      } else "Percentile",
       `Valid replicates` = length(pair_values), `Requested replicates` = reps,
       `Valid %` = 100 * length(pair_values) / reps,
       Status = structural_canvas_bootstrap_status(length(pair_values), reps), check.names = FALSE
@@ -1662,6 +1708,26 @@ structural_canvas_mardia <- function(data, variables, max_n = 2000L) {
     kurtosis = kurtosis, expected_kurtosis = expected_kurtosis, kurtosis_z = kurtosis_z, kurtosis_p = kurtosis_p,
     recommendation = if (nonnormal) "MLR recommended" else "ML is acceptable",
     nonnormal = nonnormal
+  )
+}
+
+structural_canvas_estimator_recommendation <- function(snapshot, data, variable_table, analysis_type = "cfa", estimator = "ML") {
+  estimator <- toupper(as.character(estimator %||% "ML"))
+  if (!analysis_type %in% c("cfa", "cbsem") || !identical(estimator, "ML")) {
+    return(list(recommend = FALSE, reason = "Estimator recommendation is only evaluated for ML CFA/SEM."))
+  }
+  ordered <- structural_canvas_ordered_indicators(snapshot, variable_table)
+  if (length(ordered)) return(list(recommend = FALSE, reason = "Ordered indicators are handled by WLSMV selection."))
+  nodes <- snapshot$nodes %||% list()
+  indicators <- unique(vapply(Filter(function(node) identical(node$role, "indicator"), nodes), structural_canvas_name, character(1)))
+  indicators <- intersect(indicators, names(data %||% data.frame()))
+  diagnosis <- structural_canvas_mardia(data, indicators)
+  if (!isTRUE(diagnosis$available)) return(list(recommend = FALSE, reason = diagnosis$reason %||% "Mardia diagnostic unavailable.", diagnosis = diagnosis))
+  list(
+    recommend = isTRUE(diagnosis$nonnormal),
+    recommended_estimator = if (isTRUE(diagnosis$nonnormal)) "MLR" else "ML",
+    reason = if (isTRUE(diagnosis$nonnormal)) "Mardia skewness or kurtosis test indicates nonnormal continuous indicators." else "Mardia diagnostics do not flag nonnormality.",
+    diagnosis = diagnosis
   )
 }
 
@@ -1719,9 +1785,131 @@ structural_canvas_reliability_estimates <- function(fit, formula_mode = "standar
   if (length(rows)) do.call(rbind, rows) else data.frame()
 }
 
+structural_canvas_group_reliability_estimates <- function(fit, formula_mode = "standardized") {
+  group_labels <- as.character(lavaan::lavInspect(fit, "group.label"))
+  group_count <- as.integer(lavaan::lavInspect(fit, "ngroups"))
+  if (!is.finite(group_count) || group_count < 2L) return(data.frame())
+  if (length(group_labels) != group_count) group_labels <- paste("Group", seq_len(group_count))
+  standardized_all <- lavaan::standardizedSolution(fit)
+  parameters_all <- lavaan::parameterEstimates(fit)
+  observed <- lavaan::lavNames(fit, "ov")
+  theta_all <- lavaan::lavInspect(fit, "theta")
+  latent_covariance_all <- lavaan::lavInspect(fit, "cov.lv")
+  sample_statistics_all <- lavaan::lavInspect(fit, "sampstat")
+  rows <- lapply(seq_len(group_count), function(group_index) {
+    standardized <- standardized_all[standardized_all$group == group_index, , drop = FALSE]
+    parameters <- parameters_all[parameters_all$group == group_index, , drop = FALSE]
+    loadings <- standardized[standardized$op == "=~" & standardized$rhs %in% observed, c("lhs", "rhs", "est.std"), drop = FALSE]
+    factors <- unique(loadings$lhs)
+    if (!length(factors)) return(data.frame())
+    theta_raw <- as.matrix(if (is.list(theta_all) && !is.null(theta_all[[group_index]])) theta_all[[group_index]] else theta_all)
+    theta_standardized <- matrix(0, nrow = length(observed), ncol = length(observed), dimnames = list(observed, observed))
+    theta_rows <- standardized$op == "~~" & standardized$lhs %in% observed & standardized$rhs %in% observed
+    for (index in which(theta_rows)) {
+      lhs <- standardized$lhs[[index]]
+      rhs <- standardized$rhs[[index]]
+      theta_standardized[lhs, rhs] <- standardized$est.std[[index]]
+      theta_standardized[rhs, lhs] <- standardized$est.std[[index]]
+    }
+    sample_statistics <- if (is.list(sample_statistics_all) && !is.null(sample_statistics_all[[group_index]])) sample_statistics_all[[group_index]] else sample_statistics_all
+    sample_covariance <- sample_statistics$cov %||% NULL
+    latent_covariance <- as.matrix(if (is.list(latent_covariance_all) && !is.null(latent_covariance_all[[group_index]])) latent_covariance_all[[group_index]] else latent_covariance_all)
+    group_rows <- lapply(factors, function(factor) {
+      factor_rows <- loadings$lhs == factor
+      indicators <- loadings$rhs[factor_rows]
+      lambda <- loadings$est.std[factor_rows]
+      if (identical(formula_mode, "model_implied")) {
+        raw <- parameters$est[parameters$op == "=~" & parameters$lhs == factor & parameters$rhs %in% indicators]
+        latent_variance <- diag(latent_covariance)[[factor]]
+        residual_variances <- diag(theta_raw)[indicators]
+        ave_common <- sum(raw^2 * latent_variance, na.rm = TRUE)
+        ave <- ave_common / (ave_common + sum(residual_variances, na.rm = TRUE))
+        common <- sum(raw)^2 * latent_variance
+      } else {
+        ave <- mean(lambda^2, na.rm = TRUE)
+        common <- sum(lambda)^2
+      }
+      theta <- if (identical(formula_mode, "model_implied")) theta_raw else theta_standardized
+      error_total <- if (all(indicators %in% rownames(theta))) sum(theta[indicators, indicators, drop = FALSE], na.rm = TRUE) else NA_real_
+      cr <- if (is.finite(error_total) && common + error_total > 0) common / (common + error_total) else NA_real_
+      data.frame(
+        Group = group_labels[[group_index]], Factor = factor, k = length(indicators),
+        AVE = ave, CR = cr,
+        `Cronbach's alpha` = if (!is.null(sample_covariance)) structural_canvas_cronbach_alpha(sample_covariance, indicators) else NA_real_,
+        `Omega total` = cr,
+        check.names = FALSE
+      )
+    })
+    do.call(rbind, group_rows)
+  })
+  rows <- Filter(function(value) is.data.frame(value) && nrow(value), rows)
+  if (length(rows)) do.call(rbind, rows) else data.frame()
+}
+
+structural_canvas_group_htmt <- function(fit, threshold = .85) {
+  group_labels <- as.character(lavaan::lavInspect(fit, "group.label"))
+  group_count <- as.integer(lavaan::lavInspect(fit, "ngroups"))
+  if (!is.finite(group_count) || group_count < 2L) return(data.frame())
+  if (length(group_labels) != group_count) group_labels <- paste("Group", seq_len(group_count))
+  standardized <- lavaan::standardizedSolution(fit)
+  observed <- lavaan::lavNames(fit, "ov")
+  sample_statistics_all <- lavaan::lavInspect(fit, "sampstat")
+  rows <- lapply(seq_len(group_count), function(group_index) {
+    group_standardized <- standardized[standardized$group == group_index, , drop = FALSE]
+    loadings <- group_standardized[group_standardized$op == "=~" & group_standardized$rhs %in% observed, c("lhs", "rhs"), drop = FALSE]
+    factor_names <- unique(loadings$lhs)
+    if (length(factor_names) < 2L) return(data.frame())
+    indicators_by_factor <- stats::setNames(lapply(factor_names, function(name) unique(loadings$rhs[loadings$lhs == name])), factor_names)
+    sample_statistics <- if (is.list(sample_statistics_all) && !is.null(sample_statistics_all[[group_index]])) sample_statistics_all[[group_index]] else sample_statistics_all
+    covariance <- as.matrix(sample_statistics$cov %||% matrix(numeric(0), 0L, 0L))
+    if (!nrow(covariance) || !all(observed %in% rownames(covariance))) return(data.frame())
+    variances <- diag(covariance)
+    correlations <- if (all(is.finite(variances)) && all(variances > 0)) stats::cov2cor(covariance) else matrix(NA_real_, nrow(covariance), ncol(covariance), dimnames = dimnames(covariance))
+    htmt <- structural_canvas_htmt(correlations, indicators_by_factor, threshold = threshold)
+    if (is.null(htmt) || !nrow(htmt$pairs)) return(data.frame())
+    data.frame(Group = group_labels[[group_index]], htmt$pairs, check.names = FALSE)
+  })
+  rows <- Filter(function(value) is.data.frame(value) && nrow(value), rows)
+  if (length(rows)) do.call(rbind, rows) else data.frame()
+}
+
 structural_canvas_bootstrap_status <- function(valid, requested) {
   ratio <- as.numeric(valid) / as.numeric(requested)
   ifelse(!is.finite(ratio) | ratio < .50, "Unreliable", ifelse(ratio < .80, "Caution", "Adequate"))
+}
+
+structural_canvas_bootstrap_ci_method <- function(value) {
+  value <- tolower(trimws(as.character(value %||% "percentile")))
+  if (grepl("^bca", value)) return("bca")
+  if (value %in% c("bca", "bc_a", "bias-corrected accelerated", "bias corrected accelerated")) return("bca")
+  "percentile"
+}
+
+structural_canvas_bca_interval <- function(bootstrap_values, original_value, jackknife_values, confidence = .95) {
+  bootstrap_values <- as.numeric(bootstrap_values)
+  bootstrap_values <- bootstrap_values[is.finite(bootstrap_values)]
+  jackknife_values <- as.numeric(jackknife_values)
+  jackknife_values <- jackknife_values[is.finite(jackknife_values)]
+  confidence <- as.numeric(confidence)
+  if (length(bootstrap_values) < 20L || length(jackknife_values) < 10L ||
+      !is.finite(original_value) || !is.finite(confidence) || confidence <= 0 || confidence >= 1) {
+    return(c(NA_real_, NA_real_))
+  }
+  alpha <- (1 - confidence) / 2
+  prop_less <- (sum(bootstrap_values < original_value) + .5) / (length(bootstrap_values) + 1)
+  z0 <- stats::qnorm(prop_less)
+  jackknife_mean <- mean(jackknife_values)
+  jackknife_delta <- jackknife_mean - jackknife_values
+  denominator <- 6 * (sum(jackknife_delta^2)^(3 / 2))
+  acceleration <- if (is.finite(denominator) && denominator > 0) sum(jackknife_delta^3) / denominator else 0
+  adjusted <- vapply(c(alpha, 1 - alpha), function(probability) {
+    z_alpha <- stats::qnorm(probability)
+    denominator <- 1 - acceleration * (z0 + z_alpha)
+    if (!is.finite(denominator) || abs(denominator) < .Machine$double.eps) return(NA_real_)
+    stats::pnorm(z0 + (z0 + z_alpha) / denominator)
+  }, numeric(1))
+  if (any(!is.finite(adjusted)) || any(adjusted <= 0 | adjusted >= 1)) return(c(NA_real_, NA_real_))
+  as.numeric(stats::quantile(bootstrap_values, probs = adjusted, names = FALSE, type = 6, na.rm = TRUE))
 }
 
 structural_canvas_bollen_stine <- function(fit, reps = 500L, seed = 97531L) {
@@ -1789,8 +1977,9 @@ structural_canvas_normalize_missing_option <- function(value) {
   value
 }
 
-structural_canvas_reliability_bootstrap <- function(syntax, data, reps = 500L, confidence = .95, seed = 12345L, estimator = "ML", missing = "fiml", std_lv = FALSE, ordered = character(0), formula_mode = "standardized", original_fit = NULL) {
+structural_canvas_reliability_bootstrap <- function(syntax, data, reps = 500L, confidence = .95, seed = 12345L, estimator = "ML", missing = "fiml", std_lv = FALSE, ordered = character(0), formula_mode = "standardized", original_fit = NULL, ci_method = "percentile", progress = NULL, cancel = NULL) {
   reps <- as.integer(reps)
+  ci_method <- structural_canvas_bootstrap_ci_method(ci_method)
   if (!is.finite(reps) || reps < 1L) stop("Reliability bootstrap requires at least one resample.")
   if (is.null(original_fit)) original_fit <- tryCatch(lavaan::cfa(
       syntax, data = data, estimator = estimator, missing = missing,
@@ -1808,7 +1997,8 @@ structural_canvas_reliability_bootstrap <- function(syntax, data, reps = 500L, c
   fitted_ordered <- sort(lavaan::lavNames(original_fit, "ov.ord"))
   requested_ordered <- sort(unique(as.character(ordered %||% character(0))))
   if (!identical(fitted_ordered, requested_ordered)) stop("AVE/reliability bootstrap original_fit ordered-indicator specification does not match the requested ordered variables.")
-  if (!identical(as.character(original_options$parameterization %||% "delta"), "delta")) stop("AVE/reliability bootstrap original_fit parameterization does not match the delta parameterization used for resamples.")
+  original_parameterization <- tolower(as.character(original_options$parameterization %||% "delta"))
+  if (!original_parameterization %in% c("delta", "theta")) stop("AVE/reliability bootstrap original_fit uses an unsupported parameterization.")
   if (isTRUE(original_options$auto.cov.lv.x) && length(lavaan::lavNames(original_fit, "lv")) > 1L) stop("AVE/reliability bootstrap original_fit enables automatic exogenous latent covariances, but resamples use the explicit canvas covariance specification.")
   fitted_observed <- sort(lavaan::lavNames(original_fit, "ov"))
   syntax_observed <- sort(unique(unlist(regmatches(syntax, gregexpr("[[:alnum:]_.]+", syntax)), use.names = FALSE)))
@@ -1825,7 +2015,9 @@ structural_canvas_reliability_bootstrap <- function(syntax, data, reps = 500L, c
   supplied_parameters <- tryCatch(lavaan::lavaanify(
     syntax, model.type = "cfa", auto = TRUE, std.lv = isTRUE(std_lv),
     auto.fix.first = !isTRUE(std_lv), auto.fix.single = TRUE,
-    auto.var = TRUE, auto.cov.lv.x = FALSE, auto.th = TRUE, auto.delta = TRUE
+    auto.var = TRUE, auto.cov.lv.x = FALSE, auto.th = TRUE,
+    auto.delta = identical(original_parameterization, "delta"),
+    parameterization = original_parameterization
   ), error = function(error) stop(paste0("AVE/reliability bootstrap could not parse the supplied syntax: ", conditionMessage(error))))
   supplied_structure <- normalize_user_parameters(supplied_parameters)
   if (!identical(fitted_structure, supplied_structure)) stop("AVE/reliability bootstrap original_fit parameter structure does not match the supplied syntax.")
@@ -1841,6 +2033,15 @@ structural_canvas_reliability_bootstrap <- function(syntax, data, reps = 500L, c
   if (missing_option %in% c("listwise", "default") && nrow(fitted_data) != nrow(supplied_matrix)) supplied_matrix <- supplied_matrix[stats::complete.cases(supplied_matrix), , drop = FALSE]
   if (!isTRUE(all.equal(fitted_data, supplied_matrix, check.attributes = FALSE))) stop("AVE/reliability bootstrap original_fit does not use the same analyzed observations and values as the supplied data.")
   structural_canvas_validate_model_based_bootstrap(original_fit, "AVE/reliability bootstrap")
+  fit_reliability <- function(frame) {
+    fit <- tryCatch(lavaan::cfa(
+      syntax, data = frame, estimator = estimator, missing = missing,
+      std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE,
+      parameterization = original_parameterization
+    ), error = function(error) NULL)
+    if (is.null(fit) || !isTRUE(structural_canvas_fit_admissibility(fit)$admissible)) return(NULL)
+    tryCatch(structural_canvas_reliability_estimates(fit, formula_mode), error = function(error) NULL)
+  }
   old_seed_exists <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
   if (old_seed_exists) old_seed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
   on.exit({
@@ -1850,27 +2051,57 @@ structural_canvas_reliability_bootstrap <- function(syntax, data, reps = 500L, c
   set.seed(as.integer(seed))
   n <- nrow(data)
   estimates <- vector("list", reps)
+  total_iterations <- reps + if (identical(ci_method, "bca")) n else 0L
+  progress_step <- max(1L, floor(total_iterations / 100L))
+  if (is.function(progress)) progress(0L, total_iterations, 0L)
   for (index in seq_len(reps)) {
+    if (is.function(cancel) && isTRUE(cancel())) stop("AVE/reliability bootstrap canceled.")
     sampled <- data[sample.int(n, n, replace = TRUE), , drop = FALSE]
-    fit <- tryCatch(lavaan::cfa(
-      syntax, data = sampled, estimator = estimator, missing = missing,
-      std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE
-    ), error = function(error) NULL)
-    if (is.null(fit) || !isTRUE(structural_canvas_fit_admissibility(fit)$admissible)) next
-    estimates[[index]] <- tryCatch(structural_canvas_reliability_estimates(fit, formula_mode), error = function(error) NULL)
+    estimates[[index]] <- fit_reliability(sampled)
+    if (is.function(progress) && (index == 1L || index == total_iterations || index %% progress_step == 0L)) {
+      progress(index, total_iterations, length(Filter(function(value) !is.null(value) && nrow(value), estimates[seq_len(index)])))
+    }
   }
   valid <- Filter(function(value) !is.null(value) && nrow(value), estimates)
   if (!length(valid)) return(data.frame())
   combined <- do.call(rbind, lapply(seq_along(valid), function(index) transform(valid[[index]], Replicate = index)))
+  original_estimates <- structural_canvas_reliability_estimates(original_fit, formula_mode)
+  jackknife <- data.frame()
+  if (identical(ci_method, "bca")) {
+    jackknife_values <- vector("list", n)
+    for (index in seq_len(n)) {
+      if (is.function(cancel) && isTRUE(cancel())) stop("AVE/reliability bootstrap canceled.")
+      jackknife_values[[index]] <- fit_reliability(data[-index, , drop = FALSE])
+      completed <- reps + index
+      if (is.function(progress) && (completed == total_iterations || completed %% progress_step == 0L)) {
+        progress(completed, total_iterations, length(valid))
+      }
+    }
+    jackknife_values <- Filter(function(value) !is.null(value) && nrow(value), jackknife_values)
+    if (length(jackknife_values)) jackknife <- do.call(rbind, lapply(seq_along(jackknife_values), function(index) transform(jackknife_values[[index]], Replicate = index)))
+  }
   alpha <- (1 - confidence) / 2
   factors <- unique(combined$Factor)
   do.call(rbind, lapply(factors, function(factor) {
     values <- combined[combined$Factor == factor, , drop = FALSE]
     do.call(rbind, lapply(c("AVE", "CR", "Alpha", "Omega"), function(statistic) {
       finite <- values[[statistic]][is.finite(values[[statistic]])]
+      original <- original_estimates[original_estimates$Factor == factor, statistic, drop = TRUE]
+      original_value <- if (length(original)) as.numeric(original[[1L]]) else NA_real_
+      jackknife_finite <- if (nrow(jackknife)) jackknife[jackknife$Factor == factor, statistic, drop = TRUE] else numeric(0)
+      interval <- if (identical(ci_method, "bca")) {
+        structural_canvas_bca_interval(finite, original_value, jackknife_finite, confidence)
+      } else if (length(finite)) {
+        c(
+          unname(stats::quantile(finite, alpha, names = FALSE)),
+          unname(stats::quantile(finite, 1 - alpha, names = FALSE))
+        )
+      } else c(NA_real_, NA_real_)
       data.frame(Factor = factor, Statistic = statistic,
-        Lower = if (length(finite)) unname(stats::quantile(finite, alpha, names = FALSE)) else NA_real_,
-        Upper = if (length(finite)) unname(stats::quantile(finite, 1 - alpha, names = FALSE)) else NA_real_,
+        Lower = interval[[1L]], Upper = interval[[2L]],
+        `CI method` = if (identical(ci_method, "bca")) {
+          if (all(is.finite(interval))) "BCa" else "BCa unavailable"
+        } else "Percentile",
         `Valid replicates` = length(finite), `Requested replicates` = reps,
         `Valid %` = 100 * length(finite) / reps,
         Status = structural_canvas_bootstrap_status(length(finite), reps),
@@ -1989,24 +2220,115 @@ structural_canvas_indicator_loading_guidance <- function(beta, ci_lower, ci_uppe
   "No loading flag"
 }
 
-structural_canvas_residual_diagnostics <- function(fit, cutoff = 1.96) {
-  standardized <- tryCatch(as.matrix(lavaan::resid(fit, type = "standardized")$cov), error = function(error) NULL)
-  correlation <- tryCatch(as.matrix(lavaan::resid(fit, type = "cor")$cov), error = function(error) NULL)
-  if (is.null(standardized) || is.null(correlation)) return(list(available = FALSE))
-  standardized[upper.tri(standardized, diag = TRUE)] <- NA_real_
-  correlation[upper.tri(correlation, diag = TRUE)] <- NA_real_
-  locations <- which(is.finite(standardized) & abs(standardized) >= cutoff, arr.ind = TRUE)
-  largest <- if (nrow(locations)) {
+structural_canvas_residual_diagnostics <- function(fit, cutoff = 1.96, top_n = 20L) {
+  residual_covariance <- function(type) {
+    value <- tryCatch(lavaan::resid(fit, type = type), error = function(error) NULL)
+    if (is.null(value)) return(NULL)
+    if (!is.null(value$cov)) return(value$cov)
+    groups <- Filter(function(group_value) is.list(group_value) && !is.null(group_value$cov), value)
+    if (!length(groups)) return(NULL)
+    result <- lapply(groups, `[[`, "cov")
+    names(result) <- names(groups)
+    result
+  }
+  standardized_raw <- residual_covariance("standardized")
+  correlation_raw <- residual_covariance("cor")
+  if (is.null(correlation_raw)) return(list(available = FALSE))
+  standardized_available <- !is.null(standardized_raw)
+  if (is.null(standardized_raw)) standardized_raw <- correlation_raw
+  group_labels <- tryCatch(as.character(lavaan::lavInspect(fit, "group.label")), error = function(error) character(0))
+  group_count <- tryCatch(as.integer(lavaan::lavInspect(fit, "ngroups")), error = function(error) 1L)
+  normalize_residual_list <- function(value) {
+    if (is.list(value) && !is.data.frame(value)) {
+      result <- lapply(value, as.matrix)
+      if (is.null(names(result)) || any(!nzchar(names(result)))) {
+        labels <- group_labels
+        if (length(labels) != length(result)) labels <- paste("Group", seq_along(result))
+        names(result) <- labels
+      }
+      result
+    } else {
+      result <- list(as.matrix(value))
+      names(result) <- if (length(group_labels) == 1L) group_labels else "Overall"
+      result
+    }
+  }
+  standardized_list <- normalize_residual_list(standardized_raw)
+  correlation_list <- normalize_residual_list(correlation_raw)
+  common_groups <- intersect(names(standardized_list), names(correlation_list))
+  if (!length(common_groups)) return(list(available = FALSE))
+  pair_table <- function(standardized, correlation, group_name = NULL) {
+    standardized <- as.matrix(standardized)
+    correlation <- as.matrix(correlation)
+    if (!nrow(standardized) || !nrow(correlation)) return(data.frame())
+    standardized[upper.tri(standardized, diag = TRUE)] <- NA_real_
+    correlation[upper.tri(correlation, diag = TRUE)] <- NA_real_
+    locations <- which(is.finite(standardized), arr.ind = TRUE)
+    if (!nrow(locations)) return(data.frame())
     result <- data.frame(
       Indicator1 = rownames(standardized)[locations[, "row"]],
       Indicator2 = colnames(standardized)[locations[, "col"]],
       `Standardized residual` = standardized[locations],
       `Correlation residual` = correlation[locations],
+      `Residual scale` = if (standardized_available) "Standardized" else "Correlation residual fallback",
+      `Exceeds cutoff` = abs(standardized[locations]) >= cutoff,
       check.names = FALSE
     )
+    if (!is.null(group_name)) result <- data.frame(Group = group_name, result, row.names = NULL, check.names = FALSE)
     result[order(-abs(result[["Standardized residual"]])), , drop = FALSE]
-  } else data.frame()
-  list(available = TRUE, standardized = standardized, correlation = correlation, largest = largest, cutoff = cutoff)
+  }
+  by_group <- stats::setNames(lapply(common_groups, function(group_name) {
+    standardized <- standardized_list[[group_name]]
+    correlation <- correlation_list[[group_name]]
+    pairs <- pair_table(standardized, correlation, group_name)
+    list(
+      standardized = {
+        value <- as.matrix(standardized)
+        value[upper.tri(value, diag = TRUE)] <- NA_real_
+        value
+      },
+      correlation = {
+        value <- as.matrix(correlation)
+        value[upper.tri(value, diag = TRUE)] <- NA_real_
+        value
+      },
+      pairs = pairs,
+      largest = pairs[pairs[["Exceeds cutoff"]], , drop = FALSE]
+    )
+  }), common_groups)
+  all_pairs <- Filter(function(value) nrow(value), lapply(by_group, `[[`, "pairs"))
+  all_pairs <- if (length(all_pairs)) do.call(rbind, all_pairs) else data.frame()
+  group_largest <- if (nrow(all_pairs)) all_pairs[all_pairs[["Exceeds cutoff"]], , drop = FALSE] else data.frame()
+  if (nrow(group_largest)) group_largest <- utils::head(group_largest[order(-abs(group_largest[["Standardized residual"]])), , drop = FALSE], as.integer(top_n))
+  group_summary <- do.call(rbind, lapply(names(by_group), function(group_name) {
+    pairs <- by_group[[group_name]]$pairs
+    if (!nrow(pairs)) return(data.frame(Group = group_name, `Max |standardized residual|` = NA_real_, Indicator1 = NA_character_, Indicator2 = NA_character_, `Flagged residuals` = 0L, check.names = FALSE))
+    top <- pairs[1L, , drop = FALSE]
+    data.frame(
+      Group = group_name,
+      `Max |standardized residual|` = abs(top[["Standardized residual"]][[1L]]),
+      Indicator1 = top$Indicator1[[1L]], Indicator2 = top$Indicator2[[1L]],
+      `Flagged residuals` = sum(pairs[["Exceeds cutoff"]], na.rm = TRUE),
+      check.names = FALSE
+    )
+  }))
+  first_group <- common_groups[[1L]]
+  largest <- by_group[[first_group]]$largest
+  if (!is.null(group_count) && is.finite(group_count) && group_count == 1L && "Group" %in% names(largest)) {
+    largest <- largest[, setdiff(names(largest), c("Group", "Exceeds cutoff")), drop = FALSE]
+  }
+  list(
+    available = TRUE,
+    standardized_available = standardized_available,
+    standardized = by_group[[first_group]]$standardized,
+    correlation = by_group[[first_group]]$correlation,
+    largest = largest,
+    cutoff = cutoff,
+    by_group = by_group,
+    group_summary = group_summary,
+    group_largest = group_largest,
+    group_pairs = all_pairs
+  )
 }
 
 structural_canvas_factor_correlation_diagnostics <- function(fit) {
@@ -3153,491 +3475,17 @@ structural_canvas_measurement_invariance <- function(syntax, data, group, estima
   score_diagnostics <- stats::setNames(lapply(seq_along(fits), function(index) {
     if (index == 1L || !isTRUE(admissibility[[index]]$admissible)) data.frame() else structural_canvas_invariance_score_diagnostics(fits[[index]])
   }), names(fits))
-  list(table = do.call(rbind, rows), fits = fits, score_diagnostics = score_diagnostics, group = group, groups = observed_groups, group_diagnostics = group_diagnostics, estimator = estimator, ordered = ordered, ordinal = ordinal)
-}
-
-structural_canvas_reproducibility_record <- function(bundle, generated_at = Sys.time()) {
-  fit <- bundle$fit
-  options <- lavaan::lavInspect(fit, "options")
-  lines <- c(
-    "CFA analysis reproducibility record",
-    paste0("Generated: ", format(generated_at, "%Y-%m-%d %H:%M:%S %Z")),
-    paste0("R version: ", paste(R.version$major, R.version$minor, sep = ".")),
-    paste0("lavaan version: ", as.character(utils::packageVersion("lavaan"))),
-    paste0("Estimator: ", bundle$estimator %||% options$estimator %||% ""),
-    paste0("Missing-data option: ", bundle$missing %||% options$missing %||% ""),
-    paste0("Latent scaling: ", if (isTRUE(bundle$std_lv)) "latent variance fixed to 1" else "marker loading fixed to 1"),
-    paste0("N used: ", lavaan::lavInspect(fit, "ntotal")),
-    paste0("Ordered indicators: ", if (length(bundle$ordered %||% character(0))) paste(bundle$ordered, collapse = ", ") else "none"),
-    paste0("AVE/CR formula: ", bundle$validity_formula %||% "standardized"),
-    paste0("RMSEA CI level: ", bundle$rmsea_ci %||% .90),
-    paste0("HTMT threshold: ", bundle$htmt_threshold %||% .85),
-    paste0("HTMT bootstrap: ", bundle$htmt_bootstrap %||% 0L, "; seed: ", bundle$htmt_seed %||% "not used"),
-    paste0("AVE/reliability bootstrap: ", bundle$reliability_bootstrap %||% 0L, "; seed: ", bundle$reliability_seed %||% "not used"),
-    paste0("Bollen-Stine bootstrap: ", bundle$bollen_stine_bootstrap %||% 0L, "; seed: ", bundle$bollen_stine_seed %||% "not used"),
-    paste0("Measurement invariance: ", if (isTRUE(bundle$invariance_enabled)) paste0("enabled; group = ", bundle$invariance_group) else "disabled"),
-    paste0("MI holdout validation: ", if (isTRUE(bundle$mi_holdout_enabled)) paste0("enabled; validation fraction = ", bundle$mi_holdout_fraction, "; seed = ", bundle$mi_holdout_seed, "; exploration N = ", nrow(bundle$analysis_data), "; validation N = ", nrow(bundle$validation_data)) else "disabled"),
-    if (!is.null(bundle$holdout_comparison)) paste0("MI holdout N used after missing-data handling: ", paste(bundle$holdout_comparison$validation_n_used, collapse = ", ")),
-    paste0("MI output mode: ", bundle$mi_mode %||% "theory"),
-    paste0("Admissible solution: ", isTRUE(bundle$diagnostics$admissible)),
-    paste0("Admissibility reasons: ", if (length(bundle$diagnostics$admissibility_reasons %||% character(0))) paste(bundle$diagnostics$admissibility_reasons, collapse = "; ") else "none"),
-    "",
-    "lavaan model syntax",
-    "-------------------",
-    as.character(bundle$syntax %||% "Syntax unavailable")
-  )
-  paste(lines, collapse = "\n")
-}
-
-structural_canvas_write_result_workbook <- function(sheets, file) {
-  if (!requireNamespace("openxlsx", quietly = TRUE)) stop("The openxlsx package is required to export CFA result tables.")
-  sheets <- Filter(function(value) is.data.frame(value) || is.matrix(value), sheets)
-  if (!length(sheets)) stop("At least one result table is required for Excel export.")
-  sanitize_sheet_name <- function(name) {
-    characters <- strsplit(as.character(name), "", fixed = TRUE)[[1L]]
-    characters[characters %in% c("\\", "/", ":", "*", "?", "[", "]")] <- "_"
-    value <- trimws(paste(characters, collapse = ""))
-    if (!nzchar(value)) value <- "Sheet"
-    substr(value, 1L, 31L)
-  }
-  candidates <- vapply(names(sheets), sanitize_sheet_name, character(1))
-  valid_names <- character(length(candidates))
-  used <- character(0)
-  for (index in seq_along(candidates)) {
-    base <- candidates[[index]]
-    candidate <- base
-    suffix_index <- 1L
-    while (tolower(candidate) %in% tolower(used)) {
-      suffix <- paste0("_", suffix_index)
-      candidate <- paste0(substr(base, 1L, 31L - nchar(suffix)), suffix)
-      suffix_index <- suffix_index + 1L
-    }
-    valid_names[[index]] <- candidate
-    used <- c(used, candidate)
-  }
-  names(sheets) <- valid_names
-  workbook <- openxlsx::createWorkbook()
-  header_style <- openxlsx::createStyle(textDecoration = "bold", fgFill = "#D9EAF7", border = "Bottom")
-  decimal_style <- openxlsx::createStyle(numFmt = "0.000")
-  integer_style <- openxlsx::createStyle(numFmt = "0")
-  wrap_style <- openxlsx::createStyle(wrapText = TRUE, valign = "top")
-  for (name in names(sheets)) {
-    table <- as.data.frame(sheets[[name]], stringsAsFactors = FALSE, check.names = FALSE)
-    openxlsx::addWorksheet(workbook, name)
-    openxlsx::writeData(workbook, name, table, withFilter = nrow(table) > 0L)
-    if (ncol(table)) {
-      openxlsx::addStyle(workbook, name, header_style, rows = 1L, cols = seq_len(ncol(table)), gridExpand = TRUE)
-      widths <- vapply(seq_len(ncol(table)), function(column) {
-        values <- c(names(table)[[column]], as.character(table[[column]]))
-        values <- values[!is.na(values)]
-        observed <- if (length(values)) max(nchar(values, type = "width"), na.rm = TRUE) + 2L else 10L
-        upper <- if (identical(name, "Notes") && identical(names(table)[[column]], "Note")) 80L else 40L
-        min(max(observed, 10L), upper)
-      }, numeric(1))
-      openxlsx::setColWidths(workbook, name, cols = seq_len(ncol(table)), widths = widths)
-      openxlsx::freezePane(workbook, name, firstRow = TRUE)
-      if (nrow(table)) {
-        body_rows <- seq.int(2L, nrow(table) + 1L)
-        numeric_columns <- which(vapply(table, is.numeric, logical(1)))
-        for (column in numeric_columns) {
-          finite <- table[[column]][is.finite(table[[column]])]
-          style <- if (length(finite) && all(finite == trunc(finite))) integer_style else decimal_style
-          openxlsx::addStyle(workbook, name, style, rows = body_rows, cols = column, gridExpand = TRUE, stack = TRUE)
-        }
-        wrapped_columns <- which(vapply(table, function(values) {
-          is.character(values) && any(nchar(values, type = "width") > 40L, na.rm = TRUE)
-        }, logical(1)))
-        if (length(wrapped_columns)) openxlsx::addStyle(
-          workbook, name, wrap_style, rows = body_rows, cols = wrapped_columns,
-          gridExpand = TRUE, stack = TRUE
-        )
-      }
-    }
-  }
-  openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
-  invisible(normalizePath(file, winslash = "/", mustWork = TRUE))
-}
-
-structural_canvas_export_notes <- function(bundle) {
-  ordered <- length(bundle$ordered %||% character(0)) > 0L
-  admissible <- isTRUE(bundle$diagnostics$admissible %||% FALSE)
-  missing_covariances <- structural_canvas_missing_exogenous_covariances(bundle$snapshot %||% list())
-  notes <- data.frame(
-    Section = c("Fit", "Fit", "RMSEA tests", "Information criteria", "Validity", "Reliability", "Measurement", "Modification indices", "Admissibility"),
-    Note = c(
-      "Robust/scaled fit statistics are reported when available for the fitted estimator.",
-      "Descriptive guidance uses CFI/TLI >= .95 (good) and >= .90 (marginal), RMSEA <= .06 (good) and <= .08 (marginal), and SRMR <= .08 (good) and <= .10 (marginal). These are not universal acceptance rules.",
-      "Close-fit tests H0: RMSEA <= .05; not-close tests H0: RMSEA >= .08. Estimator-matched robust/scaled p values are used when available, and neither test is a standalone acceptance rule.",
-      "AIC, BIC, and adjusted BIC are relative criteria for models fitted to the same observations and variables with the same likelihood and estimator family; lower values are preferred, but they do not establish absolute fit.",
-      "Fornell-Larcker diagonal entries are sqrt(AVE); lower-triangle entries are latent correlations. AVE is reported separately.",
-      "AVE >= .50 and CR, Cronbach's alpha, and omega >= .70 are descriptive guidelines that require substantive and model-based interpretation.",
-      "Fixed reference loadings have no estimated unstandardized SE, z, or p value. R-squared and residual diagnostics should be considered alongside loadings.",
-      "MI p values use the unscaled asymptotic 1-df chi-square reference from each modification index and BH adjustment across all finite lavaan candidates before display filters. In sequential output, each step refits the preceding model, skips candidates that fail convergence or post-estimation admissibility, and recomputes its own MI family and EPC values.",
-      if (admissible) "The fitted solution passed the implemented admissibility checks." else "The fitted solution failed or did not complete one or more admissibility checks; inferential and validity results require caution."
-    ),
-    stringsAsFactors = FALSE,
-    check.names = FALSE
-  )
-  if (ordered) notes <- rbind(notes, data.frame(
-    Section = "Ordered indicators",
-    Note = "Ordered-indicator results use the fitted latent-response model; alpha uses the polychoric correlation matrix and AVE/CR/omega use standardized latent-response parameters.",
-    stringsAsFactors = FALSE
-  ))
-  if (!is.null(bundle$bollen_stine_result) && nrow(bundle$bollen_stine_result)) notes <- rbind(notes, data.frame(
-    Section = "Bollen-Stine",
-    Note = paste0(
-      "Model-based AVE/reliability and Bollen-Stine bootstraps require an admissible original CFA and use only replicates that pass the same full admissibility checks; Bollen-Stine additionally uses a plus-one correction and reports finite-simulation error.",
-      if (isTRUE(bundle$modified_from_baseline)) " Because the model was modified using the analyzed data, this result is exploratory rather than confirmatory." else ""
-    ),
-    stringsAsFactors = FALSE
-  ))
-  if (length(missing_covariances)) notes <- rbind(notes, data.frame(
-    Section = "Latent covariances",
-    Note = paste0("Omitted exogenous latent covariance paths were fixed to zero: ", paste(missing_covariances, collapse = ", "), "."),
-    stringsAsFactors = FALSE
-  ))
-  rownames(notes) <- NULL
-  notes
-}
-
-structural_canvas_export_parameter_estimates <- function(fit) {
-  estimates <- lavaan::parameterEstimates(fit, ci = TRUE, standardized = TRUE)
-  columns <- intersect(
-    c("lhs", "op", "rhs", "label", "est", "se", "z", "pvalue", "ci.lower", "ci.upper", "std.lv", "std.all", "std.nox"),
-    names(estimates)
-  )
-  table <- estimates[, columns, drop = FALSE]
-  table$Fixed <- with(table, is.finite(se) & se == 0 & is.na(z) & is.na(pvalue))
-  names(table)[names(table) == "pvalue"] <- "p"
-  rownames(table) <- NULL
-  table
-}
-
-structural_canvas_export_fit_estimates <- function(bundle) {
-  ci_level <- as.numeric(bundle$rmsea_ci %||% .90)
-  fits <- if (isTRUE(bundle$modified_from_baseline) && !is.null(bundle$baseline_fit)) {
-    list(bundle$baseline_fit, bundle$fit)
-  } else list(bundle$fit)
-  selections <- structural_canvas_common_fit_measures(fits, bundle$estimator %||% "ML", ci_level)
-  values <- do.call(rbind, lapply(selections, function(item) item$values))
-  models <- if (length(selections) > 1L) {
-    c("Original model", as.character(bundle$comparison_label %||% "Modified model"))
-  } else "Fitted model"
-  data.frame(
-    Model = models,
-    `Chi-square` = values[, 1L], df = values[, 2L], p = values[, 3L], Q = values[, 4L],
-    CFI = values[, 5L], TLI = values[, 6L], SRMR = values[, 7L], RMSEA = values[, 8L],
-    `RMSEA CI lower` = values[, 9L], `RMSEA CI upper` = values[, 10L],
-    `RMSEA CI level` = rep(ci_level, length(selections)),
-    `Chi-square source` = vapply(selections, function(item) item$keys[["chisq"]], character(1)),
-    `CFI source` = vapply(selections, function(item) item$keys[["cfi"]], character(1)),
-    `TLI source` = vapply(selections, function(item) item$keys[["tli"]], character(1)),
-    `RMSEA source` = vapply(selections, function(item) item$keys[["rmsea"]], character(1)),
-    check.names = FALSE
-  )
-}
-
-structural_canvas_rmsea_hypothesis_tests <- function(bundle) {
-  ci_level <- as.numeric(bundle$rmsea_ci %||% .90)
-  fits <- if (isTRUE(bundle$modified_from_baseline) && !is.null(bundle$baseline_fit)) list(bundle$baseline_fit, bundle$fit) else list(bundle$fit)
-  selections <- structural_canvas_common_fit_measures(fits, bundle$estimator %||% "ML", ci_level)
-  models <- if (length(fits) > 1L) c("Original model", as.character(bundle$comparison_label %||% "Modified model")) else "Fitted model"
-  rows <- lapply(seq_along(fits), function(index) {
-    measures <- selections[[index]]$measures
-    rmsea_key <- selections[[index]]$keys[["rmsea"]]
-    suffix <- sub("^rmsea", "", rmsea_key)
-    get_value <- function(keys) {
-      for (key in keys) if (key %in% names(measures) && is.finite(measures[[key]])) return(unname(measures[[key]]))
-      NA_real_
-    }
-    data.frame(
-      Model = models[[index]],
-      RMSEA = selections[[index]]$values[[8L]],
-      `Close-fit H0` = get_value("rmsea.close.h0"),
-      `Close-fit p` = get_value(c(paste0("rmsea.pvalue", suffix), "rmsea.pvalue.scaled", "rmsea.pvalue")),
-      `Not-close H0` = get_value("rmsea.notclose.h0"),
-      `Not-close p` = get_value(c(paste0("rmsea.notclose.pvalue", suffix), "rmsea.notclose.pvalue.scaled", "rmsea.notclose.pvalue")),
-      Source = rmsea_key,
-      check.names = FALSE
-    )
-  })
-  do.call(rbind, rows)
-}
-
-structural_canvas_information_criteria <- function(bundle) {
-  fits <- if (isTRUE(bundle$modified_from_baseline) && !is.null(bundle$baseline_fit)) list(bundle$baseline_fit, bundle$fit) else list(bundle$fit)
-  models <- if (length(fits) > 1L) c("Original model", as.character(bundle$comparison_label %||% "Modified model")) else "Fitted model"
-  value <- function(measures, key) if (key %in% names(measures) && is.finite(measures[[key]])) unname(measures[[key]]) else NA_real_
-  metadata <- lapply(fits, function(fit) {
-    estimator <- toupper(as.character(lavaan::lavInspect(fit, "options")$estimator %||% ""))
-    analyzed_data <- as.matrix(lavaan::lavInspect(fit, "data"))
-    if (!is.null(colnames(analyzed_data))) analyzed_data <- analyzed_data[, sort(colnames(analyzed_data)), drop = FALSE]
-    list(
-      n = as.numeric(lavaan::lavInspect(fit, "ntotal")),
-      observed = sort(lavaan::lavNames(fit, "ov")),
-      data = analyzed_data,
-      estimator = estimator,
-      family = if (estimator %in% c("ML", "MLR")) "ML" else estimator,
-      admissibility = structural_canvas_fit_admissibility(fit)
-    )
-  })
-  comparison_valid <- length(fits) > 1L &&
-    length(unique(vapply(metadata, function(item) item$n, numeric(1)))) == 1L &&
-    all(vapply(metadata[-1L], function(item) identical(item$observed, metadata[[1L]]$observed), logical(1))) &&
-    all(vapply(metadata[-1L], function(item) isTRUE(all.equal(item$data, metadata[[1L]]$data, check.attributes = FALSE)), logical(1))) &&
-    length(unique(vapply(metadata, function(item) item$family, character(1)))) == 1L &&
-    all(vapply(metadata, function(item) isTRUE(item$admissibility$admissible), logical(1)))
-  inadmissible <- length(fits) > 1L && any(!vapply(metadata, function(item) isTRUE(item$admissibility$admissible), logical(1)))
-  comparison_status <- if (length(fits) == 1L) "Single model; delta not applicable" else if (comparison_valid) "Comparable on observations, variables, estimator family, and admissibility" else if (inadmissible) "Not comparable; inadmissible model; delta suppressed" else "Not comparable; delta suppressed"
-  rows <- lapply(seq_along(fits), function(index) {
-    measures <- suppressWarnings(lavaan::fitMeasures(fits[[index]]))
-    data.frame(
-      Model = models[[index]], N = metadata[[index]]$n,
-      `Observed variables` = length(metadata[[index]]$observed), Estimator = metadata[[index]]$estimator,
-      Admissible = isTRUE(metadata[[index]]$admissibility$admissible),
-      `Admissibility reasons` = if (length(metadata[[index]]$admissibility$reasons)) paste(metadata[[index]]$admissibility$reasons, collapse = "; ") else "None",
-      LogLik = value(measures, "logl"),
-      `Free parameters` = value(measures, "npar"), AIC = value(measures, "aic"),
-      BIC = value(measures, "bic"), `Adjusted BIC` = value(measures, "bic2"),
-      `Comparison status` = comparison_status,
-      check.names = FALSE
-    )
-  })
-  table <- do.call(rbind, rows)
-  for (metric in c("AIC", "BIC", "Adjusted BIC")) {
-    finite <- table[[metric]][is.finite(table[[metric]])]
-    table[[paste0("Delta ", metric)]] <- if (comparison_valid && length(finite) == length(fits)) table[[metric]] - min(finite) else NA_real_
-  }
-  table
-}
-
-structural_canvas_export_admissibility <- function(bundle) {
-  fits <- if (isTRUE(bundle$modified_from_baseline) && !is.null(bundle$baseline_fit)) list(`Original model` = bundle$baseline_fit, `Modified model` = bundle$fit) else list(`Fitted model` = bundle$fit)
-  rows <- lapply(names(fits), function(model) {
-    diagnostics <- structural_canvas_fit_admissibility(fits[[model]])
-    data.frame(
-      Model = model,
-      Admissible = isTRUE(diagnostics$admissible),
-      Reasons = if (length(diagnostics$reasons)) paste(diagnostics$reasons, collapse = "; ") else "None",
-      `Residual min eigenvalue` = diagnostics$residual_min_eigenvalue,
-      `Latent min eigenvalue` = diagnostics$latent_min_eigenvalue,
-      `Parameter min eigenvalue` = diagnostics$parameter_min_eigenvalue,
-      `Residual condition number` = diagnostics$residual_condition_number,
-      `Latent condition number` = diagnostics$latent_condition_number,
-      `Parameter condition number` = diagnostics$parameter_condition_number,
-      `Parameter boundary dimensions` = diagnostics$parameter_boundary_dimensions,
-      `Explicit equality constraints` = diagnostics$equality_constraint_count,
-      `Ill-conditioned warning` = any(c(diagnostics$residual_condition_number, diagnostics$latent_condition_number, diagnostics$parameter_condition_number) > 1e8),
-      check.names = FALSE
-    )
-  })
-  do.call(rbind, rows)
-}
-
-structural_canvas_export_latent_correlations <- function(fit) {
-  covariance <- as.matrix(lavaan::lavInspect(fit, "cov.lv"))
-  latent_names <- lavaan::lavNames(fit, "lv")
-  if (!length(dim(covariance))) covariance <- matrix(covariance, nrow = 1L, ncol = 1L)
-  correlations <- if (all(is.finite(diag(covariance))) && all(diag(covariance) > 0)) {
-    stats::cov2cor(covariance)
-  } else {
-    matrix(NA_real_, nrow = nrow(covariance), ncol = ncol(covariance), dimnames = dimnames(covariance))
-  }
-  if (is.null(rownames(correlations))) rownames(correlations) <- latent_names
-  if (is.null(colnames(correlations))) colnames(correlations) <- latent_names
-  data.frame(Factor = rownames(correlations), correlations, check.names = FALSE, row.names = NULL)
-}
-
-structural_canvas_export_reliability_validity <- function(bundle) {
-  fit <- bundle$fit
-  snapshot <- bundle$snapshot %||% list()
-  estimates <- structural_canvas_reliability_estimates(fit, bundle$validity_formula %||% "standardized")
-  if (!nrow(estimates)) return(data.frame())
-  standardized <- lavaan::standardizedSolution(fit)
-  observed <- lavaan::lavNames(fit, "ov")
-  loadings <- standardized[standardized$op == "=~" & standardized$rhs %in% observed, c("lhs", "rhs"), drop = FALSE]
-  counts <- stats::setNames(vapply(estimates$Factor, function(name) sum(loadings$lhs == name), integer(1)), estimates$Factor)
-  cross_loaded_indicators <- unique(loadings$rhs[duplicated(loadings$rhs) | duplicated(loadings$rhs, fromLast = TRUE)])
-  cross_loaded <- stats::setNames(vapply(estimates$Factor, function(name) {
-    any(loadings$rhs[loadings$lhs == name] %in% cross_loaded_indicators)
-  }, logical(1)), estimates$Factor)
-  constrained <- estimates$Factor %in% structural_canvas_constrained_single_indicators(snapshot)
-  single <- counts[estimates$Factor] < 2L
-  unconstrained_single <- single & !constrained
-  estimates$AVE[unconstrained_single] <- NA_real_
-  estimates$CR[unconstrained_single] <- NA_real_
-  estimates$Alpha[single] <- NA_real_
-  estimates$Omega[unconstrained_single] <- NA_real_
-  latent_covariance <- as.matrix(lavaan::lavInspect(fit, "cov.lv"))
-  correlations <- if (all(is.finite(diag(latent_covariance))) && all(diag(latent_covariance) > 0)) {
-    stats::cov2cor(latent_covariance)
-  } else {
-    matrix(NA_real_, nrow = nrow(latent_covariance), ncol = ncol(latent_covariance), dimnames = dimnames(latent_covariance))
-  }
-  factor_correlations <- correlations[estimates$Factor, estimates$Factor, drop = FALSE]
-  missing_covariances <- structural_canvas_missing_exogenous_covariances(snapshot)
-  fl <- structural_canvas_fornell_larcker(
-    stats::setNames(estimates$AVE, estimates$Factor), factor_correlations,
-    counts, assessable = !length(missing_covariances)
-  )
-  sqrt_ave <- ifelse(is.finite(estimates$AVE) & estimates$AVE >= 0, sqrt(estimates$AVE), NA_real_)
-  assessed <- !single & !length(missing_covariances) & is.finite(sqrt_ave) & is.finite(fl$max_correlation[estimates$Factor])
-  data.frame(
-    Factor = estimates$Factor,
-    k = unname(counts[estimates$Factor]),
-    AVE = estimates$AVE,
-    `sqrt(AVE)` = sqrt_ave,
-    CR = estimates$CR,
-    `Cronbach's alpha` = estimates$Alpha,
-    `Omega total` = estimates$Omega,
-    `Max absolute latent correlation` = unname(fl$max_correlation[estimates$Factor]),
-    `Fornell-Larcker criterion` = unname(fl$criterion[estimates$Factor]),
-    `Fornell-Larcker assessed` = assessed,
-    `Single indicator` = unname(single),
-    `Externally constrained single indicator` = unname(constrained),
-    `Contains cross-loaded indicator` = unname(cross_loaded[estimates$Factor]),
-    check.names = FALSE
-  )
-}
-
-structural_canvas_export_sample_statistics <- function(fit) {
-  sample_statistics <- lavaan::lavInspect(fit, "sampstat")
-  groups <- if (!is.null(sample_statistics$cov) || !is.null(sample_statistics$th)) list(sample_statistics) else sample_statistics
-  group_labels <- as.character(lavaan::lavInspect(fit, "group.label"))
-  if (!length(group_labels)) group_labels <- if (length(groups) == 1L) "Overall" else paste("Group", seq_along(groups))
-  if (length(group_labels) != length(groups)) group_labels <- paste("Group", seq_along(groups))
-  group_n <- as.numeric(lavaan::lavInspect(fit, "nobs"))
-  if (length(group_n) != length(groups)) group_n <- rep(NA_real_, length(groups))
-  descriptives <- covariance_rows <- threshold_rows <- vector("list", length(groups))
-  for (index in seq_along(groups)) {
-    statistics <- groups[[index]]
-    covariance <- as.matrix(statistics$cov %||% matrix(numeric(0), 0L, 0L))
-    variables <- rownames(covariance) %||% character(0)
-    means <- as.numeric(statistics$mean %||% rep(NA_real_, length(variables)))
-    if (length(means) != length(variables)) means <- rep(NA_real_, length(variables))
-    variances <- if (length(variables)) diag(covariance) else numeric(0)
-    descriptives[[index]] <- data.frame(
-      Group = rep(group_labels[[index]], length(variables)), Variable = variables, Mean = means,
-      Variance = variances, SD = ifelse(is.finite(variances) & variances >= 0, sqrt(variances), NA_real_),
-      `Model N` = rep(group_n[[index]], length(variables)), check.names = FALSE
-    )
-    if (length(variables)) {
-      correlation <- if (all(is.finite(variances)) && all(variances > 0)) stats::cov2cor(covariance) else matrix(NA_real_, nrow(covariance), ncol(covariance))
-      grid <- expand.grid(Row = variables, Column = variables, stringsAsFactors = FALSE)
-      grid$Group <- group_labels[[index]]
-      grid$Covariance <- as.numeric(covariance[cbind(match(grid$Row, variables), match(grid$Column, variables))])
-      grid$Correlation <- as.numeric(correlation[cbind(match(grid$Row, variables), match(grid$Column, variables))])
-      covariance_rows[[index]] <- grid[, c("Group", "Row", "Column", "Covariance", "Correlation")]
-    }
-    thresholds <- statistics$th %||% numeric(0)
-    if (length(thresholds)) {
-      threshold_names <- names(thresholds)
-      if (is.null(threshold_names)) threshold_names <- paste0("Threshold_", seq_along(thresholds))
-      threshold_rows[[index]] <- data.frame(
-      Group = group_labels[[index]], Parameter = threshold_names, Threshold = as.numeric(thresholds),
-      check.names = FALSE
-      )
-    }
-  }
-  combine <- function(values) {
-    values <- Filter(function(value) !is.null(value) && nrow(value), values)
-    if (length(values)) do.call(rbind, values) else data.frame()
-  }
+  configural_fit <- fits[[1L]]
+  group_reliability <- structural_canvas_group_reliability_estimates(configural_fit)
+  group_htmt <- structural_canvas_group_htmt(configural_fit)
+  group_residuals <- structural_canvas_residual_diagnostics(configural_fit)
   list(
-    Descriptives = combine(descriptives),
-    Covariance = combine(covariance_rows),
-    Thresholds = combine(threshold_rows)
+    table = do.call(rbind, rows), fits = fits, score_diagnostics = score_diagnostics,
+    group = group, groups = observed_groups, group_diagnostics = group_diagnostics,
+    group_reliability = group_reliability, group_htmt = group_htmt,
+    group_residuals = group_residuals,
+    estimator = estimator, ordered = ordered, ordinal = ordinal
   )
-}
-
-structural_canvas_workbook_contents <- function(sheet_names) {
-  describe <- function(name) {
-    if (identical(name, "Contents")) return("Workbook sheet index and interpretation guide.")
-    if (name %in% c("Overview", "Fit", "Validity", "Measurement")) return("Formatted reporting table; use the corresponding numeric sheet for calculations where available.")
-    if (identical(name, "Fit_Numeric")) return("Numeric model-fit statistics, confidence limits, and selected robust/scaled source keys.")
-    if (identical(name, "Admissibility_Diagnostics")) return("Numeric eigenvalue, condition-number, boundary-dimension, and reason diagnostics for fitted and compared models.")
-    if (identical(name, "RMSEA_Tests")) return("RMSEA close-fit and not-close hypothesis tests using estimator-matched robust/scaled p values when available.")
-    if (identical(name, "Information_Criteria")) return("Log-likelihood, AIC, BIC, adjusted BIC, and within-export delta values for likelihood-based model comparison.")
-    if (identical(name, "Parameter_Estimates")) return("Numeric unstandardized and standardized parameter estimates with confidence intervals and fixed-parameter flags.")
-    if (identical(name, "Latent_Correlations")) return("Numeric latent-variable correlation matrix.")
-    if (identical(name, "Reliability_Validity_Numeric")) return("Numeric AVE, sqrt(AVE), reliability, latent-correlation, and Fornell-Larcker results with assessment flags.")
-    if (identical(name, "Sample_Descriptives")) return("Sample statistics used by the fitted model: variable means when estimated, variances, standard deviations, and model N.")
-    if (identical(name, "Sample_Covariance")) return("Long-form covariance and correlation statistics used by the fitted model.")
-    if (identical(name, "Thresholds")) return("Numeric ordered-indicator thresholds.")
-    if (identical(name, "Bollen_Stine")) return("Bollen-Stine exact-fit bootstrap p value with Monte Carlo uncertainty and valid-replicate diagnostics.")
-    if (grepl("^Residual", name) || identical(name, "Large_Residuals")) return("Local-fit residual diagnostic output.")
-    if (grepl("^MI_", name)) return("Exploratory modification-index or holdout-validation output; changes require theoretical justification.")
-    if (identical(name, "Model_Difference")) return("Nested-model difference-test result or the explicit reason the formal test was suppressed.")
-    if (grepl("^Inv", name)) return("Measurement-invariance fit, group, or equality-constraint diagnostic output.")
-    if (grepl("_CI$", name)) return("Confidence-interval output; consult Notes and valid-replicate counts before interpretation.")
-    if (identical(name, "Model_Syntax")) return("lavaan model syntax used for the fitted model.")
-    if (identical(name, "Analysis_Record")) return("Reproducibility record containing analysis options and computational context.")
-    if (identical(name, "Notes")) return("Statistical definitions, descriptive cutoffs, caveats, and model-specific warnings.")
-    "Supplementary CFA result table."
-  }
-  data.frame(
-    Sheet = sheet_names,
-    Description = vapply(sheet_names, describe, character(1)),
-    stringsAsFactors = FALSE,
-    check.names = FALSE
-  )
-}
-
-structural_canvas_result_workbook_sheets <- function(bundle, table_fn) {
-  sheets <- list(
-    Overview = table_fn("overview"), Fit = table_fn("fit"),
-    Validity = table_fn("validity"), Measurement = table_fn("measurement")
-  )
-  if (!is.null(bundle$invariance_result) && nrow(bundle$invariance_result$table)) {
-    sheets$Invariance <- bundle$invariance_result$table
-    sheets$Invariance_Groups <- bundle$invariance_result$group_diagnostics
-    score_tables <- bundle$invariance_result$score_diagnostics %||% list()
-    for (stage in names(score_tables)) if (nrow(score_tables[[stage]])) sheets[[paste0("Inv_Score_", stage)]] <- score_tables[[stage]]
-  }
-  if (!is.null(bundle$reliability_bootstrap_result) && nrow(bundle$reliability_bootstrap_result)) sheets$Reliability_CI <- bundle$reliability_bootstrap_result
-  if (!is.null(bundle$bollen_stine_result) && nrow(bundle$bollen_stine_result)) {
-    sheets$Bollen_Stine <- bundle$bollen_stine_result
-    sheets$Bollen_Stine$`Model context` <- if (isTRUE(bundle$modified_from_baseline)) "Exploratory modified model" else "Prespecified/original model"
-  }
-  if (!is.null(bundle$htmt_bootstrap_result) && nrow(bundle$htmt_bootstrap_result)) sheets$HTMT_CI <- bundle$htmt_bootstrap_result
-  if (!is.null(bundle$mi_history) && nrow(bundle$mi_history)) sheets$MI_History <- bundle$mi_history[, setdiff(names(bundle$mi_history), "Signature"), drop = FALSE]
-  if (!is.null(bundle$holdout_comparison)) {
-    sheets$MI_Holdout_Fit <- bundle$holdout_comparison$table
-    sheets$MI_Holdout_Change <- bundle$holdout_comparison$changes
-  }
-  if (isTRUE(bundle$modified_from_baseline) && !is.null(bundle$baseline_fit)) sheets$Model_Difference <- structural_canvas_model_difference_report(bundle)
-  residuals <- structural_canvas_residual_diagnostics(bundle$fit)
-  matrix_sheet <- function(value) {
-    value <- as.matrix(value)
-    data.frame(Indicator = rownames(value), value, check.names = FALSE)
-  }
-  if (isTRUE(residuals$available)) {
-    sheets$Residual_Z <- matrix_sheet(residuals$standardized)
-    sheets$Residual_Correlation <- matrix_sheet(residuals$correlation)
-    if (nrow(residuals$largest)) sheets$Large_Residuals <- residuals$largest
-  }
-  latent_intervals <- structural_canvas_latent_correlation_intervals(bundle$fit, level = .95)
-  if (nrow(latent_intervals)) sheets$Latent_Correlation_CI <- latent_intervals
-  if (!is.null(bundle$mi) && nrow(bundle$mi)) {
-    mi_columns <- intersect(c("step", "skipped_inadmissible", "skipped_details", "lhs", "op", "rhs", "mi", "MI p", "BH-adjusted p", "Multiplicity family size", "epc", "sepc.lv", "sepc.all", "Reason", "cfi_after", "tli_after", "rmsea_after", "srmr_after"), names(bundle$mi))
-    sheets$MI_Candidates <- bundle$mi[, mi_columns, drop = FALSE]
-  }
-  sheets$Model_Syntax <- data.frame(Line = strsplit(as.character(bundle$syntax %||% ""), "\n", fixed = TRUE)[[1L]], check.names = FALSE)
-  sheets$Analysis_Record <- data.frame(Record = strsplit(structural_canvas_reproducibility_record(bundle), "\n", fixed = TRUE)[[1L]], check.names = FALSE)
-  sheets$Fit_Numeric <- structural_canvas_export_fit_estimates(bundle)
-  sheets$Admissibility_Diagnostics <- structural_canvas_export_admissibility(bundle)
-  sheets$RMSEA_Tests <- structural_canvas_rmsea_hypothesis_tests(bundle)
-  information_criteria <- structural_canvas_information_criteria(bundle)
-  if (any(is.finite(information_criteria$AIC)) || any(is.finite(information_criteria$BIC))) sheets$Information_Criteria <- information_criteria
-  sheets$Parameter_Estimates <- structural_canvas_export_parameter_estimates(bundle$fit)
-  sheets$Latent_Correlations <- structural_canvas_export_latent_correlations(bundle$fit)
-  sheets$Reliability_Validity_Numeric <- structural_canvas_export_reliability_validity(bundle)
-  sample_statistics <- structural_canvas_export_sample_statistics(bundle$fit)
-  if (nrow(sample_statistics$Descriptives)) sheets$Sample_Descriptives <- sample_statistics$Descriptives
-  if (nrow(sample_statistics$Covariance)) sheets$Sample_Covariance <- sample_statistics$Covariance
-  if (nrow(sample_statistics$Thresholds)) sheets$Thresholds <- sample_statistics$Thresholds
-  sheets$Notes <- structural_canvas_export_notes(bundle)
-  c(list(Contents = structural_canvas_workbook_contents(c("Contents", names(sheets)))), sheets)
 }
 
 register_structural_equation_canvas_handlers <- function(input, output, session, dataset_fn, selected_names_fn, variable_table_fn, labels_fn, category_table_fn, mark_settings_dirty, app_language_fn = NULL) {
@@ -3650,6 +3498,7 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
     advanced_input <- paste0(prefix, "_canvas_advanced_request")
     fit_result <- reactiveVal(NULL)
     pending_mi_rows <- reactiveVal(integer(0))
+    pending_estimator_snapshot <- reactiveVal(NULL)
     if (identical(analysis_type, "cfa")) output[[paste0(prefix, "_download_reproducibility")]] <- downloadHandler(
       filename = function() paste0("cfa-analysis-record-", format(Sys.Date(), "%Y%m%d"), ".txt"),
       contentType = "text/plain; charset=utf-8",
@@ -3720,6 +3569,13 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
           )
           names(overview_df)[[1]] <- if (ko) "항목" else "Item"
           names(overview_df)[[2]] <- if (ko) "값" else "Value"
+          overview_df <- rbind(
+            overview_df[1L, , drop = FALSE],
+            data.frame(overview_df[1L, , drop = FALSE], check.names = FALSE),
+            overview_df[-1L, , drop = FALSE]
+          )
+          overview_df[2L, 1L] <- "Analysis context"
+          overview_df[2L, 2L] <- structural_canvas_analysis_context(bundle)
           return(overview_df)
         }
         if (identical(kind, "fit")) {
@@ -4148,7 +4004,29 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
       if (is.null(result)) return(NULL)
       table <- result$table
       group_table <- result$group_diagnostics
+      group_reliability <- result$group_reliability %||% data.frame()
+      group_htmt <- result$group_htmt %||% data.frame()
+      group_residuals <- result$group_residuals %||% list()
+      residual_summary <- if (isTRUE(group_residuals$available)) group_residuals$group_summary %||% data.frame() else data.frame()
+      residual_largest <- if (isTRUE(group_residuals$available)) group_residuals$group_largest %||% data.frame() else data.frame()
       group_table[["Indicator missing %"]] <- paste0(vapply(group_table[["Indicator missing %"]], format_decimal3, character(1)), "%")
+      if (nrow(group_reliability)) {
+        for (name in intersect(c("AVE", "CR", "Cronbach's alpha", "Omega total"), names(group_reliability))) {
+          group_reliability[[name]] <- vapply(group_reliability[[name]], format_decimal3, character(1))
+        }
+      }
+      if (nrow(group_htmt)) {
+        for (name in intersect(c("HTMT"), names(group_htmt))) {
+          group_htmt[[name]] <- vapply(group_htmt[[name]], format_decimal3, character(1))
+        }
+      }
+      if (nrow(residual_summary)) {
+        residual_summary[["Max |standardized residual|"]] <- vapply(residual_summary[["Max |standardized residual|"]], format_decimal3, character(1))
+      }
+      if (nrow(residual_largest)) {
+        residual_largest[["Standardized residual"]] <- vapply(residual_largest[["Standardized residual"]], format_decimal3, character(1))
+        residual_largest[["Correlation residual"]] <- vapply(residual_largest[["Correlation residual"]], format_decimal3, character(1))
+      }
       srmr_limit <- ifelse(table$Model == "Metric", .030, .010)
       table$Decision <- ifelse(
         !table$Admissible, "Inadmissible stage",
@@ -4177,6 +4055,37 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
           tags$tbody(lapply(seq_len(nrow(group_table)), function(index) tags$tr(lapply(as.character(group_table[index, ]), tags$td))))
         )),
         tags$p(class = "structural-result-note", "Group N below 100 is flagged as a descriptive small-group warning, not a universal minimum. Adequacy depends on model complexity, indicator quality, estimator, missingness, category distribution, and effect size."),
+        if (nrow(residual_summary)) tagList(
+          tags$h5("Group-specific configural residual diagnostics"),
+          tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered",
+            tags$thead(tags$tr(lapply(names(residual_summary), tags$th))),
+            tags$tbody(lapply(seq_len(nrow(residual_summary)), function(index) tags$tr(lapply(as.character(residual_summary[index, ]), tags$td))))
+          )),
+          if (nrow(residual_largest)) tagList(
+            tags$h5(paste0("Large group-specific residuals (|z| >= ", group_residuals$cutoff %||% 1.96, ")")),
+            tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered",
+              tags$thead(tags$tr(lapply(names(residual_largest), tags$th))),
+              tags$tbody(lapply(seq_len(nrow(residual_largest)), function(index) tags$tr(lapply(as.character(residual_largest[index, ]), tags$td))))
+            ))
+          ) else tags$p(class = "structural-result-note", paste0("No group-specific configural residuals exceeded |z| >= ", group_residuals$cutoff %||% 1.96, ".")),
+          tags$p(class = "structural-result-note", "These residual diagnostics are computed separately within each group from the configural model. For WLSMV ordered indicators they are approximate local-fit diagnostics on the fitted latent-response/polychoric scale; use them to locate candidate areas for review, not as automatic modification instructions.")
+        ),
+        if (nrow(group_reliability)) tagList(
+          tags$h5("Group-specific reliability and convergent validity"),
+          tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered",
+            tags$thead(tags$tr(lapply(names(group_reliability), tags$th))),
+            tags$tbody(lapply(seq_len(nrow(group_reliability)), function(index) tags$tr(lapply(as.character(group_reliability[index, ]), tags$td))))
+          )),
+          tags$p(class = "structural-result-note", "Group-specific AVE, CR, alpha, and omega are computed from the configural model, before imposing equality constraints. Use them as descriptive group diagnostics, not as formal invariance tests.")
+        ),
+        if (nrow(group_htmt)) tagList(
+          tags$h5("Group-specific HTMT"),
+          tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered",
+            tags$thead(tags$tr(lapply(names(group_htmt), tags$th))),
+            tags$tbody(lapply(seq_len(nrow(group_htmt)), function(index) tags$tr(lapply(as.character(group_htmt[index, ]), tags$td))))
+          )),
+          tags$p(class = "structural-result-note", "Group-specific HTMT uses each group's configural-model sample correlation matrix. Bootstrap intervals remain single-group in this release.")
+        ),
         tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered",
           tags$thead(tags$tr(lapply(names(table), tags$th))),
           tags$tbody(lapply(seq_len(nrow(table)), function(index) tags$tr(lapply(as.character(table[index, ]), tags$td))))
@@ -4468,10 +4377,14 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
       requested <- as.integer(bundle$reliability_bootstrap %||% 0L)
       if (requested <= 0L) return(tags$p(class = "structural-result-note", "AVE, CR, Cronbach's alpha, and omega are point estimates. Select AVE/reliability bootstrap CI in the analysis options when interval estimates are required."))
       if (is.null(values) || !nrow(values)) return(tags$p(class = "structural-result-note", "AVE/reliability bootstrap intervals could not be estimated because no resample produced usable estimates."))
+      reliability_ci_method <- structural_canvas_bootstrap_ci_method(bundle$reliability_ci_method %||% "percentile")
+      reliability_ci_label <- if (identical(reliability_ci_method, "bca")) "BCa" else "percentile"
       incomplete <- values[["Valid replicates"]] < values[["Requested replicates"]]
       caution_intervals <- values$Status == "Caution"
       unreliable_intervals <- values$Status == "Unreliable"
       boundary_interval <- !is.finite(values$Lower) | !is.finite(values$Upper) | values$Lower < 0 | values$Upper > 1
+      if (!"CI method" %in% names(values)) values[["CI method"]] <- "Percentile"
+      bca_unavailable <- "CI method" %in% names(values) && any(values[["CI method"]] == "BCa unavailable")
       values$Statistic[values$Statistic == "Alpha"] <- "Cronbach's α"
       values$Statistic[values$Statistic == "Omega"] <- "McDonald's ωtotal"
       values$Estimate <- paste0(vapply(values$Estimate, format_decimal3, character(1)), ifelse(!is.finite(values$Estimate) | values$Estimate < 0 | values$Estimate > 1, "†", ""))
@@ -4481,13 +4394,14 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
       names(values)[names(values) == "Lower"] <- "95% CI lower"
       names(values)[names(values) == "Upper"] <- "95% CI upper"
       tagList(
-        tags$h5(paste0("AVE and reliability percentile bootstrap intervals (", requested, " resamples; seed = ", bundle$reliability_seed, ")")),
+        tags$h5(paste0("AVE and reliability ", reliability_ci_label, " bootstrap intervals (", requested, " resamples; seed = ", bundle$reliability_seed, ")")),
         tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered",
           tags$thead(tags$tr(lapply(names(values), tags$th))),
           tags$tbody(lapply(seq_len(nrow(values)), function(index) tags$tr(lapply(as.character(values[index, ]), tags$td))))
         )),
-        tags$p(class = "structural-result-note", paste0("Intervals use case-resampling percentile bootstrap and the selected ", if (identical(bundle$validity_formula, "model_implied")) "model-implied parameter" else "standardized-loading", " AVE/CR formula. McDonald's omega total follows the same fitted congeneric scoring formula as CR in this output.")),
-        if (any(boundary_interval)) tags$p(class = "structural-result-note", "† marks an estimate or percentile interval extending outside the admissible [0, 1] coefficient range. Do not truncate the interval for reporting; investigate model admissibility, sample instability, item covariance structure, and failed resamples."),
+        tags$p(class = "structural-result-note", paste0("Intervals use case resampling", if (identical(reliability_ci_method, "bca")) " with leave-one-out jackknife acceleration" else " percentile bootstrap", " and the selected ", if (identical(bundle$validity_formula, "model_implied")) "model-implied parameter" else "standardized-loading", " AVE/CR formula. McDonald's omega total follows the same fitted congeneric scoring formula as CR in this output.")),
+        if (bca_unavailable) tags$p(class = "structural-result-note", "BCa unavailable means the bias-correction or jackknife acceleration could not be computed for that statistic; increase valid replicates or use percentile CI for reporting."),
+        if (any(boundary_interval)) tags$p(class = "structural-result-note", "† marks an estimate or interval extending outside the admissible [0, 1] coefficient range. Do not truncate the interval for reporting; investigate model admissibility, sample instability, item covariance structure, and failed resamples."),
         if (any(incomplete)) tags$p(class = "structural-result-note", "Some resamples failed the same convergence, variance, covariance-matrix, df, and latent-correlation admissibility checks as the main CFA, or yielded unavailable statistics. Interpret intervals cautiously when the valid-replicate count is materially below the requested count."),
         if (any(caution_intervals)) tags$p(class = "structural-result-note", "Caution indicates that 50% to less than 80% of requested resamples yielded the statistic. Treat the percentile limits as unstable and report the valid-replicate count."),
         if (any(unreliable_intervals)) tags$p(class = "structural-result-note", "Unreliable indicates that fewer than 50% of requested resamples yielded the statistic. The displayed quantiles are diagnostic only and should not be reported as a defensible confidence interval; resolve convergence, admissibility, sparse-category, or specification problems first.")
@@ -4522,16 +4436,20 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
       pair_table$Reason[!nzchar(pair_table$Reason)] <- "—"
       bootstrap_reps <- as.integer(bundle$htmt_bootstrap %||% 0L)
       bootstrap_seed <- as.integer(bundle$htmt_seed %||% 12345L)
+      htmt_ci_method <- structural_canvas_bootstrap_ci_method(bundle$htmt_ci_method %||% "percentile")
+      htmt_ci_label <- if (identical(htmt_ci_method, "bca")) "BCa" else "percentile"
       bootstrap_table <- NULL
       bootstrap_incomplete <- FALSE
       bootstrap_caution <- FALSE
       bootstrap_unreliable <- FALSE
+      bootstrap_bca_unavailable <- FALSE
       if (bootstrap_reps > 0L) {
         bootstrap_table <- bundle$htmt_bootstrap_result %||% NULL
         if (!is.null(bootstrap_table)) {
           bootstrap_incomplete <- any(bootstrap_table[["Valid replicates"]] < bootstrap_reps)
           bootstrap_caution <- any(bootstrap_table$Status == "Caution")
           bootstrap_unreliable <- any(bootstrap_table$Status == "Unreliable")
+          bootstrap_bca_unavailable <- "CI method" %in% names(bootstrap_table) && any(bootstrap_table[["CI method"]] == "BCa unavailable")
           names(bootstrap_table)[names(bootstrap_table) == "Lower"] <- "95% CI lower"
           names(bootstrap_table)[names(bootstrap_table) == "Upper"] <- "95% CI upper"
           names(bootstrap_table)[names(bootstrap_table) == "One-sided upper"] <- "One-sided 95% upper"
@@ -4552,7 +4470,7 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
           tags$tbody(lapply(seq_len(nrow(pair_table)), function(index) tags$tr(lapply(as.character(pair_table[index, ]), tags$td))))
         )),
         if (!is.null(bootstrap_table)) tagList(
-          tags$h5(paste0("HTMT percentile bootstrap confidence intervals (", bootstrap_reps, " resamples; seed = ", bootstrap_seed, ")")),
+          tags$h5(paste0("HTMT ", htmt_ci_label, " bootstrap confidence intervals (", bootstrap_reps, " resamples; seed = ", bootstrap_seed, ")")),
           tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered structural-htmt-bootstrap",
             tags$thead(tags$tr(lapply(names(bootstrap_table), tags$th))),
             tags$tbody(lapply(seq_len(nrow(bootstrap_table)), function(index) tags$tr(lapply(as.character(bootstrap_table[index, ]), tags$td))))
@@ -4563,10 +4481,11 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
         if (bootstrap_reps <= 0L) tags$p(class = "structural-result-note", "HTMT point estimates are descriptive. Select HTMT bootstrap CI in the analysis options when interval estimates are required."),
         if (bootstrap_reps > 0L && is.null(bootstrap_table)) tags$p(class = "structural-result-note", "HTMT bootstrap confidence intervals could not be estimated from the selected indicators."),
         if (bootstrap_incomplete) tags$p(class = "structural-result-note", "Some bootstrap resamples could not produce an admissible correlation matrix, commonly because an ordered category was absent or sparse. Interpret intervals with reduced valid-replicate counts cautiously."),
+        if (bootstrap_bca_unavailable) tags$p(class = "structural-result-note", "BCa unavailable means the bias-correction or jackknife acceleration could not be computed for that pair; increase valid replicates or use percentile CI for reporting."),
         if (bootstrap_caution) tags$p(class = "structural-result-note", "HTMT bootstrap status Caution means that 50% to less than 80% of requested resamples were valid. Treat the interval as unstable and report the valid-replicate count."),
         if (bootstrap_unreliable) tags$p(class = "structural-result-note", "HTMT bootstrap status Unreliable means that fewer than 50% of requested resamples were valid. Confidence limits and threshold decisions are not assessed and should not be used as discriminant-validity evidence."),
         if (!is.null(bootstrap_table)) tags$p(class = "structural-result-note", paste0(
-          "The percentile interval is based on case resampling", if (length(bundle$ordered %||% character(0))) " with polychoric correlations re-estimated in each resample" else "",
+          "The ", htmt_ci_label, " interval is based on case resampling", if (identical(htmt_ci_method, "bca")) " with leave-one-out jackknife acceleration" else "", if (length(bundle$ordered %||% character(0))) " with polychoric correlations re-estimated in each resample" else "",
           ". 'Upper < threshold' uses the one-sided 95% upper confidence limit for the selected .85/.90 criterion. 'Upper < 1' indicates whether the two-sided 95% interval excludes 1. These are intentionally reported separately from the point-estimate criterion."
         ))
       )
@@ -4768,6 +4687,7 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
       if (is.na(reliability_bootstrap) || !reliability_bootstrap %in% c(0L, 500L, 1000L, 2000L)) reliability_bootstrap <- 0L
       reliability_seed <- suppressWarnings(as.integer(settings$reliability_seed %||% input[[paste0(prefix, "_reliability_seed")]] %||% 24680L))
       if (is.na(reliability_seed) || reliability_seed < 1L) reliability_seed <- 24680L
+      reliability_ci_method <- structural_canvas_bootstrap_ci_method(settings$reliability_ci_method %||% input[[paste0(prefix, "_reliability_ci_method")]] %||% "percentile")
       bollen_stine_bootstrap <- suppressWarnings(as.integer(settings$bollen_stine_bootstrap %||% input[[paste0(prefix, "_bollen_stine_bootstrap")]] %||% 0L))
       if (is.na(bollen_stine_bootstrap) || !bollen_stine_bootstrap %in% c(0L, 500L, 1000L, 2000L)) bollen_stine_bootstrap <- 0L
       bollen_stine_seed <- suppressWarnings(as.integer(settings$bollen_stine_seed %||% input[[paste0(prefix, "_bollen_stine_seed")]] %||% 97531L))
@@ -4778,6 +4698,7 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
       if (is.na(htmt_bootstrap) || !htmt_bootstrap %in% c(0L, 500L, 1000L, 2000L)) htmt_bootstrap <- 0L
       htmt_seed <- suppressWarnings(as.integer(settings$htmt_seed %||% input[[paste0(prefix, "_htmt_seed")]] %||% 12345L))
       if (is.na(htmt_seed) || htmt_seed < 1L) htmt_seed <- 12345L
+      htmt_ci_method <- structural_canvas_bootstrap_ci_method(settings$htmt_ci_method %||% input[[paste0(prefix, "_htmt_ci_method")]] %||% "percentile")
       invariance_enabled <- isTRUE(settings$invariance_enabled %||% input[[paste0(prefix, "_invariance_enabled")]] %||% FALSE)
       invariance_group <- as.character(settings$invariance_group %||% input[[paste0(prefix, "_invariance_group")]] %||% "")
       mi_holdout_enabled <- isTRUE(settings$mi_holdout_enabled %||% input[[paste0(prefix, "_mi_holdout_enabled")]] %||% FALSE)
@@ -4878,7 +4799,14 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
           value <- structural_canvas_reliability_bootstrap(
             result$syntax, data, reps = reliability_bootstrap, confidence = .95, seed = reliability_seed,
             estimator = estimator, missing = missing, std_lv = std_lv, ordered = ordered, formula_mode = validity_formula,
-            original_fit = result$fit
+            original_fit = result$fit,
+            ci_method = reliability_ci_method,
+            progress = function(done, total, valid) {
+              shiny::setProgress(
+                value = .05 + .90 * (as.numeric(done) / max(1, as.numeric(total))),
+                detail = sprintf("Reliability bootstrap %s/%s; valid replicates %s", done, total, valid)
+              )
+            }
           )
           if (nrow(value)) {
             point <- structural_canvas_reliability_estimates(result$fit, validity_formula)
@@ -4889,9 +4817,9 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
               if (nrow(row) && column %in% names(row)) as.numeric(row[[column]][[1L]]) else NA_real_
             }, numeric(1))
             value$`Valid %` <- 100 * value[["Valid replicates"]] / value[["Requested replicates"]]
-            value <- value[, c("Factor", "Statistic", "Estimate", "Lower", "Upper", "Valid replicates", "Requested replicates", "Valid %", "Status"), drop = FALSE]
+            value <- value[, c("Factor", "Statistic", "Estimate", "Lower", "Upper", "CI method", "Valid replicates", "Requested replicates", "Valid %", "Status"), drop = FALSE]
           }
-          shiny::incProgress(.95, detail = "Preparing percentile intervals")
+          shiny::incProgress(.95, detail = paste0("Preparing ", if (identical(reliability_ci_method, "bca")) "BCa" else "percentile", " intervals"))
           value
         })
       }
@@ -4925,7 +4853,14 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
               shiny::incProgress(.1, detail = paste0(htmt_bootstrap, " case-resampling replicates"))
               value <- structural_canvas_htmt_bootstrap(
                 data, indicators_for_htmt, reps = htmt_bootstrap, confidence = .95,
-                seed = htmt_seed, ordered = ordered, threshold = htmt_threshold
+                seed = htmt_seed, ordered = ordered, threshold = htmt_threshold,
+                ci_method = htmt_ci_method,
+                progress = function(done, total, valid) {
+                  shiny::setProgress(
+                    value = .10 + .80 * (as.numeric(done) / max(1, as.numeric(total))),
+                    detail = sprintf("HTMT bootstrap %s/%s; valid replicates %s", done, total, valid)
+                  )
+                }
               )
               shiny::incProgress(.9, detail = "Preparing interval estimates")
               value
@@ -4947,10 +4882,12 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
         fit = result$fit, syntax = result$syntax, snapshot = snapshot, mi = mi, mi_mode = mi_mode,
         rmsea_ci = rmsea_ci, validity_formula = validity_formula,
         reliability_bootstrap = reliability_bootstrap, reliability_seed = reliability_seed,
+        reliability_ci_method = reliability_ci_method,
         reliability_bootstrap_result = reliability_bootstrap_result,
         bollen_stine_bootstrap = bollen_stine_bootstrap, bollen_stine_seed = bollen_stine_seed,
         bollen_stine_result = bollen_stine_result,
         htmt_threshold = htmt_threshold, htmt_bootstrap = htmt_bootstrap, htmt_seed = htmt_seed,
+        htmt_ci_method = htmt_ci_method,
         htmt_bootstrap_result = htmt_bootstrap_result,
         invariance_enabled = invariance_enabled, invariance_group = invariance_group, invariance_result = invariance_result,
         mi_holdout_enabled = mi_holdout_enabled, mi_holdout_fraction = mi_holdout_fraction, mi_holdout_seed = mi_holdout_seed,
@@ -4977,6 +4914,14 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
       )
       result
     }
+    run_confirmed_analysis <- function(snapshot, settings = list()) {
+      result <- execute_analysis(snapshot, settings)
+      showNotification(
+        if (identical(statedu_current_language(app_language_fn), "ko")) paste0(structural_analysis_title(analysis_type, statedu_current_language(app_language_fn)), " 遺꾩꽍???꾨즺?섏뿀?듬땲??") else paste0(structural_analysis_title(analysis_type, statedu_current_language(app_language_fn)), " analysis completed."),
+        type = if (isTRUE(result$converged)) "message" else "warning"
+      )
+      result
+    }
     observeEvent(input[[canvas_input]], mark_settings_dirty(), ignoreInit = TRUE)
     observeEvent(input[[confirm_input]], {
       package <- structural_analysis_package(analysis_type)
@@ -4985,6 +4930,34 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
       } else {
         tryCatch({
           snapshot <- input[[confirm_input]]
+          recommendation <- structural_canvas_estimator_recommendation(
+            snapshot, dataset_fn(), variable_table_fn(), analysis_type,
+            input[[paste0(prefix, "_estimator")]] %||% "ML"
+          )
+          if (isTRUE(recommendation$recommend)) {
+            pending_estimator_snapshot(snapshot)
+            diagnosis <- recommendation$diagnosis
+            bollen_requested <- identical(analysis_type, "cfa") && as.integer(input[[paste0(prefix, "_bollen_stine_bootstrap")]] %||% 0L) > 0L
+            showModal(modalDialog(
+              title = "Estimator recommendation",
+              tags$p("Mardia diagnostics flagged nonnormal continuous indicators. Robust MLR is recommended before fitting this model."),
+              tags$p(paste0(
+                "Mardia skewness p = ", format_p(diagnosis$skew_p),
+                "; kurtosis p = ", format_p(diagnosis$kurtosis_p),
+                "; complete cases = ", diagnosis$n, " of ", diagnosis$original_n, "."
+              )),
+              if (bollen_requested) tags$p(class = "structural-result-note", "Bollen-Stine bootstrap is available only for ML; choosing MLR will run the model without Bollen-Stine bootstrap."),
+              footer = tagList(
+                modalButton("Cancel"),
+                actionButton(paste0(prefix, "_run_with_ml"), "Run with ML", class = "btn-default"),
+                actionButton(paste0(prefix, "_run_with_mlr"), "Run with MLR", class = "btn-primary")
+              ),
+              easyClose = TRUE
+            ))
+            return()
+          }
+          run_confirmed_analysis(snapshot)
+          return()
           result <- execute_analysis(snapshot)
           showNotification(
             if (identical(statedu_current_language(app_language_fn), "ko")) paste0(structural_analysis_title(analysis_type, statedu_current_language(app_language_fn)), " 분석이 완료되었습니다.") else paste0(structural_analysis_title(analysis_type, statedu_current_language(app_language_fn)), " analysis completed."),
@@ -4994,6 +4967,28 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
           showNotification(conditionMessage(error), type = "error", duration = 8)
         })
       }
+    }, ignoreInit = TRUE)
+    observeEvent(input[[paste0(prefix, "_run_with_ml")]], {
+      snapshot <- pending_estimator_snapshot()
+      removeModal()
+      shiny::req(!is.null(snapshot))
+      tryCatch({
+        run_confirmed_analysis(snapshot, list(estimator = "ML"))
+      }, error = function(error) {
+        showNotification(conditionMessage(error), type = "error", duration = 8)
+      })
+    }, ignoreInit = TRUE)
+    observeEvent(input[[paste0(prefix, "_run_with_mlr")]], {
+      snapshot <- pending_estimator_snapshot()
+      removeModal()
+      shiny::req(!is.null(snapshot))
+      tryCatch({
+        settings <- list(estimator = "MLR")
+        if (identical(analysis_type, "cfa")) settings$bollen_stine_bootstrap <- 0L
+        run_confirmed_analysis(snapshot, settings)
+      }, error = function(error) {
+        showNotification(conditionMessage(error), type = "error", duration = 8)
+      })
     }, ignoreInit = TRUE)
     lapply(seq_len(100L), function(index) local({
       row_index <- index

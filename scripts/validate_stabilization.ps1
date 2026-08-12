@@ -79,6 +79,7 @@ $coreValidations = @(
 $fullOnlyValidations = @(
   "scripts\validate_ancova.R",
   "scripts\validate_calculators.R",
+  "scripts\validate_cfa_all.R",
   "scripts\validate_correlation_auto.R",
   "scripts\validate_crosstabs.R",
   "scripts\validate_factor_pca.R",
@@ -92,7 +93,15 @@ $fullOnlyValidations = @(
   "scripts\validate_reliability.R",
   "scripts\validate_result_history.R",
   "scripts\validate_sample_size.R",
+  "scripts\validate_survival.R",
   "scripts\validate_analysis_reference_comparison.R"
+)
+
+$aggregateCoveredValidations = @(
+  "scripts\validate_cfa_canvas.R",
+  "scripts\validate_cfa_common.R",
+  "scripts\validate_cfa_external_references.R",
+  "scripts\validate_cfa_reporting_exports.R"
 )
 
 $validations = $coreValidations
@@ -102,7 +111,7 @@ if ($Full) {
 
 Push-Location $RepoRoot
 try {
-  $knownValidationScripts = @($coreValidations + $fullOnlyValidations) | Sort-Object -Unique
+  $knownValidationScripts = @($coreValidations + $fullOnlyValidations + $aggregateCoveredValidations) | Sort-Object -Unique
   $allValidationScripts = Get-ChildItem -LiteralPath (Join-Path $RepoRoot "scripts") -Filter "validate_*.R" |
     ForEach-Object { "scripts\$($_.Name)" } |
     Sort-Object -Unique

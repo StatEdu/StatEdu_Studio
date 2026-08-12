@@ -1,8 +1,4 @@
-source(file.path("R", "utils.R"), encoding = "UTF-8")
-library(shiny)
-source(file.path("R", "setup_custom_model_canvas_ui.R"), encoding = "UTF-8")
-
-ui_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+source(file.path("scripts", "validate_cfa_common.R"), encoding = "UTF-8")
 stopifnot(grepl("Latent construct correlations, reliability, and convergent/discriminant validity", ui_source, fixed = TRUE))
 stopifnot(length(gregexpr('class = "table-responsive"', ui_source, fixed = TRUE)[[1L]]) >= 8L)
 
@@ -77,7 +73,9 @@ stopifnot(
 )
 stopifnot(
   grepl("CFA analysis reproducibility record", reproducibility_record, fixed = TRUE),
+  grepl("Analysis context: Prespecified/original model.", reproducibility_record, fixed = TRUE),
   grepl("Estimator: ML", reproducibility_record, fixed = TRUE),
+  grepl("CI method: percentile", reproducibility_record, fixed = TRUE),
   grepl("eta1 =~ x1 + x2 + x3", reproducibility_record, fixed = TRUE),
   grepl("lavaan version:", reproducibility_record, fixed = TRUE)
 )
@@ -102,9 +100,20 @@ expected_standardized_cr <- sum(standardized_reliability_loadings)^2 / (sum(stan
 stopifnot(abs(reliability_estimates$CR - expected_standardized_cr) < 1e-12)
 stopifnot(nrow(model_implied_reliability) == 1L, all(is.finite(unlist(model_implied_reliability[c("AVE", "CR", "Alpha", "Omega")], use.names = FALSE))))
 seed_before_reliability_bootstrap <- .Random.seed
+reliability_progress_events <- list()
 reliability_bootstrap <- structural_canvas_reliability_bootstrap(
-  "eta1 =~ x1 + x2 + x3", continuous, reps = 20L, seed = 20260812L, estimator = "ML", original_fit = ml$fit
+  "eta1 =~ x1 + x2 + x3", continuous, reps = 20L, seed = 20260812L, estimator = "ML", original_fit = ml$fit,
+  progress = function(done, total, valid) {
+    reliability_progress_events[[length(reliability_progress_events) + 1L]] <<- c(done = done, total = total, valid = valid)
+  }
 )
+reliability_cancel_error <- tryCatch({
+  structural_canvas_reliability_bootstrap(
+    "eta1 =~ x1 + x2 + x3", continuous, reps = 2L, seed = 20260812L, estimator = "ML",
+    original_fit = ml$fit, cancel = function() TRUE
+  )
+  ""
+}, error = conditionMessage)
 stopifnot(
   isTRUE(structural_canvas_validate_model_based_bootstrap(ml$fit)),
   identical(structural_canvas_bootstrap_status(c(80, 79, 50, 49, 0), 100), c("Adequate", "Caution", "Caution", "Unreliable", "Unreliable")),
@@ -114,9 +123,28 @@ stopifnot(
   all(reliability_bootstrap[["Valid replicates"]] > 0L),
   all(reliability_bootstrap[["Requested replicates"]] == 20L),
   all(reliability_bootstrap[["Valid %"]] > 0 & reliability_bootstrap[["Valid %"]] <= 100),
+  all(reliability_bootstrap[["CI method"]] == "Percentile"),
   all(reliability_bootstrap$Status == "Adequate"),
   identical(.Random.seed, seed_before_reliability_bootstrap),
-  grepl('is.null(fit) || !isTRUE(structural_canvas_fit_admissibility(fit)$admissible)', ui_source, fixed = TRUE)
+  length(reliability_progress_events) >= 2L,
+  reliability_progress_events[[1L]][["done"]] == 0L,
+  tail(reliability_progress_events, 1L)[[1L]][["done"]] == 20L,
+  tail(reliability_progress_events, 1L)[[1L]][["valid"]] > 0L,
+  grepl("canceled", reliability_cancel_error, fixed = TRUE),
+  identical(structural_canvas_bootstrap_ci_method("BCa (slower)"), "bca"),
+  grepl('progress(index, total_iterations, length(Filter(function(value) !is.null(value) && nrow(value), estimates[seq_len(index)])))', ui_source, fixed = TRUE),
+  grepl("_reliability_ci_method", ui_source, fixed = TRUE)
+)
+small_continuous <- continuous[seq_len(80L), , drop = FALSE]
+small_ml <- lavaan::cfa("eta1 =~ x1 + x2 + x3", data = small_continuous, auto.cov.lv.x = FALSE)
+reliability_bca <- structural_canvas_reliability_bootstrap(
+  "eta1 =~ x1 + x2 + x3", small_continuous, reps = 25L, seed = 20260813L,
+  estimator = "ML", missing = "listwise", original_fit = small_ml, ci_method = "bca"
+)
+stopifnot(
+  nrow(reliability_bca) == 4L,
+  all(reliability_bca[["CI method"]] %in% c("BCa", "BCa unavailable")),
+  all(reliability_bca[["Valid replicates"]] > 0L)
 )
 inadmissible_bootstrap_error <- tryCatch({
   structural_canvas_validate_model_based_bootstrap(NULL, "Test bootstrap")
@@ -215,6 +243,11 @@ stopifnot(
   all(invariance$table[["Latent min eigenvalue"]] > 0),
   all(vapply(invariance$fits, function(fit) structural_canvas_fit_admissibility(fit)$admissible, logical(1))),
   all(vapply(invariance$fits, function(fit) identical(structural_canvas_fit_admissibility(fit)$group_labels, c("A", "B")), logical(1))),
+  nrow(invariance$group_reliability) == 2L,
+  identical(invariance$group_reliability$Group, c("A", "B")),
+  identical(invariance$group_reliability$Factor, c("eta1", "eta1")),
+  all(is.finite(invariance$group_reliability$AVE)),
+  nrow(invariance$group_htmt) == 0L,
   all(diff(invariance$table$df) >= 0),
   all(is.finite(invariance$table$CFI)), all(is.finite(invariance$table$RMSEA)), all(is.finite(invariance$table$SRMR)),
   all(is.finite(invariance$table$DeltaCFI[-1L])),
@@ -313,6 +346,24 @@ stopifnot(
 two_factor_fit <- lavaan::cfa(
   "eta1 =~ x1 + x2 + x3\neta2 =~ x4 + x5 + x6",
   data = lavaan::HolzingerSwineford1939
+)
+two_factor_invariance <- structural_canvas_measurement_invariance(
+  "eta1 =~ x1 + x2 + x3\neta2 =~ x4 + x5 + x6\neta1 ~~ eta2",
+  lavaan::HolzingerSwineford1939, "school", estimator = "MLR"
+)
+stopifnot(
+  nrow(two_factor_invariance$group_reliability) == 4L,
+  all(c("Group", "Factor", "AVE", "CR", "Cronbach's alpha", "Omega total") %in% names(two_factor_invariance$group_reliability)),
+  identical(sort(unique(two_factor_invariance$group_reliability$Factor)), c("eta1", "eta2")),
+  all(is.finite(two_factor_invariance$group_reliability$AVE)),
+  nrow(two_factor_invariance$group_htmt) == 2L,
+  all(c("Group", "Factor1", "Factor2", "HTMT", "Criterion") %in% names(two_factor_invariance$group_htmt)),
+  all(is.finite(two_factor_invariance$group_htmt$HTMT)),
+  isTRUE(two_factor_invariance$group_residuals$available),
+  nrow(two_factor_invariance$group_residuals$group_summary) == 2L,
+  all(c("Group", "Max |standardized residual|", "Flagged residuals") %in% names(two_factor_invariance$group_residuals$group_summary)),
+  nrow(two_factor_invariance$group_residuals$group_pairs) > 0L,
+  all(c("Group", "Indicator1", "Indicator2", "Standardized residual", "Correlation residual", "Exceeds cutoff") %in% names(two_factor_invariance$group_residuals$group_pairs))
 )
 automatic_covariance_bootstrap_error <- tryCatch({
   structural_canvas_reliability_bootstrap(
@@ -555,7 +606,9 @@ stopifnot(
   all(nzchar(sequential_mi_candidates$skipped_details) == (sequential_mi_candidates$skipped_inadmissible > 0L))
 )
 stopifnot(
-  grepl('c("step", "skipped_inadmissible", "skipped_details", "lhs", "op", "rhs", "mi"', ui_source, fixed = TRUE),
+  grepl("candidate_row$step <- step", ui_source, fixed = TRUE),
+  grepl("candidate_row$skipped_inadmissible <- skipped_candidates", ui_source, fixed = TRUE),
+  grepl("candidate_row$skipped_details <- paste(skipped_details, collapse = \" | \")", ui_source, fixed = TRUE),
   grepl("table <- data.frame(Step = step, `Skipped unsafe` = skipped, `Skipped details` = skipped_details, relation", ui_source, fixed = TRUE),
   grepl("Each Step is sequential", ui_source, fixed = TRUE)
 )
@@ -753,19 +806,46 @@ htmt_boot_data <- data.frame(
   y1 = stats::rnorm(180), y2 = stats::rnorm(180)
 )
 seed_before_htmt_boot <- .Random.seed
+htmt_progress_events <- list()
 htmt_boot <- structural_canvas_htmt_bootstrap(
   htmt_boot_data, list(eta1 = c("x1", "x2"), eta2 = c("y1", "y2")),
-  reps = 100L, confidence = .95, seed = 42L
+  reps = 100L, confidence = .95, seed = 42L,
+  progress = function(done, total, valid) {
+    htmt_progress_events[[length(htmt_progress_events) + 1L]] <<- c(done = done, total = total, valid = valid)
+  }
 )
+htmt_cancel_error <- tryCatch({
+  structural_canvas_htmt_bootstrap(
+    htmt_boot_data, list(eta1 = c("x1", "x2"), eta2 = c("y1", "y2")),
+    reps = 2L, confidence = .95, seed = 42L, cancel = function() TRUE
+  )
+  ""
+}, error = conditionMessage)
 stopifnot(
   nrow(htmt_boot) == 1L,
-  all(c("Lower", "Upper", "One-sided upper", "Upper < threshold", "Upper < 1", "Valid replicates", "Requested replicates", "Valid %", "Status") %in% names(htmt_boot)),
+  all(c("Lower", "Upper", "One-sided upper", "Upper < threshold", "Upper < 1", "CI method", "Valid replicates", "Requested replicates", "Valid %", "Status") %in% names(htmt_boot)),
   htmt_boot$`Valid replicates`[[1L]] == 100L,
   htmt_boot$`Requested replicates`[[1L]] == 100L, htmt_boot$`Valid %`[[1L]] == 100,
+  identical(htmt_boot[["CI method"]][[1L]], "Percentile"),
   identical(htmt_boot$Status[[1L]], "Adequate"),
   is.finite(htmt_boot$Lower[[1L]]), htmt_boot$Lower[[1L]] <= htmt_boot$`One-sided upper`[[1L]],
   htmt_boot$`One-sided upper`[[1L]] <= htmt_boot$Upper[[1L]],
-  identical(.Random.seed, seed_before_htmt_boot)
+  identical(.Random.seed, seed_before_htmt_boot),
+  length(htmt_progress_events) >= 2L,
+  htmt_progress_events[[1L]][["done"]] == 0L,
+  tail(htmt_progress_events, 1L)[[1L]][["done"]] == 100L,
+  tail(htmt_progress_events, 1L)[[1L]][["valid"]] == 100L,
+  grepl("canceled", htmt_cancel_error, fixed = TRUE),
+  grepl("_htmt_ci_method", ui_source, fixed = TRUE)
+)
+htmt_bca <- structural_canvas_htmt_bootstrap(
+  htmt_boot_data, list(eta1 = c("x1", "x2"), eta2 = c("y1", "y2")),
+  reps = 25L, confidence = .95, seed = 44L, ci_method = "bca"
+)
+stopifnot(
+  nrow(htmt_bca) == 1L,
+  htmt_bca[["CI method"]][[1L]] %in% c("BCa", "BCa unavailable"),
+  htmt_bca$`Valid replicates`[[1L]] == 25L
 )
 
 ordinal_boot_data <- as.data.frame(lapply(htmt_boot_data, function(values) {
@@ -789,6 +869,18 @@ set.seed(20260814)
 nonnormal_data <- data.frame(x1 = stats::rexp(800), x2 = stats::rexp(800), x3 = stats::rexp(800))
 mardia_nonnormal <- structural_canvas_mardia(nonnormal_data, names(nonnormal_data))
 stopifnot(isTRUE(mardia_nonnormal$available), isTRUE(mardia_nonnormal$nonnormal), identical(mardia_nonnormal$recommendation, "MLR recommended"))
+estimator_recommendation <- structural_canvas_estimator_recommendation(snapshot, nonnormal_data, data.frame(name = names(nonnormal_data), measurement = "continuous"), "cfa", "ML")
+estimator_no_recommendation <- structural_canvas_estimator_recommendation(snapshot, nonnormal_data, data.frame(name = names(nonnormal_data), measurement = "continuous"), "cfa", "MLR")
+estimator_ordered_recommendation <- structural_canvas_estimator_recommendation(snapshot, nonnormal_data, data.frame(name = names(nonnormal_data), measurement = c("ordered", "continuous", "continuous")), "cfa", "ML")
+stopifnot(
+  isTRUE(estimator_recommendation$recommend),
+  identical(estimator_recommendation$recommended_estimator, "MLR"),
+  !isTRUE(estimator_no_recommendation$recommend),
+  !isTRUE(estimator_ordered_recommendation$recommend),
+  grepl("Estimator recommendation", ui_source, fixed = TRUE),
+  grepl("_run_with_mlr", ui_source, fixed = TRUE),
+  grepl("_run_with_ml", ui_source, fixed = TRUE)
+)
 singular_data <- data.frame(x1 = 1:20, x2 = 1:20)
 mardia_singular <- structural_canvas_mardia(singular_data, names(singular_data))
 stopifnot(!isTRUE(mardia_singular$available), grepl("singular", mardia_singular$reason, fixed = TRUE))
@@ -896,14 +988,16 @@ wlsmv_theta_fit <- lavaan::cfa(
   missing = "pairwise", ordered = ordered_names, parameterization = "theta",
   auto.cov.lv.x = FALSE
 )
-mismatched_reliability_parameterization_error <- tryCatch({
-  structural_canvas_reliability_bootstrap(
-    "eta1 =~ x1 + x2 + x3", ordinal, reps = 2L, estimator = "WLSMV",
-    missing = "pairwise", ordered = ordered_names, original_fit = wlsmv_theta_fit
-  )
-  ""
-}, error = conditionMessage)
-stopifnot(grepl("parameterization does not match", mismatched_reliability_parameterization_error, fixed = TRUE))
+theta_reliability_bootstrap <- structural_canvas_reliability_bootstrap(
+  "eta1 =~ x1 + x2 + x3", ordinal, reps = 5L, estimator = "WLSMV",
+  missing = "pairwise", ordered = ordered_names, original_fit = wlsmv_theta_fit
+)
+stopifnot(
+  identical(lavaan::lavInspect(wlsmv_theta_fit, "options")$parameterization, "theta"),
+  nrow(theta_reliability_bootstrap) == 4L,
+  identical(theta_reliability_bootstrap$Statistic, c("AVE", "CR", "Alpha", "Omega")),
+  all(theta_reliability_bootstrap[["Requested replicates"]] == 5L)
+)
 wlsmv_sample_statistics <- structural_canvas_export_sample_statistics(wlsmv$fit)
 stopifnot(
   nrow(wlsmv_sample_statistics$Descriptives) == length(lavaan::lavNames(wlsmv$fit, "ov")),
@@ -945,6 +1039,10 @@ stopifnot(
   nrow(ordinal_invariance$group_diagnostics) == 2L,
   all(ordinal_invariance$group_diagnostics$N == n / 2L),
   all(ordinal_invariance$group_diagnostics[["Absent ordered categories"]] == "None"),
+  isTRUE(ordinal_invariance$group_residuals$available),
+  nrow(ordinal_invariance$group_residuals$group_summary) == 2L,
+  nrow(ordinal_invariance$group_residuals$group_pairs) > 0L,
+  all(c("Group", "Indicator1", "Indicator2", "Standardized residual", "Correlation residual", "Exceeds cutoff") %in% names(ordinal_invariance$group_residuals$group_pairs)),
   identical(names(ordinal_invariance$score_diagnostics), names(ordinal_invariance$fits))
 )
 absent_category_data <- ordinal_invariance_data
@@ -978,96 +1076,6 @@ stopifnot(grepl("Download analysis record", ui_source, fixed = TRUE))
 stopifnot(grepl("Download result tables", ui_source, fixed = TRUE))
 stopifnot(!grepl("ko <- FALSE", ui_source, fixed = TRUE))
 stopifnot(!grepl("�", ui_source, fixed = TRUE))
-stopifnot(requireNamespace("openxlsx", quietly = TRUE))
-integrated_sheets <- structural_canvas_result_workbook_sheets(
-  utils::modifyList(ml, list(
-    bollen_stine_bootstrap = 20L, bollen_stine_seed = 97531L,
-    bollen_stine_result = bollen_stine_test
-  )),
-  function(kind) data.frame(Table = kind, Value = 1, check.names = FALSE)
-)
-required_integrated_sheets <- c(
-  "Contents", "Overview", "Fit", "Validity", "Measurement", "Model_Syntax", "Analysis_Record",
-  "Fit_Numeric", "Admissibility_Diagnostics", "RMSEA_Tests", "Information_Criteria", "Parameter_Estimates", "Latent_Correlations",
-  "Reliability_Validity_Numeric", "Sample_Descriptives", "Sample_Covariance", "Bollen_Stine", "Notes"
-)
-stopifnot(
-  identical(names(integrated_sheets)[[1L]], "Contents"),
-  all(required_integrated_sheets %in% names(integrated_sheets)),
-  all(vapply(integrated_sheets[required_integrated_sheets], is.data.frame, logical(1))),
-  all(c("Sheet", "Description") %in% names(integrated_sheets$Contents)),
-  identical(integrated_sheets$Bollen_Stine$`Model context`[[1L]], "Prespecified/original model"),
-  any(integrated_sheets$Contents$Sheet == "Fit_Numeric" & grepl("Numeric model-fit", integrated_sheets$Contents$Description, fixed = TRUE)),
-  any(integrated_sheets$Contents$Sheet == "Validity" & grepl("Formatted reporting", integrated_sheets$Contents$Description, fixed = TRUE))
-)
-integrated_workbook_file <- tempfile(fileext = ".xlsx")
-structural_canvas_write_result_workbook(integrated_sheets, integrated_workbook_file)
-integrated_workbook_names <- openxlsx::getSheetNames(integrated_workbook_file)
-stopifnot(
-  file.exists(integrated_workbook_file), file.info(integrated_workbook_file)$size > 0L,
-  identical(integrated_workbook_names[[1L]], "Contents"),
-  all(c("Overview", "Fit_Numeric", "Parameter_Estimates", "Notes") %in% integrated_workbook_names)
-)
-unlink(integrated_workbook_file)
-export_note_snapshot <- list(
-  nodes = list(
-    list(id = "f1", role = "latent", name = "F1"),
-    list(id = "f2", role = "latent", name = "F2")
-  ),
-  edges = list()
-)
-export_notes <- structural_canvas_export_notes(list(
-  ordered = "x1",
-  diagnostics = list(admissible = FALSE),
-  snapshot = export_note_snapshot
-))
-modified_bollen_notes <- structural_canvas_export_notes(list(
-  ordered = character(0), diagnostics = list(admissible = TRUE), snapshot = list(),
-  bollen_stine_result = bollen_stine_test, modified_from_baseline = TRUE
-))
-stopifnot(
-  identical(names(export_notes), c("Section", "Note")),
-  any(export_notes$Section == "Ordered indicators"),
-  any(export_notes$Section == "Latent covariances"),
-  any(grepl("failed", export_notes$Note, fixed = TRUE)),
-  any(modified_bollen_notes$Section == "Bollen-Stine" & grepl("exploratory", modified_bollen_notes$Note, fixed = TRUE)),
-  grepl("sheets$Fit_Numeric <- structural_canvas_export_fit_estimates(bundle)", ui_source, fixed = TRUE),
-  grepl("sheets$Parameter_Estimates <- structural_canvas_export_parameter_estimates(bundle$fit)", ui_source, fixed = TRUE),
-  grepl("sheets$Latent_Correlations <- structural_canvas_export_latent_correlations(bundle$fit)", ui_source, fixed = TRUE),
-  grepl("sheets$Reliability_Validity_Numeric <- structural_canvas_export_reliability_validity(bundle)", ui_source, fixed = TRUE),
-  grepl("sheets$Sample_Descriptives <- sample_statistics$Descriptives", ui_source, fixed = TRUE),
-  grepl("sheets$Sample_Covariance <- sample_statistics$Covariance", ui_source, fixed = TRUE),
-  grepl("sheets$Thresholds <- sample_statistics$Thresholds", ui_source, fixed = TRUE),
-  grepl("sheets$Notes <- structural_canvas_export_notes(bundle)", ui_source, fixed = TRUE)
-)
-workbook_file <- tempfile(fileext = ".xlsx")
-long_sheet_name <- paste(rep("A", 40L), collapse = "")
-workbook_sheets <- list(
-  data.frame(Item = "Estimator", Value = "MLR"),
-  data.frame(Metric = "CFI", Value = .95),
-  data.frame(Value = 1),
-  data.frame(Value = 2),
-  data.frame(Value = 3),
-  data.frame(Section = "Fit", Note = paste(rep("Long statistical interpretation note", 8L), collapse = " "))
-)
-names(workbook_sheets) <- c("Overview", "Invalid/name*test", long_sheet_name, tolower(long_sheet_name), " ", "Notes")
-structural_canvas_write_result_workbook(workbook_sheets, workbook_file)
-workbook_sheet_names <- openxlsx::getSheetNames(workbook_file)
-numeric_workbook_values <- openxlsx::read.xlsx(workbook_file, sheet = "Invalid_name_test")
-stopifnot(
-  file.exists(workbook_file), file.info(workbook_file)$size > 0L,
-  identical(workbook_sheet_names[1:2], c("Overview", "Invalid_name_test")),
-  all(nchar(workbook_sheet_names) <= 31L),
-  !anyDuplicated(tolower(workbook_sheet_names)),
-  identical(workbook_sheet_names[[5L]], "Sheet"),
-  identical(openxlsx::read.xlsx(workbook_file, sheet = "Overview")$Value, "MLR"),
-  is.numeric(numeric_workbook_values$Value),
-  identical(numeric_workbook_values$Value[[1L]], .95),
-  nchar(openxlsx::read.xlsx(workbook_file, sheet = "Notes")$Note[[1L]]) > 40L,
-  grepl('createStyle(numFmt = "0.000")', ui_source, fixed = TRUE),
-  grepl("createStyle(wrapText = TRUE", ui_source, fixed = TRUE)
-)
-unlink(workbook_file)
 stopifnot(!grepl("structural-covariate-toolbar-button", cfa_toolbar, fixed = TRUE))
 stopifnot(!grepl("data-action=\"structuralCovariateTargets\"", cfa_toolbar, fixed = TRUE))
 
