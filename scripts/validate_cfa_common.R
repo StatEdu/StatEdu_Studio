@@ -2,6 +2,7 @@ source(file.path("R", "utils.R"), encoding = "UTF-8")
 suppressPackageStartupMessages(library(shiny))
 source(file.path("R", "setup_custom_model_canvas_snapshot.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_core.R"), encoding = "UTF-8")
+source(file.path("R", "setup_custom_model_canvas_structural_diagnostics.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_exports.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_ui.R"), encoding = "UTF-8")
 
