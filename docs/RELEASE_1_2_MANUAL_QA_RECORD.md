@@ -41,7 +41,7 @@ QA date: 2026-08-12
 Tester: automated preflight
 Installer: D:\Program\Studio\dist\electron\StatEdu_Studio_Dev_Setup_1.2.2-dev.exe
 R runtime: R-4.5.3
-Validation command: scripts\release_preflight.ps1 -FullElectronSmoke; scripts\smoke_electron_app_lifecycle.ps1
+Validation command: scripts\validate_cfa_all.R; scripts\smoke_electron_release.ps1; scripts\smoke_shiny_app.ps1 with CFA capture env
 ```
 
 | Check | Status | Notes |
@@ -58,6 +58,7 @@ Validation command: scripts\release_preflight.ps1 -FullElectronSmoke; scripts\sm
 | CFA BCa/percentile CI workflow | Pending | Manual visual/workflow QA still needed in the packaged app. |
 | CFA bootstrap progress and cancel controls | Pending | Manual visual/workflow QA still needed in the packaged app. |
 | CFA multigroup reliability/HTMT and Excel export | Pending | Manual visual/workflow QA still needed in the packaged app. |
-| CFA model-file load and run from packaged UI | Pending | Browser automation reached the packaged CFA canvas, but the model-load path uses the native `showOpenFilePicker` flow and was not captured by the automated file chooser. Complete this as hands-on UI QA or add a dedicated test hook. |
+| CFA model-file load/run automation hook | Pass | Added `STATEDU_CAPTURE_CFA_MODEL_FILE` / `STATEDU_CAPTURE_CFA_RUN`; `scripts\validate_cfa_all.R` passed and `scripts\smoke_shiny_app.ps1` passed with `outputs\cfa_qa_two_factor.stmodel` capture env enabled. |
+| CFA model-file load and run from packaged native picker UI | Pending | Browser automation reached the packaged CFA canvas, but the native `showOpenFilePicker` path still requires hands-on UI QA. |
 
-Development QA status: Automated packaged validation passed. Packaged data-load/CFA-canvas visual QA and matching R-level QA model fit passed; focused CFA model execution/export workflow QA remains pending.
+Development QA status: Automated packaged validation passed. Packaged data-load/CFA-canvas visual QA, matching R-level QA model fit, and source Shiny CFA capture-hook smoke passed; focused packaged native-picker and CFA execution/export workflow QA remains pending.

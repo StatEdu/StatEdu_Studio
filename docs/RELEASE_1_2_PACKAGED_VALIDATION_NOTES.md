@@ -38,10 +38,10 @@ Packaged validation status: Automated package checks passed for public deploymen
 Product: StatEdu Studio Dev
 Version: 1.2.2-dev
 Installer: D:\Program\Studio\dist\electron\StatEdu_Studio_Dev_Setup_1.2.2-dev.exe
-Installer SHA256: 9BE185563F7FE706A787841BC88A29BA31ACBEBDB428B35F3722243D48E76E55
-Installer bytes: 321542651
-Blockmap SHA256: 0DC13D2DCA9F8CB439A0018F8B7A3D995CE35E7E352FEFAAA82030CC13A5E3E8
-Blockmap bytes: 322323
+Installer SHA256: 1503955BF64FA6E3D94310C86793ADEE8CF3175260386225BD2F73D320380783
+Installer bytes: 321539854
+Blockmap SHA256: D72D4B6DF1221F3827D0FA7C67974FAF5486473D49F3227693BAF595F7F77AD3
+Blockmap bytes: 322362
 R runtime: R-4.5.3
 Validation date: 2026-08-12
 ```
@@ -54,5 +54,6 @@ Validation date: 2026-08-12
 | Dev installer is `StatEdu_Studio_Dev_Setup_1.2.2-dev.exe` | Pass | Built at `D:\Program\Studio\dist\electron\StatEdu_Studio_Dev_Setup_1.2.2-dev.exe`. |
 | Packaged executable metadata is `StatEdu Studio Dev` | Pass | Verified by full Electron smoke checks against `win-unpacked`. |
 | Required SEM/CFA package dependencies are bundled | Pass | Local `seminr 2.5.0` dependency was installed before packaging; bundled runtime smoke passed. |
+| CFA capture model hook smoke passes | Pass | `scripts\smoke_shiny_app.ps1` passed with `STATEDU_CAPTURE_CFA_MODEL_FILE=D:\Program\Studio\outputs\cfa_qa_two_factor.stmodel` and `STATEDU_CAPTURE_CFA_RUN=yes`; `scripts\validate_cfa_all.R` also covers the hook. |
 
-Development package status: Automated package checks passed; visual CFA workflow QA remains a manual check before promoting a public release build.
+Development package status: Automated package checks passed after the CFA capture-hook rebuild; visual CFA workflow and native picker QA remain manual checks before promoting a public release build.
