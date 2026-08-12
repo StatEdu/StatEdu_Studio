@@ -73,6 +73,20 @@ assert_contains("packaging/electron/scripts/afterPack.js", "context.packager.app
 assert_contains("packaging/electron/scripts/afterPack.js", '"OriginalFilename", exeName', "Windows executable dynamic original filename")
 
 electron_package <- read_json("packaging/electron/package.json")
+version <- trimws(readLines(file.path(repo_root, "VERSION"), warn = FALSE)[[1L]])
+electron_profile <- if (grepl("^\\d+\\.\\d+\\.\\d+-dev$", version)) {
+  list(
+    product_name = "StatEdu Studio Dev",
+    shortcut_name = "StatEdu Studio Dev",
+    artifact_name = 'StatEdu_Studio_Dev_Setup_${version}.${ext}'
+  )
+} else {
+  list(
+    product_name = "StatEdu Studio",
+    shortcut_name = "StatEdu Studio",
+    artifact_name = 'StatEdu_Studio_Setup_${version}.${ext}'
+  )
+}
 
 assert_equal <- function(actual, expected, label) {
   if (is.null(actual) || length(actual) == 0) {
@@ -85,17 +99,17 @@ assert_equal <- function(actual, expected, label) {
 
 assert_equal(
   electron_package$build$productName,
-  "StatEdu Studio",
+  electron_profile$product_name,
   "Electron build productName"
 )
 assert_equal(
   electron_package$build$nsis$shortcutName,
-  "StatEdu Studio",
+  electron_profile$shortcut_name,
   "Electron NSIS shortcutName"
 )
 assert_equal(
   electron_package$build$win$artifactName,
-  'StatEdu_Studio_Setup_${version}.${ext}',
+  electron_profile$artifact_name,
   "Electron final installer artifactName"
 )
 assert_contains("scripts/build_electron_beta.ps1", "Sync-ElectronPackageMetadata", "Electron package metadata sync")
