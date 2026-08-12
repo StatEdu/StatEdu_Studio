@@ -3950,16 +3950,24 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
         p = c(format_p(diagnosis$skew_p), format_p(diagnosis$kurtosis_p)),
         check.names = FALSE
       )
+      ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
+      recommendation_label <- if (ko && identical(diagnosis$recommendation, "MLR recommended")) {
+        "MLR 권장"
+      } else if (ko && identical(diagnosis$recommendation, "ML is acceptable")) {
+        "ML 사용 가능"
+      } else {
+        diagnosis$recommendation
+      }
       div(class = "result-section regression-result-panel structural-normality-result",
-        h4("Multivariate normality and estimator guidance"),
+        h4(if (ko) "다변량 정규성 및 추정량 안내" else "Multivariate normality and estimator guidance"),
         tags$table(class = "table table-striped table-bordered",
           tags$thead(tags$tr(lapply(names(table), tags$th))),
           tags$tbody(lapply(seq_len(nrow(table)), function(index) tags$tr(lapply(as.character(table[index, ]), tags$td))))
         ),
-        tags$p(class = "structural-result-note", paste0("Guidance: ", diagnosis$recommendation, ". This recommendation is diagnostic and does not automatically change the estimator.")),
-        tags$p(class = "structural-result-note", paste0("Complete cases used: ", diagnosis$n, " of ", diagnosis$original_n, "; indicators: ", diagnosis$p, ".")),
-        if (isTRUE(diagnosis$sampled)) tags$p(class = "structural-result-note", "For computational stability, Mardia statistics used an evenly spaced deterministic subsample of 2,000 complete cases."),
-        tags$p(class = "structural-result-note", "Mardia tests are sample-size sensitive. Consider distribution shape, outliers, and substantive measurement assumptions alongside p-values.")
+        tags$p(class = "structural-result-note", if (ko) paste0("안내: ", recommendation_label, ". 이 권고는 진단용이며 추정량을 자동으로 변경하지 않습니다.") else paste0("Guidance: ", recommendation_label, ". This recommendation is diagnostic and does not automatically change the estimator.")),
+        tags$p(class = "structural-result-note", if (ko) paste0("사용된 완전 사례: ", diagnosis$n, " / ", diagnosis$original_n, "; 지표 수: ", diagnosis$p, ".") else paste0("Complete cases used: ", diagnosis$n, " of ", diagnosis$original_n, "; indicators: ", diagnosis$p, ".")),
+        if (isTRUE(diagnosis$sampled)) tags$p(class = "structural-result-note", if (ko) "계산 안정성을 위해 Mardia 통계량은 완전 사례 중 균등 간격 결정 표본 2,000건으로 계산했습니다." else "For computational stability, Mardia statistics used an evenly spaced deterministic subsample of 2,000 complete cases."),
+        tags$p(class = "structural-result-note", if (ko) "Mardia 검정은 표본 수에 민감합니다. p 값과 함께 분포 형태, 이상치, 측정 가정을 함께 검토하십시오." else "Mardia tests are sample-size sensitive. Consider distribution shape, outliers, and substantive measurement assumptions alongside p-values.")
       )
     })
     output[[paste0(prefix, "_result_risk_diagnostics")]] <- renderUI({
@@ -4997,19 +5005,20 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
             pending_estimator_snapshot(snapshot)
             diagnosis <- recommendation$diagnosis
             bollen_requested <- identical(analysis_type, "cfa") && as.integer(input[[paste0(prefix, "_bollen_stine_bootstrap")]] %||% 0L) > 0L
+            ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
             showModal(modalDialog(
-              title = "Estimator recommendation",
-              tags$p("Mardia diagnostics flagged nonnormal continuous indicators. Robust MLR is recommended before fitting this model."),
+              title = if (ko) "추정량 권고" else "Estimator recommendation",
+              tags$p(if (ko) "Mardia 진단에서 연속형 지표의 비정규성이 확인되었습니다. 이 모형을 적합하기 전에 강건 MLR 사용을 권장합니다." else "Mardia diagnostics flagged nonnormal continuous indicators. Robust MLR is recommended before fitting this model."),
               tags$p(paste0(
-                "Mardia skewness p = ", format_p(diagnosis$skew_p),
-                "; kurtosis p = ", format_p(diagnosis$kurtosis_p),
-                "; complete cases = ", diagnosis$n, " of ", diagnosis$original_n, "."
+                if (ko) "Mardia 왜도 p = " else "Mardia skewness p = ", format_p(diagnosis$skew_p),
+                if (ko) "; 첨도 p = " else "; kurtosis p = ", format_p(diagnosis$kurtosis_p),
+                if (ko) "; 완전 사례 = " else "; complete cases = ", diagnosis$n, if (ko) " / " else " of ", diagnosis$original_n, "."
               )),
-              if (bollen_requested) tags$p(class = "structural-result-note", "Bollen-Stine bootstrap is available only for ML; choosing MLR will run the model without Bollen-Stine bootstrap."),
+              if (bollen_requested) tags$p(class = "structural-result-note", if (ko) "Bollen-Stine 부트스트랩은 ML에서만 사용할 수 있습니다. MLR을 선택하면 Bollen-Stine 부트스트랩 없이 모형을 실행합니다." else "Bollen-Stine bootstrap is available only for ML; choosing MLR will run the model without Bollen-Stine bootstrap."),
               footer = tagList(
-                modalButton("Cancel"),
-                actionButton(paste0(prefix, "_run_with_ml"), "Run with ML", class = "btn-default"),
-                actionButton(paste0(prefix, "_run_with_mlr"), "Run with MLR", class = "btn-primary")
+                modalButton(if (ko) "취소" else "Cancel"),
+                actionButton(paste0(prefix, "_run_with_ml"), if (ko) "ML로 실행" else "Run with ML", class = "btn-default"),
+                actionButton(paste0(prefix, "_run_with_mlr"), if (ko) "MLR로 실행" else "Run with MLR", class = "btn-primary")
               ),
               easyClose = TRUE
             ))
