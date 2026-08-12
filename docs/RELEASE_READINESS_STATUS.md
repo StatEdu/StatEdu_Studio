@@ -43,7 +43,8 @@ Current release candidate source version: 1.2.0
 - SEM/CFA hardening work has been merged into `codex/sem-model-canvas`.
 - `scripts/validate_cfa_all.R` covers CFA canvas, reporting/export, and external-reference comparisons.
 - `scripts/validate_cfa_all.R` also covers theta-parameterized WLSMV ordered-indicator AVE/reliability bootstrap.
-- Remaining before public promotion: focused manual packaged-app QA for native CFA model-file picker, theta ordinal bootstrap visual workflow, BCa/percentile CI selection, bootstrap progress/cancel behavior, multigroup reliability/HTMT, and Excel export.
+- `scripts/validate_cfa_all.R` covers percentile and BCa CI paths for AVE/reliability bootstrap and HTMT bootstrap.
+- Remaining before public promotion: focused manual packaged-app QA for native CFA model-file picker, theta ordinal bootstrap visual workflow, BCa/percentile CI visual selection, bootstrap progress/cancel behavior, multigroup reliability/HTMT, and Excel export.
 
 ## Historical 1.0.1 Package Snapshot
 
