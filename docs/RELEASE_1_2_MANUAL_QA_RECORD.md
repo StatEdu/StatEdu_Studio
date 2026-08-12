@@ -51,6 +51,7 @@ Validation command: scripts\release_preflight.ps1 -FullElectronSmoke; scripts\sm
 | Packaged Electron release smoke passes | Pass | `scripts\smoke_electron_release.ps1` passed with unpacked-output checks enabled. |
 | Packaged app lifecycle smoke passes | Pass | `scripts\smoke_electron_app_lifecycle.ps1` loaded the bundled Shiny URL and confirmed closing Electron stopped the bundled Shiny process. |
 | Packaged executable metadata displays `StatEdu Studio Dev` | Pass | Verified by full Electron smoke checks. |
+| CFA menu opens in packaged app | Pass | Manual packaged-app check opened Analysis > Structural Equation Modeling > Confirmatory Factor Analysis and verified the CFA canvas rendered under `v1.2.2-dev`. |
 | CFA theta ordinal bootstrap workflow | Pending | Manual visual/workflow QA still needed in the packaged app. |
 | CFA BCa/percentile CI workflow | Pending | Manual visual/workflow QA still needed in the packaged app. |
 | CFA bootstrap progress and cancel controls | Pending | Manual visual/workflow QA still needed in the packaged app. |
