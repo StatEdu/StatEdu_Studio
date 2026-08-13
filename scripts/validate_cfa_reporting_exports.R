@@ -30,6 +30,22 @@ reporting_bundle <- list(
   modified_from_baseline = FALSE
 )
 table_fn <- function(kind) data.frame(Table = kind, Value = 1, check.names = FALSE)
+assert_sheet_snapshot <- function(sheets, name, expected_names, expected_rows) {
+  sheet <- sheets[[name]]
+  stopifnot(
+    is.data.frame(sheet),
+    identical(names(sheet), expected_names),
+    nrow(sheet) == expected_rows
+  )
+}
+assert_workbook_sheet_snapshot <- function(file, name, expected_names, expected_rows) {
+  sheet <- openxlsx::read.xlsx(file, sheet = name)
+  stopifnot(
+    identical(names(sheet), expected_names),
+    nrow(sheet) == expected_rows
+  )
+  sheet
+}
 
 single_factor_syntax <- "eta1 =~ x1 + x2 + x3"
 single_factor_fit <- lavaan::cfa(single_factor_syntax, data = reporting_data, auto.cov.lv.x = FALSE)
@@ -102,6 +118,37 @@ stopifnot(
 
 record <- structural_canvas_reproducibility_record(reporting_bundle, as.POSIXct("2026-08-12 12:00:00", tz = "Asia/Seoul"))
 integrated_sheets <- structural_canvas_result_workbook_sheets(reporting_bundle, table_fn)
+sheet_snapshots <- list(
+  Overview = list(names = c("Table", "Value"), rows = 1L),
+  Report_Summary = list(names = c("Section", "Item", "Value"), rows = 15L),
+  Fit_Numeric = list(names = c(
+    "Model", "Chi-square", "df", "p", "Q", "CFI", "TLI", "SRMR", "RMSEA",
+    "RMSEA CI lower", "RMSEA CI upper", "RMSEA CI level",
+    "Chi-square source", "CFI source", "TLI source", "RMSEA source"
+  ), rows = 1L),
+  Parameter_Estimates = list(names = c(
+    "lhs", "op", "rhs", "est", "se", "z", "p", "ci.lower", "ci.upper",
+    "std.lv", "std.all", "Fixed"
+  ), rows = 15L),
+  Latent_Correlations = list(names = c("Factor", "eta1", "eta2"), rows = 2L),
+  Reliability_Validity_Numeric = list(names = c(
+    "Factor", "k", "AVE", "sqrt(AVE)", "CR", "Cronbach's alpha", "Omega total",
+    "Max absolute latent correlation", "Fornell-Larcker criterion",
+    "Fornell-Larcker assessed", "Single indicator",
+    "Externally constrained single indicator", "Contains cross-loaded indicator"
+  ), rows = 2L),
+  Sample_Descriptives = list(names = c("Group", "Variable", "Mean", "Variance", "SD", "Model N"), rows = 6L),
+  Sample_Covariance = list(names = c("Group", "Row", "Column", "Covariance", "Correlation"), rows = 36L),
+  Bollen_Stine = list(names = c(
+    "Observed chi-square", "Bootstrap p", "Monte Carlo SE", "Monte Carlo 95% lower",
+    "Monte Carlo 95% upper", "Valid replicates", "Requested replicates",
+    "Valid %", "Status", "Seed", "Model context"
+  ), rows = 1L),
+  Notes = list(names = c("Section", "Note"), rows = 11L)
+)
+for (name in names(sheet_snapshots)) {
+  assert_sheet_snapshot(integrated_sheets, name, sheet_snapshots[[name]]$names, sheet_snapshots[[name]]$rows)
+}
 required_integrated_sheets <- c(
   "Contents", "Overview", "Report_Summary", "Fit", "Validity", "Measurement", "Model_Syntax", "Analysis_Record",
   "Fit_Numeric", "Admissibility_Diagnostics", "RMSEA_Tests", "Information_Criteria", "Parameter_Estimates", "Latent_Correlations",
@@ -116,16 +163,51 @@ stopifnot(
   any(integrated_sheets$Report_Summary$Item == "Analysis context"),
   identical(integrated_sheets$Bollen_Stine$`Model context`[[1L]], "Prespecified/original model"),
   any(integrated_sheets$Contents$Sheet == "Fit_Numeric" & grepl("Numeric model-fit", integrated_sheets$Contents$Description, fixed = TRUE)),
-  any(integrated_sheets$Contents$Sheet == "Validity" & grepl("Formatted reporting", integrated_sheets$Contents$Description, fixed = TRUE))
+  any(integrated_sheets$Contents$Sheet == "Validity" & grepl("Formatted reporting", integrated_sheets$Contents$Description, fixed = TRUE)),
+  identical(integrated_sheets$Fit_Numeric$Model[[1L]], "Fitted model"),
+  identical(integrated_sheets$Fit_Numeric$df[[1L]], 8),
+  identical(integrated_sheets$Fit_Numeric$`RMSEA CI level`[[1L]], .90),
+  identical(integrated_sheets$Parameter_Estimates$lhs[[1L]], "eta1"),
+  identical(integrated_sheets$Parameter_Estimates$op[[1L]], "=~"),
+  identical(integrated_sheets$Parameter_Estimates$rhs[[1L]], "x1"),
+  isTRUE(integrated_sheets$Parameter_Estimates$Fixed[[1L]]),
+  identical(integrated_sheets$Reliability_Validity_Numeric$Factor, c("eta1", "eta2")),
+  identical(integrated_sheets$Sample_Descriptives$Variable, c("x1", "x2", "x3", "y1", "y2", "y3")),
+  identical(integrated_sheets$Bollen_Stine$`Requested replicates`[[1L]], 10L),
+  identical(integrated_sheets$Bollen_Stine$Status[[1L]], "Adequate")
 )
 
 integrated_workbook_file <- tempfile(fileext = ".xlsx")
 structural_canvas_write_result_workbook(integrated_sheets, integrated_workbook_file)
 integrated_workbook_names <- openxlsx::getSheetNames(integrated_workbook_file)
+workbook_fit <- assert_workbook_sheet_snapshot(integrated_workbook_file, "Fit_Numeric", c(
+  "Model", "Chi-square", "df", "p", "Q", "CFI", "TLI", "SRMR", "RMSEA",
+  "RMSEA.CI.lower", "RMSEA.CI.upper", "RMSEA.CI.level",
+  "Chi-square.source", "CFI.source", "TLI.source", "RMSEA.source"
+), 1L)
+workbook_parameters <- assert_workbook_sheet_snapshot(integrated_workbook_file, "Parameter_Estimates", c(
+  "lhs", "op", "rhs", "est", "se", "z", "p", "ci.lower", "ci.upper",
+  "std.lv", "std.all", "Fixed"
+), 15L)
+workbook_reliability <- assert_workbook_sheet_snapshot(integrated_workbook_file, "Reliability_Validity_Numeric", c(
+  "Factor", "k", "AVE", "sqrt(AVE)", "CR", "Cronbach's.alpha", "Omega.total",
+  "Max.absolute.latent.correlation", "Fornell-Larcker.criterion",
+  "Fornell-Larcker.assessed", "Single.indicator",
+  "Externally.constrained.single.indicator", "Contains.cross-loaded.indicator"
+), 2L)
+workbook_descriptives <- assert_workbook_sheet_snapshot(integrated_workbook_file, "Sample_Descriptives", c(
+  "Group", "Variable", "Mean", "Variance", "SD", "Model.N"
+), 6L)
 stopifnot(
   file.exists(integrated_workbook_file), file.info(integrated_workbook_file)$size > 0L,
   identical(integrated_workbook_names[[1L]], "Contents"),
-  all(c("Overview", "Report_Summary", "Fit_Numeric", "Parameter_Estimates", "Notes") %in% integrated_workbook_names)
+  all(c("Overview", "Report_Summary", "Fit_Numeric", "Parameter_Estimates", "Notes") %in% integrated_workbook_names),
+  identical(workbook_fit$Model[[1L]], "Fitted model"),
+  identical(workbook_fit$df[[1L]], 8),
+  identical(workbook_parameters$lhs[[1L]], "eta1"),
+  identical(workbook_parameters$Fixed[[1L]], TRUE),
+  identical(workbook_reliability$Factor, c("eta1", "eta2")),
+  identical(workbook_descriptives$Variable, c("x1", "x2", "x3", "y1", "y2", "y3"))
 )
 unlink(integrated_workbook_file)
 
@@ -139,16 +221,42 @@ invariance_export_bundle$invariance_result <- structural_canvas_measurement_inva
   estimator = "MLR"
 )
 invariance_export_sheets <- structural_canvas_result_workbook_sheets(invariance_export_bundle, table_fn)
+invariance_sheet_snapshots <- list(
+  Invariance = list(names = c(
+    "Model", "Chisq", "df", "p", "CFI", "RMSEA", "SRMR", "DeltaCFI", "DeltaRMSEA", "DeltaSRMR",
+    "DeltaChisq", "DeltaDf", "DeltaP", "Converged", "Admissible", "Admissibility reasons",
+    "Parameter boundary dimensions", "Explicit equality constraints", "Residual min eigenvalue",
+    "Latent min eigenvalue", "Parameter min eigenvalue", "Residual condition number",
+    "Latent condition number", "Parameter condition number", "Ill-conditioned warning"
+  ), rows = 4L),
+  Invariance_Groups = list(names = c(
+    "Group", "N", "Complete indicator cases", "Indicator missing %",
+    "Minimum category count", "Absent ordered categories", "Status"
+  ), rows = 2L),
+  Invariance_Reliability = list(names = c("Group", "Factor", "k", "AVE", "CR", "Cronbach's alpha", "Omega total"), rows = 4L),
+  Invariance_HTMT = list(names = c("Group", "Factor1", "Factor2", "HTMT", "Criterion", "Reason"), rows = 2L)
+)
+for (name in names(invariance_sheet_snapshots)) {
+  assert_sheet_snapshot(invariance_export_sheets, name, invariance_sheet_snapshots[[name]]$names, invariance_sheet_snapshots[[name]]$rows)
+}
 invariance_workbook_file <- tempfile(fileext = ".xlsx")
 structural_canvas_write_result_workbook(invariance_export_sheets, invariance_workbook_file)
 invariance_workbook_names <- openxlsx::getSheetNames(invariance_workbook_file)
+invariance_workbook_reliability <- assert_workbook_sheet_snapshot(invariance_workbook_file, "Invariance_Reliability", c(
+  "Group", "Factor", "k", "AVE", "CR", "Cronbach's.alpha", "Omega.total"
+), 4L)
+invariance_workbook_htmt <- assert_workbook_sheet_snapshot(invariance_workbook_file, "Invariance_HTMT", c(
+  "Group", "Factor1", "Factor2", "HTMT", "Criterion", "Reason"
+), 2L)
 stopifnot(
   all(c("Invariance", "Invariance_Groups", "Invariance_Reliability", "Invariance_HTMT") %in% names(invariance_export_sheets)),
   all(c("Invariance", "Invariance_Groups", "Invariance_Reliability", "Invariance_HTMT") %in% invariance_workbook_names),
   nrow(invariance_export_sheets$Invariance_Reliability) == 4L,
   nrow(invariance_export_sheets$Invariance_HTMT) == 2L,
   all(c("Group", "Factor", "AVE", "CR", "Cronbach's alpha", "Omega total") %in% names(invariance_export_sheets$Invariance_Reliability)),
-  all(c("Group", "Factor1", "Factor2", "HTMT", "Criterion") %in% names(invariance_export_sheets$Invariance_HTMT))
+  all(c("Group", "Factor1", "Factor2", "HTMT", "Criterion") %in% names(invariance_export_sheets$Invariance_HTMT)),
+  identical(invariance_workbook_reliability$Factor, c("eta1", "eta2", "eta1", "eta2")),
+  identical(invariance_workbook_htmt$Criterion, c("Criterion met", "Criterion met"))
 )
 unlink(invariance_workbook_file)
 
