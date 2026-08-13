@@ -13,8 +13,11 @@ structural_canvas_notify_missing_covariances <- function(missing_covariances, an
 structural_canvas_notify_ignored_pls_covariances <- function(result, analysis_type) {
   ignored_covariances <- result$ignored_covariances %||% character(0)
   if (identical(analysis_type, "plssem") && length(ignored_covariances)) {
+    domain <- shiny::getDefaultReactiveDomain()
+    if (is.null(domain) || !is.function(domain$sendNotification)) return(invisible(FALSE))
     showNotification(paste0("PLS-SEM does not estimate covariance paths; excluded: ", paste(ignored_covariances, collapse = ", "), "."), type = "warning", duration = 10)
   }
+  invisible(TRUE)
 }
 
 structural_canvas_notify_solution_diagnostics <- function(result) {

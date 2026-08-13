@@ -334,6 +334,22 @@ stopifnot(inherits(executed$fit, "pls_model"))
 stopifnot(inherits(fit_result_state()$fit, "pls_model"))
 stopifnot(identical(execution_state$message$type, "custom-model-canvas-result"))
 stopifnot(any(nzchar(vapply(execution_state$message$message$result$edges, function(edge) as.character(edge$label %||% ""), character(1)))))
+execution_state$value <- NULL
+execution_state$message <- NULL
+executed_covariance <- structural_canvas_execute_analysis(
+  pls_covariance_snapshot,
+  settings = list(estimator = "PLS"),
+  input = list(),
+  session = session,
+  dataset_fn = function() data,
+  variable_table_fn = function() variable_table,
+  analysis_type = "plssem",
+  prefix = "structural_plssem",
+  fit_result = fit_result_state
+)
+stopifnot(inherits(executed_covariance$fit, "pls_model"))
+stopifnot(identical(fit_result_state()$diagnostics$ignored_covariances, "eta1 ~~ eta2"))
+stopifnot(identical(execution_state$message$type, "custom-model-canvas-result"))
 
 formative_snapshot <- snapshot
 formative_snapshot$nodes[[1]]$measurementMode <- "formative"
