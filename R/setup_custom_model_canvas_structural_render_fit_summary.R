@@ -190,14 +190,22 @@ structural_canvas_lavaan_quality_priority <- function(items) {
   ifelse(items %in% critical, "Critical", ifelse(items %in% major, "Major", "Advisory"))
 }
 
+structural_canvas_lavaan_quality_action <- function(priority) {
+  ifelse(
+    priority == "Critical", "Resolve before reporting",
+    ifelse(priority == "Major", "Resolve or justify", "Document limitation")
+  )
+}
+
 structural_canvas_lavaan_quality_review_rows <- function(rows) {
   if (!nrow(rows) || !"Status" %in% names(rows)) {
-    return(data.frame(Priority = character(0), Item = character(0), Value = character(0), Guidance = character(0), stringsAsFactors = FALSE))
+    return(data.frame(Priority = character(0), Action = character(0), Item = character(0), Value = character(0), Guidance = character(0), stringsAsFactors = FALSE))
   }
   review <- rows[rows$Status == "Review", c("Item", "Value", "Guidance"), drop = FALSE]
   review$Priority <- structural_canvas_lavaan_quality_priority(review$Item)
+  review$Action <- structural_canvas_lavaan_quality_action(review$Priority)
   priority_order <- c(Critical = 1L, Major = 2L, Advisory = 3L)
-  review <- review[order(priority_order[review$Priority], review$Item), c("Priority", "Item", "Value", "Guidance"), drop = FALSE]
+  review <- review[order(priority_order[review$Priority], review$Item), c("Priority", "Action", "Item", "Value", "Guidance"), drop = FALSE]
   rownames(review) <- NULL
   review
 }
