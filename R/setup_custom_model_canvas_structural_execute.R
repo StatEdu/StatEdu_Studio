@@ -70,6 +70,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   missing_covariances <- structural_canvas_missing_exogenous_covariances(snapshot)
   structural_canvas_notify_missing_covariances(missing_covariances, analysis_type)
   result <- run_structural_canvas_analysis(snapshot, data, analysis_type, estimator = estimator, missing = missing, std_lv = std_lv, ordered = ordered, nominal = nominal, residual_variance_fixes = residual_variance_fixes)
+  structural_canvas_notify_ignored_pls_covariances(result, analysis_type)
   structural_canvas_notify_solution_diagnostics(result)
   if (identical(analysis_type, "cfa") && bollen_stine_bootstrap > 0L) {
     if (invariance_enabled) stop("Bollen-Stine bootstrap cannot be combined with measurement-invariance analysis; assess global fit within the appropriate group model instead of the pooled CFA.")
