@@ -284,10 +284,19 @@ structural_canvas_lavaan_structural_effect_rows <- function(fit, effect_definiti
   if (!length(effect_definitions)) return(data.frame())
   raw <- lavaan::parameterEstimates(fit, ci = TRUE)
   raw <- raw[raw$op == ":=", c("lhs", "est", "se", "z", "pvalue", "ci.lower", "ci.upper"), drop = FALSE]
+  standardized <- tryCatch(lavaan::standardizedSolution(fit, ci = TRUE, level = .95), error = function(error) data.frame())
+  if (all(c("lhs", "op", "est.std", "ci.lower", "ci.upper") %in% names(standardized))) {
+    standardized <- standardized[standardized$op == ":=", c("lhs", "est.std", "ci.lower", "ci.upper"), drop = FALSE]
+  } else {
+    standardized <- data.frame(lhs = character(0), est.std = numeric(0), ci.lower = numeric(0), ci.upper = numeric(0))
+  }
   rows <- lapply(effect_definitions, function(effect) {
     row <- raw[raw$lhs == effect$label, , drop = FALSE]
     if (!nrow(row)) return(NULL)
-    beta <- structural_canvas_lavaan_standardized_effect(fit, effect)
+    standardized_row <- standardized[standardized$lhs == effect$label, , drop = FALSE]
+    beta <- if (nrow(standardized_row)) suppressWarnings(as.numeric(standardized_row$est.std[[1L]])) else structural_canvas_lavaan_standardized_effect(fit, effect)
+    beta_ci_lower <- if (nrow(standardized_row)) suppressWarnings(as.numeric(standardized_row$ci.lower[[1L]])) else NA_real_
+    beta_ci_upper <- if (nrow(standardized_row)) suppressWarnings(as.numeric(standardized_row$ci.upper[[1L]])) else NA_real_
     data.frame(
       Effect = as.character(effect$type %||% ""),
       Outcome = vapply(as.character(effect$outcome %||% ""), display_name, character(1)),
@@ -297,8 +306,8 @@ structural_canvas_lavaan_structural_effect_rows <- function(fit, effect_definiti
       `B 95% CI upper` = fmt(row$ci.upper),
       SE = fmt(row$se),
       beta = fmt(beta),
-      `beta 95% CI lower` = "",
-      `beta 95% CI upper` = "",
+      `beta 95% CI lower` = fmt(beta_ci_lower),
+      `beta 95% CI upper` = fmt(beta_ci_upper),
       R2 = "",
       z = fmt(row$z),
       p = vapply(row$pvalue, format_p, character(1)),

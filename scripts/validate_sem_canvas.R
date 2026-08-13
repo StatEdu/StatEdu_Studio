@@ -152,6 +152,8 @@ stopifnot(all(nzchar(cbsem_mediation_structural$beta[cbsem_mediation_structural$
 stopifnot(all(nzchar(cbsem_mediation_structural$p[cbsem_mediation_structural$Effect %in% c("Direct", "Indirect", "Total")])))
 stopifnot(any(nzchar(cbsem_mediation_structural[["R²"]][cbsem_mediation_structural$Effect == "Direct" & cbsem_mediation_structural$Outcome == "etaC"])))
 stopifnot(any(nzchar(cbsem_mediation_structural[["beta 95% CI lower"]][cbsem_mediation_structural$Effect == "Direct"])))
+stopifnot(all(nzchar(cbsem_mediation_structural[["beta 95% CI lower"]][cbsem_mediation_structural$Effect %in% c("Indirect", "Total")])))
+stopifnot(all(nzchar(cbsem_mediation_structural[["beta 95% CI upper"]][cbsem_mediation_structural$Effect %in% c("Indirect", "Total")])))
 
 cycle_snapshot <- snapshot
 cycle_snapshot$edges <- c(cycle_snapshot$edges, list(list(id = "p2", from = "lv2", to = "lv1")))
