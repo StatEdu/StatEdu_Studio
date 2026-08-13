@@ -1,8 +1,9 @@
 # Structural equation canvas HTMT render outputs.
 
-structural_canvas_register_htmt_outputs <- function(output, prefix, fit_result) {
+structural_canvas_register_htmt_outputs <- function(output, prefix, fit_result, app_language_fn = NULL) {
 output[[paste0(prefix, "_result_htmt")]] <- renderUI({
   bundle <- fit_result()
+  ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
   fit <- bundle$fit
   standardized <- lavaan::standardizedSolution(fit)
   loadings <- standardized[standardized$op == "=~", c("lhs", "rhs"), drop = FALSE]
@@ -12,7 +13,7 @@ output[[paste0(prefix, "_result_htmt")]] <- renderUI({
   indicators_by_factor <- stats::setNames(lapply(factor_names, function(name) unique(loadings$rhs[loadings$lhs == name])), factor_names)
   sample_statistics <- lavaan::lavInspect(fit, "sampstat")
   sample_covariance <- sample_statistics$cov %||% NULL
-  if (is.null(sample_covariance)) return(tags$p(class = "structural-result-note", "HTMT is not currently displayed for multigroup sample statistics."))
+  if (is.null(sample_covariance)) return(tags$p(class = "structural-result-note", if (ko) "다집단 표본통계에 대한 HTMT는 현재 결과 화면에 표시하지 않습니다." else "HTMT is not currently displayed for multigroup sample statistics."))
   sample_correlations <- stats::cov2cor(as.matrix(sample_covariance))
   threshold <- as.numeric(bundle$htmt_threshold %||% .85)
   htmt <- structural_canvas_htmt(sample_correlations, indicators_by_factor, threshold)
@@ -54,7 +55,7 @@ output[[paste0(prefix, "_result_htmt")]] <- renderUI({
     }
   }
   tagList(
-    tags$h5(paste0("HTMT (threshold = ", format(threshold, nsmall = 2L), ")")),
+    tags$h5(if (ko) paste0("HTMT (기준 = ", format(threshold, nsmall = 2L), ")") else paste0("HTMT (threshold = ", format(threshold, nsmall = 2L), ")")),
     tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered structural-htmt-matrix",
       tags$thead(tags$tr(lapply(colnames(matrix_values), tags$th))),
       tags$tbody(lapply(seq_len(nrow(matrix_values)), function(index) tags$tr(lapply(as.character(matrix_values[index, ]), tags$td))))
@@ -64,23 +65,23 @@ output[[paste0(prefix, "_result_htmt")]] <- renderUI({
       tags$tbody(lapply(seq_len(nrow(pair_table)), function(index) tags$tr(lapply(as.character(pair_table[index, ]), tags$td))))
     )),
     if (!is.null(bootstrap_table)) tagList(
-      tags$h5(paste0("HTMT ", htmt_ci_label, " bootstrap confidence intervals (", bootstrap_reps, " resamples; seed = ", bootstrap_seed, ")")),
+      tags$h5(if (ko) paste0("HTMT ", htmt_ci_label, " 부트스트랩 신뢰구간 (", bootstrap_reps, "회 재표집; seed = ", bootstrap_seed, ")") else paste0("HTMT ", htmt_ci_label, " bootstrap confidence intervals (", bootstrap_reps, " resamples; seed = ", bootstrap_seed, ")")),
       tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered structural-htmt-bootstrap",
         tags$thead(tags$tr(lapply(names(bootstrap_table), tags$th))),
         tags$tbody(lapply(seq_len(nrow(bootstrap_table)), function(index) tags$tr(lapply(as.character(bootstrap_table[index, ]), tags$td))))
       ))
     ),
-    tags$p(class = "structural-result-note", "HTMT uses absolute item correlations. Values below the selected threshold are marked 'Criterion met'."),
-    if (length(bundle$ordered %||% character(0))) tags$p(class = "structural-result-note", "For ordered indicators, HTMT uses lavaan's polychoric latent-response correlations."),
-    if (bootstrap_reps <= 0L) tags$p(class = "structural-result-note", "HTMT point estimates are descriptive. Select HTMT bootstrap CI in the analysis options when interval estimates are required."),
-    if (bootstrap_reps > 0L && is.null(bootstrap_table)) tags$p(class = "structural-result-note", "HTMT bootstrap confidence intervals could not be estimated from the selected indicators."),
-    if (bootstrap_incomplete) tags$p(class = "structural-result-note", "Some bootstrap resamples could not produce an admissible correlation matrix, commonly because an ordered category was absent or sparse. Interpret intervals with reduced valid-replicate counts cautiously."),
-    if (bootstrap_bca_unavailable) tags$p(class = "structural-result-note", "BCa unavailable means the bias-correction or jackknife acceleration could not be computed for that pair; increase valid replicates or use percentile CI for reporting."),
-    if (bootstrap_caution) tags$p(class = "structural-result-note", "HTMT bootstrap status Caution means that 50% to less than 80% of requested resamples were valid. Treat the interval as unstable and report the valid-replicate count."),
-    if (bootstrap_unreliable) tags$p(class = "structural-result-note", "HTMT bootstrap status Unreliable means that fewer than 50% of requested resamples were valid. Confidence limits and threshold decisions are not assessed and should not be used as discriminant-validity evidence."),
+    tags$p(class = "structural-result-note", if (ko) "HTMT는 문항 상관의 절댓값을 사용합니다. 선택 기준보다 낮은 값은 'Criterion met'으로 표시됩니다." else "HTMT uses absolute item correlations. Values below the selected threshold are marked 'Criterion met'."),
+    if (length(bundle$ordered %||% character(0))) tags$p(class = "structural-result-note", if (ko) "순서형 지표에서는 HTMT가 lavaan의 polychoric latent-response 상관을 사용합니다." else "For ordered indicators, HTMT uses lavaan's polychoric latent-response correlations."),
+    if (bootstrap_reps <= 0L) tags$p(class = "structural-result-note", if (ko) "HTMT 점추정값은 기술적 지표입니다. 구간추정이 필요하면 분석 옵션에서 HTMT 부트스트랩 CI를 선택하십시오." else "HTMT point estimates are descriptive. Select HTMT bootstrap CI in the analysis options when interval estimates are required."),
+    if (bootstrap_reps > 0L && is.null(bootstrap_table)) tags$p(class = "structural-result-note", if (ko) "선택된 지표로부터 HTMT 부트스트랩 신뢰구간을 계산하지 못했습니다." else "HTMT bootstrap confidence intervals could not be estimated from the selected indicators."),
+    if (bootstrap_incomplete) tags$p(class = "structural-result-note", if (ko) "일부 부트스트랩 재표집은 허용 가능한 상관행렬을 만들지 못했습니다. 순서형 범주가 없거나 희소한 경우가 흔한 원인입니다. 유효 반복 수가 줄어든 구간은 신중하게 해석하십시오." else "Some bootstrap resamples could not produce an admissible correlation matrix, commonly because an ordered category was absent or sparse. Interpret intervals with reduced valid-replicate counts cautiously."),
+    if (bootstrap_bca_unavailable) tags$p(class = "structural-result-note", if (ko) "BCa unavailable은 해당 쌍의 편향보정 또는 잭나이프 가속도를 계산하지 못했다는 뜻입니다. 유효 반복 수를 늘리거나 보고에는 percentile CI 사용을 검토하십시오." else "BCa unavailable means the bias-correction or jackknife acceleration could not be computed for that pair; increase valid replicates or use percentile CI for reporting."),
+    if (bootstrap_caution) tags$p(class = "structural-result-note", if (ko) "HTMT 부트스트랩 상태 Caution은 요청 재표집의 50% 이상 80% 미만만 유효했다는 뜻입니다. 구간은 불안정할 수 있으므로 유효 반복 수를 함께 보고하십시오." else "HTMT bootstrap status Caution means that 50% to less than 80% of requested resamples were valid. Treat the interval as unstable and report the valid-replicate count."),
+    if (bootstrap_unreliable) tags$p(class = "structural-result-note", if (ko) "HTMT 부트스트랩 상태 Unreliable은 요청 재표집의 50% 미만만 유효했다는 뜻입니다. 신뢰한계와 기준 판단은 평가하지 않으며, 변별타당도 근거로 사용하면 안 됩니다." else "HTMT bootstrap status Unreliable means that fewer than 50% of requested resamples were valid. Confidence limits and threshold decisions are not assessed and should not be used as discriminant-validity evidence."),
     if (!is.null(bootstrap_table)) tags$p(class = "structural-result-note", paste0(
-      "The ", htmt_ci_label, " interval is based on case resampling", if (identical(htmt_ci_method, "bca")) " with leave-one-out jackknife acceleration" else "", if (length(bundle$ordered %||% character(0))) " with polychoric correlations re-estimated in each resample" else "",
-      ". 'Upper < threshold' uses the one-sided 95% upper confidence limit for the selected .85/.90 criterion. 'Upper < 1' indicates whether the two-sided 95% interval excludes 1. These are intentionally reported separately from the point-estimate criterion."
+      if (ko) paste0(htmt_ci_label, " 구간은 사례 재표집", if (identical(htmt_ci_method, "bca")) "과 leave-one-out 잭나이프 가속도" else "", if (length(bundle$ordered %||% character(0))) " 및 각 재표집에서 재추정된 polychoric 상관" else "", "에 기반합니다. 'Upper < threshold'는 선택된 .85/.90 기준에 대한 단측 95% 상한을 사용합니다. 'Upper < 1'은 양측 95% 구간이 1을 제외하는지 나타냅니다. 이 판단은 점추정 기준과 분리해 보고합니다.") else paste0("The ", htmt_ci_label, " interval is based on case resampling", if (identical(htmt_ci_method, "bca")) " with leave-one-out jackknife acceleration" else "", if (length(bundle$ordered %||% character(0))) " with polychoric correlations re-estimated in each resample" else "",
+      ". 'Upper < threshold' uses the one-sided 95% upper confidence limit for the selected .85/.90 criterion. 'Upper < 1' indicates whether the two-sided 95% interval excludes 1. These are intentionally reported separately from the point-estimate criterion.")
     ))
   )
 })
