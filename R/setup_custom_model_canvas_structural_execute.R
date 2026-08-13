@@ -7,9 +7,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     stop(paste0("Model identification check failed: ", paste(paste0(identification_errors$Element, " — ", identification_errors$Message), collapse = "; ")))
   }
   identification_warnings <- identification[identification$Severity == "Warning", , drop = FALSE]
-  if (nrow(identification_warnings)) {
-    showNotification(paste0("Identification warning: ", paste(paste0(identification_warnings$Element, " — ", identification_warnings$Message), collapse = "; ")), type = "warning", duration = 12)
-  }
+  structural_canvas_notify_identification_warnings(identification_warnings)
   options <- structural_canvas_execute_settings(settings, input, prefix)
   estimator <- options$estimator
   missing <- options$missing
@@ -68,35 +66,9 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     holdout_rows <- list()
   }
   missing_covariances <- structural_canvas_missing_exogenous_covariances(snapshot)
-  if (analysis_type %in% c("cfa", "cbsem") && length(missing_covariances)) {
-    showNotification(paste0("Missing covariance paths between exogenous latent variables: ", paste(missing_covariances, collapse = ", "), ". These covariances will be fixed to zero."), type = "warning", duration = 10)
-  }
+  structural_canvas_notify_missing_covariances(missing_covariances, analysis_type)
   result <- run_structural_canvas_analysis(snapshot, data, analysis_type, estimator = estimator, missing = missing, std_lv = std_lv, ordered = ordered, nominal = nominal, residual_variance_fixes = residual_variance_fixes)
-  if (!isTRUE(result$admissible)) {
-    details <- c(
-      if (!isTRUE(result$converged)) "the model did not converge",
-      if (!isTRUE(result$post_check)) "lavaan post-estimation checks failed",
-      if (!isTRUE(result$identified)) paste0("model degrees of freedom are invalid (df = ", format_decimal3(result$df), ")"),
-      if (length(result$negative_residuals)) paste0("negative residual variances: ", paste(result$negative_residuals, collapse = ", ")),
-      if (length(result$negative_latent_variances)) paste0("negative latent variances: ", paste(result$negative_latent_variances, collapse = ", ")),
-      if (isTRUE(result$non_psd_theta)) paste0("residual covariance matrix is not positive semidefinite (minimum eigenvalue = ", format_decimal3(result$theta_min_eigenvalue), ")"),
-      if (isTRUE(result$non_psd_latent_covariance)) paste0("latent covariance matrix is not positive semidefinite (minimum eigenvalue = ", format_decimal3(result$latent_min_eigenvalue), ")"),
-      if (isTRUE(result$near_singular_theta)) paste0("residual covariance matrix is near singular or on the boundary (minimum eigenvalue = ", format_decimal3(result$theta_min_eigenvalue), ")"),
-      if (isTRUE(result$near_singular_latent_covariance)) paste0("latent covariance matrix is near singular or on the boundary (minimum eigenvalue = ", format_decimal3(result$latent_min_eigenvalue), ")"),
-      if (isTRUE(result$non_psd_parameter_covariance)) paste0("parameter-estimate covariance matrix is not positive semidefinite (minimum eigenvalue = ", format(result$parameter_min_eigenvalue, scientific = TRUE, digits = 3), ")"),
-      if (isTRUE(result$near_singular_parameter_covariance)) paste0("parameter-estimate covariance matrix is near singular (minimum eigenvalue = ", format(result$parameter_min_eigenvalue, scientific = TRUE, digits = 3), ")"),
-      if (isTRUE(result$invalid_correlations)) "one or more absolute latent correlations are at least 1"
-    )
-    showNotification(paste0("Potentially inadmissible solution: ", paste(details, collapse = "; "), ". Interpret fit, AVE, CR, and validity results with caution."), type = "error", duration = NULL)
-  }
-  conditioning_details <- c(
-    if (isTRUE(result$ill_conditioned_theta)) paste0("residual covariance condition number = ", format(result$theta_condition_number, scientific = TRUE, digits = 3)),
-    if (isTRUE(result$ill_conditioned_latent_covariance)) paste0("latent covariance condition number = ", format(result$latent_condition_number, scientific = TRUE, digits = 3)),
-    if (isTRUE(result$ill_conditioned_parameter_covariance)) paste0("parameter-estimate covariance condition number = ", format(result$parameter_condition_number, scientific = TRUE, digits = 3))
-  )
-  if (length(conditioning_details)) {
-    showNotification(paste0("Numerically ill-conditioned solution: ", paste(conditioning_details, collapse = "; "), ". Small data or specification changes may produce unstable estimates."), type = "warning", duration = 12)
-  }
+  structural_canvas_notify_solution_diagnostics(result)
   if (identical(analysis_type, "cfa") && bollen_stine_bootstrap > 0L) {
     if (invariance_enabled) stop("Bollen-Stine bootstrap cannot be combined with measurement-invariance analysis; assess global fit within the appropriate group model instead of the pooled CFA.")
     eligibility <- structural_canvas_bollen_stine_eligibility(result$fit)
