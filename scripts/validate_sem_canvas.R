@@ -56,6 +56,8 @@ stopifnot(
   grepl("rather than covariance-based global fit indices", ui_source, fixed = TRUE),
   grepl("PLS-SEM measurement output reports outer loadings, outer weights, item VIF", ui_source, fixed = TRUE),
   grepl("Fornell-Larcker, and HTMT summaries", ui_source, fixed = TRUE),
+  grepl("indirect and total effect rows are included", ui_source, fixed = TRUE),
+  grepl("표준화 효과의 95% 신뢰구간", ui_source, fixed = TRUE),
   !grepl("Latent covariance, factor-score, HTMT, and lavaan delta-method diagnostics are not displayed", ui_source, fixed = TRUE)
 )
 
