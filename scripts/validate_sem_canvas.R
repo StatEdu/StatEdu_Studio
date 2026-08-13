@@ -44,6 +44,7 @@ snapshot <- list(
 
 labels_fn <- function() character(0)
 language_fn <- function() "en"
+notification_source <- readLines(file.path("R", "setup_custom_model_canvas_structural_execute_notifications.R"), warn = FALSE, encoding = "UTF-8")
 stopifnot(
   grepl("PLS structural model effects", ui_source, fixed = TRUE),
   grepl("PLS 구조모형 효과", ui_source, fixed = TRUE),
@@ -62,9 +63,11 @@ stopifnot(
   grepl("PLS-SEM does not estimate covariance paths; excluded:", ui_source, fixed = TRUE),
   grepl("PLS-SEM은 공분산 경로를 추정하지", ui_source, fixed = TRUE),
   grepl("외생 잠재변수 사이의 공분산 경로가 없습니다", ui_source, fixed = TRUE),
+  grepl("structural_canvas_show_notification <- function", ui_source, fixed = TRUE),
   grepl("structural_canvas_notify_missing_covariances(missing_covariances, analysis_type, statedu_current_language(app_language_fn))", ui_source, fixed = TRUE),
   grepl("structural_canvas_notify_ignored_pls_covariances(result, analysis_type, statedu_current_language(app_language_fn))", ui_source, fixed = TRUE),
   grepl("PLS-SEM에서는 공분산 경로를 추정하지", ui_source, fixed = TRUE),
+  sum(grepl("showNotification(", notification_source, fixed = TRUE)) == 1L,
   !grepl("Latent covariance, factor-score, HTMT, and lavaan delta-method diagnostics are not displayed", ui_source, fixed = TRUE)
 )
 
