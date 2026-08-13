@@ -47,7 +47,7 @@
       if (!edited) return;
       copyFields(edge, edited, [
         "shape", "curveDirection", "curveOffset", "controlPoint",
-        "fromSide", "toSide", "fixedCenter", "labelPosition",
+        "fromSide", "toSide", "fixedCenter", "directAnchors", "labelPosition",
         "labelOffsetX", "labelOffsetY", "labelFontSize", "labelTextAnchor"
       ]);
     });

@@ -3,6 +3,7 @@ source(file.path("scripts", "validate_cfa_common.R"), encoding = "UTF-8")
 stopifnot(requireNamespace("htmltools", quietly = TRUE))
 
 canvas_js_source <- paste(readLines(file.path("www", "model-canvas", "canvas.js"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+bridge_js_source <- paste(readLines(file.path("www", "model-canvas", "shiny-bridge.js"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 stopifnot(
   grepl("Latent construct correlations, reliability, and convergent/discriminant validity", ui_source, fixed = TRUE),
   length(gregexpr('class = "table-responsive"', ui_source, fixed = TRUE)[[1L]]) >= 8L,
@@ -12,6 +13,7 @@ stopifnot(
   grepl("parseInitialSnapshot", canvas_js_source, fixed = TRUE),
   grepl("window.StatEduModelCanvas.state.restore(instance.state, initialSnapshot)", canvas_js_source, fixed = TRUE),
   grepl("window.Shiny && typeof window.Shiny.setInputValue === \"function\"", canvas_js_source, fixed = TRUE),
+  grepl("\"fromSide\", \"toSide\", \"fixedCenter\", \"directAnchors\", \"labelPosition\"", bridge_js_source, fixed = TRUE),
   grepl("_reliability_ci_method", ui_source, fixed = TRUE),
   grepl("_htmt_ci_method", ui_source, fixed = TRUE),
   grepl("structural_canvas_register_validity_outputs(\n    output, prefix, analysis_type, fit_result, result_table, app_language_fn", ui_source, fixed = TRUE),
