@@ -164,6 +164,9 @@ if (identical(analysis_type, "plssem")) {
   })
   return(invisible(TRUE))
 }
+output[[paste0(prefix, "_result_lavaan_quality")]] <- renderUI({
+  structural_canvas_lavaan_quality_result_ui(fit_result(), analysis_type, statedu_current_language(app_language_fn))
+})
 output[[paste0(prefix, "_result_identification")]] <- renderUI({
   structural_canvas_identification_result_ui(fit_result())
 })

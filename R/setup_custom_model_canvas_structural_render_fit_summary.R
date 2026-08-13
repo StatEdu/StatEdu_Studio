@@ -1,5 +1,163 @@
 # Structural fit summary result rendering.
 
+structural_canvas_lavaan_quality_number <- function(values, direction = "single") {
+  values <- suppressWarnings(as.numeric(values))
+  values <- values[is.finite(values)]
+  if (!length(values)) return("")
+  value <- switch(
+    direction,
+    min = min(values, na.rm = TRUE),
+    max = max(values, na.rm = TRUE),
+    mean = mean(values, na.rm = TRUE),
+    values[[1L]]
+  )
+  format_decimal3(value)
+}
+
+structural_canvas_lavaan_quality_loadings <- function(fit) {
+  standardized <- tryCatch(lavaan::standardizedSolution(fit), error = function(error) data.frame())
+  observed <- tryCatch(lavaan::lavNames(fit, "ov"), error = function(error) character(0))
+  loadings <- standardized[standardized$op == "=~" & standardized$rhs %in% observed, c("lhs", "rhs", "est.std"), drop = FALSE]
+  loadings$est.std <- suppressWarnings(as.numeric(loadings$est.std))
+  loadings
+}
+
+structural_canvas_lavaan_quality_validity <- function(fit) {
+  loadings <- structural_canvas_lavaan_quality_loadings(fit)
+  if (!nrow(loadings)) return(list(ave = numeric(0), cr = numeric(0)))
+  observed <- tryCatch(lavaan::lavNames(fit, "ov"), error = function(error) character(0))
+  standardized <- tryCatch(lavaan::standardizedSolution(fit), error = function(error) data.frame())
+  theta <- matrix(0, nrow = length(observed), ncol = length(observed), dimnames = list(observed, observed))
+  theta_rows <- standardized$op == "~~" & standardized$lhs %in% observed & standardized$rhs %in% observed
+  for (index in which(theta_rows)) {
+    lhs <- standardized$lhs[[index]]
+    rhs <- standardized$rhs[[index]]
+    theta[lhs, rhs] <- standardized$est.std[[index]]
+    theta[rhs, lhs] <- standardized$est.std[[index]]
+  }
+  latent_names <- unique(loadings$lhs)
+  ave <- stats::setNames(vapply(latent_names, function(name) {
+    lambda <- loadings$est.std[loadings$lhs == name]
+    mean(lambda^2, na.rm = TRUE)
+  }, numeric(1)), latent_names)
+  cr <- stats::setNames(vapply(latent_names, function(name) {
+    lambda <- loadings$est.std[loadings$lhs == name]
+    indicators <- loadings$rhs[loadings$lhs == name]
+    common <- sum(lambda, na.rm = TRUE)^2
+    residual <- sum(theta[indicators, indicators, drop = FALSE], na.rm = TRUE)
+    denominator <- common + residual
+    if (is.finite(denominator) && denominator > 0) common / denominator else NA_real_
+  }, numeric(1)), latent_names)
+  list(ave = ave, cr = cr)
+}
+
+structural_canvas_lavaan_quality_max_latent_correlation <- function(fit) {
+  correlations <- tryCatch(as.matrix(lavaan::lavInspect(fit, "cor.lv")), error = function(error) matrix(numeric(0), 0L, 0L))
+  if (!length(correlations) || nrow(correlations) < 2L || ncol(correlations) < 2L) return(NA_real_)
+  correlations[upper.tri(correlations, diag = TRUE)] <- NA_real_
+  values <- suppressWarnings(abs(as.numeric(correlations)))
+  if (!any(is.finite(values))) NA_real_ else max(values, na.rm = TRUE)
+}
+
+structural_canvas_lavaan_quality_structural <- function(fit) {
+  standardized <- tryCatch(lavaan::standardizedSolution(fit), error = function(error) data.frame())
+  structural <- standardized[standardized$op == "~", , drop = FALSE]
+  beta <- suppressWarnings(abs(as.numeric(structural$est.std %||% numeric(0))))
+  r2_values <- tryCatch(lavaan::lavInspect(fit, "r2"), error = function(error) numeric(0))
+  outcomes <- unique(as.character(structural$lhs %||% character(0)))
+  r2 <- suppressWarnings(as.numeric(r2_values[outcomes]))
+  list(path_count = nrow(structural), max_beta = beta, r2 = r2)
+}
+
+structural_canvas_lavaan_quality_rows <- function(bundle, analysis_type = "cfa") {
+  if (is.null(bundle) || is.null(bundle$fit) || !inherits(bundle$fit, "lavaan")) {
+    return(data.frame(Item = character(0), Value = character(0), Guidance = character(0), stringsAsFactors = FALSE))
+  }
+  fit <- bundle$fit
+  selection <- structural_canvas_fit_measures(fit, bundle$estimator %||% "ML", bundle$rmsea_ci %||% .90)
+  values <- selection$values
+  loadings <- structural_canvas_lavaan_quality_loadings(fit)
+  validity <- structural_canvas_lavaan_quality_validity(fit)
+  structural <- structural_canvas_lavaan_quality_structural(fit)
+  converged <- bundle$converged %||% bundle$diagnostics$converged %||% tryCatch(lavaan::lavInspect(fit, "converged"), error = function(error) NA)
+  admissible <- bundle$admissible %||% bundle$diagnostics$admissible %||% tryCatch(structural_canvas_fit_admissibility(fit)$admissible, error = function(error) NA)
+  modified <- if (isTRUE(bundle$modified_model) || isTRUE(bundle$modified_from_baseline) || length(bundle$mi_history %||% list())) "Exploratory modified model" else "Original/prespecified model"
+  data.frame(
+    Item = c(
+      "Converged",
+      "Admissible solution",
+      "Model df",
+      "CFI",
+      "TLI",
+      "RMSEA",
+      "SRMR",
+      "Min standardized loading",
+      "Min CR",
+      "Min AVE",
+      "Max latent correlation",
+      "Structural path count",
+      "Max structural beta",
+      "Min endogenous R2",
+      "Model status"
+    ),
+    Value = c(
+      if (is.na(converged)) "not recorded" else as.character(isTRUE(converged)),
+      if (is.na(admissible)) "not recorded" else as.character(isTRUE(admissible)),
+      structural_canvas_lavaan_quality_number(values[[2L]]),
+      structural_canvas_lavaan_quality_number(values[[5L]]),
+      structural_canvas_lavaan_quality_number(values[[6L]]),
+      structural_canvas_lavaan_quality_number(values[[8L]]),
+      structural_canvas_lavaan_quality_number(values[[7L]]),
+      structural_canvas_lavaan_quality_number(abs(loadings$est.std), "min"),
+      structural_canvas_lavaan_quality_number(validity$cr, "min"),
+      structural_canvas_lavaan_quality_number(validity$ave, "min"),
+      structural_canvas_lavaan_quality_number(structural_canvas_lavaan_quality_max_latent_correlation(fit)),
+      as.character(structural$path_count),
+      structural_canvas_lavaan_quality_number(structural$max_beta, "max"),
+      structural_canvas_lavaan_quality_number(structural$r2, "min"),
+      modified
+    ),
+    Guidance = c(
+      "Must be TRUE before interpreting estimates.",
+      "Must be TRUE before reporting fit, reliability, validity, or structural paths as final.",
+      "df = 0 indicates a saturated model; approximate fit is not substantively diagnostic.",
+      "Review below .90; .95 is a common descriptive target.",
+      "Review below .90; .95 is a common descriptive target.",
+      "Review above .08; .06 is a common descriptive target.",
+      "Review above .10; .08 is a common descriptive target.",
+      "Review indicators below .40/.70 depending on purpose and theory.",
+      "Review construct reliability below .70.",
+      "Review convergent validity below .50.",
+      "Review discriminant validity near or above .85/.90.",
+      "Report whether the model includes structural regressions.",
+      "Inspect coefficients near or above |1| for inadmissibility or suppression.",
+      "Report explanatory power for endogenous latent variables when structural paths exist.",
+      "MI-based modifications are exploratory unless validated in independent data."
+    ),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
+structural_canvas_lavaan_quality_result_ui <- function(bundle, analysis_type = "cfa", language = statedu_initial_language()) {
+  rows <- structural_canvas_lavaan_quality_rows(bundle, analysis_type)
+  if (!nrow(rows)) return(NULL)
+  ko <- identical(normalize_app_language(language), "ko")
+  div(
+    class = "result-section regression-result-panel structural-lavaan-quality-result",
+    h4(if (ko) "SEM quality checklist" else "SEM quality checklist"),
+    structural_canvas_basic_html_table(rows),
+    tags$p(
+      class = "structural-result-note",
+      if (ko) {
+        "This checklist summarizes lavaan SEM/CFA convergence, admissibility, global fit, measurement quality, discriminant-validity risk, and structural explanatory-power conditions for reporting and review."
+      } else {
+        "This checklist summarizes lavaan SEM/CFA convergence, admissibility, global fit, measurement quality, discriminant-validity risk, and structural explanatory-power conditions for reporting and review."
+      }
+    )
+  )
+}
+
 structural_canvas_fit_guidance_result_ui <- function(bundle, language) {
   ko <- identical(normalize_app_language(language), "ko")
   comparison_fits <- if (isTRUE(bundle$modified_from_baseline) && !is.null(bundle$baseline_fit)) list(bundle$baseline_fit, bundle$fit) else list(bundle$fit)

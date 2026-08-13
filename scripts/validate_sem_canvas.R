@@ -55,6 +55,8 @@ stopifnot(
   grepl("PLSpredict predictive assessment", ui_source, fixed = TRUE),
   grepl("PLS-SEM quality checklist", ui_source, fixed = TRUE),
   grepl("measurement, collinearity, explanatory-power, and predictive-quality boundary conditions", ui_source, fixed = TRUE),
+  grepl("SEM quality checklist", ui_source, fixed = TRUE),
+  grepl("convergence, admissibility, global fit, measurement quality, discriminant-validity risk", ui_source, fixed = TRUE),
   grepl("Reporting checklist", ui_source, fixed = TRUE),
   grepl("Estimator or algorithm", ui_source, fixed = TRUE),
   grepl("Admissibility and convergence", ui_source, fixed = TRUE),
@@ -110,6 +112,13 @@ stopifnot(cbsem_reporting$Value[cbsem_reporting$Item == "Estimator or algorithm"
 stopifnot(cbsem_reporting$Value[cbsem_reporting$Item == "Missing-data handling"] == "fiml")
 stopifnot(cbsem_reporting$Value[cbsem_reporting$Item == "Analysis context"] == "Original/prespecified model")
 stopifnot(grepl("converged=TRUE", cbsem_reporting$Value[cbsem_reporting$Item == "Admissibility and convergence"], fixed = TRUE))
+cbsem_quality <- structural_canvas_lavaan_quality_rows(cbsem_bundle, "cbsem")
+stopifnot(nrow(cbsem_quality) == 15L)
+stopifnot(all(c("Converged", "Admissible solution", "CFI", "RMSEA", "SRMR", "Min standardized loading", "Min CR", "Min AVE", "Max latent correlation", "Structural path count", "Max structural beta", "Min endogenous R2", "Model status") %in% cbsem_quality$Item))
+stopifnot(cbsem_quality$Value[cbsem_quality$Item == "Converged"] == "TRUE")
+stopifnot(cbsem_quality$Value[cbsem_quality$Item == "Admissible solution"] == "TRUE")
+stopifnot(cbsem_quality$Value[cbsem_quality$Item == "Structural path count"] == "1")
+stopifnot(cbsem_quality$Value[cbsem_quality$Item == "Model status"] == "Original/prespecified model")
 stopifnot(nrow(structural_canvas_result_table("overview", cbsem_result, "cbsem", labels_fn, language_fn)) > 0L)
 stopifnot(nrow(structural_canvas_result_table("fit", cbsem_result, "cbsem", labels_fn, language_fn)) > 0L)
 stopifnot(nrow(structural_canvas_result_table("validity", cbsem_result, "cbsem", labels_fn, language_fn)) > 0L)
