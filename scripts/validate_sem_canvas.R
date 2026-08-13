@@ -131,9 +131,13 @@ pls_boot_bundle$pls_bootstrap <- 30L
 pls_boot_bundle$pls_bootstrap_result <- pls_bootstrap
 pls_boot_result <- function() pls_boot_bundle
 pls_boot_fit <- structural_canvas_result_table("fit", pls_boot_result, "plssem", labels_fn, language_fn)
+pls_boot_validity <- structural_canvas_result_table("validity", pls_boot_result, "plssem", labels_fn, language_fn)
 pls_boot_measurement <- structural_canvas_result_table("measurement", pls_boot_result, "plssem", labels_fn, language_fn)
-stopifnot(all(c("Boot CI lower", "Boot CI upper", "Boot p") %in% names(pls_boot_fit)))
+stopifnot(all(c("Total effect CI lower", "Total effect CI upper", "Total effect p", "Boot CI lower", "Boot CI upper", "Boot p") %in% names(pls_boot_fit)))
+stopifnot(any(nzchar(pls_boot_fit[["Total effect p"]])))
 stopifnot(any(nzchar(pls_boot_fit[["Boot p"]])))
+stopifnot(all(c("Max HTMT CI lower", "Max HTMT CI upper", "Max HTMT p") %in% names(pls_boot_validity)))
+stopifnot(any(nzchar(pls_boot_validity[["Max HTMT p"]])))
 stopifnot(all(c("Loading CI lower", "Loading CI upper", "Loading p", "Weight CI lower", "Weight CI upper", "Weight p") %in% names(pls_boot_measurement)))
 stopifnot(any(nzchar(pls_boot_measurement[["Loading p"]])))
 
