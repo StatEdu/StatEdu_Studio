@@ -21,8 +21,8 @@ output[[paste0(prefix, "_results")]] <- renderUI({
     } else {
       if (ko) "2. 모형 적합도" else "2. Model fit"
     }), div(class = "table-responsive", uiOutput(paste0(prefix, "_result_fit"))), if (identical(analysis_type, "plssem")) tagList(
-      tags$p(class = "structural-result-note", "PLS-SEM structural output reports path coefficients, R2, adjusted R2, f2, inner VIF, and total/indirect effects rather than covariance-based global fit indices."),
-      tags$p(class = "structural-result-note", "Inner VIF is reported for direct structural paths when an endogenous construct has antecedent predictors available from seminr.")
+      tags$p(class = "structural-result-note", if (ko) "PLS-SEM 구조모형 출력은 공분산 기반 전역 적합도 지수 대신 경로계수, R2, 수정 R2, f2, inner VIF, 총효과와 간접효과를 표시합니다." else "PLS-SEM structural output reports path coefficients, R2, adjusted R2, f2, inner VIF, and total/indirect effects rather than covariance-based global fit indices."),
+      tags$p(class = "structural-result-note", if (ko) "Inner VIF는 seminr에서 내생 구성개념의 선행 예측자 정보를 반환할 때 직접 구조경로에 대해 표시됩니다." else "Inner VIF is reported for direct structural paths when an endogenous construct has antecedent predictors available from seminr.")
     ), uiOutput(paste0(prefix, "_result_fit_guidance")), uiOutput(paste0(prefix, "_result_rmsea_tests")), uiOutput(paste0(prefix, "_result_information_criteria")), uiOutput(paste0(prefix, "_result_bollen_stine")), div(class = "table-responsive", uiOutput(paste0(prefix, "_result_fit_difference")))),
     if (analysis_type == "cbsem") div(
       class = "result-section regression-result-panel structural-path-result",
@@ -37,9 +37,9 @@ output[[paste0(prefix, "_results")]] <- renderUI({
       h4(if (ko) "4. 측정모형" else "4. Measurement model"),
       div(class = "table-responsive", tableOutput(paste0(prefix, "_result_measurement"))),
       if (identical(analysis_type, "plssem")) tagList(
-        tags$p(class = "structural-result-note", "PLS-SEM measurement output reports outer loadings, outer weights, item VIF, cross-loading summaries, and the reflective/formative measurement mode."),
-        tags$p(class = "structural-result-note", "For reflective constructs, review outer loadings and cross-loadings. For formative constructs, prioritize outer weights, item VIF, and substantive indicator coverage."),
-        tags$p(class = "structural-result-note", "When PLS bootstrap is requested, loading and weight CI/p columns use seminr percentile bootstrap summaries when available.")
+        tags$p(class = "structural-result-note", if (ko) "PLS-SEM 측정모형 출력은 outer loading, outer weight, item VIF, 교차적재 요약, reflective/formative 측정모드를 표시합니다." else "PLS-SEM measurement output reports outer loadings, outer weights, item VIF, cross-loading summaries, and the reflective/formative measurement mode."),
+        tags$p(class = "structural-result-note", if (ko) "Reflective 구성개념은 outer loading과 교차적재를 확인하고, formative 구성개념은 outer weight, item VIF, 지표의 이론적 포괄성을 우선 확인합니다." else "For reflective constructs, review outer loadings and cross-loadings. For formative constructs, prioritize outer weights, item VIF, and substantive indicator coverage."),
+        tags$p(class = "structural-result-note", if (ko) "PLS bootstrap을 요청한 경우 loading과 weight의 CI/p 열은 사용 가능한 seminr percentile bootstrap 요약을 사용합니다." else "When PLS bootstrap is requested, loading and weight CI/p columns use seminr percentile bootstrap summaries when available.")
       ) else tagList(
         tags$p(class = "structural-result-note", "* Fixed reference loading; its unstandardized SE, z, and p are not estimated. The standardized loading remains a derived estimate and therefore has a confidence interval."),
         tags$p(class = "structural-result-note", "B confidence intervals are 95% intervals for unstandardized loadings. A fixed reference loading has a degenerate B interval at its fixed value."),
