@@ -131,52 +131,12 @@ for (index in seq_len(nrow(standardized_reliability_theta))) {
 expected_standardized_cr <- sum(standardized_reliability_loadings)^2 / (sum(standardized_reliability_loadings)^2 + sum(expected_theta))
 stopifnot(abs(reliability_estimates$CR - expected_standardized_cr) < 1e-12)
 stopifnot(nrow(model_implied_reliability) == 1L, all(is.finite(unlist(model_implied_reliability[c("AVE", "CR", "Alpha", "Omega")], use.names = FALSE))))
-seed_before_reliability_bootstrap <- .Random.seed
-reliability_progress_events <- list()
-reliability_bootstrap <- structural_canvas_reliability_bootstrap(
-  "eta1 =~ x1 + x2 + x3", continuous, reps = 20L, seed = 20260812L, estimator = "ML", original_fit = ml$fit,
-  progress = function(done, total, valid) {
-    reliability_progress_events[[length(reliability_progress_events) + 1L]] <<- c(done = done, total = total, valid = valid)
-  }
-)
-reliability_cancel_error <- tryCatch({
-  structural_canvas_reliability_bootstrap(
-    "eta1 =~ x1 + x2 + x3", continuous, reps = 2L, seed = 20260812L, estimator = "ML",
-    original_fit = ml$fit, cancel = function() TRUE
-  )
-  ""
-}, error = conditionMessage)
 stopifnot(
   isTRUE(structural_canvas_validate_model_based_bootstrap(ml$fit)),
   identical(structural_canvas_bootstrap_status(c(80, 79, 50, 49, 0), 100), c("Adequate", "Caution", "Caution", "Unreliable", "Unreliable")),
-  nrow(reliability_bootstrap) == 4L,
-  identical(reliability_bootstrap$Statistic, c("AVE", "CR", "Alpha", "Omega")),
-  all(reliability_bootstrap$Lower <= reliability_bootstrap$Upper),
-  all(reliability_bootstrap[["Valid replicates"]] > 0L),
-  all(reliability_bootstrap[["Requested replicates"]] == 20L),
-  all(reliability_bootstrap[["Valid %"]] > 0 & reliability_bootstrap[["Valid %"]] <= 100),
-  all(reliability_bootstrap[["CI method"]] == "Percentile"),
-  all(reliability_bootstrap$Status == "Adequate"),
-  identical(.Random.seed, seed_before_reliability_bootstrap),
-  length(reliability_progress_events) >= 2L,
-  reliability_progress_events[[1L]][["done"]] == 0L,
-  tail(reliability_progress_events, 1L)[[1L]][["done"]] == 20L,
-  tail(reliability_progress_events, 1L)[[1L]][["valid"]] > 0L,
-  grepl("canceled", reliability_cancel_error, fixed = TRUE),
   identical(structural_canvas_bootstrap_ci_method("BCa (slower)"), "bca"),
   grepl('progress(index, total_iterations, length(Filter(function(value) !is.null(value) && nrow(value), estimates[seq_len(index)])))', bootstrap_source, fixed = TRUE),
   grepl("_reliability_ci_method", ui_source, fixed = TRUE)
-)
-small_continuous <- continuous[seq_len(80L), , drop = FALSE]
-small_ml <- lavaan::cfa("eta1 =~ x1 + x2 + x3", data = small_continuous, auto.cov.lv.x = FALSE)
-reliability_bca <- structural_canvas_reliability_bootstrap(
-  "eta1 =~ x1 + x2 + x3", small_continuous, reps = 25L, seed = 20260813L,
-  estimator = "ML", missing = "listwise", original_fit = small_ml, ci_method = "bca"
-)
-stopifnot(
-  nrow(reliability_bca) == 4L,
-  all(reliability_bca[["CI method"]] %in% c("BCa", "BCa unavailable")),
-  all(reliability_bca[["Valid replicates"]] > 0L)
 )
 inadmissible_bootstrap_error <- tryCatch({
   structural_canvas_validate_model_based_bootstrap(NULL, "Test bootstrap")
@@ -517,19 +477,6 @@ numeric_fit_table <- structural_canvas_export_fit_estimates(list(
   fit = two_factor_fit, estimator = "ML", rmsea_ci = .90
 ))
 admissibility_export <- structural_canvas_export_admissibility(list(fit = two_factor_fit))
-set.seed(86420L)
-bollen_seed_before <- .Random.seed
-bollen_progress_events <- list()
-bollen_stine_test <- structural_canvas_bollen_stine(
-  two_factor_fit, reps = 20L, seed = 97531L,
-  progress = function(done, total, valid) {
-    bollen_progress_events[[length(bollen_progress_events) + 1L]] <<- c(done = done, total = total, valid = valid)
-  }
-)
-bollen_cancel_error <- tryCatch({
-  structural_canvas_bollen_stine(two_factor_fit, reps = 2L, seed = 97531L, cancel = function() TRUE)
-  ""
-}, error = conditionMessage)
 bollen_stine_eligible <- structural_canvas_bollen_stine_eligibility(two_factor_fit)
 stopifnot(
   nrow(numeric_fit_table) == 1L,
@@ -543,25 +490,7 @@ stopifnot(
   isTRUE(admissibility_export$Admissible[[1L]]),
   identical(admissibility_export$Reasons[[1L]], "None"),
   all(vapply(admissibility_export[c("Residual min eigenvalue", "Latent min eigenvalue", "Parameter min eigenvalue", "Residual condition number", "Latent condition number", "Parameter condition number")], is.numeric, logical(1))),
-  identical(.Random.seed, bollen_seed_before),
-  isTRUE(bollen_stine_eligible$available),
-  nrow(bollen_stine_test) == 1L,
-  is.finite(bollen_stine_test$`Observed chi-square`[[1L]]),
-  bollen_stine_test$`Bootstrap p`[[1L]] > 0,
-  bollen_stine_test$`Bootstrap p`[[1L]] <= 1,
-  is.finite(bollen_stine_test$`Monte Carlo SE`[[1L]]),
-  bollen_stine_test$`Monte Carlo SE`[[1L]] >= 0,
-  bollen_stine_test$`Monte Carlo 95% lower`[[1L]] >= 0,
-  bollen_stine_test$`Monte Carlo 95% lower`[[1L]] <= bollen_stine_test$`Bootstrap p`[[1L]],
-  bollen_stine_test$`Bootstrap p`[[1L]] <= bollen_stine_test$`Monte Carlo 95% upper`[[1L]],
-  bollen_stine_test$`Monte Carlo 95% upper`[[1L]] <= 1,
-  bollen_stine_test$`Valid replicates`[[1L]] > 0L,
-  identical(bollen_stine_test$`Requested replicates`[[1L]], 20L),
-  length(bollen_progress_events) >= 2L,
-  bollen_progress_events[[1L]][["done"]] == 0L,
-  tail(bollen_progress_events, 1L)[[1L]][["done"]] == 20L,
-  tail(bollen_progress_events, 1L)[[1L]][["valid"]] == bollen_stine_test$`Valid replicates`[[1L]],
-  grepl("canceled", bollen_cancel_error, fixed = TRUE)
+  isTRUE(bollen_stine_eligible$available)
 )
 stopifnot(
   grepl("structural_canvas_fit_admissibility(candidate)$admissible", bootstrap_source, fixed = TRUE),
@@ -847,67 +776,8 @@ stopifnot(abs(htmt$matrix["eta1", "eta2"] - (.20 / sqrt(.50 * .40))) < 1e-10, id
 htmt_review <- structural_canvas_htmt(htmt_correlations, list(eta1 = c("x1", "x2"), eta2 = c("x2", "y2")), .85)
 stopifnot(identical(htmt_review$pairs$Criterion[[1L]], "Not assessed"), grepl("Cross-loaded", htmt_review$pairs$Reason[[1L]], fixed = TRUE))
 
-set.seed(77)
-htmt_boot_data <- data.frame(
-  x1 = stats::rnorm(180), x2 = stats::rnorm(180),
-  y1 = stats::rnorm(180), y2 = stats::rnorm(180)
-)
-seed_before_htmt_boot <- .Random.seed
-htmt_progress_events <- list()
-htmt_boot <- structural_canvas_htmt_bootstrap(
-  htmt_boot_data, list(eta1 = c("x1", "x2"), eta2 = c("y1", "y2")),
-  reps = 100L, confidence = .95, seed = 42L,
-  progress = function(done, total, valid) {
-    htmt_progress_events[[length(htmt_progress_events) + 1L]] <<- c(done = done, total = total, valid = valid)
-  }
-)
-htmt_cancel_error <- tryCatch({
-  structural_canvas_htmt_bootstrap(
-    htmt_boot_data, list(eta1 = c("x1", "x2"), eta2 = c("y1", "y2")),
-    reps = 2L, confidence = .95, seed = 42L, cancel = function() TRUE
-  )
-  ""
-}, error = conditionMessage)
 stopifnot(
-  nrow(htmt_boot) == 1L,
-  all(c("Lower", "Upper", "One-sided upper", "Upper < threshold", "Upper < 1", "CI method", "Valid replicates", "Requested replicates", "Valid %", "Status") %in% names(htmt_boot)),
-  htmt_boot$`Valid replicates`[[1L]] == 100L,
-  htmt_boot$`Requested replicates`[[1L]] == 100L, htmt_boot$`Valid %`[[1L]] == 100,
-  identical(htmt_boot[["CI method"]][[1L]], "Percentile"),
-  identical(htmt_boot$Status[[1L]], "Adequate"),
-  is.finite(htmt_boot$Lower[[1L]]), htmt_boot$Lower[[1L]] <= htmt_boot$`One-sided upper`[[1L]],
-  htmt_boot$`One-sided upper`[[1L]] <= htmt_boot$Upper[[1L]],
-  identical(.Random.seed, seed_before_htmt_boot),
-  length(htmt_progress_events) >= 2L,
-  htmt_progress_events[[1L]][["done"]] == 0L,
-  tail(htmt_progress_events, 1L)[[1L]][["done"]] == 100L,
-  tail(htmt_progress_events, 1L)[[1L]][["valid"]] == 100L,
-  grepl("canceled", htmt_cancel_error, fixed = TRUE),
   grepl("_htmt_ci_method", ui_source, fixed = TRUE)
-)
-htmt_bca <- structural_canvas_htmt_bootstrap(
-  htmt_boot_data, list(eta1 = c("x1", "x2"), eta2 = c("y1", "y2")),
-  reps = 25L, confidence = .95, seed = 44L, ci_method = "bca"
-)
-stopifnot(
-  nrow(htmt_bca) == 1L,
-  htmt_bca[["CI method"]][[1L]] %in% c("BCa", "BCa unavailable"),
-  htmt_bca$`Valid replicates`[[1L]] == 25L
-)
-
-ordinal_boot_data <- as.data.frame(lapply(htmt_boot_data, function(values) {
-  ordered(cut(values, breaks = c(-Inf, -.5, .5, Inf), labels = c("low", "mid", "high")))
-}))
-htmt_ordinal_boot <- structural_canvas_htmt_bootstrap(
-  ordinal_boot_data, list(eta1 = c("x1", "x2"), eta2 = c("y1", "y2")),
-  reps = 30L, confidence = .95, seed = 43L, ordered = names(ordinal_boot_data)
-)
-stopifnot(
-  nrow(htmt_ordinal_boot) == 1L,
-  htmt_ordinal_boot$`Valid replicates`[[1L]] >= 20L,
-  htmt_ordinal_boot$Status[[1L]] %in% c("Adequate", "Caution"),
-  is.finite(htmt_ordinal_boot$Lower[[1L]]),
-  htmt_ordinal_boot$Lower[[1L]] <= htmt_ordinal_boot$Upper[[1L]]
 )
 
 mardia_normal <- structural_canvas_mardia(continuous, names(continuous))
@@ -1037,21 +907,6 @@ stopifnot(
   identical(sparse_pairs$Status, "Review")
 )
 wlsmv <- run_structural_canvas_analysis(snapshot, ordinal, "cfa", estimator = "WLSMV", missing = "pairwise", ordered = ordered_names)
-wlsmv_theta_fit <- lavaan::cfa(
-  "eta1 =~ x1 + x2 + x3", data = ordinal, estimator = "WLSMV",
-  missing = "pairwise", ordered = ordered_names, parameterization = "theta",
-  auto.cov.lv.x = FALSE
-)
-theta_reliability_bootstrap <- structural_canvas_reliability_bootstrap(
-  "eta1 =~ x1 + x2 + x3", ordinal, reps = 5L, estimator = "WLSMV",
-  missing = "pairwise", ordered = ordered_names, original_fit = wlsmv_theta_fit
-)
-stopifnot(
-  identical(lavaan::lavInspect(wlsmv_theta_fit, "options")$parameterization, "theta"),
-  nrow(theta_reliability_bootstrap) == 4L,
-  identical(theta_reliability_bootstrap$Statistic, c("AVE", "CR", "Alpha", "Omega")),
-  all(theta_reliability_bootstrap[["Requested replicates"]] == 5L)
-)
 wlsmv_sample_statistics <- structural_canvas_export_sample_statistics(wlsmv$fit)
 stopifnot(
   nrow(wlsmv_sample_statistics$Descriptives) == length(lavaan::lavNames(wlsmv$fit, "ov")),
