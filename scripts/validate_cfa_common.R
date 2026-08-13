@@ -17,6 +17,7 @@ source(file.path("R", "setup_custom_model_canvas_structural_invariance_evaluatio
 source(file.path("R", "setup_custom_model_canvas_structural_engine.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_bootstrap.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_reliability_bootstrap.R"), encoding = "UTF-8")
+source(file.path("R", "setup_custom_model_canvas_structural_reliability_bootstrap_execute.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_bollen_stine_bootstrap.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_exports.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_export_fit_tables.R"), encoding = "UTF-8")
@@ -109,6 +110,7 @@ evaluation_source <- paste(c(
 bootstrap_source <- paste(c(
   readLines(file.path("R", "setup_custom_model_canvas_structural_bootstrap.R"), warn = FALSE, encoding = "UTF-8"),
   readLines(file.path("R", "setup_custom_model_canvas_structural_reliability_bootstrap.R"), warn = FALSE, encoding = "UTF-8"),
+  readLines(file.path("R", "setup_custom_model_canvas_structural_reliability_bootstrap_execute.R"), warn = FALSE, encoding = "UTF-8"),
   readLines(file.path("R", "setup_custom_model_canvas_structural_bollen_stine_bootstrap.R"), warn = FALSE, encoding = "UTF-8")
 ), collapse = "\n")
 
