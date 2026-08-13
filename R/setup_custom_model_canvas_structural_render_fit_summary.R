@@ -184,11 +184,20 @@ structural_canvas_lavaan_quality_status_summary <- function(rows) {
   )
 }
 
+structural_canvas_lavaan_quality_priority <- function(items) {
+  critical <- c("Converged", "Admissible solution")
+  major <- c("Model df", "CFI", "TLI", "RMSEA", "SRMR", "Min standardized loading", "Min CR", "Min AVE", "Max latent correlation", "Max structural beta")
+  ifelse(items %in% critical, "Critical", ifelse(items %in% major, "Major", "Advisory"))
+}
+
 structural_canvas_lavaan_quality_review_rows <- function(rows) {
   if (!nrow(rows) || !"Status" %in% names(rows)) {
-    return(data.frame(Item = character(0), Value = character(0), Guidance = character(0), stringsAsFactors = FALSE))
+    return(data.frame(Priority = character(0), Item = character(0), Value = character(0), Guidance = character(0), stringsAsFactors = FALSE))
   }
   review <- rows[rows$Status == "Review", c("Item", "Value", "Guidance"), drop = FALSE]
+  review$Priority <- structural_canvas_lavaan_quality_priority(review$Item)
+  priority_order <- c(Critical = 1L, Major = 2L, Advisory = 3L)
+  review <- review[order(priority_order[review$Priority], review$Item), c("Priority", "Item", "Value", "Guidance"), drop = FALSE]
   rownames(review) <- NULL
   review
 }
