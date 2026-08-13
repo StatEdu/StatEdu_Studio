@@ -175,7 +175,7 @@ pls_measurement <- structural_canvas_result_table("measurement", pls_result, "pl
 pls_mi <- structural_canvas_result_table("mi", pls_result, "plssem", labels_fn, language_fn)
 stopifnot(nrow(pls_overview) == 7L)
 stopifnot("Item" %in% names(pls_overview))
-stopifnot(all(c("Effect", "Outcome", "Predictor", "Coefficient", "R2", "AdjR2", "f2", "Indirect effect", "Indirect effect CI lower", "Indirect effect CI upper", "Indirect effect p", "Total effect") %in% names(pls_fit)))
+stopifnot(all(c("Effect", "Outcome", "Predictor", "Coefficient", "R2", "AdjR2", "f2", "Inner VIF", "Indirect effect", "Indirect effect CI lower", "Indirect effect CI upper", "Indirect effect p", "Total effect") %in% names(pls_fit)))
 stopifnot(pls_fit$Effect[[1L]] == "Direct")
 stopifnot(any(pls_fit$Predictor == "eta1"))
 stopifnot(any(pls_fit$Outcome == "eta2"))
@@ -206,6 +206,7 @@ pls_mediation_fit <- structural_canvas_result_table("fit", pls_mediation_result,
 stopifnot(any(pls_mediation_fit$Effect == "Indirect" & pls_mediation_fit$Outcome == "etaC" & pls_mediation_fit$Predictor == "etaA"))
 stopifnot(any(nzchar(pls_mediation_fit[["Indirect effect"]][pls_mediation_fit$Effect == "Indirect"])))
 stopifnot(any(nzchar(pls_mediation_fit[["Total effect"]][pls_mediation_fit$Effect == "Indirect"])))
+stopifnot(any(nzchar(pls_mediation_fit[["Inner VIF"]][pls_mediation_fit$Effect == "Direct" & pls_mediation_fit$Outcome == "etaC"])))
 
 pls_options <- structural_canvas_execute_settings(
   settings = list(pls_bootstrap = 500L, pls_seed = 13579L),
