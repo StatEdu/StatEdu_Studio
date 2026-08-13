@@ -1,6 +1,13 @@
 source(file.path("scripts", "validate_cfa_common.R"), encoding = "UTF-8")
 
 stopifnot(requireNamespace("lavaan", quietly = TRUE))
+edge_source <- paste(readLines(file.path("www", "model-canvas", "edges.js"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+stopifnot(
+  grepl("ARROW_MARKER_CLEARANCE", edge_source, fixed = TRUE),
+  grepl("function visibleArrowEndpoints", edge_source, fixed = TRUE),
+  grepl("to: pointShiftedToward(endpoints.to, endpoints.from, ARROW_MARKER_CLEARANCE)", edge_source, fixed = TRUE),
+  grepl("return visibleArrowEndpoints(edge, endpoints);", edge_source, fixed = TRUE)
+)
 stopifnot(
   structural_canvas_minimum_eigenvalue(diag(2L)) > 0,
   structural_canvas_minimum_eigenvalue(matrix(c(1, 1.2, 1.2, 1), 2L)) < 0,

@@ -5,6 +5,7 @@
   var SNAP_POINTS = [20, 30, 40, 50, 60, 70, 80];
   var ANCHOR_GAP = 2.5;
   var MODERATION_ANCHOR_GAP = 4;
+  var ARROW_MARKER_CLEARANCE = 8;
   var EDGE_SIDES = ["top", "right", "bottom", "left"];
 
   function edgeById(instance, id) {
@@ -242,6 +243,32 @@
     return {x: center.x + dx * scale, y: center.y + dy * scale};
   }
 
+  function pointShiftedToward(point, target, amount) {
+    var dx = target.x - point.x;
+    var dy = target.y - point.y;
+    var distance = Math.sqrt(dx * dx + dy * dy);
+    if (!distance) return point;
+    var shift = Math.min(Number(amount || 0), distance / 3);
+    return {
+      x: point.x + (dx / distance) * shift,
+      y: point.y + (dy / distance) * shift
+    };
+  }
+
+  function visibleArrowEndpoints(edge, endpoints) {
+    if (!edge || !endpoints || edge.directAnchors) return endpoints;
+    if (edge.kind === "covariance") {
+      return {
+        from: pointShiftedToward(endpoints.from, endpoints.to, ARROW_MARKER_CLEARANCE),
+        to: pointShiftedToward(endpoints.to, endpoints.from, ARROW_MARKER_CLEARANCE)
+      };
+    }
+    return {
+      from: endpoints.from,
+      to: pointShiftedToward(endpoints.to, endpoints.from, ARROW_MARKER_CLEARANCE)
+    };
+  }
+
   function moderationTargetPoint(instance, moderation) {
     var edge = edgeById(instance, moderation.toEdge);
     var endpoints = edge ? edgeEndpoints(instance, edge) : null;
@@ -289,10 +316,11 @@
         to: radialNodeAnchor(instance, to, from)
       };
     }
-    return {
+    var endpoints = {
       from: nodeAnchor(instance, from, sides.fromSide, anchorSlot(instance, edge, "from", sides.fromSide)),
       to: nodeAnchor(instance, to, sides.toSide, anchorSlot(instance, edge, "to", sides.toSide))
     };
+    return visibleArrowEndpoints(edge, endpoints);
   }
 
   function pointOnEdge(start, end, percent) {
