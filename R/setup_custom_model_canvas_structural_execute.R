@@ -68,7 +68,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     holdout_rows <- list()
   }
   missing_covariances <- structural_canvas_missing_exogenous_covariances(snapshot)
-  structural_canvas_notify_missing_covariances(missing_covariances, analysis_type)
+  structural_canvas_notify_missing_covariances(missing_covariances, analysis_type, statedu_current_language(app_language_fn))
   result <- run_structural_canvas_analysis(snapshot, data, analysis_type, estimator = estimator, missing = missing, std_lv = std_lv, ordered = ordered, nominal = nominal, residual_variance_fixes = residual_variance_fixes)
   structural_canvas_notify_ignored_pls_covariances(result, analysis_type, statedu_current_language(app_language_fn))
   structural_canvas_notify_solution_diagnostics(result)
