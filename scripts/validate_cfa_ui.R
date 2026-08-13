@@ -21,6 +21,8 @@ stopifnot(
   grepl("AVE/신뢰도 부트스트랩 CI", ui_source, fixed = TRUE),
   grepl("다집단 표본통계에 대한 HTMT", ui_source, fixed = TRUE),
   grepl("국지적 적합도 진단", ui_source, fixed = TRUE),
+  grepl("고차요인 CFA 결과", ui_source, fixed = TRUE),
+  grepl("omega-h는 적합된 고차요인 CFA 모형", ui_source, fixed = TRUE),
   grepl("Download analysis record", ui_source, fixed = TRUE),
   grepl("Download result tables", ui_source, fixed = TRUE),
   !grepl("ko <- FALSE", ui_source, fixed = TRUE),

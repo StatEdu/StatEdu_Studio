@@ -38,6 +38,7 @@ output[[paste0(prefix, "_result_residuals")]] <- renderUI({
 })
 output[[paste0(prefix, "_result_higher_order")]] <- renderUI({
   bundle <- fit_result()
+  ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
   higher <- structural_canvas_higher_order_results(bundle$snapshot %||% list(), bundle$fit)
   if (!isTRUE(higher$available)) return(NULL)
   table <- higher$table
@@ -68,28 +69,70 @@ output[[paste0(prefix, "_result_higher_order")]] <- renderUI({
   display$SE[fixed] <- "Fixed*"
   display$z[fixed] <- "—"
   display$p[fixed] <- "—"
+  if (ko) {
+    display$Guidance <- vapply(display$Guidance, function(value) {
+      switch(
+        value,
+        "Review residual/R² interval" = "잔차/R2 구간 점검",
+        "Not assessed" = "평가 안 됨",
+        "Weak loading review" = "약한 적재량 점검",
+        "No loading flag" = "적재량 경고 없음",
+        value
+      )
+    }, character(1))
+    display$SE[fixed] <- "고정*"
+    names(display) <- c(
+      "고차요인", "저차요인", "B", "B 95% CI 하한", "B 95% CI 상한", "SE", "Beta",
+      "Beta 95% CI 하한", "Beta 95% CI 상한", "R2", "R2 95% CI 하한", "R2 95% CI 상한",
+      "잔차분산", "해석", "z", "p"
+    )
+  }
   omega_h <- structural_canvas_omega_h(bundle$snapshot %||% list(), bundle$fit)
+  omega_h_guidance <- if (isTRUE(omega_h$available)) structural_canvas_omega_h_guidance(omega_h$omega_h) else ""
+  if (ko) {
+    omega_h_guidance <- switch(
+      omega_h_guidance,
+      "Review inadmissible coefficient" = "허용 범위 밖 계수 점검",
+      "Below common .70 guideline" = "일반적 .70 기준 미만",
+      "Meets common .70 guideline" = "일반적 .70 기준 충족",
+      omega_h_guidance
+    )
+  }
+  omega_h_reason <- omega_h$reason
+  if (ko) {
+    omega_h_reason <- switch(
+      omega_h_reason,
+      "No higher-order loading paths are specified." = "고차요인 적재 경로가 지정되지 않았습니다.",
+      "Omega-h requires exactly one higher-order general factor." = "omega-h는 정확히 하나의 고차 일반요인이 필요합니다.",
+      "Omega-h is not reported when a lower-order factor has multiple higher-order loadings." = "하나의 저차요인이 여러 고차요인에 적재되면 omega-h를 보고하지 않습니다.",
+      "No observed indicators were found under the lower-order factors." = "저차요인 아래에서 관측 지표를 찾지 못했습니다.",
+      "Omega-h is not reported with cross-loaded observed indicators." = "교차적재 관측 지표가 있으면 omega-h를 보고하지 않습니다.",
+      "The model-implied indicator covariance matrix is unavailable." = "모형-함의 지표 공분산행렬을 사용할 수 없습니다.",
+      "Omega-h denominator is not positive and finite." = "omega-h 분모가 양의 유한값이 아닙니다.",
+      omega_h_reason
+    )
+  }
   div(class = "result-section regression-result-panel structural-higher-order-result",
-    h4("Higher-order CFA results"),
+    h4(if (ko) "고차요인 CFA 결과" else "Higher-order CFA results"),
     tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered",
       tags$thead(tags$tr(lapply(names(display), tags$th))),
       tags$tbody(lapply(seq_len(nrow(display)), function(index) tags$tr(lapply(as.character(display[index, ]), tags$td))))
     )),
     if (isTRUE(omega_h$available)) tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered",
-      tags$thead(tags$tr(tags$th("Higher-order factor"), tags$th("Indicators"), tags$th("Hierarchical omega (ωh)"), tags$th("Guidance"))),
+      tags$thead(tags$tr(tags$th(if (ko) "고차요인" else "Higher-order factor"), tags$th(if (ko) "지표 수" else "Indicators"), tags$th(if (ko) "위계적 omega (omega-h)" else "Hierarchical omega (ωh)"), tags$th(if (ko) "해석" else "Guidance"))),
       tags$tbody(tags$tr(
         tags$td(omega_h$higher_order_factor), tags$td(omega_h$indicators),
         tags$td(paste0(format_decimal3(omega_h$omega_h), if (!is.finite(omega_h$omega_h) || omega_h$omega_h < 0 || omega_h$omega_h > 1) "†" else "")),
-        tags$td(structural_canvas_omega_h_guidance(omega_h$omega_h))
+        tags$td(omega_h_guidance)
       ))
-    )) else tags$p(class = "structural-result-note", paste0("Hierarchical omega was not reported: ", omega_h$reason)),
-    tags$p(class = "structural-result-note", "Lower-order R² is the variance explained by the higher-order factor. Residual variance is reported on the standardized latent-variable scale."),
-    tags$p(class = "structural-result-note", "Lower-order R² intervals complement the standardized residual-variance intervals. † also marks an R² interval extending beyond [0, 1]."),
-    tags$p(class = "structural-result-note", "Higher-order standardized-loading confidence intervals are 95% delta-method intervals from lavaan."),
-    tags$p(class = "structural-result-note", "B confidence intervals are 95% intervals for unstandardized higher-order loadings; a fixed reference loading has a degenerate interval at its fixed value."),
-    tags$p(class = "structural-result-note", "ωh estimates the proportion of unit-weighted total-score variance attributable to one higher-order general factor under the fitted higher-order CFA model."),
-    tags$p(class = "structural-result-note", "The .40 loading and .70 ωh values are descriptive review guidelines, not universal pass/fail rules. † marks an unavailable value or a coefficient/residual variance outside [0, 1]."),
-    tags$p(class = "structural-result-note", "* Fixed reference loading; SE, z, and p are not estimated.")
+    )) else tags$p(class = "structural-result-note", paste0(if (ko) "위계적 omega를 보고하지 않았습니다: " else "Hierarchical omega was not reported: ", omega_h_reason)),
+    tags$p(class = "structural-result-note", if (ko) "저차요인 R2는 고차요인이 설명하는 분산입니다. 잔차분산은 표준화된 잠재변수 척도로 보고됩니다." else "Lower-order R² is the variance explained by the higher-order factor. Residual variance is reported on the standardized latent-variable scale."),
+    tags$p(class = "structural-result-note", if (ko) "저차요인 R2 구간은 표준화 잔차분산 구간의 보수(complement)입니다. † 표시는 R2 구간이 [0, 1] 범위를 벗어난 경우도 나타냅니다." else "Lower-order R² intervals complement the standardized residual-variance intervals. † also marks an R² interval extending beyond [0, 1]."),
+    tags$p(class = "structural-result-note", if (ko) "고차요인 표준화 적재량 신뢰구간은 lavaan의 95% delta-method 구간입니다." else "Higher-order standardized-loading confidence intervals are 95% delta-method intervals from lavaan."),
+    tags$p(class = "structural-result-note", if (ko) "B 신뢰구간은 비표준화 고차요인 적재량의 95% 구간입니다. 고정된 기준 적재량은 고정값에서 퇴화된 구간을 갖습니다." else "B confidence intervals are 95% intervals for unstandardized higher-order loadings; a fixed reference loading has a degenerate interval at its fixed value."),
+    tags$p(class = "structural-result-note", if (ko) "omega-h는 적합된 고차요인 CFA 모형에서 단위가중 총점 분산 중 하나의 고차 일반요인에 귀속되는 비율을 추정합니다." else "ωh estimates the proportion of unit-weighted total-score variance attributable to one higher-order general factor under the fitted higher-order CFA model."),
+    tags$p(class = "structural-result-note", if (ko) ".40 적재량과 .70 omega-h 값은 기술적 검토 기준이며, 보편적 통과/탈락 규칙이 아닙니다. † 표시는 사용할 수 없는 값 또는 [0, 1] 범위를 벗어난 계수/잔차분산을 나타냅니다." else "The .40 loading and .70 ωh values are descriptive review guidelines, not universal pass/fail rules. † marks an unavailable value or a coefficient/residual variance outside [0, 1]."),
+    tags$p(class = "structural-result-note", if (ko) "* 고정된 기준 적재량은 SE, z, p를 추정하지 않습니다." else "* Fixed reference loading; SE, z, and p are not estimated.")
   )
 })
   invisible(TRUE)
