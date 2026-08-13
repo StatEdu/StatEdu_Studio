@@ -158,16 +158,32 @@ structural_canvas_pls_quality_review_rows <- function(rows) {
   review
 }
 
+structural_canvas_pls_quality_reporting_readiness <- function(rows) {
+  review <- structural_canvas_pls_quality_review_rows(rows)
+  if (!nrow(review)) return("Reporting readiness: no quality-review blockers detected.")
+  critical_n <- sum(review$Priority == "Critical")
+  major_n <- sum(review$Priority == "Major")
+  if (critical_n > 0L) {
+    return(paste0("Reporting readiness: blocked until ", critical_n, " critical review item(s) are resolved."))
+  }
+  if (major_n > 0L) {
+    return(paste0("Reporting readiness: requires resolution or explicit justification for ", major_n, " major review item(s)."))
+  }
+  "Reporting readiness: advisory review item(s) should be documented."
+}
+
 structural_canvas_pls_quality_result_ui <- function(bundle, language = statedu_initial_language()) {
   rows <- structural_canvas_pls_quality_rows(bundle)
   if (!nrow(rows)) return(NULL)
   ko <- identical(normalize_app_language(language), "ko")
   summary <- structural_canvas_pls_quality_status_summary(rows)
+  readiness <- structural_canvas_pls_quality_reporting_readiness(rows)
   review_rows <- structural_canvas_pls_quality_review_rows(rows)
   div(
     class = "result-section regression-result-panel structural-pls-quality-result",
     h4(if (ko) "PLS-SEM quality checklist" else "PLS-SEM quality checklist"),
     tags$p(class = "structural-result-note structural-quality-status-summary", summary),
+    tags$p(class = "structural-result-note structural-quality-reporting-readiness", readiness),
     tags$h5(if (ko) "Review focus" else "Review focus"),
     if (nrow(review_rows)) structural_canvas_basic_html_table(review_rows) else tags$p(class = "structural-result-note", "No Review rows in the quality checklist."),
     structural_canvas_basic_html_table(rows),
