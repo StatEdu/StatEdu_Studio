@@ -45,6 +45,7 @@ source(file.path("R", "setup_custom_model_canvas_structural_measurement_tables.R
 source(file.path("R", "setup_custom_model_canvas_structural_validity_tables.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_mi_tables.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_tables.R"), encoding = "UTF-8")
+source(file.path("R", "setup_custom_model_canvas_structural_render_tables.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_render_data_diagnostics.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_render_invariance.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_render_heywood.R"), encoding = "UTF-8")
@@ -85,6 +86,7 @@ ui_source <- paste(
     readLines(file.path("R", "setup_custom_model_canvas_structural_validity_tables.R"), warn = FALSE, encoding = "UTF-8"),
     readLines(file.path("R", "setup_custom_model_canvas_structural_mi_tables.R"), warn = FALSE, encoding = "UTF-8"),
     readLines(file.path("R", "setup_custom_model_canvas_structural_tables.R"), warn = FALSE, encoding = "UTF-8"),
+    readLines(file.path("R", "setup_custom_model_canvas_structural_render_tables.R"), warn = FALSE, encoding = "UTF-8"),
     readLines(file.path("R", "setup_custom_model_canvas_structural_render_data_diagnostics.R"), warn = FALSE, encoding = "UTF-8"),
     readLines(file.path("R", "setup_custom_model_canvas_structural_render_invariance.R"), warn = FALSE, encoding = "UTF-8"),
     readLines(file.path("R", "setup_custom_model_canvas_structural_render_heywood.R"), warn = FALSE, encoding = "UTF-8"),
