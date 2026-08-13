@@ -166,7 +166,8 @@ pls_measurement <- structural_canvas_result_table("measurement", pls_result, "pl
 pls_mi <- structural_canvas_result_table("mi", pls_result, "plssem", labels_fn, language_fn)
 stopifnot(nrow(pls_overview) == 7L)
 stopifnot("Item" %in% names(pls_overview))
-stopifnot(all(c("Outcome", "Predictor", "Coefficient", "R2", "AdjR2", "f2", "Total effect") %in% names(pls_fit)))
+stopifnot(all(c("Effect", "Outcome", "Predictor", "Coefficient", "R2", "AdjR2", "f2", "Indirect effect", "Total effect") %in% names(pls_fit)))
+stopifnot(pls_fit$Effect[[1L]] == "Direct")
 stopifnot(any(pls_fit$Predictor == "eta1"))
 stopifnot(any(pls_fit$Outcome == "eta2"))
 stopifnot(nzchar(pls_fit$f2[[1L]]))
@@ -181,6 +182,21 @@ stopifnot(nrow(pls_mi) == 0L)
 pls_snapshot <- structural_canvas_result_snapshot(snapshot, pls$fit, "beta")
 pls_labels <- vapply(pls_snapshot$edges, function(edge) as.character(edge$label %||% ""), character(1))
 stopifnot(any(nzchar(pls_labels)))
+
+pls_mediation <- run_structural_canvas_analysis(mediation_snapshot, mediation_data, "plssem", estimator = "PLS")
+stopifnot(inherits(pls_mediation$fit, "pls_model"))
+pls_mediation_bundle <- list(
+  fit = pls_mediation$fit,
+  syntax = pls_mediation$syntax,
+  snapshot = mediation_snapshot,
+  diagnostics = pls_mediation,
+  estimator = "PLS"
+)
+pls_mediation_result <- function() pls_mediation_bundle
+pls_mediation_fit <- structural_canvas_result_table("fit", pls_mediation_result, "plssem", labels_fn, language_fn)
+stopifnot(any(pls_mediation_fit$Effect == "Indirect" & pls_mediation_fit$Outcome == "etaC" & pls_mediation_fit$Predictor == "etaA"))
+stopifnot(any(nzchar(pls_mediation_fit[["Indirect effect"]][pls_mediation_fit$Effect == "Indirect"])))
+stopifnot(any(nzchar(pls_mediation_fit[["Total effect"]][pls_mediation_fit$Effect == "Indirect"])))
 
 pls_options <- structural_canvas_execute_settings(
   settings = list(pls_bootstrap = 500L, pls_seed = 13579L),
