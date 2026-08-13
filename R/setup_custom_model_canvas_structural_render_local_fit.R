@@ -1,6 +1,7 @@
-structural_canvas_register_local_fit_outputs <- function(output, prefix, fit_result) {
+structural_canvas_register_local_fit_outputs <- function(output, prefix, fit_result, app_language_fn = NULL) {
 output[[paste0(prefix, "_result_residuals")]] <- renderUI({
   bundle <- fit_result()
+  ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
   diagnostics <- structural_canvas_residual_diagnostics(bundle$fit)
   if (!isTRUE(diagnostics$available)) return(NULL)
   matrix_table <- function(matrix_value, title) {
@@ -24,15 +25,15 @@ output[[paste0(prefix, "_result_residuals")]] <- renderUI({
     largest[["Correlation residual"]] <- vapply(largest[["Correlation residual"]], format_decimal3, character(1))
   }
   div(class = "result-section regression-result-panel structural-residual-result",
-    h4("5. Local fit diagnostics"),
-    matrix_table(diagnostics$standardized, "Standardized residual matrix"),
-    matrix_table(diagnostics$correlation, "Correlation residual matrix"),
-    tags$h5(paste0("Large standardized residuals (|z| >= ", diagnostics$cutoff, ")")),
-    if (!nrow(largest)) tags$p("No residuals exceeded the cutoff.") else tags$table(class = "table table-striped table-bordered",
+    h4(if (ko) "5. 국지적 적합도 진단" else "5. Local fit diagnostics"),
+    matrix_table(diagnostics$standardized, if (ko) "표준화 잔차 행렬" else "Standardized residual matrix"),
+    matrix_table(diagnostics$correlation, if (ko) "상관 잔차 행렬" else "Correlation residual matrix"),
+    tags$h5(paste0(if (ko) "큰 표준화 잔차 (|z| >= " else "Large standardized residuals (|z| >= ", diagnostics$cutoff, ")")),
+    if (!nrow(largest)) tags$p(if (ko) "기준값을 넘는 잔차가 없습니다." else "No residuals exceeded the cutoff.") else tags$table(class = "table table-striped table-bordered",
       tags$thead(tags$tr(lapply(names(largest), tags$th))),
       tags$tbody(lapply(seq_len(nrow(largest)), function(index) tags$tr(lapply(as.character(largest[index, ]), tags$td))))
     ),
-    tags$p(class = "structural-result-note", "Large standardized residuals identify local areas of model misfit and should be interpreted with theory rather than used as automatic modification instructions.")
+    tags$p(class = "structural-result-note", if (ko) "큰 표준화 잔차는 모형 부적합이 국지적으로 나타나는 영역을 가리킵니다. 자동 수정 지시로 사용하지 말고 이론과 함께 해석하십시오." else "Large standardized residuals identify local areas of model misfit and should be interpreted with theory rather than used as automatic modification instructions.")
   )
 })
 output[[paste0(prefix, "_result_higher_order")]] <- renderUI({

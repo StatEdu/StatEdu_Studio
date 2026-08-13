@@ -45,7 +45,7 @@ output[[paste0(prefix, "_results")]] <- renderUI({
     output, prefix, analysis_type, fit_result, result_table, app_language_fn
   )
   structural_canvas_register_local_fit_outputs(
-    output, prefix, fit_result
+    output, prefix, fit_result, app_language_fn
   )
 for (kind in c("overview", "validity", "measurement")) local({
   result_kind <- kind
