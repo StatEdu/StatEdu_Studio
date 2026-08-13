@@ -1,8 +1,9 @@
 # Structural measurement invariance result rendering.
 
-structural_canvas_invariance_result_ui <- function(bundle) {
+structural_canvas_invariance_result_ui <- function(bundle, language = statedu_initial_language()) {
   result <- bundle$invariance_result %||% NULL
   if (is.null(result)) return(NULL)
+  ko <- identical(normalize_app_language(language), "ko")
   table <- result$table
   group_table <- result$group_diagnostics
   group_reliability <- result$group_reliability %||% data.frame()
@@ -37,6 +38,15 @@ structural_canvas_invariance_result_ui <- function(bundle) {
   reviewed_stages <- table$Model[table$Decision == "Review noninvariance"]
   score_tables <- (result$score_diagnostics %||% list())[intersect(reviewed_stages, names(result$score_diagnostics %||% list()))]
   score_tables <- Filter(function(value) nrow(value), score_tables)
+  if (ko) {
+    decision_labels <- c(
+      "Inadmissible stage" = "허용 불가 단계",
+      "Baseline stage" = "기준 단계",
+      "Change criteria met" = "변화 기준 충족",
+      "Review noninvariance" = "불변성 위반 검토"
+    )
+    table$Decision <- ifelse(table$Decision %in% names(decision_labels), decision_labels[table$Decision], table$Decision)
+  }
   numeric_columns <- c("Chisq", "df", "CFI", "RMSEA", "SRMR", "DeltaCFI", "DeltaRMSEA", "DeltaSRMR", "DeltaChisq", "DeltaDf", "Residual min eigenvalue", "Latent min eigenvalue", "Parameter min eigenvalue")
   for (name in numeric_columns) table[[name]] <- vapply(table[[name]], format_decimal3, character(1))
   for (name in c("Residual condition number", "Latent condition number", "Parameter condition number")) table[[name]] <- vapply(table[[name]], function(value) if (is.finite(value)) format(value, scientific = TRUE, digits = 3) else "Inf", character(1))
@@ -49,36 +59,36 @@ structural_canvas_invariance_result_ui <- function(bundle) {
   names(table)[names(table) == "DeltaDf"] <- "Δdf"
   names(table)[names(table) == "DeltaP"] <- "Δp"
   div(class = "result-section regression-result-panel structural-invariance-result",
-    h4(paste0("Measurement invariance by ", result$group)),
-    tags$h5("Group-level data diagnostics"),
+    h4(if (ko) paste0("집단별 측정불변성: ", result$group) else paste0("Measurement invariance by ", result$group)),
+    tags$h5(if (ko) "집단별 데이터 진단" else "Group-level data diagnostics"),
     structural_canvas_basic_html_table(group_table),
-    tags$p(class = "structural-result-note", "Group N below 100 is flagged as a descriptive small-group warning, not a universal minimum. Adequacy depends on model complexity, indicator quality, estimator, missingness, category distribution, and effect size."),
+    tags$p(class = "structural-result-note", if (ko) "집단 N이 100 미만이면 기술적 소집단 경고로 표시합니다. 이는 보편적 최소 기준이 아니며, 적절성은 모형 복잡도, 지표 품질, 추정량, 결측, 범주 분포, 효과크기에 따라 달라집니다." else "Group N below 100 is flagged as a descriptive small-group warning, not a universal minimum. Adequacy depends on model complexity, indicator quality, estimator, missingness, category distribution, and effect size."),
     if (nrow(residual_summary)) tagList(
-      tags$h5("Group-specific configural residual diagnostics"),
+      tags$h5(if (ko) "집단별 형태모형 잔차 진단" else "Group-specific configural residual diagnostics"),
       structural_canvas_basic_html_table(residual_summary),
       if (nrow(residual_largest)) tagList(
-        tags$h5(paste0("Large group-specific residuals (|z| >= ", group_residuals$cutoff %||% 1.96, ")")),
+        tags$h5(if (ko) paste0("큰 집단별 잔차(|z| >= ", group_residuals$cutoff %||% 1.96, ")") else paste0("Large group-specific residuals (|z| >= ", group_residuals$cutoff %||% 1.96, ")")),
         structural_canvas_basic_html_table(residual_largest)
-      ) else tags$p(class = "structural-result-note", paste0("No group-specific configural residuals exceeded |z| >= ", group_residuals$cutoff %||% 1.96, ".")),
-      tags$p(class = "structural-result-note", "These residual diagnostics are computed separately within each group from the configural model. For WLSMV ordered indicators they are approximate local-fit diagnostics on the fitted latent-response/polychoric scale; use them to locate candidate areas for review, not as automatic modification instructions.")
+      ) else tags$p(class = "structural-result-note", if (ko) paste0("|z| >= ", group_residuals$cutoff %||% 1.96, "을 초과한 집단별 형태모형 잔차가 없습니다.") else paste0("No group-specific configural residuals exceeded |z| >= ", group_residuals$cutoff %||% 1.96, ".")),
+      tags$p(class = "structural-result-note", if (ko) "이 잔차 진단은 형태모형에서 집단별로 따로 계산합니다. WLSMV 순서형 지표에서는 적합된 잠재반응/polychoric 척도에서의 근사적 국소적합 진단입니다. 자동 수정 지시가 아니라 검토 후보 영역을 찾는 용도로 사용하십시오." else "These residual diagnostics are computed separately within each group from the configural model. For WLSMV ordered indicators they are approximate local-fit diagnostics on the fitted latent-response/polychoric scale; use them to locate candidate areas for review, not as automatic modification instructions.")
     ),
     if (nrow(group_reliability)) tagList(
-      tags$h5("Group-specific reliability and convergent validity"),
+      tags$h5(if (ko) "집단별 신뢰도 및 수렴타당도" else "Group-specific reliability and convergent validity"),
       structural_canvas_basic_html_table(group_reliability),
-      tags$p(class = "structural-result-note", "Group-specific AVE, CR, alpha, and omega are computed from the configural model, before imposing equality constraints. Use them as descriptive group diagnostics, not as formal invariance tests.")
+      tags$p(class = "structural-result-note", if (ko) "집단별 AVE, CR, alpha, omega는 동등성 제약을 부과하기 전 형태모형에서 계산합니다. 이는 공식 불변성 검정이 아니라 기술적 집단 진단으로 해석하십시오." else "Group-specific AVE, CR, alpha, and omega are computed from the configural model, before imposing equality constraints. Use them as descriptive group diagnostics, not as formal invariance tests.")
     ),
     if (nrow(group_htmt)) tagList(
-      tags$h5("Group-specific HTMT"),
+      tags$h5(if (ko) "집단별 HTMT" else "Group-specific HTMT"),
       structural_canvas_basic_html_table(group_htmt),
-      tags$p(class = "structural-result-note", "Group-specific HTMT uses each group's configural-model sample correlation matrix. Bootstrap intervals remain single-group in this release.")
+      tags$p(class = "structural-result-note", if (ko) "집단별 HTMT는 각 집단의 형태모형 표본 상관행렬을 사용합니다. 이 릴리스에서 bootstrap 구간은 단일집단 기준으로 유지됩니다." else "Group-specific HTMT uses each group's configural-model sample correlation matrix. Bootstrap intervals remain single-group in this release.")
     ),
     structural_canvas_basic_html_table(table),
-    if (any(!result$table$Admissible)) tags$p(class = "structural-result-note", "An inadmissible invariance stage failed the same full checks as the main CFA. Its change indices, formal difference test, and equality-constraint score diagnostics are suppressed; resolve the stage-specific variance, covariance-matrix, df, or latent-correlation problem before judging invariance."),
-    tags$p(class = "structural-result-note", "Parameter boundary dimensions counts near-zero eigenvalues in the parameter covariance matrix. Boundary dimensions up to the number of explicit equality constraints are treated as constraint-induced; any excess is flagged as unexplained empirical underidentification."),
-    tags$p(class = "structural-result-note", "Minimum eigenvalues report the worst group-specific residual and latent covariance eigenvalues and the parameter covariance minimum. Negative values beyond numerical tolerance indicate non-positive-definiteness; values near zero indicate a boundary or singular direction."),
-    if (any(result$table$`Ill-conditioned warning`)) tags$p(class = "structural-result-note", "Ill-conditioned warning marks a residual, latent, or parameter covariance condition number above 1e8 (or an infinite value). This indicates numerical sensitivity but is not by itself proof of inadmissibility."),
+    if (any(!result$table$Admissible)) tags$p(class = "structural-result-note", if (ko) "허용 불가능한 불변성 단계는 주 CFA와 같은 전체 점검을 통과하지 못한 것입니다. 변화 지수, 공식 차이검정, 동등성 제약 score 진단은 숨깁니다. 불변성을 판단하기 전에 단계별 분산, 공분산행렬, 자유도, 잠재상관 문제를 먼저 해결하십시오." else "An inadmissible invariance stage failed the same full checks as the main CFA. Its change indices, formal difference test, and equality-constraint score diagnostics are suppressed; resolve the stage-specific variance, covariance-matrix, df, or latent-correlation problem before judging invariance."),
+    tags$p(class = "structural-result-note", if (ko) "Parameter boundary dimensions는 모수 공분산행렬의 0에 가까운 고유값 수입니다. 명시적 동등성 제약 수 이내의 boundary dimension은 제약으로 인한 것으로 보고, 초과분은 설명되지 않은 경험적 과소식별로 표시합니다." else "Parameter boundary dimensions counts near-zero eigenvalues in the parameter covariance matrix. Boundary dimensions up to the number of explicit equality constraints are treated as constraint-induced; any excess is flagged as unexplained empirical underidentification."),
+    tags$p(class = "structural-result-note", if (ko) "최소 고유값은 집단별 잔차 및 잠재 공분산 고유값 중 최악의 값과 모수 공분산 최소값을 보고합니다. 수치 허용오차를 넘는 음수는 비양정성, 0에 가까운 값은 경계 또는 특이 방향을 의미합니다." else "Minimum eigenvalues report the worst group-specific residual and latent covariance eigenvalues and the parameter covariance minimum. Negative values beyond numerical tolerance indicate non-positive-definiteness; values near zero indicate a boundary or singular direction."),
+    if (any(result$table$`Ill-conditioned warning`)) tags$p(class = "structural-result-note", if (ko) "Ill-conditioned warning은 잔차, 잠재, 또는 모수 공분산 조건수가 1e8을 넘거나 무한대일 때 표시됩니다. 이는 수치 민감성을 뜻하지만 그 자체로 허용 불가능성을 입증하지는 않습니다." else "Ill-conditioned warning marks a residual, latent, or parameter covariance condition number above 1e8 (or an infinite value). This indicates numerical sensitivity but is not by itself proof of inadmissibility."),
     if (length(score_tables)) tagList(
-      tags$h5("Largest equality-constraint score tests"),
+      tags$h5(if (ko) "가장 큰 동등성 제약 score 검정" else "Largest equality-constraint score tests"),
       lapply(names(score_tables), function(stage) {
         score_table <- utils::head(score_tables[[stage]], 10L)
         score_table[["Score χ²"]] <- vapply(score_table[["Score χ²"]], format_decimal3, character(1))
@@ -90,12 +100,16 @@ structural_canvas_invariance_result_ui <- function(bundle) {
         score_table[["Raw BH-adjusted p"]] <- vapply(score_table[["Raw BH-adjusted p"]], format_p, character(1))
         tagList(tags$h6(stage), structural_canvas_basic_html_table(score_table))
       }),
-      tags$p(class = "structural-result-note", "Score tests rank equality constraints that contribute to stage misfit. Group labels are the observed grouping-variable categories. Max |standardized EPC| is the largest absolute fully standardized expected parameter change among the parameters in that equality constraint and provides an effect-size-oriented diagnostic. BH-adjusted p values control the false-discovery rate within each invariance stage. These remain exploratory diagnostics and do not automatically establish partial invariance or justify freeing a constraint.")
+      tags$p(class = "structural-result-note", if (ko) "Score 검정은 단계 부적합에 기여하는 동등성 제약의 순위를 보여줍니다. 집단 라벨은 관측된 집단변수 범주입니다. Max |standardized EPC|는 해당 동등성 제약에 포함된 모수 중 완전표준화 기대모수변화의 최대 절대값이며 효과크기 관점의 진단을 제공합니다. BH 보정 p값은 각 불변성 단계 안에서 false-discovery rate를 조절합니다. 이 결과는 탐색적 진단이며 부분불변성을 자동으로 확립하거나 제약 해제를 정당화하지 않습니다." else "Score tests rank equality constraints that contribute to stage misfit. Group labels are the observed grouping-variable categories. Max |standardized EPC| is the largest absolute fully standardized expected parameter change among the parameters in that equality constraint and provides an effect-size-oriented diagnostic. BH-adjusted p values control the false-discovery rate within each invariance stage. These remain exploratory diagnostics and do not automatically establish partial invariance or justify freeing a constraint.")
     ),
-    tags$p(class = "structural-result-note", if (isTRUE(result$ordinal)) "For ordered indicators, nested theta-parameterized stages constrain thresholds, then thresholds plus loadings (scalar/strong invariance), then residual variances (strict). A separate conventional metric-only stage is not reported because categorical identification depends jointly on thresholds, loadings, scales, and intercepts." else "Nested stages constrain loadings (metric), then intercepts (scalar), then residual variances (strict). Δ values compare each row with the immediately preceding stage; robust/scaled fit indices and difference tests are used when available."),
-    if (isTRUE(result$ordinal)) tags$p(class = "structural-result-note", "Ordered-indicator models use WLSMV/DWLS, category thresholds, and theta parameterization. Scalar invariance therefore means invariant thresholds and loadings, not equality of observed-variable intercepts as in continuous CFA."),
-    tags$p(class = "structural-result-note", "Descriptive change guidance flags ΔCFI < −.010, ΔRMSEA > .015, or ΔSRMR > .030 for metric and > .010 for scalar/strict invariance. These guidelines should be considered jointly with parameter changes, group sizes, theory, and model admissibility; Δχ² is sample-size sensitive."),
-    tags$p(class = "structural-result-note", "Failure at a stage does not justify automatically freeing parameters. Partial invariance requires substantively defensible constraints and transparent reporting.")
+    tags$p(class = "structural-result-note", if (isTRUE(result$ordinal)) {
+      if (ko) "순서형 지표에서는 중첩된 theta 파라미터화 단계가 thresholds, thresholds+loadings(scalar/strong invariance), residual variances(strict)를 차례로 제약합니다. 범주형 식별은 thresholds, loadings, scales, intercepts에 함께 의존하므로 별도의 전통적 metric-only 단계는 보고하지 않습니다." else "For ordered indicators, nested theta-parameterized stages constrain thresholds, then thresholds plus loadings (scalar/strong invariance), then residual variances (strict). A separate conventional metric-only stage is not reported because categorical identification depends jointly on thresholds, loadings, scales, and intercepts."
+    } else {
+      if (ko) "중첩 단계는 loadings(metric), intercepts(scalar), residual variances(strict)를 차례로 제약합니다. Δ 값은 각 행을 바로 이전 단계와 비교하며, 가능한 경우 robust/scaled 적합도 지수와 차이검정을 사용합니다." else "Nested stages constrain loadings (metric), then intercepts (scalar), then residual variances (strict). Δ values compare each row with the immediately preceding stage; robust/scaled fit indices and difference tests are used when available."
+    }),
+    if (isTRUE(result$ordinal)) tags$p(class = "structural-result-note", if (ko) "순서형 지표 모형은 WLSMV/DWLS, 범주 thresholds, theta 파라미터화를 사용합니다. 따라서 scalar invariance는 연속형 CFA의 관측변수 절편 동등성이 아니라 thresholds와 loadings의 불변성을 의미합니다." else "Ordered-indicator models use WLSMV/DWLS, category thresholds, and theta parameterization. Scalar invariance therefore means invariant thresholds and loadings, not equality of observed-variable intercepts as in continuous CFA."),
+    tags$p(class = "structural-result-note", if (ko) "기술적 변화 기준은 ΔCFI < -.010, ΔRMSEA > .015, 또는 ΔSRMR > .030(metric) 및 > .010(scalar/strict)을 표시합니다. 이 기준은 모수 변화, 집단 크기, 이론, 모형 허용성과 함께 판단해야 하며 Δχ²는 표본크기에 민감합니다." else "Descriptive change guidance flags ΔCFI < −.010, ΔRMSEA > .015, or ΔSRMR > .030 for metric and > .010 for scalar/strict invariance. These guidelines should be considered jointly with parameter changes, group sizes, theory, and model admissibility; Δχ² is sample-size sensitive."),
+    tags$p(class = "structural-result-note", if (ko) "특정 단계의 실패가 모수 자동 해제를 정당화하지는 않습니다. 부분불변성은 실질적으로 방어 가능한 제약과 투명한 보고가 필요합니다." else "Failure at a stage does not justify automatically freeing parameters. Partial invariance requires substantively defensible constraints and transparent reporting.")
   )
 
 }

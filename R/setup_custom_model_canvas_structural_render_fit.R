@@ -19,7 +19,7 @@ output[[paste0(prefix, "_result_fit_difference")]] <- renderUI({
   structural_canvas_fit_difference_result_ui(fit_result(), statedu_current_language(app_language_fn))
 })
 output[[paste0(prefix, "_result_invariance")]] <- renderUI({
-  structural_canvas_invariance_result_ui(fit_result())
+  structural_canvas_invariance_result_ui(fit_result(), statedu_current_language(app_language_fn))
 })
 output[[paste0(prefix, "_result_fit_guidance")]] <- renderUI({
   structural_canvas_fit_guidance_result_ui(fit_result(), statedu_current_language(app_language_fn))
