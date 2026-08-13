@@ -80,6 +80,7 @@ structural_canvas_pls_effect_value <- function(total_effects, paths, predictor, 
   direct <- structural_canvas_pls_matrix_cell(paths, predictor, outcome)
   if (identical(effect, "Direct")) {
     indirect <- if (is.finite(total) && is.finite(direct)) total - direct else NA_real_
+    if (is.finite(indirect) && abs(indirect) < 1e-12) indirect <- NA_real_
     return(list(coefficient = direct, indirect = indirect, total = total))
   }
   direct_value <- if (is.finite(direct)) direct else 0
@@ -109,10 +110,11 @@ structural_canvas_pls_indirect_specs <- function(path_specs) {
   unique(do.call(rbind, rows))
 }
 
-structural_canvas_pls_fit_row <- function(effect, outcome, predictor, paths, f_square, total_effects, bootstrap_paths, bootstrap_total_paths, display_name) {
+structural_canvas_pls_fit_row <- function(effect, outcome, predictor, paths, f_square, total_effects, bootstrap_paths, bootstrap_total_paths, bootstrap_indirect_paths, display_name) {
   values <- structural_canvas_pls_effect_value(total_effects, paths, predictor, outcome, effect)
   boot_row <- if (identical(effect, "Direct")) structural_canvas_pls_bootstrap_row(bootstrap_paths, predictor, outcome) else NULL
   total_boot_row <- structural_canvas_pls_bootstrap_row(bootstrap_total_paths, predictor, outcome)
+  indirect_boot_row <- structural_canvas_pls_bootstrap_row(bootstrap_indirect_paths, predictor, outcome)
   data.frame(
     Effect = effect,
     Outcome = display_name(outcome),
@@ -122,6 +124,9 @@ structural_canvas_pls_fit_row <- function(effect, outcome, predictor, paths, f_s
     AdjR2 = structural_canvas_pls_number(structural_canvas_pls_matrix_cell(paths, "AdjR^2", outcome)),
     f2 = if (identical(effect, "Direct")) structural_canvas_pls_number(structural_canvas_pls_matrix_cell(f_square, predictor, outcome)) else "",
     `Indirect effect` = structural_canvas_pls_number(values$indirect),
+    `Indirect effect CI lower` = structural_canvas_pls_bootstrap_value(indirect_boot_row, "2.5% CI"),
+    `Indirect effect CI upper` = structural_canvas_pls_bootstrap_value(indirect_boot_row, "97.5% CI"),
+    `Indirect effect p` = if (is.null(indirect_boot_row) || !"Bootstrap P Val" %in% names(indirect_boot_row)) "" else format_p(indirect_boot_row[["Bootstrap P Val"]][[1L]]),
     `Total effect` = structural_canvas_pls_number(values$total),
     `Total effect CI lower` = structural_canvas_pls_bootstrap_value(total_boot_row, "2.5% CI"),
     `Total effect CI upper` = structural_canvas_pls_bootstrap_value(total_boot_row, "97.5% CI"),
@@ -139,13 +144,14 @@ structural_canvas_pls_fit_result_table <- function(summary_fit, diagnostics, dis
   total_effects <- as.matrix(summary_fit$total_effects %||% matrix(numeric(0), 0L, 0L))
   bootstrap_paths <- bootstrap$bootstrapped_paths %||% NULL
   bootstrap_total_paths <- bootstrap$bootstrapped_total_paths %||% NULL
+  bootstrap_indirect_paths <- bootstrap$bootstrapped_total_indirect_paths %||% NULL
   path_specs <- structural_canvas_pls_path_specs(diagnostics)
   rows <- lapply(seq_len(nrow(path_specs)), function(index) {
-    structural_canvas_pls_fit_row("Direct", path_specs$outcome[[index]], path_specs$predictor[[index]], paths, f_square, total_effects, bootstrap_paths, bootstrap_total_paths, display_name)
+    structural_canvas_pls_fit_row("Direct", path_specs$outcome[[index]], path_specs$predictor[[index]], paths, f_square, total_effects, bootstrap_paths, bootstrap_total_paths, bootstrap_indirect_paths, display_name)
   })
   indirect_specs <- structural_canvas_pls_indirect_specs(path_specs)
   rows <- c(rows, lapply(seq_len(nrow(indirect_specs)), function(index) {
-    structural_canvas_pls_fit_row("Indirect", indirect_specs$outcome[[index]], indirect_specs$predictor[[index]], paths, f_square, total_effects, bootstrap_paths, bootstrap_total_paths, display_name)
+    structural_canvas_pls_fit_row("Indirect", indirect_specs$outcome[[index]], indirect_specs$predictor[[index]], paths, f_square, total_effects, bootstrap_paths, bootstrap_total_paths, bootstrap_indirect_paths, display_name)
   }))
   rows <- Filter(Negate(is.null), rows)
   if (!length(rows)) return(data.frame())

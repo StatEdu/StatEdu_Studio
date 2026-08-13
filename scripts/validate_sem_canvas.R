@@ -166,7 +166,7 @@ pls_measurement <- structural_canvas_result_table("measurement", pls_result, "pl
 pls_mi <- structural_canvas_result_table("mi", pls_result, "plssem", labels_fn, language_fn)
 stopifnot(nrow(pls_overview) == 7L)
 stopifnot("Item" %in% names(pls_overview))
-stopifnot(all(c("Effect", "Outcome", "Predictor", "Coefficient", "R2", "AdjR2", "f2", "Indirect effect", "Total effect") %in% names(pls_fit)))
+stopifnot(all(c("Effect", "Outcome", "Predictor", "Coefficient", "R2", "AdjR2", "f2", "Indirect effect", "Indirect effect CI lower", "Indirect effect CI upper", "Indirect effect p", "Total effect") %in% names(pls_fit)))
 stopifnot(pls_fit$Effect[[1L]] == "Direct")
 stopifnot(any(pls_fit$Predictor == "eta1"))
 stopifnot(any(pls_fit$Outcome == "eta2"))
@@ -211,6 +211,8 @@ stopifnot(is.list(pls_bootstrap))
 stopifnot(length(pls_bootstrap$bootstrapped_paths) > 0L)
 stopifnot(length(pls_bootstrap$bootstrapped_loadings) > 0L)
 stopifnot(length(pls_bootstrap$bootstrapped_weights) > 0L)
+pls_mediation_bootstrap <- structural_canvas_run_pls_bootstrap("plssem", 20L, pls_mediation, 13579L)
+stopifnot("bootstrapped_total_indirect_paths" %in% names(pls_mediation_bootstrap))
 pls_boot_bundle <- pls_bundle
 pls_boot_bundle$pls_bootstrap <- 30L
 pls_boot_bundle$pls_bootstrap_result <- pls_bootstrap
@@ -218,9 +220,16 @@ pls_boot_result <- function() pls_boot_bundle
 pls_boot_fit <- structural_canvas_result_table("fit", pls_boot_result, "plssem", labels_fn, language_fn)
 pls_boot_validity <- structural_canvas_result_table("validity", pls_boot_result, "plssem", labels_fn, language_fn)
 pls_boot_measurement <- structural_canvas_result_table("measurement", pls_boot_result, "plssem", labels_fn, language_fn)
-stopifnot(all(c("Total effect CI lower", "Total effect CI upper", "Total effect p", "Boot CI lower", "Boot CI upper", "Boot p") %in% names(pls_boot_fit)))
+stopifnot(all(c("Indirect effect CI lower", "Indirect effect CI upper", "Indirect effect p", "Total effect CI lower", "Total effect CI upper", "Total effect p", "Boot CI lower", "Boot CI upper", "Boot p") %in% names(pls_boot_fit)))
 stopifnot(any(nzchar(pls_boot_fit[["Total effect p"]])))
 stopifnot(any(nzchar(pls_boot_fit[["Boot p"]])))
+pls_mediation_boot_bundle <- pls_mediation_bundle
+pls_mediation_boot_bundle$pls_bootstrap_result <- pls_mediation_bootstrap
+pls_mediation_boot_result <- function() pls_mediation_boot_bundle
+pls_mediation_boot_fit <- structural_canvas_result_table("fit", pls_mediation_boot_result, "plssem", labels_fn, language_fn)
+pls_mediation_indirect_row <- pls_mediation_boot_fit[pls_mediation_boot_fit$Effect == "Indirect" & pls_mediation_boot_fit$Outcome == "etaC" & pls_mediation_boot_fit$Predictor == "etaA", , drop = FALSE]
+stopifnot(nrow(pls_mediation_indirect_row) == 1L)
+stopifnot(nzchar(pls_mediation_indirect_row[["Indirect effect CI lower"]][[1L]]), nzchar(pls_mediation_indirect_row[["Indirect effect CI upper"]][[1L]]), nzchar(pls_mediation_indirect_row[["Indirect effect p"]][[1L]]))
 stopifnot(all(c("Max HTMT CI lower", "Max HTMT CI upper", "Max HTMT p") %in% names(pls_boot_validity)))
 stopifnot(any(nzchar(pls_boot_validity[["Max HTMT p"]])))
 stopifnot(all(c("Loading CI lower", "Loading CI upper", "Loading p", "Weight CI lower", "Weight CI upper", "Weight p") %in% names(pls_boot_measurement)))
