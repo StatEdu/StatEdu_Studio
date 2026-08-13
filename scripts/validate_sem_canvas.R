@@ -56,12 +56,13 @@ stopifnot(
   grepl("PLS-SEM quality checklist", ui_source, fixed = TRUE),
   grepl("Q2 predictive-relevance", ui_source, fixed = TRUE),
   grepl("SEM quality checklist", ui_source, fixed = TRUE),
-  grepl("convergence, admissibility, global fit, measurement quality, discriminant-validity risk", ui_source, fixed = TRUE),
+  grepl("chi-square/df, robust/scaled fit source, global fit", ui_source, fixed = TRUE),
   grepl("Reporting checklist", ui_source, fixed = TRUE),
   grepl("Estimator or algorithm", ui_source, fixed = TRUE),
   grepl("Admissibility and convergence", ui_source, fixed = TRUE),
   grepl("PLS - LM values indicate lower out-of-sample prediction error", ui_source, fixed = TRUE),
   grepl("path coefficients, R2, adjusted R2, f2, Q2, q2, inner VIF", ui_source, fixed = TRUE),
+  grepl("f2 and q2 size labels use the descriptive .02/.15/.35", ui_source, fixed = TRUE),
   grepl("Inner VIF is reported for direct structural paths", ui_source, fixed = TRUE),
   grepl("PLS-SEM 구조모형 출력", ui_source, fixed = TRUE),
   grepl("PLS-SEM 측정모형 출력", ui_source, fixed = TRUE),
@@ -115,13 +116,15 @@ stopifnot(cbsem_reporting$Value[cbsem_reporting$Item == "Missing-data handling"]
 stopifnot(cbsem_reporting$Value[cbsem_reporting$Item == "Analysis context"] == "Original/prespecified model")
 stopifnot(grepl("converged=TRUE", cbsem_reporting$Value[cbsem_reporting$Item == "Admissibility and convergence"], fixed = TRUE))
 cbsem_quality <- structural_canvas_lavaan_quality_rows(cbsem_bundle, "cbsem")
-stopifnot(nrow(cbsem_quality) == 15L)
+stopifnot(nrow(cbsem_quality) == 17L)
 stopifnot(all(c("Item", "Value", "Status", "Guidance") %in% names(cbsem_quality)))
-stopifnot(all(c("Converged", "Admissible solution", "CFI", "RMSEA", "SRMR", "Min standardized loading", "Min CR", "Min AVE", "Max latent correlation", "Structural path count", "Max structural beta", "Min endogenous R2", "Model status") %in% cbsem_quality$Item))
+stopifnot(all(c("Converged", "Admissible solution", "Model df", "Chi-square/df", "Fit statistic source", "CFI", "RMSEA", "SRMR", "Min standardized loading", "Min CR", "Min AVE", "Max latent correlation", "Structural path count", "Max structural beta", "Min endogenous R2", "Model status") %in% cbsem_quality$Item))
 stopifnot(cbsem_quality$Value[cbsem_quality$Item == "Converged"] == "TRUE")
 stopifnot(cbsem_quality$Value[cbsem_quality$Item == "Admissible solution"] == "TRUE")
 stopifnot(cbsem_quality$Status[cbsem_quality$Item == "Converged"] == "OK")
 stopifnot(cbsem_quality$Status[cbsem_quality$Item == "Admissible solution"] == "OK")
+stopifnot(nzchar(cbsem_quality$Value[cbsem_quality$Item == "Chi-square/df"]))
+stopifnot(cbsem_quality$Status[cbsem_quality$Item == "Fit statistic source"] == "OK")
 stopifnot(cbsem_quality$Value[cbsem_quality$Item == "Structural path count"] == "1")
 stopifnot(cbsem_quality$Status[cbsem_quality$Item == "Structural path count"] == "OK")
 stopifnot(cbsem_quality$Value[cbsem_quality$Item == "Model status"] == "Original/prespecified model")
@@ -381,13 +384,15 @@ pls_measurement <- structural_canvas_result_table("measurement", pls_result, "pl
 pls_mi <- structural_canvas_result_table("mi", pls_result, "plssem", labels_fn, language_fn)
 stopifnot(nrow(pls_overview) == 7L)
 stopifnot("Item" %in% names(pls_overview))
-stopifnot(all(c("Effect", "Outcome", "Predictor", "Coefficient", "R2", "AdjR2", "f2", "Q2", "q2", "Inner VIF", "Indirect effect", "Indirect effect CI lower", "Indirect effect CI upper", "Indirect effect p", "Total effect") %in% names(pls_fit)))
+stopifnot(all(c("Effect", "Outcome", "Predictor", "Coefficient", "R2", "AdjR2", "f2", "f2 size", "Q2", "q2", "q2 size", "Inner VIF", "Indirect effect", "Indirect effect CI lower", "Indirect effect CI upper", "Indirect effect t", "Indirect effect p", "Total effect") %in% names(pls_fit)))
 stopifnot(pls_fit$Effect[[1L]] == "Direct")
 stopifnot(any(pls_fit$Predictor == "eta1"))
 stopifnot(any(pls_fit$Outcome == "eta2"))
 stopifnot(nzchar(pls_fit$f2[[1L]]))
+stopifnot(nzchar(pls_fit[["f2 size"]][[1L]]))
 stopifnot(nzchar(pls_fit$Q2[[1L]]))
 stopifnot(nzchar(pls_fit$q2[[1L]]))
+stopifnot(nzchar(pls_fit[["q2 size"]][[1L]]))
 stopifnot(nzchar(pls_fit[["Total effect"]][[1L]]))
 stopifnot(all(c("Construct", "alpha", "rhoA", "rhoC", "AVE", "sqrt(AVE)", "Max HTMT", "Fornell-Larcker") %in% names(pls_validity)))
 stopifnot(nrow(pls_validity) >= 2L)
@@ -476,8 +481,9 @@ stopifnot(grepl("seed=24680", pls_boot_reporting$Value[pls_boot_reporting$Item =
 pls_boot_fit <- structural_canvas_result_table("fit", pls_boot_result, "plssem", labels_fn, language_fn)
 pls_boot_validity <- structural_canvas_result_table("validity", pls_boot_result, "plssem", labels_fn, language_fn)
 pls_boot_measurement <- structural_canvas_result_table("measurement", pls_boot_result, "plssem", labels_fn, language_fn)
-stopifnot(all(c("Indirect effect CI lower", "Indirect effect CI upper", "Indirect effect p", "Total effect CI lower", "Total effect CI upper", "Total effect p", "Boot CI lower", "Boot CI upper", "Boot p") %in% names(pls_boot_fit)))
+stopifnot(all(c("Indirect effect CI lower", "Indirect effect CI upper", "Indirect effect t", "Indirect effect p", "Total effect CI lower", "Total effect CI upper", "Total effect t", "Total effect p", "Boot CI lower", "Boot CI upper", "Boot t", "Boot p") %in% names(pls_boot_fit)))
 stopifnot(any(nzchar(pls_boot_fit[["Total effect p"]])))
+stopifnot(any(nzchar(pls_boot_fit[["Boot t"]])))
 stopifnot(any(nzchar(pls_boot_fit[["Boot p"]])))
 pls_mediation_boot_bundle <- pls_mediation_bundle
 pls_mediation_boot_bundle$pls_bootstrap_result <- pls_mediation_bootstrap
@@ -488,7 +494,8 @@ stopifnot(nrow(pls_mediation_indirect_row) == 1L)
 stopifnot(nzchar(pls_mediation_indirect_row[["Indirect effect CI lower"]][[1L]]), nzchar(pls_mediation_indirect_row[["Indirect effect CI upper"]][[1L]]), nzchar(pls_mediation_indirect_row[["Indirect effect p"]][[1L]]))
 stopifnot(all(c("Max HTMT CI lower", "Max HTMT CI upper", "Max HTMT p") %in% names(pls_boot_validity)))
 stopifnot(any(nzchar(pls_boot_validity[["Max HTMT p"]])))
-stopifnot(all(c("Loading CI lower", "Loading CI upper", "Loading p", "Weight CI lower", "Weight CI upper", "Weight p") %in% names(pls_boot_measurement)))
+stopifnot(all(c("Loading CI lower", "Loading CI upper", "Loading t", "Loading p", "Weight CI lower", "Weight CI upper", "Weight t", "Weight p") %in% names(pls_boot_measurement)))
+stopifnot(any(nzchar(pls_boot_measurement[["Loading t"]])))
 stopifnot(any(nzchar(pls_boot_measurement[["Loading p"]])))
 
 execution_state <- new.env(parent = emptyenv())

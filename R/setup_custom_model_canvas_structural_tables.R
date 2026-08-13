@@ -33,6 +33,21 @@ structural_canvas_pls_bootstrap_value <- function(row, column) {
   structural_canvas_pls_number(row[[column]][[1L]])
 }
 
+structural_canvas_pls_bootstrap_p <- function(row) {
+  if (is.null(row) || !"Bootstrap P Val" %in% names(row)) return("")
+  format_p(row[["Bootstrap P Val"]][[1L]])
+}
+
+structural_canvas_pls_effect_size_label <- function(value) {
+  value <- suppressWarnings(as.numeric(value))
+  if (length(value) < 1L || !is.finite(value[[1L]])) return("")
+  value <- value[[1L]]
+  if (value < .02) "Below small"
+  else if (value < .15) "Small"
+  else if (value < .35) "Medium"
+  else "Large"
+}
+
 structural_canvas_pls_indicator_vifs <- function(summary_fit) {
   vif_items <- summary_fit$validity$vif_items %||% list()
   values <- numeric(0)
@@ -148,20 +163,25 @@ structural_canvas_pls_fit_row <- function(effect, outcome, predictor, summary_fi
     R2 = structural_canvas_pls_number(structural_canvas_pls_matrix_cell(paths, "R^2", outcome)),
     AdjR2 = structural_canvas_pls_number(structural_canvas_pls_matrix_cell(paths, "AdjR^2", outcome)),
     f2 = if (identical(effect, "Direct")) structural_canvas_pls_number(structural_canvas_pls_matrix_cell(f_square, predictor, outcome)) else "",
+    `f2 size` = if (identical(effect, "Direct")) structural_canvas_pls_effect_size_label(structural_canvas_pls_matrix_cell(f_square, predictor, outcome)) else "",
     Q2 = structural_canvas_pls_number(structural_canvas_pls_q2_value(diagnostics, outcome)),
     q2 = if (identical(effect, "Direct")) structural_canvas_pls_number(structural_canvas_pls_q2_effect_value(diagnostics, predictor, outcome)) else "",
+    `q2 size` = if (identical(effect, "Direct")) structural_canvas_pls_effect_size_label(structural_canvas_pls_q2_effect_value(diagnostics, predictor, outcome)) else "",
     `Inner VIF` = if (identical(effect, "Direct")) structural_canvas_pls_number(structural_canvas_pls_inner_vif(summary_fit, predictor, outcome)) else "",
     `Indirect effect` = structural_canvas_pls_number(values$indirect),
     `Indirect effect CI lower` = structural_canvas_pls_bootstrap_value(indirect_boot_row, "2.5% CI"),
     `Indirect effect CI upper` = structural_canvas_pls_bootstrap_value(indirect_boot_row, "97.5% CI"),
-    `Indirect effect p` = if (is.null(indirect_boot_row) || !"Bootstrap P Val" %in% names(indirect_boot_row)) "" else format_p(indirect_boot_row[["Bootstrap P Val"]][[1L]]),
+    `Indirect effect t` = structural_canvas_pls_bootstrap_value(indirect_boot_row, "T Stat."),
+    `Indirect effect p` = structural_canvas_pls_bootstrap_p(indirect_boot_row),
     `Total effect` = structural_canvas_pls_number(values$total),
     `Total effect CI lower` = structural_canvas_pls_bootstrap_value(total_boot_row, "2.5% CI"),
     `Total effect CI upper` = structural_canvas_pls_bootstrap_value(total_boot_row, "97.5% CI"),
-    `Total effect p` = if (is.null(total_boot_row) || !"Bootstrap P Val" %in% names(total_boot_row)) "" else format_p(total_boot_row[["Bootstrap P Val"]][[1L]]),
+    `Total effect t` = structural_canvas_pls_bootstrap_value(total_boot_row, "T Stat."),
+    `Total effect p` = structural_canvas_pls_bootstrap_p(total_boot_row),
     `Boot CI lower` = structural_canvas_pls_bootstrap_value(boot_row, "2.5% CI"),
     `Boot CI upper` = structural_canvas_pls_bootstrap_value(boot_row, "97.5% CI"),
-    `Boot p` = if (is.null(boot_row) || !"Bootstrap P Val" %in% names(boot_row)) "" else format_p(boot_row[["Bootstrap P Val"]][[1L]]),
+    `Boot t` = structural_canvas_pls_bootstrap_value(boot_row, "T Stat."),
+    `Boot p` = structural_canvas_pls_bootstrap_p(boot_row),
     check.names = FALSE
   )
 }
@@ -265,11 +285,13 @@ structural_canvas_pls_measurement_result_table <- function(summary_fit, snapshot
         Loading = structural_canvas_pls_number(structural_canvas_pls_matrix_cell(loadings, indicator, construct)),
         `Loading CI lower` = structural_canvas_pls_bootstrap_value(loading_boot, "2.5% CI"),
         `Loading CI upper` = structural_canvas_pls_bootstrap_value(loading_boot, "97.5% CI"),
-        `Loading p` = if (is.null(loading_boot) || !"Bootstrap P Val" %in% names(loading_boot)) "" else format_p(loading_boot[["Bootstrap P Val"]][[1L]]),
+        `Loading t` = structural_canvas_pls_bootstrap_value(loading_boot, "T Stat."),
+        `Loading p` = structural_canvas_pls_bootstrap_p(loading_boot),
         Weight = structural_canvas_pls_number(structural_canvas_pls_matrix_cell(weights, indicator, construct)),
         `Weight CI lower` = structural_canvas_pls_bootstrap_value(weight_boot, "2.5% CI"),
         `Weight CI upper` = structural_canvas_pls_bootstrap_value(weight_boot, "97.5% CI"),
-        `Weight p` = if (is.null(weight_boot) || !"Bootstrap P Val" %in% names(weight_boot)) "" else format_p(weight_boot[["Bootstrap P Val"]][[1L]]),
+        `Weight t` = structural_canvas_pls_bootstrap_value(weight_boot, "T Stat."),
+        `Weight p` = structural_canvas_pls_bootstrap_p(weight_boot),
         `Item VIF` = structural_canvas_pls_number(if (indicator %in% names(item_vifs)) item_vifs[[indicator]] else NA_real_),
         `Max cross-loading` = structural_canvas_pls_number(cross_max),
         Mode = if (identical(latent$measurementMode %||% "reflective", "formative")) "Formative" else "Reflective",

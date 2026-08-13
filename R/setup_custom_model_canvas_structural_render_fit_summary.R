@@ -76,6 +76,8 @@ structural_canvas_lavaan_quality_status <- function(item, value, analysis_type =
   if (identical(item, "Converged")) return(if (identical(value, "TRUE")) "OK" else "Review")
   if (identical(item, "Admissible solution")) return(if (identical(value, "TRUE")) "OK" else "Review")
   if (identical(item, "Model df")) return(if (is.finite(numeric_value) && numeric_value > 0) "OK" else "Review")
+  if (identical(item, "Chi-square/df")) return(if (is.finite(numeric_value) && numeric_value <= 5) "OK" else "Review")
+  if (identical(item, "Fit statistic source")) return("OK")
   if (identical(item, "CFI")) return(if (is.finite(numeric_value) && numeric_value >= .90) "OK" else "Review")
   if (identical(item, "TLI")) return(if (is.finite(numeric_value) && numeric_value >= .90) "OK" else "Review")
   if (identical(item, "RMSEA")) return(if (is.finite(numeric_value) && numeric_value <= .08) "OK" else "Review")
@@ -107,6 +109,7 @@ structural_canvas_lavaan_quality_rows <- function(bundle, analysis_type = "cfa")
   fit <- bundle$fit
   selection <- structural_canvas_fit_measures(fit, bundle$estimator %||% "ML", bundle$rmsea_ci %||% .90)
   values <- selection$values
+  source_label <- paste(unname(selection$keys), collapse = ", ")
   loadings <- structural_canvas_lavaan_quality_loadings(fit)
   validity <- structural_canvas_lavaan_quality_validity(fit)
   structural <- structural_canvas_lavaan_quality_structural(fit)
@@ -117,6 +120,8 @@ structural_canvas_lavaan_quality_rows <- function(bundle, analysis_type = "cfa")
     "Converged",
     "Admissible solution",
     "Model df",
+    "Chi-square/df",
+    "Fit statistic source",
     "CFI",
     "TLI",
     "RMSEA",
@@ -134,6 +139,8 @@ structural_canvas_lavaan_quality_rows <- function(bundle, analysis_type = "cfa")
     if (is.na(converged)) "not recorded" else as.character(isTRUE(converged)),
     if (is.na(admissible)) "not recorded" else as.character(isTRUE(admissible)),
     structural_canvas_lavaan_quality_number(values[[2L]]),
+    structural_canvas_lavaan_quality_number(values[[4L]]),
+    source_label,
     structural_canvas_lavaan_quality_number(values[[5L]]),
     structural_canvas_lavaan_quality_number(values[[6L]]),
     structural_canvas_lavaan_quality_number(values[[8L]]),
@@ -155,6 +162,8 @@ structural_canvas_lavaan_quality_rows <- function(bundle, analysis_type = "cfa")
       "Must be TRUE before interpreting estimates.",
       "Must be TRUE before reporting fit, reliability, validity, or structural paths as final.",
       "df = 0 indicates a saturated model; approximate fit is not substantively diagnostic.",
+      "Often reported as chi-square divided by df; values above 3 or 5 should be justified.",
+      "Records whether lavaan robust/scaled or conventional fit statistics were selected.",
       "Review below .90; .95 is a common descriptive target.",
       "Review below .90; .95 is a common descriptive target.",
       "Review above .08; .06 is a common descriptive target.",
@@ -186,7 +195,7 @@ structural_canvas_lavaan_quality_status_summary <- function(rows) {
 
 structural_canvas_lavaan_quality_priority <- function(items) {
   critical <- c("Converged", "Admissible solution")
-  major <- c("Model df", "CFI", "TLI", "RMSEA", "SRMR", "Min standardized loading", "Min CR", "Min AVE", "Max latent correlation", "Max structural beta")
+  major <- c("Model df", "Chi-square/df", "CFI", "TLI", "RMSEA", "SRMR", "Min standardized loading", "Min CR", "Min AVE", "Max latent correlation", "Max structural beta")
   ifelse(items %in% critical, "Critical", ifelse(items %in% major, "Major", "Advisory"))
 }
 
@@ -246,9 +255,9 @@ structural_canvas_lavaan_quality_result_ui <- function(bundle, analysis_type = "
     tags$p(
       class = "structural-result-note",
       if (ko) {
-        "This checklist summarizes lavaan SEM/CFA convergence, admissibility, global fit, measurement quality, discriminant-validity risk, and structural explanatory-power conditions for reporting and review."
+        "This checklist summarizes lavaan SEM/CFA convergence, admissibility, chi-square/df, robust/scaled fit source, global fit, measurement quality, discriminant-validity risk, and structural explanatory-power conditions for reporting and review."
       } else {
-        "This checklist summarizes lavaan SEM/CFA convergence, admissibility, global fit, measurement quality, discriminant-validity risk, and structural explanatory-power conditions for reporting and review."
+        "This checklist summarizes lavaan SEM/CFA convergence, admissibility, chi-square/df, robust/scaled fit source, global fit, measurement quality, discriminant-validity risk, and structural explanatory-power conditions for reporting and review."
       }
     )
   )
