@@ -58,6 +58,8 @@ stopifnot(
   grepl("Fornell-Larcker, and HTMT summaries", ui_source, fixed = TRUE),
   grepl("indirect and total effect rows are included", ui_source, fixed = TRUE),
   grepl("표준화 효과의 95% 신뢰구간", ui_source, fixed = TRUE),
+  grepl("PLS-SEM does not estimate covariance paths", ui_source, fixed = TRUE),
+  grepl("PLS-SEM에서는 공분산 경로를 추정하지", ui_source, fixed = TRUE),
   !grepl("Latent covariance, factor-score, HTMT, and lavaan delta-method diagnostics are not displayed", ui_source, fixed = TRUE)
 )
 
@@ -232,6 +234,13 @@ stopifnot(nrow(pls_mi) == 0L)
 pls_snapshot <- structural_canvas_result_snapshot(snapshot, pls$fit, "beta")
 pls_labels <- vapply(pls_snapshot$edges, function(edge) as.character(edge$label %||% ""), character(1))
 stopifnot(any(nzchar(pls_labels)))
+
+pls_covariance_snapshot <- snapshot
+pls_covariance_snapshot$edges <- c(pls_covariance_snapshot$edges, list(list(id = "cov12", from = "lv1", to = "lv2", kind = "covariance")))
+pls_covariance <- run_structural_canvas_analysis(pls_covariance_snapshot, data, "plssem", estimator = "PLS")
+stopifnot(inherits(pls_covariance$fit, "pls_model"))
+stopifnot(!grepl("~~", pls_covariance$syntax, fixed = TRUE))
+stopifnot(identical(pls_covariance$ignored_covariances, "eta1 ~~ eta2"))
 
 pls_mediation <- run_structural_canvas_analysis(mediation_snapshot, mediation_data, "plssem", estimator = "PLS")
 stopifnot(inherits(pls_mediation$fit, "pls_model"))

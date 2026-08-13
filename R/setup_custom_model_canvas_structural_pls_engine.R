@@ -46,6 +46,14 @@ structural_canvas_run_pls_analysis <- function(snapshot, data, latents, edges) {
       structural_canvas_name(structural_canvas_node(snapshot, edge$from))
     )
   }, character(1))
+  ignored_covariances <- vapply(Filter(function(edge) identical(edge$kind, "covariance"), edges), function(edge) {
+    from <- structural_canvas_node(snapshot, edge$from)
+    to <- structural_canvas_node(snapshot, edge$to)
+    from_name <- if (is.null(from)) "" else structural_canvas_name(from)
+    to_name <- if (is.null(to)) "" else structural_canvas_name(to)
+    label <- paste(c(from_name, to_name)[nzchar(c(from_name, to_name))], collapse = " ~~ ")
+    if (nzchar(label)) label else as.character(edge$id %||% "covariance")
+  }, character(1))
   measurement_lines <- vapply(latents, function(latent) {
     latent_name <- structural_canvas_name(latent)
     indicators <- latent_indicators(latent)
@@ -65,6 +73,7 @@ structural_canvas_run_pls_analysis <- function(snapshot, data, latents, edges) {
     observed = indicator_names,
     constructs = construct_names,
     structural_paths = structural_paths,
+    ignored_covariances = unique(ignored_covariances),
     admissible = TRUE
   )
 }
