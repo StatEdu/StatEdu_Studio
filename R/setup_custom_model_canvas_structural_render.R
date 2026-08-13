@@ -1,3 +1,185 @@
+structural_canvas_reporting_package_version <- function(package) {
+  if (!requireNamespace(package, quietly = TRUE)) return("not available")
+  as.character(utils::packageVersion(package))
+}
+
+structural_canvas_reporting_sample_size <- function(bundle, analysis_type) {
+  if (is.null(bundle)) return("")
+  if (identical(analysis_type, "plssem")) {
+    return(as.character(bundle$diagnostics$n %||% bundle$n %||% ""))
+  }
+  if (!is.null(bundle$fit) && requireNamespace("lavaan", quietly = TRUE)) {
+    inspected <- tryCatch(lavaan::lavInspect(bundle$fit, "ntotal"), error = function(error) NULL)
+    if (length(inspected)) {
+      inspected <- as.integer(inspected)
+      group_names <- names(inspected)
+      if (length(inspected) > 1L) {
+        if (is.null(group_names) || any(!nzchar(group_names))) group_names <- paste0("group", seq_along(inspected))
+        return(paste0(sum(inspected, na.rm = TRUE), " (", paste(paste0(group_names, "=", inspected), collapse = ", "), ")"))
+      }
+      return(as.character(inspected[[1L]]))
+    }
+  }
+  as.character(bundle$diagnostics$n %||% bundle$n %||% "")
+}
+
+structural_canvas_reporting_lavaan_option <- function(bundle, name, fallback = "") {
+  if (is.null(bundle$fit) || !requireNamespace("lavaan", quietly = TRUE)) return(fallback)
+  options <- tryCatch(lavaan::lavInspect(bundle$fit, "options"), error = function(error) list())
+  as.character(options[[name]] %||% fallback)
+}
+
+structural_canvas_reporting_bootstrap_label <- function(bundle, analysis_type) {
+  requested <- character(0)
+  if (identical(analysis_type, "plssem")) {
+    pls_r <- suppressWarnings(as.integer(bundle$pls_bootstrap %||% 0L))
+    if (is.finite(pls_r) && pls_r > 0L) {
+      requested <- c(requested, paste0("PLS bootstrap R=", pls_r, ", seed=", bundle$pls_seed %||% "not recorded"))
+    }
+  } else {
+    rel_r <- suppressWarnings(as.integer(bundle$reliability_bootstrap %||% 0L))
+    htmt_r <- suppressWarnings(as.integer(bundle$htmt_bootstrap %||% 0L))
+    bs_r <- suppressWarnings(as.integer(bundle$bollen_stine_bootstrap %||% 0L))
+    if (is.finite(rel_r) && rel_r > 0L) {
+      requested <- c(requested, paste0("Reliability/AVE R=", rel_r, ", CI=", bundle$reliability_ci_method %||% "percentile", ", seed=", bundle$reliability_seed %||% "not recorded"))
+    }
+    if (is.finite(htmt_r) && htmt_r > 0L) {
+      requested <- c(requested, paste0("HTMT R=", htmt_r, ", CI=", bundle$htmt_ci_method %||% "percentile", ", seed=", bundle$htmt_seed %||% "not recorded"))
+    }
+    if (is.finite(bs_r) && bs_r > 0L) {
+      requested <- c(requested, paste0("Bollen-Stine R=", bs_r, ", seed=", bundle$bollen_stine_seed %||% "not recorded"))
+    }
+  }
+  if (!length(requested)) "Not requested" else paste(requested, collapse = "; ")
+}
+
+structural_canvas_reporting_predict_label <- function(bundle, analysis_type) {
+  if (!identical(analysis_type, "plssem")) return("Not applicable")
+  result <- bundle$pls_predict_result
+  if (is.list(result)) {
+    return(paste0("Executed: folds=", result$folds %||% "", ", reps=", result$reps %||% ""))
+  }
+  folds <- suppressWarnings(as.integer(bundle$pls_predict_folds %||% 0L))
+  reps <- suppressWarnings(as.integer(bundle$pls_predict_reps %||% 0L))
+  if (is.finite(folds) && folds > 1L) return(paste0("Requested: folds=", folds, ", reps=", reps))
+  "Not requested"
+}
+
+structural_canvas_reporting_group_label <- function(bundle) {
+  if (is.list(bundle$invariance_result)) {
+    group <- as.character(bundle$invariance_group %||% "")
+    label <- as.character(bundle$invariance_result$type %||% "group analysis")
+    if (nzchar(group)) paste0(label, " by ", group) else label
+  } else if (isTRUE(bundle$invariance_enabled)) {
+    paste0("Requested by ", as.character(bundle$invariance_group %||% "selected group"))
+  } else {
+    "Not enabled"
+  }
+}
+
+structural_canvas_reporting_holdout_label <- function(bundle) {
+  if (is.list(bundle$mi_holdout_result)) return("Executed")
+  if (isTRUE(bundle$mi_holdout_enabled)) {
+    return(paste0("Requested: fraction=", bundle$mi_holdout_fraction %||% "", ", seed=", bundle$mi_holdout_seed %||% "not recorded"))
+  }
+  "Not enabled"
+}
+
+structural_canvas_reporting_admissibility_label <- function(bundle) {
+  converged <- bundle$converged %||% bundle$diagnostics$converged %||% NA
+  admissible <- bundle$admissible %||% bundle$diagnostics$admissible %||% NA
+  paste0(
+    "converged=", if (is.na(converged)) "not recorded" else as.character(isTRUE(converged)),
+    "; admissible=", if (is.na(admissible)) "not recorded" else as.character(isTRUE(admissible))
+  )
+}
+
+structural_canvas_reporting_context_rows <- function(bundle, analysis_type) {
+  if (is.null(bundle)) return(data.frame(Item = character(0), Value = character(0), stringsAsFactors = FALSE))
+  engine <- if (identical(analysis_type, "plssem")) {
+    paste0("seminr ", structural_canvas_reporting_package_version("seminr"))
+  } else {
+    paste0("lavaan ", structural_canvas_reporting_package_version("lavaan"))
+  }
+  estimator <- if (identical(analysis_type, "plssem")) {
+    "PLS path modeling"
+  } else {
+    bundle$estimator %||% structural_canvas_reporting_lavaan_option(bundle, "estimator", "")
+  }
+  missing <- if (identical(analysis_type, "plssem")) {
+    "Valid rows used by seminr; no FIML/pairwise option"
+  } else {
+    bundle$missing %||% structural_canvas_reporting_lavaan_option(bundle, "missing", "")
+  }
+  ordered <- as.character(bundle$ordered %||% character(0))
+  ordered_label <- if (length(ordered)) paste(ordered, collapse = ", ") else "None recorded"
+  scaling <- if (identical(analysis_type, "plssem")) {
+    "Composite scores"
+  } else if (isTRUE(bundle$std_lv)) {
+    "std.lv = TRUE"
+  } else {
+    "Marker loading scaling"
+  }
+  context <- if (isTRUE(bundle$modified_model) || length(bundle$mi_history %||% list())) {
+    "Exploratory modified model"
+  } else {
+    "Original/prespecified model"
+  }
+  syntax_label <- if (nzchar(as.character(bundle$syntax %||% ""))) "Available in analysis bundle" else "Not recorded"
+  data.frame(
+    Item = c(
+      "Analysis context",
+      "Analysis engine",
+      "Estimator or algorithm",
+      "Missing-data handling",
+      "Analyzed N",
+      "Ordered indicators",
+      "Latent scaling",
+      "Bootstrap settings",
+      "PLSpredict setting",
+      "Group analysis",
+      "MI holdout",
+      "Syntax availability",
+      "Admissibility and convergence"
+    ),
+    Value = c(
+      context,
+      engine,
+      estimator,
+      missing,
+      structural_canvas_reporting_sample_size(bundle, analysis_type),
+      ordered_label,
+      scaling,
+      structural_canvas_reporting_bootstrap_label(bundle, analysis_type),
+      structural_canvas_reporting_predict_label(bundle, analysis_type),
+      structural_canvas_reporting_group_label(bundle),
+      structural_canvas_reporting_holdout_label(bundle),
+      syntax_label,
+      structural_canvas_reporting_admissibility_label(bundle)
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+structural_canvas_reporting_context_result_ui <- function(bundle, analysis_type, language = statedu_initial_language()) {
+  rows <- structural_canvas_reporting_context_rows(bundle, analysis_type)
+  if (!nrow(rows)) return(NULL)
+  ko <- identical(normalize_app_language(language), "ko")
+  div(
+    class = "result-section regression-result-panel structural-reporting-context",
+    h4(if (ko) "Reporting checklist" else "Reporting checklist"),
+    structural_canvas_basic_html_table(rows),
+    tags$p(
+      class = "structural-result-note",
+      if (ko) {
+        "Use this block to report reproducibility conditions: estimator, missing-data handling, analyzed N, ordered indicators, bootstrap settings, seeds, group analysis, and whether MI-based changes are exploratory."
+      } else {
+        "Use this block to report reproducibility conditions: estimator, missing-data handling, analyzed N, ordered indicators, bootstrap settings, seeds, group analysis, and whether MI-based changes are exploratory."
+      }
+    )
+  )
+}
+
 structural_canvas_register_result_outputs <- function(input, output, prefix, canvas_output, analysis_type, selected_names_fn, variable_table_fn, labels_fn, app_language_fn, fit_result, result_table) {
 output[[canvas_output]] <- renderUI({
   structural_equation_workspace(selected_names_fn(), variable_table_fn(), labels_fn(), analysis_type, statedu_current_language(app_language_fn))
@@ -12,6 +194,7 @@ output[[paste0(prefix, "_results")]] <- renderUI({
     if (analysis_type == "cfa") downloadButton(paste0(prefix, "_download_reproducibility"), if (ko) "분석 기록 다운로드" else "Download analysis record", class = "btn btn-default btn-sm"),
     if (analysis_type == "cfa") downloadButton(paste0(prefix, "_download_tables"), if (ko) "결과표 Excel 다운로드" else "Download result tables", class = "btn btn-default btn-sm"),
     div(class = "result-section regression-result-panel", h4(if (ko) "1. 모형 개요" else "1. Model overview"), div(class = "table-responsive", tableOutput(paste0(prefix, "_result_overview")))),
+    uiOutput(paste0(prefix, "_result_reporting_context")),
     uiOutput(paste0(prefix, "_result_identification")),
     uiOutput(paste0(prefix, "_result_normality")),
     uiOutput(paste0(prefix, "_result_missing_outliers")),
@@ -60,6 +243,9 @@ output[[paste0(prefix, "_results")]] <- renderUI({
     if (analysis_type != "plssem") div(class = "result-section regression-result-panel structural-mi-result", h4(if (ko) "6. 수정지수(MI)" else "6. Modification indices (MI)"), uiOutput(paste0(prefix, "_result_mi")))
   )
 })
+  output[[paste0(prefix, "_result_reporting_context")]] <- renderUI({
+    structural_canvas_reporting_context_result_ui(fit_result(), analysis_type, statedu_current_language(app_language_fn))
+  })
   structural_canvas_register_fit_diagnostic_outputs(
     output, prefix, analysis_type, fit_result, result_table, dataset_fn, app_language_fn
   )

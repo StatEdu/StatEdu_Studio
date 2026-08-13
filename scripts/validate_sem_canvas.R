@@ -53,6 +53,9 @@ stopifnot(
   grepl("total and indirect effects", ui_source, fixed = TRUE),
   grepl("PLSpredict cross-validation", ui_source, fixed = TRUE),
   grepl("PLSpredict predictive assessment", ui_source, fixed = TRUE),
+  grepl("Reporting checklist", ui_source, fixed = TRUE),
+  grepl("Estimator or algorithm", ui_source, fixed = TRUE),
+  grepl("Admissibility and convergence", ui_source, fixed = TRUE),
   grepl("PLS - LM values indicate lower out-of-sample prediction error", ui_source, fixed = TRUE),
   grepl("path coefficients, R2, adjusted R2, f2, inner VIF", ui_source, fixed = TRUE),
   grepl("Inner VIF is reported for direct structural paths", ui_source, fixed = TRUE),
@@ -93,10 +96,18 @@ cbsem_bundle <- list(
   snapshot = snapshot,
   diagnostics = cbsem,
   estimator = "ML",
+  missing = "fiml",
   rmsea_ci = 0.90,
   validity_formula = "standardized"
 )
 cbsem_result <- function() cbsem_bundle
+cbsem_reporting <- structural_canvas_reporting_context_rows(cbsem_bundle, "cbsem")
+stopifnot(nrow(cbsem_reporting) == 13L)
+stopifnot(grepl("lavaan", cbsem_reporting$Value[cbsem_reporting$Item == "Analysis engine"], fixed = TRUE))
+stopifnot(cbsem_reporting$Value[cbsem_reporting$Item == "Estimator or algorithm"] == "ML")
+stopifnot(cbsem_reporting$Value[cbsem_reporting$Item == "Missing-data handling"] == "fiml")
+stopifnot(cbsem_reporting$Value[cbsem_reporting$Item == "Analysis context"] == "Original/prespecified model")
+stopifnot(grepl("converged=TRUE", cbsem_reporting$Value[cbsem_reporting$Item == "Admissibility and convergence"], fixed = TRUE))
 stopifnot(nrow(structural_canvas_result_table("overview", cbsem_result, "cbsem", labels_fn, language_fn)) > 0L)
 stopifnot(nrow(structural_canvas_result_table("fit", cbsem_result, "cbsem", labels_fn, language_fn)) > 0L)
 stopifnot(nrow(structural_canvas_result_table("validity", cbsem_result, "cbsem", labels_fn, language_fn)) > 0L)
@@ -308,6 +319,12 @@ pls_bundle <- list(
   estimator = "PLS"
 )
 pls_result <- function() pls_bundle
+pls_reporting <- structural_canvas_reporting_context_rows(pls_bundle, "plssem")
+stopifnot(nrow(pls_reporting) == 13L)
+stopifnot(grepl("seminr", pls_reporting$Value[pls_reporting$Item == "Analysis engine"], fixed = TRUE))
+stopifnot(pls_reporting$Value[pls_reporting$Item == "Estimator or algorithm"] == "PLS path modeling")
+stopifnot(pls_reporting$Value[pls_reporting$Item == "Missing-data handling"] == "Valid rows used by seminr; no FIML/pairwise option")
+stopifnot(pls_reporting$Value[pls_reporting$Item == "Latent scaling"] == "Composite scores")
 pls_overview <- structural_canvas_result_table("overview", pls_result, "plssem", labels_fn, language_fn)
 pls_fit <- structural_canvas_result_table("fit", pls_result, "plssem", labels_fn, language_fn)
 pls_validity <- structural_canvas_result_table("validity", pls_result, "plssem", labels_fn, language_fn)
@@ -394,8 +411,12 @@ pls_mediation_bootstrap <- structural_canvas_run_pls_bootstrap("plssem", 20L, pl
 stopifnot("bootstrapped_total_indirect_paths" %in% names(pls_mediation_bootstrap))
 pls_boot_bundle <- pls_bundle
 pls_boot_bundle$pls_bootstrap <- 30L
+pls_boot_bundle$pls_seed <- 24680L
 pls_boot_bundle$pls_bootstrap_result <- pls_bootstrap
 pls_boot_result <- function() pls_boot_bundle
+pls_boot_reporting <- structural_canvas_reporting_context_rows(pls_boot_bundle, "plssem")
+stopifnot(grepl("PLS bootstrap R=30", pls_boot_reporting$Value[pls_boot_reporting$Item == "Bootstrap settings"], fixed = TRUE))
+stopifnot(grepl("seed=24680", pls_boot_reporting$Value[pls_boot_reporting$Item == "Bootstrap settings"], fixed = TRUE))
 pls_boot_fit <- structural_canvas_result_table("fit", pls_boot_result, "plssem", labels_fn, language_fn)
 pls_boot_validity <- structural_canvas_result_table("validity", pls_boot_result, "plssem", labels_fn, language_fn)
 pls_boot_measurement <- structural_canvas_result_table("measurement", pls_boot_result, "plssem", labels_fn, language_fn)
@@ -492,6 +513,8 @@ stopifnot(inherits(executed$fit, "pls_model"))
 stopifnot(inherits(fit_result_state()$fit, "pls_model"))
 stopifnot(is.list(fit_result_state()$pls_predict_result))
 stopifnot(fit_result_state()$pls_predict_result$folds == 5L)
+pls_predict_reporting <- structural_canvas_reporting_context_rows(fit_result_state(), "plssem")
+stopifnot(grepl("Executed: folds=5, reps=1", pls_predict_reporting$Value[pls_predict_reporting$Item == "PLSpredict setting"], fixed = TRUE))
 stopifnot(identical(execution_state$message$type, "custom-model-canvas-result"))
 stopifnot(any(nzchar(vapply(execution_state$message$message$result$edges, function(edge) as.character(edge$label %||% ""), character(1)))))
 execution_state$value <- NULL
