@@ -20,7 +20,10 @@ output[[paste0(prefix, "_results")]] <- renderUI({
       if (ko) "2. PLS 구조모형 효과" else "2. PLS structural model effects"
     } else {
       if (ko) "2. 모형 적합도" else "2. Model fit"
-    }), div(class = "table-responsive", uiOutput(paste0(prefix, "_result_fit"))), uiOutput(paste0(prefix, "_result_fit_guidance")), uiOutput(paste0(prefix, "_result_rmsea_tests")), uiOutput(paste0(prefix, "_result_information_criteria")), uiOutput(paste0(prefix, "_result_bollen_stine")), div(class = "table-responsive", uiOutput(paste0(prefix, "_result_fit_difference")))),
+    }), div(class = "table-responsive", uiOutput(paste0(prefix, "_result_fit"))), if (identical(analysis_type, "plssem")) tagList(
+      tags$p(class = "structural-result-note", "PLS-SEM structural output reports path coefficients, R2, adjusted R2, f2, inner VIF, and total/indirect effects rather than covariance-based global fit indices."),
+      tags$p(class = "structural-result-note", "Inner VIF is reported for direct structural paths when an endogenous construct has antecedent predictors available from seminr.")
+    ), uiOutput(paste0(prefix, "_result_fit_guidance")), uiOutput(paste0(prefix, "_result_rmsea_tests")), uiOutput(paste0(prefix, "_result_information_criteria")), uiOutput(paste0(prefix, "_result_bollen_stine")), div(class = "table-responsive", uiOutput(paste0(prefix, "_result_fit_difference")))),
     if (analysis_type == "cbsem") div(
       class = "result-section regression-result-panel structural-path-result",
       h4(if (ko) "3. 구조모형 경로" else "3. Structural model paths"),
