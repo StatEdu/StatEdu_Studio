@@ -241,6 +241,17 @@ pls_covariance <- run_structural_canvas_analysis(pls_covariance_snapshot, data, 
 stopifnot(inherits(pls_covariance$fit, "pls_model"))
 stopifnot(!grepl("~~", pls_covariance$syntax, fixed = TRUE))
 stopifnot(identical(pls_covariance$ignored_covariances, "eta1 ~~ eta2"))
+pls_covariance_bundle <- list(
+  fit = pls_covariance$fit,
+  syntax = pls_covariance$syntax,
+  snapshot = pls_covariance_snapshot,
+  diagnostics = pls_covariance,
+  estimator = "PLS"
+)
+pls_covariance_result <- function() pls_covariance_bundle
+pls_covariance_overview <- structural_canvas_result_table("overview", pls_covariance_result, "plssem", labels_fn, language_fn)
+stopifnot(nrow(pls_covariance_overview) == 8L)
+stopifnot(pls_covariance_overview$Value[pls_covariance_overview$Item == "Ignored covariance paths"] == "eta1 ~~ eta2")
 
 pls_mediation <- run_structural_canvas_analysis(mediation_snapshot, mediation_data, "plssem", estimator = "PLS")
 stopifnot(inherits(pls_mediation$fit, "pls_model"))

@@ -431,6 +431,17 @@ structural_canvas_result_table <- function(kind, fit_result, analysis_type, labe
       ),
       check.names = FALSE
     )
+    ignored_covariances <- diagnostics$ignored_covariances %||% character(0)
+    if (length(ignored_covariances)) {
+      overview_df <- rbind(
+        overview_df,
+        data.frame(
+          Item = if (ko) "제외된 공분산 경로" else "Ignored covariance paths",
+          Value = paste(ignored_covariances, collapse = ", "),
+          check.names = FALSE
+        )
+      )
+    }
     names(overview_df)[[1]] <- if (ko) "항목" else "Item"
     names(overview_df)[[2]] <- if (ko) "값" else "Value"
     return(overview_df)
