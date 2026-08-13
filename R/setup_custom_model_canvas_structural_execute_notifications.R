@@ -10,12 +10,18 @@ structural_canvas_notify_missing_covariances <- function(missing_covariances, an
   }
 }
 
-structural_canvas_notify_ignored_pls_covariances <- function(result, analysis_type) {
+structural_canvas_notify_ignored_pls_covariances <- function(result, analysis_type, language = NULL) {
   ignored_covariances <- result$ignored_covariances %||% character(0)
   if (identical(analysis_type, "plssem") && length(ignored_covariances)) {
     domain <- shiny::getDefaultReactiveDomain()
     if (is.null(domain) || !is.function(domain$sendNotification)) return(invisible(FALSE))
-    showNotification(paste0("PLS-SEM does not estimate covariance paths; excluded: ", paste(ignored_covariances, collapse = ", "), "."), type = "warning", duration = 10)
+    ko <- identical(normalize_app_language(language), "ko")
+    message <- if (ko) {
+      paste0("PLS-SEM은 공분산 경로를 추정하지 않으므로 제외했습니다: ", paste(ignored_covariances, collapse = ", "), ".")
+    } else {
+      paste0("PLS-SEM does not estimate covariance paths; excluded: ", paste(ignored_covariances, collapse = ", "), ".")
+    }
+    showNotification(message, type = "warning", duration = 10)
   }
   invisible(TRUE)
 }

@@ -44,7 +44,7 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
     )
     execute_analysis <- function(snapshot, settings = NULL) {
       structural_canvas_execute_analysis(
-        snapshot, settings, input, session, dataset_fn, variable_table_fn, analysis_type, prefix, fit_result
+        snapshot, settings, input, session, dataset_fn, variable_table_fn, analysis_type, prefix, fit_result, app_language_fn
       )
     }
     structural_canvas_register_interaction_events(

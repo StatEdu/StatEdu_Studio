@@ -60,7 +60,8 @@ stopifnot(
   grepl("표준화 효과의 95% 신뢰구간", ui_source, fixed = TRUE),
   grepl("PLS-SEM does not estimate covariance paths", ui_source, fixed = TRUE),
   grepl("PLS-SEM does not estimate covariance paths; excluded:", ui_source, fixed = TRUE),
-  grepl("structural_canvas_notify_ignored_pls_covariances(result, analysis_type)", ui_source, fixed = TRUE),
+  grepl("PLS-SEM은 공분산 경로를 추정하지", ui_source, fixed = TRUE),
+  grepl("structural_canvas_notify_ignored_pls_covariances(result, analysis_type, statedu_current_language(app_language_fn))", ui_source, fixed = TRUE),
   grepl("PLS-SEM에서는 공분산 경로를 추정하지", ui_source, fixed = TRUE),
   !grepl("Latent covariance, factor-score, HTMT, and lavaan delta-method diagnostics are not displayed", ui_source, fixed = TRUE)
 )
