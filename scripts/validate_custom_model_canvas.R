@@ -18,6 +18,7 @@ source(file.path(repo_root, "R", "setup_custom_model_canvas_snapshot.R"))
 source(file.path(repo_root, "R", "setup_custom_model_canvas_i18n.R"))
 source(file.path(repo_root, "R", "setup_custom_model_canvas_components.R"))
 source(file.path(repo_root, "R", "setup_custom_model_canvas_options.R"))
+source(file.path(repo_root, "R", "setup_custom_model_canvas_toolbar.R"))
 source(file.path(repo_root, "R", "setup_custom_model_canvas_result_snapshot.R"))
 source(file.path(repo_root, "R", "setup_custom_model_canvas_ui.R"))
 
