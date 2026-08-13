@@ -97,6 +97,22 @@ structural_canvas_pls_effect_value <- function(total_effects, paths, predictor, 
   list(coefficient = NA_real_, indirect = indirect, total = total)
 }
 
+structural_canvas_pls_q2_value <- function(diagnostics, outcome) {
+  q2_table <- as.data.frame(diagnostics$q2 %||% data.frame(), check.names = FALSE)
+  if (!nrow(q2_table) || !"Outcome" %in% names(q2_table) || !"Q2" %in% names(q2_table)) return(NA_real_)
+  row <- q2_table[q2_table$Outcome == outcome, , drop = FALSE]
+  if (!nrow(row)) return(NA_real_)
+  suppressWarnings(as.numeric(row$Q2[[1L]]))
+}
+
+structural_canvas_pls_q2_effect_value <- function(diagnostics, predictor, outcome) {
+  q2_effects <- as.data.frame(diagnostics$q2_effects %||% data.frame(), check.names = FALSE)
+  if (!nrow(q2_effects) || !all(c("Outcome", "Predictor", "q2") %in% names(q2_effects))) return(NA_real_)
+  row <- q2_effects[q2_effects$Outcome == outcome & q2_effects$Predictor == predictor, , drop = FALSE]
+  if (!nrow(row)) return(NA_real_)
+  suppressWarnings(as.numeric(row$q2[[1L]]))
+}
+
 structural_canvas_pls_indirect_specs <- function(path_specs) {
   if (!nrow(path_specs)) return(data.frame(outcome = character(0), predictor = character(0)))
   nodes <- sort(unique(c(path_specs$predictor, path_specs$outcome)))
@@ -119,7 +135,7 @@ structural_canvas_pls_indirect_specs <- function(path_specs) {
   unique(do.call(rbind, rows))
 }
 
-structural_canvas_pls_fit_row <- function(effect, outcome, predictor, summary_fit, paths, f_square, total_effects, bootstrap_paths, bootstrap_total_paths, bootstrap_indirect_paths, display_name) {
+structural_canvas_pls_fit_row <- function(effect, outcome, predictor, summary_fit, diagnostics, paths, f_square, total_effects, bootstrap_paths, bootstrap_total_paths, bootstrap_indirect_paths, display_name) {
   values <- structural_canvas_pls_effect_value(total_effects, paths, predictor, outcome, effect)
   boot_row <- if (identical(effect, "Direct")) structural_canvas_pls_bootstrap_row(bootstrap_paths, predictor, outcome) else NULL
   total_boot_row <- structural_canvas_pls_bootstrap_row(bootstrap_total_paths, predictor, outcome)
@@ -132,6 +148,8 @@ structural_canvas_pls_fit_row <- function(effect, outcome, predictor, summary_fi
     R2 = structural_canvas_pls_number(structural_canvas_pls_matrix_cell(paths, "R^2", outcome)),
     AdjR2 = structural_canvas_pls_number(structural_canvas_pls_matrix_cell(paths, "AdjR^2", outcome)),
     f2 = if (identical(effect, "Direct")) structural_canvas_pls_number(structural_canvas_pls_matrix_cell(f_square, predictor, outcome)) else "",
+    Q2 = structural_canvas_pls_number(structural_canvas_pls_q2_value(diagnostics, outcome)),
+    q2 = if (identical(effect, "Direct")) structural_canvas_pls_number(structural_canvas_pls_q2_effect_value(diagnostics, predictor, outcome)) else "",
     `Inner VIF` = if (identical(effect, "Direct")) structural_canvas_pls_number(structural_canvas_pls_inner_vif(summary_fit, predictor, outcome)) else "",
     `Indirect effect` = structural_canvas_pls_number(values$indirect),
     `Indirect effect CI lower` = structural_canvas_pls_bootstrap_value(indirect_boot_row, "2.5% CI"),
@@ -157,11 +175,11 @@ structural_canvas_pls_fit_result_table <- function(summary_fit, diagnostics, dis
   bootstrap_indirect_paths <- bootstrap$bootstrapped_total_indirect_paths %||% NULL
   path_specs <- structural_canvas_pls_path_specs(diagnostics)
   rows <- lapply(seq_len(nrow(path_specs)), function(index) {
-    structural_canvas_pls_fit_row("Direct", path_specs$outcome[[index]], path_specs$predictor[[index]], summary_fit, paths, f_square, total_effects, bootstrap_paths, bootstrap_total_paths, bootstrap_indirect_paths, display_name)
+    structural_canvas_pls_fit_row("Direct", path_specs$outcome[[index]], path_specs$predictor[[index]], summary_fit, diagnostics, paths, f_square, total_effects, bootstrap_paths, bootstrap_total_paths, bootstrap_indirect_paths, display_name)
   })
   indirect_specs <- structural_canvas_pls_indirect_specs(path_specs)
   rows <- c(rows, lapply(seq_len(nrow(indirect_specs)), function(index) {
-    structural_canvas_pls_fit_row("Indirect", indirect_specs$outcome[[index]], indirect_specs$predictor[[index]], summary_fit, paths, f_square, total_effects, bootstrap_paths, bootstrap_total_paths, bootstrap_indirect_paths, display_name)
+    structural_canvas_pls_fit_row("Indirect", indirect_specs$outcome[[index]], indirect_specs$predictor[[index]], summary_fit, diagnostics, paths, f_square, total_effects, bootstrap_paths, bootstrap_total_paths, bootstrap_indirect_paths, display_name)
   }))
   rows <- Filter(Negate(is.null), rows)
   if (!length(rows)) return(data.frame())

@@ -41,6 +41,7 @@ structural_canvas_pls_quality_status <- function(item, value) {
   if (identical(item, "Max inner VIF")) return(if (is.finite(numeric_value) && numeric_value <= 5) "OK" else "Review")
   if (identical(item, "Min endogenous R2")) return(if (is.finite(numeric_value)) "OK" else "Review")
   if (identical(item, "Max f2")) return(if (is.finite(numeric_value)) "OK" else "Not assessed")
+  if (identical(item, "Min Q2")) return(if (is.finite(numeric_value) && numeric_value > 0) "OK" else "Review")
   if (identical(item, "PLSpredict summary")) {
     matches <- regmatches(value, regexec("^([0-9]+)/([0-9]+)", value))[[1L]]
     if (length(matches) == 3L) {
@@ -76,6 +77,8 @@ structural_canvas_pls_quality_rows <- function(bundle) {
   r2 <- if (length(paths) && "R^2" %in% rownames(paths)) suppressWarnings(as.numeric(paths["R^2", ])) else numeric(0)
   f_square <- suppressWarnings(as.numeric(as.matrix(summary_fit$fSquare %||% matrix(numeric(0), 0L, 0L))))
   f_square <- f_square[is.finite(f_square) & f_square > 0]
+  q2 <- suppressWarnings(as.numeric((bundle$diagnostics$q2 %||% data.frame())$Q2))
+  q2 <- q2[is.finite(q2)]
   missing <- summary_fit$missing_data$method %||% "not recorded"
   weight_diff <- bundle$fit$weightDiff %||% NA_real_
   items <- c(
@@ -90,6 +93,7 @@ structural_canvas_pls_quality_rows <- function(bundle) {
     "Max inner VIF",
     "Min endogenous R2",
     "Max f2",
+    "Min Q2",
     "PLSpredict summary"
   )
   displayed_values <- c(
@@ -104,6 +108,7 @@ structural_canvas_pls_quality_rows <- function(bundle) {
     structural_canvas_pls_quality_number(inner_vif, "max"),
     structural_canvas_pls_quality_number(r2, "min"),
     structural_canvas_pls_quality_number(f_square, "max"),
+    structural_canvas_pls_quality_number(q2, "min"),
     structural_canvas_pls_quality_predictive_label(bundle)
   )
   data.frame(
@@ -122,6 +127,7 @@ structural_canvas_pls_quality_rows <- function(bundle) {
       "Review structural predictor collinearity above 3.3 or 5.",
       "Report explanatory power for endogenous constructs.",
       "Interpret as structural effect size; .02/.15/.35 are descriptive anchors.",
+      "Stone-Geisser Q2 above 0 indicates predictive relevance for endogenous constructs.",
       "Out-of-sample prediction is strongest when PLS error is lower than LM."
     ),
     stringsAsFactors = FALSE,
@@ -142,7 +148,7 @@ structural_canvas_pls_quality_status_summary <- function(rows) {
 
 structural_canvas_pls_quality_priority <- function(items) {
   critical <- c("PLS algorithm iterations", "Final weight difference")
-  major <- c("Min outer loading", "Min rhoC", "Min AVE", "Max HTMT", "Max item VIF", "Max inner VIF")
+  major <- c("Min outer loading", "Min rhoC", "Min AVE", "Max HTMT", "Max item VIF", "Max inner VIF", "Min Q2")
   ifelse(items %in% critical, "Critical", ifelse(items %in% major, "Major", "Advisory"))
 }
 
@@ -202,9 +208,9 @@ structural_canvas_pls_quality_result_ui <- function(bundle, language = statedu_i
     tags$p(
       class = "structural-result-note",
       if (ko) {
-        "This checklist summarizes PLS-SEM measurement, collinearity, explanatory-power, and predictive-quality boundary conditions for reporting and review."
+        "This checklist summarizes PLS-SEM measurement, collinearity, explanatory-power, Q2 predictive-relevance, and predictive-quality boundary conditions for reporting and review."
       } else {
-        "This checklist summarizes PLS-SEM measurement, collinearity, explanatory-power, and predictive-quality boundary conditions for reporting and review."
+        "This checklist summarizes PLS-SEM measurement, collinearity, explanatory-power, Q2 predictive-relevance, and predictive-quality boundary conditions for reporting and review."
       }
     )
   )

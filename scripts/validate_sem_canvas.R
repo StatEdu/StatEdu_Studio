@@ -54,14 +54,14 @@ stopifnot(
   grepl("PLSpredict cross-validation", ui_source, fixed = TRUE),
   grepl("PLSpredict predictive assessment", ui_source, fixed = TRUE),
   grepl("PLS-SEM quality checklist", ui_source, fixed = TRUE),
-  grepl("measurement, collinearity, explanatory-power, and predictive-quality boundary conditions", ui_source, fixed = TRUE),
+  grepl("Q2 predictive-relevance", ui_source, fixed = TRUE),
   grepl("SEM quality checklist", ui_source, fixed = TRUE),
   grepl("convergence, admissibility, global fit, measurement quality, discriminant-validity risk", ui_source, fixed = TRUE),
   grepl("Reporting checklist", ui_source, fixed = TRUE),
   grepl("Estimator or algorithm", ui_source, fixed = TRUE),
   grepl("Admissibility and convergence", ui_source, fixed = TRUE),
   grepl("PLS - LM values indicate lower out-of-sample prediction error", ui_source, fixed = TRUE),
-  grepl("path coefficients, R2, adjusted R2, f2, inner VIF", ui_source, fixed = TRUE),
+  grepl("path coefficients, R2, adjusted R2, f2, Q2, q2, inner VIF", ui_source, fixed = TRUE),
   grepl("Inner VIF is reported for direct structural paths", ui_source, fixed = TRUE),
   grepl("PLS-SEM 구조모형 출력", ui_source, fixed = TRUE),
   grepl("PLS-SEM 측정모형 출력", ui_source, fixed = TRUE),
@@ -81,6 +81,8 @@ stopifnot(
   grepl("PLS-SEM bootstrap complete", pls_engine_source, fixed = TRUE),
   grepl("Estimating PLSpredict cross-validation", pls_engine_source, fixed = TRUE),
   grepl("seminr::predict_pls", pls_engine_source, fixed = TRUE),
+  grepl("structural_canvas_pls_predictive_relevance", pls_engine_source, fixed = TRUE),
+  grepl("q2 = 1 - press / tss", pls_engine_source, fixed = TRUE),
   grepl("structural_canvas_notify_missing_covariances(missing_covariances, analysis_type, statedu_current_language(app_language_fn))", ui_source, fixed = TRUE),
   grepl("structural_canvas_notify_ignored_pls_covariances(result, analysis_type, statedu_current_language(app_language_fn))", ui_source, fixed = TRUE),
   grepl("PLS-SEM에서는 공분산 경로를 추정하지", ui_source, fixed = TRUE),
@@ -352,12 +354,14 @@ stopifnot(pls_reporting$Value[pls_reporting$Item == "Estimator or algorithm"] ==
 stopifnot(pls_reporting$Value[pls_reporting$Item == "Missing-data handling"] == "Valid rows used by seminr; no FIML/pairwise option")
 stopifnot(pls_reporting$Value[pls_reporting$Item == "Latent scaling"] == "Composite scores")
 pls_quality <- structural_canvas_pls_quality_rows(pls_bundle)
-stopifnot(nrow(pls_quality) == 12L)
+stopifnot(nrow(pls_quality) == 13L)
 stopifnot(all(c("Item", "Value", "Status", "Guidance") %in% names(pls_quality)))
-stopifnot(all(c("PLS algorithm iterations", "Min outer loading", "Min rhoC", "Min AVE", "Max HTMT", "Max item VIF", "Min endogenous R2", "PLSpredict summary") %in% pls_quality$Item))
+stopifnot(all(c("PLS algorithm iterations", "Min outer loading", "Min rhoC", "Min AVE", "Max HTMT", "Max item VIF", "Min endogenous R2", "Max f2", "Min Q2", "PLSpredict summary") %in% pls_quality$Item))
 stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "PLS algorithm iterations"]))
 stopifnot(pls_quality$Status[pls_quality$Item == "PLS algorithm iterations"] == "OK")
 stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Min outer loading"]))
+stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Min Q2"]))
+stopifnot(pls_quality$Status[pls_quality$Item == "Min Q2"] %in% c("OK", "Review"))
 stopifnot(pls_quality$Value[pls_quality$Item == "PLSpredict summary"] == "Not executed")
 stopifnot(pls_quality$Status[pls_quality$Item == "PLSpredict summary"] == "Not assessed")
 pls_quality_summary <- structural_canvas_pls_quality_status_summary(pls_quality)
@@ -377,11 +381,13 @@ pls_measurement <- structural_canvas_result_table("measurement", pls_result, "pl
 pls_mi <- structural_canvas_result_table("mi", pls_result, "plssem", labels_fn, language_fn)
 stopifnot(nrow(pls_overview) == 7L)
 stopifnot("Item" %in% names(pls_overview))
-stopifnot(all(c("Effect", "Outcome", "Predictor", "Coefficient", "R2", "AdjR2", "f2", "Inner VIF", "Indirect effect", "Indirect effect CI lower", "Indirect effect CI upper", "Indirect effect p", "Total effect") %in% names(pls_fit)))
+stopifnot(all(c("Effect", "Outcome", "Predictor", "Coefficient", "R2", "AdjR2", "f2", "Q2", "q2", "Inner VIF", "Indirect effect", "Indirect effect CI lower", "Indirect effect CI upper", "Indirect effect p", "Total effect") %in% names(pls_fit)))
 stopifnot(pls_fit$Effect[[1L]] == "Direct")
 stopifnot(any(pls_fit$Predictor == "eta1"))
 stopifnot(any(pls_fit$Outcome == "eta2"))
 stopifnot(nzchar(pls_fit$f2[[1L]]))
+stopifnot(nzchar(pls_fit$Q2[[1L]]))
+stopifnot(nzchar(pls_fit$q2[[1L]]))
 stopifnot(nzchar(pls_fit[["Total effect"]][[1L]]))
 stopifnot(all(c("Construct", "alpha", "rhoA", "rhoC", "AVE", "sqrt(AVE)", "Max HTMT", "Fornell-Larcker") %in% names(pls_validity)))
 stopifnot(nrow(pls_validity) >= 2L)
