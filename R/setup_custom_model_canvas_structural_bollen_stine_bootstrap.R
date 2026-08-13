@@ -1,21 +1,36 @@
 # Structural equation canvas Bollen-Stine bootstrap helpers.
 
-structural_canvas_bollen_stine <- function(fit, reps = 500L, seed = 97531L) {
+structural_canvas_bollen_stine <- function(fit, reps = 500L, seed = 97531L, progress = NULL, cancel = NULL) {
   reps <- as.integer(reps)
   if (!is.finite(reps) || reps < 1L) stop("Bollen-Stine bootstrap requires at least one resample.")
   eligibility <- structural_canvas_bollen_stine_eligibility(fit)
   if (!isTRUE(eligibility$available)) stop(eligibility$reason)
   observed <- unname(lavaan::fitMeasures(fit, "chisq"))
+  completed <- 0L
+  valid <- 0L
+  progress_step <- max(1L, floor(reps / 100L))
+  if (is.function(progress)) progress(0L, reps, 0L)
   draws <- suppressWarnings(lavaan::bootstrapLavaan(
-    fit, r = reps, type = "bollen.stine", iseed = as.integer(seed),
-    fun = function(candidate) {
-      if (!isTRUE(structural_canvas_fit_admissibility(candidate)$admissible)) return(NA_real_)
-      unname(lavaan::fitMeasures(candidate, "chisq"))
+    fit, R = reps, type = "bollen.stine", iseed = as.integer(seed),
+    FUN = function(candidate) {
+      if (is.function(cancel) && isTRUE(cancel())) stop("Bollen-Stine bootstrap canceled.")
+      completed <<- completed + 1L
+      value <- if (isTRUE(structural_canvas_fit_admissibility(candidate)$admissible)) {
+        unname(lavaan::fitMeasures(candidate, "chisq"))
+      } else {
+        NA_real_
+      }
+      if (is.finite(value)) valid <<- valid + 1L
+      if (is.function(progress) && (completed == 1L || completed == reps || completed %% progress_step == 0L)) {
+        progress(completed, reps, valid)
+      }
+      value
     }
   ))
   draws <- as.numeric(draws)
   valid_draws <- draws[is.finite(draws)]
   valid <- length(valid_draws)
+  if (is.function(progress)) progress(reps, reps, valid)
   exceedances <- if (valid) sum(valid_draws >= observed) else 0L
   trials <- valid + 1L
   successes <- exceedances + 1L

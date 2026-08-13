@@ -519,7 +519,17 @@ numeric_fit_table <- structural_canvas_export_fit_estimates(list(
 admissibility_export <- structural_canvas_export_admissibility(list(fit = two_factor_fit))
 set.seed(86420L)
 bollen_seed_before <- .Random.seed
-bollen_stine_test <- structural_canvas_bollen_stine(two_factor_fit, reps = 20L, seed = 97531L)
+bollen_progress_events <- list()
+bollen_stine_test <- structural_canvas_bollen_stine(
+  two_factor_fit, reps = 20L, seed = 97531L,
+  progress = function(done, total, valid) {
+    bollen_progress_events[[length(bollen_progress_events) + 1L]] <<- c(done = done, total = total, valid = valid)
+  }
+)
+bollen_cancel_error <- tryCatch({
+  structural_canvas_bollen_stine(two_factor_fit, reps = 2L, seed = 97531L, cancel = function() TRUE)
+  ""
+}, error = conditionMessage)
 bollen_stine_eligible <- structural_canvas_bollen_stine_eligibility(two_factor_fit)
 stopifnot(
   nrow(numeric_fit_table) == 1L,
@@ -546,7 +556,12 @@ stopifnot(
   bollen_stine_test$`Bootstrap p`[[1L]] <= bollen_stine_test$`Monte Carlo 95% upper`[[1L]],
   bollen_stine_test$`Monte Carlo 95% upper`[[1L]] <= 1,
   bollen_stine_test$`Valid replicates`[[1L]] > 0L,
-  identical(bollen_stine_test$`Requested replicates`[[1L]], 20L)
+  identical(bollen_stine_test$`Requested replicates`[[1L]], 20L),
+  length(bollen_progress_events) >= 2L,
+  bollen_progress_events[[1L]][["done"]] == 0L,
+  tail(bollen_progress_events, 1L)[[1L]][["done"]] == 20L,
+  tail(bollen_progress_events, 1L)[[1L]][["valid"]] == bollen_stine_test$`Valid replicates`[[1L]],
+  grepl("canceled", bollen_cancel_error, fixed = TRUE)
 )
 stopifnot(
   grepl("structural_canvas_fit_admissibility(candidate)$admissible", bootstrap_source, fixed = TRUE),
