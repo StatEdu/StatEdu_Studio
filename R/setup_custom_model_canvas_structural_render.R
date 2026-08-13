@@ -16,7 +16,11 @@ output[[paste0(prefix, "_results")]] <- renderUI({
     uiOutput(paste0(prefix, "_result_missing_outliers")),
     uiOutput(paste0(prefix, "_result_risk_diagnostics")),
     uiOutput(paste0(prefix, "_result_heywood")),
-    div(class = "result-section regression-result-panel", h4(if (ko) "2. 모형 적합도" else "2. Model fit"), div(class = "table-responsive", uiOutput(paste0(prefix, "_result_fit"))), uiOutput(paste0(prefix, "_result_fit_guidance")), uiOutput(paste0(prefix, "_result_rmsea_tests")), uiOutput(paste0(prefix, "_result_information_criteria")), uiOutput(paste0(prefix, "_result_bollen_stine")), div(class = "table-responsive", uiOutput(paste0(prefix, "_result_fit_difference")))),
+    div(class = "result-section regression-result-panel", h4(if (identical(analysis_type, "plssem")) {
+      if (ko) "2. PLS 구조모형 효과" else "2. PLS structural model effects"
+    } else {
+      if (ko) "2. 모형 적합도" else "2. Model fit"
+    }), div(class = "table-responsive", uiOutput(paste0(prefix, "_result_fit"))), uiOutput(paste0(prefix, "_result_fit_guidance")), uiOutput(paste0(prefix, "_result_rmsea_tests")), uiOutput(paste0(prefix, "_result_information_criteria")), uiOutput(paste0(prefix, "_result_bollen_stine")), div(class = "table-responsive", uiOutput(paste0(prefix, "_result_fit_difference")))),
     if (analysis_type == "cbsem") div(
       class = "result-section regression-result-panel structural-path-result",
       h4(if (ko) "3. 구조모형 경로" else "3. Structural model paths"),

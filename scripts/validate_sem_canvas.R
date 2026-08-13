@@ -44,6 +44,12 @@ snapshot <- list(
 
 labels_fn <- function() character(0)
 language_fn <- function() "en"
+stopifnot(
+  grepl("PLS structural model effects", ui_source, fixed = TRUE),
+  grepl("PLS 구조모형 효과", ui_source, fixed = TRUE),
+  grepl("total and indirect effects", ui_source, fixed = TRUE),
+  grepl("rather than covariance-based global fit indices", ui_source, fixed = TRUE)
+)
 
 cbsem <- run_structural_canvas_analysis(snapshot, data, "cbsem", estimator = "ML", missing = "fiml")
 stopifnot(inherits(cbsem$fit, "lavaan"))
