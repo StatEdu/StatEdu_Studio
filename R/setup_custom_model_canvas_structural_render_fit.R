@@ -39,6 +39,63 @@ structural_canvas_pls_ten_times_margin <- function(bundle) {
   if (!is.finite(n) || denominator <= 0) NA_real_ else n / denominator
 }
 
+structural_canvas_pls_approximate_fit_indices <- function(bundle, summary_fit = NULL) {
+  fit <- bundle$fit %||% NULL
+  if (is.null(fit) || is.null(fit$data) || is.null(fit$construct_scores)) {
+    return(c(srmr = NA_real_, d_uls = NA_real_, nfi = NA_real_))
+  }
+  snapshot <- bundle$snapshot %||% list()
+  latents <- Filter(function(node) identical(node$role, "latent"), snapshot$nodes %||% list())
+  if (length(latents) && any(vapply(latents, function(node) identical(node$measurementMode %||% "reflective", "formative"), logical(1)))) {
+    return(c(srmr = NA_real_, d_uls = NA_real_, nfi = NA_real_))
+  }
+  summary_fit <- summary_fit %||% tryCatch(summary(fit), error = function(error) NULL)
+  if (is.null(summary_fit)) return(c(srmr = NA_real_, d_uls = NA_real_, nfi = NA_real_))
+  mm <- as.data.frame(fit$mmMatrix %||% data.frame(), stringsAsFactors = FALSE)
+  if (!all(c("construct", "measurement") %in% names(mm))) return(c(srmr = NA_real_, d_uls = NA_real_, nfi = NA_real_))
+  loadings <- suppressWarnings(as.matrix(summary_fit$loadings %||% matrix(numeric(0), 0L, 0L)))
+  scores <- suppressWarnings(as.matrix(fit$construct_scores))
+  indicators <- intersect(as.character(mm$measurement), rownames(loadings))
+  indicators <- intersect(indicators, names(fit$data))
+  constructs <- intersect(as.character(mm$construct), colnames(loadings))
+  constructs <- intersect(constructs, colnames(scores))
+  mm <- mm[mm$measurement %in% indicators & mm$construct %in% constructs, , drop = FALSE]
+  indicators <- unique(as.character(mm$measurement))
+  if (length(indicators) < 2L || nrow(mm) < 2L) return(c(srmr = NA_real_, d_uls = NA_real_, nfi = NA_real_))
+  observed <- tryCatch(stats::cor(fit$data[indicators], use = "pairwise.complete.obs"), error = function(error) NULL)
+  construct_cor <- tryCatch(stats::cor(scores[, constructs, drop = FALSE], use = "pairwise.complete.obs"), error = function(error) NULL)
+  if (is.null(observed) || is.null(construct_cor)) return(c(srmr = NA_real_, d_uls = NA_real_, nfi = NA_real_))
+  implied <- diag(1, length(indicators), length(indicators))
+  dimnames(implied) <- list(indicators, indicators)
+  construct_for <- stats::setNames(as.character(mm$construct), as.character(mm$measurement))
+  for (i in seq_along(indicators)) {
+    for (j in seq_along(indicators)) {
+      if (i == j) next
+      first <- indicators[[i]]
+      second <- indicators[[j]]
+      first_construct <- construct_for[[first]]
+      second_construct <- construct_for[[second]]
+      first_loading <- structural_canvas_pls_matrix_cell(loadings, first, first_construct)
+      second_loading <- structural_canvas_pls_matrix_cell(loadings, second, second_construct)
+      phi <- if (identical(first_construct, second_construct)) 1 else structural_canvas_pls_matrix_cell(construct_cor, first_construct, second_construct)
+      implied[first, second] <- if (all(is.finite(c(first_loading, second_loading, phi)))) first_loading * second_loading * phi else NA_real_
+    }
+  }
+  lower <- lower.tri(observed)
+  residuals <- suppressWarnings(as.numeric(observed[lower] - implied[lower]))
+  residuals <- residuals[is.finite(residuals)]
+  null_residuals <- suppressWarnings(as.numeric(observed[lower]))
+  null_residuals <- null_residuals[is.finite(null_residuals)]
+  if (!length(residuals)) return(c(srmr = NA_real_, d_uls = NA_real_, nfi = NA_real_))
+  d_uls <- sum(residuals^2, na.rm = TRUE)
+  d_null <- sum(null_residuals^2, na.rm = TRUE)
+  c(
+    srmr = sqrt(mean(residuals^2, na.rm = TRUE)),
+    d_uls = d_uls,
+    nfi = if (is.finite(d_null) && d_null > 0) 1 - d_uls / d_null else NA_real_
+  )
+}
+
 structural_canvas_pls_quality_status <- function(item, value) {
   numeric_value <- suppressWarnings(as.numeric(value))
   unavailable <- !nzchar(as.character(value %||% "")) || identical(value, "Not executed")
@@ -46,6 +103,9 @@ structural_canvas_pls_quality_status <- function(item, value) {
   if (identical(item, "PLS algorithm iterations")) return(if (is.finite(numeric_value) && numeric_value <= 300) "OK" else "Review")
   if (identical(item, "Final weight difference")) return(if (is.finite(numeric_value) && numeric_value <= 1e-6) "OK" else "Review")
   if (identical(item, "Missing-data method")) return("OK")
+  if (identical(item, "Approx PLS SRMR")) return(if (is.finite(numeric_value) && numeric_value <= .10) "OK" else "Review")
+  if (identical(item, "Approx d_ULS")) return(if (is.finite(numeric_value)) "OK" else "Not assessed")
+  if (identical(item, "Approx NFI")) return(if (is.finite(numeric_value) && numeric_value >= .90) "OK" else "Review")
   if (identical(item, "10-times rule margin")) return(if (is.finite(numeric_value) && numeric_value >= 1) "OK" else "Review")
   if (identical(item, "Min outer loading")) return(if (is.finite(numeric_value) && numeric_value >= .40) "OK" else "Review")
   if (identical(item, "Min rhoC")) return(if (is.finite(numeric_value) && numeric_value >= .70) "OK" else "Review")
@@ -96,12 +156,16 @@ structural_canvas_pls_quality_rows <- function(bundle) {
   q2 <- q2[is.finite(q2)]
   full_collinearity_vif <- structural_canvas_quality_full_collinearity_vif(bundle$fit$construct_scores %||% NULL)
   ten_times_margin <- structural_canvas_pls_ten_times_margin(bundle)
+  approximate_fit <- structural_canvas_pls_approximate_fit_indices(bundle, summary_fit)
   missing <- summary_fit$missing_data$method %||% "not recorded"
   weight_diff <- bundle$fit$weightDiff %||% NA_real_
   items <- c(
     "PLS algorithm iterations",
     "Final weight difference",
     "Missing-data method",
+    "Approx PLS SRMR",
+    "Approx d_ULS",
+    "Approx NFI",
     "10-times rule margin",
     "Min outer loading",
     "Min rhoC",
@@ -119,6 +183,9 @@ structural_canvas_pls_quality_rows <- function(bundle) {
     as.character(summary_fit$iterations %||% bundle$fit$iterations %||% ""),
     structural_canvas_pls_quality_number(weight_diff),
     as.character(missing),
+    structural_canvas_pls_quality_number(approximate_fit[["srmr"]]),
+    structural_canvas_pls_quality_number(approximate_fit[["d_uls"]]),
+    structural_canvas_pls_quality_number(approximate_fit[["nfi"]]),
     structural_canvas_pls_quality_number(ten_times_margin),
     structural_canvas_pls_quality_number(assigned_loadings, "min"),
     structural_canvas_pls_quality_number(reliability$rhoC, "min"),
@@ -140,6 +207,9 @@ structural_canvas_pls_quality_rows <- function(bundle) {
       "Algorithm diagnostic; inspect unusually high iteration counts.",
       "Smaller values indicate stable outer-weight convergence.",
       "Report this because PLS does not use lavaan FIML/pairwise options.",
+      "Approximate reflective-measurement SRMR from observed versus implied indicator correlations.",
+      "Approximate squared Euclidean discrepancy for reflective indicator correlations; no universal cutoff.",
+      "Approximate normed fit index against an independence correlation baseline.",
       "Descriptive minimum-sample screen using 10 times the larger of max indicators or max antecedents.",
       "Review reflective indicators below .70; retain lower loadings only with theory.",
       "Review construct reliability below .70.",
@@ -171,7 +241,7 @@ structural_canvas_pls_quality_status_summary <- function(rows) {
 
 structural_canvas_pls_quality_priority <- function(items) {
   critical <- c("PLS algorithm iterations", "Final weight difference")
-  major <- c("10-times rule margin", "Min outer loading", "Min rhoC", "Min AVE", "Max HTMT", "Max item VIF", "Max inner VIF", "Max full collinearity VIF", "Min Q2")
+  major <- c("Approx PLS SRMR", "Approx NFI", "10-times rule margin", "Min outer loading", "Min rhoC", "Min AVE", "Max HTMT", "Max item VIF", "Max inner VIF", "Max full collinearity VIF", "Min Q2")
   ifelse(items %in% critical, "Critical", ifelse(items %in% major, "Major", "Advisory"))
 }
 
@@ -231,9 +301,9 @@ structural_canvas_pls_quality_result_ui <- function(bundle, language = statedu_i
     tags$p(
       class = "structural-result-note",
       if (ko) {
-        "This checklist summarizes PLS-SEM sample adequacy, measurement, collinearity, common-method-bias screens, explanatory-power, Q2 predictive-relevance, and predictive-quality boundary conditions for reporting and review."
+        "This checklist summarizes PLS-SEM sample adequacy, approximate reflective-model fit diagnostics, measurement, collinearity, common-method-bias screens, explanatory-power, Q2 predictive-relevance, and predictive-quality boundary conditions for reporting and review."
       } else {
-        "This checklist summarizes PLS-SEM sample adequacy, measurement, collinearity, common-method-bias screens, explanatory-power, Q2 predictive-relevance, and predictive-quality boundary conditions for reporting and review."
+        "This checklist summarizes PLS-SEM sample adequacy, approximate reflective-model fit diagnostics, measurement, collinearity, common-method-bias screens, explanatory-power, Q2 predictive-relevance, and predictive-quality boundary conditions for reporting and review."
       }
     )
   )

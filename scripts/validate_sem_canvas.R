@@ -55,6 +55,7 @@ stopifnot(
   grepl("PLSpredict predictive assessment", ui_source, fixed = TRUE),
   grepl("PLS-SEM quality checklist", ui_source, fixed = TRUE),
   grepl("Q2 predictive-relevance", ui_source, fixed = TRUE),
+  grepl("approximate reflective-model fit diagnostics", ui_source, fixed = TRUE),
   grepl("SEM quality checklist", ui_source, fixed = TRUE),
   grepl("sample adequacy, common-method-bias screens, chi-square/df", ui_source, fixed = TRUE),
   grepl("Reporting checklist", ui_source, fixed = TRUE),
@@ -360,11 +361,15 @@ stopifnot(pls_reporting$Value[pls_reporting$Item == "Estimator or algorithm"] ==
 stopifnot(pls_reporting$Value[pls_reporting$Item == "Missing-data handling"] == "Valid rows used by seminr; no FIML/pairwise option")
 stopifnot(pls_reporting$Value[pls_reporting$Item == "Latent scaling"] == "Composite scores")
 pls_quality <- structural_canvas_pls_quality_rows(pls_bundle)
-stopifnot(nrow(pls_quality) == 15L)
+stopifnot(nrow(pls_quality) == 18L)
 stopifnot(all(c("Item", "Value", "Status", "Guidance") %in% names(pls_quality)))
-stopifnot(all(c("PLS algorithm iterations", "10-times rule margin", "Min outer loading", "Min rhoC", "Min AVE", "Max HTMT", "Max item VIF", "Max inner VIF", "Max full collinearity VIF", "Min endogenous R2", "Max f2", "Min Q2", "PLSpredict summary") %in% pls_quality$Item))
+stopifnot(all(c("PLS algorithm iterations", "Approx PLS SRMR", "Approx d_ULS", "Approx NFI", "10-times rule margin", "Min outer loading", "Min rhoC", "Min AVE", "Max HTMT", "Max item VIF", "Max inner VIF", "Max full collinearity VIF", "Min endogenous R2", "Max f2", "Min Q2", "PLSpredict summary") %in% pls_quality$Item))
 stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "PLS algorithm iterations"]))
 stopifnot(pls_quality$Status[pls_quality$Item == "PLS algorithm iterations"] == "OK")
+stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Approx PLS SRMR"]))
+stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Approx d_ULS"]))
+stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Approx NFI"]))
+stopifnot(pls_quality$Status[pls_quality$Item == "Approx PLS SRMR"] %in% c("OK", "Review"))
 stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Min outer loading"]))
 stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "10-times rule margin"]))
 stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Max full collinearity VIF"]))
