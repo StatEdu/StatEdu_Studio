@@ -17,6 +17,12 @@ output[[paste0(prefix, "_results")]] <- renderUI({
     uiOutput(paste0(prefix, "_result_risk_diagnostics")),
     uiOutput(paste0(prefix, "_result_heywood")),
     div(class = "result-section regression-result-panel", h4(if (ko) "2. 모형 적합도" else "2. Model fit"), div(class = "table-responsive", uiOutput(paste0(prefix, "_result_fit"))), uiOutput(paste0(prefix, "_result_fit_guidance")), uiOutput(paste0(prefix, "_result_rmsea_tests")), uiOutput(paste0(prefix, "_result_information_criteria")), uiOutput(paste0(prefix, "_result_bollen_stine")), div(class = "table-responsive", uiOutput(paste0(prefix, "_result_fit_difference")))),
+    if (analysis_type == "cbsem") div(
+      class = "result-section regression-result-panel structural-path-result",
+      h4(if (ko) "3. 구조모형 경로" else "3. Structural model paths"),
+      div(class = "table-responsive", tableOutput(paste0(prefix, "_result_structural"))),
+      tags$p(class = "structural-result-note", if (ko) "구조경로 표는 lavaan의 회귀경로(~)에 대한 비표준화 계수, 표준화 계수, 신뢰구간, R², z 및 p 값을 표시합니다." else "Structural paths are lavaan regression paths (~), reported with unstandardized and standardized coefficients, confidence intervals, R², z, and p values.")
+    ),
     uiOutput(paste0(prefix, "_result_invariance")),
     div(class = "result-section regression-result-panel", h4(if (ko) "3. 잠재 구성개념 상관, 신뢰도 및 수렴·판별타당도" else "3. Latent construct correlations, reliability, and convergent/discriminant validity"), div(class = "table-responsive", tableOutput(paste0(prefix, "_result_validity"))), uiOutput(paste0(prefix, "_result_latent_correlation_ci")), uiOutput(paste0(prefix, "_result_validity_note")), uiOutput(paste0(prefix, "_result_reliability_bootstrap")), uiOutput(paste0(prefix, "_result_factor_scores")), uiOutput(paste0(prefix, "_result_htmt"))),
     div(
@@ -47,7 +53,7 @@ output[[paste0(prefix, "_results")]] <- renderUI({
   if (analysis_type != "plssem") structural_canvas_register_local_fit_outputs(
     output, prefix, fit_result, app_language_fn
   )
-for (kind in c("overview", "validity", "measurement")) local({
+for (kind in c("overview", "validity", "measurement", "structural")) local({
   result_kind <- kind
   output[[paste0(prefix, "_result_", result_kind)]] <- renderTable(result_table(result_kind), striped = TRUE, bordered = TRUE, sanitize.text.function = identity)
 })

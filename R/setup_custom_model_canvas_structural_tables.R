@@ -122,6 +122,41 @@ structural_canvas_pls_measurement_result_table <- function(summary_fit, snapshot
   do.call(rbind, rows)
 }
 
+structural_canvas_lavaan_structural_result_table <- function(kind, fit, ko, fmt, display_name) {
+  if (!identical(kind, "structural")) return(NULL)
+  raw <- lavaan::parameterEstimates(fit, ci = TRUE)
+  raw <- raw[raw$op == "~", c("lhs", "rhs", "est", "se", "z", "pvalue", "ci.lower", "ci.upper"), drop = FALSE]
+  if (!nrow(raw)) return(data.frame())
+  standardized <- lavaan::standardizedSolution(fit, ci = TRUE, level = .95)
+  standardized <- standardized[standardized$op == "~", c("lhs", "rhs", "est.std", "ci.lower", "ci.upper"), drop = FALSE]
+  raw_key <- paste(raw$lhs, raw$rhs, sep = "\r")
+  standardized_key <- paste(standardized$lhs, standardized$rhs, sep = "\r")
+  standardized_match <- match(raw_key, standardized_key)
+  beta <- standardized$est.std[standardized_match]
+  beta_ci_lower <- standardized$ci.lower[standardized_match]
+  beta_ci_upper <- standardized$ci.upper[standardized_match]
+  r2_values <- tryCatch(lavaan::lavInspect(fit, "r2"), error = function(error) numeric(0))
+  r2 <- suppressWarnings(as.numeric(r2_values[raw$lhs]))
+  table <- data.frame(
+    vapply(raw$lhs, display_name, character(1)),
+    vapply(raw$rhs, display_name, character(1)),
+    B = fmt(raw$est),
+    `B 95% CI lower` = fmt(raw$ci.lower),
+    `B 95% CI upper` = fmt(raw$ci.upper),
+    SE = fmt(raw$se),
+    beta = fmt(beta),
+    `beta 95% CI lower` = fmt(beta_ci_lower),
+    `beta 95% CI upper` = fmt(beta_ci_upper),
+    R2 = fmt(r2),
+    z = fmt(raw$z),
+    p = vapply(raw$pvalue, format_p, character(1)),
+    check.names = FALSE
+  )
+  names(table)[1:2] <- if (ko) c("결과변수", "예측변수") else c("Outcome", "Predictor")
+  names(table)[names(table) == "R2"] <- "R²"
+  table
+}
+
 structural_canvas_result_table <- function(kind, fit_result, analysis_type, labels_fn, app_language_fn = NULL) {
   bundle <- fit_result()
   shiny::req(!is.null(bundle))
@@ -164,6 +199,8 @@ structural_canvas_result_table <- function(kind, fit_result, analysis_type, labe
     if (!is.null(validity_table)) return(validity_table)
     measurement_table <- structural_canvas_measurement_result_table(kind, fit, ko, fmt, display_name)
     if (!is.null(measurement_table)) return(measurement_table)
+    structural_table <- structural_canvas_lavaan_structural_result_table(kind, fit, ko, fmt, display_name)
+    if (!is.null(structural_table)) return(structural_table)
     return(structural_canvas_mi_result_table(bundle, snapshot, fit, ko, fmt, display_name, residual_name))
   }
   summary_fit <- summary(fit)

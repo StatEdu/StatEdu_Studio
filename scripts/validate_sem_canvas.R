@@ -65,6 +65,11 @@ stopifnot(nrow(structural_canvas_result_table("overview", cbsem_result, "cbsem",
 stopifnot(nrow(structural_canvas_result_table("fit", cbsem_result, "cbsem", labels_fn, language_fn)) > 0L)
 stopifnot(nrow(structural_canvas_result_table("validity", cbsem_result, "cbsem", labels_fn, language_fn)) > 0L)
 stopifnot(nrow(structural_canvas_result_table("measurement", cbsem_result, "cbsem", labels_fn, language_fn)) > 0L)
+cbsem_structural <- structural_canvas_result_table("structural", cbsem_result, "cbsem", labels_fn, language_fn)
+stopifnot(nrow(cbsem_structural) == 1L)
+stopifnot(all(c("Outcome", "Predictor", "B", "beta", "R²", "z", "p") %in% names(cbsem_structural)))
+stopifnot(cbsem_structural$Outcome[[1L]] == "eta2")
+stopifnot(cbsem_structural$Predictor[[1L]] == "eta1")
 
 cbsem_snapshot <- structural_canvas_result_snapshot(snapshot, cbsem$fit, "beta")
 cbsem_labels <- vapply(cbsem_snapshot$edges, function(edge) as.character(edge$label %||% ""), character(1))
