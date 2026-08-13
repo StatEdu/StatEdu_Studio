@@ -47,12 +47,35 @@ stopifnot(
 cfa_toolbar <- htmltools::renderTags(structural_equation_toolbar("cfa", "en"))$html
 cfa_ids <- regmatches(cfa_toolbar, gregexpr('(^|[[:space:]])id="[^"]+"', cfa_toolbar, perl = TRUE))[[1L]]
 cfa_ids <- sub('^.*id="([^"]+)".*$', "\\1", cfa_ids)
+cfa_option_tab_links <- regmatches(
+  cfa_toolbar,
+  gregexpr('<a href="#[^"]+" data-toggle="tab"[^>]*data-value="[^"]+"[^>]*>', cfa_toolbar, perl = TRUE)
+)[[1L]]
+cfa_option_tab_values <- sub('^.*data-value="([^"]+)".*$', "\\1", cfa_option_tab_links)
+cfa_option_tab_targets <- sub('^.*href="#([^"]+)".*$', "\\1", cfa_option_tab_links)
+cfa_option_panes <- regmatches(
+  cfa_toolbar,
+  gregexpr('<div class="tab-pane[^"]*" data-value="[^"]+" id="[^"]+"', cfa_toolbar, perl = TRUE)
+)[[1L]]
+cfa_option_pane_values <- sub('^.*data-value="([^"]+)".*$', "\\1", cfa_option_panes)
+cfa_option_pane_ids <- sub('^.*id="([^"]+)".*$', "\\1", cfa_option_panes)
 stopifnot(
   !anyDuplicated(cfa_ids),
   grepl("structural-run-options-tabs", cfa_toolbar, fixed = TRUE),
+  grepl('<ul class="nav nav-tabs"', cfa_toolbar, fixed = TRUE),
+  grepl('<div class="tab-content"', cfa_toolbar, fixed = TRUE),
+  identical(cfa_option_tab_values, c("Estimation", "Validity", "Diagnostics")),
+  identical(cfa_option_pane_values, c("Estimation", "Validity", "Diagnostics")),
+  identical(cfa_option_tab_targets, cfa_option_pane_ids),
+  grepl('<li class="active">', cfa_toolbar, fixed = TRUE),
+  grepl('<div class="tab-pane active" data-value="Estimation"', cfa_toolbar, fixed = TRUE),
   grepl("Estimation", cfa_toolbar, fixed = TRUE),
+  grepl("Validity", cfa_toolbar, fixed = TRUE),
   grepl("Diagnostics", cfa_toolbar, fixed = TRUE),
   grepl("AVE/reliability bootstrap CI", cfa_toolbar, fixed = TRUE),
+  grepl("structural_cfa_reliability_bootstrap", cfa_toolbar, fixed = TRUE),
+  grepl("structural_cfa_htmt_bootstrap", cfa_toolbar, fixed = TRUE),
+  grepl("structural_cfa_mi_mode", cfa_toolbar, fixed = TRUE),
   !grepl("structural-covariate-toolbar-button", cfa_toolbar, fixed = TRUE),
   !grepl("data-action=\"structuralCovariateTargets\"", cfa_toolbar, fixed = TRUE)
 )
