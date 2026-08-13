@@ -4,6 +4,7 @@ scripts <- c(
   "validate_cfa_invariance.R",
   "validate_cfa_mi_holdout.R",
   "validate_cfa_ordinal.R",
+  "validate_cfa_ui.R",
   "validate_cfa_reporting_exports.R",
   "validate_cfa_external_references.R"
 )

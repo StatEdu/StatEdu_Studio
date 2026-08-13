@@ -1,38 +1,4 @@
 source(file.path("scripts", "validate_cfa_common.R"), encoding = "UTF-8")
-canvas_js_source <- paste(readLines(file.path("www", "model-canvas", "canvas.js"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-stopifnot(grepl("Latent construct correlations, reliability, and convergent/discriminant validity", ui_source, fixed = TRUE))
-stopifnot(length(gregexpr('class = "table-responsive"', ui_source, fixed = TRUE)[[1L]]) >= 8L)
-stopifnot(
-  grepl("STATEDU_CAPTURE_CFA_MODEL_FILE", ui_source, fixed = TRUE),
-  grepl("data-initial-snapshot", ui_source, fixed = TRUE),
-  grepl("data-initial-run", ui_source, fixed = TRUE),
-  grepl("parseInitialSnapshot", canvas_js_source, fixed = TRUE),
-  grepl("window.StatEduModelCanvas.state.restore(instance.state, initialSnapshot)", canvas_js_source, fixed = TRUE),
-  grepl("window.Shiny && typeof window.Shiny.setInputValue === \"function\"", canvas_js_source, fixed = TRUE)
-)
-old_capture_model <- Sys.getenv("STATEDU_CAPTURE_CFA_MODEL_FILE", unset = NA_character_)
-old_structural_model <- Sys.getenv("STATEDU_CAPTURE_STRUCTURAL_MODEL_FILE", unset = NA_character_)
-old_capture_run <- Sys.getenv("STATEDU_CAPTURE_CFA_RUN", unset = NA_character_)
-on.exit({
-  if (is.na(old_capture_model)) Sys.unsetenv("STATEDU_CAPTURE_CFA_MODEL_FILE") else Sys.setenv(STATEDU_CAPTURE_CFA_MODEL_FILE = old_capture_model)
-  if (is.na(old_structural_model)) Sys.unsetenv("STATEDU_CAPTURE_STRUCTURAL_MODEL_FILE") else Sys.setenv(STATEDU_CAPTURE_STRUCTURAL_MODEL_FILE = old_structural_model)
-  if (is.na(old_capture_run)) Sys.unsetenv("STATEDU_CAPTURE_CFA_RUN") else Sys.setenv(STATEDU_CAPTURE_CFA_RUN = old_capture_run)
-}, add = TRUE)
-capture_model_file <- tempfile(fileext = ".stmodel")
-jsonlite::write_json(
-  list(nodes = list(list(id = "latent_1", role = "latent", name = "eta1")), edges = list()),
-  capture_model_file,
-  auto_unbox = TRUE,
-  null = "null"
-)
-Sys.setenv(STATEDU_CAPTURE_CFA_MODEL_FILE = capture_model_file, STATEDU_CAPTURE_CFA_RUN = "yes")
-capture_result <- structural_capture_initial_snapshot("cfa")
-stopifnot(
-  is.list(capture_result$snapshot),
-  identical(capture_result$snapshot$nodes[[1L]]$id, "latent_1"),
-  isTRUE(capture_result$auto_run),
-  is.null(structural_capture_initial_snapshot("cbsem")$snapshot)
-)
 
 stopifnot(requireNamespace("lavaan", quietly = TRUE))
 stopifnot(
@@ -135,8 +101,7 @@ stopifnot(
   isTRUE(structural_canvas_validate_model_based_bootstrap(ml$fit)),
   identical(structural_canvas_bootstrap_status(c(80, 79, 50, 49, 0), 100), c("Adequate", "Caution", "Caution", "Unreliable", "Unreliable")),
   identical(structural_canvas_bootstrap_ci_method("BCa (slower)"), "bca"),
-  grepl('progress(index, total_iterations, length(Filter(function(value) !is.null(value) && nrow(value), estimates[seq_len(index)])))', bootstrap_source, fixed = TRUE),
-  grepl("_reliability_ci_method", ui_source, fixed = TRUE)
+  grepl('progress(index, total_iterations, length(Filter(function(value) !is.null(value) && nrow(value), estimates[seq_len(index)])))', bootstrap_source, fixed = TRUE)
 )
 inadmissible_bootstrap_error <- tryCatch({
   structural_canvas_validate_model_based_bootstrap(NULL, "Test bootstrap")
@@ -536,10 +501,6 @@ stopifnot(abs(htmt$matrix["eta1", "eta2"] - (.20 / sqrt(.50 * .40))) < 1e-10, id
 htmt_review <- structural_canvas_htmt(htmt_correlations, list(eta1 = c("x1", "x2"), eta2 = c("x2", "y2")), .85)
 stopifnot(identical(htmt_review$pairs$Criterion[[1L]], "Not assessed"), grepl("Cross-loaded", htmt_review$pairs$Reason[[1L]], fixed = TRUE))
 
-stopifnot(
-  grepl("_htmt_ci_method", ui_source, fixed = TRUE)
-)
-
 mardia_normal <- structural_canvas_mardia(continuous, names(continuous))
 stopifnot(isTRUE(mardia_normal$available), mardia_normal$n == nrow(continuous), is.finite(mardia_normal$skewness), is.finite(mardia_normal$kurtosis))
 set.seed(20260814)
@@ -609,20 +570,5 @@ round_trip_json <- jsonlite::toJSON(round_trip_snapshot, auto_unbox = TRUE, null
 round_trip_restored <- jsonlite::fromJSON(round_trip_json, simplifyVector = FALSE)
 restored_edge <- round_trip_restored$edges[[1L]]
 stopifnot(identical(restored_edge$pathType, "higherOrder"), identical(restored_edge$free, FALSE), identical(restored_edge$fixedValue, .8), identical(restored_edge$startValue, .7), identical(restored_edge$parameterName, "gamma1"), identical(restored_edge$equalityLabel, "equal_general"))
-
-cfa_toolbar <- htmltools::renderTags(structural_equation_toolbar("cfa", "en"))$html
-cfa_ids <- regmatches(cfa_toolbar, gregexpr('(^|[[:space:]])id="[^"]+"', cfa_toolbar, perl = TRUE))[[1L]]
-cfa_ids <- sub('^.*id="([^"]+)".*$', "\\1", cfa_ids)
-stopifnot(!anyDuplicated(cfa_ids))
-stopifnot(grepl("structural-run-options-tabs", cfa_toolbar, fixed = TRUE))
-stopifnot(grepl("Estimation", cfa_toolbar, fixed = TRUE))
-stopifnot(grepl("Diagnostics", cfa_toolbar, fixed = TRUE))
-stopifnot(grepl("AVE/reliability bootstrap CI", cfa_toolbar, fixed = TRUE))
-stopifnot(grepl("Download analysis record", ui_source, fixed = TRUE))
-stopifnot(grepl("Download result tables", ui_source, fixed = TRUE))
-stopifnot(!grepl("ko <- FALSE", ui_source, fixed = TRUE))
-stopifnot(!grepl("�", ui_source, fixed = TRUE))
-stopifnot(!grepl("structural-covariate-toolbar-button", cfa_toolbar, fixed = TRUE))
-stopifnot(!grepl("data-action=\"structuralCovariateTargets\"", cfa_toolbar, fixed = TRUE))
 
 cat("CFA canvas validations passed.\n")
