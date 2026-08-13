@@ -153,3 +153,120 @@ structural_canvas_measurement_invariance <- function(syntax, data, group, estima
     estimator = estimator, ordered = ordered, ordinal = ordinal
   )
 }
+
+structural_canvas_structural_path_group_comparison <- function(syntax, data, group, estimator = "MLR", missing = "fiml", std_lv = FALSE, ci_level = .90, ordered = character(0)) {
+  group <- as.character(group %||% "")
+  if (!nzchar(group) || !group %in% names(data)) stop("A valid grouping variable is required for structural path group comparison.")
+  if (length(ordered) || !toupper(estimator) %in% c("ML", "MLR")) {
+    stop("Structural path group comparison currently supports continuous-indicator SEM/CB-SEM estimated with ML or MLR.")
+  }
+  group_values <- data[[group]]
+  observed_groups <- unique(group_values[!is.na(group_values)])
+  if (length(observed_groups) < 2L) stop("Structural path group comparison requires at least two non-empty groups.")
+  if (length(observed_groups) > 20L) stop("The grouping variable must contain no more than 20 non-empty groups.")
+  group_syntax_lines <- strsplit(as.character(syntax), "\n", fixed = TRUE)[[1L]]
+  group_syntax_lines <- group_syntax_lines[!grepl(":=", group_syntax_lines, fixed = TRUE)]
+  group_syntax <- paste(vapply(group_syntax_lines, function(line) {
+    gsub("(^|[=~+])\\s*[A-Za-z.][A-Za-z0-9_.]*\\s*\\*", "\\1 ", line, perl = TRUE)
+  }, character(1)), collapse = "\n")
+  unconstrained <- lavaan::sem(
+    group_syntax, data = data, group = group,
+    estimator = estimator, missing = missing, std.lv = isTRUE(std_lv),
+    auto.cov.lv.x = FALSE
+  )
+  if (group %in% lavaan::lavNames(unconstrained, "ov")) stop("The grouping variable cannot also be an observed model variable.")
+  constrained <- lavaan::sem(
+    group_syntax, data = data, group = group, group.equal = "regressions",
+    estimator = estimator, missing = missing, std.lv = isTRUE(std_lv),
+    auto.cov.lv.x = FALSE
+  )
+  fits <- list(`Free structural paths` = unconstrained, `Equal structural paths` = constrained)
+  selections <- structural_canvas_common_fit_measures(fits, estimator, ci_level)
+  admissibility <- lapply(fits, structural_canvas_fit_admissibility)
+  difference <- if (isTRUE(admissibility[[1L]]$admissible) && isTRUE(admissibility[[2L]]$admissible)) {
+    structural_canvas_model_difference(unconstrained, constrained, verify_nesting = FALSE)
+  } else {
+    NULL
+  }
+  table <- data.frame(
+    Model = names(fits),
+    Chisq = vapply(selections, function(item) item$values[[1L]], numeric(1)),
+    df = vapply(selections, function(item) item$values[[2L]], numeric(1)),
+    p = vapply(selections, function(item) item$values[[3L]], numeric(1)),
+    CFI = vapply(selections, function(item) item$values[[5L]], numeric(1)),
+    RMSEA = vapply(selections, function(item) item$values[[8L]], numeric(1)),
+    SRMR = vapply(selections, function(item) item$values[[7L]], numeric(1)),
+    DeltaCFI = c(NA_real_, selections[[2L]]$values[[5L]] - selections[[1L]]$values[[5L]]),
+    DeltaRMSEA = c(NA_real_, selections[[2L]]$values[[8L]] - selections[[1L]]$values[[8L]]),
+    DeltaSRMR = c(NA_real_, selections[[2L]]$values[[7L]] - selections[[1L]]$values[[7L]]),
+    DeltaChisq = c(NA_real_, as.numeric(difference$chisq %||% NA_real_)),
+    DeltaDf = c(NA_real_, as.numeric(difference$df %||% NA_real_)),
+    DeltaP = c(NA_real_, as.numeric(difference$pvalue %||% NA_real_)),
+    Converged = vapply(fits, function(fit) isTRUE(lavaan::lavInspect(fit, "converged")), logical(1)),
+    Admissible = vapply(admissibility, function(item) isTRUE(item$admissible), logical(1)),
+    `Admissibility reasons` = vapply(admissibility, function(item) if (length(item$reasons)) paste(item$reasons, collapse = "; ") else "None", character(1)),
+    check.names = FALSE
+  )
+  group_labels <- as.character(lavaan::lavInspect(unconstrained, "group.label") %||% observed_groups)
+  estimates <- lavaan::parameterEstimates(unconstrained, ci = TRUE)
+  estimates <- estimates[estimates$op == "~", , drop = FALSE]
+  standardized <- lavaan::standardizedSolution(unconstrained, ci = TRUE)
+  standardized <- standardized[standardized$op == "~", , drop = FALSE]
+  key <- paste(estimates$lhs, estimates$op, estimates$rhs, estimates$group, sep = "\r")
+  standardized_key <- paste(standardized$lhs, standardized$op, standardized$rhs, standardized$group, sep = "\r")
+  standardized_match <- match(key, standardized_key)
+  path_estimates <- data.frame(
+    Group = group_labels[estimates$group],
+    Outcome = estimates$lhs,
+    Predictor = estimates$rhs,
+    B = estimates$est,
+    SE = estimates$se,
+    z = estimates$z,
+    p = estimates$pvalue,
+    `B 95% CI lower` = estimates$ci.lower,
+    `B 95% CI upper` = estimates$ci.upper,
+    beta = standardized$est.std[standardized_match],
+    `beta 95% CI lower` = standardized$ci.lower[standardized_match],
+    `beta 95% CI upper` = standardized$ci.upper[standardized_match],
+    check.names = FALSE
+  )
+  path_differences <- list()
+  path_keys <- unique(paste(estimates$lhs, estimates$rhs, sep = "\r"))
+  for (path_key in path_keys) {
+    path_rows <- estimates[paste(estimates$lhs, estimates$rhs, sep = "\r") == path_key, , drop = FALSE]
+    if (nrow(path_rows) < 2L) next
+    for (first in seq_len(nrow(path_rows) - 1L)) {
+      for (second in seq.int(first + 1L, nrow(path_rows))) {
+        diff_value <- path_rows$est[[first]] - path_rows$est[[second]]
+        diff_se <- sqrt(path_rows$se[[first]]^2 + path_rows$se[[second]]^2)
+        z_value <- if (is.finite(diff_se) && diff_se > 0) diff_value / diff_se else NA_real_
+        path_differences[[length(path_differences) + 1L]] <- data.frame(
+          Outcome = path_rows$lhs[[first]],
+          Predictor = path_rows$rhs[[first]],
+          `Group 1` = group_labels[path_rows$group[[first]]],
+          `Group 2` = group_labels[path_rows$group[[second]]],
+          `B difference` = diff_value,
+          SE = diff_se,
+          z = z_value,
+          p = if (is.finite(z_value)) 2 * stats::pnorm(abs(z_value), lower.tail = FALSE) else NA_real_,
+          check.names = FALSE
+        )
+      }
+    }
+  }
+  path_differences <- if (length(path_differences)) do.call(rbind, path_differences) else data.frame()
+  if (nrow(path_differences)) {
+    path_differences[["BH-adjusted p"]] <- stats::p.adjust(path_differences$p, method = "BH")
+  }
+  indicators <- lavaan::lavNames(unconstrained, "ov")
+  group_diagnostics <- structural_canvas_invariance_group_diagnostics(data, group, indicators, ordered = character(0))
+  list(
+    type = "structural_path_comparison",
+    table = table, fits = fits, group = group, groups = observed_groups,
+    group_diagnostics = group_diagnostics,
+    path_estimates = path_estimates,
+    path_differences = path_differences,
+    syntax = group_syntax,
+    estimator = estimator, ordered = ordered, ordinal = FALSE
+  )
+}

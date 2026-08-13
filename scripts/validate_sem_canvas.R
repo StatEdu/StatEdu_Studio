@@ -134,6 +134,40 @@ stopifnot(is.data.frame(sem_htmt_bootstrap))
 stopifnot(nrow(sem_htmt_bootstrap) == 1L)
 stopifnot(sem_htmt_bootstrap[["Requested replicates"]][[1L]] == 8L)
 
+set.seed(20260821)
+group_n <- 220L
+group_value <- rep(c("A", "B"), each = group_n / 2L)
+group_eta1 <- stats::rnorm(group_n)
+group_eta2 <- ifelse(group_value == "A", 0.35, 0.75) * group_eta1 + stats::rnorm(group_n, sd = 0.72)
+group_data <- data.frame(
+  x1 = 0.78 * group_eta1 + stats::rnorm(group_n, sd = 0.45),
+  x2 = 0.72 * group_eta1 + stats::rnorm(group_n, sd = 0.50),
+  x3 = 0.69 * group_eta1 + stats::rnorm(group_n, sd = 0.52),
+  y1 = 0.82 * group_eta2 + stats::rnorm(group_n, sd = 0.42),
+  y2 = 0.76 * group_eta2 + stats::rnorm(group_n, sd = 0.48),
+  y3 = 0.70 * group_eta2 + stats::rnorm(group_n, sd = 0.55),
+  group = group_value
+)
+cbsem_group_base <- run_structural_canvas_analysis(snapshot, group_data, "cbsem", estimator = "ML", missing = "fiml")
+structural_group_comparison <- structural_canvas_structural_path_group_comparison(
+  cbsem_group_base$syntax, group_data, "group", estimator = "ML", missing = "fiml"
+)
+stopifnot(
+  identical(structural_group_comparison$type, "structural_path_comparison"),
+  nrow(structural_group_comparison$table) == 2L,
+  identical(structural_group_comparison$table$Model, c("Free structural paths", "Equal structural paths")),
+  all(structural_group_comparison$table$Converged),
+  all(structural_group_comparison$table$Admissible),
+  nrow(structural_group_comparison$group_diagnostics) == 2L,
+  nrow(structural_group_comparison$path_estimates) == 2L,
+  all(c("Group", "Outcome", "Predictor", "B", "SE", "beta") %in% names(structural_group_comparison$path_estimates)),
+  nrow(structural_group_comparison$path_differences) == 1L,
+  all(c("Group 1", "Group 2", "B difference", "BH-adjusted p") %in% names(structural_group_comparison$path_differences)),
+  is.finite(structural_group_comparison$table$DeltaP[[2L]]),
+  structural_group_comparison$path_differences$Predictor[[1L]] == "eta1",
+  structural_group_comparison$path_differences$Outcome[[1L]] == "eta2"
+)
+
 set.seed(20260814)
 n_mediation <- 240L
 eta_a <- stats::rnorm(n_mediation)
@@ -390,6 +424,23 @@ stopifnot(inherits(fit_result_state()$fit, "lavaan"))
 stopifnot(identical(fit_result_state()$estimator, "ML"))
 stopifnot(identical(execution_state$message$type, "custom-model-canvas-result"))
 stopifnot(any(nzchar(vapply(execution_state$message$message$result$edges, function(edge) as.character(edge$label %||% ""), character(1)))))
+execution_state$value <- NULL
+execution_state$message <- NULL
+executed_cbsem_group <- structural_canvas_execute_analysis(
+  snapshot,
+  settings = list(estimator = "ML", missing = "fiml", invariance_enabled = TRUE, invariance_group = "group"),
+  input = list(),
+  session = session,
+  dataset_fn = function() group_data,
+  variable_table_fn = function() data.frame(name = names(group_data), measurement = c(rep("scale", 6L), "nominal"), stringsAsFactors = FALSE),
+  analysis_type = "cbsem",
+  prefix = "structural_cbsem",
+  fit_result = fit_result_state
+)
+stopifnot(inherits(executed_cbsem_group$fit, "lavaan"))
+stopifnot(identical(fit_result_state()$invariance_result$type, "structural_path_comparison"))
+stopifnot(nrow(fit_result_state()$invariance_result$path_differences) == 1L)
+stopifnot(identical(execution_state$message$type, "custom-model-canvas-result"))
 execution_state$value <- NULL
 execution_state$message <- NULL
 executed_sem <- structural_canvas_execute_analysis(

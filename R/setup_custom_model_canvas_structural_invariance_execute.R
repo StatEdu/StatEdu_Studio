@@ -16,5 +16,15 @@ structural_canvas_run_measurement_invariance <- function(analysis_type, invarian
       value
     })
   }
+  if (analysis_type %in% c("cbsem", "sem") && invariance_enabled) {
+    if (length(ordered) || !toupper(estimator) %in% c("ML", "MLR")) stop("Structural path group comparison requires continuous ML or MLR SEM/CB-SEM.")
+    if (!nzchar(invariance_group) || !invariance_group %in% names(data)) stop("Select a valid grouping variable for structural path group comparison.")
+    invariance_result <- structural_canvas_with_progress(message = "Estimating structural path group-comparison models", value = 0, {
+      structural_canvas_inc_progress(.20, detail = "Free and equal structural-path models")
+      value <- structural_canvas_structural_path_group_comparison(result$syntax, data, invariance_group, estimator, missing, std_lv, rmsea_ci, ordered)
+      structural_canvas_inc_progress(.80, detail = "Preparing group-specific path comparisons")
+      value
+    })
+  }
   invariance_result
 }

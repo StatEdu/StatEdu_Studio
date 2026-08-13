@@ -13,8 +13,16 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
           if (analysis_type != "plssem") tags$p(class = "structural-option-note", if (ko) "순서형 지표 또는 WLSMV 추정량을 사용하면 lavaan 제약에 따라 FIML 대신 pairwise 결측 처리가 적용됩니다." else "When ordered indicators or the WLSMV estimator are used, lavaan uses pairwise missing-data handling instead of FIML."),
           if (analysis_type != "plssem") selectInput(paste0(structural_analysis_prefix(analysis_type), "_scale"), if (ko) "잠재변수 스케일" else "Latent scale", choices = stats::setNames(c("marker", "variance"), c(if (ko) "첫 지표 부하량 = 1" else "Marker loading = 1", if (ko) "잠재변수 분산 = 1" else "Latent variance = 1"))),
           if (analysis_type != "plssem") selectInput(paste0(structural_analysis_prefix(analysis_type), "_rmsea_ci"), if (ko) "RMSEA 신뢰수준" else "RMSEA confidence level", choices = c("90% CI" = "0.90", "95% CI" = "0.95", "99% CI" = "0.99"), selected = "0.90"),
-          if (identical(analysis_type, "cfa")) checkboxInput(paste0(structural_analysis_prefix(analysis_type), "_invariance_enabled"), if (ko) "측정불변성 분석" else "Measurement invariance analysis", value = FALSE),
-          if (identical(analysis_type, "cfa")) selectInput(paste0(structural_analysis_prefix(analysis_type), "_invariance_group"), if (ko) "집단변수" else "Grouping variable", choices = character(0)),
+          if (analysis_type %in% c("cfa", "cbsem")) checkboxInput(
+            paste0(structural_analysis_prefix(analysis_type), "_invariance_enabled"),
+            if (identical(analysis_type, "cfa")) {
+              if (ko) "측정불변성 분석" else "Measurement invariance analysis"
+            } else {
+              if (ko) "구조경로 집단비교" else "Structural path group comparison"
+            },
+            value = FALSE
+          ),
+          if (analysis_type %in% c("cfa", "cbsem")) selectInput(paste0(structural_analysis_prefix(analysis_type), "_invariance_group"), if (ko) "집단변수" else "Grouping variable", choices = character(0)),
             ),
             tabPanel(
               if (ko) "타당도" else "Validity",

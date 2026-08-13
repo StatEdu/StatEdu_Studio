@@ -1,9 +1,66 @@
 # Structural measurement invariance result rendering.
 
+structural_canvas_structural_path_group_comparison_ui <- function(result, ko = FALSE) {
+  table <- result$table %||% data.frame()
+  group_table <- result$group_diagnostics %||% data.frame()
+  path_estimates <- result$path_estimates %||% data.frame()
+  path_differences <- result$path_differences %||% data.frame()
+  if (nrow(group_table) && "Indicator missing %" %in% names(group_table)) {
+    group_table[["Indicator missing %"]] <- paste0(vapply(group_table[["Indicator missing %"]], format_decimal3, character(1)), "%")
+  }
+  if (nrow(table)) {
+    numeric_columns <- c("Chisq", "df", "CFI", "RMSEA", "SRMR", "DeltaCFI", "DeltaRMSEA", "DeltaSRMR", "DeltaChisq", "DeltaDf")
+    for (name in intersect(numeric_columns, names(table))) table[[name]] <- vapply(table[[name]], format_decimal3, character(1))
+    if ("p" %in% names(table)) table$p <- vapply(table$p, format_p, character(1))
+    if ("DeltaP" %in% names(table)) table$DeltaP <- vapply(table$DeltaP, format_p, character(1))
+    names(table)[names(table) == "DeltaCFI"] <- "ΔCFI"
+    names(table)[names(table) == "DeltaRMSEA"] <- "ΔRMSEA"
+    names(table)[names(table) == "DeltaSRMR"] <- "ΔSRMR"
+    names(table)[names(table) == "DeltaChisq"] <- "Δχ²"
+    names(table)[names(table) == "DeltaDf"] <- "Δdf"
+    names(table)[names(table) == "DeltaP"] <- "Δp"
+  }
+  if (nrow(path_estimates)) {
+    for (name in intersect(c("B", "SE", "z", "B 95% CI lower", "B 95% CI upper", "beta", "beta 95% CI lower", "beta 95% CI upper"), names(path_estimates))) {
+      path_estimates[[name]] <- vapply(path_estimates[[name]], format_decimal3, character(1))
+    }
+    if ("p" %in% names(path_estimates)) path_estimates$p <- vapply(path_estimates$p, format_p, character(1))
+  }
+  if (nrow(path_differences)) {
+    for (name in intersect(c("B difference", "SE", "z"), names(path_differences))) {
+      path_differences[[name]] <- vapply(path_differences[[name]], format_decimal3, character(1))
+    }
+    for (name in intersect(c("p", "BH-adjusted p"), names(path_differences))) {
+      path_differences[[name]] <- vapply(path_differences[[name]], format_p, character(1))
+    }
+  }
+  div(class = "result-section regression-result-panel structural-invariance-result structural-path-group-result",
+    h4(if (ko) paste0("구조경로 집단비교: ", result$group) else paste0("Structural path group comparison by ", result$group)),
+    tags$h5(if (ko) "집단별 데이터 진단" else "Group-level data diagnostics"),
+    structural_canvas_basic_html_table(group_table),
+    tags$p(class = "structural-result-note", if (ko) "집단 크기와 결측률은 구조경로 차이 해석의 안정성을 판단하기 위한 기술 진단입니다." else "Group size and missingness diagnostics are descriptive checks for judging the stability of structural path comparisons."),
+    tags$h5(if (ko) "자유 구조경로 모형과 동일 구조경로 모형 비교" else "Free versus equal structural-path models"),
+    structural_canvas_basic_html_table(table),
+    tags$p(class = "structural-result-note", if (ko) "동일 구조경로 모형은 집단 간 회귀경로(~)를 같게 제약합니다. Δχ²와 적합도 변화는 전체 구조경로 동일성의 omnibus 검정으로 해석하십시오." else "The equal structural-path model constrains regression paths (~) to equality across groups. Δχ² and fit-index changes are omnibus evidence for or against equality of the structural paths."),
+    if (nrow(path_estimates)) tagList(
+      tags$h5(if (ko) "집단별 구조경로 계수" else "Group-specific structural path estimates"),
+      structural_canvas_basic_html_table(path_estimates)
+    ),
+    if (nrow(path_differences)) tagList(
+      tags$h5(if (ko) "경로별 집단 간 차이" else "Pairwise group differences by path"),
+      structural_canvas_basic_html_table(path_differences),
+      tags$p(class = "structural-result-note", if (ko) "경로별 차이 z 검정은 집단별 추정치와 표준오차를 이용한 탐색적 pairwise 진단입니다. 최종 판단은 위의 동일 구조경로 모형 비교, 이론, 표본수와 함께 보고하십시오." else "Path-level z tests are exploratory pairwise diagnostics based on group-specific estimates and standard errors. Report final conclusions jointly with the equal-path model comparison, theory, and group sizes.")
+    ) else tags$p(class = "structural-result-note", if (ko) "비교 가능한 구조경로가 충분하지 않아 경로별 집단 차이 표를 만들지 않았습니다." else "No path-level group-difference table was produced because comparable structural paths were unavailable.")
+  )
+}
+
 structural_canvas_invariance_result_ui <- function(bundle, language = statedu_initial_language()) {
   result <- bundle$invariance_result %||% NULL
   if (is.null(result)) return(NULL)
   ko <- identical(normalize_app_language(language), "ko")
+  if (identical(result$type %||% "", "structural_path_comparison")) {
+    return(structural_canvas_structural_path_group_comparison_ui(result, ko))
+  }
   table <- result$table
   group_table <- result$group_diagnostics
   group_reliability <- result$group_reliability %||% data.frame()
