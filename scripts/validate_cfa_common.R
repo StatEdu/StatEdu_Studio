@@ -16,6 +16,7 @@ source(file.path("R", "setup_custom_model_canvas_structural_holdout_evaluation.R
 source(file.path("R", "setup_custom_model_canvas_structural_invariance_evaluation.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_engine.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_bootstrap.R"), encoding = "UTF-8")
+source(file.path("R", "setup_custom_model_canvas_structural_bollen_stine_bootstrap.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_exports.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_export_fit_tables.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_export_report.R"), encoding = "UTF-8")
@@ -84,7 +85,10 @@ evaluation_source <- paste(c(
   readLines(file.path("R", "setup_custom_model_canvas_structural_holdout_evaluation.R"), warn = FALSE, encoding = "UTF-8"),
   readLines(file.path("R", "setup_custom_model_canvas_structural_invariance_evaluation.R"), warn = FALSE, encoding = "UTF-8")
 ), collapse = "\n")
-bootstrap_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_bootstrap.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+bootstrap_source <- paste(c(
+  readLines(file.path("R", "setup_custom_model_canvas_structural_bootstrap.R"), warn = FALSE, encoding = "UTF-8"),
+  readLines(file.path("R", "setup_custom_model_canvas_structural_bollen_stine_bootstrap.R"), warn = FALSE, encoding = "UTF-8")
+), collapse = "\n")
 
 assert_close <- function(actual, expected, tolerance = 1e-8, label = "value") {
   if (!isTRUE(all.equal(as.numeric(actual), as.numeric(expected), tolerance = tolerance, check.attributes = FALSE))) {
