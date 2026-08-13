@@ -87,6 +87,7 @@ run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estima
     shared_admissibility <- structural_canvas_fit_admissibility(fit)
     return(list(
       fit = fit, syntax = syntax, converged = converged, post_check = post_check,
+      effect_definitions = lavaan_syntax$effect_definitions %||% list(),
       identified = is.finite(model_df) && model_df >= 0,
       df = model_df,
       admissible = isTRUE(shared_admissibility$admissible),

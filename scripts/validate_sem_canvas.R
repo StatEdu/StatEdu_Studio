@@ -48,7 +48,7 @@ language_fn <- function() "en"
 cbsem <- run_structural_canvas_analysis(snapshot, data, "cbsem", estimator = "ML", missing = "fiml")
 stopifnot(inherits(cbsem$fit, "lavaan"))
 stopifnot(isTRUE(cbsem$converged))
-stopifnot(grepl("eta2 ~ eta1", cbsem$syntax, fixed = TRUE))
+stopifnot(grepl("eta2 ~", cbsem$syntax, fixed = TRUE), grepl("*eta1", cbsem$syntax, fixed = TRUE))
 stopifnot(is.finite(cbsem$df))
 
 cbsem_bundle <- list(
@@ -67,6 +67,7 @@ stopifnot(nrow(structural_canvas_result_table("validity", cbsem_result, "cbsem",
 stopifnot(nrow(structural_canvas_result_table("measurement", cbsem_result, "cbsem", labels_fn, language_fn)) > 0L)
 cbsem_structural <- structural_canvas_result_table("structural", cbsem_result, "cbsem", labels_fn, language_fn)
 stopifnot(nrow(cbsem_structural) == 1L)
+stopifnot("Effect" %in% names(cbsem_structural), cbsem_structural$Effect[[1L]] == "Direct")
 stopifnot(all(c("Outcome", "Predictor", "B", "beta", "R²", "z", "p") %in% names(cbsem_structural)))
 stopifnot(cbsem_structural$Outcome[[1L]] == "eta2")
 stopifnot(cbsem_structural$Predictor[[1L]] == "eta1")
@@ -74,6 +75,74 @@ stopifnot(cbsem_structural$Predictor[[1L]] == "eta1")
 cbsem_snapshot <- structural_canvas_result_snapshot(snapshot, cbsem$fit, "beta")
 cbsem_labels <- vapply(cbsem_snapshot$edges, function(edge) as.character(edge$label %||% ""), character(1))
 stopifnot(any(nzchar(cbsem_labels)))
+
+set.seed(20260814)
+n_mediation <- 240L
+eta_a <- stats::rnorm(n_mediation)
+eta_b <- 0.55 * eta_a + stats::rnorm(n_mediation, sd = 0.80)
+eta_c <- 0.35 * eta_a + 0.50 * eta_b + stats::rnorm(n_mediation, sd = 0.75)
+mediation_data <- data.frame(
+  a1 = 0.82 * eta_a + stats::rnorm(n_mediation, sd = 0.42),
+  a2 = 0.75 * eta_a + stats::rnorm(n_mediation, sd = 0.50),
+  a3 = 0.70 * eta_a + stats::rnorm(n_mediation, sd = 0.55),
+  b1 = 0.80 * eta_b + stats::rnorm(n_mediation, sd = 0.45),
+  b2 = 0.73 * eta_b + stats::rnorm(n_mediation, sd = 0.52),
+  b3 = 0.68 * eta_b + stats::rnorm(n_mediation, sd = 0.58),
+  c1 = 0.84 * eta_c + stats::rnorm(n_mediation, sd = 0.40),
+  c2 = 0.77 * eta_c + stats::rnorm(n_mediation, sd = 0.48),
+  c3 = 0.71 * eta_c + stats::rnorm(n_mediation, sd = 0.54)
+)
+mediation_snapshot <- list(
+  nodes = c(
+    list(
+      list(id = "eta_a", role = "latent", name = "etaA", canvasLabel = "etaA", x = 100, y = 100),
+      list(id = "eta_b", role = "latent", name = "etaB", canvasLabel = "etaB", x = 360, y = 100),
+      list(id = "eta_c", role = "latent", name = "etaC", canvasLabel = "etaC", x = 620, y = 100)
+    ),
+    lapply(seq_len(3L), function(index) list(id = paste0("a", index), role = "indicator", name = paste0("a", index), variableId = paste0("a", index), canvasLabel = paste0("a", index), x = 100, y = 210 + index * 60)),
+    lapply(seq_len(3L), function(index) list(id = paste0("b", index), role = "indicator", name = paste0("b", index), variableId = paste0("b", index), canvasLabel = paste0("b", index), x = 360, y = 210 + index * 60)),
+    lapply(seq_len(3L), function(index) list(id = paste0("c", index), role = "indicator", name = paste0("c", index), variableId = paste0("c", index), canvasLabel = paste0("c", index), x = 620, y = 210 + index * 60))
+  ),
+  edges = c(
+    lapply(seq_len(3L), function(index) list(id = paste0("ea", index), from = "eta_a", to = paste0("a", index))),
+    lapply(seq_len(3L), function(index) list(id = paste0("eb", index), from = "eta_b", to = paste0("b", index))),
+    lapply(seq_len(3L), function(index) list(id = paste0("ec", index), from = "eta_c", to = paste0("c", index))),
+    list(
+      list(id = "ab", from = "eta_a", to = "eta_b"),
+      list(id = "bc", from = "eta_b", to = "eta_c"),
+      list(id = "ac", from = "eta_a", to = "eta_c")
+    )
+  )
+)
+cbsem_mediation <- run_structural_canvas_analysis(mediation_snapshot, mediation_data, "cbsem", estimator = "ML", missing = "fiml")
+stopifnot(isTRUE(cbsem_mediation$converged))
+stopifnot(grepl(":=", cbsem_mediation$syntax, fixed = TRUE))
+stopifnot(length(cbsem_mediation$effect_definitions) == 2L)
+cbsem_mediation_bundle <- list(
+  fit = cbsem_mediation$fit,
+  syntax = cbsem_mediation$syntax,
+  snapshot = mediation_snapshot,
+  diagnostics = cbsem_mediation,
+  estimator = "ML",
+  rmsea_ci = 0.90,
+  validity_formula = "standardized"
+)
+cbsem_mediation_result <- function() cbsem_mediation_bundle
+cbsem_mediation_structural <- structural_canvas_result_table("structural", cbsem_mediation_result, "cbsem", labels_fn, language_fn)
+stopifnot(all(c("Direct", "Indirect", "Total") %in% cbsem_mediation_structural$Effect))
+stopifnot(any(cbsem_mediation_structural$Effect == "Indirect" & cbsem_mediation_structural$Outcome == "etaC" & cbsem_mediation_structural$Predictor == "etaA"))
+stopifnot(any(cbsem_mediation_structural$Effect == "Total" & cbsem_mediation_structural$Outcome == "etaC" & cbsem_mediation_structural$Predictor == "etaA"))
+stopifnot(all(nzchar(cbsem_mediation_structural$B[cbsem_mediation_structural$Effect %in% c("Indirect", "Total")])))
+
+cycle_snapshot <- snapshot
+cycle_snapshot$edges <- c(cycle_snapshot$edges, list(list(id = "p2", from = "lv2", to = "lv1")))
+cycle_syntax <- structural_canvas_lavaan_syntax(
+  cycle_snapshot, data, "cbsem",
+  Filter(function(node) identical(node$role, "latent"), cycle_snapshot$nodes),
+  cycle_snapshot$edges,
+  character(0)
+)
+stopifnot(!grepl(":=", cycle_syntax$syntax, fixed = TRUE), !length(cycle_syntax$effect_definitions))
 
 pls <- run_structural_canvas_analysis(snapshot, data, "plssem", estimator = "PLS")
 stopifnot(inherits(pls$fit, "pls_model"))

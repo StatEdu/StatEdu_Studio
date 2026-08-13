@@ -191,7 +191,56 @@ structural_canvas_pls_measurement_result_table <- function(summary_fit, snapshot
   do.call(rbind, rows)
 }
 
-structural_canvas_lavaan_structural_result_table <- function(kind, fit, ko, fmt, display_name) {
+structural_canvas_lavaan_standardized_effect <- function(fit, effect) {
+  standardized <- lavaan::standardizedSolution(fit, ci = FALSE)
+  standardized <- standardized[standardized$op == "~", c("lhs", "rhs", "est.std"), drop = FALSE]
+  coefficient <- function(predictor, outcome) {
+    row <- standardized[standardized$lhs == outcome & standardized$rhs == predictor, , drop = FALSE]
+    if (!nrow(row)) return(NA_real_)
+    suppressWarnings(as.numeric(row$est.std[[1L]]))
+  }
+  path_value <- function(path) {
+    if (length(path) < 2L) return(NA_real_)
+    values <- vapply(seq_len(length(path) - 1L), function(index) coefficient(path[[index]], path[[index + 1L]]), numeric(1))
+    if (any(!is.finite(values))) NA_real_ else prod(values)
+  }
+  values <- vapply(effect$paths %||% list(), path_value, numeric(1))
+  if (!any(is.finite(values))) NA_real_ else sum(values[is.finite(values)])
+}
+
+structural_canvas_lavaan_structural_effect_rows <- function(fit, effect_definitions, fmt, display_name) {
+  if (!length(effect_definitions)) return(data.frame())
+  raw <- lavaan::parameterEstimates(fit, ci = TRUE)
+  raw <- raw[raw$op == ":=", c("lhs", "est", "se", "z", "pvalue", "ci.lower", "ci.upper"), drop = FALSE]
+  rows <- lapply(effect_definitions, function(effect) {
+    row <- raw[raw$lhs == effect$label, , drop = FALSE]
+    if (!nrow(row)) return(NULL)
+    beta <- structural_canvas_lavaan_standardized_effect(fit, effect)
+    data.frame(
+      Effect = as.character(effect$type %||% ""),
+      Outcome = vapply(as.character(effect$outcome %||% ""), display_name, character(1)),
+      Predictor = vapply(as.character(effect$predictor %||% ""), display_name, character(1)),
+      B = fmt(row$est),
+      `B 95% CI lower` = fmt(row$ci.lower),
+      `B 95% CI upper` = fmt(row$ci.upper),
+      SE = fmt(row$se),
+      beta = fmt(beta),
+      `beta 95% CI lower` = "",
+      `beta 95% CI upper` = "",
+      R2 = "",
+      z = fmt(row$z),
+      p = vapply(row$pvalue, format_p, character(1)),
+      check.names = FALSE
+    )
+  })
+  rows <- Filter(Negate(is.null), rows)
+  if (!length(rows)) return(data.frame())
+  table <- do.call(rbind, rows)
+  names(table)[names(table) == "R2"] <- "R2"
+  table
+}
+
+structural_canvas_lavaan_structural_result_table <- function(kind, fit, ko, fmt, display_name, effect_definitions = list()) {
   if (!identical(kind, "structural")) return(NULL)
   raw <- lavaan::parameterEstimates(fit, ci = TRUE)
   raw <- raw[raw$op == "~", c("lhs", "rhs", "est", "se", "z", "pvalue", "ci.lower", "ci.upper"), drop = FALSE]
@@ -207,6 +256,7 @@ structural_canvas_lavaan_structural_result_table <- function(kind, fit, ko, fmt,
   r2_values <- tryCatch(lavaan::lavInspect(fit, "r2"), error = function(error) numeric(0))
   r2 <- suppressWarnings(as.numeric(r2_values[raw$lhs]))
   table <- data.frame(
+    Effect = "Direct",
     vapply(raw$lhs, display_name, character(1)),
     vapply(raw$rhs, display_name, character(1)),
     B = fmt(raw$est),
@@ -269,7 +319,19 @@ structural_canvas_result_table <- function(kind, fit_result, analysis_type, labe
     measurement_table <- structural_canvas_measurement_result_table(kind, fit, ko, fmt, display_name)
     if (!is.null(measurement_table)) return(measurement_table)
     structural_table <- structural_canvas_lavaan_structural_result_table(kind, fit, ko, fmt, display_name)
-    if (!is.null(structural_table)) return(structural_table)
+    if (!is.null(structural_table)) {
+      if (identical(kind, "structural") && ncol(structural_table) >= 3L) {
+        names(structural_table)[1:3] <- c("Effect", "Outcome", "Predictor")
+        effect_rows <- structural_canvas_lavaan_structural_effect_rows(
+          fit, bundle$diagnostics$effect_definitions %||% bundle$effect_definitions %||% list(), fmt, display_name
+        )
+        if (nrow(effect_rows)) {
+          names(effect_rows) <- names(structural_table)
+          structural_table <- rbind(structural_table, effect_rows)
+        }
+      }
+      return(structural_table)
+    }
     return(structural_canvas_mi_result_table(bundle, snapshot, fit, ko, fmt, display_name, residual_name))
   }
   summary_fit <- summary(fit)

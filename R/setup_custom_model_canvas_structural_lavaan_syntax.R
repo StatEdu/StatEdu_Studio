@@ -1,5 +1,128 @@
 # Structural equation canvas lavaan syntax helpers.
 
+structural_canvas_lavaan_safe_label <- function(value, prefix = "statedu") {
+  value <- gsub("[^A-Za-z0-9_.]+", "_", as.character(value %||% ""))
+  value <- gsub("_+", "_", value)
+  value <- gsub("^_+|_+$", "", value)
+  if (!nzchar(value) || !grepl("^[A-Za-z]", value)) value <- paste0(prefix, "_", value)
+  value
+}
+
+structural_canvas_structural_effect_label <- function(prefix, predictor, outcome) {
+  paste(
+    structural_canvas_lavaan_safe_label(prefix, "statedu"),
+    structural_canvas_lavaan_safe_label(predictor, "from"),
+    structural_canvas_lavaan_safe_label(outcome, "to"),
+    sep = "_"
+  )
+}
+
+structural_canvas_structural_edge_label <- function(edge, index) {
+  equality_label <- trimws(as.character(edge$equalityLabel %||% ""))
+  parameter_name <- trimws(as.character(edge$parameterName %||% ""))
+  label <- if (nzchar(equality_label)) equality_label else parameter_name
+  if (nzchar(label) && !grepl("^[A-Za-z][A-Za-z0-9_.]*$", label)) {
+    stop(sprintf("Invalid lavaan parameter label '%s'. Use a letter first, followed by letters, numbers, underscores, or periods.", label))
+  }
+  if (nzchar(label)) return(label)
+  fixed_value <- suppressWarnings(as.numeric(edge$fixedValue %||% NA_real_))
+  if (identical(edge$free, FALSE)) {
+    if (!is.finite(fixed_value)) stop("A finite fixed value is required for every fixed structural path.")
+    return(format(fixed_value, scientific = FALSE, digits = 15, trim = TRUE))
+  }
+  paste0("statedu_b", as.integer(index))
+}
+
+structural_canvas_structural_edge_term <- function(edge, predictor_name, label) {
+  if (identical(edge$free, FALSE)) return(structural_canvas_parameter_term(edge, predictor_name))
+  labeled_edge <- edge
+  if (!nzchar(trimws(as.character(labeled_edge$equalityLabel %||% ""))) &&
+      !nzchar(trimws(as.character(labeled_edge$parameterName %||% "")))) {
+    labeled_edge$parameterName <- label
+  }
+  structural_canvas_parameter_term(labeled_edge, predictor_name)
+}
+
+structural_canvas_find_structural_paths <- function(adjacency, from, to, visited = character(0)) {
+  from <- as.character(from)
+  to <- as.character(to)
+  if (identical(from, to)) return(list())
+  next_nodes <- adjacency[[from]] %||% character(0)
+  paths <- list()
+  for (next_node in next_nodes) {
+    if (next_node %in% visited) next
+    if (identical(next_node, to)) {
+      paths[[length(paths) + 1L]] <- c(from, to)
+    } else {
+      child_paths <- structural_canvas_find_structural_paths(adjacency, next_node, to, c(visited, from))
+      paths <- c(paths, lapply(child_paths, function(path) c(from, path)))
+    }
+  }
+  paths
+}
+
+structural_canvas_structural_has_cycle <- function(adjacency) {
+  visiting <- character(0)
+  visited <- character(0)
+  visit <- function(node) {
+    if (node %in% visiting) return(TRUE)
+    if (node %in% visited) return(FALSE)
+    visiting <<- c(visiting, node)
+    for (next_node in adjacency[[node]] %||% character(0)) {
+      if (isTRUE(visit(next_node))) return(TRUE)
+    }
+    visiting <<- setdiff(visiting, node)
+    visited <<- c(visited, node)
+    FALSE
+  }
+  any(vapply(names(adjacency), visit, logical(1)))
+}
+
+structural_canvas_structural_effect_definitions <- function(structural_edge_info) {
+  if (!length(structural_edge_info)) return(list(lines = character(0), effects = list()))
+  nodes <- sort(unique(c(
+    vapply(structural_edge_info, function(item) item$predictor, character(1)),
+    vapply(structural_edge_info, function(item) item$outcome, character(1))
+  )))
+  edge_expression <- list()
+  adjacency <- setNames(vector("list", length(nodes)), nodes)
+  for (item in structural_edge_info) {
+    adjacency[[item$predictor]] <- unique(c(adjacency[[item$predictor]] %||% character(0), item$outcome))
+    edge_expression[[paste(item$predictor, item$outcome, sep = "\r")]] <- item$label
+  }
+  if (structural_canvas_structural_has_cycle(adjacency)) return(list(lines = character(0), effects = list()))
+  lines <- character(0)
+  effects <- list()
+  for (predictor in nodes) {
+    for (outcome in setdiff(nodes, predictor)) {
+      paths <- structural_canvas_find_structural_paths(adjacency, predictor, outcome)
+      if (!length(paths)) next
+      direct_key <- paste(predictor, outcome, sep = "\r")
+      indirect_paths <- Filter(function(path) length(path) > 2L, paths)
+      if (!length(indirect_paths)) next
+      path_expressions <- vapply(indirect_paths, function(path) {
+        terms <- vapply(seq_len(length(path) - 1L), function(index) {
+          edge_expression[[paste(path[[index]], path[[index + 1L]], sep = "\r")]]
+        }, character(1))
+        paste(terms, collapse = " * ")
+      }, character(1))
+      indirect_label <- structural_canvas_structural_effect_label("statedu_ind", predictor, outcome)
+      total_label <- structural_canvas_structural_effect_label("statedu_tot", predictor, outcome)
+      indirect_expression <- paste(path_expressions, collapse = " + ")
+      total_terms <- c(edge_expression[[direct_key]] %||% character(0), path_expressions)
+      total_expression <- paste(total_terms[nzchar(total_terms)], collapse = " + ")
+      lines <- c(lines, paste(indirect_label, ":=", indirect_expression), paste(total_label, ":=", total_expression))
+      effects[[length(effects) + 1L]] <- list(
+        label = indirect_label, type = "Indirect", predictor = predictor, outcome = outcome, paths = indirect_paths
+      )
+      effects[[length(effects) + 1L]] <- list(
+        label = total_label, type = "Total", predictor = predictor, outcome = outcome, paths = paths
+      )
+    }
+  }
+  list(lines = lines, effects = effects)
+}
+
 structural_canvas_lavaan_syntax <- function(snapshot, data, analysis_type, latents, edges, ordered, residual_variance_fixes = numeric(0)) {
   measurement_lines <- vapply(latents, function(latent) {
     indicator_edges <- Filter(function(edge) {
@@ -32,16 +155,31 @@ structural_canvas_lavaan_syntax <- function(snapshot, data, analysis_type, laten
     }, character(1))
     paste(structural_canvas_name(parent), "=~", paste(children, collapse = " + "))
   }, character(1))
-  structural_lines <- vapply(Filter(function(edge) {
+  structural_edges <- Filter(function(edge) {
     if (identical(edge$kind, "covariance")) return(FALSE)
     if (identical(as.character(edge$pathType %||% "regression"), "higherOrder")) return(FALSE)
     from <- structural_canvas_node(snapshot, edge$from)
     to <- structural_canvas_node(snapshot, edge$to)
     identical(from$role, "latent") && identical(to$role, "latent")
-  }, edges), function(edge) {
+  }, edges)
+  structural_edge_info <- Map(function(edge, index) {
     predictor_name <- structural_canvas_name(structural_canvas_node(snapshot, edge$from))
-    paste(structural_canvas_name(structural_canvas_node(snapshot, edge$to)), "~", structural_canvas_parameter_term(edge, predictor_name))
+    outcome_name <- structural_canvas_name(structural_canvas_node(snapshot, edge$to))
+    list(
+      edge = edge,
+      predictor = predictor_name,
+      outcome = outcome_name,
+      label = structural_canvas_structural_edge_label(edge, index)
+    )
+  }, structural_edges, seq_along(structural_edges))
+  structural_lines <- vapply(structural_edge_info, function(item) {
+    paste(item$outcome, "~", structural_canvas_structural_edge_term(item$edge, item$predictor, item$label))
   }, character(1))
+  effect_definitions <- if (identical(analysis_type, "cbsem")) {
+    structural_canvas_structural_effect_definitions(structural_edge_info)
+  } else {
+    list(lines = character(0), effects = list())
+  }
   covariance_target_name <- function(node) {
     if (is.null(node)) return("")
     if (identical(node$role, "latent") || identical(node$role, "indicator")) return(structural_canvas_name(node))
@@ -86,7 +224,8 @@ structural_canvas_lavaan_syntax <- function(snapshot, data, analysis_type, laten
   }, character(1)) else character(0)
 
   list(
-    syntax = paste(c(measurement_lines, higher_order_lines, structural_lines, covariance_lines, residual_parameter_lines, residual_fix_lines), collapse = "\n"),
-    residual_variance_fixes = residual_variance_fixes
+    syntax = paste(c(measurement_lines, higher_order_lines, structural_lines, effect_definitions$lines, covariance_lines, residual_parameter_lines, residual_fix_lines), collapse = "\n"),
+    residual_variance_fixes = residual_variance_fixes,
+    effect_definitions = effect_definitions$effects
   )
 }
