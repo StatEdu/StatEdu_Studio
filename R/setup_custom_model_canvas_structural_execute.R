@@ -10,36 +10,29 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   if (nrow(identification_warnings)) {
     showNotification(paste0("Identification warning: ", paste(paste0(identification_warnings$Element, " — ", identification_warnings$Message), collapse = "; ")), type = "warning", duration = 12)
   }
-  estimator <- settings$estimator %||% input[[paste0(prefix, "_estimator")]] %||% "ML"
-  missing <- settings$missing %||% input[[paste0(prefix, "_missing")]] %||% "fiml"
-  std_lv <- settings$std_lv %||% identical(input[[paste0(prefix, "_scale")]], "variance")
-  mi_mode <- settings$mi_mode %||% input[[paste0(prefix, "_mi_mode")]] %||% "theory"
-  rmsea_ci <- settings$rmsea_ci %||% as.numeric(input[[paste0(prefix, "_rmsea_ci")]] %||% .90)
-  validity_formula <- settings$validity_formula %||% input[[paste0(prefix, "_validity_formula")]] %||% "standardized"
-  reliability_bootstrap <- suppressWarnings(as.integer(settings$reliability_bootstrap %||% input[[paste0(prefix, "_reliability_bootstrap")]] %||% 0L))
-  if (is.na(reliability_bootstrap) || !reliability_bootstrap %in% c(0L, 500L, 1000L, 2000L)) reliability_bootstrap <- 0L
-  reliability_seed <- suppressWarnings(as.integer(settings$reliability_seed %||% input[[paste0(prefix, "_reliability_seed")]] %||% 24680L))
-  if (is.na(reliability_seed) || reliability_seed < 1L) reliability_seed <- 24680L
-  reliability_ci_method <- structural_canvas_bootstrap_ci_method(settings$reliability_ci_method %||% input[[paste0(prefix, "_reliability_ci_method")]] %||% "percentile")
-  bollen_stine_bootstrap <- suppressWarnings(as.integer(settings$bollen_stine_bootstrap %||% input[[paste0(prefix, "_bollen_stine_bootstrap")]] %||% 0L))
-  if (is.na(bollen_stine_bootstrap) || !bollen_stine_bootstrap %in% c(0L, 500L, 1000L, 2000L)) bollen_stine_bootstrap <- 0L
-  bollen_stine_seed <- suppressWarnings(as.integer(settings$bollen_stine_seed %||% input[[paste0(prefix, "_bollen_stine_seed")]] %||% 97531L))
-  if (is.na(bollen_stine_seed) || bollen_stine_seed < 1L) bollen_stine_seed <- 97531L
-  htmt_threshold <- as.numeric(settings$htmt_threshold %||% input[[paste0(prefix, "_htmt_threshold")]] %||% .85)
-  if (!is.finite(htmt_threshold) || !htmt_threshold %in% c(.85, .90)) htmt_threshold <- .85
-  htmt_bootstrap <- suppressWarnings(as.integer(settings$htmt_bootstrap %||% input[[paste0(prefix, "_htmt_bootstrap")]] %||% 0L))
-  if (is.na(htmt_bootstrap) || !htmt_bootstrap %in% c(0L, 500L, 1000L, 2000L)) htmt_bootstrap <- 0L
-  htmt_seed <- suppressWarnings(as.integer(settings$htmt_seed %||% input[[paste0(prefix, "_htmt_seed")]] %||% 12345L))
-  if (is.na(htmt_seed) || htmt_seed < 1L) htmt_seed <- 12345L
-  htmt_ci_method <- structural_canvas_bootstrap_ci_method(settings$htmt_ci_method %||% input[[paste0(prefix, "_htmt_ci_method")]] %||% "percentile")
-  invariance_enabled <- isTRUE(settings$invariance_enabled %||% input[[paste0(prefix, "_invariance_enabled")]] %||% FALSE)
-  invariance_group <- as.character(settings$invariance_group %||% input[[paste0(prefix, "_invariance_group")]] %||% "")
-  mi_holdout_enabled <- isTRUE(settings$mi_holdout_enabled %||% input[[paste0(prefix, "_mi_holdout_enabled")]] %||% FALSE)
-  mi_holdout_fraction <- as.numeric(settings$mi_holdout_fraction %||% input[[paste0(prefix, "_mi_holdout_fraction")]] %||% .30)
-  mi_holdout_seed <- suppressWarnings(as.integer(settings$mi_holdout_seed %||% input[[paste0(prefix, "_mi_holdout_seed")]] %||% 13579L))
-  if (is.na(mi_holdout_seed) || mi_holdout_seed < 1L) mi_holdout_seed <- 13579L
-  result_coefficient <- settings$result_coefficient %||% input[[paste0(prefix, "_result_coefficient")]] %||% "beta"
-  residual_variance_fixes <- settings$residual_variance_fixes %||% numeric(0)
+  options <- structural_canvas_execute_settings(settings, input, prefix)
+  estimator <- options$estimator
+  missing <- options$missing
+  std_lv <- options$std_lv
+  mi_mode <- options$mi_mode
+  rmsea_ci <- options$rmsea_ci
+  validity_formula <- options$validity_formula
+  reliability_bootstrap <- options$reliability_bootstrap
+  reliability_seed <- options$reliability_seed
+  reliability_ci_method <- options$reliability_ci_method
+  bollen_stine_bootstrap <- options$bollen_stine_bootstrap
+  bollen_stine_seed <- options$bollen_stine_seed
+  htmt_threshold <- options$htmt_threshold
+  htmt_bootstrap <- options$htmt_bootstrap
+  htmt_seed <- options$htmt_seed
+  htmt_ci_method <- options$htmt_ci_method
+  invariance_enabled <- options$invariance_enabled
+  invariance_group <- options$invariance_group
+  mi_holdout_enabled <- options$mi_holdout_enabled
+  mi_holdout_fraction <- options$mi_holdout_fraction
+  mi_holdout_seed <- options$mi_holdout_seed
+  result_coefficient <- options$result_coefficient
+  residual_variance_fixes <- options$residual_variance_fixes
   full_data <- dataset_fn()
   variable_table <- variable_table_fn()
   nominal <- structural_canvas_nominal_indicators(snapshot, variable_table)
