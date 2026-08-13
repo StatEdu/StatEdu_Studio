@@ -6,6 +6,7 @@ stopifnot(
   grepl("ARROW_MARKER_CLEARANCE", edge_source, fixed = TRUE),
   grepl("function visibleArrowEndpoints", edge_source, fixed = TRUE),
   grepl("to: pointShiftedToward(endpoints.to, endpoints.from, ARROW_MARKER_CLEARANCE)", edge_source, fixed = TRUE),
+  grepl("return visibleArrowEndpoints(edge, {\n        from: radialNodeAnchor(instance, from, to)", edge_source, fixed = TRUE),
   grepl("return visibleArrowEndpoints(edge, endpoints);", edge_source, fixed = TRUE),
   !grepl("edge.directAnchors) return endpoints", edge_source, fixed = TRUE)
 )

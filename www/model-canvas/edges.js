@@ -311,10 +311,10 @@
     var sides = edgeSide(instance, edge);
     if (!from || !to || !sides) return null;
     if (edge.directAnchors) {
-      return {
+      return visibleArrowEndpoints(edge, {
         from: radialNodeAnchor(instance, from, to),
         to: radialNodeAnchor(instance, to, from)
-      };
+      });
     }
     var endpoints = {
       from: nodeAnchor(instance, from, sides.fromSide, anchorSlot(instance, edge, "from", sides.fromSide)),
