@@ -140,15 +140,27 @@ structural_canvas_pls_quality_status_summary <- function(rows) {
   )
 }
 
+structural_canvas_pls_quality_review_rows <- function(rows) {
+  if (!nrow(rows) || !"Status" %in% names(rows)) {
+    return(data.frame(Item = character(0), Value = character(0), Guidance = character(0), stringsAsFactors = FALSE))
+  }
+  review <- rows[rows$Status == "Review", c("Item", "Value", "Guidance"), drop = FALSE]
+  rownames(review) <- NULL
+  review
+}
+
 structural_canvas_pls_quality_result_ui <- function(bundle, language = statedu_initial_language()) {
   rows <- structural_canvas_pls_quality_rows(bundle)
   if (!nrow(rows)) return(NULL)
   ko <- identical(normalize_app_language(language), "ko")
   summary <- structural_canvas_pls_quality_status_summary(rows)
+  review_rows <- structural_canvas_pls_quality_review_rows(rows)
   div(
     class = "result-section regression-result-panel structural-pls-quality-result",
     h4(if (ko) "PLS-SEM quality checklist" else "PLS-SEM quality checklist"),
     tags$p(class = "structural-result-note structural-quality-status-summary", summary),
+    tags$h5(if (ko) "Review focus" else "Review focus"),
+    if (nrow(review_rows)) structural_canvas_basic_html_table(review_rows) else tags$p(class = "structural-result-note", "No Review rows in the quality checklist."),
     structural_canvas_basic_html_table(rows),
     if (any(rows$Status == "Review")) tags$p(
       class = "structural-result-note",
