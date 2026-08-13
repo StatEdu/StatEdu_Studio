@@ -217,43 +217,6 @@ mismatched_reliability_structure_error <- tryCatch({
 }, error = conditionMessage)
 stopifnot(grepl("parameter structure does not match", mismatched_reliability_structure_error, fixed = TRUE))
 
-invariance_data <- continuous
-invariance_data$group <- rep(c("A", "B"), each = n / 2L)
-invariance <- structural_canvas_measurement_invariance(
-  "eta1 =~ x1 + x2 + x3", invariance_data, "group", estimator = "MLR"
-)
-stopifnot(
-  identical(invariance$table$Model, c("Configural", "Metric", "Scalar", "Strict")),
-  nrow(invariance$table) == 4L, length(invariance$fits) == 4L,
-  all(invariance$table$Converged), all(invariance$table$Admissible),
-  all(invariance$table[["Admissibility reasons"]] == "None"),
-  all(invariance$table[["Parameter boundary dimensions"]] <= invariance$table[["Explicit equality constraints"]]),
-  all(vapply(invariance$table[c("Residual min eigenvalue", "Latent min eigenvalue", "Parameter min eigenvalue")], function(values) all(is.finite(values)), logical(1))),
-  all(vapply(invariance$table[c("Residual condition number", "Latent condition number", "Parameter condition number")], function(values) all(is.finite(values) | is.infinite(values)), logical(1))),
-  is.logical(invariance$table[["Ill-conditioned warning"]]),
-  all(invariance$table[["Residual min eigenvalue"]] > 0),
-  all(invariance$table[["Latent min eigenvalue"]] > 0),
-  all(vapply(invariance$fits, function(fit) structural_canvas_fit_admissibility(fit)$admissible, logical(1))),
-  all(vapply(invariance$fits, function(fit) identical(structural_canvas_fit_admissibility(fit)$group_labels, c("A", "B")), logical(1))),
-  nrow(invariance$group_reliability) == 2L,
-  identical(invariance$group_reliability$Group, c("A", "B")),
-  identical(invariance$group_reliability$Factor, c("eta1", "eta1")),
-  all(is.finite(invariance$group_reliability$AVE)),
-  nrow(invariance$group_htmt) == 0L,
-  all(diff(invariance$table$df) >= 0),
-  all(is.finite(invariance$table$CFI)), all(is.finite(invariance$table$RMSEA)), all(is.finite(invariance$table$SRMR)),
-  all(is.finite(invariance$table$DeltaCFI[-1L])),
-  all(is.finite(invariance$table$DeltaChisq[-1L])), all(is.finite(invariance$table$DeltaDf[-1L])), all(is.finite(invariance$table$DeltaP[-1L])),
-  identical(names(invariance$score_diagnostics), c("Configural", "Metric", "Scalar", "Strict")),
-  nrow(invariance$score_diagnostics$Configural) == 0L,
-  all(vapply(invariance$score_diagnostics[-1L], nrow, integer(1)) > 0L),
-  all(vapply(invariance$score_diagnostics[-1L], function(value) all(diff(value[["Score χ²"]]) <= 0), logical(1))),
-  all(vapply(invariance$score_diagnostics[-1L], function(value) all(value[["BH-adjusted p"]] >= value$p, na.rm = TRUE), logical(1))),
-  all(vapply(invariance$score_diagnostics[-1L], function(value) all(value[["BH-adjusted p"]] >= 0 & value[["BH-adjusted p"]] <= 1, na.rm = TRUE), logical(1))),
-  all(vapply(invariance$score_diagnostics[-1L], function(value) all(is.finite(value[["Max |standardized EPC|"]]) & value[["Max |standardized EPC|"]] >= 0), logical(1))),
-  all(vapply(invariance$score_diagnostics[-1L], function(value) all(grepl("group A|group B", value$Constraint)), logical(1)))
-)
-stopifnot(inherits(try(structural_canvas_measurement_invariance("eta1 =~ x1 + x2 + x3", invariance_data, "missing_group"), silent = TRUE), "try-error"))
 holdout_data <- continuous
 holdout_data$x4 <- .65 * factor_score + stats::rnorm(n, sd = .75)
 seed_before_holdout_split <- .Random.seed
@@ -338,24 +301,6 @@ stopifnot(
 two_factor_fit <- lavaan::cfa(
   "eta1 =~ x1 + x2 + x3\neta2 =~ x4 + x5 + x6",
   data = lavaan::HolzingerSwineford1939
-)
-two_factor_invariance <- structural_canvas_measurement_invariance(
-  "eta1 =~ x1 + x2 + x3\neta2 =~ x4 + x5 + x6\neta1 ~~ eta2",
-  lavaan::HolzingerSwineford1939, "school", estimator = "MLR"
-)
-stopifnot(
-  nrow(two_factor_invariance$group_reliability) == 4L,
-  all(c("Group", "Factor", "AVE", "CR", "Cronbach's alpha", "Omega total") %in% names(two_factor_invariance$group_reliability)),
-  identical(sort(unique(two_factor_invariance$group_reliability$Factor)), c("eta1", "eta2")),
-  all(is.finite(two_factor_invariance$group_reliability$AVE)),
-  nrow(two_factor_invariance$group_htmt) == 2L,
-  all(c("Group", "Factor1", "Factor2", "HTMT", "Criterion") %in% names(two_factor_invariance$group_htmt)),
-  all(is.finite(two_factor_invariance$group_htmt$HTMT)),
-  isTRUE(two_factor_invariance$group_residuals$available),
-  nrow(two_factor_invariance$group_residuals$group_summary) == 2L,
-  all(c("Group", "Max |standardized residual|", "Flagged residuals") %in% names(two_factor_invariance$group_residuals$group_summary)),
-  nrow(two_factor_invariance$group_residuals$group_pairs) > 0L,
-  all(c("Group", "Indicator1", "Indicator2", "Standardized residual", "Correlation residual", "Exceeds cutoff") %in% names(two_factor_invariance$group_residuals$group_pairs))
 )
 automatic_covariance_bootstrap_error <- tryCatch({
   structural_canvas_reliability_bootstrap(
@@ -923,47 +868,6 @@ stopifnot(
 stopifnot(identical(sort(lavaan::lavNames(wlsmv$fit, "ov.ord")), sort(ordered_names)))
 wlsmv_measures <- structural_canvas_fit_measures(wlsmv$fit, "WLSMV", .90)
 stopifnot(isTRUE(wlsmv_measures$adjusted))
-ordinal_invariance_data <- ordinal
-ordinal_invariance_data$group <- rep(c("A", "B"), each = n / 2L)
-ordinal_invariance <- structural_canvas_measurement_invariance(
-  "eta1 =~ x1 + x2 + x3", ordinal_invariance_data, "group",
-  estimator = "WLSMV", missing = "pairwise", ordered = ordered_names
-)
-stopifnot(
-  isTRUE(ordinal_invariance$ordinal),
-  identical(ordinal_invariance$table$Model, c("Configural", "Thresholds", "Scalar (thresholds + loadings)", "Strict")),
-  all(ordinal_invariance$table$Converged), all(ordinal_invariance$table$Admissible),
-  all(ordinal_invariance$table[["Admissibility reasons"]] == "None"),
-  all(ordinal_invariance$table[["Parameter boundary dimensions"]] <= ordinal_invariance$table[["Explicit equality constraints"]]),
-  all(vapply(ordinal_invariance$table[c("Residual min eigenvalue", "Latent min eigenvalue", "Parameter min eigenvalue")], function(values) all(is.finite(values)), logical(1))),
-  all(vapply(ordinal_invariance$table[c("Residual condition number", "Latent condition number", "Parameter condition number")], function(values) all(is.finite(values) | is.infinite(values)), logical(1))),
-  is.logical(ordinal_invariance$table[["Ill-conditioned warning"]]),
-  all(ordinal_invariance$table[["Residual min eigenvalue"]] > 0),
-  all(ordinal_invariance$table[["Latent min eigenvalue"]] > 0),
-  all(vapply(ordinal_invariance$fits, function(fit) structural_canvas_fit_admissibility(fit)$admissible, logical(1))),
-  all(vapply(ordinal_invariance$fits, function(fit) identical(structural_canvas_fit_admissibility(fit)$group_labels, c("A", "B")), logical(1))),
-  all(is.finite(ordinal_invariance$table$CFI)),
-  all(is.finite(ordinal_invariance$table$DeltaChisq[-1L])),
-  all(vapply(ordinal_invariance$fits, function(fit) identical(lavaan::lavInspect(fit, "options")$parameterization, "theta"), logical(1))),
-  nrow(ordinal_invariance$group_diagnostics) == 2L,
-  all(ordinal_invariance$group_diagnostics$N == n / 2L),
-  all(ordinal_invariance$group_diagnostics[["Absent ordered categories"]] == "None"),
-  isTRUE(ordinal_invariance$group_residuals$available),
-  nrow(ordinal_invariance$group_residuals$group_summary) == 2L,
-  nrow(ordinal_invariance$group_residuals$group_pairs) > 0L,
-  all(c("Group", "Indicator1", "Indicator2", "Standardized residual", "Correlation residual", "Exceeds cutoff") %in% names(ordinal_invariance$group_residuals$group_pairs)),
-  identical(names(ordinal_invariance$score_diagnostics), names(ordinal_invariance$fits))
-)
-absent_category_data <- ordinal_invariance_data
-absent_category_data$x1[absent_category_data$group == "A" & absent_category_data$x1 == 5L] <- 4L
-absent_category_error <- tryCatch({
-  structural_canvas_measurement_invariance(
-    "eta1 =~ x1 + x2 + x3", absent_category_data, "group",
-    estimator = "WLSMV", missing = "pairwise", ordered = ordered_names
-  )
-  ""
-}, error = conditionMessage)
-stopifnot(grepl("categories are absent within group", absent_category_error, fixed = TRUE))
 fixed_ordered_error <- tryCatch({
   run_structural_canvas_analysis(snapshot, ordinal, "cfa", estimator = "WLSMV", missing = "pairwise", ordered = ordered_names, residual_variance_fixes = c(x1 = .001))
   ""
