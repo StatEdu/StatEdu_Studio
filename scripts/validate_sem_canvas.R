@@ -51,6 +51,9 @@ stopifnot(
   grepl("PLS structural model effects", ui_source, fixed = TRUE),
   grepl("PLS 구조모형 효과", ui_source, fixed = TRUE),
   grepl("total and indirect effects", ui_source, fixed = TRUE),
+  grepl("PLSpredict cross-validation", ui_source, fixed = TRUE),
+  grepl("PLSpredict predictive assessment", ui_source, fixed = TRUE),
+  grepl("PLS - LM values indicate lower out-of-sample prediction error", ui_source, fixed = TRUE),
   grepl("path coefficients, R2, adjusted R2, f2, inner VIF", ui_source, fixed = TRUE),
   grepl("Inner VIF is reported for direct structural paths", ui_source, fixed = TRUE),
   grepl("PLS-SEM 구조모형 출력", ui_source, fixed = TRUE),
@@ -69,6 +72,8 @@ stopifnot(
   grepl("Estimating PLS-SEM bootstrap intervals", pls_engine_source, fixed = TRUE),
   grepl("seminr bootstrap resamples", pls_engine_source, fixed = TRUE),
   grepl("PLS-SEM bootstrap complete", pls_engine_source, fixed = TRUE),
+  grepl("Estimating PLSpredict cross-validation", pls_engine_source, fixed = TRUE),
+  grepl("seminr::predict_pls", pls_engine_source, fixed = TRUE),
   grepl("structural_canvas_notify_missing_covariances(missing_covariances, analysis_type, statedu_current_language(app_language_fn))", ui_source, fixed = TRUE),
   grepl("structural_canvas_notify_ignored_pls_covariances(result, analysis_type, statedu_current_language(app_language_fn))", ui_source, fixed = TRUE),
   grepl("PLS-SEM에서는 공분산 경로를 추정하지", ui_source, fixed = TRUE),
@@ -362,12 +367,23 @@ stopifnot(any(nzchar(pls_mediation_fit[["Total effect"]][pls_mediation_fit$Effec
 stopifnot(any(nzchar(pls_mediation_fit[["Inner VIF"]][pls_mediation_fit$Effect == "Direct" & pls_mediation_fit$Outcome == "etaC"])))
 
 pls_options <- structural_canvas_execute_settings(
-  settings = list(pls_bootstrap = 500L, pls_seed = 13579L),
+  settings = list(pls_bootstrap = 500L, pls_seed = 13579L, pls_predict_folds = 5L, pls_predict_reps = 1L),
   input = list(),
   prefix = "structural_plssem"
 )
 stopifnot(pls_options$pls_bootstrap == 500L)
 stopifnot(pls_options$pls_seed == 13579L)
+stopifnot(pls_options$pls_predict_folds == 5L)
+stopifnot(pls_options$pls_predict_reps == 1L)
+
+pls_predict <- structural_canvas_run_pls_predict("plssem", 5L, 1L, pls)
+stopifnot(is.list(pls_predict))
+stopifnot(pls_predict$folds == 5L)
+stopifnot(pls_predict$reps == 1L)
+pls_predict_tables <- structural_canvas_pls_predict_tables(pls_predict)
+stopifnot(nrow(pls_predict_tables$items) >= 2L)
+stopifnot(all(c("Indicator", "Metric", "PLS out-of-sample", "LM benchmark", "PLS - LM", "Assessment") %in% names(pls_predict_tables$items)))
+stopifnot(all(c("Construct", "IS_MSE", "IS_MAE", "OOS_MSE", "OOS_MAE", "overfit") %in% names(pls_predict_tables$constructs)))
 
 pls_bootstrap <- structural_canvas_run_pls_bootstrap("plssem", 30L, pls, 24680L)
 stopifnot(is.list(pls_bootstrap))
@@ -463,7 +479,7 @@ execution_state$value <- NULL
 execution_state$message <- NULL
 executed <- structural_canvas_execute_analysis(
   snapshot,
-  settings = list(estimator = "PLS"),
+  settings = list(estimator = "PLS", pls_predict_folds = 5L, pls_predict_reps = 1L),
   input = list(),
   session = session,
   dataset_fn = function() data,
@@ -474,6 +490,8 @@ executed <- structural_canvas_execute_analysis(
 )
 stopifnot(inherits(executed$fit, "pls_model"))
 stopifnot(inherits(fit_result_state()$fit, "pls_model"))
+stopifnot(is.list(fit_result_state()$pls_predict_result))
+stopifnot(fit_result_state()$pls_predict_result$folds == 5L)
 stopifnot(identical(execution_state$message$type, "custom-model-canvas-result"))
 stopifnot(any(nzchar(vapply(execution_state$message$message$result$edges, function(edge) as.character(edge$label %||% ""), character(1)))))
 execution_state$value <- NULL

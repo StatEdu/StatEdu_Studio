@@ -263,6 +263,38 @@ structural_canvas_pls_measurement_result_table <- function(summary_fit, snapshot
   do.call(rbind, rows)
 }
 
+structural_canvas_pls_predict_tables <- function(prediction) {
+  if (is.null(prediction)) return(list(items = data.frame(), constructs = data.frame()))
+  summary_value <- prediction$summary %||% prediction
+  pls_oos <- as.matrix(summary_value$PLS_out_of_sample %||% matrix(numeric(0), 0L, 0L))
+  lm_oos <- as.matrix(summary_value$LM_out_of_sample %||% matrix(numeric(0), 0L, 0L))
+  item_rows <- list()
+  for (indicator in intersect(colnames(pls_oos), colnames(lm_oos))) {
+    for (metric in intersect(rownames(pls_oos), rownames(lm_oos))) {
+      pls_value <- suppressWarnings(as.numeric(pls_oos[metric, indicator]))
+      lm_value <- suppressWarnings(as.numeric(lm_oos[metric, indicator]))
+      item_rows[[length(item_rows) + 1L]] <- data.frame(
+        Indicator = indicator,
+        Metric = metric,
+        `PLS out-of-sample` = pls_value,
+        `LM benchmark` = lm_value,
+        `PLS - LM` = pls_value - lm_value,
+        Assessment = if (!is.finite(pls_value) || !is.finite(lm_value)) "Not available" else if (pls_value < lm_value) "PLS lower error" else if (pls_value > lm_value) "LM lower error" else "Tie",
+        check.names = FALSE
+      )
+    }
+  }
+  item_table <- if (length(item_rows)) do.call(rbind, item_rows) else data.frame()
+  construct_error <- as.matrix(summary_value$construct_error %||% matrix(numeric(0), 0L, 0L))
+  construct_table <- if (length(construct_error) && nrow(construct_error) && ncol(construct_error)) {
+    values <- as.data.frame(t(construct_error), check.names = FALSE)
+    data.frame(Construct = rownames(values), values, check.names = FALSE)
+  } else {
+    data.frame()
+  }
+  list(items = item_table, constructs = construct_table)
+}
+
 structural_canvas_lavaan_standardized_effect <- function(fit, effect) {
   standardized <- lavaan::standardizedSolution(fit, ci = FALSE)
   standardized <- standardized[standardized$op == "~", c("lhs", "rhs", "est.std"), drop = FALSE]

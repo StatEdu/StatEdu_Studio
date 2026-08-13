@@ -26,6 +26,8 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   htmt_ci_method <- options$htmt_ci_method
   pls_bootstrap <- options$pls_bootstrap
   pls_seed <- options$pls_seed
+  pls_predict_folds <- options$pls_predict_folds
+  pls_predict_reps <- options$pls_predict_reps
   invariance_enabled <- options$invariance_enabled
   invariance_group <- options$invariance_group
   mi_holdout_enabled <- options$mi_holdout_enabled
@@ -96,6 +98,9 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   pls_bootstrap_result <- structural_canvas_run_pls_bootstrap(
     analysis_type, pls_bootstrap, result, pls_seed
   )
+  pls_predict_result <- structural_canvas_run_pls_predict(
+    analysis_type, pls_predict_folds, pls_predict_reps, result
+  )
   baseline_fit <- if (is_mi_refit) settings$baseline_fit %||% settings$fit else result$fit
   baseline_diagnostics <- if (is_mi_refit) settings$baseline_diagnostics %||% settings$diagnostics else result
   baseline_syntax <- if (is_mi_refit) settings$baseline_syntax %||% settings$syntax else result$syntax
@@ -118,6 +123,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     htmt_ci_method = htmt_ci_method,
     htmt_bootstrap_result = htmt_bootstrap_result,
     pls_bootstrap = pls_bootstrap, pls_seed = pls_seed, pls_bootstrap_result = pls_bootstrap_result,
+    pls_predict_folds = pls_predict_folds, pls_predict_reps = pls_predict_reps, pls_predict_result = pls_predict_result,
     invariance_enabled = invariance_enabled, invariance_group = invariance_group, invariance_result = invariance_result,
     mi_holdout_enabled = mi_holdout_enabled, mi_holdout_fraction = mi_holdout_fraction, mi_holdout_seed = mi_holdout_seed,
     analysis_data = data, validation_data = validation_data, holdout_rows = holdout_rows, holdout_comparison = holdout_comparison,

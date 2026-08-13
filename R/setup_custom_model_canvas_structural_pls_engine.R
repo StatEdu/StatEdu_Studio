@@ -102,3 +102,33 @@ structural_canvas_run_pls_bootstrap <- function(analysis_type, pls_bootstrap, re
     value
   })
 }
+
+structural_canvas_run_pls_predict <- function(analysis_type, pls_predict_folds, pls_predict_reps, result) {
+  pls_predict_folds <- suppressWarnings(as.integer(pls_predict_folds %||% 0L))
+  pls_predict_reps <- suppressWarnings(as.integer(pls_predict_reps %||% 1L))
+  if (!identical(analysis_type, "plssem") || pls_predict_folds <= 0L) return(NULL)
+  if (is.null(result$fit) || !inherits(result$fit, "pls_model")) return(NULL)
+  if (is.na(pls_predict_reps) || pls_predict_reps < 1L) pls_predict_reps <- 1L
+  structural_canvas_with_progress(message = "Estimating PLSpredict cross-validation", value = 0, {
+    structural_canvas_set_progress(
+      value = .05,
+      detail = paste0(pls_predict_folds, "-fold cross-validation")
+    )
+    prediction <- seminr::predict_pls(
+      model = result$fit,
+      technique = seminr::predict_DA,
+      noFolds = pls_predict_folds,
+      reps = pls_predict_reps,
+      cores = NULL
+    )
+    structural_canvas_set_progress(value = .90, detail = "Preparing PLSpredict summaries")
+    value <- list(
+      folds = pls_predict_folds,
+      reps = pls_predict_reps,
+      technique = "Direct antecedents",
+      summary = summary(prediction)
+    )
+    structural_canvas_set_progress(value = 1, detail = "PLSpredict complete")
+    value
+  })
+}

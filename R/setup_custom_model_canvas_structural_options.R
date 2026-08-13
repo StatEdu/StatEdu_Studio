@@ -23,6 +23,19 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
             value = FALSE
           ),
           if (analysis_type %in% c("cfa", "cbsem")) selectInput(paste0(structural_analysis_prefix(analysis_type), "_invariance_group"), if (ko) "집단변수" else "Grouping variable", choices = character(0)),
+          if (identical(analysis_type, "plssem")) selectInput(
+            paste0(structural_analysis_prefix(analysis_type), "_pls_predict_folds"),
+            if (ko) "PLSpredict 교차검증" else "PLSpredict cross-validation",
+            choices = c("Do not compute" = "0", "5-fold" = "5", "10-fold" = "10"),
+            selected = "0"
+          ),
+          if (identical(analysis_type, "plssem")) selectInput(
+            paste0(structural_analysis_prefix(analysis_type), "_pls_predict_reps"),
+            if (ko) "PLSpredict 반복" else "PLSpredict repetitions",
+            choices = c("1" = "1", "3" = "3", "5" = "5"),
+            selected = "1"
+          ),
+          if (identical(analysis_type, "plssem")) tags$p(class = "structural-option-note", if (ko) "PLSpredict는 Direct Antecedents 방식으로 indicator별 out-of-sample RMSE/MAE를 PLS와 선형모형 기준값으로 비교합니다. fold와 반복 수가 커질수록 실행 시간이 늘어납니다." else "PLSpredict uses the Direct Antecedents scheme and compares indicator-level out-of-sample RMSE/MAE against a linear-model benchmark. More folds and repetitions increase run time.")
             ),
             tabPanel(
               if (ko) "타당도" else "Validity",
