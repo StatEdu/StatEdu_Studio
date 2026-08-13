@@ -285,19 +285,6 @@ stopifnot(
   identical(ml$admissibility_reasons, structural_canvas_fit_admissibility(ml$fit)$reasons)
 )
 stopifnot(identical(dim(correlations), c(1L, 1L)), identical(rownames(correlations), "eta1"))
-single_factor_correlation_export <- structural_canvas_export_latent_correlations(ml$fit)
-single_factor_reliability_export <- structural_canvas_export_reliability_validity(list(
-  fit = ml$fit, snapshot = snapshot, validity_formula = "standardized"
-))
-stopifnot(
-  identical(names(single_factor_correlation_export), c("Factor", "eta1")),
-  identical(single_factor_correlation_export$Factor, "eta1"),
-  is.numeric(single_factor_correlation_export$eta1),
-  abs(single_factor_correlation_export$eta1 - 1) < 1e-12,
-  nrow(single_factor_reliability_export) == 1L,
-  isTRUE(single_factor_reliability_export$`Fornell-Larcker assessed`[[1L]] == FALSE),
-  is.numeric(single_factor_reliability_export$AVE)
-)
 two_factor_fit <- lavaan::cfa(
   "eta1 =~ x1 + x2 + x3\neta2 =~ x4 + x5 + x6",
   data = lavaan::HolzingerSwineford1939
@@ -380,12 +367,6 @@ stopifnot(
   all(is.na(information_criteria_different_observations$`Delta AIC`))
 )
 latent_correlation_ci <- structural_canvas_latent_correlation_intervals(two_factor_fit)
-numeric_parameter_table <- structural_canvas_export_parameter_estimates(two_factor_fit)
-two_factor_correlation_export <- structural_canvas_export_latent_correlations(two_factor_fit)
-two_factor_reliability_export <- structural_canvas_export_reliability_validity(list(
-  fit = two_factor_fit, snapshot = list(), validity_formula = "standardized"
-))
-two_factor_sample_statistics <- structural_canvas_export_sample_statistics(two_factor_fit)
 stopifnot(
   nrow(latent_correlation_ci) == 1L,
   identical(latent_correlation_ci$Type[[1L]], "Estimated"),
@@ -393,50 +374,13 @@ stopifnot(
   is.finite(latent_correlation_ci$`CI lower`[[1L]]),
   is.finite(latent_correlation_ci$`CI upper`[[1L]]),
   latent_correlation_ci$`CI lower`[[1L]] <= latent_correlation_ci$r[[1L]],
-  latent_correlation_ci$r[[1L]] <= latent_correlation_ci$`CI upper`[[1L]],
-  is.numeric(numeric_parameter_table$est),
-  is.numeric(numeric_parameter_table$se),
-  is.numeric(numeric_parameter_table$std.all),
-  is.logical(numeric_parameter_table$Fixed),
-  any(numeric_parameter_table$op == "=~" & numeric_parameter_table$Fixed),
-  !any(grepl("Fixed", numeric_parameter_table$se, fixed = TRUE)),
-  identical(two_factor_correlation_export$Factor, c("eta1", "eta2")),
-  all(vapply(two_factor_correlation_export[c("eta1", "eta2")], is.numeric, logical(1))),
-  max(abs(as.matrix(two_factor_correlation_export[c("eta1", "eta2")]) -
-    stats::cov2cor(as.matrix(lavaan::lavInspect(two_factor_fit, "cov.lv"))))) < 1e-12,
-  nrow(two_factor_reliability_export) == 2L,
-  identical(two_factor_reliability_export$k, c(3L, 3L)),
-  all(vapply(two_factor_reliability_export[c("AVE", "sqrt(AVE)", "CR", "Cronbach's alpha", "Omega total")], is.numeric, logical(1))),
-  all(two_factor_reliability_export$`Fornell-Larcker assessed`),
-  !any(two_factor_reliability_export$`Contains cross-loaded indicator`),
-  nrow(two_factor_sample_statistics$Descriptives) == 6L,
-  nrow(two_factor_sample_statistics$Covariance) == 36L,
-  !nrow(two_factor_sample_statistics$Thresholds),
-  all(vapply(two_factor_sample_statistics$Descriptives[c("Mean", "Variance", "SD", "Model N")], is.numeric, logical(1))),
-  all(vapply(two_factor_sample_statistics$Covariance[c("Covariance", "Correlation")], is.numeric, logical(1)))
+  latent_correlation_ci$r[[1L]] <= latent_correlation_ci$`CI upper`[[1L]]
 )
 ml_measures <- structural_canvas_fit_measures(ml$fit, "ML", .90)
 stopifnot(identical(ml_measures$labels[[5L]], "CFI"), !isTRUE(ml_measures$adjusted))
 stopifnot(is.na(ml_measures$values[[4L]]))
-numeric_fit_table <- structural_canvas_export_fit_estimates(list(
-  fit = two_factor_fit, estimator = "ML", rmsea_ci = .90
-))
-admissibility_export <- structural_canvas_export_admissibility(list(fit = two_factor_fit))
 bollen_stine_eligible <- structural_canvas_bollen_stine_eligibility(two_factor_fit)
-stopifnot(
-  nrow(numeric_fit_table) == 1L,
-  identical(numeric_fit_table$Model[[1L]], "Fitted model"),
-  is.numeric(numeric_fit_table$`Chi-square`),
-  is.numeric(numeric_fit_table$p),
-  is.numeric(numeric_fit_table$RMSEA),
-  identical(numeric_fit_table$`RMSEA CI level`[[1L]], .90),
-  identical(numeric_fit_table$`CFI source`[[1L]], "cfi"),
-  nrow(admissibility_export) == 1L,
-  isTRUE(admissibility_export$Admissible[[1L]]),
-  identical(admissibility_export$Reasons[[1L]], "None"),
-  all(vapply(admissibility_export[c("Residual min eigenvalue", "Latent min eigenvalue", "Parameter min eigenvalue", "Residual condition number", "Latent condition number", "Parameter condition number")], is.numeric, logical(1))),
-  isTRUE(bollen_stine_eligible$available)
-)
+stopifnot(isTRUE(bollen_stine_eligible$available))
 stopifnot(
   grepl("structural_canvas_fit_admissibility(candidate)$admissible", bootstrap_source, fixed = TRUE),
   grepl("admissibility <- structural_canvas_fit_admissibility(fit)", bootstrap_source, fixed = TRUE)
@@ -852,12 +796,6 @@ stopifnot(
   identical(sparse_pairs$Status, "Review")
 )
 wlsmv <- run_structural_canvas_analysis(snapshot, ordinal, "cfa", estimator = "WLSMV", missing = "pairwise", ordered = ordered_names)
-wlsmv_sample_statistics <- structural_canvas_export_sample_statistics(wlsmv$fit)
-stopifnot(
-  nrow(wlsmv_sample_statistics$Descriptives) == length(lavaan::lavNames(wlsmv$fit, "ov")),
-  nrow(wlsmv_sample_statistics$Thresholds) > 0L,
-  is.numeric(wlsmv_sample_statistics$Thresholds$Threshold)
-)
 stopifnot(isTRUE(wlsmv$converged))
 wlsmv_bollen_eligibility <- structural_canvas_bollen_stine_eligibility(wlsmv$fit)
 stopifnot(

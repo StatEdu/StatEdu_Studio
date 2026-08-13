@@ -31,6 +31,75 @@ reporting_bundle <- list(
 )
 table_fn <- function(kind) data.frame(Table = kind, Value = 1, check.names = FALSE)
 
+single_factor_syntax <- "eta1 =~ x1 + x2 + x3"
+single_factor_fit <- lavaan::cfa(single_factor_syntax, data = reporting_data, auto.cov.lv.x = FALSE)
+single_factor_correlation_export <- structural_canvas_export_latent_correlations(single_factor_fit)
+single_factor_reliability_export <- structural_canvas_export_reliability_validity(list(
+  fit = single_factor_fit, snapshot = list(), validity_formula = "standardized"
+))
+numeric_parameter_table <- structural_canvas_export_parameter_estimates(reporting_fit)
+two_factor_correlation_export <- structural_canvas_export_latent_correlations(reporting_fit)
+two_factor_reliability_export <- structural_canvas_export_reliability_validity(list(
+  fit = reporting_fit, snapshot = list(), validity_formula = "standardized"
+))
+two_factor_sample_statistics <- structural_canvas_export_sample_statistics(reporting_fit)
+numeric_fit_table <- structural_canvas_export_fit_estimates(list(
+  fit = reporting_fit, estimator = "ML", rmsea_ci = .90
+))
+admissibility_export <- structural_canvas_export_admissibility(list(fit = reporting_fit))
+ordered_names <- c("x1", "x2", "x3")
+ordinal_reporting_data <- as.data.frame(lapply(reporting_data[ordered_names], function(value) {
+  as.integer(cut(value, breaks = stats::quantile(value, probs = seq(0, 1, .2)), include.lowest = TRUE))
+}))
+ordinal_reporting_fit <- lavaan::cfa(
+  single_factor_syntax, data = ordinal_reporting_data,
+  estimator = "WLSMV", missing = "pairwise", ordered = ordered_names
+)
+ordinal_sample_statistics <- structural_canvas_export_sample_statistics(ordinal_reporting_fit)
+stopifnot(
+  identical(names(single_factor_correlation_export), c("Factor", "eta1")),
+  identical(single_factor_correlation_export$Factor, "eta1"),
+  is.numeric(single_factor_correlation_export$eta1),
+  abs(single_factor_correlation_export$eta1 - 1) < 1e-12,
+  nrow(single_factor_reliability_export) == 1L,
+  isTRUE(single_factor_reliability_export$`Fornell-Larcker assessed`[[1L]] == FALSE),
+  is.numeric(single_factor_reliability_export$AVE),
+  is.numeric(numeric_parameter_table$est),
+  is.numeric(numeric_parameter_table$se),
+  is.numeric(numeric_parameter_table$std.all),
+  is.logical(numeric_parameter_table$Fixed),
+  any(numeric_parameter_table$op == "=~" & numeric_parameter_table$Fixed),
+  !any(grepl("Fixed", numeric_parameter_table$se, fixed = TRUE)),
+  identical(two_factor_correlation_export$Factor, c("eta1", "eta2")),
+  all(vapply(two_factor_correlation_export[c("eta1", "eta2")], is.numeric, logical(1))),
+  max(abs(as.matrix(two_factor_correlation_export[c("eta1", "eta2")]) -
+    stats::cov2cor(as.matrix(lavaan::lavInspect(reporting_fit, "cov.lv"))))) < 1e-12,
+  nrow(two_factor_reliability_export) == 2L,
+  identical(two_factor_reliability_export$k, c(3L, 3L)),
+  all(vapply(two_factor_reliability_export[c("AVE", "sqrt(AVE)", "CR", "Cronbach's alpha", "Omega total")], is.numeric, logical(1))),
+  all(two_factor_reliability_export$`Fornell-Larcker assessed`),
+  !any(two_factor_reliability_export$`Contains cross-loaded indicator`),
+  nrow(two_factor_sample_statistics$Descriptives) == 6L,
+  nrow(two_factor_sample_statistics$Covariance) == 36L,
+  !nrow(two_factor_sample_statistics$Thresholds),
+  all(vapply(two_factor_sample_statistics$Descriptives[c("Mean", "Variance", "SD", "Model N")], is.numeric, logical(1))),
+  all(vapply(two_factor_sample_statistics$Covariance[c("Covariance", "Correlation")], is.numeric, logical(1))),
+  nrow(numeric_fit_table) == 1L,
+  identical(numeric_fit_table$Model[[1L]], "Fitted model"),
+  is.numeric(numeric_fit_table$`Chi-square`),
+  is.numeric(numeric_fit_table$p),
+  is.numeric(numeric_fit_table$RMSEA),
+  identical(numeric_fit_table$`RMSEA CI level`[[1L]], .90),
+  identical(numeric_fit_table$`CFI source`[[1L]], "cfi"),
+  nrow(admissibility_export) == 1L,
+  isTRUE(admissibility_export$Admissible[[1L]]),
+  identical(admissibility_export$Reasons[[1L]], "None"),
+  all(vapply(admissibility_export[c("Residual min eigenvalue", "Latent min eigenvalue", "Parameter min eigenvalue", "Residual condition number", "Latent condition number", "Parameter condition number")], is.numeric, logical(1))),
+  nrow(ordinal_sample_statistics$Descriptives) == length(lavaan::lavNames(ordinal_reporting_fit, "ov")),
+  nrow(ordinal_sample_statistics$Thresholds) > 0L,
+  is.numeric(ordinal_sample_statistics$Thresholds$Threshold)
+)
+
 record <- structural_canvas_reproducibility_record(reporting_bundle, as.POSIXct("2026-08-12 12:00:00", tz = "Asia/Seoul"))
 integrated_sheets <- structural_canvas_result_workbook_sheets(reporting_bundle, table_fn)
 required_integrated_sheets <- c(
