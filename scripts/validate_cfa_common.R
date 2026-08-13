@@ -9,6 +9,7 @@ source(file.path("R", "setup_custom_model_canvas_structural_evaluation.R"), enco
 source(file.path("R", "setup_custom_model_canvas_structural_engine.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_bootstrap.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_exports.R"), encoding = "UTF-8")
+source(file.path("R", "setup_custom_model_canvas_i18n.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_components.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_components.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_tables.R"), encoding = "UTF-8")
@@ -24,6 +25,7 @@ source(file.path("R", "setup_custom_model_canvas_ui.R"), encoding = "UTF-8")
 
 ui_source <- paste(
   c(
+    readLines(file.path("R", "setup_custom_model_canvas_i18n.R"), warn = FALSE, encoding = "UTF-8"),
     readLines(file.path("R", "setup_custom_model_canvas_components.R"), warn = FALSE, encoding = "UTF-8"),
     readLines(file.path("R", "setup_custom_model_canvas_structural_components.R"), warn = FALSE, encoding = "UTF-8"),
     readLines(file.path("R", "setup_custom_model_canvas_structural_tables.R"), warn = FALSE, encoding = "UTF-8"),

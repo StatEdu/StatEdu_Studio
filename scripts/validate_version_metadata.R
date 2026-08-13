@@ -348,6 +348,7 @@ assert_contains(easyflow_js, "analysis_custom_model_canvas: '\\uB9E4\\uAC1C\\u00
 assert_contains(easyflow_js, "values: ['Regression', 'analysis_mediation_moderation', 'analysis_custom_model_canvas', 'Generalized Linear Model (GLM)', 'analysis_logistic_regression']", "custom model included in Regression / Models grouped menu")
 
 custom_model_canvas_ui <- paste(
+  read_text("R/setup_custom_model_canvas_i18n.R"),
   read_text("R/setup_custom_model_canvas_components.R"),
   read_text("R/setup_custom_model_canvas_ui.R"),
   sep = "\n"
