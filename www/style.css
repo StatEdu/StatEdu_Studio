@@ -5306,6 +5306,30 @@ input.variable-select:disabled {
   overflow-wrap: anywhere !important;
 }
 
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group th,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group td {
+  min-width: 0 !important;
+  max-width: none !important;
+}
+
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-term,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-value,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-mse,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-ci,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-effect-size,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-statistic,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-p,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-posthoc {
+  width: auto !important;
+  min-width: 0 !important;
+}
+
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-term,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-value {
+  overflow-wrap: anywhere !important;
+  word-break: keep-all !important;
+}
+
 .regression-results > .regression-result-panel.landscape-table-panel {
   width: min(100%, 890px);
   max-width: 100%;

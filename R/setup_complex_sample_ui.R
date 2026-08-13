@@ -2889,19 +2889,19 @@ complex_sample_group_column_widths <- function(columns) {
   weights <- vapply(keys, function(key) {
     switch(
       key,
-      variable = 11,
-      value = 15,
+      variable = 15,
+      value = 20,
       mse = 18,
       msd = 18,
-      `95ci` = 19,
-      es = 13,
-      effectsize = 13,
-      tdf = 14,
-      fdf = 14,
-      tfdf = 14,
+      `95ci` = 17,
+      es = 8,
+      effectsize = 8,
+      tdf = 12,
+      fdf = 12,
+      tfdf = 12,
       p = 10,
       pfortrend = 10,
-      posthoc = 8,
+      posthoc = 13,
       weightedn = 8,
       cv = 7,
       deff = 7,
@@ -4238,6 +4238,16 @@ register_complex_sample_handlers <- function(
   output[[paste0(prefix, "_results")]] <- renderUI({
     result_cache()
   })
+
+  observeEvent({
+    option_ids <- paste0(prefix, "_", complex_sample_option_keys(analysis_type))
+    lapply(option_ids, function(id) input[[id]])
+  }, {
+    if (!is.null(result_cache())) {
+      result_cache(NULL)
+    }
+    if (!is.null(mark_settings_dirty)) mark_settings_dirty()
+  }, ignoreInit = TRUE)
 
   observeEvent(input$main_menu, {
     if (identical(analysis_type, "crosstabs") && !identical(input$main_menu %||% "", "analysis_complex_crosstabs")) {

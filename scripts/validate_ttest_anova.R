@@ -413,6 +413,20 @@ expect_true(
   ),
   "Expected ordered post-hoc notation to combine multiple higher markers that share one lower marker"
 )
+expect_true(
+  identical(
+    ttest_ordered_marker_statements(
+      c("a", "b", "c", "d", "e"),
+      data.frame(
+        higher = c("a", "a", "b", "a", "a", "b", "b"),
+        lower = c("b", "c", "c", "d", "e", "d", "e"),
+        stringsAsFactors = FALSE
+      )
+    ),
+    c("a>b>c", "a>b>d,e")
+  ),
+  "Expected shared lower markers to use a chained higher marker summary when the higher markers differ"
+)
 label_order_rows <- data.frame(
   Value = c("1", "2", "3"),
   M = c("2.00", "3.00", "1.00"),
