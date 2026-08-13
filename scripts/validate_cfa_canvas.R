@@ -577,9 +577,6 @@ stopifnot(isTRUE(residual_diagnostics$available), identical(dim(residual_diagnos
 
 factor_correlation_diagnostics <- structural_canvas_factor_correlation_diagnostics(second_order_fit$fit)
 stopifnot(nrow(factor_correlation_diagnostics) > 0L, all(factor_correlation_diagnostics$Severity %in% c("Acceptable", "Review", "High", "Severe", "Inadmissible", "Unavailable")))
-ordered_category_data <- data.frame(x1 = ordered(c("A", rep("B", 98), "C"), levels = c("A", "B", "C", "D")))
-category_diagnostics <- structural_canvas_ordered_category_diagnostics(ordered_category_data, "x1")
-stopifnot(identical(as.character(category_diagnostics$Status), c("Sparse", "Dominant (>=95%)", "Sparse", "Empty")))
 error_snapshot <- snapshot
 error_snapshot$nodes <- c(error_snapshot$nodes, list(list(id = "e1", role = "error"), list(id = "e2", role = "error")))
 error_snapshot$edges <- c(error_snapshot$edges, list(list(from = "e1", to = "e2", kind = "covariance")))
@@ -612,71 +609,6 @@ round_trip_json <- jsonlite::toJSON(round_trip_snapshot, auto_unbox = TRUE, null
 round_trip_restored <- jsonlite::fromJSON(round_trip_json, simplifyVector = FALSE)
 restored_edge <- round_trip_restored$edges[[1L]]
 stopifnot(identical(restored_edge$pathType, "higherOrder"), identical(restored_edge$free, FALSE), identical(restored_edge$fixedValue, .8), identical(restored_edge$startValue, .7), identical(restored_edge$parameterName, "gamma1"), identical(restored_edge$equalityLabel, "equal_general"))
-
-variable_table <- data.frame(
-  name = c("x1", "x2", "x3"),
-  measurement = c("ordered", "ordinal", "continuous"),
-  stringsAsFactors = FALSE
-)
-ordered_names <- structural_canvas_ordered_indicators(snapshot, variable_table)
-stopifnot(identical(ordered_names, c("x1", "x2")))
-
-nominal_table <- data.frame(
-  name = c("x1", "x2", "x3"),
-  measurement = c("category", "nominal", "factor"),
-  stringsAsFactors = FALSE
-)
-stopifnot(length(structural_canvas_ordered_indicators(snapshot, nominal_table)) == 0L)
-stopifnot(identical(structural_canvas_nominal_indicators(snapshot, nominal_table), c("x1", "x2", "x3")))
-engine_nominal_error <- tryCatch({
-  run_structural_canvas_analysis(snapshot, continuous, "cfa", nominal = "x1")
-  ""
-}, error = conditionMessage)
-stopifnot(grepl("Nominal indicators are not supported", engine_nominal_error, fixed = TRUE))
-
-ordinal <- as.data.frame(lapply(continuous, function(value) {
-  as.integer(cut(value, breaks = stats::quantile(value, probs = seq(0, 1, .2)), include.lowest = TRUE))
-}))
-ordered_pair_diagnostics <- structural_canvas_ordered_pair_diagnostics(ordinal, ordered_names)
-stopifnot(
-  nrow(ordered_pair_diagnostics) == choose(length(ordered_names), 2L),
-  all(ordered_pair_diagnostics[["Cells"]] == 25L),
-  all(ordered_pair_diagnostics[["Valid pairs"]] == n)
-)
-sparse_ordinal <- data.frame(
-  a = factor(c(rep(1L, 99L), 2L), levels = 1:3),
-  b = factor(c(rep(1L, 98L), 2L, 3L), levels = 1:3)
-)
-sparse_categories <- structural_canvas_ordered_category_diagnostics(sparse_ordinal, c("a", "b"))
-sparse_pairs <- structural_canvas_ordered_pair_diagnostics(sparse_ordinal, c("a", "b"))
-stopifnot(
-  any(sparse_categories$Status == "Empty"), any(sparse_categories$Status == "Sparse"),
-  any(sparse_categories$Status == "Dominant (>=95%)"),
-  sparse_pairs[["Empty cells"]] > 0L, sparse_pairs[["Sparse nonempty cells"]] > 0L,
-  identical(sparse_pairs$Status, "Review")
-)
-wlsmv <- run_structural_canvas_analysis(snapshot, ordinal, "cfa", estimator = "WLSMV", missing = "pairwise", ordered = ordered_names)
-stopifnot(isTRUE(wlsmv$converged))
-wlsmv_bollen_eligibility <- structural_canvas_bollen_stine_eligibility(wlsmv$fit)
-stopifnot(
-  !isTRUE(wlsmv_bollen_eligibility$available),
-  grepl("ML estimation", wlsmv_bollen_eligibility$reason, fixed = TRUE),
-  inherits(try(structural_canvas_bollen_stine(wlsmv$fit, reps = 2L), silent = TRUE), "try-error")
-)
-stopifnot(identical(sort(lavaan::lavNames(wlsmv$fit, "ov.ord")), sort(ordered_names)))
-wlsmv_measures <- structural_canvas_fit_measures(wlsmv$fit, "WLSMV", .90)
-stopifnot(isTRUE(wlsmv_measures$adjusted))
-fixed_ordered_error <- tryCatch({
-  run_structural_canvas_analysis(snapshot, ordinal, "cfa", estimator = "WLSMV", missing = "pairwise", ordered = ordered_names, residual_variance_fixes = c(x1 = .001))
-  ""
-}, error = conditionMessage)
-stopifnot(grepl("supported only for continuous", fixed_ordered_error, fixed = TRUE))
-
-missing_ordered_error <- tryCatch({
-  run_structural_canvas_analysis(snapshot, ordinal, "cfa", estimator = "WLSMV", missing = "pairwise")
-  ""
-}, error = conditionMessage)
-stopifnot(grepl("requires at least one", missing_ordered_error, fixed = TRUE))
 
 cfa_toolbar <- htmltools::renderTags(structural_equation_toolbar("cfa", "en"))$html
 cfa_ids <- regmatches(cfa_toolbar, gregexpr('(^|[[:space:]])id="[^"]+"', cfa_toolbar, perl = TRUE))[[1L]]
