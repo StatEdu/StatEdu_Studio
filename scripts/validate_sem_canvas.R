@@ -282,5 +282,18 @@ formative_snapshot$nodes[[1]]$measurementMode <- "formative"
 pls_formative <- run_structural_canvas_analysis(formative_snapshot, data, "plssem", estimator = "PLS")
 stopifnot(inherits(pls_formative$fit, "pls_model"))
 stopifnot(grepl("eta1 <~", pls_formative$syntax, fixed = TRUE))
+pls_formative_bundle <- list(
+  fit = pls_formative$fit,
+  syntax = pls_formative$syntax,
+  snapshot = formative_snapshot,
+  diagnostics = pls_formative,
+  estimator = "PLS"
+)
+pls_formative_result <- function() pls_formative_bundle
+pls_formative_measurement <- structural_canvas_result_table("measurement", pls_formative_result, "plssem", labels_fn, language_fn)
+stopifnot(any(pls_formative_measurement$Construct == "eta1" & pls_formative_measurement$Mode == "Formative"))
+stopifnot(any(pls_formative_measurement$Construct == "eta2" & pls_formative_measurement$Mode == "Reflective"))
+stopifnot(any(nzchar(pls_formative_measurement$Weight[pls_formative_measurement$Mode == "Formative"])))
+stopifnot(any(nzchar(pls_formative_measurement[["Item VIF"]][pls_formative_measurement$Mode == "Formative"])))
 
 cat("SEM canvas validations passed.\n")
