@@ -128,15 +128,9 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     analysis_type, reliability_bootstrap, result, data, reliability_seed,
     estimator, missing, std_lv, ordered, validity_formula, reliability_ci_method
   )
-  bollen_stine_result <- NULL
-  if (identical(analysis_type, "cfa") && bollen_stine_bootstrap > 0L) {
-    bollen_stine_result <- shiny::withProgress(message = "Estimating Bollen-Stine global-fit p value", value = 0, {
-      shiny::incProgress(.05, detail = paste0(bollen_stine_bootstrap, " transformed-data bootstrap replicates"))
-      value <- structural_canvas_bollen_stine(result$fit, bollen_stine_bootstrap, bollen_stine_seed)
-      shiny::incProgress(.95, detail = "Preparing bootstrap goodness-of-fit result")
-      value
-    })
-  }
+  bollen_stine_result <- structural_canvas_run_bollen_stine_bootstrap(
+    analysis_type, bollen_stine_bootstrap, result, bollen_stine_seed
+  )
   mi <- if (analysis_type %in% c("cfa", "cbsem")) structural_canvas_mi_refits(snapshot, result, data, analysis_type, estimator, missing, std_lv, mode = mi_mode, ordered = ordered) else NULL
   htmt_bootstrap_result <- structural_canvas_run_htmt_bootstrap(
     analysis_type, htmt_bootstrap, result, data, htmt_seed, ordered,
