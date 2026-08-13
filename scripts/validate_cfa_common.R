@@ -4,6 +4,7 @@ source(file.path("R", "setup_custom_model_canvas_snapshot.R"), encoding = "UTF-8
 source(file.path("R", "setup_custom_model_canvas_structural_core.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_diagnostics.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_identification_diagnostics.R"), encoding = "UTF-8")
+source(file.path("R", "setup_custom_model_canvas_structural_residual_constraints.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_distribution_diagnostics.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_local_fit_diagnostics.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_risk_diagnostics.R"), encoding = "UTF-8")
