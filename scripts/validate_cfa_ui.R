@@ -4,6 +4,9 @@ stopifnot(requireNamespace("htmltools", quietly = TRUE))
 
 canvas_js_source <- paste(readLines(file.path("www", "model-canvas", "canvas.js"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 bridge_js_source <- paste(readLines(file.path("www", "model-canvas", "shiny-bridge.js"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+dialogs_js_source <- paste(readLines(file.path("www", "model-canvas", "dialogs.js"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+layout_js_source <- paste(readLines(file.path("www", "model-canvas", "layout.js"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+toolbar_js_source <- paste(readLines(file.path("www", "model-canvas", "toolbar.js"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 stopifnot(
   grepl("Latent construct correlations, reliability, and convergent/discriminant validity", ui_source, fixed = TRUE),
   length(gregexpr('class = "table-responsive"', ui_source, fixed = TRUE)[[1L]]) >= 8L,
@@ -13,7 +16,19 @@ stopifnot(
   grepl("parseInitialSnapshot", canvas_js_source, fixed = TRUE),
   grepl("window.StatEduModelCanvas.state.restore(instance.state, initialSnapshot)", canvas_js_source, fixed = TRUE),
   grepl("window.Shiny && typeof window.Shiny.setInputValue === \"function\"", canvas_js_source, fixed = TRUE),
+  grepl("function autoLayoutModel(instance)", canvas_js_source, fixed = TRUE),
+  grepl("window.StatEduModelCanvas.layout.reflowRoleLayout(instance.state.nodes, instance.state.style)", canvas_js_source, fixed = TRUE),
+  grepl("autoLayout: autoLayoutModel", canvas_js_source, fixed = TRUE),
   grepl("\"fromSide\", \"toSide\", \"fixedCenter\", \"directAnchors\", \"labelPosition\"", bridge_js_source, fixed = TRUE),
+  grepl("if (window.showOpenFilePicker)", dialogs_js_source, fixed = TRUE),
+  grepl("types: filePickerTypes()", dialogs_js_source, fixed = TRUE),
+  grepl("multiple: false", dialogs_js_source, fixed = TRUE),
+  grepl("openModelFileFallback(instance)", dialogs_js_source, fixed = TRUE),
+  grepl("if (window.showSaveFilePicker)", dialogs_js_source, fixed = TRUE),
+  grepl("downloadText(timestampName(\"model-canvas\", \"stmodel\")", dialogs_js_source, fixed = TRUE),
+  grepl("changed = alignModerators(nodes, style) || changed;", layout_js_source, fixed = TRUE),
+  grepl("if (action === \"autoLayout\") applicable = hasCanvasContent;", toolbar_js_source, fixed = TRUE),
+  grepl("if (action === \"autoLayout\") window.StatEduModelCanvas.canvas.autoLayout(instance);", toolbar_js_source, fixed = TRUE),
   grepl("_reliability_ci_method", ui_source, fixed = TRUE),
   grepl("_htmt_ci_method", ui_source, fixed = TRUE),
   grepl("structural_canvas_register_validity_outputs(\n    output, prefix, analysis_type, fit_result, result_table, app_language_fn", ui_source, fixed = TRUE),
@@ -87,6 +102,8 @@ stopifnot(
   grepl("structural_cfa_reliability_bootstrap", cfa_toolbar, fixed = TRUE),
   grepl("structural_cfa_htmt_bootstrap", cfa_toolbar, fixed = TRUE),
   grepl("structural_cfa_mi_mode", cfa_toolbar, fixed = TRUE),
+  grepl("data-action=\"autoLayout\"", cfa_toolbar, fixed = TRUE),
+  grepl("Auto layout", cfa_toolbar, fixed = TRUE),
   !grepl("structural-covariate-toolbar-button", cfa_toolbar, fixed = TRUE),
   !grepl("data-action=\"structuralCovariateTargets\"", cfa_toolbar, fixed = TRUE)
 )

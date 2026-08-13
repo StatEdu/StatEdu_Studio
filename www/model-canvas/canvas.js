@@ -1334,6 +1334,16 @@
     reflowMeasurementModel(instance); render(instance); window.StatEduModelCanvas.bridge.sendState(instance); return true;
   }
 
+  function autoLayoutModel(instance) {
+    if (!instance || !instance.state || !instance.state.nodes.length) return false;
+    window.StatEduModelCanvas.state.pushHistory(instance);
+    window.StatEduModelCanvas.layout.reflowRoleLayout(instance.state.nodes, instance.state.style);
+    reflowMeasurementModel(instance);
+    render(instance);
+    window.StatEduModelCanvas.bridge.sendState(instance);
+    return true;
+  }
+
   function copySelection(instance) {
     var nodes = selectedNodes(instance);
     if (!nodes.length) return false;
@@ -1584,7 +1594,8 @@
     selectedLatents: selectedLatentNodes,
     detachIndicators: detachSelectedIndicators,
     moveIndicator: moveSelectedIndicator,
-    alignSelected: alignSelected
+    alignSelected: alignSelected,
+    autoLayout: autoLayoutModel
   };
 
   if (document.readyState === "loading") {

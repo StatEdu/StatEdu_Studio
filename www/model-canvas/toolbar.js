@@ -54,10 +54,11 @@
       if (action === "detachIndicator" || action === "indicatorUp" || action === "indicatorDown") applicable = selectedIndicators.length > 0;
       if (["alignLeft", "alignTop", "alignCenter", "alignMiddle"].indexOf(action) >= 0) applicable = selectedNodes.length >= 2;
       if (action === "distributeH" || action === "distributeV") applicable = selectedNodes.length >= 3;
+      if (action === "autoLayout") applicable = hasCanvasContent;
       if (action === "undo") applicable = instance.state.history.length > 0;
       if (action === "redo") applicable = instance.state.redoStack.length > 0;
       if (["resultView", "resultEdit", "dashNonsignificant", "style"].indexOf(action) >= 0) applicable = hasResult;
-      if (["save", "run", "connect", "covariance", "properties", "delete", "detachIndicator", "indicatorUp", "indicatorDown", "alignLeft", "alignTop", "alignCenter", "alignMiddle", "distributeH", "distributeV", "undo", "redo", "resultView", "resultEdit", "dashNonsignificant", "style"].indexOf(action) >= 0) {
+      if (["save", "run", "connect", "covariance", "properties", "delete", "detachIndicator", "indicatorUp", "indicatorDown", "alignLeft", "alignTop", "alignCenter", "alignMiddle", "distributeH", "distributeV", "autoLayout", "undo", "redo", "resultView", "resultEdit", "dashNonsignificant", "style"].indexOf(action) >= 0) {
         button.disabled = !applicable;
         button.setAttribute("aria-disabled", applicable ? "false" : "true");
       }
@@ -247,6 +248,7 @@
     if (action === "indicatorUp") window.StatEduModelCanvas.canvas.moveIndicator(instance, -1);
     if (action === "indicatorDown") window.StatEduModelCanvas.canvas.moveIndicator(instance, 1);
     if (["alignLeft", "alignTop", "alignCenter", "alignMiddle", "distributeH", "distributeV"].indexOf(action) >= 0) window.StatEduModelCanvas.canvas.alignSelected(instance, action);
+    if (action === "autoLayout") window.StatEduModelCanvas.canvas.autoLayout(instance);
     if (action === "grid") {
       instance.state.gridVisible = !instance.state.gridVisible;
       updateButtons(instance);

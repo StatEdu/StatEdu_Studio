@@ -38,6 +38,7 @@ structural_equation_toolbar <- function(analysis_type = "cbsem", language = stat
       custom_model_canvas_button("alignMiddle", if (ko) "세로 중앙" else "Middle", title = if (ko) "선택 항목 세로 중앙 정렬" else "Align vertical centers"),
       custom_model_canvas_button("distributeH", if (ko) "가로 분배" else "Distribute", title = if (ko) "선택 항목 가로 균등 배치" else "Distribute horizontally"),
       custom_model_canvas_button("distributeV", if (ko) "세로 분배" else "Distribute vertical", title = if (ko) "선택 항목 세로 균등 배치" else "Distribute vertically"),
+      custom_model_canvas_button("autoLayout", if (ko) "자동 정렬" else "Auto layout", title = if (ko) "역할 열과 측정모형을 자동으로 다시 배치" else "Automatically arrange role columns and measurement blocks"),
       custom_model_canvas_button("delete", custom_model_canvas_text(language, "Delete", "삭제"), mode = TRUE),
       custom_model_canvas_button("undo", custom_model_canvas_text(language, "Undo", "실행 취소")),
       custom_model_canvas_button("redo", custom_model_canvas_text(language, "Redo", "다시 실행")),
