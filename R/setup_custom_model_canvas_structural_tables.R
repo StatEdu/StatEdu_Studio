@@ -10,6 +10,24 @@ structural_canvas_pls_matrix_cell <- function(matrix_value, row_name, column_nam
   suppressWarnings(as.numeric(matrix_value[row_name, column_name]))
 }
 
+structural_canvas_pls_bootstrap_row <- function(table, from, to) {
+  if (is.null(table)) return(NULL)
+  table <- as.data.frame(table, check.names = FALSE)
+  if (!nrow(table)) return(NULL)
+  parts <- strsplit(rownames(table), "->", fixed = TRUE)
+  keys <- vapply(parts, function(item) {
+    if (length(item) != 2L) return("")
+    paste(trimws(item[[1L]]), trimws(item[[2L]]), sep = "\r")
+  }, character(1))
+  match_index <- match(paste(from, to, sep = "\r"), keys)
+  if (is.na(match_index)) NULL else table[match_index, , drop = FALSE]
+}
+
+structural_canvas_pls_bootstrap_value <- function(row, column) {
+  if (is.null(row) || !column %in% names(row)) return("")
+  structural_canvas_pls_number(row[[column]][[1L]])
+}
+
 structural_canvas_pls_indicator_vifs <- function(summary_fit) {
   vif_items <- summary_fit$validity$vif_items %||% list()
   values <- numeric(0)
@@ -36,10 +54,11 @@ structural_canvas_pls_assigned_indicators <- function(snapshot, latent) {
   }, character(1))
 }
 
-structural_canvas_pls_fit_result_table <- function(summary_fit, diagnostics, display_name) {
+structural_canvas_pls_fit_result_table <- function(summary_fit, diagnostics, display_name, bootstrap = NULL) {
   paths <- as.matrix(summary_fit$paths %||% matrix(numeric(0), 0L, 0L))
   f_square <- as.matrix(summary_fit$fSquare %||% matrix(numeric(0), 0L, 0L))
   total_effects <- as.matrix(summary_fit$total_effects %||% matrix(numeric(0), 0L, 0L))
+  bootstrap_paths <- bootstrap$bootstrapped_paths %||% NULL
   path_specs <- as.character(diagnostics$structural_paths %||% character(0))
   rows <- lapply(path_specs, function(spec) {
     parts <- strsplit(spec, "~", fixed = TRUE)[[1L]]
@@ -47,6 +66,7 @@ structural_canvas_pls_fit_result_table <- function(summary_fit, diagnostics, dis
     outcome <- trimws(parts[[1L]])
     predictor <- trimws(parts[[2L]])
     coefficient <- structural_canvas_pls_matrix_cell(paths, predictor, outcome)
+    boot_row <- structural_canvas_pls_bootstrap_row(bootstrap_paths, predictor, outcome)
     data.frame(
       Outcome = display_name(outcome),
       Predictor = display_name(predictor),
@@ -55,6 +75,9 @@ structural_canvas_pls_fit_result_table <- function(summary_fit, diagnostics, dis
       AdjR2 = structural_canvas_pls_number(structural_canvas_pls_matrix_cell(paths, "AdjR^2", outcome)),
       f2 = structural_canvas_pls_number(structural_canvas_pls_matrix_cell(f_square, predictor, outcome)),
       `Total effect` = structural_canvas_pls_number(structural_canvas_pls_matrix_cell(total_effects, predictor, outcome)),
+      `Boot CI lower` = structural_canvas_pls_bootstrap_value(boot_row, "2.5% CI"),
+      `Boot CI upper` = structural_canvas_pls_bootstrap_value(boot_row, "97.5% CI"),
+      `Boot p` = if (is.null(boot_row) || !"Bootstrap P Val" %in% names(boot_row)) "" else format_p(boot_row[["Bootstrap P Val"]][[1L]]),
       check.names = FALSE
     )
   })
@@ -94,10 +117,12 @@ structural_canvas_pls_validity_result_table <- function(summary_fit, display_nam
   )
 }
 
-structural_canvas_pls_measurement_result_table <- function(summary_fit, snapshot, display_name) {
+structural_canvas_pls_measurement_result_table <- function(summary_fit, snapshot, display_name, bootstrap = NULL) {
   loadings <- as.matrix(summary_fit$loadings %||% matrix(numeric(0), 0L, 0L))
   weights <- as.matrix(summary_fit$weights %||% matrix(numeric(0), 0L, 0L))
   cross_loadings <- as.matrix(summary_fit$validity$cross_loadings %||% matrix(numeric(0), 0L, 0L))
+  bootstrap_loadings <- bootstrap$bootstrapped_loadings %||% NULL
+  bootstrap_weights <- bootstrap$bootstrapped_weights %||% NULL
   item_vifs <- structural_canvas_pls_indicator_vifs(summary_fit)
   latents <- Filter(function(node) identical(node$role, "latent"), snapshot$nodes %||% list())
   rows <- list()
@@ -106,11 +131,19 @@ structural_canvas_pls_measurement_result_table <- function(summary_fit, snapshot
     for (indicator in structural_canvas_pls_assigned_indicators(snapshot, latent)) {
       cross_values <- if (indicator %in% rownames(cross_loadings)) suppressWarnings(as.numeric(cross_loadings[indicator, setdiff(colnames(cross_loadings), construct)])) else NA_real_
       cross_max <- if (any(is.finite(cross_values))) max(abs(cross_values), na.rm = TRUE) else NA_real_
+      loading_boot <- structural_canvas_pls_bootstrap_row(bootstrap_loadings, indicator, construct)
+      weight_boot <- structural_canvas_pls_bootstrap_row(bootstrap_weights, indicator, construct)
       rows[[length(rows) + 1L]] <- data.frame(
         Construct = display_name(construct),
         Indicator = display_name(indicator),
         Loading = structural_canvas_pls_number(structural_canvas_pls_matrix_cell(loadings, indicator, construct)),
+        `Loading CI lower` = structural_canvas_pls_bootstrap_value(loading_boot, "2.5% CI"),
+        `Loading CI upper` = structural_canvas_pls_bootstrap_value(loading_boot, "97.5% CI"),
+        `Loading p` = if (is.null(loading_boot) || !"Bootstrap P Val" %in% names(loading_boot)) "" else format_p(loading_boot[["Bootstrap P Val"]][[1L]]),
         Weight = structural_canvas_pls_number(structural_canvas_pls_matrix_cell(weights, indicator, construct)),
+        `Weight CI lower` = structural_canvas_pls_bootstrap_value(weight_boot, "2.5% CI"),
+        `Weight CI upper` = structural_canvas_pls_bootstrap_value(weight_boot, "97.5% CI"),
+        `Weight p` = if (is.null(weight_boot) || !"Bootstrap P Val" %in% names(weight_boot)) "" else format_p(weight_boot[["Bootstrap P Val"]][[1L]]),
         `Item VIF` = structural_canvas_pls_number(if (indicator %in% names(item_vifs)) item_vifs[[indicator]] else NA_real_),
         `Max cross-loading` = structural_canvas_pls_number(cross_max),
         Mode = if (identical(latent$measurementMode %||% "reflective", "formative")) "Formative" else "Reflective",
@@ -223,9 +256,9 @@ structural_canvas_result_table <- function(kind, fit_result, analysis_type, labe
     names(overview_df)[[2]] <- if (ko) "값" else "Value"
     return(overview_df)
   }
-  if (identical(kind, "fit")) return(structural_canvas_pls_fit_result_table(summary_fit, bundle$diagnostics %||% list(), display_name))
+  if (identical(kind, "fit")) return(structural_canvas_pls_fit_result_table(summary_fit, bundle$diagnostics %||% list(), display_name, bundle$pls_bootstrap_result %||% NULL))
   if (identical(kind, "validity")) return(structural_canvas_pls_validity_result_table(summary_fit, display_name))
-  if (identical(kind, "measurement")) return(structural_canvas_pls_measurement_result_table(summary_fit, snapshot, display_name))
+  if (identical(kind, "measurement")) return(structural_canvas_pls_measurement_result_table(summary_fit, snapshot, display_name, bundle$pls_bootstrap_result %||% NULL))
   matrix_value <- switch(kind, mi = NULL)
   if (is.null(matrix_value)) return(data.frame())
   table <- as.data.frame(matrix_value, check.names = FALSE)

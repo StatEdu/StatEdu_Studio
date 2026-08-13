@@ -113,6 +113,30 @@ pls_snapshot <- structural_canvas_result_snapshot(snapshot, pls$fit, "beta")
 pls_labels <- vapply(pls_snapshot$edges, function(edge) as.character(edge$label %||% ""), character(1))
 stopifnot(any(nzchar(pls_labels)))
 
+pls_options <- structural_canvas_execute_settings(
+  settings = list(pls_bootstrap = 500L, pls_seed = 13579L),
+  input = list(),
+  prefix = "structural_plssem"
+)
+stopifnot(pls_options$pls_bootstrap == 500L)
+stopifnot(pls_options$pls_seed == 13579L)
+
+pls_bootstrap <- structural_canvas_run_pls_bootstrap("plssem", 30L, pls, 24680L)
+stopifnot(is.list(pls_bootstrap))
+stopifnot(length(pls_bootstrap$bootstrapped_paths) > 0L)
+stopifnot(length(pls_bootstrap$bootstrapped_loadings) > 0L)
+stopifnot(length(pls_bootstrap$bootstrapped_weights) > 0L)
+pls_boot_bundle <- pls_bundle
+pls_boot_bundle$pls_bootstrap <- 30L
+pls_boot_bundle$pls_bootstrap_result <- pls_bootstrap
+pls_boot_result <- function() pls_boot_bundle
+pls_boot_fit <- structural_canvas_result_table("fit", pls_boot_result, "plssem", labels_fn, language_fn)
+pls_boot_measurement <- structural_canvas_result_table("measurement", pls_boot_result, "plssem", labels_fn, language_fn)
+stopifnot(all(c("Boot CI lower", "Boot CI upper", "Boot p") %in% names(pls_boot_fit)))
+stopifnot(any(nzchar(pls_boot_fit[["Boot p"]])))
+stopifnot(all(c("Loading CI lower", "Loading CI upper", "Loading p", "Weight CI lower", "Weight CI upper", "Weight p") %in% names(pls_boot_measurement)))
+stopifnot(any(nzchar(pls_boot_measurement[["Loading p"]])))
+
 execution_state <- new.env(parent = emptyenv())
 execution_state$value <- NULL
 execution_state$message <- NULL

@@ -54,6 +54,18 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
           if (identical(analysis_type, "cfa")) selectInput(paste0(structural_analysis_prefix(analysis_type), "_mi_holdout_fraction"), if (ko) "검증표본 비율" else "Validation-sample fraction", choices = c("20%" = "0.20", "30%" = "0.30", "40%" = "0.40"), selected = "0.30"),
           if (identical(analysis_type, "cfa")) numericInput(paste0(structural_analysis_prefix(analysis_type), "_mi_holdout_seed"), if (ko) "표본분할 seed" else "Sample-split seed", value = 13579L, min = 1L, step = 1L),
           if (identical(analysis_type, "cfa")) tags$p(class = "structural-option-note", if (ko) "MI 표본분할은 연속형 ML/MLR CFA 전용이며 측정불변성 또는 Heywood 제약 재분석과 동시에 사용할 수 없습니다." else "MI splitting is for continuous ML/MLR CFA and cannot be combined with measurement invariance or Heywood-constrained reanalysis."),
+          if (identical(analysis_type, "plssem")) selectInput(
+            paste0(structural_analysis_prefix(analysis_type), "_pls_bootstrap"),
+            if (ko) "PLS bootstrap CI/p" else "PLS bootstrap CI/p",
+            choices = c("Do not compute" = "0", "500 resamples" = "500", "1,000 resamples" = "1000", "2,000 resamples" = "2000"),
+            selected = "0"
+          ),
+          if (identical(analysis_type, "plssem")) numericInput(
+            paste0(structural_analysis_prefix(analysis_type), "_pls_seed"),
+            if (ko) "PLS bootstrap seed" else "PLS bootstrap seed",
+            value = 24680L, min = 1L, step = 1L
+          ),
+          if (identical(analysis_type, "plssem")) tags$p(class = "structural-option-note", if (ko) "PLS bootstrap은 경로계수, outer loading, outer weight의 percentile CI와 p 값을 표시합니다. 반복 수가 클수록 시간이 늘어납니다." else "PLS bootstrap reports percentile CIs and p values for paths, outer loadings, and outer weights. Larger resample counts take longer."),
             ),
             tabPanel(
               if (ko) "진단" else "Diagnostics",

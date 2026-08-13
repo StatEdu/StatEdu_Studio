@@ -22,6 +22,12 @@ structural_canvas_execute_settings <- function(settings, input, prefix) {
   htmt_seed <- suppressWarnings(as.integer(settings$htmt_seed %||% input[[paste0(prefix, "_htmt_seed")]] %||% 12345L))
   if (is.na(htmt_seed) || htmt_seed < 1L) htmt_seed <- 12345L
 
+  pls_bootstrap <- suppressWarnings(as.integer(settings$pls_bootstrap %||% input[[paste0(prefix, "_pls_bootstrap")]] %||% 0L))
+  if (is.na(pls_bootstrap) || !pls_bootstrap %in% c(0L, 500L, 1000L, 2000L)) pls_bootstrap <- 0L
+
+  pls_seed <- suppressWarnings(as.integer(settings$pls_seed %||% input[[paste0(prefix, "_pls_seed")]] %||% 24680L))
+  if (is.na(pls_seed) || pls_seed < 1L) pls_seed <- 24680L
+
   mi_holdout_seed <- suppressWarnings(as.integer(settings$mi_holdout_seed %||% input[[paste0(prefix, "_mi_holdout_seed")]] %||% 13579L))
   if (is.na(mi_holdout_seed) || mi_holdout_seed < 1L) mi_holdout_seed <- 13579L
 
@@ -41,6 +47,8 @@ structural_canvas_execute_settings <- function(settings, input, prefix) {
     htmt_bootstrap = htmt_bootstrap,
     htmt_seed = htmt_seed,
     htmt_ci_method = structural_canvas_bootstrap_ci_method(settings$htmt_ci_method %||% input[[paste0(prefix, "_htmt_ci_method")]] %||% "percentile"),
+    pls_bootstrap = pls_bootstrap,
+    pls_seed = pls_seed,
     invariance_enabled = isTRUE(settings$invariance_enabled %||% input[[paste0(prefix, "_invariance_enabled")]] %||% FALSE),
     invariance_group = as.character(settings$invariance_group %||% input[[paste0(prefix, "_invariance_group")]] %||% ""),
     mi_holdout_enabled = isTRUE(settings$mi_holdout_enabled %||% input[[paste0(prefix, "_mi_holdout_enabled")]] %||% FALSE),

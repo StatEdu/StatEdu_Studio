@@ -9,7 +9,8 @@ structural_canvas_fit_table_result_ui <- function(bundle, values) {
         tags$thead(tags$tr(lapply(names(values), tags$th))),
         tags$tbody(lapply(seq_len(nrow(values)), function(index) tags$tr(lapply(as.character(values[index, , drop = TRUE]), tags$td))))
       ),
-      tags$p(class = "structural-result-note", "PLS-SEM reports path coefficients and explained variance (R^2/adjusted R^2) rather than covariance-based global fit indices.")
+      tags$p(class = "structural-result-note", "PLS-SEM reports path coefficients and explained variance (R^2/adjusted R^2) rather than covariance-based global fit indices."),
+      if (as.integer(bundle$pls_bootstrap %||% 0L) > 0L) tags$p(class = "structural-result-note", paste0("Bootstrap columns use seminr percentile intervals from ", as.integer(bundle$pls_bootstrap %||% 0L), " requested resamples; failed bootstrap iterations are excluded by seminr."))
     ))
   }
   ci_percent <- round(100 * as.numeric(bundle$rmsea_ci %||% .90))

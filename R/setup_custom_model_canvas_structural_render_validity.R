@@ -1,7 +1,11 @@
 structural_canvas_register_validity_outputs <- function(output, prefix, analysis_type, fit_result, result_table, app_language_fn = NULL) {
   if (identical(analysis_type, "plssem")) {
     output[[paste0(prefix, "_result_validity_note")]] <- renderUI({
-      tags$p(class = "structural-result-note", "PLS-SEM validity output is based on seminr reliability summaries. Latent covariance, factor-score, HTMT, and lavaan delta-method diagnostics are not displayed for PLS models in this view.")
+      bundle <- fit_result()
+      tagList(
+        tags$p(class = "structural-result-note", "PLS-SEM validity output is based on seminr reliability summaries. Latent covariance, factor-score, HTMT, and lavaan delta-method diagnostics are not displayed for PLS models in this view."),
+        if (as.integer(bundle$pls_bootstrap %||% 0L) > 0L) tags$p(class = "structural-result-note", "PLS bootstrap columns are added to the structural-path and measurement-model tables for paths, outer loadings, and outer weights.")
+      )
     })
     return(invisible(TRUE))
   }

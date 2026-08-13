@@ -68,3 +68,16 @@ structural_canvas_run_pls_analysis <- function(snapshot, data, latents, edges) {
     admissible = TRUE
   )
 }
+
+structural_canvas_run_pls_bootstrap <- function(analysis_type, pls_bootstrap, result, pls_seed) {
+  pls_bootstrap <- suppressWarnings(as.integer(pls_bootstrap %||% 0L))
+  if (!identical(analysis_type, "plssem") || pls_bootstrap <= 0L) return(NULL)
+  if (is.null(result$fit) || !inherits(result$fit, "pls_model")) return(NULL)
+  boot <- seminr::bootstrap_model(
+    seminr_model = result$fit,
+    nboot = pls_bootstrap,
+    cores = 1,
+    seed = as.integer(pls_seed %||% 24680L)
+  )
+  summary(boot)
+}
