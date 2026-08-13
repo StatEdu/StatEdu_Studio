@@ -144,9 +144,14 @@ cbsem_mediation_bundle <- list(
 cbsem_mediation_result <- function() cbsem_mediation_bundle
 cbsem_mediation_structural <- structural_canvas_result_table("structural", cbsem_mediation_result, "cbsem", labels_fn, language_fn)
 stopifnot(all(c("Direct", "Indirect", "Total") %in% cbsem_mediation_structural$Effect))
+stopifnot(sum(cbsem_mediation_structural$Effect == "Direct") == 3L)
 stopifnot(any(cbsem_mediation_structural$Effect == "Indirect" & cbsem_mediation_structural$Outcome == "etaC" & cbsem_mediation_structural$Predictor == "etaA"))
 stopifnot(any(cbsem_mediation_structural$Effect == "Total" & cbsem_mediation_structural$Outcome == "etaC" & cbsem_mediation_structural$Predictor == "etaA"))
 stopifnot(all(nzchar(cbsem_mediation_structural$B[cbsem_mediation_structural$Effect %in% c("Indirect", "Total")])))
+stopifnot(all(nzchar(cbsem_mediation_structural$beta[cbsem_mediation_structural$Effect %in% c("Direct", "Indirect", "Total")])))
+stopifnot(all(nzchar(cbsem_mediation_structural$p[cbsem_mediation_structural$Effect %in% c("Direct", "Indirect", "Total")])))
+stopifnot(any(nzchar(cbsem_mediation_structural[["R²"]][cbsem_mediation_structural$Effect == "Direct" & cbsem_mediation_structural$Outcome == "etaC"])))
+stopifnot(any(nzchar(cbsem_mediation_structural[["beta 95% CI lower"]][cbsem_mediation_structural$Effect == "Direct"])))
 
 cycle_snapshot <- snapshot
 cycle_snapshot$edges <- c(cycle_snapshot$edges, list(list(id = "p2", from = "lv2", to = "lv1")))
