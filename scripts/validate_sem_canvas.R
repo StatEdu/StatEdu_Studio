@@ -53,6 +53,8 @@ stopifnot(
   grepl("total and indirect effects", ui_source, fixed = TRUE),
   grepl("PLSpredict cross-validation", ui_source, fixed = TRUE),
   grepl("PLSpredict predictive assessment", ui_source, fixed = TRUE),
+  grepl("PLS-SEM quality checklist", ui_source, fixed = TRUE),
+  grepl("measurement, collinearity, explanatory-power, and predictive-quality boundary conditions", ui_source, fixed = TRUE),
   grepl("Reporting checklist", ui_source, fixed = TRUE),
   grepl("Estimator or algorithm", ui_source, fixed = TRUE),
   grepl("Admissibility and convergence", ui_source, fixed = TRUE),
@@ -325,6 +327,12 @@ stopifnot(grepl("seminr", pls_reporting$Value[pls_reporting$Item == "Analysis en
 stopifnot(pls_reporting$Value[pls_reporting$Item == "Estimator or algorithm"] == "PLS path modeling")
 stopifnot(pls_reporting$Value[pls_reporting$Item == "Missing-data handling"] == "Valid rows used by seminr; no FIML/pairwise option")
 stopifnot(pls_reporting$Value[pls_reporting$Item == "Latent scaling"] == "Composite scores")
+pls_quality <- structural_canvas_pls_quality_rows(pls_bundle)
+stopifnot(nrow(pls_quality) == 12L)
+stopifnot(all(c("PLS algorithm iterations", "Min outer loading", "Min rhoC", "Min AVE", "Max HTMT", "Max item VIF", "Min endogenous R2", "PLSpredict summary") %in% pls_quality$Item))
+stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "PLS algorithm iterations"]))
+stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Min outer loading"]))
+stopifnot(pls_quality$Value[pls_quality$Item == "PLSpredict summary"] == "Not executed")
 pls_overview <- structural_canvas_result_table("overview", pls_result, "plssem", labels_fn, language_fn)
 pls_fit <- structural_canvas_result_table("fit", pls_result, "plssem", labels_fn, language_fn)
 pls_validity <- structural_canvas_result_table("validity", pls_result, "plssem", labels_fn, language_fn)
@@ -401,6 +409,10 @@ pls_predict_tables <- structural_canvas_pls_predict_tables(pls_predict)
 stopifnot(nrow(pls_predict_tables$items) >= 2L)
 stopifnot(all(c("Indicator", "Metric", "PLS out-of-sample", "LM benchmark", "PLS - LM", "Assessment") %in% names(pls_predict_tables$items)))
 stopifnot(all(c("Construct", "IS_MSE", "IS_MAE", "OOS_MSE", "OOS_MAE", "overfit") %in% names(pls_predict_tables$constructs)))
+pls_predict_bundle <- pls_bundle
+pls_predict_bundle$pls_predict_result <- pls_predict
+pls_predict_quality <- structural_canvas_pls_quality_rows(pls_predict_bundle)
+stopifnot(grepl("indicator metrics favor PLS over LM", pls_predict_quality$Value[pls_predict_quality$Item == "PLSpredict summary"], fixed = TRUE))
 
 pls_bootstrap <- structural_canvas_run_pls_bootstrap("plssem", 30L, pls, 24680L)
 stopifnot(is.list(pls_bootstrap))
