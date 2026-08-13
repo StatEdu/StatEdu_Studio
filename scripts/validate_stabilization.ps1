@@ -98,10 +98,16 @@ $fullOnlyValidations = @(
 )
 
 $aggregateCoveredValidations = @(
+  "scripts\validate_cfa_bootstrap.R",
   "scripts\validate_cfa_canvas.R",
   "scripts\validate_cfa_common.R",
   "scripts\validate_cfa_external_references.R",
-  "scripts\validate_cfa_reporting_exports.R"
+  "scripts\validate_cfa_identification.R",
+  "scripts\validate_cfa_invariance.R",
+  "scripts\validate_cfa_mi_holdout.R",
+  "scripts\validate_cfa_ordinal.R",
+  "scripts\validate_cfa_reporting_exports.R",
+  "scripts\validate_cfa_ui.R"
 )
 
 $validations = $coreValidations
