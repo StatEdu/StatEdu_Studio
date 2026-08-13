@@ -14,6 +14,7 @@ source(file.path("R", "setup_custom_model_canvas_structural_evaluation.R"), enco
 source(file.path("R", "setup_custom_model_canvas_structural_mi_evaluation.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_holdout_evaluation.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_invariance_evaluation.R"), encoding = "UTF-8")
+source(file.path("R", "setup_custom_model_canvas_structural_invariance_execute.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_engine.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_bootstrap.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_reliability_bootstrap.R"), encoding = "UTF-8")
@@ -107,7 +108,8 @@ evaluation_source <- paste(c(
   readLines(file.path("R", "setup_custom_model_canvas_structural_evaluation.R"), warn = FALSE, encoding = "UTF-8"),
   readLines(file.path("R", "setup_custom_model_canvas_structural_mi_evaluation.R"), warn = FALSE, encoding = "UTF-8"),
   readLines(file.path("R", "setup_custom_model_canvas_structural_holdout_evaluation.R"), warn = FALSE, encoding = "UTF-8"),
-  readLines(file.path("R", "setup_custom_model_canvas_structural_invariance_evaluation.R"), warn = FALSE, encoding = "UTF-8")
+  readLines(file.path("R", "setup_custom_model_canvas_structural_invariance_evaluation.R"), warn = FALSE, encoding = "UTF-8"),
+  readLines(file.path("R", "setup_custom_model_canvas_structural_invariance_execute.R"), warn = FALSE, encoding = "UTF-8")
 ), collapse = "\n")
 bootstrap_source <- paste(c(
   readLines(file.path("R", "setup_custom_model_canvas_structural_bootstrap.R"), warn = FALSE, encoding = "UTF-8"),
