@@ -3,7 +3,7 @@ structural_canvas_register_validity_outputs <- function(output, prefix, analysis
     output[[paste0(prefix, "_result_validity_note")]] <- renderUI({
       bundle <- fit_result()
       tagList(
-        tags$p(class = "structural-result-note", "PLS-SEM validity output is based on seminr reliability summaries. Latent covariance, factor-score, HTMT, and lavaan delta-method diagnostics are not displayed for PLS models in this view."),
+        tags$p(class = "structural-result-note", "PLS-SEM validity output is based on seminr reliability, Fornell-Larcker, and HTMT summaries. Lavaan-specific latent covariance, factor-score, and delta-method diagnostics are not displayed for PLS models in this view."),
         if (as.integer(bundle$pls_bootstrap %||% 0L) > 0L) tags$p(class = "structural-result-note", "PLS bootstrap columns are added for direct paths, total and indirect effects, HTMT, outer loadings, and outer weights when seminr returns the corresponding bootstrap summaries.")
       )
     })

@@ -48,7 +48,10 @@ stopifnot(
   grepl("PLS structural model effects", ui_source, fixed = TRUE),
   grepl("PLS 구조모형 효과", ui_source, fixed = TRUE),
   grepl("total and indirect effects", ui_source, fixed = TRUE),
-  grepl("rather than covariance-based global fit indices", ui_source, fixed = TRUE)
+  grepl("rather than covariance-based global fit indices", ui_source, fixed = TRUE),
+  grepl("PLS-SEM measurement output reports outer loadings, outer weights, item VIF", ui_source, fixed = TRUE),
+  grepl("Fornell-Larcker, and HTMT summaries", ui_source, fixed = TRUE),
+  !grepl("Latent covariance, factor-score, HTMT, and lavaan delta-method diagnostics are not displayed", ui_source, fixed = TRUE)
 )
 
 cbsem <- run_structural_canvas_analysis(snapshot, data, "cbsem", estimator = "ML", missing = "fiml")
