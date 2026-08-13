@@ -15,6 +15,7 @@ source(file.path("R", "setup_custom_model_canvas_structural_mi_evaluation.R"), e
 source(file.path("R", "setup_custom_model_canvas_structural_holdout_evaluation.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_invariance_evaluation.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_invariance_execute.R"), encoding = "UTF-8")
+source(file.path("R", "setup_custom_model_canvas_structural_pls_engine.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_engine.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_bootstrap.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_reliability_bootstrap.R"), encoding = "UTF-8")
