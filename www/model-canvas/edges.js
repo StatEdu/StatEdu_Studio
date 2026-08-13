@@ -256,7 +256,7 @@
   }
 
   function visibleArrowEndpoints(edge, endpoints) {
-    if (!edge || !endpoints || edge.directAnchors) return endpoints;
+    if (!edge || !endpoints) return endpoints;
     if (edge.kind === "covariance") {
       return {
         from: pointShiftedToward(endpoints.from, endpoints.to, ARROW_MARKER_CLEARANCE),
