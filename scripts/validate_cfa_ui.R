@@ -37,6 +37,8 @@ stopifnot(
   grepl("structural_canvas_register_htmt_outputs(output, prefix, fit_result, app_language_fn)", ui_source, fixed = TRUE),
   grepl("structural_canvas_register_local_fit_outputs(\n    output, prefix, fit_result, app_language_fn", ui_source, fixed = TRUE),
   grepl("structural_canvas_invariance_result_ui(fit_result(), statedu_current_language(app_language_fn))", ui_source, fixed = TRUE),
+  grepl("FIML 대신 pairwise 결측 처리", ui_source, fixed = TRUE),
+  grepl("pairwise missing-data handling instead of FIML", ui_source, fixed = TRUE),
   grepl("괄호 안 대각값은 sqrt(AVE)", ui_source, fixed = TRUE),
   grepl("순서형 지표에서는 AVE, CR, omega", ui_source, fixed = TRUE),
   grepl("교차적재 지표", ui_source, fixed = TRUE),

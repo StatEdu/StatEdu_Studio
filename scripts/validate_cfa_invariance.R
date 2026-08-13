@@ -12,6 +12,21 @@ continuous <- data.frame(
   group = rep(c("A", "B"), each = n / 2L)
 )
 
+unbalanced <- continuous
+unbalanced$group <- c(rep("A", 210L), rep("B", 30L))
+unbalanced_diagnostics <- structural_canvas_invariance_group_diagnostics(
+  unbalanced, "group", c("x1", "x2", "x3")
+)
+very_small <- continuous
+very_small$group <- c(rep("A", 220L), rep("B", 20L))
+very_small_diagnostics <- structural_canvas_invariance_group_diagnostics(
+  very_small, "group", c("x1", "x2", "x3")
+)
+stopifnot(
+  any(unbalanced_diagnostics$Status == "Severely unbalanced smallest group; review power/stability"),
+  any(very_small_diagnostics$Status == "Very small group (N < 30); invariance estimates may be unstable")
+)
+
 invariance <- structural_canvas_measurement_invariance(
   "eta1 =~ x1 + x2 + x3", continuous, "group", estimator = "MLR"
 )

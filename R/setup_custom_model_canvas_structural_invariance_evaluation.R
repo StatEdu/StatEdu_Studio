@@ -3,6 +3,10 @@
 structural_canvas_invariance_group_diagnostics <- function(data, group, indicators, ordered = character(0)) {
   indicators <- intersect(unique(as.character(indicators)), names(data))
   groups <- unique(data[[group]][!is.na(data[[group]])])
+  group_sizes <- as.integer(stats::setNames(table(data[[group]], useNA = "no"), names(table(data[[group]], useNA = "no"))))
+  smallest_group <- if (length(group_sizes)) min(group_sizes) else NA_integer_
+  largest_group <- if (length(group_sizes)) max(group_sizes) else NA_integer_
+  severely_unbalanced <- is.finite(smallest_group) && is.finite(largest_group) && smallest_group > 0L && smallest_group / largest_group < .20
   rows <- lapply(groups, function(group_value) {
     subset <- data[data[[group]] == group_value & !is.na(data[[group]]), indicators, drop = FALSE]
     missing_count <- sum(is.na(subset))
@@ -22,7 +26,7 @@ structural_canvas_invariance_group_diagnostics <- function(data, group, indicato
       `Indicator missing %` = if (length(subset)) 100 * missing_count / length(as.matrix(subset)) else NA_real_,
       `Minimum category count` = minimum_category_count,
       `Absent ordered categories` = if (length(missing_categories)) paste(missing_categories, collapse = "; ") else "None",
-      Status = if (length(missing_categories)) "Ordered category absent" else if (nrow(subset) < 100L) "Small group; review power/stability" else "No group-level flag",
+      Status = if (length(missing_categories)) "Ordered category absent" else if (nrow(subset) < 30L) "Very small group (N < 30); invariance estimates may be unstable" else if (isTRUE(severely_unbalanced) && nrow(subset) == smallest_group) "Severely unbalanced smallest group; review power/stability" else if (nrow(subset) < 100L) "Small group; review power/stability" else "No group-level flag",
       check.names = FALSE
     )
   })

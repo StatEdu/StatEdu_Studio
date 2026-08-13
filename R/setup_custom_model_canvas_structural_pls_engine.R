@@ -82,11 +82,23 @@ structural_canvas_run_pls_bootstrap <- function(analysis_type, pls_bootstrap, re
   pls_bootstrap <- suppressWarnings(as.integer(pls_bootstrap %||% 0L))
   if (!identical(analysis_type, "plssem") || pls_bootstrap <= 0L) return(NULL)
   if (is.null(result$fit) || !inherits(result$fit, "pls_model")) return(NULL)
-  boot <- seminr::bootstrap_model(
-    seminr_model = result$fit,
-    nboot = pls_bootstrap,
-    cores = 1,
-    seed = as.integer(pls_seed %||% 24680L)
-  )
-  summary(boot)
+  structural_canvas_with_progress(message = "Estimating PLS-SEM bootstrap intervals", value = 0, {
+    structural_canvas_set_progress(
+      value = .05,
+      detail = paste0(pls_bootstrap, " seminr bootstrap resamples")
+    )
+    boot <- seminr::bootstrap_model(
+      seminr_model = result$fit,
+      nboot = pls_bootstrap,
+      cores = 1,
+      seed = as.integer(pls_seed %||% 24680L)
+    )
+    structural_canvas_set_progress(
+      value = .90,
+      detail = "Preparing PLS-SEM bootstrap summaries"
+    )
+    value <- summary(boot)
+    structural_canvas_set_progress(value = 1, detail = "PLS-SEM bootstrap complete")
+    value
+  })
 }
