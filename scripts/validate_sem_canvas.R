@@ -157,6 +157,33 @@ stopifnot(any(nzchar(cbsem_mediation_structural[["beta 95% CI lower"]][cbsem_med
 stopifnot(all(nzchar(cbsem_mediation_structural[["beta 95% CI lower"]][cbsem_mediation_structural$Effect %in% c("Indirect", "Total")])))
 stopifnot(all(nzchar(cbsem_mediation_structural[["beta 95% CI upper"]][cbsem_mediation_structural$Effect %in% c("Indirect", "Total")])))
 
+parallel_snapshot <- mediation_snapshot
+parallel_snapshot$edges <- c(
+  parallel_snapshot$edges[seq_len(9L)],
+  list(
+    list(id = "ac", from = "eta_a", to = "eta_c"),
+    list(id = "bc", from = "eta_b", to = "eta_c"),
+    list(id = "cov_ab", from = "eta_a", to = "eta_b", kind = "covariance")
+  )
+)
+cbsem_parallel <- run_structural_canvas_analysis(parallel_snapshot, mediation_data, "cbsem", estimator = "ML", missing = "fiml")
+stopifnot(isTRUE(cbsem_parallel$converged))
+stopifnot(grepl("etaA ~~ etaB", cbsem_parallel$syntax, fixed = TRUE))
+stopifnot(!length(structural_canvas_missing_exogenous_covariances(parallel_snapshot)))
+cbsem_parallel_bundle <- list(
+  fit = cbsem_parallel$fit,
+  syntax = cbsem_parallel$syntax,
+  snapshot = parallel_snapshot,
+  diagnostics = cbsem_parallel,
+  estimator = "ML",
+  rmsea_ci = 0.90,
+  validity_formula = "standardized"
+)
+cbsem_parallel_result <- function() cbsem_parallel_bundle
+cbsem_parallel_structural <- structural_canvas_result_table("structural", cbsem_parallel_result, "cbsem", labels_fn, language_fn)
+stopifnot(sum(cbsem_parallel_structural$Effect == "Direct") == 2L)
+stopifnot(all(c("etaA", "etaB") %in% cbsem_parallel_structural$Predictor[cbsem_parallel_structural$Outcome == "etaC"]))
+
 cycle_snapshot <- snapshot
 cycle_snapshot$edges <- c(cycle_snapshot$edges, list(list(id = "p2", from = "lv2", to = "lv1")))
 cycle_syntax <- structural_canvas_lavaan_syntax(
