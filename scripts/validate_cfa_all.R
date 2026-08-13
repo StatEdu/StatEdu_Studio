@@ -1,6 +1,7 @@
 scripts <- c(
   "validate_cfa_canvas.R",
   "validate_cfa_bootstrap.R",
+  "validate_cfa_identification.R",
   "validate_cfa_invariance.R",
   "validate_cfa_mi_holdout.R",
   "validate_cfa_ordinal.R",
