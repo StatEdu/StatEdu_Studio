@@ -1,7 +1,7 @@
 run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estimator = "ML", missing = "fiml", std_lv = FALSE, ordered = character(0), nominal = character(0), residual_variance_fixes = numeric(0)) {
   nodes <- snapshot$nodes %||% list()
   edges <- snapshot$edges %||% list()
-  residual_constraint_diagnostics <- if (analysis_type %in% c("cfa", "cbsem")) structural_canvas_identification_diagnostics(snapshot) else data.frame()
+  residual_constraint_diagnostics <- if (analysis_type %in% c("cfa", "cbsem", "sem")) structural_canvas_identification_diagnostics(snapshot) else data.frame()
   residual_constraint_errors <- if (nrow(residual_constraint_diagnostics)) residual_constraint_diagnostics[
     residual_constraint_diagnostics$Severity == "Error" & residual_constraint_diagnostics$Code %in% c("single_indicator", "invalid_fixed_residual", "negative_fixed_residual"),
     , drop = FALSE
@@ -9,7 +9,7 @@ run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estima
   if (nrow(residual_constraint_errors)) {
     stop(paste(residual_constraint_errors$Message, collapse = " "))
   }
-  residual_scale <- if (analysis_type %in% c("cfa", "cbsem")) structural_canvas_fixed_residual_scale_diagnostics(snapshot, data, ordered) else data.frame()
+  residual_scale <- if (analysis_type %in% c("cfa", "cbsem", "sem")) structural_canvas_fixed_residual_scale_diagnostics(snapshot, data, ordered) else data.frame()
   invalid_residual_scale <- if (nrow(residual_scale)) residual_scale[
     residual_scale$Status != "Within observed variance" & residual_scale[["Single-indicator factor"]], , drop = FALSE
   ] else data.frame()
@@ -25,7 +25,7 @@ run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estima
     snapshot, data, analysis_type, latents, edges, ordered, residual_variance_fixes
   )
   residual_variance_fixes <- lavaan_syntax$residual_variance_fixes
-  if (analysis_type %in% c("cfa", "cbsem")) {
+  if (analysis_type %in% c("cfa", "cbsem", "sem")) {
     syntax <- lavaan_syntax$syntax
     if (!nzchar(syntax)) stop("The model does not contain estimable paths.")
     estimator <- toupper(as.character(estimator %||% "ML"))

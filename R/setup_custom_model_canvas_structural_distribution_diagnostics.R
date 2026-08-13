@@ -86,7 +86,7 @@ structural_canvas_mardia <- function(data, variables, max_n = 2000L) {
 
 structural_canvas_estimator_recommendation <- function(snapshot, data, variable_table, analysis_type = "cfa", estimator = "ML") {
   estimator <- toupper(as.character(estimator %||% "ML"))
-  if (!analysis_type %in% c("cfa", "cbsem") || !identical(estimator, "ML")) {
+  if (!analysis_type %in% c("cfa", "cbsem", "sem") || !identical(estimator, "ML")) {
     return(list(recommend = FALSE, reason = "Estimator recommendation is only evaluated for ML CFA/SEM."))
   }
   ordered <- structural_canvas_ordered_indicators(snapshot, variable_table)

@@ -44,6 +44,7 @@ snapshot <- list(
 
 labels_fn <- function() character(0)
 language_fn <- function() "en"
+variable_table <- data.frame(name = names(data), measurement = "scale", stringsAsFactors = FALSE)
 notification_source <- readLines(file.path("R", "setup_custom_model_canvas_structural_execute_notifications.R"), warn = FALSE, encoding = "UTF-8")
 stopifnot(
   grepl("PLS structural model effects", ui_source, fixed = TRUE),
@@ -101,6 +102,33 @@ stopifnot(cbsem_structural$Predictor[[1L]] == "eta1")
 cbsem_snapshot <- structural_canvas_result_snapshot(snapshot, cbsem$fit, "beta")
 cbsem_labels <- vapply(cbsem_snapshot$edges, function(edge) as.character(edge$label %||% ""), character(1))
 stopifnot(any(nzchar(cbsem_labels)))
+
+sem <- run_structural_canvas_analysis(snapshot, data, "sem", estimator = "ML", missing = "fiml")
+stopifnot(inherits(sem$fit, "lavaan"))
+stopifnot(isTRUE(sem$converged))
+stopifnot(grepl("eta2 ~", sem$syntax, fixed = TRUE), grepl("*eta1", sem$syntax, fixed = TRUE))
+sem_bundle <- list(
+  fit = sem$fit,
+  syntax = sem$syntax,
+  snapshot = snapshot,
+  diagnostics = sem,
+  estimator = "ML",
+  rmsea_ci = 0.90,
+  validity_formula = "standardized"
+)
+sem_result <- function() sem_bundle
+stopifnot(nrow(structural_canvas_result_table("overview", sem_result, "sem", labels_fn, language_fn)) > 0L)
+sem_structural <- structural_canvas_result_table("structural", sem_result, "sem", labels_fn, language_fn)
+stopifnot(nrow(sem_structural) == 1L)
+stopifnot(sem_structural$Effect[[1L]] == "Direct")
+stopifnot(sem_structural$Outcome[[1L]] == "eta2")
+stopifnot(sem_structural$Predictor[[1L]] == "eta1")
+sem_recommendation <- structural_canvas_estimator_recommendation(snapshot, data, variable_table, "sem", "ML")
+stopifnot(is.logical(sem_recommendation$recommend), !is.null(sem_recommendation$diagnosis))
+sem_htmt_bootstrap <- structural_canvas_run_htmt_bootstrap("sem", 8L, sem, data, 20260818L, character(0), .85, "percentile")
+stopifnot(is.data.frame(sem_htmt_bootstrap))
+stopifnot(nrow(sem_htmt_bootstrap) == 1L)
+stopifnot(sem_htmt_bootstrap[["Requested replicates"]][[1L]] == 8L)
 
 set.seed(20260814)
 n_mediation <- 240L
@@ -166,6 +194,24 @@ stopifnot(any(nzchar(cbsem_mediation_structural[["R²"]][cbsem_mediation_structu
 stopifnot(any(nzchar(cbsem_mediation_structural[["beta 95% CI lower"]][cbsem_mediation_structural$Effect == "Direct"])))
 stopifnot(all(nzchar(cbsem_mediation_structural[["beta 95% CI lower"]][cbsem_mediation_structural$Effect %in% c("Indirect", "Total")])))
 stopifnot(all(nzchar(cbsem_mediation_structural[["beta 95% CI upper"]][cbsem_mediation_structural$Effect %in% c("Indirect", "Total")])))
+
+sem_mediation <- run_structural_canvas_analysis(mediation_snapshot, mediation_data, "sem", estimator = "ML", missing = "fiml")
+stopifnot(isTRUE(sem_mediation$converged))
+stopifnot(grepl(":=", sem_mediation$syntax, fixed = TRUE))
+stopifnot(length(sem_mediation$effect_definitions) == 2L)
+sem_mediation_bundle <- list(
+  fit = sem_mediation$fit,
+  syntax = sem_mediation$syntax,
+  snapshot = mediation_snapshot,
+  diagnostics = sem_mediation,
+  estimator = "ML",
+  rmsea_ci = 0.90,
+  validity_formula = "standardized"
+)
+sem_mediation_result <- function() sem_mediation_bundle
+sem_mediation_structural <- structural_canvas_result_table("structural", sem_mediation_result, "sem", labels_fn, language_fn)
+stopifnot(any(sem_mediation_structural$Effect == "Indirect" & sem_mediation_structural$Outcome == "etaC" & sem_mediation_structural$Predictor == "etaA"))
+stopifnot(any(sem_mediation_structural$Effect == "Total" & sem_mediation_structural$Outcome == "etaC" & sem_mediation_structural$Predictor == "etaA"))
 
 parallel_snapshot <- mediation_snapshot
 parallel_snapshot$edges <- c(
@@ -324,7 +370,6 @@ fit_result_state <- function(value) {
 session <- list(sendCustomMessage = function(type, message) {
   execution_state$message <- list(type = type, message = message)
 })
-variable_table <- data.frame(name = names(data), measurement = "scale", stringsAsFactors = FALSE)
 executed <- structural_canvas_execute_analysis(
   snapshot,
   settings = list(estimator = "PLS"),

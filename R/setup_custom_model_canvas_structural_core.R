@@ -1,5 +1,25 @@
 # Structural equation canvas core snapshot and MI helpers.
 
+structural_canvas_shiny_progress_available <- function() {
+  domain <- tryCatch(shiny::getDefaultReactiveDomain(), error = function(error) NULL)
+  !is.null(domain) && inherits(domain, "ShinySession")
+}
+
+structural_canvas_with_progress <- function(message, value = 0, expr) {
+  if (!structural_canvas_shiny_progress_available()) return(force(expr))
+  shiny::withProgress(message = message, value = value, expr)
+}
+
+structural_canvas_inc_progress <- function(amount = 0.1, detail = NULL) {
+  if (structural_canvas_shiny_progress_available()) shiny::incProgress(amount, detail = detail)
+  invisible(NULL)
+}
+
+structural_canvas_set_progress <- function(value = NULL, detail = NULL) {
+  if (structural_canvas_shiny_progress_available()) shiny::setProgress(value = value, detail = detail)
+  invisible(NULL)
+}
+
 structural_canvas_node <- function(snapshot, id) {
   nodes <- snapshot$nodes %||% list()
   matches <- Filter(function(node) identical(as.character(node$id %||% ""), as.character(id)), nodes)

@@ -4,15 +4,15 @@ structural_canvas_run_reliability_bootstrap <- function(analysis_type, reliabili
   reliability_bootstrap_result <- NULL
   if (identical(analysis_type, "cfa") && reliability_bootstrap > 0L) {
     structural_canvas_validate_model_based_bootstrap(result$fit, "AVE/reliability bootstrap")
-    reliability_bootstrap_result <- shiny::withProgress(message = "Estimating AVE and reliability confidence intervals", value = 0, {
-      shiny::incProgress(.05, detail = paste0(reliability_bootstrap, " case-resampling replicates"))
+    reliability_bootstrap_result <- structural_canvas_with_progress(message = "Estimating AVE and reliability confidence intervals", value = 0, {
+      structural_canvas_inc_progress(.05, detail = paste0(reliability_bootstrap, " case-resampling replicates"))
       value <- structural_canvas_reliability_bootstrap(
         result$syntax, data, reps = reliability_bootstrap, confidence = .95, seed = reliability_seed,
         estimator = estimator, missing = missing, std_lv = std_lv, ordered = ordered, formula_mode = validity_formula,
         original_fit = result$fit,
         ci_method = reliability_ci_method,
         progress = function(done, total, valid) {
-          shiny::setProgress(
+          structural_canvas_set_progress(
             value = .05 + .90 * (as.numeric(done) / max(1, as.numeric(total))),
             detail = sprintf("Reliability bootstrap %s/%s; valid replicates %s", done, total, valid)
           )
@@ -29,7 +29,7 @@ structural_canvas_run_reliability_bootstrap <- function(analysis_type, reliabili
         value$`Valid %` <- 100 * value[["Valid replicates"]] / value[["Requested replicates"]]
         value <- value[, c("Factor", "Statistic", "Estimate", "Lower", "Upper", "CI method", "Valid replicates", "Requested replicates", "Valid %", "Status"), drop = FALSE]
       }
-      shiny::incProgress(.95, detail = paste0("Preparing ", if (identical(reliability_ci_method, "bca")) "BCa" else "percentile", " intervals"))
+      structural_canvas_inc_progress(.95, detail = paste0("Preparing ", if (identical(reliability_ci_method, "bca")) "BCa" else "percentile", " intervals"))
       value
     })
   }

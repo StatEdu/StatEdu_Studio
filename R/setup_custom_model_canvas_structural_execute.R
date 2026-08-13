@@ -1,7 +1,7 @@
 structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input, session, dataset_fn, variable_table_fn, analysis_type, prefix, fit_result, app_language_fn = NULL) {
   is_mi_refit <- !is.null(settings) && !is.null(settings$fit)
   settings <- settings %||% list()
-  identification <- if (analysis_type %in% c("cfa", "cbsem")) structural_canvas_identification_diagnostics(snapshot) else data.frame()
+  identification <- if (analysis_type %in% c("cfa", "cbsem", "sem")) structural_canvas_identification_diagnostics(snapshot) else data.frame()
   identification_errors <- identification[identification$Severity == "Error", , drop = FALSE]
   if (nrow(identification_errors)) {
     stop(paste0("Model identification check failed: ", paste(paste0(identification_errors$Element, " — ", identification_errors$Message), collapse = "; ")))
@@ -88,7 +88,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   bollen_stine_result <- structural_canvas_run_bollen_stine_bootstrap(
     analysis_type, bollen_stine_bootstrap, result, bollen_stine_seed
   )
-  mi <- if (analysis_type %in% c("cfa", "cbsem")) structural_canvas_mi_refits(snapshot, result, data, analysis_type, estimator, missing, std_lv, mode = mi_mode, ordered = ordered) else NULL
+  mi <- if (analysis_type %in% c("cfa", "cbsem", "sem")) structural_canvas_mi_refits(snapshot, result, data, analysis_type, estimator, missing, std_lv, mode = mi_mode, ordered = ordered) else NULL
   htmt_bootstrap_result <- structural_canvas_run_htmt_bootstrap(
     analysis_type, htmt_bootstrap, result, data, htmt_seed, ordered,
     htmt_threshold, htmt_ci_method

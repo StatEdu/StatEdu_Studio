@@ -392,7 +392,7 @@ structural_canvas_result_table <- function(kind, fit_result, analysis_type, labe
     if (nzchar(label)) label else display_name(name)
   }
   fmt <- function(value) vapply(as.numeric(value), format_decimal3, character(1))
-  if (analysis_type %in% c("cfa", "cbsem")) {
+  if (analysis_type %in% c("cfa", "cbsem", "sem")) {
     summary_table <- structural_canvas_summary_result_table(kind, bundle, fit, analysis_type, ko, fmt)
     if (!is.null(summary_table)) return(summary_table)
     validity_table <- structural_canvas_validity_result_table(kind, bundle, snapshot, fit, ko, fmt, display_name)

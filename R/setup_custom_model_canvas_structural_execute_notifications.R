@@ -12,7 +12,7 @@ structural_canvas_notify_identification_warnings <- function(identification_warn
 }
 
 structural_canvas_notify_missing_covariances <- function(missing_covariances, analysis_type, language = NULL) {
-  if (analysis_type %in% c("cfa", "cbsem") && length(missing_covariances)) {
+  if (analysis_type %in% c("cfa", "cbsem", "sem") && length(missing_covariances)) {
     ko <- identical(normalize_app_language(language), "ko")
     message <- if (ko) {
       paste0("외생 잠재변수 사이의 공분산 경로가 없습니다: ", paste(missing_covariances, collapse = ", "), ". 해당 공분산은 0으로 고정됩니다.")

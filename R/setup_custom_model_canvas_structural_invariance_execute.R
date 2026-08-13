@@ -9,10 +9,10 @@ structural_canvas_run_measurement_invariance <- function(analysis_type, invarian
     if (invariance_group %in% lavaan::lavNames(result$fit, "ov")) stop("The grouping variable cannot also be an indicator in the CFA model.")
     group_count <- length(unique(data[[invariance_group]][!is.na(data[[invariance_group]])]))
     if (group_count < 2L || group_count > 20L) stop("The grouping variable must contain between 2 and 20 non-empty groups.")
-    invariance_result <- shiny::withProgress(message = "Estimating measurement-invariance models", value = 0, {
-      shiny::incProgress(.15, detail = "Configural, metric, scalar, and strict models")
+    invariance_result <- structural_canvas_with_progress(message = "Estimating measurement-invariance models", value = 0, {
+      structural_canvas_inc_progress(.15, detail = "Configural, metric, scalar, and strict models")
       value <- structural_canvas_measurement_invariance(result$syntax, data, invariance_group, estimator, missing, std_lv, rmsea_ci, ordered)
-      shiny::incProgress(.85, detail = "Preparing robust comparisons")
+      structural_canvas_inc_progress(.85, detail = "Preparing robust comparisons")
       value
     })
   }

@@ -26,7 +26,7 @@ output[[paste0(prefix, "_results")]] <- renderUI({
       tags$p(class = "structural-result-note", if (ko) "Inner VIF는 seminr에서 내생 구성개념의 선행 예측자 정보를 반환할 때 직접 구조경로에 대해 표시됩니다." else "Inner VIF is reported for direct structural paths when an endogenous construct has antecedent predictors available from seminr."),
       if (length(bundle$diagnostics$ignored_covariances %||% character(0))) tags$p(class = "structural-result-note", if (ko) paste0("PLS-SEM에서는 공분산 경로를 추정하지 않으므로 다음 캔버스 공분산 경로를 제외했습니다: ", paste(bundle$diagnostics$ignored_covariances, collapse = ", "), ".") else paste0("PLS-SEM does not estimate covariance paths, so these canvas covariance paths were excluded: ", paste(bundle$diagnostics$ignored_covariances, collapse = ", "), "."))
     ), uiOutput(paste0(prefix, "_result_fit_guidance")), uiOutput(paste0(prefix, "_result_rmsea_tests")), uiOutput(paste0(prefix, "_result_information_criteria")), uiOutput(paste0(prefix, "_result_bollen_stine")), div(class = "table-responsive", uiOutput(paste0(prefix, "_result_fit_difference")))),
-    if (analysis_type == "cbsem") div(
+    if (analysis_type %in% c("cbsem", "sem")) div(
       class = "result-section regression-result-panel structural-path-result",
       h4(if (ko) "3. 구조모형 경로" else "3. Structural model paths"),
       div(class = "table-responsive", tableOutput(paste0(prefix, "_result_structural"))),

@@ -175,7 +175,7 @@ structural_canvas_lavaan_syntax <- function(snapshot, data, analysis_type, laten
   structural_lines <- vapply(structural_edge_info, function(item) {
     paste(item$outcome, "~", structural_canvas_structural_edge_term(item$edge, item$predictor, item$label))
   }, character(1))
-  effect_definitions <- if (identical(analysis_type, "cbsem")) {
+  effect_definitions <- if (analysis_type %in% c("cbsem", "sem")) {
     structural_canvas_structural_effect_definitions(structural_edge_info)
   } else {
     list(lines = character(0), effects = list())
