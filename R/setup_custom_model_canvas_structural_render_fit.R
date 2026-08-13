@@ -26,13 +26,40 @@ structural_canvas_pls_quality_predictive_label <- function(bundle) {
   )
 }
 
+structural_canvas_pls_quality_status <- function(item, value) {
+  numeric_value <- suppressWarnings(as.numeric(value))
+  unavailable <- !nzchar(as.character(value %||% "")) || identical(value, "Not executed")
+  if (unavailable) return("Not assessed")
+  if (identical(item, "PLS algorithm iterations")) return(if (is.finite(numeric_value) && numeric_value <= 300) "OK" else "Review")
+  if (identical(item, "Final weight difference")) return(if (is.finite(numeric_value) && numeric_value <= 1e-6) "OK" else "Review")
+  if (identical(item, "Missing-data method")) return("OK")
+  if (identical(item, "Min outer loading")) return(if (is.finite(numeric_value) && numeric_value >= .40) "OK" else "Review")
+  if (identical(item, "Min rhoC")) return(if (is.finite(numeric_value) && numeric_value >= .70) "OK" else "Review")
+  if (identical(item, "Min AVE")) return(if (is.finite(numeric_value) && numeric_value >= .50) "OK" else "Review")
+  if (identical(item, "Max HTMT")) return(if (is.finite(numeric_value) && numeric_value < .85) "OK" else "Review")
+  if (identical(item, "Max item VIF")) return(if (is.finite(numeric_value) && numeric_value <= 5) "OK" else "Review")
+  if (identical(item, "Max inner VIF")) return(if (is.finite(numeric_value) && numeric_value <= 5) "OK" else "Review")
+  if (identical(item, "Min endogenous R2")) return(if (is.finite(numeric_value)) "OK" else "Review")
+  if (identical(item, "Max f2")) return(if (is.finite(numeric_value)) "OK" else "Not assessed")
+  if (identical(item, "PLSpredict summary")) {
+    matches <- regmatches(value, regexec("^([0-9]+)/([0-9]+)", value))[[1L]]
+    if (length(matches) == 3L) {
+      favored <- suppressWarnings(as.integer(matches[[2L]]))
+      total <- suppressWarnings(as.integer(matches[[3L]]))
+      return(if (is.finite(favored) && is.finite(total) && total > 0L && favored > 0L) "OK" else "Review")
+    }
+    return("Not assessed")
+  }
+  "Not assessed"
+}
+
 structural_canvas_pls_quality_rows <- function(bundle) {
   if (is.null(bundle) || is.null(bundle$fit) || !inherits(bundle$fit, "pls_model")) {
-    return(data.frame(Item = character(0), Value = character(0), Guidance = character(0), stringsAsFactors = FALSE))
+    return(data.frame(Item = character(0), Value = character(0), Status = character(0), Guidance = character(0), stringsAsFactors = FALSE))
   }
   summary_fit <- tryCatch(summary(bundle$fit), error = function(error) NULL)
   if (is.null(summary_fit)) {
-    return(data.frame(Item = character(0), Value = character(0), Guidance = character(0), stringsAsFactors = FALSE))
+    return(data.frame(Item = character(0), Value = character(0), Status = character(0), Guidance = character(0), stringsAsFactors = FALSE))
   }
   reliability <- as.data.frame(summary_fit$reliability %||% data.frame(), check.names = FALSE)
   loadings <- suppressWarnings(abs(as.matrix(summary_fit$loadings %||% matrix(numeric(0), 0L, 0L))))
@@ -51,35 +78,38 @@ structural_canvas_pls_quality_rows <- function(bundle) {
   f_square <- f_square[is.finite(f_square) & f_square > 0]
   missing <- summary_fit$missing_data$method %||% "not recorded"
   weight_diff <- bundle$fit$weightDiff %||% NA_real_
+  items <- c(
+    "PLS algorithm iterations",
+    "Final weight difference",
+    "Missing-data method",
+    "Min outer loading",
+    "Min rhoC",
+    "Min AVE",
+    "Max HTMT",
+    "Max item VIF",
+    "Max inner VIF",
+    "Min endogenous R2",
+    "Max f2",
+    "PLSpredict summary"
+  )
+  displayed_values <- c(
+    as.character(summary_fit$iterations %||% bundle$fit$iterations %||% ""),
+    structural_canvas_pls_quality_number(weight_diff),
+    as.character(missing),
+    structural_canvas_pls_quality_number(assigned_loadings, "min"),
+    structural_canvas_pls_quality_number(reliability$rhoC, "min"),
+    structural_canvas_pls_quality_number(reliability$AVE, "min"),
+    structural_canvas_pls_quality_number(htmt, "max"),
+    structural_canvas_pls_quality_number(item_vif, "max"),
+    structural_canvas_pls_quality_number(inner_vif, "max"),
+    structural_canvas_pls_quality_number(r2, "min"),
+    structural_canvas_pls_quality_number(f_square, "max"),
+    structural_canvas_pls_quality_predictive_label(bundle)
+  )
   data.frame(
-    Item = c(
-      "PLS algorithm iterations",
-      "Final weight difference",
-      "Missing-data method",
-      "Min outer loading",
-      "Min rhoC",
-      "Min AVE",
-      "Max HTMT",
-      "Max item VIF",
-      "Max inner VIF",
-      "Min endogenous R2",
-      "Max f2",
-      "PLSpredict summary"
-    ),
-    Value = c(
-      as.character(summary_fit$iterations %||% bundle$fit$iterations %||% ""),
-      structural_canvas_pls_quality_number(weight_diff),
-      as.character(missing),
-      structural_canvas_pls_quality_number(assigned_loadings, "min"),
-      structural_canvas_pls_quality_number(reliability$rhoC, "min"),
-      structural_canvas_pls_quality_number(reliability$AVE, "min"),
-      structural_canvas_pls_quality_number(htmt, "max"),
-      structural_canvas_pls_quality_number(item_vif, "max"),
-      structural_canvas_pls_quality_number(inner_vif, "max"),
-      structural_canvas_pls_quality_number(r2, "min"),
-      structural_canvas_pls_quality_number(f_square, "max"),
-      structural_canvas_pls_quality_predictive_label(bundle)
-    ),
+    Item = items,
+    Value = displayed_values,
+    Status = mapply(structural_canvas_pls_quality_status, items, displayed_values, USE.NAMES = FALSE),
     Guidance = c(
       "Algorithm diagnostic; inspect unusually high iteration counts.",
       "Smaller values indicate stable outer-weight convergence.",

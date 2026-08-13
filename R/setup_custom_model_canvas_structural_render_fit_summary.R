@@ -69,9 +69,40 @@ structural_canvas_lavaan_quality_structural <- function(fit) {
   list(path_count = nrow(structural), max_beta = beta, r2 = r2)
 }
 
+structural_canvas_lavaan_quality_status <- function(item, value, analysis_type = "cfa") {
+  numeric_value <- suppressWarnings(as.numeric(value))
+  unavailable <- !nzchar(as.character(value %||% "")) || identical(value, "not recorded")
+  if (unavailable) return("Not assessed")
+  if (identical(item, "Converged")) return(if (identical(value, "TRUE")) "OK" else "Review")
+  if (identical(item, "Admissible solution")) return(if (identical(value, "TRUE")) "OK" else "Review")
+  if (identical(item, "Model df")) return(if (is.finite(numeric_value) && numeric_value > 0) "OK" else "Review")
+  if (identical(item, "CFI")) return(if (is.finite(numeric_value) && numeric_value >= .90) "OK" else "Review")
+  if (identical(item, "TLI")) return(if (is.finite(numeric_value) && numeric_value >= .90) "OK" else "Review")
+  if (identical(item, "RMSEA")) return(if (is.finite(numeric_value) && numeric_value <= .08) "OK" else "Review")
+  if (identical(item, "SRMR")) return(if (is.finite(numeric_value) && numeric_value <= .10) "OK" else "Review")
+  if (identical(item, "Min standardized loading")) return(if (is.finite(numeric_value) && numeric_value >= .40) "OK" else "Review")
+  if (identical(item, "Min CR")) return(if (is.finite(numeric_value) && numeric_value >= .70) "OK" else "Review")
+  if (identical(item, "Min AVE")) return(if (is.finite(numeric_value) && numeric_value >= .50) "OK" else "Review")
+  if (identical(item, "Max latent correlation")) return(if (is.finite(numeric_value) && numeric_value < .85) "OK" else "Review")
+  if (identical(item, "Structural path count")) {
+    if (!analysis_type %in% c("sem", "cbsem")) return("Not assessed")
+    return(if (is.finite(numeric_value) && numeric_value > 0) "OK" else "Review")
+  }
+  if (identical(item, "Max structural beta")) {
+    if (!analysis_type %in% c("sem", "cbsem")) return("Not assessed")
+    return(if (is.finite(numeric_value) && numeric_value < 1) "OK" else "Review")
+  }
+  if (identical(item, "Min endogenous R2")) {
+    if (!analysis_type %in% c("sem", "cbsem")) return("Not assessed")
+    return(if (is.finite(numeric_value)) "OK" else "Review")
+  }
+  if (identical(item, "Model status")) return(if (identical(value, "Original/prespecified model")) "OK" else "Review")
+  "Not assessed"
+}
+
 structural_canvas_lavaan_quality_rows <- function(bundle, analysis_type = "cfa") {
   if (is.null(bundle) || is.null(bundle$fit) || !inherits(bundle$fit, "lavaan")) {
-    return(data.frame(Item = character(0), Value = character(0), Guidance = character(0), stringsAsFactors = FALSE))
+    return(data.frame(Item = character(0), Value = character(0), Status = character(0), Guidance = character(0), stringsAsFactors = FALSE))
   }
   fit <- bundle$fit
   selection <- structural_canvas_fit_measures(fit, bundle$estimator %||% "ML", bundle$rmsea_ci %||% .90)
@@ -82,41 +113,44 @@ structural_canvas_lavaan_quality_rows <- function(bundle, analysis_type = "cfa")
   converged <- bundle$converged %||% bundle$diagnostics$converged %||% tryCatch(lavaan::lavInspect(fit, "converged"), error = function(error) NA)
   admissible <- bundle$admissible %||% bundle$diagnostics$admissible %||% tryCatch(structural_canvas_fit_admissibility(fit)$admissible, error = function(error) NA)
   modified <- if (isTRUE(bundle$modified_model) || isTRUE(bundle$modified_from_baseline) || length(bundle$mi_history %||% list())) "Exploratory modified model" else "Original/prespecified model"
+  items <- c(
+    "Converged",
+    "Admissible solution",
+    "Model df",
+    "CFI",
+    "TLI",
+    "RMSEA",
+    "SRMR",
+    "Min standardized loading",
+    "Min CR",
+    "Min AVE",
+    "Max latent correlation",
+    "Structural path count",
+    "Max structural beta",
+    "Min endogenous R2",
+    "Model status"
+  )
+  displayed_values <- c(
+    if (is.na(converged)) "not recorded" else as.character(isTRUE(converged)),
+    if (is.na(admissible)) "not recorded" else as.character(isTRUE(admissible)),
+    structural_canvas_lavaan_quality_number(values[[2L]]),
+    structural_canvas_lavaan_quality_number(values[[5L]]),
+    structural_canvas_lavaan_quality_number(values[[6L]]),
+    structural_canvas_lavaan_quality_number(values[[8L]]),
+    structural_canvas_lavaan_quality_number(values[[7L]]),
+    structural_canvas_lavaan_quality_number(abs(loadings$est.std), "min"),
+    structural_canvas_lavaan_quality_number(validity$cr, "min"),
+    structural_canvas_lavaan_quality_number(validity$ave, "min"),
+    structural_canvas_lavaan_quality_number(structural_canvas_lavaan_quality_max_latent_correlation(fit)),
+    as.character(structural$path_count),
+    structural_canvas_lavaan_quality_number(structural$max_beta, "max"),
+    structural_canvas_lavaan_quality_number(structural$r2, "min"),
+    modified
+  )
   data.frame(
-    Item = c(
-      "Converged",
-      "Admissible solution",
-      "Model df",
-      "CFI",
-      "TLI",
-      "RMSEA",
-      "SRMR",
-      "Min standardized loading",
-      "Min CR",
-      "Min AVE",
-      "Max latent correlation",
-      "Structural path count",
-      "Max structural beta",
-      "Min endogenous R2",
-      "Model status"
-    ),
-    Value = c(
-      if (is.na(converged)) "not recorded" else as.character(isTRUE(converged)),
-      if (is.na(admissible)) "not recorded" else as.character(isTRUE(admissible)),
-      structural_canvas_lavaan_quality_number(values[[2L]]),
-      structural_canvas_lavaan_quality_number(values[[5L]]),
-      structural_canvas_lavaan_quality_number(values[[6L]]),
-      structural_canvas_lavaan_quality_number(values[[8L]]),
-      structural_canvas_lavaan_quality_number(values[[7L]]),
-      structural_canvas_lavaan_quality_number(abs(loadings$est.std), "min"),
-      structural_canvas_lavaan_quality_number(validity$cr, "min"),
-      structural_canvas_lavaan_quality_number(validity$ave, "min"),
-      structural_canvas_lavaan_quality_number(structural_canvas_lavaan_quality_max_latent_correlation(fit)),
-      as.character(structural$path_count),
-      structural_canvas_lavaan_quality_number(structural$max_beta, "max"),
-      structural_canvas_lavaan_quality_number(structural$r2, "min"),
-      modified
-    ),
+    Item = items,
+    Value = displayed_values,
+    Status = mapply(structural_canvas_lavaan_quality_status, items, displayed_values, MoreArgs = list(analysis_type = analysis_type), USE.NAMES = FALSE),
     Guidance = c(
       "Must be TRUE before interpreting estimates.",
       "Must be TRUE before reporting fit, reliability, validity, or structural paths as final.",
