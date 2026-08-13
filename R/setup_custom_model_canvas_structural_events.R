@@ -143,25 +143,11 @@ observeEvent(input[[paste0(prefix, "_heywood_confirm")]], {
   bundle <- fit_result()
   shiny::req(!is.null(bundle))
   tryCatch({
-    if (!toupper(as.character(bundle$estimator %||% "ML")) %in% c("ML", "MLR") || length(bundle$ordered %||% character(0))) {
-      stop("Heywood-constrained reanalysis is available only for continuous indicators estimated with ML or MLR.")
-    }
-    variables <- as.character((bundle$baseline_diagnostics %||% bundle$diagnostics)$negative_residuals %||% character(0))
-    if (!length(variables)) stop("No negative residual variances were found in the original model.")
     percent <- as.numeric(input[[paste0(prefix, "_heywood_percent")]] %||% 0.1)
-    if (!is.finite(percent) || percent < 0.01 || percent > 5) stop("Enter a percentage between 0.01 and 5.")
-    data <- dataset_fn()
-    observed_variances <- vapply(variables, function(name) stats::var(data[[name]], na.rm = TRUE), numeric(1))
-    if (any(!is.finite(observed_variances) | observed_variances <= 0)) stop("A positive observed variance is required for every Heywood indicator.")
-    fixes <- observed_variances * percent / 100
-    names(fixes) <- variables
-    settings <- bundle
-    settings$residual_variance_fixes <- fixes
-    settings$comparison_label <- "Heywood-constrained model"
-    settings$comparison_type <- "heywood"
+    constraint <- structural_canvas_heywood_constraint_settings(bundle, dataset_fn(), percent)
     removeModal()
-    result <- execute_analysis(bundle$snapshot, settings)
-    showNotification(paste0("The constrained model fixed ", paste(variables, collapse = ", "), " to ", format(percent, trim = TRUE), "% of observed variance."), type = if (isTRUE(result$admissible)) "message" else "warning", duration = 10)
+    result <- execute_analysis(bundle$snapshot, constraint$settings)
+    showNotification(paste0("The constrained model fixed ", paste(constraint$variables, collapse = ", "), " to ", format(constraint$percent, trim = TRUE), "% of observed variance."), type = if (isTRUE(result$admissible)) "message" else "warning", duration = 10)
   }, error = function(error) {
     showNotification(conditionMessage(error), type = "error", duration = 10)
   })
