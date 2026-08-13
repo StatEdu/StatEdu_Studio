@@ -1,13 +1,13 @@
 structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input, session, dataset_fn, variable_table_fn, analysis_type, prefix, fit_result) {
   is_mi_refit <- !is.null(settings) && !is.null(settings$fit)
   settings <- settings %||% list()
-  identification <- structural_canvas_identification_diagnostics(snapshot)
+  identification <- if (analysis_type %in% c("cfa", "cbsem")) structural_canvas_identification_diagnostics(snapshot) else data.frame()
   identification_errors <- identification[identification$Severity == "Error", , drop = FALSE]
   if (nrow(identification_errors)) {
     stop(paste0("Model identification check failed: ", paste(paste0(identification_errors$Element, " — ", identification_errors$Message), collapse = "; ")))
   }
   identification_warnings <- identification[identification$Severity == "Warning", , drop = FALSE]
-  structural_canvas_notify_identification_warnings(identification_warnings)
+  if (nrow(identification_warnings)) structural_canvas_notify_identification_warnings(identification_warnings)
   options <- structural_canvas_execute_settings(settings, input, prefix)
   estimator <- options$estimator
   missing <- options$missing

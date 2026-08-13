@@ -2,6 +2,7 @@ structural_canvas_register_fit_diagnostic_outputs <- function(output, prefix, an
 output[[paste0(prefix, "_result_fit")]] <- renderUI({
   structural_canvas_fit_table_result_ui(fit_result(), result_table("fit"))
 })
+if (identical(analysis_type, "plssem")) return(invisible(TRUE))
 output[[paste0(prefix, "_result_identification")]] <- renderUI({
   structural_canvas_identification_result_ui(fit_result())
 })

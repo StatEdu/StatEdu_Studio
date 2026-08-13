@@ -2,6 +2,16 @@
 
 structural_canvas_fit_table_result_ui <- function(bundle, values) {
   shiny::req(nrow(values) > 0)
+  if (!inherits(bundle$fit, "lavaan")) {
+    return(tagList(
+      tags$table(
+        class = "table table-striped table-bordered structural-fit-table",
+        tags$thead(tags$tr(lapply(names(values), tags$th))),
+        tags$tbody(lapply(seq_len(nrow(values)), function(index) tags$tr(lapply(as.character(values[index, , drop = TRUE]), tags$td))))
+      ),
+      tags$p(class = "structural-result-note", "PLS-SEM reports path coefficients and explained variance (R^2/adjusted R^2) rather than covariance-based global fit indices.")
+    ))
+  }
   ci_percent <- round(100 * as.numeric(bundle$rmsea_ci %||% .90))
   comparison_fits <- if (isTRUE(bundle$modified_from_baseline) && !is.null(bundle$baseline_fit)) list(bundle$baseline_fit, bundle$fit) else list(bundle$fit)
   fit_selections <- structural_canvas_common_fit_measures(comparison_fits, bundle$estimator %||% "ML", bundle$rmsea_ci %||% .90)

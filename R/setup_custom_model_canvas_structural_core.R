@@ -41,6 +41,53 @@ structural_canvas_has_parameter_modifier <- function(edge) {
 structural_canvas_result_snapshot <- function(snapshot, fit, coefficient = "beta") {
   snapshot <- snapshot %||% list()
   snapshot$nonce <- NULL
+  if (inherits(fit, "pls_model")) {
+    summary_fit <- summary(fit)
+    loadings <- as.matrix(summary_fit$loadings %||% matrix(numeric(0), 0L, 0L))
+    paths <- as.matrix(summary_fit$paths %||% matrix(numeric(0), 0L, 0L))
+    snapshot$edges <- lapply(snapshot$edges %||% list(), function(edge) {
+      from <- structural_canvas_node(snapshot, edge$from)
+      to <- structural_canvas_node(snapshot, edge$to)
+      info <- list(label = "", matched = FALSE)
+      if (!is.null(from) && !is.null(to) && !identical(edge$kind, "covariance")) {
+        if (identical(from$role, "latent") && identical(to$role, "indicator")) {
+          construct <- structural_canvas_name(from)
+          indicator <- structural_canvas_name(to)
+          if (indicator %in% rownames(loadings) && construct %in% colnames(loadings)) {
+            value <- suppressWarnings(as.numeric(loadings[indicator, construct]))
+            if (is.finite(value)) info <- list(label = format_decimal3(value), matched = TRUE)
+          }
+        } else if (identical(from$role, "indicator") && identical(to$role, "latent")) {
+          construct <- structural_canvas_name(to)
+          indicator <- structural_canvas_name(from)
+          if (indicator %in% rownames(loadings) && construct %in% colnames(loadings)) {
+            value <- suppressWarnings(as.numeric(loadings[indicator, construct]))
+            if (is.finite(value)) info <- list(label = format_decimal3(value), matched = TRUE)
+          }
+        } else if (identical(from$role, "latent") && identical(to$role, "latent")) {
+          predictor <- structural_canvas_name(from)
+          outcome <- structural_canvas_name(to)
+          if (predictor %in% rownames(paths) && outcome %in% colnames(paths)) {
+            value <- suppressWarnings(as.numeric(paths[predictor, outcome]))
+            if (is.finite(value)) info <- list(label = format_decimal3(value), matched = TRUE)
+          }
+        }
+      }
+      edge$label <- info$label
+      edge$p <- NA_real_
+      edge$significant <- FALSE
+      edge$dashEligible <- FALSE
+      edge$resultMatched <- isTRUE(info$matched)
+      edge$labelPosition <- 50
+      edge$labelOffsetX <- 0
+      edge$labelOffsetY <- -10
+      edge$labelTextAnchor <- "middle"
+      edge
+    })
+    snapshot$dashNonsignificant <- FALSE
+    snapshot$resultCoefficient <- "pls"
+    return(snapshot)
+  }
   if (!inherits(fit, "lavaan")) return(snapshot)
 
   parameters <- lavaan::parameterEstimates(fit, standardized = TRUE)

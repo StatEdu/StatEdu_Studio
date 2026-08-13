@@ -93,6 +93,7 @@ $fullOnlyValidations = @(
   "scripts\validate_reliability.R",
   "scripts\validate_result_history.R",
   "scripts\validate_sample_size.R",
+  "scripts\validate_sem_canvas.R",
   "scripts\validate_survival.R",
   "scripts\validate_analysis_reference_comparison.R"
 )

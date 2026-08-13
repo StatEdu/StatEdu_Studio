@@ -43,13 +43,32 @@ structural_canvas_result_table <- function(kind, fit_result, analysis_type, labe
     return(structural_canvas_mi_result_table(bundle, snapshot, fit, ko, fmt, display_name, residual_name))
   }
   summary_fit <- summary(fit)
-  matrix_value <- switch(kind, overview = summary_fit$paths, fit = summary_fit$paths, validity = summary_fit$reliability, measurement = summary_fit$loadings, mi = NULL)
+  if (identical(kind, "overview")) {
+    diagnostics <- bundle$diagnostics %||% list()
+    overview_df <- data.frame(
+      Item = if (ko) c("분석", "추정 방법", "표본 크기(N)", "구성개념", "지표", "구조 경로", "수렴 여부") else c("Analysis", "Estimator", "N", "Constructs", "Indicators", "Structural paths", "Converged"),
+      Value = c(
+        structural_analysis_title(analysis_type, "en"),
+        "PLS",
+        as.character(diagnostics$n %||% NA_integer_),
+        length(diagnostics$constructs %||% character(0)),
+        length(diagnostics$observed %||% character(0)),
+        length(diagnostics$structural_paths %||% character(0)),
+        if (isTRUE(diagnostics$converged %||% TRUE)) "Yes" else "No"
+      ),
+      check.names = FALSE
+    )
+    names(overview_df)[[1]] <- if (ko) "항목" else "Item"
+    names(overview_df)[[2]] <- if (ko) "값" else "Value"
+    return(overview_df)
+  }
+  matrix_value <- switch(kind, fit = summary_fit$paths, validity = summary_fit$reliability, measurement = summary_fit$loadings, mi = NULL)
   if (is.null(matrix_value)) return(data.frame())
   table <- as.data.frame(matrix_value, check.names = FALSE)
   row_labels <- rownames(table)
   row_labels <- vapply(row_labels, function(name) if (name %in% c("R^2", "AdjR^2")) name else display_name(name), character(1))
   names(table) <- vapply(names(table), display_name, character(1))
-  result <- cbind(row_labels, table, row.names = NULL, check.names = FALSE)
+  result <- data.frame(row_labels, table, check.names = FALSE)
   names(result)[[1]] <- if (ko) "항목" else "Item"
   result
 }
