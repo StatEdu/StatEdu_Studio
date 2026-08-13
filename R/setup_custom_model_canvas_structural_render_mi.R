@@ -2,30 +2,31 @@ structural_canvas_register_mi_render_outputs <- function(output, prefix, fit_res
 output[[paste0(prefix, "_result_mi")]] <- renderUI({
   table <- result_table("mi")
   if (!nrow(table)) return(NULL)
+  ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
   theory_mi <- identical(fit_result()$mi_mode %||% "theory", "theory")
   tagList(tags$table(
     class = "table table-striped table-bordered structural-mi-table",
     tags$thead(tags$tr(
       lapply(names(table), tags$th),
-      if (theory_mi) tags$th("Select")
+      if (theory_mi) tags$th(if (ko) "선택" else "Select")
     )),
     tags$tbody(lapply(seq_len(nrow(table)), function(index) {
       tags$tr(
         lapply(as.character(table[index, , drop = TRUE]), tags$td),
         if (theory_mi) tags$td(actionButton(
           paste0(prefix, "_mi_select_", index),
-          "Select",
+          if (ko) "선택" else "Select",
           class = "btn-sm structural-mi-select-button"
         ))
       )
     }))
   ),
-  tags$p(class = "structural-result-note", "MI p treats each modification index as an unscaled asymptotic 1-df chi-square test. BH-adjusted p controls the false-discovery rate across all finite lavaan candidate modifications before the displayed MI and theory filters; MI tests reports that multiplicity-family size."),
-  tags$p(class = "structural-result-note", "For MLR or WLSMV, these derived p values are not a separate robust/scaled score-test correction and should be treated as exploratory reference values."),
-  tags$p(class = "structural-result-note", "EPC is the expected unstandardized parameter change if the fixed parameter is freed; Std. EPC is lavaan's fully standardized expected change (sepc.all). Consider direction and magnitude rather than MI rank alone."),
-  if (theory_mi) tags$p(class = "structural-result-note", "Each Step is sequential: the displayed path is added, the model is refitted, and MI, multiplicity family, EPC, and cumulative fit for the next row are recomputed from that updated model. Rows are not simultaneous candidates from one unchanged model."),
-  if (theory_mi) tags$p(class = "structural-result-note", "Skipped unsafe counts higher-ranked candidates rejected for nonconvergence, post.check failure, negative variance, a non-positive-definite or boundary residual/latent/parameter covariance matrix, invalid df, or |latent correlation| >= 1. Skipped details records each rejected path and diagnostic reason; a skipped candidate is not offered for automatic application."),
-  tags$p(class = "structural-result-note", "Neither an unadjusted nor adjusted p value justifies a modification. Use effect size (EPC/standardized EPC), residual diagnostics, admissibility, theory, and preferably independent validation."))
+  tags$p(class = "structural-result-note", if (ko) "MI p는 각 수정지수를 비척도화된 점근적 1 자유도 카이제곱 검정으로 취급합니다. BH-adjusted p는 화면에 표시된 MI 및 이론 필터를 적용하기 전 lavaan 후보 수정 전체의 false-discovery rate를 조절합니다. MI tests는 이 다중검정 계열의 크기를 보고합니다." else "MI p treats each modification index as an unscaled asymptotic 1-df chi-square test. BH-adjusted p controls the false-discovery rate across all finite lavaan candidate modifications before the displayed MI and theory filters; MI tests reports that multiplicity-family size."),
+  tags$p(class = "structural-result-note", if (ko) "MLR 또는 WLSMV에서 이 p값은 별도의 robust/scaled score-test 보정이 아니며 탐색적 참고값으로 보아야 합니다." else "For MLR or WLSMV, these derived p values are not a separate robust/scaled score-test correction and should be treated as exploratory reference values."),
+  tags$p(class = "structural-result-note", if (ko) "EPC는 고정 모수를 자유화했을 때 기대되는 비표준화 모수 변화입니다. Std. EPC는 lavaan의 완전표준화 기대 변화(sepc.all)입니다. MI 순위만 보지 말고 방향과 크기를 함께 검토하십시오." else "EPC is the expected unstandardized parameter change if the fixed parameter is freed; Std. EPC is lavaan's fully standardized expected change (sepc.all). Consider direction and magnitude rather than MI rank alone."),
+  if (theory_mi) tags$p(class = "structural-result-note", if (ko) "각 Step은 순차적입니다. 표시된 경로를 추가하고 모형을 다시 적합한 뒤, 다음 행의 MI, 다중검정 계열, EPC, 누적 적합도를 그 갱신된 모형에서 다시 계산합니다. 행들은 변경되지 않은 하나의 모형에서 나온 동시 후보가 아닙니다." else "Each Step is sequential: the displayed path is added, the model is refitted, and MI, multiplicity family, EPC, and cumulative fit for the next row are recomputed from that updated model. Rows are not simultaneous candidates from one unchanged model."),
+  if (theory_mi) tags$p(class = "structural-result-note", if (ko) "Skipped unsafe는 더 높은 순위였지만 수렴 실패, post.check 실패, 음의 분산, 비양정 또는 경계 잔차/잠재/모수 공분산행렬, 잘못된 자유도, 또는 |잠재상관| >= 1 때문에 거부된 후보 수입니다. Skipped details는 거부된 각 경로와 진단 사유를 기록하며, 거부된 후보는 자동 적용 대상으로 제공하지 않습니다." else "Skipped unsafe counts higher-ranked candidates rejected for nonconvergence, post.check failure, negative variance, a non-positive-definite or boundary residual/latent/parameter covariance matrix, invalid df, or |latent correlation| >= 1. Skipped details records each rejected path and diagnostic reason; a skipped candidate is not offered for automatic application."),
+  tags$p(class = "structural-result-note", if (ko) "비보정 p값이나 보정 p값만으로는 수정을 정당화할 수 없습니다. 효과크기(EPC/표준화 EPC), 잔차 진단, 허용성, 이론, 가능하면 독립 검증을 함께 사용하십시오." else "Neither an unadjusted nor adjusted p value justifies a modification. Use effect size (EPC/standardized EPC), residual diagnostics, admissibility, theory, and preferably independent validation."))
 })
 output[[paste0(prefix, "_result_mi_history")]] <- renderUI({
   bundle <- fit_result()
