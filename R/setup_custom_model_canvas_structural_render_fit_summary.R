@@ -14,6 +14,56 @@ structural_canvas_lavaan_quality_number <- function(values, direction = "single"
   format_decimal3(value)
 }
 
+structural_canvas_quality_full_collinearity_vif <- function(scores) {
+  if (is.null(scores)) return(numeric(0))
+  scores <- as.data.frame(scores, check.names = FALSE)
+  numeric_columns <- names(scores)[vapply(scores, is.numeric, logical(1))]
+  scores <- scores[numeric_columns]
+  if (ncol(scores) < 2L) return(numeric(0))
+  scores <- scores[stats::complete.cases(scores), , drop = FALSE]
+  if (nrow(scores) <= ncol(scores) + 1L) return(numeric(0))
+  stats::setNames(vapply(names(scores), function(outcome) {
+    predictors <- setdiff(names(scores), outcome)
+    y <- scores[[outcome]]
+    x <- as.matrix(scores[predictors])
+    design <- cbind(`(Intercept)` = 1, x)
+    fit <- tryCatch(stats::lm.fit(design, y), error = function(error) NULL)
+    if (is.null(fit)) return(NA_real_)
+    residual <- fit$residuals
+    tss <- sum((y - mean(y, na.rm = TRUE))^2, na.rm = TRUE)
+    rss <- sum(residual^2, na.rm = TRUE)
+    if (!is.finite(tss) || tss <= 0 || !is.finite(rss)) return(NA_real_)
+    r2 <- max(0, min(1, 1 - rss / tss))
+    if (r2 >= 1) Inf else 1 / (1 - r2)
+  }, numeric(1)), names(scores))
+}
+
+structural_canvas_lavaan_harman_first_factor_percent <- function(fit) {
+  observed <- tryCatch(lavaan::lavNames(fit, "ov"), error = function(error) character(0))
+  data <- tryCatch(as.data.frame(lavaan::lavInspect(fit, "data"), check.names = FALSE), error = function(error) data.frame())
+  variables <- intersect(observed, names(data))
+  variables <- variables[vapply(data[variables], is.numeric, logical(1))]
+  if (length(variables) < 2L) return(NA_real_)
+  values <- data[variables]
+  values <- values[stats::complete.cases(values), , drop = FALSE]
+  if (nrow(values) <= length(variables) + 1L) return(NA_real_)
+  pca <- tryCatch(stats::prcomp(values, center = TRUE, scale. = TRUE), error = function(error) NULL)
+  if (is.null(pca) || is.null(pca$sdev) || !length(pca$sdev)) return(NA_real_)
+  variance <- pca$sdev^2
+  100 * variance[[1L]] / sum(variance)
+}
+
+structural_canvas_lavaan_full_collinearity_vif <- function(fit) {
+  scores <- tryCatch(lavaan::lavPredict(fit), error = function(error) NULL)
+  structural_canvas_quality_full_collinearity_vif(scores)
+}
+
+structural_canvas_lavaan_sample_ratio <- function(fit) {
+  n <- tryCatch(sum(as.integer(lavaan::lavInspect(fit, "ntotal")), na.rm = TRUE), error = function(error) NA_integer_)
+  npar <- tryCatch(as.numeric(lavaan::lavInspect(fit, "npar")), error = function(error) NA_real_)
+  if (!is.finite(n) || !is.finite(npar) || npar <= 0) NA_real_ else n / npar
+}
+
 structural_canvas_lavaan_quality_loadings <- function(fit) {
   standardized <- tryCatch(lavaan::standardizedSolution(fit), error = function(error) data.frame())
   observed <- tryCatch(lavaan::lavNames(fit, "ov"), error = function(error) character(0))
@@ -78,6 +128,9 @@ structural_canvas_lavaan_quality_status <- function(item, value, analysis_type =
   if (identical(item, "Model df")) return(if (is.finite(numeric_value) && numeric_value > 0) "OK" else "Review")
   if (identical(item, "Chi-square/df")) return(if (is.finite(numeric_value) && numeric_value <= 5) "OK" else "Review")
   if (identical(item, "Fit statistic source")) return("OK")
+  if (identical(item, "N/free parameter ratio")) return(if (is.finite(numeric_value) && numeric_value >= 5) "OK" else "Review")
+  if (identical(item, "Harman first-factor %")) return(if (is.finite(numeric_value) && numeric_value <= 50) "OK" else "Review")
+  if (identical(item, "Max full collinearity VIF")) return(if (is.finite(numeric_value) && numeric_value <= 3.3) "OK" else "Review")
   if (identical(item, "CFI")) return(if (is.finite(numeric_value) && numeric_value >= .90) "OK" else "Review")
   if (identical(item, "TLI")) return(if (is.finite(numeric_value) && numeric_value >= .90) "OK" else "Review")
   if (identical(item, "RMSEA")) return(if (is.finite(numeric_value) && numeric_value <= .08) "OK" else "Review")
@@ -110,6 +163,9 @@ structural_canvas_lavaan_quality_rows <- function(bundle, analysis_type = "cfa")
   selection <- structural_canvas_fit_measures(fit, bundle$estimator %||% "ML", bundle$rmsea_ci %||% .90)
   values <- selection$values
   source_label <- paste(unname(selection$keys), collapse = ", ")
+  sample_ratio <- structural_canvas_lavaan_sample_ratio(fit)
+  harman_percent <- structural_canvas_lavaan_harman_first_factor_percent(fit)
+  full_collinearity_vif <- structural_canvas_lavaan_full_collinearity_vif(fit)
   loadings <- structural_canvas_lavaan_quality_loadings(fit)
   validity <- structural_canvas_lavaan_quality_validity(fit)
   structural <- structural_canvas_lavaan_quality_structural(fit)
@@ -122,6 +178,9 @@ structural_canvas_lavaan_quality_rows <- function(bundle, analysis_type = "cfa")
     "Model df",
     "Chi-square/df",
     "Fit statistic source",
+    "N/free parameter ratio",
+    "Harman first-factor %",
+    "Max full collinearity VIF",
     "CFI",
     "TLI",
     "RMSEA",
@@ -141,6 +200,9 @@ structural_canvas_lavaan_quality_rows <- function(bundle, analysis_type = "cfa")
     structural_canvas_lavaan_quality_number(values[[2L]]),
     structural_canvas_lavaan_quality_number(values[[4L]]),
     source_label,
+    structural_canvas_lavaan_quality_number(sample_ratio),
+    structural_canvas_lavaan_quality_number(harman_percent),
+    structural_canvas_lavaan_quality_number(full_collinearity_vif, "max"),
     structural_canvas_lavaan_quality_number(values[[5L]]),
     structural_canvas_lavaan_quality_number(values[[6L]]),
     structural_canvas_lavaan_quality_number(values[[8L]]),
@@ -164,6 +226,9 @@ structural_canvas_lavaan_quality_rows <- function(bundle, analysis_type = "cfa")
       "df = 0 indicates a saturated model; approximate fit is not substantively diagnostic.",
       "Often reported as chi-square divided by df; values above 3 or 5 should be justified.",
       "Records whether lavaan robust/scaled or conventional fit statistics were selected.",
+      "Descriptive sample-size screen; ratios below 5 require caution or justification.",
+      "Harman single-factor screen; above 50% suggests possible common-method concentration.",
+      "Full collinearity VIF above 3.3 suggests possible common-method or construct-overlap bias.",
       "Review below .90; .95 is a common descriptive target.",
       "Review below .90; .95 is a common descriptive target.",
       "Review above .08; .06 is a common descriptive target.",
@@ -195,7 +260,7 @@ structural_canvas_lavaan_quality_status_summary <- function(rows) {
 
 structural_canvas_lavaan_quality_priority <- function(items) {
   critical <- c("Converged", "Admissible solution")
-  major <- c("Model df", "Chi-square/df", "CFI", "TLI", "RMSEA", "SRMR", "Min standardized loading", "Min CR", "Min AVE", "Max latent correlation", "Max structural beta")
+  major <- c("Model df", "Chi-square/df", "N/free parameter ratio", "Harman first-factor %", "Max full collinearity VIF", "CFI", "TLI", "RMSEA", "SRMR", "Min standardized loading", "Min CR", "Min AVE", "Max latent correlation", "Max structural beta")
   ifelse(items %in% critical, "Critical", ifelse(items %in% major, "Major", "Advisory"))
 }
 
@@ -255,9 +320,9 @@ structural_canvas_lavaan_quality_result_ui <- function(bundle, analysis_type = "
     tags$p(
       class = "structural-result-note",
       if (ko) {
-        "This checklist summarizes lavaan SEM/CFA convergence, admissibility, chi-square/df, robust/scaled fit source, global fit, measurement quality, discriminant-validity risk, and structural explanatory-power conditions for reporting and review."
+        "This checklist summarizes lavaan SEM/CFA convergence, admissibility, sample adequacy, common-method-bias screens, chi-square/df, robust/scaled fit source, global fit, measurement quality, discriminant-validity risk, and structural explanatory-power conditions for reporting and review."
       } else {
-        "This checklist summarizes lavaan SEM/CFA convergence, admissibility, chi-square/df, robust/scaled fit source, global fit, measurement quality, discriminant-validity risk, and structural explanatory-power conditions for reporting and review."
+        "This checklist summarizes lavaan SEM/CFA convergence, admissibility, sample adequacy, common-method-bias screens, chi-square/df, robust/scaled fit source, global fit, measurement quality, discriminant-validity risk, and structural explanatory-power conditions for reporting and review."
       }
     )
   )

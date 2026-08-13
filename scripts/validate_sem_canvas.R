@@ -56,7 +56,7 @@ stopifnot(
   grepl("PLS-SEM quality checklist", ui_source, fixed = TRUE),
   grepl("Q2 predictive-relevance", ui_source, fixed = TRUE),
   grepl("SEM quality checklist", ui_source, fixed = TRUE),
-  grepl("chi-square/df, robust/scaled fit source, global fit", ui_source, fixed = TRUE),
+  grepl("sample adequacy, common-method-bias screens, chi-square/df", ui_source, fixed = TRUE),
   grepl("Reporting checklist", ui_source, fixed = TRUE),
   grepl("Estimator or algorithm", ui_source, fixed = TRUE),
   grepl("Admissibility and convergence", ui_source, fixed = TRUE),
@@ -116,15 +116,18 @@ stopifnot(cbsem_reporting$Value[cbsem_reporting$Item == "Missing-data handling"]
 stopifnot(cbsem_reporting$Value[cbsem_reporting$Item == "Analysis context"] == "Original/prespecified model")
 stopifnot(grepl("converged=TRUE", cbsem_reporting$Value[cbsem_reporting$Item == "Admissibility and convergence"], fixed = TRUE))
 cbsem_quality <- structural_canvas_lavaan_quality_rows(cbsem_bundle, "cbsem")
-stopifnot(nrow(cbsem_quality) == 17L)
+stopifnot(nrow(cbsem_quality) == 20L)
 stopifnot(all(c("Item", "Value", "Status", "Guidance") %in% names(cbsem_quality)))
-stopifnot(all(c("Converged", "Admissible solution", "Model df", "Chi-square/df", "Fit statistic source", "CFI", "RMSEA", "SRMR", "Min standardized loading", "Min CR", "Min AVE", "Max latent correlation", "Structural path count", "Max structural beta", "Min endogenous R2", "Model status") %in% cbsem_quality$Item))
+stopifnot(all(c("Converged", "Admissible solution", "Model df", "Chi-square/df", "Fit statistic source", "N/free parameter ratio", "Harman first-factor %", "Max full collinearity VIF", "CFI", "RMSEA", "SRMR", "Min standardized loading", "Min CR", "Min AVE", "Max latent correlation", "Structural path count", "Max structural beta", "Min endogenous R2", "Model status") %in% cbsem_quality$Item))
 stopifnot(cbsem_quality$Value[cbsem_quality$Item == "Converged"] == "TRUE")
 stopifnot(cbsem_quality$Value[cbsem_quality$Item == "Admissible solution"] == "TRUE")
 stopifnot(cbsem_quality$Status[cbsem_quality$Item == "Converged"] == "OK")
 stopifnot(cbsem_quality$Status[cbsem_quality$Item == "Admissible solution"] == "OK")
 stopifnot(nzchar(cbsem_quality$Value[cbsem_quality$Item == "Chi-square/df"]))
 stopifnot(cbsem_quality$Status[cbsem_quality$Item == "Fit statistic source"] == "OK")
+stopifnot(nzchar(cbsem_quality$Value[cbsem_quality$Item == "N/free parameter ratio"]))
+stopifnot(nzchar(cbsem_quality$Value[cbsem_quality$Item == "Harman first-factor %"]))
+stopifnot(nzchar(cbsem_quality$Value[cbsem_quality$Item == "Max full collinearity VIF"]))
 stopifnot(cbsem_quality$Value[cbsem_quality$Item == "Structural path count"] == "1")
 stopifnot(cbsem_quality$Status[cbsem_quality$Item == "Structural path count"] == "OK")
 stopifnot(cbsem_quality$Value[cbsem_quality$Item == "Model status"] == "Original/prespecified model")
@@ -357,12 +360,14 @@ stopifnot(pls_reporting$Value[pls_reporting$Item == "Estimator or algorithm"] ==
 stopifnot(pls_reporting$Value[pls_reporting$Item == "Missing-data handling"] == "Valid rows used by seminr; no FIML/pairwise option")
 stopifnot(pls_reporting$Value[pls_reporting$Item == "Latent scaling"] == "Composite scores")
 pls_quality <- structural_canvas_pls_quality_rows(pls_bundle)
-stopifnot(nrow(pls_quality) == 13L)
+stopifnot(nrow(pls_quality) == 15L)
 stopifnot(all(c("Item", "Value", "Status", "Guidance") %in% names(pls_quality)))
-stopifnot(all(c("PLS algorithm iterations", "Min outer loading", "Min rhoC", "Min AVE", "Max HTMT", "Max item VIF", "Min endogenous R2", "Max f2", "Min Q2", "PLSpredict summary") %in% pls_quality$Item))
+stopifnot(all(c("PLS algorithm iterations", "10-times rule margin", "Min outer loading", "Min rhoC", "Min AVE", "Max HTMT", "Max item VIF", "Max inner VIF", "Max full collinearity VIF", "Min endogenous R2", "Max f2", "Min Q2", "PLSpredict summary") %in% pls_quality$Item))
 stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "PLS algorithm iterations"]))
 stopifnot(pls_quality$Status[pls_quality$Item == "PLS algorithm iterations"] == "OK")
 stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Min outer loading"]))
+stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "10-times rule margin"]))
+stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Max full collinearity VIF"]))
 stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Min Q2"]))
 stopifnot(pls_quality$Status[pls_quality$Item == "Min Q2"] %in% c("OK", "Review"))
 stopifnot(pls_quality$Value[pls_quality$Item == "PLSpredict summary"] == "Not executed")

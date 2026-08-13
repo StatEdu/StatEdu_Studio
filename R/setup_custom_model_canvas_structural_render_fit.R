@@ -26,6 +26,19 @@ structural_canvas_pls_quality_predictive_label <- function(bundle) {
   )
 }
 
+structural_canvas_pls_ten_times_margin <- function(bundle) {
+  fit <- bundle$fit %||% NULL
+  diagnostics <- bundle$diagnostics %||% list()
+  n <- suppressWarnings(as.numeric(diagnostics$n %||% nrow(fit$data %||% data.frame())))
+  mm_variables <- fit$mmVariables %||% matrix(character(0), 0L, 0L)
+  mm_variables <- as.matrix(mm_variables)
+  indicator_max <- if (length(mm_variables)) max(colSums(!is.na(mm_variables) & nzchar(mm_variables)), na.rm = TRUE) else 0
+  path_specs <- structural_canvas_pls_path_specs(diagnostics)
+  antecedent_max <- if (nrow(path_specs)) max(table(path_specs$outcome), na.rm = TRUE) else 0
+  denominator <- 10 * max(1, indicator_max, antecedent_max)
+  if (!is.finite(n) || denominator <= 0) NA_real_ else n / denominator
+}
+
 structural_canvas_pls_quality_status <- function(item, value) {
   numeric_value <- suppressWarnings(as.numeric(value))
   unavailable <- !nzchar(as.character(value %||% "")) || identical(value, "Not executed")
@@ -33,12 +46,14 @@ structural_canvas_pls_quality_status <- function(item, value) {
   if (identical(item, "PLS algorithm iterations")) return(if (is.finite(numeric_value) && numeric_value <= 300) "OK" else "Review")
   if (identical(item, "Final weight difference")) return(if (is.finite(numeric_value) && numeric_value <= 1e-6) "OK" else "Review")
   if (identical(item, "Missing-data method")) return("OK")
+  if (identical(item, "10-times rule margin")) return(if (is.finite(numeric_value) && numeric_value >= 1) "OK" else "Review")
   if (identical(item, "Min outer loading")) return(if (is.finite(numeric_value) && numeric_value >= .40) "OK" else "Review")
   if (identical(item, "Min rhoC")) return(if (is.finite(numeric_value) && numeric_value >= .70) "OK" else "Review")
   if (identical(item, "Min AVE")) return(if (is.finite(numeric_value) && numeric_value >= .50) "OK" else "Review")
   if (identical(item, "Max HTMT")) return(if (is.finite(numeric_value) && numeric_value < .85) "OK" else "Review")
   if (identical(item, "Max item VIF")) return(if (is.finite(numeric_value) && numeric_value <= 5) "OK" else "Review")
   if (identical(item, "Max inner VIF")) return(if (is.finite(numeric_value) && numeric_value <= 5) "OK" else "Review")
+  if (identical(item, "Max full collinearity VIF")) return(if (is.finite(numeric_value) && numeric_value <= 3.3) "OK" else "Review")
   if (identical(item, "Min endogenous R2")) return(if (is.finite(numeric_value)) "OK" else "Review")
   if (identical(item, "Max f2")) return(if (is.finite(numeric_value)) "OK" else "Not assessed")
   if (identical(item, "Min Q2")) return(if (is.finite(numeric_value) && numeric_value > 0) "OK" else "Review")
@@ -79,18 +94,22 @@ structural_canvas_pls_quality_rows <- function(bundle) {
   f_square <- f_square[is.finite(f_square) & f_square > 0]
   q2 <- suppressWarnings(as.numeric((bundle$diagnostics$q2 %||% data.frame())$Q2))
   q2 <- q2[is.finite(q2)]
+  full_collinearity_vif <- structural_canvas_quality_full_collinearity_vif(bundle$fit$construct_scores %||% NULL)
+  ten_times_margin <- structural_canvas_pls_ten_times_margin(bundle)
   missing <- summary_fit$missing_data$method %||% "not recorded"
   weight_diff <- bundle$fit$weightDiff %||% NA_real_
   items <- c(
     "PLS algorithm iterations",
     "Final weight difference",
     "Missing-data method",
+    "10-times rule margin",
     "Min outer loading",
     "Min rhoC",
     "Min AVE",
     "Max HTMT",
     "Max item VIF",
     "Max inner VIF",
+    "Max full collinearity VIF",
     "Min endogenous R2",
     "Max f2",
     "Min Q2",
@@ -100,12 +119,14 @@ structural_canvas_pls_quality_rows <- function(bundle) {
     as.character(summary_fit$iterations %||% bundle$fit$iterations %||% ""),
     structural_canvas_pls_quality_number(weight_diff),
     as.character(missing),
+    structural_canvas_pls_quality_number(ten_times_margin),
     structural_canvas_pls_quality_number(assigned_loadings, "min"),
     structural_canvas_pls_quality_number(reliability$rhoC, "min"),
     structural_canvas_pls_quality_number(reliability$AVE, "min"),
     structural_canvas_pls_quality_number(htmt, "max"),
     structural_canvas_pls_quality_number(item_vif, "max"),
     structural_canvas_pls_quality_number(inner_vif, "max"),
+    structural_canvas_pls_quality_number(full_collinearity_vif, "max"),
     structural_canvas_pls_quality_number(r2, "min"),
     structural_canvas_pls_quality_number(f_square, "max"),
     structural_canvas_pls_quality_number(q2, "min"),
@@ -119,12 +140,14 @@ structural_canvas_pls_quality_rows <- function(bundle) {
       "Algorithm diagnostic; inspect unusually high iteration counts.",
       "Smaller values indicate stable outer-weight convergence.",
       "Report this because PLS does not use lavaan FIML/pairwise options.",
+      "Descriptive minimum-sample screen using 10 times the larger of max indicators or max antecedents.",
       "Review reflective indicators below .70; retain lower loadings only with theory.",
       "Review construct reliability below .70.",
       "Review convergent validity below .50.",
       "Review discriminant validity near or above .85/.90.",
       "Review indicator collinearity above 3.3 or 5.",
       "Review structural predictor collinearity above 3.3 or 5.",
+      "Full collinearity VIF above 3.3 suggests possible common-method or construct-overlap bias.",
       "Report explanatory power for endogenous constructs.",
       "Interpret as structural effect size; .02/.15/.35 are descriptive anchors.",
       "Stone-Geisser Q2 above 0 indicates predictive relevance for endogenous constructs.",
@@ -148,7 +171,7 @@ structural_canvas_pls_quality_status_summary <- function(rows) {
 
 structural_canvas_pls_quality_priority <- function(items) {
   critical <- c("PLS algorithm iterations", "Final weight difference")
-  major <- c("Min outer loading", "Min rhoC", "Min AVE", "Max HTMT", "Max item VIF", "Max inner VIF", "Min Q2")
+  major <- c("10-times rule margin", "Min outer loading", "Min rhoC", "Min AVE", "Max HTMT", "Max item VIF", "Max inner VIF", "Max full collinearity VIF", "Min Q2")
   ifelse(items %in% critical, "Critical", ifelse(items %in% major, "Major", "Advisory"))
 }
 
@@ -208,9 +231,9 @@ structural_canvas_pls_quality_result_ui <- function(bundle, language = statedu_i
     tags$p(
       class = "structural-result-note",
       if (ko) {
-        "This checklist summarizes PLS-SEM measurement, collinearity, explanatory-power, Q2 predictive-relevance, and predictive-quality boundary conditions for reporting and review."
+        "This checklist summarizes PLS-SEM sample adequacy, measurement, collinearity, common-method-bias screens, explanatory-power, Q2 predictive-relevance, and predictive-quality boundary conditions for reporting and review."
       } else {
-        "This checklist summarizes PLS-SEM measurement, collinearity, explanatory-power, Q2 predictive-relevance, and predictive-quality boundary conditions for reporting and review."
+        "This checklist summarizes PLS-SEM sample adequacy, measurement, collinearity, common-method-bias screens, explanatory-power, Q2 predictive-relevance, and predictive-quality boundary conditions for reporting and review."
       }
     )
   )
