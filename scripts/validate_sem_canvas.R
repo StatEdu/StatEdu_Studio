@@ -370,6 +370,42 @@ fit_result_state <- function(value) {
 session <- list(sendCustomMessage = function(type, message) {
   execution_state$message <- list(type = type, message = message)
 })
+executed_cbsem <- structural_canvas_execute_analysis(
+  snapshot,
+  settings = list(estimator = "ML", missing = "fiml"),
+  input = list(),
+  session = session,
+  dataset_fn = function() data,
+  variable_table_fn = function() variable_table,
+  analysis_type = "cbsem",
+  prefix = "structural_cbsem",
+  fit_result = fit_result_state
+)
+stopifnot(inherits(executed_cbsem$fit, "lavaan"))
+stopifnot(inherits(fit_result_state()$fit, "lavaan"))
+stopifnot(identical(fit_result_state()$estimator, "ML"))
+stopifnot(identical(execution_state$message$type, "custom-model-canvas-result"))
+stopifnot(any(nzchar(vapply(execution_state$message$message$result$edges, function(edge) as.character(edge$label %||% ""), character(1)))))
+execution_state$value <- NULL
+execution_state$message <- NULL
+executed_sem <- structural_canvas_execute_analysis(
+  snapshot,
+  settings = list(estimator = "ML", missing = "fiml"),
+  input = list(),
+  session = session,
+  dataset_fn = function() data,
+  variable_table_fn = function() variable_table,
+  analysis_type = "sem",
+  prefix = "structural_sem",
+  fit_result = fit_result_state
+)
+stopifnot(inherits(executed_sem$fit, "lavaan"))
+stopifnot(inherits(fit_result_state()$fit, "lavaan"))
+stopifnot(identical(fit_result_state()$estimator, "ML"))
+stopifnot(identical(execution_state$message$type, "custom-model-canvas-result"))
+stopifnot(any(nzchar(vapply(execution_state$message$message$result$edges, function(edge) as.character(edge$label %||% ""), character(1)))))
+execution_state$value <- NULL
+execution_state$message <- NULL
 executed <- structural_canvas_execute_analysis(
   snapshot,
   settings = list(estimator = "PLS"),
