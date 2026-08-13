@@ -173,14 +173,31 @@ structural_canvas_lavaan_quality_rows <- function(bundle, analysis_type = "cfa")
   )
 }
 
+structural_canvas_lavaan_quality_status_summary <- function(rows) {
+  if (!nrow(rows) || !"Status" %in% names(rows)) return("Quality status: not assessed.")
+  counts <- table(factor(rows$Status, levels = c("OK", "Review", "Not assessed")))
+  paste0(
+    "Quality status: OK=", counts[["OK"]],
+    "; Review=", counts[["Review"]],
+    "; Not assessed=", counts[["Not assessed"]],
+    "."
+  )
+}
+
 structural_canvas_lavaan_quality_result_ui <- function(bundle, analysis_type = "cfa", language = statedu_initial_language()) {
   rows <- structural_canvas_lavaan_quality_rows(bundle, analysis_type)
   if (!nrow(rows)) return(NULL)
   ko <- identical(normalize_app_language(language), "ko")
+  summary <- structural_canvas_lavaan_quality_status_summary(rows)
   div(
     class = "result-section regression-result-panel structural-lavaan-quality-result",
     h4(if (ko) "SEM quality checklist" else "SEM quality checklist"),
+    tags$p(class = "structural-result-note structural-quality-status-summary", summary),
     structural_canvas_basic_html_table(rows),
+    if (any(rows$Status == "Review")) tags$p(
+      class = "structural-result-note",
+      "Rows marked Review should be resolved or explicitly justified before confirmatory reporting."
+    ),
     tags$p(
       class = "structural-result-note",
       if (ko) {
