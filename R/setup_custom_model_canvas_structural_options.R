@@ -1,5 +1,12 @@
 # Structural equation canvas analysis option controls.
 
+structural_canvas_result_coefficient_choices <- function(language = statedu_initial_language()) {
+  stats::setNames(
+    c("b_p", "b_t", "beta_t", "beta_p", "b_beta"),
+    c("B(p)", "B(t)", "beta(t)", "beta(p)", "B(Beta)")
+  )
+}
+
 structural_analysis_options_panel <- function(analysis_type = "cbsem", language = statedu_initial_language()) {
   ko <- identical(normalize_app_language(language), "ko")
         div(
@@ -8,7 +15,7 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
             type = "tabs",
             tabPanel(
               if (ko) "추정" else "Estimation",
-          selectInput(paste0(structural_analysis_prefix(analysis_type), "_estimator"), if (ko) "추정 방법" else "Estimator", choices = if (analysis_type == "plssem") c("PLS" = "PLS") else c("ML" = "ML", "MLR" = "MLR", "WLSMV" = "WLSMV")),
+          selectInput(paste0(structural_analysis_prefix(analysis_type), "_estimator"), if (ko) "추정 방법" else "Estimator", choices = if (analysis_type == "plssem") c("PLS" = "PLS", "PLSc" = "PLSc") else c("ML" = "ML", "MLR" = "MLR", "WLSMV" = "WLSMV")),
           if (analysis_type != "plssem") selectInput(paste0(structural_analysis_prefix(analysis_type), "_missing"), if (ko) "결측치 처리" else "Missing data", choices = stats::setNames(c("fiml", "listwise"), c("FIML", if (ko) "목록 삭제" else "Listwise deletion"))),
           if (analysis_type != "plssem") tags$p(class = "structural-option-note", if (ko) "순서형 지표 또는 WLSMV 추정량을 사용하면 lavaan 제약에 따라 FIML 대신 pairwise 결측 처리가 적용됩니다." else "When ordered indicators or the WLSMV estimator are used, lavaan uses pairwise missing-data handling instead of FIML."),
           if (analysis_type != "plssem") selectInput(paste0(structural_analysis_prefix(analysis_type), "_scale"), if (ko) "잠재변수 스케일" else "Latent scale", choices = stats::setNames(c("marker", "variance"), c(if (ko) "첫 지표 부하량 = 1" else "Marker loading = 1", if (ko) "잠재변수 분산 = 1" else "Latent variance = 1"))),
@@ -53,7 +60,7 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
           if (identical(analysis_type, "cfa")) numericInput(
             paste0(structural_analysis_prefix(analysis_type), "_reliability_seed"),
             if (ko) "AVE·신뢰도 bootstrap seed" else "AVE/reliability bootstrap seed",
-            value = 24680L, min = 1L, step = 1L
+            value = default_seed(), min = 1L, step = 1L
           ),
           if (identical(analysis_type, "cfa")) selectInput(
             paste0(structural_analysis_prefix(analysis_type), "_reliability_ci_method"),
@@ -69,7 +76,7 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
           if (identical(analysis_type, "cfa")) numericInput(
             paste0(structural_analysis_prefix(analysis_type), "_bollen_stine_seed"),
             if (ko) "Bollen-Stine bootstrap seed" else "Bollen-Stine bootstrap seed",
-            value = 97531L, min = 1L, step = 1L
+            value = default_seed(), min = 1L, step = 1L
           ),
           if (identical(analysis_type, "cfa")) tags$p(class = "structural-option-note", if (ko) "Bollen-Stine 검정은 결측이 없는 연속형 단일집단 ML CFA에서만 실행됩니다." else "Bollen-Stine is available only for complete continuous single-group CFA estimated with ML."),
           if (identical(analysis_type, "cfa")) checkboxInput(paste0(structural_analysis_prefix(analysis_type), "_mi_holdout_enabled"), if (ko) "MI 탐색·검증 표본분할" else "MI exploration/validation split", value = FALSE),
@@ -79,13 +86,13 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
           if (identical(analysis_type, "plssem")) selectInput(
             paste0(structural_analysis_prefix(analysis_type), "_pls_bootstrap"),
             if (ko) "PLS bootstrap CI/p" else "PLS bootstrap CI/p",
-            choices = c("Do not compute" = "0", "500 resamples" = "500", "1,000 resamples" = "1000", "2,000 resamples" = "2000"),
-            selected = "0"
+            choices = c("1,000 resamples" = "1000", "5,000 resamples" = "5000", "10,000 resamples" = "10000", "50,000 resamples" = "50000"),
+            selected = "5000"
           ),
           if (identical(analysis_type, "plssem")) numericInput(
             paste0(structural_analysis_prefix(analysis_type), "_pls_seed"),
             if (ko) "PLS bootstrap seed" else "PLS bootstrap seed",
-            value = 24680L, min = 1L, step = 1L
+            value = default_seed(), min = 1L, step = 1L
           ),
           if (identical(analysis_type, "plssem")) tags$p(class = "structural-option-note", if (ko) "PLS bootstrap은 경로계수, outer loading, outer weight의 percentile CI와 p 값을 표시합니다. 반복 수가 클수록 시간이 늘어납니다." else "PLS bootstrap reports percentile CIs and p values for paths, outer loadings, and outer weights. Larger resample counts take longer."),
             ),
@@ -106,7 +113,7 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
           if (analysis_type != "plssem") numericInput(
             paste0(structural_analysis_prefix(analysis_type), "_htmt_seed"),
             if (ko) "HTMT 부트스트랩 seed" else "HTMT bootstrap seed",
-            value = 12345L, min = 1L, step = 1L
+            value = default_seed(), min = 1L, step = 1L
           ),
           if (analysis_type != "plssem") selectInput(
             paste0(structural_analysis_prefix(analysis_type), "_htmt_ci_method"),
@@ -122,13 +129,36 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
               c(if (ko) "이론적 허용 MI + 누적 적합도" else "Theory-allowed MI with cumulative fit", if (ko) "일반 프로그램 방식(전체 MI)" else "Conventional output (all MI)")
             ),
             selected = "theory"
-          ),
-          selectInput(
-            paste0(structural_analysis_prefix(analysis_type), "_result_coefficient"),
-            if (ko) "결과 모형 계수" else "Result diagram coefficient",
-            choices = c("beta(p)" = "beta", "B(p)" = "b"),
-            selected = "beta"
           )
+            ),
+            if (analysis_type != "plssem") tabPanel(
+              if (ko) "동일방법편의" else "Common Method",
+              checkboxInput(
+                paste0(structural_analysis_prefix(analysis_type), "_common_method_enabled"),
+                if (ko) "동일방법편의 진단 실행" else "Run common method bias diagnostics",
+                value = FALSE
+              ),
+              checkboxGroupInput(
+                paste0(structural_analysis_prefix(analysis_type), "_common_method_methods"),
+                if (ko) "진단 방법" else "Common method diagnostics",
+                choices = stats::setNames(
+                  c("harman", "single_factor_cfa", "common_latent_factor"),
+                  c(
+                    if (ko) "Harman 단일요인 점검" else "Harman single-factor screen",
+                    if (ko) "단일요인 CFA 비교" else "Single-factor CFA comparison",
+                    if (ko) "공통잠재요인 점검" else "Common latent factor screen"
+                  )
+                ),
+                selected = c("harman", "single_factor_cfa")
+              ),
+              tags$p(
+                class = "structural-option-note",
+                if (ko) {
+                  "동일방법편의 진단은 증거 점검용이며, 편의가 없다는 증명이 아닙니다."
+                } else {
+                  "Common method diagnostics are reported as evidence screens, not as proof that common method bias is absent."
+                }
+              )
             )
           )
         )

@@ -8,7 +8,7 @@ structural_canvas_normalize_missing_option <- function(value) {
   value
 }
 
-structural_canvas_reliability_bootstrap <- function(syntax, data, reps = 500L, confidence = .95, seed = 12345L, estimator = "ML", missing = "fiml", std_lv = FALSE, ordered = character(0), formula_mode = "standardized", original_fit = NULL, ci_method = "percentile", progress = NULL, cancel = NULL) {
+structural_canvas_reliability_bootstrap <- function(syntax, data, reps = 500L, confidence = .95, seed = default_seed(), estimator = "ML", missing = "fiml", std_lv = FALSE, ordered = character(0), formula_mode = "standardized", original_fit = NULL, ci_method = "percentile", progress = NULL, cancel = NULL) {
   reps <- as.integer(reps)
   ci_method <- structural_canvas_bootstrap_ci_method(ci_method)
   if (!is.finite(reps) || reps < 1L) stop("Reliability bootstrap requires at least one resample.")

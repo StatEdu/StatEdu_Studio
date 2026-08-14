@@ -1344,6 +1344,65 @@
     return true;
   }
 
+  function selectedStructuralEdge(instance) {
+    var edge = instance.state.selectedEdgeId && window.StatEduModelCanvas.edges.edgeById(instance, instance.state.selectedEdgeId);
+    if (!edge || edge.kind === "covariance") return null;
+    var from = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
+    var to = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
+    if (!from || !to || from.role !== "latent" || to.role !== "latent") return null;
+    return {edge: edge, from: from, to: to};
+  }
+
+  function addContinuousModeratorBlock(instance) {
+    if (["cbsem", "sem", "plssem"].indexOf(instance.analysisType) < 0) return false;
+    var target = selectedStructuralEdge(instance);
+    var names = selectedVariableNames(instance).filter(function(name) {
+      var variable = variableByName(instance, name);
+      var measurement = String(variable && variable.measurement || "").toLowerCase();
+      var continuous = !measurement || ["scale", "continuous", "numeric"].indexOf(measurement) >= 0;
+      return variable && continuous && !window.StatEduModelCanvas.nodes.variableUsed(instance, name);
+    });
+    if (!target || !names.length) return false;
+    window.StatEduModelCanvas.state.pushHistory(instance);
+    var style = instance.state.style || {};
+    var fromCenter = window.StatEduModelCanvas.layout.nodeCenter(target.from, style);
+    var toCenter = window.StatEduModelCanvas.layout.nodeCenter(target.to, style);
+    var baseX = (fromCenter.x + toCenter.x) / 2 - 45;
+    var baseY = Math.min(fromCenter.y, toCenter.y) - 145;
+    var selectedIds = [];
+    var errorBase = nextErrorSequence(instance) - 1;
+    names.forEach(function(name, index) {
+      var variable = variableByName(instance, name);
+      if (!variable) return;
+      var latent = window.StatEduModelCanvas.nodes.createLatentNode(instance, baseX + index * 150, baseY);
+      latent.name = String(variable.name || "moderator") + "_latent";
+      latent.dataLabel = variable.dataLabel || variable.name;
+      latent.canvasLabel = variable.dataLabel || variable.name;
+      latent.measurementPlacement = "top";
+      latent.measurementMode = "reflective";
+      latent.constructType = "commonFactor";
+      var indicator = window.StatEduModelCanvas.nodes.createIndicatorNode(instance, variable, latent.x, latent.y - 80);
+      var errorNode = window.StatEduModelCanvas.nodes.createErrorNode(instance, indicator, indicator.x, indicator.y - 46, errorBase + index + 1);
+      instance.state.nodes.push(latent, indicator, errorNode);
+      window.StatEduModelCanvas.edges.createEdge(instance, latent.id, indicator.id);
+      window.StatEduModelCanvas.edges.createEdge(instance, errorNode.id, indicator.id);
+      window.StatEduModelCanvas.edges.createModeration(instance, latent.id, target.edge.id, 50);
+      selectedIds.push(latent.id, indicator.id);
+    });
+    if (!selectedIds.length) {
+      instance.state.history.pop();
+      return false;
+    }
+    reflowMeasurementModel(instance);
+    instance.state.selectedNodeIds = selectedIds;
+    instance.state.selectedNodeId = selectedIds[0];
+    instance.state.selectedEdgeId = null;
+    instance.state.selectedModerationId = null;
+    render(instance);
+    window.StatEduModelCanvas.bridge.sendState(instance);
+    return true;
+  }
+
   function copySelection(instance) {
     var nodes = selectedNodes(instance);
     if (!nodes.length) return false;
@@ -1591,6 +1650,7 @@
     reflowMeasurements: reflowMeasurementModel,
     setMeasurementPlacement: setMeasurementPlacement,
     setMeasurementMode: setMeasurementMode,
+    addContinuousModeratorBlock: addContinuousModeratorBlock,
     selectedLatents: selectedLatentNodes,
     detachIndicators: detachSelectedIndicators,
     moveIndicator: moveSelectedIndicator,

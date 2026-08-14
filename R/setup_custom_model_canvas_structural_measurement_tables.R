@@ -1,7 +1,7 @@
 # Structural equation canvas measurement loading result tables.
 
 structural_canvas_measurement_result_table <- function(kind, fit, ko, fmt, display_name) {
-  if (!kind %in% c("measurement", "measurement_diagnostics")) return(NULL)
+  if (!kind %in% c("measurement", "measurement_ci", "measurement_diagnostics")) return(NULL)
 
   raw <- lavaan::parameterEstimates(fit)
   parameter_table <- lavaan::parameterTable(fit)
@@ -78,16 +78,23 @@ structural_canvas_measurement_result_table <- function(kind, fit, ko, fmt, displ
   names(table)[names(table) == "R2 95% CI lower"] <- "R² 95% CI lower"
   names(table)[names(table) == "R2 95% CI upper"] <- "R² 95% CI upper"
 
+  if (identical(kind, "measurement_ci")) {
+    return(table[, c(
+      "Latent", "Indicator",
+      "B 95% CI lower", "B 95% CI upper",
+      "beta 95% CI lower", "beta 95% CI upper",
+      "R² 95% CI lower", "R² 95% CI upper"
+    ), drop = FALSE])
+  }
+
   if (identical(kind, "measurement_diagnostics")) {
     return(table[, c(
-      "Latent", "Indicator", "beta 95% CI lower", "beta 95% CI upper",
-      "R² 95% CI lower", "R² 95% CI upper",
+      "Latent", "Indicator",
       "Std. residual variance", "Cross-loading", "Guidance"
     ), drop = FALSE])
   }
 
   table[, c(
-    "Latent", "Indicator", "B", "B 95% CI lower", "B 95% CI upper",
-    "SE", "beta", "R²", "z", "p"
+    "Latent", "Indicator", "B", "SE", "beta", "z", "p", "R²"
   ), drop = FALSE]
 }

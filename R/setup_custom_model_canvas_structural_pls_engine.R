@@ -106,7 +106,7 @@ structural_canvas_pls_predictive_relevance <- function(fit, structural_paths, fo
   )
 }
 
-structural_canvas_run_pls_analysis <- function(snapshot, data, latents, edges) {
+structural_canvas_run_pls_analysis <- function(snapshot, data, latents, edges, estimator = "PLS") {
   latent_indicators <- function(latent) {
     vapply(Filter(function(edge) {
       from <- structural_canvas_node(snapshot, edge$from)
@@ -166,14 +166,20 @@ structural_canvas_run_pls_analysis <- function(snapshot, data, latents, edges) {
     operator <- if (identical(latent$measurementMode %||% "reflective", "formative")) "<~" else "=~"
     paste(latent_name, operator, paste(indicators, collapse = " + "))
   }, character(1))
+  estimator <- toupper(as.character(estimator %||% "PLS"))
+  if (!estimator %in% c("PLS", "PLSC")) estimator <- "PLS"
   fit <- seminr::estimate_pls(
     data = data,
     measurement_model = do.call(seminr::constructs, constructs),
     structural_model = if (length(path_specs)) do.call(seminr::relationships, path_specs) else NULL
   )
+  if (identical(estimator, "PLSC")) {
+    fit <- seminr::PLSc(fit)
+  }
   predictive_relevance <- structural_canvas_pls_predictive_relevance(fit, structural_paths, folds = 7L)
   list(
     fit = fit,
+    estimator = if (identical(estimator, "PLSC")) "PLSc" else "PLS",
     syntax = paste(c(measurement_lines, structural_paths), collapse = "\n"),
     converged = TRUE,
     n = nrow(data),
@@ -188,26 +194,118 @@ structural_canvas_run_pls_analysis <- function(snapshot, data, latents, edges) {
   )
 }
 
+structural_canvas_run_plsc_bootstrap <- function(seminr_model, nboot = 5000L, seed = default_seed()) {
+  nboot <- suppressWarnings(as.integer(nboot %||% 5000L))
+  seed <- suppressWarnings(as.integer(seed %||% default_seed()))
+  if (!is.finite(nboot) || nboot < 1L) nboot <- 5000L
+  if (!is.finite(seed) || seed < 1L) seed <- default_seed()
+  d <- seminr_model$rawdata
+  measurement_model <- seminr_model$measurement_model
+  structural_model <- seminr_model$smMatrix
+  inner_weights <- seminr_model$inner_weights
+  original_htmt <- seminr:::HTMT(seminr_model)
+  original_total <- seminr:::total_effects(seminr_model$path_coef)
+  boot_vec_len <- length(seminr_model$path_coef) + length(seminr_model$outer_loadings) +
+    length(seminr_model$outer_weights) + length(original_htmt) + length(original_total)
+  boot_values <- lapply(seq_len(nboot), function(index) {
+    set.seed(seed + index)
+    tryCatch(suppressWarnings({
+      sampled <- d[sample.int(nrow(d), replace = TRUE), , drop = FALSE]
+      boot_model <- seminr::estimate_pls(
+        data = sampled,
+        measurement_model = measurement_model,
+        structural_model = structural_model,
+        inner_weights = inner_weights,
+        assess_syntax = FALSE
+      )
+      boot_model <- seminr::PLSc(boot_model)
+      c(
+        c(boot_model$path_coef),
+        c(boot_model$outer_loadings),
+        c(boot_model$outer_weights),
+        c(seminr:::HTMT(boot_model)),
+        c(seminr:::total_effects(boot_model$path_coef))
+      )
+    }), error = function(error) rep(NA_real_, boot_vec_len))
+  })
+  bootmatrix <- do.call(cbind, boot_values)
+  valid <- !is.na(bootmatrix[1L, ])
+  bootmatrix <- bootmatrix[, valid, drop = FALSE]
+  valid_n <- ncol(bootmatrix)
+  if (!valid_n) return(NULL)
+
+  path_rows <- nrow(seminr_model$path_coef)
+  path_cols <- ncol(seminr_model$path_coef)
+  mm_rows <- nrow(seminr_model$outer_loadings)
+  mm_cols <- ncol(seminr_model$outer_loadings)
+
+  start <- 1L
+  end <- path_rows * path_cols
+  boot_paths <- array(bootmatrix[start:end, , drop = FALSE], dim = c(path_rows, path_cols, valid_n), dimnames = list(rownames(seminr_model$path_coef), colnames(seminr_model$path_coef), seq_len(valid_n)))
+
+  start <- end + 1L
+  end <- start + (mm_rows * mm_cols) - 1L
+  boot_loadings <- array(bootmatrix[start:end, , drop = FALSE], dim = c(mm_rows, mm_cols, valid_n), dimnames = list(rownames(seminr_model$outer_loadings), colnames(seminr_model$outer_loadings), seq_len(valid_n)))
+
+  start <- end + 1L
+  end <- start + (mm_rows * mm_cols) - 1L
+  boot_weights <- array(bootmatrix[start:end, , drop = FALSE], dim = c(mm_rows, mm_cols, valid_n), dimnames = list(rownames(seminr_model$outer_weights), colnames(seminr_model$outer_weights), seq_len(valid_n)))
+
+  htmt_rows <- nrow(original_htmt)
+  htmt_cols <- ncol(original_htmt)
+  start <- end + 1L
+  end <- start + (htmt_rows * htmt_cols) - 1L
+  boot_htmt <- array(bootmatrix[start:end, , drop = FALSE], dim = c(htmt_rows, htmt_cols, valid_n), dimnames = list(rownames(original_htmt), colnames(original_htmt), seq_len(valid_n)))
+
+  start <- end + 1L
+  end <- start + (path_rows * path_cols) - 1L
+  boot_total_paths <- array(bootmatrix[start:end, , drop = FALSE], dim = c(path_rows, path_cols, valid_n), dimnames = list(rownames(original_total), colnames(original_total), seq_len(valid_n)))
+
+  boot_summary <- list(
+    nboot = valid_n,
+    requested_nboot = nboot,
+    bootstrapped_paths = seminr:::parse_boot_array(seminr_model$path_coef, boot_paths, alpha = .05),
+    bootstrapped_weights = seminr:::parse_boot_array(seminr_model$outer_weights, boot_weights, alpha = .05),
+    bootstrapped_loadings = seminr:::parse_boot_array(seminr_model$outer_loadings, boot_loadings, alpha = .05),
+    bootstrapped_HTMT = seminr:::parse_boot_array_htmt(original_htmt, boot_htmt, alpha = .05),
+    bootstrapped_total_paths = seminr:::parse_boot_array(original_total, boot_total_paths, alpha = .05),
+    bootstrapped_total_indirect_paths = seminr:::parse_boot_array_total_indirect(
+      original_matrix = seminr:::total_indirect_effects(seminr_model$path_coef),
+      tp = boot_total_paths,
+      rp = boot_paths,
+      alpha = .05
+    )
+  )
+  class(boot_summary) <- "summary.boot_seminr_model"
+  boot_summary
+}
+
 structural_canvas_run_pls_bootstrap <- function(analysis_type, pls_bootstrap, result, pls_seed) {
   pls_bootstrap <- suppressWarnings(as.integer(pls_bootstrap %||% 0L))
   if (!identical(analysis_type, "plssem") || pls_bootstrap <= 0L) return(NULL)
   if (is.null(result$fit) || !inherits(result$fit, "pls_model")) return(NULL)
+  use_plsc <- identical(toupper(as.character(result$estimator %||% "PLS")), "PLSC")
   structural_canvas_with_progress(message = "Estimating PLS-SEM bootstrap intervals", value = 0, {
     structural_canvas_set_progress(
       value = .05,
-      detail = paste0(pls_bootstrap, " seminr bootstrap resamples")
+      detail = paste0(pls_bootstrap, " seminr bootstrap resamples", if (use_plsc) " with PLSc correction" else "")
     )
-    boot <- seminr::bootstrap_model(
-      seminr_model = result$fit,
-      nboot = pls_bootstrap,
-      cores = 1,
-      seed = as.integer(pls_seed %||% 24680L)
-    )
+    boot <- if (use_plsc) {
+      structural_canvas_run_plsc_bootstrap(result$fit, pls_bootstrap, pls_seed)
+    } else {
+      seminr::bootstrap_model(
+        seminr_model = result$fit,
+        nboot = pls_bootstrap,
+        cores = 1,
+        seed = as.integer(pls_seed %||% default_seed())
+      )
+    }
     structural_canvas_set_progress(
       value = .90,
       detail = "Preparing PLS-SEM bootstrap summaries"
     )
-    value <- summary(boot)
+    if (is.null(boot)) return(NULL)
+    value <- if (inherits(boot, "summary.boot_seminr_model")) boot else summary(boot)
     structural_canvas_set_progress(value = 1, detail = "PLS-SEM bootstrap complete")
     value
   })

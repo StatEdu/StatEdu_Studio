@@ -42,17 +42,17 @@ structural_canvas_pls_ten_times_margin <- function(bundle) {
 structural_canvas_pls_approximate_fit_indices <- function(bundle, summary_fit = NULL) {
   fit <- bundle$fit %||% NULL
   if (is.null(fit) || is.null(fit$data) || is.null(fit$construct_scores)) {
-    return(c(srmr = NA_real_, d_uls = NA_real_, nfi = NA_real_))
+    return(c(srmr = NA_real_, d_g = NA_real_, d_uls = NA_real_, nfi = NA_real_))
   }
   snapshot <- bundle$snapshot %||% list()
   latents <- Filter(function(node) identical(node$role, "latent"), snapshot$nodes %||% list())
   if (length(latents) && any(vapply(latents, function(node) identical(node$measurementMode %||% "reflective", "formative"), logical(1)))) {
-    return(c(srmr = NA_real_, d_uls = NA_real_, nfi = NA_real_))
+    return(c(srmr = NA_real_, d_g = NA_real_, d_uls = NA_real_, nfi = NA_real_))
   }
   summary_fit <- summary_fit %||% tryCatch(summary(fit), error = function(error) NULL)
-  if (is.null(summary_fit)) return(c(srmr = NA_real_, d_uls = NA_real_, nfi = NA_real_))
+  if (is.null(summary_fit)) return(c(srmr = NA_real_, d_g = NA_real_, d_uls = NA_real_, nfi = NA_real_))
   mm <- as.data.frame(fit$mmMatrix %||% data.frame(), stringsAsFactors = FALSE)
-  if (!all(c("construct", "measurement") %in% names(mm))) return(c(srmr = NA_real_, d_uls = NA_real_, nfi = NA_real_))
+  if (!all(c("construct", "measurement") %in% names(mm))) return(c(srmr = NA_real_, d_g = NA_real_, d_uls = NA_real_, nfi = NA_real_))
   loadings <- suppressWarnings(as.matrix(summary_fit$loadings %||% matrix(numeric(0), 0L, 0L)))
   scores <- suppressWarnings(as.matrix(fit$construct_scores))
   indicators <- intersect(as.character(mm$measurement), rownames(loadings))
@@ -61,10 +61,10 @@ structural_canvas_pls_approximate_fit_indices <- function(bundle, summary_fit = 
   constructs <- intersect(constructs, colnames(scores))
   mm <- mm[mm$measurement %in% indicators & mm$construct %in% constructs, , drop = FALSE]
   indicators <- unique(as.character(mm$measurement))
-  if (length(indicators) < 2L || nrow(mm) < 2L) return(c(srmr = NA_real_, d_uls = NA_real_, nfi = NA_real_))
+  if (length(indicators) < 2L || nrow(mm) < 2L) return(c(srmr = NA_real_, d_g = NA_real_, d_uls = NA_real_, nfi = NA_real_))
   observed <- tryCatch(stats::cor(fit$data[indicators], use = "pairwise.complete.obs"), error = function(error) NULL)
   construct_cor <- tryCatch(stats::cor(scores[, constructs, drop = FALSE], use = "pairwise.complete.obs"), error = function(error) NULL)
-  if (is.null(observed) || is.null(construct_cor)) return(c(srmr = NA_real_, d_uls = NA_real_, nfi = NA_real_))
+  if (is.null(observed) || is.null(construct_cor)) return(c(srmr = NA_real_, d_g = NA_real_, d_uls = NA_real_, nfi = NA_real_))
   implied <- diag(1, length(indicators), length(indicators))
   dimnames(implied) <- list(indicators, indicators)
   construct_for <- stats::setNames(as.character(mm$construct), as.character(mm$measurement))
@@ -86,13 +86,34 @@ structural_canvas_pls_approximate_fit_indices <- function(bundle, summary_fit = 
   residuals <- residuals[is.finite(residuals)]
   null_residuals <- suppressWarnings(as.numeric(observed[lower]))
   null_residuals <- null_residuals[is.finite(null_residuals)]
-  if (!length(residuals)) return(c(srmr = NA_real_, d_uls = NA_real_, nfi = NA_real_))
+  if (!length(residuals)) return(c(srmr = NA_real_, d_g = NA_real_, d_uls = NA_real_, nfi = NA_real_))
   d_uls <- sum(residuals^2, na.rm = TRUE)
   d_null <- sum(null_residuals^2, na.rm = TRUE)
+  d_g <- tryCatch({
+    observed_pd <- observed[indicators, indicators, drop = FALSE]
+    implied_pd <- implied[indicators, indicators, drop = FALSE]
+    eigen_values <- Re(eigen(solve(implied_pd, observed_pd), only.values = TRUE)$values)
+    if (any(!is.finite(eigen_values) | eigen_values <= 0)) NA_real_ else sqrt(sum(log(eigen_values)^2))
+  }, error = function(error) NA_real_)
   c(
     srmr = sqrt(mean(residuals^2, na.rm = TRUE)),
+    d_g = d_g,
     d_uls = d_uls,
     nfi = if (is.finite(d_null) && d_null > 0) 1 - d_uls / d_null else NA_real_
+  )
+}
+
+structural_canvas_pls_fit_diagnostics_table <- function(bundle) {
+  if (is.null(bundle) || is.null(bundle$fit) || !inherits(bundle$fit, "pls_model")) return(data.frame())
+  summary_fit <- tryCatch(summary(bundle$fit), error = function(error) NULL)
+  values <- structural_canvas_pls_approximate_fit_indices(bundle, summary_fit)
+  estimator <- bundle$diagnostics$estimator %||% bundle$estimator %||% "PLS"
+  data.frame(
+    Estimator = estimator,
+    SRMR = structural_canvas_pls_quality_number(values[["srmr"]]),
+    d_G = structural_canvas_pls_quality_number(values[["d_g"]]),
+    d_ULS = structural_canvas_pls_quality_number(values[["d_uls"]]),
+    check.names = FALSE
   )
 }
 
@@ -104,6 +125,7 @@ structural_canvas_pls_quality_status <- function(item, value) {
   if (identical(item, "Final weight difference")) return(if (is.finite(numeric_value) && numeric_value <= 1e-6) "OK" else "Review")
   if (identical(item, "Missing-data method")) return("OK")
   if (identical(item, "Approx PLS SRMR")) return(if (is.finite(numeric_value) && numeric_value <= .10) "OK" else "Review")
+  if (identical(item, "Approx d_G")) return(if (is.finite(numeric_value)) "OK" else "Not assessed")
   if (identical(item, "Approx d_ULS")) return(if (is.finite(numeric_value)) "OK" else "Not assessed")
   if (identical(item, "Approx NFI")) return(if (is.finite(numeric_value) && numeric_value >= .90) "OK" else "Review")
   if (identical(item, "10-times rule margin")) return(if (is.finite(numeric_value) && numeric_value >= 1) "OK" else "Review")
@@ -164,6 +186,7 @@ structural_canvas_pls_quality_rows <- function(bundle) {
     "Final weight difference",
     "Missing-data method",
     "Approx PLS SRMR",
+    "Approx d_G",
     "Approx d_ULS",
     "Approx NFI",
     "10-times rule margin",
@@ -184,6 +207,7 @@ structural_canvas_pls_quality_rows <- function(bundle) {
     structural_canvas_pls_quality_number(weight_diff),
     as.character(missing),
     structural_canvas_pls_quality_number(approximate_fit[["srmr"]]),
+    structural_canvas_pls_quality_number(approximate_fit[["d_g"]]),
     structural_canvas_pls_quality_number(approximate_fit[["d_uls"]]),
     structural_canvas_pls_quality_number(approximate_fit[["nfi"]]),
     structural_canvas_pls_quality_number(ten_times_margin),
@@ -208,6 +232,7 @@ structural_canvas_pls_quality_rows <- function(bundle) {
       "Smaller values indicate stable outer-weight convergence.",
       "Report this because PLS does not use lavaan FIML/pairwise options.",
       "Approximate reflective-measurement SRMR from observed versus implied indicator correlations.",
+      "Approximate geodesic discrepancy from observed versus implied indicator correlations; no universal cutoff.",
       "Approximate squared Euclidean discrepancy for reflective indicator correlations; no universal cutoff.",
       "Approximate normed fit index against an independence correlation baseline.",
       "Descriptive minimum-sample screen using 10 times the larger of max indicators or max antecedents.",
@@ -349,6 +374,38 @@ output[[paste0(prefix, "_result_fit")]] <- renderUI({
   structural_canvas_fit_table_result_ui(fit_result(), result_table("fit"))
 })
 if (identical(analysis_type, "plssem")) {
+  output[[paste0(prefix, "_result_pls_fit_diagnostics")]] <- renderUI({
+    table <- structural_canvas_pls_fit_diagnostics_table(fit_result())
+    if (!is.data.frame(table) || !nrow(table)) return(NULL)
+    ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
+    tagList(
+      tags$h5(if (ko) "PLS/PLSc 모형 적합도 진단" else "PLS/PLSc model fit diagnostics"),
+      structural_canvas_basic_html_table(table, class = "table table-striped table-bordered structural-pls-fit-diagnostics-table"),
+      tags$p(class = "structural-result-note", if (ko) "SRMR, d_G, d_ULS는 반영 측정모형의 관찰 지표 상관과 모형 함의 지표 상관 간 근사 불일치 지표입니다." else "SRMR, d_G, and d_ULS are approximate discrepancy diagnostics between observed and model-implied indicator correlations for reflective measurement models.")
+    )
+  })
+  output[[paste0(prefix, "_result_fit_guidance")]] <- renderUI({
+    table <- result_table("fit_guide")
+    if (!is.data.frame(table) || !nrow(table)) return(NULL)
+    ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
+    tagList(
+      tags$h5(if (ko) "표 2 보조: 구조효과 가이드 지표" else "Supplementary Table 2: Structural effect guide indices"),
+      structural_canvas_basic_html_table(table, class = "table table-striped table-bordered structural-pls-fit-guide-table"),
+      tags$p(class = "structural-result-note", if (ko) "f²와 q² 크기 등급, inner VIF는 경로계수의 해석을 돕는 보조 지표입니다. 본표의 경로계수와 별도로 검토하십시오." else "f2/q2 size labels and inner VIF are supplementary diagnostics for interpreting structural paths.")
+    )
+  })
+  output[[paste0(prefix, "_result_fit_bootstrap")]] <- renderUI({
+    table <- result_table("fit_bootstrap")
+    if (!is.data.frame(table) || !nrow(table)) return(NULL)
+    value_columns <- setdiff(names(table), c("Effect", "Outcome", "Predictor"))
+    if (!length(value_columns) || !any(nzchar(as.character(unlist(table[value_columns], use.names = FALSE))))) return(NULL)
+    ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
+    tagList(
+      tags$h5(if (ko) "표 2 보조: PLS 부트스트랩 경로 추론" else "Supplementary Table 2: PLS bootstrap path inference"),
+      structural_canvas_basic_html_table(table, class = "table table-striped table-bordered structural-pls-fit-bootstrap-table"),
+      tags$p(class = "structural-result-note", if (ko) "직접경로, 간접효과, 총효과의 percentile bootstrap CI, t, p 값입니다. seminr가 반환한 항목만 표시됩니다." else "Percentile bootstrap CI, t, and p values are shown when seminr returns them.")
+    )
+  })
   output[[paste0(prefix, "_result_pls_quality")]] <- renderUI({
     structural_canvas_pls_quality_result_ui(fit_result(), statedu_current_language(app_language_fn))
   })

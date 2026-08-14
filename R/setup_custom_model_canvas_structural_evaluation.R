@@ -1,7 +1,10 @@
 structural_canvas_fit_admissibility <- function(fit) {
   converged <- isTRUE(lavaan::lavInspect(fit, "converged"))
   post_check <- isTRUE(lavaan::lavInspect(fit, "post.check"))
-  model_df <- suppressWarnings(as.numeric(lavaan::fitMeasures(fit, "df")[[1L]]))
+  model_df <- tryCatch(
+    suppressWarnings(as.numeric(lavaan::fitMeasures(fit, "df")[[1L]])),
+    error = function(error) NA_real_
+  )
   as_matrix_list <- function(value) {
     if (is.list(value) && !is.matrix(value)) lapply(value, as.matrix) else list(as.matrix(value))
   }
@@ -82,7 +85,10 @@ structural_canvas_fit_admissibility <- function(fit) {
 }
 
 structural_canvas_fit_measures <- function(fit, estimator = "ML", ci_level = .90, preferred_keys = NULL) {
-  measures <- suppressWarnings(lavaan::fitMeasures(fit, fm_args = list(rmsea.ci.level = ci_level)))
+  measures <- tryCatch(
+    suppressWarnings(lavaan::fitMeasures(fit, fm_args = list(rmsea.ci.level = ci_level))),
+    error = function(error) numeric(0)
+  )
   value <- function(key) if (key %in% names(measures)) unname(measures[[key]]) else NA_real_
   choose <- function(keys) {
     for (key in keys) {

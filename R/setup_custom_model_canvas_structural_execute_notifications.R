@@ -5,10 +5,89 @@ structural_canvas_show_notification <- function(message, type = "message", durat
   invisible(TRUE)
 }
 
-structural_canvas_notify_identification_warnings <- function(identification_warnings) {
+structural_canvas_error_message <- function(error, language = NULL) {
+  message <- if (inherits(error, "condition")) conditionMessage(error) else as.character(error %||% "")
+  ko <- identical(normalize_app_language(language), "ko")
+  if (!ko) return(message)
+  if (grepl("modindices", message, fixed = TRUE) || grepl("modification indices", message, ignore.case = TRUE)) {
+    if (grepl("information matrix is singular", message, ignore.case = TRUE)) {
+      return("수정지수(MI)를 계산할 수 없습니다. 정보행렬이 특이(singular)하여 모형이 식별 경계에 있거나 추정이 불안정합니다. MI 후보는 표시하지 않습니다.")
+    }
+    return("수정지수(MI)를 계산할 수 없습니다. 현재 적합 모형에서 MI 후보를 산출하지 못했습니다.")
+  }
+  if (grepl("information matrix is singular", message, ignore.case = TRUE)) {
+    return("정보행렬이 특이(singular)하여 표준오차나 수정지수를 안정적으로 계산할 수 없습니다. 모형 식별성, 공분산, 고차요인 구조를 확인하십시오.")
+  }
+  if (grepl("lavaan", message, fixed = TRUE)) {
+    return(paste0("lavaan 추정 오류: ", message))
+  }
+  message
+}
+
+structural_canvas_identification_issue_message <- function(code, message, language = NULL) {
+  if (!identical(normalize_app_language(language), "ko")) return(as.character(message %||% ""))
+  switch(
+    as.character(code %||% ""),
+    unmeasured_latent = "관측지표나 하위요인이 없는 잠재변수입니다.",
+    single_indicator = "단일지표 요인은 오차경로의 잔차분산을 외부 근거에 따라 고정해야 식별됩니다.",
+    single_indicator_constrained = "단일지표 요인은 고정 잔차분산으로 식별되었습니다. 이 제약의 외부 신뢰도 근거를 기록하십시오.",
+    two_indicators = "두 지표 요인은 안정적인 식별을 위해 추가 제약이나 구조정보가 필요할 수 있습니다.",
+    few_lower_order_factors = "현재 자동 식별 방식에서는 고차요인마다 하위요인이 최소 3개 필요합니다.",
+    mixed_measurement_level = "이 요인은 관측지표와 하위요인을 모두 가지고 있습니다. 혼합 측정 지정이 의도한 것인지 확인하십시오.",
+    multiple_higher_order_parents = "이 하위요인은 둘 이상의 고차요인에 적재되어 있습니다. 표준 고차요인 신뢰도 요약이 적용되지 않을 수 있습니다.",
+    cross_loading = as.character(message %||% ""),
+    invalid_fixed_residual = "고정 잔차분산은 유한한 0 이상의 값이어야 합니다.",
+    negative_fixed_residual = "잔차분산은 음수로 고정할 수 없습니다.",
+    boundary_fixed_residual = "0으로 고정한 잔차분산은 완전한 무잔차 측정을 뜻하는 경계 제약입니다. 강한 실질적 근거를 제시하십시오.",
+    duplicate_path = "동일한 양끝점 사이에 중복된 방향 경로가 있습니다.",
+    as.character(message %||% "")
+  )
+}
+
+structural_canvas_identification_issue_text <- function(issues, language = NULL) {
+  if (!nrow(issues)) return("")
+  ko <- identical(normalize_app_language(language), "ko")
+  prefix <- if (ko) "모형 식별성 점검 실패: " else "Model identification check failed: "
+  paste0(
+    prefix,
+    paste(
+      paste0(
+        issues$Element,
+        " — ",
+        mapply(
+          structural_canvas_identification_issue_message,
+          issues$Code,
+          issues$Message,
+          MoreArgs = list(language = language),
+          USE.NAMES = FALSE
+        )
+      ),
+      collapse = "; "
+    )
+  )
+}
+
+structural_canvas_notify_identification_warnings <- function(identification_warnings, language = NULL) {
   if (nrow(identification_warnings)) {
+    ko <- identical(normalize_app_language(language), "ko")
     structural_canvas_show_notification(
-      paste0("Identification warning: ", paste(paste0(identification_warnings$Element, " - ", identification_warnings$Message), collapse = "; ")),
+      paste0(
+        if (ko) "식별성 경고: " else "Identification warning: ",
+        paste(
+          paste0(
+            identification_warnings$Element,
+            " - ",
+            mapply(
+              structural_canvas_identification_issue_message,
+              identification_warnings$Code,
+              identification_warnings$Message,
+              MoreArgs = list(language = language),
+              USE.NAMES = FALSE
+            )
+          ),
+          collapse = "; "
+        )
+      ),
       type = "warning",
       duration = 12
     )

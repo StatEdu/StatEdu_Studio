@@ -2,6 +2,8 @@ source(file.path("scripts", "validate_cfa_common.R"), encoding = "UTF-8")
 
 stopifnot(requireNamespace("lavaan", quietly = TRUE))
 edge_source <- paste(readLines(file.path("www", "model-canvas", "edges.js"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+state_source <- paste(readLines(file.path("www", "model-canvas", "state.js"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+dialog_source <- paste(readLines(file.path("www", "model-canvas", "dialogs.js"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 stopifnot(
   grepl("ARROW_MARKER_CLEARANCE", edge_source, fixed = TRUE),
   grepl("var ARROW_MARKER_CLEARANCE = 0;", edge_source, fixed = TRUE),
@@ -10,7 +12,12 @@ stopifnot(
   grepl("to: pointShiftedToward(endpoints.to, endpoints.from, ARROW_MARKER_CLEARANCE)", edge_source, fixed = TRUE),
   grepl("return visibleArrowEndpoints(edge, {\n        from: radialNodeAnchor(instance, from, to)", edge_source, fixed = TRUE),
   grepl("return visibleArrowEndpoints(edge, endpoints);", edge_source, fixed = TRUE),
-  !grepl("edge.directAnchors) return endpoints", edge_source, fixed = TRUE)
+  !grepl("edge.directAnchors) return endpoints", edge_source, fixed = TRUE),
+  grepl('arrowHead: "triangle"', state_source, fixed = TRUE),
+  grepl('sourceVersion < 5 && state.style.arrowHead === "line"', state_source, fixed = TRUE),
+  grepl('current.arrowHead || "triangle"', dialog_source, fixed = TRUE),
+  grepl("function measurementGroupUsesSharedStart", edge_source, fixed = TRUE),
+  grepl("if (!measurementGroupUsesSharedStart(instance, bundle.latent, group)) return;", edge_source, fixed = TRUE)
 )
 stopifnot(
   structural_canvas_minimum_eigenvalue(diag(2L)) > 0,
@@ -258,6 +265,12 @@ information_criteria_noncomparable <- structural_canvas_information_criteria(lis
   modified_from_baseline = TRUE, comparison_label = "Different-data model"
 ))
 mlr_fit_measures <- lavaan::fitMeasures(two_factor_mlr_fit)
+additional_fit_mlr <- structural_canvas_additional_fit_indices_table(
+  list(two_factor_mlr_fit),
+  "Research model",
+  structural_canvas_common_fit_measures(list(two_factor_mlr_fit), "MLR", .90)
+)
+additional_fit_wide <- structural_canvas_additional_fit_indices_wide_tables(additional_fit_mlr)
 stopifnot(
   identical(rmsea_tests_ml$Source[[1L]], "rmsea"),
   identical(rmsea_tests_mlr$Source[[1L]], "rmsea.robust"),
@@ -273,7 +286,10 @@ stopifnot(
   all(information_criteria_comparison$`Delta BIC` == 0),
   all(information_criteria_noncomparable$`Comparison status` == "Not comparable; delta suppressed"),
   all(is.na(information_criteria_noncomparable$`Delta AIC`)),
-  all(is.na(information_criteria_noncomparable$`Delta BIC`))
+  all(is.na(information_criteria_noncomparable$`Delta BIC`)),
+  length(additional_fit_wide) > 0L,
+  any(vapply(additional_fit_wide, function(table) ncol(table) > 2L, logical(1))),
+  !all(names(additional_fit_wide) == "other")
 )
 latent_correlation_ci <- structural_canvas_latent_correlation_intervals(two_factor_fit)
 stopifnot(

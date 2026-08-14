@@ -58,9 +58,17 @@ structural_canvas_has_parameter_modifier <- function(edge) {
     nzchar(trimws(as.character(edge$equalityLabel %||% "")))
 }
 
+structural_canvas_result_coefficient_mode <- function(coefficient = "beta_p") {
+  coefficient <- as.character(coefficient %||% "beta_p")[[1]]
+  if (identical(coefficient, "beta")) return("beta_p")
+  if (identical(coefficient, "b")) return("b_p")
+  if (coefficient %in% c("b_p", "b_t", "beta_t", "beta_p", "b_beta")) coefficient else "beta_p"
+}
+
 structural_canvas_result_snapshot <- function(snapshot, fit, coefficient = "beta") {
   snapshot <- snapshot %||% list()
   snapshot$nonce <- NULL
+  coefficient <- structural_canvas_result_coefficient_mode(coefficient)
   if (inherits(fit, "pls_model")) {
     summary_fit <- summary(fit)
     loadings <- as.matrix(summary_fit$loadings %||% matrix(numeric(0), 0L, 0L))
@@ -111,22 +119,27 @@ structural_canvas_result_snapshot <- function(snapshot, fit, coefficient = "beta
   if (!inherits(fit, "lavaan")) return(snapshot)
 
   parameters <- lavaan::parameterEstimates(fit, standardized = TRUE)
-  estimate_column <- if (identical(coefficient, "b")) "est" else "std.all"
   result_info <- function(lhs, op, rhs) {
     row <- parameters[parameters$lhs == lhs & parameters$op == op & parameters$rhs == rhs, , drop = FALSE]
     if (!nrow(row) && identical(op, "~~")) {
       row <- parameters[parameters$lhs == rhs & parameters$op == op & parameters$rhs == lhs, , drop = FALSE]
     }
     if (!nrow(row)) return(list(label = "", p = NA_real_, matched = FALSE))
-    value <- suppressWarnings(as.numeric(row[[estimate_column]][[1L]]))
+    b_value <- suppressWarnings(as.numeric(row$est[[1L]]))
+    beta_value <- suppressWarnings(as.numeric(row$std.all[[1L]]))
     p_value <- suppressWarnings(as.numeric(row$pvalue[[1L]]))
+    t_value <- suppressWarnings(as.numeric(row$z[[1L]]))
+    value <- if (coefficient %in% c("b_p", "b_t", "b_beta")) b_value else beta_value
     if (!is.finite(value)) return(list(label = "", p = p_value, matched = FALSE))
+    label <- switch(
+      coefficient,
+      b_t = if (is.finite(t_value)) sprintf("%s(%s)", format_decimal3(value), format_decimal3(t_value)) else format_decimal3(value),
+      beta_t = if (is.finite(t_value)) sprintf("%s(%s)", format_decimal3(value), format_decimal3(t_value)) else format_decimal3(value),
+      b_beta = if (is.finite(beta_value)) sprintf("%s(%s)", format_decimal3(value), format_decimal3(beta_value)) else format_decimal3(value),
+      if (is.finite(p_value)) sprintf("%s(%s)", format_decimal3(value), format_p(p_value)) else format_decimal3(value)
+    )
     list(
-      label = if (is.finite(p_value)) {
-        sprintf("%s(%s)", format_decimal3(value), format_p(p_value))
-      } else {
-        format_decimal3(value)
-      },
+      label = label,
       p = p_value,
       matched = TRUE
     )

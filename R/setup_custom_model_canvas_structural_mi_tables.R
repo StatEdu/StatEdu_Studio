@@ -30,10 +30,10 @@ structural_canvas_mi_result_table <- function(bundle, snapshot, fit, ko, fmt, di
   step <- if ("step" %in% names(mi)) as.integer(mi$step) else seq_len(nrow(mi))
   skipped <- if ("skipped_inadmissible" %in% names(mi)) as.integer(mi$skipped_inadmissible) else rep(0L, nrow(mi))
   skipped_details <- if ("skipped_details" %in% names(mi)) as.character(mi$skipped_details) else rep("", nrow(mi))
-  data.frame(
+  skipped_details[is.na(skipped_details)] <- ""
+  table <- data.frame(
     Step = step,
     `Skipped unsafe` = skipped,
-    `Skipped details` = skipped_details,
     Covariance = relation,
     MI = fmt(mi$mi),
     `MI p` = vapply(mi$`MI p`, format_p, character(1)),
@@ -47,4 +47,12 @@ structural_canvas_mi_result_table <- function(bundle, snapshot, fit, ko, fmt, di
     SRMR = fmt(mi$srmr_after),
     check.names = FALSE
   )
+  skipped_rows <- nzchar(trimws(skipped_details))
+  skipped_table <- data.frame(
+    Step = step[skipped_rows],
+    `Skipped details` = skipped_details[skipped_rows],
+    check.names = FALSE
+  )
+  attr(table, "skipped_details") <- skipped_table
+  table
 }

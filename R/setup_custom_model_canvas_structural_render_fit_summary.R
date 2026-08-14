@@ -487,6 +487,139 @@ structural_canvas_additional_fit_indices_table <- function(fits, labels, selecti
   do.call(rbind, rows)
 }
 
+structural_canvas_additional_fit_metric_family <- function(metric) {
+  metric <- tolower(metric %||% "")
+  if (grepl("^baseline\\.", metric)) return("baseline")
+  if (metric %in% c("npar", "fmin", "ntotal") || grepl("^(chisq|df|pvalue)(\\.|$)|scaling", metric)) {
+    return("model")
+  }
+  if (grepl("^(cfi|tli|nnfi|rfi|nfi|pnfi|ifi|rni)(\\.|$)", metric)) return("incremental")
+  if (grepl("^rmsea(\\.|$)", metric)) return("rmsea")
+  if (grepl("^(srmr|crmr|rmr|wrmr|gfi|agfi|pgfi|mfi)(\\.|_|$)", metric)) return("residual")
+  if (grepl("^(logl|unrestricted\\.logl|aic|bic|bic2|ecvi)(\\.|$)", metric)) return("likelihood")
+  "other"
+}
+
+structural_canvas_additional_fit_family_label <- function(family, ko = FALSE) {
+  labels <- if (ko) {
+    c(
+      model = "모형 기본 통계",
+      baseline = "기저모형 통계",
+      incremental = "증분 적합도",
+      rmsea = "RMSEA 계열",
+      residual = "잔차/절대 적합도",
+      likelihood = "우도/정보기준",
+      other = "기타 지표"
+    )
+  } else {
+    c(
+      model = "Model statistics",
+      baseline = "Baseline model",
+      incremental = "Incremental fit",
+      rmsea = "RMSEA family",
+      residual = "Residual and absolute fit",
+      likelihood = "Likelihood and information",
+      other = "Other indices"
+    )
+  }
+  if (family %in% names(labels)) {
+    return(unname(labels[[family]]))
+  }
+  family
+}
+
+structural_canvas_additional_fit_metric_label <- function(metric) {
+  metric <- as.character(metric %||% "")
+  labels <- c(
+    npar = "npar",
+    fmin = "fmin",
+    chisq = "χ²",
+    pvalue = "p",
+    df.scaled = "scaled df",
+    chisq.scaling.factor = "χ² scale",
+    baseline.chisq = "base χ²",
+    baseline.df = "base df",
+    baseline.pvalue = "base p",
+    baseline.chisq.scaled = "base scaled χ²",
+    baseline.df.scaled = "base scaled df",
+    baseline.pvalue.scaled = "base scaled p",
+    unrestricted.logl = "unrestricted logL",
+    logl = "logL",
+    bic2 = "adj BIC",
+    rmsea.ci.level = "CI level",
+    rmsea.pvalue = "RMSEA p",
+    rmsea.close.h0 = "close H0",
+    rmsea.notclose.h0 = "not-close H0",
+    rmsea.robust = "robust RMSEA",
+    rmsea.ci.lower = "CI lower",
+    rmsea.ci.upper = "CI upper",
+    rmsea.ci.lower.robust = "robust CI lower",
+    rmsea.ci.upper.robust = "robust CI upper",
+    rmsea.pvalue.robust = "robust p",
+    rmsea.notclose.pvalue.robust = "robust not-close p",
+    srmr_bentler = "SRMR Bentler",
+    srmr_bentler_nomean = "SRMR Bentler no mean",
+    crmr_nomean = "CRMR no mean",
+    srmr_mplus = "SRMR Mplus",
+    srmr_mplus_nomean = "SRMR Mplus no mean"
+  )
+  if (metric %in% names(labels)) {
+    return(unname(labels[[metric]]))
+  }
+  toupper(gsub(".", " ", metric, fixed = TRUE))
+}
+
+structural_canvas_additional_fit_metric_order <- function(metrics, family) {
+  metrics <- as.character(metrics %||% character(0))
+  if (!length(metrics)) return(metrics)
+  if (identical(family, "residual")) {
+    priority <- c("gfi", "agfi", "pgfi", "mfi")
+    return(c(intersect(priority, metrics), setdiff(metrics, priority)))
+  }
+  metrics
+}
+
+structural_canvas_additional_fit_indices_wide_tables <- function(additional_fit) {
+  if (!nrow(additional_fit)) return(list())
+  order <- c("model", "baseline", "incremental", "rmsea", "residual", "likelihood", "other")
+  additional_fit$Family <- vapply(additional_fit$Metric, structural_canvas_additional_fit_metric_family, character(1))
+  families <- order[order %in% unique(additional_fit$Family)]
+  result <- lapply(families, function(family) {
+    subset <- additional_fit[additional_fit$Family == family, , drop = FALSE]
+    models <- unique(subset$Model)
+    metrics <- structural_canvas_additional_fit_metric_order(unique(subset$Metric), family)
+    table <- data.frame(Model = models, check.names = FALSE)
+    for (metric in metrics) {
+      table[[structural_canvas_additional_fit_metric_label(metric)]] <- vapply(models, function(model) {
+        match <- subset$Model == model & subset$Metric == metric
+        if (!any(match)) return("")
+        subset$Value[which(match)[[1L]]]
+      }, character(1))
+    }
+    table
+  })
+  names(result) <- families
+  result
+}
+
+structural_canvas_additional_fit_indices_ui <- function(additional_fit, ko = FALSE) {
+  tables <- structural_canvas_additional_fit_indices_wide_tables(additional_fit)
+  if (!length(tables)) return(NULL)
+  tagList(lapply(names(tables), function(family) {
+    tags$div(
+      class = "structural-additional-fit-family",
+      tags$h6(structural_canvas_additional_fit_family_label(family, ko)),
+      tags$div(
+        class = "table-responsive structural-landscape-table-wrap",
+        structural_canvas_basic_html_table(
+          tables[[family]],
+          class = "table table-striped table-bordered structural-landscape-table structural-additional-fit-indices-table"
+        )
+      )
+    )
+  }))
+}
+
 structural_canvas_fit_guidance_result_ui <- function(bundle, language) {
   ko <- identical(normalize_app_language(language), "ko")
   comparison_fits <- if (isTRUE(bundle$modified_from_baseline) && !is.null(bundle$baseline_fit)) list(bundle$baseline_fit, bundle$fit) else list(bundle$fit)
@@ -508,17 +641,17 @@ structural_canvas_fit_guidance_result_ui <- function(bundle, language) {
   }, character(1))
   div(class = "structural-fit-guidance-result",
     tags$h5(if (ko) "표 2 가이드: 기준 기반 적합도 안내" else "Guide for Table 2: Reference-based fit guidance"),
-    tags$table(class = "table table-striped table-bordered",
+    tags$div(class = "table-responsive structural-landscape-table-wrap", tags$table(class = "table table-striped table-bordered structural-result-table structural-landscape-table structural-fit-guidance-table",
       tags$thead(tags$tr(lapply(names(table), tags$th))),
       tags$tbody(lapply(seq_len(nrow(table)), function(index) tags$tr(lapply(as.character(table[index, ]), tags$td))))
-    ),
+    )),
     tags$p(paste(vapply(names(summaries), function(name) paste0(name, ": ", summaries[[name]]), character(1)), collapse = " | ")),
     tags$p(class = "structural-result-note", if (ko) "Good/Marginal/Review 표시는 흔히 쓰는 근사 기준에 따른 설명용 안내입니다. 보편적 수용 규칙이 아니며 모형 식별, 잔차 진단, 모수 타당성, 이론, 표본 특성, 대안 모형 비교를 대체하지 않습니다." else "Good/Marginal/Review labels are descriptive reference guidance based on commonly used approximate cutoffs. They are not universal acceptance rules and do not replace model identification, residual diagnostics, parameter plausibility, theory, sample characteristics, or comparison with plausible alternatives."),
     tags$p(class = "structural-result-note", if (ko) "증분 적합도 안내: CFI/TLI >= .95 Good, >= .90 Marginal. 절대 적합도 안내: RMSEA <= .06 Good, <= .08 Marginal; SRMR <= .08 Good, <= .10 Marginal. 이 범위 밖 값은 Review로 표시합니다." else "Incremental-fit guidance: CFI/TLI >= .95 Good, >= .90 Marginal. Absolute-fit guidance: RMSEA <= .06 Good, <= .08 Marginal; SRMR <= .08 Good, <= .10 Marginal. Values outside these ranges are marked Review."),
     if (any(table$Guidance == "Not assessed")) tags$p(class = "structural-result-note", if (ko) "포화모형(df = 0)이거나 적합도 지수가 없으면 적합도 안내를 평가하지 않습니다." else "Fit guidance is not assessed for saturated models (df = 0) or unavailable fit indices."),
     if (nrow(additional_fit)) tagList(
       tags$h5(if (ko) "표 2 가이드: 표 2에 직접 표시하지 않은 추가 적합도 통계량" else "Guide for Table 2: Additional fit indices not shown in Table 2"),
-      structural_canvas_basic_html_table(additional_fit, class = "table table-striped table-bordered structural-additional-fit-indices-table")
+      structural_canvas_additional_fit_indices_ui(additional_fit, ko)
     )
   )
 
@@ -532,7 +665,7 @@ structural_canvas_rmsea_tests_result_ui <- function(bundle, language = statedu_i
   for (column in c("Close-fit p", "Not-close p")) display[[column]] <- vapply(display[[column]], format_p, character(1))
   tagList(
     tags$h5(if (ko) "표 2 가이드: RMSEA 가설검정" else "Guide for Table 2: RMSEA hypothesis tests"),
-    tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered",
+    tags$div(class = "table-responsive structural-landscape-table-wrap", tags$table(class = "table table-striped table-bordered structural-result-table structural-landscape-table structural-rmsea-tests-table",
       tags$thead(tags$tr(lapply(names(display), tags$th))),
       tags$tbody(lapply(seq_len(nrow(display)), function(index) tags$tr(lapply(as.character(display[index, ]), tags$td))))
     )),
@@ -555,9 +688,22 @@ structural_canvas_information_criteria_result_ui <- function(bundle, language = 
   display <- display[, display_columns, drop = FALSE]
   numeric_columns <- names(display)[vapply(display, is.numeric, logical(1))]
   for (column in numeric_columns) display[[column]] <- vapply(display[[column]], format_decimal3, character(1))
+  names(display) <- vapply(names(display), function(name) switch(
+    name,
+    "Estimator" = "Estimator",
+    "Admissible" = "Admissible",
+    "LogLik" = "logL",
+    "Free parameters" = "Params",
+    "Adjusted BIC" = "Adj BIC",
+    "Comparison status" = "Comparison",
+    "Delta AIC" = "Δ AIC",
+    "Delta BIC" = "Δ BIC",
+    "Delta Adjusted BIC" = "Δ Adj BIC",
+    name
+  ), character(1))
   tagList(
     tags$h5(if (ko) "표 2 가이드: 우도 기반 정보기준" else "Guide for Table 2: Likelihood-based information criteria"),
-    tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered structural-information-criteria-table",
+    tags$div(class = "table-responsive structural-landscape-table-wrap", tags$table(class = "table table-striped table-bordered structural-result-table structural-landscape-table structural-information-criteria-table",
       tags$thead(tags$tr(lapply(names(display), tags$th))),
       tags$tbody(lapply(seq_len(nrow(display)), function(index) tags$tr(lapply(as.character(display[index, ]), tags$td))))
     )),

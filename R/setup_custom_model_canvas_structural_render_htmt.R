@@ -52,7 +52,7 @@ structural_canvas_register_htmt_outputs <- function(output, prefix, fit_result, 
     pair_columns <- intersect(c("Factor 1", "Factor 2", "HTMT", "Criterion", "Reason"), names(pair_table))
 
     bootstrap_reps <- as.integer(bundle$htmt_bootstrap %||% 0L)
-    bootstrap_seed <- as.integer(bundle$htmt_seed %||% 12345L)
+    bootstrap_seed <- as.integer(bundle$htmt_seed %||% default_seed())
     htmt_ci_method <- structural_canvas_bootstrap_ci_method(bundle$htmt_ci_method %||% "percentile")
     htmt_ci_label <- if (identical(htmt_ci_method, "bca")) "BCa" else "percentile"
     bootstrap_table <- NULL

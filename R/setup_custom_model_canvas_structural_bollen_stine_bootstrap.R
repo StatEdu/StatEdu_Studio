@@ -1,6 +1,6 @@
 # Structural equation canvas Bollen-Stine bootstrap helpers.
 
-structural_canvas_bollen_stine <- function(fit, reps = 500L, seed = 97531L, progress = NULL, cancel = NULL) {
+structural_canvas_bollen_stine <- function(fit, reps = 500L, seed = default_seed(), progress = NULL, cancel = NULL) {
   reps <- as.integer(reps)
   if (!is.finite(reps) || reps < 1L) stop("Bollen-Stine bootstrap requires at least one resample.")
   eligibility <- structural_canvas_bollen_stine_eligibility(fit)

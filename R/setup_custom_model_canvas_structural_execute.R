@@ -4,10 +4,10 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   identification <- if (analysis_type %in% c("cfa", "cbsem", "sem")) structural_canvas_identification_diagnostics(snapshot) else data.frame()
   identification_errors <- identification[identification$Severity == "Error", , drop = FALSE]
   if (nrow(identification_errors)) {
-    stop(paste0("Model identification check failed: ", paste(paste0(identification_errors$Element, " — ", identification_errors$Message), collapse = "; ")))
+    stop(structural_canvas_identification_issue_text(identification_errors, statedu_current_language(app_language_fn)))
   }
   identification_warnings <- identification[identification$Severity == "Warning", , drop = FALSE]
-  if (nrow(identification_warnings)) structural_canvas_notify_identification_warnings(identification_warnings)
+  if (nrow(identification_warnings)) structural_canvas_notify_identification_warnings(identification_warnings, statedu_current_language(app_language_fn))
   options <- structural_canvas_execute_settings(settings, input, prefix)
   estimator <- options$estimator
   missing <- options$missing
@@ -33,6 +33,8 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   mi_holdout_enabled <- options$mi_holdout_enabled
   mi_holdout_fraction <- options$mi_holdout_fraction
   mi_holdout_seed <- options$mi_holdout_seed
+  common_method_enabled <- options$common_method_enabled
+  common_method_methods <- options$common_method_methods
   result_coefficient <- options$result_coefficient
   residual_variance_fixes <- options$residual_variance_fixes
   full_data <- dataset_fn()
@@ -90,7 +92,21 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   bollen_stine_result <- structural_canvas_run_bollen_stine_bootstrap(
     analysis_type, bollen_stine_bootstrap, result, bollen_stine_seed
   )
-  mi <- if (analysis_type %in% c("cfa", "cbsem", "sem")) structural_canvas_mi_refits(snapshot, result, data, analysis_type, estimator, missing, std_lv, mode = mi_mode, ordered = ordered) else NULL
+  mi <- if (analysis_type %in% c("cfa", "cbsem", "sem")) {
+    tryCatch(
+      structural_canvas_mi_refits(snapshot, result, data, analysis_type, estimator, missing, std_lv, mode = mi_mode, ordered = ordered),
+      error = function(error) {
+        structural_canvas_show_notification(
+          structural_canvas_error_message(error, statedu_current_language(app_language_fn)),
+          type = "warning",
+          duration = 12
+        )
+        NULL
+      }
+    )
+  } else {
+    NULL
+  }
   htmt_bootstrap_result <- structural_canvas_run_htmt_bootstrap(
     analysis_type, htmt_bootstrap, result, data, htmt_seed, ordered,
     htmt_threshold, htmt_ci_method
@@ -101,6 +117,23 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   pls_predict_result <- structural_canvas_run_pls_predict(
     analysis_type, pls_predict_folds, pls_predict_reps, result
   )
+  common_method_result <- if (isTRUE(common_method_enabled) && analysis_type %in% c("cfa", "cbsem", "sem")) {
+    tryCatch(
+      structural_canvas_run_common_method_diagnostics(
+        result, data, analysis_type, estimator, missing, std_lv, ordered, common_method_methods
+      ) %||% structural_canvas_common_method_unavailable_result(common_method_methods),
+      error = function(error) {
+        structural_canvas_show_notification(
+          structural_canvas_error_message(error, statedu_current_language(app_language_fn)),
+          type = "warning",
+          duration = 12
+        )
+        structural_canvas_common_method_unavailable_result(common_method_methods, conditionMessage(error))
+      }
+    )
+  } else {
+    NULL
+  }
   baseline_fit <- if (is_mi_refit) settings$baseline_fit %||% settings$fit else result$fit
   baseline_diagnostics <- if (is_mi_refit) settings$baseline_diagnostics %||% settings$diagnostics else result
   baseline_syntax <- if (is_mi_refit) settings$baseline_syntax %||% settings$syntax else result$syntax
@@ -127,6 +160,8 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     invariance_enabled = invariance_enabled, invariance_group = invariance_group, invariance_result = invariance_result,
     mi_holdout_enabled = mi_holdout_enabled, mi_holdout_fraction = mi_holdout_fraction, mi_holdout_seed = mi_holdout_seed,
     analysis_data = data, validation_data = validation_data, holdout_rows = holdout_rows, holdout_comparison = holdout_comparison,
+    common_method_enabled = common_method_enabled, common_method_methods = common_method_methods,
+    common_method_result = common_method_result,
     estimator = estimator, missing = missing, std_lv = std_lv, ordered = ordered,
     result_coefficient = result_coefficient, diagnostics = result,
     baseline_fit = baseline_fit, modified_from_baseline = is_mi_refit || isTRUE(settings$modified_from_baseline),

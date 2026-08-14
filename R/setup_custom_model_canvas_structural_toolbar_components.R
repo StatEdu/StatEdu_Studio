@@ -2,6 +2,7 @@
 
 structural_equation_toolbar <- function(analysis_type = "cbsem", language = statedu_initial_language()) {
   ko <- identical(normalize_app_language(language), "ko")
+  prefix <- structural_analysis_prefix(analysis_type)
   div(
     class = "custom-model-toolbar",
     div(
@@ -24,6 +25,13 @@ structural_equation_toolbar <- function(analysis_type = "cbsem", language = stat
         custom_model_canvas_button("structuralCovariateTargets", if (ko) "공변량 설정" else "Covariate targets", title = if (ko) "공변량별 통제 대상 설정" else "Set control targets for each covariate", icon = structural_file_icon("settings"))
       ),
       custom_model_canvas_button("addLatent", if (ko) "잠재변수" else "Latent variable", extra_class = "structural-add-latent"),
+      if (analysis_type %in% c("cfa", "cbsem")) custom_model_canvas_button(
+        "addHigherOrderLatent",
+        if (ko) "고차요인" else "Higher-order",
+        title = if (ko) "고차 잠재변수를 배치하고, 잠재변수로 연결하면 2차 CFA 적재로 자동 지정됩니다." else "Add a higher-order latent variable. Connections to latent variables become higher-order loadings.",
+        extra_class = "structural-add-higher-order",
+        icon = structural_higher_order_icon()
+      ),
       custom_model_canvas_button("select", custom_model_canvas_text(language, "Select", "선택"), mode = TRUE),
       if (identical(analysis_type, "cfa")) custom_model_canvas_button("flipCfa", if (ko) "좌우 반전" else "Flip sides", title = if (ko) "잠재변수와 측정변수 좌우 반전" else "Flip latent variables and indicators", mode = TRUE),
       custom_model_canvas_button("connect", custom_model_canvas_text(language, "Connect", "연결"), mode = TRUE),
@@ -69,32 +77,51 @@ structural_equation_toolbar <- function(analysis_type = "cbsem", language = stat
         )
       )
       ),
-      if (!identical(analysis_type, "cfa")) div(
-        class = "structural-advanced-analysis-tools",
-        custom_model_canvas_button("multiGroup", if (ko) "다집단 분석" else "Multigroup", title = if (ko) "다집단 분석 설정" else "Multigroup analysis settings"),
-        custom_model_canvas_button("moderator", if (ko) "조절변수" else "Moderator", title = if (ko) "조절효과 설정" else "Moderation settings")
-      ),
-      if (!identical(analysis_type, "cfa")) div(
-        class = "structural-latent-tools",
-        span(class = "structural-latent-tools-label", if (ko) "측정모형" else "Measurement"),
-        custom_model_canvas_button("placementLeft", if (ko) "왼쪽" else "Left", title = if (ko) "측정변수를 왼쪽으로" else "Indicators left", icon = structural_measurement_icon("left")),
-        custom_model_canvas_button("placementRight", if (ko) "오른쪽" else "Right", title = if (ko) "측정변수를 오른쪽으로" else "Indicators right", icon = structural_measurement_icon("right")),
-        custom_model_canvas_button("placementTop", if (ko) "위" else "Top", title = if (ko) "측정변수를 위로" else "Indicators above", icon = structural_measurement_icon("top")),
-        custom_model_canvas_button("placementBottom", if (ko) "아래" else "Bottom", title = if (ko) "측정변수를 아래로" else "Indicators below", icon = structural_measurement_icon("bottom")),
-        if (identical(analysis_type, "plssem")) tagList(
-          span(class = "structural-toolbar-separator"),
-          custom_model_canvas_button("reflective", if (ko) "반영지표" else "Reflective", title = if (ko) "반영지표: 잠재변수 → 측정변수" else "Reflective measurement", icon = structural_measurement_icon("reflective")),
-          custom_model_canvas_button("formative", if (ko) "형성지표" else "Formative", title = if (ko) "형성지표: 측정변수 → 잠재변수" else "Formative measurement", icon = structural_measurement_icon("formative"))
-        )
-      ),
-      custom_model_canvas_edge_shape_tools(language),
-      custom_model_canvas_edge_anchor_tools(language),
       div(
-        class = "structural-result-tools",
-        custom_model_canvas_button("resultView", if (ko) "결과 모형" else "Result diagram"),
-        custom_model_canvas_button("resultEdit", if (ko) "결과 편집" else "Edit result", mode = TRUE),
-        custom_model_canvas_button("dashNonsignificant", if (ko) "비유의 점선" else "Non-significant dashed", mode = TRUE),
-        custom_model_canvas_button("style", if (ko) "스타일" else "Style")
+        class = "structural-secondary-toolbar-tools",
+        if (!identical(analysis_type, "cfa")) div(
+          class = "structural-advanced-analysis-tools",
+          custom_model_canvas_button("multiGroup", if (ko) "다집단 분석" else "Multigroup", title = if (ko) "다집단 분석 설정" else "Multigroup analysis settings"),
+          custom_model_canvas_button("moderator", if (ko) "조절변수" else "Moderator", title = if (ko) "조절효과 설정" else "Moderation settings")
+        ),
+        if (!identical(analysis_type, "cfa")) div(
+          class = paste("structural-latent-tools", if (identical(analysis_type, "plssem")) "structural-latent-tools-pls" else "structural-latent-tools-basic"),
+          span(class = "structural-latent-tools-label", if (ko) "측정모형" else "Measurement"),
+          custom_model_canvas_button("placementLeft", if (ko) "왼쪽" else "Left", title = if (ko) "측정변수를 왼쪽으로" else "Indicators left", icon = structural_measurement_icon("left")),
+          custom_model_canvas_button("placementRight", if (ko) "오른쪽" else "Right", title = if (ko) "측정변수를 오른쪽으로" else "Indicators right", icon = structural_measurement_icon("right")),
+          custom_model_canvas_button("placementTop", if (ko) "위" else "Top", title = if (ko) "측정변수를 위로" else "Indicators above", icon = structural_measurement_icon("top")),
+          custom_model_canvas_button("placementBottom", if (ko) "아래" else "Bottom", title = if (ko) "측정변수를 아래로" else "Indicators below", icon = structural_measurement_icon("bottom")),
+          if (identical(analysis_type, "plssem")) tagList(
+            span(class = "structural-toolbar-separator"),
+            custom_model_canvas_button("reflective", if (ko) "반영지표" else "Reflective", title = if (ko) "반영지표: 잠재변수 → 측정변수" else "Reflective measurement", icon = structural_measurement_icon("reflective")),
+            custom_model_canvas_button("formative", if (ko) "형성지표" else "Formative", title = if (ko) "형성지표: 측정변수 → 잠재변수" else "Formative measurement", icon = structural_measurement_icon("formative"))
+          )
+        ),
+        custom_model_canvas_edge_shape_tools(language),
+        custom_model_canvas_edge_anchor_tools(language),
+        div(
+          class = "structural-result-tools",
+          div(
+            class = "structural-result-coefficient-control",
+            tags$label(
+              class = "structural-result-coefficient-label",
+              `for` = paste0(prefix, "_result_coefficient"),
+              if (ko) "계수" else "Coefficient"
+            ),
+            tags$select(
+              id = paste0(prefix, "_result_coefficient"),
+              class = "form-control input-sm structural-result-coefficient-select",
+              lapply(names(structural_canvas_result_coefficient_choices(language)), function(label) {
+                value <- structural_canvas_result_coefficient_choices(language)[[label]]
+                tags$option(value = value, selected = if (identical(value, "beta_p")) "selected" else NULL, label)
+              })
+            )
+          ),
+          custom_model_canvas_button("resultView", if (ko) "결과 모형" else "Result diagram"),
+          custom_model_canvas_button("resultEdit", if (ko) "결과 편집" else "Edit result", mode = TRUE),
+          custom_model_canvas_button("dashNonsignificant", if (ko) "비유의 점선" else "Non-significant dashed", mode = TRUE),
+          custom_model_canvas_button("style", if (ko) "스타일" else "Style")
+        )
       ),
       div(class = "structural-disturbance-toolbar", `aria-live` = "polite")
     )

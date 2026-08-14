@@ -58,7 +58,10 @@ run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estima
     }
     converged <- isTRUE(lavaan::lavInspect(fit, "converged"))
     post_check <- isTRUE(lavaan::lavInspect(fit, "post.check"))
-    model_df <- suppressWarnings(as.numeric(lavaan::fitMeasures(fit, "df")[[1L]]))
+    model_df <- tryCatch(
+      suppressWarnings(as.numeric(lavaan::fitMeasures(fit, "df")[[1L]])),
+      error = function(error) NA_real_
+    )
     theta <- as.matrix(lavaan::lavInspect(fit, "theta"))
     negative_residuals <- if (length(theta)) rownames(theta)[diag(theta) < 0] else character(0)
     latent_covariance <- as.matrix(lavaan::lavInspect(fit, "cov.lv"))
@@ -107,5 +110,5 @@ run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estima
     ))
   }
 
-  structural_canvas_run_pls_analysis(snapshot, data, latents, edges)
+  structural_canvas_run_pls_analysis(snapshot, data, latents, edges, estimator = estimator)
 }

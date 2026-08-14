@@ -48,7 +48,7 @@
       button.classList.toggle("is-active", active);
       var applicable = true;
       if (action === "save") applicable = hasCanvasContent;
-      if (action === "run") applicable = instance.state.nodes.length > 0 && !(instance.validation && instance.validation.errors.length > 0);
+      if (action === "run") applicable = instance.state.nodes.length > 0;
       if (action === "connect" || action === "covariance") applicable = instance.state.nodes.length >= 2;
       if (action === "properties" || action === "delete") applicable = hasCanvasContent;
       if (action === "detachIndicator" || action === "indicatorUp" || action === "indicatorDown") applicable = selectedIndicators.length > 0;
@@ -167,24 +167,49 @@
   }
 
   function handleAction(instance, action, button) {
-    if (action === "addLatent") {
+    if (action === "addLatent" || action === "addHigherOrderLatent") {
       window.StatEduModelCanvas.state.pushHistory(instance);
       var count = instance.state.nodes.filter(function(node) { return node.role === "latent"; }).length;
+      var higherOrder = action === "addHigherOrderLatent";
       var isCfa = instance.analysisType === "cfa";
       var latent = window.StatEduModelCanvas.nodes.createLatentNode(
         instance,
-        isCfa ? 520 : 330 + (count % 3) * 220,
-        isCfa ? 180 + count * 170 : 360 + Math.floor(count / 3) * 150
+        higherOrder ? 250 : (isCfa ? 520 : 330 + (count % 3) * 220),
+        higherOrder ? 180 + count * 75 : (isCfa ? 180 + count * 170 : 360 + Math.floor(count / 3) * 150)
       );
-      if (isCfa) latent.measurementPlacement = "right";
+      if (higherOrder) {
+        var higherOrderCount = instance.state.nodes.filter(function(node) {
+          return node.role === "latent" && node.constructType === "higherOrder";
+        }).length + 1;
+        latent.constructType = "higherOrder";
+        latent.name = "HO" + higherOrderCount;
+        latent.dataLabel = instance.language === "ko" ? "\uace0\ucc28\uc694\uc778 " + higherOrderCount : "Higher-order " + higherOrderCount;
+        latent.canvasLabel = latent.dataLabel;
+        latent.measurementPlacement = "left";
+        latent.width = 104;
+      } else if (isCfa) {
+        latent.measurementPlacement = "right";
+      }
       var existingLatents = instance.state.nodes.filter(function(node) { return node.role === "latent"; });
       instance.state.nodes.push(latent);
-      if (isCfa) {
+      if (isCfa && !higherOrder) {
         existingLatents.forEach(function(otherLatent) {
+          if (otherLatent.constructType === "higherOrder") return;
           if (!window.StatEduModelCanvas.edges.createCovariance(instance, otherLatent.id, latent.id)) return;
           var covariance = instance.state.edges[instance.state.edges.length - 1];
           covariance.curveDirection = "left";
           covariance.curveOffset = Math.max(75, Math.min(190, Math.abs(Number(latent.y || 0) - Number(otherLatent.y || 0)) * 0.45));
+          covariance.fromSide = "left";
+          covariance.toSide = "left";
+          covariance.fixedCenter = true;
+        });
+      } else if (isCfa && higherOrder) {
+        existingLatents.forEach(function(otherLatent) {
+          if (otherLatent.constructType !== "higherOrder") return;
+          if (!window.StatEduModelCanvas.edges.createCovariance(instance, otherLatent.id, latent.id)) return;
+          var covariance = instance.state.edges[instance.state.edges.length - 1];
+          covariance.curveDirection = "left";
+          covariance.curveOffset = Math.max(70, Math.min(170, Math.abs(Number(latent.y || 0) - Number(otherLatent.y || 0)) * 0.5));
           covariance.fromSide = "left";
           covariance.toSide = "left";
           covariance.fixedCenter = true;
@@ -218,6 +243,9 @@
         window.StatEduModelCanvas.canvas.render(instance);
         window.StatEduModelCanvas.bridge.sendState(instance);
       }
+    }
+    if (action === "moderator" && window.StatEduModelCanvas.canvas.addContinuousModeratorBlock(instance)) {
+      return;
     }
     if ((action === "multiGroup" || action === "moderator") && window.Shiny) {
       window.Shiny.setInputValue(

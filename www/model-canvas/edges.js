@@ -74,7 +74,9 @@
 
   function validCovarianceEdge(instance, fromNode, toNode) {
     if (!fromNode || !toNode || fromNode.id === toNode.id) return false;
-    if (fromNode.role === "latent" && toNode.role === "latent") return true;
+    if (fromNode.role === "latent" && toNode.role === "latent") {
+      return !hasHigherOrderParent(instance, fromNode.id) && !hasHigherOrderParent(instance, toNode.id);
+    }
     if (fromNode.role === "error" && toNode.role === "error") {
       var fromParent = measurementParentId(instance, fromNode);
       return !!fromParent && fromParent === measurementParentId(instance, toNode);
@@ -98,6 +100,30 @@
     var fromNode = moderation ? window.StatEduModelCanvas.nodes.nodeById(instance, moderation.from) : null;
     var edge = moderation ? edgeById(instance, moderation.toEdge) : null;
     return !!(validModerationSource(fromNode) && edge);
+  }
+
+  function isHigherOrderLatent(node) {
+    return !!node && node.role === "latent" && node.constructType === "higherOrder";
+  }
+
+  function hasHigherOrderParent(instance, latentId) {
+    return instance.state.edges.some(function(edge) {
+      return edge.kind !== "covariance" && edge.pathType === "higherOrder" && edge.to === latentId;
+    });
+  }
+
+  function removeHigherOrderConflictingCovariances(instance, parentId, childId) {
+    var lowerOrderIds = {};
+    instance.state.edges.forEach(function(edge) {
+      if (edge.kind === "covariance" || edge.pathType !== "higherOrder") return;
+      var child = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
+      if (child && child.role === "latent") lowerOrderIds[child.id] = true;
+    });
+    lowerOrderIds[childId] = true;
+    instance.state.edges = instance.state.edges.filter(function(edge) {
+      if (edge.kind !== "covariance") return true;
+      return !lowerOrderIds[edge.from] && !lowerOrderIds[edge.to];
+    });
   }
 
   function curveEditable(instance, edge) {
@@ -355,10 +381,6 @@
       normalX = -normalX;
       normalY = -normalY;
     }
-    if (Math.abs(normalY) < 0.2) {
-      normalY = shape === "curveDown" ? 1 : -1;
-      normalX = 0;
-    }
     return {
       x: midX + normalX * offset,
       y: midY + normalY * offset
@@ -457,6 +479,17 @@
     var automaticLabel = owner && (owner.equalityLabel || owner.parameterName) ? (owner.equalityLabel || owner.parameterName) :
       owner && owner.free === false && owner.fixedValue !== null && owner.fixedValue !== undefined ? String(owner.fixedValue) : "";
     return String(owner && owner.label ? owner.label : automaticLabel).trim();
+  }
+
+  function measurementGroupUsesSharedStart(instance, latent, group) {
+    if (!latent || !group || group.length < 2) return false;
+    var latentCenter = window.StatEduModelCanvas.layout.nodeCenter(latent, instance.state.style);
+    return group.every(function(item) {
+      var indicatorCenter = window.StatEduModelCanvas.layout.nodeCenter(item.indicator, instance.state.style);
+      var dx = Math.abs(indicatorCenter.x - latentCenter.x);
+      var dy = Math.abs(indicatorCenter.y - latentCenter.y);
+      return dx >= dy;
+    });
   }
 
   function addEdgeLabelElement(instance, svg, owner, type, id, point, placedLabels) {
@@ -726,16 +759,18 @@
         toNode && toNode.role === "latent" && fromNode && fromNode.role === "indicator" ? toNode : null;
       var indicator = latent === fromNode ? toNode : latent === toNode ? fromNode : null;
       if (!latent || !indicator || !displayLabel(edge)) return;
-      if (!measurementGroups[latent.id]) measurementGroups[latent.id] = [];
-      measurementGroups[latent.id].push({edge: edge, indicator: indicator});
+      if (!measurementGroups[latent.id]) measurementGroups[latent.id] = {latent: latent, items: []};
+      measurementGroups[latent.id].items.push({edge: edge, indicator: indicator});
     });
 
     Object.keys(measurementGroups).forEach(function(latentId) {
-      var group = measurementGroups[latentId].sort(function(a, b) {
+      var bundle = measurementGroups[latentId];
+      var group = bundle.items.sort(function(a, b) {
         return Number(a.indicator.y || 0) - Number(b.indicator.y || 0);
       });
+      if (!measurementGroupUsesSharedStart(instance, bundle.latent, group)) return;
       if (group.length < 2) return;
-      var reference = group[1];
+      var reference = group[Math.floor(group.length / 2)];
       var referenceEndpoints = edgeEndpoints(instance, reference.edge);
       if (!referenceEndpoints) return;
       var referencePoint = pointOnRenderedEdge(reference.edge, referenceEndpoints, reference.edge.labelPosition || 50);
@@ -830,19 +865,31 @@
     if (!fromId || !toId || fromId === toId) return false;
     var fromNode = window.StatEduModelCanvas.nodes.nodeById(instance, fromId);
     var toNode = window.StatEduModelCanvas.nodes.nodeById(instance, toId);
+    if (fromNode && toNode && fromNode.role === "latent" && toNode.role === "latent" &&
+        !isHigherOrderLatent(fromNode) && isHigherOrderLatent(toNode)) {
+      var originalFromId = fromId;
+      fromId = toId;
+      toId = originalFromId;
+      fromNode = window.StatEduModelCanvas.nodes.nodeById(instance, fromId);
+      toNode = window.StatEduModelCanvas.nodes.nodeById(instance, toId);
+    }
     if (!validDirectedEdge(fromNode, toNode)) return false;
     var exists = instance.state.edges.some(function(edge) {
       return edge.from === fromId && edge.to === toId;
     });
     if (exists) return false;
+    var pathType = fromNode.role === "latent" && toNode.role === "latent" ?
+      (isHigherOrderLatent(fromNode) ? "higherOrder" : "regression") :
+      null;
     instance.state.edges.push({
       id: "edge_" + fromId + "_" + toId + "_" + Date.now(),
       from: fromId,
       to: toId,
       label: "",
       shape: "straight",
-      pathType: fromNode.role === "latent" && toNode.role === "latent" ? "regression" : null
+      pathType: pathType
     });
+    if (pathType === "higherOrder") removeHigherOrderConflictingCovariances(instance, fromId, toId);
     return true;
   }
 

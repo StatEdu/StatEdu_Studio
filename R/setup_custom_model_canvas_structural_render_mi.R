@@ -4,24 +4,34 @@ output[[paste0(prefix, "_result_mi")]] <- renderUI({
   if (!nrow(table)) return(NULL)
   ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
   theory_mi <- identical(fit_result()$mi_mode %||% "theory", "theory")
-  tagList(tags$table(
-    class = "table table-striped table-bordered structural-mi-table",
-    tags$thead(tags$tr(
-      lapply(names(table), tags$th),
-      if (theory_mi) tags$th(if (ko) "선택" else "Select")
+  skipped_details <- attr(table, "skipped_details", exact = TRUE)
+  display_columns <- intersect(c(
+    "Step", "Skipped unsafe", "Covariance", "MI", "MI p", "BH-adjusted p", "EPC", "Std. EPC", "CFI", "TLI", "SRMR", "RMSEA"
+  ), names(table))
+  display <- table[, display_columns, drop = FALSE]
+  tagList(
+  tags$div(class = "table-responsive structural-landscape-table-wrap structural-mi-table-scroll", tags$table(
+      class = paste("table table-striped table-bordered structural-result-table structural-landscape-table structural-mi-table", if (theory_mi) "structural-mi-theory-table" else "structural-mi-free-table"),
+      tags$thead(tags$tr(
+        lapply(names(display), tags$th),
+        if (theory_mi) tags$th(if (ko) "선택" else "Select")
+      )),
+      tags$tbody(lapply(seq_len(nrow(display)), function(index) {
+        tags$tr(
+          lapply(as.character(display[index, , drop = TRUE]), structural_canvas_html_cell),
+          if (theory_mi) tags$td(actionButton(
+            paste0(prefix, "_mi_select_", index),
+            if (ko) "선택" else "Select",
+            class = "btn-sm structural-mi-select-button"
+          ))
+        )
+      }))
     )),
-    tags$tbody(lapply(seq_len(nrow(table)), function(index) {
-      tags$tr(
-        lapply(as.character(table[index, , drop = TRUE]), structural_canvas_html_cell),
-        if (theory_mi) tags$td(actionButton(
-          paste0(prefix, "_mi_select_", index),
-          if (ko) "선택" else "Select",
-          class = "btn-sm structural-mi-select-button"
-        ))
-      )
-    }))
+  if (theory_mi && is.data.frame(skipped_details) && nrow(skipped_details)) tagList(
+    tags$h5(if (ko) "건너뛴 MI 후보 상세" else "Skipped MI candidate details"),
+    structural_canvas_basic_html_table(skipped_details, class = "table table-striped table-bordered structural-mi-skipped-details-table")
   ),
-  tags$p(class = "structural-result-note", if (ko) "MI p는 각 수정지수를 비척도화된 점근적 1 자유도 카이제곱 검정으로 취급합니다. BH-adjusted p는 화면에 표시된 MI 및 이론 필터를 적용하기 전 lavaan 후보 수정 전체의 false-discovery rate를 조절합니다. MI tests는 이 다중검정 계열의 크기를 보고합니다." else "MI p treats each modification index as an unscaled asymptotic 1-df chi-square test. BH-adjusted p controls the false-discovery rate across all finite lavaan candidate modifications before the displayed MI and theory filters; MI tests reports that multiplicity-family size."),
+  tags$p(class = "structural-result-note", if (ko) "MI p는 각 수정지수를 비척도화된 점근적 1 자유도 카이제곱 검정으로 취급합니다. BH-adjusted p는 화면에 표시된 MI 및 이론 필터를 적용하기 전 lavaan 후보 수정 전체의 false-discovery rate를 조절합니다." else "MI p treats each modification index as an unscaled asymptotic 1-df chi-square test. BH-adjusted p controls the false-discovery rate across all finite lavaan candidate modifications before the displayed MI and theory filters."),
   tags$p(class = "structural-result-note", if (ko) "MLR 또는 WLSMV에서 이 p값은 별도의 robust/scaled score-test 보정이 아니며 탐색적 참고값으로 보아야 합니다." else "For MLR or WLSMV, these derived p values are not a separate robust/scaled score-test correction and should be treated as exploratory reference values."),
   tags$p(class = "structural-result-note", if (ko) "EPC는 고정 모수를 자유화했을 때 기대되는 비표준화 모수 변화입니다. Std. EPC는 lavaan의 완전표준화 기대 변화(sepc.all)입니다. MI 순위만 보지 말고 방향과 크기를 함께 검토하십시오." else "EPC is the expected unstandardized parameter change if the fixed parameter is freed; Std. EPC is lavaan's fully standardized expected change (sepc.all). Consider direction and magnitude rather than MI rank alone."),
   if (theory_mi) tags$p(class = "structural-result-note", if (ko) "각 Step은 순차적입니다. 표시된 경로를 추가하고 모형을 다시 적합한 뒤, 다음 행의 MI, 다중검정 계열, EPC, 누적 적합도를 그 갱신된 모형에서 다시 계산합니다. 행들은 변경되지 않은 하나의 모형에서 나온 동시 후보가 아닙니다." else "Each Step is sequential: the displayed path is added, the model is refitted, and MI, multiplicity family, EPC, and cumulative fit for the next row are recomputed from that updated model. Rows are not simultaneous candidates from one unchanged model."),

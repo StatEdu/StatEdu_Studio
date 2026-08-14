@@ -28,6 +28,7 @@ structural_canvas_reproducibility_record <- function(bundle, generated_at = Sys.
     paste0("AVE/reliability bootstrap: ", bundle$reliability_bootstrap %||% 0L, "; seed: ", bundle$reliability_seed %||% "not used", "; CI method: ", bundle$reliability_ci_method %||% "percentile"),
     paste0("Bollen-Stine bootstrap: ", bundle$bollen_stine_bootstrap %||% 0L, "; seed: ", bundle$bollen_stine_seed %||% "not used"),
     paste0("Measurement invariance: ", if (isTRUE(bundle$invariance_enabled)) paste0("enabled; group = ", bundle$invariance_group) else "disabled"),
+    paste0("Common method bias diagnostics: ", if (isTRUE(bundle$common_method_enabled)) paste0("enabled; methods = ", paste(bundle$common_method_methods %||% character(0), collapse = ", ")) else "disabled"),
     paste0("MI holdout validation: ", if (isTRUE(bundle$mi_holdout_enabled)) paste0("enabled; validation fraction = ", bundle$mi_holdout_fraction, "; seed = ", bundle$mi_holdout_seed, "; exploration N = ", nrow(bundle$analysis_data), "; validation N = ", nrow(bundle$validation_data)) else "disabled"),
     if (!is.null(bundle$holdout_comparison)) paste0("MI holdout N used after missing-data handling: ", paste(bundle$holdout_comparison$validation_n_used, collapse = ", ")),
     paste0("MI output mode: ", bundle$mi_mode %||% "theory"),
@@ -73,6 +74,11 @@ structural_canvas_export_notes <- function(bundle) {
       "Model-based AVE/reliability and Bollen-Stine bootstraps require an admissible original CFA and use only replicates that pass the same full admissibility checks; Bollen-Stine additionally uses a plus-one correction and reports finite-simulation error.",
       if (isTRUE(bundle$modified_from_baseline)) " Because the model was modified using the analyzed data, this result is exploratory rather than confirmatory." else ""
     ),
+    stringsAsFactors = FALSE
+  ))
+  if (!is.null(bundle$common_method_result)) notes <- rbind(notes, data.frame(
+    Section = "Common method bias",
+    Note = "Common method diagnostics are screening evidence only. Report them as indicating whether serious common-method concentration was detected, not as proof that common method bias is absent.",
     stringsAsFactors = FALSE
   ))
   if (length(missing_covariances)) notes <- rbind(notes, data.frame(

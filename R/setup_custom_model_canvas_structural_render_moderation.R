@@ -204,7 +204,13 @@ structural_canvas_moderation_update_factor_score_ranges <- function(definitions,
   lapply(definitions, function(definition) {
     if (!identical(as.character(definition$moderator_role %||% ""), "latent")) return(definition)
     values <- structural_canvas_moderation_factor_score_values(fit, as.character(definition$moderator %||% ""))
-    if (length(values) < 2L) return(definition)
+    if (length(values) < 2L) {
+      definition$moderator_range_available <- FALSE
+      definition$moderator_min <- NA_real_
+      definition$moderator_max <- NA_real_
+      return(definition)
+    }
+    definition$moderator_range_available <- TRUE
     definition$moderator_mean <- 0
     definition$moderator_min <- min(values, na.rm = TRUE)
     definition$moderator_max <- max(values, na.rm = TRUE)

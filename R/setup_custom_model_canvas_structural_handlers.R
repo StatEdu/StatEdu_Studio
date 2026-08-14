@@ -9,8 +9,8 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
     fit_result <- reactiveVal(NULL)
     pending_mi_rows <- reactiveVal(integer(0))
     pending_estimator_snapshot <- reactiveVal(NULL)
-    if (identical(analysis_type, "cfa")) output[[paste0(prefix, "_download_reproducibility")]] <- downloadHandler(
-      filename = function() paste0("cfa-analysis-record-", format(Sys.Date(), "%Y%m%d"), ".txt"),
+    if (analysis_type %in% c("cfa", "cbsem", "sem")) output[[paste0(prefix, "_download_reproducibility")]] <- downloadHandler(
+      filename = function() paste0(analysis_type, "-analysis-record-", format(Sys.Date(), "%Y%m%d"), ".txt"),
       contentType = "text/plain; charset=utf-8",
       content = function(file) {
         bundle <- fit_result()
@@ -18,8 +18,8 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
         writeLines(structural_canvas_reproducibility_record(bundle), file, useBytes = TRUE)
       }
     )
-    if (identical(analysis_type, "cfa")) output[[paste0(prefix, "_download_tables")]] <- downloadHandler(
-      filename = function() paste0("cfa-result-tables-", format(Sys.Date(), "%Y%m%d"), ".xlsx"),
+    if (analysis_type %in% c("cfa", "cbsem", "sem")) output[[paste0(prefix, "_download_tables")]] <- downloadHandler(
+      filename = function() paste0(analysis_type, "-result-tables-", format(Sys.Date(), "%Y%m%d"), ".xlsx"),
       contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       content = function(file) {
         shiny::req(requireNamespace("openxlsx", quietly = TRUE))

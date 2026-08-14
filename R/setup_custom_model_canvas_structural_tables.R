@@ -206,10 +206,51 @@ structural_canvas_pls_fit_result_table <- function(summary_fit, diagnostics, dis
   do.call(rbind, rows)
 }
 
-structural_canvas_pls_validity_result_table <- function(summary_fit, display_name, bootstrap = NULL) {
+structural_canvas_subset_columns <- function(table, columns) {
+  if (!is.data.frame(table) || !nrow(table)) return(data.frame())
+  columns <- columns[columns %in% names(table)]
+  if (!length(columns)) return(data.frame())
+  table[, columns, drop = FALSE]
+}
+
+structural_canvas_pls_fit_main_table <- function(table) {
+  if (!is.data.frame(table) || !nrow(table)) return(data.frame())
+  display <- table
+  if ("Coefficient" %in% names(display)) names(display)[names(display) == "Coefficient"] <- "Path beta"
+  structural_canvas_subset_columns(display, c("Effect", "Outcome", "Predictor", "Path beta", "Indirect effect", "Total effect", "R2", "AdjR2", "Q2"))
+}
+
+structural_canvas_pls_fit_guide_table <- function(table) {
+  structural_canvas_subset_columns(table, c("Effect", "Outcome", "Predictor", "f2", "f2 size", "q2", "q2 size", "Inner VIF"))
+}
+
+structural_canvas_pls_fit_bootstrap_table <- function(table) {
+  structural_canvas_subset_columns(table, c(
+    "Effect", "Outcome", "Predictor",
+    "Boot CI lower", "Boot CI upper", "Boot t", "Boot p",
+    "Indirect effect CI lower", "Indirect effect CI upper", "Indirect effect t", "Indirect effect p",
+    "Total effect CI lower", "Total effect CI upper", "Total effect t", "Total effect p"
+  ))
+}
+
+structural_canvas_pls_construct_modes <- function(snapshot) {
+  latents <- Filter(function(node) identical(node$role, "latent"), snapshot$nodes %||% list())
+  stats::setNames(
+    vapply(latents, function(latent) {
+      if (identical(latent$measurementMode %||% "reflective", "formative")) "Formative" else "Reflective"
+    }, character(1)),
+    vapply(latents, structural_canvas_name, character(1))
+  )
+}
+
+structural_canvas_pls_validity_result_table <- function(summary_fit, display_name, bootstrap = NULL, snapshot = NULL) {
   reliability <- as.data.frame(summary_fit$reliability %||% data.frame(), check.names = FALSE)
   if (!nrow(reliability)) return(data.frame())
   constructs <- rownames(reliability)
+  modes <- structural_canvas_pls_construct_modes(snapshot %||% list())
+  construct_modes <- modes[constructs]
+  construct_modes[is.na(construct_modes) | !nzchar(construct_modes)] <- "Reflective"
+  reflective <- construct_modes == "Reflective"
   htmt <- suppressWarnings(as.matrix(summary_fit$validity$htmt %||% matrix(numeric(0), 0L, 0L)))
   fl <- suppressWarnings(as.matrix(summary_fit$validity$fl_criteria %||% matrix(numeric(0), 0L, 0L)))
   max_from_matrix <- function(matrix_value, construct) {
@@ -249,18 +290,27 @@ structural_canvas_pls_validity_result_table <- function(summary_fit, display_nam
   })
   data.frame(
     Construct = vapply(constructs, display_name, character(1)),
-    alpha = vapply(reliability$alpha, structural_canvas_pls_number, character(1)),
-    rhoA = vapply(reliability$rhoA, structural_canvas_pls_number, character(1)),
-    rhoC = vapply(reliability$rhoC, structural_canvas_pls_number, character(1)),
-    AVE = vapply(reliability$AVE, structural_canvas_pls_number, character(1)),
-    `sqrt(AVE)` = vapply(sqrt_ave, structural_canvas_pls_number, character(1)),
-    `Max HTMT` = vapply(max_htmt, structural_canvas_pls_number, character(1)),
-    `Max HTMT CI lower` = vapply(htmt_boot_rows, structural_canvas_pls_bootstrap_value, character(1), column = "2.5% CI"),
-    `Max HTMT CI upper` = vapply(htmt_boot_rows, structural_canvas_pls_bootstrap_value, character(1), column = "97.5% CI"),
-    `Max HTMT p` = vapply(htmt_boot_rows, function(row) if (is.null(row) || !"Bootstrap P Val" %in% names(row)) "" else format_p(row[["Bootstrap P Val"]][[1L]]), character(1)),
-    `Fornell-Larcker` = ifelse(is.finite(max_correlation) & is.finite(sqrt_ave) & sqrt_ave > max_correlation, "Criterion met", "Review needed"),
+    Mode = unname(construct_modes),
+    alpha = ifelse(reflective, vapply(reliability$alpha, structural_canvas_pls_number, character(1)), "N/A"),
+    rhoA = ifelse(reflective, vapply(reliability$rhoA, structural_canvas_pls_number, character(1)), "N/A"),
+    rhoC = ifelse(reflective, vapply(reliability$rhoC, structural_canvas_pls_number, character(1)), "N/A"),
+    AVE = ifelse(reflective, vapply(reliability$AVE, structural_canvas_pls_number, character(1)), "N/A"),
+    `sqrt(AVE)` = ifelse(reflective, vapply(sqrt_ave, structural_canvas_pls_number, character(1)), "N/A"),
+    `Max HTMT` = ifelse(reflective, vapply(max_htmt, structural_canvas_pls_number, character(1)), "N/A"),
+    `Max HTMT CI lower` = ifelse(reflective, vapply(htmt_boot_rows, structural_canvas_pls_bootstrap_value, character(1), column = "2.5% CI"), "N/A"),
+    `Max HTMT CI upper` = ifelse(reflective, vapply(htmt_boot_rows, structural_canvas_pls_bootstrap_value, character(1), column = "97.5% CI"), "N/A"),
+    `Max HTMT p` = ifelse(reflective, vapply(htmt_boot_rows, function(row) if (is.null(row) || !"Bootstrap P Val" %in% names(row)) "" else format_p(row[["Bootstrap P Val"]][[1L]]), character(1)), "N/A"),
+    `Fornell-Larcker` = ifelse(reflective, ifelse(is.finite(max_correlation) & is.finite(sqrt_ave) & sqrt_ave > max_correlation, "Criterion met", "Review needed"), "N/A - formative"),
     check.names = FALSE
   )
+}
+
+structural_canvas_pls_validity_main_table <- function(table) {
+  structural_canvas_subset_columns(table, c("Construct", "Mode", "alpha", "rhoA", "rhoC", "AVE", "sqrt(AVE)", "Max HTMT"))
+}
+
+structural_canvas_pls_validity_guide_table <- function(table) {
+  structural_canvas_subset_columns(table, c("Construct", "Mode", "Max HTMT CI lower", "Max HTMT CI upper", "Max HTMT p", "Fornell-Larcker"))
 }
 
 structural_canvas_pls_measurement_result_table <- function(summary_fit, snapshot, display_name, bootstrap = NULL) {
@@ -283,11 +333,13 @@ structural_canvas_pls_measurement_result_table <- function(summary_fit, snapshot
         Construct = display_name(construct),
         Indicator = display_name(indicator),
         Loading = structural_canvas_pls_number(structural_canvas_pls_matrix_cell(loadings, indicator, construct)),
+        `Loading Boot SE` = structural_canvas_pls_bootstrap_value(loading_boot, "Bootstrap SD"),
         `Loading CI lower` = structural_canvas_pls_bootstrap_value(loading_boot, "2.5% CI"),
         `Loading CI upper` = structural_canvas_pls_bootstrap_value(loading_boot, "97.5% CI"),
         `Loading t` = structural_canvas_pls_bootstrap_value(loading_boot, "T Stat."),
         `Loading p` = structural_canvas_pls_bootstrap_p(loading_boot),
         Weight = structural_canvas_pls_number(structural_canvas_pls_matrix_cell(weights, indicator, construct)),
+        `Weight Boot SE` = structural_canvas_pls_bootstrap_value(weight_boot, "Bootstrap SD"),
         `Weight CI lower` = structural_canvas_pls_bootstrap_value(weight_boot, "2.5% CI"),
         `Weight CI upper` = structural_canvas_pls_bootstrap_value(weight_boot, "97.5% CI"),
         `Weight t` = structural_canvas_pls_bootstrap_value(weight_boot, "T Stat."),
@@ -301,6 +353,50 @@ structural_canvas_pls_measurement_result_table <- function(summary_fit, snapshot
   }
   if (!length(rows)) return(data.frame())
   do.call(rbind, rows)
+}
+
+structural_canvas_pls_measurement_main_table <- function(table) {
+  if (!is.data.frame(table) || !nrow(table)) return(data.frame())
+  if (!all(c("Mode", "Loading", "Weight") %in% names(table))) return(data.frame())
+  display <- table
+  display[["loading/weight"]] <- ifelse(display$Mode == "Formative", display$Weight, display$Loading)
+  display[["Boot SE"]] <- ifelse(display$Mode == "Formative", display$`Weight Boot SE`, display$`Loading Boot SE`)
+  display[["Boot 95% CI lower"]] <- ifelse(display$Mode == "Formative", display$`Weight CI lower`, display$`Loading CI lower`)
+  display[["Boot 95% CI upper"]] <- ifelse(display$Mode == "Formative", display$`Weight CI upper`, display$`Loading CI upper`)
+  display[["Boot t"]] <- ifelse(display$Mode == "Formative", display$`Weight t`, display$`Loading t`)
+  display[["Boot p"]] <- ifelse(display$Mode == "Formative", display$`Weight p`, display$`Loading p`)
+  structural_canvas_subset_columns(display, c("Construct", "Indicator", "loading/weight", "Boot SE", "Boot 95% CI lower", "Boot 95% CI upper", "Boot t", "Boot p", "Mode"))
+}
+
+structural_canvas_pls_measurement_guide_table <- function(table) {
+  structural_canvas_subset_columns(table, c("Construct", "Indicator", "Loading", "Weight", "Item VIF", "Max cross-loading", "Mode"))
+}
+
+structural_canvas_pls_measurement_bootstrap_table <- function(table) {
+  structural_canvas_subset_columns(table, c(
+    "Construct", "Indicator", "Mode",
+    "Loading Boot SE", "Loading CI lower", "Loading CI upper", "Loading t", "Loading p",
+    "Weight Boot SE", "Weight CI lower", "Weight CI upper", "Weight t", "Weight p"
+  ))
+}
+
+structural_canvas_pls_htmt_matrix_table <- function(summary_fit, display_name) {
+  htmt <- suppressWarnings(as.matrix(summary_fit$validity$htmt %||% matrix(numeric(0), 0L, 0L)))
+  if (!length(htmt) || nrow(htmt) < 2L || ncol(htmt) < 2L) return(data.frame())
+  constructs <- rownames(htmt)
+  values <- matrix("", nrow = length(constructs), ncol = length(constructs) + 1L)
+  colnames(values) <- c("Construct", vapply(constructs, display_name, character(1)))
+  for (row in seq_along(constructs)) {
+    values[row, 1L] <- display_name(constructs[[row]])
+    for (column in seq_along(constructs)) {
+      if (row == column) {
+        values[row, column + 1L] <- "-"
+      } else if (row > column) {
+        values[row, column + 1L] <- structural_canvas_pls_number(htmt[row, column])
+      }
+    }
+  }
+  as.data.frame(values, check.names = FALSE)
 }
 
 structural_canvas_pls_predict_tables <- function(prediction) {
@@ -394,7 +490,7 @@ structural_canvas_lavaan_structural_effect_rows <- function(fit, effect_definiti
 }
 
 structural_canvas_lavaan_structural_result_table <- function(kind, fit, ko, fmt, display_name, effect_definitions = list()) {
-  if (!identical(kind, "structural")) return(NULL)
+  if (!kind %in% c("structural", "structural_ci", "structural_effects", "structural_effect_ci")) return(NULL)
   raw <- lavaan::parameterEstimates(fit, ci = TRUE)
   raw <- raw[raw$op == "~", c("lhs", "rhs", "est", "se", "z", "pvalue", "ci.lower", "ci.upper"), drop = FALSE]
   if (!nrow(raw)) return(data.frame())
@@ -424,9 +520,56 @@ structural_canvas_lavaan_structural_result_table <- function(kind, fit, ko, fmt,
     p = vapply(raw$pvalue, format_p, character(1)),
     check.names = FALSE
   )
-  names(table)[1:2] <- if (ko) c("결과변수", "예측변수") else c("Outcome", "Predictor")
+  names(table)[1:3] <- c("Effect", if (ko) c("결과변수", "예측변수") else c("Outcome", "Predictor"))
   names(table)[names(table) == "R2"] <- "R²"
   table
+}
+
+structural_canvas_effect_summary_table <- function(structural_table, ci = FALSE) {
+  if (!is.data.frame(structural_table) || !nrow(structural_table) ||
+      !all(c("Effect", "Outcome", "Predictor") %in% names(structural_table))) {
+    return(data.frame())
+  }
+  if (!any(structural_table$Effect %in% c("Indirect", "Total"))) return(data.frame())
+  pairs <- unique(structural_table[, c("Outcome", "Predictor"), drop = FALSE])
+  value_for <- function(outcome, predictor, effect, column) {
+    rows <- structural_table$Outcome == outcome & structural_table$Predictor == predictor & structural_table$Effect == effect
+    if (!any(rows) || !column %in% names(structural_table)) return("")
+    as.character(structural_table[[column]][which(rows)[[1L]]])
+  }
+  ci_for <- function(outcome, predictor, effect) {
+    lower <- value_for(outcome, predictor, effect, "beta 95% CI lower")
+    upper <- value_for(outcome, predictor, effect, "beta 95% CI upper")
+    if (!nzchar(lower) && !nzchar(upper)) return("")
+    paste0(lower, " ~ ", upper)
+  }
+  rows <- lapply(seq_len(nrow(pairs)), function(index) {
+    outcome <- pairs$Outcome[[index]]
+    predictor <- pairs$Predictor[[index]]
+    if (isTRUE(ci)) {
+      data.frame(
+        Outcome = outcome,
+        Predictor = predictor,
+        `Direct beta 95% CI` = ci_for(outcome, predictor, "Direct"),
+        `Indirect beta 95% CI` = ci_for(outcome, predictor, "Indirect"),
+        `Total beta 95% CI` = ci_for(outcome, predictor, "Total"),
+        check.names = FALSE
+      )
+    } else {
+      data.frame(
+        Outcome = outcome,
+        Predictor = predictor,
+        `Direct beta` = value_for(outcome, predictor, "Direct", "beta"),
+        `Direct p` = value_for(outcome, predictor, "Direct", "p"),
+        `Indirect beta` = value_for(outcome, predictor, "Indirect", "beta"),
+        `Indirect p` = value_for(outcome, predictor, "Indirect", "p"),
+        `Total beta` = value_for(outcome, predictor, "Total", "beta"),
+        `Total p` = value_for(outcome, predictor, "Total", "p"),
+        check.names = FALSE
+      )
+    }
+  })
+  do.call(rbind, rows)
 }
 
 structural_canvas_result_table <- function(kind, fit_result, analysis_type, labels_fn, app_language_fn = NULL) {
@@ -465,6 +608,13 @@ structural_canvas_result_table <- function(kind, fit_result, analysis_type, labe
   }
   fmt <- function(value) vapply(as.numeric(value), format_decimal3, character(1))
   if (analysis_type %in% c("cfa", "cbsem", "sem")) {
+    if (identical(kind, "common_method")) {
+      return(structural_canvas_common_method_display_table(
+        bundle$common_method_result,
+        format_values = TRUE,
+        language = statedu_current_language(app_language_fn)
+      ))
+    }
     summary_table <- structural_canvas_summary_result_table(kind, bundle, fit, analysis_type, ko, fmt)
     if (!is.null(summary_table)) return(summary_table)
     validity_table <- structural_canvas_validity_result_table(kind, bundle, snapshot, fit, ko, fmt, display_name)
@@ -480,7 +630,7 @@ structural_canvas_result_table <- function(kind, fit_result, analysis_type, labe
     }
     structural_table <- structural_canvas_lavaan_structural_result_table(kind, fit, ko, fmt, display_name)
     if (!is.null(structural_table)) {
-      if (identical(kind, "structural") && ncol(structural_table) >= 3L) {
+      if (kind %in% c("structural", "structural_ci", "structural_effects", "structural_effect_ci") && ncol(structural_table) >= 3L) {
         names(structural_table)[1:3] <- c("Effect", "Outcome", "Predictor")
         effect_rows <- structural_canvas_lavaan_structural_effect_rows(
           fit, bundle$diagnostics$effect_definitions %||% bundle$effect_definitions %||% list(), fmt, display_name
@@ -490,6 +640,24 @@ structural_canvas_result_table <- function(kind, fit_result, analysis_type, labe
           structural_table <- rbind(structural_table, effect_rows)
         }
       }
+      if (identical(kind, "structural")) {
+        direct <- structural_table[structural_table$Effect == "Direct", , drop = FALSE]
+        return(direct[, c("Outcome", "Predictor", "B", "SE", "beta", "z", "p", "R²"), drop = FALSE])
+      }
+      if (identical(kind, "structural_ci")) {
+        direct <- structural_table[structural_table$Effect == "Direct", , drop = FALSE]
+        return(direct[, c(
+          "Outcome", "Predictor",
+          "B 95% CI lower", "B 95% CI upper",
+          "beta 95% CI lower", "beta 95% CI upper"
+        ), drop = FALSE])
+      }
+      if (identical(kind, "structural_effects")) {
+        return(structural_canvas_effect_summary_table(structural_table, ci = FALSE))
+      }
+      if (identical(kind, "structural_effect_ci")) {
+        return(structural_canvas_effect_summary_table(structural_table, ci = TRUE))
+      }
       return(structural_table)
     }
     return(structural_canvas_mi_result_table(bundle, snapshot, fit, ko, fmt, display_name, residual_name))
@@ -497,11 +665,12 @@ structural_canvas_result_table <- function(kind, fit_result, analysis_type, labe
   summary_fit <- summary(fit)
   if (identical(kind, "overview")) {
     diagnostics <- bundle$diagnostics %||% list()
+    estimator_label <- diagnostics$estimator %||% bundle$estimator %||% "PLS"
     overview_df <- data.frame(
       Item = if (ko) c("분석", "추정 방법", "표본 크기(N)", "구성개념", "지표", "구조 경로", "수렴 여부") else c("Analysis", "Estimator", "N", "Constructs", "Indicators", "Structural paths", "Converged"),
       Value = c(
         structural_analysis_title(analysis_type, "en"),
-        "PLS",
+        estimator_label,
         as.character(diagnostics$n %||% NA_integer_),
         length(diagnostics$constructs %||% character(0)),
         length(diagnostics$observed %||% character(0)),
@@ -525,9 +694,26 @@ structural_canvas_result_table <- function(kind, fit_result, analysis_type, labe
     names(overview_df)[[2]] <- if (ko) "값" else "Value"
     return(overview_df)
   }
-  if (identical(kind, "fit")) return(structural_canvas_pls_fit_result_table(summary_fit, bundle$diagnostics %||% list(), display_name, bundle$pls_bootstrap_result %||% NULL))
-  if (identical(kind, "validity")) return(structural_canvas_pls_validity_result_table(summary_fit, display_name, bundle$pls_bootstrap_result %||% NULL))
-  if (identical(kind, "measurement")) return(structural_canvas_pls_measurement_result_table(summary_fit, snapshot, display_name, bundle$pls_bootstrap_result %||% NULL))
+  if (kind %in% c("fit", "fit_guide", "fit_bootstrap")) {
+    full_fit <- structural_canvas_pls_fit_result_table(summary_fit, bundle$diagnostics %||% list(), display_name, bundle$pls_bootstrap_result %||% NULL)
+    if (identical(kind, "fit")) return(structural_canvas_pls_fit_main_table(full_fit))
+    if (identical(kind, "fit_guide")) return(structural_canvas_pls_fit_guide_table(full_fit))
+    return(structural_canvas_pls_fit_bootstrap_table(full_fit))
+  }
+  if (kind %in% c("validity", "validity_guide")) {
+    full_validity <- structural_canvas_pls_validity_result_table(summary_fit, display_name, bundle$pls_bootstrap_result %||% NULL, bundle$snapshot %||% NULL)
+    if (identical(kind, "validity")) return(structural_canvas_pls_validity_main_table(full_validity))
+    return(structural_canvas_pls_validity_guide_table(full_validity))
+  }
+  if (identical(kind, "pls_htmt")) {
+    return(structural_canvas_pls_htmt_matrix_table(summary_fit, display_name))
+  }
+  if (kind %in% c("measurement", "measurement_guide", "measurement_bootstrap")) {
+    full_measurement <- structural_canvas_pls_measurement_result_table(summary_fit, snapshot, display_name, bundle$pls_bootstrap_result %||% NULL)
+    if (identical(kind, "measurement")) return(structural_canvas_pls_measurement_main_table(full_measurement))
+    if (identical(kind, "measurement_guide")) return(structural_canvas_pls_measurement_guide_table(full_measurement))
+    return(structural_canvas_pls_measurement_bootstrap_table(full_measurement))
+  }
   matrix_value <- switch(kind, mi = NULL)
   if (is.null(matrix_value)) return(data.frame())
   table <- as.data.frame(matrix_value, check.names = FALSE)

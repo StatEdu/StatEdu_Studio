@@ -118,6 +118,20 @@ stopifnot(
 
 record <- structural_canvas_reproducibility_record(reporting_bundle, as.POSIXct("2026-08-12 12:00:00", tz = "Asia/Seoul"))
 integrated_sheets <- structural_canvas_result_workbook_sheets(reporting_bundle, table_fn)
+common_method_export_bundle <- reporting_bundle
+common_method_export_bundle$common_method_enabled <- TRUE
+common_method_export_bundle$common_method_methods <- c("harman", "single_factor_cfa", "common_latent_factor")
+common_method_export_bundle$common_method_result <- structural_canvas_run_common_method_diagnostics(
+  list(fit = reporting_fit, syntax = reporting_syntax),
+  reporting_data,
+  "cfa",
+  "ML",
+  "listwise",
+  FALSE,
+  character(0),
+  common_method_export_bundle$common_method_methods
+)
+common_method_sheets <- structural_canvas_result_workbook_sheets(common_method_export_bundle, table_fn)
 sheet_snapshots <- list(
   Overview = list(names = c("Table", "Value"), rows = 1L),
   Report_Summary = list(names = c("Section", "Item", "Value"), rows = 15L),
@@ -174,7 +188,11 @@ stopifnot(
   identical(integrated_sheets$Reliability_Validity_Numeric$Factor, c("eta1", "eta2")),
   identical(integrated_sheets$Sample_Descriptives$Variable, c("x1", "x2", "x3", "y1", "y2", "y3")),
   identical(integrated_sheets$Bollen_Stine$`Requested replicates`[[1L]], 10L),
-  identical(integrated_sheets$Bollen_Stine$Status[[1L]], "Adequate")
+  identical(integrated_sheets$Bollen_Stine$Status[[1L]], "Adequate"),
+  all(c("Common_Method", "Common_Method_Fit", "Common_Method_Comparison") %in% names(common_method_sheets)),
+  all(c("Method", "Statistic", "Value", "Status", "Guidance") %in% names(common_method_sheets$Common_Method)),
+  all(c("Comparison", "Delta chisq", "Delta df", "Delta p", "Delta CFI", "Delta RMSEA", "Delta SRMR", "Note") %in% names(common_method_sheets$Common_Method_Comparison)),
+  any(common_method_sheets$Contents$Sheet == "Common_Method_Comparison" & grepl("delta chi-square", common_method_sheets$Contents$Description, fixed = TRUE))
 )
 
 integrated_workbook_file <- tempfile(fileext = ".xlsx")
@@ -287,6 +305,7 @@ stopifnot(
   grepl("sheets$Parameter_Estimates <- structural_canvas_export_parameter_estimates(bundle$fit)", export_source, fixed = TRUE),
   grepl("sheets$Latent_Correlations <- structural_canvas_export_latent_correlations(bundle$fit)", export_source, fixed = TRUE),
   grepl("sheets$Reliability_Validity_Numeric <- structural_canvas_export_reliability_validity(bundle)", export_source, fixed = TRUE),
+  grepl("sheets$Common_Method_Comparison <- common_method$comparison", export_source, fixed = TRUE),
   grepl("sheets$Sample_Descriptives <- sample_statistics$Descriptives", export_source, fixed = TRUE),
   grepl("sheets$Sample_Covariance <- sample_statistics$Covariance", export_source, fixed = TRUE),
   grepl("sheets$Thresholds <- sample_statistics$Thresholds", export_source, fixed = TRUE),

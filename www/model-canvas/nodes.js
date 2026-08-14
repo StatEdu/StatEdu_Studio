@@ -142,6 +142,9 @@
     instance.state.nodes.forEach(function(node) {
       var element = document.createElement("div");
       element.className = "custom-model-node custom-model-node-" + node.role;
+      if (node.role === "latent" && node.constructType === "higherOrder") {
+        element.className += " custom-model-node-higher-order";
+      }
       if (node.id === instance.state.selectedNodeId || selectedNodeIds.indexOf(node.id) >= 0) {
         element.className += " is-selected";
       }

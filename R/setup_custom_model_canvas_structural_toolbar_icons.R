@@ -51,3 +51,30 @@ structural_file_icon <- function(kind) {
     tags$path(d = "M4 17h8"), tags$circle(cx = "15", cy = "17", r = "2"), tags$path(d = "M17 17h3")
   )
 }
+
+structural_higher_order_icon <- function() {
+  tags$svg(
+    class = "structural-higher-order-svg",
+    viewBox = "0 0 40 24",
+    fill = "none",
+    stroke = "currentColor",
+    `stroke-width` = "1.7",
+    `stroke-linecap` = "round",
+    `stroke-linejoin` = "round",
+    `aria-hidden` = "true",
+    tags$ellipse(cx = "20", cy = "12", rx = "15.5", ry = "8.5"),
+    tags$ellipse(cx = "20", cy = "12", rx = "11.5", ry = "5.7"),
+    tags$text(
+      x = "20",
+      y = "15",
+      `text-anchor` = "middle",
+      `font-size` = "8.5",
+      `font-weight` = "800",
+      `font-family` = "Arial, sans-serif",
+      `letter-spacing` = "0",
+      stroke = "none",
+      fill = "currentColor",
+      "HO"
+    )
+  )
+}

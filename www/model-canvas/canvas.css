@@ -623,7 +623,9 @@
 
 .custom-model-edge-shape-tools.is-visible,
 .custom-model-edge-anchor-tools.is-visible {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: repeat(2, 30px);
+  grid-auto-rows: 30px;
 }
 
 .custom-model-edge-anchor-tools {
@@ -700,13 +702,38 @@
 }
 
 .structural-result-tools {
-  display: flex;
-  position: absolute;
-  top: 6px;
-  right: 8px;
+  display: grid;
+  grid-template-columns: 112px repeat(2, 40px);
+  grid-template-rows: repeat(2, 32px);
   gap: 4px;
-  align-items: center;
+  align-items: stretch;
   flex: 0 0 auto;
+}
+
+.structural-result-coefficient-control {
+  grid-row: 1 / span 2;
+  display: grid;
+  grid-template-rows: 16px 28px;
+  align-content: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.structural-result-coefficient-label {
+  margin: 0;
+  color: #475467;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+.structural-result-coefficient-select {
+  width: 112px;
+  height: 28px;
+  min-height: 28px;
+  padding: 2px 24px 2px 8px;
+  font-size: 12px;
+  line-height: 1.2;
 }
 
 .custom-model-modal-backdrop {
@@ -963,6 +990,24 @@
   border: 2px solid currentColor;
   border-radius: 50%;
 }
+.structural-equation-canvas-root [data-action="addHigherOrderLatent"] .custom-model-toolbar-icon::before {
+  content: none;
+}
+.structural-higher-order-svg {
+  width: 34px;
+  height: 22px;
+  display: block;
+}
+.structural-higher-order-svg ellipse,
+.structural-higher-order-svg line {
+  fill: none;
+  stroke: currentColor;
+  vector-effect: non-scaling-stroke;
+}
+.structural-higher-order-svg text {
+  fill: currentColor;
+  stroke: none;
+}
 .structural-equation-canvas-root [data-action="select"] .custom-model-toolbar-icon::before { content: "↖"; }
 .structural-equation-canvas-root [data-action="connect"] .custom-model-toolbar-icon::before,
 .structural-equation-canvas-root [data-action="covariance"] .custom-model-toolbar-icon::before {
@@ -1026,11 +1071,11 @@
 .structural-covariate-target-cell { display: flex; align-items: center; justify-content: center; margin: 0; }
 
 .structural-latent-tools {
-  display: inline-flex;
+  display: grid;
   align-items: center;
   align-self: flex-start;
   gap: 4px;
-  margin-left: auto;
+  margin-left: 0;
   padding-left: 10px;
   border-left: 1px solid #d8dee8;
 }
@@ -1047,7 +1092,7 @@
 
 .structural-primary-toolbar-tools {
   display: grid;
-  grid-template-columns: repeat(14, 44px);
+  grid-template-columns: repeat(15, 44px);
   grid-template-rows: repeat(2, 32px);
   grid-auto-rows: 32px;
   gap: 4px;
@@ -1073,19 +1118,44 @@
   font-size: 15px;
 }
 
-.structural-advanced-analysis-tools {
-  display: inline-flex;
+.structural-primary-toolbar-tools [data-action="addHigherOrderLatent"] .custom-model-toolbar-icon {
+  width: 34px;
+  height: 22px;
+}
+
+.structural-secondary-toolbar-tools {
+  display: flex;
   align-items: flex-start;
+  gap: 8px;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.structural-advanced-analysis-tools {
+  display: grid;
+  grid-template-columns: 72px;
+  grid-template-rows: repeat(2, 32px);
+  align-items: stretch;
   gap: 4px;
-  margin-left: 8px;
+  margin-left: 0;
   padding-left: 8px;
   border-left: 1px solid #d8dee8;
 }
 
+.structural-latent-tools-basic {
+  grid-template-columns: auto repeat(4, 46px);
+  grid-template-rows: 32px;
+}
+
+.structural-latent-tools-pls {
+  grid-template-columns: auto repeat(4, 46px);
+  grid-template-rows: repeat(2, 32px);
+}
+
 .structural-advanced-analysis-tools .custom-model-toolbar-button {
-  width: 64px;
-  min-width: 64px;
-  height: 40px;
+  width: 72px;
+  min-width: 72px;
+  height: 32px;
 }
 
 .structural-equation-canvas-root [data-action="multiGroup"] .custom-model-toolbar-icon::before {
@@ -1104,8 +1174,22 @@
 .structural-equation-canvas-root [data-action="zoomOut"] .custom-model-toolbar-icon::before { content: "−"; font-size: 22px; font-weight: 600; }
 .structural-equation-canvas-root [data-action="run"] .custom-model-toolbar-icon::before { content: "▶"; font-size: 17px; }
 .structural-equation-canvas-root [data-action="flipCfa"] .custom-model-toolbar-icon::before { content: "⇄"; font-size: 22px; }
-.structural-latent-tools-label { margin-right: 3px; color: #475467; font-size: 11px; font-weight: 700; }
-.structural-toolbar-separator { width: 1px; height: 24px; margin: 0 3px; background: #d8dee8; }
+.structural-latent-tools-label {
+  margin-right: 3px;
+  color: #475467;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.structural-latent-tools-basic .structural-latent-tools-label {
+  grid-row: 1;
+}
+
+.structural-latent-tools-pls .structural-latent-tools-label {
+  grid-row: 1 / span 2;
+}
+
+.structural-toolbar-separator { display: none; }
 .structural-equation-canvas-root [data-action="placementLeft"] .custom-model-toolbar-icon::before { content: "▭←⬭"; font-size: 12px; }
 .structural-equation-canvas-root [data-action="placementRight"] .custom-model-toolbar-icon::before { content: "⬭→▭"; font-size: 12px; }
 .structural-equation-canvas-root [data-action="placementTop"] .custom-model-toolbar-icon::before { content: "▭↑⬭"; font-size: 12px; }
@@ -1114,19 +1198,19 @@
 .structural-equation-canvas-root [data-action="formative"] .custom-model-toolbar-icon::before { content: "x→η"; font-size: 12px; }
 
 .structural-latent-tools .custom-model-toolbar-button {
-  width: 52px;
-  min-width: 52px;
-  height: 40px;
+  width: 46px;
+  min-width: 46px;
+  height: 32px;
   padding: 2px 4px;
 }
 
 .structural-latent-tools .custom-model-toolbar-icon {
-  width: 46px;
-  height: 32px;
+  width: 40px;
+  height: 26px;
 }
 
 .structural-latent-tools .custom-model-toolbar-icon:has(.structural-measurement-svg)::before { content: none; }
-.structural-measurement-svg { width: 46px; height: 30px; overflow: visible; }
+.structural-measurement-svg { width: 40px; height: 26px; overflow: visible; }
 .structural-measurement-svg rect,
 .structural-measurement-svg ellipse,
 .structural-measurement-svg line {
@@ -1134,6 +1218,12 @@
   stroke: currentColor;
   stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
+}
+
+.custom-model-node.custom-model-node-higher-order {
+  border-style: double;
+  border-width: 3px !important;
+  background-color: rgba(239, 246, 255, 0.74) !important;
 }
 
 .structural-equation-canvas-root .custom-model-variable-list {
@@ -1554,9 +1644,39 @@
   vertical-align: middle;
 }
 
+.structural-pls-measurement-main-table,
+.structural-pls-fit-guide-table,
+.structural-pls-fit-bootstrap-table,
+.structural-pls-validity-guide-table,
+.structural-pls-measurement-guide-table,
+.structural-pls-measurement-bootstrap-table {
+  table-layout: auto !important;
+}
+
+.structural-pls-measurement-main-table th,
+.structural-pls-measurement-main-table td,
+.structural-pls-fit-guide-table th,
+.structural-pls-fit-guide-table td,
+.structural-pls-fit-bootstrap-table th,
+.structural-pls-fit-bootstrap-table td,
+.structural-pls-validity-guide-table th,
+.structural-pls-validity-guide-table td,
+.structural-pls-measurement-guide-table th,
+.structural-pls-measurement-guide-table td,
+.structural-pls-measurement-bootstrap-table th,
+.structural-pls-measurement-bootstrap-table td {
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
 .structural-validity-table th:not(:first-child),
 .structural-validity-table td:not(:first-child),
 .structural-validity-table .structural-numeric-cell {
+  text-align: center !important;
+}
+
+.structural-validity-table td.structural-parenthetical-cell {
   text-align: center !important;
 }
 
@@ -1566,13 +1686,77 @@
   text-align: center !important;
 }
 
+.structural-landscape-table-wrap {
+  overflow-x: auto !important;
+  width: 100%;
+}
+
+.structural-landscape-table {
+  table-layout: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  font-size: 11px;
+}
+
+.structural-landscape-table th,
+.structural-landscape-table td {
+  min-width: 0 !important;
+  padding: 5px 6px !important;
+  overflow-wrap: normal;
+  white-space: normal !important;
+  word-break: keep-all;
+}
+
+.structural-landscape-table td.structural-numeric-cell {
+  white-space: nowrap !important;
+}
+
+.structural-landscape-table .structural-numeric-value {
+  min-width: 0;
+}
+
+.structural-additional-fit-family {
+  margin: 10px 0 14px 0;
+}
+
+.structural-additional-fit-family h6 {
+  color: #082747;
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 6px 0;
+}
+
+.structural-additional-fit-family .table-responsive {
+  overflow-x: auto;
+}
+
+.structural-additional-fit-indices-table {
+  max-width: none !important;
+  min-width: 100%;
+  table-layout: auto !important;
+  width: max-content !important;
+}
+
+.structural-additional-fit-indices-table th,
+.structural-additional-fit-indices-table td {
+  min-width: 72px;
+  white-space: nowrap;
+}
+
 .structural-additional-fit-indices-table th:not(:first-child),
 .structural-additional-fit-indices-table td:not(:first-child) {
   text-align: center;
 }
 
+.structural-additional-fit-indices-table th:first-child,
+.structural-additional-fit-indices-table td:first-child {
+  min-width: 110px;
+  text-align: left !important;
+}
+
 .structural-information-criteria-table {
-  min-width: 760px;
+  min-width: 0;
   font-size: 12px;
 }
 
@@ -1583,17 +1767,104 @@
 
 .structural-information-criteria-table th:nth-child(10),
 .structural-information-criteria-table td:nth-child(10) {
-  min-width: 150px;
+  min-width: 0;
   white-space: normal;
 }
 
-.structural-mi-result table th:not(:first-child),
-.structural-mi-result table td:not(:first-child) {
+.structural-mi-table-scroll {
+  overflow-x: auto;
+}
+
+.structural-mi-table {
+  max-width: none !important;
+  min-width: 100%;
+  table-layout: auto !important;
+  width: max-content !important;
+}
+
+.structural-mi-table th,
+.structural-mi-table td {
+  min-width: 58px;
+  white-space: nowrap;
+}
+
+.structural-mi-table th:not(:first-child),
+.structural-mi-table td:not(:first-child) {
   text-align: right;
 }
 
-.structural-mi-result table th:first-child,
-.structural-mi-result table td:first-child {
-  min-width: 170px;
+.structural-mi-theory-table th:first-child,
+.structural-mi-theory-table td:first-child {
+  min-width: 52px;
   white-space: nowrap;
+}
+
+.structural-mi-theory-table th:nth-child(3),
+.structural-mi-theory-table td:nth-child(3),
+.structural-mi-free-table th:first-child,
+.structural-mi-free-table td:first-child {
+  min-width: 118px;
+  text-align: center;
+}
+
+.structural-mi-theory-table th:last-child,
+.structural-mi-theory-table td:last-child {
+  min-width: 58px;
+  text-align: center;
+}
+
+.structural-mi-skipped-details-table td:first-child {
+  text-align: center;
+  white-space: nowrap;
+  width: 60px;
+}
+
+.structural-mi-skipped-details-table td:nth-child(2) {
+  overflow-wrap: anywhere;
+  text-align: left !important;
+  white-space: normal;
+}
+
+.structural-landscape-table.structural-additional-fit-indices-table,
+.structural-landscape-table.structural-information-criteria-table,
+.structural-landscape-table.structural-mi-table,
+.structural-landscape-table.structural-fit-guidance-table,
+.structural-landscape-table.structural-rmsea-tests-table {
+  table-layout: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+.structural-landscape-table.structural-additional-fit-indices-table th,
+.structural-landscape-table.structural-additional-fit-indices-table td,
+.structural-landscape-table.structural-information-criteria-table th,
+.structural-landscape-table.structural-information-criteria-table td,
+.structural-landscape-table.structural-mi-table th,
+.structural-landscape-table.structural-mi-table td,
+.structural-landscape-table.structural-fit-guidance-table th,
+.structural-landscape-table.structural-fit-guidance-table td,
+.structural-landscape-table.structural-rmsea-tests-table th,
+.structural-landscape-table.structural-rmsea-tests-table td {
+  min-width: 0 !important;
+  white-space: normal !important;
+  word-break: keep-all;
+}
+
+.structural-mi-table.structural-landscape-table th,
+.structural-mi-table.structural-landscape-table td {
+  white-space: nowrap !important;
+}
+
+.structural-fit-guidance-result,
+.structural-effect-summary-block {
+  margin-top: 18px;
+}
+
+.structural-path-result > .structural-result-note + .structural-result-note {
+  margin-top: 4px;
+}
+
+.structural-effect-summary-block h5 {
+  margin-top: 0;
 }

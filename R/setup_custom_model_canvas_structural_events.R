@@ -8,6 +8,22 @@ run_confirmed_analysis <- function(snapshot, settings = list()) {
   result
 }
 observeEvent(input[[canvas_input]], mark_settings_dirty(), ignoreInit = TRUE)
+observeEvent(input[[paste0(prefix, "_result_coefficient")]], {
+  bundle <- fit_result()
+  shiny::req(!is.null(bundle), !is.null(bundle$fit), !is.null(bundle$snapshot))
+  coefficient <- structural_canvas_result_coefficient_mode(input[[paste0(prefix, "_result_coefficient")]] %||% bundle$result_coefficient %||% "beta_p")
+  bundle$result_coefficient <- coefficient
+  fit_result(bundle)
+  session$sendCustomMessage(
+    "custom-model-canvas-result",
+    list(
+      rootId = paste0(prefix, "-canvas-root"),
+      source = bundle$snapshot,
+      result = structural_canvas_result_snapshot(bundle$snapshot, bundle$fit, coefficient),
+      show = TRUE
+    )
+  )
+}, ignoreInit = TRUE)
 observeEvent(input[[confirm_input]], {
   package <- structural_analysis_package(analysis_type)
   if (!requireNamespace(package, quietly = TRUE)) {
@@ -36,7 +52,7 @@ observeEvent(input[[confirm_input]], {
         type = if (isTRUE(result$converged)) "message" else "warning"
       )
     }, error = function(error) {
-      showNotification(conditionMessage(error), type = "error", duration = 8)
+      showNotification(structural_canvas_error_message(error, statedu_current_language(app_language_fn)), type = "error", duration = 8)
     })
   }
 }, ignoreInit = TRUE)
@@ -47,7 +63,7 @@ observeEvent(input[[paste0(prefix, "_run_with_ml")]], {
   tryCatch({
     run_confirmed_analysis(snapshot, list(estimator = "ML"))
   }, error = function(error) {
-    showNotification(conditionMessage(error), type = "error", duration = 8)
+    showNotification(structural_canvas_error_message(error, statedu_current_language(app_language_fn)), type = "error", duration = 8)
   })
 }, ignoreInit = TRUE)
 observeEvent(input[[paste0(prefix, "_run_with_mlr")]], {
@@ -59,7 +75,7 @@ observeEvent(input[[paste0(prefix, "_run_with_mlr")]], {
     if (identical(analysis_type, "cfa")) settings$bollen_stine_bootstrap <- 0L
     run_confirmed_analysis(snapshot, settings)
   }, error = function(error) {
-    showNotification(conditionMessage(error), type = "error", duration = 8)
+    showNotification(structural_canvas_error_message(error, statedu_current_language(app_language_fn)), type = "error", duration = 8)
   })
 }, ignoreInit = TRUE)
 lapply(seq_len(100L), function(index) local({
@@ -72,7 +88,7 @@ lapply(seq_len(100L), function(index) local({
       NULL
     }, error = identity)
     if (!is.null(reuse_error)) {
-      showNotification(conditionMessage(reuse_error), type = "error", duration = 12)
+      showNotification(structural_canvas_error_message(reuse_error, statedu_current_language(app_language_fn)), type = "error", duration = 12)
       return()
     }
     selected_rows <- if (identical(bundle$mi_mode %||% "theory", "theory")) seq_len(row_index) else row_index
@@ -112,7 +128,7 @@ observeEvent(input[[paste0(prefix, "_mi_confirm_apply")]], {
     result <- execute_analysis(snapshot, settings)
     ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
     showNotification(if (ko) "선택한 MI 경로를 추가하고 기록한 뒤 재분석했습니다." else "The selected MI paths were added, documented, and reanalyzed.", type = if (isTRUE(result$converged)) "message" else "warning")
-  }, error = function(error) showNotification(conditionMessage(error), type = "error", duration = 8))
+  }, error = function(error) showNotification(structural_canvas_error_message(error, statedu_current_language(app_language_fn)), type = "error", duration = 8))
 }, ignoreInit = TRUE)
 observeEvent(input[[paste0(prefix, "_heywood_refit")]], {
   ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
@@ -135,7 +151,7 @@ observeEvent(input[[paste0(prefix, "_heywood_confirm")]], {
     result <- execute_analysis(bundle$snapshot, constraint$settings)
     showNotification(paste0("The constrained model fixed ", paste(constraint$variables, collapse = ", "), " to ", format(constraint$percent, trim = TRUE), "% of observed variance."), type = if (isTRUE(result$admissible)) "message" else "warning", duration = 10)
   }, error = function(error) {
-    showNotification(conditionMessage(error), type = "error", duration = 10)
+    showNotification(structural_canvas_error_message(error, statedu_current_language(app_language_fn)), type = "error", duration = 10)
   })
 }, ignoreInit = TRUE)
 observeEvent(input[[advanced_input]], {

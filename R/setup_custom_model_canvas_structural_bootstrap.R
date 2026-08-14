@@ -1,6 +1,6 @@
 # Structural equation canvas bootstrap helpers.
 
-structural_canvas_htmt_bootstrap <- function(data, indicators_by_factor, reps = 0L, confidence = .95, seed = 20260812L, ordered = character(0), threshold = .85, ci_method = "percentile", progress = NULL, cancel = NULL) {
+structural_canvas_htmt_bootstrap <- function(data, indicators_by_factor, reps = 0L, confidence = .95, seed = default_seed(), ordered = character(0), threshold = .85, ci_method = "percentile", progress = NULL, cancel = NULL) {
   reps <- suppressWarnings(as.integer(reps))
   confidence <- suppressWarnings(as.numeric(confidence))
   threshold <- suppressWarnings(as.numeric(threshold))

@@ -48,11 +48,15 @@ ko_language_fn <- function() "ko"
 variable_table <- data.frame(name = names(data), measurement = "scale", stringsAsFactors = FALSE)
 notification_source <- readLines(file.path("R", "setup_custom_model_canvas_structural_execute_notifications.R"), warn = FALSE, encoding = "UTF-8")
 pls_engine_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_pls_engine.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+handler_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_handlers.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+fit_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_render_fit.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 stopifnot(
   grepl("PLS structural model effects", ui_source, fixed = TRUE),
   grepl("2. PLS structural model effects", ui_source, fixed = TRUE),
   grepl("total and indirect effects", ui_source, fixed = TRUE),
   grepl("PLSpredict cross-validation", ui_source, fixed = TRUE),
+  grepl('"PLSc" = "PLSc"', ui_source, fixed = TRUE),
+  grepl('"5,000 resamples" = "5000"', ui_source, fixed = TRUE),
   grepl("PLSpredict predictive assessment", ui_source, fixed = TRUE),
   grepl("PLS-SEM quality checklist", ui_source, fixed = TRUE),
   grepl("Q2 predictive-relevance", ui_source, fixed = TRUE),
@@ -63,24 +67,27 @@ stopifnot(
   grepl("Estimator or algorithm", ui_source, fixed = TRUE),
   grepl("Admissibility and convergence", ui_source, fixed = TRUE),
   grepl("PLS - LM values indicate lower out-of-sample prediction error", ui_source, fixed = TRUE),
-  grepl("path coefficients, R2, adjusted R2, f2, Q2, q2, inner VIF", ui_source, fixed = TRUE),
-  grepl("f2 and q2 size labels use the descriptive .02/.15/.35", ui_source, fixed = TRUE),
-  grepl("Inner VIF is reported for direct structural paths", ui_source, fixed = TRUE),
-  grepl("PLS-SEM 구조모형 출력", ui_source, fixed = TRUE),
-  grepl("PLS-SEM 측정모형 출력", ui_source, fixed = TRUE),
+  grepl("path beta, indirect effect, total effect, R2, adjusted R2, and Q2", ui_source, fixed = TRUE),
   grepl("PLS-SEM 타당도 출력", ui_source, fixed = TRUE),
-  grepl("rather than covariance-based global fit indices", ui_source, fixed = TRUE),
-  grepl("PLS-SEM measurement output reports outer loadings, outer weights, item VIF", ui_source, fixed = TRUE),
+  grepl("Effect-size labels, VIF, and bootstrap inference are reported in supplementary tables", ui_source, fixed = TRUE),
+  grepl("loading/weight reports the outer loading for reflective indicators and the outer weight for formative indicators", ui_source, fixed = TRUE),
+  grepl("Supplementary Table 2: Structural effect guide indices", fit_source, fixed = TRUE),
+  grepl("Supplementary Table 2: PLS bootstrap path inference", fit_source, fixed = TRUE),
+  grepl("PLS measurement diagnostics", ui_source, fixed = TRUE),
+  grepl("PLS measurement bootstrap", ui_source, fixed = TRUE),
   grepl("Fornell-Larcker, and HTMT summaries", ui_source, fixed = TRUE),
-  grepl("indirect and total effect rows are included", ui_source, fixed = TRUE),
-  grepl("standardized-effect 95% confidence intervals", ui_source, fixed = TRUE),
+  grepl("Indirect and total effects are reported separately", ui_source, fixed = TRUE),
+  grepl("Supplementary Table 3: Effect beta 95% confidence intervals", ui_source, fixed = TRUE),
   grepl("PLS-SEM does not estimate covariance paths", ui_source, fixed = TRUE),
   grepl("PLS-SEM does not estimate covariance paths; excluded:", ui_source, fixed = TRUE),
+  grepl('analysis_type %in% c("cfa", "cbsem", "sem")) downloadButton(paste0(prefix, "_download_reproducibility")', ui_source, fixed = TRUE),
+  grepl('analysis_type %in% c("cfa", "cbsem", "sem")) downloadButton(paste0(prefix, "_download_tables")', ui_source, fixed = TRUE),
   grepl("PLS-SEM은 공분산 경로를 추정하지", ui_source, fixed = TRUE),
   grepl("외생 잠재변수 사이의 공분산 경로가 없습니다", ui_source, fixed = TRUE),
   grepl("structural_canvas_show_notification <- function", ui_source, fixed = TRUE),
   grepl("Estimating PLS-SEM bootstrap intervals", pls_engine_source, fixed = TRUE),
   grepl("seminr bootstrap resamples", pls_engine_source, fixed = TRUE),
+  grepl("seminr::PLSc", pls_engine_source, fixed = TRUE),
   grepl("PLS-SEM bootstrap complete", pls_engine_source, fixed = TRUE),
   grepl("Estimating PLSpredict cross-validation", pls_engine_source, fixed = TRUE),
   grepl("seminr::predict_pls", pls_engine_source, fixed = TRUE),
@@ -93,6 +100,8 @@ stopifnot(
   any(grepl("수치적으로 불안정한 해", notification_source, fixed = TRUE)),
   grepl("PLS-SEM은 공분산 경로를 추정하지", ui_source, fixed = TRUE),
   sum(grepl("showNotification(", notification_source, fixed = TRUE)) == 1L,
+  grepl('analysis_type %in% c("cfa", "cbsem", "sem")) output[[paste0(prefix, "_download_reproducibility")]]', handler_source, fixed = TRUE),
+  grepl('analysis_type %in% c("cfa", "cbsem", "sem")) output[[paste0(prefix, "_download_tables")]]', handler_source, fixed = TRUE),
   !grepl("Latent covariance, factor-score, HTMT, and lavaan delta-method diagnostics are not displayed", ui_source, fixed = TRUE)
 )
 
@@ -114,11 +123,12 @@ cbsem_bundle <- list(
 )
 cbsem_result <- function() cbsem_bundle
 cbsem_reporting <- structural_canvas_reporting_context_rows(cbsem_bundle, "cbsem")
-stopifnot(nrow(cbsem_reporting) == 13L)
+stopifnot(nrow(cbsem_reporting) == 14L)
 stopifnot(grepl("lavaan", cbsem_reporting$Value[cbsem_reporting$Item == "Analysis engine"], fixed = TRUE))
 stopifnot(cbsem_reporting$Value[cbsem_reporting$Item == "Estimator or algorithm"] == "ML")
 stopifnot(cbsem_reporting$Value[cbsem_reporting$Item == "Missing-data handling"] == "fiml")
 stopifnot(cbsem_reporting$Value[cbsem_reporting$Item == "Analysis context"] == "Original/prespecified model")
+stopifnot(cbsem_reporting$Value[cbsem_reporting$Item == "Common method diagnostics"] == "Not enabled")
 stopifnot(grepl("converged=TRUE", cbsem_reporting$Value[cbsem_reporting$Item == "Admissibility and convergence"], fixed = TRUE))
 cbsem_reporting_ko <- structural_canvas_reporting_context_display_rows(cbsem_reporting, TRUE)
 stopifnot(
@@ -178,22 +188,29 @@ stopifnot(
 )
 cbsem_validity <- structural_canvas_result_table("validity", cbsem_result, "cbsem", labels_fn, language_fn)
 cbsem_measurement <- structural_canvas_result_table("measurement", cbsem_result, "cbsem", labels_fn, language_fn)
+cbsem_measurement_ci <- structural_canvas_result_table("measurement_ci", cbsem_result, "cbsem", labels_fn, language_fn)
 cbsem_measurement_diagnostics <- structural_canvas_result_table("measurement_diagnostics", cbsem_result, "cbsem", labels_fn, language_fn)
 stopifnot(
   nrow(cbsem_validity) > 0L,
   identical(names(cbsem_validity), c("Latent", "eta1", "eta2", "Max |r|", "AVE", "CR", "α", "ω total")),
   !any(c("FL criterion", "k", "Guidance") %in% names(cbsem_validity)),
   nrow(cbsem_measurement) > 0L,
-  identical(names(cbsem_measurement), c("Latent", "Indicator", "B", "B 95% CI lower", "B 95% CI upper", "SE", "beta", "R²", "z", "p")),
+  identical(names(cbsem_measurement), c("Latent", "Indicator", "B", "SE", "beta", "z", "p", "R²")),
   !any(grepl("Fixed", cbsem_measurement$SE, fixed = TRUE)),
-  !any(c("beta 95% CI lower", "beta 95% CI upper", "R² 95% CI lower", "R² 95% CI upper", "Std. residual variance", "Cross-loading", "Guidance") %in% names(cbsem_measurement)),
+  !any(grepl("95% CI", names(cbsem_measurement), fixed = TRUE)),
+  nrow(cbsem_measurement_ci) == nrow(cbsem_measurement),
+  all(c("B 95% CI lower", "B 95% CI upper", "beta 95% CI lower", "beta 95% CI upper", "R² 95% CI lower", "R² 95% CI upper") %in% names(cbsem_measurement_ci)),
   nrow(cbsem_measurement_diagnostics) == nrow(cbsem_measurement),
-  all(c("beta 95% CI lower", "beta 95% CI upper", "R² 95% CI lower", "R² 95% CI upper", "Std. residual variance", "Cross-loading", "Guidance") %in% names(cbsem_measurement_diagnostics))
+  all(c("Std. residual variance", "Cross-loading", "Guidance") %in% names(cbsem_measurement_diagnostics)),
+  !any(grepl("95% CI", names(cbsem_measurement_diagnostics), fixed = TRUE))
 )
 result_layout_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_render.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 stopifnot(
   grepl('uiOutput(paste0(prefix, "_result_htmt"))', result_layout_source, fixed = TRUE),
   grepl('uiOutput(paste0(prefix, "_result_htmt_details"))', result_layout_source, fixed = TRUE),
+  grepl('uiOutput(paste0(prefix, "_result_structural_effects"))', result_layout_source, fixed = TRUE),
+  grepl('uiOutput(paste0(prefix, "_result_structural_effect_ci"))', result_layout_source, fixed = TRUE),
+  grepl('uiOutput(paste0(prefix, "_result_measurement_ci"))', result_layout_source, fixed = TRUE),
   grepl("structural_canvas_measurement_html_table", result_layout_source, fixed = TRUE),
   grepl('h4("Modification indices (MI)")', result_layout_source, fixed = TRUE),
   regexpr('uiOutput\\(paste0\\(prefix, "_result_reporting_context"\\)\\)', result_layout_source) >
@@ -213,12 +230,19 @@ stopifnot(
 alignment_html <- paste(as.character(structural_canvas_basic_html_table(data.frame(Label = c("x", "y"), Value = c(".12", "No"), check.names = FALSE))), collapse = "\n")
 stopifnot(
   grepl("structural-numeric-cell", alignment_html, fixed = TRUE),
-  grepl("text-align: center;", alignment_html, fixed = TRUE)
+  grepl("structural-numeric-value", alignment_html, fixed = TRUE),
+  grepl("structural-table-header-cell", alignment_html, fixed = TRUE),
+  grepl("structural-result-table", alignment_html, fixed = TRUE)
 )
 cbsem_structural <- structural_canvas_result_table("structural", cbsem_result, "cbsem", labels_fn, language_fn)
 stopifnot(nrow(cbsem_structural) == 1L)
-stopifnot("Effect" %in% names(cbsem_structural), cbsem_structural$Effect[[1L]] == "Direct")
-stopifnot(all(c("Outcome", "Predictor", "B", "beta", "R²", "z", "p") %in% names(cbsem_structural)))
+stopifnot(!"Effect" %in% names(cbsem_structural))
+stopifnot(all(c("Outcome", "Predictor", "B", "beta", "z", "p", "R²") %in% names(cbsem_structural)))
+stopifnot(identical(names(cbsem_structural)[[ncol(cbsem_structural)]], "R²"))
+stopifnot(!any(grepl("95% CI", names(cbsem_structural), fixed = TRUE)))
+cbsem_structural_ci <- structural_canvas_result_table("structural_ci", cbsem_result, "cbsem", labels_fn, language_fn)
+stopifnot(nrow(cbsem_structural_ci) == nrow(cbsem_structural))
+stopifnot(all(c("B 95% CI lower", "B 95% CI upper", "beta 95% CI lower", "beta 95% CI upper") %in% names(cbsem_structural_ci)))
 
 moderation_data <- data
 moderation_data$W <- stats::rnorm(nrow(moderation_data))
@@ -480,17 +504,17 @@ cbsem_mediation_bundle <- list(
 )
 cbsem_mediation_result <- function() cbsem_mediation_bundle
 cbsem_mediation_structural <- structural_canvas_result_table("structural", cbsem_mediation_result, "cbsem", labels_fn, language_fn)
-stopifnot(all(c("Direct", "Indirect", "Total") %in% cbsem_mediation_structural$Effect))
-stopifnot(sum(cbsem_mediation_structural$Effect == "Direct") == 3L)
-stopifnot(any(cbsem_mediation_structural$Effect == "Indirect" & cbsem_mediation_structural$Outcome == "etaC" & cbsem_mediation_structural$Predictor == "etaA"))
-stopifnot(any(cbsem_mediation_structural$Effect == "Total" & cbsem_mediation_structural$Outcome == "etaC" & cbsem_mediation_structural$Predictor == "etaA"))
-stopifnot(all(nzchar(cbsem_mediation_structural$B[cbsem_mediation_structural$Effect %in% c("Indirect", "Total")])))
-stopifnot(all(nzchar(cbsem_mediation_structural$beta[cbsem_mediation_structural$Effect %in% c("Direct", "Indirect", "Total")])))
-stopifnot(all(nzchar(cbsem_mediation_structural$p[cbsem_mediation_structural$Effect %in% c("Direct", "Indirect", "Total")])))
-stopifnot(any(nzchar(cbsem_mediation_structural[["R²"]][cbsem_mediation_structural$Effect == "Direct" & cbsem_mediation_structural$Outcome == "etaC"])))
-stopifnot(any(nzchar(cbsem_mediation_structural[["beta 95% CI lower"]][cbsem_mediation_structural$Effect == "Direct"])))
-stopifnot(all(nzchar(cbsem_mediation_structural[["beta 95% CI lower"]][cbsem_mediation_structural$Effect %in% c("Indirect", "Total")])))
-stopifnot(all(nzchar(cbsem_mediation_structural[["beta 95% CI upper"]][cbsem_mediation_structural$Effect %in% c("Indirect", "Total")])))
+cbsem_mediation_effects <- structural_canvas_result_table("structural_effects", cbsem_mediation_result, "cbsem", labels_fn, language_fn)
+cbsem_mediation_effect_ci <- structural_canvas_result_table("structural_effect_ci", cbsem_mediation_result, "cbsem", labels_fn, language_fn)
+stopifnot(nrow(cbsem_mediation_structural) == 3L)
+stopifnot(!"Effect" %in% names(cbsem_mediation_structural))
+stopifnot(any(cbsem_mediation_effects$Outcome == "etaC" & cbsem_mediation_effects$Predictor == "etaA"))
+stopifnot(all(c("Direct beta", "Direct p", "Indirect beta", "Indirect p", "Total beta", "Total p") %in% names(cbsem_mediation_effects)))
+stopifnot(any(nzchar(cbsem_mediation_effects[["Indirect beta"]][cbsem_mediation_effects$Outcome == "etaC" & cbsem_mediation_effects$Predictor == "etaA"])))
+stopifnot(any(nzchar(cbsem_mediation_effects[["Total p"]][cbsem_mediation_effects$Outcome == "etaC" & cbsem_mediation_effects$Predictor == "etaA"])))
+stopifnot(any(nzchar(cbsem_mediation_structural[["R²"]][cbsem_mediation_structural$Outcome == "etaC"])))
+stopifnot(all(c("Direct beta 95% CI", "Indirect beta 95% CI", "Total beta 95% CI") %in% names(cbsem_mediation_effect_ci)))
+stopifnot(any(nzchar(cbsem_mediation_effect_ci[["Indirect beta 95% CI"]][cbsem_mediation_effect_ci$Outcome == "etaC" & cbsem_mediation_effect_ci$Predictor == "etaA"])))
 
 sem_mediation <- run_structural_canvas_analysis(mediation_snapshot, mediation_data, "sem", estimator = "ML", missing = "fiml")
 stopifnot(isTRUE(sem_mediation$converged))
@@ -507,8 +531,11 @@ sem_mediation_bundle <- list(
 )
 sem_mediation_result <- function() sem_mediation_bundle
 sem_mediation_structural <- structural_canvas_result_table("structural", sem_mediation_result, "sem", labels_fn, language_fn)
-stopifnot(any(sem_mediation_structural$Effect == "Indirect" & sem_mediation_structural$Outcome == "etaC" & sem_mediation_structural$Predictor == "etaA"))
-stopifnot(any(sem_mediation_structural$Effect == "Total" & sem_mediation_structural$Outcome == "etaC" & sem_mediation_structural$Predictor == "etaA"))
+sem_mediation_effects <- structural_canvas_result_table("structural_effects", sem_mediation_result, "sem", labels_fn, language_fn)
+stopifnot(!"Effect" %in% names(sem_mediation_structural))
+stopifnot(any(sem_mediation_effects$Outcome == "etaC" & sem_mediation_effects$Predictor == "etaA"))
+stopifnot(any(nzchar(sem_mediation_effects[["Indirect beta"]][sem_mediation_effects$Outcome == "etaC" & sem_mediation_effects$Predictor == "etaA"])))
+stopifnot(any(nzchar(sem_mediation_effects[["Total beta"]][sem_mediation_effects$Outcome == "etaC" & sem_mediation_effects$Predictor == "etaA"])))
 
 parallel_snapshot <- mediation_snapshot
 parallel_snapshot$edges <- c(
@@ -534,7 +561,7 @@ cbsem_parallel_bundle <- list(
 )
 cbsem_parallel_result <- function() cbsem_parallel_bundle
 cbsem_parallel_structural <- structural_canvas_result_table("structural", cbsem_parallel_result, "cbsem", labels_fn, language_fn)
-stopifnot(sum(cbsem_parallel_structural$Effect == "Direct") == 2L)
+stopifnot(nrow(cbsem_parallel_structural) == 2L)
 stopifnot(all(c("etaA", "etaB") %in% cbsem_parallel_structural$Predictor[cbsem_parallel_structural$Outcome == "etaC"]))
 
 cycle_snapshot <- snapshot
@@ -550,9 +577,29 @@ stopifnot(!grepl(":=", cycle_syntax$syntax, fixed = TRUE), !length(cycle_syntax$
 pls <- run_structural_canvas_analysis(snapshot, data, "plssem", estimator = "PLS")
 stopifnot(inherits(pls$fit, "pls_model"))
 stopifnot(isTRUE(pls$converged))
+stopifnot(identical(pls$estimator, "PLS"))
 stopifnot(grepl("eta2 ~ eta1", pls$syntax, fixed = TRUE))
 stopifnot(length(pls$constructs) == 2L)
 stopifnot(length(pls$observed) == 6L)
+
+plsc <- run_structural_canvas_analysis(snapshot, data, "plssem", estimator = "PLSc")
+stopifnot(inherits(plsc$fit, "pls_model"))
+stopifnot(identical(plsc$estimator, "PLSc"))
+plsc_bundle <- list(
+  fit = plsc$fit,
+  syntax = plsc$syntax,
+  snapshot = snapshot,
+  diagnostics = plsc,
+  estimator = "PLSc"
+)
+plsc_result <- function() plsc_bundle
+plsc_overview <- structural_canvas_result_table("overview", plsc_result, "plssem", labels_fn, language_fn)
+plsc_reporting <- structural_canvas_reporting_context_rows(plsc_bundle, "plssem")
+plsc_fit_diagnostics <- structural_canvas_pls_fit_diagnostics_table(plsc_bundle)
+stopifnot(plsc_overview$Value[plsc_overview$Item == "Estimator"] == "PLSc")
+stopifnot(plsc_reporting$Value[plsc_reporting$Item == "Estimator or algorithm"] == "PLSc path modeling")
+stopifnot(plsc_fit_diagnostics$Estimator[[1L]] == "PLSc")
+stopifnot(nzchar(plsc_fit_diagnostics$SRMR[[1L]]), nzchar(plsc_fit_diagnostics$d_G[[1L]]), nzchar(plsc_fit_diagnostics$d_ULS[[1L]]))
 
 pls_bundle <- list(
   fit = pls$fit,
@@ -563,18 +610,20 @@ pls_bundle <- list(
 )
 pls_result <- function() pls_bundle
 pls_reporting <- structural_canvas_reporting_context_rows(pls_bundle, "plssem")
-stopifnot(nrow(pls_reporting) == 13L)
+stopifnot(nrow(pls_reporting) == 14L)
 stopifnot(grepl("seminr", pls_reporting$Value[pls_reporting$Item == "Analysis engine"], fixed = TRUE))
 stopifnot(pls_reporting$Value[pls_reporting$Item == "Estimator or algorithm"] == "PLS path modeling")
 stopifnot(pls_reporting$Value[pls_reporting$Item == "Missing-data handling"] == "Valid rows used by seminr; no FIML/pairwise option")
 stopifnot(pls_reporting$Value[pls_reporting$Item == "Latent scaling"] == "Composite scores")
+stopifnot(pls_reporting$Value[pls_reporting$Item == "Common method diagnostics"] == "Not enabled")
 pls_quality <- structural_canvas_pls_quality_rows(pls_bundle)
-stopifnot(nrow(pls_quality) == 18L)
+stopifnot(nrow(pls_quality) == 19L)
 stopifnot(all(c("Item", "Value", "Status", "Guidance") %in% names(pls_quality)))
-stopifnot(all(c("PLS algorithm iterations", "Approx PLS SRMR", "Approx d_ULS", "Approx NFI", "10-times rule margin", "Min outer loading", "Min rhoC", "Min AVE", "Max HTMT", "Max item VIF", "Max inner VIF", "Max full collinearity VIF", "Min endogenous R2", "Max f2", "Min Q2", "PLSpredict summary") %in% pls_quality$Item))
+stopifnot(all(c("PLS algorithm iterations", "Approx PLS SRMR", "Approx d_G", "Approx d_ULS", "Approx NFI", "10-times rule margin", "Min outer loading", "Min rhoC", "Min AVE", "Max HTMT", "Max item VIF", "Max inner VIF", "Max full collinearity VIF", "Min endogenous R2", "Max f2", "Min Q2", "PLSpredict summary") %in% pls_quality$Item))
 stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "PLS algorithm iterations"]))
 stopifnot(pls_quality$Status[pls_quality$Item == "PLS algorithm iterations"] == "OK")
 stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Approx PLS SRMR"]))
+stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Approx d_G"]))
 stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Approx d_ULS"]))
 stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Approx NFI"]))
 stopifnot(pls_quality$Status[pls_quality$Item == "Approx PLS SRMR"] %in% c("OK", "Review"))
@@ -596,27 +645,40 @@ stopifnot(all(pls_quality_review$Action %in% c("Resolve before reporting", "Reso
 pls_readiness <- structural_canvas_pls_quality_reporting_readiness(pls_quality)
 stopifnot(grepl("Reporting readiness:", pls_readiness, fixed = TRUE))
 pls_overview <- structural_canvas_result_table("overview", pls_result, "plssem", labels_fn, language_fn)
+pls_fit_diagnostics <- structural_canvas_pls_fit_diagnostics_table(pls_bundle)
 pls_fit <- structural_canvas_result_table("fit", pls_result, "plssem", labels_fn, language_fn)
+pls_fit_guide <- structural_canvas_result_table("fit_guide", pls_result, "plssem", labels_fn, language_fn)
 pls_validity <- structural_canvas_result_table("validity", pls_result, "plssem", labels_fn, language_fn)
+pls_validity_guide <- structural_canvas_result_table("validity_guide", pls_result, "plssem", labels_fn, language_fn)
 pls_measurement <- structural_canvas_result_table("measurement", pls_result, "plssem", labels_fn, language_fn)
+pls_measurement_guide <- structural_canvas_result_table("measurement_guide", pls_result, "plssem", labels_fn, language_fn)
 pls_mi <- structural_canvas_result_table("mi", pls_result, "plssem", labels_fn, language_fn)
 stopifnot(nrow(pls_overview) == 7L)
 stopifnot("Item" %in% names(pls_overview))
-stopifnot(all(c("Effect", "Outcome", "Predictor", "Coefficient", "R2", "AdjR2", "f2", "f2 size", "Q2", "q2", "q2 size", "Inner VIF", "Indirect effect", "Indirect effect CI lower", "Indirect effect CI upper", "Indirect effect t", "Indirect effect p", "Total effect") %in% names(pls_fit)))
+stopifnot(all(c("Estimator", "SRMR", "d_G", "d_ULS") %in% names(pls_fit_diagnostics)))
+stopifnot(pls_fit_diagnostics$Estimator[[1L]] == "PLS")
+stopifnot(nzchar(pls_fit_diagnostics$SRMR[[1L]]), nzchar(pls_fit_diagnostics$d_G[[1L]]), nzchar(pls_fit_diagnostics$d_ULS[[1L]]))
+stopifnot(all(c("Effect", "Outcome", "Predictor", "Path beta", "Indirect effect", "Total effect", "R2", "AdjR2", "Q2") %in% names(pls_fit)))
 stopifnot(pls_fit$Effect[[1L]] == "Direct")
 stopifnot(any(pls_fit$Predictor == "eta1"))
 stopifnot(any(pls_fit$Outcome == "eta2"))
-stopifnot(nzchar(pls_fit$f2[[1L]]))
-stopifnot(nzchar(pls_fit[["f2 size"]][[1L]]))
 stopifnot(nzchar(pls_fit$Q2[[1L]]))
-stopifnot(nzchar(pls_fit$q2[[1L]]))
-stopifnot(nzchar(pls_fit[["q2 size"]][[1L]]))
 stopifnot(nzchar(pls_fit[["Total effect"]][[1L]]))
-stopifnot(all(c("Construct", "alpha", "rhoA", "rhoC", "AVE", "sqrt(AVE)", "Max HTMT", "Fornell-Larcker") %in% names(pls_validity)))
+stopifnot(all(c("Effect", "Outcome", "Predictor", "f2", "f2 size", "q2", "q2 size", "Inner VIF") %in% names(pls_fit_guide)))
+stopifnot(nzchar(pls_fit_guide$f2[[1L]]))
+stopifnot(nzchar(pls_fit_guide[["f2 size"]][[1L]]))
+stopifnot(nzchar(pls_fit_guide$q2[[1L]]))
+stopifnot(nzchar(pls_fit_guide[["q2 size"]][[1L]]))
+stopifnot(all(c("Construct", "Mode", "alpha", "rhoA", "rhoC", "AVE", "sqrt(AVE)", "Max HTMT") %in% names(pls_validity)))
+stopifnot(all(c("Construct", "Mode", "Max HTMT CI lower", "Max HTMT CI upper", "Max HTMT p", "Fornell-Larcker") %in% names(pls_validity_guide)))
 stopifnot(nrow(pls_validity) >= 2L)
-stopifnot(all(c("Construct", "Indicator", "Loading", "Weight", "Item VIF", "Max cross-loading", "Mode") %in% names(pls_measurement)))
+stopifnot(all(c("Construct", "Indicator", "loading/weight", "Boot SE", "Boot 95% CI lower", "Boot 95% CI upper", "Boot t", "Boot p", "Mode") %in% names(pls_measurement)))
 stopifnot(nrow(pls_measurement) >= 6L)
-stopifnot(any(nzchar(pls_measurement[["Item VIF"]])))
+pls_htmt <- structural_canvas_result_table("pls_htmt", pls_result, "plssem", labels_fn, language_fn)
+stopifnot(nrow(pls_htmt) >= 2L)
+stopifnot("Construct" %in% names(pls_htmt))
+stopifnot(all(c("Construct", "Indicator", "Loading", "Weight", "Item VIF", "Max cross-loading", "Mode") %in% names(pls_measurement_guide)))
+stopifnot(any(nzchar(pls_measurement_guide[["Item VIF"]])))
 stopifnot(nrow(pls_mi) == 0L)
 
 pls_snapshot <- structural_canvas_result_snapshot(snapshot, pls$fit, "beta")
@@ -652,17 +714,18 @@ pls_mediation_bundle <- list(
 )
 pls_mediation_result <- function() pls_mediation_bundle
 pls_mediation_fit <- structural_canvas_result_table("fit", pls_mediation_result, "plssem", labels_fn, language_fn)
+pls_mediation_fit_guide <- structural_canvas_result_table("fit_guide", pls_mediation_result, "plssem", labels_fn, language_fn)
 stopifnot(any(pls_mediation_fit$Effect == "Indirect" & pls_mediation_fit$Outcome == "etaC" & pls_mediation_fit$Predictor == "etaA"))
 stopifnot(any(nzchar(pls_mediation_fit[["Indirect effect"]][pls_mediation_fit$Effect == "Indirect"])))
 stopifnot(any(nzchar(pls_mediation_fit[["Total effect"]][pls_mediation_fit$Effect == "Indirect"])))
-stopifnot(any(nzchar(pls_mediation_fit[["Inner VIF"]][pls_mediation_fit$Effect == "Direct" & pls_mediation_fit$Outcome == "etaC"])))
+stopifnot(any(nzchar(pls_mediation_fit_guide[["Inner VIF"]][pls_mediation_fit_guide$Effect == "Direct" & pls_mediation_fit_guide$Outcome == "etaC"])))
 
 pls_options <- structural_canvas_execute_settings(
-  settings = list(pls_bootstrap = 500L, pls_seed = 13579L, pls_predict_folds = 5L, pls_predict_reps = 1L),
+  settings = list(pls_bootstrap = 5000L, pls_seed = 13579L, pls_predict_folds = 5L, pls_predict_reps = 1L),
   input = list(),
   prefix = "structural_plssem"
 )
-stopifnot(pls_options$pls_bootstrap == 500L)
+stopifnot(pls_options$pls_bootstrap == 5000L)
 stopifnot(pls_options$pls_seed == 13579L)
 stopifnot(pls_options$pls_predict_folds == 5L)
 stopifnot(pls_options$pls_predict_reps == 1L)
@@ -686,6 +749,12 @@ stopifnot(is.list(pls_bootstrap))
 stopifnot(length(pls_bootstrap$bootstrapped_paths) > 0L)
 stopifnot(length(pls_bootstrap$bootstrapped_loadings) > 0L)
 stopifnot(length(pls_bootstrap$bootstrapped_weights) > 0L)
+plsc_bootstrap <- structural_canvas_run_pls_bootstrap("plssem", 5L, plsc, 13579L)
+stopifnot(is.list(plsc_bootstrap))
+stopifnot(identical(plsc_bootstrap$requested_nboot, 5L))
+stopifnot(length(plsc_bootstrap$bootstrapped_paths) > 0L)
+stopifnot(length(plsc_bootstrap$bootstrapped_loadings) > 0L)
+stopifnot(length(plsc_bootstrap$bootstrapped_weights) > 0L)
 pls_mediation_bootstrap <- structural_canvas_run_pls_bootstrap("plssem", 20L, pls_mediation, 13579L)
 stopifnot("bootstrapped_total_indirect_paths" %in% names(pls_mediation_bootstrap))
 pls_boot_bundle <- pls_bundle
@@ -697,24 +766,27 @@ pls_boot_reporting <- structural_canvas_reporting_context_rows(pls_boot_bundle, 
 stopifnot(grepl("PLS bootstrap R=30", pls_boot_reporting$Value[pls_boot_reporting$Item == "Bootstrap settings"], fixed = TRUE))
 stopifnot(grepl("seed=24680", pls_boot_reporting$Value[pls_boot_reporting$Item == "Bootstrap settings"], fixed = TRUE))
 pls_boot_fit <- structural_canvas_result_table("fit", pls_boot_result, "plssem", labels_fn, language_fn)
+pls_boot_fit_bootstrap <- structural_canvas_result_table("fit_bootstrap", pls_boot_result, "plssem", labels_fn, language_fn)
 pls_boot_validity <- structural_canvas_result_table("validity", pls_boot_result, "plssem", labels_fn, language_fn)
+pls_boot_validity_guide <- structural_canvas_result_table("validity_guide", pls_boot_result, "plssem", labels_fn, language_fn)
 pls_boot_measurement <- structural_canvas_result_table("measurement", pls_boot_result, "plssem", labels_fn, language_fn)
-stopifnot(all(c("Indirect effect CI lower", "Indirect effect CI upper", "Indirect effect t", "Indirect effect p", "Total effect CI lower", "Total effect CI upper", "Total effect t", "Total effect p", "Boot CI lower", "Boot CI upper", "Boot t", "Boot p") %in% names(pls_boot_fit)))
-stopifnot(any(nzchar(pls_boot_fit[["Total effect p"]])))
-stopifnot(any(nzchar(pls_boot_fit[["Boot t"]])))
-stopifnot(any(nzchar(pls_boot_fit[["Boot p"]])))
+pls_boot_measurement_bootstrap <- structural_canvas_result_table("measurement_bootstrap", pls_boot_result, "plssem", labels_fn, language_fn)
+stopifnot(all(c("Indirect effect CI lower", "Indirect effect CI upper", "Indirect effect t", "Indirect effect p", "Total effect CI lower", "Total effect CI upper", "Total effect t", "Total effect p", "Boot CI lower", "Boot CI upper", "Boot t", "Boot p") %in% names(pls_boot_fit_bootstrap)))
+stopifnot(any(nzchar(pls_boot_fit_bootstrap[["Total effect p"]])))
+stopifnot(any(nzchar(pls_boot_fit_bootstrap[["Boot t"]])))
+stopifnot(any(nzchar(pls_boot_fit_bootstrap[["Boot p"]])))
 pls_mediation_boot_bundle <- pls_mediation_bundle
 pls_mediation_boot_bundle$pls_bootstrap_result <- pls_mediation_bootstrap
 pls_mediation_boot_result <- function() pls_mediation_boot_bundle
-pls_mediation_boot_fit <- structural_canvas_result_table("fit", pls_mediation_boot_result, "plssem", labels_fn, language_fn)
+pls_mediation_boot_fit <- structural_canvas_result_table("fit_bootstrap", pls_mediation_boot_result, "plssem", labels_fn, language_fn)
 pls_mediation_indirect_row <- pls_mediation_boot_fit[pls_mediation_boot_fit$Effect == "Indirect" & pls_mediation_boot_fit$Outcome == "etaC" & pls_mediation_boot_fit$Predictor == "etaA", , drop = FALSE]
 stopifnot(nrow(pls_mediation_indirect_row) == 1L)
 stopifnot(nzchar(pls_mediation_indirect_row[["Indirect effect CI lower"]][[1L]]), nzchar(pls_mediation_indirect_row[["Indirect effect CI upper"]][[1L]]), nzchar(pls_mediation_indirect_row[["Indirect effect p"]][[1L]]))
-stopifnot(all(c("Max HTMT CI lower", "Max HTMT CI upper", "Max HTMT p") %in% names(pls_boot_validity)))
-stopifnot(any(nzchar(pls_boot_validity[["Max HTMT p"]])))
-stopifnot(all(c("Loading CI lower", "Loading CI upper", "Loading t", "Loading p", "Weight CI lower", "Weight CI upper", "Weight t", "Weight p") %in% names(pls_boot_measurement)))
-stopifnot(any(nzchar(pls_boot_measurement[["Loading t"]])))
-stopifnot(any(nzchar(pls_boot_measurement[["Loading p"]])))
+stopifnot(all(c("Max HTMT CI lower", "Max HTMT CI upper", "Max HTMT p") %in% names(pls_boot_validity_guide)))
+stopifnot(any(nzchar(pls_boot_validity_guide[["Max HTMT p"]])))
+stopifnot(all(c("Loading CI lower", "Loading CI upper", "Loading t", "Loading p", "Weight CI lower", "Weight CI upper", "Weight t", "Weight p") %in% names(pls_boot_measurement_bootstrap)))
+stopifnot(any(nzchar(pls_boot_measurement_bootstrap[["Loading t"]])))
+stopifnot(any(nzchar(pls_boot_measurement_bootstrap[["Loading p"]])))
 
 execution_state <- new.env(parent = emptyenv())
 execution_state$value <- NULL
@@ -781,7 +853,7 @@ execution_state$value <- NULL
 execution_state$message <- NULL
 executed <- structural_canvas_execute_analysis(
   snapshot,
-  settings = list(estimator = "PLS", pls_predict_folds = 5L, pls_predict_reps = 1L),
+  settings = list(estimator = "PLS", pls_bootstrap = 0L, pls_predict_folds = 5L, pls_predict_reps = 1L),
   input = list(),
   session = session,
   dataset_fn = function() data,
@@ -802,7 +874,7 @@ execution_state$value <- NULL
 execution_state$message <- NULL
 executed_covariance <- structural_canvas_execute_analysis(
   pls_covariance_snapshot,
-  settings = list(estimator = "PLS"),
+  settings = list(estimator = "PLS", pls_bootstrap = 0L),
   input = list(),
   session = session,
   dataset_fn = function() data,
@@ -829,9 +901,26 @@ pls_formative_bundle <- list(
 )
 pls_formative_result <- function() pls_formative_bundle
 pls_formative_measurement <- structural_canvas_result_table("measurement", pls_formative_result, "plssem", labels_fn, language_fn)
+pls_formative_measurement_guide <- structural_canvas_result_table("measurement_guide", pls_formative_result, "plssem", labels_fn, language_fn)
+pls_formative_validity <- structural_canvas_result_table("validity", pls_formative_result, "plssem", labels_fn, language_fn)
 stopifnot(any(pls_formative_measurement$Construct == "eta1" & pls_formative_measurement$Mode == "Formative"))
 stopifnot(any(pls_formative_measurement$Construct == "eta2" & pls_formative_measurement$Mode == "Reflective"))
-stopifnot(any(nzchar(pls_formative_measurement$Weight[pls_formative_measurement$Mode == "Formative"])))
-stopifnot(any(nzchar(pls_formative_measurement[["Item VIF"]][pls_formative_measurement$Mode == "Formative"])))
+stopifnot(any(nzchar(pls_formative_measurement[["loading/weight"]][pls_formative_measurement$Mode == "Formative"])))
+stopifnot(any(nzchar(pls_formative_measurement_guide[["Item VIF"]][pls_formative_measurement_guide$Mode == "Formative"])))
+stopifnot("Mode" %in% names(pls_formative_validity))
+stopifnot(any(pls_formative_validity$Construct == "eta1" & pls_formative_validity$Mode == "Formative"))
+formative_validity <- pls_formative_validity[pls_formative_validity$Mode == "Formative", , drop = FALSE]
+stopifnot(all(formative_validity[, c("alpha", "rhoA", "rhoC", "AVE", "sqrt(AVE)", "Max HTMT")] == "N/A"))
+pls_formative_validity_guide <- structural_canvas_result_table("validity_guide", pls_formative_result, "plssem", labels_fn, language_fn)
+formative_validity_guide <- pls_formative_validity_guide[pls_formative_validity_guide$Mode == "Formative", , drop = FALSE]
+stopifnot(all(formative_validity_guide$`Fornell-Larcker` == "N/A - formative"))
+
+missing_latent_range <- structural_canvas_moderation_update_factor_score_ranges(
+  list(list(moderator_role = "latent", moderator = "missing", moderator_min = -2, moderator_max = 2)),
+  structure(list(), class = "not_lavaan")
+)[[1L]]
+stopifnot(isFALSE(missing_latent_range$moderator_range_available))
+stopifnot(!is.finite(missing_latent_range$moderator_min))
+stopifnot(!is.finite(missing_latent_range$moderator_max))
 
 cat("SEM canvas validations passed.\n")

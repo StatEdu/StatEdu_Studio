@@ -85,6 +85,10 @@ structural_canvas_workbook_contents <- function(sheet_names) {
     if (identical(name, "Sample_Covariance")) return("Long-form covariance and correlation statistics used by the fitted model.")
     if (identical(name, "Thresholds")) return("Numeric ordered-indicator thresholds.")
     if (identical(name, "Bollen_Stine")) return("Bollen-Stine exact-fit bootstrap p value with Monte Carlo uncertainty and valid-replicate diagnostics.")
+    if (identical(name, "Common_Method")) return("Common method bias diagnostic summary including Harman, single-factor CFA, and common latent factor screens when requested.")
+    if (identical(name, "Common_Method_Fit")) return("Fit indices for the research model and requested common-method comparison models.")
+    if (identical(name, "Common_Method_Comparison")) return("Difference statistics for requested common-method comparison models, including delta chi-square, delta df, delta CFI, delta RMSEA, and delta SRMR.")
+    if (identical(name, "Common_Method_Loadings")) return("Standardized loading changes after adding the common latent method factor.")
     if (grepl("^Residual", name) || identical(name, "Large_Residuals")) return("Local-fit residual diagnostic output.")
     if (grepl("^MI_", name)) return("Exploratory modification-index or holdout-validation output; changes require theoretical justification.")
     if (identical(name, "Model_Difference")) return("Nested-model difference-test result or the explicit reason the formal test was suppressed.")
@@ -131,6 +135,14 @@ structural_canvas_result_workbook_sheets <- function(bundle, table_fn) {
     sheets$Bollen_Stine$`Model context` <- if (isTRUE(bundle$modified_from_baseline)) "Exploratory modified model" else "Prespecified/original model"
   }
   if (!is.null(bundle$htmt_bootstrap_result) && nrow(bundle$htmt_bootstrap_result)) sheets$HTMT_CI <- bundle$htmt_bootstrap_result
+  common_method <- bundle$common_method_result %||% NULL
+  if (!is.null(common_method)) {
+    common_summary <- structural_canvas_common_method_display_table(common_method, format_values = FALSE)
+    if (nrow(common_summary)) sheets$Common_Method <- common_summary
+    if (nrow(common_method$fit %||% data.frame())) sheets$Common_Method_Fit <- common_method$fit
+    if (nrow(common_method$comparison %||% data.frame())) sheets$Common_Method_Comparison <- common_method$comparison
+    if (nrow(common_method$loading_change %||% data.frame())) sheets$Common_Method_Loadings <- common_method$loading_change
+  }
   if (!is.null(bundle$mi_history) && nrow(bundle$mi_history)) sheets$MI_History <- bundle$mi_history[, setdiff(names(bundle$mi_history), "Signature"), drop = FALSE]
   if (!is.null(bundle$holdout_comparison)) {
     sheets$MI_Holdout_Fit <- bundle$holdout_comparison$table
