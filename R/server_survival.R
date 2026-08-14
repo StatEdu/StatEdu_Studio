@@ -172,7 +172,7 @@ register_survival_handlers <- function(
   output$survival_cox_results <- renderUI({
     result <- cox_result()
     if (is.null(result)) return(NULL)
-    survival_cox_results_panel(result)
+    survival_cox_results_panel(result, language = statedu_current_language(app_language_fn))
   })
 
   plot_survival_km_result <- function(result, plot_type = "survival", plot_version = "color") {

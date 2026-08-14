@@ -43,8 +43,13 @@ stopifnot(grepl("&chi;", km_html, fixed = TRUE))
 stopifnot(grepl("<sup>2</sup>", km_html, fixed = TRUE))
 
 km_panel <- htmltools::renderTags(survival_km_results_panel(km, plot_output_ids = list(character(0), character(0)), language = "en"))$html
-stopifnot(grepl("Model overview", km_panel, fixed = TRUE))
+stopifnot(grepl("1. Analysis overview", km_panel, fixed = TRUE))
+stopifnot(grepl("2. Kaplan-Meier survival time summary", km_panel, fixed = TRUE))
+stopifnot(grepl("3. Survival probabilities at selected time points", km_panel, fixed = TRUE))
 stopifnot(grepl("M = mean; SE = standard error", km_panel, fixed = TRUE))
+stopifnot(regexpr("1. Analysis overview", km_panel, fixed = TRUE) < regexpr("2. Kaplan-Meier survival time summary", km_panel, fixed = TRUE))
+stopifnot(regexpr("2. Kaplan-Meier survival time summary", km_panel, fixed = TRUE) < regexpr("3. Survival probabilities at selected time points", km_panel, fixed = TRUE))
+stopifnot(grepl("text-align:center !important", km_panel, fixed = TRUE))
 
 message("Checking Kaplan-Meier empty table/plot options...")
 km_empty_options <- prepare_km_analysis_result(
@@ -79,6 +84,12 @@ stopifnot(identical(cox$type, "cox"))
 stopifnot(nrow(cox$coef_table) > 0)
 stopifnot(is.data.frame(survival_cox_coef_table(cox)))
 stopifnot(is.data.frame(survival_ph_table(cox)))
+cox_html <- htmltools::renderTags(survival_cox_results_panel(cox, language = "ko"))$html
+stopifnot(grepl("1. Analysis overview", cox_html, fixed = TRUE))
+stopifnot(grepl("2. Cox proportional hazards model", cox_html, fixed = TRUE))
+stopifnot(grepl("HR = hazard ratio", cox_html, fixed = TRUE))
+stopifnot(grepl("표 2 가이드", cox_html, fixed = TRUE))
+stopifnot(regexpr("2. Cox proportional hazards model", cox_html, fixed = TRUE) < regexpr("표 2 가이드", cox_html, fixed = TRUE))
 
 message("Checking figure DPI policy...")
 stopifnot(analysis_figure_dpi(edition = "pro", public_release = FALSE) == 600L)

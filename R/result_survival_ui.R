@@ -36,14 +36,22 @@ survival_simple_table <- function(table, class = "survival-result-table") {
   tags$table(
     class = paste("coefficient-table", class),
     style = result_table_style(font_size = 12, min_width = 0),
-    tags$thead(tags$tr(lapply(names(table), function(name) tags$th(style = result_header_cell_style(), survival_header_content(name))))),
+    tags$thead(tags$tr(lapply(seq_along(table), function(col_index) {
+      tags$th(
+        style = paste0(result_header_cell_style(col_index == 1L), if (col_index == 1L) "" else "text-align:center !important;"),
+        survival_header_content(names(table)[[col_index]])
+      )
+    }))),
     tags$tbody(lapply(seq_len(nrow(table)), function(row_index) {
       tags$tr(lapply(seq_along(table), function(col_index) {
         column <- names(table)[[col_index]]
         value <- table[[col_index]][[row_index]]
         if (is.numeric(value)) value <- survival_format_number(value)
         marker <- survival_cell_note_marker(table, row_index, column)
-        tags$td(style = result_body_cell_style(col_index == 1L, row_index == nrow(table)), survival_cell_content(value, marker))
+        tags$td(
+          style = paste0(result_body_cell_style(col_index == 1L, row_index == nrow(table)), if (col_index == 1L) "" else "text-align:center !important;"),
+          survival_cell_content(value, marker)
+        )
       }))
     }))
   )
@@ -53,6 +61,42 @@ survival_table_note <- function(text) {
   text <- as.character(text %||% "")
   if (!nzchar(text)) return(NULL)
   div(class = "survival-table-note", text)
+}
+
+survival_km_summary_note <- function() {
+  survival_table_note("M = mean; SE = standard error; CI = confidence interval; NE = not estimable; df = degrees of freedom; p = p value.")
+}
+
+survival_rate_note <- function() {
+  survival_table_note("CI = confidence interval.")
+}
+
+survival_cox_coef_note <- function() {
+  survival_table_note("B = log hazard coefficient; SE = standard error; HR = hazard ratio; CI = confidence interval; z = Wald z statistic; p = p value.")
+}
+
+survival_ph_guide_title <- function(table_number = 2L, language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
+  if (identical(language, "ko")) {
+    paste0("표 ", table_number, " 가이드: 비례위험 가정 진단")
+  } else {
+    paste0("Guide for Table ", table_number, ": proportional hazards assumption")
+  }
+}
+
+survival_ph_guide_note <- function(language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
+  text <- if (identical(language, "ko")) {
+    "비례위험 가정은 Schoenfeld 잔차로 평가합니다. 작은 p값은 시간에 따라 효과가 변할 가능성을 시사합니다."
+  } else {
+    "The proportional hazards assumption is assessed with Schoenfeld residuals. A small p-value suggests time-varying effects."
+  }
+  div(text, class = "result-note")
+}
+
+survival_km_test_supplement_title <- function(language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
+  if (identical(language, "ko")) "보조표: 집단 비교 검정" else "Supplementary table: group comparison test"
 }
 
 survival_km_overview_table <- function(result) {
@@ -383,38 +427,32 @@ survival_km_result_panel <- function(result, plot_output_ids = "survival_km_plot
     class = "survival-km-result-block",
     if (nzchar(as.character(title %||% ""))) h2(title),
     div(class = "result-section regression-result-panel survival-result-panel",
-      h3(survival_ui_text("Model overview")),
+      h3("1. Analysis overview"),
       survival_simple_table(survival_km_overview_table(result))
     ),
-    lapply(seq_len(nrow(plot_specs)), function(index) {
-      plot_type <- plot_specs$plot_type[[index]]
-      plot_version <- plot_specs$plot_version[[index]]
-      div(class = "result-section regression-result-panel survival-result-panel",
-        h3(paste(survival_plot_type_label(plot_type, language), survival_plot_version_label(plot_version, language), sep = " - ")),
-        plotOutput(plot_output_ids[[index]], height = "420px")
-      )
-    }),
     if ("survival_time" %in% output_tables) {
       div(class = "result-section regression-result-panel survival-result-panel",
-        h3(survival_ui_text("Kaplan-Meier survival time summary", language)),
-        survival_simple_table(result$median_table)
+        h3("2. Kaplan-Meier survival time summary"),
+        survival_simple_table(survival_km_summary_table(result)),
+        survival_km_summary_note()
       )
     },
     if ("survival_table" %in% output_tables) {
       div(class = "result-section regression-result-panel survival-result-panel",
-        h3(survival_ui_text("Survival table", language)),
-        survival_simple_table(survival_km_rate_table(result))
+        h3("3. Survival probabilities at selected time points"),
+        survival_simple_table(survival_km_rate_table(result)),
+        survival_rate_note()
       )
     },
     if (identical(result$analysis_method, "life_table") && "survival_table" %in% output_tables) {
       div(class = "result-section regression-result-panel survival-result-panel",
-        h3(survival_ui_text("Life table", language)),
+        h3("4. Life table"),
         survival_simple_table(survival_life_table_display(result))
       )
     },
     if (!is.null(result$logrank)) {
       div(class = "result-section regression-result-panel survival-result-panel",
-        h3(survival_ui_text("Log-rank test")),
+        h3(survival_km_test_supplement_title(language)),
         survival_simple_table(survival_logrank_table(result))
       )
     },
@@ -423,7 +461,15 @@ survival_km_result_panel <- function(result, plot_output_ids = "survival_km_plot
         h3(survival_ui_text("Post-hoc pairwise comparison", language)),
         survival_simple_table(survival_km_posthoc_display_table(result))
       )
-    }
+    },
+    lapply(seq_len(nrow(plot_specs)), function(index) {
+      plot_type <- plot_specs$plot_type[[index]]
+      plot_version <- plot_specs$plot_version[[index]]
+      div(class = "result-section regression-result-panel survival-result-panel",
+        h3(paste(survival_plot_type_label(plot_type, language), survival_plot_version_label(plot_version, language), sep = " - ")),
+        plotOutput(plot_output_ids[[index]], height = "420px")
+      )
+    })
   )
 }
 
@@ -441,23 +487,24 @@ survival_km_results_panel <- function(result, plot_output_ids = "survival_km_plo
   div(
     class = "survival-results",
     div(class = "result-section regression-result-panel survival-result-panel survival-wide-result-panel",
-      h3(survival_ui_text("Model overview", language)),
+      h3("1. Analysis overview"),
       survival_simple_table(survival_km_overview_table(result))
     ),
     div(class = "result-section regression-result-panel survival-result-panel survival-wide-result-panel",
-      h3(survival_ui_text("Kaplan-Meier survival time summary", language)),
+      h3("2. Kaplan-Meier survival time summary"),
       survival_simple_table(km_summary),
-      survival_table_note("M = mean; SE = standard error; CI = confidence interval; NE = not estimable.")
+      survival_km_summary_note()
     ),
     if ("survival_table" %in% output_tables && nrow(rate_summary) > 0) {
       div(class = "result-section regression-result-panel survival-result-panel survival-wide-result-panel",
-        h3(survival_ui_text("Survival table", language)),
-        survival_simple_table(rate_summary)
+        h3("3. Survival probabilities at selected time points"),
+        survival_simple_table(rate_summary),
+        survival_rate_note()
       )
     },
     if (identical(result$analysis_method, "life_table") && "survival_table" %in% output_tables && nrow(life_summary) > 0) {
       div(class = "result-section regression-result-panel survival-result-panel survival-wide-result-panel",
-        h3(survival_ui_text("Life table", language)),
+        h3("4. Life table"),
         survival_simple_table(life_summary)
       )
     },
@@ -518,7 +565,7 @@ survival_cox_coef_table <- function(result) {
   )
 }
 
-survival_ph_table <- function(result) {
+survival_ph_table <- function(result, language = statedu_initial_language()) {
   table <- result$ph_table
   if (!is.data.frame(table) || nrow(table) == 0) return(data.frame())
   names(table) <- sub("^p$", "p", names(table))
@@ -531,24 +578,31 @@ survival_ph_table <- function(result) {
       }
     }
   }
+  if (identical(normalize_app_language(language), "ko")) {
+    names(table)[names(table) == "Term"] <- "항목"
+    names(table)[names(table) == "chisq"] <- "Chi-square"
+    names(table)[names(table) == "p"] <- "p"
+  }
   table
 }
 
-survival_cox_results_panel <- function(result) {
+survival_cox_results_panel <- function(result, language = statedu_initial_language()) {
+  language <- normalize_app_language(language)
   div(
     class = "survival-results",
     div(class = "result-section regression-result-panel survival-result-panel",
-      h3(survival_ui_text("Model overview")),
+      h3("1. Analysis overview"),
       survival_simple_table(survival_cox_overview_table(result))
     ),
     div(class = "result-section regression-result-panel survival-result-panel",
-      h3(survival_ui_text("Cox Regression")),
-      survival_simple_table(survival_cox_coef_table(result))
+      h3("2. Cox proportional hazards model"),
+      survival_simple_table(survival_cox_coef_table(result)),
+      survival_cox_coef_note()
     ),
     div(class = "result-section regression-result-panel survival-result-panel",
-      h3(survival_ui_text("PH assumption")),
-      survival_simple_table(survival_ph_table(result)),
-      div("PH assumption is assessed with Schoenfeld residuals. A small p-value suggests time-varying effects.", class = "result-note")
+      h3(survival_ph_guide_title(2L, language)),
+      survival_simple_table(survival_ph_table(result, language)),
+      survival_ph_guide_note(language)
     )
   )
 }
