@@ -391,7 +391,7 @@ output[[paste0(prefix, "_result_bollen_stine")]] <- renderUI({
   structural_canvas_bollen_stine_result_ui(fit_result(), statedu_current_language(app_language_fn))
 })
 output[[paste0(prefix, "_result_heywood")]] <- renderUI({
-  structural_canvas_heywood_result_ui(fit_result(), dataset_fn(), prefix, analysis_type)
+  structural_canvas_heywood_result_ui(fit_result(), dataset_fn(), prefix, analysis_type, statedu_current_language(app_language_fn))
 })
   invisible(TRUE)
 }

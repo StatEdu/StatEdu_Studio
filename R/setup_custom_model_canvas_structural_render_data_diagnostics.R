@@ -2,11 +2,19 @@
 
 structural_canvas_normality_result_ui <- function(bundle, dataset, analysis_type, language) {
   if (analysis_type == "plssem" || length(bundle$ordered %||% character(0))) return(NULL)
+  ko <- identical(normalize_app_language(language), "ko")
   indicators <- lavaan::lavNames(bundle$fit, "ov")
   diagnosis <- structural_canvas_mardia(dataset, indicators)
   if (!isTRUE(diagnosis$available)) {
+    reason <- if (ko && identical(diagnosis$reason, "Mardia diagnostics require at least two complete cases and two indicators.")) {
+      "Mardia 진단에는 완전 사례 2개 이상과 지표 2개 이상이 필요합니다."
+    } else {
+      diagnosis$reason
+    }
     return(div(class = "result-section regression-result-panel structural-normality-result",
-      h4("Multivariate normality"), tags$p(class = "structural-result-note", diagnosis$reason)))
+      h4(if (ko) "다변량 정규성" else "Multivariate normality"),
+      tags$p(class = "structural-result-note", reason)
+    ))
   }
   table <- data.frame(
     Test = c("Mardia skewness", "Mardia kurtosis"),
@@ -16,7 +24,6 @@ structural_canvas_normality_result_ui <- function(bundle, dataset, analysis_type
     p = c(format_p(diagnosis$skew_p), format_p(diagnosis$kurtosis_p)),
     check.names = FALSE
   )
-  ko <- identical(normalize_app_language(language), "ko")
   recommendation_label <- if (ko && identical(diagnosis$recommendation, "MLR recommended")) {
     "MLR 권장"
   } else if (ko && identical(diagnosis$recommendation, "ML is acceptable")) {
@@ -35,7 +42,6 @@ structural_canvas_normality_result_ui <- function(bundle, dataset, analysis_type
     if (isTRUE(diagnosis$sampled)) tags$p(class = "structural-result-note", if (ko) "계산 안정성을 위해 Mardia 통계량은 완전 사례 중 균등 간격 결정 표본 2,000건으로 계산했습니다." else "For computational stability, Mardia statistics used an evenly spaced deterministic subsample of 2,000 complete cases."),
     tags$p(class = "structural-result-note", if (ko) "Mardia 검정은 표본 수에 민감합니다. p 값과 함께 분포 형태, 이상치, 측정 가정을 함께 검토하십시오." else "Mardia tests are sample-size sensitive. Consider distribution shape, outliers, and substantive measurement assumptions alongside p-values.")
   )
-
 }
 
 structural_canvas_risk_diagnostics_result_ui <- function(bundle, dataset, analysis_type, language = statedu_initial_language()) {
@@ -73,7 +79,6 @@ structural_canvas_risk_diagnostics_result_ui <- function(bundle, dataset, analys
     if (nrow(flagged_pairs)) tags$p(class = "structural-result-note", if (ko) "각 순서형 지표 쌍은 관측되었거나 선언된 모든 범주에 대해 교차표를 계산합니다. 빈 셀 또는 빈도가 max(5, pairwise 유효응답의 1%) 이하인 비빈 셀은 polychoric 상관과 WLSMV 가중행렬을 불안정하게 할 수 있어 표시합니다. 범주 병합은 실질적 근거가 있어야 하며 순서를 보존해야 합니다." else "Each ordered-indicator pair is cross-tabulated over all observed or declared categories. Empty cells or nonempty cells with counts no greater than max(5, 1% of pairwise-valid responses) are flagged because they can destabilize polychoric correlations and the WLSMV weight matrix. Category collapsing requires substantive justification and must preserve order."),
     if (error_covariances$count > 0L) tags$p(class = "structural-result-note", if (ko) "여러 상관오차는 문항 중복 또는 자료 기반 과적합을 시사할 수 있습니다. 각 공분산에는 실질적 정당화가 필요합니다." else "Several correlated errors can indicate item redundancy or data-driven overfitting. Each covariance requires substantive justification.")
   )
-
 }
 
 structural_canvas_missing_outliers_result_ui <- function(bundle, dataset, analysis_type, language = statedu_initial_language()) {
@@ -111,5 +116,4 @@ structural_canvas_missing_outliers_result_ui <- function(bundle, dataset, analys
     },
     tags$p(class = "structural-result-note", if (ko) "Mahalanobis 후보는 자료 오류, 특이하지만 유효한 사례, 영향점을 검토해야 합니다. 자동으로 제거하지 않으며, 필요하면 robust 추정 또는 문서화된 민감도 분석을 사용하십시오." else "Mahalanobis candidates should be investigated for data errors, unusual but valid cases, and influence. They are not removed automatically; use robust estimation or a documented sensitivity analysis when appropriate.")
   )
-
 }
