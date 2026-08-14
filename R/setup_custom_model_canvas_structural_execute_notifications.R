@@ -7,8 +7,13 @@ structural_canvas_show_notification <- function(message, type = "message", durat
 
 structural_canvas_notify_identification_warnings <- function(identification_warnings) {
   if (nrow(identification_warnings)) {
-    structural_canvas_show_notification(paste0("Identification warning: ", paste(paste0(identification_warnings$Element, " — ", identification_warnings$Message), collapse = "; ")), type = "warning", duration = 12)
+    structural_canvas_show_notification(
+      paste0("Identification warning: ", paste(paste0(identification_warnings$Element, " - ", identification_warnings$Message), collapse = "; ")),
+      type = "warning",
+      duration = 12
+    )
   }
+  invisible(TRUE)
 }
 
 structural_canvas_notify_missing_covariances <- function(missing_covariances, analysis_type, language = NULL) {
@@ -29,9 +34,9 @@ structural_canvas_notify_ignored_pls_covariances <- function(result, analysis_ty
   if (identical(analysis_type, "plssem") && length(ignored_covariances)) {
     ko <- identical(normalize_app_language(language), "ko")
     message <- if (ko) {
-      paste0("PLS-SEM은 공분산 경로를 추정하지 않으므로 제외했습니다: ", paste(ignored_covariances, collapse = ", "), ".")
+      paste0("PLS-SEM은 공분산 경로를 추정하지 않으므로 제외했습니다: ", paste(ignored_covariances, collapse = ", "), ". 외생 구성개념 간 관련성은 구조모형 추정 과정에서 간접적으로 반영됩니다.")
     } else {
-      paste0("PLS-SEM does not estimate covariance paths; excluded: ", paste(ignored_covariances, collapse = ", "), ".")
+      paste0("PLS-SEM does not estimate covariance paths; excluded: ", paste(ignored_covariances, collapse = ", "), ". Associations among exogenous constructs are handled indirectly during structural-model estimation.")
     }
     structural_canvas_show_notification(message, type = "warning", duration = 10)
   }
@@ -53,7 +58,7 @@ structural_canvas_notify_solution_diagnostics <- function(result, language = NUL
       if (isTRUE(result$near_singular_latent_covariance)) paste0("잠재변수 공분산행렬이 거의 특이하거나 경계에 있음(최소 고유값 = ", format_decimal3(result$latent_min_eigenvalue), ")"),
       if (isTRUE(result$non_psd_parameter_covariance)) paste0("모수추정 공분산행렬이 양의 준정부호가 아님(최소 고유값 = ", format(result$parameter_min_eigenvalue, scientific = TRUE, digits = 3), ")"),
       if (isTRUE(result$near_singular_parameter_covariance)) paste0("모수추정 공분산행렬이 거의 특이함(최소 고유값 = ", format(result$parameter_min_eigenvalue, scientific = TRUE, digits = 3), ")"),
-      if (isTRUE(result$invalid_correlations)) "절댓값 1 이상의 잠재상관이 있음"
+      if (isTRUE(result$invalid_correlations)) "절대값 1 이상의 잠재변수 상관이 있음"
     ) else c(
       if (!isTRUE(result$converged)) "the model did not converge",
       if (!isTRUE(result$post_check)) "lavaan post-estimation checks failed",
@@ -89,4 +94,5 @@ structural_canvas_notify_solution_diagnostics <- function(result, language = NUL
     }
     structural_canvas_show_notification(message, type = "warning", duration = 12)
   }
+  invisible(TRUE)
 }

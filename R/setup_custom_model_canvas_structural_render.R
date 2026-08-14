@@ -188,9 +188,10 @@ structural_canvas_reporting_context_display_rows <- function(rows, ko = FALSE) {
     "Not recorded" = "기록 없음",
     "Available in analysis bundle" = "분석 객체에 포함됨",
     "PLS path modeling" = "PLS 경로모형",
-    "Valid rows used by seminr; no FIML/pairwise option" = "seminr 유효 사례 사용(FIML/pairwise 옵션 없음)",
+    "Valid rows used by seminr; no FIML/pairwise option" = "seminr 유효 행 사용(FIML/pairwise 옵션 없음)",
     "Composite scores" = "합성점수",
     "Marker loading scaling" = "기준 적재량 고정",
+    "std.lv = TRUE" = "잠재변수 분산 = 1",
     "Executed" = "실행됨"
   )
   rows$Item <- ifelse(rows$Item %in% names(item_map), unname(item_map[rows$Item]), rows$Item)
@@ -208,7 +209,6 @@ structural_canvas_reporting_context_display_rows <- function(rows, ko = FALSE) {
   names(rows) <- c("항목", "값")
   rows
 }
-
 structural_canvas_reporting_context_result_ui <- function(bundle, analysis_type, language = statedu_initial_language()) {
   rows <- structural_canvas_reporting_context_rows(bundle, analysis_type)
   if (!nrow(rows)) return(NULL)
