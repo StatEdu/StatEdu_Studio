@@ -24,6 +24,7 @@ run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estima
   lavaan_syntax <- structural_canvas_lavaan_syntax(
     snapshot, data, analysis_type, latents, edges, ordered, residual_variance_fixes
   )
+  data <- lavaan_syntax$data %||% data
   residual_variance_fixes <- lavaan_syntax$residual_variance_fixes
   if (analysis_type %in% c("cfa", "cbsem", "sem")) {
     syntax <- lavaan_syntax$syntax
@@ -88,6 +89,7 @@ run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estima
     return(list(
       fit = fit, syntax = syntax, converged = converged, post_check = post_check,
       effect_definitions = lavaan_syntax$effect_definitions %||% list(),
+      moderation_definitions = lavaan_syntax$moderation_definitions %||% list(),
       identified = is.finite(model_df) && model_df >= 0,
       df = model_df,
       admissible = isTRUE(shared_admissibility$admissible),

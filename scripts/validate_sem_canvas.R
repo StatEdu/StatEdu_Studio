@@ -219,6 +219,79 @@ cbsem_structural <- structural_canvas_result_table("structural", cbsem_result, "
 stopifnot(nrow(cbsem_structural) == 1L)
 stopifnot("Effect" %in% names(cbsem_structural), cbsem_structural$Effect[[1L]] == "Direct")
 stopifnot(all(c("Outcome", "Predictor", "B", "beta", "R²", "z", "p") %in% names(cbsem_structural)))
+
+moderation_data <- data
+moderation_data$W <- stats::rnorm(nrow(moderation_data))
+moderation_data$y1 <- moderation_data$y1 + 0.55 * eta1 * moderation_data$W
+moderation_data$y2 <- moderation_data$y2 + 0.55 * eta1 * moderation_data$W
+moderation_data$y3 <- moderation_data$y3 + 0.55 * eta1 * moderation_data$W
+moderation_snapshot <- snapshot
+moderation_snapshot$nodes <- c(moderation_snapshot$nodes, list(list(id = "w", role = "moderator", name = "W", variableId = "W", canvasLabel = "W", x = 260, y = 20)))
+moderation_snapshot$moderations <- list(list(id = "mod_eta1_eta2", from = "w", toEdge = "p1"))
+cbsem_moderation <- run_structural_canvas_analysis(moderation_snapshot, moderation_data, "cbsem", estimator = "MLR", missing = "fiml")
+cbsem_jn <- structural_canvas_moderation_jn_table(list(fit = cbsem_moderation$fit, diagnostics = cbsem_moderation))
+stopifnot(
+  length(cbsem_moderation$moderation_definitions) == 1L,
+  grepl("statedu_int", cbsem_moderation$syntax, fixed = TRUE),
+  is.data.frame(cbsem_jn),
+  all(c("Effect", "Path", "Moderator", "Moderator range", "Midpoint effect", "SE", "z", "p", "Significant") %in% names(cbsem_jn)),
+  "Direct" %in% cbsem_jn$Effect
+)
+moderated_mediation_n <- 320L
+moderated_x <- stats::rnorm(moderated_mediation_n)
+moderated_w <- stats::rnorm(moderated_mediation_n)
+moderated_m <- (0.45 + 0.80 * moderated_w) * moderated_x + stats::rnorm(moderated_mediation_n, sd = 0.55)
+moderated_y <- 0.75 * moderated_m + stats::rnorm(moderated_mediation_n, sd = 0.55)
+moderated_mediation_data <- data.frame(
+  x1 = 0.82 * moderated_x + stats::rnorm(moderated_mediation_n, sd = 0.35),
+  x2 = 0.78 * moderated_x + stats::rnorm(moderated_mediation_n, sd = 0.38),
+  x3 = 0.75 * moderated_x + stats::rnorm(moderated_mediation_n, sd = 0.40),
+  m1 = 0.84 * moderated_m + stats::rnorm(moderated_mediation_n, sd = 0.35),
+  m2 = 0.80 * moderated_m + stats::rnorm(moderated_mediation_n, sd = 0.38),
+  m3 = 0.76 * moderated_m + stats::rnorm(moderated_mediation_n, sd = 0.40),
+  y1 = 0.86 * moderated_y + stats::rnorm(moderated_mediation_n, sd = 0.35),
+  y2 = 0.81 * moderated_y + stats::rnorm(moderated_mediation_n, sd = 0.38),
+  y3 = 0.77 * moderated_y + stats::rnorm(moderated_mediation_n, sd = 0.40),
+  W = moderated_w
+)
+moderated_mediation_snapshot <- list(
+  nodes = list(
+    list(id = "mx", role = "latent", name = "eta1", canvasLabel = "eta1", x = 120, y = 120, measurementMode = "reflective"),
+    list(id = "mm", role = "latent", name = "eta2", canvasLabel = "eta2", x = 420, y = 120, measurementMode = "reflective"),
+    list(id = "my", role = "latent", name = "eta3", canvasLabel = "eta3", x = 720, y = 120, measurementMode = "reflective"),
+    list(id = "mx1", role = "indicator", name = "x1", variableId = "x1", canvasLabel = "x1", x = 120, y = 250),
+    list(id = "mx2", role = "indicator", name = "x2", variableId = "x2", canvasLabel = "x2", x = 120, y = 320),
+    list(id = "mx3", role = "indicator", name = "x3", variableId = "x3", canvasLabel = "x3", x = 120, y = 390),
+    list(id = "mm1", role = "indicator", name = "m1", variableId = "m1", canvasLabel = "m1", x = 420, y = 250),
+    list(id = "mm2", role = "indicator", name = "m2", variableId = "m2", canvasLabel = "m2", x = 420, y = 320),
+    list(id = "mm3", role = "indicator", name = "m3", variableId = "m3", canvasLabel = "m3", x = 420, y = 390),
+    list(id = "my1", role = "indicator", name = "y1", variableId = "y1", canvasLabel = "y1", x = 720, y = 250),
+    list(id = "my2", role = "indicator", name = "y2", variableId = "y2", canvasLabel = "y2", x = 720, y = 320),
+    list(id = "my3", role = "indicator", name = "y3", variableId = "y3", canvasLabel = "y3", x = 720, y = 390),
+    list(id = "mw", role = "moderator", name = "W", variableId = "W", canvasLabel = "W", x = 260, y = 20)
+  ),
+  edges = list(
+    list(id = "me1", from = "mx", to = "mx1"),
+    list(id = "me2", from = "mx", to = "mx2"),
+    list(id = "me3", from = "mx", to = "mx3"),
+    list(id = "me4", from = "mm", to = "mm1"),
+    list(id = "me5", from = "mm", to = "mm2"),
+    list(id = "me6", from = "mm", to = "mm3"),
+    list(id = "me7", from = "my", to = "my1"),
+    list(id = "me8", from = "my", to = "my2"),
+    list(id = "me9", from = "my", to = "my3"),
+    list(id = "mp1", from = "mx", to = "mm"),
+    list(id = "mp2", from = "mm", to = "my")
+  ),
+  moderations = list(list(id = "mod_mediation", from = "mw", toEdge = "mp1"))
+)
+cbsem_moderated_mediation <- run_structural_canvas_analysis(moderated_mediation_snapshot, moderated_mediation_data, "cbsem", estimator = "MLR", missing = "fiml")
+cbsem_moderated_mediation_jn <- structural_canvas_moderation_jn_table(list(fit = cbsem_moderated_mediation$fit, diagnostics = cbsem_moderated_mediation))
+stopifnot(
+  length(cbsem_moderated_mediation$effect_definitions) > 0L,
+  is.data.frame(cbsem_moderated_mediation_jn),
+  "Indirect" %in% cbsem_moderated_mediation_jn$Effect
+)
 stopifnot(cbsem_structural$Outcome[[1L]] == "eta2")
 stopifnot(cbsem_structural$Predictor[[1L]] == "eta1")
 

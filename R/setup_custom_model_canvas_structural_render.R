@@ -263,6 +263,7 @@ output[[paste0(prefix, "_results")]] <- renderUI({
       tags$p(class = "structural-result-note", if (ko) "구조경로 표는 lavaan의 회귀경로(~)에 대한 비표준화 계수, 표준화 계수, 신뢰구간, R², z 및 p 값을 표시합니다." else "Structural paths are lavaan regression paths (~), reported with unstandardized and standardized coefficients, confidence intervals, R², z, and p values."),
       tags$p(class = "structural-result-note", if (ko) "매개 경로가 정의되면 간접효과와 총효과 행도 함께 표시되며, lavaan이 반환하는 경우 표준화 효과의 95% 신뢰구간을 포함합니다." else "When mediation paths are defined, indirect and total effect rows are included with standardized-effect 95% confidence intervals when lavaan returns them.")
     ),
+    uiOutput(paste0(prefix, "_result_moderation_jn")),
     div(class = "result-section regression-result-panel structural-validity-result", h4("3. Latent construct correlations, reliability, and convergent/discriminant validity"), uiOutput(paste0(prefix, "_result_validity")), uiOutput(paste0(prefix, "_result_htmt"))),
     div(
       class = "result-section regression-result-panel structural-measurement-result",
@@ -315,6 +316,9 @@ output[[paste0(prefix, "_results")]] <- renderUI({
     output, prefix, analysis_type, fit_result, manuscript_result_table, app_language_fn
   )
   if (analysis_type != "plssem") structural_canvas_register_local_fit_outputs(
+    output, prefix, fit_result, app_language_fn
+  )
+  if (analysis_type %in% c("cbsem", "sem")) structural_canvas_register_moderation_outputs(
     output, prefix, fit_result, app_language_fn
   )
 for (kind in c("overview", "structural")) local({

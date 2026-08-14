@@ -7,6 +7,13 @@ structural_canvas_validity_result_table <- function(kind, bundle, snapshot, fit,
       observed_names <- lavaan::lavNames(fit, "ov")
       loadings <- loadings[loadings$rhs %in% observed_names, , drop = FALSE]
       latent_names <- unique(loadings$lhs)
+      moderation_factors <- vapply(bundle$diagnostics$moderation_definitions %||% bundle$moderation_definitions %||% list(), function(item) as.character(item$interaction_factor %||% ""), character(1))
+      moderation_factors <- moderation_factors[nzchar(moderation_factors)]
+      if (length(moderation_factors)) {
+        loadings <- loadings[!loadings$lhs %in% moderation_factors, , drop = FALSE]
+        latent_names <- setdiff(latent_names, moderation_factors)
+      }
+      if (!length(latent_names)) return(data.frame())
       indicator_counts <- stats::setNames(vapply(latent_names, function(name) sum(loadings$lhs == name), integer(1)), latent_names)
       formula_mode <- bundle$validity_formula %||% "standardized"
       if (identical(formula_mode, "model_implied")) {

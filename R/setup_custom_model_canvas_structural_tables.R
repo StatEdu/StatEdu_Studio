@@ -470,7 +470,14 @@ structural_canvas_result_table <- function(kind, fit_result, analysis_type, labe
     validity_table <- structural_canvas_validity_result_table(kind, bundle, snapshot, fit, ko, fmt, display_name)
     if (!is.null(validity_table)) return(validity_table)
     measurement_table <- structural_canvas_measurement_result_table(kind, fit, ko, fmt, display_name)
-    if (!is.null(measurement_table)) return(measurement_table)
+    if (!is.null(measurement_table)) {
+      moderation_factors <- vapply(bundle$diagnostics$moderation_definitions %||% bundle$moderation_definitions %||% list(), function(item) as.character(item$interaction_factor %||% ""), character(1))
+      moderation_factors <- moderation_factors[nzchar(moderation_factors)]
+      if (length(moderation_factors) && "Latent" %in% names(measurement_table)) {
+        measurement_table <- measurement_table[!measurement_table$Latent %in% moderation_factors, , drop = FALSE]
+      }
+      return(measurement_table)
+    }
     structural_table <- structural_canvas_lavaan_structural_result_table(kind, fit, ko, fmt, display_name)
     if (!is.null(structural_table)) {
       if (identical(kind, "structural") && ncol(structural_table) >= 3L) {

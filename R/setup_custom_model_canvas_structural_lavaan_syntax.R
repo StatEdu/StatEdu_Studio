@@ -17,6 +17,33 @@ structural_canvas_structural_effect_label <- function(prefix, predictor, outcome
   )
 }
 
+structural_canvas_moderation_product_name <- function(predictor, moderator, indicator, existing_names) {
+  base <- structural_canvas_lavaan_safe_label(paste("statedu_pi", predictor, moderator, indicator, sep = "_"), "statedu_pi")
+  name <- base
+  suffix <- 1L
+  while (name %in% existing_names) {
+    suffix <- suffix + 1L
+    name <- paste0(base, "_", suffix)
+  }
+  name
+}
+
+structural_canvas_latent_indicators <- function(snapshot, edges, latent_id) {
+  indicator_edges <- Filter(function(edge) {
+    if (identical(edge$kind, "covariance")) return(FALSE)
+    from <- structural_canvas_node(snapshot, edge$from)
+    to <- structural_canvas_node(snapshot, edge$to)
+    if (is.null(from) || is.null(to)) return(FALSE)
+    (identical(as.character(from$id %||% ""), as.character(latent_id)) && identical(to$role, "indicator")) ||
+      (identical(as.character(to$id %||% ""), as.character(latent_id)) && identical(from$role, "indicator"))
+  }, edges)
+  unique(vapply(indicator_edges, function(edge) {
+    from <- structural_canvas_node(snapshot, edge$from)
+    to <- structural_canvas_node(snapshot, edge$to)
+    structural_canvas_name(if (identical(from$role, "indicator")) from else to)
+  }, character(1)))
+}
+
 structural_canvas_structural_edge_label <- function(edge, index) {
   equality_label <- trimws(as.character(edge$equalityLabel %||% ""))
   parameter_name <- trimws(as.character(edge$parameterName %||% ""))
@@ -31,6 +58,61 @@ structural_canvas_structural_edge_label <- function(edge, index) {
     return(format(fixed_value, scientific = FALSE, digits = 15, trim = TRUE))
   }
   paste0("statedu_b", as.integer(index))
+}
+
+structural_canvas_structural_moderation_terms <- function(snapshot, data, edges, structural_edge_info) {
+  moderations <- snapshot$moderations %||% list()
+  if (!length(moderations)) return(list(data = data, measurement_lines = character(0), structural_lines = character(0), definitions = list()))
+  edge_info_by_id <- stats::setNames(structural_edge_info, vapply(structural_edge_info, function(item) as.character(item$edge$id %||% ""), character(1)))
+  existing_names <- names(data)
+  measurement_lines <- character(0)
+  structural_lines <- character(0)
+  definitions <- list()
+  for (moderation in moderations) {
+    target_edge_id <- as.character(moderation$toEdge %||% "")
+    if (!nzchar(target_edge_id) || !target_edge_id %in% names(edge_info_by_id)) next
+    source <- structural_canvas_node(snapshot, moderation$from)
+    if (is.null(source) || !identical(source$role, "moderator")) next
+    moderator <- structural_canvas_name(source)
+    if (!moderator %in% names(data)) stop(paste0("The moderator variable is not in the data: ", moderator, "."))
+    if (!is.numeric(data[[moderator]])) stop(paste0("Johnson-Neyman SEM moderation currently requires a continuous numeric observed moderator: ", moderator, "."))
+    edge_info <- edge_info_by_id[[target_edge_id]]
+    predictor_node <- structural_canvas_node(snapshot, edge_info$edge$from)
+    predictor_indicators <- structural_canvas_latent_indicators(snapshot, edges, predictor_node$id)
+    predictor_indicators <- predictor_indicators[predictor_indicators %in% names(data)]
+    if (length(predictor_indicators) < 2L) {
+      stop(paste0("Latent SEM moderation requires at least two observed indicators for the moderated predictor: ", edge_info$predictor, "."))
+    }
+    moderator_mean <- mean(data[[moderator]], na.rm = TRUE)
+    moderator_centered <- data[[moderator]] - moderator_mean
+    product_names <- character(0)
+    for (indicator in predictor_indicators) {
+      if (!is.numeric(data[[indicator]])) stop(paste0("Product-indicator SEM moderation requires numeric indicators. Check: ", indicator, "."))
+      product_name <- structural_canvas_moderation_product_name(edge_info$predictor, moderator, indicator, existing_names)
+      existing_names <- c(existing_names, product_name)
+      data[[product_name]] <- (data[[indicator]] - mean(data[[indicator]], na.rm = TRUE)) * moderator_centered
+      product_names <- c(product_names, product_name)
+    }
+    interaction_factor <- structural_canvas_structural_effect_label("statedu_int", edge_info$predictor, moderator)
+    moderator_label <- structural_canvas_structural_effect_label("statedu_mod", moderator, edge_info$outcome)
+    interaction_label <- structural_canvas_structural_effect_label("statedu_jn", edge_info$predictor, moderator)
+    measurement_lines <- c(measurement_lines, paste(interaction_factor, "=~", paste(product_names, collapse = " + ")))
+    structural_lines <- c(structural_lines, paste(edge_info$outcome, "~", paste0(moderator_label, "*", moderator), "+", paste0(interaction_label, "*", interaction_factor)))
+    definitions[[length(definitions) + 1L]] <- list(
+      predictor = edge_info$predictor,
+      outcome = edge_info$outcome,
+      moderator = moderator,
+      direct_label = edge_info$label,
+      moderator_label = moderator_label,
+      interaction_label = interaction_label,
+      interaction_factor = interaction_factor,
+      product_indicators = product_names,
+      moderator_mean = moderator_mean,
+      moderator_min = min(data[[moderator]], na.rm = TRUE),
+      moderator_max = max(data[[moderator]], na.rm = TRUE)
+    )
+  }
+  list(data = data, measurement_lines = measurement_lines, structural_lines = structural_lines, definitions = definitions)
 }
 
 structural_canvas_structural_edge_term <- function(edge, predictor_name, label) {
@@ -100,10 +182,13 @@ structural_canvas_structural_effect_definitions <- function(structural_edge_info
       direct_key <- paste(predictor, outcome, sep = "\r")
       indirect_paths <- Filter(function(path) length(path) > 2L, paths)
       if (!length(indirect_paths)) next
-      path_expressions <- vapply(indirect_paths, function(path) {
+      path_labels <- lapply(indirect_paths, function(path) {
         terms <- vapply(seq_len(length(path) - 1L), function(index) {
           edge_expression[[paste(path[[index]], path[[index + 1L]], sep = "\r")]]
         }, character(1))
+        terms
+      })
+      path_expressions <- vapply(path_labels, function(terms) {
         paste(terms, collapse = " * ")
       }, character(1))
       indirect_label <- structural_canvas_structural_effect_label("statedu_ind", predictor, outcome)
@@ -113,7 +198,7 @@ structural_canvas_structural_effect_definitions <- function(structural_edge_info
       total_expression <- paste(total_terms[nzchar(total_terms)], collapse = " + ")
       lines <- c(lines, paste(indirect_label, ":=", indirect_expression), paste(total_label, ":=", total_expression))
       effects[[length(effects) + 1L]] <- list(
-        label = indirect_label, type = "Indirect", predictor = predictor, outcome = outcome, paths = indirect_paths
+        label = indirect_label, type = "Indirect", predictor = predictor, outcome = outcome, paths = indirect_paths, path_labels = path_labels
       )
       effects[[length(effects) + 1L]] <- list(
         label = total_label, type = "Total", predictor = predictor, outcome = outcome, paths = paths
@@ -175,6 +260,10 @@ structural_canvas_lavaan_syntax <- function(snapshot, data, analysis_type, laten
   structural_lines <- vapply(structural_edge_info, function(item) {
     paste(item$outcome, "~", structural_canvas_structural_edge_term(item$edge, item$predictor, item$label))
   }, character(1))
+  moderation_terms <- structural_canvas_structural_moderation_terms(snapshot, data, edges, structural_edge_info)
+  data <- moderation_terms$data
+  measurement_lines <- c(measurement_lines, moderation_terms$measurement_lines)
+  structural_lines <- c(structural_lines, moderation_terms$structural_lines)
   effect_definitions <- if (analysis_type %in% c("cbsem", "sem")) {
     structural_canvas_structural_effect_definitions(structural_edge_info)
   } else {
@@ -225,7 +314,9 @@ structural_canvas_lavaan_syntax <- function(snapshot, data, analysis_type, laten
 
   list(
     syntax = paste(c(measurement_lines, higher_order_lines, structural_lines, effect_definitions$lines, covariance_lines, residual_parameter_lines, residual_fix_lines), collapse = "\n"),
+    data = data,
     residual_variance_fixes = residual_variance_fixes,
-    effect_definitions = effect_definitions$effects
+    effect_definitions = effect_definitions$effects,
+    moderation_definitions = moderation_terms$definitions
   )
 }
