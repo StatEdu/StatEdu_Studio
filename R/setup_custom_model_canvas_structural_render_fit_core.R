@@ -21,12 +21,13 @@ structural_canvas_fit_table_result_ui <- function(bundle, values) {
   baseline_selection <- if (length(fit_selections) > 1L) fit_selections[[1L]] else NULL
   same_measure_keys <- is.null(baseline_selection) || identical(selection$keys, baseline_selection$keys)
   if (!same_measure_keys) fit_labels[c(5L, 6L, 8L)] <- c("Adjusted CFI", "Adjusted TLI", "Adjusted RMSEA")
+  model_header <- names(values)[[1L]] %||% "Model"
   tagList(tags$table(
     class = "table table-striped table-bordered structural-fit-table",
     tags$thead(
       tags$tr(
-        tags$th(rowspan = "2", "Model"),
-        tags$th(rowspan = "2", if (!same_measure_keys) HTML("Adjusted &chi;<sup>2</sup>*") else if (grepl("Scaled", fit_labels[[1L]], fixed = TRUE)) HTML("Scaled &chi;<sup>2</sup>*") else HTML("&chi;<sup>2</sup>")), tags$th(rowspan = "2", "df"), tags$th(rowspan = "2", "p"), tags$th(rowspan = "2", "Q"),
+        tags$th(rowspan = "2", model_header),
+        tags$th(rowspan = "2", if (!same_measure_keys) HTML("Adjusted &chi;<sup>2</sup>*") else if (grepl("Scaled", fit_labels[[1L]], fixed = TRUE)) HTML("Scaled &chi;<sup>2</sup>*") else HTML("&chi;<sup>2</sup>")), tags$th(rowspan = "2", "df"), tags$th(rowspan = "2", "p"), tags$th(rowspan = "2", HTML("&chi;<sup>2</sup>/df")),
         tags$th(rowspan = "2", paste0(fit_labels[[5L]], if (selection$adjusted) "*" else "")), tags$th(rowspan = "2", paste0(fit_labels[[6L]], if (selection$adjusted) "*" else "")), tags$th(rowspan = "2", "SRMR"), tags$th(rowspan = "2", paste0(fit_labels[[8L]], if (selection$adjusted) "*" else "")),
         tags$th(colspan = "2", paste0(ci_percent, "% CI"))
       ),
@@ -37,24 +38,38 @@ structural_canvas_fit_table_result_ui <- function(bundle, values) {
     tags$p(class = "structural-result-note", if (is.null(baseline_selection) || same_measure_keys) {
       paste0("* Reported lavaan measures: ", paste(unname(selection$keys), collapse = ", "), ". SRMR has no separate robust correction.")
     } else {
-      paste0("* Original-model measures: ", paste(unname(baseline_selection$keys), collapse = ", "), "; modified-model measures: ", paste(unname(selection$keys), collapse = ", "), ". SRMR has no separate robust correction.")
+      paste0("* Research-model measures: ", paste(unname(baseline_selection$keys), collapse = ", "), "; modified-model measures: ", paste(unname(selection$keys), collapse = ", "), ". SRMR has no separate robust correction.")
     }),
     if ((!is.null(baseline_selection) && baseline_selection$values[[2L]] == 0) || selection$values[[2L]] == 0)
-      tags$p(class = "structural-result-note", "Q (chi-square/df) and some fit indices are not interpretable for a saturated model with df = 0.")
+      tags$p(class = "structural-result-note", "Chi-square/df and some fit indices are not interpretable for a saturated model with df = 0.")
   )
 
 }
 
-structural_canvas_identification_result_ui <- function(bundle) {
+structural_canvas_identification_result_ui <- function(bundle, language = statedu_initial_language()) {
+  ko <- identical(normalize_app_language(language), "ko")
   issues <- bundle$identification %||% data.frame()
-  if (!nrow(issues)) return(tags$p(class = "structural-result-note", "Pre-fit structural identification check: no rule-based issues detected."))
+  if (!nrow(issues)) {
+    return(tags$p(
+      class = "structural-result-note",
+      if (ko) "사전 구조모형 식별성 점검: 규칙 기반 문제는 발견되지 않았습니다." else "Pre-fit structural identification check: no rule-based issues detected."
+    ))
+  }
+  display_issues <- issues
+  if (ko && ncol(display_issues)) {
+    issue_name_map <- c(Element = "요소", Message = "메시지", Severity = "심각도")
+    names(display_issues) <- ifelse(names(display_issues) %in% names(issue_name_map), unname(issue_name_map[names(display_issues)]), names(display_issues))
+  }
   tags$div(class = "structural-identification-result",
-    tags$h5("Pre-fit identification diagnostics"),
+    tags$h5(if (ko) "사전 식별성 진단" else "Pre-fit identification diagnostics"),
     tags$table(class = "table table-striped table-bordered",
-      tags$thead(tags$tr(lapply(names(issues), tags$th))),
-      tags$tbody(lapply(seq_len(nrow(issues)), function(index) tags$tr(lapply(as.character(issues[index, ]), tags$td))))
+      tags$thead(tags$tr(lapply(names(display_issues), tags$th))),
+      tags$tbody(lapply(seq_len(nrow(display_issues)), function(index) tags$tr(lapply(as.character(display_issues[index, ]), tags$td))))
     ),
-    tags$p(class = "structural-result-note", "This rule-based screen does not prove mathematical identification; lavaan estimation, degrees of freedom, information-matrix checks, and solution admissibility remain decisive.")
+    tags$p(
+      class = "structural-result-note",
+      if (ko) "이 규칙 기반 점검만으로 수학적 식별성이 증명되지는 않습니다. lavaan 추정, 자유도, 정보행렬 점검, 해의 허용성이 최종 판단 기준입니다." else "This rule-based screen does not prove mathematical identification; lavaan estimation, degrees of freedom, information-matrix checks, and solution admissibility remain decisive."
+    )
   )
 
 }
@@ -69,7 +84,7 @@ structural_canvas_fit_difference_result_ui <- function(bundle, language) {
   }
   tags$div(
     class = "structural-fit-difference",
-    tags$h5(if (ko) "기존 모형 vs 탐색적 수정 모형" else "Original vs exploratory modified model"),
+    tags$h5(if (ko) "연구모형 vs 탐색적 수정모형" else "Research model vs exploratory modified model"),
     tags$table(class = "table table-striped table-bordered",
       tags$thead(tags$tr(tags$th("Δχ²"), tags$th("Δdf"), tags$th("p"))),
       tags$tbody(tags$tr(

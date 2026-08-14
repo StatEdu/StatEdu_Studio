@@ -161,18 +161,67 @@ structural_canvas_reporting_context_rows <- function(bundle, analysis_type) {
   )
 }
 
+structural_canvas_reporting_context_display_rows <- function(rows, ko = FALSE) {
+  if (!isTRUE(ko) || !nrow(rows)) return(rows)
+  item_map <- c(
+    "Analysis context" = "분석 맥락",
+    "Analysis engine" = "분석 엔진",
+    "Estimator or algorithm" = "추정량/알고리즘",
+    "Missing-data handling" = "결측 처리",
+    "Analyzed N" = "분석 N",
+    "Ordered indicators" = "순서형 지표",
+    "Latent scaling" = "잠재변수 척도화",
+    "Bootstrap settings" = "부트스트랩 설정",
+    "PLSpredict setting" = "PLSpredict 설정",
+    "Group analysis" = "집단 분석",
+    "MI holdout" = "MI 홀드아웃",
+    "Syntax availability" = "구문 제공",
+    "Admissibility and convergence" = "해의 허용성 및 수렴"
+  )
+  value_map <- c(
+    "Original/prespecified model" = "연구모형",
+    "Exploratory modified model" = "탐색적 수정모형",
+    "Not requested" = "요청하지 않음",
+    "Not applicable" = "해당 없음",
+    "Not enabled" = "사용 안 함",
+    "None recorded" = "기록 없음",
+    "Not recorded" = "기록 없음",
+    "Available in analysis bundle" = "분석 객체에 포함됨",
+    "PLS path modeling" = "PLS 경로모형",
+    "Valid rows used by seminr; no FIML/pairwise option" = "seminr 유효 사례 사용(FIML/pairwise 옵션 없음)",
+    "Composite scores" = "합성점수",
+    "Marker loading scaling" = "기준 적재량 고정",
+    "Executed" = "실행됨"
+  )
+  rows$Item <- ifelse(rows$Item %in% names(item_map), unname(item_map[rows$Item]), rows$Item)
+  rows$Value <- vapply(as.character(rows$Value), function(value) {
+    if (value %in% names(value_map)) return(unname(value_map[value]))
+    value <- gsub("^converged=TRUE; admissible=TRUE$", "수렴=예; 허용 가능=예", value)
+    value <- gsub("^converged=TRUE; admissible=FALSE$", "수렴=예; 허용 가능=아니오", value)
+    value <- gsub("^converged=FALSE; admissible=TRUE$", "수렴=아니오; 허용 가능=예", value)
+    value <- gsub("^converged=FALSE; admissible=FALSE$", "수렴=아니오; 허용 가능=아니오", value)
+    value <- gsub("not recorded", "기록 없음", value, fixed = TRUE)
+    value <- gsub("Requested", "요청됨", value, fixed = TRUE)
+    value <- gsub("Executed", "실행됨", value, fixed = TRUE)
+    value
+  }, character(1))
+  names(rows) <- c("항목", "값")
+  rows
+}
+
 structural_canvas_reporting_context_result_ui <- function(bundle, analysis_type, language = statedu_initial_language()) {
   rows <- structural_canvas_reporting_context_rows(bundle, analysis_type)
   if (!nrow(rows)) return(NULL)
   ko <- identical(normalize_app_language(language), "ko")
+  display_rows <- structural_canvas_reporting_context_display_rows(rows, ko)
   div(
     class = "result-section regression-result-panel structural-reporting-context",
-    h4(if (ko) "Reporting checklist" else "Reporting checklist"),
-    structural_canvas_basic_html_table(rows),
+    h4(if (ko) "보고 체크리스트" else "Reporting checklist"),
+    structural_canvas_basic_html_table(display_rows),
     tags$p(
       class = "structural-result-note",
       if (ko) {
-        "Use this block to report reproducibility conditions: estimator, missing-data handling, analyzed N, ordered indicators, bootstrap settings, seeds, group analysis, and whether MI-based changes are exploratory."
+        "이 블록은 재현성 보고에 필요한 조건을 요약합니다: 추정량, 결측 처리, 분석 N, 순서형 지표, 부트스트랩 설정과 seed, 집단 분석, MI 기반 수정 여부."
       } else {
         "Use this block to report reproducibility conditions: estimator, missing-data handling, analyzed N, ordered indicators, bootstrap settings, seeds, group analysis, and whether MI-based changes are exploratory."
       }
@@ -180,7 +229,7 @@ structural_canvas_reporting_context_result_ui <- function(bundle, analysis_type,
   )
 }
 
-structural_canvas_register_result_outputs <- function(input, output, prefix, canvas_output, analysis_type, selected_names_fn, variable_table_fn, labels_fn, app_language_fn, fit_result, result_table) {
+structural_canvas_register_result_outputs <- function(input, output, prefix, canvas_output, analysis_type, selected_names_fn, variable_table_fn, dataset_fn, labels_fn, app_language_fn, fit_result, result_table) {
 output[[canvas_output]] <- renderUI({
   structural_equation_workspace(selected_names_fn(), variable_table_fn(), labels_fn(), analysis_type, statedu_current_language(app_language_fn))
 })

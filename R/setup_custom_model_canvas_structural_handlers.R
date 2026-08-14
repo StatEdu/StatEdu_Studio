@@ -40,7 +40,7 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
     }
     structural_canvas_register_result_outputs(
       input, output, prefix, canvas_output, analysis_type,
-      selected_names_fn, variable_table_fn, labels_fn, app_language_fn, fit_result, result_table
+      selected_names_fn, variable_table_fn, dataset_fn, labels_fn, app_language_fn, fit_result, result_table
     )
     execute_analysis <- function(snapshot, settings = NULL) {
       structural_canvas_execute_analysis(

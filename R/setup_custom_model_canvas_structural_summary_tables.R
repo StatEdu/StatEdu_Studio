@@ -23,17 +23,17 @@ structural_canvas_summary_result_table <- function(kind, bundle, fit, analysis_t
       comparison_fits <- if (isTRUE(bundle$modified_from_baseline) && !is.null(bundle$baseline_fit)) list(bundle$baseline_fit, fit) else list(fit)
       selections <- structural_canvas_common_fit_measures(comparison_fits, bundle$estimator %||% "ML", ci_level)
       model_labels <- if (ko) "모형" else "Model"
-      row_labels <- if (ko) "기존 모형" else "Original model"
+      row_labels <- if (ko) "연구모형" else "Research model"
       if (length(selections) > 1L) {
         modified_label <- bundle$comparison_label %||% if (ko) "수정 모형" else "Modified model"
-        row_labels <- c(if (ko) "기존 모형" else "Original model", modified_label)
+        row_labels <- c(if (ko) "연구모형" else "Research model", modified_label)
       }
       values <- do.call(rbind, lapply(selections, function(item) item$values))
       ci_percent <- round(100 * ci_level)
       table <- data.frame(
         row_labels,
         `χ²` = fmt(values[, 1L]), df = fmt(values[, 2L]),
-        p = vapply(values[, 3L], format_p, character(1)), Q = fmt(values[, 4L]),
+        p = vapply(values[, 3L], format_p, character(1)), `χ²/df` = fmt(values[, 4L]),
         CFI = fmt(values[, 5L]), TLI = fmt(values[, 6L]), SRMR = fmt(values[, 7L]),
         RMSEA = fmt(values[, 8L]), fmt(values[, 9L]), fmt(values[, 10L]),
         check.names = FALSE

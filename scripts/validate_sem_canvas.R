@@ -44,6 +44,7 @@ snapshot <- list(
 
 labels_fn <- function() character(0)
 language_fn <- function() "en"
+ko_language_fn <- function() "ko"
 variable_table <- data.frame(name = names(data), measurement = "scale", stringsAsFactors = FALSE)
 notification_source <- readLines(file.path("R", "setup_custom_model_canvas_structural_execute_notifications.R"), warn = FALSE, encoding = "UTF-8")
 pls_engine_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_pls_engine.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -87,6 +88,9 @@ stopifnot(
   grepl("q2 = 1 - press / tss", pls_engine_source, fixed = TRUE),
   grepl("structural_canvas_notify_missing_covariances(missing_covariances, analysis_type, statedu_current_language(app_language_fn))", ui_source, fixed = TRUE),
   grepl("structural_canvas_notify_ignored_pls_covariances(result, analysis_type, statedu_current_language(app_language_fn))", ui_source, fixed = TRUE),
+  grepl("structural_canvas_notify_solution_diagnostics(result, statedu_current_language(app_language_fn))", ui_source, fixed = TRUE),
+  any(grepl("잠재적으로 허용 불가능한 해", notification_source, fixed = TRUE)),
+  any(grepl("수치적으로 불안정한 해", notification_source, fixed = TRUE)),
   grepl("PLS-SEM에서는 공분산 경로를 추정하지", ui_source, fixed = TRUE),
   sum(grepl("showNotification(", notification_source, fixed = TRUE)) == 1L,
   !grepl("Latent covariance, factor-score, HTMT, and lavaan delta-method diagnostics are not displayed", ui_source, fixed = TRUE)
@@ -116,6 +120,13 @@ stopifnot(cbsem_reporting$Value[cbsem_reporting$Item == "Estimator or algorithm"
 stopifnot(cbsem_reporting$Value[cbsem_reporting$Item == "Missing-data handling"] == "fiml")
 stopifnot(cbsem_reporting$Value[cbsem_reporting$Item == "Analysis context"] == "Original/prespecified model")
 stopifnot(grepl("converged=TRUE", cbsem_reporting$Value[cbsem_reporting$Item == "Admissibility and convergence"], fixed = TRUE))
+cbsem_reporting_ko <- structural_canvas_reporting_context_display_rows(cbsem_reporting, TRUE)
+stopifnot(
+  identical(names(cbsem_reporting_ko), c("항목", "값")),
+  "분석 맥락" %in% cbsem_reporting_ko$항목,
+  "연구모형" %in% cbsem_reporting_ko$값,
+  grepl("보고 체크리스트", paste(as.character(structural_canvas_reporting_context_result_ui(cbsem_bundle, "cbsem", "ko")), collapse = "\n"), fixed = TRUE)
+)
 cbsem_quality <- structural_canvas_lavaan_quality_rows(cbsem_bundle, "cbsem")
 stopifnot(nrow(cbsem_quality) == 20L)
 stopifnot(all(c("Item", "Value", "Status", "Guidance") %in% names(cbsem_quality)))
@@ -143,8 +154,28 @@ stopifnot(all(cbsem_quality_review$Priority %in% c("Critical", "Major", "Advisor
 stopifnot(all(cbsem_quality_review$Action %in% c("Resolve before reporting", "Resolve or justify", "Document limitation")))
 cbsem_readiness <- structural_canvas_lavaan_quality_reporting_readiness(cbsem_quality)
 stopifnot(grepl("Reporting readiness:", cbsem_readiness, fixed = TRUE))
+cbsem_quality_ko <- structural_canvas_quality_display_rows(cbsem_quality, TRUE)
+cbsem_quality_ui_ko <- paste(as.character(structural_canvas_lavaan_quality_result_ui(cbsem_bundle, "cbsem", "ko")), collapse = "\n")
+stopifnot(
+  "항목" %in% names(cbsem_quality_ko),
+  "상태" %in% names(cbsem_quality_ko),
+  "수렴" %in% cbsem_quality_ko$항목,
+  "χ²/df" %in% cbsem_quality_ko$항목,
+  "연구모형" %in% cbsem_quality_ko$값,
+  grepl("SEM 품질 체크리스트", cbsem_quality_ui_ko, fixed = TRUE),
+  grepl("보고 준비도:", cbsem_quality_ui_ko, fixed = TRUE)
+)
 stopifnot(nrow(structural_canvas_result_table("overview", cbsem_result, "cbsem", labels_fn, language_fn)) > 0L)
-stopifnot(nrow(structural_canvas_result_table("fit", cbsem_result, "cbsem", labels_fn, language_fn)) > 0L)
+cbsem_fit_en <- structural_canvas_result_table("fit", cbsem_result, "cbsem", labels_fn, language_fn)
+cbsem_fit_ko <- structural_canvas_result_table("fit", cbsem_result, "cbsem", labels_fn, ko_language_fn)
+stopifnot(
+  nrow(cbsem_fit_en) > 0L,
+  nrow(cbsem_fit_ko) > 0L,
+  "χ²/df" %in% names(cbsem_fit_ko),
+  !"Q" %in% names(cbsem_fit_ko),
+  names(cbsem_fit_ko)[[1L]] == "모형",
+  cbsem_fit_ko[[1L]][[1L]] == "연구모형"
+)
 stopifnot(nrow(structural_canvas_result_table("validity", cbsem_result, "cbsem", labels_fn, language_fn)) > 0L)
 stopifnot(nrow(structural_canvas_result_table("measurement", cbsem_result, "cbsem", labels_fn, language_fn)) > 0L)
 cbsem_structural <- structural_canvas_result_table("structural", cbsem_result, "cbsem", labels_fn, language_fn)

@@ -283,25 +283,27 @@ structural_canvas_pls_quality_result_ui <- function(bundle, language = statedu_i
   rows <- structural_canvas_pls_quality_rows(bundle)
   if (!nrow(rows)) return(NULL)
   ko <- identical(normalize_app_language(language), "ko")
-  summary <- structural_canvas_pls_quality_status_summary(rows)
-  readiness <- structural_canvas_pls_quality_reporting_readiness(rows)
   review_rows <- structural_canvas_pls_quality_review_rows(rows)
+  summary <- structural_canvas_quality_status_summary_display(rows, ko)
+  readiness <- structural_canvas_quality_reporting_readiness_display(review_rows, rows, ko)
+  display_rows <- structural_canvas_quality_display_rows(rows, ko)
+  display_review_rows <- structural_canvas_quality_display_rows(review_rows, ko)
   div(
     class = "result-section regression-result-panel structural-pls-quality-result",
-    h4(if (ko) "PLS-SEM quality checklist" else "PLS-SEM quality checklist"),
+    h4(if (ko) "PLS-SEM 품질 체크리스트" else "PLS-SEM quality checklist"),
     tags$p(class = "structural-result-note structural-quality-status-summary", summary),
     tags$p(class = "structural-result-note structural-quality-reporting-readiness", readiness),
-    tags$h5(if (ko) "Review focus" else "Review focus"),
-    if (nrow(review_rows)) structural_canvas_basic_html_table(review_rows) else tags$p(class = "structural-result-note", "No Review rows in the quality checklist."),
-    structural_canvas_basic_html_table(rows),
+    tags$h5(if (ko) "검토 필요 항목" else "Review focus"),
+    if (nrow(display_review_rows)) structural_canvas_basic_html_table(display_review_rows) else tags$p(class = "structural-result-note", if (ko) "품질 체크리스트에 검토 항목이 없습니다." else "No Review rows in the quality checklist."),
+    structural_canvas_basic_html_table(display_rows),
     if (any(rows$Status == "Review")) tags$p(
       class = "structural-result-note",
-      "Rows marked Review should be resolved or explicitly justified before confirmatory reporting."
+      if (ko) "검토로 표시된 행은 확인적 보고 전 해결하거나 명시적으로 근거를 제시해야 합니다." else "Rows marked Review should be resolved or explicitly justified before confirmatory reporting."
     ),
     tags$p(
       class = "structural-result-note",
       if (ko) {
-        "This checklist summarizes PLS-SEM sample adequacy, approximate reflective-model fit diagnostics, measurement, collinearity, common-method-bias screens, explanatory-power, Q2 predictive-relevance, and predictive-quality boundary conditions for reporting and review."
+        "이 체크리스트는 PLS-SEM의 표본 적절성, 반영형 모형 근사 적합도 진단, 측정모형, 공선성, 공통방법편향 점검, 설명력, Q² 예측 관련성, 예측 품질의 보고 조건을 요약합니다."
       } else {
         "This checklist summarizes PLS-SEM sample adequacy, approximate reflective-model fit diagnostics, measurement, collinearity, common-method-bias screens, explanatory-power, Q2 predictive-relevance, and predictive-quality boundary conditions for reporting and review."
       }
@@ -359,7 +361,7 @@ output[[paste0(prefix, "_result_lavaan_quality")]] <- renderUI({
   structural_canvas_lavaan_quality_result_ui(fit_result(), analysis_type, statedu_current_language(app_language_fn))
 })
 output[[paste0(prefix, "_result_identification")]] <- renderUI({
-  structural_canvas_identification_result_ui(fit_result())
+  structural_canvas_identification_result_ui(fit_result(), statedu_current_language(app_language_fn))
 })
 output[[paste0(prefix, "_result_normality")]] <- renderUI({
   structural_canvas_normality_result_ui(fit_result(), dataset_fn(), analysis_type, statedu_current_language(app_language_fn))

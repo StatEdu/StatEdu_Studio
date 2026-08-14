@@ -5,7 +5,7 @@
   var SNAP_POINTS = [20, 30, 40, 50, 60, 70, 80];
   var ANCHOR_GAP = 2.5;
   var MODERATION_ANCHOR_GAP = 4;
-  var ARROW_MARKER_CLEARANCE = 8;
+  var ARROW_MARKER_CLEARANCE = 1.5;
   var EDGE_SIDES = ["top", "right", "bottom", "left"];
 
   function edgeById(instance, id) {

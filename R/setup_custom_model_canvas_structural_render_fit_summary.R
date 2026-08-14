@@ -298,29 +298,163 @@ structural_canvas_lavaan_quality_reporting_readiness <- function(rows) {
   "Reporting readiness: advisory review item(s) should be documented."
 }
 
+structural_canvas_quality_display_value <- function(value) {
+  value <- as.character(value %||% "")
+  value_map <- c(
+    "TRUE" = "예",
+    "FALSE" = "아니오",
+    "not recorded" = "기록 없음",
+    "Not executed" = "실행 안 함",
+    "Original/prespecified model" = "연구모형",
+    "Exploratory modified model" = "탐색적 수정모형",
+    "mean_replacement" = "평균 대체"
+  )
+  if (value %in% names(value_map)) return(unname(value_map[value]))
+  if (grepl("^[0-9]+/[0-9]+ indicator metrics favor PLS over LM$", value)) {
+    return(sub(" indicator metrics favor PLS over LM", "개 지표 오차에서 PLS가 LM보다 낮음", value))
+  }
+  value
+}
+
+structural_canvas_quality_display_guidance <- function(item, guidance) {
+  guidance_map <- c(
+    "Converged" = "추정이 정상 수렴해야 계수를 해석할 수 있습니다.",
+    "Admissible solution" = "적합도, 신뢰도, 타당도, 구조경로를 최종 보고하기 전 반드시 예여야 합니다.",
+    "Model df" = "df = 0이면 포화모형이므로 근사 적합도 해석이 제한됩니다.",
+    "Chi-square/df" = "카이제곱을 자유도로 나눈 값입니다. 3 또는 5 초과는 근거를 제시하십시오.",
+    "Fit statistic source" = "lavaan의 일반/robust/scaled 적합도 중 어떤 지표를 선택했는지 기록합니다.",
+    "N/free parameter ratio" = "표본 크기 점검입니다. 5 미만이면 주의 또는 근거가 필요합니다.",
+    "Harman first-factor %" = "단일요인 비율이 50%를 넘으면 공통방법편향 가능성을 검토하십시오.",
+    "Max full collinearity VIF" = "3.3 초과는 공통방법편향 또는 구성개념 중복 가능성을 시사합니다.",
+    "CFI" = ".90 미만은 검토가 필요하며 .95는 흔히 쓰는 기술적 목표입니다.",
+    "TLI" = ".90 미만은 검토가 필요하며 .95는 흔히 쓰는 기술적 목표입니다.",
+    "RMSEA" = ".08 초과는 검토가 필요하며 .06은 흔히 쓰는 기술적 목표입니다.",
+    "SRMR" = ".10 초과는 검토가 필요하며 .08은 흔히 쓰는 기술적 목표입니다.",
+    "Min standardized loading" = "목적과 이론에 따라 .40/.70 미만 지표를 검토하십시오.",
+    "Min CR" = ".70 미만의 구성개념 신뢰도는 검토가 필요합니다.",
+    "Min AVE" = ".50 미만의 수렴타당도는 검토가 필요합니다.",
+    "Max latent correlation" = ".85/.90에 가깝거나 넘으면 판별타당도를 검토하십시오.",
+    "Structural path count" = "구조 회귀경로 포함 여부를 보고하십시오.",
+    "Max structural beta" = "|1|에 가깝거나 넘는 계수는 부적절해 또는 억제효과 가능성을 점검하십시오.",
+    "Min endogenous R2" = "구조경로가 있으면 내생 잠재변수의 설명력을 보고하십시오.",
+    "Model status" = "MI 기반 수정은 독립 자료에서 검증하지 않는 한 탐색적 결과입니다.",
+    "PLS algorithm iterations" = "반복 횟수가 비정상적으로 크면 알고리즘 수렴을 점검하십시오.",
+    "Final weight difference" = "값이 작을수록 외부가중치 수렴이 안정적입니다.",
+    "Missing-data method" = "PLS는 lavaan의 FIML/pairwise 옵션을 사용하지 않으므로 결측 처리 방식을 보고하십시오.",
+    "Approx PLS SRMR" = "반영형 측정모형에서 관측-모형 함의 지표상관 차이를 근사한 SRMR입니다.",
+    "Approx d_ULS" = "반영형 지표상관의 제곱 유클리드 불일치입니다. 보편 절단값은 없습니다.",
+    "Approx NFI" = "독립 상관 기준선 대비 근사 NFI입니다.",
+    "10-times rule margin" = "최대 지표 수 또는 최대 선행변수 수의 10배 기준으로 보는 기술적 표본 점검입니다.",
+    "Min outer loading" = ".70 미만 반영형 지표는 이론적 근거가 있을 때만 유지하십시오.",
+    "Min rhoC" = ".70 미만의 구성개념 신뢰도는 검토가 필요합니다.",
+    "Max HTMT" = ".85/.90에 가깝거나 넘으면 판별타당도를 검토하십시오.",
+    "Max item VIF" = "3.3 또는 5 초과의 지표 다중공선성을 검토하십시오.",
+    "Max inner VIF" = "3.3 또는 5 초과의 구조 예측변수 다중공선성을 검토하십시오.",
+    "Min Q2" = "Stone-Geisser Q2가 0보다 크면 내생 구성개념의 예측 관련성이 있음을 시사합니다.",
+    "PLSpredict summary" = "표본외 예측은 PLS 오차가 LM보다 낮을 때 더 강하게 뒷받침됩니다.",
+    "Max f2" = "구조 효과크기입니다. .02/.15/.35는 기술적 기준입니다."
+  )
+  if (item %in% names(guidance_map)) unname(guidance_map[item]) else guidance
+}
+
+structural_canvas_quality_display_rows <- function(rows, ko = FALSE) {
+  if (!isTRUE(ko) || !nrow(rows)) return(rows)
+  original_items <- if ("Item" %in% names(rows)) as.character(rows$Item) else rep("", nrow(rows))
+  item_map <- c(
+    "Converged" = "수렴",
+    "Admissible solution" = "허용 가능한 해",
+    "Model df" = "모형 자유도",
+    "Chi-square/df" = "χ²/df",
+    "Fit statistic source" = "적합도 지표 출처",
+    "N/free parameter ratio" = "N/자유모수 비율",
+    "Harman first-factor %" = "Harman 1요인 %",
+    "Max full collinearity VIF" = "최대 full collinearity VIF",
+    "Min standardized loading" = "최소 표준화 적재량",
+    "Min CR" = "최소 CR",
+    "Min AVE" = "최소 AVE",
+    "Max latent correlation" = "최대 잠재상관",
+    "Structural path count" = "구조경로 수",
+    "Max structural beta" = "최대 구조 β",
+    "Min endogenous R2" = "최소 내생 R²",
+    "Model status" = "모형 상태",
+    "PLS algorithm iterations" = "PLS 알고리즘 반복 수",
+    "Final weight difference" = "최종 가중치 차이",
+    "Missing-data method" = "결측 처리 방식",
+    "Approx PLS SRMR" = "근사 PLS SRMR",
+    "Approx d_ULS" = "근사 d_ULS",
+    "Approx NFI" = "근사 NFI",
+    "10-times rule margin" = "10배 규칙 여유",
+    "Min outer loading" = "최소 외부적재량",
+    "Min rhoC" = "최소 rhoC",
+    "Max HTMT" = "최대 HTMT",
+    "Max item VIF" = "최대 지표 VIF",
+    "Max inner VIF" = "최대 inner VIF",
+    "Max f2" = "최대 f²",
+    "Min Q2" = "최소 Q²",
+    "PLSpredict summary" = "PLSpredict 요약"
+  )
+  status_map <- c("OK" = "양호", "Review" = "검토", "Not assessed" = "미평가")
+  priority_map <- c("Critical" = "치명", "Major" = "주요", "Advisory" = "참고")
+  action_map <- c("Resolve before reporting" = "보고 전 해결", "Resolve or justify" = "해결 또는 근거 제시", "Document limitation" = "한계로 명시")
+  if ("Item" %in% names(rows)) rows$Item <- ifelse(rows$Item %in% names(item_map), unname(item_map[rows$Item]), rows$Item)
+  if ("Value" %in% names(rows)) rows$Value <- vapply(rows$Value, structural_canvas_quality_display_value, character(1))
+  if ("Status" %in% names(rows)) rows$Status <- ifelse(rows$Status %in% names(status_map), unname(status_map[rows$Status]), rows$Status)
+  if ("Priority" %in% names(rows)) rows$Priority <- ifelse(rows$Priority %in% names(priority_map), unname(priority_map[rows$Priority]), rows$Priority)
+  if ("Action" %in% names(rows)) rows$Action <- ifelse(rows$Action %in% names(action_map), unname(action_map[rows$Action]), rows$Action)
+  if ("Guidance" %in% names(rows)) rows$Guidance <- mapply(structural_canvas_quality_display_guidance, original_items, rows$Guidance, USE.NAMES = FALSE)
+  name_map <- c(Priority = "우선순위", Action = "조치", Item = "항목", Value = "값", Status = "상태", Guidance = "안내")
+  names(rows) <- ifelse(names(rows) %in% names(name_map), unname(name_map[names(rows)]), names(rows))
+  rows
+}
+
+structural_canvas_quality_status_summary_display <- function(rows, ko = FALSE) {
+  if (!isTRUE(ko)) {
+    if ("PLS algorithm iterations" %in% rows$Item) return(structural_canvas_pls_quality_status_summary(rows))
+    return(structural_canvas_lavaan_quality_status_summary(rows))
+  }
+  if (!nrow(rows) || !"Status" %in% names(rows)) return("품질 상태: 미평가.")
+  counts <- table(factor(rows$Status, levels = c("OK", "Review", "Not assessed")))
+  paste0("품질 상태: 양호=", counts[["OK"]], "; 검토=", counts[["Review"]], "; 미평가=", counts[["Not assessed"]], ".")
+}
+
+structural_canvas_quality_reporting_readiness_display <- function(review_rows, rows, ko = FALSE) {
+  if (!isTRUE(ko)) {
+    if ("PLS algorithm iterations" %in% rows$Item) return(structural_canvas_pls_quality_reporting_readiness(rows))
+    return(structural_canvas_lavaan_quality_reporting_readiness(rows))
+  }
+  if (!nrow(review_rows)) return("보고 준비도: 품질 검토 차단 항목이 없습니다.")
+  critical_n <- sum(review_rows$Priority == "Critical")
+  major_n <- sum(review_rows$Priority == "Major")
+  if (critical_n > 0L) return(paste0("보고 준비도: 치명 검토 항목 ", critical_n, "개를 해결해야 합니다."))
+  if (major_n > 0L) return(paste0("보고 준비도: 주요 검토 항목 ", major_n, "개는 해결하거나 근거를 명시해야 합니다."))
+  "보고 준비도: 참고 검토 항목은 한계로 명시하십시오."
+}
+
 structural_canvas_lavaan_quality_result_ui <- function(bundle, analysis_type = "cfa", language = statedu_initial_language()) {
   rows <- structural_canvas_lavaan_quality_rows(bundle, analysis_type)
   if (!nrow(rows)) return(NULL)
   ko <- identical(normalize_app_language(language), "ko")
-  summary <- structural_canvas_lavaan_quality_status_summary(rows)
-  readiness <- structural_canvas_lavaan_quality_reporting_readiness(rows)
   review_rows <- structural_canvas_lavaan_quality_review_rows(rows)
+  summary <- structural_canvas_quality_status_summary_display(rows, ko)
+  readiness <- structural_canvas_quality_reporting_readiness_display(review_rows, rows, ko)
+  display_rows <- structural_canvas_quality_display_rows(rows, ko)
+  display_review_rows <- structural_canvas_quality_display_rows(review_rows, ko)
   div(
     class = "result-section regression-result-panel structural-lavaan-quality-result",
-    h4(if (ko) "SEM quality checklist" else "SEM quality checklist"),
+    h4(if (ko) "SEM 품질 체크리스트" else "SEM quality checklist"),
     tags$p(class = "structural-result-note structural-quality-status-summary", summary),
     tags$p(class = "structural-result-note structural-quality-reporting-readiness", readiness),
-    tags$h5(if (ko) "Review focus" else "Review focus"),
-    if (nrow(review_rows)) structural_canvas_basic_html_table(review_rows) else tags$p(class = "structural-result-note", "No Review rows in the quality checklist."),
-    structural_canvas_basic_html_table(rows),
+    tags$h5(if (ko) "검토 필요 항목" else "Review focus"),
+    if (nrow(display_review_rows)) structural_canvas_basic_html_table(display_review_rows) else tags$p(class = "structural-result-note", if (ko) "품질 체크리스트에 검토 항목이 없습니다." else "No Review rows in the quality checklist."),
+    structural_canvas_basic_html_table(display_rows),
     if (any(rows$Status == "Review")) tags$p(
       class = "structural-result-note",
-      "Rows marked Review should be resolved or explicitly justified before confirmatory reporting."
+      if (ko) "검토로 표시된 행은 확인적 보고 전 해결하거나 명시적으로 근거를 제시해야 합니다." else "Rows marked Review should be resolved or explicitly justified before confirmatory reporting."
     ),
     tags$p(
       class = "structural-result-note",
       if (ko) {
-        "This checklist summarizes lavaan SEM/CFA convergence, admissibility, sample adequacy, common-method-bias screens, chi-square/df, robust/scaled fit source, global fit, measurement quality, discriminant-validity risk, and structural explanatory-power conditions for reporting and review."
+        "이 체크리스트는 lavaan SEM/CFA의 수렴, 해의 허용성, 표본 적절성, 공통방법편향 점검, χ²/df, robust/scaled 적합도 출처, 전역 적합도, 측정 품질, 판별타당도 위험, 구조모형 설명력 조건을 요약합니다."
       } else {
         "This checklist summarizes lavaan SEM/CFA convergence, admissibility, sample adequacy, common-method-bias screens, chi-square/df, robust/scaled fit source, global fit, measurement quality, discriminant-validity risk, and structural explanatory-power conditions for reporting and review."
       }
@@ -332,7 +466,7 @@ structural_canvas_fit_guidance_result_ui <- function(bundle, language) {
   ko <- identical(normalize_app_language(language), "ko")
   comparison_fits <- if (isTRUE(bundle$modified_from_baseline) && !is.null(bundle$baseline_fit)) list(bundle$baseline_fit, bundle$fit) else list(bundle$fit)
   selections <- structural_canvas_common_fit_measures(comparison_fits, bundle$estimator %||% "ML", bundle$rmsea_ci %||% .90)
-  labels <- if (length(selections) > 1L) c(if (ko) "기존 모형" else "Original model", if (ko) "탐색적 수정 모형" else bundle$comparison_label %||% "Modified model") else if (ko) "기존 모형" else "Original model"
+  labels <- if (length(selections) > 1L) c(if (ko) "연구모형" else "Research model", if (ko) "탐색적 수정모형" else bundle$comparison_label %||% "Modified model") else if (ko) "연구모형" else "Research model"
   tables <- lapply(seq_along(selections), function(index) {
     guidance <- structural_canvas_fit_guidance(selections[[index]]$values)
     guidance$Model <- labels[[index]]
