@@ -128,34 +128,16 @@ structural_canvas_reporting_context_rows <- function(bundle, analysis_type) {
   syntax_label <- if (nzchar(as.character(bundle$syntax %||% ""))) "Available in analysis bundle" else "Not recorded"
   data.frame(
     Item = c(
-      "Analysis context",
-      "Analysis engine",
-      "Estimator or algorithm",
-      "Missing-data handling",
-      "Analyzed N",
-      "Ordered indicators",
-      "Latent scaling",
-      "Bootstrap settings",
-      "PLSpredict setting",
-      "Group analysis",
-      "MI holdout",
-      "Syntax availability",
+      "Analysis context", "Analysis engine", "Estimator or algorithm", "Missing-data handling",
+      "Analyzed N", "Ordered indicators", "Latent scaling", "Bootstrap settings",
+      "PLSpredict setting", "Group analysis", "MI holdout", "Syntax availability",
       "Admissibility and convergence"
     ),
     Value = c(
-      context,
-      engine,
-      estimator,
-      missing,
-      structural_canvas_reporting_sample_size(bundle, analysis_type),
-      ordered_label,
-      scaling,
-      structural_canvas_reporting_bootstrap_label(bundle, analysis_type),
-      structural_canvas_reporting_predict_label(bundle, analysis_type),
-      structural_canvas_reporting_group_label(bundle),
-      structural_canvas_reporting_holdout_label(bundle),
-      syntax_label,
-      structural_canvas_reporting_admissibility_label(bundle)
+      context, engine, estimator, missing, structural_canvas_reporting_sample_size(bundle, analysis_type),
+      ordered_label, scaling, structural_canvas_reporting_bootstrap_label(bundle, analysis_type),
+      structural_canvas_reporting_predict_label(bundle, analysis_type), structural_canvas_reporting_group_label(bundle),
+      structural_canvas_reporting_holdout_label(bundle), syntax_label, structural_canvas_reporting_admissibility_label(bundle)
     ),
     stringsAsFactors = FALSE
   )
@@ -176,7 +158,7 @@ structural_canvas_reporting_context_display_rows <- function(rows, ko = FALSE) {
     "Group analysis" = "집단 분석",
     "MI holdout" = "MI 홀드아웃",
     "Syntax availability" = "구문 제공",
-    "Admissibility and convergence" = "해의 허용성 및 수렴"
+    "Admissibility and convergence" = "해의 허용성과 수렴"
   )
   value_map <- c(
     "Original/prespecified model" = "연구모형",
@@ -192,7 +174,7 @@ structural_canvas_reporting_context_display_rows <- function(rows, ko = FALSE) {
     "Composite scores" = "합성점수",
     "Marker loading scaling" = "기준 적재량 고정",
     "std.lv = TRUE" = "잠재변수 분산 = 1",
-    "Executed" = "실행됨"
+    "Executed" = "실행함"
   )
   rows$Item <- ifelse(rows$Item %in% names(item_map), unname(item_map[rows$Item]), rows$Item)
   rows$Value <- vapply(as.character(rows$Value), function(value) {
@@ -202,13 +184,14 @@ structural_canvas_reporting_context_display_rows <- function(rows, ko = FALSE) {
     value <- gsub("^converged=FALSE; admissible=TRUE$", "수렴=아니오; 허용 가능=예", value)
     value <- gsub("^converged=FALSE; admissible=FALSE$", "수렴=아니오; 허용 가능=아니오", value)
     value <- gsub("not recorded", "기록 없음", value, fixed = TRUE)
-    value <- gsub("Requested", "요청됨", value, fixed = TRUE)
-    value <- gsub("Executed", "실행됨", value, fixed = TRUE)
+    value <- gsub("Requested", "요청함", value, fixed = TRUE)
+    value <- gsub("Executed", "실행함", value, fixed = TRUE)
     value
   }, character(1))
   names(rows) <- c("항목", "값")
   rows
 }
+
 structural_canvas_reporting_context_result_ui <- function(bundle, analysis_type, language = statedu_initial_language()) {
   rows <- structural_canvas_reporting_context_rows(bundle, analysis_type)
   if (!nrow(rows)) return(NULL)
@@ -230,82 +213,106 @@ structural_canvas_reporting_context_result_ui <- function(bundle, analysis_type,
 }
 
 structural_canvas_register_result_outputs <- function(input, output, prefix, canvas_output, analysis_type, selected_names_fn, variable_table_fn, dataset_fn, labels_fn, app_language_fn, fit_result, result_table) {
-manuscript_result_table <- function(kind) {
-  structural_canvas_result_table(kind, fit_result, analysis_type, labels_fn, function() "en")
-}
-output[[canvas_output]] <- renderUI({
-  structural_equation_workspace(selected_names_fn(), variable_table_fn(), labels_fn(), analysis_type, statedu_current_language(app_language_fn))
-})
-output[[paste0(prefix, "_results")]] <- renderUI({
-  shiny::req(!is.null(fit_result()))
-  bundle <- fit_result()
-  ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
-  div(
-    class = "structural-analysis-results regression-results",
-    h3(if (ko) "분석 결과" else "Analysis Results"),
-    if (analysis_type == "cfa") downloadButton(paste0(prefix, "_download_reproducibility"), if (ko) "분석 기록 다운로드" else "Download analysis record", class = "btn btn-default btn-sm"),
-    if (analysis_type == "cfa") downloadButton(paste0(prefix, "_download_tables"), if (ko) "결과표 Excel 다운로드" else "Download result tables", class = "btn btn-default btn-sm"),
-    div(class = "result-section regression-result-panel", h4("1. Model overview"), div(class = "table-responsive", tableOutput(paste0(prefix, "_result_overview")))),
-    div(class = "result-section regression-result-panel", h4(if (identical(analysis_type, "plssem")) {
-      "2. PLS structural model effects"
-    } else {
-      "2. Model fit"
-    }), div(class = "table-responsive", uiOutput(paste0(prefix, "_result_fit"))), if (identical(analysis_type, "plssem")) tagList(
-      tags$p(class = "structural-result-note", if (ko) "PLS-SEM 구조모형 출력은 공분산 기반 전역 적합도 지수 대신 경로계수, R2, 수정 R2, f2, Q2, q2, inner VIF, 총효과와 간접효과를 표시합니다." else "PLS-SEM structural output reports path coefficients, R2, adjusted R2, f2, Q2, q2, inner VIF, and total/indirect effects rather than covariance-based global fit indices."),
-      tags$p(class = "structural-result-note", if (ko) "f2와 q2 해석 등급은 .02/.15/.35 기준의 descriptive small/medium/large 안내이며, 이론과 연구 맥락을 대체하지 않습니다." else "f2 and q2 size labels use the descriptive .02/.15/.35 small/medium/large anchors and do not replace theory or study context."),
-      tags$p(class = "structural-result-note", if (ko) "Inner VIF는 seminr에서 내생 구성개념의 선행 예측자 정보를 반환할 때 직접 구조경로에 대해 표시됩니다." else "Inner VIF is reported for direct structural paths when an endogenous construct has antecedent predictors available from seminr."),
-      if (length(bundle$diagnostics$ignored_covariances %||% character(0))) tags$p(class = "structural-result-note", if (ko) paste0("PLS-SEM에서는 공분산 경로를 추정하지 않으므로 다음 캔버스 공분산 경로를 제외했습니다: ", paste(bundle$diagnostics$ignored_covariances, collapse = ", "), ".") else paste0("PLS-SEM does not estimate covariance paths, so these canvas covariance paths were excluded: ", paste(bundle$diagnostics$ignored_covariances, collapse = ", "), "."))
-    )),
-    if (analysis_type %in% c("cbsem", "sem")) div(
-      class = "result-section regression-result-panel structural-path-result",
-      h4("3. Structural model paths"),
-      div(class = "table-responsive", tableOutput(paste0(prefix, "_result_structural"))),
-      tags$p(class = "structural-result-note", if (ko) "구조경로 표는 lavaan의 회귀경로(~)에 대한 비표준화 계수, 표준화 계수, 신뢰구간, R², z 및 p 값을 표시합니다." else "Structural paths are lavaan regression paths (~), reported with unstandardized and standardized coefficients, confidence intervals, R², z, and p values."),
-      tags$p(class = "structural-result-note", if (ko) "매개 경로가 정의되면 간접효과와 총효과 행도 함께 표시되며, lavaan이 반환하는 경우 표준화 효과의 95% 신뢰구간을 포함합니다." else "When mediation paths are defined, indirect and total effect rows are included with standardized-effect 95% confidence intervals when lavaan returns them.")
-    ),
-    uiOutput(paste0(prefix, "_result_moderation_jn")),
-    div(class = "result-section regression-result-panel structural-validity-result", h4("3. Latent construct correlations, reliability, and convergent/discriminant validity"), uiOutput(paste0(prefix, "_result_validity")), uiOutput(paste0(prefix, "_result_htmt"))),
+  manuscript_result_table <- function(kind) {
+    structural_canvas_result_table(kind, fit_result, analysis_type, labels_fn, function() "en")
+  }
+  table_number <- function(kind) {
+    has_structural <- analysis_type %in% c("cbsem", "sem")
+    switch(kind,
+      overview = "1",
+      fit = "2",
+      structural = if (has_structural) "3" else NA_character_,
+      validity = if (has_structural) "4" else "3",
+      measurement = if (has_structural) "5" else "4",
+      localfit = if (has_structural) "6" else "5",
+      NA_character_
+    )
+  }
+
+  output[[canvas_output]] <- renderUI({
+    structural_equation_workspace(selected_names_fn(), variable_table_fn(), labels_fn(), analysis_type, statedu_current_language(app_language_fn))
+  })
+
+  output[[paste0(prefix, "_results")]] <- renderUI({
+    shiny::req(!is.null(fit_result()))
+    bundle <- fit_result()
+    ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
     div(
-      class = "result-section regression-result-panel structural-measurement-result",
-      h4("4. Measurement model"),
-      uiOutput(paste0(prefix, "_result_measurement")),
-      if (identical(analysis_type, "plssem")) tagList(
-        tags$p(class = "structural-result-note", if (ko) "PLS-SEM 측정모형 출력은 outer loading, outer weight, item VIF, 교차적재 요약, reflective/formative 측정모드를 표시합니다." else "PLS-SEM measurement output reports outer loadings, outer weights, item VIF, cross-loading summaries, and the reflective/formative measurement mode."),
-        tags$p(class = "structural-result-note", if (ko) "Reflective 구성개념은 outer loading과 교차적재를 확인하고, formative 구성개념은 outer weight, item VIF, 지표의 이론적 포괄성을 우선 확인합니다." else "For reflective constructs, review outer loadings and cross-loadings. For formative constructs, prioritize outer weights, item VIF, and substantive indicator coverage."),
-        tags$p(class = "structural-result-note", if (ko) "PLS bootstrap을 요청한 경우 loading과 weight의 CI/p 열은 사용 가능한 seminr percentile bootstrap 요약을 사용합니다." else "When PLS bootstrap is requested, loading and weight CI/p columns use seminr percentile bootstrap summaries when available.")
-      ) else structural_canvas_symbol_footnotes(manuscript_result_table("measurement"))
-    ),
-    uiOutput(paste0(prefix, "_result_mi_section")),
-    uiOutput(paste0(prefix, "_result_residuals")),
-    div(class = "result-section regression-result-panel structural-supplementary-result",
-      h4(if (ko) "보조 결과 및 진단" else "Supplementary results and diagnostics"),
-      uiOutput(paste0(prefix, "_result_reporting_context")),
-      uiOutput(paste0(prefix, "_result_identification")),
-      uiOutput(paste0(prefix, "_result_normality")),
-      uiOutput(paste0(prefix, "_result_missing_outliers")),
-      uiOutput(paste0(prefix, "_result_risk_diagnostics")),
-      uiOutput(paste0(prefix, "_result_heywood")),
-      if (!identical(analysis_type, "plssem")) uiOutput(paste0(prefix, "_result_lavaan_quality")),
-      if (identical(analysis_type, "plssem")) uiOutput(paste0(prefix, "_result_pls_quality")),
-      uiOutput(paste0(prefix, "_result_pls_predict")),
-      uiOutput(paste0(prefix, "_result_fit_guidance")),
-      uiOutput(paste0(prefix, "_result_rmsea_tests")),
-      uiOutput(paste0(prefix, "_result_information_criteria")),
-      uiOutput(paste0(prefix, "_result_bollen_stine")),
-      div(class = "table-responsive", uiOutput(paste0(prefix, "_result_fit_difference"))),
-      uiOutput(paste0(prefix, "_result_invariance")),
-      uiOutput(paste0(prefix, "_result_htmt_details")),
-      uiOutput(paste0(prefix, "_result_latent_correlation_ci")),
-      uiOutput(paste0(prefix, "_result_validity_note")),
-      uiOutput(paste0(prefix, "_result_reliability_bootstrap")),
-      uiOutput(paste0(prefix, "_result_factor_scores")),
-      uiOutput(paste0(prefix, "_result_measurement_diagnostics"))
-    ),
-    uiOutput(paste0(prefix, "_result_higher_order")),
-    uiOutput(paste0(prefix, "_result_mi_holdout")),
-    uiOutput(paste0(prefix, "_result_mi_history"))
-  )
-})
+      class = "structural-analysis-results regression-results",
+      h3(if (ko) "분석 결과" else "Analysis Results"),
+      if (analysis_type == "cfa") downloadButton(paste0(prefix, "_download_reproducibility"), if (ko) "분석 기록 다운로드" else "Download analysis record", class = "btn btn-default btn-sm"),
+      if (analysis_type == "cfa") downloadButton(paste0(prefix, "_download_tables"), if (ko) "결과표 Excel 다운로드" else "Download result tables", class = "btn btn-default btn-sm"),
+      div(class = "result-section regression-result-panel", h4("1. Model overview"), div(class = "table-responsive", tableOutput(paste0(prefix, "_result_overview")))),
+      div(
+        class = "result-section regression-result-panel",
+        h4(if (identical(analysis_type, "plssem")) "2. PLS structural model effects" else "2. Model fit"),
+        div(class = "table-responsive", uiOutput(paste0(prefix, "_result_fit"))),
+        if (identical(analysis_type, "plssem")) tagList(
+          tags$p(class = "structural-result-note", if (ko) "PLS-SEM 구조모형 출력은 공분산 기반 전역 적합도 지수 대신 경로계수, R², 수정 R², f², Q², q², inner VIF, 총효과와 간접효과를 표시합니다." else "PLS-SEM structural output reports path coefficients, R2, adjusted R2, f2, Q2, q2, inner VIF, and total/indirect effects rather than covariance-based global fit indices."),
+          tags$p(class = "structural-result-note", if (ko) "f²와 q² 해석 등급은 .02/.15/.35의 기술적 small/medium/large 기준을 사용하며, 이론과 연구 맥락을 대체하지 않습니다." else "f2 and q2 size labels use the descriptive .02/.15/.35 small/medium/large anchors and do not replace theory or study context."),
+          tags$p(class = "structural-result-note", if (ko) "Inner VIF는 seminr가 내생 구성개념의 선행 예측자 정보를 반환할 때 직접 구조경로에 대해 표시합니다." else "Inner VIF is reported for direct structural paths when an endogenous construct has antecedent predictors available from seminr."),
+          if (length(bundle$diagnostics$ignored_covariances %||% character(0))) tags$p(class = "structural-result-note", if (ko) paste0("PLS-SEM은 공분산 경로를 추정하지 않으므로 다음 캔버스 공분산 경로를 제외했습니다: ", paste(bundle$diagnostics$ignored_covariances, collapse = ", "), ".") else paste0("PLS-SEM does not estimate covariance paths, so these canvas covariance paths were excluded: ", paste(bundle$diagnostics$ignored_covariances, collapse = ", "), "."))
+        )
+      ),
+      if (analysis_type %in% c("cbsem", "sem")) div(
+        class = "result-section regression-result-panel structural-path-result",
+        h4("3. Structural model paths"),
+        div(class = "table-responsive", tableOutput(paste0(prefix, "_result_structural"))),
+        tags$p(class = "structural-result-note", "Structural paths are lavaan regression paths (~), reported with unstandardized and standardized coefficients, confidence intervals, R², z, and p values."),
+        tags$p(class = "structural-result-note", "When mediation paths are defined, indirect and total effect rows are included with standardized-effect 95% confidence intervals when lavaan returns them.")
+      ),
+      uiOutput(paste0(prefix, "_result_moderation_jn")),
+      div(
+        class = "result-section regression-result-panel structural-validity-result",
+        h4(paste0(table_number("validity"), ". Latent construct correlations, reliability, and convergent/discriminant validity")),
+        uiOutput(paste0(prefix, "_result_validity")),
+        uiOutput(paste0(prefix, "_result_htmt"))
+      ),
+      div(
+        class = "result-section regression-result-panel structural-measurement-result",
+        h4(paste0(table_number("measurement"), ". Measurement model")),
+        uiOutput(paste0(prefix, "_result_measurement")),
+        if (identical(analysis_type, "plssem")) tagList(
+          tags$p(class = "structural-result-note", if (ko) "PLS-SEM 측정모형 출력은 outer loading, outer weight, item VIF, 교차적재 요약, reflective/formative 측정모드를 표시합니다." else "PLS-SEM measurement output reports outer loadings, outer weights, item VIF, cross-loading summaries, and the reflective/formative measurement mode."),
+          tags$p(class = "structural-result-note", if (ko) "Reflective 구성개념은 outer loading과 교차적재를 확인하고, formative 구성개념은 outer weight, item VIF, 지표의 이론적 포괄성을 우선 확인합니다." else "For reflective constructs, review outer loadings and cross-loadings. For formative constructs, prioritize outer weights, item VIF, and substantive indicator coverage."),
+          tags$p(class = "structural-result-note", if (ko) "PLS bootstrap을 요청한 경우 loading과 weight의 CI/p는 사용 가능한 seminr percentile bootstrap 요약을 사용합니다." else "When PLS bootstrap is requested, loading and weight CI/p columns use seminr percentile bootstrap summaries when available.")
+        ) else tagList(
+          structural_canvas_abbreviation_footnotes(manuscript_result_table("measurement"), "measurement"),
+          structural_canvas_symbol_footnotes(manuscript_result_table("measurement"))
+        )
+      ),
+      uiOutput(paste0(prefix, "_result_mi_section")),
+      uiOutput(paste0(prefix, "_result_residuals")),
+      div(class = "result-section regression-result-panel structural-supplementary-result",
+        h4(if (ko) "보조 결과 및 진단" else "Supplementary results and diagnostics"),
+        uiOutput(paste0(prefix, "_result_reporting_context")),
+        uiOutput(paste0(prefix, "_result_identification")),
+        uiOutput(paste0(prefix, "_result_normality")),
+        uiOutput(paste0(prefix, "_result_missing_outliers")),
+        uiOutput(paste0(prefix, "_result_risk_diagnostics")),
+        uiOutput(paste0(prefix, "_result_heywood")),
+        if (!identical(analysis_type, "plssem")) uiOutput(paste0(prefix, "_result_lavaan_quality")),
+        if (identical(analysis_type, "plssem")) uiOutput(paste0(prefix, "_result_pls_quality")),
+        uiOutput(paste0(prefix, "_result_pls_predict")),
+        uiOutput(paste0(prefix, "_result_fit_guidance")),
+        uiOutput(paste0(prefix, "_result_rmsea_tests")),
+        uiOutput(paste0(prefix, "_result_information_criteria")),
+        uiOutput(paste0(prefix, "_result_bollen_stine")),
+        div(class = "table-responsive", uiOutput(paste0(prefix, "_result_fit_difference"))),
+        uiOutput(paste0(prefix, "_result_invariance")),
+        uiOutput(paste0(prefix, "_result_htmt_details")),
+        uiOutput(paste0(prefix, "_result_latent_correlation_ci")),
+        uiOutput(paste0(prefix, "_result_validity_note")),
+        uiOutput(paste0(prefix, "_result_reliability_bootstrap")),
+        uiOutput(paste0(prefix, "_result_factor_scores")),
+        uiOutput(paste0(prefix, "_result_measurement_diagnostics"))
+      ),
+      uiOutput(paste0(prefix, "_result_higher_order")),
+      uiOutput(paste0(prefix, "_result_mi_holdout")),
+      uiOutput(paste0(prefix, "_result_mi_history"))
+    )
+  })
+
   output[[paste0(prefix, "_result_reporting_context")]] <- renderUI({
     structural_canvas_reporting_context_result_ui(fit_result(), analysis_type, statedu_current_language(app_language_fn))
   })
@@ -321,15 +328,16 @@ output[[paste0(prefix, "_results")]] <- renderUI({
   if (analysis_type %in% c("cbsem", "sem")) structural_canvas_register_moderation_outputs(
     output, prefix, fit_result, app_language_fn
   )
-for (kind in c("overview", "structural")) local({
-  result_kind <- kind
-  output[[paste0(prefix, "_result_", result_kind)]] <- renderTable(manuscript_result_table(result_kind), striped = TRUE, bordered = TRUE, sanitize.text.function = identity)
-})
+
+  for (kind in c("overview", "structural")) local({
+    result_kind <- kind
+    output[[paste0(prefix, "_result_", result_kind)]] <- renderTable(manuscript_result_table(result_kind), striped = TRUE, bordered = TRUE, sanitize.text.function = identity)
+  })
   output[[paste0(prefix, "_result_validity")]] <- renderUI({
     table <- manuscript_result_table("validity")
     tagList(
       structural_canvas_basic_html_table(table, class = "table table-striped table-bordered structural-validity-table"),
-      tags$p(class = "structural-result-note", "\u03b1 = Cronbach's alpha; \u03c9 total = omega total."),
+      structural_canvas_abbreviation_footnotes(table, "validity"),
       structural_canvas_symbol_footnotes(table)
     )
   })
@@ -344,8 +352,9 @@ for (kind in c("overview", "structural")) local({
     if (identical(analysis_type, "plssem")) return(NULL)
     diagnostics <- result_table("measurement_diagnostics")
     if (!nrow(diagnostics)) return(NULL)
+    ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
     tagList(
-      tags$h5(if (identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")) "표 4 가이드: 보조 측정 진단" else "Guide for Table 4: Supplementary measurement diagnostics"),
+      tags$h5(if (ko) paste0("표 ", table_number("measurement"), " 가이드: 보조 측정 진단") else paste0("Guide for Table ", table_number("measurement"), ": Supplementary measurement diagnostics")),
       structural_canvas_basic_html_table(diagnostics)
     )
   })

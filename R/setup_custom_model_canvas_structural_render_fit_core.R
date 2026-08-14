@@ -7,7 +7,7 @@ structural_canvas_fit_table_result_ui <- function(bundle, values) {
       tags$table(
         class = "table table-striped table-bordered structural-fit-table",
         tags$thead(tags$tr(lapply(names(values), tags$th))),
-        tags$tbody(lapply(seq_len(nrow(values)), function(index) tags$tr(lapply(as.character(values[index, , drop = TRUE]), tags$td))))
+        tags$tbody(lapply(seq_len(nrow(values)), function(index) tags$tr(lapply(as.character(values[index, , drop = TRUE]), structural_canvas_html_cell))))
       ),
       tags$p(class = "structural-result-note", "PLS-SEM reports structural effects, path coefficients, f^2/q^2 effect-size labels, Q^2 predictive relevance, and explained variance (R^2/adjusted R^2) rather than covariance-based global fit indices."),
       if (as.integer(bundle$pls_bootstrap %||% 0L) > 0L) tags$p(class = "structural-result-note", paste0("Bootstrap columns use seminr percentile intervals from ", as.integer(bundle$pls_bootstrap %||% 0L), " requested resamples; failed bootstrap iterations are excluded by seminr."))
@@ -33,7 +33,7 @@ structural_canvas_fit_table_result_ui <- function(bundle, values) {
       ),
       tags$tr(tags$th("LLCI"), tags$th("ULCI"))
     ),
-    tags$tbody(lapply(seq_len(nrow(values)), function(index) tags$tr(lapply(as.character(values[index, , drop = TRUE]), tags$td))))
+    tags$tbody(lapply(seq_len(nrow(values)), function(index) tags$tr(lapply(as.character(values[index, , drop = TRUE]), structural_canvas_html_cell))))
   ),
     tags$p(class = "structural-result-note", HTML("&chi;<sup>2</sup> = chi-square; df = degrees of freedom; CFI = Comparative Fit Index; TLI = Tucker-Lewis Index; SRMR = Standardized Root Mean Square Residual; RMSEA = Root Mean Square Error of Approximation; CI = confidence interval; LLCI/ULCI = lower/upper limit of the confidence interval.")),
     if (selection$adjusted)

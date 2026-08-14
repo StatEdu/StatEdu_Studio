@@ -144,7 +144,7 @@ stopifnot(
   grepl("candidate_row$step <- step", evaluation_source, fixed = TRUE),
   grepl("candidate_row$skipped_inadmissible <- skipped_candidates", evaluation_source, fixed = TRUE),
   grepl("candidate_row$skipped_details <- paste(skipped_details, collapse = \" | \")", evaluation_source, fixed = TRUE),
-  grepl("table <- data.frame(Step = step, `Skipped unsafe` = skipped, `Skipped details` = skipped_details, relation", ui_source, fixed = TRUE),
+  grepl("`Skipped unsafe` = skipped", ui_source, fixed = TRUE) && grepl("`Skipped details` = skipped_details", ui_source, fixed = TRUE),
   grepl("Each Step is sequential", ui_source, fixed = TRUE),
   isTRUE(nested_difference_eligibility$available),
   !is.null(model_difference),

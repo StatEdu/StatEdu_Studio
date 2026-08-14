@@ -12,7 +12,7 @@ output[[paste0(prefix, "_result_mi")]] <- renderUI({
     )),
     tags$tbody(lapply(seq_len(nrow(table)), function(index) {
       tags$tr(
-        lapply(as.character(table[index, , drop = TRUE]), tags$td),
+        lapply(as.character(table[index, , drop = TRUE]), structural_canvas_html_cell),
         if (theory_mi) tags$td(actionButton(
           paste0(prefix, "_mi_select_", index),
           if (ko) "선택" else "Select",

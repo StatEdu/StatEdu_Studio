@@ -3,14 +3,14 @@
 structural_canvas_numeric_display_cell <- function(value) {
   value <- trimws(as.character(value %||% ""))
   if (!nzchar(value)) return(FALSE)
-  grepl("^(?:[<>]=?)?-?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?(?:[%†*]+)?$", value)
+  grepl("^(?:[<>]=?)?-?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?(?:[%†‡¶*]+)?$", value)
 }
 
 structural_canvas_html_cell <- function(value, header = FALSE) {
   value <- as.character(value %||% "")
   if (isTRUE(header)) return(tags$th(value))
   if (structural_canvas_numeric_display_cell(value)) {
-    return(tags$td(class = "text-right structural-numeric-cell", style = "text-align: right;", value))
+    return(tags$td(class = "text-center structural-numeric-cell", style = "text-align: center;", value))
   }
   tags$td(value)
 }
@@ -50,6 +50,28 @@ structural_canvas_measurement_html_table <- function(table) {
   ))
 }
 
+structural_canvas_abbreviation_footnotes <- function(table, context = "general") {
+  if (identical(context, "fit")) {
+    return(tags$p(
+      class = "structural-result-note",
+      HTML("&chi;<sup>2</sup> = chi-square; df = degrees of freedom; CFI = Comparative Fit Index; TLI = Tucker-Lewis Index; SRMR = Standardized Root Mean Square Residual; RMSEA = Root Mean Square Error of Approximation; CI = confidence interval; LLCI/ULCI = lower/upper limit of the confidence interval.")
+    ))
+  }
+  if (identical(context, "validity")) {
+    return(tags$p(
+      class = "structural-result-note",
+      HTML("AVE = Average Variance Extracted; CR = Composite Reliability; &alpha; = Cronbach's alpha; &omega; total = McDonald's omega total.")
+    ))
+  }
+  if (identical(context, "measurement")) {
+    return(tags$p(
+      class = "structural-result-note",
+      HTML("B = unstandardized loading; CI = confidence interval; SE = standard error; beta = standardized loading; R<sup>2</sup> = coefficient of determination; z = z statistic; p = p value.")
+    ))
+  }
+  NULL
+}
+
 structural_canvas_symbol_footnotes <- function(table) {
   values <- as.character(unlist(table, use.names = FALSE))
   values <- values[!is.na(values)]
@@ -59,6 +81,12 @@ structural_canvas_symbol_footnotes <- function(table) {
   }
   if (any(grepl("\u2020", values, fixed = TRUE))) {
     notes <- c(notes, list(tags$p(class = "structural-result-note", "\u2020 Coefficient is outside the conventional admissible range; interpret cautiously.")))
+  }
+  if (any(grepl("\u2021", values, fixed = TRUE))) {
+    notes <- c(notes, list(tags$p(class = "structural-result-note", "\u2021 Single-indicator construct without a constrained error variance; reliability and AVE are not estimated.")))
+  }
+  if (any(grepl("\u00b6", values, fixed = TRUE))) {
+    notes <- c(notes, list(tags$p(class = "structural-result-note", "\u00b6 Single-indicator construct with constrained error variance; interpret reliability and validity descriptively.")))
   }
   tagList(notes)
 }

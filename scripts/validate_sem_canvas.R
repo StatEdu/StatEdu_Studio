@@ -73,7 +73,7 @@ stopifnot(
   grepl("PLS-SEM measurement output reports outer loadings, outer weights, item VIF", ui_source, fixed = TRUE),
   grepl("Fornell-Larcker, and HTMT summaries", ui_source, fixed = TRUE),
   grepl("indirect and total effect rows are included", ui_source, fixed = TRUE),
-  grepl("표준화 효과의 95% 신뢰구간", ui_source, fixed = TRUE),
+  grepl("standardized-effect 95% confidence intervals", ui_source, fixed = TRUE),
   grepl("PLS-SEM does not estimate covariance paths", ui_source, fixed = TRUE),
   grepl("PLS-SEM does not estimate covariance paths; excluded:", ui_source, fixed = TRUE),
   grepl("PLS-SEM은 공분산 경로를 추정하지", ui_source, fixed = TRUE),
@@ -91,7 +91,7 @@ stopifnot(
   grepl("structural_canvas_notify_solution_diagnostics(result, statedu_current_language(app_language_fn))", ui_source, fixed = TRUE),
   any(grepl("잠재적으로 허용 불가능한 해", notification_source, fixed = TRUE)),
   any(grepl("수치적으로 불안정한 해", notification_source, fixed = TRUE)),
-  grepl("PLS-SEM에서는 공분산 경로를 추정하지", ui_source, fixed = TRUE),
+  grepl("PLS-SEM은 공분산 경로를 추정하지", ui_source, fixed = TRUE),
   sum(grepl("showNotification(", notification_source, fixed = TRUE)) == 1L,
   !grepl("Latent covariance, factor-score, HTMT, and lavaan delta-method diagnostics are not displayed", ui_source, fixed = TRUE)
 )
@@ -186,9 +186,9 @@ stopifnot(
   nrow(cbsem_measurement) > 0L,
   identical(names(cbsem_measurement), c("Latent", "Indicator", "B", "B 95% CI lower", "B 95% CI upper", "SE", "beta", "R²", "z", "p")),
   !any(grepl("Fixed", cbsem_measurement$SE, fixed = TRUE)),
-  !any(c("β 95% CI lower", "β 95% CI upper", "R² 95% CI lower", "R² 95% CI upper", "Std. residual variance", "Cross-loading", "Guidance") %in% names(cbsem_measurement)),
+  !any(c("beta 95% CI lower", "beta 95% CI upper", "R² 95% CI lower", "R² 95% CI upper", "Std. residual variance", "Cross-loading", "Guidance") %in% names(cbsem_measurement)),
   nrow(cbsem_measurement_diagnostics) == nrow(cbsem_measurement),
-  all(c("β 95% CI lower", "β 95% CI upper", "R² 95% CI lower", "R² 95% CI upper", "Std. residual variance", "Cross-loading", "Guidance") %in% names(cbsem_measurement_diagnostics))
+  all(c("beta 95% CI lower", "beta 95% CI upper", "R² 95% CI lower", "R² 95% CI upper", "Std. residual variance", "Cross-loading", "Guidance") %in% names(cbsem_measurement_diagnostics))
 )
 result_layout_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_render.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 stopifnot(
@@ -213,7 +213,7 @@ stopifnot(
 alignment_html <- paste(as.character(structural_canvas_basic_html_table(data.frame(Label = c("x", "y"), Value = c(".12", "No"), check.names = FALSE))), collapse = "\n")
 stopifnot(
   grepl("structural-numeric-cell", alignment_html, fixed = TRUE),
-  grepl("text-align: right;", alignment_html, fixed = TRUE)
+  grepl("text-align: center;", alignment_html, fixed = TRUE)
 )
 cbsem_structural <- structural_canvas_result_table("structural", cbsem_result, "cbsem", labels_fn, language_fn)
 stopifnot(nrow(cbsem_structural) == 1L)
