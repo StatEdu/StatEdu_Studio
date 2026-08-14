@@ -43,7 +43,7 @@ structural_canvas_measurement_result_table <- function(kind, fit, ko, fmt, displ
       p <- vapply(raw$pvalue, format_p, character(1))
       r2_values <- lavaan::lavInspect(fit, "r2")
       r2 <- as.numeric(r2_values[raw$rhs])
-      se[fixed] <- "Fixed*"
+      se[fixed] <- "—"
       z[fixed] <- "—"
       p[fixed] <- "—"
       table <- data.frame(

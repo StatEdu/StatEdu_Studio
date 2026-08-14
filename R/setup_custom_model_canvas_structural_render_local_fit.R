@@ -63,7 +63,7 @@ output[[paste0(prefix, "_result_higher_order")]] <- renderUI({
     p = vapply(table$p, format_p, character(1)),
     check.names = FALSE
   )
-  display$SE[fixed] <- "Fixed*"
+  display$SE[fixed] <- "—"
   display$z[fixed] <- "—"
   display$p[fixed] <- "—"
   if (ko) {
@@ -77,7 +77,7 @@ output[[paste0(prefix, "_result_higher_order")]] <- renderUI({
         value
       )
     }, character(1))
-    display$SE[fixed] <- "고정*"
+    display$SE[fixed] <- "—"
     names(display) <- c(
       "고차요인", "저차요인", "B", "B 95% CI 하한", "B 95% CI 상한", "SE", "Beta",
       "Beta 95% CI 하한", "Beta 95% CI 상한", "R2", "R2 95% CI 하한", "R2 95% CI 상한",
@@ -126,7 +126,7 @@ output[[paste0(prefix, "_result_higher_order")]] <- renderUI({
     tags$p(class = "structural-result-note", if (ko) "B 신뢰구간은 비표준화 고차요인 적재량의 95% 구간입니다. 고정된 기준 적재량은 고정값에서 퇴화된 구간을 갖습니다." else "B confidence intervals are 95% intervals for unstandardized higher-order loadings; a fixed reference loading has a degenerate interval at its fixed value."),
     tags$p(class = "structural-result-note", if (ko) "omega-h는 적합된 고차요인 CFA 모형에서 단위가중 총점 분산 중 하나의 고차 일반요인에 귀속되는 비율을 추정합니다." else "ωh estimates the proportion of unit-weighted total-score variance attributable to one higher-order general factor under the fitted higher-order CFA model."),
     tags$p(class = "structural-result-note", if (ko) ".40 적재량과 .70 omega-h 값은 기술적 검토 기준이며, 보편적 통과/탈락 규칙이 아닙니다. † 표시는 사용할 수 없는 값 또는 [0, 1] 범위를 벗어난 계수/잔차분산을 나타냅니다." else "The .40 loading and .70 ωh values are descriptive review guidelines, not universal pass/fail rules. † marks an unavailable value or a coefficient/residual variance outside [0, 1]."),
-    tags$p(class = "structural-result-note", if (ko) "* 고정된 기준 적재량은 SE, z, p를 추정하지 않습니다." else "* Fixed reference loading; SE, z, and p are not estimated.")
+    tags$p(class = "structural-result-note", if (ko) "고정된 기준 적재량은 SE, z, p를 추정하지 않습니다." else "Fixed reference loadings have no estimated SE, z, or p value.")
   )
 })
   invisible(TRUE)

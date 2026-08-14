@@ -181,13 +181,28 @@ cbsem_measurement <- structural_canvas_result_table("measurement", cbsem_result,
 cbsem_measurement_diagnostics <- structural_canvas_result_table("measurement_diagnostics", cbsem_result, "cbsem", labels_fn, language_fn)
 stopifnot(
   nrow(cbsem_validity) > 0L,
-  identical(names(cbsem_validity), c("Latent", "eta1", "eta2", "Max |r|", "AVE", "CR", "Cronbach's alpha", "Omega total")),
+  identical(names(cbsem_validity), c("Latent", "eta1", "eta2", "Max |r|", "AVE", "CR", "α", "ω total")),
   !any(c("FL criterion", "k", "Guidance") %in% names(cbsem_validity)),
   nrow(cbsem_measurement) > 0L,
   identical(names(cbsem_measurement), c("Latent", "Indicator", "B", "B 95% CI lower", "B 95% CI upper", "SE", "beta", "R²", "z", "p")),
+  !any(grepl("Fixed", cbsem_measurement$SE, fixed = TRUE)),
   !any(c("β 95% CI lower", "β 95% CI upper", "R² 95% CI lower", "R² 95% CI upper", "Std. residual variance", "Cross-loading", "Guidance") %in% names(cbsem_measurement)),
   nrow(cbsem_measurement_diagnostics) == nrow(cbsem_measurement),
   all(c("β 95% CI lower", "β 95% CI upper", "R² 95% CI lower", "R² 95% CI upper", "Std. residual variance", "Cross-loading", "Guidance") %in% names(cbsem_measurement_diagnostics))
+)
+result_layout_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_render.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+stopifnot(
+  grepl('uiOutput(paste0(prefix, "_result_htmt"))', result_layout_source, fixed = TRUE),
+  grepl('uiOutput(paste0(prefix, "_result_htmt_details"))', result_layout_source, fixed = TRUE),
+  regexpr('uiOutput\\(paste0\\(prefix, "_result_reporting_context"\\)\\)', result_layout_source) >
+    regexpr('uiOutput\\(paste0\\(prefix, "_result_measurement"\\)\\)', result_layout_source),
+  regexpr('uiOutput\\(paste0\\(prefix, "_result_residuals"\\)\\)', result_layout_source) >
+    regexpr('uiOutput\\(paste0\\(prefix, "_result_measurement"\\)\\)', result_layout_source),
+  regexpr('uiOutput\\(paste0\\(prefix, "_result_residuals"\\)\\)', result_layout_source) <
+    regexpr('uiOutput\\(paste0\\(prefix, "_result_reporting_context"\\)\\)', result_layout_source),
+  regexpr('uiOutput\\(paste0\\(prefix, "_result_htmt"\\)\\)', result_layout_source) <
+    regexpr('uiOutput\\(paste0\\(prefix, "_result_measurement"\\)\\)', result_layout_source),
+  grepl("structural-validity-table", result_layout_source, fixed = TRUE)
 )
 alignment_html <- paste(as.character(structural_canvas_basic_html_table(data.frame(Label = c("x", "y"), Value = c(".12", "No"), check.names = FALSE))), collapse = "\n")
 stopifnot(

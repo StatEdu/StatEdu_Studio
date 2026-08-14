@@ -1549,6 +1549,11 @@
   text-align: right;
 }
 
+.structural-validity-table th:not(:first-child),
+.structural-validity-table td:not(:first-child) {
+  text-align: center !important;
+}
+
 .structural-mi-result table th:not(:first-child),
 .structural-mi-result table td:not(:first-child) {
   text-align: right;

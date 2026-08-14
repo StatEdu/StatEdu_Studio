@@ -2,7 +2,7 @@ structural_canvas_register_interaction_events <- function(input, session, datase
 run_confirmed_analysis <- function(snapshot, settings = list()) {
   result <- execute_analysis(snapshot, settings)
   showNotification(
-    if (identical(statedu_current_language(app_language_fn), "ko")) paste0(structural_analysis_title(analysis_type, statedu_current_language(app_language_fn)), " 遺꾩꽍???꾨즺?섏뿀?듬땲??") else paste0(structural_analysis_title(analysis_type, statedu_current_language(app_language_fn)), " analysis completed."),
+    if (identical(statedu_current_language(app_language_fn), "ko")) paste0(structural_analysis_title(analysis_type, statedu_current_language(app_language_fn)), " 분석이 완료되었습니다.") else paste0(structural_analysis_title(analysis_type, statedu_current_language(app_language_fn)), " analysis completed."),
     type = if (isTRUE(result$converged)) "message" else "warning"
   )
   result

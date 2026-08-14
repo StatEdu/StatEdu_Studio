@@ -1,7 +1,7 @@
 # Structural equation canvas HTMT render outputs.
 
 structural_canvas_register_htmt_outputs <- function(output, prefix, fit_result, app_language_fn = NULL) {
-output[[paste0(prefix, "_result_htmt")]] <- renderUI({
+render_htmt_tables <- function(include_details = FALSE) {
   bundle <- fit_result()
   ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
   fit <- bundle$fit
@@ -27,8 +27,9 @@ output[[paste0(prefix, "_result_htmt")]] <- renderUI({
     }
   }
   pair_table <- htmt$pairs
-  pair_table$HTMT <- vapply(pair_table$HTMT, format_decimal3, character(1))
-  pair_table$Reason[!nzchar(pair_table$Reason)] <- "—"
+  if ("HTMT" %in% names(pair_table)) pair_table$HTMT <- vapply(pair_table$HTMT, format_decimal3, character(1))
+  if ("Reason" %in% names(pair_table)) pair_table$Reason[!nzchar(pair_table$Reason)] <- "—"
+  pair_columns <- intersect(c("Factor 1", "Factor 2", "HTMT", "Criterion", "Reason"), names(pair_table))
   bootstrap_reps <- as.integer(bundle$htmt_bootstrap %||% 0L)
   bootstrap_seed <- as.integer(bundle$htmt_seed %||% 12345L)
   htmt_ci_method <- structural_canvas_bootstrap_ci_method(bundle$htmt_ci_method %||% "percentile")
@@ -54,10 +55,15 @@ output[[paste0(prefix, "_result_htmt")]] <- renderUI({
       bootstrap_table[["Valid %"]] <- paste0(vapply(bootstrap_table[["Valid %"]], format_decimal3, character(1)), "%")
     }
   }
+  if (!isTRUE(include_details)) {
+    return(tagList(
+      tags$h5(paste0("HTMT (threshold = ", format(threshold, nsmall = 2L), ")")),
+      structural_canvas_basic_html_table(as.data.frame(matrix_values, check.names = FALSE), class = "table table-striped table-bordered structural-htmt-matrix")
+    ))
+  }
   tagList(
-    tags$h5(paste0("HTMT (threshold = ", format(threshold, nsmall = 2L), ")")),
-    structural_canvas_basic_html_table(as.data.frame(matrix_values, check.names = FALSE), class = "table table-striped table-bordered structural-htmt-matrix"),
-    structural_canvas_basic_html_table(pair_table[, c("Factor 1", "Factor 2", "HTMT", "Criterion", "Reason"), drop = FALSE], class = "table table-striped table-bordered structural-htmt-criterion"),
+    tags$h5(if (ko) "HTMT 세부 판단" else "HTMT detailed criteria"),
+    if (length(pair_columns)) structural_canvas_basic_html_table(pair_table[, pair_columns, drop = FALSE], class = "table table-striped table-bordered structural-htmt-criterion"),
     if (!is.null(bootstrap_table)) tagList(
       tags$h5(if (ko) paste0("HTMT ", htmt_ci_label, " 부트스트랩 신뢰구간 (", bootstrap_reps, "회 재표집; seed = ", bootstrap_seed, ")") else paste0("HTMT ", htmt_ci_label, " bootstrap confidence intervals (", bootstrap_reps, " resamples; seed = ", bootstrap_seed, ")")),
       structural_canvas_basic_html_table(bootstrap_table, class = "table table-striped table-bordered structural-htmt-bootstrap")
@@ -75,6 +81,12 @@ output[[paste0(prefix, "_result_htmt")]] <- renderUI({
       ". 'Upper < threshold' uses the one-sided 95% upper confidence limit for the selected .85/.90 criterion. 'Upper < 1' indicates whether the two-sided 95% interval excludes 1. These are intentionally reported separately from the point-estimate criterion.")
     ))
   )
+}
+output[[paste0(prefix, "_result_htmt")]] <- renderUI({
+  render_htmt_tables(include_details = FALSE)
+})
+output[[paste0(prefix, "_result_htmt_details")]] <- renderUI({
+  render_htmt_tables(include_details = TRUE)
 })
   invisible(TRUE)
 }

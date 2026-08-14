@@ -64,7 +64,7 @@ structural_canvas_validity_result_table <- function(kind, bundle, snapshot, fit,
       omega <- cr
       constrained_single_factors <- structural_canvas_constrained_single_indicators(snapshot)
       table <- matrix("", nrow = length(latent_names), ncol = length(latent_names) + 6L)
-      colnames(table) <- c("Latent", vapply(latent_names, display_name, character(1)), "Max |r|", "AVE", "CR", "Cronbach's alpha", "Omega total")
+      colnames(table) <- c("Latent", vapply(latent_names, display_name, character(1)), "Max |r|", "AVE", "CR", "α", "ω total")
       for (row in seq_along(latent_names)) {
         latent_name <- latent_names[[row]]
         single_indicator <- indicator_counts[[latent_name]] < 2L

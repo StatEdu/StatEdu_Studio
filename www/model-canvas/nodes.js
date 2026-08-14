@@ -219,18 +219,16 @@
         : Number(node.y || 0) + Number(node.height || 0) / 2;
     }
     siblings.sort(function(a, b) { return center(a) - center(b); });
-    var centers = siblings.map(center);
-    var gaps = [];
-    for (var index = 1; index < centers.length; index += 1) {
-      var gap = centers[index] - centers[index - 1];
-      if (gap > 1) gaps.push(gap);
-    }
-    gaps.sort(function(a, b) { return a - b; });
-    var spacing = gaps.length ? gaps[Math.floor(gaps.length / 2)] : (horizontal ? Number(indicator.width || 110) + 24 : 48);
+    var latentCenter = horizontal
+      ? Number(latent.x || 0) + Number(latent.width || 0) / 2
+      : Number(latent.y || 0) + Number(latent.height || 0) / 2;
+    var spacing = horizontal
+      ? Number(indicator.width || 82) + 24
+      : Math.max(48, Number(indicator.height || 30) + 18);
     return {
       latentId: latent.id,
       horizontal: horizontal,
-      center: centers.reduce(function(sum, value) { return sum + value; }, 0) / centers.length,
+      center: latentCenter,
       spacing: spacing,
       siblingIds: siblings.map(function(node) { return node.id; })
     };
@@ -479,7 +477,7 @@
   }
 
   function completeMeasurementBundleSelection(instance, selectedIds) {
-    if (["cbsem", "plssem"].indexOf(instance.analysisType) < 0) return false;
+    if (["cfa", "sem", "cbsem", "plssem"].indexOf(instance.analysisType) < 0) return false;
     var selected = selectedIds || [];
     if (!selected.length) return false;
     var selectedMap = {};

@@ -60,7 +60,7 @@ stopifnot(
   grepl("MI p는 각 수정지수", ui_source, fixed = TRUE),
   grepl("Skipped unsafe는 더 높은 순위", ui_source, fixed = TRUE),
   grepl("괄호 안 대각값은 sqrt(AVE)", ui_source, fixed = TRUE),
-  grepl("순서형 지표에서는 AVE, CR, omega", ui_source, fixed = TRUE),
+  grepl("순서형 지표에서는 AVE, CR, ω total", ui_source, fixed = TRUE),
   grepl("교차적재 지표", ui_source, fixed = TRUE),
   grepl("집단별 측정불변성", ui_source, fixed = TRUE),
   grepl("집단별 신뢰도 및 수렴타당도", ui_source, fixed = TRUE),

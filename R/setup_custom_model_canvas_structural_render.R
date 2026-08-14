@@ -243,12 +243,6 @@ output[[paste0(prefix, "_results")]] <- renderUI({
     if (analysis_type == "cfa") downloadButton(paste0(prefix, "_download_reproducibility"), if (ko) "분석 기록 다운로드" else "Download analysis record", class = "btn btn-default btn-sm"),
     if (analysis_type == "cfa") downloadButton(paste0(prefix, "_download_tables"), if (ko) "결과표 Excel 다운로드" else "Download result tables", class = "btn btn-default btn-sm"),
     div(class = "result-section regression-result-panel", h4(if (ko) "1. 모형 개요" else "1. Model overview"), div(class = "table-responsive", tableOutput(paste0(prefix, "_result_overview")))),
-    uiOutput(paste0(prefix, "_result_reporting_context")),
-    uiOutput(paste0(prefix, "_result_identification")),
-    uiOutput(paste0(prefix, "_result_normality")),
-    uiOutput(paste0(prefix, "_result_missing_outliers")),
-    uiOutput(paste0(prefix, "_result_risk_diagnostics")),
-    uiOutput(paste0(prefix, "_result_heywood")),
     div(class = "result-section regression-result-panel", h4(if (identical(analysis_type, "plssem")) {
       if (ko) "2. PLS 구조모형 효과" else "2. PLS structural model effects"
     } else {
@@ -258,7 +252,7 @@ output[[paste0(prefix, "_results")]] <- renderUI({
       tags$p(class = "structural-result-note", if (ko) "f2와 q2 해석 등급은 .02/.15/.35 기준의 descriptive small/medium/large 안내이며, 이론과 연구 맥락을 대체하지 않습니다." else "f2 and q2 size labels use the descriptive .02/.15/.35 small/medium/large anchors and do not replace theory or study context."),
       tags$p(class = "structural-result-note", if (ko) "Inner VIF는 seminr에서 내생 구성개념의 선행 예측자 정보를 반환할 때 직접 구조경로에 대해 표시됩니다." else "Inner VIF is reported for direct structural paths when an endogenous construct has antecedent predictors available from seminr."),
       if (length(bundle$diagnostics$ignored_covariances %||% character(0))) tags$p(class = "structural-result-note", if (ko) paste0("PLS-SEM에서는 공분산 경로를 추정하지 않으므로 다음 캔버스 공분산 경로를 제외했습니다: ", paste(bundle$diagnostics$ignored_covariances, collapse = ", "), ".") else paste0("PLS-SEM does not estimate covariance paths, so these canvas covariance paths were excluded: ", paste(bundle$diagnostics$ignored_covariances, collapse = ", "), "."))
-    ), if (!identical(analysis_type, "plssem")) uiOutput(paste0(prefix, "_result_lavaan_quality")), if (identical(analysis_type, "plssem")) uiOutput(paste0(prefix, "_result_pls_quality")), uiOutput(paste0(prefix, "_result_pls_predict")), uiOutput(paste0(prefix, "_result_fit_guidance")), uiOutput(paste0(prefix, "_result_rmsea_tests")), uiOutput(paste0(prefix, "_result_information_criteria")), uiOutput(paste0(prefix, "_result_bollen_stine")), div(class = "table-responsive", uiOutput(paste0(prefix, "_result_fit_difference")))),
+    )),
     if (analysis_type %in% c("cbsem", "sem")) div(
       class = "result-section regression-result-panel structural-path-result",
       h4(if (ko) "3. 구조모형 경로" else "3. Structural model paths"),
@@ -266,25 +260,47 @@ output[[paste0(prefix, "_results")]] <- renderUI({
       tags$p(class = "structural-result-note", if (ko) "구조경로 표는 lavaan의 회귀경로(~)에 대한 비표준화 계수, 표준화 계수, 신뢰구간, R², z 및 p 값을 표시합니다." else "Structural paths are lavaan regression paths (~), reported with unstandardized and standardized coefficients, confidence intervals, R², z, and p values."),
       tags$p(class = "structural-result-note", if (ko) "매개 경로가 정의되면 간접효과와 총효과 행도 함께 표시되며, lavaan이 반환하는 경우 표준화 효과의 95% 신뢰구간을 포함합니다." else "When mediation paths are defined, indirect and total effect rows are included with standardized-effect 95% confidence intervals when lavaan returns them.")
     ),
-    uiOutput(paste0(prefix, "_result_invariance")),
-    div(class = "result-section regression-result-panel", h4(if (ko) "3. 잠재 구성개념 상관, 신뢰도 및 수렴·판별타당도" else "3. Latent construct correlations, reliability, and convergent/discriminant validity"), uiOutput(paste0(prefix, "_result_validity")), uiOutput(paste0(prefix, "_result_htmt")), uiOutput(paste0(prefix, "_result_latent_correlation_ci")), uiOutput(paste0(prefix, "_result_validity_note")), uiOutput(paste0(prefix, "_result_reliability_bootstrap")), uiOutput(paste0(prefix, "_result_factor_scores"))),
+    div(class = "result-section regression-result-panel structural-validity-result", h4(if (ko) "3. 잠재 구성개념 상관, 신뢰도 및 수렴·판별타당도" else "3. Latent construct correlations, reliability, and convergent/discriminant validity"), uiOutput(paste0(prefix, "_result_validity")), uiOutput(paste0(prefix, "_result_htmt"))),
     div(
       class = "result-section regression-result-panel structural-measurement-result",
       h4(if (ko) "4. 측정모형" else "4. Measurement model"),
       uiOutput(paste0(prefix, "_result_measurement")),
-      uiOutput(paste0(prefix, "_result_measurement_diagnostics")),
       if (identical(analysis_type, "plssem")) tagList(
         tags$p(class = "structural-result-note", if (ko) "PLS-SEM 측정모형 출력은 outer loading, outer weight, item VIF, 교차적재 요약, reflective/formative 측정모드를 표시합니다." else "PLS-SEM measurement output reports outer loadings, outer weights, item VIF, cross-loading summaries, and the reflective/formative measurement mode."),
         tags$p(class = "structural-result-note", if (ko) "Reflective 구성개념은 outer loading과 교차적재를 확인하고, formative 구성개념은 outer weight, item VIF, 지표의 이론적 포괄성을 우선 확인합니다." else "For reflective constructs, review outer loadings and cross-loadings. For formative constructs, prioritize outer weights, item VIF, and substantive indicator coverage."),
         tags$p(class = "structural-result-note", if (ko) "PLS bootstrap을 요청한 경우 loading과 weight의 CI/p 열은 사용 가능한 seminr percentile bootstrap 요약을 사용합니다." else "When PLS bootstrap is requested, loading and weight CI/p columns use seminr percentile bootstrap summaries when available.")
       ) else tagList(
-        tags$p(class = "structural-result-note", "* Fixed reference loading; its unstandardized SE, z, and p are not estimated."),
-        tags$p(class = "structural-result-note", "B confidence intervals are 95% intervals for unstandardized loadings. A fixed reference loading has a degenerate B interval at its fixed value."),
-        tags$p(class = "structural-result-note", "Supplementary measurement diagnostics below lists standardized-loading CIs, R² CIs, standardized residual variances, cross-loading flags, and loading guidance.")
+        tags$p(class = "structural-result-note", if (ko) "기준 적재량은 고정값이므로 비표준화 SE, z, p를 추정하지 않습니다." else "Reference loadings are fixed values, so their unstandardized SE, z, and p are not estimated."),
+        tags$p(class = "structural-result-note", if (ko) "B 신뢰구간은 비표준화 적재량의 95% 구간입니다. 기준 적재량은 고정값에서 같은 하한과 상한을 갖습니다." else "B confidence intervals are 95% intervals for unstandardized loadings. Reference loadings have identical lower and upper limits at their fixed values."),
+        tags$p(class = "structural-result-note", if (ko) "아래 보조 측정 진단 표에는 표준화 적재량 신뢰구간, R² 신뢰구간, 표준화 잔차분산, 교차적재 표시, 적재량 안내를 별도로 표시합니다." else "The supplementary measurement diagnostics table below lists standardized-loading CIs, R² CIs, standardized residual variances, cross-loading flags, and loading guidance.")
       )
     ),
-    uiOutput(paste0(prefix, "_result_higher_order")),
     uiOutput(paste0(prefix, "_result_residuals")),
+    div(class = "result-section regression-result-panel structural-supplementary-result",
+      h4(if (ko) "보조 결과 및 진단" else "Supplementary results and diagnostics"),
+      uiOutput(paste0(prefix, "_result_reporting_context")),
+      uiOutput(paste0(prefix, "_result_identification")),
+      uiOutput(paste0(prefix, "_result_normality")),
+      uiOutput(paste0(prefix, "_result_missing_outliers")),
+      uiOutput(paste0(prefix, "_result_risk_diagnostics")),
+      uiOutput(paste0(prefix, "_result_heywood")),
+      if (!identical(analysis_type, "plssem")) uiOutput(paste0(prefix, "_result_lavaan_quality")),
+      if (identical(analysis_type, "plssem")) uiOutput(paste0(prefix, "_result_pls_quality")),
+      uiOutput(paste0(prefix, "_result_pls_predict")),
+      uiOutput(paste0(prefix, "_result_fit_guidance")),
+      uiOutput(paste0(prefix, "_result_rmsea_tests")),
+      uiOutput(paste0(prefix, "_result_information_criteria")),
+      uiOutput(paste0(prefix, "_result_bollen_stine")),
+      div(class = "table-responsive", uiOutput(paste0(prefix, "_result_fit_difference"))),
+      uiOutput(paste0(prefix, "_result_invariance")),
+      uiOutput(paste0(prefix, "_result_htmt_details")),
+      uiOutput(paste0(prefix, "_result_latent_correlation_ci")),
+      uiOutput(paste0(prefix, "_result_validity_note")),
+      uiOutput(paste0(prefix, "_result_reliability_bootstrap")),
+      uiOutput(paste0(prefix, "_result_factor_scores")),
+      uiOutput(paste0(prefix, "_result_measurement_diagnostics"))
+    ),
+    uiOutput(paste0(prefix, "_result_higher_order")),
     uiOutput(paste0(prefix, "_result_mi_holdout")),
     uiOutput(paste0(prefix, "_result_mi_history")),
     if (analysis_type != "plssem") div(class = "result-section regression-result-panel structural-mi-result", h4(if (ko) "6. 수정지수(MI)" else "6. Modification indices (MI)"), uiOutput(paste0(prefix, "_result_mi")))
@@ -307,7 +323,7 @@ for (kind in c("overview", "structural")) local({
   output[[paste0(prefix, "_result_", result_kind)]] <- renderTable(result_table(result_kind), striped = TRUE, bordered = TRUE, sanitize.text.function = identity)
 })
   output[[paste0(prefix, "_result_validity")]] <- renderUI({
-    structural_canvas_basic_html_table(result_table("validity"))
+    structural_canvas_basic_html_table(result_table("validity"), class = "table table-striped table-bordered structural-validity-table")
   })
   output[[paste0(prefix, "_result_measurement")]] <- renderUI({
     structural_canvas_basic_html_table(result_table("measurement"))
