@@ -245,11 +245,11 @@ output[[paste0(prefix, "_results")]] <- renderUI({
     h3(if (ko) "분석 결과" else "Analysis Results"),
     if (analysis_type == "cfa") downloadButton(paste0(prefix, "_download_reproducibility"), if (ko) "분석 기록 다운로드" else "Download analysis record", class = "btn btn-default btn-sm"),
     if (analysis_type == "cfa") downloadButton(paste0(prefix, "_download_tables"), if (ko) "결과표 Excel 다운로드" else "Download result tables", class = "btn btn-default btn-sm"),
-    div(class = "result-section regression-result-panel", h4(if (ko) "1. 모형 개요" else "1. Model overview"), div(class = "table-responsive", tableOutput(paste0(prefix, "_result_overview")))),
+    div(class = "result-section regression-result-panel", h4("1. Model overview"), div(class = "table-responsive", tableOutput(paste0(prefix, "_result_overview")))),
     div(class = "result-section regression-result-panel", h4(if (identical(analysis_type, "plssem")) {
-      if (ko) "2. PLS 구조모형 효과" else "2. PLS structural model effects"
+      "2. PLS structural model effects"
     } else {
-      if (ko) "2. 모형 적합도" else "2. Model fit"
+      "2. Model fit"
     }), div(class = "table-responsive", uiOutput(paste0(prefix, "_result_fit"))), if (identical(analysis_type, "plssem")) tagList(
       tags$p(class = "structural-result-note", if (ko) "PLS-SEM 구조모형 출력은 공분산 기반 전역 적합도 지수 대신 경로계수, R2, 수정 R2, f2, Q2, q2, inner VIF, 총효과와 간접효과를 표시합니다." else "PLS-SEM structural output reports path coefficients, R2, adjusted R2, f2, Q2, q2, inner VIF, and total/indirect effects rather than covariance-based global fit indices."),
       tags$p(class = "structural-result-note", if (ko) "f2와 q2 해석 등급은 .02/.15/.35 기준의 descriptive small/medium/large 안내이며, 이론과 연구 맥락을 대체하지 않습니다." else "f2 and q2 size labels use the descriptive .02/.15/.35 small/medium/large anchors and do not replace theory or study context."),
@@ -258,15 +258,15 @@ output[[paste0(prefix, "_results")]] <- renderUI({
     )),
     if (analysis_type %in% c("cbsem", "sem")) div(
       class = "result-section regression-result-panel structural-path-result",
-      h4(if (ko) "3. 구조모형 경로" else "3. Structural model paths"),
+      h4("3. Structural model paths"),
       div(class = "table-responsive", tableOutput(paste0(prefix, "_result_structural"))),
       tags$p(class = "structural-result-note", if (ko) "구조경로 표는 lavaan의 회귀경로(~)에 대한 비표준화 계수, 표준화 계수, 신뢰구간, R², z 및 p 값을 표시합니다." else "Structural paths are lavaan regression paths (~), reported with unstandardized and standardized coefficients, confidence intervals, R², z, and p values."),
       tags$p(class = "structural-result-note", if (ko) "매개 경로가 정의되면 간접효과와 총효과 행도 함께 표시되며, lavaan이 반환하는 경우 표준화 효과의 95% 신뢰구간을 포함합니다." else "When mediation paths are defined, indirect and total effect rows are included with standardized-effect 95% confidence intervals when lavaan returns them.")
     ),
-    div(class = "result-section regression-result-panel structural-validity-result", h4(if (ko) "3. 잠재 구성개념 상관, 신뢰도 및 수렴·판별타당도" else "3. Latent construct correlations, reliability, and convergent/discriminant validity"), uiOutput(paste0(prefix, "_result_validity")), uiOutput(paste0(prefix, "_result_htmt"))),
+    div(class = "result-section regression-result-panel structural-validity-result", h4("3. Latent construct correlations, reliability, and convergent/discriminant validity"), uiOutput(paste0(prefix, "_result_validity")), uiOutput(paste0(prefix, "_result_htmt"))),
     div(
       class = "result-section regression-result-panel structural-measurement-result",
-      h4(if (ko) "4. 측정모형" else "4. Measurement model"),
+      h4("4. Measurement model"),
       uiOutput(paste0(prefix, "_result_measurement")),
       if (identical(analysis_type, "plssem")) tagList(
         tags$p(class = "structural-result-note", if (ko) "PLS-SEM 측정모형 출력은 outer loading, outer weight, item VIF, 교차적재 요약, reflective/formative 측정모드를 표시합니다." else "PLS-SEM measurement output reports outer loadings, outer weights, item VIF, cross-loading summaries, and the reflective/formative measurement mode."),
@@ -274,8 +274,8 @@ output[[paste0(prefix, "_results")]] <- renderUI({
         tags$p(class = "structural-result-note", if (ko) "PLS bootstrap을 요청한 경우 loading과 weight의 CI/p 열은 사용 가능한 seminr percentile bootstrap 요약을 사용합니다." else "When PLS bootstrap is requested, loading and weight CI/p columns use seminr percentile bootstrap summaries when available.")
       ) else structural_canvas_symbol_footnotes(manuscript_result_table("measurement"))
     ),
-    uiOutput(paste0(prefix, "_result_residuals")),
     uiOutput(paste0(prefix, "_result_mi_section")),
+    uiOutput(paste0(prefix, "_result_residuals")),
     div(class = "result-section regression-result-panel structural-supplementary-result",
       h4(if (ko) "보조 결과 및 진단" else "Supplementary results and diagnostics"),
       uiOutput(paste0(prefix, "_result_reporting_context")),
@@ -330,7 +330,11 @@ for (kind in c("overview", "structural")) local({
     )
   })
   output[[paste0(prefix, "_result_measurement")]] <- renderUI({
-    structural_canvas_basic_html_table(manuscript_result_table("measurement"))
+    if (identical(analysis_type, "plssem")) {
+      structural_canvas_basic_html_table(manuscript_result_table("measurement"))
+    } else {
+      structural_canvas_measurement_html_table(manuscript_result_table("measurement"))
+    }
   })
   output[[paste0(prefix, "_result_measurement_diagnostics")]] <- renderUI({
     if (identical(analysis_type, "plssem")) return(NULL)
@@ -345,14 +349,13 @@ for (kind in c("overview", "structural")) local({
     if (identical(analysis_type, "plssem")) return(NULL)
     table <- result_table("mi")
     if (!is.data.frame(table) || !nrow(table)) return(NULL)
-    ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
     div(class = "result-section regression-result-panel structural-mi-result",
-      h4(if (ko) "6. 수정지수(MI)" else "6. Modification indices (MI)"),
+      h4("Modification indices (MI)"),
       uiOutput(paste0(prefix, "_result_mi"))
     )
   })
   structural_canvas_register_mi_render_outputs(
-    output, prefix, fit_result, result_table, app_language_fn
+    output, prefix, fit_result, manuscript_result_table, app_language_fn
   )
   invisible(TRUE)
 }

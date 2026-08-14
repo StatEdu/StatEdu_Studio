@@ -34,7 +34,9 @@ structural_canvas_fit_table_result_ui <- function(bundle, values) {
       tags$tr(tags$th("LLCI"), tags$th("ULCI"))
     ),
     tags$tbody(lapply(seq_len(nrow(values)), function(index) tags$tr(lapply(as.character(values[index, , drop = TRUE]), tags$td))))
-  ), if (selection$adjusted)
+  ),
+    tags$p(class = "structural-result-note", HTML("&chi;<sup>2</sup> = chi-square; df = degrees of freedom; CFI = Comparative Fit Index; TLI = Tucker-Lewis Index; SRMR = Standardized Root Mean Square Residual; RMSEA = Root Mean Square Error of Approximation; CI = confidence interval; LLCI/ULCI = lower/upper limit of the confidence interval.")),
+    if (selection$adjusted)
     tags$p(class = "structural-result-note", if (is.null(baseline_selection) || same_measure_keys) {
       paste0("* Reported lavaan measures: ", paste(unname(selection$keys), collapse = ", "), ". SRMR has no separate robust correction.")
     } else {

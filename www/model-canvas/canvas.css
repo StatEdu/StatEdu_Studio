@@ -1549,14 +1549,26 @@
   text-align: right;
 }
 
+.structural-measurement-table thead th {
+  text-align: center;
+  vertical-align: middle;
+}
+
 .structural-validity-table th:not(:first-child),
-.structural-validity-table td:not(:first-child) {
+.structural-validity-table td:not(:first-child),
+.structural-validity-table .structural-numeric-cell {
   text-align: center !important;
 }
 
 .structural-htmt-matrix th:not(:first-child),
-.structural-htmt-matrix td:not(:first-child) {
+.structural-htmt-matrix td:not(:first-child),
+.structural-htmt-matrix .structural-numeric-cell {
   text-align: center !important;
+}
+
+.structural-additional-fit-indices-table th:not(:first-child),
+.structural-additional-fit-indices-table td:not(:first-child) {
+  text-align: center;
 }
 
 .structural-information-criteria-table {

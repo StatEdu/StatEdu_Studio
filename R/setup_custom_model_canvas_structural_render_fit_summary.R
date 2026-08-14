@@ -462,11 +462,37 @@ structural_canvas_lavaan_quality_result_ui <- function(bundle, analysis_type = "
   )
 }
 
+structural_canvas_additional_fit_indices_table <- function(fits, labels, selections) {
+  rows <- lapply(seq_along(selections), function(index) {
+    selection <- selections[[index]]
+    measures <- selection$measures
+    selected_chisq <- as.character(selection$keys[["chisq"]] %||% "")
+    displayed_keys <- unique(c(
+      unname(selection$keys),
+      "df", "srmr",
+      if (identical(selected_chisq, "chisq.scaled")) "pvalue.scaled" else "pvalue"
+    ))
+    values <- measures[setdiff(names(measures), displayed_keys)]
+    values <- values[is.finite(values)]
+    if (!length(values)) return(NULL)
+    data.frame(
+      Model = labels[[index]],
+      Metric = names(values),
+      Value = vapply(values, format_decimal3, character(1)),
+      check.names = FALSE
+    )
+  })
+  rows <- Filter(Negate(is.null), rows)
+  if (!length(rows)) return(data.frame())
+  do.call(rbind, rows)
+}
+
 structural_canvas_fit_guidance_result_ui <- function(bundle, language) {
   ko <- identical(normalize_app_language(language), "ko")
   comparison_fits <- if (isTRUE(bundle$modified_from_baseline) && !is.null(bundle$baseline_fit)) list(bundle$baseline_fit, bundle$fit) else list(bundle$fit)
   selections <- structural_canvas_common_fit_measures(comparison_fits, bundle$estimator %||% "ML", bundle$rmsea_ci %||% .90)
   labels <- if (length(selections) > 1L) c(if (ko) "연구모형" else "Research model", if (ko) "탐색적 수정모형" else bundle$comparison_label %||% "Modified model") else if (ko) "연구모형" else "Research model"
+  additional_fit <- structural_canvas_additional_fit_indices_table(comparison_fits, labels, selections)
   tables <- lapply(seq_along(selections), function(index) {
     guidance <- structural_canvas_fit_guidance(selections[[index]]$values)
     guidance$Model <- labels[[index]]
@@ -489,7 +515,11 @@ structural_canvas_fit_guidance_result_ui <- function(bundle, language) {
     tags$p(paste(vapply(names(summaries), function(name) paste0(name, ": ", summaries[[name]]), character(1)), collapse = " | ")),
     tags$p(class = "structural-result-note", if (ko) "Good/Marginal/Review 표시는 흔히 쓰는 근사 기준에 따른 설명용 안내입니다. 보편적 수용 규칙이 아니며 모형 식별, 잔차 진단, 모수 타당성, 이론, 표본 특성, 대안 모형 비교를 대체하지 않습니다." else "Good/Marginal/Review labels are descriptive reference guidance based on commonly used approximate cutoffs. They are not universal acceptance rules and do not replace model identification, residual diagnostics, parameter plausibility, theory, sample characteristics, or comparison with plausible alternatives."),
     tags$p(class = "structural-result-note", if (ko) "증분 적합도 안내: CFI/TLI >= .95 Good, >= .90 Marginal. 절대 적합도 안내: RMSEA <= .06 Good, <= .08 Marginal; SRMR <= .08 Good, <= .10 Marginal. 이 범위 밖 값은 Review로 표시합니다." else "Incremental-fit guidance: CFI/TLI >= .95 Good, >= .90 Marginal. Absolute-fit guidance: RMSEA <= .06 Good, <= .08 Marginal; SRMR <= .08 Good, <= .10 Marginal. Values outside these ranges are marked Review."),
-    if (any(table$Guidance == "Not assessed")) tags$p(class = "structural-result-note", if (ko) "포화모형(df = 0)이거나 적합도 지수가 없으면 적합도 안내를 평가하지 않습니다." else "Fit guidance is not assessed for saturated models (df = 0) or unavailable fit indices.")
+    if (any(table$Guidance == "Not assessed")) tags$p(class = "structural-result-note", if (ko) "포화모형(df = 0)이거나 적합도 지수가 없으면 적합도 안내를 평가하지 않습니다." else "Fit guidance is not assessed for saturated models (df = 0) or unavailable fit indices."),
+    if (nrow(additional_fit)) tagList(
+      tags$h5(if (ko) "표 2 가이드: 표 2에 직접 표시하지 않은 추가 적합도 통계량" else "Guide for Table 2: Additional fit indices not shown in Table 2"),
+      structural_canvas_basic_html_table(additional_fit, class = "table table-striped table-bordered structural-additional-fit-indices-table")
+    )
   )
 
 }

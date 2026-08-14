@@ -50,7 +50,7 @@ notification_source <- readLines(file.path("R", "setup_custom_model_canvas_struc
 pls_engine_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_pls_engine.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 stopifnot(
   grepl("PLS structural model effects", ui_source, fixed = TRUE),
-  grepl("PLS 구조모형 효과", ui_source, fixed = TRUE),
+  grepl("2. PLS structural model effects", ui_source, fixed = TRUE),
   grepl("total and indirect effects", ui_source, fixed = TRUE),
   grepl("PLSpredict cross-validation", ui_source, fixed = TRUE),
   grepl("PLSpredict predictive assessment", ui_source, fixed = TRUE),
@@ -194,8 +194,14 @@ result_layout_source <- paste(readLines(file.path("R", "setup_custom_model_canva
 stopifnot(
   grepl('uiOutput(paste0(prefix, "_result_htmt"))', result_layout_source, fixed = TRUE),
   grepl('uiOutput(paste0(prefix, "_result_htmt_details"))', result_layout_source, fixed = TRUE),
+  grepl("structural_canvas_measurement_html_table", result_layout_source, fixed = TRUE),
+  grepl('h4("Modification indices (MI)")', result_layout_source, fixed = TRUE),
   regexpr('uiOutput\\(paste0\\(prefix, "_result_reporting_context"\\)\\)', result_layout_source) >
     regexpr('uiOutput\\(paste0\\(prefix, "_result_measurement"\\)\\)', result_layout_source),
+  regexpr('uiOutput\\(paste0\\(prefix, "_result_mi_section"\\)\\)', result_layout_source) >
+    regexpr('uiOutput\\(paste0\\(prefix, "_result_measurement"\\)\\)', result_layout_source),
+  regexpr('uiOutput\\(paste0\\(prefix, "_result_mi_section"\\)\\)', result_layout_source) <
+    regexpr('uiOutput\\(paste0\\(prefix, "_result_residuals"\\)\\)', result_layout_source),
   regexpr('uiOutput\\(paste0\\(prefix, "_result_residuals"\\)\\)', result_layout_source) >
     regexpr('uiOutput\\(paste0\\(prefix, "_result_measurement"\\)\\)', result_layout_source),
   regexpr('uiOutput\\(paste0\\(prefix, "_result_residuals"\\)\\)', result_layout_source) <
