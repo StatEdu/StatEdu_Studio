@@ -5,7 +5,7 @@
   var SNAP_POINTS = [20, 30, 40, 50, 60, 70, 80];
   var ANCHOR_GAP = 2.5;
   var MODERATION_ANCHOR_GAP = 4;
-  var ARROW_MARKER_CLEARANCE = 1.5;
+  var ARROW_MARKER_CLEARANCE = 0;
   var EDGE_SIDES = ["top", "right", "bottom", "left"];
 
   function edgeById(instance, id) {
@@ -568,7 +568,7 @@
     marker.setAttribute("id", id);
     marker.setAttribute("markerWidth", arrowHead === "circle" ? "8" : (arrowHead === "line" ? "10" : "10"));
     marker.setAttribute("markerHeight", arrowHead === "circle" ? "8" : (arrowHead === "line" ? "8" : "10"));
-    marker.setAttribute("refX", arrowHead === "circle" ? "6" : (arrowHead === "line" ? "8" : "8"));
+    marker.setAttribute("refX", arrowHead === "circle" ? "6" : (arrowHead === "line" ? "8" : (arrowHead === "open" ? "8" : "9")));
     marker.setAttribute("refY", arrowHead === "circle" ? "4" : (arrowHead === "line" ? "4" : "3"));
     marker.setAttribute("viewBox", arrowHead === "line" ? "0 0 10 8" : "0 0 10 10");
     marker.setAttribute("orient", "auto-start-reverse");

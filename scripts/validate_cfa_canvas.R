@@ -4,7 +4,8 @@ stopifnot(requireNamespace("lavaan", quietly = TRUE))
 edge_source <- paste(readLines(file.path("www", "model-canvas", "edges.js"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 stopifnot(
   grepl("ARROW_MARKER_CLEARANCE", edge_source, fixed = TRUE),
-  grepl("var ARROW_MARKER_CLEARANCE = 1.5;", edge_source, fixed = TRUE),
+  grepl("var ARROW_MARKER_CLEARANCE = 0;", edge_source, fixed = TRUE),
+  grepl("arrowHead === \"open\" ? \"8\" : \"9\"", edge_source, fixed = TRUE),
   grepl("function visibleArrowEndpoints", edge_source, fixed = TRUE),
   grepl("to: pointShiftedToward(endpoints.to, endpoints.from, ARROW_MARKER_CLEARANCE)", edge_source, fixed = TRUE),
   grepl("return visibleArrowEndpoints(edge, {\n        from: radialNodeAnchor(instance, from, to)", edge_source, fixed = TRUE),
