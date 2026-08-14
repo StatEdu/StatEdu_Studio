@@ -171,10 +171,9 @@ structural_canvas_indirect_moderation_jn_rows <- function(effect_definitions, mo
           }
           structural_canvas_moderation_delta_se(gradient, covariance)
         }
-        path_text <- paste(path, collapse = " -> ")
         rows[[length(rows) + 1L]] <- structural_canvas_moderation_interval_rows(
           "Indirect",
-          path_text,
+          paste(path, collapse = " -> "),
           definition$moderator,
           moderator_mean,
           centered_min,
@@ -191,9 +190,32 @@ structural_canvas_indirect_moderation_jn_rows <- function(effect_definitions, mo
   do.call(rbind, rows)
 }
 
+structural_canvas_moderation_factor_score_values <- function(fit, latent_name) {
+  scores <- tryCatch(lavaan::lavPredict(fit, method = "regression"), error = function(error) NULL)
+  if (is.null(scores)) return(numeric(0))
+  if (is.list(scores)) scores <- do.call(rbind, lapply(scores, as.data.frame))
+  scores <- as.data.frame(scores)
+  if (!latent_name %in% names(scores)) return(numeric(0))
+  values <- suppressWarnings(as.numeric(scores[[latent_name]]))
+  values[is.finite(values)]
+}
+
+structural_canvas_moderation_update_factor_score_ranges <- function(definitions, fit) {
+  lapply(definitions, function(definition) {
+    if (!identical(as.character(definition$moderator_role %||% ""), "latent")) return(definition)
+    values <- structural_canvas_moderation_factor_score_values(fit, as.character(definition$moderator %||% ""))
+    if (length(values) < 2L) return(definition)
+    definition$moderator_mean <- 0
+    definition$moderator_min <- min(values, na.rm = TRUE)
+    definition$moderator_max <- max(values, na.rm = TRUE)
+    definition
+  })
+}
+
 structural_canvas_moderation_jn_table <- function(bundle, alpha = .05) {
   definitions <- bundle$diagnostics$moderation_definitions %||% bundle$moderation_definitions %||% list()
   if (!length(definitions) || !inherits(bundle$fit, "lavaan")) return(data.frame())
+  definitions <- structural_canvas_moderation_update_factor_score_ranges(definitions, bundle$fit)
   coefficients <- lavaan::coef(bundle$fit)
   covariance <- tryCatch(as.matrix(lavaan::lavInspect(bundle$fit, "vcov")), error = function(error) matrix(numeric(0), 0L, 0L))
   estimates <- lavaan::parameterEstimates(bundle$fit)
@@ -219,7 +241,7 @@ structural_canvas_register_moderation_outputs <- function(output, prefix, fit_re
     div(class = "result-section regression-result-panel structural-moderation-jn-result",
       h4(if (ko) "Johnson-Neyman 조절효과" else "Johnson-Neyman moderation"),
       structural_canvas_basic_html_table(table),
-      tags$p(class = "structural-result-note", if (ko) "이 표는 관측 연속형 조절변수가 연결된 잠재 구조경로에서 product-indicator 상호작용항 또는 조절된 매개효과 index가 유의한 경우에만 표시됩니다." else "This table is shown only when a product-indicator interaction term or moderated-mediation index is significant for a latent structural path moderated by an observed continuous moderator.")
+      tags$p(class = "structural-result-note", if (ko) "이 표는 관측 연속형 또는 잠재 조절변수가 연결된 잠재 구조경로에서 product-indicator 상호작용항 또는 조절된 매개효과 index가 유의한 경우에만 표시됩니다. 잠재 조절변수의 범위는 lavaan 회귀 요인점수 척도로 표시됩니다." else "This table is shown only when a product-indicator interaction term or moderated-mediation index is significant for a latent structural path moderated by an observed continuous or latent moderator. Latent moderator ranges are reported on the lavaan regression factor-score scale.")
     )
   })
   invisible(TRUE)

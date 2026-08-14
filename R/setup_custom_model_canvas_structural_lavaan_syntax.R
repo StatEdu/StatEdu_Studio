@@ -44,6 +44,17 @@ structural_canvas_latent_indicators <- function(snapshot, edges, latent_id) {
   }, character(1)))
 }
 
+structural_canvas_moderation_range <- function(values, center = TRUE) {
+  values <- suppressWarnings(as.numeric(values))
+  mean_value <- if (isTRUE(center)) mean(values, na.rm = TRUE) else 0
+  list(
+    mean = mean_value,
+    centered = values - mean_value,
+    min = min(values, na.rm = TRUE),
+    max = max(values, na.rm = TRUE)
+  )
+}
+
 structural_canvas_structural_edge_label <- function(edge, index) {
   equality_label <- trimws(as.character(edge$equalityLabel %||% ""))
   parameter_name <- trimws(as.character(edge$parameterName %||% ""))
@@ -72,10 +83,8 @@ structural_canvas_structural_moderation_terms <- function(snapshot, data, edges,
     target_edge_id <- as.character(moderation$toEdge %||% "")
     if (!nzchar(target_edge_id) || !target_edge_id %in% names(edge_info_by_id)) next
     source <- structural_canvas_node(snapshot, moderation$from)
-    if (is.null(source) || !identical(source$role, "moderator")) next
+    if (is.null(source) || !(source$role %in% c("moderator", "latent"))) next
     moderator <- structural_canvas_name(source)
-    if (!moderator %in% names(data)) stop(paste0("The moderator variable is not in the data: ", moderator, "."))
-    if (!is.numeric(data[[moderator]])) stop(paste0("Johnson-Neyman SEM moderation currently requires a continuous numeric observed moderator: ", moderator, "."))
     edge_info <- edge_info_by_id[[target_edge_id]]
     predictor_node <- structural_canvas_node(snapshot, edge_info$edge$from)
     predictor_indicators <- structural_canvas_latent_indicators(snapshot, edges, predictor_node$id)
@@ -83,14 +92,50 @@ structural_canvas_structural_moderation_terms <- function(snapshot, data, edges,
     if (length(predictor_indicators) < 2L) {
       stop(paste0("Latent SEM moderation requires at least two observed indicators for the moderated predictor: ", edge_info$predictor, "."))
     }
-    moderator_mean <- mean(data[[moderator]], na.rm = TRUE)
-    moderator_centered <- data[[moderator]] - moderator_mean
+    product_specs <- list()
+    if (identical(source$role, "latent")) {
+      moderator_indicators <- structural_canvas_latent_indicators(snapshot, edges, source$id)
+      moderator_indicators <- moderator_indicators[moderator_indicators %in% names(data)]
+      if (length(moderator_indicators) < 2L) {
+        stop(paste0("Latent SEM moderation requires at least two observed indicators for the latent moderator: ", moderator, "."))
+      }
+      for (indicator in c(predictor_indicators, moderator_indicators)) {
+        if (!is.numeric(data[[indicator]])) stop(paste0("Product-indicator SEM moderation requires numeric indicators. Check: ", indicator, "."))
+      }
+      for (predictor_indicator in predictor_indicators) {
+        for (moderator_indicator in moderator_indicators) {
+          product_specs[[length(product_specs) + 1L]] <- list(
+            predictor_indicator = predictor_indicator,
+            moderator_indicator = moderator_indicator,
+            moderator_centered = data[[moderator_indicator]] - mean(data[[moderator_indicator]], na.rm = TRUE)
+          )
+        }
+      }
+      moderator_range <- list(mean = 0, min = -2, max = 2)
+    } else {
+      if (!moderator %in% names(data)) stop(paste0("The moderator variable is not in the data: ", moderator, "."))
+      if (!is.numeric(data[[moderator]])) stop(paste0("Johnson-Neyman SEM moderation currently requires a continuous numeric observed moderator: ", moderator, "."))
+      moderator_values <- structural_canvas_moderation_range(data[[moderator]], center = TRUE)
+      for (indicator in predictor_indicators) {
+        if (!is.numeric(data[[indicator]])) stop(paste0("Product-indicator SEM moderation requires numeric indicators. Check: ", indicator, "."))
+        product_specs[[length(product_specs) + 1L]] <- list(
+          predictor_indicator = indicator,
+          moderator_indicator = moderator,
+          moderator_centered = moderator_values$centered
+        )
+      }
+      moderator_range <- list(mean = moderator_values$mean, min = moderator_values$min, max = moderator_values$max)
+    }
     product_names <- character(0)
-    for (indicator in predictor_indicators) {
-      if (!is.numeric(data[[indicator]])) stop(paste0("Product-indicator SEM moderation requires numeric indicators. Check: ", indicator, "."))
-      product_name <- structural_canvas_moderation_product_name(edge_info$predictor, moderator, indicator, existing_names)
+    for (product_spec in product_specs) {
+      product_name <- structural_canvas_moderation_product_name(
+        edge_info$predictor,
+        moderator,
+        paste(product_spec$predictor_indicator, product_spec$moderator_indicator, sep = "_"),
+        existing_names
+      )
       existing_names <- c(existing_names, product_name)
-      data[[product_name]] <- (data[[indicator]] - mean(data[[indicator]], na.rm = TRUE)) * moderator_centered
+      data[[product_name]] <- (data[[product_spec$predictor_indicator]] - mean(data[[product_spec$predictor_indicator]], na.rm = TRUE)) * product_spec$moderator_centered
       product_names <- c(product_names, product_name)
     }
     interaction_factor <- structural_canvas_structural_effect_label("statedu_int", edge_info$predictor, moderator)
@@ -107,9 +152,10 @@ structural_canvas_structural_moderation_terms <- function(snapshot, data, edges,
       interaction_label = interaction_label,
       interaction_factor = interaction_factor,
       product_indicators = product_names,
-      moderator_mean = moderator_mean,
-      moderator_min = min(data[[moderator]], na.rm = TRUE),
-      moderator_max = max(data[[moderator]], na.rm = TRUE)
+      moderator_role = source$role,
+      moderator_mean = moderator_range$mean,
+      moderator_min = moderator_range$min,
+      moderator_max = moderator_range$max
     )
   }
   list(data = data, measurement_lines = measurement_lines, structural_lines = structural_lines, definitions = definitions)

@@ -292,6 +292,73 @@ stopifnot(
   is.data.frame(cbsem_moderated_mediation_jn),
   "Indirect" %in% cbsem_moderated_mediation_jn$Effect
 )
+latent_moderation_n <- 520L
+latent_moderation_x <- stats::rnorm(latent_moderation_n)
+latent_moderation_w <- stats::rnorm(latent_moderation_n)
+latent_moderation_m <- (0.50 + 0.95 * latent_moderation_w) * latent_moderation_x + 0.25 * latent_moderation_w + stats::rnorm(latent_moderation_n, sd = 0.45)
+latent_moderation_y <- 0.85 * latent_moderation_m + stats::rnorm(latent_moderation_n, sd = 0.45)
+latent_moderation_data <- data.frame(
+  x1 = 0.86 * latent_moderation_x + stats::rnorm(latent_moderation_n, sd = 0.30),
+  x2 = 0.82 * latent_moderation_x + stats::rnorm(latent_moderation_n, sd = 0.32),
+  x3 = 0.78 * latent_moderation_x + stats::rnorm(latent_moderation_n, sd = 0.34),
+  w1 = 0.86 * latent_moderation_w + stats::rnorm(latent_moderation_n, sd = 0.30),
+  w2 = 0.82 * latent_moderation_w + stats::rnorm(latent_moderation_n, sd = 0.32),
+  w3 = 0.78 * latent_moderation_w + stats::rnorm(latent_moderation_n, sd = 0.34),
+  m1 = 0.86 * latent_moderation_m + stats::rnorm(latent_moderation_n, sd = 0.30),
+  m2 = 0.82 * latent_moderation_m + stats::rnorm(latent_moderation_n, sd = 0.32),
+  m3 = 0.78 * latent_moderation_m + stats::rnorm(latent_moderation_n, sd = 0.34),
+  y1 = 0.86 * latent_moderation_y + stats::rnorm(latent_moderation_n, sd = 0.30),
+  y2 = 0.82 * latent_moderation_y + stats::rnorm(latent_moderation_n, sd = 0.32),
+  y3 = 0.78 * latent_moderation_y + stats::rnorm(latent_moderation_n, sd = 0.34)
+)
+latent_moderation_snapshot <- list(
+  nodes = list(
+    list(id = "lmx", role = "latent", name = "etaX", canvasLabel = "etaX", measurementMode = "reflective"),
+    list(id = "lmw", role = "latent", name = "etaW", canvasLabel = "etaW", measurementMode = "reflective"),
+    list(id = "lmm", role = "latent", name = "etaM", canvasLabel = "etaM", measurementMode = "reflective"),
+    list(id = "lmy", role = "latent", name = "etaY", canvasLabel = "etaY", measurementMode = "reflective"),
+    list(id = "lmx1", role = "indicator", name = "x1", variableId = "x1", canvasLabel = "x1"),
+    list(id = "lmx2", role = "indicator", name = "x2", variableId = "x2", canvasLabel = "x2"),
+    list(id = "lmx3", role = "indicator", name = "x3", variableId = "x3", canvasLabel = "x3"),
+    list(id = "lmw1", role = "indicator", name = "w1", variableId = "w1", canvasLabel = "w1"),
+    list(id = "lmw2", role = "indicator", name = "w2", variableId = "w2", canvasLabel = "w2"),
+    list(id = "lmw3", role = "indicator", name = "w3", variableId = "w3", canvasLabel = "w3"),
+    list(id = "lmm1", role = "indicator", name = "m1", variableId = "m1", canvasLabel = "m1"),
+    list(id = "lmm2", role = "indicator", name = "m2", variableId = "m2", canvasLabel = "m2"),
+    list(id = "lmm3", role = "indicator", name = "m3", variableId = "m3", canvasLabel = "m3"),
+    list(id = "lmy1", role = "indicator", name = "y1", variableId = "y1", canvasLabel = "y1"),
+    list(id = "lmy2", role = "indicator", name = "y2", variableId = "y2", canvasLabel = "y2"),
+    list(id = "lmy3", role = "indicator", name = "y3", variableId = "y3", canvasLabel = "y3")
+  ),
+  edges = list(
+    list(id = "lme1", from = "lmx", to = "lmx1"),
+    list(id = "lme2", from = "lmx", to = "lmx2"),
+    list(id = "lme3", from = "lmx", to = "lmx3"),
+    list(id = "lme4", from = "lmw", to = "lmw1"),
+    list(id = "lme5", from = "lmw", to = "lmw2"),
+    list(id = "lme6", from = "lmw", to = "lmw3"),
+    list(id = "lme7", from = "lmm", to = "lmm1"),
+    list(id = "lme8", from = "lmm", to = "lmm2"),
+    list(id = "lme9", from = "lmm", to = "lmm3"),
+    list(id = "lme10", from = "lmy", to = "lmy1"),
+    list(id = "lme11", from = "lmy", to = "lmy2"),
+    list(id = "lme12", from = "lmy", to = "lmy3"),
+    list(id = "lmp1", from = "lmx", to = "lmm"),
+    list(id = "lmp2", from = "lmm", to = "lmy")
+  ),
+  moderations = list(list(id = "latent_mod_mediation", from = "lmw", toEdge = "lmp1"))
+)
+cbsem_latent_moderation <- run_structural_canvas_analysis(latent_moderation_snapshot, latent_moderation_data, "cbsem", estimator = "MLR", missing = "fiml")
+cbsem_latent_moderation_jn <- structural_canvas_moderation_jn_table(list(fit = cbsem_latent_moderation$fit, diagnostics = cbsem_latent_moderation))
+stopifnot(
+  isTRUE(cbsem_latent_moderation$converged),
+  length(cbsem_latent_moderation$moderation_definitions) == 1L,
+  identical(cbsem_latent_moderation$moderation_definitions[[1L]]$moderator_role, "latent"),
+  grepl("statedu_int", cbsem_latent_moderation$syntax, fixed = TRUE),
+  grepl("statedu_pi_etaX_etaW_x1_w1", cbsem_latent_moderation$syntax, fixed = TRUE),
+  is.data.frame(cbsem_latent_moderation_jn),
+  all(c("Direct", "Indirect") %in% cbsem_latent_moderation_jn$Effect)
+)
 stopifnot(cbsem_structural$Outcome[[1L]] == "eta2")
 stopifnot(cbsem_structural$Predictor[[1L]] == "eta1")
 

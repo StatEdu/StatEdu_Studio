@@ -91,7 +91,7 @@
   }
 
   function validModerationSource(node) {
-    return node && node.role === "moderator";
+    return node && (node.role === "moderator" || node.role === "latent");
   }
 
   function validModeration(instance, moderation) {
