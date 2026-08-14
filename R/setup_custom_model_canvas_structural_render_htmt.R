@@ -1,6 +1,6 @@
 # Structural equation canvas HTMT render outputs.
 
-structural_canvas_register_htmt_outputs <- function(output, prefix, fit_result, app_language_fn = NULL) {
+structural_canvas_register_htmt_outputs <- function(output, prefix, fit_result, result_table = NULL, app_language_fn = NULL) {
 render_htmt_tables <- function(include_details = FALSE) {
   bundle <- fit_result()
   ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
@@ -10,6 +10,16 @@ render_htmt_tables <- function(include_details = FALSE) {
   loadings <- loadings[loadings$rhs %in% lavaan::lavNames(fit, "ov"), , drop = FALSE]
   factor_names <- unique(loadings$lhs)
   if (length(factor_names) < 2L) return(NULL)
+  factor_display_names <- factor_names
+  if (is.function(result_table)) {
+    validity_table <- tryCatch(result_table("validity"), error = function(e) NULL)
+    if (is.data.frame(validity_table) && ncol(validity_table) > length(factor_names)) {
+      candidates <- names(validity_table)[seq.int(2L, length.out = length(factor_names))]
+      candidates <- candidates[nzchar(candidates)]
+      if (length(candidates) == length(factor_names)) factor_display_names <- candidates
+    }
+  }
+  factor_display_map <- stats::setNames(factor_display_names, factor_names)
   indicators_by_factor <- stats::setNames(lapply(factor_names, function(name) unique(loadings$rhs[loadings$lhs == name])), factor_names)
   sample_statistics <- lavaan::lavInspect(fit, "sampstat")
   sample_covariance <- sample_statistics$cov %||% NULL
@@ -18,15 +28,20 @@ render_htmt_tables <- function(include_details = FALSE) {
   threshold <- as.numeric(bundle$htmt_threshold %||% .85)
   htmt <- structural_canvas_htmt(sample_correlations, indicators_by_factor, threshold)
   matrix_values <- matrix("", nrow = length(factor_names), ncol = length(factor_names) + 1L)
-  colnames(matrix_values) <- c("Factor", factor_names)
+  colnames(matrix_values) <- c("Factor", factor_display_names)
   for (row in seq_along(factor_names)) {
-    matrix_values[row, 1L] <- factor_names[[row]]
+    matrix_values[row, 1L] <- factor_display_names[[row]]
     for (column in seq_along(factor_names)) {
       if (row == column) matrix_values[row, column + 1L] <- "—"
       else if (row > column) matrix_values[row, column + 1L] <- format_decimal3(htmt$matrix[row, column])
     }
   }
   pair_table <- htmt$pairs
+  for (column in intersect(c("Factor 1", "Factor 2"), names(pair_table))) {
+    original_values <- as.character(pair_table[[column]])
+    mapped_values <- unname(factor_display_map[original_values])
+    pair_table[[column]] <- ifelse(is.na(mapped_values) | !nzchar(mapped_values), original_values, mapped_values)
+  }
   if ("HTMT" %in% names(pair_table)) pair_table$HTMT <- vapply(pair_table$HTMT, format_decimal3, character(1))
   if ("Reason" %in% names(pair_table)) pair_table$Reason[!nzchar(pair_table$Reason)] <- "—"
   pair_columns <- intersect(c("Factor 1", "Factor 2", "HTMT", "Criterion", "Reason"), names(pair_table))
@@ -62,7 +77,7 @@ render_htmt_tables <- function(include_details = FALSE) {
     ))
   }
   tagList(
-    tags$h5(if (ko) "HTMT 세부 판단" else "HTMT detailed criteria"),
+    tags$h5(if (ko) "표 3 가이드: HTMT 세부 판단" else "Guide for Table 3: HTMT detailed criteria"),
     if (length(pair_columns)) structural_canvas_basic_html_table(pair_table[, pair_columns, drop = FALSE], class = "table table-striped table-bordered structural-htmt-criterion"),
     if (!is.null(bootstrap_table)) tagList(
       tags$h5(if (ko) paste0("HTMT ", htmt_ci_label, " 부트스트랩 신뢰구간 (", bootstrap_reps, "회 재표집; seed = ", bootstrap_seed, ")") else paste0("HTMT ", htmt_ci_label, " bootstrap confidence intervals (", bootstrap_reps, " resamples; seed = ", bootstrap_seed, ")")),

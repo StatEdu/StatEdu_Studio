@@ -481,7 +481,7 @@ structural_canvas_fit_guidance_result_ui <- function(bundle, language) {
     names(severity)[match(score, severity)]
   }, character(1))
   div(class = "structural-fit-guidance-result",
-    tags$h5(if (ko) "기준 기반 적합도 안내" else "Reference-based fit guidance"),
+    tags$h5(if (ko) "표 2 가이드: 기준 기반 적합도 안내" else "Guide for Table 2: Reference-based fit guidance"),
     tags$table(class = "table table-striped table-bordered",
       tags$thead(tags$tr(lapply(names(table), tags$th))),
       tags$tbody(lapply(seq_len(nrow(table)), function(index) tags$tr(lapply(as.character(table[index, ]), tags$td))))
@@ -501,7 +501,7 @@ structural_canvas_rmsea_tests_result_ui <- function(bundle, language = statedu_i
   for (column in c("RMSEA", "Close-fit H0", "Not-close H0")) display[[column]] <- vapply(display[[column]], format_decimal3, character(1))
   for (column in c("Close-fit p", "Not-close p")) display[[column]] <- vapply(display[[column]], format_p, character(1))
   tagList(
-    tags$h5(if (ko) "RMSEA 가설검정" else "RMSEA hypothesis tests"),
+    tags$h5(if (ko) "표 2 가이드: RMSEA 가설검정" else "Guide for Table 2: RMSEA hypothesis tests"),
     tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered",
       tags$thead(tags$tr(lapply(names(display), tags$th))),
       tags$tbody(lapply(seq_len(nrow(display)), function(index) tags$tr(lapply(as.character(display[index, ]), tags$td))))
@@ -517,11 +517,17 @@ structural_canvas_information_criteria_result_ui <- function(bundle, language = 
   table <- structural_canvas_information_criteria(bundle)
   if (!any(is.finite(table$AIC)) && !any(is.finite(table$BIC))) return(NULL)
   display <- table
+  display_columns <- intersect(c(
+    "Model", "N", "Estimator", "Admissible", "LogLik", "Free parameters",
+    "AIC", "BIC", "Adjusted BIC", "Comparison status",
+    "Delta AIC", "Delta BIC", "Delta Adjusted BIC"
+  ), names(display))
+  display <- display[, display_columns, drop = FALSE]
   numeric_columns <- names(display)[vapply(display, is.numeric, logical(1))]
   for (column in numeric_columns) display[[column]] <- vapply(display[[column]], format_decimal3, character(1))
   tagList(
-    tags$h5(if (ko) "우도 기반 정보기준" else "Likelihood-based information criteria"),
-    tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered",
+    tags$h5(if (ko) "표 2 가이드: 우도 기반 정보기준" else "Guide for Table 2: Likelihood-based information criteria"),
+    tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered structural-information-criteria-table",
       tags$thead(tags$tr(lapply(names(display), tags$th))),
       tags$tbody(lapply(seq_len(nrow(display)), function(index) tags$tr(lapply(as.character(display[index, ]), tags$td))))
     )),

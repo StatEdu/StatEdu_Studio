@@ -1554,6 +1554,27 @@
   text-align: center !important;
 }
 
+.structural-htmt-matrix th:not(:first-child),
+.structural-htmt-matrix td:not(:first-child) {
+  text-align: center !important;
+}
+
+.structural-information-criteria-table {
+  min-width: 760px;
+  font-size: 12px;
+}
+
+.structural-information-criteria-table th,
+.structural-information-criteria-table td {
+  white-space: nowrap;
+}
+
+.structural-information-criteria-table th:nth-child(10),
+.structural-information-criteria-table td:nth-child(10) {
+  min-width: 150px;
+  white-space: normal;
+}
+
 .structural-mi-result table th:not(:first-child),
 .structural-mi-result table td:not(:first-child) {
   text-align: right;

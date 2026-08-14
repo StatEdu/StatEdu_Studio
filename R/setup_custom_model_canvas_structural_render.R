@@ -230,6 +230,9 @@ structural_canvas_reporting_context_result_ui <- function(bundle, analysis_type,
 }
 
 structural_canvas_register_result_outputs <- function(input, output, prefix, canvas_output, analysis_type, selected_names_fn, variable_table_fn, dataset_fn, labels_fn, app_language_fn, fit_result, result_table) {
+manuscript_result_table <- function(kind) {
+  structural_canvas_result_table(kind, fit_result, analysis_type, labels_fn, function() "en")
+}
 output[[canvas_output]] <- renderUI({
   structural_equation_workspace(selected_names_fn(), variable_table_fn(), labels_fn(), analysis_type, statedu_current_language(app_language_fn))
 })
@@ -269,13 +272,10 @@ output[[paste0(prefix, "_results")]] <- renderUI({
         tags$p(class = "structural-result-note", if (ko) "PLS-SEM 측정모형 출력은 outer loading, outer weight, item VIF, 교차적재 요약, reflective/formative 측정모드를 표시합니다." else "PLS-SEM measurement output reports outer loadings, outer weights, item VIF, cross-loading summaries, and the reflective/formative measurement mode."),
         tags$p(class = "structural-result-note", if (ko) "Reflective 구성개념은 outer loading과 교차적재를 확인하고, formative 구성개념은 outer weight, item VIF, 지표의 이론적 포괄성을 우선 확인합니다." else "For reflective constructs, review outer loadings and cross-loadings. For formative constructs, prioritize outer weights, item VIF, and substantive indicator coverage."),
         tags$p(class = "structural-result-note", if (ko) "PLS bootstrap을 요청한 경우 loading과 weight의 CI/p 열은 사용 가능한 seminr percentile bootstrap 요약을 사용합니다." else "When PLS bootstrap is requested, loading and weight CI/p columns use seminr percentile bootstrap summaries when available.")
-      ) else tagList(
-        tags$p(class = "structural-result-note", if (ko) "기준 적재량은 고정값이므로 비표준화 SE, z, p를 추정하지 않습니다." else "Reference loadings are fixed values, so their unstandardized SE, z, and p are not estimated."),
-        tags$p(class = "structural-result-note", if (ko) "B 신뢰구간은 비표준화 적재량의 95% 구간입니다. 기준 적재량은 고정값에서 같은 하한과 상한을 갖습니다." else "B confidence intervals are 95% intervals for unstandardized loadings. Reference loadings have identical lower and upper limits at their fixed values."),
-        tags$p(class = "structural-result-note", if (ko) "아래 보조 측정 진단 표에는 표준화 적재량 신뢰구간, R² 신뢰구간, 표준화 잔차분산, 교차적재 표시, 적재량 안내를 별도로 표시합니다." else "The supplementary measurement diagnostics table below lists standardized-loading CIs, R² CIs, standardized residual variances, cross-loading flags, and loading guidance.")
-      )
+      ) else structural_canvas_symbol_footnotes(manuscript_result_table("measurement"))
     ),
     uiOutput(paste0(prefix, "_result_residuals")),
+    uiOutput(paste0(prefix, "_result_mi_section")),
     div(class = "result-section regression-result-panel structural-supplementary-result",
       h4(if (ko) "보조 결과 및 진단" else "Supplementary results and diagnostics"),
       uiOutput(paste0(prefix, "_result_reporting_context")),
@@ -302,39 +302,53 @@ output[[paste0(prefix, "_results")]] <- renderUI({
     ),
     uiOutput(paste0(prefix, "_result_higher_order")),
     uiOutput(paste0(prefix, "_result_mi_holdout")),
-    uiOutput(paste0(prefix, "_result_mi_history")),
-    if (analysis_type != "plssem") div(class = "result-section regression-result-panel structural-mi-result", h4(if (ko) "6. 수정지수(MI)" else "6. Modification indices (MI)"), uiOutput(paste0(prefix, "_result_mi")))
+    uiOutput(paste0(prefix, "_result_mi_history"))
   )
 })
   output[[paste0(prefix, "_result_reporting_context")]] <- renderUI({
     structural_canvas_reporting_context_result_ui(fit_result(), analysis_type, statedu_current_language(app_language_fn))
   })
   structural_canvas_register_fit_diagnostic_outputs(
-    output, prefix, analysis_type, fit_result, result_table, dataset_fn, app_language_fn
+    output, prefix, analysis_type, fit_result, manuscript_result_table, dataset_fn, app_language_fn
   )
   structural_canvas_register_validity_outputs(
-    output, prefix, analysis_type, fit_result, result_table, app_language_fn
+    output, prefix, analysis_type, fit_result, manuscript_result_table, app_language_fn
   )
   if (analysis_type != "plssem") structural_canvas_register_local_fit_outputs(
     output, prefix, fit_result, app_language_fn
   )
 for (kind in c("overview", "structural")) local({
   result_kind <- kind
-  output[[paste0(prefix, "_result_", result_kind)]] <- renderTable(result_table(result_kind), striped = TRUE, bordered = TRUE, sanitize.text.function = identity)
+  output[[paste0(prefix, "_result_", result_kind)]] <- renderTable(manuscript_result_table(result_kind), striped = TRUE, bordered = TRUE, sanitize.text.function = identity)
 })
   output[[paste0(prefix, "_result_validity")]] <- renderUI({
-    structural_canvas_basic_html_table(result_table("validity"), class = "table table-striped table-bordered structural-validity-table")
+    table <- manuscript_result_table("validity")
+    tagList(
+      structural_canvas_basic_html_table(table, class = "table table-striped table-bordered structural-validity-table"),
+      tags$p(class = "structural-result-note", "\u03b1 = Cronbach's alpha; \u03c9 total = omega total."),
+      structural_canvas_symbol_footnotes(table)
+    )
   })
   output[[paste0(prefix, "_result_measurement")]] <- renderUI({
-    structural_canvas_basic_html_table(result_table("measurement"))
+    structural_canvas_basic_html_table(manuscript_result_table("measurement"))
   })
   output[[paste0(prefix, "_result_measurement_diagnostics")]] <- renderUI({
     if (identical(analysis_type, "plssem")) return(NULL)
     diagnostics <- result_table("measurement_diagnostics")
     if (!nrow(diagnostics)) return(NULL)
     tagList(
-      tags$h5("Supplementary measurement diagnostics"),
+      tags$h5(if (identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")) "표 4 가이드: 보조 측정 진단" else "Guide for Table 4: Supplementary measurement diagnostics"),
       structural_canvas_basic_html_table(diagnostics)
+    )
+  })
+  output[[paste0(prefix, "_result_mi_section")]] <- renderUI({
+    if (identical(analysis_type, "plssem")) return(NULL)
+    table <- result_table("mi")
+    if (!is.data.frame(table) || !nrow(table)) return(NULL)
+    ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
+    div(class = "result-section regression-result-panel structural-mi-result",
+      h4(if (ko) "6. 수정지수(MI)" else "6. Modification indices (MI)"),
+      uiOutput(paste0(prefix, "_result_mi"))
     )
   })
   structural_canvas_register_mi_render_outputs(
