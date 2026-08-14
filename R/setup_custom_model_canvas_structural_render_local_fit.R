@@ -14,10 +14,10 @@ output[[paste0(prefix, "_result_residuals")]] <- renderUI({
         if (is.finite(value)) values[row_index, column_index + 1L] <- format_decimal3(value)
       }
     }
-    tagList(tags$h5(title), tags$table(class = "table table-striped table-bordered structural-residual-matrix",
-      tags$thead(tags$tr(lapply(colnames(values), tags$th))),
-      tags$tbody(lapply(seq_len(nrow(values)), function(index) tags$tr(lapply(as.character(values[index, ]), tags$td))))
-    ))
+    tagList(
+      tags$h5(title),
+      structural_canvas_basic_html_table(as.data.frame(values, check.names = FALSE), class = "table table-striped table-bordered structural-residual-matrix")
+    )
   }
   largest <- diagnostics$largest
   if (nrow(largest)) {
@@ -29,10 +29,7 @@ output[[paste0(prefix, "_result_residuals")]] <- renderUI({
     matrix_table(diagnostics$standardized, if (ko) "표준화 잔차 행렬" else "Standardized residual matrix"),
     matrix_table(diagnostics$correlation, if (ko) "상관 잔차 행렬" else "Correlation residual matrix"),
     tags$h5(paste0(if (ko) "큰 표준화 잔차 (|z| >= " else "Large standardized residuals (|z| >= ", diagnostics$cutoff, ")")),
-    if (!nrow(largest)) tags$p(if (ko) "기준값을 넘는 잔차가 없습니다." else "No residuals exceeded the cutoff.") else tags$table(class = "table table-striped table-bordered",
-      tags$thead(tags$tr(lapply(names(largest), tags$th))),
-      tags$tbody(lapply(seq_len(nrow(largest)), function(index) tags$tr(lapply(as.character(largest[index, ]), tags$td))))
-    ),
+    if (!nrow(largest)) tags$p(if (ko) "기준값을 넘는 잔차가 없습니다." else "No residuals exceeded the cutoff.") else structural_canvas_basic_html_table(largest),
     tags$p(class = "structural-result-note", if (ko) "큰 표준화 잔차는 모형 부적합이 국지적으로 나타나는 영역을 가리킵니다. 자동 수정 지시로 사용하지 말고 이론과 함께 해석하십시오." else "Large standardized residuals identify local areas of model misfit and should be interpreted with theory rather than used as automatic modification instructions.")
   )
 })
@@ -114,10 +111,7 @@ output[[paste0(prefix, "_result_higher_order")]] <- renderUI({
   }
   div(class = "result-section regression-result-panel structural-higher-order-result",
     h4(if (ko) "고차요인 CFA 결과" else "Higher-order CFA results"),
-    tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered",
-      tags$thead(tags$tr(lapply(names(display), tags$th))),
-      tags$tbody(lapply(seq_len(nrow(display)), function(index) tags$tr(lapply(as.character(display[index, ]), tags$td))))
-    )),
+    structural_canvas_basic_html_table(display),
     if (isTRUE(omega_h$available)) tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered",
       tags$thead(tags$tr(tags$th(if (ko) "고차요인" else "Higher-order factor"), tags$th(if (ko) "지표 수" else "Indicators"), tags$th(if (ko) "위계적 omega (omega-h)" else "Hierarchical omega (ωh)"), tags$th(if (ko) "해석" else "Guidance"))),
       tags$tbody(tags$tr(

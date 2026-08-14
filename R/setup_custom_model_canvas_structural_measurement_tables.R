@@ -1,7 +1,7 @@
 # Structural equation canvas measurement loading result tables.
 
 structural_canvas_measurement_result_table <- function(kind, fit, ko, fmt, display_name) {
-    if (identical(kind, "measurement")) {
+    if (kind %in% c("measurement", "measurement_diagnostics")) {
       raw <- lavaan::parameterEstimates(fit)
       parameter_table <- lavaan::parameterTable(fit)
       standardized <- lavaan::standardizedSolution(fit, ci = TRUE, level = .95)
@@ -55,8 +55,19 @@ structural_canvas_measurement_result_table <- function(kind, fit, ko, fmt, displ
         `Std. residual variance` = residual_display, `Cross-loading` = ifelse(cross_loaded, "Yes", "No"), Guidance = loading_guidance,
         z = z, p = p, check.names = FALSE
       )
-      names(table)[1:2] <- if (ko) c("잠재변수", "측정변수") else c("Latent", "Indicator")
+      names(table)[1:2] <- c("Latent", "Indicator")
       names(table)[names(table) == "R2"] <- "R²"
+      if (identical(kind, "measurement_diagnostics")) {
+        return(table[, c(
+          "Latent", "Indicator", "β 95% CI lower", "β 95% CI upper",
+          "R² 95% CI lower", "R² 95% CI upper",
+          "Std. residual variance", "Cross-loading", "Guidance"
+        ), drop = FALSE])
+      }
+      table <- table[, c(
+        "Latent", "Indicator", "B", "B 95% CI lower", "B 95% CI upper",
+        "SE", "beta", "R²", "z", "p"
+      ), drop = FALSE]
       return(table)
     }
   NULL

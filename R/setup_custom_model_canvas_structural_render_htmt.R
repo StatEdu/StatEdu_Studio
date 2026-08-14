@@ -55,21 +55,12 @@ output[[paste0(prefix, "_result_htmt")]] <- renderUI({
     }
   }
   tagList(
-    tags$h5(if (ko) paste0("HTMT (기준 = ", format(threshold, nsmall = 2L), ")") else paste0("HTMT (threshold = ", format(threshold, nsmall = 2L), ")")),
-    tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered structural-htmt-matrix",
-      tags$thead(tags$tr(lapply(colnames(matrix_values), tags$th))),
-      tags$tbody(lapply(seq_len(nrow(matrix_values)), function(index) tags$tr(lapply(as.character(matrix_values[index, ]), tags$td))))
-    )),
-    tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered structural-htmt-criterion",
-      tags$thead(tags$tr(lapply(c("Factor 1", "Factor 2", "HTMT", "Criterion", "Reason"), tags$th))),
-      tags$tbody(lapply(seq_len(nrow(pair_table)), function(index) tags$tr(lapply(as.character(pair_table[index, ]), tags$td))))
-    )),
+    tags$h5(paste0("HTMT (threshold = ", format(threshold, nsmall = 2L), ")")),
+    structural_canvas_basic_html_table(as.data.frame(matrix_values, check.names = FALSE), class = "table table-striped table-bordered structural-htmt-matrix"),
+    structural_canvas_basic_html_table(pair_table[, c("Factor 1", "Factor 2", "HTMT", "Criterion", "Reason"), drop = FALSE], class = "table table-striped table-bordered structural-htmt-criterion"),
     if (!is.null(bootstrap_table)) tagList(
       tags$h5(if (ko) paste0("HTMT ", htmt_ci_label, " 부트스트랩 신뢰구간 (", bootstrap_reps, "회 재표집; seed = ", bootstrap_seed, ")") else paste0("HTMT ", htmt_ci_label, " bootstrap confidence intervals (", bootstrap_reps, " resamples; seed = ", bootstrap_seed, ")")),
-      tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered structural-htmt-bootstrap",
-        tags$thead(tags$tr(lapply(names(bootstrap_table), tags$th))),
-        tags$tbody(lapply(seq_len(nrow(bootstrap_table)), function(index) tags$tr(lapply(as.character(bootstrap_table[index, ]), tags$td))))
-      ))
+      structural_canvas_basic_html_table(bootstrap_table, class = "table table-striped table-bordered structural-htmt-bootstrap")
     ),
     tags$p(class = "structural-result-note", if (ko) "HTMT는 문항 상관의 절댓값을 사용합니다. 선택 기준보다 낮은 값은 'Criterion met'으로 표시됩니다." else "HTMT uses absolute item correlations. Values below the selected threshold are marked 'Criterion met'."),
     if (length(bundle$ordered %||% character(0))) tags$p(class = "structural-result-note", if (ko) "순서형 지표에서는 HTMT가 lavaan의 polychoric latent-response 상관을 사용합니다." else "For ordered indicators, HTMT uses lavaan's polychoric latent-response correlations."),

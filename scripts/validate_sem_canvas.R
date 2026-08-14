@@ -176,8 +176,24 @@ stopifnot(
   names(cbsem_fit_ko)[[1L]] == "모형",
   cbsem_fit_ko[[1L]][[1L]] == "연구모형"
 )
-stopifnot(nrow(structural_canvas_result_table("validity", cbsem_result, "cbsem", labels_fn, language_fn)) > 0L)
-stopifnot(nrow(structural_canvas_result_table("measurement", cbsem_result, "cbsem", labels_fn, language_fn)) > 0L)
+cbsem_validity <- structural_canvas_result_table("validity", cbsem_result, "cbsem", labels_fn, language_fn)
+cbsem_measurement <- structural_canvas_result_table("measurement", cbsem_result, "cbsem", labels_fn, language_fn)
+cbsem_measurement_diagnostics <- structural_canvas_result_table("measurement_diagnostics", cbsem_result, "cbsem", labels_fn, language_fn)
+stopifnot(
+  nrow(cbsem_validity) > 0L,
+  identical(names(cbsem_validity), c("Latent", "eta1", "eta2", "Max |r|", "AVE", "CR", "Cronbach's alpha", "Omega total")),
+  !any(c("FL criterion", "k", "Guidance") %in% names(cbsem_validity)),
+  nrow(cbsem_measurement) > 0L,
+  identical(names(cbsem_measurement), c("Latent", "Indicator", "B", "B 95% CI lower", "B 95% CI upper", "SE", "beta", "R²", "z", "p")),
+  !any(c("β 95% CI lower", "β 95% CI upper", "R² 95% CI lower", "R² 95% CI upper", "Std. residual variance", "Cross-loading", "Guidance") %in% names(cbsem_measurement)),
+  nrow(cbsem_measurement_diagnostics) == nrow(cbsem_measurement),
+  all(c("β 95% CI lower", "β 95% CI upper", "R² 95% CI lower", "R² 95% CI upper", "Std. residual variance", "Cross-loading", "Guidance") %in% names(cbsem_measurement_diagnostics))
+)
+alignment_html <- paste(as.character(structural_canvas_basic_html_table(data.frame(Label = c("x", "y"), Value = c(".12", "No"), check.names = FALSE))), collapse = "\n")
+stopifnot(
+  grepl("structural-numeric-cell", alignment_html, fixed = TRUE),
+  grepl("text-align: right;", alignment_html, fixed = TRUE)
+)
 cbsem_structural <- structural_canvas_result_table("structural", cbsem_result, "cbsem", labels_fn, language_fn)
 stopifnot(nrow(cbsem_structural) == 1L)
 stopifnot("Effect" %in% names(cbsem_structural), cbsem_structural$Effect[[1L]] == "Direct")

@@ -63,8 +63,8 @@ structural_canvas_validity_result_table <- function(kind, bundle, snapshot, fit,
       }, numeric(1)), latent_names)
       omega <- cr
       constrained_single_factors <- structural_canvas_constrained_single_indicators(snapshot)
-      table <- matrix("", nrow = length(latent_names), ncol = length(latent_names) + 9L)
-      colnames(table) <- c(if (ko) "잠재변수" else "Latent", vapply(latent_names, display_name, character(1)), "Max |r|", "FL criterion", "k", "AVE", "CR", "Cronbach's α", "ωtotal", "Guidance")
+      table <- matrix("", nrow = length(latent_names), ncol = length(latent_names) + 6L)
+      colnames(table) <- c("Latent", vapply(latent_names, display_name, character(1)), "Max |r|", "AVE", "CR", "Cronbach's alpha", "Omega total")
       for (row in seq_along(latent_names)) {
         latent_name <- latent_names[[row]]
         single_indicator <- indicator_counts[[latent_name]] < 2L
@@ -75,21 +75,18 @@ structural_canvas_validity_result_table <- function(kind, bundle, snapshot, fit,
           if (row == column) table[row, column + 1L] <- if (single_indicator && !constrained_single) "(N/A‡)" else if (!is.finite(ave_value) || ave_value < 0) "(N/A†)" else paste0("(", format_decimal3(sqrt(ave_value)), if (ave_value > 1) "†" else if (constrained_single) "¶" else "", ")")
           if (row > column) table[row, column + 1L] <- format_decimal3(correlations[latent_name, latent_names[[column]]])
         }
-        table[row, ncol(table) - 7L] <- if (is.finite(fl$max_correlation[[latent_name]])) format_decimal3(fl$max_correlation[[latent_name]]) else "—"
-        table[row, ncol(table) - 6L] <- if (single_indicator) if (constrained_single) "Not assessed¶" else "Not assessed‡" else if (length(missing_covariances)) "Not assessed§" else fl$criterion[[latent_name]]
-        table[row, ncol(table) - 5L] <- as.character(indicator_counts[[latent_name]])
+        table[row, ncol(table) - 4L] <- if (is.finite(fl$max_correlation[[latent_name]])) format_decimal3(fl$max_correlation[[latent_name]]) else "—"
         ave_marker <- if (!is.finite(ave_value) || ave_value < 0 || ave_value > 1) "†" else ""
-        table[row, ncol(table) - 4L] <- if (single_indicator && !constrained_single) "N/A‡" else paste0(format_decimal3(ave_value), ave_marker, if (constrained_single && !nzchar(ave_marker)) "¶" else "")
+        table[row, ncol(table) - 3L] <- if (single_indicator && !constrained_single) "N/A‡" else paste0(format_decimal3(ave_value), ave_marker, if (constrained_single && !nzchar(ave_marker)) "¶" else "")
         cr_value <- cr[[latent_name]]
         cr_marker <- if (!is.finite(cr_value) || cr_value < 0 || cr_value > 1) "†" else ""
-        table[row, ncol(table) - 3L] <- if (single_indicator && !constrained_single) "N/A‡" else paste0(format_decimal3(cr_value), cr_marker, if (constrained_single && !nzchar(cr_marker)) "¶" else "")
+        table[row, ncol(table) - 2L] <- if (single_indicator && !constrained_single) "N/A‡" else paste0(format_decimal3(cr_value), cr_marker, if (constrained_single && !nzchar(cr_marker)) "¶" else "")
         alpha_value <- alpha[[latent_name]]
         alpha_marker <- if (!is.finite(alpha_value) || alpha_value < 0 || alpha_value > 1) "†" else ""
-        table[row, ncol(table) - 2L] <- if (single_indicator) if (constrained_single) "N/A¶" else "N/A‡" else paste0(format_decimal3(alpha_value), alpha_marker)
+        table[row, ncol(table) - 1L] <- if (single_indicator) if (constrained_single) "N/A¶" else "N/A‡" else paste0(format_decimal3(alpha_value), alpha_marker)
         omega_value <- omega[[latent_name]]
         omega_marker <- if (!is.finite(omega_value) || omega_value < 0 || omega_value > 1) "†" else ""
-        table[row, ncol(table) - 1L] <- if (single_indicator && !constrained_single) "N/A‡" else paste0(format_decimal3(omega_value), omega_marker, if (constrained_single && !nzchar(omega_marker)) "¶" else "")
-        table[row, ncol(table)] <- if (single_indicator) if (constrained_single) "Externally constrained¶" else "Not assessed‡" else structural_canvas_measurement_quality_guidance(ave_value, cr_value, alpha_value, omega_value)
+        table[row, ncol(table)] <- if (single_indicator && !constrained_single) "N/A‡" else paste0(format_decimal3(omega_value), omega_marker, if (constrained_single && !nzchar(omega_marker)) "¶" else "")
       }
       return(as.data.frame(table, check.names = FALSE))
     }
