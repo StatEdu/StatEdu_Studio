@@ -114,6 +114,30 @@ structural_canvas_identification_diagnostics <- function(snapshot) {
   directed <- Filter(function(edge) !identical(edge$kind, "covariance"), edges)
   signatures <- vapply(directed, function(edge) paste(edge$from, edge$to, edge$pathType %||% "regression", sep = "|"), character(1))
   if (anyDuplicated(signatures)) add("Error", "Model", "duplicate_path", "Duplicate directed paths were found between the same endpoints.")
+  covariance_edges <- Filter(function(edge) identical(edge$kind, "covariance"), edges)
+  covariance_signatures <- vapply(covariance_edges, function(edge) paste(sort(c(as.character(edge$from), as.character(edge$to))), collapse = "|"), character(1))
+  if (anyDuplicated(covariance_signatures)) add("Error", "Model", "duplicate_covariance", "Duplicate covariance paths were found between the same endpoints.")
+  structural_edges <- Filter(function(edge) {
+    if (identical(edge$kind, "covariance") || identical(as.character(edge$pathType %||% ""), "higherOrder")) return(FALSE)
+    from <- structural_canvas_node(snapshot, edge$from)
+    to <- structural_canvas_node(snapshot, edge$to)
+    !is.null(from) && !is.null(to) && identical(from$role, "latent") && identical(to$role, "latent")
+  }, edges)
+  adjacency <- split(vapply(structural_edges, function(edge) as.character(edge$to), character(1)), vapply(structural_edges, function(edge) as.character(edge$from), character(1)))
+  visiting <- character(0)
+  visited <- character(0)
+  has_cycle <- FALSE
+  visit <- function(id) {
+    if (id %in% visiting) return(TRUE)
+    if (id %in% visited) return(FALSE)
+    visiting <<- c(visiting, id)
+    cyclic <- any(vapply(adjacency[[id]] %||% character(0), visit, logical(1)))
+    visiting <<- setdiff(visiting, id)
+    visited <<- c(visited, id)
+    cyclic
+  }
+  for (latent in latents) if (visit(as.character(latent$id))) has_cycle <- TRUE
+  if (has_cycle) add("Error", "Model", "structural_cycle", "The current automatic identification scheme does not support reciprocal or cyclic structural paths.")
   result <- if (length(issues)) do.call(rbind, issues) else data.frame(Severity = character(0), Element = character(0), Code = character(0), Message = character(0), stringsAsFactors = FALSE)
   rownames(result) <- NULL
   result

@@ -74,7 +74,7 @@
       canvasLabel: "",
       role: "latent",
       nodeType: "latent",
-      constructType: "commonFactor",
+      constructType: "unspecified",
       weightingMode: "auto",
       x: x,
       y: y,

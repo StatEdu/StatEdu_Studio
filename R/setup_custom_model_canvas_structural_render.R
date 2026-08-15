@@ -125,7 +125,7 @@ structural_canvas_reporting_context_rows <- function(bundle, analysis_type) {
   ordered <- as.character(bundle$ordered %||% character(0))
   ordered_label <- if (length(ordered)) paste(ordered, collapse = ", ") else "None recorded"
   scaling <- if (identical(analysis_type, "plssem")) {
-    "Composite scores"
+    if (identical(toupper(as.character(bundle$estimator %||% "PLS")), "PLSC")) "PLSc consistency-corrected scores" else "Composite scores"
   } else if (isTRUE(bundle$std_lv)) {
     "std.lv = TRUE"
   } else {
@@ -185,6 +185,7 @@ structural_canvas_reporting_context_display_rows <- function(rows, ko = FALSE) {
     "PLSc path modeling" = "PLSc 경로모형",
     "Valid rows used by seminr; no FIML/pairwise option" = "seminr 유효 행 사용(FIML/pairwise 옵션 없음)",
     "Composite scores" = "합성점수",
+    "PLSc consistency-corrected scores" = "PLSc 일관성 보정 점수",
     "Marker loading scaling" = "기준 적재량 고정",
     "std.lv = TRUE" = "잠재변수 분산 = 1",
     "Executed" = "실행함"
@@ -253,6 +254,7 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
     div(
       class = "structural-analysis-results regression-results",
       h3(if (ko) "분석 결과" else "Analysis Results"),
+      downloadButton(paste0(prefix, "_download_audit"), if (ko) "Audit JSON 다운로드" else "Download audit JSON", class = "btn btn-default btn-sm"),
       if (analysis_type %in% c("cfa", "cbsem", "sem")) downloadButton(paste0(prefix, "_download_reproducibility"), if (ko) "분석 기록 다운로드" else "Download analysis record", class = "btn btn-default btn-sm"),
       if (analysis_type %in% c("cfa", "cbsem", "sem")) downloadButton(paste0(prefix, "_download_tables"), if (ko) "결과표 Excel 다운로드" else "Download result tables", class = "btn btn-default btn-sm"),
       div(
@@ -302,6 +304,7 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
       div(class = "result-section regression-result-panel landscape-table-panel structural-supplementary-result",
         h4(if (ko) "보조 결과 및 진단" else "Supplementary results and diagnostics"),
         uiOutput(paste0(prefix, "_result_reporting_context")),
+        uiOutput(paste0(prefix, "_result_structural_effect_plan")),
         uiOutput(paste0(prefix, "_result_identification")),
         uiOutput(paste0(prefix, "_result_normality")),
         uiOutput(paste0(prefix, "_result_missing_outliers")),
@@ -325,7 +328,9 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
         uiOutput(paste0(prefix, "_result_reliability_bootstrap")),
         uiOutput(paste0(prefix, "_result_factor_scores")),
         uiOutput(paste0(prefix, "_result_measurement_ci")),
-        uiOutput(paste0(prefix, "_result_measurement_diagnostics"))
+        uiOutput(paste0(prefix, "_result_measurement_diagnostics")),
+        if (identical(analysis_type, "plssem")) uiOutput(paste0(prefix, "_result_redundancy")),
+        if (identical(analysis_type, "cfa")) uiOutput(paste0(prefix, "_result_parcel_plan"))
       ),
       uiOutput(paste0(prefix, "_result_higher_order")),
       uiOutput(paste0(prefix, "_result_mi_holdout")),
@@ -413,11 +418,79 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
       structural_canvas_basic_html_table(diagnostics)
     )
   })
+  output[[paste0(prefix, "_result_structural_effect_plan")]] <- renderUI({
+    bundle <- fit_result()
+    plan <- bundle$structural_effect_plan %||% bundle$diagnostics$structural_effect_plan %||% data.frame()
+    if (!nrow(plan)) return(NULL)
+    ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
+    div(
+      class = "result-section structural-effect-capability-result",
+      tags$h5(if (ko) "구조효과 지원 범위" else "Structural-effect capability plan"),
+      tags$p(class = "structural-result-note", if (ko) "요청한 효과가 선택한 엔진에서 실제로 추정되는지 확인하는 사전 기록입니다." else "This preflight record confirms whether requested effects are actually estimated by the selected engine."),
+      structural_canvas_basic_html_table(plan, class = "table table-striped table-bordered")
+    )
+  })
+  output[[paste0(prefix, "_result_redundancy")]] <- renderUI({
+    if (!identical(analysis_type, "plssem")) return(NULL)
+    result <- fit_result()$redundancy_result %||% list(available = FALSE, reason = "Redundancy analysis was not requested.")
+    ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
+    if (!isTRUE(result$available)) return(tagList(
+      tags$h5(if (ko) "형성형 Redundancy analysis" else "Formative redundancy analysis"),
+      tags$p(class = "structural-result-note", if (ko) paste0("미평가: ", result$reason %||% "전역 기준변수를 선택하지 않았습니다.") else paste0("Not assessed: ", result$reason %||% "no global criterion was selected."))
+    ))
+    table <- data.frame(
+      Construct = result$construct,
+      Criterion = result$criterion,
+      N = result$n,
+      Loading = format_decimal3(result$loading),
+      `95% CI lower` = format_decimal3(result$ci_lower),
+      `95% CI upper` = format_decimal3(result$ci_upper),
+      R2 = format_decimal3(result$r2),
+      Guidance = result$guidance,
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
+    if (ko) names(table) <- c("합성변수", "전역 기준변수", "N", "적재량", "95% CI 하한", "95% CI 상한", "R²", "해석")
+    tagList(
+      tags$h5(if (ko) "형성형 Redundancy analysis" else "Formative redundancy analysis"),
+      structural_canvas_basic_html_table(table, class = "table table-striped table-bordered structural-redundancy-table"),
+      tags$p(class = "structural-result-note", if (ko) ".70은 설명용 참고값이며 자동 합격선이 아닙니다. 기준변수가 동일 개념을 충분히 포괄하고 형성지표와 독립적으로 측정되었는지 함께 검토하십시오." else ".70 is a descriptive reference, not an automatic pass rule. Also verify that the criterion adequately covers the same concept and was measured independently of the formative indicators.")
+    )
+  })
+  output[[paste0(prefix, "_result_parcel_plan")]] <- renderUI({
+    if (!identical(analysis_type, "cfa")) return(NULL)
+    result <- fit_result()$parcel_result %||% list(enabled = FALSE)
+    if (!isTRUE(result$enabled)) return(NULL)
+    ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
+    if (!isTRUE(result$available)) return(tagList(
+      tags$h5(if (ko) "Parcel 계획 안전성 점검" else "Parcel-plan safety review"),
+      tags$p(class = "structural-result-note", if (ko) paste0("미리보기 생성 불가: ", result$reason) else paste0("Preview unavailable: ", result$reason))
+    ))
+    allocation <- result$allocation
+    summary <- result$summary
+    allocation$Loading <- vapply(allocation$Loading, format_decimal3, character(1))
+    summary[["Mean absolute loading"]] <- vapply(summary[["Mean absolute loading"]], format_decimal3, character(1))
+    if (ko) {
+      names(allocation) <- c("Parcel", "문항", "표준화 적재량")
+      names(summary) <- c("Parcel", "평균 절대 적재량", "문항")
+    }
+    tagList(
+      tags$h5(if (ko) "Parcel 계획 안전성 점검" else "Parcel-plan safety review"),
+      tags$p(tags$b(if (ko) "기록된 목적: " else "Recorded purpose: "), result$purpose),
+      tags$p(class = "structural-result-note", paste0(if (ko) "상태: " else "Status: ", result$status, ". ", result$warning)),
+      tags$p(class = "structural-result-note", paste0(if (ko) "문항수준 최소 |적재량| = " else "Item-level minimum |loading| = ", format_decimal3(result$min_loading), if (ko) "; 최대 절대 잔차상관 = " else "; maximum absolute residual correlation = ", format_decimal3(result$max_residual_correlation), ".")),
+      tags$h6(if (ko) "배정 미리보기" else "Allocation preview"),
+      structural_canvas_basic_html_table(allocation, class = "table table-striped table-bordered structural-parcel-allocation-table"),
+      tags$h6(if (ko) "Parcel 균형 요약" else "Parcel balance summary"),
+      structural_canvas_basic_html_table(summary, class = "table table-striped table-bordered structural-parcel-summary-table"),
+      tags$p(class = "structural-result-note", if (ko) "데이터셋에 parcel 변수는 생성되지 않았습니다. 실제 적용 전 이론적 동질성, 국소의존, 다른 배정 방식에 대한 민감도와 item-level 결과를 함께 검토해야 합니다." else "No parcel variables were created. Before implementation, review substantive item homogeneity, local dependence, sensitivity to alternative allocations, and the item-level results.")
+    )
+  })
   output[[paste0(prefix, "_result_measurement_ci")]] <- renderUI({
     if (identical(analysis_type, "plssem")) {
       ci_table <- result_table("measurement_bootstrap")
       if (!is.data.frame(ci_table) || !nrow(ci_table)) return(NULL)
-      value_columns <- setdiff(names(ci_table), c("Construct", "Indicator", "Mode"))
+      value_columns <- setdiff(names(ci_table), c("Construct", "Construct type", "Indicator", "Mode"))
       if (!length(value_columns) || !any(nzchar(as.character(unlist(ci_table[value_columns], use.names = FALSE))))) return(NULL)
       ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
       return(tagList(

@@ -7,9 +7,100 @@ structural_canvas_analysis_context <- function(bundle) {
   "Prespecified/original model."
 }
 
+structural_canvas_audit_manifest <- function(bundle, analysis_type = NULL, generated_at = Sys.time()) {
+  recommendation <- bundle$method_recommendation %||% list()
+  diagnostics <- bundle$diagnostics %||% list()
+  analysis_type <- as.character(analysis_type %||% if (toupper(as.character(bundle$estimator %||% "")) %in% c("PLS", "PLSC")) "plssem" else "cbsem")
+  analysis_data <- bundle$analysis_data %||% data.frame()
+  validation_data <- bundle$validation_data %||% data.frame()
+  specification_payload <- list(
+    snapshot = bundle$snapshot %||% list(),
+    syntax = as.character(bundle$syntax %||% ""),
+    estimator = as.character(bundle$estimator %||% ""),
+    ordered = as.character(bundle$ordered %||% character(0))
+  )
+  specification_hash <- if (requireNamespace("digest", quietly = TRUE)) {
+    digest::digest(specification_payload, algo = "sha256", serialize = TRUE)
+  } else {
+    NA_character_
+  }
+  list(
+    schema = list(name = "StatEdu SEM audit manifest", version = "1.0"),
+    generated = list(
+      timestamp = format(generated_at, "%Y-%m-%dT%H:%M:%S%z"),
+      timezone = format(generated_at, "%Z"),
+      r_version = paste(R.version$major, R.version$minor, sep = "."),
+      package_versions = list(
+        lavaan = if (requireNamespace("lavaan", quietly = TRUE)) as.character(utils::packageVersion("lavaan")) else NULL,
+        seminr = if (requireNamespace("seminr", quietly = TRUE)) as.character(utils::packageVersion("seminr")) else NULL
+      )
+    ),
+    analysis = list(
+      type = analysis_type,
+      context = structural_canvas_analysis_context(bundle),
+      objective = bundle$objective %||% "not recorded",
+      selected_method = bundle$selected_method %||% "not recorded",
+      estimator = bundle$estimator %||% "not recorded",
+      missing = bundle$missing %||% "not recorded",
+      latent_scaling = if (isTRUE(bundle$std_lv)) "latent variance fixed to 1" else "marker loading fixed to 1",
+      ordered_indicators = bundle$ordered %||% character(0),
+      n_analysis = if (is.data.frame(analysis_data)) nrow(analysis_data) else NA_integer_,
+      n_validation = if (is.data.frame(validation_data)) nrow(validation_data) else 0L
+    ),
+    decision = list(
+      recommendation_status = recommendation$status %||% "not available",
+      primary_candidate = recommendation$primary %||% "not available",
+      candidates = recommendation$candidates %||% data.frame(),
+      construct_specification = structural_canvas_construct_specification(bundle$snapshot %||% list()),
+      structural_effect_plan = bundle$structural_effect_plan %||% diagnostics$structural_effect_plan %||% data.frame()
+    ),
+    model = list(
+      specification_sha256 = specification_hash,
+      canvas_snapshot = bundle$snapshot %||% list(),
+      fitted_syntax = as.character(bundle$syntax %||% "")
+    ),
+    resampling = list(
+      reliability = list(replicates = bundle$reliability_bootstrap %||% 0L, seed = bundle$reliability_seed %||% NULL, ci_method = bundle$reliability_ci_method %||% NULL),
+      htmt = list(replicates = bundle$htmt_bootstrap %||% 0L, seed = bundle$htmt_seed %||% NULL, ci_method = bundle$htmt_ci_method %||% NULL),
+      bollen_stine = list(replicates = bundle$bollen_stine_bootstrap %||% 0L, seed = bundle$bollen_stine_seed %||% NULL),
+      pls = list(replicates = bundle$pls_bootstrap %||% 0L, seed = bundle$pls_seed %||% NULL),
+      pls_predict = list(folds = bundle$pls_predict_folds %||% NULL, repetitions = bundle$pls_predict_reps %||% NULL),
+      mi_holdout = list(enabled = isTRUE(bundle$mi_holdout_enabled), fraction = bundle$mi_holdout_fraction %||% NULL, seed = bundle$mi_holdout_seed %||% NULL)
+    ),
+    requested_assessments = list(
+      measurement_invariance = list(enabled = isTRUE(bundle$invariance_enabled), group = bundle$invariance_group %||% NULL),
+      common_method = list(enabled = isTRUE(bundle$common_method_enabled), methods = bundle$common_method_methods %||% character(0)),
+      formative_redundancy = list(construct = bundle$redundancy_construct %||% NULL, criterion = bundle$redundancy_criterion %||% NULL, result = bundle$redundancy_result %||% NULL),
+      parcel_preview = list(enabled = isTRUE(bundle$parcel_enabled), construct = bundle$parcel_construct %||% NULL, count = bundle$parcel_count %||% NULL, purpose = bundle$parcel_purpose %||% NULL, result = bundle$parcel_result %||% NULL)
+    ),
+    diagnostics = list(
+      identification = bundle$identification %||% data.frame(),
+      converged = diagnostics$converged %||% NA,
+      identified = diagnostics$identified %||% NA,
+      admissible = diagnostics$admissible %||% NA,
+      admissibility_reasons = diagnostics$admissibility_reasons %||% character(0),
+      ignored_covariances = diagnostics$ignored_covariances %||% character(0),
+      modified_from_baseline = isTRUE(bundle$modified_from_baseline),
+      modification_history = bundle$mi_history %||% data.frame()
+    ),
+    privacy = list(raw_data_included = FALSE, fitted_object_included = FALSE)
+  )
+}
+
+structural_canvas_write_audit_manifest <- function(bundle, file, analysis_type = NULL) {
+  if (!requireNamespace("jsonlite", quietly = TRUE)) stop("The jsonlite package is required to export the SEM audit manifest.")
+  jsonlite::write_json(
+    structural_canvas_audit_manifest(bundle, analysis_type), file,
+    pretty = TRUE, auto_unbox = TRUE, na = "null", null = "null", dataframe = "rows"
+  )
+  invisible(file)
+}
+
 structural_canvas_reproducibility_record <- function(bundle, generated_at = Sys.time()) {
   fit <- bundle$fit
   options <- lavaan::lavInspect(fit, "options")
+  recommendation <- bundle$method_recommendation %||% list()
+  recommendation_candidates <- recommendation$candidates %||% data.frame()
   lines <- c(
     "CFA analysis reproducibility record",
     paste0("Generated: ", format(generated_at, "%Y-%m-%d %H:%M:%S %Z")),
@@ -17,6 +108,10 @@ structural_canvas_reproducibility_record <- function(bundle, generated_at = Sys.
     paste0("lavaan version: ", as.character(utils::packageVersion("lavaan"))),
     paste0("Analysis context: ", structural_canvas_analysis_context(bundle)),
     paste0("Estimator: ", bundle$estimator %||% options$estimator %||% ""),
+    paste0("Primary analysis objective: ", bundle$objective %||% "not recorded"),
+    paste0("Recommended method candidate: ", recommendation$primary %||% "not available"),
+    paste0("Selected method: ", bundle$selected_method %||% "not recorded"),
+    paste0("Recommendation rationale: ", if (nrow(recommendation_candidates)) paste(paste0(recommendation_candidates$Method, " [", recommendation_candidates$Role, "]: ", recommendation_candidates$Reason, ifelse(nzchar(recommendation_candidates$Limitation), paste0(" Limitation: ", recommendation_candidates$Limitation), "")), collapse = " | ") else "not available"),
     paste0("Missing-data option: ", bundle$missing %||% options$missing %||% ""),
     paste0("Latent scaling: ", if (isTRUE(bundle$std_lv)) "latent variance fixed to 1" else "marker loading fixed to 1"),
     paste0("N used: ", lavaan::lavInspect(fit, "ntotal")),
@@ -29,6 +124,7 @@ structural_canvas_reproducibility_record <- function(bundle, generated_at = Sys.
     paste0("Bollen-Stine bootstrap: ", bundle$bollen_stine_bootstrap %||% 0L, "; seed: ", bundle$bollen_stine_seed %||% "not used"),
     paste0("Measurement invariance: ", if (isTRUE(bundle$invariance_enabled)) paste0("enabled; group = ", bundle$invariance_group) else "disabled"),
     paste0("Common method bias diagnostics: ", if (isTRUE(bundle$common_method_enabled)) paste0("enabled; methods = ", paste(bundle$common_method_methods %||% character(0), collapse = ", ")) else "disabled"),
+    paste0("Parcel planning: ", if (isTRUE(bundle$parcel_enabled)) paste0("preview only; construct = ", bundle$parcel_construct %||% "", "; parcels = ", bundle$parcel_count %||% "", "; purpose = ", bundle$parcel_purpose %||% "not recorded", "; variables created = no") else "disabled"),
     paste0("MI holdout validation: ", if (isTRUE(bundle$mi_holdout_enabled)) paste0("enabled; validation fraction = ", bundle$mi_holdout_fraction, "; seed = ", bundle$mi_holdout_seed, "; exploration N = ", nrow(bundle$analysis_data), "; validation N = ", nrow(bundle$validation_data)) else "disabled"),
     if (!is.null(bundle$holdout_comparison)) paste0("MI holdout N used after missing-data handling: ", paste(bundle$holdout_comparison$validation_n_used, collapse = ", ")),
     paste0("MI output mode: ", bundle$mi_mode %||% "theory"),
@@ -79,6 +175,11 @@ structural_canvas_export_notes <- function(bundle) {
   if (!is.null(bundle$common_method_result)) notes <- rbind(notes, data.frame(
     Section = "Common method bias",
     Note = "Common method diagnostics are screening evidence only. Report them as indicating whether serious common-method concentration was detected, not as proof that common method bias is absent.",
+    stringsAsFactors = FALSE
+  ))
+  if (isTRUE(bundle$parcel_enabled)) notes <- rbind(notes, data.frame(
+    Section = "Parcel planning",
+    Note = "The parcel allocation is a non-mutating, sample-dependent preview. Item-level CFA remains primary; actual parcel use requires substantive homogeneity, local-dependence review, and sensitivity to alternative allocations.",
     stringsAsFactors = FALSE
   ))
   if (length(missing_covariances)) notes <- rbind(notes, data.frame(

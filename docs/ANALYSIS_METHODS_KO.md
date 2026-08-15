@@ -409,7 +409,7 @@ public 1.2는 아래 분석 목록에 평가자간 일치도, 혼합 반복측�
 | Nonparametric | Mann-Whitney, Wilcoxon signed-rank, Kruskal-Wallis, Friedman | rank-based effect approximation, groups, measurements |
 | Correlation | Pearson correlation | r, alpha, power |
 | Reliability / Agreement | Cronbach alpha, ICC, kappa, Bland-Altman precision | expected reliability, CI half-width, items/raters/categories |
-| SEM / CFA | RMSEA close-fit/not-close-fit, parameter Monte Carlo, complexity heuristic | df or model counts, RMSEA, standardized parameter, model complexity |
+| SEM / CFA | RMSEA close-fit/not-close-fit, 근사 모수 검정력 시뮬레이션, complexity heuristic | df or model counts, RMSEA, standardized parameter, model complexity |
 | Regression | multiple regression f2, hierarchical f2, logistic OR, mediation, moderation | f2, OR, paths a/b, covariates |
 | Count / Rate Regression | Poisson, negative binomial, gamma/rate ratio planning | rate ratio or mean ratio, exposure/person-time, dispersion |
 | ROC AUC | AUC vs null | AUC, null AUC, case/control ratio |

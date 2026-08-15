@@ -1246,7 +1246,7 @@ statedu_translation_table <- local({
       sample_size.label.stepped_wedge_cluster_trial = row("Stepped-wedge cluster trial", h("eab384eb8ba8ed989520eab5b0eca79120ec8b9ced9798")),
       sample_size.label.close_fit_test_detect_poor_fit = row("Close fit test (detect poor fit)", h("ebb080eca09120eca081ed95a920eab280eca095")),
       sample_size.label.not_close_fit_test_support_close_fit = row("Not-close-fit test (support close fit)", h("ebb984ebb080eca09120eca081ed95a920eab280eca095")),
-      sample_size.label.parameter_level_monte_carlo = row("Parameter-level Monte Carlo", h("ebaaa8ec889820ec8898eca480204d6f6e7465204361726c6f")),
+      sample_size.label.parameter_level_monte_carlo = row("Approximate parameter power simulation", h("eab7bcec82ac20ebaaa8ec889820eab280eca095eba0a520ec8b9cebaeaceba088ec9db4ec8598")),
       sample_size.label.model_complexity_heuristic = row("Model complexity heuristic", h("ebaaa8ed989520ebb3b5ec9ea1eb8f8420ed9cb4eba6acec8aa4ed8bb1")),
       sample_size.label.standardized_loading = row("Standardized loading", h("ed919ceca480ed999420ec9a94ec9db8ebb680ed9598")),
       sample_size.label.standardized_path = row("Standardized path", h("ed919ceca480ed999420eab2bdeba19c")),

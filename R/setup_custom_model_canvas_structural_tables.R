@@ -248,8 +248,12 @@ structural_canvas_pls_validity_result_table <- function(summary_fit, display_nam
   if (!nrow(reliability)) return(data.frame())
   constructs <- rownames(reliability)
   modes <- structural_canvas_pls_construct_modes(snapshot %||% list())
+  specification <- structural_canvas_construct_specification(snapshot %||% list())
+  types <- stats::setNames(ifelse(specification$construct_type == "commonFactor", "Common factor", ifelse(specification$construct_type == "composite", "Composite", "Unspecified")), specification$name)
   construct_modes <- modes[constructs]
   construct_modes[is.na(construct_modes) | !nzchar(construct_modes)] <- "Reflective"
+  construct_types <- types[constructs]
+  construct_types[is.na(construct_types) | !nzchar(construct_types)] <- "Unspecified"
   reflective <- construct_modes == "Reflective"
   htmt <- suppressWarnings(as.matrix(summary_fit$validity$htmt %||% matrix(numeric(0), 0L, 0L)))
   fl <- suppressWarnings(as.matrix(summary_fit$validity$fl_criteria %||% matrix(numeric(0), 0L, 0L)))
@@ -290,6 +294,7 @@ structural_canvas_pls_validity_result_table <- function(summary_fit, display_nam
   })
   data.frame(
     Construct = vapply(constructs, display_name, character(1)),
+    `Construct type` = unname(construct_types),
     Mode = unname(construct_modes),
     alpha = ifelse(reflective, vapply(reliability$alpha, structural_canvas_pls_number, character(1)), "N/A"),
     rhoA = ifelse(reflective, vapply(reliability$rhoA, structural_canvas_pls_number, character(1)), "N/A"),
@@ -306,11 +311,11 @@ structural_canvas_pls_validity_result_table <- function(summary_fit, display_nam
 }
 
 structural_canvas_pls_validity_main_table <- function(table) {
-  structural_canvas_subset_columns(table, c("Construct", "Mode", "alpha", "rhoA", "rhoC", "AVE", "sqrt(AVE)", "Max HTMT"))
+  structural_canvas_subset_columns(table, c("Construct", "Construct type", "Mode", "alpha", "rhoA", "rhoC", "AVE", "sqrt(AVE)", "Max HTMT"))
 }
 
 structural_canvas_pls_validity_guide_table <- function(table) {
-  structural_canvas_subset_columns(table, c("Construct", "Mode", "Max HTMT CI lower", "Max HTMT CI upper", "Max HTMT p", "Fornell-Larcker"))
+  structural_canvas_subset_columns(table, c("Construct", "Construct type", "Mode", "Max HTMT CI lower", "Max HTMT CI upper", "Max HTMT p", "Fornell-Larcker"))
 }
 
 structural_canvas_pls_measurement_result_table <- function(summary_fit, snapshot, display_name, bootstrap = NULL) {
@@ -324,6 +329,8 @@ structural_canvas_pls_measurement_result_table <- function(summary_fit, snapshot
   rows <- list()
   for (latent in latents) {
     construct <- structural_canvas_name(latent)
+    construct_type <- latent$constructType %||% if (identical(latent$measurementMode %||% "reflective", "formative")) "composite" else "commonFactor"
+    construct_type_label <- if (identical(construct_type, "commonFactor")) "Common factor" else if (identical(construct_type, "composite")) "Composite" else "Unspecified"
     for (indicator in structural_canvas_pls_assigned_indicators(snapshot, latent)) {
       cross_values <- if (indicator %in% rownames(cross_loadings)) suppressWarnings(as.numeric(cross_loadings[indicator, setdiff(colnames(cross_loadings), construct)])) else NA_real_
       cross_max <- if (any(is.finite(cross_values))) max(abs(cross_values), na.rm = TRUE) else NA_real_
@@ -331,6 +338,7 @@ structural_canvas_pls_measurement_result_table <- function(summary_fit, snapshot
       weight_boot <- structural_canvas_pls_bootstrap_row(bootstrap_weights, indicator, construct)
       rows[[length(rows) + 1L]] <- data.frame(
         Construct = display_name(construct),
+        `Construct type` = construct_type_label,
         Indicator = display_name(indicator),
         Loading = structural_canvas_pls_number(structural_canvas_pls_matrix_cell(loadings, indicator, construct)),
         `Loading Boot SE` = structural_canvas_pls_bootstrap_value(loading_boot, "Bootstrap SD"),
@@ -365,16 +373,16 @@ structural_canvas_pls_measurement_main_table <- function(table) {
   display[["Boot 95% CI upper"]] <- ifelse(display$Mode == "Formative", display$`Weight CI upper`, display$`Loading CI upper`)
   display[["Boot t"]] <- ifelse(display$Mode == "Formative", display$`Weight t`, display$`Loading t`)
   display[["Boot p"]] <- ifelse(display$Mode == "Formative", display$`Weight p`, display$`Loading p`)
-  structural_canvas_subset_columns(display, c("Construct", "Indicator", "loading/weight", "Boot SE", "Boot 95% CI lower", "Boot 95% CI upper", "Boot t", "Boot p", "Mode"))
+  structural_canvas_subset_columns(display, c("Construct", "Construct type", "Indicator", "loading/weight", "Boot SE", "Boot 95% CI lower", "Boot 95% CI upper", "Boot t", "Boot p", "Mode"))
 }
 
 structural_canvas_pls_measurement_guide_table <- function(table) {
-  structural_canvas_subset_columns(table, c("Construct", "Indicator", "Loading", "Weight", "Item VIF", "Max cross-loading", "Mode"))
+  structural_canvas_subset_columns(table, c("Construct", "Construct type", "Indicator", "Loading", "Weight", "Item VIF", "Max cross-loading", "Mode"))
 }
 
 structural_canvas_pls_measurement_bootstrap_table <- function(table) {
   structural_canvas_subset_columns(table, c(
-    "Construct", "Indicator", "Mode",
+    "Construct", "Construct type", "Indicator", "Mode",
     "Loading Boot SE", "Loading CI lower", "Loading CI upper", "Loading t", "Loading p",
     "Weight Boot SE", "Weight CI lower", "Weight CI upper", "Weight t", "Weight p"
   ))
@@ -579,8 +587,23 @@ structural_canvas_result_table <- function(kind, fit_result, analysis_type, labe
   snapshot <- bundle$snapshot %||% list()
   labels <- labels_fn() %||% character(0)
   ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
+  moderation_definitions <- bundle$diagnostics$moderation_definitions %||% bundle$moderation_definitions %||% list()
+  interaction_display_names <- vapply(moderation_definitions, function(item) {
+    predictor <- as.character(item$predictor %||% "")
+    moderator <- as.character(item$moderator %||% "")
+    if (nzchar(predictor) && nzchar(moderator)) paste0(predictor, "*", moderator) else ""
+  }, character(1))
+  names(interaction_display_names) <- vapply(
+    moderation_definitions,
+    function(item) as.character(item$interaction_factor %||% ""),
+    character(1)
+  )
+  interaction_display_names <- interaction_display_names[
+    nzchar(names(interaction_display_names)) & nzchar(interaction_display_names)
+  ]
   display_name <- function(name) {
     name <- as.character(name %||% "")
+    if (name %in% names(interaction_display_names)) return(unname(interaction_display_names[[name]]))
     node <- Filter(function(item) identical(structural_canvas_name(item), name), snapshot$nodes %||% list())
     label <- if (length(node)) as.character(node[[1]]$canvasLabel %||% "") else ""
     if (!nzchar(label) && !is.null(names(labels)) && name %in% names(labels)) label <- as.character(labels[[name]] %||% "")
@@ -621,7 +644,7 @@ structural_canvas_result_table <- function(kind, fit_result, analysis_type, labe
     if (!is.null(validity_table)) return(validity_table)
     measurement_table <- structural_canvas_measurement_result_table(kind, fit, ko, fmt, display_name)
     if (!is.null(measurement_table)) {
-      moderation_factors <- vapply(bundle$diagnostics$moderation_definitions %||% bundle$moderation_definitions %||% list(), function(item) as.character(item$interaction_factor %||% ""), character(1))
+      moderation_factors <- vapply(moderation_definitions, function(item) as.character(item$interaction_factor %||% ""), character(1))
       moderation_factors <- moderation_factors[nzchar(moderation_factors)]
       if (length(moderation_factors) && "Latent" %in% names(measurement_table)) {
         measurement_table <- measurement_table[!measurement_table$Latent %in% moderation_factors, , drop = FALSE]

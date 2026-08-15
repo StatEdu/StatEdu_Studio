@@ -9,6 +9,26 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
     fit_result <- reactiveVal(NULL)
     pending_mi_rows <- reactiveVal(integer(0))
     pending_estimator_snapshot <- reactiveVal(NULL)
+    output[[paste0(prefix, "_method_recommendation")]] <- renderUI({
+      snapshot <- input[[canvas_input]] %||% list(nodes = list(), edges = list())
+      recommendation <- structural_canvas_method_recommendation(
+        snapshot, variable_table_fn(), input[[paste0(prefix, "_objective")]] %||% "confirmatory"
+      )
+      structural_canvas_method_recommendation_ui(
+        recommendation,
+        structural_canvas_selected_method_label(analysis_type, input[[paste0(prefix, "_estimator")]] %||% if (identical(analysis_type, "plssem")) "PLS" else "ML"),
+        statedu_current_language(app_language_fn)
+      )
+    })
+    output[[paste0(prefix, "_download_audit")]] <- downloadHandler(
+      filename = function() paste0(analysis_type, "-audit-manifest-", format(Sys.Date(), "%Y%m%d"), ".json"),
+      contentType = "application/json; charset=utf-8",
+      content = function(file) {
+        bundle <- fit_result()
+        shiny::req(!is.null(bundle))
+        structural_canvas_write_audit_manifest(bundle, file, analysis_type)
+      }
+    )
     if (analysis_type %in% c("cfa", "cbsem", "sem")) output[[paste0(prefix, "_download_reproducibility")]] <- downloadHandler(
       filename = function() paste0(analysis_type, "-analysis-record-", format(Sys.Date(), "%Y%m%d"), ".txt"),
       contentType = "text/plain; charset=utf-8",
@@ -34,6 +54,24 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
       choices <- names(data %||% data.frame())
       current <- as.character(input[[paste0(prefix, "_invariance_group")]] %||% "")
       updateSelectInput(session, paste0(prefix, "_invariance_group"), choices = choices, selected = if (current %in% choices) current else "")
+    })
+    if (identical(analysis_type, "cfa")) observe({
+      snapshot <- input[[canvas_input]] %||% list(nodes = list(), edges = list())
+      specification <- structural_canvas_construct_specification(snapshot)
+      eligible <- specification$name[specification$construct_type == "commonFactor" & specification$measurement_mode == "reflective"]
+      current <- as.character(input[[paste0(prefix, "_parcel_construct")]] %||% "")
+      updateSelectInput(session, paste0(prefix, "_parcel_construct"), choices = eligible, selected = if (current %in% eligible) current else if (length(eligible)) eligible[[1L]] else "")
+    })
+    if (identical(analysis_type, "plssem")) observe({
+      snapshot <- input[[canvas_input]] %||% list(nodes = list(), edges = list())
+      specification <- structural_canvas_construct_specification(snapshot)
+      formative <- specification$name[specification$construct_type == "composite" & specification$measurement_mode == "formative"]
+      current_construct <- as.character(input[[paste0(prefix, "_redundancy_construct")]] %||% "")
+      updateSelectInput(session, paste0(prefix, "_redundancy_construct"), choices = formative, selected = if (current_construct %in% formative) current_construct else if (length(formative)) formative[[1L]] else "")
+      data_names <- names(dataset_fn() %||% data.frame())
+      current_criterion <- as.character(input[[paste0(prefix, "_redundancy_criterion")]] %||% "")
+      criterion_choices <- c(stats::setNames("", if (identical(statedu_current_language(app_language_fn), "ko")) "선택하지 않음" else "Not selected"), stats::setNames(data_names, data_names))
+      updateSelectInput(session, paste0(prefix, "_redundancy_criterion"), choices = criterion_choices, selected = if (current_criterion %in% data_names) current_criterion else "")
     })
     result_table <- function(kind) {
       structural_canvas_result_table(kind, fit_result, analysis_type, labels_fn, app_language_fn)

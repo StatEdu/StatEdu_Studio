@@ -1413,7 +1413,7 @@
     "sample_size.label.parallel_cluster_randomized_trial": "Essai randomisé en grappes parallèle",
     "sample_size.label.parallel_continuous_outcome": "Résultat continu parallèle",
     "sample_size.label.parameter": "Paramètre",
-    "sample_size.label.parameter_level_monte_carlo": "Monte Carlo au niveau des paramètres",
+    "sample_size.label.parameter_level_monte_carlo": "Simulation approximative de puissance du paramètre",
     "sample_size.label.parameter_type": "Type de paramètre",
     "sample_size.label.partial_eta_squared": "Eta carré partiel",
     "sample_size.label.partial_eta_squared_from_f": "Eta carré partiel à partir de F",

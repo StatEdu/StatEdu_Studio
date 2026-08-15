@@ -51,11 +51,37 @@ structural_canvas_fit_table_result_ui <- function(bundle, values) {
 structural_canvas_identification_result_ui <- function(bundle, language = statedu_initial_language()) {
   ko <- identical(normalize_app_language(language), "ko")
   issues <- bundle$identification %||% data.frame()
-  if (!nrow(issues)) {
-    return(tags$p(
-      class = "structural-result-note",
-      if (ko) "사전 구조모형 식별성 점검: 규칙 기반 문제는 발견되지 않았습니다." else "Pre-fit structural identification check: no rule-based issues detected."
-    ))
+  snapshot <- bundle$snapshot %||% list(nodes = list(), edges = list())
+  nodes <- snapshot$nodes %||% list()
+  edges <- snapshot$edges %||% list()
+  latent_n <- sum(vapply(nodes, function(node) identical(node$role, "latent"), logical(1)))
+  indicator_n <- sum(vapply(nodes, function(node) identical(node$role, "indicator"), logical(1)))
+  structural_n <- sum(vapply(edges, function(edge) {
+    if (identical(edge$kind, "covariance") || identical(as.character(edge$pathType %||% ""), "higherOrder")) return(FALSE)
+    from <- structural_canvas_node(snapshot, edge$from)
+    to <- structural_canvas_node(snapshot, edge$to)
+    !is.null(from) && !is.null(to) && identical(from$role, "latent") && identical(to$role, "latent")
+  }, logical(1)))
+  fitted <- inherits(bundle$fit, "lavaan")
+  model_df <- if (fitted) tryCatch(as.numeric(lavaan::fitMeasures(bundle$fit, "df")[[1L]]), error = function(error) NA_real_) else NA_real_
+  free_parameters <- if (fitted) tryCatch(as.numeric(lavaan::lavInspect(bundle$fit, "npar")), error = function(error) NA_real_) else NA_real_
+  inventory <- data.frame(
+    Item = c("Latent constructs", "Observed indicators", "Structural paths", "Latent scaling", "Model df", "Free parameters", "A-priori power basis"),
+    Value = c(
+      latent_n, indicator_n, structural_n,
+      if (isTRUE(bundle$std_lv)) "Latent variance = 1" else "Marker loading = 1",
+      if (is.finite(model_df)) format(model_df, trim = TRUE) else "Not available",
+      if (is.finite(free_parameters)) format(free_parameters, trim = TRUE) else "Not available",
+      "Not inferred from fitted data"
+    ),
+    stringsAsFactors = FALSE
+  )
+  if (ko) {
+    inventory$Item <- c("잠재 구성개념", "관측 지표", "구조경로", "잠재변수 척도", "모형 자유도", "자유모수", "사전 검정력 근거")
+    inventory$Value[inventory$Value == "Latent variance = 1"] <- "잠재분산 = 1"
+    inventory$Value[inventory$Value == "Marker loading = 1"] <- "표지 지표 적재량 = 1"
+    inventory$Value[inventory$Value == "Not available"] <- "산출 불가"
+    inventory$Value[inventory$Value == "Not inferred from fitted data"] <- "적합된 자료에서 역산하지 않음"
   }
   display_issues <- issues
   if (ko && ncol(display_issues)) {
@@ -63,15 +89,26 @@ structural_canvas_identification_result_ui <- function(bundle, language = stated
     names(display_issues) <- ifelse(names(display_issues) %in% names(issue_name_map), unname(issue_name_map[names(display_issues)]), names(display_issues))
   }
   tags$div(class = "structural-identification-result",
-    tags$h5(if (ko) "사전 식별성 진단" else "Pre-fit identification diagnostics"),
-    tags$table(class = "table table-striped table-bordered",
+    tags$h5(if (ko) "식별성 및 검정력 사전점검" else "Identification and power preflight"),
+    if (!is.null(bundle$method_recommendation)) structural_canvas_method_recommendation_ui(
+      bundle$method_recommendation,
+      bundle$selected_method %||% structural_canvas_selected_method_label(if (inherits(bundle$fit, "pls_model")) "plssem" else "cbsem", bundle$estimator),
+      language
+    ),
+    tags$table(class = "table table-striped table-bordered structural-identification-inventory",
+      tags$thead(tags$tr(lapply(names(inventory), tags$th))),
+      tags$tbody(lapply(seq_len(nrow(inventory)), function(index) tags$tr(lapply(as.character(inventory[index, ]), tags$td))))
+    ),
+    if (!nrow(display_issues)) tags$p(class = "structural-result-note", if (ko) "규칙 기반 사전 식별성 문제는 발견되지 않았습니다." else "No rule-based pre-fit identification issues were detected."),
+    if (nrow(display_issues)) tags$table(class = "table table-striped table-bordered",
       tags$thead(tags$tr(lapply(names(display_issues), tags$th))),
       tags$tbody(lapply(seq_len(nrow(display_issues)), function(index) tags$tr(lapply(as.character(display_issues[index, ]), tags$td))))
     ),
     tags$p(
       class = "structural-result-note",
       if (ko) "이 규칙 기반 점검만으로 수학적 식별성이 증명되지는 않습니다. lavaan 추정, 자유도, 정보행렬 점검, 해의 허용성이 최종 판단 기준입니다." else "This rule-based screen does not prove mathematical identification; lavaan estimation, degrees of freedom, information-matrix checks, and solution admissibility remain decisive."
-    )
+    ),
+    tags$p(class = "structural-result-note", if (ko) "검정력은 적합된 표본의 유의확률에서 역산하지 않습니다. 연구 전 RMSEA 검정력 또는 명시한 모수·모형을 이용한 시뮬레이션 근거를 별도로 기록하십시오." else "Power is not back-calculated from fitted-sample p values. Record an a-priori RMSEA-power analysis or a simulation based on explicitly specified parameters and model structure.")
   )
 
 }

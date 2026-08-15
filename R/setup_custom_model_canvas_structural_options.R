@@ -16,6 +16,13 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
             tabPanel(
               if (ko) "추정" else "Estimation",
           selectInput(paste0(structural_analysis_prefix(analysis_type), "_estimator"), if (ko) "추정 방법" else "Estimator", choices = if (analysis_type == "plssem") c("PLS" = "PLS", "PLSc" = "PLSc") else c("ML" = "ML", "MLR" = "MLR", "WLSMV" = "WLSMV")),
+          selectInput(
+            paste0(structural_analysis_prefix(analysis_type), "_objective"),
+            if (ko) "주요 분석 목적" else "Primary analysis objective",
+            choices = stats::setNames(c("confirmatory", "explanatory", "predictive", "scores"), c(if (ko) "이론 검증" else "Confirmatory theory testing", if (ko) "구조 설명" else "Structural explanation", if (ko) "표본외 예측" else "Out-of-sample prediction", if (ko) "구성개념 점수 활용" else "Construct-score use")),
+            selected = "confirmatory"
+          ),
+          uiOutput(paste0(structural_analysis_prefix(analysis_type), "_method_recommendation")),
           if (analysis_type != "plssem") selectInput(paste0(structural_analysis_prefix(analysis_type), "_missing"), if (ko) "결측치 처리" else "Missing data", choices = stats::setNames(c("fiml", "listwise"), c("FIML", if (ko) "목록 삭제" else "Listwise deletion"))),
           if (analysis_type != "plssem") tags$p(class = "structural-option-note", if (ko) "순서형 지표 또는 WLSMV 추정량을 사용하면 lavaan 제약에 따라 FIML 대신 pairwise 결측 처리가 적용됩니다." else "When ordered indicators or the WLSMV estimator are used, lavaan uses pairwise missing-data handling instead of FIML."),
           if (analysis_type != "plssem") selectInput(paste0(structural_analysis_prefix(analysis_type), "_scale"), if (ko) "잠재변수 스케일" else "Latent scale", choices = stats::setNames(c("marker", "variance"), c(if (ko) "첫 지표 부하량 = 1" else "Marker loading = 1", if (ko) "잠재변수 분산 = 1" else "Latent variance = 1"))),
@@ -83,6 +90,28 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
           if (identical(analysis_type, "cfa")) selectInput(paste0(structural_analysis_prefix(analysis_type), "_mi_holdout_fraction"), if (ko) "검증표본 비율" else "Validation-sample fraction", choices = c("20%" = "0.20", "30%" = "0.30", "40%" = "0.40"), selected = "0.30"),
           if (identical(analysis_type, "cfa")) numericInput(paste0(structural_analysis_prefix(analysis_type), "_mi_holdout_seed"), if (ko) "표본분할 seed" else "Sample-split seed", value = 13579L, min = 1L, step = 1L),
           if (identical(analysis_type, "cfa")) tags$p(class = "structural-option-note", if (ko) "MI 표본분할은 연속형 ML/MLR CFA 전용이며 측정불변성 또는 Heywood 제약 재분석과 동시에 사용할 수 없습니다." else "MI splitting is for continuous ML/MLR CFA and cannot be combined with measurement invariance or Heywood-constrained reanalysis."),
+          if (identical(analysis_type, "cfa")) checkboxInput(
+            paste0(structural_analysis_prefix(analysis_type), "_parcel_enabled"),
+            if (ko) "Parcel 계획 미리보기" else "Preview a parceling plan",
+            value = FALSE
+          ),
+          if (identical(analysis_type, "cfa")) selectInput(
+            paste0(structural_analysis_prefix(analysis_type), "_parcel_construct"),
+            if (ko) "대상 공통요인" else "Target common factor",
+            choices = character(0)
+          ),
+          if (identical(analysis_type, "cfa")) selectInput(
+            paste0(structural_analysis_prefix(analysis_type), "_parcel_count"),
+            if (ko) "Parcel 수" else "Number of parcels",
+            choices = c("3" = "3", "4" = "4"), selected = "3"
+          ),
+          if (identical(analysis_type, "cfa")) textAreaInput(
+            paste0(structural_analysis_prefix(analysis_type), "_parcel_purpose"),
+            if (ko) "적용 목적과 이론적 근거" else "Purpose and substantive justification",
+            rows = 3,
+            placeholder = if (ko) "문항 수준 분석 대신 parcel을 고려하는 이유를 기록하십시오." else "Document why parceling is being considered instead of retaining item-level analysis."
+          ),
+          if (identical(analysis_type, "cfa")) tags$p(class = "structural-option-note", if (ko) "기본값은 비활성화입니다. 미리보기는 데이터에 변수를 만들지 않으며 item-level CFA를 대체하지 않습니다." else "Disabled by default. The preview does not create variables and does not replace the item-level CFA."),
           if (identical(analysis_type, "plssem")) selectInput(
             paste0(structural_analysis_prefix(analysis_type), "_pls_bootstrap"),
             if (ko) "PLS bootstrap CI/p" else "PLS bootstrap CI/p",
@@ -95,6 +124,17 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
             value = default_seed(), min = 1L, step = 1L
           ),
           if (identical(analysis_type, "plssem")) tags$p(class = "structural-option-note", if (ko) "PLS bootstrap은 경로계수, outer loading, outer weight의 percentile CI와 p 값을 표시합니다. 반복 수가 클수록 시간이 늘어납니다." else "PLS bootstrap reports percentile CIs and p values for paths, outer loadings, and outer weights. Larger resample counts take longer."),
+          if (identical(analysis_type, "plssem")) selectInput(
+            paste0(structural_analysis_prefix(analysis_type), "_redundancy_construct"),
+            if (ko) "형성형 합성변수" else "Formative composite",
+            choices = character(0)
+          ),
+          if (identical(analysis_type, "plssem")) selectInput(
+            paste0(structural_analysis_prefix(analysis_type), "_redundancy_criterion"),
+            if (ko) "전역 기준변수" else "Global criterion variable",
+            choices = stats::setNames("", if (ko) "선택하지 않음" else "Not selected")
+          ),
+          if (identical(analysis_type, "plssem")) tags$p(class = "structural-option-note", if (ko) "Redundancy analysis는 형성형 합성변수 점수와 이론적으로 동일한 개념을 측정하는 별도 전역 기준변수의 관계를 평가합니다. 단순히 상관이 높은 임의 변수를 선택하지 마십시오." else "Redundancy analysis relates the formative-composite score to a separate global criterion measuring the same concept. Do not choose an arbitrary variable merely because it correlates highly."),
             ),
             tabPanel(
               if (ko) "진단" else "Diagnostics",

@@ -1,6 +1,71 @@
+structural_canvas_construct_specification <- function(snapshot) {
+  latents <- Filter(function(node) identical(node$role, "latent"), snapshot$nodes %||% list())
+  rows <- lapply(latents, function(latent) {
+    measurement_mode <- as.character(latent$measurementMode %||% "reflective")
+    construct_type <- as.character(latent$constructType %||% if (identical(measurement_mode, "formative")) "composite" else "commonFactor")
+    data.frame(
+      id = as.character(latent$id %||% ""),
+      name = structural_canvas_name(latent),
+      construct_type = construct_type,
+      measurement_mode = measurement_mode,
+      weighting_mode = as.character(latent$weightingMode %||% "auto"),
+      stringsAsFactors = FALSE
+    )
+  })
+  if (!length(rows)) return(data.frame(id = character(0), name = character(0), construct_type = character(0), measurement_mode = character(0), weighting_mode = character(0)))
+  do.call(rbind, rows)
+}
+
+structural_canvas_validate_construct_specification <- function(snapshot, analysis_type) {
+  specification <- structural_canvas_construct_specification(snapshot)
+  if (!nrow(specification)) return(invisible(specification))
+  invalid_factor <- specification$construct_type == "commonFactor" & specification$measurement_mode == "formative"
+  if (any(invalid_factor)) {
+    stop(sprintf(
+      "Formative indicator relationships are incompatible with common-factor specifications: %s.",
+      paste(specification$name[invalid_factor], collapse = ", ")
+    ))
+  }
+  unsupported_composite <- analysis_type %in% c("cfa", "cbsem", "sem") & specification$construct_type == "composite"
+  if (any(unsupported_composite)) {
+    stop(sprintf(
+      "The current CFA/CB-SEM engine does not estimate composite constructs: %s. Use a supported composite engine or revise the theoretical specification.",
+      paste(specification$name[unsupported_composite], collapse = ", ")
+    ))
+  }
+  invisible(specification)
+}
+
+structural_canvas_structural_effect_plan <- function(snapshot, analysis_type, estimator = "ML") {
+  moderations <- snapshot$moderations %||% list()
+  engine <- if (identical(analysis_type, "plssem")) toupper(as.character(estimator %||% "PLS")) else "CB-SEM"
+  if (!engine %in% c("PLS", "PLSC", "CB-SEM")) engine <- "CB-SEM"
+  rows <- list(
+    data.frame(Effect = "Direct effects", Status = "Supported", Method = if (engine == "CB-SEM") "lavaan structural regression" else "PLS path coefficients", Limitation = "Interpret only theory-specified directed paths.", stringsAsFactors = FALSE),
+    data.frame(Effect = "Mediation", Status = "Supported", Method = if (engine == "CB-SEM") "Defined indirect and total effects" else "Bootstrap indirect and total effects", Limitation = if (engine == "CB-SEM") "Use bootstrap confidence intervals when requested; significance of component paths alone is not a mediation test." else "Requires PLS bootstrap inference; no covariance-model global fit claim.", stringsAsFactors = FALSE),
+    data.frame(Effect = "Moderation", Status = if (length(moderations) && engine != "CB-SEM") "Blocked" else if (length(moderations)) "Supported" else "Not requested", Method = if (engine == "CB-SEM") "Mean-centered product indicators" else "Not implemented in the current PLS/PLSc engine", Limitation = if (engine == "CB-SEM") "Johnson-Neyman regions require a continuous observed moderator or a latent moderator represented on its factor-score scale." else "Canvas moderation edges must not be silently omitted.", stringsAsFactors = FALSE),
+    data.frame(Effect = "Moderated mediation", Status = if (length(moderations) && engine != "CB-SEM") "Blocked" else if (length(moderations)) "Available when an indirect chain contains the moderated path" else "Not requested", Method = if (engine == "CB-SEM") "Conditional indirect effect and index of moderated mediation" else "Not implemented in the current PLS/PLSc engine", Limitation = if (engine == "CB-SEM") "Inference uses the fitted product-indicator parameterization and the observed moderator range." else "Use a validated two-stage or product-indicator PLS implementation outside the current engine.", stringsAsFactors = FALSE)
+  )
+  do.call(rbind, rows)
+}
+
+structural_canvas_validate_structural_effects <- function(snapshot, analysis_type, estimator = "ML") {
+  plan <- structural_canvas_structural_effect_plan(snapshot, analysis_type, estimator)
+  blocked <- plan$Status == "Blocked"
+  if (any(blocked)) {
+    stop(paste0(
+      "The current PLS/PLSc engine does not estimate canvas moderation or moderated-mediation edges. ",
+      "These edges were not fitted. Use CB-SEM product-indicator moderation or a separately validated PLS interaction workflow."
+    ))
+  }
+  invisible(plan)
+}
+
 run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estimator = "ML", missing = "fiml", std_lv = FALSE, ordered = character(0), nominal = character(0), residual_variance_fixes = numeric(0)) {
   nodes <- snapshot$nodes %||% list()
   edges <- snapshot$edges %||% list()
+  structural_canvas_validate_construct_specification(snapshot, analysis_type)
+  structural_effect_plan <- structural_canvas_validate_structural_effects(snapshot, analysis_type, estimator)
   residual_constraint_diagnostics <- if (analysis_type %in% c("cfa", "cbsem", "sem")) structural_canvas_identification_diagnostics(snapshot) else data.frame()
   residual_constraint_errors <- if (nrow(residual_constraint_diagnostics)) residual_constraint_diagnostics[
     residual_constraint_diagnostics$Severity == "Error" & residual_constraint_diagnostics$Code %in% c("single_indicator", "invalid_fixed_residual", "negative_fixed_residual"),
@@ -93,6 +158,7 @@ run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estima
       fit = fit, syntax = syntax, converged = converged, post_check = post_check,
       effect_definitions = lavaan_syntax$effect_definitions %||% list(),
       moderation_definitions = lavaan_syntax$moderation_definitions %||% list(),
+      structural_effect_plan = structural_effect_plan,
       identified = is.finite(model_df) && model_df >= 0,
       df = model_df,
       admissible = isTRUE(shared_admissibility$admissible),
@@ -110,5 +176,7 @@ run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estima
     ))
   }
 
-  structural_canvas_run_pls_analysis(snapshot, data, latents, edges, estimator = estimator)
+  result <- structural_canvas_run_pls_analysis(snapshot, data, latents, edges, estimator = estimator)
+  result$structural_effect_plan <- structural_effect_plan
+  result
 }

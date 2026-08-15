@@ -196,6 +196,35 @@ structural_canvas_result_snapshot <- function(snapshot, fit, coefficient = "beta
     }
     edge
   })
+  snapshot$moderations <- lapply(snapshot$moderations %||% list(), function(moderation) {
+    target_edge_id <- as.character(moderation$toEdge %||% "")
+    target_edges <- Filter(
+      function(edge) identical(as.character(edge$id %||% ""), target_edge_id),
+      edges
+    )
+    source <- structural_canvas_node(snapshot, moderation$from)
+    target_edge <- if (length(target_edges)) target_edges[[1L]] else NULL
+    predictor <- if (!is.null(target_edge)) structural_canvas_node(snapshot, target_edge$from) else NULL
+    outcome <- if (!is.null(target_edge)) structural_canvas_node(snapshot, target_edge$to) else NULL
+    info <- list(label = "", p = NA_real_, matched = FALSE)
+    if (!is.null(source) && !is.null(predictor) && !is.null(outcome) &&
+        source$role %in% c("moderator", "latent") &&
+        identical(predictor$role, "latent") && identical(outcome$role, "latent")) {
+      interaction_factor <- structural_canvas_structural_effect_label(
+        "statedu_int",
+        structural_canvas_name(predictor),
+        structural_canvas_name(source)
+      )
+      info <- result_info(structural_canvas_name(outcome), "~", interaction_factor)
+    }
+    moderation$label <- info$label
+    moderation$p <- info$p
+    moderation$significant <- isTRUE(info$matched) && (!is.finite(info$p) || info$p < .05)
+    moderation$resultMatched <- isTRUE(info$matched)
+    moderation$labelOffsetX <- 0
+    moderation$labelOffsetY <- -10
+    moderation
+  })
   snapshot$dashNonsignificant <- TRUE
   snapshot$resultCoefficient <- coefficient
   snapshot

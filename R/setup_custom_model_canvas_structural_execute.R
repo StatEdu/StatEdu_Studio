@@ -10,6 +10,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   if (nrow(identification_warnings)) structural_canvas_notify_identification_warnings(identification_warnings, statedu_current_language(app_language_fn))
   options <- structural_canvas_execute_settings(settings, input, prefix)
   estimator <- options$estimator
+  objective <- options$objective
   missing <- options$missing
   std_lv <- options$std_lv
   mi_mode <- options$mi_mode
@@ -28,6 +29,12 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   pls_seed <- options$pls_seed
   pls_predict_folds <- options$pls_predict_folds
   pls_predict_reps <- options$pls_predict_reps
+  redundancy_construct <- options$redundancy_construct
+  redundancy_criterion <- options$redundancy_criterion
+  parcel_enabled <- options$parcel_enabled
+  parcel_construct <- options$parcel_construct
+  parcel_count <- options$parcel_count
+  parcel_purpose <- options$parcel_purpose
   invariance_enabled <- options$invariance_enabled
   invariance_group <- options$invariance_group
   mi_holdout_enabled <- options$mi_holdout_enabled
@@ -39,6 +46,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   residual_variance_fixes <- options$residual_variance_fixes
   full_data <- dataset_fn()
   variable_table <- variable_table_fn()
+  method_recommendation <- structural_canvas_method_recommendation(snapshot, variable_table, objective)
   nominal <- structural_canvas_nominal_indicators(snapshot, variable_table)
   if (length(nominal)) {
     stop(sprintf(
@@ -117,6 +125,16 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   pls_predict_result <- structural_canvas_run_pls_predict(
     analysis_type, pls_predict_folds, pls_predict_reps, result
   )
+  redundancy_result <- if (identical(analysis_type, "plssem")) {
+    structural_canvas_pls_redundancy_analysis(result, snapshot, data, redundancy_construct, redundancy_criterion)
+  } else {
+    NULL
+  }
+  parcel_result <- if (identical(analysis_type, "cfa")) {
+    structural_canvas_parcel_plan(result, snapshot, parcel_enabled, parcel_construct, parcel_count, parcel_purpose)
+  } else {
+    NULL
+  }
   common_method_result <- if (isTRUE(common_method_enabled) && analysis_type %in% c("cfa", "cbsem", "sem")) {
     tryCatch(
       structural_canvas_run_common_method_diagnostics(
@@ -157,12 +175,18 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     htmt_bootstrap_result = htmt_bootstrap_result,
     pls_bootstrap = pls_bootstrap, pls_seed = pls_seed, pls_bootstrap_result = pls_bootstrap_result,
     pls_predict_folds = pls_predict_folds, pls_predict_reps = pls_predict_reps, pls_predict_result = pls_predict_result,
+    redundancy_construct = redundancy_construct, redundancy_criterion = redundancy_criterion, redundancy_result = redundancy_result,
+    parcel_enabled = parcel_enabled, parcel_construct = parcel_construct, parcel_count = parcel_count,
+    parcel_purpose = parcel_purpose, parcel_result = parcel_result,
     invariance_enabled = invariance_enabled, invariance_group = invariance_group, invariance_result = invariance_result,
     mi_holdout_enabled = mi_holdout_enabled, mi_holdout_fraction = mi_holdout_fraction, mi_holdout_seed = mi_holdout_seed,
     analysis_data = data, validation_data = validation_data, holdout_rows = holdout_rows, holdout_comparison = holdout_comparison,
     common_method_enabled = common_method_enabled, common_method_methods = common_method_methods,
     common_method_result = common_method_result,
-    estimator = estimator, missing = missing, std_lv = std_lv, ordered = ordered,
+    estimator = estimator, objective = objective, method_recommendation = method_recommendation,
+    structural_effect_plan = result$structural_effect_plan,
+    selected_method = structural_canvas_selected_method_label(analysis_type, estimator),
+    missing = missing, std_lv = std_lv, ordered = ordered,
     result_coefficient = result_coefficient, diagnostics = result,
     baseline_fit = baseline_fit, modified_from_baseline = is_mi_refit || isTRUE(settings$modified_from_baseline),
     baseline_syntax = baseline_syntax,

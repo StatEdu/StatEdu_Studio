@@ -119,6 +119,7 @@
   function validateStructuralModel(instance) {
     var result = {errors: [], warnings: [], byNode: {}};
     if (!isStructuralCanvas(instance)) return result;
+    var ko = instance.language === "ko";
     function add(level, nodeId, code, message) {
       var item = {level: level, nodeId: nodeId, code: code, message: message};
       result[level === "error" ? "errors" : "warnings"].push(item);
@@ -151,6 +152,20 @@
       indicators = indicators.concat(lowerOrderFactors);
       if (!indicators.length) add("error", latent.id, "latent_without_indicators", "측정변수가 없는 잠재변수");
       else if (indicators.length < 3) add("warning", latent.id, "few_indicators", "측정변수가 3개 미만");
+      var measurementMode = latent.measurementMode || "reflective";
+      var constructType = latent.constructType || (measurementMode === "formative" ? "composite" : "commonFactor");
+      if (constructType === "unspecified") {
+        add("warning", latent.id, "construct_type_unspecified", ko ? "요인 또는 합성변수인지 명세가 필요함" : "Specify whether the construct is a common factor or composite");
+      }
+      if (constructType === "commonFactor" && measurementMode === "formative") {
+        add("error", latent.id, "formative_common_factor", ko ? "형성형 지표 관계는 공통요인 명세와 양립하지 않음" : "A formative indicator relationship is incompatible with a common-factor specification");
+      }
+      if (["cfa", "cbsem"].indexOf(instance.analysisType) >= 0 && constructType === "composite") {
+        add("error", latent.id, "composite_in_covariance_engine", ko ? "현재 CFA/CB-SEM 엔진은 합성변수를 추정하지 않음" : "The current CFA/CB-SEM engine does not estimate composite constructs");
+      }
+      if (constructType === "commonFactor" && latent.weightingMode && latent.weightingMode !== "auto") {
+        add("warning", latent.id, "factor_weighting_ignored", ko ? "PLS 가중방식은 공통요인 자체의 이론적 명세가 아님" : "PLS weighting does not define the common-factor construct");
+      }
       var connected = structural.some(function(edge) { return edge.from === latent.id || edge.to === latent.id; });
       if (structural.length > 0 && latents.length > 1 && !connected) add("warning", latent.id, "disconnected_latent", "구조모형에 연결되지 않은 잠재변수");
     });
@@ -277,10 +292,10 @@
       if (single.role === "latent") {
         var constructSelect = document.createElement("select");
         constructSelect.className = "form-control input-sm";
-        [["commonFactor", ko ? "공통요인" : "Common factor"], ["composite", ko ? "합성변수" : "Composite"]].forEach(function(item) {
+        [["unspecified", ko ? "미확정 (권장사항 안내)" : "Not sure (show guidance)"], ["commonFactor", ko ? "공통요인" : "Common factor"], ["composite", ko ? "합성변수" : "Composite"]].forEach(function(item) {
           var option = document.createElement("option"); option.value = item[0]; option.textContent = item[1]; constructSelect.appendChild(option);
         });
-        constructSelect.value = single.constructType || "commonFactor";
+        constructSelect.value = single.constructType || ((single.measurementMode || "reflective") === "formative" ? "composite" : "commonFactor");
         constructSelect.addEventListener("change", function() { commit(function() { single.constructType = constructSelect.value; }); });
         field(ko ? "구성개념 유형" : "Construct type", constructSelect);
         var weightSelect = document.createElement("select");
@@ -1380,7 +1395,7 @@
       latent.canvasLabel = variable.dataLabel || variable.name;
       latent.measurementPlacement = "top";
       latent.measurementMode = "reflective";
-      latent.constructType = "commonFactor";
+      latent.constructType = "unspecified";
       var indicator = window.StatEduModelCanvas.nodes.createIndicatorNode(instance, variable, latent.x, latent.y - 80);
       var errorNode = window.StatEduModelCanvas.nodes.createErrorNode(instance, indicator, indicator.x, indicator.y - 46, errorBase + index + 1);
       instance.state.nodes.push(latent, indicator, errorNode);
@@ -1557,6 +1572,22 @@
     window.StatEduModelCanvas.bridge.sendState(instance);
   }
 
+  function resizeCanvasToViewport(instance) {
+    if (!instance || !instance.root || !isStructuralCanvas(instance)) return;
+    if (instance.root.offsetParent === null) return;
+    var scroll = instance.root.querySelector(".custom-model-canvas-scroll");
+    var diagram = instance.root.querySelector(".custom-model-diagram-panel");
+    if (!scroll || !diagram) return;
+    var toolbar = diagram.querySelector(".custom-model-toolbar");
+    var statusbar = diagram.querySelector(".custom-model-statusbar");
+    var rootTop = instance.root.getBoundingClientRect().top;
+    var chromeHeight = Number(toolbar ? toolbar.offsetHeight : 0) + Number(statusbar ? statusbar.offsetHeight : 0);
+    var available = window.innerHeight - rootTop - chromeHeight - 20;
+    var scrollHeight = Math.max(280, Math.min(730, available));
+    scroll.style.height = Math.round(scrollHeight) + "px";
+    instance.root.style.setProperty("--custom-model-visible-height", Math.round(scrollHeight + chromeHeight) + "px");
+  }
+
   function showResult(instance) {
     if (!instance || !instance.resultSnapshot) {
       window.alert(window.StatEduModelCanvas.state.label(instance, "result_unavailable", "\uacb0\uacfc \uadf8\ub9bc\uc740 \ubd84\uc11d \uc2e4\ud589 \ud6c4\uc5d0 \ud655\uc778\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4."));
@@ -1617,6 +1648,7 @@
     bindCanvasPointer(instance);
     bindCanvasKeyboard(instance);
     render(instance);
+    resizeCanvasToViewport(instance);
     window.StatEduModelCanvas.bridge.sendState(instance);
     if (root.getAttribute("data-initial-run") === "true") {
       var attempts = 0;
@@ -1634,7 +1666,9 @@
   }
 
   function initAll() {
-    document.querySelectorAll(".custom-model-canvas-root").forEach(init);
+    document.querySelectorAll(".custom-model-canvas-root").forEach(function(root) {
+      resizeCanvasToViewport(init(root));
+    });
   }
 
   window.StatEduModelCanvas = window.StatEduModelCanvas || {};
@@ -1647,6 +1681,7 @@
     showSource: showSource,
     zoom: zoom,
     fit: fit,
+    resizeToViewport: resizeCanvasToViewport,
     reflowMeasurements: reflowMeasurementModel,
     setMeasurementPlacement: setMeasurementPlacement,
     setMeasurementMode: setMeasurementMode,
@@ -1657,6 +1692,17 @@
     alignSelected: alignSelected,
     autoLayout: autoLayoutModel
   };
+
+  var canvasResizeFrame = 0;
+  window.addEventListener("resize", function() {
+    if (canvasResizeFrame) window.cancelAnimationFrame(canvasResizeFrame);
+    canvasResizeFrame = window.requestAnimationFrame(function() {
+      canvasResizeFrame = 0;
+      document.querySelectorAll(".custom-model-canvas-root").forEach(function(root) {
+        resizeCanvasToViewport(root.__stateduModelCanvas);
+      });
+    });
+  });
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initAll);

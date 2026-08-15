@@ -254,9 +254,23 @@ moderation_snapshot$nodes <- c(moderation_snapshot$nodes, list(list(id = "w", ro
 moderation_snapshot$moderations <- list(list(id = "mod_eta1_eta2", from = "w", toEdge = "p1"))
 cbsem_moderation <- run_structural_canvas_analysis(moderation_snapshot, moderation_data, "cbsem", estimator = "MLR", missing = "fiml")
 cbsem_jn <- structural_canvas_moderation_jn_table(list(fit = cbsem_moderation$fit, diagnostics = cbsem_moderation))
+cbsem_moderation_table <- structural_canvas_result_table(
+  "structural",
+  function() list(fit = cbsem_moderation$fit, snapshot = moderation_snapshot, diagnostics = cbsem_moderation),
+  "cbsem",
+  labels_fn,
+  language_fn
+)
+cbsem_moderation_snapshot <- structural_canvas_result_snapshot(moderation_snapshot, cbsem_moderation$fit, "b_p")
 stopifnot(
   length(cbsem_moderation$moderation_definitions) == 1L,
   grepl("statedu_int", cbsem_moderation$syntax, fixed = TRUE),
+  any(cbsem_moderation_table$Predictor == "eta1*W"),
+  !any(grepl("^statedu_int", cbsem_moderation_table$Predictor)),
+  length(cbsem_moderation_snapshot$moderations) == 1L,
+  isTRUE(cbsem_moderation_snapshot$moderations[[1L]]$resultMatched),
+  nzchar(cbsem_moderation_snapshot$moderations[[1L]]$label),
+  grepl("\\(", cbsem_moderation_snapshot$moderations[[1L]]$label),
   is.data.frame(cbsem_jn),
   all(c("Effect", "Path", "Moderator", "Moderator range", "Midpoint effect", "SE", "z", "p", "Significant") %in% names(cbsem_jn)),
   "Direct" %in% cbsem_jn$Effect

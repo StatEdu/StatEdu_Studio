@@ -42,6 +42,13 @@ structural_canvas_execute_settings <- function(settings, input, prefix) {
 
   list(
     estimator = settings$estimator %||% input[[paste0(prefix, "_estimator")]] %||% if (identical(prefix, "structural_plssem")) "PLS" else "ML",
+    objective = settings$objective %||% input[[paste0(prefix, "_objective")]] %||% "confirmatory",
+    redundancy_construct = as.character(settings$redundancy_construct %||% input[[paste0(prefix, "_redundancy_construct")]] %||% ""),
+    redundancy_criterion = as.character(settings$redundancy_criterion %||% input[[paste0(prefix, "_redundancy_criterion")]] %||% ""),
+    parcel_enabled = isTRUE(settings$parcel_enabled %||% input[[paste0(prefix, "_parcel_enabled")]] %||% FALSE),
+    parcel_construct = as.character(settings$parcel_construct %||% input[[paste0(prefix, "_parcel_construct")]] %||% ""),
+    parcel_count = suppressWarnings(as.integer(settings$parcel_count %||% input[[paste0(prefix, "_parcel_count")]] %||% 3L)),
+    parcel_purpose = as.character(settings$parcel_purpose %||% input[[paste0(prefix, "_parcel_purpose")]] %||% ""),
     missing = settings$missing %||% input[[paste0(prefix, "_missing")]] %||% "fiml",
     std_lv = settings$std_lv %||% identical(input[[paste0(prefix, "_scale")]], "variance"),
     mi_mode = settings$mi_mode %||% input[[paste0(prefix, "_mi_mode")]] %||% "theory",

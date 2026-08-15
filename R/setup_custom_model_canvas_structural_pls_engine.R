@@ -16,6 +16,49 @@ structural_canvas_pls_path_specs_from_strings <- function(structural_paths) {
   unique(do.call(rbind, rows))
 }
 
+structural_canvas_pls_redundancy_analysis <- function(result, snapshot, data, construct = "", criterion = "") {
+  construct <- as.character(construct %||% "")
+  criterion <- as.character(criterion %||% "")
+  if (!nzchar(construct) || !nzchar(criterion)) return(list(available = FALSE, reason = "A formative construct and a separate global criterion were not both selected."))
+  specification <- structural_canvas_construct_specification(snapshot)
+  selected <- specification[specification$name == construct, , drop = FALSE]
+  if (!nrow(selected) || !identical(selected$construct_type[[1L]], "composite") || !identical(selected$measurement_mode[[1L]], "formative")) {
+    return(list(available = FALSE, reason = "Redundancy analysis requires a formative composite."))
+  }
+  latent <- Filter(function(node) identical(node$role, "latent") && identical(structural_canvas_name(node), construct), snapshot$nodes %||% list())
+  indicator_names <- if (length(latent)) unique(vapply(Filter(function(edge) {
+    from <- structural_canvas_node(snapshot, edge$from)
+    to <- structural_canvas_node(snapshot, edge$to)
+    (identical(as.character(from$id %||% ""), as.character(latent[[1L]]$id)) && identical(to$role, "indicator")) ||
+      (identical(as.character(to$id %||% ""), as.character(latent[[1L]]$id)) && identical(from$role, "indicator"))
+  }, snapshot$edges %||% list()), function(edge) {
+    from <- structural_canvas_node(snapshot, edge$from)
+    to <- structural_canvas_node(snapshot, edge$to)
+    structural_canvas_name(if (identical(from$role, "indicator")) from else to)
+  }, character(1))) else character(0)
+  if (criterion %in% indicator_names) return(list(available = FALSE, reason = "The global criterion must be separate from the formative indicators."))
+  scores <- result$fit$construct_scores %||% NULL
+  if (is.null(scores) || !construct %in% colnames(scores)) return(list(available = FALSE, reason = "The selected construct score is unavailable."))
+  rawdata <- as.data.frame(result$fit$rawdata %||% data, check.names = FALSE)
+  if (!criterion %in% names(rawdata) || !is.numeric(rawdata[[criterion]])) return(list(available = FALSE, reason = "The global criterion must be a numeric variable available to the PLS model."))
+  score <- as.numeric(scores[, construct])
+  criterion_values <- as.numeric(rawdata[[criterion]])
+  if (length(score) != length(criterion_values)) return(list(available = FALSE, reason = "Construct-score and criterion row counts do not match after PLS preprocessing."))
+  complete <- is.finite(score) & is.finite(criterion_values)
+  n <- sum(complete)
+  if (n < 4L) return(list(available = FALSE, reason = "At least four complete construct-score/criterion pairs are required."))
+  correlation <- suppressWarnings(stats::cor(score[complete], criterion_values[complete]))
+  if (!is.finite(correlation)) return(list(available = FALSE, reason = "The redundancy relationship could not be estimated because one variable has no variance."))
+  bounded <- max(-.999999, min(.999999, correlation))
+  fisher_se <- 1 / sqrt(n - 3)
+  ci <- tanh(atanh(bounded) + c(-1, 1) * stats::qnorm(.975) * fisher_se)
+  list(
+    available = TRUE, construct = construct, criterion = criterion, n = n,
+    loading = correlation, r2 = correlation^2, ci_lower = ci[[1L]], ci_upper = ci[[2L]],
+    guidance = if (abs(correlation) >= .70) "Strong redundancy evidence; also verify criterion content validity and independence." else "Redundancy evidence is below the common descriptive .70 loading reference; review criterion quality and construct specification."
+  )
+}
+
 structural_canvas_pls_cv_q2_value <- function(scores, outcome, predictors, folds = 7L, excluded = character(0)) {
   predictors <- setdiff(unique(as.character(predictors %||% character(0))), as.character(excluded %||% character(0)))
   if (is.null(scores) || !outcome %in% colnames(scores)) return(list(q2 = NA_real_, press = NA_real_, tss = NA_real_, folds = 0L, n = 0L))

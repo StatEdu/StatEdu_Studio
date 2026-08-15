@@ -188,3 +188,48 @@ structural_canvas_latent_correlation_intervals <- function(fit, level = .95) {
     check.names = FALSE
   )
 }
+structural_canvas_parcel_plan <- function(result, snapshot, enabled = FALSE, construct = "", parcels = 3L, purpose = "") {
+  if (!isTRUE(enabled)) return(list(enabled = FALSE, available = FALSE, reason = "Parcel planning was not requested."))
+  construct <- as.character(construct %||% "")
+  purpose <- trimws(as.character(purpose %||% ""))
+  parcels <- suppressWarnings(as.integer(parcels %||% 3L))
+  if (!nzchar(purpose)) return(list(enabled = TRUE, available = FALSE, reason = "A substantive parceling purpose must be recorded before a preview is created."))
+  if (!parcels %in% c(3L, 4L)) return(list(enabled = TRUE, available = FALSE, reason = "Parcel preview currently supports three or four parcels."))
+  specification <- structural_canvas_construct_specification(snapshot)
+  selected <- specification[specification$name == construct, , drop = FALSE]
+  if (!nrow(selected)) return(list(enabled = TRUE, available = FALSE, reason = "The selected construct is not present in the model."))
+  if (!identical(selected$construct_type[[1L]], "commonFactor") || !identical(selected$measurement_mode[[1L]], "reflective")) {
+    return(list(enabled = TRUE, available = FALSE, reason = "Parceling preview is restricted to reflective common-factor constructs."))
+  }
+  if (is.null(result$fit) || !inherits(result$fit, "lavaan") || !isTRUE(result$admissible)) {
+    return(list(enabled = TRUE, available = FALSE, reason = "An admissible item-level CFA must be fitted before parcel planning."))
+  }
+  if (as.integer(lavaan::lavInspect(result$fit, "ngroups")) != 1L) return(list(enabled = TRUE, available = FALSE, reason = "Parcel preview currently requires a single-group item-level CFA."))
+  ordered_indicators <- tryCatch(lavaan::lavNames(result$fit, "ov.ord"), error = function(error) character(0))
+  if (length(ordered_indicators)) return(list(enabled = TRUE, available = FALSE, reason = "Parcel preview currently requires continuous indicators; ordinal items need an ordinal-specific scoring and sensitivity plan."))
+  standardized <- tryCatch(lavaan::standardizedSolution(result$fit), error = function(error) data.frame())
+  loadings <- standardized[standardized$op == "=~" & standardized$lhs == construct, c("rhs", "est.std"), drop = FALSE]
+  names(loadings) <- c("Indicator", "Loading")
+  loadings <- loadings[is.finite(loadings$Loading), , drop = FALSE]
+  if (nrow(loadings) < parcels * 2L) return(list(enabled = TRUE, available = FALSE, reason = paste0("At least ", parcels * 2L, " indicators are required to preview ", parcels, " parcels with at least two items each.")))
+  loadings <- loadings[order(-abs(loadings$Loading), loadings$Indicator), , drop = FALSE]
+  cycle <- c(seq_len(parcels), rev(seq_len(parcels)))
+  allocation <- rep(cycle, length.out = nrow(loadings))
+  loadings$Parcel <- paste0("P", allocation)
+  loadings <- loadings[order(loadings$Parcel, -abs(loadings$Loading)), c("Parcel", "Indicator", "Loading"), drop = FALSE]
+  parcel_summary <- aggregate(abs(Loading) ~ Parcel, data = loadings, FUN = mean)
+  names(parcel_summary)[[2L]] <- "Mean absolute loading"
+  parcel_summary$Items <- vapply(parcel_summary$Parcel, function(parcel) paste(loadings$Indicator[loadings$Parcel == parcel], collapse = ", "), character(1))
+  residual_matrix <- tryCatch(as.matrix(lavaan::lavResiduals(result$fit, type = "cor")$cov), error = function(error) matrix(numeric(0), 0L, 0L))
+  indicators <- loadings$Indicator
+  residual_sub <- if (length(residual_matrix) && all(indicators %in% rownames(residual_matrix)) && all(indicators %in% colnames(residual_matrix))) residual_matrix[indicators, indicators, drop = FALSE] else matrix(numeric(0), 0L, 0L)
+  residual_values <- if (length(residual_sub) > 1L) abs(residual_sub[row(residual_sub) != col(residual_sub)]) else numeric(0)
+  max_residual <- if (any(is.finite(residual_values))) max(residual_values[is.finite(residual_values)]) else NA_real_
+  list(
+    enabled = TRUE, available = TRUE, construct = construct, parcels = parcels, purpose = purpose,
+    allocation = loadings, summary = parcel_summary,
+    min_loading = min(abs(loadings$Loading), na.rm = TRUE), max_residual_correlation = max_residual,
+    status = "Preview only - expert review required",
+    warning = "Loading-balanced allocation is sample-dependent and can conceal multidimensionality or local dependence. No parcel variables were created and the item-level CFA remains the primary analysis."
+  )
+}

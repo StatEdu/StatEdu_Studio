@@ -1304,7 +1304,7 @@ $$ d_{\mathrm{GLMM}} = \frac{B}{SD_{\mathrm{residual}}} $$
 **표본 수와 검정력.**
 
 - RMSEA close-fit/not-close-fit은 noncentral chi-square distribution을 사용한다.
-- parameter-level Monte Carlo는 standardized SEM/CFA parameter estimate distribution에서 반복 추출해 검정력을 추정한다.
+- 근사 모수 검정력 시뮬레이션은 standardized SEM/CFA parameter estimate distribution에서 반복 추출하며, Fisher-z 계열의 큰표본 표준오차와 모형 복잡도 보정을 사용한다. 전체 SEM 자료를 생성하고 매 반복에서 모형을 다시 적합하는 정식 Monte Carlo 연구는 아니므로 복잡한 모형에서는 별도의 모형 기반 시뮬레이션이 우선이다.
 - model complexity heuristic은 cases-per-free-parameter, observed/latent variable burden, structural path burden, standardized loading/path detectability 중 최대값을 권장 n으로 둔다.
 
 **입력과 보고.**
