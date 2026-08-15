@@ -73,6 +73,7 @@ structural_canvas_workbook_contents <- function(sheet_names) {
   describe <- function(name) {
     if (identical(name, "Contents")) return("Workbook sheet index and interpretation guide.")
     if (identical(name, "Report_Summary")) return("Copy-ready analysis context and key model-fit values for report drafting.")
+    if (identical(name, "Construct_Specification")) return("Declared construct type and measurement direction alongside requested/effective weighting, engine representation, estimand, and saved-model migration provenance.")
     if (name %in% c("Overview", "Fit", "Validity", "Measurement")) return("Formatted reporting table; use the corresponding numeric sheet for calculations where available.")
     if (identical(name, "Fit_Numeric")) return("Numeric model-fit statistics, confidence limits, and selected robust/scaled source keys.")
     if (identical(name, "Admissibility_Diagnostics")) return("Numeric eigenvalue, condition-number, boundary-dimension, and reason diagnostics for fitted and compared models.")
@@ -108,9 +109,11 @@ structural_canvas_workbook_contents <- function(sheet_names) {
 }
 
 structural_canvas_result_workbook_sheets <- function(bundle, table_fn) {
+  analysis_type <- as.character(bundle$analysis_type %||% if (inherits(bundle$fit, "lavaan")) "cfa" else "plssem")
   sheets <- list(
     Overview = table_fn("overview"), Report_Summary = structural_canvas_report_summary(bundle), Fit = table_fn("fit"),
-    Validity = table_fn("validity"), Measurement = table_fn("measurement")
+    Validity = table_fn("validity"), Measurement = table_fn("measurement"),
+    Construct_Specification = structural_canvas_construct_reporting_rows(bundle, analysis_type, FALSE)
   )
   if (!is.null(bundle$invariance_result) && nrow(bundle$invariance_result$table)) {
     sheets$Invariance <- bundle$invariance_result$table

@@ -64,13 +64,13 @@ structural_canvas_omega_h <- function(snapshot, fit) {
 structural_canvas_higher_order_loading_guidance <- function(value) {
   if (!is.finite(value)) "Not assessed"
   else if (abs(value) < .40) "Weak loading review"
-  else "No loading flag"
+  else "At/above descriptive .40 reference"
 }
 
 structural_canvas_omega_h_guidance <- function(value) {
   if (!is.finite(value) || value < 0 || value > 1) "Review inadmissible coefficient"
   else if (value < .70) "Below common .70 guideline"
-  else "Meets common .70 guideline"
+  else "At/above descriptive .70 reference"
 }
 
 structural_canvas_factor_score_quality <- function(fit) {
@@ -85,9 +85,9 @@ structural_canvas_factor_score_quality <- function(fit) {
   determinacy <- ifelse(is.finite(reliability) & reliability >= 0, sqrt(reliability), NA_real_)
   guidance <- vapply(determinacy, function(value) {
     if (!is.finite(value) || value > 1) "Not assessed"
-    else if (value >= .90) "Strong"
-    else if (value >= .80) "Acceptable for cautious use"
-    else "Low; avoid individual-score use"
+    else if (value >= .90) "At/above descriptive .90 reference"
+    else if (value >= .80) "Between descriptive .80 and .90 references"
+    else "Below descriptive .80; review score use"
   }, character(1))
   data.frame(Factor = factor_names, Determinacy = determinacy, `Score reliability` = reliability, Guidance = guidance, check.names = FALSE)
 }

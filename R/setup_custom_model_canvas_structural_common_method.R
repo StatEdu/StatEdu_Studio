@@ -47,7 +47,7 @@ structural_canvas_common_method_statistic_label <- function(value, language = NU
 structural_canvas_common_method_status_label <- function(value, language = NULL) {
   ko <- identical(normalize_app_language(language %||% "en"), "ko")
   labels <- if (ko) {
-    c("OK" = "양호", "Review" = "검토 필요", "Not available" = "계산 불가")
+    c("OK" = "양호", "Review" = "검토 필요", "Screen only" = "탐색 점검", "Screen flag" = "탐색 신호", "Not available" = "계산 불가")
   } else {
     c()
   }
@@ -61,6 +61,7 @@ structural_canvas_common_method_guidance_label <- function(value, language = NUL
       "Harman PCA requires at least two numeric indicators." = "Harman PCA에는 숫자형 관측변수가 최소 2개 필요합니다.",
       "Harman PCA requires more complete rows than indicators." = "Harman PCA에는 관측변수 수보다 많은 완전 응답 행이 필요합니다.",
       "Harman PCA failed for the selected indicators." = "선택된 관측변수로 Harman PCA를 계산하지 못했습니다.",
+      "Exploratory first-component screen only; values above 50% may flag concentration, but no value establishes presence or absence of common-method bias." = "탐색적 첫 성분 점검값입니다. 50% 초과는 집중 가능성을 표시할 수 있지만 어떤 값도 동일방법편향의 존재나 부재를 확정하지 않습니다.",
       "First unrotated principal component percent; values above 50% suggest possible common-method concentration." = "회전하지 않은 첫 번째 주성분의 설명분산 비율입니다. 50%를 넘으면 동일방법편의 집중 가능성을 검토합니다.",
       "A single-factor CFA fit the indicators reasonably well; review common-method concentration." = "단일요인 CFA가 비교적 양호하게 적합했습니다. 동일방법편의 집중 가능성을 검토하십시오.",
       "The single-factor CFA did not show a strong one-factor fit pattern." = "단일요인 CFA에서 강한 단일요인 적합 패턴은 보이지 않았습니다.",
@@ -148,8 +149,8 @@ structural_canvas_common_method_harman <- function(data, indicators) {
   percent <- 100 * variance[[1L]] / sum(variance)
   list(
     value = percent,
-    status = if (is.finite(percent) && percent <= 50) "OK" else "Review",
-    note = "First unrotated principal component percent; values above 50% suggest possible common-method concentration."
+    status = if (is.finite(percent) && percent <= 50) "Screen only" else "Screen flag",
+    note = "Exploratory first-component screen only; values above 50% may flag concentration, but no value establishes presence or absence of common-method bias."
   )
 }
 
@@ -239,19 +240,22 @@ structural_canvas_common_method_conclusion <- function(common_method, language =
       evidence <- c(evidence, "Mean common method factor loading exceeds the .50 screening threshold.")
     }
     if (nrow(single) && identical(single$Status[[1L]], "Review")) {
-      evidence <- c(evidence, "The single-factor CFA fit is acceptable enough to require review.")
+      evidence <- c(evidence, "The single-factor CFA is comparatively close to conventional fit references and requires review.")
     }
     if (nrow(harman) && identical(harman$Status[[1L]], "Review")) {
       evidence <- c(evidence, "Harman's first factor exceeds 50%.")
     }
     guidance <- paste(evidence, collapse = " ")
     if (!nzchar(guidance)) guidance <- "At least one common method diagnostic crossed its review threshold."
+  } else if (any(summary$Status == "Screen flag", na.rm = TRUE)) {
+    status <- "Screen flag"
+    guidance <- "An exploratory screen crossed its heuristic threshold; this is neither a diagnosis nor evidence that common-method bias caused the results."
   } else if (any(summary$Status == "Not available", na.rm = TRUE)) {
     status <- "Not available"
     guidance <- "Some common method diagnostics could not be computed; interpret the available checks only."
   } else {
-    status <- "OK"
-    guidance <- "No selected common method diagnostic crossed its screening threshold."
+    status <- if (any(summary$Status == "Screen only", na.rm = TRUE)) "Screen only" else "OK"
+    guidance <- "No selected screen crossed its heuristic threshold; this does not establish the absence of common-method bias."
   }
   ko <- identical(normalize_app_language(language %||% "en"), "ko")
   data.frame(
@@ -267,11 +271,13 @@ structural_canvas_common_method_conclusion_guidance_label <- function(value) {
     "No common method diagnostics could be computed for the current model." = "현재 모형에서 동일방법편의 진단 결과를 계산하지 못했습니다.",
     "Common latent factor loading changes exceed the .20 screening threshold." = "공통잠재요인 점검에서 적재량 변화가 .20 기준을 초과했습니다.",
     "Mean common method factor loading exceeds the .50 screening threshold." = "평균 공통방법요인 적재량이 .50 기준을 초과했습니다.",
-    "The single-factor CFA fit is acceptable enough to require review." = "단일요인 CFA 적합도가 검토가 필요할 정도로 양호합니다.",
+    "The single-factor CFA is comparatively close to conventional fit references and requires review." = "단일요인 CFA가 관행적 적합도 참고값에 비교적 가까워 추가 검토가 필요합니다.",
     "Harman's first factor exceeds 50%." = "Harman 첫 요인의 설명분산이 50%를 초과했습니다.",
     "At least one common method diagnostic crossed its review threshold." = "하나 이상의 동일방법편의 진단 지표가 검토 기준을 넘었습니다.",
     "Some common method diagnostics could not be computed; interpret the available checks only." = "일부 동일방법편의 진단을 계산하지 못했습니다. 계산된 지표만 제한적으로 해석하십시오.",
-    "No selected common method diagnostic crossed its screening threshold." = "선택한 동일방법편의 진단에서 검토 기준을 넘는 신호는 없습니다."
+    "No selected common method diagnostic crossed its screening threshold." = "선택한 동일방법편의 진단에서 검토 기준을 넘는 신호는 없습니다.",
+    "An exploratory screen crossed its heuristic threshold; this is neither a diagnosis nor evidence that common-method bias caused the results." = "탐색적 점검값이 휴리스틱 기준을 넘었지만 이는 진단도 아니고 동일방법편향이 결과를 유발했다는 증거도 아닙니다.",
+    "No selected screen crossed its heuristic threshold; this does not establish the absence of common-method bias." = "선택한 점검값이 휴리스틱 기준을 넘지 않았지만 동일방법편향의 부재를 입증하지는 않습니다."
   )
   parts <- strsplit(as.character(value %||% ""), " (?=Mean common|The single-factor|Harman's|At least|Some common|No selected)", perl = TRUE)[[1L]]
   translated <- structural_canvas_common_method_lookup_label(parts, labels)

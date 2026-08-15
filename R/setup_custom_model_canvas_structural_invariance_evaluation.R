@@ -33,6 +33,121 @@ structural_canvas_invariance_group_diagnostics <- function(data, group, indicato
   do.call(rbind, rows)
 }
 
+structural_canvas_micom <- function(snapshot, data, group, estimator = "PLS", permutations = 500L, seed = 20260816L) {
+  if (!nzchar(group) || !group %in% names(data)) stop("Select a valid grouping variable for MICOM analysis.")
+  groups <- unique(as.character(data[[group]][!is.na(data[[group]])]))
+  if (length(groups) != 2L) stop("The current MICOM implementation requires exactly two non-empty groups.")
+  permutations <- as.integer(permutations)
+  if (!is.finite(permutations) || permutations < 19L) stop("MICOM requires at least 19 permutations.")
+  indicators <- unique(unlist(lapply(Filter(function(node) identical(node$role, "latent"), snapshot$nodes %||% list()), function(latent) {
+    vapply(structural_canvas_pls_assigned_indicators(snapshot, latent), identity, character(1))
+  }), use.names = FALSE))
+  if (!length(indicators) || any(!indicators %in% names(data))) stop("MICOM requires all model indicators in the analysis data.")
+  if (!all(vapply(data[indicators], is.numeric, logical(1)))) stop("MICOM currently requires numeric indicators.")
+  complete <- stats::complete.cases(data[, c(indicators, group), drop = FALSE])
+  analysis <- data[complete, , drop = FALSE]
+  labels <- as.character(analysis[[group]])
+  counts <- table(labels)
+  if (any(counts < 30L)) stop("MICOM requires at least 30 complete observations in each group in the current implementation.")
+  standardized <- scale(analysis[, indicators, drop = FALSE])
+  if (any(!is.finite(standardized))) stop("MICOM cannot use constant or non-finite indicators.")
+  constructs <- vapply(Filter(function(node) identical(node$role, "latent"), snapshot$nodes %||% list()), structural_canvas_name, character(1))
+  node_names <- stats::setNames(vapply(snapshot$nodes %||% list(), structural_canvas_name, character(1)), vapply(snapshot$nodes %||% list(), function(node) as.character(node$id %||% ""), character(1)))
+  latent_ids <- vapply(Filter(function(node) identical(node$role, "latent"), snapshot$nodes %||% list()), function(node) as.character(node$id), character(1))
+  structural_edges <- Filter(function(edge) {
+    !identical(edge$kind %||% "", "covariance") && !identical(edge$pathType %||% "", "higherOrder") &&
+      as.character(edge$from %||% "") %in% latent_ids && as.character(edge$to %||% "") %in% latent_ids
+  }, snapshot$edges %||% list())
+  path_labels <- vapply(structural_edges, function(edge) paste0(node_names[[as.character(edge$from)]], " -> ", node_names[[as.character(edge$to)]]), character(1))
+  fit_parts <- function(index) {
+    fitted <- suppressMessages(run_structural_canvas_analysis(snapshot, analysis[index, , drop = FALSE], "plssem", estimator = estimator))
+    summary_fit <- summary(fitted$fit)
+    path_matrix <- as.matrix(summary_fit$paths %||% matrix(numeric(0), 0L, 0L))
+    path_values <- vapply(structural_edges, function(edge) {
+      predictor <- node_names[[as.character(edge$from)]]
+      outcome <- node_names[[as.character(edge$to)]]
+      if (predictor %in% rownames(path_matrix) && outcome %in% colnames(path_matrix)) as.numeric(path_matrix[predictor, outcome]) else NA_real_
+    }, numeric(1))
+    list(weights = as.matrix(summary_fit$weights), paths = path_values)
+  }
+  scores_from_weights <- function(weights) {
+    scores <- sapply(constructs, function(construct) {
+      if (!construct %in% colnames(weights)) return(rep(NA_real_, nrow(standardized)))
+      used <- intersect(indicators, rownames(weights)[is.finite(weights[, construct]) & weights[, construct] != 0])
+      if (!length(used)) return(rep(NA_real_, nrow(standardized)))
+      as.numeric(standardized[, used, drop = FALSE] %*% weights[used, construct])
+    })
+    colnames(scores) <- constructs
+    scores
+  }
+  statistics <- function(current_labels) {
+    first <- which(current_labels == groups[[1L]])
+    second <- which(current_labels == groups[[2L]])
+    fit_1 <- fit_parts(first)
+    fit_2 <- fit_parts(second)
+    scores_1 <- scores_from_weights(fit_1$weights)
+    scores_2 <- scores_from_weights(fit_2$weights)
+    correlations <- vapply(constructs, function(construct) abs(stats::cor(scores_1[, construct], scores_2[, construct], use = "complete.obs")), numeric(1))
+    pooled <- scores_1
+    pooled[second, ] <- scores_2[second, ]
+    pooled <- scale(pooled)
+    means <- vapply(constructs, function(construct) mean(pooled[first, construct]) - mean(pooled[second, construct]), numeric(1))
+    variances <- vapply(constructs, function(construct) stats::var(pooled[first, construct]) - stats::var(pooled[second, construct]), numeric(1))
+    c(correlations, means, variances, fit_1$paths - fit_2$paths)
+  }
+  observed <- statistics(labels)
+  set.seed(seed)
+  permutation_values <- replicate(permutations, tryCatch(statistics(sample(labels, replace = FALSE)), error = function(error) rep(NA_real_, 3L * length(constructs) + length(structural_edges))))
+  valid <- colSums(is.finite(permutation_values)) == nrow(permutation_values)
+  if (sum(valid) < max(19L, ceiling(.50 * permutations))) stop("Too few valid MICOM permutations were obtained.")
+  permutation_values <- permutation_values[, valid, drop = FALSE]
+  k <- length(constructs)
+  rows <- lapply(seq_along(constructs), function(index) {
+    correlation_null <- permutation_values[index, ]
+    mean_null <- permutation_values[k + index, ]
+    variance_null <- permutation_values[2L * k + index, ]
+    compositional <- observed[index] >= stats::quantile(correlation_null, .05, na.rm = TRUE)
+    mean_equal <- observed[k + index] >= stats::quantile(mean_null, .025, na.rm = TRUE) && observed[k + index] <= stats::quantile(mean_null, .975, na.rm = TRUE)
+    variance_equal <- observed[2L * k + index] >= stats::quantile(variance_null, .025, na.rm = TRUE) && observed[2L * k + index] <= stats::quantile(variance_null, .975, na.rm = TRUE)
+    data.frame(
+      Construct = constructs[[index]], `Observed c` = observed[index], `5% permutation c` = stats::quantile(correlation_null, .05, na.rm = TRUE),
+      `Compositional invariance` = compositional, `Mean difference` = observed[k + index], `Mean equality` = mean_equal,
+      `Variance difference` = observed[2L * k + index], `Variance equality` = variance_equal,
+      `Invariance level` = if (!compositional) "None" else if (mean_equal && variance_equal) "Full" else "Partial",
+      stringsAsFactors = FALSE, check.names = FALSE
+    )
+  })
+  table <- do.call(rbind, rows)
+  partial <- all(table$`Compositional invariance`)
+  path_table <- data.frame()
+  if (partial && length(structural_edges)) {
+    observed_differences <- observed[3L * k + seq_along(structural_edges)]
+    permutation_differences <- permutation_values[3L * k + seq_along(structural_edges), , drop = FALSE]
+    raw_p <- vapply(seq_along(structural_edges), function(index) {
+      (1 + sum(abs(permutation_differences[index, ]) >= abs(observed_differences[[index]]), na.rm = TRUE)) / (ncol(permutation_differences) + 1)
+    }, numeric(1))
+    path_table <- data.frame(
+      Path = path_labels,
+      Predictor = vapply(structural_edges, function(edge) node_names[[as.character(edge$from)]], character(1)),
+      Outcome = vapply(structural_edges, function(edge) node_names[[as.character(edge$to)]], character(1)),
+      `Group 1` = groups[[1L]], `Group 2` = groups[[2L]],
+      `Path difference` = observed_differences,
+      `Permutation p` = raw_p,
+      `BH-adjusted p` = stats::p.adjust(raw_p, method = "BH"),
+      `Valid permutations` = ncol(permutation_differences),
+      stringsAsFactors = FALSE, check.names = FALSE
+    )
+  }
+  list(
+    type = "pls_micom", group = group, groups = groups, table = table,
+    configural_invariance = TRUE,
+    measurement_gate = list(passed = partial, reason = if (partial) "At least partial measurement invariance was established for every construct." else "Compositional invariance failed for one or more constructs; PLS group path comparisons are blocked."),
+    mga_table = path_table,
+    mga_status = if (!partial) "Blocked by MICOM gate" else if (!length(structural_edges)) "No structural paths" else "Permutation PLS-MGA completed",
+    permutations_requested = permutations, permutations_valid = sum(valid), seed = seed
+  )
+}
+
 structural_canvas_invariance_score_diagnostics <- function(fit, top_n = 20L) {
   score <- tryCatch(suppressWarnings(lavaan::lavTestScore(fit, epc = TRUE)), error = function(error) NULL)
   if (is.null(score) || is.null(score$uni) || !nrow(score$uni)) return(data.frame())

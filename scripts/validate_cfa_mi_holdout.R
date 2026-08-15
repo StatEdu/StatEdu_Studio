@@ -30,6 +30,7 @@ holdout_comparison <- structural_canvas_holdout_model_comparison(
   "eta1 =~ x1 + x2 + x3 + x4", "eta1 =~ x1 + x2 + x3 + x4\nx1 ~~ x2",
   holdout_split$validation, estimator = "MLR", missing = "fiml"
 )
+holdout_gate <- structural_canvas_mi_validation_gate(TRUE, TRUE, holdout_comparison)
 stopifnot(
   nrow(holdout_split$exploration) == 280L,
   nrow(holdout_split$validation) == 120L,
@@ -46,6 +47,13 @@ stopifnot(
   all(holdout_comparison$validation_n_used == 120L),
   all(holdout_comparison$table[["N used"]] == 120L),
   identical(holdout_comparison$changes$`Comparison status`[[1L]], "Both validation models admissible"),
+  identical(holdout_gate$code, "holdout_evaluated"),
+  !isTRUE(holdout_gate$confirmatory),
+  identical(structural_canvas_mi_validation_gate(TRUE, FALSE)$code, "unvalidated"),
+  identical(structural_canvas_mi_validation_gate(TRUE, TRUE)$code, "reserved"),
+  isTRUE(structural_canvas_mi_validation_gate(FALSE)$confirmatory),
+  identical(structural_canvas_validate_mi_justification("  theory-based wording overlap  "), "theory-based wording overlap"),
+  inherits(try(structural_canvas_validate_mi_justification("   "), silent = TRUE), "try-error"),
   all(is.finite(unlist(holdout_comparison$changes[vapply(holdout_comparison$changes, is.numeric, logical(1))], use.names = FALSE))),
   inherits(try(structural_canvas_holdout_split(holdout_data[1:50, ], .30), silent = TRUE), "try-error"),
   isTRUE(structural_canvas_validate_holdout_options(TRUE, "cfa", "MLR")),

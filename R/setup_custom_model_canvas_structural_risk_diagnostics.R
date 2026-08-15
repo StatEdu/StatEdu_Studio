@@ -14,7 +14,7 @@ structural_canvas_ordered_category_diagnostics <- function(data, variables) {
       rows[[length(rows) + 1L]] <- data.frame(
         Indicator = name, Category = names(counts)[[index]], Count = count,
         Percent = if (valid_n > 0) 100 * count / valid_n else NA_real_,
-        Status = if (count == 0L) "Empty" else if (count <= sparse_limit) "Sparse" else if (valid_n > 0 && count / valid_n >= .95) "Dominant (>=95%)" else "Adequate",
+        Status = if (count == 0L) "Empty" else if (count <= sparse_limit) "Sparse" else if (valid_n > 0 && count / valid_n >= .95) "Dominant (>=95%)" else "No sparsity flag",
         stringsAsFactors = FALSE
       )
     }
@@ -42,7 +42,7 @@ structural_canvas_ordered_pair_diagnostics <- function(data, variables) {
       `Cells` = length(counts), `Empty cells` = zero, `Sparse nonempty cells` = sparse,
       `Minimum nonzero count` = if (any(counts > 0L)) min(counts[counts > 0L]) else 0L,
       `Empty %` = if (length(counts)) 100 * zero / length(counts) else NA_real_,
-      Status = if (zero > 0L || sparse > 0L) "Review" else "Adequate", check.names = FALSE
+      Status = if (zero > 0L || sparse > 0L) "Review" else "No sparsity flag", check.names = FALSE
     )
   })
   do.call(rbind, rows)

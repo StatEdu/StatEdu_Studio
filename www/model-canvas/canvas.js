@@ -155,16 +155,28 @@
       var measurementMode = latent.measurementMode || "reflective";
       var constructType = latent.constructType || (measurementMode === "formative" ? "composite" : "commonFactor");
       if (constructType === "unspecified") {
-        add("warning", latent.id, "construct_type_unspecified", ko ? "요인 또는 합성변수인지 명세가 필요함" : "Specify whether the construct is a common factor or composite");
+        add("error", latent.id, "construct_type_unspecified", ko ? "실행 전 공통요인 또는 합성변수로 명세해야 함" : "Specify common factor or composite before estimation");
       }
       if (constructType === "commonFactor" && measurementMode === "formative") {
         add("error", latent.id, "formative_common_factor", ko ? "형성형 지표 관계는 공통요인 명세와 양립하지 않음" : "A formative indicator relationship is incompatible with a common-factor specification");
       }
-      if (["cfa", "cbsem"].indexOf(instance.analysisType) >= 0 && constructType === "composite") {
+      if (["cfa", "cbsem", "sem"].indexOf(instance.analysisType) >= 0 && constructType === "composite") {
         add("error", latent.id, "composite_in_covariance_engine", ko ? "현재 CFA/CB-SEM 엔진은 합성변수를 추정하지 않음" : "The current CFA/CB-SEM engine does not estimate composite constructs");
       }
-      if (constructType === "commonFactor" && latent.weightingMode && latent.weightingMode !== "auto") {
-        add("warning", latent.id, "factor_weighting_ignored", ko ? "PLS 가중방식은 공통요인 자체의 이론적 명세가 아님" : "PLS weighting does not define the common-factor construct");
+      var weightingMode = latent.weightingMode || "auto";
+      if (["sum", "predefined"].indexOf(weightingMode) >= 0) {
+        add("error", latent.id, "weighting_not_implemented", ko ? "동일가중·사용자 지정 가중은 현재 엔진에 구현되지 않음" : "Equal and predefined weights are not implemented in the current engine");
+      }
+      if (measurementMode === "reflective" && weightingMode === "modeB") {
+        add("error", latent.id, "reflective_mode_b", ko ? "현재 반영형 블록은 Mode A만 지원함" : "Reflective blocks require Mode A in the current engine");
+      }
+      if (measurementMode === "formative" && weightingMode === "modeA") {
+        add("error", latent.id, "formative_mode_a", ko ? "현재 형성형 합성변수는 Mode B만 지원함" : "Formative composites require Mode B in the current engine");
+      }
+      if (constructType === "composite" && measurementMode === "formative") {
+        if (!String(latent.compositeDomainDefinition || "").trim()) add("warning", latent.id, "formative_domain_missing", ko ? "합성변수의 개념 영역 정의가 기록되지 않음" : "Composite domain definition is not recorded");
+        if (!String(latent.compositeIndicatorRationale || "").trim()) add("warning", latent.id, "formative_indicator_rationale_missing", ko ? "형성지표 포함 근거가 기록되지 않음" : "Formative-indicator inclusion rationale is not recorded");
+        if (!String(latent.compositeContentValidityEvidence || "").trim()) add("warning", latent.id, "formative_content_evidence_missing", ko ? "내용타당도 절차·출처가 기록되지 않음" : "Content-validity procedure or source is not recorded");
       }
       var connected = structural.some(function(edge) { return edge.from === latent.id || edge.to === latent.id; });
       if (structural.length > 0 && latents.length > 1 && !connected) add("warning", latent.id, "disconnected_latent", "구조모형에 연결되지 않은 잠재변수");
@@ -290,22 +302,64 @@
       });
       field(ko ? "라벨" : "Label", labelInput);
       if (single.role === "latent") {
+        var advancedInput = document.createElement("input");
+        advancedInput.type = "checkbox";
+        advancedInput.checked = !!single.advancedConstructSpecification;
+        advancedInput.addEventListener("change", function() {
+          commit(function() { single.advancedConstructSpecification = !!advancedInput.checked; });
+        });
+        field(ko ? "고급 구성개념 명세" : "Advanced construct specification", advancedInput);
+        var advancedConstruct = !!single.advancedConstructSpecification;
         var constructSelect = document.createElement("select");
         constructSelect.className = "form-control input-sm";
-        [["unspecified", ko ? "미확정 (권장사항 안내)" : "Not sure (show guidance)"], ["commonFactor", ko ? "공통요인" : "Common factor"], ["composite", ko ? "합성변수" : "Composite"]].forEach(function(item) {
-          var option = document.createElement("option"); option.value = item[0]; option.textContent = item[1]; constructSelect.appendChild(option);
+        [["unspecified", ko ? "잘 모르겠음 (안내 필요)" : "Not sure (show guidance)"], ["commonFactor", ko ? "잠재특성·공통요인" : "Latent trait / common factor"], ["composite", ko ? "구성지수·합성변수" : "Constructed index / composite"]].forEach(function(item) {
+          var option = document.createElement("option"); option.value = item[0]; option.textContent = item[1];
+          if (["cfa", "cbsem", "sem"].indexOf(instance.analysisType) >= 0 && item[0] === "composite") option.disabled = true;
+          constructSelect.appendChild(option);
         });
         constructSelect.value = single.constructType || ((single.measurementMode || "reflective") === "formative" ? "composite" : "commonFactor");
-        constructSelect.addEventListener("change", function() { commit(function() { single.constructType = constructSelect.value; }); });
-        field(ko ? "구성개념 유형" : "Construct type", constructSelect);
-        var weightSelect = document.createElement("select");
-        weightSelect.className = "form-control input-sm";
-        [["auto", ko ? "자동" : "Automatic"], ["modeA", "Mode A"], ["modeB", "Mode B"], ["sum", ko ? "동일가중" : "Equal weights"], ["predefined", ko ? "사용자 지정" : "Predefined"]].forEach(function(item) {
-          var option = document.createElement("option"); option.value = item[0]; option.textContent = item[1]; weightSelect.appendChild(option);
+        constructSelect.addEventListener("change", function() {
+          var selectedType = constructSelect.value;
+          commit(function() {
+            single.constructType = selectedType;
+            if (!advancedConstruct && selectedType !== "unspecified") single.weightingMode = "auto";
+          });
+          if (!advancedConstruct && selectedType !== "unspecified") setMeasurementMode(instance, selectedType === "composite" ? "formative" : "reflective");
         });
-        weightSelect.value = single.weightingMode || "auto";
-        weightSelect.addEventListener("change", function() { commit(function() { single.weightingMode = weightSelect.value; }); });
-        field(ko ? "PLS 가중 방식" : "PLS weighting", weightSelect);
+        field(advancedConstruct ? (ko ? "구성개념 유형" : "Construct ontology") : (ko ? "구성개념 모형" : "Construct model"), constructSelect);
+        if (!advancedConstruct) {
+          var constructNote = document.createElement("div");
+          constructNote.className = "structural-option-note";
+          var covarianceEngine = ["cfa", "cbsem", "sem"].indexOf(instance.analysisType) >= 0;
+          constructNote.textContent = covarianceEngine ? (ko ? "현재 엔진은 반영형 공통요인만 지원합니다." : "The current engine supports reflective common factors only.") : (ko ? "공통요인은 반영형 Mode A로, 합성변수는 형성형 Mode B로 자동 설정됩니다." : "Common factors default to reflective Mode A blocks; composites default to formative Mode B blocks.");
+          field("", constructNote);
+        }
+        if (advancedConstruct && instance.analysisType === "plssem") {
+          var weightSelect = document.createElement("select");
+          weightSelect.className = "form-control input-sm";
+          [["auto", ko ? "자동" : "Automatic"], ["modeA", "Mode A"], ["modeB", "Mode B"]].forEach(function(item) {
+            var option = document.createElement("option"); option.value = item[0]; option.textContent = item[1]; weightSelect.appendChild(option);
+          });
+          weightSelect.value = single.weightingMode || "auto";
+          weightSelect.addEventListener("change", function() { commit(function() { single.weightingMode = weightSelect.value; }); });
+          field(ko ? "PLS 가중 방식" : "PLS weighting", weightSelect);
+        }
+        if (instance.analysisType === "plssem" && constructSelect.value === "composite" && (single.measurementMode || "reflective") === "formative") {
+          function constructEvidenceField(label, property, placeholder) {
+            var textarea = document.createElement("textarea");
+            textarea.className = "form-control input-sm";
+            textarea.rows = 3;
+            textarea.value = single[property] || "";
+            textarea.placeholder = placeholder;
+            textarea.addEventListener("change", function() {
+              commit(function() { single[property] = String(textarea.value || "").trim(); });
+            });
+            field(label, textarea);
+          }
+          constructEvidenceField(ko ? "개념 영역 정의" : "Domain definition", "compositeDomainDefinition", ko ? "합성변수가 포괄해야 하는 개념 영역" : "Conceptual domain the composite must cover");
+          constructEvidenceField(ko ? "지표 포함 근거" : "Indicator inclusion rationale", "compositeIndicatorRationale", ko ? "각 지표가 포함된 이론적·내용적 근거" : "Theoretical and content rationale for indicator inclusion");
+          constructEvidenceField(ko ? "내용타당도 절차·출처" : "Content-validity procedure/source", "compositeContentValidityEvidence", ko ? "전문가 검토, 문헌, 척도개발 절차 또는 출처" : "Expert review, literature, scale-development procedure, or source");
+        }
       }
       if (selectionChanged) {
         var preferredInput = instance.settingsPreferredField === "name" && nameEditable ? nameInput :
@@ -730,9 +784,14 @@
   function setMeasurementMode(instance, mode) {
     var latents = selectedLatentNodes(instance);
     if (!latents.length || ["reflective", "formative"].indexOf(mode) < 0) return false;
+    if (mode === "formative" && ["cfa", "cbsem", "sem"].indexOf(instance.analysisType) >= 0) return false;
     window.StatEduModelCanvas.state.pushHistory(instance);
     latents.forEach(function(latent) {
       latent.measurementMode = mode;
+      if (!latent.advancedConstructSpecification) {
+        latent.constructType = mode === "formative" ? "composite" : "commonFactor";
+        latent.weightingMode = "auto";
+      }
       var relatedEdges = instance.state.edges.filter(function(edge) {
         var from = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
         var to = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);

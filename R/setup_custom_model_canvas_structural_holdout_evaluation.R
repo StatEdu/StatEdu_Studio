@@ -44,6 +44,33 @@ structural_canvas_validate_holdout_reuse <- function(enabled, validation_reveale
   invisible(TRUE)
 }
 
+structural_canvas_validate_mi_justification <- function(value) {
+  justification <- trimws(as.character(value %||% ""))
+  if (!length(justification) || !nzchar(justification[[1L]])) {
+    stop("A substantive justification is required before an MI-driven parameter can be freed.")
+  }
+  justification[[1L]]
+}
+
+structural_canvas_mi_validation_gate <- function(modified = FALSE, holdout_enabled = FALSE, comparison = NULL) {
+  if (!isTRUE(modified)) return(list(code = "not_applicable", label = "Not applicable", confirmatory = TRUE))
+  if (!isTRUE(holdout_enabled)) return(list(
+    code = "unvalidated", label = "Exploratory - independent validation not performed", confirmatory = FALSE
+  ))
+  if (is.null(comparison)) return(list(
+    code = "reserved", label = "Exploratory - reserved holdout not yet evaluated", confirmatory = FALSE
+  ))
+  admissible <- is.data.frame(comparison$table) && nrow(comparison$table) == 2L && all(comparison$table$Admissible %in% TRUE)
+  if (!admissible) return(list(
+    code = "holdout_inadmissible", label = "Exploratory - holdout evaluation inconclusive (inadmissible model)", confirmatory = FALSE
+  ))
+  list(
+    code = "holdout_evaluated",
+    label = "Exploratory - evaluated once in a prespecified reserved holdout; inspect all changes",
+    confirmatory = FALSE
+  )
+}
+
 structural_canvas_holdout_model_comparison <- function(original_syntax, modified_syntax, validation_data, estimator = "MLR", missing = "fiml", std_lv = FALSE, ci_level = .90) {
   if (!toupper(estimator) %in% c("ML", "MLR")) stop("MI holdout validation currently supports continuous indicators estimated with ML or MLR.")
   fit_model <- function(syntax) lavaan::cfa(

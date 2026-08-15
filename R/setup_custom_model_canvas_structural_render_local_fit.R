@@ -22,14 +22,18 @@ output[[paste0(prefix, "_result_residuals")]] <- renderUI({
   if (nrow(largest)) {
     largest[["Standardized residual"]] <- vapply(largest[["Standardized residual"]], format_decimal3, character(1))
     largest[["Correlation residual"]] <- vapply(largest[["Correlation residual"]], format_decimal3, character(1))
+    if ("Screening p" %in% names(largest)) largest[["Screening p"]] <- vapply(largest[["Screening p"]], format_p, character(1))
+    if ("BH-adjusted screening p" %in% names(largest)) largest[["BH-adjusted screening p"]] <- vapply(largest[["BH-adjusted screening p"]], format_p, character(1))
   }
-  div(class = "result-section regression-result-panel structural-residual-result",
+  div(class = "result-section regression-result-panel landscape-table-panel structural-residual-result",
     h4("5. Local fit diagnostics"),
     matrix_table(diagnostics$standardized, "Standardized residual matrix"),
     matrix_table(diagnostics$correlation, "Correlation residual matrix"),
-    tags$h5(paste0("Large standardized residuals (|z| >= ", diagnostics$cutoff, ")")),
-    if (!nrow(largest)) tags$p("No residuals exceeded the cutoff.") else structural_canvas_basic_html_table(largest),
-    tags$p(class = "structural-result-note", "Large standardized residuals identify local areas of model misfit and should be interpreted with theory rather than used as automatic modification instructions.")
+    tags$h5(paste0("Large standardized residuals (descriptive |z| >= ", diagnostics$cutoff, ")")),
+    if (!isTRUE(diagnostics$standardized_available)) tags$p(class = "structural-result-note", "Standardized residuals were unavailable. Correlation residuals are displayed without z cutoffs or screening p values because they are not on the same reference scale."),
+    if (isTRUE(diagnostics$standardized_available) && !nrow(largest)) tags$p("No standardized residuals exceeded the descriptive cutoff."),
+    if (nrow(largest)) structural_canvas_basic_html_table(largest),
+    tags$p(class = "structural-result-note", "The |2.58| marker and BH-adjusted two-sided normal-reference screening p values are descriptive localization aids across unique indicator pairs. Residuals are dependent and their reference distribution can vary by estimator; neither an exceedance nor a small adjusted p value is an automatic modification instruction, and no flagged residuals does not establish local fit.")
   )
 })
 output[[paste0(prefix, "_result_higher_order")]] <- renderUI({
@@ -72,7 +76,7 @@ output[[paste0(prefix, "_result_higher_order")]] <- renderUI({
         "Review residual/R² interval" = "잔차/R2 구간 점검",
         "Not assessed" = "평가 안 됨",
         "Weak loading review" = "약한 적재량 점검",
-        "No loading flag" = "적재량 경고 없음",
+        "At/above descriptive .40 reference" = "기술적 .40 참고값 이상",
         value
       )
     }, character(1))
@@ -90,7 +94,7 @@ output[[paste0(prefix, "_result_higher_order")]] <- renderUI({
       omega_h_guidance,
       "Review inadmissible coefficient" = "허용 범위 밖 계수 점검",
       "Below common .70 guideline" = "일반적 .70 기준 미만",
-      "Meets common .70 guideline" = "일반적 .70 기준 충족",
+      "At/above descriptive .70 reference" = "기술적 .70 참고값 이상",
       omega_h_guidance
     )
   }
@@ -124,6 +128,8 @@ output[[paste0(prefix, "_result_higher_order")]] <- renderUI({
     tags$p(class = "structural-result-note", if (ko) "고차요인 표준화 적재량 신뢰구간은 lavaan의 95% delta-method 구간입니다." else "Higher-order standardized-loading confidence intervals are 95% delta-method intervals from lavaan."),
     tags$p(class = "structural-result-note", if (ko) "B 신뢰구간은 비표준화 고차요인 적재량의 95% 구간입니다. 고정된 기준 적재량은 고정값에서 퇴화된 구간을 갖습니다." else "B confidence intervals are 95% intervals for unstandardized higher-order loadings; a fixed reference loading has a degenerate interval at its fixed value."),
     tags$p(class = "structural-result-note", if (ko) "omega-h는 적합된 고차요인 CFA 모형에서 단위가중 총점 분산 중 하나의 고차 일반요인에 귀속되는 비율을 추정합니다." else "ωh estimates the proportion of unit-weighted total-score variance attributable to one higher-order general factor under the fitted higher-order CFA model."),
+    tags$p(class = "structural-result-note", if (ko) "고차요인 모형에서는 일반요인이 문항에 직접 적재하지 않고 저차요인을 통해 간접적으로 영향을 줍니다. 이는 일반요인과 집단요인이 문항에 직접 적재하는 bifactor 모형과 동일하지 않으며, 고차요인 적합만으로 단일차원성·일반점수 우월성 또는 bifactor 구조를 입증하지 않습니다." else "In a higher-order model, the general factor affects indicators indirectly through lower-order factors. This is not equivalent to a bifactor model, where general and specific factors load directly on indicators; fitting a higher-order factor alone does not establish unidimensionality, superiority of a general score, or a bifactor structure."),
+    tags$p(class = "structural-result-note", if (ko) "ωh는 지정된 단위가중 총점과 적합된 고차요인 모형에 조건부인 기술량입니다. 척도 점수 사용을 정당화하려면 내용타당도, 대안모형, 요인점수 결정성 및 독립표본 재현성을 함께 검토하십시오." else "ωh is conditional on the specified unit-weighted total score and fitted higher-order model. Justifying score use also requires content validity, plausible alternative models, factor-score determinacy, and independent replication."),
     tags$p(class = "structural-result-note", if (ko) ".40 적재량과 .70 omega-h 값은 기술적 검토 기준이며, 보편적 통과/탈락 규칙이 아닙니다. † 표시는 사용할 수 없는 값 또는 [0, 1] 범위를 벗어난 계수/잔차분산을 나타냅니다." else "The .40 loading and .70 ωh values are descriptive review guidelines, not universal pass/fail rules. † marks an unavailable value or a coefficient/residual variance outside [0, 1]."),
     tags$p(class = "structural-result-note", if (ko) "고정된 기준 적재량은 SE, z, p를 추정하지 않습니다." else "Fixed reference loadings have no estimated SE, z, or p value.")
   )

@@ -74,6 +74,8 @@ structural_canvas_structural_edge_label <- function(edge, index) {
 structural_canvas_structural_moderation_terms <- function(snapshot, data, edges, structural_edge_info) {
   moderations <- snapshot$moderations %||% list()
   if (!length(moderations)) return(list(data = data, measurement_lines = character(0), structural_lines = character(0), definitions = list()))
+  method <- as.character(snapshot$moderationMethod %||% "all_pairs_dmc")
+  if (!method %in% c("all_pairs_dmc", "matched_pair_dmc", "all_pairs_mean_centered")) method <- "all_pairs_dmc"
   edge_info_by_id <- stats::setNames(structural_edge_info, vapply(structural_edge_info, function(item) as.character(item$edge$id %||% ""), character(1)))
   existing_names <- names(data)
   measurement_lines <- character(0)
@@ -102,14 +104,22 @@ structural_canvas_structural_moderation_terms <- function(snapshot, data, edges,
       for (indicator in c(predictor_indicators, moderator_indicators)) {
         if (!is.numeric(data[[indicator]])) stop(paste0("Product-indicator SEM moderation requires numeric indicators. Check: ", indicator, "."))
       }
-      for (predictor_indicator in predictor_indicators) {
-        for (moderator_indicator in moderator_indicators) {
+      indicator_pairs <- if (identical(method, "matched_pair_dmc")) {
+        pair_count <- min(length(predictor_indicators), length(moderator_indicators))
+        Map(c, predictor_indicators[seq_len(pair_count)], moderator_indicators[seq_len(pair_count)])
+      } else {
+        unlist(lapply(predictor_indicators, function(predictor_indicator) {
+          lapply(moderator_indicators, function(moderator_indicator) c(predictor_indicator, moderator_indicator))
+        }), recursive = FALSE)
+      }
+      for (indicator_pair in indicator_pairs) {
+        predictor_indicator <- indicator_pair[[1L]]
+        moderator_indicator <- indicator_pair[[2L]]
           product_specs[[length(product_specs) + 1L]] <- list(
             predictor_indicator = predictor_indicator,
             moderator_indicator = moderator_indicator,
             moderator_centered = data[[moderator_indicator]] - mean(data[[moderator_indicator]], na.rm = TRUE)
           )
-        }
       }
       moderator_range <- list(mean = 0, min = -2, max = 2)
     } else {
@@ -135,7 +145,9 @@ structural_canvas_structural_moderation_terms <- function(snapshot, data, edges,
         existing_names
       )
       existing_names <- c(existing_names, product_name)
-      data[[product_name]] <- (data[[product_spec$predictor_indicator]] - mean(data[[product_spec$predictor_indicator]], na.rm = TRUE)) * product_spec$moderator_centered
+      product_values <- (data[[product_spec$predictor_indicator]] - mean(data[[product_spec$predictor_indicator]], na.rm = TRUE)) * product_spec$moderator_centered
+      if (method %in% c("all_pairs_dmc", "matched_pair_dmc")) product_values <- product_values - mean(product_values, na.rm = TRUE)
+      data[[product_name]] <- product_values
       product_names <- c(product_names, product_name)
     }
     interaction_factor <- structural_canvas_structural_effect_label("statedu_int", edge_info$predictor, moderator)
@@ -152,6 +164,8 @@ structural_canvas_structural_moderation_terms <- function(snapshot, data, edges,
       interaction_label = interaction_label,
       interaction_factor = interaction_factor,
       product_indicators = product_names,
+      product_indicator_method = method,
+      product_indicator_count = length(product_names),
       moderator_role = source$role,
       moderator_mean = moderator_range$mean,
       moderator_min = moderator_range$min,

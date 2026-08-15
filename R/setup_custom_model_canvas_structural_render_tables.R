@@ -99,7 +99,7 @@ structural_canvas_measurement_ci_html_table <- function(table) {
 structural_canvas_effect_summary_html_table <- function(table, ci = FALSE) {
   if (!is.data.frame(table) || !nrow(table)) return(NULL)
   if (isTRUE(ci)) {
-    required <- c("Outcome", "Predictor", "Direct beta 95% CI", "Indirect beta 95% CI", "Total beta 95% CI")
+    required <- c("Outcome", "Predictor", "Direct beta 95% CI", "Direct CI source", "Indirect beta 95% CI", "Indirect CI source", "Total beta 95% CI", "Total CI source")
     if (!all(required %in% names(table))) return(structural_canvas_basic_html_table(table))
     body_values <- table[, required, drop = FALSE]
     return(tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered structural-result-table structural-effect-ci-table",
@@ -107,12 +107,15 @@ structural_canvas_effect_summary_html_table <- function(table, ci = FALSE) {
         tags$tr(
           tags$th(class = "structural-table-header-cell", rowspan = "2", "Outcome"),
           tags$th(class = "structural-table-header-cell", rowspan = "2", "Predictor"),
-          tags$th(class = "structural-table-header-cell", colspan = "3", "beta 95% CI")
+          tags$th(class = "structural-table-header-cell", colspan = "6", "beta 95% CI and source")
         ),
         tags$tr(
           tags$th(class = "structural-table-header-cell", "Direct effect"),
+          tags$th(class = "structural-table-header-cell", "Source"),
           tags$th(class = "structural-table-header-cell", "Indirect effect"),
-          tags$th(class = "structural-table-header-cell", "Total effect")
+          tags$th(class = "structural-table-header-cell", "Source"),
+          tags$th(class = "structural-table-header-cell", "Total effect"),
+          tags$th(class = "structural-table-header-cell", "Source")
         )
       ),
       tags$tbody(lapply(seq_len(nrow(body_values)), function(index) {
@@ -120,7 +123,7 @@ structural_canvas_effect_summary_html_table <- function(table, ci = FALSE) {
       }))
     )))
   }
-  required <- c("Outcome", "Predictor", "Direct beta", "Direct p", "Indirect beta", "Indirect p", "Total beta", "Total p")
+  required <- c("Outcome", "Predictor", "Direct beta", "Direct p", "Direct BH-adjusted p", "Indirect beta", "Indirect p", "Indirect BH-adjusted p", "Total beta", "Total p", "Total BH-adjusted p")
   if (!all(required %in% names(table))) return(structural_canvas_basic_html_table(table))
   body_values <- table[, required, drop = FALSE]
   tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered structural-result-table structural-effect-summary-table",
@@ -128,17 +131,20 @@ structural_canvas_effect_summary_html_table <- function(table, ci = FALSE) {
       tags$tr(
         tags$th(class = "structural-table-header-cell", rowspan = "2", "Outcome"),
         tags$th(class = "structural-table-header-cell", rowspan = "2", "Predictor"),
-        tags$th(class = "structural-table-header-cell", colspan = "2", "Direct effect"),
-        tags$th(class = "structural-table-header-cell", colspan = "2", "Indirect effect"),
-        tags$th(class = "structural-table-header-cell", colspan = "2", "Total effect")
+        tags$th(class = "structural-table-header-cell", colspan = "3", "Direct effect"),
+        tags$th(class = "structural-table-header-cell", colspan = "3", "Indirect effect"),
+        tags$th(class = "structural-table-header-cell", colspan = "3", "Total effect")
       ),
       tags$tr(
         tags$th(class = "structural-table-header-cell", "beta"),
         tags$th(class = "structural-table-header-cell", "p"),
+        tags$th(class = "structural-table-header-cell", "BH p"),
         tags$th(class = "structural-table-header-cell", "beta"),
         tags$th(class = "structural-table-header-cell", "p"),
+        tags$th(class = "structural-table-header-cell", "BH p"),
         tags$th(class = "structural-table-header-cell", "beta"),
-        tags$th(class = "structural-table-header-cell", "p")
+        tags$th(class = "structural-table-header-cell", "p"),
+        tags$th(class = "structural-table-header-cell", "BH p")
       )
     ),
     tags$tbody(lapply(seq_len(nrow(body_values)), function(index) {

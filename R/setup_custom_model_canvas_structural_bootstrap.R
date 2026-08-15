@@ -139,3 +139,107 @@ structural_canvas_bca_interval <- function(bootstrap_values, original_value, jac
   if (any(!is.finite(adjusted)) || any(adjusted <= 0 | adjusted >= 1)) return(c(NA_real_, NA_real_))
   as.numeric(stats::quantile(bootstrap_values, probs = adjusted, names = FALSE, type = 6, na.rm = TRUE))
 }
+
+structural_canvas_moderated_mediation_indices <- function(result) {
+  effects <- result$effect_definitions %||% list()
+  moderations <- result$moderation_definitions %||% list()
+  if (!length(effects) || !length(moderations) || is.null(result$fit)) return(data.frame())
+  parameters <- lavaan::parameterEstimates(result$fit)
+  labeled <- parameters[nzchar(parameters$label %||% ""), c("label", "est"), drop = FALSE]
+  coefficients <- stats::setNames(as.numeric(labeled$est), as.character(labeled$label))
+  rows <- list()
+  for (effect in effects) {
+    if (!identical(as.character(effect$type %||% ""), "Indirect")) next
+    paths <- effect$paths %||% list()
+    path_labels <- effect$path_labels %||% list()
+    for (path_index in seq_along(paths)) {
+      path <- paths[[path_index]]
+      labels <- path_labels[[path_index]] %||% character(0)
+      if (length(path) < 3L || length(labels) != length(path) - 1L) next
+      for (definition in moderations) {
+        edge_position <- which(
+          path[-length(path)] == as.character(definition$predictor %||% "") &
+            path[-1L] == as.character(definition$outcome %||% "")
+        )
+        if (!length(edge_position)) next
+        edge_position <- edge_position[[1L]]
+        interaction_label <- as.character(definition$interaction_label %||% "")
+        other_labels <- labels[-edge_position]
+        required <- c(interaction_label, other_labels)
+        if (!length(interaction_label) || !all(required %in% names(coefficients))) next
+        values <- unname(coefficients[required])
+        if (any(!is.finite(values))) next
+        rows[[length(rows) + 1L]] <- data.frame(
+          lhs = paste(path, collapse = " -> "), op = "modmed",
+          rhs = as.character(definition$moderator %||% ""),
+          est = unname(coefficients[[interaction_label]]) * if (length(other_labels)) prod(unname(coefficients[other_labels])) else 1,
+          stringsAsFactors = FALSE
+        )
+      }
+    }
+  }
+  if (!length(rows)) return(data.frame())
+  unique(do.call(rbind, rows))
+}
+
+structural_canvas_effect_bootstrap <- function(snapshot, data, analysis_type, estimator, missing, std_lv, ordered, nominal, residual_variance_fixes, reps = 0L, seed = default_seed()) {
+  reps <- suppressWarnings(as.integer(reps))
+  if (!analysis_type %in% c("cbsem", "sem") || !is.data.frame(data) || nrow(data) < 3L || !is.finite(reps) || reps < 2L) return(NULL)
+  original <- run_structural_canvas_analysis(snapshot, data, analysis_type, estimator, missing, std_lv, ordered, nominal, residual_variance_fixes)
+  raw_original <- lavaan::parameterEstimates(original$fit)
+  raw_original <- raw_original[raw_original$op %in% c("~", ":="), c("lhs", "op", "rhs", "est"), drop = FALSE]
+  moderated_original <- structural_canvas_moderated_mediation_indices(original)
+  if (nrow(moderated_original)) raw_original <- rbind(raw_original, moderated_original)
+  keys <- paste(raw_original$lhs, raw_original$op, raw_original$rhs, sep = "\r")
+  draws <- matrix(NA_real_, nrow = reps, ncol = length(keys), dimnames = list(NULL, keys))
+  standardized_original <- tryCatch(lavaan::standardizedSolution(original$fit, ci = FALSE), error = function(error) data.frame())
+  standardized_original_values <- rep(NA_real_, length(keys))
+  if (all(c("lhs", "op", "rhs", "est.std") %in% names(standardized_original))) {
+    standardized_keys <- paste(standardized_original$lhs, standardized_original$op, standardized_original$rhs, sep = "\r")
+    standardized_match <- match(keys, standardized_keys)
+    standardized_original_values[!is.na(standardized_match)] <- standardized_original$est.std[standardized_match[!is.na(standardized_match)]]
+  }
+  standardized_draws <- matrix(NA_real_, nrow = reps, ncol = length(keys), dimnames = list(NULL, keys))
+  old_seed_exists <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  if (old_seed_exists) old_seed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  on.exit({
+    if (old_seed_exists) assign(".Random.seed", old_seed, envir = .GlobalEnv)
+    else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) rm(".Random.seed", envir = .GlobalEnv)
+  }, add = TRUE)
+  set.seed(as.integer(seed))
+  for (index in seq_len(reps)) {
+    sampled <- data[sample.int(nrow(data), nrow(data), replace = TRUE), , drop = FALSE]
+    fit <- suppressWarnings(tryCatch(
+      run_structural_canvas_analysis(snapshot, sampled, analysis_type, estimator, missing, std_lv, ordered, nominal, residual_variance_fixes),
+      error = function(error) NULL
+    ))
+    if (is.null(fit) || !isTRUE(fit$converged) || !isTRUE(fit$admissible)) next
+    estimates <- lavaan::parameterEstimates(fit$fit)
+    estimates <- estimates[estimates$op %in% c("~", ":="), c("lhs", "op", "rhs", "est"), drop = FALSE]
+    moderated <- structural_canvas_moderated_mediation_indices(fit)
+    if (nrow(moderated)) estimates <- rbind(estimates, moderated)
+    estimate_keys <- paste(estimates$lhs, estimates$op, estimates$rhs, sep = "\r")
+    matched <- match(keys, estimate_keys)
+    draws[index, !is.na(matched)] <- estimates$est[matched[!is.na(matched)]]
+    standardized <- tryCatch(lavaan::standardizedSolution(fit$fit, ci = FALSE), error = function(error) data.frame())
+    if (all(c("lhs", "op", "rhs", "est.std") %in% names(standardized))) {
+      standardized_keys <- paste(standardized$lhs, standardized$op, standardized$rhs, sep = "\r")
+      standardized_match <- match(keys, standardized_keys)
+      standardized_draws[index, !is.na(standardized_match)] <- standardized$est.std[standardized_match[!is.na(standardized_match)]]
+    }
+  }
+  rows <- lapply(seq_along(keys), function(column) {
+    values <- draws[, column]
+    values <- values[is.finite(values)]
+    valid <- length(values)
+    interval <- if (valid >= max(20L, ceiling(.5 * reps))) as.numeric(stats::quantile(values, c(.025, .975), names = FALSE, type = 6)) else c(NA_real_, NA_real_)
+    p_value <- if (valid) min(1, 2 * min((sum(values <= 0) + 1) / (valid + 1), (sum(values >= 0) + 1) / (valid + 1))) else NA_real_
+    standardized_values <- standardized_draws[, column]
+    standardized_values <- standardized_values[is.finite(standardized_values)]
+    standardized_valid <- length(standardized_values)
+    standardized_interval <- if (standardized_valid >= max(20L, ceiling(.5 * reps))) as.numeric(stats::quantile(standardized_values, c(.025, .975), names = FALSE, type = 6)) else c(NA_real_, NA_real_)
+    standardized_p <- if (standardized_valid) min(1, 2 * min((sum(standardized_values <= 0) + 1) / (standardized_valid + 1), (sum(standardized_values >= 0) + 1) / (standardized_valid + 1))) else NA_real_
+    data.frame(lhs = raw_original$lhs[[column]], op = raw_original$op[[column]], rhs = raw_original$rhs[[column]], estimate = raw_original$est[[column]], lower = interval[[1L]], upper = interval[[2L]], p = p_value, beta_estimate = standardized_original_values[[column]], beta_lower = standardized_interval[[1L]], beta_upper = standardized_interval[[2L]], beta_p = standardized_p, beta_valid = standardized_valid, valid = valid, requested = reps, `valid_percent` = 100 * valid / reps, status = structural_canvas_bootstrap_status(valid, reps), stringsAsFactors = FALSE)
+  })
+  do.call(rbind, rows)
+}

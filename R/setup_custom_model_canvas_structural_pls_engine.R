@@ -55,7 +55,7 @@ structural_canvas_pls_redundancy_analysis <- function(result, snapshot, data, co
   list(
     available = TRUE, construct = construct, criterion = criterion, n = n,
     loading = correlation, r2 = correlation^2, ci_lower = ci[[1L]], ci_upper = ci[[2L]],
-    guidance = if (abs(correlation) >= .70) "Strong redundancy evidence; also verify criterion content validity and independence." else "Redundancy evidence is below the common descriptive .70 loading reference; review criterion quality and construct specification."
+    guidance = if (abs(correlation) >= .70) "At/above the descriptive .70 redundancy reference; also verify criterion content validity and independence." else "Redundancy evidence is below the common descriptive .70 loading reference; review criterion quality and construct specification."
   )
 }
 
@@ -150,6 +150,9 @@ structural_canvas_pls_predictive_relevance <- function(fit, structural_paths, fo
 }
 
 structural_canvas_run_pls_analysis <- function(snapshot, data, latents, edges, estimator = "PLS") {
+  resolved_specification <- structural_canvas_resolve_construct_specification(snapshot, "plssem", estimator)
+  unsupported <- !resolved_specification$supported
+  if (any(unsupported)) stop(paste(unique(resolved_specification$reason[unsupported]), collapse = " "))
   latent_indicators <- function(latent) {
     vapply(Filter(function(edge) {
       from <- structural_canvas_node(snapshot, edge$from)
@@ -164,10 +167,13 @@ structural_canvas_run_pls_analysis <- function(snapshot, data, latents, edges, e
   }
   constructs <- lapply(latents, function(latent) {
     indicator_names <- latent_indicators(latent)
-    if (identical(latent$measurementMode %||% "reflective", "formative")) {
-      seminr::composite(structural_canvas_name(latent), indicator_names)
+    latent_name <- structural_canvas_name(latent)
+    resolved <- resolved_specification[resolved_specification$name == latent_name, , drop = FALSE]
+    if (!nrow(resolved)) stop(paste0("Resolved PLS construct specification is missing for: ", latent_name, "."))
+    if (identical(resolved$effective_weighting[[1L]], "Mode B")) {
+      seminr::composite(latent_name, indicator_names, weights = seminr::mode_B)
     } else {
-      seminr::reflective(structural_canvas_name(latent), indicator_names)
+      seminr::reflective(latent_name, indicator_names)
     }
   })
   path_specs <- lapply(Filter(function(edge) {
@@ -233,6 +239,7 @@ structural_canvas_run_pls_analysis <- function(snapshot, data, latents, edges, e
     q2_effects = predictive_relevance$q2_effects,
     q2_folds = predictive_relevance$folds,
     ignored_covariances = unique(ignored_covariances),
+    resolved_construct_specification = resolved_specification,
     admissible = TRUE
   )
 }
@@ -354,7 +361,19 @@ structural_canvas_run_pls_bootstrap <- function(analysis_type, pls_bootstrap, re
   })
 }
 
-structural_canvas_run_pls_predict <- function(analysis_type, pls_predict_folds, pls_predict_reps, result) {
+structural_canvas_pls_predict_mean_matrix <- function(summaries, field) {
+  matrices <- lapply(summaries, function(value) as.matrix(value[[field]] %||% matrix(numeric(0), 0L, 0L)))
+  matrices <- Filter(function(value) length(value) && nrow(value) && ncol(value), matrices)
+  if (!length(matrices)) return(matrix(numeric(0), 0L, 0L))
+  reference <- matrices[[1L]]
+  compatible <- vapply(matrices, function(value) identical(dim(value), dim(reference)) && identical(dimnames(value), dimnames(reference)), logical(1))
+  matrices <- matrices[compatible]
+  values <- simplify2array(matrices)
+  if (length(matrices) == 1L) return(reference)
+  apply(values, c(1L, 2L), mean, na.rm = TRUE)
+}
+
+structural_canvas_run_pls_predict <- function(analysis_type, pls_predict_folds, pls_predict_reps, result, pls_predict_seed = default_seed()) {
   pls_predict_folds <- suppressWarnings(as.integer(pls_predict_folds %||% 0L))
   pls_predict_reps <- suppressWarnings(as.integer(pls_predict_reps %||% 1L))
   if (!identical(analysis_type, "plssem") || pls_predict_folds <= 0L) return(NULL)
@@ -365,19 +384,35 @@ structural_canvas_run_pls_predict <- function(analysis_type, pls_predict_folds, 
       value = .05,
       detail = paste0(pls_predict_folds, "-fold cross-validation")
     )
-    prediction <- seminr::predict_pls(
-      model = result$fit,
-      technique = seminr::predict_DA,
-      noFolds = pls_predict_folds,
-      reps = pls_predict_reps,
-      cores = NULL
-    )
+    old_seed_exists <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    if (old_seed_exists) old_seed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    on.exit({
+      if (old_seed_exists) assign(".Random.seed", old_seed, envir = .GlobalEnv)
+      else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) rm(".Random.seed", envir = .GlobalEnv)
+    }, add = TRUE)
+    repetition_summaries <- lapply(seq_len(pls_predict_reps), function(index) {
+      set.seed(as.integer(pls_predict_seed) + index - 1L)
+      prediction <- seminr::predict_pls(
+        model = result$fit,
+        technique = seminr::predict_DA,
+        noFolds = pls_predict_folds,
+        reps = 1L,
+        cores = NULL
+      )
+      summary(prediction)
+    })
+    summary_value <- repetition_summaries[[1L]]
+    for (field in c("PLS_out_of_sample", "LM_out_of_sample", "construct_error")) {
+      summary_value[[field]] <- structural_canvas_pls_predict_mean_matrix(repetition_summaries, field)
+    }
     structural_canvas_set_progress(value = .90, detail = "Preparing PLSpredict summaries")
     value <- list(
       folds = pls_predict_folds,
       reps = pls_predict_reps,
+      seed = as.integer(pls_predict_seed),
       technique = "Direct antecedents",
-      summary = summary(prediction)
+      summary = summary_value,
+      repetition_summaries = repetition_summaries
     )
     structural_canvas_set_progress(value = 1, detail = "PLSpredict complete")
     value

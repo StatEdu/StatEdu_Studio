@@ -28,7 +28,7 @@ stopifnot(
   is.infinite(structural_canvas_symmetric_condition_number(diag(c(1, 0))))
 )
 stopifnot(
-  identical(structural_canvas_measurement_quality_guidance(.60, .80, .75, .82), "Meets common cutoffs"),
+  identical(structural_canvas_measurement_quality_guidance(.60, .80, .75, .82), "At/above common descriptive references"),
   grepl("AVE", structural_canvas_measurement_quality_guidance(.40, .80, .75, .82), fixed = TRUE),
   grepl("Cronbach's α", structural_canvas_measurement_quality_guidance(.60, .80, .65, .82), fixed = TRUE),
   grepl("ωtotal", structural_canvas_measurement_quality_guidance(.60, .80, .75, .65), fixed = TRUE),
@@ -85,7 +85,8 @@ stopifnot(
   is.finite(ml$parameter_condition_number), !isTRUE(ml$ill_conditioned_parameter_covariance),
   nrow(factor_score_quality) == 1L, identical(factor_score_quality$Factor, "eta1"),
   factor_score_quality$Determinacy > 0, factor_score_quality$Determinacy <= 1,
-  abs(factor_score_quality[["Score reliability"]] - factor_score_quality$Determinacy^2) < 1e-12
+  abs(factor_score_quality[["Score reliability"]] - factor_score_quality$Determinacy^2) < 1e-12,
+  factor_score_quality$Guidance %in% c("At/above descriptive .90 reference", "Between descriptive .80 and .90 references", "Below descriptive .80; review score use")
 )
 stopifnot(
   grepl("CFA analysis reproducibility record", reproducibility_record, fixed = TRUE),
@@ -321,7 +322,7 @@ fl <- structural_canvas_fornell_larcker(
   correlations = matrix(c(1, .60, .60, 1), 2L, dimnames = list(c("eta1", "eta2"), c("eta1", "eta2"))),
   indicator_counts = c(eta1 = 3L, eta2 = 3L)
 )
-stopifnot(all.equal(unname(fl$max_correlation), c(.60, .60)), identical(unname(fl$criterion), c("Criterion met", "Criterion met")))
+stopifnot(all.equal(unname(fl$max_correlation), c(.60, .60)), identical(unname(fl$criterion), c("Below reference", "Below reference")))
 fl_review <- structural_canvas_fornell_larcker(
   ave = c(eta1 = .25, eta2 = .64),
   correlations = matrix(c(1, .60, .60, 1), 2L, dimnames = list(c("eta1", "eta2"), c("eta1", "eta2"))),
@@ -338,7 +339,7 @@ htmt_correlations <- matrix(c(
   .20, .20, .40, 1
 ), 4L, byrow = TRUE, dimnames = list(c("x1", "x2", "y1", "y2"), c("x1", "x2", "y1", "y2")))
 htmt <- structural_canvas_htmt(htmt_correlations, list(eta1 = c("x1", "x2"), eta2 = c("y1", "y2")), .85)
-stopifnot(abs(htmt$matrix["eta1", "eta2"] - (.20 / sqrt(.50 * .40))) < 1e-10, identical(htmt$pairs$Criterion[[1L]], "Criterion met"))
+stopifnot(abs(htmt$matrix["eta1", "eta2"] - (.20 / sqrt(.50 * .40))) < 1e-10, identical(htmt$pairs$Criterion[[1L]], "Below reference"))
 htmt_review <- structural_canvas_htmt(htmt_correlations, list(eta1 = c("x1", "x2"), eta2 = c("x2", "y2")), .85)
 stopifnot(identical(htmt_review$pairs$Criterion[[1L]], "Not assessed"), grepl("Cross-loaded", htmt_review$pairs$Reason[[1L]], fixed = TRUE))
 
@@ -348,6 +349,8 @@ set.seed(20260814)
 nonnormal_data <- data.frame(x1 = stats::rexp(800), x2 = stats::rexp(800), x3 = stats::rexp(800))
 mardia_nonnormal <- structural_canvas_mardia(nonnormal_data, names(nonnormal_data))
 stopifnot(isTRUE(mardia_nonnormal$available), isTRUE(mardia_nonnormal$nonnormal), identical(mardia_nonnormal$recommendation, "MLR recommended"))
+normal_mardia <- structural_canvas_mardia(continuous, names(continuous))
+stopifnot(grepl("normality not established", normal_mardia$recommendation, fixed = TRUE) || isTRUE(normal_mardia$test_flag))
 estimator_recommendation <- structural_canvas_estimator_recommendation(snapshot, nonnormal_data, data.frame(name = names(nonnormal_data), measurement = "continuous"), "cfa", "ML")
 estimator_no_recommendation <- structural_canvas_estimator_recommendation(snapshot, nonnormal_data, data.frame(name = names(nonnormal_data), measurement = "continuous"), "cfa", "MLR")
 estimator_ordered_recommendation <- structural_canvas_estimator_recommendation(snapshot, nonnormal_data, data.frame(name = names(nonnormal_data), measurement = c("ordered", "continuous", "continuous")), "cfa", "ML")
@@ -375,13 +378,13 @@ alpha_covariance <- matrix(c(1, .5, .5, 1), 2L, dimnames = list(c("x1", "x2"), c
 stopifnot(abs(structural_canvas_cronbach_alpha(alpha_covariance, c("x1", "x2")) - 2 / 3) < 1e-10)
 stopifnot(is.na(structural_canvas_cronbach_alpha(alpha_covariance, "x1")))
 residual_diagnostics <- structural_canvas_residual_diagnostics(ml$fit)
-stopifnot(isTRUE(residual_diagnostics$available), identical(dim(residual_diagnostics$standardized), c(3L, 3L)), all(is.na(residual_diagnostics$standardized[upper.tri(residual_diagnostics$standardized, diag = TRUE)])))
+stopifnot(isTRUE(residual_diagnostics$available), residual_diagnostics$cutoff == 2.58, identical(dim(residual_diagnostics$standardized), c(3L, 3L)), all(is.na(residual_diagnostics$standardized[upper.tri(residual_diagnostics$standardized, diag = TRUE)])), all(c("Screening p", "BH-adjusted screening p", "Exceeds descriptive cutoff") %in% names(residual_diagnostics$group_pairs)))
 
 missing_fixture <- continuous
 missing_fixture$x1[c(1L, 2L)] <- NA_real_
 missing_fixture$x2[[2L]] <- NA_real_
 missing_diagnostics <- structural_canvas_missing_diagnostics(missing_fixture, names(missing_fixture))
-stopifnot(isTRUE(missing_diagnostics$available), missing_diagnostics$complete_n == nrow(continuous) - 2L, missing_diagnostics$variables$Missing[missing_diagnostics$variables$Variable == "x1"] == 2L, missing_diagnostics$pattern_count == 3L)
+stopifnot(isTRUE(missing_diagnostics$available), missing_diagnostics$complete_n == nrow(continuous) - 2L, missing_diagnostics$variables$Missing[missing_diagnostics$variables$Variable == "x1"] == 2L, missing_diagnostics$pattern_count == 3L, identical(dim(missing_diagnostics$pairwise_n), c(3L, 3L)), missing_diagnostics$minimum_pairwise_n == nrow(continuous) - 2L, abs(missing_diagnostics$incomplete_percent - 100 * 2 / nrow(continuous)) < 1e-12)
 outlier_fixture <- continuous
 outlier_fixture[1L, ] <- outlier_fixture[1L, ] + 20
 outlier_diagnostics <- structural_canvas_mahalanobis_diagnostics(outlier_fixture, names(outlier_fixture), alpha = .001)

@@ -49,7 +49,7 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
         structural_canvas_write_result_workbook(sheets, file)
       }
     )
-    if (analysis_type %in% c("cfa", "cbsem")) observe({
+    if (analysis_type %in% c("cfa", "cbsem", "plssem")) observe({
       data <- dataset_fn()
       choices <- names(data %||% data.frame())
       current <- as.character(input[[paste0(prefix, "_invariance_group")]] %||% "")

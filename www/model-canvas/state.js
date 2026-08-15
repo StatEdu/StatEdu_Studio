@@ -2,7 +2,7 @@
   "use strict";
 
   var DEFAULT_STATE = {
-    modelSchemaVersion: 5,
+    modelSchemaVersion: 6,
     canvas: {
       paper: "B5",
       orientation: "landscape",
@@ -104,13 +104,53 @@
     return edge;
   }
 
+  function normalizeNode(node) {
+    node = clone(node || {});
+    if (node.role !== "latent") return node;
+
+    var migrations = [];
+    var hadConstructType = Object.prototype.hasOwnProperty.call(node, "constructType");
+    var hadMeasurementMode = Object.prototype.hasOwnProperty.call(node, "measurementMode");
+    var hadWeightingMode = Object.prototype.hasOwnProperty.call(node, "weightingMode");
+    var hadAdvancedFlag = Object.prototype.hasOwnProperty.call(node, "advancedConstructSpecification");
+
+    if (!hadMeasurementMode || !node.measurementMode) {
+      node.measurementMode = "reflective";
+      migrations.push("measurement_mode_defaulted");
+    }
+    if (!hadConstructType || !node.constructType) {
+      node.constructType = node.measurementMode === "formative" ? "composite" : "commonFactor";
+      migrations.push("construct_type_inferred_from_measurement_mode");
+    }
+    if (!hadWeightingMode || !node.weightingMode) {
+      node.weightingMode = "auto";
+      migrations.push("weighting_mode_defaulted");
+    }
+
+    var needsAdvancedReview =
+      (node.constructType === "composite" && node.measurementMode === "reflective") ||
+      (node.constructType === "commonFactor" && node.measurementMode === "formative") ||
+      ["", "auto"].indexOf(node.weightingMode) < 0;
+    if (!hadAdvancedFlag) {
+      node.advancedConstructSpecification = needsAdvancedReview;
+      if (needsAdvancedReview) migrations.push("advanced_view_enabled_for_review");
+    } else {
+      node.advancedConstructSpecification = !!node.advancedConstructSpecification;
+    }
+
+    if (migrations.length && !node.constructSpecificationMigration) {
+      node.constructSpecificationMigration = migrations.join(";");
+    }
+    return node;
+  }
+
   function restore(state, snap) {
     var sourceVersion = Number(snap && snap.modelSchemaVersion || 2);
     state.modelSchemaVersion = DEFAULT_STATE.modelSchemaVersion;
     state.canvas = clone(snap.canvas || DEFAULT_STATE.canvas);
     state.style = Object.assign(clone(DEFAULT_STATE.style), clone(snap.style || {}));
     if (sourceVersion < 5 && state.style.arrowHead === "line") state.style.arrowHead = "triangle";
-    state.nodes = clone(snap.nodes || []);
+    state.nodes = clone(snap.nodes || []).map(normalizeNode);
     state.edges = clone(snap.edges || []).map(normalizeEdge);
     var nodeRoles = {};
     state.nodes.forEach(function(node) { nodeRoles[node.id] = node.role; });
@@ -188,6 +228,7 @@
     label: label,
     formatLabel: formatLabel,
     roleLabel: roleLabel,
-    clone: clone
+    clone: clone,
+    normalizeNode: normalizeNode
   };
 })();

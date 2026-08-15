@@ -135,13 +135,13 @@ stopifnot(
   omega_h$omega_h <= 1,
   omega_h$indicators == 9L,
   identical(structural_canvas_higher_order_loading_guidance(.30), "Weak loading review"),
-  identical(structural_canvas_higher_order_loading_guidance(-.60), "No loading flag"),
+  identical(structural_canvas_higher_order_loading_guidance(-.60), "At/above descriptive .40 reference"),
   identical(structural_canvas_omega_h_guidance(.65), "Below common .70 guideline"),
-  identical(structural_canvas_omega_h_guidance(.80), "Meets common .70 guideline"),
+  identical(structural_canvas_omega_h_guidance(.80), "At/above descriptive .70 reference"),
   identical(structural_canvas_omega_h_guidance(1.05), "Review inadmissible coefficient"),
   !any(second_order_identification$Severity == "Error"),
   nrow(factor_correlation_diagnostics) > 0L,
-  all(factor_correlation_diagnostics$Severity %in% c("Acceptable", "Review", "High", "Severe", "Inadmissible", "Unavailable"))
+  all(factor_correlation_diagnostics$Severity %in% c("Below correlation review reference", "Review", "High", "Severe", "Inadmissible", "Unavailable"))
 )
 
 single_indicator_snapshot <- list(

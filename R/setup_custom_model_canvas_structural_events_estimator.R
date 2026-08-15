@@ -75,7 +75,7 @@ structural_canvas_estimator_recommendation_modal <- function(recommendation, ana
 
   modalDialog(
     title = if (ko) "추정량 권고" else "Estimator recommendation",
-    tags$p(if (ko) "Mardia 진단에서 연속형 지표의 비정규성이 확인되었습니다. 이 모형을 적합하기 전에 강건 MLR 사용을 권장합니다." else "Mardia diagnostics flagged nonnormal continuous indicators. Robust MLR is recommended before fitting this model."),
+    tags$p(if (ko) "표본크기에 민감한 Mardia 선별검사에서 연속형 지표의 다변량 정규성 이탈이 표시되었습니다. 강건 표준오차와 보정 검정을 제공하는 MLR을 우선 검토하십시오. 이 검정만으로 분포 이탈의 실질적 크기나 추정치 영향을 확정할 수는 없습니다." else "The sample-size-sensitive Mardia screen flagged departure from multivariate normality in the continuous indicators. Consider MLR for robust standard errors and a scaled test. This screen alone does not establish the substantive magnitude of departure or its impact on estimates."),
     tags$p(paste0(
       if (ko) "Mardia 왜도 p = " else "Mardia skewness p = ", format_p(diagnosis$skew_p),
       if (ko) "; 첨도 p = " else "; kurtosis p = ", format_p(diagnosis$kurtosis_p),

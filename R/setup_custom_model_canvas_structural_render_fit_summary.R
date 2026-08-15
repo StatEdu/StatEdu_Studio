@@ -126,19 +126,18 @@ structural_canvas_lavaan_quality_status <- function(item, value, analysis_type =
   if (identical(item, "Converged")) return(if (identical(value, "TRUE")) "OK" else "Review")
   if (identical(item, "Admissible solution")) return(if (identical(value, "TRUE")) "OK" else "Review")
   if (identical(item, "Model df")) return(if (is.finite(numeric_value) && numeric_value > 0) "OK" else "Review")
-  if (identical(item, "Chi-square/df")) return(if (is.finite(numeric_value) && numeric_value <= 5) "OK" else "Review")
+  if (identical(item, "Chi-square/df")) return(if (is.finite(numeric_value) && numeric_value <= 5) "Reference only" else "Review")
   if (identical(item, "Fit statistic source")) return("OK")
-  if (identical(item, "N/free parameter ratio")) return(if (is.finite(numeric_value) && numeric_value >= 5) "OK" else "Review")
-  if (identical(item, "Harman first-factor %")) return(if (is.finite(numeric_value) && numeric_value <= 50) "OK" else "Review")
-  if (identical(item, "Max full collinearity VIF")) return(if (is.finite(numeric_value) && numeric_value <= 3.3) "OK" else "Review")
-  if (identical(item, "CFI")) return(if (is.finite(numeric_value) && numeric_value >= .90) "OK" else "Review")
-  if (identical(item, "TLI")) return(if (is.finite(numeric_value) && numeric_value >= .90) "OK" else "Review")
-  if (identical(item, "RMSEA")) return(if (is.finite(numeric_value) && numeric_value <= .08) "OK" else "Review")
-  if (identical(item, "SRMR")) return(if (is.finite(numeric_value) && numeric_value <= .10) "OK" else "Review")
-  if (identical(item, "Min standardized loading")) return(if (is.finite(numeric_value) && numeric_value >= .40) "OK" else "Review")
-  if (identical(item, "Min CR")) return(if (is.finite(numeric_value) && numeric_value >= .70) "OK" else "Review")
-  if (identical(item, "Min AVE")) return(if (is.finite(numeric_value) && numeric_value >= .50) "OK" else "Review")
-  if (identical(item, "Max latent correlation")) return(if (is.finite(numeric_value) && numeric_value < .85) "OK" else "Review")
+  if (identical(item, "N/free parameter ratio")) return(if (is.finite(numeric_value)) "Reference only" else "Not assessed")
+  if (item %in% c("Harman first-factor %", "Max full collinearity VIF")) return(if (is.finite(numeric_value)) "Screen only" else "Not assessed")
+  if (identical(item, "CFI")) return(if (is.finite(numeric_value) && numeric_value >= .90) "Reference only" else "Review")
+  if (identical(item, "TLI")) return(if (is.finite(numeric_value) && numeric_value >= .90) "Reference only" else "Review")
+  if (identical(item, "RMSEA")) return(if (is.finite(numeric_value) && numeric_value <= .08) "Reference only" else "Review")
+  if (identical(item, "SRMR")) return(if (is.finite(numeric_value) && numeric_value <= .10) "Reference only" else "Review")
+  if (identical(item, "Min standardized loading")) return(if (is.finite(numeric_value) && numeric_value >= .40) "Reference only" else "Review")
+  if (identical(item, "Min CR")) return(if (is.finite(numeric_value) && numeric_value >= .70) "Reference only" else "Review")
+  if (identical(item, "Min AVE")) return(if (is.finite(numeric_value) && numeric_value >= .50) "Reference only" else "Review")
+  if (identical(item, "Max latent correlation")) return(if (is.finite(numeric_value) && numeric_value < .85) "Reference only" else "Review")
   if (identical(item, "Structural path count")) {
     if (!analysis_type %in% c("sem", "cbsem")) return("Not assessed")
     return(if (is.finite(numeric_value) && numeric_value > 0) "OK" else "Review")
@@ -149,7 +148,7 @@ structural_canvas_lavaan_quality_status <- function(item, value, analysis_type =
   }
   if (identical(item, "Min endogenous R2")) {
     if (!analysis_type %in% c("sem", "cbsem")) return("Not assessed")
-    return(if (is.finite(numeric_value)) "OK" else "Review")
+    return(if (is.finite(numeric_value)) "Descriptive only" else "Not assessed")
   }
   if (identical(item, "Model status")) return(if (identical(value, "Original/prespecified model")) "OK" else "Review")
   "Not assessed"
@@ -224,22 +223,22 @@ structural_canvas_lavaan_quality_rows <- function(bundle, analysis_type = "cfa")
       "Must be TRUE before interpreting estimates.",
       "Must be TRUE before reporting fit, reliability, validity, or structural paths as final.",
       "df = 0 indicates a saturated model; approximate fit is not substantively diagnostic.",
-      "Often reported as chi-square divided by df; values above 3 or 5 should be justified.",
+      "Descriptive ratio only; conventional ranges are not a model-acceptance test. Large values flag possible misfit for investigation.",
       "Records whether lavaan robust/scaled or conventional fit statistics were selected.",
-      "Descriptive sample-size screen; ratios below 5 require caution or justification.",
-      "Harman single-factor screen; above 50% suggests possible common-method concentration.",
-      "Full collinearity VIF above 3.3 suggests possible common-method or construct-overlap bias.",
-      "Review below .90; .95 is a common descriptive target.",
-      "Review below .90; .95 is a common descriptive target.",
-      "Review above .08; .06 is a common descriptive target.",
-      "Review above .10; .08 is a common descriptive target.",
-      "Review indicators below .40/.70 depending on purpose and theory.",
-      "Review construct reliability below .70.",
-      "Review convergent validity below .50.",
-      "Review discriminant validity near or above .85/.90.",
+      "Descriptive sample-size ratio only; no universal N-to-parameter cutoff establishes adequate power or stable estimation.",
+      "Exploratory Harman screen only; values above 50% may flag concentration, while lower values do not rule out common-method bias.",
+      "Exploratory full-collinearity screen only; values above 3.3 are nonspecific and lower values do not rule out common-method bias.",
+      "Common .90/.95 values are descriptive references, not universal acceptance rules; interpret with residuals, model complexity, and theory.",
+      "Common .90/.95 values are descriptive references, not universal acceptance rules; interpret with residuals, model complexity, and theory.",
+      "Common .08/.06 values are descriptive references; interpret the estimate and CI with df, sample size, residuals, and theory.",
+      "Common .10/.08 values are descriptive references, not universal acceptance rules; inspect the residual pattern and substantive size.",
+      "Loading values are descriptive evidence, not automatic item-retention rules. Review low values with content validity, residuals, cross-loadings, uncertainty, and prespecified theory.",
+      "The .70 value is a descriptive reliability reference, not a universal scale-acceptance rule; report the estimate, formula, and uncertainty.",
+      "The .50 value is a descriptive convergent-validity reference, not an automatic construct-acceptance or item-deletion rule.",
+      "Latent-correlation references do not establish discriminant validity; interpret with HTMT intervals, cross-loadings, local fit, theory, and competing measurement models.",
       "Report whether the model includes structural regressions.",
       "Inspect coefficients near or above |1| for inadmissibility or suppression.",
-      "Report explanatory power for endogenous latent variables when structural paths exist.",
+      "Report R2 descriptively for each endogenous construct; no universal value establishes adequate explanation or causal importance.",
       "MI-based modifications are exploratory unless validated in independent data."
     ),
     stringsAsFactors = FALSE,
@@ -249,10 +248,12 @@ structural_canvas_lavaan_quality_rows <- function(bundle, analysis_type = "cfa")
 
 structural_canvas_lavaan_quality_status_summary <- function(rows) {
   if (!nrow(rows) || !"Status" %in% names(rows)) return("Quality status: not assessed.")
-  counts <- table(factor(rows$Status, levels = c("OK", "Review", "Not assessed")))
+  counts <- table(factor(rows$Status, levels = c("OK", "Review", "Reference only", "Screen only", "Not assessed")))
   paste0(
     "Quality status: OK=", counts[["OK"]],
     "; Review=", counts[["Review"]],
+    "; Reference only=", counts[["Reference only"]],
+    "; Screen only=", counts[["Screen only"]],
     "; Not assessed=", counts[["Not assessed"]],
     "."
   )
@@ -324,35 +325,36 @@ structural_canvas_quality_display_guidance <- function(item, guidance) {
     "Chi-square/df" = "카이제곱을 자유도로 나눈 값입니다. 3 또는 5 초과는 근거를 제시하십시오.",
     "Fit statistic source" = "lavaan의 일반/robust/scaled 적합도 중 어떤 지표를 선택했는지 기록합니다.",
     "N/free parameter ratio" = "표본 크기 점검입니다. 5 미만이면 주의 또는 근거가 필요합니다.",
-    "Harman first-factor %" = "단일요인 비율이 50%를 넘으면 공통방법편향 가능성을 검토하십시오.",
-    "Max full collinearity VIF" = "3.3 초과는 공통방법편향 또는 구성개념 중복 가능성을 시사합니다.",
+    "Harman first-factor %" = "탐색적 점검값일 뿐입니다. 50% 초과는 집중 가능성을 표시하지만 낮은 값도 동일방법편향의 부재를 입증하지 않습니다.",
+    "Max full collinearity VIF" = "비특이적인 탐색적 점검값입니다. 3.3 초과는 검토 신호일 수 있지만 낮은 값도 동일방법편향의 부재를 입증하지 않습니다.",
     "CFI" = ".90 미만은 검토가 필요하며 .95는 흔히 쓰는 기술적 목표입니다.",
     "TLI" = ".90 미만은 검토가 필요하며 .95는 흔히 쓰는 기술적 목표입니다.",
     "RMSEA" = ".08 초과는 검토가 필요하며 .06은 흔히 쓰는 기술적 목표입니다.",
     "SRMR" = ".10 초과는 검토가 필요하며 .08은 흔히 쓰는 기술적 목표입니다.",
-    "Min standardized loading" = "목적과 이론에 따라 .40/.70 미만 지표를 검토하십시오.",
-    "Min CR" = ".70 미만의 구성개념 신뢰도는 검토가 필요합니다.",
-    "Min AVE" = ".50 미만의 수렴타당도는 검토가 필요합니다.",
-    "Max latent correlation" = ".85/.90에 가깝거나 넘으면 판별타당도를 검토하십시오.",
+    "Min standardized loading" = "적재량은 문항 유지의 자동 규칙이 아닙니다. 낮은 값은 내용타당도, 잔차, 교차적재, 불확실성과 사전 이론을 함께 검토하십시오.",
+    "Min CR" = ".70은 기술적 신뢰도 참고값이며 보편적 척도 합격선이 아닙니다. 추정값, 계산식과 불확실성을 보고하십시오.",
+    "Min AVE" = ".50은 기술적 수렴타당도 참고값이며 구성개념 채택이나 문항 삭제의 자동 기준이 아닙니다.",
+    "Max latent correlation" = "잠재상관 기준만으로 판별타당도가 확립되지는 않습니다. HTMT 구간, 교차적재, 국소적합, 이론과 경쟁 측정모형을 함께 검토하십시오.",
     "Structural path count" = "구조 회귀경로 포함 여부를 보고하십시오.",
     "Max structural beta" = "|1|에 가깝거나 넘는 계수는 부적절해 또는 억제효과 가능성을 점검하십시오.",
-    "Min endogenous R2" = "구조경로가 있으면 내생 잠재변수의 설명력을 보고하십시오.",
+    "Min endogenous R2" = "내생 구성개념별 R²를 기술적으로 보고하십시오. 보편적인 값 하나가 충분한 설명력이나 인과적 중요성을 확립하지 않습니다.",
     "Model status" = "MI 기반 수정은 독립 자료에서 검증하지 않는 한 탐색적 결과입니다.",
     "PLS algorithm iterations" = "반복 횟수가 비정상적으로 크면 알고리즘 수렴을 점검하십시오.",
     "Final weight difference" = "값이 작을수록 외부가중치 수렴이 안정적입니다.",
     "Missing-data method" = "PLS는 lavaan의 FIML/pairwise 옵션을 사용하지 않으므로 결측 처리 방식을 보고하십시오.",
-    "Approx PLS SRMR" = "반영형 측정모형에서 관측-모형 함의 지표상관 차이를 근사한 SRMR입니다.",
-    "Approx d_ULS" = "반영형 지표상관의 제곱 유클리드 불일치입니다. 보편 절단값은 없습니다.",
-    "Approx NFI" = "독립 상관 기준선 대비 근사 NFI입니다.",
-    "10-times rule margin" = "최대 지표 수 또는 최대 선행변수 수의 10배 기준으로 보는 기술적 표본 점검입니다.",
-    "Min outer loading" = ".70 미만 반영형 지표는 이론적 근거가 있을 때만 유지하십시오.",
-    "Min rhoC" = ".70 미만의 구성개념 신뢰도는 검토가 필요합니다.",
-    "Max HTMT" = ".85/.90에 가깝거나 넘으면 판별타당도를 검토하십시오.",
-    "Max item VIF" = "3.3 또는 5 초과의 지표 다중공선성을 검토하십시오.",
-    "Max inner VIF" = "3.3 또는 5 초과의 구조 예측변수 다중공선성을 검토하십시오.",
-    "Min Q2" = "Stone-Geisser Q2가 0보다 크면 내생 구성개념의 예측 관련성이 있음을 시사합니다.",
+    "Approx PLS SRMR" = "로컬에서 재구성한 반영형 측정모형 SRMR입니다. 수용·기각 절단값 없이 기술적으로만 보고하십시오.",
+    "Approx d_G" = "로컬에서 재구성한 측지 불일치입니다. 보편 절단값이 없으므로 기술적으로만 보고하십시오.",
+    "Approx d_ULS" = "로컬에서 재구성한 제곱 유클리드 불일치입니다. 보편 절단값이 없으므로 기술적으로만 보고하십시오.",
+    "Approx NFI" = "독립 상관 기준선으로 로컬에서 재구성한 NFI입니다. 수용·기각 절단값 없이 기술적으로만 보고하십시오.",
+    "10-times rule margin" = "역사적으로 부정확한 10배 규칙은 표본크기 정당화에 사용할 수 없습니다. 사전 검정력 또는 모형별 시뮬레이션을 우선하십시오.",
+    "Min outer loading" = "외부적재량은 자동 삭제 기준이 아닙니다. 낮은 값은 내용타당도, 교차적재, 불확실성과 사전 이론을 함께 검토하십시오.",
+    "Min rhoC" = ".70은 기술적 신뢰도 참고값이며 보편적 척도 합격선이 아닙니다.",
+    "Max HTMT" = "HTMT 기준 미만은 판별타당도 확정 판정이 아닙니다. 신뢰구간, 잠재상관, 교차적재, 이론과 경쟁 측정모형을 함께 검토하십시오.",
+    "Max item VIF" = "VIF 절단값은 기술적 참고입니다. 높은 값은 중복 지표나 형성가중치 불안정성을 검토하고, 낮은 값도 측정 품질을 확립하지 않습니다.",
+    "Max inner VIF" = "VIF 절단값은 기술적 참고입니다. 예측변수 간 이론적 중복, 계수 부호·크기 변화, 억제효과와 bootstrap 불안정성을 함께 검토하십시오.",
+    "Min Q2" = "Q²는 생략 예측 기준과 비교한 기술적 지표입니다. 0 초과만으로 강한 표본외 예측력을 주장하지 말고 PLSpredict 기준모형 비교를 함께 보고하십시오.",
     "PLSpredict summary" = "표본외 예측은 PLS 오차가 LM보다 낮을 때 더 강하게 뒷받침됩니다.",
-    "Max f2" = "구조 효과크기입니다. .02/.15/.35는 기술적 기준입니다."
+    "Max f2" = "f²의 .02/.15/.35 구간은 기술적 표지이며 분야 맥락, 불확실성과 실질적 중요성을 대체하지 않습니다."
   )
   if (item %in% names(guidance_map)) unname(guidance_map[item]) else guidance
 }
@@ -393,7 +395,7 @@ structural_canvas_quality_display_rows <- function(rows, ko = FALSE) {
     "Min Q2" = "최소 Q²",
     "PLSpredict summary" = "PLSpredict 요약"
   )
-  status_map <- c("OK" = "양호", "Review" = "검토", "Not assessed" = "미평가")
+  status_map <- c("OK" = "양호", "Review" = "검토", "Reference only" = "기준 참고", "Descriptive only" = "기술적 참고", "Screen only" = "탐색 점검", "Not assessed" = "미평가")
   priority_map <- c("Critical" = "치명", "Major" = "주요", "Advisory" = "참고")
   action_map <- c("Resolve before reporting" = "보고 전 해결", "Resolve or justify" = "해결 또는 근거 제시", "Document limitation" = "한계로 명시")
   if ("Item" %in% names(rows)) rows$Item <- ifelse(rows$Item %in% names(item_map), unname(item_map[rows$Item]), rows$Item)
@@ -413,8 +415,9 @@ structural_canvas_quality_status_summary_display <- function(rows, ko = FALSE) {
     return(structural_canvas_lavaan_quality_status_summary(rows))
   }
   if (!nrow(rows) || !"Status" %in% names(rows)) return("품질 상태: 미평가.")
-  counts <- table(factor(rows$Status, levels = c("OK", "Review", "Not assessed")))
-  paste0("품질 상태: 양호=", counts[["OK"]], "; 검토=", counts[["Review"]], "; 미평가=", counts[["Not assessed"]], ".")
+  status_levels <- c("OK", "Review", "Reference only", "Descriptive only", "Screen only", "Not assessed")
+  counts <- table(factor(rows$Status, levels = status_levels))
+  paste0("품질 상태: 양호=", counts[["OK"]], "; 검토=", counts[["Review"]], "; 기준 참고=", counts[["Reference only"]], "; 기술적 참고=", counts[["Descriptive only"]], "; 탐색 점검=", counts[["Screen only"]], "; 미평가=", counts[["Not assessed"]], ".")
 }
 
 structural_canvas_quality_reporting_readiness_display <- function(review_rows, rows, ko = FALSE) {

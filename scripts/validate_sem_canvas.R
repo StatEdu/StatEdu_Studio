@@ -66,16 +66,16 @@ stopifnot(
   grepl("Reporting checklist", ui_source, fixed = TRUE),
   grepl("Estimator or algorithm", ui_source, fixed = TRUE),
   grepl("Admissibility and convergence", ui_source, fixed = TRUE),
-  grepl("PLS - LM values indicate lower out-of-sample prediction error", ui_source, fixed = TRUE),
+  grepl("PLS lower % is the proportion of repetitions favoring PLS", ui_source, fixed = TRUE),
   grepl("path beta, indirect effect, total effect, R2, adjusted R2, and Q2", ui_source, fixed = TRUE),
-  grepl("PLS-SEM 타당도 출력", ui_source, fixed = TRUE),
+  grepl("형성형 합성변수에는 내적일관성·AVE·HTMT를 적용하지 않습니다", ui_source, fixed = TRUE),
   grepl("Effect-size labels, VIF, and bootstrap inference are reported in supplementary tables", ui_source, fixed = TRUE),
   grepl("loading/weight reports the outer loading for reflective indicators and the outer weight for formative indicators", ui_source, fixed = TRUE),
   grepl("Supplementary Table 2: Structural effect guide indices", fit_source, fixed = TRUE),
   grepl("Supplementary Table 2: PLS bootstrap path inference", fit_source, fixed = TRUE),
   grepl("PLS measurement diagnostics", ui_source, fixed = TRUE),
   grepl("PLS measurement bootstrap", ui_source, fixed = TRUE),
-  grepl("Fornell-Larcker, and HTMT summaries", ui_source, fixed = TRUE),
+  grepl("HTMT and Fornell-Larcker are computed only between reflective constructs", ui_source, fixed = TRUE),
   grepl("Indirect and total effects are reported separately", ui_source, fixed = TRUE),
   grepl("Supplementary Table 3: Effect beta 95% confidence intervals", ui_source, fixed = TRUE),
   grepl("PLS-SEM does not estimate covariance paths", ui_source, fixed = TRUE),
@@ -123,7 +123,14 @@ cbsem_bundle <- list(
 )
 cbsem_result <- function() cbsem_bundle
 cbsem_reporting <- structural_canvas_reporting_context_rows(cbsem_bundle, "cbsem")
-stopifnot(nrow(cbsem_reporting) == 14L)
+cbsem_construct_reporting <- structural_canvas_construct_reporting_rows(cbsem_bundle, "cbsem", FALSE)
+stopifnot(nrow(cbsem_reporting) == 16L)
+stopifnot(
+  nrow(cbsem_construct_reporting) == 2L,
+  all(c("Declared type", "Effective weighting", "Engine representation", "Estimand", "Migration") %in% names(cbsem_construct_reporting)),
+  all(cbsem_construct_reporting$`Declared type` == "commonFactor"),
+  all(cbsem_construct_reporting$`Effective weighting` == "Not applicable")
+)
 stopifnot(grepl("lavaan", cbsem_reporting$Value[cbsem_reporting$Item == "Analysis engine"], fixed = TRUE))
 stopifnot(cbsem_reporting$Value[cbsem_reporting$Item == "Estimator or algorithm"] == "ML")
 stopifnot(cbsem_reporting$Value[cbsem_reporting$Item == "Missing-data handling"] == "fiml")
@@ -148,8 +155,14 @@ stopifnot(cbsem_quality$Status[cbsem_quality$Item == "Admissible solution"] == "
 stopifnot(nzchar(cbsem_quality$Value[cbsem_quality$Item == "Chi-square/df"]))
 stopifnot(cbsem_quality$Status[cbsem_quality$Item == "Fit statistic source"] == "OK")
 stopifnot(nzchar(cbsem_quality$Value[cbsem_quality$Item == "N/free parameter ratio"]))
+stopifnot(cbsem_quality$Status[cbsem_quality$Item == "N/free parameter ratio"] == "Reference only")
+stopifnot(all(cbsem_quality$Status[cbsem_quality$Item %in% c("CFI", "TLI", "RMSEA", "SRMR")] %in% c("Reference only", "Review")))
 stopifnot(nzchar(cbsem_quality$Value[cbsem_quality$Item == "Harman first-factor %"]))
 stopifnot(nzchar(cbsem_quality$Value[cbsem_quality$Item == "Max full collinearity VIF"]))
+stopifnot(all(cbsem_quality$Status[cbsem_quality$Item %in% c("Harman first-factor %", "Max full collinearity VIF")] == "Screen only"))
+stopifnot(all(cbsem_quality$Status[cbsem_quality$Item %in% c("Min standardized loading", "Min CR", "Min AVE")] %in% c("Reference only", "Review")))
+stopifnot(cbsem_quality$Status[cbsem_quality$Item == "Max latent correlation"] %in% c("Reference only", "Review"))
+stopifnot(cbsem_quality$Status[cbsem_quality$Item == "Min endogenous R2"] == "Descriptive only")
 stopifnot(cbsem_quality$Value[cbsem_quality$Item == "Structural path count"] == "1")
 stopifnot(cbsem_quality$Status[cbsem_quality$Item == "Structural path count"] == "OK")
 stopifnot(cbsem_quality$Value[cbsem_quality$Item == "Model status"] == "Original/prespecified model")
@@ -157,6 +170,7 @@ stopifnot(cbsem_quality$Status[cbsem_quality$Item == "Model status"] == "OK")
 cbsem_quality_summary <- structural_canvas_lavaan_quality_status_summary(cbsem_quality)
 stopifnot(grepl("Quality status: OK=", cbsem_quality_summary, fixed = TRUE))
 stopifnot(grepl("; Review=", cbsem_quality_summary, fixed = TRUE))
+stopifnot(grepl("; Reference only=", cbsem_quality_summary, fixed = TRUE))
 cbsem_quality_review <- structural_canvas_lavaan_quality_review_rows(cbsem_quality)
 stopifnot(all(c("Priority", "Action", "Item", "Value", "Guidance") %in% names(cbsem_quality_review)))
 stopifnot(nrow(cbsem_quality_review) == sum(cbsem_quality$Status == "Review"))
@@ -237,12 +251,12 @@ stopifnot(
 cbsem_structural <- structural_canvas_result_table("structural", cbsem_result, "cbsem", labels_fn, language_fn)
 stopifnot(nrow(cbsem_structural) == 1L)
 stopifnot(!"Effect" %in% names(cbsem_structural))
-stopifnot(all(c("Outcome", "Predictor", "B", "beta", "z", "p", "R²") %in% names(cbsem_structural)))
+stopifnot(all(c("Outcome", "Predictor", "B", "beta", "z", "p", "BH-adjusted p", "R²") %in% names(cbsem_structural)))
 stopifnot(identical(names(cbsem_structural)[[ncol(cbsem_structural)]], "R²"))
 stopifnot(!any(grepl("95% CI", names(cbsem_structural), fixed = TRUE)))
 cbsem_structural_ci <- structural_canvas_result_table("structural_ci", cbsem_result, "cbsem", labels_fn, language_fn)
 stopifnot(nrow(cbsem_structural_ci) == nrow(cbsem_structural))
-stopifnot(all(c("B 95% CI lower", "B 95% CI upper", "beta 95% CI lower", "beta 95% CI upper") %in% names(cbsem_structural_ci)))
+stopifnot(all(c("B 95% CI lower", "B 95% CI upper", "B CI source", "beta 95% CI lower", "beta 95% CI upper", "beta CI source") %in% names(cbsem_structural_ci)))
 
 moderation_data <- data
 moderation_data$W <- stats::rnorm(nrow(moderation_data))
@@ -324,6 +338,14 @@ moderated_mediation_snapshot <- list(
   moderations = list(list(id = "mod_mediation", from = "mw", toEdge = "mp1"))
 )
 cbsem_moderated_mediation <- run_structural_canvas_analysis(moderated_mediation_snapshot, moderated_mediation_data, "cbsem", estimator = "MLR", missing = "fiml")
+cbsem_moderated_index <- structural_canvas_moderated_mediation_indices(cbsem_moderated_mediation)
+stopifnot(nrow(cbsem_moderated_index) >= 1L, all(cbsem_moderated_index$op == "modmed"), all(is.finite(cbsem_moderated_index$est)))
+cbsem_moderated_bootstrap <- structural_canvas_effect_bootstrap(
+  moderated_mediation_snapshot, moderated_mediation_data, "cbsem", "MLR", "fiml", FALSE,
+  character(0), character(0), numeric(0), reps = 20L, seed = 20260820L
+)
+stopifnot(any(cbsem_moderated_bootstrap$op == "modmed"))
+stopifnot(all(c("lower", "upper", "p", "valid_percent", "status") %in% names(cbsem_moderated_bootstrap)))
 cbsem_moderated_mediation_jn <- structural_canvas_moderation_jn_table(list(fit = cbsem_moderated_mediation$fit, diagnostics = cbsem_moderated_mediation))
 stopifnot(
   length(cbsem_moderated_mediation$effect_definitions) > 0L,
@@ -392,10 +414,20 @@ stopifnot(
   isTRUE(cbsem_latent_moderation$converged),
   length(cbsem_latent_moderation$moderation_definitions) == 1L,
   identical(cbsem_latent_moderation$moderation_definitions[[1L]]$moderator_role, "latent"),
+  identical(cbsem_latent_moderation$moderation_definitions[[1L]]$product_indicator_method, "all_pairs_dmc"),
+  cbsem_latent_moderation$moderation_definitions[[1L]]$product_indicator_count == 9L,
   grepl("statedu_int", cbsem_latent_moderation$syntax, fixed = TRUE),
   grepl("statedu_pi_etaX_etaW_x1_w1", cbsem_latent_moderation$syntax, fixed = TRUE),
   is.data.frame(cbsem_latent_moderation_jn),
   all(c("Direct", "Indirect") %in% cbsem_latent_moderation_jn$Effect)
+)
+matched_latent_moderation_snapshot <- latent_moderation_snapshot
+matched_latent_moderation_snapshot$moderationMethod <- "matched_pair_dmc"
+cbsem_latent_moderation_matched <- run_structural_canvas_analysis(matched_latent_moderation_snapshot, latent_moderation_data, "cbsem", estimator = "MLR", missing = "fiml")
+stopifnot(
+  isTRUE(cbsem_latent_moderation_matched$converged),
+  identical(cbsem_latent_moderation_matched$moderation_definitions[[1L]]$product_indicator_method, "matched_pair_dmc"),
+  cbsem_latent_moderation_matched$moderation_definitions[[1L]]$product_indicator_count == 3L
 )
 stopifnot(cbsem_structural$Outcome[[1L]] == "eta2")
 stopifnot(cbsem_structural$Predictor[[1L]] == "eta1")
@@ -505,6 +537,24 @@ mediation_snapshot <- list(
 )
 cbsem_mediation <- run_structural_canvas_analysis(mediation_snapshot, mediation_data, "cbsem", estimator = "ML", missing = "fiml")
 stopifnot(isTRUE(cbsem_mediation$converged))
+causal_boundary <- structural_canvas_causal_interpretation(mediation_snapshot, "cbsem")
+stopifnot(
+  isTRUE(causal_boundary$applicable),
+  identical(causal_boundary$status, "Causal identification not established"),
+  identical(causal_boundary$interpretation, "Associational structural parameters"),
+  isTRUE(causal_boundary$indirect_chain_detected),
+  nrow(causal_boundary$rows) == 4L,
+  any(grepl("confounding", causal_boundary$rows$Assumption, ignore.case = TRUE)),
+  any(grepl("associational", causal_boundary$rows$Consequence, ignore.case = TRUE))
+)
+cbsem_effect_bootstrap <- structural_canvas_effect_bootstrap(
+  mediation_snapshot, mediation_data, "cbsem", "ML", "fiml", FALSE,
+  character(0), character(0), numeric(0), reps = 30L, seed = 20260819L
+)
+stopifnot(is.data.frame(cbsem_effect_bootstrap))
+stopifnot(any(cbsem_effect_bootstrap$op == ":="))
+stopifnot(all(c("lower", "upper", "p", "beta_estimate", "beta_lower", "beta_upper", "beta_p", "beta_valid", "valid", "requested", "valid_percent", "status") %in% names(cbsem_effect_bootstrap)))
+stopifnot(all(cbsem_effect_bootstrap$requested == 30L))
 stopifnot(grepl(":=", cbsem_mediation$syntax, fixed = TRUE))
 stopifnot(length(cbsem_mediation$effect_definitions) == 2L)
 cbsem_mediation_bundle <- list(
@@ -516,6 +566,33 @@ cbsem_mediation_bundle <- list(
   rmsea_ci = 0.90,
   validity_formula = "standardized"
 )
+cbsem_mediation_bundle$effect_bootstrap_result <- cbsem_effect_bootstrap
+cbsem_mediation_bundle$analysis_data <- mediation_data
+cbsem_mediation_bundle$sampling_design <- "independent_cross_sectional"
+cbsem_mediation_bundle$sampling_design_gate <- structural_canvas_sampling_design_gate("independent_cross_sectional")
+cbsem_mediation_audit <- structural_canvas_audit_manifest(cbsem_mediation_bundle, "cbsem")
+stopifnot(
+  identical(cbsem_mediation_audit$schema$version, "1.4"),
+  identical(cbsem_mediation_audit$decision$causal_interpretation$status, "Causal identification not established"),
+  isTRUE(cbsem_mediation_audit$decision$causal_interpretation$indirect_chain_detected),
+  identical(cbsem_mediation_audit$data_fingerprints$analysis$rows, nrow(mediation_data)),
+  identical(cbsem_mediation_audit$data_fingerprints$analysis$columns, ncol(mediation_data)),
+  nchar(cbsem_mediation_audit$data_fingerprints$analysis$content_sha256) == 64L,
+  nchar(cbsem_mediation_audit$model$specification_sha256) == 64L,
+  nchar(cbsem_mediation_audit$generated$analysis_code$sha256) == 64L,
+  is.logical(cbsem_mediation_audit$generated$git$available),
+  all(c("Category", "Severity", "Message") %in% names(cbsem_mediation_audit$warnings)),
+  any(cbsem_mediation_audit$warnings$Category == "Causal interpretation"),
+  isFALSE(cbsem_mediation_audit$privacy$raw_data_included)
+)
+audit_file <- tempfile(fileext = ".json")
+on.exit(unlink(audit_file), add = TRUE)
+structural_canvas_write_audit_manifest(cbsem_mediation_bundle, audit_file, "cbsem")
+audit_roundtrip <- jsonlite::read_json(audit_file, simplifyVector = TRUE)
+stopifnot(
+  identical(audit_roundtrip$schema$version, "1.4"),
+  identical(audit_roundtrip$data_fingerprints$analysis$content_sha256, cbsem_mediation_audit$data_fingerprints$analysis$content_sha256)
+)
 cbsem_mediation_result <- function() cbsem_mediation_bundle
 cbsem_mediation_structural <- structural_canvas_result_table("structural", cbsem_mediation_result, "cbsem", labels_fn, language_fn)
 cbsem_mediation_effects <- structural_canvas_result_table("structural_effects", cbsem_mediation_result, "cbsem", labels_fn, language_fn)
@@ -523,11 +600,11 @@ cbsem_mediation_effect_ci <- structural_canvas_result_table("structural_effect_c
 stopifnot(nrow(cbsem_mediation_structural) == 3L)
 stopifnot(!"Effect" %in% names(cbsem_mediation_structural))
 stopifnot(any(cbsem_mediation_effects$Outcome == "etaC" & cbsem_mediation_effects$Predictor == "etaA"))
-stopifnot(all(c("Direct beta", "Direct p", "Indirect beta", "Indirect p", "Total beta", "Total p") %in% names(cbsem_mediation_effects)))
+stopifnot(all(c("Direct beta", "Direct p", "Direct BH-adjusted p", "Indirect beta", "Indirect p", "Indirect BH-adjusted p", "Total beta", "Total p", "Total BH-adjusted p") %in% names(cbsem_mediation_effects)))
 stopifnot(any(nzchar(cbsem_mediation_effects[["Indirect beta"]][cbsem_mediation_effects$Outcome == "etaC" & cbsem_mediation_effects$Predictor == "etaA"])))
 stopifnot(any(nzchar(cbsem_mediation_effects[["Total p"]][cbsem_mediation_effects$Outcome == "etaC" & cbsem_mediation_effects$Predictor == "etaA"])))
 stopifnot(any(nzchar(cbsem_mediation_structural[["R²"]][cbsem_mediation_structural$Outcome == "etaC"])))
-stopifnot(all(c("Direct beta 95% CI", "Indirect beta 95% CI", "Total beta 95% CI") %in% names(cbsem_mediation_effect_ci)))
+stopifnot(all(c("Direct beta 95% CI", "Direct CI source", "Indirect beta 95% CI", "Indirect CI source", "Total beta 95% CI", "Total CI source") %in% names(cbsem_mediation_effect_ci)))
 stopifnot(any(nzchar(cbsem_mediation_effect_ci[["Indirect beta 95% CI"]][cbsem_mediation_effect_ci$Outcome == "etaC" & cbsem_mediation_effect_ci$Predictor == "etaA"])))
 
 sem_mediation <- run_structural_canvas_analysis(mediation_snapshot, mediation_data, "sem", estimator = "ML", missing = "fiml")
@@ -624,7 +701,7 @@ pls_bundle <- list(
 )
 pls_result <- function() pls_bundle
 pls_reporting <- structural_canvas_reporting_context_rows(pls_bundle, "plssem")
-stopifnot(nrow(pls_reporting) == 14L)
+stopifnot(nrow(pls_reporting) == 16L)
 stopifnot(grepl("seminr", pls_reporting$Value[pls_reporting$Item == "Analysis engine"], fixed = TRUE))
 stopifnot(pls_reporting$Value[pls_reporting$Item == "Estimator or algorithm"] == "PLS path modeling")
 stopifnot(pls_reporting$Value[pls_reporting$Item == "Missing-data handling"] == "Valid rows used by seminr; no FIML/pairwise option")
@@ -640,16 +717,23 @@ stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Approx PLS SRMR"]))
 stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Approx d_G"]))
 stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Approx d_ULS"]))
 stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Approx NFI"]))
-stopifnot(pls_quality$Status[pls_quality$Item == "Approx PLS SRMR"] %in% c("OK", "Review"))
+stopifnot(all(pls_quality$Status[pls_quality$Item %in% c("Approx PLS SRMR", "Approx d_G", "Approx d_ULS", "Approx NFI")] == "Descriptive only"))
 stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Min outer loading"]))
 stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "10-times rule margin"]))
+stopifnot(pls_quality$Status[pls_quality$Item == "10-times rule margin"] == "Descriptive only")
 stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Max full collinearity VIF"]))
+stopifnot(pls_quality$Status[pls_quality$Item == "Max full collinearity VIF"] == "Screen only")
+stopifnot(all(pls_quality$Status[pls_quality$Item %in% c("Min outer loading", "Min rhoC", "Min AVE")] %in% c("Reference only", "Review")))
+stopifnot(pls_quality$Status[pls_quality$Item == "Max HTMT"] %in% c("Reference only", "Review"))
+stopifnot(all(pls_quality$Status[pls_quality$Item %in% c("Max item VIF", "Max inner VIF")] %in% c("Reference only", "Review", "Not assessed")))
 stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Min Q2"]))
-stopifnot(pls_quality$Status[pls_quality$Item == "Min Q2"] %in% c("OK", "Review"))
+stopifnot(pls_quality$Status[pls_quality$Item == "Min Q2"] %in% c("Descriptive only", "Review"))
+stopifnot(all(pls_quality$Status[pls_quality$Item %in% c("Min endogenous R2", "Max f2")] == "Descriptive only"))
 stopifnot(pls_quality$Value[pls_quality$Item == "PLSpredict summary"] == "Not executed")
 stopifnot(pls_quality$Status[pls_quality$Item == "PLSpredict summary"] == "Not assessed")
 pls_quality_summary <- structural_canvas_pls_quality_status_summary(pls_quality)
 stopifnot(grepl("Quality status: OK=", pls_quality_summary, fixed = TRUE))
+stopifnot(grepl("; Descriptive only=", pls_quality_summary, fixed = TRUE))
 stopifnot(grepl("; Not assessed=", pls_quality_summary, fixed = TRUE))
 pls_quality_review <- structural_canvas_pls_quality_review_rows(pls_quality)
 stopifnot(all(c("Priority", "Action", "Item", "Value", "Guidance") %in% names(pls_quality_review)))
@@ -683,8 +767,11 @@ stopifnot(nzchar(pls_fit_guide$f2[[1L]]))
 stopifnot(nzchar(pls_fit_guide[["f2 size"]][[1L]]))
 stopifnot(nzchar(pls_fit_guide$q2[[1L]]))
 stopifnot(nzchar(pls_fit_guide[["q2 size"]][[1L]]))
-stopifnot(all(c("Construct", "Mode", "alpha", "rhoA", "rhoC", "AVE", "sqrt(AVE)", "Max HTMT") %in% names(pls_validity)))
-stopifnot(all(c("Construct", "Mode", "Max HTMT CI lower", "Max HTMT CI upper", "Max HTMT p", "Fornell-Larcker") %in% names(pls_validity_guide)))
+stopifnot(grepl("Descriptive:", pls_fit_guide[["f2 size"]][[1L]], fixed = TRUE))
+stopifnot(grepl("Descriptive:", pls_fit_guide[["q2 size"]][[1L]], fixed = TRUE))
+stopifnot(all(c("Construct", "Construct type", "Mode", "Evidence role", "alpha", "rhoA", "rhoC", "AVE", "sqrt(AVE)", "Max HTMT") %in% names(pls_validity)))
+stopifnot(all(c("Construct", "Construct type", "Mode", "Evidence role", "Max HTMT CI lower", "Max HTMT CI upper", "Max HTMT p", "Fornell-Larcker") %in% names(pls_validity_guide)))
+stopifnot(all(grepl("score-proxy", pls_validity$`Evidence role`, fixed = TRUE)))
 stopifnot(nrow(pls_validity) >= 2L)
 stopifnot(all(c("Construct", "Indicator", "loading/weight", "Boot SE", "Boot 95% CI lower", "Boot 95% CI upper", "Boot t", "Boot p", "Mode") %in% names(pls_measurement)))
 stopifnot(nrow(pls_measurement) >= 6L)
@@ -735,7 +822,7 @@ stopifnot(any(nzchar(pls_mediation_fit[["Total effect"]][pls_mediation_fit$Effec
 stopifnot(any(nzchar(pls_mediation_fit_guide[["Inner VIF"]][pls_mediation_fit_guide$Effect == "Direct" & pls_mediation_fit_guide$Outcome == "etaC"])))
 
 pls_options <- structural_canvas_execute_settings(
-  settings = list(pls_bootstrap = 5000L, pls_seed = 13579L, pls_predict_folds = 5L, pls_predict_reps = 1L),
+  settings = list(pls_bootstrap = 5000L, pls_seed = 13579L, pls_predict_folds = 5L, pls_predict_reps = 1L, sampling_design = "independent_cross_sectional"),
   input = list(),
   prefix = "structural_plssem"
 )
@@ -743,14 +830,23 @@ stopifnot(pls_options$pls_bootstrap == 5000L)
 stopifnot(pls_options$pls_seed == 13579L)
 stopifnot(pls_options$pls_predict_folds == 5L)
 stopifnot(pls_options$pls_predict_reps == 1L)
+stopifnot(is.finite(pls_options$pls_predict_seed))
+stopifnot(pls_options$sampling_design == "independent_cross_sectional")
+sampling_gate <- structural_canvas_sampling_design_gate(pls_options$sampling_design)
+stopifnot(isTRUE(sampling_gate$supported), grepl("independent-observation", sampling_gate$reason, fixed = TRUE))
+for (unsupported_design in c("not_declared", "clustered", "complex_survey", "longitudinal_repeated")) {
+  gate_error <- tryCatch(structural_canvas_sampling_design_gate(unsupported_design), error = identity)
+  stopifnot(inherits(gate_error, "error"), grepl("Sampling-design gate blocked estimation", conditionMessage(gate_error), fixed = TRUE))
+}
 
-pls_predict <- structural_canvas_run_pls_predict("plssem", 5L, 1L, pls)
+pls_predict <- structural_canvas_run_pls_predict("plssem", 5L, 5L, pls, 20260821L)
 stopifnot(is.list(pls_predict))
 stopifnot(pls_predict$folds == 5L)
-stopifnot(pls_predict$reps == 1L)
+stopifnot(pls_predict$reps == 5L, pls_predict$seed == 20260821L, length(pls_predict$repetition_summaries) == 5L)
 pls_predict_tables <- structural_canvas_pls_predict_tables(pls_predict)
 stopifnot(nrow(pls_predict_tables$items) >= 2L)
-stopifnot(all(c("Indicator", "Metric", "PLS out-of-sample", "LM benchmark", "PLS - LM", "Assessment") %in% names(pls_predict_tables$items)))
+stopifnot(all(c("Indicator", "Metric", "PLS out-of-sample", "LM benchmark", "PLS - LM", "PLS - LM SD", "PLS lower %", "Assessment") %in% names(pls_predict_tables$items)))
+stopifnot(any(is.finite(pls_predict_tables$items[["PLS - LM SD"]])))
 stopifnot(all(c("Construct", "IS_MSE", "IS_MAE", "OOS_MSE", "OOS_MAE", "overfit") %in% names(pls_predict_tables$constructs)))
 pls_predict_bundle <- pls_bundle
 pls_predict_bundle$pls_predict_result <- pls_predict
@@ -785,7 +881,7 @@ pls_boot_validity <- structural_canvas_result_table("validity", pls_boot_result,
 pls_boot_validity_guide <- structural_canvas_result_table("validity_guide", pls_boot_result, "plssem", labels_fn, language_fn)
 pls_boot_measurement <- structural_canvas_result_table("measurement", pls_boot_result, "plssem", labels_fn, language_fn)
 pls_boot_measurement_bootstrap <- structural_canvas_result_table("measurement_bootstrap", pls_boot_result, "plssem", labels_fn, language_fn)
-stopifnot(all(c("Indirect effect CI lower", "Indirect effect CI upper", "Indirect effect t", "Indirect effect p", "Total effect CI lower", "Total effect CI upper", "Total effect t", "Total effect p", "Boot CI lower", "Boot CI upper", "Boot t", "Boot p") %in% names(pls_boot_fit_bootstrap)))
+stopifnot(all(c("Indirect effect CI lower", "Indirect effect CI upper", "Indirect effect t", "Indirect effect p", "Indirect effect BH-adjusted p", "Total effect CI lower", "Total effect CI upper", "Total effect t", "Total effect p", "Total effect BH-adjusted p", "Boot CI lower", "Boot CI upper", "Boot t", "Boot p", "Boot BH-adjusted p") %in% names(pls_boot_fit_bootstrap)))
 stopifnot(any(nzchar(pls_boot_fit_bootstrap[["Total effect p"]])))
 stopifnot(any(nzchar(pls_boot_fit_bootstrap[["Boot t"]])))
 stopifnot(any(nzchar(pls_boot_fit_bootstrap[["Boot p"]])))
@@ -798,7 +894,7 @@ stopifnot(nrow(pls_mediation_indirect_row) == 1L)
 stopifnot(nzchar(pls_mediation_indirect_row[["Indirect effect CI lower"]][[1L]]), nzchar(pls_mediation_indirect_row[["Indirect effect CI upper"]][[1L]]), nzchar(pls_mediation_indirect_row[["Indirect effect p"]][[1L]]))
 stopifnot(all(c("Max HTMT CI lower", "Max HTMT CI upper", "Max HTMT p") %in% names(pls_boot_validity_guide)))
 stopifnot(any(nzchar(pls_boot_validity_guide[["Max HTMT p"]])))
-stopifnot(all(c("Loading CI lower", "Loading CI upper", "Loading t", "Loading p", "Weight CI lower", "Weight CI upper", "Weight t", "Weight p") %in% names(pls_boot_measurement_bootstrap)))
+stopifnot(all(c("Loading CI lower", "Loading CI upper", "Loading t", "Loading p", "Loading BH-adjusted p", "Weight CI lower", "Weight CI upper", "Weight t", "Weight p", "Weight BH-adjusted p") %in% names(pls_boot_measurement_bootstrap)))
 stopifnot(any(nzchar(pls_boot_measurement_bootstrap[["Loading t"]])))
 stopifnot(any(nzchar(pls_boot_measurement_bootstrap[["Loading p"]])))
 
@@ -814,7 +910,7 @@ session <- list(sendCustomMessage = function(type, message) {
 })
 executed_cbsem <- structural_canvas_execute_analysis(
   snapshot,
-  settings = list(estimator = "ML", missing = "fiml"),
+  settings = list(estimator = "ML", missing = "fiml", sampling_design = "independent_cross_sectional"),
   input = list(),
   session = session,
   dataset_fn = function() data,
@@ -832,7 +928,7 @@ execution_state$value <- NULL
 execution_state$message <- NULL
 executed_cbsem_group <- structural_canvas_execute_analysis(
   snapshot,
-  settings = list(estimator = "ML", missing = "fiml", invariance_enabled = TRUE, invariance_group = "group"),
+  settings = list(estimator = "ML", missing = "fiml", sampling_design = "independent_cross_sectional", invariance_enabled = TRUE, invariance_group = "group"),
   input = list(),
   session = session,
   dataset_fn = function() group_data,
@@ -849,7 +945,7 @@ execution_state$value <- NULL
 execution_state$message <- NULL
 executed_sem <- structural_canvas_execute_analysis(
   snapshot,
-  settings = list(estimator = "ML", missing = "fiml"),
+  settings = list(estimator = "ML", missing = "fiml", sampling_design = "independent_cross_sectional"),
   input = list(),
   session = session,
   dataset_fn = function() data,
@@ -867,7 +963,7 @@ execution_state$value <- NULL
 execution_state$message <- NULL
 executed <- structural_canvas_execute_analysis(
   snapshot,
-  settings = list(estimator = "PLS", pls_bootstrap = 0L, pls_predict_folds = 5L, pls_predict_reps = 1L),
+  settings = list(estimator = "PLS", sampling_design = "independent_cross_sectional", pls_bootstrap = 0L, pls_predict_folds = 5L, pls_predict_reps = 1L),
   input = list(),
   session = session,
   dataset_fn = function() data,
@@ -888,7 +984,7 @@ execution_state$value <- NULL
 execution_state$message <- NULL
 executed_covariance <- structural_canvas_execute_analysis(
   pls_covariance_snapshot,
-  settings = list(estimator = "PLS", pls_bootstrap = 0L),
+  settings = list(estimator = "PLS", sampling_design = "independent_cross_sectional", pls_bootstrap = 0L),
   input = list(),
   session = session,
   dataset_fn = function() data,
@@ -906,6 +1002,10 @@ formative_snapshot$nodes[[1]]$measurementMode <- "formative"
 pls_formative <- run_structural_canvas_analysis(formative_snapshot, data, "plssem", estimator = "PLS")
 stopifnot(inherits(pls_formative$fit, "pls_model"))
 stopifnot(grepl("eta1 <~", pls_formative$syntax, fixed = TRUE))
+stopifnot(
+  identical(pls_formative$resolved_construct_specification$effective_weighting[pls_formative$resolved_construct_specification$name == "eta1"], "Mode B"),
+  all(pls_formative$fit$measurement_model$composite[c(FALSE, FALSE, TRUE)] == "B")
+)
 pls_formative_bundle <- list(
   fit = pls_formative$fit,
   syntax = pls_formative$syntax,
@@ -914,10 +1014,12 @@ pls_formative_bundle <- list(
   estimator = "PLS"
 )
 pls_formative_result <- function() pls_formative_bundle
+pls_formative_quality <- structural_canvas_pls_quality_rows(pls_formative_bundle)
 pls_formative_measurement <- structural_canvas_result_table("measurement", pls_formative_result, "plssem", labels_fn, language_fn)
 pls_formative_measurement_guide <- structural_canvas_result_table("measurement_guide", pls_formative_result, "plssem", labels_fn, language_fn)
 pls_formative_validity <- structural_canvas_result_table("validity", pls_formative_result, "plssem", labels_fn, language_fn)
 stopifnot(any(pls_formative_measurement$Construct == "eta1" & pls_formative_measurement$Mode == "Formative"))
+stopifnot(any(grepl("^Formative evidence: eta1$", pls_formative_quality$Item) & pls_formative_quality$Status == "Review"))
 stopifnot(any(pls_formative_measurement$Construct == "eta2" & pls_formative_measurement$Mode == "Reflective"))
 stopifnot(any(nzchar(pls_formative_measurement[["loading/weight"]][pls_formative_measurement$Mode == "Formative"])))
 stopifnot(any(nzchar(pls_formative_measurement_guide[["Item VIF"]][pls_formative_measurement_guide$Mode == "Formative"])))
@@ -925,9 +1027,24 @@ stopifnot("Mode" %in% names(pls_formative_validity))
 stopifnot(any(pls_formative_validity$Construct == "eta1" & pls_formative_validity$Mode == "Formative"))
 formative_validity <- pls_formative_validity[pls_formative_validity$Mode == "Formative", , drop = FALSE]
 stopifnot(all(formative_validity[, c("alpha", "rhoA", "rhoC", "AVE", "sqrt(AVE)", "Max HTMT")] == "N/A"))
+stopifnot(all(grepl("not applicable", formative_validity$`Evidence role`, fixed = TRUE)))
 pls_formative_validity_guide <- structural_canvas_result_table("validity_guide", pls_formative_result, "plssem", labels_fn, language_fn)
 formative_validity_guide <- pls_formative_validity_guide[pls_formative_validity_guide$Mode == "Formative", , drop = FALSE]
 stopifnot(all(formative_validity_guide$`Fornell-Larcker` == "N/A - formative"))
+pls_formative_htmt <- structural_canvas_result_table("pls_htmt", pls_formative_result, "plssem", labels_fn, language_fn)
+stopifnot(any(pls_formative_htmt == "N/A"))
+
+reflective_composite_bundle <- pls_bundle
+reflective_composite_bundle$snapshot$nodes[[1L]]$constructType <- "composite"
+reflective_composite_result <- function() reflective_composite_bundle
+reflective_composite_validity <- structural_canvas_result_table("validity", reflective_composite_result, "plssem", labels_fn, language_fn)
+reflective_composite_row <- reflective_composite_validity[reflective_composite_validity$Construct == "eta1", , drop = FALSE]
+stopifnot(
+  reflective_composite_row$`Construct type` == "Composite",
+  reflective_composite_row$Mode == "Reflective",
+  grepl("do not infer a latent common cause", reflective_composite_row$`Evidence role`, fixed = TRUE),
+  reflective_composite_row$AVE != "N/A"
+)
 
 missing_latent_range <- structural_canvas_moderation_update_factor_score_ranges(
   list(list(moderator_role = "latent", moderator = "missing", moderator_min = -2, moderator_max = 2)),

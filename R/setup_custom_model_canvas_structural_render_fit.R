@@ -124,21 +124,19 @@ structural_canvas_pls_quality_status <- function(item, value) {
   if (identical(item, "PLS algorithm iterations")) return(if (is.finite(numeric_value) && numeric_value <= 300) "OK" else "Review")
   if (identical(item, "Final weight difference")) return(if (is.finite(numeric_value) && numeric_value <= 1e-6) "OK" else "Review")
   if (identical(item, "Missing-data method")) return("OK")
-  if (identical(item, "Approx PLS SRMR")) return(if (is.finite(numeric_value) && numeric_value <= .10) "OK" else "Review")
-  if (identical(item, "Approx d_G")) return(if (is.finite(numeric_value)) "OK" else "Not assessed")
-  if (identical(item, "Approx d_ULS")) return(if (is.finite(numeric_value)) "OK" else "Not assessed")
-  if (identical(item, "Approx NFI")) return(if (is.finite(numeric_value) && numeric_value >= .90) "OK" else "Review")
-  if (identical(item, "10-times rule margin")) return(if (is.finite(numeric_value) && numeric_value >= 1) "OK" else "Review")
-  if (identical(item, "Min outer loading")) return(if (is.finite(numeric_value) && numeric_value >= .40) "OK" else "Review")
-  if (identical(item, "Min rhoC")) return(if (is.finite(numeric_value) && numeric_value >= .70) "OK" else "Review")
-  if (identical(item, "Min AVE")) return(if (is.finite(numeric_value) && numeric_value >= .50) "OK" else "Review")
-  if (identical(item, "Max HTMT")) return(if (is.finite(numeric_value) && numeric_value < .85) "OK" else "Review")
-  if (identical(item, "Max item VIF")) return(if (is.finite(numeric_value) && numeric_value <= 5) "OK" else "Review")
-  if (identical(item, "Max inner VIF")) return(if (is.finite(numeric_value) && numeric_value <= 5) "OK" else "Review")
-  if (identical(item, "Max full collinearity VIF")) return(if (is.finite(numeric_value) && numeric_value <= 3.3) "OK" else "Review")
-  if (identical(item, "Min endogenous R2")) return(if (is.finite(numeric_value)) "OK" else "Review")
-  if (identical(item, "Max f2")) return(if (is.finite(numeric_value)) "OK" else "Not assessed")
-  if (identical(item, "Min Q2")) return(if (is.finite(numeric_value) && numeric_value > 0) "OK" else "Review")
+  if (item %in% c("Approx PLS SRMR", "Approx d_G", "Approx d_ULS", "Approx NFI", "10-times rule margin")) {
+    return(if (is.finite(numeric_value)) "Descriptive only" else "Not assessed")
+  }
+  if (identical(item, "Min outer loading")) return(if (is.finite(numeric_value) && numeric_value >= .40) "Reference only" else "Review")
+  if (identical(item, "Min rhoC")) return(if (is.finite(numeric_value) && numeric_value >= .70) "Reference only" else "Review")
+  if (identical(item, "Min AVE")) return(if (is.finite(numeric_value) && numeric_value >= .50) "Reference only" else "Review")
+  if (identical(item, "Max HTMT")) return(if (is.finite(numeric_value) && numeric_value < .85) "Reference only" else "Review")
+  if (identical(item, "Max item VIF")) return(if (is.finite(numeric_value) && numeric_value <= 5) "Reference only" else "Review")
+  if (identical(item, "Max inner VIF")) return(if (is.finite(numeric_value) && numeric_value <= 5) "Reference only" else "Review")
+  if (identical(item, "Max full collinearity VIF")) return(if (is.finite(numeric_value)) "Screen only" else "Not assessed")
+  if (identical(item, "Min endogenous R2")) return(if (is.finite(numeric_value)) "Descriptive only" else "Not assessed")
+  if (identical(item, "Max f2")) return(if (is.finite(numeric_value)) "Descriptive only" else "Not assessed")
+  if (identical(item, "Min Q2")) return(if (!is.finite(numeric_value)) "Not assessed" else if (numeric_value > 0) "Descriptive only" else "Review")
   if (identical(item, "PLSpredict summary")) {
     matches <- regmatches(value, regexec("^([0-9]+)/([0-9]+)", value))[[1L]]
     if (length(matches) == 3L) {
@@ -223,7 +221,7 @@ structural_canvas_pls_quality_rows <- function(bundle) {
     structural_canvas_pls_quality_number(q2, "min"),
     structural_canvas_pls_quality_predictive_label(bundle)
   )
-  data.frame(
+  rows <- data.frame(
     Item = items,
     Value = displayed_values,
     Status = mapply(structural_canvas_pls_quality_status, items, displayed_values, USE.NAMES = FALSE),
@@ -231,34 +229,53 @@ structural_canvas_pls_quality_rows <- function(bundle) {
       "Algorithm diagnostic; inspect unusually high iteration counts.",
       "Smaller values indicate stable outer-weight convergence.",
       "Report this because PLS does not use lavaan FIML/pairwise options.",
-      "Approximate reflective-measurement SRMR from observed versus implied indicator correlations.",
-      "Approximate geodesic discrepancy from observed versus implied indicator correlations; no universal cutoff.",
-      "Approximate squared Euclidean discrepancy for reflective indicator correlations; no universal cutoff.",
-      "Approximate normed fit index against an independence correlation baseline.",
-      "Descriptive minimum-sample screen using 10 times the larger of max indicators or max antecedents.",
-      "Review reflective indicators below .70; retain lower loadings only with theory.",
-      "Review construct reliability below .70.",
-      "Review convergent validity below .50.",
-      "Review discriminant validity near or above .85/.90.",
-      "Review indicator collinearity above 3.3 or 5.",
-      "Review structural predictor collinearity above 3.3 or 5.",
-      "Full collinearity VIF above 3.3 suggests possible common-method or construct-overlap bias.",
-      "Report explanatory power for endogenous constructs.",
-      "Interpret as structural effect size; .02/.15/.35 are descriptive anchors.",
-      "Stone-Geisser Q2 above 0 indicates predictive relevance for endogenous constructs.",
+      "Locally reconstructed reflective-measurement SRMR; report descriptively without an accept/reject cutoff.",
+      "Locally reconstructed geodesic discrepancy; report descriptively because no universal cutoff applies.",
+      "Locally reconstructed squared Euclidean discrepancy; report descriptively because no universal cutoff applies.",
+      "Locally reconstructed NFI against an independence baseline; report descriptively without an accept/reject cutoff.",
+      "Historically imprecise 10-times heuristic; do not use it to justify sample size. Prefer a priori power or model-specific simulation.",
+      "Outer loadings are descriptive evidence, not automatic deletion rules; review low values with content validity, cross-loadings, uncertainty, and prespecified theory.",
+      "The .70 rhoC value is a descriptive reliability reference, not a universal scale-acceptance rule.",
+      "The .50 AVE value is a descriptive convergent-validity reference, not an automatic construct-acceptance or indicator-deletion rule.",
+      "HTMT references do not establish discriminant validity; interpret with intervals, cross-loadings, construct correlations, theory, and competing measurement models.",
+      "Item VIF cutoffs are descriptive references. High values flag redundant indicators or unstable formative weights; low values do not establish measurement quality.",
+      "Inner VIF cutoffs are descriptive references. Review coefficient sign/magnitude changes, suppression, bootstrap instability, and theoretical overlap across predictors.",
+      "Exploratory full-collinearity screen only; values above 3.3 are nonspecific and lower values do not rule out common-method bias.",
+      "Report R2 descriptively for each endogenous construct; no universal value establishes adequate explanation or causal importance.",
+      "The .02/.15/.35 f2 ranges are descriptive anchors, not universal importance thresholds.",
+      "Q2 compares omission prediction with a baseline; values above 0 remain descriptive and do not establish strong out-of-sample prediction.",
       "Out-of-sample prediction is strongest when PLS error is lower than LM."
     ),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
+  formative <- structural_canvas_formative_content_validity_rows(
+    bundle$snapshot %||% list(), bundle$redundancy_result %||% NULL, bundle$redundancy_construct %||% NULL
+  )
+  if (nrow(formative)) rows <- rbind(rows, data.frame(
+    Item = paste0("Formative evidence: ", formative$Construct),
+    Value = paste0(
+      "domain=", ifelse(nzchar(formative$`Domain definition`), "recorded", "missing"),
+      "; indicator rationale=", ifelse(nzchar(formative$`Indicator inclusion rationale`), "recorded", "missing"),
+      "; content-validity procedure/source=", ifelse(nzchar(formative$`Content-validity procedure/source`), "recorded", "missing"),
+      "; redundancy=", formative$`Redundancy evidence`
+    ),
+    Status = ifelse(formative$Status == "Documented", "OK", "Review"),
+    Guidance = formative$Guidance,
+    stringsAsFactors = FALSE, check.names = FALSE
+  ))
+  rows
 }
 
 structural_canvas_pls_quality_status_summary <- function(rows) {
   if (!nrow(rows) || !"Status" %in% names(rows)) return("Quality status: not assessed.")
-  counts <- table(factor(rows$Status, levels = c("OK", "Review", "Not assessed")))
+  counts <- table(factor(rows$Status, levels = c("OK", "Review", "Reference only", "Descriptive only", "Screen only", "Not assessed")))
   paste0(
     "Quality status: OK=", counts[["OK"]],
     "; Review=", counts[["Review"]],
+    "; Reference only=", counts[["Reference only"]],
+    "; Descriptive only=", counts[["Descriptive only"]],
+    "; Screen only=", counts[["Screen only"]],
     "; Not assessed=", counts[["Not assessed"]],
     "."
   )
@@ -266,8 +283,8 @@ structural_canvas_pls_quality_status_summary <- function(rows) {
 
 structural_canvas_pls_quality_priority <- function(items) {
   critical <- c("PLS algorithm iterations", "Final weight difference")
-  major <- c("Approx PLS SRMR", "Approx NFI", "10-times rule margin", "Min outer loading", "Min rhoC", "Min AVE", "Max HTMT", "Max item VIF", "Max inner VIF", "Max full collinearity VIF", "Min Q2")
-  ifelse(items %in% critical, "Critical", ifelse(items %in% major, "Major", "Advisory"))
+  major <- c("Min outer loading", "Min rhoC", "Min AVE", "Max HTMT", "Max item VIF", "Max inner VIF", "Max full collinearity VIF", "Min Q2")
+  ifelse(items %in% critical, "Critical", ifelse(items %in% major | grepl("^Formative evidence:", items), "Major", "Advisory"))
 }
 
 structural_canvas_pls_quality_action <- function(priority) {
@@ -354,9 +371,9 @@ structural_canvas_pls_predict_result_ui <- function(bundle, language = statedu_i
   div(class = "result-section regression-result-panel structural-pls-predict-result",
     h4(if (ko) "PLSpredict 예측 진단" else "PLSpredict predictive assessment"),
     tags$p(class = "structural-result-note", if (ko) {
-      paste0("Direct Antecedents 방식, ", bundle$pls_predict_result$folds, "-fold, 반복 ", bundle$pls_predict_result$reps, "회 기준입니다. PLS - LM 값이 음수이면 PLS의 out-of-sample 예측오차가 선형모형 기준값보다 작습니다.")
+      paste0("Direct Antecedents 방식, ", bundle$pls_predict_result$folds, "-fold, 독립 반복 ", bundle$pls_predict_result$reps, "회(seed = ", bundle$pls_predict_result$seed, ") 기준입니다. PLS - LM은 반복 평균 차이, SD는 분할 간 변동성, PLS lower %는 선형모형보다 오차가 낮았던 반복 비율입니다. 단일 반복 결과는 예측력 결론에 충분하지 않습니다.")
     } else {
-      paste0("Direct Antecedents scheme, ", bundle$pls_predict_result$folds, "-fold, ", bundle$pls_predict_result$reps, " repetition(s). Negative PLS - LM values indicate lower out-of-sample prediction error for PLS than for the linear-model benchmark.")
+      paste0("Direct Antecedents scheme, ", bundle$pls_predict_result$folds, "-fold, ", bundle$pls_predict_result$reps, " independent repetitions (seed = ", bundle$pls_predict_result$seed, "). PLS - LM is the mean difference, SD reflects split-to-split variability, and PLS lower % is the proportion of repetitions favoring PLS over the linear-model benchmark. One repetition is insufficient for a predictive-performance claim.")
     }),
     if (nrow(item_table)) tagList(
       tags$h5(if (ko) "Indicator별 out-of-sample 예측오차" else "Indicator-level out-of-sample prediction error"),
@@ -391,7 +408,7 @@ if (identical(analysis_type, "plssem")) {
     tagList(
       tags$h5(if (ko) "표 2 보조: 구조효과 가이드 지표" else "Supplementary Table 2: Structural effect guide indices"),
       structural_canvas_basic_html_table(table, class = "table table-striped table-bordered structural-pls-fit-guide-table"),
-      tags$p(class = "structural-result-note", if (ko) "f²와 q² 크기 등급, inner VIF는 경로계수의 해석을 돕는 보조 지표입니다. 본표의 경로계수와 별도로 검토하십시오." else "f2/q2 size labels and inner VIF are supplementary diagnostics for interpreting structural paths.")
+      tags$p(class = "structural-result-note", if (ko) "f²와 q² 크기 등급은 관행적 기술 표지이며 보편적 중요도 또는 예측력 합격선이 아닙니다. R²·Q²·f²는 분야 맥락, 불확실성, 실질적 중요성과 반복 PLSpredict 기준모형 비교를 함께 해석하십시오. Inner VIF는 단독 합격판정이 아니며 계수 부호·크기 변화, 억제효과와 bootstrap 안정성을 함께 점검하십시오." else "f2/q2 size labels are conventional descriptive anchors, not universal importance or predictive-performance thresholds. Interpret R2, Q2, and f2 with domain context, uncertainty, practical importance, and repeated PLSpredict benchmark comparisons. Inner VIF is not a standalone pass criterion; also inspect coefficient sign/magnitude changes, suppression, and bootstrap stability.")
     )
   })
   output[[paste0(prefix, "_result_fit_bootstrap")]] <- renderUI({

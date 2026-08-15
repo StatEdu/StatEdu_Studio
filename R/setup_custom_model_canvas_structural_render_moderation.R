@@ -152,7 +152,6 @@ structural_canvas_indirect_moderation_jn_rows <- function(effect_definitions, mo
         } else {
           NA_real_
         }
-        if (!is.finite(index_p) || index_p >= alpha) next
         moderator_mean <- as.numeric(definition$moderator_mean %||% 0)
         centered_min <- as.numeric(definition$moderator_min %||% NA_real_) - moderator_mean
         centered_max <- as.numeric(definition$moderator_max %||% NA_real_) - moderator_mean

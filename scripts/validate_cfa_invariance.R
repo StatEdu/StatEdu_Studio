@@ -70,7 +70,7 @@ stopifnot(
   isTRUE(two_factor_invariance$group_residuals$available),
   nrow(two_factor_invariance$group_residuals$group_summary) == 2L,
   nrow(two_factor_invariance$group_residuals$group_pairs) > 0L,
-  all(c("Group", "Indicator1", "Indicator2", "Standardized residual", "Correlation residual", "Exceeds cutoff") %in% names(two_factor_invariance$group_residuals$group_pairs))
+  all(c("Group", "Indicator1", "Indicator2", "Standardized residual", "Correlation residual", "Screening p", "BH-adjusted screening p", "Exceeds descriptive cutoff") %in% names(two_factor_invariance$group_residuals$group_pairs))
 )
 
 ordinal <- as.data.frame(lapply(continuous[c("x1", "x2", "x3")], function(value) {

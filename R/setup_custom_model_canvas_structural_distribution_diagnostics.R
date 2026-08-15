@@ -20,10 +20,36 @@ structural_canvas_missing_diagnostics <- function(data, variables) {
     missing_variables <- variables[bits == "1"]
     if (length(missing_variables)) paste("Missing:", paste(missing_variables, collapse = ", ")) else "Complete"
   }, character(1))
+  observed <- !is.na(values)
+  pairwise_n <- crossprod(as.matrix(observed) * 1L)
+  dimnames(pairwise_n) <- list(variables, variables)
+  off_diagonal <- pairwise_n[lower.tri(pairwise_n)]
   list(
     available = TRUE, n = n, complete_n = sum(stats::complete.cases(values)),
     incomplete_n = sum(!stats::complete.cases(values)), pattern_count = nrow(pattern_table),
-    variables = variable_table, patterns = pattern_table
+    incomplete_percent = if (n > 0) 100 * mean(!stats::complete.cases(values)) else NA_real_,
+    variables = variable_table, patterns = pattern_table, pairwise_n = pairwise_n,
+    minimum_pairwise_n = if (length(off_diagonal)) min(off_diagonal) else if (length(pairwise_n)) pairwise_n[[1L]] else NA_real_
+  )
+}
+
+structural_canvas_missing_sensitivity_rows <- function(bundle) {
+  method <- as.character(bundle$missing_sensitivity_method %||% "not_assessed")
+  details <- trimws(as.character(bundle$missing_sensitivity_details %||% ""))
+  labels <- c(
+    not_assessed = "Not assessed", complete_case_comparison = "Complete-case comparison",
+    multiple_imputation = "Multiple-imputation comparison", delta_pattern_mixture = "Delta/pattern-mixture",
+    external_analysis = "External sensitivity analysis", other_documented = "Other documented assessment"
+  )
+  has_missing <- isTRUE(bundle$missing_diagnostics$available) && as.integer(bundle$missing_diagnostics$incomplete_n %||% 0L) > 0L
+  requires_review <- has_missing && identical(bundle$missing %||% "", "fiml") && (identical(method, "not_assessed") || !nzchar(details))
+  data.frame(
+    `Primary missing-data method` = as.character(bundle$missing %||% "Not recorded"),
+    `Sensitivity assessment` = unname(labels[method] %||% method),
+    `Assumptions, results, and conclusion` = details,
+    Status = if (!has_missing) "Not required - no incomplete indicator cases" else if (requires_review) "Review" else if (identical(method, "not_assessed")) "Not assessed" else "Documented",
+    Guidance = if (requires_review) "FIML relies on MAR conditional on modeled variables. Document a sensitivity assessment and whether key conclusions change under plausible departures." else "Sensitivity records are user-supplied evidence and do not cause this engine to perform or validate the stated external analysis.",
+    stringsAsFactors = FALSE, check.names = FALSE
   )
 }
 
@@ -79,8 +105,9 @@ structural_canvas_mardia <- function(data, variables, max_n = 2000L) {
     available = TRUE, n = n, original_n = original_n, p = p, sampled = sampled,
     skewness = skewness, skew_statistic = skew_statistic, skew_df = skew_df, skew_p = skew_p,
     kurtosis = kurtosis, expected_kurtosis = expected_kurtosis, kurtosis_z = kurtosis_z, kurtosis_p = kurtosis_p,
-    recommendation = if (nonnormal) "MLR recommended" else "ML is acceptable",
-    nonnormal = nonnormal
+    recommendation = if (nonnormal) "MLR recommended" else "No Mardia test flag; normality not established",
+    nonnormal = nonnormal, test_flag = nonnormal,
+    interpretation = if (nonnormal) "At least one sample-size-sensitive omnibus test flagged departure from multivariate normality." else "Neither omnibus test was significant; this is not evidence that multivariate normality holds."
   )
 }
 
@@ -99,7 +126,7 @@ structural_canvas_estimator_recommendation <- function(snapshot, data, variable_
   list(
     recommend = isTRUE(diagnosis$nonnormal),
     recommended_estimator = if (isTRUE(diagnosis$nonnormal)) "MLR" else "ML",
-    reason = if (isTRUE(diagnosis$nonnormal)) "Mardia skewness or kurtosis test indicates nonnormal continuous indicators." else "Mardia diagnostics do not flag nonnormality.",
+    reason = if (isTRUE(diagnosis$nonnormal)) "At least one sample-size-sensitive Mardia test flags departure from multivariate normality." else "Mardia tests did not flag departure; this does not establish multivariate normality.",
     diagnosis = diagnosis
   )
 }

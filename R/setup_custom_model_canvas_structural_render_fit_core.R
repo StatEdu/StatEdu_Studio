@@ -72,7 +72,7 @@ structural_canvas_identification_result_ui <- function(bundle, language = stated
       if (isTRUE(bundle$std_lv)) "Latent variance = 1" else "Marker loading = 1",
       if (is.finite(model_df)) format(model_df, trim = TRUE) else "Not available",
       if (is.finite(free_parameters)) format(free_parameters, trim = TRUE) else "Not available",
-      "Not inferred from fitted data"
+      if (identical(bundle$power_basis %||% "not_recorded", "not_recorded")) "Not recorded; not inferred from fitted data" else paste0(bundle$power_basis, if (nzchar(bundle$power_details %||% "")) paste0(": ", bundle$power_details) else ": details not recorded")
     ),
     stringsAsFactors = FALSE
   )
@@ -81,7 +81,7 @@ structural_canvas_identification_result_ui <- function(bundle, language = stated
     inventory$Value[inventory$Value == "Latent variance = 1"] <- "잠재분산 = 1"
     inventory$Value[inventory$Value == "Marker loading = 1"] <- "표지 지표 적재량 = 1"
     inventory$Value[inventory$Value == "Not available"] <- "산출 불가"
-    inventory$Value[inventory$Value == "Not inferred from fitted data"] <- "적합된 자료에서 역산하지 않음"
+    inventory$Value[inventory$Value == "Not recorded; not inferred from fitted data"] <- "기록되지 않음; 적합된 자료에서 역산하지 않음"
   }
   display_issues <- issues
   if (ko && ncol(display_issues)) {

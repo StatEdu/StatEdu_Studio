@@ -34,8 +34,13 @@ structural_canvas_structural_path_group_comparison_ui <- function(result, ko = F
       path_differences[[name]] <- vapply(path_differences[[name]], format_p, character(1))
     }
   }
+  measurement <- result$measurement_invariance %||% NULL
+  gate <- result$measurement_gate %||% list(passed = FALSE, reason = "Measurement-invariance gate was not recorded.")
   div(class = "result-section regression-result-panel structural-invariance-result structural-path-group-result",
     h4(if (ko) paste0("구조경로 집단비교: ", result$group) else paste0("Structural path group comparison by ", result$group)),
+    tags$h5(if (ko) "구조경로 비교 선행 측정불변성" else "Measurement-invariance gate before structural comparison"),
+    if (!is.null(measurement) && nrow(measurement$table %||% data.frame())) structural_canvas_basic_html_table(measurement$table, class = "table table-striped table-bordered"),
+    tags$p(class = "structural-result-note", if (ko) paste0("Metric gate: ", if (isTRUE(gate$passed)) "통과" else "실패", ". ", gate$reason %||% "") else paste0("Metric gate: ", if (isTRUE(gate$passed)) "passed" else "failed", ". ", gate$reason %||% "")),
     tags$h5(if (ko) "집단별 데이터 진단" else "Group-level data diagnostics"),
     structural_canvas_basic_html_table(group_table),
     tags$p(class = "structural-result-note", if (ko) "집단 크기와 결측률은 구조경로 차이 해석의 안정성을 판단하기 위한 기술 진단입니다." else "Group size and missingness diagnostics are descriptive checks for judging the stability of structural path comparisons."),
@@ -60,6 +65,27 @@ structural_canvas_invariance_result_ui <- function(bundle, language = statedu_in
   ko <- identical(normalize_app_language(language), "ko")
   if (identical(result$type %||% "", "structural_path_comparison")) {
     return(structural_canvas_structural_path_group_comparison_ui(result, ko))
+  }
+  if (identical(result$type %||% "", "pls_micom")) {
+    gate <- result$measurement_gate %||% list(passed = FALSE, reason = "MICOM gate was not recorded.")
+    table <- result$table %||% data.frame()
+    mga <- result$mga_table %||% data.frame()
+    for (name in intersect(c("Observed c", "5% permutation c", "Mean difference", "Variance difference"), names(table))) {
+      table[[name]] <- vapply(table[[name]], format_decimal3, character(1))
+    }
+    if (nrow(mga)) {
+      if ("Path difference" %in% names(mga)) mga[["Path difference"]] <- vapply(mga[["Path difference"]], format_decimal3, character(1))
+      for (name in intersect(c("Permutation p", "BH-adjusted p"), names(mga))) mga[[name]] <- vapply(mga[[name]], format_p, character(1))
+    }
+    return(div(class = "result-section regression-result-panel structural-invariance-result structural-micom-result",
+      h4(if (ko) paste0("PLS MICOM 측정불변성: ", result$group) else paste0("PLS MICOM measurement invariance by ", result$group)),
+      tags$p(class = "structural-result-note", if (ko) "1단계 구성불변성은 동일 지표, 자료처리, 알고리즘 설정으로 확보합니다. 2단계 합성점수 상관 permutation이 모든 구성개념에서 통과해야 최소 부분 측정불변성이 성립합니다. 평균·분산 동등성까지 통과하면 완전 측정불변성입니다." else "Step 1 configural invariance uses identical indicators, data treatment, and algorithm settings. Step 2 permutation tests of composite-score correlation must pass for every construct to establish at least partial measurement invariance. Equality of means and variances additionally establishes full measurement invariance."),
+      structural_canvas_basic_html_table(table),
+      tags$p(class = "structural-result-note", if (ko) paste0("MICOM gate: ", if (isTRUE(gate$passed)) "통과" else "실패", ". ", gate$reason, " 유효 permutation ", result$permutations_valid, "/", result$permutations_requested, ", seed=", result$seed, ".") else paste0("MICOM gate: ", if (isTRUE(gate$passed)) "passed" else "failed", ". ", gate$reason, " Valid permutations ", result$permutations_valid, "/", result$permutations_requested, ", seed=", result$seed, ".")),
+      tags$h5(if (ko) "MICOM gate 이후 PLS-MGA 경로차이" else "PLS-MGA path differences after the MICOM gate"),
+      if (nrow(mga)) structural_canvas_basic_html_table(mga, class = "table table-striped table-bordered structural-pls-mga-table") else tags$p(class = "structural-result-note", result$mga_status %||% if (ko) "MGA를 계산하지 않았습니다." else "MGA was not computed."),
+      tags$p(class = "structural-result-note", if (ko) "경로차이 p값은 집단표지를 치환한 양측 permutation 검정이며 경로군 안에서 BH 보정합니다. MICOM 통과는 비교 가능성의 선행조건일 뿐 경로차이의 증거가 아니며, 유의한 차이도 이론·효과크기·집단 표본수와 함께 해석해야 합니다." else "Path-difference p values use a two-sided group-label permutation test and BH adjustment within the path family. Passing MICOM is a comparability prerequisite rather than evidence of path differences; significant differences must still be interpreted with theory, effect size, and group sample sizes.")
+    ))
   }
   table <- result$table
   group_table <- result$group_diagnostics

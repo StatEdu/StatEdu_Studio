@@ -9,7 +9,7 @@ structural_canvas_indicator_loading_guidance <- function(beta, ci_lower, ci_uppe
   "No loading flag"
 }
 
-structural_canvas_residual_diagnostics <- function(fit, cutoff = 1.96, top_n = 20L) {
+structural_canvas_residual_diagnostics <- function(fit, cutoff = 2.58, top_n = 20L) {
   residual_covariance <- function(type) {
     value <- tryCatch(lavaan::resid(fit, type = type), error = function(error) NULL)
     if (is.null(value)) return(NULL)
@@ -54,13 +54,16 @@ structural_canvas_residual_diagnostics <- function(fit, cutoff = 1.96, top_n = 2
     correlation[upper.tri(correlation, diag = TRUE)] <- NA_real_
     locations <- which(is.finite(standardized), arr.ind = TRUE)
     if (!nrow(locations)) return(data.frame())
+    screening_p <- if (standardized_available) 2 * stats::pnorm(-abs(standardized[locations])) else rep(NA_real_, nrow(locations))
     result <- data.frame(
       Indicator1 = rownames(standardized)[locations[, "row"]],
       Indicator2 = colnames(standardized)[locations[, "col"]],
       `Standardized residual` = standardized[locations],
       `Correlation residual` = correlation[locations],
       `Residual scale` = if (standardized_available) "Standardized" else "Correlation residual fallback",
-      `Exceeds cutoff` = abs(standardized[locations]) >= cutoff,
+      `Screening p` = screening_p,
+      `BH-adjusted screening p` = if (standardized_available) stats::p.adjust(screening_p, method = "BH") else NA_real_,
+      `Exceeds descriptive cutoff` = if (standardized_available) abs(standardized[locations]) >= cutoff else FALSE,
       check.names = FALSE
     )
     if (!is.null(group_name)) result <- data.frame(Group = group_name, result, row.names = NULL, check.names = FALSE)
@@ -82,12 +85,12 @@ structural_canvas_residual_diagnostics <- function(fit, cutoff = 1.96, top_n = 2
         value
       },
       pairs = pairs,
-      largest = pairs[pairs[["Exceeds cutoff"]], , drop = FALSE]
+      largest = pairs[pairs[["Exceeds descriptive cutoff"]], , drop = FALSE]
     )
   }), common_groups)
   all_pairs <- Filter(function(value) nrow(value), lapply(by_group, `[[`, "pairs"))
   all_pairs <- if (length(all_pairs)) do.call(rbind, all_pairs) else data.frame()
-  group_largest <- if (nrow(all_pairs)) all_pairs[all_pairs[["Exceeds cutoff"]], , drop = FALSE] else data.frame()
+  group_largest <- if (nrow(all_pairs)) all_pairs[all_pairs[["Exceeds descriptive cutoff"]], , drop = FALSE] else data.frame()
   if (nrow(group_largest)) group_largest <- utils::head(group_largest[order(-abs(group_largest[["Standardized residual"]])), , drop = FALSE], as.integer(top_n))
   group_summary <- do.call(rbind, lapply(names(by_group), function(group_name) {
     pairs <- by_group[[group_name]]$pairs
@@ -97,14 +100,14 @@ structural_canvas_residual_diagnostics <- function(fit, cutoff = 1.96, top_n = 2
       Group = group_name,
       `Max |standardized residual|` = abs(top[["Standardized residual"]][[1L]]),
       Indicator1 = top$Indicator1[[1L]], Indicator2 = top$Indicator2[[1L]],
-      `Flagged residuals` = sum(pairs[["Exceeds cutoff"]], na.rm = TRUE),
+      `Flagged residuals` = sum(pairs[["Exceeds descriptive cutoff"]], na.rm = TRUE),
       check.names = FALSE
     )
   }))
   first_group <- common_groups[[1L]]
   largest <- by_group[[first_group]]$largest
   if (!is.null(group_count) && is.finite(group_count) && group_count == 1L && "Group" %in% names(largest)) {
-    largest <- largest[, setdiff(names(largest), c("Group", "Exceeds cutoff")), drop = FALSE]
+    largest <- largest[, setdiff(names(largest), c("Group", "Exceeds descriptive cutoff")), drop = FALSE]
   }
   list(
     available = TRUE,
@@ -131,7 +134,7 @@ structural_canvas_factor_correlation_diagnostics <- function(fit) {
     else if (value >= .95) "Severe"
     else if (value >= .90) "High"
     else if (value >= .85) "Review"
-    else "Acceptable"
+    else "Below correlation review reference"
   }, character(1))
   data.frame(
     Factor1 = rownames(correlations)[locations[, "row"]],

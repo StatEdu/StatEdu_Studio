@@ -13,7 +13,7 @@ structural_canvas_fornell_larcker <- function(ave, correlations, indicator_count
     values <- values[is.finite(values)]
     if (length(values)) max_correlation[[name]] <- max(values)
     if ((indicator_counts[[name]] %||% 0L) < 2L || !is.finite(ave[[name]]) || !is.finite(max_correlation[[name]])) next
-    criterion[[name]] <- if (sqrt(ave[[name]]) > max_correlation[[name]]) "Criterion met" else "Review needed"
+    criterion[[name]] <- if (sqrt(ave[[name]]) > max_correlation[[name]]) "Below reference" else "Review needed"
   }
   list(max_correlation = max_correlation, criterion = criterion)
 }
@@ -49,7 +49,7 @@ structural_canvas_htmt <- function(correlations, indicators_by_factor, threshold
     pair_index <- pair_index + 1L
     pairs[[pair_index]] <- data.frame(
       Factor1 = first, Factor2 = second, HTMT = value,
-      Criterion = if (is.finite(value)) if (value < threshold) "Criterion met" else "Review needed" else "Not assessed",
+      Criterion = if (is.finite(value)) if (value < threshold) "Below reference" else "Review needed" else "Not assessed",
       Reason = reason,
       stringsAsFactors = FALSE
     )

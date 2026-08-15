@@ -48,8 +48,10 @@ output[[paste0(prefix, "_result_mi_history")]] <- renderUI({
     display[[name]] <- vapply(display[[name]], format_decimal3, character(1))
   }
   display$Justification[!nzchar(display$Justification)] <- if (ko) "제공되지 않음" else "Not provided"
+  gate <- bundle$mi_validation_gate %||% structural_canvas_mi_validation_gate(TRUE, bundle$mi_holdout_enabled, bundle$holdout_comparison)
   div(class = "result-section regression-result-panel structural-mi-history-result",
     h4(if (ko) "MI 수정 이력" else "MI modification history"),
+    tags$p(class = "structural-result-note", paste0(if (ko) "검증 상태: " else "Validation status: ", gate$label)),
     tags$table(class = "table table-striped table-bordered",
       tags$thead(tags$tr(lapply(names(display), tags$th))),
       tags$tbody(lapply(seq_len(nrow(display)), function(index) tags$tr(lapply(as.character(display[index, ]), tags$td))))
@@ -76,6 +78,7 @@ output[[paste0(prefix, "_result_mi_holdout")]] <- renderUI({
   changes$DeltaP <- vapply(changes$DeltaP, format_p, character(1))
   div(class = "result-section regression-result-panel structural-mi-holdout-result",
     h4(if (ko) "MI 홀드아웃 검증" else "MI holdout validation"),
+    tags$p(class = "structural-result-note", paste0(if (ko) "검증 상태: " else "Validation status: ", (bundle$mi_validation_gate %||% structural_canvas_mi_validation_gate(TRUE, TRUE, comparison))$label)),
     tags$p(paste0(if (ko) "탐색 행 수 = " else "Exploration rows = ", nrow(bundle$analysis_data), if (ko) "; 예약 검증 행 수 = " else "; reserved validation rows = ", comparison$validation_n_raw, if (ko) "; 사용된 검증 N = " else "; validation N used = ", paste(unique(comparison$validation_n_used), collapse = ", "), if (ko) "; 분할 seed = " else "; split seed = ", bundle$mi_holdout_seed, ".")),
     tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered",
       tags$thead(tags$tr(lapply(names(table), tags$th))),

@@ -38,14 +38,29 @@ structural_canvas_pls_bootstrap_p <- function(row) {
   format_p(row[["Bootstrap P Val"]][[1L]])
 }
 
+structural_canvas_pls_bootstrap_p_numeric <- function(row) {
+  if (is.null(row) || !"Bootstrap P Val" %in% names(row)) return(NA_real_)
+  value <- suppressWarnings(as.numeric(row[["Bootstrap P Val"]][[1L]]))
+  if (length(value) && is.finite(value[[1L]])) value[[1L]] else NA_real_
+}
+
+structural_canvas_add_bh_column <- function(table, numeric_column, output_column) {
+  values <- suppressWarnings(as.numeric(table[[numeric_column]]))
+  adjusted <- rep("", length(values))
+  finite <- is.finite(values)
+  if (any(finite)) adjusted[finite] <- vapply(stats::p.adjust(values[finite], method = "BH"), format_p, character(1))
+  table[[output_column]] <- adjusted
+  table
+}
+
 structural_canvas_pls_effect_size_label <- function(value) {
   value <- suppressWarnings(as.numeric(value))
   if (length(value) < 1L || !is.finite(value[[1L]])) return("")
   value <- value[[1L]]
-  if (value < .02) "Below small"
-  else if (value < .15) "Small"
-  else if (value < .35) "Medium"
-  else "Large"
+  if (value < .02) "Descriptive: below .02"
+  else if (value < .15) "Descriptive: .02-.15"
+  else if (value < .35) "Descriptive: .15-.35"
+  else "Descriptive: >= .35"
 }
 
 structural_canvas_pls_indicator_vifs <- function(summary_fit) {
@@ -173,15 +188,18 @@ structural_canvas_pls_fit_row <- function(effect, outcome, predictor, summary_fi
     `Indirect effect CI upper` = structural_canvas_pls_bootstrap_value(indirect_boot_row, "97.5% CI"),
     `Indirect effect t` = structural_canvas_pls_bootstrap_value(indirect_boot_row, "T Stat."),
     `Indirect effect p` = structural_canvas_pls_bootstrap_p(indirect_boot_row),
+    indirect_p_numeric = structural_canvas_pls_bootstrap_p_numeric(indirect_boot_row),
     `Total effect` = structural_canvas_pls_number(values$total),
     `Total effect CI lower` = structural_canvas_pls_bootstrap_value(total_boot_row, "2.5% CI"),
     `Total effect CI upper` = structural_canvas_pls_bootstrap_value(total_boot_row, "97.5% CI"),
     `Total effect t` = structural_canvas_pls_bootstrap_value(total_boot_row, "T Stat."),
     `Total effect p` = structural_canvas_pls_bootstrap_p(total_boot_row),
+    total_p_numeric = structural_canvas_pls_bootstrap_p_numeric(total_boot_row),
     `Boot CI lower` = structural_canvas_pls_bootstrap_value(boot_row, "2.5% CI"),
     `Boot CI upper` = structural_canvas_pls_bootstrap_value(boot_row, "97.5% CI"),
     `Boot t` = structural_canvas_pls_bootstrap_value(boot_row, "T Stat."),
     `Boot p` = structural_canvas_pls_bootstrap_p(boot_row),
+    direct_p_numeric = structural_canvas_pls_bootstrap_p_numeric(boot_row),
     check.names = FALSE
   )
 }
@@ -203,7 +221,10 @@ structural_canvas_pls_fit_result_table <- function(summary_fit, diagnostics, dis
   }))
   rows <- Filter(Negate(is.null), rows)
   if (!length(rows)) return(data.frame())
-  do.call(rbind, rows)
+  table <- do.call(rbind, rows)
+  table <- structural_canvas_add_bh_column(table, "direct_p_numeric", "Boot BH-adjusted p")
+  table <- structural_canvas_add_bh_column(table, "indirect_p_numeric", "Indirect effect BH-adjusted p")
+  structural_canvas_add_bh_column(table, "total_p_numeric", "Total effect BH-adjusted p")
 }
 
 structural_canvas_subset_columns <- function(table, columns) {
@@ -227,9 +248,9 @@ structural_canvas_pls_fit_guide_table <- function(table) {
 structural_canvas_pls_fit_bootstrap_table <- function(table) {
   structural_canvas_subset_columns(table, c(
     "Effect", "Outcome", "Predictor",
-    "Boot CI lower", "Boot CI upper", "Boot t", "Boot p",
-    "Indirect effect CI lower", "Indirect effect CI upper", "Indirect effect t", "Indirect effect p",
-    "Total effect CI lower", "Total effect CI upper", "Total effect t", "Total effect p"
+    "Boot CI lower", "Boot CI upper", "Boot t", "Boot p", "Boot BH-adjusted p",
+    "Indirect effect CI lower", "Indirect effect CI upper", "Indirect effect t", "Indirect effect p", "Indirect effect BH-adjusted p",
+    "Total effect CI lower", "Total effect CI upper", "Total effect t", "Total effect p", "Total effect BH-adjusted p"
   ))
 }
 
@@ -243,7 +264,7 @@ structural_canvas_pls_construct_modes <- function(snapshot) {
   )
 }
 
-structural_canvas_pls_validity_result_table <- function(summary_fit, display_name, bootstrap = NULL, snapshot = NULL) {
+structural_canvas_pls_validity_result_table <- function(summary_fit, display_name, bootstrap = NULL, snapshot = NULL, estimator = "PLS") {
   reliability <- as.data.frame(summary_fit$reliability %||% data.frame(), check.names = FALSE)
   if (!nrow(reliability)) return(data.frame())
   constructs <- rownames(reliability)
@@ -255,20 +276,23 @@ structural_canvas_pls_validity_result_table <- function(summary_fit, display_nam
   construct_types <- types[constructs]
   construct_types[is.na(construct_types) | !nzchar(construct_types)] <- "Unspecified"
   reflective <- construct_modes == "Reflective"
+  reflective_constructs <- constructs[reflective]
   htmt <- suppressWarnings(as.matrix(summary_fit$validity$htmt %||% matrix(numeric(0), 0L, 0L)))
   fl <- suppressWarnings(as.matrix(summary_fit$validity$fl_criteria %||% matrix(numeric(0), 0L, 0L)))
-  max_from_matrix <- function(matrix_value, construct) {
+  max_from_matrix <- function(matrix_value, construct, eligible = constructs) {
     if (!length(matrix_value) || !construct %in% rownames(matrix_value) || !construct %in% colnames(matrix_value)) return(NA_real_)
-    values <- c(matrix_value[construct, setdiff(colnames(matrix_value), construct)], matrix_value[setdiff(rownames(matrix_value), construct), construct])
+    partners <- setdiff(intersect(eligible, intersect(rownames(matrix_value), colnames(matrix_value))), construct)
+    if (!length(partners)) return(NA_real_)
+    values <- c(matrix_value[construct, partners], matrix_value[partners, construct])
     values <- suppressWarnings(as.numeric(values))
     if (!any(is.finite(values))) NA_real_ else max(abs(values), na.rm = TRUE)
   }
-  max_pair_from_matrix <- function(matrix_value, construct) {
+  max_pair_from_matrix <- function(matrix_value, construct, eligible = constructs) {
     if (!length(matrix_value) || !construct %in% rownames(matrix_value) || !construct %in% colnames(matrix_value)) {
       return(list(value = NA_real_, partner = ""))
     }
-    row_partners <- setdiff(colnames(matrix_value), construct)
-    column_partners <- setdiff(rownames(matrix_value), construct)
+    row_partners <- setdiff(intersect(colnames(matrix_value), eligible), construct)
+    column_partners <- setdiff(intersect(rownames(matrix_value), eligible), construct)
     values <- c(matrix_value[construct, row_partners], matrix_value[column_partners, construct])
     partners <- c(row_partners, column_partners)
     values <- suppressWarnings(as.numeric(values))
@@ -283,8 +307,8 @@ structural_canvas_pls_validity_result_table <- function(summary_fit, display_nam
     fl_value <- structural_canvas_pls_matrix_cell(fl, construct, construct)
     if (is.finite(fl_value)) fl_value else sqrt(suppressWarnings(as.numeric(reliability[construct, "AVE"])))
   }, numeric(1))
-  max_correlation <- vapply(constructs, function(construct) max_from_matrix(fl, construct), numeric(1))
-  htmt_pairs <- lapply(constructs, function(construct) max_pair_from_matrix(htmt, construct))
+  max_correlation <- vapply(constructs, function(construct) max_from_matrix(fl, construct, reflective_constructs), numeric(1))
+  htmt_pairs <- lapply(constructs, function(construct) max_pair_from_matrix(htmt, construct, reflective_constructs))
   names(htmt_pairs) <- constructs
   max_htmt <- vapply(htmt_pairs, function(pair) pair$value, numeric(1))
   bootstrap_htmt <- bootstrap$bootstrapped_HTMT %||% NULL
@@ -292,10 +316,20 @@ structural_canvas_pls_validity_result_table <- function(summary_fit, display_nam
     partner <- htmt_pairs[[construct]]$partner
     if (!nzchar(partner)) NULL else structural_canvas_pls_bootstrap_pair_row(bootstrap_htmt, construct, partner)
   })
+  evidence_role <- ifelse(
+    construct_modes == "Formative",
+    "Weights, collinearity, content coverage, and redundancy; internal consistency/AVE/HTMT not applicable",
+    ifelse(
+      construct_types == "Common factor",
+      if (identical(toupper(as.character(estimator %||% "PLS")), "PLSC")) "PLSc common-factor diagnostics; interpretation depends on consistency-correction assumptions" else "Mode A score-proxy diagnostics; not covariance-based factor-model evidence",
+      "Reflective-composite diagnostics; do not infer a latent common cause or explicit measurement-error separation"
+    )
+  )
   data.frame(
     Construct = vapply(constructs, display_name, character(1)),
     `Construct type` = unname(construct_types),
     Mode = unname(construct_modes),
+    `Evidence role` = unname(evidence_role),
     alpha = ifelse(reflective, vapply(reliability$alpha, structural_canvas_pls_number, character(1)), "N/A"),
     rhoA = ifelse(reflective, vapply(reliability$rhoA, structural_canvas_pls_number, character(1)), "N/A"),
     rhoC = ifelse(reflective, vapply(reliability$rhoC, structural_canvas_pls_number, character(1)), "N/A"),
@@ -305,17 +339,17 @@ structural_canvas_pls_validity_result_table <- function(summary_fit, display_nam
     `Max HTMT CI lower` = ifelse(reflective, vapply(htmt_boot_rows, structural_canvas_pls_bootstrap_value, character(1), column = "2.5% CI"), "N/A"),
     `Max HTMT CI upper` = ifelse(reflective, vapply(htmt_boot_rows, structural_canvas_pls_bootstrap_value, character(1), column = "97.5% CI"), "N/A"),
     `Max HTMT p` = ifelse(reflective, vapply(htmt_boot_rows, function(row) if (is.null(row) || !"Bootstrap P Val" %in% names(row)) "" else format_p(row[["Bootstrap P Val"]][[1L]]), character(1)), "N/A"),
-    `Fornell-Larcker` = ifelse(reflective, ifelse(is.finite(max_correlation) & is.finite(sqrt_ave) & sqrt_ave > max_correlation, "Criterion met", "Review needed"), "N/A - formative"),
+    `Fornell-Larcker` = ifelse(reflective, ifelse(is.finite(max_correlation) & is.finite(sqrt_ave) & sqrt_ave > max_correlation, "Below reference", "Review needed"), "N/A - formative"),
     check.names = FALSE
   )
 }
 
 structural_canvas_pls_validity_main_table <- function(table) {
-  structural_canvas_subset_columns(table, c("Construct", "Construct type", "Mode", "alpha", "rhoA", "rhoC", "AVE", "sqrt(AVE)", "Max HTMT"))
+  structural_canvas_subset_columns(table, c("Construct", "Construct type", "Mode", "Evidence role", "alpha", "rhoA", "rhoC", "AVE", "sqrt(AVE)", "Max HTMT"))
 }
 
 structural_canvas_pls_validity_guide_table <- function(table) {
-  structural_canvas_subset_columns(table, c("Construct", "Construct type", "Mode", "Max HTMT CI lower", "Max HTMT CI upper", "Max HTMT p", "Fornell-Larcker"))
+  structural_canvas_subset_columns(table, c("Construct", "Construct type", "Mode", "Evidence role", "Max HTMT CI lower", "Max HTMT CI upper", "Max HTMT p", "Fornell-Larcker"))
 }
 
 structural_canvas_pls_measurement_result_table <- function(summary_fit, snapshot, display_name, bootstrap = NULL) {
@@ -346,12 +380,14 @@ structural_canvas_pls_measurement_result_table <- function(summary_fit, snapshot
         `Loading CI upper` = structural_canvas_pls_bootstrap_value(loading_boot, "97.5% CI"),
         `Loading t` = structural_canvas_pls_bootstrap_value(loading_boot, "T Stat."),
         `Loading p` = structural_canvas_pls_bootstrap_p(loading_boot),
+        loading_p_numeric = structural_canvas_pls_bootstrap_p_numeric(loading_boot),
         Weight = structural_canvas_pls_number(structural_canvas_pls_matrix_cell(weights, indicator, construct)),
         `Weight Boot SE` = structural_canvas_pls_bootstrap_value(weight_boot, "Bootstrap SD"),
         `Weight CI lower` = structural_canvas_pls_bootstrap_value(weight_boot, "2.5% CI"),
         `Weight CI upper` = structural_canvas_pls_bootstrap_value(weight_boot, "97.5% CI"),
         `Weight t` = structural_canvas_pls_bootstrap_value(weight_boot, "T Stat."),
         `Weight p` = structural_canvas_pls_bootstrap_p(weight_boot),
+        weight_p_numeric = structural_canvas_pls_bootstrap_p_numeric(weight_boot),
         `Item VIF` = structural_canvas_pls_number(if (indicator %in% names(item_vifs)) item_vifs[[indicator]] else NA_real_),
         `Max cross-loading` = structural_canvas_pls_number(cross_max),
         Mode = if (identical(latent$measurementMode %||% "reflective", "formative")) "Formative" else "Reflective",
@@ -360,7 +396,9 @@ structural_canvas_pls_measurement_result_table <- function(summary_fit, snapshot
     }
   }
   if (!length(rows)) return(data.frame())
-  do.call(rbind, rows)
+  table <- do.call(rbind, rows)
+  table <- structural_canvas_add_bh_column(table, "loading_p_numeric", "Loading BH-adjusted p")
+  structural_canvas_add_bh_column(table, "weight_p_numeric", "Weight BH-adjusted p")
 }
 
 structural_canvas_pls_measurement_main_table <- function(table) {
@@ -373,7 +411,8 @@ structural_canvas_pls_measurement_main_table <- function(table) {
   display[["Boot 95% CI upper"]] <- ifelse(display$Mode == "Formative", display$`Weight CI upper`, display$`Loading CI upper`)
   display[["Boot t"]] <- ifelse(display$Mode == "Formative", display$`Weight t`, display$`Loading t`)
   display[["Boot p"]] <- ifelse(display$Mode == "Formative", display$`Weight p`, display$`Loading p`)
-  structural_canvas_subset_columns(display, c("Construct", "Construct type", "Indicator", "loading/weight", "Boot SE", "Boot 95% CI lower", "Boot 95% CI upper", "Boot t", "Boot p", "Mode"))
+  display[["Boot BH-adjusted p"]] <- ifelse(display$Mode == "Formative", display$`Weight BH-adjusted p`, display$`Loading BH-adjusted p`)
+  structural_canvas_subset_columns(display, c("Construct", "Construct type", "Indicator", "loading/weight", "Boot SE", "Boot 95% CI lower", "Boot 95% CI upper", "Boot t", "Boot p", "Boot BH-adjusted p", "Mode"))
 }
 
 structural_canvas_pls_measurement_guide_table <- function(table) {
@@ -383,15 +422,17 @@ structural_canvas_pls_measurement_guide_table <- function(table) {
 structural_canvas_pls_measurement_bootstrap_table <- function(table) {
   structural_canvas_subset_columns(table, c(
     "Construct", "Construct type", "Indicator", "Mode",
-    "Loading Boot SE", "Loading CI lower", "Loading CI upper", "Loading t", "Loading p",
-    "Weight Boot SE", "Weight CI lower", "Weight CI upper", "Weight t", "Weight p"
+    "Loading Boot SE", "Loading CI lower", "Loading CI upper", "Loading t", "Loading p", "Loading BH-adjusted p",
+    "Weight Boot SE", "Weight CI lower", "Weight CI upper", "Weight t", "Weight p", "Weight BH-adjusted p"
   ))
 }
 
-structural_canvas_pls_htmt_matrix_table <- function(summary_fit, display_name) {
+structural_canvas_pls_htmt_matrix_table <- function(summary_fit, display_name, snapshot = NULL) {
   htmt <- suppressWarnings(as.matrix(summary_fit$validity$htmt %||% matrix(numeric(0), 0L, 0L)))
   if (!length(htmt) || nrow(htmt) < 2L || ncol(htmt) < 2L) return(data.frame())
   constructs <- rownames(htmt)
+  modes <- structural_canvas_pls_construct_modes(snapshot %||% list())
+  reflective <- constructs[modes[constructs] != "Formative" | is.na(modes[constructs])]
   values <- matrix("", nrow = length(constructs), ncol = length(constructs) + 1L)
   colnames(values) <- c("Construct", vapply(constructs, display_name, character(1)))
   for (row in seq_along(constructs)) {
@@ -399,8 +440,10 @@ structural_canvas_pls_htmt_matrix_table <- function(summary_fit, display_name) {
     for (column in seq_along(constructs)) {
       if (row == column) {
         values[row, column + 1L] <- "-"
-      } else if (row > column) {
+      } else if (row > column && constructs[[row]] %in% reflective && constructs[[column]] %in% reflective) {
         values[row, column + 1L] <- structural_canvas_pls_number(htmt[row, column])
+      } else if (row > column) {
+        values[row, column + 1L] <- "N/A"
       }
     }
   }
@@ -413,16 +456,28 @@ structural_canvas_pls_predict_tables <- function(prediction) {
   pls_oos <- as.matrix(summary_value$PLS_out_of_sample %||% matrix(numeric(0), 0L, 0L))
   lm_oos <- as.matrix(summary_value$LM_out_of_sample %||% matrix(numeric(0), 0L, 0L))
   item_rows <- list()
+  repetition_summaries <- prediction$repetition_summaries %||% list(summary_value)
   for (indicator in intersect(colnames(pls_oos), colnames(lm_oos))) {
     for (metric in intersect(rownames(pls_oos), rownames(lm_oos))) {
       pls_value <- suppressWarnings(as.numeric(pls_oos[metric, indicator]))
       lm_value <- suppressWarnings(as.numeric(lm_oos[metric, indicator]))
+      repetition_differences <- vapply(repetition_summaries, function(repetition) {
+        repetition_pls <- as.matrix(repetition$PLS_out_of_sample %||% matrix(numeric(0), 0L, 0L))
+        repetition_lm <- as.matrix(repetition$LM_out_of_sample %||% matrix(numeric(0), 0L, 0L))
+        if (!metric %in% rownames(repetition_pls) || !indicator %in% colnames(repetition_pls) || !metric %in% rownames(repetition_lm) || !indicator %in% colnames(repetition_lm)) return(NA_real_)
+        as.numeric(repetition_pls[metric, indicator]) - as.numeric(repetition_lm[metric, indicator])
+      }, numeric(1))
+      finite_differences <- repetition_differences[is.finite(repetition_differences)]
+      difference_sd <- if (length(finite_differences) > 1L) stats::sd(finite_differences) else NA_real_
+      pls_win_rate <- if (length(finite_differences)) mean(finite_differences < 0) else NA_real_
       item_rows[[length(item_rows) + 1L]] <- data.frame(
         Indicator = indicator,
         Metric = metric,
         `PLS out-of-sample` = pls_value,
         `LM benchmark` = lm_value,
         `PLS - LM` = pls_value - lm_value,
+        `PLS - LM SD` = difference_sd,
+        `PLS lower %` = 100 * pls_win_rate,
         Assessment = if (!is.finite(pls_value) || !is.finite(lm_value)) "Not available" else if (pls_value < lm_value) "PLS lower error" else if (pls_value > lm_value) "LM lower error" else "Tie",
         check.names = FALSE
       )
@@ -456,7 +511,7 @@ structural_canvas_lavaan_standardized_effect <- function(fit, effect) {
   if (!any(is.finite(values))) NA_real_ else sum(values[is.finite(values)])
 }
 
-structural_canvas_lavaan_structural_effect_rows <- function(fit, effect_definitions, fmt, display_name) {
+structural_canvas_lavaan_structural_effect_rows <- function(fit, effect_definitions, fmt, display_name, bootstrap = NULL) {
   if (!length(effect_definitions)) return(data.frame())
   raw <- lavaan::parameterEstimates(fit, ci = TRUE)
   raw <- raw[raw$op == ":=", c("lhs", "est", "se", "z", "pvalue", "ci.lower", "ci.upper"), drop = FALSE]
@@ -469,10 +524,23 @@ structural_canvas_lavaan_structural_effect_rows <- function(fit, effect_definiti
   rows <- lapply(effect_definitions, function(effect) {
     row <- raw[raw$lhs == effect$label, , drop = FALSE]
     if (!nrow(row)) return(NULL)
+    boot <- if (is.data.frame(bootstrap)) bootstrap[bootstrap$lhs == effect$label & bootstrap$op == ":=", , drop = FALSE] else data.frame()
+    if (nrow(boot)) {
+      row$ci.lower <- boot$lower[[1L]]
+      row$ci.upper <- boot$upper[[1L]]
+      row$pvalue <- boot$p[[1L]]
+    }
+    b_ci_source <- if (!nrow(boot)) "Model-based 95% CI" else if (all(is.finite(c(row$ci.lower[[1L]], row$ci.upper[[1L]])))) "Bootstrap percentile 95% CI" else "Not estimated - insufficient valid bootstrap replicates"
     standardized_row <- standardized[standardized$lhs == effect$label, , drop = FALSE]
     beta <- if (nrow(standardized_row)) suppressWarnings(as.numeric(standardized_row$est.std[[1L]])) else structural_canvas_lavaan_standardized_effect(fit, effect)
     beta_ci_lower <- if (nrow(standardized_row)) suppressWarnings(as.numeric(standardized_row$ci.lower[[1L]])) else NA_real_
     beta_ci_upper <- if (nrow(standardized_row)) suppressWarnings(as.numeric(standardized_row$ci.upper[[1L]])) else NA_real_
+    beta_ci_source <- "Model-based 95% CI"
+    if (nrow(boot) && all(c("beta_lower", "beta_upper") %in% names(boot))) {
+      beta_ci_lower <- boot$beta_lower[[1L]]
+      beta_ci_upper <- boot$beta_upper[[1L]]
+      beta_ci_source <- if (all(is.finite(c(beta_ci_lower, beta_ci_upper)))) "Bootstrap percentile 95% CI" else "Not estimated - insufficient valid standardized bootstrap replicates"
+    }
     data.frame(
       Effect = as.character(effect$type %||% ""),
       Outcome = vapply(as.character(effect$outcome %||% ""), display_name, character(1)),
@@ -480,13 +548,17 @@ structural_canvas_lavaan_structural_effect_rows <- function(fit, effect_definiti
       B = fmt(row$est),
       `B 95% CI lower` = fmt(row$ci.lower),
       `B 95% CI upper` = fmt(row$ci.upper),
+      `B CI source` = b_ci_source,
       SE = fmt(row$se),
       beta = fmt(beta),
       `beta 95% CI lower` = fmt(beta_ci_lower),
       `beta 95% CI upper` = fmt(beta_ci_upper),
+      `beta CI source` = beta_ci_source,
       R2 = "",
       z = fmt(row$z),
       p = vapply(row$pvalue, format_p, character(1)),
+      p_numeric = as.numeric(row$pvalue),
+      `BH-adjusted p` = "",
       check.names = FALSE
     )
   })
@@ -497,11 +569,25 @@ structural_canvas_lavaan_structural_effect_rows <- function(fit, effect_definiti
   table
 }
 
-structural_canvas_lavaan_structural_result_table <- function(kind, fit, ko, fmt, display_name, effect_definitions = list()) {
+structural_canvas_lavaan_structural_result_table <- function(kind, fit, ko, fmt, display_name, effect_definitions = list(), bootstrap = NULL) {
   if (!kind %in% c("structural", "structural_ci", "structural_effects", "structural_effect_ci")) return(NULL)
   raw <- lavaan::parameterEstimates(fit, ci = TRUE)
   raw <- raw[raw$op == "~", c("lhs", "rhs", "est", "se", "z", "pvalue", "ci.lower", "ci.upper"), drop = FALSE]
   if (!nrow(raw)) return(data.frame())
+  if (is.data.frame(bootstrap) && nrow(bootstrap)) {
+    bootstrap_paths <- bootstrap[bootstrap$op == "~", , drop = FALSE]
+    raw_keys <- paste(raw$lhs, raw$op, raw$rhs, sep = "\r")
+    bootstrap_keys <- paste(bootstrap_paths$lhs, bootstrap_paths$op, bootstrap_paths$rhs, sep = "\r")
+    bootstrap_match <- match(raw_keys, bootstrap_keys)
+    available <- !is.na(bootstrap_match)
+    raw$ci.lower[available] <- bootstrap_paths$lower[bootstrap_match[available]]
+    raw$ci.upper[available] <- bootstrap_paths$upper[bootstrap_match[available]]
+    raw$pvalue[available] <- bootstrap_paths$p[bootstrap_match[available]]
+  }
+  b_ci_source <- rep("Model-based 95% CI", nrow(raw))
+  if (is.data.frame(bootstrap) && nrow(bootstrap)) {
+    b_ci_source[available] <- ifelse(is.finite(raw$ci.lower[available]) & is.finite(raw$ci.upper[available]), "Bootstrap percentile 95% CI", "Not estimated - insufficient valid bootstrap replicates")
+  }
   standardized <- lavaan::standardizedSolution(fit, ci = TRUE, level = .95)
   standardized <- standardized[standardized$op == "~", c("lhs", "rhs", "est.std", "ci.lower", "ci.upper"), drop = FALSE]
   raw_key <- paste(raw$lhs, raw$rhs, sep = "\r")
@@ -510,6 +596,16 @@ structural_canvas_lavaan_structural_result_table <- function(kind, fit, ko, fmt,
   beta <- standardized$est.std[standardized_match]
   beta_ci_lower <- standardized$ci.lower[standardized_match]
   beta_ci_upper <- standardized$ci.upper[standardized_match]
+  beta_ci_source <- rep("Model-based 95% CI", nrow(raw))
+  if (is.data.frame(bootstrap) && nrow(bootstrap) && all(c("beta_lower", "beta_upper") %in% names(bootstrap))) {
+    bootstrap_paths <- bootstrap[bootstrap$op == "~", , drop = FALSE]
+    bootstrap_keys <- paste(bootstrap_paths$lhs, bootstrap_paths$rhs, sep = "\r")
+    beta_bootstrap_match <- match(raw_key, bootstrap_keys)
+    matched_beta <- !is.na(beta_bootstrap_match)
+    beta_ci_lower[matched_beta] <- bootstrap_paths$beta_lower[beta_bootstrap_match[matched_beta]]
+    beta_ci_upper[matched_beta] <- bootstrap_paths$beta_upper[beta_bootstrap_match[matched_beta]]
+    beta_ci_source[matched_beta] <- ifelse(is.finite(beta_ci_lower[matched_beta]) & is.finite(beta_ci_upper[matched_beta]), "Bootstrap percentile 95% CI", "Not estimated - insufficient valid standardized bootstrap replicates")
+  }
   r2_values <- tryCatch(lavaan::lavInspect(fit, "r2"), error = function(error) numeric(0))
   r2 <- suppressWarnings(as.numeric(r2_values[raw$lhs]))
   table <- data.frame(
@@ -519,13 +615,17 @@ structural_canvas_lavaan_structural_result_table <- function(kind, fit, ko, fmt,
     B = fmt(raw$est),
     `B 95% CI lower` = fmt(raw$ci.lower),
     `B 95% CI upper` = fmt(raw$ci.upper),
+    `B CI source` = b_ci_source,
     SE = fmt(raw$se),
     beta = fmt(beta),
     `beta 95% CI lower` = fmt(beta_ci_lower),
     `beta 95% CI upper` = fmt(beta_ci_upper),
+    `beta CI source` = beta_ci_source,
     R2 = fmt(r2),
     z = fmt(raw$z),
     p = vapply(raw$pvalue, format_p, character(1)),
+    p_numeric = as.numeric(raw$pvalue),
+    `BH-adjusted p` = "",
     check.names = FALSE
   )
   names(table)[1:3] <- c("Effect", if (ko) c("결과변수", "예측변수") else c("Outcome", "Predictor"))
@@ -559,8 +659,11 @@ structural_canvas_effect_summary_table <- function(structural_table, ci = FALSE)
         Outcome = outcome,
         Predictor = predictor,
         `Direct beta 95% CI` = ci_for(outcome, predictor, "Direct"),
+        `Direct CI source` = value_for(outcome, predictor, "Direct", "beta CI source"),
         `Indirect beta 95% CI` = ci_for(outcome, predictor, "Indirect"),
+        `Indirect CI source` = value_for(outcome, predictor, "Indirect", "beta CI source"),
         `Total beta 95% CI` = ci_for(outcome, predictor, "Total"),
+        `Total CI source` = value_for(outcome, predictor, "Total", "beta CI source"),
         check.names = FALSE
       )
     } else {
@@ -569,10 +672,13 @@ structural_canvas_effect_summary_table <- function(structural_table, ci = FALSE)
         Predictor = predictor,
         `Direct beta` = value_for(outcome, predictor, "Direct", "beta"),
         `Direct p` = value_for(outcome, predictor, "Direct", "p"),
+        `Direct BH-adjusted p` = value_for(outcome, predictor, "Direct", "BH-adjusted p"),
         `Indirect beta` = value_for(outcome, predictor, "Indirect", "beta"),
         `Indirect p` = value_for(outcome, predictor, "Indirect", "p"),
+        `Indirect BH-adjusted p` = value_for(outcome, predictor, "Indirect", "BH-adjusted p"),
         `Total beta` = value_for(outcome, predictor, "Total", "beta"),
         `Total p` = value_for(outcome, predictor, "Total", "p"),
+        `Total BH-adjusted p` = value_for(outcome, predictor, "Total", "BH-adjusted p"),
         check.names = FALSE
       )
     }
@@ -651,28 +757,30 @@ structural_canvas_result_table <- function(kind, fit_result, analysis_type, labe
       }
       return(measurement_table)
     }
-    structural_table <- structural_canvas_lavaan_structural_result_table(kind, fit, ko, fmt, display_name)
+    structural_table <- structural_canvas_lavaan_structural_result_table(kind, fit, ko, fmt, display_name, bootstrap = bundle$effect_bootstrap_result %||% NULL)
     if (!is.null(structural_table)) {
       if (kind %in% c("structural", "structural_ci", "structural_effects", "structural_effect_ci") && ncol(structural_table) >= 3L) {
         names(structural_table)[1:3] <- c("Effect", "Outcome", "Predictor")
         effect_rows <- structural_canvas_lavaan_structural_effect_rows(
-          fit, bundle$diagnostics$effect_definitions %||% bundle$effect_definitions %||% list(), fmt, display_name
+          fit, bundle$diagnostics$effect_definitions %||% bundle$effect_definitions %||% list(), fmt, display_name, bundle$effect_bootstrap_result %||% NULL
         )
         if (nrow(effect_rows)) {
           names(effect_rows) <- names(structural_table)
           structural_table <- rbind(structural_table, effect_rows)
         }
+        finite_p <- is.finite(structural_table$p_numeric)
+        structural_table$`BH-adjusted p`[finite_p] <- vapply(stats::p.adjust(structural_table$p_numeric[finite_p], method = "BH"), format_p, character(1))
       }
       if (identical(kind, "structural")) {
         direct <- structural_table[structural_table$Effect == "Direct", , drop = FALSE]
-        return(direct[, c("Outcome", "Predictor", "B", "SE", "beta", "z", "p", "R²"), drop = FALSE])
+        return(direct[, c("Outcome", "Predictor", "B", "SE", "beta", "z", "p", "BH-adjusted p", "R²"), drop = FALSE])
       }
       if (identical(kind, "structural_ci")) {
         direct <- structural_table[structural_table$Effect == "Direct", , drop = FALSE]
         return(direct[, c(
           "Outcome", "Predictor",
           "B 95% CI lower", "B 95% CI upper",
-          "beta 95% CI lower", "beta 95% CI upper"
+          "B CI source", "beta 95% CI lower", "beta 95% CI upper", "beta CI source"
         ), drop = FALSE])
       }
       if (identical(kind, "structural_effects")) {
@@ -724,12 +832,12 @@ structural_canvas_result_table <- function(kind, fit_result, analysis_type, labe
     return(structural_canvas_pls_fit_bootstrap_table(full_fit))
   }
   if (kind %in% c("validity", "validity_guide")) {
-    full_validity <- structural_canvas_pls_validity_result_table(summary_fit, display_name, bundle$pls_bootstrap_result %||% NULL, bundle$snapshot %||% NULL)
+    full_validity <- structural_canvas_pls_validity_result_table(summary_fit, display_name, bundle$pls_bootstrap_result %||% NULL, bundle$snapshot %||% NULL, bundle$estimator %||% "PLS")
     if (identical(kind, "validity")) return(structural_canvas_pls_validity_main_table(full_validity))
     return(structural_canvas_pls_validity_guide_table(full_validity))
   }
   if (identical(kind, "pls_htmt")) {
-    return(structural_canvas_pls_htmt_matrix_table(summary_fit, display_name))
+    return(structural_canvas_pls_htmt_matrix_table(summary_fit, display_name, bundle$snapshot %||% NULL))
   }
   if (kind %in% c("measurement", "measurement_guide", "measurement_bootstrap")) {
     full_measurement <- structural_canvas_pls_measurement_result_table(summary_fit, snapshot, display_name, bundle$pls_bootstrap_result %||% NULL)

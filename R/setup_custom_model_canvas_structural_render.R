@@ -58,11 +58,11 @@ structural_canvas_reporting_predict_label <- function(bundle, analysis_type) {
   if (!identical(analysis_type, "plssem")) return("Not applicable")
   result <- bundle$pls_predict_result
   if (is.list(result)) {
-    return(paste0("Executed: folds=", result$folds %||% "", ", reps=", result$reps %||% ""))
+    return(paste0("Executed: folds=", result$folds %||% "", ", reps=", result$reps %||% "", ", seed=", result$seed %||% bundle$pls_predict_seed %||% "not recorded"))
   }
   folds <- suppressWarnings(as.integer(bundle$pls_predict_folds %||% 0L))
   reps <- suppressWarnings(as.integer(bundle$pls_predict_reps %||% 0L))
-  if (is.finite(folds) && folds > 1L) return(paste0("Requested: folds=", folds, ", reps=", reps))
+  if (is.finite(folds) && folds > 1L) return(paste0("Requested: folds=", folds, ", reps=", reps, ", seed=", bundle$pls_predict_seed %||% "not recorded"))
   "Not requested"
 }
 
@@ -139,13 +139,15 @@ structural_canvas_reporting_context_rows <- function(bundle, analysis_type) {
   syntax_label <- if (nzchar(as.character(bundle$syntax %||% ""))) "Available in analysis bundle" else "Not recorded"
   data.frame(
     Item = c(
-      "Analysis context", "Analysis engine", "Estimator or algorithm", "Missing-data handling",
+      "Analysis context", "Sampling design", "Analysis engine", "Estimator or algorithm", "Missing-data handling", "Missing-data sensitivity",
       "Analyzed N", "Ordered indicators", "Latent scaling", "Bootstrap settings",
       "PLSpredict setting", "Group analysis", "Common method diagnostics", "MI holdout", "Syntax availability",
       "Admissibility and convergence"
     ),
     Value = c(
-      context, engine, estimator, missing, structural_canvas_reporting_sample_size(bundle, analysis_type),
+      context, bundle$sampling_design_gate$label %||% "Not recorded", engine, estimator, missing,
+      if (identical(analysis_type, "plssem")) "Not applicable to the current complete-row PLS workflow" else paste0(structural_canvas_missing_sensitivity_rows(bundle)$`Sensitivity assessment`[[1L]], "; status=", structural_canvas_missing_sensitivity_rows(bundle)$Status[[1L]]),
+      structural_canvas_reporting_sample_size(bundle, analysis_type),
       ordered_label, scaling, structural_canvas_reporting_bootstrap_label(bundle, analysis_type),
       structural_canvas_reporting_predict_label(bundle, analysis_type), structural_canvas_reporting_group_label(bundle),
       structural_canvas_reporting_common_method_label(bundle), structural_canvas_reporting_holdout_label(bundle),
@@ -159,9 +161,11 @@ structural_canvas_reporting_context_display_rows <- function(rows, ko = FALSE) {
   if (!isTRUE(ko) || !nrow(rows)) return(rows)
   item_map <- c(
     "Analysis context" = "분석 맥락",
+    "Sampling design" = "표본·관측 구조",
     "Analysis engine" = "분석 엔진",
     "Estimator or algorithm" = "추정량/알고리즘",
     "Missing-data handling" = "결측 처리",
+    "Missing-data sensitivity" = "결측 민감도",
     "Analyzed N" = "분석 N",
     "Ordered indicators" = "순서형 지표",
     "Latent scaling" = "잠재변수 척도화",
@@ -180,6 +184,7 @@ structural_canvas_reporting_context_display_rows <- function(rows, ko = FALSE) {
     "Not enabled" = "사용 안 함",
     "None recorded" = "기록 없음",
     "Not recorded" = "기록 없음",
+    "Independent cross-sectional observations" = "독립 관측 횡단자료",
     "Available in analysis bundle" = "분석 객체에 포함됨",
     "PLS path modeling" = "PLS 경로모형",
     "PLSc path modeling" = "PLSc 경로모형",
@@ -206,6 +211,33 @@ structural_canvas_reporting_context_display_rows <- function(rows, ko = FALSE) {
   rows
 }
 
+structural_canvas_construct_reporting_rows <- function(bundle, analysis_type, ko = FALSE) {
+  display_names <- if (ko) {
+    c("구성개념", "선언 유형", "측정 방향", "요청 가중", "실제 가중", "엔진 표현", "추정대상", "마이그레이션")
+  } else {
+    c("Construct", "Declared type", "Measurement direction", "Requested weighting", "Effective weighting", "Engine representation", "Estimand", "Migration")
+  }
+  rows <- bundle$resolved_construct_specification %||% structural_canvas_resolve_construct_specification(
+    bundle$snapshot %||% list(), analysis_type, bundle$estimator %||% NULL
+  )
+  if (!is.data.frame(rows) || !nrow(rows)) {
+    empty <- as.data.frame(stats::setNames(rep(list(character(0)), length(display_names)), display_names), check.names = FALSE)
+    return(empty)
+  }
+  defaults <- list(
+    weighting_mode = "auto", effective_weighting = "Not recorded", engine_representation = "Not recorded",
+    estimand = "Not recorded", specification_migration = ""
+  )
+  for (column in names(defaults)) if (!column %in% names(rows)) rows[[column]] <- defaults[[column]]
+  display <- rows[, c(
+    "name", "construct_type", "measurement_mode", "weighting_mode", "effective_weighting",
+    "engine_representation", "estimand", "specification_migration"
+  ), drop = FALSE]
+  display$specification_migration[!nzchar(display$specification_migration)] <- if (ko) "없음" else "None"
+  names(display) <- display_names
+  display
+}
+
 structural_canvas_reporting_context_result_ui <- function(bundle, analysis_type, language = statedu_initial_language()) {
   rows <- structural_canvas_reporting_context_rows(bundle, analysis_type)
   if (!nrow(rows)) return(NULL)
@@ -215,12 +247,14 @@ structural_canvas_reporting_context_result_ui <- function(bundle, analysis_type,
     class = "result-section regression-result-panel structural-reporting-context",
     h4(if (ko) "보고 체크리스트" else "Reporting checklist"),
     structural_canvas_basic_html_table(display_rows),
+    tags$h5(if (ko) "구성개념 명세와 실제 계산 표현" else "Construct specification and computational representation"),
+    structural_canvas_basic_html_table(structural_canvas_construct_reporting_rows(bundle, analysis_type, ko)),
     tags$p(
       class = "structural-result-note",
       if (ko) {
-        "이 블록은 재현성 보고에 필요한 조건을 요약합니다: 추정량, 결측 처리, 분석 N, 순서형 지표, 부트스트랩 설정과 seed, 집단 분석, MI 기반 수정 여부."
+        "이 블록은 재현성 보고에 필요한 조건과 구성개념별 선언 유형, 실제 가중법, 엔진 표현, 추정대상 및 저장 모형 마이그레이션 이력을 요약합니다."
       } else {
-        "Use this block to report reproducibility conditions: estimator, missing-data handling, analyzed N, ordered indicators, bootstrap settings, seeds, group analysis, and whether MI-based changes are exploratory."
+        "Use this block to report reproducibility conditions and, for every construct, the declared type, effective weighting, engine representation, estimand, and saved-model migration history."
       }
     )
   )
@@ -268,7 +302,7 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
         h4(if (identical(analysis_type, "plssem")) "2. PLS structural model effects" else "2. Model fit"),
         div(class = "table-responsive", uiOutput(paste0(prefix, "_result_fit"))),
         if (identical(analysis_type, "plssem")) tagList(
-          tags$p(class = "structural-result-note", "PLS-SEM structural effects are reported as path beta, indirect effect, total effect, R2, adjusted R2, and Q2. Effect-size labels, VIF, and bootstrap inference are reported in supplementary tables."),
+          tags$p(class = "structural-result-note", "PLS-SEM structural effects are reported as path beta, indirect effect, total effect, R2, adjusted R2, and Q2. Effect-size labels, VIF, and bootstrap inference are reported in supplementary tables. Bootstrap tables report raw and BH-adjusted p values in separate direct-path, indirect-effect, and total-effect families; prespecified primary hypotheses should still be distinguished from exploratory tests."),
           if (length(bundle$diagnostics$ignored_covariances %||% character(0))) tags$p(class = "structural-result-note", if (ko) paste0("PLS-SEM은 공분산 경로를 추정하지 않으므로 다음 캔버스 공분산 경로를 제외했습니다: ", paste(bundle$diagnostics$ignored_covariances, collapse = ", "), ".") else paste0("PLS-SEM does not estimate covariance paths, so these canvas covariance paths were excluded: ", paste(bundle$diagnostics$ignored_covariances, collapse = ", "), "."))
         )
       ),
@@ -293,7 +327,7 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
         h4(paste0(table_number("measurement"), ". Measurement model")),
         uiOutput(paste0(prefix, "_result_measurement")),
         if (identical(analysis_type, "plssem")) tagList(
-          tags$p(class = "structural-result-note", "loading/weight reports the outer loading for reflective indicators and the outer weight for formative indicators. VIF, cross-loading, and bootstrap inference are reported in supplementary tables.")
+          tags$p(class = "structural-result-note", "loading/weight reports the outer loading for reflective indicators and the outer weight for formative indicators. Bootstrap tables provide separate BH adjustments for loading and weight families; these do not turn data-driven indicator deletion into a confirmatory procedure.")
         ) else tagList(
           structural_canvas_abbreviation_footnotes(manuscript_result_table("measurement"), "measurement"),
           structural_canvas_symbol_footnotes(manuscript_result_table("measurement"))
@@ -304,7 +338,9 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
       div(class = "result-section regression-result-panel landscape-table-panel structural-supplementary-result",
         h4(if (ko) "보조 결과 및 진단" else "Supplementary results and diagnostics"),
         uiOutput(paste0(prefix, "_result_reporting_context")),
+        uiOutput(paste0(prefix, "_result_causal_interpretation")),
         uiOutput(paste0(prefix, "_result_structural_effect_plan")),
+        if (analysis_type %in% c("cbsem", "sem")) uiOutput(paste0(prefix, "_result_effect_bootstrap")),
         uiOutput(paste0(prefix, "_result_identification")),
         uiOutput(paste0(prefix, "_result_normality")),
         uiOutput(paste0(prefix, "_result_missing_outliers")),
@@ -341,6 +377,26 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
   output[[paste0(prefix, "_result_reporting_context")]] <- renderUI({
     structural_canvas_reporting_context_result_ui(fit_result(), analysis_type, statedu_current_language(app_language_fn))
   })
+  output[[paste0(prefix, "_result_causal_interpretation")]] <- renderUI({
+    if (!analysis_type %in% c("cbsem", "sem", "plssem")) return(NULL)
+    bundle <- fit_result()
+    interpretation <- structural_canvas_causal_interpretation(bundle$snapshot %||% list(), analysis_type)
+    ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
+    rows <- interpretation$rows
+    if (ko && nrow(rows)) {
+      names(rows) <- c("인과식별 가정", "현재 기록", "보고상 제한")
+    }
+    div(
+      class = "result-section structural-causal-interpretation-result",
+      tags$h5(if (ko) "인과해석 경계" else "Causal-interpretation boundary"),
+      tags$p(class = "structural-result-note", if (ko) {
+        "현재 분석은 인과식별을 확립하지 않으므로 경로계수와 간접효과를 이론에 의해 방향을 정한 통계적 연관으로 해석하십시오. 유의한 계수, bootstrap 신뢰구간 또는 좋은 적합도만으로 인과성이나 시간적 선행성이 성립하지 않습니다."
+      } else {
+        "This analysis does not establish causal identification. Interpret path coefficients and indirect effects as theory-directed statistical associations. Significant coefficients, bootstrap intervals, or good fit alone do not establish causality or temporal precedence."
+      }),
+      structural_canvas_basic_html_table(rows, class = "table table-striped table-bordered")
+    )
+  })
   structural_canvas_register_fit_diagnostic_outputs(
     output, prefix, analysis_type, fit_result, manuscript_result_table, dataset_fn, app_language_fn
   )
@@ -360,7 +416,10 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
   })
   output[[paste0(prefix, "_result_structural")]] <- renderUI({
     if (!analysis_type %in% c("cbsem", "sem")) return(NULL)
-    structural_canvas_basic_html_table(manuscript_result_table("structural"), class = "table table-striped table-bordered structural-path-table")
+    tagList(
+      structural_canvas_basic_html_table(manuscript_result_table("structural"), class = "table table-striped table-bordered structural-path-table"),
+      tags$p(class = "structural-result-note", if (identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")) "BH 보정 p값은 표시된 직접·간접·총 구조효과 전체에서 false-discovery rate를 조절합니다. 비보정 p값은 사전 지정된 1차 가설 보고를 위해 유지하지만, 사전등록 여부와 효과크기·신뢰구간 해석을 대체하지 않습니다." else "BH-adjusted p values control the false-discovery rate across the displayed direct, indirect, and total structural-effect family. Unadjusted p values are retained for prespecified primary hypotheses; adjustment does not replace preregistration or effect-size and confidence-interval interpretation.")
+    )
   })
   output[[paste0(prefix, "_result_structural_effects")]] <- renderUI({
     if (!analysis_type %in% c("cbsem", "sem")) return(NULL)
@@ -381,7 +440,8 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
     div(
       class = "structural-effect-summary-block",
       tags$h5(if (ko) "표 3 보조: 효과 beta 95% 신뢰구간" else "Supplementary Table 3: Effect beta 95% confidence intervals"),
-      structural_canvas_effect_summary_html_table(table, ci = TRUE)
+      structural_canvas_effect_summary_html_table(table, ci = TRUE),
+      tags$p(class = "structural-result-note", if (ko) "Bootstrap을 요청한 효과는 유효 반복이 부족해도 모형기반 정규이론 CI로 자동 대체하지 않습니다. 빈 구간과 Source 열의 사유를 함께 보고하십시오." else "When bootstrap inference was requested, an interval with insufficient valid replicates is not silently replaced by a model-based normal-theory CI. Report the blank interval together with its Source explanation.")
     )
   })
   output[[paste0(prefix, "_result_validity")]] <- renderUI({
@@ -404,10 +464,16 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
       diagnostics <- result_table("measurement_guide")
       if (!is.data.frame(diagnostics) || !nrow(diagnostics)) return(NULL)
       ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
+      bundle <- fit_result()
+      formative_evidence <- structural_canvas_formative_content_validity_rows(
+        bundle$snapshot %||% list(), bundle$redundancy_result %||% NULL, bundle$redundancy_construct %||% NULL
+      )
       return(tagList(
         tags$h5(if (ko) paste0("표 ", table_number("measurement"), " 보조: PLS 측정 진단") else paste0("Supplementary Table ", table_number("measurement"), ": PLS measurement diagnostics")),
         structural_canvas_basic_html_table(diagnostics, class = "table table-striped table-bordered structural-pls-measurement-guide-table"),
-        tags$p(class = "structural-result-note", if (ko) "반영지표는 outer loading과 교차적재를, 형성지표는 outer weight와 item VIF를 우선 검토합니다." else "For reflective indicators, review outer loadings and cross-loadings; for formative indicators, prioritize outer weights and item VIF.")
+        tags$p(class = "structural-result-note", if (ko) "반영지표는 outer loading과 교차적재를, 형성지표는 outer weight와 item VIF를 우선 검토합니다." else "For reflective indicators, review outer loadings and cross-loadings; for formative indicators, prioritize outer weights and item VIF."),
+        if (nrow(formative_evidence)) tags$h5(if (ko) "형성형 합성변수의 내용타당도 근거" else "Formative-composite content-validity evidence"),
+        if (nrow(formative_evidence)) structural_canvas_basic_html_table(formative_evidence, class = "table table-striped table-bordered structural-formative-evidence-table")
       ))
     }
     diagnostics <- result_table("measurement_diagnostics")
@@ -428,6 +494,28 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
       tags$h5(if (ko) "구조효과 지원 범위" else "Structural-effect capability plan"),
       tags$p(class = "structural-result-note", if (ko) "요청한 효과가 선택한 엔진에서 실제로 추정되는지 확인하는 사전 기록입니다." else "This preflight record confirms whether requested effects are actually estimated by the selected engine."),
       structural_canvas_basic_html_table(plan, class = "table table-striped table-bordered")
+    )
+  })
+  output[[paste0(prefix, "_result_effect_bootstrap")]] <- renderUI({
+    bundle <- fit_result()
+    result <- bundle$effect_bootstrap_result %||% NULL
+    requested <- as.integer(bundle$effect_bootstrap %||% 0L)
+    if (requested <= 0L) return(NULL)
+    ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
+    if (is.null(result) || !nrow(result)) return(tags$p(class = "structural-result-note", if (ko) "구조효과 bootstrap에서 사용 가능한 반복 적합을 얻지 못했습니다." else "No usable replicate fits were obtained for the structural-effect bootstrap."))
+    diagnostics <- unique(result[, c("valid", "requested", "valid_percent", "status"), drop = FALSE])
+    names(diagnostics) <- c("Valid replicates", "Requested replicates", "Valid %", "Status")
+    moderated <- result[result$op == "modmed", c("lhs", "rhs", "estimate", "lower", "upper", "p", "valid", "requested", "valid_percent", "status"), drop = FALSE]
+    if (nrow(moderated)) names(moderated) <- c("Indirect path", "Moderator", "Index", "95% CI lower", "95% CI upper", "Bootstrap p", "Valid replicates", "Requested replicates", "Valid %", "Status")
+    div(
+      class = "result-section structural-effect-bootstrap-result",
+      tags$h5(if (ko) "구조효과 bootstrap 진단" else "Structural-effect bootstrap diagnostics"),
+      structural_canvas_basic_html_table(diagnostics, class = "table table-striped table-bordered"),
+      if (nrow(moderated)) tagList(
+        tags$h5(if (ko) "조절된 매개효과 index" else "Index of moderated mediation"),
+        structural_canvas_basic_html_table(moderated, class = "table table-striped table-bordered")
+      ),
+      tags$p(class = "structural-result-note", if (ko) paste0("사례 재표집 percentile 95% CI; seed = ", bundle$effect_bootstrap_seed, ". 직접·간접·총효과의 B와 beta 구간은 각 유효 반복에서 다시 계산됩니다. 부적합·미수렴 반복은 제외하며 유효율이 80% 미만이면 주의가 필요합니다.") else paste0("Case-resampling percentile 95% CIs; seed = ", bundle$effect_bootstrap_seed, ". B and beta intervals for direct, indirect, and total effects are recomputed in every valid replicate. Inadmissible or nonconverged replicates are excluded; valid rates below 80% require caution."))
     )
   })
   output[[paste0(prefix, "_result_redundancy")]] <- renderUI({
@@ -496,7 +584,7 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
       return(tagList(
         tags$h5(if (ko) paste0("표 ", table_number("measurement"), " 보조: PLS 측정모형 부트스트랩") else paste0("Supplementary Table ", table_number("measurement"), ": PLS measurement bootstrap")),
         structural_canvas_basic_html_table(ci_table, class = "table table-striped table-bordered structural-pls-measurement-bootstrap-table"),
-        tags$p(class = "structural-result-note", if (ko) "outer loading과 outer weight의 percentile bootstrap CI, t, p 값입니다. seminr가 반환한 항목만 표시됩니다." else "Percentile bootstrap CI, t, and p values for outer loadings and outer weights are shown when seminr returns them.")
+        tags$p(class = "structural-result-note", if (ko) "outer loading과 outer weight의 percentile bootstrap CI, t, p 값과 각 검정군별 BH 보정 p값입니다. seminr가 반환한 항목만 표시됩니다." else "Percentile bootstrap CI, t, raw p values, and family-specific BH-adjusted p values for outer loadings and outer weights are shown when seminr returns them.")
       ))
     }
     ci_table <- result_table("measurement_ci")

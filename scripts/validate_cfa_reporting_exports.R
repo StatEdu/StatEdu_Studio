@@ -164,12 +164,14 @@ for (name in names(sheet_snapshots)) {
   assert_sheet_snapshot(integrated_sheets, name, sheet_snapshots[[name]]$names, sheet_snapshots[[name]]$rows)
 }
 required_integrated_sheets <- c(
-  "Contents", "Overview", "Report_Summary", "Fit", "Validity", "Measurement", "Model_Syntax", "Analysis_Record",
+  "Contents", "Overview", "Report_Summary", "Fit", "Validity", "Measurement", "Construct_Specification", "Model_Syntax", "Analysis_Record",
   "Fit_Numeric", "Admissibility_Diagnostics", "RMSEA_Tests", "Information_Criteria", "Parameter_Estimates", "Latent_Correlations",
   "Reliability_Validity_Numeric", "Sample_Descriptives", "Sample_Covariance", "Bollen_Stine", "Notes"
 )
 stopifnot(
   grepl("Analysis context: Prespecified/original model.", record, fixed = TRUE),
+  grepl("Construct specification (construct | declared type", record, fixed = TRUE),
+  all(c("Declared type", "Effective weighting", "Engine representation", "Estimand", "Migration") %in% names(integrated_sheets$Construct_Specification)),
   identical(names(integrated_sheets)[[1L]], "Contents"),
   all(required_integrated_sheets %in% names(integrated_sheets)),
   all(vapply(integrated_sheets[required_integrated_sheets], is.data.frame, logical(1))),
@@ -274,7 +276,7 @@ stopifnot(
   all(c("Group", "Factor", "AVE", "CR", "Cronbach's alpha", "Omega total") %in% names(invariance_export_sheets$Invariance_Reliability)),
   all(c("Group", "Factor1", "Factor2", "HTMT", "Criterion") %in% names(invariance_export_sheets$Invariance_HTMT)),
   identical(invariance_workbook_reliability$Factor, c("eta1", "eta2", "eta1", "eta2")),
-  identical(invariance_workbook_htmt$Criterion, c("Criterion met", "Criterion met"))
+  identical(invariance_workbook_htmt$Criterion, c("Below reference", "Below reference"))
 )
 unlink(invariance_workbook_file)
 

@@ -53,6 +53,20 @@
   margin-top: 8px;
 }
 
+.structural-equation-canvas-root .custom-model-variable-panel {
+  min-height: min(530px, var(--custom-model-visible-height, 530px));
+  height: var(--custom-model-visible-height, auto);
+  overflow: hidden;
+}
+
+.structural-equation-canvas-root .custom-model-variable-list {
+  height: auto;
+  min-height: 180px;
+  max-height: none;
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+
 .custom-model-variable-item {
   cursor: grab;
 }

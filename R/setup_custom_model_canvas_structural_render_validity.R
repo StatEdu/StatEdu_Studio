@@ -12,7 +12,7 @@ structural_canvas_register_validity_outputs <- function(output, prefix, analysis
       bundle <- fit_result()
       ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
       tagList(
-        tags$p(class = "structural-result-note", if (ko) "PLS-SEM 타당도 출력은 seminr의 신뢰도, Fornell-Larcker, HTMT 요약에 기반합니다. lavaan 전용 잠재공분산, 요인점수, delta-method 진단은 PLS 모형 화면에서는 표시하지 않습니다." else "PLS-SEM validity output is based on seminr reliability, Fornell-Larcker, and HTMT summaries. Lavaan-specific latent covariance, factor-score, and delta-method diagnostics are not displayed for PLS models in this view."),
+        tags$p(class = "structural-result-note", if (ko) "반영형 공통요인의 표준 PLS 신뢰도·AVE·HTMT는 Mode A 점수 대리변수의 진단이며 공분산 기반 요인모형의 증거가 아닙니다. 반영형 합성변수에서는 합성점수 평가로만 해석하고, 형성형 합성변수에는 내적일관성·AVE·HTMT를 적용하지 않습니다." else "For a reflective common factor, standard-PLS reliability, AVE, and HTMT diagnose a Mode A score proxy rather than provide covariance-based factor-model evidence. For a reflective composite, interpret them only as composite-score diagnostics. Internal consistency, AVE, and HTMT are not applied to formative composites."),
         if (as.integer(bundle$pls_bootstrap %||% 0L) > 0L) tags$p(class = "structural-result-note", if (ko) "PLS bootstrap 열은 seminr가 해당 bootstrap 요약을 반환할 때 직접경로, 총효과와 간접효과, HTMT, outer loading, outer weight에 추가됩니다." else "PLS bootstrap columns are added for direct paths, total and indirect effects, HTMT, outer loadings, and outer weights when seminr returns the corresponding bootstrap summaries.")
       )
     })
@@ -23,7 +23,7 @@ structural_canvas_register_validity_outputs <- function(output, prefix, analysis
       tagList(
         tags$h5(if (ko) "표 3 보조: 판별타당도 가이드" else "Supplementary Table 3: Discriminant-validity guide"),
         structural_canvas_basic_html_table(table, class = "table table-striped table-bordered structural-pls-validity-guide-table"),
-        tags$p(class = "structural-result-note", if (ko) "HTMT 부트스트랩 추론과 Fornell-Larcker 판정은 본표의 신뢰도/타당도 핵심 지표를 해석하기 위한 보조 정보입니다." else "HTMT bootstrap inference and Fornell-Larcker decisions are supplementary interpretation aids for the main reliability and validity table.")
+        tags$p(class = "structural-result-note", if (ko) "HTMT와 Fornell-Larcker는 반영형 구성개념끼리만 계산합니다. 해당 결과는 보조 정보이며 단독 합격판정이 아니므로 교차적재, 구성개념 상관, 이론과 경쟁 측정모형을 함께 검토하십시오." else "HTMT and Fornell-Larcker are computed only between reflective constructs. They are supplementary rather than standalone pass decisions; also review cross-loadings, construct correlations, theory, and competing measurement models.")
       )
     })
     return(invisible(TRUE))

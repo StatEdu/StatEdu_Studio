@@ -9,16 +9,120 @@ structural_canvas_construct_specification <- function(snapshot) {
       construct_type = construct_type,
       measurement_mode = measurement_mode,
       weighting_mode = as.character(latent$weightingMode %||% "auto"),
+      specification_migration = as.character(latent$constructSpecificationMigration %||% ""),
       stringsAsFactors = FALSE
     )
   })
-  if (!length(rows)) return(data.frame(id = character(0), name = character(0), construct_type = character(0), measurement_mode = character(0), weighting_mode = character(0)))
+  if (!length(rows)) return(data.frame(id = character(0), name = character(0), construct_type = character(0), measurement_mode = character(0), weighting_mode = character(0), specification_migration = character(0)))
+  do.call(rbind, rows)
+}
+
+structural_canvas_formative_content_validity_rows <- function(snapshot, redundancy_result = NULL, redundancy_construct = NULL) {
+  specification <- structural_canvas_construct_specification(snapshot)
+  formative <- specification[specification$construct_type == "composite" & specification$measurement_mode == "formative", , drop = FALSE]
+  if (!nrow(formative)) return(data.frame(
+    Construct = character(0), `Domain definition` = character(0), `Indicator inclusion rationale` = character(0),
+    `Content-validity procedure/source` = character(0), `Redundancy evidence` = character(0), Status = character(0), Guidance = character(0), check.names = FALSE
+  ))
+  nodes <- stats::setNames(Filter(function(node) identical(node$role, "latent"), snapshot$nodes %||% list()), vapply(Filter(function(node) identical(node$role, "latent"), snapshot$nodes %||% list()), structural_canvas_name, character(1)))
+  rows <- lapply(formative$name, function(name) {
+    node <- nodes[[name]] %||% list()
+    domain <- trimws(as.character(node$compositeDomainDefinition %||% ""))
+    rationale <- trimws(as.character(node$compositeIndicatorRationale %||% ""))
+    evidence <- trimws(as.character(node$compositeContentValidityEvidence %||% ""))
+    redundancy <- if (identical(as.character(redundancy_construct %||% ""), name) && isTRUE(redundancy_result$available)) "Available" else "Not documented"
+    complete <- all(nzchar(c(domain, rationale, evidence))) && identical(redundancy, "Available")
+    data.frame(
+      Construct = name, `Domain definition` = domain, `Indicator inclusion rationale` = rationale,
+      `Content-validity procedure/source` = evidence, `Redundancy evidence` = redundancy,
+      Status = if (complete) "Documented" else "Review",
+      Guidance = if (complete) "Report these design-based grounds with weight, collinearity, and redundancy results." else "Document construct-domain coverage, indicator inclusion grounds, content-validation procedure/source, and available redundancy evidence before confirmatory reporting.",
+      stringsAsFactors = FALSE, check.names = FALSE
+    )
+  })
+  do.call(rbind, rows)
+}
+
+structural_canvas_resolve_construct_specification <- function(snapshot, analysis_type, estimator = NULL) {
+  specification <- structural_canvas_construct_specification(snapshot)
+  if (!nrow(specification)) return(transform(
+    specification, effective_weighting = character(0), engine_representation = character(0),
+    estimand = character(0), supported = logical(0), reason = character(0)
+  ))
+  estimator <- toupper(as.character(estimator %||% if (identical(analysis_type, "plssem")) "PLS" else "ML"))
+  covariance_engine <- analysis_type %in% c("cfa", "cbsem", "sem")
+  rows <- lapply(seq_len(nrow(specification)), function(index) {
+    row <- specification[index, , drop = FALSE]
+    construct_type <- row$construct_type[[1L]]
+    measurement_mode <- row$measurement_mode[[1L]]
+    requested_weighting <- row$weighting_mode[[1L]]
+    supported <- TRUE
+    reason <- ""
+    effective_weighting <- "Not applicable"
+    engine_representation <- ""
+    estimand <- ""
+    if (identical(construct_type, "unspecified")) {
+      supported <- FALSE
+      reason <- "Construct ontology is unspecified. Declare a common factor or composite before estimation."
+    } else if (identical(construct_type, "commonFactor") && identical(measurement_mode, "formative")) {
+      supported <- FALSE
+      reason <- "A formative indicator relation is incompatible with the common-factor ontology."
+    } else if (covariance_engine) {
+      engine_representation <- "lavaan reflective latent factor"
+      estimand <- "Common factor with explicit measurement error"
+      if (!identical(construct_type, "commonFactor") || !identical(measurement_mode, "reflective")) {
+        supported <- FALSE
+        reason <- "The current CFA/CB-SEM engine supports reflective common factors only."
+      } else if (!requested_weighting %in% c("", "auto")) {
+        supported <- FALSE
+        reason <- "PLS weighting choices do not apply to covariance-based common-factor estimation."
+      }
+    } else if (identical(analysis_type, "plssem")) {
+      effective_weighting <- if (identical(requested_weighting, "auto")) {
+        if (identical(measurement_mode, "formative")) "Mode B" else "Mode A"
+      } else switch(requested_weighting, modeA = "Mode A", modeB = "Mode B", sum = "Equal weights", predefined = "Predefined weights", requested_weighting)
+      if (requested_weighting %in% c("sum", "predefined")) {
+        supported <- FALSE
+        reason <- "Equal and predefined weights are exposed in the legacy UI but are not implemented by the current SEM engine."
+      } else if (identical(measurement_mode, "reflective") && identical(effective_weighting, "Mode B")) {
+        supported <- FALSE
+        reason <- "Reflective blocks require Mode A in the current PLS implementation."
+      } else if (identical(measurement_mode, "formative") && identical(effective_weighting, "Mode A")) {
+        supported <- FALSE
+        reason <- "Formative composite blocks require Mode B in the current PLS implementation."
+      }
+      if (identical(measurement_mode, "reflective")) {
+        engine_representation <- if (identical(estimator, "PLSC")) "seminr reflective block with PLSc correction" else "seminr reflective Mode A score proxy"
+        estimand <- if (identical(construct_type, "commonFactor")) {
+          if (identical(estimator, "PLSC")) "Consistency-corrected reflective common factor" else "Common-factor construct represented by a Mode A composite score proxy"
+        } else "Reflective Mode A composite"
+      } else {
+        engine_representation <- "seminr Mode B composite"
+        estimand <- "Formative composite"
+      }
+      if (identical(estimator, "PLSC") && !(identical(construct_type, "commonFactor") && identical(measurement_mode, "reflective") && identical(effective_weighting, "Mode A"))) {
+        supported <- FALSE
+        reason <- "PLSc is restricted to reflective common factors initialized with Mode A weights."
+      }
+    } else {
+      supported <- FALSE
+      reason <- paste0("No construct-resolution rule is defined for analysis type: ", analysis_type, ".")
+    }
+    data.frame(row, effective_weighting = effective_weighting, engine_representation = engine_representation, estimand = estimand, supported = supported, reason = reason, check.names = FALSE)
+  })
   do.call(rbind, rows)
 }
 
 structural_canvas_validate_construct_specification <- function(snapshot, analysis_type) {
   specification <- structural_canvas_construct_specification(snapshot)
   if (!nrow(specification)) return(invisible(specification))
+  unspecified <- specification$construct_type == "unspecified"
+  if (any(unspecified)) {
+    stop(sprintf(
+      "Every latent construct must be specified before estimation. Choose common factor or composite for: %s.",
+      paste(specification$name[unspecified], collapse = ", ")
+    ))
+  }
   invalid_factor <- specification$construct_type == "commonFactor" & specification$measurement_mode == "formative"
   if (any(invalid_factor)) {
     stop(sprintf(
@@ -33,20 +137,117 @@ structural_canvas_validate_construct_specification <- function(snapshot, analysi
       paste(specification$name[unsupported_composite], collapse = ", ")
     ))
   }
+  resolved <- structural_canvas_resolve_construct_specification(snapshot, analysis_type, if (identical(analysis_type, "plssem")) "PLS" else NULL)
+  unsupported <- !resolved$supported
+  if (any(unsupported)) stop(paste(unique(resolved$reason[unsupported]), collapse = " "))
+  invisible(specification)
+}
+
+structural_canvas_validate_plsc_specification <- function(snapshot, analysis_type, estimator) {
+  if (!identical(analysis_type, "plssem") || !identical(toupper(as.character(estimator %||% "PLS")), "PLSC")) return(invisible(NULL))
+  specification <- structural_canvas_construct_specification(snapshot)
+  if (!nrow(specification)) stop("PLSc requires at least one explicitly specified reflective common factor.")
+  resolved <- structural_canvas_resolve_construct_specification(snapshot, analysis_type, "PLSC")
+  eligible <- resolved$supported
+  if (!all(eligible)) {
+    invalid <- paste0(
+      specification$name[!eligible], " [", specification$construct_type[!eligible], "/",
+      specification$measurement_mode[!eligible], "]"
+    )
+    stop(paste0(
+      "PLSc consistency correction is available only when every construct is explicitly specified as a reflective common factor. ",
+      "Unsupported constructs: ", paste(invalid, collapse = ", "), ". ", paste(unique(resolved$reason[!eligible]), collapse = " "), " Use standard PLS for composite models or revise the theoretical construct specification."
+    ))
+  }
   invisible(specification)
 }
 
 structural_canvas_structural_effect_plan <- function(snapshot, analysis_type, estimator = "ML") {
   moderations <- snapshot$moderations %||% list()
+  moderation_method <- as.character(snapshot$moderationMethod %||% "all_pairs_dmc")
+  moderation_method_label <- switch(
+    moderation_method,
+    matched_pair_dmc = "Unconstrained matched-pair product indicators with double-mean-centering",
+    all_pairs_mean_centered = "Unconstrained all-pairs product indicators with indicator mean-centering (legacy)",
+    "Unconstrained all-pairs product indicators with double-mean-centering"
+  )
   engine <- if (identical(analysis_type, "plssem")) toupper(as.character(estimator %||% "PLS")) else "CB-SEM"
   if (!engine %in% c("PLS", "PLSC", "CB-SEM")) engine <- "CB-SEM"
   rows <- list(
     data.frame(Effect = "Direct effects", Status = "Supported", Method = if (engine == "CB-SEM") "lavaan structural regression" else "PLS path coefficients", Limitation = "Interpret only theory-specified directed paths.", stringsAsFactors = FALSE),
     data.frame(Effect = "Mediation", Status = "Supported", Method = if (engine == "CB-SEM") "Defined indirect and total effects" else "Bootstrap indirect and total effects", Limitation = if (engine == "CB-SEM") "Use bootstrap confidence intervals when requested; significance of component paths alone is not a mediation test." else "Requires PLS bootstrap inference; no covariance-model global fit claim.", stringsAsFactors = FALSE),
-    data.frame(Effect = "Moderation", Status = if (length(moderations) && engine != "CB-SEM") "Blocked" else if (length(moderations)) "Supported" else "Not requested", Method = if (engine == "CB-SEM") "Mean-centered product indicators" else "Not implemented in the current PLS/PLSc engine", Limitation = if (engine == "CB-SEM") "Johnson-Neyman regions require a continuous observed moderator or a latent moderator represented on its factor-score scale." else "Canvas moderation edges must not be silently omitted.", stringsAsFactors = FALSE),
+    data.frame(Effect = "Moderation", Status = if (length(moderations) && engine != "CB-SEM") "Blocked" else if (length(moderations)) "Supported" else "Not requested", Method = if (engine == "CB-SEM") moderation_method_label else "Not implemented in the current PLS/PLSc engine", Limitation = if (engine == "CB-SEM") "Johnson-Neyman regions require a continuous observed moderator or a latent moderator represented on its factor-score scale." else "Canvas moderation edges must not be silently omitted.", stringsAsFactors = FALSE),
     data.frame(Effect = "Moderated mediation", Status = if (length(moderations) && engine != "CB-SEM") "Blocked" else if (length(moderations)) "Available when an indirect chain contains the moderated path" else "Not requested", Method = if (engine == "CB-SEM") "Conditional indirect effect and index of moderated mediation" else "Not implemented in the current PLS/PLSc engine", Limitation = if (engine == "CB-SEM") "Inference uses the fitted product-indicator parameterization and the observed moderator range." else "Use a validated two-stage or product-indicator PLS implementation outside the current engine.", stringsAsFactors = FALSE)
   )
   do.call(rbind, rows)
+}
+
+structural_canvas_causal_interpretation <- function(snapshot, analysis_type) {
+  structural_analysis <- analysis_type %in% c("cbsem", "sem", "plssem")
+  if (!structural_analysis) return(list(applicable = FALSE, status = "Not applicable", rows = data.frame()))
+  nodes <- snapshot$nodes %||% list()
+  node_ids <- vapply(nodes, function(node) as.character(node$id %||% ""), character(1))
+  latent_ids <- node_ids[vapply(nodes, function(node) identical(node$role, "latent"), logical(1))]
+  directed <- Filter(function(edge) {
+    !identical(edge$kind %||% "", "covariance") &&
+      as.character(edge$from %||% "") %in% latent_ids &&
+      as.character(edge$to %||% "") %in% latent_ids
+  }, snapshot$edges %||% list())
+  from <- vapply(directed, function(edge) as.character(edge$from %||% ""), character(1))
+  to <- vapply(directed, function(edge) as.character(edge$to %||% ""), character(1))
+  has_indirect_chain <- length(from) > 1L && any(to %in% from)
+  rows <- data.frame(
+    Assumption = c(
+      "Temporal ordering / study design",
+      "No unmeasured exposure-outcome confounding",
+      "Causal treatment/exposure identification",
+      "Sequential ignorability for mediation"
+    ),
+    Recorded = c(
+      "Not collected by this workflow",
+      "Not established by SEM fit",
+      "Not established by directed paths",
+      if (has_indirect_chain) "Not established; indirect chain detected" else "Not assessed; no indirect chain detected"
+    ),
+    Consequence = c(
+      "Do not infer temporal or causal direction from path arrows alone.",
+      "Fit indices, bootstrap intervals, and significant coefficients do not remove confounding bias.",
+      "Report coefficients as theory-directed associations unless identification is justified externally.",
+      if (has_indirect_chain) "Describe the indirect effect as an associational decomposition unless temporal order and mediator/outcome confounding assumptions are justified." else "No mediation-specific claim is indicated by the current path graph."
+    ),
+    stringsAsFactors = FALSE
+  )
+  list(
+    applicable = TRUE,
+    status = "Causal identification not established",
+    interpretation = "Associational structural parameters",
+    indirect_chain_detected = has_indirect_chain,
+    rows = rows
+  )
+}
+
+structural_canvas_sampling_design_gate <- function(sampling_design) {
+  sampling_design <- as.character(sampling_design %||% "not_declared")
+  labels <- c(
+    not_declared = "Not declared",
+    independent_cross_sectional = "Independent cross-sectional observations",
+    clustered = "Clustered or multilevel data",
+    complex_survey = "Complex survey design",
+    longitudinal_repeated = "Longitudinal or repeated measures"
+  )
+  if (!sampling_design %in% names(labels)) sampling_design <- "not_declared"
+  supported <- identical(sampling_design, "independent_cross_sectional")
+  reason <- switch(
+    sampling_design,
+    independent_cross_sectional = "The declared structure is supported by the current single-level independent-observation engine.",
+    clustered = "Cluster-robust or multilevel SEM is required; the current canvas engine does not model cluster dependence.",
+    complex_survey = "Survey weights, strata, and primary sampling units require a survey-aware SEM workflow that is not implemented here.",
+    longitudinal_repeated = "Within-person dependence and longitudinal measurement structure require a repeated-measures or longitudinal SEM workflow that is not implemented here.",
+    "Observation independence and sampling structure must be declared before estimation."
+  )
+  result <- list(design = sampling_design, label = unname(labels[[sampling_design]]), supported = supported, reason = reason)
+  if (!supported) stop(paste0("Sampling-design gate blocked estimation. ", reason))
+  result
 }
 
 structural_canvas_validate_structural_effects <- function(snapshot, analysis_type, estimator = "ML") {
@@ -65,6 +266,8 @@ run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estima
   nodes <- snapshot$nodes %||% list()
   edges <- snapshot$edges %||% list()
   structural_canvas_validate_construct_specification(snapshot, analysis_type)
+  structural_canvas_validate_plsc_specification(snapshot, analysis_type, estimator)
+  resolved_specification <- structural_canvas_resolve_construct_specification(snapshot, analysis_type, estimator)
   structural_effect_plan <- structural_canvas_validate_structural_effects(snapshot, analysis_type, estimator)
   residual_constraint_diagnostics <- if (analysis_type %in% c("cfa", "cbsem", "sem")) structural_canvas_identification_diagnostics(snapshot) else data.frame()
   residual_constraint_errors <- if (nrow(residual_constraint_diagnostics)) residual_constraint_diagnostics[
@@ -159,6 +362,7 @@ run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estima
       effect_definitions = lavaan_syntax$effect_definitions %||% list(),
       moderation_definitions = lavaan_syntax$moderation_definitions %||% list(),
       structural_effect_plan = structural_effect_plan,
+      resolved_construct_specification = resolved_specification,
       identified = is.finite(model_df) && model_df >= 0,
       df = model_df,
       admissible = isTRUE(shared_admissibility$admissible),
@@ -178,5 +382,6 @@ run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estima
 
   result <- structural_canvas_run_pls_analysis(snapshot, data, latents, edges, estimator = estimator)
   result$structural_effect_plan <- structural_effect_plan
+  result$resolved_construct_specification <- resolved_specification
   result
 }

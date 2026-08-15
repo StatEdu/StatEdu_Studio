@@ -5345,6 +5345,38 @@ input.variable-select:disabled {
   font-size: var(--result-table-font-size);
 }
 
+@media screen {
+  .regression-results > .structural-residual-result.landscape-table-panel {
+    overflow-x: auto;
+  }
+
+  .regression-results > .structural-residual-result.landscape-table-panel .structural-residual-matrix {
+    width: max-content !important;
+    min-width: 100% !important;
+    max-width: none !important;
+    table-layout: auto !important;
+  }
+
+  .regression-results > .structural-residual-result.landscape-table-panel .structural-residual-matrix th,
+  .regression-results > .structural-residual-result.landscape-table-panel .structural-residual-matrix td {
+    white-space: nowrap;
+  }
+}
+
+@media print {
+  body.print-mixed-landscape .structural-residual-result.landscape-table-panel .structural-residual-matrix {
+    font-size: 5.5pt !important;
+  }
+
+  body.print-mixed-landscape .structural-residual-result.landscape-table-panel .structural-residual-matrix th,
+  body.print-mixed-landscape .structural-residual-result.landscape-table-panel .structural-residual-matrix td {
+    padding-left: 1.5pt !important;
+    padding-right: 1.5pt !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+  }
+}
+
 .regression-result-panel h3 {
   margin: 0 0 8px;
   font-size: 15px;

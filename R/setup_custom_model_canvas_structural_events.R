@@ -117,12 +117,13 @@ observeEvent(input[[paste0(prefix, "_mi_confirm_apply")]], {
   shiny::req(!is.null(bundle), length(selected_rows))
   tryCatch({
     structural_canvas_validate_holdout_reuse(bundle$mi_holdout_enabled, !is.null(bundle$holdout_comparison))
+    justification <- structural_canvas_validate_mi_justification(input[[paste0(prefix, "_mi_justification")]])
     snapshot <- bundle$snapshot
     for (selected_row in selected_rows) snapshot <- structural_canvas_apply_mi(snapshot, bundle$mi[selected_row, , drop = FALSE])
     settings <- bundle
     settings$comparison_type <- "mi"
     settings$comparison_label <- "Modified model"
-    settings$mi_history <- structural_canvas_mi_history_rows(bundle$mi, selected_rows, bundle$mi_history %||% data.frame(), input[[paste0(prefix, "_mi_justification")]] %||% "")
+    settings$mi_history <- structural_canvas_mi_history_rows(bundle$mi, selected_rows, bundle$mi_history %||% data.frame(), justification)
     removeModal()
     pending_mi_rows(integer(0))
     result <- execute_analysis(snapshot, settings)

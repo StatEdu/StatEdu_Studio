@@ -147,5 +147,5 @@ structural_canvas_measurement_quality_guidance <- function(ave, cr, alpha, omega
   if (any(!is.finite(values)) || any(values < 0 | values > 1)) return("Review inadmissible coefficient(s)")
   cutoffs <- c(AVE = .50, CR = .70, `Cronbach's α` = .70, `ωtotal` = .70)
   below <- names(values)[values < cutoffs]
-  if (!length(below)) "Meets common cutoffs" else paste0(paste(below, collapse = ", "), " below common cutoff")
+  if (!length(below)) "At/above common descriptive references" else paste0(paste(below, collapse = ", "), " below descriptive reference")
 }

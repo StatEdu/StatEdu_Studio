@@ -11,7 +11,15 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   options <- structural_canvas_execute_settings(settings, input, prefix)
   estimator <- options$estimator
   objective <- options$objective
+  sampling_design <- options$sampling_design
+  sampling_design_gate <- structural_canvas_sampling_design_gate(sampling_design)
+  power_basis <- options$power_basis
+  power_details <- options$power_details
+  moderation_method <- options$moderation_method
+  snapshot$moderationMethod <- moderation_method
   missing <- options$missing
+  missing_sensitivity_method <- options$missing_sensitivity_method
+  missing_sensitivity_details <- options$missing_sensitivity_details
   std_lv <- options$std_lv
   mi_mode <- options$mi_mode
   rmsea_ci <- options$rmsea_ci
@@ -21,6 +29,8 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   reliability_ci_method <- options$reliability_ci_method
   bollen_stine_bootstrap <- options$bollen_stine_bootstrap
   bollen_stine_seed <- options$bollen_stine_seed
+  effect_bootstrap <- options$effect_bootstrap
+  effect_bootstrap_seed <- options$effect_bootstrap_seed
   htmt_threshold <- options$htmt_threshold
   htmt_bootstrap <- options$htmt_bootstrap
   htmt_seed <- options$htmt_seed
@@ -29,6 +39,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   pls_seed <- options$pls_seed
   pls_predict_folds <- options$pls_predict_folds
   pls_predict_reps <- options$pls_predict_reps
+  pls_predict_seed <- options$pls_predict_seed
   redundancy_construct <- options$redundancy_construct
   redundancy_criterion <- options$redundancy_criterion
   parcel_enabled <- options$parcel_enabled
@@ -37,6 +48,8 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   parcel_purpose <- options$parcel_purpose
   invariance_enabled <- options$invariance_enabled
   invariance_group <- options$invariance_group
+  micom_permutations <- options$micom_permutations
+  micom_seed <- options$micom_seed
   mi_holdout_enabled <- options$mi_holdout_enabled
   mi_holdout_fraction <- options$mi_holdout_fraction
   mi_holdout_seed <- options$mi_holdout_seed
@@ -82,6 +95,12 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   missing_covariances <- structural_canvas_missing_exogenous_covariances(snapshot)
   structural_canvas_notify_missing_covariances(missing_covariances, analysis_type, statedu_current_language(app_language_fn))
   result <- run_structural_canvas_analysis(snapshot, data, analysis_type, estimator = estimator, missing = missing, std_lv = std_lv, ordered = ordered, nominal = nominal, residual_variance_fixes = residual_variance_fixes)
+  missing_diagnostics <- if (!identical(analysis_type, "plssem")) {
+    structural_canvas_missing_diagnostics(data, lavaan::lavNames(result$fit, "ov"))
+  } else NULL
+  normality_diagnostics <- if (!identical(analysis_type, "plssem") && !length(ordered)) {
+    structural_canvas_mardia(data, lavaan::lavNames(result$fit, "ov"))
+  } else NULL
   structural_canvas_notify_ignored_pls_covariances(result, analysis_type, statedu_current_language(app_language_fn))
   structural_canvas_notify_solution_diagnostics(result, statedu_current_language(app_language_fn))
   if (identical(analysis_type, "cfa") && bollen_stine_bootstrap > 0L) {
@@ -91,7 +110,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   }
   invariance_result <- structural_canvas_run_measurement_invariance(
     analysis_type, invariance_enabled, result, data, invariance_group,
-    estimator, missing, std_lv, rmsea_ci, ordered
+    estimator, missing, std_lv, rmsea_ci, ordered, snapshot, micom_permutations, micom_seed
   )
   reliability_bootstrap_result <- structural_canvas_run_reliability_bootstrap(
     analysis_type, reliability_bootstrap, result, data, reliability_seed,
@@ -123,7 +142,11 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     analysis_type, pls_bootstrap, result, pls_seed
   )
   pls_predict_result <- structural_canvas_run_pls_predict(
-    analysis_type, pls_predict_folds, pls_predict_reps, result
+    analysis_type, pls_predict_folds, pls_predict_reps, result, pls_predict_seed
+  )
+  effect_bootstrap_result <- structural_canvas_effect_bootstrap(
+    snapshot, data, analysis_type, estimator, missing, std_lv, ordered, nominal,
+    residual_variance_fixes, effect_bootstrap, effect_bootstrap_seed
   )
   redundancy_result <- if (identical(analysis_type, "plssem")) {
     structural_canvas_pls_redundancy_analysis(result, snapshot, data, redundancy_construct, redundancy_criterion)
@@ -162,6 +185,10 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
       estimator = estimator, missing = missing, std_lv = std_lv, ci_level = rmsea_ci
     )
   }
+  mi_validation_gate <- structural_canvas_mi_validation_gate(
+    modified = identical(settings$comparison_type %||% "", "mi") || nrow(settings$mi_history %||% data.frame()) > 0L,
+    holdout_enabled = mi_holdout_enabled, comparison = holdout_comparison
+  )
   fit_result(list(
     fit = result$fit, syntax = result$syntax, snapshot = snapshot, mi = mi, mi_mode = mi_mode,
     rmsea_ci = rmsea_ci, validity_formula = validity_formula,
@@ -170,23 +197,33 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     reliability_bootstrap_result = reliability_bootstrap_result,
     bollen_stine_bootstrap = bollen_stine_bootstrap, bollen_stine_seed = bollen_stine_seed,
     bollen_stine_result = bollen_stine_result,
+    effect_bootstrap = effect_bootstrap, effect_bootstrap_seed = effect_bootstrap_seed,
+    effect_bootstrap_result = effect_bootstrap_result,
     htmt_threshold = htmt_threshold, htmt_bootstrap = htmt_bootstrap, htmt_seed = htmt_seed,
     htmt_ci_method = htmt_ci_method,
     htmt_bootstrap_result = htmt_bootstrap_result,
     pls_bootstrap = pls_bootstrap, pls_seed = pls_seed, pls_bootstrap_result = pls_bootstrap_result,
-    pls_predict_folds = pls_predict_folds, pls_predict_reps = pls_predict_reps, pls_predict_result = pls_predict_result,
+    pls_predict_folds = pls_predict_folds, pls_predict_reps = pls_predict_reps, pls_predict_seed = pls_predict_seed, pls_predict_result = pls_predict_result,
     redundancy_construct = redundancy_construct, redundancy_criterion = redundancy_criterion, redundancy_result = redundancy_result,
     parcel_enabled = parcel_enabled, parcel_construct = parcel_construct, parcel_count = parcel_count,
     parcel_purpose = parcel_purpose, parcel_result = parcel_result,
     invariance_enabled = invariance_enabled, invariance_group = invariance_group, invariance_result = invariance_result,
+    micom_permutations = micom_permutations, micom_seed = micom_seed,
     mi_holdout_enabled = mi_holdout_enabled, mi_holdout_fraction = mi_holdout_fraction, mi_holdout_seed = mi_holdout_seed,
     analysis_data = data, validation_data = validation_data, holdout_rows = holdout_rows, holdout_comparison = holdout_comparison,
+    mi_validation_gate = mi_validation_gate,
     common_method_enabled = common_method_enabled, common_method_methods = common_method_methods,
     common_method_result = common_method_result,
-    estimator = estimator, objective = objective, method_recommendation = method_recommendation,
+    analysis_type = analysis_type, estimator = estimator, objective = objective, method_recommendation = method_recommendation,
+    power_basis = power_basis, power_details = power_details,
+    sampling_design = sampling_design, sampling_design_gate = sampling_design_gate,
+    moderation_method = moderation_method,
     structural_effect_plan = result$structural_effect_plan,
+    resolved_construct_specification = result$resolved_construct_specification %||% structural_canvas_resolve_construct_specification(snapshot, analysis_type, estimator),
     selected_method = structural_canvas_selected_method_label(analysis_type, estimator),
-    missing = missing, std_lv = std_lv, ordered = ordered,
+    missing = missing, missing_diagnostics = missing_diagnostics,
+    missing_sensitivity_method = missing_sensitivity_method, missing_sensitivity_details = missing_sensitivity_details,
+    normality_diagnostics = normality_diagnostics, std_lv = std_lv, ordered = ordered,
     result_coefficient = result_coefficient, diagnostics = result,
     baseline_fit = baseline_fit, modified_from_baseline = is_mi_refit || isTRUE(settings$modified_from_baseline),
     baseline_syntax = baseline_syntax,
