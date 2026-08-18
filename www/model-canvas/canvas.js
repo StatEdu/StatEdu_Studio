@@ -864,6 +864,18 @@
     }
   }
 
+  function applyAnalysisCanvasDefaults(instance) {
+    if (!instance || instance.analysisType !== "cfa") return;
+    Object.assign(instance.state.canvas, {
+      paper: "B5",
+      orientation: "portrait",
+      widthMm: 182,
+      heightMm: 257,
+      widthPx: 688,
+      heightPx: 971
+    });
+  }
+
   function applyMeasurementAnchors(edge, mode, placement) {
     edge.type = "measurement";
     edge.directAnchors = false;
@@ -1846,6 +1858,7 @@
       nodeLayer: root.querySelector(".custom-model-node-layer")
     };
     instance.state.variables = parseVariables(root);
+    applyAnalysisCanvasDefaults(instance);
     var configuredWidth = Number(root.getAttribute("data-canvas-width") || 0);
     var configuredHeight = Number(root.getAttribute("data-canvas-height") || 0);
     if (configuredWidth > 0 && configuredHeight > 0) {
