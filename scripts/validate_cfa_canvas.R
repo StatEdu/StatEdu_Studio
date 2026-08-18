@@ -30,13 +30,6 @@ stopifnot(
   is.infinite(structural_canvas_symmetric_condition_number(diag(c(1, 0))))
 )
 stopifnot(
-  identical(structural_canvas_measurement_quality_guidance(.60, .80, .75, .82), "At/above common descriptive references"),
-  grepl("AVE", structural_canvas_measurement_quality_guidance(.40, .80, .75, .82), fixed = TRUE),
-  grepl("Cronbach's α", structural_canvas_measurement_quality_guidance(.60, .80, .65, .82), fixed = TRUE),
-  grepl("ωtotal", structural_canvas_measurement_quality_guidance(.60, .80, .75, .65), fixed = TRUE),
-  identical(structural_canvas_measurement_quality_guidance(.60, 1.05, .75, .82), "Review inadmissible coefficient(s)")
-)
-stopifnot(
   identical(structural_canvas_indicator_loading_guidance(.70, .55, .82, .51), "No loading flag"),
   identical(structural_canvas_indicator_loading_guidance(.30, .10, .49, .91), "Weak loading review"),
   identical(structural_canvas_indicator_loading_guidance(.20, -.05, .45, .96), "Loading CI includes 0"),

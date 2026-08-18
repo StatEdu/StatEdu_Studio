@@ -44,7 +44,6 @@ structural_canvas_identification_issue_message <- function(code, message, langua
   switch(
     as.character(code %||% ""),
     unmeasured_latent = "관측지표나 하위요인이 없는 잠재변수입니다.",
-    single_indicator = "단일지표 요인은 오차경로의 잔차분산을 외부 근거에 따라 고정해야 식별됩니다.",
     single_indicator_auto_fixed = "단일지표 요인은 지표 오차분산을 0으로 자동 고정하여 식별했습니다. 이는 완전측정 가정이므로 해석에 주의하십시오.",
     single_indicator_constrained = "단일지표 요인은 고정 잔차분산으로 식별되었습니다. 이 제약의 외부 신뢰도 근거를 기록하십시오.",
     two_indicators = "두 지표 요인은 안정적인 식별을 위해 추가 제약이나 구조정보가 필요할 수 있습니다.",

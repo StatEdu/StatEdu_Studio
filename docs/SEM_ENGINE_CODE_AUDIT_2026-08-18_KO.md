@@ -18,6 +18,7 @@
 - PLSpredict 요약은 일부 지표의 PLS 우세를 `OK`로 판정하지 않고 `Descriptive only`로 표시한다.
 - 대표본 Mardia 진단은 정렬에 민감한 등간격 추출 대신 RNG 상태를 보존하는 고정 시드 단순무작위 비복원 부분표본을 사용한다.
 - 병렬 PLSc bootstrap은 `seed + index` 대신 재현 가능한 L'Ecuyer-CMRG 독립 난수 스트림을 반복별로 사전 할당한다.
+- 호출되지 않는 측정품질 판정 함수와 더 이상 발생하지 않는 `single_indicator` 오류 코드·번역 분기를 제거했다.
 - 설계 규칙을 혼합 PLSc 블록별 보정, 구조효과 BC 기본값, 단일지표 완전측정 경고, Audit schema 1.4에 맞게 갱신했다.
 
 아래 본문은 수정 전 발견 근거이므로 당시 코드상태에 대한 서술로 읽어야 한다. 측정모형을 포함한 score-CV의 fold별 재추정 및 SmartPLS식 PLS exact-fit 동등성은 별도 잔여 검증항목이다.

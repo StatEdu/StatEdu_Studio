@@ -114,7 +114,6 @@ structural_canvas_group_reliability_estimates <- function(fit, formula_mode = "s
   rows <- Filter(function(value) is.data.frame(value) && nrow(value), rows)
   if (length(rows)) do.call(rbind, rows) else data.frame()
 }
-
 structural_canvas_group_htmt <- function(fit, threshold = .85) {
   group_labels <- as.character(lavaan::lavInspect(fit, "group.label"))
   group_count <- as.integer(lavaan::lavInspect(fit, "ngroups"))
@@ -142,10 +141,3 @@ structural_canvas_group_htmt <- function(fit, threshold = .85) {
   if (length(rows)) do.call(rbind, rows) else data.frame()
 }
 
-structural_canvas_measurement_quality_guidance <- function(ave, cr, alpha, omega) {
-  values <- c(AVE = ave, CR = cr, `Cronbach's α` = alpha, `ωtotal` = omega)
-  if (any(!is.finite(values)) || any(values < 0 | values > 1)) return("Review inadmissible coefficient(s)")
-  cutoffs <- c(AVE = .50, CR = .70, `Cronbach's α` = .70, `ωtotal` = .70)
-  below <- names(values)[values < cutoffs]
-  if (!length(below)) "At/above common descriptive references" else paste0(paste(below, collapse = ", "), " below descriptive reference")
-}

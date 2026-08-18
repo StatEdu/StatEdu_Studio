@@ -314,7 +314,7 @@ run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estima
   structural_effect_plan <- structural_canvas_validate_structural_effects(snapshot, analysis_type, estimator)
   residual_constraint_diagnostics <- if (analysis_type %in% c("cfa", "cbsem", "sem")) structural_canvas_identification_diagnostics(snapshot) else data.frame()
   residual_constraint_errors <- if (nrow(residual_constraint_diagnostics)) residual_constraint_diagnostics[
-    residual_constraint_diagnostics$Severity == "Error" & residual_constraint_diagnostics$Code %in% c("single_indicator", "invalid_fixed_residual", "negative_fixed_residual"),
+    residual_constraint_diagnostics$Severity == "Error" & residual_constraint_diagnostics$Code %in% c("invalid_fixed_residual", "negative_fixed_residual"),
     , drop = FALSE
   ] else data.frame()
   if (nrow(residual_constraint_errors)) {
