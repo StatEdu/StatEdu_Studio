@@ -1888,7 +1888,11 @@
     var rootTop = instance.root.getBoundingClientRect().top;
     var chromeHeight = Number(toolbar ? toolbar.offsetHeight : 0) + Number(statusbar ? statusbar.offsetHeight : 0);
     var available = window.innerHeight - rootTop - chromeHeight - 20;
-    var scrollHeight = Math.max(280, Math.min(730, available));
+    var paperHeight = Number(instance.state.canvas.heightPx || 0);
+    var cfaCanvasHeight = Math.min(1060, Math.max(730, paperHeight + 48));
+    var scrollHeight = instance.analysisType === "cfa" ?
+      cfaCanvasHeight :
+      Math.max(280, Math.min(730, available));
     scroll.style.height = Math.round(scrollHeight) + "px";
     instance.root.style.setProperty("--custom-model-visible-height", Math.round(scrollHeight + chromeHeight) + "px");
   }

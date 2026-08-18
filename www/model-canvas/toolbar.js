@@ -187,9 +187,11 @@
       var count = instance.state.nodes.filter(function(node) { return node.role === "latent"; }).length;
       var higherOrder = action === "addHigherOrderLatent";
       var isCfa = instance.analysisType === "cfa";
+      var paperWidth = Number(instance.state.canvas.widthPx || 0);
+      var cfaLatentX = Math.max(360, Math.min(480, paperWidth - 330));
       var latent = window.StatEduModelCanvas.nodes.createLatentNode(
         instance,
-        higherOrder ? 250 : (isCfa ? 520 : 330 + (count % 3) * 220),
+        higherOrder ? 250 : (isCfa ? cfaLatentX : 330 + (count % 3) * 220),
         higherOrder ? 180 + count * 75 : (isCfa ? 180 + count * 170 : 360 + Math.floor(count / 3) * 150)
       );
       if (higherOrder) {

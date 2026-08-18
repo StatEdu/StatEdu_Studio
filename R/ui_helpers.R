@@ -189,7 +189,7 @@ app_brand_title <- function(version) {
 app_stylesheet_link <- function(version) {
   tagList(
     tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-ci-group-header-center-20260816a")),
-    tags$link(rel = "stylesheet", type = "text/css", href = paste0("model-canvas/canvas.css?v=", version, "-paper-fit-view-20260818a"))
+    tags$link(rel = "stylesheet", type = "text/css", href = paste0("model-canvas/canvas.css?v=", version, "-decoupled-cfa-canvas-20260818a"))
   )
 }
 
@@ -202,8 +202,8 @@ app_script_link <- function(version) {
     tags$script(src = paste0("model-canvas/edges.js?v=", version, "-covariance-depth-20260818a")),
     tags$script(src = paste0("model-canvas/nodes.js?v=", version, "-residual-variance-node-20260818a")),
     tags$script(src = paste0("model-canvas/dialogs.js?v=", version, "-paper-fit-view-20260818a")),
-    tags$script(src = paste0("model-canvas/toolbar.js?v=", version, "-covariance-depth-20260818a")),
-    tags$script(src = paste0("model-canvas/canvas.js?v=", version, "-paper-fit-view-20260818a"))
+    tags$script(src = paste0("model-canvas/toolbar.js?v=", version, "-decoupled-cfa-canvas-20260818a")),
+    tags$script(src = paste0("model-canvas/canvas.js?v=", version, "-decoupled-cfa-canvas-20260818a"))
   )
 }
 
