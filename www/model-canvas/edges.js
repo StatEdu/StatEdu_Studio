@@ -146,12 +146,28 @@
     if (!fromNode || !toNode || fromNode.role !== "latent" || toNode.role !== "latent") return null;
     var config = options || {};
     var minOffset = Number(config.minOffset || 75);
-    var maxOffset = Number(config.maxOffset || 310);
-    var factor = Number(config.factor || 0.5);
+    var maxOffset = Number(config.maxOffset || 560);
+    var factor = Number(config.factor || 0.62);
+    var knee = Number(config.knee || 120);
     var dx = Number(toNode.x || 0) - Number(fromNode.x || 0);
     var dy = Number(toNode.y || 0) - Number(fromNode.y || 0);
     var distance = Math.sqrt(dx * dx + dy * dy);
-    return Math.max(minOffset, Math.min(maxOffset, distance * factor));
+    var distanceBeyondClosePair = Math.max(0, distance - knee);
+    return Math.max(minOffset, Math.min(maxOffset, minOffset + distanceBeyondClosePair * factor));
+  }
+
+  function refreshLatentCovarianceCurveOffsets(instance) {
+    if (!instance || instance.analysisType !== "cfa") return;
+    instance.state.edges.forEach(function(edge) {
+      if (!edge || edge.kind !== "covariance" || edge.controlPoint) return;
+      var fromNode = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
+      var toNode = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
+      if (!fromNode || !toNode || fromNode.role !== "latent" || toNode.role !== "latent") return;
+      var higherOrderCovariance = fromNode.constructType === "higherOrder" && toNode.constructType === "higherOrder";
+      edge.curveOffset = higherOrderCovariance ?
+        latentCovarianceCurveOffset(fromNode, toNode, {minOffset: 70, maxOffset: 500, factor: 0.58, knee: 120}) :
+        latentCovarianceCurveOffset(fromNode, toNode);
+    });
   }
 
   function anchorOffset(size, count, index, gap) {
@@ -812,6 +828,7 @@
   function renderEdges(instance) {
     var svg = instance.edgeLayer;
     svg.innerHTML = "";
+    refreshLatentCovarianceCurveOffsets(instance);
     var structuralCanvas = ["cfa", "cbsem", "sem", "plssem"].indexOf(instance.analysisType) >= 0;
     var configuredArrowHead = instance.state.style.arrowHead || "triangle";
     var arrowHead = structuralCanvas && (configuredArrowHead === "none" || configuredArrowHead === "line") ? "triangle" : configuredArrowHead;

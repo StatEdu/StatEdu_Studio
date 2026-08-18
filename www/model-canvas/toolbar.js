@@ -224,7 +224,7 @@
           if (!window.StatEduModelCanvas.edges.createCovariance(instance, otherLatent.id, latent.id)) return;
           var covariance = instance.state.edges[instance.state.edges.length - 1];
           covariance.curveDirection = "left";
-          covariance.curveOffset = window.StatEduModelCanvas.edges.latentCovarianceCurveOffset(otherLatent, latent, {minOffset: 70, maxOffset: 270, factor: 0.5});
+          covariance.curveOffset = window.StatEduModelCanvas.edges.latentCovarianceCurveOffset(otherLatent, latent, {minOffset: 70, maxOffset: 500, factor: 0.58, knee: 120});
           covariance.fromSide = "left";
           covariance.toSide = "left";
           covariance.fixedCenter = true;
