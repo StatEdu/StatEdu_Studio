@@ -289,6 +289,10 @@
       var snap = parseSnapshotText(raw);
       window.StatEduModelCanvas.state.pushHistory(instance);
       window.StatEduModelCanvas.state.restore(instance.state, snap);
+      instance.sourceSnapshot = null;
+      instance.resultSnapshot = null;
+      instance.viewingResult = false;
+      instance.root.classList.remove("is-viewing-result", "has-result");
       window.StatEduModelCanvas.canvas.render(instance);
       window.StatEduModelCanvas.bridge.sendState(instance);
     } catch (error) {
@@ -398,6 +402,7 @@
   }
 
   function exportSvg(instance) {
+    window.StatEduModelCanvas.canvas.render(instance);
     var width = Number(instance.state.canvas.widthPx || instance.paper.offsetWidth || 0);
     var height = Number(instance.state.canvas.heightPx || instance.paper.offsetHeight || 0);
     var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");

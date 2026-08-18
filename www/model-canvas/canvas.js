@@ -139,6 +139,7 @@
     instance.edgeLayer.setAttribute("width", instance.state.canvas.widthPx);
     instance.edgeLayer.setAttribute("height", instance.state.canvas.heightPx);
     instance.validation = validateStructuralModel(instance);
+    instance.state.validation = window.StatEduModelCanvas.state.clone(instance.validation);
     window.StatEduModelCanvas.nodes.render(instance);
     window.StatEduModelCanvas.edges.render(instance);
     window.StatEduModelCanvas.toolbar.updateStatus(instance);

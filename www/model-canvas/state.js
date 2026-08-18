@@ -90,7 +90,8 @@
       latentStatsSelection: clone(state.latentStatsSelection || ["r2"]),
       showLatentStats: state.showLatentStats !== false,
       autoAlign: state.autoAlign !== false,
-      gridVisible: state.gridVisible
+      gridVisible: state.gridVisible,
+      validation: clone(state.validation || null)
     };
   }
 
@@ -175,6 +176,7 @@
     state.showLatentStats = snap.showLatentStats !== false;
     state.autoAlign = snap.autoAlign !== false;
     state.gridVisible = snap.gridVisible !== false;
+    state.validation = clone(snap.validation || null);
     state.connectFrom = null;
     state.dragPreview = null;
     state.selectedNodeId = null;

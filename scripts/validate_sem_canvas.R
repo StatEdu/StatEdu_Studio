@@ -1067,7 +1067,12 @@ stopifnot(
   grepl("do not infer a latent common cause", reflective_composite_guide_row$`Evidence role`, fixed = TRUE),
   reflective_composite_row$AVE != "N/A"
 )
-stopifnot(!nrow(structural_canvas_pls_fit_diagnostics_table(pls_formative_bundle)))
+pls_formative_fit_diagnostics <- structural_canvas_pls_fit_diagnostics_table(pls_formative_bundle)
+stopifnot(
+  nrow(pls_formative_fit_diagnostics) == 2L,
+  identical(pls_formative_fit_diagnostics$Model, c("pls", "plsc")),
+  all(pls_formative_fit_diagnostics[, c("srmr", "d_G", "d_ULS")] == "N/A")
+)
 
 missing_latent_range <- structural_canvas_moderation_update_factor_score_ranges(
   list(list(moderator_role = "latent", moderator = "missing", moderator_min = -2, moderator_max = 2)),

@@ -12,6 +12,11 @@ structural_canvas_pls_quality_number <- function(values, direction = "single") {
   format_decimal3(value)
 }
 
+structural_canvas_pls_diagnostic_number <- function(value) {
+  formatted <- structural_canvas_pls_quality_number(value)
+  if (nzchar(formatted)) formatted else "N/A"
+}
+
 structural_canvas_pls_quality_predictive_label <- function(bundle) {
   if (is.null(bundle$pls_predict_result)) return("Not executed")
   tables <- structural_canvas_pls_predict_tables(bundle$pls_predict_result)
@@ -125,11 +130,6 @@ structural_canvas_pls_diagnostic_fit <- function(bundle, estimator) {
 
 structural_canvas_pls_fit_diagnostics_table <- function(bundle) {
   if (is.null(bundle) || is.null(bundle$fit) || !inherits(bundle$fit, "pls_model")) return(data.frame())
-  snapshot <- bundle$snapshot %||% list()
-  latent_nodes <- Filter(function(node) identical(node$role %||% "", "latent"), snapshot$nodes %||% list())
-  if (any(vapply(latent_nodes, function(node) identical(node$measurementMode %||% "reflective", "formative"), logical(1)))) {
-    return(data.frame())
-  }
   rows <- lapply(c("PLS", "PLSC"), function(estimator) {
     fit <- structural_canvas_pls_diagnostic_fit(bundle, estimator)
     diagnostic_bundle <- bundle
@@ -139,9 +139,9 @@ structural_canvas_pls_fit_diagnostics_table <- function(bundle) {
     values <- structural_canvas_pls_approximate_fit_indices(diagnostic_bundle, summary_fit)
     data.frame(
       Model = if (identical(estimator, "PLSC")) "plsc" else "pls",
-      srmr = structural_canvas_pls_quality_number(values[["srmr"]]),
-      d_G = structural_canvas_pls_quality_number(values[["d_g"]]),
-      d_ULS = structural_canvas_pls_quality_number(values[["d_uls"]]),
+      srmr = structural_canvas_pls_diagnostic_number(values[["srmr"]]),
+      d_G = structural_canvas_pls_diagnostic_number(values[["d_g"]]),
+      d_ULS = structural_canvas_pls_diagnostic_number(values[["d_uls"]]),
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
