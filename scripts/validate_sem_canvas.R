@@ -715,7 +715,7 @@ plsc_overview <- structural_canvas_result_table("overview", plsc_result, "plssem
 plsc_reporting <- structural_canvas_reporting_context_rows(plsc_bundle, "plssem")
 plsc_fit_diagnostics <- structural_canvas_pls_fit_diagnostics_table(plsc_bundle)
 stopifnot(plsc_overview$Value[plsc_overview$Item == "Estimator"] == "PLSc")
-stopifnot(plsc_reporting$Value[plsc_reporting$Item == "Estimator or algorithm"] == "PLSc path modeling")
+stopifnot(plsc_reporting$Value[plsc_reporting$Item == "Estimator or algorithm"] == "PLSc path modeling (Reflective common-factor model)")
 stopifnot(identical(plsc_fit_diagnostics$Model, c("pls", "plsc")))
 stopifnot(all(nzchar(plsc_fit_diagnostics$srmr)), all(nzchar(plsc_fit_diagnostics$d_G)), all(nzchar(plsc_fit_diagnostics$d_ULS)))
 
@@ -730,7 +730,7 @@ pls_result <- function() pls_bundle
 pls_reporting <- structural_canvas_reporting_context_rows(pls_bundle, "plssem")
 stopifnot(nrow(pls_reporting) == 16L)
 stopifnot(grepl("seminr", pls_reporting$Value[pls_reporting$Item == "Analysis engine"], fixed = TRUE))
-stopifnot(pls_reporting$Value[pls_reporting$Item == "Estimator or algorithm"] == "PLS path modeling")
+stopifnot(pls_reporting$Value[pls_reporting$Item == "Estimator or algorithm"] == "PLS path modeling (Composite PLS model)")
 stopifnot(pls_reporting$Value[pls_reporting$Item == "Missing-data handling"] == "Valid rows used by seminr; no FIML/pairwise option")
 stopifnot(pls_reporting$Value[pls_reporting$Item == "Latent scaling"] == "Composite scores")
 stopifnot(pls_reporting$Value[pls_reporting$Item == "Common method diagnostics"] == "Not enabled")

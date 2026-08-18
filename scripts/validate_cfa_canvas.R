@@ -9,7 +9,7 @@ stopifnot(
   grepl("var ARROW_MARKER_CLEARANCE = 0;", edge_source, fixed = TRUE),
   grepl("arrowHead === \"open\" ? \"8\" : \"9\"", edge_source, fixed = TRUE),
   grepl("function visibleArrowEndpoints", edge_source, fixed = TRUE),
-  grepl('appendArrowMarker(defs, "custom-model-arrow", arrowHead, color);', edge_source, fixed = TRUE),
+  grepl('appendArrowMarker(defs, markerIds.arrow, arrowHead, color);', edge_source, fixed = TRUE),
   grepl("svg.appendChild(defs);", edge_source, fixed = TRUE),
   grepl("to: pointShiftedToward(endpoints.to, endpoints.from, ARROW_MARKER_CLEARANCE)", edge_source, fixed = TRUE),
   grepl("return visibleArrowEndpoints(instance, edge, {\n        from: radialNodeAnchor(instance, from, to)", edge_source, fixed = TRUE),
