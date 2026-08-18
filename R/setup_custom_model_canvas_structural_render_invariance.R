@@ -116,17 +116,17 @@ structural_canvas_invariance_result_ui <- function(bundle, language = statedu_in
   table$Decision <- ifelse(
     !table$Admissible, "Inadmissible stage",
     ifelse(table$Model == "Configural", "Baseline stage",
-    ifelse(table$Admissible & table$DeltaCFI >= -.010 & table$DeltaRMSEA <= .015 & table$DeltaSRMR <= srmr_limit, "Change criteria met", "Review noninvariance")
+    ifelse(table$Admissible & table$DeltaCFI >= -.010 & table$DeltaRMSEA <= .015 & table$DeltaSRMR <= srmr_limit, "Descriptive change guidance met", "Review descriptive change")
   ))
-  reviewed_stages <- table$Model[table$Decision == "Review noninvariance"]
+  reviewed_stages <- table$Model[table$Decision == "Review descriptive change"]
   score_tables <- (result$score_diagnostics %||% list())[intersect(reviewed_stages, names(result$score_diagnostics %||% list()))]
   score_tables <- Filter(function(value) nrow(value), score_tables)
   if (ko) {
     decision_labels <- c(
       "Inadmissible stage" = "허용 불가 단계",
       "Baseline stage" = "기준 단계",
-      "Change criteria met" = "변화 기준 충족",
-      "Review noninvariance" = "불변성 위반 검토"
+      "Descriptive change guidance met" = "기술적 변화 기준 충족",
+      "Review descriptive change" = "기술적 변화 검토"
     )
     table$Decision <- ifelse(table$Decision %in% names(decision_labels), decision_labels[table$Decision], table$Decision)
   }
@@ -191,7 +191,7 @@ structural_canvas_invariance_result_ui <- function(bundle, language = statedu_in
       if (ko) "중첩 단계는 loadings(metric), intercepts(scalar), residual variances(strict)를 차례로 제약합니다. Δ 값은 각 행을 바로 이전 단계와 비교하며, 가능한 경우 robust/scaled 적합도 지수와 차이검정을 사용합니다." else "Nested stages constrain loadings (metric), then intercepts (scalar), then residual variances (strict). Δ values compare each row with the immediately preceding stage; robust/scaled fit indices and difference tests are used when available."
     }),
     if (isTRUE(result$ordinal)) tags$p(class = "structural-result-note", if (ko) "순서형 지표 모형은 WLSMV/DWLS, 범주 thresholds, theta 파라미터화를 사용합니다. 따라서 scalar invariance는 연속형 CFA의 관측변수 절편 동등성이 아니라 thresholds와 loadings의 불변성을 의미합니다." else "Ordered-indicator models use WLSMV/DWLS, category thresholds, and theta parameterization. Scalar invariance therefore means invariant thresholds and loadings, not equality of observed-variable intercepts as in continuous CFA."),
-    tags$p(class = "structural-result-note", if (ko) "기술적 변화 기준은 ΔCFI < -.010, ΔRMSEA > .015, 또는 ΔSRMR > .030(metric) 및 > .010(scalar/strict)을 표시합니다. 이 기준은 모수 변화, 집단 크기, 이론, 모형 허용성과 함께 판단해야 하며 Δχ²는 표본크기에 민감합니다." else "Descriptive change guidance flags ΔCFI < −.010, ΔRMSEA > .015, or ΔSRMR > .030 for metric and > .010 for scalar/strict invariance. These guidelines should be considered jointly with parameter changes, group sizes, theory, and model admissibility; Δχ² is sample-size sensitive."),
+    tags$p(class = "structural-result-note", if (ko) "Chen(2007)에 근거한 기술적 변화 표시는 ΔCFI < -.010, ΔRMSEA > .015, 또는 ΔSRMR > .030(metric) 및 > .010(scalar/strict)을 사용합니다. Scalar/strict의 .010은 단계별 결과표의 보조 표시일 뿐 구조경로 집단비교 실행 gate에는 사용하지 않습니다. 구조경로 비교 gate는 metric 단계의 수렴·허용성과 ΔCFI ≥ -.010, ΔRMSEA ≤ .015, ΔSRMR ≤ .030만 사용합니다. 모든 변화 기준은 모수 변화, 집단 크기, 이론, 모형 허용성과 함께 판단해야 하며 Δχ²는 표본크기에 민감합니다." else "Descriptive change guidance based on Chen (2007) flags ΔCFI < −.010, ΔRMSEA > .015, or ΔSRMR > .030 for metric and > .010 for scalar/strict invariance. The .010 scalar/strict value is display-only stage guidance and is not part of the structural-path group-comparison gate. That gate uses only metric-stage convergence and admissibility with ΔCFI ≥ −.010, ΔRMSEA ≤ .015, and ΔSRMR ≤ .030. All change guidelines should be considered jointly with parameter changes, group sizes, theory, and model admissibility; Δχ² is sample-size sensitive."),
     tags$p(class = "structural-result-note", if (ko) "특정 단계의 실패가 모수 자동 해제를 정당화하지는 않습니다. 부분불변성은 실질적으로 방어 가능한 제약과 투명한 보고가 필요합니다." else "Failure at a stage does not justify automatically freeing parameters. Partial invariance requires substantively defensible constraints and transparent reporting.")
   )
 

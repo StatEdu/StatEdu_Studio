@@ -208,6 +208,8 @@ CB-SEM 직접·간접·총효과는 선택적으로 사례 재표집 bias-correc
 
 CB-SEM의 집단 간 구조경로 비교는 동일 자료·집단변수에서 측정모형만 분리해 configural 및 metric 불변성을 먼저 적합한다. Metric 모형이 수렴하고 허용 가능한 해이며 ΔCFI ≥ −.010, ΔRMSEA ≤ .015, ΔSRMR ≤ .030을 모두 만족할 때만 자유 구조경로 모형과 동일 구조경로 모형을 비교한다. Gate 실패 시 구조경로 동일성 검정을 실행하지 않는다. 잠재 product-indicator 상호작용이 포함된 다집단 비교는 별도의 상호작용 측정불변성 절차가 필요하므로 현재 엔진에서 차단한다.
 
+전체 측정불변성 결과표는 Chen(2007)의 변화지수 제안을 기술적 참고로 사용하여 metric 단계에는 ΔSRMR ≤ .030, scalar/strict 단계에는 ΔSRMR ≤ .010을 표시한다. Scalar/strict의 `.010`은 단계별 불변성 검토를 위한 보조 표시이며 위 구조경로 비교 gate의 조건이 아니다. 변화지수는 표본크기, 집단 수·불균형, 모형 복잡도와 비불변 모수의 위치에 따라 달라질 수 있으므로 보편적 합격선으로 해석하지 않는다. 참고: Chen, F. F. (2007). Sensitivity of goodness of fit indexes to lack of measurement invariance. *Structural Equation Modeling, 14*(3), 464–504. https://doi.org/10.1080/10705510701301834
+
 CB-SEM 조절효과의 Johnson-Neyman 구간은 연속형 관측 조절변수 또는 요인점수 척도로 표현되는 잠재 조절변수에 한정한다. 매개효과는 개별 구성경로의 유의성만으로 판정하지 않으며 간접효과의 구간추정을 우선한다. PLS/PLSc에서는 캔버스의 조절경로를 무시한 채 주효과 모형을 적합하지 않고 명시적 오류로 중단한다. 별도의 검증된 two-stage 또는 product-indicator PLS 상호작용 구현이 추가되기 전에는 PLS 조절효과를 지원한다고 표시하지 않는다.
 
 결과의 `구조효과 지원 범위` 표와 audit bundle에는 효과별 지원상태, 추정방법, 해석 제한을 저장한다.

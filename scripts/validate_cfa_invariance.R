@@ -1,4 +1,5 @@
 source(file.path("scripts", "validate_cfa_common.R"), encoding = "UTF-8")
+invariance_render_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_render_invariance.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
 stopifnot(requireNamespace("lavaan", quietly = TRUE))
 
@@ -25,6 +26,20 @@ very_small_diagnostics <- structural_canvas_invariance_group_diagnostics(
 stopifnot(
   any(unbalanced_diagnostics$Status == "Severely unbalanced smallest group; review power/stability"),
   any(very_small_diagnostics$Status == "Very small group (N < 30); invariance estimates may be unstable")
+)
+display_only_scalar_fixture <- list(table = data.frame(
+  Model = c("Configural", "Metric", "Scalar"),
+  Converged = TRUE, Admissible = TRUE,
+  DeltaCFI = c(NA_real_, -.005, -.005),
+  DeltaRMSEA = c(NA_real_, .010, .010),
+  DeltaSRMR = c(NA_real_, .020, .050),
+  stringsAsFactors = FALSE
+))
+stopifnot(
+  isTRUE(structural_canvas_metric_invariance_gate(display_only_scalar_fixture)$passed),
+  grepl("display-only stage guidance", invariance_render_source, fixed = TRUE),
+  grepl("Chen (2007)", invariance_render_source, fixed = TRUE),
+  grepl("Descriptive change guidance met", invariance_render_source, fixed = TRUE)
 )
 
 invariance <- structural_canvas_measurement_invariance(
