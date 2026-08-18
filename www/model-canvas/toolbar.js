@@ -137,6 +137,10 @@
     var paper = instance.root.querySelector(".custom-model-paper-status");
     if (paper) {
       paper.textContent = (instance.state.canvas.paper || "B5") + " " + (instance.state.canvas.orientation || "landscape");
+      paper.setAttribute("role", "button");
+      paper.setAttribute("tabindex", "0");
+      paper.setAttribute("title", instance.language === "ko" ? "용지 크기/방향 변경" : "Change paper size/orientation");
+      paper.setAttribute("aria-label", instance.language === "ko" ? "용지 크기와 방향 변경" : "Change paper size and orientation");
     }
     var covariates = instance.root.querySelector(".custom-model-covariate-status");
     if (covariates) {
@@ -386,6 +390,17 @@
       button.addEventListener("click", function(event) {
         event.preventDefault();
         handleAction(instance, button.getAttribute("data-action") || "", button);
+      });
+    });
+    instance.root.querySelectorAll(".custom-model-paper-status").forEach(function(paperStatus) {
+      paperStatus.addEventListener("click", function(event) {
+        event.preventDefault();
+        window.StatEduModelCanvas.dialogs.paper(instance);
+      });
+      paperStatus.addEventListener("keydown", function(event) {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        window.StatEduModelCanvas.dialogs.paper(instance);
       });
     });
     instance.root.querySelectorAll(".custom-model-run-options-popover [data-action], .custom-model-reset-confirm-popover [data-action]").forEach(function(button) {

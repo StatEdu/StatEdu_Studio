@@ -706,6 +706,19 @@
   white-space: nowrap;
 }
 
+.custom-model-paper-status {
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.custom-model-paper-status:hover,
+.custom-model-paper-status:focus-visible {
+  background: #eef4ff;
+  color: #0f4ea3;
+  outline: 1px solid #bfdbfe;
+}
+
 .custom-model-canvas-scroll {
   height: 730px;
   flex: 1 1 auto;
