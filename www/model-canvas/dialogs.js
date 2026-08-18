@@ -390,8 +390,18 @@
     clone.querySelectorAll(".custom-model-edge-hit, .custom-model-moderation-hit, .custom-model-edge-control, .custom-model-drag-preview").forEach(function(element) {
       element.remove();
     });
+    clone.querySelectorAll(".structural-validation-badge").forEach(function(element) {
+      element.remove();
+    });
     clone.querySelectorAll(".custom-model-node.is-selected, .structural-latent-statistics.is-selected").forEach(function(element) {
       element.classList.remove("is-selected");
+    });
+    clone.classList.remove("is-grid-visible", "is-delete-mode", "is-connect-mode");
+    clone.style.backgroundImage = "none";
+    clone.style.backgroundSize = "auto";
+    clone.querySelectorAll(".custom-model-node.has-validation-error, .custom-model-node.has-validation-warning").forEach(function(element) {
+      element.classList.remove("has-validation-error", "has-validation-warning");
+      element.removeAttribute("data-validation-message");
     });
     clone.style.position = "relative";
     clone.style.left = "0";

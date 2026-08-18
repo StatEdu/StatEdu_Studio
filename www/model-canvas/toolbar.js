@@ -40,9 +40,13 @@
     var hasResult = !!instance.resultSnapshot && instance.root.classList.contains("has-result");
     instance.root.querySelectorAll(".custom-model-toolbar-button").forEach(function(button) {
       var action = button.getAttribute("data-action") || "";
+      var latentStatsVisible = instance.state.showLatentStats !== false &&
+        Array.isArray(instance.state.latentStatsSelection) &&
+        instance.state.latentStatsSelection.length > 0;
       var active = action === instance.state.mode ||
         (action === "grid" && instance.state.gridVisible) ||
         (action === "autoAlign" && instance.state.autoAlign !== false) ||
+        (action === "latentStats" && latentStatsVisible) ||
         (action === "resultEdit" && hasResult && instance.state.mode === "properties") ||
         (action === "dashNonsignificant" && hasResult && instance.state.dashNonsignificant !== false);
       button.classList.toggle("is-active", active);
@@ -116,7 +120,10 @@
     });
     instance.root.querySelectorAll("[data-latent-stat]").forEach(function(input) {
       var selectedStats = instance.state.latentStatsSelection || ["r2"];
-      input.checked = selectedStats.indexOf(input.getAttribute("data-latent-stat") || "r2") >= 0;
+      var key = input.getAttribute("data-latent-stat") || "r2";
+      input.checked = key === "none" ?
+        instance.state.showLatentStats === false || selectedStats.length === 0 :
+        instance.state.showLatentStats !== false && selectedStats.indexOf(key) >= 0;
     });
   }
 
@@ -389,15 +396,24 @@
     });
     instance.root.querySelectorAll("[data-latent-stat]").forEach(function(input) {
       var selectedStats = instance.state.latentStatsSelection || ["r2"];
-      input.checked = selectedStats.indexOf(input.getAttribute("data-latent-stat") || "r2") >= 0;
+      var key = input.getAttribute("data-latent-stat") || "r2";
+      input.checked = key === "none" ?
+        instance.state.showLatentStats === false || selectedStats.length === 0 :
+        instance.state.showLatentStats !== false && selectedStats.indexOf(key) >= 0;
     });
     instance.root.querySelectorAll("[data-latent-stat]").forEach(function(input) {
       input.addEventListener("change", function() {
         var key = input.getAttribute("data-latent-stat") || "r2";
-        instance.state.latentStatsSelection = [key];
-        instance.state.showLatentStats = true;
+        if (key === "none") {
+          instance.state.latentStatsSelection = [];
+          instance.state.showLatentStats = false;
+        } else {
+          instance.state.latentStatsSelection = [key];
+          instance.state.showLatentStats = true;
+        }
         hidePopover(instance, ".structural-latent-stats-popover");
         window.StatEduModelCanvas.canvas.render(instance);
+        updateButtons(instance);
         window.StatEduModelCanvas.bridge.sendState(instance);
       });
     });

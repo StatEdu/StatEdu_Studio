@@ -142,7 +142,7 @@ structural_equation_toolbar <- function(analysis_type = "cbsem", language = stat
                   tags$input(type = "radio", name = paste0(prefix, "_latent_stat"), `data-latent-stat` = key, checked = if (identical(key, "r2")) "checked" else NULL),
                   as.character(label)
                 )
-              }, c("r2", "ave", "cr"), c("R²", "AVE", "CR"))
+              }, c("r2", "ave", "cr", "none"), c("R²", "AVE", "CR", if (ko) "없음" else "None"))
             )
           ),
           custom_model_canvas_button("resultView", if (ko) "결과 모형" else "Result diagram"),
