@@ -256,7 +256,22 @@ structural_canvas_structural_effect_definitions <- function(structural_edge_info
       indirect_expression <- paste(path_expressions, collapse = " + ")
       total_terms <- c(edge_expression[[direct_key]] %||% character(0), path_expressions)
       total_expression <- paste(total_terms[nzchar(total_terms)], collapse = " + ")
-      lines <- c(lines, paste(indirect_label, ":=", indirect_expression), paste(total_label, ":=", total_expression))
+      specific_labels <- vapply(seq_along(path_expressions), function(path_index) {
+        paste(
+          structural_canvas_lavaan_safe_label("statedu_spind", "statedu"),
+          structural_canvas_lavaan_safe_label(predictor, "from"),
+          structural_canvas_lavaan_safe_label(outcome, "to"),
+          path_index,
+          sep = "_"
+        )
+      }, character(1))
+      lines <- c(lines, paste(specific_labels, ":=", path_expressions), paste(indirect_label, ":=", indirect_expression), paste(total_label, ":=", total_expression))
+      for (path_index in seq_along(indirect_paths)) {
+        effects[[length(effects) + 1L]] <- list(
+          label = specific_labels[[path_index]], type = "Specific indirect", predictor = predictor, outcome = outcome,
+          paths = list(indirect_paths[[path_index]]), path_labels = list(path_labels[[path_index]]), path = indirect_paths[[path_index]]
+        )
+      }
       effects[[length(effects) + 1L]] <- list(
         label = indirect_label, type = "Indirect", predictor = predictor, outcome = outcome, paths = indirect_paths, path_labels = path_labels
       )

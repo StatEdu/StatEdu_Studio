@@ -107,21 +107,23 @@ structural_canvas_effect_summary_html_table <- function(table, ci = FALSE, langu
   if (!is.data.frame(table) || !nrow(table)) return(NULL)
   path_label <- if (identical(normalize_app_language(language), "ko")) "경로" else "Path"
   if (isTRUE(ci)) {
-    required <- c("Outcome", "Predictor", "Direct beta 95% CI", "Direct CI source", "Indirect beta 95% CI", "Indirect CI source", "Total beta 95% CI", "Total CI source")
+    required <- c("Outcome", "Predictor", "Direct beta 95% CI", "Direct CI source", "Specific indirect beta 95% CI", "Specific indirect CI source", "Indirect beta 95% CI", "Indirect CI source", "Total beta 95% CI", "Total CI source")
     if (!all(required %in% names(table))) return(structural_canvas_basic_html_table(table))
     body_values <- cbind(
       stats::setNames(data.frame(paste(table$Predictor, "→", table$Outcome), stringsAsFactors = FALSE), path_label),
-      table[, c("Direct beta 95% CI", "Direct CI source", "Indirect beta 95% CI", "Indirect CI source", "Total beta 95% CI", "Total CI source"), drop = FALSE]
+      table[, c("Direct beta 95% CI", "Direct CI source", "Specific indirect beta 95% CI", "Specific indirect CI source", "Indirect beta 95% CI", "Indirect CI source", "Total beta 95% CI", "Total CI source"), drop = FALSE]
     )
     return(tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered structural-result-table structural-effect-ci-table",
       tags$thead(
         tags$tr(
           tags$th(class = "structural-table-header-cell", rowspan = "2", path_label),
           tags$th(class = "structural-table-header-cell", colspan = "2", "Direct effect"),
-          tags$th(class = "structural-table-header-cell", colspan = "2", "Indirect effect"),
+          tags$th(class = "structural-table-header-cell", colspan = "2", "Specific indirect effect"),
+          tags$th(class = "structural-table-header-cell", colspan = "2", "Total indirect effect"),
           tags$th(class = "structural-table-header-cell", colspan = "2", "Total effect")
         ),
         tags$tr(
+          tags$th(class = "structural-table-header-cell", "beta 95% CI"), tags$th(class = "structural-table-header-cell", if (identical(normalize_app_language(language), "ko")) "산출 근거" else "Source"),
           tags$th(class = "structural-table-header-cell", "beta 95% CI"), tags$th(class = "structural-table-header-cell", if (identical(normalize_app_language(language), "ko")) "산출 근거" else "Source"),
           tags$th(class = "structural-table-header-cell", "beta 95% CI"), tags$th(class = "structural-table-header-cell", if (identical(normalize_app_language(language), "ko")) "산출 근거" else "Source"),
           tags$th(class = "structural-table-header-cell", "beta 95% CI"), tags$th(class = "structural-table-header-cell", if (identical(normalize_app_language(language), "ko")) "산출 근거" else "Source")
@@ -132,7 +134,7 @@ structural_canvas_effect_summary_html_table <- function(table, ci = FALSE, langu
       }))
     )))
   }
-  required <- c("Outcome", "Predictor", "Direct beta", "Direct p", "Direct BH-adjusted p", "Indirect beta", "Indirect p", "Indirect BH-adjusted p", "Total beta", "Total p", "Total BH-adjusted p")
+  required <- c("Outcome", "Predictor", "Direct beta", "Direct p", "Direct BH-adjusted p", "Specific indirect beta", "Specific indirect p", "Specific indirect BH-adjusted p", "Indirect beta", "Indirect p", "Indirect BH-adjusted p", "Total beta", "Total p", "Total BH-adjusted p")
   if (!all(required %in% names(table))) return(structural_canvas_basic_html_table(table))
   body_values <- cbind(
     stats::setNames(data.frame(paste(table$Predictor, "→", table$Outcome), stringsAsFactors = FALSE), path_label),
@@ -143,10 +145,14 @@ structural_canvas_effect_summary_html_table <- function(table, ci = FALSE, langu
       tags$tr(
         tags$th(class = "structural-table-header-cell", rowspan = "2", path_label),
         tags$th(class = "structural-table-header-cell", colspan = "3", "Direct effect"),
-        tags$th(class = "structural-table-header-cell", colspan = "3", "Indirect effect"),
+        tags$th(class = "structural-table-header-cell", colspan = "3", "Specific indirect effect"),
+        tags$th(class = "structural-table-header-cell", colspan = "3", "Total indirect effect"),
         tags$th(class = "structural-table-header-cell", colspan = "3", "Total effect")
       ),
       tags$tr(
+        tags$th(class = "structural-table-header-cell", "beta"),
+        tags$th(class = "structural-table-header-cell", "p"),
+        tags$th(class = "structural-table-header-cell", "BH p"),
         tags$th(class = "structural-table-header-cell", "beta"),
         tags$th(class = "structural-table-header-cell", "p"),
         tags$th(class = "structural-table-header-cell", "BH p"),
@@ -198,12 +204,12 @@ structural_canvas_pls_measurement_main_html_table <- function(table) {
 }
 
 structural_canvas_effect_ci_source_note <- function(table, language = NULL) {
-  source_columns <- c("Direct CI source", "Indirect CI source", "Total CI source")
+  source_columns <- c("Direct CI source", "Specific indirect CI source", "Indirect CI source", "Total CI source")
   if (!is.data.frame(table) || !all(source_columns %in% names(table))) return(NULL)
   labels <- if (identical(normalize_app_language(language), "ko")) {
-    c("Direct CI source" = "직접효과", "Indirect CI source" = "간접효과", "Total CI source" = "총효과")
+    c("Direct CI source" = "직접효과", "Specific indirect CI source" = "특정 간접효과", "Indirect CI source" = "총 간접효과", "Total CI source" = "총효과")
   } else {
-    c("Direct CI source" = "direct effects", "Indirect CI source" = "indirect effects", "Total CI source" = "total effects")
+    c("Direct CI source" = "direct effects", "Specific indirect CI source" = "specific indirect effects", "Indirect CI source" = "total indirect effects", "Total CI source" = "total effects")
   }
   parts <- unlist(lapply(source_columns, function(column) {
     values <- unique(trimws(as.character(table[[column]] %||% "")))

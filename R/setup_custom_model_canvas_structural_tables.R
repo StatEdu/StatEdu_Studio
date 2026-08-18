@@ -558,6 +558,10 @@ structural_canvas_lavaan_structural_effect_rows <- function(fit, effect_definiti
       Effect = as.character(effect$type %||% ""),
       Outcome = vapply(as.character(effect$outcome %||% ""), display_name, character(1)),
       Predictor = vapply(as.character(effect$predictor %||% ""), display_name, character(1)),
+      `Path detail` = if (identical(as.character(effect$type %||% ""), "Specific indirect")) {
+        path <- as.character(effect$path %||% character(0))
+        if (length(path)) paste(vapply(path, display_name, character(1)), collapse = " → ") else ""
+      } else "",
       B = fmt(row$est),
       `B 95% CI lower` = fmt(row$ci.lower),
       `B 95% CI upper` = fmt(row$ci.upper),
@@ -625,6 +629,7 @@ structural_canvas_lavaan_structural_result_table <- function(kind, fit, ko, fmt,
     Effect = "Direct",
     vapply(raw$lhs, display_name, character(1)),
     vapply(raw$rhs, display_name, character(1)),
+    `Path detail` = "",
     B = fmt(raw$est),
     `B 95% CI lower` = fmt(raw$ci.lower),
     `B 95% CI upper` = fmt(raw$ci.upper),
@@ -651,12 +656,50 @@ structural_canvas_effect_summary_table <- function(structural_table, ci = FALSE)
       !all(c("Effect", "Outcome", "Predictor") %in% names(structural_table))) {
     return(data.frame())
   }
-  if (!any(structural_table$Effect %in% c("Indirect", "Total"))) return(data.frame())
+  if (!any(structural_table$Effect %in% c("Specific indirect", "Indirect", "Total"))) return(data.frame())
   pairs <- unique(structural_table[, c("Outcome", "Predictor"), drop = FALSE])
   value_for <- function(outcome, predictor, effect, column) {
     rows <- structural_table$Outcome == outcome & structural_table$Predictor == predictor & structural_table$Effect == effect
     if (!any(rows) || !column %in% names(structural_table)) return("")
     as.character(structural_table[[column]][which(rows)[[1L]]])
+  }
+  values_for <- function(outcome, predictor, effect, column) {
+    rows <- structural_table$Outcome == outcome & structural_table$Predictor == predictor & structural_table$Effect == effect
+    if (!any(rows) || !column %in% names(structural_table)) return(character(0))
+    as.character(structural_table[[column]][which(rows)])
+  }
+  specific_for <- function(outcome, predictor, column) {
+    values <- values_for(outcome, predictor, "Specific indirect", column)
+    paths <- values_for(outcome, predictor, "Specific indirect", "Path detail")
+    if (!length(values)) return("")
+    if (length(paths) != length(values)) paths <- rep("", length(values))
+    entries <- vapply(seq_along(values), function(index) {
+      label <- trimws(paths[[index]] %||% "")
+      value <- trimws(values[[index]] %||% "")
+      if (!nzchar(label)) label <- paste0("Path ", index)
+      if (!nzchar(value)) return("")
+      paste0(label, " = ", value)
+    }, character(1))
+    paste(entries[nzchar(entries)], collapse = "; ")
+  }
+  specific_ci_for <- function(outcome, predictor) {
+    lower <- values_for(outcome, predictor, "Specific indirect", "beta 95% CI lower")
+    upper <- values_for(outcome, predictor, "Specific indirect", "beta 95% CI upper")
+    paths <- values_for(outcome, predictor, "Specific indirect", "Path detail")
+    count <- max(length(lower), length(upper), length(paths))
+    if (!count) return("")
+    length(lower) <- count
+    length(upper) <- count
+    length(paths) <- count
+    entries <- vapply(seq_len(count), function(index) {
+      label <- trimws(paths[[index]] %||% "")
+      lo <- trimws(lower[[index]] %||% "")
+      hi <- trimws(upper[[index]] %||% "")
+      if (!nzchar(label)) label <- paste0("Path ", index)
+      if (!nzchar(lo) && !nzchar(hi)) return("")
+      paste0(label, " = ", lo, " ~ ", hi)
+    }, character(1))
+    paste(entries[nzchar(entries)], collapse = "; ")
   }
   ci_for <- function(outcome, predictor, effect) {
     lower <- value_for(outcome, predictor, effect, "beta 95% CI lower")
@@ -673,6 +716,8 @@ structural_canvas_effect_summary_table <- function(structural_table, ci = FALSE)
         Predictor = predictor,
         `Direct beta 95% CI` = ci_for(outcome, predictor, "Direct"),
         `Direct CI source` = value_for(outcome, predictor, "Direct", "beta CI source"),
+        `Specific indirect beta 95% CI` = specific_ci_for(outcome, predictor),
+        `Specific indirect CI source` = specific_for(outcome, predictor, "beta CI source"),
         `Indirect beta 95% CI` = ci_for(outcome, predictor, "Indirect"),
         `Indirect CI source` = value_for(outcome, predictor, "Indirect", "beta CI source"),
         `Total beta 95% CI` = ci_for(outcome, predictor, "Total"),
@@ -686,6 +731,9 @@ structural_canvas_effect_summary_table <- function(structural_table, ci = FALSE)
         `Direct beta` = value_for(outcome, predictor, "Direct", "beta"),
         `Direct p` = value_for(outcome, predictor, "Direct", "p"),
         `Direct BH-adjusted p` = value_for(outcome, predictor, "Direct", "BH-adjusted p"),
+        `Specific indirect beta` = specific_for(outcome, predictor, "beta"),
+        `Specific indirect p` = specific_for(outcome, predictor, "p"),
+        `Specific indirect BH-adjusted p` = specific_for(outcome, predictor, "BH-adjusted p"),
         `Indirect beta` = value_for(outcome, predictor, "Indirect", "beta"),
         `Indirect p` = value_for(outcome, predictor, "Indirect", "p"),
         `Indirect BH-adjusted p` = value_for(outcome, predictor, "Indirect", "BH-adjusted p"),

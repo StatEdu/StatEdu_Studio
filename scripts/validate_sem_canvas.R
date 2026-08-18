@@ -77,11 +77,11 @@ stopifnot(
   grepl("PLS measurement diagnostics", ui_source, fixed = TRUE),
   grepl("PLS measurement bootstrap", ui_source, fixed = TRUE),
   grepl("HTMT and Fornell-Larcker are computed only between reflective constructs", ui_source, fixed = TRUE),
-  grepl("Indirect and total effects are reported separately", ui_source, fixed = TRUE),
+  grepl("Specific indirect effects for each mediation path, total indirect effects, and total effects", ui_source, fixed = TRUE),
   grepl("Supplementary Table 3: Effect beta 95% confidence intervals", ui_source, fixed = TRUE),
   grepl("표 3. 구조모형 경로", ui_source, fixed = TRUE),
   grepl("Data-driven indicator deletion must not be presented", ui_source, fixed = TRUE),
-  grepl('"Direct CI source", "Indirect beta 95% CI", "Indirect CI source"', ui_source, fixed = TRUE),
+  grepl('"Direct CI source", "Specific indirect beta 95% CI", "Specific indirect CI source"', ui_source, fixed = TRUE),
   grepl("PLS-SEM does not estimate covariance paths", ui_source, fixed = TRUE),
   grepl("PLS-SEM does not estimate covariance paths; excluded:", ui_source, fixed = TRUE),
   grepl('analysis_type %in% c("cfa", "cbsem", "sem")) downloadButton(paste0(prefix, "_download_reproducibility")', ui_source, fixed = TRUE),
@@ -564,7 +564,7 @@ stopifnot(any(cbsem_effect_bootstrap$op == ":="))
 stopifnot(all(c("lower", "upper", "p", "beta_estimate", "beta_lower", "beta_upper", "beta_p", "beta_valid", "valid", "requested", "valid_percent", "status") %in% names(cbsem_effect_bootstrap)))
 stopifnot(all(cbsem_effect_bootstrap$requested == 30L))
 stopifnot(grepl(":=", cbsem_mediation$syntax, fixed = TRUE))
-stopifnot(length(cbsem_mediation$effect_definitions) == 2L)
+stopifnot(length(cbsem_mediation$effect_definitions) == 3L)
 cbsem_mediation_bundle <- list(
   fit = cbsem_mediation$fit,
   syntax = cbsem_mediation$syntax,
@@ -608,17 +608,19 @@ cbsem_mediation_effect_ci <- structural_canvas_result_table("structural_effect_c
 stopifnot(nrow(cbsem_mediation_structural) == 3L)
 stopifnot(!"Effect" %in% names(cbsem_mediation_structural))
 stopifnot(any(cbsem_mediation_effects$Outcome == "etaC" & cbsem_mediation_effects$Predictor == "etaA"))
-stopifnot(all(c("Direct beta", "Direct p", "Direct BH-adjusted p", "Indirect beta", "Indirect p", "Indirect BH-adjusted p", "Total beta", "Total p", "Total BH-adjusted p") %in% names(cbsem_mediation_effects)))
+stopifnot(all(c("Direct beta", "Direct p", "Direct BH-adjusted p", "Specific indirect beta", "Specific indirect p", "Specific indirect BH-adjusted p", "Indirect beta", "Indirect p", "Indirect BH-adjusted p", "Total beta", "Total p", "Total BH-adjusted p") %in% names(cbsem_mediation_effects)))
+stopifnot(any(grepl("etaA → etaB → etaC", cbsem_mediation_effects[["Specific indirect beta"]][cbsem_mediation_effects$Outcome == "etaC" & cbsem_mediation_effects$Predictor == "etaA"], fixed = TRUE)))
 stopifnot(any(nzchar(cbsem_mediation_effects[["Indirect beta"]][cbsem_mediation_effects$Outcome == "etaC" & cbsem_mediation_effects$Predictor == "etaA"])))
 stopifnot(any(nzchar(cbsem_mediation_effects[["Total p"]][cbsem_mediation_effects$Outcome == "etaC" & cbsem_mediation_effects$Predictor == "etaA"])))
 stopifnot(any(nzchar(cbsem_mediation_structural[["R²"]][cbsem_mediation_structural$Outcome == "etaC"])))
-stopifnot(all(c("Direct beta 95% CI", "Direct CI source", "Indirect beta 95% CI", "Indirect CI source", "Total beta 95% CI", "Total CI source") %in% names(cbsem_mediation_effect_ci)))
+stopifnot(all(c("Direct beta 95% CI", "Direct CI source", "Specific indirect beta 95% CI", "Specific indirect CI source", "Indirect beta 95% CI", "Indirect CI source", "Total beta 95% CI", "Total CI source") %in% names(cbsem_mediation_effect_ci)))
+stopifnot(any(grepl("etaA → etaB → etaC", cbsem_mediation_effect_ci[["Specific indirect beta 95% CI"]][cbsem_mediation_effect_ci$Outcome == "etaC" & cbsem_mediation_effect_ci$Predictor == "etaA"], fixed = TRUE)))
 stopifnot(any(nzchar(cbsem_mediation_effect_ci[["Indirect beta 95% CI"]][cbsem_mediation_effect_ci$Outcome == "etaC" & cbsem_mediation_effect_ci$Predictor == "etaA"])))
 
 sem_mediation <- run_structural_canvas_analysis(mediation_snapshot, mediation_data, "sem", estimator = "ML", missing = "fiml")
 stopifnot(isTRUE(sem_mediation$converged))
 stopifnot(grepl(":=", sem_mediation$syntax, fixed = TRUE))
-stopifnot(length(sem_mediation$effect_definitions) == 2L)
+stopifnot(length(sem_mediation$effect_definitions) == 3L)
 sem_mediation_bundle <- list(
   fit = sem_mediation$fit,
   syntax = sem_mediation$syntax,
@@ -633,6 +635,7 @@ sem_mediation_structural <- structural_canvas_result_table("structural", sem_med
 sem_mediation_effects <- structural_canvas_result_table("structural_effects", sem_mediation_result, "sem", labels_fn, language_fn)
 stopifnot(!"Effect" %in% names(sem_mediation_structural))
 stopifnot(any(sem_mediation_effects$Outcome == "etaC" & sem_mediation_effects$Predictor == "etaA"))
+stopifnot(any(grepl("etaA → etaB → etaC", sem_mediation_effects[["Specific indirect beta"]][sem_mediation_effects$Outcome == "etaC" & sem_mediation_effects$Predictor == "etaA"], fixed = TRUE)))
 stopifnot(any(nzchar(sem_mediation_effects[["Indirect beta"]][sem_mediation_effects$Outcome == "etaC" & sem_mediation_effects$Predictor == "etaA"])))
 stopifnot(any(nzchar(sem_mediation_effects[["Total beta"]][sem_mediation_effects$Outcome == "etaC" & sem_mediation_effects$Predictor == "etaA"])))
 
