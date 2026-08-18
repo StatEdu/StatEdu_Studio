@@ -77,11 +77,12 @@ stopifnot(
   grepl("PLS measurement diagnostics", ui_source, fixed = TRUE),
   grepl("PLS measurement bootstrap", ui_source, fixed = TRUE),
   grepl("HTMT and Fornell-Larcker are computed only between reflective constructs", ui_source, fixed = TRUE),
-  grepl("Specific indirect effects for each mediation path, total indirect effects, and total effects", ui_source, fixed = TRUE),
+  grepl("Indirect and total effects are reported separately", ui_source, fixed = TRUE),
+  grepl("Table 6: Specific indirect effects", ui_source, fixed = TRUE),
   grepl("Supplementary Table 3: Effect beta 95% confidence intervals", ui_source, fixed = TRUE),
   grepl("표 3. 구조모형 경로", ui_source, fixed = TRUE),
   grepl("Data-driven indicator deletion must not be presented", ui_source, fixed = TRUE),
-  grepl('"Direct CI source", "Specific indirect beta 95% CI", "Specific indirect CI source"', ui_source, fixed = TRUE),
+  grepl('"Direct CI source", "Indirect beta 95% CI", "Indirect CI source"', ui_source, fixed = TRUE),
   grepl("PLS-SEM does not estimate covariance paths", ui_source, fixed = TRUE),
   grepl("PLS-SEM does not estimate covariance paths; excluded:", ui_source, fixed = TRUE),
   grepl('analysis_type %in% c("cfa", "cbsem", "sem")) downloadButton(paste0(prefix, "_download_reproducibility")', ui_source, fixed = TRUE),
@@ -605,17 +606,22 @@ cbsem_mediation_result <- function() cbsem_mediation_bundle
 cbsem_mediation_structural <- structural_canvas_result_table("structural", cbsem_mediation_result, "cbsem", labels_fn, language_fn)
 cbsem_mediation_effects <- structural_canvas_result_table("structural_effects", cbsem_mediation_result, "cbsem", labels_fn, language_fn)
 cbsem_mediation_effect_ci <- structural_canvas_result_table("structural_effect_ci", cbsem_mediation_result, "cbsem", labels_fn, language_fn)
+cbsem_specific_indirect <- structural_canvas_result_table("structural_specific_indirect", cbsem_mediation_result, "cbsem", labels_fn, language_fn)
 stopifnot(nrow(cbsem_mediation_structural) == 3L)
 stopifnot(!"Effect" %in% names(cbsem_mediation_structural))
 stopifnot(any(cbsem_mediation_effects$Outcome == "etaC" & cbsem_mediation_effects$Predictor == "etaA"))
-stopifnot(all(c("Direct beta", "Direct p", "Direct BH-adjusted p", "Specific indirect beta", "Specific indirect p", "Specific indirect BH-adjusted p", "Indirect beta", "Indirect p", "Indirect BH-adjusted p", "Total beta", "Total p", "Total BH-adjusted p") %in% names(cbsem_mediation_effects)))
-stopifnot(any(grepl("etaA → etaB → etaC", cbsem_mediation_effects[["Specific indirect beta"]][cbsem_mediation_effects$Outcome == "etaC" & cbsem_mediation_effects$Predictor == "etaA"], fixed = TRUE)))
+stopifnot(all(c("Direct beta", "Direct p", "Direct BH-adjusted p", "Indirect beta", "Indirect p", "Indirect BH-adjusted p", "Total beta", "Total p", "Total BH-adjusted p") %in% names(cbsem_mediation_effects)))
+stopifnot(!"Specific indirect beta" %in% names(cbsem_mediation_effects))
 stopifnot(any(nzchar(cbsem_mediation_effects[["Indirect beta"]][cbsem_mediation_effects$Outcome == "etaC" & cbsem_mediation_effects$Predictor == "etaA"])))
 stopifnot(any(nzchar(cbsem_mediation_effects[["Total p"]][cbsem_mediation_effects$Outcome == "etaC" & cbsem_mediation_effects$Predictor == "etaA"])))
 stopifnot(any(nzchar(cbsem_mediation_structural[["R²"]][cbsem_mediation_structural$Outcome == "etaC"])))
-stopifnot(all(c("Direct beta 95% CI", "Direct CI source", "Specific indirect beta 95% CI", "Specific indirect CI source", "Indirect beta 95% CI", "Indirect CI source", "Total beta 95% CI", "Total CI source") %in% names(cbsem_mediation_effect_ci)))
-stopifnot(any(grepl("etaA → etaB → etaC", cbsem_mediation_effect_ci[["Specific indirect beta 95% CI"]][cbsem_mediation_effect_ci$Outcome == "etaC" & cbsem_mediation_effect_ci$Predictor == "etaA"], fixed = TRUE)))
+stopifnot(all(c("Direct beta 95% CI", "Direct CI source", "Indirect beta 95% CI", "Indirect CI source", "Total beta 95% CI", "Total CI source") %in% names(cbsem_mediation_effect_ci)))
+stopifnot(!"Specific indirect beta 95% CI" %in% names(cbsem_mediation_effect_ci))
 stopifnot(any(nzchar(cbsem_mediation_effect_ci[["Indirect beta 95% CI"]][cbsem_mediation_effect_ci$Outcome == "etaC" & cbsem_mediation_effect_ci$Predictor == "etaA"])))
+stopifnot(nrow(cbsem_specific_indirect) == 1L)
+stopifnot(all(c("Path", "B", "Boot SE", "Boot 95% CI lower", "Boot 95% CI upper", "z", "p", "BH-adjusted p") %in% names(cbsem_specific_indirect)))
+stopifnot(grepl("etaA → etaB → etaC", cbsem_specific_indirect$Path[[1L]], fixed = TRUE))
+stopifnot(nzchar(cbsem_specific_indirect[["Boot SE"]][[1L]]), nzchar(cbsem_specific_indirect[["Boot 95% CI lower"]][[1L]]), nzchar(cbsem_specific_indirect[["Boot 95% CI upper"]][[1L]]))
 
 sem_mediation <- run_structural_canvas_analysis(mediation_snapshot, mediation_data, "sem", estimator = "ML", missing = "fiml")
 stopifnot(isTRUE(sem_mediation$converged))
@@ -633,11 +639,13 @@ sem_mediation_bundle <- list(
 sem_mediation_result <- function() sem_mediation_bundle
 sem_mediation_structural <- structural_canvas_result_table("structural", sem_mediation_result, "sem", labels_fn, language_fn)
 sem_mediation_effects <- structural_canvas_result_table("structural_effects", sem_mediation_result, "sem", labels_fn, language_fn)
+sem_specific_indirect <- structural_canvas_result_table("structural_specific_indirect", sem_mediation_result, "sem", labels_fn, language_fn)
 stopifnot(!"Effect" %in% names(sem_mediation_structural))
 stopifnot(any(sem_mediation_effects$Outcome == "etaC" & sem_mediation_effects$Predictor == "etaA"))
-stopifnot(any(grepl("etaA → etaB → etaC", sem_mediation_effects[["Specific indirect beta"]][sem_mediation_effects$Outcome == "etaC" & sem_mediation_effects$Predictor == "etaA"], fixed = TRUE)))
 stopifnot(any(nzchar(sem_mediation_effects[["Indirect beta"]][sem_mediation_effects$Outcome == "etaC" & sem_mediation_effects$Predictor == "etaA"])))
 stopifnot(any(nzchar(sem_mediation_effects[["Total beta"]][sem_mediation_effects$Outcome == "etaC" & sem_mediation_effects$Predictor == "etaA"])))
+stopifnot(nrow(sem_specific_indirect) == 1L)
+stopifnot(grepl("etaA → etaB → etaC", sem_specific_indirect$Path[[1L]], fixed = TRUE))
 
 parallel_snapshot <- mediation_snapshot
 parallel_snapshot$edges <- c(

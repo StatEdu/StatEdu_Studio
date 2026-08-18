@@ -368,6 +368,7 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
       h4(if (ko) "보조 결과 및 진단" else "Supplementary results and diagnostics"),
       if (analysis_type %in% c("cbsem", "sem")) tagList(
         uiOutput(paste0(prefix, "_result_structural_effects")),
+        uiOutput(paste0(prefix, "_result_specific_indirect")),
         uiOutput(paste0(prefix, "_result_structural_effect_ci"))
       ),
       uiOutput(paste0(prefix, "_result_reporting_context")),
@@ -446,9 +447,21 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
     ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
     div(
       class = "structural-effect-summary-block",
-      tags$h5(if (ko) "표 3 보조: 직접효과, 특정/총 간접효과, 총효과" else "Supplementary Table 3: Direct, specific/total indirect, and total effects"),
+      tags$h5(if (ko) "표 3 보조: 직접효과, 간접효과, 총효과" else "Supplementary Table 3: Direct, indirect, and total effects"),
       structural_canvas_effect_summary_html_table(table, ci = FALSE, language = statedu_current_language(app_language_fn)),
-      tags$p(class = "structural-result-note", if (ko) "매개경로가 정의된 경우 특정 간접효과(각 경로별), 총 간접효과와 총효과를 본표의 직접 구조경로와 구분하여 보고합니다." else "Specific indirect effects for each mediation path, total indirect effects, and total effects are reported separately when mediation paths are defined.")
+      tags$p(class = "structural-result-note", if (ko) "매개경로가 정의된 경우 간접효과와 총효과를 본표의 직접 구조경로와 구분하여 보고합니다." else "Indirect and total effects are reported separately when mediation paths are defined.")
+    )
+  })
+  output[[paste0(prefix, "_result_specific_indirect")]] <- renderUI({
+    if (!analysis_type %in% c("cbsem", "sem")) return(NULL)
+    table <- result_table("structural_specific_indirect")
+    if (!nrow(table)) return(NULL)
+    ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
+    div(
+      class = "structural-effect-summary-block",
+      tags$h5(if (ko) "표 6: 특정 간접효과" else "Table 6: Specific indirect effects"),
+      structural_canvas_specific_indirect_html_table(table),
+      tags$p(class = "structural-result-note", if (ko) "각 행은 하나의 매개 경로에 해당합니다. Boot SE와 Boot 95% CI는 효과 bootstrap을 요청한 경우 재표집 결과를 사용하고, 유효 반복이 부족하면 빈 값으로 표시됩니다." else "Each row is one mediation path. Boot SE and Boot 95% CI use effect-bootstrap resampling when requested; intervals are blank when valid replicates are insufficient.")
     )
   })
   output[[paste0(prefix, "_result_structural_effect_ci")]] <- renderUI({
@@ -544,7 +557,7 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
         tags$h5(if (ko) "조절된 매개효과 index" else "Index of moderated mediation"),
         structural_canvas_basic_html_table(moderated, class = "table table-striped table-bordered")
       ),
-      tags$p(class = "structural-result-note", if (ko) paste0("사례 재표집 percentile 95% CI; seed = ", bundle$effect_bootstrap_seed, ". 직접효과, 특정 간접효과, 총 간접효과와 총효과의 B와 beta 구간은 각 유효 반복에서 다시 계산됩니다. 부적합·미수렴 반복은 제외하며 유효율이 80% 미만이면 주의가 필요합니다.") else paste0("Case-resampling percentile 95% CIs; seed = ", bundle$effect_bootstrap_seed, ". B and beta intervals for direct effects, specific indirect effects, total indirect effects, and total effects are recomputed in every valid replicate. Inadmissible or nonconverged replicates are excluded; valid rates below 80% require caution."))
+      tags$p(class = "structural-result-note", if (ko) paste0("사례 재표집 percentile 95% CI; seed = ", bundle$effect_bootstrap_seed, ". 직접효과, 특정 간접효과, 간접효과와 총효과의 B와 beta 구간은 각 유효 반복에서 다시 계산됩니다. 부적합·미수렴 반복은 제외하며 유효율이 80% 미만이면 주의가 필요합니다.") else paste0("Case-resampling percentile 95% CIs; seed = ", bundle$effect_bootstrap_seed, ". B and beta intervals for direct effects, specific indirect effects, indirect effects, and total effects are recomputed in every valid replicate. Inadmissible or nonconverged replicates are excluded; valid rates below 80% require caution."))
     )
   })
   output[[paste0(prefix, "_result_redundancy")]] <- renderUI({
