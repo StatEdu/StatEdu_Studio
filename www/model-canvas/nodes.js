@@ -741,6 +741,26 @@
     return item;
   }
 
+  function isResidualParameterNode(node) {
+    return !!(node && ["error", "disturbance"].indexOf(node.role) >= 0);
+  }
+
+  function residualParameterEdge(instance, node) {
+    if (!isResidualParameterNode(node)) return null;
+    var targetRoles = node.role === "error" ? ["indicator"] : ["latent"];
+    return instance.state.edges.find(function(edge) {
+      if (edge.kind === "covariance" || String(edge.from) !== String(node.id)) return false;
+      var target = nodeById(instance, edge.to);
+      return target && targetRoles.indexOf(target.role) >= 0;
+    }) || null;
+  }
+
+  function residualParameterValue(node, edge, field, fallback) {
+    if (edge && Object.prototype.hasOwnProperty.call(edge, field)) return edge[field];
+    if (node && Object.prototype.hasOwnProperty.call(node, field)) return node[field];
+    return fallback;
+  }
+
   function showNodeProperties(instance, nodeId) {
     var node = nodeById(instance, nodeId);
     if (!node) return;
@@ -756,7 +776,10 @@
     var t = function(key, fallback) {
       return window.StatEduModelCanvas.state.label(instance, key, fallback);
     };
-    panel.innerHTML = [
+    var ko = instance.language === "ko";
+    var isStructuralModel = ["cfa", "cbsem", "sem", "plssem"].indexOf(instance.analysisType) >= 0;
+    var residualEdge = isStructuralModel ? residualParameterEdge(instance, node) : null;
+    var propertyFields = [
       '<div class="custom-model-property-title">' + t("properties", "\uc18d\uc131") + '</div>',
       '<label class="custom-model-property-label">' + t("variable_name", "\ubcc0\uc218\uba85") + '</label>',
       '<input class="form-control custom-model-property-variable" type="text" readonly>',
@@ -765,15 +788,30 @@
       '<label class="custom-model-property-label">' + t("role", "\uc5ed\ud560") + '</label>',
       '<select class="form-control custom-model-property-role"></select>',
       '<label class="custom-model-property-label">' + t("font_size", "\ud3f0\ud2b8 \ud06c\uae30") + '</label>',
-      '<input class="form-control custom-model-property-font-size" type="number" min="8" max="32" step="1">',
+      '<input class="form-control custom-model-property-font-size" type="number" min="8" max="32" step="1">'
+    ];
+    if (residualEdge) propertyFields.push(
+      '<div class="custom-model-property-title custom-model-property-subtitle">' + (ko ? "오차분산" : "Residual variance") + '</div>',
+      '<label class="custom-model-property-label">' + (ko ? "모수 이름" : "Parameter name") + '</label>',
+      '<input class="form-control node-residual-property-name" type="text">',
+      '<label class="custom-model-property-check"><input class="node-residual-property-free" type="checkbox"> ' + (ko ? "자유 오차분산" : "Free residual variance") + '</label>',
+      '<label class="custom-model-property-label">' + (ko ? "고정값" : "Fixed value") + '</label>',
+      '<input class="form-control node-residual-property-fixed" type="number" step="any" min="0">',
+      '<label class="custom-model-property-label">' + (ko ? "시작값" : "Starting value") + '</label>',
+      '<input class="form-control node-residual-property-start" type="number" step="any">',
+      '<label class="custom-model-property-label">' + (ko ? "등가제약 라벨" : "Equality label") + '</label>',
+      '<input class="form-control node-residual-property-equality" type="text">'
+    );
+    propertyFields.push(
       '<div class="custom-model-property-actions">',
       '<button type="button" class="btn btn-primary btn-sm custom-model-property-apply">' + t("apply", "\uc801\uc6a9") + '</button>',
       '<button type="button" class="btn btn-default btn-sm custom-model-property-close">' + t("close", "\ub2eb\uae30") + '</button>',
       '</div>'
-    ].join("");
+    );
+    panel.innerHTML = propertyFields.join("");
 
     var roleSelect = panel.querySelector(".custom-model-property-role");
-    if (["latent", "indicator", "error"].indexOf(node.role) >= 0) {
+    if (["latent", "indicator", "error", "disturbance"].indexOf(node.role) >= 0) {
       roleSelect.appendChild(option(node.role, window.StatEduModelCanvas.state.roleLabel(instance, node.role)));
       roleSelect.disabled = true;
     }
@@ -786,13 +824,27 @@
     panel.querySelector(".custom-model-property-label-input").value = node.canvasLabel || node.dataLabel || "";
     panel.querySelector(".custom-model-property-font-size").value = node.customFontSize ? (node.fontSize || instance.state.style.fontSize) : instance.state.style.fontSize;
     roleSelect.value = node.role || "independent";
+    if (residualEdge) {
+      var residualFree = residualParameterValue(node, residualEdge, "free", true) !== false;
+      panel.querySelector(".node-residual-property-name").value = residualParameterValue(node, residualEdge, "parameterName", "") || "";
+      panel.querySelector(".node-residual-property-free").checked = residualFree;
+      var residualFixedValue = residualParameterValue(node, residualEdge, "fixedValue", "");
+      var residualStartValue = residualParameterValue(node, residualEdge, "startValue", "");
+      panel.querySelector(".node-residual-property-fixed").value = residualFixedValue === null || residualFixedValue === undefined ? "" : residualFixedValue;
+      panel.querySelector(".node-residual-property-start").value = residualStartValue === null || residualStartValue === undefined ? "" : residualStartValue;
+      panel.querySelector(".node-residual-property-equality").value = residualParameterValue(node, residualEdge, "equalityLabel", "") || "";
+      panel.querySelector(".node-residual-property-fixed").disabled = residualFree;
+      panel.querySelector(".node-residual-property-free").addEventListener("change", function(event) {
+        panel.querySelector(".node-residual-property-fixed").disabled = event.target.checked;
+      });
+    }
 
     var position = clampPanelPosition(
       instance,
       Number(node.x || 0) + Number(node.width || instance.state.style.boxWidth) + 10,
       Number(node.y || 0),
       230,
-      230
+      residualEdge ? 430 : 230
     );
     panel.style.left = position.x + "px";
     panel.style.top = position.y + "px";
@@ -806,6 +858,7 @@
       window.StatEduModelCanvas.state.pushHistory(instance);
       node.canvasLabel = String(panel.querySelector(".custom-model-property-label-input").value || "").trim();
       var fixedRole = ["latent", "indicator", "error"].indexOf(node.role) >= 0;
+      fixedRole = fixedRole || node.role === "disturbance";
       var nextRole = fixedRole ? node.role : (roleSelect.value || "independent");
       var roleLimit = window.StatEduModelCanvas.state.ROLE_LIMITS[nextRole];
       var assignedCount = instance.state.nodes.filter(function(item) {
@@ -832,6 +885,36 @@
       var fontSize = Number(panel.querySelector(".custom-model-property-font-size").value || instance.state.style.fontSize);
       node.fontSize = Math.max(8, Math.min(32, fontSize));
       node.customFontSize = node.fontSize !== Number(instance.state.style.fontSize || 11);
+      if (residualEdge) {
+        var freeInput = panel.querySelector(".node-residual-property-free");
+        var fixedInput = panel.querySelector(".node-residual-property-fixed");
+        var startInput = panel.querySelector(".node-residual-property-start");
+        var free = !!freeInput.checked;
+        var fixed = fixedInput.value;
+        var start = startInput.value;
+        var fixedValue = fixed === "" ? null : Number(fixed);
+        var startValue = start === "" ? null : Number(start);
+        if (!free && (!Number.isFinite(fixedValue) || fixedValue < 0)) {
+          window.alert(ko ? "고정 오차분산은 0 이상의 유한한 값이어야 합니다." : "A fixed residual variance must be a finite nonnegative value.");
+          instance.state.history.pop();
+          return;
+        }
+        if (start !== "" && !Number.isFinite(startValue)) {
+          window.alert(ko ? "시작값은 유한한 숫자여야 합니다." : "The starting value must be finite.");
+          instance.state.history.pop();
+          return;
+        }
+        node.parameterName = String(panel.querySelector(".node-residual-property-name").value || "").trim();
+        node.free = free;
+        node.fixedValue = free ? null : fixedValue;
+        node.startValue = start === "" ? null : startValue;
+        node.equalityLabel = String(panel.querySelector(".node-residual-property-equality").value || "").trim();
+        residualEdge.parameterName = node.parameterName;
+        residualEdge.free = node.free;
+        residualEdge.fixedValue = node.fixedValue;
+        residualEdge.startValue = node.startValue;
+        residualEdge.equalityLabel = node.equalityLabel;
+      }
       hideProperties(instance);
       window.StatEduModelCanvas.canvas.render(instance);
       window.StatEduModelCanvas.bridge.sendState(instance);

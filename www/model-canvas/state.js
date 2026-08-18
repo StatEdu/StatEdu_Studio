@@ -2,7 +2,7 @@
   "use strict";
 
   var DEFAULT_STATE = {
-    modelSchemaVersion: 6,
+    modelSchemaVersion: 7,
     canvas: {
       paper: "B5",
       orientation: "landscape",
@@ -50,7 +50,11 @@
     mediator: "\ub9e4\uac1c",
     moderator: "\uc870\uc808",
     dependent: "\uc885\uc18d",
-    covariate: "\uacf5\ubcc0\ub7c9"
+    covariate: "\uacf5\ubcc0\ub7c9",
+    latent: "\uc7a0\uc7ac\ubcc0\uc218",
+    indicator: "\uce21\uc815\ubcc0\uc218",
+    error: "\uc624\ucc28\ud56d",
+    disturbance: "\uc794\ucc28\ud56d"
   };
 
   function clone(value) {
@@ -111,6 +115,16 @@
 
   function normalizeNode(node) {
     node = clone(node || {});
+    if (node.role === "error" || node.role === "disturbance") {
+      node.free = node.free !== false;
+      node.fixedValue = node.fixedValue === null || node.fixedValue === undefined || node.fixedValue === "" ? null : Number(node.fixedValue);
+      node.startValue = node.startValue === null || node.startValue === undefined || node.startValue === "" ? null : Number(node.startValue);
+      if (!Number.isFinite(node.fixedValue)) node.fixedValue = null;
+      if (!Number.isFinite(node.startValue)) node.startValue = null;
+      node.parameterName = String(node.parameterName || "").trim();
+      node.equalityLabel = String(node.equalityLabel || "").trim();
+      return node;
+    }
     if (node.role !== "latent") return node;
 
     var migrations = [];

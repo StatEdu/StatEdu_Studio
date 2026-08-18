@@ -273,6 +273,13 @@
     }];
   }
 
+  function svgFilePickerTypes() {
+    return [{
+      description: "SVG image",
+      accept: {"image/svg+xml": [".svg"]}
+    }];
+  }
+
   function parseSnapshotText(raw) {
     var normalized = String(raw || "").replace(/^\uFEFF/, "").trim();
     if (!normalized) throw new Error("Empty model file");
@@ -535,9 +542,24 @@
     openModelFileFallback(instance);
   }
 
-  function exportModel(instance) {
+  async function exportModel(instance) {
     window.StatEduModelCanvas.activeInstance = instance;
-    downloadText(timestampName("model-canvas", "svg"), exportSvg(instance), "image/svg+xml");
+    var payload = exportSvg(instance);
+    if (window.showSaveFilePicker) {
+      try {
+        var handle = await window.showSaveFilePicker({
+          suggestedName: timestampName("model-canvas", "svg"),
+          types: svgFilePickerTypes()
+        });
+        var writable = await handle.createWritable();
+        await writable.write(payload);
+        await writable.close();
+        return;
+      } catch (error) {
+        if (error && error.name === "AbortError") return;
+      }
+    }
+    downloadText(timestampName("model-canvas", "svg"), payload, "image/svg+xml");
   }
 
   function run(instance) {
