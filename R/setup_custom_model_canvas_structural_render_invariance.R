@@ -94,6 +94,7 @@ structural_canvas_invariance_result_ui <- function(bundle, language = statedu_in
   group_residuals <- result$group_residuals %||% list()
   residual_summary <- if (isTRUE(group_residuals$available)) group_residuals$group_summary %||% data.frame() else data.frame()
   residual_largest <- if (isTRUE(group_residuals$available)) group_residuals$group_largest %||% data.frame() else data.frame()
+  partial_invariance <- result$partial_invariance %||% structural_canvas_partial_invariance_status()
   group_table[["Indicator missing %"]] <- paste0(vapply(group_table[["Indicator missing %"]], format_decimal3, character(1)), "%")
   if (nrow(group_reliability)) {
     for (name in intersect(c("AVE", "CR", "Cronbach's alpha", "Omega total"), names(group_reliability))) {
@@ -166,6 +167,8 @@ structural_canvas_invariance_result_ui <- function(bundle, language = statedu_in
       tags$p(class = "structural-result-note", if (ko) "집단별 HTMT는 각 집단의 형태모형 표본 상관행렬을 사용합니다. 이 릴리스에서 bootstrap 구간은 단일집단 기준으로 유지됩니다." else "Group-specific HTMT uses each group's configural-model sample correlation matrix. Bootstrap intervals remain single-group in this release.")
     ),
     structural_canvas_basic_html_table(table),
+    tags$h5(if (ko) "부분불변성 지원 상태" else "Partial-invariance support status"),
+    tags$p(class = "structural-result-note", if (ko) "현재 릴리스는 동등성 제약의 사용자 지정 해제와 부분불변성 재적합을 지원하지 않습니다. Score 검정과 표준화 EPC는 탐색 후보의 순위만 제공하며 모수를 해제하거나 부분불변성을 확립하지 않습니다. 외부에서 부분불변성을 적합했다면 해제한 각 모수, 이론적 근거, 식별 점검, 다중성 처리, 모형 비교와 주요 결론의 민감도를 별도로 보고해야 합니다." else paste(partial_invariance$scope, partial_invariance$score_diagnostic_role, partial_invariance$required_external_record)),
     if (any(!result$table$Admissible)) tags$p(class = "structural-result-note", if (ko) "허용 불가능한 불변성 단계는 주 CFA와 같은 전체 점검을 통과하지 못한 것입니다. 변화 지수, 공식 차이검정, 동등성 제약 score 진단은 숨깁니다. 불변성을 판단하기 전에 단계별 분산, 공분산행렬, 자유도, 잠재상관 문제를 먼저 해결하십시오." else "An inadmissible invariance stage failed the same full checks as the main CFA. Its change indices, formal difference test, and equality-constraint score diagnostics are suppressed; resolve the stage-specific variance, covariance-matrix, df, or latent-correlation problem before judging invariance."),
     tags$p(class = "structural-result-note", if (ko) "Parameter boundary dimensions는 모수 공분산행렬의 0에 가까운 고유값 수입니다. 명시적 동등성 제약 수 이내의 boundary dimension은 제약으로 인한 것으로 보고, 초과분은 설명되지 않은 경험적 과소식별로 표시합니다." else "Parameter boundary dimensions counts near-zero eigenvalues in the parameter covariance matrix. Boundary dimensions up to the number of explicit equality constraints are treated as constraint-induced; any excess is flagged as unexplained empirical underidentification."),
     tags$p(class = "structural-result-note", if (ko) "최소 고유값은 집단별 잔차 및 잠재 공분산 고유값 중 최악의 값과 모수 공분산 최소값을 보고합니다. 수치 허용오차를 넘는 음수는 비양정성, 0에 가까운 값은 경계 또는 특이 방향을 의미합니다." else "Minimum eigenvalues report the worst group-specific residual and latent covariance eigenvalues and the parameter covariance minimum. Negative values beyond numerical tolerance indicate non-positive-definiteness; values near zero indicate a boundary or singular direction."),

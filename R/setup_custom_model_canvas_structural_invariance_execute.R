@@ -49,7 +49,7 @@ structural_canvas_run_measurement_invariance <- function(analysis_type, invarian
       structural_canvas_inc_progress(.10, detail = "Configural and metric measurement models")
       measurement <- structural_canvas_measurement_invariance(structural_canvas_measurement_only_syntax(result$syntax), data, invariance_group, estimator, missing, std_lv, rmsea_ci, ordered)
       gate <- structural_canvas_metric_invariance_gate(measurement)
-      if (!isTRUE(gate$passed)) stop(paste0(gate$reason, " Structural path equality tests were not run."))
+      if (!isTRUE(gate$passed)) stop(paste0(gate$reason, " Structural path equality tests were not run. Automatic or user-specified partial-invariance refitting is not implemented in this release; score/EPC diagnostics do not override the gate."))
       structural_canvas_inc_progress(.45, detail = "Metric gate passed; fitting free and equal structural paths")
       value <- structural_canvas_structural_path_group_comparison(result$syntax, data, invariance_group, estimator, missing, std_lv, rmsea_ci, ordered)
       value$measurement_invariance <- measurement

@@ -67,7 +67,22 @@ stopifnot(
   all(vapply(invariance$score_diagnostics[-1L], nrow, integer(1)) > 0L),
   !is.na(score_column),
   all(vapply(invariance$score_diagnostics[-1L], function(value) all(diff(value[[score_column]]) <= 0), logical(1))),
-  all(vapply(invariance$score_diagnostics[-1L], function(value) all(value[["BH-adjusted p"]] >= value$p, na.rm = TRUE), logical(1)))
+  all(vapply(invariance$score_diagnostics[-1L], function(value) all(value[["BH-adjusted p"]] >= value$p, na.rm = TRUE), logical(1))),
+  isFALSE(invariance$partial_invariance$supported),
+  identical(invariance$partial_invariance$status, "Not implemented"),
+  grepl("do not free parameters or establish partial invariance", invariance$partial_invariance$score_diagnostic_role, fixed = TRUE),
+  grepl("Partial-invariance support status", invariance_render_source, fixed = TRUE)
+)
+invariance_audit <- structural_canvas_audit_manifest(list(
+  fit = invariance$fits[[1L]], analysis_type = "cfa", snapshot = list(nodes = list(), edges = list()),
+  syntax = "eta1 =~ x1 + x2 + x3", estimator = "MLR", missing = "fiml",
+  invariance_enabled = TRUE, invariance_group = "group", invariance_result = invariance,
+  analysis_data = continuous, diagnostics = list()
+), "cfa")
+stopifnot(
+  nrow(invariance_audit$requested_assessments$measurement_invariance$measurement_table) == 4L,
+  isFALSE(invariance_audit$requested_assessments$measurement_invariance$partial_invariance$supported),
+  identical(invariance_audit$requested_assessments$measurement_invariance$partial_invariance$status, "Not implemented")
 )
 
 two_factor_invariance <- structural_canvas_measurement_invariance(

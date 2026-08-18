@@ -22,6 +22,7 @@
 - 조절된 매개효과 index에는 비표준화 bootstrap 결과를 보고하고, product-indicator 척도 의존성 때문에 표준화 index를 미보고한다는 상태와 각주를 추가했다.
 - 텍스트 재현성 기록 함수 내부에서 lavaan 적합 객체를 직접 확인하고, PLS/PLSc에는 공통 JSON Audit manifest를 사용하도록 명시적으로 차단한다.
 - scalar/strict ΔSRMR `.010`은 Chen(2007)에 근거한 결과표용 기술적 표시이며 metric 구조경로 비교 gate와 무관함을 결과 각주와 설계 규칙에 명시했다.
+- 부분불변성 재적합은 미지원임을 결과와 Audit에 구조화하고, score/EPC가 탐색 후보일 뿐 제약 해제나 gate 우회가 아니라는 경계를 강화했다.
 - 설계 규칙을 혼합 PLSc 블록별 보정, 구조효과 BC 기본값, 단일지표 완전측정 경고, Audit schema 1.4에 맞게 갱신했다.
 
 아래 본문은 수정 전 발견 근거이므로 당시 코드상태에 대한 서술로 읽어야 한다. 측정모형을 포함한 score-CV의 fold별 재추정 및 SmartPLS식 PLS exact-fit 동등성은 별도 잔여 검증항목이다.

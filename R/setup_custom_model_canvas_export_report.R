@@ -204,7 +204,8 @@ structural_canvas_audit_manifest <- function(bundle, analysis_type = NULL, gener
       measurement_invariance = list(
         enabled = isTRUE(bundle$invariance_enabled), group = bundle$invariance_group %||% NULL,
         metric_gate = bundle$invariance_result$measurement_gate %||% NULL,
-        measurement_table = bundle$invariance_result$measurement_invariance$table %||% NULL
+        measurement_table = bundle$invariance_result$measurement_invariance$table %||% bundle$invariance_result$table %||% NULL,
+        partial_invariance = bundle$invariance_result$partial_invariance %||% bundle$invariance_result$measurement_invariance$partial_invariance %||% structural_canvas_partial_invariance_status()
       ),
       common_method = list(enabled = isTRUE(bundle$common_method_enabled), methods = bundle$common_method_methods %||% character(0)),
       formative_redundancy = list(construct = bundle$redundancy_construct %||% NULL, criterion = bundle$redundancy_criterion %||% NULL, result = bundle$redundancy_result %||% NULL),

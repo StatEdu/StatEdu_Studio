@@ -180,6 +180,16 @@ structural_canvas_invariance_score_diagnostics <- function(fit, top_n = 20L) {
   utils::head(result, as.integer(top_n))
 }
 
+structural_canvas_partial_invariance_status <- function() {
+  list(
+    supported = FALSE,
+    status = "Not implemented",
+    scope = "User-specified equality-constraint freeing and partial-invariance refitting are not available in this release.",
+    score_diagnostic_role = "Score tests and standardized EPCs rank exploratory candidates only; they do not free parameters or establish partial invariance.",
+    required_external_record = "If partial invariance is fitted externally, report each freed parameter, substantive rationale, identification checks, multiplicity handling, model comparison, and sensitivity of substantive conclusions."
+  )
+}
+
 structural_canvas_measurement_invariance <- function(syntax, data, group, estimator = "MLR", missing = "fiml", std_lv = FALSE, ci_level = .90, ordered = character(0)) {
   group <- as.character(group %||% "")
   if (!nzchar(group) || !group %in% names(data)) stop("A valid grouping variable is required for measurement invariance analysis.")
@@ -265,7 +275,8 @@ structural_canvas_measurement_invariance <- function(syntax, data, group, estima
     group = group, groups = observed_groups, group_diagnostics = group_diagnostics,
     group_reliability = group_reliability, group_htmt = group_htmt,
     group_residuals = group_residuals,
-    estimator = estimator, ordered = ordered, ordinal = ordinal
+    estimator = estimator, ordered = ordered, ordinal = ordinal,
+    partial_invariance = structural_canvas_partial_invariance_status()
   )
 }
 
