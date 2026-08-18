@@ -582,10 +582,12 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
       return(tags$p(class = "structural-result-note", if (ko) paste0("구조효과 bootstrap CI 계산 실패: ", bundle$effect_bootstrap_error) else paste0("Structural-effect bootstrap CI failed: ", bundle$effect_bootstrap_error)))
     }
     if (is.null(result) || !nrow(result)) return(tags$p(class = "structural-result-note", if (ko) "구조효과 bootstrap에서 사용 가능한 반복 적합을 얻지 못했습니다." else "No usable replicate fits were obtained for the structural-effect bootstrap."))
+    interval_label <- if (identical(as.character(bundle$effect_bootstrap_ci_method %||% "bias_corrected"), "percentile")) "percentile" else "bias-corrected (BC)"
+    if (!"beta_status" %in% names(result)) result$beta_status <- ifelse(result$op == "modmed", "Not reported: product-indicator index is scale-dependent", "Not available")
     diagnostics <- unique(result[, c("valid", "requested", "valid_percent", "status"), drop = FALSE])
     names(diagnostics) <- c("Valid replicates", "Requested replicates", "Valid %", "Status")
-    moderated <- result[result$op == "modmed", c("lhs", "rhs", "estimate", "lower", "upper", "p", "valid", "requested", "valid_percent", "status"), drop = FALSE]
-    if (nrow(moderated)) names(moderated) <- c("Indirect path", "Moderator", "Index", "95% CI lower", "95% CI upper", "Bootstrap p", "Valid replicates", "Requested replicates", "Valid %", "Status")
+    moderated <- result[result$op == "modmed", c("lhs", "rhs", "estimate", "lower", "upper", "p", "beta_status", "valid", "requested", "valid_percent", "status"), drop = FALSE]
+    if (nrow(moderated)) names(moderated) <- c("Indirect path", "Moderator", "Index", "95% CI lower", "95% CI upper", "Bootstrap p", "Standardized index", "Valid replicates", "Requested replicates", "Valid %", "Status")
     div(
       class = "result-section structural-effect-bootstrap-result",
       tags$h5(if (ko) "구조효과 bootstrap 진단" else "Structural-effect bootstrap diagnostics"),
@@ -594,7 +596,7 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
         tags$h5(if (ko) "조절된 매개효과 index" else "Index of moderated mediation"),
         structural_canvas_basic_html_table(moderated, class = "table table-striped table-bordered")
       ),
-      tags$p(class = "structural-result-note", if (ko) paste0("사례 재표집 percentile 95% CI; seed = ", bundle$effect_bootstrap_seed, ". 직접효과, 특정 간접효과, 간접효과와 총효과의 B와 beta 구간은 각 유효 반복에서 다시 계산됩니다. 부적합·미수렴 반복은 제외하며 유효율이 80% 미만이면 주의가 필요합니다.") else paste0("Case-resampling percentile 95% CIs; seed = ", bundle$effect_bootstrap_seed, ". B and beta intervals for direct effects, specific indirect effects, indirect effects, and total effects are recomputed in every valid replicate. Inadmissible or nonconverged replicates are excluded; valid rates below 80% require caution."))
+      tags$p(class = "structural-result-note", if (ko) paste0("사례 재표집 ", interval_label, " 95% CI; seed = ", bundle$effect_bootstrap_seed, ". 직접효과, 특정 간접효과, 간접효과와 총효과의 B와 beta 구간은 각 유효 반복에서 다시 계산됩니다. product-indicator 잠재조절모형의 조절된 매개효과 index는 척도 의존적이며 유일한 표준화 정의가 없으므로 비표준화 index와 bootstrap CI를 주 결과로 보고하고 표준화 index는 보고하지 않습니다. 부적합·미수렴 반복은 제외하며 유효율이 80% 미만이면 주의가 필요합니다.") else paste0("Case-resampling ", interval_label, " 95% CIs; seed = ", bundle$effect_bootstrap_seed, ". B and beta intervals for direct effects, specific indirect effects, indirect effects, and total effects are recomputed in every valid replicate. The moderated-mediation index in a product-indicator latent-moderation model is scale-dependent and has no unique standardization, so the unstandardized index with its bootstrap CI is the primary result and a standardized index is not reported. Inadmissible or nonconverged replicates are excluded; valid rates below 80% require caution."))
     )
   })
   output[[paste0(prefix, "_result_redundancy")]] <- renderUI({

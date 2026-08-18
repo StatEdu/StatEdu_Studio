@@ -194,7 +194,7 @@ CB-SEM 직접·간접·총효과는 선택적으로 사례 재표집 bias-correc
 
 병렬 PLSc bootstrap은 기준 seed에서 L'Ecuyer-CMRG 독립 난수 스트림을 반복별로 사전 할당한다. 작업자 수나 동적 작업 배정 순서와 무관하게 같은 seed의 반복 표본을 재현하며, 호출 전 세션 RNG 상태를 복원한다.
 
-조절된 매개효과에서는 조절경로의 상호작용계수와 나머지 간접경로 계수의 곱으로 index of moderated mediation를 반복마다 다시 계산한다. index의 선택된 BC 또는 percentile CI와 bootstrap p를 유의 여부와 관계없이 보고하며, Johnson-Neyman 결과도 index의 사전 유의성 필터로 숨기지 않는다.
+조절된 매개효과에서는 조절경로의 상호작용계수와 나머지 간접경로 계수의 곱으로 index of moderated mediation를 반복마다 다시 계산한다. index의 선택된 BC 또는 percentile CI와 bootstrap p를 유의 여부와 관계없이 보고하며, Johnson-Neyman 결과도 index의 사전 유의성 필터로 숨기지 않는다. Product-indicator 잠재조절모형의 index는 잠재변수·곱지표 척도에 의존하고 유일한 표준화 정의가 없으므로, 비표준화 index와 bootstrap CI를 주 결과로 제공하고 표준화 index는 미보고 사유를 명시한다.
 
 ### 잠재조절 product-indicator 명세
 

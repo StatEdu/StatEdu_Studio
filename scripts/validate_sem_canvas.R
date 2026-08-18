@@ -356,7 +356,8 @@ cbsem_moderated_bootstrap <- structural_canvas_effect_bootstrap(
   character(0), character(0), numeric(0), reps = 20L, seed = 20260820L
 )
 stopifnot(any(cbsem_moderated_bootstrap$op == "modmed"))
-stopifnot(all(c("lower", "upper", "p", "valid_percent", "status") %in% names(cbsem_moderated_bootstrap)))
+stopifnot(all(c("lower", "upper", "p", "beta_status", "valid_percent", "status") %in% names(cbsem_moderated_bootstrap)))
+stopifnot(all(cbsem_moderated_bootstrap$beta_status[cbsem_moderated_bootstrap$op == "modmed"] == "Not reported: product-indicator index is scale-dependent"))
 cbsem_moderated_mediation_jn <- structural_canvas_moderation_jn_table(list(fit = cbsem_moderated_mediation$fit, diagnostics = cbsem_moderated_mediation))
 stopifnot(
   length(cbsem_moderated_mediation$effect_definitions) > 0L,
