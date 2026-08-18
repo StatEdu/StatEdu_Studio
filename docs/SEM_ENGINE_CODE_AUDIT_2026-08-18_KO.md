@@ -23,6 +23,7 @@
 - 텍스트 재현성 기록 함수 내부에서 lavaan 적합 객체를 직접 확인하고, PLS/PLSc에는 공통 JSON Audit manifest를 사용하도록 명시적으로 차단한다.
 - scalar/strict ΔSRMR `.010`은 Chen(2007)에 근거한 결과표용 기술적 표시이며 metric 구조경로 비교 gate와 무관함을 결과 각주와 설계 규칙에 명시했다.
 - 부분불변성 재적합은 미지원임을 결과와 Audit에 구조화하고, score/EPC가 탐색 후보일 뿐 제약 해제나 gate 우회가 아니라는 경계를 강화했다.
+- 반복 PLSpredict도 기준 seed의 L'Ecuyer-CMRG 독립 스트림을 반복별로 할당하고 Audit에 RNG 방식을 기록한다.
 - 설계 규칙을 혼합 PLSc 블록별 보정, 구조효과 BC 기본값, 단일지표 완전측정 경고, Audit schema 1.4에 맞게 갱신했다.
 
 아래 본문은 수정 전 발견 근거이므로 당시 코드상태에 대한 서술로 읽어야 한다. 측정모형을 포함한 score-CV의 fold별 재추정 및 SmartPLS식 PLS exact-fit 동등성은 별도 잔여 검증항목이다.
@@ -160,7 +161,7 @@ HTMT는 Henseler et al.(2015) 이후 판별타당도 판정에서 단측 상한�
 - Bollen-Stine bootstrap은 `lavaan::bootstrapLavaan(type="bollen.stine")`에 위임한 안전한 선택
 - 조절된 매개효과 index가 매 반복 재계산됨(점추정치 재사용 버그 없음)
 - 양측 p값 공식이 표준적 연속성 보정 공식
-- PLSpredict seed가 기준 seed에서 문서 그대로 순차 생성됨
+- PLSpredict 반복은 기준 seed에서 생성한 L'Ecuyer-CMRG 독립 스트림으로 재현됨
 - 모든 부트스트랩 함수가 `.Random.seed` 저장/복원으로 세션 RNG 오염을 방지
 - Audit manifest에 reps/seed/ci_method/git commit/code fingerprint/RNGkind/locale까지 기록
 

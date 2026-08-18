@@ -629,12 +629,15 @@ structural_canvas_run_pls_predict <- function(analysis_type, pls_predict_folds, 
     )
     old_seed_exists <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
     if (old_seed_exists) old_seed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    old_kind <- RNGkind()
     on.exit({
+      do.call(RNGkind, as.list(old_kind))
       if (old_seed_exists) assign(".Random.seed", old_seed, envir = .GlobalEnv)
       else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) rm(".Random.seed", envir = .GlobalEnv)
     }, add = TRUE)
+    rng_streams <- structural_canvas_rng_streams(pls_predict_reps, pls_predict_seed)
     repetition_summaries <- lapply(seq_len(pls_predict_reps), function(index) {
-      set.seed(as.integer(pls_predict_seed) + index - 1L)
+      assign(".Random.seed", rng_streams[[index]], envir = .GlobalEnv)
       prediction <- seminr::predict_pls(
         model = result$fit,
         technique = seminr::predict_DA,
@@ -653,6 +656,7 @@ structural_canvas_run_pls_predict <- function(analysis_type, pls_predict_folds, 
       folds = pls_predict_folds,
       reps = pls_predict_reps,
       seed = as.integer(pls_predict_seed),
+      rng = "L'Ecuyer-CMRG independent streams",
       technique = "Direct antecedents",
       summary = summary_value,
       repetition_summaries = repetition_summaries

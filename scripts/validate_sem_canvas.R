@@ -883,10 +883,21 @@ for (unsupported_design in c("not_declared", "clustered", "complex_survey", "lon
   stopifnot(inherits(gate_error, "error"), grepl("Sampling-design gate blocked estimation", conditionMessage(gate_error), fixed = TRUE))
 }
 
+set.seed(1618L)
+pls_predict_rng_before <- .Random.seed
+pls_predict_kind_before <- RNGkind()
 pls_predict <- structural_canvas_run_pls_predict("plssem", 5L, 5L, pls, 20260821L)
+pls_predict_repeat <- structural_canvas_run_pls_predict("plssem", 5L, 5L, pls, 20260821L)
 stopifnot(is.list(pls_predict))
 stopifnot(pls_predict$folds == 5L)
-stopifnot(pls_predict$reps == 5L, pls_predict$seed == 20260821L, length(pls_predict$repetition_summaries) == 5L)
+stopifnot(
+  pls_predict$reps == 5L, pls_predict$seed == 20260821L,
+  identical(pls_predict$rng, "L'Ecuyer-CMRG independent streams"),
+  length(pls_predict$repetition_summaries) == 5L,
+  identical(pls_predict$repetition_summaries, pls_predict_repeat$repetition_summaries),
+  identical(.Random.seed, pls_predict_rng_before),
+  identical(RNGkind(), pls_predict_kind_before)
+)
 pls_predict_tables <- structural_canvas_pls_predict_tables(pls_predict)
 stopifnot(nrow(pls_predict_tables$items) >= 2L)
 stopifnot(all(c("Indicator", "Metric", "PLS out-of-sample", "LM benchmark", "PLS - LM", "PLS - LM SD", "PLS lower %", "Assessment") %in% names(pls_predict_tables$items)))
@@ -894,6 +905,13 @@ stopifnot(any(is.finite(pls_predict_tables$items[["PLS - LM SD"]])))
 stopifnot(all(c("Construct", "IS_MSE", "IS_MAE", "OOS_MSE", "OOS_MAE", "overfit") %in% names(pls_predict_tables$constructs)))
 pls_predict_bundle <- pls_bundle
 pls_predict_bundle$pls_predict_result <- pls_predict
+pls_predict_bundle$pls_predict_folds <- 5L
+pls_predict_bundle$pls_predict_reps <- 5L
+pls_predict_bundle$pls_predict_seed <- 20260821L
+pls_predict_bundle$analysis_data <- data
+pls_predict_bundle$sampling_design <- "independent_cross_sectional"
+pls_predict_audit <- structural_canvas_audit_manifest(pls_predict_bundle, "plssem")
+stopifnot(identical(pls_predict_audit$resampling$pls_predict$rng, "L'Ecuyer-CMRG independent streams"))
 pls_predict_quality <- structural_canvas_pls_quality_rows(pls_predict_bundle)
 stopifnot(grepl("indicator metrics favor PLS over LM", pls_predict_quality$Value[pls_predict_quality$Item == "PLSpredict summary"], fixed = TRUE))
 stopifnot(pls_predict_quality$Status[pls_predict_quality$Item == "PLSpredict summary"] == "Descriptive only")

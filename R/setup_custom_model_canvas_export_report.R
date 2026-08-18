@@ -197,7 +197,7 @@ structural_canvas_audit_manifest <- function(bundle, analysis_type = NULL, gener
       structural_effects = list(replicates = bundle$effect_bootstrap %||% 0L, seed = bundle$effect_bootstrap_seed %||% NULL, interval = paste("case-resampling", bundle$effect_bootstrap_ci_method %||% "bias_corrected", "for unstandardized and standardized effects"), diagnostics = bundle$effect_bootstrap_result %||% NULL),
       pls = list(replicates = bundle$pls_bootstrap %||% 0L, seed = bundle$pls_seed %||% NULL),
       micom = list(enabled = isTRUE(bundle$invariance_enabled) && identical(analysis_type, "plssem"), permutations = bundle$micom_permutations %||% NULL, seed = bundle$micom_seed %||% NULL, result = if (identical(bundle$invariance_result$type %||% "", "pls_micom")) bundle$invariance_result else NULL),
-      pls_predict = list(folds = bundle$pls_predict_folds %||% NULL, repetitions = bundle$pls_predict_reps %||% NULL, seed = bundle$pls_predict_seed %||% NULL, benchmark = "linear model", repetition_results = bundle$pls_predict_result$repetition_summaries %||% NULL),
+      pls_predict = list(folds = bundle$pls_predict_folds %||% NULL, repetitions = bundle$pls_predict_reps %||% NULL, seed = bundle$pls_predict_seed %||% NULL, rng = bundle$pls_predict_result$rng %||% NULL, benchmark = "linear model", repetition_results = bundle$pls_predict_result$repetition_summaries %||% NULL),
       mi_holdout = list(enabled = isTRUE(bundle$mi_holdout_enabled), fraction = bundle$mi_holdout_fraction %||% NULL, seed = bundle$mi_holdout_seed %||% NULL)
     ),
     requested_assessments = list(
