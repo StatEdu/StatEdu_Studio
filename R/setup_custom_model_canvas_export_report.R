@@ -97,7 +97,14 @@ structural_canvas_audit_warnings <- function(bundle, analysis_type, diagnostics)
   bootstrap_tables <- list(bundle$effect_bootstrap_result, bundle$htmt_bootstrap_result, bundle$reliability_bootstrap_result, bundle$bollen_stine_result)
   bootstrap_status <- unique(unlist(lapply(bootstrap_tables, function(value) if (is.data.frame(value) && "Status" %in% names(value)) as.character(value$Status) else character(0))))
   if (any(bootstrap_status %in% c("Caution", "Unreliable"))) add("Resampling", if ("Unreliable" %in% bootstrap_status) "Critical" else "Major", paste0("Bootstrap diagnostics include: ", paste(bootstrap_status, collapse = ", "), "."))
-  if (is.list(bundle$pls_predict_result) && as.integer(bundle$pls_predict_result$reps %||% 0L) < 5L) add("Prediction", "Major", "PLSpredict used fewer than five independent repetitions; predictive stability is insufficiently characterized.")
+  if (is.list(bundle$pls_predict_result)) {
+    predict_reps <- as.integer(bundle$pls_predict_result$reps %||% 0L)
+    if (predict_reps < 5L) {
+      add("Prediction", "Major", paste0("PLSpredict used ", predict_reps, " independent repetition(s), fewer than the minimum displayed option of five; predictive stability is insufficiently characterized."))
+    } else if (predict_reps < 10L) {
+      add("Prediction", "Advisory", paste0("PLSpredict used ", predict_reps, " independent repetitions, below the UI default and recommended stability setting of 10; report split-to-split variability and consider a 10-or-more-repetition sensitivity analysis."))
+    }
+  }
   if (!length(warnings)) return(data.frame(Category = character(0), Severity = character(0), Message = character(0)))
   do.call(rbind, warnings)
 }

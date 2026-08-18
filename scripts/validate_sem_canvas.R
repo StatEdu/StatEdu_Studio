@@ -911,7 +911,22 @@ pls_predict_bundle$pls_predict_seed <- 20260821L
 pls_predict_bundle$analysis_data <- data
 pls_predict_bundle$sampling_design <- "independent_cross_sectional"
 pls_predict_audit <- structural_canvas_audit_manifest(pls_predict_bundle, "plssem")
-stopifnot(identical(pls_predict_audit$resampling$pls_predict$rng, "L'Ecuyer-CMRG independent streams"))
+pls_predict_warning <- pls_predict_audit$warnings[pls_predict_audit$warnings$Category == "Prediction", , drop = FALSE]
+pls_predict_four_bundle <- pls_predict_bundle
+pls_predict_four_bundle$pls_predict_result$reps <- 4L
+pls_predict_four_warning <- structural_canvas_audit_warnings(pls_predict_four_bundle, "plssem", pls_predict_four_bundle$diagnostics)
+pls_predict_four_warning <- pls_predict_four_warning[pls_predict_four_warning$Category == "Prediction", , drop = FALSE]
+pls_predict_ten_bundle <- pls_predict_bundle
+pls_predict_ten_bundle$pls_predict_result$reps <- 10L
+pls_predict_ten_warning <- structural_canvas_audit_warnings(pls_predict_ten_bundle, "plssem", pls_predict_ten_bundle$diagnostics)
+pls_predict_ten_warning <- pls_predict_ten_warning[pls_predict_ten_warning$Category == "Prediction", , drop = FALSE]
+stopifnot(
+  identical(pls_predict_audit$resampling$pls_predict$rng, "L'Ecuyer-CMRG independent streams"),
+  nrow(pls_predict_warning) == 1L, identical(pls_predict_warning$Severity[[1L]], "Advisory"),
+  grepl("recommended stability setting of 10", pls_predict_warning$Message[[1L]], fixed = TRUE),
+  nrow(pls_predict_four_warning) == 1L, identical(pls_predict_four_warning$Severity[[1L]], "Major"),
+  nrow(pls_predict_ten_warning) == 0L
+)
 pls_predict_quality <- structural_canvas_pls_quality_rows(pls_predict_bundle)
 stopifnot(grepl("indicator metrics favor PLS over LM", pls_predict_quality$Value[pls_predict_quality$Item == "PLSpredict summary"], fixed = TRUE))
 stopifnot(pls_predict_quality$Status[pls_predict_quality$Item == "PLSpredict summary"] == "Descriptive only")
