@@ -242,6 +242,9 @@ structural_canvas_write_audit_manifest <- function(bundle, file, analysis_type =
 
 structural_canvas_reproducibility_record <- function(bundle, generated_at = Sys.time()) {
   fit <- bundle$fit
+  if (is.null(fit) || !inherits(fit, "lavaan")) {
+    stop("The text reproducibility record requires a fitted lavaan CFA/CB-SEM object. Use the JSON audit manifest for PLS/PLSc analyses.", call. = FALSE)
+  }
   options <- lavaan::lavInspect(fit, "options")
   recommendation <- bundle$method_recommendation %||% list()
   recommendation_candidates <- recommendation$candidates %||% data.frame()

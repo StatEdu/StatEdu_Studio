@@ -20,6 +20,7 @@
 - 병렬 PLSc bootstrap은 `seed + index` 대신 재현 가능한 L'Ecuyer-CMRG 독립 난수 스트림을 반복별로 사전 할당한다.
 - 호출되지 않는 측정품질 판정 함수와 더 이상 발생하지 않는 `single_indicator` 오류 코드·번역 분기를 제거했다.
 - 조절된 매개효과 index에는 비표준화 bootstrap 결과를 보고하고, product-indicator 척도 의존성 때문에 표준화 index를 미보고한다는 상태와 각주를 추가했다.
+- 텍스트 재현성 기록 함수 내부에서 lavaan 적합 객체를 직접 확인하고, PLS/PLSc에는 공통 JSON Audit manifest를 사용하도록 명시적으로 차단한다.
 - 설계 규칙을 혼합 PLSc 블록별 보정, 구조효과 BC 기본값, 단일지표 완전측정 경고, Audit schema 1.4에 맞게 갱신했다.
 
 아래 본문은 수정 전 발견 근거이므로 당시 코드상태에 대한 서술로 읽어야 한다. 측정모형을 포함한 score-CV의 fold별 재추정 및 SmartPLS식 PLS exact-fit 동등성은 별도 잔여 검증항목이다.

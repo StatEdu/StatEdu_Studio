@@ -117,6 +117,15 @@ stopifnot(
 )
 
 record <- structural_canvas_reproducibility_record(reporting_bundle, as.POSIXct("2026-08-12 12:00:00", tz = "Asia/Seoul"))
+non_lavaan_record_error <- tryCatch(
+  structural_canvas_reproducibility_record(list(fit = structure(list(), class = "pls_model"))),
+  error = identity
+)
+stopifnot(
+  inherits(non_lavaan_record_error, "error"),
+  grepl("requires a fitted lavaan CFA/CB-SEM object", conditionMessage(non_lavaan_record_error), fixed = TRUE),
+  grepl("JSON audit manifest", conditionMessage(non_lavaan_record_error), fixed = TRUE)
+)
 integrated_sheets <- structural_canvas_result_workbook_sheets(reporting_bundle, table_fn)
 common_method_export_bundle <- reporting_bundle
 common_method_export_bundle$common_method_enabled <- TRUE
