@@ -93,6 +93,8 @@ structural_canvas_audit_warnings <- function(bundle, analysis_type, diagnostics)
   if (!isTRUE(bundle$sampling_design_gate$supported %||% FALSE)) add("Sampling design", "Major", "A supported independent-observation sampling-design declaration was not recorded in this bundle.")
   if (identical(bundle$power_basis %||% "not_recorded", "not_recorded")) add("Sample size", "Advisory", "No a-priori sample-size or power basis was recorded; fitted-sample significance, N-to-parameter ratios, and the PLS 10-times rule do not establish adequate power.")
   if (!identical(bundle$power_basis %||% "not_recorded", "not_recorded") && !nzchar(bundle$power_details %||% "")) add("Sample size", "Advisory", "A power-basis category was selected without assumptions, target power/precision, attrition allowance, or calculation source.")
+  if (identical(bundle$objective %||% "", "confirmatory") && identical(bundle$analysis_plan_status %||% "not_recorded", "not_recorded")) add("Analysis plan", "Advisory", "Confirmatory analysis was selected but preregistration/protocol status was not recorded; do not describe hypotheses or analytic decisions as preregistered without an external record.")
+  if ((bundle$analysis_plan_status %||% "not_recorded") %in% c("preregistered", "protocol_defined") && !nzchar(bundle$analysis_plan_reference %||% "")) add("Analysis plan", "Advisory", "An a-priori analysis-plan status was selected without a registration or protocol reference.")
   if (is.list(bundle$invariance_result$measurement_gate) && !isTRUE(bundle$invariance_result$measurement_gate$passed)) add("Measurement invariance", "Critical", "The engine-appropriate measurement-invariance gate did not pass; structural group comparisons must not be interpreted.")
   bootstrap_tables <- list(bundle$effect_bootstrap_result, bundle$htmt_bootstrap_result, bundle$reliability_bootstrap_result, bundle$bollen_stine_result)
   bootstrap_status <- unique(unlist(lapply(bootstrap_tables, function(value) if (is.data.frame(value) && "Status" %in% names(value)) as.character(value$Status) else character(0))))
@@ -155,6 +157,7 @@ structural_canvas_audit_manifest <- function(bundle, analysis_type = NULL, gener
       power_basis = bundle$power_basis %||% "not_recorded",
       power_details = bundle$power_details %||% "",
       objective = bundle$objective %||% "not recorded",
+      analysis_plan = list(status = bundle$analysis_plan_status %||% "not_recorded", reference = bundle$analysis_plan_reference %||% ""),
       selected_method = bundle$selected_method %||% "not recorded",
       estimator = bundle$estimator %||% "not recorded",
       missing = bundle$missing %||% "not recorded",

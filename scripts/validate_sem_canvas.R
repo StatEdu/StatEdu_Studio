@@ -601,6 +601,8 @@ cbsem_mediation_bundle$sampling_design_gate <- structural_canvas_sampling_design
 cbsem_mediation_bundle$common_method_procedural_controls <- "Separated predictor and outcome measurement times"
 cbsem_mediation_bundle$common_method_marker_variable <- "social_desirability_marker"
 cbsem_mediation_bundle$common_method_marker_rationale <- "Theoretically unrelated marker measured with the same response format"
+cbsem_mediation_bundle$analysis_plan_status <- "preregistered"
+cbsem_mediation_bundle$analysis_plan_reference <- "https://osf.io/example"
 cbsem_mediation_audit <- structural_canvas_audit_manifest(cbsem_mediation_bundle, "cbsem")
 stopifnot(
   identical(cbsem_mediation_audit$schema$version, "1.5"),
@@ -614,6 +616,8 @@ stopifnot(
   nchar(cbsem_mediation_audit$model$specification_sha256) == 64L,
   nchar(cbsem_mediation_audit$generated$analysis_code$sha256) == 64L,
   identical(cbsem_mediation_audit$requested_assessments$common_method$marker_variable, "social_desirability_marker"),
+  identical(cbsem_mediation_audit$analysis$analysis_plan$status, "preregistered"),
+  identical(cbsem_mediation_audit$analysis$analysis_plan$reference, "https://osf.io/example"),
   grepl("does not estimate", cbsem_mediation_audit$requested_assessments$common_method$marker_analysis_status, fixed = TRUE),
   is.logical(cbsem_mediation_audit$generated$git$available),
   all(c("Category", "Severity", "Message") %in% names(cbsem_mediation_audit$warnings)),
@@ -907,6 +911,10 @@ stopifnot(
   identical(common_method_record_options$common_method_marker_variable, "social_desirability_marker"),
   grepl("Theoretically unrelated", common_method_record_options$common_method_marker_rationale, fixed = TRUE)
 )
+analysis_plan_options <- structural_canvas_execute_settings(settings = list(
+  analysis_plan_status = "preregistered", analysis_plan_reference = "https://osf.io/example"
+), input = list(), prefix = "structural_cbsem")
+stopifnot(identical(analysis_plan_options$analysis_plan_status, "preregistered"), identical(analysis_plan_options$analysis_plan_reference, "https://osf.io/example"))
 sampling_gate <- structural_canvas_sampling_design_gate(pls_options$sampling_design)
 stopifnot(isTRUE(sampling_gate$supported), grepl("independent-observation", sampling_gate$reason, fixed = TRUE))
 for (unsupported_design in c("not_declared", "clustered", "complex_survey", "longitudinal_repeated")) {

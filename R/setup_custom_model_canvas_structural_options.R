@@ -40,6 +40,19 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
             selected = "confirmatory"
           ),
           selectInput(
+            paste0(structural_analysis_prefix(analysis_type), "_analysis_plan_status"),
+            if (ko) "분석계획 상태" else "Analysis-plan status",
+            choices = stats::setNames(
+              c("not_recorded", "preregistered", "protocol_defined", "exploratory"),
+              c(if (ko) "기록되지 않음" else "Not recorded", if (ko) "사전등록됨" else "Preregistered", if (ko) "등록 전 프로토콜에 정의됨" else "Defined in an a-priori protocol", if (ko) "탐색적 분석" else "Exploratory analysis")
+            ), selected = "not_recorded"
+          ),
+          textInput(
+            paste0(structural_analysis_prefix(analysis_type), "_analysis_plan_reference"),
+            if (ko) "사전등록·프로토콜 참조" else "Preregistration or protocol reference",
+            value = "", placeholder = if (ko) "등록 URL/DOI, 날짜, 버전 또는 프로토콜 식별자" else "Registration URL/DOI, date, version, or protocol identifier"
+          ),
+          selectInput(
             paste0(structural_analysis_prefix(analysis_type), "_sampling_design"),
             if (ko) "관측치·표본설계 구조" else "Observation and sampling structure",
             choices = stats::setNames(

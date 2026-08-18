@@ -20,6 +20,8 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     })
   }
   objective <- options$objective
+  analysis_plan_status <- options$analysis_plan_status
+  analysis_plan_reference <- options$analysis_plan_reference
   sampling_design <- options$sampling_design
   sampling_design_gate <- structural_canvas_sampling_design_gate(sampling_design)
   power_basis <- options$power_basis
@@ -269,6 +271,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     common_method_result = common_method_result,
     analysis_type = analysis_type, estimator = estimator, estimator_recommendation_confirmed = estimator_recommendation_confirmed,
     objective = objective, method_recommendation = method_recommendation,
+    analysis_plan_status = analysis_plan_status, analysis_plan_reference = analysis_plan_reference,
     power_basis = power_basis, power_details = power_details,
     sampling_design = sampling_design, sampling_design_gate = sampling_design_gate,
     moderation_method = moderation_method,

@@ -60,6 +60,11 @@ structural_canvas_execute_settings <- function(settings, input, prefix) {
     estimator = settings$estimator %||% input[[paste0(prefix, "_estimator")]] %||% if (identical(prefix, "structural_plssem")) "AUTO" else "ML",
     estimator_recommendation_confirmed = isTRUE(settings$estimator_recommendation_confirmed %||% input[[paste0(prefix, "_estimator_recommendation_confirmed")]] %||% FALSE),
     objective = settings$objective %||% input[[paste0(prefix, "_objective")]] %||% "confirmatory",
+    analysis_plan_status = {
+      value <- as.character(settings$analysis_plan_status %||% input[[paste0(prefix, "_analysis_plan_status")]] %||% "not_recorded")
+      if (value %in% c("not_recorded", "preregistered", "protocol_defined", "exploratory")) value else "not_recorded"
+    },
+    analysis_plan_reference = trimws(as.character(settings$analysis_plan_reference %||% input[[paste0(prefix, "_analysis_plan_reference")]] %||% "")),
     sampling_design = {
       value <- as.character(settings$sampling_design %||% input[[paste0(prefix, "_sampling_design")]] %||% "not_declared")
       if (value %in% c("not_declared", "independent_cross_sectional", "clustered", "complex_survey", "longitudinal_repeated")) value else "not_declared"
