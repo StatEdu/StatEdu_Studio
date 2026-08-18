@@ -189,7 +189,7 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
           if (identical(analysis_type, "cfa")) tags$p(class = "structural-option-note", if (ko) "MI 표본분할은 연속형 ML/MLR CFA 전용이며 측정불변성 또는 Heywood 제약 재분석과 동시에 사용할 수 없습니다." else "MI splitting is for continuous ML/MLR CFA and cannot be combined with measurement invariance or Heywood-constrained reanalysis."),
           if (identical(analysis_type, "cfa")) checkboxInput(
             paste0(structural_analysis_prefix(analysis_type), "_parcel_enabled"),
-            if (ko) "Parcel 계획 미리보기" else "Preview a parceling plan",
+            if (ko) "Parcel item-level 모형 생성" else "Create parcel item-level model",
             value = FALSE
           ),
           if (identical(analysis_type, "cfa")) selectInput(
@@ -208,7 +208,7 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
             rows = 3,
             placeholder = if (ko) "문항 수준 분석 대신 parcel을 고려하는 이유를 기록하십시오." else "Document why parceling is being considered instead of retaining item-level analysis."
           ),
-          if (identical(analysis_type, "cfa")) tags$p(class = "structural-option-note", if (ko) "기본값은 비활성화입니다. 미리보기는 데이터에 변수를 만들지 않으며 item-level CFA를 대체하지 않습니다." else "Disabled by default. The preview does not create variables and does not replace the item-level CFA."),
+          if (identical(analysis_type, "cfa")) tags$p(class = "structural-option-note", if (ko) "기본값은 비활성화입니다. 실행하면 먼저 원 단일요인 CFA로 문항을 배정한 뒤, 데이터에 parcel 변수를 만들지 않고 item-level 하위요인 모형을 적합합니다." else "Disabled by default. When run, the item-level CFA first allocates items, then fits an item-level lower-order parcel-factor model without creating parcel variables in the data."),
           if (identical(analysis_type, "plssem")) selectInput(
             paste0(structural_analysis_prefix(analysis_type), "_pls_bootstrap"),
             if (ko) "PLS bootstrap CI/p" else "PLS bootstrap CI/p",

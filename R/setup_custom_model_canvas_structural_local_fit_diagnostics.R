@@ -196,7 +196,6 @@ structural_canvas_parcel_plan <- function(result, snapshot, enabled = FALSE, con
   construct <- as.character(construct %||% "")
   purpose <- trimws(as.character(purpose %||% ""))
   parcels <- suppressWarnings(as.integer(parcels %||% 3L))
-  if (!nzchar(purpose)) return(list(enabled = TRUE, available = FALSE, reason = "A substantive parceling purpose must be recorded before a preview is created."))
   if (!parcels %in% c(3L, 4L)) return(list(enabled = TRUE, available = FALSE, reason = "Parcel preview currently supports three or four parcels."))
   specification <- structural_canvas_construct_specification(snapshot)
   selected <- specification[specification$name == construct, , drop = FALSE]
@@ -232,7 +231,171 @@ structural_canvas_parcel_plan <- function(result, snapshot, enabled = FALSE, con
     enabled = TRUE, available = TRUE, construct = construct, parcels = parcels, purpose = purpose,
     allocation = loadings, summary = parcel_summary,
     min_loading = min(abs(loadings$Loading), na.rm = TRUE), max_residual_correlation = max_residual,
-    status = "Preview only - expert review required",
-    warning = "Loading-balanced allocation is sample-dependent and can conceal multidimensionality or local dependence. No parcel variables were created and the item-level CFA remains the primary analysis."
+    purpose_recorded = nzchar(purpose),
+    status = "Item-level parcel-factor model requested",
+    warning = paste(
+      "Loading-balanced allocation is sample-dependent and can conceal multidimensionality or local dependence.",
+      "No parcel variables were created; the requested parcels are represented as lower-order item-level factors.",
+      if (!nzchar(purpose)) "A substantive parceling purpose was not recorded." else ""
+    )
   )
+}
+
+structural_canvas_parcel_item_level_snapshot <- function(snapshot, parcel_result) {
+  if (!isTRUE(parcel_result$available)) return(snapshot)
+  construct <- as.character(parcel_result$construct %||% "")
+  allocation <- parcel_result$allocation
+  if (!nzchar(construct) || !is.data.frame(allocation) || !nrow(allocation)) return(snapshot)
+
+  nodes <- snapshot$nodes %||% list()
+  edges <- snapshot$edges %||% list()
+  target_matches <- Filter(function(node) identical(node$role, "latent") && identical(structural_canvas_name(node), construct), nodes)
+  if (!length(target_matches)) return(snapshot)
+  target <- target_matches[[1L]]
+  target_id <- as.character(target$id %||% "")
+  if (!nzchar(target_id)) return(snapshot)
+
+  number_value <- function(value, fallback) {
+    parsed <- suppressWarnings(as.numeric(value %||% NA_real_))
+    if (is.finite(parsed)) parsed else fallback
+  }
+  node_by_name <- stats::setNames(nodes, vapply(nodes, structural_canvas_name, character(1)))
+  assigned_indicators <- unique(as.character(allocation$Indicator %||% character(0)))
+  assigned_indicators <- assigned_indicators[nzchar(assigned_indicators) & assigned_indicators %in% names(node_by_name)]
+  if (!length(assigned_indicators)) return(snapshot)
+
+  canvas_width <- number_value(snapshot$canvas$widthPx %||% snapshot$canvas$width, 688)
+  parent_width <- number_value(target$width, 90)
+  parent_height <- number_value(target$height, 44)
+  latent_width <- parent_width
+  latent_height <- parent_height
+  indicator_width <- 82
+  indicator_height <- 30
+  error_width <- 26
+  row_gap <- 48
+  parent_x <- max(36, min(number_value(target$x, 72), canvas_width - 560))
+  child_x <- parent_x + parent_width + 120
+  indicator_x <- child_x + latent_width + 82
+  error_x <- indicator_x + indicator_width + 28
+  total_items <- length(assigned_indicators)
+  first_center_y <- number_value(target$y, 120) + parent_height / 2 - (total_items - 1L) * row_gap / 2
+
+  group_names <- unique(as.character(allocation$Parcel))
+  item_centers <- list()
+  cursor <- 0L
+  for (parcel in group_names) {
+    indicators <- as.character(allocation$Indicator[allocation$Parcel == parcel])
+    indicators <- indicators[nzchar(indicators) & indicators %in% assigned_indicators]
+    for (indicator in indicators) {
+      item_centers[[indicator]] <- first_center_y + cursor * row_gap
+      cursor <- cursor + 1L
+    }
+  }
+  all_centers <- unlist(item_centers, use.names = FALSE)
+  if (!length(all_centers)) return(snapshot)
+  parent_y <- mean(range(all_centers)) - parent_height / 2
+
+  updated_nodes <- lapply(nodes, function(node) {
+    node_id <- as.character(node$id %||% "")
+    node_name <- structural_canvas_name(node)
+    if (identical(node_id, target_id)) {
+      node$x <- parent_x
+      node$y <- parent_y
+      node$constructType <- "higherOrder"
+      node$measurementMode <- "reflective"
+      node$advancedConstructSpecification <- TRUE
+      node$measurementPlacement <- "right"
+      node$effectiveMeasurementPlacement <- "right"
+      return(node)
+    }
+    if (node_name %in% assigned_indicators && identical(node$role, "indicator")) {
+      center_y <- item_centers[[node_name]]
+      node$x <- indicator_x
+      node$y <- center_y - number_value(node$height, indicator_height) / 2
+      node$width <- number_value(node$width, indicator_width)
+      node$height <- number_value(node$height, indicator_height)
+      return(node)
+    }
+    node
+  })
+
+  node_lookup <- stats::setNames(updated_nodes, vapply(updated_nodes, function(node) as.character(node$id %||% ""), character(1)))
+  updated_nodes <- lapply(updated_nodes, function(node) {
+    if (!identical(node$role, "error")) return(node)
+    error_edge <- Filter(function(edge) {
+      identical(edge$kind %||% "", "covariance") == FALSE &&
+        identical(as.character(edge$from %||% ""), as.character(node$id %||% ""))
+    }, edges)
+    if (!length(error_edge)) return(node)
+    indicator <- node_lookup[[as.character(error_edge[[1L]]$to %||% "")]] %||% NULL
+    if (is.null(indicator) || !structural_canvas_name(indicator) %in% assigned_indicators) return(node)
+    node$x <- error_x
+    node$y <- number_value(indicator$y, 0) + number_value(indicator$height, indicator_height) / 2 - number_value(node$height, error_width) / 2
+    node
+  })
+
+  measurement_edge_for_target <- function(edge) {
+    if (identical(edge$kind %||% "", "covariance")) return(FALSE)
+    from <- structural_canvas_node(snapshot, edge$from)
+    to <- structural_canvas_node(snapshot, edge$to)
+    if (is.null(from) || is.null(to)) return(FALSE)
+    ((identical(as.character(from$id %||% ""), target_id) && identical(to$role, "indicator") && structural_canvas_name(to) %in% assigned_indicators) ||
+      (identical(as.character(to$id %||% ""), target_id) && identical(from$role, "indicator") && structural_canvas_name(from) %in% assigned_indicators))
+  }
+  updated_edges <- Filter(function(edge) !measurement_edge_for_target(edge), edges)
+  updated_edges <- lapply(updated_edges, function(edge) {
+    from <- structural_canvas_node(snapshot, edge$from)
+    to <- structural_canvas_node(snapshot, edge$to)
+    if (!is.null(from) && !is.null(to) && identical(from$role, "error") && identical(to$role, "indicator") && structural_canvas_name(to) %in% assigned_indicators) {
+      edge$fromSide <- "left"
+      edge$toSide <- "right"
+      edge$fixedCenter <- TRUE
+      edge$directAnchors <- FALSE
+    }
+    edge
+  })
+
+  parcel_nodes <- list()
+  parcel_edges <- list()
+  for (index in seq_along(group_names)) {
+    parcel <- group_names[[index]]
+    indicators <- as.character(allocation$Indicator[allocation$Parcel == parcel])
+    indicators <- indicators[nzchar(indicators) & indicators %in% assigned_indicators]
+    centers <- unlist(item_centers[indicators], use.names = FALSE)
+    if (!length(centers)) next
+    parcel_id <- paste0(target_id, "_parcel_", index)
+    parcel_name <- paste0(construct, "_", parcel)
+    parcel_nodes[[length(parcel_nodes) + 1L]] <- list(
+      id = parcel_id, variableId = "", name = parcel_name,
+      dataLabel = paste0(construct, " ", parcel), canvasLabel = "",
+      role = "latent", nodeType = "latent", constructType = "commonFactor",
+      measurementMode = "reflective", advancedConstructSpecification = FALSE,
+      weightingMode = "auto", x = child_x, y = mean(centers) - latent_height / 2,
+      width = latent_width, height = latent_height, fontSize = number_value(target$fontSize, 13),
+      customFontSize = TRUE, fontFamily = target$fontFamily %||% ""
+    )
+    parcel_edges[[length(parcel_edges) + 1L]] <- list(
+      id = paste0("edge_", target_id, "_", parcel_id),
+      from = target_id, to = parcel_id, kind = "path", type = "measurement",
+      pathType = "higherOrder", fromSide = "right", toSide = "left",
+      fixedCenter = FALSE, directAnchors = FALSE, label = ""
+    )
+    for (indicator in indicators) {
+      indicator_id <- as.character(node_by_name[[indicator]]$id %||% "")
+      if (!nzchar(indicator_id)) next
+      parcel_edges[[length(parcel_edges) + 1L]] <- list(
+        id = paste0("edge_", parcel_id, "_", indicator_id),
+        from = parcel_id, to = indicator_id, kind = "path", type = "measurement",
+        fromSide = "right", toSide = "left", fixedCenter = FALSE,
+        directAnchors = FALSE, label = ""
+      )
+    }
+  }
+
+  snapshot$nodes <- c(updated_nodes, parcel_nodes)
+  snapshot$edges <- c(updated_edges, parcel_edges)
+  snapshot$parcelItemLevelModel <- TRUE
+  snapshot$parcelConstruct <- construct
+  snapshot$parcelCount <- length(parcel_nodes)
+  snapshot
 }

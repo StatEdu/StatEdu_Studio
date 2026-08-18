@@ -260,7 +260,13 @@ structural_canvas_reproducibility_record <- function(bundle, generated_at = Sys.
     paste0("Bollen-Stine bootstrap: ", bundle$bollen_stine_bootstrap %||% 0L, "; seed: ", bundle$bollen_stine_seed %||% "not used"),
     paste0("Measurement invariance: ", if (isTRUE(bundle$invariance_enabled)) paste0("enabled; group = ", bundle$invariance_group) else "disabled"),
     paste0("Common method bias diagnostics: ", if (isTRUE(bundle$common_method_enabled)) paste0("enabled; methods = ", paste(bundle$common_method_methods %||% character(0), collapse = ", ")) else "disabled"),
-    paste0("Parcel planning: ", if (isTRUE(bundle$parcel_enabled)) paste0("preview only; construct = ", bundle$parcel_construct %||% "", "; parcels = ", bundle$parcel_count %||% "", "; purpose = ", bundle$parcel_purpose %||% "not recorded", "; variables created = no") else "disabled"),
+    paste0("Parcel item-level model: ", if (isTRUE(bundle$parcel_enabled)) paste0(
+      if (isTRUE(bundle$parcel_result$applied)) "fitted" else "requested",
+      "; construct = ", bundle$parcel_construct %||% "",
+      "; parcels = ", bundle$parcel_count %||% "",
+      "; purpose = ", bundle$parcel_purpose %||% "not recorded",
+      "; data parcel variables created = no"
+    ) else "disabled"),
     paste0("MI holdout validation: ", if (isTRUE(bundle$mi_holdout_enabled)) paste0("enabled; validation fraction = ", bundle$mi_holdout_fraction, "; seed = ", bundle$mi_holdout_seed, "; exploration N = ", nrow(bundle$analysis_data), "; validation N = ", nrow(bundle$validation_data)) else "disabled"),
     if (!is.null(bundle$holdout_comparison)) paste0("MI holdout N used after missing-data handling: ", paste(bundle$holdout_comparison$validation_n_used, collapse = ", ")),
     paste0("MI output mode: ", bundle$mi_mode %||% "theory"),
@@ -319,7 +325,7 @@ structural_canvas_export_notes <- function(bundle) {
   ))
   if (isTRUE(bundle$parcel_enabled)) notes <- rbind(notes, data.frame(
     Section = "Parcel planning",
-    Note = "The parcel allocation is a non-mutating, sample-dependent preview. Item-level CFA remains primary; actual parcel use requires substantive homogeneity, local-dependence review, and sensitivity to alternative allocations.",
+    Note = "The parcel allocation is sample-dependent. No parcel variables were created in the data; the fitted parcel option represents parcels as lower-order item-level factors using the original indicators. Substantive homogeneity, local-dependence review, and sensitivity to alternative allocations remain required.",
     stringsAsFactors = FALSE
   ))
   if (length(missing_covariances)) notes <- rbind(notes, data.frame(

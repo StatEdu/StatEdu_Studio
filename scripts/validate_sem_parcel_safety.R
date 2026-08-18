@@ -7,13 +7,15 @@ spec_source <- paste(readLines(file.path("docs", "SEM_DECISION_RULES_V1_KO.md"),
 
 stopifnot(
   grepl("structural_canvas_parcel_plan <- function", diagnostic_source, fixed = TRUE),
+  grepl("structural_canvas_parcel_item_level_snapshot <- function", diagnostic_source, fixed = TRUE),
   grepl("An admissible item-level CFA", diagnostic_source, fixed = TRUE),
-  grepl("No parcel variables were created", diagnostic_source, fixed = TRUE),
+  grepl("lower-order item-level factors", diagnostic_source, fixed = TRUE),
   grepl('"_parcel_enabled"', options_source, fixed = TRUE),
   grepl("value = FALSE", options_source, fixed = TRUE),
+  grepl("structural_canvas_parcel_item_level_snapshot", execute_source, fixed = TRUE),
   grepl("parcel_result = parcel_result", execute_source, fixed = TRUE),
   grepl('"_result_parcel_plan"', render_source, fixed = TRUE),
-  grepl("variables created = no", export_source, fixed = TRUE),
+  grepl("data parcel variables created = no", export_source, fixed = TRUE),
   grepl("## 5단계: Parceling Safety", spec_source, fixed = TRUE)
 )
 

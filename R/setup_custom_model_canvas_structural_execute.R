@@ -96,6 +96,33 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   missing_covariances <- structural_canvas_missing_exogenous_covariances(snapshot)
   structural_canvas_notify_missing_covariances(missing_covariances, analysis_type, statedu_current_language(app_language_fn))
   result <- run_structural_canvas_analysis(snapshot, data, analysis_type, estimator = estimator, missing = missing, std_lv = std_lv, ordered = ordered, nominal = nominal, residual_variance_fixes = residual_variance_fixes)
+  original_item_level_snapshot <- snapshot
+  original_item_level_result <- result
+  parcel_result <- if (identical(analysis_type, "cfa")) {
+    structural_canvas_parcel_plan(result, snapshot, parcel_enabled, parcel_construct, parcel_count, parcel_purpose)
+  } else {
+    NULL
+  }
+  if (isTRUE(parcel_result$available)) {
+    parcel_snapshot <- structural_canvas_parcel_item_level_snapshot(snapshot, parcel_result)
+    parcel_fit <- tryCatch(
+      run_structural_canvas_analysis(parcel_snapshot, data, analysis_type, estimator = estimator, missing = missing, std_lv = std_lv, ordered = ordered, nominal = nominal, residual_variance_fixes = residual_variance_fixes),
+      error = identity
+    )
+    if (inherits(parcel_fit, "error")) {
+      parcel_result$applied <- FALSE
+      parcel_result$fit_error <- conditionMessage(parcel_fit)
+      parcel_result$status <- "Item-level parcel-factor model could not be fitted"
+      parcel_result$warning <- paste(parcel_result$warning %||% "", conditionMessage(parcel_fit))
+    } else {
+      snapshot <- parcel_snapshot
+      result <- parcel_fit
+      identification <- if (analysis_type %in% c("cfa", "cbsem", "sem")) structural_canvas_identification_diagnostics(snapshot) else data.frame()
+      parcel_result$applied <- TRUE
+      parcel_result$item_level_constructs <- paste0(parcel_result$construct, "_", unique(as.character(parcel_result$allocation$Parcel)))
+      parcel_result$status <- "Item-level parcel-factor CFA fitted"
+    }
+  }
   missing_diagnostics <- if (!identical(analysis_type, "plssem")) {
     structural_canvas_missing_diagnostics(data, lavaan::lavNames(result$fit, "ov"))
   } else NULL
@@ -157,11 +184,6 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   } else {
     NULL
   }
-  parcel_result <- if (identical(analysis_type, "cfa")) {
-    structural_canvas_parcel_plan(result, snapshot, parcel_enabled, parcel_construct, parcel_count, parcel_purpose)
-  } else {
-    NULL
-  }
   common_method_result <- if (isTRUE(common_method_enabled) && analysis_type %in% c("cfa", "cbsem", "sem")) {
     tryCatch(
       structural_canvas_run_common_method_diagnostics(
@@ -213,6 +235,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     redundancy_construct = redundancy_construct, redundancy_criterion = redundancy_criterion, redundancy_result = redundancy_result,
     parcel_enabled = parcel_enabled, parcel_construct = parcel_construct, parcel_count = parcel_count,
     parcel_purpose = parcel_purpose, parcel_result = parcel_result,
+    original_item_level_snapshot = original_item_level_snapshot, original_item_level_result = original_item_level_result,
     invariance_enabled = invariance_enabled, invariance_group = invariance_group, invariance_result = invariance_result,
     micom_permutations = micom_permutations, micom_seed = micom_seed,
     mi_holdout_enabled = mi_holdout_enabled, mi_holdout_fraction = mi_holdout_fraction, mi_holdout_seed = mi_holdout_seed,

@@ -593,14 +593,16 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
     }
     tagList(
       tags$h5(if (ko) "Parcel 계획 안전성 점검" else "Parcel-plan safety review"),
-      tags$p(tags$b(if (ko) "기록된 목적: " else "Recorded purpose: "), result$purpose),
+      tags$p(tags$b(if (ko) "기록된 목적: " else "Recorded purpose: "), if (nzchar(result$purpose %||% "")) result$purpose else if (ko) "기록 없음" else "Not recorded"),
       tags$p(class = "structural-result-note", paste0(if (ko) "상태: " else "Status: ", result$status, ". ", result$warning)),
+      if (isTRUE(result$applied)) tags$p(class = "structural-result-note", if (ko) paste0("결과 모형은 ", result$construct, "를 상위요인으로 두고 ", paste(result$item_level_constructs %||% character(0), collapse = ", "), " 하위 item-level 요인을 적합했습니다.") else paste0("The result model fitted ", result$construct, " as a higher-order factor with lower-order item-level factors: ", paste(result$item_level_constructs %||% character(0), collapse = ", "), ".")),
+      if (identical(result$applied, FALSE) && nzchar(result$fit_error %||% "")) tags$p(class = "structural-result-note structural-result-warning", if (ko) paste0("item-level 하위요인 모형 적합 실패: ", result$fit_error) else paste0("Item-level lower-order model fit failed: ", result$fit_error)),
       tags$p(class = "structural-result-note", paste0(if (ko) "문항수준 최소 |적재량| = " else "Item-level minimum |loading| = ", format_decimal3(result$min_loading), if (ko) "; 최대 절대 잔차상관 = " else "; maximum absolute residual correlation = ", format_decimal3(result$max_residual_correlation), ".")),
       tags$h6(if (ko) "배정 미리보기" else "Allocation preview"),
       structural_canvas_basic_html_table(allocation, class = "table table-striped table-bordered structural-parcel-allocation-table"),
       tags$h6(if (ko) "Parcel 균형 요약" else "Parcel balance summary"),
       structural_canvas_basic_html_table(summary, class = "table table-striped table-bordered structural-parcel-summary-table"),
-      tags$p(class = "structural-result-note", if (ko) "데이터셋에 parcel 변수는 생성되지 않았습니다. 실제 적용 전 이론적 동질성, 국소의존, 다른 배정 방식에 대한 민감도와 item-level 결과를 함께 검토해야 합니다." else "No parcel variables were created. Before implementation, review substantive item homogeneity, local dependence, sensitivity to alternative allocations, and the item-level results.")
+      tags$p(class = "structural-result-note", if (ko) "데이터셋에 parcel 변수는 생성되지 않았습니다. 하위요인은 원문항을 그대로 지표로 사용하는 item-level 표현입니다. 해석 전 이론적 동질성, 국소의존, 다른 배정 방식에 대한 민감도를 함께 검토해야 합니다." else "No parcel variables were created. The lower-order factors remain item-level representations using the original indicators. Review substantive item homogeneity, local dependence, and sensitivity to alternative allocations before interpretation.")
     )
   })
   output[[paste0(prefix, "_result_measurement_ci")]] <- renderUI({
