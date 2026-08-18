@@ -142,6 +142,18 @@
     return "curveUp";
   }
 
+  function latentCovarianceCurveOffset(fromNode, toNode, options) {
+    if (!fromNode || !toNode || fromNode.role !== "latent" || toNode.role !== "latent") return null;
+    var config = options || {};
+    var minOffset = Number(config.minOffset || 75);
+    var maxOffset = Number(config.maxOffset || 310);
+    var factor = Number(config.factor || 0.5);
+    var dx = Number(toNode.x || 0) - Number(fromNode.x || 0);
+    var dy = Number(toNode.y || 0) - Number(fromNode.y || 0);
+    var distance = Math.sqrt(dx * dx + dy * dy);
+    return Math.max(minOffset, Math.min(maxOffset, distance * factor));
+  }
+
   function anchorOffset(size, count, index, gap) {
     size = Number(size || 0);
     var center = size / 2;
@@ -990,12 +1002,7 @@
       toSide: latentCovariance ? "left" : null,
       fixedCenter: latentCovariance,
       directAnchors: false,
-      curveOffset: (function() {
-        if (!fromNode || !toNode || fromNode.role !== "latent" || toNode.role !== "latent") return null;
-        var dx = Number(toNode.x || 0) - Number(fromNode.x || 0);
-        var dy = Number(toNode.y || 0) - Number(fromNode.y || 0);
-        return Math.max(75, Math.min(190, Math.sqrt(dx * dx + dy * dy) * 0.45));
-      })(),
+      curveOffset: latentCovariance ? latentCovarianceCurveOffset(fromNode, toNode) : null,
       free: true,
       parameterName: "",
       equalityLabel: ""
@@ -1226,6 +1233,7 @@
     render: renderEdges,
     createEdge: createEdge,
     createCovariance: createCovariance,
+    latentCovarianceCurveOffset: latentCovarianceCurveOffset,
     createModeration: createModeration,
     deleteEdge: deleteEdge,
     deleteModeration: deleteModeration,
