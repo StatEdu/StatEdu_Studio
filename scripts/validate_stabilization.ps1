@@ -88,6 +88,7 @@ $fullOnlyValidations = @(
   "scripts\validate_logistic_ui.R",
   "scripts\validate_ordinal_category_order.R",
   "scripts\validate_paired_guards.R",
+  "scripts\validate_pls_fit_csem.R",
   "scripts\validate_penalized.R",
   "scripts\validate_p_formatting.R",
   "scripts\validate_reliability.R",

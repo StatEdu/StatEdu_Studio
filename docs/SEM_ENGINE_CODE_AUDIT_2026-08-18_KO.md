@@ -17,6 +17,7 @@
 - 기존 Q²는 `score-CV Q²`로 재표기하고 전체 표본 구성개념 점수에 기반한 내부 기술 진단으로 제한했다.
 - 이후 전체 표본 점수의 측정정보 누출을 제거하기 위해 score-CV Q²/q² 계산과 출력을 폐기하고, 훈련 접기별 재추정을 수행하는 반복 PLSpredict만 예측평가로 유지했다.
 - PLS 근사 적합도 행렬 계산을 cSEM 정의와 대조해 SRMR 분모, d_G 로그·척도, NFI ML 거리식을 교정하고 고정 행렬 benchmark를 추가했다.
+- cSEM 설치 환경에서 SRMR·d_G·d_ULS를 cSEM 패키지 함수와 직접 대조하는 선택적 package-level benchmark를 안정화 검증 목록에 추가했다.
 - PLSpredict 요약은 일부 지표의 PLS 우세를 `OK`로 판정하지 않고 `Descriptive only`로 표시한다.
 - 대표본 Mardia 진단은 정렬에 민감한 등간격 추출 대신 RNG 상태를 보존하는 고정 시드 단순무작위 비복원 부분표본을 사용한다.
 - 병렬 PLSc bootstrap은 `seed + index` 대신 재현 가능한 L'Ecuyer-CMRG 독립 난수 스트림을 반복별로 사전 할당한다.
