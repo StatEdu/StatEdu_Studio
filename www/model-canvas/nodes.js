@@ -507,21 +507,8 @@
   function measurementLatentForNode(instance, node) {
     if (!node) return null;
     if (node.role === "latent") return node;
-    var indicator = node;
-    if (node.role === "error") {
-      var errorEdge = instance.state.edges.find(function(edge) {
-        var target = nodeById(instance, edge.to);
-        return edge.from === node.id && target && target.role === "indicator";
-      });
-      indicator = errorEdge ? nodeById(instance, errorEdge.to) : null;
-    } else if (node.role === "disturbance") {
-      var disturbanceEdge = instance.state.edges.find(function(edge) {
-        var target = nodeById(instance, edge.to);
-        return edge.from === node.id && target && target.role === "latent";
-      });
-      return disturbanceEdge ? nodeById(instance, disturbanceEdge.to) : null;
-    }
-    if (!indicator || indicator.role !== "indicator") return null;
+    var indicator = measurementIndicatorForNode(instance, node);
+    if (!indicator) return null;
     var measurementEdge = instance.state.edges.find(function(edge) {
       if (edge.kind === "covariance") return false;
       var from = nodeById(instance, edge.from);
@@ -532,6 +519,44 @@
     if (!measurementEdge) return null;
     var from = nodeById(instance, measurementEdge.from);
     return from && from.role === "latent" ? from : nodeById(instance, measurementEdge.to);
+  }
+
+  function measurementIndicatorForNode(instance, node) {
+    if (!node) return null;
+    if (node.role === "indicator") return node;
+    var indicator = node;
+    if (node.role === "error") {
+      var errorEdge = instance.state.edges.find(function(edge) {
+        var target = nodeById(instance, edge.to);
+        return edge.from === node.id && target && target.role === "indicator";
+      });
+      indicator = errorEdge ? nodeById(instance, errorEdge.to) : null;
+    } else {
+      indicator = null;
+    }
+    return indicator && indicator.role === "indicator" ? indicator : null;
+  }
+
+  function disturbanceLatentForNode(instance, node) {
+    if (!node || node.role !== "disturbance") return null;
+    var disturbanceEdge = instance.state.edges.find(function(edge) {
+      var target = nodeById(instance, edge.to);
+      return edge.from === node.id && target && target.role === "latent";
+    });
+    return disturbanceEdge ? nodeById(instance, disturbanceEdge.to) : null;
+  }
+
+  function latentIndicatorIds(instance, latent) {
+    if (!latent) return [];
+    return instance.state.edges.reduce(function(ids, edge) {
+      var from = nodeById(instance, edge.from);
+      var to = nodeById(instance, edge.to);
+      if (from && from.id === latent.id && to && to.role === "indicator") ids.push(to.id);
+      if (to && to.id === latent.id && from && from.role === "indicator") ids.push(from.id);
+      return ids;
+    }, []).filter(function(id, index, ids) {
+      return ids.indexOf(id) === index;
+    });
   }
 
   function measurementAxisForLatent(latent) {
@@ -565,15 +590,50 @@
             if (errorEdge.to === indicator.id && error && error.role === "error") bundleMap[error.id] = true;
           });
         }
-        if (edge.to === latent.id && from && from.role === "disturbance") bundleMap[from.id] = true;
       });
     });
     var everyRequiredSelected = Object.keys(bundleMap).every(function(id) { return selectedMap[id]; });
     var noPartialExtraBundle = selectedNodes.every(function(node) {
+      if (node.role === "disturbance") {
+        var disturbanceOwner = disturbanceLatentForNode(instance, node);
+        return disturbanceOwner && bundleMap[disturbanceOwner.id];
+      }
       var owner = measurementLatentForNode(instance, node);
       return owner && bundleMap[owner.id];
     });
     return everyRequiredSelected && noPartialExtraBundle;
+  }
+
+  function structuralMeasurementSelectionAxis(instance, selectedNodes) {
+    var axes = {};
+    var selectedIndicatorsByLatent = {};
+    var hasMeasurementNode = false;
+    selectedNodes.forEach(function(node) {
+      var indicator = measurementIndicatorForNode(instance, node);
+      if (!indicator) return;
+      var latent = measurementLatentForNode(instance, node);
+      if (!latent) return;
+      hasMeasurementNode = true;
+      axes[measurementAxisForLatent(latent)] = true;
+      if (!selectedIndicatorsByLatent[latent.id]) {
+        selectedIndicatorsByLatent[latent.id] = {
+          selected: {},
+          total: latentIndicatorIds(instance, latent).length
+        };
+      }
+      selectedIndicatorsByLatent[latent.id].selected[indicator.id] = true;
+    });
+    if (!hasMeasurementNode) return null;
+    var partialMultiSelection = Object.keys(selectedIndicatorsByLatent).some(function(latentId) {
+      var group = selectedIndicatorsByLatent[latentId];
+      var selectedCount = Object.keys(group.selected).length;
+      return selectedCount > 1 && selectedCount < group.total;
+    });
+    if (partialMultiSelection) return "none";
+    var values = Object.keys(axes);
+    if (values.length === 1) return values[0];
+    if (values.length > 1) return "none";
+    return "none";
   }
 
   function wholeModelSelection(instance, selectedIds) {
@@ -592,16 +652,19 @@
     // rule so future selection features cannot accidentally disable Y movement.
     if (wholeModelSelection(instance, selected)) return null;
     if (completeMeasurementBundleSelection(instance, selected)) return null;
-    var axes = {};
-    instance.state.nodes.forEach(function(node) {
-      if (selected.indexOf(node.id) < 0) return;
-      var latent = measurementLatentForNode(instance, node);
-      if (latent) axes[measurementAxisForLatent(latent)] = true;
+    var selectedNodes = instance.state.nodes.filter(function(node) {
+      return selected.indexOf(node.id) >= 0;
     });
-    var values = Object.keys(axes);
-    if (values.length === 1) return values[0];
-    if (values.length > 1) return "none";
-    return "x";
+    if (!selectedNodes.length) return null;
+    var hasMeasurementNode = selectedNodes.some(function(node) {
+      return node.role === "indicator" || node.role === "error";
+    });
+    var hasPartialLatentSet = hasMeasurementNode && selectedNodes.some(function(node) {
+      return node.role === "latent" || node.role === "disturbance";
+    });
+    if (hasPartialLatentSet) return "none";
+    if (hasMeasurementNode) return structuralMeasurementSelectionAxis(instance, selectedNodes);
+    return null;
   }
 
   function structuralSelectionAllowsY(instance, selectedIds) {

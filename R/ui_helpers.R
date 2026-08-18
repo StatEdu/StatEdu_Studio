@@ -200,7 +200,7 @@ app_script_link <- function(version) {
     tags$script(src = paste0("model-canvas/layout.js?v=", version, "-custom-model-canvas-balanced-multi-role-layout-20260729a")),
     tags$script(src = paste0("model-canvas/shiny-bridge.js?v=", version, "-movable-latent-stats-20260817b")),
     tags$script(src = paste0("model-canvas/edges.js?v=", version, "-covariance-depth-20260818a")),
-    tags$script(src = paste0("model-canvas/nodes.js?v=", version, "-residual-variance-node-20260818a")),
+    tags$script(src = paste0("model-canvas/nodes.js?v=", version, "-structural-selection-move-policy-20260818a")),
     tags$script(src = paste0("model-canvas/dialogs.js?v=", version, "-paper-view-zoom-20260818a")),
     tags$script(src = paste0("model-canvas/toolbar.js?v=", version, "-decoupled-cfa-canvas-20260818a")),
     tags$script(src = paste0("model-canvas/canvas.js?v=", version, "-paper-view-zoom-20260818a"))
