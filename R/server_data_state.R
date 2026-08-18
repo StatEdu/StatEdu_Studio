@@ -129,12 +129,31 @@ create_data_reactives <- function(input, active_data_file, calculated_variables 
 }
 
 create_table_input_collectors <- function(input, variable_info_table_fn) {
+  merge_client_table_state <- function(direct, field) {
+    state <- input$variable_table_state %||% list()
+    state_values <- state[[field]] %||% character(0)
+    if (identical(field, "measurements") && exists("settings_state_measurements", mode = "function")) {
+      state_values <- settings_state_measurements(state)
+    }
+    state_values <- unlist(state_values, recursive = TRUE, use.names = TRUE)
+    state_values <- stats::setNames(as.character(state_values), names(state_values))
+    state_values <- state_values[nzchar(names(state_values) %||% character(0))]
+    if (!length(state_values)) return(direct)
+    c(direct[setdiff(names(direct), names(state_values))], state_values)
+  }
+
   collect_var_label_inputs <- function() {
-    collect_var_label_inputs_from_table(variable_info_table_fn, input)
+    merge_client_table_state(
+      collect_var_label_inputs_from_table(variable_info_table_fn, input),
+      "var_labels"
+    )
   }
 
   collect_measurement_inputs <- function() {
-    collect_measurement_inputs_from_table(variable_info_table_fn, input)
+    merge_client_table_state(
+      collect_measurement_inputs_from_table(variable_info_table_fn, input),
+      "measurements"
+    )
   }
 
   list(
