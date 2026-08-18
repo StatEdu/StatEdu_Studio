@@ -156,7 +156,7 @@ two_indicator_diagnostics <- structural_canvas_identification_diagnostics(two_in
 duplicate_snapshot <- snapshot
 duplicate_snapshot$edges <- c(duplicate_snapshot$edges, list(duplicate_snapshot$edges[[1L]]))
 stopifnot(
-  any(single_indicator_diagnostics$Code == "single_indicator" & single_indicator_diagnostics$Severity == "Error"),
+  any(single_indicator_diagnostics$Code == "single_indicator_auto_fixed" & single_indicator_diagnostics$Severity == "Warning"),
   any(two_indicator_diagnostics$Code == "two_indicators" & two_indicator_diagnostics$Severity == "Warning"),
   !any(two_indicator_diagnostics$Severity == "Error"),
   any(structural_canvas_identification_diagnostics(duplicate_snapshot)$Code == "duplicate_path")
@@ -200,6 +200,7 @@ multi_indicator_residual_snapshot$nodes <- c(multi_indicator_residual_snapshot$n
 multi_indicator_residual_snapshot$edges <- c(multi_indicator_residual_snapshot$edges, list(list(from = "e_multi", to = "indicator_1", free = FALSE, fixedValue = 2 * stats::var(continuous$x1))))
 multi_indicator_scale <- structural_canvas_fixed_residual_scale_diagnostics(multi_indicator_residual_snapshot, continuous)
 single_constrained_fit <- run_structural_canvas_analysis(single_constrained_snapshot, single_constrained_data, "cfa")
+single_auto_fit <- run_structural_canvas_analysis(single_indicator_snapshot, single_constrained_data, "cfa")
 negative_residual_error <- tryCatch({
   run_structural_canvas_analysis(negative_residual_snapshot, single_constrained_data, "cfa")
   ""
@@ -213,9 +214,11 @@ stopifnot(
   any(single_constrained_diagnostics$Code == "single_indicator_constrained"),
   length(structural_canvas_constrained_single_indicators(single_indicator_snapshot)) == 0L,
   identical(structural_canvas_constrained_single_indicators(single_constrained_snapshot), "F"),
+  grepl("x ~~ 0*x", single_auto_fit$syntax, fixed = TRUE),
+  identical(single_auto_fit$single_indicator_auto_residuals, "x"),
   any(negative_residual_diagnostics$Code == "negative_fixed_residual" & negative_residual_diagnostics$Severity == "Error"),
   any(zero_residual_diagnostics$Code == "boundary_fixed_residual" & zero_residual_diagnostics$Severity == "Warning"),
-  any(zero_residual_diagnostics$Code == "single_indicator" & zero_residual_diagnostics$Severity == "Error"),
+  !any(zero_residual_diagnostics$Severity == "Error"),
   length(structural_canvas_constrained_single_indicators(zero_residual_snapshot)) == 0L,
   nrow(residual_scale_ok) == 1L,
   isTRUE(residual_scale_ok[["Single-indicator factor"]][[1L]]),

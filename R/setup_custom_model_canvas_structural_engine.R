@@ -364,6 +364,7 @@ run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estima
       moderation_definitions = lavaan_syntax$moderation_definitions %||% list(),
       structural_effect_plan = structural_effect_plan,
       resolved_construct_specification = resolved_specification,
+      single_indicator_auto_residuals = lavaan_syntax$single_indicator_auto_residuals %||% character(0),
       identified = is.finite(model_df) && model_df >= 0,
       df = model_df,
       admissible = isTRUE(shared_admissibility$admissible),

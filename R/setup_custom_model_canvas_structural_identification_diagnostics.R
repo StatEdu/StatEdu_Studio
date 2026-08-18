@@ -57,9 +57,9 @@ structural_canvas_identification_diagnostics <- function(snapshot) {
         from <- structural_canvas_node(snapshot, edge$from)
         identical(as.character(edge$to), indicator_id) && !is.null(from) && identical(from$role, "error") &&
           identical(edge$free, FALSE) && is.finite(suppressWarnings(as.numeric(edge$fixedValue %||% NA_real_))) &&
-          suppressWarnings(as.numeric(edge$fixedValue %||% NA_real_)) > 0
+          suppressWarnings(as.numeric(edge$fixedValue %||% NA_real_)) >= 0
       }, logical(1)))
-      if (!single_indicator_constrained) add("Error", latent_name, "single_indicator", "A single-indicator factor requires an externally justified fixed residual variance on its error path.")
+      if (!single_indicator_constrained) add("Warning", latent_name, "single_indicator_auto_fixed", "The single-indicator factor is identified by automatically fixing the indicator residual variance to zero; treat this as a perfect-measurement assumption unless an external reliability constraint is supplied.")
       else add("Warning", latent_name, "single_indicator_constrained", "The single-indicator factor is identified using a fixed residual variance; document the external reliability basis for this constraint.")
     }
     if (length(observed) == 2L && !length(children)) add("Warning", latent_name, "two_indicators", "A two-indicator factor may require additional constraints or structural information for stable identification.")

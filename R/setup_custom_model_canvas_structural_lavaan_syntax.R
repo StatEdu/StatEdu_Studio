@@ -371,11 +371,38 @@ structural_canvas_lavaan_syntax <- function(snapshot, data, analysis_type, laten
   residual_fix_lines <- if (length(residual_variance_fixes)) vapply(names(residual_variance_fixes), function(name) {
     paste(structural_canvas_name(list(name = name)), "~~", paste0(format(residual_variance_fixes[[name]], scientific = FALSE, digits = 15, trim = TRUE), "*", structural_canvas_name(list(name = name))))
   }, character(1)) else character(0)
+  existing_residual_targets <- unique(vapply(residual_parameter_edges, function(edge) structural_canvas_name(structural_canvas_node(snapshot, edge$to)), character(1)))
+  single_indicator_auto_residuals <- character(0)
+  single_indicator_auto_lines <- character(0)
+  for (latent in latents) {
+    latent_id <- as.character(latent$id %||% "")
+    if (!nzchar(latent_id)) next
+    indicator_edges <- Filter(function(edge) {
+      if (identical(edge$kind, "covariance") || identical(as.character(edge$pathType %||% ""), "higherOrder")) return(FALSE)
+      from <- structural_canvas_node(snapshot, edge$from)
+      to <- structural_canvas_node(snapshot, edge$to)
+      !is.null(from) && !is.null(to) &&
+        ((identical(as.character(from$id %||% ""), latent_id) && identical(to$role, "indicator")) ||
+          (identical(as.character(to$id %||% ""), latent_id) && identical(from$role, "indicator")))
+    }, edges)
+    indicators <- unique(vapply(indicator_edges, function(edge) {
+      from <- structural_canvas_node(snapshot, edge$from)
+      to <- structural_canvas_node(snapshot, edge$to)
+      structural_canvas_name(if (identical(from$role, "indicator")) from else to)
+    }, character(1)))
+    indicators <- indicators[nzchar(indicators)]
+    if (length(indicators) != 1L) next
+    indicator <- indicators[[1L]]
+    if (indicator %in% existing_residual_targets || indicator %in% names(residual_variance_fixes)) next
+    single_indicator_auto_residuals <- c(single_indicator_auto_residuals, indicator)
+    single_indicator_auto_lines <- c(single_indicator_auto_lines, paste(indicator, "~~", paste0("0*", indicator)))
+  }
 
   list(
-    syntax = paste(c(measurement_lines, higher_order_lines, structural_lines, effect_definitions$lines, covariance_lines, residual_parameter_lines, residual_fix_lines), collapse = "\n"),
+    syntax = paste(c(measurement_lines, higher_order_lines, structural_lines, effect_definitions$lines, covariance_lines, residual_parameter_lines, residual_fix_lines, single_indicator_auto_lines), collapse = "\n"),
     data = data,
     residual_variance_fixes = residual_variance_fixes,
+    single_indicator_auto_residuals = unique(single_indicator_auto_residuals),
     effect_definitions = effect_definitions$effects,
     moderation_definitions = moderation_terms$definitions
   )
