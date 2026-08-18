@@ -10,6 +10,7 @@
       heightMm: 182,
       widthPx: 971,
       heightPx: 688,
+      paperViewMode: "width",
       viewZoom: 1,
       zoom: 1
     },

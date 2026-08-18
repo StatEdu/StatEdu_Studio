@@ -83,8 +83,9 @@
     return boundedZoom(instance.state.canvas.zoom, 1);
   }
 
-  function setPaperViewZoom(instance, zoom) {
+  function setPaperViewZoom(instance, zoom, mode) {
     var nextZoom = boundedZoom(zoom, 1);
+    instance.state.canvas.paperViewMode = mode || "manual";
     if (isStructuralCanvas(instance)) {
       instance.state.canvas.viewZoom = nextZoom;
     } else {
@@ -1842,6 +1843,7 @@
     if (isStructuralCanvas(instance)) {
       instance.state.canvas.modelZoom = 1;
     }
+    instance.state.canvas.paperViewMode = "width";
     fitPaperToViewport(instance);
     render(instance);
     var scroll = instance.root.querySelector(".custom-model-canvas-scroll");
@@ -1849,18 +1851,20 @@
     window.StatEduModelCanvas.bridge.sendState(instance);
   }
 
-  function fitPaperToViewport(instance) {
+  function fitPaperToViewport(instance, force) {
     if (!instance || !instance.root || instance.root.offsetParent === null) return false;
+    var mode = instance.state.canvas.paperViewMode || "width";
+    if (!force && ["fit", "width"].indexOf(mode) < 0) return false;
     var scroll = instance.root.querySelector(".custom-model-canvas-scroll");
     if (!scroll) {
-      setPaperViewZoom(instance, 1);
+      setPaperViewZoom(instance, 1, mode);
       instance.paperAutoFitApplied = true;
       return false;
     }
     var paperWidth = Number(instance.state.canvas.widthPx || 0);
     var paperHeight = Number(instance.state.canvas.heightPx || 0);
     if (!(paperWidth > 0) || !(paperHeight > 0)) {
-      setPaperViewZoom(instance, 1);
+      setPaperViewZoom(instance, 1, mode);
       instance.paperAutoFitApplied = true;
       return false;
     }
@@ -1869,10 +1873,12 @@
     var paddingY = Number(parseFloat(computed.paddingTop) || 0) + Number(parseFloat(computed.paddingBottom) || 0);
     var availableWidth = Math.max(120, scroll.clientWidth - paddingX - 4);
     var availableHeight = Math.max(120, scroll.clientHeight - paddingY - 4);
-    var nextZoom = Math.min(1, availableWidth / paperWidth, availableHeight / paperHeight);
+    var widthZoom = availableWidth / paperWidth;
+    var fullPageZoom = Math.min(widthZoom, availableHeight / paperHeight);
+    var nextZoom = Math.min(1, mode === "fit" ? fullPageZoom : widthZoom);
     nextZoom = boundedZoom(nextZoom, 1);
     var currentZoom = paperViewZoom(instance);
-    setPaperViewZoom(instance, nextZoom);
+    setPaperViewZoom(instance, nextZoom, mode);
     instance.paperAutoFitApplied = true;
     return Math.abs(currentZoom - nextZoom) > 0.001;
   }
@@ -2002,7 +2008,9 @@
     showSource: showSource,
     zoom: zoom,
     fit: fit,
+    paperViewZoom: paperViewZoom,
     fitPaperToViewport: fitPaperToViewport,
+    setPaperViewZoom: setPaperViewZoom,
     resizeToViewport: resizeCanvasToViewport,
     reflowMeasurements: reflowMeasurementModel,
     setMeasurementPlacement: setMeasurementPlacement,

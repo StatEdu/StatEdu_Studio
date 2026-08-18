@@ -205,14 +205,29 @@
       '<select class="form-control custom-model-paper-orientation">',
       '<option value="landscape">' + t("landscape", "Landscape") + '</option>',
       '<option value="portrait">' + t("portrait", "Portrait") + '</option>',
+      '</select>',
+      '<label class="custom-model-field-label">' + t("paper_view_zoom", "\uc6a9\uc9c0 \ubcf4\uae30 \ubc30\uc728") + '</label>',
+      '<select class="form-control custom-model-paper-view-zoom">',
+      '<option value="width">' + t("fit_width", "\ud3ed \ub9de\ucda4") + '</option>',
+      '<option value="fit">' + t("fit_to_screen", "\uc804\uccb4 \ubcf4\uae30") + '</option>',
+      '<option value="1.25">125%</option>',
+      '<option value="1">100%</option>',
+      '<option value="0.75">75%</option>',
+      '<option value="0.5">50%</option>',
       '</select>'
     ].join("");
     shell.body.appendChild(form);
     form.querySelector(".custom-model-paper-size").value = instance.state.canvas.paper || "B5";
     form.querySelector(".custom-model-paper-orientation").value = instance.state.canvas.orientation || "landscape";
+    var currentPaperZoom = window.StatEduModelCanvas.canvas.paperViewZoom ?
+      window.StatEduModelCanvas.canvas.paperViewZoom(instance) :
+      (instance.state.canvas.viewZoom || instance.state.canvas.zoom || 1);
+    var currentViewMode = instance.state.canvas.paperViewMode || "width";
+    form.querySelector(".custom-model-paper-view-zoom").value = currentViewMode === "fit" || currentViewMode === "width" ? currentViewMode : String(currentPaperZoom);
     shell.apply.addEventListener("click", function() {
       var paperName = form.querySelector(".custom-model-paper-size").value || "B5";
       var orientation = form.querySelector(".custom-model-paper-orientation").value || "landscape";
+      var paperViewZoom = form.querySelector(".custom-model-paper-view-zoom").value || "width";
       var size = PAPER_SIZES[paperName] || PAPER_SIZES.B5;
       var widthMm = size.widthMm;
       var heightMm = size.heightMm;
@@ -228,7 +243,12 @@
       instance.state.canvas.widthPx = pxFromMm(widthMm);
       instance.state.canvas.heightPx = pxFromMm(heightMm);
       window.StatEduModelCanvas.canvas.resizeToViewport(instance);
-      window.StatEduModelCanvas.canvas.fitPaperToViewport(instance);
+      if (paperViewZoom === "fit" || paperViewZoom === "width") {
+        instance.state.canvas.paperViewMode = paperViewZoom;
+        window.StatEduModelCanvas.canvas.fitPaperToViewport(instance, true);
+      } else {
+        window.StatEduModelCanvas.canvas.setPaperViewZoom(instance, Number(paperViewZoom), "manual");
+      }
       window.StatEduModelCanvas.canvas.render(instance);
       window.StatEduModelCanvas.bridge.sendState(instance);
       removeModal();
