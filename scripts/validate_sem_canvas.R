@@ -598,6 +598,9 @@ cbsem_mediation_bundle$effect_bootstrap_result <- cbsem_effect_bootstrap
 cbsem_mediation_bundle$analysis_data <- mediation_data
 cbsem_mediation_bundle$sampling_design <- "independent_cross_sectional"
 cbsem_mediation_bundle$sampling_design_gate <- structural_canvas_sampling_design_gate("independent_cross_sectional")
+cbsem_mediation_bundle$common_method_procedural_controls <- "Separated predictor and outcome measurement times"
+cbsem_mediation_bundle$common_method_marker_variable <- "social_desirability_marker"
+cbsem_mediation_bundle$common_method_marker_rationale <- "Theoretically unrelated marker measured with the same response format"
 cbsem_mediation_audit <- structural_canvas_audit_manifest(cbsem_mediation_bundle, "cbsem")
 stopifnot(
   identical(cbsem_mediation_audit$schema$version, "1.5"),
@@ -610,6 +613,8 @@ stopifnot(
   nchar(cbsem_mediation_audit$data_fingerprints$analysis$content_sha256) == 64L,
   nchar(cbsem_mediation_audit$model$specification_sha256) == 64L,
   nchar(cbsem_mediation_audit$generated$analysis_code$sha256) == 64L,
+  identical(cbsem_mediation_audit$requested_assessments$common_method$marker_variable, "social_desirability_marker"),
+  grepl("does not estimate", cbsem_mediation_audit$requested_assessments$common_method$marker_analysis_status, fixed = TRUE),
   is.logical(cbsem_mediation_audit$generated$git$available),
   all(c("Category", "Severity", "Message") %in% names(cbsem_mediation_audit$warnings)),
   any(cbsem_mediation_audit$warnings$Category == "Causal interpretation"),
@@ -892,6 +897,16 @@ stopifnot(identical(cbsem_default_options$sampling_design, "not_declared"))
 stopifnot(identical(cbsem_default_options$effect_bootstrap, 5000L))
 stopifnot(identical(cbsem_default_options$htmt_bootstrap, 5000L))
 stopifnot(identical(cbsem_default_options$htmt_ci_method, "bias_corrected"))
+common_method_record_options <- structural_canvas_execute_settings(settings = list(
+  common_method_procedural_controls = "Separated predictor and outcome measurement times",
+  common_method_marker_variable = "social_desirability_marker",
+  common_method_marker_rationale = "Theoretically unrelated marker measured with the same response format"
+), input = list(), prefix = "structural_cbsem")
+stopifnot(
+  identical(common_method_record_options$common_method_procedural_controls, "Separated predictor and outcome measurement times"),
+  identical(common_method_record_options$common_method_marker_variable, "social_desirability_marker"),
+  grepl("Theoretically unrelated", common_method_record_options$common_method_marker_rationale, fixed = TRUE)
+)
 sampling_gate <- structural_canvas_sampling_design_gate(pls_options$sampling_design)
 stopifnot(isTRUE(sampling_gate$supported), grepl("independent-observation", sampling_gate$reason, fixed = TRUE))
 for (unsupported_design in c("not_declared", "clustered", "complex_survey", "longitudinal_repeated")) {

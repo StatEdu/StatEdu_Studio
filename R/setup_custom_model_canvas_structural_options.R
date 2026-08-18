@@ -302,12 +302,28 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
                 ),
                 selected = c("harman", "single_factor_cfa")
               ),
+              textAreaInput(
+                paste0(structural_analysis_prefix(analysis_type), "_common_method_procedural_controls"),
+                if (ko) "설계단계 절차적 통제" else "Design-stage procedural controls",
+                value = "", rows = 3,
+                placeholder = if (ko) "예: 응답원·측정시점 분리, 익명성, 문항 순서·척도 형식 설계" else "e.g., source/time separation, anonymity, item ordering, scale-format design"
+              ),
+              textInput(
+                paste0(structural_analysis_prefix(analysis_type), "_common_method_marker_variable"),
+                if (ko) "Marker variable(기록용)" else "Marker variable (record only)",
+                value = ""
+              ),
+              textAreaInput(
+                paste0(structural_analysis_prefix(analysis_type), "_common_method_marker_rationale"),
+                if (ko) "Marker 선정·타당화 근거" else "Marker selection and validity rationale",
+                value = "", rows = 2
+              ),
               tags$p(
                 class = "structural-option-note",
                 if (ko) {
-                  "동일방법편의 진단은 증거 점검용이며, 편의가 없다는 증명이 아닙니다."
+                  "동일방법편의 진단은 증거 점검용이며, 편의가 없다는 증명이 아닙니다. Marker 정보는 감사기록용이며 현재 엔진이 marker 효과를 추정하지 않습니다."
                 } else {
-                  "Common method diagnostics are reported as evidence screens, not as proof that common method bias is absent."
+                  "Common method diagnostics are evidence screens, not proof that bias is absent. Marker information is recorded for audit only; the current engine does not estimate a marker effect."
                 }
               )
             )

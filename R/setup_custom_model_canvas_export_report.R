@@ -219,7 +219,14 @@ structural_canvas_audit_manifest <- function(bundle, analysis_type = NULL, gener
         measurement_table = bundle$invariance_result$measurement_invariance$table %||% bundle$invariance_result$table %||% NULL,
         partial_invariance = bundle$invariance_result$partial_invariance %||% bundle$invariance_result$measurement_invariance$partial_invariance %||% structural_canvas_partial_invariance_status()
       ),
-      common_method = list(enabled = isTRUE(bundle$common_method_enabled), methods = bundle$common_method_methods %||% character(0)),
+      common_method = list(
+        enabled = isTRUE(bundle$common_method_enabled),
+        methods = bundle$common_method_methods %||% character(0),
+        procedural_controls = bundle$common_method_procedural_controls %||% "",
+        marker_variable = bundle$common_method_marker_variable %||% "",
+        marker_rationale = bundle$common_method_marker_rationale %||% "",
+        marker_analysis_status = "Recorded only; the current engine does not estimate or adjust for a marker-variable effect."
+      ),
       formative_redundancy = list(construct = bundle$redundancy_construct %||% NULL, criterion = bundle$redundancy_criterion %||% NULL, result = bundle$redundancy_result %||% NULL),
       formative_content_validity = structural_canvas_formative_content_validity_rows(bundle$snapshot %||% list(), bundle$redundancy_result %||% NULL, bundle$redundancy_construct %||% NULL),
       parcel_preview = list(enabled = isTRUE(bundle$parcel_enabled), construct = bundle$parcel_construct %||% NULL, count = bundle$parcel_count %||% NULL, purpose = bundle$parcel_purpose %||% NULL, result = bundle$parcel_result %||% NULL)
@@ -287,6 +294,8 @@ structural_canvas_reproducibility_record <- function(bundle, generated_at = Sys.
     paste0("Bollen-Stine bootstrap: ", bundle$bollen_stine_bootstrap %||% 0L, "; seed: ", bundle$bollen_stine_seed %||% "not used"),
     paste0("Measurement invariance: ", if (isTRUE(bundle$invariance_enabled)) paste0("enabled; group = ", bundle$invariance_group) else "disabled"),
     paste0("Common method bias diagnostics: ", if (isTRUE(bundle$common_method_enabled)) paste0("enabled; methods = ", paste(bundle$common_method_methods %||% character(0), collapse = ", ")) else "disabled"),
+    paste0("Common method procedural controls: ", bundle$common_method_procedural_controls %||% "not recorded"),
+    paste0("Common method marker variable: ", bundle$common_method_marker_variable %||% "not recorded", "; rationale: ", bundle$common_method_marker_rationale %||% "not recorded", "; analysis status: recorded only, not estimated"),
     paste0("Parcel item-level model: ", if (isTRUE(bundle$parcel_enabled)) paste0(
       if (isTRUE(bundle$parcel_result$applied)) "fitted" else "requested",
       "; construct = ", bundle$parcel_construct %||% "",

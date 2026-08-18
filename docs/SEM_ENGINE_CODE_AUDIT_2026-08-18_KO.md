@@ -19,6 +19,7 @@
 - PLS 근사 적합도 행렬 계산을 cSEM 정의와 대조해 SRMR 분모, d_G 로그·척도, NFI ML 거리식을 교정하고 고정 행렬 benchmark를 추가했다.
 - cSEM 설치 환경에서 SRMR·d_G·d_ULS를 cSEM 패키지 함수와 직접 대조하는 선택적 package-level benchmark를 안정화 검증 목록에 추가했다.
 - SmartPLS/ADANCO 결과 CSV를 StatEdu 원값과 절대·상대 허용오차로 자동 대조하는 외부 benchmark 비교기와 재현 절차를 추가했다.
+- CMB 옵션에 설계단계 절차적 통제, marker 변수와 선정 근거의 구조화 기록을 추가하고, marker 효과는 현재 추정하지 않는다는 상태를 UI·Audit에 명시했다.
 - PLSpredict 요약은 일부 지표의 PLS 우세를 `OK`로 판정하지 않고 `Descriptive only`로 표시한다.
 - 대표본 Mardia 진단은 정렬에 민감한 등간격 추출 대신 RNG 상태를 보존하는 고정 시드 단순무작위 비복원 부분표본을 사용한다.
 - 병렬 PLSc bootstrap은 `seed + index` 대신 재현 가능한 L'Ecuyer-CMRG 독립 난수 스트림을 반복별로 사전 할당한다.

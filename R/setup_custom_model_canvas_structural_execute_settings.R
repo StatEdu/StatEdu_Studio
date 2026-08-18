@@ -121,6 +121,9 @@ structural_canvas_execute_settings <- function(settings, input, prefix) {
     mi_holdout_seed = mi_holdout_seed,
     common_method_enabled = isTRUE(settings$common_method_enabled %||% input[[paste0(prefix, "_common_method_enabled")]] %||% FALSE),
     common_method_methods = common_method_methods,
+    common_method_procedural_controls = trimws(as.character(settings$common_method_procedural_controls %||% input[[paste0(prefix, "_common_method_procedural_controls")]] %||% "")),
+    common_method_marker_variable = trimws(as.character(settings$common_method_marker_variable %||% input[[paste0(prefix, "_common_method_marker_variable")]] %||% "")),
+    common_method_marker_rationale = trimws(as.character(settings$common_method_marker_rationale %||% input[[paste0(prefix, "_common_method_marker_rationale")]] %||% "")),
     result_coefficient = structural_canvas_result_coefficient_mode(settings$result_coefficient %||% input[[paste0(prefix, "_result_coefficient")]] %||% "beta_p"),
     result_measurement_coefficient = as.character(settings$result_measurement_coefficient %||% input[[paste0(prefix, "_result_measurement_coefficient")]] %||% "measurement_p"),
     residual_variance_fixes = settings$residual_variance_fixes %||% numeric(0)

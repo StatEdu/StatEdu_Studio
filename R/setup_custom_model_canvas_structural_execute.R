@@ -65,6 +65,9 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   mi_holdout_seed <- options$mi_holdout_seed
   common_method_enabled <- options$common_method_enabled
   common_method_methods <- options$common_method_methods
+  common_method_procedural_controls <- options$common_method_procedural_controls
+  common_method_marker_variable <- options$common_method_marker_variable
+  common_method_marker_rationale <- options$common_method_marker_rationale
   result_coefficient <- options$result_coefficient
   result_measurement_coefficient <- options$result_measurement_coefficient
   residual_variance_fixes <- options$residual_variance_fixes
@@ -260,6 +263,9 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     analysis_data = data, validation_data = validation_data, holdout_rows = holdout_rows, holdout_comparison = holdout_comparison,
     mi_validation_gate = mi_validation_gate,
     common_method_enabled = common_method_enabled, common_method_methods = common_method_methods,
+    common_method_procedural_controls = common_method_procedural_controls,
+    common_method_marker_variable = common_method_marker_variable,
+    common_method_marker_rationale = common_method_marker_rationale,
     common_method_result = common_method_result,
     analysis_type = analysis_type, estimator = estimator, estimator_recommendation_confirmed = estimator_recommendation_confirmed,
     objective = objective, method_recommendation = method_recommendation,
