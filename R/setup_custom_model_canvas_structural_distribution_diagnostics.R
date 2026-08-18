@@ -75,17 +75,29 @@ structural_canvas_mahalanobis_diagnostics <- function(data, variables, alpha = .
   list(available = TRUE, n = nrow(values), p = p, alpha = alpha, flagged_n = sum(flagged), table = table)
 }
 
-structural_canvas_mardia <- function(data, variables, max_n = 2000L) {
+structural_canvas_mardia <- function(data, variables, max_n = 2000L, seed = 20260818L) {
   variables <- intersect(unique(as.character(variables)), names(data))
   if (length(variables) < 2L) return(list(available = FALSE, reason = "At least two continuous indicators are required."))
   values <- data[variables]
   if (!all(vapply(values, is.numeric, logical(1)))) return(list(available = FALSE, reason = "All indicators must be numeric and continuous."))
-  values <- values[stats::complete.cases(values), , drop = FALSE]
+  complete_rows <- which(stats::complete.cases(values))
+  values <- values[complete_rows, , drop = FALSE]
   original_n <- nrow(values)
   p <- ncol(values)
   if (original_n <= p + 1L) return(list(available = FALSE, reason = "Too few complete cases for the number of indicators."))
   sampled <- original_n > max_n
-  if (sampled) values <- values[unique(round(seq(1, original_n, length.out = max_n))), , drop = FALSE]
+  sample_indices <- seq_len(original_n)
+  if (sampled) {
+    old_seed_exists <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    if (old_seed_exists) old_seed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    on.exit({
+      if (old_seed_exists) assign(".Random.seed", old_seed, envir = .GlobalEnv)
+      else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) rm(".Random.seed", envir = .GlobalEnv)
+    }, add = TRUE)
+    set.seed(as.integer(seed))
+    sample_indices <- sort(sample.int(original_n, size = as.integer(max_n), replace = FALSE))
+    values <- values[sample_indices, , drop = FALSE]
+  }
   n <- nrow(values)
   centered <- sweep(as.matrix(values), 2L, colMeans(values), "-")
   covariance <- crossprod(centered) / n
@@ -103,6 +115,9 @@ structural_canvas_mardia <- function(data, variables, max_n = 2000L) {
   nonnormal <- is.finite(skew_p) && is.finite(kurtosis_p) && (skew_p < .05 || kurtosis_p < .05)
   list(
     available = TRUE, n = n, original_n = original_n, p = p, sampled = sampled,
+    sampling_method = if (sampled) "seeded simple random sample without replacement" else "all complete cases",
+    sampling_seed = if (sampled) as.integer(seed) else NA_integer_,
+    sampled_rows = complete_rows[sample_indices],
     skewness = skewness, skew_statistic = skew_statistic, skew_df = skew_df, skew_p = skew_p,
     kurtosis = kurtosis, expected_kurtosis = expected_kurtosis, kurtosis_z = kurtosis_z, kurtosis_p = kurtosis_p,
     recommendation = if (nonnormal) "MLR recommended" else "No Mardia test flag; normality not established",

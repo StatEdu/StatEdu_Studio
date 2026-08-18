@@ -380,6 +380,24 @@ mardia_nonnormal <- structural_canvas_mardia(nonnormal_data, names(nonnormal_dat
 stopifnot(isTRUE(mardia_nonnormal$available), isTRUE(mardia_nonnormal$nonnormal), identical(mardia_nonnormal$recommendation, "MLR recommended"))
 normal_mardia <- structural_canvas_mardia(continuous, names(continuous))
 stopifnot(grepl("normality not established", normal_mardia$recommendation, fixed = TRUE) || isTRUE(normal_mardia$test_flag))
+large_mardia_data <- data.frame(
+  x1 = seq_len(2100L),
+  x2 = sin(seq_len(2100L) / 13) + seq_len(2100L) / 100,
+  x3 = cos(seq_len(2100L) / 17) + seq_len(2100L) / 80
+)
+set.seed(913L)
+rng_before_mardia <- .Random.seed
+sampled_mardia_first <- structural_canvas_mardia(large_mardia_data, names(large_mardia_data), max_n = 200L, seed = 71L)
+sampled_mardia_second <- structural_canvas_mardia(large_mardia_data, names(large_mardia_data), max_n = 200L, seed = 71L)
+stopifnot(
+  identical(.Random.seed, rng_before_mardia),
+  isTRUE(sampled_mardia_first$sampled),
+  sampled_mardia_first$n == 200L,
+  identical(sampled_mardia_first$sampled_rows, sampled_mardia_second$sampled_rows),
+  identical(sampled_mardia_first$sampling_method, "seeded simple random sample without replacement"),
+  sampled_mardia_first$sampling_seed == 71L,
+  !identical(sampled_mardia_first$sampled_rows, unique(round(seq(1, 2100L, length.out = 200L))))
+)
 estimator_recommendation <- structural_canvas_estimator_recommendation(snapshot, nonnormal_data, data.frame(name = names(nonnormal_data), measurement = "continuous"), "cfa", "ML")
 estimator_no_recommendation <- structural_canvas_estimator_recommendation(snapshot, nonnormal_data, data.frame(name = names(nonnormal_data), measurement = "continuous"), "cfa", "MLR")
 estimator_ordered_recommendation <- structural_canvas_estimator_recommendation(snapshot, nonnormal_data, data.frame(name = names(nonnormal_data), measurement = c("ordered", "continuous", "continuous")), "cfa", "ML")
