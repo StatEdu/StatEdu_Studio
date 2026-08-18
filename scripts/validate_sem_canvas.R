@@ -895,7 +895,12 @@ pls_predict_bundle <- pls_bundle
 pls_predict_bundle$pls_predict_result <- pls_predict
 pls_predict_quality <- structural_canvas_pls_quality_rows(pls_predict_bundle)
 stopifnot(grepl("indicator metrics favor PLS over LM", pls_predict_quality$Value[pls_predict_quality$Item == "PLSpredict summary"], fixed = TRUE))
-stopifnot(pls_predict_quality$Status[pls_predict_quality$Item == "PLSpredict summary"] %in% c("OK", "Review"))
+stopifnot(pls_predict_quality$Status[pls_predict_quality$Item == "PLSpredict summary"] == "Descriptive only")
+stopifnot(
+  structural_canvas_pls_quality_status("PLSpredict summary", "0/6 indicator metrics favor PLS over LM") == "Descriptive only",
+  structural_canvas_pls_quality_status("PLSpredict summary", "1/6 indicator metrics favor PLS over LM") == "Descriptive only",
+  structural_canvas_pls_quality_status("PLSpredict summary", "6/6 indicator metrics favor PLS over LM") == "Descriptive only"
+)
 
 pls_bootstrap <- structural_canvas_run_pls_bootstrap("plssem", 30L, pls, 24680L)
 stopifnot(is.list(pls_bootstrap))

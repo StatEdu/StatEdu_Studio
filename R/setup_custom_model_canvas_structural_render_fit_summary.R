@@ -353,7 +353,7 @@ structural_canvas_quality_display_guidance <- function(item, guidance) {
     "Max item VIF" = "VIF 절단값은 기술적 참고입니다. 높은 값은 중복 지표나 형성가중치 불안정성을 검토하고, 낮은 값도 측정 품질을 확립하지 않습니다.",
     "Max inner VIF" = "VIF 절단값은 기술적 참고입니다. 예측변수 간 이론적 중복, 계수 부호·크기 변화, 억제효과와 bootstrap 불안정성을 함께 검토하십시오.",
     "Min score-CV Q2" = "score-CV Q²는 전체 표본에서 추정한 구성개념 점수를 사용하므로 내부 점수 수준의 기술적 안정성 지표입니다. 표본외 예측력으로 해석하지 말고 PLSpredict 기준모형 비교를 보고하십시오.",
-    "PLSpredict summary" = "표본외 예측은 PLS 오차가 LM보다 낮을 때 더 강하게 뒷받침됩니다.",
+    "PLSpredict summary" = "PLS와 LM의 반복 표본외 오차 차이를 기술적으로 비교합니다. 일부 지표의 PLS 우세만으로 예측타당도 통과 판정을 내리지 마십시오.",
     "Max f2" = "f²의 .02/.15/.35 구간은 기술적 표지이며 분야 맥락, 불확실성과 실질적 중요성을 대체하지 않습니다."
   )
   if (item %in% names(guidance_map)) unname(guidance_map[item]) else guidance

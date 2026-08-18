@@ -189,9 +189,8 @@ structural_canvas_pls_quality_status <- function(item, value) {
   if (identical(item, "PLSpredict summary")) {
     matches <- regmatches(value, regexec("^([0-9]+)/([0-9]+)", value))[[1L]]
     if (length(matches) == 3L) {
-      favored <- suppressWarnings(as.integer(matches[[2L]]))
       total <- suppressWarnings(as.integer(matches[[3L]]))
-      return(if (is.finite(favored) && is.finite(total) && total > 0L && favored > 0L) "OK" else "Review")
+      return(if (is.finite(total) && total > 0L) "Descriptive only" else "Not assessed")
     }
     return("Not assessed")
   }
