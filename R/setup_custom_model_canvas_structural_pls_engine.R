@@ -158,6 +158,8 @@ structural_canvas_apply_plsc <- function(fit, common_factor_constructs = charact
     corrected <- seminr::PLSc(fit)
     corrected$statedu_common_factor_constructs <- common_factor_constructs
     corrected$statedu_plsc_mode <- "all_common_factors"
+    corrected$statedu_plsc_correction_status <- "complete"
+    corrected$statedu_plsc_corrected_endogenous <- seminr:::all_endogenous(corrected$smMatrix)
     return(corrected)
   }
   sm_matrix <- fit$smMatrix
@@ -171,14 +173,25 @@ structural_canvas_apply_plsc <- function(fit, common_factor_constructs = charact
   adjustment <- sqrt(rho %*% t(rho))
   diag(adjustment) <- 1
   adjusted_correlations <- stats::cor(construct_scores, use = "pairwise.complete.obs") / adjustment
+  if (any(!is.finite(adjusted_correlations))) {
+    stop("PLSc correction failed because the disattenuated construct-correlation matrix contains non-finite values.")
+  }
+  corrected_endogenous <- character(0)
   for (endogenous in seminr:::all_endogenous(sm_matrix)) {
     antecedents <- seminr:::construct_antecedents(sm_matrix, endogenous)
     if (!length(antecedents)) next
     coefficients <- tryCatch(
       solve(adjusted_correlations[antecedents, antecedents, drop = FALSE], adjusted_correlations[antecedents, endogenous, drop = FALSE]),
-      error = function(error) NULL
+      error = function(error) stop(
+        paste0("PLSc correction failed for endogenous construct '", endogenous, "': ", conditionMessage(error)),
+        call. = FALSE
+      )
     )
-    if (!is.null(coefficients)) path_coef[antecedents, endogenous] <- coefficients
+    if (any(!is.finite(coefficients))) {
+      stop(paste0("PLSc correction failed for endogenous construct '", endogenous, "': corrected path coefficients are non-finite."), call. = FALSE)
+    }
+    path_coef[antecedents, endogenous] <- coefficients
+    corrected_endogenous <- c(corrected_endogenous, endogenous)
   }
   reflectives <- intersect(seminr:::all_reflective(mm_matrix), common_factor_constructs)
   for (construct in reflectives) {
@@ -196,6 +209,8 @@ structural_canvas_apply_plsc <- function(fit, common_factor_constructs = charact
   )
   fit$statedu_common_factor_constructs <- common_factor_constructs
   fit$statedu_plsc_mode <- "mixed_common_factors_and_composites"
+  fit$statedu_plsc_correction_status <- "complete"
+  fit$statedu_plsc_corrected_endogenous <- unique(corrected_endogenous)
   fit
 }
 
@@ -288,6 +303,8 @@ structural_canvas_run_pls_analysis <- function(snapshot, data, latents, edges, e
     estimator_selection_reason = selection$reason,
     plsc_corrected_constructs = selection$common_factors,
     plsc_uncorrected_composites = selection$composites,
+    plsc_correction_status = as.character(fit$statedu_plsc_correction_status %||% if (identical(estimator, "PLSC")) "not recorded" else "not applicable"),
+    plsc_corrected_endogenous = as.character(fit$statedu_plsc_corrected_endogenous %||% character(0)),
     syntax = paste(c(measurement_lines, structural_paths), collapse = "\n"),
     converged = TRUE,
     n = nrow(data),

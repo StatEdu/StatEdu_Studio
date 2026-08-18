@@ -27,7 +27,12 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
             type = "tabs",
             tabPanel(
               if (ko) "추정" else "Estimation",
-          selectInput(paste0(structural_analysis_prefix(analysis_type), "_estimator"), if (ko) "추정 방법" else "Estimator", choices = if (analysis_type == "plssem") stats::setNames(c("AUTO", "PLS", "PLSC"), c(if (ko) "자동(권장)" else "Automatic (recommended)", "PLS", "PLSc")) else c("ML" = "ML", "MLR" = "MLR", "WLSMV" = "WLSMV"), selected = if (analysis_type == "plssem") "AUTO" else "ML"),
+          selectInput(paste0(structural_analysis_prefix(analysis_type), "_estimator"), if (ko) "추정 방법" else "Estimator", choices = if (analysis_type == "plssem") stats::setNames(c("AUTO", "PLS", "PLSC"), c(if (ko) "규칙 기반 추천(확인 필요)" else "Rule-based recommendation (confirmation required)", "PLS", "PLSc")) else c("ML" = "ML", "MLR" = "MLR", "WLSMV" = "WLSMV"), selected = if (analysis_type == "plssem") "AUTO" else "ML"),
+          if (analysis_type == "plssem") checkboxInput(
+            paste0(structural_analysis_prefix(analysis_type), "_estimator_recommendation_confirmed"),
+            if (ko) "구성개념 명세에 따른 PLS/PLSc 추천을 검토하고 적용합니다." else "I reviewed and accept the PLS/PLSc recommendation based on the construct specification.",
+            value = FALSE
+          ),
           selectInput(
             paste0(structural_analysis_prefix(analysis_type), "_objective"),
             if (ko) "주요 분석 목적" else "Primary analysis objective",
@@ -47,7 +52,7 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
                 if (ko) "종단·반복측정자료" else "Longitudinal or repeated measures"
               )
             ),
-            selected = "independent_cross_sectional"
+            selected = "not_declared"
           ),
           tags$p(class = "structural-option-note", if (ko) "분석 전에 표집구조를 명시적으로 확인하십시오. 현재 캔버스 엔진은 군집, 복합표본 또는 종단·반복측정의 의존구조를 무시한 분석을 실행하지 않습니다." else "Confirm the sampling structure explicitly before analysis. The current canvas engine will not fit a model that ignores clustered, complex-survey, longitudinal, or repeated-measures dependence."),
           checkboxInput(
@@ -256,7 +261,7 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
             selected = "theory"
           ),
           if (identical(analysis_type, "plssem")) tagList(
-            tags$p(class = "structural-option-note", if (ko) "PLS 진단은 표본 밖 예측력, 잔차 기반 근사 적합도, 공선성, Q² 및 구성개념별 품질지표를 함께 검토합니다." else "PLS diagnostics jointly review out-of-sample predictive power, residual-based approximate fit, collinearity, Q², and construct-level quality indices."),
+            tags$p(class = "structural-option-note", if (ko) "PLS 진단은 PLSpredict 표본외 예측, 잔차 기반 근사 적합도, 공선성, 기술적 score-CV Q² 및 구성개념별 품질지표를 구분해 검토합니다." else "PLS diagnostics distinguish PLSpredict out-of-sample assessment from descriptive score-CV Q² while reviewing residual-based approximate fit, collinearity, and construct-level quality indices."),
             selectInput(
               paste0(structural_analysis_prefix(analysis_type), "_pls_predict_folds"),
               if (ko) "PLSpredict 교차검증" else "PLSpredict cross-validation",

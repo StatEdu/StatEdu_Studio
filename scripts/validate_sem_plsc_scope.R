@@ -12,15 +12,18 @@ stopifnot(is.null(structural_canvas_validate_plsc_specification(factor_snapshot,
 invalid_snapshots <- list(
   composite = list(nodes = list(list(id = "c", name = "Composite", role = "latent", constructType = "composite", measurementMode = "reflective"))),
   formative = list(nodes = list(list(id = "c", name = "Formative", role = "latent", constructType = "composite", measurementMode = "formative"))),
-  unspecified = list(nodes = list(list(id = "u", name = "Unspecified", role = "latent", constructType = "unspecified", measurementMode = "reflective"))),
-  mixed = list(nodes = c(factor_snapshot$nodes, list(list(id = "c", name = "Composite", role = "latent", constructType = "composite", measurementMode = "reflective"))))
+  unspecified = list(nodes = list(list(id = "u", name = "Unspecified", role = "latent", constructType = "unspecified", measurementMode = "reflective")))
 )
 for (snapshot in invalid_snapshots) {
   blocked <- tryCatch({
     structural_canvas_validate_plsc_specification(snapshot, "plssem", "PLSc")
     FALSE
-  }, error = function(error) grepl("only when every construct", conditionMessage(error), fixed = TRUE))
+  }, error = function(error) grepl("PLSc requires", conditionMessage(error), fixed = TRUE))
   stopifnot(blocked)
 }
+
+mixed_snapshot <- list(nodes = c(factor_snapshot$nodes, list(list(id = "c", name = "Composite", role = "latent", constructType = "composite", measurementMode = "reflective"))))
+mixed_specification <- structural_canvas_validate_plsc_specification(mixed_snapshot, "plssem", "PLSc")
+stopifnot(nrow(mixed_specification) == 3L)
 
 message("SEM PLSc scope validation passed.")

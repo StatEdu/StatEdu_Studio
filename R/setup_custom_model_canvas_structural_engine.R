@@ -39,11 +39,11 @@ structural_canvas_select_pls_estimator <- function(snapshot, estimator = "AUTO")
   reason <- if (!identical(requested, "AUTO")) {
     "Estimator selected by the user."
   } else if (length(common_factors) && length(composites)) {
-    "PLSc selected automatically because the model contains reflective common factors; consistency correction is limited to those blocks."
+    "Rule-based recommendation: PLSc because the model contains reflective common factors; consistency correction is limited to those blocks."
   } else if (length(common_factors)) {
-    "PLSc selected automatically because all eligible constructs are reflective common factors."
+    "Rule-based recommendation: PLSc because all eligible constructs are reflective common factors."
   } else {
-    "PLS selected automatically because the model contains composites and no reflective common factor requiring consistency correction."
+    "Rule-based recommendation: PLS because the model contains composites and no reflective common factor requiring consistency correction."
   }
   list(
     requested = requested, selected = selected, mode = mode, reason = reason,

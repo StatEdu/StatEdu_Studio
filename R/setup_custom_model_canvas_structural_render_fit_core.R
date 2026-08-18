@@ -6,7 +6,7 @@ structural_canvas_fit_table_result_ui <- function(bundle, values) {
     pls_header <- function(value) {
       display <- switch(value,
         f2 = "f<sup>2</sup>", R2 = "R<sup>2</sup>", AdjR2 = "Adj R<sup>2</sup>",
-        R2AdjR2 = "R<sup>2</sup>(adj R<sup>2</sup>)", Q2 = "Q<sup>2</sup>",
+        R2AdjR2 = "R<sup>2</sup>(adj R<sup>2</sup>)", `Score-CV Q2` = "Score-CV Q<sup>2</sup>",
         `Inner VIF` = "VIF", value
       )
       tags$th(HTML(display))

@@ -116,7 +116,7 @@ structural_canvas_reporting_context_rows <- function(bundle, analysis_type) {
     label <- if (identical(toupper(as.character(algorithm)), "PLSC")) "PLSc path modeling" else "PLS path modeling"
     requested <- toupper(as.character(bundle$diagnostics$estimator_requested %||% bundle$estimator_requested %||% ""))
     mode <- as.character(bundle$diagnostics$estimator_selection_mode %||% bundle$estimator_selection_mode %||% "")
-    if (identical(requested, "AUTO")) paste0(label, " (automatically selected; ", mode, ")") else label
+    if (nzchar(mode)) paste0(label, " (", if (identical(requested, "AUTO")) "rule-based recommendation accepted; " else "", mode, ")") else label
   } else {
     bundle$estimator %||% structural_canvas_reporting_lavaan_option(bundle, "estimator", "")
   }
@@ -128,7 +128,10 @@ structural_canvas_reporting_context_rows <- function(bundle, analysis_type) {
   ordered <- as.character(bundle$ordered %||% character(0))
   ordered_label <- if (length(ordered)) paste(ordered, collapse = ", ") else "None recorded"
   scaling <- if (identical(analysis_type, "plssem")) {
-    if (identical(toupper(as.character(bundle$estimator %||% "PLS")), "PLSC")) "PLSc consistency-corrected scores" else "Composite scores"
+    if (identical(toupper(as.character(bundle$estimator %||% "PLS")), "PLSC")) {
+      mode <- as.character(bundle$diagnostics$estimator_selection_mode %||% bundle$estimator_selection_mode %||% "")
+      if (grepl("Mixed model", mode, fixed = TRUE)) "Mixed PLSc: common-factor blocks corrected; composite blocks uncorrected" else "PLSc consistency-corrected common-factor scores"
+    } else "Composite scores"
   } else if (isTRUE(bundle$std_lv)) {
     "std.lv = TRUE"
   } else {

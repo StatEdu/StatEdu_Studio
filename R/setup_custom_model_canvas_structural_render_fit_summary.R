@@ -352,7 +352,7 @@ structural_canvas_quality_display_guidance <- function(item, guidance) {
     "Max HTMT" = "HTMT 기준 미만은 판별타당도 확정 판정이 아닙니다. 신뢰구간, 잠재상관, 교차적재, 이론과 경쟁 측정모형을 함께 검토하십시오.",
     "Max item VIF" = "VIF 절단값은 기술적 참고입니다. 높은 값은 중복 지표나 형성가중치 불안정성을 검토하고, 낮은 값도 측정 품질을 확립하지 않습니다.",
     "Max inner VIF" = "VIF 절단값은 기술적 참고입니다. 예측변수 간 이론적 중복, 계수 부호·크기 변화, 억제효과와 bootstrap 불안정성을 함께 검토하십시오.",
-    "Min Q2" = "Q²는 생략 예측 기준과 비교한 기술적 지표입니다. 0 초과만으로 강한 표본외 예측력을 주장하지 말고 PLSpredict 기준모형 비교를 함께 보고하십시오.",
+    "Min score-CV Q2" = "score-CV Q²는 전체 표본에서 추정한 구성개념 점수를 사용하므로 내부 점수 수준의 기술적 안정성 지표입니다. 표본외 예측력으로 해석하지 말고 PLSpredict 기준모형 비교를 보고하십시오.",
     "PLSpredict summary" = "표본외 예측은 PLS 오차가 LM보다 낮을 때 더 강하게 뒷받침됩니다.",
     "Max f2" = "f²의 .02/.15/.35 구간은 기술적 표지이며 분야 맥락, 불확실성과 실질적 중요성을 대체하지 않습니다."
   )
@@ -392,7 +392,7 @@ structural_canvas_quality_display_rows <- function(rows, ko = FALSE) {
     "Max item VIF" = "최대 지표 VIF",
     "Max inner VIF" = "최대 inner VIF",
     "Max f2" = "최대 f²",
-    "Min Q2" = "최소 Q²",
+    "Min score-CV Q2" = "최소 score-CV Q²",
     "PLSpredict summary" = "PLSpredict 요약"
   )
   status_map <- c("OK" = "양호", "Review" = "검토", "Reference only" = "기준 참고", "Descriptive only" = "기술적 참고", "Screen only" = "탐색 점검", "Not assessed" = "미평가")
@@ -636,7 +636,7 @@ structural_canvas_fit_guidance_result_ui <- function(bundle, language) {
   })
   table <- do.call(rbind, tables)
   table$Value <- vapply(table$Value, format_decimal3, character(1))
-  severity <- c("Good" = 1L, "Marginal" = 2L, "Review" = 3L, "Not assessed" = 4L)
+  severity <- c("Reference only" = 1L, "Review" = 2L, "Not assessed" = 3L)
   summaries <- vapply(split(table$Guidance, table$Model), function(values) {
     if (all(values == "Not assessed")) return("Not assessed")
     score <- max(vapply(values[values != "Not assessed"], function(value) severity[[value]], integer(1)))
@@ -649,8 +649,8 @@ structural_canvas_fit_guidance_result_ui <- function(bundle, language) {
       tags$tbody(lapply(seq_len(nrow(table)), function(index) tags$tr(lapply(as.character(table[index, ]), tags$td))))
     )),
     tags$p(paste(vapply(names(summaries), function(name) paste0(name, ": ", summaries[[name]]), character(1)), collapse = " | ")),
-    tags$p(class = "structural-result-note", if (ko) "Good/Marginal/Review 표시는 흔히 쓰는 근사 기준에 따른 설명용 안내입니다. 보편적 수용 규칙이 아니며 모형 식별, 잔차 진단, 모수 타당성, 이론, 표본 특성, 대안 모형 비교를 대체하지 않습니다." else "Good/Marginal/Review labels are descriptive reference guidance based on commonly used approximate cutoffs. They are not universal acceptance rules and do not replace model identification, residual diagnostics, parameter plausibility, theory, sample characteristics, or comparison with plausible alternatives."),
-    tags$p(class = "structural-result-note", if (ko) "증분 적합도 안내: CFI/TLI >= .95 Good, >= .90 Marginal. 절대 적합도 안내: RMSEA <= .06 Good, <= .08 Marginal; SRMR <= .08 Good, <= .10 Marginal. 이 범위 밖 값은 Review로 표시합니다." else "Incremental-fit guidance: CFI/TLI >= .95 Good, >= .90 Marginal. Absolute-fit guidance: RMSEA <= .06 Good, <= .08 Marginal; SRMR <= .08 Good, <= .10 Marginal. Values outside these ranges are marked Review."),
+    tags$p(class = "structural-result-note", if (ko) "기준 참고/검토 표시는 흔히 쓰는 근사 범위와의 위치를 설명할 뿐 모형의 채택·기각 판정이 아닙니다. 모형 식별, 잔차 진단, 모수 타당성, 이론, 표본 특성, 대안 모형 비교를 함께 검토하십시오." else "Reference-only/review labels locate estimates relative to common approximate ranges; they do not accept or reject the model. Also inspect identification, residuals, parameter plausibility, theory, sample characteristics, and plausible alternative models."),
+    tags$p(class = "structural-result-note", if (ko) "흔한 참고점: CFI/TLI .90/.95, RMSEA .08/.06, SRMR .10/.08. 이 값은 맥락 의존적 참고점이며 보편적 절단값이 아닙니다." else "Common reference points: CFI/TLI .90/.95, RMSEA .08/.06, and SRMR .10/.08. These are context-dependent reference points, not universal cutoffs."),
     if (any(table$Guidance == "Not assessed")) tags$p(class = "structural-result-note", if (ko) "포화모형(df = 0)이거나 적합도 지수가 없으면 적합도 안내를 평가하지 않습니다." else "Fit guidance is not assessed for saturated models (df = 0) or unavailable fit indices."),
     if (nrow(additional_fit)) tagList(
       tags$h5(if (ko) "표 2 가이드: 표 2에 직접 표시하지 않은 추가 적합도 통계량" else "Guide for Table 2: Additional fit indices not shown in Table 2"),

@@ -10,6 +10,15 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   if (nrow(identification_warnings)) structural_canvas_notify_identification_warnings(identification_warnings, statedu_current_language(app_language_fn))
   options <- structural_canvas_execute_settings(settings, input, prefix)
   estimator <- options$estimator
+  estimator_recommendation_confirmed <- options$estimator_recommendation_confirmed
+  if (identical(analysis_type, "plssem") && identical(toupper(as.character(estimator)), "AUTO") && !isTRUE(estimator_recommendation_confirmed)) {
+    recommendation <- structural_canvas_select_pls_estimator(snapshot, estimator)
+    stop(if (identical(statedu_current_language(app_language_fn), "ko")) {
+      paste0("PLS/PLSc 추천 결과는 ", recommendation$selected, "입니다. 구성개념 명세와 추천 사유를 검토한 뒤 확인란을 선택하거나 PLS/PLSc를 직접 지정하십시오. 사유: ", recommendation$reason)
+    } else {
+      paste0("The PLS/PLSc recommendation is ", recommendation$selected, ". Review the construct specification and rationale, then select the confirmation checkbox or choose PLS/PLSc explicitly. Rationale: ", recommendation$reason)
+    })
+  }
   objective <- options$objective
   sampling_design <- options$sampling_design
   sampling_design_gate <- structural_canvas_sampling_design_gate(sampling_design)
@@ -252,7 +261,8 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     mi_validation_gate = mi_validation_gate,
     common_method_enabled = common_method_enabled, common_method_methods = common_method_methods,
     common_method_result = common_method_result,
-    analysis_type = analysis_type, estimator = estimator, objective = objective, method_recommendation = method_recommendation,
+    analysis_type = analysis_type, estimator = estimator, estimator_recommendation_confirmed = estimator_recommendation_confirmed,
+    objective = objective, method_recommendation = method_recommendation,
     power_basis = power_basis, power_details = power_details,
     sampling_design = sampling_design, sampling_design_gate = sampling_design_gate,
     moderation_method = moderation_method,

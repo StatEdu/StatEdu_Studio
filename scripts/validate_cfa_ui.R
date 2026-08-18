@@ -242,7 +242,7 @@ stopifnot(
   grepl('<li class="active">', cfa_toolbar, fixed = TRUE),
   grepl('<div class="tab-pane active" data-value="Estimation"', cfa_toolbar, fixed = TRUE),
   grepl("Estimation", cfa_toolbar, fixed = TRUE),
-  grepl('selected = "independent_cross_sectional"', ui_source, fixed = TRUE),
+  grepl('selected = "not_declared"', ui_source, fixed = TRUE),
   grepl("분석 전에 표집구조를 명시적으로 확인하십시오", ui_source, fixed = TRUE),
   grepl("Validity", cfa_toolbar, fixed = TRUE),
   grepl("Diagnostics", cfa_toolbar, fixed = TRUE),

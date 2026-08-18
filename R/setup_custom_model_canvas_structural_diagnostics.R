@@ -8,11 +8,11 @@ structural_canvas_fit_guidance <- function(fit_values) {
   if (!is.finite(df) || df <= 0) {
     return(data.frame(Metric = names(metrics), Value = metrics, Guidance = "Not assessed", Reference = "Saturated/df <= 0", stringsAsFactors = FALSE))
   }
-  classify_incremental <- function(value) if (!is.finite(value)) "Not assessed" else if (value >= .95) "Good" else if (value >= .90) "Marginal" else "Review"
-  classify_rmsea <- function(value) if (!is.finite(value)) "Not assessed" else if (value <= .06) "Good" else if (value <= .08) "Marginal" else "Review"
-  classify_srmr <- function(value) if (!is.finite(value)) "Not assessed" else if (value <= .08) "Good" else if (value <= .10) "Marginal" else "Review"
+  classify_incremental <- function(value) if (!is.finite(value)) "Not assessed" else if (value >= .90) "Reference only" else "Review"
+  classify_rmsea <- function(value) if (!is.finite(value)) "Not assessed" else if (value <= .08) "Reference only" else "Review"
+  classify_srmr <- function(value) if (!is.finite(value)) "Not assessed" else if (value <= .10) "Reference only" else "Review"
   guidance <- c(classify_incremental(metrics[["CFI"]]), classify_incremental(metrics[["TLI"]]), classify_srmr(metrics[["SRMR"]]), classify_rmsea(metrics[["RMSEA"]]))
-  references <- c("Good >= .95; Marginal >= .90", "Good >= .95; Marginal >= .90", "Good <= .08; Marginal <= .10", "Good <= .06; Marginal <= .08")
+  references <- c("Common references: .90/.95", "Common references: .90/.95", "Common references: .10/.08", "Common references: .08/.06")
   data.frame(Metric = names(metrics), Value = unname(metrics), Guidance = guidance, Reference = references, stringsAsFactors = FALSE)
 }
 

@@ -164,6 +164,17 @@ structural_canvas_audit_manifest <- function(bundle, analysis_type = NULL, gener
       candidates = recommendation$candidates %||% data.frame(),
       construct_specification = structural_canvas_construct_specification(bundle$snapshot %||% list()),
       resolved_construct_specification = bundle$resolved_construct_specification %||% structural_canvas_resolve_construct_specification(bundle$snapshot %||% list(), analysis_type, bundle$estimator %||% NULL),
+      pls_estimator_selection = if (identical(analysis_type, "plssem")) list(
+        requested = diagnostics$estimator_requested %||% bundle$estimator_requested %||% NULL,
+        selected = diagnostics$estimator %||% bundle$estimator %||% NULL,
+        recommendation_confirmed = isTRUE(bundle$estimator_recommendation_confirmed %||% FALSE),
+        mode = diagnostics$estimator_selection_mode %||% bundle$estimator_selection_mode %||% NULL,
+        reason = diagnostics$estimator_selection_reason %||% bundle$estimator_selection_reason %||% NULL,
+        corrected_common_factors = diagnostics$plsc_corrected_constructs %||% bundle$plsc_corrected_constructs %||% character(0),
+        uncorrected_composites = diagnostics$plsc_uncorrected_composites %||% bundle$plsc_uncorrected_composites %||% character(0),
+        correction_status = diagnostics$plsc_correction_status %||% bundle$plsc_correction_status %||% NULL,
+        corrected_endogenous = diagnostics$plsc_corrected_endogenous %||% bundle$plsc_corrected_endogenous %||% character(0)
+      ) else NULL,
       structural_effect_plan = bundle$structural_effect_plan %||% diagnostics$structural_effect_plan %||% data.frame(),
       causal_interpretation = structural_canvas_causal_interpretation(bundle$snapshot %||% list(), analysis_type),
       mi_validation_gate = bundle$mi_validation_gate %||% NULL,

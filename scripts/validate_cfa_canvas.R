@@ -124,6 +124,15 @@ stopifnot(
   identical(structural_canvas_bootstrap_ci_method("BCa (slower)"), "bca"),
   grepl('progress(index, total_iterations, length(Filter(function(value) !is.null(value) && nrow(value), estimates[seq_len(index)])))', bootstrap_source, fixed = TRUE)
 )
+bca_bootstrap_values <- seq(.10, 1.10, length.out = 100L)^2
+bca_jackknife_values <- vapply(seq_len(30L), function(index) mean((seq_len(30L)[-index])^1.2), numeric(1))
+bca_original_value <- stats::median(bca_bootstrap_values) * .95
+bca_interval <- structural_canvas_bca_interval(bca_bootstrap_values, bca_original_value, bca_jackknife_values, .95)
+stopifnot(
+  isTRUE(all.equal(bca_interval[[1L]], structural_canvas_bca_quantile(bca_bootstrap_values, bca_original_value, bca_jackknife_values, .025))),
+  isTRUE(all.equal(bca_interval[[2L]], structural_canvas_bca_quantile(bca_bootstrap_values, bca_original_value, bca_jackknife_values, .975))),
+  is.finite(structural_canvas_bca_quantile(bca_bootstrap_values, bca_original_value, bca_jackknife_values, .95))
+)
 inadmissible_bootstrap_error <- tryCatch({
   structural_canvas_validate_model_based_bootstrap(NULL, "Test bootstrap")
   ""
@@ -411,9 +420,9 @@ outlier_diagnostics <- structural_canvas_mahalanobis_diagnostics(outlier_fixture
 stopifnot(isTRUE(outlier_diagnostics$available), outlier_diagnostics$flagged_n >= 1L, 1L %in% outlier_diagnostics$table$Row)
 
 fit_good <- structural_canvas_fit_guidance(c(10, 10, .4, 1, .96, .95, .07, .05, .03, .07))
-stopifnot(identical(as.character(fit_good$Guidance), c("Good", "Good", "Good", "Good")))
+stopifnot(identical(as.character(fit_good$Guidance), rep("Reference only", 4L)))
 fit_mixed <- structural_canvas_fit_guidance(c(20, 10, .01, 2, .92, .89, .09, .075, .05, .10))
-stopifnot(identical(as.character(fit_mixed$Guidance), c("Marginal", "Review", "Marginal", "Marginal")))
+stopifnot(identical(as.character(fit_mixed$Guidance), c("Reference only", "Review", "Reference only", "Reference only")))
 fit_saturated <- structural_canvas_fit_guidance(c(0, 0, 1, NA, 1, 1, 0, 0, 0, 0))
 stopifnot(all(fit_saturated$Guidance == "Not assessed"))
 

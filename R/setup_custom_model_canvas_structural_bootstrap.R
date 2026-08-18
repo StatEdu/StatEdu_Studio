@@ -83,7 +83,9 @@ structural_canvas_htmt_bootstrap <- function(data, indicators_by_factor, reps = 
     } else if (length(pair_values) >= max(20L, ceiling(.5 * reps))) {
       as.numeric(stats::quantile(pair_values, probs = c(alpha, 1 - alpha), names = FALSE, type = 6, na.rm = TRUE))
     } else c(NA_real_, NA_real_)
-    upper_one_sided <- if (identical(ci_method, "bias_corrected") && length(pair_values) >= max(20L, ceiling(.5 * reps))) {
+    upper_one_sided <- if (identical(ci_method, "bca")) {
+      structural_canvas_bca_quantile(pair_values, original_values[[pair_index]], jackknife[, pair_index], confidence)
+    } else if (identical(ci_method, "bias_corrected") && length(pair_values) >= max(20L, ceiling(.5 * reps))) {
       structural_canvas_bias_corrected_quantile(pair_values, original_values[[pair_index]], confidence)
     } else if (length(pair_values) >= max(20L, ceiling(.5 * reps))) {
       as.numeric(stats::quantile(pair_values, probs = confidence, names = FALSE, type = 6, na.rm = TRUE))
@@ -131,29 +133,37 @@ structural_canvas_bias_corrected_quantile <- function(bootstrap_values, original
 }
 
 structural_canvas_bca_interval <- function(bootstrap_values, original_value, jackknife_values, confidence = .95) {
+  confidence <- as.numeric(confidence)
+  if (!is.finite(confidence) || confidence <= 0 || confidence >= 1) return(c(NA_real_, NA_real_))
+  alpha <- (1 - confidence) / 2
+  vapply(
+    c(alpha, 1 - alpha),
+    function(probability) structural_canvas_bca_quantile(bootstrap_values, original_value, jackknife_values, probability),
+    numeric(1)
+  )
+}
+
+structural_canvas_bca_quantile <- function(bootstrap_values, original_value, jackknife_values, probability) {
   bootstrap_values <- as.numeric(bootstrap_values)
   bootstrap_values <- bootstrap_values[is.finite(bootstrap_values)]
   jackknife_values <- as.numeric(jackknife_values)
   jackknife_values <- jackknife_values[is.finite(jackknife_values)]
-  confidence <- as.numeric(confidence)
+  probability <- as.numeric(probability)
   if (length(bootstrap_values) < 20L || length(jackknife_values) < 10L ||
-      !is.finite(original_value) || !is.finite(confidence) || confidence <= 0 || confidence >= 1) {
-    return(c(NA_real_, NA_real_))
+      !is.finite(original_value) || !is.finite(probability) || probability <= 0 || probability >= 1) {
+    return(NA_real_)
   }
-  alpha <- (1 - confidence) / 2
   prop_less <- (sum(bootstrap_values < original_value) + .5) / (length(bootstrap_values) + 1)
   z0 <- stats::qnorm(prop_less)
   jackknife_mean <- mean(jackknife_values)
   jackknife_delta <- jackknife_mean - jackknife_values
   denominator <- 6 * (sum(jackknife_delta^2)^(3 / 2))
   acceleration <- if (is.finite(denominator) && denominator > 0) sum(jackknife_delta^3) / denominator else 0
-  adjusted <- vapply(c(alpha, 1 - alpha), function(probability) {
-    z_alpha <- stats::qnorm(probability)
-    denominator <- 1 - acceleration * (z0 + z_alpha)
-    if (!is.finite(denominator) || abs(denominator) < .Machine$double.eps) return(NA_real_)
-    stats::pnorm(z0 + (z0 + z_alpha) / denominator)
-  }, numeric(1))
-  if (any(!is.finite(adjusted)) || any(adjusted <= 0 | adjusted >= 1)) return(c(NA_real_, NA_real_))
+  z_alpha <- stats::qnorm(probability)
+  adjusted_denominator <- 1 - acceleration * (z0 + z_alpha)
+  if (!is.finite(adjusted_denominator) || abs(adjusted_denominator) < .Machine$double.eps) return(NA_real_)
+  adjusted <- stats::pnorm(z0 + (z0 + z_alpha) / adjusted_denominator)
+  if (!is.finite(adjusted) || adjusted <= 0 || adjusted >= 1) return(NA_real_)
   as.numeric(stats::quantile(bootstrap_values, probs = adjusted, names = FALSE, type = 6, na.rm = TRUE))
 }
 
