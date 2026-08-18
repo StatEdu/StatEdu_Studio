@@ -1609,7 +1609,7 @@
                 analysis_structural_cfa: 'Confirmatory Factor Analysis',
                 analysis_structural_cbsem: 'Structural Equation Modeling',
                 analysis_structural_plssem: 'PLS Structural Equation Modeling',
-                analysis_structural_automation: 'Automated Structural Equation Modeling',
+                analysis_structural_automation: 'SEM Workflow Recommendation',
                 analysis_custom_model_canvas: 'Mediation / Moderation Custom Model',
                 'Longitudinal / Panel Models': 'Longitudinal / Panel Models'
               },
@@ -1645,7 +1645,7 @@
                 analysis_structural_cfa: '\uD655\uC778\uC801 \uC694\uC778\uBD84\uC11D',
                 analysis_structural_cbsem: '\uAD6C\uC870\uBC29\uC815\uC2DD',
                 analysis_structural_plssem: 'PLS \uAD6C\uC870\uBC29\uC815\uC2DD',
-                analysis_structural_automation: '\uC790\uB3D9\uD654 \uAD6C\uC870\uBC29\uC815\uC2DD',
+                analysis_structural_automation: '\uAD6C\uC870\uBC29\uC815\uC2DD \uBD84\uC11D \uCD94\uCC9C',
                 analysis_custom_model_canvas: '\uB9E4\uAC1C\u00B7\uC870\uC808 \uC0AC\uC6A9\uC790 \uC815\uC758 \uBAA8\uB378',
                 'Longitudinal / Panel Models': '\uC885\uB2E8 / \uD328\uB110 \uBAA8\uD615'
               },

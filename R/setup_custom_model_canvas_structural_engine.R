@@ -18,6 +18,39 @@ structural_canvas_construct_specification <- function(snapshot) {
   do.call(rbind, rows)
 }
 
+structural_canvas_select_pls_estimator <- function(snapshot, estimator = "AUTO") {
+  requested <- toupper(as.character(estimator %||% "AUTO"))
+  if (!requested %in% c("AUTO", "PLS", "PLSC")) requested <- "AUTO"
+  specification <- structural_canvas_construct_specification(snapshot)
+  common_factors <- specification$name[
+    specification$construct_type == "commonFactor" & specification$measurement_mode == "reflective"
+  ]
+  composites <- specification$name[specification$construct_type == "composite"]
+  selected <- if (identical(requested, "AUTO")) {
+    if (length(common_factors)) "PLSC" else "PLS"
+  } else requested
+  mode <- if (identical(selected, "PLSC") && length(composites)) {
+    "Mixed model: common factors corrected; composites uncorrected"
+  } else if (identical(selected, "PLSC")) {
+    "Reflective common-factor model"
+  } else {
+    "Composite PLS model"
+  }
+  reason <- if (!identical(requested, "AUTO")) {
+    "Estimator selected by the user."
+  } else if (length(common_factors) && length(composites)) {
+    "PLSc selected automatically because the model contains reflective common factors; consistency correction is limited to those blocks."
+  } else if (length(common_factors)) {
+    "PLSc selected automatically because all eligible constructs are reflective common factors."
+  } else {
+    "PLS selected automatically because the model contains composites and no reflective common factor requiring consistency correction."
+  }
+  list(
+    requested = requested, selected = selected, mode = mode, reason = reason,
+    common_factors = common_factors, composites = composites
+  )
+}
+
 structural_canvas_formative_content_validity_rows <- function(snapshot, redundancy_result = NULL, redundancy_construct = NULL) {
   specification <- structural_canvas_construct_specification(snapshot)
   formative <- specification[specification$construct_type == "composite" & specification$measurement_mode == "formative", , drop = FALSE]
@@ -93,17 +126,19 @@ structural_canvas_resolve_construct_specification <- function(snapshot, analysis
         reason <- "Formative composite blocks require Mode B in the current PLS implementation."
       }
       if (identical(measurement_mode, "reflective")) {
-        engine_representation <- if (identical(estimator, "PLSC")) "seminr reflective block with PLSc correction" else "seminr reflective Mode A score proxy"
+        corrected_common_factor <- identical(estimator, "PLSC") && identical(construct_type, "commonFactor")
+        engine_representation <- if (corrected_common_factor) "seminr reflective block with PLSc correction" else "seminr reflective Mode A score proxy"
         estimand <- if (identical(construct_type, "commonFactor")) {
-          if (identical(estimator, "PLSC")) "Consistency-corrected reflective common factor" else "Common-factor construct represented by a Mode A composite score proxy"
+          if (corrected_common_factor) "Consistency-corrected reflective common factor" else "Common-factor construct represented by a Mode A composite score proxy"
         } else "Reflective Mode A composite"
       } else {
         engine_representation <- "seminr Mode B composite"
         estimand <- "Formative composite"
       }
-      if (identical(estimator, "PLSC") && !(identical(construct_type, "commonFactor") && identical(measurement_mode, "reflective") && identical(effective_weighting, "Mode A"))) {
+      if (identical(estimator, "PLSC") && identical(construct_type, "commonFactor") &&
+          !(identical(measurement_mode, "reflective") && identical(effective_weighting, "Mode A"))) {
         supported <- FALSE
-        reason <- "PLSc is restricted to reflective common factors initialized with Mode A weights."
+        reason <- "PLSc common factors must be reflective and initialized with Mode A weights."
       }
     } else {
       supported <- FALSE
@@ -148,16 +183,21 @@ structural_canvas_validate_plsc_specification <- function(snapshot, analysis_typ
   if (!identical(analysis_type, "plssem") || !identical(toupper(as.character(estimator %||% "PLS")), "PLSC")) return(invisible(NULL))
   specification <- structural_canvas_construct_specification(snapshot)
   if (!nrow(specification)) stop("PLSc requires at least one explicitly specified reflective common factor.")
+  eligible_factor <- specification$construct_type == "commonFactor" & specification$measurement_mode == "reflective"
+  if (!any(eligible_factor)) {
+    stop("PLSc requires at least one explicitly specified reflective common factor; use PLS for an all-composite model.")
+  }
   resolved <- structural_canvas_resolve_construct_specification(snapshot, analysis_type, "PLSC")
-  eligible <- resolved$supported
-  if (!all(eligible)) {
+  invalid_factor <- eligible_factor & !resolved$supported
+  if (any(invalid_factor)) {
     invalid <- paste0(
-      specification$name[!eligible], " [", specification$construct_type[!eligible], "/",
-      specification$measurement_mode[!eligible], "]"
+      specification$name[invalid_factor], " [", specification$construct_type[invalid_factor], "/",
+      specification$measurement_mode[invalid_factor], "]"
     )
     stop(paste0(
-      "PLSc consistency correction is available only when every construct is explicitly specified as a reflective common factor. ",
-      "Unsupported constructs: ", paste(invalid, collapse = ", "), ". ", paste(unique(resolved$reason[!eligible]), collapse = " "), " Use standard PLS for composite models or revise the theoretical construct specification."
+      "PLSc consistency correction could not be applied to the declared common-factor blocks. ",
+      "Unsupported common factors: ", paste(invalid, collapse = ", "), ". ", paste(unique(resolved$reason[invalid_factor]), collapse = " "),
+      " Composite constructs may remain uncorrected in a mixed PLSc model."
     ))
   }
   invisible(specification)
@@ -266,6 +306,8 @@ structural_canvas_validate_structural_effects <- function(snapshot, analysis_typ
 run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estimator = "ML", missing = "fiml", std_lv = FALSE, ordered = character(0), nominal = character(0), residual_variance_fixes = numeric(0)) {
   nodes <- snapshot$nodes %||% list()
   edges <- snapshot$edges %||% list()
+  estimator_selection <- if (identical(analysis_type, "plssem")) structural_canvas_select_pls_estimator(snapshot, estimator) else NULL
+  if (!is.null(estimator_selection)) estimator <- estimator_selection$selected
   structural_canvas_validate_construct_specification(snapshot, analysis_type)
   structural_canvas_validate_plsc_specification(snapshot, analysis_type, estimator)
   resolved_specification <- structural_canvas_resolve_construct_specification(snapshot, analysis_type, estimator)
@@ -359,7 +401,10 @@ run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estima
     invalid_correlations <- length(latent_correlations) > 1L && any(abs(latent_correlations[row(latent_correlations) != col(latent_correlations)]) >= 1, na.rm = TRUE)
     shared_admissibility <- structural_canvas_fit_admissibility(fit)
     return(list(
-      fit = fit, syntax = syntax, converged = converged, post_check = post_check,
+      fit = fit, syntax = syntax, research_syntax = lavaan_syntax$research_syntax %||% syntax,
+      covariates = lavaan_syntax$covariates %||% character(0),
+      covariate_effect_lines = lavaan_syntax$covariate_effect_lines %||% character(0),
+      converged = converged, post_check = post_check,
       effect_definitions = lavaan_syntax$effect_definitions %||% list(),
       moderation_definitions = lavaan_syntax$moderation_definitions %||% list(),
       structural_effect_plan = structural_effect_plan,
@@ -383,6 +428,11 @@ run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estima
   }
 
   result <- structural_canvas_run_pls_analysis(snapshot, data, latents, edges, estimator = estimator)
+  result$estimator_requested <- estimator_selection$requested
+  result$estimator_selection_mode <- estimator_selection$mode
+  result$estimator_selection_reason <- estimator_selection$reason
+  result$plsc_corrected_constructs <- estimator_selection$common_factors
+  result$plsc_uncorrected_composites <- estimator_selection$composites
   result$structural_effect_plan <- structural_effect_plan
   result$resolved_construct_specification <- resolved_specification
   result

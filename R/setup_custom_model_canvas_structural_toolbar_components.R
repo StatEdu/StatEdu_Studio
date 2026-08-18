@@ -13,7 +13,7 @@ structural_equation_toolbar <- function(analysis_type = "cbsem", language = stat
       custom_model_canvas_button("load", if (ko) "모형 불러오기" else "Load model", title = if (ko) "저장한 모형 불러오기" else "Load a saved model", icon = structural_file_icon("load")),
       custom_model_canvas_button("save", if (ko) "모형 저장" else "Save model", title = if (ko) "현재 모형 저장하기" else "Save the current model", icon = structural_file_icon("save")),
       custom_model_canvas_button("export", if (ko) "모형 내보내기" else "Export model"),
-      if (!identical(analysis_type, "cfa")) tagList(
+      if (analysis_type %in% c("cfa", "cbsem", "sem", "plssem")) tagList(
         tags$button(
           type = "button",
           class = "custom-model-toolbar-button structural-covariate-toolbar-button",

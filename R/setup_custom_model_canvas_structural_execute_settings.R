@@ -57,7 +57,7 @@ structural_canvas_execute_settings <- function(settings, input, prefix) {
   common_method_methods <- structural_canvas_common_method_methods(common_method_methods)
 
   list(
-    estimator = settings$estimator %||% input[[paste0(prefix, "_estimator")]] %||% if (identical(prefix, "structural_plssem")) "PLS" else "ML",
+    estimator = settings$estimator %||% input[[paste0(prefix, "_estimator")]] %||% if (identical(prefix, "structural_plssem")) "AUTO" else "ML",
     objective = settings$objective %||% input[[paste0(prefix, "_objective")]] %||% "confirmatory",
     sampling_design = {
       value <- as.character(settings$sampling_design %||% input[[paste0(prefix, "_sampling_design")]] %||% "independent_cross_sectional")

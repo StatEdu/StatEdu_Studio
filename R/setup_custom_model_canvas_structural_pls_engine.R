@@ -149,7 +149,59 @@ structural_canvas_pls_predictive_relevance <- function(fit, structural_paths, fo
   )
 }
 
+structural_canvas_apply_plsc <- function(fit, common_factor_constructs = character(0)) {
+  score_names <- if (is.null(fit$construct_scores)) character(0) else colnames(fit$construct_scores)
+  common_factor_constructs <- intersect(as.character(common_factor_constructs), score_names)
+  if (!length(common_factor_constructs)) stop("PLSc requires at least one reflective common-factor construct.")
+  all_constructs <- seminr:::constructs_in_model(fit)$construct_names
+  if (setequal(common_factor_constructs, all_constructs)) {
+    corrected <- seminr::PLSc(fit)
+    corrected$statedu_common_factor_constructs <- common_factor_constructs
+    corrected$statedu_plsc_mode <- "all_common_factors"
+    return(corrected)
+  }
+  sm_matrix <- fit$smMatrix
+  mm_matrix <- fit$mmMatrix
+  path_coef <- fit$path_coef
+  loadings <- fit$outer_loadings
+  construct_scores <- fit$construct_scores
+  rho <- seminr:::rho_A(fit, all_constructs)
+  rho[!rownames(rho) %in% common_factor_constructs, ] <- 1
+  rho[seminr:::is_interaction(rownames(rho)), ] <- 1
+  adjustment <- sqrt(rho %*% t(rho))
+  diag(adjustment) <- 1
+  adjusted_correlations <- stats::cor(construct_scores, use = "pairwise.complete.obs") / adjustment
+  for (endogenous in seminr:::all_endogenous(sm_matrix)) {
+    antecedents <- seminr:::construct_antecedents(sm_matrix, endogenous)
+    if (!length(antecedents)) next
+    coefficients <- tryCatch(
+      solve(adjusted_correlations[antecedents, antecedents, drop = FALSE], adjusted_correlations[antecedents, endogenous, drop = FALSE]),
+      error = function(error) NULL
+    )
+    if (!is.null(coefficients)) path_coef[antecedents, endogenous] <- coefficients
+  }
+  reflectives <- intersect(seminr:::all_reflective(mm_matrix), common_factor_constructs)
+  for (construct in reflectives) {
+    indicators <- seminr:::construct_items(mm_matrix, construct)
+    available <- intersect(indicators, rownames(loadings))
+    if (length(available)) {
+      weights <- as.matrix(fit$outer_weights[available, construct])
+      loadings[available, construct] <- weights %*% (sqrt(rho[construct, 1L]) / (t(weights) %*% weights))
+    }
+  }
+  fit$path_coef <- path_coef
+  fit$outer_loadings <- loadings
+  fit$rSquared <- seminr:::metrics_insample(
+    fit$data, construct_scores, sm_matrix, seminr:::all_endogenous(sm_matrix), adjusted_correlations
+  )
+  fit$statedu_common_factor_constructs <- common_factor_constructs
+  fit$statedu_plsc_mode <- "mixed_common_factors_and_composites"
+  fit
+}
+
 structural_canvas_run_pls_analysis <- function(snapshot, data, latents, edges, estimator = "PLS") {
+  selection <- structural_canvas_select_pls_estimator(snapshot, estimator)
+  estimator <- selection$selected
   resolved_specification <- structural_canvas_resolve_construct_specification(snapshot, "plssem", estimator)
   unsupported <- !resolved_specification$supported
   if (any(unsupported)) stop(paste(unique(resolved_specification$reason[unsupported]), collapse = " "))
@@ -222,13 +274,20 @@ structural_canvas_run_pls_analysis <- function(snapshot, data, latents, edges, e
     measurement_model = do.call(seminr::constructs, constructs),
     structural_model = if (length(path_specs)) do.call(seminr::relationships, path_specs) else NULL
   )
+  fit$statedu_common_factor_constructs <- selection$common_factors
+  fit$statedu_composite_constructs <- selection$composites
   if (identical(estimator, "PLSC")) {
-    fit <- seminr::PLSc(fit)
+    fit <- structural_canvas_apply_plsc(fit, selection$common_factors)
   }
   predictive_relevance <- structural_canvas_pls_predictive_relevance(fit, structural_paths, folds = 7L)
   list(
     fit = fit,
     estimator = if (identical(estimator, "PLSC")) "PLSc" else "PLS",
+    estimator_requested = selection$requested,
+    estimator_selection_mode = selection$mode,
+    estimator_selection_reason = selection$reason,
+    plsc_corrected_constructs = selection$common_factors,
+    plsc_uncorrected_composites = selection$composites,
     syntax = paste(c(measurement_lines, structural_paths), collapse = "\n"),
     converged = TRUE,
     n = nrow(data),
@@ -303,7 +362,8 @@ structural_canvas_run_plsc_bootstrap <- function(seminr_model, nboot = 5000L, se
     boot_model
   }
   reference_loadings <- seminr_model$outer_loadings
-  estimate_one <- function(index, d, measurement_model, structural_model, inner_weights, seed, apply_plsc, boot_vec_len, reference_loadings) {
+  common_factor_constructs <- as.character(seminr_model$statedu_common_factor_constructs %||% character(0))
+  estimate_one <- function(index, d, measurement_model, structural_model, inner_weights, seed, apply_plsc, common_factor_constructs, boot_vec_len, reference_loadings) {
     set.seed(seed + index)
     tryCatch({
       setTimeLimit(cpu = Inf, elapsed = 60, transient = TRUE)
@@ -318,7 +378,7 @@ structural_canvas_run_plsc_bootstrap <- function(seminr_model, nboot = 5000L, se
           stopCriterion = 7,
           assess_syntax = FALSE
         )
-        if (isTRUE(apply_plsc)) boot_model <- seminr::PLSc(boot_model)
+        if (isTRUE(apply_plsc)) boot_model <- structural_canvas_apply_plsc(boot_model, common_factor_constructs)
         boot_model <- align_bootstrap_signs(boot_model, reference_loadings)
         c(
           c(boot_model$path_coef),
@@ -341,7 +401,7 @@ structural_canvas_run_plsc_bootstrap <- function(seminr_model, nboot = 5000L, se
     on.exit(parallel::stopCluster(cluster), add = TRUE)
     parallel::clusterExport(
       cluster,
-      c("estimate_one", "align_bootstrap_signs", "d", "measurement_model", "structural_model", "inner_weights", "seed", "apply_plsc", "boot_vec_len", "reference_loadings"),
+      c("estimate_one", "align_bootstrap_signs", "structural_canvas_apply_plsc", "common_factor_constructs", "d", "measurement_model", "structural_model", "inner_weights", "seed", "apply_plsc", "boot_vec_len", "reference_loadings"),
       envir = environment()
     )
   }
@@ -350,10 +410,10 @@ structural_canvas_run_plsc_bootstrap <- function(seminr_model, nboot = 5000L, se
   for (start in starts) {
     indices <- seq.int(start, min(nboot, start + batch_size - 1L))
     values <- if (is.null(cluster)) {
-      lapply(indices, estimate_one, d, measurement_model, structural_model, inner_weights, seed, apply_plsc, boot_vec_len, reference_loadings)
+      lapply(indices, estimate_one, d, measurement_model, structural_model, inner_weights, seed, apply_plsc, common_factor_constructs, boot_vec_len, reference_loadings)
     } else {
       parallel::parLapplyLB(cluster, indices, function(index) {
-        estimate_one(index, d, measurement_model, structural_model, inner_weights, seed, apply_plsc, boot_vec_len, reference_loadings)
+        estimate_one(index, d, measurement_model, structural_model, inner_weights, seed, apply_plsc, common_factor_constructs, boot_vec_len, reference_loadings)
       })
     }
     boot_values[indices] <- values

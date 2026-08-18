@@ -27,7 +27,7 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
             type = "tabs",
             tabPanel(
               if (ko) "추정" else "Estimation",
-          selectInput(paste0(structural_analysis_prefix(analysis_type), "_estimator"), if (ko) "추정 방법" else "Estimator", choices = if (analysis_type == "plssem") c("PLS" = "PLS", "PLSc" = "PLSc") else c("ML" = "ML", "MLR" = "MLR", "WLSMV" = "WLSMV")),
+          selectInput(paste0(structural_analysis_prefix(analysis_type), "_estimator"), if (ko) "추정 방법" else "Estimator", choices = if (analysis_type == "plssem") stats::setNames(c("AUTO", "PLS", "PLSC"), c(if (ko) "자동(권장)" else "Automatic (recommended)", "PLS", "PLSc")) else c("ML" = "ML", "MLR" = "MLR", "WLSMV" = "WLSMV"), selected = if (analysis_type == "plssem") "AUTO" else "ML"),
           selectInput(
             paste0(structural_analysis_prefix(analysis_type), "_objective"),
             if (ko) "주요 분석 목적" else "Primary analysis objective",

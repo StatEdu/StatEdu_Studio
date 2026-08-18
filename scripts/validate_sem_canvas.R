@@ -56,7 +56,7 @@ stopifnot(
   grepl("3. PLS structural model effects", ui_source, fixed = TRUE),
   grepl("total and indirect effects", ui_source, fixed = TRUE),
   grepl("PLSpredict cross-validation", ui_source, fixed = TRUE),
-  grepl('"PLSc" = "PLSc"', ui_source, fixed = TRUE),
+  grepl('"AUTO", "PLS", "PLSC"', ui_source, fixed = TRUE),
   grepl('"5,000 resamples" = "5000"', ui_source, fixed = TRUE),
   grepl("PLSpredict predictive assessment", ui_source, fixed = TRUE),
   grepl("PLS-SEM quality checklist", ui_source, fixed = TRUE),
@@ -78,7 +78,7 @@ stopifnot(
   grepl("PLS measurement bootstrap", ui_source, fixed = TRUE),
   grepl("HTMT and Fornell-Larcker are computed only between reflective constructs", ui_source, fixed = TRUE),
   grepl("Indirect and total effects are reported separately", ui_source, fixed = TRUE),
-  grepl("Table 6: Specific indirect effects", ui_source, fixed = TRUE),
+  grepl("Table 6. Specific indirect effects", ui_source, fixed = TRUE),
   grepl("Supplementary Table 3: Effect beta 95% confidence intervals", ui_source, fixed = TRUE),
   grepl("표 3. 구조모형 경로", ui_source, fixed = TRUE),
   grepl("Data-driven indicator deletion must not be presented", ui_source, fixed = TRUE),
@@ -695,6 +695,12 @@ stopifnot(length(pls$observed) == 6L)
 plsc <- run_structural_canvas_analysis(snapshot, data, "plssem", estimator = "PLSc")
 stopifnot(inherits(plsc$fit, "pls_model"))
 stopifnot(identical(plsc$estimator, "PLSc"))
+automatic_plsc <- run_structural_canvas_analysis(snapshot, data, "plssem", estimator = "AUTO")
+stopifnot(
+  identical(automatic_plsc$estimator, "PLSc"),
+  identical(automatic_plsc$estimator_requested, "AUTO"),
+  setequal(automatic_plsc$plsc_corrected_constructs, c("eta1", "eta2"))
+)
 plsc_bundle <- list(
   fit = plsc$fit,
   syntax = plsc$syntax,
@@ -1034,6 +1040,12 @@ formative_snapshot <- snapshot
 formative_snapshot$nodes[[1]]$measurementMode <- "formative"
 pls_formative <- run_structural_canvas_analysis(formative_snapshot, data, "plssem", estimator = "PLS")
 stopifnot(inherits(pls_formative$fit, "pls_model"))
+automatic_mixed <- run_structural_canvas_analysis(formative_snapshot, data, "plssem", estimator = "AUTO")
+stopifnot(
+  identical(automatic_mixed$estimator, "PLSc"),
+  identical(automatic_mixed$plsc_corrected_constructs, "eta2"),
+  identical(automatic_mixed$plsc_uncorrected_composites, "eta1")
+)
 stopifnot(grepl("eta1 <~", pls_formative$syntax, fixed = TRUE))
 stopifnot(
   identical(pls_formative$resolved_construct_specification$effective_weighting[pls_formative$resolved_construct_specification$name == "eta1"], "Mode B"),
@@ -1084,7 +1096,7 @@ pls_formative_fit_diagnostics <- structural_canvas_pls_fit_diagnostics_table(pls
 stopifnot(
   nrow(pls_formative_fit_diagnostics) == 2L,
   identical(pls_formative_fit_diagnostics$Model, c("pls", "plsc")),
-  all(pls_formative_fit_diagnostics[, c("srmr", "d_G", "d_ULS")] == "N/A")
+  grepl("common factors corrected", pls_formative_fit_diagnostics$Basis[[2L]], fixed = TRUE)
 )
 
 missing_latent_range <- structural_canvas_moderation_update_factor_score_ranges(

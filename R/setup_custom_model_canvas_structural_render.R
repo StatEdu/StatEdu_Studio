@@ -113,7 +113,10 @@ structural_canvas_reporting_context_rows <- function(bundle, analysis_type) {
   }
   estimator <- if (identical(analysis_type, "plssem")) {
     algorithm <- bundle$diagnostics$estimator %||% bundle$estimator %||% "PLS"
-    if (identical(toupper(as.character(algorithm)), "PLSC")) "PLSc path modeling" else "PLS path modeling"
+    label <- if (identical(toupper(as.character(algorithm)), "PLSC")) "PLSc path modeling" else "PLS path modeling"
+    requested <- toupper(as.character(bundle$diagnostics$estimator_requested %||% bundle$estimator_requested %||% ""))
+    mode <- as.character(bundle$diagnostics$estimator_selection_mode %||% bundle$estimator_selection_mode %||% "")
+    if (identical(requested, "AUTO")) paste0(label, " (automatically selected; ", mode, ")") else label
   } else {
     bundle$estimator %||% structural_canvas_reporting_lavaan_option(bundle, "estimator", "")
   }
@@ -327,6 +330,7 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
           if (length(bundle$diagnostics$ignored_covariances %||% character(0))) tags$p(class = "structural-result-note", if (ko) paste0("PLS-SEM은 공분산 경로를 추정하지 않으므로 다음 캔버스 공분산 경로를 제외했습니다: ", paste(bundle$diagnostics$ignored_covariances, collapse = ", "), ".") else paste0("PLS-SEM does not estimate covariance paths, so these canvas covariance paths were excluded: ", paste(bundle$diagnostics$ignored_covariances, collapse = ", "), "."))
         )
       ),
+      if (analysis_type %in% c("cfa", "cbsem", "sem")) uiOutput(paste0(prefix, "_result_covariate_section")),
       if (analysis_type %in% c("cbsem", "sem")) div(
         class = "result-section regression-result-panel structural-path-result",
         h4(if (ko) "표 3. 구조모형 경로" else "Table 3. Structural model paths"),
@@ -360,6 +364,37 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
 
   output[[paste0(prefix, "_result_reporting_context")]] <- renderUI({
     structural_canvas_reporting_context_result_ui(fit_result(), analysis_type, statedu_current_language(app_language_fn))
+  })
+
+  output[[paste0(prefix, "_result_covariate_section")]] <- renderUI({
+    bundle <- fit_result()
+    covariates <- bundle$covariates %||% character(0)
+    if (!length(covariates)) return(NULL)
+    labels <- labels_fn() %||% character(0)
+    display_name <- function(name) {
+      name <- as.character(name %||% "")
+      node <- Filter(function(item) identical(structural_canvas_name(item), name), bundle$snapshot$nodes %||% list())
+      label <- if (length(node)) as.character(node[[1]]$canvasLabel %||% node[[1]]$dataLabel %||% "") else ""
+      if (!nzchar(label) && !is.null(names(labels)) && name %in% names(labels)) label <- as.character(labels[[name]] %||% "")
+      if (nzchar(label)) label else name
+    }
+    effects <- structural_canvas_covariate_effect_table(bundle$fit, covariates, display_name)
+    comparison <- bundle$covariate_fit_comparison %||% data.frame()
+    format_table <- function(table) {
+      if (!nrow(table)) return(table)
+      for (name in names(table)) if (is.numeric(table[[name]])) {
+        table[[name]] <- if (identical(name, "p")) vapply(table[[name]], format_p, character(1)) else vapply(table[[name]], format_decimal3, character(1))
+      }
+      table
+    }
+    if (!nrow(effects) && !nrow(comparison)) return(NULL)
+    div(
+      class = "result-section regression-result-panel structural-covariate-result",
+      tags$h4("Covariate-adjusted model"),
+      if (nrow(effects)) tagList(tags$h5("Covariate effects"), structural_canvas_basic_html_table(format_table(effects), class = "table table-striped table-bordered structural-covariate-effect-table")),
+      if (nrow(comparison)) tagList(tags$h5("Research-model and covariate-adjusted-model fit comparison"), structural_canvas_basic_html_table(format_table(comparison), class = "table table-striped table-bordered structural-covariate-fit-table")),
+      tags$p(class = "structural-result-note", "Delta chi-square and delta df are research model minus covariate-adjusted model; delta CFI, TLI, RMSEA, and SRMR are covariate-adjusted model minus research model. The delta-row p value is the nested-model likelihood-ratio test when available.")
+    )
   })
 
   output[[paste0(prefix, "_result_supplementary_container")]] <- renderUI({
@@ -456,12 +491,11 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
     if (!analysis_type %in% c("cbsem", "sem")) return(NULL)
     table <- result_table("structural_specific_indirect")
     if (!nrow(table)) return(NULL)
-    ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
     div(
       class = "result-section regression-result-panel structural-specific-indirect-result",
-      tags$h5(if (ko) "표 6: 특정 간접효과" else "Table 6: Specific indirect effects"),
+      tags$h5("Table 6. Specific indirect effects"),
       structural_canvas_specific_indirect_html_table(table),
-      tags$p(class = "structural-result-note", if (ko) "각 행은 하나의 매개 경로에 해당합니다. Boot SE와 Boot 95% CI는 효과 bootstrap을 요청한 경우 재표집 결과를 사용하고, 유효 반복이 부족하면 빈 값으로 표시됩니다." else "Each row is one mediation path. Boot SE and Boot 95% CI use effect-bootstrap resampling when requested; intervals are blank when valid replicates are insufficient.")
+      tags$p(class = "structural-result-note", "Each row represents one mediation path. Boot SE and Boot 95% CI use effect-bootstrap resampling when requested; intervals are blank when valid replicates are insufficient.")
     )
   })
   output[[paste0(prefix, "_result_structural_effect_ci")]] <- renderUI({

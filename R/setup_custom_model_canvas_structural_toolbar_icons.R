@@ -53,43 +53,10 @@ structural_file_icon <- function(kind) {
 }
 
 structural_higher_order_icon <- function() {
-  tags$svg(
-    class = "structural-higher-order-svg",
-    viewBox = "0 0 52 30",
-    fill = "none",
-    stroke = "currentColor",
-    `stroke-width` = "2.25",
-    `stroke-linecap` = "round",
-    `stroke-linejoin` = "round",
+  tags$span(
+    class = "structural-higher-order-badge",
     `aria-hidden` = "true",
-    tags$defs(tags$marker(
-      id = "sem-higher-order-arrow",
-      viewBox = "0 0 6 6",
-      refX = "5",
-      refY = "3",
-      markerWidth = "4.5",
-      markerHeight = "4.5",
-      orient = "auto",
-      tags$path(d = "M0,0 L6,3 L0,6 Z", fill = "currentColor")
-    )),
-    tags$ellipse(cx = "26", cy = "7.5", rx = "14.5", ry = "5.8"),
-    tags$ellipse(cx = "13", cy = "23", rx = "9.5", ry = "4.6"),
-    tags$ellipse(cx = "26", cy = "23", rx = "9.5", ry = "4.6"),
-    tags$ellipse(cx = "39", cy = "23", rx = "9.5", ry = "4.6"),
-    tags$line(x1 = "20", y1 = "12.5", x2 = "15", y2 = "18.3", `marker-end` = "url(#sem-higher-order-arrow)"),
-    tags$line(x1 = "26", y1 = "13.2", x2 = "26", y2 = "18.3", `marker-end` = "url(#sem-higher-order-arrow)"),
-    tags$line(x1 = "32", y1 = "12.5", x2 = "37", y2 = "18.3", `marker-end` = "url(#sem-higher-order-arrow)"),
-    tags$text(
-      x = "26",
-      y = "10.4",
-      `text-anchor` = "middle",
-      `font-size` = "9.2",
-      `font-weight` = "800",
-      `font-family` = "Arial, sans-serif",
-      `letter-spacing` = "0",
-      stroke = "none",
-      fill = "currentColor",
-      "2차"
-    )
+    tags$strong("2nd"),
+    tags$small("Factor")
   )
 }

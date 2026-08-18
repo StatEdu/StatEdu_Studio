@@ -1,5 +1,65 @@
 # Structural equation canvas nested model comparison helpers.
 
+structural_canvas_fit_research_model <- function(result, data, analysis_type, estimator, missing, std_lv, ordered) {
+  covariates <- result$covariates %||% character(0)
+  if (!length(covariates) || !length(result$covariate_effect_lines %||% character(0))) return(NULL)
+  syntax <- as.character(result$research_syntax %||% "")
+  if (!nzchar(syntax)) return(NULL)
+  fit_function <- if (identical(analysis_type, "cfa")) lavaan::cfa else lavaan::sem
+  tryCatch(
+    fit_function(
+      syntax, data = data, estimator = estimator, missing = missing,
+      std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE
+    ),
+    error = function(error) NULL
+  )
+}
+
+structural_canvas_covariate_effect_table <- function(fit, covariates, display_name = identity) {
+  if (is.null(fit) || !length(covariates)) return(data.frame())
+  raw <- lavaan::parameterEstimates(fit, standardized = TRUE, ci = TRUE)
+  raw <- raw[raw$op == "~" & raw$rhs %in% covariates, , drop = FALSE]
+  if (!nrow(raw)) return(data.frame())
+  data.frame(
+    Outcome = vapply(as.character(raw$lhs), display_name, character(1)),
+    Covariate = vapply(as.character(raw$rhs), display_name, character(1)),
+    B = raw$est, SE = raw$se, z = raw$z, p = raw$pvalue,
+    `95% CI lower` = raw$ci.lower, `95% CI upper` = raw$ci.upper,
+    beta = raw$std.all,
+    check.names = FALSE, stringsAsFactors = FALSE
+  )
+}
+
+structural_canvas_covariate_fit_comparison <- function(research_fit, adjusted_fit) {
+  if (is.null(research_fit) || is.null(adjusted_fit)) return(data.frame())
+  keys <- c("chisq", "df", "pvalue", "cfi", "tli", "rmsea", "srmr")
+  extract <- function(fit) {
+    values <- tryCatch(lavaan::fitMeasures(fit, keys), error = function(error) rep(NA_real_, length(keys)))
+    stats::setNames(as.numeric(values), keys)
+  }
+  research <- extract(research_fit)
+  adjusted <- extract(adjusted_fit)
+  lrt <- tryCatch(suppressWarnings(lavaan::lavTestLRT(research_fit, adjusted_fit)), error = function(error) NULL)
+  lrt_p <- if (!is.null(lrt) && nrow(lrt) >= 2L) {
+    column <- grep("Pr\\(>Chisq\\)", names(lrt), value = TRUE)
+    if (length(column)) as.numeric(lrt[[column[[1L]]]][[nrow(lrt)]]) else NA_real_
+  } else NA_real_
+  row <- function(model, values) data.frame(
+    Model = model, `Chi-square` = values[["chisq"]], df = values[["df"]], p = values[["pvalue"]],
+    CFI = values[["cfi"]], TLI = values[["tli"]], RMSEA = values[["rmsea"]], SRMR = values[["srmr"]],
+    check.names = FALSE, stringsAsFactors = FALSE
+  )
+  delta <- data.frame(
+    Model = "Delta",
+    `Chi-square` = research[["chisq"]] - adjusted[["chisq"]],
+    df = research[["df"]] - adjusted[["df"]], p = lrt_p,
+    CFI = adjusted[["cfi"]] - research[["cfi"]], TLI = adjusted[["tli"]] - research[["tli"]],
+    RMSEA = adjusted[["rmsea"]] - research[["rmsea"]], SRMR = adjusted[["srmr"]] - research[["srmr"]],
+    check.names = FALSE, stringsAsFactors = FALSE
+  )
+  rbind(row("Research model", research), row("Covariate-adjusted model", adjusted), delta)
+}
+
 structural_canvas_nested_comparison_eligibility <- function(first_fit, second_fit) {
   metadata <- lapply(list(first_fit, second_fit), function(fit) {
     options <- lavaan::lavInspect(fit, "options")

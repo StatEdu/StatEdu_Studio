@@ -335,6 +335,25 @@ structural_canvas_lavaan_syntax <- function(snapshot, data, analysis_type, laten
   structural_lines <- vapply(structural_edge_info, function(item) {
     paste(item$outcome, "~", structural_canvas_structural_edge_term(item$edge, item$predictor, item$label))
   }, character(1))
+  covariates <- intersect(unique(as.character(snapshot$covariates %||% character(0))), names(data))
+  latent_ids <- vapply(latents, function(latent) as.character(latent$id %||% ""), character(1))
+  final_endogenous_ids <- latent_ids[vapply(latent_ids, function(id) {
+    any(vapply(structural_edge_info, function(item) identical(as.character(item$edge$to %||% ""), id), logical(1))) &&
+      !any(vapply(structural_edge_info, function(item) identical(as.character(item$edge$from %||% ""), id), logical(1)))
+  }, logical(1))]
+  covariate_target_ids <- function(covariate) {
+    explicit <- as.character((snapshot$covariateTargets %||% list())[[covariate]] %||% character(0))
+    targets <- if (identical(analysis_type, "cfa")) latent_ids else unique(c(explicit, final_endogenous_ids))
+    intersect(targets, latent_ids)
+  }
+  covariate_effect_lines <- unlist(lapply(covariates, function(covariate) {
+    targets <- covariate_target_ids(covariate)
+    vapply(targets, function(target_id) {
+      target <- structural_canvas_name(structural_canvas_node(snapshot, target_id))
+      paste(target, "~", covariate)
+    }, character(1))
+  }), use.names = FALSE)
+  covariate_variance_lines <- vapply(covariates, function(covariate) paste(covariate, "~~", covariate), character(1))
   moderation_terms <- structural_canvas_structural_moderation_terms(snapshot, data, edges, structural_edge_info)
   data <- moderation_terms$data
   measurement_lines <- c(measurement_lines, moderation_terms$measurement_lines)
@@ -413,8 +432,12 @@ structural_canvas_lavaan_syntax <- function(snapshot, data, analysis_type, laten
     single_indicator_auto_lines <- c(single_indicator_auto_lines, paste(indicator, "~~", paste0("0*", indicator)))
   }
 
+  common_lines <- c(measurement_lines, higher_order_lines, structural_lines, effect_definitions$lines, covariance_lines, covariate_variance_lines, residual_parameter_lines, residual_fix_lines, single_indicator_auto_lines)
   list(
-    syntax = paste(c(measurement_lines, higher_order_lines, structural_lines, effect_definitions$lines, covariance_lines, residual_parameter_lines, residual_fix_lines, single_indicator_auto_lines), collapse = "\n"),
+    syntax = paste(c(common_lines, covariate_effect_lines), collapse = "\n"),
+    research_syntax = paste(common_lines, collapse = "\n"),
+    covariates = covariates,
+    covariate_effect_lines = covariate_effect_lines,
     data = data,
     residual_variance_fixes = residual_variance_fixes,
     single_indicator_auto_residuals = unique(single_indicator_auto_residuals),

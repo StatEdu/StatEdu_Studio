@@ -133,6 +133,9 @@
       return paths.some(function(edge) { return edge.to === latent.id; }) &&
         !paths.some(function(edge) { return edge.from === latent.id; });
     }).map(function(latent) { return latent.id; });
+    if (instance.analysisType === "cfa") {
+      finalIds = latents.map(function(latent) { return latent.id; });
+    }
     var shell = modalShell(ko ? "공변량 통제 대상" : "Covariate control targets");
     shell.modal.classList.add("structural-covariate-target-modal");
     var note = document.createElement("div");

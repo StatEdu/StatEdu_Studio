@@ -31,7 +31,7 @@ structural_analysis_prefix <- function(analysis_type = "cbsem") {
 }
 
 structural_automation_title <- function(language = statedu_initial_language()) {
-  if (identical(normalize_app_language(language), "ko")) "자동화 구조방정식" else "Automated SEM"
+  if (identical(normalize_app_language(language), "ko")) "구조방정식 분석 추천" else "SEM Workflow Recommendation"
 }
 
 structural_automation_tab_panel <- function(language = statedu_initial_language()) {
@@ -42,10 +42,10 @@ structural_automation_tab_panel <- function(language = statedu_initial_language(
     value = "analysis_structural_automation",
     div(
       class = "page-shell",
-      div(class = "app-heading", h1(title), div(if (ko) "연구 목적에 맞는 구조방정식 자동화 workflow를 선택합니다." else "Choose an automated structural-equation workflow for the research objective.", class = "app-subtitle")),
+      div(class = "app-heading", h1(title), div(if (ko) "연구 목적과 구성개념 명세에 맞는 구조방정식 분석 workflow를 추천합니다." else "Receive a structural-equation workflow recommendation based on the research objective and construct specification.", class = "app-subtitle")),
       div(
         class = "workspace-panel structural-automation-launcher",
-        h3(if (ko) "연구설계 기반 자동 workflow" else "Design-guided automated workflow"),
+        h3(if (ko) "연구설계 기반 분석 추천" else "Design-guided analysis recommendation"),
         tags$p(if (ko) "분석법 이름을 직접 고르는 대신 연구 목적과 구성개념을 선언하면 적합한 엔진으로 안내합니다. 구성개념의 이론적 유형은 자료만으로 자동 판정하지 않습니다." else "Declare the research objective and construct type instead of choosing a method name. The workflow routes to an appropriate engine; construct ontology is not inferred from data alone."),
         selectInput("structural_automation_objective", if (ko) "주요 목적" else "Primary objective", choices = stats::setNames(c("measurement", "theory", "prediction"), c(if (ko) "측정모형 검증" else "Validate a measurement model", if (ko) "구조관계·이론 검증" else "Test structural relations or theory", if (ko) "예측·구성개념 점수" else "Prediction or construct scores"))),
         selectInput("structural_automation_construct", if (ko) "구성개념 유형" else "Construct type", choices = stats::setNames(c("common_factor", "composite", "mixed"), c(if (ko) "반영형 공통요인" else "Reflective common factors", if (ko) "합성변수 포함" else "Includes composites", if (ko) "공통요인·합성변수 혼합" else "Mixed factors and composites"))),
@@ -110,11 +110,7 @@ structural_equation_workspace <- function(selected_names, variable_table = NULL,
     )
     if (isTRUE(capture$auto_run)) capture_attrs[["data-initial-run"]] <- "true"
   }
-  canvas_spec <- if (identical(analysis_type, "cfa")) {
-    list(width = "688", height = "971", paper = "B5", orientation = "portrait", status = "B5 portrait")
-  } else {
-    list(width = "1123", height = "794", paper = "A4", orientation = "landscape", status = "A4 landscape")
-  }
+  canvas_spec <- list(width = "1123", height = "794", paper = "A4", orientation = "landscape", status = "A4 landscape")
   root <- div(
       id = paste0(prefix, "-canvas-root"),
       class = "custom-model-canvas-root structural-equation-canvas-root",

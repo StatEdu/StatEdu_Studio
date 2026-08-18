@@ -117,7 +117,8 @@ structural_canvas_pls_diagnostic_fit <- function(bundle, estimator) {
   if (identical(current_estimator, "PLSC")) current_estimator <- "PLSC"
   if (identical(estimator, current_estimator)) return(bundle$fit)
   if (identical(estimator, "PLSC")) {
-    return(tryCatch(seminr::PLSc(bundle$fit), error = function(error) NULL))
+    selection <- structural_canvas_select_pls_estimator(bundle$snapshot %||% list(), "PLSC")
+    return(tryCatch(structural_canvas_apply_plsc(bundle$fit, selection$common_factors), error = function(error) NULL))
   }
   snapshot <- bundle$snapshot %||% list()
   data <- bundle$analysis_data %||% bundle$fit$rawdata %||% bundle$fit$data %||% NULL
@@ -134,8 +135,10 @@ structural_canvas_pls_fit_diagnostics_table <- function(bundle) {
   if (is.null(bundle) || is.null(bundle$fit) || !inherits(bundle$fit, "pls_model")) return(data.frame())
   specification <- structural_canvas_construct_specification(bundle$snapshot %||% list())
   has_formative <- nrow(specification) && any(specification$measurement_mode == "formative")
+  has_common_factor <- nrow(specification) && any(specification$construct_type == "commonFactor" & specification$measurement_mode == "reflective")
+  has_composite <- nrow(specification) && any(specification$construct_type == "composite")
   rows <- lapply(c("PLS", "PLSC"), function(estimator) {
-    applicable <- !(identical(estimator, "PLSC") && has_formative)
+    applicable <- !(identical(estimator, "PLSC") && !has_common_factor)
     fit <- if (applicable) structural_canvas_pls_diagnostic_fit(bundle, estimator) else NULL
     diagnostic_bundle <- bundle
     diagnostic_bundle$fit <- fit
@@ -147,7 +150,15 @@ structural_canvas_pls_fit_diagnostics_table <- function(bundle) {
       srmr = structural_canvas_pls_diagnostic_number(values[["srmr"]]),
       d_G = structural_canvas_pls_diagnostic_number(values[["d_g"]]),
       d_ULS = structural_canvas_pls_diagnostic_number(values[["d_uls"]]),
-      Basis = if (!applicable) "Not applicable: formative construct present" else if (has_formative) "Reflective measurement subset" else "All indicators",
+      Basis = if (!applicable) {
+        "Not applicable: no reflective common factor"
+      } else if (identical(estimator, "PLSC") && has_composite) {
+        "Mixed model: common factors corrected; composites uncorrected"
+      } else if (has_formative) {
+        "Reflective measurement subset"
+      } else {
+        "All indicators"
+      },
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
@@ -437,7 +448,7 @@ if (identical(analysis_type, "plssem")) {
     names(display)[names(display) == "Model"] <- ""
     tagList(
       structural_canvas_basic_html_table(display, class = "table table-striped table-bordered structural-pls-fit-diagnostics-table"),
-      tags$p(class = "structural-result-note", if (ko) "SRMR, d_G, d_ULS는 관측 지표상관과 모형함의 지표상관 사이의 근사 불일치 진단입니다. 혼합모형에서는 반영형 측정 부분만 계산하며, 형성형 구성개념이 포함된 모형의 PLSc 행은 적용되지 않습니다." else "SRMR, d_G, and d_ULS are approximate discrepancy diagnostics between observed and model-implied indicator correlations. For mixed models they are calculated on the reflective measurement subset; PLSc is not applicable when a formative construct is present.")
+      tags$p(class = "structural-result-note", if (ko) "SRMR, d_G, d_ULS는 관측 지표상관과 모형함의 지표상관 사이의 근사 불일치 진단입니다. 혼합모형의 PLSc는 반영형 공통요인 블록만 일관성 보정하고 합성변수 블록은 보정하지 않습니다. SRMR < .08은 기술적 참고 기준이며 d_G와 d_ULS에는 고정 절단값을 적용하지 않습니다." else "SRMR, d_G, and d_ULS are approximate discrepancy diagnostics between observed and model-implied indicator correlations. Mixed-model PLSc corrects reflective common-factor blocks only and leaves composite blocks uncorrected. SRMR < .08 is a descriptive reference; no fixed cutoff is imposed on d_G or d_ULS.")
     )
   }
   pls_fit_diagnostics_ui <- function() pls_fit_diagnostics_content()

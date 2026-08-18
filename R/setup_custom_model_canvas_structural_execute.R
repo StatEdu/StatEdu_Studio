@@ -124,6 +124,10 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
       parcel_result$status <- "Item-level parcel-factor CFA fitted"
     }
   }
+  covariate_research_fit <- if (analysis_type %in% c("cfa", "cbsem", "sem")) {
+    structural_canvas_fit_research_model(result, data, analysis_type, estimator, missing, std_lv, ordered)
+  } else NULL
+  covariate_fit_comparison <- structural_canvas_covariate_fit_comparison(covariate_research_fit, result$fit)
   missing_diagnostics <- if (!identical(analysis_type, "plssem")) {
     structural_canvas_missing_diagnostics(data, lavaan::lavNames(result$fit, "ov"))
   } else NULL
@@ -219,6 +223,9 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   analysis_run_id <- paste(prefix, as.numeric(Sys.time()), sample.int(.Machine$integer.max, 1L), sep = "-")
   fit_result(list(
     fit = result$fit, syntax = result$syntax, snapshot = snapshot, mi = mi, mi_mode = mi_mode,
+    covariates = result$covariates %||% character(0),
+    covariate_research_fit = covariate_research_fit,
+    covariate_fit_comparison = covariate_fit_comparison,
     rmsea_ci = rmsea_ci, validity_formula = validity_formula,
     reliability_bootstrap = reliability_bootstrap, reliability_seed = reliability_seed,
     reliability_ci_method = reliability_ci_method,

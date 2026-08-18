@@ -915,12 +915,12 @@
   function applyAnalysisCanvasDefaults(instance) {
     if (!instance || instance.analysisType !== "cfa") return;
     Object.assign(instance.state.canvas, {
-      paper: "B5",
-      orientation: "portrait",
-      widthMm: 182,
-      heightMm: 257,
-      widthPx: 688,
-      heightPx: 971
+      paper: "A4",
+      orientation: "landscape",
+      widthMm: 297,
+      heightMm: 210,
+      widthPx: 1123,
+      heightPx: 794
     });
   }
 
