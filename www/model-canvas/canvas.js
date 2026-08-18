@@ -1865,7 +1865,8 @@
       instance.state.canvas.widthPx = configuredWidth;
       instance.state.canvas.heightPx = configuredHeight;
       instance.state.canvas.paper = root.getAttribute("data-canvas-paper") || "Custom";
-      instance.state.canvas.orientation = "landscape";
+      instance.state.canvas.orientation = root.getAttribute("data-canvas-orientation") ||
+        (configuredHeight > configuredWidth ? "portrait" : "landscape");
     }
     var initialSnapshot = parseInitialSnapshot(root);
     if (

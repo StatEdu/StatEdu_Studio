@@ -110,15 +110,21 @@ structural_equation_workspace <- function(selected_names, variable_table = NULL,
     )
     if (isTRUE(capture$auto_run)) capture_attrs[["data-initial-run"]] <- "true"
   }
+  canvas_spec <- if (identical(analysis_type, "cfa")) {
+    list(width = "688", height = "971", paper = "B5", orientation = "portrait", status = "B5 portrait")
+  } else {
+    list(width = "1600", height = "1000", paper = "Large", orientation = "landscape", status = "Large landscape")
+  }
   root <- div(
       id = paste0(prefix, "-canvas-root"),
       class = "custom-model-canvas-root structural-equation-canvas-root",
       `data-input-prefix` = paste0(prefix, "_canvas"),
       `data-analysis-type` = analysis_type,
       `data-analysis-package` = structural_analysis_package(analysis_type),
-      `data-canvas-width` = "1600",
-      `data-canvas-height` = "1000",
-      `data-canvas-paper` = "Large",
+      `data-canvas-width` = canvas_spec$width,
+      `data-canvas-height` = canvas_spec$height,
+      `data-canvas-paper` = canvas_spec$paper,
+      `data-canvas-orientation` = canvas_spec$orientation,
       `data-variables` = variables_json,
       `data-language` = normalize_app_language(language),
       `data-i18n` = i18n_json,
@@ -132,12 +138,12 @@ structural_equation_workspace <- function(selected_names, variable_table = NULL,
         structural_equation_toolbar(analysis_type, language),
         div(class = "custom-model-statusbar",
             span(class = "custom-model-mode-status", custom_model_canvas_text(language, "Mode: Select", "모드: 선택")),
-            span(class = "custom-model-paper-status", "Large 1600×1000"),
+            span(class = "custom-model-paper-status", canvas_spec$status),
             span(class = "custom-model-covariate-status", ""),
             span(class = "structural-validation-status", "오류 0 · 경고 0")),
         div(class = "custom-model-canvas-scroll",
-            div(class = "custom-model-paper is-grid-visible", `data-width` = "1600", `data-height` = "1000",
-                tags$svg(class = "custom-model-edge-layer", width = "1600", height = "1000"),
+            div(class = "custom-model-paper is-grid-visible", `data-width` = canvas_spec$width, `data-height` = canvas_spec$height,
+                tags$svg(class = "custom-model-edge-layer", width = canvas_spec$width, height = canvas_spec$height),
                 div(class = "custom-model-node-layer")))
       )
     )
