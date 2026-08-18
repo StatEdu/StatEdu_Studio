@@ -50,6 +50,22 @@ notification_source <- readLines(file.path("R", "setup_custom_model_canvas_struc
 pls_engine_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_pls_engine.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 handler_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_handlers.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 fit_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_render_fit.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+fit_benchmark_observed <- matrix(c(1, .4, .2, .4, 1, .3, .2, .3, 1), 3L, 3L)
+fit_benchmark_implied <- matrix(c(1, .35, .15, .35, 1, .25, .15, .25, 1), 3L, 3L)
+fit_benchmark <- structural_canvas_pls_matrix_fit_indices(fit_benchmark_observed, fit_benchmark_implied)
+fit_benchmark_difference <- fit_benchmark_observed - fit_benchmark_implied
+fit_benchmark_eigen <- eigen(solve(fit_benchmark_observed, fit_benchmark_implied), only.values = TRUE)$values
+fit_benchmark_dml <- function(sample_matrix, fitted_matrix) {
+  ratio <- solve(fitted_matrix, sample_matrix)
+  sum(diag(ratio)) - as.numeric(determinant(ratio, logarithm = TRUE)$modulus) - nrow(sample_matrix)
+}
+stopifnot(
+  isTRUE(all.equal(unname(fit_benchmark[["srmr"]]), sqrt(sum(fit_benchmark_difference[lower.tri(fit_benchmark_difference, diag = TRUE)]^2) / 6), tolerance = 1e-12)),
+  isTRUE(all.equal(unname(fit_benchmark[["d_g"]]), 0.5 * sum(log10(fit_benchmark_eigen)^2), tolerance = 1e-12)),
+  isTRUE(all.equal(unname(fit_benchmark[["d_uls"]]), 0.5 * sum(fit_benchmark_difference^2), tolerance = 1e-12)),
+  isTRUE(all.equal(unname(fit_benchmark[["nfi"]]), 1 - fit_benchmark_dml(fit_benchmark_observed, fit_benchmark_implied) / fit_benchmark_dml(fit_benchmark_observed, diag(3L)), tolerance = 1e-12)),
+  all(is.na(structural_canvas_pls_matrix_fit_indices(matrix(0, 2L, 2L), diag(2L))))
+)
 stopifnot(
   grepl("PLS structural model effects", ui_source, fixed = TRUE),
   grepl("2. PLS/PLSc model fit diagnostics", ui_source, fixed = TRUE),

@@ -44,6 +44,41 @@ structural_canvas_pls_ten_times_margin <- function(bundle) {
   if (!is.finite(n) || denominator <= 0) NA_real_ else n / denominator
 }
 
+structural_canvas_pls_matrix_fit_indices <- function(observed, implied) {
+  observed <- suppressWarnings(as.matrix(observed))
+  implied <- suppressWarnings(as.matrix(implied))
+  unavailable <- c(srmr = NA_real_, d_g = NA_real_, d_uls = NA_real_, nfi = NA_real_)
+  if (!length(observed) || !identical(dim(observed), dim(implied)) || nrow(observed) < 2L) return(unavailable)
+  if (any(!is.finite(observed)) || any(!is.finite(implied))) return(unavailable)
+  observed <- tryCatch(suppressWarnings(stats::cov2cor(observed)), error = function(error) NULL)
+  implied <- tryCatch(suppressWarnings(stats::cov2cor(implied)), error = function(error) NULL)
+  if (is.null(observed) || is.null(implied)) return(unavailable)
+  if (any(!is.finite(observed)) || any(!is.finite(implied))) return(unavailable)
+  difference <- observed - implied
+  lower_diagonal <- lower.tri(difference, diag = TRUE)
+  d_uls <- 0.5 * sum(difference^2)
+  d_g <- tryCatch({
+    eigen_values <- Re(eigen(solve(observed, implied), only.values = TRUE)$values)
+    if (any(!is.finite(eigen_values) | eigen_values <= 0)) NA_real_ else 0.5 * sum(log10(eigen_values)^2)
+  }, error = function(error) NA_real_)
+  d_ml <- function(sample_matrix, fitted_matrix) {
+    tryCatch({
+      ratio <- solve(fitted_matrix, sample_matrix)
+      determinant <- determinant(ratio, logarithm = TRUE)
+      value <- sum(diag(ratio)) - as.numeric(determinant$modulus) - nrow(sample_matrix)
+      if (determinant$sign <= 0 || !is.finite(value)) NA_real_ else value
+    }, error = function(error) NA_real_)
+  }
+  fitted_ml <- d_ml(observed, implied)
+  null_ml <- d_ml(observed, diag(nrow(observed)))
+  c(
+    srmr = sqrt(sum(difference[lower_diagonal]^2) / sum(lower_diagonal)),
+    d_g = d_g,
+    d_uls = d_uls,
+    nfi = if (is.finite(null_ml) && null_ml > 0 && is.finite(fitted_ml)) (null_ml - fitted_ml) / null_ml else NA_real_
+  )
+}
+
 structural_canvas_pls_approximate_fit_indices <- function(bundle, summary_fit = NULL) {
   fit <- bundle$fit %||% NULL
   if (is.null(fit) || is.null(fit$data) || is.null(fit$construct_scores)) {
@@ -88,26 +123,7 @@ structural_canvas_pls_approximate_fit_indices <- function(bundle, summary_fit = 
       implied[first, second] <- if (all(is.finite(c(first_loading, second_loading, phi)))) first_loading * second_loading * phi else NA_real_
     }
   }
-  lower <- lower.tri(observed)
-  residuals <- suppressWarnings(as.numeric(observed[lower] - implied[lower]))
-  residuals <- residuals[is.finite(residuals)]
-  null_residuals <- suppressWarnings(as.numeric(observed[lower]))
-  null_residuals <- null_residuals[is.finite(null_residuals)]
-  if (!length(residuals)) return(c(srmr = NA_real_, d_g = NA_real_, d_uls = NA_real_, nfi = NA_real_))
-  d_uls <- sum(residuals^2, na.rm = TRUE)
-  d_null <- sum(null_residuals^2, na.rm = TRUE)
-  d_g <- tryCatch({
-    observed_pd <- observed[indicators, indicators, drop = FALSE]
-    implied_pd <- implied[indicators, indicators, drop = FALSE]
-    eigen_values <- Re(eigen(solve(implied_pd, observed_pd), only.values = TRUE)$values)
-    if (any(!is.finite(eigen_values) | eigen_values <= 0)) NA_real_ else sqrt(sum(log(eigen_values)^2))
-  }, error = function(error) NA_real_)
-  c(
-    srmr = sqrt(mean(residuals^2, na.rm = TRUE)),
-    d_g = d_g,
-    d_uls = d_uls,
-    nfi = if (is.finite(d_null) && d_null > 0) 1 - d_uls / d_null else NA_real_
-  )
+  structural_canvas_pls_matrix_fit_indices(observed, implied)
 }
 
 structural_canvas_pls_diagnostic_fit <- function(bundle, estimator) {
