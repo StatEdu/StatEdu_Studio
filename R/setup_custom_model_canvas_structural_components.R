@@ -113,7 +113,7 @@ structural_equation_workspace <- function(selected_names, variable_table = NULL,
   canvas_spec <- if (identical(analysis_type, "cfa")) {
     list(width = "688", height = "971", paper = "B5", orientation = "portrait", status = "B5 portrait")
   } else {
-    list(width = "1600", height = "1000", paper = "Large", orientation = "landscape", status = "Large landscape")
+    list(width = "1123", height = "794", paper = "A4", orientation = "landscape", status = "A4 landscape")
   }
   root <- div(
       id = paste0(prefix, "-canvas-root"),

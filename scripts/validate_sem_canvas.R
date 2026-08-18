@@ -861,7 +861,9 @@ undeclared_options <- structural_canvas_execute_settings(settings = list(), inpu
 stopifnot(identical(undeclared_options$sampling_design, "independent_cross_sectional"))
 cbsem_default_options <- structural_canvas_execute_settings(settings = list(), input = list(), prefix = "structural_cbsem")
 stopifnot(identical(cbsem_default_options$sampling_design, "independent_cross_sectional"))
-stopifnot(identical(cbsem_default_options$effect_bootstrap, 1000L))
+stopifnot(identical(cbsem_default_options$effect_bootstrap, 5000L))
+stopifnot(identical(cbsem_default_options$htmt_bootstrap, 5000L))
+stopifnot(identical(cbsem_default_options$htmt_ci_method, "bias_corrected"))
 sampling_gate <- structural_canvas_sampling_design_gate(pls_options$sampling_design)
 stopifnot(isTRUE(sampling_gate$supported), grepl("independent-observation", sampling_gate$reason, fixed = TRUE))
 for (unsupported_design in c("not_declared", "clustered", "complex_survey", "longitudinal_repeated")) {

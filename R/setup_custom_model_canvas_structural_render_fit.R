@@ -51,13 +51,15 @@ structural_canvas_pls_approximate_fit_indices <- function(bundle, summary_fit = 
   }
   snapshot <- bundle$snapshot %||% list()
   latent_nodes <- Filter(function(node) identical(node$role %||% "", "latent"), snapshot$nodes %||% list())
-  if (any(vapply(latent_nodes, function(node) identical(node$measurementMode %||% "reflective", "formative"), logical(1)))) {
-    return(c(srmr = NA_real_, d_g = NA_real_, d_uls = NA_real_, nfi = NA_real_))
-  }
+  reflective_constructs <- vapply(Filter(
+    function(node) !identical(node$measurementMode %||% "reflective", "formative"),
+    latent_nodes
+  ), structural_canvas_name, character(1))
   summary_fit <- summary_fit %||% tryCatch(summary(fit), error = function(error) NULL)
   if (is.null(summary_fit)) return(c(srmr = NA_real_, d_g = NA_real_, d_uls = NA_real_, nfi = NA_real_))
   mm <- as.data.frame(fit$mmMatrix %||% data.frame(), stringsAsFactors = FALSE)
   if (!all(c("construct", "measurement") %in% names(mm))) return(c(srmr = NA_real_, d_g = NA_real_, d_uls = NA_real_, nfi = NA_real_))
+  if (length(latent_nodes)) mm <- mm[as.character(mm$construct) %in% reflective_constructs, , drop = FALSE]
   loadings <- suppressWarnings(as.matrix(summary_fit$loadings %||% matrix(numeric(0), 0L, 0L)))
   scores <- suppressWarnings(as.matrix(fit$construct_scores))
   indicators <- intersect(as.character(mm$measurement), rownames(loadings))
@@ -130,8 +132,11 @@ structural_canvas_pls_diagnostic_fit <- function(bundle, estimator) {
 
 structural_canvas_pls_fit_diagnostics_table <- function(bundle) {
   if (is.null(bundle) || is.null(bundle$fit) || !inherits(bundle$fit, "pls_model")) return(data.frame())
+  specification <- structural_canvas_construct_specification(bundle$snapshot %||% list())
+  has_formative <- nrow(specification) && any(specification$measurement_mode == "formative")
   rows <- lapply(c("PLS", "PLSC"), function(estimator) {
-    fit <- structural_canvas_pls_diagnostic_fit(bundle, estimator)
+    applicable <- !(identical(estimator, "PLSC") && has_formative)
+    fit <- if (applicable) structural_canvas_pls_diagnostic_fit(bundle, estimator) else NULL
     diagnostic_bundle <- bundle
     diagnostic_bundle$fit <- fit
     diagnostic_bundle$estimator <- estimator
@@ -142,6 +147,7 @@ structural_canvas_pls_fit_diagnostics_table <- function(bundle) {
       srmr = structural_canvas_pls_diagnostic_number(values[["srmr"]]),
       d_G = structural_canvas_pls_diagnostic_number(values[["d_g"]]),
       d_ULS = structural_canvas_pls_diagnostic_number(values[["d_uls"]]),
+      Basis = if (!applicable) "Not applicable: formative construct present" else if (has_formative) "Reflective measurement subset" else "All indicators",
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
@@ -431,7 +437,7 @@ if (identical(analysis_type, "plssem")) {
     names(display)[names(display) == "Model"] <- ""
     tagList(
       structural_canvas_basic_html_table(display, class = "table table-striped table-bordered structural-pls-fit-diagnostics-table"),
-      tags$p(class = "structural-result-note", if (ko) "SRMR, d_G, d_ULS는 반영형 측정모형에서 관측 지표상관과 모형함의 지표상관 사이의 근사 불일치 진단입니다. 형성형 구성개념이 있으면 계산하지 않습니다." else "SRMR, d_G, and d_ULS are approximate discrepancy diagnostics between observed and model-implied indicator correlations for reflective measurement models. They are not calculated when a formative construct is present.")
+      tags$p(class = "structural-result-note", if (ko) "SRMR, d_G, d_ULS는 관측 지표상관과 모형함의 지표상관 사이의 근사 불일치 진단입니다. 혼합모형에서는 반영형 측정 부분만 계산하며, 형성형 구성개념이 포함된 모형의 PLSc 행은 적용되지 않습니다." else "SRMR, d_G, and d_ULS are approximate discrepancy diagnostics between observed and model-implied indicator correlations. For mixed models they are calculated on the reflective measurement subset; PLSc is not applicable when a formative construct is present.")
     )
   }
   pls_fit_diagnostics_ui <- function() pls_fit_diagnostics_content()

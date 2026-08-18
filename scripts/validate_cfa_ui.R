@@ -79,7 +79,7 @@ stopifnot(
   grepl("if (hasMeasurementNode) return structuralMeasurementSelectionAxis(instance, selectedNodes);", nodes_js_source, fixed = TRUE),
   grepl("return null;", nodes_js_source, fixed = TRUE),
   grepl("window.StatEduModelCanvas.nodes.startDrag(instance, event, nodeElement);", canvas_js_source, fixed = TRUE),
-  grepl("var groupGap = rowGap;", canvas_js_source, fixed = TRUE),
+  grepl("var groupGap = Math.max(6, rowGap - indicatorHeight - 12);", canvas_js_source, fixed = TRUE),
   grepl("if (!isViewingResult(instance)) return", nodes_js_source, fixed = TRUE),
   grepl("instance.selectedLatentStatsNodeId = node.id", nodes_js_source, fixed = TRUE),
   grepl("instance.state.selectedNodeIds = []", nodes_js_source, fixed = TRUE),

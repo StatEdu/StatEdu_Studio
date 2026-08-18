@@ -730,22 +730,29 @@
     defs.appendChild(marker);
   }
 
-  function ensureDefs(svg, style) {
+  function ensureDefs(svg, style, markerPrefix) {
     var defs = svg.querySelector("defs");
     if (defs) defs.remove();
     defs = document.createElementNS(SVG_NS, "defs");
     var color = (style && style.edgeStrokeColor) || "#000000";
     var arrowHead = (style && style.arrowHead) || "triangle";
+    markerPrefix = String(markerPrefix || "custom-model").replace(/[^A-Za-z0-9_-]/g, "-");
+    var markerIds = {
+      arrow: markerPrefix + "-arrow",
+      arrowSelected: markerPrefix + "-arrow-selected",
+      moderation: markerPrefix + "-moderation-arrow",
+      moderationSelected: markerPrefix + "-moderation-arrow-selected"
+    };
     if (arrowHead === "none") {
       svg.appendChild(defs);
-      return defs;
+      return markerIds;
     }
-    appendArrowMarker(defs, "custom-model-arrow", arrowHead, color);
-    appendArrowMarker(defs, "custom-model-arrow-selected", arrowHead, "#2563eb");
-    appendArrowMarker(defs, "custom-model-moderation-arrow", arrowHead, "#7c3aed");
-    appendArrowMarker(defs, "custom-model-moderation-arrow-selected", arrowHead, "#2563eb");
+    appendArrowMarker(defs, markerIds.arrow, arrowHead, color);
+    appendArrowMarker(defs, markerIds.arrowSelected, arrowHead, "#2563eb");
+    appendArrowMarker(defs, markerIds.moderation, arrowHead, "#7c3aed");
+    appendArrowMarker(defs, markerIds.moderationSelected, arrowHead, "#2563eb");
     svg.appendChild(defs);
-    return defs;
+    return markerIds;
   }
 
   function lineElement(className, x1, y1, x2, y2) {
@@ -832,7 +839,8 @@
     var structuralCanvas = ["cfa", "cbsem", "sem", "plssem"].indexOf(instance.analysisType) >= 0;
     var configuredArrowHead = instance.state.style.arrowHead || "triangle";
     var arrowHead = structuralCanvas && (configuredArrowHead === "none" || configuredArrowHead === "line") ? "triangle" : configuredArrowHead;
-    ensureDefs(svg, Object.assign({}, instance.state.style, {arrowHead: arrowHead}));
+    var markerPrefix = (instance.root && instance.root.id) || (instance.analysisType + "-canvas");
+    var markerIds = ensureDefs(svg, Object.assign({}, instance.state.style, {arrowHead: arrowHead}), markerPrefix);
     var edgeColor = instance.state.style.edgeStrokeColor || "#000000";
     var edgeWidth = Number(instance.state.style.edgeStrokeWidth || 1.8);
     var placedLabels = nodeObstacleBoxes(instance);
@@ -887,10 +895,10 @@
         element.removeAttribute("stroke-dasharray");
       }
       if (item && item.kind === "covariance") {
-        element.setAttribute("marker-start", selected ? "url(#custom-model-arrow-selected)" : "url(#custom-model-arrow)");
-        element.setAttribute("marker-end", selected ? "url(#custom-model-arrow-selected)" : "url(#custom-model-arrow)");
+        element.setAttribute("marker-start", "url(#" + (selected ? markerIds.arrowSelected : markerIds.arrow) + ")");
+        element.setAttribute("marker-end", "url(#" + (selected ? markerIds.arrowSelected : markerIds.arrow) + ")");
       } else if (arrowHead !== "none") {
-        element.setAttribute("marker-end", selected ? "url(#custom-model-arrow-selected)" : "url(#custom-model-arrow)");
+        element.setAttribute("marker-end", "url(#" + (selected ? markerIds.arrowSelected : markerIds.arrow) + ")");
       }
     }
 
@@ -945,7 +953,7 @@
         }
       }
       if (arrowHead !== "none") {
-        line.setAttribute("marker-end", isSelected ? "url(#custom-model-moderation-arrow-selected)" : "url(#custom-model-moderation-arrow)");
+        line.setAttribute("marker-end", "url(#" + (isSelected ? markerIds.moderationSelected : markerIds.moderation) + ")");
       }
       svg.appendChild(line);
       addModerationHitElement(svg, moderation, from, to);

@@ -13,17 +13,19 @@ structural_canvas_execute_settings <- function(settings, input, prefix) {
   bollen_stine_seed <- suppressWarnings(as.integer(settings$bollen_stine_seed %||% input[[paste0(prefix, "_bollen_stine_seed")]] %||% default_seed()))
   if (is.na(bollen_stine_seed) || bollen_stine_seed < 1L) bollen_stine_seed <- default_seed()
 
-  default_effect_bootstrap <- if (prefix %in% c("structural_cbsem", "structural_sem")) 1000L else 0L
+  bootstrap_replicate_choices <- c(0L, 1000L, 5000L, 10000L, 20000L, 50000L)
+  default_effect_bootstrap <- if (prefix %in% c("structural_cbsem", "structural_sem")) 5000L else 0L
   effect_bootstrap <- suppressWarnings(as.integer(settings$effect_bootstrap %||% input[[paste0(prefix, "_effect_bootstrap")]] %||% default_effect_bootstrap))
-  if (is.na(effect_bootstrap) || !effect_bootstrap %in% c(0L, 500L, 1000L, 2000L)) effect_bootstrap <- 0L
+  if (is.na(effect_bootstrap) || !effect_bootstrap %in% bootstrap_replicate_choices) effect_bootstrap <- default_effect_bootstrap
   effect_bootstrap_seed <- suppressWarnings(as.integer(settings$effect_bootstrap_seed %||% input[[paste0(prefix, "_effect_bootstrap_seed")]] %||% default_seed()))
   if (is.na(effect_bootstrap_seed) || effect_bootstrap_seed < 1L) effect_bootstrap_seed <- default_seed()
 
   htmt_threshold <- as.numeric(settings$htmt_threshold %||% input[[paste0(prefix, "_htmt_threshold")]] %||% .85)
   if (!is.finite(htmt_threshold) || !htmt_threshold %in% c(.85, .90)) htmt_threshold <- .85
 
-  htmt_bootstrap <- suppressWarnings(as.integer(settings$htmt_bootstrap %||% input[[paste0(prefix, "_htmt_bootstrap")]] %||% 0L))
-  if (is.na(htmt_bootstrap) || !htmt_bootstrap %in% c(0L, 500L, 1000L, 2000L)) htmt_bootstrap <- 0L
+  default_htmt_bootstrap <- if (!identical(prefix, "structural_plssem")) 5000L else 0L
+  htmt_bootstrap <- suppressWarnings(as.integer(settings$htmt_bootstrap %||% input[[paste0(prefix, "_htmt_bootstrap")]] %||% default_htmt_bootstrap))
+  if (is.na(htmt_bootstrap) || !htmt_bootstrap %in% bootstrap_replicate_choices) htmt_bootstrap <- default_htmt_bootstrap
 
   htmt_seed <- suppressWarnings(as.integer(settings$htmt_seed %||% input[[paste0(prefix, "_htmt_seed")]] %||% default_seed()))
   if (is.na(htmt_seed) || htmt_seed < 1L) htmt_seed <- default_seed()
@@ -85,7 +87,10 @@ structural_canvas_execute_settings <- function(settings, input, prefix) {
     std_lv = settings$std_lv %||% identical(input[[paste0(prefix, "_scale")]], "variance"),
     mi_mode = settings$mi_mode %||% input[[paste0(prefix, "_mi_mode")]] %||% "theory",
     rmsea_ci = settings$rmsea_ci %||% as.numeric(input[[paste0(prefix, "_rmsea_ci")]] %||% .90),
-    validity_formula = settings$validity_formula %||% input[[paste0(prefix, "_validity_formula")]] %||% "standardized",
+    validity_formula = {
+      value <- as.character(settings$validity_formula %||% input[[paste0(prefix, "_validity_formula")]] %||% "standardized")
+      if (value %in% c("standardized", "model_implied")) value else "standardized"
+    },
     reliability_bootstrap = reliability_bootstrap,
     reliability_seed = reliability_seed,
     reliability_ci_method = structural_canvas_bootstrap_ci_method(settings$reliability_ci_method %||% input[[paste0(prefix, "_reliability_ci_method")]] %||% "percentile"),
@@ -93,10 +98,14 @@ structural_canvas_execute_settings <- function(settings, input, prefix) {
     bollen_stine_seed = bollen_stine_seed,
     effect_bootstrap = effect_bootstrap,
     effect_bootstrap_seed = effect_bootstrap_seed,
+    effect_bootstrap_ci_method = {
+      value <- as.character(settings$effect_bootstrap_ci_method %||% input[[paste0(prefix, "_effect_bootstrap_ci_method")]] %||% "bias_corrected")
+      if (value %in% c("bias_corrected", "percentile")) value else "bias_corrected"
+    },
     htmt_threshold = htmt_threshold,
     htmt_bootstrap = htmt_bootstrap,
     htmt_seed = htmt_seed,
-    htmt_ci_method = structural_canvas_bootstrap_ci_method(settings$htmt_ci_method %||% input[[paste0(prefix, "_htmt_ci_method")]] %||% "percentile"),
+    htmt_ci_method = structural_canvas_bootstrap_ci_method(settings$htmt_ci_method %||% input[[paste0(prefix, "_htmt_ci_method")]] %||% "bias_corrected"),
     pls_bootstrap = pls_bootstrap,
     pls_seed = pls_seed,
     pls_predict_folds = pls_predict_folds,

@@ -1,5 +1,8 @@
 # Changelog
 
+- Added bias-corrected (BC) confidence intervals as the default for SEM structural-effect case bootstrapping, while retaining percentile intervals as an explicit option and recording the selected method in results and audit exports.
+- Fixed PLS SRMR, d_G, and d_ULS output for mixed reflective/formative models by reporting the reflective measurement subset and marking PLSc as not applicable when a formative construct is present; exact-fit inference remains distinct from ordinary parameter bootstrapping.
+
 ## v1.2.0 - 2026-08-06
 
 ### Added

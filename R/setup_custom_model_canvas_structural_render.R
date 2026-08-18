@@ -45,7 +45,7 @@ structural_canvas_reporting_bootstrap_label <- function(bundle, analysis_type) {
       requested <- c(requested, paste0("Reliability/AVE R=", rel_r, ", CI=", bundle$reliability_ci_method %||% "percentile", ", seed=", bundle$reliability_seed %||% "not recorded"))
     }
     if (is.finite(htmt_r) && htmt_r > 0L) {
-      requested <- c(requested, paste0("HTMT R=", htmt_r, ", CI=", bundle$htmt_ci_method %||% "percentile", ", seed=", bundle$htmt_seed %||% "not recorded"))
+      requested <- c(requested, paste0("HTMT R=", htmt_r, ", CI=", bundle$htmt_ci_method %||% "bias_corrected", ", seed=", bundle$htmt_seed %||% "not recorded"))
     }
     if (is.finite(bs_r) && bs_r > 0L) {
       requested <- c(requested, paste0("Bollen-Stine R=", bs_r, ", seed=", bundle$bollen_stine_seed %||% "not recorded"))
@@ -348,6 +348,7 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
           structural_canvas_symbol_footnotes(manuscript_result_table("measurement"))
         )
       ),
+      if (analysis_type %in% c("cbsem", "sem")) uiOutput(paste0(prefix, "_result_specific_indirect")),
       uiOutput(paste0(prefix, "_result_mi_section")),
       uiOutput(paste0(prefix, "_result_residuals")),
       uiOutput(paste0(prefix, "_result_supplementary_container")),
@@ -368,7 +369,6 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
       h4(if (ko) "보조 결과 및 진단" else "Supplementary results and diagnostics"),
       if (analysis_type %in% c("cbsem", "sem")) tagList(
         uiOutput(paste0(prefix, "_result_structural_effects")),
-        uiOutput(paste0(prefix, "_result_specific_indirect")),
         uiOutput(paste0(prefix, "_result_structural_effect_ci"))
       ),
       uiOutput(paste0(prefix, "_result_reporting_context")),
@@ -458,7 +458,7 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
     if (!nrow(table)) return(NULL)
     ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
     div(
-      class = "structural-effect-summary-block",
+      class = "result-section regression-result-panel structural-specific-indirect-result",
       tags$h5(if (ko) "표 6: 특정 간접효과" else "Table 6: Specific indirect effects"),
       structural_canvas_specific_indirect_html_table(table),
       tags$p(class = "structural-result-note", if (ko) "각 행은 하나의 매개 경로에 해당합니다. Boot SE와 Boot 95% CI는 효과 bootstrap을 요청한 경우 재표집 결과를 사용하고, 유효 반복이 부족하면 빈 값으로 표시됩니다." else "Each row is one mediation path. Boot SE and Boot 95% CI use effect-bootstrap resampling when requested; intervals are blank when valid replicates are insufficient.")

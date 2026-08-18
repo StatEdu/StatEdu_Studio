@@ -12,6 +12,24 @@
   max-width: 100%;
 }
 
+/* Match the structural workspace to the full-width Step 2 data panel. */
+.structural-equation-canvas-root {
+  grid-template-columns: 260px minmax(0, 1fr);
+  width: 100%;
+}
+
+.structural-equation-canvas-root .custom-model-diagram-panel {
+  width: 100%;
+  min-width: 0;
+}
+
+.structural-equation-canvas-root .custom-model-canvas-scroll {
+  height: auto !important;
+  flex: 0 0 auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
 .custom-model-variable-panel,
 .custom-model-diagram-panel {
   border: 1px solid #d8dee8;
@@ -791,14 +809,14 @@
 
 .custom-model-node-latent .structural-latent-statistics {
   position: absolute;
-  left: 100%;
-  top: 50%;
+  left: 84%;
+  top: -18%;
   z-index: 8;
   display: block;
   width: max-content;
   max-width: 180px;
   margin-left: 8px;
-  margin-top: -9px;
+  margin-top: 0;
   padding: 2px 4px;
   transform-origin: left center;
   border-radius: 3px;

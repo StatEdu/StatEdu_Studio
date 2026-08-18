@@ -165,12 +165,11 @@ structural_canvas_effect_summary_html_table <- function(table, ci = FALSE, langu
 }
 
 structural_canvas_specific_indirect_html_table <- function(table) {
-  required <- c("Path", "B", "Boot SE", "Boot 95% CI lower", "Boot 95% CI upper", "z", "p")
+  required <- c("Path", "B", "Boot SE", "Boot 95% CI lower", "Boot 95% CI upper", "p")
   if (!is.data.frame(table) || !nrow(table) || !all(required %in% names(table))) {
     return(structural_canvas_basic_html_table(table, class = "table table-striped table-bordered structural-specific-indirect-table"))
   }
-  optional <- intersect("BH-adjusted p", names(table))
-  body_values <- table[, c(required, optional), drop = FALSE]
+  body_values <- table[, required, drop = FALSE]
   tags$div(class = "table-responsive", tags$table(class = "table table-striped table-bordered structural-result-table structural-specific-indirect-table",
     tags$thead(
       tags$tr(
@@ -178,9 +177,7 @@ structural_canvas_specific_indirect_html_table <- function(table) {
         tags$th(class = "structural-table-header-cell", rowspan = "2", "B"),
         tags$th(class = "structural-table-header-cell", rowspan = "2", "Boot SE"),
         tags$th(class = "structural-table-header-cell", colspan = "2", "Boot 95% CI"),
-        tags$th(class = "structural-table-header-cell", rowspan = "2", "z"),
-        tags$th(class = "structural-table-header-cell", rowspan = "2", "p"),
-        if ("BH-adjusted p" %in% names(body_values)) tags$th(class = "structural-table-header-cell", rowspan = "2", "BH p")
+        tags$th(class = "structural-table-header-cell", rowspan = "2", "p")
       ),
       tags$tr(
         tags$th(class = "structural-table-header-cell", "Lower"),

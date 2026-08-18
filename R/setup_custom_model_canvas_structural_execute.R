@@ -31,6 +31,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   bollen_stine_seed <- options$bollen_stine_seed
   effect_bootstrap <- options$effect_bootstrap
   effect_bootstrap_seed <- options$effect_bootstrap_seed
+  effect_bootstrap_ci_method <- options$effect_bootstrap_ci_method
   htmt_threshold <- options$htmt_threshold
   htmt_bootstrap <- options$htmt_bootstrap
   htmt_seed <- options$htmt_seed
@@ -176,7 +177,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   effect_bootstrap_result <- if (isTRUE(defer_effect_bootstrap)) NULL else {
     structural_canvas_effect_bootstrap(
       snapshot, data, analysis_type, estimator, missing, std_lv, ordered, nominal,
-      residual_variance_fixes, effect_bootstrap, effect_bootstrap_seed
+      residual_variance_fixes, effect_bootstrap, effect_bootstrap_seed, effect_bootstrap_ci_method
     )
   }
   redundancy_result <- if (identical(analysis_type, "plssem")) {
@@ -225,6 +226,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     bollen_stine_bootstrap = bollen_stine_bootstrap, bollen_stine_seed = bollen_stine_seed,
     bollen_stine_result = bollen_stine_result,
     effect_bootstrap = effect_bootstrap, effect_bootstrap_seed = effect_bootstrap_seed,
+    effect_bootstrap_ci_method = effect_bootstrap_ci_method,
     effect_bootstrap_result = effect_bootstrap_result,
     effect_bootstrap_pending = isTRUE(defer_effect_bootstrap),
     htmt_threshold = htmt_threshold, htmt_bootstrap = htmt_bootstrap, htmt_seed = htmt_seed,

@@ -620,7 +620,7 @@
       var indicatorHeight = Number(style.boxHeight || 38);
       var latentHeightFallback = Number(style.latentHeight || 58);
       var rowGap = Math.max(48, indicatorHeight + 10);
-      var groupGap = rowGap;
+      var groupGap = Math.max(6, rowGap - indicatorHeight - 12);
       var groups = latents.map(function(latent) {
         var edges = measurementEdgesForLatent(latent);
         if (!edges.length) return null;
@@ -1633,10 +1633,45 @@
     if (!instance || !instance.state || !instance.state.nodes.length) return false;
     window.StatEduModelCanvas.state.pushHistory(instance);
     window.StatEduModelCanvas.layout.reflowRoleLayout(instance.state.nodes, instance.state.style);
+    if (instance.analysisType === "cfa") autoLayoutCfaMeasurementGroups(instance);
     reflowMeasurementModel(instance);
     render(instance);
     window.StatEduModelCanvas.bridge.sendState(instance);
     return true;
+  }
+
+  function autoLayoutCfaMeasurementGroups(instance) {
+    var style = instance.state.style || {};
+    var paperWidth = Number(instance.state.canvas.widthPx || 688);
+    var latentX = Math.max(220, Math.min(300, paperWidth - 430));
+    var rowGap = Math.max(48, Number(style.boxHeight || 38) + 10);
+    var indicatorHeight = 30;
+    var groupGap = Math.max(12, rowGap - indicatorHeight);
+    var nextTop = 80;
+    var latents = instance.state.nodes.filter(function(node) {
+      return node.role === "latent" && node.constructType !== "higherOrder";
+    }).sort(function(a, b) {
+      return Number(a.y || 0) - Number(b.y || 0);
+    });
+
+    latents.forEach(function(latent) {
+      var indicatorCount = instance.state.edges.reduce(function(count, edge) {
+        if (edge.kind === "covariance") return count;
+        var from = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
+        var to = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
+        var measurement = (from && from.id === latent.id && to && to.role === "indicator") ||
+          (to && to.id === latent.id && from && from.role === "indicator");
+        return count + (measurement ? 1 : 0);
+      }, 0);
+      var latentHeight = Number(latent.height || 44);
+      var measurementHeight = indicatorCount > 0 ? indicatorHeight + (indicatorCount - 1) * rowGap : latentHeight;
+      var groupHeight = Math.max(latentHeight, measurementHeight);
+      latent.x = latentX;
+      latent.y = nextTop + (groupHeight - latentHeight) / 2;
+      latent.measurementPlacement = "right";
+      latent.manualPosition = true;
+      nextTop += groupHeight + groupGap;
+    });
   }
 
   function selectedStructuralEdge(instance) {

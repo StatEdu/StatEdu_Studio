@@ -188,7 +188,7 @@
       var higherOrder = action === "addHigherOrderLatent";
       var isCfa = instance.analysisType === "cfa";
       var paperWidth = Number(instance.state.canvas.widthPx || 0);
-      var cfaLatentX = Math.max(360, Math.min(480, paperWidth - 330));
+      var cfaLatentX = Math.max(220, Math.min(300, paperWidth - 430));
       var latent = window.StatEduModelCanvas.nodes.createLatentNode(
         instance,
         higherOrder ? 250 : (isCfa ? cfaLatentX : 330 + (count % 3) * 220),

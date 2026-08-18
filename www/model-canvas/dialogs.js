@@ -4,7 +4,8 @@
   var ROLE_ORDER = ["independent", "mediator", "moderator", "dependent"];
   var PAPER_SIZES = {
     B5: {widthMm: 257, heightMm: 182},
-    A4: {widthMm: 297, heightMm: 210}
+    A4: {widthMm: 297, heightMm: 210},
+    Large: {widthMm: 529.1667, heightMm: 264.5833, widthPx: 2000, heightPx: 1000}
   };
   var COLOR_PRESETS = [
     {value: "#000000", label: "\uac80\uc815", key: "color_black"},
@@ -200,6 +201,7 @@
       '<select class="form-control custom-model-paper-size">',
       '<option value="B5">B5</option>',
       '<option value="A4">A4</option>',
+      '<option value="Large">Large</option>',
       '</select>',
       '<label class="custom-model-field-label">' + t("orientation", "\ubc29\ud5a5") + '</label>',
       '<select class="form-control custom-model-paper-orientation">',
@@ -231,17 +233,21 @@
       var size = PAPER_SIZES[paperName] || PAPER_SIZES.B5;
       var widthMm = size.widthMm;
       var heightMm = size.heightMm;
+      var widthPx = Number(size.widthPx || pxFromMm(widthMm));
+      var heightPx = Number(size.heightPx || pxFromMm(heightMm));
       if (orientation === "portrait") {
         widthMm = size.heightMm;
         heightMm = size.widthMm;
+        widthPx = Number(size.heightPx || pxFromMm(widthMm));
+        heightPx = Number(size.widthPx || pxFromMm(heightMm));
       }
       window.StatEduModelCanvas.state.pushHistory(instance);
       instance.state.canvas.paper = paperName;
       instance.state.canvas.orientation = orientation;
       instance.state.canvas.widthMm = widthMm;
       instance.state.canvas.heightMm = heightMm;
-      instance.state.canvas.widthPx = pxFromMm(widthMm);
-      instance.state.canvas.heightPx = pxFromMm(heightMm);
+      instance.state.canvas.widthPx = widthPx;
+      instance.state.canvas.heightPx = heightPx;
       window.StatEduModelCanvas.canvas.resizeToViewport(instance);
       if (paperViewZoom === "fit" || paperViewZoom === "width") {
         instance.state.canvas.paperViewMode = paperViewZoom;

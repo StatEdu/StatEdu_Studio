@@ -39,7 +39,7 @@ structural_canvas_htmt_bootstrap <- function(data, indicators_by_factor, reps = 
       as.numeric(htmt$matrix[pair[[1L]], pair[[2L]]])
     }, numeric(1))
   }
-  original_values <- if (identical(ci_method, "bca")) compute_pair_values(values) else rep(NA_real_, length(pairs))
+  original_values <- if (ci_method %in% c("bca", "bias_corrected")) compute_pair_values(values) else rep(NA_real_, length(pairs))
   old_seed_exists <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
   if (old_seed_exists) old_seed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
   on.exit({
@@ -78,10 +78,14 @@ structural_canvas_htmt_bootstrap <- function(data, indicators_by_factor, reps = 
     pair_values <- pair_values[is.finite(pair_values)]
     interval <- if (identical(ci_method, "bca")) {
       structural_canvas_bca_interval(pair_values, original_values[[pair_index]], jackknife[, pair_index], confidence)
+    } else if (identical(ci_method, "bias_corrected") && length(pair_values) >= max(20L, ceiling(.5 * reps))) {
+      bootstrap_ci(original_values[[pair_index]], pair_values, conf = confidence, method = "bias_corrected")
     } else if (length(pair_values) >= max(20L, ceiling(.5 * reps))) {
       as.numeric(stats::quantile(pair_values, probs = c(alpha, 1 - alpha), names = FALSE, type = 6, na.rm = TRUE))
     } else c(NA_real_, NA_real_)
-    upper_one_sided <- if (length(pair_values) >= max(20L, ceiling(.5 * reps))) {
+    upper_one_sided <- if (identical(ci_method, "bias_corrected") && length(pair_values) >= max(20L, ceiling(.5 * reps))) {
+      structural_canvas_bias_corrected_quantile(pair_values, original_values[[pair_index]], confidence)
+    } else if (length(pair_values) >= max(20L, ceiling(.5 * reps))) {
       as.numeric(stats::quantile(pair_values, probs = confidence, names = FALSE, type = 6, na.rm = TRUE))
     } else NA_real_
     data.frame(
@@ -92,7 +96,7 @@ structural_canvas_htmt_bootstrap <- function(data, indicators_by_factor, reps = 
       `Upper < 1` = if (is.finite(interval[[2L]])) if (interval[[2L]] < 1) "Yes" else "No" else "Not assessed",
       `CI method` = if (identical(ci_method, "bca")) {
         if (all(is.finite(interval))) "BCa" else "BCa unavailable"
-      } else "Percentile",
+      } else if (identical(ci_method, "bias_corrected")) "Bias-corrected (BC)" else "Percentile",
       `Valid replicates` = length(pair_values), `Requested replicates` = reps,
       `Valid %` = 100 * length(pair_values) / reps,
       Status = structural_canvas_bootstrap_status(length(pair_values), reps), check.names = FALSE
@@ -110,7 +114,20 @@ structural_canvas_bootstrap_ci_method <- function(value) {
   value <- tolower(trimws(as.character(value %||% "percentile")))
   if (grepl("^bca", value)) return("bca")
   if (value %in% c("bca", "bc_a", "bias-corrected accelerated", "bias corrected accelerated")) return("bca")
+  if (value %in% c("bc", "bias_corrected", "bias-corrected", "bias corrected")) return("bias_corrected")
   "percentile"
+}
+
+structural_canvas_bias_corrected_quantile <- function(bootstrap_values, original_value, probability) {
+  bootstrap_values <- as.numeric(bootstrap_values)
+  bootstrap_values <- bootstrap_values[is.finite(bootstrap_values)]
+  probability <- as.numeric(probability)
+  if (!length(bootstrap_values) || !is.finite(original_value) || !is.finite(probability) || probability <= 0 || probability >= 1) return(NA_real_)
+  prop_less <- mean(bootstrap_values < original_value)
+  prop_less <- min(max(prop_less, 0.5 / length(bootstrap_values)), 1 - 0.5 / length(bootstrap_values))
+  adjusted_probability <- stats::pnorm(2 * stats::qnorm(prop_less) + stats::qnorm(probability))
+  if (!is.finite(adjusted_probability) || adjusted_probability <= 0 || adjusted_probability >= 1) return(NA_real_)
+  as.numeric(stats::quantile(bootstrap_values, probs = adjusted_probability, names = FALSE, type = 6, na.rm = TRUE))
 }
 
 structural_canvas_bca_interval <- function(bootstrap_values, original_value, jackknife_values, confidence = .95) {
@@ -182,8 +199,9 @@ structural_canvas_moderated_mediation_indices <- function(result) {
   unique(do.call(rbind, rows))
 }
 
-structural_canvas_effect_bootstrap <- function(snapshot, data, analysis_type, estimator, missing, std_lv, ordered, nominal, residual_variance_fixes, reps = 0L, seed = default_seed()) {
+structural_canvas_effect_bootstrap <- function(snapshot, data, analysis_type, estimator, missing, std_lv, ordered, nominal, residual_variance_fixes, reps = 0L, seed = default_seed(), ci_method = "bias_corrected") {
   reps <- suppressWarnings(as.integer(reps))
+  ci_method <- if (identical(as.character(ci_method %||% "bias_corrected"), "percentile")) "percentile" else "bias_corrected"
   if (!analysis_type %in% c("cbsem", "sem") || !is.data.frame(data) || nrow(data) < 3L || !is.finite(reps) || reps < 2L) return(NULL)
   original <- run_structural_canvas_analysis(snapshot, data, analysis_type, estimator, missing, std_lv, ordered, nominal, residual_variance_fixes)
   raw_original <- lavaan::parameterEstimates(original$fit)
@@ -232,19 +250,19 @@ structural_canvas_effect_bootstrap <- function(snapshot, data, analysis_type, es
     values <- draws[, column]
     values <- values[is.finite(values)]
     valid <- length(values)
-    interval <- if (valid >= max(20L, ceiling(.5 * reps))) as.numeric(stats::quantile(values, c(.025, .975), names = FALSE, type = 6)) else c(NA_real_, NA_real_)
+    interval <- if (valid >= max(20L, ceiling(.5 * reps))) bootstrap_ci(raw_original$est[[column]], values, method = ci_method) else c(NA_real_, NA_real_)
     p_value <- if (valid) min(1, 2 * min((sum(values <= 0) + 1) / (valid + 1), (sum(values >= 0) + 1) / (valid + 1))) else NA_real_
     standardized_values <- standardized_draws[, column]
     standardized_values <- standardized_values[is.finite(standardized_values)]
     standardized_valid <- length(standardized_values)
-    standardized_interval <- if (standardized_valid >= max(20L, ceiling(.5 * reps))) as.numeric(stats::quantile(standardized_values, c(.025, .975), names = FALSE, type = 6)) else c(NA_real_, NA_real_)
+    standardized_interval <- if (standardized_valid >= max(20L, ceiling(.5 * reps))) bootstrap_ci(standardized_original_values[[column]], standardized_values, method = ci_method) else c(NA_real_, NA_real_)
     standardized_p <- if (standardized_valid) min(1, 2 * min((sum(standardized_values <= 0) + 1) / (standardized_valid + 1), (sum(standardized_values >= 0) + 1) / (standardized_valid + 1))) else NA_real_
-    data.frame(lhs = raw_original$lhs[[column]], op = raw_original$op[[column]], rhs = raw_original$rhs[[column]], estimate = raw_original$est[[column]], se = if (valid > 1L) stats::sd(values) else NA_real_, lower = interval[[1L]], upper = interval[[2L]], p = p_value, beta_estimate = standardized_original_values[[column]], beta_se = if (standardized_valid > 1L) stats::sd(standardized_values) else NA_real_, beta_lower = standardized_interval[[1L]], beta_upper = standardized_interval[[2L]], beta_p = standardized_p, beta_valid = standardized_valid, valid = valid, requested = reps, `valid_percent` = 100 * valid / reps, status = structural_canvas_bootstrap_status(valid, reps), stringsAsFactors = FALSE)
+    data.frame(lhs = raw_original$lhs[[column]], op = raw_original$op[[column]], rhs = raw_original$rhs[[column]], estimate = raw_original$est[[column]], se = if (valid > 1L) stats::sd(values) else NA_real_, lower = interval[[1L]], upper = interval[[2L]], p = p_value, beta_estimate = standardized_original_values[[column]], beta_se = if (standardized_valid > 1L) stats::sd(standardized_values) else NA_real_, beta_lower = standardized_interval[[1L]], beta_upper = standardized_interval[[2L]], beta_p = standardized_p, beta_valid = standardized_valid, valid = valid, requested = reps, `valid_percent` = 100 * valid / reps, ci_method = ci_method, status = structural_canvas_bootstrap_status(valid, reps), stringsAsFactors = FALSE)
   })
   do.call(rbind, rows)
 }
 
-structural_canvas_start_effect_bootstrap_job <- function(snapshot, data, analysis_type, estimator, missing, std_lv, ordered, nominal, residual_variance_fixes, reps = 0L, seed = default_seed()) {
+structural_canvas_start_effect_bootstrap_job <- function(snapshot, data, analysis_type, estimator, missing, std_lv, ordered, nominal, residual_variance_fixes, reps = 0L, seed = default_seed(), ci_method = "bias_corrected") {
   stopifnot(requireNamespace("callr", quietly = TRUE))
   job_dir <- tempfile("statedu-effect-bootstrap-")
   dir.create(job_dir, recursive = TRUE, showWarnings = FALSE)
@@ -257,7 +275,7 @@ structural_canvas_start_effect_bootstrap_job <- function(snapshot, data, analysi
       estimator = estimator, missing = missing, std_lv = std_lv,
       ordered = ordered, nominal = nominal,
       residual_variance_fixes = residual_variance_fixes,
-      reps = as.integer(reps), seed = as.integer(seed)
+      reps = as.integer(reps), seed = as.integer(seed), ci_method = ci_method
     ),
     input_file
   )
@@ -272,7 +290,7 @@ structural_canvas_start_effect_bootstrap_job <- function(snapshot, data, analysi
         value <- structural_canvas_effect_bootstrap(
           args$snapshot, args$data, args$analysis_type, args$estimator, args$missing,
           args$std_lv, args$ordered, args$nominal, args$residual_variance_fixes,
-          args$reps, args$seed
+          args$reps, args$seed, args$ci_method
         )
         saveRDS(value, result_file)
       }, error = function(error) {

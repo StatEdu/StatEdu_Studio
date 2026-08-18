@@ -89,14 +89,20 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
           if (analysis_type %in% c("cbsem", "sem")) selectInput(
             paste0(structural_analysis_prefix(analysis_type), "_effect_bootstrap"),
             if (ko) "구조효과 bootstrap CI" else "Structural-effect bootstrap CI",
-            choices = c("Do not compute" = "0", "500 resamples" = "500", "1,000 resamples" = "1000", "2,000 resamples" = "2000"), selected = "1000"
+            choices = c("Do not compute" = "0", "1,000 resamples" = "1000", "5,000 resamples" = "5000", "10,000 resamples" = "10000", "20,000 resamples" = "20000", "50,000 resamples" = "50000"), selected = "5000"
           ),
           if (analysis_type %in% c("cbsem", "sem")) numericInput(
             paste0(structural_analysis_prefix(analysis_type), "_effect_bootstrap_seed"),
             if (ko) "구조효과 bootstrap seed" else "Structural-effect bootstrap seed",
             value = default_seed(), min = 1L, step = 1L
           ),
-          if (analysis_type %in% c("cbsem", "sem")) tags$p(class = "structural-option-note", if (ko) "직접·간접·총효과의 사례 재표집 percentile CI를 계산합니다. 유효 반복 수와 실패율을 함께 보고합니다." else "Computes case-resampling percentile CIs for direct, indirect, and total effects, with valid-replicate counts and failure rates."),
+          if (analysis_type %in% c("cbsem", "sem")) selectInput(
+            paste0(structural_analysis_prefix(analysis_type), "_effect_bootstrap_ci_method"),
+            if (ko) "구조효과 bootstrap CI 방법" else "Structural-effect bootstrap CI method",
+            choices = c("Bias-corrected (BC)" = "bias_corrected", "Percentile" = "percentile"),
+            selected = "bias_corrected"
+          ),
+          if (analysis_type %in% c("cbsem", "sem")) tags$p(class = "structural-option-note", if (ko) "직접·간접·총효과의 사례 재표집 BC 신뢰구간을 기본으로 계산합니다. Percentile도 선택할 수 있으며 유효 반복 수와 실패율을 함께 보고합니다." else "Computes bias-corrected (BC) case-resampling CIs by default for direct, indirect, and total effects. Percentile intervals remain selectable; valid-replicate counts and failure rates are also reported."),
           if (analysis_type %in% c("cbsem", "sem")) selectInput(
             paste0(structural_analysis_prefix(analysis_type), "_moderation_method"),
             if (ko) "잠재조절 product-indicator 방법" else "Latent-moderation product-indicator method",
@@ -128,33 +134,15 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
             paste0(structural_analysis_prefix(analysis_type), "_micom_seed"),
             if (ko) "MICOM seed" else "MICOM seed", value = default_seed(), min = 1L, step = 1L
           ),
-          if (identical(analysis_type, "plssem")) selectInput(
-            paste0(structural_analysis_prefix(analysis_type), "_pls_predict_folds"),
-            if (ko) "PLSpredict 교차검증" else "PLSpredict cross-validation",
-            choices = c("Do not compute" = "0", "5-fold" = "5", "10-fold" = "10"),
-            selected = "0"
-          ),
-          if (identical(analysis_type, "plssem")) selectInput(
-            paste0(structural_analysis_prefix(analysis_type), "_pls_predict_reps"),
-            if (ko) "PLSpredict 반복" else "PLSpredict repetitions",
-            choices = c("5" = "5", "10" = "10", "20" = "20"),
-            selected = "10"
-          ),
-          if (identical(analysis_type, "plssem")) numericInput(
-            paste0(structural_analysis_prefix(analysis_type), "_pls_predict_seed"),
-            if (ko) "PLSpredict seed" else "PLSpredict seed",
-            value = default_seed(), min = 1L, step = 1L
-          ),
-          if (identical(analysis_type, "plssem")) tags$p(class = "structural-option-note", if (ko) "PLSpredict는 Direct Antecedents 방식으로 indicator별 out-of-sample RMSE/MAE를 PLS와 선형모형 기준값으로 비교합니다. fold와 반복 수가 커질수록 실행 시간이 늘어납니다." else "PLSpredict uses the Direct Antecedents scheme and compares indicator-level out-of-sample RMSE/MAE against a linear-model benchmark. More folds and repetitions increase run time.")
           )),
             ),
             tabPanel(
               if (ko) "타당도" else "Validity",
-          if (analysis_type != "plssem") selectInput(
+          if (analysis_type != "plssem") radioButtons(
             paste0(structural_analysis_prefix(analysis_type), "_validity_formula"),
             if (ko) "AVE·CR 계산 방식" else "AVE/CR formula",
             choices = stats::setNames(c("standardized", "model_implied"), c(if (ko) "표준화 부하량(Fornell-Larcker)" else "Standardized loadings (Fornell-Larcker)", if (ko) "모형모수 방식(Raykov 계열)" else "Model-implied parameters (Raykov)")),
-            selected = "standardized"
+            selected = "standardized", inline = TRUE
           ),
           if (identical(analysis_type, "cfa")) selectInput(
             paste0(structural_analysis_prefix(analysis_type), "_reliability_bootstrap"),
@@ -244,8 +232,8 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
           if (analysis_type != "plssem") selectInput(
             paste0(structural_analysis_prefix(analysis_type), "_htmt_bootstrap"),
             if (ko) "HTMT 부트스트랩 CI" else "HTMT bootstrap CI",
-            choices = c("Do not compute" = "0", "500 resamples" = "500", "1,000 resamples" = "1000", "2,000 resamples" = "2000"),
-            selected = "0"
+            choices = c("Do not compute" = "0", "1,000 resamples" = "1000", "5,000 resamples" = "5000", "10,000 resamples" = "10000", "20,000 resamples" = "20000", "50,000 resamples" = "50000"),
+            selected = "5000"
           ),
           if (analysis_type != "plssem") numericInput(
             paste0(structural_analysis_prefix(analysis_type), "_htmt_seed"),
@@ -255,8 +243,8 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
           if (analysis_type != "plssem") selectInput(
             paste0(structural_analysis_prefix(analysis_type), "_htmt_ci_method"),
             if (ko) "HTMT CI method" else "HTMT CI method",
-            choices = c("Percentile" = "percentile", "BCa (slower)" = "bca"),
-            selected = "percentile"
+            choices = c("Bias-corrected (BC)" = "bias_corrected", "Percentile" = "percentile"),
+            selected = "bias_corrected"
           ),
           if (analysis_type != "plssem") selectInput(
             paste0(structural_analysis_prefix(analysis_type), "_mi_mode"),
@@ -266,6 +254,27 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
               c(if (ko) "이론적 허용 MI + 누적 적합도" else "Theory-allowed MI with cumulative fit", if (ko) "일반 프로그램 방식(전체 MI)" else "Conventional output (all MI)")
             ),
             selected = "theory"
+          ),
+          if (identical(analysis_type, "plssem")) tagList(
+            tags$p(class = "structural-option-note", if (ko) "PLS 진단은 표본 밖 예측력, 잔차 기반 근사 적합도, 공선성, Q² 및 구성개념별 품질지표를 함께 검토합니다." else "PLS diagnostics jointly review out-of-sample predictive power, residual-based approximate fit, collinearity, Q², and construct-level quality indices."),
+            selectInput(
+              paste0(structural_analysis_prefix(analysis_type), "_pls_predict_folds"),
+              if (ko) "PLSpredict 교차검증" else "PLSpredict cross-validation",
+              choices = c("Do not compute" = "0", "5-fold" = "5", "10-fold" = "10"),
+              selected = "0"
+            ),
+            selectInput(
+              paste0(structural_analysis_prefix(analysis_type), "_pls_predict_reps"),
+              if (ko) "PLSpredict 반복" else "PLSpredict repetitions",
+              choices = c("5" = "5", "10" = "10", "20" = "20"),
+              selected = "10"
+            ),
+            numericInput(
+              paste0(structural_analysis_prefix(analysis_type), "_pls_predict_seed"),
+              if (ko) "PLSpredict seed" else "PLSpredict seed",
+              value = default_seed(), min = 1L, step = 1L
+            ),
+            tags$p(class = "structural-option-note", if (ko) "Direct Antecedents 방식으로 지표별 표본 밖 RMSE/MAE를 PLS와 선형모형 기준값에 비교합니다. fold와 반복 수가 커질수록 실행 시간이 늘어납니다." else "The Direct Antecedents scheme compares indicator-level out-of-sample RMSE/MAE against PLS and linear-model benchmarks. More folds and repetitions increase run time.")
           )
             ),
             if (analysis_type != "plssem") tabPanel(
