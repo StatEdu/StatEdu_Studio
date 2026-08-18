@@ -127,22 +127,6 @@ structural_canvas_pls_effect_value <- function(total_effects, paths, predictor, 
   list(coefficient = NA_real_, indirect = indirect, total = total)
 }
 
-structural_canvas_pls_q2_value <- function(diagnostics, outcome) {
-  q2_table <- as.data.frame(diagnostics$q2 %||% data.frame(), check.names = FALSE)
-  if (!nrow(q2_table) || !"Outcome" %in% names(q2_table) || !"Q2" %in% names(q2_table)) return(NA_real_)
-  row <- q2_table[q2_table$Outcome == outcome, , drop = FALSE]
-  if (!nrow(row)) return(NA_real_)
-  suppressWarnings(as.numeric(row$Q2[[1L]]))
-}
-
-structural_canvas_pls_q2_effect_value <- function(diagnostics, predictor, outcome) {
-  q2_effects <- as.data.frame(diagnostics$q2_effects %||% data.frame(), check.names = FALSE)
-  if (!nrow(q2_effects) || !all(c("Outcome", "Predictor", "q2") %in% names(q2_effects))) return(NA_real_)
-  row <- q2_effects[q2_effects$Outcome == outcome & q2_effects$Predictor == predictor, , drop = FALSE]
-  if (!nrow(row)) return(NA_real_)
-  suppressWarnings(as.numeric(row$q2[[1L]]))
-}
-
 structural_canvas_pls_indirect_specs <- function(path_specs) {
   if (!nrow(path_specs)) return(data.frame(outcome = character(0), predictor = character(0)))
   nodes <- sort(unique(c(path_specs$predictor, path_specs$outcome)))
@@ -179,9 +163,6 @@ structural_canvas_pls_fit_row <- function(effect, outcome, predictor, summary_fi
     AdjR2 = structural_canvas_pls_number(structural_canvas_pls_matrix_cell(paths, "AdjR^2", outcome)),
     f2 = if (identical(effect, "Direct")) structural_canvas_pls_number(structural_canvas_pls_matrix_cell(f_square, predictor, outcome)) else "",
     `f2 size` = if (identical(effect, "Direct")) structural_canvas_pls_effect_size_label(structural_canvas_pls_matrix_cell(f_square, predictor, outcome)) else "",
-    `Score-CV Q2` = structural_canvas_pls_number(structural_canvas_pls_q2_value(diagnostics, outcome)),
-    `Score-CV q2` = if (identical(effect, "Direct")) structural_canvas_pls_number(structural_canvas_pls_q2_effect_value(diagnostics, predictor, outcome)) else "",
-    `Score-CV q2 size` = if (identical(effect, "Direct")) structural_canvas_pls_effect_size_label(structural_canvas_pls_q2_effect_value(diagnostics, predictor, outcome)) else "",
     `Inner VIF` = if (identical(effect, "Direct")) structural_canvas_pls_number(structural_canvas_pls_inner_vif(summary_fit, predictor, outcome)) else "",
     `Indirect effect` = structural_canvas_pls_number(values$indirect),
     `Indirect effect CI lower` = structural_canvas_pls_bootstrap_value(indirect_boot_row, "2.5% CI"),
@@ -251,11 +232,11 @@ structural_canvas_pls_fit_main_table <- function(table) {
     adj_r2 <- as.character(display$AdjR2 %||% "")
     display$R2AdjR2 <- ifelse(nzchar(r2) & nzchar(adj_r2), paste0(r2, " (", adj_r2, ")"), ifelse(nzchar(r2), r2, adj_r2))
   }
-  structural_canvas_subset_columns(display, c("Path", "B", "Boot SE", "z", "p", "f2", "R2AdjR2", "Score-CV Q2", "Inner VIF"))
+  structural_canvas_subset_columns(display, c("Path", "B", "Boot SE", "z", "p", "f2", "R2AdjR2", "Inner VIF"))
 }
 
 structural_canvas_pls_fit_guide_table <- function(table) {
-  structural_canvas_subset_columns(table, c("Effect", "Outcome", "Predictor", "f2", "f2 size", "Score-CV q2", "Score-CV q2 size", "Inner VIF"))
+  structural_canvas_subset_columns(table, c("Effect", "Outcome", "Predictor", "f2", "f2 size", "Inner VIF"))
 }
 
 structural_canvas_pls_fit_bootstrap_table <- function(table) {

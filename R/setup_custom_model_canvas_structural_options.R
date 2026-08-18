@@ -261,7 +261,7 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
             selected = "theory"
           ),
           if (identical(analysis_type, "plssem")) tagList(
-            tags$p(class = "structural-option-note", if (ko) "PLS 진단은 PLSpredict 표본외 예측, 잔차 기반 근사 적합도, 공선성, 기술적 score-CV Q² 및 구성개념별 품질지표를 구분해 검토합니다." else "PLS diagnostics distinguish PLSpredict out-of-sample assessment from descriptive score-CV Q² while reviewing residual-based approximate fit, collinearity, and construct-level quality indices."),
+            tags$p(class = "structural-option-note", if (ko) "PLS 진단은 반복 PLSpredict 표본외 예측, 잔차 기반 근사 적합도, 공선성과 구성개념별 품질지표를 구분해 검토합니다." else "PLS diagnostics distinguish repeated PLSpredict out-of-sample assessment while reviewing residual-based approximate fit, collinearity, and construct-level quality indices."),
             selectInput(
               paste0(structural_analysis_prefix(analysis_type), "_pls_predict_folds"),
               if (ko) "PLSpredict 교차검증" else "PLSpredict cross-validation",

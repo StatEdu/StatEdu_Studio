@@ -6,7 +6,7 @@ structural_canvas_fit_table_result_ui <- function(bundle, values) {
     pls_header <- function(value) {
       display <- switch(value,
         f2 = "f<sup>2</sup>", R2 = "R<sup>2</sup>", AdjR2 = "Adj R<sup>2</sup>",
-        R2AdjR2 = "R<sup>2</sup>(adj R<sup>2</sup>)", `Score-CV Q2` = "Score-CV Q<sup>2</sup>",
+        R2AdjR2 = "R<sup>2</sup>(adj R<sup>2</sup>)",
         `Inner VIF` = "VIF", value
       )
       tags$th(HTML(display))
@@ -29,7 +29,7 @@ structural_canvas_fit_table_result_ui <- function(bundle, values) {
         tags$thead(tags$tr(lapply(names(values), pls_header))),
         tags$tbody(lapply(seq_len(nrow(values)), function(index) tags$tr(Map(pls_cell, as.character(values[index, , drop = TRUE]), names(values)))))
       ),
-      tags$p(class = "structural-result-note", "B = standardized PLS path coefficient; Boot SE = bootstrap standard error; z = bootstrap test statistic; p = raw bootstrap p value; f^2 = local effect size; R^2(adj R^2) = explained variance (adjusted explained variance); Q^2 = predictive relevance; VIF = inner variance inflation factor. R^2(adj R^2) and Q^2 describe the destination construct and may therefore repeat across paths with the same outcome."),
+      tags$p(class = "structural-result-note", "B = standardized PLS path coefficient; Boot SE = bootstrap standard error; z = bootstrap test statistic; p = raw bootstrap p value; f^2 = local effect size; R^2(adj R^2) = explained variance (adjusted explained variance); VIF = inner variance inflation factor. R^2(adj R^2) describes the destination construct and may therefore repeat across paths with the same outcome. Out-of-sample prediction is reported separately by repeated PLSpredict."),
       if (as.integer(bundle$pls_bootstrap %||% 0L) > 0L) tags$p(class = "structural-result-note", paste0("Bootstrap columns use seminr percentile intervals from ", as.integer(bundle$pls_bootstrap %||% 0L), " requested resamples; failed bootstrap iterations are excluded by seminr."))
     ))
   }

@@ -59,96 +59,6 @@ structural_canvas_pls_redundancy_analysis <- function(result, snapshot, data, co
   )
 }
 
-structural_canvas_pls_cv_q2_value <- function(scores, outcome, predictors, folds = 7L, excluded = character(0)) {
-  predictors <- setdiff(unique(as.character(predictors %||% character(0))), as.character(excluded %||% character(0)))
-  if (is.null(scores) || !outcome %in% colnames(scores)) return(list(q2 = NA_real_, press = NA_real_, tss = NA_real_, folds = 0L, n = 0L))
-  columns <- unique(c(outcome, predictors))
-  available <- intersect(columns, colnames(scores))
-  if (!identical(sort(columns), sort(available))) return(list(q2 = NA_real_, press = NA_real_, tss = NA_real_, folds = 0L, n = 0L))
-  values <- as.data.frame(scores[, columns, drop = FALSE], check.names = FALSE)
-  finite_rows <- stats::complete.cases(values)
-  values <- values[finite_rows, , drop = FALSE]
-  n <- nrow(values)
-  folds <- suppressWarnings(as.integer(folds %||% 7L))
-  if (!is.finite(folds) || folds < 2L) folds <- 2L
-  folds <- min(folds, max(2L, floor(n / 2L)))
-  if (n < 6L || folds < 2L) return(list(q2 = NA_real_, press = NA_real_, tss = NA_real_, folds = 0L, n = n))
-  fold_id <- ((seq_len(n) - 1L) %% folds) + 1L
-  press <- 0
-  tss <- 0
-  used_folds <- 0L
-  for (fold in seq_len(folds)) {
-    test <- fold_id == fold
-    train <- !test
-    if (sum(test) < 1L || sum(train) <= length(predictors) + 1L) next
-    y_train <- values[[outcome]][train]
-    y_test <- values[[outcome]][test]
-    x_train <- if (length(predictors)) as.matrix(values[train, predictors, drop = FALSE]) else matrix(numeric(0), sum(train), 0L)
-    x_test <- if (length(predictors)) as.matrix(values[test, predictors, drop = FALSE]) else matrix(numeric(0), sum(test), 0L)
-    design_train <- cbind(`(Intercept)` = 1, x_train)
-    design_test <- cbind(`(Intercept)` = 1, x_test)
-    coefficients <- tryCatch(stats::lm.fit(design_train, y_train)$coefficients, error = function(error) rep(NA_real_, ncol(design_train)))
-    coefficients[!is.finite(coefficients)] <- 0
-    predicted <- as.vector(design_test %*% coefficients)
-    fold_tss <- sum((y_test - mean(y_train, na.rm = TRUE))^2, na.rm = TRUE)
-    if (!is.finite(fold_tss) || fold_tss <= 0) next
-    press <- press + sum((y_test - predicted)^2, na.rm = TRUE)
-    tss <- tss + fold_tss
-    used_folds <- used_folds + 1L
-  }
-  if (!used_folds || !is.finite(tss) || tss <= 0) return(list(q2 = NA_real_, press = NA_real_, tss = NA_real_, folds = used_folds, n = n))
-  list(q2 = 1 - press / tss, press = press, tss = tss, folds = used_folds, n = n)
-}
-
-structural_canvas_pls_predictive_relevance <- function(fit, structural_paths, folds = 7L) {
-  if (is.null(fit) || is.null(fit$construct_scores)) {
-    return(list(q2 = data.frame(), q2_effects = data.frame(), folds = 0L))
-  }
-  scores <- as.matrix(fit$construct_scores)
-  path_specs <- structural_canvas_pls_path_specs_from_strings(structural_paths)
-  if (!nrow(path_specs)) return(list(q2 = data.frame(), q2_effects = data.frame(), folds = 0L))
-  outcomes <- unique(path_specs$outcome)
-  q2_rows <- list()
-  effect_rows <- list()
-  for (outcome in outcomes) {
-    predictors <- unique(path_specs$predictor[path_specs$outcome == outcome])
-    included <- structural_canvas_pls_cv_q2_value(scores, outcome, predictors, folds = folds)
-    q2_rows[[length(q2_rows) + 1L]] <- data.frame(
-      Outcome = outcome,
-      Predictors = paste(predictors, collapse = ", "),
-      Q2 = included$q2,
-      PRESS = included$press,
-      TSS = included$tss,
-      Folds = included$folds,
-      N = included$n,
-      stringsAsFactors = FALSE,
-      check.names = FALSE
-    )
-    for (predictor in predictors) {
-      excluded <- structural_canvas_pls_cv_q2_value(scores, outcome, predictors, folds = folds, excluded = predictor)
-      effect <- if (is.finite(included$q2) && is.finite(excluded$q2) && is.finite(1 - included$q2) && (1 - included$q2) > 0) {
-        (included$q2 - excluded$q2) / (1 - included$q2)
-      } else {
-        NA_real_
-      }
-      effect_rows[[length(effect_rows) + 1L]] <- data.frame(
-        Outcome = outcome,
-        Predictor = predictor,
-        `Q2 included` = included$q2,
-        `Q2 excluded` = excluded$q2,
-        q2 = effect,
-        stringsAsFactors = FALSE,
-        check.names = FALSE
-      )
-    }
-  }
-  list(
-    q2 = if (length(q2_rows)) do.call(rbind, q2_rows) else data.frame(),
-    q2_effects = if (length(effect_rows)) do.call(rbind, effect_rows) else data.frame(),
-    folds = folds
-  )
-}
-
 structural_canvas_apply_plsc <- function(fit, common_factor_constructs = character(0)) {
   score_names <- if (is.null(fit$construct_scores)) character(0) else colnames(fit$construct_scores)
   common_factor_constructs <- intersect(as.character(common_factor_constructs), score_names)
@@ -294,7 +204,6 @@ structural_canvas_run_pls_analysis <- function(snapshot, data, latents, edges, e
   if (identical(estimator, "PLSC")) {
     fit <- structural_canvas_apply_plsc(fit, selection$common_factors)
   }
-  predictive_relevance <- structural_canvas_pls_predictive_relevance(fit, structural_paths, folds = 7L)
   list(
     fit = fit,
     estimator = if (identical(estimator, "PLSC")) "PLSc" else "PLS",
@@ -311,9 +220,6 @@ structural_canvas_run_pls_analysis <- function(snapshot, data, latents, edges, e
     observed = indicator_names,
     constructs = construct_names,
     structural_paths = structural_paths,
-    q2 = predictive_relevance$q2,
-    q2_effects = predictive_relevance$q2_effects,
-    q2_folds = predictive_relevance$folds,
     ignored_covariances = unique(ignored_covariances),
     resolved_construct_specification = resolved_specification,
     admissible = TRUE

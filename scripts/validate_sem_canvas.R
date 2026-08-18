@@ -62,7 +62,7 @@ stopifnot(
   grepl('"5,000 resamples" = "5000"', ui_source, fixed = TRUE),
   grepl("PLSpredict predictive assessment", ui_source, fixed = TRUE),
   grepl("PLS-SEM quality checklist", ui_source, fixed = TRUE),
-  grepl("descriptive score-CV Q2", ui_source, fixed = TRUE),
+  grepl("repeated PLSpredict boundary conditions", ui_source, fixed = TRUE),
   grepl("approximate reflective-model fit diagnostics", ui_source, fixed = TRUE),
   grepl("SEM quality checklist", ui_source, fixed = TRUE),
   grepl("sample adequacy, common-method-bias screens, chi-square/df", ui_source, fixed = TRUE),
@@ -102,8 +102,8 @@ stopifnot(
   grepl("PLS-SEM bootstrap complete", pls_engine_source, fixed = TRUE),
   grepl("Estimating PLSpredict cross-validation", pls_engine_source, fixed = TRUE),
   grepl("seminr::predict_pls", pls_engine_source, fixed = TRUE),
-  grepl("structural_canvas_pls_predictive_relevance", pls_engine_source, fixed = TRUE),
-  grepl("q2 = 1 - press / tss", pls_engine_source, fixed = TRUE),
+  !grepl("structural_canvas_pls_predictive_relevance", pls_engine_source, fixed = TRUE),
+  !grepl("q2 = 1 - press / tss", pls_engine_source, fixed = TRUE),
   grepl("structural_canvas_notify_missing_covariances(missing_covariances, analysis_type, statedu_current_language(app_language_fn))", ui_source, fixed = TRUE),
   grepl("structural_canvas_notify_ignored_pls_covariances(result, analysis_type, statedu_current_language(app_language_fn))", ui_source, fixed = TRUE),
   grepl("structural_canvas_notify_solution_diagnostics(result, statedu_current_language(app_language_fn))", ui_source, fixed = TRUE),
@@ -739,9 +739,10 @@ stopifnot(pls_reporting$Value[pls_reporting$Item == "Missing-data handling"] == 
 stopifnot(pls_reporting$Value[pls_reporting$Item == "Latent scaling"] == "Composite scores")
 stopifnot(pls_reporting$Value[pls_reporting$Item == "Common method diagnostics"] == "Not enabled")
 pls_quality <- structural_canvas_pls_quality_rows(pls_bundle)
-stopifnot(nrow(pls_quality) == 19L)
+stopifnot(nrow(pls_quality) == 18L)
 stopifnot(all(c("Item", "Value", "Status", "Guidance") %in% names(pls_quality)))
-stopifnot(all(c("PLS algorithm iterations", "Approx PLS SRMR", "Approx d_G", "Approx d_ULS", "Approx NFI", "10-times rule margin", "Min outer loading", "Min rhoC", "Min AVE", "Max HTMT", "Max item VIF", "Max inner VIF", "Max full collinearity VIF", "Min endogenous R2", "Max f2", "Min score-CV Q2", "PLSpredict summary") %in% pls_quality$Item))
+stopifnot(all(c("PLS algorithm iterations", "Approx PLS SRMR", "Approx d_G", "Approx d_ULS", "Approx NFI", "10-times rule margin", "Min outer loading", "Min rhoC", "Min AVE", "Max HTMT", "Max item VIF", "Max inner VIF", "Max full collinearity VIF", "Min endogenous R2", "Max f2", "PLSpredict summary") %in% pls_quality$Item))
+stopifnot(!"Min score-CV Q2" %in% pls_quality$Item)
 stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "PLS algorithm iterations"]))
 stopifnot(pls_quality$Status[pls_quality$Item == "PLS algorithm iterations"] == "OK")
 stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Approx PLS SRMR"]))
@@ -757,8 +758,6 @@ stopifnot(pls_quality$Status[pls_quality$Item == "Max full collinearity VIF"] ==
 stopifnot(all(pls_quality$Status[pls_quality$Item %in% c("Min outer loading", "Min rhoC", "Min AVE")] %in% c("Reference only", "Review")))
 stopifnot(pls_quality$Status[pls_quality$Item == "Max HTMT"] %in% c("Reference only", "Review"))
 stopifnot(all(pls_quality$Status[pls_quality$Item %in% c("Max item VIF", "Max inner VIF")] %in% c("Reference only", "Review", "Not assessed")))
-stopifnot(nzchar(pls_quality$Value[pls_quality$Item == "Min score-CV Q2"]))
-stopifnot(pls_quality$Status[pls_quality$Item == "Min score-CV Q2"] == "Descriptive only")
 stopifnot(all(pls_quality$Status[pls_quality$Item %in% c("Min endogenous R2", "Max f2")] == "Descriptive only"))
 stopifnot(pls_quality$Value[pls_quality$Item == "PLSpredict summary"] == "Not executed")
 stopifnot(pls_quality$Status[pls_quality$Item == "PLSpredict summary"] == "Not assessed")
@@ -787,19 +786,17 @@ stopifnot("Item" %in% names(pls_overview))
 stopifnot(all(c("Model", "srmr", "d_G", "d_ULS") %in% names(pls_fit_diagnostics)))
 stopifnot(identical(pls_fit_diagnostics$Model, c("pls", "plsc")))
 stopifnot(all(nzchar(pls_fit_diagnostics$srmr)), all(nzchar(pls_fit_diagnostics$d_G)), all(nzchar(pls_fit_diagnostics$d_ULS)))
-stopifnot(all(c("Path", "B", "Boot SE", "z", "p", "f2", "R2AdjR2", "Score-CV Q2", "Inner VIF") %in% names(pls_fit)))
+stopifnot(all(c("Path", "B", "Boot SE", "z", "p", "f2", "R2AdjR2", "Inner VIF") %in% names(pls_fit)))
+stopifnot(!"Score-CV Q2" %in% names(pls_fit))
 stopifnot(!any(c("Effect", "Outcome", "Predictor") %in% names(pls_fit)))
 stopifnot(any(pls_fit$Path == "eta1 → eta2"))
 stopifnot(identical(pls_fit$Path, sort(pls_fit$Path, method = "radix")))
-stopifnot(nzchar(pls_fit[["Score-CV Q2"]][[1L]]))
 stopifnot(any(nzchar(pls_fit[["B"]])))
-stopifnot(all(c("Effect", "Outcome", "Predictor", "f2", "f2 size", "Score-CV q2", "Score-CV q2 size", "Inner VIF") %in% names(pls_fit_guide)))
+stopifnot(all(c("Effect", "Outcome", "Predictor", "f2", "f2 size", "Inner VIF") %in% names(pls_fit_guide)))
+stopifnot(!any(c("Score-CV q2", "Score-CV q2 size") %in% names(pls_fit_guide)))
 stopifnot(nzchar(pls_fit_guide$f2[[1L]]))
 stopifnot(nzchar(pls_fit_guide[["f2 size"]][[1L]]))
-stopifnot(nzchar(pls_fit_guide[["Score-CV q2"]][[1L]]))
-stopifnot(nzchar(pls_fit_guide[["Score-CV q2 size"]][[1L]]))
 stopifnot(grepl("Descriptive:", pls_fit_guide[["f2 size"]][[1L]], fixed = TRUE))
-stopifnot(grepl("Descriptive:", pls_fit_guide[["Score-CV q2 size"]][[1L]], fixed = TRUE))
 stopifnot(all(c("Construct", "alpha", "rhoA", "rhoC", "AVE", "sqrt(AVE)", "Max HTMT") %in% names(pls_validity)))
 stopifnot(!any(c("Construct type", "Mode", "Evidence role") %in% names(pls_validity)))
 stopifnot(all(c("Construct", "Construct type", "Mode", "Evidence role", "Max HTMT CI lower", "Max HTMT CI upper", "Max HTMT p", "Fornell-Larcker") %in% names(pls_validity_guide)))

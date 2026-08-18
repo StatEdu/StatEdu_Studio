@@ -185,7 +185,6 @@ structural_canvas_pls_quality_status <- function(item, value) {
   if (identical(item, "Max full collinearity VIF")) return(if (is.finite(numeric_value)) "Screen only" else "Not assessed")
   if (identical(item, "Min endogenous R2")) return(if (is.finite(numeric_value)) "Descriptive only" else "Not assessed")
   if (identical(item, "Max f2")) return(if (is.finite(numeric_value)) "Descriptive only" else "Not assessed")
-  if (identical(item, "Min score-CV Q2")) return(if (is.finite(numeric_value)) "Descriptive only" else "Not assessed")
   if (identical(item, "PLSpredict summary")) {
     matches <- regmatches(value, regexec("^([0-9]+)/([0-9]+)", value))[[1L]]
     if (length(matches) == 3L) {
@@ -220,8 +219,6 @@ structural_canvas_pls_quality_rows <- function(bundle) {
   r2 <- if (length(paths) && "R^2" %in% rownames(paths)) suppressWarnings(as.numeric(paths["R^2", ])) else numeric(0)
   f_square <- suppressWarnings(as.numeric(as.matrix(summary_fit$fSquare %||% matrix(numeric(0), 0L, 0L))))
   f_square <- f_square[is.finite(f_square) & f_square > 0]
-  q2 <- suppressWarnings(as.numeric((bundle$diagnostics$q2 %||% data.frame())$Q2))
-  q2 <- q2[is.finite(q2)]
   full_collinearity_vif <- structural_canvas_quality_full_collinearity_vif(bundle$fit$construct_scores %||% NULL)
   ten_times_margin <- structural_canvas_pls_ten_times_margin(bundle)
   approximate_fit <- structural_canvas_pls_approximate_fit_indices(bundle, summary_fit)
@@ -245,7 +242,6 @@ structural_canvas_pls_quality_rows <- function(bundle) {
     "Max full collinearity VIF",
     "Min endogenous R2",
     "Max f2",
-    "Min score-CV Q2",
     "PLSpredict summary"
   )
   displayed_values <- c(
@@ -266,7 +262,6 @@ structural_canvas_pls_quality_rows <- function(bundle) {
     structural_canvas_pls_quality_number(full_collinearity_vif, "max"),
     structural_canvas_pls_quality_number(r2, "min"),
     structural_canvas_pls_quality_number(f_square, "max"),
-    structural_canvas_pls_quality_number(q2, "min"),
     structural_canvas_pls_quality_predictive_label(bundle)
   )
   rows <- data.frame(
@@ -291,7 +286,6 @@ structural_canvas_pls_quality_rows <- function(bundle) {
       "Exploratory full-collinearity screen only; values above 3.3 are nonspecific and lower values do not rule out common-method bias.",
       "Report R2 descriptively for each endogenous construct; no universal value establishes adequate explanation or causal importance.",
       "The .02/.15/.35 f2 ranges are descriptive anchors, not universal importance thresholds.",
-      "Score-CV Q2 uses construct scores estimated from the full sample. Treat it only as internal score-level stability, not strict out-of-sample prediction; use PLSpredict for predictive assessment.",
       "Out-of-sample prediction is strongest when PLS error is lower than LM."
     ),
     stringsAsFactors = FALSE,
@@ -393,9 +387,9 @@ structural_canvas_pls_quality_result_ui <- function(bundle, language = statedu_i
     tags$p(
       class = "structural-result-note",
       if (ko) {
-        "이 체크리스트는 PLS-SEM의 표본 적절성, 반영형 모형 근사 적합도 진단, 측정모형, 공선성, 공통방법편향 점검, 설명력, 기술적 score-CV Q²와 PLSpredict의 보고 조건을 요약합니다."
+        "이 체크리스트는 PLS-SEM의 표본 적절성, 반영형 모형 근사 적합도 진단, 측정모형, 공선성, 공통방법편향 점검, 설명력과 반복 PLSpredict의 보고 조건을 요약합니다."
       } else {
-        "This checklist summarizes PLS-SEM sample adequacy, approximate reflective-model fit diagnostics, measurement, collinearity, common-method-bias screens, explanatory power, descriptive score-CV Q2, and PLSpredict boundary conditions for reporting and review."
+        "This checklist summarizes PLS-SEM sample adequacy, approximate reflective-model fit diagnostics, measurement, collinearity, common-method-bias screens, explanatory power, and repeated PLSpredict boundary conditions for reporting and review."
       }
     )
   )
@@ -465,7 +459,7 @@ if (identical(analysis_type, "plssem")) {
     tagList(
       tags$h5(if (ko) "표 3 보조: 구조효과 가이드 지표" else "Supplementary Table 3: Structural effect guide indices"),
       structural_canvas_basic_html_table(table, class = "table table-striped table-bordered structural-pls-fit-guide-table"),
-      tags$p(class = "structural-result-note", if (ko) "score-CV Q²와 q²는 전체 표본에서 추정한 구성개념 점수를 사용하므로 내부 점수 수준의 기술적 안정성 지표일 뿐 엄격한 표본외 예측력이 아닙니다. 예측 평가는 반복 PLSpredict 기준모형 비교를 사용하십시오. f²·q² 크기 등급은 관행적 기술 표지이며, Inner VIF도 단독 합격판정이 아닙니다." else "Score-CV Q2 and q2 use construct scores estimated from the full sample, so they describe internal score-level stability rather than strict out-of-sample prediction. Use repeated PLSpredict benchmark comparisons for predictive assessment. The f2/q2 size labels are conventional descriptive anchors, and Inner VIF is not a standalone pass criterion.")
+      tags$p(class = "structural-result-note", if (ko) "f² 크기 등급은 관행적 기술 표지이며, Inner VIF도 단독 합격판정이 아닙니다. 예측 평가는 측정·구조모형을 훈련 접기에서 재추정하는 반복 PLSpredict 기준모형 비교를 사용하십시오." else "The f2 size labels are conventional descriptive anchors, and Inner VIF is not a standalone pass criterion. Predictive assessment uses repeated PLSpredict benchmark comparisons that re-estimate the measurement and structural model in each training fold.")
     )
   })
   output[[paste0(prefix, "_result_fit_bootstrap")]] <- renderUI({
