@@ -52,6 +52,7 @@ stopifnot(
   grepl("if (usesStructuralMovePolicy(instance)) {", nodes_js_source, fixed = TRUE),
   grepl('var singleLatent = structuralMovePolicy && initialPositions.length === 1 && item.node.role === "latent"', nodes_js_source, fixed = TRUE),
   grepl("window.StatEduModelCanvas.nodes.startDrag(instance, event, nodeElement);", canvas_js_source, fixed = TRUE),
+  grepl("var groupGap = rowGap;", canvas_js_source, fixed = TRUE),
   grepl("if (!isViewingResult(instance)) return", nodes_js_source, fixed = TRUE),
   grepl("instance.selectedLatentStatsNodeId = node.id", nodes_js_source, fixed = TRUE),
   grepl("instance.state.selectedNodeIds = []", nodes_js_source, fixed = TRUE),

@@ -572,7 +572,7 @@
       var indicatorHeight = Number(style.boxHeight || 38);
       var latentHeightFallback = Number(style.latentHeight || 58);
       var rowGap = Math.max(48, indicatorHeight + 10);
-      var groupGap = Math.max(4, rowGap - indicatorHeight - 12);
+      var groupGap = rowGap;
       var groups = latents.map(function(latent) {
         var edges = measurementEdgesForLatent(latent);
         if (!edges.length) return null;
