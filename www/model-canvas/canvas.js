@@ -724,7 +724,7 @@
             errorNode.x = indicator.x - Number(errorNode.width || 26) - 28 - leftErrorOffset;
             errorNode.y = indicator.y + ih / 2 - Number(errorNode.height || 26) / 2;
           }
-          if (measurementEdge) Object.assign(measurementEdge, {fromSide: measurementMode === "formative" ? "right" : "left", toSide: measurementMode === "formative" ? "left" : "right", fixedCenter: true, directAnchors: false});
+          if (measurementEdge) Object.assign(measurementEdge, {fromSide: measurementMode === "formative" ? "right" : "left", toSide: measurementMode === "formative" ? "left" : "right", fixedCenter: measurementAnchorFixedCenter(measurementMode), directAnchors: false});
           if (errorEdge) Object.assign(errorEdge, {fromSide: "right", toSide: "left", fixedCenter: true});
         } else if (placement === "right") {
           indicator.x = Number(latent.x || 0) + lw + 50;
@@ -734,7 +734,7 @@
             errorNode.x = indicator.x + iw + 28 + rightErrorOffset;
             errorNode.y = indicator.y + ih / 2 - Number(errorNode.height || 26) / 2;
           }
-          if (measurementEdge) Object.assign(measurementEdge, {fromSide: measurementMode === "formative" ? "left" : "right", toSide: measurementMode === "formative" ? "right" : "left", fixedCenter: true, directAnchors: false});
+          if (measurementEdge) Object.assign(measurementEdge, {fromSide: measurementMode === "formative" ? "left" : "right", toSide: measurementMode === "formative" ? "right" : "left", fixedCenter: measurementAnchorFixedCenter(measurementMode), directAnchors: false});
           if (errorEdge) Object.assign(errorEdge, {fromSide: "left", toSide: "right", fixedCenter: true});
         } else if (placement === "top") {
           var gap = iw + 24;
@@ -745,7 +745,7 @@
             errorNode.x = indicator.x + iw / 2 - Number(errorNode.width || 26) / 2;
             errorNode.y = indicator.y - Number(errorNode.height || 26) - 28 - topErrorOffset;
           }
-          if (measurementEdge) Object.assign(measurementEdge, {fromSide: measurementMode === "formative" ? "bottom" : "top", toSide: measurementMode === "formative" ? "top" : "bottom", fixedCenter: true, directAnchors: false});
+          if (measurementEdge) Object.assign(measurementEdge, {fromSide: measurementMode === "formative" ? "bottom" : "top", toSide: measurementMode === "formative" ? "top" : "bottom", fixedCenter: measurementAnchorFixedCenter(measurementMode), directAnchors: false});
           if (errorEdge) Object.assign(errorEdge, {fromSide: "bottom", toSide: "top", fixedCenter: true});
         } else {
           var bottomGap = iw + 24;
@@ -756,7 +756,7 @@
             errorNode.x = indicator.x + iw / 2 - Number(errorNode.width || 26) / 2;
             errorNode.y = indicator.y + ih + 28 + bottomErrorOffset;
           }
-          if (measurementEdge) Object.assign(measurementEdge, {fromSide: measurementMode === "formative" ? "top" : "bottom", toSide: measurementMode === "formative" ? "bottom" : "top", fixedCenter: true, directAnchors: false});
+          if (measurementEdge) Object.assign(measurementEdge, {fromSide: measurementMode === "formative" ? "top" : "bottom", toSide: measurementMode === "formative" ? "bottom" : "top", fixedCenter: measurementAnchorFixedCenter(measurementMode), directAnchors: false});
           if (errorEdge) Object.assign(errorEdge, {fromSide: "top", toSide: "bottom", fixedCenter: true});
         }
       });
@@ -844,16 +844,6 @@
     return true;
   }
 
-  function measurementPlacementFromCurrentPosition(instance, latent, indicator) {
-    var style = instance.state.style || {};
-    var latentCenter = window.StatEduModelCanvas.layout.nodeCenter(latent, style);
-    var indicatorCenter = window.StatEduModelCanvas.layout.nodeCenter(indicator, style);
-    var dx = Number(indicatorCenter.x || 0) - Number(latentCenter.x || 0);
-    var dy = Number(indicatorCenter.y || 0) - Number(latentCenter.y || 0);
-    if (Math.abs(dx) >= Math.abs(dy)) return dx < 0 ? "left" : "right";
-    return dy < 0 ? "top" : "bottom";
-  }
-
   function placeErrorNearIndicator(instance, errorNode, indicator, placement) {
     var iw = Number(indicator.width || instance.state.style.boxWidth || 110);
     var ih = Number(indicator.height || instance.state.style.boxHeight || 38);
@@ -877,7 +867,7 @@
   function applyMeasurementAnchors(edge, mode, placement) {
     edge.type = "measurement";
     edge.directAnchors = false;
-    edge.fixedCenter = true;
+    edge.fixedCenter = measurementAnchorFixedCenter(mode);
     if (placement === "left") {
       Object.assign(edge, {fromSide: mode === "formative" ? "right" : "left", toSide: mode === "formative" ? "left" : "right"});
     } else if (placement === "right") {
@@ -887,6 +877,34 @@
     } else {
       Object.assign(edge, {fromSide: mode === "formative" ? "top" : "bottom", toSide: mode === "formative" ? "bottom" : "top"});
     }
+  }
+
+  function measurementAnchorFixedCenter(mode) {
+    return mode !== "formative";
+  }
+
+  function measurementPlacementForLatent(instance, latent, relatedEdges) {
+    if (["left", "right", "top", "bottom"].indexOf(latent.measurementPlacement) >= 0) return latent.measurementPlacement;
+    if (["left", "right", "top", "bottom"].indexOf(latent.effectiveMeasurementPlacement) >= 0) return latent.effectiveMeasurementPlacement;
+    var indicators = (relatedEdges || []).map(function(edge) {
+      var from = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
+      return from && from.role === "indicator" ? from : window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
+    }).filter(Boolean);
+    if (!indicators.length) return "right";
+    var style = instance.state.style || {};
+    var latentCenter = window.StatEduModelCanvas.layout.nodeCenter(latent, style);
+    var average = indicators.reduce(function(total, indicator) {
+      var center = window.StatEduModelCanvas.layout.nodeCenter(indicator, style);
+      total.x += Number(center.x || 0);
+      total.y += Number(center.y || 0);
+      return total;
+    }, {x: 0, y: 0});
+    average.x /= indicators.length;
+    average.y /= indicators.length;
+    var dx = average.x - Number(latentCenter.x || 0);
+    var dy = average.y - Number(latentCenter.y || 0);
+    if (Math.abs(dx) >= Math.abs(dy)) return dx < 0 ? "left" : "right";
+    return dy < 0 ? "top" : "bottom";
   }
 
   function applyErrorAnchors(edge, placement) {
@@ -913,11 +931,11 @@
         var to = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
         return (from && from.id === latent.id && to && to.role === "indicator") || (to && to.id === latent.id && from && from.role === "indicator");
       });
+      var placement = measurementPlacementForLatent(instance, latent, relatedEdges);
       relatedEdges.forEach(function(edge) {
         var from = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
         var indicator = from && from.role === "indicator" ? from : window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
         if (!indicator) return;
-        var placement = measurementPlacementFromCurrentPosition(instance, latent, indicator);
         edge.from = mode === "formative" ? indicator.id : latent.id;
         edge.to = mode === "formative" ? latent.id : indicator.id;
         applyMeasurementAnchors(edge, mode, placement);

@@ -4,6 +4,7 @@
   var SVG_NS = "http://www.w3.org/2000/svg";
   var SNAP_POINTS = [20, 30, 40, 50, 60, 70, 80];
   var ANCHOR_GAP = 2.5;
+  var MEASUREMENT_ARROW_SPREAD_GAP = 14;
   var MODERATION_ANCHOR_GAP = 4;
   var ARROW_MARKER_CLEARANCE = 0;
   var EDGE_SIDES = ["top", "right", "bottom", "left"];
@@ -257,6 +258,17 @@
     return {x: x, y: y};
   }
 
+  function endpointAnchorGap(instance, edge, endpoint) {
+    if (!edge || edge.kind === "covariance" || edge.fixedCenter) return ANCHOR_GAP;
+    var node = window.StatEduModelCanvas.nodes.nodeById(instance, endpoint === "from" ? edge.from : edge.to);
+    var other = window.StatEduModelCanvas.nodes.nodeById(instance, endpoint === "from" ? edge.to : edge.from);
+    if (!node || !other) return ANCHOR_GAP;
+    if (node.role === "latent" && other.role === "indicator" && (node.measurementMode || "reflective") === "formative") {
+      return MEASUREMENT_ARROW_SPREAD_GAP;
+    }
+    return ANCHOR_GAP;
+  }
+
   function radialNodeAnchor(instance, node, targetNode) {
     var center = window.StatEduModelCanvas.layout.nodeCenter(node, instance.state.style);
     var target = window.StatEduModelCanvas.layout.nodeCenter(targetNode, instance.state.style);
@@ -343,8 +355,8 @@
       });
     }
     var endpoints = {
-      from: nodeAnchor(instance, from, sides.fromSide, anchorSlot(instance, edge, "from", sides.fromSide)),
-      to: nodeAnchor(instance, to, sides.toSide, anchorSlot(instance, edge, "to", sides.toSide))
+      from: nodeAnchor(instance, from, sides.fromSide, anchorSlot(instance, edge, "from", sides.fromSide), endpointAnchorGap(instance, edge, "from")),
+      to: nodeAnchor(instance, to, sides.toSide, anchorSlot(instance, edge, "to", sides.toSide), endpointAnchorGap(instance, edge, "to"))
     };
     return visibleArrowEndpoints(instance, edge, endpoints);
   }
