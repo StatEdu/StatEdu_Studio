@@ -197,6 +197,7 @@ structural_canvas_pls_fit_row <- function(effect, outcome, predictor, summary_fi
     total_p_numeric = structural_canvas_pls_bootstrap_p_numeric(total_boot_row),
     `Boot CI lower` = structural_canvas_pls_bootstrap_value(boot_row, "2.5% CI"),
     `Boot CI upper` = structural_canvas_pls_bootstrap_value(boot_row, "97.5% CI"),
+    `Boot SE` = structural_canvas_pls_bootstrap_value(boot_row, "Bootstrap SD"),
     `Boot t` = structural_canvas_pls_bootstrap_value(boot_row, "T Stat."),
     `Boot p` = structural_canvas_pls_bootstrap_p(boot_row),
     direct_p_numeric = structural_canvas_pls_bootstrap_p_numeric(boot_row),
@@ -237,8 +238,20 @@ structural_canvas_subset_columns <- function(table, columns) {
 structural_canvas_pls_fit_main_table <- function(table) {
   if (!is.data.frame(table) || !nrow(table)) return(data.frame())
   display <- table
-  if ("Coefficient" %in% names(display)) names(display)[names(display) == "Coefficient"] <- "Path beta"
-  structural_canvas_subset_columns(display, c("Effect", "Outcome", "Predictor", "Path beta", "Indirect effect", "Total effect", "R2", "AdjR2", "Q2"))
+  if ("Coefficient" %in% names(display)) names(display)[names(display) == "Coefficient"] <- "B"
+  if ("Effect" %in% names(display)) display <- display[display$Effect == "Direct", , drop = FALSE]
+  if (all(c("Outcome", "Predictor") %in% names(display))) {
+    display$Path <- paste(display$Predictor, "→", display$Outcome)
+    display <- display[order(display$Path, method = "radix"), , drop = FALSE]
+  }
+  if ("Boot t" %in% names(display)) names(display)[names(display) == "Boot t"] <- "z"
+  if ("Boot p" %in% names(display)) names(display)[names(display) == "Boot p"] <- "p"
+  if (all(c("R2", "AdjR2") %in% names(display))) {
+    r2 <- as.character(display$R2 %||% "")
+    adj_r2 <- as.character(display$AdjR2 %||% "")
+    display$R2AdjR2 <- ifelse(nzchar(r2) & nzchar(adj_r2), paste0(r2, " (", adj_r2, ")"), ifelse(nzchar(r2), r2, adj_r2))
+  }
+  structural_canvas_subset_columns(display, c("Path", "B", "Boot SE", "z", "p", "f2", "R2AdjR2", "Q2", "Inner VIF"))
 }
 
 structural_canvas_pls_fit_guide_table <- function(table) {
@@ -345,7 +358,7 @@ structural_canvas_pls_validity_result_table <- function(summary_fit, display_nam
 }
 
 structural_canvas_pls_validity_main_table <- function(table) {
-  structural_canvas_subset_columns(table, c("Construct", "Construct type", "Mode", "Evidence role", "alpha", "rhoA", "rhoC", "AVE", "sqrt(AVE)", "Max HTMT"))
+  structural_canvas_subset_columns(table, c("Construct", "alpha", "rhoA", "rhoC", "AVE", "sqrt(AVE)", "Max HTMT"))
 }
 
 structural_canvas_pls_validity_guide_table <- function(table) {
@@ -412,7 +425,7 @@ structural_canvas_pls_measurement_main_table <- function(table) {
   display[["Boot t"]] <- ifelse(display$Mode == "Formative", display$`Weight t`, display$`Loading t`)
   display[["Boot p"]] <- ifelse(display$Mode == "Formative", display$`Weight p`, display$`Loading p`)
   display[["Boot BH-adjusted p"]] <- ifelse(display$Mode == "Formative", display$`Weight BH-adjusted p`, display$`Loading BH-adjusted p`)
-  structural_canvas_subset_columns(display, c("Construct", "Construct type", "Indicator", "loading/weight", "Boot SE", "Boot 95% CI lower", "Boot 95% CI upper", "Boot t", "Boot p", "Boot BH-adjusted p", "Mode"))
+  structural_canvas_subset_columns(display, c("Construct", "Construct type", "Indicator", "loading/weight", "Boot SE", "Boot 95% CI lower", "Boot 95% CI upper", "Boot t", "Boot p", "Boot BH-adjusted p", "Item VIF", "Mode"))
 }
 
 structural_canvas_pls_measurement_guide_table <- function(table) {

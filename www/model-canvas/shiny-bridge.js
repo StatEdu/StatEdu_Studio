@@ -24,6 +24,8 @@
     source.style = window.StatEduModelCanvas.state.clone(editedSnapshot.style || source.style);
     source.gridVisible = editedSnapshot.gridVisible !== false;
     source.dashNonsignificant = editedSnapshot.dashNonsignificant !== false;
+    source.latentStatsSelection = window.StatEduModelCanvas.state.clone(editedSnapshot.latentStatsSelection || ["r2"]);
+    source.showLatentStats = editedSnapshot.showLatentStats !== false;
 
     // The source and result views are two presentations of one model. Keep
     // their topology in sync while retaining result-only values on matching
@@ -37,7 +39,10 @@
     (source.nodes || []).forEach(function(node) {
       var edited = resultNodes[node.id];
       if (!edited) return;
-      copyFields(node, edited, ["x", "y", "width", "height", "canvasLabel", "fontSize", "customFontSize"]);
+      copyFields(node, edited, [
+        "x", "y", "width", "height", "canvasLabel", "fontSize", "customFontSize",
+        "resultStatsOffsetX", "resultStatsOffsetY"
+      ]);
     });
 
     var resultEdges = {};
@@ -48,7 +53,7 @@
       copyFields(edge, edited, [
         "shape", "curveDirection", "curveOffset", "controlPoint",
         "fromSide", "toSide", "fixedCenter", "directAnchors", "labelPosition",
-        "labelOffsetX", "labelOffsetY", "labelFontSize", "labelTextAnchor"
+        "labelOffsetX", "labelOffsetY", "labelManualPosition", "labelFontSize", "labelTextAnchor"
       ]);
     });
 
@@ -57,7 +62,7 @@
     (source.moderations || []).forEach(function(item) {
       var edited = resultModerations[item.id];
       if (!edited) return;
-      copyFields(item, edited, ["edgePosition", "labelPosition", "labelOffsetX", "labelOffsetY", "labelFontSize"]);
+      copyFields(item, edited, ["edgePosition", "labelPosition", "labelOffsetX", "labelOffsetY", "labelManualPosition", "labelFontSize"]);
     });
     return source;
   }
@@ -98,8 +103,18 @@
     if (!root || !window.StatEduModelCanvas || !window.StatEduModelCanvas.canvas) return;
     var instance = window.StatEduModelCanvas.canvas.init(root);
     if (!instance) return;
-    instance.sourceSnapshot = message && message.source ? window.StatEduModelCanvas.state.clone(message.source) : null;
-    instance.resultSnapshot = message && message.result ? window.StatEduModelCanvas.state.clone(message.result) : null;
+    var currentResult = null;
+    if (window.StatEduModelCanvas.nodes && window.StatEduModelCanvas.nodes.isViewingResult(instance)) {
+      currentResult = window.StatEduModelCanvas.state.snapshot(instance.state);
+    } else if (instance.resultSnapshot) {
+      currentResult = window.StatEduModelCanvas.state.clone(instance.resultSnapshot);
+    }
+    var incomingSource = message && message.source ? window.StatEduModelCanvas.state.clone(message.source) : null;
+    var incomingResult = message && message.result ? window.StatEduModelCanvas.state.clone(message.result) : null;
+    if (incomingSource && instance.sourceSnapshot) incomingSource = syncVisualEdits(incomingSource, instance.sourceSnapshot);
+    if (incomingResult && currentResult) incomingResult = syncVisualEdits(incomingResult, currentResult);
+    instance.sourceSnapshot = incomingSource;
+    instance.resultSnapshot = incomingResult;
     root.classList.toggle("has-result", !!instance.resultSnapshot);
     if (window.StatEduModelCanvas.toolbar && window.StatEduModelCanvas.toolbar.updateButtons) {
       window.StatEduModelCanvas.toolbar.updateButtons(instance);

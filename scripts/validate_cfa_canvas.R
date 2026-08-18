@@ -9,9 +9,11 @@ stopifnot(
   grepl("var ARROW_MARKER_CLEARANCE = 0;", edge_source, fixed = TRUE),
   grepl("arrowHead === \"open\" ? \"8\" : \"9\"", edge_source, fixed = TRUE),
   grepl("function visibleArrowEndpoints", edge_source, fixed = TRUE),
+  grepl('appendArrowMarker(defs, "custom-model-arrow", arrowHead, color);', edge_source, fixed = TRUE),
+  grepl("svg.appendChild(defs);", edge_source, fixed = TRUE),
   grepl("to: pointShiftedToward(endpoints.to, endpoints.from, ARROW_MARKER_CLEARANCE)", edge_source, fixed = TRUE),
-  grepl("return visibleArrowEndpoints(edge, {\n        from: radialNodeAnchor(instance, from, to)", edge_source, fixed = TRUE),
-  grepl("return visibleArrowEndpoints(edge, endpoints);", edge_source, fixed = TRUE),
+  grepl("return visibleArrowEndpoints(instance, edge, {\n        from: radialNodeAnchor(instance, from, to)", edge_source, fixed = TRUE),
+  grepl("return visibleArrowEndpoints(instance, edge, endpoints);", edge_source, fixed = TRUE),
   !grepl("edge.directAnchors) return endpoints", edge_source, fixed = TRUE),
   grepl('arrowHead: "triangle"', state_source, fixed = TRUE),
   grepl('sourceVersion < 5 && state.style.arrowHead === "line"', state_source, fixed = TRUE),
@@ -265,6 +267,21 @@ information_criteria_noncomparable <- structural_canvas_information_criteria(lis
   fit = two_factor_mlr_fit, baseline_fit = ml$fit,
   modified_from_baseline = TRUE, comparison_label = "Different-data model"
 ))
+mi_fit_summary <- structural_canvas_summary_result_table(
+  "fit",
+  list(
+    baseline_fit = two_factor_mlr_fit,
+    modified_from_baseline = TRUE,
+    comparison_type = "mi",
+    comparison_label = "Modified model",
+    estimator = "MLR",
+    rmsea_ci = .90
+  ),
+  two_factor_mlr_fit,
+  "cfa",
+  FALSE,
+  function(value) vapply(as.numeric(value), format_decimal3, character(1))
+)
 mlr_fit_measures <- lavaan::fitMeasures(two_factor_mlr_fit)
 additional_fit_mlr <- structural_canvas_additional_fit_indices_table(
   list(two_factor_mlr_fit),
@@ -282,6 +299,9 @@ stopifnot(
   is.na(information_criteria_mlr$`Delta AIC`[[1L]]),
   identical(information_criteria_mlr$`Comparison status`[[1L]], "Single model; delta not applicable"),
   identical(information_criteria_comparison$Model, c("Original model", "Modified model")),
+  nrow(mi_fit_summary) == 3L,
+  identical(mi_fit_summary$Model[[3L]], "Δ (modified−research)"),
+  identical(mi_fit_summary$p[[3L]], "—"),
   all(information_criteria_comparison$`Comparison status` == "Comparable on observations, variables, estimator family, and admissibility"),
   all(information_criteria_comparison$`Delta AIC` == 0),
   all(information_criteria_comparison$`Delta BIC` == 0),

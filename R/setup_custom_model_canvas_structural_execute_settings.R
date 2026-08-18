@@ -13,7 +13,8 @@ structural_canvas_execute_settings <- function(settings, input, prefix) {
   bollen_stine_seed <- suppressWarnings(as.integer(settings$bollen_stine_seed %||% input[[paste0(prefix, "_bollen_stine_seed")]] %||% default_seed()))
   if (is.na(bollen_stine_seed) || bollen_stine_seed < 1L) bollen_stine_seed <- default_seed()
 
-  effect_bootstrap <- suppressWarnings(as.integer(settings$effect_bootstrap %||% input[[paste0(prefix, "_effect_bootstrap")]] %||% 0L))
+  default_effect_bootstrap <- if (prefix %in% c("structural_cbsem", "structural_sem")) 1000L else 0L
+  effect_bootstrap <- suppressWarnings(as.integer(settings$effect_bootstrap %||% input[[paste0(prefix, "_effect_bootstrap")]] %||% default_effect_bootstrap))
   if (is.na(effect_bootstrap) || !effect_bootstrap %in% c(0L, 500L, 1000L, 2000L)) effect_bootstrap <- 0L
   effect_bootstrap_seed <- suppressWarnings(as.integer(settings$effect_bootstrap_seed %||% input[[paste0(prefix, "_effect_bootstrap_seed")]] %||% default_seed()))
   if (is.na(effect_bootstrap_seed) || effect_bootstrap_seed < 1L) effect_bootstrap_seed <- default_seed()
@@ -57,8 +58,8 @@ structural_canvas_execute_settings <- function(settings, input, prefix) {
     estimator = settings$estimator %||% input[[paste0(prefix, "_estimator")]] %||% if (identical(prefix, "structural_plssem")) "PLS" else "ML",
     objective = settings$objective %||% input[[paste0(prefix, "_objective")]] %||% "confirmatory",
     sampling_design = {
-      value <- as.character(settings$sampling_design %||% input[[paste0(prefix, "_sampling_design")]] %||% "not_declared")
-      if (value %in% c("not_declared", "independent_cross_sectional", "clustered", "complex_survey", "longitudinal_repeated")) value else "not_declared"
+      value <- as.character(settings$sampling_design %||% input[[paste0(prefix, "_sampling_design")]] %||% "independent_cross_sectional")
+      if (value %in% c("not_declared", "independent_cross_sectional", "clustered", "complex_survey", "longitudinal_repeated")) value else "independent_cross_sectional"
     },
     power_basis = {
       value <- as.character(settings$power_basis %||% input[[paste0(prefix, "_power_basis")]] %||% "not_recorded")
@@ -111,6 +112,7 @@ structural_canvas_execute_settings <- function(settings, input, prefix) {
     common_method_enabled = isTRUE(settings$common_method_enabled %||% input[[paste0(prefix, "_common_method_enabled")]] %||% FALSE),
     common_method_methods = common_method_methods,
     result_coefficient = structural_canvas_result_coefficient_mode(settings$result_coefficient %||% input[[paste0(prefix, "_result_coefficient")]] %||% "beta_p"),
+    result_measurement_coefficient = as.character(settings$result_measurement_coefficient %||% input[[paste0(prefix, "_result_measurement_coefficient")]] %||% "measurement_p"),
     residual_variance_fixes = settings$residual_variance_fixes %||% numeric(0)
   )
 }

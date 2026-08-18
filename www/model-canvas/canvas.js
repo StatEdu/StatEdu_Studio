@@ -84,6 +84,36 @@
     return nearest && nearest.edge ? nearest.edge.id : null;
   }
 
+  function nodeIdAtEvent(instance, event, requiredRole) {
+    var direct = event.target && event.target.closest ? event.target.closest(".custom-model-node") : null;
+    var candidates = direct ? [direct] : (document.elementsFromPoint ? document.elementsFromPoint(event.clientX, event.clientY) : []);
+    for (var index = 0; index < candidates.length; index += 1) {
+      var element = candidates[index] && candidates[index].closest ? candidates[index].closest(".custom-model-node") : null;
+      if (!element || !instance.nodeLayer.contains(element)) continue;
+      var nodeId = element.getAttribute("data-node-id");
+      var node = window.StatEduModelCanvas.nodes.nodeById(instance, nodeId);
+      if (node && (!requiredRole || node.role === requiredRole)) return nodeId;
+    }
+    return null;
+  }
+
+  function selectableLabelFromEvent(instance, event, initialLabel) {
+    if (!instance.edgeLayer) return initialLabel;
+    var x = Number(event.clientX);
+    var y = Number(event.clientY);
+    var matches = Array.prototype.filter.call(instance.edgeLayer.querySelectorAll(".custom-model-edge-label"), function(label) {
+      var rect = label.getBoundingClientRect();
+      return x >= rect.left - 3 && x <= rect.right + 3 && y >= rect.top - 3 && y <= rect.bottom + 3;
+    });
+    if (!matches.length) return initialLabel;
+    if (matches.length === 1) return matches[0];
+    var selectedId = instance.state.selectedEdgeId;
+    var selectedIndex = matches.findIndex(function(label) {
+      return label.getAttribute("data-label-type") === "edge" && label.getAttribute("data-label-id") === selectedId;
+    });
+    return matches[(selectedIndex + 1 + matches.length) % matches.length];
+  }
+
   function render(instance) {
     var paperWidth = Number(instance.state.canvas.widthPx || 0);
     var paperHeight = Number(instance.state.canvas.heightPx || 0);
@@ -312,12 +342,16 @@
         var advancedConstruct = !!single.advancedConstructSpecification;
         var constructSelect = document.createElement("select");
         constructSelect.className = "form-control input-sm";
-        [["unspecified", ko ? "잘 모르겠음 (안내 필요)" : "Not sure (show guidance)"], ["commonFactor", ko ? "잠재특성·공통요인" : "Latent trait / common factor"], ["composite", ko ? "구성지수·합성변수" : "Constructed index / composite"]].forEach(function(item) {
+        var constructChoices = single.constructType === "higherOrder" ?
+          [["higherOrder", ko ? "고차 공통요인" : "Higher-order common factor"]] :
+          [["commonFactor", ko ? "잠재특성·공통요인" : "Latent trait / common factor"], ["composite", ko ? "구성지수·합성변수" : "Constructed index / composite"]];
+        constructChoices.forEach(function(item) {
           var option = document.createElement("option"); option.value = item[0]; option.textContent = item[1];
           if (["cfa", "cbsem", "sem"].indexOf(instance.analysisType) >= 0 && item[0] === "composite") option.disabled = true;
           constructSelect.appendChild(option);
         });
         constructSelect.value = single.constructType || ((single.measurementMode || "reflective") === "formative" ? "composite" : "commonFactor");
+        if (single.constructType === "higherOrder") constructSelect.disabled = true;
         constructSelect.addEventListener("change", function() {
           var selectedType = constructSelect.value;
           commit(function() {
@@ -523,34 +557,59 @@
       return from && to && from.role === "latent" && to.role === "latent";
     });
     var errorNotationCounters = {delta: 0, epsilon: 0};
+    function measurementEdgesForLatent(latent) {
+      return instance.state.edges.filter(function(edge) {
+        if (edge.kind === "covariance") return false;
+        var from = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
+        var to = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
+        return (from && from.id === latent.id && to && to.role === "indicator") ||
+          (to && to.id === latent.id && from && from.role === "indicator");
+      });
+    }
+    function avoidVerticalMeasurementOverlap(latents) {
+      var style = instance.state.style || {};
+      var indicatorHeight = Number(style.boxHeight || 38);
+      var latentHeightFallback = Number(style.latentHeight || 58);
+      var rowGap = Math.max(48, indicatorHeight + 10);
+      var groupGap = Math.max(4, rowGap - indicatorHeight - 12);
+      var groups = latents.map(function(latent) {
+        var edges = measurementEdgesForLatent(latent);
+        if (!edges.length) return null;
+        var count = edges.length;
+        var latentY = Number(latent.y || 0);
+        var latentHeight = Number(latent.height || latentHeightFallback);
+        var latentMiddle = latentY + latentHeight / 2;
+        var top = latentMiddle - indicatorHeight / 2 - (count - 1) * rowGap / 2;
+        var bottom = top + indicatorHeight + (count - 1) * rowGap;
+        return {
+          latent: latent,
+          top: Math.min(top, latentY) - 6,
+          bottom: Math.max(bottom, latentY + latentHeight) + 6
+        };
+      }).filter(Boolean).sort(function(a, b) {
+        return Number(a.latent.y || 0) - Number(b.latent.y || 0);
+      });
+      var nextTop = null;
+      groups.forEach(function(group) {
+        if (nextTop !== null && group.top < nextTop) {
+          var shift = nextTop - group.top;
+          group.latent.y = Number(group.latent.y || 0) + shift;
+          group.top += shift;
+          group.bottom += shift;
+        }
+        nextTop = group.bottom + groupGap;
+      });
+    }
     if (instance.analysisType === "cfa") {
       var cfaLatents = instance.state.nodes.filter(function(node) { return node.role === "latent"; }).sort(function(a, b) {
         return Number(a.y || 0) - Number(b.y || 0);
       });
-      var cfaRowGap = 48;
-      var cfaTop = 150;
-      var cfaRow = 0;
       cfaLatents.forEach(function(latent) {
-        var cfaEdges = instance.state.edges.filter(function(edge) {
-          if (edge.kind === "covariance") return false;
-          var from = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
-          var to = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
-          return (from && from.id === latent.id && to && to.role === "indicator") ||
-            (to && to.id === latent.id && from && from.role === "indicator");
-        });
+        var cfaEdges = measurementEdgesForLatent(latent);
         if (!cfaEdges.length) return;
-        var firstRow = cfaRow;
-        cfaEdges.forEach(function(edge) {
-          var from = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
-          var indicator = from && from.role === "indicator" ? from : window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
-          if (indicator) indicator.y = cfaTop + cfaRow * cfaRowGap;
-          cfaRow += 1;
-        });
-        var lastRow = cfaRow - 1;
-        var indicatorHeight = Number(instance.state.style.boxHeight || 38);
-        var latentHeight = Number(latent.height || 58);
-        latent.y = cfaTop + ((firstRow + lastRow) / 2) * cfaRowGap + indicatorHeight / 2 - latentHeight / 2;
+        latent.manualPosition = true;
       });
+      avoidVerticalMeasurementOverlap(cfaLatents);
     }
     instance.state.nodes.filter(function(node) { return node.role === "latent"; }).forEach(function(latent) {
       var hasIncoming = structuralEdges.some(function(edge) { return edge.to === latent.id; });
@@ -620,12 +679,7 @@
           directAnchors: true
         });
       }
-      var measurementEdges = instance.state.edges.filter(function(edge) {
-        var from = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
-        var to = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
-        return (from && from.id === latent.id && to && to.role === "indicator") ||
-          (to && to.id === latent.id && from && from.role === "indicator");
-      });
+      var measurementEdges = measurementEdgesForLatent(latent);
       var indicators = measurementEdges.map(function(edge) {
         var from = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
         return from && from.role === "indicator" ? from : window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
@@ -669,7 +723,7 @@
             errorNode.x = indicator.x - Number(errorNode.width || 26) - 28 - leftErrorOffset;
             errorNode.y = indicator.y + ih / 2 - Number(errorNode.height || 26) / 2;
           }
-          if (measurementEdge) Object.assign(measurementEdge, {fromSide: measurementMode === "formative" ? "right" : "left", toSide: measurementMode === "formative" ? "left" : "right", fixedCenter: true});
+          if (measurementEdge) Object.assign(measurementEdge, {fromSide: measurementMode === "formative" ? "right" : "left", toSide: measurementMode === "formative" ? "left" : "right", fixedCenter: true, directAnchors: false});
           if (errorEdge) Object.assign(errorEdge, {fromSide: "right", toSide: "left", fixedCenter: true});
         } else if (placement === "right") {
           indicator.x = Number(latent.x || 0) + lw + 50;
@@ -679,7 +733,7 @@
             errorNode.x = indicator.x + iw + 28 + rightErrorOffset;
             errorNode.y = indicator.y + ih / 2 - Number(errorNode.height || 26) / 2;
           }
-          if (measurementEdge) Object.assign(measurementEdge, {fromSide: measurementMode === "formative" ? "left" : "right", toSide: measurementMode === "formative" ? "right" : "left", fixedCenter: true});
+          if (measurementEdge) Object.assign(measurementEdge, {fromSide: measurementMode === "formative" ? "left" : "right", toSide: measurementMode === "formative" ? "right" : "left", fixedCenter: true, directAnchors: false});
           if (errorEdge) Object.assign(errorEdge, {fromSide: "left", toSide: "right", fixedCenter: true});
         } else if (placement === "top") {
           var gap = iw + 24;
@@ -690,7 +744,7 @@
             errorNode.x = indicator.x + iw / 2 - Number(errorNode.width || 26) / 2;
             errorNode.y = indicator.y - Number(errorNode.height || 26) - 28 - topErrorOffset;
           }
-          if (measurementEdge) Object.assign(measurementEdge, {fromSide: measurementMode === "formative" ? "bottom" : "top", toSide: measurementMode === "formative" ? "top" : "bottom", fixedCenter: true});
+          if (measurementEdge) Object.assign(measurementEdge, {fromSide: measurementMode === "formative" ? "bottom" : "top", toSide: measurementMode === "formative" ? "top" : "bottom", fixedCenter: true, directAnchors: false});
           if (errorEdge) Object.assign(errorEdge, {fromSide: "bottom", toSide: "top", fixedCenter: true});
         } else {
           var bottomGap = iw + 24;
@@ -701,7 +755,7 @@
             errorNode.x = indicator.x + iw / 2 - Number(errorNode.width || 26) / 2;
             errorNode.y = indicator.y + ih + 28 + bottomErrorOffset;
           }
-          if (measurementEdge) Object.assign(measurementEdge, {fromSide: measurementMode === "formative" ? "top" : "bottom", toSide: measurementMode === "formative" ? "bottom" : "top", fixedCenter: true});
+          if (measurementEdge) Object.assign(measurementEdge, {fromSide: measurementMode === "formative" ? "top" : "bottom", toSide: measurementMode === "formative" ? "bottom" : "top", fixedCenter: true, directAnchors: false});
           if (errorEdge) Object.assign(errorEdge, {fromSide: "top", toSide: "bottom", fixedCenter: true});
         }
       });
@@ -770,6 +824,14 @@
     return (values.length ? Math.max.apply(Math, values) : 0) + 1;
   }
 
+  function latentHasIncomingStructuralPath(instance, latent) {
+    return instance.state.edges.some(function(edge) {
+      if (edge.kind === "covariance" || edge.to !== latent.id) return false;
+      var source = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
+      return source && source.role === "latent";
+    });
+  }
+
   function setMeasurementPlacement(instance, placement) {
     var latents = selectedLatentNodes(instance);
     if (!latents.length || ["left", "right", "top", "bottom"].indexOf(placement) < 0) return false;
@@ -779,6 +841,59 @@
     render(instance);
     window.StatEduModelCanvas.bridge.sendState(instance);
     return true;
+  }
+
+  function measurementPlacementFromCurrentPosition(instance, latent, indicator) {
+    var style = instance.state.style || {};
+    var latentCenter = window.StatEduModelCanvas.layout.nodeCenter(latent, style);
+    var indicatorCenter = window.StatEduModelCanvas.layout.nodeCenter(indicator, style);
+    var dx = Number(indicatorCenter.x || 0) - Number(latentCenter.x || 0);
+    var dy = Number(indicatorCenter.y || 0) - Number(latentCenter.y || 0);
+    if (Math.abs(dx) >= Math.abs(dy)) return dx < 0 ? "left" : "right";
+    return dy < 0 ? "top" : "bottom";
+  }
+
+  function placeErrorNearIndicator(instance, errorNode, indicator, placement) {
+    var iw = Number(indicator.width || instance.state.style.boxWidth || 110);
+    var ih = Number(indicator.height || instance.state.style.boxHeight || 38);
+    var ew = Number(errorNode.width || 26);
+    var eh = Number(errorNode.height || 26);
+    if (placement === "left") {
+      errorNode.x = Number(indicator.x || 0) - ew - 28;
+      errorNode.y = Number(indicator.y || 0) + ih / 2 - eh / 2;
+    } else if (placement === "right") {
+      errorNode.x = Number(indicator.x || 0) + iw + 28;
+      errorNode.y = Number(indicator.y || 0) + ih / 2 - eh / 2;
+    } else if (placement === "top") {
+      errorNode.x = Number(indicator.x || 0) + iw / 2 - ew / 2;
+      errorNode.y = Number(indicator.y || 0) - eh - 28;
+    } else {
+      errorNode.x = Number(indicator.x || 0) + iw / 2 - ew / 2;
+      errorNode.y = Number(indicator.y || 0) + ih + 28;
+    }
+  }
+
+  function applyMeasurementAnchors(edge, mode, placement) {
+    edge.type = "measurement";
+    edge.directAnchors = false;
+    edge.fixedCenter = true;
+    if (placement === "left") {
+      Object.assign(edge, {fromSide: mode === "formative" ? "right" : "left", toSide: mode === "formative" ? "left" : "right"});
+    } else if (placement === "right") {
+      Object.assign(edge, {fromSide: mode === "formative" ? "left" : "right", toSide: mode === "formative" ? "right" : "left"});
+    } else if (placement === "top") {
+      Object.assign(edge, {fromSide: mode === "formative" ? "bottom" : "top", toSide: mode === "formative" ? "top" : "bottom"});
+    } else {
+      Object.assign(edge, {fromSide: mode === "formative" ? "top" : "bottom", toSide: mode === "formative" ? "bottom" : "top"});
+    }
+  }
+
+  function applyErrorAnchors(edge, placement) {
+    edge.fixedCenter = true;
+    if (placement === "left") Object.assign(edge, {fromSide: "right", toSide: "left"});
+    else if (placement === "right") Object.assign(edge, {fromSide: "left", toSide: "right"});
+    else if (placement === "top") Object.assign(edge, {fromSide: "bottom", toSide: "top"});
+    else Object.assign(edge, {fromSide: "top", toSide: "bottom"});
   }
 
   function setMeasurementMode(instance, mode) {
@@ -801,9 +916,10 @@
         var from = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
         var indicator = from && from.role === "indicator" ? from : window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
         if (!indicator) return;
+        var placement = measurementPlacementFromCurrentPosition(instance, latent, indicator);
         edge.from = mode === "formative" ? indicator.id : latent.id;
         edge.to = mode === "formative" ? latent.id : indicator.id;
-        edge.type = "measurement";
+        applyMeasurementAnchors(edge, mode, placement);
         if (mode === "formative") {
           var errorIds = instance.state.edges.filter(function(item) { return item.to === indicator.id; }).map(function(item) {
             var source = window.StatEduModelCanvas.nodes.nodeById(instance, item.from);
@@ -821,13 +937,25 @@
           if (!hasError) {
             var sequence = nextErrorSequence(instance);
             var errorNode = window.StatEduModelCanvas.nodes.createErrorNode(instance, indicator, indicator.x, indicator.y, sequence);
+            if (errorNode.autoErrorNotation !== false) {
+              var endogenous = latentHasIncomingStructuralPath(instance, latent);
+              errorNode.name = (endogenous ? "epsilon" : "delta") + sequence;
+              errorNode.dataLabel = (endogenous ? "ε" : "δ") + sequence;
+            }
+            placeErrorNearIndicator(instance, errorNode, indicator, placement);
             instance.state.nodes.push(errorNode);
             window.StatEduModelCanvas.edges.createEdge(instance, errorNode.id, indicator.id);
+            var newErrorEdge = instance.state.edges.find(function(item) { return item.from === errorNode.id && item.to === indicator.id; });
+            if (newErrorEdge) applyErrorAnchors(newErrorEdge, placement);
+          } else {
+            instance.state.edges.forEach(function(item) {
+              var source = window.StatEduModelCanvas.nodes.nodeById(instance, item.from);
+              if (item.to === indicator.id && source && source.role === "error") applyErrorAnchors(item, placement);
+            });
           }
         }
       });
     });
-    reflowMeasurementModel(instance);
     render(instance);
     window.StatEduModelCanvas.bridge.sendState(instance);
     return true;
@@ -1092,17 +1220,22 @@
       flushActiveSetting(instance);
       var propertyPanel = event.target.closest ? event.target.closest(".custom-model-property-popover") : null;
       if (propertyPanel) return;
+      var latentStatsElement = event.target.closest ? event.target.closest(".structural-latent-statistics") : null;
+      if (latentStatsElement) return;
+      instance.selectedLatentStatsNodeId = null;
 
       var labelElement = event.target.closest ? event.target.closest(".custom-model-edge-label") : null;
+      labelElement = selectableLabelFromEvent(instance, event, labelElement);
       var nodeElement = event.target.closest ? event.target.closest(".custom-model-node") : null;
       var edgeControlElement = event.target.closest ? event.target.closest(".custom-model-edge-control") : null;
       var edgeElement = event.target.closest ? event.target.closest(".custom-model-edge, .custom-model-edge-hit") : null;
       var moderationElement = event.target.closest ? event.target.closest(".custom-model-moderation, .custom-model-moderation-hit") : null;
       var edgeId = edgeIdFromEvent(instance, event, 18);
 
-      var resultSelectionMode = window.StatEduModelCanvas.nodes.isViewingResult(instance) && instance.state.mode === "properties";
-      var marqueeSelectionMode = event.shiftKey || instance.state.mode === "select" || resultSelectionMode;
-      if (marqueeSelectionMode && !nodeElement && !edgeId && !moderationElement && !propertyPanel) {
+      var viewingResult = window.StatEduModelCanvas.nodes.isViewingResult(instance);
+      var resultSelectionMode = viewingResult && instance.state.mode === "properties";
+      var marqueeSelectionMode = (!viewingResult && (event.shiftKey || instance.state.mode === "select")) || resultSelectionMode;
+      if (marqueeSelectionMode && !labelElement && !nodeElement && !edgeId && !moderationElement && !propertyPanel) {
         event.preventDefault();
         var start = canvasPoint(instance, event);
         var additiveSelection = event.shiftKey;
@@ -1164,7 +1297,7 @@
             labelElement.getAttribute("data-label-id")
           );
         }
-        if (instance.state.mode === "properties" || window.StatEduModelCanvas.nodes.isViewingResult(instance)) {
+        if (instance.state.mode === "properties") {
           window.StatEduModelCanvas.edges.startLabelDrag(
             instance,
             event,
@@ -1177,13 +1310,13 @@
 
       if (edgeControlElement) {
         var controlEdge = window.StatEduModelCanvas.edges.edgeById(instance, edgeControlElement.getAttribute("data-edge-id"));
-        if (instance.state.mode === "properties" || (instance.state.mode === "select" && window.StatEduModelCanvas.edges.curveEditable(instance, controlEdge))) {
+        if (instance.state.mode === "properties" || (!viewingResult && instance.state.mode === "select" && window.StatEduModelCanvas.edges.curveEditable(instance, controlEdge))) {
           window.StatEduModelCanvas.edges.startControlDrag(instance, event, controlEdge.id);
           return;
         }
       }
 
-      if ((instance.state.mode === "select" || instance.state.mode === "properties") && moderationElement) {
+      if (((!viewingResult && instance.state.mode === "select") || instance.state.mode === "properties") && moderationElement) {
         window.StatEduModelCanvas.edges.startModerationDrag(instance, event, moderationElement.getAttribute("data-moderation-id"));
         return;
       }
@@ -1239,8 +1372,8 @@
               }
               instance.state.selectedNodeId = resultNodeId;
               instance.state.selectedEdgeId = null;
-              render(instance);
               window.StatEduModelCanvas.nodes.startDrag(instance, event, nodeElement);
+              render(instance);
             }
           } else {
             event.preventDefault();
@@ -1272,6 +1405,15 @@
         return;
       }
 
+      if (viewingResult) {
+        instance.state.selectedNodeId = null;
+        instance.state.selectedNodeIds = [];
+        instance.state.selectedEdgeId = null;
+        instance.state.selectedModerationId = null;
+        render(instance);
+        return;
+      }
+
       if (nodeElement) {
         var nodeId = nodeElement.getAttribute("data-node-id");
         var selectedIds = instance.state.selectedNodeIds || [];
@@ -1296,8 +1438,8 @@
           instance.state.selectedNodeId = nodeId;
         }
         instance.state.selectedEdgeId = null;
-        render(instance);
         window.StatEduModelCanvas.nodes.startDrag(instance, event, nodeElement);
+        render(instance);
       } else if (edgeId) {
         var selectedEdge = window.StatEduModelCanvas.edges.edgeById(instance, edgeId);
         if (window.StatEduModelCanvas.edges.curveEditable(instance, selectedEdge)) {
@@ -1454,7 +1596,7 @@
       latent.canvasLabel = variable.dataLabel || variable.name;
       latent.measurementPlacement = "top";
       latent.measurementMode = "reflective";
-      latent.constructType = "unspecified";
+      latent.constructType = "commonFactor";
       var indicator = window.StatEduModelCanvas.nodes.createIndicatorNode(instance, variable, latent.x, latent.y - 80);
       var errorNode = window.StatEduModelCanvas.nodes.createErrorNode(instance, indicator, indicator.x, indicator.y - 46, errorBase + index + 1);
       instance.state.nodes.push(latent, indicator, errorNode);
@@ -1573,13 +1715,13 @@
       document.removeEventListener("pointercancel", cancel, true);
       instance.state.dragPreview = null;
 
-      var targetNodeElement = upEvent.target && upEvent.target.closest ? upEvent.target.closest(".custom-model-node") : null;
+      var targetNodeId = nodeIdAtEvent(instance, upEvent);
       var changed = false;
       window.StatEduModelCanvas.state.pushHistory(instance);
-      if (targetNodeElement) {
+      if (targetNodeId) {
         changed = connectMode === "covariance" ?
-          window.StatEduModelCanvas.edges.createCovariance(instance, fromId, targetNodeElement.getAttribute("data-node-id")) :
-          window.StatEduModelCanvas.edges.createEdge(instance, fromId, targetNodeElement.getAttribute("data-node-id"));
+          window.StatEduModelCanvas.edges.createCovariance(instance, fromId, targetNodeId) :
+          window.StatEduModelCanvas.edges.createEdge(instance, fromId, targetNodeId);
       } else {
         var targetPoint = canvasPoint(instance, upEvent);
         var nearest = window.StatEduModelCanvas.edges.nearestEdgeAt(instance, targetPoint, 24);
@@ -1654,10 +1796,14 @@
     }
     window.StatEduModelCanvas.state.restore(instance.state, instance.resultSnapshot);
     instance.state.mode = "select";
+    instance.state.selectedNodeId = null;
+    instance.state.selectedNodeIds = [];
+    instance.state.selectedEdgeId = null;
+    instance.state.selectedModerationId = null;
+    instance.selectedLatentStatsNodeId = null;
     instance.viewingResult = true;
     instance.root.classList.add("is-viewing-result");
     render(instance);
-    window.StatEduModelCanvas.bridge.sendState(instance);
   }
 
   function showSource(instance) {
@@ -1736,6 +1882,7 @@
     initAll: initAll,
     render: render,
     canvasPoint: canvasPoint,
+    nodeIdAtEvent: nodeIdAtEvent,
     showResult: showResult,
     showSource: showSource,
     zoom: zoom,

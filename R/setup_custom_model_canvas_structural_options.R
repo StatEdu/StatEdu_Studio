@@ -1,14 +1,26 @@
 # Structural equation canvas analysis option controls.
 
-structural_canvas_result_coefficient_choices <- function(language = statedu_initial_language()) {
+structural_canvas_result_coefficient_choices <- function(language = statedu_initial_language(), analysis_type = "cbsem") {
+  if (identical(analysis_type, "plssem")) {
+    return(stats::setNames(
+      c("pls_value", "pls_p"),
+      c("β", "β(p)")
+    ))
+  }
   stats::setNames(
     c("b_p", "b_t", "beta_t", "beta_p", "b_beta"),
     c("B(p)", "B(t)", "beta(t)", "beta(p)", "B(Beta)")
   )
 }
 
+structural_canvas_measurement_coefficient_choices <- function(language = statedu_initial_language()) {
+  stats::setNames(c("measurement_value", "measurement_p"), c("loading / weight", "loading(p) / weight(p)"))
+}
+
 structural_analysis_options_panel <- function(analysis_type = "cbsem", language = statedu_initial_language()) {
   ko <- identical(normalize_app_language(language), "ko")
+  prefix <- structural_analysis_prefix(analysis_type)
+  advanced_condition <- sprintf("input['%s']", paste0(prefix, "_show_advanced"))
         div(
           class = "custom-model-analysis-options structural-run-options-tabs analysis-tabbed-options",
           tabsetPanel(
@@ -35,9 +47,15 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
                 if (ko) "종단·반복측정자료" else "Longitudinal or repeated measures"
               )
             ),
-            selected = "not_declared"
+            selected = "independent_cross_sectional"
           ),
-          tags$p(class = "structural-option-note", if (ko) "현재 캔버스 엔진은 독립 관측 횡단자료만 지원합니다. 군집, 표본가중치·층화·PSU, 개인 내 반복측정을 무시한 분석은 실행되지 않습니다." else "The current canvas engine supports independent cross-sectional observations only. It will not fit a model that ignores clustering, survey weights/strata/PSUs, or within-person repeated measurements."),
+          tags$p(class = "structural-option-note", if (ko) "분석 전에 표집구조를 명시적으로 확인하십시오. 현재 캔버스 엔진은 군집, 복합표본 또는 종단·반복측정의 의존구조를 무시한 분석을 실행하지 않습니다." else "Confirm the sampling structure explicitly before analysis. The current canvas engine will not fit a model that ignores clustered, complex-survey, longitudinal, or repeated-measures dependence."),
+          checkboxInput(
+            paste0(prefix, "_show_advanced"),
+            if (ko) "고급 옵션 표시" else "Show advanced options",
+            value = FALSE
+          ),
+          conditionalPanel(advanced_condition, tagList(
           selectInput(
             paste0(structural_analysis_prefix(analysis_type), "_power_basis"),
             if (ko) "사전 표본크기·검정력 근거" else "A-priori sample-size/power basis",
@@ -47,10 +65,12 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
             ), selected = "not_recorded"
           ),
           textAreaInput(paste0(structural_analysis_prefix(analysis_type), "_power_details"), if (ko) "검정력 근거 상세" else "Power-basis details", rows = 2, placeholder = if (ko) "가정한 효과크기·모수, 목표 검정력, alpha, 결측/탈락, 사용 도구 또는 문헌을 기록하십시오." else "Record assumed effects/parameters, target power, alpha, attrition/missingness allowance, and software or source."),
-          tags$p(class = "structural-option-note", if (ko) "N/모수 비율이나 PLS 10배 규칙은 사전 검정력 근거가 아닙니다. 잠재상호작용·간접효과·순서형·결측·비정규 모형은 가능하면 전체 자료생성 및 반복 적합 Monte Carlo를 사용하십시오." else "N-to-parameter ratios and the PLS 10-times rule are not a-priori power evidence. Prefer full data-generation and repeated-fit Monte Carlo for latent interactions, indirect effects, ordinal indicators, missingness, or nonnormality."),
+          tags$p(class = "structural-option-note", if (ko) "N/모수 비율이나 PLS 10배 규칙은 사전 검정력 근거가 아닙니다. 잠재상호작용·간접효과·순서형·결측·비정규 모형은 가능하면 전체 자료생성 및 반복 적합 Monte Carlo를 사용하십시오." else "N-to-parameter ratios and the PLS 10-times rule are not a-priori power evidence. Prefer full data-generation and repeated-fit Monte Carlo for latent interactions, indirect effects, ordinal indicators, missingness, or nonnormality.")
+          )),
           uiOutput(paste0(structural_analysis_prefix(analysis_type), "_method_recommendation")),
           if (analysis_type != "plssem") selectInput(paste0(structural_analysis_prefix(analysis_type), "_missing"), if (ko) "결측치 처리" else "Missing data", choices = stats::setNames(c("fiml", "listwise"), c("FIML", if (ko) "목록 삭제" else "Listwise deletion"))),
           if (analysis_type != "plssem") tags$p(class = "structural-option-note", if (ko) "순서형 지표 또는 WLSMV 추정량을 사용하면 lavaan 제약에 따라 FIML 대신 pairwise 결측 처리가 적용됩니다." else "When ordered indicators or the WLSMV estimator are used, lavaan uses pairwise missing-data handling instead of FIML."),
+          conditionalPanel(advanced_condition, tagList(
           if (analysis_type != "plssem") selectInput(
             paste0(structural_analysis_prefix(analysis_type), "_missing_sensitivity_method"),
             if (ko) "결측 민감도 검토" else "Missing-data sensitivity assessment",
@@ -69,7 +89,7 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
           if (analysis_type %in% c("cbsem", "sem")) selectInput(
             paste0(structural_analysis_prefix(analysis_type), "_effect_bootstrap"),
             if (ko) "구조효과 bootstrap CI" else "Structural-effect bootstrap CI",
-            choices = c("Do not compute" = "0", "500 resamples" = "500", "1,000 resamples" = "1000", "2,000 resamples" = "2000"), selected = "0"
+            choices = c("Do not compute" = "0", "500 resamples" = "500", "1,000 resamples" = "1000", "2,000 resamples" = "2000"), selected = "1000"
           ),
           if (analysis_type %in% c("cbsem", "sem")) numericInput(
             paste0(structural_analysis_prefix(analysis_type), "_effect_bootstrap_seed"),
@@ -126,6 +146,7 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
             value = default_seed(), min = 1L, step = 1L
           ),
           if (identical(analysis_type, "plssem")) tags$p(class = "structural-option-note", if (ko) "PLSpredict는 Direct Antecedents 방식으로 indicator별 out-of-sample RMSE/MAE를 PLS와 선형모형 기준값으로 비교합니다. fold와 반복 수가 커질수록 실행 시간이 늘어납니다." else "PLSpredict uses the Direct Antecedents scheme and compares indicator-level out-of-sample RMSE/MAE against a linear-model benchmark. More folds and repetitions increase run time.")
+          )),
             ),
             tabPanel(
               if (ko) "타당도" else "Validity",

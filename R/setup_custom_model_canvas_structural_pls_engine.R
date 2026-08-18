@@ -244,7 +244,23 @@ structural_canvas_run_pls_analysis <- function(snapshot, data, latents, edges, e
   )
 }
 
-structural_canvas_run_plsc_bootstrap <- function(seminr_model, nboot = 5000L, seed = default_seed()) {
+structural_canvas_write_bootstrap_progress <- function(progress_file, completed, total, phase = "bootstrap", determinate = TRUE) {
+  progress_file <- as.character(progress_file %||% "")
+  if (!nzchar(progress_file)) return(invisible(FALSE))
+  payload <- list(
+    completed = as.integer(completed %||% 0L), total = as.integer(total %||% 0L),
+    phase = as.character(phase %||% "bootstrap"), determinate = isTRUE(determinate),
+    updated_at = as.numeric(Sys.time())
+  )
+  temporary <- paste0(progress_file, ".tmp")
+  tryCatch({
+    saveRDS(payload, temporary)
+    file.rename(temporary, progress_file)
+  }, error = function(error) FALSE)
+  invisible(TRUE)
+}
+
+structural_canvas_run_plsc_bootstrap <- function(seminr_model, nboot = 5000L, seed = default_seed(), progress_file = NULL, apply_plsc = TRUE) {
   nboot <- suppressWarnings(as.integer(nboot %||% 5000L))
   seed <- suppressWarnings(as.integer(seed %||% default_seed()))
   if (!is.finite(nboot) || nboot < 1L) nboot <- 5000L
@@ -257,27 +273,94 @@ structural_canvas_run_plsc_bootstrap <- function(seminr_model, nboot = 5000L, se
   original_total <- seminr:::total_effects(seminr_model$path_coef)
   boot_vec_len <- length(seminr_model$path_coef) + length(seminr_model$outer_loadings) +
     length(seminr_model$outer_weights) + length(original_htmt) + length(original_total)
-  boot_values <- lapply(seq_len(nboot), function(index) {
+  detected_cores <- suppressWarnings(parallel::detectCores(logical = FALSE))
+  if (!is.finite(detected_cores) || detected_cores < 2L) detected_cores <- 2L
+  workers <- max(1L, min(4L, as.integer(detected_cores) - 1L, nboot))
+  batch_size <- max(50L, workers * 25L)
+  boot_values <- vector("list", nboot)
+  align_bootstrap_signs <- function(boot_model, reference_loadings) {
+    boot_loadings <- as.matrix(boot_model$outer_loadings)
+    reference_loadings <- as.matrix(reference_loadings)
+    constructs <- intersect(colnames(boot_loadings), colnames(reference_loadings))
+    signs <- stats::setNames(rep(1, length(constructs)), constructs)
+    for (construct in constructs) {
+      shared <- intersect(rownames(boot_loadings), rownames(reference_loadings))
+      current <- suppressWarnings(as.numeric(boot_loadings[shared, construct]))
+      reference <- suppressWarnings(as.numeric(reference_loadings[shared, construct]))
+      usable <- is.finite(current) & is.finite(reference) & (abs(current) + abs(reference) > 0)
+      if (any(usable) && sum(current[usable] * reference[usable]) < 0) signs[[construct]] <- -1
+    }
+    for (construct in names(signs)[signs < 0]) {
+      boot_model$outer_loadings[, construct] <- -boot_model$outer_loadings[, construct]
+      if (!is.null(boot_model$outer_weights) && construct %in% colnames(boot_model$outer_weights)) boot_model$outer_weights[, construct] <- -boot_model$outer_weights[, construct]
+      if (!is.null(boot_model$construct_scores) && construct %in% colnames(boot_model$construct_scores)) boot_model$construct_scores[, construct] <- -boot_model$construct_scores[, construct]
+    }
+    path_rows <- intersect(rownames(boot_model$path_coef), names(signs))
+    path_cols <- intersect(colnames(boot_model$path_coef), names(signs))
+    if (length(path_rows) && length(path_cols)) {
+      boot_model$path_coef[path_rows, path_cols] <- boot_model$path_coef[path_rows, path_cols, drop = FALSE] * outer(signs[path_rows], signs[path_cols])
+    }
+    boot_model
+  }
+  reference_loadings <- seminr_model$outer_loadings
+  estimate_one <- function(index, d, measurement_model, structural_model, inner_weights, seed, apply_plsc, boot_vec_len, reference_loadings) {
     set.seed(seed + index)
-    tryCatch(suppressWarnings({
-      sampled <- d[sample.int(nrow(d), replace = TRUE), , drop = FALSE]
-      boot_model <- seminr::estimate_pls(
-        data = sampled,
-        measurement_model = measurement_model,
-        structural_model = structural_model,
-        inner_weights = inner_weights,
-        assess_syntax = FALSE
-      )
-      boot_model <- seminr::PLSc(boot_model)
-      c(
-        c(boot_model$path_coef),
-        c(boot_model$outer_loadings),
-        c(boot_model$outer_weights),
-        c(seminr:::HTMT(boot_model)),
-        c(seminr:::total_effects(boot_model$path_coef))
-      )
-    }), error = function(error) rep(NA_real_, boot_vec_len))
-  })
+    tryCatch({
+      setTimeLimit(cpu = Inf, elapsed = 60, transient = TRUE)
+      suppressWarnings({
+        sampled <- d[sample.int(nrow(d), replace = TRUE), , drop = FALSE]
+        boot_model <- seminr::estimate_pls(
+          data = sampled,
+          measurement_model = measurement_model,
+          structural_model = structural_model,
+          inner_weights = inner_weights,
+          maxIt = 300,
+          stopCriterion = 7,
+          assess_syntax = FALSE
+        )
+        if (isTRUE(apply_plsc)) boot_model <- seminr::PLSc(boot_model)
+        boot_model <- align_bootstrap_signs(boot_model, reference_loadings)
+        c(
+          c(boot_model$path_coef),
+          c(boot_model$outer_loadings),
+          c(boot_model$outer_weights),
+          c(seminr:::HTMT(boot_model)),
+          c(seminr:::total_effects(boot_model$path_coef))
+        )
+      })
+    }, error = function(error) {
+      failed <- rep(NA_real_, boot_vec_len)
+      attr(failed, "failure_reason") <- if (grepl("time limit|elapsed time", conditionMessage(error), ignore.case = TRUE)) "timeout" else "estimation"
+      failed
+    }, finally = {
+      setTimeLimit(cpu = Inf, elapsed = Inf, transient = FALSE)
+    })
+  }
+  cluster <- if (workers > 1L) parallel::makePSOCKcluster(workers) else NULL
+  if (!is.null(cluster)) {
+    on.exit(parallel::stopCluster(cluster), add = TRUE)
+    parallel::clusterExport(
+      cluster,
+      c("estimate_one", "align_bootstrap_signs", "d", "measurement_model", "structural_model", "inner_weights", "seed", "apply_plsc", "boot_vec_len", "reference_loadings"),
+      envir = environment()
+    )
+  }
+  structural_canvas_write_bootstrap_progress(progress_file, 0L, nboot, "resampling", TRUE)
+  starts <- seq.int(1L, nboot, by = batch_size)
+  for (start in starts) {
+    indices <- seq.int(start, min(nboot, start + batch_size - 1L))
+    values <- if (is.null(cluster)) {
+      lapply(indices, estimate_one, d, measurement_model, structural_model, inner_weights, seed, apply_plsc, boot_vec_len, reference_loadings)
+    } else {
+      parallel::parLapplyLB(cluster, indices, function(index) {
+        estimate_one(index, d, measurement_model, structural_model, inner_weights, seed, apply_plsc, boot_vec_len, reference_loadings)
+      })
+    }
+    boot_values[indices] <- values
+    structural_canvas_write_bootstrap_progress(progress_file, max(indices), nboot, "resampling", TRUE)
+  }
+  structural_canvas_write_bootstrap_progress(progress_file, nboot, nboot, "summarizing", TRUE)
+  failure_reasons <- vapply(boot_values, function(value) as.character(attr(value, "failure_reason") %||% ""), character(1))
   bootmatrix <- do.call(cbind, boot_values)
   valid <- !is.na(bootmatrix[1L, ])
   bootmatrix <- bootmatrix[, valid, drop = FALSE]
@@ -314,6 +397,8 @@ structural_canvas_run_plsc_bootstrap <- function(seminr_model, nboot = 5000L, se
   boot_summary <- list(
     nboot = valid_n,
     requested_nboot = nboot,
+    timeout_failures = sum(failure_reasons == "timeout"),
+    estimation_failures = sum(failure_reasons == "estimation"),
     bootstrapped_paths = seminr:::parse_boot_array(seminr_model$path_coef, boot_paths, alpha = .05),
     bootstrapped_weights = seminr:::parse_boot_array(seminr_model$outer_weights, boot_weights, alpha = .05),
     bootstrapped_loadings = seminr:::parse_boot_array(seminr_model$outer_loadings, boot_loadings, alpha = .05),
@@ -371,6 +456,56 @@ structural_canvas_pls_predict_mean_matrix <- function(summaries, field) {
   values <- simplify2array(matrices)
   if (length(matrices) == 1L) return(reference)
   apply(values, c(1L, 2L), mean, na.rm = TRUE)
+}
+
+structural_canvas_start_pls_bootstrap_job <- function(result, nboot, seed = default_seed()) {
+  stopifnot(requireNamespace("callr", quietly = TRUE))
+  job_dir <- tempfile("statedu-pls-bootstrap-")
+  dir.create(job_dir, recursive = TRUE, showWarnings = FALSE)
+  model_file <- file.path(job_dir, "model.rds")
+  result_file <- file.path(job_dir, "result.rds")
+  error_file <- file.path(job_dir, "error.txt")
+  progress_file <- file.path(job_dir, "progress.rds")
+  saveRDS(list(fit = result$fit, estimator = result$estimator), model_file)
+  structural_canvas_write_bootstrap_progress(progress_file, 0L, nboot, "starting", TRUE)
+  process <- callr::r_bg(
+    func = function(model_file, result_file, error_file, progress_file, nboot, seed, source_file) {
+      tryCatch({
+        `%||%` <- function(x, y) if (is.null(x)) y else x
+        default_seed <- function() 24680L
+        source(source_file, local = environment(), encoding = "UTF-8")
+        model <- readRDS(model_file)
+        use_plsc <- identical(toupper(as.character(model$estimator %||% "PLS")), "PLSC")
+        boot <- structural_canvas_run_plsc_bootstrap(model$fit, nboot, seed, progress_file, apply_plsc = use_plsc)
+        structural_canvas_write_bootstrap_progress(progress_file, nboot, nboot, "summarizing", TRUE)
+        value <- if (is.null(boot) || inherits(boot, "summary.boot_seminr_model")) boot else summary(boot)
+        saveRDS(value, result_file)
+        structural_canvas_write_bootstrap_progress(progress_file, nboot, nboot, "complete", TRUE)
+      }, error = function(error) {
+        writeLines(conditionMessage(error), error_file, useBytes = TRUE)
+        quit(status = 1L, save = "no")
+      })
+      invisible(TRUE)
+    },
+    args = list(
+      model_file = model_file, result_file = result_file, error_file = error_file, progress_file = progress_file,
+      nboot = as.integer(nboot), seed = as.integer(seed),
+      source_file = normalizePath("R/setup_custom_model_canvas_structural_pls_engine.R", winslash = "/", mustWork = TRUE)
+    ),
+    supervise = TRUE
+  )
+  list(
+    process = process, directory = job_dir, result_file = result_file, error_file = error_file,
+    progress_file = progress_file, started_at = Sys.time(), nboot = as.integer(nboot),
+    estimator = as.character(result$estimator %||% "PLS")
+  )
+}
+
+structural_canvas_cleanup_pls_bootstrap_job <- function(job) {
+  if (is.null(job)) return(invisible(FALSE))
+  directory <- as.character(job$directory %||% "")
+  if (nzchar(directory) && dir.exists(directory)) unlink(directory, recursive = TRUE, force = TRUE)
+  invisible(TRUE)
 }
 
 structural_canvas_run_pls_predict <- function(analysis_type, pls_predict_folds, pls_predict_reps, result, pls_predict_seed = default_seed()) {

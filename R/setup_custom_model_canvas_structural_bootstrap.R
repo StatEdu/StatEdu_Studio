@@ -243,3 +243,61 @@ structural_canvas_effect_bootstrap <- function(snapshot, data, analysis_type, es
   })
   do.call(rbind, rows)
 }
+
+structural_canvas_start_effect_bootstrap_job <- function(snapshot, data, analysis_type, estimator, missing, std_lv, ordered, nominal, residual_variance_fixes, reps = 0L, seed = default_seed()) {
+  stopifnot(requireNamespace("callr", quietly = TRUE))
+  job_dir <- tempfile("statedu-effect-bootstrap-")
+  dir.create(job_dir, recursive = TRUE, showWarnings = FALSE)
+  input_file <- file.path(job_dir, "input.rds")
+  result_file <- file.path(job_dir, "result.rds")
+  error_file <- file.path(job_dir, "error.txt")
+  saveRDS(
+    list(
+      snapshot = snapshot, data = data, analysis_type = analysis_type,
+      estimator = estimator, missing = missing, std_lv = std_lv,
+      ordered = ordered, nominal = nominal,
+      residual_variance_fixes = residual_variance_fixes,
+      reps = as.integer(reps), seed = as.integer(seed)
+    ),
+    input_file
+  )
+  process <- callr::r_bg(
+    func = function(input_file, result_file, error_file, project_dir) {
+      tryCatch({
+        setwd(project_dir)
+        source(file.path("R", "app_bootstrap.R"), encoding = "UTF-8")
+        load_app_packages()
+        source_app_modules()
+        args <- readRDS(input_file)
+        value <- structural_canvas_effect_bootstrap(
+          args$snapshot, args$data, args$analysis_type, args$estimator, args$missing,
+          args$std_lv, args$ordered, args$nominal, args$residual_variance_fixes,
+          args$reps, args$seed
+        )
+        saveRDS(value, result_file)
+      }, error = function(error) {
+        writeLines(conditionMessage(error), error_file, useBytes = TRUE)
+        quit(status = 1L, save = "no")
+      })
+      invisible(TRUE)
+    },
+    args = list(
+      input_file = input_file,
+      result_file = result_file,
+      error_file = error_file,
+      project_dir = normalizePath(".", winslash = "/", mustWork = TRUE)
+    ),
+    supervise = TRUE
+  )
+  list(
+    process = process, directory = job_dir, result_file = result_file,
+    error_file = error_file, started_at = Sys.time(), reps = as.integer(reps)
+  )
+}
+
+structural_canvas_cleanup_effect_bootstrap_job <- function(job) {
+  if (is.null(job)) return(invisible(FALSE))
+  directory <- as.character(job$directory %||% "")
+  if (nzchar(directory) && dir.exists(directory)) unlink(directory, recursive = TRUE, force = TRUE)
+  invisible(TRUE)
+}

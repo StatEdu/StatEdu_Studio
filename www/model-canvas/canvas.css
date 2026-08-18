@@ -716,21 +716,103 @@
 }
 
 .structural-result-tools {
-  display: grid;
-  grid-template-columns: 112px repeat(2, 40px);
-  grid-template-rows: repeat(2, 32px);
+  display: flex;
+  flex-flow: row wrap;
+  width: auto;
   gap: 4px;
-  align-items: stretch;
+  align-content: center;
+  align-items: center;
   flex: 0 0 auto;
 }
 
+.structural-equation-canvas-root [data-action="latentStats"] {
+  display: inline-flex;
+}
+
+.structural-latent-stats-popover {
+  display: none;
+  position: absolute;
+  top: 36px;
+  right: 0;
+  z-index: 210;
+  width: 142px;
+  align-items: stretch;
+  flex-direction: column;
+  gap: 7px;
+  min-height: 0;
+  padding: 8px;
+  border: 1px solid #cfd7e4;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
+  white-space: nowrap;
+}
+
+.structural-latent-stats-popover.is-visible {
+  display: flex;
+}
+
+.structural-latent-stats-title {
+  color: #475467;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.structural-latent-stats-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin: 0;
+  color: #1f2937;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.custom-model-node-latent .structural-latent-statistics {
+  position: absolute;
+  left: 100%;
+  top: 0;
+  z-index: 8;
+  display: block;
+  width: max-content;
+  max-width: 180px;
+  margin-left: 8px;
+  margin-top: -3px;
+  padding: 2px 4px;
+  transform-origin: left center;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #173b73;
+  font-size: 11px;
+  line-height: 1.25;
+  white-space: pre-line;
+  pointer-events: auto;
+  cursor: move;
+}
+
+.custom-model-node-latent .structural-latent-statistics.is-selected {
+  outline: 2px solid #3b6de3;
+  outline-offset: 1px;
+}
+
+.structural-latent-stats-option input {
+  margin: 0;
+}
+
 .structural-result-coefficient-control {
-  grid-row: 1 / span 2;
   display: grid;
   grid-template-rows: 16px 28px;
   align-content: center;
   gap: 2px;
+  width: 112px;
+  flex: 0 0 112px;
   min-width: 0;
+}
+
+.structural-result-tools > .custom-model-toolbar-button {
+  flex: 0 0 40px;
+  width: 40px;
+  min-width: 40px;
 }
 
 .structural-result-coefficient-label {
@@ -925,6 +1007,12 @@
   paint-order: stroke;
 }
 
+.custom-model-edge-label-bg {
+  fill: rgba(255, 255, 255, 0.88);
+  stroke: none;
+  pointer-events: none;
+}
+
 .custom-model-edge-label-text {
   fill: #111827;
   font-weight: 700;
@@ -1008,14 +1096,16 @@
   content: none;
 }
 .structural-higher-order-svg {
-  width: 34px;
-  height: 22px;
+  width: 40px;
+  height: 25px;
   display: block;
+  overflow: visible;
 }
 .structural-higher-order-svg ellipse,
 .structural-higher-order-svg line {
   fill: none;
   stroke: currentColor;
+  stroke-width: 2.25;
   vector-effect: non-scaling-stroke;
 }
 .structural-higher-order-svg text {
@@ -1058,6 +1148,7 @@
 .structural-equation-canvas-root [data-action="export"] .custom-model-toolbar-icon::before { content: "\21E9"; font-size: 20px; }
 .structural-equation-canvas-root [data-action="reset"] .custom-model-toolbar-icon::before { content: "\21BA"; font-size: 21px; }
 .structural-equation-canvas-root [data-action="resultView"] .custom-model-toolbar-icon::before { content: "β"; font-family: Georgia, serif; font-size: 20px; }
+.structural-equation-canvas-root [data-action="latentStats"] .custom-model-toolbar-icon::before { content: "R²"; font-size: 15px; font-weight: 800; }
 .structural-equation-canvas-root [data-action="resultEdit"] .custom-model-toolbar-icon::before { content: "\270E"; font-size: 19px; }
 .structural-equation-canvas-root [data-action="dashNonsignificant"] .custom-model-toolbar-icon::before { content: "\2504"; font-size: 22px; }
 .structural-equation-canvas-root [data-action="style"] .custom-model-toolbar-icon::before { content: "\25D0"; font-size: 20px; }
@@ -1140,6 +1231,7 @@
 .structural-secondary-toolbar-tools {
   display: flex;
   align-items: flex-start;
+  flex-wrap: wrap;
   gap: 8px;
   margin-left: auto;
   min-width: 0;
@@ -1374,6 +1466,11 @@
   padding-right: 8px;
 }
 
+.custom-model-edge-label-hit {
+  pointer-events: all;
+  cursor: move;
+}
+
 .structural-disturbance-toolbar {
   display: none;
   position: absolute;
@@ -1477,6 +1574,14 @@
   overflow-wrap: anywhere;
   line-height: 1.15;
   padding: 0 5px;
+}
+
+.custom-model-node-error .custom-model-node-label,
+.custom-model-node-disturbance .custom-model-node-label {
+  display: block;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  padding: 0 2px;
 }
 
 .custom-model-node-independent {
@@ -1659,6 +1764,7 @@
 }
 
 .structural-pls-measurement-main-table,
+.structural-pls-main-effects-table,
 .structural-pls-fit-guide-table,
 .structural-pls-fit-bootstrap-table,
 .structural-pls-validity-guide-table,
@@ -1669,6 +1775,8 @@
 
 .structural-pls-measurement-main-table th,
 .structural-pls-measurement-main-table td,
+.structural-pls-main-effects-table th,
+.structural-pls-main-effects-table td,
 .structural-pls-fit-guide-table th,
 .structural-pls-fit-guide-table td,
 .structural-pls-fit-bootstrap-table th,
@@ -1682,6 +1790,37 @@
   white-space: nowrap;
   word-break: keep-all;
   overflow-wrap: normal;
+}
+
+.structural-pls-main-effects-table th:first-child,
+.structural-pls-main-effects-table td:first-child {
+  min-width: 112px;
+}
+
+.structural-pls-main-effects-table .structural-pls-path-cell {
+  text-align: center;
+}
+
+.structural-pls-main-effects-table .structural-pls-path-layout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.structural-pls-measurement-main-table {
+  width: max-content !important;
+  max-width: none !important;
+}
+
+.structural-pls-measurement-main-table .structural-boot-bh-header,
+.structural-pls-measurement-main-table th:nth-child(9),
+.structural-pls-measurement-main-table td:nth-child(9) {
+  width: 88px !important;
+  min-width: 88px !important;
+  max-width: 88px !important;
+  text-align: right;
 }
 
 .structural-validity-table th:not(:first-child),
@@ -1882,3 +2021,204 @@
 .structural-effect-summary-block h5 {
   margin-top: 0;
 }
+
+/* Keep every structural toolbar control visible in one fixed two-row area.
+   The toolbar must not become a horizontal scroll container because that
+   also clips the analysis-options popover. */
+.structural-equation-canvas-root .custom-model-toolbar {
+  overflow: visible;
+}
+
+.structural-equation-canvas-root .custom-model-toolbar-panel[data-toolbar-panel="tools"].is-active {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 68px;
+  align-items: start;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow: visible;
+}
+
+.structural-equation-canvas-root .structural-primary-toolbar-tools {
+  grid-template-columns: repeat(15, 36px);
+  gap: 3px;
+}
+
+.structural-equation-canvas-root .structural-primary-toolbar-tools > .custom-model-toolbar-button {
+  width: 36px;
+  min-width: 36px;
+}
+
+.structural-equation-canvas-root .structural-primary-toolbar-tools .custom-model-toolbar-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.structural-equation-canvas-root .structural-secondary-toolbar-tools,
+.structural-equation-canvas-root .structural-result-tools {
+  flex-wrap: nowrap;
+  margin-left: 0;
+  white-space: nowrap;
+}
+
+.structural-equation-canvas-root .structural-secondary-toolbar-tools {
+  flex: 1 1 auto;
+  gap: 5px;
+}
+
+.structural-equation-canvas-root .structural-advanced-analysis-tools {
+  grid-template-columns: 58px;
+  gap: 3px;
+  padding-left: 5px;
+}
+
+.structural-equation-canvas-root .structural-advanced-analysis-tools .custom-model-toolbar-button {
+  width: 58px;
+  min-width: 58px;
+}
+
+.structural-equation-canvas-root .structural-latent-tools {
+  gap: 3px;
+  padding-left: 5px;
+}
+
+.structural-equation-canvas-root .structural-latent-tools-basic,
+.structural-equation-canvas-root .structural-latent-tools-pls {
+  grid-template-columns: repeat(4, 38px);
+}
+
+.structural-equation-canvas-root .structural-latent-tools .custom-model-toolbar-button {
+  width: 38px;
+  min-width: 38px;
+}
+
+.structural-equation-canvas-root .structural-latent-tools .custom-model-toolbar-icon,
+.structural-equation-canvas-root .structural-measurement-svg {
+  width: 33px;
+}
+
+.structural-equation-canvas-root .structural-result-tools {
+  gap: 3px;
+  position: relative;
+}
+
+.structural-equation-canvas-root .structural-result-coefficient-control {
+  width: 88px;
+  flex-basis: 88px;
+}
+
+.structural-equation-canvas-root .structural-result-coefficient-select {
+  width: 88px;
+  min-width: 0;
+  padding-left: 6px;
+}
+
+.structural-equation-canvas-root .structural-result-coefficient-control:nth-child(2) {
+  width: 116px;
+  flex-basis: 116px;
+}
+
+.structural-equation-canvas-root .structural-result-coefficient-control:nth-child(2) .structural-result-coefficient-select {
+  width: 116px;
+}
+
+.structural-equation-canvas-root .structural-latent-stats-popover {
+  gap: 5px;
+  padding: 8px;
+}
+
+.structural-equation-canvas-root .structural-latent-stats-title {
+  max-width: none;
+  line-height: 1.15;
+  white-space: normal;
+}
+
+.structural-equation-canvas-root .structural-latent-stats-option {
+  gap: 2px;
+  font-size: 10px;
+}
+
+.structural-equation-canvas-root .structural-result-tools > .custom-model-toolbar-button {
+  width: 34px;
+  min-width: 34px;
+  flex-basis: 34px;
+}
+
+.structural-equation-canvas-root .custom-model-run-options-popover.is-visible {
+  z-index: 200;
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+}
+
+@media (max-width: 1500px) {
+  .structural-equation-canvas-root .custom-model-toolbar-panel[data-toolbar-panel="tools"].is-active {
+    zoom: 0.75;
+    width: 133.333%;
+  }
+}
+
+/* Portrait Table 3: distribute all validity columns within the page. */
+.structural-validity-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.structural-validity-table th,
+.structural-validity-table td {
+  min-width: 0 !important;
+  padding: 5px 6px !important;
+  white-space: normal !important;
+}
+
+.structural-validity-table th:first-child,
+.structural-validity-table td:first-child { width: 17%; text-align: left !important; }
+.structural-validity-table th:nth-child(2),
+.structural-validity-table td:nth-child(2),
+.structural-validity-table th:nth-child(3),
+.structural-validity-table td:nth-child(3),
+.structural-validity-table th:nth-child(4),
+.structural-validity-table td:nth-child(4) { width: 14%; }
+.structural-validity-table th:nth-child(n+5),
+.structural-validity-table td:nth-child(n+5) { width: 13%; }
+
+/* Portrait Table 4: fit all measurement columns through VIF on one page. */
+.structural-pls-measurement-main-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+  font-size: 10.5px;
+}
+
+.structural-pls-measurement-main-table th,
+.structural-pls-measurement-main-table td {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  padding: 5px 4px !important;
+  white-space: normal !important;
+}
+
+.structural-pls-measurement-main-table th:nth-child(1),
+.structural-pls-measurement-main-table td:nth-child(1),
+.structural-pls-measurement-main-table th:nth-child(2),
+.structural-pls-measurement-main-table td:nth-child(2) { width: 10% !important; }
+.structural-pls-measurement-main-table th:nth-child(3),
+.structural-pls-measurement-main-table td:nth-child(3) { width: 11% !important; }
+.structural-pls-measurement-main-table th:nth-child(4),
+.structural-pls-measurement-main-table td:nth-child(4) { width: 9% !important; }
+.structural-pls-measurement-main-table th:nth-child(5),
+.structural-pls-measurement-main-table td:nth-child(5),
+.structural-pls-measurement-main-table th:nth-child(6),
+.structural-pls-measurement-main-table td:nth-child(6) { width: 9% !important; }
+.structural-pls-measurement-main-table th:nth-child(7),
+.structural-pls-measurement-main-table td:nth-child(7),
+.structural-pls-measurement-main-table th:nth-child(8),
+.structural-pls-measurement-main-table td:nth-child(8),
+.structural-pls-measurement-main-table th:nth-child(10),
+.structural-pls-measurement-main-table td:nth-child(10) { width: 8% !important; }
+.structural-pls-measurement-main-table th:nth-child(9),
+.structural-pls-measurement-main-table td:nth-child(9) { width: 10% !important; }

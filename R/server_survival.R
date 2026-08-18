@@ -14,7 +14,13 @@ register_survival_handlers <- function(
 ) {
   km_result <- reactiveVal(NULL)
   cox_result <- reactiveVal(NULL)
+  competing_result <- reactiveVal(NULL)
+  design_result <- reactiveVal(NULL)
+  active_contract_transfer <- reactiveVal(NULL)
+  competing_contract_transfer <- reactiveVal(NULL)
+  current_survival_contract <- reactiveVal(NULL)
   km_time <- reactiveVal(character(0))
+  km_entry <- reactiveVal(character(0))
   km_event <- reactiveVal(character(0))
   km_group <- reactiveVal(character(0))
   km_active_list <- reactiveVal("survival_km_available")
@@ -22,12 +28,116 @@ register_survival_handlers <- function(
   km_plot_types <- reactiveVal(c("survival", "event", "cumhaz", "log_survival"))
   km_plot_versions <- reactiveVal("color")
   cox_time <- reactiveVal(character(0))
+  cox_entry <- reactiveVal(character(0))
+  cox_start <- reactiveVal(character(0))
+  cox_stop <- reactiveVal(character(0))
+  cox_subject_id <- reactiveVal(character(0))
   cox_event <- reactiveVal(character(0))
   cox_covariates <- reactiveVal(character(0))
   cox_active_list <- reactiveVal("survival_cox_available")
 
+  survival_available_names <- function() {
+    data <- tryCatch(dataset_fn(), error = function(e) NULL)
+    variable_table <- tryCatch(variable_table_fn(), error = function(e) NULL)
+    survival_available_variable_names(selected_names_fn(), data, variable_table)
+  }
+
+  output$survival_contract_setup <- renderUI({
+    survival_contract_setup_panel(
+      survival_available_names(),
+      input$survival_design_shape %||% "single_record",
+      input$survival_design_events %||% "single",
+      statedu_current_language(app_language_fn)
+    )
+  })
+
+  survival_event_values <- reactive({
+    event_name <- as.character(input$survival_contract_event %||% "")[[1]]
+    data <- dataset_fn()
+    if (!nzchar(event_name) || !is.data.frame(data) || !event_name %in% names(data)) return(character(0))
+    unique(data[[event_name]])
+  })
+
+  output$survival_event_map_setup <- renderUI({
+    survival_event_map_panel(survival_event_values(), statedu_current_language(app_language_fn))
+  })
+
+  observeEvent(input$run_survival_design, {
+    observed_event_values <- unique(trimws(as.character(survival_event_values())))
+    observed_event_values <- observed_event_values[nzchar(observed_event_values) & !is.na(observed_event_values)]
+    explicit_event_map <- if (length(observed_event_values)) data.frame(
+      raw_value = observed_event_values,
+      role = vapply(seq_along(observed_event_values), function(index) as.character(input[[paste0("survival_event_role_", index)]] %||% "unknown")[[1]], character(1)),
+      label = vapply(seq_along(observed_event_values), function(index) as.character(input[[paste0("survival_event_label_", index)]] %||% observed_event_values[[index]])[[1]], character(1)),
+      stringsAsFactors = FALSE
+    ) else NULL
+    recommendation <- survival_recommend(list(
+      objective = input$survival_design_objective,
+      data_shape = input$survival_design_shape,
+      event_structure = input$survival_design_events,
+      competing_estimand = input$survival_design_estimand,
+      time_dependent = isTRUE(input$survival_design_time_dependent)
+    ))
+    settings <- survival_contract_settings(list(
+      objective = input$survival_design_objective, event_structure = input$survival_design_events, data_shape = input$survival_design_shape,
+      time_origin = input$survival_contract_origin, time_unit = input$survival_contract_unit,
+      custom_time_unit = input$survival_contract_custom_unit, time = input$survival_contract_time,
+      entry = input$survival_contract_entry, start = input$survival_contract_start,
+      stop = input$survival_contract_stop, subject_id = input$survival_contract_subject_id,
+      event = input$survival_contract_event, group = input$survival_contract_group,
+      covariates = input$survival_contract_covariates, event_map = explicit_event_map,
+      event_map_confirmed = isTRUE(input$survival_event_map_confirmed)
+    ))
+    audit <- survival_contract_preflight(dataset_fn(), settings)
+    recommendation$settings <- settings
+    recommendation$preflight <- audit
+    if (!isTRUE(audit$ok)) {
+      recommendation$status <- "blocked"
+      recommendation$primary <- "Complete the survival data contract"
+      recommendation$target_tab <- NULL
+      recommendation$rule_ids <- character(0)
+      recommendation$alternatives <- character(0)
+      recommendation$confirmations <- character(0)
+      recommendation$warnings <- character(0)
+      recommendation$blocked_by <- unique(audit$issues$code[audit$issues$severity %in% c("error", "block")])
+    }
+    design_result(recommendation)
+  }, ignoreInit = TRUE)
+
+  output$survival_design_recommendation <- renderUI({
+    survival_design_recommendation_panel(design_result(), statedu_current_language(app_language_fn))
+  })
+
+  observeEvent(input$open_recommended_survival_analysis, {
+    result <- design_result()
+    shiny::req(!is.null(result$target_tab), identical(result$status, "ready"))
+    transfer <- survival_contract_transfer(result$settings, result)
+    current_survival_contract(result$settings)
+    active_contract_transfer(transfer)
+    if (identical(transfer$target_tab, "analysis_survival_competing")) {
+      competing_contract_transfer(transfer)
+    }
+    if (identical(transfer$target_tab, "analysis_survival_km")) {
+      km_time(one_or_empty(transfer$time))
+      km_entry(one_or_empty(transfer$entry))
+      km_event(one_or_empty(transfer$event))
+      km_group(one_or_empty(transfer$group))
+    }
+    if (identical(transfer$target_tab, "analysis_survival_cox")) {
+      cox_time(one_or_empty(transfer$time))
+      cox_entry(one_or_empty(transfer$entry))
+      cox_start(one_or_empty(transfer$start))
+      cox_stop(one_or_empty(transfer$stop))
+      cox_subject_id(one_or_empty(transfer$subject_id))
+      cox_event(one_or_empty(transfer$event))
+      cox_covariates(normalize_selected(transfer$covariates))
+    }
+    updateNavbarPage(session, "main_menu", selected = result$target_tab)
+    session$onFlushed(function() active_contract_transfer(NULL), once = TRUE)
+  }, ignoreInit = TRUE)
+
   normalize_selected <- function(values) {
-    intersect(as.character(values %||% character(0)), survival_selected_names(selected_names_fn()))
+    intersect(as.character(values %||% character(0)), survival_available_names())
   }
 
   one_or_empty <- function(values) {
@@ -98,22 +208,33 @@ register_survival_handlers <- function(
     km_plot_versions(value)
   }, ignoreInit = TRUE, ignoreNULL = FALSE)
 
+  observeEvent(input$survival_km_entry, { km_entry(one_or_empty(input$survival_km_entry)) }, ignoreInit = TRUE)
+  observeEvent(input$survival_cox_entry, { cox_entry(one_or_empty(input$survival_cox_entry)) }, ignoreInit = TRUE)
+  observeEvent(input$survival_cox_start, { cox_start(one_or_empty(input$survival_cox_start)) }, ignoreInit = TRUE)
+  observeEvent(input$survival_cox_stop, { cox_stop(one_or_empty(input$survival_cox_stop)) }, ignoreInit = TRUE)
+  observeEvent(input$survival_cox_subject_id, { cox_subject_id(one_or_empty(input$survival_cox_subject_id)) }, ignoreInit = TRUE)
+
   output$survival_km_setup <- renderUI({
     language <- statedu_current_language(app_language_fn)
-    selected <- survival_selected_names(selected_names_fn())
+    selected <- survival_available_names()
     if (length(selected) == 0) {
       return(setup_empty_message(survival_ui_text("Complete Step 2 in the Data tab before setting up survival analysis.", language), language = language))
     }
     km_time(normalize_selected(km_time()))
     km_event(normalize_selected(km_event()))
     km_group(normalize_selected(km_group()))
+    transfer <- active_contract_transfer()
+    transferred_here <- !is.null(transfer) && identical(transfer$target_tab, "analysis_survival_km")
     survival_km_setup_panel(
       selected,
       time = km_time(),
+      entry = if (length(km_entry())) km_entry() else isolate(input$survival_km_entry %||% ""),
       event = km_event(),
       group = km_group(),
-      event_value = as.character(input$survival_km_event_value %||% "1"),
+      event_value = if (transferred_here) transfer$event_value else as.character(input$survival_km_event_value %||% "1"),
       rate_times = as.character(input$survival_km_rate_times %||% ""),
+      rmst_tau = as.character(input$survival_km_rmst_tau %||% ""),
+      data_shape = if (transferred_here) transfer$data_shape %||% "single_record" else isolate(input$survival_km_data_shape %||% "single_record"),
       analysis_method = as.character(input$survival_km_analysis_method %||% "km"),
       test_method = as.character(input$survival_km_test_method %||% "logrank"),
       output_tables = km_output_tables(),
@@ -134,19 +255,28 @@ register_survival_handlers <- function(
 
   output$survival_cox_setup <- renderUI({
     language <- statedu_current_language(app_language_fn)
-    selected <- survival_selected_names(selected_names_fn())
+    selected <- survival_available_names()
     if (length(selected) == 0) {
       return(setup_empty_message(survival_ui_text("Complete Step 2 in the Data tab before setting up survival analysis.", language), language = language))
     }
     cox_time(normalize_selected(cox_time()))
     cox_event(normalize_selected(cox_event()))
     cox_covariates(normalize_selected(cox_covariates()))
+    transfer <- active_contract_transfer()
+    transferred_here <- !is.null(transfer) && identical(transfer$target_tab, "analysis_survival_cox")
     survival_cox_setup_panel(
       selected,
       time = cox_time(),
+      entry = if (length(cox_entry())) cox_entry() else isolate(input$survival_cox_entry %||% ""),
+      start = if (length(cox_start())) cox_start() else isolate(input$survival_cox_start %||% ""),
+      stop = if (length(cox_stop())) cox_stop() else isolate(input$survival_cox_stop %||% ""),
+      subject_id = if (length(cox_subject_id())) cox_subject_id() else isolate(input$survival_cox_subject_id %||% ""),
       event = cox_event(),
       covariates = cox_covariates(),
-      event_value = as.character(input$survival_cox_event_value %||% "1"),
+      event_value = if (transferred_here) transfer$event_value else as.character(input$survival_cox_event_value %||% "1"),
+      adjusted_group = as.character(input$survival_cox_adjusted_group %||% ""),
+      adjusted_bootstrap_reps = as.integer(input$survival_cox_adjusted_bootstrap_reps %||% 100L),
+      data_shape = if (transferred_here) transfer$data_shape %||% "single_record" else isolate(input$survival_cox_data_shape %||% "single_record"),
       variable_table = variable_table_fn(),
       labels = labels_fn(),
       selected_available = isolate(input$survival_cox_available),
@@ -155,6 +285,25 @@ register_survival_handlers <- function(
       selected_covariates = isolate(input$survival_cox_covariates),
       language = language
     )
+  })
+
+  output$survival_competing_setup <- renderUI({
+    language <- statedu_current_language(app_language_fn)
+    selected <- survival_available_names()
+    if (length(selected) == 0) return(setup_empty_message(survival_ui_text("Complete Step 2 in the Data tab before setting up survival analysis.", language), language = language))
+    transfer <- competing_contract_transfer() %||% active_contract_transfer()
+    transferred_here <- !is.null(transfer) && identical(transfer$target_tab, "analysis_survival_competing")
+    survival_competing_setup_panel(selected, values = list(
+      time = if (transferred_here) transfer$time else isolate(input$survival_competing_time %||% ""),
+      event = if (transferred_here) transfer$event else isolate(input$survival_competing_event %||% ""),
+      group = if (transferred_here) transfer$group else isolate(input$survival_competing_group %||% ""),
+      censored_value = if (transferred_here) transfer$censored_value else isolate(input$survival_competing_censored_value %||% "0"),
+      interest_value = if (transferred_here) transfer$event_value else isolate(input$survival_competing_interest_value %||% "1"),
+      competing_values = if (transferred_here) transfer$competing_values else isolate(input$survival_competing_event_values %||% "2"),
+      rate_times = isolate(input$survival_competing_rate_times %||% ""),
+      regression = if (transferred_here) transfer$regression else isolate(input$survival_competing_regression %||% "none"),
+      covariates = if (transferred_here) transfer$covariates else isolate(input$survival_competing_covariates %||% character(0))
+    ), language = language)
   })
 
   output$survival_km_results <- renderUI({
@@ -175,8 +324,30 @@ register_survival_handlers <- function(
     survival_cox_results_panel(result, language = statedu_current_language(app_language_fn))
   })
 
+  output$survival_competing_results <- renderUI({
+    result <- competing_result()
+    if (is.null(result)) return(NULL)
+    survival_competing_results_panel(result, language = statedu_current_language(app_language_fn))
+  })
+
+  output$survival_cox_adjusted_plot <- renderPlot({
+    result <- cox_result()
+    shiny::req(!is.null(result), is.list(result$adjusted_survival))
+    plot <- survival_adjusted_survival_ggplot(result)
+    shiny::req(!is.null(plot))
+    print(plot)
+  }, res = 160)
+
+  output$survival_competing_plot <- renderPlot({
+    result <- competing_result()
+    shiny::req(!is.null(result))
+    plot <- survival_competing_ggplot(result)
+    shiny::req(!is.null(plot))
+    survival_draw_plot_with_risk_table(plot, survival_competing_risk_table_plot(result))
+  }, res = 160, height = 650)
+
   plot_survival_km_result <- function(result, plot_type = "survival", plot_version = "color") {
-    print(survival_km_ggplot(result, plot_type, plot_version))
+    survival_draw_plot_with_risk_table(survival_km_ggplot(result, plot_type, plot_version), survival_km_risk_table_plot(result, plot_version))
   }
 
   observe({
@@ -224,8 +395,13 @@ register_survival_handlers <- function(
     analysis_reset_button("reset_survival_cox", enabled = !is.null(cox_result()))
   })
 
+  output$survival_competing_reset_control <- renderUI({
+    analysis_reset_button("reset_survival_competing", enabled = !is.null(competing_result()))
+  })
+
   observeEvent(input$reset_survival_km, {
     km_time(character(0))
+    km_entry(character(0))
     km_event(character(0))
     km_group(character(0))
     km_result(NULL)
@@ -235,10 +411,19 @@ register_survival_handlers <- function(
 
   observeEvent(input$reset_survival_cox, {
     cox_time(character(0))
+    cox_entry(character(0))
+    cox_start(character(0))
+    cox_stop(character(0))
+    cox_subject_id(character(0))
     cox_event(character(0))
     cox_covariates(character(0))
     cox_result(NULL)
     clear_transfer_selection(c("survival_cox_available", "survival_cox_time", "survival_cox_event", "survival_cox_covariates"))
+    mark_settings_dirty()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$reset_survival_competing, {
+    competing_result(NULL)
     mark_settings_dirty()
   }, ignoreInit = TRUE)
 
@@ -285,8 +470,11 @@ register_survival_handlers <- function(
   }
 
   move_cox_single <- function(target, target_id) {
-    if (identical(cox_active_list(), target_id) && length(input[[target_id]] %||% character(0)) > 0) {
-      if (remove_from_target(target, input[[target_id]])) {
+    target_selection <- input[[target_id]] %||% character(0)
+    available_selection <- input$survival_cox_available %||% character(0)
+    if (length(target_selection) > 0 && (identical(cox_active_list(), target_id) || length(available_selection) == 0)) {
+      if (remove_from_target(target, target_selection)) {
+        cox_result(NULL)
         cox_active_list("survival_cox_available")
         clear_transfer_selection(target_id)
         mark_settings_dirty()
@@ -330,8 +518,10 @@ register_survival_handlers <- function(
   observeEvent(input$survival_cox_event_move, { move_cox_single(cox_event, "survival_cox_event") }, ignoreInit = TRUE)
 
   observeEvent(input$survival_cox_covariates_move, {
-    if (identical(cox_active_list(), "survival_cox_covariates") && length(input$survival_cox_covariates %||% character(0)) > 0) {
-      if (remove_from_target(cox_covariates, input$survival_cox_covariates)) {
+    target_selection <- input$survival_cox_covariates %||% character(0)
+    available_selection <- input$survival_cox_available %||% character(0)
+    if (length(target_selection) > 0 && (identical(cox_active_list(), "survival_cox_covariates") || length(available_selection) == 0)) {
+      if (remove_from_target(cox_covariates, target_selection)) {
         cox_result(NULL)
         cox_active_list("survival_cox_available")
         clear_transfer_selection("survival_cox_covariates")
@@ -348,6 +538,35 @@ register_survival_handlers <- function(
       clear_transfer_selection("survival_cox_available")
       mark_settings_dirty()
     }
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$analysis_transfer_drop, {
+    drop <- input$analysis_transfer_drop
+    ids <- c("survival_cox_available", "survival_cox_time", "survival_cox_event", "survival_cox_covariates")
+    source <- as.character(drop$source %||% "")
+    target <- as.character(drop$target %||% "")
+    values <- normalize_selected(unique(as.character(drop$values %||% character(0))))
+    if (!source %in% ids || !target %in% ids || identical(source, target) || length(values) == 0) return()
+
+    changed <- FALSE
+    if (identical(target, "survival_cox_available")) {
+      changed <- cox_remove_all(values)
+    } else if (identical(target, "survival_cox_time")) {
+      cox_remove_all(values[[1]])
+      changed <- set_single_target(cox_time, values[[1]])
+    } else if (identical(target, "survival_cox_event")) {
+      cox_remove_all(values[[1]])
+      changed <- set_single_target(cox_event, values[[1]])
+    } else if (identical(target, "survival_cox_covariates")) {
+      cox_remove_all(values)
+      changed <- append_multi_target(cox_covariates, values)
+    }
+    if (!isTRUE(changed)) return()
+
+    cox_result(NULL)
+    cox_active_list(target)
+    clear_transfer_selection(ids)
+    mark_settings_dirty()
   }, ignoreInit = TRUE)
 
   observeEvent(input$survival_km_time_doubleclick, {
@@ -390,6 +609,7 @@ register_survival_handlers <- function(
   observeEvent(input$run_survival_km, {
     tryCatch(
       {
+        contract <- current_survival_contract() %||% list()
         result <- prepare_km_analysis_result(
           data = dataset_fn(),
           time = km_time(),
@@ -403,7 +623,12 @@ register_survival_handlers <- function(
           plot_types = km_plot_types(),
           plot_versions = km_plot_versions(),
           show_ci = input$survival_km_show_ci,
-          show_censor = input$survival_km_show_censor
+          show_censor = input$survival_km_show_censor,
+          rmst_tau = input$survival_km_rmst_tau,
+          entry = if (identical(as.character(input$survival_km_data_shape %||% "single_record")[[1]], "entry_exit")) input$survival_km_entry else "",
+          time_origin = contract$time_origin %||% "",
+          time_unit = contract$time_unit %||% "",
+          event_map = contract$event_map %||% NULL
         )
         km_result(result)
         showNotification("Kaplan-Meier analysis finished.", type = "message")
@@ -418,13 +643,25 @@ register_survival_handlers <- function(
   observeEvent(input$run_survival_cox, {
     tryCatch(
       {
+        contract <- current_survival_contract() %||% list()
+        cox_shape <- as.character(input$survival_cox_data_shape %||% "single_record")[[1]]
         result <- prepare_cox_analysis_result(
           data = dataset_fn(),
           time = cox_time(),
           event = cox_event(),
           covariates = cox_covariates(),
           event_value = input$survival_cox_event_value,
-          variable_info = variable_table_fn()
+          variable_info = variable_table_fn(),
+          reference_values = regression_reference_values_static(category_table_fn()),
+          adjusted_group = input$survival_cox_adjusted_group,
+          adjusted_bootstrap_reps = input$survival_cox_adjusted_bootstrap_reps,
+          entry = if (identical(cox_shape, "entry_exit")) input$survival_cox_entry else "",
+          start = if (identical(cox_shape, "start_stop")) input$survival_cox_start else "",
+          stop = if (identical(cox_shape, "start_stop")) input$survival_cox_stop else "",
+          subject_id = if (identical(cox_shape, "start_stop")) input$survival_cox_subject_id else "",
+          time_origin = contract$time_origin %||% "",
+          time_unit = contract$time_unit %||% "",
+          event_map = contract$event_map %||% NULL
         )
         cox_result(result)
         showNotification("Cox regression finished.", type = "message")
@@ -436,18 +673,86 @@ register_survival_handlers <- function(
     )
   }, ignoreInit = TRUE)
 
+  observeEvent(input$run_survival_competing, {
+    tryCatch(
+      {
+        contract <- current_survival_contract() %||% list()
+        result <- prepare_competing_risk_result(
+          data = dataset_fn(),
+          time = input$survival_competing_time,
+          event = input$survival_competing_event,
+          event_of_interest = input$survival_competing_interest_value,
+          censored_value = input$survival_competing_censored_value,
+          competing_values = input$survival_competing_event_values,
+          group = input$survival_competing_group,
+          rate_times = input$survival_competing_rate_times,
+          covariates = input$survival_competing_covariates,
+          regression = input$survival_competing_regression,
+          variable_info = variable_table_fn(),
+          time_origin = contract$time_origin %||% "",
+          time_unit = contract$time_unit %||% "",
+          event_map = contract$event_map %||% NULL
+        )
+        competing_result(result)
+        showNotification("Competing-risks analysis finished.", type = "message")
+      },
+      error = function(e) {
+        competing_result(NULL)
+        showNotification(paste("Competing-risks analysis failed:", conditionMessage(e)), type = "error", duration = 8)
+      }
+    )
+  }, ignoreInit = TRUE)
+
   output$survival_km_save_control <- renderUI({
     result <- km_result()
     if (is.null(result)) {
       return(NULL)
     }
-    analysis_save_buttons(
-      figure_button_id = "save_survival_km_figures_dialog",
-      has_figures = TRUE,
-      included_features = c("figure")
+    tagList(
+      analysis_save_buttons(figure_button_id = "save_survival_km_figures_dialog", has_figures = TRUE, included_features = c("figure")),
+      actionButton("save_survival_km_audit_dialog", "Save audit", class = "btn btn-default")
     )
   })
-  output$survival_cox_save_control <- renderUI(NULL)
+  output$survival_cox_save_control <- renderUI({
+    if (is.null(cox_result())) return(NULL)
+    actionButton("save_survival_cox_audit_dialog", "Save audit", class = "btn btn-default")
+  })
+  output$survival_competing_save_control <- renderUI({
+    if (is.null(competing_result())) return(NULL)
+    tagList(
+      analysis_save_buttons(figure_button_id = "save_survival_competing_figures_dialog", has_figures = TRUE, included_features = "figure"),
+      actionButton("save_survival_competing_audit_dialog", "Save audit", class = "btn btn-default")
+    )
+  })
+
+  save_survival_audit <- function(result) {
+    shiny::req(!is.null(result))
+    directory <- choose_figure_save_dir()
+    if (length(directory) == 0 || !nzchar(directory[[1]])) return(invisible(NULL))
+    files <- save_survival_reporting_files(result, directory, statedu_current_language(app_language_fn))
+    showNotification(sprintf("Saved %d survival reporting file(s): %s", length(files), directory), type = "message")
+  }
+
+  observeEvent(input$save_survival_km_audit_dialog, {
+    tryCatch(save_survival_audit(km_result()), error = function(e) showNotification(conditionMessage(e), type = "error", duration = 8))
+  }, ignoreInit = TRUE)
+  observeEvent(input$save_survival_cox_audit_dialog, {
+    tryCatch(save_survival_audit(cox_result()), error = function(e) showNotification(conditionMessage(e), type = "error", duration = 8))
+  }, ignoreInit = TRUE)
+  observeEvent(input$save_survival_competing_audit_dialog, {
+    tryCatch(save_survival_audit(competing_result()), error = function(e) showNotification(conditionMessage(e), type = "error", duration = 8))
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$save_survival_competing_figures_dialog, {
+    result <- competing_result()
+    shiny::req(!is.null(result))
+    directory <- choose_figure_save_dir()
+    if (length(directory) == 0 || !nzchar(directory[[1]])) return(invisible(NULL))
+    tryCatch({
+      file <- save_survival_competing_figure_files(result, directory)
+      showNotification(sprintf("Saved competing-risk figure: %s", file), type = "message")
+    }, error = function(e) showNotification(conditionMessage(e), type = "error", duration = 8))
+  }, ignoreInit = TRUE)
 
   observeEvent(input$save_survival_km_figures_dialog, {
     result <- km_result()

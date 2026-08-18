@@ -281,7 +281,7 @@
     };
   }
 
-  function visibleArrowEndpoints(edge, endpoints) {
+  function visibleArrowEndpoints(instance, edge, endpoints) {
     if (!edge || !endpoints) return endpoints;
     if (edge.kind === "covariance") {
       return {
@@ -337,7 +337,7 @@
     var sides = edgeSide(instance, edge);
     if (!from || !to || !sides) return null;
     if (edge.directAnchors) {
-      return visibleArrowEndpoints(edge, {
+      return visibleArrowEndpoints(instance, edge, {
         from: radialNodeAnchor(instance, from, to),
         to: radialNodeAnchor(instance, to, from)
       });
@@ -346,7 +346,7 @@
       from: nodeAnchor(instance, from, sides.fromSide, anchorSlot(instance, edge, "from", sides.fromSide)),
       to: nodeAnchor(instance, to, sides.toSide, anchorSlot(instance, edge, "to", sides.toSide))
     };
-    return visibleArrowEndpoints(edge, endpoints);
+    return visibleArrowEndpoints(instance, edge, endpoints);
   }
 
   function pointOnEdge(start, end, percent) {
@@ -447,6 +447,20 @@
     return a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
   }
 
+  function nodeObstacleBoxes(instance) {
+    return (instance.state.nodes || []).map(function(node) {
+      var padding = 6;
+      var left = Number(node.x || 0) - padding;
+      var top = Number(node.y || 0) - padding;
+      return {
+        left: left,
+        right: left + Number(node.width || instance.state.style.boxWidth || 0) + padding * 2,
+        top: top,
+        bottom: top + Number(node.height || instance.state.style.boxHeight || 0) + padding * 2
+      };
+    });
+  }
+
   function autoLabelPosition(label, x, y, fontSize, placedLabels) {
     var candidates = [
       {x: 0, y: 0},
@@ -482,35 +496,59 @@
   }
 
   function measurementGroupUsesSharedStart(instance, latent, group) {
-    if (!latent || !group || group.length < 2) return false;
-    var latentCenter = window.StatEduModelCanvas.layout.nodeCenter(latent, instance.state.style);
-    return group.every(function(item) {
-      var indicatorCenter = window.StatEduModelCanvas.layout.nodeCenter(item.indicator, instance.state.style);
-      var dx = Math.abs(indicatorCenter.x - latentCenter.x);
-      var dy = Math.abs(indicatorCenter.y - latentCenter.y);
-      return dx >= dy;
-    });
+    // Loading/path labels are independently movable. A shared origin caused
+    // one dragged label to move every label in the same measurement block.
+    return false;
   }
 
   function addEdgeLabelElement(instance, svg, owner, type, id, point, placedLabels) {
     var label = displayLabel(owner);
     if (!label) return;
-    var x = Number(point.x || 0) + Number(owner.labelOffsetX || 0);
-    var y = Number(point.y || 0) + Number(owner.labelOffsetY || -10);
+    var hasOffsetX = Object.prototype.hasOwnProperty.call(owner, "labelOffsetX");
+    var hasOffsetY = Object.prototype.hasOwnProperty.call(owner, "labelOffsetY");
+    var offsetX = hasOffsetX ? Number(owner.labelOffsetX) : 0;
+    var offsetY = hasOffsetY ? Number(owner.labelOffsetY) : -10;
+    var x = Number(point.x || 0) + offsetX;
+    var y = Number(point.y || 0) + offsetY;
+    var autoShiftX = 0;
+    var autoShiftY = 0;
     var fontSize = Number(owner.labelFontSize || instance.state.style.labelFontSize || instance.state.style.fontSize || 12);
-    if (Number(owner.labelOffsetX || 0) === 0 && Number(owner.labelOffsetY || -10) === -10) {
+    // Coefficient labels belong to their individual paths. Keep an untouched
+    // edge label at the path midpoint so moving either endpoint moves the
+    // label with that path and never reflows labels on neighboring paths.
+    if (type !== "edge" && !owner.labelManualPosition && offsetX === 0 && offsetY === -10) {
       var positioned = autoLabelPosition(label, x, y, fontSize, placedLabels);
+      autoShiftX = positioned.x - x;
+      autoShiftY = positioned.y - y;
       x = positioned.x;
       y = positioned.y;
       if (placedLabels) placedLabels.push(positioned.box);
-    } else if (placedLabels) {
-      placedLabels.push(labelBox(label, x, y, fontSize));
     }
     var group = document.createElementNS(SVG_NS, "g");
     group.setAttribute("class", "custom-model-edge-label");
     group.setAttribute("data-label-type", type);
     group.setAttribute("data-label-id", id);
+    group.setAttribute("data-label-auto-shift-x", autoShiftX);
+    group.setAttribute("data-label-auto-shift-y", autoShiftY);
     group.setAttribute("transform", "translate(" + x + " " + y + ")");
+
+    var hitWidth = Math.max(28, String(label).length * fontSize * 0.58 + 10);
+    var hit = document.createElementNS(SVG_NS, "rect");
+    hit.setAttribute("class", "custom-model-edge-label-hit");
+    hit.setAttribute("x", owner && owner.labelTextAnchor === "start" ? -3 : -hitWidth / 2);
+    hit.setAttribute("y", -(fontSize + 8) / 2);
+    hit.setAttribute("width", hitWidth);
+    hit.setAttribute("height", fontSize + 8);
+    hit.setAttribute("fill", "transparent");
+
+    var background = document.createElementNS(SVG_NS, "rect");
+    background.setAttribute("class", "custom-model-edge-label-bg");
+    background.setAttribute("x", owner && owner.labelTextAnchor === "start" ? -3 : -hitWidth / 2);
+    background.setAttribute("y", -(fontSize + 7) / 2);
+    background.setAttribute("width", hitWidth);
+    background.setAttribute("height", fontSize + 7);
+    background.setAttribute("rx", "2");
+    background.setAttribute("ry", "2");
 
     var halo = document.createElementNS(SVG_NS, "text");
     halo.setAttribute("class", "custom-model-edge-label-halo");
@@ -527,6 +565,8 @@
     text.setAttribute("font-size", fontSize);
     text.textContent = label;
 
+    group.appendChild(hit);
+    group.appendChild(background);
     group.appendChild(halo);
     group.appendChild(text);
     svg.appendChild(group);
@@ -743,11 +783,13 @@
   function renderEdges(instance) {
     var svg = instance.edgeLayer;
     svg.innerHTML = "";
-    ensureDefs(svg, instance.state.style);
+    var structuralCanvas = ["cfa", "cbsem", "sem", "plssem"].indexOf(instance.analysisType) >= 0;
+    var configuredArrowHead = instance.state.style.arrowHead || "triangle";
+    var arrowHead = structuralCanvas && (configuredArrowHead === "none" || configuredArrowHead === "line") ? "triangle" : configuredArrowHead;
+    ensureDefs(svg, Object.assign({}, instance.state.style, {arrowHead: arrowHead}));
     var edgeColor = instance.state.style.edgeStrokeColor || "#000000";
     var edgeWidth = Number(instance.state.style.edgeStrokeWidth || 1.8);
-    var arrowHead = instance.state.style.arrowHead || "triangle";
-    var placedLabels = [];
+    var placedLabels = nodeObstacleBoxes(instance);
     var measurementLabelStarts = {};
     var measurementGroups = {};
 
@@ -781,10 +823,19 @@
       group.forEach(function(item) { measurementLabelStarts[item.edge.id] = sharedStart; });
     });
 
+    function edgeTouchesErrorNode(item) {
+      if (!item) return false;
+      var fromNode = window.StatEduModelCanvas.nodes.nodeById(instance, item.from);
+      var toNode = window.StatEduModelCanvas.nodes.nodeById(instance, item.to);
+      return [fromNode && fromNode.role, toNode && toNode.role].some(function(role) {
+        return role === "error" || role === "disturbance";
+      });
+    }
+
     function applyEdgeStyle(element, selected, widthOffset, item) {
       element.style.stroke = selected ? "#2563eb" : edgeColor;
       element.style.strokeWidth = edgeWidth + Number(widthOffset || 0);
-      if (instance.state.dashNonsignificant !== false && item && item.dashEligible === true && item.significant === false) {
+      if (instance.state.dashNonsignificant !== false && item && item.dashEligible === true && item.significant === false && !edgeTouchesErrorNode(item)) {
         element.setAttribute("stroke-dasharray", "7 5");
       } else {
         element.removeAttribute("stroke-dasharray");
@@ -859,6 +910,13 @@
       var preview = instance.state.dragPreview;
       svg.appendChild(lineElement("custom-model-drag-preview", preview.x1, preview.y1, preview.x2, preview.y2));
     }
+
+    // Labels must be the topmost SVG objects. Otherwise a later path's wide,
+    // transparent hit line can intercept pointer events intended for an
+    // earlier coefficient label (most visibly on exogenous paths).
+    Array.prototype.forEach.call(svg.querySelectorAll(".custom-model-edge-label"), function(label) {
+      svg.appendChild(label);
+    });
   }
 
   function createEdge(instance, fromId, toId) {
@@ -902,6 +960,7 @@
       return edge.kind === "covariance" && ((edge.from === fromId && edge.to === toId) || (edge.from === toId && edge.to === fromId));
     });
     if (exists) return false;
+    var latentCovariance = fromNode && toNode && fromNode.role === "latent" && toNode.role === "latent";
     instance.state.edges.push({
       id: "covariance_" + fromId + "_" + toId + "_" + Date.now(),
       from: fromId,
@@ -909,6 +968,11 @@
       kind: "covariance",
       label: "",
       shape: "curveUp",
+      curveDirection: latentCovariance ? "left" : null,
+      fromSide: latentCovariance ? "left" : null,
+      toSide: latentCovariance ? "left" : null,
+      fixedCenter: latentCovariance,
+      directAnchors: false,
       curveOffset: (function() {
         if (!fromNode || !toNode || fromNode.role !== "latent" || toNode.role !== "latent") return null;
         var dx = Number(toNode.x || 0) - Number(fromNode.x || 0);
@@ -1070,13 +1134,21 @@
     selectLabelOwner(instance, type, id);
     window.StatEduModelCanvas.state.pushHistory(instance);
     var start = window.StatEduModelCanvas.canvas.canvasPoint(instance, event);
-    var startX = Number(owner.labelOffsetX || 0);
-    var startY = Number(owner.labelOffsetY || -10);
+    var startX = Object.prototype.hasOwnProperty.call(owner, "labelOffsetX") ? Number(owner.labelOffsetX) : 0;
+    var startY = Object.prototype.hasOwnProperty.call(owner, "labelOffsetY") ? Number(owner.labelOffsetY) : -10;
+    var renderedLabel = Array.prototype.find.call(instance.edgeLayer.querySelectorAll(".custom-model-edge-label"), function(element) {
+      return element.getAttribute("data-label-type") === type && element.getAttribute("data-label-id") === id;
+    });
+    if (renderedLabel) {
+      startX += Number(renderedLabel.getAttribute("data-label-auto-shift-x") || 0);
+      startY += Number(renderedLabel.getAttribute("data-label-auto-shift-y") || 0);
+    }
 
     function move(moveEvent) {
       var point = window.StatEduModelCanvas.canvas.canvasPoint(instance, moveEvent);
       owner.labelOffsetX = startX + point.x - start.x;
       owner.labelOffsetY = startY + point.y - start.y;
+      owner.labelManualPosition = true;
       renderEdges(instance);
     }
 

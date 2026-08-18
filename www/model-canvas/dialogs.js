@@ -273,11 +273,20 @@
     }];
   }
 
+  function parseSnapshotText(raw) {
+    var normalized = String(raw || "").replace(/^\uFEFF/, "").trim();
+    if (!normalized) throw new Error("Empty model file");
+    var snap = JSON.parse(normalized);
+    if (snap && snap.snapshot && typeof snap.snapshot === "object") snap = snap.snapshot;
+    if (snap && snap.state && typeof snap.state === "object") snap = snap.state;
+    if (!snap || typeof snap !== "object" || !Array.isArray(snap.nodes) || !Array.isArray(snap.edges)) throw new Error("Invalid model structure");
+    return snap;
+  }
+
   function applySnapshotText(instance, raw) {
     if (!raw) return;
     try {
-      var snap = JSON.parse(raw);
-      if (!snap || typeof snap !== "object" || !Array.isArray(snap.nodes) || !Array.isArray(snap.edges)) throw new Error("Invalid model structure");
+      var snap = parseSnapshotText(raw);
       window.StatEduModelCanvas.state.pushHistory(instance);
       window.StatEduModelCanvas.state.restore(instance.state, snap);
       window.StatEduModelCanvas.canvas.render(instance);
@@ -352,40 +361,58 @@
       .replace(/"/g, "&quot;");
   }
 
-  function exportSvg(instance) {
-    var style = instance.state.style;
-    var svg = instance.edgeLayer.cloneNode(true);
-    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-    svg.setAttribute("width", instance.state.canvas.widthPx);
-    svg.setAttribute("height", instance.state.canvas.heightPx);
-    svg.setAttribute("viewBox", "0 0 " + instance.state.canvas.widthPx + " " + instance.state.canvas.heightPx);
-    svg.querySelectorAll(".custom-model-edge-hit, .custom-model-moderation-hit, .custom-model-edge-control").forEach(function(element) {
+  function inlineComputedStyles(source, clone) {
+    if (!source || !clone || source.nodeType !== 1 || clone.nodeType !== 1) return;
+    var computed = window.getComputedStyle(source);
+    var css = [];
+    for (var index = 0; index < computed.length; index += 1) {
+      var name = computed[index];
+      css.push(name + ":" + computed.getPropertyValue(name) + ";");
+    }
+    clone.setAttribute("style", css.join(""));
+    var sourceChildren = Array.prototype.filter.call(source.childNodes || [], function(node) { return node.nodeType === 1; });
+    var cloneChildren = Array.prototype.filter.call(clone.childNodes || [], function(node) { return node.nodeType === 1; });
+    sourceChildren.forEach(function(sourceChild, index) {
+      inlineComputedStyles(sourceChild, cloneChildren[index]);
+    });
+  }
+
+  function prepareExportClone(instance) {
+    var paper = instance && instance.paper ? instance.paper : null;
+    if (!paper) return null;
+    var clone = paper.cloneNode(true);
+    inlineComputedStyles(paper, clone);
+    clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+    clone.querySelectorAll(".custom-model-edge-hit, .custom-model-moderation-hit, .custom-model-edge-control, .custom-model-drag-preview").forEach(function(element) {
       element.remove();
     });
-    instance.state.nodes.forEach(function(node) {
-      var group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-      var rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      rect.setAttribute("x", node.x);
-      rect.setAttribute("y", node.y);
-      rect.setAttribute("width", node.width || style.boxWidth);
-      rect.setAttribute("height", node.height || style.boxHeight);
-      rect.setAttribute("rx", "5");
-      rect.setAttribute("fill", "#ffffff");
-      rect.setAttribute("stroke", style.boxStrokeColor || "#000000");
-      rect.setAttribute("stroke-width", style.boxStrokeWidth || 1.5);
-      var text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      text.setAttribute("x", Number(node.x || 0) + Number((node.width || style.boxWidth) / 2));
-      text.setAttribute("y", Number(node.y || 0) + Number((node.height || style.boxHeight) / 2) + 4);
-      text.setAttribute("text-anchor", "middle");
-      text.setAttribute("font-family", node.fontFamily || style.fontFamily || "Arial");
-      text.setAttribute("font-size", node.customFontSize ? node.fontSize : style.fontSize);
-      text.setAttribute("fill", "#111827");
-      text.textContent = window.StatEduModelCanvas.layout.displayText(node);
-      group.appendChild(rect);
-      group.appendChild(text);
-      svg.appendChild(group);
+    clone.querySelectorAll(".custom-model-node.is-selected, .structural-latent-statistics.is-selected").forEach(function(element) {
+      element.classList.remove("is-selected");
     });
-    return new XMLSerializer().serializeToString(svg);
+    clone.style.position = "relative";
+    clone.style.left = "0";
+    clone.style.top = "0";
+    clone.style.margin = "0";
+    clone.style.boxShadow = "none";
+    return clone;
+  }
+
+  function exportSvg(instance) {
+    var width = Number(instance.state.canvas.widthPx || instance.paper.offsetWidth || 0);
+    var height = Number(instance.state.canvas.heightPx || instance.paper.offsetHeight || 0);
+    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svg.setAttribute("width", width);
+    svg.setAttribute("height", height);
+    svg.setAttribute("viewBox", "0 0 " + width + " " + height);
+    var foreignObject = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
+    foreignObject.setAttribute("x", "0");
+    foreignObject.setAttribute("y", "0");
+    foreignObject.setAttribute("width", width);
+    foreignObject.setAttribute("height", height);
+    foreignObject.appendChild(prepareExportClone(instance));
+    svg.appendChild(foreignObject);
+    return '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(svg);
   }
 
   function style(instance) {
@@ -495,28 +522,7 @@
 
   function exportModel(instance) {
     window.StatEduModelCanvas.activeInstance = instance;
-    var t = function(key, fallback) { return window.StatEduModelCanvas.state.label(instance, key, fallback); };
-    var shell = modalShell(t("export_model", "\ubaa8\ub378 \ub0b4\ubcf4\ub0b4\uae30"));
-    shell.apply.textContent = t("export", "\ub0b4\ubcf4\ub0b4\uae30");
-    shell.body.innerHTML = [
-      '<div class="custom-model-file-panel">',
-      '<label class="custom-model-field-label">' + t("format", "\ud615\uc2dd") + '</label>',
-      '<select class="form-control custom-model-export-format">',
-      '<option value="json">JSON</option>',
-      '<option value="svg">SVG</option>',
-      '</select>',
-      '</div>'
-    ].join("");
-    shell.apply.addEventListener("click", function() {
-      var format = shell.body.querySelector(".custom-model-export-format").value || "json";
-      if (format === "svg") {
-        downloadText(timestampName("model-canvas", "svg"), exportSvg(instance), "image/svg+xml");
-      } else {
-        var payload = JSON.stringify(window.StatEduModelCanvas.state.snapshot(instance.state), null, 2);
-        downloadText(timestampName("model-canvas", "json"), payload, "application/json");
-      }
-      removeModal();
-    });
+    downloadText(timestampName("model-canvas", "svg"), exportSvg(instance), "image/svg+xml");
   }
 
   function run(instance) {
@@ -540,6 +546,7 @@
     save: save,
     load: load,
     exportModel: exportModel,
+    parseSnapshotText: parseSnapshotText,
     run: run
   };
 })();

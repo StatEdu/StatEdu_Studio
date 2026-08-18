@@ -3,6 +3,7 @@ structural_canvas_construct_specification <- function(snapshot) {
   rows <- lapply(latents, function(latent) {
     measurement_mode <- as.character(latent$measurementMode %||% "reflective")
     construct_type <- as.character(latent$constructType %||% if (identical(measurement_mode, "formative")) "composite" else "commonFactor")
+    if (identical(construct_type, "higherOrder")) construct_type <- "commonFactor"
     data.frame(
       id = as.character(latent$id %||% ""),
       name = structural_canvas_name(latent),

@@ -86,7 +86,6 @@ structural_equation_toolbar <- function(analysis_type = "cbsem", language = stat
         ),
         if (!identical(analysis_type, "cfa")) div(
           class = paste("structural-latent-tools", if (identical(analysis_type, "plssem")) "structural-latent-tools-pls" else "structural-latent-tools-basic"),
-          span(class = "structural-latent-tools-label", if (ko) "측정모형" else "Measurement"),
           custom_model_canvas_button("placementLeft", if (ko) "왼쪽" else "Left", title = if (ko) "측정변수를 왼쪽으로" else "Indicators left", icon = structural_measurement_icon("left")),
           custom_model_canvas_button("placementRight", if (ko) "오른쪽" else "Right", title = if (ko) "측정변수를 오른쪽으로" else "Indicators right", icon = structural_measurement_icon("right")),
           custom_model_canvas_button("placementTop", if (ko) "위" else "Top", title = if (ko) "측정변수를 위로" else "Indicators above", icon = structural_measurement_icon("top")),
@@ -98,7 +97,6 @@ structural_equation_toolbar <- function(analysis_type = "cbsem", language = stat
           )
         ),
         custom_model_canvas_edge_shape_tools(language),
-        custom_model_canvas_edge_anchor_tools(language),
         div(
           class = "structural-result-tools",
           div(
@@ -111,10 +109,40 @@ structural_equation_toolbar <- function(analysis_type = "cbsem", language = stat
             tags$select(
               id = paste0(prefix, "_result_coefficient"),
               class = "form-control input-sm structural-result-coefficient-select",
-              lapply(names(structural_canvas_result_coefficient_choices(language)), function(label) {
-                value <- structural_canvas_result_coefficient_choices(language)[[label]]
-                tags$option(value = value, selected = if (identical(value, "beta_p")) "selected" else NULL, label)
+              lapply(names(structural_canvas_result_coefficient_choices(language, analysis_type)), function(label) {
+                value <- structural_canvas_result_coefficient_choices(language, analysis_type)[[label]]
+                default_value <- if (identical(analysis_type, "plssem")) "pls_p" else "beta_p"
+                tags$option(value = value, selected = if (identical(value, default_value)) "selected" else NULL, label)
               })
+            )
+          ),
+          if (identical(analysis_type, "plssem")) div(
+            class = "structural-result-coefficient-control",
+            tags$label(
+              class = "structural-result-coefficient-label",
+              `for` = paste0(prefix, "_result_measurement_coefficient"),
+              if (ko) "측정경로" else "Measurement paths"
+            ),
+            tags$select(
+              id = paste0(prefix, "_result_measurement_coefficient"),
+              class = "form-control input-sm structural-result-coefficient-select",
+              lapply(names(structural_canvas_measurement_coefficient_choices(language)), function(label) {
+                value <- structural_canvas_measurement_coefficient_choices(language)[[label]]
+                tags$option(value = value, selected = if (identical(value, "measurement_p")) "selected" else NULL, label)
+              })
+            )
+          ),
+          if (analysis_type %in% c("cbsem", "sem", "plssem")) tagList(
+            custom_model_canvas_button("latentStats", if (ko) "잠재변수 통계" else "Latent statistics", title = if (ko) "표시할 잠재변수 통계량 선택" else "Choose latent-variable statistics to display", mode = TRUE),
+            div(
+              class = "structural-latent-stats-popover",
+              div(class = "structural-latent-stats-title", if (ko) "표시할 통계량" else "Statistics to display"),
+              Map(function(key, label) {
+                tags$label(class = "structural-latent-stats-option",
+                  tags$input(type = "radio", name = paste0(prefix, "_latent_stat"), `data-latent-stat` = key, checked = if (identical(key, "r2")) "checked" else NULL),
+                  as.character(label)
+                )
+              }, c("r2", "ave", "cr"), c("R²", "AVE", "CR"))
             )
           ),
           custom_model_canvas_button("resultView", if (ko) "결과 모형" else "Result diagram"),

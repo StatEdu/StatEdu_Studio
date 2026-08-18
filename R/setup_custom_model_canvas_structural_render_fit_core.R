@@ -3,13 +3,33 @@
 structural_canvas_fit_table_result_ui <- function(bundle, values) {
   shiny::req(nrow(values) > 0)
   if (!inherits(bundle$fit, "lavaan")) {
+    pls_header <- function(value) {
+      display <- switch(value,
+        f2 = "f<sup>2</sup>", R2 = "R<sup>2</sup>", AdjR2 = "Adj R<sup>2</sup>",
+        R2AdjR2 = "R<sup>2</sup>(adj R<sup>2</sup>)", Q2 = "Q<sup>2</sup>",
+        `Inner VIF` = "VIF", value
+      )
+      tags$th(HTML(display))
+    }
+    pls_cell <- function(value, column) {
+      if (!identical(column, "Path")) return(structural_canvas_html_cell(value))
+      parts <- strsplit(as.character(value %||% ""), "→", fixed = TRUE)[[1L]]
+      if (length(parts) != 2L) return(tags$td(class = "structural-pls-path-cell", value))
+      tags$td(class = "structural-pls-path-cell",
+        tags$div(class = "structural-pls-path-layout",
+          tags$span(class = "structural-pls-path-from", trimws(parts[[1L]])),
+          tags$span(class = "structural-pls-path-arrow", "→"),
+          tags$span(class = "structural-pls-path-to", trimws(parts[[2L]]))
+        )
+      )
+    }
     return(tagList(
       tags$table(
-        class = "table table-striped table-bordered structural-fit-table",
-        tags$thead(tags$tr(lapply(names(values), tags$th))),
-        tags$tbody(lapply(seq_len(nrow(values)), function(index) tags$tr(lapply(as.character(values[index, , drop = TRUE]), structural_canvas_html_cell))))
+        class = "table table-striped table-bordered structural-fit-table structural-pls-main-effects-table",
+        tags$thead(tags$tr(lapply(names(values), pls_header))),
+        tags$tbody(lapply(seq_len(nrow(values)), function(index) tags$tr(Map(pls_cell, as.character(values[index, , drop = TRUE]), names(values)))))
       ),
-      tags$p(class = "structural-result-note", "PLS-SEM reports structural effects, path coefficients, f^2/q^2 effect-size labels, Q^2 predictive relevance, and explained variance (R^2/adjusted R^2) rather than covariance-based global fit indices."),
+      tags$p(class = "structural-result-note", "B = standardized PLS path coefficient; Boot SE = bootstrap standard error; z = bootstrap test statistic; p = raw bootstrap p value; f^2 = local effect size; R^2(adj R^2) = explained variance (adjusted explained variance); Q^2 = predictive relevance; VIF = inner variance inflation factor. R^2(adj R^2) and Q^2 describe the destination construct and may therefore repeat across paths with the same outcome."),
       if (as.integer(bundle$pls_bootstrap %||% 0L) > 0L) tags$p(class = "structural-result-note", paste0("Bootstrap columns use seminr percentile intervals from ", as.integer(bundle$pls_bootstrap %||% 0L), " requested resamples; failed bootstrap iterations are excluded by seminr."))
     ))
   }

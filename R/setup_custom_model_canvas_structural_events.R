@@ -1,4 +1,5 @@
-structural_canvas_register_interaction_events <- function(input, session, dataset_fn, selected_names_fn, variable_table_fn, app_language_fn, analysis_type, prefix, canvas_input, confirm_input, advanced_input, fit_result, pending_mi_rows, pending_estimator_snapshot, mark_settings_dirty, execute_analysis) {
+structural_canvas_register_interaction_events <- function(input, session, dataset_fn, selected_names_fn, variable_table_fn, app_language_fn, analysis_type, prefix, canvas_input, run_input, confirm_input, advanced_input, fit_result, pending_mi_rows, pending_estimator_snapshot, mark_settings_dirty, execute_analysis) {
+pending_run_snapshot <- shiny::reactiveVal(NULL)
 run_confirmed_analysis <- function(snapshot, settings = list()) {
   result <- execute_analysis(snapshot, settings)
   showNotification(
@@ -8,18 +9,24 @@ run_confirmed_analysis <- function(snapshot, settings = list()) {
   result
 }
 observeEvent(input[[canvas_input]], mark_settings_dirty(), ignoreInit = TRUE)
-observeEvent(input[[paste0(prefix, "_result_coefficient")]], {
+observeEvent(input[[run_input]], {
+  snapshot <- input[[run_input]]
+  pending_run_snapshot(snapshot)
+}, ignoreInit = TRUE)
+observeEvent(list(input[[paste0(prefix, "_result_coefficient")]], input[[paste0(prefix, "_result_measurement_coefficient")]]), {
   bundle <- fit_result()
   shiny::req(!is.null(bundle), !is.null(bundle$fit), !is.null(bundle$snapshot))
   coefficient <- structural_canvas_result_coefficient_mode(input[[paste0(prefix, "_result_coefficient")]] %||% bundle$result_coefficient %||% "beta_p")
+  measurement_coefficient <- as.character(input[[paste0(prefix, "_result_measurement_coefficient")]] %||% bundle$result_measurement_coefficient %||% "measurement_p")
   bundle$result_coefficient <- coefficient
+  bundle$result_measurement_coefficient <- measurement_coefficient
   fit_result(bundle)
   session$sendCustomMessage(
     "custom-model-canvas-result",
     list(
       rootId = paste0(prefix, "-canvas-root"),
       source = bundle$snapshot,
-      result = structural_canvas_result_snapshot(bundle$snapshot, bundle$fit, coefficient),
+      result = structural_canvas_result_snapshot(bundle$snapshot, bundle$fit, coefficient, bundle$pls_bootstrap_result %||% NULL, measurement_coefficient),
       show = TRUE
     )
   )
@@ -30,7 +37,9 @@ observeEvent(input[[confirm_input]], {
     showNotification(sprintf("%s package is required.", package), type = "error")
   } else {
     tryCatch({
-      snapshot <- input[[confirm_input]]
+      snapshot <- input[[confirm_input]] %||% pending_run_snapshot()
+      pending_run_snapshot(snapshot)
+      shiny::req(!is.null(snapshot))
       recommendation <- structural_canvas_estimator_recommendation(
         snapshot, dataset_fn(), variable_table_fn(), analysis_type,
         input[[paste0(prefix, "_estimator")]] %||% "ML"
@@ -102,9 +111,19 @@ lapply(seq_len(100L), function(index) local({
     pending_mi_rows(selected_rows)
     parameters <- vapply(selected_rows, function(index) paste(bundle$mi$lhs[[index]], bundle$mi$op[[index]], bundle$mi$rhs[[index]]), character(1))
     ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
+    skipped_details <- if ("skipped_details" %in% names(bundle$mi)) {
+      unique(trimws(as.character(bundle$mi$skipped_details[selected_rows])))
+    } else character(0)
+    skipped_details <- skipped_details[!is.na(skipped_details) & nzchar(skipped_details)]
     showModal(modalDialog(
       title = if (ko) "MI 수정 기록" else "Document MI modification",
       tags$p(paste0(if (ko) "추가할 경로: " else "Paths to add: ", paste(parameters, collapse = ", "))),
+      if (length(skipped_details)) tags$div(
+        class = "alert alert-warning structural-mi-skipped-reasons",
+        tags$strong(if (ko) "건너뛴 후보 및 사유" else "Skipped candidates and reasons"),
+        tags$ul(lapply(skipped_details, tags$li)),
+        tags$p(class = "structural-result-note", if (ko) "이 후보들은 안전성 진단을 통과하지 못해 적용 대상에서 제외되었습니다." else "These candidates were excluded from application because they failed safety diagnostics." )
+      ),
       textAreaInput(paste0(prefix, "_mi_justification"), if (ko) "실질적 근거" else "Substantive justification", rows = 4, placeholder = if (ko) "이 모수를 자유화하는 것이 이론적으로 방어 가능한 이유를 기록하십시오." else "Explain why freeing these parameters is theoretically defensible."),
       footer = tagList(modalButton(if (ko) "취소" else "Cancel"), actionButton(paste0(prefix, "_mi_confirm_apply"), if (ko) "적용 후 재분석" else "Apply and reanalyze", class = "btn-primary")),
       easyClose = TRUE

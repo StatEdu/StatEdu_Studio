@@ -32,6 +32,8 @@
     covariateTargets: {},
     covariateApplyTo: "all",
     dashNonsignificant: true,
+    latentStatsSelection: ["r2"],
+    showLatentStats: true,
     autoAlign: true,
     mode: "select",
     gridVisible: true
@@ -85,6 +87,8 @@
       covariateTargets: clone(state.covariateTargets || {}),
       covariateApplyTo: state.covariateApplyTo,
       dashNonsignificant: state.dashNonsignificant !== false,
+      latentStatsSelection: clone(state.latentStatsSelection || ["r2"]),
+      showLatentStats: state.showLatentStats !== false,
       autoAlign: state.autoAlign !== false,
       gridVisible: state.gridVisible
     };
@@ -121,6 +125,10 @@
     if (!hadConstructType || !node.constructType) {
       node.constructType = node.measurementMode === "formative" ? "composite" : "commonFactor";
       migrations.push("construct_type_inferred_from_measurement_mode");
+    }
+    if (node.constructType === "unspecified" && !node.advancedConstructSpecification) {
+      node.constructType = node.measurementMode === "formative" ? "composite" : "commonFactor";
+      migrations.push("default_construct_type_applied");
     }
     if (!hadWeightingMode || !node.weightingMode) {
       node.weightingMode = "auto";
@@ -163,6 +171,8 @@
     state.covariateTargets = clone(snap.covariateTargets || {});
     state.covariateApplyTo = snap.covariateApplyTo || "all";
     state.dashNonsignificant = snap.dashNonsignificant !== false;
+    state.latentStatsSelection = clone(snap.latentStatsSelection || ["r2"]);
+    state.showLatentStats = snap.showLatentStats !== false;
     state.autoAlign = snap.autoAlign !== false;
     state.gridVisible = snap.gridVisible !== false;
     state.connectFrom = null;

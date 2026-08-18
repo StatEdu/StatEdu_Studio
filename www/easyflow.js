@@ -1571,6 +1571,12 @@
               menu: 'Analysis',
               menuLabels: ['Analysis', '\uBD84\uC11D'],
               marker: 'analysis',
+              valueAliases: {
+                'Survival Analysis Guide': 'analysis_survival_setup',
+                '\uBD84\uC11D \uC120\uD0DD \uB3C4\uC6B0\uBBF8': 'analysis_survival_setup',
+                'Competing-Event Analysis': 'analysis_survival_competing',
+                '\uACBD\uC7C1\uC0AC\uAC74 \uBD84\uC11D': 'analysis_survival_competing'
+              },
               itemLabelsEn: {
                 'Frequencies / Descriptives': 'Frequencies / Descriptives',
                 analysis_crosstabs: 'Cross-tabulation Analysis',
@@ -1589,6 +1595,10 @@
                 analysis_mediation_moderation: 'Mediation / Moderation',
                 'Generalized Linear Model (GLM)': 'Generalized Linear Model (GLM)',
                 analysis_logistic_regression: 'Logistic Regression',
+                analysis_survival_setup: 'Analysis Guide',
+                analysis_survival_km: 'Kaplan-Meier',
+                analysis_survival_cox: 'Cox Regression',
+                analysis_survival_competing: 'Competing-Event Analysis',
                 analysis_complex_design: 'Complex Samples Design Variables',
                 analysis_complex_frequencies: 'Complex Samples Frequencies / Descriptives',
                 analysis_complex_crosstabs: 'Complex Samples Cross-tabulation',
@@ -1599,6 +1609,7 @@
                 analysis_structural_cfa: 'Confirmatory Factor Analysis',
                 analysis_structural_cbsem: 'Structural Equation Modeling',
                 analysis_structural_plssem: 'PLS Structural Equation Modeling',
+                analysis_structural_automation: 'Automated Structural Equation Modeling',
                 analysis_custom_model_canvas: 'Mediation / Moderation Custom Model',
                 'Longitudinal / Panel Models': 'Longitudinal / Panel Models'
               },
@@ -1620,8 +1631,10 @@
                 analysis_mediation_moderation: '\uB9E4\uAC1C\u00B7\uC870\uC808',
                 'Generalized Linear Model (GLM)': '\uC77C\uBC18\uD654 \uC120\uD615\uBAA8\uD615(GLM)',
                 analysis_logistic_regression: '\uB85C\uC9C0\uC2A4\uD2F1 \uD68C\uADC0',
+                analysis_survival_setup: '\uBD84\uC11D \uC120\uD0DD \uB3C4\uC6B0\uBBF8',
                 analysis_survival_km: 'Kaplan-Meier',
                 analysis_survival_cox: 'Cox \uD68C\uADC0\uBD84\uC11D',
+                analysis_survival_competing: '\uACBD\uC7C1\uC0AC\uAC74 \uBD84\uC11D',
                 analysis_complex_design: '\uBCF5\uD569\uD45C\uBCF8 \uC124\uACC4\uBCC0\uC218',
                 analysis_complex_frequencies: '\uBCF5\uD569\uD45C\uBCF8 \uBE48\uB3C4\uBD84\uC11D / \uAE30\uC220\uD1B5\uACC4\uBD84\uC11D',
                 analysis_complex_crosstabs: '\uBCF5\uD569\uD45C\uBCF8 \uAD50\uCC28\uBD84\uC11D',
@@ -1632,6 +1645,7 @@
                 analysis_structural_cfa: '\uD655\uC778\uC801 \uC694\uC778\uBD84\uC11D',
                 analysis_structural_cbsem: '\uAD6C\uC870\uBC29\uC815\uC2DD',
                 analysis_structural_plssem: 'PLS \uAD6C\uC870\uBC29\uC815\uC2DD',
+                analysis_structural_automation: '\uC790\uB3D9\uD654 \uAD6C\uC870\uBC29\uC815\uC2DD',
                 analysis_custom_model_canvas: '\uB9E4\uAC1C\u00B7\uC870\uC808 \uC0AC\uC6A9\uC790 \uC815\uC758 \uBAA8\uB378',
                 'Longitudinal / Panel Models': '\uC885\uB2E8 / \uD328\uB110 \uBAA8\uD615'
               },
@@ -1664,7 +1678,7 @@
                 {
                   title: 'Survival Analysis',
                   titleKo: '\uC0DD\uC874\uBD84\uC11D',
-                  values: ['analysis_survival_km', 'analysis_survival_cox']
+                  values: ['analysis_survival_setup', 'analysis_survival_km', 'analysis_survival_cox', 'analysis_survival_competing']
                 },
                 {
                   title: 'Longitudinal / Panel',
@@ -1679,7 +1693,7 @@
                 {
                   title: 'Structural Equation Modeling',
                   titleKo: '\uAD6C\uC870\uBC29\uC815\uC2DD',
-                  values: ['analysis_structural_cfa', 'analysis_structural_cbsem', 'analysis_structural_plssem']
+                  values: ['analysis_structural_cfa', 'analysis_structural_cbsem', 'analysis_structural_plssem', 'analysis_structural_automation']
                 }
               ],
               aliasItems: []
@@ -1917,6 +1931,26 @@
           return lookup[group.title] || lookup[group.titleKo] || group.title || group.titleKo || '';
         }
 
+        function easyflowCanonicalGroupedValue(config, rawValue) {
+          var value = String(rawValue || '');
+          var itemLabelsEn = config.itemLabelsEn || {};
+          var itemLabelsKo = config.itemLabelsKo || {};
+          var explicitAliases = config.valueAliases || {};
+          if (explicitAliases[value]) return explicitAliases[value];
+          var keys = Object.keys(itemLabelsEn).concat(Object.keys(itemLabelsKo));
+          for (var index = 0; index < keys.length; index += 1) {
+            var key = keys[index];
+            if (itemLabelsEn[key] === value || itemLabelsKo[key] === value) return key;
+          }
+          return value;
+        }
+
+        function easyflowFindGroupedMenuLink(menu, config, value) {
+          return menu.find('a[data-value]').filter(function() {
+            return easyflowCanonicalGroupedValue(config, window.jQuery(this).attr('data-value')) === value;
+          }).first();
+        }
+
         function groupNavbarDropdownItems(config) {
           var menuLanguage = easyflowCurrentLanguage();
           var menuLabels = easyflowMenuLabelCandidates(config, menuLanguage);
@@ -1934,13 +1968,13 @@
           if (menu.attr('data-easyflow-menu-grouped') === config.marker) {
             config.groups.forEach(function(group) {
               var firstValue = group.values[0];
-              var groupLink = menu.find('a[data-value="' + firstValue + '"]').first();
+              var groupLink = easyflowFindGroupedMenuLink(menu, config, firstValue);
               var groupNode = groupLink.closest('.analysis-menu-section');
               var groupTitleText = easyflowGroupedTitleText(group, menuLanguage);
               if (!groupNode.length) return;
               groupNode.children('.analysis-menu-section-title').first().text(groupTitleText);
               group.values.forEach(function(value) {
-                var link = menu.find('a[data-value="' + value + '"]').first();
+                var link = easyflowFindGroupedMenuLink(menu, config, value);
                 if (!link.length) return;
                 var itemLabel = easyflowGroupedMenuText(config, value, menuLanguage);
                 if (itemLabel) link.text(itemLabel);
@@ -1948,7 +1982,7 @@
               (group.subgroups || []).forEach(function(subgroup) {
                 var subgroupTitleText = easyflowGroupedTitleText(subgroup, menuLanguage);
                 subgroup.values.forEach(function(value, index) {
-                  var link = menu.find('a[data-value="' + value + '"]').first();
+                  var link = easyflowFindGroupedMenuLink(menu, config, value);
                   if (!link.length) return;
                   var itemLabel = easyflowGroupedMenuText(config, value, menuLanguage);
                   if (itemLabel) link.text(itemLabel);
@@ -1971,7 +2005,7 @@
             var item = window.jQuery(this);
             var link = item.children('a[data-value]').first();
             if (!link.length) return;
-            existingItems[String(link.attr('data-value'))] = item.detach();
+            existingItems[easyflowCanonicalGroupedValue(config, link.attr('data-value'))] = item.detach();
           });
 
           config.groups.forEach(function(group) {

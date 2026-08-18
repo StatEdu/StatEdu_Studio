@@ -188,22 +188,22 @@ app_brand_title <- function(version) {
 
 app_stylesheet_link <- function(version) {
   tagList(
-    tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-survival-km-result-table-20260810")),
-    tags$link(rel = "stylesheet", type = "text/css", href = paste0("model-canvas/canvas.css?v=", version, "-structural-result-label-weight-20260812y"))
+    tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-ci-group-header-center-20260816a")),
+    tags$link(rel = "stylesheet", type = "text/css", href = paste0("model-canvas/canvas.css?v=", version, "-pls-table-20260818a"))
   )
 }
 
 app_script_link <- function(version) {
   tagList(
-    tags$script(src = paste0("easyflow.js?v=", version, "-structural-menu-20260812b")),
+    tags$script(src = paste0("easyflow.js?v=", version, "-structural-menu-20260816a")),
     tags$script(src = paste0("model-canvas/state.js?v=", version, "-structural-equation-fonts-disturbance-position-20260811u")),
     tags$script(src = paste0("model-canvas/layout.js?v=", version, "-custom-model-canvas-balanced-multi-role-layout-20260729a")),
-    tags$script(src = paste0("model-canvas/shiny-bridge.js?v=", version, "-structural-result-toolbar-20260812c")),
-    tags$script(src = paste0("model-canvas/edges.js?v=", version, "-structural-result-path-style-20260812z")),
-    tags$script(src = paste0("model-canvas/nodes.js?v=", version, "-result-unified-node-move-20260812v")),
-    tags$script(src = paste0("model-canvas/dialogs.js?v=", version, "-structural-equation-fonts-disturbance-position-20260811u")),
-    tags$script(src = paste0("model-canvas/toolbar.js?v=", version, "-structural-run-options-20260812v")),
-    tags$script(src = paste0("model-canvas/canvas.js?v=", version, "-result-whole-model-key-move-20260812v"))
+    tags$script(src = paste0("model-canvas/shiny-bridge.js?v=", version, "-movable-latent-stats-20260817b")),
+    tags$script(src = paste0("model-canvas/edges.js?v=", version, "-label-bg-export-20260818a")),
+    tags$script(src = paste0("model-canvas/nodes.js?v=", version, "-select-move-latent-stats-20260817b")),
+    tags$script(src = paste0("model-canvas/dialogs.js?v=", version, "-rendered-svg-export-20260818a")),
+    tags$script(src = paste0("model-canvas/toolbar.js?v=", version, "-select-latent-statistics-20260817b")),
+    tags$script(src = paste0("model-canvas/canvas.js?v=", version, "-measurement-mode-no-reflow-20260818b"))
   )
 }
 

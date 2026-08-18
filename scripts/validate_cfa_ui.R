@@ -4,6 +4,8 @@ stopifnot(requireNamespace("htmltools", quietly = TRUE))
 
 canvas_js_source <- paste(readLines(file.path("www", "model-canvas", "canvas.js"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 bridge_js_source <- paste(readLines(file.path("www", "model-canvas", "shiny-bridge.js"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+nodes_js_source <- paste(readLines(file.path("www", "model-canvas", "nodes.js"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+state_js_source <- paste(readLines(file.path("www", "model-canvas", "state.js"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 dialogs_js_source <- paste(readLines(file.path("www", "model-canvas", "dialogs.js"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 layout_js_source <- paste(readLines(file.path("www", "model-canvas", "layout.js"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 toolbar_js_source <- paste(readLines(file.path("www", "model-canvas", "toolbar.js"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -11,6 +13,7 @@ edges_js_source <- paste(readLines(file.path("www", "model-canvas", "edges.js"),
 canvas_css_source <- paste(readLines(file.path("www", "model-canvas", "canvas.css"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 structural_core_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_core.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 structural_notifications_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_execute_notifications.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+structural_toolbar_icons_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_toolbar_icons.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 stopifnot(
   grepl("Latent construct correlations, reliability, and convergent/discriminant validity", ui_source, fixed = TRUE),
   length(gregexpr('class = "table-responsive"', ui_source, fixed = TRUE)[[1L]]) >= 8L,
@@ -24,9 +27,41 @@ stopifnot(
   grepl("window.StatEduModelCanvas.layout.reflowRoleLayout(instance.state.nodes, instance.state.style)", canvas_js_source, fixed = TRUE),
   grepl("autoLayout: autoLayoutModel", canvas_js_source, fixed = TRUE),
   grepl("\"fromSide\", \"toSide\", \"fixedCenter\", \"directAnchors\", \"labelPosition\"", bridge_js_source, fixed = TRUE),
+  grepl("incomingResult = syncVisualEdits(incomingResult, currentResult)", bridge_js_source, fixed = TRUE),
+  grepl("resultStatsOffsetX", bridge_js_source, fixed = TRUE),
+  grepl("autoLabelPosition", edges_js_source, fixed = TRUE),
+  grepl("owner.labelManualPosition = true", edges_js_source, fixed = TRUE),
+  grepl("custom-model-edge-label-hit", edges_js_source, fixed = TRUE),
+  grepl("data-label-auto-shift-x", edges_js_source, fixed = TRUE),
+  grepl("if (!matches.length) return initialLabel", canvas_js_source, fixed = TRUE),
+  grepl("marqueeSelectionMode && !labelElement && !nodeElement", canvas_js_source, fixed = TRUE),
+  grepl('if (window.StatEduModelCanvas.nodes.isViewingResult(instance))', canvas_js_source, fixed = TRUE),
+  grepl('event.target.closest(".structural-latent-statistics")', canvas_js_source, fixed = TRUE),
+  !grepl("instance.paper.setPointerCapture", nodes_js_source, fixed = TRUE),
+  grepl('custom-model-node-" + node.role', nodes_js_source, fixed = TRUE),
+  grepl('if (isViewingResult(instance)) {', nodes_js_source, fixed = TRUE),
+  grepl("if (usesStructuralMovePolicy(instance)) {", nodes_js_source, fixed = TRUE),
+  grepl('var singleLatent = structuralMovePolicy && initialPositions.length === 1 && item.node.role === "latent"', nodes_js_source, fixed = TRUE),
+  grepl("window.StatEduModelCanvas.nodes.startDrag(instance, event, nodeElement);", canvas_js_source, fixed = TRUE),
+  grepl("if (!isViewingResult(instance)) return", nodes_js_source, fixed = TRUE),
+  grepl("instance.selectedLatentStatsNodeId = node.id", nodes_js_source, fixed = TRUE),
+  grepl("instance.state.selectedNodeIds = []", nodes_js_source, fixed = TRUE),
+  grepl("data-latent-stat", toolbar_js_source, fixed = TRUE),
+  grepl("var validationItems = instance.validation && instance.validation.byNode", nodes_js_source, fixed = TRUE),
+  grepl('constructType: "commonFactor"', nodes_js_source, fixed = TRUE),
+  !grepl('constructType: "unspecified"', nodes_js_source, fixed = TRUE),
+  grepl('latent.constructType = "commonFactor"', canvas_js_source, fixed = TRUE),
+  grepl('fixedCenter: true, directAnchors: false', canvas_js_source, fixed = TRUE),
+  grepl('edge.directAnchors = false', canvas_js_source, fixed = TRUE),
+  grepl('node.constructType === "unspecified" && !node.advancedConstructSpecification', state_js_source, fixed = TRUE),
+  grepl('migrations.push("default_construct_type_applied")', state_js_source, fixed = TRUE),
+  grepl("state.latentStatsSelection", nodes_js_source, fixed = TRUE),
   grepl("if (window.showOpenFilePicker)", dialogs_js_source, fixed = TRUE),
   grepl("types: filePickerTypes()", dialogs_js_source, fixed = TRUE),
   grepl("multiple: false", dialogs_js_source, fixed = TRUE),
+  grepl('accept: {"application/json": [".stmodel", ".studio", ".json"]}', dialogs_js_source, fixed = TRUE),
+  grepl("window.StatEduModelCanvas.dialogs", dialogs_js_source, fixed = TRUE),
+  grepl('replace(/^\\uFEFF/, "")', dialogs_js_source, fixed = TRUE),
   grepl("openModelFileFallback(instance)", dialogs_js_source, fixed = TRUE),
   grepl("if (window.showSaveFilePicker)", dialogs_js_source, fixed = TRUE),
   grepl("downloadText(timestampName(\"model-canvas\", \"stmodel\")", dialogs_js_source, fixed = TRUE),
@@ -149,6 +184,8 @@ stopifnot(
   grepl('<li class="active">', cfa_toolbar, fixed = TRUE),
   grepl('<div class="tab-pane active" data-value="Estimation"', cfa_toolbar, fixed = TRUE),
   grepl("Estimation", cfa_toolbar, fixed = TRUE),
+  grepl('selected = "independent_cross_sectional"', ui_source, fixed = TRUE),
+  grepl("분석 전에 표집구조를 명시적으로 확인하십시오", ui_source, fixed = TRUE),
   grepl("Validity", cfa_toolbar, fixed = TRUE),
   grepl("Diagnostics", cfa_toolbar, fixed = TRUE),
   grepl("Common Method", cfa_toolbar, fixed = TRUE),
@@ -168,6 +205,8 @@ stopifnot(
   grepl("b_beta", structural_core_source, fixed = TRUE),
   grepl("structural_canvas_identification_issue_text", structural_notifications_source, fixed = TRUE),
   grepl("structural_canvas_error_message", structural_notifications_source, fixed = TRUE),
+  grepl("Sampling-design gate blocked estimation", structural_notifications_source, fixed = TRUE),
+  grepl("분석을 실행하려면 관측치와 표본설계 구조를 먼저 선택해야 합니다.", structural_notifications_source, fixed = TRUE),
   grepl("모형 식별성 점검 실패", structural_notifications_source, fixed = TRUE),
   grepl("현재 자동 식별 방식에서는 고차요인마다 하위요인이 최소 3개 필요합니다.", structural_notifications_source, fixed = TRUE),
   grepl("수정지수(MI)를 계산할 수 없습니다", structural_notifications_source, fixed = TRUE),
@@ -186,7 +225,16 @@ stopifnot(
   grepl("latent.constructType = \"higherOrder\"", toolbar_js_source, fixed = TRUE),
   grepl("if (otherLatent.constructType !== \"higherOrder\") return;", toolbar_js_source, fixed = TRUE),
   grepl("covariance.curveDirection = \"left\";", toolbar_js_source, fixed = TRUE),
+  grepl("sem-higher-order-arrow", structural_toolbar_icons_source, fixed = TRUE),
+  grepl("2차", structural_toolbar_icons_source, fixed = TRUE),
+  grepl("height: 25px", canvas_css_source, fixed = TRUE),
+  grepl('configuredArrowHead === "none" || configuredArrowHead === "line"', edges_js_source, fixed = TRUE),
+  grepl("var ARROW_MARKER_CLEARANCE = 0;", edges_js_source, fixed = TRUE),
+  grepl('if (structuralMovePolicy && item.node.role === "latent") item.node.manualPosition = true;', nodes_js_source, fixed = TRUE),
+  grepl('latent.manualPosition = true;', canvas_js_source, fixed = TRUE),
+  grepl('curveDirection: latentCovariance ? "left" : null', edges_js_source, fixed = TRUE),
   grepl("function isHigherOrderLatent", edges_js_source, fixed = TRUE),
+  grepl('var arrowHead = (style && style.arrowHead) || "triangle";', edges_js_source, fixed = TRUE),
   grepl("function hasHigherOrderParent", edges_js_source, fixed = TRUE),
   grepl("return !hasHigherOrderParent(instance, fromNode.id) && !hasHigherOrderParent(instance, toNode.id);", edges_js_source, fixed = TRUE),
   grepl("isHigherOrderLatent(fromNode) ? \"higherOrder\" : \"regression\"", edges_js_source, fixed = TRUE),

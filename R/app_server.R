@@ -226,6 +226,24 @@ create_app_server <- function(app_version) {
   output$lazy_analysis_structural_cfa <- renderUI(tab_panel_content(structural_equation_tab_panel("cfa", app_language())))
   output$lazy_analysis_structural_cbsem <- renderUI(tab_panel_content(structural_equation_tab_panel("cbsem", app_language())))
   output$lazy_analysis_structural_plssem <- renderUI(tab_panel_content(structural_equation_tab_panel("plssem", app_language())))
+  output$lazy_analysis_structural_automation <- renderUI(tab_panel_content(structural_automation_tab_panel(app_language())))
+  observeEvent(input$structural_automation_start, {
+    objective <- input$structural_automation_objective %||% "measurement"
+    construct <- input$structural_automation_construct %||% "common_factor"
+    indicator <- input$structural_automation_indicator %||% "continuous"
+    target <- if (identical(objective, "measurement") && identical(construct, "common_factor")) {
+      "analysis_structural_cfa"
+    } else if (!identical(construct, "common_factor") || identical(objective, "prediction")) {
+      "analysis_structural_plssem"
+    } else {
+      "analysis_structural_cbsem"
+    }
+    if (identical(indicator, "ordered") && !identical(construct, "common_factor")) {
+      showNotification(if (identical(normalize_app_language(app_language()), "ko")) "순서형 지표와 합성변수를 함께 추정하는 엔진은 현재 지원하지 않습니다. 구성개념 명세를 다시 확인하십시오." else "The current engine does not support ordered indicators combined with composite constructs. Review the construct specification.", type = "warning", duration = 8)
+      return()
+    }
+    updateTabsetPanel(session, "main_menu", selected = target)
+  }, ignoreInit = TRUE)
   output$lazy_analysis_longitudinal <- renderUI({
     if (!isTRUE(statedu_feature_enabled("longitudinal", TRUE))) {
       return(tab_panel_content(div(class = "analysis-placeholder-panel", "Longitudinal / Panel Models is not enabled in this build.")))
@@ -241,8 +259,10 @@ create_app_server <- function(app_version) {
   output$lazy_analysis_complex_correlation <- renderUI(tab_panel_content(complex_sample_correlation_tab_panel(app_language())))
   output$lazy_analysis_complex_regression <- renderUI(tab_panel_content(complex_sample_regression_tab_panel(app_language())))
   output$lazy_analysis_complex_logistic <- renderUI(tab_panel_content(complex_sample_logistic_tab_panel(app_language())))
+  output$lazy_analysis_survival_setup <- renderUI(tab_panel_content(survival_setup_tab_panel(app_language())))
   output$lazy_analysis_survival_km <- renderUI(tab_panel_content(survival_km_tab_panel(app_language())))
   output$lazy_analysis_survival_cox <- renderUI(tab_panel_content(survival_cox_tab_panel(app_language())))
+  output$lazy_analysis_survival_competing <- renderUI(tab_panel_content(survival_competing_tab_panel(app_language())))
 
   register_sample_size_server(input, output, session, app_language_fn = app_language)
 

@@ -114,6 +114,10 @@
         button.classList.toggle("is-active", !!selectedEdge && activeSide === side);
       });
     });
+    instance.root.querySelectorAll("[data-latent-stat]").forEach(function(input) {
+      var selectedStats = instance.state.latentStatsSelection || ["r2"];
+      input.checked = selectedStats.indexOf(input.getAttribute("data-latent-stat") || "r2") >= 0;
+    });
   }
 
   function updateStatus(instance) {
@@ -333,6 +337,10 @@
       }
       setMode(instance, "properties");
     }
+    if (action === "latentStats") {
+      var statsPopover = instance.root.querySelector(".structural-latent-stats-popover");
+      if (statsPopover) statsPopover.classList.toggle("is-visible");
+    }
     if (action === "dashNonsignificant") {
       instance.state.dashNonsignificant = instance.state.dashNonsignificant === false;
       window.StatEduModelCanvas.canvas.render(instance);
@@ -377,6 +385,20 @@
       button.addEventListener("click", function(event) {
         event.preventDefault();
         handleAction(instance, button.getAttribute("data-action") || "", button);
+      });
+    });
+    instance.root.querySelectorAll("[data-latent-stat]").forEach(function(input) {
+      var selectedStats = instance.state.latentStatsSelection || ["r2"];
+      input.checked = selectedStats.indexOf(input.getAttribute("data-latent-stat") || "r2") >= 0;
+    });
+    instance.root.querySelectorAll("[data-latent-stat]").forEach(function(input) {
+      input.addEventListener("change", function() {
+        var key = input.getAttribute("data-latent-stat") || "r2";
+        instance.state.latentStatsSelection = [key];
+        instance.state.showLatentStats = true;
+        hidePopover(instance, ".structural-latent-stats-popover");
+        window.StatEduModelCanvas.canvas.render(instance);
+        window.StatEduModelCanvas.bridge.sendState(instance);
       });
     });
     instance.root.querySelectorAll(".custom-model-edge-shape-button").forEach(function(button) {

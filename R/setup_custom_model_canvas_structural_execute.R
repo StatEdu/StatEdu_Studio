@@ -1,4 +1,4 @@
-structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input, session, dataset_fn, variable_table_fn, analysis_type, prefix, fit_result, app_language_fn = NULL) {
+structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input, session, dataset_fn, variable_table_fn, analysis_type, prefix, fit_result, app_language_fn = NULL, defer_pls_bootstrap = FALSE) {
   is_mi_refit <- !is.null(settings) && !is.null(settings$fit)
   settings <- settings %||% list()
   identification <- if (analysis_type %in% c("cfa", "cbsem", "sem")) structural_canvas_identification_diagnostics(snapshot) else data.frame()
@@ -56,6 +56,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   common_method_enabled <- options$common_method_enabled
   common_method_methods <- options$common_method_methods
   result_coefficient <- options$result_coefficient
+  result_measurement_coefficient <- options$result_measurement_coefficient
   residual_variance_fixes <- options$residual_variance_fixes
   full_data <- dataset_fn()
   variable_table <- variable_table_fn()
@@ -138,16 +139,19 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     analysis_type, htmt_bootstrap, result, data, htmt_seed, ordered,
     htmt_threshold, htmt_ci_method
   )
-  pls_bootstrap_result <- structural_canvas_run_pls_bootstrap(
-    analysis_type, pls_bootstrap, result, pls_seed
-  )
+  pls_bootstrap_result <- if (isTRUE(defer_pls_bootstrap) && identical(analysis_type, "plssem")) NULL else {
+    structural_canvas_run_pls_bootstrap(analysis_type, pls_bootstrap, result, pls_seed)
+  }
   pls_predict_result <- structural_canvas_run_pls_predict(
     analysis_type, pls_predict_folds, pls_predict_reps, result, pls_predict_seed
   )
-  effect_bootstrap_result <- structural_canvas_effect_bootstrap(
-    snapshot, data, analysis_type, estimator, missing, std_lv, ordered, nominal,
-    residual_variance_fixes, effect_bootstrap, effect_bootstrap_seed
-  )
+  defer_effect_bootstrap <- analysis_type %in% c("cbsem", "sem") && effect_bootstrap > 0L
+  effect_bootstrap_result <- if (isTRUE(defer_effect_bootstrap)) NULL else {
+    structural_canvas_effect_bootstrap(
+      snapshot, data, analysis_type, estimator, missing, std_lv, ordered, nominal,
+      residual_variance_fixes, effect_bootstrap, effect_bootstrap_seed
+    )
+  }
   redundancy_result <- if (identical(analysis_type, "plssem")) {
     structural_canvas_pls_redundancy_analysis(result, snapshot, data, redundancy_construct, redundancy_criterion)
   } else {
@@ -189,6 +193,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     modified = identical(settings$comparison_type %||% "", "mi") || nrow(settings$mi_history %||% data.frame()) > 0L,
     holdout_enabled = mi_holdout_enabled, comparison = holdout_comparison
   )
+  analysis_run_id <- paste(prefix, as.numeric(Sys.time()), sample.int(.Machine$integer.max, 1L), sep = "-")
   fit_result(list(
     fit = result$fit, syntax = result$syntax, snapshot = snapshot, mi = mi, mi_mode = mi_mode,
     rmsea_ci = rmsea_ci, validity_formula = validity_formula,
@@ -199,6 +204,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     bollen_stine_result = bollen_stine_result,
     effect_bootstrap = effect_bootstrap, effect_bootstrap_seed = effect_bootstrap_seed,
     effect_bootstrap_result = effect_bootstrap_result,
+    effect_bootstrap_pending = isTRUE(defer_effect_bootstrap),
     htmt_threshold = htmt_threshold, htmt_bootstrap = htmt_bootstrap, htmt_seed = htmt_seed,
     htmt_ci_method = htmt_ci_method,
     htmt_bootstrap_result = htmt_bootstrap_result,
@@ -224,7 +230,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     missing = missing, missing_diagnostics = missing_diagnostics,
     missing_sensitivity_method = missing_sensitivity_method, missing_sensitivity_details = missing_sensitivity_details,
     normality_diagnostics = normality_diagnostics, std_lv = std_lv, ordered = ordered,
-    result_coefficient = result_coefficient, diagnostics = result,
+    result_coefficient = result_coefficient, result_measurement_coefficient = result_measurement_coefficient, diagnostics = result,
     baseline_fit = baseline_fit, modified_from_baseline = is_mi_refit || isTRUE(settings$modified_from_baseline),
     baseline_syntax = baseline_syntax,
     baseline_diagnostics = baseline_diagnostics,
@@ -232,6 +238,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     comparison_type = settings$comparison_type %||% NULL,
     residual_variance_fixes = residual_variance_fixes,
     identification = identification,
+    analysis_run_id = analysis_run_id,
     mi_history = settings$mi_history %||% data.frame()
   ))
   session$sendCustomMessage(
@@ -239,7 +246,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     list(
       rootId = paste0(prefix, "-canvas-root"),
       source = snapshot,
-      result = structural_canvas_result_snapshot(snapshot, result$fit, result_coefficient),
+      result = structural_canvas_result_snapshot(snapshot, result$fit, result_coefficient, pls_bootstrap_result, result_measurement_coefficient),
       show = TRUE
     )
   )

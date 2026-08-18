@@ -62,17 +62,57 @@ structural_canvas_result_coefficient_mode <- function(coefficient = "beta_p") {
   coefficient <- as.character(coefficient %||% "beta_p")[[1]]
   if (identical(coefficient, "beta")) return("beta_p")
   if (identical(coefficient, "b")) return("b_p")
-  if (coefficient %in% c("b_p", "b_t", "beta_t", "beta_p", "b_beta")) coefficient else "beta_p"
+  if (coefficient %in% c("b_p", "b_t", "beta_t", "beta_p", "b_beta", "pls_value", "pls_p")) coefficient else "beta_p"
 }
 
-structural_canvas_result_snapshot <- function(snapshot, fit, coefficient = "beta") {
+structural_canvas_result_snapshot <- function(snapshot, fit, coefficient = "beta", bootstrap = NULL, measurement_coefficient = "measurement_p") {
   snapshot <- snapshot %||% list()
   snapshot$nonce <- NULL
   coefficient <- structural_canvas_result_coefficient_mode(coefficient)
   if (inherits(fit, "pls_model")) {
     summary_fit <- summary(fit)
     loadings <- as.matrix(summary_fit$loadings %||% matrix(numeric(0), 0L, 0L))
+    weights <- as.matrix(summary_fit$weights %||% matrix(numeric(0), 0L, 0L))
     paths <- as.matrix(summary_fit$paths %||% matrix(numeric(0), 0L, 0L))
+    show_path_p <- coefficient %in% c("pls_p", "beta_p")
+    show_measurement_p <- identical(as.character(measurement_coefficient %||% "measurement_p"), "measurement_p")
+    bootstrap_paths <- bootstrap$bootstrapped_paths %||% NULL
+    bootstrap_loadings <- bootstrap$bootstrapped_loadings %||% NULL
+    bootstrap_weights <- bootstrap$bootstrapped_weights %||% NULL
+    reliability <- as.data.frame(summary_fit$reliability %||% data.frame(), check.names = FALSE)
+    snapshot$nodes <- lapply(snapshot$nodes %||% list(), function(node) {
+      if (!identical(node$role, "latent")) return(node)
+      construct <- structural_canvas_name(node)
+      values <- character(0)
+      long_values <- character(0)
+      stats_values <- list()
+      r2 <- structural_canvas_pls_matrix_cell(paths, "R^2", construct)
+      if (is.finite(r2)) {
+        stats_values$r2 <- paste0("R\u00b2 = ", format_decimal3(r2))
+        values <- c(values, stats_values$r2)
+        long_values <- c(long_values, stats_values$r2)
+      }
+      reflective <- !identical(as.character(node$measurementMode %||% "reflective"), "formative")
+      if (reflective && construct %in% rownames(reliability)) {
+        ave <- suppressWarnings(as.numeric(reliability[construct, "AVE"]))
+        cr_column <- intersect(c("rhoC", "rho_C", "Composite Reliability"), names(reliability))
+        cr <- if (length(cr_column)) suppressWarnings(as.numeric(reliability[construct, cr_column[[1L]]])) else NA_real_
+        if (is.finite(ave)) stats_values$ave <- paste0("AVE = ", format_decimal3(ave))
+        if (is.finite(cr)) stats_values$cr <- paste0("CR = ", format_decimal3(cr))
+        if (!is.null(stats_values$ave)) values <- c(values, stats_values$ave)
+        if (!is.null(stats_values$cr)) values <- c(values, stats_values$cr)
+      }
+      node$resultStatsValues <- stats_values
+      node$resultStats <- paste(values, collapse = "\n")
+      node$resultStatsLong <- paste(c(long_values, setdiff(values, long_values)), collapse = "\n")
+      node
+    })
+    label_with_p <- function(value, row = NULL, show_p = FALSE) {
+      if (!is.finite(value)) return(list(label = "", p = NA_real_, matched = FALSE))
+      p_value <- if (show_p) structural_canvas_pls_bootstrap_p_numeric(row) else NA_real_
+      label <- if (show_p && is.finite(p_value)) sprintf("%s(%s)", format_decimal3(value), format_p(p_value)) else format_decimal3(value)
+      list(label = label, p = p_value, matched = TRUE)
+    }
     snapshot$edges <- lapply(snapshot$edges %||% list(), function(edge) {
       from <- structural_canvas_node(snapshot, edge$from)
       to <- structural_canvas_node(snapshot, edge$to)
@@ -81,42 +121,82 @@ structural_canvas_result_snapshot <- function(snapshot, fit, coefficient = "beta
         if (identical(from$role, "latent") && identical(to$role, "indicator")) {
           construct <- structural_canvas_name(from)
           indicator <- structural_canvas_name(to)
-          if (indicator %in% rownames(loadings) && construct %in% colnames(loadings)) {
-            value <- suppressWarnings(as.numeric(loadings[indicator, construct]))
-            if (is.finite(value)) info <- list(label = format_decimal3(value), matched = TRUE)
+          formative <- identical(as.character(from$measurementMode %||% "reflective"), "formative")
+          matrix_value <- if (formative) weights else loadings
+          boot_table <- if (formative) bootstrap_weights else bootstrap_loadings
+          if (indicator %in% rownames(matrix_value) && construct %in% colnames(matrix_value)) {
+            value <- suppressWarnings(as.numeric(matrix_value[indicator, construct]))
+            info <- label_with_p(value, structural_canvas_pls_bootstrap_row(boot_table, indicator, construct), show_measurement_p)
           }
         } else if (identical(from$role, "indicator") && identical(to$role, "latent")) {
           construct <- structural_canvas_name(to)
           indicator <- structural_canvas_name(from)
-          if (indicator %in% rownames(loadings) && construct %in% colnames(loadings)) {
-            value <- suppressWarnings(as.numeric(loadings[indicator, construct]))
-            if (is.finite(value)) info <- list(label = format_decimal3(value), matched = TRUE)
+          formative <- identical(as.character(to$measurementMode %||% "formative"), "formative")
+          matrix_value <- if (formative) weights else loadings
+          boot_table <- if (formative) bootstrap_weights else bootstrap_loadings
+          if (indicator %in% rownames(matrix_value) && construct %in% colnames(matrix_value)) {
+            value <- suppressWarnings(as.numeric(matrix_value[indicator, construct]))
+            info <- label_with_p(value, structural_canvas_pls_bootstrap_row(boot_table, indicator, construct), show_measurement_p)
           }
         } else if (identical(from$role, "latent") && identical(to$role, "latent")) {
           predictor <- structural_canvas_name(from)
           outcome <- structural_canvas_name(to)
           if (predictor %in% rownames(paths) && outcome %in% colnames(paths)) {
             value <- suppressWarnings(as.numeric(paths[predictor, outcome]))
-            if (is.finite(value)) info <- list(label = format_decimal3(value), matched = TRUE)
+            info <- label_with_p(value, structural_canvas_pls_bootstrap_row(bootstrap_paths, predictor, outcome), show_path_p)
           }
         }
       }
       edge$label <- info$label
-      edge$p <- NA_real_
-      edge$significant <- FALSE
-      edge$dashEligible <- FALSE
+      edge$p <- info$p %||% NA_real_
+      edge$significant <- isTRUE(info$matched) && is.finite(edge$p) && edge$p < .05
+      error_path <- !is.null(from) && !is.null(to) &&
+        (from$role %in% c("error", "disturbance") || to$role %in% c("error", "disturbance"))
+      edge$dashEligible <- !error_path && if (!is.null(from) && !is.null(to) && identical(from$role, "latent") && identical(to$role, "latent")) show_path_p else show_measurement_p
       edge$resultMatched <- isTRUE(info$matched)
-      edge$labelPosition <- 50
+      measurement_path <- !is.null(from) && !is.null(to) &&
+        ((identical(from$role, "latent") && identical(to$role, "indicator")) ||
+         (identical(from$role, "indicator") && identical(to$role, "latent")))
+      edge$labelPosition <- if (measurement_path) {
+        if (identical(from$role, "latent")) 38 else 62
+      } else 50
       edge$labelOffsetX <- 0
       edge$labelOffsetY <- -10
       edge$labelTextAnchor <- "middle"
       edge
     })
-    snapshot$dashNonsignificant <- FALSE
-    snapshot$resultCoefficient <- "pls"
+    snapshot$dashNonsignificant <- show_path_p || show_measurement_p
+    snapshot$resultCoefficient <- if (coefficient %in% c("pls_value", "pls_p")) coefficient else "pls_p"
+    snapshot$resultMeasurementCoefficient <- measurement_coefficient
     return(snapshot)
   }
   if (!inherits(fit, "lavaan")) return(snapshot)
+
+  lavaan_r2 <- tryCatch(lavaan::lavInspect(fit, "rsquare"), error = function(error) numeric(0))
+  reliability <- tryCatch(structural_canvas_reliability_estimates(fit), error = function(error) data.frame())
+  snapshot$nodes <- lapply(snapshot$nodes %||% list(), function(node) {
+    if (!identical(node$role, "latent")) return(node)
+    construct <- structural_canvas_name(node)
+    values <- character(0)
+    stats_values <- list()
+    r2 <- if (construct %in% names(lavaan_r2)) suppressWarnings(as.numeric(lavaan_r2[[construct]])) else NA_real_
+    if (is.finite(r2)) stats_values$r2 <- paste0("R\u00b2 = ", format_decimal3(r2))
+    if (!is.null(stats_values$r2)) values <- c(values, stats_values$r2)
+    row <- reliability[as.character(reliability$Factor %||% character(0)) == construct, , drop = FALSE]
+    reflective <- !identical(as.character(node$measurementMode %||% "reflective"), "formative")
+    if (reflective && nrow(row)) {
+      ave <- suppressWarnings(as.numeric(row$AVE[[1L]] %||% NA_real_))
+      cr <- suppressWarnings(as.numeric(row$CR[[1L]] %||% NA_real_))
+      if (is.finite(ave)) stats_values$ave <- paste0("AVE = ", format_decimal3(ave))
+      if (is.finite(cr)) stats_values$cr <- paste0("CR = ", format_decimal3(cr))
+      if (!is.null(stats_values$ave)) values <- c(values, stats_values$ave)
+      if (!is.null(stats_values$cr)) values <- c(values, stats_values$cr)
+    }
+    node$resultStatsValues <- stats_values
+    node$resultStats <- paste(values, collapse = "\n")
+    node$resultStatsLong <- node$resultStats
+    node
+  })
 
   parameters <- lavaan::parameterEstimates(fit, standardized = TRUE)
   result_info <- function(lhs, op, rhs) {
@@ -183,7 +263,8 @@ structural_canvas_result_snapshot <- function(snapshot, fit, coefficient = "beta
     edge$label <- info$label
     edge$p <- info$p
     edge$significant <- isTRUE(info$matched) && (!is.finite(info$p) || info$p < .05)
-    edge$dashEligible <- is_measurement_path || is_structural_path
+    error_path <- from_role %in% c("error", "disturbance") || to_role %in% c("error", "disturbance")
+    edge$dashEligible <- !error_path && (is_measurement_path || is_structural_path)
     edge$resultMatched <- isTRUE(info$matched)
     edge$labelPosition <- 50
     edge$labelOffsetX <- 0

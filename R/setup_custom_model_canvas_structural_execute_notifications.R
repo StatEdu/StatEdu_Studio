@@ -1,7 +1,7 @@
-structural_canvas_show_notification <- function(message, type = "message", duration = 5) {
+structural_canvas_show_notification <- function(message, type = "message", duration = 5, id = NULL) {
   domain <- shiny::getDefaultReactiveDomain()
   if (is.null(domain) || !is.function(domain$sendNotification)) return(invisible(FALSE))
-  showNotification(message, type = type, duration = duration)
+  showNotification(message, type = type, duration = duration, id = id)
   invisible(TRUE)
 }
 
@@ -9,6 +9,21 @@ structural_canvas_error_message <- function(error, language = NULL) {
   message <- if (inherits(error, "condition")) conditionMessage(error) else as.character(error %||% "")
   ko <- identical(normalize_app_language(language), "ko")
   if (!ko) return(message)
+  if (grepl("Sampling-design gate blocked estimation", message, fixed = TRUE)) {
+    if (grepl("Observation independence and sampling structure must be declared", message, fixed = TRUE)) {
+      return("분석을 실행하려면 관측치와 표본설계 구조를 먼저 선택해야 합니다. 분석 옵션의 ‘추정’ 탭에서 독립 횡단자료, 군집·다층자료, 복합표본 또는 종단·반복측정자료 중 해당 항목을 선택하십시오.")
+    }
+    if (grepl("Cluster-robust or multilevel SEM is required", message, fixed = TRUE)) {
+      return("현재 캔버스 엔진은 군집·다층자료를 분석할 수 없습니다. 군집 의존성을 반영하는 다층 SEM 또는 군집 강건 추정 절차가 필요합니다.")
+    }
+    if (grepl("Survey weights, strata, and primary sampling units", message, fixed = TRUE)) {
+      return("현재 캔버스 엔진은 복합표본 자료를 분석할 수 없습니다. 표본가중치, 층화 및 PSU를 반영하는 복합표본 SEM 절차가 필요합니다.")
+    }
+    if (grepl("Within-person dependence and longitudinal measurement structure", message, fixed = TRUE)) {
+      return("현재 캔버스 엔진은 종단·반복측정자료를 분석할 수 없습니다. 개인 내 의존성과 종단 측정구조를 반영하는 종단 SEM 절차가 필요합니다.")
+    }
+    return("선택한 표본설계는 현재 캔버스 추정 엔진에서 지원되지 않아 분석을 실행하지 않았습니다.")
+  }
   if (grepl("modindices", message, fixed = TRUE) || grepl("modification indices", message, ignore.case = TRUE)) {
     if (grepl("information matrix is singular", message, ignore.case = TRUE)) {
       return("수정지수(MI)를 계산할 수 없습니다. 정보행렬이 특이(singular)하여 모형이 식별 경계에 있거나 추정이 불안정합니다. MI 후보는 표시하지 않습니다.")

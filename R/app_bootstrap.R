@@ -39,6 +39,7 @@ required_packages <- c(
   "mice",
   "survey",
   "survival",
+  "cmprsk",
   "lavaan",
   "seminr"
 )

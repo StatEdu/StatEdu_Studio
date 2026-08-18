@@ -45,8 +45,8 @@ structural_canvas_pls_approximate_fit_indices <- function(bundle, summary_fit = 
     return(c(srmr = NA_real_, d_g = NA_real_, d_uls = NA_real_, nfi = NA_real_))
   }
   snapshot <- bundle$snapshot %||% list()
-  latents <- Filter(function(node) identical(node$role, "latent"), snapshot$nodes %||% list())
-  if (length(latents) && any(vapply(latents, function(node) identical(node$measurementMode %||% "reflective", "formative"), logical(1)))) {
+  latent_nodes <- Filter(function(node) identical(node$role %||% "", "latent"), snapshot$nodes %||% list())
+  if (any(vapply(latent_nodes, function(node) identical(node$measurementMode %||% "reflective", "formative"), logical(1)))) {
     return(c(srmr = NA_real_, d_g = NA_real_, d_uls = NA_real_, nfi = NA_real_))
   }
   summary_fit <- summary_fit %||% tryCatch(summary(fit), error = function(error) NULL)
@@ -103,18 +103,50 @@ structural_canvas_pls_approximate_fit_indices <- function(bundle, summary_fit = 
   )
 }
 
+structural_canvas_pls_diagnostic_fit <- function(bundle, estimator) {
+  if (is.null(bundle) || is.null(bundle$fit) || !inherits(bundle$fit, "pls_model")) return(NULL)
+  estimator <- toupper(as.character(estimator %||% "PLS"))
+  current_estimator <- toupper(as.character(bundle$diagnostics$estimator %||% bundle$estimator %||% "PLS"))
+  if (identical(current_estimator, "PLSC")) current_estimator <- "PLSC"
+  if (identical(estimator, current_estimator)) return(bundle$fit)
+  if (identical(estimator, "PLSC")) {
+    return(tryCatch(seminr::PLSc(bundle$fit), error = function(error) NULL))
+  }
+  snapshot <- bundle$snapshot %||% list()
+  data <- bundle$analysis_data %||% bundle$fit$rawdata %||% bundle$fit$data %||% NULL
+  if (is.null(data)) return(NULL)
+  latents <- Filter(function(node) identical(node$role %||% "", "latent"), snapshot$nodes %||% list())
+  edges <- snapshot$edges %||% list()
+  tryCatch(
+    structural_canvas_run_pls_analysis(snapshot, as.data.frame(data, check.names = FALSE), latents, edges, estimator = "PLS")$fit,
+    error = function(error) NULL
+  )
+}
+
 structural_canvas_pls_fit_diagnostics_table <- function(bundle) {
   if (is.null(bundle) || is.null(bundle$fit) || !inherits(bundle$fit, "pls_model")) return(data.frame())
-  summary_fit <- tryCatch(summary(bundle$fit), error = function(error) NULL)
-  values <- structural_canvas_pls_approximate_fit_indices(bundle, summary_fit)
-  estimator <- bundle$diagnostics$estimator %||% bundle$estimator %||% "PLS"
-  data.frame(
-    Estimator = estimator,
-    SRMR = structural_canvas_pls_quality_number(values[["srmr"]]),
-    d_G = structural_canvas_pls_quality_number(values[["d_g"]]),
-    d_ULS = structural_canvas_pls_quality_number(values[["d_uls"]]),
-    check.names = FALSE
-  )
+  snapshot <- bundle$snapshot %||% list()
+  latent_nodes <- Filter(function(node) identical(node$role %||% "", "latent"), snapshot$nodes %||% list())
+  if (any(vapply(latent_nodes, function(node) identical(node$measurementMode %||% "reflective", "formative"), logical(1)))) {
+    return(data.frame())
+  }
+  rows <- lapply(c("PLS", "PLSC"), function(estimator) {
+    fit <- structural_canvas_pls_diagnostic_fit(bundle, estimator)
+    diagnostic_bundle <- bundle
+    diagnostic_bundle$fit <- fit
+    diagnostic_bundle$estimator <- estimator
+    summary_fit <- tryCatch(summary(fit), error = function(error) NULL)
+    values <- structural_canvas_pls_approximate_fit_indices(diagnostic_bundle, summary_fit)
+    data.frame(
+      Model = if (identical(estimator, "PLSC")) "plsc" else "pls",
+      srmr = structural_canvas_pls_quality_number(values[["srmr"]]),
+      d_G = structural_canvas_pls_quality_number(values[["d_g"]]),
+      d_ULS = structural_canvas_pls_quality_number(values[["d_uls"]]),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
+  })
+  do.call(rbind, rows)
 }
 
 structural_canvas_pls_quality_status <- function(item, value) {
@@ -391,22 +423,31 @@ output[[paste0(prefix, "_result_fit")]] <- renderUI({
   structural_canvas_fit_table_result_ui(fit_result(), result_table("fit"))
 })
 if (identical(analysis_type, "plssem")) {
-  output[[paste0(prefix, "_result_pls_fit_diagnostics")]] <- renderUI({
+  pls_fit_diagnostics_content <- function() {
     table <- structural_canvas_pls_fit_diagnostics_table(fit_result())
     if (!is.data.frame(table) || !nrow(table)) return(NULL)
     ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
+    display <- table
+    names(display)[names(display) == "Model"] <- ""
     tagList(
-      tags$h5(if (ko) "PLS/PLSc 모형 적합도 진단" else "PLS/PLSc model fit diagnostics"),
-      structural_canvas_basic_html_table(table, class = "table table-striped table-bordered structural-pls-fit-diagnostics-table"),
-      tags$p(class = "structural-result-note", if (ko) "SRMR, d_G, d_ULS는 반영 측정모형의 관찰 지표 상관과 모형 함의 지표 상관 간 근사 불일치 지표입니다." else "SRMR, d_G, and d_ULS are approximate discrepancy diagnostics between observed and model-implied indicator correlations for reflective measurement models.")
+      structural_canvas_basic_html_table(display, class = "table table-striped table-bordered structural-pls-fit-diagnostics-table"),
+      tags$p(class = "structural-result-note", if (ko) "SRMR, d_G, d_ULS는 반영형 측정모형에서 관측 지표상관과 모형함의 지표상관 사이의 근사 불일치 진단입니다. 형성형 구성개념이 있으면 계산하지 않습니다." else "SRMR, d_G, and d_ULS are approximate discrepancy diagnostics between observed and model-implied indicator correlations for reflective measurement models. They are not calculated when a formative construct is present.")
     )
+  }
+  pls_fit_diagnostics_ui <- function() pls_fit_diagnostics_content()
+  output[[paste0(prefix, "_result_pls_fit_diagnostics_section")]] <- renderUI({
+    content <- pls_fit_diagnostics_content()
+    if (is.null(content)) return(NULL)
+    div(class = "result-section regression-result-panel structural-pls-fit-diagnostics-result", content)
   })
+  output[[paste0(prefix, "_result_pls_fit_diagnostics")]] <- renderUI(pls_fit_diagnostics_ui())
+  output[[paste0(prefix, "_result_pls_fit_diagnostics_inline")]] <- renderUI(pls_fit_diagnostics_ui())
   output[[paste0(prefix, "_result_fit_guidance")]] <- renderUI({
     table <- result_table("fit_guide")
     if (!is.data.frame(table) || !nrow(table)) return(NULL)
     ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
     tagList(
-      tags$h5(if (ko) "표 2 보조: 구조효과 가이드 지표" else "Supplementary Table 2: Structural effect guide indices"),
+      tags$h5(if (ko) "표 3 보조: 구조효과 가이드 지표" else "Supplementary Table 3: Structural effect guide indices"),
       structural_canvas_basic_html_table(table, class = "table table-striped table-bordered structural-pls-fit-guide-table"),
       tags$p(class = "structural-result-note", if (ko) "f²와 q² 크기 등급은 관행적 기술 표지이며 보편적 중요도 또는 예측력 합격선이 아닙니다. R²·Q²·f²는 분야 맥락, 불확실성, 실질적 중요성과 반복 PLSpredict 기준모형 비교를 함께 해석하십시오. Inner VIF는 단독 합격판정이 아니며 계수 부호·크기 변화, 억제효과와 bootstrap 안정성을 함께 점검하십시오." else "f2/q2 size labels are conventional descriptive anchors, not universal importance or predictive-performance thresholds. Interpret R2, Q2, and f2 with domain context, uncertainty, practical importance, and repeated PLSpredict benchmark comparisons. Inner VIF is not a standalone pass criterion; also inspect coefficient sign/magnitude changes, suppression, and bootstrap stability.")
     )
@@ -417,9 +458,15 @@ if (identical(analysis_type, "plssem")) {
     value_columns <- setdiff(names(table), c("Effect", "Outcome", "Predictor"))
     if (!length(value_columns) || !any(nzchar(as.character(unlist(table[value_columns], use.names = FALSE))))) return(NULL)
     ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
+    bootstrap <- fit_result()$pls_bootstrap_result %||% list()
+    valid_n <- suppressWarnings(as.integer(bootstrap$nboot %||% 0L))
+    requested_n <- suppressWarnings(as.integer(bootstrap$requested_nboot %||% 0L))
+    timeout_n <- suppressWarnings(as.integer(bootstrap$timeout_failures %||% 0L))
+    estimation_n <- suppressWarnings(as.integer(bootstrap$estimation_failures %||% max(0L, requested_n - valid_n - timeout_n)))
     tagList(
-      tags$h5(if (ko) "표 2 보조: PLS 부트스트랩 경로 추론" else "Supplementary Table 2: PLS bootstrap path inference"),
+      tags$h5(if (ko) "표 3 보조: PLS 부트스트랩 경로 추론" else "Supplementary Table 3: PLS bootstrap path inference"),
       structural_canvas_basic_html_table(table, class = "table table-striped table-bordered structural-pls-fit-bootstrap-table"),
+      if (requested_n > 0L) tags$p(class = "structural-result-note", if (ko) paste0("유효 재표집: ", valid_n, "/", requested_n, "회 (시간 제한 ", timeout_n, ", 추정 실패 ", estimation_n, ").") else paste0("Valid resamples: ", valid_n, "/", requested_n, " (timeouts ", timeout_n, ", estimation failures ", estimation_n, ").")),
       tags$p(class = "structural-result-note", if (ko) "직접경로, 간접효과, 총효과의 percentile bootstrap CI, t, p 값입니다. seminr가 반환한 항목만 표시됩니다." else "Percentile bootstrap CI, t, and p values are shown when seminr returns them.")
     )
   })

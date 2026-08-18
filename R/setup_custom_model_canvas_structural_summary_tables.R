@@ -62,6 +62,25 @@ structural_canvas_summary_result_table <- function(kind, bundle, fit, analysis_t
     )
     names(table)[[1L]] <- if (ko) "모형" else "Model"
     names(table)[10:11] <- paste0(ci_percent, "% CI ", c("LLCI", "ULCI"))
+    if (length(selections) > 1L && identical(bundle$comparison_type %||% "", "mi")) {
+      delta <- values[2L, ] - values[1L, ]
+      delta_row <- data.frame(
+        if (ko) "Δ (수정−연구)" else "Δ (modified−research)",
+        fmt(delta[[1L]]),
+        fmt(delta[[2L]]),
+        "—",
+        fmt(delta[[4L]]),
+        fmt(delta[[5L]]),
+        fmt(delta[[6L]]),
+        fmt(delta[[7L]]),
+        fmt(delta[[8L]]),
+        fmt(delta[[9L]]),
+        fmt(delta[[10L]]),
+        check.names = FALSE
+      )
+      names(delta_row) <- names(table)
+      table <- rbind(table, delta_row)
+    }
     return(table)
   }
 

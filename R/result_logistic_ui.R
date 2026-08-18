@@ -440,7 +440,7 @@ logistic_result_html_table <- function(result, variable_table = NULL, labels = c
             if (isTRUE(show_b)) tags$th(style = logistic_header_style(FALSE, bottom = FALSE), ""),
             if (isTRUE(show_se)) tags$th(style = logistic_header_style(FALSE, bottom = FALSE), ""),
             tags$th(style = logistic_header_style(FALSE, bottom = FALSE), ""),
-            tags$th(style = logistic_header_style(FALSE, bottom = TRUE, center = TRUE), colspan = 2, "95% CI"),
+            tags$th(class = "coefficient-ci-group-header", style = logistic_header_style(FALSE, bottom = TRUE, center = TRUE), colspan = 2, span(class = "coefficient-ci-group-label", "95% CI")),
             tags$th(style = logistic_header_style(FALSE, bottom = FALSE), ""),
             tags$th(style = logistic_header_style(FALSE, bottom = FALSE), "")
           ),

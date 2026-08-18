@@ -7,6 +7,10 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
     confirm_input <- paste0(prefix, "_canvas_run_confirm")
     advanced_input <- paste0(prefix, "_canvas_advanced_request")
     fit_result <- reactiveVal(NULL)
+    pls_bootstrap_job <- reactiveVal(NULL)
+    pls_bootstrap_progress_mtime <- reactiveVal(NA_real_)
+    pls_bootstrap_progress_cache <- reactiveVal(NULL)
+    effect_bootstrap_job <- reactiveVal(NULL)
     pending_mi_rows <- reactiveVal(integer(0))
     pending_estimator_snapshot <- reactiveVal(NULL)
     output[[paste0(prefix, "_method_recommendation")]] <- renderUI({
@@ -73,21 +77,236 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
       criterion_choices <- c(stats::setNames("", if (identical(statedu_current_language(app_language_fn), "ko")) "선택하지 않음" else "Not selected"), stats::setNames(data_names, data_names))
       updateSelectInput(session, paste0(prefix, "_redundancy_criterion"), choices = criterion_choices, selected = if (current_criterion %in% data_names) current_criterion else "")
     })
-    result_table <- function(kind) {
-      structural_canvas_result_table(kind, fit_result, analysis_type, labels_fn, app_language_fn)
+    result_table_cache <- new.env(parent = emptyenv())
+    result_table_cache_bundle <- NULL
+    result_table <- function(kind, language_override = NULL) {
+      bundle <- fit_result()
+      shiny::req(!is.null(bundle))
+      if (!identical(bundle, result_table_cache_bundle)) {
+        rm(list = ls(result_table_cache, all.names = TRUE), envir = result_table_cache)
+        result_table_cache_bundle <<- bundle
+      }
+      language <- language_override %||% statedu_current_language(app_language_fn)
+      labels <- labels_fn() %||% character(0)
+      label_signature <- paste(names(labels), as.character(labels), sep = "=", collapse = "\r")
+      cache_key <- paste(normalize_app_language(language), as.character(kind), label_signature, sep = "::")
+      if (exists(cache_key, envir = result_table_cache, inherits = FALSE)) {
+        return(get(cache_key, envir = result_table_cache, inherits = FALSE))
+      }
+      value <- structural_canvas_result_table(
+        kind,
+        function() bundle,
+        analysis_type,
+        function() labels,
+        function() language
+      )
+      assign(cache_key, value, envir = result_table_cache)
+      value
     }
     structural_canvas_register_result_outputs(
       input, output, prefix, canvas_output, analysis_type,
       selected_names_fn, variable_table_fn, dataset_fn, labels_fn, app_language_fn, fit_result, result_table
     )
     execute_analysis <- function(snapshot, settings = NULL) {
-      structural_canvas_execute_analysis(
-        snapshot, settings, input, session, dataset_fn, variable_table_fn, analysis_type, prefix, fit_result, app_language_fn
+      value <- structural_canvas_execute_analysis(
+        snapshot, settings, input, session, dataset_fn, variable_table_fn, analysis_type, prefix, fit_result, app_language_fn,
+        defer_pls_bootstrap = identical(analysis_type, "plssem")
       )
+      if (identical(analysis_type, "plssem")) {
+        bundle <- fit_result()
+        nboot <- suppressWarnings(as.integer(bundle$pls_bootstrap %||% 0L))
+        if (is.finite(nboot) && nboot > 0L) {
+          old_job <- pls_bootstrap_job()
+          if (!is.null(old_job)) {
+            if (!is.null(old_job$process) && old_job$process$is_alive()) old_job$process$kill()
+            structural_canvas_cleanup_pls_bootstrap_job(old_job)
+          }
+          job <- structural_canvas_start_pls_bootstrap_job(bundle$diagnostics, nboot, bundle$pls_seed)
+          pls_bootstrap_job(job)
+          pls_bootstrap_progress_mtime(NA_real_)
+          pls_bootstrap_progress_cache(NULL)
+          ko <- identical(statedu_current_language(app_language_fn), "ko")
+          structural_canvas_show_notification(
+            shiny::tagList(
+              shiny::tags$strong(if (ko) "PLS/PLSc 부트스트랩을 계산하고 있습니다." else "Computing the PLS/PLSc bootstrap."),
+              shiny::tags$div(paste0(format(nboot, big.mark = ","), if (ko) "회 재표집 · 기본 분석 결과는 지금 확인할 수 있습니다." else " resamples · Base-model results are available now.")),
+              shiny::tags$div(class = "progress structural-bootstrap-progress", shiny::tags$div(class = "progress-bar progress-bar-striped active", role = "progressbar", style = "width: 100%;", if (ko) "준비 중" else "Starting")),
+              shiny::actionButton(paste0(prefix, "_pls_bootstrap_stop"), if (ko) "부트스트랩 중단" else "Stop bootstrap", class = "btn btn-sm btn-danger")
+            ),
+            type = "message", duration = NULL, id = paste0(prefix, "-pls-bootstrap-progress")
+          )
+        }
+      }
+      if (analysis_type %in% c("cbsem", "sem")) {
+        bundle <- fit_result()
+        if (!is.null(bundle) && isTRUE(bundle$effect_bootstrap_pending)) {
+          old_job <- effect_bootstrap_job()
+          if (!is.null(old_job)) {
+            if (!is.null(old_job$process) && old_job$process$is_alive()) old_job$process$kill()
+            structural_canvas_cleanup_effect_bootstrap_job(old_job)
+          }
+          job <- structural_canvas_start_effect_bootstrap_job(
+            bundle$snapshot, bundle$analysis_data, analysis_type, bundle$estimator,
+            bundle$missing, bundle$std_lv, bundle$ordered, character(0),
+            bundle$residual_variance_fixes, bundle$effect_bootstrap, bundle$effect_bootstrap_seed
+          )
+          effect_bootstrap_job(job)
+          structural_canvas_show_notification(
+            if (identical(statedu_current_language(app_language_fn), "ko")) "구조효과 bootstrap CI를 별도 작업으로 계산하고 있습니다. 기본 결과표는 지금 확인할 수 있습니다." else "Computing structural-effect bootstrap CIs in a background job. Base result tables are available now.",
+            type = "message", duration = 7
+          )
+        }
+      }
+      value
+    }
+    if (analysis_type %in% c("cbsem", "sem")) {
+      observe({
+        job <- effect_bootstrap_job()
+        if (is.null(job) || is.null(job$process)) return()
+        if (job$process$is_alive()) {
+          shiny::invalidateLater(700, session)
+          return()
+        }
+        on.exit(structural_canvas_cleanup_effect_bootstrap_job(job), add = TRUE)
+        status <- job$process$get_exit_status()
+        bundle <- fit_result()
+        if (!is.null(bundle)) {
+          bundle$effect_bootstrap_pending <- FALSE
+          if (identical(status, 0L) && file.exists(job$result_file)) {
+            bundle$effect_bootstrap_result <- readRDS(job$result_file)
+            bundle$effect_bootstrap_error <- NULL
+            fit_result(bundle)
+            structural_canvas_show_notification(
+              if (identical(statedu_current_language(app_language_fn), "ko")) "구조효과 bootstrap CI 계산이 완료되어 결과표를 갱신했습니다." else "Structural-effect bootstrap CIs are complete and result tables were updated.",
+              type = "message", duration = 6
+            )
+          } else {
+            error_text <- if (file.exists(job$error_file)) paste(readLines(job$error_file, warn = FALSE, encoding = "UTF-8"), collapse = "\n") else ""
+            bundle$effect_bootstrap_result <- NULL
+            bundle$effect_bootstrap_error <- if (nzchar(error_text)) error_text else "Background bootstrap did not complete."
+            fit_result(bundle)
+            structural_canvas_show_notification(
+              if (identical(statedu_current_language(app_language_fn), "ko")) paste0("구조효과 bootstrap CI 계산을 완료하지 못했습니다.", if (nzchar(error_text)) paste0(" ", error_text) else "") else paste0("Structural-effect bootstrap CIs did not complete.", if (nzchar(error_text)) paste0(" ", error_text) else ""),
+              type = "warning", duration = 10
+            )
+          }
+        }
+        effect_bootstrap_job(NULL)
+      })
+      session$onSessionEnded(function() {
+        job <- shiny::isolate(effect_bootstrap_job())
+        if (!is.null(job$process) && job$process$is_alive()) job$process$kill()
+        structural_canvas_cleanup_effect_bootstrap_job(job)
+      })
+    }
+    if (identical(analysis_type, "plssem")) {
+      observeEvent(input[[paste0(prefix, "_pls_bootstrap_stop")]], {
+        job <- pls_bootstrap_job()
+        if (is.null(job)) return()
+        if (!is.null(job$process) && job$process$is_alive()) job$process$kill()
+        structural_canvas_cleanup_pls_bootstrap_job(job)
+        pls_bootstrap_job(NULL)
+        shiny::removeNotification(paste0(prefix, "-pls-bootstrap-progress"))
+        structural_canvas_show_notification(
+          if (identical(statedu_current_language(app_language_fn), "ko")) "PLS/PLSc 부트스트랩을 중단했습니다. 기본 분석 결과는 유지됩니다." else "The PLS/PLSc bootstrap was stopped. Base-model results remain available.",
+          type = "warning", duration = 8
+        )
+      }, ignoreInit = TRUE)
+      observe({
+        job <- pls_bootstrap_job()
+        if (is.null(job) || is.null(job$process)) return()
+        if (job$process$is_alive()) {
+          shiny::invalidateLater(400, session)
+          current_mtime <- tryCatch(as.numeric(file.info(job$progress_file)$mtime), error = function(error) NA_real_)
+          if (is.finite(current_mtime) && !identical(current_mtime, pls_bootstrap_progress_mtime())) {
+            pls_bootstrap_progress_cache(tryCatch(readRDS(job$progress_file), error = function(error) pls_bootstrap_progress_cache()))
+            pls_bootstrap_progress_mtime(current_mtime)
+          }
+          progress <- pls_bootstrap_progress_cache()
+          elapsed <- max(0L, as.integer(difftime(Sys.time(), job$started_at, units = "secs")))
+          ko <- identical(statedu_current_language(app_language_fn), "ko")
+          determinate <- isTRUE(progress$determinate)
+          completed <- suppressWarnings(as.integer(progress$completed %||% 0L))
+          total <- suppressWarnings(as.integer(progress$total %||% job$nboot %||% 0L))
+          percentage <- if (determinate && total > 0L) max(0, min(100, round(100 * completed / total))) else NA_real_
+          progress_age <- suppressWarnings(as.numeric(Sys.time()) - as.numeric(progress$updated_at %||% Sys.time()))
+          stalled <- identical(as.character(progress$phase %||% ""), "resampling") && is.finite(progress_age) && progress_age >= 10
+          rate <- if (!stalled && elapsed > 0L && completed > 0L) completed / elapsed else NA_real_
+          remaining <- if (!stalled && is.finite(rate) && rate > 0 && total > completed) ceiling((total - completed) / rate) else NA_real_
+          phase <- as.character(progress$phase %||% "starting")
+          phase_label <- if (ko) switch(phase, starting = "준비 중", resampling = "재표집 중", summarizing = "결과 정리 중", complete = "완료", "실행 중") else switch(phase, starting = "Starting", resampling = "Resampling", summarizing = "Preparing summaries", complete = "Complete", "Running")
+          detail <- if (is.finite(percentage)) {
+            paste0(
+              phase_label, " ", percentage, "% · ", format(completed, big.mark = ","), "/", format(total, big.mark = ","),
+              if (is.finite(rate)) paste0(" · ", format(round(rate, 1), nsmall = 1), if (ko) "회/초" else "/s") else "",
+              if (ko) " · 경과 " else " · elapsed ", elapsed, if (ko) "초" else " s",
+              if (stalled) if (ko) " · 현재 재표집 묶음이 오래 걸려 ETA 계산을 일시 중지했습니다." else " · current resample batch is slow; ETA paused."
+              else if (is.finite(remaining)) paste0(if (ko) " · 예상 잔여 " else " · about ", remaining, if (ko) "초" else " s remaining") else ""
+            )
+          } else {
+            paste0(phase_label, " · ", format(job$nboot, big.mark = ","), if (ko) "회 요청 · 경과 " else " requested · elapsed ", elapsed, if (ko) "초" else " s")
+          }
+          bar_class <- paste("progress-bar progress-bar-striped", if (!is.finite(percentage)) "active" else "")
+          bar_width <- if (is.finite(percentage)) paste0(percentage, "%") else "100%"
+          structural_canvas_show_notification(
+            shiny::tagList(
+              shiny::tags$strong(if (ko) "PLS/PLSc 부트스트랩 진행 상태" else "PLS/PLSc bootstrap progress"),
+              shiny::tags$div(detail),
+              shiny::tags$div(class = "progress structural-bootstrap-progress", shiny::tags$div(class = bar_class, role = "progressbar", style = paste0("width: ", bar_width, ";"), if (is.finite(percentage)) paste0(percentage, "%") else phase_label)),
+              shiny::actionButton(paste0(prefix, "_pls_bootstrap_stop"), if (ko) "부트스트랩 중단" else "Stop bootstrap", class = "btn btn-sm btn-danger")
+            ),
+            type = "message", duration = NULL, id = paste0(prefix, "-pls-bootstrap-progress")
+          )
+          return()
+        }
+        on.exit(structural_canvas_cleanup_pls_bootstrap_job(job), add = TRUE)
+        shiny::removeNotification(paste0(prefix, "-pls-bootstrap-progress"))
+        status <- job$process$get_exit_status()
+        if (identical(status, 0L) && file.exists(job$result_file)) {
+          value <- readRDS(job$result_file)
+          bundle <- fit_result()
+          if (!is.null(bundle)) {
+            bundle$pls_bootstrap_result <- value
+            fit_result(bundle)
+            session$sendCustomMessage(
+              "custom-model-canvas-result",
+              list(
+                rootId = paste0(prefix, "-canvas-root"), source = bundle$snapshot,
+                result = structural_canvas_result_snapshot(
+                  bundle$snapshot, bundle$fit,
+                  bundle$result_coefficient %||% "pls_p", value,
+                  bundle$result_measurement_coefficient %||% "measurement_p"
+                ),
+                show = TRUE
+              )
+            )
+          }
+          valid_n <- suppressWarnings(as.integer(value$nboot %||% 0L))
+          requested_n <- suppressWarnings(as.integer(value$requested_nboot %||% job$nboot %||% 0L))
+          timeout_n <- suppressWarnings(as.integer(value$timeout_failures %||% 0L))
+          estimation_n <- suppressWarnings(as.integer(value$estimation_failures %||% max(0L, requested_n - valid_n - timeout_n)))
+          structural_canvas_show_notification(
+            if (identical(statedu_current_language(app_language_fn), "ko")) paste0("PLS/PLSc 부트스트랩이 완료되어 결과표를 갱신했습니다. 유효 재표집 ", format(valid_n, big.mark = ","), "/", format(requested_n, big.mark = ","), "회 (시간 제한 ", timeout_n, ", 추정 실패 ", estimation_n, ").") else paste0("The PLS/PLSc bootstrap is complete and result tables were updated. Valid resamples: ", format(valid_n, big.mark = ","), "/", format(requested_n, big.mark = ","), " (timeouts ", timeout_n, ", estimation failures ", estimation_n, ")."),
+            type = "message", duration = 8
+          )
+        } else {
+          error_text <- if (file.exists(job$error_file)) paste(readLines(job$error_file, warn = FALSE, encoding = "UTF-8"), collapse = "\n") else ""
+          structural_canvas_show_notification(
+            if (identical(statedu_current_language(app_language_fn), "ko")) paste0("PLS/PLSc 부트스트랩을 완료하지 못했습니다.", if (nzchar(error_text)) paste0(" ", error_text) else "") else paste0("The PLS/PLSc bootstrap did not complete.", if (nzchar(error_text)) paste0(" ", error_text) else ""),
+            type = "error", duration = 12
+          )
+        }
+        pls_bootstrap_job(NULL)
+      })
+      session$onSessionEnded(function() {
+        job <- shiny::isolate(pls_bootstrap_job())
+        if (!is.null(job$process) && job$process$is_alive()) job$process$kill()
+        structural_canvas_cleanup_pls_bootstrap_job(job)
+      })
     }
     structural_canvas_register_interaction_events(
       input, session, dataset_fn, selected_names_fn, variable_table_fn, app_language_fn,
-      analysis_type, prefix, canvas_input, confirm_input, advanced_input,
+      analysis_type, prefix, canvas_input, run_input, confirm_input, advanced_input,
       fit_result, pending_mi_rows, pending_estimator_snapshot, mark_settings_dirty, execute_analysis
     )
     register_analysis_data_viewer_handlers(

@@ -51,6 +51,26 @@ structural_canvas_method_recommendation_ui <- function(recommendation, selected_
   ko <- identical(normalize_app_language(language), "ko")
   candidates <- recommendation$candidates %||% data.frame()
   aligned <- isTRUE(nzchar(recommendation$primary %||% "")) && identical(selected_method, recommendation$primary)
+  translate_candidate <- function(value) {
+    if (!ko) return(as.character(value %||% ""))
+    translations <- c(
+      Primary = "우선 권고", Alternative = "대안", Review = "검토 필요", Blocked = "실행 불가",
+      "All constructs are reflective common factors and the objective is confirmatory or explanatory." = "모든 구성개념이 반영형 공통요인이며 분석 목적이 확인적 또는 설명적입니다.",
+      "Choose ML/MLR/WLSMV from indicator scale and estimator assumptions." = "지표의 측정수준과 추정 가정에 따라 ML, MLR 또는 WLSMV를 선택합니다.",
+      "A consistent PLS factor-estimation workflow may be used when substantively required." = "실질적 필요가 있을 때 일관성 보정 PLS 요인추정 절차를 대안으로 사용할 수 있습니다.",
+      "Do not choose it solely because empirical fit is better." = "경험적 적합도가 더 좋다는 이유만으로 선택하지 마십시오.",
+      "All constructs are reflective common factors and a PLS-based prediction/score workflow was requested." = "모든 구성개념이 반영형 공통요인이며 PLS 기반 예측 또는 점수 활용이 목적입니다.",
+      "Verify that the selected PLSc implementation supports every structural feature." = "선택한 PLSc 구현이 모형의 모든 구조적 기능을 지원하는지 확인해야 합니다.",
+      "Retains covariance-based common-factor estimation and confirmatory global-fit assessment." = "공분산 기반 공통요인 추정과 확인적 전역 적합도 평가를 유지합니다.",
+      "Prediction and score use require separate validation." = "예측과 점수 활용에는 별도의 검증이 필요합니다.",
+      "Common-factor constructs use ordered indicators." = "공통요인 구성개념에 순서형 지표가 사용되었습니다.",
+      "Use thresholds and an ordinal identification/invariance workflow." = "임계값과 순서형 식별·불변성 절차를 사용합니다.",
+      "The model contains both common-factor and composite specifications." = "모형에 공통요인과 합성변수 명세가 함께 포함되어 있습니다.",
+      "The model contains composite constructs." = "모형에 합성변수 구성개념이 포함되어 있습니다."
+    )
+    key <- as.character(value %||% "")
+    if (key %in% names(translations)) unname(translations[[key]]) else key
+  }
   tags$div(
     class = paste("structural-method-recommendation", if (aligned) "is-aligned" else "needs-review"),
     tags$strong(if (ko) "추정법 안내: " else "Method guidance: "),
@@ -61,11 +81,16 @@ structural_canvas_method_recommendation_ui <- function(recommendation, selected_
     } else {
       paste0(if (ko) "1순위 후보는 " else "Primary candidate: ", recommendation$primary, if (ko) "입니다. 현재 선택: " else ". Current selection: ", selected_method, ".")
     },
-    if (nrow(candidates)) tags$ul(lapply(seq_len(nrow(candidates)), function(index) tags$li(
-      tags$b(paste0(candidates$Method[[index]], " — ", candidates$Role[[index]], ": ")),
-      candidates$Reason[[index]], if (nzchar(candidates$Limitation[[index]])) paste0(" ", candidates$Limitation[[index]])
-    ))),
-    tags$p(class = "structural-option-note", if (ko) "작은 표본, 비정규성 또는 더 좋은 적합도만으로 PLS/PLSc를 선택하지 않습니다. 최종 선택은 사용자가 확정하며 분석 기록에 저장됩니다." else "Small samples, nonnormality, or better empirical fit alone do not select PLS/PLSc. The user retains the final choice, which is stored in the analysis record.")
+    if (nrow(candidates)) tags$details(
+      class = "structural-method-guidance-details",
+      tags$summary(if (ko) "선정 근거와 대안 보기" else "Show rationale and alternatives"),
+      tags$ul(lapply(seq_len(nrow(candidates)), function(index) tags$li(
+        tags$b(paste0(candidates$Method[[index]], " — ", translate_candidate(candidates$Role[[index]]), ": ")),
+        translate_candidate(candidates$Reason[[index]]),
+        if (nzchar(candidates$Limitation[[index]])) paste0(" ", translate_candidate(candidates$Limitation[[index]]))
+      ))),
+      tags$p(class = "structural-option-note", if (ko) "작은 표본, 비정규성 또는 더 좋은 적합도만으로 PLS/PLSc를 선택하지 않습니다. 최종 선택은 사용자가 확정하며 분석 기록에 저장됩니다." else "Small samples, nonnormality, or better empirical fit alone do not select PLS/PLSc. The user retains the final choice, which is stored in the analysis record.")
+    )
   )
 }
 
