@@ -907,13 +907,33 @@ stopifnot(is.list(pls_bootstrap))
 stopifnot(length(pls_bootstrap$bootstrapped_paths) > 0L)
 stopifnot(length(pls_bootstrap$bootstrapped_loadings) > 0L)
 stopifnot(length(pls_bootstrap$bootstrapped_weights) > 0L)
+set.seed(8128L)
+pls_rng_before <- .Random.seed
+pls_rng_kind_before <- RNGkind()
+pls_rng_streams_first <- structural_canvas_rng_streams(4L, 24680L)
+pls_rng_streams_second <- structural_canvas_rng_streams(4L, 24680L)
+stopifnot(
+  identical(pls_rng_streams_first, pls_rng_streams_second),
+  length(unique(vapply(pls_rng_streams_first, paste, collapse = ":", FUN.VALUE = character(1)))) == 4L,
+  all(vapply(pls_rng_streams_first, function(stream) length(stream) == 7L, logical(1))),
+  identical(.Random.seed, pls_rng_before),
+  identical(RNGkind(), pls_rng_kind_before)
+)
+set.seed(2718L)
+plsc_rng_before <- .Random.seed
 plsc_bootstrap <- structural_canvas_run_pls_bootstrap("plssem", 5L, plsc, 13579L)
+plsc_bootstrap_repeat <- structural_canvas_run_pls_bootstrap("plssem", 5L, plsc, 13579L)
 stopifnot(is.list(plsc_bootstrap))
 stopifnot(identical(plsc_bootstrap$requested_nboot, 5L))
 stopifnot(all(c("timeout_failures", "estimation_failures") %in% names(plsc_bootstrap)))
 stopifnot(length(plsc_bootstrap$bootstrapped_paths) > 0L)
 stopifnot(length(plsc_bootstrap$bootstrapped_loadings) > 0L)
 stopifnot(length(plsc_bootstrap$bootstrapped_weights) > 0L)
+stopifnot(
+  identical(plsc_bootstrap$bootstrapped_paths, plsc_bootstrap_repeat$bootstrapped_paths),
+  identical(plsc_bootstrap$bootstrapped_loadings, plsc_bootstrap_repeat$bootstrapped_loadings),
+  identical(.Random.seed, plsc_rng_before)
+)
 pls_mediation_bootstrap <- structural_canvas_run_pls_bootstrap("plssem", 20L, pls_mediation, 13579L)
 stopifnot("bootstrapped_total_indirect_paths" %in% names(pls_mediation_bootstrap))
 pls_boot_bundle <- pls_bundle

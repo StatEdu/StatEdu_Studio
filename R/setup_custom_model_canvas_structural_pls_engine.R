@@ -336,6 +336,30 @@ structural_canvas_write_bootstrap_progress <- function(progress_file, completed,
   invisible(TRUE)
 }
 
+structural_canvas_rng_streams <- function(n, seed = default_seed()) {
+  n <- suppressWarnings(as.integer(n))
+  seed <- suppressWarnings(as.integer(seed))
+  if (!is.finite(n) || n < 1L) return(list())
+  if (!is.finite(seed) || seed < 1L) seed <- default_seed()
+  old_kind <- RNGkind()
+  old_seed_exists <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  if (old_seed_exists) old_seed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  on.exit({
+    do.call(RNGkind, as.list(old_kind))
+    if (old_seed_exists) assign(".Random.seed", old_seed, envir = .GlobalEnv)
+    else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) rm(".Random.seed", envir = .GlobalEnv)
+  }, add = TRUE)
+  RNGkind("L'Ecuyer-CMRG")
+  set.seed(seed)
+  streams <- vector("list", n)
+  stream <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  for (index in seq_len(n)) {
+    streams[[index]] <- stream
+    stream <- parallel::nextRNGStream(stream)
+  }
+  streams
+}
+
 structural_canvas_run_plsc_bootstrap <- function(seminr_model, nboot = 5000L, seed = default_seed(), progress_file = NULL, apply_plsc = TRUE) {
   nboot <- suppressWarnings(as.integer(nboot %||% 5000L))
   seed <- suppressWarnings(as.integer(seed %||% default_seed()))
@@ -380,8 +404,15 @@ structural_canvas_run_plsc_bootstrap <- function(seminr_model, nboot = 5000L, se
   }
   reference_loadings <- seminr_model$outer_loadings
   common_factor_constructs <- as.character(seminr_model$statedu_common_factor_constructs %||% character(0))
-  estimate_one <- function(index, d, measurement_model, structural_model, inner_weights, seed, apply_plsc, common_factor_constructs, boot_vec_len, reference_loadings) {
-    set.seed(seed + index)
+  rng_streams <- structural_canvas_rng_streams(nboot, seed)
+  estimate_one <- function(index, d, measurement_model, structural_model, inner_weights, rng_stream, apply_plsc, common_factor_constructs, boot_vec_len, reference_loadings) {
+    old_seed_exists <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    if (old_seed_exists) old_seed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    on.exit({
+      if (old_seed_exists) assign(".Random.seed", old_seed, envir = .GlobalEnv)
+      else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) rm(".Random.seed", envir = .GlobalEnv)
+    }, add = TRUE)
+    assign(".Random.seed", rng_stream, envir = .GlobalEnv)
     tryCatch({
       setTimeLimit(cpu = Inf, elapsed = 60, transient = TRUE)
       suppressWarnings({
@@ -418,7 +449,7 @@ structural_canvas_run_plsc_bootstrap <- function(seminr_model, nboot = 5000L, se
     on.exit(parallel::stopCluster(cluster), add = TRUE)
     parallel::clusterExport(
       cluster,
-      c("estimate_one", "align_bootstrap_signs", "structural_canvas_apply_plsc", "common_factor_constructs", "d", "measurement_model", "structural_model", "inner_weights", "seed", "apply_plsc", "boot_vec_len", "reference_loadings"),
+      c("estimate_one", "align_bootstrap_signs", "structural_canvas_apply_plsc", "common_factor_constructs", "d", "measurement_model", "structural_model", "inner_weights", "rng_streams", "apply_plsc", "boot_vec_len", "reference_loadings"),
       envir = environment()
     )
   }
@@ -427,10 +458,10 @@ structural_canvas_run_plsc_bootstrap <- function(seminr_model, nboot = 5000L, se
   for (start in starts) {
     indices <- seq.int(start, min(nboot, start + batch_size - 1L))
     values <- if (is.null(cluster)) {
-      lapply(indices, estimate_one, d, measurement_model, structural_model, inner_weights, seed, apply_plsc, common_factor_constructs, boot_vec_len, reference_loadings)
+      lapply(indices, function(index) estimate_one(index, d, measurement_model, structural_model, inner_weights, rng_streams[[index]], apply_plsc, common_factor_constructs, boot_vec_len, reference_loadings))
     } else {
       parallel::parLapplyLB(cluster, indices, function(index) {
-        estimate_one(index, d, measurement_model, structural_model, inner_weights, seed, apply_plsc, common_factor_constructs, boot_vec_len, reference_loadings)
+        estimate_one(index, d, measurement_model, structural_model, inner_weights, rng_streams[[index]], apply_plsc, common_factor_constructs, boot_vec_len, reference_loadings)
       })
     }
     boot_values[indices] <- values
