@@ -189,21 +189,21 @@ app_brand_title <- function(version) {
 app_stylesheet_link <- function(version) {
   tagList(
     tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-ci-group-header-center-20260816a")),
-    tags$link(rel = "stylesheet", type = "text/css", href = paste0("model-canvas/canvas.css?v=", version, "-paper-status-button-20260818a"))
+    tags$link(rel = "stylesheet", type = "text/css", href = paste0("model-canvas/canvas.css?v=", version, "-paper-fit-view-20260818a"))
   )
 }
 
 app_script_link <- function(version) {
   tagList(
     tags$script(src = paste0("easyflow.js?v=", version, "-structural-menu-20260816a")),
-    tags$script(src = paste0("model-canvas/state.js?v=", version, "-residual-variance-node-20260818a")),
+    tags$script(src = paste0("model-canvas/state.js?v=", version, "-paper-fit-view-20260818a")),
     tags$script(src = paste0("model-canvas/layout.js?v=", version, "-custom-model-canvas-balanced-multi-role-layout-20260729a")),
     tags$script(src = paste0("model-canvas/shiny-bridge.js?v=", version, "-movable-latent-stats-20260817b")),
     tags$script(src = paste0("model-canvas/edges.js?v=", version, "-distance-covariance-curves-20260818a")),
     tags$script(src = paste0("model-canvas/nodes.js?v=", version, "-residual-variance-node-20260818a")),
-    tags$script(src = paste0("model-canvas/dialogs.js?v=", version, "-save-dialog-svg-export-20260818a")),
+    tags$script(src = paste0("model-canvas/dialogs.js?v=", version, "-paper-fit-view-20260818a")),
     tags$script(src = paste0("model-canvas/toolbar.js?v=", version, "-paper-status-button-20260818a")),
-    tags$script(src = paste0("model-canvas/canvas.js?v=", version, "-measurement-mode-no-reflow-20260818b"))
+    tags$script(src = paste0("model-canvas/canvas.js?v=", version, "-paper-fit-view-20260818a"))
   )
 }
 

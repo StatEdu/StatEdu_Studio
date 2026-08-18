@@ -35,11 +35,14 @@ custom_model_canvas_workspace <- function(selected_names, variable_table = NULL,
         div(
           class = "custom-model-canvas-scroll",
           div(
-            class = "custom-model-paper is-grid-visible",
-            `data-width` = "971",
-            `data-height` = "688",
-            tags$svg(class = "custom-model-edge-layer", width = "971", height = "688"),
-            div(class = "custom-model-node-layer")
+            class = "custom-model-paper-frame",
+            div(
+              class = "custom-model-paper is-grid-visible",
+              `data-width` = "971",
+              `data-height` = "688",
+              tags$svg(class = "custom-model-edge-layer", width = "971", height = "688"),
+              div(class = "custom-model-node-layer")
+            )
           )
         )
       )

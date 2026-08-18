@@ -54,10 +54,11 @@
   function canvasPoint(instance, event) {
     var rect = instance.paper.getBoundingClientRect();
     var structural = isStructuralCanvas(instance);
-    var scale = structural ? Number(instance.state.canvas.modelZoom || 1) : Number(instance.state.canvas.zoom || 1);
-    var localX = event.clientX - rect.left;
-    var localY = event.clientY - rect.top;
+    var viewZoom = paperViewZoom(instance);
+    var localX = (event.clientX - rect.left) / viewZoom;
+    var localY = (event.clientY - rect.top) / viewZoom;
     if (structural) {
+      var scale = Number(instance.state.canvas.modelZoom || 1);
       var centerX = Number(instance.state.canvas.widthPx || rect.width) / 2;
       var centerY = Number(instance.state.canvas.heightPx || rect.height) / 2;
       return {
@@ -66,9 +67,46 @@
       };
     }
     return {
-      x: localX / scale,
-      y: localY / scale
+      x: localX,
+      y: localY
     };
+  }
+
+  function boundedZoom(value, fallback) {
+    var number = Number(value);
+    if (!Number.isFinite(number) || number <= 0) number = fallback;
+    return Math.max(0.25, Math.min(2, number));
+  }
+
+  function paperViewZoom(instance) {
+    if (isStructuralCanvas(instance)) return boundedZoom(instance.state.canvas.viewZoom, 1);
+    return boundedZoom(instance.state.canvas.zoom, 1);
+  }
+
+  function setPaperViewZoom(instance, zoom) {
+    var nextZoom = boundedZoom(zoom, 1);
+    if (isStructuralCanvas(instance)) {
+      instance.state.canvas.viewZoom = nextZoom;
+    } else {
+      instance.state.canvas.zoom = nextZoom;
+    }
+  }
+
+  function ensurePaperFrame(instance) {
+    if (!instance || !instance.paper) return null;
+    if (instance.paperFrame && instance.paperFrame.contains(instance.paper)) return instance.paperFrame;
+    var parent = instance.paper.parentNode;
+    if (parent && parent.classList && parent.classList.contains("custom-model-paper-frame")) {
+      instance.paperFrame = parent;
+      return parent;
+    }
+    if (!parent) return null;
+    var frame = document.createElement("div");
+    frame.className = "custom-model-paper-frame";
+    parent.insertBefore(frame, instance.paper);
+    frame.appendChild(instance.paper);
+    instance.paperFrame = frame;
+    return frame;
   }
 
   function variableByName(instance, name) {
@@ -115,24 +153,33 @@
   }
 
   function render(instance) {
+    ensurePaperFrame(instance);
     var paperWidth = Number(instance.state.canvas.widthPx || 0);
     var paperHeight = Number(instance.state.canvas.heightPx || 0);
-    var diagramColumnWidth = Math.max(720, paperWidth + 48);
+    var viewZoom = paperViewZoom(instance);
+    var displayWidth = Math.ceil(paperWidth * viewZoom);
+    var displayHeight = Math.ceil(paperHeight * viewZoom);
+    var diagramColumnWidth = Math.max(720, displayWidth + 48);
     instance.root.style.setProperty("--custom-model-paper-width", paperWidth + "px");
     instance.root.style.setProperty("--custom-model-paper-height", paperHeight + "px");
+    instance.root.style.setProperty("--custom-model-paper-display-width", displayWidth + "px");
+    instance.root.style.setProperty("--custom-model-paper-display-height", displayHeight + "px");
     instance.root.style.setProperty("--custom-model-diagram-column-width", diagramColumnWidth + "px");
+    if (instance.paperFrame) {
+      instance.paperFrame.style.width = displayWidth + "px";
+      instance.paperFrame.style.height = displayHeight + "px";
+    }
     instance.paper.style.width = instance.state.canvas.widthPx + "px";
     instance.paper.style.height = instance.state.canvas.heightPx + "px";
+    instance.paper.style.transform = viewZoom === 1 ? "none" : "scale(" + viewZoom + ")";
+    instance.paper.style.transformOrigin = "0 0";
     if (isStructuralCanvas(instance)) {
       var modelZoom = Number(instance.state.canvas.modelZoom || 1);
-      instance.paper.style.transform = "none";
       instance.nodeLayer.style.transform = "scale(" + modelZoom + ")";
       instance.nodeLayer.style.transformOrigin = "50% 50%";
       instance.edgeLayer.style.transform = "scale(" + modelZoom + ")";
       instance.edgeLayer.style.transformOrigin = "50% 50%";
     } else {
-      instance.paper.style.transform = "scale(" + instance.state.canvas.zoom + ")";
-      instance.paper.style.transformOrigin = "0 0";
       instance.nodeLayer.style.transform = "";
       instance.edgeLayer.style.transform = "";
     }
@@ -1792,16 +1839,42 @@
   }
 
   function fit(instance) {
-    var scroll = instance.root.querySelector(".custom-model-canvas-scroll");
-    var isStructural = isStructuralCanvas(instance);
-    if (isStructural && scroll) {
+    if (isStructuralCanvas(instance)) {
       instance.state.canvas.modelZoom = 1;
-    } else {
-      instance.state.canvas.zoom = 1;
     }
+    fitPaperToViewport(instance);
     render(instance);
-    scroll.scrollTo({left: 0, top: 0});
+    var scroll = instance.root.querySelector(".custom-model-canvas-scroll");
+    if (scroll) scroll.scrollTo({left: 0, top: 0});
     window.StatEduModelCanvas.bridge.sendState(instance);
+  }
+
+  function fitPaperToViewport(instance) {
+    if (!instance || !instance.root || instance.root.offsetParent === null) return false;
+    var scroll = instance.root.querySelector(".custom-model-canvas-scroll");
+    if (!scroll) {
+      setPaperViewZoom(instance, 1);
+      instance.paperAutoFitApplied = true;
+      return false;
+    }
+    var paperWidth = Number(instance.state.canvas.widthPx || 0);
+    var paperHeight = Number(instance.state.canvas.heightPx || 0);
+    if (!(paperWidth > 0) || !(paperHeight > 0)) {
+      setPaperViewZoom(instance, 1);
+      instance.paperAutoFitApplied = true;
+      return false;
+    }
+    var computed = window.getComputedStyle(scroll);
+    var paddingX = Number(parseFloat(computed.paddingLeft) || 0) + Number(parseFloat(computed.paddingRight) || 0);
+    var paddingY = Number(parseFloat(computed.paddingTop) || 0) + Number(parseFloat(computed.paddingBottom) || 0);
+    var availableWidth = Math.max(120, scroll.clientWidth - paddingX - 4);
+    var availableHeight = Math.max(120, scroll.clientHeight - paddingY - 4);
+    var nextZoom = Math.min(1, availableWidth / paperWidth, availableHeight / paperHeight);
+    nextZoom = boundedZoom(nextZoom, 1);
+    var currentZoom = paperViewZoom(instance);
+    setPaperViewZoom(instance, nextZoom);
+    instance.paperAutoFitApplied = true;
+    return Math.abs(currentZoom - nextZoom) > 0.001;
   }
 
   function resizeCanvasToViewport(instance) {
@@ -1854,9 +1927,11 @@
       state: window.StatEduModelCanvas.state.create(),
       analysisType: root.getAttribute("data-analysis-type") || "",
       paper: root.querySelector(".custom-model-paper"),
+      paperFrame: root.querySelector(".custom-model-paper-frame"),
       edgeLayer: root.querySelector(".custom-model-edge-layer"),
       nodeLayer: root.querySelector(".custom-model-node-layer")
     };
+    ensurePaperFrame(instance);
     instance.state.variables = parseVariables(root);
     applyAnalysisCanvasDefaults(instance);
     var configuredWidth = Number(root.getAttribute("data-canvas-width") || 0);
@@ -1885,8 +1960,9 @@
     bindVariableDrag(instance);
     bindCanvasPointer(instance);
     bindCanvasKeyboard(instance);
-    render(instance);
     resizeCanvasToViewport(instance);
+    fitPaperToViewport(instance);
+    render(instance);
     window.StatEduModelCanvas.bridge.sendState(instance);
     if (root.getAttribute("data-initial-run") === "true") {
       var attempts = 0;
@@ -1905,7 +1981,9 @@
 
   function initAll() {
     document.querySelectorAll(".custom-model-canvas-root").forEach(function(root) {
-      resizeCanvasToViewport(init(root));
+      var instance = init(root);
+      resizeCanvasToViewport(instance);
+      if (instance && !instance.paperAutoFitApplied && fitPaperToViewport(instance)) render(instance);
     });
   }
 
@@ -1920,6 +1998,7 @@
     showSource: showSource,
     zoom: zoom,
     fit: fit,
+    fitPaperToViewport: fitPaperToViewport,
     resizeToViewport: resizeCanvasToViewport,
     reflowMeasurements: reflowMeasurementModel,
     setMeasurementPlacement: setMeasurementPlacement,
@@ -1938,7 +2017,9 @@
     canvasResizeFrame = window.requestAnimationFrame(function() {
       canvasResizeFrame = 0;
       document.querySelectorAll(".custom-model-canvas-root").forEach(function(root) {
-        resizeCanvasToViewport(root.__stateduModelCanvas);
+        var instance = root.__stateduModelCanvas;
+        resizeCanvasToViewport(instance);
+        if (instance && fitPaperToViewport(instance)) render(instance);
       });
     });
   });

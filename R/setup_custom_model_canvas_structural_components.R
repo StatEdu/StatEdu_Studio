@@ -142,9 +142,10 @@ structural_equation_workspace <- function(selected_names, variable_table = NULL,
             span(class = "custom-model-covariate-status", ""),
             span(class = "structural-validation-status", "오류 0 · 경고 0")),
         div(class = "custom-model-canvas-scroll",
-            div(class = "custom-model-paper is-grid-visible", `data-width` = canvas_spec$width, `data-height` = canvas_spec$height,
-                tags$svg(class = "custom-model-edge-layer", width = canvas_spec$width, height = canvas_spec$height),
-                div(class = "custom-model-node-layer")))
+            div(class = "custom-model-paper-frame",
+                div(class = "custom-model-paper is-grid-visible", `data-width` = canvas_spec$width, `data-height` = canvas_spec$height,
+                    tags$svg(class = "custom-model-edge-layer", width = canvas_spec$width, height = canvas_spec$height),
+                    div(class = "custom-model-node-layer"))))
       )
     )
   if (length(capture_attrs)) {

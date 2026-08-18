@@ -227,6 +227,8 @@
       instance.state.canvas.heightMm = heightMm;
       instance.state.canvas.widthPx = pxFromMm(widthMm);
       instance.state.canvas.heightPx = pxFromMm(heightMm);
+      window.StatEduModelCanvas.canvas.resizeToViewport(instance);
+      window.StatEduModelCanvas.canvas.fitPaperToViewport(instance);
       window.StatEduModelCanvas.canvas.render(instance);
       window.StatEduModelCanvas.bridge.sendState(instance);
       removeModal();
@@ -415,6 +417,7 @@
     clone.style.top = "0";
     clone.style.margin = "0";
     clone.style.boxShadow = "none";
+    clone.style.transform = "none";
     return clone;
   }
 

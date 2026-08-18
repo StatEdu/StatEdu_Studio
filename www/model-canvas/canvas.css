@@ -728,6 +728,13 @@
   position: relative;
 }
 
+.custom-model-paper-frame {
+  position: relative;
+  width: var(--custom-model-paper-display-width, var(--custom-model-paper-width, 971px));
+  height: var(--custom-model-paper-display-height, var(--custom-model-paper-height, 688px));
+  flex: 0 0 auto;
+}
+
 .structural-result-tools {
   display: flex;
   flex-flow: row wrap;
