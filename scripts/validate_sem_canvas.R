@@ -584,7 +584,9 @@ cbsem_mediation_bundle$sampling_design <- "independent_cross_sectional"
 cbsem_mediation_bundle$sampling_design_gate <- structural_canvas_sampling_design_gate("independent_cross_sectional")
 cbsem_mediation_audit <- structural_canvas_audit_manifest(cbsem_mediation_bundle, "cbsem")
 stopifnot(
-  identical(cbsem_mediation_audit$schema$version, "1.4"),
+  identical(cbsem_mediation_audit$schema$version, "1.5"),
+  grepl("recorded seed", cbsem_mediation_audit$resampling$reproducibility_policy$requirement, fixed = TRUE),
+  grepl("data and model fingerprints", cbsem_mediation_audit$resampling$reproducibility_policy$additional_conditions, fixed = TRUE),
   identical(cbsem_mediation_audit$decision$causal_interpretation$status, "Causal identification not established"),
   isTRUE(cbsem_mediation_audit$decision$causal_interpretation$indirect_chain_detected),
   identical(cbsem_mediation_audit$data_fingerprints$analysis$rows, nrow(mediation_data)),
@@ -602,7 +604,8 @@ on.exit(unlink(audit_file), add = TRUE)
 structural_canvas_write_audit_manifest(cbsem_mediation_bundle, audit_file, "cbsem")
 audit_roundtrip <- jsonlite::read_json(audit_file, simplifyVector = TRUE)
 stopifnot(
-  identical(audit_roundtrip$schema$version, "1.4"),
+  identical(audit_roundtrip$schema$version, "1.5"),
+  grepl("recorded seed", audit_roundtrip$resampling$reproducibility_policy$requirement, fixed = TRUE),
   identical(audit_roundtrip$data_fingerprints$analysis$content_sha256, cbsem_mediation_audit$data_fingerprints$analysis$content_sha256)
 )
 cbsem_mediation_result <- function() cbsem_mediation_bundle

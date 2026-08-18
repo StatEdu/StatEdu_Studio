@@ -128,7 +128,7 @@ structural_canvas_audit_manifest <- function(bundle, analysis_type = NULL, gener
   residual_diagnostics <- if (inherits(bundle$fit, "lavaan")) structural_canvas_residual_diagnostics(bundle$fit) else list(available = FALSE)
   factor_score_quality <- if (inherits(bundle$fit, "lavaan")) structural_canvas_factor_score_quality(bundle$fit) else data.frame()
   list(
-    schema = list(name = "StatEdu SEM audit manifest", version = "1.4"),
+    schema = list(name = "StatEdu SEM audit manifest", version = "1.5"),
     generated = list(
       timestamp = format(generated_at, "%Y-%m-%dT%H:%M:%S%z"),
       timezone = format(generated_at, "%Z"),
@@ -198,6 +198,11 @@ structural_canvas_audit_manifest <- function(bundle, analysis_type = NULL, gener
       validation = structural_canvas_data_fingerprint(validation_data)
     ),
     resampling = list(
+      reproducibility_policy = list(
+        requirement = "Reuse the recorded seed and RNG configuration; rerunning unchanged options without supplying the recorded seed is not a reproducibility guarantee.",
+        scope = "All bootstrap, permutation, cross-validation, prediction, and holdout procedures recorded below.",
+        additional_conditions = "Match the recorded data and model fingerprints, analysis-code fingerprint, package versions, and analysis settings."
+      ),
       reliability = list(replicates = bundle$reliability_bootstrap %||% 0L, seed = bundle$reliability_seed %||% NULL, ci_method = bundle$reliability_ci_method %||% NULL),
       htmt = list(replicates = bundle$htmt_bootstrap %||% 0L, seed = bundle$htmt_seed %||% NULL, ci_method = bundle$htmt_ci_method %||% NULL),
       bollen_stine = list(replicates = bundle$bollen_stine_bootstrap %||% 0L, seed = bundle$bollen_stine_seed %||% NULL),

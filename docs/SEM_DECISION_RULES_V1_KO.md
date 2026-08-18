@@ -296,7 +296,9 @@ Audit은 5회 미만을 예측 안정성이 충분히 특성화되지 않은 `Ma
 - 식별·수렴·허용가능성, 제외된 공분산, 자료기반 수정 이력
 - 원자료와 fitted object가 포함되지 않았다는 privacy 표시
 
-Audit schema 1.4는 분석자료와 검증자료에 대해 행·열 수, 변수명·자료형 및 직렬화된 내용의 SHA-256 fingerprint를 저장한다. 원자료 값은 manifest에 포함하지 않지만 동일한 자료·행 순서·변수 속성으로 실행했는지 fingerprint로 대조할 수 있다. 명세 fingerprint와 별도로 핵심 분석 함수 본문의 code fingerprint, Git commit·branch·dirty 상태, 운영체제·locale·RNG 종류와 주요 패키지 버전을 기록한다. PLS/PLSc에서는 요청·선택 추정량, 선택 이유, 보정된 공통요인, 비보정 composite, 보정 상태와 보정된 내생변수도 기록한다.
+Audit schema 1.5는 분석자료와 검증자료에 대해 행·열 수, 변수명·자료형 및 직렬화된 내용의 SHA-256 fingerprint를 저장한다. 원자료 값은 manifest에 포함하지 않지만 동일한 자료·행 순서·변수 속성으로 실행했는지 fingerprint로 대조할 수 있다. 명세 fingerprint와 별도로 핵심 분석 함수 본문의 code fingerprint, Git commit·branch·dirty 상태, 운영체제·locale·RNG 종류와 주요 패키지 버전을 기록한다. PLS/PLSc에서는 요청·선택 추정량, 선택 이유, 보정된 공통요인, 비보정 composite, 보정 상태와 보정된 내생변수도 기록한다.
+
+재표집 seed를 사용자가 직접 입력하지 않아 시스템이 생성한 경우에도 동일 옵션을 다시 실행하는 것만으로 동일 난수열이 보장되지는 않는다. 정확한 계산 재현에는 Audit에 기록된 seed와 RNG 설정을 명시적으로 재사용하고, 자료·명세·분석 코드 fingerprint, 패키지 버전 및 분석 설정을 함께 일치시켜야 한다. 이 조건은 schema 1.5의 `resampling.reproducibility_policy`에 구조화해 저장한다.
 
 수렴 실패, 부적합 해, 무시된 공분산, 자료기반 모형수정, 측정불변성 gate 실패, 낮은 bootstrap 유효율, 부족한 PLSpredict 반복, 인과식별 미확립은 `warnings` 배열에 중요도와 함께 구조화한다. Git dirty 상태에서는 commit hash만으로 정확한 실행 코드를 재구성할 수 없으므로 code fingerprint와 변경 상태를 함께 보고해야 한다.
 

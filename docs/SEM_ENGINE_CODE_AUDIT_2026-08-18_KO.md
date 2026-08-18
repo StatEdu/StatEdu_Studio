@@ -25,7 +25,8 @@
 - 부분불변성 재적합은 미지원임을 결과와 Audit에 구조화하고, score/EPC가 탐색 후보일 뿐 제약 해제나 gate 우회가 아니라는 경계를 강화했다.
 - 반복 PLSpredict도 기준 seed의 L'Ecuyer-CMRG 독립 스트림을 반복별로 할당하고 Audit에 RNG 방식을 기록한다.
 - PLSpredict Audit 경고를 UI 기본값과 맞춰 5회 미만은 `Major`, 5~9회는 10회 권장 설정 미달 `Advisory`로 구분한다.
-- 설계 규칙을 혼합 PLSc 블록별 보정, 구조효과 BC 기본값, 단일지표 완전측정 경고, Audit schema 1.4에 맞게 갱신했다.
+- Audit schema 1.5에 재현성 정책을 추가해 자동 생성 seed를 포함한 재분석은 기록된 seed·RNG 설정과 자료·명세·코드 fingerprint 등을 일치시켜야 함을 구조화했다.
+- 설계 규칙을 혼합 PLSc 블록별 보정, 구조효과 BC 기본값, 단일지표 완전측정 경고, Audit schema 1.5에 맞게 갱신했다.
 
 아래 본문은 수정 전 발견 근거이므로 당시 코드상태에 대한 서술로 읽어야 한다. 측정모형을 포함한 score-CV의 fold별 재추정 및 SmartPLS식 PLS exact-fit 동등성은 별도 잔여 검증항목이다.
 
