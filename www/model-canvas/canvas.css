@@ -1580,8 +1580,12 @@
 .custom-model-node-disturbance .custom-model-node-label {
   display: block;
   white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
   overflow-wrap: normal;
-  padding: 0 2px;
+  padding: 0;
+  font-size: 11px;
+  line-height: 1;
 }
 
 .custom-model-node-independent {

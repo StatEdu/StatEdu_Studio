@@ -444,8 +444,12 @@
     return edgeById(instance, id);
   }
 
+  function labelVisualWidth(label, fontSize) {
+    return Math.max(20, String(label || "").length * Number(fontSize || 12) * 0.5 + 4);
+  }
+
   function labelBox(label, x, y, fontSize) {
-    var width = Math.max(28, String(label || "").length * Number(fontSize || 12) * 0.58 + 10);
+    var width = labelVisualWidth(label, fontSize);
     var height = Math.max(16, Number(fontSize || 12) + 8);
     return {
       left: x - width / 2,
@@ -544,7 +548,8 @@
     group.setAttribute("data-label-auto-shift-y", autoShiftY);
     group.setAttribute("transform", "translate(" + x + " " + y + ")");
 
-    var hitWidth = Math.max(28, String(label).length * fontSize * 0.58 + 10);
+    var visualWidth = labelVisualWidth(label, fontSize);
+    var hitWidth = Math.max(28, visualWidth + 8);
     var hit = document.createElementNS(SVG_NS, "rect");
     hit.setAttribute("class", "custom-model-edge-label-hit");
     hit.setAttribute("x", owner && owner.labelTextAnchor === "start" ? -3 : -hitWidth / 2);
@@ -555,9 +560,9 @@
 
     var background = document.createElementNS(SVG_NS, "rect");
     background.setAttribute("class", "custom-model-edge-label-bg");
-    background.setAttribute("x", owner && owner.labelTextAnchor === "start" ? -3 : -hitWidth / 2);
+    background.setAttribute("x", owner && owner.labelTextAnchor === "start" ? -2 : -visualWidth / 2);
     background.setAttribute("y", -(fontSize + 7) / 2);
-    background.setAttribute("width", hitWidth);
+    background.setAttribute("width", visualWidth);
     background.setAttribute("height", fontSize + 7);
     background.setAttribute("rx", "2");
     background.setAttribute("ry", "2");
