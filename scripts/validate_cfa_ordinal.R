@@ -69,6 +69,13 @@ stopifnot(
 )
 
 wlsmv <- run_structural_canvas_analysis(snapshot, ordinal, "cfa", estimator = "WLSMV", missing = "pairwise", ordered = ordered_names)
+wlsmv_bundle <- list(fit = wlsmv$fit, diagnostics = wlsmv, estimator = "WLSMV", parameterization = wlsmv$parameterization)
+wlsmv_overview_en <- structural_canvas_result_table("overview", function() wlsmv_bundle, "cfa", function() character(0), function() "en")
+wlsmv_overview_ko <- structural_canvas_result_table("overview", function() wlsmv_bundle, "cfa", function() character(0), function() "ko")
+wlsmv_audit <- structural_canvas_audit_manifest(c(
+  wlsmv_bundle,
+  list(snapshot = snapshot, syntax = wlsmv$syntax, ordered = ordered_names, analysis_data = ordinal, missing = "pairwise")
+), "cfa")
 wlsmv_bollen_eligibility <- structural_canvas_bollen_stine_eligibility(wlsmv$fit)
 wlsmv_measures <- structural_canvas_fit_measures(wlsmv$fit, "WLSMV", .90)
 fixed_ordered_error <- tryCatch({
@@ -81,6 +88,11 @@ missing_ordered_error <- tryCatch({
 }, error = conditionMessage)
 stopifnot(
   isTRUE(wlsmv$converged),
+  identical(wlsmv$parameterization, "theta"),
+  identical(tolower(lavaan::lavInspect(wlsmv$fit, "options")$parameterization), "theta"),
+  identical(wlsmv_overview_en$Value[wlsmv_overview_en$Item == "Parameterization"], "Theta"),
+  identical(wlsmv_overview_ko$값[wlsmv_overview_ko$항목 == "모수화"], "Theta"),
+  identical(wlsmv_audit$analysis$parameterization, "theta"),
   !isTRUE(wlsmv_bollen_eligibility$available),
   grepl("ML estimation", wlsmv_bollen_eligibility$reason, fixed = TRUE),
   inherits(try(structural_canvas_bollen_stine(wlsmv$fit, reps = 2L), silent = TRUE), "try-error"),

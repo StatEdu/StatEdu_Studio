@@ -40,9 +40,9 @@ Release candidate: 1.2.3-dev
 QA date: 2026-08-19
 Tester: automated validation plus packaged-app browser QA
 Installer: C:\StatEdu\Studio\dist\electron\StatEdu_Studio_Dev_Setup_1.2.3-dev.exe
-Installer SHA256: 6133064C74914AE66A9318D98CBD311EC1BCE21C12F27979F2A1E749C40CF05B
+Installer SHA256: 3544EE3F7B24787830C78E75FAB8FC96E310BF16DFC0BF59AA05065021B5A481
 R runtime: R-4.5.3
-Validation command: scripts\validate_sem_canvas.R; scripts\validate_cfa_ui.R; scripts\smoke_electron_release.ps1; scripts\smoke_electron_app_lifecycle.ps1
+Validation command: scripts\validate_sem_canvas.R; scripts\validate_cfa_all.R; scripts\smoke_electron_release.ps1; scripts\smoke_electron_app_lifecycle.ps1; packaged Windows UI Automation
 ```
 
 | Check | Status | Notes |
@@ -58,14 +58,14 @@ Validation command: scripts\validate_sem_canvas.R; scripts\validate_cfa_ui.R; sc
 | CFA higher-order-factor affordance | Pass | The packaged toolbar explicitly displays `2nd`, `Factor`, and `고차요인`. This verifies the control labeling, not a complete higher-order model execution workflow. |
 | CFA result downloads are exposed | Pass | Audit JSON, reproducibility record, and Excel result-table links were visible and enabled after analysis. |
 | Native CFA/SEM model-file picker load and analysis entry | Pass | Packaged Electron was launched with renderer accessibility enabled and no model auto-injection for the CFA confirmation run. The actual Windows `열기` dialog appeared with the `StatEdu Model Canvas` filter; `sample\cfa.stmodel` and `sample\sem.stmodel` both closed the dialog, restored their expected latent/indicator labels, changed the initially disabled Run button to enabled, and reached the Mardia/MLR estimator-decision step. Full fit execution remains independently covered by the capture-hook and R validators. |
-| Packaged ordinal WLSMV/theta workflow | Pending | R-level validation passes; estimator selection, output, and bootstrap behavior still require packaged visual QA. |
+| Packaged ordinal WLSMV/theta workflow | Pass | Packaged Windows UI Automation loaded 360 rows of five-category data, verified all nine CFA indicators as ordinal, restored `sample\cfa.stmodel`, and ran the model with zero canvas errors/warnings. The rendered English overview reported `Estimator = DWLS` (lavaan's internal WLSMV estimator representation), `Parameterization = Theta`, `N = 360`, and `Converged = Yes`. Base results remained visible while the default HTMT bootstrap ran, and remained visible after the background bootstrap was stopped. |
 | Packaged BCa and percentile selection | Pending | Algorithmic validation passes and BC is the verified packaged default; nondefault BCa/percentile selection remains packaged visual QA. |
 | Packaged multigroup reliability/HTMT/invariance and Excel export | Pending | Requires an end-to-end grouped-data workflow and exported workbook inspection. |
 | Packaged SEM covariate effects and model-fit delta | Pending | Source validation exists; the research-model, covariate-model, and delta tables require focused packaged visual QA. |
 | Packaged higher-order model execution | Pending | The toolbar affordance is verified; model construction, estimation, results, and export still require end-to-end packaged QA. |
 | SmartPLS/ADANCO external numerical comparison | Pending external evidence | The CSV comparator is implemented; matching external-program result files must be generated with the same data, model, settings, and recorded software versions. |
 
-Development QA status: Core SEM/CFA automation, native CFA/SEM model-file selection and analysis entry, packaged background progress, independent cancellation, accurate cancellation messaging, release structure, and lifecycle cleanup pass. The pending rows above are the remaining focused packaged or external-program checks and must not be represented as completed.
+Development QA status: Core SEM/CFA automation, native CFA/SEM model-file selection and analysis entry, packaged ordinal WLSMV/theta execution, background progress, independent cancellation, accurate cancellation messaging, release structure, and lifecycle cleanup pass. The pending rows above are the remaining focused packaged or external-program checks and must not be represented as completed.
 
 ## Historical Development Candidate: 1.2.2-dev
 
@@ -95,4 +95,4 @@ Validation command: scripts\validate_cfa_all.R; scripts\smoke_electron_release.p
 | CFA model-file load/run automation hook | Pass | Added `STATEDU_CAPTURE_CFA_MODEL_FILE` / `STATEDU_CAPTURE_CFA_RUN`; `scripts\validate_cfa_all.R` passed and `scripts\smoke_shiny_app.ps1` passed with `outputs\cfa_qa_two_factor.stmodel` capture env enabled. |
 | CFA model-file load and run from packaged native picker UI | Pending | Browser automation reached the packaged CFA canvas, but the native `showOpenFilePicker` path still requires hands-on UI QA. |
 
-Historical development QA status: This 1.2.2-dev record is preserved for traceability. Its bootstrap-progress and UI-cancel pending items were completed in 1.2.3-dev; remaining picker, ordinal, multigroup, export, covariate, higher-order, and external-comparison checks are tracked in the current section above.
+Historical development QA status: This 1.2.2-dev record is preserved for traceability. Its picker, ordinal, bootstrap-progress, and UI-cancel pending items were completed in 1.2.3-dev; remaining multigroup, export, covariate, higher-order, and external-comparison checks are tracked in the current section above.

@@ -67,10 +67,10 @@ Development package status: Automated package checks passed after the CFA captur
 Product: StatEdu Studio Dev
 Version: 1.2.3-dev
 Installer: C:\StatEdu\Studio\dist\electron\StatEdu_Studio_Dev_Setup_1.2.3-dev.exe
-Installer SHA256: 6133064C74914AE66A9318D98CBD311EC1BCE21C12F27979F2A1E749C40CF05B
-Installer bytes: 331291142
-Blockmap SHA256: CDE36F9EF3A096A37C54E72E4DC4CFE6BA5DDF11ABAE97FA93A56115A41D2E9D
-Blockmap bytes: 333582
+Installer SHA256: 3544EE3F7B24787830C78E75FAB8FC96E310BF16DFC0BF59AA05065021B5A481
+Installer bytes: 331295091
+Blockmap SHA256: CDE4DE9E05A1292A488732D185C5FAE75A1DB1A9C425C4AF2D8ECCEDCBAC2D81
+Blockmap bytes: 333528
 Electron: 43.4.0
 electron-builder: 26.15.3
 R runtime: R-4.5.3
@@ -90,6 +90,7 @@ Validation date: 2026-08-19
 | npm dependency security audit | Pass | Exact-pin updates to Electron 43.4.0 and electron-builder 26.15.3 reduced findings from 13 to 0. The lockfile was reproduced with `npm ci`; no automatic `npm audit fix --force` was applied. |
 | Source-app CFA visual workflow | Pass | In-app browser QA loaded a three-factor model and 180-row data set, confirmed the explicit independent-cross-sectional sampling gate, ran CFA with zero errors or warnings, and rendered model overview, fit, validity, and measurement-model results. |
 | Packaged native CFA/SEM model picker | Pass | Windows UI Automation exercised the actual packaged Electron `열기` dialog, not the browser fallback. The dialog exposed the `StatEdu Model Canvas` filter; `sample\cfa.stmodel` and `sample\sem.stmodel` restored the expected three-factor canvases, enabled Run from an initially disabled empty canvas, and continued through Run options to the Mardia/MLR estimator-decision step. Capture-hook and R-level validators separately cover completed fit execution. |
+| Packaged ordinal WLSMV/theta workflow | Pass | Windows UI Automation loaded a 360-row, nine-indicator, five-category data set, marked every indicator ordinal, restored `sample\cfa.stmodel`, and executed CFA. The overview rendered `Estimator = DWLS`, `Parameterization = Theta`, `N = 360`, and `Converged = Yes`; zero canvas errors/warnings were present. The DWLS label is lavaan's internal representation of the requested WLSMV workflow. Base results stayed available during and after stopping the background HTMT bootstrap. |
 | CFA high-order-factor affordance | Pass | The canvas toolbar visibly identifies the control with `2nd`, `Factor`, and `고차요인`, rather than relying on an unlabeled icon. |
 | CFA result downloads | Pass | After analysis, Audit JSON, reproducibility record, and Excel result-table links were visible, enabled, and backed by session download URLs. |
 | CFA bootstrap CI defaults | Pass | HTMT output rendered bias-corrected (BC) intervals with 5,000/5,000 valid replicates. AVE/reliability bootstrap now also defaults to BC; percentile and slower BCa remain selectable sensitivity options. `scripts\validate_cfa_all.R` covers BC, percentile/BCa support, progress callbacks, cancellation, exports, and external-reference comparisons. |
@@ -99,4 +100,4 @@ Validation date: 2026-08-19
 | SEM cancellation semantics | Pass | HTMT and structural-effect result sections distinguish user cancellation from estimation failure. The final package displayed explicit user-stopped messages for both jobs and did not retain the former `could not be estimated` or `Canceled by user` failure wording. |
 | Packaged lifecycle cleanup robustness | Pass | The lifecycle smoke uses shared-read access for the live startup log, accepts either the explicit Shiny-ready marker or the bundled loopback listening marker before renderer load, aligns its startup timeout with the 180-second product limit, always executes final cleanup, and finished with zero packaged Electron/R processes. |
 
-Development package status: Automated SEM/CFA structure, bootstrap, release, and lifecycle checks pass. Packaged QA additionally confirms the native Windows CFA/SEM model picker, concurrent SEM HTMT/structural-effect progress, independent cancellation, accurate cancellation messaging, retained base results, and zero packaged-process residue after cleanup.
+Development package status: Automated SEM/CFA structure, bootstrap, release, and lifecycle checks pass. Packaged QA additionally confirms the native Windows CFA/SEM model picker, ordinal WLSMV/theta execution, concurrent SEM HTMT/structural-effect progress, independent cancellation, accurate cancellation messaging, retained base results, and zero packaged-process residue after cleanup.

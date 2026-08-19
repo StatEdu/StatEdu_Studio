@@ -12,9 +12,11 @@ structural_canvas_reliability_bootstrap <- function(syntax, data, reps = 500L, c
   reps <- as.integer(reps)
   ci_method <- structural_canvas_bootstrap_ci_method(ci_method)
   if (!is.finite(reps) || reps < 1L) stop("Reliability bootstrap requires at least one resample.")
+  parameterization <- if (length(ordered)) "theta" else "delta"
   if (is.null(original_fit)) original_fit <- tryCatch(lavaan::cfa(
       syntax, data = data, estimator = estimator, missing = missing,
-      std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE
+      std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE,
+      parameterization = parameterization
     ), error = function(error) stop(paste0("AVE/reliability bootstrap could not fit the original CFA model: ", conditionMessage(error))))
   if (!inherits(original_fit, "lavaan")) stop("AVE/reliability bootstrap original_fit must be a fitted lavaan object.")
   if (as.integer(lavaan::lavInspect(original_fit, "ngroups")) != 1L) stop("AVE/reliability bootstrap currently supports only single-group CFA models.")

@@ -291,8 +291,9 @@ structural_canvas_common_method_single_factor <- function(data, indicators, esti
   }
   syntax <- paste("CMB_SINGLE =~", paste(indicators, collapse = " + "))
   ordered <- intersect(as.character(ordered %||% character(0)), indicators)
+  parameterization <- if (length(ordered)) "theta" else "delta"
   fit <- tryCatch(
-    lavaan::cfa(syntax, data = data, estimator = estimator, missing = missing, std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE),
+    lavaan::cfa(syntax, data = data, estimator = estimator, missing = missing, std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE, parameterization = parameterization),
     error = function(error) error
   )
   if (inherits(fit, "error")) {
@@ -351,8 +352,9 @@ structural_canvas_common_method_clf <- function(original_fit, syntax, data, indi
   orthogonal_lines <- if (length(latent_names)) paste(method_factor, "~~ 0*", latent_names) else character(0)
   method_syntax <- paste(c(syntax, method_line, paste(method_factor, "~~ 1*", method_factor), orthogonal_lines), collapse = "\n")
   ordered <- intersect(as.character(ordered %||% character(0)), indicators)
+  parameterization <- if (length(ordered)) "theta" else "delta"
   fit <- tryCatch(
-    lavaan::sem(method_syntax, data = data, estimator = estimator, missing = missing, std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE),
+    lavaan::sem(method_syntax, data = data, estimator = estimator, missing = missing, std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE, parameterization = parameterization),
     error = function(error) error
   )
   if (inherits(fit, "error")) {

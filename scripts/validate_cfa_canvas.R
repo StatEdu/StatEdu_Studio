@@ -57,6 +57,10 @@ continuous <- data.frame(
 )
 
 ml <- run_structural_canvas_analysis(snapshot, continuous, "cfa")
+stopifnot(
+  identical(ml$parameterization, "delta"),
+  identical(tolower(lavaan::lavInspect(ml$fit, "options")$parameterization), "delta")
+)
 stopifnot(isTRUE(ml$converged))
 factor_score_quality <- structural_canvas_factor_score_quality(ml$fit)
 reliability_estimates <- structural_canvas_reliability_estimates(ml$fit)

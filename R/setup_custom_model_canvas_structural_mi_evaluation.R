@@ -102,11 +102,12 @@ structural_canvas_mi_refits <- function(snapshot, result, data, analysis_type, e
         sep = "\n"
       )
       trial_error <- ""
+      parameterization <- if (length(ordered)) "theta" else "delta"
       trial <- tryCatch({
         if (identical(analysis_type, "cfa")) {
-          lavaan::cfa(trial_syntax, data = data, estimator = estimator, missing = missing, std.lv = std_lv, ordered = ordered, auto.cov.lv.x = FALSE)
+          lavaan::cfa(trial_syntax, data = data, estimator = estimator, missing = missing, std.lv = std_lv, ordered = ordered, auto.cov.lv.x = FALSE, parameterization = parameterization)
         } else {
-          lavaan::sem(trial_syntax, data = data, estimator = estimator, missing = missing, std.lv = std_lv, ordered = ordered, auto.cov.lv.x = FALSE)
+          lavaan::sem(trial_syntax, data = data, estimator = estimator, missing = missing, std.lv = std_lv, ordered = ordered, auto.cov.lv.x = FALSE, parameterization = parameterization)
         }
       }, error = function(error) {
         trial_error <<- conditionMessage(error)

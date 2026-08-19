@@ -6,10 +6,12 @@ structural_canvas_fit_research_model <- function(result, data, analysis_type, es
   syntax <- as.character(result$research_syntax %||% "")
   if (!nzchar(syntax)) return(NULL)
   fit_function <- if (identical(analysis_type, "cfa")) lavaan::cfa else lavaan::sem
+  parameterization <- if (length(ordered)) "theta" else "delta"
   tryCatch(
     fit_function(
       syntax, data = data, estimator = estimator, missing = missing,
-      std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE
+      std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE,
+      parameterization = parameterization
     ),
     error = function(error) NULL
   )

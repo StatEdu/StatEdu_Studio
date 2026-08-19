@@ -21,6 +21,21 @@ structural_canvas_summary_result_table <- function(kind, bundle, fit, analysis_t
       check.names = FALSE
     )
     names(overview_df) <- if (ko) c("항목", "값") else c("Item", "Value")
+    fitted_parameterization <- as.character(lavaan::lavInspect(fit, "options")$parameterization %||% "")
+    if (nzchar(fitted_parameterization)) {
+      fitted_parameterization <- paste0(
+        toupper(substr(fitted_parameterization, 1L, 1L)),
+        tolower(substr(fitted_parameterization, 2L, nchar(fitted_parameterization)))
+      )
+      overview_df <- rbind(
+        overview_df[seq_len(2L), , drop = FALSE],
+        stats::setNames(
+          data.frame(if (ko) "모수화" else "Parameterization", fitted_parameterization, check.names = FALSE),
+          names(overview_df)
+        ),
+        overview_df[-seq_len(2L), , drop = FALSE]
+      )
+    }
     overview_df <- rbind(
       overview_df[1L, , drop = FALSE],
       data.frame(overview_df[1L, , drop = FALSE], check.names = FALSE),

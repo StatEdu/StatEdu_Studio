@@ -362,10 +362,11 @@ run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estima
     if (identical(estimator, "WLSMV") && !length(ordered)) {
       stop("WLSMV requires at least one binary, categorical, or ordinal indicator.")
     }
+    parameterization <- if (length(ordered)) "theta" else "delta"
     fit <- if (identical(analysis_type, "cfa")) {
-      lavaan::cfa(syntax, data = data, estimator = estimator, missing = missing, std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE)
+      lavaan::cfa(syntax, data = data, estimator = estimator, missing = missing, std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE, parameterization = parameterization)
     } else {
-      lavaan::sem(syntax, data = data, estimator = estimator, missing = missing, std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE)
+      lavaan::sem(syntax, data = data, estimator = estimator, missing = missing, std.lv = isTRUE(std_lv), ordered = ordered, auto.cov.lv.x = FALSE, parameterization = parameterization)
     }
     converged <- isTRUE(lavaan::lavInspect(fit, "converged"))
     post_check <- isTRUE(lavaan::lavInspect(fit, "post.check"))
@@ -402,6 +403,7 @@ run_structural_canvas_analysis <- function(snapshot, data, analysis_type, estima
     shared_admissibility <- structural_canvas_fit_admissibility(fit)
     return(list(
       fit = fit, syntax = syntax, research_syntax = lavaan_syntax$research_syntax %||% syntax,
+      estimator = estimator, parameterization = parameterization,
       covariates = lavaan_syntax$covariates %||% character(0),
       covariate_effect_lines = lavaan_syntax$covariate_effect_lines %||% character(0),
       converged = converged, post_check = post_check,

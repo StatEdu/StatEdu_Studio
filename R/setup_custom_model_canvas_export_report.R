@@ -117,10 +117,16 @@ structural_canvas_audit_manifest <- function(bundle, analysis_type = NULL, gener
   analysis_type <- as.character(analysis_type %||% if (toupper(as.character(bundle$estimator %||% "")) %in% c("PLS", "PLSC")) "plssem" else "cbsem")
   analysis_data <- bundle$analysis_data %||% data.frame()
   validation_data <- bundle$validation_data %||% data.frame()
+  parameterization <- if (inherits(bundle$fit, "lavaan")) {
+    as.character(lavaan::lavInspect(bundle$fit, "options")$parameterization %||% bundle$parameterization %||% "")
+  } else {
+    as.character(bundle$parameterization %||% "")
+  }
   specification_payload <- list(
     snapshot = bundle$snapshot %||% list(),
     syntax = as.character(bundle$syntax %||% ""),
     estimator = as.character(bundle$estimator %||% ""),
+    parameterization = parameterization,
     ordered = as.character(bundle$ordered %||% character(0))
   )
   specification_hash <- structural_canvas_sha256(specification_payload)
@@ -160,6 +166,7 @@ structural_canvas_audit_manifest <- function(bundle, analysis_type = NULL, gener
       analysis_plan = list(status = bundle$analysis_plan_status %||% "not_recorded", reference = bundle$analysis_plan_reference %||% ""),
       selected_method = bundle$selected_method %||% "not recorded",
       estimator = bundle$estimator %||% "not recorded",
+      parameterization = if (nzchar(parameterization)) parameterization else "not applicable",
       missing = bundle$missing %||% "not recorded",
       missing_sensitivity = structural_canvas_missing_sensitivity_rows(bundle),
       latent_scaling = if (isTRUE(bundle$std_lv)) "latent variance fixed to 1" else "marker loading fixed to 1",
