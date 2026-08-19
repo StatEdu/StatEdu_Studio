@@ -10,6 +10,8 @@ Release-line note: public 1.2.0 was published on 2026-08-08 and is retained belo
 
 The 1.2.3 fail-closed promotion validator is armed in `scripts/validate_sem_release_promotion.R`. It independently recomputes the fixed external PLS/PLSc comparison and requires evidence hashes, final package hashes, manual packaged QA, and explicit human approval before a public 1.2.3 build can pass.
 
+The external-program handoff is automated by `scripts/prepare_pls_external_handoff.R` and `scripts/finalize_pls_external_evidence.R`: the first packages the fixed data/model/specification and result template, and the second accepts only versioned, dated, convergence-confirmed SmartPLS/ADANCO results, recomputes all six comparisons, records actual output precision, and seals the evidence hashes. Actual proprietary-program values remain pending.
+
 ## Current 1.2.0 Public Release Snapshot
 
 - Source metadata has been promoted from the stabilized post-1.1.3 work to `1.2.0`.

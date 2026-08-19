@@ -28,6 +28,15 @@ StatEdu Studio와 SmartPLS 또는 ADANCO의 SRMR, d_G, d_ULS를 비교할 때 �
 - `external_fit_template.csv`: SmartPLS/ADANCO 원값 입력용 템플릿
 - `benchmark_manifest.json`: 자료·모형 SHA-256, 구성개념/경로, StatEdu·R·seminr 버전과 알고리즘 설정
 
+외부 실행자에게 전달할 완전한 핸드오프 묶음은 다음 명령으로 생성한다.
+
+```powershell
+& "C:\Program Files\R\R-4.5.3\bin\Rscript.exe" scripts/prepare_pls_external_handoff.R `
+  --output-dir=outputs/pls_external_handoff
+```
+
+이 묶음에는 원자료와 StatEdu 모형 스냅샷의 사본, `measurement_model.csv`, `structural_paths.csv`, `statedu_fit.csv`, 값 입력용 `external_fit.csv`, 사전 해시가 기록된 `external_run.json`, 실행 안내문이 포함된다.
+
 외부 프로그램에는 `sample/HolzingerSwineford1939.csv`와 `sample/pls_external_benchmark.stmodel`에 기록된 동일 모형을 사용한다. SmartPLS 4에서는 standardized results, path weighting, 초기 외부가중치 +1, 고정 stop criterion 10^-7을 사용하고 saturated model 결과를 기록한다. SmartPLS 4의 최대 반복은 3,000회로 고정되어 있지만 StatEdu/seminr는 300회이므로, 양쪽 모두 300회 이전에 수렴했는지 확인한다. benchmark 자료에는 결측값이 없다. PLS와 consistent PLS(PLSc)를 각각 실행하고 외부 프로그램 버전·실행일을 manifest 사본에 기록한다.
 
 ## CSV 형식
@@ -54,5 +63,19 @@ plsc,saturated,0.0789513151368562,0.119832386033816,0.280498957282763
 ```
 
 각 지표는 절대오차 또는 상대오차 중 하나가 허용범위 안이면 통과한다. 초과 행이 있으면 스크립트는 실패 종료코드를 반환한다. 차이가 발견되면 먼저 지표 정의, 상관행렬 구성 범위, PLSc 보정 범위, 반올림 전 원값과 saturated/estimated model 설정을 확인한다.
+
+외부 값을 `external_fit.csv`에 입력한 후에는 다음 명령으로 비교표와 증거 해시를 확정한다. `--converged-before-300=true`는 실제 반복기록을 확인한 경우에만 지정한다.
+
+```powershell
+& "C:\Program Files\R\R-4.5.3\bin\Rscript.exe" scripts/finalize_pls_external_evidence.R `
+  --evidence-dir=outputs/pls_external_handoff `
+  --software=SmartPLS `
+  --software-version=4.x.x `
+  --run-date=2026-08-19 `
+  --converged-before-300=true `
+  --reported-decimal-places=3
+```
+
+`--reported-decimal-places`에는 화면이 아니라 실제 비교에 사용한 Excel/HTML 내보내기 값의 소수 자릿수를 기록한다. 확정 스크립트는 기본 수치 허용오차와 마지막 보고 자릿수의 반 단위 중 큰 값을 절대 허용오차로 사용한다. 따라서 결과는 ‘외부 출력 정밀도 내 일치’로 해석하며 원시 내부값의 완전 동일성을 주장하지 않는다. 스크립트는 여섯 행이 이 기준을 모두 통과한 경우에만 `comparison.csv`를 보존하고 `external_run.json`의 외부 결과·비교표 SHA-256을 갱신한다. 프로그램명, 버전, 실행일, 보고 자릿수 또는 300회 이전 수렴 확인이 빠지면 실패한다.
 
 SmartPLS 공식 참고: [Model Fit](https://www.smartpls.com/documentation/algorithms-and-techniques/model-fit/), [Consistent PLS-SEM](https://www.smartpls.com/documentation/algorithms-and-techniques/consistent-pls/), [PLS-SEM Algorithm](https://smartpls.com/documentation/algorithms-and-techniques/core-algorithm/pls/).

@@ -4,12 +4,13 @@ This checklist promotes `1.2.3-dev` to public `1.2.3`. It does not modify or sup
 
 ## Gate 1: External PLS/PLSc evidence
 
-- Generate the fixed bundle with `scripts/generate_pls_external_benchmark.R`.
+- Generate the external handoff with `scripts/prepare_pls_external_handoff.R`.
 - Run the identical saturated model in SmartPLS or ADANCO.
 - Record program name, exact version, run date, standardized-result setting, weighting scheme, convergence, and fit target.
 - Create the external-run record from `docs/RELEASE_1_2_3_EXTERNAL_PLS_RUN.template.json` and record the fixed data, model, StatEdu result, external result, and comparison SHA-256 values.
 - Preserve full-precision PLS and PLSc SRMR, d_G, and d_ULS values.
-- Run `scripts/compare_pls_fit_external.R` and retain a comparison CSV in which every row passes the declared tolerances.
+- Record the decimal places actually available in the exported external values; describe a passing comparison as agreement within recorded output precision, not equality of inaccessible internal values.
+- Run `scripts/finalize_pls_external_evidence.R` and retain a comparison CSV in which every independently recomputed row passes the declared tolerances.
 - Verify data/model/result SHA-256 values in the external-run record; the promotion validator must recompute the comparison instead of trusting a recorded `Pass` column alone.
 
 ## Gate 2: Final metadata and public claims

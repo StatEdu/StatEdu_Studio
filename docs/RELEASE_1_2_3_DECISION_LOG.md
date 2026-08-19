@@ -24,7 +24,7 @@ Public promotion: blocked pending required evidence
 
 ## Current blockers
 
-- Actual SmartPLS/ADANCO output, software version, run date, settings record, and passing comparison CSV.
+- Actual SmartPLS/ADANCO output, software version, run date, settings record, and passing comparison CSV. The reproducible handoff and fail-closed finalizer are implemented; proprietary-program execution remains external.
 - Final 1.2.3 version metadata and public release notes.
 - Final non-dev installer build, checksums, release smoke, lifecycle smoke, and packaged manual QA.
 - Explicit publication approval.
