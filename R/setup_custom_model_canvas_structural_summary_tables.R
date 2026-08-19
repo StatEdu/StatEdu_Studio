@@ -2,6 +2,10 @@
 
 structural_canvas_summary_result_table <- function(kind, bundle, fit, analysis_type, ko, fmt) {
   if (identical(kind, "overview")) {
+    fit_options <- lavaan::lavInspect(fit, "options")
+    displayed_estimator <- as.character(
+      bundle$estimator %||% fit_options$estimator.orig %||% fit_options$estimator %||% ""
+    )
     overview_df <- data.frame(
       Item = if (ko) {
         c("분석 방법", "추정 방법", "표본 크기(N)", "관측변수 수", "잠재변수 수", "자유 파라미터 수", "수렴 여부", "적합해 여부")
@@ -10,7 +14,7 @@ structural_canvas_summary_result_table <- function(kind, bundle, fit, analysis_t
       },
       Value = c(
         structural_analysis_title(analysis_type, "en"),
-        lavaan::lavInspect(fit, "options")$estimator,
+        displayed_estimator,
         lavaan::lavInspect(fit, "ntotal"),
         length(lavaan::lavNames(fit, "ov")),
         length(lavaan::lavNames(fit, "lv")),
@@ -21,7 +25,7 @@ structural_canvas_summary_result_table <- function(kind, bundle, fit, analysis_t
       check.names = FALSE
     )
     names(overview_df) <- if (ko) c("항목", "값") else c("Item", "Value")
-    fitted_parameterization <- as.character(lavaan::lavInspect(fit, "options")$parameterization %||% "")
+    fitted_parameterization <- as.character(fit_options$parameterization %||% "")
     if (nzchar(fitted_parameterization)) {
       fitted_parameterization <- paste0(
         toupper(substr(fitted_parameterization, 1L, 1L)),

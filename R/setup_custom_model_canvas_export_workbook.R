@@ -1,5 +1,59 @@
 # CFA/SEM canvas workbook assembly and Excel writing helpers.
 
+structural_canvas_prune_dangling_drawing_relationships <- function(file) {
+  if (!requireNamespace("zip", quietly = TRUE)) stop("The zip package is required to finalize CFA Excel exports.")
+  archive_file <- normalizePath(file, winslash = "/", mustWork = TRUE)
+  extract_dir <- tempfile("structural-canvas-xlsx-")
+  repacked_file <- tempfile(fileext = ".xlsx")
+  dir.create(extract_dir, recursive = TRUE, showWarnings = FALSE)
+  on.exit({
+    unlink(extract_dir, recursive = TRUE, force = TRUE)
+    if (file.exists(repacked_file)) unlink(repacked_file, force = TRUE)
+  }, add = TRUE)
+
+  zip::unzip(archive_file, exdir = extract_dir)
+  relationship_dir <- file.path(extract_dir, "xl", "worksheets", "_rels")
+  relationship_files <- if (dir.exists(relationship_dir)) {
+    list.files(relationship_dir, pattern = "[.]rels$", full.names = TRUE)
+  } else {
+    character(0)
+  }
+  removed <- 0L
+  for (relationship_file in relationship_files) {
+    xml <- paste(readLines(relationship_file, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+    matches <- regmatches(xml, gregexpr("<Relationship\\b[^>]*/>", xml, perl = TRUE))[[1L]]
+    if (!length(matches) || identical(matches, character(0)) || identical(matches, "")) next
+    source_dir <- dirname(dirname(relationship_file))
+    for (relationship in matches) {
+      type <- sub('.*\\bType="([^"]+)".*', "\\1", relationship, perl = TRUE)
+      target <- sub('.*\\bTarget="([^"]+)".*', "\\1", relationship, perl = TRUE)
+      is_drawing <- grepl("/(drawing|vmlDrawing)$", type, perl = TRUE)
+      if (!is_drawing || identical(target, relationship)) next
+      target_file <- normalizePath(file.path(source_dir, target), winslash = "/", mustWork = FALSE)
+      if (!file.exists(target_file)) {
+        xml <- sub(relationship, "", xml, fixed = TRUE)
+        removed <- removed + 1L
+      }
+    }
+    writeLines(xml, relationship_file, useBytes = TRUE)
+  }
+
+  if (removed > 0L) {
+    archive_entries <- list.files(extract_dir, recursive = TRUE, all.files = TRUE, no.. = TRUE)
+    zip::zipr(
+      zipfile = repacked_file,
+      files = archive_entries,
+      root = extract_dir,
+      include_directories = FALSE,
+      mode = "mirror"
+    )
+    if (!file.copy(repacked_file, archive_file, overwrite = TRUE)) {
+      stop("Failed to finalize the CFA Excel export after removing invalid drawing relationships.")
+    }
+  }
+  invisible(removed)
+}
+
 structural_canvas_write_result_workbook <- function(sheets, file) {
   if (!requireNamespace("openxlsx", quietly = TRUE)) stop("The openxlsx package is required to export CFA result tables.")
   sheets <- Filter(function(value) is.data.frame(value) || is.matrix(value), sheets)
@@ -66,6 +120,7 @@ structural_canvas_write_result_workbook <- function(sheets, file) {
     }
   }
   openxlsx::saveWorkbook(workbook, file, overwrite = TRUE)
+  structural_canvas_prune_dangling_drawing_relationships(file)
   invisible(normalizePath(file, winslash = "/", mustWork = TRUE))
 }
 

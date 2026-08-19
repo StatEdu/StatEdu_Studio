@@ -47,6 +47,37 @@ assert_workbook_sheet_snapshot <- function(file, name, expected_names, expected_
   sheet
 }
 
+assert_no_dangling_drawing_relationships <- function(file) {
+  extract_dir <- tempfile("validate-cfa-xlsx-")
+  dir.create(extract_dir, recursive = TRUE, showWarnings = FALSE)
+  on.exit(unlink(extract_dir, recursive = TRUE, force = TRUE), add = TRUE)
+  zip::unzip(file, exdir = extract_dir)
+  relationship_dir <- file.path(extract_dir, "xl", "worksheets", "_rels")
+  relationship_files <- if (dir.exists(relationship_dir)) {
+    list.files(relationship_dir, pattern = "[.]rels$", full.names = TRUE)
+  } else {
+    character(0)
+  }
+  dangling <- character(0)
+  for (relationship_file in relationship_files) {
+    xml <- paste(readLines(relationship_file, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+    matches <- regmatches(xml, gregexpr("<Relationship\\b[^>]*/>", xml, perl = TRUE))[[1L]]
+    if (!length(matches) || identical(matches, character(0)) || identical(matches, "")) next
+    source_dir <- dirname(dirname(relationship_file))
+    for (relationship in matches) {
+      type <- sub('.*\\bType="([^"]+)".*', "\\1", relationship, perl = TRUE)
+      target <- sub('.*\\bTarget="([^"]+)".*', "\\1", relationship, perl = TRUE)
+      if (grepl("/(drawing|vmlDrawing)$", type, perl = TRUE) &&
+          !identical(target, relationship) &&
+          !file.exists(normalizePath(file.path(source_dir, target), winslash = "/", mustWork = FALSE))) {
+        dangling <- c(dangling, paste(basename(relationship_file), target, sep = ": "))
+      }
+    }
+  }
+  stopifnot(length(dangling) == 0L)
+  invisible(TRUE)
+}
+
 single_factor_syntax <- "eta1 =~ x1 + x2 + x3"
 single_factor_fit <- lavaan::cfa(single_factor_syntax, data = reporting_data, auto.cov.lv.x = FALSE)
 single_factor_correlation_export <- structural_canvas_export_latent_correlations(single_factor_fit)
@@ -208,6 +239,7 @@ stopifnot(
 
 integrated_workbook_file <- tempfile(fileext = ".xlsx")
 structural_canvas_write_result_workbook(integrated_sheets, integrated_workbook_file)
+assert_no_dangling_drawing_relationships(integrated_workbook_file)
 integrated_workbook_names <- openxlsx::getSheetNames(integrated_workbook_file)
 workbook_fit <- assert_workbook_sheet_snapshot(integrated_workbook_file, "Fit_Numeric", c(
   "Model", "Chi-square", "df", "p", "Q", "CFI", "TLI", "SRMR", "RMSEA",
@@ -270,6 +302,7 @@ for (name in names(invariance_sheet_snapshots)) {
 }
 invariance_workbook_file <- tempfile(fileext = ".xlsx")
 structural_canvas_write_result_workbook(invariance_export_sheets, invariance_workbook_file)
+assert_no_dangling_drawing_relationships(invariance_workbook_file)
 invariance_workbook_names <- openxlsx::getSheetNames(invariance_workbook_file)
 invariance_workbook_reliability <- assert_workbook_sheet_snapshot(invariance_workbook_file, "Invariance_Reliability", c(
   "Group", "Factor", "k", "AVE", "CR", "Cronbach's.alpha", "Omega.total"
@@ -335,6 +368,7 @@ workbook_sheets <- list(
 )
 names(workbook_sheets) <- c("Overview", "Invalid/name*test", long_sheet_name, tolower(long_sheet_name), " ", "Notes")
 structural_canvas_write_result_workbook(workbook_sheets, workbook_file)
+assert_no_dangling_drawing_relationships(workbook_file)
 workbook_sheet_names <- openxlsx::getSheetNames(workbook_file)
 numeric_workbook_values <- openxlsx::read.xlsx(workbook_file, sheet = "Invalid_name_test")
 stopifnot(

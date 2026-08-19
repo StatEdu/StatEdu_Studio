@@ -288,6 +288,14 @@ mi_fit_summary <- structural_canvas_summary_result_table(
   FALSE,
   function(value) vapply(as.numeric(value), format_decimal3, character(1))
 )
+mlr_overview <- structural_canvas_summary_result_table(
+  "overview",
+  list(estimator = "MLR", diagnostics = list(admissible = TRUE)),
+  two_factor_mlr_fit,
+  "cfa",
+  FALSE,
+  function(value) vapply(as.numeric(value), format_decimal3, character(1))
+)
 mlr_fit_measures <- lavaan::fitMeasures(two_factor_mlr_fit)
 additional_fit_mlr <- structural_canvas_additional_fit_indices_table(
   list(two_factor_mlr_fit),
@@ -296,6 +304,7 @@ additional_fit_mlr <- structural_canvas_additional_fit_indices_table(
 )
 additional_fit_wide <- structural_canvas_additional_fit_indices_wide_tables(additional_fit_mlr)
 stopifnot(
+  identical(mlr_overview$Value[mlr_overview$Item == "Estimator"], "MLR"),
   identical(rmsea_tests_ml$Source[[1L]], "rmsea"),
   identical(rmsea_tests_mlr$Source[[1L]], "rmsea.robust"),
   abs(rmsea_tests_mlr$`Close-fit p`[[1L]] - mlr_fit_measures[["rmsea.pvalue.robust"]]) < 1e-12,
