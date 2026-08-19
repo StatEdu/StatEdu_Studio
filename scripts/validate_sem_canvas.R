@@ -92,6 +92,8 @@ stopifnot(
   grepl("The structural-effect bootstrap was stopped by the user. Base-model results and point estimates remain available.", render_source, fixed = TRUE),
   grepl("PLS structural model effects", ui_source, fixed = TRUE),
   grepl("2. PLS/PLSc model fit diagnostics", ui_source, fixed = TRUE),
+  grepl('Fit = "saturated"', fit_source, fixed = TRUE),
+  grepl("Estimated-model values that impose the structural paths are not currently provided.", fit_source, fixed = TRUE),
   grepl("3. PLS structural model effects", ui_source, fixed = TRUE),
   grepl("total and indirect effects", ui_source, fixed = TRUE),
   grepl("PLSpredict cross-validation", ui_source, fixed = TRUE),
@@ -872,7 +874,9 @@ plsc_fit_diagnostics <- structural_canvas_pls_fit_diagnostics_table(plsc_bundle)
 stopifnot(plsc_overview$Value[plsc_overview$Item == "Estimator"] == "PLSc")
 stopifnot(plsc_reporting$Value[plsc_reporting$Item == "Estimator or algorithm"] == "PLSc path modeling (Reflective common-factor model)")
 stopifnot(identical(plsc_fit_diagnostics$Model, c("pls", "plsc")))
+stopifnot(identical(plsc_fit_diagnostics$Fit, c("saturated", "saturated")))
 stopifnot(all(nzchar(plsc_fit_diagnostics$srmr)), all(nzchar(plsc_fit_diagnostics$d_G)), all(nzchar(plsc_fit_diagnostics$d_ULS)))
+stopifnot(any(plsc_fit_diagnostics[1L, c("srmr", "d_G", "d_ULS")] != plsc_fit_diagnostics[2L, c("srmr", "d_G", "d_ULS")]))
 
 pls_bundle <- list(
   fit = pls$fit,
@@ -934,8 +938,9 @@ pls_measurement_guide <- structural_canvas_result_table("measurement_guide", pls
 pls_mi <- structural_canvas_result_table("mi", pls_result, "plssem", labels_fn, language_fn)
 stopifnot(nrow(pls_overview) == 7L)
 stopifnot("Item" %in% names(pls_overview))
-stopifnot(all(c("Model", "srmr", "d_G", "d_ULS") %in% names(pls_fit_diagnostics)))
+stopifnot(all(c("Model", "Fit", "srmr", "d_G", "d_ULS") %in% names(pls_fit_diagnostics)))
 stopifnot(identical(pls_fit_diagnostics$Model, c("pls", "plsc")))
+stopifnot(identical(pls_fit_diagnostics$Fit, c("saturated", "saturated")))
 stopifnot(all(nzchar(pls_fit_diagnostics$srmr)), all(nzchar(pls_fit_diagnostics$d_G)), all(nzchar(pls_fit_diagnostics$d_ULS)))
 stopifnot(all(c("Path", "B", "Boot SE", "z", "p", "f2", "R2AdjR2", "Inner VIF") %in% names(pls_fit)))
 stopifnot(!"Score-CV Q2" %in% names(pls_fit))

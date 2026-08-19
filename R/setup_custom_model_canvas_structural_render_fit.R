@@ -107,6 +107,20 @@ structural_canvas_pls_approximate_fit_indices <- function(bundle, summary_fit = 
   observed <- tryCatch(stats::cor(fit$data[indicators], use = "pairwise.complete.obs"), error = function(error) NULL)
   construct_cor <- tryCatch(stats::cor(scores[, constructs, drop = FALSE], use = "pairwise.complete.obs"), error = function(error) NULL)
   if (is.null(observed) || is.null(construct_cor)) return(c(srmr = NA_real_, d_g = NA_real_, d_uls = NA_real_, nfi = NA_real_))
+  estimator <- toupper(as.character(bundle$estimator %||% bundle$diagnostics$estimator %||% "PLS"))
+  if (identical(estimator, "PLSC")) {
+    common_factors <- intersect(as.character(fit$statedu_common_factor_constructs %||% character(0)), constructs)
+    rho_a <- tryCatch(seminr:::rho_A(fit, constructs), error = function(error) NULL)
+    if (is.null(rho_a) || !length(common_factors)) return(c(srmr = NA_real_, d_g = NA_real_, d_uls = NA_real_, nfi = NA_real_))
+    rho_a <- suppressWarnings(as.numeric(rho_a[constructs, 1L]))
+    names(rho_a) <- constructs
+    rho_a[!constructs %in% common_factors] <- 1
+    if (any(!is.finite(rho_a) | rho_a <= 0)) return(c(srmr = NA_real_, d_g = NA_real_, d_uls = NA_real_, nfi = NA_real_))
+    adjustment <- sqrt(outer(rho_a, rho_a))
+    diag(adjustment) <- 1
+    construct_cor <- construct_cor / adjustment
+    if (any(!is.finite(construct_cor))) return(c(srmr = NA_real_, d_g = NA_real_, d_uls = NA_real_, nfi = NA_real_))
+  }
   implied <- diag(1, length(indicators), length(indicators))
   dimnames(implied) <- list(indicators, indicators)
   construct_for <- stats::setNames(as.character(mm$construct), as.character(mm$measurement))
@@ -163,6 +177,7 @@ structural_canvas_pls_fit_diagnostics_table <- function(bundle) {
     values <- structural_canvas_pls_approximate_fit_indices(diagnostic_bundle, summary_fit)
     data.frame(
       Model = if (identical(estimator, "PLSC")) "plsc" else "pls",
+      Fit = "saturated",
       srmr = structural_canvas_pls_diagnostic_number(values[["srmr"]]),
       d_G = structural_canvas_pls_diagnostic_number(values[["d_g"]]),
       d_ULS = structural_canvas_pls_diagnostic_number(values[["d_uls"]]),
@@ -457,7 +472,7 @@ if (identical(analysis_type, "plssem")) {
     names(display)[names(display) == "Model"] <- ""
     tagList(
       structural_canvas_basic_html_table(display, class = "table table-striped table-bordered structural-pls-fit-diagnostics-table"),
-      tags$p(class = "structural-result-note", if (ko) "SRMR, d_G, d_ULS는 관측 지표상관과 모형함의 지표상관 사이의 근사 불일치 진단입니다. 혼합모형의 PLSc는 반영형 공통요인 블록만 일관성 보정하고 합성변수 블록은 보정하지 않습니다. SRMR < .08은 기술적 참고 기준이며 d_G와 d_ULS에는 고정 절단값을 적용하지 않습니다." else "SRMR, d_G, and d_ULS are approximate discrepancy diagnostics between observed and model-implied indicator correlations. Mixed-model PLSc corrects reflective common-factor blocks only and leaves composite blocks uncorrected. SRMR < .08 is a descriptive reference; no fixed cutoff is imposed on d_G or d_ULS.")
+      tags$p(class = "structural-result-note", if (ko) "SRMR, d_G, d_ULS는 모든 구성개념 상관을 자유롭게 둔 saturated 측정모형 근사에서 관측 지표상관과 모형함의 지표상관 사이의 불일치를 계산합니다. 구조경로 제약을 반영한 estimated-model 값은 현재 제공하지 않습니다. 혼합모형의 PLSc는 반영형 공통요인 블록만 일관성 보정하고 합성변수 블록은 보정하지 않습니다. SRMR < .08은 기술적 참고 기준이며 d_G와 d_ULS에는 고정 절단값을 적용하지 않습니다." else "SRMR, d_G, and d_ULS are approximate discrepancies between observed and model-implied indicator correlations under a saturated measurement-model approximation in which all construct correlations are free. Estimated-model values that impose the structural paths are not currently provided. Mixed-model PLSc corrects reflective common-factor blocks only and leaves composite blocks uncorrected. SRMR < .08 is a descriptive reference; no fixed cutoff is imposed on d_G or d_ULS.")
     )
   }
   pls_fit_diagnostics_ui <- function() pls_fit_diagnostics_content()

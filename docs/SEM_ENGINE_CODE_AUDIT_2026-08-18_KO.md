@@ -18,7 +18,7 @@
 | 표본설계 선언, 추정량 선택 근거, CMB 중립 라벨 | 완료 | `a8314d2`; `validate_sem_canvas.R`, `validate_cfa_ui.R` |
 | Mardia·PLSc·PLSpredict 재현성 | 완료 | `27f2659`, `f61f204`, `33a92f8`, `ebba1d0` |
 | 부분불변성 지원 경계 | 제한 명시 완료 | `13bf2a3`, `849224a`; 자동 제약 해제 없이 외부 분석 요건을 Audit에 보존 |
-| PLS 적합도 정의·외부 비교 | 완료 | `91d2480`, `d82fe7a`, `6e31b56`; cSEM 선택 검증과 외부 CSV 비교기 |
+| PLS 적합도 정의·외부 비교 | 내부 완료 / 독점 프로그램 실행 대기 | `91d2480`, `d82fe7a`, `6e31b56`; cSEM 선택 검증, 고정 PLS/PLSc saturated benchmark 생성기와 외부 CSV 비교기. SmartPLS/ADANCO 실제 결과·버전은 외부 증거 대기 |
 | CMB 설계통제 및 분석계획 provenance | 완료 | `07e530f`, `f673b9e`; 실제 marker 효과 추정은 지원 범위 밖으로 명시 |
 | 전체 회귀검증 편입 | 완료 | `4cf5727`; `scripts/validate_stabilization.ps1 -Full` 통과 |
 
@@ -33,7 +33,7 @@
 - 이후 전체 표본 점수의 측정정보 누출을 제거하기 위해 score-CV Q²/q² 계산과 출력을 폐기하고, 훈련 접기별 재추정을 수행하는 반복 PLSpredict만 예측평가로 유지했다.
 - PLS 근사 적합도 행렬 계산을 cSEM 정의와 대조해 SRMR 분모, d_G 로그·척도, NFI ML 거리식을 교정하고 고정 행렬 benchmark를 추가했다.
 - cSEM 설치 환경에서 SRMR·d_G·d_ULS를 cSEM 패키지 함수와 직접 대조하는 선택적 package-level benchmark를 안정화 검증 목록에 추가했다.
-- SmartPLS/ADANCO 결과 CSV를 StatEdu 원값과 절대·상대 허용오차로 자동 대조하는 외부 benchmark 비교기와 재현 절차를 추가했다.
+- SmartPLS/ADANCO 결과 CSV를 StatEdu 원값과 절대·상대 허용오차로 자동 대조하는 외부 benchmark 비교기와 재현 절차를 추가했다. 고정 자료·모형에서 반올림 전 PLS/PLSc saturated 값, 외부 입력 템플릿, SHA-256/버전/설정 manifest를 생성한다. 이 과정에서 PLSc 적합도 재구성이 원 점수상관을 재사용하던 결함을 발견해 disattenuated 공통요인 상관을 반영하도록 수정했으며, 실제 독점 프로그램 결과가 들어오기 전에는 동등성 통과를 주장하지 않는다.
 - CMB 옵션에 설계단계 절차적 통제, marker 변수와 선정 근거의 구조화 기록을 추가하고, marker 효과는 현재 추정하지 않는다는 상태를 UI·Audit에 명시했다.
 - 분석계획을 사전등록·사전 프로토콜·탐색적·미기록으로 구분하고 외부 참조를 Audit에 저장해 확인적 주장과 탐색적 분석의 provenance를 분리했다.
 - PLSpredict 요약은 일부 지표의 PLS 우세를 `OK`로 판정하지 않고 `Descriptive only`로 표시한다.

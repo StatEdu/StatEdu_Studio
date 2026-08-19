@@ -37,8 +37,8 @@ Current release candidate source version: 1.2.0
 - Source version: `1.2.3-dev`.
 - Branch: `codex/sem-model-canvas`.
 - Built development package: `dist/electron/StatEdu_Studio_Dev_Setup_1.2.3-dev.exe`.
-- Installer SHA256: `44092E1E457831C8D124BB5D29EC11A19E15D70333B43B1632663E9A791FDC3B`.
-- Blockmap SHA256: `C359CE4E57E0355098C54E43C7C44D1E52205D20C8132EB078BA39BE3FEBAF62`.
+- Installer SHA256: `A6258BE4E1557F9AC426C78915144E37F47EAA228444822F26C41697A7EC33E2`.
+- Blockmap SHA256: `4A4864B235E5BA9E4112793F8E085884D43AF8CB4572315FB4261E75FAA423CD`.
 - `scripts/validate_sem_canvas.R` and `scripts/validate_cfa_all.R`: passed on 2026-08-19.
 - `scripts/smoke_electron_release.ps1`: passed against the final 1.2.3-dev package.
 - `scripts/smoke_electron_app_lifecycle.ps1`: passed with zero packaged Electron/R processes remaining after cleanup.
@@ -50,7 +50,8 @@ Current release candidate source version: 1.2.0
 - Packaged Windows UI Automation verified nondefault bootstrap methods end to end: AVE/reliability BCa completed 500 case resamples plus 45 jackknife fits and returned 468/500 valid replicates, while three-factor HTMT Percentile returned 1,000/1,000 valid replicates with populated two-sided and one-sided limits.
 - Packaged Windows UI Automation also completed the 301-case `school` multigroup CFA. All four invariance stages converged and were admissible, group-specific reliability/AVE and HTMT rendered, and the live 33-sheet Excel export passed strict OpenXML import, all-sheet rendering, key-value verification, and dangling-relationship/error-token scans. The export now reports the requested MLR estimator consistently in both overview and report-summary sheets.
 - Packaged Windows UI Automation also completed the 301-case higher-order CFA with MLR. The fit converged and was admissible; all three general-factor loadings, lower-order R2 values, and model-/score-conditional omega-h rendered. The 26-sheet live Excel export passed strict OpenXML import, all-sheet rendering, value matching, and spreadsheet-error scans.
-- Remaining before public promotion: external SmartPLS/ADANCO numerical comparison; final public versioning, manual QA, release notes, upload, and publication. Packaged SEM covariate-model comparison and higher-order CFA execution/export now have end-to-end evidence.
+- The external PLS benchmark is reproducibly prepared: a fixed data/model fixture generates full-precision PLS/PLSc saturated values, an external CSV template, and a SHA-256/version/settings manifest. It also identified and corrected omission of the PLSc disattenuated construct-correlation matrix from fit reconstruction. Comparator and SEM regression checks pass, but no proprietary-program equivalence is claimed without actual SmartPLS/ADANCO output.
+- Remaining before public promotion: actual SmartPLS/ADANCO numerical results with recorded software versions; final public versioning, manual QA, release notes, upload, and publication. Packaged SEM covariate-model comparison and higher-order CFA execution/export now have end-to-end evidence.
 
 ## Historical 1.2.2-dev Development Snapshot
 

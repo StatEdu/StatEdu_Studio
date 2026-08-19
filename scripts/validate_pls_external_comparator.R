@@ -27,4 +27,30 @@ utils::write.csv(invalid_fit, external_file, row.names = FALSE)
 stopifnot(inherits(try(pls_fit_compare_external(statedu_file, external_file), silent = TRUE), "try-error"))
 stopifnot(inherits(try(pls_fit_compare_external(statedu_file, statedu_file, absolute_tolerance = -1), silent = TRUE), "try-error"))
 
+source(file.path("scripts", "generate_pls_external_benchmark.R"), encoding = "UTF-8")
+benchmark_dir <- tempfile(pattern = "pls-external-benchmark-")
+dir.create(benchmark_dir, recursive = TRUE)
+on.exit(unlink(benchmark_dir, recursive = TRUE, force = TRUE), add = TRUE)
+benchmark <- generate_pls_external_benchmark(benchmark_dir)
+benchmark_values <- pls_fit_read_comparison_csv(benchmark$statedu_path, "StatEdu")
+benchmark_manifest <- jsonlite::fromJSON(benchmark$manifest_path, simplifyVector = FALSE)
+stopifnot(
+  nrow(benchmark_values) == 2L,
+  identical(benchmark_values$Model, c("pls", "plsc")),
+  identical(benchmark_values$Fit, c("saturated", "saturated")),
+  any(benchmark_values[1L, c("srmr", "d_G", "d_ULS")] != benchmark_values[2L, c("srmr", "d_G", "d_ULS")]),
+  identical(benchmark_manifest$schema_version, "1.0"),
+  identical(benchmark_manifest$data$rows, 301L),
+  nchar(benchmark_manifest$data$sha256) == 64L,
+  nchar(benchmark_manifest$model$sha256) == 64L,
+  identical(benchmark_manifest$algorithm$fit_target, "saturated"),
+  identical(benchmark_manifest$algorithm$maximum_iterations, 300L),
+  identical(benchmark_manifest$algorithm$stop_criterion, 1e-7),
+  file.exists(benchmark$template_path)
+)
+benchmark_external <- benchmark_values
+utils::write.csv(benchmark_external, external_file, row.names = FALSE)
+benchmark_comparison <- pls_fit_compare_external(benchmark$statedu_path, external_file)
+stopifnot(nrow(benchmark_comparison) == 6L, all(benchmark_comparison$Pass))
+
 cat("External PLS fit comparator validation passed.\n")
