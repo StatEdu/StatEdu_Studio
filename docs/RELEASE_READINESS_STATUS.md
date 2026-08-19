@@ -47,7 +47,8 @@ Current release candidate source version: 1.2.0
 - CFA higher-order-factor toolbar labeling, result downloads, default BC bootstrap intervals, and cancellable background bootstrap progress have packaged-app evidence in `docs/RELEASE_1_2_PACKAGED_VALIDATION_NOTES.md`.
 - Packaged Windows UI Automation confirmed the actual native `열기` dialog, `StatEdu Model Canvas` filter, CFA/SEM snapshot restoration, Run-button enablement, and entry into the estimator-decision workflow.
 - Packaged Windows UI Automation also ran a 360-row ordinal CFA and confirmed `Estimator = DWLS`, `Parameterization = Theta`, `Converged = Yes`, retained base results during background HTMT bootstrap, and zero packaged-process residue after cleanup.
-- Remaining before public promotion: packaged BCa/percentile workflows; packaged multigroup reliability/HTMT/invariance and Excel export; packaged covariate-model comparison and higher-order-model execution; external SmartPLS/ADANCO numerical comparison; final public versioning, manual QA, release notes, upload, and publication.
+- Packaged Windows UI Automation verified nondefault bootstrap methods end to end: AVE/reliability BCa completed 500 case resamples plus 45 jackknife fits and returned 468/500 valid replicates, while three-factor HTMT Percentile returned 1,000/1,000 valid replicates with populated two-sided and one-sided limits.
+- Remaining before public promotion: packaged multigroup reliability/HTMT/invariance and Excel export; packaged covariate-model comparison and higher-order-model execution; external SmartPLS/ADANCO numerical comparison; final public versioning, manual QA, release notes, upload, and publication.
 
 ## Historical 1.2.2-dev Development Snapshot
 
