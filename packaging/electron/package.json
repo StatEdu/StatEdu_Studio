@@ -1,88 +1,88 @@
 {
-    "name": "statedu-studio-dev",
-    "version": "1.2.3-dev",
-    "description": "StatEdu Studio developer desktop installer",
-    "author": "StatEdu",
-    "main": "main.js",
-    "private": true,
-    "scripts": {
-        "start": "electron .",
-        "dist": "electron-builder --win nsis --x64"
+  "name": "statedu-studio-dev",
+  "version": "1.2.3-dev",
+  "description": "StatEdu Studio developer desktop installer",
+  "author": "StatEdu",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis --x64"
+  },
+  "devDependencies": {
+    "electron": "43.4.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.statedu.studio.dev",
+    "productName": "StatEdu Studio Dev",
+    "asar": true,
+    "asarUnpack": [
+      "package.json",
+      "app/**/*",
+      "runtime/**/*"
+    ],
+    "directories": {
+      "output": "../../dist/electron"
     },
-    "devDependencies": {
-        "electron": "43.4.0",
-        "electron-builder": "26.15.3"
+    "files": [
+      "main.js",
+      "package.json",
+      "app/**/*",
+      "runtime/**/*"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "signExecutable": false,
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "StatEdu_Studio_Dev_Setup_${version}.${ext}"
     },
-    "build": {
-        "appId": "com.statedu.studio.dev",
-        "productName": "StatEdu Studio Dev",
-        "asar": true,
-        "asarUnpack": [
-            "package.json",
-            "app/**/*",
-            "runtime/**/*"
-        ],
-        "directories": {
-            "output": "../../dist/electron"
-        },
-        "files": [
-            "main.js",
-            "package.json",
-            "app/**/*",
-            "runtime/**/*"
-        ],
-        "win": {
-            "icon": "build/icon.ico",
-            "signExecutable": false,
-            "target": [
-                {
-                    "target": "nsis",
-                    "arch": [
-                        "x64"
-                    ]
-                }
-            ],
-            "artifactName": "StatEdu_Studio_Dev_Setup_${version}.${ext}"
-        },
-        "nsis": {
-            "installerIcon": "build/icon.ico",
-            "uninstallerIcon": "build/icon.ico",
-            "oneClick": false,
-            "allowToChangeInstallationDirectory": true,
-            "createDesktopShortcut": true,
-            "createStartMenuShortcut": true,
-            "shortcutName": "StatEdu Studio Dev",
-            "deleteAppDataOnUninstall": false
-        },
-        "fileAssociations": [
-            {
-                "ext": "studio",
-                "name": "StatEdu Studio Settings",
-                "description": "StatEdu Studio Settings",
-                "icon": "build/studio-data.ico",
-                "role": "Editor"
-            },
-            {
-                "ext": "stmodel",
-                "name": "StatEdu Model",
-                "description": "StatEdu Model Canvas",
-                "icon": "build/studio-mm.ico",
-                "role": "Editor"
-            },
-            {
-                "ext": "stsem",
-                "name": "StatEdu SEM Project",
-                "description": "StatEdu Structural Equation Model Project",
-                "icon": "build/studio-sem.ico",
-                "role": "Editor"
-            },
-            {
-                "ext": "stmm",
-                "name": "StatEdu Mediation Moderation Project",
-                "description": "StatEdu Mediation and Moderation Model Project",
-                "icon": "build/studio-mm.ico",
-                "role": "Editor"
-            }
-        ]
-    }
+    "nsis": {
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "StatEdu Studio Dev",
+      "deleteAppDataOnUninstall": false
+    },
+    "fileAssociations": [
+      {
+        "ext": "studio",
+        "name": "StatEdu Studio Settings",
+        "description": "StatEdu Studio Settings",
+        "icon": "build/studio-data.ico",
+        "role": "Editor"
+      },
+      {
+        "ext": "stmodel",
+        "name": "StatEdu Model",
+        "description": "StatEdu Model Canvas",
+        "icon": "build/studio-mm.ico",
+        "role": "Editor"
+      },
+      {
+        "ext": "stsem",
+        "name": "StatEdu SEM Project",
+        "description": "StatEdu Structural Equation Model Project",
+        "icon": "build/studio-sem.ico",
+        "role": "Editor"
+      },
+      {
+        "ext": "stmm",
+        "name": "StatEdu Mediation Moderation Project",
+        "description": "StatEdu Mediation and Moderation Model Project",
+        "icon": "build/studio-mm.ico",
+        "role": "Editor"
+      }
+    ]
+  }
 }

@@ -48,6 +48,9 @@ Use this checklist before creating a public beta installer, release candidate, o
 - Confirm `runtime_prune_report.csv` exists and contains only `keep` rows, unless an intentional exception is documented.
 - Confirm `electron` and `electron-builder` are exact version pins in `packaging/electron/package.json`.
 - Run `npm ci` from `packaging/electron` before packaging.
+- If npm is unavailable but pnpm and Node.js are available, pass their explicit
+  paths to `build_electron_release.ps1` with `-PnpmPath` and `-NodePath`; the
+  build uses pinned npm 10.9.2 through pnpm and preserves `package-lock.json` semantics.
 - Confirm `dist/electron` contains only the current StatEdu Studio setup `.exe`, its `.blockmap`, and `win-unpacked`; remove legacy EasyFlow installers and debug artifacts before publishing.
 - For 0.9.x beta builds, `StatEdu Studio Beta` and `StatEdu_Studio_Beta_Setup_*` are expected. For public builds, `StatEdu Studio` and `StatEdu_Studio_Setup_*` are expected.
 - Run `scripts\get_release_checksums.ps1` and copy the installer SHA256 into the current packaged validation notes.

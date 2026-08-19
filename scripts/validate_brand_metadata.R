@@ -111,6 +111,8 @@ assert_equal(
 )
 assert_equal(electron_package$build$win$signExecutable, FALSE, "Electron code-signing opt-out")
 assert_contains("scripts/build_electron_beta.ps1", "Sync-ElectronPackageMetadata", "Electron package metadata sync")
+assert_contains("scripts/build_electron_beta.ps1", '"npm@10.9.2"', "Electron pnpm fallback pins npm")
+assert_contains("scripts/build_electron_release.ps1", "-PnpmPath", "Electron release build forwards pnpm path")
 assert_contains("scripts/build_electron_beta.ps1", "StatEdu_Studio_Setup", "final 1.0 installer artifact prefix")
 assert_contains("scripts/build_electron_beta.ps1", "com.statedu.studio", "final 1.0 app id")
 assert_contains("scripts/build_electron_release.ps1", "build_electron_beta.ps1", "release build wrapper delegates to compatibility build script")
