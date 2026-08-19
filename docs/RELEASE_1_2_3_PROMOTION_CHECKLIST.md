@@ -5,6 +5,7 @@ This checklist promotes `1.2.3-dev` to public `1.2.3`. It does not modify or sup
 ## Gate 1: External PLS/PLSc evidence
 
 - Generate the external handoff with `scripts/prepare_pls_external_handoff.R`.
+- Package the handoff with `scripts/package_pls_external_handoff.ps1` and retain the archive SHA-256 alongside the external-run record.
 - Run the identical saturated model in SmartPLS or ADANCO.
 - Record program name, exact version, run date, standardized-result setting, weighting scheme, convergence, and fit target.
 - Create the external-run record from `docs/RELEASE_1_2_3_EXTERNAL_PLS_RUN.template.json` and record the fixed data, model, StatEdu result, external result, and comparison SHA-256 values.

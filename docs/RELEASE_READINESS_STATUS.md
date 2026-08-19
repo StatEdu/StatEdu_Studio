@@ -12,6 +12,8 @@ The 1.2.3 fail-closed promotion validator is armed in `scripts/validate_sem_rele
 
 The external-program handoff is automated by `scripts/prepare_pls_external_handoff.R` and `scripts/finalize_pls_external_evidence.R`: the first packages the fixed data/model/specification and result template, and the second accepts only versioned, dated, convergence-confirmed SmartPLS/ADANCO results, recomputes all six comparisons, records actual output precision, and seals the evidence hashes. Actual proprietary-program values remain pending.
 
+`scripts/package_pls_external_handoff.ps1` creates the transfer ZIP from a fresh temporary staging directory, verifies its required contents, embeds per-file SHA-256 values, and emits a checksum sidecar for the archive. This closes the evidence-transfer integrity step but does not substitute for the pending proprietary-program run.
+
 ## Current 1.2.0 Public Release Snapshot
 
 - Source metadata has been promoted from the stabilized post-1.1.3 work to `1.2.0`.

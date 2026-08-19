@@ -37,6 +37,14 @@ StatEdu Studio와 SmartPLS 또는 ADANCO의 SRMR, d_G, d_ULS를 비교할 때 �
 
 이 묶음에는 원자료와 StatEdu 모형 스냅샷의 사본, `measurement_model.csv`, `structural_paths.csv`, `statedu_fit.csv`, 값 입력용 `external_fit.csv`, 사전 해시가 기록된 `external_run.json`, 실행 안내문이 포함된다.
 
+전달용 ZIP과 파일별/ZIP SHA-256은 다음 명령으로 새 임시 staging에서 생성한다. 기존 작업 폴더의 오래된 파일은 ZIP에 섞이지 않는다.
+
+```powershell
+& scripts/package_pls_external_handoff.ps1
+```
+
+기본 산출물은 `outputs/StatEdu_1.2.3_PLS_external_handoff.zip`과 동일 이름의 `.sha256` 파일이다. ZIP 내부 `HANDOFF_SHA256.csv`로 개별 입력 파일의 크기와 해시를 확인한다.
+
 외부 프로그램에는 `sample/HolzingerSwineford1939.csv`와 `sample/pls_external_benchmark.stmodel`에 기록된 동일 모형을 사용한다. SmartPLS 4에서는 standardized results, path weighting, 초기 외부가중치 +1, 고정 stop criterion 10^-7을 사용하고 saturated model 결과를 기록한다. SmartPLS 4의 최대 반복은 3,000회로 고정되어 있지만 StatEdu/seminr는 300회이므로, 양쪽 모두 300회 이전에 수렴했는지 확인한다. benchmark 자료에는 결측값이 없다. PLS와 consistent PLS(PLSc)를 각각 실행하고 외부 프로그램 버전·실행일을 manifest 사본에 기록한다.
 
 ## CSV 형식
