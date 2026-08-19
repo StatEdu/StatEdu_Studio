@@ -168,6 +168,53 @@ stopifnot(isTRUE(cbsem$converged))
 stopifnot(grepl("eta2 ~", cbsem$syntax, fixed = TRUE), grepl("*eta1", cbsem$syntax, fixed = TRUE))
 stopifnot(is.finite(cbsem$df))
 
+covariate_research_syntax <- paste(
+  "visual =~ x1 + x2 + x3",
+  "textual =~ x4 + x5 + x6",
+  "speed =~ x7 + x8 + x9",
+  "textual ~ visual",
+  "speed ~ visual + textual",
+  "ageyr ~~ ageyr",
+  sep = "\n"
+)
+covariate_adjusted_syntax <- paste(
+  "visual =~ x1 + x2 + x3",
+  "textual =~ x4 + x5 + x6",
+  "speed =~ x7 + x8 + x9",
+  "textual ~ visual + ageyr",
+  "speed ~ visual + textual + ageyr",
+  "ageyr ~~ ageyr",
+  sep = "\n"
+)
+covariate_research_fit <- lavaan::sem(
+  covariate_research_syntax, data = lavaan::HolzingerSwineford1939,
+  estimator = "MLR", fixed.x = FALSE
+)
+covariate_adjusted_fit <- lavaan::sem(
+  covariate_adjusted_syntax, data = lavaan::HolzingerSwineford1939,
+  estimator = "MLR", fixed.x = FALSE
+)
+covariate_fit_comparison <- structural_canvas_covariate_fit_comparison(
+  covariate_research_fit, covariate_adjusted_fit
+)
+covariate_lrt <- suppressWarnings(lavaan::lavTestLRT(covariate_research_fit, covariate_adjusted_fit))
+covariate_lrt_row <- covariate_lrt[nrow(covariate_lrt), , drop = FALSE]
+covariate_lrt_value <- function(pattern) {
+  column <- grep(pattern, names(covariate_lrt_row), value = TRUE, ignore.case = TRUE)
+  if (length(column)) as.numeric(covariate_lrt_row[[column[[1L]]]][[1L]]) else NA_real_
+}
+stopifnot(
+  identical(as.character(covariate_fit_comparison$Model), c("Research model", "Covariate-adjusted model", "Delta")),
+  "Fit basis" %in% names(covariate_fit_comparison),
+  all(grepl("robust CFI/TLI/RMSEA", covariate_fit_comparison$`Fit basis`[1:2], fixed = TRUE)),
+  grepl("Robust", covariate_fit_comparison$`Fit basis`[[3L]], ignore.case = TRUE),
+  isTRUE(all.equal(covariate_fit_comparison$CFI[[1L]], as.numeric(lavaan::fitMeasures(covariate_research_fit, "cfi.robust")), tolerance = 1e-10)),
+  isTRUE(all.equal(covariate_fit_comparison$`Chi-square`[[1L]], as.numeric(lavaan::fitMeasures(covariate_research_fit, "chisq.scaled")), tolerance = 1e-10)),
+  isTRUE(all.equal(covariate_fit_comparison$`Chi-square`[[3L]], covariate_lrt_value("Chisq diff"), tolerance = 1e-10)),
+  isTRUE(all.equal(covariate_fit_comparison$df[[3L]], covariate_lrt_value("Df diff"), tolerance = 1e-10)),
+  isTRUE(all.equal(covariate_fit_comparison$p[[3L]], covariate_lrt_value("Pr\\(>Chisq\\)"), tolerance = 1e-10))
+)
+
 cbsem_bundle <- list(
   fit = cbsem$fit,
   syntax = cbsem$syntax,

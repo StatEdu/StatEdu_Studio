@@ -149,7 +149,7 @@ structural_canvas_workbook_contents <- function(sheet_names) {
     if (grepl("^MI_", name)) return("Exploratory modification-index or holdout-validation output; changes require theoretical justification.")
     if (identical(name, "Model_Difference")) return("Nested-model difference-test result or the explicit reason the formal test was suppressed.")
     if (identical(name, "Covariate_Effects")) return("Estimated covariate effects on their assigned latent-variable targets.")
-    if (identical(name, "Covariate_Fit_Comparison")) return("Research-model, covariate-adjusted-model, and delta fit statistics.")
+    if (identical(name, "Covariate_Fit_Comparison")) return("Research-model, covariate-adjusted-model, and delta fit statistics with the estimator-matched fit and likelihood-ratio test basis stated in each row.")
     if (grepl("^Inv", name)) return("Measurement-invariance fit, group, or equality-constraint diagnostic output.")
     if (grepl("_CI$", name)) return("Confidence-interval output; consult Notes and valid-replicate counts before interpretation.")
     if (identical(name, "Model_Syntax")) return("lavaan model syntax used for the fitted model.")

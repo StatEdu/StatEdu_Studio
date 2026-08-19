@@ -37,8 +37,8 @@ Current release candidate source version: 1.2.0
 - Source version: `1.2.3-dev`.
 - Branch: `codex/sem-model-canvas`.
 - Built development package: `dist/electron/StatEdu_Studio_Dev_Setup_1.2.3-dev.exe`.
-- Installer SHA256: `54F90EB00030A46DFD4DD38D07FEE5E55141D89762DDBC0C55D4BCDD7C0289B2`.
-- Blockmap SHA256: `0662152D0D8B73DEE2903D3E4351F2C0A2FFC968A928D04A84CCDCD934C294F4`.
+- Installer SHA256: `A52987D677866C9A726D36CAEDFCC56B6DF84654228FA0A9A62DB867EC276021`.
+- Blockmap SHA256: `1E2D70DC4F881E09D0DFCD55988381DC094DFC155A4D74AB283422557D32D125`.
 - `scripts/validate_sem_canvas.R` and `scripts/validate_cfa_all.R`: passed on 2026-08-19.
 - `scripts/smoke_electron_release.ps1`: passed against the final 1.2.3-dev package.
 - `scripts/smoke_electron_app_lifecycle.ps1`: passed with zero packaged Electron/R processes remaining after cleanup.
@@ -49,7 +49,7 @@ Current release candidate source version: 1.2.0
 - Packaged Windows UI Automation also ran a 360-row ordinal CFA and confirmed `Estimator = DWLS`, `Parameterization = Theta`, `Converged = Yes`, retained base results during background HTMT bootstrap, and zero packaged-process residue after cleanup.
 - Packaged Windows UI Automation verified nondefault bootstrap methods end to end: AVE/reliability BCa completed 500 case resamples plus 45 jackknife fits and returned 468/500 valid replicates, while three-factor HTMT Percentile returned 1,000/1,000 valid replicates with populated two-sided and one-sided limits.
 - Packaged Windows UI Automation also completed the 301-case `school` multigroup CFA. All four invariance stages converged and were admissible, group-specific reliability/AVE and HTMT rendered, and the live 33-sheet Excel export passed strict OpenXML import, all-sheet rendering, key-value verification, and dangling-relationship/error-token scans. The export now reports the requested MLR estimator consistently in both overview and report-summary sheets.
-- Remaining before public promotion: packaged covariate-model comparison and higher-order-model execution; external SmartPLS/ADANCO numerical comparison; final public versioning, manual QA, release notes, upload, and publication.
+- Remaining before public promotion: packaged higher-order-model execution; external SmartPLS/ADANCO numerical comparison; final public versioning, manual QA, release notes, upload, and publication. Packaged SEM covariate-model comparison now has MLR robust/scaled end-to-end evidence.
 
 ## Historical 1.2.2-dev Development Snapshot
 

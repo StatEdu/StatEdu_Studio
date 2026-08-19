@@ -34,29 +34,71 @@ structural_canvas_covariate_effect_table <- function(fit, covariates, display_na
 
 structural_canvas_covariate_fit_comparison <- function(research_fit, adjusted_fit) {
   if (is.null(research_fit) || is.null(adjusted_fit)) return(data.frame())
-  keys <- c("chisq", "df", "pvalue", "cfi", "tli", "rmsea", "srmr")
+  keys <- c(
+    "chisq", "chisq.scaled", "df", "pvalue", "pvalue.scaled",
+    "cfi", "cfi.scaled", "cfi.robust",
+    "tli", "tli.scaled", "tli.robust",
+    "rmsea", "rmsea.scaled", "rmsea.robust", "srmr"
+  )
+  first_finite <- function(values, candidates) {
+    available <- candidates[candidates %in% names(values)]
+    if (!length(available)) return(NA_real_)
+    selected <- values[available]
+    finite <- which(is.finite(selected))
+    if (length(finite)) unname(selected[[finite[[1L]]]]) else NA_real_
+  }
   extract <- function(fit) {
-    values <- tryCatch(lavaan::fitMeasures(fit, keys), error = function(error) rep(NA_real_, length(keys)))
-    stats::setNames(as.numeric(values), keys)
+    values <- tryCatch(
+      lavaan::fitMeasures(fit, keys),
+      error = function(error) stats::setNames(rep(NA_real_, length(keys)), keys)
+    )
+    values <- stats::setNames(as.numeric(values), names(values))
+    options <- tryCatch(lavaan::lavInspect(fit, "options"), error = function(error) list())
+    estimator <- toupper(as.character(options$estimator.orig %||% options$estimator %||% ""))
+    robust <- estimator %in% c("MLR", "MLM", "MLMV", "MLMVS", "WLSM", "WLSMV", "ULSM", "ULSMV", "DWLS")
+    selected <- c(
+      chisq = first_finite(values, if (robust) c("chisq.scaled", "chisq") else "chisq"),
+      df = first_finite(values, "df"),
+      pvalue = first_finite(values, if (robust) c("pvalue.scaled", "pvalue") else "pvalue"),
+      cfi = first_finite(values, if (robust) c("cfi.robust", "cfi.scaled", "cfi") else "cfi"),
+      tli = first_finite(values, if (robust) c("tli.robust", "tli.scaled", "tli") else "tli"),
+      rmsea = first_finite(values, if (robust) c("rmsea.robust", "rmsea.scaled", "rmsea") else "rmsea"),
+      srmr = first_finite(values, "srmr")
+    )
+    attr(selected, "basis") <- if (robust) {
+      paste0(estimator, " scaled chi-square/p; robust CFI/TLI/RMSEA; standard SRMR")
+    } else {
+      paste0(if (nzchar(estimator)) estimator else "Model", " conventional fit measures")
+    }
+    selected
   }
   research <- extract(research_fit)
   adjusted <- extract(adjusted_fit)
-  lrt <- tryCatch(suppressWarnings(lavaan::lavTestLRT(research_fit, adjusted_fit)), error = function(error) NULL)
-  lrt_p <- if (!is.null(lrt) && nrow(lrt) >= 2L) {
-    column <- grep("Pr\\(>Chisq\\)", names(lrt), value = TRUE)
-    if (length(column)) as.numeric(lrt[[column[[1L]]]][[nrow(lrt)]]) else NA_real_
-  } else NA_real_
+  difference <- structural_canvas_model_difference(research_fit, adjusted_fit)
+  difference_basis <- if (!is.null(difference)) {
+    method <- paste(difference$method, collapse = " ")
+    if (grepl("scaled|robust|satorra|yuan", method, ignore.case = TRUE)) {
+      "Robust/scaled likelihood-ratio difference test"
+    } else {
+      "Likelihood-ratio difference test"
+    }
+  } else {
+    "Difference test unavailable"
+  }
   row <- function(model, values) data.frame(
     Model = model, `Chi-square` = values[["chisq"]], df = values[["df"]], p = values[["pvalue"]],
     CFI = values[["cfi"]], TLI = values[["tli"]], RMSEA = values[["rmsea"]], SRMR = values[["srmr"]],
+    `Fit basis` = attr(values, "basis") %||% "",
     check.names = FALSE, stringsAsFactors = FALSE
   )
   delta <- data.frame(
     Model = "Delta",
-    `Chi-square` = research[["chisq"]] - adjusted[["chisq"]],
-    df = research[["df"]] - adjusted[["df"]], p = lrt_p,
+    `Chi-square` = if (!is.null(difference)) difference$chisq else NA_real_,
+    df = if (!is.null(difference)) difference$df else NA_real_,
+    p = if (!is.null(difference)) difference$pvalue else NA_real_,
     CFI = adjusted[["cfi"]] - research[["cfi"]], TLI = adjusted[["tli"]] - research[["tli"]],
     RMSEA = adjusted[["rmsea"]] - research[["rmsea"]], SRMR = adjusted[["srmr"]] - research[["srmr"]],
+    `Fit basis` = paste0(difference_basis, "; fit-index changes use the model-row measures"),
     check.names = FALSE, stringsAsFactors = FALSE
   )
   rbind(row("Research model", research), row("Covariate-adjusted model", adjusted), delta)

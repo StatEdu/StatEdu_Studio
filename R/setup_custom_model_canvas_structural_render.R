@@ -396,7 +396,7 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
       tags$h4("Covariate-adjusted model"),
       if (nrow(effects)) tagList(tags$h5("Covariate effects"), structural_canvas_basic_html_table(format_table(effects), class = "table table-striped table-bordered structural-covariate-effect-table")),
       if (nrow(comparison)) tagList(tags$h5("Research-model and covariate-adjusted-model fit comparison"), structural_canvas_basic_html_table(format_table(comparison), class = "table table-striped table-bordered structural-covariate-fit-table")),
-      tags$p(class = "structural-result-note", "Delta chi-square and delta df are research model minus covariate-adjusted model; delta CFI, TLI, RMSEA, and SRMR are covariate-adjusted model minus research model. The delta-row p value is the nested-model likelihood-ratio test when available.")
+      tags$p(class = "structural-result-note", "For robust estimators, model rows use scaled chi-square/p and robust CFI, TLI, and RMSEA when available; SRMR remains the standard residual index. Delta chi-square, delta df, and p come from the nested-model likelihood-ratio difference test, while delta CFI, TLI, RMSEA, and SRMR are covariate-adjusted model minus research model.")
     )
   })
 

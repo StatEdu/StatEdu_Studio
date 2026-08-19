@@ -67,10 +67,10 @@ Development package status: Automated package checks passed after the CFA captur
 Product: StatEdu Studio Dev
 Version: 1.2.3-dev
 Installer: C:\StatEdu\Studio\dist\electron\StatEdu_Studio_Dev_Setup_1.2.3-dev.exe
-Installer SHA256: 3544EE3F7B24787830C78E75FAB8FC96E310BF16DFC0BF59AA05065021B5A481
-Installer bytes: 331295091
-Blockmap SHA256: CDE4DE9E05A1292A488732D185C5FAE75A1DB1A9C425C4AF2D8ECCEDCBAC2D81
-Blockmap bytes: 333528
+Installer SHA256: A52987D677866C9A726D36CAEDFCC56B6DF84654228FA0A9A62DB867EC276021
+Installer bytes: 331299715
+Blockmap SHA256: 1E2D70DC4F881E09D0DFCD55988381DC094DFC155A4D74AB283422557D32D125
+Blockmap bytes: 333680
 Electron: 43.4.0
 electron-builder: 26.15.3
 R runtime: R-4.5.3
@@ -94,6 +94,7 @@ Validation date: 2026-08-19
 | CFA high-order-factor affordance | Pass | The canvas toolbar visibly identifies the control with `2nd`, `Factor`, and `고차요인`, rather than relying on an unlabeled icon. |
 | CFA result downloads | Pass | After analysis, Audit JSON, reproducibility record, and Excel result-table links were visible, enabled, and backed by session download URLs. |
 | Packaged multigroup CFA and strict Excel inspection | Pass | The packaged app ran the three-factor, nine-indicator CFA on all 301 Holzinger-Swineford observations grouped by `school` (Pasteur N=156; Grant-White N=145) with MLR. Configural, metric, scalar, and strict fits all converged and were admissible; the metric gate changes were ΔCFI=-.002, ΔRMSEA=-.004, and ΔSRMR=.004. The UI rendered six group-specific reliability/AVE rows, six group-specific HTMT rows, group residual diagnostics, and equality-constraint score tables. The live session exported a 33-sheet workbook that imported without repair in the strict OpenXML-based artifact tool, rendered every sheet, reported MLR consistently in `Overview` and `Report_Summary`, and contained no dangling drawing/VML relationships or spreadsheet error tokens. |
+| Packaged SEM covariate effects and robust model comparison | Pass | Packaged Windows UI Automation ran the 301-row three-factor SEM with continuous `ageyr` targeting `zm` and final outcome `zy`. Both covariate paths rendered with estimates, standard errors, p values, confidence limits, and standardized coefficients. The comparison rendered research, covariate-adjusted, and Delta rows; MLR model rows used scaled chi-square/p and robust CFI/TLI/RMSEA, while Delta chi-square/df/p came from lavaan's robust/scaled likelihood-ratio difference test (44.734, 2, p<.001). The table and note explicitly identify these bases, and cleanup left zero packaged processes. |
 | CFA bootstrap CI defaults | Pass | HTMT output rendered bias-corrected (BC) intervals with 5,000/5,000 valid replicates. AVE/reliability bootstrap now also defaults to BC; percentile and slower BCa remain selectable sensitivity options. `scripts\validate_cfa_all.R` covers BC, percentile/BCa support, progress callbacks, cancellation, exports, and external-reference comparisons. |
 | Packaged nondefault BCa/percentile intervals | Pass | A one-factor continuous CFA selected AVE/reliability BCa with 500 resamples. The packaged progress total was 545 (500 case resamples plus 45 leave-one-out jackknife fits), and AVE, CR, alpha, and omega rows rendered BCa limits with 468/500 valid replicates (93.6%, `Adequate`). A separate 301-row, nine-indicator, three-factor CFA selected HTMT Percentile with 1,000 resamples; all three factor pairs rendered percentile limits, one-sided upper limits, threshold comparisons, and 1,000/1,000 valid replicates (100%, `Adequate`). |
 | Packaged CFA bootstrap progress | Pass | The rebuilt packaged Shiny resources displayed the standard progress panel during a 500-resample BC reliability run, including a determinate bar and live `completed/requested` plus valid-replicate counts (observed at 15/500 and 25/500). |
@@ -102,4 +103,4 @@ Validation date: 2026-08-19
 | SEM cancellation semantics | Pass | HTMT and structural-effect result sections distinguish user cancellation from estimation failure. The final package displayed explicit user-stopped messages for both jobs and did not retain the former `could not be estimated` or `Canceled by user` failure wording. |
 | Packaged lifecycle cleanup robustness | Pass | The lifecycle smoke uses shared-read access for the live startup log, accepts either the explicit Shiny-ready marker or the bundled loopback listening marker before renderer load, aligns its startup timeout with the 180-second product limit, always executes final cleanup, and finished with zero packaged Electron/R processes. |
 
-Development package status: Automated SEM/CFA structure, bootstrap, release, and lifecycle checks pass. Packaged QA additionally confirms the native Windows CFA/SEM model picker, ordinal WLSMV/theta execution, default BC and nondefault BCa/percentile intervals, concurrent SEM HTMT/structural-effect progress, independent cancellation, accurate cancellation messaging, retained base results, and zero packaged-process residue after cleanup.
+Development package status: Automated SEM/CFA structure, bootstrap, release, and lifecycle checks pass. Packaged QA additionally confirms the native Windows CFA/SEM model picker, ordinal WLSMV/theta execution, robust SEM covariate effects and nested-model comparison, default BC and nondefault BCa/percentile intervals, concurrent SEM HTMT/structural-effect progress, independent cancellation, accurate cancellation messaging, retained base results, and zero packaged-process residue after cleanup.
