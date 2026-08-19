@@ -57,7 +57,7 @@ Validation command: scripts\validate_sem_canvas.R; scripts\validate_cfa_ui.R; sc
 | CFA background bootstrap progress and cancellation | Pass | Packaged QA previously confirmed combined reliability/Bollen-Stine/HTMT progress, worker termination, and retained base CFA results. |
 | CFA higher-order-factor affordance | Pass | The packaged toolbar explicitly displays `2nd`, `Factor`, and `고차요인`. This verifies the control labeling, not a complete higher-order model execution workflow. |
 | CFA result downloads are exposed | Pass | Audit JSON, reproducibility record, and Excel result-table links were visible and enabled after analysis. |
-| Native CFA/SEM model-file picker load and run | Pending | Capture-hook automation passes, but the native Windows picker workflow still requires hands-on QA. |
+| Native CFA/SEM model-file picker load and analysis entry | Pass | Packaged Electron was launched with renderer accessibility enabled and no model auto-injection for the CFA confirmation run. The actual Windows `열기` dialog appeared with the `StatEdu Model Canvas` filter; `sample\cfa.stmodel` and `sample\sem.stmodel` both closed the dialog, restored their expected latent/indicator labels, changed the initially disabled Run button to enabled, and reached the Mardia/MLR estimator-decision step. Full fit execution remains independently covered by the capture-hook and R validators. |
 | Packaged ordinal WLSMV/theta workflow | Pending | R-level validation passes; estimator selection, output, and bootstrap behavior still require packaged visual QA. |
 | Packaged BCa and percentile selection | Pending | Algorithmic validation passes and BC is the verified packaged default; nondefault BCa/percentile selection remains packaged visual QA. |
 | Packaged multigroup reliability/HTMT/invariance and Excel export | Pending | Requires an end-to-end grouped-data workflow and exported workbook inspection. |
@@ -65,7 +65,7 @@ Validation command: scripts\validate_sem_canvas.R; scripts\validate_cfa_ui.R; sc
 | Packaged higher-order model execution | Pending | The toolbar affordance is verified; model construction, estimation, results, and export still require end-to-end packaged QA. |
 | SmartPLS/ADANCO external numerical comparison | Pending external evidence | The CSV comparator is implemented; matching external-program result files must be generated with the same data, model, settings, and recorded software versions. |
 
-Development QA status: Core SEM/CFA automation, packaged background progress, independent cancellation, accurate cancellation messaging, release structure, and lifecycle cleanup pass. The pending rows above are the remaining focused packaged or external-program checks and must not be represented as completed.
+Development QA status: Core SEM/CFA automation, native CFA/SEM model-file selection and analysis entry, packaged background progress, independent cancellation, accurate cancellation messaging, release structure, and lifecycle cleanup pass. The pending rows above are the remaining focused packaged or external-program checks and must not be represented as completed.
 
 ## Historical Development Candidate: 1.2.2-dev
 

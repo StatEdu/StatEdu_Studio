@@ -45,7 +45,8 @@ Current release candidate source version: 1.2.0
 - Final packaged-app browser QA loaded a three-factor, nine-indicator, 180-observation SEM and confirmed that base results appear before the 5,000-resample HTMT and structural-effect jobs finish.
 - The HTMT and structural-effect jobs expose independent live progress panels and Stop buttons. Both packaged workflows were canceled independently, retained base results and point estimates, and displayed explicit user-cancellation messages rather than estimation-failure messages.
 - CFA higher-order-factor toolbar labeling, result downloads, default BC bootstrap intervals, and cancellable background bootstrap progress have packaged-app evidence in `docs/RELEASE_1_2_PACKAGED_VALIDATION_NOTES.md`.
-- Remaining before public promotion: native model-file picker QA; packaged ordinal WLSMV/theta and BCa/percentile workflows; packaged multigroup reliability/HTMT/invariance and Excel export; packaged covariate-model comparison and higher-order-model execution; external SmartPLS/ADANCO numerical comparison; final public versioning, manual QA, release notes, upload, and publication.
+- Packaged Windows UI Automation confirmed the actual native `열기` dialog, `StatEdu Model Canvas` filter, CFA/SEM snapshot restoration, Run-button enablement, and entry into the estimator-decision workflow.
+- Remaining before public promotion: packaged ordinal WLSMV/theta and BCa/percentile workflows; packaged multigroup reliability/HTMT/invariance and Excel export; packaged covariate-model comparison and higher-order-model execution; external SmartPLS/ADANCO numerical comparison; final public versioning, manual QA, release notes, upload, and publication.
 
 ## Historical 1.2.2-dev Development Snapshot
 
