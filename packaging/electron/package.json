@@ -25,7 +25,6 @@
         "directories": {
             "output": "../../dist/electron"
         },
-        "afterPack": "scripts/afterPack.js",
         "files": [
             "main.js",
             "package.json",
@@ -34,7 +33,7 @@
         ],
         "win": {
             "icon": "build/icon.ico",
-            "signAndEditExecutable": false,
+            "signExecutable": false,
             "target": [
                 {
                     "target": "nsis",

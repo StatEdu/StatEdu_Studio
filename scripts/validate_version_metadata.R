@@ -292,7 +292,7 @@ assert_contains(version_bump_checklist, "`README.md`", "1.0 version bump README"
 assert_contains(version_bump_checklist, "`CITATION.cff`", "1.0 version bump CITATION")
 assert_contains(version_bump_checklist, "`packaging/electron/package.json`", "1.0 version bump Electron package")
 assert_contains(version_bump_checklist, "`packaging/electron/main.js`", "1.0 version bump Electron main")
-assert_contains(version_bump_checklist, "`packaging/electron/scripts/afterPack.js`", "1.0 version bump Electron afterPack")
+assert_contains(version_bump_checklist, "`signExecutable: false`", "1.0 version bump Electron signing boundary")
 assert_contains(version_bump_checklist, "`scripts/smoke_electron_release.ps1`", "1.0 version bump Electron smoke")
 assert_contains(version_bump_checklist, "`scripts/smoke_electron_app_lifecycle.ps1`", "1.0 version bump lifecycle smoke")
 assert_contains(version_bump_checklist, "`scripts/validate_brand_metadata.R`", "1.0 version bump brand validation")
