@@ -67,10 +67,10 @@ Development package status: Automated package checks passed after the CFA captur
 Product: StatEdu Studio Dev
 Version: 1.2.3-dev
 Installer: C:\StatEdu\Studio\dist\electron\StatEdu_Studio_Dev_Setup_1.2.3-dev.exe
-Installer SHA256: ECC754AAFA1A2D3C2BF5D5B7BC0080DB4B42CF4177C79F326EED67F135574839
-Installer bytes: 331284269
-Blockmap SHA256: FB4CC1D2E291DDE0D4CEEA0D7DCDE046973C55482FD5D346F9D7E811FC5F4988
-Blockmap bytes: 333536
+Installer SHA256: A39E435240E8B2F3E841FA610036D86A1BA4084D2596B691872E06D859DD561E
+Installer bytes: 331284693
+Blockmap SHA256: 23DBC0289B92DCBB3B2D411E147A4F0EA9AD316B2173423B1E1A759DF40DFE9B
+Blockmap bytes: 333580
 Electron: 43.4.0
 electron-builder: 26.15.3
 R runtime: R-4.5.3
@@ -86,6 +86,7 @@ Validation date: 2026-08-19
 | Electron ASAR integrity boundary | Pass | Electron main code is packaged in `app.asar`; executable R, Shiny application resources, and package metadata are explicitly placed in `app.asar.unpacked`. Release smoke verifies both paths and lifecycle smoke verifies runtime resolution. |
 | Windows executable resource editing | Pass | `signExecutable: false` disables code signing only; electron-builder applies the icon, product metadata, version resources, and ASAR integrity without the former custom `afterPack` rcedit hook. |
 | npm/pnpm build-runner fallback | Pass | `build_electron_release.ps1` completed with explicit `NodePath` and `PnpmPath`, using pinned npm 10.9.2 through pnpm; package structure and lifecycle smoke checks passed. |
+| Build-time R locale isolation | Pass | Runtime pruning, dependency discovery, and license generation run with a Windows UTF-8 locale scoped to each R subprocess; inherited locale values are restored and the build emits no `C.UTF-8` warnings. |
 | npm dependency security audit | Pass | Exact-pin updates to Electron 43.4.0 and electron-builder 26.15.3 reduced findings from 13 to 0. The lockfile was reproduced with `npm ci`; no automatic `npm audit fix --force` was applied. |
 
 Development package status: Automated structure and lifecycle checks pass. Focused visual CFA/SEM workflow QA and dependency-security triage remain required before public promotion.

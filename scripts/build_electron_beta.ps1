@@ -155,6 +155,31 @@ function Invoke-Npm {
   }
 }
 
+function Invoke-RScript {
+  param(
+    [string]$RscriptPath,
+    [string[]]$Arguments
+  )
+  $previousLcAll = $env:LC_ALL
+  $previousLang = $env:LANG
+  $previousPreference = $ErrorActionPreference
+  try {
+    $env:LC_ALL = "English_United States.utf8"
+    $env:LANG = "English_United States.utf8"
+    $ErrorActionPreference = "SilentlyContinue"
+    $output = & $RscriptPath @Arguments
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -ne 0) {
+      throw "$RscriptPath failed with exit code $exitCode"
+    }
+    return $output
+  } finally {
+    $env:LC_ALL = $previousLcAll
+    $env:LANG = $previousLang
+    $ErrorActionPreference = $previousPreference
+  }
+}
+
 function Invoke-RScriptFile {
   param(
     [string]$RscriptPath,
@@ -163,10 +188,7 @@ function Invoke-RScriptFile {
   $tempScript = Join-Path $env:TEMP ("easyflow-build-" + [guid]::NewGuid().ToString() + ".R")
   try {
     [System.IO.File]::WriteAllText($tempScript, $ScriptText, [System.Text.UTF8Encoding]::new($false))
-    & $RscriptPath $tempScript
-    if ($LASTEXITCODE -ne 0) {
-      throw "$RscriptPath failed with exit code $LASTEXITCODE"
-    }
+    Invoke-RScript $RscriptPath @($tempScript)
   } finally {
     if (Test-Path -LiteralPath $tempScript) {
       Remove-Item -LiteralPath $tempScript -Force
@@ -332,7 +354,7 @@ packages <- sort(unique(c(required, unlist(deps, use.names = FALSE))))
 cat(packages, sep = "\n")
 "@
   $requiredPackages = Invoke-RScriptFile (Join-Path $RHome "bin\x64\Rscript.exe") $dependencyScript
-  $libraryPaths = & (Join-Path $RHome "bin\x64\Rscript.exe") -e "cat(.libPaths(), sep='\n')"
+  $libraryPaths = Invoke-RScript (Join-Path $RHome "bin\x64\Rscript.exe") @("-e", "cat(.libPaths(), sep='\n')")
   $libraryPaths = @($libraryPaths | Where-Object { $_ -and (Test-Path -LiteralPath $_) })
   Write-Host ("Copying {0} required R package(s) and dependencies" -f $requiredPackages.Count)
   foreach ($package in $requiredPackages) {
@@ -342,7 +364,7 @@ cat(packages, sep = "\n")
 
 if (Test-Path -LiteralPath (Join-Path $runtimeStage "bin\x64\Rscript.exe")) {
   Write-Host "Pruning bundled R runtime packages"
-  Invoke-Native (Join-Path $runtimeStage "bin\x64\Rscript.exe") @(
+  Invoke-RScript (Join-Path $runtimeStage "bin\x64\Rscript.exe") @(
     (Join-Path $repoRoot "scripts\prune_r_runtime.R"),
     "--repo-root=$repoRoot",
     "--runtime-root=$runtimeStage",
@@ -351,7 +373,7 @@ if (Test-Path -LiteralPath (Join-Path $runtimeStage "bin\x64\Rscript.exe")) {
   )
 
   Write-Host "Generating third-party license notices"
-  Invoke-Native (Join-Path $runtimeStage "bin\x64\Rscript.exe") @(
+  Invoke-RScript (Join-Path $runtimeStage "bin\x64\Rscript.exe") @(
     (Join-Path $repoRoot "scripts\generate_oss_notices.R"),
     "--repo-root=$repoRoot",
     "--runtime-root=$runtimeStage",
@@ -361,7 +383,7 @@ if (Test-Path -LiteralPath (Join-Path $runtimeStage "bin\x64\Rscript.exe")) {
   # Keep the 1.1.1 public packaging rule: exclude R runtime documentation,
   # tests, examples, source payloads, and other non-runtime content.
   Write-Host "Pruning bundled R runtime documentation and test payloads"
-  Invoke-Native (Join-Path $runtimeStage "bin\x64\Rscript.exe") @(
+  Invoke-RScript (Join-Path $runtimeStage "bin\x64\Rscript.exe") @(
     (Join-Path $repoRoot "scripts\prune_r_runtime_content.R"),
     "--runtime-root=$runtimeStage",
     "--output-dir=$appStage",
