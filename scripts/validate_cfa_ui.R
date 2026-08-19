@@ -134,6 +134,8 @@ stopifnot(
   grepl("structural_canvas_register_validity_note_outputs(output, prefix, fit_result, result_table, app_language_fn)", ui_source, fixed = TRUE),
   grepl("structural_canvas_register_factor_score_outputs(output, prefix, fit_result, app_language_fn)", ui_source, fixed = TRUE),
   grepl("structural_canvas_register_reliability_bootstrap_outputs(output, prefix, fit_result, app_language_fn)", ui_source, fixed = TRUE),
+  grepl("_cfa_bootstrap_stop", ui_source, fixed = TRUE),
+  grepl("structural_canvas_start_cfa_bootstrap_job", ui_source, fixed = TRUE),
   grepl("structural_canvas_register_htmt_outputs(output, prefix, fit_result, result_table, app_language_fn)", ui_source, fixed = TRUE),
   grepl("structural_canvas_register_local_fit_outputs(\n    output, prefix, fit_result, app_language_fn", ui_source, fixed = TRUE),
   grepl("structural_canvas_invariance_result_ui(fit_result(), statedu_current_language(app_language_fn))", ui_source, fixed = TRUE),

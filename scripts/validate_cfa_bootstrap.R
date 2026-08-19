@@ -53,6 +53,41 @@ stopifnot(
   all(reliability_bca[["CI method"]] %in% c("BCa", "BCa unavailable"))
 )
 
+cfa_job_progress <- tempfile(fileext = ".rds")
+cfa_job_value <- structural_canvas_cfa_bootstrap_job_value(list(
+  fit = single_fit, syntax = "eta1 =~ x1 + x2 + x3", data = continuous,
+  estimator = "ML", missing = "listwise", std_lv = FALSE, ordered = character(0),
+  validity_formula = "standardized", reliability_bootstrap = 4L,
+  reliability_seed = 20260814L, reliability_ci_method = "bias_corrected",
+  bollen_stine_bootstrap = 0L, bollen_stine_seed = 20260814L,
+  htmt_bootstrap = 0L, htmt_seed = 20260814L, htmt_threshold = .85,
+  htmt_ci_method = "bias_corrected"
+), cfa_job_progress)
+cfa_job_status <- readRDS(cfa_job_progress)
+unlink(cfa_job_progress)
+stopifnot(
+  nrow(cfa_job_value$reliability_bootstrap_result) == 4L,
+  identical(cfa_job_status$phase, "complete"),
+  identical(cfa_job_status$completed, 4L),
+  identical(cfa_job_status$total, 4L)
+)
+if (requireNamespace("callr", quietly = TRUE)) {
+  cancellable_job <- structural_canvas_start_cfa_bootstrap_job(list(
+    fit = single_fit, syntax = "eta1 =~ x1 + x2 + x3", analysis_data = continuous,
+    estimator = "ML", missing = "listwise", std_lv = FALSE, ordered = character(0),
+    validity_formula = "standardized", reliability_bootstrap = 50L,
+    reliability_seed = 20260814L, reliability_ci_method = "bias_corrected",
+    bollen_stine_bootstrap = 0L, bollen_stine_seed = 20260814L,
+    htmt_bootstrap = 0L, htmt_seed = 20260814L, htmt_threshold = .85,
+    htmt_ci_method = "bias_corrected"
+  ))
+  cancellable_directory <- cancellable_job$directory
+  stopifnot(cancellable_job$process$is_alive(), file.exists(cancellable_job$progress_file))
+  cancellable_job$process$kill()
+  structural_canvas_cleanup_cfa_bootstrap_job(cancellable_job)
+  stopifnot(!dir.exists(cancellable_directory))
+}
+
 ordinal <- as.data.frame(lapply(continuous[c("x1", "x2", "x3")], function(value) {
   ordered(cut(value, breaks = stats::quantile(value, probs = seq(0, 1, .2)), include.lowest = TRUE))
 }))

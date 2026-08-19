@@ -7,6 +7,7 @@ output[[paste0(prefix, "_result_reliability_bootstrap")]] <- renderUI({
   values <- bundle$reliability_bootstrap_result %||% NULL
   requested <- as.integer(bundle$reliability_bootstrap %||% 0L)
   if (requested <= 0L) return(tags$p(class = "structural-result-note", if (ko) "AVE, CR, Cronbach's alpha, omega는 점추정값입니다. 구간추정이 필요하면 분석 옵션에서 AVE/신뢰도 부트스트랩 CI를 선택하십시오." else "AVE, CR, Cronbach's alpha, and omega are point estimates. Select AVE/reliability bootstrap CI in the analysis options when interval estimates are required."))
+  if (isTRUE(bundle$cfa_bootstrap_pending) && is.null(values)) return(tags$p(class = "structural-result-note", if (ko) "AVE·신뢰도 부트스트랩을 백그라운드에서 계산하고 있습니다. 완료되면 이 결과표가 자동으로 갱신됩니다." else "AVE/reliability bootstrap intervals are being computed in the background. This result table will update automatically when complete."))
   if (is.null(values) || !nrow(values)) return(tags$p(class = "structural-result-note", if (ko) "사용 가능한 추정값을 산출한 재표집이 없어 AVE/신뢰도 부트스트랩 구간을 계산하지 못했습니다." else "AVE/reliability bootstrap intervals could not be estimated because no resample produced usable estimates."))
   reliability_ci_method <- structural_canvas_bootstrap_ci_method(bundle$reliability_ci_method %||% "bias_corrected")
   reliability_ci_label <- if (identical(reliability_ci_method, "bca")) "BCa" else if (identical(reliability_ci_method, "bias_corrected")) "bias-corrected (BC)" else "percentile"

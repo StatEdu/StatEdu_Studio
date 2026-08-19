@@ -1,4 +1,4 @@
-structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input, session, dataset_fn, variable_table_fn, analysis_type, prefix, fit_result, app_language_fn = NULL, defer_pls_bootstrap = FALSE) {
+structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input, session, dataset_fn, variable_table_fn, analysis_type, prefix, fit_result, app_language_fn = NULL, defer_pls_bootstrap = FALSE, defer_cfa_bootstrap = FALSE) {
   is_mi_refit <- !is.null(settings) && !is.null(settings$fit)
   settings <- settings %||% list()
   identification <- if (analysis_type %in% c("cfa", "cbsem", "sem")) structural_canvas_identification_diagnostics(snapshot) else data.frame()
@@ -159,11 +159,13 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     analysis_type, invariance_enabled, result, data, invariance_group,
     estimator, missing, std_lv, rmsea_ci, ordered, snapshot, micom_permutations, micom_seed
   )
-  reliability_bootstrap_result <- structural_canvas_run_reliability_bootstrap(
+  cfa_bootstrap_pending <- isTRUE(defer_cfa_bootstrap) && identical(analysis_type, "cfa") && any(c(reliability_bootstrap, bollen_stine_bootstrap, htmt_bootstrap) > 0L)
+  if (cfa_bootstrap_pending && reliability_bootstrap > 0L) structural_canvas_validate_model_based_bootstrap(result$fit, "AVE/reliability bootstrap")
+  reliability_bootstrap_result <- if (cfa_bootstrap_pending) NULL else structural_canvas_run_reliability_bootstrap(
     analysis_type, reliability_bootstrap, result, data, reliability_seed,
     estimator, missing, std_lv, ordered, validity_formula, reliability_ci_method
   )
-  bollen_stine_result <- structural_canvas_run_bollen_stine_bootstrap(
+  bollen_stine_result <- if (cfa_bootstrap_pending) NULL else structural_canvas_run_bollen_stine_bootstrap(
     analysis_type, bollen_stine_bootstrap, result, bollen_stine_seed
   )
   mi <- if (analysis_type %in% c("cfa", "cbsem", "sem")) {
@@ -181,7 +183,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
   } else {
     NULL
   }
-  htmt_bootstrap_result <- structural_canvas_run_htmt_bootstrap(
+  htmt_bootstrap_result <- if (cfa_bootstrap_pending) NULL else structural_canvas_run_htmt_bootstrap(
     analysis_type, htmt_bootstrap, result, data, htmt_seed, ordered,
     htmt_threshold, htmt_ci_method
   )
@@ -244,6 +246,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     reliability_bootstrap = reliability_bootstrap, reliability_seed = reliability_seed,
     reliability_ci_method = reliability_ci_method,
     reliability_bootstrap_result = reliability_bootstrap_result,
+    cfa_bootstrap_pending = cfa_bootstrap_pending,
     bollen_stine_bootstrap = bollen_stine_bootstrap, bollen_stine_seed = bollen_stine_seed,
     bollen_stine_result = bollen_stine_result,
     effect_bootstrap = effect_bootstrap, effect_bootstrap_seed = effect_bootstrap_seed,

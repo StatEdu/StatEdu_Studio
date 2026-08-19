@@ -11,6 +11,7 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
     pls_bootstrap_progress_mtime <- reactiveVal(NA_real_)
     pls_bootstrap_progress_cache <- reactiveVal(NULL)
     effect_bootstrap_job <- reactiveVal(NULL)
+    cfa_bootstrap_job <- reactiveVal(NULL)
     pending_mi_rows <- reactiveVal(integer(0))
     pending_estimator_snapshot <- reactiveVal(NULL)
     output[[paste0(prefix, "_method_recommendation")]] <- renderUI({
@@ -110,7 +111,8 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
     execute_analysis <- function(snapshot, settings = NULL) {
       value <- structural_canvas_execute_analysis(
         snapshot, settings, input, session, dataset_fn, variable_table_fn, analysis_type, prefix, fit_result, app_language_fn,
-        defer_pls_bootstrap = identical(analysis_type, "plssem")
+        defer_pls_bootstrap = identical(analysis_type, "plssem"),
+        defer_cfa_bootstrap = identical(analysis_type, "cfa")
       )
       if (identical(analysis_type, "plssem")) {
         bundle <- fit_result()
@@ -158,7 +160,99 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
           )
         }
       }
+      if (identical(analysis_type, "cfa")) {
+        bundle <- fit_result()
+        if (!is.null(bundle) && isTRUE(bundle$cfa_bootstrap_pending)) {
+          old_job <- cfa_bootstrap_job()
+          if (!is.null(old_job)) {
+            if (!is.null(old_job$process) && old_job$process$is_alive()) old_job$process$kill()
+            structural_canvas_cleanup_cfa_bootstrap_job(old_job)
+          }
+          job <- structural_canvas_start_cfa_bootstrap_job(bundle)
+          cfa_bootstrap_job(job)
+          ko <- identical(statedu_current_language(app_language_fn), "ko")
+          structural_canvas_show_notification(
+            shiny::tagList(
+              shiny::tags$strong(if (ko) "CFA 부트스트랩을 계산하고 있습니다." else "Computing CFA bootstrap intervals."),
+              shiny::tags$div(if (ko) "기본 분석 결과는 지금 확인할 수 있습니다." else "Base-model results are available now."),
+              shiny::tags$div(class = "progress structural-bootstrap-progress", shiny::tags$div(class = "progress-bar progress-bar-striped active", role = "progressbar", style = "width: 100%;", if (ko) "준비 중" else "Starting")),
+              shiny::actionButton(paste0(prefix, "_cfa_bootstrap_stop"), if (ko) "부트스트랩 중단" else "Stop bootstrap", class = "btn btn-sm btn-danger")
+            ),
+            type = "message", duration = NULL, id = paste0(prefix, "-cfa-bootstrap-progress")
+          )
+        }
+      }
       value
+    }
+    if (identical(analysis_type, "cfa")) {
+      observeEvent(input[[paste0(prefix, "_cfa_bootstrap_stop")]], {
+        job <- cfa_bootstrap_job()
+        if (is.null(job)) return()
+        if (!is.null(job$process) && job$process$is_alive()) job$process$kill()
+        structural_canvas_cleanup_cfa_bootstrap_job(job)
+        cfa_bootstrap_job(NULL)
+        bundle <- fit_result()
+        if (!is.null(bundle)) {
+          bundle$cfa_bootstrap_pending <- FALSE
+          bundle$cfa_bootstrap_error <- "Canceled by user"
+          fit_result(bundle)
+        }
+        shiny::removeNotification(paste0(prefix, "-cfa-bootstrap-progress"))
+        structural_canvas_show_notification(if (identical(statedu_current_language(app_language_fn), "ko")) "CFA 부트스트랩을 중단했습니다. 기본 분석 결과는 유지됩니다." else "The CFA bootstrap was stopped. Base-model results remain available.", type = "warning", duration = 8)
+      }, ignoreInit = TRUE)
+      observe({
+        job <- cfa_bootstrap_job()
+        if (is.null(job) || is.null(job$process)) return()
+        if (job$process$is_alive()) {
+          shiny::invalidateLater(500, session)
+          progress <- tryCatch(if (file.exists(job$progress_file)) readRDS(job$progress_file) else NULL, error = function(error) NULL)
+          if (!is.null(progress)) {
+            completed <- as.integer(progress$completed %||% 0L)
+            total <- as.integer(progress$total %||% job$total %||% 0L)
+            percent <- if (total > 0L) max(0, min(100, round(100 * completed / total))) else 0L
+            phase <- as.character(progress$phase %||% "starting")
+            ko <- identical(statedu_current_language(app_language_fn), "ko")
+            phase_label <- if (ko) switch(phase, reliability = "AVE·신뢰도", bollen_stine = "Bollen-Stine", htmt = "HTMT", complete = "완료", "준비 중") else switch(phase, reliability = "AVE/reliability", bollen_stine = "Bollen-Stine", htmt = "HTMT", complete = "Complete", "Starting")
+            detail <- paste0(phase_label, " · ", percent, "% · ", format(completed, big.mark = ","), "/", format(total, big.mark = ","))
+            structural_canvas_show_notification(
+              shiny::tagList(
+                shiny::tags$strong(if (ko) "CFA 부트스트랩 진행 상태" else "CFA bootstrap progress"),
+                shiny::tags$div(detail),
+                shiny::tags$div(class = "progress structural-bootstrap-progress", shiny::tags$div(class = "progress-bar progress-bar-striped", role = "progressbar", style = paste0("width: ", percent, "%;"), paste0(percent, "%"))),
+                shiny::actionButton(paste0(prefix, "_cfa_bootstrap_stop"), if (ko) "부트스트랩 중단" else "Stop bootstrap", class = "btn btn-sm btn-danger")
+              ), type = "message", duration = NULL, id = paste0(prefix, "-cfa-bootstrap-progress")
+            )
+          }
+          return()
+        }
+        on.exit(structural_canvas_cleanup_cfa_bootstrap_job(job), add = TRUE)
+        shiny::removeNotification(paste0(prefix, "-cfa-bootstrap-progress"))
+        status <- job$process$get_exit_status()
+        bundle <- fit_result()
+        if (!is.null(bundle)) {
+          bundle$cfa_bootstrap_pending <- FALSE
+          if (identical(status, 0L) && file.exists(job$result_file)) {
+            value <- readRDS(job$result_file)
+            bundle$reliability_bootstrap_result <- value$reliability_bootstrap_result
+            bundle$bollen_stine_result <- value$bollen_stine_result
+            bundle$htmt_bootstrap_result <- value$htmt_bootstrap_result
+            bundle$cfa_bootstrap_error <- NULL
+            fit_result(bundle)
+            structural_canvas_show_notification(if (identical(statedu_current_language(app_language_fn), "ko")) "CFA 부트스트랩이 완료되어 결과표를 갱신했습니다." else "The CFA bootstrap is complete and result tables were updated.", type = "message", duration = 8)
+          } else {
+            error_text <- if (file.exists(job$error_file)) paste(readLines(job$error_file, warn = FALSE, encoding = "UTF-8"), collapse = "\n") else "Background CFA bootstrap did not complete."
+            bundle$cfa_bootstrap_error <- error_text
+            fit_result(bundle)
+            structural_canvas_show_notification(paste0(if (identical(statedu_current_language(app_language_fn), "ko")) "CFA 부트스트랩을 완료하지 못했습니다. " else "The CFA bootstrap did not complete. ", error_text), type = "error", duration = 12)
+          }
+        }
+        cfa_bootstrap_job(NULL)
+      })
+      session$onSessionEnded(function() {
+        job <- shiny::isolate(cfa_bootstrap_job())
+        if (!is.null(job$process) && job$process$is_alive()) job$process$kill()
+        structural_canvas_cleanup_cfa_bootstrap_job(job)
+      })
     }
     if (analysis_type %in% c("cbsem", "sem")) {
       observe({

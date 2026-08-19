@@ -34,6 +34,7 @@ source(file.path("R", "setup_custom_model_canvas_structural_reliability_bootstra
 source(file.path("R", "setup_custom_model_canvas_structural_htmt_bootstrap_execute.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_bollen_stine_bootstrap.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_structural_bollen_stine_bootstrap_execute.R"), encoding = "UTF-8")
+source(file.path("R", "setup_custom_model_canvas_structural_cfa_bootstrap_job.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_exports.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_export_fit_tables.R"), encoding = "UTF-8")
 source(file.path("R", "setup_custom_model_canvas_export_report.R"), encoding = "UTF-8")
