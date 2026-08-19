@@ -67,8 +67,10 @@ Development package status: Automated package checks passed after the CFA captur
 Product: StatEdu Studio Dev
 Version: 1.2.3-dev
 Installer: C:\StatEdu\Studio\dist\electron\StatEdu_Studio_Dev_Setup_1.2.3-dev.exe
-Installer SHA256: 348A2562494DFBAB557BB66EB515B7B4F962CED9EBFECE4864F37172B06DFF4B
-Blockmap SHA256: F2B27E08E5B168CA949DCF3FC8917A000756A54200A15CF4395C141E2E8ED299
+Installer SHA256: 53FE9F65E63E4171F1A431F893D62327C1663B2614B1EC478599E371A642CBC9
+Blockmap SHA256: E2484EA2A31A1950E5B58F795B2F7BF1BC3A859A1D7DE6D9D74AB5367428845C
+Electron: 39.8.10
+electron-builder: 26.15.3
 R runtime: R-4.5.3
 Validation date: 2026-08-19
 ```
@@ -79,6 +81,6 @@ Validation date: 2026-08-19
 | `scripts\smoke_electron_release.ps1` passes | Pass | Package names, pinned Electron dependencies, bundled version, licenses, pruned R runtime, and bundled module loading passed. |
 | `scripts\smoke_electron_app_lifecycle.ps1` passes | Pass | Packaged app reached the bundled Shiny URL; closing Electron stopped the bundled R process. |
 | Windows bundled-R UTF-8 startup | Pass | Electron now overrides inherited Linux-style locale values with `English_United States.utf8` for the R probe and Shiny process. |
-| npm dependency security audit | Review | Packaging reported 13 dependency findings (1 moderate, 11 high, 1 critical). Review exact dependency paths and upgrade compatibility before public promotion; no automatic `npm audit fix --force` was applied. |
+| npm dependency security audit | Review | Exact-pin updates reduced findings from 13 (including 1 critical) to 2 high findings. Both remaining findings are the Electron installation-time `extract-zip` path; npm offers only a breaking Electron 43 upgrade. The packaged app has no Node runtime dependency tree, but the build host must use trusted Electron archives. No automatic `npm audit fix --force` was applied. |
 
 Development package status: Automated structure and lifecycle checks pass. Focused visual CFA/SEM workflow QA and dependency-security triage remain required before public promotion.
