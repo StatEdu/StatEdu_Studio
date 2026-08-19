@@ -33,7 +33,41 @@ Validation command: scripts\smoke_electron_release.ps1; scripts\smoke_electron_a
 
 Manual QA status: Automated lifecycle smoke passed; visual and workflow manual QA pending.
 
-## Development Candidate: 1.2.2-dev
+## Development Candidate: 1.2.3-dev
+
+```text
+Release candidate: 1.2.3-dev
+QA date: 2026-08-19
+Tester: automated validation plus packaged-app browser QA
+Installer: C:\StatEdu\Studio\dist\electron\StatEdu_Studio_Dev_Setup_1.2.3-dev.exe
+Installer SHA256: 6133064C74914AE66A9318D98CBD311EC1BCE21C12F27979F2A1E749C40CF05B
+R runtime: R-4.5.3
+Validation command: scripts\validate_sem_canvas.R; scripts\validate_cfa_ui.R; scripts\smoke_electron_release.ps1; scripts\smoke_electron_app_lifecycle.ps1
+```
+
+| Check | Status | Notes |
+|---|---|---|
+| Dedicated SEM and CFA UI validation passes | Pass | `scripts\validate_sem_canvas.R` and `scripts\validate_cfa_ui.R` passed on 2026-08-19. |
+| Packaged Electron release smoke passes | Pass | Package names, pinned Electron dependencies, bundled version, licenses, pruned R runtime, and bundled module loading passed. |
+| Packaged app lifecycle smoke passes | Pass | The bundled Shiny URL loaded and final cleanup left zero packaged Electron/R processes. |
+| SEM base results render before long bootstrap jobs | Pass | Packaged QA rendered overview, fit, structural paths, validity, and point estimates before the 5,000-resample jobs completed. |
+| SEM HTMT and structural-effect progress panels | Pass | Both background jobs displayed independent progress panels and live Stop buttons during the same SEM run. |
+| SEM HTMT cancellation | Pass | The packaged HTMT worker stopped independently; the result section reported user cancellation and retained HTMT point estimates and base-model results. |
+| SEM structural-effect cancellation | Pass | The packaged structural-effect worker stopped independently; the result section reported user cancellation and retained base-model results and point estimates. |
+| CFA background bootstrap progress and cancellation | Pass | Packaged QA previously confirmed combined reliability/Bollen-Stine/HTMT progress, worker termination, and retained base CFA results. |
+| CFA higher-order-factor affordance | Pass | The packaged toolbar explicitly displays `2nd`, `Factor`, and `고차요인`. This verifies the control labeling, not a complete higher-order model execution workflow. |
+| CFA result downloads are exposed | Pass | Audit JSON, reproducibility record, and Excel result-table links were visible and enabled after analysis. |
+| Native CFA/SEM model-file picker load and run | Pending | Capture-hook automation passes, but the native Windows picker workflow still requires hands-on QA. |
+| Packaged ordinal WLSMV/theta workflow | Pending | R-level validation passes; estimator selection, output, and bootstrap behavior still require packaged visual QA. |
+| Packaged BCa and percentile selection | Pending | Algorithmic validation passes and BC is the verified packaged default; nondefault BCa/percentile selection remains packaged visual QA. |
+| Packaged multigroup reliability/HTMT/invariance and Excel export | Pending | Requires an end-to-end grouped-data workflow and exported workbook inspection. |
+| Packaged SEM covariate effects and model-fit delta | Pending | Source validation exists; the research-model, covariate-model, and delta tables require focused packaged visual QA. |
+| Packaged higher-order model execution | Pending | The toolbar affordance is verified; model construction, estimation, results, and export still require end-to-end packaged QA. |
+| SmartPLS/ADANCO external numerical comparison | Pending external evidence | The CSV comparator is implemented; matching external-program result files must be generated with the same data, model, settings, and recorded software versions. |
+
+Development QA status: Core SEM/CFA automation, packaged background progress, independent cancellation, accurate cancellation messaging, release structure, and lifecycle cleanup pass. The pending rows above are the remaining focused packaged or external-program checks and must not be represented as completed.
+
+## Historical Development Candidate: 1.2.2-dev
 
 ```text
 Release candidate: 1.2.2-dev
@@ -61,4 +95,4 @@ Validation command: scripts\validate_cfa_all.R; scripts\smoke_electron_release.p
 | CFA model-file load/run automation hook | Pass | Added `STATEDU_CAPTURE_CFA_MODEL_FILE` / `STATEDU_CAPTURE_CFA_RUN`; `scripts\validate_cfa_all.R` passed and `scripts\smoke_shiny_app.ps1` passed with `outputs\cfa_qa_two_factor.stmodel` capture env enabled. |
 | CFA model-file load and run from packaged native picker UI | Pending | Browser automation reached the packaged CFA canvas, but the native `showOpenFilePicker` path still requires hands-on UI QA. |
 
-Development QA status: Automated packaged validation passed. Packaged data-load/CFA-canvas visual QA, matching R-level QA model fit, and source Shiny CFA capture-hook smoke passed; focused packaged native-picker and CFA execution/export workflow QA remains pending.
+Historical development QA status: This 1.2.2-dev record is preserved for traceability. Its bootstrap-progress and UI-cancel pending items were completed in 1.2.3-dev; remaining picker, ordinal, multigroup, export, covariate, higher-order, and external-comparison checks are tracked in the current section above.
