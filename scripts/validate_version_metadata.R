@@ -161,6 +161,7 @@ assert_contains(version_bump_123, "Use this checklist only after the external PL
 assert_contains(version_bump_123, "Do not alter the published 1.2.0 release", "1.2.3 historical release boundary")
 assert_contains(version_bump_123, "StatEdu_Studio_Setup_1.2.3.exe", "1.2.3 final installer name")
 assert_contains(version_bump_123, "scripts/validate_sem_public_claims.R", "1.2.3 public claims validation")
+assert_contains(version_bump_123, "docs/RELEASE_1_2_3_PACKAGED_VALIDATION_NOTES.md", "1.2.3 packaged validation record")
 assert_contains(version_bump_123, "Never infer approval from passing automated checks", "1.2.3 explicit approval boundary")
 
 manual_qa_123 <- read_text("docs/RELEASE_1_2_3_MANUAL_QA_RECORD.md")
@@ -175,6 +176,18 @@ assert_contains(manual_qa_123, "Development-build automation", "1.2.3 developmen
 if (is_development_version) {
   assert_contains(manual_qa_123, "Overall status: blocked / pending final public package", "1.2.3 manual QA blocked development status")
   assert_not_contains(manual_qa_123, "| Pass |", "1.2.3 premature final-package Pass row")
+}
+
+packaged_validation_123 <- read_text("docs/RELEASE_1_2_3_PACKAGED_VALIDATION_NOTES.md")
+assert_contains(packaged_validation_123, "StatEdu Studio 1.2.3 Final Packaged Validation Notes", "1.2.3 packaged validation title")
+assert_contains(packaged_validation_123, "dist/electron/StatEdu_Studio_Setup_1.2.3.exe", "1.2.3 packaged installer path")
+assert_contains(packaged_validation_123, "scripts/release_preflight.ps1 -FullElectronSmoke", "1.2.3 full Electron smoke row")
+assert_contains(packaged_validation_123, "Residual packaged processes:", "1.2.3 residual process record")
+assert_contains(packaged_validation_123, "External PLS/PLSc evidence agrees within recorded output precision", "1.2.3 external PLS package row")
+assert_contains(packaged_validation_123, "Packaged validation status:", "1.2.3 packaged validation final status")
+if (is_development_version) {
+  assert_contains(packaged_validation_123, "Overall status: blocked / pending final public package", "1.2.3 packaged validation blocked development status")
+  assert_not_contains(packaged_validation_123, "| Pass |", "1.2.3 premature packaged validation Pass row")
 }
 
 release_readiness <- read_text("docs/RELEASE_READINESS_STATUS.md")

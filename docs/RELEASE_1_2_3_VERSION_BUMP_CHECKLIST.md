@@ -28,6 +28,7 @@ Use this checklist only after the external PLS/PLSc evidence gate passes. It pro
 
 - Replace every publication placeholder in `docs/RELEASE_1_2_3_PUBLIC_NOTES_DRAFT.md` with verified values; retaining `DRAFT` in the filename is acceptable, but the content must be final and approved.
 - Run `scripts/validate_sem_public_claims.R` and resolve every unsupported causal, universal-fit, unidimensionality, bifactor-equivalence, or cross-program-equivalence claim.
+- Complete `docs/RELEASE_1_2_3_PACKAGED_VALIDATION_NOTES.md` against the final non-development installer and record its hashes, byte sizes, runtime, smoke results, and zero residual processes.
 - Complete `docs/RELEASE_1_2_3_MANUAL_QA_RECORD.md` against the final non-development installer; do not carry forward development-package Pass values.
 - Create `docs/evidence/release_1_2_3/promotion_manifest.json` from its template and record the final installer/blockmap hashes and human approval.
 
