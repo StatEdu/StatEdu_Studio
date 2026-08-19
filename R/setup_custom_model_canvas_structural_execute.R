@@ -159,7 +159,7 @@ structural_canvas_execute_analysis <- function(snapshot, settings = NULL, input,
     analysis_type, invariance_enabled, result, data, invariance_group,
     estimator, missing, std_lv, rmsea_ci, ordered, snapshot, micom_permutations, micom_seed
   )
-  cfa_bootstrap_pending <- isTRUE(defer_cfa_bootstrap) && identical(analysis_type, "cfa") && any(c(reliability_bootstrap, bollen_stine_bootstrap, htmt_bootstrap) > 0L)
+  cfa_bootstrap_pending <- isTRUE(defer_cfa_bootstrap) && analysis_type %in% c("cfa", "cbsem", "sem") && any(c(reliability_bootstrap, bollen_stine_bootstrap, htmt_bootstrap) > 0L)
   if (cfa_bootstrap_pending && reliability_bootstrap > 0L) structural_canvas_validate_model_based_bootstrap(result$fit, "AVE/reliability bootstrap")
   reliability_bootstrap_result <- if (cfa_bootstrap_pending) NULL else structural_canvas_run_reliability_bootstrap(
     analysis_type, reliability_bootstrap, result, data, reliability_seed,

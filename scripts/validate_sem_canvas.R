@@ -66,6 +66,21 @@ stopifnot(
   isTRUE(all.equal(unname(fit_benchmark[["nfi"]]), 1 - fit_benchmark_dml(fit_benchmark_observed, fit_benchmark_implied) / fit_benchmark_dml(fit_benchmark_observed, diag(3L)), tolerance = 1e-12)),
   all(is.na(structural_canvas_pls_matrix_fit_indices(matrix(0, 2L, 2L), diag(2L))))
 )
+
+sem_capture <- local({
+  capture_model_file <- tempfile(fileext = ".json")
+  jsonlite::write_json(snapshot, capture_model_file, auto_unbox = TRUE, null = "null")
+  old_sem_capture_model <- Sys.getenv("STATEDU_CAPTURE_SEM_MODEL_FILE", unset = NA_character_)
+  old_sem_capture_run <- Sys.getenv("STATEDU_CAPTURE_SEM_RUN", unset = NA_character_)
+  on.exit({
+    if (is.na(old_sem_capture_model)) Sys.unsetenv("STATEDU_CAPTURE_SEM_MODEL_FILE") else Sys.setenv(STATEDU_CAPTURE_SEM_MODEL_FILE = old_sem_capture_model)
+    if (is.na(old_sem_capture_run)) Sys.unsetenv("STATEDU_CAPTURE_SEM_RUN") else Sys.setenv(STATEDU_CAPTURE_SEM_RUN = old_sem_capture_run)
+    unlink(capture_model_file)
+  }, add = TRUE)
+  Sys.setenv(STATEDU_CAPTURE_SEM_MODEL_FILE = capture_model_file, STATEDU_CAPTURE_SEM_RUN = "yes")
+  structural_capture_initial_snapshot("cbsem")
+})
+stopifnot(is.list(sem_capture$snapshot), length(sem_capture$snapshot$nodes) == length(snapshot$nodes), isTRUE(sem_capture$auto_run))
 stopifnot(
   grepl("PLS structural model effects", ui_source, fixed = TRUE),
   grepl("2. PLS/PLSc model fit diagnostics", ui_source, fixed = TRUE),
@@ -129,6 +144,9 @@ stopifnot(
   sum(grepl("showNotification(", notification_source, fixed = TRUE)) == 1L,
   grepl('analysis_type %in% c("cfa", "cbsem", "sem")) output[[paste0(prefix, "_download_reproducibility")]]', handler_source, fixed = TRUE),
   grepl('analysis_type %in% c("cfa", "cbsem", "sem")) output[[paste0(prefix, "_download_tables")]]', handler_source, fixed = TRUE),
+  grepl('defer_cfa_bootstrap = analysis_type %in% c("cfa", "cbsem", "sem")', handler_source, fixed = TRUE),
+  grepl('if (analysis_type %in% c("cfa", "cbsem", "sem")) {', handler_source, fixed = TRUE),
+  grepl('model_label <- if (identical(analysis_type, "cfa")) "CFA" else "SEM"', handler_source, fixed = TRUE),
   !grepl("Latent covariance, factor-score, HTMT, and lavaan delta-method diagnostics are not displayed", ui_source, fixed = TRUE)
 )
 
@@ -147,6 +165,24 @@ cbsem_bundle <- list(
   missing = "fiml",
   rmsea_ci = 0.90,
   validity_formula = "standardized"
+)
+sem_htmt_progress_file <- tempfile(fileext = ".rds")
+sem_htmt_job_value <- structural_canvas_cfa_bootstrap_job_value(list(
+  fit = cbsem$fit, syntax = cbsem$syntax, data = data,
+  estimator = "ML", missing = "fiml", std_lv = FALSE, ordered = character(0),
+  validity_formula = "standardized", reliability_bootstrap = 0L,
+  reliability_seed = 20260819L, reliability_ci_method = "bias_corrected",
+  bollen_stine_bootstrap = 0L, bollen_stine_seed = 20260819L,
+  htmt_bootstrap = 20L, htmt_seed = 20260819L, htmt_threshold = .85,
+  htmt_ci_method = "bias_corrected"
+), sem_htmt_progress_file)
+sem_htmt_job_status <- readRDS(sem_htmt_progress_file)
+unlink(sem_htmt_progress_file)
+stopifnot(
+  nrow(sem_htmt_job_value$htmt_bootstrap_result) == 1L,
+  identical(sem_htmt_job_status$phase, "complete"),
+  identical(sem_htmt_job_status$completed, 20L),
+  identical(sem_htmt_job_status$total, 20L)
 )
 cbsem_result <- function() cbsem_bundle
 cbsem_reporting <- structural_canvas_reporting_context_rows(cbsem_bundle, "cbsem")

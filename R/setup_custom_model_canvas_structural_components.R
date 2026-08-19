@@ -61,32 +61,41 @@ structural_capture_truthy <- function(value) {
 }
 
 structural_capture_initial_snapshot <- function(analysis_type = "cbsem") {
-  if (!identical(analysis_type, "cfa")) return(list(snapshot = NULL, auto_run = FALSE))
-  candidates <- c(
-    Sys.getenv("STATEDU_CAPTURE_CFA_MODEL_FILE", ""),
-    Sys.getenv("STATEDU_CAPTURE_STRUCTURAL_MODEL_FILE", "")
+  analysis_type <- as.character(analysis_type %||% "cbsem")
+  candidates <- switch(
+    analysis_type,
+    cfa = c(Sys.getenv("STATEDU_CAPTURE_CFA_MODEL_FILE", ""), Sys.getenv("STATEDU_CAPTURE_STRUCTURAL_MODEL_FILE", "")),
+    cbsem = c(Sys.getenv("STATEDU_CAPTURE_SEM_MODEL_FILE", ""), Sys.getenv("STATEDU_CAPTURE_STRUCTURAL_MODEL_FILE", "")),
+    plssem = c(Sys.getenv("STATEDU_CAPTURE_PLS_MODEL_FILE", ""), Sys.getenv("STATEDU_CAPTURE_STRUCTURAL_MODEL_FILE", "")),
+    character(0)
   )
   candidates <- candidates[nzchar(candidates)]
   path <- if (length(candidates)) candidates[[1L]] else ""
   if (!nzchar(path)) return(list(snapshot = NULL, auto_run = FALSE))
   if (!file.exists(path)) {
-    warning(sprintf("CFA capture model file does not exist: %s", path), call. = FALSE)
+    warning(sprintf("%s capture model file does not exist: %s", toupper(analysis_type), path), call. = FALSE)
     return(list(snapshot = NULL, auto_run = FALSE))
   }
   snapshot <- tryCatch(
     jsonlite::fromJSON(path, simplifyVector = FALSE),
     error = function(error) {
-      warning(sprintf("Failed to read CFA capture model file: %s", conditionMessage(error)), call. = FALSE)
+      warning(sprintf("Failed to read %s capture model file: %s", toupper(analysis_type), conditionMessage(error)), call. = FALSE)
       NULL
     }
   )
   if (!is.list(snapshot) || !is.list(snapshot$nodes) || !is.list(snapshot$edges)) {
-    warning("CFA capture model file must contain model nodes and edges.", call. = FALSE)
+    warning(sprintf("%s capture model file must contain model nodes and edges.", toupper(analysis_type)), call. = FALSE)
     return(list(snapshot = NULL, auto_run = FALSE))
   }
   list(
     snapshot = snapshot,
-    auto_run = structural_capture_truthy(Sys.getenv("STATEDU_CAPTURE_CFA_RUN", ""))
+    auto_run = structural_capture_truthy(switch(
+      analysis_type,
+      cfa = Sys.getenv("STATEDU_CAPTURE_CFA_RUN", Sys.getenv("STATEDU_CAPTURE_STRUCTURAL_RUN", "")),
+      cbsem = Sys.getenv("STATEDU_CAPTURE_SEM_RUN", Sys.getenv("STATEDU_CAPTURE_STRUCTURAL_RUN", "")),
+      plssem = Sys.getenv("STATEDU_CAPTURE_PLS_RUN", Sys.getenv("STATEDU_CAPTURE_STRUCTURAL_RUN", "")),
+      ""
+    ))
   )
 }
 
