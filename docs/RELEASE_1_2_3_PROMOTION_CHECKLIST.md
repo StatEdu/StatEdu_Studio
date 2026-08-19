@@ -34,6 +34,7 @@ This checklist promotes `1.2.3-dev` to public `1.2.3`. It does not modify or sup
 ## Gate 4: Manual packaged QA
 
 - Complete a new `docs/RELEASE_1_2_3_MANUAL_QA_RECORD.md` against the final public installer.
+- Keep every row `Pending` until it is repeated against the checksum-recorded final non-development package; development-build automation is corroborating evidence only.
 - Recheck native model loading, CFA/SEM/PLS execution, Korean/English switching and restart, HTML/PDF public exports, license notices, paths with spaces/Korean text, and clean shutdown.
 - Recheck the higher-order CFA, multigroup CFA, covariate comparison, bootstrap method/progress/cancel, and saturated PLS/PLSc diagnostic labeling.
 

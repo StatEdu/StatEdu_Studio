@@ -154,6 +154,20 @@ assert_contains(release_checklist, "docs/RELEASE_1_2_3_PROMOTION_CHECKLIST.md", 
 assert_contains(release_checklist, "docs/RELEASE_1_2_3_DECISION_LOG.md", "release checklist 1.2.3 decision log")
 assert_contains(release_checklist, "scripts\\validate_sem_release_promotion.R", "release checklist 1.2.3 promotion validator")
 
+manual_qa_123 <- read_text("docs/RELEASE_1_2_3_MANUAL_QA_RECORD.md")
+assert_contains(manual_qa_123, "StatEdu Studio 1.2.3 Final Packaged Manual QA Record", "1.2.3 manual QA title")
+assert_contains(manual_qa_123, "dist/electron/StatEdu_Studio_Setup_1.2.3.exe", "1.2.3 final installer path")
+assert_contains(manual_qa_123, "scripts/validate_sem_release_promotion.R", "1.2.3 promotion validation row")
+assert_contains(manual_qa_123, "Higher-order CFA execution", "1.2.3 higher-order CFA QA row")
+assert_contains(manual_qa_123, "Research versus adjusted fit", "1.2.3 SEM covariate comparison QA row")
+assert_contains(manual_qa_123, "Eligible PLSc model", "1.2.3 PLSc QA row")
+assert_contains(manual_qa_123, "Manual QA status:", "1.2.3 manual QA final status")
+assert_contains(manual_qa_123, "Development-build automation", "1.2.3 development/final evidence boundary")
+if (is_development_version) {
+  assert_contains(manual_qa_123, "Overall status: blocked / pending final public package", "1.2.3 manual QA blocked development status")
+  assert_not_contains(manual_qa_123, "| Pass |", "1.2.3 premature final-package Pass row")
+}
+
 release_readiness <- read_text("docs/RELEASE_READINESS_STATUS.md")
 if (is_development_version) {
   assert_contains(release_readiness, paste0("Current version: ", readme_public), "release readiness current public version")

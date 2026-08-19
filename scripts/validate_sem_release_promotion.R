@@ -3,6 +3,14 @@ promotion_read_text <- function(path) {
   paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 }
 
+promotion_record_field <- function(text, label) {
+  lines <- strsplit(text, "\n", fixed = TRUE)[[1L]]
+  prefix <- paste0(label, ":")
+  matches <- lines[startsWith(trimws(lines), prefix)]
+  if (!length(matches)) return("")
+  trimws(sub(paste0("^", prefix), "", trimws(matches[[length(matches)]])))
+}
+
 promotion_require <- function(condition, message) {
   if (!isTRUE(condition)) stop(message, call. = FALSE)
 }
@@ -54,6 +62,14 @@ promotion_validate_public_manifest <- function(manifest_path) {
   evidence_paths <- unlist(manifest$evidence[required_evidence], use.names = TRUE)
   absent <- names(evidence_paths)[!file.exists(evidence_paths)]
   promotion_require(!length(absent), paste0("Promotion evidence file(s) were not found: ", paste(absent, collapse = ", "), "."))
+
+  manual_qa <- promotion_read_text(evidence_paths[["manual_qa_record"]])
+  promotion_require(identical(promotion_record_field(manual_qa, "Release candidate"), "1.2.3"), "Manual QA record must identify release candidate 1.2.3.")
+  promotion_require(identical(tolower(promotion_record_field(manual_qa, "Manual QA status")), "pass"), "Manual QA final status must be Pass.")
+  promotion_require(!grepl("| Pending |", manual_qa, fixed = TRUE), "Manual QA record still contains Pending rows.")
+  promotion_require(!grepl("| Fail |", manual_qa, fixed = TRUE), "Manual QA record still contains Fail rows.")
+  promotion_require(nzchar(promotion_record_field(manual_qa, "Tester sign-off")), "Manual QA tester sign-off is missing.")
+  promotion_require(nzchar(promotion_record_field(manual_qa, "Sign-off time")), "Manual QA sign-off time is missing.")
 
   comparison <- utils::read.csv(evidence_paths[["comparison"]], check.names = FALSE, stringsAsFactors = FALSE)
   promotion_require(all(c("Model", "Fit", "Metric", "StatEdu", "External", "Pass") %in% names(comparison)), "External comparison CSV has an invalid schema.")
@@ -115,6 +131,8 @@ promotion_validate_public_manifest <- function(manifest_path) {
 
   promotion_require_sha256(evidence_paths[["installer"]], manifest$checksums$installer_sha256, "Installer")
   promotion_require_sha256(evidence_paths[["blockmap"]], manifest$checksums$blockmap_sha256, "Blockmap")
+  promotion_require(identical(toupper(promotion_record_field(manual_qa, "Installer SHA-256")), toupper(as.character(manifest$checksums$installer_sha256))), "Manual QA installer SHA-256 does not match the promotion manifest.")
+  promotion_require(identical(toupper(promotion_record_field(manual_qa, "Blockmap SHA-256")), toupper(as.character(manifest$checksums$blockmap_sha256))), "Manual QA blockmap SHA-256 does not match the promotion manifest.")
   promotion_require(nzchar(trimws(as.character(manifest$approval$approved_by %||% ""))), "Promotion approver is missing.")
   promotion_require(nzchar(trimws(as.character(manifest$approval$approved_at %||% ""))), "Promotion approval time is missing.")
   invisible(TRUE)
@@ -126,6 +144,7 @@ version <- trimws(readLines("VERSION", warn = FALSE, n = 1L))
 decision_log <- promotion_read_text("docs/RELEASE_1_2_3_DECISION_LOG.md")
 checklist <- promotion_read_text("docs/RELEASE_1_2_3_PROMOTION_CHECKLIST.md")
 public_notes <- promotion_read_text("docs/RELEASE_1_2_3_PUBLIC_NOTES_DRAFT.md")
+manual_qa_template <- promotion_read_text("docs/RELEASE_1_2_3_MANUAL_QA_RECORD.md")
 template <- jsonlite::fromJSON("docs/RELEASE_1_2_3_PROMOTION_MANIFEST.template.json", simplifyVector = TRUE)
 external_run_template <- jsonlite::fromJSON("docs/RELEASE_1_2_3_EXTERNAL_PLS_RUN.template.json", simplifyVector = TRUE)
 
@@ -144,8 +163,30 @@ if (identical(version, "1.2.3")) {
 } else if (identical(version, "1.2.3-dev")) {
   promotion_require(grepl("Public promotion: blocked", decision_log, fixed = TRUE), "Development decision log must retain the blocked promotion status.")
   promotion_require(grepl("Status: draft; not approved for publication", public_notes, fixed = TRUE), "Development public notes must remain an unapproved draft.")
+  promotion_require(grepl("Overall status: blocked / pending final public package", manual_qa_template, fixed = TRUE), "Development manual QA record must remain blocked pending the final public package.")
+  promotion_require(!grepl("| Pass |", manual_qa_template, fixed = TRUE), "Development manual QA template must not contain final-package Pass rows.")
   missing_manifest_error <- try(promotion_validate_public_manifest(tempfile("missing-promotion-manifest-", fileext = ".json")), silent = TRUE)
   promotion_require(inherits(missing_manifest_error, "try-error") && grepl("Public 1.2.3 promotion is blocked", as.character(missing_manifest_error), fixed = TRUE), "Public promotion validator must fail closed when the manifest is absent.")
+  dummy_evidence <- tempfile("promotion-dummy-evidence-", fileext = ".txt")
+  manual_gate_manifest <- tempfile("promotion-manual-gate-", fileext = ".json")
+  writeLines("placeholder", dummy_evidence, useBytes = TRUE)
+  jsonlite::write_json(list(
+    target_version = "1.2.3",
+    gates = as.list(stats::setNames(rep(TRUE, 6L), c(
+      "external_numeric_evidence", "version_metadata_aligned", "public_notes_finalized",
+      "final_package_validated", "manual_packaged_qa", "publication_approved"
+    ))),
+    evidence = list(
+      statedu_fit = dummy_evidence, external_fit = dummy_evidence, comparison = dummy_evidence,
+      external_run_record = dummy_evidence, manual_qa_record = "docs/RELEASE_1_2_3_MANUAL_QA_RECORD.md",
+      public_notes = dummy_evidence, installer = dummy_evidence, blockmap = dummy_evidence
+    ),
+    checksums = list(installer_sha256 = "", blockmap_sha256 = ""),
+    approval = list(approved_by = "test", approved_at = "test")
+  ), manual_gate_manifest, auto_unbox = TRUE, pretty = TRUE)
+  manual_gate_error <- try(promotion_validate_public_manifest(manual_gate_manifest), silent = TRUE)
+  unlink(c(dummy_evidence, manual_gate_manifest), force = TRUE)
+  promotion_require(inherits(manual_gate_error, "try-error") && grepl("Manual QA final status must be Pass", as.character(manual_gate_error), fixed = TRUE), "Public promotion validator must reject a Pending manual QA record.")
   cat("SEM 1.2.3 public-promotion gate is armed; development version remains blocked from public promotion.\n")
 } else {
   cat("SEM 1.2.3 public-promotion gate not applicable to version ", version, ".\n", sep = "")
