@@ -16,7 +16,12 @@
     "build": {
         "appId": "com.statedu.studio.dev",
         "productName": "StatEdu Studio Dev",
-        "asar": false,
+        "asar": true,
+        "asarUnpack": [
+            "package.json",
+            "app/**/*",
+            "runtime/**/*"
+        ],
         "directories": {
             "output": "../../dist/electron"
         },

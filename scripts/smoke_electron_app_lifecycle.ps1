@@ -62,7 +62,10 @@ function Assert-Path {
 }
 
 function Get-BundledRProcesses {
-  $runtimeNeedle = [regex]::Escape((Join-Path $RepoRoot "dist\electron\win-unpacked\resources\app\runtime\R-4.5.3"))
+  $resourcesDir = Join-Path $RepoRoot "dist\electron\win-unpacked\resources"
+  $unpackedDir = Join-Path $resourcesDir "app.asar.unpacked"
+  $appDir = if (Test-Path -LiteralPath $unpackedDir) { $unpackedDir } else { Join-Path $resourcesDir "app" }
+  $runtimeNeedle = [regex]::Escape((Join-Path $appDir "runtime\R-4.5.3"))
   @(Get-CimInstance Win32_Process | Where-Object {
     $_.Name -eq "Rscript.exe" -and
     $_.CommandLine -match $runtimeNeedle -and

@@ -67,10 +67,10 @@ Development package status: Automated package checks passed after the CFA captur
 Product: StatEdu Studio Dev
 Version: 1.2.3-dev
 Installer: C:\StatEdu\Studio\dist\electron\StatEdu_Studio_Dev_Setup_1.2.3-dev.exe
-Installer SHA256: F98B3D21F2BBDB36460BDD6C0C9D7D261C50CEE53B6722179C37F26AAB325FAB
-Installer bytes: 330865535
-Blockmap SHA256: 54A8D3A6F21291E47F04C8DF0DEF032FC0B9925618D3BFD0A9B6B7F392826F09
-Blockmap bytes: 333339
+Installer SHA256: AACF30E6A2B4092F33783AC81AD7FBDD6C44F4D1CD6BE9A28F7FC28359737E77
+Installer bytes: 331288819
+Blockmap SHA256: 3BB7EA4E2E86C5A4EF8E5F0D71C3D58B10739561171A10885345C55A2BAF16AA
+Blockmap bytes: 333787
 Electron: 43.4.0
 electron-builder: 26.15.3
 R runtime: R-4.5.3
@@ -83,6 +83,7 @@ Validation date: 2026-08-19
 | `scripts\smoke_electron_release.ps1` passes | Pass | Package names, pinned Electron dependencies, bundled version, licenses, pruned R runtime, and bundled module loading passed. |
 | `scripts\smoke_electron_app_lifecycle.ps1` passes | Pass | Packaged app reached the bundled Shiny URL; closing Electron stopped the bundled R process. |
 | Windows bundled-R UTF-8 startup | Pass | Electron now overrides inherited Linux-style locale values with `English_United States.utf8` for the R probe and Shiny process. |
+| Electron ASAR integrity boundary | Pass | Electron main code is packaged in `app.asar`; executable R, Shiny application resources, and package metadata are explicitly placed in `app.asar.unpacked`. Release smoke verifies both paths and lifecycle smoke verifies runtime resolution. |
 | npm dependency security audit | Pass | Exact-pin updates to Electron 43.4.0 and electron-builder 26.15.3 reduced findings from 13 to 0. The lockfile was reproduced with `npm ci`; no automatic `npm audit fix --force` was applied. |
 
 Development package status: Automated structure and lifecycle checks pass. Focused visual CFA/SEM workflow QA and dependency-security triage remain required before public promotion.

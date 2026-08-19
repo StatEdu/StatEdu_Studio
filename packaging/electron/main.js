@@ -186,7 +186,11 @@ function logStartupEnvironment() {
 }
 
 function appBaseDir() {
-  return app.getAppPath();
+  const appPath = app.getAppPath();
+  if (appPath.toLowerCase().endsWith(".asar")) {
+    return `${appPath}.unpacked`;
+  }
+  return appPath;
 }
 
 function bundledAppDir() {

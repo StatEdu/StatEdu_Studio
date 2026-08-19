@@ -17,7 +17,10 @@ if (-not $ElectronOutDir) {
   $ElectronOutDir = Join-Path $RepoRoot "dist\electron\win-unpacked"
 }
 
-$appResourceDir = Join-Path $ElectronOutDir "resources\app"
+$resourceRoot = Join-Path $ElectronOutDir "resources"
+$asarArchive = Join-Path $resourceRoot "app.asar"
+$asarUnpackedDir = Join-Path $resourceRoot "app.asar.unpacked"
+$appResourceDir = if (Test-Path -LiteralPath $asarUnpackedDir) { $asarUnpackedDir } else { Join-Path $resourceRoot "app" }
 $bundledAppDir = Join-Path $appResourceDir "app"
 $runtimeDir = Join-Path $appResourceDir "runtime\R-4.5.3"
 $rscript = Join-Path $runtimeDir "bin\x64\Rscript.exe"
@@ -349,6 +352,8 @@ if (-not $SkipUnpackedChecks) {
   $projectVersion = Get-ProjectVersion
   $releaseProfile = Get-ElectronReleaseProfile -Version $projectVersion
   Assert-Path $ElectronOutDir "unpacked Electron output"
+  Assert-Path $asarArchive "Electron ASAR archive"
+  Assert-Path $asarUnpackedDir "Electron unpacked runtime resources"
   $electronExe = Join-Path $ElectronOutDir $releaseProfile.ExeName
   Assert-Path $electronExe "Electron executable"
   Assert-ExeVersionInfo $electronExe $releaseProfile.ProductName "StatEdu"
