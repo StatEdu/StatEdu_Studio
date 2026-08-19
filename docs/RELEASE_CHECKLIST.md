@@ -23,6 +23,7 @@ Use this checklist before creating a public beta installer, release candidate, o
 - Before changing release metadata, complete the matching version bump checklist, such as `docs/RELEASE_1_2_VERSION_BUMP_CHECKLIST.md`, so package names, installer names, smoke-test expectations, DOI checks, and public claims move together.
 - For the 1.2.3 release line, complete `docs/RELEASE_1_2_3_PROMOTION_CHECKLIST.md` and retain the blocked/approved decision in `docs/RELEASE_1_2_3_DECISION_LOG.md`; the published 1.2.0 evidence remains historical and must not be overwritten.
 - Before publishing 1.2.3, run `scripts\validate_sem_release_promotion.R`; it must independently recompute the external PLS/PLSc comparison and verify the evidence and package checksums.
+- Complete `docs/RELEASE_1_2_3_VERSION_BUMP_CHECKLIST.md` before changing the 1.2.3 development metadata, and run `scripts\validate_sem_public_claims.R` before finalizing public release text.
 
 ## Brand and Compatibility
 

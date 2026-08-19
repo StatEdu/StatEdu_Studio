@@ -153,6 +153,15 @@ assert_contains(release_checklist, "scripts\\get_release_checksums.ps1", "releas
 assert_contains(release_checklist, "docs/RELEASE_1_2_3_PROMOTION_CHECKLIST.md", "release checklist 1.2.3 promotion checklist")
 assert_contains(release_checklist, "docs/RELEASE_1_2_3_DECISION_LOG.md", "release checklist 1.2.3 decision log")
 assert_contains(release_checklist, "scripts\\validate_sem_release_promotion.R", "release checklist 1.2.3 promotion validator")
+assert_contains(release_checklist, "docs/RELEASE_1_2_3_VERSION_BUMP_CHECKLIST.md", "release checklist 1.2.3 version bump checklist")
+assert_contains(release_checklist, "scripts\\validate_sem_public_claims.R", "release checklist SEM public claims validator")
+
+version_bump_123 <- read_text("docs/RELEASE_1_2_3_VERSION_BUMP_CHECKLIST.md")
+assert_contains(version_bump_123, "Use this checklist only after the external PLS/PLSc evidence gate passes", "1.2.3 version bump external evidence prerequisite")
+assert_contains(version_bump_123, "Do not alter the published 1.2.0 release", "1.2.3 historical release boundary")
+assert_contains(version_bump_123, "StatEdu_Studio_Setup_1.2.3.exe", "1.2.3 final installer name")
+assert_contains(version_bump_123, "scripts/validate_sem_public_claims.R", "1.2.3 public claims validation")
+assert_contains(version_bump_123, "Never infer approval from passing automated checks", "1.2.3 explicit approval boundary")
 
 manual_qa_123 <- read_text("docs/RELEASE_1_2_3_MANUAL_QA_RECORD.md")
 assert_contains(manual_qa_123, "StatEdu Studio 1.2.3 Final Packaged Manual QA Record", "1.2.3 manual QA title")

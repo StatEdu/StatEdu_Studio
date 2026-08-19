@@ -17,9 +17,11 @@ This checklist promotes `1.2.3-dev` to public `1.2.3`. It does not modify or sup
 ## Gate 2: Final metadata and public claims
 
 - Change `VERSION` and all version-controlled product metadata from `1.2.3-dev` to `1.2.3` only after Gate 1 passes.
+- Complete `docs/RELEASE_1_2_3_VERSION_BUMP_CHECKLIST.md`; do not edit or supersede historical 1.2.0 release evidence.
 - Finalize `docs/RELEASE_1_2_3_PUBLIC_NOTES_DRAFT.md` without unsupported causal, model-fit, unidimensionality, or cross-program-equivalence claims.
 - Add 1.2.3 entries to the English and Korean changelogs while preserving 1.2.0 as historical content.
 - Confirm README, citation, About, Electron metadata, and latent-module version alignment.
+- Run `scripts/validate_sem_public_claims.R` and retain every interpretation boundary.
 
 ## Gate 3: Final package validation
 
