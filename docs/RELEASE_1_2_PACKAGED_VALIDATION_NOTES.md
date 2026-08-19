@@ -67,9 +67,11 @@ Development package status: Automated package checks passed after the CFA captur
 Product: StatEdu Studio Dev
 Version: 1.2.3-dev
 Installer: C:\StatEdu\Studio\dist\electron\StatEdu_Studio_Dev_Setup_1.2.3-dev.exe
-Installer SHA256: 53FE9F65E63E4171F1A431F893D62327C1663B2614B1EC478599E371A642CBC9
-Blockmap SHA256: E2484EA2A31A1950E5B58F795B2F7BF1BC3A859A1D7DE6D9D74AB5367428845C
-Electron: 39.8.10
+Installer SHA256: F98B3D21F2BBDB36460BDD6C0C9D7D261C50CEE53B6722179C37F26AAB325FAB
+Installer bytes: 330865535
+Blockmap SHA256: 54A8D3A6F21291E47F04C8DF0DEF032FC0B9925618D3BFD0A9B6B7F392826F09
+Blockmap bytes: 333339
+Electron: 43.4.0
 electron-builder: 26.15.3
 R runtime: R-4.5.3
 Validation date: 2026-08-19
@@ -81,6 +83,6 @@ Validation date: 2026-08-19
 | `scripts\smoke_electron_release.ps1` passes | Pass | Package names, pinned Electron dependencies, bundled version, licenses, pruned R runtime, and bundled module loading passed. |
 | `scripts\smoke_electron_app_lifecycle.ps1` passes | Pass | Packaged app reached the bundled Shiny URL; closing Electron stopped the bundled R process. |
 | Windows bundled-R UTF-8 startup | Pass | Electron now overrides inherited Linux-style locale values with `English_United States.utf8` for the R probe and Shiny process. |
-| npm dependency security audit | Review | Exact-pin updates reduced findings from 13 (including 1 critical) to 2 high findings. Both remaining findings are the Electron installation-time `extract-zip` path; npm offers only a breaking Electron 43 upgrade. The packaged app has no Node runtime dependency tree, but the build host must use trusted Electron archives. No automatic `npm audit fix --force` was applied. |
+| npm dependency security audit | Pass | Exact-pin updates to Electron 43.4.0 and electron-builder 26.15.3 reduced findings from 13 to 0. The lockfile was reproduced with `npm ci`; no automatic `npm audit fix --force` was applied. |
 
 Development package status: Automated structure and lifecycle checks pass. Focused visual CFA/SEM workflow QA and dependency-security triage remain required before public promotion.
