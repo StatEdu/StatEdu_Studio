@@ -60,7 +60,7 @@ Current release candidate source version: 1.2.0
 
 The local stabilization checks are passing for the current branch.
 
-- `scripts/validate_stabilization.ps1 -Full`: passed on 2026-06-28 (post-rebrand merge)
+- `scripts/validate_stabilization.ps1 -Full`: passed on 2026-08-19, including all dedicated SEM validation scripts.
 - `scripts/release_preflight.ps1`: passed on 2026-06-28 (post-rebrand rebuild)
 - `scripts/smoke_electron_release.ps1 -RepoRoot .`: passed on 2026-06-28 against rebuilt 1.0.1 with bundled `R-4.5.3` (external link fix included)
 - `scripts/smoke_shiny_app.ps1`: passed

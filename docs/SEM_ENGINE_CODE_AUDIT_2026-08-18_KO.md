@@ -9,6 +9,21 @@
 
 이 문서는 2026-08-18 시점의 발견사항을 보존하는 역사적 감사기록이다. 이후 구현에서는 다음 항목을 수정했다.
 
+### 2026-08-19 종결 검증
+
+| 감사 영역 | 종결 상태 | 구현·검증 근거 |
+|---|---|---|
+| 적합도 판정형 라벨 및 HTMT BCa 단측상한 | 완료 | `a8314d2`; CFA/SEM 검증 통과 |
+| 혼합 PLSc 보정 실패·보정 범위 | 완료 | `4b35d02`, `a8314d2`; `validate_sem_plsc_scope.R`, `validate_sem_construct_resolution.R` |
+| 표본설계 선언, 추정량 선택 근거, CMB 중립 라벨 | 완료 | `a8314d2`; `validate_sem_canvas.R`, `validate_cfa_ui.R` |
+| Mardia·PLSc·PLSpredict 재현성 | 완료 | `27f2659`, `f61f204`, `33a92f8`, `ebba1d0` |
+| 부분불변성 지원 경계 | 제한 명시 완료 | `13bf2a3`, `849224a`; 자동 제약 해제 없이 외부 분석 요건을 Audit에 보존 |
+| PLS 적합도 정의·외부 비교 | 완료 | `91d2480`, `d82fe7a`, `6e31b56`; cSEM 선택 검증과 외부 CSV 비교기 |
+| CMB 설계통제 및 분석계획 provenance | 완료 | `07e530f`, `f673b9e`; 실제 marker 효과 추정은 지원 범위 밖으로 명시 |
+| 전체 회귀검증 편입 | 완료 | `4cf5727`; `scripts/validate_stabilization.ps1 -Full` 통과 |
+
+따라서 아래 본문의 1·2순위 항목은 발견 당시의 기록이며 현재 열린 결함 목록이 아니다. 남은 항목은 `SEM_SCI_GAP_AUDIT_KO.md`의 `제한 유지` 또는 `장기 확장` 범주로 관리한다.
+
 - CB-SEM 적합도 `Good/Marginal` 판정을 `Reference only/Review`로 교체했다.
 - HTMT BCa의 단측 상한에도 양측 구간과 동일한 bias-correction 및 jackknife acceleration을 적용했다.
 - 혼합 PLSc 경로보정 실패 시 원시 PLS 계수를 조용히 유지하지 않고 실행을 중단하며, 정상 보정 범위와 상태를 결과·Audit에 기록한다.
