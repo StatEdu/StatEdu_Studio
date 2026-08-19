@@ -150,6 +150,8 @@ structural_canvas_workbook_contents <- function(sheet_names) {
     if (identical(name, "Model_Difference")) return("Nested-model difference-test result or the explicit reason the formal test was suppressed.")
     if (identical(name, "Covariate_Effects")) return("Estimated covariate effects on their assigned latent-variable targets.")
     if (identical(name, "Covariate_Fit_Comparison")) return("Research-model, covariate-adjusted-model, and delta fit statistics with the estimator-matched fit and likelihood-ratio test basis stated in each row.")
+    if (identical(name, "Higher_Order_Loadings")) return("Higher-order factor loadings, confidence intervals, explained lower-order-factor variance, and standardized residual variance.")
+    if (identical(name, "Higher_Order_Omega")) return("Model-conditional hierarchical omega for the unit-weighted total score, with indicator count and interpretive guidance.")
     if (grepl("^Inv", name)) return("Measurement-invariance fit, group, or equality-constraint diagnostic output.")
     if (grepl("_CI$", name)) return("Confidence-interval output; consult Notes and valid-replicate counts before interpretation.")
     if (identical(name, "Model_Syntax")) return("lavaan model syntax used for the fitted model.")
@@ -195,6 +197,27 @@ structural_canvas_result_workbook_sheets <- function(bundle, table_fn) {
     sheets$Bollen_Stine$`Model context` <- if (isTRUE(bundle$modified_from_baseline)) "Exploratory modified model" else "Prespecified/original model"
   }
   if (!is.null(bundle$htmt_bootstrap_result) && nrow(bundle$htmt_bootstrap_result)) sheets$HTMT_CI <- bundle$htmt_bootstrap_result
+  higher_order <- structural_canvas_higher_order_results(bundle$snapshot %||% list(), bundle$fit)
+  if (isTRUE(higher_order$available) && nrow(higher_order$table %||% data.frame())) {
+    higher_table <- higher_order$table
+    names(higher_table) <- c(
+      "Higher-order factor", "Lower-order factor", "B", "B 95% CI lower", "B 95% CI upper",
+      "SE", "z", "p", "Beta", "Beta 95% CI lower", "Beta 95% CI upper",
+      "R2", "R2 95% CI lower", "R2 95% CI upper", "Standardized residual variance"
+    )
+    sheets$Higher_Order_Loadings <- higher_table
+    omega_h <- structural_canvas_omega_h(bundle$snapshot %||% list(), bundle$fit)
+    if (isTRUE(omega_h$available)) {
+      sheets$Higher_Order_Omega <- data.frame(
+        `Higher-order factor` = omega_h$higher_order_factor,
+        Indicators = omega_h$indicators,
+        `Hierarchical omega` = omega_h$omega_h,
+        Guidance = structural_canvas_omega_h_guidance(omega_h$omega_h),
+        Note = "Model- and unit-weighted-score-conditional; not evidence of unidimensionality or equivalence to a bifactor model.",
+        check.names = FALSE, stringsAsFactors = FALSE
+      )
+    }
+  }
   if (length(bundle$covariates %||% character(0))) {
     covariate_effects <- structural_canvas_covariate_effect_table(bundle$fit, bundle$covariates)
     if (nrow(covariate_effects)) sheets$Covariate_Effects <- covariate_effects

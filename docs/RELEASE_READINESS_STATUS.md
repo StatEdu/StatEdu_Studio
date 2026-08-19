@@ -37,19 +37,20 @@ Current release candidate source version: 1.2.0
 - Source version: `1.2.3-dev`.
 - Branch: `codex/sem-model-canvas`.
 - Built development package: `dist/electron/StatEdu_Studio_Dev_Setup_1.2.3-dev.exe`.
-- Installer SHA256: `A52987D677866C9A726D36CAEDFCC56B6DF84654228FA0A9A62DB867EC276021`.
-- Blockmap SHA256: `1E2D70DC4F881E09D0DFCD55988381DC094DFC155A4D74AB283422557D32D125`.
+- Installer SHA256: `44092E1E457831C8D124BB5D29EC11A19E15D70333B43B1632663E9A791FDC3B`.
+- Blockmap SHA256: `C359CE4E57E0355098C54E43C7C44D1E52205D20C8132EB078BA39BE3FEBAF62`.
 - `scripts/validate_sem_canvas.R` and `scripts/validate_cfa_all.R`: passed on 2026-08-19.
 - `scripts/smoke_electron_release.ps1`: passed against the final 1.2.3-dev package.
 - `scripts/smoke_electron_app_lifecycle.ps1`: passed with zero packaged Electron/R processes remaining after cleanup.
 - Final packaged-app browser QA loaded a three-factor, nine-indicator, 180-observation SEM and confirmed that base results appear before the 5,000-resample HTMT and structural-effect jobs finish.
 - The HTMT and structural-effect jobs expose independent live progress panels and Stop buttons. Both packaged workflows were canceled independently, retained base results and point estimates, and displayed explicit user-cancellation messages rather than estimation-failure messages.
-- CFA higher-order-factor toolbar labeling, result downloads, default BC bootstrap intervals, and cancellable background bootstrap progress have packaged-app evidence in `docs/RELEASE_1_2_PACKAGED_VALIDATION_NOTES.md`.
+- CFA higher-order-factor toolbar labeling, full higher-order MLR execution, omega-h/loading results, strict Excel export, default BC bootstrap intervals, and cancellable background bootstrap progress have packaged-app evidence in `docs/RELEASE_1_2_PACKAGED_VALIDATION_NOTES.md`.
 - Packaged Windows UI Automation confirmed the actual native `열기` dialog, `StatEdu Model Canvas` filter, CFA/SEM snapshot restoration, Run-button enablement, and entry into the estimator-decision workflow.
 - Packaged Windows UI Automation also ran a 360-row ordinal CFA and confirmed `Estimator = DWLS`, `Parameterization = Theta`, `Converged = Yes`, retained base results during background HTMT bootstrap, and zero packaged-process residue after cleanup.
 - Packaged Windows UI Automation verified nondefault bootstrap methods end to end: AVE/reliability BCa completed 500 case resamples plus 45 jackknife fits and returned 468/500 valid replicates, while three-factor HTMT Percentile returned 1,000/1,000 valid replicates with populated two-sided and one-sided limits.
 - Packaged Windows UI Automation also completed the 301-case `school` multigroup CFA. All four invariance stages converged and were admissible, group-specific reliability/AVE and HTMT rendered, and the live 33-sheet Excel export passed strict OpenXML import, all-sheet rendering, key-value verification, and dangling-relationship/error-token scans. The export now reports the requested MLR estimator consistently in both overview and report-summary sheets.
-- Remaining before public promotion: packaged higher-order-model execution; external SmartPLS/ADANCO numerical comparison; final public versioning, manual QA, release notes, upload, and publication. Packaged SEM covariate-model comparison now has MLR robust/scaled end-to-end evidence.
+- Packaged Windows UI Automation also completed the 301-case higher-order CFA with MLR. The fit converged and was admissible; all three general-factor loadings, lower-order R2 values, and model-/score-conditional omega-h rendered. The 26-sheet live Excel export passed strict OpenXML import, all-sheet rendering, value matching, and spreadsheet-error scans.
+- Remaining before public promotion: external SmartPLS/ADANCO numerical comparison; final public versioning, manual QA, release notes, upload, and publication. Packaged SEM covariate-model comparison and higher-order CFA execution/export now have end-to-end evidence.
 
 ## Historical 1.2.2-dev Development Snapshot
 

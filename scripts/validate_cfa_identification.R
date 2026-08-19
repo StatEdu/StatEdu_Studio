@@ -144,6 +144,30 @@ stopifnot(
   all(factor_correlation_diagnostics$Severity %in% c("Below correlation review reference", "Review", "High", "Severe", "Inadmissible", "Unavailable"))
 )
 
+higher_order_fixture <- jsonlite::fromJSON(
+  file.path("sample", "cfa_higher_order.stmodel"), simplifyVector = FALSE
+)
+higher_order_fixture_fit <- run_structural_canvas_analysis(
+  higher_order_fixture, lavaan::HolzingerSwineford1939, "cfa", estimator = "MLR"
+)
+higher_order_fixture_results <- structural_canvas_higher_order_results(
+  higher_order_fixture, higher_order_fixture_fit$fit
+)
+higher_order_fixture_omega <- structural_canvas_omega_h(
+  higher_order_fixture, higher_order_fixture_fit$fit
+)
+stopifnot(
+  identical(higher_order_fixture$modelSchemaVersion, 7L),
+  isTRUE(higher_order_fixture_fit$converged),
+  grepl("general =~ visual + textual + speed", higher_order_fixture_fit$syntax, fixed = TRUE),
+  isTRUE(higher_order_fixture_results$available),
+  nrow(higher_order_fixture_results$table) == 3L,
+  identical(higher_order_fixture_results$table$LowerOrderFactor, c("visual", "textual", "speed")),
+  isTRUE(higher_order_fixture_omega$available),
+  higher_order_fixture_omega$indicators == 9L,
+  is.finite(higher_order_fixture_omega$omega_h)
+)
+
 single_indicator_snapshot <- list(
   nodes = list(list(id = "F", role = "latent", name = "F"), list(id = "x", role = "indicator", name = "x")),
   edges = list(list(from = "F", to = "x"))

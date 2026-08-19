@@ -158,6 +158,20 @@ stopifnot(
   grepl("JSON audit manifest", conditionMessage(non_lavaan_record_error), fixed = TRUE)
 )
 integrated_sheets <- structural_canvas_result_workbook_sheets(reporting_bundle, table_fn)
+higher_order_snapshot <- jsonlite::fromJSON(
+  file.path("sample", "cfa_higher_order.stmodel"), simplifyVector = FALSE
+)
+higher_order_analysis <- run_structural_canvas_analysis(
+  higher_order_snapshot, lavaan::HolzingerSwineford1939, "cfa", estimator = "MLR"
+)
+higher_order_bundle <- reporting_bundle
+higher_order_bundle$fit <- higher_order_analysis$fit
+higher_order_bundle$syntax <- higher_order_analysis$syntax
+higher_order_bundle$snapshot <- higher_order_snapshot
+higher_order_bundle$estimator <- "MLR"
+higher_order_bundle$diagnostics <- higher_order_analysis
+higher_order_bundle$bollen_stine_result <- NULL
+higher_order_sheets <- structural_canvas_result_workbook_sheets(higher_order_bundle, table_fn)
 common_method_export_bundle <- reporting_bundle
 common_method_export_bundle$common_method_enabled <- TRUE
 common_method_export_bundle$common_method_methods <- c("harman", "single_factor_cfa", "common_latent_factor")
@@ -236,6 +250,38 @@ stopifnot(
   all(c("Comparison", "Delta chisq", "Delta df", "Delta p", "Delta CFI", "Delta RMSEA", "Delta SRMR", "Note") %in% names(common_method_sheets$Common_Method_Comparison)),
   any(common_method_sheets$Contents$Sheet == "Common_Method_Comparison" & grepl("delta chi-square", common_method_sheets$Contents$Description, fixed = TRUE))
 )
+
+assert_sheet_snapshot(higher_order_sheets, "Higher_Order_Loadings", c(
+  "Higher-order factor", "Lower-order factor", "B", "B 95% CI lower", "B 95% CI upper",
+  "SE", "z", "p", "Beta", "Beta 95% CI lower", "Beta 95% CI upper",
+  "R2", "R2 95% CI lower", "R2 95% CI upper", "Standardized residual variance"
+), 3L)
+assert_sheet_snapshot(higher_order_sheets, "Higher_Order_Omega", c(
+  "Higher-order factor", "Indicators", "Hierarchical omega", "Guidance", "Note"
+), 1L)
+stopifnot(
+  identical(higher_order_sheets$Higher_Order_Loadings$`Lower-order factor`, c("visual", "textual", "speed")),
+  all(is.finite(higher_order_sheets$Higher_Order_Loadings$Beta)),
+  is.finite(higher_order_sheets$Higher_Order_Omega$`Hierarchical omega`[[1L]]),
+  identical(higher_order_sheets$Higher_Order_Omega$Indicators[[1L]], 9L),
+  any(higher_order_sheets$Contents$Sheet == "Higher_Order_Loadings" & grepl("Higher-order factor loadings", higher_order_sheets$Contents$Description, fixed = TRUE)),
+  any(higher_order_sheets$Contents$Sheet == "Higher_Order_Omega" & grepl("hierarchical omega", higher_order_sheets$Contents$Description, ignore.case = TRUE))
+)
+
+higher_order_workbook_file <- tempfile(fileext = ".xlsx")
+structural_canvas_write_result_workbook(higher_order_sheets, higher_order_workbook_file)
+assert_no_dangling_drawing_relationships(higher_order_workbook_file)
+higher_order_workbook_names <- openxlsx::getSheetNames(higher_order_workbook_file)
+higher_order_workbook_loadings <- openxlsx::read.xlsx(higher_order_workbook_file, sheet = "Higher_Order_Loadings")
+higher_order_workbook_omega <- openxlsx::read.xlsx(higher_order_workbook_file, sheet = "Higher_Order_Omega")
+stopifnot(
+  all(c("Higher_Order_Loadings", "Higher_Order_Omega") %in% higher_order_workbook_names),
+  nrow(higher_order_workbook_loadings) == 3L,
+  nrow(higher_order_workbook_omega) == 1L,
+  all(is.finite(higher_order_workbook_loadings$Beta)),
+  is.finite(higher_order_workbook_omega$Hierarchical.omega[[1L]])
+)
+unlink(higher_order_workbook_file)
 
 integrated_workbook_file <- tempfile(fileext = ".xlsx")
 structural_canvas_write_result_workbook(integrated_sheets, integrated_workbook_file)
