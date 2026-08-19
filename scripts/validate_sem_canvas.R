@@ -147,6 +147,9 @@ stopifnot(
   grepl('defer_cfa_bootstrap = analysis_type %in% c("cfa", "cbsem", "sem")', handler_source, fixed = TRUE),
   grepl('if (analysis_type %in% c("cfa", "cbsem", "sem")) {', handler_source, fixed = TRUE),
   grepl('model_label <- if (identical(analysis_type, "cfa")) "CFA" else "SEM"', handler_source, fixed = TRUE),
+  grepl('paste0(prefix, "_effect_bootstrap_stop")', handler_source, fixed = TRUE),
+  grepl('paste0(prefix, "-effect-bootstrap-progress")', handler_source, fixed = TRUE),
+  grepl("SEM structural-effect bootstrap progress", handler_source, fixed = TRUE),
   !grepl("Latent covariance, factor-score, HTMT, and lavaan delta-method diagnostics are not displayed", ui_source, fixed = TRUE)
 )
 
@@ -611,14 +614,45 @@ stopifnot(
   any(grepl("confounding", causal_boundary$rows$Assumption, ignore.case = TRUE)),
   any(grepl("associational", causal_boundary$rows$Consequence, ignore.case = TRUE))
 )
+effect_progress_events <- list()
 cbsem_effect_bootstrap <- structural_canvas_effect_bootstrap(
   mediation_snapshot, mediation_data, "cbsem", "ML", "fiml", FALSE,
-  character(0), character(0), numeric(0), reps = 30L, seed = 20260819L
+  character(0), character(0), numeric(0), reps = 30L, seed = 20260819L,
+  progress = function(done, total, valid) {
+    effect_progress_events[[length(effect_progress_events) + 1L]] <<- c(done = done, total = total, valid = valid)
+  }
 )
 stopifnot(is.data.frame(cbsem_effect_bootstrap))
 stopifnot(any(cbsem_effect_bootstrap$op == ":="))
 stopifnot(all(c("lower", "upper", "p", "beta_estimate", "beta_lower", "beta_upper", "beta_p", "beta_valid", "valid", "requested", "valid_percent", "status") %in% names(cbsem_effect_bootstrap)))
 stopifnot(all(cbsem_effect_bootstrap$requested == 30L))
+stopifnot(effect_progress_events[[1L]][["done"]] == 0L)
+stopifnot(tail(effect_progress_events, 1L)[[1L]][["done"]] == 30L)
+effect_cancel_error <- tryCatch({
+  structural_canvas_effect_bootstrap(
+    mediation_snapshot, mediation_data, "cbsem", "ML", "fiml", FALSE,
+    character(0), character(0), numeric(0), reps = 2L, seed = 20260819L,
+    cancel = function() TRUE
+  )
+  ""
+}, error = conditionMessage)
+stopifnot(grepl("canceled", effect_cancel_error, fixed = TRUE))
+if (requireNamespace("callr", quietly = TRUE)) {
+  cancellable_effect_job <- structural_canvas_start_effect_bootstrap_job(
+    mediation_snapshot, mediation_data, "cbsem", "ML", "fiml", FALSE,
+    character(0), character(0), numeric(0), reps = 100L, seed = 20260819L
+  )
+  cancellable_effect_directory <- cancellable_effect_job$directory
+  effect_initial_progress <- readRDS(cancellable_effect_job$progress_file)
+  stopifnot(
+    cancellable_effect_job$process$is_alive(),
+    identical(effect_initial_progress$phase, "starting"),
+    identical(effect_initial_progress$total, 100L)
+  )
+  cancellable_effect_job$process$kill()
+  structural_canvas_cleanup_effect_bootstrap_job(cancellable_effect_job)
+  stopifnot(!dir.exists(cancellable_effect_directory))
+}
 stopifnot(grepl(":=", cbsem_mediation$syntax, fixed = TRUE))
 stopifnot(length(cbsem_mediation$effect_definitions) == 3L)
 cbsem_mediation_bundle <- list(

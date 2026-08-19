@@ -154,9 +154,15 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
             bundle$effect_bootstrap_ci_method %||% "bias_corrected"
           )
           effect_bootstrap_job(job)
+          ko <- identical(statedu_current_language(app_language_fn), "ko")
           structural_canvas_show_notification(
-            if (identical(statedu_current_language(app_language_fn), "ko")) "구조효과 bootstrap CI를 별도 작업으로 계산하고 있습니다. 기본 결과표는 지금 확인할 수 있습니다." else "Computing structural-effect bootstrap CIs in a background job. Base result tables are available now.",
-            type = "message", duration = 7
+            shiny::tagList(
+              shiny::tags$strong(if (ko) "SEM 구조효과 부트스트랩을 계산하고 있습니다." else "Computing SEM structural-effect bootstrap intervals."),
+              shiny::tags$div(paste0(format(job$total, big.mark = ","), if (ko) "회 재표집 · 기본 결과표는 지금 확인할 수 있습니다." else " resamples · Base result tables are available now.")),
+              shiny::tags$div(class = "progress structural-bootstrap-progress", shiny::tags$div(class = "progress-bar progress-bar-striped active", role = "progressbar", style = "width: 100%;", if (ko) "준비 중" else "Starting")),
+              shiny::actionButton(paste0(prefix, "_effect_bootstrap_stop"), if (ko) "구조효과 부트스트랩 중단" else "Stop effect bootstrap", class = "btn btn-sm btn-danger")
+            ),
+            type = "message", duration = NULL, id = paste0(prefix, "-effect-bootstrap-progress")
           )
         }
       }
@@ -260,14 +266,55 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
       })
     }
     if (analysis_type %in% c("cbsem", "sem")) {
+      observeEvent(input[[paste0(prefix, "_effect_bootstrap_stop")]], {
+        job <- effect_bootstrap_job()
+        if (is.null(job)) return()
+        if (!is.null(job$process) && job$process$is_alive()) job$process$kill()
+        structural_canvas_cleanup_effect_bootstrap_job(job)
+        effect_bootstrap_job(NULL)
+        bundle <- fit_result()
+        if (!is.null(bundle)) {
+          bundle$effect_bootstrap_pending <- FALSE
+          bundle$effect_bootstrap_result <- NULL
+          bundle$effect_bootstrap_error <- "Canceled by user"
+          fit_result(bundle)
+        }
+        shiny::removeNotification(paste0(prefix, "-effect-bootstrap-progress"))
+        structural_canvas_show_notification(
+          if (identical(statedu_current_language(app_language_fn), "ko")) "SEM 구조효과 부트스트랩을 중단했습니다. 기본 분석 결과는 유지됩니다." else "The SEM structural-effect bootstrap was stopped. Base-model results remain available.",
+          type = "warning", duration = 8
+        )
+      }, ignoreInit = TRUE)
       observe({
         job <- effect_bootstrap_job()
         if (is.null(job) || is.null(job$process)) return()
         if (job$process$is_alive()) {
-          shiny::invalidateLater(700, session)
+          shiny::invalidateLater(500, session)
+          progress <- tryCatch(if (file.exists(job$progress_file)) readRDS(job$progress_file) else NULL, error = function(error) NULL)
+          if (!is.null(progress)) {
+            completed <- as.integer(progress$completed %||% 0L)
+            total <- as.integer(progress$total %||% job$total %||% 0L)
+            valid <- as.integer(progress$valid %||% 0L)
+            percent <- if (total > 0L) max(0, min(100, round(100 * completed / total))) else 0L
+            ko <- identical(statedu_current_language(app_language_fn), "ko")
+            detail <- if (ko) {
+              paste0(percent, "% · ", format(completed, big.mark = ","), "/", format(total, big.mark = ","), "회 · 유효 모형 ", format(valid, big.mark = ","))
+            } else {
+              paste0(percent, "% · ", format(completed, big.mark = ","), "/", format(total, big.mark = ","), " resamples · valid models ", format(valid, big.mark = ","))
+            }
+            structural_canvas_show_notification(
+              shiny::tagList(
+                shiny::tags$strong(if (ko) "SEM 구조효과 부트스트랩 진행 상태" else "SEM structural-effect bootstrap progress"),
+                shiny::tags$div(detail),
+                shiny::tags$div(class = "progress structural-bootstrap-progress", shiny::tags$div(class = "progress-bar progress-bar-striped", role = "progressbar", style = paste0("width: ", percent, "%;"), paste0(percent, "%"))),
+                shiny::actionButton(paste0(prefix, "_effect_bootstrap_stop"), if (ko) "구조효과 부트스트랩 중단" else "Stop effect bootstrap", class = "btn btn-sm btn-danger")
+              ), type = "message", duration = NULL, id = paste0(prefix, "-effect-bootstrap-progress")
+            )
+          }
           return()
         }
         on.exit(structural_canvas_cleanup_effect_bootstrap_job(job), add = TRUE)
+        shiny::removeNotification(paste0(prefix, "-effect-bootstrap-progress"))
         status <- job$process$get_exit_status()
         bundle <- fit_result()
         if (!is.null(bundle)) {

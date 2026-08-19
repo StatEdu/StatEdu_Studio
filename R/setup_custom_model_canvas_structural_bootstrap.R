@@ -209,7 +209,7 @@ structural_canvas_moderated_mediation_indices <- function(result) {
   unique(do.call(rbind, rows))
 }
 
-structural_canvas_effect_bootstrap <- function(snapshot, data, analysis_type, estimator, missing, std_lv, ordered, nominal, residual_variance_fixes, reps = 0L, seed = default_seed(), ci_method = "bias_corrected") {
+structural_canvas_effect_bootstrap <- function(snapshot, data, analysis_type, estimator, missing, std_lv, ordered, nominal, residual_variance_fixes, reps = 0L, seed = default_seed(), ci_method = "bias_corrected", progress = NULL, cancel = NULL) {
   reps <- suppressWarnings(as.integer(reps))
   ci_method <- if (identical(as.character(ci_method %||% "bias_corrected"), "percentile")) "percentile" else "bias_corrected"
   if (!analysis_type %in% c("cbsem", "sem") || !is.data.frame(data) || nrow(data) < 3L || !is.finite(reps) || reps < 2L) return(NULL)
@@ -235,13 +235,21 @@ structural_canvas_effect_bootstrap <- function(snapshot, data, analysis_type, es
     else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) rm(".Random.seed", envir = .GlobalEnv)
   }, add = TRUE)
   set.seed(as.integer(seed))
+  progress_step <- max(1L, floor(reps / 100L))
+  valid_fits <- 0L
+  if (is.function(progress)) progress(0L, reps, valid_fits)
   for (index in seq_len(reps)) {
+    if (is.function(cancel) && isTRUE(cancel())) stop("Structural-effect bootstrap canceled.")
     sampled <- data[sample.int(nrow(data), nrow(data), replace = TRUE), , drop = FALSE]
     fit <- suppressWarnings(tryCatch(
       run_structural_canvas_analysis(snapshot, sampled, analysis_type, estimator, missing, std_lv, ordered, nominal, residual_variance_fixes),
       error = function(error) NULL
     ))
-    if (is.null(fit) || !isTRUE(fit$converged) || !isTRUE(fit$admissible)) next
+    if (is.null(fit) || !isTRUE(fit$converged) || !isTRUE(fit$admissible)) {
+      if (is.function(progress) && (index == 1L || index == reps || index %% progress_step == 0L)) progress(index, reps, valid_fits)
+      next
+    }
+    valid_fits <- valid_fits + 1L
     estimates <- lavaan::parameterEstimates(fit$fit)
     estimates <- estimates[estimates$op %in% c("~", ":="), c("lhs", "op", "rhs", "est"), drop = FALSE]
     moderated <- structural_canvas_moderated_mediation_indices(fit)
@@ -255,6 +263,7 @@ structural_canvas_effect_bootstrap <- function(snapshot, data, analysis_type, es
       standardized_match <- match(keys, standardized_keys)
       standardized_draws[index, !is.na(standardized_match)] <- standardized$est.std[standardized_match[!is.na(standardized_match)]]
     }
+    if (is.function(progress) && (index == 1L || index == reps || index %% progress_step == 0L)) progress(index, reps, valid_fits)
   }
   rows <- lapply(seq_along(keys), function(column) {
     values <- draws[, column]
@@ -272,12 +281,21 @@ structural_canvas_effect_bootstrap <- function(snapshot, data, analysis_type, es
   do.call(rbind, rows)
 }
 
+structural_canvas_write_effect_bootstrap_progress <- function(progress_file, completed, total, valid = 0L, phase = "resampling") {
+  saveRDS(list(
+    phase = as.character(phase), completed = as.integer(completed), total = as.integer(total),
+    valid = as.integer(valid), updated_at = Sys.time()
+  ), progress_file)
+  invisible(NULL)
+}
+
 structural_canvas_start_effect_bootstrap_job <- function(snapshot, data, analysis_type, estimator, missing, std_lv, ordered, nominal, residual_variance_fixes, reps = 0L, seed = default_seed(), ci_method = "bias_corrected") {
   stopifnot(requireNamespace("callr", quietly = TRUE))
   job_dir <- tempfile("statedu-effect-bootstrap-")
   dir.create(job_dir, recursive = TRUE, showWarnings = FALSE)
   input_file <- file.path(job_dir, "input.rds")
   result_file <- file.path(job_dir, "result.rds")
+  progress_file <- file.path(job_dir, "progress.rds")
   error_file <- file.path(job_dir, "error.txt")
   saveRDS(
     list(
@@ -289,8 +307,9 @@ structural_canvas_start_effect_bootstrap_job <- function(snapshot, data, analysi
     ),
     input_file
   )
+  structural_canvas_write_effect_bootstrap_progress(progress_file, 0L, as.integer(reps), 0L, "starting")
   process <- callr::r_bg(
-    func = function(input_file, result_file, error_file, project_dir) {
+    func = function(input_file, result_file, progress_file, error_file, project_dir) {
       tryCatch({
         setwd(project_dir)
         source(file.path("R", "app_bootstrap.R"), encoding = "UTF-8")
@@ -300,9 +319,14 @@ structural_canvas_start_effect_bootstrap_job <- function(snapshot, data, analysi
         value <- structural_canvas_effect_bootstrap(
           args$snapshot, args$data, args$analysis_type, args$estimator, args$missing,
           args$std_lv, args$ordered, args$nominal, args$residual_variance_fixes,
-          args$reps, args$seed, args$ci_method
+          args$reps, args$seed, args$ci_method,
+          progress = function(done, total, valid) structural_canvas_write_effect_bootstrap_progress(progress_file, done, total, valid, "resampling")
         )
         saveRDS(value, result_file)
+        valid_values <- if (is.data.frame(value) && "valid" %in% names(value)) suppressWarnings(as.integer(value$valid)) else integer(0)
+        valid_values <- valid_values[is.finite(valid_values)]
+        valid <- if (length(valid_values)) min(valid_values) else 0L
+        structural_canvas_write_effect_bootstrap_progress(progress_file, args$reps, args$reps, valid, "complete")
       }, error = function(error) {
         writeLines(conditionMessage(error), error_file, useBytes = TRUE)
         quit(status = 1L, save = "no")
@@ -312,14 +336,15 @@ structural_canvas_start_effect_bootstrap_job <- function(snapshot, data, analysi
     args = list(
       input_file = input_file,
       result_file = result_file,
+      progress_file = progress_file,
       error_file = error_file,
       project_dir = normalizePath(".", winslash = "/", mustWork = TRUE)
     ),
     supervise = TRUE
   )
   list(
-    process = process, directory = job_dir, result_file = result_file,
-    error_file = error_file, started_at = Sys.time(), reps = as.integer(reps)
+    process = process, directory = job_dir, result_file = result_file, progress_file = progress_file,
+    error_file = error_file, started_at = Sys.time(), reps = as.integer(reps), total = as.integer(reps)
   )
 }
 
