@@ -67,10 +67,10 @@ Development package status: Automated package checks passed after the CFA captur
 Product: StatEdu Studio Dev
 Version: 1.2.3-dev
 Installer: C:\StatEdu\Studio\dist\electron\StatEdu_Studio_Dev_Setup_1.2.3-dev.exe
-Installer SHA256: A39E435240E8B2F3E841FA610036D86A1BA4084D2596B691872E06D859DD561E
-Installer bytes: 331284693
-Blockmap SHA256: 23DBC0289B92DCBB3B2D411E147A4F0EA9AD316B2173423B1E1A759DF40DFE9B
-Blockmap bytes: 333580
+Installer SHA256: 5548D7D9EAF10A864B8E53E1A72D6342C926CAAD595653D578E095477057D6EA
+Installer bytes: 331285464
+Blockmap SHA256: 9F17395FDAAAB73C44874202899CAB7F4D58F2520AA46990EF11FB26CB4C6D59
+Blockmap bytes: 333701
 Electron: 43.4.0
 electron-builder: 26.15.3
 R runtime: R-4.5.3
@@ -92,5 +92,7 @@ Validation date: 2026-08-19
 | CFA high-order-factor affordance | Pass | The canvas toolbar visibly identifies the control with `2nd`, `Factor`, and `고차요인`, rather than relying on an unlabeled icon. |
 | CFA result downloads | Pass | After analysis, Audit JSON, reproducibility record, and Excel result-table links were visible, enabled, and backed by session download URLs. |
 | CFA bootstrap CI defaults | Pass | HTMT output rendered bias-corrected (BC) intervals with 5,000/5,000 valid replicates. AVE/reliability bootstrap now also defaults to BC; percentile and slower BCa remain selectable sensitivity options. `scripts\validate_cfa_all.R` covers BC, percentile/BCa support, progress callbacks, cancellation, exports, and external-reference comparisons. |
+| Packaged CFA bootstrap progress | Pass | The rebuilt packaged Shiny resources displayed the standard progress panel during a 500-resample BC reliability run, including a determinate bar and live `completed/requested` plus valid-replicate counts (observed at 15/500 and 25/500). |
+| Packaged CFA bootstrap cancel control | Pending | CFA reliability, HTMT, and Bollen-Stine bootstrap loops are still synchronous. Cooperative cancellation is covered at function level, but a usable UI stop control requires moving these jobs to a background process so the Shiny session can receive the stop event. |
 
-Development package status: Automated structure and lifecycle checks pass, and the source-app CFA workflow has completed focused browser QA. Packaged-app bootstrap progress/cancel presentation and the remaining SEM-specific visual workflows still require focused QA before public promotion.
+Development package status: Automated structure and lifecycle checks pass, and source plus packaged-resource CFA workflows have completed focused browser QA. CFA bootstrap progress is verified; background cancellation and the remaining SEM-specific visual workflows still require focused work before public promotion.
