@@ -127,6 +127,7 @@ stopifnot(
   grepl("if (action === \"autoLayout\") applicable = hasCanvasContent;", toolbar_js_source, fixed = TRUE),
   grepl("if (action === \"autoLayout\") window.StatEduModelCanvas.canvas.autoLayout(instance);", toolbar_js_source, fixed = TRUE),
   grepl("_reliability_ci_method", ui_source, fixed = TRUE),
+  grepl('selected = "bias_corrected"', ui_source, fixed = TRUE),
   grepl("_htmt_ci_method", ui_source, fixed = TRUE),
   grepl("structural_canvas_register_validity_outputs(\n    output, prefix, analysis_type, fit_result, manuscript_result_table, app_language_fn", ui_source, fixed = TRUE),
   grepl("structural_canvas_register_latent_correlation_outputs(output, prefix, fit_result, app_language_fn)", ui_source, fixed = TRUE),

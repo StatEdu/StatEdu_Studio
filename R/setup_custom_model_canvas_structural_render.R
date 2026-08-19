@@ -42,7 +42,7 @@ structural_canvas_reporting_bootstrap_label <- function(bundle, analysis_type) {
     htmt_r <- suppressWarnings(as.integer(bundle$htmt_bootstrap %||% 0L))
     bs_r <- suppressWarnings(as.integer(bundle$bollen_stine_bootstrap %||% 0L))
     if (is.finite(rel_r) && rel_r > 0L) {
-      requested <- c(requested, paste0("Reliability/AVE R=", rel_r, ", CI=", bundle$reliability_ci_method %||% "percentile", ", seed=", bundle$reliability_seed %||% "not recorded"))
+      requested <- c(requested, paste0("Reliability/AVE R=", rel_r, ", CI=", bundle$reliability_ci_method %||% "bias_corrected", ", seed=", bundle$reliability_seed %||% "not recorded"))
     }
     if (is.finite(htmt_r) && htmt_r > 0L) {
       requested <- c(requested, paste0("HTMT R=", htmt_r, ", CI=", bundle$htmt_ci_method %||% "bias_corrected", ", seed=", bundle$htmt_seed %||% "not recorded"))

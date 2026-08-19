@@ -67,12 +67,13 @@ structural_canvas_mahalanobis_diagnostics <- function(data, variables, alpha = .
   distances <- rowSums((centered %*% inverse) * centered)
   pvalues <- stats::pchisq(distances, df = p, lower.tail = FALSE)
   flagged <- pvalues < alpha
+  flagged_n <- sum(flagged)
   table <- data.frame(
-    Row = complete_rows[flagged], Mahalanobis = distances[flagged], df = p,
+    Row = complete_rows[flagged], Mahalanobis = distances[flagged], df = rep.int(p, flagged_n),
     p = pvalues[flagged], stringsAsFactors = FALSE
   )
   if (nrow(table)) table <- table[order(-table$Mahalanobis), , drop = FALSE]
-  list(available = TRUE, n = nrow(values), p = p, alpha = alpha, flagged_n = sum(flagged), table = table)
+  list(available = TRUE, n = nrow(values), p = p, alpha = alpha, flagged_n = flagged_n, table = table)
 }
 
 structural_canvas_mardia <- function(data, variables, max_n = 2000L, seed = 20260818L) {

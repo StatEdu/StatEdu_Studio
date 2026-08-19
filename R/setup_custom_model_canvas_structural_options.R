@@ -175,8 +175,8 @@ structural_analysis_options_panel <- function(analysis_type = "cbsem", language 
           if (identical(analysis_type, "cfa")) selectInput(
             paste0(structural_analysis_prefix(analysis_type), "_reliability_ci_method"),
             if (ko) "AVE/reliability CI method" else "AVE/reliability CI method",
-            choices = c("Percentile" = "percentile", "BCa (slower)" = "bca"),
-            selected = "percentile"
+            choices = c("Bias-corrected (BC)" = "bias_corrected", "Percentile" = "percentile", "BCa (slower)" = "bca"),
+            selected = "bias_corrected"
           ),
           if (identical(analysis_type, "cfa")) selectInput(
             paste0(structural_analysis_prefix(analysis_type), "_bollen_stine_bootstrap"),

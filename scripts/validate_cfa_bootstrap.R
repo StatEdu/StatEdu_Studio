@@ -34,6 +34,7 @@ reliability_cancel_error <- tryCatch({
 }, error = conditionMessage)
 stopifnot(
   nrow(reliability_bootstrap) == 4L,
+  all(reliability_bootstrap[["CI method"]] == "Bias-corrected (BC)"),
   all(reliability_bootstrap[["Requested replicates"]] == 12L),
   all(reliability_bootstrap[["Valid replicates"]] > 0L),
   reliability_progress_events[[1L]][["done"]] == 0L,

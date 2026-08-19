@@ -99,7 +99,7 @@ structural_canvas_execute_settings <- function(settings, input, prefix) {
     },
     reliability_bootstrap = reliability_bootstrap,
     reliability_seed = reliability_seed,
-    reliability_ci_method = structural_canvas_bootstrap_ci_method(settings$reliability_ci_method %||% input[[paste0(prefix, "_reliability_ci_method")]] %||% "percentile"),
+    reliability_ci_method = structural_canvas_bootstrap_ci_method(settings$reliability_ci_method %||% input[[paste0(prefix, "_reliability_ci_method")]] %||% "bias_corrected"),
     bollen_stine_bootstrap = bollen_stine_bootstrap,
     bollen_stine_seed = bollen_stine_seed,
     effect_bootstrap = effect_bootstrap,

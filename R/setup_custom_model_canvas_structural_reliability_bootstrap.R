@@ -8,7 +8,7 @@ structural_canvas_normalize_missing_option <- function(value) {
   value
 }
 
-structural_canvas_reliability_bootstrap <- function(syntax, data, reps = 500L, confidence = .95, seed = default_seed(), estimator = "ML", missing = "fiml", std_lv = FALSE, ordered = character(0), formula_mode = "standardized", original_fit = NULL, ci_method = "percentile", progress = NULL, cancel = NULL) {
+structural_canvas_reliability_bootstrap <- function(syntax, data, reps = 500L, confidence = .95, seed = default_seed(), estimator = "ML", missing = "fiml", std_lv = FALSE, ordered = character(0), formula_mode = "standardized", original_fit = NULL, ci_method = "bias_corrected", progress = NULL, cancel = NULL) {
   reps <- as.integer(reps)
   ci_method <- structural_canvas_bootstrap_ci_method(ci_method)
   if (!is.finite(reps) || reps < 1L) stop("Reliability bootstrap requires at least one resample.")
@@ -122,6 +122,11 @@ structural_canvas_reliability_bootstrap <- function(syntax, data, reps = 500L, c
       jackknife_finite <- if (nrow(jackknife)) jackknife[jackknife$Factor == factor, statistic, drop = TRUE] else numeric(0)
       interval <- if (identical(ci_method, "bca")) {
         structural_canvas_bca_interval(finite, original_value, jackknife_finite, confidence)
+      } else if (identical(ci_method, "bias_corrected") && length(finite)) {
+        c(
+          structural_canvas_bias_corrected_quantile(finite, original_value, alpha),
+          structural_canvas_bias_corrected_quantile(finite, original_value, 1 - alpha)
+        )
       } else if (length(finite)) {
         c(
           unname(stats::quantile(finite, alpha, names = FALSE)),
@@ -132,7 +137,7 @@ structural_canvas_reliability_bootstrap <- function(syntax, data, reps = 500L, c
         Lower = interval[[1L]], Upper = interval[[2L]],
         `CI method` = if (identical(ci_method, "bca")) {
           if (all(is.finite(interval))) "BCa" else "BCa unavailable"
-        } else "Percentile",
+        } else if (identical(ci_method, "bias_corrected")) "Bias-corrected (BC)" else "Percentile",
         `Valid replicates` = length(finite), `Requested replicates` = reps,
         `Valid %` = 100 * length(finite) / reps,
         Status = structural_canvas_bootstrap_status(length(finite), reps),

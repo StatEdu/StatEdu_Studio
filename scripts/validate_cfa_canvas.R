@@ -87,7 +87,7 @@ stopifnot(
   grepl("CFA analysis reproducibility record", reproducibility_record, fixed = TRUE),
   grepl("Analysis context: Prespecified/original model.", reproducibility_record, fixed = TRUE),
   grepl("Estimator: ML", reproducibility_record, fixed = TRUE),
-  grepl("CI method: percentile", reproducibility_record, fixed = TRUE),
+  grepl("CI method: bias_corrected", reproducibility_record, fixed = TRUE),
   grepl("eta1 =~ x1 + x2 + x3", reproducibility_record, fixed = TRUE),
   grepl("lavaan version:", reproducibility_record, fixed = TRUE)
 )
@@ -429,6 +429,8 @@ outlier_fixture <- continuous
 outlier_fixture[1L, ] <- outlier_fixture[1L, ] + 20
 outlier_diagnostics <- structural_canvas_mahalanobis_diagnostics(outlier_fixture, names(outlier_fixture), alpha = .001)
 stopifnot(isTRUE(outlier_diagnostics$available), outlier_diagnostics$flagged_n >= 1L, 1L %in% outlier_diagnostics$table$Row)
+no_outlier_diagnostics <- structural_canvas_mahalanobis_diagnostics(continuous, names(continuous), alpha = 0)
+stopifnot(isTRUE(no_outlier_diagnostics$available), identical(no_outlier_diagnostics$flagged_n, 0L), nrow(no_outlier_diagnostics$table) == 0L)
 
 fit_good <- structural_canvas_fit_guidance(c(10, 10, .4, 1, .96, .95, .07, .05, .03, .07))
 stopifnot(identical(as.character(fit_good$Guidance), rep("Reference only", 4L)))
