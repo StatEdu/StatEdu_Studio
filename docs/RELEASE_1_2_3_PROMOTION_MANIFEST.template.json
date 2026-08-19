@@ -16,6 +16,7 @@
     "external_run_record": "docs/evidence/release_1_2_3/pls/external_run.json",
     "packaged_validation_record": "docs/RELEASE_1_2_3_PACKAGED_VALIDATION_NOTES.md",
     "manual_qa_record": "docs/RELEASE_1_2_3_MANUAL_QA_RECORD.md",
+    "approval_record": "docs/RELEASE_1_2_3_APPROVAL_RECORD.md",
     "public_notes": "docs/RELEASE_1_2_3_PUBLIC_NOTES_DRAFT.md",
     "installer": "dist/electron/StatEdu_Studio_Setup_1.2.3.exe",
     "blockmap": "dist/electron/StatEdu_Studio_Setup_1.2.3.exe.blockmap"

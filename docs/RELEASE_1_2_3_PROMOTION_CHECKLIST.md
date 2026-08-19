@@ -43,6 +43,7 @@ This checklist promotes `1.2.3-dev` to public `1.2.3`. It does not modify or sup
 
 ## Gate 5: Approval and publication
 
+- Complete `docs/RELEASE_1_2_3_APPROVAL_RECORD.md` for the exact release commit and installer/blockmap hashes; automated checks never imply approval.
 - Create `docs/evidence/release_1_2_3/promotion_manifest.json` from the template and set a gate to true only after its evidence exists.
 - After the tracked `VERSION` file and release metadata are finalized as `1.2.3`, run `scripts/validate_sem_release_promotion.R`; it must pass.
 - Record approver and approval time.

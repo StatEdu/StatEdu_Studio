@@ -25,6 +25,7 @@ Use this checklist before creating a public beta installer, release candidate, o
 - Before publishing 1.2.3, run `scripts\validate_sem_release_promotion.R`; it must independently recompute the external PLS/PLSc comparison and verify the evidence and package checksums.
 - Complete `docs/RELEASE_1_2_3_VERSION_BUMP_CHECKLIST.md` before changing the 1.2.3 development metadata, and run `scripts\validate_sem_public_claims.R` before finalizing public release text.
 - For public 1.2.3, complete `docs/RELEASE_1_2_3_PACKAGED_VALIDATION_NOTES.md` and `docs/RELEASE_1_2_3_MANUAL_QA_RECORD.md` against the same checksum-recorded final installer.
+- Record explicit 1.2.3 publication authorization in `docs/RELEASE_1_2_3_APPROVAL_RECORD.md`; passing automation is not authorization to publish.
 
 ## Brand and Compatibility
 

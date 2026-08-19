@@ -40,6 +40,27 @@ promotion_read_fit_csv <- function(path, label) {
   invisible(value)
 }
 
+promotion_validate_approval_record <- function(text, manifest, packaged_commit, comparison_sha256) {
+  promotion_require(identical(promotion_record_field(text, "Target version"), "1.2.3"), "Approval record target version must be 1.2.3.")
+  promotion_require(identical(tolower(promotion_record_field(text, "Publication approval status")), "approved"), "Publication approval record status must be Approved.")
+  promotion_require(!grepl("| Pending |", text, fixed = TRUE), "Publication approval record still contains Pending rows.")
+  promotion_require(!grepl("| Fail |", text, fixed = TRUE), "Publication approval record still contains Fail rows.")
+  approved_by <- promotion_record_field(text, "Approved by")
+  approver_role <- promotion_record_field(text, "Approver role")
+  approval_time <- promotion_record_field(text, "Approval time")
+  promotion_require(nzchar(approved_by), "Publication approver is missing from the approval record.")
+  promotion_require(nzchar(approver_role), "Publication approver role is missing from the approval record.")
+  promotion_require(grepl("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(Z|[+-]\\d{2}:\\d{2})$", approval_time), "Publication approval time must use ISO 8601 with a timezone.")
+  promotion_require(identical(approved_by, trimws(as.character(manifest$approval$approved_by %||% ""))), "Approval-record approver does not match the promotion manifest.")
+  promotion_require(identical(approval_time, trimws(as.character(manifest$approval$approved_at %||% ""))), "Approval-record time does not match the promotion manifest.")
+  promotion_require(identical(promotion_record_field(text, "Approved release commit"), packaged_commit), "Approved release commit does not match packaged validation.")
+  promotion_require(identical(toupper(promotion_record_field(text, "Approved installer SHA-256")), toupper(as.character(manifest$checksums$installer_sha256))), "Approved installer SHA-256 does not match the promotion manifest.")
+  promotion_require(identical(toupper(promotion_record_field(text, "Approved blockmap SHA-256")), toupper(as.character(manifest$checksums$blockmap_sha256))), "Approved blockmap SHA-256 does not match the promotion manifest.")
+  promotion_require(identical(toupper(promotion_record_field(text, "PLS comparison SHA-256")), toupper(as.character(comparison_sha256))), "Approved PLS comparison SHA-256 does not match the external evidence.")
+  promotion_require(identical(promotion_record_field(text, "Release tag"), "v1.2.3"), "Approval record release tag must be v1.2.3.")
+  invisible(TRUE)
+}
+
 promotion_validate_public_manifest <- function(manifest_path) {
   promotion_require(file.exists(manifest_path), paste0(
     "Public 1.2.3 promotion is blocked: create ", manifest_path,
@@ -56,7 +77,7 @@ promotion_validate_public_manifest <- function(manifest_path) {
   incomplete <- required_gates[!vapply(manifest$gates[required_gates], isTRUE, logical(1))]
   promotion_require(!length(incomplete), paste0("Public 1.2.3 promotion gate(s) remain incomplete: ", paste(incomplete, collapse = ", "), "."))
 
-  required_evidence <- c("statedu_fit", "external_fit", "comparison", "external_run_record", "packaged_validation_record", "manual_qa_record", "public_notes", "installer", "blockmap")
+  required_evidence <- c("statedu_fit", "external_fit", "comparison", "external_run_record", "packaged_validation_record", "manual_qa_record", "approval_record", "public_notes", "installer", "blockmap")
   missing_evidence_keys <- setdiff(required_evidence, names(manifest$evidence))
   promotion_require(!length(missing_evidence_keys), paste0("Promotion manifest is missing evidence path(s): ", paste(missing_evidence_keys, collapse = ", "), "."))
   evidence_paths <- unlist(manifest$evidence[required_evidence], use.names = TRUE)
@@ -151,6 +172,8 @@ promotion_validate_public_manifest <- function(manifest_path) {
   promotion_require(identical(toupper(promotion_record_field(packaged_validation, "Blockmap SHA-256")), toupper(as.character(manifest$checksums$blockmap_sha256))), "Packaged validation blockmap SHA-256 does not match the promotion manifest.")
   promotion_require(nzchar(trimws(as.character(manifest$approval$approved_by %||% ""))), "Promotion approver is missing.")
   promotion_require(nzchar(trimws(as.character(manifest$approval$approved_at %||% ""))), "Promotion approval time is missing.")
+  approval_record <- promotion_read_text(evidence_paths[["approval_record"]])
+  promotion_validate_approval_record(approval_record, manifest, promotion_record_field(packaged_validation, "Git commit"), external_run$comparison_sha256)
   invisible(TRUE)
 }
 
@@ -162,6 +185,7 @@ checklist <- promotion_read_text("docs/RELEASE_1_2_3_PROMOTION_CHECKLIST.md")
 public_notes <- promotion_read_text("docs/RELEASE_1_2_3_PUBLIC_NOTES_DRAFT.md")
 manual_qa_template <- promotion_read_text("docs/RELEASE_1_2_3_MANUAL_QA_RECORD.md")
 packaged_validation_template <- promotion_read_text("docs/RELEASE_1_2_3_PACKAGED_VALIDATION_NOTES.md")
+approval_template <- promotion_read_text("docs/RELEASE_1_2_3_APPROVAL_RECORD.md")
 template <- jsonlite::fromJSON("docs/RELEASE_1_2_3_PROMOTION_MANIFEST.template.json", simplifyVector = TRUE)
 external_run_template <- jsonlite::fromJSON("docs/RELEASE_1_2_3_EXTERNAL_PLS_RUN.template.json", simplifyVector = TRUE)
 
@@ -184,6 +208,8 @@ if (identical(version, "1.2.3")) {
   promotion_require(!grepl("| Pass |", manual_qa_template, fixed = TRUE), "Development manual QA template must not contain final-package Pass rows.")
   promotion_require(grepl("Overall status: blocked / pending final public package", packaged_validation_template, fixed = TRUE), "Development packaged validation record must remain blocked pending the final public package.")
   promotion_require(!grepl("| Pass |", packaged_validation_template, fixed = TRUE), "Development packaged validation template must not contain final-package Pass rows.")
+  promotion_require(grepl("Overall status: blocked / pending explicit publication approval", approval_template, fixed = TRUE), "Development publication approval record must remain blocked pending explicit approval.")
+  promotion_require(!grepl("| Pass |", approval_template, fixed = TRUE), "Development publication approval record must not contain Pass rows.")
   missing_manifest_error <- try(promotion_validate_public_manifest(tempfile("missing-promotion-manifest-", fileext = ".json")), silent = TRUE)
   promotion_require(inherits(missing_manifest_error, "try-error") && grepl("Public 1.2.3 promotion is blocked", as.character(missing_manifest_error), fixed = TRUE), "Public promotion validator must fail closed when the manifest is absent.")
   dummy_evidence <- tempfile("promotion-dummy-evidence-", fileext = ".txt")
@@ -199,6 +225,7 @@ if (identical(version, "1.2.3")) {
       statedu_fit = dummy_evidence, external_fit = dummy_evidence, comparison = dummy_evidence,
       external_run_record = dummy_evidence, packaged_validation_record = "docs/RELEASE_1_2_3_PACKAGED_VALIDATION_NOTES.md",
       manual_qa_record = "docs/RELEASE_1_2_3_MANUAL_QA_RECORD.md",
+      approval_record = "docs/RELEASE_1_2_3_APPROVAL_RECORD.md",
       public_notes = dummy_evidence, installer = dummy_evidence, blockmap = dummy_evidence
     ),
     checksums = list(installer_sha256 = "", blockmap_sha256 = ""),
@@ -218,6 +245,23 @@ if (identical(version, "1.2.3")) {
   package_gate_error <- try(promotion_validate_public_manifest(pending_package_manifest), silent = TRUE)
   unlink(c(dummy_evidence, manual_gate_manifest, dummy_manual_qa, pending_package_manifest), force = TRUE)
   promotion_require(inherits(package_gate_error, "try-error") && grepl("Packaged validation final status must be Pass", as.character(package_gate_error), fixed = TRUE), "Public promotion validator must reject a Pending packaged validation record.")
+  synthetic_manifest <- list(
+    checksums = list(installer_sha256 = paste(rep("A", 64L), collapse = ""), blockmap_sha256 = paste(rep("B", 64L), collapse = "")),
+    approval = list(approved_by = "Test Approver", approved_at = "2026-08-19T22:30:00+09:00")
+  )
+  synthetic_comparison_sha256 <- paste(rep("C", 64L), collapse = "")
+  pending_approval_error <- try(promotion_validate_approval_record(approval_template, synthetic_manifest, "abc123", synthetic_comparison_sha256), silent = TRUE)
+  promotion_require(inherits(pending_approval_error, "try-error") && grepl("Publication approval record status must be Approved", as.character(pending_approval_error), fixed = TRUE), "Public promotion validator must reject a Pending approval record.")
+  synthetic_approval <- paste(c(
+    "Target version: 1.2.3", "Publication approval status: Approved",
+    "Approved by: Test Approver", "Approver role: Release owner", "Approval time: 2026-08-19T22:30:00+09:00",
+    "Approved release commit: abc123",
+    paste0("Approved installer SHA-256: ", synthetic_manifest$checksums$installer_sha256),
+    paste0("Approved blockmap SHA-256: ", synthetic_manifest$checksums$blockmap_sha256),
+    paste0("PLS comparison SHA-256: ", synthetic_comparison_sha256),
+    "Release tag: v1.2.3"
+  ), collapse = "\n")
+  promotion_validate_approval_record(synthetic_approval, synthetic_manifest, "abc123", synthetic_comparison_sha256)
   cat("SEM 1.2.3 public-promotion gate is armed; development version remains blocked from public promotion.\n")
 } else {
   cat("SEM 1.2.3 public-promotion gate not applicable to version ", version, ".\n", sep = "")

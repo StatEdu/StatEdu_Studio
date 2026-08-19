@@ -190,6 +190,18 @@ if (is_development_version) {
   assert_not_contains(packaged_validation_123, "| Pass |", "1.2.3 premature packaged validation Pass row")
 }
 
+approval_record_123 <- read_text("docs/RELEASE_1_2_3_APPROVAL_RECORD.md")
+assert_contains(approval_record_123, "StatEdu Studio 1.2.3 Publication Approval Record", "1.2.3 publication approval title")
+assert_contains(approval_record_123, "Automated success does not constitute approval", "1.2.3 human approval boundary")
+assert_contains(approval_record_123, "Publication approval status:", "1.2.3 approval status field")
+assert_contains(approval_record_123, "Approved release commit:", "1.2.3 approved commit field")
+assert_contains(approval_record_123, "Approved installer SHA-256:", "1.2.3 approved installer hash field")
+assert_contains(approval_record_123, "ISO 8601 with a timezone", "1.2.3 approval time format")
+if (is_development_version) {
+  assert_contains(approval_record_123, "Overall status: blocked / pending explicit publication approval", "1.2.3 blocked approval status")
+  assert_not_contains(approval_record_123, "| Pass |", "1.2.3 premature approval Pass row")
+}
+
 release_readiness <- read_text("docs/RELEASE_READINESS_STATUS.md")
 if (is_development_version) {
   assert_contains(release_readiness, paste0("Current version: ", readme_public), "release readiness current public version")

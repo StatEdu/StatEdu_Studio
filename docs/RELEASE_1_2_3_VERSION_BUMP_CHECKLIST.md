@@ -49,6 +49,7 @@ After packaging, rerun the full 1.2.3 manual QA record against the checksum-reco
 ## Publication boundary
 
 - Record the exact commit, installer/blockmap hashes, QA sign-off, approver, and approval time before upload.
+- Complete `docs/RELEASE_1_2_3_APPROVAL_RECORD.md` and ensure its approver, ISO-8601 approval time, commit, tag, and hashes match the promotion manifest.
 - Upload only the artifacts whose hashes match the promotion manifest.
 - Keep the pull request/release in draft state until explicit publication approval is recorded.
 - Never infer approval from passing automated checks.
