@@ -67,10 +67,10 @@ Development package status: Automated package checks passed after the CFA captur
 Product: StatEdu Studio Dev
 Version: 1.2.3-dev
 Installer: C:\StatEdu\Studio\dist\electron\StatEdu_Studio_Dev_Setup_1.2.3-dev.exe
-Installer SHA256: 899F540707DE1D47A8D3BC5CDFC1A719E07F6A5D1DECBFDEDFBE3BB1284EE900
-Installer bytes: 331289041
-Blockmap SHA256: 06D82DA3D9BD63ACB61E24CF2E59F9E4B5C2680C500BE7D25F38F52DEB60A946
-Blockmap bytes: 333609
+Installer SHA256: 6133064C74914AE66A9318D98CBD311EC1BCE21C12F27979F2A1E749C40CF05B
+Installer bytes: 331291142
+Blockmap SHA256: CDE36F9EF3A096A37C54E72E4DC4CFE6BA5DDF11ABAE97FA93A56115A41D2E9D
+Blockmap bytes: 333582
 Electron: 43.4.0
 electron-builder: 26.15.3
 R runtime: R-4.5.3
@@ -94,5 +94,8 @@ Validation date: 2026-08-19
 | CFA bootstrap CI defaults | Pass | HTMT output rendered bias-corrected (BC) intervals with 5,000/5,000 valid replicates. AVE/reliability bootstrap now also defaults to BC; percentile and slower BCa remain selectable sensitivity options. `scripts\validate_cfa_all.R` covers BC, percentile/BCa support, progress callbacks, cancellation, exports, and external-reference comparisons. |
 | Packaged CFA bootstrap progress | Pass | The rebuilt packaged Shiny resources displayed the standard progress panel during a 500-resample BC reliability run, including a determinate bar and live `completed/requested` plus valid-replicate counts (observed at 15/500 and 25/500). |
 | CFA bootstrap background progress and cancel | Pass | CFA reliability, Bollen-Stine, and HTMT bootstraps run in a supervised background R process. Source and rebuilt packaged-resource browser QA confirmed that base CFA results appear immediately, a determinate combined progress panel exposes the active phase and completed/requested count, the Stop button terminates the worker, and base results remain visible after cancellation. Packaged QA exercised the default 5,000-resample HTMT job and confirmed worker cleanup. |
+| Packaged SEM concurrent bootstrap progress and cancel | Pass | Final packaged-app browser QA ran a three-factor, nine-indicator SEM with 180 observations. Base results appeared before the 5,000-resample jobs completed; independent progress panels were visible for HTMT and structural effects, and each live Stop button terminated only its own worker while the model overview, fit, paths, validity, and point estimates remained available. |
+| SEM cancellation semantics | Pass | HTMT and structural-effect result sections distinguish user cancellation from estimation failure. The final package displayed explicit user-stopped messages for both jobs and did not retain the former `could not be estimated` or `Canceled by user` failure wording. |
+| Packaged lifecycle cleanup robustness | Pass | The lifecycle smoke uses shared-read access for the live startup log, accepts either the explicit Shiny-ready marker or the bundled loopback listening marker before renderer load, aligns its startup timeout with the 180-second product limit, always executes final cleanup, and finished with zero packaged Electron/R processes. |
 
-Development package status: Automated structure and lifecycle checks pass, and CFA background progress/cancellation pass both source and rebuilt packaged-resource browser QA. The remaining SEM-specific visual workflows still require focused work before public promotion.
+Development package status: Automated SEM/CFA structure, bootstrap, release, and lifecycle checks pass. Final packaged-app browser QA confirms concurrent SEM HTMT/structural-effect progress, independent cancellation, accurate cancellation messaging, retained base results, and zero packaged-process residue after cleanup.

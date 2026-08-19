@@ -49,7 +49,10 @@ variable_table <- data.frame(name = names(data), measurement = "scale", stringsA
 notification_source <- readLines(file.path("R", "setup_custom_model_canvas_structural_execute_notifications.R"), warn = FALSE, encoding = "UTF-8")
 pls_engine_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_pls_engine.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 handler_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_handlers.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+htmt_render_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_render_htmt.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+reliability_bootstrap_render_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_render_reliability_bootstrap.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 fit_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_render_fit.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+render_source <- paste(readLines(file.path("R", "setup_custom_model_canvas_structural_render.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 fit_benchmark_observed <- matrix(c(1, .4, .2, .4, 1, .3, .2, .3, 1), 3L, 3L)
 fit_benchmark_implied <- matrix(c(1, .35, .15, .35, 1, .25, .15, .25, 1), 3L, 3L)
 fit_benchmark <- structural_canvas_pls_matrix_fit_indices(fit_benchmark_observed, fit_benchmark_implied)
@@ -82,6 +85,11 @@ sem_capture <- local({
 })
 stopifnot(is.list(sem_capture$snapshot), length(sem_capture$snapshot$nodes) == length(snapshot$nodes), isTRUE(sem_capture$auto_run))
 stopifnot(
+  grepl("bundle$cfa_bootstrap_canceled <- TRUE", handler_source, fixed = TRUE),
+  grepl("bundle$effect_bootstrap_canceled <- TRUE", handler_source, fixed = TRUE),
+  grepl("The HTMT bootstrap was stopped by the user. Point estimates and base-model results remain available.", htmt_render_source, fixed = TRUE),
+  grepl("The AVE/reliability bootstrap was stopped by the user. Point estimates and base-model results remain available.", reliability_bootstrap_render_source, fixed = TRUE),
+  grepl("The structural-effect bootstrap was stopped by the user. Base-model results and point estimates remain available.", render_source, fixed = TRUE),
   grepl("PLS structural model effects", ui_source, fixed = TRUE),
   grepl("2. PLS/PLSc model fit diagnostics", ui_source, fixed = TRUE),
   grepl("3. PLS structural model effects", ui_source, fixed = TRUE),
@@ -150,6 +158,7 @@ stopifnot(
   grepl('paste0(prefix, "_effect_bootstrap_stop")', handler_source, fixed = TRUE),
   grepl('paste0(prefix, "-effect-bootstrap-progress")', handler_source, fixed = TRUE),
   grepl("SEM structural-effect bootstrap progress", handler_source, fixed = TRUE),
+  grepl("Shiny.setInputValue('%s', Date.now(), {priority: 'event'})", handler_source, fixed = TRUE),
   !grepl("Latent covariance, factor-score, HTMT, and lavaan delta-method diagnostics are not displayed", ui_source, fixed = TRUE)
 )
 

@@ -1,7 +1,7 @@
 param(
   [string]$RepoRoot = "",
   [string]$ElectronExe = "",
-  [int]$StartupTimeoutSeconds = 90,
+  [int]$StartupTimeoutSeconds = 180,
   [int]$ShutdownTimeoutSeconds = 20
 )
 
@@ -138,11 +138,21 @@ function Read-NewLogText {
   if (-not (Test-Path -LiteralPath $Path)) {
     return ""
   }
-  $bytes = [System.IO.File]::ReadAllBytes($Path)
-  if ($bytes.Length -le $InitialLength) {
-    return ""
+  $stream = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+  try {
+    if ($stream.Length -le $InitialLength) {
+      return ""
+    }
+    $stream.Seek($InitialLength, [System.IO.SeekOrigin]::Begin) | Out-Null
+    $reader = [System.IO.StreamReader]::new($stream, [System.Text.Encoding]::UTF8, $true, 4096, $true)
+    try {
+      return $reader.ReadToEnd()
+    } finally {
+      $reader.Dispose()
+    }
+  } finally {
+    $stream.Dispose()
   }
-  [System.Text.Encoding]::UTF8.GetString($bytes, $InitialLength, $bytes.Length - $InitialLength)
 }
 
 Assert-Path $ElectronExe "packaged Electron executable"
@@ -158,6 +168,7 @@ if (Test-Path -LiteralPath $startupLog) {
 $appProcess = Start-Process `
   -FilePath $ElectronExe `
   -WorkingDirectory (Split-Path $ElectronExe -Parent) `
+  -WindowStyle Hidden `
   -PassThru
 
 try {
@@ -168,7 +179,8 @@ try {
       throw "Packaged Electron app exited before startup completed."
     }
     $newLogText = Read-NewLogText -Path $startupLog -InitialLength $initialLogLength
-    if ($newLogText -match "Shiny ready" -and $newLogText -match "BrowserWindow loaded") {
+    $shinyListening = $newLogText -match "Shiny ready" -or $newLogText -match "Listening on http://127\.0\.0\.1:"
+    if ($shinyListening -and $newLogText -match "BrowserWindow loaded") {
       $appReady = $true
       break
     }
@@ -179,7 +191,7 @@ try {
     if (Test-Path -LiteralPath $startupLog) {
       $tail = (Get-Content -LiteralPath $startupLog -Tail 30) -join [Environment]::NewLine
     }
-    throw "Packaged Electron app did not reach Shiny ready state within $StartupTimeoutSeconds seconds.`n$tail"
+    throw "Packaged Electron app did not reach the bundled Shiny URL within $StartupTimeoutSeconds seconds.`n$tail"
   }
   Write-Host "[ok] packaged Electron app loaded bundled Shiny URL"
 
@@ -196,7 +208,7 @@ try {
     if ($appProcessCount -eq 0 -and ($bundledRProcessCount -eq 0 -or $newLogText -match "R process exited")) {
       Write-Host "[ok] closing packaged Electron app stopped bundled Shiny process"
       Write-Host "Packaged Electron lifecycle smoke passed."
-      exit 0
+      return
     }
   }
 

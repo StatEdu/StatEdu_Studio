@@ -578,6 +578,9 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
     if (isTRUE(bundle$effect_bootstrap_pending)) {
       return(tags$p(class = "structural-result-note", if (ko) "구조효과 bootstrap CI를 계산하고 있습니다. 완료되면 이 표가 자동으로 갱신됩니다." else "Structural-effect bootstrap CIs are still running. This section will update automatically when they finish."))
     }
+    if (isTRUE(bundle$effect_bootstrap_canceled)) {
+      return(tags$p(class = "structural-result-note", if (ko) "구조효과 부트스트랩이 사용자 요청으로 중단되었습니다. 기본 분석 결과와 점추정값은 유지됩니다." else "The structural-effect bootstrap was stopped by the user. Base-model results and point estimates remain available."))
+    }
     if (nzchar(as.character(bundle$effect_bootstrap_error %||% ""))) {
       return(tags$p(class = "structural-result-note", if (ko) paste0("구조효과 bootstrap CI 계산 실패: ", bundle$effect_bootstrap_error) else paste0("Structural-effect bootstrap CI failed: ", bundle$effect_bootstrap_error)))
     }
