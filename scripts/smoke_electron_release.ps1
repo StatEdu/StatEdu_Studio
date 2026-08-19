@@ -1,6 +1,7 @@
 param(
   [string]$RepoRoot = "",
   [string]$ElectronOutDir = "",
+  [string]$NodePath = "",
   [switch]$SkipUnpackedChecks
 )
 
@@ -33,11 +34,17 @@ function Assert-Path {
 }
 
 function Assert-JsonVersionPin {
-  $node = Get-Command "node.exe" -ErrorAction SilentlyContinue
-  if (-not $node) {
-    $node = Get-Command "node" -ErrorAction SilentlyContinue
+  $nodeExecutable = $NodePath
+  if (-not $nodeExecutable) {
+    $node = Get-Command "node.exe" -ErrorAction SilentlyContinue
+    if (-not $node) {
+      $node = Get-Command "node" -ErrorAction SilentlyContinue
+    }
+    if ($node) {
+      $nodeExecutable = $node.Source
+    }
   }
-  if (-not $node) {
+  if (-not $nodeExecutable -or -not (Test-Path -LiteralPath $nodeExecutable)) {
     throw "Node.js was not found; cannot validate Electron package pins."
   }
 
@@ -58,7 +65,7 @@ for (const name of ['electron', 'electron-builder']) {
 "@
   Push-Location $RepoRoot
   try {
-    & $node.Source -e $script
+    & $nodeExecutable -e $script
     if ($LASTEXITCODE -ne 0) {
       throw "Electron package pin validation failed."
     }
@@ -423,10 +430,19 @@ if (-not $SkipUnpackedChecks) {
   Write-Host "[ok] bundled R runtime has no documentation/test/example/source payload directories"
 
   $prevPref = $ErrorActionPreference
+  $previousLcAll = $env:LC_ALL
+  $previousLang = $env:LANG
   $ErrorActionPreference = "SilentlyContinue"
-  $moduleCheckOutput = & $rscript -e "source('R/app_bootstrap.R'); load_app_packages(); source_app_modules(); cat('bundled R modules ok\n')" 2>$null
-  $moduleExitCode = $LASTEXITCODE
-  $ErrorActionPreference = $prevPref
+  try {
+    $env:LC_ALL = "English_United States.utf8"
+    $env:LANG = "English_United States.utf8"
+    $moduleCheckOutput = & $rscript -e "source('R/app_bootstrap.R'); load_app_packages(); source_app_modules(); cat('bundled R modules ok\n')" 2>$null
+    $moduleExitCode = $LASTEXITCODE
+  } finally {
+    $env:LC_ALL = $previousLcAll
+    $env:LANG = $previousLang
+    $ErrorActionPreference = $prevPref
+  }
   $moduleCheckOutput | ForEach-Object { Write-Host $_ }
   if ($moduleExitCode -ne 0) {
     throw "Bundled R module load check failed."

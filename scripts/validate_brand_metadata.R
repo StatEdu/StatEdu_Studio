@@ -118,6 +118,7 @@ assert_contains("scripts/build_electron_beta.ps1", "com.statedu.studio", "final 
 assert_contains("scripts/build_electron_release.ps1", "build_electron_beta.ps1", "release build wrapper delegates to compatibility build script")
 
 assert_contains("packaging/electron/main.js", "STATEDU_TOKEN", "Electron token handoff")
+assert_contains("packaging/electron/main.js", 'LC_ALL: "English_United States.utf8"', "Electron Windows R UTF-8 locale")
 assert_contains("docs/RELEASE_CHECKLIST.md", "Keep backward-compatible internal identifiers", "compatibility policy")
 assert_contains("docs/RELEASE_CHECKLIST.md", "Do not expose legacy `.efs-settings` or `.json` settings filters", "legacy settings dialog non-exposure note")
 assert_contains("scripts/generate_oss_notices.R", "THIRD-PARTY-NOTICES.txt", "OSS notice output file")
