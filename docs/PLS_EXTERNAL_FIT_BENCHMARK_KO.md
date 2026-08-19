@@ -18,12 +18,14 @@ StatEdu Studio와 SmartPLS 또는 ADANCO의 SRMR, d_G, d_ULS를 비교할 때 �
 StatEdu와 외부 프로그램 결과를 각각 다음 열의 CSV로 준비한다.
 
 ```text
-Model,srmr,d_G,d_ULS
-pls,0.041,0.012,0.020
-plsc,0.038,0.009,0.017
+Model,Fit,srmr,d_G,d_ULS
+pls,saturated,0.041,0.012,0.020
+pls,estimated,0.044,0.014,0.023
+plsc,saturated,0.038,0.009,0.017
+plsc,estimated,0.040,0.011,0.019
 ```
 
-표시용 반올림 값이 아니라 가능한 최대 정밀도의 원값을 사용한다. `Model` 값은 대소문자를 구분하지 않지만 중복될 수 없다.
+표시용 반올림 값이 아니라 가능한 최대 정밀도의 원값을 사용한다. `Model` 값은 대소문자를 구분하지 않는다. `Fit`은 `saturated` 또는 `estimated`여야 하며, `Model`과 `Fit`의 조합은 중복될 수 없다. 두 적합대상을 모두 제공할 수 없다면 계산된 대상의 행만 넣되 양쪽 CSV의 조합이 정확히 같아야 한다.
 
 ## 자동 비교
 

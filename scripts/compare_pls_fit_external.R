@@ -1,13 +1,17 @@
 pls_fit_read_comparison_csv <- function(path, source_name) {
   if (!file.exists(path)) stop(source_name, " CSV was not found: ", path, call. = FALSE)
   value <- utils::read.csv(path, check.names = FALSE, stringsAsFactors = FALSE)
-  required <- c("Model", "srmr", "d_G", "d_ULS")
+  required <- c("Model", "Fit", "srmr", "d_G", "d_ULS")
   missing <- setdiff(required, names(value))
   if (length(missing)) stop(source_name, " CSV is missing column(s): ", paste(missing, collapse = ", "), call. = FALSE)
   value <- value[, required, drop = FALSE]
   value$Model <- tolower(trimws(as.character(value$Model)))
-  if (any(!nzchar(value$Model)) || anyDuplicated(value$Model)) stop(source_name, " CSV must contain unique non-empty Model values.", call. = FALSE)
-  for (metric in required[-1L]) {
+  value$Fit <- tolower(trimws(as.character(value$Fit)))
+  if (any(!nzchar(value$Model))) stop(source_name, " CSV must contain non-empty Model values.", call. = FALSE)
+  if (any(!value$Fit %in% c("saturated", "estimated"))) stop(source_name, " CSV Fit values must be saturated or estimated.", call. = FALSE)
+  key <- paste(value$Model, value$Fit, sep = "::")
+  if (anyDuplicated(key)) stop(source_name, " CSV must contain unique Model/Fit combinations.", call. = FALSE)
+  for (metric in c("srmr", "d_G", "d_ULS")) {
     value[[metric]] <- suppressWarnings(as.numeric(value[[metric]]))
     if (any(!is.finite(value[[metric]]))) stop(source_name, " CSV contains a non-finite ", metric, " value.", call. = FALSE)
   }
@@ -15,10 +19,16 @@ pls_fit_read_comparison_csv <- function(path, source_name) {
 }
 
 pls_fit_compare_external <- function(statedu_path, external_path, absolute_tolerance = 1e-6, relative_tolerance = 1e-4) {
+  if (length(absolute_tolerance) != 1L || !is.finite(absolute_tolerance) || absolute_tolerance < 0 ||
+      length(relative_tolerance) != 1L || !is.finite(relative_tolerance) || relative_tolerance < 0) {
+    stop("Comparison tolerances must be finite non-negative numbers.", call. = FALSE)
+  }
   statedu <- pls_fit_read_comparison_csv(statedu_path, "StatEdu")
   external <- pls_fit_read_comparison_csv(external_path, "External")
-  if (!setequal(statedu$Model, external$Model)) stop("StatEdu and external CSV files must contain the same Model values.", call. = FALSE)
-  external <- external[match(statedu$Model, external$Model), , drop = FALSE]
+  statedu_key <- paste(statedu$Model, statedu$Fit, sep = "::")
+  external_key <- paste(external$Model, external$Fit, sep = "::")
+  if (!setequal(statedu_key, external_key)) stop("StatEdu and external CSV files must contain the same Model/Fit combinations.", call. = FALSE)
+  external <- external[match(statedu_key, external_key), , drop = FALSE]
   metrics <- c("srmr", "d_G", "d_ULS")
   rows <- lapply(seq_len(nrow(statedu)), function(index) do.call(rbind, lapply(metrics, function(metric) {
     statedu_value <- statedu[[metric]][[index]]
@@ -26,7 +36,7 @@ pls_fit_compare_external <- function(statedu_path, external_path, absolute_toler
     absolute_error <- abs(statedu_value - external_value)
     relative_error <- absolute_error / max(abs(statedu_value), abs(external_value), .Machine$double.eps)
     data.frame(
-      Model = statedu$Model[[index]], Metric = metric,
+      Model = statedu$Model[[index]], Fit = statedu$Fit[[index]], Metric = metric,
       StatEdu = statedu_value, External = external_value,
       `Absolute error` = absolute_error, `Relative error` = relative_error,
       Pass = absolute_error <= absolute_tolerance || relative_error <= relative_tolerance,
