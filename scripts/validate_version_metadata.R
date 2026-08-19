@@ -150,6 +150,9 @@ assert_contains(release_checklist, "For public builds, `StatEdu Studio` and `Sta
 assert_contains(release_checklist, "scripts\\build_electron_release.ps1", "release checklist final build command")
 assert_contains(release_checklist, "docs/RELEASE_1_2_VERSION_BUMP_CHECKLIST.md", "release checklist 1.2 version bump checklist")
 assert_contains(release_checklist, "scripts\\get_release_checksums.ps1", "release checklist checksum helper")
+assert_contains(release_checklist, "docs/RELEASE_1_2_3_PROMOTION_CHECKLIST.md", "release checklist 1.2.3 promotion checklist")
+assert_contains(release_checklist, "docs/RELEASE_1_2_3_DECISION_LOG.md", "release checklist 1.2.3 decision log")
+assert_contains(release_checklist, "scripts\\validate_sem_release_promotion.R", "release checklist 1.2.3 promotion validator")
 
 release_readiness <- read_text("docs/RELEASE_READINESS_STATUS.md")
 if (is_development_version) {

@@ -21,6 +21,8 @@ Use this checklist before creating a public beta installer, release candidate, o
 - For the current release, update the matching decision log, such as `docs/RELEASE_1_2_DECISION_LOG.md`, with any distribution, license, update, DOI, website, or packaging decisions.
 - During a release-candidate preparation pass, do not add new analysis features unless they are required to fix correctness, data safety, packaging, or validation coverage.
 - Before changing release metadata, complete the matching version bump checklist, such as `docs/RELEASE_1_2_VERSION_BUMP_CHECKLIST.md`, so package names, installer names, smoke-test expectations, DOI checks, and public claims move together.
+- For the 1.2.3 release line, complete `docs/RELEASE_1_2_3_PROMOTION_CHECKLIST.md` and retain the blocked/approved decision in `docs/RELEASE_1_2_3_DECISION_LOG.md`; the published 1.2.0 evidence remains historical and must not be overwritten.
+- Before publishing 1.2.3, run `scripts\validate_sem_release_promotion.R`; it must independently recompute the external PLS/PLSc comparison and verify the evidence and package checksums.
 
 ## Brand and Compatibility
 

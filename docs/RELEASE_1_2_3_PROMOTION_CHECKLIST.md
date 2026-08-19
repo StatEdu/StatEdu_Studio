@@ -1,0 +1,43 @@
+# StatEdu Studio 1.2.3 Promotion Checklist
+
+This checklist promotes `1.2.3-dev` to public `1.2.3`. It does not modify or supersede the already published 1.2.0 release record.
+
+## Gate 1: External PLS/PLSc evidence
+
+- Generate the fixed bundle with `scripts/generate_pls_external_benchmark.R`.
+- Run the identical saturated model in SmartPLS or ADANCO.
+- Record program name, exact version, run date, standardized-result setting, weighting scheme, convergence, and fit target.
+- Create the external-run record from `docs/RELEASE_1_2_3_EXTERNAL_PLS_RUN.template.json` and record the fixed data, model, StatEdu result, external result, and comparison SHA-256 values.
+- Preserve full-precision PLS and PLSc SRMR, d_G, and d_ULS values.
+- Run `scripts/compare_pls_fit_external.R` and retain a comparison CSV in which every row passes the declared tolerances.
+- Verify data/model/result SHA-256 values in the external-run record; the promotion validator must recompute the comparison instead of trusting a recorded `Pass` column alone.
+
+## Gate 2: Final metadata and public claims
+
+- Change `VERSION` and all version-controlled product metadata from `1.2.3-dev` to `1.2.3` only after Gate 1 passes.
+- Finalize `docs/RELEASE_1_2_3_PUBLIC_NOTES_DRAFT.md` without unsupported causal, model-fit, unidimensionality, or cross-program-equivalence claims.
+- Add 1.2.3 entries to the English and Korean changelogs while preserving 1.2.0 as historical content.
+- Confirm README, citation, About, Electron metadata, and latent-module version alignment.
+
+## Gate 3: Final package validation
+
+- Run `scripts/validate_stabilization.ps1 -Full`.
+- Run `scripts/release_preflight.ps1`.
+- Build with `scripts/build_electron_release.ps1` and final non-dev names.
+- Run `scripts/release_preflight.ps1 -FullElectronSmoke`.
+- Run `scripts/smoke_electron_app_lifecycle.ps1`.
+- Record installer and blockmap SHA-256 values.
+- Confirm the final package has zero residual Electron/R processes after close.
+
+## Gate 4: Manual packaged QA
+
+- Complete a new `docs/RELEASE_1_2_3_MANUAL_QA_RECORD.md` against the final public installer.
+- Recheck native model loading, CFA/SEM/PLS execution, Korean/English switching and restart, HTML/PDF public exports, license notices, paths with spaces/Korean text, and clean shutdown.
+- Recheck the higher-order CFA, multigroup CFA, covariate comparison, bootstrap method/progress/cancel, and saturated PLS/PLSc diagnostic labeling.
+
+## Gate 5: Approval and publication
+
+- Create `docs/evidence/release_1_2_3/promotion_manifest.json` from the template and set a gate to true only after its evidence exists.
+- After the tracked `VERSION` file and release metadata are finalized as `1.2.3`, run `scripts/validate_sem_release_promotion.R`; it must pass.
+- Record approver and approval time.
+- Upload the exact checksum-verified installer/blockmap and publish the GitHub release only after explicit approval.

@@ -6,6 +6,10 @@ Current version: 1.2.0
 
 Current release candidate source version: 1.2.0
 
+Release-line note: public 1.2.0 was published on 2026-08-08 and is retained below as historical release evidence. Current SEM/CFA work targets 1.2.3 and is governed separately by `docs/RELEASE_1_2_3_DECISION_LOG.md` and `docs/RELEASE_1_2_3_PROMOTION_CHECKLIST.md`; it is not approved for public promotion.
+
+The 1.2.3 fail-closed promotion validator is armed in `scripts/validate_sem_release_promotion.R`. It independently recomputes the fixed external PLS/PLSc comparison and requires evidence hashes, final package hashes, manual packaged QA, and explicit human approval before a public 1.2.3 build can pass.
+
 ## Current 1.2.0 Public Release Snapshot
 
 - Source metadata has been promoted from the stabilized post-1.1.3 work to `1.2.0`.
