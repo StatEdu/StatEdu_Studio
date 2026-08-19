@@ -67,10 +67,10 @@ Development package status: Automated package checks passed after the CFA captur
 Product: StatEdu Studio Dev
 Version: 1.2.3-dev
 Installer: C:\StatEdu\Studio\dist\electron\StatEdu_Studio_Dev_Setup_1.2.3-dev.exe
-Installer SHA256: 5548D7D9EAF10A864B8E53E1A72D6342C926CAAD595653D578E095477057D6EA
-Installer bytes: 331285464
-Blockmap SHA256: 9F17395FDAAAB73C44874202899CAB7F4D58F2520AA46990EF11FB26CB4C6D59
-Blockmap bytes: 333701
+Installer SHA256: 899F540707DE1D47A8D3BC5CDFC1A719E07F6A5D1DECBFDEDFBE3BB1284EE900
+Installer bytes: 331289041
+Blockmap SHA256: 06D82DA3D9BD63ACB61E24CF2E59F9E4B5C2680C500BE7D25F38F52DEB60A946
+Blockmap bytes: 333609
 Electron: 43.4.0
 electron-builder: 26.15.3
 R runtime: R-4.5.3
@@ -93,6 +93,6 @@ Validation date: 2026-08-19
 | CFA result downloads | Pass | After analysis, Audit JSON, reproducibility record, and Excel result-table links were visible, enabled, and backed by session download URLs. |
 | CFA bootstrap CI defaults | Pass | HTMT output rendered bias-corrected (BC) intervals with 5,000/5,000 valid replicates. AVE/reliability bootstrap now also defaults to BC; percentile and slower BCa remain selectable sensitivity options. `scripts\validate_cfa_all.R` covers BC, percentile/BCa support, progress callbacks, cancellation, exports, and external-reference comparisons. |
 | Packaged CFA bootstrap progress | Pass | The rebuilt packaged Shiny resources displayed the standard progress panel during a 500-resample BC reliability run, including a determinate bar and live `completed/requested` plus valid-replicate counts (observed at 15/500 and 25/500). |
-| CFA bootstrap background progress and cancel | Pass in source-app QA; packaged rebuild pending | CFA reliability, Bollen-Stine, and HTMT bootstraps now run in a supervised background R process. Browser QA confirmed that base CFA results appear immediately, a determinate combined progress panel exposes the active phase and completed/requested count, the Stop button terminates the worker, and base results remain visible after cancellation. |
+| CFA bootstrap background progress and cancel | Pass | CFA reliability, Bollen-Stine, and HTMT bootstraps run in a supervised background R process. Source and rebuilt packaged-resource browser QA confirmed that base CFA results appear immediately, a determinate combined progress panel exposes the active phase and completed/requested count, the Stop button terminates the worker, and base results remain visible after cancellation. Packaged QA exercised the default 5,000-resample HTMT job and confirmed worker cleanup. |
 
-Development package status: Automated structure and lifecycle checks pass. CFA background progress and cancellation pass source-app browser QA; a fresh packaged rebuild and the remaining SEM-specific visual workflows are still required before public promotion.
+Development package status: Automated structure and lifecycle checks pass, and CFA background progress/cancellation pass both source and rebuilt packaged-resource browser QA. The remaining SEM-specific visual workflows still require focused work before public promotion.
