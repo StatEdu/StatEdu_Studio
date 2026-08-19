@@ -38,4 +38,8 @@ stopifnot(
   isTRUE(all.equal(unname(statedu[["d_uls"]]), unname(csem_duls), tolerance = 1e-12))
 )
 
-cat("PLS fit diagnostics match cSEM matrix functions.\n")
+cat(
+  "PLS fit diagnostics match cSEM matrix functions (cSEM ",
+  as.character(utils::packageVersion("cSEM")), ", tolerance 1e-12).\n",
+  sep = ""
+)

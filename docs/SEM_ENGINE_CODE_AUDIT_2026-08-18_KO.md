@@ -18,7 +18,7 @@
 | 표본설계 선언, 추정량 선택 근거, CMB 중립 라벨 | 완료 | `a8314d2`; `validate_sem_canvas.R`, `validate_cfa_ui.R` |
 | Mardia·PLSc·PLSpredict 재현성 | 완료 | `27f2659`, `f61f204`, `33a92f8`, `ebba1d0` |
 | 부분불변성 지원 경계 | 제한 명시 완료 | `13bf2a3`, `849224a`; 자동 제약 해제 없이 외부 분석 요건을 Audit에 보존 |
-| PLS 적합도 정의·외부 비교 | 내부 완료 / 독점 프로그램 실행 대기 | `91d2480`, `d82fe7a`, `6e31b56`; cSEM 선택 검증, 고정 PLS/PLSc saturated benchmark 생성기와 외부 CSV 비교기. SmartPLS/ADANCO 실제 결과·버전은 외부 증거 대기 |
+| PLS 적합도 정의·외부 비교 | 공식 독립검증 완료 / 독점 프로그램 실행 대기 | `91d2480`, `d82fe7a`, `6e31b56`; cSEM 0.6.1의 SRMR·d_G·d_ULS 함수와 1e-12 동등성 통과, 고정 PLS/PLSc saturated benchmark 생성기와 외부 CSV 비교기. SmartPLS/ADANCO 실제 결과·버전은 외부 증거 대기 |
 | CMB 설계통제 및 분석계획 provenance | 완료 | `07e530f`, `f673b9e`; 실제 marker 효과 추정은 지원 범위 밖으로 명시 |
 | 전체 회귀검증 편입 | 완료 | `4cf5727`; `scripts/validate_stabilization.ps1 -Full` 통과 |
 
