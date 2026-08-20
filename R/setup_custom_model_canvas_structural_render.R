@@ -494,11 +494,12 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
     if (!analysis_type %in% c("cbsem", "sem")) return(NULL)
     table <- result_table("structural_specific_indirect")
     if (!nrow(table)) return(NULL)
+    ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
     div(
       class = "result-section regression-result-panel structural-specific-indirect-result",
-      tags$h5("Table 6. Specific indirect effects"),
+      tags$h5(if (ko) "표 6. 경로별 특정 간접효과" else "Table 6. Specific indirect effects"),
       structural_canvas_specific_indirect_html_table(table),
-      tags$p(class = "structural-result-note", "Each row represents one mediation path. Boot SE and Boot 95% CI use effect-bootstrap resampling when requested; intervals are blank when valid replicates are insufficient.")
+      tags$p(class = "structural-result-note", if (ko) "각 행은 하나의 매개경로입니다. Boot SE와 Boot 95% CI는 요청한 경로·간접·총효과 재표집을 사용하며, 유효 반복이 부족하면 구간을 비워 둡니다." else "Each row represents one mediation path. Boot SE and Boot 95% CI use path/indirect/total-effect resampling when requested; intervals are blank when valid replicates are insufficient.")
     )
   })
   output[[paste0(prefix, "_result_structural_effect_ci")]] <- renderUI({
@@ -576,15 +577,15 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
     if (requested <= 0L) return(NULL)
     ko <- identical(normalize_app_language(statedu_current_language(app_language_fn)), "ko")
     if (isTRUE(bundle$effect_bootstrap_pending)) {
-      return(tags$p(class = "structural-result-note", if (ko) "구조효과 bootstrap CI를 계산하고 있습니다. 완료되면 이 표가 자동으로 갱신됩니다." else "Structural-effect bootstrap CIs are still running. This section will update automatically when they finish."))
+      return(tags$p(class = "structural-result-note", if (ko) "경로·간접·총효과 bootstrap CI/p를 계산하고 있습니다. 완료되면 이 표가 자동으로 갱신됩니다." else "Path, indirect, and total-effect bootstrap CIs and p values are still running. This section will update automatically when they finish."))
     }
     if (isTRUE(bundle$effect_bootstrap_canceled)) {
-      return(tags$p(class = "structural-result-note", if (ko) "구조효과 부트스트랩이 사용자 요청으로 중단되었습니다. 기본 분석 결과와 점추정값은 유지됩니다." else "The structural-effect bootstrap was stopped by the user. Base-model results and point estimates remain available."))
+      return(tags$p(class = "structural-result-note", if (ko) "경로·간접·총효과 부트스트랩이 사용자 요청으로 중단되었습니다. 기본 분석 결과와 점추정값은 유지됩니다." else "The path, indirect, and total-effect bootstrap was stopped by the user. Base-model results and point estimates remain available."))
     }
     if (nzchar(as.character(bundle$effect_bootstrap_error %||% ""))) {
-      return(tags$p(class = "structural-result-note", if (ko) paste0("구조효과 bootstrap CI 계산 실패: ", bundle$effect_bootstrap_error) else paste0("Structural-effect bootstrap CI failed: ", bundle$effect_bootstrap_error)))
+      return(tags$p(class = "structural-result-note", if (ko) paste0("경로·간접·총효과 bootstrap CI/p 계산 실패: ", bundle$effect_bootstrap_error) else paste0("Path, indirect, and total-effect bootstrap failed: ", bundle$effect_bootstrap_error)))
     }
-    if (is.null(result) || !nrow(result)) return(tags$p(class = "structural-result-note", if (ko) "구조효과 bootstrap에서 사용 가능한 반복 적합을 얻지 못했습니다." else "No usable replicate fits were obtained for the structural-effect bootstrap."))
+    if (is.null(result) || !nrow(result)) return(tags$p(class = "structural-result-note", if (ko) "경로·간접·총효과 bootstrap에서 사용 가능한 반복 적합을 얻지 못했습니다." else "No usable replicate fits were obtained for the path, indirect, and total-effect bootstrap."))
     interval_label <- if (identical(as.character(bundle$effect_bootstrap_ci_method %||% "bias_corrected"), "percentile")) "percentile" else "bias-corrected (BC)"
     if (!"beta_status" %in% names(result)) result$beta_status <- ifelse(result$op == "modmed", "Not reported: product-indicator index is scale-dependent", "Not available")
     diagnostics <- unique(result[, c("valid", "requested", "valid_percent", "status"), drop = FALSE])
@@ -593,7 +594,7 @@ structural_canvas_register_result_outputs <- function(input, output, prefix, can
     if (nrow(moderated)) names(moderated) <- c("Indirect path", "Moderator", "Index", "95% CI lower", "95% CI upper", "Bootstrap p", "Standardized index", "Valid replicates", "Requested replicates", "Valid %", "Status")
     div(
       class = "result-section structural-effect-bootstrap-result",
-      tags$h5(if (ko) "구조효과 bootstrap 진단" else "Structural-effect bootstrap diagnostics"),
+      tags$h5(if (ko) "경로·간접·총효과 bootstrap 진단" else "Path, indirect, and total-effect bootstrap diagnostics"),
       structural_canvas_basic_html_table(diagnostics, class = "table table-striped table-bordered"),
       if (nrow(moderated)) tagList(
         tags$h5(if (ko) "조절된 매개효과 index" else "Index of moderated mediation"),

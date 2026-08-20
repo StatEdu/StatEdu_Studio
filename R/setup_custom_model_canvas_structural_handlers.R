@@ -164,10 +164,10 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
           ko <- identical(statedu_current_language(app_language_fn), "ko")
           structural_canvas_show_notification(
             shiny::tagList(
-              shiny::tags$strong(if (ko) "SEM 구조효과 부트스트랩을 계산하고 있습니다." else "Computing SEM structural-effect bootstrap intervals."),
+              shiny::tags$strong(if (ko) "SEM 경로·간접·총효과 부트스트랩을 계산하고 있습니다." else "Computing SEM path, indirect, and total-effect bootstrap inference."),
               shiny::tags$div(paste0(format(job$total, big.mark = ","), if (ko) "회 재표집 · 기본 결과표는 지금 확인할 수 있습니다." else " resamples · Base result tables are available now.")),
               shiny::tags$div(class = "progress structural-bootstrap-progress", shiny::tags$div(class = "progress-bar progress-bar-striped active", role = "progressbar", style = "width: 100%;", if (ko) "준비 중" else "Starting")),
-              bootstrap_stop_button("_effect_bootstrap_stop", if (ko) "구조효과 부트스트랩 중단" else "Stop effect bootstrap")
+              bootstrap_stop_button("_effect_bootstrap_stop", if (ko) "경로·간접·총효과 부트스트랩 중단" else "Stop path/effect bootstrap")
             ),
             type = "message", duration = NULL, id = paste0(prefix, "-effect-bootstrap-progress")
           )
@@ -292,7 +292,7 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
         }
         shiny::removeNotification(paste0(prefix, "-effect-bootstrap-progress"))
         structural_canvas_show_notification(
-          if (identical(statedu_current_language(app_language_fn), "ko")) "SEM 구조효과 부트스트랩을 중단했습니다. 기본 분석 결과는 유지됩니다." else "The SEM structural-effect bootstrap was stopped. Base-model results remain available.",
+          if (identical(statedu_current_language(app_language_fn), "ko")) "SEM 경로·간접·총효과 부트스트랩을 중단했습니다. 기본 분석 결과는 유지됩니다." else "The SEM path, indirect, and total-effect bootstrap was stopped. Base-model results remain available.",
           type = "warning", duration = 8
         )
       }, ignoreInit = TRUE)
@@ -315,10 +315,10 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
             }
             structural_canvas_show_notification(
               shiny::tagList(
-                shiny::tags$strong(if (ko) "SEM 구조효과 부트스트랩 진행 상태" else "SEM structural-effect bootstrap progress"),
+                shiny::tags$strong(if (ko) "SEM 경로·간접·총효과 부트스트랩 진행 상태" else "SEM path, indirect, and total-effect bootstrap progress"),
                 shiny::tags$div(detail),
                 shiny::tags$div(class = "progress structural-bootstrap-progress", shiny::tags$div(class = "progress-bar progress-bar-striped", role = "progressbar", style = paste0("width: ", percent, "%;"), paste0(percent, "%"))),
-                bootstrap_stop_button("_effect_bootstrap_stop", if (ko) "구조효과 부트스트랩 중단" else "Stop effect bootstrap")
+                bootstrap_stop_button("_effect_bootstrap_stop", if (ko) "경로·간접·총효과 부트스트랩 중단" else "Stop path/effect bootstrap")
               ), type = "message", duration = NULL, id = paste0(prefix, "-effect-bootstrap-progress")
             )
           }
@@ -336,7 +336,7 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
             bundle$effect_bootstrap_error <- NULL
             fit_result(bundle)
             structural_canvas_show_notification(
-              if (identical(statedu_current_language(app_language_fn), "ko")) "구조효과 bootstrap CI 계산이 완료되어 결과표를 갱신했습니다." else "Structural-effect bootstrap CIs are complete and result tables were updated.",
+              if (identical(statedu_current_language(app_language_fn), "ko")) "경로·간접·총효과 bootstrap CI/p 계산이 완료되어 결과표를 갱신했습니다." else "Path, indirect, and total-effect bootstrap inference is complete and result tables were updated.",
               type = "message", duration = 6
             )
           } else {
@@ -346,7 +346,7 @@ register_structural_equation_canvas_handlers <- function(input, output, session,
             bundle$effect_bootstrap_error <- if (nzchar(error_text)) error_text else "Background bootstrap did not complete."
             fit_result(bundle)
             structural_canvas_show_notification(
-              if (identical(statedu_current_language(app_language_fn), "ko")) paste0("구조효과 bootstrap CI 계산을 완료하지 못했습니다.", if (nzchar(error_text)) paste0(" ", error_text) else "") else paste0("Structural-effect bootstrap CIs did not complete.", if (nzchar(error_text)) paste0(" ", error_text) else ""),
+              if (identical(statedu_current_language(app_language_fn), "ko")) paste0("경로·간접·총효과 bootstrap CI/p 계산을 완료하지 못했습니다.", if (nzchar(error_text)) paste0(" ", error_text) else "") else paste0("Path, indirect, and total-effect bootstrap inference did not complete.", if (nzchar(error_text)) paste0(" ", error_text) else ""),
               type = "warning", duration = 10
             )
           }

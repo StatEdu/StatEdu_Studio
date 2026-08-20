@@ -135,6 +135,12 @@ structural_canvas_workbook_contents <- function(sheet_names) {
     if (identical(name, "RMSEA_Tests")) return("RMSEA close-fit and not-close hypothesis tests using estimator-matched robust/scaled p values when available.")
     if (identical(name, "Information_Criteria")) return("Log-likelihood, AIC, BIC, adjusted BIC, and within-export delta values for likelihood-based model comparison.")
     if (identical(name, "Parameter_Estimates")) return("Numeric unstandardized and standardized parameter estimates with confidence intervals and fixed-parameter flags.")
+    if (identical(name, "Structural_Paths")) return("Direct structural paths with model estimates and bootstrap p values when path/effect resampling was requested.")
+    if (identical(name, "Structural_Path_CI")) return("Direct-path unstandardized and standardized confidence intervals with an explicit model-based or bootstrap source.")
+    if (identical(name, "Structural_Effects")) return("Direct, indirect, and total structural effects with raw and BH-adjusted p values.")
+    if (identical(name, "Structural_Effect_CI")) return("Direct, indirect, and total-effect confidence intervals with an explicit model-based or bootstrap source.")
+    if (identical(name, "Specific_Indirect")) return("Mediation-path-specific indirect effects with bootstrap SE, confidence intervals, and valid-replicate diagnostics when requested.")
+    if (identical(name, "Effect_Bootstrap_Diagnostics")) return("Raw path, indirect, total-effect, and moderated-mediation bootstrap estimates with requested and valid replicate counts.")
     if (identical(name, "Latent_Correlations")) return("Numeric latent-variable correlation matrix.")
     if (identical(name, "Reliability_Validity_Numeric")) return("Numeric AVE, sqrt(AVE), reliability, latent-correlation, and Fornell-Larcker results with assessment flags.")
     if (identical(name, "Sample_Descriptives")) return("Sample statistics used by the fitted model: variable means when estimated, variances, standard deviations, and model N.")
@@ -174,6 +180,22 @@ structural_canvas_result_workbook_sheets <- function(bundle, table_fn) {
     Validity = table_fn("validity"), Measurement = table_fn("measurement"),
     Construct_Specification = structural_canvas_construct_reporting_rows(bundle, analysis_type, FALSE)
   )
+  if (analysis_type %in% c("cbsem", "sem")) {
+    structural_tables <- list(
+      Structural_Paths = table_fn("structural"),
+      Structural_Path_CI = table_fn("structural_ci"),
+      Structural_Effects = table_fn("structural_effects"),
+      Structural_Effect_CI = table_fn("structural_effect_ci"),
+      Specific_Indirect = table_fn("structural_specific_indirect")
+    )
+    for (name in names(structural_tables)) {
+      table <- structural_tables[[name]]
+      if (is.data.frame(table) && nrow(table)) sheets[[name]] <- table
+    }
+    if (is.data.frame(bundle$effect_bootstrap_result) && nrow(bundle$effect_bootstrap_result)) {
+      sheets$Effect_Bootstrap_Diagnostics <- bundle$effect_bootstrap_result
+    }
+  }
   if (!is.null(bundle$invariance_result) && nrow(bundle$invariance_result$table)) {
     sheets$Invariance <- bundle$invariance_result$table
     sheets$Invariance_Groups <- bundle$invariance_result$group_diagnostics

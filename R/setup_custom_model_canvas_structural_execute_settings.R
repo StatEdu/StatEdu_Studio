@@ -14,7 +14,7 @@ structural_canvas_execute_settings <- function(settings, input, prefix) {
   if (is.na(bollen_stine_seed) || bollen_stine_seed < 1L) bollen_stine_seed <- default_seed()
 
   bootstrap_replicate_choices <- c(0L, 1000L, 5000L, 10000L, 20000L, 50000L)
-  default_effect_bootstrap <- if (prefix %in% c("structural_cbsem", "structural_sem")) 5000L else 0L
+  default_effect_bootstrap <- 0L
   effect_bootstrap <- suppressWarnings(as.integer(settings$effect_bootstrap %||% input[[paste0(prefix, "_effect_bootstrap")]] %||% default_effect_bootstrap))
   if (is.na(effect_bootstrap) || !effect_bootstrap %in% bootstrap_replicate_choices) effect_bootstrap <- default_effect_bootstrap
   effect_bootstrap_seed <- suppressWarnings(as.integer(settings$effect_bootstrap_seed %||% input[[paste0(prefix, "_effect_bootstrap_seed")]] %||% default_seed()))
@@ -23,15 +23,16 @@ structural_canvas_execute_settings <- function(settings, input, prefix) {
   htmt_threshold <- as.numeric(settings$htmt_threshold %||% input[[paste0(prefix, "_htmt_threshold")]] %||% .85)
   if (!is.finite(htmt_threshold) || !htmt_threshold %in% c(.85, .90)) htmt_threshold <- .85
 
-  default_htmt_bootstrap <- if (!identical(prefix, "structural_plssem")) 5000L else 0L
+  default_htmt_bootstrap <- 0L
   htmt_bootstrap <- suppressWarnings(as.integer(settings$htmt_bootstrap %||% input[[paste0(prefix, "_htmt_bootstrap")]] %||% default_htmt_bootstrap))
   if (is.na(htmt_bootstrap) || !htmt_bootstrap %in% bootstrap_replicate_choices) htmt_bootstrap <- default_htmt_bootstrap
 
   htmt_seed <- suppressWarnings(as.integer(settings$htmt_seed %||% input[[paste0(prefix, "_htmt_seed")]] %||% default_seed()))
   if (is.na(htmt_seed) || htmt_seed < 1L) htmt_seed <- default_seed()
 
-  pls_bootstrap <- suppressWarnings(as.integer(settings$pls_bootstrap %||% input[[paste0(prefix, "_pls_bootstrap")]] %||% if (identical(prefix, "structural_plssem")) 5000L else 0L))
-  if (is.na(pls_bootstrap) || !pls_bootstrap %in% c(0L, 1000L, 5000L, 10000L, 50000L)) pls_bootstrap <- 5000L
+  default_pls_bootstrap <- 0L
+  pls_bootstrap <- suppressWarnings(as.integer(settings$pls_bootstrap %||% input[[paste0(prefix, "_pls_bootstrap")]] %||% default_pls_bootstrap))
+  if (is.na(pls_bootstrap) || !pls_bootstrap %in% c(0L, 1000L, 5000L, 10000L, 50000L)) pls_bootstrap <- default_pls_bootstrap
 
   pls_seed <- suppressWarnings(as.integer(settings$pls_seed %||% input[[paste0(prefix, "_pls_seed")]] %||% default_seed()))
   if (is.na(pls_seed) || pls_seed < 1L) pls_seed <- default_seed()
