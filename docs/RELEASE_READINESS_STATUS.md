@@ -1,10 +1,18 @@
 # StatEdu Studio Release Readiness Status
 
-Last reviewed: 2026-08-08
+Last reviewed: 2026-08-19
 
 Current version: 1.2.0
 
 Current release candidate source version: 1.2.0
+
+Release-line note: public 1.2.0 was published on 2026-08-08 and is retained below as historical release evidence. Current SEM/CFA work targets 1.2.3 and is governed separately by `docs/RELEASE_1_2_3_DECISION_LOG.md` and `docs/RELEASE_1_2_3_PROMOTION_CHECKLIST.md`; it is not approved for public promotion.
+
+The 1.2.3 fail-closed promotion validator is armed in `scripts/validate_sem_release_promotion.R`. It independently recomputes the fixed external PLS/PLSc comparison and requires evidence hashes, final package hashes, manual packaged QA, and explicit human approval before a public 1.2.3 build can pass.
+
+The external-program handoff is automated by `scripts/prepare_pls_external_handoff.R` and `scripts/finalize_pls_external_evidence.R`: the first packages the fixed data/model/specification and result template, and the second accepts only versioned, dated, convergence-confirmed SmartPLS/ADANCO results, recomputes all six comparisons, records actual output precision, and seals the evidence hashes. Actual proprietary-program values remain pending.
+
+`scripts/package_pls_external_handoff.ps1` creates the transfer ZIP from a fresh temporary staging directory, verifies its required contents, embeds per-file SHA-256 values, and emits a checksum sidecar for the archive. This closes the evidence-transfer integrity step but does not substitute for the pending proprietary-program run.
 
 ## Current 1.2.0 Public Release Snapshot
 
@@ -32,6 +40,43 @@ Current release candidate source version: 1.2.0
   - `docs/RELEASE_1_2_MANUAL_QA_RECORD.md`
 - Remaining before public deployment: upload/publish steps.
 
+## Current 1.2.3-dev Development Snapshot
+
+- Source version: `1.2.3-dev`.
+- Branch: `codex/sem-model-canvas`.
+- Built development package: `dist/electron/StatEdu_Studio_Dev_Setup_1.2.3-dev.exe`.
+- Installer SHA256: `A6258BE4E1557F9AC426C78915144E37F47EAA228444822F26C41697A7EC33E2`.
+- Blockmap SHA256: `4A4864B235E5BA9E4112793F8E085884D43AF8CB4572315FB4261E75FAA423CD`.
+- `scripts/validate_sem_canvas.R` and `scripts/validate_cfa_all.R`: passed on 2026-08-19.
+- `scripts/smoke_electron_release.ps1`: passed against the final 1.2.3-dev package.
+- `scripts/smoke_electron_app_lifecycle.ps1`: passed with zero packaged Electron/R processes remaining after cleanup.
+- Final packaged-app browser QA loaded a three-factor, nine-indicator, 180-observation SEM and confirmed that base results appear before the 5,000-resample HTMT and structural-effect jobs finish.
+- The HTMT and structural-effect jobs expose independent live progress panels and Stop buttons. Both packaged workflows were canceled independently, retained base results and point estimates, and displayed explicit user-cancellation messages rather than estimation-failure messages.
+- CFA higher-order-factor toolbar labeling, full higher-order MLR execution, omega-h/loading results, strict Excel export, default BC bootstrap intervals, and cancellable background bootstrap progress have packaged-app evidence in `docs/RELEASE_1_2_PACKAGED_VALIDATION_NOTES.md`.
+- Packaged Windows UI Automation confirmed the actual native `열기` dialog, `StatEdu Model Canvas` filter, CFA/SEM snapshot restoration, Run-button enablement, and entry into the estimator-decision workflow.
+- Packaged Windows UI Automation also ran a 360-row ordinal CFA and confirmed `Estimator = DWLS`, `Parameterization = Theta`, `Converged = Yes`, retained base results during background HTMT bootstrap, and zero packaged-process residue after cleanup.
+- Packaged Windows UI Automation verified nondefault bootstrap methods end to end: AVE/reliability BCa completed 500 case resamples plus 45 jackknife fits and returned 468/500 valid replicates, while three-factor HTMT Percentile returned 1,000/1,000 valid replicates with populated two-sided and one-sided limits.
+- Packaged Windows UI Automation also completed the 301-case `school` multigroup CFA. All four invariance stages converged and were admissible, group-specific reliability/AVE and HTMT rendered, and the live 33-sheet Excel export passed strict OpenXML import, all-sheet rendering, key-value verification, and dangling-relationship/error-token scans. The export now reports the requested MLR estimator consistently in both overview and report-summary sheets.
+- Packaged Windows UI Automation also completed the 301-case higher-order CFA with MLR. The fit converged and was admissible; all three general-factor loadings, lower-order R2 values, and model-/score-conditional omega-h rendered. The 26-sheet live Excel export passed strict OpenXML import, all-sheet rendering, value matching, and spreadsheet-error scans.
+- The external PLS benchmark is reproducibly prepared: a fixed data/model fixture generates full-precision PLS/PLSc saturated values, an external CSV template, and a SHA-256/version/settings manifest. It also identified and corrected omission of the PLSc disattenuated construct-correlation matrix from fit reconstruction. Comparator and SEM regression checks pass, but no proprietary-program equivalence is claimed without actual SmartPLS/ADANCO output.
+- Independent formula evidence is complete: cSEM 0.6.1 reproduced StatEdu SRMR, d_G, and d_ULS on the fixed matrix pair at tolerance 1e-12. This narrows the remaining external risk to algorithm/model-implied-matrix implementation and version/settings differences rather than the three discrepancy formulas themselves.
+- Remaining before public promotion: actual SmartPLS/ADANCO numerical results with recorded software versions; final public versioning, manual QA, release notes, upload, and publication. Packaged SEM covariate-model comparison and higher-order CFA execution/export now have end-to-end evidence.
+
+## Historical 1.2.2-dev Development Snapshot
+
+- Source version: `1.2.2-dev`.
+- Built development package: `dist/electron/StatEdu_Studio_Dev_Setup_1.2.2-dev.exe`.
+- Installer SHA256: `1503955BF64FA6E3D94310C86793ADEE8CF3175260386225BD2F73D320380783`.
+- Blockmap SHA256: `D72D4B6DF1221F3827D0FA7C67974FAF5486473D49F3227693BAF595F7F77AD3`.
+- `scripts/smoke_electron_release.ps1`: passed on 2026-08-12 after the CFA capture-hook rebuild.
+- `scripts/smoke_shiny_app.ps1`: passed on 2026-08-12 with `STATEDU_CAPTURE_CFA_MODEL_FILE` and `STATEDU_CAPTURE_CFA_RUN` enabled.
+- SEM/CFA hardening work has been merged into `codex/sem-model-canvas`.
+- `scripts/validate_cfa_all.R` covers CFA canvas, reporting/export, and external-reference comparisons.
+- `scripts/validate_cfa_all.R` also covers theta-parameterized WLSMV ordered-indicator AVE/reliability bootstrap.
+- `scripts/validate_cfa_all.R` covers percentile and BCa CI paths for AVE/reliability bootstrap and HTMT bootstrap.
+- `scripts/validate_cfa_all.R` covers CFA bootstrap progress callbacks and cooperative cancel paths; a packaged user-facing cancel button remains pending.
+- This snapshot is retained as historical evidence. Its pending bootstrap-progress and cancel items were completed and superseded by the 1.2.3-dev package evidence above.
+
 ## Historical 1.0.1 Package Snapshot
 
 - Built package: `dist/electron/StatEdu_Studio_Setup_1.0.1.exe`
@@ -45,7 +90,7 @@ Current release candidate source version: 1.2.0
 
 The local stabilization checks are passing for the current branch.
 
-- `scripts/validate_stabilization.ps1 -Full`: passed on 2026-06-28 (post-rebrand merge)
+- `scripts/validate_stabilization.ps1 -Full`: passed on 2026-08-19, including all dedicated SEM validation scripts.
 - `scripts/release_preflight.ps1`: passed on 2026-06-28 (post-rebrand rebuild)
 - `scripts/smoke_electron_release.ps1 -RepoRoot .`: passed on 2026-06-28 against rebuilt 1.0.1 with bundled `R-4.5.3` (external link fix included)
 - `scripts/smoke_shiny_app.ps1`: passed

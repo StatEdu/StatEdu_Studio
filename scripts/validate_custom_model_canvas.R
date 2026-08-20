@@ -4,6 +4,7 @@ script_path <- tryCatch(
 )
 repo_root <- normalizePath(file.path(dirname(script_path), ".."), winslash = "/", mustWork = TRUE)
 setwd(repo_root)
+options(statedu.output_decimal_digits = 3L)
 
 tags <- htmltools::tags
 source(file.path(repo_root, "R", "utils.R"))
@@ -13,6 +14,13 @@ source(file.path(repo_root, "R", "result_table_ui.R"))
 source(file.path(repo_root, "R", "result_panels_ui.R"))
 source(file.path(repo_root, "R", "analysis_regression.R"))
 source(file.path(repo_root, "R", "setup_mediation_moderation_ui.R"))
+source(file.path(repo_root, "R", "setup_custom_model_canvas_snapshot.R"))
+source(file.path(repo_root, "R", "setup_custom_model_canvas_i18n.R"))
+source(file.path(repo_root, "R", "setup_custom_model_canvas_variables.R"))
+source(file.path(repo_root, "R", "setup_custom_model_canvas_components.R"))
+source(file.path(repo_root, "R", "setup_custom_model_canvas_options.R"))
+source(file.path(repo_root, "R", "setup_custom_model_canvas_toolbar.R"))
+source(file.path(repo_root, "R", "setup_custom_model_canvas_result_snapshot.R"))
 source(file.path(repo_root, "R", "setup_custom_model_canvas_ui.R"))
 
 message("Checking custom model canvas snapshot-to-analysis maps...")
@@ -108,13 +116,13 @@ dw_diagnostics <- mediation_moderation_dw_summary_value(list(
   dw_d = 1.79,
   dw_crit = list(dU = 1.89)
 ))
-stopifnot(identical(dw_diagnostics, "1.79 (1.89~2.11)"))
+stopifnot(identical(dw_diagnostics, "1.790 (1.890~2.110)"))
 dw_plain <- mediation_moderation_dw_summary_value(list(
   residual_diagnostics = FALSE,
   dw_d = 1.79,
   dw_crit = list(dU = 1.89)
 ))
-stopifnot(identical(dw_plain, "1.79"))
+stopifnot(identical(dw_plain, "1.790"))
 
 message("Checking numeric-label factor responses are converted before lm...")
 numeric_factor_data <- data.frame(

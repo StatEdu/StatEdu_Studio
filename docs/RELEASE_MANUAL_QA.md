@@ -5,6 +5,8 @@ Use this protocol after automated stabilization checks pass and before a public
 tests cannot fully prove, especially visual consistency, file dialogs, packaged
 runtime behavior, and export handoffs.
 
+For the 1.2.3 release line, record the final non-development package in `docs/RELEASE_1_2_3_MANUAL_QA_RECORD.md`. Results obtained from a `-dev` installer are corroborating development evidence only and must not be copied as final public-package passes.
+
 For each item, record `Pass`, `Fail`, or `NA`. Every `Fail` must reference a
 stabilization defect, the fix commit, and the automated validation that was
 re-run after the fix.

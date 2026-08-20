@@ -29,7 +29,12 @@
       item.setAttribute("aria-selected", isSelected ? "true" : "false");
       if (role) {
         item.setAttribute("data-role", role);
-        item.setAttribute("data-role-label", window.StatEduModelCanvas.state.roleLabel(instance, role));
+        var roleLabel = window.StatEduModelCanvas.state.roleLabel(instance, role);
+        if (role === "covariate") {
+          var covariateType = (instance.state.covariateTypes || {})[name];
+          if (covariateType && covariateType.encoding) roleLabel += " · " + covariateType.encoding;
+        }
+        item.setAttribute("data-role-label", roleLabel);
       } else {
         item.removeAttribute("data-role");
         item.removeAttribute("data-role-label");
@@ -58,6 +63,125 @@
     return window.StatEduModelCanvas.layout.roleAutoAlignPosition(box, instance.state.nodes, window.StatEduModelCanvas.layout.AUTO_ALIGN_THRESHOLD);
   }
 
+  function createLatentNode(instance, x, y) {
+    var style = instance.state.style;
+    var sequence = instance.state.nodes.filter(function(node) { return node.role === "latent"; }).length + 1;
+    return {
+      id: "latent_" + Date.now() + "_" + sequence,
+      variableId: "",
+      name: "eta" + sequence,
+      dataLabel: "잠재변수 " + sequence,
+      canvasLabel: "",
+      role: "latent",
+      nodeType: "latent",
+      constructType: "commonFactor",
+      measurementMode: "reflective",
+      advancedConstructSpecification: false,
+      weightingMode: "auto",
+      compositeDomainDefinition: "",
+      compositeIndicatorRationale: "",
+      compositeContentValidityEvidence: "",
+      x: x,
+      y: y,
+      width: 90,
+      height: 44,
+      fontSize: 13,
+      customFontSize: true,
+      fontFamily: style.fontFamily
+    };
+  }
+
+  function createIndicatorNode(instance, variable, x, y) {
+    var node = createNodeFromVariable(instance, variable, x, y, "indicator");
+    node.nodeType = "indicator";
+    node.width = 82;
+    node.height = 30;
+    node.fontSize = 12;
+    node.customFontSize = true;
+    return node;
+  }
+
+  function createErrorNode(instance, indicator, x, y, sequence) {
+    return {
+      id: "error_" + indicator.id + "_" + sequence,
+      variableId: "",
+      name: "e" + sequence,
+      dataLabel: "e" + sequence,
+      canvasLabel: "",
+      autoErrorNotation: true,
+      role: "error",
+      nodeType: "error",
+      x: x,
+      y: y,
+      width: 26,
+      height: 26,
+      fontSize: 12,
+      customFontSize: true,
+      fontFamily: instance.state.style.fontFamily
+    };
+  }
+
+  function createDisturbanceNode(instance, latent, sequence) {
+    return {
+      id: "disturbance_" + latent.id,
+      variableId: "",
+      name: "zeta" + sequence,
+      dataLabel: "ζ" + sequence,
+      canvasLabel: "",
+      role: "disturbance",
+      nodeType: "disturbance",
+      x: Number(latent.x || 0),
+      y: Number(latent.y || 0),
+      width: 26,
+      height: 26,
+      fontSize: 12,
+      customFontSize: true,
+      fontFamily: instance.state.style.fontFamily
+    };
+  }
+
+  function selectedLatentStats(instance, node) {
+    var values = node && node.resultStatsValues ? node.resultStatsValues : {};
+    var selected = Array.isArray(instance.state.latentStatsSelection) ? instance.state.latentStatsSelection : [];
+    if (!selected.length) selected = ["r2"];
+    return selected.map(function(key) { return values[key] || ""; }).filter(Boolean);
+  }
+
+  function bindLatentStatsDrag(instance, node, badge) {
+    badge.addEventListener("pointerdown", function(event) {
+      if (!isViewingResult(instance)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      instance.state.selectedNodeId = null;
+      instance.state.selectedNodeIds = [];
+      instance.state.selectedEdgeId = null;
+      instance.state.selectedModerationId = null;
+      instance.selectedLatentStatsNodeId = node.id;
+      window.StatEduModelCanvas.state.pushHistory(instance);
+      var start = window.StatEduModelCanvas.canvas.canvasPoint(instance, event);
+      var originX = Number(node.resultStatsOffsetX || 0);
+      var originY = Number(node.resultStatsOffsetY || 0);
+
+      function move(moveEvent) {
+        var point = window.StatEduModelCanvas.canvas.canvasPoint(instance, moveEvent);
+        node.resultStatsOffsetX = originX + point.x - start.x;
+        node.resultStatsOffsetY = originY + point.y - start.y;
+        renderNodes(instance);
+      }
+
+      function up() {
+        document.removeEventListener("pointermove", move, true);
+        document.removeEventListener("pointerup", up, true);
+        document.removeEventListener("pointercancel", up, true);
+        window.StatEduModelCanvas.bridge.sendState(instance);
+      }
+
+      document.addEventListener("pointermove", move, true);
+      document.addEventListener("pointerup", up, true);
+      document.addEventListener("pointercancel", up, true);
+    });
+  }
+
   function renderNodes(instance) {
     var layer = instance.nodeLayer;
     layer.innerHTML = "";
@@ -65,8 +189,17 @@
     instance.state.nodes.forEach(function(node) {
       var element = document.createElement("div");
       element.className = "custom-model-node custom-model-node-" + node.role;
+      if (node.role === "latent" && node.constructType === "higherOrder") {
+        element.className += " custom-model-node-higher-order";
+      }
       if (node.id === instance.state.selectedNodeId || selectedNodeIds.indexOf(node.id) >= 0) {
         element.className += " is-selected";
+      }
+      var validationItems = instance.validation && instance.validation.byNode ? (instance.validation.byNode[node.id] || []) : [];
+      if (validationItems.length) {
+        var hasError = validationItems.some(function(item) { return item.level === "error"; });
+        element.className += hasError ? " has-validation-error" : " has-validation-warning";
+        element.setAttribute("data-validation-message", validationItems.map(function(item) { return item.message; }).join("\n"));
       }
       element.setAttribute("data-node-id", node.id);
       element.setAttribute("title", window.StatEduModelCanvas.layout.displayText(node));
@@ -76,13 +209,34 @@
       element.style.height = (node.height || instance.state.style.boxHeight) + "px";
       element.style.fontSize = (node.customFontSize ? node.fontSize : instance.state.style.fontSize) + "px";
       element.style.fontFamily = node.fontFamily || instance.state.style.fontFamily;
-      element.style.borderColor = instance.state.style.boxStrokeColor || "#000000";
+      element.style.backgroundColor = node.fillColor && node.fillColor !== "transparent" ? node.fillColor : "transparent";
+      element.style.borderColor = node.strokeColor || instance.state.style.boxStrokeColor || "#000000";
       element.style.borderWidth = Number(instance.state.style.boxStrokeWidth || 1.5) + "px";
 
       var label = document.createElement("div");
       label.className = "custom-model-node-label";
       label.textContent = window.StatEduModelCanvas.layout.displayText(node);
       element.appendChild(label);
+      if (node.role === "latent" && instance.state.showLatentStats !== false) {
+        var stats = selectedLatentStats(instance, node);
+        if (stats.length) {
+          var statsBadge = document.createElement("span");
+          statsBadge.className = "structural-latent-statistics";
+          if (instance.selectedLatentStatsNodeId === node.id) statsBadge.className += " is-selected";
+          statsBadge.textContent = stats.join("\n");
+          statsBadge.style.transform = "translate(" + Number(node.resultStatsOffsetX || 0) + "px, " + Number(node.resultStatsOffsetY || 0) + "px)";
+          statsBadge.title = isViewingResult(instance) ? (instance.language === "ko" ? "드래그하여 통계량 이동" : "Drag to move statistics") : "";
+          if (isViewingResult(instance)) bindLatentStatsDrag(instance, node, statsBadge);
+          element.appendChild(statsBadge);
+        }
+      }
+      if (validationItems.length) {
+        var badge = document.createElement("span");
+        badge.className = "structural-validation-badge";
+        badge.textContent = validationItems.some(function(item) { return item.level === "error"; }) ? "!" : "△";
+        badge.title = validationItems.map(function(item) { return item.message; }).join("\n");
+        element.appendChild(badge);
+      }
       layer.appendChild(element);
     });
     setVariableUsage(instance);
@@ -94,57 +248,530 @@
     });
   }
 
+  function measurementDeletionLayout(instance, indicator) {
+    if (!indicator || indicator.role !== "indicator") return null;
+    var measurementEdge = instance.state.edges.find(function(edge) {
+      if (edge.kind === "covariance") return false;
+      var from = nodeById(instance, edge.from);
+      var to = nodeById(instance, edge.to);
+      return (from && from.role === "latent" && to && to.id === indicator.id) ||
+        (to && to.role === "latent" && from && from.id === indicator.id);
+    });
+    if (!measurementEdge) return null;
+    var from = nodeById(instance, measurementEdge.from);
+    var latent = from && from.role === "latent" ? from : nodeById(instance, measurementEdge.to);
+    if (!latent) return null;
+
+    var placement = latent.effectiveMeasurementPlacement || latent.measurementPlacement || "right";
+    var horizontal = placement === "top" || placement === "bottom";
+    var siblings = instance.state.edges.map(function(edge) {
+      if (edge.kind === "covariance") return null;
+      var edgeFrom = nodeById(instance, edge.from);
+      var edgeTo = nodeById(instance, edge.to);
+      if (edgeFrom && edgeFrom.id === latent.id && edgeTo && edgeTo.role === "indicator") return edgeTo;
+      if (edgeTo && edgeTo.id === latent.id && edgeFrom && edgeFrom.role === "indicator") return edgeFrom;
+      return null;
+    }).filter(function(node, index, nodes) {
+      return node && nodes.indexOf(node) === index;
+    });
+    if (siblings.length < 2) return null;
+
+    function center(node) {
+      return horizontal
+        ? Number(node.x || 0) + Number(node.width || 0) / 2
+        : Number(node.y || 0) + Number(node.height || 0) / 2;
+    }
+    siblings.sort(function(a, b) { return center(a) - center(b); });
+    var latentCenter = horizontal
+      ? Number(latent.x || 0) + Number(latent.width || 0) / 2
+      : Number(latent.y || 0) + Number(latent.height || 0) / 2;
+    var spacing = horizontal
+      ? Number(indicator.width || 82) + 24
+      : Math.max(48, Number(indicator.height || 30) + 18);
+    return {
+      latentId: latent.id,
+      horizontal: horizontal,
+      center: latentCenter,
+      spacing: spacing,
+      siblingIds: siblings.map(function(node) { return node.id; })
+    };
+  }
+
+  function compactMeasurementAfterDeletion(instance, layout, removedId) {
+    if (!layout) return;
+    var siblings = layout.siblingIds.filter(function(id) { return id !== removedId; }).map(function(id) {
+      return nodeById(instance, id);
+    }).filter(Boolean);
+    if (!siblings.length) return;
+
+    function axisCenter(node) {
+      return layout.horizontal
+        ? Number(node.x || 0) + Number(node.width || 0) / 2
+        : Number(node.y || 0) + Number(node.height || 0) / 2;
+    }
+    siblings.sort(function(a, b) { return axisCenter(a) - axisCenter(b); });
+    siblings.forEach(function(indicator, index) {
+      var targetCenter = layout.center + (index - (siblings.length - 1) / 2) * layout.spacing;
+      var oldX = Number(indicator.x || 0);
+      var oldY = Number(indicator.y || 0);
+      if (layout.horizontal) indicator.x = targetCenter - Number(indicator.width || 0) / 2;
+      else indicator.y = targetCenter - Number(indicator.height || 0) / 2;
+      var dx = Number(indicator.x || 0) - oldX;
+      var dy = Number(indicator.y || 0) - oldY;
+      var errorEdge = instance.state.edges.find(function(edge) {
+        var source = nodeById(instance, edge.from);
+        return edge.to === indicator.id && source && source.role === "error";
+      });
+      var error = errorEdge ? nodeById(instance, errorEdge.from) : null;
+      if (error) {
+        error.x = Number(error.x || 0) + dx;
+        error.y = Number(error.y || 0) + dy;
+      }
+    });
+  }
+
   function deleteNode(instance, nodeId) {
+    var target = nodeById(instance, nodeId);
+    if (!target) return;
+    var deletionLayout = measurementDeletionLayout(instance, target);
+    var preservedPositions = {};
+    if (deletionLayout) {
+      instance.state.nodes.forEach(function(node) {
+        preservedPositions[node.id] = {x: node.x, y: node.y};
+      });
+    }
+    var removeIds = [nodeId];
+    if (target.role === "indicator") {
+      instance.state.edges.forEach(function(edge) {
+        var source = nodeById(instance, edge.from);
+        if (edge.to === target.id && source && source.role === "error") removeIds.push(source.id);
+      });
+    }
+    if (target.role === "latent") {
+      var indicators = instance.state.edges.map(function(edge) {
+        var from = nodeById(instance, edge.from);
+        var to = nodeById(instance, edge.to);
+        if (from && from.id === target.id && to && to.role === "indicator") return to;
+        if (to && to.id === target.id && from && from.role === "indicator") return from;
+        return null;
+      }).filter(Boolean);
+      indicators.forEach(function(indicator) {
+        removeIds.push(indicator.id);
+        instance.state.edges.forEach(function(edge) {
+          var source = nodeById(instance, edge.from);
+          if (edge.to === indicator.id && source && source.role === "error") removeIds.push(source.id);
+        });
+      });
+      instance.state.edges.forEach(function(edge) {
+        var source = nodeById(instance, edge.from);
+        if (edge.to === target.id && source && source.role === "disturbance") removeIds.push(source.id);
+      });
+    }
+    removeIds = removeIds.filter(function(id, index) { return removeIds.indexOf(id) === index; });
     var removedEdgeIds = instance.state.edges
-      .filter(function(edge) { return edge.from === nodeId || edge.to === nodeId; })
+      .filter(function(edge) { return removeIds.indexOf(edge.from) >= 0 || removeIds.indexOf(edge.to) >= 0; })
       .map(function(edge) { return edge.id; });
     instance.state.nodes = instance.state.nodes.filter(function(node) {
-      return node.id !== nodeId;
+      return removeIds.indexOf(node.id) < 0;
     });
     instance.state.edges = instance.state.edges.filter(function(edge) {
-      return edge.from !== nodeId && edge.to !== nodeId;
+      return removeIds.indexOf(edge.from) < 0 && removeIds.indexOf(edge.to) < 0;
     });
     instance.state.moderations = instance.state.moderations.filter(function(moderation) {
       return moderation.from !== nodeId && removedEdgeIds.indexOf(moderation.toEdge) < 0;
     });
-    if (instance.state.selectedNodeId === nodeId) instance.state.selectedNodeId = null;
+    instance.state.selectedNodeIds = (instance.state.selectedNodeIds || []).filter(function(id) { return removeIds.indexOf(id) < 0; });
+    if (removeIds.indexOf(instance.state.selectedNodeId) >= 0) instance.state.selectedNodeId = null;
     hideProperties(instance);
+    if (window.StatEduModelCanvas.canvas && window.StatEduModelCanvas.canvas.reflowMeasurements) {
+      window.StatEduModelCanvas.canvas.reflowMeasurements(instance);
+    }
+    if (deletionLayout) {
+      instance.state.nodes.forEach(function(node) {
+        var preserved = preservedPositions[node.id];
+        if (!preserved) return;
+        node.x = preserved.x;
+        node.y = preserved.y;
+      });
+      compactMeasurementAfterDeletion(instance, deletionLayout, nodeId);
+    }
+  }
+
+  function errorPlacement(instance, errorNode) {
+    if (!errorNode || errorNode.role !== "error") return null;
+    var errorEdge = instance.state.edges.find(function(edge) { return edge.from === errorNode.id; });
+    var indicator = errorEdge ? nodeById(instance, errorEdge.to) : null;
+    if (!indicator) return null;
+    var measurementEdge = instance.state.edges.find(function(edge) {
+      if (edge.from !== indicator.id && edge.to !== indicator.id) return false;
+      var other = nodeById(instance, edge.from === indicator.id ? edge.to : edge.from);
+      return other && other.role === "latent";
+    });
+    var latent = measurementEdge ? nodeById(instance, measurementEdge.from === indicator.id ? measurementEdge.to : measurementEdge.from) : null;
+    if (!latent) return null;
+    return {
+      indicator: indicator,
+      placement: latent.effectiveMeasurementPlacement || latent.measurementPlacement || "left"
+    };
+  }
+
+  function errorMovementAxis(instance, errorNode) {
+    var placementInfo = errorPlacement(instance, errorNode);
+    if (!placementInfo) return null;
+    return placementInfo.placement === "left" || placementInfo.placement === "right" ? "x" : "y";
+  }
+
+  function captureErrorOffset(instance, errorNode) {
+    var placementInfo = errorPlacement(instance, errorNode);
+    if (!placementInfo) return false;
+    var indicator = placementInfo.indicator;
+    var placement = placementInfo.placement;
+    var iw = Number(indicator.width || instance.state.style.boxWidth || 110);
+    var ih = Number(indicator.height || instance.state.style.boxHeight || 38);
+    var ew = Number(errorNode.width || 26);
+    var eh = Number(errorNode.height || 26);
+    var defaultPosition;
+    if (placement === "left") {
+      defaultPosition = Number(indicator.x || 0) - ew - 28;
+      errorNode.manualOffset = defaultPosition - Number(errorNode.x || 0);
+    } else if (placement === "right") {
+      defaultPosition = Number(indicator.x || 0) + iw + 28;
+      errorNode.manualOffset = Number(errorNode.x || 0) - defaultPosition;
+    } else if (placement === "top") {
+      defaultPosition = Number(indicator.y || 0) - eh - 28;
+      errorNode.manualOffset = defaultPosition - Number(errorNode.y || 0);
+    } else {
+      defaultPosition = Number(indicator.y || 0) + ih + 28;
+      errorNode.manualOffset = Number(errorNode.y || 0) - defaultPosition;
+    }
+    errorNode.manualPosition = true;
+    return true;
+  }
+
+  function disturbanceMovement(instance, disturbanceNode) {
+    if (!disturbanceNode || disturbanceNode.role !== "disturbance") return null;
+    var edge = instance.state.edges.find(function(item) { return item.from === disturbanceNode.id; });
+    var latent = edge ? nodeById(instance, edge.to) : null;
+    if (!latent) return null;
+    var placement = disturbanceNode.disturbancePosition || "auto";
+    if (placement === "auto") {
+      var measurementPlacement = latent.effectiveMeasurementPlacement || latent.measurementPlacement || "left";
+      placement = measurementPlacement === "top" ? "s" : "n";
+    }
+    var diagonal = Math.sqrt(0.5);
+    var vectors = {
+      nw: {x: -diagonal, y: -diagonal}, n: {x: 0, y: -1}, ne: {x: diagonal, y: -diagonal},
+      w: {x: -1, y: 0}, e: {x: 1, y: 0},
+      sw: {x: -diagonal, y: diagonal}, s: {x: 0, y: 1}, se: {x: diagonal, y: diagonal}
+    };
+    var vector = vectors[placement] || vectors.n;
+    var latentX = Number(latent.x || 0);
+    var latentY = Number(latent.y || 0);
+    var latentWidth = Number(latent.width || 90);
+    var latentHeight = Number(latent.height || 44);
+    var width = Number(disturbanceNode.width || 26);
+    var height = Number(disturbanceNode.height || 26);
+    var bases = {
+      nw: {x: latentX - width - 38, y: latentY - height - 38},
+      n: {x: latentX + latentWidth / 2 - width / 2, y: latentY - height - 38},
+      ne: {x: latentX + latentWidth + 38, y: latentY - height - 38},
+      e: {x: latentX + latentWidth + 38, y: latentY + latentHeight / 2 - height / 2},
+      se: {x: latentX + latentWidth + 38, y: latentY + latentHeight + 38},
+      s: {x: latentX + latentWidth / 2 - width / 2, y: latentY + latentHeight + 38},
+      sw: {x: latentX - width - 38, y: latentY + latentHeight + 38},
+      w: {x: latentX - width - 38, y: latentY + latentHeight / 2 - height / 2}
+    };
+    return {placement: placement, vector: vector, base: bases[placement] || bases.n};
+  }
+
+  function captureDisturbanceOffset(instance, disturbanceNode) {
+    var movement = disturbanceMovement(instance, disturbanceNode);
+    if (!movement) return false;
+    disturbanceNode.manualOffset =
+      (Number(disturbanceNode.x || 0) - movement.base.x) * movement.vector.x +
+      (Number(disturbanceNode.y || 0) - movement.base.y) * movement.vector.y;
+    return true;
+  }
+
+  function isViewingResult(instance) {
+    return !!(instance && (
+      instance.viewingResult ||
+      (instance.root && instance.root.classList.contains("is-viewing-result"))
+    ));
+  }
+
+  function usesStructuralMovePolicy(instance) {
+    return !!(instance && instance.root && instance.root.classList.contains("structural-equation-canvas-root"));
+  }
+
+  function measurementLatentForNode(instance, node) {
+    if (!node) return null;
+    if (node.role === "latent") return node;
+    var indicator = measurementIndicatorForNode(instance, node);
+    if (!indicator) return null;
+    var measurementEdge = instance.state.edges.find(function(edge) {
+      if (edge.kind === "covariance") return false;
+      var from = nodeById(instance, edge.from);
+      var to = nodeById(instance, edge.to);
+      return (from && from.role === "latent" && to && to.id === indicator.id) ||
+        (to && to.role === "latent" && from && from.id === indicator.id);
+    });
+    if (!measurementEdge) return null;
+    var from = nodeById(instance, measurementEdge.from);
+    return from && from.role === "latent" ? from : nodeById(instance, measurementEdge.to);
+  }
+
+  function measurementIndicatorForNode(instance, node) {
+    if (!node) return null;
+    if (node.role === "indicator") return node;
+    var indicator = node;
+    if (node.role === "error") {
+      var errorEdge = instance.state.edges.find(function(edge) {
+        var target = nodeById(instance, edge.to);
+        return edge.from === node.id && target && target.role === "indicator";
+      });
+      indicator = errorEdge ? nodeById(instance, errorEdge.to) : null;
+    } else {
+      indicator = null;
+    }
+    return indicator && indicator.role === "indicator" ? indicator : null;
+  }
+
+  function disturbanceLatentForNode(instance, node) {
+    if (!node || node.role !== "disturbance") return null;
+    var disturbanceEdge = instance.state.edges.find(function(edge) {
+      var target = nodeById(instance, edge.to);
+      return edge.from === node.id && target && target.role === "latent";
+    });
+    return disturbanceEdge ? nodeById(instance, disturbanceEdge.to) : null;
+  }
+
+  function latentIndicatorIds(instance, latent) {
+    if (!latent) return [];
+    return instance.state.edges.reduce(function(ids, edge) {
+      var from = nodeById(instance, edge.from);
+      var to = nodeById(instance, edge.to);
+      if (from && from.id === latent.id && to && to.role === "indicator") ids.push(to.id);
+      if (to && to.id === latent.id && from && from.role === "indicator") ids.push(from.id);
+      return ids;
+    }, []).filter(function(id, index, ids) {
+      return ids.indexOf(id) === index;
+    });
+  }
+
+  function measurementAxisForLatent(latent) {
+    var placement = latent && (latent.effectiveMeasurementPlacement || latent.measurementPlacement) || "right";
+    return placement === "top" || placement === "bottom" ? "y" : "x";
+  }
+
+  function completeMeasurementBundleSelection(instance, selectedIds) {
+    if (["cfa", "sem", "cbsem", "plssem"].indexOf(instance.analysisType) < 0) return false;
+    var selected = selectedIds || [];
+    if (!selected.length) return false;
+    var selectedMap = {};
+    selected.forEach(function(id) { selectedMap[id] = true; });
+    var selectedNodes = instance.state.nodes.filter(function(node) { return selectedMap[node.id]; });
+    var latents = selectedNodes.filter(function(node) { return node.role === "latent"; });
+    if (!latents.length) return false;
+
+    var bundleMap = {};
+    latents.forEach(function(latent) {
+      bundleMap[latent.id] = true;
+      instance.state.edges.forEach(function(edge) {
+        var from = nodeById(instance, edge.from);
+        var to = nodeById(instance, edge.to);
+        var indicator = null;
+        if (from && from.id === latent.id && to && to.role === "indicator") indicator = to;
+        if (to && to.id === latent.id && from && from.role === "indicator") indicator = from;
+        if (indicator) {
+          bundleMap[indicator.id] = true;
+          instance.state.edges.forEach(function(errorEdge) {
+            var error = nodeById(instance, errorEdge.from);
+            if (errorEdge.to === indicator.id && error && error.role === "error") bundleMap[error.id] = true;
+          });
+        }
+      });
+    });
+    var everyRequiredSelected = Object.keys(bundleMap).every(function(id) { return selectedMap[id]; });
+    var noPartialExtraBundle = selectedNodes.every(function(node) {
+      if (node.role === "disturbance") {
+        var disturbanceOwner = disturbanceLatentForNode(instance, node);
+        return disturbanceOwner && bundleMap[disturbanceOwner.id];
+      }
+      var owner = measurementLatentForNode(instance, node);
+      return owner && bundleMap[owner.id];
+    });
+    return everyRequiredSelected && noPartialExtraBundle;
+  }
+
+  function structuralMeasurementSelectionAxis(instance, selectedNodes) {
+    var axes = {};
+    var selectedIndicatorsByLatent = {};
+    var hasMeasurementNode = false;
+    selectedNodes.forEach(function(node) {
+      var indicator = measurementIndicatorForNode(instance, node);
+      if (!indicator) return;
+      var latent = measurementLatentForNode(instance, node);
+      if (!latent) return;
+      hasMeasurementNode = true;
+      axes[measurementAxisForLatent(latent)] = true;
+      if (!selectedIndicatorsByLatent[latent.id]) {
+        selectedIndicatorsByLatent[latent.id] = {
+          selected: {},
+          total: latentIndicatorIds(instance, latent).length
+        };
+      }
+      selectedIndicatorsByLatent[latent.id].selected[indicator.id] = true;
+    });
+    if (!hasMeasurementNode) return null;
+    var partialMultiSelection = Object.keys(selectedIndicatorsByLatent).some(function(latentId) {
+      var group = selectedIndicatorsByLatent[latentId];
+      var selectedCount = Object.keys(group.selected).length;
+      return selectedCount > 1 && selectedCount < group.total;
+    });
+    if (partialMultiSelection) return "none";
+    var values = Object.keys(axes);
+    if (values.length === 1) return values[0];
+    if (values.length > 1) return "none";
+    return "none";
+  }
+
+  function wholeModelSelection(instance, selectedIds) {
+    var selected = selectedIds || [];
+    if (!instance.state.nodes.length || !selected.length) return false;
+    var selectedMap = {};
+    selected.forEach(function(id) { selectedMap[id] = true; });
+    return instance.state.nodes.every(function(node) { return selectedMap[node.id]; });
+  }
+
+  function structuralSelectionMovementAxis(instance, selectedIds) {
+    if (!usesStructuralMovePolicy(instance) || !instance.state) return null;
+    var selected = selectedIds || instance.state.selectedNodeIds || [];
+    // Invariant: selecting the whole model always moves it as one rigid body
+    // on both axes. Keep this ahead of every analysis- or placement-specific
+    // rule so future selection features cannot accidentally disable Y movement.
+    if (wholeModelSelection(instance, selected)) return null;
+    if (completeMeasurementBundleSelection(instance, selected)) return null;
+    var selectedNodes = instance.state.nodes.filter(function(node) {
+      return selected.indexOf(node.id) >= 0;
+    });
+    if (!selectedNodes.length) return null;
+    var hasMeasurementNode = selectedNodes.some(function(node) {
+      return node.role === "indicator" || node.role === "error";
+    });
+    var hasPartialLatentSet = hasMeasurementNode && selectedNodes.some(function(node) {
+      return node.role === "latent" || node.role === "disturbance";
+    });
+    if (hasPartialLatentSet) return "none";
+    if (hasMeasurementNode) return structuralMeasurementSelectionAxis(instance, selectedNodes);
+    return null;
+  }
+
+  function structuralSelectionAllowsY(instance, selectedIds) {
+    return usesStructuralMovePolicy(instance) && structuralSelectionMovementAxis(instance, selectedIds) === null;
   }
 
   function startNodeDrag(instance, event, element) {
-    if (instance.state.mode !== "select") return;
+    if (event.target && event.target.closest && event.target.closest(".structural-latent-statistics")) return;
+    var resultEditMode = false;
+    if (isViewingResult(instance)) {
+      resultEditMode = instance.state.mode === "properties";
+    }
+    if (instance.state.mode !== "select" && !resultEditMode) return;
     var node = nodeById(instance, element.getAttribute("data-node-id"));
     if (!node) return;
     event.preventDefault();
     window.StatEduModelCanvas.state.pushHistory(instance);
     var startX = event.clientX;
     var startY = event.clientY;
+    var moved = false;
+    var dragThreshold = 4;
     var selectedIds = (instance.state.selectedNodeIds || []).indexOf(node.id) >= 0 ?
       (instance.state.selectedNodeIds || []).slice() :
       [node.id];
     var draggedNodes = instance.state.nodes.filter(function(item) {
       return selectedIds.indexOf(item.id) >= 0;
     });
+    var structuralAxis = structuralSelectionMovementAxis(instance, selectedIds);
     var initialPositions = draggedNodes.map(function(item) {
       return {node: item, x: Number(item.x || 0), y: Number(item.y || 0)};
     });
 
     function move(moveEvent) {
-      var dx = (moveEvent.clientX - startX) / instance.state.canvas.zoom;
-      var dy = (moveEvent.clientY - startY) / instance.state.canvas.zoom;
+      var dragScale = instance.analysisType ? Number(instance.state.canvas.modelZoom || 1) : Number(instance.state.canvas.zoom || 1);
+      var dx = (moveEvent.clientX - startX) / dragScale;
+      var dy = (moveEvent.clientY - startY) / dragScale;
+      if (!moved && Math.sqrt(dx * dx + dy * dy) < dragThreshold) return;
+      moved = true;
       initialPositions.forEach(function(item) {
-        item.node.x = item.x + dx;
-        item.node.y = item.y + dy;
+        var structuralMovePolicy = usesStructuralMovePolicy(instance);
+        var singleLatent = structuralMovePolicy && initialPositions.length === 1 && item.node.role === "latent";
+        var axis = structuralMovePolicy ? (singleLatent ? null : structuralAxis) : errorMovementAxis(instance, item.node);
+        var disturbanceMove = structuralMovePolicy ? null : disturbanceMovement(instance, item.node);
+        if (disturbanceMove) {
+          var projected = dx * disturbanceMove.vector.x + dy * disturbanceMove.vector.y;
+          item.node.x = item.x + projected * disturbanceMove.vector.x;
+          item.node.y = item.y + projected * disturbanceMove.vector.y;
+        } else {
+          item.node.x = item.x + (axis === "y" || axis === "none" ? 0 : dx);
+          item.node.y = item.y + (axis === "x" || axis === "none" ? 0 : dy);
+        }
       });
       renderNodes(instance);
       window.StatEduModelCanvas.edges.render(instance);
     }
 
-    function up() {
+    function up(upEvent) {
       document.removeEventListener("pointermove", move, true);
       document.removeEventListener("pointerup", up, true);
-      if (instance.state.autoAlign !== false && initialPositions.length === 1) {
+      if (!moved) {
+        instance.state.history.pop();
+        return;
+      }
+      var structuralMovePolicy = usesStructuralMovePolicy(instance);
+      var movedError = false;
+      var movedDisturbance = false;
+      initialPositions.forEach(function(item) {
+        if (captureErrorOffset(instance, item.node)) movedError = true;
+        if (captureDisturbanceOffset(instance, item.node)) movedDisturbance = true;
+        if (structuralMovePolicy && item.node.role === "latent") item.node.manualPosition = true;
+      });
+      if (node.role === "indicator" && initialPositions.length === 1 && upEvent && upEvent.target && upEvent.target.closest) {
+        var targetElement = upEvent.target.closest(".custom-model-node-latent");
+        var targetLatentId = window.StatEduModelCanvas.canvas.nodeIdAtEvent(instance, upEvent, "latent") ||
+          (targetElement ? targetElement.getAttribute("data-node-id") : null);
+        var targetLatent = targetLatentId ? nodeById(instance, targetLatentId) : null;
+        if (targetLatent) {
+          instance.state.edges = instance.state.edges.filter(function(edge) {
+            var from = nodeById(instance, edge.from);
+            var to = nodeById(instance, edge.to);
+            return !((from && from.role === "latent" && to && to.id === node.id) || (to && to.role === "latent" && from && from.id === node.id));
+          });
+          var formative = (targetLatent.measurementMode || "reflective") === "formative";
+          window.StatEduModelCanvas.edges.createEdge(instance, formative ? node.id : targetLatent.id, formative ? targetLatent.id : node.id);
+          if (window.StatEduModelCanvas.canvas && window.StatEduModelCanvas.canvas.reflowMeasurements) window.StatEduModelCanvas.canvas.reflowMeasurements(instance);
+          renderNodes(instance);
+          window.StatEduModelCanvas.edges.render(instance);
+          window.StatEduModelCanvas.bridge.sendState(instance);
+          return;
+        }
+      }
+      if (usesStructuralMovePolicy(instance)) {
+        window.StatEduModelCanvas.bridge.sendState(instance);
+        return;
+      }
+      if (!structuralMovePolicy && instance.state.autoAlign !== false && initialPositions.length === 1 && node.role !== "error" && node.role !== "disturbance") {
         window.StatEduModelCanvas.layout.roleAutoAlignPosition(node, instance.state.nodes, window.StatEduModelCanvas.layout.AUTO_ALIGN_THRESHOLD, node.id);
+        renderNodes(instance);
+        window.StatEduModelCanvas.edges.render(instance);
+      }
+      if (!structuralMovePolicy && node.role === "latent" && window.StatEduModelCanvas.canvas && window.StatEduModelCanvas.canvas.reflowMeasurements) {
+        window.StatEduModelCanvas.canvas.reflowMeasurements(instance);
+        renderNodes(instance);
+        window.StatEduModelCanvas.edges.render(instance);
+      }
+      if (!structuralMovePolicy && (movedError || movedDisturbance) && window.StatEduModelCanvas.canvas && window.StatEduModelCanvas.canvas.reflowMeasurements) {
+        window.StatEduModelCanvas.canvas.reflowMeasurements(instance);
         renderNodes(instance);
         window.StatEduModelCanvas.edges.render(instance);
       }
@@ -177,6 +804,26 @@
     return item;
   }
 
+  function isResidualParameterNode(node) {
+    return !!(node && ["error", "disturbance"].indexOf(node.role) >= 0);
+  }
+
+  function residualParameterEdge(instance, node) {
+    if (!isResidualParameterNode(node)) return null;
+    var targetRoles = node.role === "error" ? ["indicator"] : ["latent"];
+    return instance.state.edges.find(function(edge) {
+      if (edge.kind === "covariance" || String(edge.from) !== String(node.id)) return false;
+      var target = nodeById(instance, edge.to);
+      return target && targetRoles.indexOf(target.role) >= 0;
+    }) || null;
+  }
+
+  function residualParameterValue(node, edge, field, fallback) {
+    if (edge && Object.prototype.hasOwnProperty.call(edge, field)) return edge[field];
+    if (node && Object.prototype.hasOwnProperty.call(node, field)) return node[field];
+    return fallback;
+  }
+
   function showNodeProperties(instance, nodeId) {
     var node = nodeById(instance, nodeId);
     if (!node) return;
@@ -192,7 +839,10 @@
     var t = function(key, fallback) {
       return window.StatEduModelCanvas.state.label(instance, key, fallback);
     };
-    panel.innerHTML = [
+    var ko = instance.language === "ko";
+    var isStructuralModel = ["cfa", "cbsem", "sem", "plssem"].indexOf(instance.analysisType) >= 0;
+    var residualEdge = isStructuralModel ? residualParameterEdge(instance, node) : null;
+    var propertyFields = [
       '<div class="custom-model-property-title">' + t("properties", "\uc18d\uc131") + '</div>',
       '<label class="custom-model-property-label">' + t("variable_name", "\ubcc0\uc218\uba85") + '</label>',
       '<input class="form-control custom-model-property-variable" type="text" readonly>',
@@ -201,14 +851,33 @@
       '<label class="custom-model-property-label">' + t("role", "\uc5ed\ud560") + '</label>',
       '<select class="form-control custom-model-property-role"></select>',
       '<label class="custom-model-property-label">' + t("font_size", "\ud3f0\ud2b8 \ud06c\uae30") + '</label>',
-      '<input class="form-control custom-model-property-font-size" type="number" min="8" max="32" step="1">',
+      '<input class="form-control custom-model-property-font-size" type="number" min="8" max="32" step="1">'
+    ];
+    if (residualEdge) propertyFields.push(
+      '<div class="custom-model-property-title custom-model-property-subtitle">' + (ko ? "오차분산" : "Residual variance") + '</div>',
+      '<label class="custom-model-property-label">' + (ko ? "모수 이름" : "Parameter name") + '</label>',
+      '<input class="form-control node-residual-property-name" type="text">',
+      '<label class="custom-model-property-check"><input class="node-residual-property-free" type="checkbox"> ' + (ko ? "자유 오차분산" : "Free residual variance") + '</label>',
+      '<label class="custom-model-property-label">' + (ko ? "고정값" : "Fixed value") + '</label>',
+      '<input class="form-control node-residual-property-fixed" type="number" step="any" min="0">',
+      '<label class="custom-model-property-label">' + (ko ? "시작값" : "Starting value") + '</label>',
+      '<input class="form-control node-residual-property-start" type="number" step="any">',
+      '<label class="custom-model-property-label">' + (ko ? "등가제약 라벨" : "Equality label") + '</label>',
+      '<input class="form-control node-residual-property-equality" type="text">'
+    );
+    propertyFields.push(
       '<div class="custom-model-property-actions">',
       '<button type="button" class="btn btn-primary btn-sm custom-model-property-apply">' + t("apply", "\uc801\uc6a9") + '</button>',
       '<button type="button" class="btn btn-default btn-sm custom-model-property-close">' + t("close", "\ub2eb\uae30") + '</button>',
       '</div>'
-    ].join("");
+    );
+    panel.innerHTML = propertyFields.join("");
 
     var roleSelect = panel.querySelector(".custom-model-property-role");
+    if (["latent", "indicator", "error", "disturbance"].indexOf(node.role) >= 0) {
+      roleSelect.appendChild(option(node.role, window.StatEduModelCanvas.state.roleLabel(instance, node.role)));
+      roleSelect.disabled = true;
+    }
     roleSelect.appendChild(option("independent", window.StatEduModelCanvas.state.roleLabel(instance, "independent")));
     roleSelect.appendChild(option("mediator", window.StatEduModelCanvas.state.roleLabel(instance, "mediator")));
     roleSelect.appendChild(option("moderator", window.StatEduModelCanvas.state.roleLabel(instance, "moderator")));
@@ -218,13 +887,27 @@
     panel.querySelector(".custom-model-property-label-input").value = node.canvasLabel || node.dataLabel || "";
     panel.querySelector(".custom-model-property-font-size").value = node.customFontSize ? (node.fontSize || instance.state.style.fontSize) : instance.state.style.fontSize;
     roleSelect.value = node.role || "independent";
+    if (residualEdge) {
+      var residualFree = residualParameterValue(node, residualEdge, "free", true) !== false;
+      panel.querySelector(".node-residual-property-name").value = residualParameterValue(node, residualEdge, "parameterName", "") || "";
+      panel.querySelector(".node-residual-property-free").checked = residualFree;
+      var residualFixedValue = residualParameterValue(node, residualEdge, "fixedValue", "");
+      var residualStartValue = residualParameterValue(node, residualEdge, "startValue", "");
+      panel.querySelector(".node-residual-property-fixed").value = residualFixedValue === null || residualFixedValue === undefined ? "" : residualFixedValue;
+      panel.querySelector(".node-residual-property-start").value = residualStartValue === null || residualStartValue === undefined ? "" : residualStartValue;
+      panel.querySelector(".node-residual-property-equality").value = residualParameterValue(node, residualEdge, "equalityLabel", "") || "";
+      panel.querySelector(".node-residual-property-fixed").disabled = residualFree;
+      panel.querySelector(".node-residual-property-free").addEventListener("change", function(event) {
+        panel.querySelector(".node-residual-property-fixed").disabled = event.target.checked;
+      });
+    }
 
     var position = clampPanelPosition(
       instance,
       Number(node.x || 0) + Number(node.width || instance.state.style.boxWidth) + 10,
       Number(node.y || 0),
       230,
-      230
+      residualEdge ? 430 : 230
     );
     panel.style.left = position.x + "px";
     panel.style.top = position.y + "px";
@@ -237,7 +920,9 @@
     panel.querySelector(".custom-model-property-apply").addEventListener("click", function() {
       window.StatEduModelCanvas.state.pushHistory(instance);
       node.canvasLabel = String(panel.querySelector(".custom-model-property-label-input").value || "").trim();
-      var nextRole = roleSelect.value || "independent";
+      var fixedRole = ["latent", "indicator", "error"].indexOf(node.role) >= 0;
+      fixedRole = fixedRole || node.role === "disturbance";
+      var nextRole = fixedRole ? node.role : (roleSelect.value || "independent");
       var roleLimit = window.StatEduModelCanvas.state.ROLE_LIMITS[nextRole];
       var assignedCount = instance.state.nodes.filter(function(item) {
         return item.id !== node.id && item.role === nextRole;
@@ -262,7 +947,37 @@
       }
       var fontSize = Number(panel.querySelector(".custom-model-property-font-size").value || instance.state.style.fontSize);
       node.fontSize = Math.max(8, Math.min(32, fontSize));
-      node.customFontSize = node.fontSize !== Number(instance.state.style.fontSize || 13);
+      node.customFontSize = node.fontSize !== Number(instance.state.style.fontSize || 11);
+      if (residualEdge) {
+        var freeInput = panel.querySelector(".node-residual-property-free");
+        var fixedInput = panel.querySelector(".node-residual-property-fixed");
+        var startInput = panel.querySelector(".node-residual-property-start");
+        var free = !!freeInput.checked;
+        var fixed = fixedInput.value;
+        var start = startInput.value;
+        var fixedValue = fixed === "" ? null : Number(fixed);
+        var startValue = start === "" ? null : Number(start);
+        if (!free && (!Number.isFinite(fixedValue) || fixedValue < 0)) {
+          window.alert(ko ? "고정 오차분산은 0 이상의 유한한 값이어야 합니다." : "A fixed residual variance must be a finite nonnegative value.");
+          instance.state.history.pop();
+          return;
+        }
+        if (start !== "" && !Number.isFinite(startValue)) {
+          window.alert(ko ? "시작값은 유한한 숫자여야 합니다." : "The starting value must be finite.");
+          instance.state.history.pop();
+          return;
+        }
+        node.parameterName = String(panel.querySelector(".node-residual-property-name").value || "").trim();
+        node.free = free;
+        node.fixedValue = free ? null : fixedValue;
+        node.startValue = start === "" ? null : startValue;
+        node.equalityLabel = String(panel.querySelector(".node-residual-property-equality").value || "").trim();
+        residualEdge.parameterName = node.parameterName;
+        residualEdge.free = node.free;
+        residualEdge.fixedValue = node.fixedValue;
+        residualEdge.startValue = node.startValue;
+        residualEdge.equalityLabel = node.equalityLabel;
+      }
       hideProperties(instance);
       window.StatEduModelCanvas.canvas.render(instance);
       window.StatEduModelCanvas.bridge.sendState(instance);
@@ -272,6 +987,7 @@
   }
 
   function showEdgeProperties(instance, edgeId) {
+    if (isViewingResult(instance)) return;
     var edge = window.StatEduModelCanvas.edges.edgeById(instance, edgeId);
     if (!edge) return;
     hideProperties(instance);
@@ -281,6 +997,74 @@
     renderNodes(instance);
     window.StatEduModelCanvas.edges.render(instance);
     window.StatEduModelCanvas.toolbar.updateButtons(instance);
+    var ko = instance.language === "ko";
+    var isStructuralModel = ["cfa", "cbsem", "plssem"].indexOf(instance.analysisType) >= 0;
+    var edgeFromNode = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
+    var edgeToNode = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
+    var isLatentPath = edge.kind !== "covariance" && edgeFromNode && edgeToNode && edgeFromNode.role === "latent" && edgeToNode.role === "latent" && ["cfa", "cbsem"].indexOf(instance.analysisType) >= 0;
+    var panel = document.createElement("div");
+    panel.className = "custom-model-property-popover structural-edge-property-popover";
+    var propertyFields = [
+      '<div class="custom-model-property-title">' + (ko ? (edge.kind === "covariance" ? "공분산 속성" : "경로 속성") : "Path properties") + '</div>',
+      '<label class="custom-model-property-label">' + (ko ? "표시 라벨" : "Display label") + '</label>',
+      '<input class="form-control edge-property-label" type="text">'
+    ];
+    if (isStructuralModel) propertyFields.push(
+      '<label class="custom-model-property-label">' + (ko ? "모수 이름" : "Parameter name") + '</label>',
+      '<input class="form-control edge-property-name" type="text">',
+      '<label class="custom-model-property-check"><input class="edge-property-free" type="checkbox"> ' + (ko ? "자유모수" : "Free parameter") + '</label>',
+      '<label class="custom-model-property-label">' + (ko ? "고정값" : "Fixed value") + '</label>',
+      '<input class="form-control edge-property-fixed" type="number" step="any">',
+      '<label class="custom-model-property-label">' + (ko ? "시작값" : "Starting value") + '</label>',
+      '<input class="form-control edge-property-start" type="number" step="any">',
+      '<label class="custom-model-property-label">' + (ko ? "등가제약 라벨" : "Equality label") + '</label>',
+      '<input class="form-control edge-property-equality" type="text">'
+    );
+    if (isLatentPath) propertyFields.push(
+      '<label class="custom-model-property-label">Path type</label>',
+      '<select class="form-control edge-property-path-type"><option value="regression">Structural regression (~)</option><option value="higherOrder">Higher-order loading (=~)</option></select>'
+    );
+    propertyFields.push(
+      '<div class="custom-model-property-actions">',
+      '<button type="button" class="btn btn-primary btn-sm edge-property-apply">' + (ko ? "적용" : "Apply") + '</button>',
+      '<button type="button" class="btn btn-default btn-sm edge-property-close">' + (ko ? "닫기" : "Close") + '</button>',
+      '</div>'
+    );
+    panel.innerHTML = propertyFields.join("");
+    panel.querySelector(".edge-property-label").value = edge.label || "";
+    if (isStructuralModel) {
+      panel.querySelector(".edge-property-name").value = edge.parameterName || "";
+      panel.querySelector(".edge-property-free").checked = edge.free !== false;
+      panel.querySelector(".edge-property-fixed").value = edge.fixedValue === undefined ? "" : edge.fixedValue;
+      panel.querySelector(".edge-property-start").value = edge.startValue === undefined ? "" : edge.startValue;
+      panel.querySelector(".edge-property-equality").value = edge.equalityLabel || "";
+      if (isLatentPath) panel.querySelector(".edge-property-path-type").value = edge.pathType || "regression";
+      panel.querySelector(".edge-property-fixed").disabled = edge.free !== false;
+      panel.querySelector(".edge-property-free").addEventListener("change", function(event) {
+        panel.querySelector(".edge-property-fixed").disabled = event.target.checked;
+      });
+    }
+    panel.querySelector(".edge-property-close").addEventListener("click", function() { hideProperties(instance); });
+    panel.querySelector(".edge-property-apply").addEventListener("click", function() {
+      window.StatEduModelCanvas.state.pushHistory(instance);
+      edge.label = String(panel.querySelector(".edge-property-label").value || "").trim();
+      if (isStructuralModel) {
+        edge.parameterName = String(panel.querySelector(".edge-property-name").value || "").trim();
+        edge.free = panel.querySelector(".edge-property-free").checked;
+        var fixed = panel.querySelector(".edge-property-fixed").value;
+        var start = panel.querySelector(".edge-property-start").value;
+        edge.fixedValue = fixed === "" ? null : Number(fixed);
+        edge.startValue = start === "" ? null : Number(start);
+        edge.equalityLabel = String(panel.querySelector(".edge-property-equality").value || "").trim();
+        if (isLatentPath) edge.pathType = panel.querySelector(".edge-property-path-type").value || "regression";
+      }
+      hideProperties(instance);
+      window.StatEduModelCanvas.canvas.render(instance);
+      window.StatEduModelCanvas.bridge.sendState(instance);
+    });
+    panel.style.left = "24px";
+    panel.style.top = "24px";
+    instance.paper.appendChild(panel);
   }
 
   window.StatEduModelCanvas = window.StatEduModelCanvas || {};
@@ -288,6 +1072,18 @@
     variableUsed: variableUsed,
     setVariableUsage: setVariableUsage,
     createNodeFromVariable: createNodeFromVariable,
+    createLatentNode: createLatentNode,
+    createIndicatorNode: createIndicatorNode,
+    createErrorNode: createErrorNode,
+    createDisturbanceNode: createDisturbanceNode,
+    errorMovementAxis: errorMovementAxis,
+    captureErrorOffset: captureErrorOffset,
+    disturbanceMovement: disturbanceMovement,
+    captureDisturbanceOffset: captureDisturbanceOffset,
+    isViewingResult: isViewingResult,
+    usesStructuralMovePolicy: usesStructuralMovePolicy,
+    structuralSelectionMovementAxis: structuralSelectionMovementAxis,
+    structuralSelectionAllowsY: structuralSelectionAllowsY,
     render: renderNodes,
     nodeById: nodeById,
     deleteNode: deleteNode,

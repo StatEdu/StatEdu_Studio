@@ -1413,7 +1413,7 @@
     "sample_size.label.parallel_cluster_randomized_trial": "Thử nghiệm ngẫu nhiên cụm song song",
     "sample_size.label.parallel_continuous_outcome": "Kết cục liên tục song song",
     "sample_size.label.parameter": "Tham số",
-    "sample_size.label.parameter_level_monte_carlo": "Monte Carlo cấp tham số",
+    "sample_size.label.parameter_level_monte_carlo": "Mô phỏng công suất tham số xấp xỉ",
     "sample_size.label.parameter_type": "Loại tham số",
     "sample_size.label.partial_eta_squared": "Eta bình phương riêng phần",
     "sample_size.label.partial_eta_squared_from_f": "Eta bình phương riêng phần từ F",

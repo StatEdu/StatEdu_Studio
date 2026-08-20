@@ -169,14 +169,42 @@ expect_true(grepl("\\([0-9,]+\\)", group_mixed_text), "Complex-sample t-test / A
 expect_true(grepl(">\\([0-9,]+\\)</td>", group_mixed_text), "Complex-sample t-test / ANOVA df should render in the next table-row cell.")
 expect_true(!grepl("d=", group_mixed_text, fixed = TRUE), "Complex-sample t-test / ANOVA effect-size values should omit the d= prefix.")
 expect_contains(group_mixed_text, "table-layout:fixed", "complex-sample t-test / ANOVA fixed table layout")
+expect_contains(group_mixed_text, "coefficient-table-complex-sample-group", "complex-sample t-test / ANOVA table class")
 expect_contains(group_mixed_text, "width:18.0000%", "complex-sample t-test / ANOVA M +/- SE B5 portrait width")
-expect_contains(group_mixed_text, "width:19.0000%", "complex-sample t-test / ANOVA 95% CI B5 portrait width")
-expect_contains(group_mixed_text, "width:13.0000%", "complex-sample t-test / ANOVA ES B5 portrait width")
-expect_contains(group_mixed_text, "width:14.0000%", "complex-sample t-test / ANOVA compact statistic B5 portrait width")
+expect_contains(group_mixed_text, "width:17.0000%", "complex-sample t-test / ANOVA 95% CI B5 portrait width")
+expect_contains(group_mixed_text, "width:8.0000%", "complex-sample t-test / ANOVA ES B5 portrait width")
+expect_contains(group_mixed_text, "width:12.0000%", "complex-sample t-test / ANOVA compact statistic B5 portrait width")
 expect_contains(group_mixed_text, "padding-left:6px !important;padding-right:6px !important", "complex-sample t-test / ANOVA compact stat columns spacing")
 expect_not_matches(group_mixed_text, 'coefficient-col-effect-size" style="[^"]*(^|;)width:[0-9]+px', "legacy fixed-pixel ES width")
 expect_not_matches(group_mixed_text, 'coefficient-col-statistic" style="[^"]*(^|;)width:[0-9]+px', "legacy fixed-pixel t/F(df) width")
 expect_not_matches(group_mixed_text, 'coefficient-col-p" style="[^"]*(^|;)width:[0-9]+px', "legacy fixed-pixel p width")
+
+no_ci_input <- complex_input()
+no_ci_input$p_show_ci <- FALSE
+no_ci_text <- render_text(complex_sample_group_result(group_mixed_data, "y", c("g2", "g3"), no_ci_input, "p", variable_info = group_mixed_info))
+expect_true(!grepl("95% CI</th>", no_ci_text, fixed = TRUE), "Unchecked complex-sample t-test / ANOVA 95% CI option must remove the 95% CI column.")
+
+ordered_group_data <- data.frame(
+  psu = 1:90,
+  wt = rep(1, 90),
+  y = c(1:30, 101:130, 201:230),
+  g = rep(c("A", "B", "C"), each = 30),
+  stringsAsFactors = FALSE
+)
+ordered_group_info <- data.frame(
+  name = c("y", "g"),
+  measurement = c("continuous", "nominal"),
+  stringsAsFactors = FALSE
+)
+ordered_input <- complex_input()
+ordered_input$p_post_hoc <- TRUE
+ordered_input$p_ordered_significance <- TRUE
+ordered_text <- render_text(complex_sample_group_result(ordered_group_data, "y", "g", ordered_input, "p", variable_info = ordered_group_info))
+expect_contains(ordered_text, "coefficient-footnote-marker", "complex-sample ordered post-hoc superscript markers")
+expect_true(
+  grepl("c&gt;b&gt;a", ordered_text, fixed = TRUE) || grepl("c>b>a", ordered_text, fixed = TRUE),
+  "Complex-sample mean-order significance notation should match the standard ANOVA marker summary."
+)
 
 cross_wide_test <- list(statistic = c(F = 3.14159), parameter = c(ndf = 1, ddf = 24), p.value = 0.0123)
 cross_wide_options <- list(crosstab_test_method = "F", show_df = TRUE, show_percent = TRUE, row_percent = FALSE, show_p = TRUE, show_trend = FALSE)

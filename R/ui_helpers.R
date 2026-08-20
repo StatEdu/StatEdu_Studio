@@ -64,7 +64,7 @@ analysis_save_feature_visible <- function(feature, included_features = character
     return(TRUE)
   }
   if (statedu_public_release() && feature %in% c("excel", "word")) {
-    return(TRUE)
+    return(statedu_feature_enabled(paste0(feature, "_export"), FALSE))
   }
   if (feature %in% c("excel", "word") && analysis_save_edition() %in% c("pro", "personal", "institution")) {
     return(TRUE)
@@ -85,7 +85,7 @@ analysis_save_feature_enabled <- function(feature, edition = analysis_save_editi
   included_features <- setdiff(included_features, "__public_exception__")
   if (identical(edition, "free")) {
     return(
-      identical(feature, "html") ||
+      feature %in% c("html", "pdf", "figure", "add_result", "result_history") ||
         isTRUE(free_all) ||
         (statedu_public_release() && isTRUE(public_exception) && feature %in% included_features)
     )
@@ -188,22 +188,22 @@ app_brand_title <- function(version) {
 
 app_stylesheet_link <- function(version) {
   tagList(
-    tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-survival-km-result-table-20260810")),
-    tags$link(rel = "stylesheet", type = "text/css", href = paste0("model-canvas/canvas.css?v=", version, "-analysis-modal-compact-20260712b"))
+    tags$link(rel = "stylesheet", type = "text/css", href = paste0("style.css?v=", version, "-ci-group-header-center-20260816a")),
+    tags$link(rel = "stylesheet", type = "text/css", href = paste0("model-canvas/canvas.css?v=", version, "-decoupled-cfa-canvas-20260818a"))
   )
 }
 
 app_script_link <- function(version) {
   tagList(
-    tags$script(src = paste0("easyflow.js?v=", version, "-survival-km-options-20260809")),
-    tags$script(src = paste0("model-canvas/state.js?v=", version, "-custom-model-canvas-multi-y-20260729a")),
+    tags$script(src = paste0("easyflow.js?v=", version, "-structural-menu-20260816a")),
+    tags$script(src = paste0("model-canvas/state.js?v=", version, "-paper-view-zoom-20260818a")),
     tags$script(src = paste0("model-canvas/layout.js?v=", version, "-custom-model-canvas-balanced-multi-role-layout-20260729a")),
-    tags$script(src = paste0("model-canvas/shiny-bridge.js?v=", version, "-custom-model-canvas-20260705an")),
-    tags$script(src = paste0("model-canvas/edges.js?v=", version, "-label-overlap-fit-20260730")),
-    tags$script(src = paste0("model-canvas/nodes.js?v=", version, "-custom-model-canvas-preserve-moderator-layout-20260729b")),
-    tags$script(src = paste0("model-canvas/dialogs.js?v=", version, "-stmodel-extension-20260730")),
-    tags$script(src = paste0("model-canvas/toolbar.js?v=", version, "-custom-model-canvas-20260711ac")),
-    tags$script(src = paste0("model-canvas/canvas.js?v=", version, "-custom-model-canvas-preserve-moderator-layout-20260729b"))
+    tags$script(src = paste0("model-canvas/shiny-bridge.js?v=", version, "-movable-latent-stats-20260817b")),
+    tags$script(src = paste0("model-canvas/edges.js?v=", version, "-covariance-depth-20260818a")),
+    tags$script(src = paste0("model-canvas/nodes.js?v=", version, "-structural-selection-move-policy-20260818a")),
+    tags$script(src = paste0("model-canvas/dialogs.js?v=", version, "-paper-view-zoom-20260818a")),
+    tags$script(src = paste0("model-canvas/toolbar.js?v=", version, "-decoupled-cfa-canvas-20260818a")),
+    tags$script(src = paste0("model-canvas/canvas.js?v=", version, "-paper-view-zoom-20260818a"))
   )
 }
 

@@ -831,7 +831,7 @@ measurement_select_html <- function(name, value, source_order, language = stated
     paste0(
       '<span class="measurement-control">',
       '<span class="measurement-symbol measurement-%s" title="%s" aria-label="%s"></span>',
-      '<select id="measurement_input_%s" class="measurement-select" data-name="%s" ',
+      '<select class="measurement-select" data-name="%s" ',
       'onchange="if(window.Shiny){Shiny.setInputValue(&quot;variable_measurement_update&quot;,',
       '{name:this.getAttribute(&quot;data-name&quot;),value:this.value,nonce:Date.now()+Math.random()},',
       '{priority:&quot;event&quot;});} if(window.easyflowUpdateMeasurementControl){window.easyflowUpdateMeasurementControl(this);}">%s</select>',
@@ -840,7 +840,6 @@ measurement_select_html <- function(name, value, source_order, language = stated
     htmltools::htmlEscape(value),
     htmltools::htmlEscape(title),
     htmltools::htmlEscape(title),
-    htmltools::htmlEscape(source_order),
     htmltools::htmlEscape(name),
     paste(
       sprintf(

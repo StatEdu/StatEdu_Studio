@@ -38,8 +38,9 @@ from beta to final release names when `VERSION` starts with `1.`.
   without `Beta`.
 - Confirm `packaging/electron/main.js` uses the final display name when
   `VERSION` starts with `1.`.
-- Confirm `packaging/electron/scripts/afterPack.js` writes final executable
-  resource strings from the selected Electron `productName`.
+- Confirm electron-builder resource editing writes executable metadata and the
+  icon from the selected `productName`, while `signExecutable: false` disables
+  only code signing for the unsigned development build.
 - Confirm the final app data folder name is documented and used by the
   lifecycle smoke test.
 

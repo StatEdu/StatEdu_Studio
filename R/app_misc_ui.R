@@ -135,15 +135,65 @@ about_text_document <- function(path) {
   )
 }
 
-about_license_report_document <- function(path = "license_report.csv") {
-  resolved_path <- about_resolve_document_path(path)
-  if (!nzchar(resolved_path)) {
-    return(NULL)
-  }
-  report <- tryCatch(
-    utils::read.csv(resolved_path, stringsAsFactors = FALSE, check.names = FALSE),
+about_installed_license_report <- function() {
+  db <- tryCatch(
+    installed.packages(fields = c("URL", "License")),
     error = function(e) NULL
   )
+  if (is.null(db) || nrow(db) == 0) {
+    return(NULL)
+  }
+
+  package_names <- rownames(db)
+  package_urls <- db[, "URL"]
+  package_urls[is.na(package_urls) | !nzchar(package_urls)] <- paste0(
+    "https://cran.r-project.org/package=",
+    package_names[is.na(package_urls) | !nzchar(package_urls)]
+  )
+  package_scopes <- ifelse(
+    package_names %in% required_packages,
+    "Direct StatEdu Studio package",
+    ifelse(db[, "Priority"] %in% c("base", "recommended"), "R base/recommended", "Bundled dependency")
+  )
+
+  package_rows <- data.frame(
+    Scope = package_scopes,
+    Component = paste0("R package: ", package_names),
+    Version = db[, "Version"],
+    License = db[, "License"],
+    URL = package_urls,
+    Notes = "",
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+  runtime_row <- data.frame(
+    Scope = "R runtime",
+    Component = "R runtime",
+    Version = paste(R.version$major, R.version$minor, sep = "."),
+    License = "GPL-2 | GPL-3; LGPL applies to selected R libraries where stated",
+    URL = "https://www.r-project.org/Licenses/",
+    Notes = "Runtime used by the current StatEdu Studio session.",
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+  report <- rbind(runtime_row, package_rows)
+  report[order(match(report$Scope, c(
+    "R runtime", "Direct StatEdu Studio package", "Bundled dependency", "R base/recommended"
+  )), report$Component), , drop = FALSE]
+}
+
+about_license_report_document <- function(path = "license_report.csv", fallback = FALSE) {
+  resolved_path <- about_resolve_document_path(path)
+  report <- if (nzchar(resolved_path)) {
+    tryCatch(
+      utils::read.csv(resolved_path, stringsAsFactors = FALSE, check.names = FALSE),
+      error = function(e) NULL
+    )
+  } else if (isTRUE(fallback)) {
+    about_installed_license_report()
+  } else {
+    NULL
+  }
   if (!is.data.frame(report) || nrow(report) == 0) {
     return(NULL)
   }
@@ -172,8 +222,18 @@ about_license_report_document <- function(path = "license_report.csv") {
 }
 
 about_oss_license_document <- function() {
-  notices <- about_text_document("THIRD-PARTY-NOTICES.txt")
-  report <- about_license_report_document()
+  notice_path <- about_resolve_document_path("THIRD-PARTY-NOTICES.txt")
+  notices <- if (nzchar(notice_path)) {
+    about_text_document("THIRD-PARTY-NOTICES.txt")
+  } else {
+    div(
+      class = "about-markdown-document",
+      h2("Third-Party Notices"),
+      p("StatEdu Studio uses the R runtime and the third-party R packages listed below."),
+      p("The packaged application includes the complete generated notices and copied license files.")
+    )
+  }
+  report <- about_license_report_document(fallback = !nzchar(notice_path))
   if (is.null(report)) {
     return(notices)
   }

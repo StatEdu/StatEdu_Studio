@@ -538,6 +538,7 @@ coefficient_column_class <- function(name) {
     level = "coefficient-col-level",
     label = "coefficient-col-reference",
     statistic = "coefficient-col-statistic",
+    es = "coefficient-col-effect-size",
     tf = "coefficient-col-statistic",
     tdf = "coefficient-col-statistic",
     fdf = "coefficient-col-statistic",
@@ -652,6 +653,7 @@ coefficient_html_table <- function(
     if (isTRUE(attr(table, "show_df", exact = TRUE))) "coefficient-table-show-df" else "",
     if (isTRUE(attr(table, "mean_sd", exact = TRUE))) "coefficient-table-mean-sd" else "",
     if (isTRUE(attr(table, "trend_analysis", exact = TRUE))) "coefficient-table-trend-analysis" else "",
+    if (isTRUE(attr(table, "complex_sample_group_table", exact = TRUE))) "coefficient-table-complex-sample-group" else "",
     if (isTRUE(attr(table, "bootstrap_regression", exact = TRUE))) "coefficient-table-bootstrap-regression" else ""
   )
   table_style <- result_table_style(

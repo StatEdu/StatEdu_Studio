@@ -21,6 +21,11 @@ Use this checklist before creating a public beta installer, release candidate, o
 - For the current release, update the matching decision log, such as `docs/RELEASE_1_2_DECISION_LOG.md`, with any distribution, license, update, DOI, website, or packaging decisions.
 - During a release-candidate preparation pass, do not add new analysis features unless they are required to fix correctness, data safety, packaging, or validation coverage.
 - Before changing release metadata, complete the matching version bump checklist, such as `docs/RELEASE_1_2_VERSION_BUMP_CHECKLIST.md`, so package names, installer names, smoke-test expectations, DOI checks, and public claims move together.
+- For the 1.2.3 release line, complete `docs/RELEASE_1_2_3_PROMOTION_CHECKLIST.md` and retain the blocked/approved decision in `docs/RELEASE_1_2_3_DECISION_LOG.md`; the published 1.2.0 evidence remains historical and must not be overwritten.
+- Before publishing 1.2.3, run `scripts\validate_sem_release_promotion.R`; it must independently recompute the external PLS/PLSc comparison and verify the evidence and package checksums.
+- Complete `docs/RELEASE_1_2_3_VERSION_BUMP_CHECKLIST.md` before changing the 1.2.3 development metadata, and run `scripts\validate_sem_public_claims.R` before finalizing public release text.
+- For public 1.2.3, complete `docs/RELEASE_1_2_3_PACKAGED_VALIDATION_NOTES.md` and `docs/RELEASE_1_2_3_MANUAL_QA_RECORD.md` against the same checksum-recorded final installer.
+- Record explicit 1.2.3 publication authorization in `docs/RELEASE_1_2_3_APPROVAL_RECORD.md`; passing automation is not authorization to publish.
 
 ## Brand and Compatibility
 
@@ -48,6 +53,9 @@ Use this checklist before creating a public beta installer, release candidate, o
 - Confirm `runtime_prune_report.csv` exists and contains only `keep` rows, unless an intentional exception is documented.
 - Confirm `electron` and `electron-builder` are exact version pins in `packaging/electron/package.json`.
 - Run `npm ci` from `packaging/electron` before packaging.
+- If npm is unavailable but pnpm and Node.js are available, pass their explicit
+  paths to `build_electron_release.ps1` with `-PnpmPath` and `-NodePath`; the
+  build uses pinned npm 10.9.2 through pnpm and preserves `package-lock.json` semantics.
 - Confirm `dist/electron` contains only the current StatEdu Studio setup `.exe`, its `.blockmap`, and `win-unpacked`; remove legacy EasyFlow installers and debug artifacts before publishing.
 - For 0.9.x beta builds, `StatEdu Studio Beta` and `StatEdu_Studio_Beta_Setup_*` are expected. For public builds, `StatEdu Studio` and `StatEdu_Studio_Setup_*` are expected.
 - Run `scripts\get_release_checksums.ps1` and copy the installer SHA256 into the current packaged validation notes.

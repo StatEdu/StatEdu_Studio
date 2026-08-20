@@ -17,17 +17,33 @@ expect_close <- function(actual, expected, tolerance = 1e-8, label = "value") {
 }
 
 message("Checking Kaplan-Meier analysis...")
-lung <- read.csv(file.path(repo_root, "sample", "survival_examples", "survival_lung.csv"), check.names = FALSE)
+fixture_path <- file.path(repo_root, "scripts", "fixtures", "survival_validation.csv")
+if (!file.exists(fixture_path)) stop("Required survival validation fixture is missing: ", fixture_path)
+survival_fixture <- read.csv(fixture_path, check.names = FALSE)
+required_fixture_columns <- c("id", "time", "status", "sex", "ph.ecog", "age")
+stopifnot(
+  identical(names(survival_fixture), required_fixture_columns),
+  nrow(survival_fixture) == 72L,
+  identical(sort(unique(survival_fixture$status)), c(0L, 1L)),
+  identical(sort(unique(survival_fixture$sex)), c(1L, 2L)),
+  identical(sort(unique(survival_fixture$ph.ecog)), 0:2),
+  identical(survival_fixture$id, seq_len(72L)),
+  sum(survival_fixture$time) == 19176,
+  sum(survival_fixture$status) == 50,
+  sum(survival_fixture$age) == 4318,
+  max(survival_fixture$time) > 400
+)
+lung <- survival_fixture
+lung$status <- lung$status + 1L
 stopifnot(identical(survival_example_event_value(list(name = "survival_lung.csv"), "status"), "2"))
 stopifnot(identical(survival_example_event_value(list(name = "survival_pbc.csv"), "status"), "2"))
 stopifnot(identical(survival_example_event_value(list(name = "study_data.csv"), "status"), ""))
-
 km <- prepare_km_analysis_result(
-  data = lung,
+  data = survival_fixture,
   time = "time",
   event = "status",
   group = c("sex", "ph.ecog"),
-  event_value = "2",
+  event_value = "1",
   rate_times = "100, 200, 400",
   test_method = "logrank",
   output_tables = c("survival_table", "survival_time"),
@@ -54,7 +70,7 @@ stopifnot(grepl("<sup>2</sup>", km_html, fixed = TRUE))
 stopifnot(grepl("survival-col-median-95-ci", km_html, fixed = TRUE))
 
 sex_logrank <- km$analyses[[which(vapply(km$analyses, function(item) identical(item$group, "sex"), logical(1)))]]
-expected_logrank <- survival::survdiff(survival::Surv(time, status == 2) ~ sex, data = lung)
+expected_logrank <- survival::survdiff(survival::Surv(time, status == 1) ~ sex, data = survival_fixture)
 expect_close(sex_logrank$logrank$chisq, expected_logrank$chisq, label = "Log-rank chi-square")
 expect_close(
   sex_logrank$logrank$p,
@@ -63,8 +79,13 @@ expect_close(
 )
 
 km_panel <- htmltools::renderTags(survival_km_results_panel(km, plot_output_ids = list(character(0), character(0)), language = "en"))$html
-stopifnot(grepl("Model overview", km_panel, fixed = TRUE))
-stopifnot(grepl("M = mean; SE = standard error", km_panel, fixed = TRUE))
+stopifnot(grepl("1. Analysis overview", km_panel, fixed = TRUE))
+stopifnot(grepl("2. Kaplan-Meier survival time summary", km_panel, fixed = TRUE))
+stopifnot(grepl("3. Survival probabilities at selected time points", km_panel, fixed = TRUE))
+stopifnot(grepl("M = restricted mean over the default fitted follow-up horizon", km_panel, fixed = TRUE))
+stopifnot(regexpr("1. Analysis overview", km_panel, fixed = TRUE) < regexpr("2. Kaplan-Meier survival time summary", km_panel, fixed = TRUE))
+stopifnot(regexpr("2. Kaplan-Meier survival time summary", km_panel, fixed = TRUE) < regexpr("3. Survival probabilities at selected time points", km_panel, fixed = TRUE))
+stopifnot(grepl("text-align:center !important", km_panel, fixed = TRUE))
 
 message("Checking ungrouped Kaplan-Meier and life-table analyses...")
 km_ungrouped <- prepare_km_analysis_result(
@@ -121,11 +142,11 @@ stopifnot(grepl("NR", nr_table[["Median (95% CI)"]][[1]], fixed = TRUE))
 
 message("Checking Kaplan-Meier empty table/plot options...")
 km_empty_options <- prepare_km_analysis_result(
-  data = lung,
+  data = survival_fixture,
   time = "time",
   event = "status",
   group = "sex",
-  event_value = "2",
+  event_value = "1",
   output_tables = character(0),
   plot_types = character(0),
   plot_versions = character(0)
@@ -141,17 +162,116 @@ stopifnot(inherits(plot_color, "ggplot"))
 stopifnot(inherits(plot_bw, "ggplot"))
 
 message("Checking Cox regression...")
+event_note_html <- htmltools::renderTags(survival_event_variable_note("ko"))$html
+stopifnot(
+  grepl("이분형 또는 범주형 사건코드 변수", event_note_html, fixed = TRUE),
+  grepl("사건/비사건으로 매핑", event_note_html, fixed = TRUE)
+)
 cox <- prepare_cox_analysis_result(
-  data = lung,
+  data = survival_fixture,
   time = "time",
   event = "status",
   covariates = c("age", "sex"),
-  event_value = "2"
+  event_value = "1"
 )
 stopifnot(identical(cox$type, "cox"))
 stopifnot(nrow(cox$coef_table) > 0)
-stopifnot(is.data.frame(survival_cox_coef_table(cox)))
+cox_hr_table <- survival_cox_coef_table(cox)
+cox_statistic_table <- survival_cox_statistic_table(cox)
+stopifnot(
+  is.data.frame(cox_hr_table),
+  identical(names(cox_hr_table), c("Term", "HR", "95% CI", "p")),
+  is.data.frame(cox_statistic_table),
+  identical(names(cox_statistic_table), c("Term", "B", "SE", "z", "p"))
+)
 stopifnot(is.data.frame(survival_ph_table(cox)))
+factor_cox_data <- survival_fixture
+factor_cox_data$sex <- factor(factor_cox_data$sex)
+factor_cox <- prepare_cox_analysis_result(
+  data = factor_cox_data,
+  time = "time",
+  event = "status",
+  covariates = c("sex", "age"),
+  event_value = "1",
+  reference_values = stats::setNames(levels(factor_cox_data$sex)[[2]], "sex")
+)
+factor_cox_table <- survival_cox_coef_table(factor_cox)
+stopifnot(
+  any(grepl(paste0("sex=", levels(factor_cox_data$sex)[[2]], " \\(reference\\)"), factor_cox_table$Term)),
+  any(grepl("sex=.*\\(reference\\)", factor_cox_table$Term)),
+  any(factor_cox_table$`95% CI` == "reference"),
+  any(factor_cox_table$HR == "1.000")
+)
+cox_html <- htmltools::renderTags(survival_cox_results_panel(cox, language = "ko"))$html
+cox_table_html <- htmltools::renderTags(survival_cox_result_html_table(factor_cox))$html
+stopifnot(
+  grepl("survival-cox-result-table", cox_table_html, fixed = TRUE),
+  grepl("coefficient-ci-group-header", cox_table_html, fixed = TRUE),
+  grepl('colspan="2"', cox_table_html, fixed = TRUE),
+  grepl("95% CI", cox_table_html, fixed = TRUE),
+  grepl("LLCI", cox_table_html, fixed = TRUE),
+  grepl("ULCI", cox_table_html, fixed = TRUE),
+  grepl(">1.00<", cox_table_html, fixed = TRUE),
+  grepl("survival-cox-summary-row", cox_table_html, fixed = TRUE),
+  grepl("Likelihood-ratio χ²(p)", cox_table_html, fixed = TRUE),
+  grepl("PH GLOBAL χ²(p)", cox_table_html, fixed = TRUE),
+  !grepl("Wald χ²(p)", cox_table_html, fixed = TRUE),
+  !grepl("Score χ²(p)", cox_table_html, fixed = TRUE),
+  !grepl("PH age χ²(p)", cox_table_html, fixed = TRUE),
+  grepl("text-align:center", cox_table_html, fixed = TRUE)
+)
+ph_first <- factor_cox$ph_table[toupper(factor_cox$ph_table$Term) == "GLOBAL", , drop = FALSE]
+stopifnot(grepl(
+  paste0(
+    "PH ", ph_first[["Term"]], " χ²(p) = ",
+    survival_format_number(ph_first[["chisq"]]), " (",
+    survival_p(ph_first[["p"]]), ")"
+  ),
+  cox_table_html,
+  fixed = TRUE
+))
+stopifnot(grepl("1. Analysis overview", cox_html, fixed = TRUE))
+stopifnot(grepl("2. Cox proportional hazards model", cox_html, fixed = TRUE))
+stopifnot(grepl("3. Supplementary statistics and diagnostics", cox_html, fixed = TRUE))
+stopifnot(grepl("HR = hazard ratio", cox_html, fixed = TRUE))
+stopifnot(grepl("괄호 안은 p값", cox_html, fixed = TRUE))
+stopifnot(grepl("Schoenfeld 잔차", cox_html, fixed = TRUE))
+stopifnot(grepl("비례위험 가정 상세 진단", cox_html, fixed = TRUE))
+stopifnot(grepl("4. Residual distribution review", cox_html, fixed = TRUE))
+stopifnot(grepl("5. Influence review", cox_html, fixed = TRUE))
+stopifnot(grepl("logistic-result-table", cox_html, fixed = TRUE))
+stopifnot(!grepl("survival-cox-model-subsection", cox_html, fixed = TRUE))
+stopifnot(regexpr("2. Cox proportional hazards model", cox_html, fixed = TRUE) < regexpr("Likelihood-ratio χ²(p)", cox_html, fixed = TRUE))
+stopifnot(regexpr("Likelihood-ratio χ²(p)", cox_html, fixed = TRUE) < regexpr("3. Supplementary statistics and diagnostics", cox_html, fixed = TRUE))
+
+message("Checking survival HTML, PDF, Excel, and Result-collection exports...")
+saved_cox_html <- saved_survival_results_html(cox, language = "en")
+stopifnot(grepl("StatEdu Studio Cox Regression Results", saved_cox_html, fixed = TRUE))
+stopifnot(grepl("data:image/png;base64,", saved_cox_html, fixed = TRUE))
+saved_cox_document <- xml2::read_html(saved_cox_html)
+stopifnot(length(xml2::xml_find_all(saved_cox_document, "//*[contains(concat(' ', normalize-space(@class), ' '), ' shiny-plot-output ')]")) == 0L)
+
+survival_export_dir <- tempfile("survival-result-exports-")
+dir.create(survival_export_dir)
+survival_html_file <- file.path(survival_export_dir, "cox-results.html")
+survival_pdf_file <- file.path(survival_export_dir, "cox-results.pdf")
+survival_excel_file <- file.path(survival_export_dir, "cox-results.xlsx")
+write_survival_results_html(cox, survival_html_file, language = "en")
+write_survival_results_pdf(cox, survival_pdf_file, language = "en")
+save_survival_excel_file(cox, survival_excel_file, language = "en")
+stopifnot(all(file.exists(c(survival_html_file, survival_pdf_file, survival_excel_file))))
+stopifnot(all(file.info(c(survival_html_file, survival_pdf_file, survival_excel_file))$size > 1000))
+stopifnot(identical(readBin(survival_pdf_file, "raw", n = 4L), charToRaw("%PDF")))
+survival_excel_sheets <- openxlsx::getSheetNames(survival_excel_file)
+stopifnot("Report metadata" %in% survival_excel_sheets)
+stopifnot(any(grepl("Cox", survival_excel_sheets, ignore.case = TRUE)))
+
+survival_result_entry <- list(title = "Cox Regression", saved_at = "2026-08-20 12:00:00", html = saved_cox_html)
+stopifnot(length(result_entry_tables(survival_result_entry, 1L)) >= 5L)
+survival_result_images <- result_entry_images(survival_result_entry)
+stopifnot(length(survival_result_images) >= 2L, all(file.exists(vapply(survival_result_images, `[[`, character(1), "path"))))
+unlink(vapply(survival_result_images, `[[`, character(1), "path"))
+
 stopifnot(is.data.frame(cox$model_tests))
 stopifnot(nrow(cox$model_tests) == 3)
 stopifnot(inherits(survival_cox_ggplot(cox, "color"), "ggplot"))
@@ -169,7 +289,7 @@ stopifnot(length(cox_figures) == 2)
 stopifnot(all(file.exists(cox_figures)))
 unlink(cox_figure_dir, recursive = TRUE)
 
-expected_cox <- survival::coxph(survival::Surv(time, status == 2) ~ age + sex, data = lung, x = TRUE)
+expected_cox <- survival::coxph(survival::Surv(time, status == 1) ~ age + sex, data = survival_fixture, x = TRUE)
 expected_cox_summary <- summary(expected_cox)
 for (term in rownames(expected_cox_summary$coefficients)) {
   actual_row <- cox$coef_table[cox$coef_table$Term == term, , drop = FALSE]
@@ -189,15 +309,15 @@ for (term in rownames(expected_ph_table)) {
   }
 }
 
-for (test_name in c("Likelihood ratio", "Wald", "Score")) {
+for (test_name in c("Likelihood-ratio", "Wald", "Score")) {
   expected_test <- switch(test_name,
-    `Likelihood ratio` = expected_cox_summary$logtest,
+    `Likelihood-ratio` = expected_cox_summary$logtest,
     Wald = expected_cox_summary$waldtest,
     Score = expected_cox_summary$sctest
   )
   actual_row <- cox$model_tests[cox$model_tests$Test == test_name, , drop = FALSE]
   stopifnot(nrow(actual_row) == 1)
-  expect_close(actual_row$Chisq, expected_test[["test"]], label = paste(test_name, "chi-square"))
+  expect_close(actual_row$Statistic, expected_test[["test"]], label = paste(test_name, "chi-square"))
   expect_close(actual_row$df, expected_test[["df"]], label = paste(test_name, "df"))
   expect_close(actual_row$p, expected_test[["pvalue"]], label = paste(test_name, "p"))
 }

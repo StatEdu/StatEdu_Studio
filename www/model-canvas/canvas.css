@@ -6,10 +6,28 @@
   display: grid;
   grid-template-columns: 260px minmax(0, min(var(--custom-model-diagram-column-width, 1019px), calc(100vw - 340px)));
   gap: 16px;
-  align-items: stretch;
+  align-items: start;
   justify-content: start;
   width: fit-content;
   max-width: 100%;
+}
+
+/* Match the structural workspace to the full-width Step 2 data panel. */
+.structural-equation-canvas-root {
+  grid-template-columns: 260px minmax(0, 1fr);
+  width: 100%;
+}
+
+.structural-equation-canvas-root .custom-model-diagram-panel {
+  width: 100%;
+  min-width: 0;
+}
+
+.structural-equation-canvas-root .custom-model-canvas-scroll {
+  height: auto !important;
+  flex: 0 0 auto;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .custom-model-variable-panel,
@@ -51,6 +69,21 @@
   min-height: 417px;
   max-height: 417px;
   margin-top: 8px;
+}
+
+.structural-equation-canvas-root .custom-model-variable-panel {
+  align-self: start;
+  min-height: 530px;
+  height: 530px;
+  overflow: hidden;
+}
+
+.structural-equation-canvas-root .custom-model-variable-list {
+  height: auto;
+  min-height: 180px;
+  max-height: none;
+  flex: 1 1 auto;
+  overflow-y: auto;
 }
 
 .custom-model-variable-item {
@@ -173,6 +206,16 @@
 
 .custom-model-role-button-covariate {
   grid-column: 1 / -1;
+}
+
+.structural-covariate-actions {
+  display: block;
+  margin-top: 8px;
+  padding-top: 8px;
+}
+
+.structural-covariate-actions .custom-model-role-button-covariate {
+  width: 100%;
 }
 
 .custom-model-diagram-panel {
@@ -431,6 +474,51 @@
   overflow: visible !important;
 }
 
+.custom-model-run-options-popover.structural-run-options-popover {
+  width: min(520px, calc(100vw - 48px));
+  min-width: min(420px, calc(100vw - 48px));
+}
+
+.custom-model-toolbar-panel .custom-model-run-options-popover .structural-run-options-tabs {
+  display: block;
+}
+
+.custom-model-toolbar-panel .custom-model-run-options-popover .structural-run-options-tabs .nav-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 10px;
+  border-bottom: 1px solid #d7dee8;
+}
+
+.custom-model-toolbar-panel .custom-model-run-options-popover .structural-run-options-tabs .nav-tabs > li {
+  float: none;
+  margin: 0;
+}
+
+.custom-model-toolbar-panel .custom-model-run-options-popover .structural-run-options-tabs .nav-tabs > li > a {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 5px 5px 0 0;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.custom-model-toolbar-panel .custom-model-run-options-popover .structural-run-options-tabs .nav-tabs > li.active > a,
+.custom-model-toolbar-panel .custom-model-run-options-popover .structural-run-options-tabs .nav-tabs > li.active > a:focus,
+.custom-model-toolbar-panel .custom-model-run-options-popover .structural-run-options-tabs .nav-tabs > li.active > a:hover {
+  border-color: #d7dee8 #d7dee8 #ffffff;
+  color: #0f172a;
+  background: #ffffff;
+}
+
+.custom-model-toolbar-panel .custom-model-run-options-popover .structural-run-options-tabs .tab-content {
+  max-height: min(58vh, 520px);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
 .custom-model-toolbar-panel .custom-model-run-options-popover .analysis-option-group {
   display: block;
   margin: 0;
@@ -568,7 +656,9 @@
 
 .custom-model-edge-shape-tools.is-visible,
 .custom-model-edge-anchor-tools.is-visible {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: repeat(2, 30px);
+  grid-auto-rows: 30px;
 }
 
 .custom-model-edge-anchor-tools {
@@ -635,12 +725,150 @@
   white-space: nowrap;
 }
 
+.custom-model-paper-status {
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.custom-model-paper-status:hover,
+.custom-model-paper-status:focus-visible {
+  background: #eef4ff;
+  color: #0f4ea3;
+  outline: 1px solid #bfdbfe;
+}
+
 .custom-model-canvas-scroll {
   height: 730px;
   flex: 1 1 auto;
   overflow: auto;
   background: #eef2f7;
   padding: 24px;
+  position: relative;
+}
+
+.custom-model-paper-frame {
+  position: relative;
+  width: var(--custom-model-paper-display-width, var(--custom-model-paper-width, 971px));
+  height: var(--custom-model-paper-display-height, var(--custom-model-paper-height, 688px));
+  flex: 0 0 auto;
+}
+
+.structural-result-tools {
+  display: flex;
+  flex-flow: row wrap;
+  width: auto;
+  gap: 4px;
+  align-content: center;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.structural-equation-canvas-root [data-action="latentStats"] {
+  display: inline-flex;
+}
+
+.structural-latent-stats-popover {
+  display: none;
+  position: absolute;
+  top: 36px;
+  right: 0;
+  z-index: 210;
+  width: 142px;
+  align-items: stretch;
+  flex-direction: column;
+  gap: 7px;
+  min-height: 0;
+  padding: 8px;
+  border: 1px solid #cfd7e4;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
+  white-space: nowrap;
+}
+
+.structural-latent-stats-popover.is-visible {
+  display: flex;
+}
+
+.structural-latent-stats-title {
+  color: #475467;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.structural-latent-stats-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin: 0;
+  color: #1f2937;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.custom-model-node-latent .structural-latent-statistics {
+  position: absolute;
+  left: 84%;
+  top: -18%;
+  z-index: 8;
+  display: block;
+  width: max-content;
+  max-width: 180px;
+  margin-left: 8px;
+  margin-top: 0;
+  padding: 2px 4px;
+  transform-origin: left center;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #173b73;
+  font-size: 11px;
+  line-height: 1.25;
+  white-space: pre-line;
+  pointer-events: auto;
+  cursor: move;
+}
+
+.custom-model-node-latent .structural-latent-statistics.is-selected {
+  outline: 2px solid #3b6de3;
+  outline-offset: 1px;
+}
+
+.structural-latent-stats-option input {
+  margin: 0;
+}
+
+.structural-result-coefficient-control {
+  display: grid;
+  grid-template-rows: 16px 28px;
+  align-content: center;
+  gap: 2px;
+  width: 112px;
+  flex: 0 0 112px;
+  min-width: 0;
+}
+
+.structural-result-tools > .custom-model-toolbar-button {
+  flex: 0 0 40px;
+  width: 40px;
+  min-width: 40px;
+}
+
+.structural-result-coefficient-label {
+  margin: 0;
+  color: #475467;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+.structural-result-coefficient-select {
+  width: 112px;
+  height: 28px;
+  min-height: 28px;
+  padding: 2px 24px 2px 8px;
+  font-size: 12px;
+  line-height: 1.2;
 }
 
 .custom-model-modal-backdrop {
@@ -806,6 +1034,10 @@
   cursor: pointer;
 }
 
+.custom-model-canvas-root.is-viewing-result .custom-model-edge-label {
+  cursor: move;
+}
+
 .custom-model-edge-label-halo {
   fill: none;
   stroke: #ffffff;
@@ -814,9 +1046,19 @@
   paint-order: stroke;
 }
 
+.custom-model-edge-label-bg {
+  fill: rgba(255, 255, 255, 0.88);
+  stroke: none;
+  pointer-events: none;
+}
+
 .custom-model-edge-label-text {
   fill: #111827;
   font-weight: 700;
+}
+
+.structural-equation-canvas-root .custom-model-edge-label-text {
+  font-weight: 400;
 }
 
 .custom-model-label-property-popover {
@@ -839,9 +1081,552 @@
   pointer-events: auto;
 }
 
-.custom-model-node.is-selected {
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+.custom-model-toolbar-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+  filter: grayscale(1);
 }
+
+.structural-equation-canvas-root .custom-model-toolbar-panel {
+  width: 100%;
+  align-items: center;
+  padding: 6px 8px;
+  box-sizing: border-box;
+}
+
+.structural-equation-canvas-root .custom-model-toolbar-button {
+  width: 34px;
+  min-width: 34px;
+  height: 32px;
+  padding: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.structural-equation-canvas-root .custom-model-toolbar-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.structural-equation-canvas-root .custom-model-toolbar-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 23px;
+  height: 23px;
+  color: currentColor;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.structural-equation-canvas-root [data-action="addLatent"] .custom-model-toolbar-icon {
+  width: 23px;
+  height: 15px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+.structural-equation-canvas-root [data-action="addHigherOrderLatent"] .custom-model-toolbar-icon::before {
+  content: none;
+}
+.structural-higher-order-svg {
+  width: 40px;
+  height: 25px;
+  display: block;
+  overflow: visible;
+}
+.structural-higher-order-svg ellipse,
+.structural-higher-order-svg line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.25;
+  vector-effect: non-scaling-stroke;
+}
+.structural-higher-order-svg text {
+  fill: currentColor;
+  stroke: none;
+}
+
+.structural-higher-order-badge {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 25px;
+  line-height: 1;
+  color: currentColor;
+}
+
+.structural-higher-order-badge strong { font-size: 12px; font-weight: 800; }
+.structural-higher-order-badge small { margin-top: 2px; font-size: 7px; font-weight: 700; text-transform: uppercase; }
+.structural-equation-canvas-root [data-action="select"] .custom-model-toolbar-icon::before { content: "↖"; }
+.structural-equation-canvas-root [data-action="connect"] .custom-model-toolbar-icon::before,
+.structural-equation-canvas-root [data-action="covariance"] .custom-model-toolbar-icon::before {
+  font-size: 25px;
+  line-height: 1;
+  transform: scaleX(1.12);
+}
+.structural-equation-canvas-root [data-action="connect"] .custom-model-toolbar-icon::before { content: "→"; }
+.structural-equation-canvas-root [data-action="covariance"] .custom-model-toolbar-icon::before { content: "↔"; }
+.structural-equation-canvas-root [data-action="properties"] .custom-model-toolbar-icon::before { content: "⚙"; }
+.structural-equation-canvas-root [data-action="detachIndicator"] .custom-model-toolbar-icon::before { content: "⊘"; }
+.structural-equation-canvas-root [data-action="indicatorUp"] .custom-model-toolbar-icon::before { content: "↑"; }
+.structural-equation-canvas-root [data-action="indicatorDown"] .custom-model-toolbar-icon::before { content: "↓"; }
+.structural-equation-canvas-root [data-action="alignLeft"] .custom-model-toolbar-icon::before { content: "≡"; }
+.structural-equation-canvas-root [data-action="alignTop"] .custom-model-toolbar-icon::before { content: "⊤"; }
+.structural-equation-canvas-root [data-action="alignCenter"] .custom-model-toolbar-icon::before { content: "▯│▯"; font-size: 13px; }
+.structural-equation-canvas-root [data-action="alignMiddle"] .custom-model-toolbar-icon::before { content: "▭\A─\A▭"; white-space: pre; line-height: 7px; font-size: 10px; }
+.structural-equation-canvas-root [data-action="distributeH"] .custom-model-toolbar-icon::before { content: "▯↔▯"; font-size: 13px; }
+.structural-equation-canvas-root [data-action="distributeV"] .custom-model-toolbar-icon::before { content: "▭\A↕\A▭"; white-space: pre; line-height: 7px; font-size: 10px; }
+.structural-equation-canvas-root [data-action="delete"] .custom-model-toolbar-icon::before {
+  content: "";
+  display: block;
+  width: 22px;
+  height: 22px;
+  background: center / contain no-repeat url("assets/delete-brush-x.png");
+}
+.structural-equation-canvas-root [data-action="delete"].is-active .custom-model-toolbar-icon::before {
+  filter: grayscale(1) brightness(0) invert(1);
+}
+.structural-equation-canvas-root [data-action="undo"] .custom-model-toolbar-icon::before { content: "↶"; }
+.structural-equation-canvas-root [data-action="redo"] .custom-model-toolbar-icon::before { content: "↷"; }
+.structural-equation-canvas-root [data-action="grid"] .custom-model-toolbar-icon::before { content: "▦"; }
+.structural-equation-canvas-root [data-action="fit"] .custom-model-toolbar-icon::before { content: "⛶"; }
+.structural-equation-canvas-root [data-action="export"] .custom-model-toolbar-icon::before { content: "\21E9"; font-size: 20px; }
+.structural-equation-canvas-root [data-action="reset"] .custom-model-toolbar-icon::before { content: "\21BA"; font-size: 21px; }
+.structural-equation-canvas-root [data-action="resultView"] .custom-model-toolbar-icon::before { content: "β"; font-family: Georgia, serif; font-size: 20px; }
+.structural-equation-canvas-root [data-action="latentStats"] .custom-model-toolbar-icon::before { content: "R²"; font-size: 15px; font-weight: 800; }
+.structural-equation-canvas-root [data-action="resultEdit"] .custom-model-toolbar-icon::before { content: "\270E"; font-size: 19px; }
+.structural-equation-canvas-root [data-action="dashNonsignificant"] .custom-model-toolbar-icon::before { content: "\2504"; font-size: 22px; }
+.structural-equation-canvas-root [data-action="style"] .custom-model-toolbar-icon::before { content: "\25D0"; font-size: 20px; }
+.structural-equation-canvas-root [data-action="load"] .custom-model-toolbar-icon::before,
+.structural-equation-canvas-root [data-action="save"] .custom-model-toolbar-icon::before,
+.structural-equation-canvas-root [data-action="structuralCovariateTargets"] .custom-model-toolbar-icon::before { content: none; }
+
+.structural-common-toolbar-svg { width: 24px; height: 24px; display: block; }
+
+.structural-covariate-target-modal { width: min(920px, calc(100vw - 40px)); }
+.structural-covariate-target-note { margin-bottom: 12px; color: #475569; font-size: 13px; }
+.structural-covariate-target-table { overflow-x: auto; border: 1px solid #d8e0eb; border-radius: 6px; }
+.structural-covariate-target-row {
+  display: grid;
+  grid-template-columns: 150px repeat(var(--target-columns), minmax(100px, 1fr));
+  min-width: max-content;
+  border-bottom: 1px solid #e5eaf1;
+}
+.structural-covariate-target-row:last-child { border-bottom: 0; }
+.structural-covariate-target-row > div,
+.structural-covariate-target-row > label { padding: 9px 10px; border-right: 1px solid #e5eaf1; }
+.structural-covariate-target-row > :last-child { border-right: 0; }
+.structural-covariate-target-row.is-header { background: #f1f5f9; font-weight: 700; text-align: center; }
+.structural-covariate-target-name { font-weight: 600; }
+.structural-covariate-target-cell { display: flex; align-items: center; justify-content: center; margin: 0; }
+
+.structural-latent-tools {
+  display: grid;
+  align-items: center;
+  align-self: flex-start;
+  gap: 4px;
+  margin-left: 0;
+  padding-left: 10px;
+  border-left: 1px solid #d8dee8;
+}
+
+.structural-canvas-topbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 44px;
+  padding: 4px 8px;
+  border-bottom: 1px solid #d8dee8;
+  background: #f8fafc;
+}
+
+.structural-primary-toolbar-tools {
+  display: grid;
+  grid-template-columns: repeat(15, 44px);
+  grid-template-rows: repeat(2, 32px);
+  grid-auto-rows: 32px;
+  gap: 4px;
+  flex: 0 0 auto;
+  align-items: stretch;
+}
+
+.structural-primary-toolbar-tools > .custom-model-toolbar-button {
+  width: 44px;
+  min-width: 44px;
+  height: 32px;
+  padding: 2px 4px;
+}
+
+.structural-primary-toolbar-tools > .custom-model-toolbar-button[data-action="run"] {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.structural-primary-toolbar-tools .custom-model-toolbar-icon {
+  width: 22px;
+  height: 22px;
+  font-size: 15px;
+}
+
+.structural-primary-toolbar-tools [data-action="addHigherOrderLatent"] .custom-model-toolbar-icon {
+  width: 34px;
+  height: 22px;
+}
+
+.structural-secondary-toolbar-tools {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.structural-advanced-analysis-tools {
+  display: grid;
+  grid-template-columns: 72px;
+  grid-template-rows: repeat(2, 32px);
+  align-items: stretch;
+  gap: 4px;
+  margin-left: 0;
+  padding-left: 8px;
+  border-left: 1px solid #d8dee8;
+}
+
+.structural-latent-tools-basic {
+  grid-template-columns: auto repeat(4, 46px);
+  grid-template-rows: 32px;
+}
+
+.structural-latent-tools-pls {
+  grid-template-columns: auto repeat(4, 46px);
+  grid-template-rows: repeat(2, 32px);
+}
+
+.structural-advanced-analysis-tools .custom-model-toolbar-button {
+  width: 72px;
+  min-width: 72px;
+  height: 32px;
+}
+
+.structural-equation-canvas-root [data-action="multiGroup"] .custom-model-toolbar-icon::before {
+  content: "G1/G2";
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.structural-equation-canvas-root [data-action="moderator"] .custom-model-toolbar-icon::before {
+  content: "X×M";
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.structural-equation-canvas-root [data-action="zoomIn"] .custom-model-toolbar-icon::before { content: "+"; font-size: 22px; font-weight: 600; }
+.structural-equation-canvas-root [data-action="zoomOut"] .custom-model-toolbar-icon::before { content: "−"; font-size: 22px; font-weight: 600; }
+.structural-equation-canvas-root [data-action="run"] .custom-model-toolbar-icon::before { content: "▶"; font-size: 17px; }
+.structural-equation-canvas-root [data-action="flipCfa"] .custom-model-toolbar-icon::before { content: "⇄"; font-size: 22px; }
+.structural-latent-tools-label {
+  margin-right: 3px;
+  color: #475467;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.structural-latent-tools-basic .structural-latent-tools-label {
+  grid-row: 1;
+}
+
+.structural-latent-tools-pls .structural-latent-tools-label {
+  grid-row: 1 / span 2;
+}
+
+.structural-toolbar-separator { display: none; }
+.structural-equation-canvas-root [data-action="placementLeft"] .custom-model-toolbar-icon::before { content: "▭←⬭"; font-size: 12px; }
+.structural-equation-canvas-root [data-action="placementRight"] .custom-model-toolbar-icon::before { content: "⬭→▭"; font-size: 12px; }
+.structural-equation-canvas-root [data-action="placementTop"] .custom-model-toolbar-icon::before { content: "▭↑⬭"; font-size: 12px; }
+.structural-equation-canvas-root [data-action="placementBottom"] .custom-model-toolbar-icon::before { content: "⬭↓▭"; font-size: 12px; }
+.structural-equation-canvas-root [data-action="reflective"] .custom-model-toolbar-icon::before { content: "η→x"; font-size: 12px; }
+.structural-equation-canvas-root [data-action="formative"] .custom-model-toolbar-icon::before { content: "x→η"; font-size: 12px; }
+
+.structural-latent-tools .custom-model-toolbar-button {
+  width: 46px;
+  min-width: 46px;
+  height: 32px;
+  padding: 2px 4px;
+}
+
+.structural-latent-tools .custom-model-toolbar-icon {
+  width: 40px;
+  height: 26px;
+}
+
+.structural-latent-tools .custom-model-toolbar-icon:has(.structural-measurement-svg)::before { content: none; }
+.structural-measurement-svg { width: 40px; height: 26px; overflow: visible; }
+.structural-measurement-svg rect,
+.structural-measurement-svg ellipse,
+.structural-measurement-svg line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.custom-model-node.custom-model-node-higher-order {
+  border-style: double;
+  border-width: 3px !important;
+  background-color: rgba(239, 246, 255, 0.74) !important;
+}
+
+.structural-specific-indirect-table th {
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+
+.structural-specific-indirect-table th:first-child,
+.structural-specific-indirect-table td:first-child {
+  width: 34%;
+  min-width: 260px;
+}
+
+.structural-equation-canvas-root .custom-model-variable-list {
+  height: 330px;
+  min-height: 260px;
+  max-height: 330px;
+}
+
+.structural-equation-canvas-root .custom-model-variable-panel-body {
+  flex: 0 0 auto;
+}
+
+.structural-selection-settings {
+  margin-top: 8px;
+  padding-top: 9px;
+  border-top: 1px solid #d3dfeb;
+}
+
+.structural-selection-settings-title {
+  margin-bottom: 9px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.structural-selection-settings-body {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.structural-selection-summary {
+  margin-bottom: 8px;
+  color: #1e3a8a;
+  font-weight: 700;
+}
+
+.structural-setting-field {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 7px;
+  align-items: center;
+  margin-bottom: 7px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.structural-setting-field .form-control {
+  width: 100%;
+  height: 28px;
+  padding: 3px 6px;
+  font-size: 11px;
+}
+
+.structural-color-control {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.structural-color-palette {
+  display: flex;
+  flex: 0 0 100%;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.structural-color-swatch {
+  position: relative;
+  width: 19px;
+  height: 19px;
+  padding: 0;
+  border: 1px solid #94a3b8;
+  border-radius: 3px;
+  box-shadow: none;
+}
+
+.structural-color-swatch:hover {
+  border-color: #2563eb;
+  transform: scale(1.08);
+}
+
+.structural-color-swatch.is-selected {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
+.structural-color-swatch.is-transparent {
+  background:
+    linear-gradient(135deg, transparent 45%, #dc2626 46%, #dc2626 54%, transparent 55%),
+    repeating-conic-gradient(#e2e8f0 0 25%, #ffffff 0 50%) 0 0 / 8px 8px;
+}
+
+.structural-color-control input[type="color"],
+.structural-setting-field > input[type="color"] {
+  width: 42px;
+  height: 28px;
+  padding: 2px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.structural-color-control label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.structural-disturbance-position-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 26px);
+  grid-template-rows: repeat(3, 22px);
+  gap: 3px;
+}
+
+.structural-disturbance-position-button {
+  width: 26px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #fff;
+  color: #334155;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.structural-equation-canvas-root .custom-model-toolbar-panel[data-toolbar-panel="tools"] {
+  min-height: 72px;
+  padding-right: 8px;
+}
+
+.custom-model-edge-label-hit {
+  pointer-events: all;
+  cursor: move;
+}
+
+.structural-disturbance-toolbar {
+  display: none;
+  position: absolute;
+  top: 4px;
+  right: 164px;
+  align-items: center;
+  gap: 7px;
+}
+
+.structural-disturbance-toolbar.is-visible {
+  display: flex;
+}
+
+.structural-disturbance-toolbar-label {
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.structural-disturbance-position-button:hover {
+  border-color: #2563eb;
+  color: #1d4ed8;
+}
+
+.structural-disturbance-position-button.is-selected {
+  border-color: #2563eb;
+  background: #dbeafe;
+  color: #1e3a8a;
+}
+
+.custom-model-selection-marquee {
+  position: absolute;
+  z-index: 20;
+  pointer-events: none;
+  border: 1.5px solid #2563eb;
+  background: rgba(59, 130, 246, 0.14);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7) inset;
+}
+
+.custom-model-node-latent {
+  border-radius: 50%;
+  background: transparent;
+  border-style: solid;
+  border-color: #000000;
+  color: #000000;
+}
+
+.custom-model-node-indicator {
+  background: transparent;
+  border-radius: 4px;
+  border-color: #000000;
+  color: #000000;
+}
+
+.custom-model-node-error {
+  border-radius: 50%;
+  background: transparent;
+  border-color: #000000;
+  color: #000000;
+  padding: 0;
+}
+
+.custom-model-node-disturbance {
+  border-radius: 50%;
+  background: transparent;
+  border-color: #000000;
+  color: #000000;
+  padding: 0;
+}
+
+.custom-model-node.is-selected {
+  z-index: 5;
+  border-color: #1d4ed8 !important;
+  border-width: 2.5px !important;
+  background: rgba(219, 234, 254, 0.78) !important;
+  color: #1e3a8a;
+  box-shadow:
+    0 0 0 3px rgba(59, 130, 246, 0.34),
+    0 3px 10px rgba(37, 99, 235, 0.24);
+}
+
+.custom-model-node.has-validation-error { border-color: #dc2626 !important; }
+.custom-model-node.has-validation-warning { border-color: #d97706 !important; }
+.structural-validation-badge {
+  position: absolute; right: -9px; top: -10px; width: 18px; height: 18px;
+  border-radius: 50%; background: #d97706; color: #fff; font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(15,23,42,.25);
+}
+.has-validation-error .structural-validation-badge { background: #dc2626; }
+.structural-validation-status { margin-left: 14px; color: #92400e; font-size: 12px; }
+.structural-validation-status.has-errors { color: #b91c1c; font-weight: 700; }
 
 .custom-model-node-label {
   display: -webkit-box;
@@ -853,6 +1638,18 @@
   overflow-wrap: anywhere;
   line-height: 1.15;
   padding: 0 5px;
+}
+
+.custom-model-node-error .custom-model-node-label,
+.custom-model-node-disturbance .custom-model-node-label {
+  display: block;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: normal;
+  padding: 0;
+  font-size: 11px;
+  line-height: 1;
 }
 
 .custom-model-node-independent {
@@ -984,3 +1781,512 @@
   gap: 6px;
   margin-top: 10px;
 }
+
+.structural-analysis-results {
+  margin: 18px 20px 28px;
+  padding-top: 16px;
+  border-top: 1px solid #d7e0ea;
+}
+
+.structural-analysis-results > h3 {
+  margin: 0 0 14px;
+  font-size: 20px;
+  color: #102a4c;
+}
+
+.structural-analysis-results .result-section {
+  margin: 0 0 16px;
+}
+
+.structural-analysis-results .result-section h4 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.structural-analysis-results table {
+  width: auto;
+  min-width: 440px;
+  max-width: 100%;
+  font-size: var(--result-table-font-size);
+}
+
+.structural-analysis-results .structural-fit-table th,
+.structural-analysis-results .structural-fit-table td {
+  text-align: right;
+  vertical-align: middle;
+}
+
+.structural-analysis-results .structural-fit-table thead tr:first-child th:last-child,
+.structural-analysis-results .structural-fit-table thead tr:last-child th {
+  text-align: center;
+}
+
+.structural-measurement-result table th:nth-child(n + 3),
+.structural-measurement-result table td:nth-child(n + 3) {
+  text-align: right;
+}
+
+.structural-measurement-table thead th {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.structural-pls-measurement-main-table,
+.structural-pls-main-effects-table,
+.structural-pls-fit-guide-table,
+.structural-pls-fit-bootstrap-table,
+.structural-pls-validity-guide-table,
+.structural-pls-measurement-guide-table,
+.structural-pls-measurement-bootstrap-table {
+  table-layout: auto !important;
+}
+
+.structural-pls-measurement-main-table th,
+.structural-pls-measurement-main-table td,
+.structural-pls-main-effects-table th,
+.structural-pls-main-effects-table td,
+.structural-pls-fit-guide-table th,
+.structural-pls-fit-guide-table td,
+.structural-pls-fit-bootstrap-table th,
+.structural-pls-fit-bootstrap-table td,
+.structural-pls-validity-guide-table th,
+.structural-pls-validity-guide-table td,
+.structural-pls-measurement-guide-table th,
+.structural-pls-measurement-guide-table td,
+.structural-pls-measurement-bootstrap-table th,
+.structural-pls-measurement-bootstrap-table td {
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+.structural-pls-main-effects-table th:first-child,
+.structural-pls-main-effects-table td:first-child {
+  min-width: 112px;
+}
+
+.structural-pls-main-effects-table .structural-pls-path-cell {
+  text-align: center;
+}
+
+.structural-pls-main-effects-table .structural-pls-path-layout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.structural-pls-measurement-main-table {
+  width: max-content !important;
+  max-width: none !important;
+}
+
+.structural-pls-measurement-main-table .structural-boot-bh-header,
+.structural-pls-measurement-main-table th:nth-child(9),
+.structural-pls-measurement-main-table td:nth-child(9) {
+  width: 88px !important;
+  min-width: 88px !important;
+  max-width: 88px !important;
+  text-align: right;
+}
+
+.structural-validity-table th:not(:first-child),
+.structural-validity-table td:not(:first-child),
+.structural-validity-table .structural-numeric-cell {
+  text-align: center !important;
+}
+
+.structural-validity-table td.structural-parenthetical-cell {
+  text-align: center !important;
+}
+
+.structural-htmt-matrix th:not(:first-child),
+.structural-htmt-matrix td:not(:first-child),
+.structural-htmt-matrix .structural-numeric-cell {
+  text-align: center !important;
+}
+
+.structural-landscape-table-wrap {
+  overflow-x: auto !important;
+  width: 100%;
+}
+
+.structural-landscape-table {
+  table-layout: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  font-size: 11px;
+}
+
+.structural-landscape-table th,
+.structural-landscape-table td {
+  min-width: 0 !important;
+  padding: 5px 6px !important;
+  overflow-wrap: normal;
+  white-space: normal !important;
+  word-break: keep-all;
+}
+
+.structural-landscape-table td.structural-numeric-cell {
+  white-space: nowrap !important;
+}
+
+.structural-landscape-table .structural-numeric-value {
+  min-width: 0;
+}
+
+.structural-additional-fit-family {
+  margin: 10px 0 14px 0;
+}
+
+.structural-additional-fit-family h6 {
+  color: #082747;
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 6px 0;
+}
+
+.structural-additional-fit-family .table-responsive {
+  overflow-x: auto;
+}
+
+.structural-additional-fit-indices-table {
+  max-width: none !important;
+  min-width: 100%;
+  table-layout: auto !important;
+  width: max-content !important;
+}
+
+.structural-additional-fit-indices-table th,
+.structural-additional-fit-indices-table td {
+  min-width: 72px;
+  white-space: nowrap;
+}
+
+.structural-additional-fit-indices-table th:not(:first-child),
+.structural-additional-fit-indices-table td:not(:first-child) {
+  text-align: center;
+}
+
+.structural-additional-fit-indices-table th:first-child,
+.structural-additional-fit-indices-table td:first-child {
+  min-width: 110px;
+  text-align: left !important;
+}
+
+.structural-information-criteria-table {
+  min-width: 0;
+  font-size: 12px;
+}
+
+.structural-information-criteria-table th,
+.structural-information-criteria-table td {
+  white-space: nowrap;
+}
+
+.structural-information-criteria-table th:nth-child(10),
+.structural-information-criteria-table td:nth-child(10) {
+  min-width: 0;
+  white-space: normal;
+}
+
+.structural-mi-table-scroll {
+  overflow-x: auto;
+}
+
+.structural-mi-table {
+  max-width: none !important;
+  min-width: 100%;
+  table-layout: auto !important;
+  width: max-content !important;
+}
+
+.structural-mi-table th,
+.structural-mi-table td {
+  min-width: 58px;
+  white-space: nowrap;
+}
+
+.structural-mi-table th:not(:first-child),
+.structural-mi-table td:not(:first-child) {
+  text-align: right;
+}
+
+.structural-mi-theory-table th:first-child,
+.structural-mi-theory-table td:first-child {
+  min-width: 52px;
+  white-space: nowrap;
+}
+
+.structural-mi-theory-table th:nth-child(3),
+.structural-mi-theory-table td:nth-child(3),
+.structural-mi-free-table th:first-child,
+.structural-mi-free-table td:first-child {
+  min-width: 118px;
+  text-align: center;
+}
+
+.structural-mi-theory-table th:last-child,
+.structural-mi-theory-table td:last-child {
+  min-width: 58px;
+  text-align: center;
+}
+
+.structural-mi-skipped-details-table td:first-child {
+  text-align: center;
+  white-space: nowrap;
+  width: 60px;
+}
+
+.structural-mi-skipped-details-table td:nth-child(2) {
+  overflow-wrap: anywhere;
+  text-align: left !important;
+  white-space: normal;
+}
+
+.structural-landscape-table.structural-additional-fit-indices-table,
+.structural-landscape-table.structural-information-criteria-table,
+.structural-landscape-table.structural-mi-table,
+.structural-landscape-table.structural-fit-guidance-table,
+.structural-landscape-table.structural-rmsea-tests-table {
+  table-layout: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+.structural-landscape-table.structural-additional-fit-indices-table th,
+.structural-landscape-table.structural-additional-fit-indices-table td,
+.structural-landscape-table.structural-information-criteria-table th,
+.structural-landscape-table.structural-information-criteria-table td,
+.structural-landscape-table.structural-mi-table th,
+.structural-landscape-table.structural-mi-table td,
+.structural-landscape-table.structural-fit-guidance-table th,
+.structural-landscape-table.structural-fit-guidance-table td,
+.structural-landscape-table.structural-rmsea-tests-table th,
+.structural-landscape-table.structural-rmsea-tests-table td {
+  min-width: 0 !important;
+  white-space: normal !important;
+  word-break: keep-all;
+}
+
+.structural-mi-table.structural-landscape-table th,
+.structural-mi-table.structural-landscape-table td {
+  white-space: nowrap !important;
+}
+
+.structural-fit-guidance-result,
+.structural-effect-summary-block {
+  margin-top: 18px;
+}
+
+.structural-path-result > .structural-result-note + .structural-result-note {
+  margin-top: 4px;
+}
+
+.structural-effect-summary-block h5 {
+  margin-top: 0;
+}
+
+/* Keep every structural toolbar control visible in one fixed two-row area.
+   The toolbar must not become a horizontal scroll container because that
+   also clips the analysis-options popover. */
+.structural-equation-canvas-root .custom-model-toolbar {
+  overflow: visible;
+}
+
+.structural-equation-canvas-root .custom-model-toolbar-panel[data-toolbar-panel="tools"].is-active {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 68px;
+  align-items: start;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow: visible;
+}
+
+.structural-equation-canvas-root .structural-primary-toolbar-tools {
+  grid-template-columns: repeat(15, 36px);
+  gap: 3px;
+}
+
+.structural-equation-canvas-root .structural-primary-toolbar-tools > .custom-model-toolbar-button {
+  width: 36px;
+  min-width: 36px;
+}
+
+.structural-equation-canvas-root .structural-primary-toolbar-tools .custom-model-toolbar-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.structural-equation-canvas-root .structural-secondary-toolbar-tools,
+.structural-equation-canvas-root .structural-result-tools {
+  flex-wrap: nowrap;
+  margin-left: 0;
+  white-space: nowrap;
+}
+
+.structural-equation-canvas-root .structural-secondary-toolbar-tools {
+  flex: 1 1 auto;
+  gap: 5px;
+}
+
+.structural-equation-canvas-root .structural-advanced-analysis-tools {
+  grid-template-columns: 58px;
+  gap: 3px;
+  padding-left: 5px;
+}
+
+.structural-equation-canvas-root .structural-advanced-analysis-tools .custom-model-toolbar-button {
+  width: 58px;
+  min-width: 58px;
+}
+
+.structural-equation-canvas-root .structural-latent-tools {
+  gap: 3px;
+  padding-left: 5px;
+}
+
+.structural-equation-canvas-root .structural-latent-tools-basic,
+.structural-equation-canvas-root .structural-latent-tools-pls {
+  grid-template-columns: repeat(4, 38px);
+}
+
+.structural-equation-canvas-root .structural-latent-tools .custom-model-toolbar-button {
+  width: 38px;
+  min-width: 38px;
+}
+
+.structural-equation-canvas-root .structural-latent-tools .custom-model-toolbar-icon,
+.structural-equation-canvas-root .structural-measurement-svg {
+  width: 33px;
+}
+
+.structural-equation-canvas-root .structural-result-tools {
+  gap: 3px;
+  position: relative;
+}
+
+.structural-equation-canvas-root .structural-result-coefficient-control {
+  width: 88px;
+  flex-basis: 88px;
+}
+
+.structural-equation-canvas-root .structural-result-coefficient-select {
+  width: 88px;
+  min-width: 0;
+  padding-left: 6px;
+}
+
+.structural-equation-canvas-root .structural-result-coefficient-control:nth-child(2) {
+  width: 116px;
+  flex-basis: 116px;
+}
+
+.structural-equation-canvas-root .structural-result-coefficient-control:nth-child(2) .structural-result-coefficient-select {
+  width: 116px;
+}
+
+.structural-equation-canvas-root .structural-latent-stats-popover {
+  gap: 5px;
+  padding: 8px;
+}
+
+.structural-equation-canvas-root .structural-latent-stats-title {
+  max-width: none;
+  line-height: 1.15;
+  white-space: normal;
+}
+
+.structural-equation-canvas-root .structural-latent-stats-option {
+  gap: 2px;
+  font-size: 10px;
+}
+
+.structural-equation-canvas-root .structural-result-tools > .custom-model-toolbar-button {
+  width: 34px;
+  min-width: 34px;
+  flex-basis: 34px;
+}
+
+.structural-equation-canvas-root .custom-model-run-options-popover.is-visible {
+  z-index: 200;
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+}
+
+@media (max-width: 1500px) {
+  .structural-equation-canvas-root .custom-model-toolbar-panel[data-toolbar-panel="tools"].is-active {
+    zoom: 0.75;
+    width: 133.333%;
+  }
+}
+
+/* Portrait Table 3: distribute all validity columns within the page. */
+.structural-validity-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.structural-validity-table th,
+.structural-validity-table td {
+  min-width: 0 !important;
+  padding: 5px 6px !important;
+  white-space: normal !important;
+}
+
+.structural-validity-table th:first-child,
+.structural-validity-table td:first-child { width: 17%; text-align: left !important; }
+.structural-validity-table th:nth-child(2),
+.structural-validity-table td:nth-child(2),
+.structural-validity-table th:nth-child(3),
+.structural-validity-table td:nth-child(3),
+.structural-validity-table th:nth-child(4),
+.structural-validity-table td:nth-child(4) { width: 14%; }
+.structural-validity-table th:nth-child(n+5),
+.structural-validity-table td:nth-child(n+5) { width: 13%; }
+
+/* Portrait Table 4: fit all measurement columns through VIF on one page. */
+.structural-pls-measurement-main-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+  font-size: 10.5px;
+}
+
+.structural-pls-measurement-main-table th,
+.structural-pls-measurement-main-table td {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  padding: 5px 4px !important;
+  white-space: normal !important;
+}
+
+.structural-pls-measurement-main-table th:nth-child(1),
+.structural-pls-measurement-main-table td:nth-child(1),
+.structural-pls-measurement-main-table th:nth-child(2),
+.structural-pls-measurement-main-table td:nth-child(2) { width: 10% !important; }
+.structural-pls-measurement-main-table th:nth-child(3),
+.structural-pls-measurement-main-table td:nth-child(3) { width: 11% !important; }
+.structural-pls-measurement-main-table th:nth-child(4),
+.structural-pls-measurement-main-table td:nth-child(4) { width: 9% !important; }
+.structural-pls-measurement-main-table th:nth-child(5),
+.structural-pls-measurement-main-table td:nth-child(5),
+.structural-pls-measurement-main-table th:nth-child(6),
+.structural-pls-measurement-main-table td:nth-child(6) { width: 9% !important; }
+.structural-pls-measurement-main-table th:nth-child(7),
+.structural-pls-measurement-main-table td:nth-child(7),
+.structural-pls-measurement-main-table th:nth-child(8),
+.structural-pls-measurement-main-table td:nth-child(8),
+.structural-pls-measurement-main-table th:nth-child(10),
+.structural-pls-measurement-main-table td:nth-child(10) { width: 8% !important; }
+.structural-pls-measurement-main-table th:nth-child(9),
+.structural-pls-measurement-main-table td:nth-child(9) { width: 10% !important; }

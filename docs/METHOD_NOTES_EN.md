@@ -1024,7 +1024,7 @@ ICC precision uses Fisher-z-style approximations. Cohen's kappa precision uses a
 
 ### 24.21 SEM / CFA
 
-SEM/CFA planning can use RMSEA close-fit or not-close-fit logic, parameter Monte Carlo, or complexity heuristics. These calculations are sensitive to degrees of freedom, standardized parameter size, and model complexity.
+SEM/CFA planning can use RMSEA close-fit or not-close-fit logic, an approximate parameter-power simulation, or complexity heuristics. The parameter simulation uses a large-sample standard-error approximation rather than full model data generation and refitting; a model-specific Monte Carlo study remains preferable for complex designs. These calculations are sensitive to degrees of freedom, standardized parameter size, and model complexity.
 
 RMSEA noncentrality parameter:
 

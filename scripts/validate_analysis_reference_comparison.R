@@ -325,6 +325,129 @@ fa_ref <- suppressWarnings(suppressMessages(psych::fa(r = stats::cor(rel_data), 
 fa_diff <- max_abs_diff(abs(as.matrix(unclass(fa_app$loadings))[, 1]), abs(as.matrix(unclass(fa_ref$loadings))[, 1]))
 add_row("Factor Analysis", "PAF one-factor loadings", 0, 0, "max |abs loading diff|", fa_diff, 1e-10)
 
+# Structural equation modeling
+sem_path_frame <- function(fit, op = "~", value_column = "est") {
+  estimates <- lavaan::parameterEstimates(fit, ci = TRUE)
+  estimates <- estimates[estimates$op == op, , drop = FALSE]
+  if (!nrow(estimates)) return(data.frame(term = character(0), value = numeric(0), stringsAsFactors = FALSE))
+  term <- if (identical(op, ":=")) estimates$lhs else paste(estimates$lhs, op, estimates$rhs)
+  data.frame(term = term, value = estimates[[value_column]], stringsAsFactors = FALSE)
+}
+
+sem_standardized_path_frame <- function(fit) {
+  estimates <- lavaan::standardizedSolution(fit, ci = TRUE)
+  estimates <- estimates[estimates$op == "~", , drop = FALSE]
+  if (!nrow(estimates)) return(data.frame(term = character(0), value = numeric(0), stringsAsFactors = FALSE))
+  data.frame(term = paste(estimates$lhs, "~", estimates$rhs), value = estimates$est.std, stringsAsFactors = FALSE)
+}
+
+compare_named_values <- function(app, reference) {
+  merged <- merge(app, reference, by = "term", all = TRUE, sort = FALSE)
+  max_abs_diff(merged$value.x, merged$value.y)
+}
+
+pls_matrix_frame <- function(matrix_value, skip_rows = character(0)) {
+  matrix_value <- as.matrix(matrix_value)
+  if (!length(matrix_value)) return(data.frame(term = character(0), value = numeric(0), stringsAsFactors = FALSE))
+  row_names <- setdiff(rownames(matrix_value), skip_rows)
+  if (!length(row_names) || !length(colnames(matrix_value))) return(data.frame(term = character(0), value = numeric(0), stringsAsFactors = FALSE))
+  rows <- expand.grid(row = row_names, column = colnames(matrix_value), stringsAsFactors = FALSE)
+  values <- mapply(function(row, column) suppressWarnings(as.numeric(matrix_value[row, column])), rows$row, rows$column)
+  rows <- rows[is.finite(values), , drop = FALSE]
+  values <- values[is.finite(values)]
+  data.frame(term = paste(rows$row, rows$column, sep = " -> "), value = values, stringsAsFactors = FALSE)
+}
+
+reference_random_seed <- .Random.seed
+set.seed(20260819)
+sem_n <- 170L
+sem_eta1 <- stats::rnorm(sem_n)
+sem_eta2 <- 0.58 * sem_eta1 + stats::rnorm(sem_n, sd = 0.76)
+sem_data <- data.frame(
+  x1 = 0.78 * sem_eta1 + stats::rnorm(sem_n, sd = 0.45),
+  x2 = 0.72 * sem_eta1 + stats::rnorm(sem_n, sd = 0.50),
+  x3 = 0.69 * sem_eta1 + stats::rnorm(sem_n, sd = 0.52),
+  y1 = 0.82 * sem_eta2 + stats::rnorm(sem_n, sd = 0.42),
+  y2 = 0.76 * sem_eta2 + stats::rnorm(sem_n, sd = 0.48),
+  y3 = 0.70 * sem_eta2 + stats::rnorm(sem_n, sd = 0.55)
+)
+sem_snapshot <- list(
+  nodes = list(
+    list(id = "lv1", role = "latent", name = "eta1", canvasLabel = "eta1", measurementMode = "reflective"),
+    list(id = "lv2", role = "latent", name = "eta2", canvasLabel = "eta2", measurementMode = "reflective"),
+    list(id = "x1", role = "indicator", name = "x1", variableId = "x1", canvasLabel = "x1"),
+    list(id = "x2", role = "indicator", name = "x2", variableId = "x2", canvasLabel = "x2"),
+    list(id = "x3", role = "indicator", name = "x3", variableId = "x3", canvasLabel = "x3"),
+    list(id = "y1", role = "indicator", name = "y1", variableId = "y1", canvasLabel = "y1"),
+    list(id = "y2", role = "indicator", name = "y2", variableId = "y2", canvasLabel = "y2"),
+    list(id = "y3", role = "indicator", name = "y3", variableId = "y3", canvasLabel = "y3")
+  ),
+  edges = list(
+    list(id = "e1", from = "lv1", to = "x1"), list(id = "e2", from = "lv1", to = "x2"), list(id = "e3", from = "lv1", to = "x3"),
+    list(id = "e4", from = "lv2", to = "y1"), list(id = "e5", from = "lv2", to = "y2"), list(id = "e6", from = "lv2", to = "y3"),
+    list(id = "p1", from = "lv1", to = "lv2")
+  )
+)
+
+sem_app <- run_structural_canvas_analysis(sem_snapshot, sem_data, "sem", estimator = "ML", missing = "fiml")
+sem_ref <- lavaan::sem(sem_app$syntax, data = sem_data, estimator = "ML", missing = "fiml", auto.cov.lv.x = FALSE)
+add_row("SEM / CB-SEM", "SEM direct structural path", 0, 0, "max |B diff|", compare_named_values(sem_path_frame(sem_app$fit, "~", "est"), sem_path_frame(sem_ref, "~", "est")), 1e-10)
+add_row("SEM / CB-SEM", "SEM direct structural path", 0, 0, "max |SE diff|", compare_named_values(sem_path_frame(sem_app$fit, "~", "se"), sem_path_frame(sem_ref, "~", "se")), 1e-10)
+add_row("SEM / CB-SEM", "SEM standardized path", 0, 0, "max |beta diff|", compare_named_values(sem_standardized_path_frame(sem_app$fit), sem_standardized_path_frame(sem_ref)), 1e-10)
+add_row("SEM / CB-SEM", "SEM global fit indices", 0, 0, "max |fit-index diff|", max_abs_diff(lavaan::fitMeasures(sem_app$fit, c("cfi", "rmsea", "srmr")), lavaan::fitMeasures(sem_ref, c("cfi", "rmsea", "srmr"))), 1e-10)
+
+set.seed(20260820)
+med_n <- 210L
+eta_a <- stats::rnorm(med_n)
+eta_b <- 0.55 * eta_a + stats::rnorm(med_n, sd = 0.80)
+eta_c <- 0.35 * eta_a + 0.50 * eta_b + stats::rnorm(med_n, sd = 0.75)
+med_data <- data.frame(
+  a1 = 0.82 * eta_a + stats::rnorm(med_n, sd = 0.42), a2 = 0.75 * eta_a + stats::rnorm(med_n, sd = 0.50), a3 = 0.70 * eta_a + stats::rnorm(med_n, sd = 0.55),
+  b1 = 0.80 * eta_b + stats::rnorm(med_n, sd = 0.45), b2 = 0.73 * eta_b + stats::rnorm(med_n, sd = 0.52), b3 = 0.68 * eta_b + stats::rnorm(med_n, sd = 0.58),
+  c1 = 0.84 * eta_c + stats::rnorm(med_n, sd = 0.40), c2 = 0.77 * eta_c + stats::rnorm(med_n, sd = 0.48), c3 = 0.71 * eta_c + stats::rnorm(med_n, sd = 0.54)
+)
+med_snapshot <- list(
+  nodes = c(
+    list(
+      list(id = "eta_a", role = "latent", name = "etaA", canvasLabel = "etaA"),
+      list(id = "eta_b", role = "latent", name = "etaB", canvasLabel = "etaB"),
+      list(id = "eta_c", role = "latent", name = "etaC", canvasLabel = "etaC")
+    ),
+    lapply(seq_len(3L), function(index) list(id = paste0("a", index), role = "indicator", name = paste0("a", index), variableId = paste0("a", index), canvasLabel = paste0("a", index))),
+    lapply(seq_len(3L), function(index) list(id = paste0("b", index), role = "indicator", name = paste0("b", index), variableId = paste0("b", index), canvasLabel = paste0("b", index))),
+    lapply(seq_len(3L), function(index) list(id = paste0("c", index), role = "indicator", name = paste0("c", index), variableId = paste0("c", index), canvasLabel = paste0("c", index)))
+  ),
+  edges = c(
+    lapply(seq_len(3L), function(index) list(id = paste0("ea", index), from = "eta_a", to = paste0("a", index))),
+    lapply(seq_len(3L), function(index) list(id = paste0("eb", index), from = "eta_b", to = paste0("b", index))),
+    lapply(seq_len(3L), function(index) list(id = paste0("ec", index), from = "eta_c", to = paste0("c", index))),
+    list(list(id = "ab", from = "eta_a", to = "eta_b"), list(id = "bc", from = "eta_b", to = "eta_c"), list(id = "ac", from = "eta_a", to = "eta_c"))
+  )
+)
+cbsem_app <- run_structural_canvas_analysis(med_snapshot, med_data, "cbsem", estimator = "ML", missing = "fiml")
+cbsem_ref <- lavaan::sem(cbsem_app$syntax, data = med_data, estimator = "ML", missing = "fiml", auto.cov.lv.x = FALSE)
+add_row("SEM / CB-SEM", "CB-SEM mediation structural paths", 0, 0, "max |B diff|", compare_named_values(sem_path_frame(cbsem_app$fit, "~", "est"), sem_path_frame(cbsem_ref, "~", "est")), 1e-10)
+add_row("SEM / CB-SEM", "CB-SEM mediation structural paths", 0, 0, "max |SE diff|", compare_named_values(sem_path_frame(cbsem_app$fit, "~", "se"), sem_path_frame(cbsem_ref, "~", "se")), 1e-10)
+add_row("SEM / CB-SEM", "CB-SEM indirect/total effects", 0, 0, "max |defined-effect B diff|", compare_named_values(sem_path_frame(cbsem_app$fit, ":=", "est"), sem_path_frame(cbsem_ref, ":=", "est")), 1e-10)
+add_row("SEM / CB-SEM", "CB-SEM indirect/total effects", 0, 0, "max |defined-effect SE diff|", compare_named_values(sem_path_frame(cbsem_app$fit, ":=", "se"), sem_path_frame(cbsem_ref, ":=", "se")), 1e-10)
+
+pls_app <- run_structural_canvas_analysis(sem_snapshot, sem_data, "plssem", estimator = "PLS")
+pls_ref <- seminr::estimate_pls(
+  data = sem_data,
+  measurement_model = seminr::constructs(
+    seminr::reflective("eta1", c("x1", "x2", "x3")),
+    seminr::reflective("eta2", c("y1", "y2", "y3"))
+  ),
+  structural_model = seminr::relationships(seminr::paths(from = "eta1", to = "eta2"))
+)
+pls_app_summary <- summary(pls_app$fit)
+pls_ref_summary <- summary(pls_ref)
+add_row("PLS-SEM", "PLS structural path", 0, 0, "max |path coefficient diff|", compare_named_values(pls_matrix_frame(pls_app_summary$paths, c("R^2", "AdjR^2")), pls_matrix_frame(pls_ref_summary$paths, c("R^2", "AdjR^2"))), 1e-10)
+add_row("PLS-SEM", "PLS R-squared", 0, 0, "max |R2 diff|", compare_named_values(pls_matrix_frame(pls_app_summary$paths["R^2", , drop = FALSE]), pls_matrix_frame(pls_ref_summary$paths["R^2", , drop = FALSE])), 1e-10)
+add_row("PLS-SEM", "PLS outer loadings", 0, 0, "max |loading diff|", compare_named_values(pls_matrix_frame(pls_app_summary$loadings), pls_matrix_frame(pls_ref_summary$loadings)), 1e-10)
+add_row("PLS-SEM", "PLS reliability and AVE", 0, 0, "max |reliability diff|", compare_named_values(pls_matrix_frame(pls_app_summary$reliability), pls_matrix_frame(pls_ref_summary$reliability)), 1e-10)
+.Random.seed <- reference_random_seed
+
 # Longitudinal / panel models
 long_info <- function(data, overrides = list()) {
   info <- lapply(names(data), function(nm) {
@@ -499,6 +622,7 @@ analysis_method_markdown <- c(
   "| Inter-rater agreement | `psych`, `irr`, `irrCAC`, Krippendorff coincidence-matrix implementation, literature examples | ICC variants, Cohen/weighted kappa, Fleiss kappa, Light kappa, Gwet AC1/AC2 including missing-data unit averaging, Krippendorff alpha including missing and single-rater unit handling, character-label ordinal category order | PASS | Weighted kappa, AC2, and ordinal alpha use `category_table` order for ordinal category levels when available. |",
   "| PCA | Direct eigen decomposition, `psych`/polychoric checks | Pearson/covariance/polychoric matrix paths, eigenvalues, component-count rules, cumulative-variance empty-selection guard, polychoric-to-Pearson fallback matrix label, covariance Kaiser warning | PASS | Kaiser eigenvalue >= 1 is warned as scale-dependent for covariance matrices. |",
   "| Factor analysis | `psych::fa`, shared numeric-matrix conversion checks | PAF one-factor absolute loadings, factor numeric conversion via labels rather than factor codes, polychoric score warning path | PASS | When FA is fitted on a polychoric matrix, saved scores are documented as raw-data/Pearson-standardized approximations. |",
+  "| SEM / CB-SEM / PLS-SEM | Direct `lavaan::sem` and `seminr::estimate_pls` calls | SEM and CB-SEM path B/SE/beta, global fit indices, defined indirect/total effects, PLS path coefficients, R2, outer loadings, reliability, and AVE | PASS | This validates representative continuous reflective models; advanced group comparisons, ordinal WLSMV, and PLS predictive diagnostics remain in dedicated SEM validation work. |",
   "| Longitudinal / panel models | `lmerTest::lmer`, `geepack::geeglm`, `plm`, `lmtest::coeftest`, `mice::pool`, direct Kish/IPW checks | LMM ML coefficients/AIC, GEE coefficients/SE with id-time sorting and waves, panel FE coefficients and group-cluster HC1 SE, Rubin MI pooling B/SE/df, Kish effective N, IPW clipping/normalization, NB-GEE fallback warning | PASS | Native negative-binomial GEE is not claimed; marginal `glm.nb` plus cluster-robust SE is explicitly labelled as a fallback. |",
   "| Data editor recode / missing-code handling | Direct helper checks and formula-transform guard tests | Same-variable recode, category/range recode, reverse scoring, Likert detection/conversion, missing-code detection and conversion to `NA`, formula transformations, factor numeric-label conversion in numeric helpers | PASS | Data-editor missing-code handling converts user/sentinel codes to `NA`; general MI/IPW engines are validated in GLM and longitudinal modules. |",
   "| Custom model canvas wiring | Synthetic canvas snapshots compared with expected analysis maps | Node roles, directed X->Y, X->M, M->Y, M->M maps, serial mediator detection, moderated path flags, moderation map rows, invalid edge/moderation record filtering | PASS | The canvas wiring test covers snapshot-to-engine map construction; fitted mediation/moderation calculations are validated in the mediation engine paths. |",

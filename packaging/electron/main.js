@@ -26,7 +26,7 @@ function normalizeStudioFileArg(value) {
     return "";
   }
   const resolved = path.resolve(raw);
-  if (path.extname(resolved).toLowerCase() !== ".studio") {
+  if (![".studio", ".stmodel", ".stsem", ".stmm"].includes(path.extname(resolved).toLowerCase())) {
     return "";
   }
   return fs.existsSync(resolved) ? resolved : "";
@@ -186,7 +186,11 @@ function logStartupEnvironment() {
 }
 
 function appBaseDir() {
-  return app.getAppPath();
+  const appPath = app.getAppPath();
+  if (appPath.toLowerCase().endsWith(".asar")) {
+    return `${appPath}.unpacked`;
+  }
+  return appPath;
 }
 
 function bundledAppDir() {
@@ -285,6 +289,10 @@ function waitForShiny(port, timeoutMs = DEFAULT_SHINY_STARTUP_TIMEOUT_MS) {
 function runRscriptProbe(rscript, appDir) {
   const result = spawnSync(rscript, ["--version"], {
     cwd: appDir,
+    env: {
+      ...process.env,
+      ...(process.platform === "win32" ? { LC_ALL: "English_United States.utf8", LANG: "English_United States.utf8" } : {})
+    },
     encoding: "utf8",
     windowsHide: true
   });
@@ -328,6 +336,7 @@ async function startShiny() {
   const initialLanguage = normalizeAppLanguage(process.env.STATEDU_APP_LANGUAGE) || readAppLanguage() || "ko";
   const env = {
     ...process.env,
+    ...(process.platform === "win32" ? { LC_ALL: "English_United States.utf8", LANG: "English_United States.utf8" } : {}),
     STATEDU_PORT: String(port),
     STATEDU_APP_DIR: appDir,
     STATEDU_LAUNCH_BROWSER: "false",

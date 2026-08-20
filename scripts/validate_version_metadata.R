@@ -150,6 +150,57 @@ assert_contains(release_checklist, "For public builds, `StatEdu Studio` and `Sta
 assert_contains(release_checklist, "scripts\\build_electron_release.ps1", "release checklist final build command")
 assert_contains(release_checklist, "docs/RELEASE_1_2_VERSION_BUMP_CHECKLIST.md", "release checklist 1.2 version bump checklist")
 assert_contains(release_checklist, "scripts\\get_release_checksums.ps1", "release checklist checksum helper")
+assert_contains(release_checklist, "docs/RELEASE_1_2_3_PROMOTION_CHECKLIST.md", "release checklist 1.2.3 promotion checklist")
+assert_contains(release_checklist, "docs/RELEASE_1_2_3_DECISION_LOG.md", "release checklist 1.2.3 decision log")
+assert_contains(release_checklist, "scripts\\validate_sem_release_promotion.R", "release checklist 1.2.3 promotion validator")
+assert_contains(release_checklist, "docs/RELEASE_1_2_3_VERSION_BUMP_CHECKLIST.md", "release checklist 1.2.3 version bump checklist")
+assert_contains(release_checklist, "scripts\\validate_sem_public_claims.R", "release checklist SEM public claims validator")
+
+version_bump_123 <- read_text("docs/RELEASE_1_2_3_VERSION_BUMP_CHECKLIST.md")
+assert_contains(version_bump_123, "Use this checklist only after the external PLS/PLSc evidence gate passes", "1.2.3 version bump external evidence prerequisite")
+assert_contains(version_bump_123, "Do not alter the published 1.2.0 release", "1.2.3 historical release boundary")
+assert_contains(version_bump_123, "StatEdu_Studio_Setup_1.2.3.exe", "1.2.3 final installer name")
+assert_contains(version_bump_123, "scripts/validate_sem_public_claims.R", "1.2.3 public claims validation")
+assert_contains(version_bump_123, "docs/RELEASE_1_2_3_PACKAGED_VALIDATION_NOTES.md", "1.2.3 packaged validation record")
+assert_contains(version_bump_123, "Never infer approval from passing automated checks", "1.2.3 explicit approval boundary")
+
+manual_qa_123 <- read_text("docs/RELEASE_1_2_3_MANUAL_QA_RECORD.md")
+assert_contains(manual_qa_123, "StatEdu Studio 1.2.3 Final Packaged Manual QA Record", "1.2.3 manual QA title")
+assert_contains(manual_qa_123, "dist/electron/StatEdu_Studio_Setup_1.2.3.exe", "1.2.3 final installer path")
+assert_contains(manual_qa_123, "scripts/validate_sem_release_promotion.R", "1.2.3 promotion validation row")
+assert_contains(manual_qa_123, "Higher-order CFA execution", "1.2.3 higher-order CFA QA row")
+assert_contains(manual_qa_123, "Research versus adjusted fit", "1.2.3 SEM covariate comparison QA row")
+assert_contains(manual_qa_123, "Eligible PLSc model", "1.2.3 PLSc QA row")
+assert_contains(manual_qa_123, "Manual QA status:", "1.2.3 manual QA final status")
+assert_contains(manual_qa_123, "Development-build automation", "1.2.3 development/final evidence boundary")
+if (is_development_version) {
+  assert_contains(manual_qa_123, "Overall status: blocked / pending final public package", "1.2.3 manual QA blocked development status")
+  assert_not_contains(manual_qa_123, "| Pass |", "1.2.3 premature final-package Pass row")
+}
+
+packaged_validation_123 <- read_text("docs/RELEASE_1_2_3_PACKAGED_VALIDATION_NOTES.md")
+assert_contains(packaged_validation_123, "StatEdu Studio 1.2.3 Final Packaged Validation Notes", "1.2.3 packaged validation title")
+assert_contains(packaged_validation_123, "dist/electron/StatEdu_Studio_Setup_1.2.3.exe", "1.2.3 packaged installer path")
+assert_contains(packaged_validation_123, "scripts/release_preflight.ps1 -FullElectronSmoke", "1.2.3 full Electron smoke row")
+assert_contains(packaged_validation_123, "Residual packaged processes:", "1.2.3 residual process record")
+assert_contains(packaged_validation_123, "External PLS/PLSc evidence agrees within recorded output precision", "1.2.3 external PLS package row")
+assert_contains(packaged_validation_123, "Packaged validation status:", "1.2.3 packaged validation final status")
+if (is_development_version) {
+  assert_contains(packaged_validation_123, "Overall status: blocked / pending final public package", "1.2.3 packaged validation blocked development status")
+  assert_not_contains(packaged_validation_123, "| Pass |", "1.2.3 premature packaged validation Pass row")
+}
+
+approval_record_123 <- read_text("docs/RELEASE_1_2_3_APPROVAL_RECORD.md")
+assert_contains(approval_record_123, "StatEdu Studio 1.2.3 Publication Approval Record", "1.2.3 publication approval title")
+assert_contains(approval_record_123, "Automated success does not constitute approval", "1.2.3 human approval boundary")
+assert_contains(approval_record_123, "Publication approval status:", "1.2.3 approval status field")
+assert_contains(approval_record_123, "Approved release commit:", "1.2.3 approved commit field")
+assert_contains(approval_record_123, "Approved installer SHA-256:", "1.2.3 approved installer hash field")
+assert_contains(approval_record_123, "ISO 8601 with a timezone", "1.2.3 approval time format")
+if (is_development_version) {
+  assert_contains(approval_record_123, "Overall status: blocked / pending explicit publication approval", "1.2.3 blocked approval status")
+  assert_not_contains(approval_record_123, "| Pass |", "1.2.3 premature approval Pass row")
+}
 
 release_readiness <- read_text("docs/RELEASE_READINESS_STATUS.md")
 if (is_development_version) {
@@ -292,7 +343,7 @@ assert_contains(version_bump_checklist, "`README.md`", "1.0 version bump README"
 assert_contains(version_bump_checklist, "`CITATION.cff`", "1.0 version bump CITATION")
 assert_contains(version_bump_checklist, "`packaging/electron/package.json`", "1.0 version bump Electron package")
 assert_contains(version_bump_checklist, "`packaging/electron/main.js`", "1.0 version bump Electron main")
-assert_contains(version_bump_checklist, "`packaging/electron/scripts/afterPack.js`", "1.0 version bump Electron afterPack")
+assert_contains(version_bump_checklist, "`signExecutable: false`", "1.0 version bump Electron signing boundary")
 assert_contains(version_bump_checklist, "`scripts/smoke_electron_release.ps1`", "1.0 version bump Electron smoke")
 assert_contains(version_bump_checklist, "`scripts/smoke_electron_app_lifecycle.ps1`", "1.0 version bump lifecycle smoke")
 assert_contains(version_bump_checklist, "`scripts/validate_brand_metadata.R`", "1.0 version bump brand validation")
@@ -347,7 +398,12 @@ assert_contains(easyflow_js, "analysis_custom_model_canvas: 'Mediation / Moderat
 assert_contains(easyflow_js, "analysis_custom_model_canvas: '\\uB9E4\\uAC1C\\u00B7\\uC870\\uC808 \\uC0AC\\uC6A9\\uC790 \\uC815\\uC758 \\uBAA8\\uB378'", "custom model Korean grouped menu label")
 assert_contains(easyflow_js, "values: ['Regression', 'analysis_mediation_moderation', 'analysis_custom_model_canvas', 'Generalized Linear Model (GLM)', 'analysis_logistic_regression']", "custom model included in Regression / Models grouped menu")
 
-custom_model_canvas_ui <- read_text("R/setup_custom_model_canvas_ui.R")
+custom_model_canvas_ui <- paste(
+  read_text("R/setup_custom_model_canvas_i18n.R"),
+  read_text("R/setup_custom_model_canvas_components.R"),
+  read_text("R/setup_custom_model_canvas_ui.R"),
+  sep = "\n"
+)
 assert_contains(custom_model_canvas_ui, '"Mediation / Moderation Custom Model"', "custom model canvas title")
 assert_contains(custom_model_canvas_ui, "\\uc0ac\\uc6a9\\uc790 \\uc815\\uc758 \\ubaa8\\ub378", "custom model canvas Korean title includes custom-defined model wording")
 

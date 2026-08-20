@@ -4,7 +4,9 @@
   var SVG_NS = "http://www.w3.org/2000/svg";
   var SNAP_POINTS = [20, 30, 40, 50, 60, 70, 80];
   var ANCHOR_GAP = 2.5;
+  var MEASUREMENT_ARROW_SPREAD_GAP = 14;
   var MODERATION_ANCHOR_GAP = 4;
+  var ARROW_MARKER_CLEARANCE = 0;
   var EDGE_SIDES = ["top", "right", "bottom", "left"];
 
   function edgeById(instance, id) {
@@ -16,6 +18,10 @@
   function validDirectedEdge(fromNode, toNode) {
     var fromRole = fromNode && fromNode.role;
     var toRole = toNode && toNode.role;
+    if ((fromRole === "latent" && (toRole === "indicator" || toRole === "latent")) ||
+        (fromRole === "indicator" && toRole === "latent") ||
+        (fromRole === "disturbance" && toRole === "latent") ||
+        (fromRole === "error" && toRole === "indicator")) return true;
     return (
       (fromRole === "independent" && toRole === "mediator") ||
       (fromRole === "mediator" && toRole === "mediator") ||
@@ -24,8 +30,71 @@
     );
   }
 
+  function measurementParentId(instance, errorNode) {
+    var errorEdge = instance.state.edges.find(function(edge) {
+      if (edge.kind === "covariance" || edge.from !== errorNode.id) return false;
+      var target = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
+      return target && target.role === "indicator";
+    });
+    var indicatorId = errorEdge ? errorEdge.to : "";
+    var measurementEdge = instance.state.edges.find(function(edge) {
+      if (edge.kind === "covariance") return false;
+      var from = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
+      var to = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
+      return (from && from.role === "latent" && to && to.id === indicatorId) || (to && to.role === "latent" && from && from.id === indicatorId);
+    });
+    if (!measurementEdge) return "";
+    var from = window.StatEduModelCanvas.nodes.nodeById(instance, measurementEdge.from);
+    return from && from.role === "latent" ? from.id : measurementEdge.to;
+  }
+
+  function disturbanceParentId(instance, disturbanceNode) {
+    var disturbanceEdge = instance.state.edges.find(function(edge) {
+      return edge.kind !== "covariance" && edge.from === disturbanceNode.id;
+    });
+    var parent = disturbanceEdge ? window.StatEduModelCanvas.nodes.nodeById(instance, disturbanceEdge.to) : null;
+    return parent && parent.role === "latent" ? parent.id : "";
+  }
+
+  function latentPathExists(instance, fromId, toId) {
+    if (!fromId || !toId) return false;
+    var visited = {};
+    function visit(nodeId) {
+      if (nodeId === toId) return true;
+      if (visited[nodeId]) return false;
+      visited[nodeId] = true;
+      return instance.state.edges.some(function(edge) {
+        if (edge.kind === "covariance" || edge.from !== nodeId) return false;
+        var from = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
+        var to = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
+        return from && to && from.role === "latent" && to.role === "latent" && visit(to.id);
+      });
+    }
+    return visit(fromId);
+  }
+
+  function validCovarianceEdge(instance, fromNode, toNode) {
+    if (!fromNode || !toNode || fromNode.id === toNode.id) return false;
+    if (fromNode.role === "latent" && toNode.role === "latent") {
+      return !hasHigherOrderParent(instance, fromNode.id) && !hasHigherOrderParent(instance, toNode.id);
+    }
+    if (fromNode.role === "error" && toNode.role === "error") {
+      var fromParent = measurementParentId(instance, fromNode);
+      return !!fromParent && fromParent === measurementParentId(instance, toNode);
+    }
+    if (fromNode.role === "disturbance" && toNode.role === "disturbance") {
+      var fromLatent = disturbanceParentId(instance, fromNode);
+      var toLatent = disturbanceParentId(instance, toNode);
+      return !!fromLatent && !!toLatent &&
+        !latentPathExists(instance, fromLatent, toLatent) &&
+        !latentPathExists(instance, toLatent, fromLatent);
+    }
+    var observed = ["independent", "mediator", "dependent"];
+    return observed.indexOf(fromNode.role) >= 0 && observed.indexOf(toNode.role) >= 0;
+  }
+
   function validModerationSource(node) {
-    return node && node.role === "moderator";
+    return node && (node.role === "moderator" || node.role === "latent");
   }
 
   function validModeration(instance, moderation) {
@@ -34,11 +103,71 @@
     return !!(validModerationSource(fromNode) && edge);
   }
 
+  function isHigherOrderLatent(node) {
+    return !!node && node.role === "latent" && node.constructType === "higherOrder";
+  }
+
+  function hasHigherOrderParent(instance, latentId) {
+    return instance.state.edges.some(function(edge) {
+      return edge.kind !== "covariance" && edge.pathType === "higherOrder" && edge.to === latentId;
+    });
+  }
+
+  function removeHigherOrderConflictingCovariances(instance, parentId, childId) {
+    var lowerOrderIds = {};
+    instance.state.edges.forEach(function(edge) {
+      if (edge.kind === "covariance" || edge.pathType !== "higherOrder") return;
+      var child = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
+      if (child && child.role === "latent") lowerOrderIds[child.id] = true;
+    });
+    lowerOrderIds[childId] = true;
+    instance.state.edges = instance.state.edges.filter(function(edge) {
+      if (edge.kind !== "covariance") return true;
+      return !lowerOrderIds[edge.from] && !lowerOrderIds[edge.to];
+    });
+  }
+
+  function curveEditable(instance, edge) {
+    if (!edge) return false;
+    if (edge.kind === "covariance") return true;
+    var from = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
+    var to = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
+    return !!from && !!to && from.role === "latent" && to.role === "latent";
+  }
+
   function edgeShape(edge) {
     if (!edge || !edge.shape || edge.shape === "straight") return "straight";
     if (edge.shape === "oval") return "curveUp";
     if (edge.shape === "curveDown") return "curveDown";
     return "curveUp";
+  }
+
+  function latentCovarianceCurveOffset(fromNode, toNode, options) {
+    if (!fromNode || !toNode || fromNode.role !== "latent" || toNode.role !== "latent") return null;
+    var config = options || {};
+    var minOffset = Number(config.minOffset || 75);
+    var maxOffset = Number(config.maxOffset || 560);
+    var factor = Number(config.factor || 0.62);
+    var knee = Number(config.knee || 120);
+    var dx = Number(toNode.x || 0) - Number(fromNode.x || 0);
+    var dy = Number(toNode.y || 0) - Number(fromNode.y || 0);
+    var distance = Math.sqrt(dx * dx + dy * dy);
+    var distanceBeyondClosePair = Math.max(0, distance - knee);
+    return Math.max(minOffset, Math.min(maxOffset, minOffset + distanceBeyondClosePair * factor));
+  }
+
+  function refreshLatentCovarianceCurveOffsets(instance) {
+    if (!instance || instance.analysisType !== "cfa") return;
+    instance.state.edges.forEach(function(edge) {
+      if (!edge || edge.kind !== "covariance" || edge.controlPoint) return;
+      var fromNode = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
+      var toNode = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
+      if (!fromNode || !toNode || fromNode.role !== "latent" || toNode.role !== "latent") return;
+      var higherOrderCovariance = fromNode.constructType === "higherOrder" && toNode.constructType === "higherOrder";
+      edge.curveOffset = higherOrderCovariance ?
+        latentCovarianceCurveOffset(fromNode, toNode, {minOffset: 70, maxOffset: 500, factor: 0.58, knee: 120}) :
+        latentCovarianceCurveOffset(fromNode, toNode);
+    });
   }
 
   function anchorOffset(size, count, index, gap) {
@@ -110,6 +239,7 @@
   }
 
   function anchorSlot(instance, edge, endpoint, side) {
+    if (edge && edge.fixedCenter) return {count: 1, index: 0};
     var nodeId = endpoint === "from" ? edge.from : edge.to;
     var peers = instance.state.edges.filter(function(item) {
       var itemSide = edgeSide(instance, item);
@@ -156,6 +286,55 @@
     return {x: x, y: y};
   }
 
+  function endpointAnchorGap(instance, edge, endpoint) {
+    if (!edge || edge.kind === "covariance" || edge.fixedCenter) return ANCHOR_GAP;
+    var node = window.StatEduModelCanvas.nodes.nodeById(instance, endpoint === "from" ? edge.from : edge.to);
+    var other = window.StatEduModelCanvas.nodes.nodeById(instance, endpoint === "from" ? edge.to : edge.from);
+    if (!node || !other) return ANCHOR_GAP;
+    if (node.role === "latent" && other.role === "indicator" && (node.measurementMode || "reflective") === "formative") {
+      return MEASUREMENT_ARROW_SPREAD_GAP;
+    }
+    return ANCHOR_GAP;
+  }
+
+  function radialNodeAnchor(instance, node, targetNode) {
+    var center = window.StatEduModelCanvas.layout.nodeCenter(node, instance.state.style);
+    var target = window.StatEduModelCanvas.layout.nodeCenter(targetNode, instance.state.style);
+    var radiusX = Number(node.width || instance.state.style.boxWidth) / 2;
+    var radiusY = Number(node.height || instance.state.style.boxHeight) / 2;
+    var dx = target.x - center.x;
+    var dy = target.y - center.y;
+    if (!dx && !dy) return center;
+    var scale = 1 / Math.sqrt((dx * dx) / (radiusX * radiusX) + (dy * dy) / (radiusY * radiusY));
+    return {x: center.x + dx * scale, y: center.y + dy * scale};
+  }
+
+  function pointShiftedToward(point, target, amount) {
+    var dx = target.x - point.x;
+    var dy = target.y - point.y;
+    var distance = Math.sqrt(dx * dx + dy * dy);
+    if (!distance) return point;
+    var shift = Math.min(Number(amount || 0), distance / 3);
+    return {
+      x: point.x + (dx / distance) * shift,
+      y: point.y + (dy / distance) * shift
+    };
+  }
+
+  function visibleArrowEndpoints(instance, edge, endpoints) {
+    if (!edge || !endpoints) return endpoints;
+    if (edge.kind === "covariance") {
+      return {
+        from: pointShiftedToward(endpoints.from, endpoints.to, ARROW_MARKER_CLEARANCE),
+        to: pointShiftedToward(endpoints.to, endpoints.from, ARROW_MARKER_CLEARANCE)
+      };
+    }
+    return {
+      from: endpoints.from,
+      to: pointShiftedToward(endpoints.to, endpoints.from, ARROW_MARKER_CLEARANCE)
+    };
+  }
+
   function moderationTargetPoint(instance, moderation) {
     var edge = edgeById(instance, moderation.toEdge);
     var endpoints = edge ? edgeEndpoints(instance, edge) : null;
@@ -197,10 +376,17 @@
     var to = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
     var sides = edgeSide(instance, edge);
     if (!from || !to || !sides) return null;
-    return {
-      from: nodeAnchor(instance, from, sides.fromSide, anchorSlot(instance, edge, "from", sides.fromSide)),
-      to: nodeAnchor(instance, to, sides.toSide, anchorSlot(instance, edge, "to", sides.toSide))
+    if (edge.directAnchors) {
+      return visibleArrowEndpoints(instance, edge, {
+        from: radialNodeAnchor(instance, from, to),
+        to: radialNodeAnchor(instance, to, from)
+      });
+    }
+    var endpoints = {
+      from: nodeAnchor(instance, from, sides.fromSide, anchorSlot(instance, edge, "from", sides.fromSide), endpointAnchorGap(instance, edge, "from")),
+      to: nodeAnchor(instance, to, sides.toSide, anchorSlot(instance, edge, "to", sides.toSide), endpointAnchorGap(instance, edge, "to"))
     };
+    return visibleArrowEndpoints(instance, edge, endpoints);
   }
 
   function pointOnEdge(start, end, percent) {
@@ -211,13 +397,20 @@
     };
   }
 
-  function defaultCurveControlPoint(start, end, shape) {
+  function defaultCurveControlPoint(start, end, shape, direction, requestedOffset) {
     var midX = (start.x + end.x) / 2;
     var midY = (start.y + end.y) / 2;
     var dx = end.x - start.x;
     var dy = end.y - start.y;
     var distance = Math.sqrt(dx * dx + dy * dy) || 1;
-    var offset = Math.max(40, Math.min(130, distance * 0.22));
+    var offset = Number.isFinite(Number(requestedOffset)) ? Number(requestedOffset) : Math.max(40, Math.min(130, distance * 0.22));
+    if (direction) {
+      var directionVectors = {
+        top: {x: 0, y: -1}, right: {x: 1, y: 0}, bottom: {x: 0, y: 1}, left: {x: -1, y: 0}
+      };
+      var directionVector = directionVectors[direction];
+      if (directionVector) return {x: midX + directionVector.x * offset, y: midY + directionVector.y * offset};
+    }
     var normalX = -dy / distance;
     var normalY = dx / distance;
     if (shape === "curveUp" && normalY > 0) {
@@ -227,10 +420,6 @@
     if (shape === "curveDown" && normalY < 0) {
       normalX = -normalX;
       normalY = -normalY;
-    }
-    if (Math.abs(normalY) < 0.2) {
-      normalY = shape === "curveDown" ? 1 : -1;
-      normalX = 0;
     }
     return {
       x: midX + normalX * offset,
@@ -247,7 +436,7 @@
     ) {
       return {x: Number(edge.controlPoint.x), y: Number(edge.controlPoint.y)};
     }
-    return defaultCurveControlPoint(start, end, edgeShape(edge));
+    return defaultCurveControlPoint(start, end, edgeShape(edge), edge && edge.curveDirection, edge && edge.curveOffset);
   }
 
   function controlPointFromHandle(start, end, handle) {
@@ -283,8 +472,12 @@
     return edgeById(instance, id);
   }
 
+  function labelVisualWidth(label, fontSize) {
+    return Math.max(20, String(label || "").length * Number(fontSize || 12) * 0.5 + 4);
+  }
+
   function labelBox(label, x, y, fontSize) {
-    var width = Math.max(28, String(label || "").length * Number(fontSize || 12) * 0.58 + 10);
+    var width = labelVisualWidth(label, fontSize);
     var height = Math.max(16, Number(fontSize || 12) + 8);
     return {
       left: x - width / 2,
@@ -296,6 +489,20 @@
 
   function boxesOverlap(a, b) {
     return a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  }
+
+  function nodeObstacleBoxes(instance) {
+    return (instance.state.nodes || []).map(function(node) {
+      var padding = 6;
+      var left = Number(node.x || 0) - padding;
+      var top = Number(node.y || 0) - padding;
+      return {
+        left: left,
+        right: left + Number(node.width || instance.state.style.boxWidth || 0) + padding * 2,
+        top: top,
+        bottom: top + Number(node.height || instance.state.style.boxHeight || 0) + padding * 2
+      };
+    });
   }
 
   function autoLabelPosition(label, x, y, fontSize, placedLabels) {
@@ -326,40 +533,85 @@
     return {x: x, y: y, box: fallback};
   }
 
+  function displayLabel(owner) {
+    var automaticLabel = owner && (owner.equalityLabel || owner.parameterName) ? (owner.equalityLabel || owner.parameterName) :
+      owner && owner.free === false && owner.fixedValue !== null && owner.fixedValue !== undefined ? String(owner.fixedValue) : "";
+    return String(owner && owner.label ? owner.label : automaticLabel).trim();
+  }
+
+  function measurementGroupUsesSharedStart(instance, latent, group) {
+    // Loading/path labels are independently movable. A shared origin caused
+    // one dragged label to move every label in the same measurement block.
+    return false;
+  }
+
   function addEdgeLabelElement(instance, svg, owner, type, id, point, placedLabels) {
-    var label = String(owner && owner.label ? owner.label : "").trim();
+    var label = displayLabel(owner);
     if (!label) return;
-    var x = Number(point.x || 0) + Number(owner.labelOffsetX || 0);
-    var y = Number(point.y || 0) + Number(owner.labelOffsetY || -10);
+    var hasOffsetX = Object.prototype.hasOwnProperty.call(owner, "labelOffsetX");
+    var hasOffsetY = Object.prototype.hasOwnProperty.call(owner, "labelOffsetY");
+    var offsetX = hasOffsetX ? Number(owner.labelOffsetX) : 0;
+    var offsetY = hasOffsetY ? Number(owner.labelOffsetY) : -10;
+    var x = Number(point.x || 0) + offsetX;
+    var y = Number(point.y || 0) + offsetY;
+    var autoShiftX = 0;
+    var autoShiftY = 0;
     var fontSize = Number(owner.labelFontSize || instance.state.style.labelFontSize || instance.state.style.fontSize || 12);
-    if (Number(owner.labelOffsetX || 0) === 0 && Number(owner.labelOffsetY || -10) === -10) {
+    // Coefficient labels belong to their individual paths. Keep an untouched
+    // edge label at the path midpoint so moving either endpoint moves the
+    // label with that path and never reflows labels on neighboring paths.
+    if (type !== "edge" && !owner.labelManualPosition && offsetX === 0 && offsetY === -10) {
       var positioned = autoLabelPosition(label, x, y, fontSize, placedLabels);
+      autoShiftX = positioned.x - x;
+      autoShiftY = positioned.y - y;
       x = positioned.x;
       y = positioned.y;
       if (placedLabels) placedLabels.push(positioned.box);
-    } else if (placedLabels) {
-      placedLabels.push(labelBox(label, x, y, fontSize));
     }
     var group = document.createElementNS(SVG_NS, "g");
     group.setAttribute("class", "custom-model-edge-label");
     group.setAttribute("data-label-type", type);
     group.setAttribute("data-label-id", id);
+    group.setAttribute("data-label-auto-shift-x", autoShiftX);
+    group.setAttribute("data-label-auto-shift-y", autoShiftY);
     group.setAttribute("transform", "translate(" + x + " " + y + ")");
+
+    var visualWidth = labelVisualWidth(label, fontSize);
+    var hitWidth = Math.max(28, visualWidth + 8);
+    var hit = document.createElementNS(SVG_NS, "rect");
+    hit.setAttribute("class", "custom-model-edge-label-hit");
+    hit.setAttribute("x", owner && owner.labelTextAnchor === "start" ? -3 : -hitWidth / 2);
+    hit.setAttribute("y", -(fontSize + 8) / 2);
+    hit.setAttribute("width", hitWidth);
+    hit.setAttribute("height", fontSize + 8);
+    hit.setAttribute("fill", "transparent");
+
+    var background = document.createElementNS(SVG_NS, "rect");
+    background.setAttribute("class", "custom-model-edge-label-bg");
+    background.setAttribute("x", owner && owner.labelTextAnchor === "start" ? -2 : -visualWidth / 2);
+    background.setAttribute("y", -(fontSize + 7) / 2);
+    background.setAttribute("width", visualWidth);
+    background.setAttribute("height", fontSize + 7);
+    background.setAttribute("rx", "2");
+    background.setAttribute("ry", "2");
 
     var halo = document.createElementNS(SVG_NS, "text");
     halo.setAttribute("class", "custom-model-edge-label-halo");
-    halo.setAttribute("text-anchor", "middle");
+    var textAnchor = owner && owner.labelTextAnchor ? owner.labelTextAnchor : "middle";
+    halo.setAttribute("text-anchor", textAnchor);
     halo.setAttribute("dominant-baseline", "middle");
     halo.setAttribute("font-size", fontSize);
     halo.textContent = label;
 
     var text = document.createElementNS(SVG_NS, "text");
     text.setAttribute("class", "custom-model-edge-label-text");
-    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("text-anchor", textAnchor);
     text.setAttribute("dominant-baseline", "middle");
     text.setAttribute("font-size", fontSize);
     text.textContent = label;
 
+    group.appendChild(hit);
+    group.appendChild(background);
     group.appendChild(halo);
     group.appendChild(text);
     svg.appendChild(group);
@@ -434,10 +686,10 @@
     marker.setAttribute("id", id);
     marker.setAttribute("markerWidth", arrowHead === "circle" ? "8" : (arrowHead === "line" ? "10" : "10"));
     marker.setAttribute("markerHeight", arrowHead === "circle" ? "8" : (arrowHead === "line" ? "8" : "10"));
-    marker.setAttribute("refX", arrowHead === "circle" ? "6" : (arrowHead === "line" ? "8" : "8"));
+    marker.setAttribute("refX", arrowHead === "circle" ? "6" : (arrowHead === "line" ? "8" : (arrowHead === "open" ? "8" : "9")));
     marker.setAttribute("refY", arrowHead === "circle" ? "4" : (arrowHead === "line" ? "4" : "3"));
     marker.setAttribute("viewBox", arrowHead === "line" ? "0 0 10 8" : "0 0 10 10");
-    marker.setAttribute("orient", "auto");
+    marker.setAttribute("orient", "auto-start-reverse");
     marker.setAttribute("markerUnits", arrowHead === "line" ? "userSpaceOnUse" : "strokeWidth");
     marker.setAttribute("overflow", "visible");
     if (arrowHead === "line") {
@@ -478,22 +730,29 @@
     defs.appendChild(marker);
   }
 
-  function ensureDefs(svg, style) {
+  function ensureDefs(svg, style, markerPrefix) {
     var defs = svg.querySelector("defs");
     if (defs) defs.remove();
     defs = document.createElementNS(SVG_NS, "defs");
     var color = (style && style.edgeStrokeColor) || "#000000";
     var arrowHead = (style && style.arrowHead) || "triangle";
+    markerPrefix = String(markerPrefix || "custom-model").replace(/[^A-Za-z0-9_-]/g, "-");
+    var markerIds = {
+      arrow: markerPrefix + "-arrow",
+      arrowSelected: markerPrefix + "-arrow-selected",
+      moderation: markerPrefix + "-moderation-arrow",
+      moderationSelected: markerPrefix + "-moderation-arrow-selected"
+    };
     if (arrowHead === "none") {
       svg.appendChild(defs);
-      return defs;
+      return markerIds;
     }
-    appendArrowMarker(defs, "custom-model-arrow", arrowHead, color);
-    appendArrowMarker(defs, "custom-model-arrow-selected", arrowHead, "#2563eb");
-    appendArrowMarker(defs, "custom-model-moderation-arrow", arrowHead, "#7c3aed");
-    appendArrowMarker(defs, "custom-model-moderation-arrow-selected", arrowHead, "#2563eb");
+    appendArrowMarker(defs, markerIds.arrow, arrowHead, color);
+    appendArrowMarker(defs, markerIds.arrowSelected, arrowHead, "#2563eb");
+    appendArrowMarker(defs, markerIds.moderation, arrowHead, "#7c3aed");
+    appendArrowMarker(defs, markerIds.moderationSelected, arrowHead, "#2563eb");
     svg.appendChild(defs);
-    return defs;
+    return markerIds;
   }
 
   function lineElement(className, x1, y1, x2, y2) {
@@ -535,8 +794,8 @@
   }
 
   function addEdgeControlElement(instance, svg, edge, endpoints) {
-    if (instance.state.mode !== "properties") return;
     if (edge.id !== instance.state.selectedEdgeId) return;
+    if (instance.state.mode !== "properties" && !(instance.state.mode === "select" && curveEditable(instance, edge))) return;
     if (edgeShape(edge) === "straight") return;
     var control = curveHandlePoint(edge, endpoints.from, endpoints.to);
     var circle = document.createElementNS(SVG_NS, "circle");
@@ -576,22 +835,70 @@
   function renderEdges(instance) {
     var svg = instance.edgeLayer;
     svg.innerHTML = "";
-    ensureDefs(svg, instance.state.style);
+    refreshLatentCovarianceCurveOffsets(instance);
+    var structuralCanvas = ["cfa", "cbsem", "sem", "plssem"].indexOf(instance.analysisType) >= 0;
+    var configuredArrowHead = instance.state.style.arrowHead || "triangle";
+    var arrowHead = structuralCanvas && (configuredArrowHead === "none" || configuredArrowHead === "line") ? "triangle" : configuredArrowHead;
+    var markerPrefix = (instance.root && instance.root.id) || (instance.analysisType + "-canvas");
+    var markerIds = ensureDefs(svg, Object.assign({}, instance.state.style, {arrowHead: arrowHead}), markerPrefix);
     var edgeColor = instance.state.style.edgeStrokeColor || "#000000";
     var edgeWidth = Number(instance.state.style.edgeStrokeWidth || 1.8);
-    var arrowHead = instance.state.style.arrowHead || "triangle";
-    var placedLabels = [];
+    var placedLabels = nodeObstacleBoxes(instance);
+    var measurementLabelStarts = {};
+    var measurementGroups = {};
+
+    instance.state.edges.forEach(function(edge) {
+      if (edge.kind === "covariance") return;
+      var fromNode = window.StatEduModelCanvas.nodes.nodeById(instance, edge.from);
+      var toNode = window.StatEduModelCanvas.nodes.nodeById(instance, edge.to);
+      var latent = fromNode && fromNode.role === "latent" && toNode && toNode.role === "indicator" ? fromNode :
+        toNode && toNode.role === "latent" && fromNode && fromNode.role === "indicator" ? toNode : null;
+      var indicator = latent === fromNode ? toNode : latent === toNode ? fromNode : null;
+      if (!latent || !indicator || !displayLabel(edge)) return;
+      if (!measurementGroups[latent.id]) measurementGroups[latent.id] = {latent: latent, items: []};
+      measurementGroups[latent.id].items.push({edge: edge, indicator: indicator});
+    });
+
+    Object.keys(measurementGroups).forEach(function(latentId) {
+      var bundle = measurementGroups[latentId];
+      var group = bundle.items.sort(function(a, b) {
+        return Number(a.indicator.y || 0) - Number(b.indicator.y || 0);
+      });
+      if (!measurementGroupUsesSharedStart(instance, bundle.latent, group)) return;
+      if (group.length < 2) return;
+      var reference = group[Math.floor(group.length / 2)];
+      var referenceEndpoints = edgeEndpoints(instance, reference.edge);
+      if (!referenceEndpoints) return;
+      var referencePoint = pointOnRenderedEdge(reference.edge, referenceEndpoints, reference.edge.labelPosition || 50);
+      var referenceLabel = displayLabel(reference.edge);
+      var referenceFontSize = Number(reference.edge.labelFontSize || instance.state.style.labelFontSize || instance.state.style.fontSize || 12);
+      var referenceWidth = labelBox(referenceLabel, 0, 0, referenceFontSize).right * 2;
+      var sharedStart = referencePoint.x + Number(reference.edge.labelOffsetX || 0) - referenceWidth / 2;
+      group.forEach(function(item) { measurementLabelStarts[item.edge.id] = sharedStart; });
+    });
+
+    function edgeTouchesErrorNode(item) {
+      if (!item) return false;
+      var fromNode = window.StatEduModelCanvas.nodes.nodeById(instance, item.from);
+      var toNode = window.StatEduModelCanvas.nodes.nodeById(instance, item.to);
+      return [fromNode && fromNode.role, toNode && toNode.role].some(function(role) {
+        return role === "error" || role === "disturbance";
+      });
+    }
 
     function applyEdgeStyle(element, selected, widthOffset, item) {
       element.style.stroke = selected ? "#2563eb" : edgeColor;
       element.style.strokeWidth = edgeWidth + Number(widthOffset || 0);
-      if (instance.state.dashNonsignificant !== false && item && item.significant === false) {
+      if (instance.state.dashNonsignificant !== false && item && item.dashEligible === true && item.significant === false && !edgeTouchesErrorNode(item)) {
         element.setAttribute("stroke-dasharray", "7 5");
       } else {
         element.removeAttribute("stroke-dasharray");
       }
-      if (arrowHead !== "none") {
-        element.setAttribute("marker-end", selected ? "url(#custom-model-arrow-selected)" : "url(#custom-model-arrow)");
+      if (item && item.kind === "covariance") {
+        element.setAttribute("marker-start", "url(#" + (selected ? markerIds.arrowSelected : markerIds.arrow) + ")");
+        element.setAttribute("marker-end", "url(#" + (selected ? markerIds.arrowSelected : markerIds.arrow) + ")");
+      } else if (arrowHead !== "none") {
+        element.setAttribute("marker-end", "url(#" + (selected ? markerIds.arrowSelected : markerIds.arrow) + ")");
       }
     }
 
@@ -614,7 +921,13 @@
       }
       addEdgeHitElement(svg, edge, endpoints);
       addEdgeControlElement(instance, svg, edge, endpoints);
-      addEdgeLabelElement(instance, svg, edge, "edge", edge.id, pointOnRenderedEdge(edge, endpoints, edge.labelPosition || 50), placedLabels);
+      var labelPoint = pointOnRenderedEdge(edge, endpoints, edge.labelPosition || 50);
+      if (Object.prototype.hasOwnProperty.call(measurementLabelStarts, edge.id)) {
+        labelPoint.x = measurementLabelStarts[edge.id] - Number(edge.labelOffsetX || 0);
+      }
+      var labelOwner = Object.prototype.hasOwnProperty.call(measurementLabelStarts, edge.id) ?
+        Object.assign({}, edge, {labelTextAnchor: "start"}) : edge;
+      addEdgeLabelElement(instance, svg, labelOwner, "edge", edge.id, labelPoint, placedLabels);
     });
 
     instance.state.moderations.forEach(function(moderation) {
@@ -640,7 +953,7 @@
         }
       }
       if (arrowHead !== "none") {
-        line.setAttribute("marker-end", isSelected ? "url(#custom-model-moderation-arrow-selected)" : "url(#custom-model-moderation-arrow)");
+        line.setAttribute("marker-end", "url(#" + (isSelected ? markerIds.moderationSelected : markerIds.moderation) + ")");
       }
       svg.appendChild(line);
       addModerationHitElement(svg, moderation, from, to);
@@ -651,23 +964,73 @@
       var preview = instance.state.dragPreview;
       svg.appendChild(lineElement("custom-model-drag-preview", preview.x1, preview.y1, preview.x2, preview.y2));
     }
+
+    // Labels must be the topmost SVG objects. Otherwise a later path's wide,
+    // transparent hit line can intercept pointer events intended for an
+    // earlier coefficient label (most visibly on exogenous paths).
+    Array.prototype.forEach.call(svg.querySelectorAll(".custom-model-edge-label"), function(label) {
+      svg.appendChild(label);
+    });
   }
 
   function createEdge(instance, fromId, toId) {
     if (!fromId || !toId || fromId === toId) return false;
     var fromNode = window.StatEduModelCanvas.nodes.nodeById(instance, fromId);
     var toNode = window.StatEduModelCanvas.nodes.nodeById(instance, toId);
+    if (fromNode && toNode && fromNode.role === "latent" && toNode.role === "latent" &&
+        !isHigherOrderLatent(fromNode) && isHigherOrderLatent(toNode)) {
+      var originalFromId = fromId;
+      fromId = toId;
+      toId = originalFromId;
+      fromNode = window.StatEduModelCanvas.nodes.nodeById(instance, fromId);
+      toNode = window.StatEduModelCanvas.nodes.nodeById(instance, toId);
+    }
     if (!validDirectedEdge(fromNode, toNode)) return false;
     var exists = instance.state.edges.some(function(edge) {
       return edge.from === fromId && edge.to === toId;
     });
     if (exists) return false;
+    var pathType = fromNode.role === "latent" && toNode.role === "latent" ?
+      (isHigherOrderLatent(fromNode) ? "higherOrder" : "regression") :
+      null;
     instance.state.edges.push({
       id: "edge_" + fromId + "_" + toId + "_" + Date.now(),
       from: fromId,
       to: toId,
       label: "",
-      shape: "straight"
+      shape: "straight",
+      pathType: pathType
+    });
+    if (pathType === "higherOrder") removeHigherOrderConflictingCovariances(instance, fromId, toId);
+    return true;
+  }
+
+  function createCovariance(instance, fromId, toId) {
+    if (!fromId || !toId || fromId === toId) return false;
+    var fromNode = window.StatEduModelCanvas.nodes.nodeById(instance, fromId);
+    var toNode = window.StatEduModelCanvas.nodes.nodeById(instance, toId);
+    if (!validCovarianceEdge(instance, fromNode, toNode)) return false;
+    var exists = instance.state.edges.some(function(edge) {
+      return edge.kind === "covariance" && ((edge.from === fromId && edge.to === toId) || (edge.from === toId && edge.to === fromId));
+    });
+    if (exists) return false;
+    var latentCovariance = fromNode && toNode && fromNode.role === "latent" && toNode.role === "latent";
+    instance.state.edges.push({
+      id: "covariance_" + fromId + "_" + toId + "_" + Date.now(),
+      from: fromId,
+      to: toId,
+      kind: "covariance",
+      label: "",
+      shape: "curveUp",
+      curveDirection: latentCovariance ? "left" : null,
+      fromSide: latentCovariance ? "left" : null,
+      toSide: latentCovariance ? "left" : null,
+      fixedCenter: latentCovariance,
+      directAnchors: false,
+      curveOffset: latentCovariance ? latentCovarianceCurveOffset(fromNode, toNode) : null,
+      free: true,
+      parameterName: "",
+      equalityLabel: ""
     });
     return true;
   }
@@ -698,6 +1061,9 @@
       return moderation.toEdge !== edgeId;
     });
     if (instance.state.selectedEdgeId === edgeId) instance.state.selectedEdgeId = null;
+    if (window.StatEduModelCanvas.canvas && window.StatEduModelCanvas.canvas.reflowMeasurements) {
+      window.StatEduModelCanvas.canvas.reflowMeasurements(instance);
+    }
   }
 
   function deleteModeration(instance, moderationId) {
@@ -721,7 +1087,7 @@
     } else {
       var endpoints = edgeEndpoints(instance, edge);
       if (endpoints) {
-        edge.controlPoint = defaultCurveControlPoint(endpoints.from, endpoints.to, edgeShape(edge));
+        edge.controlPoint = defaultCurveControlPoint(endpoints.from, endpoints.to, edgeShape(edge), edge.curveDirection);
       }
     }
     return true;
@@ -817,13 +1183,21 @@
     selectLabelOwner(instance, type, id);
     window.StatEduModelCanvas.state.pushHistory(instance);
     var start = window.StatEduModelCanvas.canvas.canvasPoint(instance, event);
-    var startX = Number(owner.labelOffsetX || 0);
-    var startY = Number(owner.labelOffsetY || -10);
+    var startX = Object.prototype.hasOwnProperty.call(owner, "labelOffsetX") ? Number(owner.labelOffsetX) : 0;
+    var startY = Object.prototype.hasOwnProperty.call(owner, "labelOffsetY") ? Number(owner.labelOffsetY) : -10;
+    var renderedLabel = Array.prototype.find.call(instance.edgeLayer.querySelectorAll(".custom-model-edge-label"), function(element) {
+      return element.getAttribute("data-label-type") === type && element.getAttribute("data-label-id") === id;
+    });
+    if (renderedLabel) {
+      startX += Number(renderedLabel.getAttribute("data-label-auto-shift-x") || 0);
+      startY += Number(renderedLabel.getAttribute("data-label-auto-shift-y") || 0);
+    }
 
     function move(moveEvent) {
       var point = window.StatEduModelCanvas.canvas.canvasPoint(instance, moveEvent);
       owner.labelOffsetX = startX + point.x - start.x;
       owner.labelOffsetY = startY + point.y - start.y;
+      owner.labelManualPosition = true;
       renderEdges(instance);
     }
 
@@ -883,11 +1257,14 @@
   window.StatEduModelCanvas.edges = {
     render: renderEdges,
     createEdge: createEdge,
+    createCovariance: createCovariance,
+    latentCovarianceCurveOffset: latentCovarianceCurveOffset,
     createModeration: createModeration,
     deleteEdge: deleteEdge,
     deleteModeration: deleteModeration,
     validDirectedEdge: validDirectedEdge,
     validModeration: validModeration,
+    curveEditable: curveEditable,
     setEdgeShape: setEdgeShape,
     setEdgeAnchorSide: setEdgeAnchorSide,
     startControlDrag: startControlDrag,

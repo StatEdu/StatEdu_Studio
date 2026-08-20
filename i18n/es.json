@@ -1413,7 +1413,7 @@
     "sample_size.label.parallel_cluster_randomized_trial": "Ensayo aleatorizado por conglomerados paralelo",
     "sample_size.label.parallel_continuous_outcome": "Resultado continuo paralelo",
     "sample_size.label.parameter": "Parámetro",
-    "sample_size.label.parameter_level_monte_carlo": "Monte Carlo a nivel de parámetro",
+    "sample_size.label.parameter_level_monte_carlo": "Simulación aproximada de potencia del parámetro",
     "sample_size.label.parameter_type": "Tipo de parámetro",
     "sample_size.label.partial_eta_squared": "Eta cuadrado parcial",
     "sample_size.label.partial_eta_squared_from_f": "Eta cuadrado parcial a partir de F",

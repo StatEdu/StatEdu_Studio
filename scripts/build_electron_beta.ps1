@@ -1,5 +1,8 @@
 param(
   [string]$RHome = "",
+  [string]$NodePath = "",
+  [string]$NpmPath = "",
+  [string]$PnpmPath = "",
   [switch]$SkipRuntimeCopy,
   [switch]$SkipNpmInstall
 )
@@ -49,31 +52,58 @@ function Sync-ElectronPackageMetadata {
   $profile = Get-ElectronReleaseProfile
   $packagePath = Join-Path $electronDir "package.json"
   $package = Get-Content -LiteralPath $packagePath -Raw | ConvertFrom-Json
+  $artifactName = "$($profile.ArtifactPrefix)_`${version}.`${ext}"
+  $metadataChanged =
+    $package.name -ne $profile.PackageName -or
+    $package.version -ne $version -or
+    $package.description -ne $profile.Description -or
+    $package.build.appId -ne $profile.AppId -or
+    $package.build.productName -ne $profile.ProductName -or
+    $package.build.win.artifactName -ne $artifactName -or
+    $package.build.nsis.shortcutName -ne $profile.ShortcutName
+  if (-not $metadataChanged) {
+    Write-Host "Electron package metadata already matches $($profile.ProductName) $version"
+    return
+  }
   $package.name = $profile.PackageName
   $package.version = $version
   $package.description = $profile.Description
   $package.build.appId = $profile.AppId
   $package.build.productName = $profile.ProductName
-  $package.build.win.artifactName = "$($profile.ArtifactPrefix)_`${version}.`${ext}"
+  $package.build.win.artifactName = $artifactName
   $package.build.nsis.shortcutName = $profile.ShortcutName
   $json = ($package | ConvertTo-Json -Depth 20) + [Environment]::NewLine
   [System.IO.File]::WriteAllText($packagePath, $json, [System.Text.UTF8Encoding]::new($false))
   Write-Host "Electron package metadata: $($profile.ProductName), $($profile.ArtifactPrefix)_$version.exe"
 }
 
-function Find-Npm {
+function Find-NpmRunner {
+  if ($NpmPath) {
+    if (-not (Test-Path -LiteralPath $NpmPath)) {
+      throw "The requested npm command was not found: $NpmPath"
+    }
+    return [pscustomobject]@{ Kind = "npm"; Path = $NpmPath }
+  }
   $wingetNpm = Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages" -Recurse -Filter "npm.cmd" -ErrorAction SilentlyContinue |
     Where-Object { $_.Directory.Name -like "node-v*-win-x64" } |
     Sort-Object FullName |
     Select-Object -First 1
   if ($wingetNpm) {
-    return $wingetNpm.FullName
+    return [pscustomobject]@{ Kind = "npm"; Path = $wingetNpm.FullName }
   }
   $command = Get-Command "npm.cmd" -ErrorAction SilentlyContinue
   if ($command) {
-    return $command.Source
+    return [pscustomobject]@{ Kind = "npm"; Path = $command.Source }
   }
-  throw "npm.cmd was not found. Install Node.js LTS with npm before building the Electron installer."
+  $resolvedPnpm = $PnpmPath
+  if (-not $resolvedPnpm) {
+    $pnpmCommand = Get-Command "pnpm.cmd" -ErrorAction SilentlyContinue
+    if ($pnpmCommand) { $resolvedPnpm = $pnpmCommand.Source }
+  }
+  if ($resolvedPnpm -and (Test-Path -LiteralPath $resolvedPnpm)) {
+    return [pscustomobject]@{ Kind = "pnpm"; Path = $resolvedPnpm }
+  }
+  throw "Neither npm.cmd nor pnpm.cmd was found. Install Node.js LTS with npm, or pass -PnpmPath and -NodePath."
 }
 
 function Find-Rscript {
@@ -113,6 +143,43 @@ function Invoke-Native {
   }
 }
 
+function Invoke-Npm {
+  param(
+    [pscustomobject]$Runner,
+    [string[]]$Arguments
+  )
+  if ($Runner.Kind -eq "pnpm") {
+    Invoke-Native $Runner.Path (@("dlx", "npm@10.9.2") + $Arguments)
+  } else {
+    Invoke-Native $Runner.Path $Arguments
+  }
+}
+
+function Invoke-RScript {
+  param(
+    [string]$RscriptPath,
+    [string[]]$Arguments
+  )
+  $previousLcAll = $env:LC_ALL
+  $previousLang = $env:LANG
+  $previousPreference = $ErrorActionPreference
+  try {
+    $env:LC_ALL = "English_United States.utf8"
+    $env:LANG = "English_United States.utf8"
+    $ErrorActionPreference = "SilentlyContinue"
+    $output = & $RscriptPath @Arguments
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -ne 0) {
+      throw "$RscriptPath failed with exit code $exitCode"
+    }
+    return $output
+  } finally {
+    $env:LC_ALL = $previousLcAll
+    $env:LANG = $previousLang
+    $ErrorActionPreference = $previousPreference
+  }
+}
+
 function Invoke-RScriptFile {
   param(
     [string]$RscriptPath,
@@ -121,10 +188,7 @@ function Invoke-RScriptFile {
   $tempScript = Join-Path $env:TEMP ("easyflow-build-" + [guid]::NewGuid().ToString() + ".R")
   try {
     [System.IO.File]::WriteAllText($tempScript, $ScriptText, [System.Text.UTF8Encoding]::new($false))
-    & $RscriptPath $tempScript
-    if ($LASTEXITCODE -ne 0) {
-      throw "$RscriptPath failed with exit code $LASTEXITCODE"
-    }
+    Invoke-RScript $RscriptPath @($tempScript)
   } finally {
     if (Test-Path -LiteralPath $tempScript) {
       Remove-Item -LiteralPath $tempScript -Force
@@ -290,7 +354,7 @@ packages <- sort(unique(c(required, unlist(deps, use.names = FALSE))))
 cat(packages, sep = "\n")
 "@
   $requiredPackages = Invoke-RScriptFile (Join-Path $RHome "bin\x64\Rscript.exe") $dependencyScript
-  $libraryPaths = & (Join-Path $RHome "bin\x64\Rscript.exe") -e "cat(.libPaths(), sep='\n')"
+  $libraryPaths = Invoke-RScript (Join-Path $RHome "bin\x64\Rscript.exe") @("-e", "cat(.libPaths(), sep='\n')")
   $libraryPaths = @($libraryPaths | Where-Object { $_ -and (Test-Path -LiteralPath $_) })
   Write-Host ("Copying {0} required R package(s) and dependencies" -f $requiredPackages.Count)
   foreach ($package in $requiredPackages) {
@@ -300,7 +364,7 @@ cat(packages, sep = "\n")
 
 if (Test-Path -LiteralPath (Join-Path $runtimeStage "bin\x64\Rscript.exe")) {
   Write-Host "Pruning bundled R runtime packages"
-  Invoke-Native (Join-Path $runtimeStage "bin\x64\Rscript.exe") @(
+  Invoke-RScript (Join-Path $runtimeStage "bin\x64\Rscript.exe") @(
     (Join-Path $repoRoot "scripts\prune_r_runtime.R"),
     "--repo-root=$repoRoot",
     "--runtime-root=$runtimeStage",
@@ -309,7 +373,7 @@ if (Test-Path -LiteralPath (Join-Path $runtimeStage "bin\x64\Rscript.exe")) {
   )
 
   Write-Host "Generating third-party license notices"
-  Invoke-Native (Join-Path $runtimeStage "bin\x64\Rscript.exe") @(
+  Invoke-RScript (Join-Path $runtimeStage "bin\x64\Rscript.exe") @(
     (Join-Path $repoRoot "scripts\generate_oss_notices.R"),
     "--repo-root=$repoRoot",
     "--runtime-root=$runtimeStage",
@@ -319,7 +383,7 @@ if (Test-Path -LiteralPath (Join-Path $runtimeStage "bin\x64\Rscript.exe")) {
   # Keep the 1.1.1 public packaging rule: exclude R runtime documentation,
   # tests, examples, source payloads, and other non-runtime content.
   Write-Host "Pruning bundled R runtime documentation and test payloads"
-  Invoke-Native (Join-Path $runtimeStage "bin\x64\Rscript.exe") @(
+  Invoke-RScript (Join-Path $runtimeStage "bin\x64\Rscript.exe") @(
     (Join-Path $repoRoot "scripts\prune_r_runtime_content.R"),
     "--runtime-root=$runtimeStage",
     "--output-dir=$appStage",
@@ -329,22 +393,26 @@ if (Test-Path -LiteralPath (Join-Path $runtimeStage "bin\x64\Rscript.exe")) {
   Write-Warning "R runtime was not found; third-party license notices were not generated."
 }
 
-$npm = Find-Npm
-$nodeDir = Split-Path $npm
-$env:PATH = "$nodeDir;$env:PATH"
+$npmRunner = Find-NpmRunner
+if ($NodePath) {
+  if (-not (Test-Path -LiteralPath $NodePath)) { throw "The requested Node.js executable was not found: $NodePath" }
+  $env:PATH = "$(Split-Path $NodePath);$env:PATH"
+} elseif ($npmRunner.Kind -eq "npm") {
+  $env:PATH = "$(Split-Path $npmRunner.Path);$env:PATH"
+}
 $env:CSC_IDENTITY_AUTO_DISCOVERY = "false"
 $env:USE_HARD_LINKS = "false"
 Push-Location $electronDir
 try {
   if (-not $SkipNpmInstall) {
     if (Test-Path -LiteralPath "package-lock.json") {
-      Invoke-Native $npm @("ci")
+      Invoke-Npm $npmRunner @("ci")
     } else {
-      Invoke-Native $npm @("install")
+      Invoke-Npm $npmRunner @("install")
     }
   }
   Sync-ElectronPackageMetadata
-  Invoke-Native $npm @("run", "dist", "--", "--publish", "never")
+  Invoke-Npm $npmRunner @("run", "dist", "--", "--publish", "never")
 } finally {
   Pop-Location
 }

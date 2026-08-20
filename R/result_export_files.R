@@ -833,14 +833,10 @@ save_survival_km_figure_files <- function(result, directory, dpi = analysis_figu
       for (plot_version in plot_versions) {
         version_label <- safe_file_stem(survival_plot_version_label(plot_version, "en"))
         file <- file.path(directory, sprintf("Kaplan-Meier_%s_%s_%s_%sdpi.png", group_label, plot_label, version_label, dpi))
-        ggplot2::ggsave(
-          filename = file,
-          plot = survival_km_ggplot(item, plot_type, plot_version),
-          width = 6.4,
-          height = 4.8,
-          units = "in",
-          dpi = dpi,
-          bg = "white"
+        grDevices::png(file, width = 6.4, height = 6.2, units = "in", res = dpi, bg = "white")
+        tryCatch(
+          survival_draw_plot_with_risk_table(survival_km_ggplot(item, plot_type, plot_version), survival_km_risk_table_plot(item, plot_version)),
+          finally = grDevices::dev.off()
         )
         saved <- c(saved, file)
       }
@@ -864,11 +860,13 @@ save_survival_cox_figure_files <- function(result, directory, dpi = analysis_fig
     plot_versions <- "color"
   }
   for (plot_version in plot_versions) {
+    plot <- survival_cox_ggplot(result, plot_version)
+    if (is.null(plot)) next
     version_label <- safe_file_stem(survival_plot_version_label(plot_version, "en"))
     file <- file.path(directory, sprintf("Cox_Hazard_Ratio_Forest_Plot_%s_%sdpi.png", version_label, dpi))
     ggplot2::ggsave(
       filename = file,
-      plot = survival_cox_ggplot(result, plot_version),
+      plot = plot,
       width = 6.4,
       height = 4.8,
       units = "in",
@@ -882,4 +880,55 @@ save_survival_cox_figure_files <- function(result, directory, dpi = analysis_fig
 
 save_survival_cox_figures_to_dir <- function(result, directory) {
   save_survival_cox_figure_files(result, directory)
+}
+
+save_survival_competing_figure_files <- function(result, directory, dpi = analysis_figure_dpi()) {
+  file <- file.path(directory, sprintf("Competing-risks_CIF_number-at-risk_%sdpi.png", dpi))
+  grDevices::png(file, width = 6.4, height = 6.2, units = "in", res = dpi, bg = "white")
+  tryCatch(
+    survival_draw_plot_with_risk_table(survival_competing_ggplot(result), survival_competing_risk_table_plot(result)),
+    finally = grDevices::dev.off()
+  )
+  saved <- file
+  if (is.list(result$cause_specific) && !is.null(result$cause_specific$ph)) {
+    ph_file <- file.path(directory, sprintf("Cause-specific-Cox_Schoenfeld-diagnostics_%sdpi.png", dpi))
+    grDevices::png(ph_file, width = 7.2, height = 6.2, units = "in", res = dpi, bg = "white")
+    tryCatch(
+      survival_cox_ph_plot(result$cause_specific),
+      finally = grDevices::dev.off()
+    )
+    saved <- c(saved, ph_file)
+  }
+  functional_plot <- if (is.list(result$cause_specific)) survival_cox_functional_form_ggplot(result$cause_specific) else NULL
+  if (!is.null(functional_plot)) {
+    functional_file <- file.path(directory, sprintf("Cause-specific-Cox_Martingale-functional-form_%sdpi.png", dpi))
+    ggplot2::ggsave(functional_file, functional_plot, width = 7.2, height = 5.8, units = "in", dpi = dpi, bg = "white")
+    saved <- c(saved, functional_file)
+  }
+  residual_plot <- survival_fine_gray_residual_ggplot(result)
+  if (!is.null(residual_plot)) {
+    residual_file <- file.path(directory, sprintf("Fine-Gray_Schoenfeld-like-residuals_%sdpi.png", dpi))
+    ggplot2::ggsave(residual_file, residual_plot, width = 7.2, height = 5.8, units = "in", dpi = dpi, bg = "white")
+    saved <- c(saved, residual_file)
+  }
+  saved
+}
+
+save_survival_reporting_files <- function(result, directory, language = statedu_initial_language()) {
+  if (!dir.exists(directory)) stop("The selected export directory does not exist.")
+  bundle <- survival_reporting_bundle(result, language)
+  files <- character(0)
+  method_file <- file.path(directory, "Survival_methods.txt")
+  writeLines(enc2utf8(bundle$method), method_file, useBytes = TRUE)
+  files <- c(files, method_file)
+  tables <- list(Data_inclusion_audit = bundle$data_flow, Event_code_mapping = bundle$event_map, Excluded_rows_by_reason = bundle$exclusions, Censoring_followup_diagnostics = bundle$followup, Analysis_stability_review = bundle$stability, Reporting_checklist = bundle$checklist, Interpretation_guide = bundle$interpretation)
+  if (length(bundle$diagnostics %||% list())) tables <- c(tables, bundle$diagnostics)
+  for (name in names(tables)) {
+    table <- tables[[name]]
+    if (!is.data.frame(table) || !nrow(table)) next
+    path <- file.path(directory, paste0(name, ".csv"))
+    utils::write.csv(table, path, row.names = FALSE, fileEncoding = "UTF-8")
+    files <- c(files, path)
+  }
+  files
 }

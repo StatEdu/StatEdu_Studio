@@ -1413,7 +1413,7 @@
     "sample_size.label.parallel_cluster_randomized_trial": "Parallele cluster-randomisierte Studie",
     "sample_size.label.parallel_continuous_outcome": "Paralleles kontinuierliches Outcome",
     "sample_size.label.parameter": "Parameter",
-    "sample_size.label.parameter_level_monte_carlo": "Monte Carlo auf Parameterebene",
+    "sample_size.label.parameter_level_monte_carlo": "Approximative Parametersimulation der Teststärke",
     "sample_size.label.parameter_type": "Parametertyp",
     "sample_size.label.partial_eta_squared": "Partielles Eta-Quadrat",
     "sample_size.label.partial_eta_squared_from_f": "Partielles Eta-Quadrat aus F",

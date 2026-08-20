@@ -1,6 +1,7 @@
 param(
   [string]$RepoRoot = "",
   [string]$ElectronOutDir = "",
+  [string]$NodePath = "",
   [switch]$SkipUnpackedChecks
 )
 
@@ -16,7 +17,10 @@ if (-not $ElectronOutDir) {
   $ElectronOutDir = Join-Path $RepoRoot "dist\electron\win-unpacked"
 }
 
-$appResourceDir = Join-Path $ElectronOutDir "resources\app"
+$resourceRoot = Join-Path $ElectronOutDir "resources"
+$asarArchive = Join-Path $resourceRoot "app.asar"
+$asarUnpackedDir = Join-Path $resourceRoot "app.asar.unpacked"
+$appResourceDir = if (Test-Path -LiteralPath $asarUnpackedDir) { $asarUnpackedDir } else { Join-Path $resourceRoot "app" }
 $bundledAppDir = Join-Path $appResourceDir "app"
 $runtimeDir = Join-Path $appResourceDir "runtime\R-4.5.3"
 $rscript = Join-Path $runtimeDir "bin\x64\Rscript.exe"
@@ -33,11 +37,17 @@ function Assert-Path {
 }
 
 function Assert-JsonVersionPin {
-  $node = Get-Command "node.exe" -ErrorAction SilentlyContinue
-  if (-not $node) {
-    $node = Get-Command "node" -ErrorAction SilentlyContinue
+  $nodeExecutable = $NodePath
+  if (-not $nodeExecutable) {
+    $node = Get-Command "node.exe" -ErrorAction SilentlyContinue
+    if (-not $node) {
+      $node = Get-Command "node" -ErrorAction SilentlyContinue
+    }
+    if ($node) {
+      $nodeExecutable = $node.Source
+    }
   }
-  if (-not $node) {
+  if (-not $nodeExecutable -or -not (Test-Path -LiteralPath $nodeExecutable)) {
     throw "Node.js was not found; cannot validate Electron package pins."
   }
 
@@ -58,7 +68,7 @@ for (const name of ['electron', 'electron-builder']) {
 "@
   Push-Location $RepoRoot
   try {
-    & $node.Source -e $script
+    & $nodeExecutable -e $script
     if ($LASTEXITCODE -ne 0) {
       throw "Electron package pin validation failed."
     }
@@ -308,13 +318,13 @@ Assert-Path (Join-Path $RepoRoot "scripts\generate_oss_notices.R") "OSS notice g
 Assert-Path (Join-Path $RepoRoot "scripts\prune_r_runtime.R") "R runtime prune script"
 Assert-Path (Join-Path $RepoRoot "LICENSE") "application license"
 Assert-Path (Join-Path $RepoRoot "SOURCE-OFFER.txt") "source offer"
-Assert-Path (Join-Path $RepoRoot "packaging\electron\build\studio-file.ico") "studio file association icon"
+Assert-Path (Join-Path $RepoRoot "packaging\electron\build\studio-data.ico") "studio file association icon"
 
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "STATEDU_TOKEN" "Electron token handoff"
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "readAppLanguage\(\)" "Electron persisted language reader"
-Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") "readAppLanguage\(\) \|\| \"ko\"" "Electron startup uses persisted language"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\main.js") 'readAppLanguage\(\) \|\| "ko"' "Electron startup uses persisted language"
 Assert-FileContains (Join-Path $RepoRoot "packaging\electron\package.json") '"ext"\s*:\s*"studio"' ".studio file association extension"
-Assert-FileContains (Join-Path $RepoRoot "packaging\electron\package.json") '"icon"\s*:\s*"build/studio-file\.ico"' ".studio file association icon path"
+Assert-FileContains (Join-Path $RepoRoot "packaging\electron\package.json") '"icon"\s*:\s*"build/studio-data\.ico"' ".studio file association icon path"
 Assert-FileContains (Join-Path $RepoRoot "docs\RELEASE_CHECKLIST.md") "validate_stabilization\.ps1 -Full" "full stabilization validation in release checklist"
 Assert-FileContains (Join-Path $RepoRoot "docs\RELEASE_CHECKLIST.md") "smoke_shiny_app\.ps1" "Shiny app smoke test in release checklist"
 Assert-FileContains (Join-Path $RepoRoot "docs\RELEASE_CHECKLIST.md") "RELEASE_MANUAL_QA\.md" "manual QA protocol in release checklist"
@@ -342,6 +352,8 @@ if (-not $SkipUnpackedChecks) {
   $projectVersion = Get-ProjectVersion
   $releaseProfile = Get-ElectronReleaseProfile -Version $projectVersion
   Assert-Path $ElectronOutDir "unpacked Electron output"
+  Assert-Path $asarArchive "Electron ASAR archive"
+  Assert-Path $asarUnpackedDir "Electron unpacked runtime resources"
   $electronExe = Join-Path $ElectronOutDir $releaseProfile.ExeName
   Assert-Path $electronExe "Electron executable"
   Assert-ExeVersionInfo $electronExe $releaseProfile.ProductName "StatEdu"
@@ -423,10 +435,19 @@ if (-not $SkipUnpackedChecks) {
   Write-Host "[ok] bundled R runtime has no documentation/test/example/source payload directories"
 
   $prevPref = $ErrorActionPreference
+  $previousLcAll = $env:LC_ALL
+  $previousLang = $env:LANG
   $ErrorActionPreference = "SilentlyContinue"
-  $moduleCheckOutput = & $rscript -e "source('R/app_bootstrap.R'); load_app_packages(); source_app_modules(); cat('bundled R modules ok\n')" 2>$null
-  $moduleExitCode = $LASTEXITCODE
-  $ErrorActionPreference = $prevPref
+  try {
+    $env:LC_ALL = "English_United States.utf8"
+    $env:LANG = "English_United States.utf8"
+    $moduleCheckOutput = & $rscript -e "source('R/app_bootstrap.R'); load_app_packages(); source_app_modules(); cat('bundled R modules ok\n')" 2>$null
+    $moduleExitCode = $LASTEXITCODE
+  } finally {
+    $env:LC_ALL = $previousLcAll
+    $env:LANG = $previousLang
+    $ErrorActionPreference = $prevPref
+  }
   $moduleCheckOutput | ForEach-Object { Write-Host $_ }
   if ($moduleExitCode -ne 0) {
     throw "Bundled R module load check failed."

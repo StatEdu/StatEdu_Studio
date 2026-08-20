@@ -630,7 +630,7 @@
     "sample_size.label.stepped_wedge_cluster_trial": "阶梯楔形集群试验",
     "sample_size.label.close_fit_test_detect_poor_fit": "近似拟合检验 (检测不良拟合)",
     "sample_size.label.not_close_fit_test_support_close_fit": "非近似拟合检验 (支持近似拟合)",
-    "sample_size.label.parameter_level_monte_carlo": "参数层面 Monte Carlo",
+    "sample_size.label.parameter_level_monte_carlo": "近似参数功效模拟",
     "sample_size.label.model_complexity_heuristic": "模型复杂度启发式",
     "sample_size.label.standardized_loading": "标准化载荷",
     "sample_size.label.standardized_path": "标准化路径",

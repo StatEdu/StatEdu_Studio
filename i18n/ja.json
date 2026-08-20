@@ -630,7 +630,7 @@
     "sample_size.label.stepped_wedge_cluster_trial": "ステップウェッジクラスター試験",
     "sample_size.label.close_fit_test_detect_poor_fit": "近似適合検定 (不良適合の検出)",
     "sample_size.label.not_close_fit_test_support_close_fit": "非近似適合検定 (近似適合の支持)",
-    "sample_size.label.parameter_level_monte_carlo": "パラメータレベル Monte Carlo",
+    "sample_size.label.parameter_level_monte_carlo": "近似パラメータ検出力シミュレーション",
     "sample_size.label.model_complexity_heuristic": "モデル複雑度ヒューリスティック",
     "sample_size.label.standardized_loading": "標準化負荷量",
     "sample_size.label.standardized_path": "標準化パス",

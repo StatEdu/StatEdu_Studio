@@ -296,7 +296,7 @@ sample_size_label <- function(language = statedu_initial_language(), label) {
     "Stepped-wedge cluster trial" = sample_size_text(language, "Stepped-wedge cluster trial", h("eab384eb8ba8ed989520eab5b0eca79120ec8b9ced9798")),
     "Close fit test (detect poor fit)" = sample_size_text(language, "Close fit test (detect poor fit)", h("ebb080eca09120eca081ed95a920eab280eca095")),
     "Not-close-fit test (support close fit)" = sample_size_text(language, "Not-close-fit test (support close fit)", h("ebb984ebb080eca09120eca081ed95a920eab280eca095")),
-    "Parameter-level Monte Carlo" = sample_size_text(language, "Parameter-level Monte Carlo", h("ebaaa8ec889820ec8898eca480204d6f6e7465204361726c6f")),
+    "Approximate parameter power simulation" = sample_size_text(language, "Approximate parameter power simulation", h("eab7bcec82ac20ebaaa8ec889820eab280eca095eba0a520ec8b9cebaeaceba088ec9db4ec8598")),
     "Model complexity heuristic" = sample_size_text(language, "Model complexity heuristic", h("ebaaa8ed989520ebb3b5ec9ea1eb8f8420ed9cb4eba6acec8aa4ed8bb1")),
     "Standardized loading" = sample_size_text(language, "Standardized loading", h("ed919ceca480ed999420ec9a94ec9db8ebb680ed9598")),
     "Standardized path" = sample_size_text(language, "Standardized path", h("ed919ceca480ed999420eab2bdeba19c")),
@@ -2706,7 +2706,7 @@ sample_size_inputs_ui <- function(method, input, language = statedu_initial_lang
         choices = sample_size_choice_labels(language, c(
           "Close fit test (detect poor fit)" = "close_fit",
           "Not-close-fit test (support close fit)" = "not_close_fit",
-          "Parameter-level Monte Carlo" = "parameter",
+          "Approximate parameter power simulation" = "parameter",
           "Model complexity heuristic" = "complexity"
         )),
         selected = sem_test
@@ -3580,8 +3580,8 @@ sample_size_method_details <- function(method, result) {
     sem = list(
       formula = if (has_design("complexity heuristic", ignore.case = TRUE)) {
         "Uses a model-complexity planning estimate: cases-per-free-parameter, observed/latent variable and structural path burden, and approximate detectability of expected standardized loading/path coefficients. The recommended N is the maximum of the component rules."
-      } else if (has_design("parameter-level", ignore.case = TRUE)) {
-        "Uses approximate Monte Carlo draws from a standardized SEM/CFA parameter estimate distribution. The standard error is based on a Fisher-z-style large-sample approximation with a model-complexity effective sample size adjustment."
+      } else if (has_design("parameter-power simulation", ignore.case = TRUE)) {
+        "Uses approximate draws from a standardized SEM/CFA parameter estimate distribution. The standard error is based on a Fisher-z-style large-sample approximation with a model-complexity effective sample size adjustment; this is not full model data generation and refitting."
       } else {
         "Uses RMSEA-based SEM/CFA model-level power with noncentrality parameter lambda = (N - 1) df RMSEA^2 and the noncentral chi-square distribution."
       },
@@ -3592,7 +3592,7 @@ sample_size_method_details <- function(method, result) {
           "Wolf, E. J., Harrington, K. M., Clark, S. L., & Miller, M. W. (2013). Sample size requirements for structural equation models: An evaluation of power, bias, and solution propriety. Educational and Psychological Measurement, 73(6), 913-934.",
           "Westland, J. C. (2010). Lower bounds on sample size in structural equation modeling. Electronic Commerce Research and Applications, 9(6), 476-487."
         )
-      } else if (has_design("parameter-level", ignore.case = TRUE)) {
+      } else if (has_design("parameter-power simulation", ignore.case = TRUE)) {
         c(
           "Muthen, L. K., & Muthen, B. O. (2002). How to use a Monte Carlo study to decide on sample size and determine power. Structural Equation Modeling, 9(4), 599-620.",
           "Wolf, E. J., Harrington, K. M., Clark, S. L., & Miller, M. W. (2013). Sample size requirements for structural equation models: An evaluation of power, bias, and solution propriety. Educational and Psychological Measurement, 73(6), 913-934.",

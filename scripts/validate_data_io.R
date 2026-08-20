@@ -8,6 +8,29 @@ setwd(repo_root)
 
 source(file.path(repo_root, "R", "utils.R"))
 source(file.path(repo_root, "R", "data_io.R"))
+source(file.path(repo_root, "R", "data_ui_tables.R"))
+source(file.path(repo_root, "R", "server_data_state.R"))
+
+message("Checking manually managed variable-table controls...")
+measurement_html <- measurement_select_html("x", "continuous", 1L, "en")
+label_renderer <- paste(as.character(variable_label_input_renderer()), collapse = "\n")
+stopifnot(
+  grepl('class="measurement-select" data-name="x"', measurement_html, fixed = TRUE),
+  !grepl('id="measurement_input_', measurement_html, fixed = TRUE),
+  !grepl("var_label_input_", label_renderer, fixed = TRUE)
+)
+collector_input <- list(variable_table_state = list(
+  measurements = list(x = "ordered"),
+  var_labels = list(x = "X label")
+))
+collector_info <- function(reactive_labels = FALSE) data.frame(
+  name = "x", source_order = 1L, stringsAsFactors = FALSE
+)
+collectors <- create_table_input_collectors(collector_input, collector_info)
+stopifnot(
+  identical(unname(collectors$collect_measurement_inputs()[["x"]]), "ordered"),
+  identical(unname(collectors$collect_var_label_inputs()[["x"]]), "X label")
+)
 
 ko_sex <- statedu_utf8("ec84b1ebb384")
 ko_grade <- statedu_utf8("ed9599eb8584")

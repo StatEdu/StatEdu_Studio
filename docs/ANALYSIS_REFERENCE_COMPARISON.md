@@ -30,6 +30,7 @@ This section summarizes the analysis-method validation scope. It excludes the sa
 | Inter-rater agreement | `psych`, `irr`, `irrCAC`, Krippendorff coincidence-matrix implementation, literature examples | ICC variants, Cohen/weighted kappa, Fleiss kappa, Light kappa, Gwet AC1/AC2 including missing-data unit averaging, Krippendorff alpha including missing and single-rater unit handling, character-label ordinal category order | PASS | Weighted kappa, AC2, and ordinal alpha use `category_table` order for ordinal category levels when available. |
 | PCA | Direct eigen decomposition, `psych`/polychoric checks | Pearson/covariance/polychoric matrix paths, eigenvalues, component-count rules, cumulative-variance empty-selection guard, polychoric-to-Pearson fallback matrix label, covariance Kaiser warning | PASS | Kaiser eigenvalue >= 1 is warned as scale-dependent for covariance matrices. |
 | Factor analysis | `psych::fa`, shared numeric-matrix conversion checks | PAF one-factor absolute loadings, factor numeric conversion via labels rather than factor codes, polychoric score warning path | PASS | When FA is fitted on a polychoric matrix, saved scores are documented as raw-data/Pearson-standardized approximations. |
+| SEM / CB-SEM / PLS-SEM | Direct `lavaan::sem` and `seminr::estimate_pls` calls | SEM and CB-SEM path B/SE/beta, global fit indices, defined indirect/total effects, PLS path coefficients, R2, outer loadings, reliability, and AVE | PASS | This validates representative continuous reflective models; advanced group comparisons, ordinal WLSMV, and PLS predictive diagnostics remain in dedicated SEM validation work. |
 | Longitudinal / panel models | `lmerTest::lmer`, `geepack::geeglm`, `plm`, `lmtest::coeftest`, `mice::pool`, direct Kish/IPW checks | LMM ML coefficients/AIC, GEE coefficients/SE with id-time sorting and waves, panel FE coefficients and group-cluster HC1 SE, Rubin MI pooling B/SE/df, Kish effective N, IPW clipping/normalization, NB-GEE fallback warning | PASS | Native negative-binomial GEE is not claimed; marginal `glm.nb` plus cluster-robust SE is explicitly labelled as a fallback. |
 | Data editor recode / missing-code handling | Direct helper checks and formula-transform guard tests | Same-variable recode, category/range recode, reverse scoring, Likert detection/conversion, missing-code detection and conversion to `NA`, formula transformations, factor numeric-label conversion in numeric helpers | PASS | Data-editor missing-code handling converts user/sentinel codes to `NA`; general MI/IPW engines are validated in GLM and longitudinal modules. |
 | Custom model canvas wiring | Synthetic canvas snapshots compared with expected analysis maps | Node roles, directed X->Y, X->M, M->Y, M->M maps, serial mediator detection, moderated path flags, moderation map rows, invalid edge/moderation record filtering | PASS | The canvas wiring test covers snapshot-to-engine map construction; fitted mediation/moderation calculations are validated in the mediation engine paths. |
@@ -41,7 +42,7 @@ Not covered by this analysis-method summary yet: none of the previously listed m
 
 ## Analysis Reference Comparison
 
-Rows compared: 54
+Rows compared: 66
 
 This table validates both direct analysis calculations and StatEdu Studio automatic decision paths. Automatic paths include sparse-cell Fisher switching, non-normal correlation switching to Spearman, t-test/ANOVA switching to Mann-Whitney, Welch, or Kruskal-Wallis, GLM family detection, count overdispersion selection, and longitudinal count-family selection.
 
@@ -92,6 +93,18 @@ This table validates both direct analysis calculations and StatEdu Studio automa
 | Reliability | Cronbach alpha | alpha | -0.04970028415 | -0.04970028415 | 0.0000000000000008326672685 | 0.0000000001 | PASS |  |
 | PCA | Correlation eigenvalues | max \|eigenvalue diff\| | 0 | 0 | 0.0000000000000005551115123 | 0.0000000001 | PASS |  |
 | Factor Analysis | PAF one-factor loadings | max \|abs loading diff\| | 0 | 0 | 0.000000000000002442490654 | 0.0000000001 | PASS |  |
+| SEM / CB-SEM | SEM direct structural path | max \|B diff\| | 0 | 0 | 0 | 0.0000000001 | PASS |  |
+| SEM / CB-SEM | SEM direct structural path | max \|SE diff\| | 0 | 0 | 0 | 0.0000000001 | PASS |  |
+| SEM / CB-SEM | SEM standardized path | max \|beta diff\| | 0 | 0 | 0 | 0.0000000001 | PASS |  |
+| SEM / CB-SEM | SEM global fit indices | max \|fit-index diff\| | 0 | 0 | 0 | 0.0000000001 | PASS |  |
+| SEM / CB-SEM | CB-SEM mediation structural paths | max \|B diff\| | 0 | 0 | 0 | 0.0000000001 | PASS |  |
+| SEM / CB-SEM | CB-SEM mediation structural paths | max \|SE diff\| | 0 | 0 | 0 | 0.0000000001 | PASS |  |
+| SEM / CB-SEM | CB-SEM indirect/total effects | max \|defined-effect B diff\| | 0 | 0 | 0 | 0.0000000001 | PASS |  |
+| SEM / CB-SEM | CB-SEM indirect/total effects | max \|defined-effect SE diff\| | 0 | 0 | 0 | 0.0000000001 | PASS |  |
+| PLS-SEM | PLS structural path | max \|path coefficient diff\| | 0 | 0 | 0 | 0.0000000001 | PASS |  |
+| PLS-SEM | PLS R-squared | max \|R2 diff\| | 0 | 0 | 0 | 0.0000000001 | PASS |  |
+| PLS-SEM | PLS outer loadings | max \|loading diff\| | 0 | 0 | 0 | 0.0000000001 | PASS |  |
+| PLS-SEM | PLS reliability and AVE | max \|reliability diff\| | 0 | 0 | 0 | 0.0000000001 | PASS |  |
 | Longitudinal / Panel | GEE binomial | max \|B diff\| | 0 | 0 | 0 | 0.0000000001 | PASS |  |
 | Longitudinal / Panel | GEE binomial | max \|SE diff\| | 0 | 0 | 0 | 0.0000000001 | PASS |  |
 | Longitudinal / Panel | GEE auto count workflow: overdispersion | fitted family | negative_binomial | negative_binomial | 0 | 0 | PASS | Count screening should switch the marginal count fit to negative binomial when dispersion ratio exceeds 1.5. |

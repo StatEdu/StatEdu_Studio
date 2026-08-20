@@ -2823,6 +2823,12 @@ input.variable-select:disabled {
   font-weight: 500;
 }
 
+.structural-equation-workspace-panel .structural_equation-workspace-heading {
+  width: 100% !important;
+  min-width: 100% !important;
+}
+
+
 .data-editor-variable-scope-button.is-active {
   color: #ffffff;
   background-color: #337ab7;
@@ -4869,6 +4875,68 @@ input.variable-select:disabled {
   table-layout: fixed;
 }
 
+.coefficient-table th.coefficient-ci-group-header,
+th.structural-table-header-cell[colspan] {
+  text-align: center !important;
+}
+
+.coefficient-ci-group-label {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.survival-cox-result-table .survival-cox-summary-row > td {
+  padding: 0.8rem 0.75rem;
+  border-bottom: 1px solid #d4dbe5;
+  text-align: center;
+  white-space: normal;
+}
+
+.survival-cox-result-table .survival-cox-summary-row-first > td {
+  border-top: 3px solid #202936;
+}
+
+.survival-cox-result-table .survival-cox-summary-row:last-child > td {
+  border-bottom: 3px solid #202936;
+}
+
+.structural-validity-table {
+  width: 100% !important;
+  min-width: 1040px;
+  table-layout: fixed !important;
+}
+
+.structural-validity-table th:nth-child(1),
+.structural-validity-table td:nth-child(1) { width: 11%; }
+.structural-validity-table th:nth-child(2),
+.structural-validity-table td:nth-child(2) { width: 12%; }
+.structural-validity-table th:nth-child(3),
+.structural-validity-table td:nth-child(3) { width: 10%; }
+.structural-validity-table th:nth-child(4),
+.structural-validity-table td:nth-child(4) { width: 25%; }
+.structural-validity-table th:nth-child(n + 5),
+.structural-validity-table td:nth-child(n + 5) { width: 7%; }
+
+.structural-validity-table th {
+  white-space: normal !important;
+  word-break: keep-all;
+}
+
+.structural-validity-table td {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.structural-pls-measurement-main-table th.structural-boot-bh-header {
+  min-width: 150px;
+  white-space: normal !important;
+  line-height: 1.25;
+  text-align: center !important;
+}
+
 .logistic-results > .logistic-hierarchical-result-panel {
   width: min(100%, 590px);
   max-width: 100%;
@@ -5300,6 +5368,30 @@ input.variable-select:disabled {
   overflow-wrap: anywhere !important;
 }
 
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group th,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group td {
+  min-width: 0 !important;
+  max-width: none !important;
+}
+
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-term,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-value,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-mse,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-ci,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-effect-size,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-statistic,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-p,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-posthoc {
+  width: auto !important;
+  min-width: 0 !important;
+}
+
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-term,
+.regression-results > .ttest-anova-result-panel .coefficient-table.coefficient-table-complex-sample-group .coefficient-col-value {
+  overflow-wrap: anywhere !important;
+  word-break: keep-all !important;
+}
+
 .regression-results > .regression-result-panel.landscape-table-panel {
   width: min(100%, 890px);
   max-width: 100%;
@@ -5313,6 +5405,38 @@ input.variable-select:disabled {
   max-width: 100% !important;
   table-layout: fixed;
   font-size: var(--result-table-font-size);
+}
+
+@media screen {
+  .regression-results > .structural-residual-result.landscape-table-panel {
+    overflow-x: auto;
+  }
+
+  .regression-results > .structural-residual-result.landscape-table-panel .structural-residual-matrix {
+    width: max-content !important;
+    min-width: 100% !important;
+    max-width: none !important;
+    table-layout: auto !important;
+  }
+
+  .regression-results > .structural-residual-result.landscape-table-panel .structural-residual-matrix th,
+  .regression-results > .structural-residual-result.landscape-table-panel .structural-residual-matrix td {
+    white-space: nowrap;
+  }
+}
+
+@media print {
+  body.print-mixed-landscape .structural-residual-result.landscape-table-panel .structural-residual-matrix {
+    font-size: 5.5pt !important;
+  }
+
+  body.print-mixed-landscape .structural-residual-result.landscape-table-panel .structural-residual-matrix th,
+  body.print-mixed-landscape .structural-residual-result.landscape-table-panel .structural-residual-matrix td {
+    padding-left: 1.5pt !important;
+    padding-right: 1.5pt !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+  }
 }
 
 .regression-result-panel h3 {
@@ -8059,6 +8183,179 @@ pre {
   margin-bottom: 10px !important;
 }
 
+.survival-design-setup-grid {
+  display: grid;
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-panel-width) var(--se-standard-options-width);
+  gap: var(--se-standard-gap);
+  width: calc((var(--se-standard-panel-width) * 2) + var(--se-standard-options-width) + (var(--se-standard-gap) * 2) + (var(--se-standard-panel-padding) * 2));
+  padding: var(--se-standard-panel-padding);
+  box-sizing: border-box;
+  align-items: stretch;
+}
+
+.survival-design-setup-grid > .analysis-transfer-panel {
+  width: var(--se-standard-panel-width);
+  min-width: var(--se-standard-panel-width);
+  max-width: var(--se-standard-panel-width);
+}
+
+.survival-design-setup-grid > .analysis-options-panel {
+  width: var(--se-standard-options-width);
+  min-width: var(--se-standard-options-width);
+  max-width: var(--se-standard-options-width);
+}
+
+.survival-design-setup-grid h4,
+.survival-competing-setup-grid h4 {
+  margin: 0 0 16px;
+  color: var(--se-heading-color, #102a52);
+  font-weight: 700;
+}
+
+.survival-design-time-panel,
+.survival-design-variable-panel,
+.survival-competing-options-panel {
+  overflow-y: auto;
+}
+
+.survival-design-variable-panel.analysis-options-column {
+  display: block;
+  gap: 0;
+}
+
+.survival-design-time-panel > h4,
+.survival-design-variable-panel > h4 {
+  margin-bottom: 16px;
+}
+
+#survival_contract_setup,
+.survival-contract-grid-fragment {
+  display: contents;
+}
+
+.survival-design-action-row {
+  grid-template-columns: var(--se-standard-panel-width) var(--se-standard-panel-width) var(--se-standard-options-width) !important;
+  gap: var(--se-standard-gap) !important;
+  width: calc((var(--se-standard-panel-width) * 2) + var(--se-standard-options-width) + (var(--se-standard-gap) * 2) + (var(--se-standard-panel-padding) * 2)) !important;
+  min-width: calc((var(--se-standard-panel-width) * 2) + var(--se-standard-options-width) + (var(--se-standard-gap) * 2) + (var(--se-standard-panel-padding) * 2)) !important;
+  max-width: none !important;
+  padding: 0 var(--se-standard-panel-padding) var(--se-standard-panel-padding) !important;
+  box-sizing: border-box;
+}
+
+.survival-design-results {
+  width: calc((var(--se-standard-panel-width) * 2) + var(--se-standard-options-width) + (var(--se-standard-gap) * 2) + (var(--se-standard-panel-padding) * 2));
+  padding: 0 var(--se-standard-panel-padding) var(--se-standard-panel-padding);
+  box-sizing: border-box;
+}
+
+.survival-design-result-card {
+  margin-top: 0 !important;
+}
+
+.survival-recommendation-explanation {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 24px;
+  margin: 18px 0 4px;
+}
+
+.survival-recommendation-section {
+  min-width: 0;
+}
+
+.survival-recommendation-section h4 {
+  margin: 0 0 7px;
+  color: var(--se-heading-color, #102a52);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.survival-recommendation-section p,
+.survival-recommendation-section ul {
+  margin: 0 0 8px;
+}
+
+.survival-recommendation-section ul {
+  padding-left: 20px;
+}
+
+.survival-recommendation-data {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid #dbe5ee;
+  border-radius: 6px;
+  background: #f7fafc;
+}
+
+.survival-recommendation-rule {
+  margin-top: 12px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .survival-recommendation-explanation {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.survival-event-map-panel {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.survival-event-map-row {
+  display: grid;
+  grid-template-columns: 76px minmax(104px, 1fr) minmax(72px, 0.85fr);
+  gap: 8px;
+  align-items: start;
+  min-width: 0;
+}
+
+.survival-event-map-row > * {
+  min-width: 0;
+}
+
+.survival-event-map-raw {
+  padding-top: 8px;
+  overflow-wrap: anywhere;
+}
+
+.survival-event-map-row .form-group,
+.survival-event-map-row .form-control {
+  width: 100%;
+  min-width: 0;
+}
+
+.analysis-three-block-workspace .survival-competing-setup-grid > .survival-competing-variable-panel {
+  grid-column: 1 !important;
+}
+
+.analysis-three-block-workspace .survival-competing-setup-grid > .survival-competing-event-panel {
+  grid-column: 3 !important;
+}
+
+.analysis-three-block-workspace .survival-competing-setup-grid > .survival-competing-options-panel {
+  grid-column: 4 !important;
+}
+
+@media (max-width: 900px) {
+  .survival-design-setup-grid {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    min-width: 0;
+  }
+
+  .survival-design-setup-grid > .analysis-transfer-panel,
+  .survival-design-setup-grid > .analysis-options-panel {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+}
+
 .analysis-three-block-workspace .analysis-workspace-heading {
   display: grid !important;
   grid-template-columns: 1fr auto !important;
@@ -8397,19 +8694,70 @@ pre {
   width: 100% !important;
 }
 
-.survival-result-table th {
-  white-space: nowrap !important;
+.survival-result-table th,
+.survival-result-table td {
+  min-width: 72px;
+  max-width: 260px;
+  word-break: normal;
+  line-height: 1.35;
   vertical-align: middle !important;
+}
+
+.survival-result-table th {
+  white-space: normal !important;
 }
 
 .survival-result-table td {
   white-space: pre-line !important;
   overflow-wrap: normal !important;
-  vertical-align: middle !important;
+}
+
+.survival-cox-target-column,
+.survival-cox-transfer-controls {
+  grid-template-rows: 110px 174px 200px !important;
+}
+
+.survival-cox-transfer-controls > .analysis-move-button {
+  align-self: start !important;
+}
+
+.survival-cox-transfer-controls > .analysis-move-button:nth-child(1),
+.survival-cox-transfer-controls > .analysis-move-button:nth-child(2) {
+  margin-top: 56px !important;
+}
+
+.survival-cox-transfer-controls > .analysis-move-button:nth-child(3) {
+  margin-top: 78px !important;
 }
 
 .survival-result-table th {
   vertical-align: bottom !important;
+}
+
+.survival-result-panel {
+  overflow-x: auto !important;
+}
+
+.survival-result-panel .survival-result-table {
+  width: max-content !important;
+  min-width: 100% !important;
+  max-width: none !important;
+  table-layout: auto !important;
+}
+
+.survival-result-panel .survival-result-table th,
+.survival-result-panel .survival-result-table td {
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+}
+
+.survival-options-column .tab-content {
+  min-width: 0;
+  overflow: visible;
+}
+
+.survival-options-column .survival-options-tab-content {
+  padding-top: 14px;
 }
 
 .survival-result-table .survival-col-median-95-ci {

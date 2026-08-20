@@ -618,7 +618,7 @@ StatEdu Studio 1.2.0 also provides study-planning calculators. These are separat
 | Nonparametric | Mann-Whitney, Wilcoxon signed-rank, Kruskal-Wallis, Friedman | rank-based approximation, groups, measurements |
 | Correlation | Pearson correlation | r, alpha, power |
 | Reliability / Agreement | alpha, ICC, kappa, Bland-Altman precision | expected reliability, CI half-width, items, raters, categories |
-| SEM / CFA | RMSEA, parameter Monte Carlo, complexity heuristic | df or model counts, RMSEA, standardized parameter, complexity |
+| SEM / CFA | RMSEA, approximate parameter-power simulation, complexity heuristic | df or model counts, RMSEA, standardized parameter, complexity |
 | Regression | multiple regression, hierarchical f2, logistic OR, mediation, moderation | f2, OR, paths a/b, covariates |
 | Count / Rate Regression | Poisson, negative binomial, Gamma/rate planning | rate ratio, mean ratio, exposure, dispersion |
 | ROC AUC | AUC vs null | AUC, null AUC, case/control ratio |

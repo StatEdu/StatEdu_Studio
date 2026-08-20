@@ -88,8 +88,10 @@ analysis_tab_panel <- function(analysis_tabs = enabled_analysis_tabs(), language
     if (isTRUE(analysis_tabs[["custom_model_canvas"]])) lazy_tab_panel(custom_model_canvas_title(language), "analysis_custom_model_canvas", "lazy_analysis_custom_model_canvas"),
     if (isTRUE(analysis_tabs[["generalized"]])) lazy_tab_panel(statedu_ui_label("glm", language), "Generalized Linear Model (GLM)", "lazy_analysis_generalized"),
     lazy_tab_panel(statedu_ui_label("logistic", language), "analysis_logistic_regression", "lazy_analysis_logistic"),
+    lazy_tab_panel(survival_ui_text("Analysis Setup", language), "analysis_survival_setup", "lazy_analysis_survival_setup"),
     lazy_tab_panel(survival_ui_text("Kaplan-Meier", language), "analysis_survival_km", "lazy_analysis_survival_km"),
     lazy_tab_panel(survival_ui_text("Cox Regression", language), "analysis_survival_cox", "lazy_analysis_survival_cox"),
+    lazy_tab_panel(survival_ui_text("Competing Risks", language), "analysis_survival_competing", "lazy_analysis_survival_competing"),
     if (isTRUE(analysis_tabs[["longitudinal"]])) lazy_tab_panel(statedu_ui_label("longitudinal", language), "Longitudinal / Panel Models", "lazy_analysis_longitudinal"),
     lazy_tab_panel(complex_sample_ui_text("design_menu", language), "analysis_complex_design", "lazy_analysis_complex_design"),
     lazy_tab_panel(complex_sample_ui_text("frequencies", language), "analysis_complex_frequencies", "lazy_analysis_complex_frequencies"),
@@ -97,6 +99,10 @@ analysis_tab_panel <- function(analysis_tabs = enabled_analysis_tabs(), language
     lazy_tab_panel(complex_sample_ui_text("ttest_anova", language), "analysis_complex_ttest_anova", "lazy_analysis_complex_ttest_anova"),
     lazy_tab_panel(complex_sample_ui_text("correlation", language), "analysis_complex_correlation", "lazy_analysis_complex_correlation"),
     lazy_tab_panel(complex_sample_ui_text("regression", language), "analysis_complex_regression", "lazy_analysis_complex_regression"),
-    lazy_tab_panel(complex_sample_ui_text("logistic", language), "analysis_complex_logistic", "lazy_analysis_complex_logistic")
+    lazy_tab_panel(complex_sample_ui_text("logistic", language), "analysis_complex_logistic", "lazy_analysis_complex_logistic"),
+    lazy_tab_panel(structural_analysis_title("cfa", language), "analysis_structural_cfa", "lazy_analysis_structural_cfa"),
+    lazy_tab_panel(structural_analysis_title("cbsem", language), "analysis_structural_cbsem", "lazy_analysis_structural_cbsem"),
+    lazy_tab_panel(structural_analysis_title("plssem", language), "analysis_structural_plssem", "lazy_analysis_structural_plssem"),
+    lazy_tab_panel(structural_automation_title(language), "analysis_structural_automation", "lazy_analysis_structural_automation")
   )
 }

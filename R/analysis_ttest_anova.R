@@ -835,6 +835,19 @@ ttest_ordered_marker_statements <- function(ordered_markers, significant_pairs) 
   pair_key <- function(higher, lower) paste(higher, lower, sep = "\r")
   pair_keys <- unique(pair_key(significant_pairs$higher, significant_pairs$lower))
   has_pair <- function(higher, lower) pair_key(higher, lower) %in% pair_keys
+  marker_group_label <- function(markers) {
+    markers <- ordered_markers[ordered_markers %in% as.character(markers %||% character(0))]
+    markers <- unique(markers[nzchar(markers)])
+    if (length(markers) < 2L) {
+      return(paste(markers, collapse = ","))
+    }
+    all_internal_pairs <- all(vapply(seq_len(length(markers) - 1L), function(index) {
+      all(vapply(markers[seq.int(index + 1L, length(markers))], function(candidate) {
+        has_pair(markers[[index]], candidate) || has_pair(candidate, markers[[index]])
+      }, logical(1)))
+    }, logical(1)))
+    paste(markers, collapse = if (isTRUE(all_internal_pairs)) ">" else ",")
+  }
 
   chain_pairs <- character(0)
   chain_statements <- data.frame(first = character(0), statement = character(0), stringsAsFactors = FALSE)
@@ -891,24 +904,18 @@ ttest_ordered_marker_statements <- function(ordered_markers, significant_pairs) 
       if (length(higher) < 2L) {
         next
       }
-      has_internal_difference <- any(vapply(seq_len(length(higher) - 1L), function(index) {
-        any(vapply(higher[seq.int(index + 1L, length(higher))], function(candidate) {
-          has_pair(higher[[index]], candidate) || has_pair(candidate, higher[[index]])
-        }, logical(1)))
-      }, logical(1)))
-      if (!has_internal_difference) {
-        grouped_pairs <- c(grouped_pairs, pair_key(higher, lower))
-        grouped_statements <- rbind(
-          grouped_statements,
-          data.frame(
-            first = higher[[1]],
-            higher_key = paste(higher, collapse = "\r"),
-            lower = lower,
-            statement = sprintf("%s>%s", paste(higher, collapse = ","), lower),
-            stringsAsFactors = FALSE
-          )
+      grouped_pairs <- c(grouped_pairs, pair_key(higher, lower))
+      grouped_statements <- rbind(
+        grouped_statements,
+        data.frame(
+          first = higher[[1]],
+          higher_key = paste(higher, collapse = "\r"),
+          higher_label = marker_group_label(higher),
+          lower = lower,
+          statement = sprintf("%s>%s", marker_group_label(higher), lower),
+          stringsAsFactors = FALSE
         )
-      }
+      )
     }
   }
   if (nrow(grouped_statements) > 0L && all(c("higher_key", "lower") %in% names(grouped_statements))) {
@@ -916,6 +923,7 @@ ttest_ordered_marker_statements <- function(ordered_markers, significant_pairs) 
     for (higher_key in unique(grouped_statements$higher_key)) {
       group_rows <- grouped_statements[grouped_statements$higher_key == higher_key, , drop = FALSE]
       higher <- strsplit(higher_key, "\r", fixed = TRUE)[[1]]
+      higher_label <- as.character(group_rows$higher_label[[1]] %||% marker_group_label(higher))
       lower <- unique(as.character(group_rows$lower))
       lower <- ordered_markers[ordered_markers %in% lower]
       has_lower_internal_difference <- length(lower) > 1L && any(vapply(seq_len(length(lower) - 1L), function(index) {
@@ -928,7 +936,7 @@ ttest_ordered_marker_statements <- function(ordered_markers, significant_pairs) 
           consolidated_grouped_statements,
           data.frame(
             first = higher[[1]],
-            statement = sprintf("%s>%s", paste(higher, collapse = ","), paste(lower, collapse = ",")),
+            statement = sprintf("%s>%s", higher_label, paste(lower, collapse = ",")),
             stringsAsFactors = FALSE
           )
         )
